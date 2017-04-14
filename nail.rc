@@ -51,10 +51,6 @@ set append
 # Ask for a message subject.
 set ask
 
-# *bsdannounce* prints a header summary on folder change and thus complements
-# *header* on a per-folder basis (it is meaningless unless *header* is set)
-set bsdannounce
-
 # Uncomment this in order to get coloured output in $PAGER (if possible).
 #set colour-pager
 # Btw., if your $PAGER is less(1) or lv(1) you will usually be served, as

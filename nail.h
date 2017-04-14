@@ -747,6 +747,16 @@ typedef signed char     sc_i;
 typedef void (          *sighandler_type)(int); /* TODO v15 obsolete */
 typedef void (          *n_sighdl_t)(int);
 
+enum n_announce_flags{
+   n_ANNOUNCE_NONE = 0,          /* Only housekeeping */
+   n_ANNOUNCE_MAIN_CALL = 1u<<0, /* POSIX covered startup call */
+   n_ANNOUNCE_STATUS = 1u<<1,    /* Only print status */
+   n_ANNOUNCE_CHANGE = 1u<<2,    /* Folder changed */
+
+   n__ANNOUNCE_HEADER = 1u<<6,
+   n__ANNOUNCE_ANY = 1u<<7
+};
+
 enum authtype {
    AUTHTYPE_NONE     = 1<<0,
    AUTHTYPE_PLAIN    = 1<<1,  /* POP3: APOP is covered by this */
@@ -1618,7 +1628,7 @@ ok_b_autothread,
    ok_b_bang,
 ok_b_batch_exit_on_error,
    ok_v_bind_timeout,                  /* {notempty=1,posnum=1} */
-   ok_b_bsdannounce,
+ok_b_bsdannounce,
    ok_b_bsdcompat,
    ok_b_bsdflags,
    ok_b_bsdheadline,

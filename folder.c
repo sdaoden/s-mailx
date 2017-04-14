@@ -48,38 +48,11 @@ static bool_t  _update_mailname(char const *name);
 SINLINE size_t __narrow_suffix(char const *cp, size_t cpl, size_t maxl);
 #endif
 
-#ifdef HAVE_C90AMEND1
-SINLINE size_t
-__narrow_suffix(char const *cp, size_t cpl, size_t maxl)
-{
-   int err;
-   size_t i, ok;
-   NYD_ENTER;
-
-   for (err = ok = i = 0; cpl > maxl || err;) {
-      int ml = mblen(cp, cpl);
-      if (ml < 0) { /* XXX _narrow_suffix(): mblen() error; action? */
-         (void)mblen(NULL, 0);
-         err = 1;
-         ml = 1;
-      } else {
-         if (!err)
-            ok = i;
-         err = 0;
-         if (ml == 0)
-            break;
-      }
-      cp += ml;
-      i += ml;
-      cpl -= ml;
-   }
-   NYD_LEAVE;
-   return ok;
-}
-#endif /* HAVE_C90AMEND1 */
+/**/
+static void a_folder_info(void);
 
 static bool_t
-_update_mailname(char const *name)
+_update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Object! */
 {
    char *mailp, *dispp;
    size_t i, j;
@@ -142,6 +115,91 @@ jdocopy:
       ok_vset(mailbox_display, displayname)));
    NYD_LEAVE;
    return rv;
+}
+
+#ifdef HAVE_C90AMEND1
+SINLINE size_t
+__narrow_suffix(char const *cp, size_t cpl, size_t maxl)
+{
+   int err;
+   size_t i, ok;
+   NYD_ENTER;
+
+   for (err = ok = i = 0; cpl > maxl || err;) {
+      int ml = mblen(cp, cpl);
+      if (ml < 0) { /* XXX _narrow_suffix(): mblen() error; action? */
+         (void)mblen(NULL, 0);
+         err = 1;
+         ml = 1;
+      } else {
+         if (!err)
+            ok = i;
+         err = 0;
+         if (ml == 0)
+            break;
+      }
+      cp += ml;
+      i += ml;
+      cpl -= ml;
+   }
+   NYD_LEAVE;
+   return ok;
+}
+#endif /* HAVE_C90AMEND1 */
+
+static void
+a_folder_info(void){
+   struct message *mp;
+   int u, n, d, s, hidden, moved;
+   NYD2_ENTER;
+
+   if(mb.mb_type == MB_VOID){
+      fprintf(n_stdout, _("(Currently no active mailbox)"));
+      goto jleave;
+   }
+
+   s = d = hidden = moved = 0;
+   for (mp = message, n = 0, u = 0; PTRCMP(mp, <, message + msgCount); ++mp) {
+      if (mp->m_flag & MNEW)
+         ++n;
+      if ((mp->m_flag & MREAD) == 0)
+         ++u;
+      if ((mp->m_flag & (MDELETED | MSAVED)) == (MDELETED | MSAVED))
+         ++moved;
+      if ((mp->m_flag & (MDELETED | MSAVED)) == MDELETED)
+         ++d;
+      if ((mp->m_flag & (MDELETED | MSAVED)) == MSAVED)
+         ++s;
+      if (mp->m_flag & MHIDDEN)
+         ++hidden;
+   }
+
+   /* If displayname gets truncated the user effectively has no option to see
+    * the full pathname of the mailbox, so print it at least for '? fi' */
+   fprintf(n_stdout, "%s: ", n_shexp_quote_cp(
+      (_update_mailname(NULL) ? displayname : mailname), FAL0));
+   if (msgCount == 1)
+      fprintf(n_stdout, _("1 message"));
+   else
+      fprintf(n_stdout, _("%d messages"), msgCount);
+   if (n > 0)
+      fprintf(n_stdout, _(" %d new"), n);
+   if (u-n > 0)
+      fprintf(n_stdout, _(" %d unread"), u);
+   if (d > 0)
+      fprintf(n_stdout, _(" %d deleted"), d);
+   if (s > 0)
+      fprintf(n_stdout, _(" %d saved"), s);
+   if (moved > 0)
+      fprintf(n_stdout, _(" %d moved"), moved);
+   if (hidden > 0)
+      fprintf(n_stdout, _(" %d hidden"), hidden);
+   else if (mb.mb_perm == 0)
+      fprintf(n_stdout, _(" [Read-only]"));
+
+jleave:
+   putc('\n', n_stdout);
+   NYD2_LEAVE;
 }
 
 FL int
@@ -493,76 +551,35 @@ jleave:
 }
 
 FL void
-announce(int printheaders)
-{
+n_folder_announce(enum n_announce_flags af){
    int vec[2], mdot;
    NYD_ENTER;
 
-   mdot = newfileinfo();
-   vec[0] = mdot;
-   vec[1] = 0;
-   dot = message + mdot - 1;
-   if (printheaders && msgCount > 0 && ok_blook(header)) {
+   mdot = (mb.mb_type == MB_VOID) ? 1 : getmdot(0);
+   dot = &message[mdot - 1];
+
+   if(af != n_ANNOUNCE_NONE && ok_blook(header) &&
+         ((af & n_ANNOUNCE_MAIN_CALL) ||
+          ((af & n_ANNOUNCE_CHANGE) && !ok_blook(posix))))
+      af |= n_ANNOUNCE_STATUS | n__ANNOUNCE_HEADER;
+
+   if(af & n_ANNOUNCE_STATUS){
+      a_folder_info();
+      af |= n__ANNOUNCE_ANY;
+   }
+
+   if(af & n__ANNOUNCE_HEADER){
+      if(!(af & n_ANNOUNCE_MAIN_CALL) && ok_blook(bsdannounce))
+         n_OBSOLETE(_("*bsdannounce* is now default behaviour"));
+      vec[0] = mdot;
+      vec[1] = 0;
       print_header_group(vec); /* XXX errors? */
+      af |= n__ANNOUNCE_ANY;
    }
+
+   if(af & n__ANNOUNCE_ANY)
+      fflush(n_stdout);
    NYD_LEAVE;
-}
-
-FL int
-newfileinfo(void)
-{
-   struct message *mp;
-   int u, n, mdot, d, s, hidden, moved;
-   NYD_ENTER;
-
-   if (mb.mb_type == MB_VOID) {
-      mdot = 1;
-      goto jleave;
-   }
-
-   mdot = getmdot(0);
-   s = d = hidden = moved =0;
-   for (mp = message, n = 0, u = 0; PTRCMP(mp, <, message + msgCount); ++mp) {
-      if (mp->m_flag & MNEW)
-         ++n;
-      if ((mp->m_flag & MREAD) == 0)
-         ++u;
-      if ((mp->m_flag & (MDELETED | MSAVED)) == (MDELETED | MSAVED))
-         ++moved;
-      if ((mp->m_flag & (MDELETED | MSAVED)) == MDELETED)
-         ++d;
-      if ((mp->m_flag & (MDELETED | MSAVED)) == MSAVED)
-         ++s;
-      if (mp->m_flag & MHIDDEN)
-         ++hidden;
-   }
-
-   /* If displayname gets truncated the user effectively has no option to see
-    * the full pathname of the mailbox, so print it at least for '? fi' */
-   fprintf(n_stdout, _("%s: "), n_shexp_quote_cp(
-      (_update_mailname(NULL) ? displayname : mailname), FAL0));
-   if (msgCount == 1)
-      fprintf(n_stdout, _("1 message"));
-   else
-      fprintf(n_stdout, _("%d messages"), msgCount);
-   if (n > 0)
-      fprintf(n_stdout, _(" %d new"), n);
-   if (u-n > 0)
-      fprintf(n_stdout, _(" %d unread"), u);
-   if (d > 0)
-      fprintf(n_stdout, _(" %d deleted"), d);
-   if (s > 0)
-      fprintf(n_stdout, _(" %d saved"), s);
-   if (moved > 0)
-      fprintf(n_stdout, _(" %d moved"), moved);
-   if (hidden > 0)
-      fprintf(n_stdout, _(" %d hidden"), hidden);
-   else if (mb.mb_perm == 0)
-      fprintf(n_stdout, _(" [Read-only]"));
-   putc('\n', n_stdout);
-jleave:
-   NYD_LEAVE;
-   return mdot;
 }
 
 FL int

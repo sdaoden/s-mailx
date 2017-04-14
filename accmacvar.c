@@ -2008,7 +2008,7 @@ c_account(void *v){
       temporary_folder_hook_check(FAL0);
       if(i > 0 && !ok_blook(emptystart))
          goto jleave;
-      announce(ok_blook(bsdcompat) || ok_blook(bsdannounce));
+      n_folder_announce(n_ANNOUNCE_CHANGE);
       restorequitflags(nqf);
    }
    rv = 0;

@@ -514,13 +514,10 @@ a_main_rcv_mode(char const *folder, char const *Larg){
    if(sigsetjmp(a_main__hdrjmp, 1) == 0){
       if((prevint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
          safe_signal(SIGINT, &a_main_hdrstop);
-      if(ok_blook(header)){
-         if(!ok_blook(quiet))
-            fprintf(n_stdout, _("%s version %s.  Type `?' for help\n"),
-               (ok_blook(bsdcompat) ? "Mail" : n_uagent), ok_vlook(version));
-         announce(1);
-         fflush(n_stdout);
-      }
+      if(!ok_blook(quiet))
+         fprintf(n_stdout, _("%s version %s.  Type `?' for help\n"),
+            n_uagent, ok_vlook(version));
+      n_folder_announce(n_ANNOUNCE_MAIN_CALL | n_ANNOUNCE_CHANGE);
       safe_signal(SIGINT, prevint);
    }
 

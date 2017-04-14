@@ -49,8 +49,8 @@ _c_file(void *v, enum fedit_mode fm)
    int i;
    NYD2_ENTER;
 
-   if (*argv == NULL) {
-      newfileinfo();
+   if(*argv == NULL){
+      n_folder_announce(n_ANNOUNCE_STATUS);
       i = 0;
       goto jleave;
    }
@@ -82,8 +82,9 @@ _c_file(void *v, enum fedit_mode fm)
       i = (n_pstate & n_PS_ROBOT) ? 0 : 1;
       goto jleave;
    }
-   if (n_pstate & n_PS_SETFILE_OPENED)
-      announce(ok_blook(bsdcompat) || ok_blook(bsdannounce));
+
+   if(n_pstate & n_PS_SETFILE_OPENED)
+      n_folder_announce(n_ANNOUNCE_CHANGE);
    i = 0;
 jleave:
    NYD2_LEAVE;

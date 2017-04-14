@@ -822,13 +822,9 @@ FL void        setmsize(int sz);
 /* Logic behind -H / -L invocations */
 FL void        print_header_summary(char const *Larg);
 
-/* Announce the presence of the current Mail version, give the message count,
- * and print a header listing */
-FL void        announce(int printheaders);
-
-/* Announce information about the file we are editing.  Return a likely place
- * to set dot */
-FL int         newfileinfo(void);
+/* Announces the current folder as indicated.
+ * Is responsible for updating "dot" (after a folder change). */
+FL void n_folder_announce(enum n_announce_flags af);
 
 FL int         getmdot(int nmail);
 
