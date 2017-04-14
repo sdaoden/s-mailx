@@ -1,37 +1,18 @@
 S - n a i l / S - m a i l x  N e w s
 ====================================
 
-v14.9.0 ("Long-tailed tit"), 2017-05-??
+v14.9.0 ("Long-tailed tit"), 2017-07-??
 ---------------------------------------
 
-  Preview 4, 2017-04-13(+55min):
-  This is not a release candidate because some functionality is
-  missing still:
-  - the ~^ command escape needs new subcommands remove-at and
-    remove-addrs, so that, e.g., the new *alternates* variable
-    list can be manually removed with a single command.
-  - the command escapes must learn to manage $? and $!.
-  - also, i want a `-' command modifier for command escapes, in
-    equal spirit to the new `ignerr' command modifier, so that,
-    e.g., "~-:noSuchCommand" will effectively be "ignerr
-    noSuchCommand" and thus not exit even with *ignerr* set.
-    The interaction of *errexit* and command escapes is not yet
-    proper.  (And i hope the `-' is known from `make', sigh.)
-  - disable all MIME handlers which do not integrate into normal
-    output, i.e., are not "copiuous" output.  This of course
-    requires a new `mimeview' or similar command, and this is
-    a problem: we have it all, but the code paths have nothing in
-    common.  But i will not ship 14.9.0 with the current,
-    completely unrestricted MIME handlers enabled.
-  - try (hard) to reinstantiate IMAP.
+  RC 1, 2017-07-01:
+  + If you tried something with -pre4, and it did not work: please
+    try again!  So many bugs have been fixed.
 
-  + If you tried something with -pre3, and it did not work: please
-    try again!
-
-This is a major feature release which took about ~19 months (21
+This is a major feature release which took about ~22 months (24
 less two) of development to complete, and which imposed massive
 changes under the hood, but also quite a lot of user visible
 changes, including some **backward incompatibilities**.
+As (still) usual, "s-nail -d" will show obsoletion warnings.
 
 It brings noticeable improvements regarding scriptability and its
 reliability, but also for interactive use cases, especially
@@ -47,7 +28,7 @@ a hand that we otherwise could not offer.  In compose-mode the new
 `~^' command escape allows some message and attachment access, and
 can be used, e.g., to implement things like custom headers, and
 has been especially designed for scripted access via the new
-*on-compose-splice* and *on-compose-splice-shell* hooks.  
+*on-compose-splice* and *on-compose-splice-shell* hooks.
 
 S-nail will move (more or less) backward-incompatibly to sh(1)ell
 compatible argument quoting (documented in "COMMANDS"), and an
@@ -57,12 +38,13 @@ exclusively, some old ones have either been switched (like
 new syntax with a `wysh' command modifier prefix.  E.g.:
 
   ? define __xv {
+    # Be careful to choose sh(1)ell-style on _entire_ line!
      localopts yes; wysh set verbose; ignerr eval "${@}"; return $?
-  }
+    }
   ? commandalias call echo boo-boo
   ? commandalias xv call __xv
   ? xv list
-  ? wysh ghost xv '\'call __xv
+  ? commandalias xv '\'call __xv
   ? xv list
 
 Calling this `xv' for `list' will give more detailed command
@@ -71,12 +53,12 @@ information, including which kind of argument is used.
 I have not managed to implement the three features i have started
 this development cycle for, these are thus subject to further
 development, just like wysh for message-list argument commands to
-support, e.g., negation, and wysh for `if' and consorts.
+support, e.g., negation, wysh for `if' and consorts, and and and.
 
 Credits, in order of commit appearance: Antonio Radici,
 Aharon Robbins, Mike Frysinger, Predrag Punosevac, Michael Convey,
 Hariskar, Rudolf Sykora, Martin Neitzel, Gavin Troy,
-Salvatore Bonaccorso, Todd C.  Miller, Sergey Matveev, Robert Elz,
+Salvatore Bonaccorso, Todd C. Miller, Sergey Matveev, Robert Elz,
 Mantas Mikulėnas, Respiranto, Jens Schleusener, Walter Alejandro
 Iglesias, Ralph Corderoy, David Levine, Lyndon Nerenberg,
 Thomas Dickey, Afan, Justin Ellingwood, Ingo Schwarze,
@@ -85,7 +67,7 @@ Hilko Bengen, Matthew Dillon, Colin Watson, Donald Mugnai,
 Stephen Isard, Jürgen Daubert, Sven Neuhaus, trondd, Ismael Bouya,
 Felipe Gasper, Paul Eggert, Dr. Werner Fink, Ken Hornstein,
 Noel Chiappa, Random832, Doug McIlroy, Baptiste Daroussin,
-Riccardo Ductor and Pietro Cerutti.
+Riccardo Ductor, Pietro Cerutti, Jörg Schilling, rain1, Xin LI.
 
 We welcome Antonio Radici, Mike Frysinger, Predrag Punosevac,
 Michael Convey, Rudolf Sykora, Todd C. Miller, Robert Elz,
@@ -94,7 +76,8 @@ Justin Ellingwood, Viktor Szépe, Juan RP, Matthew Dillon,
 Colin Watson, Donald Mugnai, Sven Neuhaus, Ismael Bouya,
 Felipe Gasper, Paul Eggert, Dr. Werner Fink, Ken Hornstein,
 Noel Chiappa, Random832, Doug McIlroy, Baptiste Daroussin,
-Riccardo Ductor and Pietro Cerutti in THANKS.
+Riccardo Ductor, Pietro Cerutti, Jörg Schilling, rain1, and
+Xin LI in THANKS.
 
 Apologies: Sergey Matveev.
 Members of the Roff community which await progress.
@@ -117,15 +100,17 @@ NOTES, ChangeLog (packager-affine)
     gained a VAL_ prefix (thus VAL_PREFIX and VAL_PAGER).
 
     This is _not_ true for non-persistent or environmental values,
-    e.g., DESTDIR, CC, etc, and also not for the overwritable
+    e.g., DESTDIR, CC, etc., and also not for the overwritable
     program variables during configuration, e.g., $awk.
 
   o SENDMAIL -> VAL_MTA, SENDMAIL_PROGNAME -> VAL_MTA_ARGV0,
     MAILSPOOL -> VAL_MAIL.
-    And VAL_NAIL -> VAL_MAILX, though this is still a lie.
+    And NAIL -> VAL_MAILX, though this is still a lie.
 
   o The make system now needs config..build..install or
     all..install or tangerine (config..build..test..install).
+    Some constants which some experts may want to fine-tune have
+    been moved to config.h.
 
   o The `build' phase can be parallelized by setting the $MAKEJOBS
     environment variable, e.g., "make MAKEJOBS=-j4 build".
@@ -144,29 +129,63 @@ NOTES, ChangeLog (packager-affine)
   o The LD_LIBRARY_PATH etc. building processes will skip any path
     which contains the string "fakeroot".  (Hilko Bengen)
 
-  o We honour a set $SOURCE_DATE_EPOCH#? environment variable.
+  o We honour a set $SOURCE_DATE_EPOCH#? environment variable to
+    an extend that allows reproducible tests, which is why the
+    repository gained a [test-out] branch with some expected plain
+    text outputs.
     (reproducible-builds.org; Colin Watson)
 
-    For reproducability of error messages, the new *log-prefix*
-    variable can be set.
+    The new *log-prefix*#?  variable aids in improving the
+    reproducibility of error messages.
 
   o These are upward compatible changes.
 
-  o "make OPENSSL_API_COMPAT=0x10100000 all" should work.
+* "make OPENSSL_API_COMPAT=0x10100000 all" should work.
 
-- To support RFC 1524 a.k.a. .mailcap files (see below) many
-  "trigger"-characters have been added for *pipe-TYPE/SUBTYPE*#?,
-  which may (rarely) affect existing values.
-  The .mailcap support itself is not yet implemented.
+* Internal and environment variables are now explicitly _defined_
+  and _tracked_ after variable handling has been rewritten
+  completely.  Notes:
+
+  o This means that, e.g., "$ password=NOT_SECRET s-nail" will
+    **NOT** work no more, since *password*#? is an internal
+    variable!
+
+  o But if you do, e.g., "? set TMPDIR=~/tmp", then this will
+    also be reflected in the program environment (it is an
+    environment variable) and thus affect child processes.
+
+  o Therefore we no longer have `setenv' and `unsetenv'.
+
+  o To integrate any other environment variable transparently
+    into our variable management, the new command `environ'#?
+    needs to be used, e.g., "? environ set NEWVAR=value" or
+    "? environ link EXISTINGVAR".
+
+- -H#? and -L#? have been decoupled:
+   it used to be -e#? -L#? instead!
 
 - *NAIL_{HEAD,TAIL}* have been obsoleted in favour of
   *message-inject-head*#? and *message-inject-tail*#?.
 
-- *NAIL_HIST{FILE,SIZE}* have been obsoleted in favour of
+  *NAIL_HIST{FILE,SIZE}* have been obsoleted in favour of
   *history-file*#? and *history-size*#?.
 
-- -H#? and -L#? have been decoupled:
-   it used to be -e#? -L#? instead!
+  *NAIL_EXTRA_RC* has been obsoleted in favour of
+  *mailx-extra-rc*#?.
+
+  *batch-exit-on-error* has been obsoleted by *errexit*, which
+  works just like the POSIX sh(1)ell "set -e" construct; the
+  `ignerr'#? command modifier (`-' for command escapes in compose
+  mode, and see below) can be used to ignore command errors even
+  then.  (This will remain even if we at some later time will
+  support at least some of the sh(1) constructs which "swallow"
+  failures with set -e.)
+
+  *bsdannounce* is obsolete, the feature is integrated in
+  *header*#? as this is much more useful.  (This is however also
+  dependent upon the also new but well-known $POSIXLY_CORRECT#?
+  <> *posix*#?, but that is just how it is; these affect more
+  behaviour, and increasing.)
 
 - Colour support has been changed backward in- and upward (from
   user interface side) compatibly, see the manual section
@@ -176,7 +195,7 @@ NOTES, ChangeLog (packager-affine)
     You can define context-sensitive, terminal-capability-
     sensitive settings, e.g.:
 
-      if terminal && [ "$features" @= +colour ]
+      if terminal && [ "$features" =@ +colour ]
         colour iso  view-header ft=bold,fg=magenta,bg=cyan
         colour 256  view-header ft=bold,fg=208,bg=230 subject,from
         colour mono view-header ft=bold
@@ -191,7 +210,7 @@ NOTES, ChangeLog (packager-affine)
     without affecting established settings.
 
   + It is deduced via termcap(5) (see below) whether the terminal
-    supports colors, e.g., "s-nail -Stermcap=Co#256".
+    supports colors, e.g., "$ s-nail -Stermcap=Co#256".
     This is also true if we don't have termcap support.
 
   + Support for 256-colour terminals. (Gavin Troy)
@@ -202,21 +221,21 @@ NOTES, ChangeLog (packager-affine)
       ? source 'gpg -qd ~/.s-nailrc-private.gpg |'
 
 - Shell pipes are also supported as targets for `move'#?,
-  `copy'#? etc., e.g.,
+  `copy'#? etc., yet unfortunately not with via a sh(1)ell token
+  parser, so that the target still has to be a single argument.
 
       ? copy . '| cat; echo huhu'
 
 - Support for custom headers via the new ~^#? compose-mode
   command escape and in addition, or alternatively, with the
-  internal variable *customhdr*#?, which can be covered by
-  `localopts'#?.
-  (Sergey Matveev)
+  internal variable *customhdr*#?, which also can be covered by
+  `localopts'#?.  (Sergey Matveev)
 
   + Support of $ORGANIZATION has been dropped.
 
-  + In compose mode ~e#? supports _any_ header.
+  + Command escape ~e#? supports _any_ header.
 
-  + In compose mode ~^#? supports _any_ header.
+  + Command escape ~^#? supports _any_ header.
 
 - New -:#? command line option can be used to more easily select
   which startup files should be loaded, e.g., -:/ loads none.
@@ -226,12 +245,21 @@ NOTES, ChangeLog (packager-affine)
    enabled by default.
 
 - A first simple form of compose-mode hooks has been implemented:
-  *on-compose-enter*#? and *on-compose-leave*#? can be set to
-  macros which get invoked at appropriate times, with
-  `localopts'#? enabled (which extend until the message is sent).
+  *on-compose-enter*#?, *on-compose-leave*#? and
+  *on-compose-cleanup*#? can be set to macros which get invoked
+  at appropriate times.
+  For the `resend' series there is *on-resend-enter*#? and
+  *on-resend-cleanup*#?: this is very likely to change once
+  true message access is possible even in this mode.
 
   An even more powerful mechanism is available via the also new
-  *on-compose-splice* and *on-compose-splice-shell* hooks, e.g.,
+  *on-compose-splice* and *on-compose-splice-shell* hooks.
+  These are executed in child processes and communicate with the
+  parent via their standard input and output, and therefore can
+  do anything and act as if they were the user.
+
+  `localopts'#? are enabled and cannot be disabled (and extend
+  until the message is sent).
   (Jens Schleusener, Rudolf Sykora)
 
     ? set on-compose-splice=ocs
@@ -239,11 +267,11 @@ NOTES, ChangeLog (packager-affine)
       read ver
       echo Splice protocol version is $ver
       echo '~^header list'
-      read hl; vput vexpr es substr "${hl}" 0 1
+      read hl; vput vexpr es substring "${hl}" 0 1
       if [ "$es" != 2 ]
-        echoerr 'Failed to read header list, bailing out'; echo '~x'
-      end
-      if [ "$hl" !@ ' cc' ]
+        echoerr 'Failed to read header list, bailing out'
+        echo '~x'
+      elif [ "$hl" @i!% ' cc' ]
         echo '~^header insert cc Diet is your <mirr.or>'
         read es; vput vexpr es substr "${es}" 0 1
         if [ "$es" != 2 ]
@@ -265,12 +293,12 @@ NOTES, ChangeLog (packager-affine)
 
       ? set netrc-lookup netrc-pipe='gpg -qd ~/.netrc.gpg'
 
-    E.g., this is in usual .netrc syntax and thus possibly much
-    nicer than saying "source 'gpg -qd ~/.credentials.gpg |'".
+    I.e., this is in usual .netrc syntax and thus possibly much
+    nicer than saying "? source 'gpg -qd ~/.credentials.gpg |'".
 
 - termcap(5) / terminfo(5) support has been changed backward in-
   and upward (from user interface side) compatibly, please read
-  "On terminal control and line editor"#?
+  "On terminal control and line editor"#?.
 
   + OPT_TERMCAP is by default enabled.
     The new, by default enabled, configuration option
@@ -282,7 +310,7 @@ NOTES, ChangeLog (packager-affine)
     disable interaction with the chosen library, leaving only
     *termcap* in charge.
 
-  + The builtin line editor has been rather completely rewritten
+  + The built-in line editor has been rather completely rewritten
     to be the Mailx-Line-Editor (OPT_MLE, default yes), and
     supports wide glyphs (if possible), infinite line lengths
     (2 GB) and more.  Tabulator expansion is no longer an option
@@ -292,8 +320,9 @@ NOTES, ChangeLog (packager-affine)
     possible to freely define key bindings for the MLE via the new
     `bind'#?  and `unbind'#? commands.  These key bindings can
     make use of termcap(5) and/or terminfo(5) names.  The MLE will
-    install a set of default bindings, more so with OPT_TERMCAP,
-    try "bind*".
+    install a set of default bindings (unless there is a set
+    *line-editor-no-defaults*#?), more so with OPT_TERMCAP,
+    i.e., try "? bind*".
 
     Sufficient support provided, one can now, e.g., type "p " and
     then collect the message numbers to type, scrolling forward
@@ -302,47 +331,31 @@ NOTES, ChangeLog (packager-affine)
 
   + OPT_EDITLINE and OPT_READLINE support have been dropped.
     The new MLE should not miss anything.  Does it?
-    Tip: in an UTF-8 locale try "touch /tmp/hall{,öchen}" and then
-    autocomplete that: once, then ^Q, and again.
+    Tip: in an UTF-8 locale try "? !touch /tmp/hall{,öchen}" and
+    then autocomplete that: once, then ^Q, and again.
 
 - `source'#? can be used in `call'#?ed macros.
   What sounds so innocent replaced an entire machinery and got rid
   of a brilliant idea of Kurt Shoens from the 70s, but which never
-  worked with Nail/Heirloom extensions, namely macros, and in
+  worked with Nail/Heirloom extensions, namely macros, and in the
   right order.
-  Accompanying this -X#? can be used to define macros and run
-  them etc.  Should work:
+  Accompanying this -X#? can (dig multiline arguments and can) be
+  used to define macros and run them etc.  Should work:
 
     $ s-nail -X'define x {' -Xversion -Xx -X'}' -X'call x'
     $ s-nail -X'source \' -X'"echo version|"' -Xx
 
-- Internal and environment variables are now explicitly _defined_
-  and _tracked_ after variable handling has been rewritten
-  completely.
+  Macros can be `undefine'#?d from within themselves, and re-
+  `define'#?d.  It is still not possible to define macros
+  from within macros, and/or have inner macros, not to talk
+  about local scoping or anything more sophisticated such.
 
-  + Notes:
-    o This means that, e.g., "password=NOT_SECRET s-nail" will
-      **NOT** work no more, since *password*#? is an internal
-      variable!
+- -u#? / $LOGNAME#? ($USER) handling has been redefined,
+  and "-u USER" is now exactly the same as "-f %USER", and
+  $LOGNAME (and $USER) is actively set to the active user.  (Afan)
 
-    o But if you do, e.g., "set TMPDIR=~/tmp", then this will
-      also be reflected in the program environment (it is an
-      environment variable) and thus affect child processes.
-
-    o Therefore we no longer have `setenv' and `unsetenv'.
-
-    o To integrate any other environment variable transparently
-      into our variable management, the new command `environ'#?
-      needs to be used, e.g., "environ set NEWVAR=value" or
-      "environ link EXISTINGVAR".
-
-  + -u#? / $LOGNAME#? ($USER) handling has been redefined,
-    and "-u USER" is now exactly the same as "-f %USER", and
-    $LOGNAME (and $USER) is actively set to the active user.
-    (Afan)
-
-    $LOGNAME#? is POSIX standardized and henceforth used and
-    preferred over $USER, which came from BSD.  (Todd C. Miller)
+  $LOGNAME#? is POSIX standardized and henceforth used and
+  preferred over $USER, which came from BSD.  (Todd C. Miller)
 
 - In the future (at least non-message-list) argument handling will
   be changed backward-incompatibly to be sh(1)ell compatible (and
@@ -369,11 +382,11 @@ NOTES, ChangeLog (packager-affine)
   Note that *mta-arguments* is now parsed via the shell-token
   parser, so the following ends up exactly as desired.
 
-    ? wysh set mta-arguments='-t -X "/tmp/my log"'
+    ? set mta-arguments='-t -X "/tmp/my log"'
 
   For now we support a hack that understands a file:// URL in
   *mta*, too, but that is also the default if there is no protocol.
-  E.g.: "set mta=smtp://a:b@xy.z"
+  E.g.: "? set mta=smtp://a:b@xy.z"
 
 - The "spamd" *spam-interface*#? is obsolete.  I haven't tested
   it since my main machine died, it is error prone since it assumes
@@ -382,48 +395,53 @@ NOTES, ChangeLog (packager-affine)
   the "is-spam" state of a message, which "spamc" doesn't allow.)
 
 - The new *inbox*#? variable will henceforth be looked up when
-  searching for a primary system mailbox (as in "File %"),
-  followed by the usual $MAIL#? and compile-time mailspool
-  search.  (Stephen Isard, Jürgen Daubert)
+  searching for a primary system mailbox (as in "? File %"),
+  followed by the usual $MAIL#? and compile-time defined local
+  mailspool search.  (Stephen Isard, Jürgen Daubert)
 
 - New "failinvaddr" keyword for *expandaddr*#?.
 
 - We finally "can" the so-called (by myself) "Dr. Problem" (a bit):
   (Dr. Werner Fink)
 
-    $ echo|./s-nail -:/ -sTrödel -dSencoding=8bit \
-      'Dr. Diet Curd <to@fu.soj>' 2>&1|\
-    grep To:
-    s-nail: >>> To: "Dr. Diet Curd" <to@fu.soj>
+    $ </dev/null s-nail -d:/ -sTrödler 'Dr. D. Iet <z@a.k>' 2>&1 |\
+      grep To:
+    s-nail: >>> To: "Dr. D. Iet" <z@a.k>
 
-  This can be done via the new `addrcodec'#?, too:
+  This can be done via the new `addrcodec'#?, too, note this
+  supports multiple modes (and the `vput' command modifier):
 
-    $ echo 'addrcodec e Dr. Diet <to@fu.soj> Curd'|./s-nail -#:/
+    $ echo 'addrcodec e Dr. Diet <to@fu.soj> Curd' | s-nail -#:/
     "Dr. Diet Curd" <to@fu.soj>
 
 - All commands with the string "codec" in their name use different
-  argument quoting, namely none at all, read "Raw data arguments
-  for codec commands"#?.
+  argument quoting, namely none at all, please read
+  "Raw data arguments for codec commands"#?.
+  This means that `urlcodec'#? (and `imapcodec'#?) has
+  slightly changed semantics.
+  And, while here: there is a new `shcodec'#?, too.
 
-- We gained "Command modifiers"#?: `\'#? (avoid `commandalias'#?
-  expansion), `vput'#? (store result in variable), `ignerr'#?
-  (ignore an error of the following command, even if the new
-  *errexit*#? is set), `wysh'#? (use shell-style arguments).
+- We gained "Command modifiers"#?: `\'#? (avoid expansion of
+  `commandalias'#? es), `vput'#? (store result in variable),
+  `ignerr'#?  (ignore an error of the following command, even
+  if the new *errexit*#? is set), `wysh'#? (use shell-style
+  arguments).
 
-    $ echo 'vput cwd resvar;echo $resvar' | ./s-nail -#:/
+    $ echo 'vput cwd resvar;echo $resvar' | s-nail -#:/
     /home/steffen/src/nail.git
 
   And the usual sh(1) stuff: `return'#?, `shift'#?, `eval'#?,
-  plus a `xcall'#? stack-avoidance optimization.
-  And an "expr(1) like thing": `vexpr'#?.
+  plus a `xcall'#? stack-avoidance optimization (to be used in
+  place of a `call'#? which would be the last called command).
+  And an "expr(1) like thing", yet simple, `vexpr'#?.
 
-    $ echo 'vexpr + 1 2' | ./s-nail -#:/
+    $ echo 'vexpr + 1 2' | s-nail -#:/
     00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000011
     03 | 0x3 | 3
-    $ echo 'vput vexpr resvar + 1 2;echo $resvar' | ./s-nail -#:/
+    $ echo 'vput vexpr resvar + 1 2;echo $resvar' | s-nail -#:/
     3
 
-  We actually start walking (?#?, *^*#?).
+  We actually start walking (*?*#?, *^*#?).
 
     ? vput vexpr res regex 'bananarama' 'Bana(.+)' '\$1\$0'
     ? echo $?/$^ERRNAME :$res:
@@ -432,11 +450,66 @@ NOTES, ChangeLog (packager-affine)
     ? echo $?/$^ERRNAME :$res:
     0/NONE :bananabananarama:
 
+  The command `vpospar'#? can be used to manage the stack of
+  positional parameters, i.e., much like "set --".
+  It also offers the possibility to save and restore the stack to
+  and from variables.  Etc.
+
+  Btw., to contact the maintainer (make.rc variables
+  VAL_CONTACT_WEB and VAL_CONTACT_MAIL):
+
+    ? echo $contact-web; eval mail $contact-mail
+
 - `if'#? no longer performs automatic number conversion, we
-  use the explicit -lt, -gt syntax of the sh(1).
+  use the explicit -lt, -gt etc. syntax of the sh(1).
   Note: `if' will change to be almost identical to sh(1) if(1),
-  so please ensure proper bracket quoting, even if it is less
+  so please ensure proper test bracketing, even if it is less
   convenient.
+
+  Moreover, the default string comparison mode has changed to
+  case-sensitive, just like in the shell.  This is because in the
+  future this crux with trigger characters will vanish and `if'
+  etc. will simply slurp in already expanded shell tokens, it will
+  act like the shell in that respect.  We have modifiers, though,
+  yet only "@i" for case-insensitivity, also for regex matches:
+
+    LC_ALL=C
+    i=`LC_ALL=C.utf8 s-nail -:/ -# -X '
+      \define cset_test {
+         \if [ "${ttycharset}" @i=@ utf ]
+            \echo $LC_ALL
+            \xit 0
+         \end
+         \if [ "${#}" -gt 0 ]
+            \wysh set LC_ALL="${1}.utf8"
+            \shift
+            \eval xcall cset_test "${@}"
+         \end
+         \xit 1
+      }
+      \call cset_test POSIX en_EN en_US
+   '`
+   [ $? -eq 0 ] && UTF8_LOCALE=$i
+
+- Using an explicit proto:// prefix should get you the desired
+  thing apart of *newfolders*, e.g.:
+
+    ? File maildir:///tmp/x.mdir
+    ? copy * file:///tmp/x.mbox
+
+- New variable *record-files*#? can be set to extend the meaning
+  of *record*#?.
+
+- New variable *ifs*#? acts a bit like the sh(1)ell's $IFS for,
+  e.g., the new `read'#? command.
+
+  There is a `readctl'#? command which can be used to manage
+  the active channel used by `read'#?.
+
+- The `~' alias for `call' is gone.
+
+- `mimetype'#? only allows specification of a single type per
+  call, on the other hand no need to quote that.
 
 ChangeLog
 ^^^^^^^^^
@@ -448,6 +521,11 @@ ChangeLog
   (Predrag Punosevac, Michael Convey, Hariskar, Rudolf Sykora,
   Respiranto, Thomas Dickey, Donald Mugnai)
 
+- To support RFC 1524 a.k.a. .mailcap files (see below) many
+  "trigger"-characters have been added for *pipe-TYPE/SUBTYPE*#?,
+  which may (rarely) affect existing values.
+  The .mailcap support itself is not yet implemented.
+
 - *mime-counter-evidence*#? gained bit 4 (perform proper in-depth
   content inspection as necessary; set to 0xE for all bits).
   (Aharon Robbins)
@@ -458,11 +536,12 @@ ChangeLog
 - -M#? and -m#? options have been added to enforce a special
   send mode that will flag standard input / the given file with
   the specified / detected MIME 'Content-Type:'.  This can be used
-  to directly send, e.g., HTML log output.  Note that before v15
-  this is quite restricted: you are not free to do anything.
+  to directly send, e.g., HTML log output.
   (Viktro Szépe, Ralph Corderoy)
 
-- Disallow symlinks on writable files (O_NOFOLLOW open(2)).
+- Disallow symlinks on writable files.  Note this requires
+  O_NOFOLLOW support for the operating-system-call open(2), but
+  which has been standardized a long time ago.
   (Matthew Dillon)
 
 - `retain'#?, `ignore'#? etc. now differentiate in between
@@ -470,24 +549,24 @@ ChangeLog
 
 - In fact we now have a new `headerpick'#? command which
   is a multiplexer for all retain and ignore lists used, call it
-  without arguments to see the current setting of them all.
+  without arguments to see the current setting(s).
   In v15 only `headerpick' and the standard-imposed wrappers
   `retain' and `ignore' will remain, all other wrappers will
   vanish.  Regular expressions can now be used if available:
 
-    0[ich /var/spool/mail/steffen]? headerpick
-    headerpick type retain add blahblahblah cc date from \
+    ? headerpick
+    headerpick type retain blahblahblah cc date from \
       mail-followup-to message-id openpgp reply-to subject to \
       user-agent
     #headerpick type ignore currently covers no fields
     #headerpick save retain currently covers no fields
-    headerpick save ignore add '^Original-.*$' '^X-.*$'
-    headerpick forward retain add cc date from list-id \
+    headerpick save ignore '^Original-.*$' '^X-.*$'
+    headerpick forward retain cc date from list-id \
       mail-followup-to reply-to subject to openpgp
     #headerpick forward ignore currently covers no fields
 
 - `top'#? has been rewritten completely, `Top'#? is new.
-  It uses a builtin set of retain/ignore headers, but it is
+  It uses a built-in set of retain/ignore headers, but it is
   possible to register a custom set via `headerpick'#?.
   Also, *toplines*#? has been extended a bit and the new
   *topsqueeze*#? variable may pimp your `top' experience.
@@ -514,11 +593,12 @@ ChangeLog
   We gained *prompt2*#? as a second level prompt.
 
     ? var prompt
-    ? wysh set prompt='?\${?}[\${account} \${mailbox-display}]? '
+    wysh set \
+      prompt='?\${?}!\${!}[\${account}#\${mailbox-display}]? '
 
 - The filename "-" can be used as a receiver, e.g.,
 
-    echo 'From Blödel'|s-nail -:/ -Sexpandaddr -Sencoding=8b -sUB -
+    $ echo Hey,\ you | s-nail -:/ -Sexpandaddr -sUB -
 
 - The -s#? command line option, the ~s#? command escape
   as well as the corresponding slots of ~^#? will actively
@@ -545,11 +625,11 @@ ChangeLog
   be stored in an encrypted resource file that has been loaded via
   `source'#? as a simple *password*#? variable.
 
-  Note that the prompting that happens as a last resort will still
-  interfere with a possibly running $PAGER#? instance, dependent
-  on the setting of *crt*#?, of course.  Proper job control
-  handling and recognizing that we are running $PAGER when doing
-  that prompt is a TODO for v15.  Sorry.
+  Note that the prompting that happens as a last resort of
+  password lookup will still interfere with a possibly running
+  $PAGER#? instance, dependent on the setting of *crt*#?, of
+  course.  Proper job control handling and recognizing that we are
+  running $PAGER when doing that prompt is a TODO for v15.  Sorry.
 
 - Some commands, like `set'#?, `help'#?, `list'#?,
   `mlist'#? etc., now react upon the setting of *verbose*#?
@@ -557,27 +637,65 @@ ChangeLog
 
 - `write'#? uses iconv(3) as appropriate.
 
-- *mbox-rfc4155*#? has first been dropped, and then
+- *mbox-rfc4155*#? has first been dropped, and was then
   reintroduced with different semantics.  Because, it can be
-  helpful if a messed up MBOX is read: by setting it, reopening
-  the MBOX, unsetting it again and then doing "copy * SOMEWHERE"
-  we will ensure the new SOMEWHERE is a valid MBOX.
+  helpful if a messed up MBOX is read, in which case we henceforth
+  will warn you and point you to this:
 
-- `call_if'#? is new; kept it even after "ignerr call" came up.
+    ? define mboxfix {
+      \localopts yes; \wysh set mbox-rfc4155;\
+        \wysh File "${1}"; \eval copy * "${2}"
+    }
+    ? call mbox /tmp/bad.mbox /tmp/good.mbox
+
+  P.S.  Here you see how weird the current thing still is, in v15:
+
+    ? define mboxfix {
+      localopts yes; set mbox-rfc4155; File "${1}"; copy * -- "${2}"
+    }
+
+  And also in v15 we will not apply (proper) so-called MBOXO
+  quoting, but instead (simply MIME) re-encode mail messages.
+
+- `call_if'#? is new and, different to "? ignerr call", silent
+  and not messing with the return status.
 
 - The new *smime-ca-flags*#? and *ssl-ca-flags*#? can be used
-  to fine-tune X509_STORE_set_flags(3).  (In the following, the
-  first `wysh' enables the ';' to be recognized as a shell token
-  delimiter, the second allows shell-style expansion of the
-  variable value.)
+  to fine-tune X509_STORE_set_flags(3) a.k.a the X509 CA
+  certificate verification.
 
-    ? wysh set ssl-ca-flags=partial-chain;\
-      wysh set smime-ca-flags="${ssl-ca-flags}"
+    ? set ssl-ca-flags=partial-chain
+    ? wysh set smime-ca-flags="${ssl-ca-flags}"
+
+  Also, *ssl-curves*#? for TLSv1.3.
 
 - Socket connections use TLS S(erver)N(ame)I(ndication) as
   appropriate (RFC 7817).
 
+- `alternate'#? checks arguments and exposes its setting via
+  the new *alternates*#? variable.
+
 - A new `charsetalias'#? command.  (Pietro Cerutti, mutt#3925)
+
+- New commands `filetype'#? and `unfiletype'#?: in the future
+  we will no longer know any builtin filetypes, in fact we already
+  simulate .gz etc. via the new mechanism as necessary:
+
+    filetype \
+       bz2 'bzip2 -dc' 'bzip2 -zc' \
+       gpg 'gpg -d' 'gpg -e' \
+       gz 'gzip -dc' 'gzip -c' \
+       xz 'xz -dc' 'xz -zc' \
+       zst 'zstd -dc' 'zstd -19 -zc' \
+       zst.pgp 'gpg -d | zstd -dc' 'zstd -19 -zc | gpg -e'
+
+- ~<#? now offers a "- [HERE-delimiter]" mode for pasting etc.
+  (Ralph Corderoy)
+
+- `exit'#? and `quit'#? take an optional exit status.
+  (That is not fixated yet, though.)
+
+- We have a useful -h / --help output.  (Doug McIlroy)
 
 git(1) shortlog (abbreviated)
 '''''''''''''''''''''''''''''
@@ -587,7 +705,6 @@ f01291d extract_date_from_from_(): dig more invalid MBOXes (Antonio Radici)..
 bb5d0e2 *pipe-TYPE/SUBTYPE*: add "!" trigger ("needsterminal")
 df8768b Add *mime-counter-evidence* bit 4 (Aharon Robbins)..
 d3fe980 Ftmp(): drop "mode" argument (not wrong: Mike Frysinger)..
-f6fbcc4 Add *mime-alternative-favour-rich*..
 86159db nail.1: we support searching, really (Predrag Punosevac)
 5b61a08 nail.1: talk about address lists (again) (Michael Convey)..
 0eeffc4 nail.1: try improve states / MBOX etc. relation (Michael Convey)
@@ -639,7 +756,6 @@ abf2e5d .netrc: support comments (Walter Alejandro Iglesias, Ralph Corderoy)..
 cf3ccfe Deduce colours via *termcap* instead!; support all/*..
 64eabef Turn NCL into M(ailx) L(ine) E(ditor)..
 27f3e9d Add terminfo(5) support (via WANT_TERMCAP_PREFER_TERMINFO)..
-  Note: later renamed to OPT_TERMCAP_VIA_TERMINFO
 1aa64b6 Add WANT_KEY_BINDINGS..
 d935e65 (BWDIC!) Allow `source' in `call'ed macros..
 c8c1393 n_lex_input(): truly support line continuation via backslash..
@@ -689,7 +805,6 @@ c83e153 (BWDIC!) Require explicit "from_" to `retain' etc. From_ lines!
 d7a15e4 page_or_print(): query $PAGER environment, use it
 1dc9bb6 (BWDIC!) Make `top' real-life capable!  Add `Top', *topsqueeze*..
 df4954c Add $SOURCE_DATE_EPOCH (reproducible-builds.org; Colin Watson)
-b412ea8 mime.types: add x-lzma, x-lz4 and x-lzip MIME type extensions
 dc92f2c savedeadletter()->sendout.c; tweak POSIX compliance (Ralph Corderoy)
 8a3638c MLE: add `bind' and `unbind' etc...
 4c93f66 (BWDIC!) Obsolete *sendmail*++ in favour of *mta*++; obsolete *smtp*..
@@ -706,24 +821,14 @@ b9e4e61 Drop `features', change `version', adjust make system..
 == Preview 1 ==
 1b462ed -#: also set *MAIL* to /dev/null
 2d53b46 url_parse(): better take better care for path parts (Stephen Isard)..
-8650fa6 sendmp(), setfile(): FIX: ensure time_current is actualized
 21f0eaa mk-conf.sh: find terminfo on Sun (Thomas Dickey)..
-e33dfa0 n_termcap_query(): FIX: did real work even with PS_TERMCAP_DISABLE..
-58423ea MLE.bind.a_tty_bind_create(): properly align durable buffer, too (sic)
-f449fe1 MLE.bind.a_tty_bind_create(): tweak previous (encapsulate+notify
-        knowledge)
 4496e9a Many: drop support for *mbox-rfc4155* - a no-brainer..
-a26d4c2 is_head(): change compat argument to check_rfc4155..
-5cf41d4 mime_types.c:_mt_by_filename(): basename() path (fix/tweak relative
-        paths)
 e4ddaa8 Change n_iconv*() protos, add enum n_iconv_flags (Ralph Corderoy)..
 83313f1 Allow -X options to take multiline arguments..
-204531f cmd_tab.h: allow history for `environ', `set', `varshow'
 a1eee83 Add a RFC 6068 url_mailto_to_address() hack for List-Post:
 99e96f3 FIX "," message specification (since [1c4b8c9], v14.8.4)..
 1587069 FIX [44cec1f] (Fix "address" message specifications (John Dodson))..
 e40e181 nail.1, nail.rc: set *sendwait* by default (Ralph Corderoy)
-0879986 First (rather small) step in reworking getmsglist()..
 3051546 Move `help' to lex_input.c, show argument type with *verbose*
 0ef4291 `z': add ^: goes to first screen; fix max calc for 0 modulos
 7adcf99 `write'++: !interactive: urlxenc() attachment paths (Ralph Corderoy)..
@@ -736,11 +841,9 @@ f1313c0 Add `urlcodec', obsolete `url{en,de}code'
 a638bcf Add *typescript-mode*, set it for -# (Ralph Corderoy, Martin
         Neitzel)..
 053e19f Add *inbox* (Stephen Isard, and Jürgen Daubert)..
-9d364e1 mk-conf.sh, auxlily.c: fix va_copy(3) detection with -std=c89
 20e3240 Add OPT_ALWAYS_UNICODE_LOCALE (Predrag Punosevac)..
 14b5a3a Make combinetime() overflow safe (Vincent Lefevre)..
 2bf0888 getmsglist(): if user gives A-B, try fulfill even in threaded mode
-0bd7cbb Dotlock: O_TRUNC is meaningless with O_CREAT|O_EXCL; etc.
 == Preview 2 ==
 3fa035ac mk-conf.sh: fix bmake(1)/portable, it fails to import
         $CFLAGS/$LDFLAGS
@@ -761,7 +864,6 @@ abf00559 (BWDIC!) Rewrite prompt handling via new n_tty_create_prompt()..
 83115c3b Allow - as an output filename..
 675d825b nail.rc, nail.1: set *editheaders* by default, and pimp "A starter"
 44ff5125 TLS/SSL: make OPENSSL_API_COMPAT=0x10100000 clean..
-411e9f7a Allow `errors' in send mode, too
 03309960 The time has come: $POSIXLY_CORRECT, *posix* have arrived
 975e6869 (BWDIC!) Only rm sysboxes, unless *posix* (Walter A. Iglesias,
         trondd)..
@@ -797,8 +899,6 @@ ebf2a584 THANKS: Paul Eggert
 e441efb4 Integrate S/MIME passwords into usual credential lookups (a bit)..
 1ad6817d nail.1: disable "The Mailcap files" for v14.9.0; sigh and sorry
 == Preview 3 ==
-303d46cd FIX [3d7835fc] aka `~^' attachments, especially Content-ID:
-        (Ralph Corderoy)
 f797c27e FIX privsep.c, yes, vulnerability (wapiflapi)..
 847a21b5 THANKS: wapiflapi
 f2699449 FIX privsep.c vulnerability, II (forgot hostname!) (wapiflapi)
@@ -807,7 +907,6 @@ f2699449 FIX privsep.c vulnerability, II (forgot hostname!) (wapiflapi)
 4ce4eb55 privsep.c: and just verify the box is also in CWD (wapiflapi)
 88253be0 send.c:sendpart(): iconv(3) when `write'ing to a file!
 1b1d7184 *on-compose-leave*: allow *autob?cc* from within
-5319762a README: adjusted repository layout
 374ccb98 Implement some command modifiers, allow recursive `ghost' expansion..
 ef903a66 Sigh.  So, reintroduce *mbox-rfc4155*, but slightly different!
 0dc7ad9b Disallow turning off `localopts' in compose-mode hooks..
@@ -824,7 +923,6 @@ b034478f INSTALL,makefile: $MAKEJOBS, not $MAILJOBS
         *-exit-status*
 4c7be869 `file'+: reallow globbing for arguments, fnmatch(3) is save!
 8389819e Add *-alternates*, check `alternates' arguments
-  Note: later renamed to *alternates*
 c6e0b04e Implement `shift', to shift macro parameters
 6c39d928 Security fix: never fall back to getenv(3)..
 65bb8d98 Implement `return', to return from macros and accounts
@@ -850,7 +948,6 @@ e0bf944d THANKS: Random832
 5a1c023c nail.1: furtherly clarify doc. of \cX (Doug McIlroy)..
 fb88d4fb THANKS: Doug McIlroy
 a396678a Implement `echon' and `echoerrn' ("echo -n" and "echo >&2 -n")
-7e4ff2d0 FIX: actually honour ARG_H (never place in history; SINCE EVER!)
 c5197719 cmd_tab.h: `wysh' for more commands!
 d33294c2 mk-release.inc: use %B for $DATE_MAN (Baptiste Daroussin)..
 ad34b768 THANKS: Baptiste Daroussin
@@ -858,15 +955,12 @@ f53248dd Support `vput' for `cwd'
 eafa9411 (BWDIC!) Defaults for *datefield{-markout-older}* (Debian #855582;
         r.ductor)..
 871a1e3f THANKS: Riccardo Ductor
-a743a900 Avoid crash due to a strictly standard compliant memcpy(3)..
 a256ebb2 (BWDIC!) sendout.c:__mta_start(): with SMTP *mta*, do not send to
         aliases!
-52004130 Add n_lex_input_clearerr(); limit *ignoreeof* count to 4..
 5ab93627 MLE: set FEXP_NOPROTO for mle-complete expansions (Ralph Corderoy)
 78c30e08 `read': work more like shells..
 ada72661 ~<: add "- [HERE-delimiter]" for pasting etc. (Ralph Corderoy)
 5669e8a2 `vexpr': add "random" subcommand
-5524e1be `vput': generalize and use shell-parser (i.e., itself expandable)
 acb887b4 (BWDIC!) *mta-arguments*: parse via shell-style quoting
 9cddf95c (BWDIC!) For all shell commands, use shell-style quoting
 72faa445 New quoting rules for `unset', `varshow', `varedit'
@@ -893,6 +987,83 @@ f7f2781b `addrcodec': add `skin' subcommand, add an `encode' mode
 59cb4714 Add *log-prefix* (with i3val), for reproduceabilities sake
 658567b5 (BWDIC!) make.rc,mk-conf.sh: VAL_NAIL -> VAL_MAILX
 == Preview 4 ==
+952a52b7 Improve shell parser sequencing; changes \c@..
+9ab5c1ef CRY OUT LOUD and tweak/explain the latter!
+  [This "latter" not _that_ latter]
+8855fdd6 Obsolete *bsdannounce*, cover it via *header* (unless *posix*)
+eabb7eaf (BWDIC!) Add `(un)?filetype', obsolete *file-hook**, .gz etc.
+        support++..
+41f21c2a `charsetalias', `filetype', `shortcut': show given with one arg
+c35072cb Add *build-os{,env}* and *version-date*
+782e53f4 Support `vput' for `!'
+af56d082 (BWDIC!) c_varedit(): do not strip ANYTHING from user data!
+4676f016 `vexpr': add "makeprint" subcommand
+162cafb7 *mime-counter-evidence*, bit 4: allow "soft" controls (Jörg
+        Schilling)..
+0ee3f647 THANKS: Jörg Schilling
+fc1e07dd a_nag_altnames: n_strlist* instead of char**; "alternates -": clear!
+9d20238d Extend $SOURCE_DATE_EPOCH coverage to randoms+..
+7039d7f4 Outsource some constants to new config.h; use mk-* for mk stuff
+6954954d Support protocol:// prefix to fixate++ `file'++ type
+90861930 Readd removed fflush()/fseek() in between read and write..
+  [That should credit Jörg Schilling indeed]
+aae47707 Tweak previous, and include O_CREAT in "a+" (Jörg Schilling)..
+c477c146 Add OPT_ASAN_{ADDRESS,MEMORY} options..
+c377e332 Ensure *mta* and *mta-argv0* have default values (again)
+fa874a8e Add VAL_CONTACT_{MAIL,WEB}, and *contact-{mail,web}*
+3e4441f8 a_main_usage(): new synopsis (Doug McIlroy)
+afce84e1 Rework test framework a bit, introduce [test-out] branch
+5bfdcde7 (BWDIC!) Add *record-files*; fix *record* for `[Rr]esend' with only
+        files
+4898618e Maildir: add test; change to Courier filenames, Torek hash++
+969f7059 `history': show mode: change output, act on *verbose*+
+17b91f60 Do not "imply *dot*" with *ignoreeof* - unless *posix*
+7457ac57 MLE: allow hist-{,srch-}fwd to start history lookup
+539c510c Add *ifs* (and *ifs-ws*) variables
+c6a93f72 `read': support and split as indicated by *ifs*
+fc10001f Drop the `~' `call' "alias", it always has been a bad idea..
+01d99c30 `vpospar': manage positional parameters, à la "set --", but
+        round-trip
+0b7f9d38 `read': trim_ifs(), $?/$! semantics rewrite; fix -1 input error case
+3659cffa Add VAL_MIME_TYPES_{SYS,USR} to make.rc (from config.h)
+f99c672b Add *ssl-curves* (for TLSv1.3)
+2aab72f6 Add `readctl' command..
+8a8b0478 Obsolete `[Rr]edirect'
+8f61025b FIX icase hmaps (`charsetalias', `filetype', `mlist') (rain1)
+a794370f THANKS: rain1
+95c24391 Pass through the real exit status of command from `!'
+f892438e Fix all `spamXY' cmds and `mbox': do not allow deleted+ msgs
+2e6a811d a_termcap_init_var(): numerics not necessarily decimal (Thomas
+        Dickey)..
+9d6b190d `~^ header': add `remove-at', test in t_behave_compose_hooks ++..
+9d58267f config.h+: add n_PATH_DEVNULL, use it instead of hardcoding (Xin LI)
+ae55f33d THANKS: Xin LI
+a6b934bf (BWDIC!) `mimetype': only support one type per call (no more quotes!)
+eb237db8 (BWDIC!) `if'+: add operator modifiers; change defaults:
+        case-sensitive!
+1acdc481 Command escapes: support $!/$?, and honour *errexit* (somewhat)
+2228d220 `shell': support $! and $?
+71c647a8 (BWDIC!) Add `partview', change MIME part handler semantics..
+f71daf4e Tweak splice hooks, and, eh, pfffh!!, n_child_wait()!
+dd94be65 ~[Rr]: "- DELIM": may need to quote delim in future
+bcfeecbf Introduce *on-compose-cleanup* (we don't support roff .env's...)
+62358d22 More `alternates' processing: a 2nd "pure", non-extended run
+e9665a17 `echoerr': use error ring queue if interactive and available
+4099f8ae `shift': _allow_ in hook/account if stack created via `vpospar'!
+e1ed6492 Change *on-compose-{enter,leave}* environment + fixes..
+d41fc323 Better hook support: *mailx-{raw,orig}-* a.k.a.
+        Mailx-{Raw,Orig}-From:..
+0869563c Support *on-resend-{enter,cleanup}*..
+077f5299 Add n_locale_init(), track $LC_{ALL,CTYPE} and $LANG (for
+        *ttycharset*)
+2f5e3b9e `exit', `quit': support optional exit status argument
+0bcd8428 cc-test.sh: use ourselfs when detecting UTF-8 locale..
+4009dc54 `xcall': simply be `call' if used from non-macro context
+027513b0 a_folder_info(): print "+[FOLDER]rest" if under folder (as
+        applicable)
+3606b399 (BWDIC!) Fix *imap-delim* behaviour..
+711ea310 Actively forbid copy from POP3 to IMAP
+== RC 1 ==
 
 Appendix
 ^^^^^^^^
