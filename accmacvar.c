@@ -2592,25 +2592,28 @@ c_varedit(void *v){
 
       if(nf != NULL){
          int c;
-         char *base;
+         char const *varres;
          off_t l;
 
          l = fsize(nf);
-         assert(l >= 0);
-         base = salloc((size_t)l +1);
-
-         for(l = 0, val = base; (c = getc(nf)) != EOF; ++val)
-            if(c == '\n' || c == '\r'){
-               *val = ' ';
-               ++l;
-            }else{
-               *val = (char)(uc_i)c;
-               l = 0;
+         if(UICMP(64, l, >=, UIZ_MAX -42)){
+            n_err(_("`varedit': not enough memory to store variable: %s\n"),
+               avc.avc_name);
+            varres = n_empty;
+            err = 1;
+         }else{
+            varres = val = n_autorec_alloc(l +1);
+            for(; l > 0 && (c = getc(nf)) != EOF; --l)
+               *val++ = c;
+            *val++ = '\0';
+            if(l != 0){
+               n_err(_("`varedit': I/O while reading new value of: %s\n"),
+                  avc.avc_name);
+               err = 1;
             }
-         val -= l;
-         *val = '\0';
+         }
 
-         if(!a_amv_var_set(&avc, base, FAL0))
+         if(!a_amv_var_set(&avc, varres, FAL0))
             err = 1;
 
          Fclose(nf);
