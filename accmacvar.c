@@ -2261,7 +2261,7 @@ temporary_compose_mode_hook_call(char const *macname,
       amcap = n_lofi_alloc(sizeof *amcap);
       memset(amcap, 0, sizeof *amcap);
       amcap->amca_name = (macname != NULL) ? macname
-            : "on-compose-splice-shell";
+            : "*on-compose-splice(-shell)?*";
       amcap->amca_amp = amp;
       amcap->amca_unroller = &a_amv_compose_lopts;
       amcap->amca_hook_pre = hook_pre;

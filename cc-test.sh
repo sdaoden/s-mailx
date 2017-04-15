@@ -2231,9 +2231,25 @@ t_behave_compose_hooks() {
    chmod 0755 ./.tsendmail.sh
 
    printf 'm hook-test@exam.ple\nbody\n~.\nvar t_oce t_ocs t_ocs_shell t_ocl' |
-   "${SNAIL}" ${ARGS} \
+   "${SNAIL}" ${ARGS} -Snomemdebug \
       -Smta=./.tsendmail.sh \
       -X'
+         define _work {
+            vput vexpr i + 1 "$2"
+            if [ $i -lt 111 ]
+               vput vexpr j % $i 10
+               if [ $j -ne 0 ]
+                  set j=xcall
+               else
+                  echon "$i.. "
+                  set j=call
+               end
+               eval \\$j _work $1 $i
+               return $?
+            end
+            vput vexpr i + $i "$1"
+            return $i
+         }
          define t_ocs {
             read ver
             echo t_ocs
@@ -2241,17 +2257,20 @@ t_behave_compose_hooks() {
             if [ "$es" != 2 ]
                echoerr "Failed to header list, aborting send"; echo "~x"
             endif
+            call _work 1; echo $?
             echo "~^header insert cc splicy diet <splice@exam.ple> spliced";\
                read es; vput vexpr es substr "$es" 0 1
             if [ "$es" != 2 ]
                echoerr "Failed to be diet, aborting send"; echo "~x"
             endif
+            call _work 2; echo $?
             echo "~^header insert bcc juicy juice <juice@exam.ple> spliced";\
                read es; vput vexpr es substr "$es" 0 1
             if [ "$es" != 2 ]
                echoerr "Failed to be juicy, aborting send"; echo "~x"
             endif
             echo "~:set t_ocs"
+            call _work 3; echo $?
          }
          define t_oce {
             set t_oce autobcc=oce@exam.ple
@@ -2279,11 +2298,14 @@ t_behave_compose_hooks() {
 #body
 #t_ocs-shell
 #t_ocs
+#10.. 20.. 30.. 40.. 50.. 60.. 70.. 80.. 90.. 100.. 110.. 112
+#10.. 20.. 30.. 40.. 50.. 60.. 70.. 80.. 90.. 100.. 110.. 113
+#10.. 20.. 30.. 40.. 50.. 60.. 70.. 80.. 90.. 100.. 110.. 114
 ##variable not set: t_oce
 ##variable not set: t_ocs
 ##variable not set: t_ocs_shell
 ##variable not set: t_ocl
-   cksum_test behave:compose_hooks "${MBOX}" '3240856112 319'
+   cksum_test behave:compose_hooks "${MBOX}" '742474275 502'
 }
 
 t_behave_smime() { # FIXME add test/ dir, unroll tests therein

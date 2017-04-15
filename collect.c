@@ -1350,8 +1350,6 @@ a_coll_ocs__mac(void){
    n_psonce &= ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT);
    n_pstate |= n_PS_COMPOSE_FORKHOOK;
    temporary_compose_mode_hook_call(a_coll_ocs__macname, NULL, NULL);
-   _exit(n_EXIT_OK);
-   /* NOTREACHED */
    return 0;
 }
 
