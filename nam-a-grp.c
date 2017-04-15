@@ -763,11 +763,11 @@ _group_print(struct group const *gp, FILE *fo)
    } else if (gp->g_type & GT_SHORTCUT) {
       GP_TO_SUBCLASS(cp, gp);
       fprintf(fo, "wysh shortcut %s %s\n",
-      gp->g_id, n_shexp_quote_cp(cp, TRU1));
+         gp->g_id, n_shexp_quote_cp(cp, TRU1));
    } else if (gp->g_type & GT_CHARSETALIAS) {
       GP_TO_SUBCLASS(cp, gp);
       fprintf(fo, "charsetalias %s %s\n",
-      n_shexp_quote_cp(gp->g_id, TRU1), n_shexp_quote_cp(cp, TRU1));
+         n_shexp_quote_cp(gp->g_id, TRU1), n_shexp_quote_cp(cp, TRU1));
    }
 
    NYD_LEAVE;
@@ -1957,6 +1957,7 @@ c_charsetalias(void *vp){
          break;
       }
 
+      /* Delete the old one, if any; don't get fooled to remove them all */
       ccp = argv[0];
       if(ccp[0] != '*' || ccp[1] != '\0')
          _group_del(GT_CHARSETALIAS, ccp);
