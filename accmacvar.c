@@ -2957,6 +2957,16 @@ jenum_plusminus:
 
       if((varres = fexpand(argv[1], FEXP_NVAR | FEXP_NOPROTO)) == NULL)
          goto jestr_nodata;
+   }else if(is_asccaseprefix(cp, "makeprint")){
+      struct str sin, sout;
+
+      if(argv[1] == NULL || argv[2] != NULL)
+         goto jesynopsis;
+
+      sin.l = strlen(sin.s = n_UNCONST(argv[1]));
+      makeprint(&sin, &sout);
+      varres = savestrbuf(sout.s, sout.l);
+      n_free(sout.s);
    }else if(is_asccaseprefix(cp, "random")){
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
