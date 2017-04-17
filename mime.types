@@ -60,6 +60,8 @@ application/xml               xml xsl xsd
 application/x-xz              xz txz
 # EXTENSION
 application/x-lzma            lzma tlz
+# EXTENSION
+application/x-zstd            zst tzst
 application/gzip              tgz gz emz
 # EXTENSION
 application/x-lz4             lz4
@@ -88,6 +90,7 @@ application/cbor              cbor
 @ application/mbox            mbox
 application/rdf+xml           rdf owl
 application/rss+xml           rss
+@ application/sql             sql
 application/x-bcpio           bcpio
 application/x-bittorrent      torrent
 application/x-bzip            bz tbz
@@ -147,11 +150,10 @@ text/x-jsp                    jsp
 @ text/x-python               py
 @ text/x-rst                  rst rest restx
 @ text/x-ruby                 rb
-@ text/x-sql                  sql
 text/x-uuencode               uu
 @ text/x-vcalendar            vcs
-@ text/x-vcard                vcf
-@ text/x-web-markdown         md mdtext mkd markdown
+@ text/vcard                  vcf
+@ text/markdown               md markdown
 @ text/x-yacc                 y
 @ text/x-yaml                 yaml
 
