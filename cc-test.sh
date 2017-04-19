@@ -220,13 +220,13 @@ t_behave() {
    t_behave_xcall
 
    # FIXME t_behave_alias
-
    # FIXME t_behave_mlist
-
-   t_behave_smime
+   t_behave_filetype
 
    t_behave_e_H_L_opts
    t_behave_compose_hooks
+
+   t_behave_smime
 }
 
 t_behave_X_opt_input_command_stack() {
@@ -2088,6 +2088,59 @@ t_behave_xcall() {
       > "${MBOX}" 2>&1
    exn0_test behave:xcall-3
    cksum_test behave:xcall-3 "${MBOX}" '1132745876 2724'
+}
+
+t_behave_filetype() {
+   TRAP_EXIT_ADDONS="./.t*"
+
+   rm -f "${MBOX}"
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!/bin/sh -
+		(echo 'From Alchemilla Wed Apr 25 15:12:13 2017' && ${cat} && echo
+			) >> "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   printf 'm m1@e.t\nL1\nHy1\n~.\nm m2@e.t\nL2\nHy2\n~@ ./snailmail.jpg\n~.\n' |
+      "${SNAIL}" ${ARGS} -Smta=./.tsendmail.sh
+   cksum_test behave:filetype-1 "${MBOX}" '2231303825 13262'
+
+   if command -v gzip >/dev/null 2>&1; then
+      ${rm} -f ./.t.mbox*
+      {
+         printf 'File "%s"\ncopy 1 ./.t.mbox.gz
+               copy 2 ./.t.mbox.gz' "${MBOX}" |
+            "${SNAIL}" ${ARGS} \
+               -X'filetype gz gzip\ -dc gzip\ -c'
+         printf 'File ./.t.mbox.gz\ncopy * ./.t.mbox\n' |
+            "${SNAIL}" ${ARGS} \
+               -X'filetype gz gzip\ -dc gzip\ -c'
+      } >/dev/null 2>&1
+      cksum_test behave:filetype-2 "./.t.mbox" '2231303825 13262'
+   else
+      echo 'behave:filetype-2: unsupported, skipped'
+   fi
+
+   {
+      ${rm} -f ./.t.mbox*
+      printf 'File "%s"\ncopy 1 ./.t.mbox.gz
+            copy 2 ./.t.mbox.gz
+            copy 1 ./.t.mbox.gz
+            copy 2 ./.t.mbox.gz
+            ' "${MBOX}" |
+         "${SNAIL}" ${ARGS} \
+            -X'filetype gz gzip\ -dc gzip\ -c' \
+            -X'filetype mbox.gz "${sed} 1,3d|${cat}" \
+            "echo eins;echo zwei;echo und mit ${sed} bist Du dabei;${cat}"'
+      printf 'File ./.t.mbox.gz\ncopy * ./.t.mbox\n' |
+         "${SNAIL}" ${ARGS} \
+            -X'filetype gz gzip\ -dc gzip\ -c' \
+            -X'filetype mbox.gz "${sed} 1,3d|${cat}" kill\ 0'
+   } >/dev/null 2>&1
+   cksum_test behave:filetype-3 "./.t.mbox" '2840933711 26544'
+
+   ${rm} -f ${TRAP_EXIT_ADDONS}
+   TRAP_EXIT_ADDONS=
 }
 
 t_behave_e_H_L_opts() {

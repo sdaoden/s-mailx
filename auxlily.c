@@ -385,19 +385,18 @@ jleave:
 }
 
 FL enum protocol
-which_protocol(char const *name) /* XXX (->URL (yet auxlily.c)) */
+which_protocol(char const *name, bool_t check_stat, bool_t try_hooks,
+   char const **adjusted_or_null)
 {
-   struct stat st;
-   char const *cp;
-   char *np;
-   size_t sz;
+   /* TODO This which_protocol() sickness should be URL::new()->protocol() */
+   char const *cp, *orig_name;
    enum protocol rv = PROTO_UNKNOWN;
    NYD_ENTER;
 
-   temporary_protocol_ext = NULL;
-
-   if (name[0] == '%' && name[1] == ':')
+   if(name[0] == '%' && name[1] == ':')
       name += 2;
+   orig_name = name;
+
    for (cp = name; *cp && *cp != ':'; cp++)
       if (!alnumchar(*cp))
          goto jfile;
@@ -413,12 +412,7 @@ which_protocol(char const *name) /* XXX (->URL (yet auxlily.c)) */
 #if defined HAVE_POP3 && defined HAVE_SSL
          rv = PROTO_POP3;
 #else
-# ifndef HAVE_POP3
-         n_err(_("No POP3 support compiled in\n"));
-# endif
-# ifndef HAVE_SSL
-         n_err(_("No SSL support compiled in\n"));
-# endif
+         n_err(_("No POP3S support compiled in\n"));
 #endif
       }
       goto jleave;
@@ -429,25 +423,36 @@ which_protocol(char const *name) /* XXX (->URL (yet auxlily.c)) */
     * TODO or (more likely) in addition to *newfolders*) */
 jfile:
    rv = PROTO_FILE;
-   np = ac_alloc((sz = strlen(name)) + 4 +1);
-   memcpy(np, name, sz + 1);
-   if (!stat(name, &st)) {
-      if (S_ISDIR(st.st_mode) &&
-            (memcpy(np+sz, "/tmp", 5), !stat(np, &st) && S_ISDIR(st.st_mode)) &&
-            (memcpy(np+sz, "/new", 5), !stat(np, &st) && S_ISDIR(st.st_mode)) &&
-            (memcpy(np+sz, "/cur", 5), !stat(np, &st) && S_ISDIR(st.st_mode)))
-          rv = PROTO_MAILDIR;
-   } else {
-      if ((memcpy(np+sz, cp=".zst",5), !stat(np, &st) && S_ISREG(st.st_mode)) ||
-            (memcpy(np+sz, cp=".xz",4), !stat(np,&st) && S_ISREG(st.st_mode)) ||
-            (memcpy(np+sz, cp=".gz",4), !stat(np,&st) && S_ISREG(st.st_mode)))
-         temporary_protocol_ext = cp;
-      else if ((cp = ok_vlook(newfolders)) != NULL &&
+
+   if(check_stat || try_hooks){
+      struct n_file_type ft;
+      struct stat stb;
+      char *np;
+      size_t sz;
+
+      np = n_lofi_alloc((sz = strlen(name)) + 4 +1);
+      memcpy(np, name, sz + 1);
+
+      if(!stat(name, &stb)){
+         if(S_ISDIR(stb.st_mode) &&
+               (memcpy(&np[sz], "/tmp", 5),
+                  !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
+               (memcpy(&np[sz], "/new", 5),
+                  !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
+               (memcpy(&np[sz], "/cur", 5),
+                  !stat(np, &stb) && S_ISDIR(stb.st_mode)))
+            rv = PROTO_MAILDIR;
+      }else if(try_hooks && n_filetype_trial(&ft, name))
+         orig_name = savecatsep(name, '.', ft.ft_ext_dat);
+      else if((cp = ok_vlook(newfolders)) != NULL &&
             !asccasecmp(cp, "maildir"))
          rv = PROTO_MAILDIR;
+
+      n_lofi_free(np);
    }
-   ac_free(np);
 jleave:
+   if(adjusted_or_null != NULL)
+      *adjusted_or_null = orig_name;
    NYD_LEAVE;
    return rv;
 }

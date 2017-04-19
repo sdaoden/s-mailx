@@ -41,30 +41,32 @@
 
 enum group_type {
    /* Main types (bits not values for easier testing only) */
-   GT_ALIAS       = 1<< 0,
-   GT_MLIST       = 1<< 1,
-   GT_SHORTCUT    = 1<< 2,
-   GT_CHARSETALIAS = 1<< 3,
-   GT_MASK        = GT_ALIAS | GT_MLIST | GT_SHORTCUT | GT_CHARSETALIAS,
+   GT_ALIAS = 1u<<0,
+   GT_MLIST = 1u<<1,
+   GT_SHORTCUT = 1u<<2,
+   GT_CHARSETALIAS = 1u<<3,
+   GT_FILETYPE = 1u<< 4,
+   GT_MASK = GT_ALIAS | GT_MLIST | GT_SHORTCUT | GT_CHARSETALIAS | GT_FILETYPE,
 
    /* Subtype bits and flags */
-   GT_SUBSCRIBE   = 1<< 4,
-   GT_REGEX       = 1<< 5,
+   GT_SUBSCRIBE = 1u<<6,
+   GT_REGEX = 1u<<7,
 
    /* Extended type mask to be able to reflect what we really have; i.e., mlist
     * can have GT_REGEX if they are subscribed or not, but `mlsubscribe' should
     * print out only GT_MLIST which have the GT_SUBSCRIBE attribute set */
-   GT_PRINT_MASK  = GT_MASK | GT_SUBSCRIBE
+   GT_PRINT_MASK = GT_MASK | GT_SUBSCRIBE
 };
 
 struct group {
    struct group   *g_next;
-   size_t         g_subclass_off;   /* of "subclass" in .g_id (if any) */
+   ui32_t         g_subclass_off;   /* of "subclass" in .g_id (if any) */
+   ui16_t         g_id_len_sub;     /* length of .g_id: _subclass_off - this */
    ui8_t          g_type;           /* enum group_type */
    /* Identifying name, of variable size.  Dependent on actual "subtype" more
     * data follows thereafter, but note this is always used (i.e., for regular
     * expression entries this is still set to the plain string) */
-   char           g_id[n_VFIELD_SIZE(-1)];
+   char           g_id[n_VFIELD_SIZE(1)];
 };
 #define GP_TO_SUBCLASS(X,G) \
 do {\
@@ -92,11 +94,25 @@ struct grp_regex {
 };
 #endif
 
+struct a_nag_file_type{
+   struct str nft_load;
+   struct str nft_save;
+};
+
 struct group_lookup {
    struct group   **gl_htable;
    struct group   **gl_slot;
    struct group   *gl_slot_last;
    struct group   *gl_group;
+};
+
+static struct n_file_type const a_nag_OBSOLETE_xz = { /* TODO v15 compat */
+   "xz", 2, "xz -cd", sizeof("xz -cd") -1, "xz -cz", sizeof("xz -cz") -1
+}, a_nag_OBSOLETE_gz = {
+   "gz", 2, "gzip -cd", sizeof("gzip -cd") -1, "gzip -cz", sizeof("gzip -cz") -1
+}, a_nag_OBSOLETE_bz2 = {
+   "bz2", 3, "bzip2 -cd", sizeof("bzip2 -cd") -1,
+   "bzip2 -cz", sizeof("bzip2 -cz") -1
 };
 
 /* List of alternate names of user */
@@ -122,10 +138,13 @@ static size_t           _mlist_size, _mlist_hits, _mlsub_size, _mlsub_hits;
 #endif
 
 /* `shortcut' */
-static struct group     *_shortcut_heads[HSHSIZE]; /* TODO dynamic hash */
+static struct group     *_shortcut_heads[HSHSIZE]; /* TODO dynamic hashmaps! */
 
 /* `charsetalias' */
 static struct group     *_charsetalias_heads[HSHSIZE];
+
+/* `filetype' */
+static struct group     *_filetype_heads[HSHSIZE];
 
 /* Same name, while taking care for *allnet*? */
 static bool_t        _same_name(char const *n1, char const *n2);
@@ -163,7 +182,7 @@ static struct group * _group_go_first(enum group_type gt,
                         struct group_lookup *glp);
 static struct group * _group_go_next(struct group_lookup *glp);
 
-/* Fetch the group id, create it as necessary */
+/* Fetch the group id, create it as necessary, fail with NULL if impossible */
 static struct group * _group_fetch(enum group_type gt, char const *id,
                         size_t addsz);
 
@@ -419,21 +438,22 @@ _group_lookup(enum group_type gt, struct group_lookup *glp, char const *id)
 
    gt &= GT_MASK;
    lgp = NULL;
-   glp->gl_htable = (gt & GT_ALIAS ? _alias_heads :
-            (gt & GT_MLIST ? _mlist_heads :
-            (gt & GT_SHORTCUT ? _shortcut_heads :
-            (gt & GT_CHARSETALIAS ? _charsetalias_heads : NULL)))
-            );
+   glp->gl_htable =
+          ( gt & GT_ALIAS ? _alias_heads
+         : (gt & GT_MLIST ? _mlist_heads
+         : (gt & GT_SHORTCUT ? _shortcut_heads
+         : (gt & GT_CHARSETALIAS ? _charsetalias_heads
+         : (/*gt & GT_FILETYPE ?*/ _filetype_heads
+         )))));
    gp = *(glp->gl_slot = &glp->gl_htable[n_torek_hash(id) % HSHSIZE]);
 
    for (; gp != NULL; lgp = gp, gp = gp->g_next)
       if ((gp->g_type & gt) && *gp->g_id == *id) {
-         if(!strcmp(gp->g_id, id))
-            break;
-         if(gt == GT_CHARSETALIAS){
+         if(gt == GT_CHARSETALIAS || gt == GT_FILETYPE){
             if(!asccasecmp(gp->g_id, id))
                break;
-         }
+         }else if(!strcmp(gp->g_id, id))
+            break;
       }
 
    glp->gl_slot_last = lgp;
@@ -461,10 +481,12 @@ _group_go_first(enum group_type gt, struct group_lookup *glp)
    size_t i;
    NYD_ENTER;
 
-   for (glp->gl_htable = gpa = (gt & GT_ALIAS ? _alias_heads :
-            (gt & GT_MLIST ? _mlist_heads :
-            (gt & GT_SHORTCUT ? _shortcut_heads :
-            (gt & GT_CHARSETALIAS ? _charsetalias_heads : NULL)))), i = 0;
+   for (glp->gl_htable = gpa = (gt & GT_ALIAS ? _alias_heads
+            : (gt & GT_MLIST ? _mlist_heads
+            : (gt & GT_SHORTCUT ? _shortcut_heads
+            : (gt & GT_CHARSETALIAS ? _charsetalias_heads
+            : (gt & GT_FILETYPE ? _filetype_heads
+            : NULL))))), i = 0;
          i < HSHSIZE; ++gpa, ++i)
       if ((gp = *gpa) != NULL) {
          glp->gl_slot = gpa;
@@ -510,10 +532,16 @@ _group_fetch(enum group_type gt, char const *id, size_t addsz)
       goto jleave;
 
    l = strlen(id) +1;
+   if (UIZ_MAX - n_ALIGN(l) <= n_ALIGN(n_VSTRUCT_SIZEOF(struct group, g_id)))
+      goto jleave;
+
    i = n_ALIGN(n_VSTRUCT_SIZEOF(struct group, g_id) + l);
    switch (gt & GT_MASK) {
    case GT_ALIAS:
-      addsz = sizeof(struct grp_names_head);
+      addsz += sizeof(struct grp_names_head);
+      break;
+   case GT_FILETYPE:
+      addsz += sizeof(struct a_nag_file_type);
       break;
    case GT_MLIST:
 #ifdef HAVE_REGEX
@@ -522,16 +550,20 @@ _group_fetch(enum group_type gt, char const *id, size_t addsz)
          gt |= GT_REGEX;
       }
 #endif
+      /* FALLTHRU */
    case GT_SHORTCUT:
    case GT_CHARSETALIAS:
    default:
       break;
    }
+   if (UIZ_MAX - i < addsz || UI32_MAX <= i || UI16_MAX < i - l)
+      goto jleave;
 
    gp = smalloc(i + addsz);
-   gp->g_subclass_off = i;
-   gp->g_type = gt;
    memcpy(gp->g_id, id, l);
+   gp->g_subclass_off = (ui32_t)i;
+   gp->g_id_len_sub = (ui16_t)(i - --l);
+   gp->g_type = gt;
 
    if (gt & GT_ALIAS) {
       struct grp_names_head *gnhp;
@@ -661,7 +693,9 @@ _group_print_all(enum group_type gt)
    gpa = (xgt & GT_ALIAS ? _alias_heads
          : (xgt & GT_MLIST ? _mlist_heads
          : (xgt & GT_SHORTCUT ? _shortcut_heads
-         : (xgt & GT_CHARSETALIAS ? _charsetalias_heads : NULL))));
+         : (xgt & GT_CHARSETALIAS ? _charsetalias_heads
+         : (xgt & GT_FILETYPE ? _filetype_heads
+         : NULL)))));
 
    for (h = 0, i = 1; h < HSHSIZE; ++h)
       for (gp = gpa[h]; gp != NULL; gp = gp->g_next)
@@ -768,6 +802,14 @@ _group_print(struct group const *gp, FILE *fo)
       GP_TO_SUBCLASS(cp, gp);
       fprintf(fo, "charsetalias %s %s\n",
          n_shexp_quote_cp(gp->g_id, TRU1), n_shexp_quote_cp(cp, TRU1));
+   } else if (gp->g_type & GT_FILETYPE) {
+      struct a_nag_file_type *nftp;
+
+      GP_TO_SUBCLASS(nftp, gp);
+      fprintf(fo, "filetype %s %s %s\n",
+         n_shexp_quote_cp(gp->g_id, TRU1),
+         n_shexp_quote_cp(nftp->nft_load.s, TRU1),
+         n_shexp_quote_cp(nftp->nft_save.s, TRU1));
    }
 
    NYD_LEAVE;
@@ -777,9 +819,13 @@ _group_print(struct group const *gp, FILE *fo)
 static int
 _mlmux(enum group_type gt, char **argv)
 {
+   char const *ecp;
    struct group *gp;
    int rv = 0;
    NYD_ENTER;
+
+   rv = 0;
+   n_UNINIT(ecp, NULL);
 
    if (*argv == NULL)
       _group_print_all(gt);
@@ -791,16 +837,19 @@ _mlmux(enum group_type gt, char **argv)
                gp->g_type |= GT_SUBSCRIBE;
                _MLMUX_LINKIN(gp);
             } else {
-               n_err(_("Mailing-list already `mlsubscribe'd: %s\n"),
-                  *argv);
-               rv = 1;
+               ecp = N_("Mailing-list already `mlsubscribe'd: %s\n");
+               goto jerr;
             }
          } else {
-            n_err(_("Mailing-list already `mlist'ed: %s\n"), *argv);
-            rv = 1;
+            ecp = N_("Mailing-list already `mlist'ed: %s\n");
+            goto jerr;
          }
-      } else
-         _group_fetch(gt, *argv, 0);
+      } else if(_group_fetch(gt, *argv, 0) == NULL) {
+         ecp = N_("Failed to create storage for mailing-list: %s\n");
+jerr:
+         n_err(V_(ecp), n_shexp_quote_cp(*argv, FAL0));
+         rv = 1;
+      }
    } while (*++argv != NULL);
 
    NYD_LEAVE;
@@ -1709,27 +1758,36 @@ n_alias_is_valid_name(char const *name){
 FL int
 c_alias(void *v)
 {
-   char **argv = v;
+   char const *ecp;
+   char **argv;
    struct group *gp;
-   int rv = 0;
+   int rv;
    NYD_ENTER;
+
+   rv = 0;
+   argv = v;
+   n_UNINIT(ecp, NULL);
 
    if (*argv == NULL)
       _group_print_all(GT_ALIAS);
    else if (!n_alias_is_valid_name(*argv)) {
-      n_err(_("Not a valid alias name: %s\n"), *argv);
-      rv = 1;
+      ecp = N_("Not a valid alias name: %s\n");
+      goto jerr;
    } else if (argv[1] == NULL) {
       if ((gp = _group_find(GT_ALIAS, *argv)) != NULL)
          _group_print(gp, n_stdout);
       else {
-         n_err(_("No such alias: %s\n"), *argv);
-         rv = 1;
+         ecp = N_("No such alias: %s\n");
+         goto jerr;
       }
+   } else if ((gp = _group_fetch(GT_ALIAS, *argv, 0)) == NULL) {
+      ecp = N_("Failed to create alias storage for: %s\n");
+jerr:
+      n_err(V_(ecp), n_shexp_quote_cp(*argv, FAL0));
+      rv = 1;
    } else {
       struct grp_names_head *gnhp;
 
-      gp = _group_fetch(GT_ALIAS, *argv, 0);
       GP_TO_SUBCLASS(gnhp, gp);
 
       for (++argv; *argv != NULL; ++argv) {
@@ -1896,9 +1954,14 @@ c_shortcut(void *v)
          _group_del(GT_SHORTCUT, *argv);
 
       l = strlen(argv[1]) +1;
-      gp = _group_fetch(GT_SHORTCUT, *argv, l);
-      GP_TO_SUBCLASS(cp, gp);
-      memcpy(cp, argv[1], l);
+      if ((gp = _group_fetch(GT_SHORTCUT, *argv, l)) == NULL) {
+         n_err(_("Failed to create storage for shortcut: %s\n"),
+            n_shexp_quote_cp(*argv, FAL0));
+         rv = 1;
+      } else {
+         GP_TO_SUBCLASS(cp, gp);
+         memcpy(cp, argv[1], l);
+      }
    }
    NYD_LEAVE;
    return rv;
@@ -1969,11 +2032,16 @@ c_charsetalias(void *vp){
          *cp++ = lowerconv(c);
 
       l = strlen(argv[1]) +1;
-      gp = _group_fetch(GT_CHARSETALIAS, ccp, l);
-      GP_TO_SUBCLASS(cp, gp);
-      for(ccp = argv[1]; (c = *ccp++) != '\0';)
-         *cp++ = lowerconv(c);
-      *cp = '\0';
+      if ((gp = _group_fetch(GT_CHARSETALIAS, ccp, l)) == NULL) {
+         n_err(_("Failed to create storage for charsetalias: %s\n"),
+            n_shexp_quote_cp(ccp, FAL0));
+         rv = 1;
+      } else {
+         GP_TO_SUBCLASS(cp, gp);
+         for(ccp = argv[1]; (c = *ccp++) != '\0';)
+            *cp++ = lowerconv(c);
+         *cp = '\0';
+      }
    }
    NYD_LEAVE;
    return rv;
@@ -2015,6 +2083,264 @@ n_charsetalias_expand(char const *cp){
       cp = savestr(cp);
    NYD_LEAVE;
    return cp;
+}
+
+FL int
+c_filetype(void *vp){ /* TODO support automatic chains: .tar.gz -> .gz + .tar */
+   char **argv; /* TODO While there: let ! prefix mean: direct execlp(2) */
+   int rv;
+   NYD_ENTER;
+
+   rv = 0;
+   argv = vp;
+
+   if(*argv == NULL)
+      _group_print_all(GT_FILETYPE);
+   else for(; *argv != NULL; argv += 3){
+      /* Because one hardly ever redefines, anything is stored in one chunk */
+      char const *ccp;
+      char *cp, c;
+      struct group *gp;
+      size_t llc, lsc;
+
+      if(argv[1] == NULL || argv[2] == NULL){
+         n_err(_("Synopsis: filetype: <extension> <load-cmd> <save-cmd>\n"));
+         rv = 1;
+         break;
+      }
+
+      /* Delete the old one, if any; don't get fooled to remove them all */
+      ccp = argv[0];
+      if(ccp[0] != '*' || ccp[1] != '\0')
+         _group_del(GT_FILETYPE, ccp);
+
+      /* Lowercase it all (for display purposes) */
+      cp = savestr(ccp);
+      ccp = cp;
+      while((c = *cp) != '\0')
+         *cp++ = lowerconv(c);
+
+      llc = strlen(argv[1]) +1;
+      lsc = strlen(argv[2]) +1;
+      if(UIZ_MAX - llc <= lsc)
+         goto jenomem;
+
+      if((gp = _group_fetch(GT_FILETYPE, ccp, llc + lsc)) == NULL){
+jenomem:
+         n_err(_("Failed to create storage for filetype: %s\n"),
+            n_shexp_quote_cp(argv[0], FAL0));
+         rv = 1;
+      }else{
+         struct a_nag_file_type *nftp;
+
+         GP_TO_SUBCLASS(nftp, gp);
+         GP_TO_SUBCLASS(cp, gp);
+         cp += sizeof *nftp;
+         memcpy(nftp->nft_load.s = cp, argv[1], llc);
+            cp += llc;
+            nftp->nft_load.l = --llc;
+         memcpy(nftp->nft_save.s = cp, argv[2], lsc);
+            cp += lsc;
+            nftp->nft_save.l = --lsc;
+      }
+   }
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
+c_unfiletype(void *vp){
+   char **argv;
+   int rv;
+   NYD_ENTER;
+
+   rv = 0;
+   argv = vp;
+
+   do if(!_group_del(GT_FILETYPE, *argv)){
+      n_err(_("No such `filetype': %s\n"), n_shexp_quote_cp(*argv, FAL0));
+      rv = 1;
+   }while(*++argv != NULL);
+   NYD_LEAVE;
+   return rv;
+}
+
+FL bool_t
+n_filetype_trial(struct n_file_type *res_or_null, char const *file){
+   struct stat stb;
+   struct group_lookup gl;
+   struct n_string s, *sp;
+   struct group const *gp;
+   ui32_t l;
+   NYD2_ENTER;
+
+   sp = n_string_creat_auto(&s);
+   sp = n_string_assign_cp(sp, file);
+   sp = n_string_push_c(sp, '.');
+   l = sp->s_len;
+
+   for(gp = _group_go_first(GT_FILETYPE, &gl); gp != NULL;
+         gp = _group_go_next(&gl)){
+      sp = n_string_trunc(sp, l);
+      sp = n_string_push_buf(sp, gp->g_id,
+            gp->g_subclass_off - gp->g_id_len_sub);
+
+      if(!stat(n_string_cp(sp), &stb) && S_ISREG(stb.st_mode)){
+         if(res_or_null != NULL){
+            struct a_nag_file_type *nftp;
+
+            GP_TO_SUBCLASS(nftp, gp);
+            res_or_null->ft_ext_dat = gp->g_id;
+            res_or_null->ft_ext_len = gp->g_subclass_off - gp->g_id_len_sub;
+            res_or_null->ft_load_dat = nftp->nft_load.s;
+            res_or_null->ft_load_len = nftp->nft_load.l;
+            res_or_null->ft_save_dat = nftp->nft_save.s;
+            res_or_null->ft_save_len = nftp->nft_save.l;
+         }
+         goto jleave; /* TODO after v15 legacy drop: break; */
+      }
+   }
+
+   /* TODO v15 legacy code: automatic file hooks for .{bz2,gz,xz},
+    * TODO but NOT supporting *file-hook-{load,save}-EXTENSION* */
+   gp = (struct group*)0x1;
+
+   sp = n_string_trunc(sp, l);
+   sp = n_string_push_buf(sp, a_nag_OBSOLETE_xz.ft_ext_dat,
+         a_nag_OBSOLETE_xz.ft_ext_len);
+   if(!stat(n_string_cp(sp), &stb) && S_ISREG(stb.st_mode)){
+      n_OBSOLETE(".xz support will vanish, please use the `filetype' command");
+      if(res_or_null != NULL)
+         *res_or_null = a_nag_OBSOLETE_xz;
+      goto jleave;
+   }
+
+   sp = n_string_trunc(sp, l);
+   sp = n_string_push_buf(sp, a_nag_OBSOLETE_gz.ft_ext_dat,
+         a_nag_OBSOLETE_gz.ft_ext_len);
+   if(!stat(n_string_cp(sp), &stb) && S_ISREG(stb.st_mode)){
+      n_OBSOLETE(".gz support will vanish, please use the `filetype' command");
+      if(res_or_null != NULL)
+         *res_or_null = a_nag_OBSOLETE_gz;
+      goto jleave;
+   }
+
+   sp = n_string_trunc(sp, l);
+   sp = n_string_push_buf(sp, a_nag_OBSOLETE_bz2.ft_ext_dat,
+         a_nag_OBSOLETE_bz2.ft_ext_len);
+   if(!stat(n_string_cp(sp), &stb) && S_ISREG(stb.st_mode)){
+      n_OBSOLETE(".bz2 support will vanish, please use the `filetype' command");
+      if(res_or_null != NULL)
+         *res_or_null = a_nag_OBSOLETE_bz2;
+      goto jleave;
+   }
+
+   gp = NULL;
+
+jleave:
+   NYD2_LEAVE;
+   return (gp != NULL);
+}
+
+FL bool_t
+n_filetype_exists(struct n_file_type *res_or_null, char const *file){
+   char const *ext, *lext;
+   NYD2_ENTER;
+
+   if((ext = strrchr(file, '/')) != NULL)
+      file = ++ext;
+
+   for(lext = NULL; (ext = strchr(file, '.')) != NULL; lext = file = ext){
+      struct group const *gp;
+
+      if((gp = _group_find(GT_FILETYPE, ++ext)) != NULL){
+         lext = ext;
+         if(res_or_null != NULL){
+            struct a_nag_file_type *nftp;
+
+            GP_TO_SUBCLASS(nftp, gp);
+            res_or_null->ft_ext_dat = gp->g_id;
+            res_or_null->ft_ext_len = gp->g_subclass_off - gp->g_id_len_sub;
+            res_or_null->ft_load_dat = nftp->nft_load.s;
+            res_or_null->ft_load_len = nftp->nft_load.l;
+            res_or_null->ft_save_dat = nftp->nft_save.s;
+            res_or_null->ft_save_len = nftp->nft_save.l;
+         }
+         goto jleave; /* TODO after v15 legacy drop: break; */
+      }
+   }
+
+   /* TODO v15 legacy code: automatic file hooks for .{bz2,gz,xz},
+    * TODO as well as supporting *file-hook-{load,save}-EXTENSION* */
+   if(lext == NULL)
+      goto jleave;
+
+   if(!asccasecmp(lext, "xz")){
+      n_OBSOLETE(".xz support will vanish, please use the `filetype' command");
+      if(res_or_null != NULL)
+         *res_or_null = a_nag_OBSOLETE_xz;
+      goto jleave;
+   }else if(!asccasecmp(lext, "gz")){
+      n_OBSOLETE(".gz support will vanish, please use the `filetype' command");
+      if(res_or_null != NULL)
+         *res_or_null = a_nag_OBSOLETE_gz;
+      goto jleave;
+   }else if(!asccasecmp(lext, "bz2")){
+      n_OBSOLETE(".bz2 support will vanish, please use the `filetype' command");
+      if(res_or_null != NULL)
+         *res_or_null = a_nag_OBSOLETE_bz2;
+      goto jleave;
+   }else{
+      char const *cload, *csave;
+      char *vbuf;
+      size_t l; 
+
+#undef a_X1
+#define a_X1 "file-hook-load-"
+#undef a_X2
+#define a_X2 "file-hook-save-"
+      l = strlen(lext);
+      vbuf = n_lofi_alloc(l + n_MAX(sizeof(a_X1), sizeof(a_X2)));
+
+      memcpy(vbuf, a_X1, sizeof(a_X1) -1);
+      memcpy(&vbuf[sizeof(a_X1) -1], lext, l);
+      vbuf[sizeof(a_X1) -1 + l] = '\0';
+      cload = n_var_vlook(vbuf, FAL0);
+
+      memcpy(vbuf, a_X2, sizeof(a_X2) -1);
+      memcpy(&vbuf[sizeof(a_X2) -1], lext, l);
+      vbuf[sizeof(a_X2) -1 + l] = '\0';
+      csave = n_var_vlook(vbuf, FAL0);
+
+#undef a_X2
+#undef a_X1
+      n_lofi_free(vbuf);
+
+      if((csave != NULL) | (cload != NULL)){
+         n_OBSOLETE("*file-hook-{load,save}-EXTENSION* will vanish, "
+            "please use the `filetype' command");
+
+         if(((csave != NULL) ^ (cload != NULL)) == 0){
+            if(res_or_null != NULL){
+               res_or_null->ft_ext_dat = lext;
+               res_or_null->ft_ext_len = l;
+               res_or_null->ft_load_dat = cload;
+               res_or_null->ft_load_len = strlen(cload);
+               res_or_null->ft_save_dat = csave;
+               res_or_null->ft_save_len = strlen(csave);
+            }
+            goto jleave;
+         }else
+            n_alert(_("Incomplete *file-hook-{load,save}-EXTENSION* for: .%s"),
+               lext);
+      }
+   }
+
+   lext = NULL;
+
+jleave:
+   NYD2_LEAVE;
+   return (lext != NULL);
 }
 
 /* s-it-mode */

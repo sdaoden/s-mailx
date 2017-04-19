@@ -4344,37 +4344,23 @@ will be applied to the
 argument.
 .
 .Pp
-If the name ends with
-.Ql .gz ,
-.Ql .xz
-or
-.Ql zst
-it is treated as being compressed with
-.Xr gzip 1 ,
-.Xr xz 1
-or
-.Xr zstd 1 ,
-respectively, and transparently handled through an intermediate
-(un)compression step (using a temporary file) with the according
-facility, sufficient support provided.
-Likewise, if the named file does not exist, but a file with one of the
-mentioned compression extensions does, then the name is automatically
-expanded and the compressed file is used.
+If the resulting
+.Ar name
+is located on a local filesystem then the list of all registered
+.Ic filetype Ns
+s is traversed in order to see whether a transparent intermediate
+conversion step is necessary to handle the given mailbox, in which case
+\*(UA will use the found hook to load and save data into and from
+a temporary file, respectively.
+Changing hooks will not affect already opened mailboxes.
+For example, the following creates hooks for the
+.Xr gzip 1
+compression tool and a combined compressed and encrypted format:
 .
-.Pp
-Otherwise, if the name ends with an extension for which
-.Va file-hook-load-EXTENSION
-and
-.Va file-hook-save-EXTENSION
-variables are set, then the given hooks will be used to load and save
-.Dq name ,
-and \*(UA will work with an intermediate temporary file.
-E.g., the following will add support for the
-.Xr bzip2 1
-compressor:
 .Bd -literal -offset indent
-set file-hook-load-bz2='bzip2 -dc' \e
-  file-hook-save-bz2='bzip2 -zc'
+filetype \e
+  gzip 'gzip -dc' 'gzip -c' \e
+  zst.pgp 'gpg -d | zstd -dc' 'zstd -19 -zc | gpg -e'
 .Ed
 .
 .Pp
@@ -4451,6 +4437,42 @@ they must be escaped in URL notation \(en the command
 .Ic urlcodec
 can be used to show the necessary conversion.
 .
+.
+.Mx
+.Mx
+.It Ic filetype , unfiletype
+\*(NQ Define or list, and remove, respectively, file handler hooks,
+which provide (shell) commands that enable \*(UA to load and save MBOX
+files from and to files with the registered file extensions;
+it will use an intermediate temporary file to store the plain data.
+The latter command removes the hooks for all given extensions,
+.Ql *
+will remove all existing handlers.
+.Pp
+When used without arguments the former shows a list of all currently
+defined file hooks.
+Otherwise three arguments are expected, the first specifying the file
+extension for which the hook is meant, and the second and third defining
+the load- and save commands, respectively, to deal with the file type,
+both of which must read from standard input and write to standard
+output.
+Changing hooks will not affect already opened mailboxes (\*(ID except below).
+\*(ID For now too much work is done, and files are oftened read in twice
+where once would be sufficient: this can cause problems if a filetype is
+changed while such a file is opened; this was already so with the
+builtin support of .gz etc. in Heirloom, and will vanish in v15.
+\*(ID For now all handler strings are passed to the
+.Ev SHELL for evaluation purposes; in the future a
+.Ql \&!
+prefix to load and save commands may mean to bypass this shell instance:
+placing a leading space will avoid any possible misinterpretations.
+.Bd -literal -offset indent
+filetype bz2 'bzip2 -dc' 'bzip2 -zc' \e
+  gz 'gzip -dc' 'gzip -c'  xz 'xz -dc' 'xz -zc' \e
+  zst 'zstd -dc' 'zstd -19 -zc' \e
+  zst.pgp 'gpg -d | zstd -dc' 'zstd -19 -zc | gpg -e'
+set record=+sent.zst.pgp
+.Ed
 .
 .Mx
 .Mx
@@ -7700,25 +7722,6 @@ as well as
 .Ic replyall , respondall , followupall
 are not affected by the current setting of
 .Va flipr .
-.
-.Mx
-.Mx
-.It Va file-hook-load-EXTENSION , file-hook-save-EXTENSION
-It is possible to install file hooks which will be used by the
-.Ic file
-command in order to be able to transparently handle (through an
-intermediate temporary file) files with specific
-.Ql EXTENSION Ns
-s: the variable values can include shell snippets and are expected to
-write data to standard output / read data from standard input,
-respectively.
-\*(ID The variables may not be changed while there is a mailbox
-attendant.
-.Bd -literal -offset indent
-set file-hook-load-gpg='echo >&2 XY-LOADS; gpg -d' \e
-    file-hook-save-gpg='echo >&2 XY-SAVE; gpg -e' \e
-    record=+null-sent.gpg
-.Ed
 .
 .Mx
 .It Va folder
@@ -11405,6 +11408,12 @@ headerpick forward retain subject date from to cc
 mlist '@xyz-editor\e.xyz$' '@xyzf\e.xyz$'
 mlsubscribe '^xfans@xfans\e.xyz$'
 
+# Handle a few file extensions (to store MBOX databases)
+filetype bz2 'bzip2 -dc' 'bzip2 -zc' \e
+  gz 'gzip -dc' 'gzip -c'  xz 'xz -dc' 'xz -zc' \e
+  zst 'zstd -dc' 'zstd -19 -zc' \e
+  zst.pgp 'gpg -d | zstd -dc' 'zstd -19 -zc | gpg -e'
+
 # A real life example of a very huge free mail provider
 # Instead of directly placing content inside `account',
 # we `define' a macro: like that we can switch "accounts"
@@ -11437,16 +11446,6 @@ account XandeX {
 # Create some new commands so that, e.g., `ls /tmp' will..
 commandalias lls '!ls ${LS_COLOR_FLAG} -aFlrS'
 commandalias llS '!ls ${LS_COLOR_FLAG} -aFlS'
-commandalias ls '!ls ${LS_COLOR_FLAG} -aFrS'
-commandalias lS '!ls ${LS_COLOR_FLAG} -aFS'
-commandalias lla '!ls ${LS_COLOR_FLAG} -aFlr'
-commandalias llA '!ls ${LS_COLOR_FLAG} -aFl'
-commandalias la '!ls ${LS_COLOR_FLAG} -aFr'
-commandalias lA '!ls ${LS_COLOR_FLAG} -aF'
-commandalias ll '!ls ${LS_COLOR_FLAG} -aFltr'
-commandalias lL '!ls ${LS_COLOR_FLAG} -aFlt'
-commandalias l '!ls ${LS_COLOR_FLAG} -aFtr'
-commandalias L '!ls ${LS_COLOR_FLAG} -aFt'
 
 # We do not support gpg(1) directly yet.  But simple --clearsign'd
 # message parts can be dealt with as follows:
@@ -11474,13 +11473,6 @@ define V {
     print
 }
 commandalias V '\e'call V
-
-define RK {
-  !printf 'Key IDs to gpg --recv-keys: ';\e
-    read keyids;\e
-    gpg --recv-keys ${keyids};
-}
-commandalias RK call RK
 .Ed
 .
 .Pp

@@ -214,4 +214,13 @@ retain from_ date from to cc subject message-id mail-followup-to reply-to
 #   colour mono mle-prompt ft=bold
 #endif
 
+# Install file-extension handlers to handle MBOXes in various formats
+#filetype \
+#   bz2 'bzip2 -dc' 'bzip2 -zc' \
+#   gpg 'gpg -d' 'gpg -e' \
+#   gz 'gzip -dc' 'gzip -c' \
+#   xz 'xz -dc' 'xz -zc' \
+#   zst 'zstd -dc' 'zstd -19 -zc' \
+#   zst.pgp 'gpg -d | zstd -dc' 'zstd -19 -zc | gpg -e'
+
 # s-it-mode

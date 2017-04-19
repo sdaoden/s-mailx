@@ -965,52 +965,66 @@ jerror:
 }
 
 static bool_t
-mightrecord(FILE *fp, struct name *to, bool_t resend)
-{
-   char *cp, *cq;
-   char const *ep;
-   bool_t rv = TRU1;
-   NYD_ENTER;
+mightrecord(FILE *fp, struct name *to, bool_t resend){
+   char *cp;
+   char const *ccp;
+   bool_t rv;
+   NYD2_ENTER;
 
-   if (n_poption & n_PO_DEBUG)
-      cp = NULL;
-   else if (to != NULL) {
-      cp = savestr(skinned_name(to));
-      for (cq = cp; *cq != '\0' && *cq != '@'; ++cq)
-         ;
-      *cq = '\0';
-   } else
-      cp = ok_vlook(record);
+   rv = TRU1;
 
-   if (cp != NULL) {
-      if ((ep = fexpand(cp, FEXP_FULL)) == NULL) {
-         ep = "NULL";
+   if(n_poption & n_PO_DEBUG)
+      ccp = NULL;
+   else if(to != NULL){
+      ccp = cp = savestr(skinned_name(to));
+      while(*cp != '\0' && *cp != '@')
+         ++cp;
+      *cp = '\0';
+   }else
+      ccp = ok_vlook(record);
+
+   if(ccp != NULL){
+      if((cp = fexpand(ccp, FEXP_FULL)) == NULL)
          goto jbail;
-      }
 
-      if (*ep != '/' && *ep != '+' && ok_blook(outfolder) &&
-            which_protocol(ep) == PROTO_FILE) {
-         size_t i = strlen(cp);
-         cq = salloc(i + 1 +1);
-         cq[0] = '+';
-         memcpy(cq + 1, cp, i +1);
-         cp = cq;
-         if ((ep = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL) {
-            ep = "NULL";
-            goto jbail;
+      switch(*(ccp = cp)){
+      case '.':
+         if(cp[1] != '/'){ /* DIRSEP */
+      default:
+            if(ok_blook(outfolder)){
+               struct str s;
+               char const *nccp;
+
+               switch(which_protocol(ccp, TRU1, FAL0, &nccp)){
+               case PROTO_FILE:
+                  ccp = "file://";
+                  if(0){
+                  /* FALLTHRU */
+               case PROTO_MAILDIR:
+                     ccp = "maildir://";
+                  }
+                  ccp = str_concat_csvl(&s, ccp, folder_query(), nccp)->s;
+                  /* FALLTHRU */
+               default:
+                  break;
+               }
+            }
          }
+         /* FALLTHRU */
+      case '/':
+         break;
       }
 
-      if (!a_sendout__savemail(ep, fp, resend)) {
+      if(!a_sendout__savemail(ccp, fp, resend)){
 jbail:
          n_err(_("Failed to save message in %s - message not sent\n"),
-            n_shexp_quote_cp(ep, FAL0));
+            n_shexp_quote_cp(ccp, FAL0));
          n_exit_status |= n_EXIT_ERR;
          savedeadletter(fp, 1);
          rv = FAL0;
       }
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 

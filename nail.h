@@ -1,5 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Header inclusion, macros, constants, types and the global var declarations.
+ *@ TODO Place in include/, split in object-based subheaders.  And please: sort.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -2022,6 +2023,15 @@ struct n_dotlock_info{
 };
 #endif
 
+struct n_file_type{
+   char const *ft_ext_dat;    /* Extension this handles, without first period */
+   size_t ft_ext_len;
+   char const *ft_load_dat;   /* And the load and save command strings */
+   size_t ft_load_len;
+   char const *ft_save_dat;
+   size_t ft_save_len;
+};
+
 struct n_go_data_ctx{
    /* The memory pool may be inherited from outer context, so we
     * .gdc_mempool may be NE .gdc__mempool_buf */
@@ -2336,7 +2346,8 @@ struct message {
 
 enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
    * TODO i rather see the mechanism that is used in c_bind() extended and used
-   * TODO anywhere, i.e. n_cmd_arg_parse() */
+   * TODO anywhere, i.e. n_cmd_arg_parse().
+   * TODO Note that we may NOT support arguments with strlen()>=UI32_MAX (?) */
    n_CMD_ARG_TYPE_MSGLIST = 0,   /* Message list type */
    n_CMD_ARG_TYPE_NDMLIST = 1,   /* Message list, no defaults */
    n_CMD_ARG_TYPE_RAWDAT = 2,    /* The plain string in an argv[] */
@@ -2633,9 +2644,6 @@ VL iconv_t     iconvd;
 
 VL volatile int interrupts; /* TODO rid! */
 VL sighandler_type dflpipe;
-
-/* TODO temporary storage to overcome which_protocol() mess (for PROTO_FILE) */
-VL char const  *temporary_protocol_ext;
 
 /*
  * Finally, let's include the function prototypes XXX embed

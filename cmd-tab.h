@@ -431,12 +431,18 @@
      DS(N_("Delete <charset-mapping-list> (* for all)")) },
 
    { "colour", &c_colour, (M | TWYSH), 1, 4
-     DS(N_("Show colour settings of <type> (1, 8, 256, all) or define one")) },
+     DS(N_("Show colour settings of <type> (1,8,256,all/*) or define one")) },
    { "uncolour", &c_uncolour, (M | TWYSH), 2, 3
      DS(N_("Un`colour' <type> <mapping> (* for all) [<precondition>]")) },
 
    { "environ", &c_environ, (G | M | X | TWYSH), 2, MAC
      DS(N_("<link|set|unset> (an) environment <variable>(s)")) },
+
+   { "filetype", &c_filetype, (M | TWYSH), 0, MAC
+     DS(N_("Create [:<extension> <load-cmd> <save-cmd>:] "
+      "or list file handlers"))},
+   { "unfiletype", &c_unfiletype, (M | TWYSH), 1, MAC
+     DS(N_("Delete file handler for [:<extension>:] (* for all)")) },
 
    { "headerpick", &c_headerpick, (M | TWYSH), 0, MAC
      DS(N_("Header selection: [<context> [<type> [<header-list>]]]"))},
@@ -444,8 +450,7 @@
      DS(N_("Header deselection: <context> <type> <header-list>"))},
 
    { "addrcodec", &c_addrcodec, (G | M | V | X | EM | TRAWDAT), 0, 0
-     DS(N_("Email address <[+[+[+]]]e[ncode]|d[ecode]|s[kin]> <rest-of-line>"))
-      },
+    DS(N_("Email address <[+[+[+]]]e[ncode]|d[ecode]|s[kin]> <rest-of-line>"))},
    { "shcodec", &c_shcodec, (G | M | V | X | EM | TRAWDAT), 0, 0
      DS(N_("Shell quoting: <[+]e[ncode]|d[ecode]> <rest-of-line>")) },
    { "urlcodec", &c_urlcodec, (G | M | V | X | EM | TRAWDAT), 0, 0

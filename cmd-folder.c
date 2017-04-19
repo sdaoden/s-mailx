@@ -193,9 +193,9 @@ c_remove(void *v)
             continue;
       }
 
-      switch (which_protocol(name)) {
+      switch (which_protocol(name, TRU1, FAL0, NULL)) {
       case PROTO_FILE:
-         if (unlink(name) == -1) { /* TODO do not handle .zst .xz .gz.. */
+         if (unlink(name) == -1) {
             int se = n_err_no;
 
             if (se == n_ERR_ISDIR) {
@@ -220,6 +220,7 @@ c_remove(void *v)
             ec |= 1;
          break;
       case PROTO_UNKNOWN:
+      default:
          n_err(_("Not removed: unknown protocol: %s\n"), ename);
          ec |= 1;
          break;
@@ -234,7 +235,7 @@ FL int
 c_rename(void *v)
 {
    char **args = v, *old, *new;
-   enum protocol oldp, newp;
+   enum protocol oldp;
    int ec;
    NYD_ENTER;
 
@@ -247,11 +248,13 @@ c_rename(void *v)
 
    if ((old = fexpand(args[0], FEXP_FULL)) == NULL)
       goto jleave;
-   oldp = which_protocol(old);
+   oldp = which_protocol(old, TRU1, FAL0, NULL);
    if ((new = fexpand(args[1], FEXP_FULL)) == NULL)
       goto jleave;
-   newp = which_protocol(new);
-
+   if(oldp != which_protocol(new, TRU1, FAL0, NULL)) {
+      n_err(_("Can only rename folders of same type\n"));
+      goto jleave;
+   }
    if (!strcmp(old, mailname) || !strcmp(new, mailname)) {
       n_err(_("Cannot rename current mailbox %s\n"),
          n_shexp_quote_cp(old, FAL0));
@@ -260,7 +263,7 @@ c_rename(void *v)
 
    ec = 0;
 
-   if (newp == PROTO_POP3)
+   if (oldp == PROTO_POP3)
       goto jnopop3;
    switch (oldp) {
    case PROTO_FILE:
@@ -269,7 +272,6 @@ c_rename(void *v)
          case n_ERR_ACCES:
          case n_ERR_EXIST:
          case n_ERR_NAMETOOLONG:
-         case n_ERR_NOENT:
          case n_ERR_NOSPC:
          case n_ERR_XDEV:
             n_perr(new, 0);

@@ -62,7 +62,7 @@ _update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Object! */
    /* Don't realpath(3) if it's only an update request */
    if (name != NULL) {
 #ifdef HAVE_REALPATH
-      enum protocol p = which_protocol(name);
+      enum protocol p = which_protocol(name, TRU1, TRU1, &name);
 
       if (p == PROTO_FILE || p == PROTO_MAILDIR) {
          if (realpath(name, mailname) == NULL && n_err_no != n_ERR_NOENT) {
@@ -247,10 +247,8 @@ jlogname:
    /* For at least substdate() users */
    time_current_update(&time_current, FAL0);
 
-   switch (which_protocol(name)) {
+   switch (which_protocol(name, TRU1, TRU1, &name)) {
    case PROTO_FILE:
-      if (temporary_protocol_ext != NULL)
-         name = savecat(name, temporary_protocol_ext);
       isdevnull = ((n_poption & n_PO_BATCH_FLAG) && !strcmp(name, "/dev/null"));
 #ifdef HAVE_REALPATH
       do { /* TODO we need objects, goes away then */
@@ -755,7 +753,7 @@ folder_query(void){
             ) == NULL) || *cp == '\0')
          goto jset;
 
-      switch(which_protocol(cp)){
+      switch(which_protocol(cp, FAL0, FAL0, NULL)){
       case PROTO_POP3:
          n_err(_("*folder* can't be set to a flat, read-only POP3 account\n"));
          err = TRU1;

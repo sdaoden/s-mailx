@@ -48,9 +48,6 @@ struct fp {
    int         pid;
    enum {
       FP_RAW      = 0,
-      FP_ZST      = 1<<0,
-      FP_XZ       = 1<<1,
-      FP_GZIP     = 1<<2,
 
       FP_MAILDIR  = 1<<4,
       FP_HOOK     = 1<<5,
@@ -90,9 +87,9 @@ static void          register_file(FILE *fp, int omode, int pid,
                         int flags, char const *realfile, long offset,
                         char const *save_cmd, struct termios *tiosp,
                         n_sighdl_t osigint);
-static enum okay     _file_save(struct fp *fpp);
-static int           _file_load(int flags, int infd, int outfd,
-                        char const *load_cmd);
+static enum okay _file_save(struct fp *fpp);
+static int a_popen_file_load(int flags, int infd, int outfd,
+            char const *load_cmd);
 static enum okay     unregister_file(FILE *fp, struct termios **tiosp,
                         n_sighdl_t *osigint);
 static int           file_pid(FILE *fp);
@@ -210,19 +207,16 @@ _file_save(struct fp *fpp)
    }
 
    cmd[2] = NULL;
-   switch (fpp->flags & FP_MASK) {
-   case FP_ZST:
-      cmd[0] = "zst";   cmd[1] = "-c"; break;
-   case FP_XZ:
-      cmd[0] = "xz";    cmd[1] = "-c"; break;
-   case FP_GZIP:
-      cmd[0] = "gzip";  cmd[1] = "-c"; break;
-   default:
-      cmd[0] = "cat";   cmd[1] = NULL; break;
+   switch(fpp->flags & FP_MASK){
    case FP_HOOK:
       cmd[0] = ok_vlook(SHELL);
       cmd[1] = "-c";
       cmd[2] = fpp->save_cmd;
+      break;
+   default:
+      cmd[0] = "cat";
+      cmd[1] = NULL;
+      break;
    }
    if (n_child_run(cmd[0], 0, fileno(fpp->fp), outfd,
          cmd[1], cmd[2], NULL, NULL) >= 0)
@@ -235,31 +229,30 @@ jleave:
 }
 
 static int
-_file_load(int flags, int infd, int outfd, char const *load_cmd)
-{
+a_popen_file_load(int flags, int infd, int outfd, char const *load_cmd){
    char const *cmd[3];
    int rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    cmd[2] = NULL;
-   switch (flags & FP_MASK) {
-   case FP_ZST:      cmd[0] = "zst";   cmd[1] = "-cd"; break;
-   case FP_XZ:       cmd[0] = "xz";    cmd[1] = "-cd"; break;
-   case FP_GZIP:     cmd[0] = "gzip";  cmd[1] = "-cd"; break;
-   default:          cmd[0] = "cat";   cmd[1] = NULL;  break;
+   switch(flags & FP_MASK){
+   case FP_MAILDIR:
+      rv = 0;
+      goto jleave;
    case FP_HOOK:
       cmd[0] = ok_vlook(SHELL);
       cmd[1] = "-c";
       cmd[2] = load_cmd;
       break;
-   case FP_MAILDIR:
-      rv = 0;
-      goto jleave;
+   default:
+      cmd[0] = "cat";
+      cmd[1] = NULL;
+      break;
    }
 
    rv = n_child_run(cmd[0], 0, infd, outfd, cmd[1], cmd[2], NULL, NULL);
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -555,55 +548,24 @@ Zopen(char const *file, char const *oflags) /* FIXME MESS! */
       rof |= OF_APPEND;
    mode = (osflags == O_RDONLY) ? R_OK : R_OK | W_OK;
 
-   if ((osflags & O_APPEND) && ((p = which_protocol(file)) == PROTO_MAILDIR)) {
+   /* We don't want to find mbox.bz2 when doing "copy * mbox", but only for
+    * "file mbox", so don't try hooks when writing */
+   p = which_protocol(file, TRU1, ((mode & W_OK) == 0), &file);
+   if (p == PROTO_MAILDIR) {
       flags |= FP_MAILDIR;
       osflags = O_RDWR | O_APPEND | O_CREAT | n_O_NOFOLLOW;
       infd = -1;
    } else {
-      char const *ext;
+      struct n_file_type ft;
 
-      if ((ext = strrchr(file, '.')) != NULL) {
-         if(!asccasecmp(ext, ".zst"))
-            flags |= FP_ZST;
-         else if(!asccasecmp(ext, ".xz"))
-            flags |= FP_XZ;
-         else if(!asccasecmp(ext, ".gz"))
-            flags |= FP_GZIP;
-         else{
-#undef _X1
-#define _X1 "file-hook-load-"
-#undef _X2
-#define _X2 "file-hook-save-"
-            size_t l = strlen(++ext);
-            char *vbuf = ac_alloc(l + n_MAX(sizeof(_X1), sizeof(_X2)));
-
-            memcpy(vbuf, _X1, sizeof(_X1) -1);
-            memcpy(vbuf + sizeof(_X1) -1, ext, l);
-            vbuf[sizeof(_X1) -1 + l] = '\0';
-            cload = n_var_vlook(vbuf, FAL0);
-            memcpy(vbuf, _X2, sizeof(_X2) -1);
-            memcpy(vbuf + sizeof(_X2) -1, ext, l);
-            vbuf[sizeof(_X2) -1 + l] = '\0';
-            csave = n_var_vlook(vbuf, FAL0);
-#undef _X2
-#undef _X1
-            ac_free(vbuf);
-
-            if((csave != NULL) && (cload != NULL))
-               flags |= FP_HOOK;
-            else if((csave != NULL) | (cload != NULL)){
-               n_alert(_("Only one of *mailbox-(load|save)-%s* is set!  "
-                  "Treating as plain text!"), ext);
-               goto jraw;
-            }else
-               goto jraw;
-         }
-
+      if(n_filetype_exists(&ft, file)){
+         flags |= FP_HOOK;
+         cload = ft.ft_load_dat;
+         csave = ft.ft_save_dat;
          /* Cause truncation for compressor/hook output files */
          osflags &= ~O_APPEND;
          rof &= ~OF_APPEND;
-      } else {
-jraw:
+      }else{
          /*flags |= FP_RAW;*/
          rv = Fopen(file, oflags);
          goto jleave;
@@ -623,7 +585,7 @@ jraw:
    if (flags & FP_MAILDIR)
       ;
    else if (infd >= 0) {
-      if (_file_load(flags, infd, fileno(rv), cload) < 0) {
+      if (a_popen_file_load(flags, infd, fileno(rv), cload) < 0) {
 jerr:
          if (rv != NULL)
             fclose(rv);

@@ -919,7 +919,7 @@ jnext:
 
       if(fexpm & FEXP_NOPROTO)
          doexp = TRU1;
-      else switch(which_protocol(res)){
+      else switch(which_protocol(res, TRU1, FAL0, NULL)){
       case PROTO_FILE:
       case PROTO_MAILDIR:
          doexp = TRU1;
@@ -965,9 +965,9 @@ jnext:
 
 jislocal:
    if (fexpm & FEXP_LOCAL)
-      switch (which_protocol(res)) {
+      switch (which_protocol(res, FAL0, FAL0, NULL)) {
       case PROTO_FILE:
-      case PROTO_MAILDIR:
+      case PROTO_MAILDIR: /* Cannot happen since we don't stat(2), but.. */
          break;
       default:
          n_err(_("Not a local file or directory: %s\n"),

@@ -288,8 +288,17 @@ FL char const *n_pager_get(char const **env_addon);
 /* Use a pager or STDOUT to print *fp*; if *lines* is 0, they'll be counted */
 FL void        page_or_print(FILE *fp, size_t lines);
 
-/* Parse name and guess at the required protocol */
-FL enum protocol  which_protocol(char const *name);
+/* Parse name and guess at the required protocol.
+ * If check_stat is true then stat(2) will be consulted - a TODO c..p hack
+ * TODO that together with *newfolders*=maildir adds Maildir support; sigh!
+ * If try_hooks is set check_stat is implied and if the stat(2) fails all
+ * file-hook will be tried in order to find a supported version of name.
+ * If adjusted_or_null is not NULL it will be set to the final version of name
+ * this function knew about: a %: FEDIT_SYSBOX prefix is forgotten, in case
+ * a hook is needed the "real" filename will be placed.
+ * TODO This c..p should be URL::from_string()->protocol() or something! */
+FL enum protocol  which_protocol(char const *name, bool_t check_stat,
+                     bool_t try_hooks, char const **adjusted_or_null);
 
 /* Hexadecimal itoa (NUL terminates) / atoi (-1 on error) */
 FL char *      n_c_to_hex_base16(char store[3], char c);
@@ -1576,6 +1585,15 @@ FL int c_charsetalias(void *vp);
 FL int c_uncharsetalias(void *vp);
 
 FL char const *n_charsetalias_expand(char const *cp);
+
+/* `(un)?filetype', and check whether file has a known (stat(2)ed) "equivalent",
+ * as well as check whether (extension of) file is known, respectively;
+ * res_or_null can be NULL, otherwise on success result data must be copied */
+FL int c_filetype(void *vp);
+FL int c_unfiletype(void *vp);
+
+FL bool_t n_filetype_trial(struct n_file_type *res_or_null, char const *file);
+FL bool_t n_filetype_exists(struct n_file_type *res_or_null, char const *file);
 
 /*
  * path.c
