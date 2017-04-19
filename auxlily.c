@@ -438,9 +438,9 @@ jfile:
             (memcpy(np+sz, "/cur", 5), !stat(np, &st) && S_ISDIR(st.st_mode)))
           rv = PROTO_MAILDIR;
    } else {
-      if ((memcpy(np+sz, cp=".gz", 4), !stat(np, &st) && S_ISREG(st.st_mode)) ||
+      if ((memcpy(np+sz, cp=".zst",5), !stat(np, &st) && S_ISREG(st.st_mode)) ||
             (memcpy(np+sz, cp=".xz",4), !stat(np,&st) && S_ISREG(st.st_mode)) ||
-            (memcpy(np+sz, cp=".bz2",5), !stat(np, &st) && S_ISREG(st.st_mode)))
+            (memcpy(np+sz, cp=".gz",4), !stat(np,&st) && S_ISREG(st.st_mode)))
          temporary_protocol_ext = cp;
       else if ((cp = ok_vlook(newfolders)) != NULL &&
             !asccasecmp(cp, "maildir"))

@@ -50,9 +50,10 @@ struct fp {
    int         pid;
    enum {
       FP_RAW      = 0,
-      FP_GZIP     = 1<<0,
+      FP_ZST      = 1<<0,
       FP_XZ       = 1<<1,
-      FP_BZIP2    = 1<<2,
+      FP_GZIP     = 1<<2,
+
       FP_MAILDIR  = 1<<4,
       FP_HOOK     = 1<<5,
       FP_PIPE     = 1<<6,
@@ -212,12 +213,12 @@ _file_save(struct fp *fpp)
 
    cmd[2] = NULL;
    switch (fpp->flags & FP_MASK) {
-   case FP_GZIP:
-      cmd[0] = "gzip";  cmd[1] = "-c"; break;
-   case FP_BZIP2:
-      cmd[0] = "bzip2"; cmd[1] = "-c"; break;
+   case FP_ZST:
+      cmd[0] = "zst";   cmd[1] = "-c"; break;
    case FP_XZ:
       cmd[0] = "xz";    cmd[1] = "-c"; break;
+   case FP_GZIP:
+      cmd[0] = "gzip";  cmd[1] = "-c"; break;
    default:
       cmd[0] = "cat";   cmd[1] = NULL; break;
    case FP_HOOK:
@@ -244,9 +245,9 @@ _file_load(int flags, int infd, int outfd, char const *load_cmd)
 
    cmd[2] = NULL;
    switch (flags & FP_MASK) {
-   case FP_GZIP:     cmd[0] = "gzip";  cmd[1] = "-cd"; break;
-   case FP_BZIP2:    cmd[0] = "bzip2"; cmd[1] = "-cd"; break;
+   case FP_ZST:      cmd[0] = "zst";   cmd[1] = "-cd"; break;
    case FP_XZ:       cmd[0] = "xz";    cmd[1] = "-cd"; break;
+   case FP_GZIP:     cmd[0] = "gzip";  cmd[1] = "-cd"; break;
    default:          cmd[0] = "cat";   cmd[1] = NULL;  break;
    case FP_HOOK:
       cmd[0] = ok_vlook(SHELL);
@@ -564,17 +565,13 @@ Zopen(char const *file, char const *oflags) /* FIXME MESS! */
       char const *ext;
 
       if ((ext = strrchr(file, '.')) != NULL) {
-         if (!asccasecmp(ext, ".gz"))
-            flags |= FP_GZIP;
-         else if (!asccasecmp(ext, ".xz")) {
+         if(!asccasecmp(ext, ".zst"))
+            flags |= FP_ZST;
+         else if(!asccasecmp(ext, ".xz"))
             flags |= FP_XZ;
-            osflags &= ~O_APPEND;
-            rof &= ~OF_APPEND;
-         } else if (!asccasecmp(ext, ".bz2")) {
-            flags |= FP_BZIP2;
-            osflags &= ~O_APPEND;
-            rof &= ~OF_APPEND;
-         } else {
+         else if(!asccasecmp(ext, ".gz"))
+            flags |= FP_GZIP;
+         else{
 #undef _X1
 #define _X1 "file-hook-load-"
 #undef _X2
@@ -594,17 +591,19 @@ Zopen(char const *file, char const *oflags) /* FIXME MESS! */
 #undef _X1
             ac_free(vbuf);
 
-            if ((csave != NULL) && (cload != NULL)) {
+            if((csave != NULL) && (cload != NULL))
                flags |= FP_HOOK;
-               osflags &= ~O_APPEND;
-               rof &= ~OF_APPEND;
-            } else if ((csave != NULL) | (cload != NULL)) {
+            else if((csave != NULL) | (cload != NULL)){
                n_alert(_("Only one of *mailbox-(load|save)-%s* is set!  "
                   "Treating as plain text!"), ext);
                goto jraw;
-            } else
+            }else
                goto jraw;
          }
+
+         /* Cause truncation for compressor/hook output files */
+         osflags &= ~O_APPEND;
+         rof &= ~OF_APPEND;
       } else {
 jraw:
          /*flags |= FP_RAW;*/

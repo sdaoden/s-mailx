@@ -194,7 +194,7 @@ c_remove(void *v)
 
       switch (which_protocol(name)) {
       case PROTO_FILE:
-         if (unlink(name) == -1) { /* TODO do not handle .gz .bz2 .xz.. */
+         if (unlink(name) == -1) { /* TODO do not handle .zst .xz .gz.. */
             int se = n_err_no;
 
             if (se == n_ERR_ISDIR) {

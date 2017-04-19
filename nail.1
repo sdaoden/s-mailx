@@ -4346,14 +4346,14 @@ argument.
 .Pp
 If the name ends with
 .Ql .gz ,
-.Ql .bz2
-or
 .Ql .xz
+or
+.Ql zst
 it is treated as being compressed with
 .Xr gzip 1 ,
-.Xr bzip2 1
+.Xr xz 1
 or
-.Xr xz 1 ,
+.Xr zstd 1 ,
 respectively, and transparently handled through an intermediate
 (un)compression step (using a temporary file) with the according
 facility, sufficient support provided.
@@ -4369,6 +4369,14 @@ and
 variables are set, then the given hooks will be used to load and save
 .Dq name ,
 and \*(UA will work with an intermediate temporary file.
+E.g., the following will add support for the
+.Xr bzip2 1
+compressor:
+.Bd -literal -offset indent
+set file-hook-load-bz2='bzip2 -dc' \e
+  file-hook-save-bz2='bzip2 -zc'
+.Ed
+.
 .Pp
 MBOX files (flat file-based mailboxes) are generally locked during file
 operations in order to avoid inconsistencies due to concurrent
@@ -7718,9 +7726,9 @@ respectively.
 \*(ID The variables may not be changed while there is a mailbox
 attendant.
 .Bd -literal -offset indent
-set file-hook-load-xy='echo >&2 XY-LOAD; gzip -cd' \e
-    file-hook-save-xy='echo >&2 XY-SAVE; gzip -c' \e
-    record=+null-sent.xy
+set file-hook-load-gpg='echo >&2 XY-LOADS; gpg -d' \e
+    file-hook-save-gpg='echo >&2 XY-SAVE; gpg -e' \e
+    record=+null-sent.gpg
 .Ed
 .
 .Mx
