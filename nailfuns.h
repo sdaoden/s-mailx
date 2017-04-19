@@ -2334,11 +2334,8 @@ FL void        n_termcap_destroy(void);
 FL void        n_termcap_resume(bool_t complete);
 FL void        n_termcap_suspend(bool_t complete);
 
-#  define n_TERMCAP_RESUME(CPL)  n_termcap_resume(CPL)
-#  define n_TERMCAP_SUSPEND(CPL) n_termcap_suspend(CPL)
-# else
-#  define n_TERMCAP_RESUME(CPL)
-#  define n_TERMCAP_SUSPEND(CPL)
+#  define n_TERMCAP_RESUME(CPL)  do{ n_termcap_resume(CPL); }while(0)
+#  define n_TERMCAP_SUSPEND(CPL) do{ n_termcap_suspend(CPL); }while(0)
 # endif
 
 /* Command multiplexer, returns FAL0 on I/O error, TRU1 on success and TRUM1
@@ -2365,6 +2362,11 @@ FL si32_t      n_termcap_query_for_name(char const *name,
 FL char const *n_termcap_name_of_query(enum n_termcap_query query);
 # endif
 #endif /* n_HAVE_TCAP */
+
+#ifndef n_TERMCAP_RESUME
+# define n_TERMCAP_RESUME(CPL) do{;}while(0)
+# define n_TERMCAP_SUSPEND(CPL) do{;}while(0);
+#endif
 
 /*
  * thread.c
