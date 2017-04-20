@@ -19,19 +19,12 @@ and a review once we have a better signal handling, and can be taken
 with us.  For example termcap.c, most of tty.c, shexp.c, memory.c, for
 example.
 
-- If a resource file can't be found that has been explicitly set via
-  environment variables there should be some feedback.
-
-- We should possibly get away of using command line utilities for
-  compression.  (At least optionally?)  Instead we should link against
-  zlib(3), bz2lib(3) and lzma(3), if found.  Or we may use dlopen(3)
-  instead, if found, to avoid linking (though those libraries don't need
-  much linker work unless actually used afaik, 'should look in detail).
-  We should also drop lzw.c, it is used for the IMAP cache.
-
-- We should maybe turn -~ into the meaning "force interactive".
-  We should extend cc-test.sh, then, to test some interactive things.
-  E.g., via (tcl(1) or, better.., perl(1) (CPAN)) expect.
+- We should have generic ENOMEM conditions, now that we have $!.
+  I.e., test overflow (e.g., nam-a-grp.c, whether an alias _can_ be
+  created / extended), like n_ENOMEM_CHECK(INTTYPE, SIZE1, SIZE2, NULL
+  or message), which returns m_bool (now bool_t).
+  Callers need to be aware of NULL returns and pass through errors,
+  then.
 
 - We need a "void" box that can be jumped to, i.e., a state in which no box
   at all is active.
@@ -53,20 +46,8 @@ example.
   I had 'set pipe-text/html="lynx -dump -force_html /dev/stdin"' but NetBSD
   does not have lynx(1), and i thought i've found a S-nail(1) bug.
 
--- Also, when we run a pipe handler asynchronously there should possible
-   written something like [pipe-handler xy started] or something
-
 - It would be nice if it would be possible to define a format string for
   *quote*, like 'set quote="format=some formats"'.
-  In general the current approach is somewhat messy IMO.  I.e., it would
-  make more sense to act rather like mutt(1) and as written elsewhere in
-  this document, i.e., have some toggles that act on the display and use it
-  for multiple modes (show/reply/forward etc.)
-  Otherwise introduce commands which include all the headers plus, e.g.,
-  "hreply" or "freply", and then the ditto series, i.e., "hReply" ...
-
--- This would also mean that interactive message editing would work
-  accordingly.  PleasE!
 
 - Line editing should gain possibility of context sensitive tab completion.
 
@@ -91,6 +72,10 @@ example.
 -- NetBSD's mail(1) has nice *indentprefix* and *indentpostscript*
    variables (though prefix and appendix or prefix and suffix, but..).
    Note that our code is quite unflexible.
+
+- headerpick: add resend-retain/ignore!  (Ralph Corderoy, Norman Shapiro)
+	(Delivered-To thread on nmh.  Will be hard to do because of
+	codepaths!)
 
 Low-Level
 ---------
@@ -118,11 +103,6 @@ Low-Level
     "co$mm1 cö,mm,2 'c'omm.3" <abc@däf.de>
   Or?
 
-++  NOTE: 'alternates' tracking happens BEFORE we enter composing, this
-    means that an account switch during message composing will NOT cause
-    reevaluation of all that very very clumy
-    elide/delete_alternates/gexpand/is_myname etc. handling.
-
 - many uses of whitechar() should be spacechar(), and spacechar() should
   be blankspacechar(), and blankspacechar() should be dropped.  then
   drop onlywhitechar() again, too.  maybe reduce char_class bits then.
@@ -139,11 +119,6 @@ Low-Level
   be init, at least in these cases.  (P.S.: this doesn't contradict the
   statement somewhere else in this file that the structure should be
   slacked; simply use multiple thereof or so)
-
-- At some later time extend the logic behind -# -- it should not have
-  a current folder, but start in VOID mode (...), and unless one is
-  explicitly chosen..  We need a reliable batch mode.
-  P.S.: then drop again the special casing of /dev/null.
 
 - After I/O layer rework we should optionally be able to read RSS
   (Atom?) feeds -- Expat should be available almost everywhere and
@@ -307,8 +282,6 @@ Low-Level
      take favour of reusing that buffer.)
      + Macro execution then no longer needs to clone the macro content
      lines before executing then.
-     + The temporary hack which duplicates the line buffer in order to
-     place the original content in history can be removed again.
      + The command context also takes preparsed command array if so
      specified in cmd_tab, and entries are cleaned up (see 2.)
   9. We should unite all the un*() commands with their non-un*
@@ -369,7 +342,7 @@ Low-Level
      cache file, which is created when a mailbox is read in, and all
      that crap that we currently have (setptr(), setmsize(), etc.!) must
      vanish.  Instead there is another, in-memory abstraction, the view.
-     Some views are builtin and are somehow selectable (the "all" view,
+     Some views are built-in and are somehow selectable (the "all" view,
      for example, and the "new" view).
      It is possible to make a view persistent by giving it a name, e.g.,
      'viewset NAME MSG-SPEC' -- 'viewset allnew :n' (and 'viewset XY `'
@@ -384,13 +357,17 @@ Low-Level
      Or name it "msgset".
      We won't extend macros that much because it would require much too
      much logic for no purpose, instead we'll (hopefully) add some
-     scriptable abstraction, with an optional builtin Lua binding.
+     scriptable abstraction, with an optional built-in Lua binding.
      E.g., it would be too complicated to create a language to access
      individual message parts (headers etc.), add error handling etc.
      Better to make it all directly accessible via language binding, and
      offer commands which relinquish execution to such a binding, maybe
      even with some arguments, as in "? lua ARG" - it should be possible
      that ARG is a msgset, then.
+     On the other hand, ~^ text-protocol stuff isn't that bad, and if
+     a text-protocol command mode could be added, that would be cool.
+     Even things like 'create temporary file', write data until EOT in
+     descriptor / temporary file / etc. and such!
 
      But what macros should be able to do is iterating over such
      a msgset / view, as in
@@ -441,35 +418,8 @@ Low-Level
      The absolute sensation would be joinable operations over multiple
      open mailboxes, e.g., views over multiple such!
 100. If i say `p 3 2 1' then i mean `3 2 1' not `1 2 3'.
-1000. Extend macros and provide language bindings.  See item 34.
-     Additionally there was:
-    I want *pipemac* (or *pipe-hookXY*).  This requires v15.0
-    infrastructure (pseudo: evaluate() returns enum eval_retval{OK=0,
-    ERR=1, ISMAC=0x80, MACOK=ISMAC|OK, MACERR=ISMAC|ERR}; new `return'
-    command which only works in an executing macro (care: recursion);
-    macro arguments in pseudo variables $1...$x (works?); `return' can
-    "return" a list (simply keep argument list around); macro execution
-    can then simply check the return value to decide what to do (no
-    jumping); btw.: where is our `clone' command which clones WHATEVER?):
-      define pipemac {
-        clone name=$1 base=$2 ext=$3 ACTION=$4([SEND_]MBOX|DISPLAY|etc)
-        if $name =~ 'README|INSTALL|TODO|COPYING|*.(txt|rc|cfg|conf)$'
-          return 'text/plain'
-        elif $ext =~ 'gz$'
-          return 'application/gzip'
-        elif $ext =~ '*.\.nim$'
-          return 'text/x-nimrod'
-        else
-          varshell i /usr/bin/file --preserve-date $name
-          return $i
-        endif
-      }
-    Also interesting would be the possibility to let a macro BE the
-    (forked+exec, I/O redirected) external handler, "returning the
-    output I/O handle".
-    Inspired by Gavin Troy and Bob Tennent.
 
--- Also (?same problem?) the thread sort doesn't get
+- The thread sort doesn't get
 
     [A is deleted]
     B answers A
@@ -481,9 +431,9 @@ Low-Level
   The current sort fails to recognize that F and the thread starting at
   B are related, which results in a mess.
 
---- Being able to sort the outermost level of threads was a suggestion
-    of Rudolf Sykora, especially being able to sort the outermost level
-    according to the date of the newest message in a thread.
+-- Being able to sort the outermost level of threads was a suggestion
+   of Rudolf Sykora, especially being able to sort the outermost level
+   according to the date of the newest message in a thread.
 
 - Drop **use-starttls* in favour of something better: support 'auto',
   'no' and 'yes' and act accordingly.  For the former be smart enough on
@@ -501,13 +451,6 @@ Low-Level
   closed.' messages, btw., the thirty-something messages which were not
   yet downloaded caused (after CNTRL-C) this: ETC. ETC.
 
-- Add a value-duplication command, i.e.,
-    clone _x header
-    unset header
-    ...
-    clone header _x
-    unset _x
-
 - I got an email in base64 that obviously used CRNL line endings, and once
   i've replied the CR where quoted as *control* characters.
   Get rid of those (kwcrtest.mbox; may be hard to do everywhere for some
@@ -517,7 +460,7 @@ Low-Level
 
 - Stuff
   .. s-nail </dev/null should work interactively when STDERR_FILENO is
-    a terminal!  (Builtin editor; how do editline and readline work?
+    a terminal!  (Built-in editor; how do editline and readline work?
     should this be documented?  What does NetBSD Mail do?  Should we NOT
     be interactive??  POSIX says for sh(1) (APPLICATION USAGE): 'sh
     2>FILE' is not interactive, even though it accepts terminal input.)
@@ -608,9 +551,6 @@ Low-Level
     add something faulty to whatever was not faulty before!
   . `dp' prints EOF at the end of a thread even if unread messages
     follow
-  . When doing `~w FILE' and FILE cannot be written to (was a directory)
-    then the composed mail is lost completely, it seems we jump to the
-    very main loop!
   . `resend' doesn't smime-sign.
   . Really do extend the test already today; test S/MIME
     signing/encryption/decryption with two pairs of identities, instead
@@ -665,7 +605,7 @@ Low-Level
     has the multibyte reset sequence plus length available for easy
     access.
   . When a user edits a specific header, it should no longer be
-    modified.
+    modified.  (Do not loose knowledge that collect() edited it.)
   . Regular expression list resorting is no good; the user should be
     able to specify a match order weight, as in:
       mlist 10 a@b.org 8 c@d.org .*@else@org 0 almost@never.com
@@ -678,10 +618,6 @@ Low-Level
      Then install a resorter function when we actually have lookups and
      one-shot sort the entire thing once (when the loop ticks).
      Instead of busy resorting, that is.
-  . Some pieces of cake (e.g. usermap()) don't perform actions on
-    addresse(e)s if the first character is a backslash.  Others do.
-    And do we really support that notion all through the codebase.
-    And, even more: should we support that at all?
   . We need more hooks: on-leave, on-connect.. whatever
   . The new internal ~/$ expansion mechanism should possibly get support
      for POSIX parameter expansions ${[:]-} and ${[:]+} (and ${[:]?}).
@@ -707,10 +643,6 @@ Low-Level
     it which have really been sent.  If we support postponing and have
     a multi-process layout and add an intermediate *record-queue* we
     may be able to improve the situation.
-  . I like "SMTP and SUBMISSION Service Extensions For Address Query",
-    for which we need
-      if (!SSL_set_tlsext_host_name(con, servername))
-        error
   . [Dd]ecrypt should transport decryption errors, not silently be like
     copy and copy undecrypted content, because this is what it's for?
     ..We need atomic operations with rollback support in order to make
@@ -752,5 +684,52 @@ Low-Level
     supports include files via :include:/filename but which i think
     should be supported in a second step.  Ditto caching (timestamp
     check and a mechanism to support/disable caching.)
+
+--
+
+. smime_verify(): only dump the multipart that is signed into the file for
+  verification purposes.  DOCUMENT that only the FIRST such part is verified.
+  Ditto, we don't decrypt but on toplevel.  Sic.
+
+. convert iconv so that it always "places the reset sequence" i.e.
+ finalizes the string properly.  we don't do this at all right now!
+
+. wysh: support a -- terminator, also in getmsglist();
+	then: `pipe' etc.: add support for wysh prefix, which uses the new
+	syntax: like this we can obsolete the ridiculous lastring() hack of nail
+	in v15!  (Stanley Lieber, Gavin Troy)
+
+. -:, *mimetypes-load-control*, ?, should honour the given load order; as
+  appropriate, add a "b" for built-in!
+  It happened to me that i searched for at least 30 minutes for a bug
+  that resulted in text/plain not text/x-diff only to find out that this
+  was because of ArchLinux's /etc/mime.types!
+
+. getapproval() should support a TRUM1 return, meaning "cancel",
+  to be understood as appropriate.
+
+. `mbox' _can_ be made usable anywhere with yet another PS_MBOX global
+  bypass!  ditto touch,save,Save
+
+. with *mime-alternative-favour-rich* it is possibly time to support GMAIL
+  style quotes, as well as class="quote" and such.
+
+. can we introduce a BUILD_DIR thing?  or OBJ_DIR OBJDIR (what was the BSD
+  name for this again?)  I really would like to be able to have separate
+  build directories!  (PREFIXDEV, however, won't work out for a while.)
+
+. We should be much smarter regarding when we allow a PAGER
+  etc. to be used, which is supposed to be a possibly useful thing in
+     $ s-nail -Scrt=0 >LOG 2>&1
+
+. when doing Lreply we may ask for Reply-To:, but strip out the address
+  actively even if user said yes to the question.  That should not
+  happen?  It somehow matches the documentation however.  unsure.
+
+. if -t is used and the file includes Mail-Followup-To:, then we should
+  NOT add to it, OR we need to offer a way to get there!
+
+. stale dotlock files should be removed - postfix has
+  a stale_lock_time=500s variable to configure that
 
 # s-ts-mode
