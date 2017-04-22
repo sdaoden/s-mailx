@@ -3751,7 +3751,8 @@ is not available (i.e., no
 .Ql +iconv
 in
 .Va features ) .
-Without arguments the list of all currently defined aliases is shown.
+Without arguments the list of all currently defined aliases is shown,
+with one argument the expansion of the given alias.
 Otherwise all given arguments are treated as pairs of character sets and
 their desired target alias name, creating new or changing already
 existing aliases, as necessary.
@@ -4450,7 +4451,7 @@ The latter command removes the hooks for all given extensions,
 will remove all existing handlers.
 .Pp
 When used without arguments the former shows a list of all currently
-defined file hooks.
+defined file hooks, with one argument the expansion of the given alias.
 Otherwise three arguments are expected, the first specifying the file
 extension for which the hook is meant, and the second and third defining
 the load- and save commands, respectively, to deal with the file type,
@@ -5539,7 +5540,7 @@ change again due to output or result storage errors.
 .Mx
 .It Ic shortcut , unshortcut
 Without arguments the list of all currently defined shortcuts is
-shown.
+shown, with one argument the expansion of the given shortcut.
 Otherwise all given arguments are treated as pairs of shortcuts and
 their expansions, creating new or changing already existing shortcuts,
 as necessary.

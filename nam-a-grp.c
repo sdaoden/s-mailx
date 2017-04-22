@@ -1465,12 +1465,12 @@ c_alternates(void *v){
       ;
 
    if(l == 0){
-      if(a_nag_altnames != NULL){
-         fprintf(n_stdout, "alternates ");
-         for(ap = a_nag_altnames; *ap != NULL; ++ap)
-            fprintf(n_stdout, "%s ", *ap);
-         putc('\n', n_stdout);
-      }
+      char const *ccp;
+
+      if((ccp = ok_vlook(alternates)) != NULL)
+         fprintf(n_stdout, "alternates %s\n", ccp);
+      else
+         fputs(_("# no alternates registered\n"), n_stdout);
    }else{
       if(a_nag_altnames != NULL){
          for(ap = a_nag_altnames; *ap != NULL; ++ap)
@@ -1933,16 +1933,26 @@ jleave:
 FL int
 c_shortcut(void *v)
 {
-   char **argv = v;
-   int rv = 0;
+   struct group *gp;
+   char **argv;
+   int rv;
    NYD_ENTER;
 
-   if (*argv == NULL)
+   rv = 0;
+   argv = v;
+
+   if(*argv == NULL)
       _group_print_all(GT_SHORTCUT);
-   else for (; *argv != NULL; argv += 2) {
+   else if(argv[1] == NULL){
+      if((gp = _group_find(GT_SHORTCUT, *argv)) != NULL)
+         _group_print(gp, n_stdout);
+      else{
+         n_err(_("No such shortcut: %s\n"), n_shexp_quote_cp(*argv, FAL0));
+         rv = 1;
+      }
+   }else for (; *argv != NULL; argv += 2) {
       /* Because one hardly ever redefines, anything is stored in one chunk */
       size_t l;
-      struct group *gp;
       char *cp;
 
       if (argv[1] == NULL) {
@@ -1983,12 +1993,11 @@ c_unshortcut(void *v)
 }
 
 FL char const *
-shortcut_expand(char const *str)
-{
+shortcut_expand(char const *str){
    struct group *gp;
    NYD_ENTER;
 
-   if ((gp = _group_find(GT_SHORTCUT, str)) != NULL)
+   if((gp = _group_find(GT_SHORTCUT, str)) != NULL)
       GP_TO_SUBCLASS(str, gp);
    else
       str = NULL;
@@ -1998,6 +2007,7 @@ shortcut_expand(char const *str)
 
 FL int
 c_charsetalias(void *vp){
+   struct group *gp;
    char **argv;
    int rv;
    NYD_ENTER;
@@ -2007,11 +2017,17 @@ c_charsetalias(void *vp){
 
    if(*argv == NULL)
       _group_print_all(GT_CHARSETALIAS);
-   else for(; *argv != NULL; argv += 2){
+   else if(argv[1] == NULL){
+      if((gp = _group_find(GT_CHARSETALIAS, *argv)) != NULL)
+         _group_print(gp, n_stdout);
+      else{
+         n_err(_("No such charsetalias: %s\n"), n_shexp_quote_cp(*argv, FAL0));
+         rv = 1;
+      }
+   }else for(; *argv != NULL; argv += 2){
       /* Because one hardly ever redefines, anything is stored in one chunk */
       char const *ccp;
       char *cp, c;
-      struct group *gp;
       size_t l;
 
       if(argv[1] == NULL){
@@ -2087,6 +2103,7 @@ n_charsetalias_expand(char const *cp){
 
 FL int
 c_filetype(void *vp){ /* TODO support automatic chains: .tar.gz -> .gz + .tar */
+   struct group *gp;
    char **argv; /* TODO While there: let ! prefix mean: direct execlp(2) */
    int rv;
    NYD_ENTER;
@@ -2096,11 +2113,17 @@ c_filetype(void *vp){ /* TODO support automatic chains: .tar.gz -> .gz + .tar */
 
    if(*argv == NULL)
       _group_print_all(GT_FILETYPE);
-   else for(; *argv != NULL; argv += 3){
+   else if(argv[1] == NULL){
+      if((gp = _group_find(GT_FILETYPE, *argv)) != NULL)
+         _group_print(gp, n_stdout);
+      else{
+         n_err(_("No such filetype: %s\n"), n_shexp_quote_cp(*argv, FAL0));
+         rv = 1;
+      }
+   }else for(; *argv != NULL; argv += 3){
       /* Because one hardly ever redefines, anything is stored in one chunk */
       char const *ccp;
       char *cp, c;
-      struct group *gp;
       size_t llc, lsc;
 
       if(argv[1] == NULL || argv[2] == NULL){
