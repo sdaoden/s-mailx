@@ -520,9 +520,11 @@ jaddr_check:
    }else{
       /* If we seem to know that this is an address.  Ensure this is correct
        * according to RFC 5322 TODO the entire address parser should be like
-       * TODO that for one, and then we should now whether structured or
+       * TODO that for one, and then we should know whether structured or
        * TODO unstructured, and just parse correctly overall!
-       * TODO In addition, this can be optimised a lot */
+       * TODO In addition, this can be optimised a lot.
+       * TODO And it is far from perfect: it should not forget whether no
+       * TODO whitespace followed some snippet, and it was written hastily */
       struct a_token{
          struct a_token *t_last;
          struct a_token *t_next;
@@ -707,7 +709,7 @@ jnode_redo:
 
       /* Nothing may follow the address, move it to the end */
       if(!(tcurr->t_f & a_T_TADDR)){
-         for(tp = thead; tp != NULL; tp = tp->t_next)
+         for(tp = thead; tp != NULL; tp = tp->t_next){
             if(tp->t_f & a_T_TADDR){
                if(tp->t_last != NULL)
                   tp->t_last->t_next = tp->t_next;
@@ -724,6 +726,7 @@ jnode_redo:
                tcurr->t_next = NULL;
                break;
             }
+         }
       }
 
       /* Make ranges contiguous: ensure a continuous range of atoms is converted
@@ -738,6 +741,7 @@ jnode_redo:
                tp->t_f |= a_T_SPECIAL;
          }
       }
+
       /* And yes, we want quotes to extend as much as possible */
       for(tp = thead; tp != NULL; tp = tp->t_next){
          if(tp->t_f & a_T_TQUOTE){
@@ -772,7 +776,7 @@ jnode_redo:
                   (tcurr->t_end - tcurr->t_start));
             while((tp = tcurr->t_next) != NULL && (tp->t_f & a_T_TCOMM)){
                tcurr = tp;
-               ostp = n_string_push_c(ostp, ' ');
+               ostp = n_string_push_c(ostp, ' '); /* XXX may be artificial */
                ostp = n_string_push_buf(ostp, &cp1st[tcurr->t_start],
                      (tcurr->t_end - tcurr->t_start));
             }
@@ -797,9 +801,10 @@ jput_quote:
                   bool_t esc;
 
                   for(esc = FAL0; cp < cpmax;){
-                     if((c.c = *cp++) == '\\' && !esc)
-                        esc = TRU1;
-                     else{
+                     if((c.c = *cp++) == '\\' && !esc){
+                        if(cp < cpmax && (*cp == '"' || *cp == '\\'))
+                           esc = TRU1;
+                     }else{
                         if(esc || c.c == '"'){
 jput_quote_esc:
                            ostp = n_string_push_c(ostp, '\\');

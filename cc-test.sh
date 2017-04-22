@@ -1534,7 +1534,7 @@ t_behave_addrcodec() {
 	eval vput addrcodec res d $res
 	echo $?/$^ERRNAME $res
 	#
-	vput addrcodec res +++e 22 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
+	vput addrcodec res +++e 22 Hey\\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
 	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
 	echo $?/$^ERRNAME $res
@@ -1549,9 +1549,9 @@ t_behave_addrcodec() {
 #0/NONE 2 . <doog@def>
 #0/NONE "3 Sauer Dr." <doog@def>
 #0/NONE 3 Sauer Dr. <doog@def>
-#0/NONE 3.50 "Sauer \(Ma\) Dr." <doog@def>
+#0/NONE "3.50 Sauer (Ma) Dr." <doog@def>
 #0/NONE 3.50 Sauer (Ma) Dr. <doog@def>
-#0/NONE 3.51 "Sauer \(Ma\) \"Dr.\"" <doog@def>
+#0/NONE "3.51 Sauer (Ma) \"Dr.\"" <doog@def>
 #0/NONE 3.51 Sauer (Ma) "Dr." <doog@def>
 #0/NONE 4 Sauer (Ma) "Dr." <doog@def>
 #0/NONE 4 Sauer (Ma) Dr. <doog@def>
@@ -1588,11 +1588,11 @@ t_behave_addrcodec() {
 #1/INVAL 20 Hey\\,\\"  <doog@def> "Wie()" findet \\" Dr. \\" das?
 #0/NONE "21 Hey\\,\\ Wie() findet \\  Dr. \\ das?" <doog@def>
 #0/NONE 21 Hey\,\ Wie() findet \  Dr. \ das? <doog@def>
-#0/NONE "22 Hey\,\" Wie() findet \" Dr. \" das?" <doog@def>
-#0/NONE 22 Hey," Wie() findet " Dr. " das? <doog@def>
+#0/NONE "22 Hey\\,\" Wie() findet \" Dr. \" das?" <doog@def>
+#0/NONE 22 Hey\," Wie() findet " Dr. " das? <doog@def>
 #0/NONE doog@def
    ex0_test behave:addrcodec
-   cksum_test behave:addrcodec "${MBOX}" '3907388894 2416'
+   cksum_test behave:addrcodec "${MBOX}" '429099645 2414'
 }
 
 t_behave_vexpr() {
