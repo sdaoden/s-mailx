@@ -3105,8 +3105,9 @@ as shown above (e.g.,
 whenever such an alias exists it will be used for display purposes.
 The control code NUL
 .Pf ( Ql \ec@ ,
-a non-standard extension) ends argument processing without producing
-further output.
+a non-standard extension) will suppress further output for the remains
+of the token (which may extend beyond the current quote), or, depending
+on the context, the remains of all arguments for the current command.
 .It Ql \e$NAME
 Non-standard extension: expand the given variable name, as above.
 Brace enclosing the name is supported.

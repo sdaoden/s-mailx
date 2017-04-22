@@ -995,15 +995,17 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
    char const *ib_save, *ib;
    enum{
       a_NONE = 0,
-      a_SKIPQ = 1u<<0,     /* Skip rest of this quote (\c0 ..) */
-      a_SURPLUS = 1u<<1,   /* Extended sequence interpretation */
-      a_NTOKEN = 1u<<2,    /* "New token": e.g., comments are possible */
-      a_BRACE = 1u<<3,     /* Variable substitution: brace enclosed */
-      a_DIGIT1 = 1u<<4,    /* ..first character was digit */
-      a_NONDIGIT = 1u<<5,  /* ..has seen any non-digits */
-      a_VARSUBST_MASK = n_BITENUM_MASK(3, 5),
+      a_SKIPQ = 1u<<0,     /* Skip rest of this quote (\u0 ..) */
+      a_SKIPT = 1u<<1,     /* Skip entire token (\c@) */
+      a_SKIPMASK = a_SKIPQ | a_SKIPT,
+      a_SURPLUS = 1u<<2,   /* Extended sequence interpretation */
+      a_NTOKEN = 1u<<3,    /* "New token": e.g., comments are possible */
+      a_BRACE = 1u<<4,     /* Variable substitution: brace enclosed */
+      a_DIGIT1 = 1u<<5,    /* ..first character was digit */
+      a_NONDIGIT = 1u<<6,  /* ..has seen any non-digits */
+      a_VARSUBST_MASK = n_BITENUM_MASK(4, 6),
 
-      a_ROUND_MASK = (int)~n_BITENUM_MASK(0, 7),
+      a_ROUND_MASK = a_SKIPT | (int)~n_BITENUM_MASK(0, 7),
       a_COOKIE = 1u<<8,
       a_EXPLODE = 1u<<9,
       a_CONSUME = 1u<<10,  /* When done, "consume" remaining input */
@@ -1070,6 +1072,7 @@ jrestart_empty:
       if(state & a_COOKIE)
          goto jleave_quick;
    }else{
+jrestart:
       if(flags & n_SHEXP_PARSE_TRIMSPACE){
          for(; il > 0; ++ib, --il)
             if(!blankspacechar(*ib))
@@ -1249,7 +1252,7 @@ jrestart_empty:
                   if(il == 0)
                      goto j_dollar_ungetc;
                   --il, c2 = *ib++;
-                  if(state & a_SKIPQ)
+                  if(state & a_SKIPMASK)
                      continue;
                   c = upperconv(c2) ^ 0x40;
                   if((ui8_t)c > 0x1F && c != 0x7F){ /* ASCII C0: 0..1F, 7F */
@@ -1261,8 +1264,8 @@ jrestart_empty:
                   /* As an implementation-defined extension, support \c@
                    * EQ printf(1) alike \c */
                   if(c == '\0'){
-                     rv |= n_SHEXP_STATE_STOP;
-                     goto jleave;
+                     state |= a_SKIPT;
+                     continue;
                   }
                   break;
 
@@ -1283,7 +1286,7 @@ jrestart_empty:
                      --il, ++ib;
                   }
                   if(il > 0 && (c = *ib) >= '0' && c <= '7'){
-                     if((ui8_t)c2 > 0x1F){
+                     if(!(state & a_SKIPMASK) && (ui8_t)c2 > 0x1F){
                         if(flags & n_SHEXP_PARSE_LOG)
                            n_err(_("\\0 argument exceeds a byte: %.*s\n"),
                               (int)input->l, input->s);
@@ -1300,10 +1303,12 @@ je_ib_save:
                      c2 = (c2 << 3) | (c -= '0');
                      --il, ++ib;
                   }
-                  if((c = c2) == '\0')
-                     state |= a_SKIPQ;
-                  if(state & a_SKIPQ)
+                  if(state & a_SKIPMASK)
                      continue;
+                  if((c = c2) == '\0'){
+                     state |= a_SKIPQ;
+                     continue;
+                  }
                   break;
 
                /* ISO 10646 / Unicode sequence, 8 or 4 hexadecimal bytes */
@@ -1340,7 +1345,7 @@ je_ib_save:
                            no += hexatoi[(ui8_t)((c) - ((c) <= '9' ? 48
                                  : ((c) <= 'F' ? 55 : 87)))];
                         }else if(j == 0){
-                           if(state & a_SKIPQ)
+                           if(state & a_SKIPMASK)
                               break;
                            c2 = (c2 == 'U' || c2 == 'u') ? 'u' : 'x';
                            if(flags & n_SHEXP_PARSE_LOG)
@@ -1358,7 +1363,7 @@ je_ib_save:
                            state |= a_SKIPQ;
                      }else if(no == 0)
                         state |= a_SKIPQ;
-                     else if(!(state & a_SKIPQ)){
+                     else if(!(state & a_SKIPMASK)){
                         if(!(flags & n_SHEXP_PARSE_DRYRUN))
                            store = n_string_reserve(store, n_MAX(j, 4));
 
@@ -1406,7 +1411,7 @@ je_ib_save:
                         }
                         continue;
                      }
-                     if(state & a_SKIPQ)
+                     if(state & a_SKIPMASK)
                         continue;
                   }
                   break;
@@ -1466,7 +1471,7 @@ j_dollar_ungetc:
                      state |= a_NONDIGIT;
                }
 
-               if(state & a_SKIPQ){
+               if(state & a_SKIPMASK){
                   if((state & a_BRACE) && il > 0 && *ib == '}')
                      --il, ++ib;
                   continue;
@@ -1561,7 +1566,7 @@ j_var_look_buf:
          }
       }
 
-      if(!(state & a_SKIPQ)){
+      if(!(state & a_SKIPMASK)){
          rv |= n_SHEXP_STATE_OUTPUT;
          if(cntrlchar(c))
             rv |= n_SHEXP_STATE_CONTROL;
@@ -1603,6 +1608,10 @@ jleave:
       if(/*!(rv & n_SHEXP_STATE_OUTPUT) &&*/ il == 0)
          rv |= n_SHEXP_STATE_STOP;
    }
+
+   if((state & a_SKIPT) && !(rv & n_SHEXP_STATE_STOP) &&
+         (flags & n__SHEXP_PARSE_META_MASK))
+      goto jrestart;
 jleave_quick:
    assert((rv & n_SHEXP_STATE_OUTPUT) || !(rv & n_SHEXP_STATE_UNICODE));
    assert((rv & n_SHEXP_STATE_OUTPUT) || !(rv & n_SHEXP_STATE_CONTROL));

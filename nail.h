@@ -1221,6 +1221,9 @@ enum n_shexp_parse_flags{
    n_SHEXP_PARSE_META_SEMICOLON = 1u<<15,
    /* LPAREN, RPAREN, LESSTHAN, GREATERTHAN */
 
+   n__SHEXP_PARSE_META_MASK = n_SHEXP_PARSE_META_VERTBAR |
+         n_SHEXP_PARSE_META_AMPERSAND | n_SHEXP_PARSE_META_SEMICOLON,
+
    /* Keep the metacharacter (or IFS character), do not skip over it */
    n_SHEXP_PARSE_META_KEEP = 1u<<16,
 
@@ -1231,23 +1234,23 @@ enum n_shexp_state{
    n_SHEXP_STATE_NONE,
    /* We have produced some output (or would have, with _PARSE_DRYRUN).
     * Note that empty quotes like '' produce no output but set this bit */
-   n_SHEXP_STATE_OUTPUT = 1<<2,
-   /* Don't call the parser again (\c0 or # comment seen; out of input).
+   n_SHEXP_STATE_OUTPUT = 1u<<0,
+   /* Don't call the parser again (# comment seen; out of input).
     * Not (necessarily) mutual with _OUTPUT) */
-   n_SHEXP_STATE_STOP = 1<<1,
-   n_SHEXP_STATE_UNICODE = 1<<3,       /* \[Uu] used */
-   n_SHEXP_STATE_CONTROL = 1<<4,       /* Control characters seen */
-   n_SHEXP_STATE_META_VERTBAR = 1<<5,  /* Metacharacter | follows/ed */
-   n_SHEXP_STATE_META_AMPERSAND = 1<<6, /* Metacharacter & follows/ed */
-   n_SHEXP_STATE_META_SEMICOLON = 1<<7, /* Metacharacter ; follows/ed */
+   n_SHEXP_STATE_STOP = 1u<<1,
+   n_SHEXP_STATE_UNICODE = 1u<<2,         /* \[Uu] used */
+   n_SHEXP_STATE_CONTROL = 1u<<3,         /* Control characters seen */
+   n_SHEXP_STATE_META_VERTBAR = 1u<<4,    /* Metacharacter | follows/ed */
+   n_SHEXP_STATE_META_AMPERSAND = 1u<<5,  /* Metacharacter & follows/ed */
+   n_SHEXP_STATE_META_SEMICOLON = 1u<<6,  /* Metacharacter ; follows/ed */
 
-   n_SHEXP_STATE_ERR_CONTROL = 1<<16,  /* \c notation with invalid argument */
-   n_SHEXP_STATE_ERR_UNICODE = 1<<17,  /* Valid \[Uu] used and !n_PSO_UNICODE */
-   n_SHEXP_STATE_ERR_NUMBER = 1<<18,   /* Bad number (\[UuXx]) */
-   n_SHEXP_STATE_ERR_BRACE = 1<<19,    /* _QUOTEOPEN + no } brace for ${VAR */
-   n_SHEXP_STATE_ERR_IDENTIFIER = 1<<20, /* Invalid identifier */
-   n_SHEXP_STATE_ERR_BADSUB = 1<<21,   /* Empty/bad ${} substitution */
-   n_SHEXP_STATE_ERR_QUOTEOPEN = 1<<22, /* Quote remains open at EOS */
+   n_SHEXP_STATE_ERR_CONTROL = 1u<<16,    /* \c notation with invalid arg. */
+   n_SHEXP_STATE_ERR_UNICODE = 1u<<17,    /* Valid \[Uu] and !n_PSO_UNICODE */
+   n_SHEXP_STATE_ERR_NUMBER = 1u<<18,     /* Bad number (\[UuXx]) */
+   n_SHEXP_STATE_ERR_BRACE = 1u<<19,      /* _QUOTEOPEN + no } brace 4 ${VAR */
+   n_SHEXP_STATE_ERR_IDENTIFIER = 1u<<20, /* Invalid identifier */
+   n_SHEXP_STATE_ERR_BADSUB = 1u<<21,     /* Empty/bad ${} substitution */
+   n_SHEXP_STATE_ERR_QUOTEOPEN = 1u<<22,  /* Quote remains open at EOS */
 
    n_SHEXP_STATE_ERR_MASK = n_BITENUM_MASK(16, 22)
 };
