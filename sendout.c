@@ -470,7 +470,9 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
          sbp->sb_signer.l = strlen(sbp->sb_signer.s = from);
    }
 
-#ifdef HAVE_SMTP
+#ifndef HAVE_SMTP
+   rv = TRU1;
+#else
    if ((smtp = ok_vlook(smtp)) == NULL) { /* TODO v15 url_creat(,ok_vlook(mta)*/
       char const *proto;
 
