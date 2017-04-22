@@ -1146,30 +1146,30 @@ jrestart_empty:
             rv |= n_SHEXP_STATE_META_VERTBAR;
             /* The parsed sequence may be _the_ output, so ensure we don't
              * include the metacharacter, then. */
+            /*if(flags & n_SHEXP_PARSE_META_VERTBAR)*/
             if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
                ++il, --ib;
-            /*else if(flags & n_SHEXP_PARSE_META_VERTBAR)*/
             break;
          }else if(c == '&'){
             rv |= n_SHEXP_STATE_META_AMPERSAND;
             /* The parsed sequence may be _the_ output, so ensure we don't
              * include the metacharacter, then. */
+            /*if(flags & n_SHEXP_PARSE_META_AMPERSAND)*/
             if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
                ++il, --ib;
-            /*else if(flags & n_SHEXP_PARSE_META_AMPERSAND)*/
             break;
          }else if(c == ';'){
             rv |= n_SHEXP_STATE_META_SEMICOLON;
             /* The parsed sequence may be _the_ output, so ensure we don't
              * include the metacharacter, then. */
-            if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
-               ++il, --ib;
-            else if(flags & n_SHEXP_PARSE_META_SEMICOLON){
+            if(flags & n_SHEXP_PARSE_META_SEMICOLON){
                if(il > 0)
                   n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, ib, il);
                state |= a_CONSUME;
                rv |= n_SHEXP_STATE_STOP;
             }
+            if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
+               ++il, --ib;
             break;
          }else if(c == ',' && (flags &
                (n_SHEXP_PARSE_IFS_ADD_COMMA | n_SHEXP_PARSE_IFS_IS_COMMA))){
