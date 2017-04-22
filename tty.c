@@ -3305,12 +3305,18 @@ jeempty:
       *--cp = '\0';
 
       /* Search for a yet existing identical mapping */
-      for(ltbcp = NULL, tbcp = a_tty.tg_bind[tbpcp->tbpc_flags]; tbcp != NULL;
-            ltbcp = tbcp, tbcp = tbcp->tbc_next)
-         if(tbcp->tbc_seq_len == sl && !memcmp(tbcp->tbc_seq, cpbase, sl)){
-            tbpcp->tbpc_tbcp = tbcp;
-            break;
-         }
+      /* C99 */{
+         enum n_go_input_flags gif;
+
+         gif = tbpcp->tbpc_flags & n__GO_INPUT_CTX_MASK;
+
+         for(ltbcp = NULL, tbcp = a_tty.tg_bind[gif]; tbcp != NULL;
+               ltbcp = tbcp, tbcp = tbcp->tbc_next)
+            if(tbcp->tbc_seq_len == sl && !memcmp(tbcp->tbc_seq, cpbase, sl)){
+               tbpcp->tbpc_tbcp = tbcp;
+               break;
+            }
+      }
       tbpcp->tbpc_ltbcp = ltbcp;
       tbpcp->tbpc_flags |= (f & a_TTY__BIND_MASK);
    }
@@ -3457,7 +3463,7 @@ a_tty_bind_del(struct a_tty_bind_parse_ctx *tbpcp){
    if((ltbcp = tbpcp->tbpc_ltbcp) != NULL)
       ltbcp->tbc_next = tbcp->tbc_next;
    else
-      a_tty.tg_bind[tbpcp->tbpc_flags] = tbcp->tbc_next;
+      a_tty.tg_bind[tbpcp->tbpc_flags & n__GO_INPUT_CTX_MASK] = tbcp->tbc_next;
    free(tbcp);
 
    --a_tty.tg_bind_cnt;
