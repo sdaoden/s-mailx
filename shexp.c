@@ -429,7 +429,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
 
             i = strlen(dep->d_name);
             j = (old_outerlen > 0) ? old_outerlen + 1 + i : i;
-            slp = n_STRLIST_MALLOC(j);
+            slp = n_STRLIST_ALLOC(j);
             *slpp = slp;
             slpp = &slp->sl_next;
             slp->sl_next = NULL;

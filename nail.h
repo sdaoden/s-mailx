@@ -1916,8 +1916,8 @@ struct n_strlist{
    size_t sl_len;
    char sl_dat[n_VFIELD_SIZE(0)];
 };
-#define n_STRLIST_MALLOC(SZ) /* XXX -> nailfuns.h (and pimp interface) */\
-   smalloc(n_VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
+#define n_STRLIST_ALLOC(SZ) /* XXX -> nailfuns.h (and pimp interface) */\
+   n_alloc(n_VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
 
 struct bidi_info {
    struct str  bi_start;      /* Start of (possibly) bidirectional text */
