@@ -756,7 +756,7 @@ jstopit:
 
    fseek(mb.mb_itf, start_off, SEEK_SET);
 
-   if (!(mtc & (_MT_C_HASNUL | _MT_C_CTRLCHAR))) {
+   if (!(mtc & (_MT_C_HASNUL /*| _MT_C_CTRLCHAR XXX really? */))) {
       mc = MIME_TEXT_PLAIN;
       if (mce & MIMECE_ALL_OVWR)
          mpp->m_ct_type_plain = "text/plain";
@@ -995,7 +995,7 @@ jdelall:
 }
 
 FL bool_t
-mime_type_check_mtname(char const *name)
+n_mimetype_check_mtname(char const *name)
 {
    struct mtlookup mtl;
    bool_t rv;
@@ -1007,7 +1007,7 @@ mime_type_check_mtname(char const *name)
 }
 
 FL char *
-mime_type_classify_filename(char const *name)
+n_mimetype_classify_filename(char const *name)
 {
    struct mtlookup mtl;
    NYD_ENTER;
@@ -1018,7 +1018,7 @@ mime_type_classify_filename(char const *name)
 }
 
 FL enum conversion
-mime_type_classify_file(FILE *fp, char const **contenttype,
+n_mimetype_classify_file(FILE *fp, char const **contenttype,
    char const **charset, int *do_iconv)
 {
    /* TODO classify once only PLEASE PLEASE PLEASE */
@@ -1130,7 +1130,7 @@ jnorfc822:
 }
 
 FL enum mimecontent
-mime_type_classify_part(struct mimepart *mpp) /* FIXME charset=binary ??? */
+n_mimetype_classify_part(struct mimepart *mpp) /* FIXME charset=binary ??? */
 {
    struct mtlookup mtl;
    enum mimecontent mc;
@@ -1223,7 +1223,7 @@ jos_content_check:
 }
 
 FL enum mime_handler_flags
-mime_type_handler(struct mime_handler *mhp, struct mimepart const *mpp,
+n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
    enum sendaction action)
 {
 #define __S    "pipe-"

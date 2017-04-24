@@ -1466,23 +1466,23 @@ FL int         c_mimetype(void *v);
 FL int         c_unmimetype(void *v);
 
 /* Check whether the Content-Type name is internally known */
-FL bool_t      mime_type_check_mtname(char const *name);
+FL bool_t n_mimetype_check_mtname(char const *name);
 
 /* Return a Content-Type matching the name, or NULL if none could be found */
-FL char *      mime_type_classify_filename(char const *name);
+FL char *n_mimetype_classify_filename(char const *name);
 
 /* Classify content of *fp* as necessary and fill in arguments; **charset* is
  * set to *charset-7bit* or charset_iter_or_fallback() if NULL */
-FL enum conversion mime_type_classify_file(FILE *fp, char const **contenttype,
+FL enum conversion n_mimetype_classify_file(FILE *fp, char const **contenttype,
                      char const **charset, int *do_iconv);
 
 /* Dependend on *mime-counter-evidence* mpp->m_ct_type_usr_ovwr will be set,
  * but otherwise mpp is const */
-FL enum mimecontent mime_type_classify_part(struct mimepart *mpp);
+FL enum mimecontent n_mimetype_classify_part(struct mimepart *mpp);
 
 /* Query handler for a part, return the plain type (& MIME_HDL_TYPE_MASK).
  * mhp is anyway initialized (mh_flags, mh_msg) */
-FL enum mime_handler_flags mime_type_handler(struct mime_handler *mhp,
+FL enum mime_handler_flags n_mimetype_handler(struct mime_handler *mhp,
                               struct mimepart const *mpp,
                               enum sendaction action);
 

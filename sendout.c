@@ -357,7 +357,7 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo)
 
       ct = ap->a_content_type;
       charset = ap->a_charset;
-      convert = mime_type_classify_file(fi, (char const**)&ct,
+      convert = n_mimetype_classify_file(fi, (char const**)&ct,
          &charset, &do_iconv);
       if (charset == NULL || ap->a_conv == AC_FIX_INCS ||
             ap->a_conv == AC_TMPFILE)
@@ -649,7 +649,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
    contenttype = "text/plain"; /* XXX mail body - always text/plain, want XX? */
    if((n_poption & n_PO_Mm_FLAG) && n_poption_arg_Mm != NULL)
       contenttype = n_poption_arg_Mm;
-   convert = mime_type_classify_file(fi, &contenttype, &charset, &do_iconv);
+   convert = n_mimetype_classify_file(fi, &contenttype, &charset, &do_iconv);
 
 #ifdef HAVE_ICONV
    tcs = ok_vlook(ttycharset);
@@ -672,7 +672,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
 #endif
 
 #ifdef HAVE_ICONV
-   if (do_iconv && charset != NULL) { /*TODO charset->mime_type_classify_file*/
+   if (do_iconv && charset != NULL) { /*TODO charset->n_mimetype_classify_file*/
       if (asccasecmp(charset, tcs) != 0 &&
             (iconvd = n_iconv_open(charset, tcs)) == (iconv_t)-1 &&
             (err = n_err_no) != 0) {

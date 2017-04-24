@@ -92,7 +92,7 @@ a_attachment_setup_base(struct attachment *ap, char const *file){
       ap->a_path_bname = ap->a_name = ++file;
    else
       file = ap->a_name;
-   ap->a_content_type = mime_type_classify_filename(file);
+   ap->a_content_type = n_mimetype_classify_filename(file);
    ap->a_content_disposition = "attachment";
    ap->a_content_description = NULL;
    ap->a_content_id = NULL;

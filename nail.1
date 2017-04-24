@@ -1168,6 +1168,10 @@ will instead only show the first
 of a message (maybe even compressed if
 .Va topsqueeze
 is set).
+Message display experience may improve by setting and adjusting
+.Va mime-counter-evidence ,
+and also see
+.Sx "HTML mail and MIME attachments" .
 .
 .Pp
 By default the current message
@@ -1211,7 +1215,9 @@ In order to display all header fields of a message regardless of
 currently active ignore or retain lists, use the commands
 .Ic Type
 and
-.Ic Top .
+.Ic Top ;
+.Ic Show
+will show the raw message content.
 Note that historically the global
 .Pa \*(UR
 not only adjusts the list of displayed headers, but also sets
@@ -1270,6 +1276,15 @@ the message by giving its number,
 or the \*(UA session can be ended by giving the
 .Ic exit Ql x
 command.
+.
+.Pp
+Messages can also be
+.Ic move Ns
+d to other mailboxes, whereas
+.Ic copy
+keeps the original message.
+.Ic write
+can be used to write out data content of specific parts of messages.
 .
 .Pp
 To end a mail processing session one may either issue

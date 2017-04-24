@@ -619,7 +619,7 @@ jheaders_skip:
       case SEND_TODISP_ALL:
       case SEND_QUOTE:
       case SEND_QUOTE_ALL:
-         switch (mime_type_handler(&mh, ip, action)) {
+         switch (n_mimetype_handler(&mh, ip, action)) {
          case MIME_HDL_MSG:
             _out(mh.mh_msg.s, mh.mh_msg.l, obuf, CONV_NONE, SEND_MBOX, qf,
                stats, NULL, NULL);
@@ -648,7 +648,7 @@ jheaders_skip:
       case SEND_TODISP_ALL:
       case SEND_QUOTE:
       case SEND_QUOTE_ALL:
-         switch (mime_type_handler(&mh, ip, action)) {
+         switch (n_mimetype_handler(&mh, ip, action)) {
          case MIME_HDL_MSG:
             _out(mh.mh_msg.s, mh.mh_msg.l, obuf, CONV_NONE, SEND_MBOX, qf,
                stats, NULL, NULL);
@@ -735,7 +735,7 @@ jalter_redo:
                default:
                   if (hadpart)
                      break;
-                  switch (mime_type_handler(&mh, np, action)) {
+                  switch (n_mimetype_handler(&mh, np, action)) {
                   default:
                      mh.mh_flags = MIME_HDL_NULL;
                      continue; /* break; break; */
@@ -747,7 +747,7 @@ jalter_redo:
                            struct mime_handler mhx;
 
                            if (x->m_mimecontent == MIME_TEXT_PLAIN ||
-                                 mime_type_handler(&mhx, x, action) ==
+                                 n_mimetype_handler(&mhx, x, action) ==
                                     MIME_HDL_TEXT)
                               break;
                         }
@@ -771,7 +771,7 @@ jalter_redo:
                      while ((x = x->m_nextpart) != NULL) {
                         struct mime_handler mhx;
 
-                        switch (mime_type_handler(&mhx, x, action)) {
+                        switch (n_mimetype_handler(&mhx, x, action)) {
                         case MIME_HDL_PTF:
                            break;
                         default:
