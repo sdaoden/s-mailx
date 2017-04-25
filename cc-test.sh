@@ -223,7 +223,7 @@ t_behave() {
 
    # FIXME t_behave_mlist
 
-   have_feat smime && t_behave_smime
+   t_behave_smime
 
    t_behave_e_H_L_opts
    t_behave_compose_hooks
@@ -1298,6 +1298,8 @@ t_behave_ifelse() {
 		__EOT
       ex0_test behave:if-regex
       cksum_test behave:if-regex "${MBOX}" '439960016 81'
+   else
+      printf 'behave:if-regex: unsupported, skipped\n'
    fi
 }
 
@@ -1926,6 +1928,8 @@ t_behave_vexpr() {
 # #4
       ex0_test behave:vexpr-regex
       cksum_test behave:vexpr-regex "${MBOX}" '3270360157 311'
+   else
+      printf 'behave:vexpr-regex: unsupported, skipped\n'
    fi
 }
 
@@ -2230,6 +2234,11 @@ t_behave_compose_hooks() {
 }
 
 t_behave_smime() { # FIXME add test/ dir, unroll tests therein
+   have_feat smime || {
+      echo 'behave:s/mime: unsupported, skipped'
+      return
+   }
+
    TRAP_EXIT_ADDONS="./.t.conf ./.tkey.pem ./.tcert.pem ./.tpair.pem"
    TRAP_EXIT_ADDONS="${TRAP_EXIT_ADDONS} ./.VERIFY ./.DECRYPT ./.ENCRYPT"
    TRAP_EXIT_ADDONS="${TRAP_EXIT_ADDONS} ./.tsendmail.sh"
