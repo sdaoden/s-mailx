@@ -215,6 +215,8 @@ do{\
 /*  */
 #define n_FROM_DATEBUF 64        /* Size of RFC 4155 From_ line date */
 #define n_DATE_DAYSYEAR 365u
+#define n_DATE_NANOSSEC (n_DATE_MICROSSEC * 1000)
+#define n_DATE_MICROSSEC (n_DATE_MILLISSEC * 1000)
 #define n_DATE_MILLISSEC 1000u
 #define n_DATE_SECSMIN 60u
 #define n_DATE_MINSHOUR 60u
@@ -2126,6 +2128,11 @@ struct n_sigman{
    sighandler_type sm_oterm;
    sighandler_type sm_opipe;
    sigjmp_buf sm_jump;
+};
+
+struct n_timespec{
+   si64_t ts_sec;
+   siz_t ts_nsec;
 };
 
 struct termios_state {

@@ -381,8 +381,9 @@ FL si8_t       quadify(char const *inbuf, uiz_t inlen, char const *prompt,
 /* Is the argument "all" (case-insensitive) or "*" */
 FL bool_t n_is_all_or_aster(char const *name);
 
-/* Get seconds since epoch */
-FL time_t n_time_epoch(void);
+/* Get seconds since epoch, return pointer to static struct */
+FL struct n_timespec const *n_time_now(void);
+#define n_time_epoch() ((time_t)n_time_now()->ts_sec)
 
 /* Update *tc* to now; only .tc_time updated unless *full_update* is true */
 FL void        time_current_update(struct time_current *tc,

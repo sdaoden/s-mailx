@@ -83,16 +83,19 @@ _alter(char const *name) /* TODO error handling */
    struct stat sb;
    struct utimbuf utb;
 #endif
+   struct n_timespec const *tsp;
    NYD_ENTER;
 
+   tsp = n_time_now();
+
 #ifdef HAVE_UTIMENSAT
-   tsa[0].tv_sec = n_time_epoch() + 1;
-   tsa[0].tv_nsec = 0;
+   tsa[0].tv_sec = tsp->ts_sec + 1;
+   tsa[0].tv_nsec = tsp->ts_nsec;
    tsa[1].tv_nsec = UTIME_OMIT;
    utimensat(AT_FDCWD, name, tsa, 0);
 #else
    if (!stat(name, &sb)) {
-      utb.actime = n_time_epoch() + 1;
+      utb.actime = tsp->ts_sec;
       utb.modtime = sb.st_mtime;
       utime(name, &utb);
    }

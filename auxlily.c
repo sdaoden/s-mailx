@@ -959,45 +959,48 @@ n_is_all_or_aster(char const *name){
    return rv;
 }
 
-FL time_t
-n_time_epoch(void)
+FL struct n_timespec const *
+n_time_now(void)
 {
-#ifdef HAVE_CLOCK_GETTIME
-   struct timespec ts;
-#elif defined HAVE_GETTIMEOFDAY
-   struct timeval ts;
-#endif
-   time_t rv;
-   char const *cp;
+   static struct n_timespec ts_now;
    NYD2_ENTER;
 
    if((cp = ok_vlook(SOURCE_DATE_EPOCH)) != NULL){
-      ui64_t tib;
-
-      (void)/* XXX ?? posnum= */n_idec_ui64_cp(&tib, cp, 0, NULL);
-      rv = (time_t)tib;
-      goto jleave;
-   }
-
+      if((n_idec_ui64_cp(&ts_now.ts_sec, cp, 0, NULL) &
+               (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+            ) != n_IDEC_STATE_CONSUMED || ts_now.ts_sec < 0){
+         n_err(_("Invalid $SOURCE_DATE_EPOCH: %s\n"),
+            cp);
+         ts_now.ts_sec = 0;
+      }
+      ts_now.ts_nsec = 0;
+   }else{
 #ifdef HAVE_CLOCK_GETTIME
-   clock_gettime(CLOCK_REALTIME, &ts);
-   rv = (time_t)ts.tv_sec;
+      struct timespec ts;
+
+      clock_gettime(CLOCK_REALTIME, &ts);
+      ts_now.ts_sec = (si64_t)ts.tv_sec;
+      ts_now.ts_nsec = (siz_t)ts.tv_nsec;
 #elif defined HAVE_GETTIMEOFDAY
-   gettimeofday(&ts, NULL);
-   rv = (time_t)ts.tv_sec;
+      struct timeval tv;
+
+      gettimeofday(&tv, NULL);
+      ts_now.ts_sec = (si64_t)tv.tv_sec;
+      ts_now.ts_nsec = (siz_t)tv.tv_usec * 1000;
 #else
-   rv = time(NULL);
+      ts_now.ts_sec = (si64_t)time(NULL);
+      ts_now.ts_nsec = 0;
 #endif
-jleave:
+   }
    NYD2_LEAVE;
-   return rv;
+   return &ts_now;
 }
 
 FL void
 time_current_update(struct time_current *tc, bool_t full_update)
 {
    NYD_ENTER;
-   tc->tc_time = n_time_epoch();
+   tc->tc_time = (time_t)n_time_now()->ts_sec;
    if (full_update) {
       memcpy(&tc->tc_gm, gmtime(&tc->tc_time), sizeof tc->tc_gm);
       memcpy(&tc->tc_local, localtime(&tc->tc_time), sizeof tc->tc_local);
