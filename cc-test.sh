@@ -260,6 +260,8 @@ t_behave() {
    t_behave_compose_hooks
 
    t_behave_smime
+
+   t_behave_maildir
 }
 
 t_behave_X_opt_input_command_stack() {
@@ -2170,6 +2172,48 @@ t_behave_smime() {
       printf 'failed\n'
       ESTAT=1
    fi
+
+   t_epilog
+}
+
+t_behave_maildir() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t*"
+
+   (
+      i=0
+      while [ ${i} -lt 112 ]; do
+         printf 'm file://%s\n~s Subject %s\nHello %s!\n~.\n' \
+            "${MBOX}" "${i}" "${i}"
+         i=`inc ${i}`
+      done
+   ) | "${SNAIL}" ${ARGS}
+   check behave:maildir-1 0 "${MBOX}" '1140119864 13780'
+
+   printf 'File "%s"
+         copy * "%s"
+         File "%s"
+         from*
+      ' "${MBOX}" .tmdir1 .tmdir1 |
+      "${SNAIL}" ${ARGS} -Snewfolders=maildir > .tlst
+   check behave:maildir-2 0 .tlst '1797938753 9103'
+
+   printf 'File "%s"
+         copy * "maildir://%s"
+         File "maildir://%s"
+         from*
+      ' "${MBOX}" .tmdir2 .tmdir2 |
+      "${SNAIL}" ${ARGS} > .tlst
+   check behave:maildir-3 0 .tlst '1155631089 9113'
+
+   printf 'File "maildir://%s"
+         copy * "file://%s"
+         File "file://%s"
+         from*
+      ' .tmdir2 .tmbox1 .tmbox1 |
+      "${SNAIL}" ${ARGS} > .tlst
+   check behave:maildir-4 0 .tmbox1 '2646131190 13220'
+   check behave:maildir-5 - .tlst '3701297796 9110'
 
    t_epilog
 }
