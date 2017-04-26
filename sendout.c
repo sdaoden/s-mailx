@@ -1441,6 +1441,7 @@ __mta_debug(struct sendbundle *sbp, char const *mta, char const **args)
 static char const *
 a_sendout_random_id(struct header *hp, bool_t msgid)
 {
+   static ui32_t reprocnt;
    struct tm *tmp;
    char const *h;
    size_t rl, i;
@@ -1478,7 +1479,7 @@ jgen:
    snprintf(rv, i, "%04d%02d%02d%02d%02d%02d.%s%c%s",
       tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday,
       tmp->tm_hour, tmp->tm_min, tmp->tm_sec,
-      n_random_create_cp(rl), sep, h);
+      n_random_create_cp(rl, &reprocnt), sep, h);
    rv[i] = '\0'; /* Because we don't test snprintf(3) return */
 jleave:
    NYD_LEAVE;
@@ -2156,7 +2157,9 @@ j_mft_add:
    }
 
    if ((w & GUA) && stealthmua == 0) {
-      if (fprintf(fo, "User-Agent: %s %s\n", n_uagent, ok_vlook(version)) < 0)
+      if (fprintf(fo, "User-Agent: %s %s\n", n_uagent,
+            (n_psonce & n_PSO_REPRODUCIBLE
+               ? n_reproducible_name : ok_vlook(version))) < 0)
          goto jleave;
       ++gotcha;
    }

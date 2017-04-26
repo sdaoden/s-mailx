@@ -8735,7 +8735,7 @@ to be forgotten after the message has been sent.
 During execution of these hooks \*(UA will temporarily forget whether it
 has been started in interactive mode, (a restricted set of)
 .Sx "COMMAND ESCAPES"
-will always be available, and for guaranteed reproduceabilities sake
+will always be available, and for guaranteed reproducibilities sake
 .Va escape
 will be set to its default.
 The compose mode command
@@ -10693,10 +10693,18 @@ A default shell is used if this environment variable is not defined.
 .
 .Mx
 .It Ev SOURCE_DATE_EPOCH
-If set, this specifies a time in seconds since the Unix epoch
-(1970-01-01) to be used in place of the current time.
-This is for the sake of reproduceability of tests, to be used during
-development or by software packagers.
+This specifies a time in seconds since the Unix epoch (1970-01-01) to be
+used in place of the current time.
+This variable is looked up upon program startup, and its existence will
+switch \*(UA to a completely reproducible mode which causes
+deterministic random numbers, a special fixed (non-existent?)
+.Ev LOGNAME
+and more to be used and set.
+It is to be used during development or by software packagers.
+\*(ID Currently an invalid setting is only ignored, rather than causing
+a program abortion.
+.Pp
+.Dl $ SOURCE_DATE_EPOCH=`date +%s` \*(uA
 .
 .Mx
 .It Ev TERM

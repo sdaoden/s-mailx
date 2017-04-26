@@ -380,7 +380,7 @@ a_xssl_rand_init(void){
 
    if(RAND_load_file(cp, a_XSSL_RAND_LOAD_FILE_MAXBYTES) != -1){
       for(x = (char*)-1;;){
-         RAND_seed(n_random_create_cp(32), 32);
+         RAND_seed(n_random_create_cp(32, NULL), 32);
          if((rv = (RAND_status() != 0)))
             break;
          if((x = (char*)((uintptr_t)x >> 1)) == NULL){

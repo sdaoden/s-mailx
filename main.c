@@ -65,6 +65,8 @@ VL char const n_month_names[12 + 1][4] = {
 };
 VL char const n_uagent[sizeof VAL_UAGENT] = VAL_UAGENT;
 VL char const n_error[sizeof n_ERROR] = N_(n_ERROR);
+VL char const n_reproducible_name[sizeof "reproducible_build"] =
+      "reproducible_build";
 VL char const n_unirepl[sizeof n_UNIREPL] = n_UNIREPL;
 VL char const n_empty[1] = "";
 VL char const n_0[2] = "0";
@@ -286,6 +288,15 @@ a_main_startup(void){
 
    /*  --  >8  --  8<  --  */
 
+   /* We need the endianess, runtime detected due to OPT_CROSS_BUILD */
+   /* C99 */{
+      union {ui16_t bom; ui8_t buf[2];} volatile u;
+
+      u.bom = 0xFEFFu;
+      if(u.buf[1] != 0xFEu)
+         n_psonce |= n_PSO_BIG_ENDIAN;
+   }
+
 #ifndef HAVE_SETLOCALE
    n_mb_cur_max = 1;
 #else
@@ -383,6 +394,17 @@ a_main_setup_vars(void){
 
    (void)ok_vlook(TMPDIR);
    (void)ok_blook(POSIXLY_CORRECT);
+
+   /* Are we in a reproducible-builds.org environment? */
+   if(ok_vlook(SOURCE_DATE_EPOCH) != NULL){
+      n_psonce |= n_PSO_REPRODUCIBLE;
+      n_pstate |= n_PS_ROOT;
+      n_progname = n_reproducible_name;
+      ok_vset(LOGNAME, n_reproducible_name);
+      n_pstate &= ~n_PS_ROOT;
+      cp = savecat(n_reproducible_name, ": ");
+      ok_vset(log_prefix, cp);
+   }
    NYD_LEAVE;
 }
 
@@ -516,7 +538,9 @@ a_main_rcv_mode(char const *folder, char const *Larg){
          safe_signal(SIGINT, &a_main_hdrstop);
       if(!ok_blook(quiet))
          fprintf(n_stdout, _("%s version %s.  Type `?' for help\n"),
-            n_uagent, ok_vlook(version));
+            n_uagent,
+            (n_psonce & n_PSO_REPRODUCIBLE
+               ? n_reproducible_name : ok_vlook(version)));
       n_folder_announce(n_ANNOUNCE_MAIN_CALL | n_ANNOUNCE_CHANGE);
       safe_signal(SIGINT, prevint);
    }

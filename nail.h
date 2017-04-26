@@ -1552,8 +1552,8 @@ do{\
    n_PS_ERRORS_PROMPT = 1u<<18,        /* New error to be reported in prompt */
 
    /* Bad hacks */
-   n_PS_HEADER_NEEDED_MIME = 1u<<19,   /* mime_write_tohdr() not ASCII clean */
-   n_PS_READLINE_NL = 1u<<20           /* readline_input()+ saw a \n */
+   n_PS_HEADER_NEEDED_MIME = 1u<<24,   /* mime_write_tohdr() not ASCII clean */
+   n_PS_READLINE_NL = 1u<<25           /* readline_input()+ saw a \n */
 };
 
 /* Various states set once, and first time messages or initializers */
@@ -1569,8 +1569,11 @@ enum n_program_state_once{
    n_PSO_TTYIN = 1u<<4,
    n_PSO_TTYOUT = 1u<<5, /* TODO should be TTYERR! */
 
-   n_PSO_UNICODE = 1u<<8,
-   n_PSO_ENC_MBSTATE = 1u<<9,
+   n_PSO_BIG_ENDIAN = 1u<<8,
+   n_PSO_UNICODE = 1u<<9,
+   n_PSO_ENC_MBSTATE = 1u<<10,
+
+   n_PSO_REPRODUCIBLE = 1u<<14,
 
    /* main.c startup code passed, we are functional! */
    n_PSO_STARTED = 1u<<15,
@@ -1833,7 +1836,8 @@ ok_v_smtp_auth_password,
 ok_v_smtp_auth_user,
    ok_v_smtp_hostname,
    ok_b_smtp_use_starttls,
-   ok_v_SOURCE_DATE_EPOCH,/*{name=SOURCE_DATE_EPOCH,env=1,notempty=1,posnum=1}*/
+   ok_v_SOURCE_DATE_EPOCH,             /* {\} */
+      /* {name=SOURCE_DATE_EPOCH,rdonly=1,import=1,notempty=1,posnum=1} */
    ok_v_spam_interface,
    ok_v_spam_maxsize,                  /* {notempty=1,posnum=1} */
    ok_v_spamc_command,
@@ -2584,6 +2588,7 @@ VL char const n_weekday_names[7 + 1][4];
 
 VL char const n_uagent[sizeof VAL_UAGENT];
 VL char const n_error[sizeof n_ERROR];
+VL char const n_reproducible_name[sizeof "reproducible_build"];
 VL char const n_unirepl[sizeof n_UNIREPL];
 VL char const n_empty[1];
 VL char const n_0[2];

@@ -2977,7 +2977,7 @@ jenum_plusminus:
          goto jestr_numrange;
       if(lhv == 0)
          lhv = NAME_MAX;
-      varres = n_random_create_cp((size_t)lhv);
+      varres = n_random_create_cp((size_t)lhv, NULL);
    }else if(is_asccaseprefix(cp, "find")){
       f |= a_ISNUM | a_ISDECIMAL;
       if(argv[1] == NULL || argv[2] == NULL || argv[3] != NULL)

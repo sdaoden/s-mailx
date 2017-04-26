@@ -694,7 +694,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
       osoflags |= O_APPEND;
 
    for (i = 0;; ++i) {
-      memcpy(cp, n_random_create_cp(_RANDCHARS), _RANDCHARS);
+      memcpy(cp, n_random_create_cp(_RANDCHARS, NULL), _RANDCHARS);
 
       hold_all_sigs();
       relesigs = TRU1;

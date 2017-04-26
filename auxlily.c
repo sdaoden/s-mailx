@@ -838,9 +838,9 @@ n_nodename(bool_t mayoverride){
 }
 
 FL char *
-n_random_create_cp(size_t length){
+n_random_create_cp(size_t length, ui32_t *reprocnt_or_null){
    struct str b64;
-   char *data;
+   char *data, *cp;
    size_t i;
    NYD_ENTER;
 
@@ -853,28 +853,52 @@ n_random_create_cp(size_t length){
     * with PAD stripped is still longer than what the user requests, easy way */
    data = n_lofi_alloc(i = length + 3);
 
+   if(!(n_psonce & n_PSO_REPRODUCIBLE) || reprocnt_or_null == NULL){
 #ifndef HAVE_POSIX_RANDOM
-   while(i-- > 0)
-      data[i] = (char)a_aux_rand_get8();
+      while(i-- > 0)
+         data[i] = (char)a_aux_rand_get8();
 #else
-   {  char *cp;
-
       for(cp = data; i > 0;){
          union {ui32_t i4; char c[4];} r;
          size_t j;
 
          r.i4 = (ui32_t)arc4random();
          switch((j = i & 3)){
-         case 0:  cp[3] = r.c[3]; j = 4;
-         case 3:  cp[2] = r.c[2];
-         case 2:  cp[1] = r.c[1];
+         case 0:  cp[3] = r.c[3]; j = 4; /* FALLTHRU */
+         case 3:  cp[2] = r.c[2]; /* FALLTHRU */
+         case 2:  cp[1] = r.c[1]; /* FALLTHRU */
+         default: cp[0] = r.c[0]; break;
+         }
+         cp += j;
+         i -= j;
+      }
+#endif
+   }else{
+      for(cp = data; i > 0;){
+         union {ui32_t i4; char c[4];} r;
+         size_t j;
+
+         r.i4 = ++*reprocnt_or_null;
+         if(n_psonce & n_PSO_BIG_ENDIAN){ /* TODO BSWAP */
+            char x;
+
+            x = r.c[0];
+            r.c[0] = r.c[3];
+            r.c[3] = x;
+            x = r.c[1];
+            r.c[1] = r.c[2];
+            r.c[2] = x;
+         }
+         switch((j = i & 3)){
+         case 0:  cp[3] = r.c[3]; j = 4; /* FALLTHRU */
+         case 3:  cp[2] = r.c[2]; /* FALLTHRU */
+         case 2:  cp[1] = r.c[1]; /* FALLTHRU */
          default: cp[0] = r.c[0]; break;
          }
          cp += j;
          i -= j;
       }
    }
-#endif
 
    assert(length + 3 < UIZ_MAX / 4);
    b64_encode_buf(&b64, data, length + 3,
@@ -960,21 +984,14 @@ n_is_all_or_aster(char const *name){
 }
 
 FL struct n_timespec const *
-n_time_now(void)
-{
+n_time_now(bool_t force_update){ /* TODO event loop update IF cmd requests! */
    static struct n_timespec ts_now;
    NYD2_ENTER;
 
-   if((cp = ok_vlook(SOURCE_DATE_EPOCH)) != NULL){
-      if((n_idec_ui64_cp(&ts_now.ts_sec, cp, 0, NULL) &
-               (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED || ts_now.ts_sec < 0){
-         n_err(_("Invalid $SOURCE_DATE_EPOCH: %s\n"),
-            cp);
-         ts_now.ts_sec = 0;
-      }
+   if(n_psonce & n_PSO_REPRODUCIBLE){
+      (void)n_idec_ui64_cp(&ts_now.ts_sec, ok_vlook(SOURCE_DATE_EPOCH), 0,NULL);
       ts_now.ts_nsec = 0;
-   }else{
+   }else if(force_update || ts_now.ts_sec == 0){
 #ifdef HAVE_CLOCK_GETTIME
       struct timespec ts;
 
@@ -1000,7 +1017,7 @@ FL void
 time_current_update(struct time_current *tc, bool_t full_update)
 {
    NYD_ENTER;
-   tc->tc_time = (time_t)n_time_now()->ts_sec;
+   tc->tc_time = (time_t)n_time_now(TRU1)->ts_sec;
    if (full_update) {
       memcpy(&tc->tc_gm, gmtime(&tc->tc_time), sizeof tc->tc_gm);
       memcpy(&tc->tc_local, localtime(&tc->tc_time), sizeof tc->tc_local);

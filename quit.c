@@ -86,7 +86,7 @@ _alter(char const *name) /* TODO error handling */
    struct n_timespec const *tsp;
    NYD_ENTER;
 
-   tsp = n_time_now();
+   tsp = n_time_now(TRU1); /* TODO -> eventloop */
 
 #ifdef HAVE_UTIMENSAT
    tsa[0].tv_sec = tsp->ts_sec + 1;

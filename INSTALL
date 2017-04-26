@@ -165,7 +165,7 @@ The configuration process creates some files named "config":
               (Removing this file reenables configuration even after
               a screwed up configuration, e.g., due to power failure.)
 - config.h    C program header produced according to config.lst.
-- config.ev   A set of sh(1) variable for reproducable compile runs.
+- config.ev   A set of sh(1) variable for reproducible compile runs.
 - config.inc  List of C header include paths, as compiler directives.
 - config.lib  List of used library information, as compiler directives.
 

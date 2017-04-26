@@ -258,7 +258,7 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
     * TODO a file wherever he wants!  *Do* create a zero-size temporary file
     * TODO and give *that* path as MAILX_FILENAME_TEMPORARY, clean it up once
     * TODO the pipe returns?  Like this we *can* verify path/name issues! */
-   cp = n_random_create_cp(n_MIN(NAME_MAX / 4, 16));
+   cp = n_random_create_cp(n_MIN(NAME_MAX / 4, 16), NULL);
    env_addon[2] = str_concat_csvl(&s, n_PIPEENV_FILENAME_GENERATED, "=", cp,
          NULL)->s;
    env_addon[3] = str_concat_csvl(&s, "NAIL_FILENAME_GENERATED", "=", cp,

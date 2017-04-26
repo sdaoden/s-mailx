@@ -361,8 +361,10 @@ FL char const * n_getdeadletter(void);
 /* Detect and query the hostname to use */
 FL char *n_nodename(bool_t mayoverride);
 
-/* Get a (pseudo) random string of *length* bytes; returns salloc()ed buffer */
-FL char *n_random_create_cp(size_t length);
+/* Get a (pseudo) random string of *length* bytes; returns salloc()ed buffer.
+ * If n_PSO_REPRODUCIBLE and reprocnt_or_null not NULL then we produce
+ * a reproducable string by using and managing that counter instead */
+FL char *n_random_create_cp(size_t length, ui32_t *reprocnt_or_null);
 
 /* Check whether the argument string is a true (1) or false (0) boolean, or an
  * invalid string, in which case -1 is returned; if emptyrv is not -1 then it,
@@ -381,9 +383,10 @@ FL si8_t       quadify(char const *inbuf, uiz_t inlen, char const *prompt,
 /* Is the argument "all" (case-insensitive) or "*" */
 FL bool_t n_is_all_or_aster(char const *name);
 
-/* Get seconds since epoch, return pointer to static struct */
-FL struct n_timespec const *n_time_now(void);
-#define n_time_epoch() ((time_t)n_time_now()->ts_sec)
+/* Get seconds since epoch, return pointer to static struct.
+ * Unless force_update is true we may use the event-loop tick time */
+FL struct n_timespec const *n_time_now(bool_t force_update);
+#define n_time_epoch() ((time_t)n_time_now(FAL0)->ts_sec)
 
 /* Update *tc* to now; only .tc_time updated unless *full_update* is true */
 FL void        time_current_update(struct time_current *tc,
