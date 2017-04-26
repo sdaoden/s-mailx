@@ -1,0 +1,48 @@
+0/NONE 1 <doog@def>
+0/NONE 1 <doog@def>
+0/NONE "2 ." <doog@def>
+0/NONE 2 . <doog@def>
+0/NONE "3 Sauer Dr." <doog@def>
+0/NONE 3 Sauer Dr. <doog@def>
+0/NONE "3.50 Sauer (Ma) Dr." <doog@def>
+0/NONE 3.50 Sauer (Ma) Dr. <doog@def>
+0/NONE "3.51 Sauer (Ma) \"Dr.\"" <doog@def>
+0/NONE 3.51 Sauer (Ma) "Dr." <doog@def>
+0/NONE 4 Sauer (Ma) "Dr." <doog@def>
+0/NONE 4 Sauer (Ma) Dr. <doog@def>
+0/NONE 5 Sauer (Ma) "Braten Dr." <doog@def>
+0/NONE 5 Sauer (Ma) Braten Dr. <doog@def>
+0/NONE 6 Sauer (Ma) "Braten Dr." (Heu) <doog@def>
+0/NONE 6 Sauer (Ma) Braten Dr. (Heu) <doog@def>
+0/NONE 7 Sauer (Ma) "Braten Dr." (Heu bu) <doog@def>
+0/NONE 7 Sauer (Ma) Braten Dr. (Heu bu) <doog@def>
+0/NONE "8 Dr. Sauer" (Ma) "Braten Dr." (Heu bu) "Boom. Boom" <doog@def>
+0/NONE 8 Dr. Sauer (Ma) Braten Dr. (Heu bu) Boom. Boom <doog@def>
+0/NONE "9 Dr.Sauer" (Ma) "Braten Dr." (Heu) <doog@def>
+0/NONE 9 Dr.Sauer (Ma) Braten Dr. (Heu) <doog@def>
+0/NONE 10 (Ma) "Braten Dr." (Heu) <doog@def>
+0/NONE 10 (Ma) Braten Dr. (Heu) <doog@def>
+0/NONE 11 (Ma) "Braten Dr\".\"" (Heu) <doog@def>
+0/NONE 11 (Ma) Braten Dr"." (Heu) <doog@def>
+0/NONE "12 Dr. Sauer" (Ma) "Braten Dr." (u) <doog@def>
+0/NONE 12 Dr. Sauer (Ma) Braten Dr. (u) <doog@def>
+0/NONE 13 (Ma) "Braten Dr." (Heu) <doog@def>
+0/NONE 13 (Ma) Braten Dr. (Heu) <doog@def>
+0/NONE "14 Hey, Du Wie" () "findet Dr. das?" () <doog@def>
+0/NONE 14 Hey, Du Wie () findet Dr. das? () <doog@def>
+0/NONE "15 Hey, Du Wie" () "findet \"\" Dr. \"\" das?" () <doog@def>
+0/NONE 15 Hey, Du Wie () findet "" Dr. "" das? () <doog@def>
+0/NONE "16 \"Hey,\" \"Du\" \"Wie" () "\" findet \"\" Dr. \"\" das?" () <doog@def>
+0/NONE 16 "Hey," "Du" "Wie () " findet "" Dr. "" das? () <doog@def>
+0/NONE "17 \"Hey\" Du \"Wie" () "findet \" \" Dr. \"\"\" das?" () <doog@def>
+0/NONE 17 "Hey" Du "Wie () findet " " Dr. """ das? () <doog@def>
+0/NONE "18 \"Hey\" Du \"Wie" () "findet \" \" Dr. \"\"\" das?" () <doog@def>
+0/NONE 18 "Hey" Du "Wie () findet " " Dr. """ das? () <doog@def>
+0/NONE "19 Hey\\,\\\" \"Wie" () "\" findet \\\" Dr. \\\" das?" <doog@def>
+0/NONE 19 Hey\,\" "Wie () " findet \" Dr. \" das? <doog@def>
+1/INVAL 20 Hey\\,\\"  <doog@def> "Wie()" findet \\" Dr. \\" das?
+0/NONE "21 Hey\\,\\ Wie() findet \\  Dr. \\ das?" <doog@def>
+0/NONE 21 Hey\,\ Wie() findet \  Dr. \ das? <doog@def>
+0/NONE "22 Hey\\,\" Wie() findet \" Dr. \" das?" <doog@def>
+0/NONE 22 Hey\," Wie() findet " Dr. " das? <doog@def>
+0/NONE doog@def

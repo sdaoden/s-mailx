@@ -1,0 +1,16 @@
+From PrimulaVeris Wed Apr 10 22:59:00 2017
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: hook-test@exam.ple, shell@exam.ple
+Cc: ocl@exam.ple, splicy diet spliced <splice@exam.ple>
+Bcc: juicy juice spliced <juice@exam.ple>, oce@exam.ple
+
+body
+t_ocs-shell
+t_ocs
+10.. 20.. 30.. 40.. 50.. 60.. 70.. 80.. 90.. 100.. 110.. 112
+10.. 20.. 30.. 40.. 50.. 60.. 70.. 80.. 90.. 100.. 110.. 113
+10.. 20.. 30.. 40.. 50.. 60.. 70.. 80.. 90.. 100.. 110.. 114
+#variable not set: t_oce
+#variable not set: t_ocs
+#variable not set: t_ocs_shell
+#variable not set: t_ocl

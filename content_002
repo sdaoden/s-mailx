@@ -1,0 +1,156 @@
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To:
+Subject: =?utf-8?B?w4RicsOk?= =?utf-8?B?ICBLw6Q/ZMOkPWJyw7Y=?=
+ =?utf-8?Q?_=09_F=C3=BC=3Fdi=3Dbus=3F?=
+ =?us-ascii?Q?_adadaddsssssssddddddddddddddddddddddddddddddddddddddddddd?=
+ =?us-ascii?Q?dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd?=
+ =?us-ascii?Q?dddddddd?= Hallelulja? Oder??
+ =?us-ascii?Q?eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee?=
+ =?us-ascii?Q?eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee?=
+ fffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+ =?us-ascii?Q?gggggggggggggggggggggggggggggggggggggggggggggggggggggggggg?=
+ =?us-ascii?Q?gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg?=
+ =?us-ascii?Q?gggggggggggggggg?=
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
+
+This is a multi-part message in MIME format.
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
+
+Ich bin eine D=C3=96S-Dat=C3=A4i mit sehr langen Zeilen und auch sonst bin =
+ich ganz sch=C3=B6n am Schleudern, da kannste denke wasde willst, gelle, ge=
+lle, gelle, gelle, gelle.=0D=0A=
+Ich bin eine D=C3=96S-Dat=C3=A4i mit langen Zeilen und auch sonst =0D=0A=
+Ich bin eine D=C3=96S-Dat=C3=A4i mit langen Zeilen und auch sonst 1=0D=0A=
+Ich bin eine D=C3=96S-Dat=C3=A4i mit langen Zeilen und auch sonst 12=0D=0A=
+Ich bin eine D=C3=96S-Dat=C3=A4i mit langen Zeilen und auch sonst 123=0D=0A=
+Ich bin eine D=C3=96S-Dat=C3=A4i mit langen Zeilen und auch sonst 1234=0D=
+=0A=
+Ich bin eine D=C3=96S-Dat=C3=A4i mit langen Zeilen und auch sonst 12345=0D=
+=0A=
+Ich bin eine D=C3=96S-Dat=C3=A4i mit langen Zeilen und auch sonst 123456=0D=
+=0A=
+Ich bin eine D=C3=96S-Dat=C3=A4i mit langen Zeilen und auch sonst 1234567=
+=0D=0A=
+Ich bin eine D=C3=96S-Dat=C3=A4i mit langen Zeilen und auch sonst 12345678=
+=0D=0A=
+Ich bin eine D=C3=96S-Dat=C3=A4i mit langen Zeilen und auch sonst 123456789=
+=0D=0A=
+Unn ausserdem habe ich trailing SP/HT/SP/HT whitespace 	 	=0D=0A=
+Unn ausserdem habe ich trailing HT/SP/HT/SP whitespace	 	 =0D=0A=
+auf den zeilen vorher.=0D=0A=
+=46rom am Zeilenbeginn und From der Mitte gibt es auch.=0D=0A=
+.=0D=0A=
+Die letzte Zeile war nur ein Punkt.=0D=0A=
+..=0D=0A=
+Das waren deren zwei.=0D=0A=
+ =0D=0A=
+Die letzte Zeile war ein Leerschritt.
+=3DVIER =3D EQUAL SIGNS=3DON A LINE=3D=0D=0A=
+Pr=C3=B6sterchen.=0D=0A=
+=2E
+Die letzte Zeile war nur ein Punkt, mit Unix Zeilenende.
+..
+Das waren deren zwei.  ditto.
+Pr=C3=B6sterchen.
+Unn ausseerdem habe ich trailing SP/HT/SP/HT whitespace 	 =09
+Unn ausseerdem habe ich trailing HT/SP/HT/SP whitespace	 	=20
+auf den zeilen vorher.
+ditto.
+Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.
+Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.1
+Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.12
+Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.123
+Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.1234
+Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.12345
+Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.1234=
+56
+QP am Zeilenende =C3=BCber soft-nl hinweg
+Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.=C3=
+=B6123
+Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.1=C3=
+=B623
+Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.12=
+=C3=B63
+Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.123=
+=C3=B6
+=3DVIER =3D EQUAL SIGNS=3DON A LINE=3D
+=20
+Die letzte Zeile war ein Leerschritt.
+=20=
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: attachment; filename=".cc-body.txt"
+
+Ich bin eine D=C3=96S-Dat=C3=A4i mit sehr langen Zeilen und auch sonst bin =
+ich ganz sch=C3=B6n am Schleudern, da kannste denke wasde willst, gelle, ge=
+lle, gelle, gelle, gelle.=0D=0A=
+Ich bin eine D=C3=96S-Dat=C3=A4i mit langen Zeilen und auch sonst =0D=0A=
+Ich bin eine D=C3=96S-Dat=C3=A4i mit langen Zeilen und auch sonst 1=0D=0A=
+Ich bin eine D=C3=96S-Dat=C3=A4i mit langen Zeilen und auch sonst 12=0D=0A=
+Ich bin eine D=C3=96S-Dat=C3=A4i mit langen Zeilen und auch sonst 123=0D=0A=
+Ich bin eine D=C3=96S-Dat=C3=A4i mit langen Zeilen und auch sonst 1234=0D=
+=0A=
+Ich bin eine D=C3=96S-Dat=C3=A4i mit langen Zeilen und auch sonst 12345=0D=
+=0A=
+Ich bin eine D=C3=96S-Dat=C3=A4i mit langen Zeilen und auch sonst 123456=0D=
+=0A=
+Ich bin eine D=C3=96S-Dat=C3=A4i mit langen Zeilen und auch sonst 1234567=
+=0D=0A=
+Ich bin eine D=C3=96S-Dat=C3=A4i mit langen Zeilen und auch sonst 12345678=
+=0D=0A=
+Ich bin eine D=C3=96S-Dat=C3=A4i mit langen Zeilen und auch sonst 123456789=
+=0D=0A=
+Unn ausserdem habe ich trailing SP/HT/SP/HT whitespace 	 	=0D=0A=
+Unn ausserdem habe ich trailing HT/SP/HT/SP whitespace	 	 =0D=0A=
+auf den zeilen vorher.=0D=0A=
+=46rom am Zeilenbeginn und From der Mitte gibt es auch.=0D=0A=
+.=0D=0A=
+Die letzte Zeile war nur ein Punkt.=0D=0A=
+..=0D=0A=
+Das waren deren zwei.=0D=0A=
+ =0D=0A=
+Die letzte Zeile war ein Leerschritt.
+=3DVIER =3D EQUAL SIGNS=3DON A LINE=3D=0D=0A=
+Pr=C3=B6sterchen.=0D=0A=
+=2E
+Die letzte Zeile war nur ein Punkt, mit Unix Zeilenende.
+..
+Das waren deren zwei.  ditto.
+Pr=C3=B6sterchen.
+Unn ausseerdem habe ich trailing SP/HT/SP/HT whitespace 	 =09
+Unn ausseerdem habe ich trailing HT/SP/HT/SP whitespace	 	=20
+auf den zeilen vorher.
+ditto.
+Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.
+Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.1
+Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.12
+Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.123
+Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.1234
+Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.12345
+Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.1234=
+56
+QP am Zeilenende =C3=BCber soft-nl hinweg
+Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.=C3=
+=B6123
+Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.1=C3=
+=B623
+Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.12=
+=C3=B63
+Ich bin eine ziemlich lange, steile, scharfe Zeile mit Unix Zeilenende.123=
+=C3=B6
+=3DVIER =3D EQUAL SIGNS=3DON A LINE=3D
+=20
+Die letzte Zeile war ein Leerschritt.
+=20=
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=--
+

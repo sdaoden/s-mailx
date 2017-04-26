@@ -1,0 +1,17 @@
+in: t0
+in: t1
+in: t2
+t2
+gv1 lv1 lv2 lv3 gv2, t2
+gv1 gv2,
+gv1    gv2, 
+in: trouble
+in: t0
+in: t1
+in: t2
+t2
+gv1 lv1 lv2 lv3 gv2, t2
+gv1 gv2,
+gv1    gv2, 
+active trouble: gv1 gv2,
+active null: ,
