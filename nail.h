@@ -1590,6 +1590,8 @@ enum n_program_state_once{
 /* A large enum with all the boolean and value options a.k.a their keys.
  * Only the constant keys are in here, to be looked up via ok_[bv]look(),
  * ok_[bv]set() and ok_[bv]clear().
+ * Variable properties are placed in {PROP=VALUE[:,PROP=VALUE:]} comments,
+ * a {\} comment causes the next line to be read for (overlong) properties.
  * Notes:
  * - see the comments in accmacvar.c before changing *anything* in here!
  * - virt= implies rdonly,nodel

@@ -75,6 +75,15 @@ sub parse_nail_h{
       $k =~ s/_/-/g;
       $vals{name} = $k;
       if($x){
+         # {\}: overlong entry, placed on follow line
+         if($x =~ /\s*\\\s*$/){
+            $_ = <F>;
+            die 'nail.h: missing continuation line' unless $_;
+            /^\s*\/\*\s*{(.*)}\s*\*\/\s*$/;
+            $x = $1;
+            die 'nail.h: invalid continuation line' unless $x
+         }
+
          while($x && $x =~ /^([^,]+?)(?:,(.*))?$/){
             $x = $2;
             $1 =~ /([^=]+)=(.+)/;
