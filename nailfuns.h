@@ -1249,14 +1249,14 @@ FL void n_free(void *vp n_MEMORY_DEBUG_ARGS);
  * like, e.g., doing a task on all messages of a box in order.
  * Such code should call _create(), successively call _unroll() after
  * a single message has been handled, and finally _gut() */
-FL void n_memory_autorec_relax_create(void);
-FL void n_memory_autorec_relax_gut(void);
-FL void n_memory_autorec_relax_unroll(void);
+FL void n_autorec_relax_create(void);
+FL void n_autorec_relax_gut(void);
+FL void n_autorec_relax_unroll(void);
 
-/* TODO obsolete srelax -> n_memory_autorec_relax_* */
-#define srelax_hold() n_memory_autorec_relax_create()
-#define srelax_rele() n_memory_autorec_relax_gut()
-#define srelax() n_memory_autorec_relax_unroll()
+/* TODO obsolete srelax -> n_autorec_relax_* */
+#define srelax_hold() n_autorec_relax_create()
+#define srelax_rele() n_autorec_relax_gut()
+#define srelax() n_autorec_relax_unroll()
 
 /* Allocate size more bytes of space and return the address of the first byte
  * to the caller.  An even number of bytes are always allocated so that the

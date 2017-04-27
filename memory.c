@@ -414,7 +414,7 @@ n_memory_reset(void){
       /* TODO v15 active recursion can only happen after a jump */
       if(macp->mac_recur > 0){
          macp->mac_recur = 1;
-         n_memory_autorec_relax_gut();
+         n_autorec_relax_gut();
       }
       a_memory_ars_reset(macp);
    }
@@ -877,7 +877,7 @@ FL void *
 }
 
 FL void
-n_memory_autorec_relax_create(void){
+n_autorec_relax_create(void){
    struct a_memory_ars_ctx *macp;
    NYD2_ENTER;
 
@@ -894,13 +894,13 @@ n_memory_autorec_relax_create(void){
    }
 #ifdef HAVE_DEVEL
    else
-      n_err("n_memory_autorec_relax_create(): recursion >0\n");
+      n_err("n_autorec_relax_create(): recursion >0\n");
 #endif
    NYD2_LEAVE;
 }
 
 FL void
-n_memory_autorec_relax_gut(void){
+n_autorec_relax_gut(void){
    struct a_memory_ars_ctx *macp;
    NYD2_ENTER;
 
@@ -913,7 +913,7 @@ n_memory_autorec_relax_gut(void){
       struct a_memory_ars_buffer *mabp;
 
       macp->mac_recur = 1;
-      n_memory_autorec_relax_unroll();
+      n_autorec_relax_unroll();
       macp->mac_recur = 0;
 
       for(mabp = macp->mac_top; mabp != NULL; mabp = mabp->mab_last)
@@ -923,13 +923,13 @@ n_memory_autorec_relax_gut(void){
    }
 #ifdef HAVE_DEVEL
    else
-      n_err("n_memory_autorec_relax_unroll(): recursion >0\n");
+      n_err("n_autorec_relax_unroll(): recursion >0\n");
 #endif
    NYD2_LEAVE;
 }
 
 FL void
-n_memory_autorec_relax_unroll(void){
+n_autorec_relax_unroll(void){
    /* The purpose of relaxation is only that it is possible to reset the
     * casters, *not* to give back memory to the system.  We are presumably in
     * an iteration over all messages of a mailbox, and it'd be quite
