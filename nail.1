@@ -1252,39 +1252,51 @@ active mailbox or by quitting \*(UA (also see
 mailbox is not performed when the variable
 .Va hold
 is set.
-.
-.Pp
-After examining a message the user can also
-.Ic delete Ql d
-the message,
-.Ic reply Ql r
-to the sender and all recipients or
-.Ic Reply Ql R
-exclusively to the sender(s).
-Messages can also be
-.Ic forward Ns
-ed (shorter alias is
-.Ic fwd Ns ).
-Note that when replying to or forwarding a message recipient addresses
-will be stripped from comments and names unless the internal variable
-.Va fullnames
-is set.
-Deletion causes \*(UA to forget about the message;
-This is not irreversible, though, one can
-.Ic undelete Ql u
-the message by giving its number,
-or the \*(UA session can be ended by giving the
-.Ic exit Ql x
-command.
-.
-.Pp
-Messages can also be
+Messages can also be explicitly
 .Ic move Ns
 d to other mailboxes, whereas
 .Ic copy
 keeps the original message.
 .Ic write
 can be used to write out data content of specific parts of messages.
+.
+.Pp
+After examining a message the user can
+.Ic reply Ql r
+to the sender and all recipients (which will also be placed in
+.Ql To:
+unless
+.Va recipients-in-cc
+is set) or
+.Ic Reply Ql R
+exclusively to the sender(s).
+Messages can be
+.Ic forward Ns
+ed (shorter alias is
+.Ic fwd Ns ).
+When replying to or forwarding a message recipient addresses will be
+stripped from comments and names unless the internal variable
+.Va fullnames
+is set.
+It is possible to
+.Ic resend
+or
+.Ic Resend
+messages: the former will add a series of
+.Ql Resent-
+headers, whereas the latter will not; different to newly created
+messages these will not save even with
+.Va record
+unless the additional variable
+.Va record-resent
+is set.
+Of course messages can also be
+.Ic delete Ql d ,
+but can spring into existence again via
+.Ic undelete
+or when the \*(UA session is ended via the
+.Ic exit Ql x
+command.
 .
 .Pp
 To end a mail processing session one may either issue
@@ -5381,6 +5393,11 @@ Takes a list of messages and a user name
 and sends each message to the named user.
 .Ql Resent-From:
 and related header fields are prepended to the new copy of the message.
+Saving in
+.Va record
+is only performed if
+.Va record-resent
+is set.
 .
 .Mx
 .It Ic Respond
@@ -5433,7 +5450,9 @@ a non-0 exit status may cause the program to exit.
 but saves the messages in a file named after the local part of the
 sender of the first message instead of (in
 .Va record
-and) taking a filename argument.
+and) taking a filename argument; the variable
+.Va outfolder
+is inspected to decide on the actual storage location.
 .
 .Mx
 .It Ic save
@@ -9205,34 +9224,59 @@ option (empty argument case).
 .
 .Mx
 .It Va recipients-in-cc
-\*(BO On group replies, specify only the sender of the original mail in
+\*(BO When doing a
+.Ic reply ,
+the original
+.Ql From:
+and
 .Ql To:
-and mention the other recipients in the secondary
-.Ql Cc: .
-By default all recipients of the original mail will be addressed via
+are by default merged into the new
 .Ql To: .
+If this variable is set, only the original
+.Ql From:
+ends in the new
+.Ql To: ,
+the rest is merged into
+.Ql Cc: .
 .
 .Mx
 .It Va record
-If defined, gives the pathname of the folder used to record all outgoing
-mail.
-If not defined, then outgoing mail is not saved.
-When saving to this folder fails the message is not sent,
-but instead saved to
+Unless this variable is defined, no copies of outgoing mail will be saved.
+If defined it gives the pathname, subject to the usual
+.Sx "Filename transformations" ,
+of a folder where all new, replied-to or forwarded messages are saved:
+when saving to this folder fails the message is not sent, but instead
+.Va save Ns
+d to
 .Ev DEAD .
+The standard defines that relative (fully expanded) paths are to be
+interpreted relative to the current directory
+.Pf ( Ic cwd ) ,
+to force interpretation relative to
+.Va folder
+.Va outfolder
+needs to be set in addition.
+.
+.Mx
+.It Va record-files
+\*(BO If this variable is set the meaning of
+.Va record
+will be extended to cover messages which target only file and pipe
+recipients (see
+.Va expandaddr ) .
+These address types will not appear in recipient lists unless
+.Va add-file-recipients
+is also set.
 .
 .Mx
 .It Va record-resent
-\*(BO If both this variable and the
+\*(BO If this variable is set the meaning of
 .Va record
-variable are set,
-the
+will be extended to also cover the
 .Ic resend
 and
 .Ic Resend
-commands save messages to the
-.Va record
-folder as it is normally only done for newly composed messages.
+commands.
 .
 .Mx
 .It Va reply-in-same-charset
@@ -11414,9 +11458,9 @@ set sendcharsets=utf-8,iso-8859-1
 # use the same encoding that the original poster used herself!
 set reply-in-same-charset
 
-# When replying to or forwarding a message the comment and name
-# parts of email addresses are removed unless this variable is set
-set fullnames
+# When replying, do not merge From: and To: of the original message
+# into To:.  Instead old From: -> new To:, old To: -> merge Cc:.
+set recipients-in-cc
 
 # When sending messages, wait until the Mail-Transfer-Agent finishs.
 # Only like this you will be able to see errors reported through the
@@ -11430,7 +11474,8 @@ set mimetypes-load-control
 set folder=mail
 # A leading "+" (often) means: under *folder*
 # *record* is used to save copies of sent messages
-set MBOX=+mbox.mbox record=+sent.mbox DEAD=+dead.txt
+set MBOX=+mbox.mbox DEAD=+dead.txt \e
+  record=+sent.mbox record-files record-resent
 
 # Make "file mymbox" and "file myrec" go to..
 shortcut mymbox %:+mbox.mbox myrec +sent.mbox

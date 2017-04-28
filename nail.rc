@@ -130,9 +130,8 @@ set keepsave
 # Automatically quote the text of the message that is responded to
 set quote
 
-# On group replies, specify only the sender of the original mail in  To: and
-# mention it's other recipients in the secondary Cc: instead of placing them
-# all together in To:
+# When replying, do not merge From: and To: of the original message
+# into To:.  Instead old From: -> new To:, old To: -> merge Cc:.
 set recipients-in-cc
 
 # When responding to a message, try to answer in the same character set

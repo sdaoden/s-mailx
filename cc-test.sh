@@ -254,6 +254,8 @@ t_behave() {
    # FIXME t_behave_mlist
    t_behave_filetype
 
+   t_behave_record_a_resend
+
    t_behave_e_H_L_opts
    t_behave_compose_hooks
 
@@ -1847,6 +1849,31 @@ t_behave_filetype() {
    } >/dev/null 2>&1
 
    check behave:filetype-3 - "./.t.mbox" '238021003 27092'
+
+   t_epilog
+}
+
+t_behave_record_a_resend() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t.record ./.t.resent"
+
+   printf '
+         set record=%s
+         m %s\n~s Subject 1.\nHello.\n~.
+         set record-files add-file-recipients
+         m %s\n~s Subject 2.\nHello.\n~.
+         File %s
+         resend 2 ./.t.resent
+         Resend 1 ./.t.resent
+         set record-resent
+         resend 2 ./.t.resent
+         Resend 1 ./.t.resent
+      ' ./.t.record "${MBOX}" "${MBOX}" "${MBOX}" |
+      "${SNAIL}" ${ARGS}
+
+   check behave:record_a_resend-1 0 "${MBOX}" '3057873538 256'
+   check behave:record_a_resend-2 - .t.record '391356429 460'
+   check behave:record_a_resend-3 - .t.resent '2685231691 648'
 
    t_epilog
 }
