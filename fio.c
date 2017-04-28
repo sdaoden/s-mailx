@@ -319,10 +319,10 @@ setptr(FILE *ibuf, off_t offset)
             else if (!(mb.mb_active & MB_FROM__WARNED))
                n_err(_("MBOX mailbox contains non-conforming From_ line(s)!\n"
                   "  Message boundaries may have been falsely detected!\n"
-                  "  Setting variable *mbox-rfc4155* and reopen may improve "
-                     "the result!\n"
-                  "  If so, unset *mbox-rfc4155* again, then "
-                     "\"copy * SOME-FILE\"\n"));
+                  "  Setting variable *mbox-rfc4155* and reopen should improve "
+                     "the result.\n"
+                  "  If so, make changes permanent: \"copy * SOME-FILE\".  "
+                     "Then unset *mbox-rfc4155*\n"));
             mb.mb_active |= MB_FROM__WARNED;
          }
          self.m_xsize = self.m_size;
