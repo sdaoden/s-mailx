@@ -1,4 +1,4 @@
-#@ mk-mk.in -- mk.mk template, completed by mk-conf.sh.
+#@ make-config.in -- mk-config.mk template, completed by make-config.sh.
 #@ Please see INSTALL and make.rc instead.
 
 SIZE_CHECK = @if ( command -v size ) > /dev/null 2>&1; then size $(@); fi
@@ -19,7 +19,7 @@ $(VAL_UAGENT): $(OBJ) uman.1 urc.rc
 	$(ECHO_LINK)$(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)
 	$(SIZE_CHECK)
 
-$(OBJ): config.h nail.h nailfuns.h $(AMALGAM_DEP)
+$(OBJ): mk-config.h config.h nail.h nailfuns.h $(AMALGAM_DEP)
 $(AMALGAM_TARGET) auxlily.c: gen-errors.h
 $(AMALGAM_TARGET) accmacvar.o: gen-okeys.h gen-version.h
 $(AMALGAM_TARGET) dotlock.o: dotlock.h
@@ -33,7 +33,7 @@ $(VAL_PRIVSEP): privsep.o
 	$(ECHO_LINK)$(CC) $(LDFLAGS) -o $(@) privsep.o $(BASE_LIBS)
 	$(SIZE_CHECK)
 
-privsep.o: privsep.c config.h nail.h dotlock.h
+privsep.o: privsep.c mk-config.h config.h nail.h dotlock.h
 	$(ECHO_CC)$(CC) $(CFLAGS) $(BASE_INCS) -c privsep.c
 
 test: all
@@ -250,10 +250,10 @@ clean:
 
 distclean: clean
 	$(ECHO_CMD)\
-	$(rm) -f ./config.* ./*.mk
+	$(rm) -f ./mk-*
 
 # MUST work with "grep=grep sed=sed cmp=cmp mv=mv", otherwise need to change
-# mk-release.inc
+# make-release.inc
 _update-version:
 	@LC_ALL=C; export LC_ALL;\
 	if [ -z "$(VERSION)" ]; then \

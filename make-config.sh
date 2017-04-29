@@ -188,15 +188,15 @@ option_update() {
 }
 
 rc=./make.rc
-lst=./config.lst
-ev=./config.ev
-h=./config.h h_name=config.h
-mk=./mk.mk
+lst=./mk-config.lst
+ev=./mk-config.ev
+h=./mk-config.h h_name=mk-config.h
+mk=./mk-config.mk
 
-newlst=./config.lst-new
-newmk=./config.mk-new
-newev=./config.ev-new
-newh=./config.h-new
+newlst=./mk-nconfig.lst
+newmk=./mk-nconfig.mk
+newev=./mk-nconfig.ev
+newh=./mk-nconfig.h
 tmp0=___tmp
 tmp=./${tmp0}1$$
 tmp2=./${tmp0}2$$
@@ -1169,7 +1169,7 @@ if [ -f ${lst} ] && ${cmp} ${newlst} ${lst} >/dev/null 2>&1; then
    exit 0
 elif [ -f ${lst} ]; then
    echo 'Configuration has been updated..'
-   ( eval "${MAKE} -f ./mk.mk clean" )
+   ( eval "${MAKE} -f ./mk-config.mk clean" )
    echo
 else
    echo 'Shiny configuration..'
@@ -1199,16 +1199,16 @@ fi
 ## Compile and link checking
 
 tmp3=./${tmp0}3$$
-log=./config.log
-lib=./config.lib
-inc=./config.inc
-makefile=./config.mk
+log=./mk-config.log
+lib=./mk-config.lib
+inc=./mk-config.inc
+makefile=./${tmp0}.mk
 
 # (No function since some shells loose non-exported variables in traps)
 trap "trap \"\" HUP INT TERM;\
    ${rm} -f ${lst} ${h} ${mk} ${lib} ${inc}; exit 1" HUP INT TERM
 trap "trap \"\" HUP INT TERM EXIT;\
-   ${rm} -rf ${tmp0}.* ${tmp0}* ${makefile}" EXIT
+   ${rm} -rf ${tmp0}.* ${tmp0}*" EXIT
 
 # Time to redefine helper 2
 msg() {
@@ -1250,7 +1250,7 @@ echo '#define VAL_BUILD_OSENV "'"${OSENV}"'"' >> ${h}
 # Generate n_err_number OS mappings
 (
    feat_yes DEVEL && NV= || NV=noverbose
-   TARGET="${h}" awk="${awk}" ./mk-errors.sh ${NV} config
+   TARGET="${h}" awk="${awk}" ./make-errors.sh ${NV} config
 ) |
    xrun_check oserrno 'OS error mapping table generated' || config_exit 1
 
@@ -2606,14 +2606,14 @@ ${mv} ${tmp} ${inc}
 squeeze_em ${lib} ${tmp}
 ${mv} ${tmp} ${lib}
 
-# config.h
+# mk-config.h
 ${mv} ${h} ${tmp}
-printf '#ifndef n_CONFIG_H\n# define n_CONFIG_H 1\n' > ${h}
+printf '#ifndef n_MK_CONFIG_H\n# define n_MK_CONFIG_H 1\n' > ${h}
 ${cat} ${tmp} >> ${h}
 ${rm} -f ${tmp}
 printf '\n' >> ${h}
 
-# Create the real mk.mk
+# Create the real mk-config.mk
 # Note we cannout use explicit ./ filename prefix for source and object
 # pathnames because of a bug in bmake(1)
 ${rm} -rf ${tmp0}.* ${tmp0}*
@@ -2670,12 +2670,12 @@ done
 #${awk} -v opts="${OPTIONS_DETECT} ${OPTIONS} ${OPTIONS_XTRA}" \
 #   -v xopts="${XOPTIONS_DETECT} ${XOPTIONS} ${XOPTIONS_XTRA}" \
 #
-printf '"\n#endif /* n_CONFIG_H */\n' >> ${h}
+printf '"\n#endif /* n_MK_CONFIG_H */\n' >> ${h}
 
 echo "LIBS = `${cat} ${lib}`" >> ${mk}
 echo "INCS = `${cat} ${inc}`" >> ${mk}
 echo >> ${mk}
-${cat} ./mk-mk.in >> ${mk}
+${cat} ./make-config.in >> ${mk}
 
 ## Finished!
 

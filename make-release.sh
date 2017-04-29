@@ -1,13 +1,13 @@
 #!/bin/sh -
-#@ mk-release.sh: simple somewhat generic release builder
+#@ make-release.sh: simple somewhat generic release builder
 
 # In order to be able to remove the release scripts from the release tarball,
 # we must delete them, which some shells may not like while they are running.
 # So be safe and move instances temporarily to .git/, the .inc will remove them
 if [ "`basename \`pwd\``" != .git ]; then
-   cp mk-release.* .git/
+   cp make-release.* .git/
    cd .git
-   exec sh mk-release.sh
+   exec sh make-release.sh
 fi
 cd ..
 
@@ -64,9 +64,9 @@ update_stable_hook() {
       git add nail.rc
    fi
 
-   [ -f ./mk-okey-map.pl ] && ./mk-okey-map.pl && git add gen-okeys.h
-   [ -f ./mk-tcap-map.pl ] && ./mk-tcap-map.pl && git add gen-tcaps.h
-   [ -f ./mk-errors.sh ] && ./mk-errors.sh && git add gen-errors.h
+   [ -f ./make-okey-map.pl ] && ./make-okey-map.pl && git add gen-okeys.h
+   [ -f ./make-tcap-map.pl ] && ./make-tcap-map.pl && git add gen-tcaps.h
+   [ -f ./make-errors.sh ] && ./make-errors.sh && git add gen-errors.h
 }
 
 update_release_hook() {
@@ -91,11 +91,14 @@ update_release_hook() {
       git add nail.rc
    fi
 
-   [ -f ./mk-okey-map.pl ] && ./mk-okey-map.pl noverbose && git add gen-okeys.h
-   [ -f ./mk-tcap-map.pl ] && ./mk-tcap-map.pl noverbose && git add gen-tcaps.h
-   [ -f ./mk-errors.sh ] && ./mk-errors.sh noverbose && git add gen-errors.h
+   [ -f ./make-okey-map.pl ] &&
+      ./make-okey-map.pl noverbose && git add gen-okeys.h
+   [ -f ./make-tcap-map.pl ] &&
+      ./make-tcap-map.pl noverbose && git add gen-tcaps.h
+   [ -f ./make-errors.sh ] &&
+      ./make-errors.sh noverbose && git add gen-errors.h
 }
 
-. ./mk-release.inc
+. ./make-release.inc
 
 # s-sh-mode

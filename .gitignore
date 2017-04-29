@@ -1,5 +1,4 @@
-config.*
-*.mk
+mk-*
 gen-mime-types.h
 
 uman.1

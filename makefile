@@ -12,31 +12,32 @@ all: config build
 config:
 	@$(_prego)
 build:
-	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk.mk $(MAKEJOBS) all
+	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk-config.mk $(MAKEJOBS) all
 install packager-install: build
-	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk.mk DESTDIR="$(DESTDIR)" install
+	@$(_prestop);\
+	LC_ALL=C $${MAKE} -f ./mk-config.mk DESTDIR="$(DESTDIR)" install
 uninstall:
-	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk.mk uninstall
+	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk-config.mk uninstall
 
 clean:
-	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk.mk clean
+	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk-config.mk clean
 distclean:
-	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk.mk distclean
+	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk-config.mk distclean
 
 test:
-	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk.mk $(MAKEJOBS) test
+	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk-config.mk $(MAKEJOBS) test
 
 devel:
 	@CONFIG=DEVEL; export CONFIG; $(_prego); $(_prestop);\
-	LC_ALL=C $${MAKE} -f ./mk.mk _update-version &&\
-	LC_ALL=C $${MAKE} -f ./mk.mk $(MAKEJOBS) all
+	LC_ALL=C $${MAKE} -f ./mk-config.mk _update-version &&\
+	LC_ALL=C $${MAKE} -f ./mk-config.mk $(MAKEJOBS) all
 odevel:
 	@CONFIG=ODEVEL; export CONFIG; $(_prego); $(_prestop);\
-	LC_ALL=C $${MAKE} -f ./mk.mk _update-version &&\
-	LC_ALL=C $${MAKE} -f ./mk.mk $(MAKEJOBS) all
+	LC_ALL=C $${MAKE} -f ./mk-config.mk _update-version &&\
+	LC_ALL=C $${MAKE} -f ./mk-config.mk $(MAKEJOBS) all
 d-b:
-	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk.mk _update-version &&\
-	LC_ALL=C $${MAKE} -f ./mk.mk $(MAKEJOBS) all
+	@$(_prestop); LC_ALL=C $${MAKE} -f ./mk-config.mk _update-version &&\
+	LC_ALL=C $${MAKE} -f ./mk-config.mk $(MAKEJOBS) all
 
 d-gettext:
 	LC_ALL=C xgettext --sort-by-file --strict --add-location \
@@ -46,12 +47,12 @@ d-gettext:
 
 _prego = SHELL="$(SHELL)" MAKE="$(MAKE)" \
 	CC="$(CC)" CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" \
-	$(SHELL) ./mk-conf.sh || exit 1
-_prestop = if [ -f ./mk.mk ]; then :; else \
+	$(SHELL) ./make-config.sh || exit 1
+_prestop = if [ -f ./mk-config.mk ]; then :; else \
 		echo 'Program not configured, nothing to do';\
 		echo 'Use one of the targets: config, all, tangerine';\
 		exit 1;\
 	fi;\
-	< ./config.ev read __ev__; eval $${__ev__}; unset __ev__
+	< ./mk-config.ev read __ev__; eval $${__ev__}; unset __ev__
 
 # s-mk-mode

@@ -57,7 +57,7 @@ sub parse_nail_h{
       /^$/ && next;
       if(/^\s*\/\*/){
          # However, one special directive we know
-         $BIND_START = @CAPS_NAMES + 1 if /--mk-tcap-map--/;
+         $BIND_START = @CAPS_NAMES + 1 if /--make-tcap-map--/;
          next
       }
 

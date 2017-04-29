@@ -364,7 +364,7 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
                   if(!asciichar(c))
                      break;
                   if(!blankspacechar(c)){
-                     if(!ISQUOTE(c))
+                     if(!n_QUOTE_IS_A(c))
                         break;
                      c = '\0';
                      break;

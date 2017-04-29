@@ -1,4 +1,4 @@
-#@ Include file for the mk-release.sh generic release builder.
+#@ Include file for the make-release.sh generic release builder.
 #@ It also needs two hooks: update_stable_hook(), update_release_hook(),
 #@ which need to "git add" what they have modified.
 
@@ -112,8 +112,8 @@ fi
 ##
 echo 'Updating stable/ files to match the release'
 
-if [ -f gen-version.h ] && [ -f mk-mk.in ]; then
-   grep=grep sed=sed cmp=cmp mv=mv make -f mk-mk.in _update-version
+if [ -f gen-version.h ] && [ -f make-config.in ]; then
+   grep=grep sed=sed cmp=cmp mv=mv make -f make-config.in _update-version
    git add gen-version.h
 fi
 update_stable_hook
@@ -126,7 +126,7 @@ LC_ALL=${ORIG_LC_ALL} git tag -s -f -m "${stblmsg}" v${REL}
 if yesno 'Create release/ branch?'; then
    git checkout -b ${relbrname}
 
-   git rm -f .gitignore .mailmap TODO mk-release.*
+   git rm -f .gitignore .mailmap TODO make-release.*
    update_release_hook
 
    LC_ALL=${ORIG_LC_ALL} git commit -S -m "${relmsg}"
@@ -209,14 +209,14 @@ if yesno 'Prepare announcement?'; then
    fi
 
    { echo "${relmsg}"; echo; } > "${TMPDIR}/${PROGRAM}-${REL}.txt"
-   if [ -f .git/mk-release.txt ]; then
+   if [ -f .git/make-release.txt ]; then
       # For the checksums
       if [ -n "${bigballs}" ] && [ -f "${TMPDIR}/${PROGRAM}-${REL}.cksum" ]
       then
          cks=`< "${TMPDIR}/${PROGRAM}-${REL}.cksum" sed -e 's/ //' -e '/^$/,$d'`
          < "${TMPDIR}/${PROGRAM}-${REL}.cksum" sed '1,/^$/d' \
             > "${TMPDIR}/.${PROGRAM}-${REL}.sigs"
-         < .git/mk-release.txt awk \
+         < .git/make-release.txt awk \
                -v INS="${cks}" -v SIGS="${TMPDIR}/.${PROGRAM}-${REL}.sigs" \
                -v NEWS="${TMPDIR}/.${PROGRAM}-${REL}.news" '
             /-----CHECKSUMS-----/{
@@ -247,7 +247,7 @@ if yesno 'Prepare announcement?'; then
          ' >> "${TMPDIR}/${PROGRAM}-${REL}.txt"
          rm -f "${TMPDIR}/.${PROGRAM}-${REL}.sigs"
       else
-         < .git/mk-release.txt awk \
+         < .git/make-release.txt awk \
                -v NEWS="${TMPDIR}/.${PROGRAM}-${REL}.news" '
             /-----NEWS-----/{
                while(getline sl < NEWS)
@@ -416,7 +416,7 @@ if [ -n "${anntxt}" ] && yesno 'Send announcement mail?'; then
 fi
 
 # Finally remove the temporary instances than ran this
-rm -f .git/mk-release.*
+rm -f .git/make-release.*
 echo 'Done'
 exit
 # s-sh-mode

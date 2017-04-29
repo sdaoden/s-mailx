@@ -4,7 +4,7 @@
  *@ HAVE_TERMCAP, but with nail.h:n_HAVE_TCAP.
  *@ HOWTO add a new non-dynamic command or query:
  *@ - add an entry to nail.h:enum n_termcap_{cmd,query}
- *@ - run mk-tcap-map.pl
+ *@ - run make-tcap-map.pl
  *@ - update the *termcap* member documentation on changes!
  *@ Bug: in case of clashes of two-letter names terminfo(5) wins.
  *
@@ -123,7 +123,7 @@ struct a_termcap_g{
 # endif
 };
 
-/* Include the constant mk-tcap-map.pl output */
+/* Include the constant make-tcap-map.pl output */
 #include "gen-tcaps.h"
 n_CTA(sizeof a_termcap_namedat <= UI16_MAX,
    "Termcap command and query name data exceed storage datatype");

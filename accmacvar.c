@@ -2,7 +2,7 @@
  *@ Account, macro and variable handling.
  *@ HOWTO add a new non-dynamic boolean or value option:
  *@ - add an entry to nail.h:enum okeys
- *@ - run mk-okey-map.pl
+ *@ - run make-okey-map.pl
  *@ - update the manual!
  *@ TODO . should be recursive environment based.
  *@ TODO   Otherwise, the `localopts' should be an attribute of the go.c
@@ -72,7 +72,7 @@ enum a_amv_mac_flags{
    a_AMV_MF__MAX = 0xFF
 };
 
-/* mk-okey-map.pl ensures that _VIRT implies _RDONLY and _NODEL, and that
+/* make-okey-map.pl ensures that _VIRT implies _RDONLY and _NODEL, and that
  * _IMPORT implies _ENV; it doesn't verify anything... */
 enum a_amv_var_flags{
    a_AMV_VF_NONE = 0,
@@ -212,7 +212,7 @@ struct a_amv_var_carrier{
    ui16_t avc_special_prop;
 };
 
-/* Include the constant mk-okey-map.pl output, and the generated version data */
+/* Include constant make-okey-map.pl output, and the generated version data */
 #include "gen-version.h"
 #include "gen-okeys.h"
 

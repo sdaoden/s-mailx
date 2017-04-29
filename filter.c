@@ -32,7 +32,7 @@
  */
 
 #ifdef HAVE_QUOTE_FOLD
-n_CTAV(QUOTE_MAX > 3);
+n_CTAV(n_QUOTE_MAX > 3);
 
 enum qf_state {
    _QF_CLEAN,
@@ -100,7 +100,7 @@ _qf_add_data(struct quoteflt *self, wchar_t wc)
    /* Unroll <tab> to spaces */
    if (wc == L'\t') {
       save_l = self->qf_datw;
-      save_w = (save_l + QUOTE_TAB_SPACES) & ~(QUOTE_TAB_SPACES - 1);
+      save_w = (save_l + n_QUOTE_TAB_SPACES) & ~(n_QUOTE_TAB_SPACES - 1);
       save_w -= save_l;
       while (save_w-- > 0) {
          ssize_t j = _qf_add_data(self, L' ');
@@ -212,13 +212,13 @@ _qf_state_prefix(struct qf_vc *vc)
          ++self->qf_wscnt;
          continue;
       }
-      if (i == 1 && ISQUOTE(wc)) {
+      if (i == 1 && n_QUOTE_IS_A(wc)) {
          self->qf_wscnt = 0;
-         if (self->qf_currq.l >= QUOTE_MAX - 3) {
-            self->qf_currq.s[QUOTE_MAX - 3] = '.';
-            self->qf_currq.s[QUOTE_MAX - 2] = '.';
-            self->qf_currq.s[QUOTE_MAX - 1] = '.';
-            self->qf_currq.l = QUOTE_MAX;
+         if (self->qf_currq.l >= n_QUOTE_MAX - 3) {
+            self->qf_currq.s[n_QUOTE_MAX - 3] = '.';
+            self->qf_currq.s[n_QUOTE_MAX - 2] = '.';
+            self->qf_currq.s[n_QUOTE_MAX - 1] = '.';
+            self->qf_currq.l = n_QUOTE_MAX;
          } else
             self->qf_currq.s[self->qf_currq.l++] = buf[-1];
          continue;
@@ -230,7 +230,7 @@ jfin:
       /* Overtake WS to the current quote in order to preserve it for eventual
        * necessary follow lines, too */
       /* TODO we de-facto "normalize" to ASCII SP here which MESSES tabs!! */
-      while (self->qf_wscnt-- > 0 && self->qf_currq.l < QUOTE_MAX)
+      while (self->qf_wscnt-- > 0 && self->qf_currq.l < n_QUOTE_MAX)
          self->qf_currq.s[self->qf_currq.l++] = ' ';
       self->qf_datw = self->qf_pfix_len + self->qf_currq.l;
       self->qf_wscnt = 0;
@@ -317,7 +317,7 @@ quoteflt_init(struct quoteflt *self, char const *prefix)
       self->qf_pfix_len = (ui32_t)strlen(prefix);
 
    /* Check whether the user wants the more fancy quoting algorithm */
-   /* TODO *quote-fold*: QUOTE_MAX may excess it! */
+   /* TODO *quote-fold*: n_QUOTE_MAX may excess it! */
 #ifdef HAVE_QUOTE_FOLD
    if (self->qf_pfix_len > 0 && (cp = ok_vlook(quote_fold)) != NULL) {
       ui32_t qmin, qmax;
@@ -341,7 +341,7 @@ quoteflt_init(struct quoteflt *self, char const *prefix)
 
       /* Add pad for takeover copies, reverse solidus and newline */
       self->qf_dat.s = salloc((qmax + 3) * n_mb_cur_max);
-      self->qf_currq.s = salloc((QUOTE_MAX + 1) * n_mb_cur_max);
+      self->qf_currq.s = salloc((n_QUOTE_MAX + 1) * n_mb_cur_max);
    }
 #endif
    NYD_LEAVE;

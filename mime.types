@@ -28,7 +28,7 @@
 # - Comments must be lines of their own.
 # - Only MIME types for which we have a type constant allocated in
 #   mime_types.c:enum mime_type are allowed in this file here.
-# - MIME types without any file extensions are not handled by mk-mk.in.
+# - MIME types without any file extensions are not handled.
 # - Note that the order of types and extensions is preserved ...
 # - Note that at least one builtin type is required (empty C array)
 

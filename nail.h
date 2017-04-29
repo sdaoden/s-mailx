@@ -33,6 +33,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#ifndef n_NAIL_H
+# define n_NAIL_H
 
 /*
  * Mail -- a mail program
@@ -40,7 +42,7 @@
  * Author: Kurt Shoens (UCB) March 25, 1978
  */
 
-#include "config.h"
+#include "mk-config.h"
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -86,6 +88,9 @@
 #ifdef HAVE_XSSL_MD5
 # include <openssl/md5.h>
 #endif
+
+/* Many things possibly of interest for adjustments have been outsourced */
+#include "config.h"
 
 /*
  * Constants, some nail-specific macros
@@ -161,44 +166,6 @@ do{\
 
 /*  */
 
-#if BUFSIZ + 0 > 2560               /* TODO simply use BUFSIZ? */
-# define LINESIZE       BUFSIZ      /* max readable line width */
-#else
-# define LINESIZE       2560
-#endif
-#define BUFFER_SIZE     (BUFSIZ >= (1u << 13) ? BUFSIZ : (1u << 14))
-
-/* Network protocol newline */
-#define NETNL           "\015\012"
-#define NETLINE(X)      X NETNL
-
-/* Number of Not-Yet-Dead calls that are remembered */
-#if defined HAVE_DEBUG || defined HAVE_DEVEL || defined HAVE_NYD2
-# ifdef HAVE_NYD2
-#  define NYD_CALLS_MAX (25 * 84)
-# elif defined HAVE_DEVEL
-#  define NYD_CALLS_MAX (25 * 42)
-# else
-#  define NYD_CALLS_MAX (25 * 10)
-# endif
-#endif
-
-#define APPEND                   /* New mail goes to end of mailbox */
-#define CBAD            (-15555)
-#define DOTLOCK_TRIES   5        /* Number of open(2) calls for dotlock */
-#define FILE_LOCK_TRIES 10       /* Maximum tries before n_file_lock() fails */
-#define FILE_LOCK_MILLIS 200     /* If UIZ_MAX, fall back to that */
-#define n_ERROR "ERROR"          /* Is-error?  Also as n_error[] */
-#define ERRORS_MAX      1000     /* Maximum error ring entries TODO configable*/
-#define n_ESCAPE        '~'      /* Default escape for sending */
-#define HSHSIZE         23       /* Hash prime TODO make dynamic, obsolete */
-#define n_MAXARGC       512      /* Maximum list of raw strings */
-#define MAXEXP          25       /* Maximum expansion of aliases */
-#define REFERENCES_MAX  20       /* Maximum entries in References: */
-#define n_UNIREPL "\xEF\xBF\xBD" /* 0xFFFD in UTF-8 */
-#define FTMP_OPEN_TRIES 10       /* Maximum number of Ftmp() open(2) tries */
-#define n_VEXPR_REGEX_MAX 10     /* Maximum address. `vexpr' regex(7) matches */
-
 #define ACCOUNT_NULL    "null"   /* Name of "null" account */
 
 /* Special FD requests for n_child_run(), n_child_start() */
@@ -224,74 +191,9 @@ do{\
 #define n_DATE_SECSHOUR (n_DATE_SECSMIN * n_DATE_MINSHOUR)
 #define n_DATE_SECSDAY (n_DATE_SECSHOUR * n_DATE_HOURSDAY)
 
-/* *indentprefix* default as of POSIX */
-#define INDENT_DEFAULT  "\t"
-
-/* Auto-reclaimed memory storage: size of the buffers.  Maximum auto-reclaimed
- * storage is that value /2, which is n_CTA()ed to be > 1024 */
-#define n_MEMORY_AUTOREC_SIZE 0x2000u
-/* Ugly, but avoid dynamic allocation for the management structure! */
-#define n_MEMORY_POOL_TYPE_SIZEOF (7 * sizeof(void*))
-
-/* Default *encoding* as enum mime_enc below */
-#define MIME_DEFAULT_ENCODING MIMEE_B64
-
-/* Maximum allowed line length in a mail before QP folding is necessary), and
- * the real limit we go for */
-#define MIME_LINELEN_MAX   998   /* Plus CRLF */
-#define MIME_LINELEN_LIMIT (MIME_LINELEN_MAX - 48)
-
-/* Ditto, SHOULD */
-#define MIME_LINELEN    78    /* Plus CRLF */
-
-/* And in headers which contain an encoded word according to RFC 2047 there is
- * yet another limit; also RFC 2045: 6.7, (5). */
-#define MIME_LINELEN_RFC2047 76
-
-/* Locations of mime.types(5) */
-#define MIME_TYPES_USR  "~/.mime.types"
-#define MIME_TYPES_SYS  "/etc/mime.types"
-
-/* Fallback MIME charsets, if *charset-7bit* and *charset-8bit* or not set.
- * Note: must be lowercase!  Changes affect enum okeys!
- * (Keep in SYNC: ./nail.1:"Character sets", ./nail.h:CHARSET_*!) */
-#define CHARSET_7BIT "us-ascii"
-#ifdef HAVE_ICONV
-# define CHARSET_8BIT "utf-8"
-# define CHARSET_8BIT_OKEY charset_8bit
-#else
-# define CHARSET_8BIT "iso-8859-1"
-# define CHARSET_8BIT_OKEY ttycharset
-#endif
-
-/* Some environment variables for pipe hooks etc. */
-#define n_PIPEENV_FILENAME "MAILX_FILENAME"
-#define n_PIPEENV_FILENAME_GENERATED "MAILX_FILENAME_GENERATED"
-#define n_PIPEENV_FILENAME_TEMPORARY "MAILX_FILENAME_TEMPORARY"
-#define n_PIPEENV_CONTENT "MAILX_CONTENT"
-#define n_PIPEENV_CONTENT_EVIDENCE "MAILX_CONTENT_EVIDENCE"
-
-/* Is *W* a quoting (ASCII only) character? */
-#define ISQUOTE(W) \
-   ((W) == n_WC_C('>') || (W) == n_WC_C('|') ||\
-    (W) == n_WC_C('}') || (W) == n_WC_C(':'))
-
-/* Maximum number of quote characters (not bytes!) that'll be used on
- * follow lines when compressing leading quote characters */
-#define QUOTE_MAX       42
-
-/* How much spaces should a <tab> count when *quote-fold*ing? (power-of-two!) */
-#define QUOTE_TAB_SPACES 8
-
-/* For long iterative output, like `list', tabulator-completion, etc.,
- * determine the screen width that should be used */
-#define n_SCRNWIDTH_FOR_LISTS ((size_t)n_scrnwidth - ((size_t)n_scrnwidth >> 3))
-
-/* Smells fishy after, or asks for shell expansion, dependent on context */
-#define n_SHEXP_MAGIC_PATH_CHARS "|&;<>{}()[]*?$`'\"\\"
-
-/* Maximum size of a message that is passed through to the spam system */
-#define SPAM_MAXSIZE    420000
+/* Network protocol newline */
+#define NETNL           "\015\012"
+#define NETLINE(X)      X NETNL
 
 /* Switch indicating necessity of terminal access interface (termcap.c) */
 #if defined HAVE_TERMCAP || defined HAVE_COLOUR || defined HAVE_MLE
@@ -901,7 +803,7 @@ enum n_dotlock_state{
    n_DLS_ABANDON = 1<<7 /* ORd to any but _NONE: give up, don't retry */
 };
 
-/* enum n_err_number from config.h via mk-conf.sh, which is in sync with
+/* enum n_err_number from mk-config.h, which is in sync with
  * n_err_to_doc(), n_err_to_name() and n_err_from_name() */
 
 enum n_exit_status{
@@ -1333,7 +1235,7 @@ enum n_termcap_captype{
 /* Termcap commands; different to queries commands perform actions.
  * Commands are resolved upon init time, and are all termcap(5)-compatible,
  * therefore we use the short termcap(5) names.
- * Note this is parsed by mk-tcap-map.pl, which expects the syntax
+ * Note this is parsed by make-tcap-map.pl, which expects the syntax
  * "CONSTANT, COMMENT" where COMMENT is "Capname/TCap-Code, TYPE[, FLAGS]",
  * and one of Capname and TCap-Code may be the string "-" meaning ENOENT;
  * a | vertical bar or end-of-comment ends processing; see termcap.c.
@@ -1375,7 +1277,7 @@ enum n_termcap_cmd{
 /* Termcap queries; a query is a command that returns a struct n_termcap_value.
  * Queries are resolved once they are used first, and may not be termcap(5)-
  * compatible, therefore we use terminfo(5) names.
- * Note this is parsed by mk-tcap-map.pl, which expects the syntax
+ * Note this is parsed by make-tcap-map.pl, which expects the syntax
  * "CONSTANT, COMMENT" where COMMENT is "Capname/TCap-Code, TYPE[, FLAGS]",
  * and one of Capname and TCap-Code may be the string "-" meaning ENOENT;
  * a | vertical bar or end-of-comment ends processing; see termcap.c.
@@ -1386,7 +1288,7 @@ enum n_termcap_query{
    n_TERMCAP_QUERY_colors, /* colors/Co, NUMERIC | max_colors */
 # endif
 
-   /* --mk-tcap-map--: only KEY_BINDINGS follow.  DON'T CHANGE THIS LINE! */
+   /* --make-tcap-map--: only KEY_BINDINGS follow.  DON'T CHANGE THIS LINE! */
    /* Update the `bind' manual on change! */
 # ifdef HAVE_KEY_BINDINGS
    n_TERMCAP_QUERY_key_backspace, /* kbs/kb, STRING */
@@ -2670,4 +2572,5 @@ VL sighandler_type dflpipe;
 # include "nailfuns.h"
 #endif
 
+#endif /* n_NAIL_H */
 /* s-it-mode */

@@ -1179,7 +1179,7 @@ j_leave:
 
 /* Source the others in that case! */
 #ifdef HAVE_AMALGAMATION
-# include "config.h"
+# include "mk-config.h"
 #endif
 
 /* s-it-mode */
