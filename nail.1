@@ -8286,11 +8286,11 @@ will perform proper, all-compatible
 quoting for all detected messages, resulting in a valid MBOX mailbox.
 Finally the variable can be unset again:
 .Bd -literal -offset indent
-define mboxit {
+define mboxfix {
   localopts yes; wysh set mbox-rfc4155;\e
     wysh File "${1}"; eval copy * "${2}"
 }
-call mbox /tmp/bad.mbox /tmp/good.mbox
+call mboxfix /tmp/bad.mbox /tmp/good.mbox
 .Ed
 .
 .Mx
