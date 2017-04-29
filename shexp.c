@@ -848,14 +848,15 @@ jrecurse:
 }
 
 FL char *
-fexpand(char const *name, enum fexp_mode fexpm)
+fexpand(char const *name, enum fexp_mode fexpm) /* TODO in parts: -> URL::!! */
 {
-   struct str s;
-   char const *cp, *res;
-   bool_t dyn;
+   struct str proto, s;
+   char const *res, *cp;
+   bool_t dyn, haveproto;
    NYD_ENTER;
 
    n_pstate &= ~n_PS_EXPAND_MULTIRESULT;
+   dyn = FAL0;
 
    /* The order of evaluation is "%" and "#" expand into constants.
     * "&" can expand into "+".  "+" can expand into shell meta characters.
@@ -864,14 +865,30 @@ fexpand(char const *name, enum fexp_mode fexpm)
    if ((fexpm & FEXP_NSHORTCUT) || (res = shortcut_expand(name)) == NULL)
       res = n_UNCONST(name);
 
+jprotonext:
+   n_UNINIT(proto.s, NULL), n_UNINIT(proto.l, 0);
+   haveproto = FAL0;
+   for(cp = res; *cp && *cp != ':'; ++cp)
+      if(!alnumchar(*cp))
+         goto jnoproto;
+   if(cp[0] == ':' && cp[1] == '/' && cp[2] == '/'){
+      haveproto = TRU1;
+      proto.s = n_UNCONST(res);
+      cp += 3;
+      proto.l = PTR2SIZE(cp - res);
+      res = cp;
+   }
+
+jnoproto:
    if(!(fexpm & FEXP_NSPECIAL)){
 jnext:
       dyn = FAL0;
       switch (*res) {
       case '%':
-         if(res[1] == ':' && res[2] != '\0')
+         if(res[1] == ':' && res[2] != '\0'){
             res = &res[2];
-         else{
+            goto jprotonext;
+         }else{
             bool_t force;
 
             force = (res[1] != '\0');
@@ -907,7 +924,7 @@ jnext:
       /* TODO *folder* can't start with %[:], can it!?! */
       if (res[0] == '%' && res[1] == ':') {
          res += 2;
-         goto jnext;
+         goto jprotonext;
       }
    }
 
@@ -919,14 +936,18 @@ jnext:
 
       if(fexpm & FEXP_NOPROTO)
          doexp = TRU1;
-      else switch(which_protocol(res, TRU1, FAL0, NULL)){
-      case PROTO_FILE:
-      case PROTO_MAILDIR:
-         doexp = TRU1;
-         break;
-      default:
-         doexp = FAL0;
-         break;
+      else{
+         cp = haveproto ? savecat(savestrbuf(proto.s, proto.l), res) : res;
+
+         switch(which_protocol(cp, TRU1, FAL0, NULL)){
+         case PROTO_FILE:
+         case PROTO_MAILDIR:
+            doexp = TRU1;
+            break;
+         default:
+            doexp = FAL0;
+            break;
+         }
       }
 
       if(doexp){
@@ -964,7 +985,12 @@ jnext:
    }
 
 jislocal:
-   if (fexpm & FEXP_LOCAL)
+   if(res != NULL && haveproto){
+      res = savecat(savestrbuf(proto.s, proto.l), res);
+      dyn = TRU1;
+   }
+
+   if(fexpm & FEXP_LOCAL){
       switch (which_protocol(res, FAL0, FAL0, NULL)) {
       case PROTO_FILE:
       case PROTO_MAILDIR: /* Cannot happen since we don't stat(2), but.. */
@@ -975,6 +1001,7 @@ jislocal:
          res = NULL;
          break;
       }
+   }
 
 jleave:
    if(res != NULL && !dyn)

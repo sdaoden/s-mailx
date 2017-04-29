@@ -736,6 +736,7 @@ maildir_setfile(char const * volatile name, enum fedit_mode fm)
 {
    sighandler_type volatile saveint;
    struct cw cw;
+   char const *emsg;
    int omsgCount;
    int volatile i = -1;
    NYD_ENTER;
@@ -768,8 +769,13 @@ maildir_setfile(char const * volatile name, enum fedit_mode fm)
       mb.mb_type = MB_MAILDIR;
    }
 
-   if (chdir(name) < 0) {
-      n_err(_("Cannot change directory to %s\n"), n_shexp_quote_cp(name, FAL0));
+   if(!n_is_dir(name, FAL0)){
+      emsg = N_("Not a maildir: %s\n");
+      goto jerr;
+   }else if(chdir(name) < 0){
+      emsg = N_("Cannot enter maildir://%s\n");
+jerr:
+      n_err(V_(emsg), n_shexp_quote_cp(name, FAL0));
       mb.mb_type = MB_VOID;
       *mailname = '\0';
       msgCount = 0;

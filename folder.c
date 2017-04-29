@@ -205,11 +205,12 @@ jleave:
 FL int
 setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
 {
+   /* TODO This all needs to be converted to URL:: and Mailbox:: */
    static int shudclob;
 
    struct stat stb;
    size_t offset;
-   char const *who;
+   char const *who, *orig_name;
    int rv, omsgCount = 0;
    FILE *ibuf = NULL, *lckfp = NULL;
    bool_t isdevnull = FAL0;
@@ -247,7 +248,7 @@ jlogname:
    /* For at least substdate() users */
    time_current_update(&time_current, FAL0);
 
-   switch (which_protocol(name, TRU1, TRU1, &name)) {
+   switch (which_protocol(orig_name = name, TRU1, TRU1, &name)) {
    case PROTO_FILE:
       isdevnull = ((n_poption & n_PO_BATCH_FLAG) && !strcmp(name, "/dev/null"));
 #ifdef HAVE_REALPATH
@@ -276,15 +277,15 @@ jlogname:
 #ifdef HAVE_POP3
    case PROTO_POP3:
       shudclob = 1;
-      rv = pop3_setfile(name, fm);
+      rv = pop3_setfile(orig_name, fm);
       goto jleave;
 #endif
    default:
-      n_err(_("Cannot handle protocol: %s\n"), name);
+      n_err(_("Cannot handle protocol: %s\n"), orig_name);
       goto jem1;
    }
 
-   if ((ibuf = Zopen(name, "r")) == NULL) {
+   if ((ibuf = Zopen(savecat("file://", name), "r")) == NULL) {
       int e = n_err_no;
 
       if ((fm & FEDIT_SYSBOX) && e == n_ERR_NOENT) {

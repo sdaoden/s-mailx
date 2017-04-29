@@ -2237,7 +2237,7 @@ denote optional parts, optional either because there also exist other
 ways to define the information in question or because support of the
 part is protocol-specific (e.g.,
 .Ql /path
-is used by the IMAP protocol but not by POP3);
+is used by the local maildir and the IMAP protocol, but not by POP3);
 If any of
 .Ql USER
 and
@@ -4372,10 +4372,34 @@ and
 .Sx "Filename transformations"
 will be applied to the
 .Ar name
-argument.
+argument, and
+.Ql protocol://
+prefixes are understood, e.g.,
+.Ql maildir:///tmp/mdirbox :
+if a protocol prefix is used the mailbox type is fixated and neither
+the auto-detection (read on) nor the
+.Va newfolders
+mechanisms apply.
+\*(OPally URLs can also be used to access network resources, see
+.Sx "On URL syntax and credential lookup" :
 .
 .Pp
-If the resulting
+.Dl \*(IN protocol://[user[:password]@]host[:port][/path]
+.Dl \*(OU protocol://[user@]host[:port][/path]
+.
+.Pp
+\*(OPally supported network protocols are
+.Ar pop3
+(POP3) and
+.Ar pop3s
+(POP3 with SSL/TLS encrypted transport),
+.Ar [/path]
+part is valid only for IMAP; there it defaults to
+.Ar INBOX .
+Network URLs require a special encoding as documented in the said section.
+.
+.Pp
+If the resulting file protocol (MBOX database)
 .Ar name
 is located on a local filesystem then the list of all registered
 .Ic filetype Ns
@@ -4395,9 +4419,8 @@ filetype \e
 .Ed
 .
 .Pp
-MBOX files (flat file-based mailboxes) are generally locked during file
-operations in order to avoid inconsistencies due to concurrent
-modifications.
+MBOX database files are generally locked during file operations in order
+to avoid inconsistencies due to concurrent modifications.
 \*(OPal Mailbox files which \*(UA treats as the system
 .Va inbox
 .Pf ( Ev MAIL ) ,
@@ -4425,7 +4448,7 @@ if any is seen: in this case
 can be used to create a valid MBOX database from the invalid input.
 .
 .Pp
-If
+If no protocol has been fixated, and
 .Ar name
 refers to a directory with the subdirectories
 .Ql tmp ,
@@ -4434,39 +4457,11 @@ and
 .Ql cur ,
 then it is treated as a folder in
 .Dq Maildir
-format; \*(ID the variable
+format.
+\*(ID Also, if no protocol has been fixated and no existing file has
+been found, the variable
 .Va newfolders
-can be used to control the format of yet non-existent folders.
-A name of the form
-.
-.Pp
-.Dl \*(IN protocol://[user[:password]@]host[:port][/path]
-.Dl \*(OU protocol://[user@]host[:port][/path]
-.
-.Pp
-is taken as an Internet mailbox specification.
-The \*(OPally supported protocols are
-.Ar pop3
-(POP3) and
-.Ar pop3s
-(POP3 with SSL/TLS encrypted transport).
-The
-.Ar [/path]
-part is valid only for IMAP; there it defaults to
-.Ar INBOX .
-Also see the section
-.Sx "On URL syntax and credential lookup" .
-.
-.Pp
-\*(OU If
-.Ar user
-contains special characters, in particular
-.Ql /
-or
-.Ql % ,
-they must be escaped in URL notation \(en the command
-.Ic urlcodec
-can be used to show the necessary conversion.
+controls the format of mailboxes yet to be created.
 .
 .
 .Mx
@@ -8697,7 +8692,7 @@ in encrypted form:
 .It Va newfolders
 If this variable has the value
 .Ql maildir ,
-newly created local folders will be in Maildir format.
+newly created local folders will be in Maildir instead of MBOX format.
 .
 .Mx
 .It Va newmail

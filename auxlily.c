@@ -401,26 +401,29 @@ which_protocol(char const *name, bool_t check_stat, bool_t try_hooks,
       if (!alnumchar(*cp))
          goto jfile;
 
-   if (cp[0] == ':' && cp[1] == '/' && cp[2] == '/') {
-      if (!strncmp(name, "pop3://", 7)) {
+   if(cp[0] == ':' && cp[1] == '/' && cp[2] == '/'){
+      if(!strncmp(name, "file", sizeof("file") -1) ||
+            !strncmp(name, "mbox", sizeof("mbox") -1))
+         rv = PROTO_FILE;
+      else if(!strncmp(name, "maildir", sizeof("maildir") -1))
+         rv = PROTO_MAILDIR;
+      else if(!strncmp(name, "pop3", sizeof("pop3") -1)){
 #ifdef HAVE_POP3
          rv = PROTO_POP3;
 #else
          n_err(_("No POP3 support compiled in\n"));
 #endif
-      } else if (!strncmp(name, "pop3s://", 8)) {
+      }else if(!strncmp(name, "pop3s", sizeof("pop3s") -1)){
 #if defined HAVE_POP3 && defined HAVE_SSL
          rv = PROTO_POP3;
 #else
          n_err(_("No POP3S support compiled in\n"));
 #endif
       }
+      orig_name = &cp[3];
       goto jleave;
    }
 
-   /* TODO This is the de facto maildir code and thus belongs into there!
-    * TODO and: we should have maildir:// and mbox:// pseudo-protos, instead of
-    * TODO or (more likely) in addition to *newfolders*) */
 jfile:
    rv = PROTO_FILE;
 
