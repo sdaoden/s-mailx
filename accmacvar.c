@@ -65,34 +65,34 @@
 
 enum a_amv_mac_flags{
    a_AMV_MF_NONE = 0,
-   a_AMV_MF_ACCOUNT = 1<<0,   /* This macro is an `account' */
+   a_AMV_MF_ACCOUNT = 1u<<0,  /* This macro is an `account' */
    a_AMV_MF_TYPE_MASK = a_AMV_MF_ACCOUNT,
-   a_AMV_MF_UNDEF = 1<<1,     /* Unlink after lookup */
-   a_AMV_MF_DELETE = 1<<7,    /* Delete in progress, free once refcnt==0 */
-   a_AMV_MF__MAX = 0xFF
+   a_AMV_MF_UNDEF = 1u<<1,    /* Unlink after lookup */
+   a_AMV_MF_DELETE = 1u<<7,   /* Delete in progress, free once refcnt==0 */
+   a_AMV_MF__MAX = 0xFFu
 };
 
 /* make-okey-map.pl ensures that _VIRT implies _RDONLY and _NODEL, and that
  * _IMPORT implies _ENV; it doesn't verify anything... */
 enum a_amv_var_flags{
    a_AMV_VF_NONE = 0,
-   a_AMV_VF_BOOL = 1<<0,      /* ok_b_* */
-   a_AMV_VF_VIRT = 1<<1,      /* "Stateless" automatic variable */
-   a_AMV_VF_NOLOPTS = 1<<2,   /* May not be tracked by `localopts' */
-   a_AMV_VF_RDONLY = 1<<3,    /* May not be set by user */
-   a_AMV_VF_NODEL = 1<<4,     /* May not be deleted */
-   a_AMV_VF_NOTEMPTY = 1<<5,  /* May not be assigned an empty value */
-   a_AMV_VF_NOCNTRLS = 1<<6,  /* Value may not contain control characters */
-   a_AMV_VF_NUM = 1<<7,       /* Value must be a 32-bit number */
-   a_AMV_VF_POSNUM = 1<<8,    /* Value must be positive 32-bit number */
-   a_AMV_VF_LOWER = 1<<9,     /* Values will be stored in a lowercase version */
-   a_AMV_VF_VIP = 1<<10,      /* Wants _var_check_vips() evaluation */
-   a_AMV_VF_IMPORT = 1<<11,   /* Import ONLY from environ (pre n_PSO_STARTED) */
-   a_AMV_VF_ENV = 1<<12,      /* Update environment on change */
-   a_AMV_VF_I3VAL = 1<<13,    /* Has an initial value */
-   a_AMV_VF_DEFVAL = 1<<14,   /* Has a default value */
-   a_AMV_VF_LINKED = 1<<15,   /* `environ' linked */
-   a_AMV_VF__MASK = (1<<(15+1)) - 1
+   a_AMV_VF_BOOL = 1u<<0,     /* ok_b_* */
+   a_AMV_VF_VIRT = 1u<<1,     /* "Stateless" automatic variable */
+   a_AMV_VF_NOLOPTS = 1u<<2,  /* May not be tracked by `localopts' */
+   a_AMV_VF_RDONLY = 1u<<3,   /* May not be set by user */
+   a_AMV_VF_NODEL = 1u<<4,    /* May not be deleted */
+   a_AMV_VF_NOTEMPTY = 1u<<5, /* May not be assigned an empty value */
+   a_AMV_VF_NOCNTRLS = 1u<<6, /* Value may not contain control characters */
+   a_AMV_VF_NUM = 1u<<7,      /* Value must be a 32-bit number */
+   a_AMV_VF_POSNUM = 1u<<8,   /* Value must be positive 32-bit number */
+   a_AMV_VF_LOWER = 1u<<9,    /* Values will be stored in a lowercase version */
+   a_AMV_VF_VIP = 1u<<10,     /* Wants _var_check_vips() evaluation */
+   a_AMV_VF_IMPORT = 1u<<11,  /* Import ONLY from environ (pre n_PSO_STARTED) */
+   a_AMV_VF_ENV = 1u<<12,     /* Update environment on change */
+   a_AMV_VF_I3VAL = 1u<<13,   /* Has an initial value */
+   a_AMV_VF_DEFVAL = 1u<<14,  /* Has a default value */
+   a_AMV_VF_LINKED = 1u<<15,  /* `environ' linked */
+   a_AMV_VF__MASK = (1u<<(15+1)) - 1
 };
 
 /* We support some special parameter names for one-letter variable names;
