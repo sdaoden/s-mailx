@@ -917,7 +917,7 @@ jnext:
 
    /* POSIX: if *folder* unset or null, "+" shall be retained */
    if (!(fexpm & FEXP_NFOLDER) && *res == '+' &&
-         *(cp = folder_query()) != '\0') {
+         *(cp = n_folder_query()) != '\0') {
       res = str_concat_csvl(&s, cp, &res[1], NULL)->s;
       dyn = TRU1;
 

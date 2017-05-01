@@ -83,7 +83,7 @@ jdocopy:
    /* C99 */{
       char const *folderp;
 
-      if(*(folderp = folder_query()) != '\0'){
+      if(*(folderp = n_folder_query()) != '\0'){
          i = strlen(folderp);
          if(!strncmp(folderp, mailp, i)){
             mailp += i;
@@ -720,7 +720,7 @@ initbox(char const *name)
 }
 
 FL char const *
-folder_query(void){
+n_folder_query(void){
    struct n_string s, *sp = &s;
    char *cp;
    char const *rv;
@@ -786,7 +786,7 @@ folder_query(void){
       /* TODO Since our visual mailname is resolved via realpath(3) if available
        * TODO to avoid that we loose track of our currently open folder in case
        * TODO we chdir away, but still checks the leading path portion against
-       * TODO folder_query() to be able to abbreviate to the +FOLDER syntax if
+       * TODO n_folder_query() to be able to abbreviate to the +FOLDER syntax if
        * TODO possible, we need to realpath(3) the folder, too */
 #ifdef HAVE_REALPATH
       assert(sp->s_len == 0 && sp->s_dat == NULL);
@@ -833,6 +833,60 @@ jset:
       assert(rv != NULL && *rv == '\0');
    }
    NYD_LEAVE;
+   return rv;
+}
+
+FL int
+n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_null){
+   /* TODO n_folder_mbox_prepare_append -> Mailbox->append() */
+   struct stat stb;
+   char buf[2];
+   bool_t needsep;
+   int rv;
+   NYD2_ENTER;
+
+   if(fseek(fout, -2L, SEEK_END)){
+      rv = n_err_no;
+
+      if(st_or_null == NULL){
+         st_or_null = &stb;
+         if(fstat(fileno(fout), st_or_null))
+            goto jerrno;
+      }
+
+      if(st_or_null->st_size >= 2)
+         goto jleave;
+      if(st_or_null->st_size == 0){
+         rv = n_ERR_NONE;
+         goto jleave;
+      }
+      if(fseek(fout, -1L, SEEK_END))
+         goto jerrno;
+   }
+
+   rv = n_ERR_NONE;
+
+   needsep = FAL0;
+   switch(fread(buf, sizeof *buf, 2, fout)){
+   case 2:
+      if(buf[1] != '\n')
+         needsep = TRU1;
+      break;
+   case 1:
+      if(buf[0] != '\n')
+         needsep = TRU1;
+      break;
+   default:
+      if(ferror(fout))
+         goto jerrno;
+      break;
+   }
+
+   if(fflush(fout) || (needsep && putc('\n', fout) == EOF))
+jerrno:
+      rv = n_err_no;
+jleave:
+   NYD2_LEAVE;
    return rv;
 }
 

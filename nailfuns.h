@@ -846,7 +846,13 @@ FL void        initbox(char const *name);
 /* Determine and expand the current *folder* name, return it (with trailing
  * solidus) or the empty string also in case of errors: since POSIX mandates
  * a default of CWD if not set etc., that seems to be a valid fallback, then */
-FL char const *folder_query(void);
+FL char const *n_folder_query(void);
+
+/* Prepare the seekable O_APPEND MBOX fout for appending of another message.
+ * If st_or_null is not NULL it is assumed to point to an up-to-date status of
+ * fout, otherwise an internal fstat(2) is performed as necessary.
+ * Returns n_err_no of error */
+FL int n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_null);
 
 /*
  * go.c

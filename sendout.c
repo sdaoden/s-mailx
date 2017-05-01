@@ -922,10 +922,27 @@ a_sendout_file_a_pipe(struct name *names, FILE *fo, bool_t *senderror){
 
          if(fname[0] == '-' && fname[1] == '\0')
             fout = n_stdout;
-         else if((fout = Zopen(fname, "a")) == NULL){
-            n_err(_("Writing message to %s failed: %s\n"),
-               fnameq, n_err_to_doc(n_err_no));
-            goto jerror;
+         else{
+            int xerr;
+
+            xerr = TRU1;
+            if((fout = Zopen(fname, "a+")) == NULL){
+               if((fout = Zopen(fname, "wx")) == NULL){
+                  xerr = n_err_no;
+jefile:
+                  n_err(_("Writing message to %s failed: %s\n"),
+                     fnameq, n_err_to_doc(xerr));
+                  goto jerror;
+               }
+               xerr = FAL0;
+            }
+
+            /* TODO RETURN check */
+            n_file_lock(fileno(fout), FLT_WRITE, 0,0, UIZ_MAX);
+
+            if(xerr && (xerr = n_folder_mbox_prepare_append(fout, NULL)
+                     ) != n_ERR_NONE)
+               goto jefile;
          }
 
          rewind(fp);
@@ -1003,7 +1020,7 @@ mightrecord(FILE *fp, struct name *to, bool_t resend){
                case PROTO_MAILDIR:
                      ccp = "maildir://";
                   }
-                  ccp = str_concat_csvl(&s, ccp, folder_query(), nccp)->s;
+                  ccp = str_concat_csvl(&s, ccp, n_folder_query(), nccp)->s;
                   /* FALLTHRU */
                default:
                   break;
@@ -1053,27 +1070,12 @@ a_sendout__savemail(char const *name, FILE *fp, bool_t resend){
    rv = TRU1;
 
    if(!emptyline){
-      if(fseek(fo, -2L, SEEK_END) == 0){ /* TODO Should be Mailbox::->append */
-         switch(fread(buf, sizeof *buf, 2, fo)){
-         case 2:
-            if(buf[1] != '\n')
-               emptyline = TRU1;
-            break;
-         case 1:
-            if(buf[0] != '\n')
-               emptyline = TRU1;
-            break;
-         default:
-            if(ferror(fo)){
-               n_perr(name, 0);
-               rv = FAL0;
-               goto jleave;
-            }
-         }
-         if(emptyline){
-            putc('\n', fo);
-            fflush(fo);
-         }
+      int xerr;
+
+      if((xerr = n_folder_mbox_prepare_append(fo, NULL)) != n_ERR_NONE){
+         n_perr(name, xerr);
+         rv = FAL0;
+         goto jleave;
       }
    }
 

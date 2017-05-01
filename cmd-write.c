@@ -132,6 +132,10 @@ save1(char *str, int domark, char const *cmd, struct n_ignore const *itp,
    if ((file = fexpand(file, FEXP_FULL)) == NULL)
       goto jleave;
 
+   /* TODO all this should be URL and Mailbox-"VFS" based, and then finally
+    * TODO end up as Mailbox()->append().  For now we have to deal with the
+    * TODO fact that we simply do not know what Zopen() gives us back, and
+    * TODO therefore we cannot truly decide how to react on errors */
    obuf = ((convert == SEND_TOFILE) ? Fopen(file, "a+") : Zopen(file, "a+"));
    if (obuf == NULL) {
       obuf = ((convert == SEND_TOFILE) ? Fopen(file, "wx") : Zopen(file, "wx"));
@@ -146,37 +150,16 @@ save1(char *str, int domark, char const *cmd, struct n_ignore const *itp,
       disp = _("[Appended]");
    }
 
-   /* TODO RETURN check, but be aware of protocols: v15: Mailbox->lock()! */
-   n_file_lock(fileno(obuf), FLT_WRITE, 0,0, UIZ_MAX);
+   if (!fstat(fileno(obuf), &st) && S_ISREG(st.st_mode)){
+      int xerr;
 
-   if (!isflag && !fstat(fileno(obuf), &st) && S_ISREG(st.st_mode) &&
-         fseek(obuf, -2L, SEEK_END) == 0) {
-      char buf[2];
-      int prependnl = 0;
+      /* TODO RETURN check, but be aware of protocols: v15: Mailbox->lock()! */
+      n_file_lock(fileno(obuf), FLT_WRITE, 0,0, UIZ_MAX);
 
-      switch (fread(buf, sizeof *buf, 2, obuf)) {
-      case 2:
-         if (buf[1] != '\n') {
-            prependnl = 1;
-            break;
-         }
-         /* FALLTHRU */
-      case 1:
-         if (buf[0] != '\n')
-            prependnl = 1;
-         break;
-      default:
-         if (ferror(obuf)) {
-            n_perr(file, 0);
-            goto jleave;
-         }
-         prependnl = 0;
-      }
-
-      fflush(obuf);
-      if (prependnl) {
-         putc('\n', obuf);
-         fflush(obuf);
+      if(!isflag &&
+            (xerr = n_folder_mbox_prepare_append(obuf, &st)) != n_ERR_NONE){
+         n_perr(file, xerr);
+         goto jleave;
       }
    }
 

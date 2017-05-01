@@ -323,7 +323,7 @@ c_folders(void *v)
       if((cp = fexpand(*argv, FEXP_NSHELL | FEXP_LOCAL)) == NULL) /* XXX NSH? */
          goto jleave;
    }else
-      cp = folder_query();
+      cp = n_folder_query();
 
    rv = n_child_run(ok_vlook(LISTER), 0, n_CHILD_FD_PASS, n_CHILD_FD_PASS,
          cp, NULL, NULL, NULL);
