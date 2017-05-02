@@ -447,6 +447,10 @@ _cc_flags_generic() {
       cc_check -O
    fi
 
+   if feat_yes AMALGAMATION; then
+      cc_check -pipe
+   fi
+
    #if feat_yes DEVEL && cc_check -Weverything; then
    #   :
    #else
@@ -489,23 +493,30 @@ _cc_flags_generic() {
       fi
    fi
 
-   if feat_yes AMALGAMATION; then
-      cc_check -pipe
-   fi
-
    # LD (+ dependend CC)
 
-   if feat_yes DEVEL; then
+   if feat_yes ASAN_ADDRESS; then
       _ccfg=${_CFLAGS}
-      # -fsanitize=address
-      #if cc_check -fsanitize=memory &&
-      #      ld_check -fsanitize=memory &&
-      #      cc_check -fsanitize-memory-track-origins=2 &&
-      #      ld_check -fsanitize-memory-track-origins=2; then
-      #   :
-      #else
-      #   _CFLAGS=${_ccfg}
-      #fi
+      if cc_check -fsanitize=address &&
+            ld_check -fsanitize=address; then
+         :
+      else
+         feat_bail_required ASAN_ADDRESS
+         _CFLAGS=${_ccfg}
+      fi
+   fi
+
+   if feat_yes ASAN_MEMORY; then
+      _ccfg=${_CFLAGS}
+      if cc_check -fsanitize=memory &&
+            ld_check -fsanitize=memory &&
+            cc_check -fsanitize-memory-track-origins=2 &&
+            ld_check -fsanitize-memory-track-origins=2; then
+         :
+      else
+         feat_bail_required ASAN_MEMORY
+         _CFLAGS=${_ccfg}
+      fi
    fi
 
    ld_check -Wl,-z,relro
@@ -1257,10 +1268,13 @@ echo '#define VAL_BUILD_OSENV "'"${OSENV}"'"' >> ${h}
 feat_def ALWAYS_UNICODE_LOCALE
 feat_def AMALGAMATION
 feat_def CROSS_BUILD
-feat_def DEBUG
-feat_def DEVEL
 feat_def DOCSTRINGS
 feat_def ERRORS
+
+feat_def ASAN_ADDRESS
+feat_def ASAN_MEMORY
+feat_def DEBUG
+feat_def DEVEL
 feat_def NYD2
 feat_def NOMEMDBG
 

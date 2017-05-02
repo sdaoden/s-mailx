@@ -174,7 +174,7 @@ do{\
 
 /* Colour stuff */
 #ifdef HAVE_COLOUR
-# define n_COLOUR(X)       X
+# define n_COLOUR(X) X
 #else
 # define n_COLOUR(X)
 #endif

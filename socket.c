@@ -194,6 +194,7 @@ jssl_retry:
    }
    if (x != sz) {
       char o[512];
+
       snprintf(o, sizeof o, "%s write error",
          (sp->s_desc ? sp->s_desc : "socket"));
 # ifdef HAVE_XSSL
@@ -548,6 +549,7 @@ jssl_retry:
             if (sp->s_rsz <= 0) {
                if (sp->s_rsz < 0) {
                   char o[512];
+
                   switch(SSL_get_error(sp->s_ssl, sp->s_rsz)) {
                   case SSL_ERROR_WANT_READ:
                   case SSL_ERROR_WANT_WRITE:
@@ -567,6 +569,7 @@ jagain:
             if (sp->s_rsz <= 0) {
                if (sp->s_rsz < 0) {
                   char o[512];
+
                   if (n_err_no == n_ERR_INTR)
                      goto jagain;
                   snprintf(o, sizeof o, "%s",

@@ -278,6 +278,12 @@ __EOT__
       fprintf(ofp, "\\t/* %ld unique members */\\n", (long)xavail);
       fprintf(ofp, "#define n__ERR_NUMBER_VOIDOFF %ld\\n", (long)voidoff);
       fclose(ofp);
+
+      while((np = head) != NULL){
+         head = np->next;
+         free(np);
+      }
+      free(nap);
       return 0;
    }
 __EOT__

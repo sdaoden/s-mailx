@@ -183,10 +183,13 @@ c_remove(void *v)
          ec |= 1;
          continue;
       }
-      {
-         size_t vl = strlen(ename) + fmt_len +1;
-         char *vb = salloc(vl);
+      /* C99 */{
          bool_t asw;
+         char *vb;
+         size_t vl;
+
+         vl = strlen(ename) + fmt_len +1;
+         vb = salloc(vl);
          snprintf(vb, vl, fmt, ename);
          asw = getapproval(vb, TRU1);
          if (!asw)

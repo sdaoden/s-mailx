@@ -1475,7 +1475,7 @@ a_sendout_random_id(struct header *hp, bool_t msgid)
 jgen:
    tmp = &time_current.tc_gm;
    i = sizeof("%04d%02d%02d%02d%02d%02d.%s%c%s") -1 + rl + strlen(h);
-   rv = salloc(i +1);
+   rv = n_autorec_alloc(i +1);
    snprintf(rv, i, "%04d%02d%02d%02d%02d%02d.%s%c%s",
       tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday,
       tmp->tm_hour, tmp->tm_min, tmp->tm_sec,

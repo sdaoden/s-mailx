@@ -504,14 +504,14 @@ _spamd_interact(struct spam_vc *vcp)
 # define _X(X) do {memcpy(lp, X, sizeof(X) -1); lp += sizeof(X) -1;} while (0)
 
    i = ((cp = ssdp->d_user.s) != NULL) ? ssdp->d_user.l : 0;
-   lp = headbuf = ac_alloc(
-         sizeof(NETLINE("A_VERY_LONG_COMMAND " SPAMD_IDENT)) +
+   size = sizeof(NETLINE("A_VERY_LONG_COMMAND " SPAMD_IDENT)) +
          sizeof(NETLINE("Content-length: 9223372036854775807")) +
          ((cp != NULL) ? sizeof("User: ") + i + sizeof(NETNL) : 0) +
          sizeof(NETLINE("Message-class: spam")) +
          sizeof(NETLINE("Set: local")) +
          sizeof(NETLINE("Remove: local")) +
-         sizeof(NETNL) /*+1*/);
+         sizeof(NETNL) /*+1*/;
+   lp = headbuf = n_lofi_alloc(size);
 
    switch (vcp->vc_action) {
    case _SPAM_RATE:
@@ -524,7 +524,7 @@ _spamd_interact(struct spam_vc *vcp)
       break;
    }
 
-   lp += snprintf(lp, 0x7FFF, NETLINE("Content-length: %" PRIuZ),
+   lp += snprintf(lp, size, NETLINE("Content-length: %" PRIuZ),
          (size_t)vcp->vc_mp->m_size);
 
    if (cp != NULL) {

@@ -488,7 +488,7 @@ mkname(time_t t, enum mflag f, char const *pref)
          } while (*cp++ != '\0');
       }
       size = 60 + strlen(node);
-      cp = salloc(size);
+      cp = n_autorec_alloc(size);
       n = snprintf(cp, size, "%lu.%06lu_%06lu.%s:2,",
             (ul_i)t, (ul_i)mypid, ++cnt, node);
    } else {
@@ -540,7 +540,7 @@ maildir_append1(char const *name, FILE *fp, off_t off1, long size,
    for (nfn = (char*)0xA /* XXX no magic */;; n_msleep(500, FAL0)) {
       now = n_time_epoch();
       flen = strlen(fn = mkname(now, flag, NULL));
-      tfn = salloc(n = nlen + flen + 6);
+      tfn = n_autorec_alloc(n = nlen + flen + 6);
       snprintf(tfn, n, "%s/tmp/%s", name, fn);
 
       /* Use "wx" for O_EXCL XXX stat(2) rather redundant; coverity:TOCTOU */
@@ -571,7 +571,7 @@ jtmperr:
    }
    Fclose(op);
 
-   nfn = salloc(n = nlen + flen + 6);
+   nfn = n_autorec_alloc(n = nlen + flen + 6);
    snprintf(nfn, n, "%s/new/%s", name, fn);
    if (link(tfn, nfn) == -1) {
       n_err(_("Cannot link %s to %s\n"), n_shexp_quote_cp(tfn, FAL0),

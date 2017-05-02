@@ -790,7 +790,7 @@ jdone:
       domainpart = cp + 1;
    }
 
-   ep = salloc(epsize = strlen(np->n_fullname) * 2 + 40);
+   ep = n_autorec_alloc(epsize = strlen(np->n_fullname) * 2 + 40);
    snprintf(ep, epsize, "(%s %s %s %s)",
       realnam ? _imap_quotestr(realnam) : "NIL",
       sourceaddr ? _imap_quotestr(sourceaddr) : "NIL",

@@ -200,12 +200,16 @@ jnext_msg:
          (cp = ok_vlook(reply_to_honour)) != NULL &&
          (rt = checkaddrs(lextract(reply_to, GTO | gf), EACM_STRICT, NULL)
          ) != NULL) {
-      char const *tr = _("Reply-To %s%s");
-      size_t l = strlen(tr) + strlen(rt->n_name) + 3 +1;
-      char *sp = salloc(l);
+      char *sp;
+      size_t l;
+      char const *tr;
 
+      tr = _("Reply-To %s%s");
+      l = strlen(tr) + strlen(rt->n_name) + 3 +1;
+      sp = n_autorec_alloc(l);
       snprintf(sp, l, tr, rt->n_name, (rt->n_flink != NULL ? "..." : n_empty));
-      if (quadify(cp, UIZ_MAX, sp, TRU1) > FAL0)
+
+      if(quadify(cp, UIZ_MAX, sp, TRU1) > FAL0)
          rcv = reply_to;
    }
 
@@ -245,17 +249,21 @@ jnext_msg:
          (cp = hfield1("mail-followup-to", mp)) != NULL &&
          (mft = np = checkaddrs(lextract(cp, GTO | gf), EACM_STRICT, NULL)
          ) != NULL) {
-      char const *tr = _("Followup-To %s%s");
-      size_t l = strlen(tr) + strlen(np->n_name) + 3 +1;
-      char *sp = salloc(l);
+      char *sp;
+      size_t l;
+      char const *tr;
 
+      tr = _("Followup-To %s%s");
+      l = strlen(tr) + strlen(np->n_name) + 3 +1;
+      sp = n_autorec_alloc(l);
       snprintf(sp, l, tr, np->n_name, (np->n_flink != NULL ? "..." : n_empty));
-      if (quadify(ok_vlook(followup_to_honour), UIZ_MAX, sp, TRU1) > FAL0) {
+
+      if(quadify(ok_vlook(followup_to_honour), UIZ_MAX, sp, TRU1) > FAL0){
          head.h_cc = NULL;
          head.h_to = np;
          head.h_mft =
          mft = namelist_vaporise_head(&head, EACM_STRICT, FAL0, NULL);
-      } else
+      }else
          mft = NULL;
    }
 
@@ -402,13 +410,17 @@ _Reply(int *msgvec, bool_t recipient_record)
             (cp = ok_vlook(reply_to_honour)) != NULL &&
             (rt = checkaddrs(lextract(rp, GTO | gf), EACM_STRICT, NULL)
             ) != NULL) {
-         char const *tr = _("Reply-To %s%s");
-         size_t l = strlen(tr) + strlen(rt->n_name) + 3 +1;
-         char *sp = salloc(l);
+         char *sp;
+         size_t l;
+         char const *tr;
 
+         tr = _("Reply-To %s%s");
+         l = strlen(tr) + strlen(rt->n_name) + 3 +1;
+         sp = n_autorec_alloc(l);
          snprintf(sp, l, tr, rt->n_name, (rt->n_flink != NULL ? "..."
             : n_empty));
-         if (quadify(cp, UIZ_MAX, sp, TRU1) > FAL0) {
+
+         if(quadify(cp, UIZ_MAX, sp, TRU1) > FAL0){
             head.h_to = cat(head.h_to, rt);
             continue;
          }

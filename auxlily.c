@@ -168,12 +168,14 @@ a_aux_rand_init(void){
 # endif
    NYD2_ENTER;
 
-   a_aux_rand = smalloc(sizeof *a_aux_rand);
+   a_aux_rand = n_alloc(sizeof *a_aux_rand);
 
 # ifdef HAVE_GETRANDOM
    /* getrandom(2) guarantees 256 without n_ERR_INTR.. */
    n_LCTA(sizeof(a_aux_rand->a._dat) <= 256,
-      "Buffer to large to be served without n_ERR_INTR error");
+      "Buffer too large to be served without n_ERR_INTR error");
+   n_LCTA(sizeof(a_aux_rand->a._dat) >= 256,
+      "Buffer too small to serve used array indices");
    for(;;){
       ssize_t gr;
 
@@ -906,7 +908,7 @@ n_random_create_cp(size_t length, ui32_t *reprocnt_or_null){
    assert(length + 3 < UIZ_MAX / 4);
    b64_encode_buf(&b64, data, length + 3,
       B64_SALLOC | B64_RFC4648URL | B64_NOPAD);
-   ac_free(data);
+   n_lofi_free(data);
 
    assert(b64.l >= length);
    b64.s[length] = '\0';

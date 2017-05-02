@@ -151,6 +151,8 @@ OPT_CROSS_BUILD=no
 # Whatever you do, the configuration is fixated and updates will force
 # rebuilds.  And far below in this file there is $OPT_FORCED_STACKPROT,
 # too, which can be used to cause injection of stack protectors.
+# (There you could also find OPT_ASAN_ADDRESS and OPT_ASAN_MEMORY
+# (Remember, file is parsed from top to bottom, sorry).)
 OPT_AUTOCC=yes
 
 # It is possible to compile S-nail as a "single-source", meaning that
@@ -352,10 +354,37 @@ OPT_DEVEL=no
 # We use the crypto libraries' MD5 implementation if possible, unless..
 OPT_NOEXTMD5=no
 
+# With $OPT_AUTOCC we can make use of the ASan AddressSanitizer and ASan
+# MemorySanitizer of Google
+# (https://github.com/google/sanitizers/wiki/AddressSanitizer).
+# These are definetely only useful for debugging.
+# Also, external libraries are often problematic (e.g., ncursesw), and
+# ASAN_MEMORY of the tried clang 4.0.0 (4.0.0-2 of ArchLinux) was faulty.
+# Can be "require"d.
+OPT_ASAN_ADDRESS=no
+OPT_ASAN_MEMORY=no
+
+# With $OPT_AUTOCC we will use stack protector guards shall the
+# detected compiler support them; this goes in line with our own (heap)
+# memory canaries and will detect buffer overflows.  It is usually only
+# useful during development, i.e., in a debug environment that tests all
+# aspects of a program.  But today it is often used even in shipout code.
+OPT_FORCED_STACKPROT=`\
+   if feat_yes DEVEL || feat_yes DEBUG; then \
+      echo yes;\
+   else \
+      echo no;\
+   fi`
+
 # If $OPT_DEBUG is true we'll use a simple memory wrapper with
 # canaries.  This interferes with memory debuggers like valgrind(1) or
 # the LLVM -fsanitize stuff.  Enable this to not use our wrapper.
-OPT_NOMEMDBG=no
+OPT_NOMEMDBG=`\
+   if feat_yes ASAN_MEMORY || feat_yes ASAN_ADDRESS; then \
+      echo yes;\
+   else \
+      echo no;\
+   fi`
 
 # Our functions are instrumented with Not-Yet-Dead chirps, which print
 # a function call trace when the program crashes.  Whereas NYD will be
@@ -364,17 +393,5 @@ OPT_NOMEMDBG=no
 # request.
 # TODO Separation in between NYD and NYD2 not yet fully done.
 OPT_NYD2=no
-
-# With $OPT_AUTOCC we will use stack protector guards shall the
-# detected compiler support them; this goes in line with our own (heap)
-# memory canaries and will detect buffer overflows.  It is usually only
-# useful during development, i.e., in a debug environment that tests all
-# aspects of a program.
-OPT_FORCED_STACKPROT=`\
-   if feat_yes DEVEL || feat_yes DEBUG; then \
-      echo yes;\
-   else \
-      echo no;\
-   fi`
 
 # vim:set tw=72: s-it-mode
