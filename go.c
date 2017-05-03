@@ -883,25 +883,32 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    gap = NULL;
    arglist =
    arglist_base = n_autorec_alloc(sizeof(*arglist_base) * n_MAXARGC);
-   line = gecp->gec_line; /* XXX don't change original (buffer pointer) */
+   line = gecp->gec_line; /* TODO const-ify original (buffer pointer)! */
    assert(line.s[line.l] == '\0');
    gecp->gec_add_history = FAL0;
 
    /* Aliases that refer to shell commands or macro expansion restart */
 jrestart:
 
-   /* Strip the white space away from end and beginning of command */
+   /* Strip the white space away from end and beginning of command.
+    * XXX Ideally this will be m_string_trim() */
    if(line.l > 0){
       size_t i;
 
       i = line.l;
       for(cp = &line.s[i -1]; spacechar(*cp); --cp)
-         --i;
-      line.l = i;
+         if(--i == 0)
+            break;
+      line.s[line.l = i] = '\0';
    }
-   for(cp = line.s; spacechar(*cp); ++cp)
-      ;
-   line.l -= PTR2SIZE(cp - line.s);
+   if(line.l > 0){
+      for(cp = line.s; spacechar(*cp); ++cp)
+         ;
+      line.l -= PTR2SIZE(cp - line.s);
+      line.s = cp;
+   }
+   if(line.l == 0)
+      goto jempty;
 
    /* Ignore null commands (comments) */
    if(*cp == '#')
@@ -951,6 +958,7 @@ jrestart:
     * table; while n_PS_SOURCING, however, we ignore blank lines to eliminate
     * confusion; act just the same for aliases */
    if(*word == '\0'){
+jempty:
       if((n_pstate & n_PS_ROBOT) || !(n_psonce & n_PSO_INTERACTIVE) ||
             gap != NULL)
          goto jret0;
