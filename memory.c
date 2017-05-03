@@ -251,7 +251,7 @@ struct a_memory_ars_buffer{
 };
 n_CTA(sizeof(struct a_memory_ars_buffer) == n_MEMORY_AUTOREC_SIZE,
    "Resulting structure size is not the expected one");
-#ifdef HAVE_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
 n_CTA(a_MEMORY_ARS_MAX + a_MEMORY_HOPE_SIZE + sizeof(struct a_memory_chunk)
       < n_SIZEOF_FIELD(struct a_memory_ars_buffer, mab_buf),
    "Memory layout of auto-reclaimed storage does not work out that way");
@@ -1133,7 +1133,7 @@ n_lofi_snap_unroll(void *cookie){ /* TODO optimise */
       p.p_alc = macp->mac_lofi_top;
       a_memory_lofi_free(macp, p.p_vp);
       ++p.p_alc;
-#ifdef HAVE_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
       a_MEMORY_HOPE_INC(p.p_ui8p);
 #endif
       if(p.p_vp == cookie)
