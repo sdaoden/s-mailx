@@ -924,25 +924,25 @@ a_sendout_file_a_pipe(struct name *names, FILE *fo, bool_t *senderror){
             fout = n_stdout;
          else{
             int xerr;
+            enum n_fopen_state fs;
 
             xerr = TRU1;
-            if((fout = n_fopen_any(fname, "a+", NULL)) == NULL){
-               if((fout = n_fopen_any(fname, "wx", NULL)) == NULL){
-                  xerr = n_err_no;
+            if((fout = n_fopen_any(fname, "a+", &fs)) == NULL){
+               xerr = n_err_no;
 jefile:
-                  n_err(_("Writing message to %s failed: %s\n"),
-                     fnameq, n_err_to_doc(xerr));
-                  goto jerror;
-               }
-               xerr = FAL0;
+               n_err(_("Writing message to %s failed: %s\n"),
+                  fnameq, n_err_to_doc(xerr));
+               goto jerror;
             }
 
-            /* TODO RETURN check */
-            n_file_lock(fileno(fout), FLT_WRITE, 0,0, UIZ_MAX);
+            if((fs & (n_PROTO_MASK | n_FOPEN_STATE_EXISTS)) ==
+                  (n_PROTO_FILE | n_FOPEN_STATE_EXISTS)){
+               n_file_lock(fileno(fout), FLT_WRITE, 0,0, UIZ_MAX);
 
-            if(xerr && (xerr = n_folder_mbox_prepare_append(fout, NULL)
+               if((xerr = n_folder_mbox_prepare_append(fout, NULL)
                      ) != n_ERR_NONE)
-               goto jefile;
+                  goto jefile;
+            }
          }
 
          rewind(fp);
@@ -1049,37 +1049,35 @@ static bool_t
 a_sendout__savemail(char const *name, FILE *fp, bool_t resend){
    FILE *fo;
    size_t bufsize, buflen, cnt;
+   enum n_fopen_state fs;
    bool_t rv, emptyline;
    char *buf;
    NYD_ENTER;
 
    buf = smalloc(bufsize = LINESIZE);
-   rv = emptyline = FAL0;
+   rv = FAL0;
 
-   if((fo = n_fopen_any(name, "a+", NULL)) == NULL){
-      if((fo = n_fopen_any(name, "wx", NULL)) == NULL){
-         n_perr(name, 0);
-         goto j_leave;
-      }
-      emptyline = TRU1;
+   if((fo = n_fopen_any(name, "a+", &fs)) == NULL){
+      n_perr(name, 0);
+      goto j_leave;
    }
 
-   /* TODO RETURN check, but be aware of protocols: v15: Mailbox->lock()! */
-   n_file_lock(fileno(fo), FLT_WRITE, 0,0, UIZ_MAX);
-
-   rv = TRU1;
-
-   if(!emptyline){
+   if((fs & (n_PROTO_MASK | n_FOPEN_STATE_EXISTS)) ==
+         (n_PROTO_FILE | n_FOPEN_STATE_EXISTS)){
       int xerr;
+
+      /* TODO RETURN check, but be aware of protocols: v15: Mailbox->lock()!
+       * TODO BETTER yet: should be returned in lock state already! */
+      n_file_lock(fileno(fo), FLT_WRITE, 0,0, UIZ_MAX);
 
       if((xerr = n_folder_mbox_prepare_append(fo, NULL)) != n_ERR_NONE){
          n_perr(name, xerr);
-         rv = FAL0;
          goto jleave;
       }
    }
 
    fflush_rewind(fp);
+   rv = TRU1;
 
    fprintf(fo, "From %s %s", ok_vlook(LOGNAME), time_current.tc_ctime);
    for(emptyline = FAL0, buflen = 0, cnt = fsize(fp);

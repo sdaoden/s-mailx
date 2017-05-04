@@ -57,7 +57,6 @@ save1(char *str, int domark, char const *cmd, struct n_ignore const *itp,
    int convert, int sender_record, int domove)
 {
    ui64_t mstats[1], tstats[2];
-   struct stat st;
    enum n_fopen_state fs;
    int last, *msgvec, *ip;
    struct message *mp;
@@ -140,36 +139,26 @@ save1(char *str, int domark, char const *cmd, struct n_ignore const *itp,
       goto jleave;
 
    /* TODO all this should be URL and Mailbox-"VFS" based, and then finally
-    * TODO end up as Mailbox()->append() */
-   obuf = (convert == SEND_TOFILE)
-         ? (fs = n_PROTO_FILE, Fopen(file, "a+"))
-         : n_fopen_any(file, "a+", &fs);
-   if(obuf == NULL){
-      obuf = (convert == SEND_TOFILE) ? Fopen(file, "wx")
-            : n_fopen_any(file, "wx", &fs);
-      if(obuf == NULL){
-         n_perr(file, 0);
-         goto jleave;
-      }
-      isflag = TRU1;
-   }else{
-      if(convert == SEND_TOFILE)
-         fs |= n_FOPEN_STATE_EXISTS;
-      isflag = FAL0;
+    * TODO end up as Mailbox()->append().  Unless SEND_TOFILE, of course.
+    * TODO However, URL parse because that file:// prefix check is a HACK! */
+   if(convert == SEND_TOFILE && !is_prefix("file://", file))
+      file = savecat("file://", file);
+   if((obuf = n_fopen_any(file, "a+", &fs)) == NULL){
+      n_perr(file, 0);
+      goto jleave;
    }
 
    disp = (fs & n_FOPEN_STATE_EXISTS) ? _("[Appended]") : _("[New file]");
 
-   if((fs & n_PROTO_MASK) == n_PROTO_FILE &&
-         !fstat(fileno(obuf), &st) && S_ISREG(st.st_mode)){
+   if((fs & (n_PROTO_MASK | n_FOPEN_STATE_EXISTS)) ==
+         (n_PROTO_FILE | n_FOPEN_STATE_EXISTS)){
       int xerr;
 
       /* TODO RETURN check, but be aware of protocols: v15: Mailbox->lock()!
        * TODO BETTER yet: should be returned in lock state already! */
       n_file_lock(fileno(obuf), FLT_WRITE, 0,0, UIZ_MAX);
 
-      if((fs & n_FOPEN_STATE_EXISTS) &&
-            (xerr = n_folder_mbox_prepare_append(obuf, &st)) != n_ERR_NONE){
+      if((xerr = n_folder_mbox_prepare_append(obuf, NULL)) != n_ERR_NONE){
          n_perr(file, xerr);
          goto jleave;
       }

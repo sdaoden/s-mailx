@@ -115,7 +115,7 @@ a_popen_scan_mode(char const *mode, int *omode){
       {"w", O_WRONLY | O_CREAT | n_O_NOFOLLOW | O_TRUNC},
       {"wx", O_WRONLY | O_CREAT | O_EXCL},
       {"a", O_WRONLY | O_APPEND | O_CREAT | n_O_NOFOLLOW},
-      {"a+", O_RDWR | O_APPEND},
+      {"a+", O_RDWR | O_APPEND | O_CREAT | n_O_NOFOLLOW},
       {"r+", O_RDWR},
       {"w+", O_RDWR | O_CREAT | O_EXCL}
    };
