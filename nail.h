@@ -840,6 +840,12 @@ enum n_file_lock_type{
    FLT_WRITE
 };
 
+enum n_fopen_state{ /* TODO add n_fopen_mode, too */
+   /* First n__PROTO_SHIFT bits are enum protocol!  n_MCTA()d below */
+   n_FOPEN_STATE_NONE = 0,
+   n_FOPEN_STATE_EXISTS = 1u<<5
+};
+
 enum n_go_input_flags{
    n_GO_INPUT_NONE,
    n_GO_INPUT_CTX_BASE = 0,            /* Generic shared base: don't use! */
@@ -1089,11 +1095,20 @@ enum prompt_exp {
 };
 
 enum protocol {
-   PROTO_FILE,       /* refers to a local file */
-   PROTO_POP3,       /* is a pop3 server string */
-   PROTO_MAILDIR,    /* refers to a maildir folder */
-   PROTO_UNKNOWN     /* unknown protocol */
+   n_PROTO_NONE,
+   n_PROTO_FILE,        /* refers to a local file */
+PROTO_FILE = n_PROTO_FILE,
+   n_PROTO_POP3,        /* is a pop3 server string */
+PROTO_POP3 = n_PROTO_POP3,
+   n_PROTO_MAILDIR,     /* refers to a maildir folder */
+PROTO_MAILDIR = n_PROTO_MAILDIR,
+   n_PROTO_UNKNOWN,     /* unknown protocol */
+PROTO_UNKNOWN = n_PROTO_UNKNOWN,
+
+   n__PROTO_SHIFT = n_PROTO_UNKNOWN,
+   n_PROTO_MASK = (1u << n__PROTO_SHIFT) - 1
 };
+n_MCTA(n__PROTO_SHIFT == 4, "enum n_fopen_state shift value must be adjusted!")
 
 enum sendaction {
    SEND_MBOX,        /* no conversion to perform */

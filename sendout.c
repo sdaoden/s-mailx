@@ -926,8 +926,8 @@ a_sendout_file_a_pipe(struct name *names, FILE *fo, bool_t *senderror){
             int xerr;
 
             xerr = TRU1;
-            if((fout = Zopen(fname, "a+")) == NULL){
-               if((fout = Zopen(fname, "wx")) == NULL){
+            if((fout = n_fopen_any(fname, "a+", NULL)) == NULL){
+               if((fout = n_fopen_any(fname, "wx", NULL)) == NULL){
                   xerr = n_err_no;
 jefile:
                   n_err(_("Writing message to %s failed: %s\n"),
@@ -1056,8 +1056,8 @@ a_sendout__savemail(char const *name, FILE *fp, bool_t resend){
    buf = smalloc(bufsize = LINESIZE);
    rv = emptyline = FAL0;
 
-   if((fo = Zopen(name, "a+")) == NULL){
-      if((fo = Zopen(name, "wx")) == NULL){
+   if((fo = n_fopen_any(name, "a+", NULL)) == NULL){
+      if((fo = n_fopen_any(name, "wx", NULL)) == NULL){
          n_perr(name, 0);
          goto j_leave;
       }

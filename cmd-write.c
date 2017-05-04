@@ -58,13 +58,20 @@ save1(char *str, int domark, char const *cmd, struct n_ignore const *itp,
 {
    ui64_t mstats[1], tstats[2];
    struct stat st;
-   int last = 0, *msgvec, *ip;
+   enum n_fopen_state fs;
+   int last, *msgvec, *ip;
    struct message *mp;
-   char *file = NULL, *cp, *cq;
-   char const *disp = n_empty, *shell = NULL;
+   char *file, *cp, *cq;
+   char const *disp, *shell;
    FILE *obuf;
-   bool_t success = FAL0, isflag;
+   bool_t success, isflag;
    NYD_ENTER;
+
+   success = FAL0;
+   last = 0;
+   disp = n_empty;
+   shell = NULL;
+   file = NULL;
 
    msgvec = salloc((msgCount + 2) * sizeof *msgvec);
    if (sender_record) {
@@ -133,30 +140,35 @@ save1(char *str, int domark, char const *cmd, struct n_ignore const *itp,
       goto jleave;
 
    /* TODO all this should be URL and Mailbox-"VFS" based, and then finally
-    * TODO end up as Mailbox()->append().  For now we have to deal with the
-    * TODO fact that we simply do not know what Zopen() gives us back, and
-    * TODO therefore we cannot truly decide how to react on errors */
-   obuf = ((convert == SEND_TOFILE) ? Fopen(file, "a+") : Zopen(file, "a+"));
-   if (obuf == NULL) {
-      obuf = ((convert == SEND_TOFILE) ? Fopen(file, "wx") : Zopen(file, "wx"));
-      if (obuf == NULL) {
+    * TODO end up as Mailbox()->append() */
+   obuf = (convert == SEND_TOFILE)
+         ? (fs = n_PROTO_FILE, Fopen(file, "a+"))
+         : n_fopen_any(file, "a+", &fs);
+   if(obuf == NULL){
+      obuf = (convert == SEND_TOFILE) ? Fopen(file, "wx")
+            : n_fopen_any(file, "wx", &fs);
+      if(obuf == NULL){
          n_perr(file, 0);
          goto jleave;
       }
       isflag = TRU1;
-      disp = _("[New file]");
-   } else {
+   }else{
+      if(convert == SEND_TOFILE)
+         fs |= n_FOPEN_STATE_EXISTS;
       isflag = FAL0;
-      disp = _("[Appended]");
    }
 
-   if (!fstat(fileno(obuf), &st) && S_ISREG(st.st_mode)){
+   disp = (fs & n_FOPEN_STATE_EXISTS) ? _("[Appended]") : _("[New file]");
+
+   if((fs & n_PROTO_MASK) == n_PROTO_FILE &&
+         !fstat(fileno(obuf), &st) && S_ISREG(st.st_mode)){
       int xerr;
 
-      /* TODO RETURN check, but be aware of protocols: v15: Mailbox->lock()! */
+      /* TODO RETURN check, but be aware of protocols: v15: Mailbox->lock()!
+       * TODO BETTER yet: should be returned in lock state already! */
       n_file_lock(fileno(obuf), FLT_WRITE, 0,0, UIZ_MAX);
 
-      if(!isflag &&
+      if((fs & n_FOPEN_STATE_EXISTS) &&
             (xerr = n_folder_mbox_prepare_append(obuf, &st)) != n_ERR_NONE){
          n_perr(file, xerr);
          goto jleave;

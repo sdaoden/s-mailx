@@ -198,7 +198,7 @@ edstop(void) /* TODO oh my god */
          n_perr(_("tmpfile"), 0);
          goto jleave;
       }
-      if ((ibuf = Zopen(mailname, "r")) == NULL) {
+      if ((ibuf = n_fopen_any(mailname, "r", NULL)) == NULL) {
          n_perr(mailname, 0);
          goto jleave;
       }
@@ -216,7 +216,7 @@ edstop(void) /* TODO oh my god */
    fprintf(n_stdout, _("%s "), n_shexp_quote_cp(displayname, FAL0));
    fflush(n_stdout);
 
-   if ((obuf = Zopen(mailname, "r+")) == NULL) {
+   if ((obuf = n_fopen_any(mailname, "r+", NULL)) == NULL) {
       int e = n_err_no;
       n_perr(n_shexp_quote_cp(mailname, FAL0), e);
       goto jleave;
@@ -348,7 +348,7 @@ quit(bool_t hold_sigs_on)
     * Delete all untouched messages to keep them out of mbox.
     * If all the messages are to be preserved, just exit with
     * a message */
-   fbuf = Zopen(mailname, "r+");
+   fbuf = n_fopen_any(mailname, "r+", NULL);
    if (fbuf == NULL) {
       if (n_err_no != n_ERR_NOENT)
 jnewmail:
@@ -524,7 +524,7 @@ makembox(void) /* TODO oh my god */
          goto jleave;
       }
 
-      if ((abuf = Zopen(mbox, "r")) != NULL) {
+      if ((abuf = n_fopen_any(mbox, "r", NULL)) != NULL) {
          while ((c = getc(abuf)) != EOF)
             putc(c, obuf);
          Fclose(abuf);
@@ -540,13 +540,13 @@ makembox(void) /* TODO oh my god */
       if ((c = open(mbox, (O_WRONLY | O_CREAT | n_O_NOFOLLOW | O_TRUNC), 0666)
             ) != -1)
          close(c);
-      if ((obuf = Zopen(mbox, "r+")) == NULL) {
+      if ((obuf = n_fopen_any(mbox, "r+", NULL)) == NULL) {
          n_perr(mbox, 0);
          Fclose(ibuf);
          goto jleave;
       }
    } else {
-      if ((obuf = Zopen(mbox, "a")) == NULL) {
+      if ((obuf = n_fopen_any(mbox, "a", NULL)) == NULL) {
          n_perr(mbox, 0);
          goto jleave;
       }

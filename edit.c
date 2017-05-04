@@ -213,7 +213,7 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
    }
 
    if ((modtime != statb.st_mtime || modsize != statb.st_size) &&
-         (nf = Fopen(tempEdit, "a+")) == NULL)
+         (nf = Fopen(tempEdit, "r+")) == NULL)
       n_perr(tempEdit, 0);
 jleave:
    if (tempEdit != NULL) { /* TODO i'd rather do more signal handling */

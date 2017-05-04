@@ -82,7 +82,7 @@ static struct termios a_popen_tios;
 static sighandler_type a_popen_otstp, a_popen_ottin, a_popen_ottou;
 static volatile int a_popen_hadsig;
 
-static int           scan_mode(char const *mode, int *omode);
+static int a_popen_scan_mode(char const *mode, int *omode);
 static void          register_file(FILE *fp, int omode, int pid,
                         int flags, char const *realfile, long offset,
                         char const *save_cmd, struct termios *tiosp,
@@ -106,11 +106,10 @@ static struct child *a_popen_child_find(int pid, bool_t create);
 static void a_popen_child_del(struct child *cp);
 
 static int
-scan_mode(char const *mode, int *omode)
-{
-   static struct {
-      char const  mode[4];
-      int         omode;
+a_popen_scan_mode(char const *mode, int *omode){
+   static struct{
+      char const mode[4];
+      int omode;
    } const maps[] = {
       {"r", O_RDONLY},
       {"w", O_WRONLY | O_CREAT | n_O_NOFOLLOW | O_TRUNC},
@@ -120,18 +119,17 @@ scan_mode(char const *mode, int *omode)
       {"r+", O_RDWR},
       {"w+", O_RDWR | O_CREAT | O_EXCL}
    };
-
    int i;
    NYD2_ENTER;
 
-   for (i = 0; UICMP(z, i, <, n_NELEM(maps)); ++i)
-      if (!strcmp(maps[i].mode, mode)) {
+   for(i = 0; UICMP(z, i, <, n_NELEM(maps)); ++i)
+      if(!strcmp(maps[i].mode, mode)){
          *omode = maps[i].omode;
          i = 0;
          goto jleave;
       }
 
-   n_alert(_("Internal error: bad stdio open mode %s"), mode);
+   DBG( n_alert(_("Internal error: bad stdio open mode %s"), mode); )
    n_err_no = n_ERR_INVAL;
    *omode = 0; /* (silence CC) */
    i = -1;
@@ -468,7 +466,7 @@ safe_fopen(char const *file, char const *oflags, int *xflags)
    FILE *fp = NULL;
    NYD2_ENTER; /* (only for Fopen() and once in go.c) */
 
-   if (scan_mode(oflags, &osflags) < 0)
+   if (a_popen_scan_mode(oflags, &osflags) < 0)
       goto jleave;
    osflags |= _O_CLOEXEC;
    if (xflags != NULL)
@@ -504,7 +502,7 @@ Fdopen(int fd, char const *oflags, bool_t nocloexec)
    int osflags;
    NYD_ENTER;
 
-   scan_mode(oflags, &osflags);
+   a_popen_scan_mode(oflags, &osflags);
    if (!nocloexec)
       osflags |= _O_CLOEXEC; /* Ensured to be set by caller as documented! */
 
@@ -529,34 +527,50 @@ Fclose(FILE *fp)
 }
 
 FL FILE *
-Zopen(char const *file, char const *oflags) /* FIXME MESS! */
-{
-   FILE *rv = NULL;
-   char const *cload = NULL, *csave = NULL;
-   int flags, osflags, mode, infd;
-   enum oflags rof;
+n_fopen_any(char const *file, char const *oflags, /* TODO should take flags */
+      enum n_fopen_state *fs_or_null){ /* TODO as bits, return state */
+   /* TODO Support file locking upon open time */
    long offset;
    enum protocol p;
+   enum oflags rof;
+   int osflags, flags, omode, infd;
+   char const *cload, *csave;
+   enum n_fopen_state fs;
+   FILE *rv;
    NYD_ENTER;
 
-   if (scan_mode(oflags, &osflags) < 0)
+   rv = NULL;
+   fs = n_FOPEN_STATE_NONE;
+   cload = csave = NULL;
+
+   if(a_popen_scan_mode(oflags, &osflags) < 0)
       goto jleave;
 
    flags = 0;
    rof = OF_RDWR | OF_UNLINK;
-   if (osflags & O_APPEND)
+   if(osflags & O_APPEND)
       rof |= OF_APPEND;
-   mode = (osflags == O_RDONLY) ? R_OK : R_OK | W_OK;
+   omode = (osflags == O_RDONLY) ? R_OK : R_OK | W_OK;
 
    /* We don't want to find mbox.bz2 when doing "copy * mbox", but only for
     * "file mbox", so don't try hooks when writing */
-   p = which_protocol(file, TRU1, ((mode & W_OK) == 0), &file);
-   if (p == PROTO_MAILDIR) {
+   p = which_protocol(file, TRU1, ((omode & W_OK) == 0), &file);
+   fs = (enum n_fopen_state)p;
+   switch(p){
+   default:
+      goto jleave;
+   case n_PROTO_MAILDIR:
+      if(fs_or_null != NULL && !access(file, F_OK))
+         fs |= n_FOPEN_STATE_EXISTS;
       flags |= FP_MAILDIR;
       osflags = O_RDWR | O_APPEND | O_CREAT | n_O_NOFOLLOW;
       infd = -1;
-   } else {
+      break;
+   case n_PROTO_FILE:{
       struct n_file_type ft;
+
+      if(!(osflags & O_EXCL) && fs_or_null != NULL && !access(file, F_OK))
+         fs |= n_FOPEN_STATE_EXISTS;
 
       if(n_filetype_exists(&ft, file)){
          flags |= FP_HOOK;
@@ -565,50 +579,54 @@ Zopen(char const *file, char const *oflags) /* FIXME MESS! */
          /* Cause truncation for compressor/hook output files */
          osflags &= ~O_APPEND;
          rof &= ~OF_APPEND;
+         if((infd = open(file, (omode & W_OK ? O_RDWR : O_RDONLY))) == -1){
+            if(!(osflags & O_CREAT) || n_err_no != n_ERR_NOENT)
+               goto jleave;
+         }
+         fs |= n_FOPEN_STATE_EXISTS;
       }else{
          /*flags |= FP_RAW;*/
          rv = Fopen(file, oflags);
+         if((osflags & O_EXCL) && rv == NULL)
+            fs |= n_FOPEN_STATE_EXISTS;
          goto jleave;
       }
-
-      if ((infd = open(file, (mode & W_OK) ? O_RDWR : O_RDONLY)) == -1 &&
-            (!(osflags & O_CREAT) || n_err_no != n_ERR_NOENT))
-         goto jleave;
+   }  break;
    }
 
    /* Note rv is not yet register_file()d, fclose() it in error path! */
-   if ((rv = Ftmp(NULL, "zopen", rof)) == NULL) {
+   if((rv = Ftmp(NULL, "fopenany", rof)) == NULL){
       n_perr(_("tmpfile"), 0);
       goto jerr;
    }
 
-   if (flags & FP_MAILDIR)
+   if(flags & FP_MAILDIR)
       ;
-   else if (infd >= 0) {
-      if (a_popen_file_load(flags, infd, fileno(rv), cload) < 0) {
+   else if(infd >= 0){
+      if(a_popen_file_load(flags, infd, fileno(rv), cload) < 0){
 jerr:
-         if (rv != NULL)
+         if(rv != NULL)
             fclose(rv);
          rv = NULL;
-         if (infd >= 0)
+         if(infd >= 0)
             close(infd);
          goto jleave;
       }
-   } else {
-      if ((infd = creat(file, 0666)) == -1) {
+   }else{
+      if((infd = creat(file, 0666)) == -1){
          fclose(rv);
          rv = NULL;
          goto jleave;
       }
    }
 
-   if (infd >= 0)
+   if(infd >= 0)
       close(infd);
    fflush(rv);
 
-   if (!(osflags & O_APPEND))
+   if(!(osflags & O_APPEND))
       rewind(rv);
-   if ((offset = ftell(rv)) == -1) {
+   if((offset = ftell(rv)) == -1){
       Fclose(rv);
       rv = NULL;
       goto jleave;
@@ -616,6 +634,8 @@ jerr:
 
    register_file(rv, osflags, 0, flags, file, offset, csave, NULL,NULL);
 jleave:
+   if(fs_or_null != NULL)
+      *fs_or_null = fs;
    NYD_LEAVE;
    return rv;
 }
@@ -715,7 +735,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
       char const *osflags = (oflags & OF_RDWR ? "w+" : "w");
       int osflagbits;
 
-      scan_mode(osflags, &osflagbits); /* TODO osoflags&xy ?!!? */
+      a_popen_scan_mode(osflags, &osflagbits); /* TODO osoflags&xy ?!!? */
       if ((fp = fdopen(fd, osflags)) != NULL)
          register_file(fp, osflagbits | _O_CLOEXEC, 0,
             (FP_RAW | (oflags & OF_REGISTER_UNLINK ? FP_UNLINK : 0)),

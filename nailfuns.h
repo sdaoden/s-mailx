@@ -1665,8 +1665,11 @@ FL FILE *      Fdopen(int fd, char const *oflags, bool_t nocloexec);
 
 FL int         Fclose(FILE *fp);
 
-/* Open file according to oflags (see popen.c).  Handles compressed files */
-FL FILE *      Zopen(char const *file, char const *oflags);
+/* TODO: Should be Mailbox::create_from_url(URL::from_string(DATA))!
+ * Open file according to oflags (see popen.c).  Handles compressed files,
+ * maildir etc.  If ft_or_null is given it will be filled accordingly */
+FL FILE * n_fopen_any(char const *file, char const *oflags,
+            enum n_fopen_state *fs_or_null);
 
 /* Create a temporary file in *TMPDIR*, use namehint for its name (prefix
  * unless OF_SUFFIX is set, in which case namehint is an extension that MUST be

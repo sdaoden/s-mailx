@@ -285,7 +285,7 @@ jlogname:
       goto jem1;
    }
 
-   if ((ibuf = Zopen(savecat("file://", name), "r")) == NULL) {
+   if ((ibuf = n_fopen_any(savecat("file://", name), "r", NULL)) == NULL) {
       int e = n_err_no;
 
       if ((fm & FEDIT_SYSBOX) && e == n_ERR_NOENT) {
@@ -349,7 +349,7 @@ jlogname:
       name = mailname;
       Fclose(ibuf);
 
-      if ((ibuf = Zopen(name, "r")) == NULL ||
+      if ((ibuf = n_fopen_any(name, "r", NULL)) == NULL ||
             fstat(fileno(ibuf), &stb) == -1 ||
             (!S_ISREG(stb.st_mode) && !isdevnull)) {
          n_perr(name, 0);

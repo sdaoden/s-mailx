@@ -2441,6 +2441,7 @@ substdate(struct message *m)
    /* Determine the date to print in faked 'From ' lines. This is traditionally
     * the date the message was written to the mail file. Try to determine this
     * using RFC message header fields, or fall back to current time */
+   m->m_time = 0;
    if ((cp = hfield1("received", m)) != NULL) {
       while ((cp = nexttoken(cp)) != NULL && *cp != ';') {
          do
