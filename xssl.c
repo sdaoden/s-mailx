@@ -894,7 +894,9 @@ smime_verify(struct message *m, int n, n_XSSL_STACKOF(X509) *chain,
 
    rv = 1;
    fp = NULL;
-   fb = NULL;
+   fb = pb = NULL;
+   pkcs7 = NULL;
+   certs = NULL;
    a_xssl_state &= ~a_XSSL_S_VERIFY_ERROR;
    a_xssl_msgno = (size_t)n;
 
@@ -999,8 +1001,14 @@ jfound:
    if (!rv)
       fprintf(n_stdout, _("Message %d was verified successfully\n"), n);
 jleave:
+   if (certs != NULL)
+      sk_X509_free(certs);
+   if (pb != NULL)
+      BIO_free(pb);
    if (fb != NULL)
       BIO_free(fb);
+   if (pkcs7 != NULL)
+      PKCS7_free(pkcs7);
    if (fp != NULL)
       Fclose(fp);
    NYD_LEAVE;
@@ -1542,7 +1550,6 @@ FL int
 c_verify(void *vp)
 {
    int *msgvec = vp, *ip, ec = 0, rv = 1;
-   n_XSSL_STACKOF(X509) *chain = NULL;
    X509_STORE *store = NULL;
    char *ca_dir, *ca_file;
    NYD_ENTER;
@@ -1591,7 +1598,7 @@ c_verify(void *vp)
    for (ip = msgvec; *ip != 0; ++ip) {
       struct message *mp = message + *ip - 1;
       setdot(mp);
-      ec |= smime_verify(mp, *ip, chain, store);
+      ec |= smime_verify(mp, *ip, NULL, store);
       srelax();
    }
    srelax_rele();
@@ -1793,6 +1800,7 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
       bail = TRU1;
       /* goto jerr2 */
    }
+   PKCS7_free(pkcs7);
 
 jerr2:
    if (bb != NULL)
@@ -1817,118 +1825,114 @@ FL struct message *
 smime_decrypt(struct message *m, char const *to, char const *cc,
    bool_t signcall)
 {
-   struct message *rv;
-   FILE *fp, *bp, *hp, *op;
-   X509 *cert;
-   PKCS7 *pkcs7;
-   EVP_PKEY *pkey;
-   BIO *bb, *pb, *ob;
    char const *myaddr;
    long size;
+   struct message *rv;
+   FILE *bp, *hp, *op;
+   PKCS7 *pkcs7;
+   BIO *ob, *bb, *pb;
+   X509 *cert;
+   EVP_PKEY *pkey;
    FILE *yp;
    NYD_ENTER;
 
-   rv = NULL;
-   cert = NULL;
    pkey = NULL;
+   cert = NULL;
+   ob = bb = pb = NULL;
+   pkcs7 = NULL;
+   bp = hp = op = NULL;
+   rv = NULL;
    size = m->m_size;
 
-   if ((yp = setinput(&mb, m, NEED_BODY)) == NULL)
+   if((yp = setinput(&mb, m, NEED_BODY)) == NULL)
       goto jleave;
 
    a_xssl_init();
 
-   if ((fp = smime_sign_cert(to, cc, 0, &myaddr)) != NULL) {
-      pkey = PEM_read_PrivateKey(fp, NULL, &ssl_password_cb,
+   if((op = smime_sign_cert(to, cc, 0, &myaddr)) != NULL){
+      pkey = PEM_read_PrivateKey(op, NULL, &ssl_password_cb,
             savecat(myaddr, ".smime-cert-key"));
-      if (pkey == NULL) {
+      if(pkey == NULL){
          ssl_gen_err(_("Error reading private key"));
-         Fclose(fp);
          goto jleave;
       }
-      rewind(fp);
 
-      if ((cert = PEM_read_X509(fp, NULL, &ssl_password_cb,
-            savecat(myaddr, ".smime-cert-cert"))) == NULL) {
+      rewind(op);
+      if((cert = PEM_read_X509(op, NULL, &ssl_password_cb,
+            savecat(myaddr, ".smime-cert-cert"))) == NULL){
          ssl_gen_err(_("Error reading decryption certificate"));
-         Fclose(fp);
-         EVP_PKEY_free(pkey);
          goto jleave;
       }
-      Fclose(fp);
-   }
 
-   if ((op = Ftmp(NULL, "smimedec", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
-         NULL) {
-      n_perr(_("tempfile"), 0);
-      goto j_ferr;
-   }
-
-   if (smime_split(yp, &hp, &bp, size, 1) == STOP)
-      goto jferr;
-
-   if ((ob = BIO_new_fp(op, BIO_NOCLOSE)) == NULL ||
-         (bb = BIO_new_fp(bp, BIO_NOCLOSE)) == NULL) {
-      ssl_gen_err(_("Error creating BIO decryption objects"));
-      goto jferr;
-   }
-   if ((pkcs7 = SMIME_read_PKCS7(bb, &pb)) == NULL) {
-      ssl_gen_err(_("Error reading PKCS#7 object"));
-jferr:
       Fclose(op);
-j_ferr:
-      if (cert)
-         X509_free(cert);
-      if (pkey)
-         EVP_PKEY_free(pkey);
+      op = NULL;
+   }
+
+   if((op = Ftmp(NULL, "smimedec", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+      n_perr(_("tempfile"), 0);
       goto jleave;
    }
 
-   if (PKCS7_type_is_signed(pkcs7)) {
-      if (signcall) {
+   if(smime_split(yp, &hp, &bp, size, 1) == STOP)
+      goto jleave;
+
+   if((ob = BIO_new_fp(op, BIO_NOCLOSE)) == NULL ||
+         (bb = BIO_new_fp(bp, BIO_NOCLOSE)) == NULL){
+      ssl_gen_err(_("Error creating BIO decryption objects"));
+      goto jleave;
+   }
+
+   if((pkcs7 = SMIME_read_PKCS7(bb, &pb)) == NULL){
+      ssl_gen_err(_("Error reading PKCS#7 object"));
+      goto jleave;
+   }
+
+   if(PKCS7_type_is_signed(pkcs7)){
+      if(signcall){
          setinput(&mb, m, NEED_BODY);
          rv = (struct message*)-1;
-         goto jerr2;
+         goto jleave;
       }
-      if (PKCS7_verify(pkcs7, NULL, NULL, NULL, ob,
+      if(PKCS7_verify(pkcs7, NULL, NULL, NULL, ob,
             PKCS7_NOVERIFY | PKCS7_NOSIGS) != 1)
          goto jerr;
       fseek(hp, 0L, SEEK_END);
       fprintf(hp, "X-Encryption-Cipher: none\n");
-      fflush(hp);
-      rewind(hp);
-   } else if (pkey == NULL) {
+      fflush_rewind(hp);
+   }else if(pkey == NULL){
       n_err(_("No appropriate private key found\n"));
-      goto jerr2;
-   } else if (cert == NULL) {
+      goto jleave;
+   }else if(cert == NULL){
       n_err(_("No appropriate certificate found\n"));
-      goto jerr2;
-   } else if (PKCS7_decrypt(pkcs7, pkey, cert, ob, 0) != 1) {
+      goto jleave;
+   }else if(PKCS7_decrypt(pkcs7, pkey, cert, ob, 0) != 1){
 jerr:
       ssl_gen_err(_("Error decrypting PKCS#7 object"));
-jerr2:
-      BIO_free(bb);
-      BIO_free(ob);
-      Fclose(op);
-      Fclose(bp);
-      Fclose(hp);
-      if (cert != NULL)
-         X509_free(cert);
-      if (pkey != NULL)
-         EVP_PKEY_free(pkey);
       goto jleave;
    }
-   BIO_free(bb);
-   BIO_free(ob);
-   if (cert)
-      X509_free(cert);
-   if (pkey)
-      EVP_PKEY_free(pkey);
    fflush_rewind(op);
    Fclose(bp);
+   bp = NULL;
 
    rv = smime_decrypt_assemble(m, hp, op);
+   hp = op = NULL; /* xxx closed by decrypt_assemble */
 jleave:
+   if(op != NULL)
+      Fclose(op);
+   if(hp != NULL)
+      Fclose(hp);
+   if(bp != NULL)
+      Fclose(bp);
+   if(bb != NULL)
+      BIO_free(bb);
+   if(ob != NULL)
+      BIO_free(ob);
+   if(pkcs7 != NULL)
+      PKCS7_free(pkcs7);
+   if(cert != NULL)
+      X509_free(cert);
+   if(pkey != NULL)
+      EVP_PKEY_free(pkey);
    NYD_LEAVE;
    return rv;
 }
@@ -1947,6 +1951,8 @@ smime_certsave(struct message *m, int n, FILE *op)
    X509 *cert;
    enum okay rv = STOP;
    NYD_ENTER;
+
+   pkcs7 = NULL;
 
    a_xssl_msgno = (size_t)n;
 jloop:
@@ -2019,6 +2025,8 @@ jloop:
    }
    rv = OKAY;
 jleave:
+   if(pkcs7 != NULL)
+      PKCS7_free(pkcs7);
    NYD_LEAVE;
    return rv;
 }

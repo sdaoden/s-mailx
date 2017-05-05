@@ -2052,11 +2052,31 @@ t_behave_smime() {
       -newkey rsa:1024 -keyout ./.tkey.pem -out ./.tcert.pem >/dev/null 2>&1
    ${cat} ./.tkey.pem ./.tcert.pem > ./.tpair.pem
 
+   # Sign/verify
    printf 'behave:s/mime:sign/verify: '
    echo bla | ${MAILX} ${ARGS} \
       -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -s 'S/MIME test' ./.VERIFY
+   if [ $? -eq 0 ]; then
+      printf 'ok\n'
+   else
+      printf 'failed\n'
+      ESTAT=1
+      t_epilog
+      return
+   fi
+
+   ${awk} '
+      BEGIN{ skip=0 }
+      /^Content-Description: /{ skip = 2; print; next }
+      /^$/{ if(skip) --skip }
+      { if(!skip) print }
+   ' \
+      < ./.VERIFY > "${MBOX}"
+   check behave:s/mime:sign/verify:checksum - "${MBOX}" '2900817158 648'
+
+   printf 'behave:s/mime:sign/verify:verify '
    printf 'verify\nx\n' |
    ${MAILX} ${ARGS} \
       -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
@@ -2071,6 +2091,7 @@ t_behave_smime() {
       t_epilog
       return
    fi
+
    printf 'behave:s/mime:sign/verify:disproof-1 '
    if openssl smime -verify -CAfile ./.tcert.pem \
          -in ./.VERIFY >/dev/null 2>&1; then
