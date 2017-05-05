@@ -911,25 +911,25 @@ jrestart:
       goto jempty;
 
    /* Ignore null commands (comments) */
-   if(*cp == '#')
+   if(*(cp = line.s) == '#')
       goto jret0;
 
    /* Handle ! differently to get the correct lexical conventions */
-   arglist[0] = cp;
    if(*cp == '!')
       ++cp;
    /* Isolate the actual command; since it may not necessarily be
     * separated from the arguments (as in `p1') we need to duplicate it to
     * be able to create a NUL terminated version.
     * We must be aware of several special one letter commands here */
-   else if((cp = a_go_isolate(cp)) == arglist[0] &&
+   else if((cp = a_go_isolate(cp)) == line.s &&
          (*cp == '|' || *cp == '~' || *cp == '?'))
       ++cp;
-   c = (int)PTR2SIZE(cp - arglist[0]);
+   c = (int)PTR2SIZE(cp - line.s);
    line.l -= c;
    word = UICMP(z, c, <, sizeof _wordbuf) ? _wordbuf : n_autorec_alloc(c +1);
-   memcpy(word, arglist[0], c);
+   memcpy(word, arglist[0] = line.s, c);
    word[c] = '\0';
+   line.s = cp;
 
    /* No-expansion modifier? */
    if(!(flags & a_NOPREFIX) && *word == '\\'){
@@ -941,15 +941,12 @@ jrestart:
    /* It may be a modifier prefix */
    if(c == sizeof("ignerr") -1 && !asccasecmp(word, "ignerr")){
       flags |= a_NOPREFIX | a_IGNERR;
-      line.s = cp;
       goto jrestart;
    }else if(c == sizeof("wysh") -1 && !asccasecmp(word, "wysh")){
       flags |= a_NOPREFIX | a_WYSH;
-      line.s = cp;
       goto jrestart;
    }else if(c == sizeof("vput") -1 && !asccasecmp(word, "vput")){
       flags |= a_NOPREFIX | a_VPUT;
-      line.s = cp;
       goto jrestart;
    }
 
@@ -1083,24 +1080,24 @@ jexec:
 
    if(flags & a_VPUT){
       if(gcdp->gcd_caflags & n_CMD_ARG_V){
-         char const *xcp;
+         char const *emsg;
 
-         xcp = cp;
+         emsg = line.s; /* xxx Cannot pass &char* as char const**, so no cp */
          arglist[0] = n_shexp_parse_token_cp((n_SHEXP_PARSE_TRIMSPACE |
-               n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_META_KEEP), &xcp);
-         line.l -= PTR2SIZE(xcp - cp);
-         cp = n_UNCONST(xcp);
+               n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_META_KEEP), &emsg);
+         line.l -= PTR2SIZE(emsg - line.s);
+         line.s = cp = n_UNCONST(emsg);
          if(cp == NULL)
-            xcp = N_("could not parse input token");
+            emsg = N_("could not parse input token");
          else if(!n_shexp_is_valid_varname(arglist[0]))
-            xcp = N_("not a valid variable name");
+            emsg = N_("not a valid variable name");
          else if(!n_var_is_user_writable(arglist[0]))
-            xcp = N_("either not a user writable, or a boolean variable");
+            emsg = N_("either not a user writable, or a boolean variable");
          else
-            xcp = NULL;
-         if(xcp != NULL){
+            emsg = NULL;
+         if(emsg != NULL){
             n_err("`%s': vput: %s: %s\n",
-                  gcdp->gcd_name, V_(xcp), n_shexp_quote_cp(arglist[0], FAL0));
+                  gcdp->gcd_name, V_(emsg), n_shexp_quote_cp(arglist[0], FAL0));
             nerrn = n_ERR_NOTSUP;
             goto jleave;
          }
@@ -1119,7 +1116,7 @@ jexec:
       /* Message list defaulting to nearest forward legal message */
       if(n_msgvec == NULL)
          goto jemsglist;
-      if((c = getmsglist(cp, n_msgvec, gcdp->gcd_msgflag)) < 0){
+      if((c = getmsglist(line.s, n_msgvec, gcdp->gcd_msgflag)) < 0){
          nerrn = n_ERR_NOMSG;
          flags |= a_NO_ERRNO;
          break;
@@ -1143,7 +1140,7 @@ jemsglist:
       /* Message list with no defaults, but no error if none exist */
       if(n_msgvec == NULL)
          goto jemsglist;
-      if((c = getmsglist(cp, n_msgvec, gcdp->gcd_msgflag)) < 0){
+      if((c = getmsglist(line.s, n_msgvec, gcdp->gcd_msgflag)) < 0){
          nerrn = n_ERR_NOMSG;
          flags |= a_NO_ERRNO;
          break;
@@ -1153,13 +1150,13 @@ jemsglist:
 
    case n_CMD_ARG_TYPE_STRING:
       /* Just the straight string, old style, with leading blanks removed */
-      while(spacechar(*cp))
+      for(cp = line.s; spacechar(*cp);)
          ++cp;
       rv = (*gcdp->gcd_func)(cp);
       break;
    case n_CMD_ARG_TYPE_RAWDAT:
       /* Just the straight string, leading blanks removed, placed in argv[] */
-      while(spacechar(*cp))
+      for(cp = line.s; spacechar(*cp);)
          ++cp;
       *arglist++ = cp;
       *arglist = NULL;
@@ -1178,8 +1175,7 @@ jemsglist:
          }
       }
       if((c = getrawlist((c != 0), arglist,
-            n_MAXARGC - PTR2SIZE(arglist - arglist_base),
-            cp, line.l)) < 0){
+            n_MAXARGC - PTR2SIZE(arglist - arglist_base), line.s, line.l)) < 0){
          n_err(_("Invalid argument list\n"));
          flags |= a_NO_ERRNO;
          break;
