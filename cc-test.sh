@@ -1,5 +1,5 @@
 #!/bin/sh -
-#@ Usage: ./cc-test.sh [--check-only [s-nail-binary]]
+#@ Usage: ./cc-test.sh [--check-only] s-mailx-binary
 #@ TODO _All_ the tests should happen in a temporary subdir.
 # Public Domain
 
@@ -11,6 +11,9 @@ BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
 MAIL=/dev/null
 #UTF8_LOCALE= autodetected unless set
+
+#MEMTESTER='valgrind --log-file=.vl-%p '
+MEMTESTER=
 
 if ( command -v command ) >/dev/null 2>&1; then :; else
    command() {
@@ -47,7 +50,7 @@ fi
 
 ##  --  >8  --  8<  --  ##
 
-export SNAIL ARGS CONF BODY MBOX MAIL  MAKE awk cat cksum rm sed grep
+export ARGS CONF BODY MBOX MAIL  MAKE awk cat cksum rm sed grep
 
 LC_ALL=C LANG=C ADDARG_UNI=-Sttycharset=UTF-8
 TZ=UTC
@@ -78,18 +81,23 @@ fi
 ESTAT=0
 
 usage() {
-   echo >&2 "Usage: ./cc-test.sh [--check-only [s-nail-binary]]"
+   echo >&2 "Usage: ./cc-test.sh [--check-only] s-mailx-binary"
    exit 1
 }
 
-CHECK_ONLY=
-[ ${#} -gt 0 ] && {
-   [ "${1}" = --check-only ] || usage
-   [ ${#} -gt 2 ] && usage
-   [ ${#} -eq 2 ] && SNAIL="${2}"
-   [ -x "${SNAIL}" ] || usage
-   CHECK_ONLY=1
-}
+CHECK_ONLY= MAILX=
+while [ $# -gt 0 ]; do
+   if [ "${1}" = --check-only ]; then
+      CHECK_ONLY=1
+   else
+      MAILX=${1}
+   fi
+   shift
+done
+[ -x "${MAILX}" ] || usage
+RAWMAILX=${MAILX}
+MAILX="${MEMTESTER}${MAILX}"
+export RAWMAILX MAILX
 
 TRAP_EXIT_ADDONS=
 trap "${rm} -rf \"${BODY}\" \"${MBOX}\" \${TRAP_EXIT_ADDONS}" EXIT
@@ -181,7 +189,8 @@ cc_all_configs() {
 }
 
 have_feat() {
-   ( "${SNAIL}" ${ARGS} -X'echo $features' -Xx | ${grep} +${1} ) >/dev/null 2>&1
+   ( "${RAWMAILX}" ${ARGS} -X'echo $features' -Xx |
+      ${grep} +${1} ) >/dev/null 2>&1
 }
 
 t_prolog() {
@@ -307,7 +316,7 @@ t_behave_X_opt_input_command_stack() {
    # The -X option supports multiline arguments, and those can internally use
    # reverse solidus newline escaping.  And all -X options are joined...
    APO=\'
-   < "${BODY}" "${SNAIL}" ${ARGS} \
+   < "${BODY}" ${MAILX} ${ARGS} \
       -X 'e\' \
       -X ' c\' \
       -X '  h\' \
@@ -367,35 +376,35 @@ t_behave_X_errexit() {
 	echo two
 	__EOT
 
-   </dev/null "${SNAIL}" ${ARGS} -Snomemdebug \
+   </dev/null ${MAILX} ${ARGS} -Snomemdebug \
          -X'echo one' -X' echos nono ' -X'echo two' \
       > "${MBOX}" 2>&1
    check behave:x_errexit-1 0 "${MBOX}" '916157812 53'
 
-   </dev/null "${SNAIL}" ${ARGS} -X'source '"${BODY}" -Snomemdebug \
+   </dev/null ${MAILX} ${ARGS} -X'source '"${BODY}" -Snomemdebug \
       > "${MBOX}" 2>&1
    check behave:x_errexit-2 0 "${MBOX}" '916157812 53'
 
-   </dev/null MAILRC="${BODY}" "${SNAIL}" ${ARGS} -:u -Snomemdebug \
+   </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u -Snomemdebug \
       > "${MBOX}" 2>&1
    check behave:x_errexit-3 0 "${MBOX}" '916157812 53'
 
    ##
 
-   </dev/null "${SNAIL}" ${ARGS} -Serrexit -Snomemdebug \
+   </dev/null ${MAILX} ${ARGS} -Serrexit -Snomemdebug \
          -X'echo one' -X' echos nono ' -X'echo two' \
       > "${MBOX}" 2>&1
    check behave:x_errexit-4 1 "${MBOX}" '2118430867 49'
 
-   </dev/null "${SNAIL}" ${ARGS} -X'source '"${BODY}" -Serrexit -Snomemdebug \
+   </dev/null ${MAILX} ${ARGS} -X'source '"${BODY}" -Serrexit -Snomemdebug \
       > "${MBOX}" 2>&1
    check behave:x_errexit-5 1 "${MBOX}" '2118430867 49'
 
-   </dev/null MAILRC="${BODY}" "${SNAIL}" ${ARGS} -:u -Serrexit -Snomemdebug \
+   </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u -Serrexit -Snomemdebug \
       > "${MBOX}" 2>&1
    check behave:x_errexit-6 1 "${MBOX}" '12955965 172'
 
-   </dev/null MAILRC="${BODY}" "${SNAIL}" ${ARGS} -:u -Sposix -Snomemdebug \
+   </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u -Sposix -Snomemdebug \
       > "${MBOX}" 2>&1
    check behave:x_errexit-7 1 "${MBOX}" '12955965 172'
 
@@ -403,20 +412,20 @@ t_behave_X_errexit() {
 
    ${sed} -e 's/^echos /ignerr echos /' < "${BODY}" > "${MBOX}"
 
-   </dev/null "${SNAIL}" ${ARGS} -Serrexit -Snomemdebug \
+   </dev/null ${MAILX} ${ARGS} -Serrexit -Snomemdebug \
          -X'echo one' -X'ignerr echos nono ' -X'echo two' \
       > "${BODY}" 2>&1
    check behave:x_errexit-8 0 "${BODY}" '916157812 53'
 
-   </dev/null "${SNAIL}" ${ARGS} -X'source '"${MBOX}" -Serrexit -Snomemdebug \
+   </dev/null ${MAILX} ${ARGS} -X'source '"${MBOX}" -Serrexit -Snomemdebug \
       > "${BODY}" 2>&1
    check behave:x_errexit-9 0 "${BODY}" '916157812 53'
 
-   </dev/null MAILRC="${MBOX}" "${SNAIL}" ${ARGS} -:u -Serrexit -Snomemdebug \
+   </dev/null MAILRC="${MBOX}" ${MAILX} ${ARGS} -:u -Serrexit -Snomemdebug \
       > "${BODY}" 2>&1
    check behave:x_errexit-10 0 "${BODY}" '916157812 53'
 
-   </dev/null MAILRC="${MBOX}" "${SNAIL}" ${ARGS} -:u -Sposix -Snomemdebug \
+   </dev/null MAILRC="${MBOX}" ${MAILX} ${ARGS} -:u -Sposix -Snomemdebug \
       > "${BODY}" 2>&1
    check behave:x_errexit-11 0 "${BODY}" '916157812 53'
 
@@ -488,11 +497,11 @@ t_behave_wysh() {
       echo 'Skip behave:wysh_unicode, no UTF8_LOCALE'
    else
       < "${BODY}" DIET=CURD TIED= \
-      LC_ALL=${UTF8_LOCALE} "${SNAIL}" ${ARGS} 2>/dev/null > "${MBOX}"
+      LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} 2>/dev/null > "${MBOX}"
       check behave:wysh_unicode 0 "${MBOX}" '475805847 317'
    fi
 
-   < "${BODY}" DIET=CURD TIED= "${SNAIL}" ${ARGS} > "${MBOX}" 2>/dev/null
+   < "${BODY}" DIET=CURD TIED= ${MAILX} ${ARGS} > "${MBOX}" 2>/dev/null
    check behave:wysh_c 0 "${MBOX}" '1473887148 321'
 
    t_epilog
@@ -501,7 +510,7 @@ t_behave_wysh() {
 t_behave_input_inject_semicolon_seq() {
    t_prolog
 
-   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
 	define mydeepmac {
 		echon '(mydeepmac)';
 	}
@@ -523,7 +532,7 @@ t_behave_input_inject_semicolon_seq() {
 t_behave_commandalias() {
    t_prolog
 
-   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
 	commandalias echo echo hoho
 	echo stop.
 	commandalias X Xx
@@ -550,7 +559,7 @@ t_behave_ifelse() {
    t_prolog
 
    # Nestable conditions test
-   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
 		if 0
 		   echo 1.err
 		else
@@ -1110,7 +1119,7 @@ t_behave_ifelse() {
    check behave:if-normal 0 "${MBOX}" '557629289 631'
 
    if have_feat regex; then
-      ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
+      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
 			set dietcurd=yoho
 			if $dietcurd =~ '^yo.*'
 			   echo 1.ok
@@ -1203,7 +1212,7 @@ t_behave_localopts() {
    t_prolog
 
    # Nestable conditions test
-   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
 	define t2 {
 	   echo in: t2
 	   set t2=t2
@@ -1246,7 +1255,7 @@ t_behave_localopts() {
 t_behave_macro_param_shift() {
    t_prolog
 
-   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" 2>/dev/null
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>/dev/null
 	define t2 {
 	   echo in: t2
 	   echo t2.0 has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
@@ -1293,7 +1302,7 @@ t_behave_macro_param_shift() {
 t_behave_addrcodec() {
    t_prolog
 
-   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}"
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
 	vput addrcodec res e 1 <doog@def>
 	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
@@ -1410,7 +1419,7 @@ t_behave_addrcodec() {
 t_behave_vexpr() {
    t_prolog
 
-   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" 2>/dev/null
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>/dev/null
 	vput vexpr res = 9223372036854775807
 	echo $?/$^ERRNAME $res
 	vput vexpr res = 9223372036854775808
@@ -1540,7 +1549,7 @@ t_behave_vexpr() {
 
    check behave:vexpr-numeric 0 "${MBOX}" '1723609217 1048'
 
-   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" #2>/dev/null
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" #2>/dev/null
 	vput vexpr res find 'bananarama' 'nana'
 	echo $?/$^ERRNAME :$res:
 	vput vexpr res find 'bananarama' 'bana'
@@ -1589,7 +1598,7 @@ t_behave_vexpr() {
    check behave:vexpr-string 0 "${MBOX}" '265398700 267'
 
    if have_feat regex; then
-      ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} > "${MBOX}" #2>/dev/null
+      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" #2>/dev/null
 		vput vexpr res regex 'bananarama' 'nana'
 		echo $?/$^ERRNAME :$res:
 		vput vexpr res regex 'bananarama' 'bana'
@@ -1639,7 +1648,7 @@ t_behave_vexpr() {
 t_behave_call_ret() {
    t_prolog
 
-   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} -Snomemdebug > "${MBOX}" 2>&1
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Snomemdebug > "${MBOX}" 2>&1
 	define w1 {
 		echon ">$1 "
 		vput vexpr i + $1 1
@@ -1716,7 +1725,7 @@ t_behave_call_ret() {
 t_behave_xcall() {
    t_prolog
 
-   ${cat} <<- '__EOT' | "${SNAIL}" ${ARGS} -Snomemdebug > "${MBOX}" 2>&1
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Snomemdebug > "${MBOX}" 2>&1
 	define work {
 		echon "$1 "
 		vput vexpr i + $1 1
@@ -1791,11 +1800,11 @@ t_behave_xcall() {
 	echo this is definitely an error
 	__EOT
 
-   < "${BODY}" "${SNAIL}" ${ARGS} -X'commandalias xxxign ignerr' -Snomemdebug \
+   < "${BODY}" ${MAILX} ${ARGS} -X'commandalias xxxign ignerr' -Snomemdebug \
       > "${MBOX}" 2>&1
    check behave:xcall-2 0 "${MBOX}" '3900716531 4200'
 
-   < "${BODY}" "${SNAIL}" ${ARGS} -X'commandalias xxxign " "' -Snomemdebug \
+   < "${BODY}" ${MAILX} ${ARGS} -X'commandalias xxxign " "' -Snomemdebug \
       > "${MBOX}" 2>&1
    check behave:xcall-3 1 "${MBOX}" '1006776201 2799'
 
@@ -1814,7 +1823,7 @@ t_behave_filetype() {
    chmod 0755 ./.tsendmail.sh
 
    printf 'm m1@e.t\nL1\nHy1\n~.\nm m2@e.t\nL2\nHy2\n~@ ./snailmail.jpg\n~.\n' |
-      "${SNAIL}" ${ARGS} -Smta=./.tsendmail.sh
+      ${MAILX} ${ARGS} -Smta=./.tsendmail.sh
    check behave:filetype-1 0 "${MBOX}" '1645747150 13536'
 
    if command -v gzip >/dev/null 2>&1; then
@@ -1822,10 +1831,10 @@ t_behave_filetype() {
       {
          printf 'File "%s"\ncopy 1 ./.t.mbox.gz
                copy 2 ./.t.mbox.gz' "${MBOX}" |
-            "${SNAIL}" ${ARGS} \
+            ${MAILX} ${ARGS} \
                -X'filetype gz gzip\ -dc gzip\ -c'
          printf 'File ./.t.mbox.gz\ncopy * ./.t.mbox\n' |
-            "${SNAIL}" ${ARGS} \
+            ${MAILX} ${ARGS} \
                -X'filetype gz gzip\ -dc gzip\ -c'
       } >/dev/null 2>&1
       check behave:filetype-2 0 "./.t.mbox" '1645747150 13536'
@@ -1840,12 +1849,12 @@ t_behave_filetype() {
             copy 1 ./.t.mbox.gz
             copy 2 ./.t.mbox.gz
             ' "${MBOX}" |
-         "${SNAIL}" ${ARGS} \
+         ${MAILX} ${ARGS} \
             -X'filetype gz gzip\ -dc gzip\ -c' \
             -X'filetype mbox.gz "${sed} 1,3d|${cat}" \
             "echo eins;echo zwei;echo und mit ${sed} bist Du dabei;${cat}"'
       printf 'File ./.t.mbox.gz\ncopy * ./.t.mbox\n' |
-         "${SNAIL}" ${ARGS} \
+         ${MAILX} ${ARGS} \
             -X'filetype gz gzip\ -dc gzip\ -c' \
             -X'filetype mbox.gz "${sed} 1,3d|${cat}" kill\ 0'
    } >/dev/null 2>&1
@@ -1871,7 +1880,7 @@ t_behave_record_a_resend() {
          resend 2 ./.t.resent
          Resend 1 ./.t.resent
       ' ./.t.record "${MBOX}" "${MBOX}" "${MBOX}" |
-      "${SNAIL}" ${ARGS}
+      ${MAILX} ${ARGS}
 
    check behave:record_a_resend-1 0 "${MBOX}" '3057873538 256'
    check behave:record_a_resend-2 - .t.record '391356429 460'
@@ -1885,7 +1894,7 @@ t_behave_e_H_L_opts() {
    TRAP_EXIT_ADDONS="./.tsendmail.sh ./.t.mbox"
 
    touch ./.t.mbox
-   "${SNAIL}" ${ARGS} -ef ./.t.mbox
+   ${MAILX} ${ARGS} -ef ./.t.mbox
    echo ${?} > "${MBOX}"
 
    ${cat} <<-_EOT > ./.tsendmail.sh
@@ -1895,38 +1904,38 @@ t_behave_e_H_L_opts() {
 	_EOT
    chmod 0755 ./.tsendmail.sh
    printf 'm me@exam.ple\nLine 1.\nHello.\n~.\n' |
-   "${SNAIL}" ${ARGS} -Smta=./.tsendmail.sh
+   ${MAILX} ${ARGS} -Smta=./.tsendmail.sh
    printf 'm you@exam.ple\nLine 1.\nBye.\n~.\n' |
-   "${SNAIL}" ${ARGS} -Smta=./.tsendmail.sh
+   ${MAILX} ${ARGS} -Smta=./.tsendmail.sh
 
-   "${SNAIL}" ${ARGS} -ef ./.t.mbox
+   ${MAILX} ${ARGS} -ef ./.t.mbox
    echo ${?} >> "${MBOX}"
-   "${SNAIL}" ${ARGS} -efL @t@me ./.t.mbox
+   ${MAILX} ${ARGS} -efL @t@me ./.t.mbox
    echo ${?} >> "${MBOX}"
-   "${SNAIL}" ${ARGS} -efL @t@you ./.t.mbox
+   ${MAILX} ${ARGS} -efL @t@you ./.t.mbox
    echo ${?} >> "${MBOX}"
-   "${SNAIL}" ${ARGS} -efL '@>@Line 1' ./.t.mbox
+   ${MAILX} ${ARGS} -efL '@>@Line 1' ./.t.mbox
    echo ${?} >> "${MBOX}"
-   "${SNAIL}" ${ARGS} -efL '@>@Hello.' ./.t.mbox
+   ${MAILX} ${ARGS} -efL '@>@Hello.' ./.t.mbox
    echo ${?} >> "${MBOX}"
-   "${SNAIL}" ${ARGS} -efL '@>@Bye.' ./.t.mbox
+   ${MAILX} ${ARGS} -efL '@>@Bye.' ./.t.mbox
    echo ${?} >> "${MBOX}"
-   "${SNAIL}" ${ARGS} -efL '@>@Good bye.' ./.t.mbox
+   ${MAILX} ${ARGS} -efL '@>@Good bye.' ./.t.mbox
    echo ${?} >> "${MBOX}"
 
-   "${SNAIL}" ${ARGS} -fH ./.t.mbox >> "${MBOX}"
+   ${MAILX} ${ARGS} -fH ./.t.mbox >> "${MBOX}"
    echo ${?} >> "${MBOX}"
-   "${SNAIL}" ${ARGS} -fL @t@me ./.t.mbox >> "${MBOX}"
+   ${MAILX} ${ARGS} -fL @t@me ./.t.mbox >> "${MBOX}"
    echo ${?} >> "${MBOX}"
-   "${SNAIL}" ${ARGS} -fL @t@you ./.t.mbox >> "${MBOX}"
+   ${MAILX} ${ARGS} -fL @t@you ./.t.mbox >> "${MBOX}"
    echo ${?} >> "${MBOX}"
-   "${SNAIL}" ${ARGS} -fL '@>@Line 1' ./.t.mbox >> "${MBOX}"
+   ${MAILX} ${ARGS} -fL '@>@Line 1' ./.t.mbox >> "${MBOX}"
    echo ${?} >> "${MBOX}"
-   "${SNAIL}" ${ARGS} -fL '@>@Hello.' ./.t.mbox >> "${MBOX}"
+   ${MAILX} ${ARGS} -fL '@>@Hello.' ./.t.mbox >> "${MBOX}"
    echo ${?} >> "${MBOX}"
-   "${SNAIL}" ${ARGS} -fL '@>@Bye.' ./.t.mbox >> "${MBOX}"
+   ${MAILX} ${ARGS} -fL '@>@Bye.' ./.t.mbox >> "${MBOX}"
    echo ${?} >> "${MBOX}"
-   "${SNAIL}" ${ARGS} -fL '@>@Good bye.' ./.t.mbox >> "${MBOX}" 2>/dev/null
+   ${MAILX} ${ARGS} -fL '@>@Good bye.' ./.t.mbox >> "${MBOX}" 2>/dev/null
    echo ${?} >> "${MBOX}"
 
    check behave:e_H_L_opts - "${MBOX}" '1708955574 678'
@@ -1946,7 +1955,7 @@ t_behave_compose_hooks() {
    chmod 0755 ./.tsendmail.sh
 
    printf 'm hook-test@exam.ple\nbody\n~.\nvar t_oce t_ocs t_ocs_shell t_ocl' |
-   "${SNAIL}" ${ARGS} -Snomemdebug \
+   ${MAILX} ${ARGS} -Snomemdebug \
       -Smta=./.tsendmail.sh \
       -X'
          define _work {
@@ -2044,12 +2053,12 @@ t_behave_smime() {
    ${cat} ./.tkey.pem ./.tcert.pem > ./.tpair.pem
 
    printf 'behave:s/mime:sign/verify: '
-   echo bla | "${SNAIL}" ${ARGS} \
+   echo bla | ${MAILX} ${ARGS} \
       -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -s 'S/MIME test' ./.VERIFY
    printf 'verify\nx\n' |
-   "${SNAIL}" ${ARGS} \
+   ${MAILX} ${ARGS} \
       -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -Serrexit -R \
@@ -2082,7 +2091,7 @@ t_behave_smime() {
 
    printf 'behave:s/mime:encrypt+sign: '
    echo bla |
-   "${SNAIL}" ${ARGS} \
+   ${MAILX} ${ARGS} \
       -Ssmime-force-encryption \
       -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
       -Smta=./.tsendmail.sh \
@@ -2101,7 +2110,7 @@ t_behave_smime() {
 
    printf 'behave:s/mime:decrypt+verify: '
    printf 'decrypt ./.DECRYPT\nfi ./.DECRYPT\nverify\nx\n' |
-   "${SNAIL}" ${ARGS} \
+   ${MAILX} ${ARGS} \
       -Ssmime-force-encryption \
       -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
       -Smta=./.tsendmail.sh \
@@ -2135,7 +2144,7 @@ t_behave_smime() {
    fi
 
    printf "behave:s/mime:encrypt: "
-   echo bla | "${SNAIL}" ${ARGS} \
+   echo bla | ${MAILX} ${ARGS} \
       -Ssmime-force-encryption \
       -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
       -Smta=./.tsendmail.sh \
@@ -2154,7 +2163,7 @@ t_behave_smime() {
    check behave:s/mime:encrypt:checksum - "${MBOX}" '1937410597 327'
 
    ${rm} -f ./.DECRYPT
-   printf 'decrypt ./.DECRYPT\nx\n' | "${SNAIL}" ${ARGS} \
+   printf 'decrypt ./.DECRYPT\nx\n' | ${MAILX} ${ARGS} \
       -Ssmime-force-encryption \
       -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
       -Smta=./.tsendmail.sh \
@@ -2187,7 +2196,7 @@ t_behave_maildir() {
             "${MBOX}" "${i}" "${i}"
          i=`inc ${i}`
       done
-   ) | "${SNAIL}" ${ARGS}
+   ) | ${MAILX} ${ARGS}
    check behave:maildir-1 0 "${MBOX}" '1140119864 13780'
 
    printf 'File "%s"
@@ -2195,7 +2204,7 @@ t_behave_maildir() {
          File "%s"
          from*
       ' "${MBOX}" .tmdir1 .tmdir1 |
-      "${SNAIL}" ${ARGS} -Snewfolders=maildir > .tlst
+      ${MAILX} ${ARGS} -Snewfolders=maildir > .tlst
    check behave:maildir-2 0 .tlst '1797938753 9103'
 
    printf 'File "%s"
@@ -2203,7 +2212,7 @@ t_behave_maildir() {
          File "maildir://%s"
          from*
       ' "${MBOX}" .tmdir2 .tmdir2 |
-      "${SNAIL}" ${ARGS} > .tlst
+      ${MAILX} ${ARGS} > .tlst
    check behave:maildir-3 0 .tlst '1155631089 9113'
 
    printf 'File "maildir://%s"
@@ -2211,7 +2220,7 @@ t_behave_maildir() {
          File "file://%s"
          from*
       ' .tmdir2 .tmbox1 .tmbox1 |
-      "${SNAIL}" ${ARGS} > .tlst
+      ${MAILX} ${ARGS} > .tlst
    check behave:maildir-4 0 .tmbox1 '2646131190 13220'
    check behave:maildir-5 - .tlst '3701297796 9110'
 
@@ -2310,24 +2319,24 @@ gggggggggggggggg"
    # At the same time testing -q FILE, < FILE and -t FILE
 
    ${rm} -f "${MBOX}"
-   < "${BODY}" "${SNAIL}" ${ARGS} ${ADDARG_UNI} \
+   < "${BODY}" ${MAILX} ${ARGS} ${ADDARG_UNI} \
       -a "${BODY}" -s "${SUB}" "${MBOX}"
    check content:001 0 "${MBOX}" '1145066634 6654'
 
    ${rm} -f "${MBOX}"
-   < /dev/null "${SNAIL}" ${ARGS} ${ADDARG_UNI} \
+   < /dev/null ${MAILX} ${ARGS} ${ADDARG_UNI} \
       -a "${BODY}" -s "${SUB}" -q "${BODY}" "${MBOX}"
    check content:002 0 "${MBOX}" '1145066634 6654'
 
    ${rm} -f "${MBOX}"
    (  echo "To: ${MBOX}" && echo "Subject: ${SUB}" && echo &&
       ${cat} "${BODY}"
-   ) | "${SNAIL}" ${ARGS} ${ADDARG_UNI} -Snodot -a "${BODY}" -t
+   ) | ${MAILX} ${ARGS} ${ADDARG_UNI} -Snodot -a "${BODY}" -t
    check content:003 0 "${MBOX}" '1145066634 6654'
 
    # Test for [260e19d] (Juergen Daubert)
    ${rm} -f "${MBOX}"
-   echo body | "${SNAIL}" ${ARGS} "${MBOX}"
+   echo body | ${MAILX} ${ARGS} "${MBOX}"
    check content:004 0 "${MBOX}" '2917662811 98'
 
    # Sending of multiple mails in a single invocation
@@ -2335,7 +2344,7 @@ gggggggggggggggg"
    (  printf "m ${MBOX}\n~s subject1\nE-Mail Körper 1\n~.\n" &&
       printf "m ${MBOX}\n~s subject2\nEmail body 2\n~.\n" &&
       echo x
-   ) | "${SNAIL}" ${ARGS} ${ADDARG_UNI}
+   ) | ${MAILX} ${ARGS} ${ADDARG_UNI}
    check content:005 0 "${MBOX}" '2098659767 358'
 
    ## $BODY CHANGED
@@ -2343,7 +2352,7 @@ gggggggggggggggg"
    # "Test for" [d6f316a] (Gavin Troy)
    ${rm} -f "${MBOX}"
    printf "m ${MBOX}\n~s subject1\nEmail body\n~.\nfi ${MBOX}\np\nx\n" |
-   "${SNAIL}" ${ARGS} ${ADDARG_UNI} -Spipe-text/plain="${cat}" > "${BODY}"
+   ${MAILX} ${ARGS} ${ADDARG_UNI} -Spipe-text/plain="${cat}" > "${BODY}"
    check content:006 0 "${MBOX}" '2099098650 122'
 
    # "Test for" [c299c45] (Peter Hofmann) TODO shouldn't end up QP-encoded?
@@ -2352,14 +2361,14 @@ gggggggggggggggg"
       for(i = 0; i < 10000; ++i)
          printf "\xC3\xBC"
          #printf "\xF0\x90\x87\x90"
-      }' | "${SNAIL}" ${ARGS} ${ADDARG_UNI} -s TestSubject "${MBOX}"
+      }' | ${MAILX} ${ARGS} ${ADDARG_UNI} -s TestSubject "${MBOX}"
    check content:007 0 "${MBOX}" '534262374 61816'
 
    ## Test some more corner cases for header bodies (as good as we can today) ##
 
    #
    ${rm} -f "${MBOX}"
-   echo | "${SNAIL}" ${ARGS} ${ADDARG_UNI} \
+   echo | ${MAILX} ${ARGS} ${ADDARG_UNI} \
       -s 'a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲' \
       "${MBOX}"
    check content:008 0 "${MBOX}" '3370931614 375'
@@ -2368,12 +2377,12 @@ gggggggggggggggg"
    # artificial data!!  Bad can be prevented by using RFC 2047 encoding)
    ${rm} -f "${MBOX}"
    i=`${awk} 'BEGIN{for(i=0; i<92; ++i) printf "0123456789_"}'`
-   echo | "${SNAIL}" ${ARGS} -s "${i}" "${MBOX}"
+   echo | ${MAILX} ${ARGS} -s "${i}" "${MBOX}"
    check content:009 0 "${MBOX}" '489922370 1718'
 
    # Combination of encoded words, space and tabs of varying sort
    ${rm} -f "${MBOX}"
-   echo | "${SNAIL}" ${ARGS} ${ADDARG_UNI} \
+   echo | ${MAILX} ${ARGS} ${ADDARG_UNI} \
       -s "1Abrä Kaspas1 2Abra Katä	b_kaspas2  \
 3Abrä Kaspas3   4Abrä Kaspas4    5Abrä Kaspas5     \
 6Abra Kaspas6      7Abrä Kaspas7       8Abra Kaspas8        \
@@ -2385,7 +2394,7 @@ gggggggggggggggg"
    # Overlong multibyte sequence that must be forcefully split
    # todo This works even before v15.0, but only by accident
    ${rm} -f "${MBOX}"
-   echo | "${SNAIL}" ${ARGS} ${ADDARG_UNI} \
+   echo | ${MAILX} ${ARGS} ${ADDARG_UNI} \
       -s "✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄" \
@@ -2394,7 +2403,7 @@ gggggggggggggggg"
 
    # Trailing WS
    ${rm} -f "${MBOX}"
-   echo | "${SNAIL}" ${ARGS} \
+   echo | ${MAILX} ${ARGS} \
       -s "1-1 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-2 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
@@ -2406,7 +2415,7 @@ gggggggggggggggg"
 
    # Leading and trailing WS
    ${rm} -f "${MBOX}"
-   echo | "${SNAIL}" ${ARGS} \
+   echo | ${MAILX} ${ARGS} \
       -s "	 	 2-1 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-2 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
@@ -2431,7 +2440,7 @@ gggggggggggggggg"
       : > hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt
       : > ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt
    )
-   echo bla | "${SNAIL}" ${ARGS} ${ADDARG_UNI} \
+   echo bla | ${MAILX} ${ARGS} ${ADDARG_UNI} \
       -a "./.ttt/ma'ger.txt" -a "./.ttt/mä'ger.txt" \
       -a './.ttt/diet\ is \curd.txt' -a './.ttt/diet "is" curd.txt' \
       -a ./.ttt/höde-tröge.txt \
@@ -2443,17 +2452,17 @@ gggggggggggggggg"
    check content:014-1 0 "${MBOX}" '684985954 3092'
 
    # `resend' test, reusing $MBOX
-   printf "Resend ${BODY}\nx\n" | "${SNAIL}" ${ARGS} -f "${MBOX}"
+   printf "Resend ${BODY}\nx\n" | ${MAILX} ${ARGS} -f "${MBOX}"
    check content:014-2 0 "${MBOX}" '684985954 3092'
 
    t_epilog
 }
 
 t_all() {
-   if have_feat devel; then
-      ARGS="${ARGS} -Smemdebug"
-      export ARGS
-   fi
+#   if have_feat devel; then
+#      ARGS="${ARGS} -Smemdebug"
+#      export ARGS
+#   fi
    t_behave
    t_content
 }
