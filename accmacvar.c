@@ -565,7 +565,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
       char *cp;
 
       n.i = n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, n_empty,
-            &line.s, &line.l, NULL);
+            &line.s, &line.l, NULL, NULL);
       if(n.ui == 0)
          continue;
       if(n.i < 0){

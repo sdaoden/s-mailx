@@ -886,14 +886,17 @@ FL void n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
 /* Read a complete line of input, with editing if interactive and possible.
  * If string is set it is used as the initial line content if in interactive
  * mode, otherwise this argument is ignored for reproducibility.
+ * If histok_or_null is set it will be updated to FAL0 if input shall not be
+ * placed in history.
  * Return number of octets or a value <0 on error.
  * Note: may use the currently `source'd file stream instead of stdin!
- * Manages the n_PS_READLINE_NL hack */
+ * Manages the n_PS_READLINE_NL hack
+ * TODO We need an OnReadLineCompletedEvent and drop this function */
 FL int n_go_input(enum n_go_input_flags gif, char const *prompt,
-         char **linebuf, size_t *linesize, char const *string
-         n_MEMORY_DEBUG_ARGS);
+         char **linebuf, size_t *linesize, char const *string,
+         bool_t *histok_or_null n_MEMORY_DEBUG_ARGS);
 #ifdef HAVE_MEMORY_DEBUG
-# define n_go_input(A,B,C,D,E) n_go_input(A,B,C,D,E,__FILE__,__LINE__)
+# define n_go_input(A,B,C,D,E,F) n_go_input(A,B,C,D,E,F,__FILE__,__LINE__)
 #endif
 
 /* Read a line of input, with editing if interactive and possible, return it
@@ -2472,17 +2475,19 @@ FL void        n_tty_signal(int sig);
 
 /* Read a line after printing prompt (if set and non-empty).
  * If n>0 assumes that *linebuf has n bytes of default content.
+ * histok_or_null like for n_go_input().
  * Only the _CTX_ bits in lif are used */
 FL int         n_tty_readline(enum n_go_input_flags gif, char const *prompt,
-                  char **linebuf, size_t *linesize, size_t n
-                  n_MEMORY_DEBUG_ARGS);
+                  char **linebuf, size_t *linesize, size_t n,
+                  bool_t *histok_or_null n_MEMORY_DEBUG_ARGS);
 #ifdef HAVE_MEMORY_DEBUG
-# define n_tty_readline(A,B,C,D,E) (n_tty_readline)(A,B,C,D,E,__FILE__,__LINE__)
+# define n_tty_readline(A,B,C,D,E,F) \
+   (n_tty_readline)(A,B,C,D,E,F,__FILE__,__LINE__)
 #endif
 
 /* Add a line (most likely as returned by n_tty_readline()) to the history.
  * Whether an entry added for real depends on the isgabby / *history-gabby*
- * relation, and / or whether s is non-empty and doesn't begin with spacechar() */
+ * relation, and / or whether s is non-empty */
 FL void        n_tty_addhist(char const *s, bool_t isgabby);
 
 #ifdef HAVE_HISTORY

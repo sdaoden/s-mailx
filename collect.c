@@ -1581,6 +1581,9 @@ jcont:
 
    /* The interactive collect loop */
    for(;;){
+      bool_t histadd, histgabby;
+
+      histadd = histgabby = TRU1;
       /* C99 */{
          enum n_go_input_flags gif;
 
@@ -1589,7 +1592,7 @@ jcont:
             if(!(n_poption & n_PO_t_FLAG))
                gif |= n_GO_INPUT_NL_ESC;
          }
-         cnt = n_go_input(gif, n_empty, &linebuf, &linesize, NULL);
+         cnt = n_go_input(gif, n_empty, &linebuf, &linesize, NULL, &histadd);
       }
 
       if (cnt < 0) {
@@ -1600,7 +1603,7 @@ jcont:
             /* It is important to set n_PSO_t_FLAG before extract_header()
              * *and* keep n_PO_t_FLAG for the first parse of the message! */
             n_psonce |= n_PSO_t_FLAG;
-            if (makeheader(_coll_fp, hp, checkaddr_err) != OKAY)
+            if(makeheader(_coll_fp, hp, checkaddr_err) != OKAY)
                goto jerr;
             n_poption &= ~n_PO_t_FLAG;
             continue;
@@ -1686,7 +1689,7 @@ jputnl:
                memcpy(buf, n_unirepl, sizeof n_unirepl);
             else
                buf[0] = '?', buf[1] = '\0';
-            n_err(_("Unknown command escape: ~%s\n"), buf);
+            n_err(_("Unknown command escape: `%c%s'\n"), escape, buf);
             continue;
          }
 jearg:
@@ -1754,6 +1757,7 @@ jearg:
          hp->h_to = cat(hp->h_to,
                checkaddrs(lextract(&linebuf[3], GTO | GFULL), EACM_NORMAL,
                   NULL));
+         histgabby = FAL0;
          break;
       case 's':
          /* Set the Subject list */
@@ -1788,6 +1792,7 @@ jearg:
          hp->h_cc = cat(hp->h_cc,
                checkaddrs(lextract(&linebuf[3], GCC | GFULL), EACM_NORMAL,
                NULL));
+         histgabby = FAL0;
          break;
       case 'b':
          /* Add stuff to blind carbon copies list */
@@ -1796,6 +1801,7 @@ jearg:
          hp->h_bcc = cat(hp->h_bcc,
                checkaddrs(lextract(&linebuf[3], GBCC | GFULL), EACM_NORMAL,
                   NULL));
+         histgabby = FAL0;
          break;
       case 'd':
          if(cnt != 2)
@@ -1823,7 +1829,8 @@ jearg:
             /* Note this also expands things like
              *    !:vput vexpr delim random 0
              *    !< - $delim */
-            if((cp = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO | FEXP_NSHELL)) == NULL)
+            if((cp = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO | FEXP_NSHELL)
+                  ) == NULL)
                break;
          }
          if(n_is_dir(cp, FAL0)){
@@ -1898,6 +1905,7 @@ jearg:
             goto jearg;
          rewind(_coll_fp);
          mespipe(&linebuf[3]);
+         histgabby = FAL0;
          goto jhistcont;
       case 'v':
       case 'e':
@@ -1910,9 +1918,8 @@ jearg:
       case '^':
          if(!a_collect_plumbing(&linebuf[3], hp))
             goto jearg;
-         if(n_psonce & n_PSO_INTERACTIVE)
-            break;
-         continue;
+         histgabby = FAL0;
+         break;
       case '?':
          /* Last the lengthy help string.  (Very ugly, but take care for
           * compiler supported string lengths :() */
@@ -1957,8 +1964,8 @@ jhistcont:
          c = '\1';
       }else
          c = '\0';
-      if(n_psonce & n_PSO_INTERACTIVE)
-         n_tty_addhist(linebuf, TRU1);
+      if((n_psonce & n_PSO_INTERACTIVE) && histadd)
+         n_tty_addhist(linebuf, histgabby);
       if(c != '\0')
          goto jcont;
    }

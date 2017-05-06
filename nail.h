@@ -860,11 +860,6 @@ enum n_go_input_flags{
    n_GO_INPUT_NL_FOLLOW = 1u<<11,      /* ..on such a follow line */
    n_GO_INPUT_PROMPT_NONE = 1u<<12,    /* Don't print prompt */
    n_GO_INPUT_PROMPT_EVAL = 1u<<13,    /* Instead, evaluate *prompt* */
-#if 0
-   n_GO_INPUT_DROP_TRAIL_SPC = 1u<<14, /* Drop any trailing space */
-   n_GO_INPUT_DROP_LEAD_SPC = 1u<<15,  /* ..leading ones */
-   n_GO_INPUT_TRIM_SPACE = n_GO_INPUT_DROP_TRAIL_SPC | n_GO_INPUT_DROP_LEAD_SPC,
-#endif
 
    n_GO_INPUT_HIST_ADD = 1u<<16,       /* Add the result to history list */
    n_GO_INPUT_HIST_GABBY = 1u<<17,     /* Consider history entry as gabby */
