@@ -230,16 +230,30 @@ exn0_test() {
 }
 
 if ( [ "$((1 + 1))" = 2 ] ) >/dev/null 2>&1; then
-   inc() {
-      echo "$((${1} + 1))"
+   add() {
+      echo "$((${1} + ${2}))"
    }
 elif command -v expr >/dev/null 2>&1; then
-   inc() {
-      echo `expr ${1} + 1`
+   add() {
+      echo `expr ${1} + ${2}`
    }
 else
-   inc() {
-      echo `${awk} 'BEGIN{print '${1}' + 1}'`
+   add() {
+      echo `${awk} 'BEGIN{print '${1}' + '${2}'}'`
+   }
+fi
+
+if ( [ "$((2 % 3))" = 2 ] ) >/dev/null 2>&1; then
+   modulo() {
+      echo "$((${1} % ${2}))"
+   }
+elif command -v expr >/dev/null 2>&1; then
+   modulo() {
+      echo `expr ${1} % ${2}`
+   }
+else
+   modulo() {
+      echo `${awk} 'BEGIN{print '${1}' % '${2}'}'`
    }
 fi
 
@@ -258,6 +272,8 @@ t_behave() {
    t_behave_vexpr
    t_behave_call_ret
    t_behave_xcall
+
+   t_behave_mbox
 
    # FIXME t_behave_alias
    # FIXME t_behave_mlist
@@ -1811,6 +1827,77 @@ t_behave_xcall() {
    t_epilog
 }
 
+t_behave_mbox() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t*"
+
+   (
+      i=0
+      while [ ${i} -lt 112 ]; do
+         printf 'm file://%s\n~s Subject %s\nHello %s!\n~.\n' \
+            "${MBOX}" "${i}" "${i}"
+         i=`add ${i} 1`
+      done
+   ) | ${MAILX} ${ARGS}
+   check behave:mbox-1 0 "${MBOX}" '1140119864 13780'
+
+   printf 'File "%s"
+         copy * "%s"
+         File "%s"
+         from*
+      ' "${MBOX}" .tmbox1 .tmbox1 |
+      ${MAILX} ${ARGS} > .tlst
+   check behave:mbox-2 0 .tlst '2739893312 9103'
+
+   printf 'File "%s"
+         copy * "file://%s"
+         File "file://%s"
+         from*
+      ' "${MBOX}" .tmbox2 .tmbox2 |
+      ${MAILX} ${ARGS} > .tlst
+   check behave:mbox-3 0 .tlst '1702194178 9110'
+
+   # only the odd (even)
+   (
+      printf 'File "file://%s"
+            copy ' .tmbox2
+      i=0
+      while [ ${i} -lt 112 ]; do
+         j=`modulo ${i} 2`
+         [ ${j} -eq 1 ] && printf '%s ' "${i}"
+         i=`add ${i} 1`
+      done
+      printf ' file://%s
+            File "file://%s"
+            from*
+         ' .tmbox3 .tmbox3
+   ) | ${MAILX} ${ARGS} > .tlst
+   check behave:mbox-4 0 .tmbox3 '631132924 6890'
+   check behave:mbox-5 - .tlst '2960975049 4573'
+   # ...
+   (
+      printf 'file "file://%s"
+            move ' .tmbox2
+      i=0
+      while [ ${i} -lt 112 ]; do
+         j=`modulo ${i} 2`
+         [ ${j} -eq 0 ] && [ ${i} -ne 0 ] && printf '%s ' "${i}"
+         i=`add ${i} 1`
+      done
+      printf ' file://%s
+            File "file://%s"
+            from*
+            File "file://%s"
+            from*
+         ' .tmbox3 .tmbox3 .tmbox2
+   ) | ${MAILX} ${ARGS} > .tlst
+   check behave:mbox-6 0 .tmbox3 '1387070539 13655'
+   ${sed} 2d < .tlst > .tlstx
+   check behave:mbox-7 - .tlstx '2729940494 13645'
+
+   t_epilog
+}
+
 t_behave_filetype() {
    t_prolog
    TRAP_EXIT_ADDONS="./.t*"
@@ -2215,7 +2302,7 @@ t_behave_maildir() {
       while [ ${i} -lt 112 ]; do
          printf 'm file://%s\n~s Subject %s\nHello %s!\n~.\n' \
             "${MBOX}" "${i}" "${i}"
-         i=`inc ${i}`
+         i=`add ${i} 1`
       done
    ) | ${MAILX} ${ARGS}
    check behave:maildir-1 0 "${MBOX}" '1140119864 13780'
@@ -2244,6 +2331,44 @@ t_behave_maildir() {
       ${MAILX} ${ARGS} > .tlst
    check behave:maildir-4 0 .tmbox1 '2646131190 13220'
    check behave:maildir-5 - .tlst '3701297796 9110'
+
+   # only the odd (even)
+   (
+      printf 'File "maildir://%s"
+            copy ' .tmdir2
+      i=0
+      while [ ${i} -lt 112 ]; do
+         j=`modulo ${i} 2`
+         [ ${j} -eq 1 ] && printf '%s ' "${i}"
+         i=`add ${i} 1`
+      done
+      printf ' file://%s
+            File "file://%s"
+            from*
+         ' .tmbox2 .tmbox2
+   ) | ${MAILX} ${ARGS} > .tlst
+   check behave:maildir-6 0 .tmbox2 '142890131 6610'
+   check behave:maildir-7 - .tlst '960096773 4573'
+   # ...
+   (
+      printf 'file "maildir://%s"
+            move ' .tmdir2
+      i=0
+      while [ ${i} -lt 112 ]; do
+         j=`modulo ${i} 2`
+         [ ${j} -eq 0 ] && [ ${i} -ne 0 ] && printf '%s ' "${i}"
+         i=`add ${i} 1`
+      done
+      printf ' file://%s
+            File "file://%s"
+            from*
+            File "maildir://%s"
+            from*
+         ' .tmbox2 .tmbox2 .tmdir2
+   ) | ${MAILX} ${ARGS} > .tlst
+   check behave:maildir-8 0 .tmbox2 '3806905791 13100'
+   ${sed} 2d < .tlst > .tlstx
+   check behave:maildir-9 - .tlstx '4216815295 13645'
 
    t_epilog
 }
