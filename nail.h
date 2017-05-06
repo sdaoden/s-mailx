@@ -1657,12 +1657,10 @@ ok_b_bsdannounce,
    ok_b_mime_alternative_favour_rich,
    ok_v_mime_counter_evidence,         /* {posnum=1} */
    ok_v_mimetypes_load_control,
-   /* TODO: v15 (not yet due to <-> sendmail): {defval=VAL_MTA} */
-   ok_v_mta,
+   ok_v_mta,                           /* {defval=VAL_MTA,notempty=1} */
    ok_v_mta_arguments,
    ok_b_mta_no_default_arguments,
-    /* TODO v15: (not yet due to <-> sendmail-progname {defval=VAL_MTA_ARGV0} */
-   ok_v_mta_argv0,
+   ok_v_mta_argv0,                     /* {defval=VAL_MTA_ARGV0,notempty=1} */
 
 ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
 ok_b_NAIL_NO_SYSTEM_RC,             /* {name=NAIL_NO_SYSTEM_RC,import=1} */
@@ -1670,7 +1668,7 @@ ok_v_NAIL_HEAD,                     /* {name=NAIL_HEAD} */
 ok_v_NAIL_HISTFILE,                 /* {name=NAIL_HISTFILE} */
 ok_v_NAIL_HISTSIZE,                 /* {name=NAIL_HISTSIZE,notempty=1,num=1} */
 ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
-   ok_v_NETRC,                      /* {env=1,defval=VAL_NETRC} */
+   ok_v_NETRC,                         /* {env=1,defval=VAL_NETRC} */
    ok_b_netrc_lookup,
    ok_v_netrc_pipe,
    ok_v_newfolders,

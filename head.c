@@ -1096,8 +1096,7 @@ jefrom:
       goto jnodename;
    if (ok_vlook(smtp) != NULL || /* TODO obsolete -> mta */
          /* TODO pretty hacky for now (this entire fun), later: url_creat()! */
-         ((mta = ok_vlook(mta)) != NULL &&
-          (mta = n_servbyname(mta, NULL)) != NULL && *mta != '\0'))
+         ((mta = n_servbyname(ok_vlook(mta), NULL)) != NULL && *mta != '\0'))
       goto jnodename;
 jleave:
    NYD_LEAVE;

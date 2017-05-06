@@ -477,8 +477,8 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
       char const *proto;
 
       /* *smtp* OBSOLETE message in mta_start() */
-      if ((smtp = ok_vlook(mta)) == NULL ||
-            (proto = n_servbyname(smtp, NULL)) == NULL || *proto == '\0') {
+      if((proto = n_servbyname(smtp = ok_vlook(mta), NULL)) == NULL ||
+            *proto == '\0'){
          rv = TRU1;
          goto jleave;
       }
@@ -1194,19 +1194,16 @@ __mta_start(struct sendbundle *sbp)
    }else{
       char const *proto;
 
+      mta = ok_vlook(mta); /* TODO v15: what solely remains in here */
       if((proto = ok_vlook(sendmail)) != NULL)
          n_OBSOLETE(_("please use *mta* instead of *sendmail*"));
-      if((mta = ok_vlook(mta)) == NULL){ /* TODO v15: mta = ok_vlook(mta); */
-         if(proto == NULL){
-            mta = VAL_MTA;
-            rv = FAL0;
-         }else
-            rv = TRU1;
-      }
+      if(proto != NULL && !strcmp(mta, VAL_MTA))
+         mta = proto;
+
       /* TODO for now this is pretty hacky: in v15 we should simply create
        * TODO an URL object; i.e., be able to do so, and it does it right
        * TODO I.e.,: url_creat(&url, ok_vlook(mta)); */
-      else if((proto = n_servbyname(mta, NULL)) != NULL){
+      if((proto = n_servbyname(mta, NULL)) != NULL){
          if(*proto == '\0'){
             mta += sizeof("file://") -1;
             rv = FAL0;
@@ -1340,11 +1337,10 @@ __mta_prepare_args(struct name *to, struct header *hp)
 
    if((cp_v15compat = ok_vlook(sendmail_progname)) != NULL)
       n_OBSOLETE(_("please use *mta-argv0*, not *sendmail-progname*"));
-   if((cp = ok_vlook(mta_argv0)) == NULL)
+   cp = ok_vlook(mta_argv0);
+   if(cp_v15compat != NULL && !strcmp(cp, VAL_MTA_ARGV0))
       cp = cp_v15compat;
-   if(cp == NULL)
-      cp = VAL_MTA_ARGV0;
-   args[0] = cp/* TODO v15: = ok_vlook(mta_argv0) */;
+   args[0] = cp/* TODO v15 only : = ok_vlook(mta_argv0) */;
 
    if ((snda = ok_blook(sendmail_no_default_arguments)))
       n_OBSOLETE(_("please use *mta-no-default-arguments*, "
