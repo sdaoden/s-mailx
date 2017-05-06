@@ -125,6 +125,9 @@ static int a_main_oind, /*_oerr,*/ a_main_oopt;
 /* Our own little getopt(3); note --help is special-treated as 'h' */
 static int a_main_getopt(int argc, char * const argv[], char const *optstring);
 
+/* */
+static void a_main_usage(FILE *fp);
+
 /* Perform basic startup initialization */
 static void a_main_startup(void);
 
@@ -153,10 +156,9 @@ static void a_main_hdrstop(int signo);
 static int
 a_main_getopt(int argc, char * const argv[], char const *optstring){
    static char const *lastp;
-
    char const *curp;
    int rv/*, colon*/;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    a_main_oarg = NULL;
    rv = -1;
@@ -227,8 +229,59 @@ a_main_getopt(int argc, char * const argv[], char const *optstring){
    a_main_oarg = NULL;
    rv = '?';
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
+}
+
+static void
+a_main_usage(FILE *fp){
+   /* Stay in 24 lines */
+   char buf[64];
+   size_t i;
+   NYD2_ENTER;
+
+   i = strlen(n_progname);
+   i = n_MIN(i, sizeof(buf) -1);
+   if(i > 0)
+      memset(buf, ' ', i);
+   buf[i] = '\0';
+
+   fprintf(fp, _("%s (%s %s): send and receive Internet mail\n"),
+         n_progname, n_uagent, ok_vlook(version));
+   fprintf(fp, _(
+         "Send-only mode: send mail \"to-address\" receiver(s):\n"
+         "  %s [-BdEFinv~#] [-: spec] [-A account]\n"
+         "  %s [:-a attachment:] [:-b bcc-address:] [:-c cc-address:]\n"
+         "  %s [-M type | -m file | -q file | -t] [-r from-address]\n"
+         "  %s [:-S var[=value]:] [-s subject] [:-X cmd:]\n"
+         "  %s [-.] :to-address: [-- :mta-option:]\n"),
+         n_progname, buf, buf, buf, buf);
+   fprintf(fp, _(
+         "\"Receive\" mode, starting on -u user, primary *inbox* or [$MAIL]:\n"
+         "  %s [-BdEeHiNnRv~#] [-: spec] [-A account]\n"
+         "  %s [-L spec] [-r from-address] [:-S var[=value]:]\n"
+         "  %s [-u user] [:-X cmd:] [-- :mta-option:]\n"),
+         n_progname, buf, buf);
+   fprintf(fp, _(
+         "\"Receive\" mode, starting on -f (secondary $MBOX or [file]):\n"
+         "  %s [-BdEeHiNnRv~#] [-: spec] [-A account] -f\n"
+         "  %s [-L spec] [-r from-address] [:-S var[=value]:]\n"
+         "  %s [:-X cmd:] [file] [-- :mta-option:]\n"),
+         n_progname, buf, buf);
+
+   if(fp != n_stderr)
+      putc('\n', fp);
+   fprintf(fp, _(
+         ". -d sandbox, -:/ no .rc files, -. end options and force send-mode\n"
+         ". -a attachment[=input-charset[#output-charset]]\n"
+         ". -b, -c, to-address, (-r): ex@am.ple or '(Lovely) Ex <am@p.le>'\n"
+         ". -[Mmqt]: special input data (-t: template message on stdin)\n"
+         ". -e only mail check, -H header summary; both: specification via -L\n"
+         ". -S sets variables, -X executes commands, -# enters batch mode\n"
+         ". Features: \"$ %s -Xversion -Xx\", WWW: %s\n"
+         ". Mail contact: \"$ %s %s\"\n"),
+         n_progname, ok_vlook(contact_web), n_progname, ok_vlook(contact_mail));
+   NYD2_LEAVE;
 }
 
 static void
@@ -580,28 +633,8 @@ a_main_hdrstop(int signo){
 int
 main(int argc, char *argv[]){
    /* Keep in SYNC: ./nail.1:"SYNOPSIS, main() */
-   static char const
-      optstr[] = "A:a:Bb:c:dEeFfHhiL:M:m:NnO:q:Rr:S:s:tu:VvX:::~#.",
-      usagestr[] = N_(
-         "Synopsis:\n"
-         "  %s -h\n"
-
-         "  %s [-BdEFintv~] [-: spec] [-A account]\n"
-         "\t [:-a attachment:] [:-b bcc-addr:] [:-c cc-addr:]\n"
-         "\t [-M type | -m file | -q file | -t]\n"
-         "\t [-r from-addr] [:-S var[=value]:]\n"
-         "\t [-s subject] [:-X cmd:] [-.] :to-addr: [-- :mta-option:]\n"
-
-         "  %s [-BdEeHiNnRv~] [-: spec] [-A account]\n"
-         "\t [-L spec] [-r from-addr] [:-S var[=value]:]\n"
-         "\t [-u user] [:-X cmd:] [-- :mta-option:]\n"
-
-         "  %s [-BdEeHiNnRv~#] [-: spec] [-A account] -f\n"
-         "\t [-L spec] [-r from-addr] [:-S var[=value]:]\n"
-         "\t [:-X cmd:] [file] [-- :mta-option:]\n"
-      );
-#define _USAGE_ARGS , n_progname, n_progname, n_progname, n_progname
-
+   static char const optstr[] =
+         "A:a:Bb:c:dEeFfHhiL:M:m:NnO:q:Rr:S:s:tu:VvX:::~#.";
    int i;
    char *cp;
    enum{
@@ -697,7 +730,7 @@ main(int argc, char *argv[]){
          n_poption |= n_PO_HEADERSONLY;
          break;
       case 'h':
-         n_err(V_(usagestr) _USAGE_ARGS);
+         a_main_usage(n_stdout);
          goto j_leave;
       case 'i':
          /* Ignore interrupts */
@@ -890,8 +923,7 @@ joarg:
 jusage:
          if(emsg != NULL)
             n_err("%s\n", V_(emsg));
-         n_err(V_(usagestr) _USAGE_ARGS);
-#undef _USAGE_ARGS
+         a_main_usage(n_stderr);
          n_exit_status = n_EXIT_USE;
          goto j_leave;
       }
