@@ -1570,6 +1570,8 @@ ok_b_bsdannounce,
    ok_v_cmd,
    ok_b_colour_disable,
    ok_b_colour_pager,
+   ok_v_contact_mail,                  /* {virt=VAL_CONTACT_MAIL} */
+   ok_v_contact_web,                   /* {virt=VAL_CONTACT_WEB} */
    ok_v_crt,                           /* {posnum=1} */
    ok_v_customhdr,                     /* {nocntrls=1} */
 

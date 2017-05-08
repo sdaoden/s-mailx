@@ -1,4 +1,4 @@
-#@ make.rc can be used adjust the set of features, paths, etc.
+#@ make.rc describes the set of used features and (default) values used etc.
 #@ You should have read INSTALL first.
 #@ Notes:
 #@ . Choosing a predefined CONFIG= disallows further option fine-tuning.
@@ -28,6 +28,10 @@
 #@   a feature, set it to a false boolean.
 
 ## IDENTITIES, PATHS AND PROGRAMS ##
+
+# Contact info (*contact-mail* and *contact-web*, respectively).
+VAL_CONTACT_MAIL=s-mailx@sdaoden.eu
+VAL_CONTACT_WEB=https://www.sdaoden.eu/code.html
 
 # The user ID our small privilege-separated helper program will be
 # SETUID to, shall it be included ($OPT_DOTLOCK).

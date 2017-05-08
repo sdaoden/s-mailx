@@ -7428,6 +7428,14 @@ adjustments dependent on the value of the environment variable
 (see there for more).
 .
 .Mx
+.Mx
+.It Va contact-mail , contact-web
+\*(RO Addresses for contact per email and web, respectively, e.g., for
+bug reports, suggestions, or help regarding \*(UA.
+The former can be used directly:
+.Ql ? eval mail $contact-mail .
+.
+.Mx
 .It Va crt
 In a(n interactive) terminal session, then if this valued variable is
 set it will be used as a threshold to determine how many lines the given
@@ -12160,9 +12168,17 @@ that was originally written by Kurt Shoens.
 .An "Keith Bostic" ,
 .An "Christos Zoulas" ,
 .An "Gunnar Ritter" ,
-.An "Steffen Nurpmeso" Aq Mt s-nail-users@lists.sourceforge.net
-(later
-.Mt s-mailx@sdaoden.eu ) .
+.An "Steffen Nurpmeso" .
+.
+.Pp
+The variables
+.Va contact-mail
+and
+.Va contact-web
+provide contact addresses:
+.Pp
+.\" v15-compat: drop eval as `mail' will expand variable?
+.Dl ? echo $contact-web; eval mail $contact-mail
 .
 .
 .\" .Sh CAVEATS {{{
