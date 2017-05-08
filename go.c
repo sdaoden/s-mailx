@@ -299,8 +299,8 @@ a_go_c_eval(void *vp){
    /* TODO HACK! `eval' should be nothing else but a command prefix, evaluate
     * TODO ARGV with shell rules, but if that is not possible then simply
     * TODO adjust argv/argc of "the CmdCtx" that we will have "exec" real cmd */
+   struct a_go_eval_ctx gec;
    struct n_string s_b, *sp;
-   si32_t rv;
    size_t i, j;
    char const **argv, *cp;
    NYD_ENTER;
@@ -319,17 +319,12 @@ a_go_c_eval(void *vp){
       sp = n_string_push_cp(sp, cp);
    }
 
-   /* TODO HACK! We should inherit the current n_go_input_flags via CmdCtx,
-    * TODO for now we don't have such sort of!  n_PS_COMPOSE_MODE is a hack
-    * TODO by itself, since ever: misuse the hack for a hack.
-    * TODO Further more, exit handling is very grazy */
-   (void)/*XXX*/n_go_command((n_pstate & n_PS_COMPOSE_MODE
-         ? n_GO_INPUT_CTX_COMPOSE : n_GO_INPUT_CTX_DEFAULT), n_string_cp(sp));
-
-   /* n_pstate_err_no = n_pstate_err_no; */
-   rv = (a_go_xcall != NULL) ? 0 : n_pstate_ex_no;
+   memset(&gec, 0, sizeof gec);
+   gec.gec_line.s = n_string_cp(sp);
+   gec.gec_line.l = sp->s_len;
+   (void)/* XXX */a_go_evaluate(&gec);
    NYD_LEAVE;
-   return rv;
+   return (a_go_xcall != NULL ? 0 : n_pstate_ex_no);
 }
 
 static int
