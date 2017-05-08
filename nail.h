@@ -1516,7 +1516,6 @@ enum n_program_state_once{
  * - see the comments in accmacvar.c before changing *anything* in here!
  * - virt= implies rdonly,nodel
  * - import= implies env
- * - defval= implies notempty
  * - num and posnum are mutual exclusive
  * - most default VAL_ues come from in from build system via ./make.rc
  * (Keep in SYNC: ./nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings") */
@@ -1563,9 +1562,9 @@ ok_b_bsdannounce,
    ok_v_build_osenv,                   /* {virt=VAL_BUILD_OSENV} */
 
    ok_v_COLUMNS,                       /* {notempty=1,posnum=1,env=1} */
-   ok_v_charset_7bit,                  /* {lower=1,defval=CHARSET_7BIT} */
+   ok_v_charset_7bit,            /* {lower=1,notempty=1,defval=CHARSET_7BIT} */
    /* But unused without HAVE_ICONV, we use ok_vlook(CHARSET_8BIT_OKEY)! */
-   ok_v_charset_8bit,                  /* {lower=1,defval=CHARSET_8BIT} */
+   ok_v_charset_8bit,            /* {lower=1,notempty=1,defval=CHARSET_8BIT} */
    ok_v_charset_unknown_8bit,          /* {lower=1} */
    ok_v_cmd,
    ok_b_colour_disable,
@@ -1591,7 +1590,7 @@ ok_b_bsdannounce,
    ok_b_dot,
    ok_b_dotlock_ignore_error,
 
-   ok_v_EDITOR,                        /* {env=1,defval=VAL_EDITOR} */
+   ok_v_EDITOR,                     /* {env=1,notempty=1,defval=VAL_EDITOR} */
    ok_b_editalong,
    ok_b_editheaders,
    ok_b_emptystart,
@@ -1635,16 +1634,16 @@ ok_b_bsdannounce,
    ok_b_keepsave,
 
    ok_v_LINES,                         /* {notempty=1,posnum=1,env=1} */
-   ok_v_LISTER,                        /* {env=1,defval=VAL_LISTER} */
+   ok_v_LISTER,                     /* {env=1,notempty=1,defval=VAL_LISTER} */
    ok_v_LOGNAME,                       /* {rdonly=1,import=1} */
    ok_b_line_editor_disable,
    ok_b_line_editor_no_defaults,
    ok_v_log_prefix,                    /* {nodel=1,i3val=VAL_UAGENT ": "} */
 
    ok_v_MAIL,                          /* {env=1} */
-   ok_v_MAILRC,                        /* {import=1,defval=VAL_MAILRC} */
+   ok_v_MAILRC,                  /* {import=1,notempty=1,defval=VAL_MAILRC} */
    ok_b_MAILX_NO_SYSTEM_RC,            /* {name=MAILX_NO_SYSTEM_RC,import=1} */
-   ok_v_MBOX,                          /* {env=1,defval=VAL_MBOX} */
+   ok_v_MBOX,                          /* {env=1,notempty=1,defval=VAL_MBOX} */
    ok_v_mailbox_resolved,              /* {nolopts=1,rdonly=1,nodel=1} */
    ok_v_mailbox_display,               /* {nolopts=1,rdonly=1,nodel=1} */
    ok_v_mailx_extra_rc,
@@ -1659,10 +1658,10 @@ ok_b_bsdannounce,
    ok_b_mime_alternative_favour_rich,
    ok_v_mime_counter_evidence,         /* {posnum=1} */
    ok_v_mimetypes_load_control,
-   ok_v_mta,                           /* {defval=VAL_MTA,notempty=1} */
+   ok_v_mta,                           /* {notempty=1,defval=VAL_MTA} */
    ok_v_mta_arguments,
    ok_b_mta_no_default_arguments,
-   ok_v_mta_argv0,                     /* {defval=VAL_MTA_ARGV0,notempty=1} */
+   ok_v_mta_argv0,                     /* {notempty=1,defval=VAL_MTA_ARGV0} */
 
 ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
 ok_b_NAIL_NO_SYSTEM_RC,             /* {name=NAIL_NO_SYSTEM_RC,import=1} */
@@ -1670,7 +1669,7 @@ ok_v_NAIL_HEAD,                     /* {name=NAIL_HEAD} */
 ok_v_NAIL_HISTFILE,                 /* {name=NAIL_HISTFILE} */
 ok_v_NAIL_HISTSIZE,                 /* {name=NAIL_HISTSIZE,notempty=1,num=1} */
 ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
-   ok_v_NETRC,                         /* {env=1,defval=VAL_NETRC} */
+   ok_v_NETRC,                         /* {env=1,notempty=1,defval=VAL_NETRC} */
    ok_b_netrc_lookup,
    ok_v_netrc_pipe,
    ok_v_newfolders,
@@ -1682,7 +1681,7 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_on_compose_splice_shell,       /* {notempty=1} */
    ok_b_outfolder,
 
-   ok_v_PAGER,                         /* {env=1,defval=VAL_PAGER} */
+   ok_v_PAGER,                         /* {env=1,notempty=1,defval=VAL_PAGER} */
    ok_v_PATH,                          /* {nodel=1,import=1} */
    ok_b_POSIXLY_CORRECT,            /* {vip=1,import=1,name=POSIXLY_CORRECT} */
    ok_b_page,
@@ -1713,7 +1712,7 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_reply_to_honour,
    ok_b_rfc822_body_from_,             /* {name=rfc822-body-from_} */
 
-   ok_v_SHELL,                         /* {import=1,defval=VAL_SHELL} */
+   ok_v_SHELL,                      /* {import=1,notempty=1,defval=VAL_SHELL} */
 ok_b_SYSV3,                         /* {env=1} */
    ok_b_save,                          /* {i3val=TRU1} */
    ok_v_screen,                        /* {notempty=1,posnum=1} */
@@ -1792,14 +1791,14 @@ ok_b_ssl_no_default_ca,
    ok_b_termcap_disable,
    ok_v_toplines,                      /* {notempty=1,num=1,defval="5"} */
    ok_b_topsqueeze,
-   ok_v_ttycharset,                    /* {lower=1,defval=CHARSET_8BIT} */
+   ok_v_ttycharset,              /* {lower=1,notempty=1,defval=CHARSET_8BIT} */
    ok_b_typescript_mode,               /* {vip=1} */
 
    ok_v_USER,                          /* {rdonly=1,import=1} */
    ok_v_umask,                      /* {vip=1,nodel=1,posnum=1,i3val="0077"} */
    ok_v_user,
 
-   ok_v_VISUAL,                        /* {env=1,defval=VAL_VISUAL} */
+   ok_v_VISUAL,                     /* {env=1,notempty=1,defval=VAL_VISUAL} */
    ok_b_v15_compat,
    ok_b_verbose,                       /* {vip=1} */
    ok_v_version,                       /* {virt=n_VERSION} */

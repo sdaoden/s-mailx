@@ -269,7 +269,6 @@ sub dump_map{
          push @fa, 'a_AMV_VF_I3VAL'
       }
       if($e->{defval}){
-         $e->{notempty} = 1;
          $defvals{$k} = $e;
          push @fa, 'a_AMV_VF_DEFVAL'
       }
