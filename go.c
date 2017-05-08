@@ -2581,9 +2581,11 @@ n_go_may_yield_control(void){ /* TODO this is a terrible hack */
 
    rv = FAL0;
 
-   /* Only when interactive and startup completed */
-   if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)) !=
-         (n_PSO_INTERACTIVE | n_PSO_STARTED))
+   /* Only when startup completed */
+   if(!(n_psonce & n_PSO_STARTED))
+      goto jleave;
+   /* Only interactive or batch mode (assuming that is ok) */
+   if(!(n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_BATCH_FLAG))
       goto jleave;
 
    /* Not when running any hook */
