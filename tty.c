@@ -4130,8 +4130,8 @@ jleave:
    return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 
 jlist:{
-   FILE *fp;
    size_t i, b;
+   FILE *fp;
 
    if(a_tty.tg_hist == NULL)
       goto jleave;
@@ -4145,10 +4145,14 @@ jlist:{
    i = a_tty.tg_hist_size;
    b = 0;
    for(thp = a_tty.tg_hist; thp != NULL;
-         --i, b += thp->th_len, thp = thp->th_older)
-      fprintf(fp,
-         "%c%4" PRIuZ ". %-50.50s (%4" PRIuZ "+%2" PRIu32 " B)\n",
-         (thp->th_isgabby ? '*' : ' '), i, thp->th_dat, b, thp->th_len);
+         --i, b += thp->th_len, thp = thp->th_older){
+      fprintf(fp, "%c%" PRIuZ, (thp->th_isgabby ? '*' : ' '), i);
+      if(n_poption & n_PO_D_V)
+         fprintf(fp, " (%" PRIuZ "+%" PRIu32 ")", b, thp->th_len);
+      putc('\t', fp);
+      fputs(thp->th_dat, fp);
+      putc('\n', fp);
+   }
 
    page_or_print(fp, i);
    Fclose(fp);
