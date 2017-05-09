@@ -624,6 +624,132 @@ FL struct str *
    return self;
 }
 
+FL struct str *
+n_str_trim(struct str *self){
+   size_t l;
+   char const *cp;
+   NYD2_ENTER;
+
+   cp = self->s;
+
+   if((l = self->l) > 0){
+      while(spacechar(*cp)){
+         ++cp;
+         if(--l == 0)
+            break;
+      }
+      self->s = n_UNCONST(cp);
+   }
+
+   if(l > 0){
+      for(cp += l -1; spacechar(*cp); --cp)
+         if(--l == 0)
+            break;
+   }
+   self->l = l;
+
+   NYD2_LEAVE;
+   return self;
+}
+
+FL struct str *
+n_str_trim_ifs(struct str *self, bool_t dodefaults){
+   char s, t, n, c;
+   char const *ifs, *cp;
+   size_t l, i;
+   NYD2_ENTER;
+
+   if((l = self->l) == 0)
+      goto jleave;
+
+   ifs = ok_vlook(ifs_ws);
+   cp = self->s;
+   s = t = n = '\0';
+
+   /* Check whether we can go fast(er) path */
+   for(i = 0; (c = ifs[i]) != '\0'; ++i){
+      switch(c){
+      case ' ': s = c; break;
+      case '\t': t = c; break;
+      case '\n': n = c; break;
+      default:
+         /* Need to go the slow path */
+         while(strchr(ifs, *cp) != NULL){
+            ++cp;
+            if(--l == 0)
+               break;
+         }
+         self->s = n_UNCONST(cp);
+
+         if(l > 0){
+            for(cp += l -1; strchr(ifs, *cp) != NULL;){
+               if(--l == 0)
+                  break;
+               /* An uneven number of reverse solidus escapes last WS! */
+               else if(*--cp == '\\'){
+                  siz_t j;
+
+                  for(j = 1; l - (uiz_t)j > 0 && cp[-j] == '\\'; ++j)
+                     ;
+                  if(j & 1){
+                     ++l;
+                     break;
+                  }
+               }
+            }
+         }
+         self->l = l;
+
+         if(!dodefaults)
+            goto jleave;
+         cp = self->s;
+         ++i;
+         break;
+      }
+   }
+
+   /* No ifs-ws?  No more data?  No trimming */
+   if(l == 0 || (i == 0 && !dodefaults))
+      goto jleave;
+
+   if(dodefaults){
+      s = ' ';
+      t = '\t';
+      n = '\n';
+   }
+
+   if(l > 0){
+      while((c = *cp) != '\0' && (c == s || c == t || c == n)){
+         ++cp;
+         if(--l == 0)
+            break;
+      }
+      self->s = n_UNCONST(cp);
+   }
+
+   if(l > 0){
+      for(cp += l -1; (c = *cp) != '\0' && (c == s || c == t || c == n);){
+         if(--l == 0)
+            break;
+         /* An uneven number of reverse solidus escapes last WS! */
+         else if(*--cp == '\\'){
+            siz_t j;
+
+            for(j = 1; l - (uiz_t)j > 0 && cp[-j] == '\\'; ++j)
+               ;
+            if(j & 1){
+               ++l;
+               break;
+            }
+         }
+      }
+   }
+   self->l = l;
+jleave:
+   NYD2_LEAVE;
+   return self;
+}
+
 /*
  * struct n_string TODO extend, optimize
  */
