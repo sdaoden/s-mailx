@@ -155,7 +155,8 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
             enum n_shexp_state shs;
 
             if((shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
-                     n_SHEXP_PARSE_META_SEMICOLON), &store, &input, &cookie)
+                     n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_META_SEMICOLON),
+                     &store, &input, &cookie)
                   ) & n_SHEXP_STATE_ERR_MASK){
                /* Simply ignore Unicode error, just keep the normalized \[Uu] */
                if((shs & n_SHEXP_STATE_ERR_MASK) != n_SHEXP_STATE_ERR_UNICODE){
@@ -264,6 +265,7 @@ jredo:
          ncap.ca_arg_flags =
          shs = n_shexp_parse_token((ncap.ca_ent_flags[1] |
                   n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_LOG |
+                  n_SHEXP_PARSE_IFS_VAR |
                   (cad_no+1 < cadp->cad_no ? 0 : n_SHEXP_PARSE_META_SEMICOLON)),
                shoup, &shin,
                (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_GREEDY ? &cookie : NULL));

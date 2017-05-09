@@ -856,6 +856,16 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
       case ok_v_folder:
          n_PS_ROOT_BLOCK(ok_vclear(folder_resolved));
          break;
+      case ok_v_ifs:{
+         char *x_b, *x, c;
+
+         x_b = x = n_autorec_alloc(strlen(val) +1);
+         while((c = *val++) != '\0')
+            if(spacechar(c))
+               *x++ = c;
+         *x = '\0';
+         n_PS_ROOT_BLOCK(ok_vset(ifs_ws, x_b));
+      }  break;
       case ok_b_memdebug:
          n_poption |= n_PO_MEMDEBUG;
          break;

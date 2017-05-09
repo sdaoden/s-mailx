@@ -1017,7 +1017,7 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
    char c2, c, quotec, utf[8];
    enum n_shexp_state rv;
    size_t i, il;
-   char const *ib_save, *ib;
+   char const *ifs, *ifs_ws, *ib_save, *ib;
    enum{
       a_NONE = 0,
       a_SKIPQ = 1u<<0,     /* Skip rest of this quote (\u0 ..) */
@@ -1054,6 +1054,11 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
 
    if((flags & n_SHEXP_PARSE_TRUNC) && store != NULL)
       store = n_string_trunc(store, 0);
+
+   if(flags & n_SHEXP_PARSE_IFS_VAR){
+      ifs = ok_vlook(ifs);
+      ifs_ws = ok_vlook(ifs_ws);
+   }
 
    state = a_NONE;
    ib = input->s;
@@ -1099,9 +1104,15 @@ jrestart_empty:
    }else{
 jrestart:
       if(flags & n_SHEXP_PARSE_TRIMSPACE){
-         for(; il > 0; ++ib, --il)
-            if(!blankspacechar(*ib))
-               break;
+         if(flags & n_SHEXP_PARSE_IFS_VAR){
+            for(; il > 0; ++ib, --il)
+               if(strchr(ifs_ws, *ib) == NULL)
+                  break;
+         }else{
+            for(; il > 0; ++ib, --il)
+               if(!blankspacechar(*ib))
+                  break;
+         }
       }
       input->s = n_UNCONST(ib);
       input->l = il;
@@ -1206,7 +1217,8 @@ jrestart:
             if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
                ++il, --ib;
             break;
-         }else if(blankchar(c)){
+         }else if((!(flags & n_SHEXP_PARSE_IFS_VAR) && blankchar(c)) ||
+               ((flags & n_SHEXP_PARSE_IFS_VAR) && strchr(ifs, c) != NULL)){
             if(!(flags & n_SHEXP_PARSE_IFS_IS_COMMA)){
                /* The parsed sequence may be _the_ output, so ensure we don't
                 * include the metacharacter, then. */
@@ -1618,9 +1630,15 @@ jleave:
       input->l = 0;
    }else{
       if(flags & n_SHEXP_PARSE_TRIMSPACE){
-         for(; il > 0; ++ib, --il)
-            if(!blankchar(*ib))
-               break;
+         if(flags & n_SHEXP_PARSE_IFS_VAR){
+            for(; il > 0; ++ib, --il)
+               if(strchr(ifs_ws, *ib) == NULL)
+                  break;
+         }else{
+            for(; il > 0; ++ib, --il)
+               if(!blankchar(*ib))
+                  break;
+         }
       }
       input->l = il;
       input->s = n_UNCONST(ib);

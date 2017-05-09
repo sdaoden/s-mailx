@@ -1523,7 +1523,10 @@ The content of these files is interpreted as follows:
 .Pp
 .Bl -bullet -compact
 .It
-A lines' leading whitespace is removed.
+The whitespace characters space, tabulator and newline,
+as well as those defined by the variable
+.Va ifs ,
+are removed from the beginning and end of input lines.
 .It
 Empty lines are ignored.
 .It
@@ -2796,7 +2799,7 @@ information which applies; a handy suggestion might thus be:
 .
 .Bd -literal -offset indent
 ? define __xv {
-  # Be careful to choose sh(1)ell-style on _entire_ line!
+  # Before v15: need to enable sh(1)ell-style on _entire_ line!
   localopts 1;wysh set verbose;ignerr eval "${@}";return ${?}
 }
 ? commandalias xv '\ecall __xv'
@@ -8182,6 +8185,42 @@ character set, an UTF-8 locale charset is required to represent all
 possible international domain names (before conversion, that is).
 .
 .Mx
+.It Va ifs
+The input field separator that is used (\*(ID by some functions) to
+determine where to split input data.
+.Pp
+.Bl -tag -compact -width MMM
+.It 1.
+Unsetting is treated as assigning the default value,
+.Ql \& \et\en .
+.It 2.
+If set to the empty value, no field splitting will be performed.
+.It 3.
+If set to a non-empty value, all whitespace characters are extracted
+and assigned to the variable
+.Va ifs-ws .
+.El
+.Pp
+.Bl -tag -compact -width MMM
+.It a.
+.Va \&\&ifs-ws
+will be ignored at the beginning and end of input.
+Diverging from POSIX shells default whitespace is removed in addition,
+which is owed to the entirely different line content extraction rules.
+.It b.
+Each occurrence of a character of
+.Va \&\&ifs
+will cause field-splitting, any adjacent
+.Va \&\&ifs-ws
+characters will be skipped.
+.El
+.
+.Mx
+.It Va ifs-ws
+\*(RO Automatically deduced from the whitespace characters in
+.Va ifs .
+.
+.Mx
 .It Va ignore
 \*(BO Ignore interrupt signals from the terminal while entering
 messages; instead echo them as
@@ -8764,7 +8803,9 @@ has been started in interactive mode, (a restricted set of)
 .Sx "COMMAND ESCAPES"
 will always be available, and for guaranteed reproducibilities sake
 .Va escape
-will be set to its default.
+will be set to its default
+.Pf ( Va ifs
+and other settings will not be reset, however).
 The compose mode command
 .Ic ~^
 has been especially designed for scriptability (via these hooks).
