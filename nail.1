@@ -2099,7 +2099,7 @@ This addressing mode is available with all types of folders;
 \*(UA will perform the search locally as necessary.
 Strings must be enclosed by double quotes
 .Ql \&"
-in their entirety if they contain white space or parentheses;
+in their entirety if they contain whitespace or parentheses;
 within the quotes, only reverse solidus
 .Ql \e
 is recognized as an escape character.
@@ -2773,7 +2773,10 @@ at the end of a command line
 the newline character: it is discarded and the next line of input is
 used as a follow-up line, with all leading whitespace removed;
 once the entire command line is completed, the processing that is
-documented in the following begins.
+documented in the following, after removal of the whitespace characters
+space, tabulator and newline as well as those defined by the variable
+.Va ifs
+from the beginning and end of the line, begins.
 .
 .Pp
 Command names may be abbreviated, in which case the first command that
@@ -2916,7 +2919,7 @@ An argument can be enclosed between paired double-quotes
 or
 single-quotes
 .Ql 'argument' ;
-any white space, shell word expansion, or reverse solidus characters
+any whitespace, shell word expansion, or reverse solidus characters
 (except as described next) within the quotes are treated literally as
 part of the argument.
 A double-quote will be treated literally within single-quotes and vice
@@ -8803,9 +8806,9 @@ has been started in interactive mode, (a restricted set of)
 .Sx "COMMAND ESCAPES"
 will always be available, and for guaranteed reproducibilities sake
 .Va escape
-will be set to its default
-.Pf ( Va ifs
-and other settings will not be reset, however).
+and
+.Va ifs
+will be set to their defaults.
 The compose mode command
 .Ic ~^
 has been especially designed for scriptability (via these hooks).

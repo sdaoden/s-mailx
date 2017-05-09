@@ -2242,7 +2242,7 @@ temporary_folder_hook_unroll(void){ /* XXX intermediate hack */
 
       a_amv_lopts = NULL;
       a_amv_lopts_unroll(&a_amv_folder_hook_lopts);
-      a_amv_folder_hook_lopts = NULL;
+      assert(a_amv_folder_hook_lopts == NULL);
       a_amv_lopts = save;
    }
    NYD_LEAVE;
@@ -2302,7 +2302,7 @@ temporary_compose_mode_hook_unroll(void){ /* XXX intermediate hack */
 
       a_amv_lopts = NULL;
       a_amv_lopts_unroll(&a_amv_compose_lopts);
-      a_amv_compose_lopts = NULL;
+      assert(a_amv_compose_lopts == NULL);
       a_amv_lopts = save;
    }
    NYD_LEAVE;

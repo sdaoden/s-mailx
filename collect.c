@@ -1403,7 +1403,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
    int volatile t, eofcnt, getfields;
    char volatile escape;
    char *linebuf, escape_saved;
-   char const *cp, *coapm;
+   char const *cp, *coapm, *ifs_saved;
    size_t i, linesize; /* TODO line pool */
    long cnt;
    enum sendaction action;
@@ -1416,7 +1416,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
    linesize = 0;
    linebuf = NULL;
    eofcnt = 0;
-   coapm = NULL;
+   ifs_saved = coapm = NULL;
    coap = NULL;
 
    /* Start catching signals from here, but we're still die on interrupts
@@ -1970,8 +1970,12 @@ jout:
       union {int (*ptf)(void); char const *sh;} u;
       char const *cmd;
 
-      /* Reset *escape* to be available and guaranteed! */
-      escape = n_ESCAPE[0];
+      /* Reset *escape* and more to their defaults.  On change update manual! */
+      if(ifs_saved == NULL){
+         escape = n_ESCAPE[0];
+         ifs_saved = savestr(ok_vlook(ifs));
+         ok_vclear(ifs);
+      }
 
       if(coapm != NULL){
          /* XXX Due Popen() fflush(NULL) in PTF mode, ensure nothing to flush */
@@ -2026,7 +2030,11 @@ jout:
    }
    if(coapm == NULL && (coapm = ok_vlook(on_compose_splice)) != NULL)
       goto Jocs;
-   escape = escape_saved;
+   if(coap != NULL){
+      ok_vset(ifs, ifs_saved);
+      ifs_saved = NULL;
+      escape = escape_saved;
+   }
 
    /* Final chance to edit headers, if not already above */
    if (ok_blook(bsdcompat) || ok_blook(askatend)) {
@@ -2138,6 +2146,8 @@ jleave:
 jerr:
    if(coap != NULL && coap != (struct a_coll_ocs_arg*)-1)
       n_go_splice_hack_remove_after_jump();
+   if(ifs_saved != NULL)
+      ok_vset(ifs, ifs_saved);
    if(sigfp != NULL)
       Fclose(n_UNVOLATILE(sigfp));
    if (_coll_fp != NULL) {

@@ -886,30 +886,16 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
 
    /* Aliases that refer to shell commands or macro expansion restart */
 jrestart:
-
-   /* Strip the white space away from end and beginning of command.
-    * XXX Ideally this will be m_string_trim() */
-   if(line.l > 0){
-      size_t i;
-
-      i = line.l;
-      for(cp = &line.s[i -1]; spacechar(*cp); --cp)
-         if(--i == 0)
-            break;
-      line.s[line.l = i] = '\0';
-   }
-   if(line.l > 0){
-      for(cp = line.s; spacechar(*cp); ++cp)
-         ;
-      line.l -= PTR2SIZE(cp - line.s);
-      line.s = cp;
-   }
-   if(line.l == 0)
+   if(n_str_trim_ifs(&line, TRU1)->l == 0){
+      line.s[0] = '\0';
       goto jempty;
+   }
+   (cp = line.s)[line.l] = '\0';
 
    /* Ignore null commands (comments) */
-   if(*(cp = line.s) == '#')
+   if(*cp == '#'){
       goto jret0;
+   }
 
    /* Handle ! differently to get the correct lexical conventions */
    if(*cp == '!')
