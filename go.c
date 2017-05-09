@@ -1731,12 +1731,18 @@ jjump: /* TODO Should be _CLEANUP_UNWIND not _TEARDOWN on signal if DOABLE! */
 static int
 a_go_c_read(void *v){ /* TODO IFS? how? -r */
    struct n_sigman sm;
-   char const **argv, *cp, *cp2;
+   struct n_string s, *sp;
    char *linebuf;
    size_t linesize;
    int rv;
+   char const *ifs, *ifsws, **argv, *cp, *cp2;
    NYD2_ENTER;
 
+   sp = n_string_creat_auto(&s);
+   sp = n_string_reserve(sp, 64 -1);
+
+   ifs = ok_vlook(ifs);
+   ifsws = ok_vlook(ifs_ws);
    rv = 0;
    linesize = 0;
    linebuf = NULL;
@@ -1765,37 +1771,38 @@ a_go_c_read(void *v){ /* TODO IFS? how? -r */
       for(rv = 0; *argv != NULL; ++argv){
          char c;
 
-         while(spacechar(*cp))
+         while((c = *cp) != '\0' && strchr(ifsws, c) != NULL)
             ++cp;
-         if(*cp == '\0')
+         if(c == '\0')
             break;
 
-         /* The last variable gets the remaining line less trailing IFS */
+         /* The last variable gets the remaining line less trailing IFS-WS */
          if(argv[1] == NULL){
             for(cp2 = cp; *cp2 != '\0'; ++cp2)
                ;
             for(; cp2 > cp; --cp2){
                c = cp2[-1];
-               if(!spacechar(c))
+               if(strchr(ifsws, c) == NULL)
                   break;
             }
-         }else
-            for(cp2 = cp; (c = *++cp2) != '\0';)
-               if(spacechar(c))
-                  break;
-
-         /* C99 xxx This is a CC warning workaround (-Wbad-function-cast) */{
-            char *vcp;
-
-            vcp = savestrbuf(cp, PTR2SIZE(cp2 - cp));
-            if(!a_go__read_set(*argv, vcp)){
-               n_pstate_err_no = n_ERR_NOTSUP;
-               rv = 1;
+jcp2cp:
+            sp = n_string_assign_buf(sp, cp, PTR2SIZE(cp2 - cp));
+         }else for(cp2 = cp;; ++cp2){
+            if((c = *cp2) == '\0')
+               goto jcp2cp;
+            if(strchr(ifs, c) != NULL){
+               sp = n_string_assign_buf(sp, cp, PTR2SIZE(cp2 - cp));
+               ++cp2;
                break;
             }
          }
-
          cp = cp2;
+
+         if(!a_go__read_set(*argv, n_string_cp(sp))){
+            n_pstate_err_no = n_ERR_NOTSUP;
+            rv = 1;
+            break;
+         }
       }
    }
 
