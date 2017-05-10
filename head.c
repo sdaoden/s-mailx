@@ -1173,7 +1173,8 @@ extract_date_from_from_(char const *line, size_t linelen,
    cp = _from__skipword(cp);
    if (cp == NULL)
       goto jerr;
-   if (cp[0] == 't' && cp[1] == 't' && cp[2] == 'y') {
+   if((cp[0] == 't' || cp[0] == 'T') && (cp[1] == 't' || cp[1] == 'T') &&
+         (cp[2] == 'y' || cp[2] == 'Y')){
       cp = _from__skipword(cp);
       if (cp == NULL)
          goto jerr;
@@ -1182,15 +1183,18 @@ extract_date_from_from_(char const *line, size_t linelen,
     * . http://bugs.debian.org/624111
     * . [Mutt] #3868: mutt should error if the imported mailbox is invalid
     * What they do is that they obfuscate the address to "name at host",
-    * and even "name at host dot dom dot dom.  I think we should handle that */
-   else if(cp[0] == 'a' && cp[1] == 't' && cp[2] == ' '){
+    * and even "name at host dot dom dot dom.
+    * The [Aa][Tt] is also RFC 733, so be tolerant */
+   else if((cp[0] == 'a' || cp[0] == 'A') && (cp[1] == 't' || cp[1] == 'T') &&
+         cp[2] == ' '){
       rv = -1;
       cp += 3;
 jat_dot:
       cp = _from__skipword(cp);
       if (cp == NULL)
          goto jerr;
-      if(cp[0] == 'd' && cp[1] == 'o' && cp[2] == 't' && cp[3] == ' '){
+      if((cp[0] == 'd' || cp[0] == 'D') && (cp[1] == 'o' || cp[1] == 'O') &&
+            (cp[2] == 't' || cp[2] == 'T') && cp[3] == ' '){
          cp += 4;
          goto jat_dot;
       }
