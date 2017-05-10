@@ -1596,7 +1596,7 @@ ok_b_bsdannounce,
    ok_b_emptystart,
    ok_v_encoding,
    ok_b_errexit,
-   ok_v_escape,
+   ok_v_escape,                        /* {defval=n_ESCAPE} */
    ok_v_expandaddr,
    ok_v_expandargv,
 

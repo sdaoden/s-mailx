@@ -36,22 +36,22 @@
 #ifndef n_CONFIG_H
 # define n_CONFIG_H
 
-#define APPEND                   /* New mail goes to end of mailbox */
-#define CBAD            (-15555)
-#define DOTLOCK_TRIES   5        /* Number of open(2) calls for dotlock */
-#define FILE_LOCK_TRIES 10       /* Maximum tries before n_file_lock() fails */
-#define FILE_LOCK_MILLIS 200     /* If UIZ_MAX, fall back to that */
-#define n_ERROR "ERROR"          /* Is-error?  Also as n_error[] */
-#define ERRORS_MAX      1000     /* Maximum error ring entries TODO configable*/
-#define n_ESCAPE        '~'      /* Default escape for sending */
-#define HSHSIZE         23       /* Hash prime TODO make dynamic, obsolete */
-#define n_MAILDIR_SEPARATOR ':'  /* Flag separator character */
-#define n_MAXARGC       512      /* Maximum list of raw strings */
-#define MAXEXP          25       /* Maximum expansion of aliases */
-#define REFERENCES_MAX  20       /* Maximum entries in References: */
-#define n_UNIREPL "\xEF\xBF\xBD" /* 0xFFFD in UTF-8 */
-#define FTMP_OPEN_TRIES 10       /* Maximum number of Ftmp() open(2) tries */
-#define n_VEXPR_REGEX_MAX 10     /* Maximum address. `vexpr' regex(7) matches */
+#define APPEND                /* New mail goes to end of mailbox */
+#define CBAD (-15555)
+#define DOTLOCK_TRIES   5     /* Number of open(2) calls for dotlock */
+#define FILE_LOCK_TRIES 10    /* Maximum tries before n_file_lock() fails */
+#define FILE_LOCK_MILLIS 200  /* If UIZ_MAX, fall back to that */
+#define n_ERROR "ERROR"       /* Is-error?  Also as n_error[] */
+#define ERRORS_MAX 1000       /* Maximum error ring entries TODO configable*/
+#define n_ESCAPE "~"          /* Default escape for sending (POSIX) */
+#define HSHSIZE 23            /* Hash prime TODO make dynamic, obsolete */
+#define n_MAILDIR_SEPARATOR ':' /* Flag separator character */
+#define n_MAXARGC 512         /* Maximum list of raw strings */
+#define MAXEXP 25             /* Maximum expansion of aliases */
+#define REFERENCES_MAX 20     /* Maximum entries in References: */
+#define n_UNIREPL "\xEF\xBF\xBD" /* Unicode replacement 0xFFFD in UTF-8 */
+#define FTMP_OPEN_TRIES 10    /* Maximum number of Ftmp() open(2) tries */
+#define n_VEXPR_REGEX_MAX 10  /* Maximum address. `vexpr' regex(7) matches */
 
 /* Max readable line width TODO simply use BUFSIZ? */
 #if BUFSIZ + 0 > 2560
@@ -62,7 +62,7 @@
 #define BUFFER_SIZE (BUFSIZ >= (1u << 13) ? BUFSIZ : (1u << 14))
 
 /* *indentprefix* default as of POSIX */
-#define INDENT_DEFAULT  "\t"
+#define INDENT_DEFAULT "\t"
 
 /* Auto-reclaimed memory storage: size of the buffers.  Maximum auto-reclaimed
  * storage is that value /2, which is n_CTA()ed to be > 1024 */
@@ -75,19 +75,19 @@
 
 /* Maximum allowed line length in a mail before QP folding is necessary), and
  * the real limit we go for */
-#define MIME_LINELEN_MAX   998   /* Plus CRLF */
+#define MIME_LINELEN_MAX 998 /* Plus CRLF */
 #define MIME_LINELEN_LIMIT (MIME_LINELEN_MAX - 48)
 
 /* Ditto, SHOULD */
-#define MIME_LINELEN    78    /* Plus CRLF */
+#define MIME_LINELEN 78 /* Plus CRLF */
 
 /* And in headers which contain an encoded word according to RFC 2047 there is
  * yet another limit; also RFC 2045: 6.7, (5). */
 #define MIME_LINELEN_RFC2047 76
 
 /* Locations of mime.types(5) */
-#define MIME_TYPES_USR  "~/.mime.types"
-#define MIME_TYPES_SYS  "/etc/mime.types"
+#define MIME_TYPES_USR "~/.mime.types"
+#define MIME_TYPES_SYS "/etc/mime.types"
 
 /* Fallback MIME charsets, if *charset-7bit* and *charset-8bit* or not set.
  * Note: must be lowercase!  Changes affect enum okeys!
@@ -128,7 +128,7 @@
 #define n_SHEXP_MAGIC_PATH_CHARS "|&;<>{}()[]*?$`'\"\\"
 
 /* Maximum size of a message that is passed through to the spam system */
-#define SPAM_MAXSIZE    420000
+#define SPAM_MAXSIZE  420000
 
 /* Number of Not-Yet-Dead calls that are remembered */
 #if defined HAVE_DEBUG || defined HAVE_DEVEL || defined HAVE_NYD2

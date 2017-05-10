@@ -7674,12 +7674,13 @@ for more on this topic.
 .
 .Mx
 .It Va escape
-If defined, the first character of the value of this variable
-gives the character to use in place of tilde
-.Ql ~
-to denote
-.Sx "COMMAND ESCAPES" .
+The first character of this value defines the escape character for
+.Sx "COMMAND ESCAPES"
+in compose mode.
+The default value is the character tilde
+.Ql ~ .
 If set to the empty string, command escapes are disabled.
+Changes on this variable will not affect an active compose mode.
 .
 .Mx
 .It Va expandaddr

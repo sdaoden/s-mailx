@@ -2041,8 +2041,8 @@ t_behave_compose_hooks() {
 	_EOT
    chmod 0755 ./.tsendmail.sh
 
-   printf 'm hook-test@exam.ple\nbody\n~.\nvar t_oce t_ocs t_ocs_shell t_ocl' |
-   ${MAILX} ${ARGS} -Snomemdebug \
+   printf 'm hook-test@exam.ple\nbody\n!.\nvar t_oce t_ocs t_ocs_shell t_ocl' |
+   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! \
       -Smta=./.tsendmail.sh \
       -X'
          define _work {

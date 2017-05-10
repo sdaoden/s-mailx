@@ -1467,7 +1467,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
       n_UNINIT(t, 0);
    }
 
-   escape_saved = escape = ((cp = ok_vlook(escape)) != NULL) ? *cp : n_ESCAPE;
+   escape_saved = escape = *(cp = ok_vlook(escape));
    _coll_hadintr = 0;
 
    if (!sigsetjmp(_coll_jmp, 1)) {
@@ -1970,7 +1970,7 @@ jout:
       char const *cmd;
 
       /* Reset *escape* to be available and guaranteed! */
-      escape = n_ESCAPE;
+      escape = n_ESCAPE[0];
 
       if(coapm != NULL){
          /* XXX Due Popen() fflush(NULL) in PTF mode, ensure nothing to flush */
