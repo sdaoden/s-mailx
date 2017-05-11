@@ -209,8 +209,8 @@ a_message_get_header(struct message *mp){
 }
 
 static char **
-a_message_add_to_namelist(char ***namelist, size_t *nmlsize, char **np,
-      char *string){
+a_message_add_to_namelist(char ***namelist, size_t *nmlsize, /* TODO Vector */
+      char **np, char *string){
    size_t idx;
    NYD2_ENTER;
 
@@ -248,8 +248,7 @@ a_message_markall(char *buf, int f){
    n_LCTA((ui32_t)a_ALLNET == (ui32_t)TRU1,
       "Constant is converted to bool_t via AND, thus");
 
-   /* Update message array: clear MMARK but remember its former state for `.
-    * An empty selector input is identical to * asterisk */
+   /* Update message array: clear MMARK but remember its former state for ` */
    for(i = msgCount; i-- > 0;){
       enum mflag mf;
 

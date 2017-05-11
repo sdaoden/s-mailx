@@ -114,6 +114,13 @@ enum a_go_cleanup_mode{
    a_GO_CLEANUP_HOLDALLSIGS = 1u<<10 /* hold_all_sigs() active TODO */
 };
 
+enum a_go_hist_flags{
+   a_GO_HIST_NONE = 0,
+   a_GO_HIST_ADD = 1u<<0,
+   a_GO_HIST_GABBY = 1u<<1,
+   a_GO_HIST_INIT = 1u<<2
+};
+
 struct a_go_cmd_desc{
    char const *gcd_name;   /* Name of command */
    int (*gcd_func)(void*); /* Implementor of command */
@@ -137,10 +144,11 @@ struct a_go_alias{ /* TODO binary search */
 struct a_go_eval_ctx{
    struct str gec_line;    /* The terminated data to _evaluate() */
    ui32_t gec_line_size;   /* May be used to store line memory size */
-   ui8_t gec__dummy[1];
    bool_t gec_ever_seen;   /* Has ever been used (main_loop() only) */
-   bool_t gec_hist_add;    /* Add command to history? */
-   bool_t gec_hist_gabby;  /* ..is a gabby entry? */
+   ui8_t gec__dummy[2];
+   ui8_t gec_hist_flags;   /* enum a_go_hist_flags */
+   char const *gec_hist_cmd; /* If a_GO_HIST_ADD only, cmd and args */
+   char const *gec_hist_args;
 };
 
 struct a_go_input_inject{
@@ -857,6 +865,7 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    /* TODO a_go_evaluate() should be splitted in multiple subfunctions,
     * TODO `eval' should be a prefix, etc., a Ctx should be passed along */
    struct str line;
+   struct n_string s, *sp;
    char _wordbuf[2], **arglist_base/*[n_MAXARGC]*/, **arglist, *cp, *word;
    struct a_go_alias *gap;
    struct a_go_cmd_desc const *gcdp;
@@ -871,6 +880,7 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
       a_IGNERR = 1u<<6,    /* ignerr modifier prefix */
       a_WYSH = 1u<<7,      /* XXX v15+ drop wysh modifier prefix */
       a_VPUT = 1u<<8,      /* vput modifier prefix */
+      a_MODE_MASK = n_BITENUM_MASK(5, 8),
       a_NO_ERRNO = 1u<<16  /* Don't set n_pstate_err_no */
    } flags;
    NYD_ENTER;
@@ -883,26 +893,27 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    gap = NULL;
    arglist =
    arglist_base = n_autorec_alloc(sizeof(*arglist_base) * n_MAXARGC);
-   line = gecp->gec_line; /* TODO const-ify original (buffer pointer)! */
+   line = gecp->gec_line; /* TODO const-ify original (buffer)! */
    assert(line.s[line.l] == '\0');
 
-jreset:
    if(line.l > 0 && spacechar(line.s[0]))
-      gecp->gec_hist_add = FAL0;
-   gecp->gec_hist_gabby = FAL0;
+      gecp->gec_hist_flags = a_GO_HIST_NONE;
+   else if(gecp->gec_hist_flags & a_GO_HIST_ADD)
+      gecp->gec_hist_cmd = gecp->gec_hist_args = NULL;
+   sp = NULL;
 
    /* Aliases that refer to shell commands or macro expansion restart */
 jrestart:
    if(n_str_trim_ifs(&line, TRU1)->l == 0){
       line.s[0] = '\0';
-      gecp->gec_hist_add = FAL0;
+      gecp->gec_hist_flags = a_GO_HIST_NONE;
       goto jempty;
    }
    (cp = line.s)[line.l] = '\0';
 
    /* Ignore null commands (comments) */
    if(*cp == '#'){
-      gecp->gec_hist_add = FAL0;
+      gecp->gec_hist_flags = a_GO_HIST_NONE;
       goto jret0;
    }
 
@@ -917,10 +928,10 @@ jrestart:
          (*cp == '|' || *cp == '~' || *cp == '?'))
       ++cp;
    c = (int)PTR2SIZE(cp - line.s);
-   line.l -= c;
    word = UICMP(z, c, <, sizeof _wordbuf) ? _wordbuf : n_autorec_alloc(c +1);
    memcpy(word, arglist[0] = line.s, c);
    word[c] = '\0';
+   line.l -= c;
    line.s = cp;
 
    /* No-expansion modifier? */
@@ -942,6 +953,37 @@ jrestart:
       goto jrestart;
    }
 
+   /* We need to trim for a possible history entry, but do it anyway and insert
+    * a space for argument separation in case of alias expansion.  Also, do
+    * terminate again because nothing prevents aliases from introducing WS */
+   n_str_trim_ifs(&line, TRU1);
+   line.s[line.l] = '\0';
+
+   /* Lengthy history entry setup, possibly even redundant.  But having
+    * normalized history entries is a good thing, and this is maybe still
+    * cheaper than parsing a StrList of words per se */
+   if((gecp->gec_hist_flags & (a_GO_HIST_ADD | a_GO_HIST_INIT)
+         ) == a_GO_HIST_ADD){
+      if(line.l > 0){
+         sp = n_string_creat_auto(&s);
+         sp = n_string_assign_buf(sp, line.s, line.l);
+         gecp->gec_hist_args = n_string_cp(sp);
+      }
+
+      sp = n_string_creat_auto(&s);
+      sp = n_string_reserve(sp, 32);
+
+      if(flags & a_NOALIAS)
+         sp = n_string_push_c(sp, '\\');
+      if(flags & a_IGNERR)
+         sp = n_string_push_buf(sp, "ignerr ", sizeof("ignerr ") -1);
+      if(flags & a_WYSH)
+         sp = n_string_push_buf(sp, "wysh ", sizeof("wysh ") -1);
+      if(flags & a_VPUT)
+         sp = n_string_push_buf(sp, "vput ", sizeof("vput ") -1);
+      gecp->gec_hist_flags = a_GO_HIST_ADD | a_GO_HIST_INIT;
+   }
+
    /* Look up the command; if not found, bitch.
     * Normally, a blank command would map to the first command in the
     * table; while n_PS_SOURCING, however, we ignore blank lines to eliminate
@@ -949,8 +991,10 @@ jrestart:
    if(*word == '\0'){
 jempty:
       if((n_pstate & n_PS_ROBOT) || !(n_psonce & n_PSO_INTERACTIVE) ||
-            gap != NULL)
+            gap != NULL){
+         gecp->gec_hist_flags = a_GO_HIST_NONE;
          goto jret0;
+      }
       gcdp = &a_go_cmd_tab[0];
       goto jexec;
    }
@@ -971,23 +1015,36 @@ jempty:
          if(!strcmp(word, gap->ga_name)){
             size_t i;
 
+            if(sp != NULL){
+               sp = n_string_push_cp(sp, word);
+               gecp->gec_hist_cmd = n_string_cp(sp);
+               sp = NULL;
+            }
+
+            /* And join arguments onto alias expansion */
             i = gap->ga_cmd.l;
-            line.s = n_autorec_alloc(i + line.l +1);
+            cp = line.s;
+            line.s = n_autorec_alloc(i + 1 + line.l +1);
             memcpy(line.s, gap->ga_cmd.s, i);
-            memcpy(line.s + i, cp, line.l);
+            if(line.l > 0){
+               line.s[i++] = ' ';
+               memcpy(&line.s[i], cp, line.l);
+            }
             line.s[i += line.l] = '\0';
             line.l = i;
-            goto jreset;
+            goto jrestart;
          }
    }
 
    if((gcdp = a_go__firstfit(word)) == NULL || gcdp->gcd_func == &c_cmdnotsupp){
-      bool_t s;
+      bool_t doskip;
 
-      if(!(s = n_cnd_if_isskip()) || (n_poption & n_PO_D_V))
+      if(!(doskip = n_cnd_if_isskip()) || (n_poption & n_PO_D_V))
          n_err(_("Unknown command%s: `%s'\n"),
-            (s ? _(" (ignored due to `if' condition)") : n_empty), prstr(word));
-      if(s)
+            (doskip ? _(" (ignored due to `if' condition)") : n_empty),
+            prstr(word));
+      gecp->gec_hist_flags = a_GO_HIST_NONE;
+      if(doskip)
          goto jret0;
       if(gcdp != NULL){
          c_cmdnotsupp(NULL);
@@ -1002,6 +1059,12 @@ jempty:
 jexec:
    if(!(gcdp->gcd_caflags & n_CMD_ARG_F) && n_cnd_if_isskip())
       goto jret0;
+
+   if(sp != NULL){
+      sp = n_string_push_cp(sp, gcdp->gcd_name);
+      gecp->gec_hist_cmd = n_string_cp(sp);
+      sp = NULL;
+   }
 
    nerrn = n_ERR_INVAL;
 
@@ -1199,10 +1262,13 @@ jemsglist:
       goto jret0;
    }
 
-   if(gcdp->gcd_caflags & n_CMD_ARG_H)
-      gecp->gec_hist_add = FAL0;
-   else if((gcdp->gcd_caflags & n_CMD_ARG_G) || (n_pstate & n_PS_MSGLIST_GABBY))
-      gecp->gec_hist_gabby = TRU1;
+   if(gecp->gec_hist_flags & a_GO_HIST_ADD){
+      if(gcdp->gcd_caflags & n_CMD_ARG_H)
+         gecp->gec_hist_flags = a_GO_HIST_NONE;
+      else if((gcdp->gcd_caflags & n_CMD_ARG_G) ||
+            (n_pstate & n_PS_MSGLIST_GABBY))
+         gecp->gec_hist_flags |= a_GO_HIST_GABBY;
+   }
 
    if(rv != 0){
       if(!(flags & a_NO_ERRNO)){
@@ -1633,6 +1699,7 @@ a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
          break;
 
       rele_all_sigs();
+      assert(gec.gec_hist_flags == a_GO_HIST_NONE);
       if(!a_go_evaluate(&gec))
          f &= ~a_RETOK;
       hold_all_sigs();
@@ -1880,12 +1947,18 @@ n_go_main_loop(void){ /* FIXME */
 
       /* Read a line of commands and handle end of file specially */
       gec.gec_line.l = gec.gec_line_size;
-      gec.gec_hist_add = (!(n_pstate & n_PS_SOURCING) &&
-            (n_psonce & n_PSO_INTERACTIVE));
-      rele_all_sigs();
-      n = n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, NULL,
-            &gec.gec_line.s, &gec.gec_line.l, NULL, &gec.gec_hist_add);
-      hold_all_sigs();
+      /* C99 */{
+         bool_t histadd;
+
+         histadd = (!(n_pstate & n_PS_SOURCING) &&
+               (n_psonce & n_PSO_INTERACTIVE));
+         rele_all_sigs();
+         n = n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, NULL,
+               &gec.gec_line.s, &gec.gec_line.l, NULL, &histadd);
+         hold_all_sigs();
+
+         gec.gec_hist_flags = histadd ? a_GO_HIST_ADD : a_GO_HIST_NONE;
+      }
       gec.gec_line_size = (ui32_t)gec.gec_line.l;
       gec.gec_line.l = (ui32_t)n;
 
@@ -1905,8 +1978,17 @@ n_go_main_loop(void){ /* FIXME */
       rv = a_go_evaluate(&gec);
       hold_all_sigs();
 
-      if(gec.gec_hist_add)
-         n_tty_addhist(gec.gec_line.s, gec.gec_hist_gabby);
+      if(gec.gec_hist_flags & a_GO_HIST_ADD){
+         char const *cc, *ca;
+
+         cc = gec.gec_hist_cmd;
+         ca = gec.gec_hist_args;
+         if(cc != NULL && ca != NULL)
+            cc = savecatsep(cc, ' ', ca);
+         else if(ca != NULL)
+            cc = ca;
+         n_tty_addhist(cc, ((gec.gec_hist_flags & a_GO_HIST_GABBY) != 0));
+      }
 
       switch(n_pstate & n_PS_ERR_EXIT_MASK){
       case n_PS_ERR_XIT: n_psonce |= n_PSO_XIT; break;
