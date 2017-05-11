@@ -88,13 +88,13 @@ static void       mesedit(int c, struct header *hp);
 
 /* Pipe the message through the command.  Old message is on stdin of command,
  * new message collected from stdout.  Shell must return 0 to accept new msg */
-static void       mespipe(char *cmd);
+static void       mespipe(char const *cmd);
 
 /* Interpolate the named messages into the current message, possibly doing
  * indent stuff.  The flag argument is one of the command escapes: [mMfFuU].
  * Return a count of the number of characters now in the message, or -1 if an
  * error is encountered writing the message temporary */
-static int        forward(char *ms, FILE *fp, int f);
+static int        forward(char const *ms, FILE *fp, int f);
 
 /* ~^ mode */
 static bool_t a_collect_plumbing(char const *ms, struct header *p);
@@ -444,7 +444,7 @@ mesedit(int c, struct header *hp)
 }
 
 static void
-mespipe(char *cmd)
+mespipe(char const *cmd)
 {
    FILE *nf;
    sighandler_type sigint;
@@ -481,7 +481,7 @@ jout:
 }
 
 static int
-forward(char *ms, FILE *fp, int f)
+forward(char const *ms, FILE *fp, int f)
 {
    int *msgvec, rv = 0;
    struct n_ignore const *itp;
@@ -1397,13 +1397,14 @@ FL FILE *
 collect(struct header *hp, int printheaders, struct message *mp,
    char const *quotefile, int doprefix, si8_t *checkaddr_err)
 {
+   struct n_string s, * volatile sp;
    struct n_ignore const *quoteitp;
    struct a_coll_ocs_arg *coap;
    int c;
    int volatile t, eofcnt, getfields;
    char volatile escape;
    char *linebuf, escape_saved;
-   char const *cp, *coapm, *ifs_saved;
+   char const *cp, *cp_base, *coapm, *ifs_saved;
    size_t i, linesize; /* TODO line pool */
    long cnt;
    enum sendaction action;
@@ -1533,27 +1534,35 @@ collect(struct header *hp, int printheaders, struct message *mp,
             goto jerr;
       }
 
-      if((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_Mm_FLAG)){
-         /* Print what we have sofar also on the terminal (if useful) */
-         if (!ok_blook(editalong)) {
-            if (printheaders)
-               puthead(TRU1, hp, n_stdout, t,
-                  SEND_TODISP, CONV_NONE, NULL, NULL);
-
-            rewind(_coll_fp);
-            while ((c = getc(_coll_fp)) != EOF) /* XXX bytewise, yuck! */
-               putc(c, n_stdout);
-            if (fseek(_coll_fp, 0, SEEK_END))
-               goto jerr;
-         } else {
-            rewind(_coll_fp);
-            mesedit('e', hp);
-            /* As mandated by the Mail Reference Manual, print "(continue)" */
-jcont:
-            if(n_psonce & n_PSO_INTERACTIVE)
-               fputs(_("(continue)\n"), n_stdout);
+      sp = NULL;
+      if(n_psonce & n_PSO_INTERACTIVE){
+         if(!(n_pstate & n_PS_SOURCING)){
+            sp = n_string_creat_auto(&s);
+            sp = n_string_reserve(sp, 80);
          }
-         fflush(n_stdout);
+
+         if(!(n_poption & n_PO_Mm_FLAG)){
+            /* Print what we have sofar also on the terminal (if useful) */
+            if (!ok_blook(editalong)) {
+               if (printheaders)
+                  puthead(TRU1, hp, n_stdout, t,
+                     SEND_TODISP, CONV_NONE, NULL, NULL);
+
+               rewind(_coll_fp);
+               while ((c = getc(_coll_fp)) != EOF) /* XXX bytewise, yuck! */
+                  putc(c, n_stdout);
+               if (fseek(_coll_fp, 0, SEEK_END))
+                  goto jerr;
+            } else {
+               rewind(_coll_fp);
+               mesedit('e', hp);
+               /* Print msg mandated by the Mail Reference Manual */
+jcont:
+               if(n_psonce & n_PSO_INTERACTIVE)
+                  fputs(_("(continue)\n"), n_stdout);
+            }
+            fflush(n_stdout);
+         }
       }
    } else {
       /* Come here for printing the after-signal message.  Duplicate messages
@@ -1581,18 +1590,21 @@ jcont:
 
    /* The interactive collect loop */
    for(;;){
-      bool_t histadd, histgabby;
+      enum {a_HIST_NONE, a_HIST_ADD = 1u<<0, a_HIST_GABBY = 1u<<1} hist;
 
-      histadd = histgabby = TRU1;
       /* C99 */{
          enum n_go_input_flags gif;
+         bool_t histadd;
 
          gif = n_GO_INPUT_CTX_COMPOSE;
+         histadd = (sp != NULL);
          if((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_TILDE_FLAG)){
             if(!(n_poption & n_PO_t_FLAG))
                gif |= n_GO_INPUT_NL_ESC;
          }
          cnt = n_go_input(gif, n_empty, &linebuf, &linesize, NULL, &histadd);
+
+         hist = histadd ? a_HIST_ADD | a_HIST_GABBY : a_HIST_NONE;
       }
 
       if (cnt < 0) {
@@ -1637,7 +1649,7 @@ jputline:
             goto jerr;
          /* TODO n_PS_READLINE_NL is a terrible hack to ensure that _in_all_-
           * TODO _code_paths_ a file without trailing newline isn't modified
-          * TODO to continue one; the "saw-newline" needs to be part of an
+          * TODO to contain one; the "saw-newline" needs to be part of an
           * TODO I/O input machinery object */
 jputnl:
          if(n_pstate & n_PS_READLINE_NL){
@@ -1647,40 +1659,43 @@ jputnl:
          continue;
       }
 
-      /* Cleanup the input string: like this we can perform a little bit of
-       * usage testing and also have somewhat normalized history entries */
-      for(cp = &linebuf[2]; (c = *cp) != '\0' && blankspacechar(c); ++cp)
-         continue;
-      if(c == '\0'){
-         linebuf[2] = '\0';
-         cnt = 2;
-      }else{
-         i = PTR2SIZE(cp - linebuf) - 3;
-         memmove(&linebuf[3], cp, (cnt -= i));
-         linebuf[2] = ' ';
-         linebuf[cnt] = '\0';
+      c = *(cp_base = ++cp);
+      --cnt;
+      /* Avoid history entry? */
+      if(spacechar(c)){
+         hist = a_HIST_NONE;
+         c = *(cp_base = ++cp);
+         --cnt;
+      }
+      /* It may just be an escaped escaped character, do that quick */
+      else if(c == escape)
+         goto jputline;
 
-         if(cnt > 0){ /* TODO v15 no more trailing WS from lex_input please */
-            cp = &linebuf[cnt];
+      /* Trim input, also to gain a somewhat normalized history entry */
+      ++cp;
+      if(--cnt > 0){
+         struct str x;
 
-            for(;; --cp){
-               c = cp[-1];
-               if(!blankspacechar(c))
-                  break;
-            }
-            ((char*)n_UNCONST(cp))[0] = '\0';
-            cnt = PTR2SIZE(cp - linebuf);
+         x.s = n_UNCONST(cp);
+         x.l = (size_t)cnt;
+         n_str_trim_ifs(&x, TRU1);
+         x.s[x.l] = '\0';
+         cp = x.s;
+         cnt = (int)/*XXX*/x.l;
+      }
+
+      if(hist != a_HIST_NONE){
+         sp = n_string_assign_c(sp, escape);
+         sp = n_string_push_c(sp, c);
+         if(cnt > 0){
+            sp = n_string_push_c(sp, ' ');
+            sp = n_string_push_buf(sp, cp, cnt);
          }
       }
 
-      switch((c = linebuf[1])){
+      switch(c){
       default:
-         /* On double escape, send a single one.  Otherwise, it's an error */
-         if(c == escape){
-            cp = &linebuf[1];
-            --cnt;
-            goto jputline;
-         }else{
+         {
             char buf[sizeof(n_UNIREPL)];
 
             if(asciichar(c))
@@ -1693,16 +1708,17 @@ jputnl:
             continue;
          }
 jearg:
-         n_err(_("Invalid command escape usage: %s\n"), linebuf);
+         n_err(_("Invalid command escape usage: %s\n"),
+            n_shexp_quote_cp(linebuf, FAL0));
          continue;
       case '!':
          /* Shell escape, send the balance of line to sh -c */
-         if(cnt == 2 || coap != NULL)
+         if(cnt == 0 || coap != NULL)
             goto jearg;
          else{
             char const *argv[2];
 
-            argv[0] = &linebuf[3];
+            argv[0] = cp;
             argv[1] = NULL;
             c_shell(argv);
          }
@@ -1712,13 +1728,13 @@ jearg:
       case '_':
          /* Escape to command mode, but be nice! *//* TODO command expansion
           * TODO should be handled here so that we have unique history! */
-         if(cnt == 2)
+         if(cnt == 0)
             goto jearg;
-         _execute_command(hp, &linebuf[3], cnt -= 3);
+         _execute_command(hp, cp, cnt);
          break;
       case '.':
          /* Simulate end of file on input */
-         if(cnt != 2 || coap != NULL)
+         if(cnt != 0 || coap != NULL)
             goto jearg;
          goto jout;
       case 'x':
@@ -1726,7 +1742,7 @@ jearg:
          /* FALLTHRU */
       case 'q':
          /* Force a quit, act like an interrupt had happened */
-         if(cnt != 2)
+         if(cnt != 0)
             goto jearg;
          ++_coll_hadintr;
          _collint((c == 'x') ? 0 : SIGINT);
@@ -1734,37 +1750,37 @@ jearg:
          /*NOTREACHED*/
       case 'h':
          /* Grab a bunch of headers */
-         if(cnt != 2)
+         if(cnt != 0)
             goto jearg;
-         do
+         do{
             grab_headers(n_GO_INPUT_CTX_COMPOSE, hp,
               (GTO | GSUBJECT | GCC | GBCC),
               (ok_blook(bsdcompat) && ok_blook(bsdorder)));
-         while(hp->h_to == NULL);
+         }while(hp->h_to == NULL);
          break;
       case 'H':
          /* Grab extra headers */
-         if(cnt != 2)
+         if(cnt != 0)
             goto jearg;
-         do
+         do{
             grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, GEXTRA, 0);
-         while(check_from_and_sender(hp->h_from, hp->h_sender) == NULL);
+         }while(check_from_and_sender(hp->h_from, hp->h_sender) == NULL);
          break;
       case 't':
          /* Add to the To: list */
-         if(cnt == 2)
+         if(cnt == 0)
             goto jearg;
          hp->h_to = cat(hp->h_to,
-               checkaddrs(lextract(&linebuf[3], GTO | GFULL), EACM_NORMAL,
+               checkaddrs(lextract(cp, GTO | GFULL), EACM_NORMAL,
                   NULL));
-         histgabby = FAL0;
+         hist &= ~a_HIST_GABBY;
          break;
       case 's':
          /* Set the Subject list */
-         if(cnt == 2)
+         if(cnt == 0)
             goto jearg;
          /* Subject:; take care for Debian #419840 and strip any \r and \n */
-         if(n_anyof_cp("\n\r", hp->h_subject = savestr(&linebuf[3]))){
+         if(n_anyof_cp("\n\r", hp->h_subject = savestr(cp))){
             char *xp;
 
             n_err(_("-s: normalizing away invalid ASCII NL / CR bytes\n"));
@@ -1779,32 +1795,31 @@ jearg:
          /* Edit the attachment list */
          aplist = hp->h_attach;
          hp->h_attach = NULL;
-         if(cnt != 2)
-            hp->h_attach = n_attachment_append_list(aplist, &linebuf[3]);
+         if(cnt != 0)
+            hp->h_attach = n_attachment_append_list(aplist, cp);
          else
             hp->h_attach = n_attachment_list_edit(aplist,
                   n_GO_INPUT_CTX_COMPOSE);
       }  break;
       case 'c':
          /* Add to the CC list */
-         if(cnt == 2)
+         if(cnt == 0)
             goto jearg;
          hp->h_cc = cat(hp->h_cc,
-               checkaddrs(lextract(&linebuf[3], GCC | GFULL), EACM_NORMAL,
+               checkaddrs(lextract(cp, GCC | GFULL), EACM_NORMAL,
                NULL));
-         histgabby = FAL0;
+         hist &= ~a_HIST_GABBY;
          break;
       case 'b':
          /* Add stuff to blind carbon copies list */
-         if(cnt == 2)
+         if(cnt == 0)
             goto jearg;
          hp->h_bcc = cat(hp->h_bcc,
-               checkaddrs(lextract(&linebuf[3], GBCC | GFULL), EACM_NORMAL,
-                  NULL));
-         histgabby = FAL0;
+               checkaddrs(lextract(cp, GBCC | GFULL), EACM_NORMAL, NULL));
+         hist &= ~a_HIST_GABBY;
          break;
       case 'd':
-         if(cnt != 2)
+         if(cnt != 0)
             goto jearg;
          cp = n_getdeadletter();
          if(0){
@@ -1814,11 +1829,11 @@ jearg:
       case '<':
             /* Invoke a file: Search for the file name, then open it and copy
              * the contents to _coll_fp */
-            if(cnt == 2){
+            if(cnt == 0){
                n_err(_("Interpolate what file?\n"));
                break;
             }
-            if(*(cp = &linebuf[3]) == '!' && c == '<'){
+            if(*cp == '!' && c == '<'){
                if(!a_coll_insert_cmd(_coll_fp, ++cp)){
                   if(ferror(_coll_fp))
                      goto jerr;
@@ -1845,9 +1860,9 @@ jearg:
          break;
       case 'i':
          /* Insert a variable into the file */
-         if(cnt == 2)
+         if(cnt == 0)
             goto jearg;
-         if((cp = n_var_vlook(&linebuf[3], TRU1)) == NULL || *cp == '\0')
+         if((cp = n_var_vlook(cp, TRU1)) == NULL || *cp == '\0')
             break;
          if(putesc(cp, _coll_fp) < 0) /* TODO v15: user resp upon `set' time */
             goto jerr;
@@ -1857,7 +1872,7 @@ jearg:
       case 'a':
       case 'A':
          /* Insert the contents of a signature variable */
-         if(cnt != 2)
+         if(cnt != 0)
             goto jearg;
          cp = (c == 'a') ? ok_vlook(sign) : ok_vlook(Sign);
          if(cp != NULL && *cp != '\0'){
@@ -1869,9 +1884,9 @@ jearg:
          break;
       case 'w':
          /* Write the message on a file */
-         if(cnt == 2)
+         if(cnt == 0)
             goto jearg;
-         if((cp = fexpand(&linebuf[3], FEXP_LOCAL | FEXP_NOPROTO)) == NULL){
+         if((cp = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL){
             n_err(_("Write what file!?\n"));
             break;
          }
@@ -1888,37 +1903,37 @@ jearg:
          /* Interpolate the named messages, if we are in receiving mail mode.
           * Does the standard list processing garbage.  If ~f is given, we
           * don't shift over */
-         if(cnt == 2)
+         if(cnt == 0)
             goto jearg;
-         if(forward(&linebuf[3], _coll_fp, c) < 0)
+         if(forward(cp, _coll_fp, c) < 0)
             break;
          break;
       case 'p':
          /* Print current state of the message without altering anything */
-         if(cnt != 2)
+         if(cnt != 0)
             goto jearg;
          print_collf(_coll_fp, hp);
          break;
       case '|':
          /* Pipe message through command. Collect output as new message */
-         if(cnt == 2)
+         if(cnt == 0)
             goto jearg;
          rewind(_coll_fp);
-         mespipe(&linebuf[3]);
-         histgabby = FAL0;
+         mespipe(cp);
+         hist &= ~a_HIST_GABBY;
          goto jhistcont;
       case 'v':
       case 'e':
          /* Edit the current message.  'e' -> use EDITOR, 'v' -> use VISUAL */
-         if(cnt != 2 || coap != NULL)
+         if(cnt != 0 || coap != NULL)
             goto jearg;
          rewind(_coll_fp);
          mesedit(c, ok_blook(editheaders) ? hp : NULL);
          goto jhistcont;
       case '^':
-         if(!a_collect_plumbing(&linebuf[3], hp))
+         if(!a_collect_plumbing(cp, hp))
             goto jearg;
-         histgabby = FAL0;
+         hist &= ~a_HIST_GABBY;
          break;
       case '?':
          /* Last the lengthy help string.  (Very ugly, but take care for
@@ -1935,7 +1950,7 @@ jearg:
 "~e            Edit message via $EDITOR\n"
             ), n_stdout);
          fputs(_(
-"~F <msglist>  Read in with headers, don't *indentprefix* lines\n"
+"~F <msglist>  Read in with headers, do not *indentprefix* lines\n"
 "~f <msglist>  Like ~F, but honour `ignore' / `retain' configuration\n"
 "~H            Edit From:, Reply-To: and Sender:\n"
 "~h            Prompt for Subject:, To:, Cc: and \"blind\" Bcc:\n"
@@ -1953,7 +1968,7 @@ jearg:
 "~x            Abort composition, discard message (`~q': save in $DEAD)\n"
 "~| <command>  Pipe message through shell filter\n"
             ), n_stdout);
-         if(cnt != 2)
+         if(cnt != 0)
             goto jearg;
          break;
       }
@@ -1964,8 +1979,8 @@ jhistcont:
          c = '\1';
       }else
          c = '\0';
-      if((n_psonce & n_PSO_INTERACTIVE) && histadd)
-         n_tty_addhist(linebuf, histgabby);
+      if(hist & a_HIST_ADD)
+         n_tty_addhist(n_string_cp(sp), ((hist & a_HIST_GABBY) != 0));
       if(c != '\0')
          goto jcont;
    }

@@ -6300,7 +6300,10 @@ Command escapes are only recognized at the beginning of lines.
 The actual escape character can be set via the internal variable
 .Va escape ,
 it defaults to the tilde
-.Ql ~ .
+.Ql ~ ,
+which is used in place of a better alternative in the following.
+To avoid the possible \*(OPal history addition, an otherwise ignored
+(single) whitespace character can be placed after the escape character.
 .
 .
 .Bl -tag -width ".It Ic BaNg"
@@ -6309,8 +6312,7 @@ it defaults to the tilde
 Insert the string of text in the message prefaced by a single
 .Ql ~ .
 (If the escape character has been changed,
-that character must be doubled
-in order to send it at the beginning of a line.)
+that character must be doubled instead.)
 .
 .Mx
 .It Ic ~! Ar command

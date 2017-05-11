@@ -1176,7 +1176,7 @@ FL void        touch(struct message *mp);
 
 /* Convert user string of message numbers and store the numbers into vector.
  * Returns the count of messages picked up or -1 on error */
-FL int         getmsglist(char *buf, int *vector, int flags);
+FL int         getmsglist(char const *buf, int *vector, int flags);
 
 /* Find the first message whose flags&m==f and return its message number */
 FL int         first(int f, int m);
@@ -2226,6 +2226,7 @@ FL struct n_string *n_string_push_c(struct n_string *self, char c
                      n_MEMORY_DEBUG_ARGS);
 
 #define n_string_assign(S,T)     ((S)->s_len = 0, n_string_push(S, T))
+#define n_string_assign_c(S,C)   ((S)->s_len = 0, n_string_push_c(S, C))
 #define n_string_assign_cp(S,CP) ((S)->s_len = 0, n_string_push_cp(S, CP))
 #define n_string_assign_buf(S,B,BL) \
    ((S)->s_len = 0, n_string_push_buf(S, B, BL))
