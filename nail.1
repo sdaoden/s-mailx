@@ -7563,14 +7563,14 @@ variable to be set.
 .It Va dot
 \*(BO When dot is set, a period
 .Ql \&.
-on a line by itself during message input in (interactive) compose mode
-will be treated as end-of-message (in addition to the normal end-of-file
-condition).
-If
-.Va ignoreeof
-is set
-.Pf no Va dot
-is ignored.
+on a line by itself during message input in (interactive or batch
+.Fl # )
+compose mode will be treated as end-of-message (in addition to the
+normal end-of-file condition).
+This behaviour is implied in
+.Va posix
+mode with a set
+.Va ignoreeof .
 .
 .Mx
 .It Va dotlock-ignore-error
@@ -8204,9 +8204,11 @@ a period
 on a line by itself or by using the
 .Ic ~.
 .Sx "COMMAND ESCAPES" ;
-.Va ignoreeof
-overrides a setting of
-.Pf no Va dot .
+Setting this implies the behaviour that
+.Va dot
+describes in
+.Va posix
+mode.
 .
 .Mx
 .It Va inbox
@@ -9088,6 +9090,12 @@ These exits can be circumvented on a per-command base by using
 one of the
 .Sx "Command modifiers" ,
 for each command which shall be allowed to fail.
+.
+.It
+Setting
+.Va ignoreeof
+implies the behaviour described by
+.Va dot .
 .
 .It
 The variable

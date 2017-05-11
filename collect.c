@@ -1481,7 +1481,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
          temporary_compose_mode_hook_call(cp, &a_coll__hook_setter, hp);
       }
 
-      /* Cannot do since it may require turning this into a multipart one */
+      /* TODO Mm: nope since it may require turning this into a multipart one */
       if(!(n_poption & n_PO_Mm_FLAG)){
          char const *cp_obsolete = ok_vlook(NAIL_HEAD);
          if(cp_obsolete != NULL)
@@ -1564,7 +1564,7 @@ jcont:
 
    /* If not under shell hook control */
    if(coap == NULL){
-      /* We're done with -M or -m (because we are too simple minded) */
+      /* We're done with -M or -m TODO because: we are too stupid yet, above */
       if(n_poption & n_PO_Mm_FLAG)
          goto jout;
       /* No command escapes, interrupts not expected.  Simply copy STDIN */
@@ -1623,7 +1623,8 @@ jcont:
          if(!(n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_TILDE_FLAG))
             goto jputline;
          else if(cp[0] == '.'){
-            if(cnt == 1 && (ok_blook(dot) || ok_blook(ignoreeof)))
+            if(cnt == 1 && (ok_blook(dot) ||
+                  (ok_blook(posix) && ok_blook(ignoreeof))))
                break;
          }
       }
