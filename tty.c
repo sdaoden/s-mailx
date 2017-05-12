@@ -2353,15 +2353,14 @@ a_tty_khist(struct a_tty_line *tlp, bool_t fwd){
    ui32_t rv;
    NYD2_ENTER;
 
-   /* If we're not in history mode yet, save line content;
-    * also, disallow forward search, then, and, of course, bail unless we
-    * do have any history at all */
+   /* If we're not in history mode yet, save line content */
    if((thp = tlp->tl_hist) == NULL){
-      if(fwd)
-         goto jleave;
+      a_tty_cell2save(tlp);
       if((thp = a_tty.tg_hist) == NULL)
          goto jleave;
-      a_tty_cell2save(tlp);
+      if(fwd)
+         while(thp->th_older != NULL)
+            thp = thp->th_older;
       goto jleave;
    }
 
@@ -2392,11 +2391,13 @@ a_tty_khist_search(struct a_tty_line *tlp, bool_t fwd){
    }
 
    if((thp = tlp->tl_hist) == NULL){
-      if((thp = a_tty.tg_hist) == NULL)
+      a_tty_cell2save(tlp);
+      rv = tlp->tl_count;
+      if((thp = a_tty.tg_hist) == NULL) /* TODO Should end "doing nothing"! */
          goto jleave;
-      /* We don't support wraparound, searching forward must always step */
       if(fwd)
-         thp = thp->th_younger;
+         while(thp->th_older != NULL)
+            thp = thp->th_older;
       orig_savec.s = NULL;
       orig_savec.l = 0; /* silence CC */
    }else if((thp = (fwd ? thp->th_younger : thp->th_older)) == NULL)
@@ -2470,9 +2471,8 @@ a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, size_t *len){
       a_tty_ksnarf(tlp, TRU1, (tlp->tl_count == 0));
       break;
 
-   case a_X(HIST_FWD):
+   case a_X(HIST_FWD):{
 # ifdef HAVE_HISTORY
-      if(tlp->tl_hist != NULL){
          bool_t isfwd = TRU1;
 
          if(0){
