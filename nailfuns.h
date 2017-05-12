@@ -233,6 +233,9 @@ FL int c_environ(void *v);
 /* `vexpr' */
 FL int c_vexpr(void *v);
 
+/* `vpospar' */
+FL int c_vpospar(void *v);
+
 /*
  * attachment.c
  * xxx Interface quite sick
@@ -2185,6 +2188,11 @@ FL struct str *n_str_trim_ifs(struct str *self, bool_t dodefaults);
 /* Truncate to size, which must be LE current length */
 #define n_string_trunc(S,L) \
    (assert(UICMP(z, L, <=, (S)->s_len)), (S)->s_len = (ui32_t)(L), (S))
+
+/* Check whether a buffer of Len bytes can be inserted into Self */
+#define n_string_can_swallow(S,L) \
+   (UICMP(z, SI32_MAX - n_ALIGN(1), >=, L) &&\
+    UICMP(z, SI32_MAX - n_ALIGN(1) - (L), >, (S)->s_len))
 
 /* Take/Release buffer ownership */
 #define n_string_take_ownership(SP,B,S,L) \

@@ -54,6 +54,9 @@
 # error Exactly one of HAVE_SETENV and HAVE_PUTENV
 #endif
 
+/* Positional parameter maximum (macro arguments, `vexpr' "splitifs") */
+#define a_AMV_POSPAR_MAX SI16_MAX
+
 /* Special "pseudo macro" that stabs you from the back */
 #define a_AMV_MACKY_MACK ((struct a_amv_mac*)-1)
 
@@ -95,17 +98,16 @@ enum a_amv_var_flags{
    a_AMV_VF__MASK = (1u<<(15+1)) - 1
 };
 
-/* We support some special parameter names for one-letter variable names;
+/* We support some special parameter names for one(+)-letter variable names;
  * note these have counterparts in the code that manages shell expansion!
- * Macro-local variables are solely backed by n_var_vlook(), and besides there
- * is only a_amv_var_revlookup() which knows about them.
- * The ARGV $[1-9][0-9]* variables are also special, but they are special ;] */
+ * All these special variables are solely backed by n_var_vlook(), and besides
+ * there is only a_amv_var_revlookup() which knows about them */
 enum a_amv_var_special_category{
    a_AMV_VSC_NONE,      /* Normal variable, no special treatment */
    a_AMV_VSC_GLOBAL,    /* ${[?!]} are specially mapped, but global */
    a_AMV_VSC_MULTIPLEX, /* ${^.*} circumflex accent multiplexer */
-   a_AMV_VSC_MAC,       /* ${[*@#]} macro argument access */
-   a_AMV_VSC_MAC_ARGV   /* ${[1-9][0-9]*} macro ARGV access */
+   a_AMV_VSC_POSPAR,    /* ${[1-9][0-9]*} positional parameters */
+   a_AMV_VSC_POSPAR_ENV /* ${[*@#]} positional parameter support variables */
 };
 
 enum a_amv_var_special_type{
@@ -116,7 +118,7 @@ enum a_amv_var_special_type{
    /* This is special in that it is a multiplex indicator, the ^ is followed by
     * a normal variable */
    a_AMV_VST_CACC,   /* ^ (circumflex accent) */
-   /* _VSC_MAC */
+   /* _VSC_POSPAR_ENV */
    a_AMV_VST_STAR,   /* * */
    a_AMV_VST_AT,     /* @ */
    a_AMV_VST_NOSIGN  /* # */
@@ -127,6 +129,16 @@ enum a_amv_var_vip_mode{
    a_AMV_VIP_SET_POST,
    a_AMV_VIP_CLEAR
 };
+
+struct a_amv_pospar{
+   ui16_t app_maxcount;    /* == slots in .app_dat */
+   ui16_t app_count;       /* Maximum a_AMV_POSPAR_MAX */
+   ui16_t app_idx;         /* `shift' moves this one, decs .app_count */
+   bool_t app_not_heap;    /* .app_dat stuff not on dynamically allocated */
+   ui8_t app__dummy[1];
+   char const **app_dat;   /* NULL terminated (for "$@" explosion support) */
+};
+n_CTA(a_AMV_POSPAR_MAX <= SI16_MAX, "Limit exceeds datatype capabilities");
 
 struct a_amv_mac{
    struct a_amv_mac *am_next;
@@ -147,16 +159,15 @@ struct a_amv_mac_line{
 };
 
 struct a_amv_mac_call_args{
-   char const *amca_name;           /* For MACKY_MACK, this is *0*! */
-   struct a_amv_mac *amca_amp;      /* "const", but for am_refcnt */
+   char const *amca_name;        /* For MACKY_MACK, this is *0*! */
+   struct a_amv_mac *amca_amp;   /* "const", but for am_refcnt */
    struct a_amv_var **amca_unroller;
    void (*amca_hook_pre)(void *);
    void *amca_hook_arg;
    bool_t amca_lopts_on;
    bool_t amca_ps_hook_mask;
-   ui8_t amca__pad[4];
-   ui16_t amca_argc;                /* Max is SI16_MAX */
-   char const **amca_argv;
+   ui8_t amca__pad[6];
+   struct a_amv_pospar amca_pospar;
 };
 
 struct a_amv_lostack{
@@ -207,7 +218,7 @@ struct a_amv_var_carrier{
    enum okeys avc_okey;
    ui8_t avc__pad[1];
    ui8_t avc_special_cat;
-   /* Numerical parameter name if .avc_special_cat=a_AMV_VSC_MAC_ARGV,
+   /* Numerical parameter name if .avc_special_cat=a_AMV_VSC_POSPAR,
     * otherwise a enum a_amv_var_special_type */
    ui16_t avc_special_prop;
 };
@@ -225,6 +236,9 @@ static struct a_amv_mac *a_amv_macs[a_AMV_PRIME]; /* TODO dynamically spaced */
 static struct a_amv_lostack *a_amv_lopts;
 
 static struct a_amv_var *a_amv_vars[a_AMV_PRIME]; /* TODO dynamically spaced */
+
+/* Global (i.e., non-local) a_AMV_VSC_POSPAR stack */
+static struct a_amv_pospar a_amv_pospar;
 
 /* TODO We really deserve localopts support for *folder-hook*s, so hack it in
  * TODO today via a static lostack, it should be a field in mailbox, once that
@@ -302,11 +316,11 @@ static bool_t a_amv_var_revlookup(struct a_amv_var_carrier *avcp,
 static bool_t a_amv_var_lookup(struct a_amv_var_carrier *avcp,
                bool_t i3val_nonew);
 
-/* Lookup functions for special category variables, _mac drives all macro etc.
- * local special categories */
+/* Lookup functions for special category variables, _pospar drives all
+ * positional parameter etc. special categories */
 static char const *a_amv_var_vsc_global(struct a_amv_var_carrier *avcp);
 static char const *a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp);
-static char const *a_amv_var_vsc_mac(struct a_amv_var_carrier *avcp);
+static char const *a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp);
 
 /* Set var from .avc_(map|name|hash), return success */
 static bool_t a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
@@ -396,13 +410,20 @@ a_amv_mac_call(void *v, bool_t silent_nexist){
       amcap->amca_amp = amp;
       /* C99 */{
          char const **argv;
-         ui32_t argc;
+         size_t argc;
 
          for(argc = 0, argv = v; *++argv != NULL; ++argc)
             ;
          if(argc > 0){
-            amcap->amca_argc = argc;
-            amcap->amca_argv = &(argv = v)[1];
+            if(argc > a_AMV_POSPAR_MAX){
+               n_err(_("Too many arguments to macro `call': %s\n"), name);
+               n_pstate_err_no = n_ERR_OVERFLOW;
+               rv = 1;
+               goto jleave;
+            }
+            amcap->amca_pospar.app_count = (ui16_t)argc;
+            amcap->amca_pospar.app_not_heap = TRU1;
+            amcap->amca_pospar.app_dat = &(argv = v)[1];
          }
       }
 
@@ -415,6 +436,7 @@ a_amv_mac_call(void *v, bool_t silent_nexist){
       n_pstate_err_no = n_ERR_NOENT;
       rv = 1;
    }
+jleave:
    NYD_LEAVE;
    return rv;
 }
@@ -467,7 +489,17 @@ a_amv_mac__finalize(void *vp){
    losp = vp;
    a_amv_lopts = losp->as_global_saved;
 
-   if((amcap = losp->as_amcap)->amca_unroller == NULL){
+   amcap = losp->as_amcap;
+
+   if(!amcap->amca_pospar.app_not_heap && amcap->amca_pospar.app_maxcount > 0){
+      ui16_t i;
+
+      for(i = amcap->amca_pospar.app_maxcount; i-- != 0;)
+         n_free(n_UNCONST(amcap->amca_pospar.app_dat[i]));
+      n_free(amcap->amca_pospar.app_dat);
+   }
+
+   if(amcap->amca_unroller == NULL){
       if(losp->as_lopts != NULL)
          a_amv_lopts_unroll(&losp->as_lopts);
    }else
@@ -597,7 +629,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
       if(n_LIKELY(++line_cnt < UI32_MAX)){
          struct a_amv_mac_line *amlp;
 
-         llp = salloc(sizeof *llp);
+         llp = n_autorec_alloc(sizeof *llp);
          if(ll_head == NULL)
             ll_head = llp;
          else
@@ -1008,8 +1040,8 @@ a_amv_var_revlookup(struct a_amv_var_carrier *avcp, char const *name){
             goto jno_special_param;
          j = j * 10 + (ui8_t)c - '0';
       }
-      if(j <= SI16_MAX){
-         avcp->avc_special_cat = a_AMV_VSC_MAC_ARGV;
+      if(j <= a_AMV_POSPAR_MAX){
+         avcp->avc_special_cat = a_AMV_VSC_POSPAR;
          goto jspecial_param;
       }
    }else if(n_UNLIKELY(name[1] == '\0')){
@@ -1022,15 +1054,15 @@ a_amv_var_revlookup(struct a_amv_var_carrier *avcp, char const *name){
       case '^':
          goto jmultiplex;
       case '*':
-         avcp->avc_special_cat = a_AMV_VSC_MAC;
+         avcp->avc_special_cat = a_AMV_VSC_POSPAR_ENV;
          j = a_AMV_VST_STAR;
          goto jspecial_param;
       case '@':
-         avcp->avc_special_cat = a_AMV_VSC_MAC;
+         avcp->avc_special_cat = a_AMV_VSC_POSPAR_ENV;
          j = a_AMV_VST_AT;
          goto jspecial_param;
       case '#':
-         avcp->avc_special_cat = a_AMV_VSC_MAC;
+         avcp->avc_special_cat = a_AMV_VSC_POSPAR_ENV;
          j = a_AMV_VST_NOSIGN;
          goto jspecial_param;
       default:
@@ -1353,85 +1385,98 @@ jleave:
 }
 
 static char const *
-a_amv_var_vsc_mac(struct a_amv_var_carrier *avcp){
-   bool_t ismacky;
-   struct a_amv_mac_call_args *amcap;
-   char const *rv;
+a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
+   size_t i, j;
+   ui16_t argc;
+   char const *rv, **argv;
    NYD2_ENTER;
 
    rv = NULL;
 
-   /* These may occur only in a macro.. */
-   if(n_UNLIKELY(a_amv_lopts == NULL))
-      goto jmaylog;
+   /* If in a macro/xy.. */
+   if(a_amv_lopts != NULL){
+      bool_t ismacky;
+      struct a_amv_mac_call_args *amcap;
 
-   amcap = a_amv_lopts->as_amcap;
+      amcap = a_amv_lopts->as_amcap;
+      argc = amcap->amca_pospar.app_count;
+      argv = amcap->amca_pospar.app_dat;
+      argv += amcap->amca_pospar.app_idx;
 
-   /* ..in a `call'ed macro only, to be exact.  Or in a_AMV_MACKY_MACK */
-   if(!(ismacky = (amcap->amca_amp == a_AMV_MACKY_MACK)) &&
-         (amcap->amca_ps_hook_mask ||
-          (assert(amcap->amca_amp != NULL),
-           (amcap->amca_amp->am_flags & a_AMV_MF_TYPE_MASK
-            ) == a_AMV_MF_ACCOUNT)))
-      goto jleave;
+      /* ..in a `call'ed macro only, to be exact.  Or in a_AMV_MACKY_MACK */
+      if(!(ismacky = (amcap->amca_amp == a_AMV_MACKY_MACK)) &&
+            (amcap->amca_ps_hook_mask ||
+             (assert(amcap->amca_amp != NULL),
+              (amcap->amca_amp->am_flags & a_AMV_MF_TYPE_MASK
+               ) == a_AMV_MF_ACCOUNT)))
+         goto jleave;
 
-   if(avcp->avc_special_cat == a_AMV_VSC_MAC_ARGV){
-      if(avcp->avc_special_prop > 0){
-         if(amcap->amca_argc >= avcp->avc_special_prop)
-            rv = amcap->amca_argv[avcp->avc_special_prop - 1];
-      }else if(ismacky)
-         rv = amcap->amca_name;
-      else
-         rv = (a_amv_lopts->as_up != NULL
-               ? a_amv_lopts->as_up->as_amcap->amca_name : n_empty);
-      goto jleave;
+      if(avcp->avc_special_cat == a_AMV_VSC_POSPAR){
+         if(avcp->avc_special_prop > 0){
+            if(argc >= avcp->avc_special_prop)
+               rv = argv[avcp->avc_special_prop - 1];
+         }else if(ismacky)
+            rv = amcap->amca_name;
+         else
+            rv = (a_amv_lopts->as_up != NULL
+                  ? a_amv_lopts->as_up->as_amcap->amca_name : n_empty);
+         goto jleave;
+      }
+      /* MACKY_MACK doesn't know about [*@#] */
+      /*else*/ if(ismacky){
+         if(n_poption & n_PO_D_V)
+            n_err(_("Cannot use $*/$@/$# in this context: %s\n"),
+               n_shexp_quote_cp(avcp->avc_name, FAL0));
+         goto jleave;
+      }
+   }else{
+      argc = a_amv_pospar.app_count;
+      argv = a_amv_pospar.app_dat;
+      argv += a_amv_pospar.app_idx;
+
+      if(avcp->avc_special_cat == a_AMV_VSC_POSPAR){
+         if(avcp->avc_special_prop > 0){
+            if(argc >= avcp->avc_special_prop)
+               rv = argv[avcp->avc_special_prop - 1];
+         }else
+            rv = n_progname;
+         goto jleave;
+      }
    }
 
-   /* MACKY_MACK doesn't know about [*@#] */
-   if(ismacky)
-      goto jmaylog;
-
-   switch(avcp->avc_special_prop){
+   switch(avcp->avc_special_prop){ /* XXX OPTIMIZE */
    case a_AMV_VST_STAR:
-   case a_AMV_VST_AT:{
-      ui32_t i, l;
-
-      for(i = l = 0; i < amcap->amca_argc; ++i)
-         l += strlen(amcap->amca_argv[i]) + 1;
-      if(l == 0)
+   case a_AMV_VST_AT:
+      for(i = j = 0; i < argc; ++i)
+         j += strlen(argv[i]) + 1;
+      if(j == 0)
          rv = n_empty;
       else{
          char *cp;
 
-         rv = cp = salloc(l);
-         for(i = l = 0; i < amcap->amca_argc; ++i){
-            l = strlen(amcap->amca_argv[i]);
-            memcpy(cp, amcap->amca_argv[i], l);
-            cp += l;
+         rv = cp = n_autorec_alloc(j);
+         for(i = j = 0; i < argc; ++i){
+            j = strlen(argv[i]);
+            memcpy(cp, argv[i], j);
+            cp += j;
             *cp++ = ' ';
          }
          *--cp = '\0';
       }
-   }  break;
+      break;
    case a_AMV_VST_NOSIGN:{
       char *cp;
 
-      rv = cp = salloc(sizeof("65535"));
-      snprintf(cp, sizeof("65535"), "%hu", amcap->amca_argc);
+      rv = cp = n_autorec_alloc(sizeof("65535"));
+      snprintf(cp, sizeof("65535"), "%hu", argc);
    }  break;
    default:
       rv = n_empty;
       break;
    }
-
 jleave:
    NYD2_LEAVE;
    return rv;
-jmaylog:
-   if(n_poption & n_PO_D_V)
-      n_err(_("Cannot use macro local variable in this context: %s\n"),
-         n_shexp_quote_cp(avcp->avc_name, FAL0));
-   goto jleave;
 }
 
 static bool_t
@@ -1708,7 +1753,7 @@ a_amv_var_show_all(void){
          ++no;
    no += a_AMV_VAR_VIRTS_CNT;
 
-   vacp = salloc(no * sizeof(*vacp));
+   vacp = n_autorec_alloc(no * sizeof(*vacp));
 
    for(cap = vacp, i = 0; i < a_AMV_PRIME; ++i)
       for(avp = a_amv_vars[i]; avp != NULL; avp = avp->av_link)
@@ -1834,7 +1879,7 @@ a_amv_var_c_set(char **ap, bool_t issetenv){
 jouter:
    while((cp = *ap++) != NULL){
       /* Isolate key */
-      cp2 = varbuf = salloc(strlen(cp) +1);
+      cp2 = varbuf = n_autorec_alloc(strlen(cp) +1);
 
       for(; (c = *cp) != '=' && c != '\0'; ++cp){
          if(cntrlchar(c) || spacechar(c)){
@@ -2072,50 +2117,51 @@ jleave:
 
 FL int
 c_shift(void *v){
+   struct a_amv_pospar *appp;
+   ui16_t i;
    int rv;
    NYD_ENTER;
 
    rv = 1;
 
+   if((v = *(char**)v) == NULL)
+      i = 1;
+   else{
+      si16_t sib;
+
+      if((n_idec_si16_cp(&sib, v, 10, NULL
+               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+            ) != n_IDEC_STATE_CONSUMED || sib < 0){
+         n_err(_("`shift': invalid argument: %s\n"), v);
+         goto jleave;
+      }
+      i = (ui16_t)sib;
+   }
+
+   /* If in in a macro/xy */
    if(a_amv_lopts != NULL){
-      ui16_t i, j;
       struct a_amv_mac const *amp;
       struct a_amv_mac_call_args *amcap;
 
       amp = (amcap = a_amv_lopts->as_amcap)->amca_amp;
       if(amp == NULL || amcap->amca_ps_hook_mask ||
-            (amp->am_flags & a_AMV_MF_TYPE_MASK) == a_AMV_MF_ACCOUNT)
-         goto jerr;
-
-      v = *(char**)v;
-      if(v == NULL)
-         i = 1;
-      else{
-         si16_t sib;
-
-         if((n_idec_si16_cp(&sib, v, 10, NULL
-                  ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-               ) != n_IDEC_STATE_CONSUMED || sib < 0){
-            n_err(_("`shift': invalid argument: %s\n"), v);
-            goto jleave;
-         }
-         i = (ui16_t)sib;
-      }
-
-      if(i > (j = amcap->amca_argc)){
-         n_err(_("`shift': cannot shift %hu of %hu parameters\n"), i, j);
+            (amp->am_flags & a_AMV_MF_TYPE_MASK) == a_AMV_MF_ACCOUNT){
+         n_err(_("Cannot use `shift' in `account's or hook macros etc.\n"));
          goto jleave;
-      }else{
-         rv = 0;
-         if(j > 0){
-            j -= i;
-            amcap->amca_argc = j;
-            amcap->amca_argv += i;
-         }
       }
+      appp = &amcap->amca_pospar;
    }else
-jerr:
-      n_err(_("Can only use `shift' in a `call'ed macro\n"));
+      appp = &a_amv_pospar;
+
+   if(i > appp->app_count){
+      n_err(_("`shift': cannot shift %hu of %hu parameters\n"),
+         i, appp->app_count);
+      goto jleave;
+   }else{
+      appp->app_idx += i;
+      appp->app_count -= i;
+      rv = 0;
+   }
 jleave:
    NYD_LEAVE;
    return rv;
@@ -2180,7 +2226,7 @@ temporary_folder_hook_check(bool_t nmail){ /* TODO temporary, v15: drop */
    NYD_ENTER;
 
    rv = TRU1;
-   var = salloc(len = strlen(mailname) + sizeof("folder-hook-") -1  +1);
+   var = n_autorec_alloc(len = strlen(mailname) + sizeof("folder-hook-") -1 +1);
 
    /* First try the fully resolved path */
    snprintf(var, len, "folder-hook-%s", mailname);
@@ -2403,9 +2449,9 @@ n_var_vlook(char const *vokey, bool_t try_getenv){
    case a_AMV_VSC_MULTIPLEX:
       rv = a_amv_var_vsc_multiplex(&avc);
       break;
-   case a_AMV_VSC_MAC:
-   case a_AMV_VSC_MAC_ARGV:
-      rv = a_amv_var_vsc_mac(&avc);
+   case a_AMV_VSC_POSPAR:
+   case a_AMV_VSC_POSPAR_ENV:
+      rv = a_amv_var_vsc_pospar(&avc);
       break;
    }
    NYD_LEAVE;
@@ -2414,9 +2460,12 @@ n_var_vlook(char const *vokey, bool_t try_getenv){
 
 FL bool_t
 n_var_vexplode(void const **cookie){
+   struct a_amv_pospar *appp;
    NYD_ENTER;
-   /* These may occur only in a macro.. */
-   *cookie = (a_amv_lopts != NULL) ? a_amv_lopts->as_amcap->amca_argv : NULL;
+
+   appp = (a_amv_lopts != NULL) ? &a_amv_lopts->as_amcap->amca_pospar
+         : &a_amv_pospar;
+   *cookie = (appp->app_count > 0) ? &appp->app_dat[appp->app_idx] : NULL;
    NYD_LEAVE;
    return (*cookie != NULL);
 }
@@ -2699,22 +2748,20 @@ c_environ(void *v){
 
 FL int
 c_vexpr(void *v){ /* TODO POSIX expr(1) comp. exit status; overly complicat. */
-   /* This needs to be here because we need to apply MACKY_MACK for
-    * search+replace regular expression support :( */
    size_t i;
    enum n_idec_state ids;
    si64_t lhv, rhv;
    char op, varbuf[64 + 64 / 8 +1];
    char const **argv, *varname, *varres, *cp;
    enum{
-      a_ERR = 1<<0,
-      a_SOFTOVERFLOW = 1<<1,
-      a_ISNUM = 1<<2,
-      a_ISDECIMAL = 1<<3,  /* Print only decimal result */
-      a_SATURATED = 1<<4,
-      a_ICASE = 1<<5,
-      a_UNSIGNED = 1<<6,   /* Unsigned right shift (share bit ok) */
-      a_TMP = 1<<30
+      a_ERR = 1u<<0,
+      a_SOFTOVERFLOW = 1u<<1,
+      a_ISNUM = 1u<<2,
+      a_ISDECIMAL = 1u<<3, /* Print only decimal result */
+      a_SATURATED = 1u<<4,
+      a_ICASE = 1u<<5,
+      a_UNSIGNED = 1u<<6,  /* Unsigned right shift (share bit ok) */
+      a_TMP = 1u<<30
    } f;
    NYD_ENTER;
 
@@ -3094,9 +3141,10 @@ jenum_plusminus:
          amca.amca_amp = a_AMV_MACKY_MACK;
          for(i = 1; rema[i].rm_so != -1 && i < n_NELEM(rema); ++i)
             ;
-         amca.amca_argc = (ui32_t)i - 1;
-         amca.amca_argv =
-         reargv = salloc(sizeof(char*) * i);
+         amca.amca_pospar.app_count = (ui32_t)i - 1;
+         amca.amca_pospar.app_not_heap = TRU1;
+         amca.amca_pospar.app_dat =
+         reargv = n_autorec_alloc(sizeof(char*) * i);
          for(i = 1; rema[i].rm_so != -1 && i < n_NELEM(rema); ++i)
             *reargv++ = savestrbuf(&argv[1][rema[i].rm_so],
                   rema[i].rm_eo - rema[i].rm_so);
@@ -3174,7 +3222,7 @@ jleave:
             n_pstate_err_no = n_err_no;
             f |= a_ERR;
          }
-      }else if(fprintf(n_stdout, "%s\n", varres) < 0){
+      }else if(varres != NULL && fprintf(n_stdout, "%s\n", varres) < 0){
          n_pstate_err_no = n_err_no;
          f |= a_ERR;
       }
@@ -3227,6 +3275,124 @@ jestr:
    f &= ~a_ISNUM;
    f |= a_ERR;
    goto jleave;
+}
+
+FL int
+c_vpospar(void *v){
+   size_t i;
+   struct a_amv_pospar *appp;
+   enum{
+      a_NONE = 0,
+      a_ERR = 1u<<0,
+      a_SET = 1u<<1,
+      a_CLEAR = 1u<<2,
+      a_QUOTE = 1u<<3
+   } f;
+   char const **argv, *varname, *varres, *cp;
+   NYD_ENTER;
+
+   n_pstate_err_no = n_ERR_NONE;
+   argv = v;
+   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
+   n_UNINIT(varres, n_empty);
+
+   if(is_asccaseprefix(argv[0], "set"))
+      f = a_SET;
+   else if(is_asccaseprefix(argv[0], "clear"))
+      f = a_CLEAR;
+   else if(is_asccaseprefix(argv[0], "quote"))
+      f = a_QUOTE;
+   else{
+      n_err(_("`vpospar': invalid subcommand: %s\n"),
+         n_shexp_quote_cp(argv[0], FAL0));
+      n_pstate_err_no = n_ERR_INVAL;
+      f = a_ERR;
+      goto jleave;
+   }
+   ++argv;
+
+   /* If in a macro, we need to overwrite the local instead of global argv */
+   appp = (a_amv_lopts != NULL) ? &a_amv_lopts->as_amcap->amca_pospar
+         : &a_amv_pospar;
+
+   if(f & (a_SET | a_CLEAR)){
+      if(varname != NULL && (n_poption & n_PO_D_V))
+         n_err(_("`vpospar': `vput' only supported for `quote' subcommand\n"));
+      if(!appp->app_not_heap && appp->app_maxcount > 0){
+         for(i = appp->app_maxcount; i-- != 0;)
+            n_free(n_UNCONST(appp->app_dat[i]));
+         n_free(appp->app_dat);
+      }
+      memset(appp, 0, sizeof *appp);
+
+      if(f & a_SET){
+         for(i = 0; argv[i] != NULL; ++i)
+            ;
+         if(i > a_AMV_POSPAR_MAX){
+            n_err(_("`vpospar': overflow: %" PRIuZ " arguments!\n"), i);
+            n_pstate_err_no = n_ERR_OVERFLOW;
+            f = a_ERR;
+            goto jleave;
+         }
+
+         memset(appp, 0, sizeof *appp);
+         if(i > 0){
+            appp->app_maxcount = appp->app_count = (ui16_t)i;
+            /* XXX Optimize: store it all in one chunk! */
+            ++i;
+            i *= sizeof *appp->app_dat;
+            appp->app_dat = n_alloc(i);
+
+            for(i = 0; (cp = argv[i]) != NULL; ++i){
+               size_t j;
+
+               j = strlen(cp) +1;
+               appp->app_dat[i] = n_alloc(j);
+               memcpy(n_UNCONST(appp->app_dat[i]), cp, j);
+            }
+
+            appp->app_dat[i] = NULL;
+         }
+      }
+   }else{
+      if(appp->app_count == 0)
+         varres = n_empty;
+      else{
+         struct str in;
+         struct n_string s, *sp;
+
+         sp = n_string_creat_auto(&s);
+
+         for(i = 0; i < appp->app_count; ++i){
+            if(sp->s_len)
+               sp = n_string_push_c(sp, ' ');
+            in.l = strlen(in.s = n_UNCONST(appp->app_dat[i + appp->app_idx]));
+
+            if(!n_string_can_swallow(sp, in.l)){
+               n_err(_("`vpospar': overflow: string too long!\n"));
+               n_pstate_err_no = n_ERR_OVERFLOW;
+               f = a_ERR;
+               goto jleave;
+            }
+            sp = n_shexp_quote(sp, &in, TRU1);
+         }
+
+         varres = n_string_cp(sp);
+      }
+
+      if(varname == NULL){
+         if(fprintf(n_stdout, "%s\n", varres) < 0){
+            n_pstate_err_no = n_err_no;
+            f |= a_ERR;
+         }
+      }else if(!n_var_vset(varname, (uintptr_t)varres)){
+         n_pstate_err_no = n_ERR_NOTSUP;
+         f |= a_ERR;
+      }
+   }
+jleave:
+   NYD_LEAVE;
+   return (f & a_ERR) ? 1 : 0;
 }
 
 /* s-it-mode */

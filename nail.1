@@ -3714,18 +3714,23 @@ may help shall keys and sequences be falsely recognized.
 .Mx
 .It Ic call
 \*(NQ Calls the given macro, which must have been created via
-.Ic define .
+.Ic define ,
+otherwise a
+.Va ^ERR Ns -NOENT
+error occurs.
 Parameters given to macros are implicitly local to the macro's scope, and
-may be accessed via the special parameter syntax that is known from the
-.Xr sh 1 ,
-e.g.,
+may be accessed via special (positional) parameters, e.g.,
 .Va 1 ,
 .Va * ,
 .Va @ ,
 .Va # .
-Positional parameters may be removed by
+The positional parameters may be removed by
 .Ic shift Ns
-ing them off the stack.
+ing them off the stack (exceeding the supported number of arguments
+results in a
+.Va ^ERR Ns -OVERFLOW ) ,
+and are otherwise controllable via
+.Ic vpospar .
 Macro execution can be terminated at any time by calling
 .Ic return .
 .Pp
@@ -5589,14 +5594,14 @@ will remove all registered shortcuts.
 .
 .Mx
 .It Ic shift
-Only available inside the scope of a
-.Ic call Ns
-ed macro, this will shift the positional parameters (starting at
+Shift the positional parameter stack (starting at
 .Va 1 )
 by the given number (which must be an unsigned, positive, decimal),
 or 1 if no argument has been given.
 It is an error if the value exceeds the number of positional parameters.
 If the given number is 0, no action is performed, successfully.
+The stack as such can be managed via
+.Ic vpospar .
 .
 .Mx
 .It Ic show
@@ -6174,8 +6179,52 @@ is replaced by the corresponding match group of the regular expression.
 .
 .Bd -literal -offset indent
 ? vexpr -@ +1 -9223372036854775808
-? vput vexpr res ir bananarama (.*)nana(.*) '\e${1}au\e$2'
+? vput vexpr res ir bananarama (.*)NanA(.*) '\e${1}au\e$2'
 ? echo $0 $res
+.Ed
+.
+.
+.Mx
+.It Ic vpospar
+\*(NQ Manage the positional parameter stack (see
+.Va 1 , # , * , @
+as well as
+.Ic shift ) .
+If the first argument is
+.Ql clear ,
+then the positional parameter stack of the current context, or the
+global one, if there is none, is cleared.
+If it is
+.Ql set ,
+then the remaining arguments will be used to (re)create the stack,
+if the parameter stack size limit is excessed an
+.Va ^ERR Ns -OVERFLOW
+error will occur.
+.
+.Pp
+If the first argument is
+.Ql quote ,
+a round-trip capable representation of the stack contents is created:
+this mode supports
+.Cm vput
+(see
+.Sx "Command modifiers" ) .
+I.e., the subcommands
+.Ql set
+and
+.Ql quote
+can be used (in conjunction with
+.Ic eval )
+to (re)create an argument stack from and to a single variable losslessly.
+.
+.Bd -literal -offset indent
+? vpospar set hey, "'you    ", world!
+? echo $#: <${1}><${2}><${3}>
+? vput vpospar x quote
+? vpospar clear
+? echo $#: <${1}><${2}><${3}>
+? eval vpospar set ${x}
+? echo $#: <${1}><${2}><${3}>
 .Ed
 .
 .
@@ -7054,58 +7103,55 @@ call work 0
 .
 .Mx
 .It Va *
-\*(RO Only available inside the scope of a
-.Ic call Ns
-ed macro, this will expand to all parameters of the macro, separated by
-a space character.
+\*(RO Expands all positional parameters (see
+.Va 1 ) ,
+separated by a space character.
 \*(ID The special semantics of the equally named special parameter of the
 .Xr sh 1
 are not yet supported.
 .
 .Mx
 .It Va @
-\*(RO Only available inside the scope of a
-.Ic call Ns
-ed macro, this will expand to all parameters of the macro, separated by
-a space character.
-\*(ID The special semantics of the equally named special parameter of the
-.Xr sh 1
-are not yet supported.
+\*(RO Expands all positional parameters (see
+.Va 1 ) ,
+separated by a space character.
+If placed in double quotation marks, each positional parameter is
+properly quoted to expand to a single parameter again.
 .
 .Mx
 .It Va #
-\*(RO Only available inside the scope of a
-.Ic call Ns
-ed macro, this will expand to the number of positional parameters in
-decimal.
+\*(RO Expands to the number of positional parameters in decimal.
 .
 .Mx
 .It Va \&0
-\*(RO Available inside the scope of a
+\*(RO Inside the scope of a
 .Ic define Ns
 d and
 .Ic call Ns
-ed macro, this expands to the name of the calling macro, or to the empty
+ed macro this expands to the name of the calling macro, or to the empty
 string if the macro is running from top-level.
 For the \*(OPal regular expression search and replace operator of
 .Ic vexpr
 this expands to the entire matching expression.
+It represents the program name in global context.
 .
 .Mx
 .It Va 1
-\*(RO Available inside the scope of a
-.Ic define Ns
-d and
-.Ic call Ns
-ed macro, this will access the first positional parameter passed.
+\*(RO Access of the positional parameter stack.
 All further parameters can be accessed with this syntax, too, e.g.,
 .Ql 2 ,
 .Ql 3
 etc.; positional parameters can be shifted off the stack by calling
 .Ic shift .
-Positional parameters are also accessible in the \*(OPal regular
-expression search and replace expression of
-.Ic vexpr .
+The parameter stack contains, e.g., the arguments of a
+.Ic call Ns
+ed
+.Ic define Ns
+d macro, the matching groups of the \*(OPal regular expression search
+and replace expression of
+.Ic vexpr ,
+and can be explicitly created or overwritten with the command
+.Ic vpospar .
 .
 .Mx
 .It Va account

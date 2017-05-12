@@ -403,6 +403,9 @@
      DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
    { "vexpr", &c_vexpr, (G | M | V | X | EM | TWYSH), 2, MAC
      DS(N_("Evaluate according to <operator> any <:arguments:>")) },
+   { "vpospar", &c_vpospar, (G | M | V | X | EM | TWYSH), 1, MAC
+     DS(N_("Positional parameters: <clear>, <quote>, or <set> from <:arg:>"))},
+
    { "version", &a_go_c_version, (H | M | X | TWYSH), 0, 0
      DS(N_("Show the version and feature set of the program")) },
 

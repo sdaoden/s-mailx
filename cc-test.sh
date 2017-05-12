@@ -376,9 +376,9 @@ t_behave_X_opt_input_command_stack() {
    call mac2
    echo 4
    undefine *
-   ' > "${MBOX}" 2>/dev/null
+   ' > "${MBOX}"
 
-   check behave:x_opt_input_command_stack 0 "${MBOX}" '1391275936 378'
+   check behave:x_opt_input_command_stack 0 "${MBOX}" '1786542668 416'
 
    t_epilog
 }
