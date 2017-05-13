@@ -3357,16 +3357,6 @@ A synonym for the
 command.
 .
 .Mx
-.It Ic ~
-\*(NQ Interprets the remainder of the word as a macro name and passes
-it through to the
-.Ic call
-command; e.g.,
-.Ql ~ Ns Ar mymacro
-is a shorter synonym for
-.Ql call Ar mymacro .
-.
-.Mx
 .Mx
 .It Ic account , unaccount
 (ac, una) Creates, selects or lists (an) account(s).
@@ -4356,10 +4346,10 @@ define xxx {
 define yyy {
   eval "$@ ' ball"
 }
-call yyy '~xxx' "b\e$'\et'u ' "
-xxx arg <b      u>
-xxx arg <  >
-xxx arg <ball>
+call yyy '\ecall xxx' "b\e$'\et'u ' "
+call xxx arg <b      u>
+call xxx arg <  >
+call xxx arg <ball>
 .Ed
 .
 .Mx

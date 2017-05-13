@@ -92,8 +92,6 @@
      DS(N_("Delete the current message, then type the next")) },
    { "undelete", &c_undelete, (A | P | TMSGLST), MDELETED,MMNDEL
      DS(N_("Un`delete' <msglist>")) },
-   { "unset", &c_unset, (G | M | X | TWYSH), 1, MAC
-     DS(N_("Unset <option-list>")) },
    { "mail", &c_sendmail, (I | M | R | S | TSTRING), 0, 0
      DS(N_("Compose mail; recipients may be given as arguments")) },
    { "Mail", &c_Sendmail, (I | M | R | S | TSTRING), 0, 0
@@ -130,14 +128,8 @@
      DS(N_("Append <msglist> to <file>")) },
    { "Save", &c_Save, (A | S | TSTRING), 0, 0
      DS(N_("Like `save', but derive filename from first sender")) },
-   { "source", &c_source, (M | TWYSH), 1, 1
-     DS(N_("Read commands from <file>")) },
-   { "source_if", &c_source_if, (M | TWYSH), 1, 1
-     DS(N_("If <file> can be opened successfully, read commands from it")) },
    { "set", &c_set, (G | M | X | TWYRA), 0, MAC
      DS(N_("Print all variables, or set (a) <variable>(s)")) },
-   { "shell", &c_dosh, (I | S | TWYSH), 0, 0
-     DS(N_("Invoke an interactive shell")) },
    { "unalias", &c_unalias, (M | TWYRA), 1, MAC
      DS(N_("Un`alias' <name-list> (* for all)")) },
    { "write", &c_write, (A | TSTRING), 0, 0
@@ -158,18 +150,12 @@
      DS(N_("Open a new <mailbox> or show the current one")) },
    { "folders", &c_folders, (M | T | TWYRA), 0, 1
      DS(N_("List mailboxes below the given or the global folder")) },
-   { "z", &c_scroll, (A | M | TWYSH), 0, 1
-     DS(N_("Scroll header display as indicated by the argument (0,-,+,$)")) },
-   { "Z", &c_Scroll, (A | M | TWYSH), 0, 1
-     DS(N_("Like `z', but continues to the next flagged message")) },
    { "headers", &c_headers, (A | M | TMSGLST), 0, MMNDEL
      DS(N_("Type a page of headers (with the first of <msglist> if given)")) },
    { "help", &a_go_c_help, (M | X | TWYRA), 0, 1
      DS(N_("Show help [[Option] for the given command]]")) },
    { n_qm, &a_go_c_help, (M | X | TWYRA), 0, 1
      DS(N_("Show help [[Option] for the given command]]")) },
-   { "=", &c_pdot, (A | TWYSH), 0, 0
-     DS(N_("Show current message number")) },
    { "Reply", &c_Reply, (A | I | R | S | TMSGLST), 0, MMNDEL
      DS(N_("Reply to originator, exclusively")) },
    { "Respond", &c_Reply, (A | I | R | S | TMSGLST), 0, MMNDEL
@@ -206,22 +192,6 @@
      DS(N_("Forward <message> to <address>")) },
    { "edit", &c_editor, (G | A | I | S | TMSGLST), 0, MMNORM
      DS(N_("Edit <msglist>")) },
-   { "echo", &c_echo, (G | M | X | TWYSH), 0, MAC
-     DS(N_("Echo arguments, and a trailing newline, to standard output")) },
-   { "echoerr", &c_echoerr, (G | M | X | TWYSH), 0, MAC
-     DS(N_("Echo arguments, and a trailing newline, to standard error")) },
-   { "echon", &c_echon, (G | M | X | TWYSH), 0, MAC
-     DS(N_("Echo arguments, without a trailing newline, to standard output")) },
-   { "echoerrn", &c_echoerrn, (G | M | X | TWYSH), 0, MAC
-     DS(N_("Echo arguments, without a trailing newline, to standard error")) },
-   { "quit", &a_go_c_quit, TWYSH, 0, 0
-     DS(N_("Terminate session, saving messages as necessary")) },
-   { "list", &a_go_c_list, (M | TWYSH), 0, 1
-     DS(N_("List all commands (with argument: in prefix search order)")) },
-   { "xit", &a_go_c_exit, (M | X | TWYSH), 0, 0
-     DS(N_("Immediately return to the shell without saving")) },
-   { "exit", &a_go_c_exit, (M | X | TWYSH), 0, 0
-     DS(N_("Immediately return to the shell without saving")) },
    { "pipe", &c_pipe, (A | TSTRING), 0, MMNDEL
      DS(N_("Pipe <msglist> to <command>, honouring `ignore' / `retain'")) },
    { "|", &c_pipe, (A | TSTRING), 0, MMNDEL
@@ -268,8 +238,6 @@
      DS(N_("Define <shortcut>s and their <expansion>, or list shortcuts")) },
    { "unshortcut", &c_unshortcut, (M | TWYRA), 1, MAC
      DS(N_("Delete <shortcut-list> (* for all)")) },
-   { "account", &c_account, (M | TWYSH), 0, MAC
-     DS(N_("Create or select <account>, or list all accounts")) },
    { "thread", &c_thread, (O | A | TMSGLST), 0, 0
      DS(N_("Obsoleted by `sort' \"thread\"")) },
    { "unthread", &c_unthread, (O | A | TMSGLST), 0, 0
@@ -290,24 +258,6 @@
      DS(N_("Mark <msglist> as draft")) },
    { "undraft", &c_undraft, (A | M | TMSGLST), 0, 0
      DS(N_("Un`draft' <msglist>")) },
-   { "define", &c_define, (M | X | TWYSH), 0, 2
-     DS(N_("Define a <macro> or show the currently defined ones")) },
-   { "undefine", &c_undefine, (M | X | TWYSH), 1, MAC
-     DS(N_("Un`define' all given <macros> (* for all)")) },
-   { "unaccount", &c_unaccount, (M | TWYSH), 1, MAC
-     DS(N_("Delete all given <accounts> (* for all)")) },
-   { "call", &c_call, (M | X | EM | TWYSH), 1, MAC
-     DS(N_("Call macro <name>")) },
-   { "xcall", &a_go_c_xcall, (M | X | EM | TWYSH), 1, MAC
-     DS(N_("Replace currently executing macro with macro <name>")) },
-   { "~", &c_call, (M | X | EM | TWYSH), 1, MAC
-     DS(N_("Call a macro")) },
-   { "call_if", &c_call_if, (M | X | EM | TWYRA), 1, 100
-     DS(N_("Call macro <name> if it exists")) },
-   { "shift", &c_shift, (M | X | TWYSH), 0, 1
-     DS(N_("In a `call'ed macro, shift positional parameters")) },
-   { "return", &c_return, (M | X | EM | TWYSH), 0, 2
-     DS(N_("Return control [with <return value> [<exit status>]] from macro"))},
    { "move", &c_move, (A | M | TSTRING), 0, 0
      DS(N_("Like `copy', but mark messages for deletion")) },
    { "mv", &c_move, (A | M | TSTRING), 0, 0
@@ -368,14 +318,6 @@
      DS(N_("Set the spam flag for each message in <msglist>")) },
    { "spamclear", &c_spam_clear, (A | M | TMSGLST), 0, 0
      DS(N_("Clear the spam flag for each message in <msglist>")) },
-   { "cwd", &c_cwd, (M | V | X | TWYSH), 0, 0
-     DS(N_("Print current working directory (CWD)")) },
-   { "varshow", &c_varshow, (G | M | X | TWYSH), 1, MAC
-     DS(N_("Show some informations about the given <variables>")) },
-   { "varedit", &c_varedit, (G | I | M | TWYSH), 1, MAC
-     DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
-   { "vexpr", &c_vexpr, (G | M | V | X | EM | TWYSH), 2, MAC
-     DS(N_("Evaluate according to <operator> any <:arguments:>")) },
    { "File", &c_File, (M | T | TWYRA), 0, 1
      DS(N_("Open a new mailbox readonly, or show the current mailbox")) },
    { "Folder", &c_File, (M | T | TWYRA), 0, 1
@@ -390,40 +332,101 @@
      DS(N_("Un`mlsubscribe' <name-list> (* for all)"))},
    { "Lreply", &c_Lreply, (A | I | R | S | TMSGLST), 0, MMNDEL
      DS(N_("Mailing-list reply to the given <msglist>")) },
-   { "errors", &c_errors, (H | I | M | TWYSH), 0, 1
-     DS(N_("Either [<show>] or <clear> the error message ring")) },
    { "dotmove", &c_dotmove, (A | TSTRING), 1, 1
      DS(N_("Move the dot up <-> or down <+> by one")) },
 
-   { "commandalias", &a_go_c_alias, (M | X | TWYSH), 0, MAC
-     DS(N_("Print/create command <alias> [<command>], or list all aliases")) },
-   { "uncommandalias", &a_go_c_unalias, (M | X | TWYSH), 1, MAC
-     DS(N_("Delete <command-alias-list> (* for all)")) },
-      { "ghost", &a_go_c_alias, (O | M | X | TWYRA), 0, MAC
-        DS(N_("Obsoleted by `commandalias'")) },
-      { "unghost", &a_go_c_unalias, (O | M | X | TWYRA), 1, MAC
-        DS(N_("Obsoleted by `uncommandalias'")) },
+   /* New-style commands without un* counterpart */
 
+   { "=", &c_pdot, (A | TWYSH), 0, 0
+     DS(N_("Show current message number")) },
+
+   { "call", &c_call, (M | X | EM | TWYSH), 1, MAC
+     DS(N_("Call macro <name>")) },
+   { "call_if", &c_call_if, (M | X | EM | TWYSH), 1, MAC
+     DS(N_("Call macro <name> like `call', but be silent if non-existent")) },
+   { "cwd", &c_cwd, (M | V | X | TWYSH), 0, 0
+     DS(N_("Print current working directory (CWD)")) },
+
+   { "echo", &c_echo, (G | M | X | TWYSH), 0, MAC
+     DS(N_("Echo arguments, and a trailing newline, to standard output")) },
+   { "echoerr", &c_echoerr, (G | M | X | TWYSH), 0, MAC
+     DS(N_("Echo arguments, and a trailing newline, to standard error")) },
+   { "echon", &c_echon, (G | M | X | TWYSH), 0, MAC
+     DS(N_("Echo arguments, without a trailing newline, to standard output")) },
+   { "echoerrn", &c_echoerrn, (G | M | X | TWYSH), 0, MAC
+     DS(N_("Echo arguments, without a trailing newline, to standard error")) },
+   { "environ", &c_environ, (G | M | X | TWYSH), 2, MAC
+     DS(N_("<link|set|unset> (an) environment <variable>(s)")) },
+   { "errors", &c_errors, (H | I | M | TWYSH), 0, 1
+     DS(N_("Either [<show>] or <clear> the error message ring")) },
    { "eval", &a_go_c_eval, (G | M | X | EM | TWYSH), 1, MAC
      DS(N_("Construct command from <:arguments:>, reuse its $? and $!")) },
-   { "localopts", &c_localopts, (H | M | X | TWYSH), 1, 1
-     DS(N_("Inside `define' / `account': isolate modifications? <boolean>"))},
-   { "read", &a_go_c_read, (G | M | X | EM | TWYSH), 1, MAC
-     DS(N_("Read a line from standard input into <variable>(s)")) },
-   { "sleep", &c_sleep, (H | M | X | EM | TWYSH), 1, 3
-     DS(N_("Sleep for <seconds> [<milliseconds>]"))},
-   { "version", &a_go_c_version, (H | M | X | TWYSH), 0, 0
-     DS(N_("Show the version and feature set of the program")) },
+   { "exit", &a_go_c_exit, (M | X | TWYSH), 0, 0
+     DS(N_("Immediately return to the shell without saving")) },
 
    { "history", &c_history, (H | I | M | TWYSH), 0, 1
      DS(N_("<show> (default), <clear> or select <NO> from editor history")) },
+
+   { "list", &a_go_c_list, (M | TWYSH), 0, 1
+     DS(N_("List all commands (with argument: in prefix search order)")) },
+   { "localopts", &c_localopts, (H | M | X | TWYSH), 1, 1
+     DS(N_("Inside `define' / `account': isolate modifications? <boolean>"))},
+
+   { "netrc", &c_netrc, (M | TWYSH), 0, 1
+     DS(N_("[<show>], <load> or <clear> the .netrc cache")) },
+
+   { "quit", &a_go_c_quit, TWYSH, 0, 0
+     DS(N_("Terminate session, saving messages as necessary")) },
+
+   { "read", &a_go_c_read, (G | M | X | EM | TWYSH), 1, MAC
+     DS(N_("Read a line from standard input into <variable>(s)")) },
+   { "return", &c_return, (M | X | EM | TWYSH), 0, 2
+     DS(N_("Return control [with <return value> [<exit status>]] from macro"))},
+
+   { "shell", &c_dosh, (I | S | TWYSH), 0, 0
+     DS(N_("Invoke an interactive shell")) },
+   { "shift", &c_shift, (M | X | TWYSH), 0, 1
+     DS(N_("In a `call'ed macro, shift positional parameters")) },
+   { "sleep", &c_sleep, (H | M | X | EM | TWYSH), 1, 3
+     DS(N_("Sleep for <seconds> [<milliseconds>]"))},
+   { "source", &c_source, (M | TWYSH), 1, 1
+     DS(N_("Read commands from <file>")) },
+   { "source_if", &c_source_if, (M | TWYSH), 1, 1
+     DS(N_("If <file> can be opened successfully, read commands from it")) },
+
+   { "unset", &c_unset, (G | M | X | TWYSH), 1, MAC
+     DS(N_("Unset <option-list>")) },
+
+   { "varshow", &c_varshow, (G | M | X | TWYSH), 1, MAC
+     DS(N_("Show some informations about the given <variables>")) },
+   { "varedit", &c_varedit, (G | I | M | TWYSH), 1, MAC
+     DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
+   { "vexpr", &c_vexpr, (G | M | V | X | EM | TWYSH), 2, MAC
+     DS(N_("Evaluate according to <operator> any <:arguments:>")) },
+   { "version", &a_go_c_version, (H | M | X | TWYSH), 0, 0
+     DS(N_("Show the version and feature set of the program")) },
+
+   { "xit"/*POSIX, first!*/, &a_go_c_exit, (M | X | TWYSH), 0, 0
+     DS(N_("Immediately return to the shell without saving")) },
+   { "xcall", &a_go_c_xcall, (M | X | EM | TWYSH), 1, MAC
+     DS(N_("Replace currently executing macro with macro <name>")) },
+
+   { "z", &c_scroll, (A | M | TWYSH), 0, 1
+     DS(N_("Scroll header display as indicated by the argument (0,-,+,$)")) },
+   { "Z", &c_Scroll, (A | M | TWYSH), 0, 1
+     DS(N_("Like `z', but continues to the next flagged message")) },
+
+   /* New-style commands with un* counterpart */
+
+   { "account", &c_account, (M | TWYSH), 0, MAC
+     DS(N_("Create or select <account>, or list all accounts")) },
+   { "unaccount", &c_unaccount, (M | TWYSH), 1, MAC
+     DS(N_("Delete all given <accounts> (* for all)")) },
+
    { "bind", &c_bind, (M | TSTRING), 1, MAC
      DS(N_("For <context> (base), [<show>] or bind <key[:,key:]> [<:data:>]"))},
    { "unbind", &c_unbind, (M | TSTRING), 2, 2
      DS(N_("Un`bind' <context> <key[:,key:]> (* for all)")) },
-
-   { "netrc", &c_netrc, (M | TWYSH), 0, 1
-     DS(N_("[<show>], <load> or <clear> the .netrc cache")) },
 
    { "charsetalias", &c_charsetalias, (M | TWYSH), 0, MAC
      DS(N_("Define [:<charset> <charset-alias>:]s, or list mappings")) },
@@ -435,8 +438,19 @@
    { "uncolour", &c_uncolour, (M | TWYSH), 2, 3
      DS(N_("Un`colour' <type> <mapping> (* for all) [<precondition>]")) },
 
-   { "environ", &c_environ, (G | M | X | TWYSH), 2, MAC
-     DS(N_("<link|set|unset> (an) environment <variable>(s)")) },
+   { "commandalias", &a_go_c_alias, (M | X | TWYSH), 0, MAC
+     DS(N_("Print/create command <alias> [<command>], or list all aliases")) },
+   { "uncommandalias", &a_go_c_unalias, (M | X | TWYSH), 1, MAC
+     DS(N_("Delete <command-alias-list> (* for all)")) },
+      { "ghost", &a_go_c_alias, (O | M | X | TWYRA), 0, MAC
+        DS(N_("Obsoleted by `commandalias'")) },
+      { "unghost", &a_go_c_unalias, (O | M | X | TWYRA), 1, MAC
+        DS(N_("Obsoleted by `uncommandalias'")) },
+
+   { "define", &c_define, (M | X | TWYSH), 0, 2
+     DS(N_("Define a <macro> or show the currently defined ones")) },
+   { "undefine", &c_undefine, (M | X | TWYSH), 1, MAC
+     DS(N_("Un`define' all given <macros> (* for all)")) },
 
    { "filetype", &c_filetype, (M | TWYSH), 0, MAC
      DS(N_("Create [:<extension> <load-cmd> <save-cmd>:] "
@@ -449,10 +463,14 @@
    { "unheaderpick", &c_unheaderpick, (M | TWYSH), 3, MAC
      DS(N_("Header deselection: <context> <type> <header-list>"))},
 
+   /* Codec commands */
+
    { "addrcodec", &c_addrcodec, (G | M | V | X | EM | TRAWDAT), 0, 0
     DS(N_("Email address <[+[+[+]]]e[ncode]|d[ecode]|s[kin]> <rest-of-line>"))},
+
    { "shcodec", &c_shcodec, (G | M | V | X | EM | TRAWDAT), 0, 0
      DS(N_("Shell quoting: <[+]e[ncode]|d[ecode]> <rest-of-line>")) },
+
    { "urlcodec", &c_urlcodec, (G | M | V | X | EM | TRAWDAT), 0, 0
      DS(N_("URL percent <[path]e[ncode]|[path]d[ecode]> <rest-of-line>")) },
       { "urlencode", &c_urlencode, (O | G | M | X | TWYRA), 1, MAC

@@ -924,8 +924,7 @@ jrestart:
     * separated from the arguments (as in `p1') we need to duplicate it to
     * be able to create a NUL terminated version.
     * We must be aware of several special one letter commands here */
-   else if((cp = a_go_isolate(cp)) == line.s &&
-         (*cp == '|' || *cp == '~' || *cp == '?'))
+   else if((cp = a_go_isolate(cp)) == line.s && (*cp == '|' || *cp == '?'))
       ++cp;
    c = (int)PTR2SIZE(cp - line.s);
    word = UICMP(z, c, <, sizeof _wordbuf) ? _wordbuf : n_autorec_alloc(c +1);

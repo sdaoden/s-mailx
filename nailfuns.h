@@ -152,7 +152,7 @@ do{\
  * accmacvar.c
  */
 
-/* Macros: `define', `undefine', `call' / `~', `call_if' */
+/* Macros: `define', `undefine', `call', `call_if' */
 FL int c_define(void *v);
 FL int c_undefine(void *v);
 FL int c_call(void *v);
