@@ -1109,7 +1109,7 @@ jgetopt_done:
          if(isfail || (isrestrict && (!(n_poption & n_PO_TILDE_FLAG) ||
                   !(n_psonce & n_PSO_INTERACTIVE)))){
             n_err(_("*expandargv* doesn't allow MTA arguments; consider "
-               "using *sendmail-arguments*\n"));
+               "using *mta-arguments*\n"));
             n_exit_status = n_EXIT_USE | n_EXIT_SEND_ERROR;
             goto jleave;
          }

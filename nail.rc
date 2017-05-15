@@ -10,7 +10,7 @@
 #@   leading whitespace of follow lines is ignored, trailing whitespace before
 #@   the escaped newline is not.
 #@ - The number sign # is the comment-command and causes the (joined) line
-#@   (content) to be ignored.  No other form of comments exist.
+#@   (content) to be ignored.
 #--MKREL-START--
 #@ S-nail(1): v14.9.0-pre4 / 2017-04-13
 #--MKREL-END--
@@ -30,7 +30,7 @@
 # - *hold, *keep*, *keepsave* and *sendwait* are deliberately set below.
 # - no*onehop* doesn't exist in this implementation.
 #   (To pass options through to the MTA, either add them after a "--"
-#   separator on the command line or set the *sendmail-arguments* variable.)
+#   separator on the command line or set the *mta-arguments* variable.)
 # (Keep in SYNC: ./nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings"!)
 #
 # Adjust the standard-imposed default variable settings.
@@ -55,15 +55,11 @@ set ask
 #set colour-pager
 # Btw., if your $PAGER is less(1) or lv(1) you will usually be served, as
 # documented for $PAGER in the manual, very well by doing, e.g., less(1):
-#  set PAGER=less
-#  environ unset LESS
+#  ? wysh set PAGER=less; environ unset LESS
 
 # Assume a CRT-like terminal and invoke a $PAGER if output doesn't fit on a
 # the screen.  (Set crt=0 to always page; value treated as number of lines)
 set crt
-
-# When composing messages a line consisting of `.' finalizes a message
-#set dot
 
 # Startup into $EDITOR (or $VISUAL) in compose mode ("automatic `~e'")
 #set editalong
@@ -165,7 +161,8 @@ set showto
 # (usually ~/.mailrc).
 
 # Map ISO-8859-1 to LATIN1, and LATIN1 to CP1252.
-# This affects message display and *reply-in-same-charset*
+# (These mappings are not applied to character sets specified by other
+# variables, e.g., sendcharsets).
 #charsetalias iso-8859-1 latin1  latin1 cp1252
 
 # Only include the selected header fields when printing messages
