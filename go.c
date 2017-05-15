@@ -206,7 +206,7 @@ static struct a_go_xcall *a_go_xcall;
 static sigjmp_buf a_go_srbuf; /* TODO GET RID */
 
 /* Isolate the command from the arguments */
-static char *a_go_isolate(char const *comm);
+static char *a_go_isolate(char const *cmd);
 
 /* `eval' */
 static int a_go_c_eval(void *vp);
@@ -295,13 +295,13 @@ static struct a_go_cmd_desc const a_go_cmd_tab[] = {
 #undef DS
 
 static char *
-a_go_isolate(char const *comm){
+a_go_isolate(char const *cmd){
    NYD2_ENTER;
-   while(*comm != '\0' &&
-         strchr("~|? \t0123456789&%@$^.:/-+*'\",;(`", *comm) == NULL)
-      ++comm;
+   while(*cmd != '\0' &&
+         strchr("\\!~|? \t0123456789&%@$^.:/-+*'\",;(`", *cmd) == NULL)
+      ++cmd;
    NYD2_LEAVE;
-   return n_UNCONST(comm);
+   return n_UNCONST(cmd);
 }
 
 static int
@@ -911,6 +911,13 @@ jrestart:
    }
    (cp = line.s)[line.l] = '\0';
 
+   /* No-expansion modifier? */
+   if(!(flags & a_NOPREFIX) && *cp == '\\'){
+      line.s = ++cp;
+      --line.l;
+      flags |= a_NOALIAS;
+   }
+
    /* Ignore null commands (comments) */
    if(*cp == '#'){
       gecp->gec_hist_flags = a_GO_HIST_NONE;
@@ -932,13 +939,6 @@ jrestart:
    word[c] = '\0';
    line.l -= c;
    line.s = cp;
-
-   /* No-expansion modifier? */
-   if(!(flags & a_NOPREFIX) && *word == '\\'){
-      ++word;
-      --c;
-      flags |= a_NOALIAS;
-   }
 
    /* It may be a modifier prefix */
    if(c == sizeof("ignerr") -1 && !asccasecmp(word, "ignerr")){
