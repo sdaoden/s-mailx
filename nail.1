@@ -10816,7 +10816,7 @@ Also see
 .Mx
 .It Ev NETRC
 \*(IN\*(OP This variable overrides the default location of the user's
-.Pa .netrc
+.Pa ~/.netrc
 file.
 .
 .Mx
@@ -10938,23 +10938,28 @@ System wide initialization file.
 .It Pa ~/.mailcap
 \*(OP Personal MIME type handler definition file, see
 .Sx "The Mailcap files" .
-(RFC 1524 location, the actual path is a configuration option.)
+This location is part of the RFC 1524 standard search path, which is
+a configuration option and can be overridden via
+.Ev MAILCAPS .
 .
 .Mx
 .It Pa /etc/mailcap
 \*(OP System wide MIME type handler definition file, see
 .Sx "The Mailcap files" .
-(RFC 1524 location, the actual path is a configuration option.)
+This location is part of the RFC 1524 standard search path, which is
+a configuration option and can be overridden via
 .
 .Mx
 .It Pa ~/.mime.types
 Personal MIME types, see
 .Sx "The mime.types files" .
+The actually used path is a configuration option.
 .
 .Mx
 .It Pa /etc/mime.types
 System wide MIME types, see
 .Sx "The mime.types files" .
+The actually used path is a configuration option.
 .
 .Mx
 .It Pa ~/.netrc
@@ -10963,6 +10968,8 @@ System wide MIME types, see
 file \(en the section
 .Sx "The .netrc file"
 documents the file format.
+The actually used path is a configuration option and can be overridden via
+.Ev NETRC .
 .El
 .
 .\" .Ss "The mime.types files" {{{

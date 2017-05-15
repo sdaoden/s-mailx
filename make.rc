@@ -110,6 +110,10 @@ VAL_PAGER=more
 VAL_TMPDIR=/tmp
 VAL_VISUAL=vi
 
+# Default locations of mime.types(5)
+VAL_MIME_TYPES_USR=~/.mime.types
+VAL_MIME_TYPES_SYS=/etc/mime.types
+
 # The following tools may be provided a.k.a. overwritten,
 # `command -v NAME` is used to query the utility otherwise:
 #  MAKE=, STRIP=, awk=, cat=, chmod=, cp=, cmp=, cksum=,

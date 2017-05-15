@@ -37,8 +37,8 @@ enum mime_type {
    __MT_TMASK  = 0x07,
 
    _MT_CMD     = 1<< 8,       /* Via `mimetype' (not struct mtbltin) */
-   _MT_USR     = 1<< 9,       /* MIME_TYPES_USR */
-   _MT_SYS     = 1<<10,       /* MIME_TYPES_SYS */
+   _MT_USR     = 1<< 9,       /* VAL_MIME_TYPES_USR */
+   _MT_SYS     = 1<<10,       /* VAL_MIME_TYPES_SYS */
    _MT_FSPEC   = 1<<11,       /* Loaded via f= *mimetypes-load-control* spec. */
 
    _MT_PLAIN   = 1<<16,       /* Without pipe handler display as text */
@@ -188,11 +188,11 @@ _mt_init(void)
       while ((ccp = n_strsep(&line, ',', TRU1)) != NULL) {
          switch ((c = *ccp)) {
          case 'S': case 's':
-            srcs_arr[1] = MIME_TYPES_SYS;
+            srcs_arr[1] = VAL_MIME_TYPES_SYS;
             if (0) {
                /* FALLTHRU */
          case 'U': case 'u':
-               srcs_arr[0] = MIME_TYPES_USR;
+               srcs_arr[0] = VAL_MIME_TYPES_USR;
             }
             if (ccp[1] != '\0')
                goto jecontent;
@@ -213,8 +213,8 @@ _mt_init(void)
       }
    } else for (i = 0; (c = ccp[i]) != '\0'; ++i)
       switch (c) {
-      case 'S': case 's': srcs_arr[1] = MIME_TYPES_SYS; break;
-      case 'U': case 'u': srcs_arr[0] = MIME_TYPES_USR; break;
+      case 'S': case 's': srcs_arr[1] = VAL_MIME_TYPES_SYS; break;
+      case 'U': case 'u': srcs_arr[0] = VAL_MIME_TYPES_USR; break;
       default:
 jecontent:
          n_err(_("*mimetypes-load-control*: unsupported content: %s\n"), ccp);

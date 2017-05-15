@@ -85,10 +85,6 @@
  * yet another limit; also RFC 2045: 6.7, (5). */
 #define MIME_LINELEN_RFC2047 76
 
-/* Locations of mime.types(5) */
-#define MIME_TYPES_USR "~/.mime.types"
-#define MIME_TYPES_SYS "/etc/mime.types"
-
 /* Fallback MIME charsets, if *charset-7bit* and *charset-8bit* or not set.
  * Note: must be lowercase!  Changes affect enum okeys!
  * (Keep in SYNC: ./nail.1:"Character sets", ./nail.h:CHARSET_*!) */
