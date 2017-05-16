@@ -2774,7 +2774,8 @@ the newline character: it is discarded and the next line of input is
 used as a follow-up line, with all leading whitespace removed;
 once the entire command line is completed, the processing that is
 documented in the following, after removal of the whitespace characters
-space, tabulator and newline as well as those defined by the variable
+.Cm space , tabulator , newline
+as well as those defined by the variable
 .Va ifs
 from the beginning and end of the line, begins.
 .
@@ -2962,7 +2963,9 @@ ampersand
 .Cm & ,
 semicolon
 .Cm \&; ,
-as well as
+as well as all characters from the variable
+.Va ifs ,
+and / or
 .Cm space , tabulator , newline .
 The additional metacharacters left and right parenthesis
 .Cm \&( , \&)
@@ -2971,8 +2974,27 @@ and less-than and greater-than signs
 that the
 .Xr sh 1
 supports are not used, and are treated as ordinary characters: for one
-these characters are a vivid part of email addresses, and it also seems
+these characters are a vivid part of email addresses, and it seems
 highly unlikely that their function will become meaningful to \*(UA.
+.
+.Bd -filled -offset indent
+.Sy Compatibility note:
+\*(ID Please note that many even new-style commands do not yet honour
+.Va ifs
+to parse their arguments: whereas the
+.Xr sh 1 Ns
+ell is a language with syntactic elements of clearly defined semantics,
+\*(UA parses entire input lines and decides on a per-command base what
+to do with the rest of the line.
+Often it even depends on subcommands how the rest of the line should be
+treated, and until v15 we are not capable to perform this deep
+inspection of arguments.
+Nonetheless, at least the following commands which work with positional
+parameters fully support
+.Va ifs
+for an almost shell-compatible field splitting:
+.Ic call , call_if , read , vpospar , xcall .
+.Ed
 .
 .Pp
 Any unquoted number sign
@@ -4013,8 +4035,8 @@ will remove all established mappings.
 \*(NQ Define or list, and remove, respectively, command aliases.
 An (command)alias can be used everywhere a normal command can be used,
 but always takes precedence: any arguments that are given to the command
-alias are joined onto the alias content, and the resulting string forms
-the command line that is, in effect, executed.
+alias are joined onto the alias expansion, and the resulting string
+forms the command line that is, in effect, executed.
 The latter command removes all given aliases, the special name
 .Ql *
 will remove all existing aliases.
@@ -4027,9 +4049,9 @@ be accessible, the content of which can be just about anything.
 An alias may itself expand to another alias, but to avoid expansion loops
 further expansion will be prevented if an alias refers to itself or if
 an expansion depth limit is reached.
-Explicit expansion prevention is available via reverse solidus
+Explicit expansion prevention via reverse solidus
 .Cm \e ,
-see
+one of the
 .Sx "Command modifiers" .
 .Bd -literal -offset indent
 ? commandalias xx
@@ -6204,8 +6226,17 @@ error will occur.
 .Pp
 If the first argument is
 .Ql quote ,
-a round-trip capable representation of the stack contents is created:
-this mode supports
+a round-trip capable representation of the stack contents is created,
+with each quoted parameter separated from each other with the first
+character of
+.Va ifs ,
+and followed by the first character of
+.Va if-ws ,
+if that is not empyty and not identical to the first.
+If that results in no separation at all a
+.Cm space
+character is used.
+This mode supports
 .Cm vput
 (see
 .Sx "Command modifiers" ) .

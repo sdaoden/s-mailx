@@ -417,9 +417,7 @@ FL void        n_panic(char const *format, ...);
 
 /* `errors' */
 #ifdef HAVE_ERRORS
-FL int         c_errors(void *vp);
-#else
-# define c_errors                c_cmdnotsupp
+FL int c_errors(void *vp);
 #endif
 
 /* strerror(3), and enum n_err_number <-> error name conversions */
@@ -431,25 +429,6 @@ FL si32_t n_err_from_name(char const *name);
 #ifdef HAVE_REGEX
 FL char const *n_regex_err_to_doc(const regex_t *rep, int e);
 #endif
-
-/*
- * cmd-arg.c
- */
-
-/* Scan out the list of string arguments according to rm, return -1 on error;
- * res_dat is NULL terminated unless res_size is 0 or error occurred */
-FL int         getrawlist(bool_t wysh, char **res_dat, size_t res_size,
-                  char const *line, size_t linesize);
-
-/* Scan an entire command argument line, return whether result can be used,
- * otherwise no resources are allocated (in ->cac_arg).
- * For _WYSH arguments the flags _TRIMSPACE and _LOG are implicit */
-FL bool_t      n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp);
-
-/* Join all the _GREEDY arguments that were seen into a single string.
- * Asserted they are string-based.  The data (if any) is appended to store */
-FL struct n_string *n_cmd_arg_join_greedy(struct n_cmd_arg_ctx const *cacp,
-                     struct n_string *store);
 
 /*
  * cmd-cnd.c
@@ -587,23 +566,30 @@ FL int c_undraft(void *v);
 /* `sleep' */
 FL int c_sleep(void *v);
 
-/* Process a shell escape by saving signals, ignoring signals and a sh -c */
+/* `!': process a shell escape by saving signals, ignoring signals and sh -c */
 FL int c_shell(void *v);
 
-/* Fork an interactive shell */
+/* `shell': fork an interactive shell */
 FL int c_dosh(void *v);
 
-/* Print user's working directory */
+/* `cwd': print user's working directory */
 FL int c_cwd(void *v);
 
-/* Change user's working directory */
+/* `chdir': change user's working directory */
 FL int c_chdir(void *v);
 
-/* Expand file names like echo (to stdout/stderr, with/out trailing newline) */
+/* `echo' series: expand file names like echo (to stdout/stderr, with/out
+ * trailing newline) */
 FL int c_echo(void *v);
 FL int c_echoerr(void *v);
 FL int c_echon(void *v);
 FL int c_echoerrn(void *v);
+
+/* `read' */
+FL int c_read(void *vp);
+
+/* `version' */
+FL int c_version(void *vp);
 
 /*
  * cmd-resend.c
@@ -636,6 +622,42 @@ FL int c_resend(void *v);
 FL int c_Resend(void *v);
 
 /*
+ * cmd-tab.c
+ * Actual command table, `help', `list', etc., and the n_cmd_arg() parser.
+ */
+
+/* Isolate the command from the arguments, return pointer to end of cmd name */
+FL char const *n_cmd_isolate(char const *cmd);
+
+/* First command which fits for cmd, or NULL */
+FL struct n_cmd_desc const *n_cmd_firstfit(char const *cmd);
+
+/* Get the default command for the empty line */
+FL struct n_cmd_desc const *n_cmd_default(void);
+
+/* Scan an entire command argument line, return whether result can be used,
+ * otherwise no resources are allocated (in ->cac_arg).
+ * For _WYSH arguments the flags _TRIM_SPACE (v15 _not_ _TRIM_IFSSPACE) and
+ * _LOG are implicit, _META_SEMICOLON is starting with the last (non-optional)
+ * argument, and then a trailing empty argument is ignored, too */
+FL bool_t n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp);
+
+/* Join all the _GREEDY arguments that were seen into a single string.
+ * Asserted they are string-based.  The data (if any) is appended to store */
+FL struct n_string *n_cmd_arg_join_greedy(struct n_cmd_arg_ctx const *cacp,
+                     struct n_string *store);
+
+/* Save away the data from autorec memory, and restore it to that.
+ * The heap storage is a single pointer to be n_free() by users */
+FL void *n_cmd_arg_save_to_heap(struct n_cmd_arg_ctx const *cacp);
+FL struct n_cmd_arg_ctx *n_cmd_arg_restore_from_heap(void *vp);
+
+/* Scan out the list of string arguments according to rm, return -1 on error;
+ * res_dat is NULL terminated unless res_size is 0 or error occurred */
+FL int /* TODO v15*/ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
+                  char const *line, size_t linesize);
+
+/*
  * cmd-write.c
  */
 
@@ -652,7 +674,7 @@ FL int c_Copy(void *v);
 FL int c_move(void *v);
 FL int c_Move(void *v);
 
-/* Decrypt and copy a message to a file */
+/* Decrypt and copy a message to a file.  Like plain `copy' at times */
 FL int c_decrypt(void *v);
 FL int c_Decrypt(void *v);
 
@@ -706,13 +728,7 @@ FL struct n_colour_pen *n_colour_pen_create(enum n_colour_id cid,
 FL void n_colour_pen_put(struct n_colour_pen *self);
 
 FL struct str const *n_colour_pen_to_str(struct n_colour_pen *self);
-
-#else /* HAVE_COLOUR */
-# define c_colour c_cmdnotsupp
-# define c_uncolour c_cmdnotsupp
-# define c_mono c_cmdnotsupp
-# define c_unmono c_cmdnotsupp
-#endif
+#endif /* HAVE_COLOUR */
 
 /*
  * dotlock.c
@@ -860,10 +876,8 @@ FL int n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_null);
 /*
  * go.c
  * Program input of all sorts, input lexing, event loops, command evaluation.
+ * Also alias handling.
  */
-
-/* Fallback implementation for commands which are unavailable in this config */
-FL int c_cmdnotsupp(void *v);
 
 /* Setup the run environment; this i *only* for main() */
 FL void n_go_init(void);
@@ -941,6 +955,16 @@ FL void n_go_splice_hack_remove_after_jump(void);
 /* XXX Hack: may we release our (interactive) (terminal) control to a different
  * XXX program, e.g., a $PAGER? */
 FL bool_t n_go_may_yield_control(void);
+
+/* `eval' */
+FL int c_eval(void *vp);
+
+/* `xcall' */
+FL int c_xcall(void *vp);
+
+/* `exit' and `quit' commands */
+FL int c_exit(void *vp);
+FL int c_quit(void *vp);
 
 /*
  * head.c
@@ -1575,6 +1599,15 @@ FL int         is_myname(char const *name);
 /* `addrcodec' */
 FL int c_addrcodec(void *v);
 
+/* `(un)?commandalias'.
+ * And whether a `commandalias' name exists, returning name or NULL, pointing
+ * expansion_or_null to expansion if set: both point into internal storage */
+FL int c_commandalias(void *vp);
+FL int c_uncommandalias(void *vp);
+
+FL char const *n_commandalias_exists(char const *name,
+                  struct str const **expansion_or_null);
+
 /* Is name a valid alias */
 FL bool_t n_alias_is_valid_name(char const *name);
 
@@ -1991,19 +2024,12 @@ FL int         sgetline(char **line, size_t *linesize, size_t *linelen,
 
 #ifdef HAVE_SPAM
 /* Direct mappings of the various spam* commands */
-FL int         c_spam_clear(void *v);
-FL int         c_spam_set(void *v);
-FL int         c_spam_forget(void *v);
-FL int         c_spam_ham(void *v);
-FL int         c_spam_rate(void *v);
-FL int         c_spam_spam(void *v);
-#else
-# define c_spam_clear            c_cmdnotsupp
-# define c_spam_set              c_cmdnotsupp
-# define c_spam_forget           c_cmdnotsupp
-# define c_spam_ham              c_cmdnotsupp
-# define c_spam_rate             c_cmdnotsupp
-# define c_spam_spam             c_cmdnotsupp
+FL int c_spam_clear(void *v);
+FL int c_spam_set(void *v);
+FL int c_spam_forget(void *v);
+FL int c_spam_ham(void *v);
+FL int c_spam_rate(void *v);
+FL int c_spam_spam(void *v);
 #endif
 
 /*
@@ -2037,8 +2063,6 @@ FL int         c_certsave(void *v);
 
 /*  */
 FL enum okay   rfc2595_hostname_match(char const *host, char const *pattern);
-#else /* HAVE_SSL */
-# define c_certsave              c_cmdnotsupp
 #endif
 
 /*
@@ -2449,25 +2473,25 @@ FL void        uncollapse1(struct message *mp, int always);
  * as a hint for boolify() and chooses the yes/no string to append to prompt
  * accordingly.  If prompt is NULL "Continue" is used instead.
  * Handles+reraises SIGINT */
-FL bool_t      getapproval(char const *prompt, bool_t noninteract_default);
+FL bool_t getapproval(char const *prompt, bool_t noninteract_default);
 
 #ifdef HAVE_SOCKETS
 /* Get a password the expected way, return termios_state.ts_linebuf on
  * success or NULL on error */
-FL char *      getuser(char const *query);
+FL char *getuser(char const *query);
 
 /* Get a password the expected way, return termios_state.ts_linebuf on
  * success or NULL on error.  SIGINT is temporarily blocked, *not* reraised.
  * termios_state_reset() (def.h) must be called anyway */
-FL char *      getpassword(char const *query);
+FL char *getpassword(char const *query);
 #endif
 
 /* Create the prompt and return its visual width in columns, which may be 0
  * if evaluation is disabled etc.  The data is placed in store.
  * xprompt is inspected only if prompt is enabled and no *prompt* evaluation
  * takes place */
-FL ui32_t      n_tty_create_prompt(struct n_string *store,
-                  char const *xprompt, enum n_go_input_flags gif);
+FL ui32_t n_tty_create_prompt(struct n_string *store, char const *xprompt,
+            enum n_go_input_flags gif);
 
 /* At least readline(3) (formerly supported) desires to handle SIGWINCH and
  * install its own handler */
@@ -2476,19 +2500,19 @@ FL ui32_t      n_tty_create_prompt(struct n_string *store,
 #endif
 
 /* Overall interactive terminal life cycle for command line editor library */
-FL void        n_tty_init(void);
-FL void        n_tty_destroy(void);
+FL void n_tty_init(void);
+FL void n_tty_destroy(void);
 
 /* Rather for main.c / SIGWINCH interaction only */
-FL void        n_tty_signal(int sig);
+FL void n_tty_signal(int sig);
 
 /* Read a line after printing prompt (if set and non-empty).
  * If n>0 assumes that *linebuf has n bytes of default content.
  * histok_or_null like for n_go_input().
  * Only the _CTX_ bits in lif are used */
-FL int         n_tty_readline(enum n_go_input_flags gif, char const *prompt,
-                  char **linebuf, size_t *linesize, size_t n,
-                  bool_t *histok_or_null n_MEMORY_DEBUG_ARGS);
+FL int n_tty_readline(enum n_go_input_flags gif, char const *prompt,
+         char **linebuf, size_t *linesize, size_t n, bool_t *histok_or_null
+         n_MEMORY_DEBUG_ARGS);
 #ifdef HAVE_MEMORY_DEBUG
 # define n_tty_readline(A,B,C,D,E,F) \
    (n_tty_readline)(A,B,C,D,E,F,__FILE__,__LINE__)
@@ -2497,21 +2521,16 @@ FL int         n_tty_readline(enum n_go_input_flags gif, char const *prompt,
 /* Add a line (most likely as returned by n_tty_readline()) to the history.
  * Whether an entry added for real depends on the isgabby / *history-gabby*
  * relation, and / or whether s is non-empty */
-FL void        n_tty_addhist(char const *s, bool_t isgabby);
+FL void n_tty_addhist(char const *s, bool_t isgabby);
 
 #ifdef HAVE_HISTORY
-FL int         c_history(void *v);
-#else
-# define c_history               c_cmdnotsupp
+FL int c_history(void *v);
 #endif
 
 /* `bind' and `unbind' */
 #ifdef HAVE_KEY_BINDINGS
-FL int         c_bind(void *v);
-FL int         c_unbind(void *v);
-#else
-# define c_bind                  c_cmdnotsupp
-# define c_unbind                c_cmdnotsupp
+FL int c_bind(void *v);
+FL int c_unbind(void *v);
 #endif
 
 /*
@@ -2592,9 +2611,7 @@ FL bool_t      ccred_lookup_old(struct ccred *ccp, enum cproto cproto,
 
 /* `netrc' */
 #ifdef HAVE_NETRC
-FL int         c_netrc(void *v);
-#else
-# define c_netrc                 c_cmdnotsupp
+FL int c_netrc(void *v);
 #endif
 
 /* MD5 (RFC 1321) related facilities */
@@ -2654,9 +2671,7 @@ FL struct message * smime_decrypt(struct message *m, char const *to,
 /*  */
 FL enum okay   smime_certsave(struct message *m, int n, FILE *op);
 
-#else /* HAVE_XSSL */
-# define c_verify                c_cmdnotsupp
-#endif
+#endif /* HAVE_XSSL */
 
 #ifndef HAVE_AMALGAMATION
 # undef FL

@@ -1981,7 +1981,7 @@ a_tty_kht(struct a_tty_line *tlp){
 
             exp = sub;
             shs = n_shexp_parse_token((n_SHEXP_PARSE_DRYRUN |
-                  n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_IGNORE_EMPTY |
+                  n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_IGNORE_EMPTY |
                   n_SHEXP_PARSE_QUOTE_AUTO_CLOSE), NULL, &sub, NULL);
             if(sub.l != 0){
                size_t x;
@@ -1997,7 +1997,7 @@ a_tty_kht(struct a_tty_line *tlp){
                   (int)exp.l, exp.s);
                goto jnope;
             }
-            n_shexp_parse_token((n_SHEXP_PARSE_TRIMSPACE |
+            n_shexp_parse_token((n_SHEXP_PARSE_TRIM_SPACE |
                   n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_QUOTE_AUTO_CLOSE),
                   shoup, &exp, NULL);
             break;
@@ -3121,9 +3121,9 @@ a_tty_bind_parse(bool_t isbindcmd, struct a_tty_bind_parse_ctx *tbpcp){
       enum n_shexp_state shs;
 
       shin_save = shin;
-      shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC | n_SHEXP_PARSE_TRIMSPACE |
-            n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_IFS_IS_COMMA),
-            shoup, &shin, NULL);
+      shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC |
+            n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_IGNORE_EMPTY |
+            n_SHEXP_PARSE_IFS_IS_COMMA), shoup, &shin, NULL);
       if(shs & n_SHEXP_STATE_ERR_UNICODE){
          f |= a_TTY_BIND_DEFUNCT;
          if(isbindcmd && (n_poption & n_PO_D_V))
@@ -4201,35 +4201,20 @@ jentry:{
 # ifdef HAVE_KEY_BINDINGS
 FL int
 c_bind(void *v){
-   n_CMD_ARG_DESC_SUBCLASS_DEF(bind, 3, a_tty_bind_cad) { /* TODO cmd-tab.h */
-      {n_CMD_ARG_DESC_STRING, 0},
-      {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_OPTION |
-            n_CMD_ARG_DESC_HONOUR_STOP,
-         n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_LOG},
-      {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_OPTION | n_CMD_ARG_DESC_GREEDY |
-            n_CMD_ARG_DESC_HONOUR_STOP,
-         n_SHEXP_PARSE_IGNORE_EMPTY}
-   } n_CMD_ARG_DESC_SUBCLASS_DEF_END;
-   struct n_cmd_arg_ctx cac;
    struct a_tty_bind_ctx *tbcp;
    enum n_go_input_flags gif;
    bool_t aster, show;
    union {char const *cp; char *p; char c;} c;
+   struct n_cmd_arg_ctx *cacp;
    NYD_ENTER;
 
-   cac.cac_desc = n_CMD_ARG_DESC_SUBCLASS_CAST(&a_tty_bind_cad);
-   cac.cac_indat = v;
-   cac.cac_inlen = UIZ_MAX;
-   if(!n_cmd_arg_parse(&cac)){
-      v = NULL;
-      goto jleave;
-   }
+   cacp = v;
 
-   c.cp = cac.cac_arg->ca_arg.ca_str.s;
-   if(cac.cac_no == 1)
+   c.cp = cacp->cac_arg->ca_arg.ca_str.s;
+   if(cacp->cac_no == 1)
       show = TRU1;
    else
-      show = !asccasecmp(cac.cac_arg->ca_next->ca_arg.ca_str.s, "show");
+      show = !asccasecmp(cacp->cac_arg->ca_next->ca_arg.ca_str.s, "show");
    aster = FAL0;
 
    if((gif = a_tty_bind_ctx_find(c.cp)) == (enum n_go_input_flags)-1){
@@ -4328,15 +4313,15 @@ c_bind(void *v){
       struct n_string store;
 
       memset(&tbpc, 0, sizeof tbpc);
-      tbpc.tbpc_cmd = a_tty_bind_cad.cad_name;
-      tbpc.tbpc_in_seq = cac.cac_arg->ca_next->ca_arg.ca_str.s;
-      tbpc.tbpc_exp.s = n_string_cp(n_cmd_arg_join_greedy(&cac,
+      tbpc.tbpc_cmd = cacp->cac_desc->cad_name;
+      tbpc.tbpc_in_seq = cacp->cac_arg->ca_next->ca_arg.ca_str.s;
+      tbpc.tbpc_exp.s = n_string_cp(n_cmd_arg_join_greedy(cacp,
             n_string_creat_auto(&store)));
       tbpc.tbpc_exp.l = store.s_len;
       tbpc.tbpc_flags = gif;
       if(!a_tty_bind_create(&tbpc, TRU1))
          v = NULL;
-      n_string_gut(&store);
+      /*n_string_gut(&store);*/
    }
 jleave:
    NYD_LEAVE;
@@ -4345,28 +4330,16 @@ jleave:
 
 FL int
 c_unbind(void *v){
-   n_CMD_ARG_DESC_SUBCLASS_DEF(unbind, 2, a_tty_unbind_cad) {/* TODO cmd-tab.h*/
-      {n_CMD_ARG_DESC_STRING, 0},
-      {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_HONOUR_STOP,
-         n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_LOG}
-   } n_CMD_ARG_DESC_SUBCLASS_DEF_END;
    struct a_tty_bind_parse_ctx tbpc;
-   struct n_cmd_arg_ctx cac;
    struct a_tty_bind_ctx *tbcp;
    enum n_go_input_flags gif;
    bool_t aster;
    union {char const *cp; char *p;} c;
+   struct n_cmd_arg_ctx *cacp;
    NYD_ENTER;
 
-   cac.cac_desc = n_CMD_ARG_DESC_SUBCLASS_CAST(&a_tty_unbind_cad);
-   cac.cac_indat = v;
-   cac.cac_inlen = UIZ_MAX;
-   if(!n_cmd_arg_parse(&cac)){
-      v = NULL;
-      goto jleave;
-   }
-
-   c.cp = cac.cac_arg->ca_arg.ca_str.s;
+   cacp = v;
+   c.cp = cacp->cac_arg->ca_arg.ca_str.s;
    aster = FAL0;
 
    if((gif = a_tty_bind_ctx_find(c.cp)) == (enum n_go_input_flags)-1){
@@ -4378,7 +4351,7 @@ c_unbind(void *v){
       gif = 0;
    }
 
-   c.cp = cac.cac_arg->ca_next->ca_arg.ca_str.s;
+   c.cp = cacp->cac_arg->ca_next->ca_arg.ca_str.s;
 jredo:
    if(n_is_all_or_aster(c.cp)){
       while((tbcp = a_tty.tg_bind[gif]) != NULL){
@@ -4389,7 +4362,7 @@ jredo:
       }
    }else{
       memset(&tbpc, 0, sizeof tbpc);
-      tbpc.tbpc_cmd = a_tty_unbind_cad.cad_name;
+      tbpc.tbpc_cmd = cacp->cac_desc->cad_name;
       tbpc.tbpc_in_seq = c.cp;
       tbpc.tbpc_flags = gif;
 

@@ -1,7 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Program input of all sorts, input lexing, event loops, command evaluation.
  *@ TODO n_PS_ROBOT requires yet n_PS_SOURCING, which REALLY sucks.
- *@ TODO Commands and -aliases deserve a tree.  Or so.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -121,26 +120,6 @@ enum a_go_hist_flags{
    a_GO_HIST_INIT = 1u<<2
 };
 
-struct a_go_cmd_desc{
-   char const *gcd_name;   /* Name of command */
-   int (*gcd_func)(void*); /* Implementor of command */
-   enum n_cmd_arg_flags gcd_caflags;
-   si16_t gcd_msgflag;     /* Required flags of msgs */
-   si16_t gcd_msgmask;     /* Relevant flags of msgs */
-#ifdef HAVE_DOCSTRINGS
-   char const *gcd_doc;    /* One line doc for command */
-#endif
-};
-/* Yechh, can't initialize unions */
-#define gcd_minargs gcd_msgflag  /* Minimum argcount for WYSH/WYRA/RAWLIST */
-#define gcd_maxargs gcd_msgmask  /* Max argcount for WYSH/WYRA/RAWLIST */
-
-struct a_go_alias{ /* TODO binary search */
-   struct a_go_alias *ga_next;
-   struct str ga_cmd;            /* Data follows after .ga_name */
-   char ga_name[n_VFIELD_SIZE(0)];
-};
-
 struct a_go_eval_ctx{
    struct str gec_line;    /* The terminated data to _evaluate() */
    ui32_t gec_line_size;   /* May be used to store line memory size */
@@ -179,15 +158,7 @@ struct a_go_ctx{
    char gc_name[n_VFIELD_SIZE(0)]; /* Name of file or macro */
 };
 
-struct a_go_xcall{
-   struct a_go_ctx *gx_upto;  /* Unroll stack up to this level */
-   size_t gx_buflen;          /* ARGV requires that much bytes, all in all */
-   size_t gx_argc;
-   struct str gx_argv[n_VFIELD_SIZE(0)];
-};
-
 static sighandler_type a_go_oldpipe;
-static struct a_go_alias *a_go_aliases;
 /* a_go_cmd_tab[] after fun protos */
 
 /* Our current execution context, and the buffer backing the outermost level */
@@ -198,56 +169,20 @@ static union{
    ui64_t align;
    char uf[n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
          sizeof(a_GO_MAINCTX_NAME)];
-   } a_go__mainctx_b;
+} a_go__mainctx_b;
 
-/* `xcall' stack-avoidance bypass optimization */
-static struct a_go_xcall *a_go_xcall;
+/* `xcall' stack-avoidance bypass optimization.  This actually is
+ * a n_cmd_arg_save_to_heap() buffer with n_cmd_arg_ctx.cac_indat misused to
+ * point to the a_go_ctx to unroll up to */
+static void *a_go_xcall;
 
 static sigjmp_buf a_go_srbuf; /* TODO GET RID */
-
-/* Isolate the command from the arguments */
-static char *a_go_isolate(char const *cmd);
-
-/* `eval' */
-static int a_go_c_eval(void *vp);
-
-/* `xcall' */
-static int a_go_c_xcall(void *vp);
-
-/* `(un)?commandalias' */
-static int a_go_c_alias(void *vp);
-static int a_go_c_unalias(void *vp);
-
-/* Create a multiline info string about all known additional infos for lcp */
-#ifdef HAVE_DOCSTRINGS
-static char const *a_go_cmdinfo(struct a_go_cmd_desc const *gcdp);
-#endif
-
-/* Print a list of all commands */
-static int a_go_c_list(void *vp);
-
-static int a_go__pcmd_cmp(void const *s1, void const *s2);
-
-/* `help' / `?' command */
-static int a_go_c_help(void *vp);
-
-/* `exit' and `quit' commands */
-static int a_go_c_exit(void *vp);
-static int a_go_c_quit(void *vp);
-
-/* Print the version number of the binary */
-static int a_go_c_version(void *vp);
-
-static int a_go__version_cmp(void const *s1, void const *s2);
 
 /* n_PS_STATE_PENDMASK requires some actions */
 static void a_go_update_pstate(void);
 
 /* Evaluate a single command */
 static bool_t a_go_evaluate(struct a_go_eval_ctx *gecp);
-
-/* Get first-fit, or NULL */
-static struct a_go_cmd_desc const *a_go__firstfit(char const *comm);
 
 /* Branch here on hangup signal and simulate "exit" */
 static void a_go_hangup(int s);
@@ -270,575 +205,6 @@ static bool_t a_go_load(struct a_go_ctx *gcp);
 
 /* A simplified command loop for recursed state machines */
 static bool_t a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif);
-
-/* `read' */
-static int a_go_c_read(void *vp);
-
-static bool_t a_go__read_set(char const *cp, char const *value);
-
-/* List of all commands, and list of commands which are specially treated
- * and deduced in _evaluate(), but must offer normal descriptions for others */
-#ifdef HAVE_DOCSTRINGS
-# define DS(S) , S
-#else
-# define DS(S)
-#endif
-static struct a_go_cmd_desc const a_go_cmd_tab[] = {
-#include "cmd-tab.h"
-},
-      a_go_special_cmd_tab[] = {
-   { n_ns, NULL, n_CMD_ARG_TYPE_STRING, 0, 0
-      DS(N_("Comment command: ignore remaining (continuable) line")) },
-   { "-", NULL, n_CMD_ARG_TYPE_WYSH, 0, 0
-      DS(N_("Print out the preceding message")) }
-};
-#undef DS
-
-static char *
-a_go_isolate(char const *cmd){
-   NYD2_ENTER;
-   while(*cmd != '\0' &&
-         strchr("\\!~|? \t0123456789&%@$^.:/-+*'\",;(`", *cmd) == NULL)
-      ++cmd;
-   NYD2_LEAVE;
-   return n_UNCONST(cmd);
-}
-
-static int
-a_go_c_eval(void *vp){
-   /* TODO HACK! `eval' should be nothing else but a command prefix, evaluate
-    * TODO ARGV with shell rules, but if that is not possible then simply
-    * TODO adjust argv/argc of "the CmdCtx" that we will have "exec" real cmd */
-   struct a_go_eval_ctx gec;
-   struct n_string s_b, *sp;
-   size_t i, j;
-   char const **argv, *cp;
-   NYD_ENTER;
-
-   argv = vp;
-
-   for(j = i = 0; (cp = argv[i]) != NULL; ++i)
-      j += strlen(cp);
-
-   sp = n_string_creat_auto(&s_b);
-   sp = n_string_reserve(sp, j);
-
-   for(i = 0; (cp = argv[i]) != NULL; ++i){
-      if(i > 0)
-         sp = n_string_push_c(sp, ' ');
-      sp = n_string_push_cp(sp, cp);
-   }
-
-   memset(&gec, 0, sizeof gec);
-   gec.gec_line.s = n_string_cp(sp);
-   gec.gec_line.l = sp->s_len;
-   (void)/* XXX */a_go_evaluate(&gec);
-   NYD_LEAVE;
-   return (a_go_xcall != NULL ? 0 : n_pstate_ex_no);
-}
-
-static int
-a_go_c_xcall(void *vp){
-   struct a_go_xcall *gxp;
-   size_t i, j;
-   char *xcp;
-   char const **oargv, *cp;
-   int rv;
-   struct a_go_ctx *gcp;
-   NYD2_ENTER;
-
-   /* The context can only be a macro context, except that possibly a single
-    * level of `eval' (TODO: yet) was used to double-expand our arguments */
-   if((gcp = a_go_ctx)->gc_flags & a_GO_MACRO_CMD)
-      gcp = gcp->gc_outer;
-   if((gcp->gc_flags & (a_GO_MACRO | a_GO_MACRO_CMD)) != a_GO_MACRO)
-      goto jerr;
-
-   /* Try to roll up the stack as much as possible.
-    * See a_GO_XCALL_LOOP flag description for more */
-   if(gcp->gc_outer != NULL){
-      if(gcp->gc_outer->gc_flags & a_GO_XCALL_LOOP)
-         gcp = gcp->gc_outer;
-   }else{
-      /* Otherwise this macro is invoked from the top level, in which case we
-       * silently act as if we were `call'... */
-      rv = c_call(vp);
-      /* ...which means we must ensure the rest of the macro that was us
-       * doesn't become evaluated! */
-      a_go_xcall = (struct a_go_xcall*)-1;
-      goto jleave;
-   }
-
-   oargv = vp;
-
-   for(j = i = 0; (cp = oargv[i]) != NULL; ++i)
-      j += strlen(cp) +1;
-
-   gxp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_xcall, gx_argv) +
-         (sizeof(struct str) * i) + ++j);
-   gxp->gx_upto = gcp;
-   gxp->gx_buflen = (sizeof(char*) * (i + 1)) + j; /* ARGV inc. strings! */
-   gxp->gx_argc = i;
-   xcp = (char*)&gxp->gx_argv[i];
-
-   for(i = 0; (cp = oargv[i]) != NULL; ++i){
-      gxp->gx_argv[i].l = j = strlen(cp);
-      gxp->gx_argv[i].s = xcp;
-      memcpy(xcp, cp, ++j);
-      xcp += j;
-   }
-
-   a_go_xcall = gxp;
-   rv = 0;
-jleave:
-   NYD2_LEAVE;
-   return rv;
-jerr:
-   n_err(_("`xcall': can only be used inside a macro\n"));
-   n_pstate_err_no = n_ERR_INVAL;
-   rv = 1;
-   goto jleave;
-}
-
-static int
-a_go_c_alias(void *vp){
-   struct a_go_alias *lgap, *gap;
-   size_t i, cl, nl;
-   char *cp;
-   char const **argv;
-   NYD_ENTER;
-
-   argv = vp;
-
-   /* Show the list? */
-   if(*argv == NULL){
-      FILE *fp;
-
-      if((fp = Ftmp(NULL, "commandalias", OF_RDWR | OF_UNLINK | OF_REGISTER)
-            ) == NULL)
-         fp = n_stdout;
-
-      for(i = 0, gap = a_go_aliases; gap != NULL; gap = gap->ga_next)
-         fprintf(fp, "commandalias %s %s\n",
-            gap->ga_name, n_shexp_quote_cp(gap->ga_cmd.s, TRU1));
-
-      if(fp != n_stdout){
-         page_or_print(fp, i);
-         Fclose(fp);
-      }
-      goto jleave;
-   }
-
-   /* Verify the name is a valid one, and not a command modifier */
-   if(*argv[0] == '\0' || *a_go_isolate(argv[0]) != '\0' ||
-         !asccasecmp(argv[0], "ignerr") || !asccasecmp(argv[0], "wysh") ||
-         !asccasecmp(argv[0], "vput")){
-      n_err(_("`commandalias': cannot canonicalize %s\n"),
-         n_shexp_quote_cp(argv[0], FAL0));
-      vp = NULL;
-      goto jleave;
-   }
-
-   /* Show command of single alias? */
-   if(argv[1] == NULL){
-      for(gap = a_go_aliases; gap != NULL; gap = gap->ga_next)
-         if(!strcmp(argv[0], gap->ga_name)){
-            fprintf(n_stdout, "commandalias %s %s\n",
-               gap->ga_name, n_shexp_quote_cp(gap->ga_cmd.s, TRU1));
-            goto jleave;
-         }
-      n_err(_("`commandalias': no such alias: %s\n"), argv[0]);
-      vp = NULL;
-      goto jleave;
-   }
-
-   /* Define command for alias: verify command content */
-   for(cl = 0, i = 1; (cp = n_UNCONST(argv[i])) != NULL; ++i)
-      if(*cp != '\0')
-         cl += strlen(cp) +1; /* SP or NUL */
-   if(cl == 0){
-      n_err(_("`commandalias': empty arguments after %s\n"), argv[0]);
-      vp = NULL;
-      goto jleave;
-   }
-
-   /* If the alias already exists, recreate */
-   for(lgap = NULL, gap = a_go_aliases; gap != NULL;
-         lgap = gap, gap = gap->ga_next)
-      if(!strcmp(gap->ga_name, argv[0])){
-         if(lgap != NULL)
-            lgap->ga_next = gap->ga_next;
-         else
-            a_go_aliases = gap->ga_next;
-         n_free(gap);
-         break;
-      }
-
-   nl = strlen(argv[0]) +1;
-   gap = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_alias, ga_name) + nl + cl);
-   gap->ga_next = a_go_aliases;
-   a_go_aliases = gap;
-   memcpy(gap->ga_name, argv[0], nl);
-   cp = gap->ga_cmd.s = &gap->ga_name[nl];
-   gap->ga_cmd.l = --cl;
-   assert(gap->ga_cmd.l > 0);
-
-   while(*++argv != NULL)
-      if((i = strlen(*argv)) > 0){
-         memcpy(cp, *argv, i);
-         cp += i;
-         *cp++ = ' ';
-      }
-   *--cp = '\0';
-jleave:
-   NYD_LEAVE;
-   return (vp == NULL);
-}
-
-static int
-a_go_c_unalias(void *vp){
-   struct a_go_alias *lgap, *gap;
-   char const **argv, *cp;
-   int rv;
-   NYD_ENTER;
-
-   rv = 0;
-   argv = vp;
-
-   while((cp = *argv++) != NULL){
-      if(cp[0] == '*' && cp[1] == '\0'){
-         while((gap = a_go_aliases) != NULL){
-            a_go_aliases = gap->ga_next;
-            n_free(gap);
-         }
-      }else{
-         for(lgap = NULL, gap = a_go_aliases; gap != NULL;
-               lgap = gap, gap = gap->ga_next)
-            if(!strcmp(gap->ga_name, cp)){
-               if(lgap != NULL)
-                  lgap->ga_next = gap->ga_next;
-               else
-                  a_go_aliases = gap->ga_next;
-               n_free(gap);
-               goto jouter;
-            }
-         n_err(_("`uncommandalias': no such alias: %s\n"),
-            n_shexp_quote_cp(cp, FAL0));
-         rv = 1;
-jouter:  ;
-      }
-   }
-   NYD_LEAVE;
-   return rv;
-}
-
-#ifdef HAVE_DOCSTRINGS
-static char const *
-a_go_cmdinfo(struct a_go_cmd_desc const *gcdp){
-   struct n_string rvb, *rv;
-   char const *cp;
-   NYD2_ENTER;
-
-   rv = n_string_creat_auto(&rvb);
-   rv = n_string_reserve(rv, 80);
-
-   switch(gcdp->gcd_caflags & n_CMD_ARG_TYPE_MASK){
-   case n_CMD_ARG_TYPE_MSGLIST:
-      cp = N_("message-list");
-      break;
-   case n_CMD_ARG_TYPE_STRING:
-   case n_CMD_ARG_TYPE_RAWDAT:
-      cp = N_("string data");
-      break;
-   case n_CMD_ARG_TYPE_RAWLIST:
-      cp = N_("old-style quoting");
-      break;
-   case n_CMD_ARG_TYPE_NDMLIST:
-      cp = N_("message-list (no default)");
-      break;
-   case n_CMD_ARG_TYPE_WYRA:
-      cp = N_("`wysh' for sh(1)ell-style quoting");
-      break;
-   default:
-   case n_CMD_ARG_TYPE_WYSH:
-      cp = (gcdp->gcd_minargs == 0 && gcdp->gcd_maxargs == 0)
-            ? N_("sh(1)ell-style quoting (takes no arguments)")
-            : N_("sh(1)ell-style quoting");
-      break;
-   }
-   rv = n_string_push_cp(rv, V_(cp));
-
-   if(gcdp->gcd_caflags & n_CMD_ARG_V)
-      rv = n_string_push_cp(rv, _(" | vput modifier"));
-   if(gcdp->gcd_caflags & n_CMD_ARG_EM)
-      rv = n_string_push_cp(rv, _(" | error in *!*"));
-
-   if(gcdp->gcd_caflags & n_CMD_ARG_A)
-      rv = n_string_push_cp(rv, _(" | needs box"));
-   if(gcdp->gcd_caflags & n_CMD_ARG_I)
-      rv = n_string_push_cp(rv, _(" | ok: batch or interactive"));
-   if(gcdp->gcd_caflags & n_CMD_ARG_M)
-      rv = n_string_push_cp(rv, _(" | ok: send mode"));
-   if(gcdp->gcd_caflags & n_CMD_ARG_R)
-      rv = n_string_push_cp(rv, _(" | not ok: compose mode"));
-   if(gcdp->gcd_caflags & n_CMD_ARG_S)
-      rv = n_string_push_cp(rv, _(" | not ok: during startup"));
-   if(gcdp->gcd_caflags & n_CMD_ARG_X)
-      rv = n_string_push_cp(rv, _(" | ok: subprocess"));
-
-   if(gcdp->gcd_caflags & n_CMD_ARG_G)
-      rv = n_string_push_cp(rv, _(" | gabby history"));
-
-   cp = n_string_cp(rv);
-   NYD2_LEAVE;
-   return cp;
-}
-#endif /* HAVE_DOCSTRINGS */
-
-static int
-a_go_c_list(void *vp){
-   FILE *fp;
-   struct a_go_cmd_desc const **gcdpa, *gcdp, **gcdpa_curr;
-   size_t i, scrwid, l;
-   NYD_ENTER;
-
-   i = n_NELEM(a_go_cmd_tab) + n_NELEM(a_go_special_cmd_tab) +1;
-   gcdpa = n_autorec_alloc(sizeof(gcdp) * i);
-
-   for(i = 0; i < n_NELEM(a_go_cmd_tab); ++i)
-      gcdpa[i] = &a_go_cmd_tab[i];
-   /* C99 */{
-      size_t j;
-
-      for(j = 0; j < n_NELEM(a_go_special_cmd_tab); ++i, ++j)
-         gcdpa[i] = &a_go_special_cmd_tab[j];
-   }
-   gcdpa[i] = NULL;
-
-   if(*(void**)vp == NULL)
-      qsort(gcdpa, i, sizeof(*gcdpa), &a_go__pcmd_cmp);
-
-   if((fp = Ftmp(NULL, "list", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
-      fp = n_stdout;
-
-   fprintf(fp, _("Commands are:\n"));
-   scrwid = n_SCRNWIDTH_FOR_LISTS;
-   l = 1;
-   for(i = 0, gcdpa_curr = gcdpa; (gcdp = *gcdpa_curr++) != NULL;){
-      if(gcdp->gcd_func == &c_cmdnotsupp)
-         continue;
-      if(n_poption & n_PO_D_V){
-         fprintf(fp, "%s\n", gcdp->gcd_name);
-         ++l;
-#ifdef HAVE_DOCSTRINGS
-         fprintf(fp, "  : %s\n", V_(gcdp->gcd_doc));
-         ++l;
-         fprintf(fp, "  : %s\n", a_go_cmdinfo(gcdp));
-         ++l;
-#endif
-      }else{
-         size_t j;
-
-         if((i += (j = strlen(gcdp->gcd_name) + 2)) > scrwid){
-            i = j;
-            fprintf(fp, "\n");
-            ++l;
-         }
-         fprintf(fp, (*gcdpa_curr != NULL ? "%s, " : "%s\n"), gcdp->gcd_name);
-      }
-   }
-
-   if(fp != n_stdout){
-      page_or_print(fp, l);
-      Fclose(fp);
-   }
-   NYD_LEAVE;
-   return 0;
-}
-
-static int
-a_go__pcmd_cmp(void const *s1, void const *s2){
-   struct a_go_cmd_desc const * const *gcdpa1, * const *gcdpa2;
-   int rv;
-   NYD2_ENTER;
-
-   gcdpa1 = s1;
-   gcdpa2 = s2;
-   rv = strcmp((*gcdpa1)->gcd_name, (*gcdpa2)->gcd_name);
-   NYD2_LEAVE;
-   return rv;
-}
-
-static int
-a_go_c_help(void *vp){
-   int rv;
-   char *arg;
-   NYD_ENTER;
-
-   /* Help for a single command? */
-   if((arg = *(char**)vp) != NULL){
-      struct a_go_alias const *gap;
-      struct a_go_cmd_desc const *gcdp, *gcdp_max;
-
-      /* Aliases take precedence */
-      for(gap = a_go_aliases; gap != NULL; gap = gap->ga_next)
-         if(!strcmp(arg, gap->ga_name)){
-            fprintf(n_stdout, "%s -> ", arg);
-            arg = gap->ga_cmd.s;
-            break;
-         }
-
-      gcdp_max = &(gcdp = a_go_cmd_tab)[n_NELEM(a_go_cmd_tab)];
-jredo:
-      for(; gcdp < gcdp_max; ++gcdp){
-         if(is_prefix(arg, gcdp->gcd_name)){
-            fputs(arg, n_stdout);
-            if(strcmp(arg, gcdp->gcd_name))
-               fprintf(n_stdout, " (%s)", gcdp->gcd_name);
-         }else
-            continue;
-
-#ifdef HAVE_DOCSTRINGS
-         fprintf(n_stdout, ": %s", V_(gcdp->gcd_doc));
-         if(n_poption & n_PO_D_V)
-            fprintf(n_stdout, "\n  : %s", a_go_cmdinfo(gcdp));
-#endif
-         putc('\n', n_stdout);
-         rv = 0;
-         goto jleave;
-      }
-
-      if(gcdp_max == &a_go_cmd_tab[n_NELEM(a_go_cmd_tab)]){
-         gcdp_max = &(gcdp =
-               a_go_special_cmd_tab)[n_NELEM(a_go_special_cmd_tab)];
-         goto jredo;
-      }
-
-      if(gap != NULL){
-         fprintf(n_stdout, "%s\n", n_shexp_quote_cp(arg, TRU1));
-         rv = 0;
-      }else{
-         n_err(_("Unknown command: `%s'\n"), arg);
-         rv = 1;
-      }
-   }else{
-      /* Very ugly, but take care for compiler supported string lengths :( */
-      fputs(n_progname, n_stdout);
-      fputs(_(
-         " commands -- <msglist> denotes message specifications,\n"
-         "e.g., 1-5, :n or ., separated by spaces:\n"), n_stdout);
-      fputs(_(
-"\n"
-"type <msglist>         type (`print') messages (honour `headerpick' etc.)\n"
-"Type <msglist>         like `type' but always show all headers\n"
-"next                   goto and type next message\n"
-"from <msglist>         (search and) print header summary for the given list\n"
-"headers                header summary for messages surrounding \"dot\"\n"
-"delete <msglist>       delete messages (can be `undelete'd)\n"),
-         n_stdout);
-
-      fputs(_(
-"\n"
-"save <msglist> folder  append messages to folder and mark as saved\n"
-"copy <msglist> folder  like `save', but don't mark them (`move' moves)\n"
-"write <msglist> file   write message contents to file (prompts for parts)\n"
-"Reply <msglist>        reply to message senders only\n"
-"reply <msglist>        like `Reply', but address all recipients\n"
-"Lreply <msglist>       forced mailing-list `reply' (see `mlist')\n"),
-         n_stdout);
-
-      fputs(_(
-"\n"
-"mail <recipients>      compose a mail for the given recipients\n"
-"file folder            change to another mailbox\n"
-"File folder            like `file', but open readonly\n"
-"quit                   quit and apply changes to the current mailbox\n"
-"xit or exit            like `quit', but discard changes\n"
-"!shell command         shell escape\n"
-"list [<anything>]      all available commands [in search order]\n"),
-         n_stdout);
-
-      rv = (ferror(n_stdout) != 0);
-   }
-jleave:
-   NYD_LEAVE;
-   return rv;
-}
-
-static int
-a_go_c_exit(void *vp){
-   NYD_ENTER;
-   n_UNUSED(vp);
-   n_psonce |= n_PSO_XIT;
-   NYD_LEAVE;
-   return 0;
-}
-
-static int
-a_go_c_quit(void *vp){
-   NYD_ENTER;
-   n_UNUSED(vp);
-   n_psonce |= n_PSO_QUIT;
-   NYD_LEAVE;
-   return 0;
-}
-
-static int
-a_go_c_version(void *vp){
-   int longest, rv;
-   char *iop;
-   char const *cp, **arr;
-   size_t i, i2;
-   NYD_ENTER;
-   n_UNUSED(vp);
-
-   fprintf(n_stdout,
-      _("%s %s, %s (%s)\nFeatures included (+) or not (-)\n"),
-      n_uagent, ok_vlook(version), ok_vlook(version_date),
-      ok_vlook(build_osenv));
-
-   /* *features* starts with dummy byte to avoid + -> *folder* expansions */
-   i = strlen(cp = &ok_vlook(features)[1]) +1;
-   iop = n_autorec_alloc(i);
-   memcpy(iop, cp, i);
-
-   arr = n_autorec_alloc(sizeof(cp) * VAL_FEATURES_CNT);
-   for(longest = 0, i = 0; (cp = n_strsep(&iop, ',', TRU1)) != NULL; ++i){
-      arr[i] = cp;
-      i2 = strlen(cp);
-      longest = n_MAX(longest, (int)i2);
-   }
-   qsort(arr, i, sizeof(cp), &a_go__version_cmp);
-
-   /* We use aligned columns, so don't use n_SCRNWIDTH_FOR_LISTS */
-   for(++longest, i2 = 0; i-- > 0;){
-      cp = *(arr++);
-      fprintf(n_stdout, "%-*s ", longest, cp);
-      i2 += longest;
-      if(UICMP(z, ++i2 + longest, >=, n_scrnwidth) || i == 0){
-         i2 = 0;
-         putc('\n', n_stdout);
-      }
-   }
-
-   if((rv = ferror(n_stdout) != 0))
-      clearerr(n_stdout);
-   NYD_LEAVE;
-   return rv;
-}
-
-static int
-a_go__version_cmp(void const *s1, void const *s2){
-   char const * const *cp1, * const *cp2;
-   int rv;
-   NYD2_ENTER;
-
-   cp1 = s1;
-   cp2 = s2;
-   rv = strcmp(&(*cp1)[1], &(*cp2)[1]);
-   NYD2_LEAVE;
-   return rv;
-}
 
 static void
 a_go_update_pstate(void){
@@ -866,9 +232,10 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
     * TODO `eval' should be a prefix, etc., a Ctx should be passed along */
    struct str line;
    struct n_string s, *sp;
+   struct str const *alias_exp;
    char _wordbuf[2], **arglist_base/*[n_MAXARGC]*/, **arglist, *cp, *word;
-   struct a_go_alias *gap;
-   struct a_go_cmd_desc const *gcdp;
+   char const *alias_name;
+   struct n_cmd_desc const *cdp;
    si32_t nerrn, nexn;     /* TODO n_pstate_ex_no -> si64_t! */
    int rv, c;
    enum{
@@ -889,8 +256,9 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    rv = 1;
    nerrn = n_ERR_NONE;
    nexn = n_EXIT_OK;
-   gcdp = NULL;
-   gap = NULL;
+   cdp = NULL;
+   alias_name = NULL;
+   n_UNINIT(alias_exp, NULL);
    arglist =
    arglist_base = n_autorec_alloc(sizeof(*arglist_base) * n_MAXARGC);
    line = gecp->gec_line; /* TODO const-ify original (buffer)! */
@@ -918,6 +286,9 @@ jrestart:
       flags |= a_NOALIAS;
    }
 
+   /* Note: adding more special treatments must be reflected in the `help' etc.
+    * output in cmd-tab.c! */
+
    /* Ignore null commands (comments) */
    if(*cp == '#'){
       gecp->gec_hist_flags = a_GO_HIST_NONE;
@@ -931,7 +302,8 @@ jrestart:
     * separated from the arguments (as in `p1') we need to duplicate it to
     * be able to create a NUL terminated version.
     * We must be aware of several special one letter commands here */
-   else if((cp = a_go_isolate(cp)) == line.s && (*cp == '|' || *cp == '?'))
+   else if((cp = n_UNCONST(n_cmd_isolate(cp))) == line.s &&
+         (*cp == '|' || *cp == '?'))
       ++cp;
    c = (int)PTR2SIZE(cp - line.s);
    word = UICMP(z, c, <, sizeof _wordbuf) ? _wordbuf : n_autorec_alloc(c +1);
@@ -940,7 +312,8 @@ jrestart:
    line.l -= c;
    line.s = cp;
 
-   /* It may be a modifier prefix */
+   /* It may be a modifier.
+    * Note: adding modifiers must be reflected in commandalias handling code */
    if(c == sizeof("ignerr") -1 && !asccasecmp(word, "ignerr")){
       flags |= a_NOPREFIX | a_IGNERR;
       goto jrestart;
@@ -990,11 +363,11 @@ jrestart:
    if(*word == '\0'){
 jempty:
       if((n_pstate & n_PS_ROBOT) || !(n_psonce & n_PSO_INTERACTIVE) ||
-            gap != NULL){
+            alias_name != NULL){
          gecp->gec_hist_flags = a_GO_HIST_NONE;
          goto jret0;
       }
-      gcdp = &a_go_cmd_tab[0];
+      cdp = n_cmd_default();
       goto jexec;
    }
 
@@ -1006,36 +379,36 @@ jempty:
       flags = (flags & ~(a_ALIAS_MASK | a_NOPREFIX)) | expcnt;
 
       /* Avoid self-recursion; yes, the user could use \ no-expansion, but.. */
-      if(gap != NULL && !strcmp(word, gap->ga_name)){
+      if(alias_name != NULL && !strcmp(word, alias_name)){
          if(n_poption & n_PO_D_V)
             n_err(_("Actively avoiding self-recursion of `commandalias': %s\n"),
                word);
-      }else for(gap = a_go_aliases; gap != NULL; gap = gap->ga_next)
-         if(!strcmp(word, gap->ga_name)){
-            size_t i;
+      }else if((alias_name = n_commandalias_exists(word, &alias_exp)) != NULL){
+         size_t i;
 
-            if(sp != NULL){
-               sp = n_string_push_cp(sp, word);
-               gecp->gec_hist_cmd = n_string_cp(sp);
-               sp = NULL;
-            }
-
-            /* And join arguments onto alias expansion */
-            i = gap->ga_cmd.l;
-            cp = line.s;
-            line.s = n_autorec_alloc(i + 1 + line.l +1);
-            memcpy(line.s, gap->ga_cmd.s, i);
-            if(line.l > 0){
-               line.s[i++] = ' ';
-               memcpy(&line.s[i], cp, line.l);
-            }
-            line.s[i += line.l] = '\0';
-            line.l = i;
-            goto jrestart;
+         if(sp != NULL){
+            sp = n_string_push_cp(sp, word);
+            gecp->gec_hist_cmd = n_string_cp(sp);
+            sp = NULL;
          }
+
+         /* And join arguments onto alias expansion */
+         alias_name = word;
+         i = alias_exp->l;
+         cp = line.s;
+         line.s = n_autorec_alloc(i + 1 + line.l +1);
+         memcpy(line.s, alias_exp->s, i);
+         if(line.l > 0){
+            line.s[i++] = ' ';
+            memcpy(&line.s[i], cp, line.l);
+         }
+         line.s[i += line.l] = '\0';
+         line.l = i;
+         goto jrestart;
+      }
    }
 
-   if((gcdp = a_go__firstfit(word)) == NULL || gcdp->gcd_func == &c_cmdnotsupp){
+   if((cdp = n_cmd_firstfit(word)) == NULL){
       bool_t doskip;
 
       if(!(doskip = n_cnd_if_isskip()) || (n_poption & n_PO_D_V))
@@ -1045,10 +418,6 @@ jempty:
       gecp->gec_hist_flags = a_GO_HIST_NONE;
       if(doskip)
          goto jret0;
-      if(gcdp != NULL){
-         c_cmdnotsupp(NULL);
-         gcdp = NULL;
-      }
       nerrn = n_ERR_NOSYS;
       goto jleave;
    }
@@ -1056,11 +425,11 @@ jempty:
    /* See if we should execute the command -- if a conditional we always
     * execute it, otherwise, check the state of cond */
 jexec:
-   if(!(gcdp->gcd_caflags & n_CMD_ARG_F) && n_cnd_if_isskip())
+   if(!(cdp->cd_caflags & n_CMD_ARG_F) && n_cnd_if_isskip())
       goto jret0;
 
    if(sp != NULL){
-      sp = n_string_push_cp(sp, gcdp->gcd_name);
+      sp = n_string_push_cp(sp, cdp->cd_name);
       gecp->gec_hist_cmd = n_string_cp(sp);
       sp = NULL;
    }
@@ -1068,52 +437,52 @@ jexec:
    nerrn = n_ERR_INVAL;
 
    /* Process the arguments to the command, depending on the type it expects */
-   if((gcdp->gcd_caflags & n_CMD_ARG_I) && !(n_psonce & n_PSO_INTERACTIVE) &&
+   if((cdp->cd_caflags & n_CMD_ARG_I) && !(n_psonce & n_PSO_INTERACTIVE) &&
          !(n_poption & n_PO_BATCH_FLAG)){
       n_err(_("May not execute `%s' unless interactive or in batch mode\n"),
-         gcdp->gcd_name);
+         cdp->cd_name);
       goto jleave;
    }
-   if(!(gcdp->gcd_caflags & n_CMD_ARG_M) && (n_psonce & n_PSO_SENDMODE)){
-      n_err(_("May not execute `%s' while sending\n"), gcdp->gcd_name);
+   if(!(cdp->cd_caflags & n_CMD_ARG_M) && (n_psonce & n_PSO_SENDMODE)){
+      n_err(_("May not execute `%s' while sending\n"), cdp->cd_name);
       goto jleave;
    }
-   if(gcdp->gcd_caflags & n_CMD_ARG_R){
+   if(cdp->cd_caflags & n_CMD_ARG_R){
       if(n_pstate & n_PS_COMPOSE_MODE){
          /* TODO n_PS_COMPOSE_MODE: should allow `reply': ~:reply! */
-         n_err(_("Cannot invoke `%s' when in compose mode\n"), gcdp->gcd_name);
+         n_err(_("Cannot invoke `%s' when in compose mode\n"), cdp->cd_name);
          goto jleave;
       }
       /* TODO Nothing should prevent n_CMD_ARG_R in conjunction with
        * TODO n_PS_ROBOT|_SOURCING; see a.._may_yield_control()! */
       if(n_pstate & (n_PS_ROBOT | n_PS_SOURCING)){
          n_err(_("Cannot invoke `%s' from a macro or during file inclusion\n"),
-            gcdp->gcd_name);
+            cdp->cd_name);
          goto jleave;
       }
    }
-   if((gcdp->gcd_caflags & n_CMD_ARG_S) && !(n_psonce & n_PSO_STARTED)){
-      n_err(_("May not execute `%s' during startup\n"), gcdp->gcd_name);
+   if((cdp->cd_caflags & n_CMD_ARG_S) && !(n_psonce & n_PSO_STARTED)){
+      n_err(_("May not execute `%s' during startup\n"), cdp->cd_name);
       goto jleave;
    }
-   if(!(gcdp->gcd_caflags & n_CMD_ARG_X) && (n_pstate & n_PS_COMPOSE_FORKHOOK)){
+   if(!(cdp->cd_caflags & n_CMD_ARG_X) && (n_pstate & n_PS_COMPOSE_FORKHOOK)){
       n_err(_("Cannot invoke `%s' from a hook running in a child process\n"),
-         gcdp->gcd_name);
+         cdp->cd_name);
       goto jleave;
    }
 
-   if((gcdp->gcd_caflags & n_CMD_ARG_A) && mb.mb_type == MB_VOID){
-      n_err(_("Cannot execute `%s' without active mailbox\n"), gcdp->gcd_name);
+   if((cdp->cd_caflags & n_CMD_ARG_A) && mb.mb_type == MB_VOID){
+      n_err(_("Cannot execute `%s' without active mailbox\n"), cdp->cd_name);
       goto jleave;
    }
-   if((gcdp->gcd_caflags & n_CMD_ARG_W) && !(mb.mb_perm & MB_DELE)){
+   if((cdp->cd_caflags & n_CMD_ARG_W) && !(mb.mb_perm & MB_DELE)){
       n_err(_("May not execute `%s' -- message file is read only\n"),
-         gcdp->gcd_name);
+         cdp->cd_name);
       goto jleave;
    }
 
-   if(gcdp->gcd_caflags & n_CMD_ARG_O)
-      n_OBSOLETE2(_("this command will be removed"), gcdp->gcd_name);
+   if(cdp->cd_caflags & n_CMD_ARG_O)
+      n_OBSOLETE2(_("this command will be removed"), cdp->cd_name);
 
    /* TODO v15: strip n_PS_ARGLIST_MASK off, just in case the actual command
     * TODO doesn't use any of those list commands which strip this mask,
@@ -1122,18 +491,19 @@ jexec:
    n_pstate &= ~n_PS_ARGLIST_MASK;
 
    if((flags & a_WYSH) &&
-         (gcdp->gcd_caflags & n_CMD_ARG_TYPE_MASK) != n_CMD_ARG_TYPE_WYRA){
-      n_err(_("`wysh' prefix does not affect `%s'\n"), gcdp->gcd_name);
+         (cdp->cd_caflags & n_CMD_ARG_TYPE_MASK) != n_CMD_ARG_TYPE_WYRA){
+      n_err(_("`wysh' prefix does not affect `%s'\n"), cdp->cd_name);
       flags &= ~a_WYSH;
    }
 
    if(flags & a_VPUT){
-      if(gcdp->gcd_caflags & n_CMD_ARG_V){
+      if(cdp->cd_caflags & n_CMD_ARG_V){
          char const *emsg;
 
          emsg = line.s; /* xxx Cannot pass &char* as char const**, so no cp */
-         arglist[0] = n_shexp_parse_token_cp((n_SHEXP_PARSE_TRIMSPACE |
-               n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_META_KEEP), &emsg);
+         arglist[0] = n_shexp_parse_token_cp((n_SHEXP_PARSE_TRIM_SPACE |
+               n_SHEXP_PARSE_TRIM_IFSSPACE | n_SHEXP_PARSE_LOG |
+               n_SHEXP_PARSE_META_KEEP), &emsg);
          line.l -= PTR2SIZE(emsg - line.s);
          line.s = cp = n_UNCONST(emsg);
          if(cp == NULL)
@@ -1146,7 +516,7 @@ jexec:
             emsg = NULL;
          if(emsg != NULL){
             n_err("`%s': vput: %s: %s\n",
-                  gcdp->gcd_name, V_(emsg), n_shexp_quote_cp(arglist[0], FAL0));
+                  cdp->cd_name, V_(emsg), n_shexp_quote_cp(arglist[0], FAL0));
             nerrn = n_ERR_NOTSUP;
             goto jleave;
          }
@@ -1155,23 +525,23 @@ jexec:
          * TODO on in getrawlist() etc., i.e., the argument vector producers,
          * TODO therefore yet needs to be set again based on flags&a_VPUT! */
       }else{
-         n_err(_("`vput' prefix does not affect `%s'\n"), gcdp->gcd_name);
+         n_err(_("`vput' prefix does not affect `%s'\n"), cdp->cd_name);
          flags &= ~a_VPUT;
       }
    }
 
-   switch(gcdp->gcd_caflags & n_CMD_ARG_TYPE_MASK){
+   switch(cdp->cd_caflags & n_CMD_ARG_TYPE_MASK){
    case n_CMD_ARG_TYPE_MSGLIST:
       /* Message list defaulting to nearest forward legal message */
       if(n_msgvec == NULL)
          goto jemsglist;
-      if((c = getmsglist(line.s, n_msgvec, gcdp->gcd_msgflag)) < 0){
+      if((c = getmsglist(line.s, n_msgvec, cdp->cd_msgflag)) < 0){
          nerrn = n_ERR_NOMSG;
          flags |= a_NO_ERRNO;
          break;
       }
       if(c == 0){
-         if((n_msgvec[0] = first(gcdp->gcd_msgflag, gcdp->gcd_msgmask)) != 0)
+         if((n_msgvec[0] = first(cdp->cd_msgflag, cdp->cd_msgmask)) != 0)
             n_msgvec[1] = 0;
       }
       if(n_msgvec[0] == 0){
@@ -1182,34 +552,32 @@ jemsglist:
          flags |= a_NO_ERRNO;
          break;
       }
-      rv = (*gcdp->gcd_func)(n_msgvec);
+      rv = (*cdp->cd_func)(n_msgvec);
       break;
 
    case n_CMD_ARG_TYPE_NDMLIST:
       /* Message list with no defaults, but no error if none exist */
       if(n_msgvec == NULL)
          goto jemsglist;
-      if((c = getmsglist(line.s, n_msgvec, gcdp->gcd_msgflag)) < 0){
+      if((c = getmsglist(line.s, n_msgvec, cdp->cd_msgflag)) < 0){
          nerrn = n_ERR_NOMSG;
          flags |= a_NO_ERRNO;
          break;
       }
-      rv = (*gcdp->gcd_func)(n_msgvec);
+      rv = (*cdp->cd_func)(n_msgvec);
       break;
 
    case n_CMD_ARG_TYPE_STRING:
       /* Just the straight string, old style, with leading blanks removed */
       for(cp = line.s; spacechar(*cp);)
          ++cp;
-      rv = (*gcdp->gcd_func)(cp);
+      rv = (*cdp->cd_func)(cp);
       break;
    case n_CMD_ARG_TYPE_RAWDAT:
-      /* Just the straight string, leading blanks removed, placed in argv[] */
-      for(cp = line.s; spacechar(*cp);)
-         ++cp;
-      *arglist++ = cp;
+      /* Just the straight string, placed in argv[] */
+      *arglist++ = line.s;
       *arglist = NULL;
-      rv = (*gcdp->gcd_func)(arglist_base);
+      rv = (*cdp->cd_func)(arglist_base);
       break;
 
    case n_CMD_ARG_TYPE_WYSH:
@@ -1230,54 +598,80 @@ jemsglist:
          break;
       }
 
-      if(c < gcdp->gcd_minargs){
+      if(c < cdp->cd_minargs){
          n_err(_("`%s' requires at least %u arg(s)\n"),
-            gcdp->gcd_name, (ui32_t)gcdp->gcd_minargs);
+            cdp->cd_name, (ui32_t)cdp->cd_minargs);
          flags |= a_NO_ERRNO;
          break;
       }
-#undef gcd_minargs
-      if(c > gcdp->gcd_maxargs){
+#undef cd_minargs
+      if(c > cdp->cd_maxargs){
          n_err(_("`%s' takes no more than %u arg(s)\n"),
-            gcdp->gcd_name, (ui32_t)gcdp->gcd_maxargs);
+            cdp->cd_name, (ui32_t)cdp->cd_maxargs);
          flags |= a_NO_ERRNO;
          break;
       }
-#undef gcd_maxargs
+#undef cd_maxargs
 
       if(flags & a_VPUT)
          n_pstate |= n_PS_ARGMOD_VPUT;
 
-      rv = (*gcdp->gcd_func)(arglist_base);
+      rv = (*cdp->cd_func)(arglist_base);
       if(a_go_xcall != NULL)
          goto jret0;
       break;
 
+   case n_CMD_ARG_TYPE_ARG:{
+      /* TODO The _ARG_TYPE_ARG is preliminary, in the end we should have a
+       * TODO per command-ctx carrier that also has slots for it arguments,
+       * TODO and that should be passed along all the way.  No more arglists
+       * TODO here, etc. */
+      struct n_cmd_arg_ctx cac;
+
+      cac.cac_desc = cdp->cd_cadp;
+      cac.cac_indat = line.s;
+      cac.cac_inlen = line.l;
+      if(!n_cmd_arg_parse(&cac)){
+         flags |= a_NO_ERRNO;
+         break;
+      }
+
+      if(flags & a_VPUT){
+         cac.cac_vput = *arglist_base;
+         n_pstate |= n_PS_ARGMOD_VPUT;
+      }else
+         cac.cac_vput = NULL;
+
+      rv = (*cdp->cd_func)(&cac);
+      if(a_go_xcall != NULL)
+         goto jret0;
+   }  break;
+
    default:
       DBG( n_panic(_("Implementation error: unknown argument type: %d"),
-         gcdp->gcd_caflags & n_CMD_ARG_TYPE_MASK); )
+         cdp->cd_caflags & n_CMD_ARG_TYPE_MASK); )
       nerrn = n_ERR_NOTOBACCO;
       nexn = 1;
       goto jret0;
    }
 
    if(gecp->gec_hist_flags & a_GO_HIST_ADD){
-      if(gcdp->gcd_caflags & n_CMD_ARG_H)
+      if(cdp->cd_caflags & n_CMD_ARG_H)
          gecp->gec_hist_flags = a_GO_HIST_NONE;
-      else if((gcdp->gcd_caflags & n_CMD_ARG_G) ||
+      else if((cdp->cd_caflags & n_CMD_ARG_G) ||
             (n_pstate & n_PS_MSGLIST_GABBY))
          gecp->gec_hist_flags |= a_GO_HIST_GABBY;
    }
 
    if(rv != 0){
       if(!(flags & a_NO_ERRNO)){
-         if(gcdp->gcd_caflags & n_CMD_ARG_EM)
+         if(cdp->cd_caflags & n_CMD_ARG_EM)
             flags |= a_NO_ERRNO;
          else if((nerrn = n_err_no) == 0)
             nerrn = n_ERR_INVAL;
       }else
          flags ^= a_NO_ERRNO;
-   }else if(gcdp->gcd_caflags & n_CMD_ARG_EM)
+   }else if(cdp->cd_caflags & n_CMD_ARG_EM)
       flags |= a_NO_ERRNO;
    else
       nerrn = n_ERR_NONE;
@@ -1316,15 +710,15 @@ jleave:
       }
    }
 
-   if(gcdp == NULL)
+   if(cdp == NULL)
       goto jret0;
-   if((gcdp->gcd_caflags & n_CMD_ARG_P) && ok_blook(autoprint))
+   if((cdp->cd_caflags & n_CMD_ARG_P) && ok_blook(autoprint))
       if(visible(dot))
          n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, "\\type",
             sizeof("\\type") -1);
 
    if(!(n_pstate & (n_PS_SOURCING | n_PS_HOOK_MASK)) &&
-         !(gcdp->gcd_caflags & n_CMD_ARG_T))
+         !(cdp->cd_caflags & n_CMD_ARG_T))
       n_pstate |= n_PS_SAW_COMMAND;
 jret0:
    rv = 0;
@@ -1334,20 +728,6 @@ jret:
    n_pstate_ex_no = nexn;
    NYD_LEAVE;
    return (rv == 0);
-}
-
-static struct a_go_cmd_desc const *
-a_go__firstfit(char const *comm){ /* TODO *hashtable*! linear list search!!! */
-   struct a_go_cmd_desc const *gcdp;
-   NYD2_ENTER;
-
-   for(gcdp = a_go_cmd_tab; gcdp < &a_go_cmd_tab[n_NELEM(a_go_cmd_tab)]; ++gcdp)
-      if(*comm == *gcdp->gcd_name && is_prefix(comm, gcdp->gcd_name))
-         goto jleave;
-   gcdp = NULL;
-jleave:
-   NYD2_LEAVE;
-   return gcdp;
 }
 
 static void
@@ -1405,7 +785,10 @@ jrestart:
    /* Work the actual context (according to cleanup mode) */
    if(gcp->gc_outer == NULL){
       if(gcm & (a_GO_CLEANUP_UNWIND | a_GO_CLEANUP_SIGINT)){
-         a_go_xcall = NULL;
+         if(a_go_xcall != NULL){
+            n_free(a_go_xcall);
+            a_go_xcall = NULL;
+         }
          gcp->gc_flags &= ~a_GO_XCALL_LOOP_MASK;
          n_pstate &= ~n_PS_ERR_EXIT_MASK;
          close_all_files();
@@ -1551,7 +934,7 @@ a_go_file(char const *file, bool_t silent_open_error){
 
    /* Being a command argument file is space-trimmed *//* TODO v15 with
     * TODO WYRALIST this is no longer necessary true, and for that we
-    * TODO don't set _PARSE_TRIMSPACE because we cannot! -> cmd-tab.h!! */
+    * TODO don't set _PARSE_TRIM_SPACE because we cannot! -> cmd-tab.h!! */
 #if 0
    ((ispipe = (!silent_open_error && (nlen = strlen(file)) > 0 &&
          file[--nlen] == '|')))
@@ -1674,7 +1057,6 @@ a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
          hold_all_sigs();
          hadint = TRU1;
          f &= ~a_RETOK;
-         a_go_xcall = NULL;
          gcp->gc_flags &= ~a_GO_XCALL_LOOP_MASK;
          goto jjump;
       }
@@ -1725,132 +1107,6 @@ jjump: /* TODO Should be _CLEANUP_UNWIND not _TEARDOWN on signal if DOABLE! */
       n_raise(SIGINT);
    }
    return (f & a_RETOK);
-}
-
-static int
-a_go_c_read(void *v){ /* TODO IFS? how? -r */
-   struct n_sigman sm;
-   struct n_string s, *sp;
-   char *linebuf;
-   size_t linesize;
-   int rv;
-   char const *ifs, *ifsws, **argv, *cp, *cp2;
-   NYD2_ENTER;
-
-   sp = n_string_creat_auto(&s);
-   sp = n_string_reserve(sp, 64 -1);
-
-   ifs = ok_vlook(ifs);
-   ifsws = ok_vlook(ifs_ws);
-   rv = 0;
-   linesize = 0;
-   linebuf = NULL;
-   argv = v;
-
-   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
-   case 0:
-      break;
-   default:
-      n_pstate_err_no = n_ERR_INTR;
-      rv = 1;
-      goto jleave;
-   }
-   rv = n_go_input(((n_pstate & n_PS_COMPOSE_MODE
-            ? n_GO_INPUT_CTX_COMPOSE : n_GO_INPUT_CTX_DEFAULT) |
-         n_GO_INPUT_FORCE_STDIN | n_GO_INPUT_NL_ESC |
-         n_GO_INPUT_PROMPT_NONE /* XXX POSIX: PS2: yes! */),
-         NULL, &linebuf, &linesize, NULL, NULL);
-   n_pstate_err_no = n_ERR_NONE; /* TODO I/O error if rv<0! */
-   if(rv < 0)
-      goto jleave;
-
-   if(rv > 0){
-      cp = linebuf;
-
-      for(rv = 0; *argv != NULL; ++argv){
-         char c;
-
-         while((c = *cp) != '\0' && strchr(ifsws, c) != NULL)
-            ++cp;
-         if(c == '\0')
-            break;
-
-         /* The last variable gets the remaining line less trailing IFS-WS */
-         if(argv[1] == NULL){
-            for(cp2 = cp; *cp2 != '\0'; ++cp2)
-               ;
-            for(; cp2 > cp; --cp2){
-               c = cp2[-1];
-               if(strchr(ifsws, c) == NULL)
-                  break;
-            }
-jcp2cp:
-            sp = n_string_assign_buf(sp, cp, PTR2SIZE(cp2 - cp));
-         }else for(cp2 = cp;; ++cp2){
-            if((c = *cp2) == '\0')
-               goto jcp2cp;
-            if(strchr(ifs, c) != NULL){
-               sp = n_string_assign_buf(sp, cp, PTR2SIZE(cp2 - cp));
-               ++cp2;
-               break;
-            }
-         }
-         cp = cp2;
-
-         if(!a_go__read_set(*argv, n_string_cp(sp))){
-            n_pstate_err_no = n_ERR_NOTSUP;
-            rv = 1;
-            break;
-         }
-      }
-   }
-
-   /* Set the remains to the empty string */
-   for(; *argv != NULL; ++argv)
-      if(!a_go__read_set(*argv, n_empty)){
-         n_pstate_err_no = n_ERR_NOTSUP;
-         rv = 1;
-         break;
-      }
-
-   n_sigman_cleanup_ping(&sm);
-jleave:
-   if(linebuf != NULL)
-      n_free(linebuf);
-   NYD2_LEAVE;
-   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
-   return rv;
-}
-
-static bool_t
-a_go__read_set(char const *cp, char const *value){
-   bool_t rv;
-   NYD2_ENTER;
-
-   if(!n_shexp_is_valid_varname(cp))
-      value = N_("not a valid variable name");
-   else if(!n_var_is_user_writable(cp))
-      value = N_("variable is read-only");
-   else if(!n_var_vset(cp, (uintptr_t)value))
-      value = N_("failed to update variable value");
-   else{
-      rv = TRU1;
-      goto jleave;
-   }
-   n_err("`read': %s: %s\n", V_(value), n_shexp_quote_cp(cp, FAL0));
-   rv = FAL0;
-jleave:
-   NYD2_LEAVE;
-   return rv;
-}
-
-FL int
-c_cmdnotsupp(void *vp){
-   NYD_ENTER;
-   n_UNUSED(vp);
-   n_err(_("The requested feature is not compiled in\n"));
-   NYD_LEAVE;
-   return 1;
 }
 
 FL void
@@ -2503,44 +1759,27 @@ n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
 
    /* Shall this enter a `xcall' stack avoidance optimization (loop)? */
    if(a_go_xcall != NULL){
-      if(a_go_xcall == (struct a_go_xcall*)-1)
+      void *vp;
+      struct n_cmd_arg_ctx *cacp;
+
+      if(a_go_xcall == (void*)-1)
          a_go_xcall = NULL;
-      else if(a_go_xcall->gx_upto == gcp){
+      else if(((void const*)(cacp = a_go_xcall)->cac_indat) == gcp){
          /* Indicate that "our" (ex-) parent now hosts xcall optimization */
          a_go_ctx->gc_flags |= a_GO_XCALL_LOOP;
          while(a_go_xcall != NULL){
-            char *cp, **argv;
-            struct a_go_xcall *gxp;
-
             hold_all_sigs();
 
             a_go_ctx->gc_flags &= ~a_GO_XCALL_LOOP_ERROR;
-            gxp = a_go_xcall;
+
+            vp = a_go_xcall;
             a_go_xcall = NULL;
-
-            /* Recreate the ARGV of this command on the LOFI memory of the
-             * hosting a_go_ctx, so that it will become auto-reclaimed */
-            /* C99 */{
-               void *vp;
-
-               vp = n_lofi_alloc(gxp->gx_buflen);
-               cp = vp;
-               argv = vp;
-            }
-            cp += sizeof(*argv) * (gxp->gx_argc + 1);
-            for(i = 0; i < gxp->gx_argc; ++i){
-               argv[i] = cp;
-               memcpy(cp, gxp->gx_argv[i].s, gxp->gx_argv[i].l +1);
-               cp += gxp->gx_argv[i].l +1;
-            }
-            argv[i] = NULL;
-            n_free(gxp);
+            cacp = n_cmd_arg_restore_from_heap(vp);
+            n_free(vp);
 
             rele_all_sigs();
 
-            (void)c_call(argv);
-
-            n_lofi_free(argv);
+            (void)c_call(cacp);
          }
          rv = ((a_go_ctx->gc_flags & a_GO_XCALL_LOOP_ERROR) != 0);
          a_go_ctx->gc_flags &= ~a_GO_XCALL_LOOP_MASK;
@@ -2660,6 +1899,103 @@ n_go_may_yield_control(void){ /* TODO this is a terrible hack */
 jleave:
    NYD2_LEAVE;
    return rv;
+}
+
+FL int
+c_eval(void *vp){
+   /* TODO HACK! `eval' should be nothing else but a command prefix, evaluate
+    * TODO ARGV with shell rules, but if that is not possible then simply
+    * TODO adjust argv/argc of "the CmdCtx" that we will have "exec" real cmd */
+   struct a_go_eval_ctx gec;
+   struct n_string s_b, *sp;
+   size_t i, j;
+   char const **argv, *cp;
+   NYD_ENTER;
+
+   argv = vp;
+
+   for(j = i = 0; (cp = argv[i]) != NULL; ++i)
+      j += strlen(cp);
+
+   sp = n_string_creat_auto(&s_b);
+   sp = n_string_reserve(sp, j);
+
+   for(i = 0; (cp = argv[i]) != NULL; ++i){
+      if(i > 0)
+         sp = n_string_push_c(sp, ' ');
+      sp = n_string_push_cp(sp, cp);
+   }
+
+   memset(&gec, 0, sizeof gec);
+   gec.gec_line.s = n_string_cp(sp);
+   gec.gec_line.l = sp->s_len;
+   (void)/* XXX */a_go_evaluate(&gec);
+   NYD_LEAVE;
+   return (a_go_xcall != NULL ? 0 : n_pstate_ex_no);
+}
+
+FL int
+c_xcall(void *vp){
+   int rv;
+   struct a_go_ctx *gcp;
+   NYD2_ENTER;
+
+   /* The context can only be a macro context, except that possibly a single
+    * level of `eval' (TODO: yet) was used to double-expand our arguments */
+   if((gcp = a_go_ctx)->gc_flags & a_GO_MACRO_CMD)
+      gcp = gcp->gc_outer;
+   if((gcp->gc_flags & (a_GO_MACRO | a_GO_MACRO_CMD)) != a_GO_MACRO)
+      goto jerr;
+
+   /* Try to roll up the stack as much as possible.
+    * See a_GO_XCALL_LOOP flag description for more */
+   if(gcp->gc_outer != NULL){
+      if(gcp->gc_outer->gc_flags & a_GO_XCALL_LOOP)
+         gcp = gcp->gc_outer;
+   }else{
+      /* Otherwise this macro is invoked from the top level, in which case we
+       * silently act as if we were `call'... */
+      rv = c_call(vp);
+      /* ...which means we must ensure the rest of the macro that was us
+       * doesn't become evaluated! */
+      a_go_xcall = (void*)-1;
+      goto jleave;
+   }
+
+   /* C99 */{
+      struct n_cmd_arg_ctx *cacp;
+
+      cacp = n_cmd_arg_save_to_heap(vp);
+      cacp->cac_indat = (char*)gcp;
+      a_go_xcall = cacp;
+   }
+   rv = 0;
+jleave:
+   NYD2_LEAVE;
+   return rv;
+jerr:
+   n_err(_("`xcall': can only be used inside a macro\n"));
+   n_pstate_err_no = n_ERR_INVAL;
+   rv = 1;
+   goto jleave;
+}
+
+FL int
+c_exit(void *vp){
+   NYD_ENTER;
+   n_UNUSED(vp);
+   n_psonce |= n_PSO_XIT;
+   NYD_LEAVE;
+   return 0;
+}
+
+FL int
+c_quit(void *vp){
+   NYD_ENTER;
+   n_UNUSED(vp);
+   n_psonce |= n_PSO_QUIT;
+   NYD_LEAVE;
+   return 0;
 }
 
 /* s-it-mode */

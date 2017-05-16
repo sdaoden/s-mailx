@@ -1055,7 +1055,7 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
    if((flags & n_SHEXP_PARSE_TRUNC) && store != NULL)
       store = n_string_trunc(store, 0);
 
-   if(flags & n_SHEXP_PARSE_IFS_VAR){
+   if(flags & (n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_TRIM_IFSSPACE)){
       ifs = ok_vlook(ifs);
       ifs_ws = ok_vlook(ifs_ws);
    }
@@ -1103,16 +1103,15 @@ jrestart_empty:
          goto jleave_quick;
    }else{
 jrestart:
-      if(flags & n_SHEXP_PARSE_TRIMSPACE){
-         if(flags & n_SHEXP_PARSE_IFS_VAR){
-            for(; il > 0; ++ib, --il)
-               if(strchr(ifs_ws, *ib) == NULL)
-                  break;
-         }else{
-            for(; il > 0; ++ib, --il)
-               if(!blankspacechar(*ib))
-                  break;
-         }
+      if(flags & n_SHEXP_PARSE_TRIM_SPACE){
+         for(; il > 0; ++ib, --il)
+            if(!blankspacechar(*ib))
+               break;
+      }
+      if(flags & n_SHEXP_PARSE_TRIM_IFSSPACE){
+         for(; il > 0; ++ib, --il)
+            if(strchr(ifs_ws, *ib) == NULL)
+               break;
       }
       input->s = n_UNCONST(ib);
       input->l = il;
@@ -1629,16 +1628,15 @@ jleave:
       input->s = n_UNCONST(&ib[il]);
       input->l = 0;
    }else{
-      if(flags & n_SHEXP_PARSE_TRIMSPACE){
-         if(flags & n_SHEXP_PARSE_IFS_VAR){
-            for(; il > 0; ++ib, --il)
-               if(strchr(ifs_ws, *ib) == NULL)
-                  break;
-         }else{
-            for(; il > 0; ++ib, --il)
-               if(!blankchar(*ib))
-                  break;
-         }
+      if(flags & n_SHEXP_PARSE_TRIM_SPACE){
+         for(; il > 0; ++ib, --il)
+            if(!blankspacechar(*ib))
+               break;
+      }
+      if(flags & n_SHEXP_PARSE_TRIM_IFSSPACE){
+         for(; il > 0; ++ib, --il)
+            if(strchr(ifs_ws, *ib) == NULL)
+               break;
       }
       input->l = il;
       input->s = n_UNCONST(ib);

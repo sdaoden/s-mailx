@@ -343,9 +343,10 @@ n_attachment_append_list(struct attachment *aplist, char const *names){
       struct attachment *nap;
       enum n_shexp_state shs;
 
-      shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC | n_SHEXP_PARSE_TRIMSPACE |
-            n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_IFS_ADD_COMMA |
-            n_SHEXP_PARSE_IGNORE_EMPTY), shoup, &shin, NULL);
+      shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC |
+            n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_LOG |
+            n_SHEXP_PARSE_IFS_ADD_COMMA | n_SHEXP_PARSE_IGNORE_EMPTY),
+            shoup, &shin, NULL);
       if(shs & n_SHEXP_STATE_ERR_MASK)
          break;
 

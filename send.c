@@ -1201,8 +1201,9 @@ jgetname:
          in.s = n_UNCONST(f2);
          in.l = UIZ_MAX;
          if((n_shexp_parse_token((n_SHEXP_PARSE_TRUNC |
-                  n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_LOG |
-                  n_SHEXP_PARSE_IGNORE_EMPTY), shoup, &in, NULL
+                  n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_TRIM_IFSSPACE |
+                  n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_IGNORE_EMPTY),
+                  shoup, &in, NULL
                ) & (n_SHEXP_STATE_STOP |
                   n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_ERR_MASK)
                ) != (n_SHEXP_STATE_STOP | n_SHEXP_STATE_OUTPUT))

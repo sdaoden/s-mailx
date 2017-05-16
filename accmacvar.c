@@ -257,7 +257,7 @@ static struct a_amv_var *a_amv_compose_lopts;
 static struct a_amv_mac *a_amv_mac_lookup(char const *name,
                            struct a_amv_mac *newamp, enum a_amv_mac_flags amf);
 
-/* `call', `call_if' */
+/* `call', `call_if' (and `xcall' via go.c -> c_call()) */
 static int a_amv_mac_call(void *v, bool_t silent_nexist);
 
 /* Execute a macro; amcap must reside in LOFI memory */
@@ -394,47 +394,59 @@ jleave:
 
 static int
 a_amv_mac_call(void *v, bool_t silent_nexist){
-   int rv;
    struct a_amv_mac *amp;
+   int rv;
    char const *name;
+   struct n_cmd_arg_ctx *cacp;
    NYD_ENTER;
 
-   name = *(char const**)v;
+   cacp = v;
 
-   if((amp = a_amv_mac_lookup(name, NULL, a_AMV_MF_NONE)) != NULL){
+   if(cacp->cac_no == 0){
+      n_err(_("Synopsis: call(_if)?: name [:<arguments>:]\n"));
+      n_pstate_err_no = n_ERR_INVAL;
+      rv = 1;
+      goto jleave;
+   }
+
+   name = cacp->cac_arg->ca_arg.ca_str.s;
+
+   if(n_UNLIKELY(cacp->cac_no > a_AMV_POSPAR_MAX)){
+      n_err(_("Too many arguments to macro `call': %s\n"), name);
+      n_pstate_err_no = n_ERR_OVERFLOW;
+      rv = 1;
+   }else if(n_UNLIKELY((amp = a_amv_mac_lookup(name, NULL, a_AMV_MF_NONE)
+         ) == NULL)){
+      if(!silent_nexist)
+         n_err(_("Undefined macro called: %s\n"), n_shexp_quote_cp(name, FAL0));
+      n_pstate_err_no = n_ERR_NOENT;
+      rv = 1;
+   }else{
+      char const **argv;
       struct a_amv_mac_call_args *amcap;
+      size_t argc;
 
-      amcap = n_lofi_alloc(sizeof *amcap);
+      argc = cacp->cac_no + 1;
+      amcap = n_lofi_alloc(sizeof *amcap + (argc * sizeof *argv));
+      argv = (void*)&amcap[1];
+
+      for(argc = 0; (cacp->cac_arg = cacp->cac_arg->ca_next) != NULL; ++argc)
+         argv[argc] = cacp->cac_arg->ca_arg.ca_str.s;
+
+      argv[argc] = NULL;
+
       memset(amcap, 0, sizeof *amcap);
       amcap->amca_name = name;
       amcap->amca_amp = amp;
-      /* C99 */{
-         char const **argv;
-         size_t argc;
 
-         for(argc = 0, argv = v; *++argv != NULL; ++argc)
-            ;
-         if(argc > 0){
-            if(argc > a_AMV_POSPAR_MAX){
-               n_err(_("Too many arguments to macro `call': %s\n"), name);
-               n_pstate_err_no = n_ERR_OVERFLOW;
-               rv = 1;
-               goto jleave;
-            }
-            amcap->amca_pospar.app_count = (ui16_t)argc;
-            amcap->amca_pospar.app_not_heap = TRU1;
-            amcap->amca_pospar.app_dat = &(argv = v)[1];
-         }
+      if(argc > 0){
+         amcap->amca_pospar.app_count = (ui16_t)argc;
+         amcap->amca_pospar.app_not_heap = TRU1;
+         amcap->amca_pospar.app_dat = argv;
       }
 
-      rv = a_amv_mac_exec(amcap);
+      (void)a_amv_mac_exec(amcap);
       rv = n_pstate_ex_no;
-   }else{
-      if((rv = (silent_nexist == FAL0)))
-         n_err(_("Undefined macro `call'ed: %s\n"),
-            n_shexp_quote_cp(name, FAL0));
-      n_pstate_err_no = n_ERR_NOENT;
-      rv = 1;
    }
 jleave:
    NYD_LEAVE;
@@ -1959,21 +1971,21 @@ c_undefine(void *v){
 }
 
 FL int
-c_call(void *v){
+c_call(void *vp){
    int rv;
    NYD_ENTER;
 
-   rv = a_amv_mac_call(v, FAL0);
+   rv = a_amv_mac_call(vp, FAL0);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_call_if(void *v){
+c_call_if(void *vp){
    int rv;
    NYD_ENTER;
 
-   rv = a_amv_mac_call(v, TRU1);
+   rv = a_amv_mac_call(vp, TRU1);
    NYD_LEAVE;
    return rv;
 }
@@ -3279,6 +3291,7 @@ jestr:
 
 FL int
 c_vpospar(void *v){
+   struct n_cmd_arg *cap;
    size_t i;
    struct a_amv_pospar *appp;
    enum{
@@ -3288,35 +3301,45 @@ c_vpospar(void *v){
       a_CLEAR = 1u<<2,
       a_QUOTE = 1u<<3
    } f;
-   char const **argv, *varname, *varres, *cp;
+   char const *varres;
+   struct n_cmd_arg_ctx *cacp;
    NYD_ENTER;
 
    n_pstate_err_no = n_ERR_NONE;
-   argv = v;
-   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
    n_UNINIT(varres, n_empty);
+   cacp = v;
+   cap = cacp->cac_arg;
 
-   if(is_asccaseprefix(argv[0], "set"))
+   if(is_asccaseprefix(cap->ca_arg.ca_str.s, "set"))
       f = a_SET;
-   else if(is_asccaseprefix(argv[0], "clear"))
+   else if(is_asccaseprefix(cap->ca_arg.ca_str.s, "clear"))
       f = a_CLEAR;
-   else if(is_asccaseprefix(argv[0], "quote"))
+   else if(is_asccaseprefix(cap->ca_arg.ca_str.s, "quote"))
       f = a_QUOTE;
    else{
       n_err(_("`vpospar': invalid subcommand: %s\n"),
-         n_shexp_quote_cp(argv[0], FAL0));
+         n_shexp_quote_cp(cap->ca_arg.ca_str.s, FAL0));
       n_pstate_err_no = n_ERR_INVAL;
       f = a_ERR;
       goto jleave;
    }
-   ++argv;
+   --cacp->cac_no;
+
+   if((f & (a_CLEAR | a_QUOTE)) && cap->ca_next != NULL){
+      n_err(_("`vpospar': `%s': takes no argument\n"), cap->ca_arg.ca_str.s);
+      n_pstate_err_no = n_ERR_INVAL;
+      f = a_ERR;
+      goto jleave;
+   }
+
+   cap = cap->ca_next;
 
    /* If in a macro, we need to overwrite the local instead of global argv */
    appp = (a_amv_lopts != NULL) ? &a_amv_lopts->as_amcap->amca_pospar
          : &a_amv_pospar;
 
    if(f & (a_SET | a_CLEAR)){
-      if(varname != NULL && (n_poption & n_PO_D_V))
+      if(cacp->cac_vput != NULL && (n_poption & n_PO_D_V))
          n_err(_("`vpospar': `vput' only supported for `quote' subcommand\n"));
       if(!appp->app_not_heap && appp->app_maxcount > 0){
          for(i = appp->app_maxcount; i-- != 0;)
@@ -3326,9 +3349,7 @@ c_vpospar(void *v){
       memset(appp, 0, sizeof *appp);
 
       if(f & a_SET){
-         for(i = 0; argv[i] != NULL; ++i)
-            ;
-         if(i > a_AMV_POSPAR_MAX){
+         if((i = cacp->cac_no) > a_AMV_POSPAR_MAX){
             n_err(_("`vpospar': overflow: %" PRIuZ " arguments!\n"), i);
             n_pstate_err_no = n_ERR_OVERFLOW;
             f = a_ERR;
@@ -3343,12 +3364,10 @@ c_vpospar(void *v){
             i *= sizeof *appp->app_dat;
             appp->app_dat = n_alloc(i);
 
-            for(i = 0; (cp = argv[i]) != NULL; ++i){
-               size_t j;
-
-               j = strlen(cp) +1;
-               appp->app_dat[i] = n_alloc(j);
-               memcpy(n_UNCONST(appp->app_dat[i]), cp, j);
+            for(i = 0; cap != NULL; ++i, cap = cap->ca_next){
+               appp->app_dat[i] = n_alloc(cap->ca_arg.ca_str.l +1);
+               memcpy(n_UNCONST(appp->app_dat[i]), cap->ca_arg.ca_str.s,
+                  cap->ca_arg.ca_str.l +1);
             }
 
             appp->app_dat[i] = NULL;
@@ -3360,15 +3379,29 @@ c_vpospar(void *v){
       else{
          struct str in;
          struct n_string s, *sp;
+         char sep1, sep2;
 
          sp = n_string_creat_auto(&s);
 
+         sep1 = *ok_vlook(ifs);
+         sep2 = *ok_vlook(ifs_ws);
+         if(sep1 == sep2)
+            sep2 = '\0';
+         if(sep1 == '\0')
+            sep1 = ' ';
+
          for(i = 0; i < appp->app_count; ++i){
-            if(sp->s_len)
-               sp = n_string_push_c(sp, ' ');
+            if(sp->s_len){
+               if(!n_string_can_swallow(sp, 2))
+                  goto jeover;
+               sp = n_string_push_c(sp, sep1);
+               if(sep2 != '\0')
+                  sp = n_string_push_c(sp, sep2);
+            }
             in.l = strlen(in.s = n_UNCONST(appp->app_dat[i + appp->app_idx]));
 
             if(!n_string_can_swallow(sp, in.l)){
+jeover:
                n_err(_("`vpospar': overflow: string too long!\n"));
                n_pstate_err_no = n_ERR_OVERFLOW;
                f = a_ERR;
@@ -3380,12 +3413,12 @@ c_vpospar(void *v){
          varres = n_string_cp(sp);
       }
 
-      if(varname == NULL){
+      if(cacp->cac_vput == NULL){
          if(fprintf(n_stdout, "%s\n", varres) < 0){
             n_pstate_err_no = n_err_no;
             f |= a_ERR;
          }
-      }else if(!n_var_vset(varname, (uintptr_t)varres)){
+      }else if(!n_var_vset(cacp->cac_vput, (uintptr_t)varres)){
          n_pstate_err_no = n_ERR_NOTSUP;
          f |= a_ERR;
       }
