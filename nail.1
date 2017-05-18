@@ -10193,6 +10193,8 @@ slot of the
 .Xr SSL_CONF_cmd 3
 function of the OpenSSL library, if available; see
 .Xr ciphers 1
+and
+.Xr SSL_CTX_set_cipher_list 3
 for more information.
 By default \*(UA does not set a list of ciphers, in effect using a
 .Va ssl-protocol
@@ -10213,6 +10215,18 @@ configuration file to be used instead of the global OpenSSL default;
 note that in this case it is an error if the file cannot be loaded.
 The application name will always be passed as
 .Dq \*(uA .
+.
+.Mx Va ssl-curves
+.It Va ssl-curves-USER@HOST , ssl-curves-HOST , ssl-curves
+\*(OP Specifies a list of supported curves for SSL/TLS connections.
+This is a direct interface to the
+.Ql Curves
+slot of the
+.Xr SSL_CONF_cmd 3
+function of the OpenSSL library, if available; see
+.Xr SSL_CTX_set1_curves_list 3
+for more information.
+By default \*(UA does not set a list of curves.
 .
 .Mx
 .Mx
@@ -11590,9 +11604,12 @@ set ssl-protocol='-ALL,+TLSv1.2'
 # In reality it is possibly best to only use ssl-cipher-list-HOST
 # (or -USER@HOST), as necessary, again..
 set ssl-cipher-list=TLSv1.2:!aNULL:!eNULL:@STRENGTH
-# TLSv1.2:!aNULL:!eNULL:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:\e
-    DHE-RSA-AES256-SHA:@STRENGTH
-# ALL:!aNULL:!eNULL:!MEDIUM:!LOW:!MD5:!RC4:!EXPORT:@STRENGTH
+# - TLSv1.2:!aNULL:!eNULL:\e
+#     ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:\e
+#     DHE-RSA-AES256-SHA:@STRENGTH
+# -ALL:!aNULL:!eNULL:!MEDIUM:!LOW:!MD5:!RC4:!EXPORT:@STRENGTH
+# Especially with TLSv1.3 curves selection may be desired:
+#set ssl-curves=P-521:P-384:P-256
 
 # Essential setting: select allowed character sets
 set sendcharsets=utf-8,iso-8859-1

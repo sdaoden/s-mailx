@@ -169,6 +169,7 @@ enum a_xssl_state{
 enum a_xssl_conf_type{
    a_XSSL_CT_CERTIFICATE,
    a_XSSL_CT_CIPHER_STRING,
+   a_XSSL_CT_CURVES,
    a_XSSL_CT_PRIVATE_KEY,
    a_XSSL_CT_OPTIONS,
    a_XSSL_CT_PROTOCOL
@@ -639,6 +640,10 @@ _ssl_conf(void *confp, enum a_xssl_conf_type ct, char const *value)
       cmsg = "ssl-protocol";
       rv = SSL_CONF_cmd(sccp, "Protocol", value);
       break;
+   case a_XSSL_CT_CURVES:
+      cmsg = "ssl-curves";
+      rv = SSL_CONF_cmd(sccp, "Curves", value);
+      break;
    }
 
    if (rv == 2)
@@ -681,27 +686,39 @@ _ssl_conf_setup(SSL_CTX* ctxp)
 }
 
 static bool_t
-_ssl_conf(void *confp, enum a_xssl_conf_type ct, char const *value)
-{
-   SSL_CTX *ctxp = (SSL_CTX*)confp;
-   NYD_ENTER;
+_ssl_conf(void *confp, enum a_xssl_conf_type ct, char const *value){
+   SSL_CTX *ctxp;
+   NYD2_ENTER;
 
-   switch (ct) {
+   ctxp = confp;
+
+   switch(ct){
    case a_XSSL_CT_CERTIFICATE:
-      if (SSL_CTX_use_certificate_chain_file(ctxp, value) != 1) {
+      if(SSL_CTX_use_certificate_chain_file(ctxp, value) != 1){
          ssl_gen_err(_("Can't load certificate from file %s\n"),
             n_shexp_quote_cp(value, FAL0));
          confp = NULL;
       }
       break;
    case a_XSSL_CT_CIPHER_STRING:
-      if (SSL_CTX_set_cipher_list(ctxp, value) != 1) {
+      if(SSL_CTX_set_cipher_list(ctxp, value) != 1){
          ssl_gen_err(_("Invalid cipher string: %s\n"), value);
          confp = NULL;
       }
       break;
+   case a_XSSL_CT_CURVES:
+#ifdef SSL_CTRL_SET_CURVES_LIST
+      if(SSL_CTX_set1_curves_list(ctxp, value) != 1){
+         ssl_gen_err(_("Invalid curves string: %s\n"), value);
+         confp = NULL;
+      }
+#else
+      n_err(_("*ssl-curves*: as such not supported\n"));
+      confp = NULL;
+#endif
+      break;
    case a_XSSL_CT_PRIVATE_KEY:
-      if (SSL_CTX_use_PrivateKey_file(ctxp, value, SSL_FILETYPE_PEM) != 1) {
+      if(SSL_CTX_use_PrivateKey_file(ctxp, value, SSL_FILETYPE_PEM) != 1){
          ssl_gen_err(_("Can't load private key from file %s\n"),
             n_shexp_quote_cp(value, FAL0));
          confp = NULL;
@@ -711,36 +728,36 @@ _ssl_conf(void *confp, enum a_xssl_conf_type ct, char const *value)
       /* "Options"="Bugs" TODO *ssl-options* */
       SSL_CTX_set_options(ctxp, SSL_OP_ALL);
       break;
-   case a_XSSL_CT_PROTOCOL: {
+   case a_XSSL_CT_PROTOCOL:{
       char *iolist, *cp, addin;
       size_t i;
       sl_i opts = 0;
 
       confp = NULL;
-      for (iolist = cp = savestr(value);
-            (cp = n_strsep(&iolist, ',', FAL0)) != NULL;) {
-         if (*cp == '\0') {
+      for(iolist = cp = savestr(value);
+            (cp = n_strsep(&iolist, ',', FAL0)) != NULL;){
+         if(*cp == '\0'){
             n_err(_("*ssl-protocol*: empty arguments are not supported\n"));
             goto jleave;
          }
 
          addin = TRU1;
-         switch (cp[0]) {
+         switch(cp[0]){
          case '-': addin = FAL0; /* FALLTHRU */
          case '+': ++cp; /* FALLTHRU */
          default : break;
          }
 
-         for (i = 0;;) {
-            if (!asccasecmp(cp, a_xssl_protocols[i].sp_name)) {
+         for(i = 0;;){
+            if(!asccasecmp(cp, a_xssl_protocols[i].sp_name)){
                /* We need to inverse the meaning of the _NO_s */
-               if (!addin)
+               if(!addin)
                   opts |= a_xssl_protocols[i].sp_flag;
                else
                   opts &= ~a_xssl_protocols[i].sp_flag;
                break;
             }
-            if (++i < n_NELEM(a_xssl_protocols))
+            if(++i < n_NELEM(a_xssl_protocols))
                continue;
             n_err(_("*ssl-protocol*: unsupported value: %s\n"), cp);
             goto jleave;
@@ -748,11 +765,10 @@ _ssl_conf(void *confp, enum a_xssl_conf_type ct, char const *value)
       }
       confp = ctxp;
       SSL_CTX_set_options(ctxp, opts);
-      break;
-   }
+   }  break;
    }
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return (confp != NULL);
 }
 
@@ -1466,6 +1482,9 @@ ssl_open(struct url const *urlp, struct sock *sp)
 
    if ((cp = xok_vlook(ssl_cipher_list, urlp, OXM_ALL)) != NULL &&
          !_ssl_conf(confp, a_XSSL_CT_CIPHER_STRING, cp))
+      goto jerr1;
+   if ((cp = xok_vlook(ssl_curves, urlp, OXM_ALL)) != NULL &&
+         !_ssl_conf(confp, a_XSSL_CT_CURVES, cp))
       goto jerr1;
 
    if (!_ssl_load_verifications(ctxp))
