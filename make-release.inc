@@ -284,7 +284,7 @@ if yesno 'Prepare announcement?'; then
       res = ""
       s = $0
 
-      while(match(s, /(\\?(http|ftp)s?\??:\/\/[^ ]*)/)){
+      while(match(s, /(\\?https?\??:\/\/[^ ]*)/)){
          pre = substr(s, 1, RSTART - 1)
          mat = substr(s, RSTART, RLENGTH)
          s = substr(s, RSTART + RLENGTH)
@@ -294,8 +294,6 @@ if yesno 'Prepare announcement?'; then
             xt = 0
             if(match(mat, /^https\?/))
                mat = "https" substr(xt = mat, RSTART + 6)
-            else if(match(mat, /^ftps\?/))
-               mat = "ftps" substr(xt = mat, RSTART + 5)
             if(match(mat, /sdaoden\.eu/))
                mat = "<?lref" (xt ? "t " : " ") mat (xt ? "<>" xt : "") "?>"
             else
