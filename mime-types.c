@@ -231,7 +231,7 @@ jecontent:
       else if (!__mt_load_file((j == 0 ? _MT_USR
                : (j == 1 ? _MT_SYS : _MT_FSPEC)), *srcs, &line, &linesize)) {
          if ((n_poption & n_PO_D_V) || j > 1)
-            n_err(_("*mimetypes-load-control*: can't open or load %s\n"),
+            n_err(_("*mimetypes-load-control*: cannot open or load %s\n"),
                n_shexp_quote_cp(*srcs, FAL0));
       }
    if (line != NULL)
@@ -278,10 +278,12 @@ jleave:
 static struct mtnode *
 _mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
 {
-   struct mtnode *mtnp = NULL;
+   struct mtnode *mtnp;
    char const *typ, *subtyp;
    size_t tlen, i;
    NYD_ENTER;
+
+   mtnp = NULL;
 
    /* Drop anything after a comment first */
    if ((typ = memchr(line, '#', len)) != NULL)
@@ -299,6 +301,7 @@ _mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
    typ = line;
 
    /* (But wait - is there a type marker?) */
+   tlen = len;
    if (!(orflags & (_MT_USR | _MT_SYS)) && *typ == '@') {
       if (len < 2)
          goto jeinval;
@@ -329,17 +332,23 @@ jexttypmar:
    /* Ignore empty lines and even incomplete specifications (only MIME type)
     * because this is quite common in mime.types(5) files */
    if (len == 0 || (tlen = PTR2SIZE(line - typ)) == 0) {
-      if (cmdcalled)
-         n_err(_("Empty MIME type or no extensions given: %s\n"),
-            (len == 0 ? _("(no value)") : line));
+      if (cmdcalled || (orflags & _MT_FSPEC)) {
+         if(len == 0){
+            line = _("(no value");
+            len = strlen(line);
+         }
+         n_err(_("Empty MIME type or no extensions given: %.*s\n"),
+            (int)len, line);
+      }
       goto jleave;
    }
 
    if ((subtyp = memchr(typ, '/', tlen)) == NULL) {
 jeinval:
-      if (cmdcalled || (n_poption & n_PO_D_V))
-         n_err(_("%s MIME type: %s\n"),
-            (cmdcalled ? _("Invalid") : _("mime.types(5): invalid")), typ);
+      if(cmdcalled || (orflags & _MT_FSPEC) || (n_poption & n_PO_D_V))
+         n_err(_("%s MIME type: %.*s\n"),
+            (cmdcalled ? _("Invalid") : _("mime.types(5): invalid")),
+            (int)tlen, typ);
       goto jleave;
    }
    ++subtyp;
@@ -834,7 +843,7 @@ jnextc:
 
    if (rv & MIME_HDL_NEEDSTERM) {
       if (rv & MIME_HDL_ASYNC) {
-         n_err(_("MIME type handlers: can't use needsterminal and "
+         n_err(_("MIME type handlers: cannot use needsterminal and "
             "x-nail-async together\n"));
          goto jerr;
       }

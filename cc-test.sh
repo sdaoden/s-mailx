@@ -3,7 +3,8 @@
 #@ TODO _All_ the tests should happen in a temporary subdir.
 # Public Domain
 
-# We need *stealthmua* regardless of $SOURCE_DATE_EPOCH, our name is variable
+# We need *stealthmua* regardless of $SOURCE_DATE_EPOCH, the program name as
+# such is a compile-time variable
 ARGS='-:/ -# -Sdotlock-ignore-error -Sencoding=quoted-printable -Sstealthmua'
    ARGS="${ARGS}"' -Snosave -Sexpandaddr=restrict'
 CONF=./make.rc
@@ -283,6 +284,7 @@ t_behave() {
 
    t_behave_e_H_L_opts
    t_behave_compose_hooks
+   t_behave_mime_types_load_control
 
    t_behave_smime
 
@@ -2098,6 +2100,57 @@ t_behave_compose_hooks() {
    ${cat} ./.tnotes >> "${MBOX}"
 
    check behave:compose_hooks - "${MBOX}" '1709067694 545'
+
+   t_epilog
+}
+
+t_behave_mime_types_load_control() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} <<-_EOT > ./.tmts1
+   @ application/mathml+xml mathml
+	_EOT
+   ${cat} <<-_EOT > ./.tmts2
+   @ x-conference/x-cooltalk ice
+   @ aga-aga aga
+   @ application/aga-aga aga
+	_EOT
+
+   ${cat} <<-_EOT > ./.tmts1.mathml
+   <head>nonsense ML</head>
+	_EOT
+   ${cat} <<-_EOT > ./.tmts2.ice
+   Icy, icy road.
+	_EOT
+   printf 'of which the crack is coming soon' > ./.tmtsx.doom
+   printf 'of which the crack is coming soon' > ./.tmtsx.aga
+
+   printf '
+         m %s
+         Schub-di-du
+~@ ./.tmts1.mathml
+~@ ./.tmts2.ice
+~@ ./.tmtsx.doom
+~@ ./.tmtsx.aga
+~.
+         File %s
+         from*
+         type
+         xit
+      ' "${MBOX}" "${MBOX}" |
+      ${MAILX} ${ARGS} \
+         -Smimetypes-load-control=f=./.tmts1,f=./.tmts2 \
+         > ./.tout 2>&1
+   ex0_test behave:mime_types_load_control
+
+   ${cat} "${MBOX}" >> ./.tout
+   check behave:mime_types_load_control-1 - ./.tout '529577037 2474'
+
+   echo type | ${MAILX} ${ARGS} -R \
+      -Smimetypes-load-control=f=./.tmts1,f=./.tmts3 \
+      -f "${MBOX}" >> ./.tout 2>&1
+   check behave:mime_types_load_control-2 0 ./.tout '2025926659 3558'
 
    t_epilog
 }
