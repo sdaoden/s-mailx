@@ -1,0 +1,120 @@
+reproducible_build: mime.types(5): invalid MIME type: aga-aga
+>N  1 reproducible_build 1996-10-02 01:50   43/1269                             
+[-- Message  1 -- 43 lines, 1269 bytes --]:
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To:
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
+Status: R
+
+[-- #1.1 5/93 7bit --]
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+
+         Schub-di-du
+
+[-- #1.2 5/142 7bit --]
+Content-Type: application/mathml+xml; charset=us-ascii
+Content-Disposition: attachment; filename=".tmts1.mathml"
+
+   <head>nonsense ML</head>
+
+[-- #1.3 5/130 7bit --]
+Content-Type: x-conference/x-cooltalk; charset=us-ascii
+Content-Disposition: attachment; filename=".tmts2.ice"
+
+   Icy, icy road.
+
+[-- #1.4 6/195 base64 --]
+Content-Type: application/octet-stream; charset=binary
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename=".tmtsx.doom"
+
+
+[-- #1.5 6/189 base64 --]
+Content-Type: application/aga-aga; charset=binary
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename=".tmtsx.aga"
+
+of which the c?rack is coming soon
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To:
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
+
+This is a multi-part message in MIME format.
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+
+         Schub-di-du
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Type: application/mathml+xml; charset=us-ascii
+Content-Disposition: attachment; filename=".tmts1.mathml"
+
+   <head>nonsense ML</head>
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Type: x-conference/x-cooltalk; charset=us-ascii
+Content-Disposition: attachment; filename=".tmts2.ice"
+
+   Icy, icy road.
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Type: application/octet-stream; charset=binary
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename=".tmtsx.doom"
+
+b2Ygd2hpY2ggdGhlIGMBcmFjayBpcyBjb21pbmcgc29vbg==
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Type: application/aga-aga; charset=binary
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename=".tmtsx.aga"
+
+b2Ygd2hpY2ggdGhlIGMBcmFjayBpcyBjb21pbmcgc29vbg==
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=--
+
+[-- Message  1 -- 43 lines, 1269 bytes --]:
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To:
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
+Status: R
+
+[-- #1.1 5/93 7bit --]
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+
+reproducible_build: *mimetypes-load-control*: cannot open or load ./.tmts3
+         Schub-di-du
+
+[-- #1.2 5/142 7bit --]
+Content-Type: application/mathml+xml; charset=us-ascii
+Content-Disposition: attachment; filename=".tmts1.mathml"
+
+   <head>nonsense ML</head>
+
+[-- #1.3 5/130 7bit --]
+Content-Type: x-conference/x-cooltalk; charset=us-ascii
+Content-Disposition: attachment; filename=".tmts2.ice"
+
+
+[-- #1.4 6/195 base64 --]
+Content-Type: application/octet-stream; charset=binary
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename=".tmtsx.doom"
+
+
+[-- #1.5 6/189 base64 --]
+Content-Type: application/aga-aga; charset=binary
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename=".tmtsx.aga"
+
