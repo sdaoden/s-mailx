@@ -88,6 +88,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
 {
    char buf[64];
    struct str ti, to;
+   bool_t want_ct, needsep;
    struct str const *cpre, *csuf;
    char const *cp;
    NYD2_ENTER;
@@ -120,11 +121,16 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
          (uiz_t)mpp->m_lines, (uiz_t)mpp->m_size);
    _out(buf, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
 
-    if ((cp = mpp->m_ct_type_usr_ovwr) != NULL)
+   needsep = FAL0;
+
+    if((cp = mpp->m_ct_type_usr_ovwr) != NULL){
       _out("+", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
-   else
+      want_ct = TRU1;
+   }else if((want_ct = n_ignore_is_ign(doitp,
+         "content-type", sizeof("content-type") -1)))
       cp = mpp->m_ct_type_plain;
-   if ((to.l = strlen(cp)) > 30 && is_asccaseprefix("application/", cp)) {
+   if (want_ct &&
+         (to.l = strlen(cp)) > 30 && is_asccaseprefix("application/", cp)) {
       size_t const al = sizeof("appl../") -1, fl = sizeof("application/") -1;
       size_t i = to.l - fl;
       char *x = salloc(al + i +1);
@@ -134,17 +140,24 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
       cp = x;
       to.l = al + i;
    }
-   _out(cp, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+   if(cp != NULL){
+      _out(cp, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+      needsep = TRU1;
+   }
 
    if (mpp->m_multipart == NULL/* TODO */ && (cp = mpp->m_ct_enc) != NULL) {
-      _out(", ", 2, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+      if(needsep)
+         _out(", ", 2, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
       if (to.l > 25 && !asccasecmp(cp, "quoted-printable"))
          cp = "qu.-pr.";
       _out(cp, strlen(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+      needsep = TRU1;
    }
 
-   if (mpp->m_multipart == NULL/* TODO */ && (cp = mpp->m_charset) != NULL) {
-      _out(", ", 2, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+   if (want_ct && mpp->m_multipart == NULL/* TODO */ &&
+         (cp = mpp->m_charset) != NULL) {
+      if(needsep)
+         _out(", ", 2, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
       _out(cp, strlen(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
    }
 
