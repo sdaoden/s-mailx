@@ -273,6 +273,7 @@ t_behave() {
    t_behave_vexpr
    t_behave_call_ret
    t_behave_xcall
+   t_behave_vpospar
 
    t_behave_mbox
 
@@ -1825,6 +1826,71 @@ t_behave_xcall() {
    < "${BODY}" ${MAILX} ${ARGS} -X'commandalias xxxign " "' -Snomemdebug \
       > "${MBOX}" 2>&1
    check behave:xcall-3 1 "${MBOX}" '1006776201 2799'
+
+   t_epilog
+}
+
+t_behave_vpospar() {
+   t_prolog
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+   vpospar set hey, "'you    ", world!
+   echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   vput vpospar x quote; echo x<$x>
+   vpospar clear;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   vput vpospar y quote;echo y<$y>
+   eval vpospar set ${x};echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   eval vpospar set ${y};echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   eval vpospar set ${x};echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+
+   define infun2 {
+      echo infun2:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>
+      vput vpospar z quote;echo infun2:z<$z>
+   }
+
+   define infun {
+      echo infun:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>
+      vput vpospar y quote;echo infun:y<$y>
+      eval vpospar set ${x};echo infun:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>
+      vpospar clear;echo infun:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>
+      eval call infun2 $x
+      echo infun:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>
+      eval vpospar set ${y};echo infun:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>
+   }
+
+   call infun This "in a" fun
+   echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   vpospar clear;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+	__EOT
+   check behave:vpospar-1 0 "${MBOX}" '155175639 866'
+
+   #
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+   set ifs=\'
+   echo ifs<$ifs> ifs-ws<$ifs-ws>
+   vpospar set hey, "'you    ", world!
+   echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   vput vpospar x quote; echo x<$x>
+   vpospar clear;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   eval vpospar set ${x};echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+
+   set ifs=,
+   echo ifs<$ifs> ifs-ws<$ifs-ws>
+   vpospar set hey, "'you    ", world!
+   echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   vput vpospar x quote; echo x<$x>
+   vpospar clear;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   eval vpospar set ${x};echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+
+   wysh set ifs=$',\t'
+   echo ifs<$ifs> ifs-ws<$ifs-ws>
+   vpospar set hey, "'you    ", world!
+   echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   vput vpospar x quote; echo x<$x>
+   vpospar clear;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   eval vpospar set ${x};echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+	__EOT
+   check behave:vpospar-ifs 0 "${MBOX}" '2015927702 706'
 
    t_epilog
 }
