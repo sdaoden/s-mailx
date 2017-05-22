@@ -5316,16 +5316,31 @@ to the given variables.
 The variable names are checked by the same rules as documented for
 .Cm vput ,
 and the same error codes will be seen in
-.Va \&! .
-If there are more fields than variables, assign successive fields to the
+.Va \&! ;
+the exit status
+.Va \&?
+indicates the number of bytes read, it will be
+.Ql -1
+with the error number
+.Va \&!
+set to
+.Va ^ERR Ns -BADF
+in case of I/O errors, or
+.Va ^ERR Ns -NONE
+upon End-Of-File.
+If there are more fields than variables, assigns successive fields to the
 last given variable.
-If there are less fields than variables, assign the empty string to the
+If there are less fields than variables, assigns the empty string to the
 remains.
 .Bd -literal -offset indent
 ? read a b c
    H  e  l  l  o
 ? echo "<$a> <$b> <$c>"
 <H> <e> <l  l  o>
+? wysh set ifs=:; read a b c;unset ifs
+hey2.0,:"'you    ",:world!:mars.:
+? echo $?/$^ERRNAME / <$a><$b><$c>
+0/NONE / <hey2.0,><"'you    ",><world!:mars.:><><>
 .Ed
 .
 .Mx

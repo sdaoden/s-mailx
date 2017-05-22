@@ -76,6 +76,7 @@ enum a_go_flags{
          /* a_GO_MACRO_X_OPTION | a_GO_MACRO_CMD | */ a_GO_SPLICE,
 
    a_GO_FORCE_EOF = 1u<<8,    /* go_input() shall return EOF next */
+   a_GO_IS_EOF = 1u<<9,
 
    a_GO_SUPER_MACRO = 1u<<16, /* *Not* inheriting n_PS_SOURCING state */
    /* This context has inherited the memory pool from its parent.
@@ -1286,16 +1287,28 @@ n_go_input_clearerr(void){
          a_GO_PIPE | a_GO_MACRO | a_GO_SPLICE)))
       fp = a_go_ctx->gc_file;
 
-   if(fp != NULL)
+   if(fp != NULL){
+      a_go_ctx->gc_flags &= ~a_GO_IS_EOF;
       clearerr(fp);
+   }
    NYD2_LEAVE;
 }
 
 FL void
 n_go_input_force_eof(void){
-   NYD_ENTER;
+   NYD2_ENTER;
    a_go_ctx->gc_flags |= a_GO_FORCE_EOF;
-   NYD_LEAVE;
+   NYD2_LEAVE;
+}
+
+FL bool_t
+n_go_input_is_eof(void){
+   bool_t rv;
+   NYD2_ENTER;
+
+   rv = ((a_go_ctx->gc_flags & a_GO_IS_EOF) != 0);
+   NYD2_LEAVE;
+   return rv;
 }
 
 FL void
@@ -1346,6 +1359,7 @@ FL int
    histok = TRU1;
 
    if(a_go_ctx->gc_flags & a_GO_FORCE_EOF){
+      a_go_ctx->gc_flags |= a_GO_IS_EOF;
       n = -1;
       goto jleave;
    }
@@ -1373,6 +1387,7 @@ jinject:
       }else{
          if((*linebuf = a_go_ctx->gc_lines[a_go_ctx->gc_loff]) == NULL){
             *linesize = 0;
+            a_go_ctx->gc_flags |= a_GO_IS_EOF;
             n = -1;
             goto jleave;
          }
@@ -1471,6 +1486,9 @@ jforce_stdin:
                n_MEMORY_DEBUG_ARGSCALL);
 
          hold_all_sigs();
+
+         if(n < 0 && feof(ifile))
+            a_go_ctx->gc_flags |= a_GO_IS_EOF;
 
          if(n > 0 && nold > 0){
             char const *cp;

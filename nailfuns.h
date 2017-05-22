@@ -894,6 +894,10 @@ FL void n_go_input_clearerr(void);
 /* Force n_go_input() to read EOF next */
 FL void n_go_input_force_eof(void);
 
+/* Returns true if force_eof() has been set -- it is set automatically if
+ * an input context enters EOF state (rather than error, as in ferror(3)) */
+FL bool_t n_go_input_is_eof(void);
+
 /* Force n_go_input() to read that buffer next -- for `history', and the MLE.
  * If commit is not true then we'll reenter the line editor with buf as default
  * line content.  Only to be used in interactive and non-robot mode! */

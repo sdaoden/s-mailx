@@ -370,20 +370,20 @@ c_echoerrn(void *v){
 }
 
 FL int
-c_read(void *vp){
+c_read(void * volatile vp){
    struct n_sigman sm;
+   struct str trim;
    struct n_string s, *sp;
    char *linebuf;
-   size_t linesize;
+   size_t linesize, i;
    int rv;
-   char const *ifs, *ifsws, **argv, *cp, *cp2;
+   char const *ifs, **argv, *cp;
    NYD2_ENTER;
 
    sp = n_string_creat_auto(&s);
    sp = n_string_reserve(sp, 64 -1);
 
    ifs = ok_vlook(ifs);
-   ifsws = ok_vlook(ifs_ws);
    rv = 0;
    linesize = 0;
    linebuf = NULL;
@@ -394,69 +394,68 @@ c_read(void *vp){
       break;
    default:
       n_pstate_err_no = n_ERR_INTR;
-      rv = 1;
+      rv = -1;
       goto jleave;
    }
+
+   n_pstate_err_no = n_ERR_NONE;
    rv = n_go_input(((n_pstate & n_PS_COMPOSE_MODE
             ? n_GO_INPUT_CTX_COMPOSE : n_GO_INPUT_CTX_DEFAULT) |
          n_GO_INPUT_FORCE_STDIN | n_GO_INPUT_NL_ESC |
          n_GO_INPUT_PROMPT_NONE /* XXX POSIX: PS2: yes! */),
          NULL, &linebuf, &linesize, NULL, NULL);
-   n_pstate_err_no = n_ERR_NONE; /* TODO I/O error if rv<0! */
-   if(rv < 0)
+   if(rv < 0){
+      if(!n_go_input_is_eof())
+         n_pstate_err_no = n_ERR_BADF;
       goto jleave;
+   }else if(rv == 0){
+      if(n_go_input_is_eof()){
+         rv = -1;
+         goto jleave;
+      }
+   }else{
+      trim.s = linebuf;
+      trim.l = linesize;
 
-   if(rv > 0){
-      cp = linebuf;
-
-      for(rv = 0; *argv != NULL; ++argv){
-         char c;
-
-         while((c = *cp) != '\0' && strchr(ifsws, c) != NULL)
-            ++cp;
-         if(c == '\0')
+      for(; *argv != NULL; ++argv){
+         if(trim.l == 0 || n_str_trim_ifs(&trim, FAL0)->l == 0)
             break;
 
          /* The last variable gets the remaining line less trailing IFS-WS */
          if(argv[1] == NULL){
-            for(cp2 = cp; *cp2 != '\0'; ++cp2)
-               ;
-            for(; cp2 > cp; --cp2){
-               c = cp2[-1];
-               if(strchr(ifsws, c) == NULL)
-                  break;
-            }
-jcp2cp:
-            sp = n_string_assign_buf(sp, cp, PTR2SIZE(cp2 - cp));
-         }else for(cp2 = cp;; ++cp2){
-            if((c = *cp2) == '\0')
-               goto jcp2cp;
-            if(strchr(ifs, c) != NULL){
-               sp = n_string_assign_buf(sp, cp, PTR2SIZE(cp2 - cp));
-               ++cp2;
+jitall:
+            sp = n_string_assign_buf(sp, trim.s, trim.l);
+            trim.l = 0;
+         }else for(cp = trim.s, i = 1;; ++cp, ++i){
+            if(strchr(ifs, *cp) != NULL){
+               sp = n_string_assign_buf(sp, trim.s, i - 1);
+               trim.s += i;
+               trim.l -= i;
                break;
             }
+            if(i == trim.l)
+               goto jitall;
          }
-         cp = cp2;
 
          if(!a_cmisc_read_set(*argv, n_string_cp(sp))){
             n_pstate_err_no = n_ERR_NOTSUP;
-            rv = 1;
+            rv = -1;
             break;
          }
       }
    }
 
    /* Set the remains to the empty string */
+jleave:
    for(; *argv != NULL; ++argv)
       if(!a_cmisc_read_set(*argv, n_empty)){
          n_pstate_err_no = n_ERR_NOTSUP;
-         rv = 1;
+         rv = -1;
          break;
       }
 
    n_sigman_cleanup_ping(&sm);
-jleave:
+
    if(linebuf != NULL)
       n_free(linebuf);
    NYD2_LEAVE;
