@@ -602,10 +602,10 @@ a_main_rcv_mode(char const *folder, char const *Larg){
    if(n_psonce & n_PSO_INTERACTIVE)
       n_tty_init();
    n_go_main_loop();
-   if(!(n_psonce & n_PSO_XIT)){
-      if(n_psonce & n_PSO_INTERACTIVE)
-         n_tty_destroy();
+   if(n_psonce & n_PSO_INTERACTIVE)
+      n_tty_destroy((n_psonce & n_PSO_XIT) != 0);
 
+   if(!(n_psonce & n_PSO_XIT)){
       if(mb.mb_type == MB_FILE || mb.mb_type == MB_MAILDIR){
          safe_signal(SIGHUP, SIG_IGN);
          safe_signal(SIGINT, SIG_IGN);
@@ -1188,8 +1188,8 @@ jgetopt_done:
    if(n_psonce & n_PSO_INTERACTIVE)
       n_tty_init();
    mail(to, cc, bcc, subject, attach, qf, ((n_poption & n_PO_F_FLAG) != 0));
-   if((n_psonce & (n_PSO_XIT | n_PSO_INTERACTIVE)) == n_PSO_INTERACTIVE)
-      n_tty_destroy();
+   if(n_psonce & n_PSO_INTERACTIVE)
+      n_tty_destroy((n_psonce & n_PSO_XIT) != 0);
 
 jleave:
   /* Be aware of identical code for `exit' command! */

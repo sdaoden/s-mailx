@@ -3809,14 +3809,14 @@ jleave:
 }
 
 FL void
-n_tty_destroy(void){
+n_tty_destroy(bool_t xit_fastpath){
    NYD_ENTER;
 
    if(!(n_psonce & n_PSO_LINE_EDITOR_INIT))
       goto jleave;
 
 # ifdef HAVE_HISTORY
-   do/* for break */{
+   if(!xit_fastpath) do/* for break */{
       size_t i;
       char const *v;
       struct a_tty_hist *thp;
@@ -3856,13 +3856,14 @@ jhist_done:
 # endif /* HAVE_HISTORY */
 
 # if defined HAVE_KEY_BINDINGS && defined HAVE_DEBUG
-   c_unbind(n_UNCONST("* *"));
+   n_go_command(n_GO_INPUT_NONE, "unbind * *");
 # endif
 
 # ifdef HAVE_DEBUG
    memset(&a_tty, 0, sizeof a_tty);
+
+   n_psonce &= ~n_PSO_LINE_EDITOR_INIT;
 # endif
-   DBG( n_psonce &= ~n_PSO_LINE_EDITOR_INIT; )
 jleave:
    NYD_LEAVE;
 }
@@ -4389,6 +4390,7 @@ jleave:
  * The really-nothing-at-all implementation
  */
 
+# if 0
 FL void
 n_tty_init(void){
    NYD_ENTER;
@@ -4396,10 +4398,12 @@ n_tty_init(void){
 }
 
 FL void
-n_tty_destroy(void){
+n_tty_destroy(bool_t xit_fastpath){
    NYD_ENTER;
+   n_UNUSED(xit_fastpath);
    NYD_LEAVE;
 }
+# endif /* 0 */
 
 FL void
 n_tty_signal(int sig){

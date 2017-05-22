@@ -2504,8 +2504,13 @@ FL ui32_t n_tty_create_prompt(struct n_string *store, char const *xprompt,
 #endif
 
 /* Overall interactive terminal life cycle for command line editor library */
+#ifdef HAVE_MLE
 FL void n_tty_init(void);
-FL void n_tty_destroy(void);
+FL void n_tty_destroy(bool_t xit_fastpath);
+#else
+# define n_tty_init() do{;}while(0)
+# define n_tty_destroy(B) do{;}while(0)
+#endif
 
 /* Rather for main.c / SIGWINCH interaction only */
 FL void n_tty_signal(int sig);
