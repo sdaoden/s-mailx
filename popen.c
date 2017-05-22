@@ -734,8 +734,8 @@ pipe_cloexec(int fd[2])
 #else
    if (pipe(fd) == -1)
       goto jleave;
-   (void)fcntl(fd[0], F_SETFD, FD_CLOEXEC);
-   (void)fcntl(fd[1], F_SETFD, FD_CLOEXEC);
+   _CLOEXEC_SET(fd[0]);
+   _CLOEXEC_SET(fd[1]);
 #endif
    rv = TRU1;
 jleave:
