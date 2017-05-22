@@ -1,0 +1,6 @@
+27/NONE / <hey1,><"'you><", world!>
+32/NONE / <hey2,><"'you><", bugs bunny!>
+25/NONE / <hey3,><"'you><",>
+19/NONE / <hey4,><"'you><">
+-1/NONE / <><><>
+readctl remove:0/NONE
