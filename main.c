@@ -390,7 +390,7 @@ a_main_grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt){
    char const **newcpp;
    NYD_ENTER;
 
-   newcpp = salloc(sizeof(char*) * newsize);
+   newcpp = salloc(sizeof(char*) * (newsize + 1));
 
    if(oldcnt > 0)
       memcpy(newcpp, *cpp, oldcnt * sizeof(char*));
@@ -902,19 +902,18 @@ joarg:
          folder = "/dev/null";
          if(oargs_cnt + 10 >= oargs_size)
             oargs_size = a_main_grow_cpp(&oargs, oargs_size + 11, oargs_cnt);
-
+         n_pstate |= n_PS_ROBOT; /* (be silent unsetting undefined variables) */
          ok_vset(MAIL, folder), oargs[oargs_cnt++] = "MAIL=/dev/null";
          ok_vset(MBOX, folder), oargs[oargs_cnt++] = "MBOX=/dev/null";
          ok_bset(emptystart), oargs[oargs_cnt++] = "emptystart";
          ok_bclear(errexit), oargs[oargs_cnt++] = "noerrexit";
          ok_bclear(header), oargs[oargs_cnt++] = "noheader";
-
          ok_vset(inbox, folder), oargs[oargs_cnt++] = "inbox=/dev/null";
          ok_bclear(posix), oargs[oargs_cnt++] = "noposix";
          ok_bset(quiet), oargs[oargs_cnt++] = "quiet";
          ok_bset(sendwait), oargs[oargs_cnt++] = "sendwait";
          ok_bset(typescript_mode), oargs[oargs_cnt++] = "typescript-mode";
-
+         n_pstate &= ~n_PS_ROBOT;
          break;
       case '.':
          n_psonce |= n_PSO_SENDMODE;
@@ -1042,37 +1041,33 @@ jgetopt_done:
    }else
       n_scrnheight = n_realscreenheight = 24, n_scrnwidth = 80;
 
-   /* Fixate the current memory pool snapshot.
-    * Memory is auto-reclaimed from now on */
+   /* Create memory pool snapshot; Memory is auto-reclaimed from now on */
    n_memory_pool_fixate();
 
    /* load() any resource files */
    if(resfiles & a_RF_ALL){
-      /* *expand() returns a savestr(), but load only uses the file name for
-       * fopen(), so it's safe to do this */
+      /* *expand() returns a savestr(), but load() only uses the file name
+       * for fopen(), so it is safe to do this */
       if(resfiles & a_RF_SYSTEM){
          bool_t nload;
 
          if((nload = ok_blook(NAIL_NO_SYSTEM_RC)))
             n_OBSOLETE(_("Please use $MAILX_NO_SYSTEM_RC instead of "
                "$NAIL_NO_SYSTEM_RC"));
-         if(!nload && !ok_blook(MAILX_NO_SYSTEM_RC)){
-            if(!n_go_load(VAL_SYSCONFDIR "/" VAL_SYSCONFRC))
-               goto j_leave;
-         }
-      }
-
-      if(resfiles & a_RF_USER){
-         if(!n_go_load(fexpand(ok_vlook(MAILRC), FEXP_LOCAL | FEXP_NOPROTO)))
+         if(!nload && !ok_blook(MAILX_NO_SYSTEM_RC) &&
+               !n_go_load(VAL_SYSCONFDIR "/" VAL_SYSCONFRC))
             goto j_leave;
       }
+
+      if((resfiles & a_RF_USER) &&
+            !n_go_load(fexpand(ok_vlook(MAILRC), FEXP_LOCAL | FEXP_NOPROTO)))
+         goto j_leave;
 
       if((cp = ok_vlook(NAIL_EXTRA_RC)) != NULL)
          n_OBSOLETE(_("Please use *mailx-extra-rc*, not *NAIL_EXTRA_RC*"));
-      if(cp != NULL || (cp = ok_vlook(mailx_extra_rc)) != NULL){
-         if(!n_go_load(fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)))
-            goto j_leave;
-      }
+      if((cp != NULL || (cp = ok_vlook(mailx_extra_rc)) != NULL) &&
+            !n_go_load(fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)))
+         goto j_leave;
    }
 
    /* Ensure the -S and other command line options take precedence over
@@ -1080,22 +1075,20 @@ jgetopt_done:
     * Our "ternary binary" option *verbose* needs special treament */
    if((n_poption & (n_PO_VERB | n_PO_VERBVERB)) == n_PO_VERB)
       n_poption &= ~n_PO_VERB;
-   /* ..and be silent when unsetting an undefined variable */
-   n_pstate |= n_PS_ROBOT;
-   for(i = 0; UICMP(z, i, <, oargs_cnt); ++i){
-      char const *a[2];
-
-      a[0] = oargs[i];
-      a[1] = NULL;
-      c_set(a);
+   /* ..and be silent when unsetting undefined variables again */
+   if(oargs_cnt > 0){
+      n_pstate |= n_PS_ROBOT;
+      oargs[oargs_cnt] = NULL;
+      c_set(oargs);
+      n_pstate &= ~n_PS_ROBOT;
    }
-   n_pstate &= ~n_PS_ROBOT;
 
-   /* Cause possible umask(2), now that any setting is established, and before
-    * we change accounts, evaluate commands etc. */
+   /* Cause possible umask(2) to be applied, now that any setting is
+    * established, and before we change accounts, evaluate commands etc. */
    (void)ok_vlook(umask);
 
    /* Additional options to pass-through to MTA, and allowed to do so? */
+   i = a_main_oind;
    if((cp = ok_vlook(expandargv)) != NULL){
       bool_t isfail, isrestrict;
 
@@ -1105,7 +1098,7 @@ jgetopt_done:
       if((n_poption & n_PO_D_V) && !isfail && !isrestrict && *cp != '\0')
          n_err(_("Unknown *expandargv* value: %s\n"), cp);
 
-      if((cp = argv[i = a_main_oind]) != NULL){
+      if((cp = argv[i]) != NULL){
          if(isfail || (isrestrict && (!(n_poption & n_PO_TILDE_FLAG) ||
                   !(n_psonce & n_PSO_INTERACTIVE)))){
             n_err(_("*expandargv* doesn't allow MTA arguments; consider "
@@ -1118,7 +1111,8 @@ jgetopt_done:
             n_smopts[n_smopts_cnt++] = cp;
          }while((cp = argv[++i]) != NULL);
       }
-   }
+   }else if(argv[i] != NULL && (n_poption & n_PO_D_V))
+      n_err(_("*expandargv* not set, ignoring given MTA arguments\n"));
 
    /* We had to wait until the resource files are loaded and any command line
     * setting has been restored, but get the termcap up and going before we
@@ -1166,30 +1160,29 @@ jgetopt_done:
     */
    n_psonce |= n_PSO_STARTED;
 
-   if(!(n_psonce & n_PSO_SENDMODE)){
+   if(!(n_psonce & n_PSO_SENDMODE))
       n_exit_status = a_main_rcv_mode(folder, Larg);
-      goto jleave;
-   }
+   else{
+      /* Now that full mailx(1)-style file expansion is possible handle the
+       * attachments which we had delayed due to this.
+       * This may use savestr(), but since we won't enter the command loop we
+       * don't need to care about that */
+      for(; a_head != NULL; a_head = a_head->aa_next){
+         enum n_attach_error aerr;
 
-   /* Now that full mailx(1)-style file expansion is possible handle the
-    * attachments which we had delayed due to this.
-    * This may use savestr(), but since we won't enter the command loop we
-    * don't need to care about that */
-   for(; a_head != NULL; a_head = a_head->aa_next){
-      enum n_attach_error aerr;
-
-      attach = n_attachment_append(attach, a_head->aa_file, &aerr, NULL);
-      if(aerr != n_ATTACH_ERR_NONE){
-         n_exit_status = n_EXIT_ERR;
-         goto jleave;
+         attach = n_attachment_append(attach, a_head->aa_file, &aerr, NULL);
+         if(aerr != n_ATTACH_ERR_NONE){
+            n_exit_status = n_EXIT_ERR;
+            goto jleave;
+         }
       }
-   }
 
-   if(n_psonce & n_PSO_INTERACTIVE)
-      n_tty_init();
-   mail(to, cc, bcc, subject, attach, qf, ((n_poption & n_PO_F_FLAG) != 0));
-   if(n_psonce & n_PSO_INTERACTIVE)
-      n_tty_destroy((n_psonce & n_PSO_XIT) != 0);
+      if(n_psonce & n_PSO_INTERACTIVE)
+         n_tty_init();
+      mail(to, cc, bcc, subject, attach, qf, ((n_poption & n_PO_F_FLAG) != 0));
+      if(n_psonce & n_PSO_INTERACTIVE)
+         n_tty_destroy((n_psonce & n_PSO_XIT) != 0);
+   }
 
 jleave:
   /* Be aware of identical code for `exit' command! */
