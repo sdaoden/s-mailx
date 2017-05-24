@@ -746,22 +746,24 @@ enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
 
 enum n_cmd_arg_desc_flags{/* TODO incomplete, misses getmsglist() */
    /* - A type */
-   n_CMD_ARG_DESC_STRING = 1<<0,    /* A !blankspacechar() string */
-   n_CMD_ARG_DESC_WYSH = 1<<1,      /* sh(1)ell-style quoted */
+   n_CMD_ARG_DESC_STRING = 1u<<0,   /* A !blankspacechar() string */
+   n_CMD_ARG_DESC_WYSH = 1u<<1,     /* sh(1)ell-style quoted */
 
    n__CMD_ARG_DESC_TYPE_MASK = n_CMD_ARG_DESC_STRING | n_CMD_ARG_DESC_WYSH,
 
    /* - Optional flags */
    /* It is not an error if an optional argument is missing; once an argument
     * has been declared optional only optional arguments may follow */
-   n_CMD_ARG_DESC_OPTION = 1<<16,
+   n_CMD_ARG_DESC_OPTION = 1u<<16,
    /* GREEDY: parse as many of that type as possible; must be last entry */
-   n_CMD_ARG_DESC_GREEDY = 1<<17,
+   n_CMD_ARG_DESC_GREEDY = 1u<<17,
+   /* If greedy, join all given arguments separated by ASCII SP right away */
+   n_CMD_ARG_DESC_GREEDY_JOIN = 1u<<18,
    /* Honour an overall "stop" request in one of the arguments (\c@ or #) */
-   n_CMD_ARG_DESC_HONOUR_STOP = 1<<18,
+   n_CMD_ARG_DESC_HONOUR_STOP = 1u<<19,
 
    n__CMD_ARG_DESC_FLAG_MASK = n_CMD_ARG_DESC_OPTION | n_CMD_ARG_DESC_GREEDY |
-         n_CMD_ARG_DESC_HONOUR_STOP
+         n_CMD_ARG_DESC_GREEDY_JOIN | n_CMD_ARG_DESC_HONOUR_STOP
 };
 
 #ifdef HAVE_COLOUR

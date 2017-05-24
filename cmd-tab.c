@@ -392,7 +392,7 @@ FL bool_t
 n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
    struct n_cmd_arg ncap, *lcap;
    struct str shin_orig, shin;
-   bool_t addca;
+   bool_t addca, greedyjoin;
    void const *cookie;
    size_t cad_idx, parsed_args;
    struct n_cmd_arg_desc const *cadp;
@@ -425,6 +425,8 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
 
    cookie = NULL;
    parsed_args = 0;
+   greedyjoin = FAL0;
+
    for(cadp = cacp->cac_desc, cad_idx = 0; shin.l > 0 && cad_idx < cadp->cad_no;
          ++cad_idx){
 jredo:
@@ -477,7 +479,6 @@ jredo:
          ncap.ca_inlen = PTR2SIZE(shin.s - ncap.ca_indat);
          if((shs & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_ERR_MASK)) ==
                n_SHEXP_STATE_OUTPUT){
-
             if((shs & n_SHEXP_STATE_META_SEMICOLON) && shou.s_len == 0)
                break;
             ncap.ca_arg.ca_str.s = n_string_cp(shoup);
@@ -500,30 +501,51 @@ jredo:
       ++parsed_args;
 
       if(addca){
-         struct n_cmd_arg *cap;
+         if(greedyjoin == TRU1){ /* TODO speed this up! */
+            char *cp;
+            size_t i;
 
-         cap = salloc(sizeof *cap);
-         memcpy(cap, &ncap, sizeof ncap);
-         if(lcap == NULL)
-            cacp->cac_arg = cap;
-         else
-            lcap->ca_next = cap;
-         lcap = cap;
-         ++cacp->cac_no;
+            assert(lcap != NULL);
+            i = lcap->ca_arg.ca_str.l;
+            lcap->ca_arg.ca_str.l += 1 + ncap.ca_arg.ca_str.l;
+            cp = salloc(lcap->ca_arg.ca_str.l +1);
+            memcpy(cp, lcap->ca_arg.ca_str.s, i);
+            lcap->ca_arg.ca_str.s = cp;
+            cp[i++] = ' ';
+            memcpy(&cp[i], ncap.ca_arg.ca_str.s, ncap.ca_arg.ca_str.l +1);
+         }else{
+            struct n_cmd_arg *cap;
+
+            cap = salloc(sizeof *cap);
+            memcpy(cap, &ncap, sizeof ncap);
+            if(lcap == NULL)
+               cacp->cac_arg = cap;
+            else
+               lcap->ca_next = cap;
+            lcap = cap;
+            ++cacp->cac_no;
+         }
 
          if(addca == TRUM1)
             goto jleave;
       }
 
       if((shin.l > 0 || cookie != NULL) &&
-            (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_GREEDY))
+            (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_GREEDY)){
+         if(!greedyjoin)
+            greedyjoin = ((ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_GREEDY_JOIN) &&
+                     (ncap.ca_ent_flags[0] &
+                        (n_CMD_ARG_DESC_STRING | n_CMD_ARG_DESC_WYSH)))
+                  ? TRU1 : TRUM1;
          goto jredo;
+      }
    }
 
    if(cad_idx < cadp->cad_no &&
          !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION))
       goto jerr;
 
+   lcap = (struct n_cmd_arg*)-1;
 jleave:
    NYD_LEAVE;
    return (lcap != NULL);
@@ -545,29 +567,6 @@ jerr:{
    }
    lcap = NULL;
    goto jleave;
-}
-
-FL struct n_string *
-n_cmd_arg_join_greedy(struct n_cmd_arg_ctx const *cacp, struct n_string *store){
-   struct n_cmd_arg *cap;
-   NYD_ENTER;
-
-   for(cap = cacp->cac_arg;
-         (cap != NULL && !(cap->ca_ent_flags[0] & n_CMD_ARG_DESC_GREEDY));
-         cap = cap->ca_next)
-      ;
-   /* Can only join strings */
-   assert(cap == NULL ||
-      (cap->ca_ent_flags[0] & (n_CMD_ARG_DESC_STRING | n_CMD_ARG_DESC_WYSH)));
-
-   while(cap != NULL){
-      store = n_string_push_buf(store,
-            cap->ca_arg.ca_str.s, cap->ca_arg.ca_str.l);
-      if((cap = cap->ca_next) != NULL)
-         store = n_string_push_c(store, ' ');
-   }
-   NYD_LEAVE;
-   return store;
 }
 
 FL void *

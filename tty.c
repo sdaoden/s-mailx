@@ -4311,18 +4311,18 @@ c_bind(void *v){
       Fclose(fp);
    }else{
       struct a_tty_bind_parse_ctx tbpc;
-      struct n_string store;
+      struct n_cmd_arg *cap;
 
       memset(&tbpc, 0, sizeof tbpc);
       tbpc.tbpc_cmd = cacp->cac_desc->cad_name;
-      tbpc.tbpc_in_seq = cacp->cac_arg->ca_next->ca_arg.ca_str.s;
-      tbpc.tbpc_exp.s = n_string_cp(n_cmd_arg_join_greedy(cacp,
-            n_string_creat_auto(&store)));
-      tbpc.tbpc_exp.l = store.s_len;
+      tbpc.tbpc_in_seq = (cap = cacp->cac_arg->ca_next)->ca_arg.ca_str.s;
+      if((cap = cap->ca_next) != NULL){
+         tbpc.tbpc_exp.s = cap->ca_arg.ca_str.s;
+         tbpc.tbpc_exp.l = cap->ca_arg.ca_str.l;
+      }
       tbpc.tbpc_flags = gif;
       if(!a_tty_bind_create(&tbpc, TRU1))
          v = NULL;
-      /*n_string_gut(&store);*/
    }
 jleave:
    NYD_LEAVE;

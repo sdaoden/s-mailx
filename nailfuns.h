@@ -642,11 +642,6 @@ FL struct n_cmd_desc const *n_cmd_default(void);
  * argument, and then a trailing empty argument is ignored, too */
 FL bool_t n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp);
 
-/* Join all the _GREEDY arguments that were seen into a single string.
- * Asserted they are string-based.  The data (if any) is appended to store */
-FL struct n_string *n_cmd_arg_join_greedy(struct n_cmd_arg_ctx const *cacp,
-                     struct n_string *store);
-
 /* Save away the data from autorec memory, and restore it to that.
  * The heap storage is a single pointer to be n_free() by users */
 FL void *n_cmd_arg_save_to_heap(struct n_cmd_arg_ctx const *cacp);
