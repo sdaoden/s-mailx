@@ -1895,6 +1895,68 @@ t_behave_vpospar() {
    t_epilog
 }
 
+t_behave_read() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} <<- '__EOT' > .tin
+   hey1, "'you    ", world!
+   hey2, "'you    ", bugs bunny!
+   hey3, "'you    ",     
+   hey4, "'you    "
+	__EOT
+
+   ${cat} <<- '__EOT' |\
+      ${MAILX} ${ARGS} -X'readctl create ./.tin' > "${MBOX}" 2>&1
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   readctl remove ./.tin;echo readctl remove:$?/$^ERRNAME
+	__EOT
+   check behave:read-1 0 "${MBOX}" '1527910147 173'
+
+   ${cat} <<- '__EOT' > .tin2
+   hey2.0,:"'you    ",:world!:mars.:
+   hey2.1,:"'you    ",:world!
+   hey2.2,:"'you    ",:bugs bunny!
+   hey2.3,:"'you    ",:    
+   hey2.4,:"'you    ":
+   :
+	__EOT
+
+   ${cat} <<- '__EOT' |\
+      6< .tin2 ${MAILX} ${ARGS} -X 'readctl create 6' > "${MBOX}" 2>&1
+   set ifs=:
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   readctl remove 6;echo readctl remove:$?/$^ERRNAME
+	__EOT
+   check behave:read-ifs 0 "${MBOX}" '890153490 298'
+
+   t_epilog
+}
+
 t_behave_mbox() {
    t_prolog
    TRAP_EXIT_ADDONS="./.t*"
