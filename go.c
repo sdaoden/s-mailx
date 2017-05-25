@@ -159,6 +159,15 @@ struct a_go_ctx{
    char gc_name[n_VFIELD_SIZE(0)]; /* Name of file or macro */
 };
 
+struct a_go_readctl_ctx{ /* TODO localize n_readctl_overlay, use OnForkEvent! */
+   struct a_go_readctl_ctx *grc_last;
+   struct a_go_readctl_ctx *grc_next;
+   char const *grc_expand;          /* If filename based, expanded string */
+   FILE *grc_fp;
+   si32_t grc_fd;                   /* Based upon file-descriptor */
+   char grc_name[n_VFIELD_SIZE(4)]; /* User input for identification purposes */
+};
+
 static sighandler_type a_go_oldpipe;
 /* a_go_cmd_tab[] after fun protos */
 
@@ -1429,8 +1438,9 @@ jforce_stdin:
    n_pstate &= ~n_PS_READLINE_NL;
    iftype = (!(n_psonce & n_PSO_STARTED) ? "LOAD"
           : (n_pstate & n_PS_SOURCING) ? "SOURCE" : "READ");
-   doprompt = ((n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)) ==
-         (n_PSO_INTERACTIVE | n_PSO_STARTED) && !(n_pstate & n_PS_ROBOT));
+   doprompt = (!(gif & n_GO_INPUT_FORCE_STDIN) &&
+         (n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)) ==
+            (n_PSO_INTERACTIVE | n_PSO_STARTED) && !(n_pstate & n_PS_ROBOT));
    dotty = (doprompt && !ok_blook(line_editor_disable));
    if(!doprompt)
       gif |= n_GO_INPUT_PROMPT_NONE;
@@ -1445,7 +1455,13 @@ jforce_stdin:
    if(!dotty && (gif & n_GO_INPUT_PROMPT_NONE))
       fflush(n_stdout);
 
-   ifile = (gif & n_GO_INPUT_FORCE_STDIN) ? n_stdin : a_go_ctx->gc_file;
+   if(gif & n_GO_INPUT_FORCE_STDIN){
+      struct a_go_readctl_ctx *grcp;
+
+      grcp = n_readctl_overlay;
+      ifile = (grcp == NULL || grcp->grc_fp == NULL) ? n_stdin : grcp->grc_fp;
+   }else
+      ifile = a_go_ctx->gc_file;
    if(ifile == NULL){
       assert((n_pstate & n_PS_COMPOSE_FORKHOOK) &&
          (a_go_ctx->gc_flags & a_GO_MACRO));
@@ -2014,6 +2030,198 @@ c_quit(void *vp){
    n_psonce |= n_PSO_QUIT;
    NYD_LEAVE;
    return 0;
+}
+
+FL int
+c_readctl(void *vp){
+   /* TODO We would need OnForkEvent and then simply remove some internal
+    * TODO management; we don't have this, therefore we need global
+    * TODO n_readctl_overlay to be accessible via =NULL, and to make that
+    * TODO work in turn we need an instance for default STDIN!  Sigh. */
+   static ui8_t a_buf[n_VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name)+1 +1];
+   static struct a_go_readctl_ctx *a_stdin;
+
+   struct a_go_readctl_ctx *grcp;
+   char const *emsg;
+   enum{
+      a_NONE = 0,
+      a_ERR = 1u<<0,
+      a_SET = 1u<<1,
+      a_CREATE = 1u<<2,
+      a_REMOVE = 1u<<3
+   } f;
+   struct n_cmd_arg *cap;
+   struct n_cmd_arg_ctx *cacp;
+   NYD_ENTER;
+
+   if(a_stdin == NULL){
+      a_stdin = (struct a_go_readctl_ctx*)a_buf;
+      a_stdin->grc_name[0] = '-';
+      n_readctl_overlay = a_stdin;
+   }
+
+   n_pstate_err_no = n_ERR_NONE;
+   cacp = vp;
+   cap = cacp->cac_arg;
+
+   if(cacp->cac_no == 0 || is_asccaseprefix(cap->ca_arg.ca_str.s, "show"))
+      goto jshow;
+   else if(is_asccaseprefix(cap->ca_arg.ca_str.s, "set"))
+      f = a_SET;
+   else if(is_asccaseprefix(cap->ca_arg.ca_str.s, "create"))
+      f = a_CREATE;
+   else if(is_asccaseprefix(cap->ca_arg.ca_str.s, "remove"))
+      f = a_REMOVE;
+   else{
+      emsg = N_("`readctl': invalid subcommand: %s\n");
+      goto jeinval_quote;
+   }
+
+   if(cacp->cac_no == 1){ /* TODO better option parser <> subcommand */
+      n_err(_("`readctl': %s: requires argument\n"), cap->ca_arg.ca_str.s);
+      goto jeinval;
+   }
+   cap = cap->ca_next;
+
+   /* - is special TODO unfortunately also regarding storage */
+   if(cap->ca_arg.ca_str.l == 1 && *cap->ca_arg.ca_str.s == '-'){
+      if(f & (a_CREATE | a_REMOVE)){
+         n_err(_("`readctl': cannot create nor remove -\n"));
+         goto jeinval;
+      }
+      n_readctl_overlay = a_stdin;
+      goto jleave;
+   }
+
+   /* Try to find a yet existing instance */
+   if((grcp = n_readctl_overlay) != NULL){
+      for(; grcp != NULL; grcp = grcp->grc_next)
+         if(!strcmp(grcp->grc_name, cap->ca_arg.ca_str.s))
+            goto jfound;
+      for(grcp = n_readctl_overlay; (grcp = grcp->grc_last) != NULL;)
+         if(!strcmp(grcp->grc_name, cap->ca_arg.ca_str.s))
+            goto jfound;
+   }
+
+   if(f & (a_SET | a_REMOVE)){
+      emsg = N_("`readctl': no such channel: %s\n");
+      goto jeinval_quote;
+   }
+
+jfound:
+   if(f & a_SET)
+      n_readctl_overlay = grcp;
+   else if(f & a_REMOVE){
+      if(n_readctl_overlay == grcp)
+         n_readctl_overlay = a_stdin;
+
+      if(grcp->grc_last != NULL)
+         grcp->grc_last->grc_next = grcp->grc_next;
+      if(grcp->grc_next != NULL)
+         grcp->grc_next->grc_last = grcp->grc_last;
+      fclose(grcp->grc_fp);
+      n_free(grcp);
+   }else{
+      FILE *fp;
+      size_t elen;
+      si32_t fd;
+
+      if(grcp != NULL){
+         n_err(_("`readctl': channel already exists: %s\n"), /* TODO reopen */
+            n_shexp_quote_cp(cap->ca_arg.ca_str.s, FAL0));
+         n_pstate_err_no = n_ERR_EXIST;
+         f = a_ERR;
+         goto jleave;
+      }
+
+      if((n_idec_si32_cp(&fd, cap->ca_arg.ca_str.s, 0, NULL
+               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+            ) != n_IDEC_STATE_CONSUMED){
+         if((emsg = fexpand(cap->ca_arg.ca_str.s, FEXP_LOCAL | FEXP_NVAR)
+               ) == NULL){
+            emsg = N_("`readctl': cannot expand filename %s\n");
+            goto jeinval_quote;
+         }
+         fd = -1;
+         elen = strlen(emsg);
+         fp = safe_fopen(emsg, "r", NULL);
+      }else if(fd == STDIN_FILENO || fd == STDOUT_FILENO ||
+            fd == STDERR_FILENO){
+         n_err(_("`readctl': create: standard descriptors are not allowed"));
+         goto jeinval;
+      }else{
+         /* xxx Avoid */
+         _CLOEXEC_SET(fd);
+         emsg = NULL;
+         elen = 0;
+         fp = fdopen(fd, "r");
+      }
+
+      if(fp != NULL){
+         size_t i;
+
+         if((i = UIZ_MAX - elen) <= cap->ca_arg.ca_str.l ||
+               (i -= cap->ca_arg.ca_str.l) <=
+                  n_VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name) +2){
+            n_err(_("`readctl': failed to create storage for %s\n"),
+               cap->ca_arg.ca_str.s);
+            n_pstate_err_no = n_ERR_OVERFLOW;
+            f = a_ERR;
+            goto jleave;
+         }
+
+         grcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name) +
+               cap->ca_arg.ca_str.l +1 + elen +1);
+         grcp->grc_last = NULL;
+         if((grcp->grc_next = n_readctl_overlay) != NULL)
+            grcp->grc_next->grc_last = grcp;
+         n_readctl_overlay = grcp;
+         grcp->grc_fp = fp;
+         grcp->grc_fd = fd;
+         memcpy(grcp->grc_name, cap->ca_arg.ca_str.s, cap->ca_arg.ca_str.l +1);
+         if(elen == 0)
+            grcp->grc_expand = NULL;
+         else{
+            char *cp;
+
+            grcp->grc_expand = cp = &grcp->grc_name[cap->ca_arg.ca_str.l +1];
+            memcpy(cp, emsg, ++elen);
+         }
+      }else{
+         emsg = N_("`readctl': failed to create file for %s\n");
+         goto jeinval_quote;
+      }
+   }
+
+jleave:
+   NYD_LEAVE;
+   return (f & a_ERR) ? 1 : 0;
+jeinval_quote:
+   n_err(V_(emsg), n_shexp_quote_cp(cap->ca_arg.ca_str.s, FAL0));
+jeinval:
+   n_pstate_err_no = n_ERR_INVAL;
+   f = a_ERR;
+   goto jleave;
+
+jshow:
+   if((grcp = n_readctl_overlay) == NULL)
+      fprintf(n_stdout, _("`readctl': no channels registered\n"));
+   else{
+      while(grcp->grc_last != NULL)
+         grcp = grcp->grc_last;
+
+      fprintf(n_stdout, _("`readctl': registered channels:\n"));
+      for(; grcp != NULL; grcp = grcp->grc_next)
+         fprintf(n_stdout, _("%c%s %s%s%s%s\n"),
+            (grcp == n_readctl_overlay ? '*' : ' '),
+            (grcp->grc_fd != -1 ? _("descriptor") : _("name")),
+            n_shexp_quote_cp(grcp->grc_name, FAL0),
+            (grcp->grc_expand != NULL ? " (" : n_empty),
+            (grcp->grc_expand != NULL ? grcp->grc_expand : n_empty),
+            (grcp->grc_expand != NULL ? ")" : n_empty));
+   }
+   f = a_NONE;
+   goto jleave;
 }
 
 /* s-it-mode */

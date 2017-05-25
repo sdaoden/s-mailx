@@ -2546,6 +2546,7 @@ VL FILE *n_stdin;
 VL FILE *n_stdout;
 VL FILE *n_stderr;
 VL FILE *n_tty_fp;               /* Our terminal output TODO input channel */
+VL void *n_readctl_overlay;      /* `readctl' overlay (see c_readctl()) */
 
 VL ui32_t n_mb_cur_max;          /* Value of MB_CUR_MAX */
 VL ui32_t n_realscreenheight;    /* The real screen height */

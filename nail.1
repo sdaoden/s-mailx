@@ -5309,8 +5309,9 @@ in which case the user can escape with the exit command.
 .
 .Mx
 .It Ic read
-\*(NQ Read a line from standard input, and assign the data, which will
-be splitted as indicated by
+\*(NQ Read a line from standard input, or the channel set active via
+.Ic readctl ,
+and assign the data, which will be splitted as indicated by
 .Va ifs ,
 to the given variables.
 The variable names are checked by the same rules as documented for
@@ -5341,6 +5342,37 @@ remains.
 hey2.0,:"'you    ",:world!:mars.:
 ? echo $?/$^ERRNAME / <$a><$b><$c>
 0/NONE / <hey2.0,><"'you    ",><world!:mars.:><><>
+.Ed
+.
+.Mx
+.It Ic readctl
+\*(NQ Manages input channels for
+.Ic read ,
+to be used to avoid complicated or impracticable code, like calling
+.Ic \&\&read
+from within a macro in non-interactive mode.
+Without arguments, or when the first argument is
+.Cm show ,
+a listing of all known channels is printed.
+Channels can otherwise be
+.Cm create Ns
+d, and existing channels can be
+.Cm set
+active and
+.Cm remove Ns
+d by giving the string used for creation.
+.Pp
+The channel name is expected to be a file descriptor number, or,
+if parsing the numeric fails, an input file name that undergoes
+.Sx "Filename transformations" .
+E.g. (this example requires a modern shell):
+.Bd -literal -offset indent
+$ LC_ALL=C printf 'echon "hey, "\enread a\enyou\enecho $a' |\e
+  LC_ALL=C \*(uA -R#
+hey, you
+$ LC_ALL=C printf 'echon "hey, "\enread a\enecho $a' |\e
+  LC_ALL=C 6<<< 'you' \*(uA -R#X'readctl create 6'
+hey, you
 .Ed
 .
 .Mx
@@ -6673,7 +6705,7 @@ is often used as a rejustifying filter.
 .
 .Mx
 .It Ic ~^ Ar cmd Op Ar subcmd Op Ar arg3 Op Ar arg4
-Low-level command ment for scripted message access, i.e., for
+Low-level command meant for scripted message access, i.e., for
 .Va on-compose-splice-shell
 and
 .Va on-compose-splice .

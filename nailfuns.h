@@ -965,6 +965,9 @@ FL int c_xcall(void *vp);
 FL int c_exit(void *vp);
 FL int c_quit(void *vp);
 
+/* `readctl' */
+FL int c_readctl(void *vp);
+
 /*
  * head.c
  */

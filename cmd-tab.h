@@ -63,6 +63,15 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(call, 2, a_ctab_cad_call){
       n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_TRIM_IFSSPACE}
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
+n_CMD_ARG_DESC_SUBCLASS_DEF(readctl, 2, a_ctab_cad_readctl){
+   {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_OPTION | n_CMD_ARG_DESC_HONOUR_STOP,
+      n_SHEXP_PARSE_TRIM_IFSSPACE},
+   {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_OPTION |
+         n_CMD_ARG_DESC_GREEDY | n_CMD_ARG_DESC_GREEDY_JOIN |
+         n_CMD_ARG_DESC_HONOUR_STOP,
+      n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
 n_CMD_ARG_DESC_SUBCLASS_DEF(unbind, 2, a_ctab_cad_unbind){
    {n_CMD_ARG_DESC_WYSH, n_SHEXP_PARSE_TRIM_IFSSPACE},
    {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_HONOUR_STOP, n_SHEXP_PARSE_DRYRUN}
@@ -506,6 +515,11 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
 
    { "read", &c_read, (G | M | X | EM | TWYSH), 1, MAC, NULL
      DS(N_("Read a line from standard input into <variable>(s)")) },
+   { "readctl", &c_readctl, (G | M | X | EM | TARG), 0, 0,
+      n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_readctl)
+     DS(N_(
+     "[<show>], <create> <spec>, <set> <spec>, <remove> <spec> read channels")
+     )},
    { "return", &c_return, (M | X | EM | TWYSH), 0, 2, NULL
      DS(N_("Return control [with <return value> [<exit status>]] from macro"))},
 

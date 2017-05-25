@@ -1315,25 +1315,22 @@ a_amv_var_vsc_global(struct a_amv_var_carrier *avcp){
    }
 
    /* XXX Oh heaven, we are responsible to ensure that $?/! is up-to-date
-    * XXX and represents n_pstate_err_no; TODO unfortunately
     * TODO we could num=1 ok_v___[qe]m, but the thing is still a string
     * TODO and thus conversion takes places over and over again; also
     * TODO for now that would have to occur before we set _that_ value
     * TODO so let's special treat it until we store ints as such */
-   if(*ep >= 0){
-      switch(*ep){
-      case 0: rv = n_0; break;
-      case 1: rv = n_1; break;
-      default:
-         snprintf(itoabuf, sizeof itoabuf, "%d", *ep);
-         rv = itoabuf;
-         break;
-      }
-      n_PS_ROOT_BLOCK(n_var_okset(avcp->avc_okey, (uintptr_t)rv));
+   switch(*ep){
+   case 0: rv = n_0; break;
+   case 1: rv = n_1; break;
+   default:
+      snprintf(itoabuf, sizeof itoabuf, "%d", *ep);
+      rv = itoabuf;
+      break;
    }
+   n_PS_ROOT_BLOCK(n_var_okset(avcp->avc_okey, (uintptr_t)rv));
+
    avcp->avc_hash = avmp->avm_hash;
    avcp->avc_map = avmp;
-
    rv = a_amv_var_lookup(avcp, TRU1) ? avcp->avc_var->av_value : NULL;
    NYD2_LEAVE;
    return rv;

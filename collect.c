@@ -1345,10 +1345,11 @@ a_coll__hook_setter(void *arg){ /* TODO v15: drop */
 
 static int
 a_coll_ocs__mac(void){
-   /* Executes in a fork(2)ed child */
+   /* Executes in a fork(2)ed child  TODO if remains, global MASKs for those! */
    setvbuf(n_stdout, NULL, _IOLBF, 0);
    n_psonce &= ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT);
    n_pstate |= n_PS_COMPOSE_FORKHOOK;
+   n_readctl_overlay = NULL; /* TODO we need OnForkEvent! See c_readctl() */
    temporary_compose_mode_hook_call(a_coll_ocs__macname, NULL, NULL);
    return 0;
 }
