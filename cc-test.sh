@@ -2162,7 +2162,7 @@ t_behave_e_H_L_opts() {
 
 t_behave_compose_hooks() {
    t_prolog
-   TRAP_EXIT_ADDONS="./.tsendmail.sh ./.tnotes"
+   TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<-_EOT > ./.tsendmail.sh
 		#!${MYSHELL} -
@@ -2170,6 +2170,8 @@ t_behave_compose_hooks() {
 		(echo 'From PrimulaVeris Wed Apr 10 22:59:00 2017' && ${cat}) > "${MBOX}"
 	_EOT
    chmod 0755 ./.tsendmail.sh
+
+   (echo line one&&echo line two&&echo line three) > ./.treadctl
 
    printf 'm hook-test@exam.ple\nbody\n!.\nvar t_oce t_ocs t_ocs_shell t_ocl' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! \
@@ -2190,6 +2192,12 @@ t_behave_compose_hooks() {
             end
             vput vexpr i + $i "$1"
             return $i
+         }
+         define _read {
+            read line;wysh set es=$? en=$^ERRNAME ; echo read:$es/$en: $line
+            if [ "${es}" -ne -1 ]
+               xcall _read
+            end
          }
          define t_ocs {
             read ver
@@ -2212,6 +2220,9 @@ t_behave_compose_hooks() {
             endif
             echo "~:set t_ocs"
             call _work 3; echo $?
+            vput cwd cwd;echo cwd:$?
+            readctl create $cwd/.treadctl     ;echo readctl:$?/$^ERRNAME
+            xcall _read
          }
          define t_oce {
             set t_oce autobcc=oce@exam.ple
@@ -2227,7 +2238,7 @@ t_behave_compose_hooks() {
    ex0_test behave:compose_hooks
    ${cat} ./.tnotes >> "${MBOX}"
 
-   check behave:compose_hooks - "${MBOX}" '1709067694 545'
+   check behave:compose_hooks - "${MBOX}" '3947796215 650'
 
    t_epilog
 }
