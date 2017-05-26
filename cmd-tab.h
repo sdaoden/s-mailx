@@ -241,12 +241,12 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
      DS(N_("Reply to originator, exclusively")) },
    { "Resend", &c_Resend, (A | R | S | TSTRING), 0, MMNDEL, NULL
      DS(N_("Like `resend', but don't add Resent-* header lines")) },
-   { "Redirect", &c_Resend, (A | R | S | TSTRING), 0, MMNDEL, NULL
-     DS(N_("Like `resend', but don't add Resent-* header lines")) },
+   { "Redirect", &c_Resend, (O | A | R | S | TSTRING), 0, MMNDEL, NULL
+     DS(N_("Obsolete alternative for `Resend'")) },
    { "resend", &c_resend, (A | R | S | TSTRING), 0, MMNDEL, NULL
      DS(N_("Resend <msglist> to <user>, add Resent-* header lines")) },
-   { "redirect", &c_resend, (A | R | S | TSTRING), 0, MMNDEL, NULL
-     DS(N_("Resend <msglist> to <user>, add Resent-* header lines")) },
+   { "redirect", &c_resend, (O | A | R | S | TSTRING), 0, MMNDEL, NULL
+     DS(N_("Obsolete alternative for `resend'")) },
    { "Forward", &c_Forward, (A | R | S | TSTRING), 0, MMNDEL, NULL
      DS(N_("Like `forward', but derive filename from <address>")) },
    { "Fwd", &c_Forward, (A | R | S | TSTRING), 0, MMNDEL, NULL
