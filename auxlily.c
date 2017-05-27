@@ -731,8 +731,14 @@ n_torek_ihashn(char const *dat, size_t len){
    ui32_t h;
    NYD2_ENTER;
 
-   for(h = 0; len > 0 && (c = *dat++) != '\0'; --len)
-      h = (h * 33) + lowerconv(c);
+   if(len == UIZ_MAX)
+      for(h = 0; (c = *dat++) != '\0';)
+         h = (h * 33) + lowerconv(c);
+   else
+      for(h = 0; len > 0; --len){
+         c = *dat++;
+         h = (h * 33) + lowerconv(c);
+      }
    NYD2_LEAVE;
    return h;
 }

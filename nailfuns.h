@@ -354,6 +354,7 @@ FL enum n_idec_state n_idec_buf(void *resp, char const *cbuf, uiz_t clen,
  * if len is UIZ_MAX, we go .), since we anyway stop for NUL */
 FL ui32_t n_torek_hash(char const *name);
 FL ui32_t n_torek_ihashn(char const *dat, size_t len);
+#define n_torek_ihash(CP) n_torek_ihashn(CP, UIZ_MAX)
 
 /* Find a prime greater than n */
 FL ui32_t n_prime_next(ui32_t n);
