@@ -441,8 +441,8 @@ jleave:
 }
 
 static struct group *
-_group_lookup(enum group_type gt, struct group_lookup *glp, char const *id)
-{
+_group_lookup(enum group_type gt, struct group_lookup *glp, char const *id){
+   char c1;
    struct group *lgp, *gp;
    NYD_ENTER;
 
@@ -456,16 +456,22 @@ _group_lookup(enum group_type gt, struct group_lookup *glp, char const *id)
          : (gt & GT_CHARSETALIAS ? _charsetalias_heads
          : (/*gt & GT_FILETYPE ?*/ _filetype_heads
          ))))));
-   gp = *(glp->gl_slot = &glp->gl_htable[n_torek_hash(id) % HSHSIZE]);
+   gp = *(glp->gl_slot = &glp->gl_htable[
+         ((gt & (GT_MLIST | GT_CHARSETALIAS | GT_FILETYPE))
+         ? n_torek_ihash(id) : n_torek_hash(id)) % HSHSIZE]);
+   c1 = *id++;
 
-   for (; gp != NULL; lgp = gp, gp = gp->g_next)
-      if ((gp->g_type & gt) && *gp->g_id == *id) {
-         if(gt == GT_CHARSETALIAS || gt == GT_FILETYPE){
-            if(!asccasecmp(gp->g_id, id))
-               break;
-         }else if(!strcmp(gp->g_id, id))
+   if(gt & (GT_MLIST | GT_CHARSETALIAS | GT_FILETYPE)){
+      c1 = lowerconv(c1);
+      for(; gp != NULL; lgp = gp, gp = gp->g_next)
+         if((gp->g_type & gt) && *gp->g_id == c1 &&
+               !asccasecmp(&gp->g_id[1], id))
             break;
-      }
+   }else{
+      for(; gp != NULL; lgp = gp, gp = gp->g_next)
+         if((gp->g_type & gt) && *gp->g_id == c1 && !strcmp(&gp->g_id[1], id))
+            break;
+   }
 
    glp->gl_slot_last = lgp;
    glp->gl_group = gp;
@@ -581,6 +587,12 @@ _group_fetch(enum group_type gt, char const *id, size_t addsz)
    gp->g_subclass_off = (ui32_t)i;
    gp->g_id_len_sub = (ui16_t)(i - --l);
    gp->g_type = gt;
+   if(gt & (GT_MLIST | GT_CHARSETALIAS | GT_FILETYPE)){
+      char *cp, c;
+
+      for(cp = gp->g_id; (c = *cp) != '\0'; ++cp)
+         *cp = lowerconv(c);
+   }
 
    if (gt & GT_ALIAS) {
       struct grp_names_head *gnhp;
@@ -645,17 +657,17 @@ __group_del(struct group_lookup *glp)
 
    /* Overly complicated: link off this node, step ahead to next.. */
    x = glp->gl_group;
-   if ((gp = glp->gl_slot_last) != NULL) {
+   if((gp = glp->gl_slot_last) != NULL)
       gp = (gp->g_next = x->g_next);
-   } else {
+   else{
       glp->gl_slot_last = NULL;
       gp = (*glp->gl_slot = x->g_next);
 
-      if (gp == NULL) {
-         struct group **gpa = glp->gl_htable + HSHSIZE;
+      if(gp == NULL){
+         struct group **gpa;
 
-         while (++glp->gl_slot < gpa)
-            if ((gp = *glp->gl_slot) != NULL)
+         for(gpa = &glp->gl_htable[HSHSIZE]; ++glp->gl_slot < gpa;)
+            if((gp = *glp->gl_slot) != NULL)
                break;
       }
    }
@@ -2184,12 +2196,6 @@ c_charsetalias(void *vp){
       ccp = argv[0];
       if(ccp[0] != '*' || ccp[1] != '\0')
          _group_del(GT_CHARSETALIAS, ccp);
-
-      /* Lowercase it all (for display purposes) */
-      cp = savestr(ccp);
-      ccp = cp;
-      while((c = *cp) != '\0')
-         *cp++ = lowerconv(c);
 
       l = strlen(argv[1]) +1;
       if ((gp = _group_fetch(GT_CHARSETALIAS, ccp, l)) == NULL) {
