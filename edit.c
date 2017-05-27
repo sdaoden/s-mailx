@@ -142,7 +142,7 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
    struct stat statb;
    sigset_t cset;
    FILE *nf = NULL;
-   int t;
+   int t, ws;
    time_t modtime;
    off_t modsize;
    char *tempEdit;
@@ -199,8 +199,9 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
 
    sigemptyset(&cset);
    if (n_child_run((viored == 'e' ? ok_vlook(EDITOR) : ok_vlook(VISUAL)),
-         (oldint != SIG_IGN ? &cset : NULL),
-         n_CHILD_FD_PASS, n_CHILD_FD_PASS, tempEdit, NULL, NULL, NULL) < 0)
+            (oldint != SIG_IGN ? &cset : NULL),
+            n_CHILD_FD_PASS, n_CHILD_FD_PASS, tempEdit, NULL, NULL, NULL, &ws
+         ) < 0 || WEXITSTATUS(ws) != 0)
       goto jleave;
 
    /* If in read only mode or file unchanged, just remove the editor temporary

@@ -2854,6 +2854,7 @@ modifier: if used, they expect the name of a variable, which can itself
 be a variable, i.e., shell expansion is applied, as their first
 argument, and will place their computation result in it instead of the
 default location (it is usually written to standard output).
+.Pp
 The given name will be tested for being a valid
 .Xr sh 1
 variable name, and may therefore only consist of upper- and lowercase
@@ -2869,7 +2870,11 @@ Any error during these operations causes the command as such to fail,
 and the error number
 .Va \&!
 will be set to
-.Va ^ERR Ns -NOTSUP .
+.Va ^ERR Ns -NOTSUP ,
+the exit status
+.Va \&?
+should be set to
+.Ql -1 .
 .
 .It
 Last, but not least, the modifier
@@ -3308,6 +3313,8 @@ may be displayed as
 The following commands are available:
 .
 .Bl -tag -width ".It Ic BaNg"
+.
+.
 .Mx
 .It Ic \&!
 Executes the
@@ -3316,18 +3323,36 @@ command which follows, replacing unescaped exclamation marks with the
 previously executed command if the internal variable
 .Va bang
 is set.
-Supports
+This command supports
 .Cm vput
-(see
-.Sx "Command modifiers" ) ,
-and sets the error number
-.Va \&!
-to
+as documented in
+.Sx "Command modifiers" ,
+and manages the error number
+.Va \&! .
+A 0 or positive exit status
+.Va \&?
+reflects the exit status of the command, negative ones that
+an error happened before the command was executed, or that the program
+did not exit cleanly, but, e.g., due to a signal: the error number is
+.Va ^ERR Ns -CHILD ,
+then.
+.
+.Pp
+In conjunction with the
+.Cm vput
+modifier the following special cases exist:
+a negative exit status occurs if the collected data could not be stored
+in the given variable, which is a
+.Va ^ERR Ns -NOTSUP
+error that should otherwise not occur.
 .Va ^ERR Ns -CANCELED
-if the temporary file which is used to collect the standard output of
-the command for usage by
-.Cm vput
-cannot be created (also causing an empty result).
+indicates that no temporary file could be created to collect the command
+output at first glance.
+In case of catchable out-of-memory situations
+.Va ^ERR Ns -NOMEM
+will occur and \*(UA will try to store the empty string, just like with
+all other detected error conditions.
+.
 .
 .Mx
 .It Ic #
@@ -4243,7 +4268,8 @@ but does not write a trailing newline.
 at each message from the given list in turn.
 Modified contents are discarded unless the
 .Va writebackedited
-variable is set.
+variable is set, and are not used unless the mailbox can be written to
+and the editor returns a successful exit status.
 .
 .Mx
 .It Ic elif
@@ -5645,7 +5671,8 @@ change again due to output or result storage errors.
 .
 .Mx
 .It Ic shell
-(sh) Invokes an interactive version of the shell.
+(sh) Invokes an interactive version of the shell,
+and returns its exit status.
 .
 .Mx
 .Mx
@@ -6309,7 +6336,8 @@ to (re)create an argument stack from and to a single variable losslessly.
 (v) Takes a message list and invokes the display editor on each message.
 Modified contents are discarded unless the
 .Va writebackedited
-variable is set.
+variable is set, and are not used unless the mailbox can be written to
+and the editor returns a successful exit status.
 .
 .Mx
 .It Ic write

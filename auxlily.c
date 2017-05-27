@@ -375,7 +375,7 @@ page_or_print(FILE *fp, size_t lines)
          pager = n_pager_get(&env_add[0]);
          env_add[1] = NULL;
          n_child_run(pager, NULL, fileno(fp), n_CHILD_FD_PASS, NULL,NULL,NULL,
-            env_add);
+            env_add, NULL);
          goto jleave;
       }
    }

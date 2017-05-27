@@ -309,7 +309,7 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
 
       sigemptyset(&nset);
       pid = n_child_run(sh, &nset, term_infd, n_CHILD_FD_PASS, "-c",
-            mhp->mh_shell_cmd, NULL, env_addon);
+            mhp->mh_shell_cmd, NULL, env_addon, NULL);
       rbuf = (pid < 0) ? NULL : (FILE*)-1;
    } else {
       rbuf = Popen(mhp->mh_shell_cmd, "W", sh, env_addon,

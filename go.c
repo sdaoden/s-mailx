@@ -528,6 +528,7 @@ jexec:
             n_err("`%s': vput: %s: %s\n",
                   cdp->cd_name, V_(emsg), n_shexp_quote_cp(arglist[0], FAL0));
             nerrn = n_ERR_NOTSUP;
+            rv = -1;
             goto jleave;
          }
          ++arglist;

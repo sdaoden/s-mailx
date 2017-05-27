@@ -217,7 +217,7 @@ _file_save(struct fp *fpp)
       break;
    }
    if (n_child_run(cmd[0], 0, fileno(fpp->fp), outfd,
-         cmd[1], cmd[2], NULL, NULL) >= 0)
+         cmd[1], cmd[2], NULL, NULL, NULL) >= 0)
       rv = OKAY;
 
    close(outfd);
@@ -248,7 +248,7 @@ a_popen_file_load(int flags, int infd, int outfd, char const *load_cmd){
       break;
    }
 
-   rv = n_child_run(cmd[0], 0, infd, outfd, cmd[1], cmd[2], NULL, NULL);
+   rv = n_child_run(cmd[0], 0, infd, outfd, cmd[1], cmd[2], NULL, NULL, NULL);
 jleave:
    NYD2_LEAVE;
    return rv;
@@ -1023,13 +1023,18 @@ close_all_files(void)
    NYD_LEAVE;
 }
 
+/* TODO The entire n_child_ series should be replaced with an object, but
+ * TODO at least have carrier arguments.  We anyway need a command manager
+ * TODO that keeps track and knows how to handle job control ++++! */
+
 FL int
-n_child_run(char const *cmd, sigset_t *mask, int infd, int outfd,
-   char const *a0, char const *a1, char const *a2, char const **env_addon)
+n_child_run(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
+   char const *a0_or_null, char const *a1_or_null, char const *a2_or_null,
+   char const **env_addon_or_null, int *wait_status_or_null)
 {
    sigset_t nset, oset;
    sighandler_type soldint;
-   int rv;
+   int rv, e;
    enum {a_NONE = 0, a_INTIGN = 1<<0, a_TTY = 1<<1} f;
    NYD_ENTER;
 
@@ -1064,16 +1069,24 @@ n_child_run(char const *cmd, sigset_t *mask, int infd, int outfd,
       }
    }
 
-   if((rv = n_child_start(cmd, mask, infd, outfd, a0, a1, a2, env_addon)) < 0)
+   if((rv = n_child_start(cmd, mask_or_null, infd, outfd, a0_or_null,
+         a1_or_null, a2_or_null, env_addon_or_null)) < 0){
+      e = n_err_no;
       rv = -1;
-   else{
-      if(n_child_wait(rv, NULL))
+   }else{
+      int ws;
+
+      e = 0;
+      if(n_child_wait(rv, &ws))
          rv = 0;
-      else{
+      else if(wait_status_or_null == NULL || !WIFEXITED(ws)){
          if(ok_blook(bsdcompat) || ok_blook(bsdmsgs))
             n_err(_("Fatal error in process\n"));
+         e = n_ERR_CHILD;
          rv = -1;
       }
+      if(wait_status_or_null != NULL)
+         *wait_status_or_null = ws;
    }
 
    if(f & a_TTY){
@@ -1087,26 +1100,31 @@ n_child_run(char const *cmd, sigset_t *mask, int infd, int outfd,
       if(soldint != SIG_IGN)
          safe_signal(SIGINT, soldint);
    }
+
+   if(e != 0)
+      n_err_no = e;
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-n_child_start(char const *cmd, sigset_t *mask, int infd, int outfd,
-   char const *a0, char const *a1, char const *a2,
-   char const **env_addon)
+n_child_start(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
+   char const *a0_or_null, char const *a1_or_null, char const *a2_or_null,
+   char const **env_addon_or_null)
 {
-   int rv;
+   int rv, e;
    NYD_ENTER;
 
    if ((rv = n_child_fork()) == -1) {
+      e = n_err_no;
       n_perr(_("fork"), 0);
+      n_err_no = e;
       rv = -1;
    } else if (rv == 0) {
       char *argv[128];
       int i;
 
-      if (env_addon != NULL) { /* TODO env_addon; should have struct child */
+      if (env_addon_or_null != NULL) {
          extern char **environ;
          size_t ei, ei_orig, ai, ai_orig;
          char **env;
@@ -1117,7 +1135,7 @@ n_child_start(char const *cmd, sigset_t *mask, int infd, int outfd,
          for (ei = 0; environ[ei] != NULL; ++ei)
             ;
          ei_orig = ei;
-         for (ai = 0; env_addon[ai] != NULL; ++ai)
+         for (ai = 0; env_addon_or_null[ai] != NULL; ++ai)
             ;
          ai_orig = ai;
          env = ac_alloc(sizeof(*env) * (ei + ai +1));
@@ -1128,7 +1146,7 @@ n_child_start(char const *cmd, sigset_t *mask, int infd, int outfd,
             char const *ee, *kvs;
             size_t kl;
 
-            ee = env_addon[ai];
+            ee = env_addon_or_null[ai];
             kvs = strchr(ee, '=');
             assert(kvs != NULL);
             kl = PTR2SIZE(kvs - ee);
@@ -1138,7 +1156,7 @@ n_child_start(char const *cmd, sigset_t *mask, int infd, int outfd,
                if (ekvs != NULL && kl == PTR2SIZE(ekvs - env[ei]) &&
                      !memcmp(ee, env[ei], kl)) {
                   env[ei] = n_UNCONST(ee);
-                  env_addon[ai] = NULL;
+                  env_addon_or_null[ai] = NULL;
                   break;
                }
             }
@@ -1146,8 +1164,8 @@ n_child_start(char const *cmd, sigset_t *mask, int infd, int outfd,
 
          /* And append the rest */
          for (ei = ei_orig, ai = ai_orig; ai-- > 0;)
-            if (env_addon[ai] != NULL)
-               env[ei++] = n_UNCONST(env_addon[ai]);
+            if (env_addon_or_null[ai] != NULL)
+               env[ei++] = n_UNCONST(env_addon_or_null[ai]);
 
          env[ei] = NULL;
          environ = env;
@@ -1155,11 +1173,11 @@ n_child_start(char const *cmd, sigset_t *mask, int infd, int outfd,
 
       i = (int)getrawlist(TRU1, argv, n_NELEM(argv), cmd, strlen(cmd));
 
-      if ((argv[i++] = n_UNCONST(a0)) != NULL &&
-            (argv[i++] = n_UNCONST(a1)) != NULL &&
-            (argv[i++] = n_UNCONST(a2)) != NULL)
+      if ((argv[i++] = n_UNCONST(a0_or_null)) != NULL &&
+            (argv[i++] = n_UNCONST(a1_or_null)) != NULL &&
+            (argv[i++] = n_UNCONST(a2_or_null)) != NULL)
          argv[i] = NULL;
-      n_child_prepare(mask, infd, outfd);
+      n_child_prepare(mask_or_null, infd, outfd);
       execvp(argv[0], argv);
       perror(argv[0]);
       _exit(n_EXIT_ERR);
@@ -1185,7 +1203,7 @@ n_child_fork(void){
 }
 
 FL void
-n_child_prepare(sigset_t *nset, int infd, int outfd)
+n_child_prepare(sigset_t *nset_or_null, int infd, int outfd)
 {
    int i;
    sigset_t fset;
@@ -1209,11 +1227,11 @@ n_child_prepare(sigset_t *nset, int infd, int outfd)
          close(outfd);
    }
 
-   if (nset) {
+   if (nset_or_null != NULL) {
       for (i = 1; i < NSIG; ++i)
-         if (sigismember(nset, i))
+         if (sigismember(nset_or_null, i))
             safe_signal(i, SIG_IGN);
-      if (!sigismember(nset, SIGINT))
+      if (!sigismember(nset_or_null, SIGINT))
          safe_signal(SIGINT, SIG_DFL);
    }
 
@@ -1244,7 +1262,7 @@ n_child_free(int pid){
 }
 
 FL bool_t
-n_child_wait(int pid, int *wait_status){
+n_child_wait(int pid, int *wait_status_or_null){
    sigset_t nset, oset;
    struct child *cp;
    int ws;
@@ -1265,8 +1283,8 @@ n_child_wait(int pid, int *wait_status){
 
    sigprocmask(SIG_SETMASK, &oset, NULL);
 
-   if(wait_status != NULL)
-      *wait_status = ws;
+   if(wait_status_or_null != NULL)
+      *wait_status_or_null = ws;
    rv = (WIFEXITED(ws) && WEXITSTATUS(ws) == 0);
    NYD_LEAVE;
    return rv;

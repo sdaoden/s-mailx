@@ -327,9 +327,7 @@ c_folders(void *v)
       cp = n_folder_query();
 
    rv = n_child_run(ok_vlook(LISTER), 0, n_CHILD_FD_PASS, n_CHILD_FD_PASS,
-         cp, NULL, NULL, NULL);
-   if(rv < 0)
-      rv = 1; /* XXX */
+         cp, NULL, NULL, NULL, NULL);
 jleave:
    NYD_LEAVE;
    return rv;

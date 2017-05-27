@@ -199,6 +199,7 @@ FL int
 c_shell(void *v)
 {
    sigset_t mask;
+   int rv;
    FILE *fp;
    char const **argv, *varname, *varres, *cp;
    NYD_ENTER;
@@ -206,66 +207,84 @@ c_shell(void *v)
    n_pstate_err_no = n_ERR_NONE;
    argv = v;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
+   varres = n_empty;
+   fp = NULL;
 
    if(varname != NULL &&
          (fp = Ftmp(NULL, "shell", OF_RDWR | OF_UNLINK | OF_REGISTER)
             ) == NULL){
       n_pstate_err_no = n_ERR_CANCELED;
-      varres = n_empty;
+      rv = -1;
    }else{
       cp = a_cmisc_bangexp(*argv);
 
       sigemptyset(&mask);
-      (void)n_child_run(ok_vlook(SHELL), &mask, /* TODO TRUE EXIT STATUS */
-            n_CHILD_FD_PASS, (varname != NULL ? fileno(fp) : n_CHILD_FD_PASS),
-            "-c", cp, NULL, NULL);
+      if(n_child_run(ok_vlook(SHELL), &mask,
+            n_CHILD_FD_PASS, (fp != NULL ? fileno(fp) : n_CHILD_FD_PASS),
+            "-c", cp, NULL, NULL, &rv) < 0){
+         n_pstate_err_no = n_err_no;
+         rv = -1;
+      }else{
+         rv = WEXITSTATUS(rv);
 
-      if(varname != NULL){
-         int c;
-         char *x;
-         off_t l;
+         if(fp != NULL){
+            int c;
+            char *x;
+            off_t l;
 
-         fflush_rewind(fp);
-         l = fsize(fp);
-         if(UICMP(64, l, >=, UIZ_MAX -42)){
-            n_pstate_err_no = n_ERR_NOMEM;
-            varres = n_empty;
-         }else{
-            varres = x = n_autorec_alloc(l +1);
+            fflush_rewind(fp);
+            l = fsize(fp);
+            if(UICMP(64, l, >=, UIZ_MAX -42)){
+               n_pstate_err_no = n_ERR_NOMEM;
+               varres = n_empty;
+            }else{
+               varres = x = n_autorec_alloc(l +1);
 
-            for(; l > 0 && (c = getc(fp)) != EOF; --l)
-               *x++ = c;
-            *x++ = '\0';
-            if(l != 0)
-               n_pstate_err_no = errno;
+               for(; l > 0 && (c = getc(fp)) != EOF; --l)
+                  *x++ = c;
+               *x++ = '\0';
+               if(l != 0){
+                  n_pstate_err_no = n_err_no;
+                  varres = n_empty; /* xxx hmmm */
+               }
+            }
          }
-         Fclose(fp);
       }
    }
 
+   if(fp != NULL)
+      Fclose(fp);
+
    if(varname != NULL){
-      if(!n_var_vset(varname, (uintptr_t)varres))
+      if(!n_var_vset(varname, (uintptr_t)varres)){
          n_pstate_err_no = n_ERR_NOTSUP;
-   }else
+         rv = -1;
+      }
+   }else if(rv >= 0){
       fprintf(n_stdout, "!\n");
       /* Line buffered fflush(n_stdout); */
-
+   }
    NYD_LEAVE;
-   return (n_pstate_err_no != n_ERR_NONE);
+   return rv;
 }
 
 FL int
 c_dosh(void *v)
 {
+   int rv;
    NYD_ENTER;
    n_UNUSED(v);
 
-   n_child_run(ok_vlook(SHELL), 0, n_CHILD_FD_PASS, n_CHILD_FD_PASS, NULL,
-      NULL, NULL, NULL);
-   putc('\n', n_stdout);
-   /* Line buffered fflush(n_stdout); */
+   if(n_child_run(ok_vlook(SHELL), 0, n_CHILD_FD_PASS, n_CHILD_FD_PASS, NULL,
+         NULL, NULL, NULL, &rv) < 0)
+      rv = -1;
+   else{
+      putc('\n', n_stdout);
+      /* Line buffered fflush(n_stdout); */
+      rv = WEXITSTATUS(rv);
+   }
    NYD_LEAVE;
-   return 0;
+   return rv;
 }
 
 FL int

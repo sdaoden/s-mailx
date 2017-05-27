@@ -446,6 +446,7 @@ mesedit(int c, struct header *hp)
 static void
 mespipe(char const *cmd)
 {
+   int ws;
    FILE *nf;
    sighandler_type sigint;
    NYD_ENTER;
@@ -460,7 +461,7 @@ mespipe(char const *cmd)
    /* stdin = current message.  stdout = new message */
    fflush(_coll_fp);
    if (n_child_run(ok_vlook(SHELL), 0, fileno(_coll_fp), fileno(nf), "-c",
-         cmd, NULL, NULL) < 0) {
+         cmd, NULL, NULL, &ws) < 0 || WEXITSTATUS(ws) != 0) {
       Fclose(nf);
       goto jout;
    }

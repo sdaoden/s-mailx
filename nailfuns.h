@@ -1757,27 +1757,29 @@ FL void        close_all_files(void);
  * The command name can be a sequence of words.
  * Signals must be handled by the caller.  "Mask" contains the signals to
  * ignore in the new process.  SIGINT is enabled unless it's in the mask.
- * env_addon may be NULL, otherwise it is expected to be a NULL terminated
- * array of "K=V" strings to be placed into the childs environment */
+ * If env_addon_or_null is set, it is expected to be a NULL terminated
+ * array of "K=V" strings to be placed into the childs environment.
+ * wait_status_or_null is set to waitpid(2) status if given */
 FL int n_child_run(char const *cmd, sigset_t *mask, int infd, int outfd,
-         char const *a0, char const *a1, char const *a2,
-         char const **env_addon);
+         char const *a0_or_null, char const *a1_or_null, char const *a2_or_null,
+         char const **env_addon_or_null, int *wait_status_or_null);
 
-/* Like n_child_run(), but don't wait for the command to finish.
+/* Like n_child_run(), but don't wait for the command to finish (use
+ * n_child_wait() for waiting on a successful return value).
  * Also it is usually an error to use n_CHILD_FD_PASS for this one */
 FL int n_child_start(char const *cmd, sigset_t *mask, int infd, int outfd,
-         char const *a0, char const *a1, char const *a2,
-         char const **env_addon);
+         char const *a0_or_null, char const *a1_or_null, char const *a2_or_null,
+         char const **env_addon_or_null);
 
 /* Fork a child process, enable the other three:
  * - in-child image preparation
  * - mark a child as don't care
  * - wait for child pid, return whether we've had a normal n_EXIT_OK exit.
- *   If wait_status is set, set it to the reported waitpid(2) wait status */
+ *   If wait_status_or_null is set, it is set to the waitpid(2) status */
 FL int n_child_fork(void);
 FL void n_child_prepare(sigset_t *nset, int infd, int outfd);
 FL void n_child_free(int pid);
-FL bool_t n_child_wait(int pid, int *wait_status);
+FL bool_t n_child_wait(int pid, int *wait_status_or_null);
 
 /*
  * quit.c
