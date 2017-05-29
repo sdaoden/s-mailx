@@ -169,9 +169,13 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
          fexpm = FEXP_FULL/* XXX FEXP_NSHELL*/;
 
       if(name[0] == '%'){
+         char const *cp;
+
          fm |= FEDIT_SYSBOX; /* TODO fexpand() needs to tell is-valid-user! */
          if(*(who = &name[1]) == ':')
             ++who;
+         if((cp = strrchr(who, '/')) != NULL)
+            who = &cp[1];
          if(*who == '\0')
             goto jlogname;
       }else
