@@ -160,7 +160,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
      DS(N_("Compose mail; recipients may be given as arguments")) },
    { "Mail", &c_Sendmail, (I | M | R | S | TSTRING), 0, 0, NULL
      DS(N_("Like `mail', but derive filename from first recipient")) },
-   { "mbox", &c_mboxit, (A | W | TMSGLST), 0, 0, NULL
+   { "mbox", &c_mboxit, (A | W | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Indicate that <msglist> is to be stored in *MBOX*")) },
    { "more", &c_more, (A | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Invoke the pager on the given messages")) },
@@ -390,7 +390,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
 #else
       NULL,
 #endif
-      (A | M | TMSGLST), 0, 0, NULL
+      (A | M | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Clear the spam flag for each message in <msglist>")) },
    { "spamset",
 #ifdef HAVE_SPAM
@@ -398,7 +398,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
 #else
       NULL,
 #endif
-      (A | M | TMSGLST), 0, 0, NULL
+      (A | M | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Set the spam flag for each message in <msglist>")) },
    { "spamforget",
 #ifdef HAVE_SPAM
@@ -406,7 +406,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
 #else
       NULL,
 #endif
-      (A | M | TMSGLST), 0, 0, NULL
+      (A | M | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Force the spam detector to unlearn <msglist>")) },
    { "spamham",
 #ifdef HAVE_SPAM
@@ -414,7 +414,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
 #else
       NULL,
 #endif
-      (A | M | TMSGLST), 0, 0, NULL
+      (A | M | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Teach the spam detector that <msglist> is ham")) },
    { "spamrate",
 #ifdef HAVE_SPAM
@@ -422,7 +422,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
 #else
       NULL,
 #endif
-      (A | M | TMSGLST), 0, 0, NULL
+      (A | M | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Rate <msglist> via the spam detector")) },
    { "spamspam",
 #ifdef HAVE_SPAM
@@ -430,7 +430,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
 #else
       NULL,
 #endif
-      (A | M | TMSGLST), 0, 0, NULL
+      (A | M | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Teach the spam detector that <msglist> is spam")) },
 
    { "File", &c_File, (M | T | TWYRA), 0, 1, NULL
