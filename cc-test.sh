@@ -2206,12 +2206,14 @@ t_behave_compose_hooks() {
             if [ "$es" != 2 ]
                echoerr "Failed to header list, aborting send"; echo "~x"
             endif
+            #
             call _work 1; echo $?
             echo "~^header insert cc splicy diet <splice@exam.ple> spliced";\
                read es; vput vexpr es substr "$es" 0 1
             if [ "$es" != 2 ]
                echoerr "Failed to be diet, aborting send"; echo "~x"
             endif
+            #
             call _work 2; echo $?
             echo "~^header insert bcc juicy juice <juice@exam.ple> spliced";\
                read es; vput vexpr es substr "$es" 0 1
@@ -2219,7 +2221,17 @@ t_behave_compose_hooks() {
                echoerr "Failed to be juicy, aborting send"; echo "~x"
             endif
             echo "~:set t_ocs"
+            #
             call _work 3; echo $?
+            echo "~r - __EOT"
+            vput ! i echo just knock if you can hear me;\
+               i=0;\
+               while [ $i -lt 24 ]; do printf "%s " $i; i=`expr $i + 1`; done;\
+               echo relax
+            echon shell-cmd says $?/$^ERRNAME: $i
+            echo "__EOT"
+            #
+            call _work 4; echo $?
             vput cwd cwd;echo cwd:$?
             readctl create $cwd/.treadctl     ;echo readctl:$?/$^ERRNAME
             xcall _read
@@ -2234,11 +2246,11 @@ t_behave_compose_hooks() {
             on-compose-splice-shell="read ver;printf \"t_ocs-shell\\n\
                ~t shell@exam.ple\\n~:set t_ocs_shell\\n\"" \
             on-compose-enter=t_oce on-compose-leave=t_ocl
-      ' > ./.tnotes
+      ' > ./.tnotes 2>&1
    ex0_test behave:compose_hooks
    ${cat} ./.tnotes >> "${MBOX}"
 
-   check behave:compose_hooks - "${MBOX}" '3947796215 650'
+   check behave:compose_hooks - "${MBOX}" '1902683291 832'
 
    t_epilog
 }

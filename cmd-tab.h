@@ -178,7 +178,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
      DS(N_("Mark <msglist> as not being read")) },
    { "New", &c_unread, (A | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Mark <msglist> as not being read")) },
-   { n_em, &c_shell, (S | V | EM | TRAWDAT), 0, 0, NULL
+   { n_em, &c_shell, (S | V | X | EM | TRAWDAT), 0, 0, NULL
      DS(N_("Execute <shell-command>")) },
    { "copy", &c_copy, (A | M | TSTRING), 0, 0, NULL
      DS(N_("Copy <msglist>, but don't mark them for deletion")) },

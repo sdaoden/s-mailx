@@ -1351,6 +1351,7 @@ a_coll_ocs__mac(void){
    n_psonce &= ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT);
    n_pstate |= n_PS_COMPOSE_FORKHOOK;
    n_readctl_overlay = NULL; /* TODO we need OnForkEvent! See c_readctl() */
+   /* TODO If that uses `!' it will effectively SIG_IGN SIGINT, ...and such */
    temporary_compose_mode_hook_call(a_coll_ocs__macname, NULL, NULL);
    return 0;
 }
@@ -1722,7 +1723,7 @@ jearg:
 
             argv[0] = cp;
             argv[1] = NULL;
-            c_shell(argv);
+            c_shell(argv); /* TODO history normalization */
          }
          goto jhistcont;
       case ':':
@@ -1836,7 +1837,7 @@ jearg:
                break;
             }
             if(*cp == '!' && c == '<'){
-               if(!a_coll_insert_cmd(_coll_fp, ++cp)){
+               if(!a_coll_insert_cmd(_coll_fp, ++cp)){/* TODO hist. normali. */
                   if(ferror(_coll_fp))
                      goto jerr;
                   break;
