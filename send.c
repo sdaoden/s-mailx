@@ -870,7 +870,7 @@ jmulti:
                 * TODO oh, wait, we did ask for a filename for this MIME mail,
                 * TODO and that outer container is useless anyway ;-P */
                if (np->m_multipart != NULL) {
-                  if ((obuf = Fopen("/dev/null", "w")) == NULL)
+                  if ((obuf = Fopen(n_path_devnull, "w")) == NULL)
                      continue;
                } else if ((obuf = newfile(np, &ispipe)) == NULL)
                   continue;

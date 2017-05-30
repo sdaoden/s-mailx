@@ -354,7 +354,7 @@ c_write(void *v)
    NYD_ENTER;
 
    if (str == NULL || *str == '\0')
-      str = savestr("/dev/null");
+      str = savestr(n_path_devnull);
    rv = save1(str, 0, "write", n_IGNORE_ALL, SEND_TOFILE, 0, 0);
    NYD_LEAVE;
    return rv;

@@ -1230,7 +1230,7 @@ n_child_prepare(sigset_t *nset_or_null, int infd, int outfd)
    /* All file descriptors other than 0, 1, and 2 are supposed to be cloexec */
    /* TODO WHAT IS WITH STDERR_FILENO DAMN? */
    if ((i = (infd == n_CHILD_FD_NULL)))
-      infd = open("/dev/null", O_RDONLY);
+      infd = open(n_path_devnull, O_RDONLY);
    if (infd >= 0) {
       dup2(infd, STDIN_FILENO);
       if (i)
@@ -1238,7 +1238,7 @@ n_child_prepare(sigset_t *nset_or_null, int infd, int outfd)
    }
 
    if ((i = (outfd == n_CHILD_FD_NULL)))
-      outfd = open("/dev/null", O_WRONLY);
+      outfd = open(n_path_devnull, O_WRONLY);
    if (outfd >= 0) {
       dup2(outfd, STDOUT_FILENO);
       if (i)

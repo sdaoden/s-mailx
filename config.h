@@ -48,6 +48,7 @@
 #define n_MAILDIR_SEPARATOR ':' /* Flag separator character */
 #define n_MAXARGC 512         /* Maximum list of raw strings */
 #define n_ALIAS_MAXEXP 25     /* Maximum expansion of aliases */
+#define n_PATH_DEVNULL "/dev/null"  /* Note: manual uses /dev/null as such */
 #define REFERENCES_MAX 20     /* Maximum entries in References: */
 #define n_UNIREPL "\xEF\xBF\xBD" /* Unicode replacement 0xFFFD in UTF-8 */
 #define FTMP_OPEN_TRIES 10    /* Maximum number of Ftmp() open(2) tries */

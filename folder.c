@@ -250,7 +250,8 @@ jlogname:
 
    switch (which_protocol(orig_name = name, TRU1, TRU1, &name)) {
    case PROTO_FILE:
-      isdevnull = ((n_poption & n_PO_BATCH_FLAG) && !strcmp(name, "/dev/null"));
+      isdevnull = ((n_poption & n_PO_BATCH_FLAG) &&
+            !strcmp(name, n_path_devnull));
 #ifdef HAVE_REALPATH
       do { /* TODO we need objects, goes away then */
 # ifdef HAVE_REALPATH_NULL
@@ -525,8 +526,8 @@ print_header_summary(char const *Larg)
    if (Larg != NULL) {
       /* Avoid any messages XXX add a make_mua_silent() and use it? */
       if ((n_poption & (n_PO_VERB | n_PO_EXISTONLY)) == n_PO_EXISTONLY) {
-         n_stdout = freopen("/dev/null", "w", stdout);
-         n_stderr = freopen("/dev/null", "w", stderr);
+         n_stdout = freopen(n_path_devnull, "w", stdout);
+         n_stderr = freopen(n_path_devnull, "w", stderr);
       }
       assert(n_msgvec != NULL);
       i = (getmsglist(/*TODO make const */n_UNCONST(Larg), n_msgvec, 0) <= 0);

@@ -1272,7 +1272,7 @@ jstop:
       sigaddset(&nset, SIGTSTP);
       sigaddset(&nset, SIGTTIN);
       sigaddset(&nset, SIGTTOU);
-      /* n_stdin = */freopen("/dev/null", "r", stdin);
+      /* n_stdin = */freopen(n_path_devnull, "r", stdin);
 #ifdef HAVE_SMTP
       if (rv) {
          n_child_prepare(&nset, 0, 1);

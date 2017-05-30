@@ -2528,6 +2528,7 @@ VL char const n_weekday_names[7 + 1][4];
 
 VL char const n_uagent[sizeof VAL_UAGENT];
 VL char const n_error[sizeof n_ERROR];
+VL char const n_path_devnull[sizeof n_PATH_DEVNULL];
 VL char const n_reproducible_name[sizeof "reproducible_build"];
 VL char const n_unirepl[sizeof n_UNIREPL];
 VL char const n_empty[1];

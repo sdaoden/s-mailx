@@ -65,6 +65,7 @@ VL char const n_month_names[12 + 1][4] = {
 };
 VL char const n_uagent[sizeof VAL_UAGENT] = VAL_UAGENT;
 VL char const n_error[sizeof n_ERROR] = N_(n_ERROR);
+VL char const n_path_devnull[sizeof n_PATH_DEVNULL] = n_PATH_DEVNULL;
 VL char const n_reproducible_name[sizeof "reproducible_build"] =
       "reproducible_build";
 VL char const n_unirepl[sizeof n_UNIREPL] = n_UNIREPL;
@@ -899,16 +900,16 @@ joarg:
          if(!(n_psonce & n_PSO_INTERACTIVE))
             setvbuf(n_stdin, NULL, _IOLBF, 0);
          n_poption |= n_PO_TILDE_FLAG | n_PO_BATCH_FLAG;
-         folder = "/dev/null";
+         folder = n_path_devnull;
          if(oargs_cnt + 10 >= oargs_size)
             oargs_size = a_main_grow_cpp(&oargs, oargs_size + 11, oargs_cnt);
          n_pstate |= n_PS_ROBOT; /* (be silent unsetting undefined variables) */
-         ok_vset(MAIL, folder), oargs[oargs_cnt++] = "MAIL=/dev/null";
-         ok_vset(MBOX, folder), oargs[oargs_cnt++] = "MBOX=/dev/null";
+         ok_vset(MAIL, folder), oargs[oargs_cnt++] = "MAIL=" n_PATH_DEVNULL;
+         ok_vset(MBOX, folder), oargs[oargs_cnt++] = "MBOX=" n_PATH_DEVNULL;
          ok_bset(emptystart), oargs[oargs_cnt++] = "emptystart";
          ok_bclear(errexit), oargs[oargs_cnt++] = "noerrexit";
          ok_bclear(header), oargs[oargs_cnt++] = "noheader";
-         ok_vset(inbox, folder), oargs[oargs_cnt++] = "inbox=/dev/null";
+         ok_vset(inbox, folder), oargs[oargs_cnt++] = "inbox=" n_PATH_DEVNULL;
          ok_bclear(posix), oargs[oargs_cnt++] = "noposix";
          ok_bset(quiet), oargs[oargs_cnt++] = "quiet";
          ok_bset(sendwait), oargs[oargs_cnt++] = "sendwait";
