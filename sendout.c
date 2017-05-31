@@ -1792,6 +1792,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
          (EACM_NORMAL |
           (!(expandaddr_to_eaf() & EAF_NAME) ? EACM_NONAME : EACM_NONE)),
          TRU1, &_sendout_error);
+
    if (to == NULL) {
       n_err(_("No recipients specified\n"));
       goto jfail_dead;

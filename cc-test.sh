@@ -2202,23 +2202,76 @@ t_behave_compose_hooks() {
          define t_ocs {
             read ver
             echo t_ocs
-            echo "~^header list"; read hl; vput vexpr es substr "$hl" 0 1
+            echo "~^header list"; read hl; echo $hl;\
+               vput vexpr es substr "$hl" 0 1
             if [ "$es" != 2 ]
                echoerr "Failed to header list, aborting send"; echo "~x"
             endif
             #
             call _work 1; echo $?
             echo "~^header insert cc splicy diet <splice@exam.ple> spliced";\
-               read es; vput vexpr es substr "$es" 0 1
+               read es; echo $es; vput vexpr es substr "$es" 0 1
             if [ "$es" != 2 ]
                echoerr "Failed to be diet, aborting send"; echo "~x"
+            endif
+            echo "~^header insert cc <splice2@exam.ple>";\
+               read es; echo $es; vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               echoerr "Failed to be diet2, aborting send"; echo "~x"
             endif
             #
             call _work 2; echo $?
             echo "~^header insert bcc juicy juice <juice@exam.ple> spliced";\
-               read es; vput vexpr es substr "$es" 0 1
+               read es; echo $es;vput vexpr es substr "$es" 0 1
             if [ "$es" != 2 ]
                echoerr "Failed to be juicy, aborting send"; echo "~x"
+            endif
+            echo "~^header insert bcc juice2@exam.ple";\
+               read es; echo $es;vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               echoerr "Failed to be juicy2, aborting send"; echo "~x"
+            endif
+            echo "~^header insert bcc juice3 <juice3@exam.ple>";\
+               read es; echo $es;vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               echoerr "Failed to be juicy3, aborting send"; echo "~x"
+            endif
+            echo "~^header insert bcc juice4@exam.ple";\
+               read es; echo $es;vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               echoerr "Failed to be juicy4, aborting send"; echo "~x"
+            endif
+            #
+            echo "~^header remove-at bcc 3";\
+               read es; echo $es;vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               echoerr "Failed to remove juicy3, aborting send"; echo "~x"
+            endif
+            echo "~^header remove-at bcc 2";\
+               read es; echo $es;vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               echoerr "Failed to remove juicy2, aborting send"; echo "~x"
+            endif
+            echo "~^header remove-at bcc 3";\
+               read es; echo $es;vput vexpr es substr "$es" 0 3
+            if [ "$es" != 501 ]
+               echoerr "Failed to failed to remove-at, aborting send"; echo "~x"
+            endif
+            # Add duplicates which ought to be removed!
+            echo "~^header insert bcc juice4@exam.ple";\
+               read es; echo $es;vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               echoerr "Failed to be juicy4-1, aborting send"; echo "~x"
+            endif
+            echo "~^header insert bcc juice4@exam.ple";\
+               read es; echo $es;vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               echoerr "Failed to be juicy4-2, aborting send"; echo "~x"
+            endif
+            echo "~^header insert bcc juice4@exam.ple";\
+               read es; echo $es;vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               echoerr "Failed to be juicy4-3, aborting send"; echo "~x"
             endif
             echo "~:set t_ocs"
             #
@@ -2229,12 +2282,15 @@ t_behave_compose_hooks() {
                while [ $i -lt 24 ]; do printf "%s " $i; i=`expr $i + 1`; done;\
                echo relax
             echon shell-cmd says $?/$^ERRNAME: $i
+            echo "~x  will not become interpreted, we are reading until __EOT"
             echo "__EOT"
             #
             call _work 4; echo $?
             vput cwd cwd;echo cwd:$?
             readctl create $cwd/.treadctl     ;echo readctl:$?/$^ERRNAME
             xcall _read
+            #
+            call _work 5; echo $?
          }
          define t_oce {
             set t_oce autobcc=oce@exam.ple
@@ -2250,7 +2306,7 @@ t_behave_compose_hooks() {
    ex0_test behave:compose_hooks
    ${cat} ./.tnotes >> "${MBOX}"
 
-   check behave:compose_hooks - "${MBOX}" '1902683291 832'
+   check behave:compose_hooks - "${MBOX}" '1851329576 1049'
 
    t_epilog
 }

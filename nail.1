@@ -6818,6 +6818,17 @@ upon success or
 .Ql 501
 if no such header can be found.
 .
+.It Ar remove-at
+This will remove from the header given as the third argument the
+instance at the list position (counting from one!) given with the fourth
+argument, reporting
+.Ql 210
+upon success or
+.Ql 505
+if the list position argument is not a number or
+.Ql 501
+if no such header instance exists.
+.
 .It Ar insert
 Create a new or an additional instance of the header given in the third
 argument, with the header body content as given in the fourth argument
@@ -6833,7 +6844,9 @@ to indicate prevention of excessing a single-instance header \(em note that
 .Ql Subject:
 can be appended to (a space separator will be added automatically first).
 .Ql 210
-is returned upon success.
+is returned upon success, followed by the name of the header and the list
+position of the newly inserted instance, which is always 1 for
+single-instance header fields.
 .El
 .
 .
