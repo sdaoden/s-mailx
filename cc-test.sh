@@ -7,14 +7,15 @@
 # such is a compile-time variable
 ARGS='-:/ -# -Sdotlock-ignore-error -Sencoding=quoted-printable -Sstealthmua'
    ARGS="${ARGS}"' -Snosave -Sexpandaddr=restrict'
+ADDARG_UNI=-Sttycharset=UTF-8
 CONF=./make.rc
 BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
 MAIL=/dev/null
 #UTF8_LOCALE= autodetected unless set
 
-#MEMTESTER='valgrind --log-file=.vl-%p '
 MEMTESTER=
+#MEMTESTER='valgrind --leak-check=full --log-file=.vl-%p '
 
 if ( command -v command ) >/dev/null 2>&1; then :; else
    command() {
@@ -51,14 +52,14 @@ fi
 
 ##  --  >8  --  8<  --  ##
 
-export ARGS CONF BODY MBOX MAIL  MAKE awk cat cksum rm sed grep
+export ARGS ADDARG_UNI CONF BODY MBOX MAIL  MAKE awk cat cksum rm sed grep
 
-LC_ALL=C LANG=C ADDARG_UNI=-Sttycharset=UTF-8
+LC_ALL=C LANG=C
 TZ=UTC
 # Wed Oct  2 01:50:07 UTC 1996
 SOURCE_DATE_EPOCH=844221007
 
-export LC_ALL LANG ADDARG_UNI TZ SOURCE_DATE_EPOCH
+export LC_ALL LANG TZ SOURCE_DATE_EPOCH
 unset POSIXLY_CORRECT
 
 if [ -z "${UTF8_LOCALE}" ]; then
@@ -2198,6 +2199,7 @@ t_behave_compose_hooks() {
             if [ "${es}" -ne -1 ]
                xcall _read
             end
+            readctl remove $cwd/.treadctl; echo readctl remove:$?/$^ERRNAME
          }
          define t_ocs {
             read ver
@@ -2306,7 +2308,7 @@ t_behave_compose_hooks() {
    ex0_test behave:compose_hooks
    ${cat} ./.tnotes >> "${MBOX}"
 
-   check behave:compose_hooks - "${MBOX}" '1851329576 1049'
+   check behave:compose_hooks - "${MBOX}" '678882154 1071'
 
    t_epilog
 }
@@ -2721,7 +2723,7 @@ ggggggggggggggggggggggggggggggggggg\
 ggggggggggggggggggggggggggggggggggg\
 gggggggggggggggg"
 
-   # Three tests for MIME encodign and (a bit) content classification.
+   # Three tests for MIME encoding and (a bit) content classification.
    # At the same time testing -q FILE, < FILE and -t FILE
 
    ${rm} -f "${MBOX}"
@@ -2760,6 +2762,7 @@ gggggggggggggggg"
    printf "m ${MBOX}\n~s subject1\nEmail body\n~.\nfi ${MBOX}\np\nx\n" |
    ${MAILX} ${ARGS} ${ADDARG_UNI} -Spipe-text/plain="${cat}" > "${BODY}"
    check content:006 0 "${MBOX}" '2099098650 122'
+   check content:006-1 - "${BODY}" '794542938 174'
 
    # "Test for" [c299c45] (Peter Hofmann) TODO shouldn't end up QP-encoded?
    ${rm} -f "${MBOX}"
@@ -2780,7 +2783,7 @@ gggggggggggggggg"
    check content:008 0 "${MBOX}" '3370931614 375'
 
    # Single word (overlong line split -- bad standard! Requires injection of
-   # artificial data!!  Bad can be prevented by using RFC 2047 encoding)
+   # artificial data!!  But can be prevented by using RFC 2047 encoding)
    ${rm} -f "${MBOX}"
    i=`${awk} 'BEGIN{for(i=0; i<92; ++i) printf "0123456789_"}'`
    echo | ${MAILX} ${ARGS} -s "${i}" "${MBOX}"
@@ -2858,8 +2861,13 @@ gggggggggggggggg"
    check content:014-1 0 "${MBOX}" '684985954 3092'
 
    # `resend' test, reusing $MBOX
-   printf "Resend ${BODY}\nx\n" | ${MAILX} ${ARGS} -f "${MBOX}"
-   check content:014-2 0 "${MBOX}" '684985954 3092'
+   ${rm} -f "${BODY}"
+   printf "Resend ${BODY}\nx\n" | ${MAILX} ${ARGS} -Rf "${MBOX}"
+   check content:014-2 0 "${BODY}" '684985954 3092'
+
+   ${rm} -f "${BODY}"
+   printf "resend ${BODY}\nx\n" | ${MAILX} ${ARGS} -Rf "${MBOX}"
+   check content:014-3 0 "${BODY}" '3130352658 3148'
 
    t_epilog
 }
