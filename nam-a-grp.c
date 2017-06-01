@@ -419,12 +419,12 @@ _group_lookup(enum group_type gt, struct group_lookup *glp, char const *id)
 
    gt &= GT_MASK;
    lgp = NULL;
-   gp = *(glp->gl_htable = glp->gl_slot =
-          &(gt & GT_ALIAS ? _alias_heads :
+   glp->gl_htable = &(gt & GT_ALIAS ? _alias_heads :
             (gt & GT_MLIST ? _mlist_heads :
             (gt & GT_SHORTCUT ? _shortcut_heads :
             (gt & GT_CHARSETALIAS ? _charsetalias_heads : NULL)))
-            )[n_torek_hash(id) % HSHSIZE]);
+            );
+   gp = *(glp->gl_slot = &glp->gl_htable[n_torek_hash(id) % HSHSIZE]);
 
    for (; gp != NULL; lgp = gp, gp = gp->g_next)
       if ((gp->g_type & gt) && *gp->g_id == *id) {
