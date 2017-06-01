@@ -419,7 +419,7 @@ _group_lookup(enum group_type gt, struct group_lookup *glp, char const *id)
 
    gt &= GT_MASK;
    lgp = NULL;
-   glp->gl_htable = &(gt & GT_ALIAS ? _alias_heads :
+   glp->gl_htable = (gt & GT_ALIAS ? _alias_heads :
             (gt & GT_MLIST ? _mlist_heads :
             (gt & GT_SHORTCUT ? _shortcut_heads :
             (gt & GT_CHARSETALIAS ? _charsetalias_heads : NULL)))
