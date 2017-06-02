@@ -692,6 +692,7 @@ jins:
       }
       if(!asccasecmp(cmd[2], cp = "Reply-To")){
          npp = &hp->h_replyto;
+         eacm = EACM_NONAME;
          goto jins;
       }
       if(!asccasecmp(cmd[2], cp = "Mail-Followup-To")){
@@ -702,6 +703,7 @@ jins:
       if(!asccasecmp(cmd[2], cp = "Message-ID")){
          mult_ok = FAL0;
          npp = &hp->h_message_id;
+         ntype = GREF;
          eacm = EACM_NONAME;
          goto jins;
       }
@@ -730,8 +732,7 @@ jins:
             goto j501cp;
       }
 
-      /* Primitive name normalization XXX header object should
-       * XXX have a more sophisticated accessible one */
+      /* Free-form header fields (note j501cp may print non-normalized name) */
       /* C99 */{
          size_t nl, bl;
          struct n_header_field **hfpp;
@@ -745,17 +746,18 @@ jins:
          for(i = 0, hfpp = &hp->h_user_headers; *hfpp != NULL; ++i)
             hfpp = &(*hfpp)->hf_next;
 
-         nl = strlen(cp = cmd[2]);
+         nl = strlen(cp = cmd[2]) +1;
          bl = strlen(cmd[3]) +1;
          *hfpp = hfp = salloc(n_VSTRUCT_SIZEOF(struct n_header_field, hf_dat
-               ) + nl +1 + bl);
+               ) + nl + bl);
          hfp->hf_next = NULL;
-         hfp->hf_nl = nl;
+         hfp->hf_nl = --nl;
          hfp->hf_bl = bl - 1;
-         memcpy(hfp->hf_dat, cp, nl);
-            hfp->hf_dat[nl++] = '\0';
-            memcpy(hfp->hf_dat + nl, cmd[3], bl);
-         fprintf(n_stdout, "210 %s %" PRIuZ "\n", cp, ++i);
+         hfp->hf_dat[nl = 0] = upperconv(*cp);
+         while(*cp++ != '\0')
+            hfp->hf_dat[++nl] = lowerconv(*cp);
+         memcpy(&hfp->hf_dat[++nl], cmd[3], bl);
+         fprintf(n_stdout, "210 %s %" PRIuZ "\n", &hfp->hf_dat[0], ++i);
       }
       goto jleave;
    }
@@ -775,9 +777,17 @@ jdefault:
          if(hp->h_message_id != NULL) fputs(" Message-ID", n_stdout);
          if(hp->h_ref != NULL) fputs(" References", n_stdout);
          if(hp->h_in_reply_to != NULL) fputs(" In-Reply-To", n_stdout);
+         /* Print only one instance of each free-form header */
          for(hfp = hp->h_user_headers; hfp != NULL; hfp = hfp->hf_next){
-            putc(' ', n_stdout);
-            fputs(&hfp->hf_dat[0], n_stdout);
+            struct n_header_field *hfpx;
+
+            for(hfpx = hp->h_user_headers;; hfpx = hfpx->hf_next)
+               if(hfpx == hfp){
+                  putc(' ', n_stdout);
+                  fputs(&hfp->hf_dat[0], n_stdout);
+                  break;
+               }else if(!strcmp(&hfpx->hf_dat[0], &hfp->hf_dat[0]))
+                  break;
          }
          putc('\n', n_stdout);
          goto jleave;
@@ -809,7 +819,7 @@ jlist:
          goto jlist;
       }
       if(!asccasecmp(cmd[2], cp = "Subject")){
-         np = (struct name*)-1;
+         np = (hp->h_subject != NULL) ? (struct name*)-1 : NULL;
          goto jlist;
       }
       if(!asccasecmp(cmd[2], cp = "Reply-To")){
@@ -833,23 +843,19 @@ jlist:
          goto jlist;
       }
 
-      /* Primitive name normalization XXX header object should
-       * XXX have a more sophisticated accessible one */
-      /* C99 */{
-         char *xp;
-
-         cp = xp = savestr(cmd[2]);
-         xp[0] = upperchar(xp[0]);
-         while(*++xp != '\0')
-            xp[0] = lowerchar(xp[0]);
-
-         for(hfp = hp->h_user_headers;; hfp = hfp->hf_next){
-            if(hfp == NULL)
-               goto j501cp;
-            else if(!asccasecmp(cp, &hfp->hf_dat[0])){
-               fprintf(n_stdout, "210 %s\n", cp);
-               break;
-            }
+      /* Free-form header fields (note j501cp may print non-normalized name) */
+      for(cp = cmd[2]; *cp != '\0'; ++cp)
+         if(!fieldnamechar(*cp)){
+            cp = cmd[2];
+            goto j501cp;
+         }
+      cp = cmd[2];
+      for(hfp = hp->h_user_headers;; hfp = hfp->hf_next){
+         if(hfp == NULL)
+            goto j501cp;
+         else if(!asccasecmp(cp, &hfp->hf_dat[0])){
+            fprintf(n_stdout, "210 %s\n", &hfp->hf_dat[0]);
+            break;
          }
       }
       goto jleave;
@@ -915,23 +921,23 @@ jrem:
             goto j501cp;
       }
 
-      /* Primitive name normalization XXX header object should
-       * XXX have a more sophisticated accessible one */
+      /* Free-form header fields (note j501cp may print non-normalized name) */
       /* C99 */{
          struct n_header_field **hfpp;
          bool_t any;
-         char *xp;
 
-         cp = xp = savestr(cmd[2]);
-         xp[0] = upperchar(xp[0]);
-         while(*++xp != '\0')
-            xp[0] = lowerchar(xp[0]);
+         for(cp = cmd[2]; *cp != '\0'; ++cp)
+            if(!fieldnamechar(*cp)){
+               cp = cmd[2];
+               goto j501cp;
+            }
+         cp = cmd[2];
 
          for(any = FAL0, hfpp = &hp->h_user_headers; (hfp = *hfpp) != NULL;){
             if(!asccasecmp(cp, &hfp->hf_dat[0])){
                *hfpp = hfp->hf_next;
                if(!any)
-                  fprintf(n_stdout, "210 %s\n", cp);
+                  fprintf(n_stdout, "210 %s\n", &hfp->hf_dat[0]);
                any = TRU1;
             }else
                hfp = *(hfpp = &hfp->hf_next);
@@ -1019,21 +1025,21 @@ jremat:
             goto j501cp;
       }
 
-      /* Primitive name normalization XXX header object should
-       * XXX have a more sophisticated accessible one */
+      /* Free-form header fields (note j501cp may print non-normalized name) */
       /* C99 */{
          struct n_header_field **hfpp;
-         char *xp;
 
-         cp = xp = savestr(cmd[2]);
-         xp[0] = upperchar(xp[0]);
-         while(*++xp != '\0')
-            xp[0] = lowerchar(xp[0]);
+         for(cp = cmd[2]; *cp != '\0'; ++cp)
+            if(!fieldnamechar(*cp)){
+               cp = cmd[2];
+               goto j501cp;
+            }
+         cp = cmd[2];
 
          for(hfpp = &hp->h_user_headers; (hfp = *hfpp) != NULL;){
             if(--i == 0){
                *hfpp = hfp->hf_next;
-               fprintf(n_stdout, "210 %s %" PRIuZ "\n", cp, i);
+               fprintf(n_stdout, "210 %s %" PRIuZ "\n", &hfp->hf_dat[0], i);
                break;
             }else
                hfp = *(hfpp = &hfp->hf_next);
@@ -1106,22 +1112,22 @@ jshow:
          goto jleave;
       }
 
-      /* Primitive name normalization XXX header object should
-       * XXX have a more sophisticated accessible one */
+      /* Free-form header fields (note j501cp may print non-normalized name) */
       /* C99 */{
          bool_t any;
-         char *xp;
 
-         cp = xp = savestr(cmd[2]);
-         xp[0] = upperchar(xp[0]);
-         while(*++xp != '\0')
-            xp[0] = lowerchar(xp[0]);
+         for(cp = cmd[2]; *cp != '\0'; ++cp)
+            if(!fieldnamechar(*cp)){
+               cp = cmd[2];
+               goto j501cp;
+            }
+         cp = cmd[2];
 
          for(any = FAL0, hfp = hp->h_user_headers; hfp != NULL;
                hfp = hfp->hf_next){
             if(!asccasecmp(cp, &hfp->hf_dat[0])){
                if(!any)
-                  fprintf(n_stdout, "212 %s\n", cp);
+                  fprintf(n_stdout, "212 %s\n", &hfp->hf_dat[0]);
                any = TRU1;
                fprintf(n_stdout, "%s\n", &hfp->hf_dat[hfp->hf_nl +1]);
             }
@@ -2315,8 +2321,10 @@ jleave:
    return _coll_fp;
 
 jerr:
-   if(coap != NULL && coap != (struct a_coll_ocs_arg*)-1)
+   if(coap != NULL && coap != (struct a_coll_ocs_arg*)-1){
+      n_psignal(coap->coa_stdout, SIGTERM);
       n_go_splice_hack_remove_after_jump();
+   }
    if(ifs_saved != NULL)
       ok_vset(ifs, ifs_saved);
    if(sigfp != NULL)

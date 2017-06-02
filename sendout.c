@@ -2083,12 +2083,18 @@ jto_fmt:
    if ((w & GIDENT) && !nosend_msg) {
       /* Mail-Followup-To: TODO factor out this huge block of code */
       /* Place ourselfs in there if any non-subscribed list is an addressee */
-      if ((hp->h_flags & HF_LIST_REPLY) || hp->h_mft != NULL ||
-            ok_blook(followup_to)) {
-         enum {_ANYLIST=1<<(HF__NEXT_SHIFT+0), _HADMFT=1<<(HF__NEXT_SHIFT+1)};
+      if((hp->h_flags & HF_LIST_REPLY) || hp->h_mft != NULL ||
+            ok_blook(followup_to)){
+         enum{
+            _ANYLIST = 1u<<(HF__NEXT_SHIFT + 0),
+            _HADMFT = 1u<<(HF__NEXT_SHIFT + 1)
+         };
+         struct name *mft, **mftp, *x;
+         ui32_t f;
 
-         ui32_t f = hp->h_flags | (hp->h_mft != NULL ? _HADMFT : 0);
-         struct name *mft, *x;
+         f = hp->h_flags | (hp->h_mft != NULL ? _HADMFT : 0);
+         mft = NULL;
+         mftp = &mft;
 
          /* But for that, we have to remove all incarnations of ourselfs first.
           * TODO It is total crap that we have delete_alternates(), is_myname()
@@ -2101,16 +2107,17 @@ jto_fmt:
                namelist_dup(hp->h_cc, GEXTRA | GFULL))));
          addr = hp->h_list_post;
 
-         for (mft = NULL; (x = np) != NULL;) {
+         while((x = np) != NULL){
             si8_t ml;
+
             np = np->n_flink;
 
-            if ((ml = is_mlist(x->n_name, FAL0)) == MLIST_OTHER &&
+            if((ml = is_mlist(x->n_name, FAL0)) == MLIST_OTHER &&
                   addr != NULL && !asccasecmp(addr, x->n_name))
                ml = MLIST_KNOWN;
 
             /* Any non-subscribed list?  Add ourselves */
-            switch (ml) {
+            switch(ml){
             case MLIST_KNOWN:
                f |= HF_MFT_SENDER;
                /* FALLTHRU */
@@ -2118,38 +2125,38 @@ jto_fmt:
                f |= _ANYLIST;
                goto j_mft_add;
             case MLIST_OTHER:
-               if (!(f & HF_LIST_REPLY)) {
+               if(!(f & HF_LIST_REPLY)){
 j_mft_add:
-                  if (!is_addr_invalid(x,
-                        EACM_STRICT | EACM_NOLOG | EACM_NONAME)) {
-                     x->n_flink = mft;
-                     mft = x;
+                  if(!is_addr_invalid(x,
+                        EACM_STRICT | EACM_NOLOG | EACM_NONAME)){
+                     x->n_blink = *mftp;
+                     x->n_flink = NULL;
+                     *mftp = x;
+                     mftp = &x->n_flink;
                   } /* XXX write some warning?  if verbose?? */
                   continue;
                }
                /* And if this is a reply that honoured a MFT: header then we'll
                 * also add all members of the original MFT: that are still
                 * addressed by us, regardless of all other circumstances */
-               else if (f & _HADMFT) {
+               else if(f & _HADMFT){
                   struct name *ox;
-                  for (ox = hp->h_mft; ox != NULL; ox = ox->n_flink)
-                     if (!asccasecmp(ox->n_name, x->n_name))
+
+                  for(ox = hp->h_mft; ox != NULL; ox = ox->n_flink)
+                     if(!asccasecmp(ox->n_name, x->n_name))
                         goto j_mft_add;
                }
                break;
             }
          }
 
-         if (f & (_ANYLIST | _HADMFT) && mft != NULL) {
-            if (((f & HF_MFT_SENDER) ||
-                  ((f & (_ANYLIST | _HADMFT)) == _HADMFT)) &&
-                  (np = fromasender) != NULL && np != (struct name*)0x1) {
-               np = ndup(np, (np->n_type & ~GMASK) | GEXTRA | GFULL);
-               np->n_flink = mft;
-               mft = np;
-            }
+         if((f & (_ANYLIST | _HADMFT)) && mft != NULL){
+            if(((f & HF_MFT_SENDER) ||
+                     ((f & (_ANYLIST | _HADMFT)) == _HADMFT)) &&
+                  (np = fromasender) != NULL && np != (struct name*)0x1)
+               *mftp = ndup(np, (np->n_type & ~GMASK) | GEXTRA | GFULL);
 
-            if (fmt("Mail-Followup-To:", mft, fo, ff))
+            if(fmt("Mail-Followup-To:", mft, fo, ff))
                goto jleave;
             ++gotcha;
          }

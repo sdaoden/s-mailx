@@ -6755,6 +6755,8 @@ plain address, e.g.,
 separated by a single ASCII SP space from the second which contains the
 unstripped address, even if that is identical to the first field, e.g.,
 .Ql (Lovely) Bob <bob@exam.ple> .
+(All the input, including the empty line, must be consumed before
+further commands can be issued.)
 .It Ql 212
 Status ok; the rest of the line is optionally used for more status.
 What follows are lines of furtherly unspecified string content,
@@ -6784,24 +6786,23 @@ The following commands are supported, and, as usual, case-insensitive:
 .
 .
 .Bl -hang -width header
-.It Ar header
+.It Cm header
 This command allows listing, inspection, and editing of message headers.
 The second argument specifies the subcommand to apply, one of:
 .
-.Pp
-.Bl -hang -compact -width remove
-.It Ar list
+.Bl -hang -width remove
+.It Cm list
 Without a third argument a list of all yet existing headers is given via
 .Ql 210 ;
 this command is the default command of
-.Ar header
+.Cm header
 if no second argument has been given.
 A third argument restricts output to the given header only, which may
 fail with
 .Ql 501
 if no such field is defined.
 .
-.It Ar show
+.It Cm show
 Shows the content of the header given as the third argument.
 Dependent on the header type this may respond with
 .Ql 211
@@ -6810,7 +6811,7 @@ or
 any failure results in
 .Ql 501 .
 .
-.It Ar remove
+.It Cm remove
 This will remove all instances of the header given as the third
 argument, reporting
 .Ql 210
@@ -6818,7 +6819,7 @@ upon success or
 .Ql 501
 if no such header can be found.
 .
-.It Ar remove-at
+.It Cm remove-at
 This will remove from the header given as the third argument the
 instance at the list position (counting from one!) given with the fourth
 argument, reporting
@@ -6829,7 +6830,7 @@ if the list position argument is not a number or
 .Ql 501
 if no such header instance exists.
 .
-.It Ar insert
+.It Cm insert
 Create a new or an additional instance of the header given in the third
 argument, with the header body content as given in the fourth argument
 (the remains of the line).
@@ -6843,30 +6844,31 @@ if any extracted address does not pass syntax and/or security checks, and
 to indicate prevention of excessing a single-instance header \(em note that
 .Ql Subject:
 can be appended to (a space separator will be added automatically first).
+.Pp
 .Ql 210
 is returned upon success, followed by the name of the header and the list
-position of the newly inserted instance, which is always 1 for
-single-instance header fields.
+position of the newly inserted instance.
+The list position is always 1 for single-instance header fields.
+All free-form header fields are managed in a single list.
 .El
 .
 .
-.It Ar attachment
+.It Cm attachment
 This command allows listing, removal and addition of message attachments.
 The second argument specifies the subcommand to apply, one of:
 .
-.Pp
-.Bl -hang -compact -width remove
-.It Ar list
+.Bl -hang -width remove
+.It Cm list
 List all attachments via
 .Ql 212 ,
 or report
 .Ql 501
 if no attachments exist.
 This command is the default command of
-.Ar attachment
+.Cm attachment
 if no second argument has been given.
 .
-.It Ar remove
+.It Cm remove
 This will remove the attachment given as the third argument, and report
 .Ql 210
 upon success or
@@ -6889,7 +6891,7 @@ which has been used when the attachment has been created; multiple
 matches result in a
 .Ql 506 .
 .
-.It Ar remove-at
+.It Cm remove-at
 This will interpret the third argument as a number and remove the
 attachment at that list position (counting from one!), reporting
 .Ql 210
@@ -6899,7 +6901,7 @@ if the argument is not a number or
 .Ql 501
 if no such attachment exists.
 .
-.It Ar insert
+.It Cm insert
 Adds the attachment given as the third argument, specified exactly as
 documented for the command line option
 .Fl a ,
@@ -6916,9 +6918,9 @@ if an on-the-fly performed character set conversion fails, otherwise
 is reported; this is also reported if character set conversion is
 requested but not available.
 .
-.It Ar attribute
+.It Cm attribute
 This uses the same search mechanism as described for
-.Ar remove
+.Cm remove
 and prints any known attributes of the first found attachment via
 .Ql 212
 upon success or
@@ -6928,20 +6930,21 @@ The attributes are written as lines of keyword and value tuples, the
 keyword being separated from the rest of the line with an ASCII SP space
 character.
 .
-.It Ar attribute-at
+.It Cm attribute-at
 This uses the same search mechanism as described for
-.Ar remove-at
+.Cm remove-at
 and is otherwise identical to
-.Ar attribute .
+.Cm attribute .
 .
-.It Ar attribute-set
+.It Cm attribute-set
 This uses the same search mechanism as described for
-.Ar remove ,
+.Cm remove ,
 and will assign the attribute given as the fourth argument, which is
 expected to be a value tuple of keyword and other data, separated by
 a ASCII SP space or TAB tabulator character.
 If the value part is empty, then the given attribute is removed, or
 reset to a default value if existence of the attribute is crucial.
+.Pp
 It returns via
 .Ql 210
 upon success, with the index of the found attachment following,
@@ -6965,17 +6968,18 @@ and generates a
 .Ql 505
 upon address content verification failure.
 .It Ql content-type
-Specifies the media type and subtype of the part; managed automatically.
+Defines the media type/subtype of the part, which is managed
+automatically, but can be overwritten.
 .It Ql content-disposition
 Automatically set to the string
 .Ql attachment .
 .El
 .
-.It Ar attribute-set-at
+.It Cm attribute-set-at
 This uses the same search mechanism as described for
-.Ar remove-at
+.Cm remove-at
 and is otherwise identical to
-.Ar attribute-set .
+.Cm attribute-set .
 .El
 .El
 .

@@ -2165,6 +2165,9 @@ t_behave_compose_hooks() {
    t_prolog
    TRAP_EXIT_ADDONS="./.t*"
 
+   (echo line one&&echo line two&&echo line three) > ./.treadctl
+   (echo echo four&&echo echo five&&echo echo six) > ./.tattach
+
    ${cat} <<-_EOT > ./.tsendmail.sh
 		#!${MYSHELL} -
 		${rm} -f "${MBOX}"
@@ -2172,8 +2175,532 @@ t_behave_compose_hooks() {
 	_EOT
    chmod 0755 ./.tsendmail.sh
 
-   (echo line one&&echo line two&&echo line three) > ./.treadctl
+   ${cat} <<'__EOT__' > ./.trc
+   define xerr {
+      vput vexpr es substr "$1" 0 1
+      if [ "$es" != 2 ]
+         echoerr "Failed: $2.  Bailing out"; echo "~x"
+      end
+   }
+   define read_mline_res {
+      read hl; wysh set len=$? es=$! en=$^ERRNAME;\
+         echo $len/$es/$^ERRNAME: $hl
+      if [ $es -ne $^ERR-NONE ]
+         echoerr "read_mline_res: bailing out"; echo "~x"
+      elif [ $len -ne 0 ]
+         \xcall read_mline_res
+      end
+   }
+   define ins_addr {
+      wysh set xh=$1
+      echo "~^header list"; read hl; echo $hl;\
+         call xerr "$hl" "in_addr ($xh) 0-1"
 
+      echo "~^header insert $xh diet <$xh@exam.ple> spliced";\
+         read es; echo $es; call xerr "$es" "ins_addr $xh 1-1"
+      echo "~^header insert $xh <${xh}2@exam.ple>";\
+         read es; echo $es; call xerr "$es" "ins_addr $xh 1-2"
+      echo "~^header insert $xh ${xh}3@exam.ple";\
+         read es; echo $es; call xerr "$es" "ins_addr $xh 1-3"
+      echo "~^header list $xh"; read hl; echo $hl;\
+         call xerr "$hl" "ins_addr $xh 1-4"
+      echo "~^header show $xh"; read es; call xerr $es "ins_addr $xh 1-5"
+      call read_mline_res
+
+      if [ "$t_remove" == "" ]
+         return
+      end
+
+      echo "~^header remove $xh"; read es; call xerr $es "ins_addr $xh 2-1"
+      echo "~^header remove $xh"; read es; vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: ins_addr $xh 2-2"; echo "~x"
+      end
+      echo "~^header list $xh"; read es; vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: ins_addr $xh 2-3"; echo "~x"
+      end
+      echo "~^header show $xh"; read es; vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: ins_addr $xh 2-4"; echo "~x"
+      end
+
+      #
+      echo "~^header insert $xh diet <$xh@exam.ple> spliced";\
+         read es; echo $es; call xerr "$es" "ins_addr $xh 3-1"
+      echo "~^header insert $xh <${xh}2@exam.ple>";\
+         read es; echo $es; call xerr "$es" "ins_addr $xh 3-2"
+      echo "~^header insert $xh ${xh}3@exam.ple";\
+         read es; echo $es; call xerr "$es" "ins_addr $xh 3-3"
+      echo "~^header list $xh"; read hl; echo $hl;\
+         call xerr "$hl" "ins_addr $xh 3-4"
+      echo "~^header show $xh"; read es; call xerr $es "ins_addr $xh 3-5"
+      call read_mline_res
+
+      echo "~^header remove-at $xh 1"; read es;\
+         call xerr $es "ins_addr $xh 3-6"
+      echo "~^header remove-at $xh 1"; read es;\
+         call xerr $es "ins_addr $xh 3-7"
+      echo "~^header remove-at $xh 1"; read es;\
+         call xerr $es "ins_addr $xh 3-8"
+      echo "~^header remove-at $xh 1"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: ins_addr $xh 3-9"; echo "~x"
+      end
+      echo "~^header remove-at $xh T"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 505 ]
+         echoerr "Failed: ins_addr $xh 3-10"; echo "~x"
+      end
+      echo "~^header list $xh"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: ins_addr $xh 3-11"; echo "~x"
+      end
+      echo "~^header show $xh"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: ins_addr $xh 3-12"; echo "~x"
+      end
+
+      #
+      echo "~^header insert $xh diet <$xh@exam.ple> spliced";\
+         read es; echo $es; call xerr "$es" "ins_addr $xh 4-1"
+      echo "~^header insert $xh <${xh}2@exam.ple> (comment) \"Quot(e)d\"";\
+         read es; echo $es; call xerr "$es" "ins_addr $xh 4-2"
+      echo "~^header insert $xh ${xh}3@exam.ple";\
+         read es; echo $es; call xerr "$es" "ins_addr $xh 4-3"
+      echo "~^header list $xh"; read hl; echo $hl;\
+         call xerr "$hl" "header list $xh 3-4"
+      echo "~^header show $xh"; read es; call xerr $es "ins_addr $xh 4-5"
+      call read_mline_res
+
+      echo "~^header remove-at $xh 3"; read es;\
+         call xerr $es "ins_addr $xh 4-6"
+      echo "~^header remove-at $xh 2"; read es;\
+         call xerr $es "ins_addr $xh 4-7"
+      echo "~^header remove-at $xh 1"; read es;\
+         call xerr $es "ins_addr $xh 4-8"
+      echo "~^header remove-at $xh 1"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: ins_addr $xh 4-9"; echo "~x"
+      end
+      echo "~^header remove-at $xh T"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 505 ]
+         echoerr "Failed: ins_addr $xh 4-10"; echo "~x"
+      end
+      echo "~^header list $xh"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: ins_addr $xh 4-11"; echo "~x"
+      end
+      echo "~^header show $xh"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: ins_addr $xh 4-12"; echo "~x"
+      end
+   }
+   define ins_ref {
+      wysh set xh=$1 mult=$2
+      echo "~^header list"; read hl; echo $hl;\
+         call xerr "$hl" "ins_ref ($xh) 0-1"
+
+      echo "~^header insert $xh <$xh@exam.ple>";\
+         read es; echo $es; call xerr "$es" "ins_ref $xh 1-1"
+      if [ $mult -ne 0 ]
+         echo "~^header insert $xh <${xh}2@exam.ple>";\
+            read es; echo $es; call xerr "$es" "ins_ref $xh 1-2"
+         echo "~^header insert $xh ${xh}3@exam.ple";\
+            read es; echo $es; call xerr "$es" "ins_ref $xh 1-3"
+      else
+         echo "~^header insert $xh <${xh}2@exam.ple>"; read es;\
+            vput vexpr es substr $es 0 3
+         if [ $es != 506 ]
+            echoerr "Failed: ins_ref $xh 1-4"; echo "~x"
+         end
+      end
+
+      echo "~^header list $xh"; read hl; echo $hl;\
+         call xerr "$hl" "ins_ref $xh 1-5"
+      echo "~^header show $xh"; read es; call xerr $es "ins_ref $xh 1-6"
+      call read_mline_res
+
+      if [ "$t_remove" == "" ]
+         return
+      end
+
+      echo "~^header remove $xh"; read es;\
+         call xerr $es "ins_ref $xh 2-1"
+      echo "~^header remove $xh"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: ins_ref $xh 2-2"; echo "~x"
+      end
+      echo "~^header list $xh"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: $es ins_ref $xh 2-3"; echo "~x"
+      end
+      echo "~^header show $xh"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: ins_ref $xh 2-4"; echo "~x"
+      end
+
+      #
+      echo "~^header insert $xh <$xh@exam.ple>";\
+         read es; echo $es; call xerr "$es" "ins_ref $xh 3-1"
+      if [ $mult -ne 0 ]
+         echo "~^header insert $xh <${xh}2@exam.ple>";\
+            read es; echo $es; call xerr "$es" "ins_ref $xh 3-2"
+         echo "~^header insert $xh ${xh}3@exam.ple";\
+            read es; echo $es; call xerr "$es" "ins_ref $xh 3-3"
+      end
+      echo "~^header list $xh";\
+         read hl; echo $hl; call xerr "$hl" "ins_ref $xh 3-4"
+      echo "~^header show $xh";\
+         read es; call xerr $es "ins_ref $xh 3-5"
+      call read_mline_res
+
+      echo "~^header remove-at $xh 1"; read es;\
+         call xerr $es "ins_ref $xh 3-6"
+      if [ $mult -ne 0 ] && [ $xh != subject ]
+         echo "~^header remove-at $xh 1"; read es;\
+            call xerr $es "ins_ref $xh 3-7"
+         echo "~^header remove-at $xh 1"; read es;\
+            call xerr $es "ins_ref $xh 3-8"
+      end
+      echo "~^header remove-at $xh 1"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: ins_ref $xh 3-9"; echo "~x"
+      end
+      echo "~^header remove-at $xh T"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 505 ]
+         echoerr "Failed: ins_ref $xh 3-10"; echo "~x"
+      end
+      echo "~^header show $xh"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: ins_ref $xh 3-11"; echo "~x"
+      end
+
+      #
+      echo "~^header insert $xh <$xh@exam.ple> ";\
+         read es; echo $es; call xerr "$es" "ins_ref $xh 4-1"
+      if [ $mult -ne 0 ]
+         echo "~^header insert $xh <${xh}2@exam.ple> ";\
+            read es; echo $es; call xerr "$es" "ins_ref $xh 4-2"
+         echo "~^header insert $xh ${xh}3@exam.ple";\
+            read es; echo $es; call xerr "$es" "ins_ref $xh 4-3"
+      end
+      echo "~^header list $xh"; read hl; echo $hl;\
+         call xerr "$hl" "ins_ref $xh 4-4"
+      echo "~^header show $xh"; read es; call xerr $es "ins_ref $xh 4-5"
+      call read_mline_res
+
+      if [ $mult -ne 0 ] && [ $xh != subject ]
+         echo "~^header remove-at $xh 3"; read es;\
+            call xerr $es "ins_ref $xh 4-6"
+         echo "~^header remove-at $xh 2"; read es;\
+            call xerr $es "ins_ref $xh 4-7"
+      end
+      echo "~^header remove-at $xh 1"; read es;\
+         call xerr $es "ins_ref $xh 4-8"
+      echo "~^header remove-at $xh 1"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: ins_ref $xh 4-9"; echo "~x"
+      end
+      echo "~^header remove-at $xh T"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 505 ]
+         echoerr "Failed: ins_ref $xh 4-10"; echo "~x"
+      end
+      echo "~^header show $xh"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: ins_ref $xh 4-11"; echo "~x"
+      end
+   }
+   define t_header {
+      echo t_header ENTER
+      # In collect.c order
+      call ins_addr from
+      call ins_ref sender 0 # Not a "ref", but works
+      call ins_addr To
+      call ins_addr cC
+      call ins_addr bCc
+      call ins_addr reply-To
+      call ins_addr mail-Followup-to
+      call ins_ref messAge-id 0
+      call ins_ref rEfErEncEs 1
+      call ins_ref in-Reply-to 1
+      call ins_ref subject 1 # Not a "ref", but works (with tweaks)
+      call ins_addr freeForm1
+      call ins_addr freeform2
+      echo t_header LEAVE
+   }
+   define t_attach {
+      echo t_attach ENTER
+
+      echo "~^attachment";\
+         read hl; echo $hl; vput vexpr es substr "$hl" 0 3
+      if [ "$es" != 501 ]
+         echoerr "Failed: attach 0-1"; echo "~x"
+      end
+
+      echo "~^attach attribute ./.treadctl";\
+         read hl; echo $hl; vput vexpr es substr "$hl" 0 3
+      if [ "$es" != 501 ]
+         echoerr "Failed: attach 0-2"; echo "~x"
+      end
+      echo "~^attachment attribute-at 1";\
+         read hl; echo $hl; vput vexpr es substr "$hl" 0 3
+      if [ "$es" != 501 ]
+         echoerr "Failed: attach 0-3"; echo "~x"
+      end
+
+      echo "~^attachment insert ./.treadctl=ascii";\
+         read hl; echo $hl; call xerr "$hl" "attach 1-1"
+      echo "~^attachment list";\
+         read es; echo $es;call xerr "$es" "attach 1-2"
+      call read_mline_res
+      echo "~^attachment attribute ./.treadctl";\
+         read es; echo $es;call xerr "$es" "attach 1-3"
+      call read_mline_res
+      echo "~^attachment attribute .treadctl";\
+         read es; echo $es;call xerr "$es" "attach 1-4"
+      call read_mline_res
+      echo "~^attachment attribute-at 1";\
+         read es; echo $es;call xerr "$es" "attach 1-5"
+      call read_mline_res
+
+      echo "~^attachment attribute-set ./.treadctl filename rctl";\
+         read es; echo $es;call xerr "$es" "attach 1-6"
+      echo "~^attachment attribute-set .treadctl content-description Au";\
+         read es; echo $es;call xerr "$es" "attach 1-7"
+      echo "~^attachment attribute-set-at 1 content-id <10.du@ich>";\
+         read es; echo $es;call xerr "$es" "attach 1-8"
+
+      echo "~^attachment attribute ./.treadctl";\
+         read es; echo $es;call xerr "$es" "attach 1-9"
+      call read_mline_res
+      echo "~^attachment attribute .treadctl";\
+         read es; echo $es;call xerr "$es" "attach 1-10"
+      call read_mline_res
+      echo "~^attachment attribute rctl";\
+         read es; echo $es;call xerr "$es" "attach 1-11"
+      call read_mline_res
+      echo "~^attachment attribute-at 1";\
+         read es; echo $es;call xerr "$es" "attach 1-12"
+      call read_mline_res
+
+      #
+      echo "~^attachment insert ./.tattach=latin1";\
+         read hl; echo $hl; call xerr "$hl" "attach 2-1"
+      echo "~^attachment list";\
+         read es; echo $es;call xerr "$es" "attach 2-2"
+      call read_mline_res
+      echo "~^attachment attribute ./.tattach";\
+         read es; echo $es;call xerr "$es" "attach 2-3"
+      call read_mline_res
+      echo "~^attachment attribute .tattach";\
+         read es; echo $es;call xerr "$es" "attach 2-4"
+      call read_mline_res
+      echo "~^attachment attribute-at 2";\
+         read es; echo $es;call xerr "$es" "attach 2-5"
+      call read_mline_res
+
+      echo "~^attachment attribute-set ./.tattach filename tat";\
+         read es; echo $es;call xerr "$es" "attach 2-6"
+      echo \
+      "~^attachment attribute-set .tattach content-description Au2";\
+         read es; echo $es;call xerr "$es" "attach 2-7"
+      echo "~^attachment attribute-set-at 2 content-id <20.du@wir>";\
+         read es; echo $es;call xerr "$es" "attach 2-8"
+      echo \
+         "~^attachment attribute-set-at 2 content-type application/x-sh";\
+        read es; echo $es;call xerr "$es" "attach 2-9"
+
+      echo "~^attachment attribute ./.tattach";\
+         read es; echo $es;call xerr "$es" "attach 2-10"
+      call read_mline_res
+      echo "~^attachment attribute .tattach";\
+         read es; echo $es;call xerr "$es" "attach 2-11"
+      call read_mline_res
+      echo "~^attachment attribute tat";\
+         read es; echo $es;call xerr "$es" "attach 2-12"
+      call read_mline_res
+      echo "~^attachment attribute-at 2";\
+         read es; echo $es;call xerr "$es" "attach 2-13"
+      call read_mline_res
+
+      #
+      if [ "$t_remove" == "" ]
+         return
+      end
+
+      echo "~^attachment remove ./.treadctl"; read es;\
+         call xerr $es "attach 3-1"
+      echo "~^attachment remove ./.tattach"; read es;\
+         call xerr $es "attach 3-2"
+      echo "~^   attachment     remove     ./.treadctl"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: attach 3-3"; echo "~x"
+      end
+      echo "~^   attachment     remove     ./.tattach"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: attach 3-4"; echo "~x"
+      end
+      echo "~^attachment list"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: attach 3-5"; echo "~x"
+      end
+
+      #
+      echo "~^attachment insert ./.tattach=latin1";\
+         read hl; echo $hl; call xerr "$hl" "attach 4-1"
+      echo "~^attachment insert ./.tattach=latin1";\
+         read hl; echo $hl; call xerr "$hl" "attach 4-2"
+      echo "~^attachment list";\
+         read es; echo $es;call xerr "$es" "attach 4-3"
+      call read_mline_res
+      echo "~^   attachment     remove     .tattach"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 506 ]
+         echoerr "Failed: attach 4-4 $es"; echo "~x"
+      end
+      echo "~^attachment remove-at T"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 505 ]
+         echoerr "Failed: attach 4-5"; echo "~x"
+      end
+      echo "~^attachment remove ./.tattach"; read es;\
+         call xerr $es "attach 4-6"
+      echo "~^attachment remove ./.tattach"; read es;\
+         call xerr $es "attach 4-7"
+      echo "~^   attachment     remove     ./.tattach"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: attach 4-8 $es"; echo "~x"
+      end
+      echo "~^attachment list"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: attach 4-9"; echo "~x"
+      end
+
+      #
+      echo "~^attachment insert ./.tattach=latin1";\
+         read hl; echo $hl; call xerr "$hl" "attach 5-1"
+      echo "~^attachment insert ./.tattach=latin1";\
+         read hl; echo $hl; call xerr "$hl" "attach 5-2"
+      echo "~^attachment insert ./.tattach=latin1";\
+         read hl; echo $hl; call xerr "$hl" "attach 5-3"
+      echo "~^attachment list";\
+         read es; echo $es;call xerr "$es" "attach 5-4"
+      call read_mline_res
+
+      echo "~^attachment remove-at 3"; read es;\
+         call xerr $es "attach 5-5"
+      echo "~^attachment remove-at 3"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: attach 5-6"; echo "~x"
+      end
+      echo "~^attachment remove-at 2"; read es;\
+         call xerr $es "attach 5-7"
+      echo "~^attachment remove-at 2"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: attach 5-8"; echo "~x"
+      end
+      echo "~^attachment remove-at 1"; read es;\
+         call xerr $es "attach 5-9"
+      echo "~^attachment remove-at 1"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: attach 5-10"; echo "~x"
+      end
+
+      echo "~^attachment list"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: attach 5-11"; echo "~x"
+      end
+
+      #
+      echo "~^attachment insert ./.tattach=latin1";\
+         read hl; echo $hl; call xerr "$hl" "attach 6-1"
+      echo "~^attachment insert ./.tattach=latin1";\
+         read hl; echo $hl; call xerr "$hl" "attach 6-2"
+      echo "~^attachment insert ./.tattach=latin1";\
+         read hl; echo $hl; call xerr "$hl" "attach 6-3"
+      echo "~^attachment list";\
+         read es; echo $es;call xerr "$es" "attach 6-4"
+      call read_mline_res
+
+      echo "~^attachment remove-at 1"; read es;\
+         call xerr $es "attach 6-5"
+      echo "~^attachment remove-at 1"; read es;\
+         call xerr $es "attach 6-6"
+      echo "~^attachment remove-at 1"; read es;\
+         call xerr $es "attach 6-7"
+      echo "~^attachment remove-at 1"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: attach 6-8"; echo "~x"
+      end
+
+      echo "~^attachment list"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         echoerr "Failed: attach 6-9"; echo "~x"
+      end
+
+      echo t_attach LEAVE
+   }
+   define t_ocs {
+      read ver
+      echo t_ocs
+      call t_header
+      if [ "$t_remove" != "" ]
+         echo "~^ header insert to -"; read es;\
+            call xerr "$es" "reinstantiate of a To:"
+      end
+      call t_attach
+   }
+   wysh set on-compose-splice=t_ocs
+__EOT__
+
+   #
+
+   ${rm} -f "${MBOX}"
+   printf 'm this-goes@nowhere\nbody\n!.\n' |
+   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
+      -X'source ./.trc' -Smta=./.tsendmail.sh \
+      2>./.terr
+   ${cat} ./.terr >> "${MBOX}"
+   check behave:compose_hooks-1 0 "${MBOX}" '3958208025 8236'
+
+   ${rm} -f "${MBOX}"
+   printf 'm -\nbody\n!.\n' |
+   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
+      -St_remove=1 -X'source ./.trc' -Smta=./.tsendmail.sh \
+      > "${MBOX}" 2>./.terr
+   ${cat} ./.terr >> "${MBOX}"
+   check behave:compose_hooks-2 0 "${MBOX}" '231191826 11104'
+
+   # Some state machine stress, shell compose hook, etc.
+   ${rm} -f "${MBOX}"
    printf 'm hook-test@exam.ple\nbody\n!.\nvar t_oce t_ocs t_ocs_shell t_ocl' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! \
       -Smta=./.tsendmail.sh \
@@ -2305,10 +2832,10 @@ t_behave_compose_hooks() {
                ~t shell@exam.ple\\n~:set t_ocs_shell\\n\"" \
             on-compose-enter=t_oce on-compose-leave=t_ocl
       ' > ./.tnotes 2>&1
-   ex0_test behave:compose_hooks
+   ex0_test behave:compose_hooks-3
    ${cat} ./.tnotes >> "${MBOX}"
 
-   check behave:compose_hooks - "${MBOX}" '678882154 1071'
+   check behave:compose_hooks-3 - "${MBOX}" '678882154 1071'
 
    t_epilog
 }
