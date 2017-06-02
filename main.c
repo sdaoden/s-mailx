@@ -1031,7 +1031,7 @@ jgetopt_done:
    a_main_setup_vars();
 
    if(n_psonce & n_PSO_INTERACTIVE){
-      a_main_setscreensize(0);
+      a_main_setscreensize(FAL0);
 #ifdef SIGWINCH
 # ifndef TTY_WANTS_SIGWINCH
       if(safe_signal(SIGWINCH, SIG_IGN) != SIG_IGN)
@@ -1192,10 +1192,10 @@ jleave:
 #endif
 
 j_leave:
-#ifdef HAVE_MEMORY_DEBUG
+#if defined HAVE_MEMORY_DEBUG || defined HAVE_NOMEMDBG
    n_memory_pool_pop(NULL);
 #endif
-#if (defined HAVE_DEBUG || defined HAVE_DEVEL)
+#if defined HAVE_DEBUG || defined HAVE_DEVEL || defined HAVE_NOMEMDBG
    n_memory_reset();
 #endif
    NYD_LEAVE;

@@ -47,8 +47,7 @@
 #endif
 
 /* Memory allocation routines from memory.c offer some debug support */
-#if (defined HAVE_DEBUG || defined HAVE_DEVEL) && !defined HAVE_NOMEMDBG
-# define HAVE_MEMORY_DEBUG
+#ifdef HAVE_MEMORY_DEBUG
 # define n_MEMORY_DEBUG_ARGS     , char const *mdbg_file, int mdbg_line
 # define n_MEMORY_DEBUG_ARGSCALL , mdbg_file, mdbg_line
 #else

@@ -126,6 +126,11 @@
 /* Maximum size of a message that is passed through to the spam system */
 #define SPAM_MAXSIZE  420000
 
+/* Whether we shall do our memory debug thing */
+#if (defined HAVE_DEBUG || defined HAVE_DEVEL) && !defined HAVE_NOMEMDBG
+# define HAVE_MEMORY_DEBUG
+#endif
+
 /* Number of Not-Yet-Dead calls that are remembered */
 #if defined HAVE_DEBUG || defined HAVE_DEVEL || defined HAVE_NYD2
 # ifdef HAVE_NYD2
