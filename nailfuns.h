@@ -1735,10 +1735,13 @@ FL bool_t      pipe_cloexec(int fd[2]);
  * env_addon may be NULL, otherwise it is expected to be a NULL terminated
  * array of "K=V" strings to be placed into the childs environment.
  * If cmd==(char*)-1 then shell is indeed expected to be a PTF :P that will be
- * called from within the child process */
-FL FILE *      Popen(char const *cmd, char const *mode, char const *shell,
-                  char const **env_addon, int newfd1);
-FL bool_t      Pclose(FILE *fp, bool_t dowait);
+ * called from within the child process.
+ * n_psignal() takes a FILE* returned by Popen, and returns <0 if no process
+ * can be found, 0 on success, and an errno number on kill(2) failure */
+FL FILE *Popen(char const *cmd, char const *mode, char const *shell,
+            char const **env_addon, int newfd1);
+FL bool_t Pclose(FILE *fp, bool_t dowait);
+VL int n_psignal(FILE *fp, int sig);
 
 /* In n_PSO_INTERACTIVE, we want to go over $PAGER.
  * These are specialized version of Popen()/Pclose() which also encapsulate

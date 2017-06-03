@@ -979,6 +979,24 @@ jleave:
    return rv;
 }
 
+VL int
+n_psignal(FILE *fp, int sig){
+   int rv;
+   NYD2_ENTER;
+
+   if((rv = file_pid(fp)) >= 0){
+      struct child *cp;
+
+      if((cp = a_popen_child_find(rv, FAL0)) != NULL){
+         if((rv = kill(rv, sig)) != 0)
+            rv = n_err_no;
+      }else
+         rv = -1;
+   }
+   NYD2_LEAVE;
+   return rv;
+}
+
 FL FILE *
 n_pager_open(void)
 {
