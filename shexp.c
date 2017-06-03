@@ -1013,7 +1013,8 @@ jleave:
 FL enum n_shexp_state
 n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
       struct str *input, void const **cookie){
-   /* TODO shexp_parse_token: WCHAR; $IFS (sp20='   '; echo a $sp20 b; ..) */
+   /* TODO shexp_parse_token: WCHAR */
+   ui32_t last_known_meta_trim_len;
    char c2, c, quotec, utf[8];
    enum n_shexp_state rv;
    size_t i, il;
@@ -1143,6 +1144,15 @@ jrestart:
       break;
    }
 
+   /* TODO n_SHEXP_PARSE_META_SEMICOLON++, well, hack: we are not the shell,
+    * TODO we are not a language, and therefore the general *ifs-ws* and normal
+    * TODO whitespace trimming that input lines undergo (in a_go_evaluate())
+    * TODO has already happened, our result will be used *as is*, and therefore
+    * TODO we need to be aware of and remove trailing unquoted WS that would
+    * TODO otherwise remain, after we have seen a semicolon sequencer.
+    * By sheer luck we only need to track this in non-quote-mode */
+   last_known_meta_trim_len = UI32_MAX;
+
    while(il > 0){
       --il, c = *ib++;
 
@@ -1155,10 +1165,12 @@ jrestart:
             else
                state &= ~a_SURPLUS;
             state &= ~a_NTOKEN;
+            last_known_meta_trim_len = UI32_MAX;
             continue;
          }else if(c == '$'){
             if(il > 0){
                state &= ~a_NTOKEN;
+               last_known_meta_trim_len = UI32_MAX;
                if(*ib == '\''){
                   --il, ++ib;
                   quotec = '\'';
@@ -1173,10 +1185,12 @@ jrestart:
              if(il > 0)
                --il, c = *ib++;
             state &= ~a_NTOKEN;
+            last_known_meta_trim_len = UI32_MAX;
          }
          /* A comment may it be if no token has yet started */
          else if(c == '#' && (state & a_NTOKEN)){
             rv |= n_SHEXP_STATE_STOP;
+            /*last_known_meta_trim_len = UI32_MAX;*/
             goto jleave;
          }
          /* Metacharacters which separate tokens must be turned on explicitly */
@@ -1184,30 +1198,37 @@ jrestart:
             rv |= n_SHEXP_STATE_META_VERTBAR;
             /* The parsed sequence may be _the_ output, so ensure we don't
              * include the metacharacter, then. */
-            /*if(flags & n_SHEXP_PARSE_META_VERTBAR)*/
+            /*if(flags & n_SHEXP_PARSE_META_VERTBAR) TODO trail ws strip then */
             if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
                ++il, --ib;
+            /*last_known_meta_trim_len = UI32_MAX;*/
             break;
          }else if(c == '&'){
             rv |= n_SHEXP_STATE_META_AMPERSAND;
             /* The parsed sequence may be _the_ output, so ensure we don't
              * include the metacharacter, then. */
-            /*if(flags & n_SHEXP_PARSE_META_AMPERSAND)*/
+            /*if(flags & n_SHEXP_PARSE_META_AMPERSAND)TODO trail ws strip then*/
             if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
                ++il, --ib;
+            /*last_known_meta_trim_len = UI32_MAX;*/
             break;
          }else if(c == ';'){
             rv |= n_SHEXP_STATE_META_SEMICOLON;
-            /* The parsed sequence may be _the_ output, so ensure we don't
-             * include the metacharacter, then. */
             if(flags & n_SHEXP_PARSE_META_SEMICOLON){
                if(il > 0)
                   n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, ib, il);
                state |= a_CONSUME;
                rv |= n_SHEXP_STATE_STOP;
+               if(!(flags & n_SHEXP_PARSE_DRYRUN) &&
+                     (rv & n_SHEXP_STATE_OUTPUT) &&
+                     last_known_meta_trim_len != UI32_MAX)
+                  store = n_string_trunc(store, last_known_meta_trim_len);
             }
+            /* The parsed sequence may be _the_ output, so ensure we don't
+             * include the metacharacter, then. */
             if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
                ++il, --ib;
+            /*last_known_meta_trim_len = UI32_MAX;*/
             break;
          }else if(c == ',' && (flags &
                (n_SHEXP_PARSE_IFS_ADD_COMMA | n_SHEXP_PARSE_IFS_IS_COMMA))){
@@ -1215,19 +1236,37 @@ jrestart:
              * include the metacharacter, then. */
             if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
                ++il, --ib;
+            /*last_known_meta_trim_len = UI32_MAX;*/
             break;
-         }else if((!(flags & n_SHEXP_PARSE_IFS_VAR) && blankchar(c)) ||
-               ((flags & n_SHEXP_PARSE_IFS_VAR) && strchr(ifs, c) != NULL)){
-            if(!(flags & n_SHEXP_PARSE_IFS_IS_COMMA)){
-               /* The parsed sequence may be _the_ output, so ensure we don't
-                * include the metacharacter, then. */
-               if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
-                  ++il, --ib;
-               break;
-            }
-            state |= a_NTOKEN;
-         }else
-            state &= ~a_NTOKEN;
+         }else{
+            ui8_t blnk;
+
+            blnk = blankchar(c) ? 1 : 0;
+            blnk |= ((flags & (n_SHEXP_PARSE_IFS_VAR |
+                     n_SHEXP_PARSE_TRIM_IFSSPACE)) &&
+                  strchr(ifs_ws, c) != NULL) ? 2 : 0;
+
+            if((!(flags & n_SHEXP_PARSE_IFS_VAR) && (blnk & 1)) ||
+                  ((flags & n_SHEXP_PARSE_IFS_VAR) &&
+                     ((blnk & 2) || strchr(ifs, c) != NULL))){
+               if(!(flags & n_SHEXP_PARSE_IFS_IS_COMMA)){
+                  /* The parsed sequence may be _the_ output, so ensure we don't
+                   * include the metacharacter, then. */
+                  if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
+                     ++il, --ib;
+                  /*last_known_meta_trim_len = UI32_MAX;*/
+                  break;
+               }
+               state |= a_NTOKEN;
+            }else
+               state &= ~a_NTOKEN;
+
+            if(blnk && store != NULL){
+               if(last_known_meta_trim_len == UI32_MAX)
+                  last_known_meta_trim_len = store->s_len;
+            }else
+               last_known_meta_trim_len = UI32_MAX;
+         }
       }else{
          /* Quote-mode */
          assert(!(state & a_NTOKEN));
@@ -1481,10 +1520,9 @@ j_dollar_ungetc:
                state &= ~a_EXPLODE;
 
                for(i = 0; il > 0; --il, ++ib, ++i){
-                  /* We have some special cases regarding macro-local special
-                   * parameters, so ensure these don't cause failure.
-                   * This has counterparts in the code that manages internal
-                   * variables! */
+                  /* We have some special cases regarding special parameters,
+                   * so ensure these don't cause failure.  This code has
+                   * counterparts in code that manages internal variables! */
                   c = *ib;
                   if(!a_SHEXP_ISVARC(c)){
                      if(i == 0 && (c == '*' || c == '@' || c == '#' ||
@@ -1513,10 +1551,6 @@ j_dollar_ungetc:
                   continue;
                }
 
-               /* XXX Digit in first place is not supported, however we do
-                * XXX support all digits because these refer to macro-local
-                * XXX variables; if we would have a notion of whether we're in
-                * XXX a macro this could be made more fine grained */
                if((state & (a_DIGIT1 | a_NONDIGIT)) == (a_DIGIT1 | a_NONDIGIT)){
                   if(state & a_BRACE){
                      if(il > 0 && *ib == '}')
