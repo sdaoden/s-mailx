@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Terminal capability interaction.
  *@ For encapsulation purposes provide a basic foundation even without
- *@ HAVE_TERMCAP, but with nail.h:n_HAVE_TCAP.
+ *@ HAVE_TERMCAP, but with config.h:n_HAVE_TCAP.
  *@ HOWTO add a new non-dynamic command or query:
  *@ - add an entry to nail.h:enum n_termcap_{cmd,query}
  *@ - run make-tcap-map.pl

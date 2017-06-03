@@ -92,82 +92,6 @@
 /* Many things possibly of interest for adjustments have been outsourced */
 #include "config.h"
 
-/*
- * Constants, some nail-specific macros
- */
-
-#if !defined NI_MAXHOST
-# define NI_MAXHOST     1025
-#endif
-
-/* TODO PATH_MAX: fixed-size buffer is always wrong (think NFS) */
-#ifndef PATH_MAX
-# ifdef MAXPATHLEN
-#  define PATH_MAX      MAXPATHLEN
-# else
-#  define PATH_MAX      1024        /* _XOPEN_PATH_MAX POSIX 2008/Cor 1-2013 */
-# endif
-#endif
-
-#ifndef HOST_NAME_MAX
-# ifdef _POSIX_HOST_NAME_MAX
-#  define HOST_NAME_MAX _POSIX_HOST_NAME_MAX
-# else
-#  define HOST_NAME_MAX 255
-# endif
-#endif
-
-#ifndef NAME_MAX
-# ifdef _POSIX_NAME_MAX
-#  define NAME_MAX      _POSIX_NAME_MAX
-# else
-#  define NAME_MAX      14
-# endif
-#endif
-#if NAME_MAX < 8
-# error NAME_MAX too small
-#endif
-
-#ifndef STDIN_FILENO
-# define STDIN_FILENO   0
-#endif
-#ifndef STDOUT_FILENO
-# define STDOUT_FILENO  1
-#endif
-#ifndef STDERR_FILENO
-# define STDERR_FILENO  2
-#endif
-
-#ifdef NSIG_MAX
-# undef NSIG
-# define NSIG           NSIG_MAX
-#elif !defined NSIG
-# define NSIG           ((sizeof(sigset_t) * 8) - 1)
-#endif
-
-#ifdef O_CLOEXEC
-# define _O_CLOEXEC O_CLOEXEC
-# define _CLOEXEC_SET(FD) do {;} while(0)
-#else
-# define _O_CLOEXEC 0
-# define _CLOEXEC_SET(FD) \
-do{\
-      int a__fd = (FD), a__fl;\
-      if((a__fl = fcntl(a__fd, F_GETFD)) != -1)\
-         (void)fcntl(a__fd, F_SETFD, a__fl |= FD_CLOEXEC);\
-}while(0)
-#endif
-
-#ifdef O_NOFOLLOW
-# define n_O_NOFOLLOW      O_NOFOLLOW
-#else
-# define n_O_NOFOLLOW      0
-#endif
-
-/*  */
-
-#define ACCOUNT_NULL    "null"   /* Name of "null" account */
-
 /* Special FD requests for n_child_run(), n_child_start() */
 #define n_CHILD_FD_PASS -1
 #define n_CHILD_FD_NULL -2
@@ -194,11 +118,6 @@ do{\
 /* Network protocol newline */
 #define NETNL           "\015\012"
 #define NETLINE(X)      X NETNL
-
-/* Switch indicating necessity of terminal access interface (termcap.c) */
-#if defined HAVE_TERMCAP || defined HAVE_COLOUR || defined HAVE_MLE
-# define n_HAVE_TCAP
-#endif
 
 /*
  * OS, CC support, generic macros etc.

@@ -36,15 +36,16 @@
 #ifndef n_CONFIG_H
 # define n_CONFIG_H
 
+#define ACCOUNT_NULL "null"   /* Name of "null" account */
 #define APPEND                /* New mail goes to end of mailbox */
-#define CBAD (-15555)
-#define DOTLOCK_TRIES   5     /* Number of open(2) calls for dotlock */
+#define DOTLOCK_TRIES 5       /* Number of open(2) calls for dotlock */
 #define FILE_LOCK_TRIES 10    /* Maximum tries before n_file_lock() fails */
 #define FILE_LOCK_MILLIS 200  /* If UIZ_MAX, fall back to that */
 #define n_ERROR "ERROR"       /* Is-error?  Also as n_error[] */
 #define ERRORS_MAX 1000       /* Maximum error ring entries TODO configable*/
 #define n_ESCAPE "~"          /* Default escape for sending (POSIX) */
 #define HSHSIZE 23            /* Hash prime TODO make dynamic, obsolete */
+#define INDENT_DEFAULT "\t"   /* *indentprefix* default as of POSIX */
 #define n_MAILDIR_SEPARATOR ':' /* Flag separator character */
 #define n_MAXARGC 512         /* Maximum list of raw strings */
 #define n_ALIAS_MAXEXP 25     /* Maximum expansion of aliases */
@@ -53,17 +54,6 @@
 #define n_UNIREPL "\xEF\xBF\xBD" /* Unicode replacement 0xFFFD in UTF-8 */
 #define FTMP_OPEN_TRIES 10    /* Maximum number of Ftmp() open(2) tries */
 #define n_VEXPR_REGEX_MAX 10  /* Maximum address. `vexpr' regex(7) matches */
-
-/* Max readable line width TODO simply use BUFSIZ? */
-#if BUFSIZ + 0 > 2560
-# define LINESIZE BUFSIZ
-#else
-# define LINESIZE 2560
-#endif
-#define BUFFER_SIZE (BUFSIZ >= (1u << 13) ? BUFSIZ : (1u << 14))
-
-/* *indentprefix* default as of POSIX */
-#define INDENT_DEFAULT "\t"
 
 /* Auto-reclaimed memory storage: size of the buffers.  Maximum auto-reclaimed
  * storage is that value /2, which is n_CTA()ed to be > 1024 */
@@ -86,9 +76,9 @@
  * yet another limit; also RFC 2045: 6.7, (5). */
 #define MIME_LINELEN_RFC2047 76
 
-/* Fallback MIME charsets, if *charset-7bit* and *charset-8bit* or not set.
- * Note: must be lowercase!  Changes affect enum okeys!
- * (Keep in SYNC: ./nail.1:"Character sets", ./nail.h:CHARSET_*!) */
+/* Fallback MIME charsets, if *charset-7bit* and *charset-8bit* are not set.
+ * Note: must be lowercase!
+ * (Keep in SYNC: ./nail.1:"Character sets", ./config.h:CHARSET_*!) */
 #define CHARSET_7BIT "us-ascii"
 #ifdef HAVE_ICONV
 # define CHARSET_8BIT "utf-8"
@@ -125,7 +115,88 @@
 #define n_SHEXP_MAGIC_PATH_CHARS "|&;<>{}()[]*?$`'\"\\"
 
 /* Maximum size of a message that is passed through to the spam system */
-#define SPAM_MAXSIZE  420000
+#define SPAM_MAXSIZE 420000
+
+/* Max readable line width TODO simply use BUFSIZ? */
+#if BUFSIZ + 0 > 2560
+# define LINESIZE BUFSIZ
+#else
+# define LINESIZE 2560
+#endif
+#define BUFFER_SIZE (BUFSIZ >= (1u << 13) ? BUFSIZ : (1u << 14))
+
+#ifndef NI_MAXHOST
+# define NI_MAXHOST 1025
+#endif
+
+/* TODO PATH_MAX: fixed-size buffer is always wrong (think NFS) */
+#ifndef PATH_MAX
+# ifdef MAXPATHLEN
+#  define PATH_MAX MAXPATHLEN
+# else
+#  define PATH_MAX 1024 /* _XOPEN_PATH_MAX POSIX 2008/Cor 1-2013 */
+# endif
+#endif
+
+#ifndef HOST_NAME_MAX
+# ifdef _POSIX_HOST_NAME_MAX
+#  define HOST_NAME_MAX _POSIX_HOST_NAME_MAX
+# else
+#  define HOST_NAME_MAX 255
+# endif
+#endif
+
+#ifndef NAME_MAX
+# ifdef _POSIX_NAME_MAX
+#  define NAME_MAX _POSIX_NAME_MAX
+# else
+#  define NAME_MAX 14
+# endif
+#endif
+#if NAME_MAX + 0 < 8
+# error NAME_MAX is too small
+#endif
+
+#ifndef STDIN_FILENO
+# define STDIN_FILENO 0
+#endif
+#ifndef STDOUT_FILENO
+# define STDOUT_FILENO 1
+#endif
+#ifndef STDERR_FILENO
+# define STDERR_FILENO 2
+#endif
+
+#ifdef O_CLOEXEC
+# define _O_CLOEXEC O_CLOEXEC
+# define _CLOEXEC_SET(FD) do {;} while(0)
+#else
+# define _O_CLOEXEC 0
+# define _CLOEXEC_SET(FD) \
+do{\
+      int a__fd = (FD), a__fl;\
+      if((a__fl = fcntl(a__fd, F_GETFD)) != -1)\
+         (void)fcntl(a__fd, F_SETFD, a__fl |= FD_CLOEXEC);\
+}while(0)
+#endif
+
+#ifdef O_NOFOLLOW
+# define n_O_NOFOLLOW O_NOFOLLOW
+#else
+# define n_O_NOFOLLOW 0
+#endif
+
+#ifdef NSIG_MAX
+# undef NSIG
+# define NSIG NSIG_MAX
+#elif !defined NSIG
+# define NSIG ((sizeof(sigset_t) * 8) - 1)
+#endif
+
+/* Switch indicating necessity of terminal access interface (termcap.c) */
+#if defined HAVE_TERMCAP || defined HAVE_COLOUR || defined HAVE_MLE
+# define n_HAVE_TCAP
+#endif
 
 /* Whether we shall do our memory debug thing */
 #if (defined HAVE_DEBUG || defined HAVE_DEVEL) && !defined HAVE_NOMEMDBG
