@@ -1493,7 +1493,8 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
       if (ff & GFILES) {
          ;
       } else if (_X("reply-to:") || _X("mail-followup-to:") ||
-            _X("references:") || _X("disposition-notification-to:"))
+            _X("references:") || _X("in-reply-to:") ||
+            _X("disposition-notification-to:"))
          m |= m_NOPF | m_NONAME;
       else if (ok_blook(add_file_recipients)) {
          ;
@@ -2031,29 +2032,17 @@ jto_fmt:
       ++gotcha;
    }
 
-   if ((np = hp->h_ref) != NULL && (w & GREF)) {
-      if (fmt("References:", np, fo, 0))
-         goto jleave;
-      if (hp->h_in_reply_to == NULL && np->n_name != NULL) {
-         while (np->n_flink != NULL)
-            np = np->n_flink;
-         if (!is_addr_invalid(np, /* TODO check that on parser side! */
-               /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME)) {
-            if (fprintf(fo,
-                  "In-Reply-To: <%s>\n", np->n_name /*TODO RFC5322 3.6.4*/) < 0)
-               goto jleave;
-            ++gotcha;
-         } else {
-            n_err(_("Invalid address in mail header: %s\n"), np->n_name);
+   if(w & GREF){
+      if((np = hp->h_ref) != NULL){
+         if(fmt("References:", np, fo, 0))
             goto jleave;
-         }
+         ++gotcha;
       }
-   }
-   if ((np = hp->h_in_reply_to) != NULL && (w & GREF)) {
-      if (fprintf(fo,
-            "In-Reply-To: <%s>\n", np->n_name /*TODO RFC 5322 3.6.4*/) < 0)
-         goto jleave;
-      ++gotcha;
+      if((np = hp->h_in_reply_to) != NULL){
+         if(fmt("In-Reply-To:", np, fo, 0))
+            goto jleave;
+         ++gotcha;
+      }
    }
 
    if (w & GIDENT) {
