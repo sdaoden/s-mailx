@@ -258,7 +258,7 @@ jeinvent:
       else if(*v == '\0')
          tep->te_flags |= a_TERMCAP_F_DISABLED;
       else if((f & a_TERMCAP_F_TYPE_MASK) == n_TERMCAP_CAPTYPE_NUMERIC){
-         if((n_idec_ui16_cp(&tep->te_off, v, 10, NULL
+         if((n_idec_ui16_cp(&tep->te_off, v, 0, NULL
                   ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
                ) != n_IDEC_STATE_CONSUMED)
             goto jeinvent;
