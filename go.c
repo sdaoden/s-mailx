@@ -563,6 +563,8 @@ jemsglist:
          flags |= a_NO_ERRNO;
          break;
       }
+      if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
+         n_err_no = 0;
       rv = (*cdp->cd_func)(n_msgvec);
       break;
 
@@ -575,6 +577,8 @@ jemsglist:
          flags |= a_NO_ERRNO;
          break;
       }
+      if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
+         n_err_no = 0;
       rv = (*cdp->cd_func)(n_msgvec);
       break;
 
@@ -582,12 +586,16 @@ jemsglist:
       /* Just the straight string, old style, with leading blanks removed */
       for(cp = line.s; spacechar(*cp);)
          ++cp;
+      if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
+         n_err_no = 0;
       rv = (*cdp->cd_func)(cp);
       break;
    case n_CMD_ARG_TYPE_RAWDAT:
       /* Just the straight string, placed in argv[] */
       *arglist++ = line.s;
       *arglist = NULL;
+      if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
+         n_err_no = 0;
       rv = (*cdp->cd_func)(arglist_base);
       break;
 
@@ -627,6 +635,8 @@ jemsglist:
       if(flags & a_VPUT)
          n_pstate |= n_PS_ARGMOD_VPUT;
 
+      if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
+         n_err_no = 0;
       rv = (*cdp->cd_func)(arglist_base);
       if(a_go_xcall != NULL)
          goto jret0;
@@ -653,6 +663,8 @@ jemsglist:
       }else
          cac.cac_vput = NULL;
 
+      if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
+         n_err_no = 0;
       rv = (*cdp->cd_func)(&cac);
       if(a_go_xcall != NULL)
          goto jret0;
