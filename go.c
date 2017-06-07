@@ -435,8 +435,10 @@ jempty:
    /* See if we should execute the command -- if a conditional we always
     * execute it, otherwise, check the state of cond */
 jexec:
-   if(!(cdp->cd_caflags & n_CMD_ARG_F) && n_cnd_if_isskip())
+   if(!(cdp->cd_caflags & n_CMD_ARG_F) && n_cnd_if_isskip()){
+      gecp->gec_hist_flags = a_GO_HIST_NONE;
       goto jret0;
+   }
 
    if(sp != NULL){
       sp = n_string_push_cp(sp, cdp->cd_name);
@@ -1378,7 +1380,7 @@ FL int
    if(!(gif & n_GO_INPUT_HOLDALLSIGS))
       hold_all_sigs();
 
-   histok = TRU1;
+   histok = FAL0;
 
    if(a_go_ctx->gc_flags & a_GO_FORCE_EOF){
       a_go_ctx->gc_flags |= a_GO_IS_EOF;
@@ -1401,7 +1403,6 @@ FL int
 
          /* Simply "reuse" allocation, copy string to front of it */
 jinject:
-         histok = !giip->gii_no_history;
          *linesize = giip->gii_len;
          *linebuf = (char*)giip;
          memmove(*linebuf, giip->gii_dat, giip->gii_len +1);
@@ -1422,7 +1423,6 @@ jinject:
          iftype = (a_go_ctx->gc_flags & a_GO_MACRO_X_OPTION)
                ? "-X OPTION"
                : (a_go_ctx->gc_flags & a_GO_MACRO_CMD) ? "CMD" : "MACRO";
-         histok = FAL0;
       }
       n = (int)*linesize;
       n_pstate |= n_PS_READLINE_NL;
@@ -1439,6 +1439,7 @@ jinject:
          if(giip->gii_commit){
             if(*linebuf != NULL)
                n_free(*linebuf);
+            histok = !giip->gii_no_history;
             goto jinject; /* (above) */
          }else{
             string = savestrbuf(giip->gii_dat, giip->gii_len);
@@ -1451,9 +1452,9 @@ jforce_stdin:
    n_pstate &= ~n_PS_READLINE_NL;
    iftype = (!(n_psonce & n_PSO_STARTED) ? "LOAD"
           : (n_pstate & n_PS_SOURCING) ? "SOURCE" : "READ");
-   doprompt = (!(gif & n_GO_INPUT_FORCE_STDIN) &&
-         (n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)) ==
-            (n_PSO_INTERACTIVE | n_PSO_STARTED) && !(n_pstate & n_PS_ROBOT));
+   histok = (n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)) ==
+         (n_PSO_INTERACTIVE | n_PSO_STARTED) && !(n_pstate & n_PS_ROBOT);
+   doprompt = !(gif & n_GO_INPUT_FORCE_STDIN) && histok;
    dotty = (doprompt && !ok_blook(line_editor_disable));
    if(!doprompt)
       gif |= n_GO_INPUT_PROMPT_NONE;
