@@ -1977,6 +1977,8 @@ c_eval(void *vp){
    memset(&gec, 0, sizeof gec);
    gec.gec_line.s = n_string_cp(sp);
    gec.gec_line.l = sp->s_len;
+   if(n_poption & n_PO_D_VV)
+      n_err(_("EVAL %" PRIuZ " bytes <%s>\n"), gec.gec_line.l, gec.gec_line.s);
    (void)/* XXX */a_go_evaluate(&gec);
    NYD_LEAVE;
    return (a_go_xcall != NULL ? 0 : n_pstate_ex_no);
