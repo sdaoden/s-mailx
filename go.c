@@ -85,6 +85,7 @@ enum a_go_flags{
     * allocated memory pool of the global context */
    a_GO_MEMPOOL_INHERITED = 1u<<17,
 
+   a_GO_XCALL_IS_CALL = 1u<<24,  /* n_GO_INPUT_NO_XCALL */
    /* `xcall' optimization barrier: n_go_macro() has been finished with
     * a `xcall' request, and `xcall' set this in the parent a_go_input of the
     * said n_go_macro() to indicate a barrier: we teardown the a_go_input of
@@ -98,8 +99,8 @@ enum a_go_flags{
     * optimization loop.  If no `xcall' is desired that loop is simply left and
     * the _event_loop() of the outer a_go_ctx will perform a loop tick and
     * clear this bit again OR become teardown itself */
-   a_GO_XCALL_LOOP = 1u<<24,  /* `xcall' optimization barrier level */
-   a_GO_XCALL_LOOP_ERROR = 1u<<25, /* .. state machine error transporter */
+   a_GO_XCALL_LOOP = 1u<<25,  /* `xcall' optimization barrier level */
+   a_GO_XCALL_LOOP_ERROR = 1u<<26, /* .. state machine error transporter */
    a_GO_XCALL_LOOP_MASK = a_GO_XCALL_LOOP | a_GO_XCALL_LOOP_ERROR
 };
 
@@ -1794,7 +1795,8 @@ n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
    gcp->gc_osigmask = osigmask;
    gcp->gc_flags = a_GO_FREE | a_GO_MACRO | a_GO_MACRO_FREE_DATA |
          ((!(a_go_ctx->gc_flags & a_GO_TYPE_MASK) ||
-            (a_go_ctx->gc_flags & a_GO_SUPER_MACRO)) ? a_GO_SUPER_MACRO : 0);
+            (a_go_ctx->gc_flags & a_GO_SUPER_MACRO)) ? a_GO_SUPER_MACRO : 0) |
+         ((gif & n_GO_INPUT_NO_XCALL) ? a_GO_XCALL_IS_CALL : 0);
    gcp->gc_lines = lines;
    gcp->gc_on_finalize = on_finalize;
    gcp->gc_finalize_arg = finalize_arg;
@@ -1994,16 +1996,17 @@ c_xcall(void *vp){
     * level of `eval' (TODO: yet) was used to double-expand our arguments */
    if((gcp = a_go_ctx)->gc_flags & a_GO_MACRO_CMD)
       gcp = gcp->gc_outer;
-   if((gcp->gc_flags & (a_GO_MACRO | a_GO_MACRO_CMD)) != a_GO_MACRO)
+   if((gcp->gc_flags & (a_GO_MACRO | a_GO_MACRO_X_OPTION | a_GO_MACRO_CMD)
+         ) != a_GO_MACRO)
       goto jerr;
 
    /* Try to roll up the stack as much as possible.
     * See a_GO_XCALL_LOOP flag description for more */
-   if(gcp->gc_outer != NULL){
+   if(!(gcp->gc_flags & a_GO_XCALL_IS_CALL) && gcp->gc_outer != NULL){
       if(gcp->gc_outer->gc_flags & a_GO_XCALL_LOOP)
          gcp = gcp->gc_outer;
    }else{
-      /* Otherwise this macro is invoked from the top level, in which case we
+      /* Otherwise this macro is "invoked from the top level", in which case we
        * silently act as if we were `call'... */
       rv = c_call(vp);
       /* ...which means we must ensure the rest of the macro that was us

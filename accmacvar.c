@@ -166,7 +166,8 @@ struct a_amv_mac_call_args{
    void *amca_hook_arg;
    bool_t amca_lopts_on;
    bool_t amca_ps_hook_mask;
-   ui8_t amca__pad[6];
+   bool_t amca_no_xcall;         /* We want n_GO_INPUT_NO_XCALL for this */
+   ui8_t amca__pad[5];
    struct a_amv_pospar amca_pospar;
 };
 
@@ -483,8 +484,9 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
    a_amv_lopts = losp;
    if(amcap->amca_hook_pre != NULL)
       n_PS_ROOT_BLOCK((*amcap->amca_hook_pre)(amcap->amca_hook_arg));
-   rv = n_go_macro(n_GO_INPUT_NONE, amp->am_name, args_base,
-         &a_amv_mac__finalize, losp);
+   rv = n_go_macro((n_GO_INPUT_NONE |
+            (amcap->amca_no_xcall ? n_GO_INPUT_NO_XCALL : 0)),
+         amp->am_name, args_base, &a_amv_mac__finalize, losp);
    NYD2_LEAVE;
    return rv;
 }
@@ -2042,7 +2044,6 @@ c_account(void *v){
    a_amv_acc_curr = amp;
 
    if(amp != NULL){
-      bool_t ok;
       assert(amp->am_lopts == NULL);
       amcap = n_lofi_alloc(sizeof *amcap);
       memset(amcap, 0, sizeof *amcap);
@@ -2050,9 +2051,9 @@ c_account(void *v){
       amcap->amca_amp = amp;
       amcap->amca_unroller = &amp->am_lopts;
       amcap->amca_lopts_on = TRU1;
+      amcap->amca_no_xcall = TRU1;
       ++amp->am_refcnt; /* We may not run 0 to avoid being deleted! */
-      ok = a_amv_mac_exec(amcap);
-      if(!ok){
+      if(!a_amv_mac_exec(amcap)){
          /* XXX account switch incomplete, unroll? */
          n_err(_("`account': failed to switch to account: %s\n"), amp->am_name);
          goto jleave;
@@ -2279,6 +2280,7 @@ jmac:
    }
    amcap->amca_lopts_on = TRU1;
    amcap->amca_ps_hook_mask = TRU1;
+   amcap->amca_no_xcall = TRU1;
    rv = a_amv_mac_exec(amcap);
    n_pstate &= ~n_PS_HOOK_MASK;
 
@@ -2331,6 +2333,7 @@ temporary_compose_mode_hook_call(char const *macname,
       amcap->amca_hook_arg = hook_arg;
       amcap->amca_lopts_on = TRU1;
       amcap->amca_ps_hook_mask = TRU1;
+      amcap->amca_no_xcall = TRU1;
       n_pstate &= ~n_PS_HOOK_MASK;
       n_pstate |= n_PS_HOOK;
       if(macname != NULL)

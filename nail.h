@@ -808,11 +808,16 @@ enum n_go_input_flags{
    n__GO_INPUT_CTX_MAX1 = n_GO_INPUT_CTX_COMPOSE + 1,
 
    n_GO_INPUT_HOLDALLSIGS = 1u<<8,     /* hold_all_sigs() active TODO */
-   n_GO_INPUT_FORCE_STDIN = 1u<<9,     /* Even in macro, use stdin (`read')! */
-   n_GO_INPUT_NL_ESC = 1u<<10,         /* Support "\\$" line continuation */
-   n_GO_INPUT_NL_FOLLOW = 1u<<11,      /* ..on such a follow line */
-   n_GO_INPUT_PROMPT_NONE = 1u<<12,    /* Don't print prompt */
-   n_GO_INPUT_PROMPT_EVAL = 1u<<13,    /* Instead, evaluate *prompt* */
+   /* `xcall' is `call' (at the level where this is set): to be set when
+    * teardown of top level has undesired effects, e.g., for `account's and
+    * folder hooks etc., where we do not to loose our `localopts' unroll list */
+   n_GO_INPUT_NO_XCALL = 1u<<9,
+
+   n_GO_INPUT_FORCE_STDIN = 1u<<10,    /* Even in macro, use stdin (`read')! */
+   n_GO_INPUT_NL_ESC = 1u<<11,         /* Support "\\$" line continuation */
+   n_GO_INPUT_NL_FOLLOW = 1u<<12,      /* ..on such a follow line */
+   n_GO_INPUT_PROMPT_NONE = 1u<<13,    /* Don't print prompt */
+   n_GO_INPUT_PROMPT_EVAL = 1u<<14,    /* Instead, evaluate *prompt* */
 
    n_GO_INPUT_HIST_ADD = 1u<<16,       /* Add the result to history list */
    n_GO_INPUT_HIST_GABBY = 1u<<17,     /* Consider history entry as gabby */

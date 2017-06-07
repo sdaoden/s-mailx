@@ -6385,6 +6385,10 @@ ed macro: the sole difference to
 is that the new macro is executed in place of the current one, which
 will not regain control; all resources of the current macro will be
 released before control is given to the replacer.
+Note this implies that
+.Ic localopts
+may become cleaned up if the teared down macro context is the outermost
+level of the cleanup stack.
 .
 .Mx
 .It Ic xit
