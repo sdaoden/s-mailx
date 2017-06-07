@@ -432,13 +432,11 @@ a_amv_mac_call(void *v, bool_t silent_nexist){
 
       for(argc = 0; (cacp->cac_arg = cacp->cac_arg->ca_next) != NULL; ++argc)
          argv[argc] = cacp->cac_arg->ca_arg.ca_str.s;
-
       argv[argc] = NULL;
 
       memset(amcap, 0, sizeof *amcap);
       amcap->amca_name = name;
       amcap->amca_amp = amp;
-
       if(argc > 0){
          amcap->amca_pospar.app_count = (ui16_t)argc;
          amcap->amca_pospar.app_not_heap = TRU1;

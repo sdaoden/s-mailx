@@ -1829,7 +1829,7 @@ n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
 
             (void)c_call(cacp);
          }
-         rv = ((a_go_ctx->gc_flags & a_GO_XCALL_LOOP_ERROR) != 0);
+         rv = ((a_go_ctx->gc_flags & a_GO_XCALL_LOOP_ERROR) == 0);
          a_go_ctx->gc_flags &= ~a_GO_XCALL_LOOP_MASK;
       }
    }
