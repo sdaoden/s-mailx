@@ -4274,7 +4274,7 @@ and the editor returns a successful exit status.
 .Mx
 .It Ic elif
 Part of the
-.Ic if Ns / Ns Ic elif Ns / Ns Ic else Ns / Ns Ic endif
+.Ic if Ns \0/\: Ic elif Ns \0/\: Ic else Ns \0/\: Ic endif
 conditional \(em if the condition of a preceding
 .Ic if
 was false, check the following condition and execute the following block
@@ -4283,7 +4283,7 @@ if it evaluates true.
 .Mx
 .It Ic else
 (el) Part of the
-.Ic if Ns / Ns Ic elif Ns / Ns Ic else Ns / Ns Ic endif
+.Ic if Ns \0/\: Ic elif Ns \0/\: Ic else Ns \0/\: Ic endif
 conditional \(em if none of the conditions of the preceding
 .Ic if
 and
@@ -4295,7 +4295,7 @@ block is executed.
 .Mx
 .It Ic endif
 (en) Marks the end of an
-.Ic if Ns / Ns Ic elif Ns / Ns Ic else Ns / Ns Ic endif
+.Ic if Ns \0/\: Ic elif Ns \0/\: Ic else Ns \0/\: Ic endif
 conditional execution block.
 .
 .
@@ -4792,23 +4792,24 @@ will display the following message, not the current one.
 .Mx
 .It Ic if
 (i) Part of the nestable
-.Ic if Ns / Ns Ic elif Ns / Ns Ic else Ns / Ns Ic endif
+.Ic if Ns \0/\: Ic elif Ns \0/\: Ic else Ns \0/\: Ic endif
 conditional execution construct \(em if the given condition is true then
 the encapsulated block is executed.
-POSIX only supports the (case-insensitive) conditions
+The POSIX standards supports the (case-insensitive) conditions
 .Ql r Ns
 eceive
 and
 .Ql s Ns
-end, all remaining conditions are non-portable extensions; note that
-falsely specified conditions cause the execution of the entire
-conditional construct until the (matching) closing
-.Ic endif
-command to be suppressed.
-The syntax of the nestable
-.Ic if
-conditional execution construct requires that each condition and syntax
-element is surrounded by whitespace.
+end, all remaining conditions are non-portable extensions.
+(Be aware that a faulty condition skips all following branches until
+.Ic endif . )
+\*(ID These commands do not yet use
+.Sx "Shell-style argument quoting"
+and therefore do not know about input tokens, so that syntax
+elements have to be surrounded by whitespace; in v15 \*(UA will inspect
+all conditions bracket group wise and consider the tokens, representing
+values and operators, therein, which also means that variables will
+already have been expanded at that time (just like in the shell).
 .
 .Bd -literal -offset indent
 if receive
@@ -4829,7 +4830,9 @@ for textual boolean representations) to mark an enwrapped block as
 .Dq never execute
 or
 .Dq always execute .
-It is possible to check
+.
+.Pp
+\*(ID It is possible to check
 .Sx "INTERNAL VARIABLES"
 as well as
 .Sx ENVIRONMENT
@@ -4840,13 +4843,14 @@ value or another variable by using the
 conditional trigger character;
 a variable on the right hand side may be signalled using the same
 mechanism.
-The variable names may be enclosed in a pair of matching braces.
+Variable names may be enclosed in a pair of matching braces.
+When this mode has been triggered, several operators are available:
 .
 .Pp
-Integer operators treat the left and right hand side as integral numbers
-and compare them arithmetically.
+Integer operators treat the arguments on the left and right hand side of
+the operator as integral numbers and compare them arithmetically.
 It is an error if any of the operands is not a valid integer, an empty
-operand is treated as if it were 0.
+argument (which implies it had been quoted) is treated as if it were 0.
 Available operators are
 .Ql -lt
 (less than),
@@ -4862,12 +4866,19 @@ Available operators are
 (greater than).
 .
 .Pp
-String operators compare the left and right hand side 8-bit byte-wise,
-ignoring case according to the rules of the US-ASCII encoding
-(therefore, dependent on the active locale, possibly producing false
-results for strings in the locale encoding).
-An unset variable is treated as the empty string.
-Available operators are
+String data operators compare the left and right hand side according to
+their textual content.
+Unset variables are treated as the empty string.
+The behaviour of string operators can be adjusted by prefixing the
+operator with the modifier trigger commercial at
+.Ql @ ,
+followed by none to multiple modifiers: for now supported is
+.Ql i ,
+which turns the comparison into a case-insensitive one: this is
+implied if no modifier follows the trigger.
+.
+.Pp
+Available string operators are
 .Ql <
 (less than),
 .Ql <=
@@ -4880,10 +4891,15 @@ Available operators are
 (greater than or equal to),
 .Ql >
 (greater than),
-.Ql =@
+.Ql =%
 (is substring of) and
-.Ql !@
+.Ql !%
 (is not substring of).
+By default these operators work on bytes and (therefore) do not take
+into account character set specifics.
+If the case-insensitivity modifier has been used, case is ignored
+according to the rules of the US-ASCII encoding, i.e., bytes are
+still compared.
 .
 .Pp
 When the \*(OPal regular expression support is available, the additional
@@ -4893,10 +4909,9 @@ and
 .Ql !~
 can be used.
 They treat the right hand side as an extended regular expression that is
-matched case-insensitively and according to the active
+matched according to the active
 .Ev LC_CTYPE
-locale, meaning that strings in the locale encoding should be matched
-correctly.
+locale, i.e., character sets should be honoured correctly.
 .
 .Pp
 Conditions can be joined via AND-OR lists (where the AND operator is
@@ -4922,31 +4937,26 @@ will reverse the result.
 if $debug
   echo *debug* is set
 endif
-if [ "$ttycharset" == UTF-8 ] || [ "$ttycharset" == UTF8 ]
-  echo *ttycharset* is set to UTF-8, case-insensitively
+if [ "$ttycharset" == UTF-8 ] || [ "$ttycharset" @i== UTF8 ]
+  echo *ttycharset* is UTF-8, the former case-sensitive!
 endif
 set t1=one t2=one
 if [ "${t1}" == "${t2}" ]
   echo These two variables are equal
 endif
-# This is a string test, -ge was added for v14.9.0
-if [ "$version-major" >= 15 ]
-  echo Running a new version..
-  if [ "$features" =@ +regex ]
-    if [ "$TERM" =~ "^xterm\&.*" ]
-      echo ..in an X terminal
-    endif
-  endif
-  if [ [ true ] && [ [ "${debug}" != '' ] || \e
-      [ "$verbose" != '' ] ] ]
-    echo Noisy, noisy
-  endif
-  if true && [ "$debug" != '' ] || [ "${verbose}" != '' ]
-    echo Left associativity, as is known from the shell
-  endif
-  if ! ! true && ! [ ! "$debug" && ! "$verbose" ]
-    echo Unary operator support
-  endif
+# This is a string test, -ge has been added for v14.9.0
+if [ "$features" =% +regex ] && [ "$TERM" @i=~ "^xterm\&.*" ]
+  echo ..in an X terminal
+endif
+if [ [ true ] && [ [ "${debug}" != '' ] || \e
+    [ "$verbose" != '' ] ] ]
+  echo Noisy, noisy
+endif
+if true && [ "$debug" != '' ] || [ "${verbose}" != '' ]
+  echo Left associativity, as is known from the shell
+endif
+if ! ! true && ! [ ! "$debug" && ! "$verbose" ]
+  echo Unary operator support
 endif
 .Ed
 .
