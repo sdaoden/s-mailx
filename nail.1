@@ -6138,7 +6138,7 @@ of \*(UA.
 .It Ic vexpr
 \*(NQ Evaluate arguments according to a given operator.
 This is a multiplexer command which can be used to perform signed 64-bit
-numeric calculations as well as string operations.
+numeric calculations as well as byte string and string operations.
 It uses polish notation, i.e., the operator is the first argument and
 defines the number and type, and the meaning of the remaining arguments.
 An empty argument is replaced with a 0 if a number is expected.
@@ -6150,15 +6150,15 @@ Supports
 .Pp
 The result that is shown in case of errors is always
 .Ql -1
-for usage errors and numeric operations, and the empty string for string
-operations.
-String operations which fail to provide result data for
+for usage errors and numeric operations, and the empty string for byte
+string and string operations;
+if the latter two fail to provide result data for
 .Dq soft
-errors, e.g., when a search operation failed, also set the
+errors, e.g., when a search operation failed, they also set the
 .Va \&!
 error number to
 .Va ^ERR Ns -NODATA .
-Except when noted than numeric arguments are parsed as signed 64-bit
+Except when otherwise noted numeric arguments are parsed as signed 64-bit
 numbers, and errors will be reported in the error number
 .Va \&!
 as the numeric error
@@ -6213,31 +6213,34 @@ as
 .Va ^ERR Ns -OVERFLOW .
 .
 .Pp
-String operations that take one argument are
-.Ql length ,
-which queries the length of the given argument,
-.Ql hash ,
-which calculates the Chris Torek hash of the given string, and
+Character set agnostic string functions have no notion of locale
+settings and character sets.
+There is
 .Ql file-expand ,
 which performs the usual
-.Sx "Filename transformations" ,
-on its argument, as well as
+.Sx "Filename transformations"
+on its argument, and
 .Ql random ,
 which generates a random string of the given length, or of
 .Dv \&\&PATH_MAX
 bytes (a constant from
 .Pa /usr/include )
 if the value 0 is given; the random string will be base64url encoded
-according to RFC 4648, and thus be usable as a file name.
-There is
-.Ql makeprint ,
-which (one-way) converts the argument to something safely printable on
-the terminal.
+according to RFC 4648, and thus be usable as a (portable) filename.
 .
 .Pp
-String operations with two or more arguments are
+Byte string operations work on 8-bit bytes and have no notion of locale
+settings and character sets, effectively assuming ASCII data.
+Operations that take one argument are
+.Ql length ,
+which queries the length of the given argument, and
+.Ql hash ,
+which calculates the Chris Torek hash of the given argument.
+.
+.Pp
+Byte string operations with two or more arguments are
 .Ql find ,
-which searches in the first for the second argument, and shows the
+which byte-searches in the first for the second argument, and shows the
 resulting 0-based offset shall it have been found,
 .Ql ifind ,
 which is identical to
@@ -6257,15 +6260,21 @@ as
 .Va ^ERR Ns -OVERFLOW .
 .
 .Pp
+String operations work, sufficient support provided, according to the
+.Ev LC_CTYPE
+locale and therefore with the user's locale encoding / character set.
+There is the one argument operation
+.Ql makeprint ,
+which (one-way) converts the argument to something safely printable on
+the terminal.
+.
+.Pp
 \*(OP
 .Ql regex
-will try to match the first argument with the regular expression given
-in the second argument, as does
+is a string operation that will try to match the first argument with the
+regular expression given as the second argument, as does
 .Ql iregex ,
 but which is case-insensitive.
-These operators match according to the active
-.Ev LC_CTYPE
-locale and thus should match correctly strings in the locale encoding.
 If the optional third argument has been given then instead of showing
 the match offset a replacement operation is performed:
 the third argument is treated as if specified via dollar-single-quote
@@ -9003,13 +9012,13 @@ set on-compose-splice=ocsm
 define ocsm {
   read ver
   echo Splice protocol version is $ver
-  echo '~^h l'; read hl; vput vexpr es substr "${hl}" 0 1
+  echo '~^h l'; read hl; vput vexpr es substring "${hl}" 0 1
   if [ "$es" != 2 ]
     echoerr 'Cannot read header list'; echo '~x'
   endif
   if [ "$hl" !@ ' cc' ]
     echo '~^h i cc Diet is your <mirr.or>'; read es;\e
-      vput vexpr es substr "${es}" 0 1
+      vput vexpr es substring "${es}" 0 1
     if [ "$es" != 2 ]
       echoerr 'Cannot insert Cc: header'; echo '~x'
     endif
