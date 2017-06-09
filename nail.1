@@ -1370,7 +1370,7 @@ if [ "$features" !@ +filter-html-tagsoup ]
   # Display HTML as plain text instead
   #set pipe-text/html=@
 endif
-mimetype '@ application/mathml+xml mathml'
+mimetype @ application/mathml+xml mathml
 wysh set pipe-application/pdf='@&=@ \e
   trap "rm -f \e"${MAILX_FILENAME_TEMPORARY}\e"" EXIT;\e
   trap "trap \e"\e" INT QUIT TERM; exit 1" INT QUIT TERM;\e
@@ -5092,18 +5092,22 @@ is set.
 .Mx
 .Mx
 .It Ic mimetype , unmimetype
-Without any arguments the content of the MIME type cache will displayed.
-Otherwise each argument defines a complete MIME type specification of
-a type that shall be added (prepended) to the cache.
+Without arguments the content of the MIME type cache will displayed;
+a more verbose listing will be produced if either of
+.Va debug
+or
+.Va verbose
+are set.
+When given arguments they will be joined, interpreted as shown in
+.Sx "The mime.types files"
+(see there for more on MIME type specifications and this topic in
+general), and the resulting entry will be added (prepended) to the cache.
 In any event MIME type sources are loaded first as necessary \(en
 .Va mimetypes-load-control
 can be used to fine-tune which sources are actually loaded.
-Refer to the section on
-.Sx "The mime.types files"
-for more on MIME type specifications and this topic in general.
 .Pp
-The latter command deleted all specifications of the given MIME type, so
-.Ql unmimetype text/plain
+The latter command deletes all specifications of the given MIME type, thus
+.Ql ? unmimetype text/plain
 will remove all registered specifications for the MIME type
 .Ql text/plain .
 The special name
@@ -11126,16 +11130,16 @@ The following type markers are supported:
 .Bl -tag -compact -width ".It Ar _n_u"
 .It Ar @
 Treat message parts with this content as plain text.
-.It Ar @t@
+.It Ar @t
 The same as plain
 .Ar @ .
-.It Ar @h@
+.It Ar @h
 Treat message parts with this content as HTML tagsoup.
 If the \*(OPal HTML-tagsoup-to-text converter is not available treat
 the content as plain text instead.
-.It Ar @H@
+.It Ar @H
 Likewise
-.Ar @h@
+.Ar @h ,
 but instead of falling back to plain text require an explicit content
 handler to be defined.
 .El
