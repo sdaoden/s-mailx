@@ -276,11 +276,13 @@ c_dosh(void *v)
    n_UNUSED(v);
 
    if(n_child_run(ok_vlook(SHELL), 0, n_CHILD_FD_PASS, n_CHILD_FD_PASS, NULL,
-         NULL, NULL, NULL, &rv) < 0)
+         NULL, NULL, NULL, &rv) < 0){
+      n_pstate_err_no = n_err_no;
       rv = -1;
-   else{
+   }else{
       putc('\n', n_stdout);
       /* Line buffered fflush(n_stdout); */
+      n_pstate_err_no = n_ERR_NONE;
       rv = WEXITSTATUS(rv);
    }
    NYD_LEAVE;

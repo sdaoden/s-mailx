@@ -523,7 +523,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
    { "return", &c_return, (M | X | EM | TWYSH), 0, 2, NULL
      DS(N_("Return control [with <return value> [<exit status>]] from macro"))},
 
-   { "shell", &c_dosh, (I | S | TWYSH), 0, 0, NULL
+   { "shell", &c_dosh, (I | S | EM | TWYSH), 0, 0, NULL
      DS(N_("Invoke an interactive shell")) },
    { "shift", &c_shift, (M | X | TWYSH), 0, 1, NULL
      DS(N_("In a `call'ed macro, shift positional parameters")) },
