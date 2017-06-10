@@ -6463,14 +6463,30 @@ ged message.
 .
 Here is a summary of the command escapes available in compose mode,
 which are used to perform special functions when composing messages.
-Command escapes are only recognized at the beginning of lines.
+Command escapes are only recognized at the beginning of lines, and
+consist of a trigger (escape) and a command character.
 The actual escape character can be set via the internal variable
 .Va escape ,
 it defaults to the tilde
-.Ql ~ ,
-which is used in place of a better alternative in the following.
+.Ql ~ .
 To avoid the possible \*(OPal history addition, an otherwise ignored
 (single) whitespace character can be placed after the escape character.
+.
+.Pp
+Unless otherwise noted all compose mode commands ensure proper updates
+of the variables which represent the error number
+.Va \&!
+and the exit status
+.Va \&? .
+If the variable
+.Va errexit
+is set they will, unless stated otherwise, error out message compose
+mode if an operation fails.
+It is however possible to place the character hyphen-minus
+.Ql -
+after (possible whitespace following) the escape character, which has an
+effect equivalent to the command modifier
+.Cm vput .
 .
 .
 .Bl -tag -width ".It Ic BaNg"
@@ -6517,6 +6533,13 @@ Its standard output is inserted into the message.
 .Mx
 .It Ic ~@ Op Ar filename...
 Append or edit the list of attachments.
+Does not manage the error number
+.Va \&!
+and the exit status
+.Va \&? ,
+(please use
+.Ic ~^
+instead if this is a concern).
 A list of
 .Ar filename
 arguments is expected (see
@@ -6767,6 +6790,12 @@ mentioned hooks receive the used protocol version as an initial line.
 In general the first field of a response line represents a status code
 which specifies whether a command was successful or not, whether result
 data is to be expected, and if, the format of the result data.
+Does not manage the error number
+.Va \&!
+and the exit status
+.Va \&? ,
+because errors are reported via the protocol
+(hard errors like I/O failures cannot be handled).
 The status codes are:
 .
 .Pp
@@ -7871,7 +7900,6 @@ in compose mode.
 The default value is the character tilde
 .Ql ~ .
 If set to the empty string, command escapes are disabled.
-Changes on this variable will not affect an active compose mode.
 .
 .Mx
 .It Va expandaddr

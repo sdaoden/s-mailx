@@ -2037,6 +2037,11 @@ FL int
 c_exit(void *vp){
    NYD_ENTER;
    n_UNUSED(vp);
+   if(n_pstate & n_PS_COMPOSE_FORKHOOK){ /* TODO sic */
+      fflush(NULL);
+      _exit(0);
+   }else if(n_pstate & n_PS_COMPOSE_MODE) /* XXX really.. */
+      n_err(_("`exit' delayed until compose mode is left\n")); /* XXX ..log? */
    n_psonce |= n_PSO_XIT;
    NYD_LEAVE;
    return 0;
@@ -2046,6 +2051,11 @@ FL int
 c_quit(void *vp){
    NYD_ENTER;
    n_UNUSED(vp);
+   if(n_pstate & n_PS_COMPOSE_FORKHOOK){ /* TODO sic */
+      fflush(NULL);
+      _exit(0);
+   }else if(n_pstate & n_PS_COMPOSE_MODE) /* XXX really.. */
+      n_err(_("`exit' delayed until compose mode is left\n")); /* XXX ..log? */
    n_psonce |= n_PSO_QUIT;
    NYD_LEAVE;
    return 0;

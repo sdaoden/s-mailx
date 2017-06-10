@@ -792,7 +792,7 @@ sendmail_internal(void *v, int recipient_record)
    head.h_to = lextract(str, GTO | GFULL);
    rv = mail1(&head, 0, NULL, NULL, recipient_record, 0);
    NYD_LEAVE;
-   return (rv == 0);
+   return (rv != OKAY); /* reverse! */
 }
 
 static struct name *
@@ -1681,7 +1681,7 @@ mail(struct name *to, struct name *cc, struct name *bcc, char const *subject,
    if (subject != NULL)
       free(out.s);
    NYD_LEAVE;
-   return 0;
+   return 0; /* TODO only for main.c, -> n_exit_status, BUT: ARGH! */
 }
 
 FL int
