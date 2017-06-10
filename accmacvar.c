@@ -823,6 +823,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
             ok = FAL0;
             break;
          }
+         /* FALLTHRU */
       case ok_v_TMPDIR:
          if(!n_is_dir(val, TRU1)){
             n_err(_("$TMPDIR is not a directory or not accessible: %s\n"),
@@ -874,6 +875,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
          ok_bset(line_editor_disable);
          if(!(n_psonce & n_PSO_STARTED))
             ok_bset(termcap_disable);
+         break;
       case ok_v_umask:
          if(*val != '\0'){
             ui64_t uib;
