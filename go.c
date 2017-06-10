@@ -1244,10 +1244,12 @@ jleave:
       }
       if(ok_blook(errexit) || bo) /* TODO v15: drop bo */
          n_pstate |= n_PS_ERR_QUIT;
-      else if(!(n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)) &&
-            ok_blook(posix))
-         n_pstate |= n_PS_ERR_XIT;
-      else
+      else if(ok_blook(posix)){
+         if(n_psonce & n_PSO_STARTED)
+            rv = 0;
+         else if(!(n_psonce & n_PSO_INTERACTIVE))
+            n_pstate |= n_PS_ERR_XIT;
+      }else
          rv = 0;
 
       if(rv != 0){

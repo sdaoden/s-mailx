@@ -2349,6 +2349,7 @@ enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
    n_CMD_ARG_V = 1u<<15,   /* Supports `vput' prefix (only WYSH/WYRA) */
    n_CMD_ARG_W = 1u<<16,   /* Invalid when read only bit */
    n_CMD_ARG_X = 1u<<17,   /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
+   /* XXX Note that CMD_ARG_EM implies a _real_ return value for $! */
    n_CMD_ARG_EM = 1u<<30   /* If error: n_pstate_err_no (4 $! aka. ok_v___em) */
 };
 
