@@ -331,22 +331,28 @@ j_lt_redo:
       head.h_attach->a_content_description = _("Original message content");
    }
 
-   if (mail1(&head, 1, mp, NULL, !!(hf & HF_RECIPIENT_RECORD), 0) == OKAY &&
-         ok_blook(markanswered) && !(mp->m_flag & MANSWERED))
+   if (mail1(&head, 1, mp, NULL, !!(hf & HF_RECIPIENT_RECORD), 0) != OKAY) {
+      msgvec = NULL;
+      goto jleave;
+   }
+   if(ok_blook(markanswered) && !(mp->m_flag & MANSWERED))
       mp->m_flag |= MANSWER | MANSWERED;
 
    if (*++msgvec != 0) {
       /* TODO message (error) ring.., less sleep */
-      fprintf(n_stdout,
-         _("Waiting a second before proceeding to the next message..\n"));
-      fflush(n_stdout);
-      n_msleep(1000, FAL0);
+      if(n_psonce & n_PSO_INTERACTIVE){
+         fprintf(n_stdout,
+            _("Waiting a second before proceeding to the next message..\n"));
+         fflush(n_stdout);
+         n_msleep(1000, FAL0);
+      }
       goto jnext_msg;
    }
 
+jleave:
    ac_free(save_msgvec);
    NYD_LEAVE;
-   return 0;
+   return (msgvec == NULL);
 }
 
 static int
@@ -426,12 +432,16 @@ _Reply(int *msgvec, bool_t recipient_record)
       head.h_attach->a_content_description = _("Original message content");
    }
 
-   if (mail1(&head, 1, mp, NULL, recipient_record, 0) == OKAY &&
-         ok_blook(markanswered) && !(mp->m_flag & MANSWERED))
+   if (mail1(&head, 1, mp, NULL, recipient_record, 0) != OKAY) {
+      msgvec = NULL;
+      goto jleave;
+   }
+
+   if(ok_blook(markanswered) && !(mp->m_flag & MANSWERED))
       mp->m_flag |= MANSWER | MANSWERED;
 jleave:
    NYD_LEAVE;
-   return 0;
+   return (msgvec == NULL);
 }
 
 static int
@@ -496,9 +506,8 @@ _fwd(char *str, int recipient_record)
    }
    head.h_subject = hfield1("subject", mp);
    head.h_subject = __fwdedit(head.h_subject);
-   mail1(&head, 1, (forward_as_attachment ? NULL : mp), NULL, recipient_record,
-      1);
-   rv = 0;
+   rv = (mail1(&head, 1, (forward_as_attachment ? NULL : mp), NULL,
+         recipient_record, 1) != OKAY); /* reverse! */
 jleave:
    NYD_LEAVE;
    return rv;
@@ -569,6 +578,7 @@ _resend1(void *v, bool_t add_resent)
 
    sn = nalloc(name, GTO | GSKIN);
    to = usermap(sn, FAL0);
+   f = TRU1;
    for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
          ++ip)
       if (resend_msg(message + *ip - 1, to, add_resent) != OKAY)
