@@ -1316,43 +1316,54 @@ instead in order to prevent any of these actions.
 .\" .Ss "HTML mail and MIME attachments" {{{
 .Ss "HTML mail and MIME attachments"
 .
-Messages which are HTML-only get more and more common and of course many
-messages come bundled with a bouquet of MIME attachments.
-Whereas \*(UA \*(OPally supports a simple HTML-to-text converter to deal
-with HTML messages (see
-.Sx "The mime.types files" ) ,
-it normally cannot deal with any of these itself, but instead programs
-need to become registered to deal with specific MIME types or file
-extensions.
-These programs may either prepare plain text versions of their input
-in order to enable \*(UA to display the content on the terminal,
-or display the content themselves, for example in a graphical window.
+Messages which are HTML-only become more and more common and of course
+many messages come bundled with a bouquet of MIME (Multipurpose Internet
+Mail Extensions) parts for, e.g., attachments.
+To get a notion of MIME types, \*(UA will first read
+.Sx "The mime.types files"
+(as configured and allowed by
+.Va mimetypes-load-control ) ,
+and then add onto that types registered directly with
+.Ic mimetype .
+It (normally) has a default set of types builtin, too.
+To improve interaction with faulty MIME part declarations which are
+often seen in real-life messages, setting
+.Va mime-counter-evidence
+will allow \*(UA to verify the given assertion and possibly provide
+an alternative MIME type.
 .
 .Pp
-To install an external handler program for a specific MIME type set an
-according
+Whereas \*(UA \*(OPally supports a simple HTML-to-text converter for
+HTML messages, it cannot handle MIME types other than plain text itself.
+Instead programs need to become registered to deal with specific MIME
+types or file extensions.
+These programs may either prepare plain text versions of their input in
+order to enable \*(UA to integrate their output neatlessly in its own
+message visualization (a mode which is called
+.Cd copiousoutput ) ,
+or display the content themselves, for example in an external graphical
+window: such handlers will only be considered by and for the command
+.Ic partview .
+.
+.Pp
+To install a handler program for a specific MIME type an according
 .Va pipe-TYPE/SUBTYPE
-variable; to instead define a handler for a specific file extension set
-the respective
+variable needs to be set; to instead define a handler for a specific
+file extension the respective
 .Va pipe-EXTENSION
-variable \(en these handlers take precedence.
+variable can be used \(en these handlers take precedence.
 \*(OPally \*(UA supports mail user agent configuration as defined in
-RFC 1524; this mechanism, documented in the section
-.Sx "The Mailcap files" ,
+RFC 1524; this mechanism (see
+.Sx "The Mailcap files" )
 will be queried for display or quote handlers if none of the former two
 .\" TODO v15-compat "will be" -> "is"
 did; it will be the sole source for handlers of other purpose.
-A last source for handlers may be the MIME type definition itself, if
-the \*(UA specific type-marker extension was used when defining the type
-with the command
-.Ic mimetype .
-(Many of the builtin MIME types do so by default.)
+A last source for handlers is the MIME type definition itself, when
+a (\*(UA specific) type-marker was registered with the command
+.Ic mimetype
+(which many builtin MIME types do).
 .
 .Pp
-The variable
-.Va mime-counter-evidence
-can be set to improve dealing with faulty MIME part declarations as are
-often seen in real-life messages.
 E.g., to display a HTML message inline (that is, converted to a more
 fancy plain text representation than the builtin converter is capable to
 produce) with either of the text-mode browsers
@@ -1365,8 +1376,8 @@ asynchronously and with some other magic attached:
 .
 .Bd -literal -offset indent
 if [ "$features" !@ +filter-html-tagsoup ]
-  #set pipe-text/html='elinks -force-html -dump 1'
-  set pipe-text/html='lynx -stdin -dump -force_html'
+  #set pipe-text/html='@* elinks -force-html -dump 1'
+  set pipe-text/html='@* lynx -stdin -dump -force_html'
   # Display HTML as plain text instead
   #set pipe-text/html=@
 endif
@@ -1376,21 +1387,6 @@ wysh set pipe-application/pdf='@&=@ \e
   trap "trap \e"\e" INT QUIT TERM; exit 1" INT QUIT TERM;\e
   mupdf "${MAILX_FILENAME_TEMPORARY}"'
 .Ed
-.
-.Pp
-Note: special care must be taken when using such commands as mail
-viruses may be distributed by this method: if messages of type
-.Ql application/x-sh
-or files with the extension
-.Ql .sh
-were blindly filtered through the shell, for example, a message sender
-could easily execute arbitrary code on the system \*(UA is running on.
-For more on MIME, also in respect to sending of messages, see the
-sections
-.Sx "The mime.types files" ,
-.Sx "The Mailcap files"
-and the command
-.Ic mimetype .
 .\" }}}
 .
 .\" .Ss "Mailing lists" {{{
@@ -5110,8 +5106,9 @@ or
 are set.
 When given arguments they will be joined, interpreted as shown in
 .Sx "The mime.types files"
-(see there for more on MIME type specifications and this topic in
-general), and the resulting entry will be added (prepended) to the cache.
+(also see
+.Sx "HTML mail and MIME attachments" ) ,
+and the resulting entry will be added (prepended) to the cache.
 In any event MIME type sources are loaded first as necessary \(en
 .Va mimetypes-load-control
 can be used to fine-tune which sources are actually loaded.
@@ -5279,6 +5276,18 @@ on the given messages, even in non-interactive mode and as long as the
 standard output is a terminal.
 Identical to
 .Ic more .
+.
+.Mx
+.It Ic partview
+\*(ID Only available in interactive mode, this command allows to show
+MIME parts which require external MIME handler programs to run which do
+not integrate in \*(UAs normal
+.Ic type
+output (see
+.Sx "HTML mail and MIME attachments" ) .
+The user will be asked for each non-text part of the given message in
+(\*(ID no syntax to directly address parts, this restriction may vanish)
+turn whether the registered handler shall be used to display the part.
 .
 .Mx
 .It Ic Pipe
@@ -5942,23 +5951,27 @@ command will display the following message instead of the current one.
 .Ic type
 but also displays header fields which would not pass the
 .Ic headerpick
-selection, and all parts of MIME
+selection, and all visualizable parts of MIME
 .Ql multipart/alternative
 messages.
 .
 .Mx
 .It Ic type
-(t) Takes a message list and types out each message on the users'
-terminal, honouring
-.Ic headerpick
-selections.
+(t) Takes a message list and types out each message on the users terminal.
+The display of message headers is selectable via
+.Ic headerpick .
 For MIME multipart messages, all parts with a content type of
-.Ql text
-or
+.Ql text ,
+all parts which have a registered MIME type handler (see
+.Sx "HTML mail and MIME attachments" )
+which produces plain text output, and all
 .Ql message
-are shown, the other are hidden except for their headers.
+parts are shown, others are hidden except for their headers.
 Messages are decrypted and converted to the terminal character set
 if necessary.
+The command
+.Ic partview
+can be used to display parts which are not displayable as plain text.
 .
 .It Ic unaccount
 See
@@ -8714,15 +8727,17 @@ contains topic subjects.)
 Normally the
 .Ql Content-Type:
 field is used to decide how to handle MIME parts.
-Some MUAs however do not use
-.Xr mime.types 5
-or a similar mechanism to correctly classify content, but simply specify
-.Ql application/octet-stream ,
-even for plain text attachments like
-.Ql text/diff .
-If this variable is set then \*(UA will try to classify such MIME
-message parts on its own, if possible, for example via a possibly
-existing attachment filename.
+Some MUAs, however, do not use
+.Sx "The mime.types files"
+(also see
+.Sx "HTML mail and MIME attachments" )
+or a similar mechanism to correctly classify content, but specify an
+unspecific MIME type
+.Pf ( Ql application/octet-stream )
+even for plain text attachments.
+If this variable is set then \*(UA will try to re-classify such MIME
+message parts, if possible, for example via a possibly existing
+attachment filename.
 A non-empty value may also be given, in which case a number is expected,
 actually a carrier of bits.
 Creating the bit-carrying number is a simple addition:
@@ -8734,11 +8749,9 @@ Value should be set to 14
 .Bl -bullet -compact
 .It
 If bit two is set (2) then the detected
-.Dq real
-content-type will be carried along with the message and be used for
-deciding which
-.Va pipe-TYPE/SUBTYPE
-is responsible for the MIME part, shall that question arise;
+.Ic mimetype
+will be carried along with the message and be used for deciding which
+MIME handler is to be used, for example;
 when displaying such a MIME part the part-info will indicate the
 overridden content-type by showing a plus sign
 .Ql + .
@@ -8755,11 +8768,9 @@ treated as such.
 .
 .Mx
 .It Va mimetypes-load-control
-Can be used to control which of the
-.Xr mime.types 5
-databases are loaded by \*(UA, as furtherly described in the section
-.Sx "The mime.types files" .
-If the letter
+Can be used to control which of
+.Sx "The mime.types files"
+are loaded: if the letter
 .Ql u
 is part of the option value, then the user's personal
 .Pa ~/.mime.types
@@ -9144,7 +9155,12 @@ When a MIME message part of type
 (case-insensitive) is displayed or quoted,
 its text is filtered through the value of this variable interpreted as
 a shell command.
-The special value
+Note that only parts which can be displayed inline as plain text (see
+.Cd copiousoutput )
+are displayed unless otherwise noted, other MIME parts will only be
+considered by and for the command
+.Ic partview .
+The special value commercial at
 .Ql @
 forces interpretation of the message part as plain text, e.g.,
 .Ql set pipe-application/xml=@
@@ -9155,60 +9171,50 @@ will henceforth display XML
 command.
 And \*(OPally MIME type handlers may be defined via
 .Sx "The Mailcap files"
-\(em corresponding flag strings are shown in parenthesis below.)
+\(em these directives,
+.Cd copiousoutput
+has already been used, should be referred to for further documentation.
 .
 .Pp
-The special value
+The commercial at
 .Ql @
-can in fact be used to adjust usage and behaviour of a following shell
-command specification by appending trigger characters to it, e.g., the
-following hypothetical command specification could be used:
+can in fact be used as a trigger character to adjust usage and behaviour
+of a following shell command specification more thoroughly by appending
+more special characters which refer to further mailcap directives, e.g.,
+the following hypothetical command specification could be used:
+.
 .Bd -literal -offset indent
-set pipe-X/Y='@*!++=@vim ${MAILX_FILENAME_TEMPORARY}'
+set pipe-X/Y='@!++=@vim ${MAILX_FILENAME_TEMPORARY}'
 .Ed
 .
 .Pp
 .Bl -tag -compact -width ".It Ql __"
 .It Ql *
-Simply by using the special
-.Ql @
-prefix the MIME type (shell command) handler will only be invoked to
-display or convert the MIME part if the message is addressed directly
-and alone by itself.
-Use this trigger to disable this and always invoke the handler
-.Pf ( Cd x-mailx-always ) .
+The command produces plain text to be integrated in \*(UAs output:
+.Cd copiousoutput .
 .
 .It Ql #
 If set the handler will not be invoked when a message is to be quoted,
-but only when it will be displayed
-.Pf ( Cd x-mailx-noquote ) .
+but only when it will be displayed:
+.Cd x-mailx-noquote .
 .
 .It Ql &
-The command will be run asynchronously, i.e., without blocking \*(UA,
-which may be a handy way to display a, e.g., PDF file while also
-continuing to read the mail message
-.Pf ( Cd x-mailx-async ) .
-Asynchronous execution implies
-.Ql # .
+Run the command asynchronously, i.e., without blocking \*(UA:
+.Cd x-mailx-async .
 .
 .It Ql \&!
 The command must be run on an interactive terminal, \*(UA will
-temporarily release the terminal to it
-.Pf ( Cd needsterminal ) .
-This flag is mutual exclusive with
-.Ql & ,
-will only be used in interactive mode and implies
-.Ql # .
+temporarily release the terminal to it:
+.Cd needsterminal .
 .
 .It Ql +
 Request creation of a zero-sized temporary file, the absolute pathname
 of which will be made accessible via the environment variable
-.Ev MAILX_FILENAME_TEMPORARY
-.Pf ( Cd x-mailx-tmpfile ) .
-If this trigger is given twice then the file will be unlinked
-automatically by \*(UA when the command loop is entered again at latest
-.Pf ( Cd x-mailx-tmpfile-unlink ) .
-(Do not use this for asynchronous handlers.)
+.Ev MAILX_FILENAME_TEMPORARY :
+.Cd x-mailx-tmpfile .
+If given twice then the file will be unlinked automatically by \*(UA
+when the command loop is entered again at latest:
+.Cd x-mailx-tmpfile-unlink .
 .
 .It Ql =
 Normally the MIME part content is passed to the handler via standard
@@ -11131,39 +11137,43 @@ The actually used path is a compile-time constant.
 .\" .Ss "The mime.types files" {{{
 .Ss "The mime.types files"
 .
-When sending messages \*(UA tries to determine the content type of all
-attachments.
-When displaying message content or attachments \*(UA uses the content
-type to decide whether it can directly display data or whether it needs
-to deal with content handlers.
-It learns about M(ultipurpose) I(nternet) M(ail) E(xtensions) types and
-how to treat them by reading
+As stated in
+.Sx "HTML mail and MIME attachments"
+\*(UA needs to learn about MIME (Multipurpose Internet Mail Extensions)
+media types in order to classify message and attachment content.
+One source for them are
 .Pa mime.types
 files, the loading of which can be controlled by setting the variable
 .Va mimetypes-load-control .
-(The command
-.Ic mimetype
-can also be used to deal with MIME types.)
+Another is the command
+.Ic mimetype ,
+which also offers access to \*(UAs MIME type cache.
 .Pa mime.types
 files have the following syntax:
 .
-.Pp
-.Dl type/subtype extension [extension ...]
+.Bd -literal -offset indent
+type/subtype extension [extension ...]
+# E.g., text/html html htm
+.Ed
 .
 .Pp
 where
 .Ql type/subtype
-are strings describing the file contents, and one or multiple
+define the MIME media type, as standardized in RFC 2046:
+.Ql type
+is used to declare the general type of data, while the
+.Ql subtype
+specifies a specific format for that type of data.
+One or multiple filename
 .Ql extension Ns
-s, separated by whitespace, name the part of a filename starting after
-the last dot (of interest).
+s, separated by whitespace, can be bound to the media type format.
 Comments may be introduced anywhere on a line with a number sign
 .Ql # ,
 causing the remaining line to be discarded.
 .
-\*(UA also supports an extended, non-portable syntax in specially
+\*(UA also supports an extended, non-portable syntax in especially
 crafted files, which can be loaded via the alternative value syntax of
-.Va mimetypes-load-control
+.Va mimetypes-load-control ,
 and prepends an optional
 .Ql type-marker :
 .
@@ -11214,7 +11224,8 @@ For reading etc. messages:
 .Sy This feature is not available in v14.9.0, sorry!
 RFC 1524 defines a
 .Dq User Agent Configuration Mechanism
-which \*(UA \*(OPally supports.
+which \*(UA \*(OPally supports (see
+.Sx "HTML mail and MIME attachments" ) .
 It defines a file format to be used to inform mail user agent programs
 about the locally-installed facilities for handling various data
 formats, i.e., about commands and how they can be used to display, edit
@@ -11341,6 +11352,7 @@ this mailcap entry applies.
 If the test fails, a subsequent mailcap entry should be sought; also see
 .Cd x-mailx-test-once .
 .
+.Mx
 .It Cd needsterminal
 This flag field indicates that the given shell command must be run on
 an interactive terminal.
@@ -11349,15 +11361,14 @@ interactive mode, in non-interactive mode this entry will be entirely
 ignored; this flag implies
 .Cd x-mailx-noquote .
 .
+.Mx
 .It Cd copiousoutput
 A flag field which indicates that the output of the
 .Cd view
 command will be an extended stream of textual output that can be
 (re)integrated into \*(UA's normal visual display.
 It is mutually exclusive with
-.Cd needsterminal
-and implies
-.Cd x-mailx-always .
+.Cd needsterminal .
 .
 .It Cd textualnewlines
 A flag field which indicates that this type of data is line-oriented and
@@ -11390,18 +11401,7 @@ This field is not used by \*(UA.
 .It Cd description
 A textual description that describes this type of data.
 .
-.It Cd x-mailx-always
-Extension flag field that denotes that the given
-.Cd view
-command shall be executed even if multiple messages will be displayed
-at once.
-Normally messages which require external viewers that produce output
-which does not integrate into \*(UA's visual display (i.e., do not have
-.Cd copiousoutput
-set) have to be addressed directly and individually.
-(To avoid cases where, e.g., a thousand PDF viewer instances are spawned
-in sequence.)
-.
+.Mx
 .It Cd x-mailx-even-if-not-interactive
 An extension flag test field \(em by default handlers without
 .Cd copiousoutput
@@ -11410,6 +11410,7 @@ then their use will be considered.
 It is an error if this flag is set for commands that use the flag
 .Cd needsterminal .
 .
+.Mx
 .It Cd x-mailx-noquote
 An extension flag field that indicates that even a
 .Cd copiousoutput
@@ -11417,6 +11418,7 @@ An extension flag field that indicates that even a
 command shall not be used to generate message quotes
 (as it would be by default).
 .
+.Mx
 .It Cd x-mailx-async
 Extension flag field that denotes that the given
 .Cd view
@@ -11424,6 +11426,7 @@ command shall be executed asynchronously, without blocking \*(UA.
 Cannot be used in conjunction with
 .Cd needsterminal .
 .
+.Mx
 .It Cd x-mailx-test-once
 Extension flag which denotes whether the given
 .Cd test
@@ -11431,6 +11434,7 @@ command shall be evaluated once only and the (boolean) result be cached.
 This is handy if some global unchanging condition is to be queried, like
 .Dq running under the X Window System .
 .
+.Mx
 .It Cd x-mailx-tmpfile
 Extension flag field that requests creation of a zero-sized temporary
 file, the name of which is to be placed in the environment variable
@@ -11439,6 +11443,7 @@ It is an error to use this flag with commands that include a
 .Ql %s
 format.
 .
+.Mx
 .It Cd x-mailx-tmpfile-fill
 Normally the MIME part content is passed to the handler via standard
 input; if this flag is set then the data will instead be written into
@@ -11451,17 +11456,21 @@ It is an error to use this flag with commands that include a
 .Ql %s
 format.
 .
+.Mx
 .It Cd x-mailx-tmpfile-unlink
 Extension flag field that requests that the temporary file shall be
 deleted automatically when the command loop is entered again at latest.
 (Do not use this for asynchronous handlers.)
 It is an error to use this flag with commands that include a
 .Ql %s
-format, or without also setting
+format, or in conjunction with
+.Cd x-mailx-async ,
+or without also setting
 .Cd x-mailx-tmpfile
 or
 .Cd x-mailx-tmpfile-fill .
 .
+.Mx
 .It Cd x-mailx-tmpfile-keep
 Using the string
 .Ql %s

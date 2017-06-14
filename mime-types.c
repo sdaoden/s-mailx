@@ -142,7 +142,7 @@ static enum mimecontent _mt_classify_os_part(ui32_t mce, struct mimepart *mpp);
 /* Check whether a *pipe-XY* handler is applicable, and adjust flags according
  * to the defined trigger characters; upon entry MIME_HDL_NULL is set, and that
  * isn't changed if mhp doesn't apply */
-static enum mime_handler_flags _mt_pipe_check(struct mime_handler *mhp);
+static enum mime_handler_flags a_mt_pipe_check(struct mime_handler *mhp);
 
 static void
 _mt_init(void)
@@ -787,8 +787,7 @@ jleave:
 }
 
 static enum mime_handler_flags
-_mt_pipe_check(struct mime_handler *mhp)
-{
+a_mt_pipe_check(struct mime_handler *mhp){
    enum mime_handler_flags rv_orig, rv;
    char const *cp;
    NYD2_ENTER;
@@ -796,24 +795,24 @@ _mt_pipe_check(struct mime_handler *mhp)
    rv_orig = rv = mhp->mh_flags;
 
    /* Do we have any handler for this part? */
-   if (*(cp = mhp->mh_shell_cmd) == '\0')
+   if(*(cp = mhp->mh_shell_cmd) == '\0')
       goto jleave;
-   else if (*cp++ != '@') {
+   else if(*cp++ != '@'){
       rv |= MIME_HDL_CMD;
       goto jleave;
-   } else if (*cp == '\0') {
+   }else if(*cp == '\0'){
       rv |= MIME_HDL_TEXT;
       goto jleave;
    }
 
 jnextc:
-   switch (*cp) {
-   case '*':   rv |= MIME_HDL_ALWAYS;     ++cp; goto jnextc;
-   case '#':   rv |= MIME_HDL_NOQUOTE;    ++cp; goto jnextc;
-   case '&':   rv |= MIME_HDL_ASYNC;      ++cp; goto jnextc;
-   case '!':   rv |= MIME_HDL_NEEDSTERM;  ++cp; goto jnextc;
+   switch(*cp){
+   case '*': rv |= MIME_HDL_COPIOUSOUTPUT; ++cp; goto jnextc;
+   case '#': rv |= MIME_HDL_NOQUOTE; ++cp; goto jnextc;
+   case '&': rv |= MIME_HDL_ASYNC; ++cp; goto jnextc;
+   case '!': rv |= MIME_HDL_NEEDSTERM; ++cp; goto jnextc;
    case '+':
-      if (rv & MIME_HDL_TMPF)
+      if(rv & MIME_HDL_TMPF)
          rv |= MIME_HDL_TMPF_UNLINK;
       rv |= MIME_HDL_TMPF;
       ++cp;
@@ -831,42 +830,54 @@ jnextc:
    mhp->mh_shell_cmd = cp;
 
    /* Implications */
-   if (rv & MIME_HDL_TMPF_FILL)
+   if(rv & MIME_HDL_TMPF_FILL)
       rv |= MIME_HDL_TMPF;
 
    /* Exceptions */
-   if (rv & MIME_HDL_ISQUOTE) {
-      if (rv & MIME_HDL_NOQUOTE)
+   if(rv & MIME_HDL_ISQUOTE){
+      if(rv & MIME_HDL_NOQUOTE)
          goto jerr;
 
       /* Cannot fetch data back from asynchronous process */
-      if (rv & MIME_HDL_ASYNC)
+      if(rv & MIME_HDL_ASYNC)
          goto jerr;
 
       /* TODO Can't use a "needsterminal" program for quoting */
-      if (rv & MIME_HDL_NEEDSTERM)
+      if(rv & MIME_HDL_NEEDSTERM)
          goto jerr;
    }
 
-   if (rv & MIME_HDL_NEEDSTERM) {
-      if (rv & MIME_HDL_ASYNC) {
+   if(rv & MIME_HDL_NEEDSTERM){
+      if(rv & MIME_HDL_COPIOUSOUTPUT){
          n_err(_("MIME type handlers: cannot use needsterminal and "
-            "x-nail-async together\n"));
+            "copiousoutput together\n"));
+         goto jerr;
+      }
+      if(rv & MIME_HDL_ASYNC){
+         n_err(_("MIME type handlers: cannot use needsterminal and "
+            "x-mailx-async together\n"));
          goto jerr;
       }
 
       /* needsterminal needs a terminal */
-      if (!(n_psonce & n_PSO_INTERACTIVE))
+      if(!(n_psonce & n_PSO_INTERACTIVE))
          goto jerr;
    }
 
-   if (!(rv & MIME_HDL_ALWAYS) && !(n_pstate & n_PS_MSGLIST_DIRECT)) {
-      /* Viewing multiple messages in one go, don't block system */
-      mhp->mh_msg.l = strlen(mhp->mh_msg.s = n_UNCONST(
-            _("[-- Directly address message only for display --]\n")));
-      rv |= MIME_HDL_MSG;
-      goto jleave;
+   if(rv & MIME_HDL_ASYNC){
+      if(rv & MIME_HDL_COPIOUSOUTPUT){
+         n_err(_("MIME type handlers: cannot use x-mailx-async and "
+            "copiousoutput together\n"));
+         goto jerr;
+      }
+      if(rv & MIME_HDL_TMPF_UNLINK){
+         n_err(_("MIME type handlers: cannot use x-mailx-async and "
+            "x-mailx-tmpfile-unlink together\n"));
+         goto jerr;
+      }
    }
+
+   /* TODO mailcap-only: TMPF_UNLINK): needs -tmpfile OR -tmpfile-fill */
 
    rv |= MIME_HDL_CMD;
 jleave:
@@ -1264,7 +1275,7 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
 #define __L    (sizeof(__S) -1)
    struct mtlookup mtl;
    char *buf, *cp;
-   enum mime_handler_flags rv;
+   enum mime_handler_flags rv, xrv;
    char const *es, *cs, *ccp;
    size_t el, cl, l;
    NYD_ENTER;
@@ -1275,7 +1286,8 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
    rv = MIME_HDL_NULL;
    if (action == SEND_QUOTE || action == SEND_QUOTE_ALL)
       rv |= MIME_HDL_ISQUOTE;
-   else if (action != SEND_TODISP && action != SEND_TODISP_ALL)
+   else if (action != SEND_TODISP && action != SEND_TODISP_ALL &&
+         action != SEND_TODISP_PARTS)
       goto jleave;
 
    el = ((es = mpp->m_filename) != NULL && (es = strrchr(es, '.')) != NULL &&
@@ -1290,7 +1302,7 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
    /* We don't pass the flags around, so ensure carrier is up-to-date */
    mhp->mh_flags = rv;
 
-   buf = ac_alloc(__L + l +1);
+   buf = n_lofi_alloc(__L + l +1);
    memcpy(buf, __S, __L);
 
    /* File-extension handlers take precedence.
@@ -1301,7 +1313,7 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
          *cp = lowerconv(*cp);
 
       if ((mhp->mh_shell_cmd = ccp = n_var_vlook(buf, FAL0)) != NULL) {
-         rv = _mt_pipe_check(mhp);
+         rv = a_mt_pipe_check(mhp);
          goto jleave;
       }
    }
@@ -1315,7 +1327,7 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
       *cp = lowerconv(*cp);
 
    if ((mhp->mh_shell_cmd = n_var_vlook(buf, FAL0)) != NULL) {
-      rv = _mt_pipe_check(mhp);
+      rv = a_mt_pipe_check(mhp);
       goto jleave;
    }
 
@@ -1344,13 +1356,22 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
       }
 
 jleave:
-   if (buf != NULL)
-      ac_free(buf);
+   if(buf != NULL)
+      n_lofi_free(buf);
 
-   mhp->mh_flags = rv;
-   if ((rv &= MIME_HDL_TYPE_MASK) == MIME_HDL_NULL)
+   xrv = rv;
+   if((rv &= MIME_HDL_TYPE_MASK) == MIME_HDL_NULL)
       mhp->mh_msg.l = strlen(mhp->mh_msg.s = n_UNCONST(
-            _("[-- No MIME handler installed or none applicable --]")));
+            _("[-- No MIME handler installed, or not applicable --]\n")));
+   else if(rv == MIME_HDL_CMD && !(xrv & MIME_HDL_COPIOUSOUTPUT) &&
+         action != SEND_TODISP_PARTS){
+      mhp->mh_msg.l = strlen(mhp->mh_msg.s = n_UNCONST(
+            _("[-- Use the command `partview' to display this --]\n")));
+      xrv &= ~MIME_HDL_TYPE_MASK;
+      xrv |= (rv = MIME_HDL_MSG);
+   }
+   mhp->mh_flags = xrv;
+
    NYD_LEAVE;
    return rv;
 #undef __L

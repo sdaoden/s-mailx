@@ -498,6 +498,47 @@ c_show(void *v)
 }
 
 FL int
+c_partview(void *vp){ /* TODO direct addressable parts, multiple such */
+   struct message *mp;
+   int rv, *msgvec;
+   NYD_ENTER;
+
+   if((msgvec = vp)[1] != 0){
+      n_err(_("`partview': can yet only take one message, sorry!\n"));/* TODO */
+      n_pstate_err_no = n_ERR_NOTSUP;
+      rv = 1;
+      goto jleave;
+   }
+
+   mp = &message[*msgvec - 1];
+   touch(mp);
+   setdot(mp);
+   n_pstate |= n_PS_DID_PRINT_DOT;
+   uncollapse1(mp, 1);
+
+   n_COLOUR(
+      n_colour_env_create(n_COLOUR_CTX_VIEW, n_stdout, FAL0);
+   )
+
+   if(!a_cmsg_show_overview(n_stdout, mp, *msgvec))
+      n_pstate_err_no = n_ERR_IO;
+   else if(sendmp(mp, n_stdout, n_IGNORE_TYPE, NULL, SEND_TODISP_PARTS,
+         NULL) < 0)
+      n_pstate_err_no = n_ERR_IO;
+   else
+      n_pstate_err_no = n_ERR_NONE;
+
+   n_COLOUR(
+      n_colour_env_gut();
+   )
+
+   rv = (n_pstate_err_no != n_ERR_NONE);
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
 c_pipe(void *v)
 {
    char *str = v;

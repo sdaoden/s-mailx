@@ -265,7 +265,7 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
    if (mpp == NULL || (cp = mpp->m_filename) == NULL)
       cp = n_empty;
    env_addon[0] = str_concat_csvl(&s, n_PIPEENV_FILENAME, "=", cp, NULL)->s;
-   env_addon[1] = str_concat_csvl(&s, "NAIL_FILENAME", "=", cp, NULL)->s;
+env_addon[1] = str_concat_csvl(&s, "NAIL_FILENAME", "=", cp, NULL)->s;/* v15 */
 
    /* MAILX_FILENAME_GENERATED *//* TODO pathconf NAME_MAX; but user can create
     * TODO a file wherever he wants!  *Do* create a zero-size temporary file
@@ -274,21 +274,21 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
    cp = n_random_create_cp(n_MIN(NAME_MAX / 4, 16), NULL);
    env_addon[2] = str_concat_csvl(&s, n_PIPEENV_FILENAME_GENERATED, "=", cp,
          NULL)->s;
-   env_addon[3] = str_concat_csvl(&s, "NAIL_FILENAME_GENERATED", "=", cp,
-         NULL)->s;
+env_addon[3] = str_concat_csvl(&s, "NAIL_FILENAME_GENERATED", "=", cp,/* v15 */
+      NULL)->s;
 
    /* MAILX_CONTENT{,_EVIDENCE} */
    if (mpp == NULL || (cp = mpp->m_ct_type_plain) == NULL)
       cp = n_empty;
    env_addon[4] = str_concat_csvl(&s, n_PIPEENV_CONTENT, "=", cp, NULL)->s;
-   env_addon[5] = str_concat_csvl(&s, "NAIL_CONTENT", "=", cp, NULL)->s;
+env_addon[5] = str_concat_csvl(&s, "NAIL_CONTENT", "=", cp, NULL)->s;/* v15 */
 
    if (mpp != NULL && mpp->m_ct_type_usr_ovwr != NULL)
       cp = mpp->m_ct_type_usr_ovwr;
    env_addon[6] = str_concat_csvl(&s, n_PIPEENV_CONTENT_EVIDENCE, "=", cp,
          NULL)->s;
-   env_addon[7] = str_concat_csvl(&s, "NAIL_CONTENT_EVIDENCE", "=", cp,
-         NULL)->s;
+env_addon[7] = str_concat_csvl(&s, "NAIL_CONTENT_EVIDENCE", "=", cp,/* v15 */
+      NULL)->s;
 
    env_addon[8] = NULL;
 
@@ -296,8 +296,8 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
    if (tmpname != NULL) {
       env_addon[8] = str_concat_csvl(&s,
             n_PIPEENV_FILENAME_TEMPORARY, "=", tmpname, NULL)->s;
-      env_addon[9] = str_concat_csvl(&s,
-            "NAIL_FILENAME_TEMPORARY", "=", tmpname, NULL)->s;
+   env_addon[9] = str_concat_csvl(&s,
+         "NAIL_FILENAME_TEMPORARY", "=", tmpname, NULL)->s;/* v15 */
       env_addon[10] = NULL;
    }
 
@@ -358,6 +358,7 @@ _out(char const *buf, size_t len, FILE *fp, enum conversion convert, enum
    n = mime_write(buf, len, fp,
          action == SEND_MBOX ? CONV_NONE : convert,
          flags | ((action == SEND_TODISP || action == SEND_TODISP_ALL ||
+            action == SEND_TODISP_PARTS ||
             action == SEND_QUOTE || action == SEND_QUOTE_ALL)
          ?  TD_ISPR | TD_ICONV
          : (action == SEND_TOSRCH || action == SEND_TOPIPE ||
@@ -420,6 +421,11 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
 
    quoteflt_reset(qf, obuf);
 
+#if 0 /* TODO PART_INFO should be displayed here!! search PART_INFO */
+   if(ip->m_mimecontent != MIME_DISCARD && level > 0)
+      _print_part_info(obuf, ip, doitp, level, qf, stats);
+#endif
+
    if (ip->m_mimecontent == MIME_PKCS7) {
       if (ip->m_multipart &&
             action != SEND_MBOX && action != SEND_RFC822 && action != SEND_SHOW)
@@ -427,7 +433,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    }
 
    dostat = 0;
-   if (level == 0) {
+   if (level == 0 && action != SEND_TODISP_PARTS) {
       if (doitp != NULL) {
          if (!n_ignore_is_ign(doitp, "status", 6))
             dostat |= 1;
@@ -452,21 +458,22 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
             break;
       }
    convert = (action == SEND_TODISP || action == SEND_TODISP_ALL ||
-         action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
-         action == SEND_TOSRCH)
+            action == SEND_TODISP_PARTS ||
+            action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
+            action == SEND_TOSRCH)
          ? CONV_FROMHDR : CONV_NONE;
 
    /* Work the headers */
    /* C99 */{
    struct n_string hl, *hlp;
    size_t lineno = 0;
-   bool_t hstop;
+   bool_t hstop, hany;
 
    hlp = n_string_creat_auto(&hl); /* TODO pool [or, v15: filter!] */
    /* Reserve three lines, still not enough for references and DKIM etc. */
    hlp = n_string_reserve(hlp, n_MAX(MIME_LINELEN, MIME_LINELEN_RFC2047) * 3);
 
-   for(hstop = FAL0; !hstop;){
+   for(hstop = hany = FAL0; !hstop;){
       size_t lcnt;
 
       lcnt = cnt;
@@ -565,6 +572,7 @@ jhdrput:
       )
       if(convert != CONV_NONE)
          putc('\n', obuf);
+      hany = TRU1;
 
 jhdrtrunc:
       hlp = n_string_trunc(hlp, 0);
@@ -575,11 +583,15 @@ jhdrtrunc:
 
    /* We've reached end of headers, so eventually force out status: field and
     * note that we are no longer in header fields */
-   if(dostat & 1)
+   if(dostat & 1){
       statusput(zmp, obuf, qf, stats);
-   if(dostat & 2)
+      hany = TRU1;
+   }
+   if(dostat & 2){
       xstatusput(zmp, obuf, qf, stats);
-   if(doitp != n_IGNORE_ALL)
+      hany = TRU1;
+   }
+   if(/* TODO PART_INFO hany && */ doitp != n_IGNORE_ALL)
       _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
    } /* C99 */
 
@@ -596,6 +608,8 @@ jheaders_skip:
    switch (ip->m_mimecontent) {
    case MIME_822:
       switch (action) {
+      case SEND_TODISP_PARTS:
+         goto jleave;
       case SEND_TODISP:
       case SEND_TODISP_ALL:
       case SEND_QUOTE:
@@ -630,14 +644,29 @@ jheaders_skip:
       switch (action) {
       case SEND_TODISP:
       case SEND_TODISP_ALL:
+      case SEND_TODISP_PARTS:
       case SEND_QUOTE:
       case SEND_QUOTE_ALL:
          switch (n_mimetype_handler(&mh, ip, action)) {
-         case MIME_HDL_MSG:
+         case MIME_HDL_NULL:
+            if(action != SEND_TODISP_PARTS)
+               break;
+            /* FALLTHRU */
+         case MIME_HDL_MSG:/* TODO these should be part of partinfo! */
             _out(mh.mh_msg.s, mh.mh_msg.l, obuf, CONV_NONE, SEND_MBOX, qf,
                stats, NULL, NULL);
             /* We would print this as plain text, so better force going home */
             goto jleave;
+         case MIME_HDL_CMD:
+            if(action == SEND_TODISP_PARTS &&
+                  (mh.mh_flags & MIME_HDL_COPIOUSOUTPUT))
+               goto jleave;
+            break;
+         case MIME_HDL_TEXT:
+         case MIME_HDL_PTF:
+            if(action == SEND_TODISP_PARTS)
+               goto jleave;
+            break;
          default:
             break;
          }
@@ -659,27 +688,36 @@ jheaders_skip:
       switch (action) {
       case SEND_TODISP:
       case SEND_TODISP_ALL:
+      case SEND_TODISP_PARTS:
       case SEND_QUOTE:
       case SEND_QUOTE_ALL:
          switch (n_mimetype_handler(&mh, ip, action)) {
-         case MIME_HDL_MSG:
+         default:
+         case MIME_HDL_NULL:
+            if (action != SEND_TODISP_ALL && (level != 0 || cnt))
+               goto jleave;
+            /* FALLTHRU */
+         case MIME_HDL_MSG:/* TODO these should be part of partinfo! */
             _out(mh.mh_msg.s, mh.mh_msg.l, obuf, CONV_NONE, SEND_MBOX, qf,
                stats, NULL, NULL);
             /* We would print this as plain text, so better force going home */
             goto jleave;
          case MIME_HDL_CMD:
-            /* FIXME WE NEED TO DO THAT IF WE ARE THE ONLY MAIL
-             * FIXME CONTENT !! */
-         case MIME_HDL_TEXT:
-            break;
-         default:
-         case MIME_HDL_NULL:
-            if (level == 0 && cnt) {
-               char const *x = _("[-- Binary content --]\n");
-               _out(x, strlen(x), obuf, CONV_NONE, SEND_MBOX, qf, stats,
-                  NULL,NULL);
+            if(action == SEND_TODISP_PARTS){
+               if(mh.mh_flags & MIME_HDL_COPIOUSOUTPUT)
+                  goto jleave;
+               else{
+                  _print_part_info(obuf, ip, doitp, level, qf, stats);
+                  if(!getapproval(_("Run MIME handler for this part?"), FAL0))
+                     goto jleave;
+               }
             }
-            goto jleave;
+            break;
+         case MIME_HDL_TEXT:
+         case MIME_HDL_PTF:
+            if(action == SEND_TODISP_PARTS)
+               goto jleave;
+            break;
          }
          break;
       case SEND_TOFILE:
@@ -834,6 +872,7 @@ jalter_leave:
       switch (action) {
       case SEND_TODISP:
       case SEND_TODISP_ALL:
+      case SEND_TODISP_PARTS:
       case SEND_QUOTE:
       case SEND_QUOTE_ALL:
       case SEND_TOFILE:
@@ -845,7 +884,7 @@ jmulti:
              ip->m_multipart != NULL &&
              ip->m_multipart->m_mimecontent == MIME_DISCARD &&
              ip->m_multipart->m_nextpart == NULL) {
-            char const *x = _("[Missing multipart boundary - use show "
+            char const *x = _("[Missing multipart boundary - use `show' "
                   "to display the raw message]\n");
             _out(x, strlen(x), obuf, CONV_NONE, SEND_MBOX, qf, stats,
                NULL,NULL);
@@ -893,6 +932,7 @@ jmulti:
                   break;
                _print_part_info(obuf, np, doitp, level, qf, stats);
                break;
+            case SEND_TODISP_PARTS:
             case SEND_QUOTE:
             case SEND_QUOTE_ALL:
             case SEND_MBOX:
@@ -991,13 +1031,14 @@ jpipe_close:
       convert = CONV_NONE;
 #ifdef HAVE_ICONV
    else if ((action == SEND_TODISP || action == SEND_TODISP_ALL ||
-          action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
-          action == SEND_TOSRCH || action == SEND_TOFILE) &&
+            action == SEND_TODISP_PARTS ||
+            action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
+            action == SEND_TOSRCH || action == SEND_TOFILE) &&
          (ip->m_mimecontent == MIME_TEXT_PLAIN ||
-          ip->m_mimecontent == MIME_TEXT_HTML ||
-          ip->m_mimecontent == MIME_TEXT ||
-          (mh.mh_flags & MIME_HDL_TYPE_MASK) == MIME_HDL_TEXT ||
-          (mh.mh_flags & MIME_HDL_TYPE_MASK) == MIME_HDL_PTF)) {
+            ip->m_mimecontent == MIME_TEXT_HTML ||
+            ip->m_mimecontent == MIME_TEXT ||
+            (mh.mh_flags & MIME_HDL_TYPE_MASK) == MIME_HDL_TEXT ||
+            (mh.mh_flags & MIME_HDL_TYPE_MASK) == MIME_HDL_PTF)) {
       char const *tcs;
 
       tcs = ok_vlook(ttycharset);
@@ -1014,6 +1055,10 @@ jpipe_close:
 
    switch (mh.mh_flags & MIME_HDL_TYPE_MASK) {
    case MIME_HDL_CMD:
+      if(!(mh.mh_flags & MIME_HDL_COPIOUSOUTPUT) &&
+            action != SEND_TODISP_PARTS)
+         goto jmhp_default;
+      /* FALLTHRU */
    case MIME_HDL_PTF:
       tmpname = NULL;
       qbuf = obuf;
@@ -1068,6 +1113,7 @@ jesend:
       break;
 
    default:
+jmhp_default:
       mh.mh_flags = MIME_HDL_NULL;
       pbuf = qbuf = obuf;
       break;

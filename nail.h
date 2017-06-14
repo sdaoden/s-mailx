@@ -994,15 +994,15 @@ enum mime_handler_flags {
    MIME_HDL_TEXT,                /* @ special cmd to force treatment as text */
    MIME_HDL_PTF,                 /* A special pointer-to-function handler */
    MIME_HDL_MSG,                 /* Display msg (returned as command string) */
-   MIME_HDL_TYPE_MASK   = 7,
-   MIME_HDL_ISQUOTE     = 1<<4,  /* Is quote action (we have info, keep it!) */
-   MIME_HDL_NOQUOTE     = 1<<5,  /* No MIME for quoting */
-   MIME_HDL_ALWAYS      = 1<<6,  /* Handler shall run for multi-msg actions */
-   MIME_HDL_ASYNC       = 1<<7,  /* Should run asynchronously */
-   MIME_HDL_NEEDSTERM   = 1<<8,  /* Takes over terminal */
-   MIME_HDL_TMPF        = 1<<9,  /* Create temporary file (zero-sized) */
-   MIME_HDL_TMPF_FILL   = 1<<10, /* Fill in the msg body content */
-   MIME_HDL_TMPF_UNLINK = 1<<11  /* Delete it later again */
+   MIME_HDL_TYPE_MASK = 7u,
+   MIME_HDL_COPIOUSOUTPUT = 1u<<4, /* _CMD produces reintegratable text */
+   MIME_HDL_ISQUOTE = 1u<<5,     /* Is quote action (we have info, keep it!) */
+   MIME_HDL_NOQUOTE = 1u<<6,     /* No MIME for quoting */
+   MIME_HDL_ASYNC = 1u<<7,       /* Should run asynchronously */
+   MIME_HDL_NEEDSTERM = 1u<<8,   /* Takes over terminal */
+   MIME_HDL_TMPF = 1u<<9,        /* Create temporary file (zero-sized) */
+   MIME_HDL_TMPF_FILL = 1u<<10,  /* Fill in the msg body content */
+   MIME_HDL_TMPF_UNLINK = 1u<<11 /* Delete it later again */
 };
 
 enum mlist_state {
@@ -1068,6 +1068,7 @@ enum sendaction {
    SEND_RFC822,      /* no conversion, no From_ line */
    SEND_TODISP,      /* convert to displayable form */
    SEND_TODISP_ALL,  /* same, include all MIME parts */
+   SEND_TODISP_PARTS, /* same, but only interactive, user-selected parts */
    SEND_SHOW,        /* convert to 'show' command form */
    SEND_TOSRCH,      /* convert for IMAP SEARCH */
    SEND_TOFILE,      /* convert for saving body to a file */

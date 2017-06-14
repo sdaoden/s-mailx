@@ -3394,7 +3394,7 @@ gggggggggggggggg"
    # "Test for" [d6f316a] (Gavin Troy)
    ${rm} -f "${MBOX}"
    printf "m ${MBOX}\n~s subject1\nEmail body\n~.\nfi ${MBOX}\np\nx\n" |
-   ${MAILX} ${ARGS} ${ADDARG_UNI} -Spipe-text/plain="${cat}" > "${BODY}"
+   ${MAILX} ${ARGS} ${ADDARG_UNI} -Spipe-text/plain="@* ${cat}" > "${BODY}"
    check content:006 0 "${MBOX}" '2099098650 122'
    check content:006-1 - "${BODY}" '794542938 174'
 
