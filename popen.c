@@ -912,6 +912,7 @@ Popen(char const *cmd, char const *mode, char const *sh,
          close(p[WRITE]);
          u.ccp = sh;
          u.es = (*u.ptf)();
+         fflush(NULL);
          _exit(u.es);
       }
    } else if (sh == NULL) {
