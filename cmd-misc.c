@@ -99,6 +99,7 @@ jleave:
 static int
 a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
    char const **argv, **ap, *cp;
+   int rv;
    NYD2_ENTER;
 
    for(ap = argv = vp; *ap != NULL; ++ap){
@@ -110,9 +111,11 @@ a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
    }
    if(donl)
       putc('\n', fp);
-   fflush(fp);
+
+   rv = (fflush(fp) == EOF);
+   rv |= ferror(fp) ? 1 : 0;
    NYD2_LEAVE;
-   return 0;
+   return rv;
 }
 
 static bool_t
