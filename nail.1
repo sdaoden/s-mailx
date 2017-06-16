@@ -6830,8 +6830,9 @@ further commands can be issued.)
 Status ok; the rest of the line is optionally used for more status.
 What follows are lines of furtherly unspecified string content,
 terminated by an empty line.
-(All the input, including the empty line, must be consumed before
-further commands can be issued.)
+.Sy All the input,
+including the empty line, must be consumed before further commands can
+be issued!
 .It Ql 500
 Syntax error; invalid command.
 .It Ql 501
@@ -6857,6 +6858,8 @@ The following commands are supported, and, as usual, case-insensitive:
 .Bl -hang -width header
 .It Cm header
 This command allows listing, inspection, and editing of message headers.
+Header name case is not normalized, and case-insensitive comparison
+should be used when matching names.
 The second argument specifies the subcommand to apply, one of:
 .
 .Bl -hang -width remove
@@ -9040,10 +9043,17 @@ The first line the hook will read on its standard input is the protocol
 version of said command escape, currently
 .Dq 0 0 1 :
 backward incompatible protocol changes have to be expected.
-Care must be taken to avoid deadlocks because of unexpected control
-flow: if both involved processes wait for more input to happen at the
+.
+.Pp
+Care must be taken to avoid deadlocks and other false control flow:
+if both involved processes wait for more input to happen at the
 same time, or one doesn't expect more input but the other is stuck
-waiting for consumption of its output.
+waiting for consumption of its output, etc.
+There is no automatic synchronization of the hook: it will not be
+stopped automatically just because it, e.g., emits
+.Ql ~x .
+The hooks will however receive a termination signal if the parent enters
+an error condition.
 \*(ID Protection against and interaction with signals is not yet given;
 it is likely that in the future these scripts will be placed in an
 isolated session, which is signalled in its entirety as necessary.
@@ -9063,9 +9073,9 @@ define ocsm {
   echo Splice protocol version is $ver
   echo '~^h l'; read hl; vput vexpr es substring "${hl}" 0 1
   if [ "$es" != 2 ]
-    echoerr 'Cannot read header list'; echo '~x'
+    echoerr 'Cannot read header list'; echo '~x'; xit
   endif
-  if [ "$hl" !@ ' cc' ]
+  if [ "$hl" @i!@ ' cc' ]
     echo '~^h i cc Diet is your <mirr.or>'; read es;\e
       vput vexpr es substring "${es}" 0 1
     if [ "$es" != 2 ]

@@ -395,10 +395,10 @@ a_popen_sigchld(int signo){
       }
 
       if ((cp = a_popen_child_find(pid, FAL0)) != NULL) {
+         cp->done = 1;
          if (cp->free)
             cp->pid = -1; /* XXX Was _delchild(cp);# */
          else {
-            cp->done = 1;
             cp->status = status;
          }
       }
@@ -1281,25 +1281,38 @@ n_child_free(int pid){
 
 FL bool_t
 n_child_wait(int pid, int *wait_status_or_null){
-   sigset_t nset, oset;
+#if !n_SIGSUSPEND_NOT_WAITPID
+   sigset_t oset;
+#endif
+   sigset_t nset;
    struct child *cp;
    int ws;
    bool_t rv;
    NYD_ENTER;
 
+#if !n_SIGSUSPEND_NOT_WAITPID
    sigemptyset(&nset);
    sigaddset(&nset, SIGCHLD);
    sigprocmask(SIG_BLOCK, &nset, &oset);
+#endif
 
    if((cp = a_popen_child_find(pid, FAL0)) != NULL){
+#if n_SIGSUSPEND_NOT_WAITPID
+      sigfillset(&nset);
+      sigdelset(&nset, SIGCHLD);
       while(!cp->done)
-         sigsuspend(&oset);
+         sigsuspend(&nset); /* TODO we should allow more than SIGCHLD!! */
       ws = cp->status;
+#else
+      waitpid(pid, &ws, 0);
+#endif
       a_popen_child_del(cp);
    }else
       ws = 0;
 
+#if !n_SIGSUSPEND_NOT_WAITPID
    sigprocmask(SIG_SETMASK, &oset, NULL);
+#endif
 
    if(wait_status_or_null != NULL)
       *wait_status_or_null = ws;

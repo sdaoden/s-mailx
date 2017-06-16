@@ -139,10 +139,12 @@ _execute_command(struct header *hp, char const *linebuf, size_t linesize){
    n_UNUSED(linesize);
    mnbuf = NULL;
 
-   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
+   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_HUP | n_SIGMAN_INT | n_SIGMAN_QUIT){
    case 0:
       break;
    default:
+      n_pstate_err_no = n_ERR_INTR;
+      n_pstate_ex_no = 1;
       goto jleave;
    }
 
@@ -1537,10 +1539,17 @@ a_coll__hook_setter(void *arg){ /* TODO v15: drop */
 static int
 a_coll_ocs__mac(void){
    /* Executes in a fork(2)ed child  TODO if remains, global MASKs for those! */
+   setvbuf(n_stdin, NULL, _IOLBF, 0);
    setvbuf(n_stdout, NULL, _IOLBF, 0);
    n_psonce &= ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT);
    n_pstate |= n_PS_COMPOSE_FORKHOOK;
    n_readctl_overlay = NULL; /* TODO we need OnForkEvent! See c_readctl() */
+   if(n_poption & n_PO_D_VV){
+      char buf[128];
+
+      snprintf(buf, sizeof buf, "[%d]%s", getpid(), ok_vlook(log_prefix));
+      ok_vset(log_prefix, buf);
+   }
    /* TODO If that uses `!' it will effectively SIG_IGN SIGINT, ...and such */
    temporary_compose_mode_hook_call(a_coll_ocs__macname, NULL, NULL);
    return 0;
@@ -1559,18 +1568,13 @@ a_coll_ocs__finalize(void *vp){
    coap = *(coapp = vp);
    *coapp = (struct a_coll_ocs_arg*)-1;
 
-   if(coap->coa_stdout != NULL)
-      if(!Pclose(coap->coa_stdout, FAL0)){
-         *coap->coa_senderr = TRU1;
-         n_err(_("*on-compose-splice(-shell)?* failed: %s\n"),
-            n_shexp_quote_cp(coap->coa_cmd, FAL0));
-      }
-
    if(coap->coa_stdin != NULL)
       Fclose(coap->coa_stdin);
    else if(coap->coa_pipe[0] != -1)
       close(coap->coa_pipe[0]);
 
+   if(coap->coa_stdout != NULL && !Pclose(coap->coa_stdout, TRU1))
+      *coap->coa_senderr = 111;
    if(coap->coa_pipe[1] != -1)
       close(coap->coa_pipe[1]);
 
@@ -1599,7 +1603,8 @@ collect(struct header *hp, int printheaders, struct message *mp,
    enum{
       a_NONE,
       a_ERREXIT = 1u<<0,
-      a_IGNERR = 1u<<1
+      a_IGNERR = 1u<<1,
+      a_COAP_NOSIGTERM = 1u<<8
 #define a_HARDERR() ((flags & (a_ERREXIT | a_IGNERR)) == a_ERREXIT)
    } volatile flags;
    char *linebuf;
@@ -1623,7 +1628,6 @@ collect(struct header *hp, int printheaders, struct message *mp,
     * until we're in the main loop */
    sigfillset(&nset);
    sigprocmask(SIG_BLOCK, &nset, &oset);
-/* FIXME have dropped handlerpush() and localized onintr() in go.c! */
    if ((_coll_saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
       safe_signal(SIGINT, &_collint);
    if ((_coll_savehup = safe_signal(SIGHUP, SIG_IGN)) != SIG_IGN)
@@ -1807,7 +1811,6 @@ jcont:
                gif |= n_GO_INPUT_NL_ESC;
          }
          cnt = n_go_input(gif, n_empty, &linebuf, &linesize, NULL, &histadd);
-
          hist = histadd ? a_HIST_ADD | a_HIST_GABBY : a_HIST_NONE;
       }
 
@@ -1962,7 +1965,7 @@ jearg:
          /* Simulate end of file on input */
          if(cnt != 0 || coap != NULL)
             goto jearg;
-         goto jout;
+         goto jout; /* TODO does not enter history, thus */
       case 'x':
          /* Same as 'q', but no *DEAD* saving */
          /* FALLTHRU */
@@ -1970,6 +1973,10 @@ jearg:
          /* Force a quit, act like an interrupt had happened */
          if(cnt != 0)
             goto jearg;
+         /* If we are running a splice hook, assume it quits on its own now,
+          * otherwise we (no true out-of-band IPC to signal this state, XXX sic)
+          * have to SIGTERM it in order to stop this wild beast */
+         flags |= a_COAP_NOSIGTERM;
          ++_coll_hadintr;
          _collint((c == 'x') ? 0 : SIGINT);
          exit(n_EXIT_ERR);
@@ -2463,7 +2470,6 @@ jskiptails:
 jleave:
    if (linebuf != NULL)
       free(linebuf);
-   sigfillset(&nset);
    sigprocmask(SIG_BLOCK, &nset, NULL);
    n_pstate &= ~n_PS_COMPOSE_MODE;
    safe_signal(SIGINT, _coll_saveint);
@@ -2476,7 +2482,8 @@ jerr:
    hold_all_sigs();
 
    if(coap != NULL && coap != (struct a_coll_ocs_arg*)-1){
-      n_psignal(coap->coa_stdout, SIGTERM);
+      if(!(flags & a_COAP_NOSIGTERM))
+         n_psignal(coap->coa_stdout, SIGTERM);
       n_go_splice_hack_remove_after_jump();
       coap = NULL;
    }
@@ -2498,9 +2505,12 @@ jerr:
    assert(checkaddr_err != NULL);
    /* TODO We don't save in $DEAD upon error because msg not readily composed?
     * TODO But this no good, it should go ZOMBIE / DRAFT / POSTPONED or what! */
-   if(*checkaddr_err != 0)
-      n_err(_("Some addressees were classified as \"hard error\"\n"));
-   else if(_coll_hadintr == 0){
+   if(*checkaddr_err != 0){
+      if(*checkaddr_err == 111)
+         n_err(_("Compose mode splice hook failure\n"));
+      else
+         n_err(_("Some addressees were classified as \"hard error\"\n"));
+   }else if(_coll_hadintr == 0){
       *checkaddr_err = TRU1; /* TODO ugly: "sendout_error" now.. */
       n_err(_("Failed to prepare composed message (I/O error, disk full?)\n"));
    }

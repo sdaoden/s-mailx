@@ -44,6 +44,7 @@
 #define n_ERROR "ERROR"       /* Is-error?  Also as n_error[] */
 #define ERRORS_MAX 1000       /* Maximum error ring entries TODO configable*/
 #define n_ESCAPE "~"          /* Default escape for sending (POSIX) */
+#define FTMP_OPEN_TRIES 10    /* Maximum number of Ftmp() open(2) tries */
 #define HSHSIZE 23            /* Hash prime TODO make dynamic, obsolete */
 #define INDENT_DEFAULT "\t"   /* *indentprefix* default as of POSIX */
 #define n_MAILDIR_SEPARATOR ':' /* Flag separator character */
@@ -51,8 +52,8 @@
 #define n_ALIAS_MAXEXP 25     /* Maximum expansion of aliases */
 #define n_PATH_DEVNULL "/dev/null"  /* Note: manual uses /dev/null as such */
 #define REFERENCES_MAX 20     /* Maximum entries in References: */
+#define n_SIGSUSPEND_NOT_WAITPID 1 /* Not waitpid(2), but sigsuspend(2) */
 #define n_UNIREPL "\xEF\xBF\xBD" /* Unicode replacement 0xFFFD in UTF-8 */
-#define FTMP_OPEN_TRIES 10    /* Maximum number of Ftmp() open(2) tries */
 #define n_VEXPR_REGEX_MAX 10  /* Maximum address. `vexpr' regex(7) matches */
 
 /* Auto-reclaimed memory storage: size of the buffers.  Maximum auto-reclaimed
