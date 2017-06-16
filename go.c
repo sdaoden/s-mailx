@@ -1382,15 +1382,15 @@ jrestart:
    /* Cleanup crucial external stuff */
    if(gcp->gc_data.gdc_ifcond != NULL){
       n_cnd_if_stack_del(gcp->gc_data.gdc_ifcond);
-      if(!(gcp->gc_flags & a_GO_FORCE_EOF) &&
-            !(gcm & (a_GO_CLEANUP_ERROR | a_GO_CLEANUP_SIGINT)) &&
-            a_go_xcall == NULL)
+      if(!(gcm & (a_GO_CLEANUP_ERROR | a_GO_CLEANUP_SIGINT)) &&
+            !(gcp->gc_flags & a_GO_FORCE_EOF) && a_go_xcall == NULL){
          n_err(_("Unmatched `if' at end of %s %s\n"),
             ((gcp->gc_flags & a_GO_MACRO
              ? (gcp->gc_flags & a_GO_MACRO_CMD ? _("command") : _("macro"))
              : _("`source'd file"))),
             gcp->gc_name);
-      gcm |= a_GO_CLEANUP_ERROR;
+         gcm |= a_GO_CLEANUP_ERROR;
+      }
    }
 
    /* Teardown context */
