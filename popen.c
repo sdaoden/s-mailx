@@ -910,9 +910,10 @@ Popen(char const *cmd, char const *mode, char const *sh,
          n_child_prepare(&nset, fd0, fd1);
          close(p[READ]);
          close(p[WRITE]);
+         /* TODO should close all other open FDs except stds and reset memory */
          u.ccp = sh;
          u.es = (*u.ptf)();
-         fflush(NULL);
+         /*fflush(NULL);*/
          _exit(u.es);
       }
    } else if (sh == NULL) {

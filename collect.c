@@ -1970,8 +1970,8 @@ jout:
 
       if(coapm != NULL){
          /* XXX Due Popen() fflush(NULL) in PTF mode, ensure nothing to flush */
-         if(!n_real_seek(_coll_fp, 0, SEEK_END))
-            goto jerr;
+         /*if(!n_real_seek(_coll_fp, 0, SEEK_END))
+          *  goto jerr;*/
          u.ptf = &a_coll_ocs__mac;
          cmd = (char*)-1;
          a_coll_ocs__macname = cp = coapm;
