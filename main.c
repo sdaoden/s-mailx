@@ -459,6 +459,17 @@ a_main_setup_vars(void){
       cp = savecat(n_reproducible_name, ": ");
       ok_vset(log_prefix, cp);
    }
+
+   if(n_psonce & n_PSO_INTERACTIVE){
+      a_main_setscreensize(FAL0);
+#ifdef SIGWINCH
+# ifndef TTY_WANTS_SIGWINCH
+      if(safe_signal(SIGWINCH, SIG_IGN) != SIG_IGN)
+# endif
+         safe_signal(SIGWINCH, &a_main_setscreensize);
+#endif
+   }else
+      n_scrnheight = n_realscreenheight = 24, n_scrnwidth = 80;
    NYD_LEAVE;
 }
 
@@ -633,6 +644,9 @@ a_main_hdrstop(int signo){
 
 int
 main(int argc, char *argv[]){
+   /* TODO Once v15 control flow/carrier rewrite took place main() should
+    * TODO be rewritten and option parsing++ should be outsourced.
+    * TODO Like so we can get rid of some stack locals etc. */
    /* Keep in SYNC: ./nail.1:"SYNOPSIS, main() */
    static char const optstr[] =
          "A:a:Bb:c:dEeFfHhiL:M:m:NnO:q:Rr:S:s:tu:VvX:::~#.";
@@ -670,8 +684,8 @@ main(int argc, char *argv[]){
    a_main_startup();
 
    /* Command line parsing
-    * Variable settings need to be done twice, since the user surely wants the
-    * setting to take effect immediately, but also doesn't want it to be
+    * -S variable settings need to be done twice, since the user surely wants
+    * the setting to take effect immediately, but also doesn't want it to be
     * overwritten from within resource files */
    while((i = a_main_getopt(argc, argv, optstr)) >= 0){
       switch(i){
@@ -1030,17 +1044,6 @@ jgetopt_done:
     */
 
    a_main_setup_vars();
-
-   if(n_psonce & n_PSO_INTERACTIVE){
-      a_main_setscreensize(FAL0);
-#ifdef SIGWINCH
-# ifndef TTY_WANTS_SIGWINCH
-      if(safe_signal(SIGWINCH, SIG_IGN) != SIG_IGN)
-# endif
-         safe_signal(SIGWINCH, &a_main_setscreensize);
-#endif
-   }else
-      n_scrnheight = n_realscreenheight = 24, n_scrnwidth = 80;
 
    /* Create memory pool snapshot; Memory is auto-reclaimed from now on */
    n_memory_pool_fixate();
