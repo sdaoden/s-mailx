@@ -278,7 +278,7 @@ t_behave() {
 
    t_behave_mbox
 
-   # FIXME t_behave_alias
+   t_behave_alias
    # FIXME t_behave_mlist
    t_behave_filetype
 
@@ -2025,6 +2025,48 @@ t_behave_mbox() {
    check behave:mbox-6 0 .tmbox3 '1387070539 13655'
    ${sed} 2d < .tlst > .tlstx
    check behave:mbox-7 - .tlstx '2729940494 13645'
+
+   t_epilog
+}
+
+t_behave_alias() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${MYSHELL} -
+		(echo 'From Hippocastanum Mon Jun 19 15:07:07 2017' && ${cat} && echo
+			) >> "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Smta=./.tsendmail.sh > ./.tall 2>&1
+   alias a1 ex1@a1.ple
+   alias a1 ex2@a1.ple "EX3 <ex3@a1.ple>"
+   alias a1 ex4@a1.ple
+   alias a2 ex1@a2.ple ex2@a2.ple ex3@a2.ple ex4@a2.ple
+   alias a3 a4
+   alias a4 a5 ex1@a4.ple
+   alias a5 a6
+   alias a6 a7 ex1@a6.ple
+   alias a7 a8
+   alias a8 ex1@a8.ple
+   alias a1
+   alias a2
+   alias a3
+   m a1
+	~c a2
+	~b a3
+	~r - '_EOT'
+   This body is!
+   This also body is!!
+_EOT
+	__EOT
+   check behave:alias-1 0 "${MBOX}" '2496925843 272'
+   check behave:alias-2 - .tall '3548953204 152'
+
+   # TODO t_behave_alias: n_ALIAS_MAXEXP is compile-time constant,
+   # TODO need to somehow provide its contents to the test, then test
 
    t_epilog
 }

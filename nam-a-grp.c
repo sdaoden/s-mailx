@@ -1944,19 +1944,28 @@ jerr:
       n_err(V_(ecp), n_shexp_quote_cp(*argv, FAL0));
       rv = 1;
    } else {
+      struct grp_names *gnp_tail, *gnp;
       struct grp_names_head *gnhp;
 
       GP_TO_SUBCLASS(gnhp, gp);
 
-      for (++argv; *argv != NULL; ++argv) {
-         size_t l = strlen(*argv) +1;
-         struct grp_names *gnp = smalloc(n_VSTRUCT_SIZEOF(struct grp_names,
-               gn_id) + l);
-         gnp->gn_next = gnhp->gnh_head;
-         gnhp->gnh_head = gnp;
-         memcpy(gnp->gn_id, *argv, l);
+      if((gnp_tail = gnhp->gnh_head) != NULL)
+         while((gnp = gnp_tail->gn_next) != NULL)
+            gnp_tail = gnp;
+
+      for(++argv; *argv != NULL; ++argv){
+         size_t i;
+
+         i = strlen(*argv) +1;
+         gnp = smalloc(n_VSTRUCT_SIZEOF(struct grp_names, gn_id) + i);
+         if(gnp_tail != NULL)
+            gnp_tail->gn_next = gnp;
+         else
+            gnhp->gnh_head = gnp;
+         gnp_tail = gnp;
+         gnp->gn_next = NULL;
+         memcpy(gnp->gn_id, *argv, i);
       }
-      assert(gnhp->gnh_head != NULL);
    }
    NYD_LEAVE;
    return rv;
