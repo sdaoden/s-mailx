@@ -87,8 +87,8 @@ struct a_shexp_glob_ctx{
 #endif
 
 struct a_shexp_quote_ctx{
-   struct n_string *sqc_store;         /* Result storage */
-   struct str sqc_input;               /* Input data, topmost level */
+   struct n_string *sqc_store;   /* Result storage */
+   struct str sqc_input;         /* Input data, topmost level */
    ui32_t sqc_cnt_revso;
    ui32_t sqc_cnt_single;
    ui32_t sqc_cnt_double;
@@ -132,7 +132,7 @@ a_shexp_findmail(char const *user, bool_t force){
 
    if(!force){
       if((cp = ok_vlook(inbox)) != NULL && *cp != '\0'){
-         /* Folder extra introduced to avoid % recursion loops */
+         /* _NFOLDER extra introduced to avoid % recursion loops */
          if((rv = fexpand(cp, FEXP_NSPECIAL | FEXP_NFOLDER | FEXP_NSHELL)
                ) != NULL)
             goto jleave;
@@ -1129,6 +1129,7 @@ jrestart:
    switch(flags & n__SHEXP_PARSE_QUOTE_AUTO_MASK){
    case n_SHEXP_PARSE_QUOTE_AUTO_SQ:
       quotec = '\'';
+      rv |= n_SHEXP_STATE_QUOTE;
       break;
    case n_SHEXP_PARSE_QUOTE_AUTO_DQ:
       quotec = '"';
@@ -1136,6 +1137,7 @@ jrestart:
    case n_SHEXP_PARSE_QUOTE_AUTO_DSQ:
          quotec = '\'';
       }
+      rv |= n_SHEXP_STATE_QUOTE;
       state |= a_SURPLUS;
       break;
    default:
@@ -1166,6 +1168,7 @@ jrestart:
                state &= ~a_SURPLUS;
             state &= ~a_NTOKEN;
             last_known_meta_trim_len = UI32_MAX;
+            rv |= n_SHEXP_STATE_QUOTE;
             continue;
          }else if(c == '$'){
             if(il > 0){
@@ -1175,6 +1178,7 @@ jrestart:
                   --il, ++ib;
                   quotec = '\'';
                   state |= a_SURPLUS;
+                  rv |= n_SHEXP_STATE_QUOTE;
                   continue;
                }else
                   goto J_var_expand;
