@@ -19,6 +19,8 @@ except some which provide redundant functionality (e.g., OPT_SPAMC is
 disabled because the generic OPT_SPAM_FILTER can do the same).
 None of the features are "require"d by default, so that configuration
 won't fail shall any of them not be available or usable.
+The generated configuration is tracked: changes will be recognized
+and cause automatic cleanups and rebuilds as necessary.
 
   $ make tangerine  # equals "$ make config build test install"
   $ make distclean  # *Completely* cleanup working directory
@@ -122,7 +124,7 @@ command line (names are case-insensitive):
 - CONFIG=MINIMAL
   This is the most plain mailx(1)-alike mode, but with MIME support and
   (if available) character set conversion and regular expressions
-  builtin.  Dotlock files and the privileged separated dotlock helper.
+  built-in.  Dotlock files and the privileged separated dotlock helper.
 
   "Require"s dotlocking and the privileged separated dotlock helper.
 
@@ -131,7 +133,7 @@ command line (names are case-insensitive):
   and don't regret improved usability for the rare interactive use
   occasions.
 
-  Like MINIMAL, but with documentation strings, the builtin line editor
+  Like MINIMAL, but with documentation strings, the built-in line editor
   (MLE) with history support and key bindings, error tracking, basic
   colour support and IDNA addresses.
 
@@ -221,71 +223,48 @@ Thank you!
 2. Notes on building the latest release
 ---------------------------------------
 
-This software has been in use or is used on a regulary basis on FreeBSD
-and Linux.  Occasional tests happens on the remains of the following.
-Unless otherwise noted the following applies to saying
-"$ make tangerine; make devel && make test".
-In alphabetical order:
-
 - All systems:
-  * I've turned off -Wstrict-overflow warnings unless we're debug
+  * I have turned off -Wstrict-overflow warnings unless we are debug
     enabled (talking about OPT_AUTOCC=yes here).
-  * You will likely see warnings on unused returns from write(2),
-    ftruncate(2) and a few other I/O functions.  These will vanish after
-    the large I/O and MIME rewrite that comes with v15.
-  * I am using the latest gcc(1) and clang(1) compilers, and am doing
-    scan-build(1) and Coverity.com inspection before major releases.
-    Some "XYZ may be used uninitialized" warnings are logically false.
+  * There are warnings on unused returns from some I/O functions.
+    These will vanish after the large v15 I/O and MIME rewrite.
+  * Some "XYZ may be used uninitialized" warnings are logically false.
 
 - All 32-bit systems:
   * There _may_ be warnings about format strings, like, e.g.,
       auxlily.c:1610:10: warning: format '%lu' expects type 'long
       unsigned int', but argument 3 has type 'size_t'
-    The codebase is ISO C89, so we have no %z printf(3) format.
+    The codebase is ISO C89 which has no %z printf(3) format.
     However we try hard to detect the real type size and define the
     "PRI[du]Z" macros which end up with the correct size, which is
     also compile-time asserted (see the "MCTA(sizeof(size_t) == XZ)"
     statements in nail.h).
 
-    You can completely overcome this situation by forcing ISO C99 mode
-    when compiling, e.g., with gcc(1) and clang(1): if you use
-    $OPT_AUTOCC then also pass "EXTRA_CFLAGS=-std=c99", otherwise
-    ensure -std=c99 is set in your $CFLAGS.
+    By forcing ISO C99 mode when compiling these warnings vanish, e.g.,
+    with gcc(1) and clang(1): with $OPT_AUTOCC pass
+    "EXTRA_CFLAGS=-std=c99", otherwise ensure -std=c99 is set in $CFLAGS.
 
-. AlpineLinux <https://www.alpinelinux.org/>
-  AlpineLinux 3.4.3, gcc(1).
+Development and/or regular tests:
 
-. ArchLinux <https://www.archlinux.org/>
-  Latest as of 2016-09-16, clang(1) and gcc(1).
+. AlpineLinux <https://www.alpinelinux.org/> (3.6; x86-64).
+. ArchLinux <https://www.archlinux.org/> (weekly updated; x86-64).
+. CRUX Linux <https://www.crux.nu/> (3.3; x86-64).
+. FreeBSD <https://www.freebsd.org/> (10.3; x86).
 
-. CRUX Linux <https://www.crux.nu/>
-  CRUX 3.2 RC3, gcc(1).
+Occasional tests:
 
-. DragonFly BSD <https://www.dragonflybsd.org/>
-  DragonFly 4.6.0, gcc(1).
-  * I will never get iconv(3) right for Solaris it seems.
-
-- FreeBSD <https://www.freebsd.org/>
-  FreeBSD 10.3, clang(1).
-
-- NetBSD <https://www.netbsd.org/>
-  Not tested.
-
-. OpenBSD <https://www.openbsd.org/>
-  OpenBSD 5.9.
-
-- Solaris <http://opencsw.org/>
+. OpenBSD <https://www.openbsd.org/> (6.1; x86).
+. Solaris <http://opencsw.org/>
   @ First of all: thanks to OpenCSW.org for offering SSH access to
     their Solaris build cluster!
   * In order to be able to run the tests you will need a cksum(1) that
     supports CRC-32 (POSIX).  We look into /opt/csw/gnu/cksum, but if
     that cannot be found you have to adjust the $cksum variable (see
     above) to something that works.
-    (v15 will use a different test suite.)
   * With $OPT_AUTOCC: we try to use Sun cc(1) whenever we find it.
     If your gcc(1) installation is doing alright you have to turn
     $OPT_AUTOCC off and use $CC, $CFLAGS and $LDFLAGS.
-  * I will never get iconv(3) right for Solaris it seems.
+  * Warnings about iconv(3) prototypes which i will not address.
   * Some notes collected on earlier trials:
     + We may forcefully disable stack protectors on SunOS/gcc because of
       linking errors seen in earlier tests.
@@ -300,19 +279,7 @@ In alphabetical order:
       to be extended to check for UINTPTR_MAX being defined as the empty
       string and similar very special things.
   - The OpenCSW build cluster consists of SunOS 5.9 - 5.11 machines
-    under SPARC and i386.
-    It looked good on 2016-09-16.
-
-- UnixWare 7.1.4.
-  * Note: it is no longer possible to use the `install' rule, because
-    we use shell functions to ease the task of directory creation etc.
-    (especially useful due to $VERBOSE), and that won't work due to bugs
-    (in the system make(1) program i presume).
-  + Not tested after v14.8.4, just fine before that.
-
-. Void Linux <http://www.voidlinux.eu/>
-  Not yet tested for v14.9.0.
-  (My current working environment is restricted since i've lost
-  my main development machine.)
+    under SPARC and i386.  And it looked good on 2017-07-01.
+. Void Linux <https://www.voidlinux.eu/> (x86; not in 2017 FIXME)
 
 # s-ts-mode
