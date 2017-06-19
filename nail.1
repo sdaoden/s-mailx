@@ -873,14 +873,16 @@ recipients, respectively, if the given list is empty.
 .Va on-compose-enter
 and
 .Va on-compose-leave
+(and
+.Va on-compose-cleanup )
 hook variables may be set to
 .Ic define Ns
 d macros to automatically adjust some settings dependent
 on receiver, sender or subject contexts, and via the
-.Va on-compose-splice-shell
-as well as
 .Va on-compose-splice
-variables, the latter also to be set to a
+as well as
+.Va on-compose-splice-shell
+variables, the former also to be set to a
 .Ic define Ns
 d macro, increasingly powerful mechanisms to perform automated message
 adjustments are available.
@@ -5068,6 +5070,8 @@ For example it will also implicitly generate a
 .Ql Mail-Followup-To:
 header if that seems useful, regardless of the setting of the variable
 .Va followup-to .
+For more documentation please refer to
+.Sx "On sending mail, and non-interactive mode" .
 .
 .Mx
 .It Ic Mail
@@ -5082,6 +5086,8 @@ recipient's address (instead of in
 (m) Takes a (list of) recipient address(es) as (an) argument(s),
 or asks on standard input if none were given;
 then collects the remaining mail content and sends it out.
+For more documentation please refer to
+.Sx "On sending mail, and non-interactive mode" .
 .
 .Mx
 .It Ic mbox
@@ -5468,9 +5474,6 @@ and all recipients.
 as well as
 .Va recipients-in-cc
 influence response behaviour.
-The command
-.Ic Lreply
-offers special support for replying to mailing lists.
 Unless the internal variable
 .Va fullnames
 is set recipient addresses will be stripped from comments, names etc.
@@ -5481,6 +5484,11 @@ is set the commands
 and
 .Ic reply
 are exchanged.
+The command
+.Ic Lreply
+offers special support for replying to mailing lists.
+For more documentation please refer to
+.Sx "On sending mail, and non-interactive mode" .
 .
 .Mx
 .It Ic replyall
@@ -7858,7 +7866,7 @@ fields are accepted within the header, other fields are ignored.
 \*(BO When entering interactive mode \*(UA normally writes
 .Dq \&No mail for user
 and exits immediately if a mailbox is empty or does not exist.
-If this variable is set \*(UA starts even with an empty or nonexistent
+If this variable is set \*(UA starts even with an empty or non-existent
 mailbox (the latter behaviour furtherly depends upon
 .Va bsdcompat ,
 though).
@@ -9007,6 +9015,65 @@ If this variable is set to the special value
 then a Maildir folder will not be rescanned completely, but only
 timestamp changes are detected.
 .
+.Mx
+.It Va outfolder
+\*(BO Causes the filename given in the
+.Va record
+variable
+and the sender-based filenames for the
+.Ic Copy
+and
+.Ic Save
+commands to be interpreted relative to the directory given in the
+.Va folder
+variable rather than to the current directory,
+unless it is set to an absolute pathname.
+.
+.Mx
+.It Va on-compose-cleanup
+Macro hook which will be called after the message has been sent (or not,
+in case of failures), as the very last step before unrolling compose mode
+.Ic localopts .
+This hook is run even in case of fatal errors, and it is advisable to
+perform only absolutely necessary actions, like cleaning up
+.Ic alternates ,
+for example.
+For compose mode hooks that may affect the message content please see
+.Va on-compose-enter , on-compose-leave , on-compose-splice .
+\*(ID This hook exists only because
+.Ic alias , alternates , commandalias , shortcut ,
+to name a few, are currently not covered by
+.Ic localopts
+or a similar mechanism: any changes applied in compose mode will
+continue to be in effect thereafter.
+.
+.Mx
+.Mx
+.It Va on-compose-enter , on-compose-leave
+Macro hooks which will be called before compose mode is entered,
+and after composing has been finished (but before the
+.Va signature
+is injected, etc.), respectively.
+.Ic localopts
+are enabled for these hooks, causing any setting to be forgotten after
+the message has been sent;
+.Va on-compose-cleanup
+can be used to perform any other necessary cleanup.
+The following (read-only) variables will be set temporarily during
+execution of the macros to represent the according message headers, or
+the empty string for non-existent:
+.Pp
+.Bl -tag -compact -width ".It Va compose_subject"
+.It Va compose-from
+.Va from .
+.It Va compose-sender
+.Va sender .
+.It Va compose-to , compose-cc , compose-bcc
+The list of receiver addresses as a space-separated list.
+.It Va compose-subject
+The subject.
+.El
+.
 .
 .Mx
 .Mx
@@ -9026,11 +9093,12 @@ restricted to a small set of commands (the
 .Va verbose
 output of, e.g.,
 .Ic list
-will indicate said capability), just enough for the purpose of
-controlling the real \*(UA instance sufficiently.
+will indicate said capability).
 .Ic localopts
 are enabled for these hooks (in the parent process), causing any setting
-to be forgotten after the message has been sent.
+to be forgotten after the message has been sent;
+.Va on-compose-cleanup
+can be used to perform other cleanup as necessary.
 .
 .Pp
 During execution of these hooks \*(UA will temporarily forget whether it
@@ -9090,44 +9158,6 @@ define ocsm {
 }
 .Ed
 .
-.
-.Mx
-.Mx
-.It Va on-compose-enter , on-compose-leave
-Macro hooks which will be executed before compose mode is entered, and
-after composing has been finished (but before the
-.Va signature
-is injected, etc.), respectively.
-.Ic localopts
-are enabled for these hooks, causing any setting to be forgotten after
-the message has been sent.
-The following (read-only) variables will be set temporarily during
-execution of the macros:
-.Pp
-.Bl -tag -compact -width ".It Va compose_subject"
-.It Va compose-from
-.Va from .
-.It Va compose-sender
-.Va sender .
-.It Va compose-to , compose-cc , compose-bcc
-The list of receiver addresses as a space-separated list.
-.It Va compose-subject
-The subject.
-.El
-.
-.Mx
-.It Va outfolder
-\*(BO Causes the filename given in the
-.Va record
-variable
-and the sender-based filenames for the
-.Ic Copy
-and
-.Ic Save
-commands to be interpreted relative to the directory given in the
-.Va folder
-variable rather than to the current directory,
-unless it is set to an absolute pathname.
 .
 .Mx
 .It Va page

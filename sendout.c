@@ -1874,7 +1874,13 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    n_sigman_cleanup_ping(&sm);
 jleave:
    if(mtf != NULL){
+      char const *cp;
+
       Fclose(mtf);
+
+      if((cp = ok_vlook(on_compose_cleanup)) != NULL)
+         temporary_compose_mode_hook_call(cp, NULL, NULL);
+
       temporary_compose_mode_hook_unroll();
    }
    if (_sendout_error)

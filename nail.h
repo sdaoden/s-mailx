@@ -1634,6 +1634,7 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_newfolders,
    ok_v_newmail,
 
+   ok_v_on_compose_cleanup,            /* {notempty=1} */
    ok_v_on_compose_enter,              /* {notempty=1} */
    ok_v_on_compose_leave,              /* {notempty=1} */
    ok_v_on_compose_splice,             /* {notempty=1} */
