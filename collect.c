@@ -173,19 +173,21 @@ jleave:
 static si32_t
 a_coll_include_file(char const *name, bool_t indent, bool_t writestat){
    FILE *fbuf;
+   bool_t quoted;
    char const *heredb, *indb;
-   char *linebuf;
    size_t linesize, heredl, indl, cnt, linelen;
+   char *linebuf;
    si64_t lc, cc;
    si32_t rv;
    NYD_ENTER;
 
    rv = n_ERR_NONE;
    lc = cc = 0;
-   linebuf = 0; /* TODO line pool */
+   linebuf = NULL; /* TODO line pool */
    linesize = 0;
    heredb = NULL;
    heredl = 0;
+   quoted = FAL0;
 
    /* The -M case is special */
    if(name == (char*)-1){
@@ -205,9 +207,28 @@ a_coll_include_file(char const *name, bool_t indent, bool_t writestat){
                ++heredb)
             ;
          if((heredl = strlen(heredb)) == 0){
+jdelim_empty:
             n_err(_("~< - HERE-delimiter: delimiter must not be empty\n"));
             rv = n_ERR_INVAL;
             goto jleave;
+         }
+
+         if((quoted = (*heredb == '\''))){
+            for(indb = ++heredb; *indb != '\0' && *indb != '\''; ++indb)
+               ;
+            if(*indb == '\0'){
+               n_err(_("~< - HERE-delimiter: missing trailing quote\n"));
+               rv = n_ERR_INVAL;
+               goto jleave;
+            }else if(indb[1] != '\0'){
+               n_err(_("~< - HERE-delimiter: trailing characters after "
+                  "quote\n"));
+               rv = n_ERR_INVAL;
+               goto jleave;
+            }
+            if((heredl = PTR2SIZE(indb - heredb)) == 0)
+               goto jdelim_empty;
+            heredb = savestrbuf(heredb, heredl);
          }
       }
       name = "-";

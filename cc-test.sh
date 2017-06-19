@@ -2912,7 +2912,7 @@ __EOT__
             echo "~:set t_ocs"
             #
             call _work 3; echo $?
-            echo "~r - __EOT"
+            echo "~r - '__EOT'"
             vput ! i echo just knock if you can hear me;\
                i=0;\
                while [ $i -lt 24 ]; do printf "%s " $i; i=`expr $i + 1`; done;\

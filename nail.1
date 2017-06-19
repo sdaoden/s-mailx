@@ -3283,7 +3283,9 @@ character will be replaced by the expansion of
 except when followed by a valid user name, in which case the home
 directory of the given user is used instead.
 .Pp
-Any occurrence of
+In addition a shell expansion as if specified in double-quotes (see
+.Sx "Shell-style argument quoting" )
+is applied, so that any occurrence of
 .Ql $VARIABLE
 (or
 .Ql ${VARIABLE} )
@@ -3291,8 +3293,7 @@ will be replaced by the expansion of the variable, if possible;
 .Sx "INTERNAL VARIABLES"
 as well as
 .Sx ENVIRONMENT
-(shell) variables can be accessed through this mechanism, and the usual
-escape mechanism has to be applied to prevent interpretation.
+(shell) variables can be accessed through this mechanism.
 .Pp
 In interactive context, in order to allow simple value acceptance (via
 .Dq ENTER ) ,
@@ -6728,19 +6729,22 @@ but indent each line that has been read by
 .
 .Mx
 .It Ic ~r Ar filename Op Ar HERE-delimiter
-Read the named file into the message.
+Read the named file, object to the usual
+.Sx "Filename transformations" ,
+into the message; if (the expanded)
 .Ar filename
-can also be a hyphen-minus
-.Ql - ,
-in which case standard input is used, e.g., for pasting purposes.
+is the hyphen-minus
+.Ql -
+then standard input is used, e.g., for pasting purposes.
 Only in this latter mode
 .Ar HERE-delimiter
 may be given: if it is data will be read in until the given
 .Ar HERE-delimiter
 is seen on a line by itself, and encountering EOF is an error; the
 .Ar HERE-delimiter
-is a required argument in non-interactive mode;
-note that variables expansion is performed on the delimiter.
+is a required argument in non-interactive mode; if it is single-quote
+quoted then the pasted content will not be expanded, \*(ID otherwise
+a future version of \*(UA may perform shell-style expansion on the content.
 .
 .Mx
 .It Ic ~s Ar string
@@ -6772,7 +6776,8 @@ the user may resume appending text to the end of the message.
 .
 .Mx
 .It Ic ~w Ar filename
-Write the message onto the named file.
+Write the message onto the named file, which is object to the usual
+.Sx "Filename transformations" .
 If the file exists,
 the message is appended to it.
 .
