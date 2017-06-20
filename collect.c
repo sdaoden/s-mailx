@@ -78,10 +78,13 @@ static void       print_collf(FILE *collf, struct header *hp);
 /* Write a file, ex-like if f set */
 static si32_t a_coll_write(char const *name, FILE *fp, int f);
 
+/* *message-inject-head* */
+static bool_t a_coll_message_inject_head(FILE *fp);
+
 /* Parse off the message header from fp and store relevant fields in hp,
  * replace _coll_fp with a shiny new version without any header */
 static bool_t a_coll_makeheader(FILE *fp, struct header *hp,
-               si8_t *checkaddr_err);
+               si8_t *checkaddr_err, bool_t do_delayed_due_t);
 
 /* Edit the message being collected on fp.  On return, make the edit file the
  * new temp file.  Return errno */
@@ -422,7 +425,27 @@ jerr:
 }
 
 static bool_t
-a_coll_makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err)
+a_coll_message_inject_head(FILE *fp){
+   bool_t rv;
+   char const *cp, *cp_obsolete;
+   NYD2_ENTER;
+
+   cp_obsolete = ok_vlook(NAIL_HEAD);
+   if(cp_obsolete != NULL)
+      n_OBSOLETE(_("please use *message-inject-head*, not *NAIL_HEAD*"));
+
+   if(((cp = ok_vlook(message_inject_head)) != NULL ||
+         (cp = cp_obsolete) != NULL) && putesc(cp, fp) < 0)
+      rv = FAL0;
+   else
+      rv = TRU1;
+   NYD2_LEAVE;
+   return rv;
+}
+
+static bool_t
+a_coll_makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err,
+   bool_t do_delayed_due_t)
 {
    FILE *nf;
    int c;
@@ -440,12 +463,28 @@ a_coll_makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err)
    if (checkaddr_err != NULL && *checkaddr_err != 0)
       goto jleave;
 
+   /* In template mode some things have been delayed until the template has
+    * been read */
+   if(do_delayed_due_t){
+      char const *cp;
+
+      if((cp = ok_vlook(on_compose_enter)) != NULL){
+         setup_from_and_sender(hp);
+         temporary_compose_mode_hook_call(cp, &a_coll__hook_setter, hp);
+      }
+
+      if(!a_coll_message_inject_head(nf))
+         goto jleave;
+   }
+
    while ((c = getc(fp)) != EOF) /* XXX bytewise, yuck! */
       putc(c, nf);
+
    if (fp != _coll_fp)
       Fclose(_coll_fp);
    Fclose(fp);
    _coll_fp = nf;
+
    if (check_from_and_sender(hp->h_from, hp->h_sender) == NULL)
       goto jleave;
    rv = TRU1;
@@ -481,7 +520,7 @@ a_coll_edit(int c, struct header *hp) /* TODO error(return) weird */
    nf = run_editor(_coll_fp, (off_t)-1, c, FAL0, hp, NULL, SEND_MBOX, sigint);
    if (nf != NULL) {
       if (hp) {
-         if(!a_coll_makeheader(nf, hp, NULL))
+         if(!a_coll_makeheader(nf, hp, NULL, FAL0))
             rv = n_ERR_INVAL;
       } else {
          fseek(nf, 0L, SEEK_END);
@@ -1699,20 +1738,16 @@ collect(struct header *hp, int printheaders, struct message *mp,
       if (getfields)
          grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, getfields, 1);
 
-      /* Execute compose-enter TODO completely v15-compat intermediate!! */
-      if((cp = ok_vlook(on_compose_enter)) != NULL){
+      /* Execute compose-enter; delayed for -t mode */
+      if(!(n_poption & n_PO_t_FLAG) &&
+            (cp = ok_vlook(on_compose_enter)) != NULL){
          setup_from_and_sender(hp);
          temporary_compose_mode_hook_call(cp, &a_coll__hook_setter, hp);
       }
 
       /* TODO Mm: nope since it may require turning this into a multipart one */
-      if(!(n_poption & n_PO_Mm_FLAG)){
-         char const *cp_obsolete = ok_vlook(NAIL_HEAD);
-         if(cp_obsolete != NULL)
-            n_OBSOLETE(_("please use *message-inject-head*, not *NAIL_HEAD*"));
-
-         if(((cp = ok_vlook(message_inject_head)) != NULL ||
-               (cp = cp_obsolete) != NULL) && putesc(cp, _coll_fp) < 0)
+      if(!(n_poption & (n_PO_Mm_FLAG | n_PO_t_FLAG))){
+         if(!a_coll_message_inject_head(_coll_fp))
             goto jerr;
 
          /* Quote an original message */
@@ -1844,7 +1879,7 @@ jcont:
              * *and* keep n_PO_t_FLAG for the first parse of the message!
              * TODO This is a hack, we need a clean approach for this */
             n_psonce |= n_PSO_t_FLAG;
-            if(!a_coll_makeheader(_coll_fp, hp, checkaddr_err))
+            if(!a_coll_makeheader(_coll_fp, hp, checkaddr_err, TRU1))
                goto jerr;
             n_poption &= ~n_PO_t_FLAG;
             continue;

@@ -286,6 +286,7 @@ t_behave() {
 
    t_behave_e_H_L_opts
    t_behave_compose_hooks
+   t_behave_message_injections
    t_behave_mime_types_load_control
 
    t_behave_smime
@@ -2943,6 +2944,46 @@ __EOT__
    ${cat} ./.tnotes >> "${MBOX}"
 
    check behave:compose_hooks-3 - "${MBOX}" '678882154 1071'
+
+   t_epilog
+}
+
+t_behave_message_injections() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${MYSHELL} -
+		(echo 'From Echinacea Tue Jun 20 15:54:02 2017' && ${cat} && echo
+			) > "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   echo mysig > ./.tmysig
+
+   echo some-body | ${MAILX} ${ARGS} -Smta=./.tsendmail.sh \
+      -Smessage-inject-head=head-inject \
+      -Smessage-inject-tail=tail-inject \
+      -Ssignature=./.tmysig \
+      ex@am.ple > ./.tall 2>&1
+   check behave:message_injections-1 0 "${MBOX}" '2434746382 134'
+   check behave:message_injections-2 - .tall '4294967295 0' # empty file
+
+   ${cat} <<-_EOT > ./.template
+	From: me
+	To: ex1@am.ple
+	Cc: ex2@am.ple
+	Subject: This subject is
+
+   Body, body, body me.
+	_EOT
+   < ./.template ${MAILX} ${ARGS} -t -Smta=./.tsendmail.sh \
+      -Smessage-inject-head=head-inject \
+      -Smessage-inject-tail=tail-inject \
+      -Ssignature=./.tmysig \
+      > ./.tall 2>&1
+   check behave:message_injections-3 0 "${MBOX}" '3114203412 198'
+   check behave:message_injections-4 - .tall '4294967295 0' # empty file
 
    t_epilog
 }
