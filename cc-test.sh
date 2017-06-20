@@ -2269,7 +2269,7 @@ t_behave_e_H_L_opts() {
    t_epilog
 }
 
-t_behave_compose_hooks() {
+t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
    t_prolog
    TRAP_EXIT_ADDONS="./.t*"
 
@@ -2786,7 +2786,41 @@ t_behave_compose_hooks() {
       end
       call t_attach
    }
-   wysh set on-compose-splice=t_ocs
+   define t_oce {
+      echo on-compose-enter
+      alternates alter1@exam.ple alter2@exam.ple
+      alternates
+      set autocc='alter1@exam.ple alter2@exam.ple'
+      echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
+      echo mailx-subject<$mailx-subject>
+      echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
+      echo mailx-orig-to<$mailx-orig-to> mailx-orig-cc<$mailx-orig-cc> \
+         mailx-orig-bcc<$mailx-orig-bcc>
+   }
+   define t_ocl {
+      echo on-compose-leave
+      eval alternates $alternates alter3@exam.ple alter4@exam.ple
+      alternates
+      set autobcc='alter3@exam.ple alter4@exam.ple'
+      echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
+      echo mailx-subject<$mailx-subject>
+      echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
+      echo mailx-orig-to<$mailx-orig-to> mailx-orig-cc<$mailx-orig-cc> \
+         mailx-orig-bcc<$mailx-orig-bcc>
+   }
+   define t_occ {
+      echo on-compose-cleanup
+      alternates -
+      alternates
+      echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
+      echo mailx-subject<$mailx-subject>
+      echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
+      echo mailx-orig-to<$mailx-orig-to> mailx-orig-cc<$mailx-orig-cc> \
+         mailx-orig-bcc<$mailx-orig-bcc>
+   }
+   wysh set on-compose-splice=t_ocs \
+      on-compose-enter=t_oce on-compose-leave=t_ocl \
+      on-compose-cleanup=t_occ
 __EOT__
 
    #
@@ -2795,9 +2829,9 @@ __EOT__
    printf 'm this-goes@nowhere\nbody\n!.\n' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
       -X'source ./.trc' -Smta=./.tsendmail.sh \
-      2>./.terr
-   ${cat} ./.terr >> "${MBOX}"
-   check behave:compose_hooks-1 0 "${MBOX}" '3958208025 8236'
+      >./.tall 2>&1
+   ${cat} ./.tall >> "${MBOX}"
+   check behave:compose_hooks-1 0 "${MBOX}" '1520175230 9574'
 
    ${rm} -f "${MBOX}"
    printf 'm -\nbody\n!.\n' |
@@ -2805,9 +2839,9 @@ __EOT__
       -St_remove=1 -X'source ./.trc' -Smta=./.tsendmail.sh \
       > "${MBOX}" 2>./.terr
    ${cat} ./.terr >> "${MBOX}"
-   check behave:compose_hooks-2 0 "${MBOX}" '231191826 11104'
+   check behave:compose_hooks-2 0 "${MBOX}" '346892777 11922'
 
-   # Some state machine stress, shell compose hook, etc.
+   # Some state machine stress, shell compose hook, localopts for hook, etc.
    ${rm} -f "${MBOX}"
    printf 'm hook-test@exam.ple\nbody\n!.\nvar t_oce t_ocs t_ocs_shell t_ocl' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! \
@@ -2930,20 +2964,48 @@ __EOT__
             call _work 5; echo $?
          }
          define t_oce {
+            echo on-compose-enter
             set t_oce autobcc=oce@exam.ple
+            alternates alter1@exam.ple alter2@exam.ple
+            alternates
+            echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
+            echo mailx-subject<$mailx-subject>
+            echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
+            echo mailx-orig-to<$mailx-orig-to> mailx-orig-cc<$mailx-orig-cc> \
+               mailx-orig-bcc<$mailx-orig-bcc>
          }
          define t_ocl {
+            echo on-compose-leave
             set t_ocl autocc=ocl@exam.ple
+            alternates alter3@exam.ple alter4@exam.ple
+            alternates
+            echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
+            echo mailx-subject<$mailx-subject>
+            echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
+            echo mailx-orig-to<$mailx-orig-to> mailx-orig-cc<$mailx-orig-cc> \
+               mailx-orig-bcc<$mailx-orig-bcc>
+         }
+         define t_occ {
+            echo on-compose-cleanup
+            set t_occ
+            alternates -
+            alternates
+            echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
+            echo mailx-subject<$mailx-subject>
+            echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
+            echo mailx-orig-to<$mailx-orig-to> mailx-orig-cc<$mailx-orig-cc> \
+               mailx-orig-bcc<$mailx-orig-bcc>
          }
          wysh set on-compose-splice=t_ocs \
             on-compose-splice-shell="read ver;printf \"t_ocs-shell\\n\
                ~t shell@exam.ple\\n~:set t_ocs_shell\\n\"" \
-            on-compose-enter=t_oce on-compose-leave=t_ocl
+            on-compose-enter=t_oce on-compose-leave=t_ocl \
+            on-compose-cleanup=t_occ
       ' > ./.tnotes 2>&1
    ex0_test behave:compose_hooks-3
    ${cat} ./.tnotes >> "${MBOX}"
 
-   check behave:compose_hooks-3 - "${MBOX}" '678882154 1071'
+   check behave:compose_hooks-3 - "${MBOX}" '1512401867 1990'
 
    t_epilog
 }

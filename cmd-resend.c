@@ -218,10 +218,18 @@ jnext_msg:
 
    /* Cc: */
    np = NULL;
-   if (ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL)
+   if (ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL) {
       np = lextract(cp, GCC | gf);
-   if ((cp = hfield1("cc", mp)) != NULL)
-      np = cat(np, lextract(cp, GCC | gf));
+      head.h_mailx_orig_to = namelist_dup(np, np->n_type);
+   }
+   if ((cp = hfield1("cc", mp)) != NULL) {
+      struct name *x;
+
+      if((x = lextract(cp, GCC | gf)) != NULL){
+         head.h_mailx_orig_cc = namelist_dup(x, x->n_type);
+         np = cat(np, x);
+      }
+   }
    if (np != NULL)
       head.h_cc = n_alternates_delete(np, FAL0);
 
@@ -230,8 +238,14 @@ jnext_msg:
    if (rcv != NULL)
       np = (rcv == reply_to) ? namelist_dup(rt, GTO | gf)
             : lextract(rcv, GTO | gf);
-   if (!ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL)
-      np = cat(np, lextract(cp, GTO | gf));
+   if (!ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL) {
+      struct name *x;
+
+      if((x = lextract(cp, GTO | gf)) != NULL){
+         head.h_mailx_orig_to = namelist_dup(x, x->n_type);
+         np = cat(np, x);
+      }
+   }
    /* Delete my name from reply list, and with it, all my alternate names */
    np = n_alternates_delete(np, FAL0);
    if (count(np) == 0)
@@ -432,6 +446,7 @@ _Reply(int *msgvec, bool_t recipient_record)
    }
    if (head.h_to == NULL)
       goto jleave;
+   head.h_mailx_orig_to = namelist_dup(head.h_to, head.h_to->n_type);
 
    mp = message + msgvec[0] - 1;
    head.h_subject = hfield1("subject", mp);
@@ -505,6 +520,7 @@ _fwd(char *str, int recipient_record)
    if ((head.h_to = lextract(recipient,
          (GTO | (ok_blook(fullnames) ? GFULL : GSKIN)))) == NULL)
       goto jleave;
+   head.h_mailx_orig_to = namelist_dup(head.h_to, head.h_to->n_type);
 
    mp = message + *msgvec - 1;
 
@@ -551,8 +567,8 @@ jleave:
 static int
 _resend1(void *v, bool_t add_resent)
 {
+   struct header head;
    char *name, *str;
-   struct name *to, *sn;
    int *ip, *msgvec;
    bool_t f = TRU1;
    NYD_ENTER;
@@ -588,12 +604,13 @@ _resend1(void *v, bool_t add_resent)
       goto jleave;
    }
 
-   sn = nalloc(name, GTO | GSKIN);
-   to = usermap(sn, FAL0);
+   memset(&head, 0, sizeof head);
+   head.h_mailx_orig_to = nalloc(name, GTO | GSKIN);
+   head.h_to = usermap(head.h_mailx_orig_to, FAL0);
    f = TRU1;
    for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
          ++ip)
-      if (resend_msg(message + *ip - 1, to, add_resent) != OKAY)
+      if (resend_msg(&message[*ip - 1], &head, add_resent) != OKAY)
          goto jleave;
    f = FAL0;
 jleave:

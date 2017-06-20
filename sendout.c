@@ -789,7 +789,8 @@ sendmail_internal(void *v, int recipient_record)
    NYD_ENTER;
 
    memset(&head, 0, sizeof head);
-   head.h_to = lextract(str, GTO | GFULL);
+   if((head.h_to = lextract(str, GTO | GFULL)) != NULL)
+      head.h_mailx_orig_to = namelist_dup(head.h_to, head.h_to->n_type);
    rv = mail1(&head, 0, NULL, NULL, recipient_record, 0);
    NYD_LEAVE;
    return (rv != OKAY); /* reverse! */
@@ -1671,9 +1672,12 @@ mail(struct name *to, struct name *cc, struct name *bcc, char const *subject,
       mime_fromhdr(&in, &out, /* TODO ??? TD_ISPR |*/ TD_ICONV);
       head.h_subject = out.s;
    }
-   head.h_to = to;
-   head.h_cc = cc;
-   head.h_bcc = bcc;
+   if((head.h_to = to) != NULL)
+      head.h_mailx_orig_to = namelist_dup(to, to->n_type);
+   if((head.h_cc = cc) != NULL)
+      head.h_mailx_orig_cc = namelist_dup(cc, cc->n_type);
+   if((head.h_bcc = bcc) != NULL)
+      head.h_mailx_orig_bcc = namelist_dup(bcc, bcc->n_type);
    head.h_attach = attach;
 
    mail1(&head, 0, NULL, quotefile, recipient_record, 0);
@@ -2236,16 +2240,20 @@ jleave:
 }
 
 FL enum okay
-resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
+resend_msg(struct message *mp, struct header *hp, bool_t add_resent)
 {
    struct sendbundle sb;
    FILE *ibuf, *nfo, *nfi;
    char *tempMail;
-   enum okay rv = STOP;
+   struct name *to;
+   enum okay rv;
    NYD_ENTER;
 
    _sendout_error = FAL0;
    __sendout_ident = NULL;
+   rv = STOP;
+   to = hp->h_to;
+   nfi = NULL;
 
    /* Update some globals we likely need first */
    time_current_update(&time_current, TRU1);
