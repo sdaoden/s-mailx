@@ -789,8 +789,9 @@ sendmail_internal(void *v, int recipient_record)
    NYD_ENTER;
 
    memset(&head, 0, sizeof head);
-   if((head.h_to = lextract(str, GTO | GFULL)) != NULL)
-      head.h_mailx_orig_to = namelist_dup(head.h_to, head.h_to->n_type);
+   head.h_mailx_command = "mail";
+   if((head.h_to = lextract(str, GTO | GFULL | GSKIN)) != NULL)
+      head.h_mailx_raw_to = namelist_dup(head.h_to, head.h_to->n_type);
    rv = mail1(&head, 0, NULL, NULL, recipient_record, 0);
    NYD_LEAVE;
    return (rv != OKAY); /* reverse! */
@@ -1672,12 +1673,15 @@ mail(struct name *to, struct name *cc, struct name *bcc, char const *subject,
       mime_fromhdr(&in, &out, /* TODO ??? TD_ISPR |*/ TD_ICONV);
       head.h_subject = out.s;
    }
+
+   head.h_mailx_command = "mail";
    if((head.h_to = to) != NULL)
-      head.h_mailx_orig_to = namelist_dup(to, to->n_type);
+      head.h_mailx_raw_to = namelist_dup(to, to->n_type);
    if((head.h_cc = cc) != NULL)
-      head.h_mailx_orig_cc = namelist_dup(cc, cc->n_type);
+      head.h_mailx_raw_cc = namelist_dup(cc, cc->n_type);
    if((head.h_bcc = bcc) != NULL)
-      head.h_mailx_orig_bcc = namelist_dup(bcc, bcc->n_type);
+      head.h_mailx_raw_bcc = namelist_dup(bcc, bcc->n_type);
+
    head.h_attach = attach;
 
    mail1(&head, 0, NULL, quotefile, recipient_record, 0);
@@ -2107,12 +2111,12 @@ jto_fmt:
          mftp = &mft;
 
          /* But for that, we have to remove all incarnations of ourselfs first.
-          * TODO It is total crap that we have alternates_delete(), is_myname()
+          * TODO It is total crap that we have alternates_remove(), is_myname()
           * TODO or whatever; these work only with variables, not with data
           * TODO that is _currently_ in some header fields!!!  v15.0: complete
           * TODO rewrite, object based, lazy evaluated, on-the-fly marked.
           * TODO then this should be a really cheap thing in here... */
-         np = elide(n_alternates_delete(cat(
+         np = elide(n_alternates_remove(cat(
                namelist_dup(hp->h_to, GEXTRA | GFULL),
                namelist_dup(hp->h_cc, GEXTRA | GFULL)), FAL0));
          addr = hp->h_list_post;

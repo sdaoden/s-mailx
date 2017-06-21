@@ -1600,7 +1600,7 @@ FL struct name * elide(struct name *names);
 FL int         c_alternates(void *v);
 
 /* If keep_single is set one alternates member will be allowed in np */
-FL struct name *n_alternates_delete(struct name *np, bool_t keep_single);
+FL struct name *n_alternates_remove(struct name *np, bool_t keep_single);
 
 /* Likewise, is name an alternate in broadest sense? */
 FL bool_t n_is_myname(char const *name);

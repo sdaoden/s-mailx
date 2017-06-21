@@ -1368,7 +1368,7 @@ namelist_vaporise_head(struct header *hp, enum expand_addr_check_mode eacm,
    hp->h_to = hp->h_cc = hp->h_bcc = NULL;
 
    tolist = usermap(tolist, metoo);
-   tolist = n_alternates_delete(tolist, TRU1);
+   tolist = n_alternates_remove(tolist, TRU1);
    tolist = elide(checkaddrs(tolist, eacm, set_on_error));
 
    for (np = tolist; np != NULL; np = np->n_flink) {
@@ -1567,7 +1567,7 @@ c_alternates(void *v){ /* TODO use a hashmap!! */
 }
 
 FL struct name *
-n_alternates_delete(struct name *np, bool_t keep_single){
+n_alternates_remove(struct name *np, bool_t keep_single){
    struct name *xp;
    NYD_ENTER;
 

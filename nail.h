@@ -1557,9 +1557,10 @@ ok_b_bsdannounce,
    ok_b_followup_to,
    ok_v_followup_to_honour,
    ok_b_forward_as_attachment,
+   ok_v_forward_inject_head,
    ok_v_from,
    ok_b_fullnames,
-   ok_v_fwdheading,
+ok_v_fwdheading,
 
    ok_v_HOME,                          /* {vip=1,nodel=1,notempty=1,import=1} */
    ok_b_header,                        /* {i3val=TRU1} */
@@ -1615,12 +1616,17 @@ ok_b_bsdannounce,
    ok_v_mta_argv0,                     /* {notempty=1,defval=VAL_MTA_ARGV0} */
 
    /* TODO likely temporary hook data, v15 drop */
+   ok_v_mailx_command,                 /* {rdonly=1} */
    ok_v_mailx_subject,                 /* {rdonly=1} */
    ok_v_mailx_from,                    /* {rdonly=1} */
    ok_v_mailx_sender,                  /* {rdonly=1} */
    ok_v_mailx_to,                      /* {rdonly=1} */
    ok_v_mailx_cc,                      /* {rdonly=1} */
    ok_v_mailx_bcc,                     /* {rdonly=1} */
+   ok_v_mailx_raw_to,                  /* {rdonly=1} */
+   ok_v_mailx_raw_cc,                  /* {rdonly=1} */
+   ok_v_mailx_raw_bcc,                 /* {rdonly=1} */
+   ok_v_mailx_orig_from,               /* {rdonly=1} */
    ok_v_mailx_orig_to,                 /* {rdonly=1} */
    ok_v_mailx_orig_cc,                 /* {rdonly=1} */
    ok_v_mailx_orig_bcc,                /* {rdonly=1} */
@@ -2321,7 +2327,12 @@ struct header {
    char const  *h_list_post;  /* Address from List-Post:, for `Lreply' */
    struct n_header_field *h_user_headers;
    struct n_header_field *h_custom_headers; /* (Cached result) */
-   /* The original versions, before any modifications.  If any */
+   /* Raw/original versions of the header(s). If any */
+   char const *h_mailx_command;
+   struct name *h_mailx_raw_to;
+   struct name *h_mailx_raw_cc;
+   struct name *h_mailx_raw_bcc;
+   struct name *h_mailx_orig_from;
    struct name *h_mailx_orig_to;
    struct name *h_mailx_orig_cc;
    struct name *h_mailx_orig_bcc;

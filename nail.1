@@ -1272,10 +1272,10 @@ unless
 is set) or
 .Ic Reply Ql R
 exclusively to the sender(s).
-Messages can be
 .Ic forward Ns
-ed (shorter alias is
-.Ic fwd Ns ).
+ing a message will allow editing the new message: the original message
+will be contained in the message body, adjusted according to
+.Ic headerpick .
 When replying to or forwarding a message recipient addresses will be
 stripped from comments and names unless the internal variable
 .Va fullnames
@@ -1287,7 +1287,7 @@ or
 messages: the former will add a series of
 .Ql Resent-
 headers, whereas the latter will not; different to newly created
-messages these will not save even with
+messages editing is not possible and no copy will be saved even with
 .Va record
 unless the additional variable
 .Va record-resent
@@ -4621,13 +4621,30 @@ variable.
 .
 .Mx
 .It Ic Forward
-Alias for
-.Ic Fwd .
+Similar to
+.Ic forward ,
+but saves the message in a file named after the local part of the
+recipient's address (instead of in
+.Va record Ns ).
 .
 .Mx
 .It Ic forward
-Alias for
-.Ic fwd .
+Takes a message and the address of a recipient
+and forwards the message to him.
+The text of the original message is included in the new one,
+with the value of the
+.Va forward-header-inject
+variable preceding it.
+To filter the included header fields to the desired subset use the
+.Ql forward
+slot of the white- and blacklisting command
+.Ic headerpick .
+Only the first part of a multipart message is included unless
+.Va forward-as-attachment ,
+and recipient addresses will be stripped from comments, names etc.
+unless the internal variable
+.Va fullnames
+is set .
 .
 .Mx
 .It Ic from
@@ -4639,34 +4656,14 @@ An alias of this command is
 Also see
 .Sx "Specifying messages" .
 .
-.Mx
 .It Ic Fwd
-Similar to
-.Ic fwd ,
-but saves the message in a file named after the local part of the
-recipient's address (instead of in
-.Va record Ns ).
+\*(OB Alias for
+.Ic Forward .
 .
-.Mx
 .It Ic fwd
-Takes a message and the address of a recipient
-and forwards the message to him.
-The text of the original message is included in the new one,
-with the value of the
-.Va fwdheading
-variable preceding it.
-To filter the included header fields to the desired subset use the
-.Ql foward
-slot of the white- and blacklisting command
-.Ic headerpick .
-Only the first part of a multipart message is included unless
-.Va forward-as-attachment ,
-and recipient addresses will be stripped from comments, names etc.
-unless the internal variable
-.Va fullnames
-is set .
+\*(OB Alias for
+.Ic forward .
 .
-.Mx
 .It Ic fwdignore
 \*(OB Superseded by the multiplexer
 .Ic headerpick .
@@ -5463,8 +5460,10 @@ Both folders must be of the same type.
 .
 .Mx
 .It Ic Reply
-(R) Reply to originator.
-Does not reply to other recipients of the original message.
+(R) Replies to only the sender of each message of the given message
+list, by using the first message as the template to quote, for the
+.Ql Subject:
+etc.
 .Va flipr
 will exchange this command with
 .Ic reply .
@@ -6838,11 +6837,44 @@ and the exit status
 .Va \&? ,
 because errors are reported via the protocol
 (hard errors like I/O failures cannot be handled).
+This command has read-only access to several virtual pseudo headers in
+the \*(UA private namespace, which may not exist (except for the first):
+.
+.
+.Pp
+.Bl -tag -compact -width ".It Va BaNg"
+.It Ql Mailx-Command:
+The name of the command that generates the message, one of
+.Ql mail ,
+.Ql reply ,
+.Ql forward ,
+.Ql resend .
+.
+.It Ql Mailx-Raw-To:
+.It Ql Mailx-Raw-Cc:
+.It Ql Mailx-Raw-Bcc:
+Represent the frozen initial state of these headers before any
+transformation (e.g.,
+.Ic alias ,
+.Ic alternates ,
+.Va recipients-in-cc
+etc.) took place.
+.
+.It Ql Mailx-Orig-From:
+.It Ql Mailx-Orig-To:
+.It Ql Mailx-Orig-Cc:
+.It Ql Mailx-Orig-Bcc:
+The values of said headers of the original message which has been
+addressed by any of
+.Ic reply , forward , resend .
+.El
+.
+.Pp
 The status codes are:
 .
 .
 .Pp
-.Bl -tag -compact -width _210_
+.Bl -tag -compact -width ".It Ql _210_"
 .It Ql 210
 Status ok; the remains of the line are the result.
 .
@@ -6875,19 +6907,7 @@ Syntax error in parameters or arguments.
 .It Ql 505
 Error: an argument fails verification.
 For example an invalid address has been specified, or an attempt was
-made to modify anything in \*(UAs own namespace, e.g., the (rather
-internal, virtual and temporary) headers
-.Ql Mailx-Orig-To ,
-.Ql Mailx-Orig-Cc
-and
-.Ql Mailx-Orig-Bcc ,
-which represent the content of the given before any transformation (e.g.,
-.Ic alias ,
-.Ic alternates ,
-.Va recipients-in-cc
-etc.) took place (\*(ID for now only the first is always available, the
-latter two will exist only if a message has been replied to).
-cannot be created (or removed),
+made to modify anything in \*(UAs own namespace.
 .
 .It Ql 506
 Error: an otherwise valid argument is rendered invalid due to context.
@@ -6902,17 +6922,17 @@ unmodified.
 Most commands can fail with
 .Ql 500
 if required arguments are missing (false command usage).
-The following commands are supported, and, as usual, case-insensitive:
+The following (case-insensitive) commands are supported:
 .
 .
-.Bl -hang -width header
+.Bl -hang -width ".It Cm header"
 .It Cm header
 This command allows listing, inspection, and editing of message headers.
 Header name case is not normalized, and case-insensitive comparison
 should be used when matching names.
 The second argument specifies the subcommand to apply, one of:
 .
-.Bl -hang -width remove
+.Bl -hang -width ".It Cm remove"
 .It Cm list
 Without a third argument a list of all yet existing headers is given via
 .Ql 210 ;
@@ -6983,7 +7003,7 @@ All free-form header fields are managed in a single list.
 This command allows listing, removal and addition of message attachments.
 The second argument specifies the subcommand to apply, one of:
 .
-.Bl -hang -width remove
+.Bl -hang -width ".It Cm remove"
 .It Cm list
 List all attachments via
 .Ql 212 ,
@@ -7080,7 +7100,7 @@ for message attachments or if the given keyword is invalid, and
 if no such attachment can be found.
 The following keywords may be used (case-insensitively):
 .Pp
-.Bl -hang -compact -width ".Ql filename"
+.Bl -hang -compact -width ".It Ql filename"
 .It Ql filename
 Sets the filename of the MIME part, i.e., the name that is used for
 display and when (suggesting a name for) saving (purposes).
@@ -7773,9 +7793,9 @@ forwarded messages; it is also possible to create custom headers in
 compose mode with
 .Ic ~^ ,
 which can be automated by setting one of the hooks
-.Va on-compose-splice-shell
+.Va on-compose-splice
 or
-.Va on-compose-splice .
+.Va on-compose-splice-shell .
 The value is interpreted as a comma-separated list of custom headers to
 be injected, to include commas in the header bodies escape them with
 reverse solidus.
@@ -8190,6 +8210,17 @@ With this setting enabled messages are sent as unmodified MIME
 attachments with all of their parts included.
 .
 .Mx
+.It Va forward-inject-head
+The string to put before the text of a message with the
+.Ic forward
+command instead of the default
+.Dq -------- Original Message -------- .
+No heading is put if it is set to the empty string.
+This variable is ignored if the
+.Va forward-as-attachment
+variable is set.
+.
+.Mx
 .It Va from
 The address (or a list of addresses) to put into the
 .Ql From:
@@ -8235,17 +8266,9 @@ the comment and name parts of email addresses.
 If this variable is set such stripping is not performed,
 and comments, names etc. are retained.
 .
-.Mx
 .It Va fwdheading
-The string to put before the text of a message with the
-.Ic forward
-command
-(unless the
-.Va forward-as-attachment
-variable is set).
-Defaults to
-.Dq -------- Original Message --------
-if unset; No heading is put if it is set to the empty string.
+\*(OB Predecessor of
+.Va forward-inject-head .
 .
 .Mx
 .It Va header
@@ -9102,9 +9125,15 @@ the message has been sent;
 can be used to perform any other necessary cleanup.
 The following (read-only) variables will be set temporarily during
 execution of the macros to represent the according message headers, or
-the empty string for non-existent:
+the empty string for non-existent; they correspond to accoding virtual
+temporary message headers that can be accessed via
+.Ic ~^ ,
+one of the
+.Sx "COMMAND ESCAPES" :
 .Pp
 .Bl -tag -compact -width ".It Va mailx_subject"
+.It Va mailx-command
+The command that generates the message.
 .It Va mailx-subject
 The subject.
 .It Va mailx-from
@@ -9113,18 +9142,25 @@ The subject.
 .Va sender .
 .It Va mailx-to , mailx-cc , mailx-bcc
 The list of receiver addresses as a space-separated list.
-.It Va mailx-orig-to , mailx-orig-cc , mailx-orig-bcc
+.It Va mailx-raw-to , mailx-raw-cc , mailx-raw-bcc
 The list of receiver addresses before any mangling (due to, e.g.,
 .Ic alternates ,
 .Ic alias
 .Va recipients-in-cc )
 as a space-separated list.
+.It Va mailx-orig-from
+When replying, forwarding or resending, this will be set to the
+.Ql From:
+of the given message.
+.It Va mailx-orig-to , mailx-orig-cc , mailx-orig-bcc
+When replying, forwarding or resending, this will be set to the
+receivers of the given message.
 .El
 .
 .
 .Mx
 .Mx
-.It Va on-compose-splice-shell , on-compose-splice
+.It Va on-compose-splice , on-compose-splice-shell
 These hooks run once the normal compose mode is finished, but before the
 .Va on-compose-leave
 macro hook is called, the
@@ -9133,9 +9169,9 @@ is injected etc.
 Both hooks will be executed in a subprocess, with their input and output
 connected to \*(UA such that they can act as if they would be an
 interactive user.
-The difference in between them is that the former is a
+The difference in between them is that the latter is a
 .Ev SHELL
-command, whereas the latter is a normal \*(UA macro, but which is
+command, whereas the former is a normal \*(UA macro, but which is
 restricted to a small set of commands (the
 .Va verbose
 output of, e.g.,

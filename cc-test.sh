@@ -2284,17 +2284,20 @@ t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
    chmod 0755 ./.tsendmail.sh
 
    ${cat} <<'__EOT__' > ./.trc
+   define bail {
+      echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
+   }
    define xerr {
       vput vexpr es substr "$1" 0 1
       if [ "$es" != 2 ]
-         echoerr "Failed: $2.  Bailing out"; echo "~x"
+         xcall bail "$2"
       end
    }
    define read_mline_res {
       read hl; wysh set len=$? es=$! en=$^ERRNAME;\
          echo $len/$es/$^ERRNAME: $hl
       if [ $es -ne $^ERR-NONE ]
-         echoerr "read_mline_res: bailing out"; echo "~x"
+         xcall bail read_mline_res
       elif [ $len -ne 0 ]
          \xcall read_mline_res
       end
@@ -2322,15 +2325,15 @@ t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
       echo "~^header remove $xh"; read es; call xerr $es "ins_addr $xh 2-1"
       echo "~^header remove $xh"; read es; vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: ins_addr $xh 2-2"; echo "~x"
+         xcall bail "ins_addr $xh 2-2"
       end
       echo "~^header list $xh"; read es; vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: ins_addr $xh 2-3"; echo "~x"
+         xcall bail "ins_addr $xh 2-3"
       end
       echo "~^header show $xh"; read es; vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: ins_addr $xh 2-4"; echo "~x"
+         xcall bail "ins_addr $xh 2-4"
       end
 
       #
@@ -2354,22 +2357,22 @@ t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
       echo "~^header remove-at $xh 1"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: ins_addr $xh 3-9"; echo "~x"
+         xcall bail "ins_addr $xh 3-9"
       end
       echo "~^header remove-at $xh T"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 505 ]
-         echoerr "Failed: ins_addr $xh 3-10"; echo "~x"
+         xcall bail "ins_addr $xh 3-10"
       end
       echo "~^header list $xh"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: ins_addr $xh 3-11"; echo "~x"
+         xcall bail "ins_addr $xh 3-11"
       end
       echo "~^header show $xh"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: ins_addr $xh 3-12"; echo "~x"
+         xcall bail "ins_addr $xh 3-12"
       end
 
       #
@@ -2393,22 +2396,22 @@ t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
       echo "~^header remove-at $xh 1"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: ins_addr $xh 4-9"; echo "~x"
+         xcall bail "ins_addr $xh 4-9"
       end
       echo "~^header remove-at $xh T"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 505 ]
-         echoerr "Failed: ins_addr $xh 4-10"; echo "~x"
+         xcall bail "ins_addr $xh 4-10"
       end
       echo "~^header list $xh"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: ins_addr $xh 4-11"; echo "~x"
+         xcall bail "ins_addr $xh 4-11"
       end
       echo "~^header show $xh"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: ins_addr $xh 4-12"; echo "~x"
+         xcall bail "ins_addr $xh 4-12"
       end
    }
    define ins_ref {
@@ -2427,7 +2430,7 @@ t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
          echo "~^header insert $xh <${xh}2@exam.ple>"; read es;\
             vput vexpr es substr $es 0 3
          if [ $es != 506 ]
-            echoerr "Failed: ins_ref $xh 1-4"; echo "~x"
+            xcall bail "ins_ref $xh 1-4"
          end
       end
 
@@ -2445,17 +2448,17 @@ t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
       echo "~^header remove $xh"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: ins_ref $xh 2-2"; echo "~x"
+         xcall bail "ins_ref $xh 2-2"
       end
       echo "~^header list $xh"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: $es ins_ref $xh 2-3"; echo "~x"
+         xcall bail "$es ins_ref $xh 2-3"
       end
       echo "~^header show $xh"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: ins_ref $xh 2-4"; echo "~x"
+         xcall bail "ins_ref $xh 2-4"
       end
 
       #
@@ -2484,17 +2487,17 @@ t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
       echo "~^header remove-at $xh 1"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: ins_ref $xh 3-9"; echo "~x"
+         xcall bail "ins_ref $xh 3-9"
       end
       echo "~^header remove-at $xh T"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 505 ]
-         echoerr "Failed: ins_ref $xh 3-10"; echo "~x"
+         xcall bail "ins_ref $xh 3-10"
       end
       echo "~^header show $xh"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: ins_ref $xh 3-11"; echo "~x"
+         xcall bail "ins_ref $xh 3-11"
       end
 
       #
@@ -2522,17 +2525,17 @@ t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
       echo "~^header remove-at $xh 1"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: ins_ref $xh 4-9"; echo "~x"
+         xcall bail "ins_ref $xh 4-9"
       end
       echo "~^header remove-at $xh T"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 505 ]
-         echoerr "Failed: ins_ref $xh 4-10"; echo "~x"
+         xcall bail "ins_ref $xh 4-10"
       end
       echo "~^header show $xh"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: ins_ref $xh 4-11"; echo "~x"
+         xcall bail "ins_ref $xh 4-11"
       end
    }
    define t_header {
@@ -2551,6 +2554,12 @@ t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
       call ins_ref subject 1 # Not a "ref", but works (with tweaks)
       call ins_addr freeForm1
       call ins_addr freeform2
+
+      echo "~^header show MAILX-Command"; read es; call xerr $es "t_header 1000"
+      call read_mline_res
+      echo "~^header show MAILX-raw-TO"; read es; call xerr $es "t_header 1001"
+      call read_mline_res
+
       echo t_header LEAVE
    }
    define t_attach {
@@ -2559,18 +2568,18 @@ t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
       echo "~^attachment";\
          read hl; echo $hl; vput vexpr es substr "$hl" 0 3
       if [ "$es" != 501 ]
-         echoerr "Failed: attach 0-1"; echo "~x"
+         xcall bail "attach 0-1"
       end
 
       echo "~^attach attribute ./.treadctl";\
          read hl; echo $hl; vput vexpr es substr "$hl" 0 3
       if [ "$es" != 501 ]
-         echoerr "Failed: attach 0-2"; echo "~x"
+         xcall bail "attach 0-2"
       end
       echo "~^attachment attribute-at 1";\
          read hl; echo $hl; vput vexpr es substr "$hl" 0 3
       if [ "$es" != 501 ]
-         echoerr "Failed: attach 0-3"; echo "~x"
+         xcall bail "attach 0-3"
       end
 
       echo "~^attachment insert ./.treadctl=ascii";\
@@ -2660,17 +2669,17 @@ t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
       echo "~^   attachment     remove     ./.treadctl"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: attach 3-3"; echo "~x"
+         xcall bail "attach 3-3"
       end
       echo "~^   attachment     remove     ./.tattach"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: attach 3-4"; echo "~x"
+         xcall bail "attach 3-4"
       end
       echo "~^attachment list"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: attach 3-5"; echo "~x"
+         xcall bail "attach 3-5"
       end
 
       #
@@ -2684,12 +2693,12 @@ t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
       echo "~^   attachment     remove     .tattach"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 506 ]
-         echoerr "Failed: attach 4-4 $es"; echo "~x"
+         xcall bail "attach 4-4 $es"
       end
       echo "~^attachment remove-at T"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 505 ]
-         echoerr "Failed: attach 4-5"; echo "~x"
+         xcall bail "attach 4-5"
       end
       echo "~^attachment remove ./.tattach"; read es;\
          call xerr $es "attach 4-6"
@@ -2698,12 +2707,12 @@ t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
       echo "~^   attachment     remove     ./.tattach"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: attach 4-8 $es"; echo "~x"
+         xcall bail "attach 4-8 $es"
       end
       echo "~^attachment list"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: attach 4-9"; echo "~x"
+         xcall bail "attach 4-9"
       end
 
       #
@@ -2722,27 +2731,27 @@ t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
       echo "~^attachment remove-at 3"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: attach 5-6"; echo "~x"
+         xcall bail "attach 5-6"
       end
       echo "~^attachment remove-at 2"; read es;\
          call xerr $es "attach 5-7"
       echo "~^attachment remove-at 2"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: attach 5-8"; echo "~x"
+         xcall bail "attach 5-8"
       end
       echo "~^attachment remove-at 1"; read es;\
          call xerr $es "attach 5-9"
       echo "~^attachment remove-at 1"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: attach 5-10"; echo "~x"
+         xcall bail "attach 5-10"
       end
 
       echo "~^attachment list"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: attach 5-11"; echo "~x"
+         xcall bail "attach 5-11"
       end
 
       #
@@ -2765,13 +2774,13 @@ t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
       echo "~^attachment remove-at 1"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: attach 6-8"; echo "~x"
+         xcall bail "attach 6-8"
       end
 
       echo "~^attachment list"; read es;\
          vput vexpr es substr $es 0 3
       if [ $es != 501 ]
-         echoerr "Failed: attach 6-9"; echo "~x"
+         xcall bail "attach 6-9"
       end
 
       echo t_attach LEAVE
@@ -2787,36 +2796,42 @@ t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
       call t_attach
    }
    define t_oce {
-      echo on-compose-enter
+      echo on-compose-enter, mailx-command<$mailx-command>
       alternates alter1@exam.ple alter2@exam.ple
       alternates
       set autocc='alter1@exam.ple alter2@exam.ple'
       echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
       echo mailx-subject<$mailx-subject>
       echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
-      echo mailx-orig-to<$mailx-orig-to> mailx-orig-cc<$mailx-orig-cc> \
-         mailx-orig-bcc<$mailx-orig-bcc>
+      echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
+         mailx-raw-bcc<$mailx-raw-bcc>
+      echo mailx-orig-from<$mailx-orig-from> mailx-orig-to<$mailx-orig-to> \
+         mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
    }
    define t_ocl {
-      echo on-compose-leave
+      echo on-compose-leave, mailx-command<$mailx-command>
       eval alternates $alternates alter3@exam.ple alter4@exam.ple
       alternates
       set autobcc='alter3@exam.ple alter4@exam.ple'
       echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
       echo mailx-subject<$mailx-subject>
       echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
-      echo mailx-orig-to<$mailx-orig-to> mailx-orig-cc<$mailx-orig-cc> \
-         mailx-orig-bcc<$mailx-orig-bcc>
+      echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
+         mailx-raw-bcc<$mailx-raw-bcc>
+      echo mailx-orig-from<$mailx-orig-from> mailx-orig-to<$mailx-orig-to> \
+         mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
    }
    define t_occ {
-      echo on-compose-cleanup
+      echo on-compose-cleanup, mailx-command<$mailx-command>
       alternates -
       alternates
       echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
       echo mailx-subject<$mailx-subject>
       echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
-      echo mailx-orig-to<$mailx-orig-to> mailx-orig-cc<$mailx-orig-cc> \
-         mailx-orig-bcc<$mailx-orig-bcc>
+      echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
+         mailx-raw-bcc<$mailx-raw-bcc>
+      echo mailx-orig-from<$mailx-orig-from> mailx-orig-to<$mailx-orig-to> \
+         mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
    }
    wysh set on-compose-splice=t_ocs \
       on-compose-enter=t_oce on-compose-leave=t_ocl \
@@ -2831,7 +2846,7 @@ __EOT__
       -X'source ./.trc' -Smta=./.tsendmail.sh \
       >./.tall 2>&1
    ${cat} ./.tall >> "${MBOX}"
-   check behave:compose_hooks-1 0 "${MBOX}" '1520175230 9574'
+   check behave:compose_hooks-1 0 "${MBOX}" '207648214 10083'
 
    ${rm} -f "${MBOX}"
    printf 'm -\nbody\n!.\n' |
@@ -2839,14 +2854,33 @@ __EOT__
       -St_remove=1 -X'source ./.trc' -Smta=./.tsendmail.sh \
       > "${MBOX}" 2>./.terr
    ${cat} ./.terr >> "${MBOX}"
-   check behave:compose_hooks-2 0 "${MBOX}" '346892777 11922'
+   check behave:compose_hooks-2 0 "${MBOX}" '217089054 12397'
 
    # Some state machine stress, shell compose hook, localopts for hook, etc.
+   # readctl in child. ~r as HERE document
    ${rm} -f "${MBOX}"
-   printf 'm hook-test@exam.ple\nbody\n!.\nvar t_oce t_ocs t_ocs_shell t_ocl' |
+   printf 'm ex@am.ple\nbody\n!.\nvar t_oce t_ocs t_ocs_sh t_ocl t_occ autocc' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! \
       -Smta=./.tsendmail.sh \
       -X'
+         define bail {
+            echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
+         }
+         define xerr {
+            vput vexpr es substr "$1" 0 1
+            if [ "$es" != 2 ]
+               xcall bail "$2"
+            end
+         }
+         define read_mline_res {
+            read hl; wysh set len=$? es=$! en=$^ERRNAME;\
+               echo $len/$es/$^ERRNAME: $hl
+            if [ $es -ne $^ERR-NONE ]
+               xcall bail read_mline_res
+            elif [ $len -ne 0 ]
+               \xcall read_mline_res
+            end
+         }
          define _work {
             vput vexpr i + 1 "$2"
             if [ $i -lt 111 ]
@@ -2876,75 +2910,76 @@ __EOT__
             echo "~^header list"; read hl; echo $hl;\
                vput vexpr es substr "$hl" 0 1
             if [ "$es" != 2 ]
-               echoerr "Failed to header list, aborting send"; echo "~x"
+               xcall bail "header list"
             endif
             #
             call _work 1; echo $?
             echo "~^header insert cc splicy diet <splice@exam.ple> spliced";\
                read es; echo $es; vput vexpr es substr "$es" 0 1
             if [ "$es" != 2 ]
-               echoerr "Failed to be diet, aborting send"; echo "~x"
+               xcall bail "be diet"
             endif
             echo "~^header insert cc <splice2@exam.ple>";\
                read es; echo $es; vput vexpr es substr "$es" 0 1
             if [ "$es" != 2 ]
-               echoerr "Failed to be diet2, aborting send"; echo "~x"
+               xcall bail "be diet2"
             endif
             #
             call _work 2; echo $?
             echo "~^header insert bcc juicy juice <juice@exam.ple> spliced";\
                read es; echo $es;vput vexpr es substr "$es" 0 1
             if [ "$es" != 2 ]
-               echoerr "Failed to be juicy, aborting send"; echo "~x"
+               xcall bail "be juicy"
             endif
             echo "~^header insert bcc juice2@exam.ple";\
                read es; echo $es;vput vexpr es substr "$es" 0 1
             if [ "$es" != 2 ]
-               echoerr "Failed to be juicy2, aborting send"; echo "~x"
+               xcall bail "be juicy2"
             endif
             echo "~^header insert bcc juice3 <juice3@exam.ple>";\
                read es; echo $es;vput vexpr es substr "$es" 0 1
             if [ "$es" != 2 ]
-               echoerr "Failed to be juicy3, aborting send"; echo "~x"
+               xcall bail "be juicy3"
             endif
             echo "~^header insert bcc juice4@exam.ple";\
                read es; echo $es;vput vexpr es substr "$es" 0 1
             if [ "$es" != 2 ]
-               echoerr "Failed to be juicy4, aborting send"; echo "~x"
+               xcall bail "be juicy4"
             endif
             #
             echo "~^header remove-at bcc 3";\
                read es; echo $es;vput vexpr es substr "$es" 0 1
             if [ "$es" != 2 ]
-               echoerr "Failed to remove juicy3, aborting send"; echo "~x"
+               xcall bail "remove juicy5"
             endif
             echo "~^header remove-at bcc 2";\
                read es; echo $es;vput vexpr es substr "$es" 0 1
             if [ "$es" != 2 ]
-               echoerr "Failed to remove juicy2, aborting send"; echo "~x"
+               xcall bail "remove juicy6"
             endif
             echo "~^header remove-at bcc 3";\
                read es; echo $es;vput vexpr es substr "$es" 0 3
             if [ "$es" != 501 ]
-               echoerr "Failed to failed to remove-at, aborting send"; echo "~x"
+               xcall bail "failed to remove-at"
             endif
             # Add duplicates which ought to be removed!
             echo "~^header insert bcc juice4@exam.ple";\
                read es; echo $es;vput vexpr es substr "$es" 0 1
             if [ "$es" != 2 ]
-               echoerr "Failed to be juicy4-1, aborting send"; echo "~x"
+               xcall bail "be juicy4-1"
             endif
             echo "~^header insert bcc juice4@exam.ple";\
                read es; echo $es;vput vexpr es substr "$es" 0 1
             if [ "$es" != 2 ]
-               echoerr "Failed to be juicy4-2, aborting send"; echo "~x"
+               xcall bail "be juicy4-2"
             endif
             echo "~^header insert bcc juice4@exam.ple";\
                read es; echo $es;vput vexpr es substr "$es" 0 1
             if [ "$es" != 2 ]
-               echoerr "Failed to be juicy4-3, aborting send"; echo "~x"
+               xcall bail "be juicy4-3"
             endif
             echo "~:set t_ocs"
+
             #
             call _work 3; echo $?
             echo "~r - '__EOT'"
@@ -2955,57 +2990,78 @@ __EOT__
             echon shell-cmd says $?/$^ERRNAME: $i
             echo "~x  will not become interpreted, we are reading until __EOT"
             echo "__EOT"
+            read r_status; echo "~~r status output: $r_status"
+            echo "~:echo $? $! $^ERRNAME"
+            read r_status
+            echo "~~r status from parent: $r_status"
+
             #
             call _work 4; echo $?
             vput cwd cwd;echo cwd:$?
-            readctl create $cwd/.treadctl     ;echo readctl:$?/$^ERRNAME
-            xcall _read
+            readctl create $cwd/.treadctl     ;echo readctl:$?/$^ERRNAME;\
+            call _read
+
             #
             call _work 5; echo $?
+            echo "~^header show MAILX-Command"; read es;\
+               call xerr $es "t_header 1000"; call read_mline_res
+            echo "~^header show MAILX-raw-TO"; read es;\
+               call xerr $es "t_header 1001"; xcall read_mline_res
+
+            echoerr IT IS WRONG IF YOU SEE THIS
          }
          define t_oce {
-            echo on-compose-enter
+            echo on-compose-enter, mailx-command<$mailx-command>
             set t_oce autobcc=oce@exam.ple
             alternates alter1@exam.ple alter2@exam.ple
             alternates
             echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
             echo mailx-subject<$mailx-subject>
             echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
-            echo mailx-orig-to<$mailx-orig-to> mailx-orig-cc<$mailx-orig-cc> \
-               mailx-orig-bcc<$mailx-orig-bcc>
+            echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
+               mailx-raw-bcc<$mailx-raw-bcc>
+            echo mailx-orig-from<$mailx-orig-from> \
+               mailx-orig-to<$mailx-orig-to> \
+               mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
          }
          define t_ocl {
-            echo on-compose-leave
+            echo on-compose-leave, mailx-command<$mailx-command>
             set t_ocl autocc=ocl@exam.ple
             alternates alter3@exam.ple alter4@exam.ple
             alternates
             echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
             echo mailx-subject<$mailx-subject>
             echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
-            echo mailx-orig-to<$mailx-orig-to> mailx-orig-cc<$mailx-orig-cc> \
-               mailx-orig-bcc<$mailx-orig-bcc>
+            echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
+               mailx-raw-bcc<$mailx-raw-bcc>
+            echo mailx-orig-from<$mailx-orig-from> \
+               mailx-orig-to<$mailx-orig-to> \
+               mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
          }
          define t_occ {
-            echo on-compose-cleanup
-            set t_occ
+            echo on-compose-cleanup, mailx-command<$mailx-command>
+            set t_occ autocc=occ@exam.ple
             alternates -
             alternates
             echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
             echo mailx-subject<$mailx-subject>
             echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
-            echo mailx-orig-to<$mailx-orig-to> mailx-orig-cc<$mailx-orig-cc> \
-               mailx-orig-bcc<$mailx-orig-bcc>
+            echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
+               mailx-raw-bcc<$mailx-raw-bcc>
+            echo mailx-orig-from<$mailx-orig-from> \
+               mailx-orig-to<$mailx-orig-to> \
+               mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
          }
          wysh set on-compose-splice=t_ocs \
             on-compose-splice-shell="read ver;printf \"t_ocs-shell\\n\
-               ~t shell@exam.ple\\n~:set t_ocs_shell\\n\"" \
+               ~t shell@exam.ple\\n~:set t_ocs_sh\\n\"" \
             on-compose-enter=t_oce on-compose-leave=t_ocl \
             on-compose-cleanup=t_occ
       ' > ./.tnotes 2>&1
    ex0_test behave:compose_hooks-3
    ${cat} ./.tnotes >> "${MBOX}"
 
-   check behave:compose_hooks-3 - "${MBOX}" '1512401867 1990'
+   check behave:compose_hooks-3 - "${MBOX}" '679526364 2431'
 
    t_epilog
 }
