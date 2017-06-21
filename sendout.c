@@ -2246,6 +2246,7 @@ jleave:
 FL enum okay
 resend_msg(struct message *mp, struct header *hp, bool_t add_resent)
 {
+   struct n_sigman sm;
    struct sendbundle sb;
    FILE *ibuf, *nfo, *nfi;
    char *tempMail;
@@ -2258,6 +2259,13 @@ resend_msg(struct message *mp, struct header *hp, bool_t add_resent)
    rv = STOP;
    to = hp->h_to;
    nfi = NULL;
+
+   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
+   case 0:
+      break;
+   default:
+      goto jleave;
+   }
 
    /* Update some globals we likely need first */
    time_current_update(&time_current, TRU1);
@@ -2285,6 +2293,16 @@ resend_msg(struct message *mp, struct header *hp, bool_t add_resent)
 
    if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)
       goto jerr_io;
+
+   /* C99 */{
+      char const *cp;
+
+      if((cp = ok_vlook(on_resend_enter)) != NULL){
+         /*setup_from_and_sender(hp);*/
+         temporary_compose_mode_hook_call(cp, &n_temporary_compose_hook_varset,
+            hp);
+      }
+   }
 
    memset(&sb, 0, sizeof sb);
    sb.sb_to = to;
@@ -2336,10 +2354,21 @@ jerr_o:
    }
 
    Fclose(nfi);
+   n_sigman_cleanup_ping(&sm);
 jleave:
+   if(nfi != NULL){
+      char const *cp;
+
+      if((cp = ok_vlook(on_resend_cleanup)) != NULL)
+         temporary_compose_mode_hook_call(cp, NULL, NULL);
+
+      temporary_compose_mode_hook_unroll();
+   }
+
    if (_sendout_error)
       n_exit_status |= n_EXIT_SEND_ERROR;
    NYD_LEAVE;
+   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
 }
 

@@ -870,25 +870,9 @@ and
 .Va askbcc
 will cause the user to be prompted actively for (blind) carbon-copy
 recipients, respectively, if the given list is empty.
-.Va on-compose-enter
-and
-.Va on-compose-leave
-(and
-.Va on-compose-cleanup )
-hook variables may be set to
-.Ic define Ns
-d macros to automatically adjust some settings dependent
-on receiver, sender or subject contexts, and via the
-.Va on-compose-splice
-as well as
-.Va on-compose-splice-shell
-variables, the former also to be set to a
-.Ic define Ns
-d macro, increasingly powerful mechanisms to perform automated message
-adjustments are available.
 .
 .Pp
-Especially for using public mail provider accounts with the SMTP
+Especially when using public mail provider accounts with the SMTP
 .Va mta
 it is often necessary to set
 .Va from
@@ -1033,6 +1017,32 @@ filtering.
 .
 .Pp
 .Dl alias cohorts bill jkf mark kridle@ucbcory ~/mail/cohorts.mbox
+.
+.Pp
+.Va on-compose-enter , on-compose-leave
+and
+.Va on-compose-cleanup
+hook variables may be set to
+.Ic define Ns
+d macros to automatically adjust some settings dependent
+on receiver, sender or subject contexts, and via the
+.Va on-compose-splice
+as well as
+.Va on-compose-splice-shell
+variables, the former also to be set to a
+.Ic define Ns
+d macro, increasingly powerful mechanisms to perform automated message
+adjustments are available.
+(\*(ID These hooks work for commands which newly create messages, namely
+.Ic forward , mail , reply
+and variants;
+.Ic resend
+and
+.Ic Resend
+for now provide only the hooks
+.Va on-resend-enter
+and
+.Va on-resend-cleanup . )
 .
 .Pp
 To avoid environmental noise scripts should
@@ -9241,6 +9251,20 @@ define ocsm {
 }
 .Ed
 .
+.
+.Mx
+.It Va on-resend-cleanup
+\*(ID Identical to
+.Va on-compose-cleanup ,
+but is only triggered by
+.Ic resend .
+.
+.Mx
+.It Va on-resend-enter
+\*(ID Identical to
+.Va on-compose-enter ,
+but is only triggered by
+.Ic resend .
 .
 .Mx
 .It Va page

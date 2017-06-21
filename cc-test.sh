@@ -2278,8 +2278,8 @@ t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
 
    ${cat} <<-_EOT > ./.tsendmail.sh
 		#!${MYSHELL} -
-		${rm} -f "${MBOX}"
-		(echo 'From PrimulaVeris Wed Apr 10 22:59:00 2017' && ${cat}) > "${MBOX}"
+		(echo 'From PrimulaVeris Wed Apr 10 22:59:00 2017' && ${cat} && echo
+         ) >> "${MBOX}"
 	_EOT
    chmod 0755 ./.tsendmail.sh
 
@@ -3062,6 +3062,120 @@ __EOT__
    ${cat} ./.tnotes >> "${MBOX}"
 
    check behave:compose_hooks-3 - "${MBOX}" '679526364 2431'
+
+   # Reply, forward, resend, Resend
+
+   ${rm} -f "${MBOX}"
+   printf 'set from=f1@z\nm t1@z\nb1\n!.\nset from=f2@z\nm t2@z\nb2\n!.\n' |
+   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! \
+      -Smta=./.tsendmail.sh
+
+   printf '
+      echo start: $? $! $^ERRNAME
+      File %s
+      echo File: $? $! $^ERRNAME;echo;echo
+      reply 1
+this is content of reply 1
+!.
+      echo reply 1: $? $! $^ERRNAME;echo;echo
+      Reply 1 2
+this is content of Reply 1 2
+!.
+      echo Reply 1 2: $? $! $^ERRNAME;echo;echo
+      forward 1 fwdex@am.ple
+this is content of forward 1
+!.
+      echo forward 1: $? $! $^ERRNAME;echo;echo
+      resend 1 2 resendex@am.ple
+      echo resend 1 2: $? $! $^ERRNAME;echo;echo
+      Resend 1 2 Resendex@am.ple
+      echo Resend 1 2: $? $! $^ERRNAME;echo;echo
+   ' "${MBOX}" |
+   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! \
+      -Smta=./.tsendmail.sh \
+      -X'
+         define bail {
+            echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
+         }
+         define xerr {
+            vput vexpr es substr "$1" 0 1
+            if [ "$es" != 2 ]
+               xcall bail "$2"
+            end
+         }
+         define read_mline_res {
+            read hl; wysh set len=$? es=$! en=$^ERRNAME;\
+               echo mline_res:$len/$es/$^ERRNAME: $hl
+            if [ $es -ne $^ERR-NONE ]
+               xcall bail read_mline_res
+            elif [ $len -ne 0 ]
+               \xcall read_mline_res
+            end
+         }
+         define work_hl {
+            echo "~^header show $1"; read es;\
+               call xerr $es "work_hl $1"; echo $1; call read_mline_res
+            if [ $# -gt 1 ]
+               shift
+               xcall work_hl "$@"
+            end
+         }
+         define t_ocs {
+            read ver
+            echo t_ocs version $ver
+            echo "~^header list"; read hl; echo $hl;\
+            echoerr the header list is $hl;\
+               call xerr "$hl" "header list"
+            eval vpospar set $hl
+            shift
+            xcall work_hl "$@"
+            echoerr IT IS WRONG IF YOU SEE THIS
+         }
+         define t_oce {
+            echo on-XY-enter, mailx-command<$mailx-command>
+            set t_oce autobcc=oce@exam.ple
+            echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
+            echo mailx-subject<$mailx-subject>
+            echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
+            echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
+               mailx-raw-bcc<$mailx-raw-bcc>
+            echo mailx-orig-from<$mailx-orig-from> \
+               mailx-orig-to<$mailx-orig-to> \
+               mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
+         }
+         define t_ocl {
+            echo on-XY-leave, mailx-command<$mailx-command>
+            set t_ocl autocc=ocl@exam.ple
+            echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
+            echo mailx-subject<$mailx-subject>
+            echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
+            echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
+               mailx-raw-bcc<$mailx-raw-bcc>
+            echo mailx-orig-from<$mailx-orig-from> \
+               mailx-orig-to<$mailx-orig-to> \
+               mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
+         }
+         define t_occ {
+            echo on-XY-cleanup, mailx-command<$mailx-command>
+            set t_occ autocc=occ@exam.ple
+            echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
+            echo mailx-subject<$mailx-subject>
+            echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
+            echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
+               mailx-raw-bcc<$mailx-raw-bcc>
+            echo mailx-orig-from<$mailx-orig-from> \
+               mailx-orig-to<$mailx-orig-to> \
+               mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
+         }
+         wysh set on-compose-splice=t_ocs \
+            on-compose-enter=t_oce on-compose-leave=t_ocl \
+               on-compose-cleanup=t_occ \
+            on-resend-enter=t_oce on-resend-cleanup=t_occ
+      ' > ./.tnotes 2>&1
+   ex0_test behave:compose_hooks-4
+   ${cat} ./.tnotes >> "${MBOX}"
+
+   check behave:compose_hooks-4 - "${MBOX}" '2711778338 7516'
 
    t_epilog
 }
