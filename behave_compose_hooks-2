@@ -1,3 +1,17 @@
+on-compose-enter, mailx-command<mail>
+alternates alter1@exam.ple alter2@exam.ple
+mailx-from<> mailx-sender<>
+mailx-subject<>
+mailx-to<-> mailx-cc<> mailx-bcc<>
+mailx-raw-to<-> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-orig-from<> mailx-orig-to<> mailx-orig-cc<> mailx-orig-bcc<>
+on-compose-leave, mailx-command<mail>
+alternates alter1@exam.ple alter2@exam.ple alter3@exam.ple alter4@exam.ple
+mailx-from<> mailx-sender<>
+mailx-subject<>
+mailx-to<-> mailx-cc<> mailx-bcc<>
+mailx-raw-to<-> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-orig-from<> mailx-orig-to<> mailx-orig-cc<> mailx-orig-bcc<>
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 To:
@@ -5,32 +19,32 @@ To:
 body
 t_ocs
 t_header ENTER
-210 To
-210  1
-210  2
-210  3
-210
+210 To Mailx-Command Mailx-Raw-To
+210 From 1
+210 From 2
+210 From 3
+210 From
 42/0/NONE: from@exam.ple diet spliced <from@exam.ple>
 31/0/NONE: from2@exam.ple <from2@exam.ple>
 29/0/NONE: from3@exam.ple from3@exam.ple
 0/0/NONE: 
-210  1
-210  2
-210  3
-210
+210 From 1
+210 From 2
+210 From 3
+210 From
 42/0/NONE: from@exam.ple diet spliced <from@exam.ple>
 31/0/NONE: from2@exam.ple <from2@exam.ple>
 29/0/NONE: from3@exam.ple from3@exam.ple
 0/0/NONE: 
-210  1
-210  2
-210  3
-210
+210 From 1
+210 From 2
+210 From 3
+210 From
 42/0/NONE: from@exam.ple diet spliced <from@exam.ple>
 52/0/NONE: from2@exam.ple (comment) "Quot(e)d" <from2@exam.ple>
 29/0/NONE: from3@exam.ple from3@exam.ple
 0/0/NONE: 
-210 To
+210 To Mailx-Command Mailx-Raw-To
 210 Sender 1
 210 Sender
 33/0/NONE: sender@exam.ple <sender@exam.ple>
@@ -43,7 +57,7 @@ t_header ENTER
 210 Sender
 33/0/NONE: sender@exam.ple <sender@exam.ple>
 0/0/NONE: 
-210 To
+210 To Mailx-Command Mailx-Raw-To
 210 To 2
 210 To 3
 210 To 4
@@ -69,7 +83,7 @@ t_header ENTER
 48/0/NONE: To2@exam.ple (comment) "Quot(e)d" <To2@exam.ple>
 25/0/NONE: To3@exam.ple To3@exam.ple
 0/0/NONE: 
-210
+210 Mailx-Command Mailx-Raw-To
 210 Cc 1
 210 Cc 2
 210 Cc 3
@@ -94,7 +108,7 @@ t_header ENTER
 48/0/NONE: cC2@exam.ple (comment) "Quot(e)d" <cC2@exam.ple>
 25/0/NONE: cC3@exam.ple cC3@exam.ple
 0/0/NONE: 
-210
+210 Mailx-Command Mailx-Raw-To
 210 Bcc 1
 210 Bcc 2
 210 Bcc 3
@@ -119,7 +133,7 @@ t_header ENTER
 50/0/NONE: bCc2@exam.ple (comment) "Quot(e)d" <bCc2@exam.ple>
 27/0/NONE: bCc3@exam.ple bCc3@exam.ple
 0/0/NONE: 
-210
+210 Mailx-Command Mailx-Raw-To
 210 Reply-To 1
 210 Reply-To 2
 210 Reply-To 3
@@ -144,7 +158,7 @@ t_header ENTER
 60/0/NONE: reply-To2@exam.ple (comment) "Quot(e)d" <reply-To2@exam.ple>
 37/0/NONE: reply-To3@exam.ple reply-To3@exam.ple
 0/0/NONE: 
-210
+210 Mailx-Command Mailx-Raw-To
 210 Mail-Followup-To 1
 210 Mail-Followup-To 2
 210 Mail-Followup-To 3
@@ -169,7 +183,7 @@ t_header ENTER
 76/0/NONE: mail-Followup-to2@exam.ple (comment) "Quot(e)d" <mail-Followup-to2@exam.ple>
 53/0/NONE: mail-Followup-to3@exam.ple mail-Followup-to3@exam.ple
 0/0/NONE: 
-210
+210 Mailx-Command Mailx-Raw-To
 210 Message-ID 1
 210 Message-ID
 39/0/NONE: messAge-id@exam.ple messAge-id@exam.ple
@@ -182,7 +196,7 @@ t_header ENTER
 210 Message-ID
 39/0/NONE: messAge-id@exam.ple messAge-id@exam.ple
 0/0/NONE: 
-210
+210 Mailx-Command Mailx-Raw-To
 210 References 1
 210 References 2
 210 References 3
@@ -207,7 +221,7 @@ t_header ENTER
 41/0/NONE: rEfErEncEs2@exam.ple rEfErEncEs2@exam.ple
 41/0/NONE: rEfErEncEs3@exam.ple rEfErEncEs3@exam.ple
 0/0/NONE: 
-210
+210 Mailx-Command Mailx-Raw-To
 210 In-Reply-To 1
 210 In-Reply-To 2
 210 In-Reply-To 3
@@ -232,7 +246,7 @@ t_header ENTER
 43/0/NONE: in-Reply-to2@exam.ple in-Reply-to2@exam.ple
 43/0/NONE: in-Reply-to3@exam.ple in-Reply-to3@exam.ple
 0/0/NONE: 
-210
+210 Mailx-Command Mailx-Raw-To
 210 Subject 1
 210 Subject 1
 210 Subject 1
@@ -251,7 +265,7 @@ t_header ENTER
 210 Subject
 56/0/NONE: <subject@exam.ple> <subject2@exam.ple> subject3@exam.ple
 0/0/NONE: 
-210
+210 Mailx-Command Mailx-Raw-To
 210 Freeform1 1
 210 Freeform1 2
 210 Freeform1 3
@@ -276,7 +290,7 @@ t_header ENTER
 42/0/NONE: <freeForm12@exam.ple> (comment) "Quot(e)d"
 19/0/NONE: freeForm13@exam.ple
 0/0/NONE: 
-210
+210 Mailx-Command Mailx-Raw-To
 210 Freeform2 1
 210 Freeform2 2
 210 Freeform2 3
@@ -300,6 +314,10 @@ t_header ENTER
 33/0/NONE: diet <freeform2@exam.ple> spliced
 42/0/NONE: <freeform22@exam.ple> (comment) "Quot(e)d"
 19/0/NONE: freeform23@exam.ple
+0/0/NONE: 
+4/0/NONE: mail
+0/0/NONE: 
+3/0/NONE: - -
 0/0/NONE: 
 t_header LEAVE
 t_attach ENTER
@@ -450,3 +468,10 @@ t_attach ENTER
 0/0/NONE: 
 t_attach LEAVE
 
+on-compose-cleanup, mailx-command<mail>
+# no alternates registered
+mailx-from<> mailx-sender<>
+mailx-subject<>
+mailx-to<-> mailx-cc<> mailx-bcc<>
+mailx-raw-to<-> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-orig-from<> mailx-orig-to<> mailx-orig-cc<> mailx-orig-bcc<>
