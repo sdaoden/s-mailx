@@ -223,7 +223,7 @@ jnext_msg:
    if ((cp = hfield1("cc", mp)) != NULL)
       np = cat(np, lextract(cp, GCC | gf));
    if (np != NULL)
-      head.h_cc = delete_alternates(np);
+      head.h_cc = n_alternates_delete(np, FAL0);
 
    /* To: */
    np = NULL;
@@ -233,7 +233,7 @@ jnext_msg:
    if (!ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL)
       np = cat(np, lextract(cp, GTO | gf));
    /* Delete my name from reply list, and with it, all my alternate names */
-   np = delete_alternates(np);
+   np = n_alternates_delete(np, FAL0);
    if (count(np) == 0)
       np = lextract(rcv, GTO | gf);
    head.h_to = np;

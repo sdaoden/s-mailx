@@ -3527,10 +3527,7 @@ period, the last character can also be the dollar sign:
 .Mx
 .It Ic alternates
 (alt) Manage a list of alternate addresses or names of the active user,
-members of which will be removed from recipient lists when replying to
-messages (and the
-.Va metoo
-variable is not set).
+members of which will be removed from recipient lists.
 Without arguments the current set of alternates is displayed, otherwise
 the set of alternate names is replaced by the given arguments, and the
 internal variable
@@ -3539,6 +3536,12 @@ is updated accordingly.
 As an extension, if one argument is given and that is the hyphen-minus
 .Ql -
 then the set of alternates is removed.
+There is a set of implicit alternates which is formed of the values of
+.Ev LOGNAME ,
+.Va from ,
+.Va sender
+and
+.Va replyto .
 .
 .Mx
 .Mx
@@ -5467,7 +5470,9 @@ is set the recipient address will be stripped from comments, names etc.
 .Mx
 .It Ic reply
 (r) Take a message and group-responds to it by addressing the sender
-and all recipients.
+and all recipients, subject to
+.Ic alternates
+processing.
 .Va followup-to ,
 .Va followup-to-honour ,
 .Va reply-to-honour

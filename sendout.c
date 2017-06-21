@@ -2103,14 +2103,14 @@ jto_fmt:
          mftp = &mft;
 
          /* But for that, we have to remove all incarnations of ourselfs first.
-          * TODO It is total crap that we have delete_alternates(), is_myname()
+          * TODO It is total crap that we have alternates_delete(), is_myname()
           * TODO or whatever; these work only with variables, not with data
           * TODO that is _currently_ in some header fields!!!  v15.0: complete
           * TODO rewrite, object based, lazy evaluated, on-the-fly marked.
           * TODO then this should be a really cheap thing in here... */
-         np = elide(delete_alternates(cat(
+         np = elide(n_alternates_delete(cat(
                namelist_dup(hp->h_to, GEXTRA | GFULL),
-               namelist_dup(hp->h_cc, GEXTRA | GFULL))));
+               namelist_dup(hp->h_cc, GEXTRA | GFULL)), FAL0));
          addr = hp->h_list_post;
 
          while((x = np) != NULL){

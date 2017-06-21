@@ -201,7 +201,7 @@ jredo:
 
    flags |= _ISADDR;
    name = name1(mp, 0);
-   if (name != NULL && ok_blook(showto) && is_myname(skin(name))) {
+   if (name != NULL && ok_blook(showto) && n_is_myname(skin(name))) {
       if ((cp = hfield1("to", mp)) != NULL) {
          name = cp;
          flags |= _ISTO;

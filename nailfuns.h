@@ -1597,9 +1597,11 @@ FL struct name * elide(struct name *names);
 /* `alternates' deal with the list of alternate names */
 FL int         c_alternates(void *v);
 
-FL struct name * delete_alternates(struct name *np);
+/* If keep_single is set one alternates member will be allowed in np */
+FL struct name *n_alternates_delete(struct name *np, bool_t keep_single);
 
-FL int         is_myname(char const *name);
+/* Likewise, is name an alternate in broadest sense? */
+FL bool_t n_is_myname(char const *name);
 
 /* `addrcodec' */
 FL int c_addrcodec(void *v);

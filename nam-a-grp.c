@@ -157,10 +157,11 @@ static struct group     *_charsetalias_heads[HSHSIZE];
 static struct group     *_filetype_heads[HSHSIZE];
 
 /* Same name, while taking care for *allnet*? */
-static bool_t        _same_name(char const *n1, char const *n2);
+static bool_t a_nag_is_same_name(char const *n1, char const *n2);
 
-/* Delete the given name from a namelist */
-static struct name * delname(struct name *np, char const *name);
+/* Delete the given name from a namelist, unless keep_single and only one */
+static struct name *a_nag_namelist_del_cp(struct name *np, char const *name,
+                     bool_t keep_single);
 
 /* Grab a single name (liberal name) */
 static char const *  yankname(char const *ap, char *wbuf,
@@ -229,52 +230,49 @@ static void          _mlmux_linkout(struct group *gp);
 #endif
 
 static bool_t
-_same_name(char const *n1, char const *n2)
-{
-   bool_t rv = FAL0;
+a_nag_is_same_name(char const *n1, char const *n2){
    char c1, c2;
-   NYD_ENTER;
+   bool_t rv;
+   NYD2_ENTER;
 
-   if (ok_blook(allnet)) {
-      do {
+   if(ok_blook(allnet)){
+      rv = TRU1;
+      do{
          c1 = *n1++;
          c2 = *n2++;
          c1 = lowerconv(c1);
          c2 = lowerconv(c2);
-         if (c1 != c2)
-            goto jleave;
-      } while (c1 != '\0' && c2 != '\0' && c1 != '@' && c2 != '@');
-      rv = 1;
-   } else
+         if(c1 != c2){
+            rv = FAL0;
+            break;
+         }
+      }while(c1 != '\0' && c2 != '\0' && c1 != '@' && c2 != '@');
+   }else
       rv = !asccasecmp(n1, n2);
-jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
 static struct name *
-delname(struct name *np, char const *name)
-{
+a_nag_namelist_del_cp(struct name *np, char const *name, bool_t keep_single){
    struct name *p;
-   NYD_ENTER;
+   NYD2_ENTER;
 
-   for (p = np; p != NULL; p = p->n_flink)
-      if (_same_name(p->n_name, name)) {
-         if (p->n_blink == NULL) {
-            if (p->n_flink != NULL)
-               p->n_flink->n_blink = NULL;
-            np = p->n_flink;
-            continue;
+   for(p = np; p != NULL; p = p->n_flink)
+      if(a_nag_is_same_name(p->n_name, name)){
+         if(keep_single && np == p && np->n_flink == NULL)
+            break;
+         if(p->n_blink == NULL){
+            if((np = p->n_flink) != NULL)
+               np->n_blink = NULL;
+         }else if(p->n_flink == NULL)
+            p->n_blink->n_flink = NULL;
+         else{
+            p->n_blink->n_flink = p->n_flink;
+            p->n_flink->n_blink = p->n_blink;
          }
-         if (p->n_flink == NULL) {
-            if (p->n_blink != NULL)
-               p->n_blink->n_flink = NULL;
-            continue;
-         }
-         p->n_blink->n_flink = p->n_flink;
-         p->n_flink->n_blink = p->n_blink;
       }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return np;
 }
 
@@ -415,14 +413,15 @@ a_nag_gexpand(size_t level, struct name *nlist, struct group *gp, bool_t metoo,
 
          assert(ngnhp->gnh_head != NULL);
          if(metoo || ngnhp->gnh_head->gn_next != NULL ||
-               !_same_name(cp, logname))
+               !a_nag_is_same_name(cp, logname))
             nlist = a_nag_gexpand(level, nlist, ngp, metoo, ntype);
          continue;
       }
 
       /* Here we should allow to expand to itself if only person in alias */
 jas_is:
-      if(metoo || gnhp->gnh_head->gn_next == NULL || !_same_name(cp, logname)){
+      if(metoo || gnhp->gnh_head->gn_next == NULL ||
+            !a_nag_is_same_name(cp, logname)){
          struct name *np;
 
          np = nalloc(cp, ntype | GFULL);
@@ -1369,6 +1368,7 @@ namelist_vaporise_head(struct header *hp, enum expand_addr_check_mode eacm,
    hp->h_to = hp->h_cc = hp->h_bcc = NULL;
 
    tolist = usermap(tolist, metoo);
+   tolist = n_alternates_delete(tolist, TRU1);
    tolist = elide(checkaddrs(tolist, eacm, set_on_error));
 
    for (np = tolist; np != NULL; np = np->n_flink) {
@@ -1491,7 +1491,7 @@ jleave:
 }
 
 FL int
-c_alternates(void *v){
+c_alternates(void *v){ /* TODO use a hashmap!! */
    char **argv;
    int rv;
    NYD_ENTER;
@@ -1567,83 +1567,107 @@ c_alternates(void *v){
 }
 
 FL struct name *
-delete_alternates(struct name *np)
-{
+n_alternates_delete(struct name *np, bool_t keep_single){
    struct name *xp;
    NYD_ENTER;
 
-   np = delname(np, ok_vlook(LOGNAME));
+   /* Throw away all deleted nodes: we may not allow to remove a lonely
+    * addressee if that matches an alternate, so ensure we do not need to
+    * fiddle around with GDEL; _namelist_del_cp() will fully del, too */
+   /* C99 */{
+      struct name *newnp;
+
+      for(xp = newnp = NULL; np != NULL; np = np->n_flink)
+         if(!(np->n_type & GDEL)){
+            np->n_blink = xp;
+            if(xp != NULL)
+               xp->n_flink = np;
+            else
+               newnp = np;
+            xp = np;
+         }
+      np = newnp;
+   }
+
+   if(np == NULL)
+      goto jleave;
+   if(keep_single && np->n_flink == NULL)
+      goto jleave;
 
    if(a_nag_altnames != NULL){
       struct n_strlist *slp;
 
-      for(slp = a_nag_altnames; slp != NULL; slp = slp->sl_next)
-         np = delname(np, slp->sl_dat);
+      for(slp = a_nag_altnames; slp != NULL; slp = slp->sl_next){
+         np = a_nag_namelist_del_cp(np, slp->sl_dat, keep_single);
+         if(np == NULL || (keep_single && np->n_flink == NULL))
+            goto jleave;
+      }
    }
 
-   if ((xp = lextract(ok_vlook(from), GEXTRA | GSKIN)) != NULL)
-      while (xp != NULL) {
-         np = delname(np, xp->n_name);
-         xp = xp->n_flink;
-      }
+   np = a_nag_namelist_del_cp(np, ok_vlook(LOGNAME), keep_single);
+   if(np == NULL || (keep_single && np->n_flink == NULL))
+      goto jleave;
 
-   if ((xp = lextract(ok_vlook(replyto), GEXTRA | GSKIN)) != NULL)
-      while (xp != NULL) {
-         np = delname(np, xp->n_name);
-         xp = xp->n_flink;
-      }
+   for(xp = lextract(ok_vlook(from), GEXTRA | GSKIN); xp != NULL;
+         xp = xp->n_flink){
+      np = a_nag_namelist_del_cp(np, xp->n_name, keep_single);
+      if(np == NULL || (keep_single && np->n_flink == NULL))
+         goto jleave;
+   }
 
-   if ((xp = extract(ok_vlook(sender), GEXTRA | GSKIN)) != NULL)
-      while (xp != NULL) {
-         np = delname(np, xp->n_name);
-         xp = xp->n_flink;
-      }
+   for(xp = extract(ok_vlook(sender), GEXTRA | GSKIN); xp != NULL;
+         xp = xp->n_flink){
+      np = a_nag_namelist_del_cp(np, xp->n_name, keep_single);
+      if(np == NULL || (keep_single && np->n_flink == NULL))
+         goto jleave;
+   }
+
+   for(xp = lextract(ok_vlook(replyto), GEXTRA | GSKIN); xp != NULL;
+         xp = xp->n_flink){
+      np = a_nag_namelist_del_cp(np, xp->n_name, keep_single);
+      if(np == NULL || (keep_single && np->n_flink == NULL))
+         goto jleave;
+   }
+jleave:
    NYD_LEAVE;
    return np;
 }
 
-FL int
-is_myname(char const *name)
-{
-   int rv = 1;
+FL bool_t
+n_is_myname(char const *name){
    struct name *xp;
    NYD_ENTER;
 
-   if (_same_name(ok_vlook(LOGNAME), name))
+   if(a_nag_is_same_name(ok_vlook(LOGNAME), name))
       goto jleave;
 
    if(a_nag_altnames != NULL){
       struct n_strlist *slp;
 
       for(slp = a_nag_altnames; slp != NULL; slp = slp->sl_next)
-         if(_same_name(slp->sl_dat, name))
+         if(a_nag_is_same_name(slp->sl_dat, name))
             goto jleave;
    }
 
-   if ((xp = lextract(ok_vlook(from), GEXTRA | GSKIN)) != NULL)
-      while (xp != NULL) {
-         if (_same_name(xp->n_name, name))
-            goto jleave;
-         xp = xp->n_flink;
-      }
+   for(xp = lextract(ok_vlook(from), GEXTRA | GSKIN); xp != NULL;
+         xp = xp->n_flink)
+      if(a_nag_is_same_name(xp->n_name, name))
+         goto jleave;
 
-   if ((xp = lextract(ok_vlook(replyto), GEXTRA | GSKIN)) != NULL)
-      while (xp != NULL) {
-         if (_same_name(xp->n_name, name))
-            goto jleave;
-         xp = xp->n_flink;
-      }
+   for(xp = lextract(ok_vlook(replyto), GEXTRA | GSKIN); xp != NULL;
+         xp = xp->n_flink)
+      if(a_nag_is_same_name(xp->n_name, name))
+         goto jleave;
 
-   if ((xp = extract(ok_vlook(sender), GEXTRA | GSKIN)) != NULL)
-      while (xp != NULL) {
-         if (_same_name(xp->n_name, name))
-            goto jleave;
-         xp = xp->n_flink;
-      }
-   rv = 0;
+   for(xp = extract(ok_vlook(sender), GEXTRA | GSKIN); xp != NULL;
+         xp = xp->n_flink)
+      if(a_nag_is_same_name(xp->n_name, name))
+         goto jleave;
+
+   name = NULL;
 jleave:
    NYD_LEAVE;
-   return rv;
+   return (name != NULL);
 }
 
 FL int
