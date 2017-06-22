@@ -1889,12 +1889,15 @@ jputnl:
       }
 
       c = *(cp_base = ++cp);
-      --cnt;
+      if(--cnt == 0)
+         goto jearg;
+
       /* Avoid history entry? */
-      if(spacechar(c)){
+      while(spacechar(c)){
          hist = a_HIST_NONE;
          c = *(cp_base = ++cp);
-         --cnt;
+         if(--cnt == 0)
+            goto jearg;
       }
 
       /* It may just be an escaped escaped character, do that quick */
@@ -1905,7 +1908,7 @@ jputnl:
       flags &= ~a_IGNERR;
       if(c == '-'){
          flags ^= a_IGNERR;
-         ++cp;
+         c = *++cp;
          if(--cnt == 0)
             goto jearg;
       }
@@ -1925,6 +1928,8 @@ jputnl:
 
       if(hist != a_HIST_NONE){
          sp = n_string_assign_c(sp, escape);
+         if(flags & a_IGNERR)
+            sp = n_string_push_c(sp, '-');
          sp = n_string_push_c(sp, c);
          if(cnt > 0){
             sp = n_string_push_c(sp, ' ');

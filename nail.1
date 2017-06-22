@@ -2776,6 +2776,8 @@ documented in the following, after removal of the whitespace characters
 as well as those defined by the variable
 .Va ifs
 from the beginning and end of the line, begins.
+Placing any whitespace characters at the beginning of a line will
+prevent a possible addition of the command line to the \*(OPal history.
 .
 .Pp
 Command names may be abbreviated, in which case the first command that
@@ -6499,8 +6501,9 @@ The actual escape character can be set via the internal variable
 .Va escape ,
 it defaults to the tilde
 .Ql ~ .
-To avoid the possible \*(OPal history addition, an otherwise ignored
-(single) whitespace character can be placed after the escape character.
+Otherwise ignored whitespace characters following the escape character
+will prevent a possible addition of the command line to the \*(OPal
+history.
 .
 .Pp
 Unless otherwise noted all compose mode commands ensure proper updates
