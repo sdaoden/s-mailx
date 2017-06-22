@@ -1,0 +1,257 @@
+From PrimulaVeris Wed Apr 10 22:59:00 2017
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: f1@z
+To: t1@z
+
+b1
+
+From PrimulaVeris Wed Apr 10 22:59:00 2017
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: f2@z
+To: t2@z
+
+b2
+
+From PrimulaVeris Wed Apr 10 22:59:00 2017
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: f1@z, t1@z
+Cc: ocl@exam.ple
+Bcc: oce@exam.ple
+
+this is content of reply 1
+t_ocs version 0 0 1
+210 To Mailx-Command Mailx-Raw-To Mailx-Orig-From Mailx-Orig-To
+To
+mline_res:9/0/NONE: f1@z f1@z
+mline_res:9/0/NONE: t1@z t1@z
+mline_res:0/0/NONE: 
+Mailx-Command
+mline_res:5/0/NONE: reply
+mline_res:0/0/NONE: 
+Mailx-Raw-To
+mline_res:9/0/NONE: f1@z f1@z
+mline_res:9/0/NONE: t1@z t1@z
+mline_res:0/0/NONE: 
+Mailx-Orig-From
+mline_res:9/0/NONE: f1@z f1@z
+mline_res:0/0/NONE: 
+Mailx-Orig-To
+mline_res:9/0/NONE: t1@z t1@z
+mline_res:0/0/NONE: 
+
+From PrimulaVeris Wed Apr 10 22:59:00 2017
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: f1@z, f2@z
+Cc: ocl@exam.ple
+Bcc: oce@exam.ple
+
+this is content of Reply 1 2
+t_ocs version 0 0 1
+210 To Mailx-Command Mailx-Raw-To Mailx-Orig-From Mailx-Orig-To
+To
+mline_res:9/0/NONE: f1@z f1@z
+mline_res:9/0/NONE: f2@z f2@z
+mline_res:0/0/NONE: 
+Mailx-Command
+mline_res:5/0/NONE: reply
+mline_res:0/0/NONE: 
+Mailx-Raw-To
+mline_res:9/0/NONE: f1@z f1@z
+mline_res:9/0/NONE: f2@z f2@z
+mline_res:0/0/NONE: 
+Mailx-Orig-From
+mline_res:9/0/NONE: f1@z f1@z
+mline_res:0/0/NONE: 
+Mailx-Orig-To
+mline_res:9/0/NONE: t1@z t1@z
+mline_res:0/0/NONE: 
+
+From PrimulaVeris Wed Apr 10 22:59:00 2017
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: fwdex@am.ple
+Cc: ocl@exam.ple
+Bcc: oce@exam.ple
+
+-------- Original Message --------
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: f1@z
+To: t1@z
+Status: R
+
+b1
+
+this is content of forward 1
+t_ocs version 0 0 1
+210 To Mailx-Command Mailx-Raw-To Mailx-Orig-From Mailx-Orig-To
+To
+mline_res:25/0/NONE: fwdex@am.ple fwdex@am.ple
+mline_res:0/0/NONE: 
+Mailx-Command
+mline_res:7/0/NONE: forward
+mline_res:0/0/NONE: 
+Mailx-Raw-To
+mline_res:25/0/NONE: fwdex@am.ple fwdex@am.ple
+mline_res:0/0/NONE: 
+Mailx-Orig-From
+mline_res:9/0/NONE: f1@z f1@z
+mline_res:0/0/NONE: 
+Mailx-Orig-To
+mline_res:9/0/NONE: t1@z t1@z
+mline_res:0/0/NONE: 
+
+From PrimulaVeris Wed Apr 10 22:59:00 2017
+Resent-Date: Wed, 02 Oct 1996 01:50:07 +0000
+Resent-To: resendex@am.ple
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: f1@z
+To: t1@z
+
+b1
+
+From PrimulaVeris Wed Apr 10 22:59:00 2017
+Resent-Date: Wed, 02 Oct 1996 01:50:07 +0000
+Resent-To: resendex@am.ple
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: f2@z
+To: t2@z
+
+b2
+
+From PrimulaVeris Wed Apr 10 22:59:00 2017
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: f1@z
+To: t1@z
+
+b1
+
+From PrimulaVeris Wed Apr 10 22:59:00 2017
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: f2@z
+To: t2@z
+
+b2
+
+start: 0 0 NONE
+File: 0 0 NONE
+
+
+on-XY-enter, mailx-command<reply>
+mailx-from<> mailx-sender<>
+mailx-subject<>
+mailx-to<f1@z t1@z> mailx-cc<> mailx-bcc<>
+mailx-raw-to<f1@z t1@z> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
+the header list is 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-From Mailx-Orig-To
+on-XY-leave, mailx-command<reply>
+mailx-from<> mailx-sender<>
+mailx-subject<>
+mailx-to<f1@z t1@z> mailx-cc<> mailx-bcc<>
+mailx-raw-to<f1@z t1@z> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
+on-XY-cleanup, mailx-command<reply>
+mailx-from<> mailx-sender<>
+mailx-subject<>
+mailx-to<f1@z t1@z> mailx-cc<> mailx-bcc<>
+mailx-raw-to<f1@z t1@z> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
+reply 1: 0 0 NONE
+
+
+on-XY-enter, mailx-command<reply>
+mailx-from<> mailx-sender<>
+mailx-subject<>
+mailx-to<f1@z f2@z> mailx-cc<> mailx-bcc<>
+mailx-raw-to<f1@z f2@z> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
+the header list is 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-From Mailx-Orig-To
+on-XY-leave, mailx-command<reply>
+mailx-from<> mailx-sender<>
+mailx-subject<>
+mailx-to<f1@z f2@z> mailx-cc<> mailx-bcc<>
+mailx-raw-to<f1@z f2@z> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
+on-XY-cleanup, mailx-command<reply>
+mailx-from<> mailx-sender<>
+mailx-subject<>
+mailx-to<f1@z f2@z> mailx-cc<> mailx-bcc<>
+mailx-raw-to<f1@z f2@z> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
+Reply 1 2: 0 0 NONE
+
+
+on-XY-enter, mailx-command<forward>
+mailx-from<> mailx-sender<>
+mailx-subject<>
+mailx-to<fwdex@am.ple> mailx-cc<> mailx-bcc<>
+mailx-raw-to<fwdex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
+the header list is 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-From Mailx-Orig-To
+on-XY-leave, mailx-command<forward>
+mailx-from<> mailx-sender<>
+mailx-subject<>
+mailx-to<fwdex@am.ple> mailx-cc<> mailx-bcc<>
+mailx-raw-to<fwdex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
+on-XY-cleanup, mailx-command<forward>
+mailx-from<> mailx-sender<>
+mailx-subject<>
+mailx-to<fwdex@am.ple> mailx-cc<> mailx-bcc<>
+mailx-raw-to<fwdex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
+forward 1: 0 0 NONE
+
+
+on-XY-enter, mailx-command<resend>
+mailx-from<> mailx-sender<>
+mailx-subject<>
+mailx-to<resendex@am.ple> mailx-cc<> mailx-bcc<>
+mailx-raw-to<resendex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
+on-XY-cleanup, mailx-command<resend>
+mailx-from<> mailx-sender<>
+mailx-subject<>
+mailx-to<resendex@am.ple> mailx-cc<> mailx-bcc<>
+mailx-raw-to<resendex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
+on-XY-enter, mailx-command<resend>
+mailx-from<> mailx-sender<>
+mailx-subject<>
+mailx-to<resendex@am.ple> mailx-cc<> mailx-bcc<>
+mailx-raw-to<resendex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-orig-from<f2@z> mailx-orig-to<t2@z> mailx-orig-cc<> mailx-orig-bcc<>
+on-XY-cleanup, mailx-command<resend>
+mailx-from<> mailx-sender<>
+mailx-subject<>
+mailx-to<resendex@am.ple> mailx-cc<> mailx-bcc<>
+mailx-raw-to<resendex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-orig-from<f2@z> mailx-orig-to<t2@z> mailx-orig-cc<> mailx-orig-bcc<>
+resend 1 2: 0 0 NONE
+
+
+on-XY-enter, mailx-command<resend>
+mailx-from<> mailx-sender<>
+mailx-subject<>
+mailx-to<Resendex@am.ple> mailx-cc<> mailx-bcc<>
+mailx-raw-to<Resendex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
+on-XY-cleanup, mailx-command<resend>
+mailx-from<> mailx-sender<>
+mailx-subject<>
+mailx-to<Resendex@am.ple> mailx-cc<> mailx-bcc<>
+mailx-raw-to<Resendex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
+on-XY-enter, mailx-command<resend>
+mailx-from<> mailx-sender<>
+mailx-subject<>
+mailx-to<Resendex@am.ple> mailx-cc<> mailx-bcc<>
+mailx-raw-to<Resendex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-orig-from<f2@z> mailx-orig-to<t2@z> mailx-orig-cc<> mailx-orig-bcc<>
+on-XY-cleanup, mailx-command<resend>
+mailx-from<> mailx-sender<>
+mailx-subject<>
+mailx-to<Resendex@am.ple> mailx-cc<> mailx-bcc<>
+mailx-raw-to<Resendex@am.ple> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-orig-from<f2@z> mailx-orig-to<t2@z> mailx-orig-cc<> mailx-orig-bcc<>
+Resend 1 2: 0 0 NONE
+
+
