@@ -46,6 +46,7 @@
 #define n_ESCAPE "~"          /* Default escape for sending (POSIX) */
 #define FTMP_OPEN_TRIES 10    /* Maximum number of Ftmp() open(2) tries */
 #define HSHSIZE 23            /* Hash prime TODO make dynamic, obsolete */
+#define n_IMAP_DELIM "/."     /* Directory separator ([0] == replacer, too) */
 #define INDENT_DEFAULT "\t"   /* *indentprefix* default as of POSIX */
 #define n_MAILDIR_SEPARATOR ':' /* Flag separator character */
 #define n_MAXARGC 512         /* Maximum list of raw strings */

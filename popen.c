@@ -47,16 +47,17 @@ struct fp {
    int         omode;
    int         pid;
    enum {
-      FP_RAW      = 0,
+      FP_RAW,
 
-      FP_MAILDIR  = 1<<4,
-      FP_HOOK     = 1<<5,
-      FP_PIPE     = 1<<6,
-      FP_MASK     = (1<<7) - 1,
+FP_IMAP = 1u<<3,
+      FP_MAILDIR = 1u<<4,
+      FP_HOOK = 1u<<5,
+      FP_PIPE = 1u<<6,
+      FP_MASK = (1u<<7) - 1,
       /* TODO FP_UNLINK: should be in a separated process so that unlinking
        * TODO the temporary "garbage" is "safe"(r than it is like that) */
-      FP_UNLINK   = 1<<9,
-      FP_TERMIOS  = 1<<10
+      FP_UNLINK = 1u<<9,
+      FP_TERMIOS = 1u<<10
    }           flags;
    long        offset;
    FILE        *fp;
@@ -189,6 +190,13 @@ _file_save(struct fp *fpp)
       goto jleave;
    }
 
+#ifdef HAVE_IMAP
+   if ((fpp->flags & FP_MASK) == FP_IMAP) {
+      rv = imap_append(fpp->realfile, fpp->fp, fpp->offset);
+      goto jleave;
+   }
+#endif
+
    if ((fpp->flags & FP_MASK) == FP_MAILDIR) {
       rv = maildir_append(fpp->realfile, fpp->fp, fpp->offset);
       goto jleave;
@@ -234,6 +242,7 @@ a_popen_file_load(int flags, int infd, int outfd, char const *load_cmd){
 
    cmd[2] = NULL;
    switch(flags & FP_MASK){
+   case FP_IMAP:
    case FP_MAILDIR:
       rv = 0;
       goto jleave;
@@ -559,6 +568,17 @@ n_fopen_any(char const *file, char const *oflags, /* TODO should take flags */
    switch(p){
    default:
       goto jleave;
+   case n_PROTO_IMAP:
+#ifdef HAVE_IMAP
+      file = savecat("imap://", file);
+      flags |= FP_IMAP;
+      osflags = O_RDWR | O_APPEND | O_CREAT | n_O_NOFOLLOW;
+      infd = -1;
+      break;
+#else
+      n_err_no = n_ERR_OPNOTSUPP;
+      goto jleave;
+#endif
    case n_PROTO_MAILDIR:
       if(fs_or_null != NULL && !access(file, F_OK))
          fs |= n_FOPEN_STATE_EXISTS;
@@ -600,7 +620,7 @@ n_fopen_any(char const *file, char const *oflags, /* TODO should take flags */
       goto jerr;
    }
 
-   if(flags & FP_MAILDIR)
+   if(flags & (FP_IMAP | FP_MAILDIR))
       ;
    else if(infd >= 0){
       if(a_popen_file_load(flags, infd, fileno(rv), cload) < 0){

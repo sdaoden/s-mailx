@@ -324,6 +324,12 @@ quit(bool_t hold_sigs_on)
       rv = pop3_quit(TRU1);
       goto jleave;
 #endif
+#ifdef HAVE_IMAP
+   case MB_IMAP:
+   case MB_CACHE:
+      rv = imap_quit(TRU1);
+      goto jleave;
+#endif
    case MB_VOID:
       rv = TRU1;
       /* FALLTHRU */
@@ -505,6 +511,7 @@ makembox(void) /* TODO oh my god */
    char *mbox, *tempQuit;
    int mcount, c;
    FILE *ibuf = NULL, *obuf, *abuf;
+   enum n_fopen_state fs;
    enum okay rv = STOP;
    NYD_ENTER;
 
@@ -540,13 +547,13 @@ makembox(void) /* TODO oh my god */
       if ((c = open(mbox, (O_WRONLY | O_CREAT | n_O_NOFOLLOW | O_TRUNC), 0666)
             ) != -1)
          close(c);
-      if ((obuf = n_fopen_any(mbox, "r+", NULL)) == NULL) {
+      if ((obuf = n_fopen_any(mbox, "r+", &fs)) == NULL) {
          n_perr(mbox, 0);
          Fclose(ibuf);
          goto jleave;
       }
    } else {
-      if ((obuf = n_fopen_any(mbox, "a", NULL)) == NULL) {
+      if ((obuf = n_fopen_any(mbox, "a", &fs)) == NULL) {
          n_perr(mbox, 0);
          goto jleave;
       }
@@ -556,7 +563,17 @@ makembox(void) /* TODO oh my god */
    for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp) {
       if (mp->m_flag & MBOX) {
          ++mcount;
+#ifdef HAVE_IMAP
+         if((fs & n_PROTO_MASK) == n_PROTO_IMAP &&
+               !n_ignore_is_any(n_IGNORE_SAVE) && imap_thisaccount(mbox)){
+            if(imap_copy(mp, PTR2SIZE(mp - message + 1), mbox) == STOP)
+               goto jcopyerr;
+         }else
+#endif
          if (sendmp(mp, obuf, n_IGNORE_SAVE, NULL, SEND_MBOX, NULL) < 0) {
+#ifdef HAVE_IMAP
+jcopyerr:
+#endif
             n_perr(mbox, 0);
             srelax_rele();
             if (ibuf != NULL)
@@ -591,7 +608,10 @@ makembox(void) /* TODO oh my god */
       goto jleave;
    }
    if (Fclose(obuf) != 0) {
-      n_perr(mbox, 0);
+#ifdef HAVE_IMAP
+      if((fs & n_PROTO_MASK) != n_PROTO_IMAP)
+#endif
+         n_perr(mbox, 0);
       goto jleave;
    }
    if (mcount == 1)

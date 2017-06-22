@@ -766,6 +766,9 @@ a_go_hangup(int s){
    exit(n_EXIT_ERR);
 }
 
+#ifdef HAVE_IMAP
+FL void n_go_onintr_for_imap(void){a_go_onintr(0);}
+#endif
 static void
 a_go_onintr(int s){ /* TODO block signals while acting */
    NYD_X; /* Signal handler */
@@ -1206,30 +1209,53 @@ n_go_main_loop(void){ /* FIXME */
       if (!(n_pstate & n_PS_SOURCING) && (n_psonce & n_PSO_INTERACTIVE)) {
          char *cp;
 
-         if ((cp = ok_vlook(newmail)) != NULL) {
+         if ((cp = ok_vlook(newmail)) != NULL) { /* TODO bla */
             struct stat st;
 
-/* FIXME TEST WITH NOPOLL ETC. !!! */
-            n = (cp != NULL && strcmp(cp, "nopoll"));
-            if ((mb.mb_type == MB_FILE && !stat(mailname, &st) &&
-                     st.st_size > mailsize) ||
-                  (mb.mb_type == MB_MAILDIR && n != 0)) {
-               size_t odot = PTR2SIZE(dot - message);
-               ui32_t odid = (n_pstate & n_PS_DID_PRINT_DOT);
-               int i;
+            if(mb.mb_type == MB_FILE){
+               if(!stat(mailname, &st) && st.st_size > mailsize) Jnewmail:{
+                  ui32_t odid;
+                  size_t odot;
 
-               rele_all_sigs();
-               i = setfile(mailname,
-                     FEDIT_NEWMAIL |
-                     ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY));
-               hold_all_sigs();
-               if(i < 0) {
-                  n_exit_status |= n_EXIT_ERR;
-                  rv = FAL0;
-                  break;
+                  odot = PTR2SIZE(dot - message);
+                  odid = (n_pstate & n_PS_DID_PRINT_DOT);
+
+                  rele_all_sigs();
+                  n = setfile(mailname,
+                        (FEDIT_NEWMAIL |
+                           ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY)));
+                  hold_all_sigs();
+
+                  if(n < 0) {
+                     n_exit_status |= n_EXIT_ERR;
+                     rv = FAL0;
+                     break;
+                  }
+#ifdef HAVE_IMAP
+                  if(mb.mb_type != MB_IMAP){
+#endif
+                     dot = &message[odot];
+                     n_pstate |= odid;
+#ifdef HAVE_IMAP
+                  }
+#endif
                }
-               dot = &message[odot];
-               n_pstate |= odid;
+            }else{
+               n = (cp != NULL && strcmp(cp, "nopoll"));
+
+               if(mb.mb_type == MB_MAILDIR){
+                  if(n != 0)
+                     goto Jnewmail;
+               }
+#ifdef HAVE_IMAP
+               else if(mb.mb_type == MB_IMAP){
+                  if(!n)
+                     n = (cp != NULL && strcmp(cp, "noimap"));
+
+                  if(imap_newmail(n) > (cp == NULL))
+                     goto Jnewmail;
+               }
+#endif
             }
          }
       }

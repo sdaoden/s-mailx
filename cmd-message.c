@@ -744,13 +744,17 @@ c_undelete(void *v)
 
    for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
          ++ip) {
-      mp = message + *ip - 1;
+      mp = &message[*ip - 1];
       touch(mp);
       setdot(mp);
       if (mp->m_flag & (MDELETED | MSAVED))
          mp->m_flag &= ~(MDELETED | MSAVED);
       else
          mp->m_flag &= ~MDELETED;
+#ifdef HAVE_IMAP
+      if (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)
+         imap_undelete(mp, *ip);
+#endif
    }
    NYD_LEAVE;
    return 0;
@@ -823,13 +827,19 @@ jleave:
 FL int
 c_unread(void *v)
 {
+   struct message *mp;
    int *msgvec = v, *ip;
    NYD_ENTER;
 
    for (ip = msgvec; *ip != 0; ++ip) {
-      setdot(message + *ip - 1);
+      mp = &message[*ip - 1];
+      setdot(mp);
       dot->m_flag &= ~(MREAD | MTOUCH);
       dot->m_flag |= MSTATUS;
+#ifdef HAVE_IMAP
+      if (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)
+         imap_unread(mp, *ip); /* TODO return? */
+#endif
       n_pstate |= n_PS_DID_PRINT_DOT;
    }
    NYD_LEAVE;

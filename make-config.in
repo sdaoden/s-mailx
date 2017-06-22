@@ -24,8 +24,9 @@ $(AMALGAM_TARGET) auxlily.c: gen-errors.h
 $(AMALGAM_TARGET) accmacvar.o: gen-okeys.h gen-version.h
 $(AMALGAM_TARGET) cmd-tab.o: cmd-tab.h
 $(AMALGAM_TARGET) dotlock.o: dotlock.h
+$(AMALGAM_TARGET) obs-imap.o: obs-imap-gssapi.h
 $(AMALGAM_TARGET) mime-types.o: gen-mime-types.h
-$(AMALGAM_TARGET) pop3.o smtp.o urlcrecry.o: rfc1321.h
+$(AMALGAM_TARGET) obs-imap.o pop3.o smtp.o urlcrecry.o: rfc1321.h
 $(AMALGAM_TARGET) smtp.o: smtp-gssapi.h
 $(AMALGAM_TARGET) termcap.o: gen-tcaps.h
 

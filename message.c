@@ -199,6 +199,12 @@ a_message_get_header(struct message *mp){
       rv = pop3_header(mp);
       break;
 #endif
+#ifdef HAVE_IMAP
+   case MB_IMAP:
+   case MB_CACHE:
+      rv = imap_header(mp);
+      break;
+#endif
    case MB_VOID:
    default:
       rv = STOP;
@@ -242,6 +248,9 @@ a_message_markall(char const *buf, int f){
       a_ASTER = 1u<<8,
       a_TOPEN = 1u<<9,     /* ( used (and didn't match) */
       a_TBACK = 1u<<10,    /* ` used (and didn't match) */
+#ifdef HAVE_IMAP
+      a_HAVE_IMAP_HEADERS = 1u<<14,
+#endif
       a_TMP = 1u<<15
    } flags;
    NYD_ENTER;
@@ -507,6 +516,13 @@ jnumber__thr:
          if(flags & a_RANGE)
             goto jebadrange;
 
+#ifdef HAVE_IMAP
+         if(!(flags & a_HAVE_IMAP_HEADERS) && mb.mb_type == MB_IMAP){
+            flags |= a_HAVE_IMAP_HEADERS;
+            imap_getheaders(1, msgCount);
+         }
+#endif
+
          if(id == NULL){
             if((cp = hfield1("in-reply-to", dot)) != NULL)
                idfield = a_MESSAGE_ID_IN_REPLY_TO;
@@ -625,6 +641,12 @@ jnumber__thr:
       }
 
       /* Iterate the entire message array */
+#ifdef HAVE_IMAP
+         if(!(flags & a_HAVE_IMAP_HEADERS) && mb.mb_type == MB_IMAP){
+            flags |= a_HAVE_IMAP_HEADERS;
+            imap_getheaders(1, msgCount);
+         }
+#endif
       srelax_hold();
       if(ok_blook(allnet))
          flags |= a_ALLNET;
@@ -1301,6 +1323,12 @@ get_body(struct message *mp){
 #ifdef HAVE_POP3
    case MB_POP3:
       rv = pop3_body(mp);
+      break;
+#endif
+#ifdef HAVE_IMAP
+   case MB_IMAP:
+   case MB_CACHE:
+      rv = imap_body(mp);
       break;
 #endif
    case MB_VOID:

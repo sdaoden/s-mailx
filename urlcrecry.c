@@ -839,10 +839,10 @@ n_servbyname(char const *proto, ui16_t *irv_or_null){
 FL bool_t
 url_parse(struct url *urlp, enum cproto cproto, char const *data)
 {
-#if defined HAVE_SMTP && defined HAVE_POP3
+#if defined HAVE_SMTP && defined HAVE_POP3 && defined HAVE_IMAP
 # define a_ALLPROTO
 #endif
-#if defined HAVE_SMTP || defined HAVE_POP3
+#if defined HAVE_SMTP || defined HAVE_POP3 || defined HAVE_IMAP
 # define a_ANYPROTO
    char *cp, *x;
 #endif
@@ -905,13 +905,13 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #else
       goto jeproto;
 #endif
-#if 0
+#ifdef HAVE_IMAP
    case CPROTO_IMAP:
       a_IFS("imaps", 993)
       a_IFs("imap", 143)
       a_PROTOX("imap", 143, urlp->url_flags |= n_URL_TLS_OPTIONAL);
       break;
-else
+#else
       goto jeproto;
 #endif
    }
@@ -1008,29 +1008,39 @@ jurlp_err:
 
    /* A (non-empty) path may only occur with IMAP */
    if (x != NULL && *x != '\0') {
-      /* Take care not to count adjacent slashes for real, on either end */
+      /* Take care not to count adjacent solidus for real, on either end */
       char *x2;
       size_t i;
+      bool_t trailsol;
 
-      for(x2 = savestrbuf(x, i = strlen(x)); i > 0; --i)
+      for(trailsol = FAL0, x2 = savestrbuf(x, i = strlen(x)); i > 0;
+            trailsol = TRU1, --i)
          if(x2[i - 1] != '/')
             break;
       x2[i] = '\0';
 
       if (i > 0) {
-#if 0
          if (cproto != CPROTO_IMAP) {
-#endif
             n_err(_("URL protocol doesn't support paths: \"%s\"\n"),
                urlp->url_input);
             goto jleave;
-#if 0
          }
-         urlp->url_path.l = i;
-         urlp->url_path.s = x2;
+#ifdef HAVE_IMAP
+         if(trailsol){
+            urlp->url_path.s = n_autorec_alloc(i + sizeof("/INBOX"));
+            memcpy(urlp->url_path.s, x, i);
+            memcpy(&urlp->url_path.s, "/INBOX", sizeof("/INBOX"));
+            urlp->url_path.l = (i += sizeof("/INBOX") -1);
+         }else
 #endif
+            urlp->url_path.l = i, urlp->url_path.s = x2;
       }
    }
+#ifdef HAVE_IMAP
+   if(cproto == CPROTO_IMAP && urlp->url_path.s == NULL)
+      urlp->url_path.s = savestrbuf("INBOX",
+            urlp->url_path.l = sizeof("INBOX") -1);
+#endif
 
    urlp->url_host.s = savestrbuf(data, urlp->url_host.l = PTR2SIZE(cp - data));
    {  size_t i;
@@ -1212,6 +1222,15 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
       authmask = AUTHTYPE_PLAIN;
       authdef = "plain";
       break;
+#ifdef HAVE_IMAP
+   case CPROTO_IMAP:
+      pname = "IMAP";
+      pxstr = "imap-auth";
+      pxlen = sizeof("imap-auth") -1;
+      authmask = AUTHTYPE_LOGIN | AUTHTYPE_CRAM_MD5 | AUTHTYPE_GSSAPI;
+      authdef = "login";
+      break;
+#endif
    }
 
    ccp->cc_cproto = cproto;
@@ -1384,6 +1403,14 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
       authdef = "plain";
       pstr = "pop3";
       break;
+#ifdef HAVE_IMAP
+   case CPROTO_IMAP:
+      pstr = "imap";
+      authokey = ok_v_imap_auth;
+      authmask = AUTHTYPE_LOGIN | AUTHTYPE_CRAM_MD5 | AUTHTYPE_GSSAPI;
+      authdef = "login";
+      break;
+#endif
    }
 
    /* Authentication type */

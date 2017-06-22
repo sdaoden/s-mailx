@@ -15,6 +15,7 @@ XOPTIONS="\
          SSL_ALL_ALGORITHMS='Support of all digest and cipher algorithms' \
       SMTP='Simple Mail Transfer Protocol client' \
       POP3='Post Office Protocol Version 3 client' \
+      IMAP='IMAP v4r1 client' \
       GSSAPI='Generic Security Service authentication' \
       NETRC='.netrc file support' \
       AGENT='-' \
@@ -153,7 +154,7 @@ option_setup() {
 
 # Inter-relationships
 option_update() {
-   if feat_no SMTP && feat_no POP3; then
+   if feat_no SMTP && feat_no POP3 && feat_no IMAP; then
       OPT_SOCKETS=0
    fi
    if feat_no SOCKETS; then
@@ -165,12 +166,20 @@ option_update() {
          msg 'ERROR: need SOCKETS for required feature POP3'
          config_exit 13
       fi
+      if feat_require IMAP; then
+         msg 'ERROR: need SOCKETS for required feature IMAP'
+         config_exit 13
+      fi
       OPT_SSL=0 OPT_SSL_ALL_ALGORITHMS=0
-      OPT_SMTP=0 OPT_POP3=0
+      OPT_SMTP=0 OPT_POP3=0 OPT_IMAP=0
       OPT_GSSAPI=0 OPT_NETRC=0 OPT_AGENT=0
    fi
-   if feat_no SMTP; then
+   if feat_no SMTP && feat_no IMAP; then
       OPT_GSSAPI=0
+   fi
+
+   if feat_no ICONV; then
+      WANT_IMAP=0
    fi
 
    if feat_no MLE; then
@@ -2310,6 +2319,7 @@ feat_def SMIME
 
 feat_def SMTP
 feat_def POP3
+feat_def IMAP
 
 if feat_yes GSSAPI; then
    ${cat} > ${tmp2}.c << \!

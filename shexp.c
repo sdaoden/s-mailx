@@ -138,6 +138,18 @@ a_shexp_findmail(char const *user, bool_t force){
             goto jleave;
          n_err(_("*inbox* expansion failed, using $MAIL / built-in: %s\n"), cp);
       }
+      /* Heirloom compatibility: an IMAP *folder* becomes "%" */
+#ifdef HAVE_IMAP
+      else if(cp == NULL && !strcmp(user, ok_vlook(LOGNAME)) &&
+            which_protocol(cp = n_folder_query(), FAL0, FAL0, NULL)
+               == PROTO_IMAP){
+         /* TODO Compat handling of *folder* with IMAP! */
+         n_OBSOLETE("no more expansion of *folder* in \"%\": "
+            "please set *inbox*");
+         rv = savestr(cp);
+         goto jleave;
+      }
+#endif
 
       if((cp = ok_vlook(MAIL)) != NULL){
          rv = savestr(cp);
@@ -915,17 +927,19 @@ jnext:
       }
    }
 
+#ifdef HAVE_IMAP
+   if (res[0] == '@' && which_protocol(mailname, FAL0, FAL0, NULL)
+         == PROTO_IMAP) {
+      res = str_concat_csvl(&s, protbase(mailname), "/", &res[1], NULL)->s;
+      dyn = TRU1;
+   }
+#endif
+
    /* POSIX: if *folder* unset or null, "+" shall be retained */
    if (!(fexpm & FEXP_NFOLDER) && *res == '+' &&
          *(cp = n_folder_query()) != '\0') {
       res = str_concat_csvl(&s, cp, &res[1], NULL)->s;
       dyn = TRU1;
-
-      /* TODO *folder* can't start with %[:], can it!?! */
-      if (res[0] == '%' && res[1] == ':') {
-         res += 2;
-         goto jprotonext;
-      }
    }
 
    /* Do some meta expansions */

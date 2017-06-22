@@ -122,6 +122,10 @@ c_newmail(void *v)
 
    if (n_pstate & n_PS_HOOK_MASK)
       n_err(_("Cannot call `newmail' from within a hook\n"));
+#ifdef HAVE_IMAP
+   else if(mb.mb_type == MB_IMAP && !imap_newmail(1))
+      ;
+#endif
    else if ((val = setfile(mailname,
             FEDIT_NEWMAIL | ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY))
          ) == 0) {
@@ -143,6 +147,11 @@ c_noop(void *v)
 #ifdef HAVE_POP3
    case MB_POP3:
       pop3_noop();
+      break;
+#endif
+#ifdef HAVE_IMAP
+   case MB_IMAP:
+      imap_noop();
       break;
 #endif
    default:
@@ -219,6 +228,15 @@ c_remove(void *v)
       case PROTO_MAILDIR:
          if (maildir_remove(name) != OKAY)
             ec |= 1;
+         break;
+      case PROTO_IMAP:
+#ifdef HAVE_IMAP
+         if(imap_remove(name) != OKAY)
+            ec |= 1;
+#else
+         n_err(_("No IMAP support compiled in\n"));
+         ec |= 1;
+#endif
          break;
       case PROTO_UNKNOWN:
       default:
@@ -298,6 +316,15 @@ jnopop3:
       n_err(_("Cannot rename POP3 mailboxes\n"));
       ec |= 1;
       break;
+   case PROTO_IMAP:
+#ifdef HAVE_IMAP
+      if(imap_rename(oldn, newn) != OKAY)
+         ec |= 1;
+#else
+      n_err(_("No IMAP support compiled in\n"));
+      ec |= 1;
+#endif
+      break;
    case PROTO_UNKNOWN:
    default:
       n_err(_("Unknown protocol in %s and %s; not renamed\n"),
@@ -311,8 +338,13 @@ jleave:
 }
 
 FL int
-c_folders(void *v)
-{
+c_folders(void *v){ /* TODO fexpand*/
+   enum fexp_mode const fexp = FEXP_NSHELL
+#ifndef HAVE_IMAP
+         | FEXP_LOCAL
+#endif
+      ;
+
    char const *cp;
    char **argv;
    int rv;
@@ -321,11 +353,16 @@ c_folders(void *v)
    rv = 1;
 
    if(*(argv = v) != NULL){
-      if((cp = fexpand(*argv, FEXP_NSHELL | FEXP_LOCAL)) == NULL) /* XXX NSH? */
+      if((cp = fexpand(*argv, fexp)) == NULL)
          goto jleave;
    }else
       cp = n_folder_query();
 
+#ifdef HAVE_IMAP
+   if(which_protocol(cp, FAL0, FAL0, NULL) == PROTO_IMAP)
+      rv = imap_folders(cp, *argv == NULL);
+   else
+#endif
    rv = n_child_run(ok_vlook(LISTER), 0, n_CHILD_FD_PASS, n_CHILD_FD_PASS,
          cp, NULL, NULL, NULL, NULL);
 jleave:

@@ -472,6 +472,19 @@ which_protocol(char const *name, bool_t check_stat, bool_t try_hooks,
          n_err(_("No POP3S support compiled in\n"));
 #endif
       }
+      else if(!strncmp(name, "imap", sizeof("imap") -1)){
+#ifdef HAVE_IMAP
+         rv = PROTO_IMAP;
+#else
+         n_err(_("No IMAP support compiled in\n"));
+#endif
+      }else if(!strncmp(name, "imaps", sizeof("imaps") -1)){
+#if defined HAVE_IMAP && defined HAVE_SSL
+         rv = PROTO_IMAP;
+#else
+         n_err(_("No IMAPS support compiled in\n"));
+#endif
+      }
       orig_name = &cp[3];
       goto jleave;
    }

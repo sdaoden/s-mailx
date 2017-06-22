@@ -843,7 +843,7 @@ imap_search(char const *spec, int f)
    _it_begin = lastspec;
 
    _it_need_headers = FAL0;
-#if 0
+#ifdef HAVE_IMAP
    if ((rv = imap_search1(spec, f) == OKAY))
       goto jleave;
 #endif
@@ -857,7 +857,7 @@ imap_search(char const *spec, int f)
    if (_it_tree == NULL)
       goto jleave;
 
-#if 0
+#ifdef HAVE_IMAP
    if (mb.mb_type == MB_IMAP && _it_need_headers)
       imap_getheaders(1, msgCount);
 #endif

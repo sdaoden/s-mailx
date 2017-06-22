@@ -1012,7 +1012,7 @@ mightrecord(FILE *fp, struct name *to, bool_t resend){
       default:
             if(ok_blook(outfolder)){
                struct str s;
-               char const *nccp;
+               char const *nccp, *folder;
 
                switch(which_protocol(ccp, TRU1, FAL0, &nccp)){
                case PROTO_FILE:
@@ -1022,7 +1022,15 @@ mightrecord(FILE *fp, struct name *to, bool_t resend){
                case PROTO_MAILDIR:
                      ccp = "maildir://";
                   }
-                  ccp = str_concat_csvl(&s, ccp, n_folder_query(), nccp)->s;
+                  folder = n_folder_query();
+#ifdef HAVE_IMAP
+                  if(which_protocol(folder, FAL0, FAL0, NULL) == PROTO_IMAP){
+                     n_err(_("(*record*): *outfolder* set, *folder* is IMAP "
+                        "based: only one protocol per file is possible\n"));
+                     goto jbail;
+                  }
+#endif
+                  ccp = str_concat_csvl(&s, ccp, folder, nccp)->s;
                   /* FALLTHRU */
                default:
                   break;

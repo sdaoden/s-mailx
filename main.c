@@ -544,6 +544,17 @@ a_main_rcv_mode(char const *folder, char const *Larg){
 
    if(folder == NULL)
       folder = "%";
+#ifdef HAVE_IMAP
+   else if(*folder == '@'){
+      /* This must be treated specially to make possible invocation like
+       * -A imap -f @mailbox */
+      char const *cp;
+
+      cp = n_folder_query();
+      if(which_protocol(cp, FAL0, FAL0, NULL) == PROTO_IMAP)
+         n_strscpy(mailname, cp, sizeof mailname);
+   }
+#endif
 
    i = (n_poption & n_PO_QUICKRUN_MASK) ? FEDIT_RDONLY : FEDIT_NONE;
    i = setfile(folder, i);

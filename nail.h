@@ -739,6 +739,7 @@ enum cproto {
    CPROTO_CCRED,     /* Special dummy credential proto (S/MIME etc.) */
    CPROTO_SMTP,
    CPROTO_POP3
+,CPROTO_IMAP
 };
 
 enum n_dotlock_state{
@@ -1053,6 +1054,8 @@ enum protocol {
 PROTO_FILE = n_PROTO_FILE,
    n_PROTO_POP3,        /* is a pop3 server string */
 PROTO_POP3 = n_PROTO_POP3,
+n_PROTO_IMAP,
+PROTO_IMAP = n_PROTO_IMAP,
    n_PROTO_MAILDIR,     /* refers to a maildir folder */
 PROTO_MAILDIR = n_PROTO_MAILDIR,
    n_PROTO_UNKNOWN,     /* unknown protocol */
@@ -1061,7 +1064,7 @@ PROTO_UNKNOWN = n_PROTO_UNKNOWN,
    n__PROTO_SHIFT = n_PROTO_UNKNOWN,
    n_PROTO_MASK = (1u << n__PROTO_SHIFT) - 1
 };
-n_MCTA(n__PROTO_SHIFT == 4, "enum n_fopen_state shift value must be adjusted!")
+n_MCTA(n__PROTO_SHIFT == 5, "enum n_fopen_state shift value must be adjusted!")
 
 enum sendaction {
    SEND_MBOX,        /* no conversion to perform */
@@ -1467,7 +1470,7 @@ enum n_program_state_once{
    n_PSO_t_FLAG = 1u<<30
 };
 
-/* A large enum with all the boolean and value options a.k.a their keys.
+/* {{{ A large enum with all the boolean and value options a.k.a their keys.
  * Only the constant keys are in here, to be looked up via ok_[bv]look(),
  * ok_[bv]set() and ok_[bv]clear().
  * Variable properties are placed in {PROP=VALUE[:,PROP=VALUE:]} comments,
@@ -1787,7 +1790,16 @@ ok_b_ssl_no_default_ca,
    ok_v_version_update,                /* {virt=n_VERSION_UPDATE} */
 
    ok_b_writebackedited
-};
+
+,  /* Obsolete IMAP related non-sorted */
+ok_b_disconnected,
+ok_v_imap_auth,
+ok_v_imap_cache,
+ok_v_imap_delim,
+ok_v_imap_keepalive,
+ok_v_imap_list_depth,
+ok_b_imap_use_starttls
+}; /* }}} */
 
 /* Locale-independent character classes */
 enum {
@@ -2146,16 +2158,30 @@ struct mailbox {
    FILE        *mb_otf;       /* same, write open */
    char        *mb_sorted;    /* sort method */
    enum {
-      MB_VOID,       /* no type (e. g. connection failed) */
-      MB_FILE,       /* local file */
-      MB_POP3,       /* POP3 mailbox */
-      MB_MAILDIR     /* maildir folder */
+      MB_VOID,    /* no type (e. g. connection failed) */
+      MB_FILE,    /* local file */
+      MB_POP3,    /* POP3 mailbox */
+MB_IMAP,          /* IMAP mailbox */
+MB_CACHE,         /* IMAP cache */
+      MB_MAILDIR  /* maildir folder */
    }           mb_type;       /* type of mailbox */
    enum {
       MB_DELE = 01,  /* may delete messages in mailbox */
       MB_EDIT = 02   /* may edit messages in mailbox */
    }           mb_perm;
    int mb_threaded;           /* mailbox has been threaded */
+#ifdef HAVE_IMAP
+   enum mbflags {
+      MB_NOFLAGS  = 000,
+      MB_UIDPLUS  = 001 /* supports IMAP UIDPLUS */
+   }           mb_flags;
+   unsigned long  mb_uidvalidity;   /* IMAP unique identifier validity */
+   char        *mb_imap_account;    /* name of current IMAP account */
+   char        *mb_imap_pass;       /* xxx v15-compat URL workaround */
+   char        *mb_imap_mailbox;    /* name of current IMAP mailbox */
+   char        *mb_cache_directory; /* name of cache directory */
+   char mb_imap_delim[8];     /* Directory separator(s), [0] += replacer */
+#endif
    struct sock mb_sock;       /* socket structure */
 };
 
@@ -2167,47 +2193,50 @@ enum needspec {
 
 enum content_info {
    CI_NOTHING,                /* Nothing downloaded yet */
-   CI_HAVE_HEADER = 1<<0,     /* Header is downloaded */
-   CI_HAVE_BODY   = 1<<1,     /* Entire message is downloaded */
-   CI_MIME_ERRORS = 1<<2,     /* Defective MIME structure */
-   CI_EXPANDED    = 1<<3,     /* Container part (pk7m) exploded into X */
-   CI_SIGNED      = 1<<4,     /* Has a signature.. */
-   CI_SIGNED_OK   = 1<<5,     /* ..verified ok.. */
-   CI_SIGNED_BAD  = 1<<6,     /* ..verified bad (missing key).. */
-   CI_ENCRYPTED   = 1<<7,     /* Is encrypted.. */
-   CI_ENCRYPTED_OK = 1<<8,    /* ..decryption possible/ok.. */
-   CI_ENCRYPTED_BAD = 1<<9    /* ..not possible/ok */
+   CI_HAVE_HEADER = 1u<<0,    /* Header is downloaded */
+   CI_HAVE_BODY = 1u<<1,      /* Entire message is downloaded */
+   CI_HAVE_MASK = CI_HAVE_HEADER | CI_HAVE_BODY,
+   CI_MIME_ERRORS = 1u<<2,    /* Defective MIME structure */
+   CI_EXPANDED = 1u<<3,       /* Container part (pk7m) exploded into X */
+   CI_SIGNED = 1u<<4,         /* Has a signature.. */
+   CI_SIGNED_OK = 1u<<5,      /* ..verified ok.. */
+   CI_SIGNED_BAD = 1u<<6,     /* ..verified bad (missing key).. */
+   CI_ENCRYPTED = 1u<<7,      /* Is encrypted.. */
+   CI_ENCRYPTED_OK = 1u<<8,   /* ..decryption possible/ok.. */
+   CI_ENCRYPTED_BAD = 1u<<9   /* ..not possible/ok */
 };
 
-/* flag bits. Attention: Flags that are used in cache.c may not change */
+/* Note: flags that are used in obs-imap-cache.c may not change */
 enum mflag {
-   MUSED          = (1<< 0),  /* entry is used, but this bit isn't */
-   MDELETED       = (1<< 1),  /* entry has been deleted */
-   MSAVED         = (1<< 2),  /* entry has been saved */
-   MTOUCH         = (1<< 3),  /* entry has been noticed */
-   MPRESERVE      = (1<< 4),  /* keep entry in sys mailbox */
-   MMARK          = (1<< 5),  /* message is marked! */
-   MODIFY         = (1<< 6),  /* message has been modified */
-   MNEW           = (1<< 7),  /* message has never been seen */
-   MREAD          = (1<< 8),  /* message has been read sometime. */
-   MSTATUS        = (1<< 9),  /* message status has changed */
-   MBOX           = (1<<10),  /* Send this to mbox, regardless */
-   MNOFROM        = (1<<11),  /* no From line */
-   MHIDDEN        = (1<<12),  /* message is hidden to user */
-   MBOXED         = (1<<13),  /* message has been sent to mbox */
-   MNEWEST        = (1<<14),  /* message is very new (newmail) */
-   MFLAG          = (1<<15),  /* message has been flagged recently */
-   MUNFLAG        = (1<<16),  /* message has been unflagged */
-   MFLAGGED       = (1<<17),  /* message is `flagged' */
-   MANSWER        = (1<<18),  /* message has been answered recently */
-   MUNANSWER      = (1<<19),  /* message has been unanswered */
-   MANSWERED      = (1<<20),  /* message is `answered' */
-   MDRAFT         = (1<<21),  /* message has been drafted recently */
-   MUNDRAFT       = (1<<22),  /* message has been undrafted */
-   MDRAFTED       = (1<<23),  /* message is marked as `draft' */
-   MOLDMARK       = (1<<24),  /* messages was marked previously */
-   MSPAM          = (1<<25),  /* message is classified as spam */
-   MSPAMUNSURE    = (1<<26)   /* message may be spam, but it is unsure */
+   MUSED = 1u<<0,       /* entry is used, but this bit isn't */
+   MDELETED = 1u<<1,    /* entry has been deleted */
+   MSAVED = 1u<<2,      /* entry has been saved */
+   MTOUCH = 1u<<3,      /* entry has been noticed */
+   MPRESERVE = 1u<<4,   /* keep entry in sys mailbox */
+   MMARK = 1u<<5,       /* message is marked! */
+   MODIFY = 1u<<6,      /* message has been modified */
+   MNEW = 1u<<7,        /* message has never been seen */
+   MREAD = 1u<<8,       /* message has been read sometime. */
+   MSTATUS = 1u<<9,     /* message status has changed */
+   MBOX = 1u<<10,       /* Send this to mbox, regardless */
+   MNOFROM = 1u<<11,    /* no From line */
+   MHIDDEN = 1u<<12,    /* message is hidden to user */
+MFULLYCACHED = 1u<<13,  /* IMAP cached */
+   MBOXED = 1u<<14,     /* message has been sent to mbox */
+MUNLINKED = 1u<<15,     /* Unlinked from IMAP cache */
+   MNEWEST = 1u<<16,    /* message is very new (newmail) */
+   MFLAG = 1u<<17,      /* message has been flagged recently */
+   MUNFLAG = 1u<<18,    /* message has been unflagged */
+   MFLAGGED = 1u<<19,   /* message is `flagged' */
+   MANSWER = 1u<<20,    /* message has been answered recently */
+   MUNANSWER = 1u<<21,  /* message has been unanswered */
+   MANSWERED = 1u<<22,  /* message is `answered' */
+   MDRAFT = 1u<<23,     /* message has been drafted recently */
+   MUNDRAFT = 1u<<24,   /* message has been undrafted */
+   MDRAFTED = 1u<<25,   /* message is marked as `draft' */
+   MOLDMARK = 1u<<26,   /* messages was marked previously */
+   MSPAM = 1u<<27,      /* message is classified as spam */
+   MSPAMUNSURE = 1u<<28, /* message may be spam, but it is unsure */
 };
 #define MMNORM          (MDELETED | MSAVED | MHIDDEN)
 #define MMNDEL          (MDELETED | MHIDDEN)
@@ -2265,6 +2294,9 @@ struct message {
    struct message *m_parent;  /* parent of this message */
    unsigned    m_level;       /* thread level of message */
    long        m_threadpos;   /* position in threaded display */
+#ifdef HAVE_IMAP
+   unsigned long m_uid;       /* IMAP unique identifier */
+#endif
    char const  *m_maildir_file;  /* original maildir file of msg */
    ui32_t      m_maildir_hash;   /* hash of file name in maildir sub */
    int         m_collapsed;      /* collapsed thread information */
@@ -2543,6 +2575,9 @@ VL struct message *prevdot;            /* Previous current message */
 VL struct message *message;            /* The actual message structure */
 VL struct message *threadroot;         /* first threaded message */
 VL int            *n_msgvec;           /* Folder setmsize(), list.c res. store*/
+#ifdef HAVE_IMAP
+VL int            imap_created_mailbox; /* hack to get feedback from imap */
+#endif
 
 VL struct time_current  time_current;  /* time(3); send: mail1() XXXcarrier */
 VL struct termios_state termios_state; /* getpassword(); see commands().. */

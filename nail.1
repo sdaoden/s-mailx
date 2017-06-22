@@ -12805,6 +12805,230 @@ that is capable of message queuing.
 .\" }}}
 .
 .
+.\" .Sh "IMAP CLIENT" {{{
+.Sh "IMAP CLIENT"
+.
+\*(OPally there is IMAP client support available.
+This part of the program is obsolete and will vanish in v15 with the
+large MIME and I/O layer rewrite, because it uses old-style blocking I/O
+and makes excessive use of signal based long code jumps.
+Support can hopefully be readded later based on a new-style I/O, with
+SysV signal handling.
+In fact the IMAP support had already been removed from the codebase, but
+was reinstantiated on user demand: in effect the IMAP code is at the
+level of \*(UA v14.8.16 (with
+.Ic imapcodec
+being the sole exception), and should be treated with some care.
+.
+.Pp
+IMAP uses the
+.Ql imap://
+and
+.Ql imaps://
+protocol prefixes, and an IMAP-based
+.Va folder
+may be used.
+IMAP URLs (paths) undergo inspections and possible transformations
+before use (and the command
+.Ic imapcodec
+can be used to manually apply them to any given argument).
+Hierarchy delimiters are normalized, a step which is configurable via the
+.Va imap-delim
+variable chain, but defaults to the first seen delimiter otherwise.
+\*(UA supports internationalised IMAP names, and en- and decodes the
+names from and to the
+.Va ttycharset
+as necessary and possible.
+If a mailbox name is expanded (see
+.Sx "Filename transformations" )
+to an IMAP mailbox, all names that begin with `+' then refer to IMAP
+mailboxes below the
+.Va folder
+target box, while folder names prefixed by `@' refer to folders below
+the hierarchy base.
+.
+.Pp
+Note: some IMAP servers do not accept the creation of mailboxes in
+the hierarchy base, but require that they are created as subfolders of
+`INBOX' \(en with such servers a folder name of the form
+.Pp
+.Dl imaps://mylogin@imap.myisp.example/INBOX.
+.Pp
+should be used (the last character is the server's hierarchy
+delimiter).
+The following IMAP-specific commands exist:
+.
+.
+.Bl -tag -width ".It Ic BaNg"
+.Mx
+.It Ic cache
+Only applicable to cached IMAP mailboxes;
+takes a message list and reads the specified messages into the IMAP
+cache.
+.
+.Mx
+.It Ic connect
+If operating in disconnected mode on an IMAP mailbox,
+switch to online mode and connect to the mail server while retaining
+the mailbox status.
+See the description of the
+.Va disconnected
+variable for more information.
+.
+.Mx
+.It Ic disconnect
+If operating in online mode on an IMAP mailbox,
+switch to disconnected mode while retaining the mailbox status.
+See the description of the
+.Va disconnected
+variable for more.
+A list of messages may optionally be given as argument;
+the respective messages are then read into the cache before the
+connection is closed, thus
+.Ql disco *
+makes the entire mailbox available for disconnected use.
+.
+.Mx
+.It Ic imap
+Sends command strings directly to the current IMAP server.
+\*(UA operates always in IMAP `selected state' on the current mailbox;
+commands that change this will produce undesirable results and should be
+avoided.
+Useful IMAP commands are:
+.Bl -tag -offset indent -width ".Ic getquotearoot"
+.It create
+Takes the name of an IMAP mailbox as an argument and creates it.
+.It getquotaroot
+(RFC 2087) Takes the name of an IMAP mailbox as an argument
+and prints the quotas that apply to the mailbox.
+Not all IMAP servers support this command.
+.It namespace
+(RFC 2342) Takes no arguments and prints the Personal Namespaces,
+the Other User's Namespaces and the Shared Namespaces.
+Each namespace type is printed in parentheses;
+if there are multiple namespaces of the same type,
+inner parentheses separate them.
+For each namespace a prefix and a hierarchy separator is listed.
+Not all IMAP servers support this command.
+.El
+.
+.Mx
+.It Ic imapcodec
+Perform IMAP path transformations on all the given strings.
+Supports
+.Cm vput
+(see
+.Sx "Command modifiers" ) ,
+and manages the error number
+.Va \&! .
+The first argument specifies the operation:
+.Ar e[ncode]
+normalizes hierarchy delimiters (see
+.Va imap-delim )
+and converts the strings from the locale
+.Va ttycharset
+to the internationalised variant used by IMAP,
+.Ar d[ecode]
+does the reverse operation.
+.El
+.
+.
+.Pp
+The following IMAP-specific internal variables exist:
+.
+.
+.Bl -tag -width ".It Va BaNg"
+.Mx
+.It Va disconnected
+\*(BO When an IMAP mailbox is selected and this variable is set,
+no connection to the server is initiated.
+Instead, data is obtained from the local cache (see
+.Va imap-cache Ns
+).
+Mailboxes that are not present in the cache
+and messages that have not yet entirely been fetched from the server
+are not available;
+to fetch all messages in a mailbox at once,
+the command
+.No ` Ns Li copy * /dev/null Ns '
+can be used while still in connected mode.
+Changes that are made to IMAP mailboxes in disconnected mode are queued
+and committed later when a connection to that server is made.
+This procedure is not completely reliable since it cannot be guaranteed
+that the IMAP unique identifiers (UIDs) on the server still match the
+ones in the cache at that time.
+Data is saved to
+.Ev DEAD
+when this problem occurs.
+.
+.It Va disconnected-USER@HOST
+The specified account is handled as described for the
+.Va disconnected
+variable above,
+but other accounts are not affected.
+.
+.Mx Va imap-auth
+.It Va imap-auth-USER@HOST , imap-auth
+Sets the IMAP authentication method.
+Valid values are `login' for the usual password-based authentication
+(the default),
+`cram-md5', which is a password-based authentication that does not send
+the password over the network in clear text,
+and `gssapi' for GSS-API based authentication.
+.
+.Mx
+.It Va imap-cache
+Enables caching of IMAP mailboxes.
+The value of this variable must point to a directory that is either
+existent or can be created by \*(UA.
+All contents of the cache can be deleted by \*(UA at any time;
+it is not safe to make assumptions about them.
+.
+.Mx Va imap-delim
+.It Va imap-delim-USER@HOST , imap-delim-HOST , imap-delim
+The hierarchy separator used by the IMAP server.
+Whenever an IMAP path is specified it will undergo normalization.
+One of the normalization steps is the squeeze and adjustment of
+hierarchy separators.
+If this variable is set, any occurrence of any character of the given
+value that exists in the path will be replaced by the first member of
+the value; an empty value will cause the default to be used, it is
+.Ql /. .
+If not set, we will reuse the first hierarchy separator character that
+is discovered in a user-given mailbox name.
+.
+.Mx Va imap-keepalive
+.It Va imap-keepalive-USER@HOST , imap-keepalive-HOST , imap-keepalive
+IMAP servers may close the connection after a period of
+inactivity; the standard requires this to be at least 30 minutes,
+but practical experience may vary.
+Setting this variable to a numeric `value' greater than 0 causes
+a `NOOP' command to be sent each `value' seconds if no other operation
+is performed.
+.
+.Mx
+.It Va imap-list-depth
+When retrieving the list of folders on an IMAP server, the
+.Ic folders
+command stops after it has reached a certain depth to avoid possible
+infinite loops.
+The value of this variable sets the maximum depth allowed.
+The default is 2.
+If the folder separator on the current IMAP server is a slash `/',
+this variable has no effect and the
+.Ic folders
+command does not descend to subfolders.
+.
+.Mx Va imap-use-starttls
+.It Va imap-use-starttls-USER@HOST , imap-use-starttls-HOST , imap-use-starttls
+Causes \*(UA to issue a `STARTTLS' command to make an unencrypted
+IMAP session SSL/TLS encrypted.
+This functionality is not supported by all servers,
+and is not used if the session is already encrypted by the IMAPS method.
+.El
+.\" }}}
+.
+.
 .Sh BUGS
 .
 After deleting some message of a POP3 mailbox the header summary falsely

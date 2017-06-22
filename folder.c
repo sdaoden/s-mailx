@@ -205,6 +205,10 @@ a_folder_info(void){
       fprintf(n_stdout, _(" %d hidden"), hidden);
    if (mb.mb_perm == 0)
       fprintf(n_stdout, _(" [Read-only]"));
+#ifdef HAVE_IMAP
+   if (mb.mb_type == MB_CACHE)
+      fprintf(n_stdout, _(" [Disconnected]"));
+#endif
 
 jleave:
    putc('\n', n_stdout);
@@ -288,6 +292,15 @@ jlogname:
    case PROTO_POP3:
       shudclob = 1;
       rv = pop3_setfile(orig_name, fm);
+      goto jleave;
+#endif
+#ifdef HAVE_IMAP
+   case PROTO_IMAP:
+      shudclob = 1;
+      if((fm & FEDIT_NEWMAIL) && mb.mb_type == MB_CACHE)
+         rv = 1;
+      else
+         rv = imap_setfile(orig_name, fm);
       goto jleave;
 #endif
    default:
@@ -723,6 +736,9 @@ initbox(char const *name)
    message_reset();
    mb.mb_active = MB_NONE;
    mb.mb_threaded = 0;
+#ifdef HAVE_IMAP
+   mb.mb_flags = MB_NOFLAGS;
+#endif
    if (mb.mb_sorted != NULL) {
       free(mb.mb_sorted);
       mb.mb_sorted = NULL;
@@ -784,6 +800,16 @@ n_folder_query(void){
       case PROTO_POP3:
          n_err(_("*folder* can't be set to a flat, read-only POP3 account\n"));
          err = TRU1;
+         goto jset;
+      case PROTO_IMAP:
+#ifdef HAVE_IMAP
+         rv = cp;
+         if(!strcmp(rv, protbase(rv)))
+            rv = savecatsep(rv, '/', n_empty);
+#else
+         n_err(_("*folder*: IMAP support not compiled in\n"));
+         err = TRU1;
+#endif
          goto jset;
       default:
          /* Further expansion desired */

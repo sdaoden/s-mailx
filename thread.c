@@ -524,6 +524,10 @@ c_thread(void *vp)
    NYD_ENTER;
 
    if (mb.mb_threaded != 1 || vp == NULL || vp == (void*)-1) {
+#ifdef HAVE_IMAP
+      if (mb.mb_type == MB_IMAP)
+         imap_getheaders(1, msgCount);
+#endif
       _makethreads(message, msgCount, (vp == (void*)-1));
       if (mb.mb_sorted != NULL)
          free(mb.mb_sorted);
@@ -709,6 +713,19 @@ c_sort(void *vp)
 
    showname = ok_blook(showname);
    ms = ac_alloc(sizeof *ms * msgCount);
+#ifdef HAVE_IMAP
+   switch (method) {
+   case SORT_SUBJECT:
+   case SORT_DATE:
+   case SORT_FROM:
+   case SORT_TO:
+      if (mb.mb_type == MB_IMAP)
+         imap_getheaders(1, msgCount);
+      break;
+   default:
+      break;
+   }
+#endif
 
    srelax_hold();
    for (n = 0, i = 0; i < msgCount; ++i) {

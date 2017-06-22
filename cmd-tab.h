@@ -647,15 +647,31 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
       { "urlencode", &c_urlencode, (O | G | M | X | TWYRA), 1, MAC, NULL
         DS(N_("Obsoleted by `urlcodec'")) },
       { "urldecode", &c_urldecode, (O | G | M | X | TWYRA), 1, MAC, NULL
-        DS(N_("Obsoleted by `urlcodec'")) },
+        DS(N_("Obsoleted by `urlcodec'")) }
 
 #ifdef HAVE_MEMORY_DEBUG
-   { "memtrace", &c_memtrace, (I | M | TWYSH), 0, 0, NULL
-     DS(N_("Trace current memory usage afap")) },
+   ,{ "memtrace", &c_memtrace, (I | M | TWYSH), 0, 0, NULL
+     DS(N_("Trace current memory usage afap")) }
 #endif
 #ifdef HAVE_DEVEL
-   { "sigstate", &c_sigstate, (I | M | TWYSH), 0, 0, NULL
-     DS(N_("Show signal handler states")) },
+   ,{ "sigstate", &c_sigstate, (I | M | TWYSH), 0, 0, NULL
+     DS(N_("Show signal handler states")) }
+#endif
+
+   /* Obsolete stuff */
+
+#ifdef HAVE_IMAP
+   ,{ "imap", &c_imap_imap, (A | TSTRING), 0, MAC, NULL
+     DS(N_("Send command strings directly to the IMAP server")) },
+   { "connect", &c_connect, (A | TSTRING), 0, 0, NULL
+     DS(N_("If disconnected, connect to IMAP mailbox")) },
+   { "disconnect", &c_disconnect, (A | TNDMLST), 0, 0, NULL
+     DS(N_("If connected, disconnect from IMAP mailbox")) },
+   { "cache", &c_cache, (A | TMSGLST), 0, 0, NULL
+     DS(N_("Read specified <message list> into the IMAP cache")) },
+
+   { "imapcodec", &c_imapcodec, (G | M | V | X | TRAWDAT), 0, 0, NULL
+     DS(N_("IMAP mailbox name <e[ncode]|d[ecode]> <rest-of-line>")) }
 #endif
 
 #undef DS

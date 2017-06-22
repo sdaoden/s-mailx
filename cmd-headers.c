@@ -527,6 +527,19 @@ j_A_redo:
                n, (threaded ? (ul_i)mp->m_threadpos : (ul_i)msgno));
          wleft = (n >= 0) ? wleft - n : 0;
          break;
+      case 'U':
+#ifdef HAVE_IMAP
+            if (n == 0)
+               n = 9;
+            if (UICMP(32, n_ABS(n), >, wleft))
+               n = (n < 0) ? -wleft : wleft;
+            n = fprintf(f, "%*lu", n, mp->m_uid);
+            wleft = (n >= 0) ? wleft - n : 0;
+            break;
+#else
+            c = '?';
+            goto jputc;
+#endif
       default:
          if (n_poption & n_PO_D_V)
             n_err(_("Unkown *headline* format: %%%c\n"), c);
@@ -860,6 +873,10 @@ _headers(int msgspec) /* TODO rework v15 */
             }
       }
 
+#ifdef HAVE_IMAP
+      if (mb.mb_type == MB_IMAP)
+         imap_getheaders(mesg + 1, mesg + size);
+#endif
       n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, n_stdout, FAL0); )
       srelax_hold();
       for (; PTRCMP(mp, <, message + msgCount); ++mp) {
@@ -1066,6 +1083,10 @@ print_headers(size_t bottom, size_t topx, bool_t only_marked)
    size_t printed;
    NYD_ENTER;
 
+#ifdef HAVE_IMAP
+   if (mb.mb_type == MB_IMAP)
+      imap_getheaders(bottom, topx);
+#endif
    time_current_update(&time_current, FAL0);
 
    n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, n_stdout, FAL0); )

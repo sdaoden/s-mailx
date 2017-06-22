@@ -177,7 +177,7 @@ OPT_AMALGAMATION=no
 OPT_ICONV=yes
 
 # Major switch to toggle *all* network related protocols
-# (POP3,SMTP) and related/dependent stuff (GSS-API,SSL);
+# (POP3,SMTP,IMAP) and related/dependent stuff (GSS-API,SSL);
 # can be "require"d.
 OPT_SOCKETS=yes
 
@@ -206,13 +206,18 @@ OPT_SMTP=yes
 # (Download of mails via POP protocol)  Can be "require"d.
 OPT_POP3=yes
 
+# If $OPT_SOCKETS: support for IMAP protocol?
+# Requires $WANT_ICONV.
+# (Reading of mails directly on the server)  Can be "require"d.
+OPT_IMAP=yes
+
 # If $OPT_SOCKETS: support for GSS-API (Generic Security Services
 # Application Programming Interface) based authentication, e.g.,
-# Kerberos v5?  Available for SMTP; can be "require"d.
+# Kerberos v5?  Available for IMAP and SMTP; can be "require"d.
 OPT_GSSAPI=yes
 
 # Enabling the MD5 message digest adds support for several
-# authentication possibilities: POP3 (APOP), SMTP (CRAM-MD5).
+# authentication possibilities: POP3 (APOP), IMAP and SMTP (CRAM-MD5).
 # If you don't need those, you may turn them off by excluding MD5.
 OPT_MD5=yes
 

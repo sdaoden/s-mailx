@@ -167,11 +167,24 @@ save1(char *str, int domark, char const *cmd, struct n_ignore const *itp,
 jsend:
    success = TRU1;
    tstats[0] = tstats[1] = 0;
+#ifdef HAVE_IMAP
+   imap_created_mailbox = 0;
+#endif
 
    srelax_hold();
    for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
          ++ip) {
-      mp = message + *ip - 1;
+      mp = &message[*ip - 1];
+#ifdef HAVE_IMAP
+      if((fs & n_PROTO_MASK) == n_PROTO_IMAP &&
+            !n_ignore_is_any(n_IGNORE_SAVE) && imap_thisaccount(file)){
+         if(imap_copy(mp, PTR2SIZE(mp - message + 1), file) == STOP){
+            success = FAL0;
+            goto jferr;
+         }
+         mstats[0] = mp->m_xsize;
+      }else
+#endif
       if (sendmp(mp, obuf, itp, NULL, convert, mstats) < 0) {
          success = FAL0;
          goto jferr;
@@ -206,6 +219,16 @@ jferr:
       success = FAL0;
 
    if (success) {
+#ifdef HAVE_IMAP
+      if((fs & n_PROTO_MASK) == n_PROTO_IMAP){
+         if(disconnected(file))
+            disp = "[Queued]";
+         else if(imap_created_mailbox)
+            disp = "[New file]";
+         else
+            disp = "[Appended]";
+      }
+#endif
       fprintf(n_stdout, "%s %s %" /*PRIu64 "/%"*/ PRIu64 " bytes\n",
          n_shexp_quote_cp(file, FAL0), disp,
          /*tstats[1], TODO v15: lines written */ tstats[0]);
