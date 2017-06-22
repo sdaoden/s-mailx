@@ -100,17 +100,35 @@ static int
 a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
    char const **argv, **ap, *cp;
    int rv;
+   bool_t doerr;
    NYD2_ENTER;
 
+#ifdef HAVE_ERRORS
+   doerr = (fp == n_stderr &&  (n_psonce & n_PSO_INTERACTIVE));
+#else
+   doerr = FAL0;
+#endif
+
    for(ap = argv = vp; *ap != NULL; ++ap){
-      if(ap != argv)
-         putc(' ', fp);
+      if(ap != argv){
+         if(doerr)
+            n_err(" ");
+         else
+            putc(' ', fp);
+      }
       if((cp = fexpand(*ap, FEXP_NSHORTCUT | FEXP_NVAR)) == NULL)
          cp = *ap;
-      fputs(cp, fp);
+      if(doerr)
+         n_err(cp);
+      else
+         fputs(cp, fp);
    }
-   if(donl)
-      putc('\n', fp);
+   if(donl){
+      if(doerr)
+         n_err("\n");
+      else
+         putc('\n', fp);
+   }
 
    rv = (fflush(fp) == EOF);
    rv |= ferror(fp) ? 1 : 0;
