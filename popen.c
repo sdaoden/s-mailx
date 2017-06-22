@@ -912,6 +912,9 @@ Popen(char const *cmd, char const *mode, char const *sh,
          close(p[WRITE]);
          /* TODO should close all other open FDs except stds and reset memory */
          u.ccp = sh;
+         n_stdin = fdopen(STDIN_FILENO, "r");
+         n_stdout = fdopen(STDOUT_FILENO, "w");
+         /*n_stderr = fdopen(STDERR_FILENO, "w");*/
          u.es = (*u.ptf)();
          /*fflush(NULL);*/
          _exit(u.es);
