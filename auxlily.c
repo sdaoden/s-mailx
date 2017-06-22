@@ -1081,16 +1081,17 @@ n_err(char const *format, ...){
 #endif
    {
       size_t len;
-      bool_t doname, doflush;
+      bool_t doname;
 
-      doflush = FAL0;
+      doname = FAL0;
+
       while(*format == '\n'){
-         doflush = TRU1;
+         doname = TRU1;
          putc('\n', n_stderr);
          ++format;
       }
 
-      if((doname = doflush))
+      if(doname)
          a_aux_err_linelen = 0;
 
       if((len = strlen(format)) > 0){
@@ -1114,8 +1115,7 @@ n_err(char const *format, ...){
          }
       }
 
-      if(doflush)
-         fflush(n_stderr);
+      fflush(n_stderr);
    }
    va_end(ap);
    NYD2_LEAVE;
