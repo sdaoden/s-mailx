@@ -2151,9 +2151,11 @@ c_shift(void *v){
       struct a_amv_mac const *amp;
       struct a_amv_mac_call_args *amcap;
 
+      /* Explicitly do allow `vpospar' created things! */
       amp = (amcap = a_amv_lopts->as_amcap)->amca_amp;
-      if(amp == NULL || amcap->amca_ps_hook_mask ||
-            (amp->am_flags & a_AMV_MF_TYPE_MASK) == a_AMV_MF_ACCOUNT){
+      if((amp == NULL || amcap->amca_ps_hook_mask ||
+               (amp->am_flags & a_AMV_MF_TYPE_MASK) == a_AMV_MF_ACCOUNT) &&
+            amcap->amca_pospar.app_not_heap){
          n_err(_("Cannot use `shift' in `account's or hook macros etc.\n"));
          goto jleave;
       }

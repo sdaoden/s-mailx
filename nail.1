@@ -5738,6 +5738,11 @@ It is an error if the value exceeds the number of positional parameters.
 If the given number is 0, no action is performed, successfully.
 The stack as such can be managed via
 .Ic vpospar .
+Note this command will fail in
+.Ic account
+and hook macros unless the positional parameter stack has been
+explicitly created in the current context via
+.Ic vpospar .
 .
 .Mx
 .It Ic show
