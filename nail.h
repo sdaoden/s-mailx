@@ -144,7 +144,7 @@
 # define _CLOEXEC_SET(FD) do {;} while(0)
 #else
 # define _O_CLOEXEC 0
-# define _CLOEXEC_SET(FD) do \
+# define _CLOEXEC_SET(FD) \
 do{\
       int a__fd = (FD), a__fl;\
       if((a__fl = fcntl(a__fd, F_GETFD)) != -1)\
