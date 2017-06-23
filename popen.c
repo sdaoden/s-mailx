@@ -911,9 +911,25 @@ Popen(char const *cmd, char const *mode, char const *sh,
          close(p[READ]);
          close(p[WRITE]);
          /* TODO should close all other open FDs except stds and reset memory */
+         /* Standard I/O drives me insane!  All we need is a sync operation
+          * that causes n_stdin to forget about any read buffer it may have.
+          * We cannot use fflush(3), this works with Musl and Solaris, but not
+          * with GlibC.  (For at least pipes.)  We cannot use fdreopen(),
+          * because this function does not exist!  Luckily (!!!) we only use
+          * n_stdin not stdin in our child, otherwise all bets were off!
+          * TODO (Unless we would fiddle around with FILE* directly:
+          * TODO #ifdef __GLIBC__
+          * TODO   n_stdin->_IO_read_ptr = n_stdin->_IO_read_end;
+          * TODO #elif *BSD*
+          * TODO   n_stdin->_r = 0;
+          * TODO #elif n_OS_SOLARIS || n_OS_SUNOS
+          * TODO   n_stdin->_cnt = 0;
+          * TODO #endif
+          * TODO ) which should have additional config test for sure! */
+         u.ccp = sh;
          u.ccp = sh;
          n_stdin = fdopen(STDIN_FILENO, "r");
-         n_stdout = fdopen(STDOUT_FILENO, "w");
+         /*n_stdout = fdopen(STDOUT_FILENO, "w");*/
          /*n_stderr = fdopen(STDERR_FILENO, "w");*/
          u.es = (*u.ptf)();
          /*fflush(NULL);*/
