@@ -924,11 +924,10 @@ Popen(char const *cmd, char const *mode, char const *sh,
           * TODO   n_stdin->_cnt = 0;
           * TODO #endif
           * TODO ) which should have additional config test for sure! */
-         u.ccp = sh;
-         u.ccp = sh;
          n_stdin = fdopen(STDIN_FILENO, "r");
          /*n_stdout = fdopen(STDOUT_FILENO, "w");*/
          /*n_stderr = fdopen(STDERR_FILENO, "w");*/
+         u.ccp = sh;
          u.es = (*u.ptf)();
          /*fflush(NULL);*/
          _exit(u.es);
