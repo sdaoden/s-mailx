@@ -39,8 +39,6 @@
 # include "nail.h"
 #endif
 
-#include <sys/wait.h>
-
 #define READ               0
 #define WRITE              1
 

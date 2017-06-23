@@ -10,8 +10,6 @@
 # include "nail.h"
 #endif
 
-#include <sys/wait.h>
-
 #ifdef HAVE_DOTLOCK
 # include "dotlock.h"
 #endif

@@ -43,6 +43,7 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 
 #ifdef HAVE_GETTIMEOFDAY
 # include <sys/time.h>

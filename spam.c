@@ -24,9 +24,6 @@
 
 EMPTY_FILE()
 #ifdef HAVE_SPAM
-#if defined HAVE_SPAM_SPAMC || defined HAVE_SPAM_FILTER
-# include <sys/wait.h>
-#endif
 
 #ifdef HAVE_SPAM_SPAMD
 # include <sys/socket.h>

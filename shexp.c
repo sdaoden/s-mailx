@@ -40,8 +40,6 @@
 # include "nail.h"
 #endif
 
-#include <sys/wait.h>
-
 #include <pwd.h>
 
 #ifdef HAVE_FNMATCH
