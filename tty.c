@@ -1997,6 +1997,11 @@ a_tty_kht(struct a_tty_line *tlp){
                   (int)exp.l, exp.s);
                goto jnope;
             }
+
+            /* All WS?  Trailing WS that has been "jumped over"? */
+            if(exp.l == 0 || (shs & n_SHEXP_STATE_WS_TRAIL))
+               break;
+
             n_shexp_parse_token((n_SHEXP_PARSE_TRIM_SPACE |
                   n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_QUOTE_AUTO_CLOSE),
                   shoup, &exp, NULL);
