@@ -442,10 +442,18 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
       } else
          dostat = 3;
    }
+
    if ((ibuf = setinput(&mb, (struct message*)ip, NEED_BODY)) == NULL) {
       rv = -1;
       goto jleave;
    }
+
+   if(action == SEND_TODISP || action == SEND_TODISP_ALL ||
+         action == SEND_TODISP_PARTS ||
+         action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
+         action == SEND_TOSRCH)
+      dostat |= 4;
+
    cnt = ip->m_size;
 
    if (ip->m_mimecontent == MIME_DISCARD)
@@ -457,11 +465,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
          if (c == '\n')
             break;
       }
-   convert = (action == SEND_TODISP || action == SEND_TODISP_ALL ||
-            action == SEND_TODISP_PARTS ||
-            action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
-            action == SEND_TOSRCH)
-         ? CONV_FROMHDR : CONV_NONE;
+   convert = (dostat & 4) ? CONV_FROMHDR : CONV_NONE;
 
    /* Work the headers */
    /* C99 */{
@@ -522,7 +526,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
 
          cp = *linedat;
 jhdrpush:
-         if(convert == CONV_NONE){
+         if(!(dostat & 4)){
             hlp = n_string_push_buf(hlp, cp, (ui32_t)linelen);
             hlp = n_string_push_c(hlp, '\n');
          }else{
@@ -570,7 +574,7 @@ jhdrput:
          if(n_COLOUR_IS_ACTIVE())
             n_colour_reset();
       )
-      if(convert != CONV_NONE)
+      if(dostat & 4)
          putc('\n', obuf);
       hany = TRU1;
 
@@ -1137,6 +1141,7 @@ jsend:
       __sendp_sig = 0;
       __sendp_opipe = safe_signal(SIGPIPE, &__sendp_onsig);
       if (sigsetjmp(__sendp_actjmp, 1)) {
+         n_pstate &= ~n_PS_BASE64_STRIP_CR;/* (but protected by outer sigman) */
          if (outrest.s != NULL)
             free(outrest.s);
          if (inrest.s != NULL)
@@ -1151,6 +1156,8 @@ jsend:
    }
 
    quoteflt_reset(qf, pbuf);
+   if(dostat & 4)
+      n_pstate |= n_PS_BASE64_STRIP_CR;
    while (!eof && fgetline(linedat, linesize, &cnt, &linelen, ibuf, 0)) {
 joutln:
       if (_out(*linedat, linelen, pbuf, convert, action, qf, stats, &outrest,
@@ -1166,6 +1173,7 @@ joutln:
       eof = eof ? TRU1 : TRUM1;
       goto joutln;
    }
+   n_pstate &= ~n_PS_BASE64_STRIP_CR;
    action &= ~_TD_EOF;
 
    /* TODO HACK: when sending to the display we yet get fooled if a message
@@ -1564,6 +1572,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
 
    n_sigman_cleanup_ping(&linedat_protect);
 jleave:
+   n_pstate &= ~n_PS_BASE64_STRIP_CR;
    quoteflt_destroy(&qf);
    if(linedat != NULL)
       free(linedat);

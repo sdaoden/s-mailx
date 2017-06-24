@@ -253,7 +253,7 @@ jleave:
 
 static ssize_t
 a_me_b64_decode(struct str *out, struct str *in){
-   ui8_t *p;
+   ui8_t *p, pb;
    ui8_t const *q, *end;
    ssize_t rv;
    NYD2_ENTER;
@@ -274,7 +274,10 @@ a_me_b64_decode(struct str *out, struct str *in){
             c == a_ME_B64_BAD || d == a_ME_B64_BAD))
          goto jleave;
 
-      *p++ = ((a << 2) | ((b & 0x30) >> 4));
+      pb = ((a << 2) | ((b & 0x30) >> 4));
+      if(pb != (ui8_t)'\r' || !(n_pstate & n_PS_BASE64_STRIP_CR))
+         *p++ = pb;
+
       if(c == a_ME_B64_EQU){ /* got '=' */
          q += 4;
          if(n_UNLIKELY(d != a_ME_B64_EQU))
@@ -282,10 +285,15 @@ a_me_b64_decode(struct str *out, struct str *in){
          break;
       }
 
-      *p++ = (((b & 0x0F) << 4) | ((c & 0x3C) >> 2));
+      pb = (((b & 0x0F) << 4) | ((c & 0x3C) >> 2));
+      if(pb != (ui8_t)'\r' || !(n_pstate & n_PS_BASE64_STRIP_CR))
+         *p++ = pb;
+
       if(d == a_ME_B64_EQU) /* got '=' */
          break;
-      *p++ = (((c & 0x03) << 6) | d);
+      pb = (((c & 0x03) << 6) | d);
+      if(pb != (ui8_t)'\r' || !(n_pstate & n_PS_BASE64_STRIP_CR))
+         *p++ = pb;
    }
    rv ^= rv;
 
@@ -1058,10 +1066,19 @@ jrepl:
 #endif
             b64l = 0;
          }else{
-            n_string_push_c(&s, (char)((a << 2) | ((b & 0x30) >> 4)));
-            n_string_push_c(&s, (char)(((b & 0x0F) << 4) | ((c & 0x3C) >> 2)));
-            if(x != a_ME_B64_EQU)
-               n_string_push_c(&s, (char)(((c & 0x03) << 6) | x));
+            ui8_t pb;
+
+            pb = ((a << 2) | ((b & 0x30) >> 4));
+            if(pb != (ui8_t)'\r' || !(n_pstate & n_PS_BASE64_STRIP_CR))
+               n_string_push_c(&s, (char)pb);
+            pb = (((b & 0x0F) << 4) | ((c & 0x3C) >> 2));
+            if(pb != (ui8_t)'\r' || !(n_pstate & n_PS_BASE64_STRIP_CR))
+               n_string_push_c(&s, (char)pb);
+            if(x != a_ME_B64_EQU){
+               pb = (((c & 0x03) << 6) | x);
+               if(pb != (ui8_t)'\r' || !(n_pstate & n_PS_BASE64_STRIP_CR))
+                  n_string_push_c(&s, (char)pb);
+            }
             ++b64l;
          }
          break;
