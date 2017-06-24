@@ -463,8 +463,11 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
       if (linelen == 0 || (cp = *linedat)[0] == '\n')
          /* If line is blank, we've reached end of headers */
          break;
-      if(cp[linelen - 1] == '\n')
+      if(cp[linelen - 1] == '\n'){
          cp[--linelen] = '\0';
+         if(linelen == 0)
+            break;
+      }
 
       /* Are we in a header? */
       if(hlp->s_len > 0){
@@ -476,11 +479,14 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
          goto jhdrpush;
       }else{
          /* Pick up the header field if we have one */
-         while(*cp != ':' && !spacechar(*cp))
+         while((c = *cp) != ':' && !spacechar(c) && c != '\0')
             ++cp;
-         while(spacechar(*cp))
-            ++cp;
-         if(*cp != ':'){
+         for(;;){
+            if(!spacechar(c) || c == '\0')
+               break;
+            c = *++cp;
+         }
+         if(c != ':'){
             /* That won't work with MIME when saving etc., before v15 */
             if (lineno != 1)
                /* XXX This disturbs, and may happen multiple times, and we
@@ -493,6 +499,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
             cnt = lcnt;
             break;
          }
+
          cp = *linedat;
 jhdrpush:
          if(convert == CONV_NONE){
