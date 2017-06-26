@@ -1072,8 +1072,9 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
       state |= a_COOKIE;
    }
 
-jrestart_empty:
    rv = n_SHEXP_STATE_NONE;
+jrestart_empty:
+   rv &= n_SHEXP_STATE_WS_LEAD;
    state &= a_ROUND_MASK;
 
    /* In cookie mode, the next ARGV entry is the token already, unchanged,
@@ -1105,15 +1106,21 @@ jrestart_empty:
    }else{
 jrestart:
       if(flags & n_SHEXP_PARSE_TRIM_SPACE){
-         for(; il > 0; ++ib, --il)
+         for(; il > 0; ++ib, --il){
             if(!blankspacechar(*ib))
                break;
+            rv |= n_SHEXP_STATE_WS_LEAD;
+         }
       }
+
       if(flags & n_SHEXP_PARSE_TRIM_IFSSPACE){
-         for(; il > 0; ++ib, --il)
+         for(; il > 0; ++ib, --il){
             if(strchr(ifs_ws, *ib) == NULL)
                break;
+            rv |= n_SHEXP_STATE_WS_LEAD;
+         }
       }
+
       input->s = n_UNCONST(ib);
       input->l = il;
    }
@@ -1667,15 +1674,21 @@ jleave:
       input->l = 0;
    }else{
       if(flags & n_SHEXP_PARSE_TRIM_SPACE){
-         for(; il > 0; ++ib, --il)
+         for(; il > 0; ++ib, --il){
             if(!blankspacechar(*ib))
                break;
+            rv |= n_SHEXP_STATE_WS_TRAIL;
+         }
       }
+
       if(flags & n_SHEXP_PARSE_TRIM_IFSSPACE){
-         for(; il > 0; ++ib, --il)
+         for(; il > 0; ++ib, --il){
             if(strchr(ifs_ws, *ib) == NULL)
                break;
+            rv |= n_SHEXP_STATE_WS_TRAIL;
+         }
       }
+
       input->l = il;
       input->s = n_UNCONST(ib);
    }

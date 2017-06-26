@@ -1132,9 +1132,11 @@ enum n_shexp_state{
    n_SHEXP_STATE_UNICODE = 1u<<2,         /* \[Uu] used */
    n_SHEXP_STATE_CONTROL = 1u<<3,         /* Control characters seen */
    n_SHEXP_STATE_QUOTE = 1u<<4,           /* Any quotes seen */
-   n_SHEXP_STATE_META_VERTBAR = 1u<<5,    /* Metacharacter | follows/ed */
-   n_SHEXP_STATE_META_AMPERSAND = 1u<<6,  /* Metacharacter & follows/ed */
-   n_SHEXP_STATE_META_SEMICOLON = 1u<<7,  /* Metacharacter ; follows/ed */
+   n_SHEXP_STATE_WS_LEAD = 1u<<5,         /* _TRIM_{IFS,}SPACE: seen.. */
+   n_SHEXP_STATE_WS_TRAIL = 1u<<6,        /* .. leading / trailing WS */
+   n_SHEXP_STATE_META_VERTBAR = 1u<<7,    /* Metacharacter | follows/ed */
+   n_SHEXP_STATE_META_AMPERSAND = 1u<<8,  /* Metacharacter & follows/ed */
+   n_SHEXP_STATE_META_SEMICOLON = 1u<<9,  /* Metacharacter ; follows/ed */
 
    n_SHEXP_STATE_ERR_CONTROL = 1u<<16,    /* \c notation with invalid arg. */
    n_SHEXP_STATE_ERR_UNICODE = 1u<<17,    /* Valid \[Uu] and !n_PSO_UNICODE */
