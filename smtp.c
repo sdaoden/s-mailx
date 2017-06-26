@@ -242,13 +242,12 @@ jerr_cred:
    case AUTHTYPE_CRAM_MD5:{
       char *cp;
 
-      if((cp = cram_md5_string(&sbp->sb_ccred.cc_user, &sbp->sb_ccred.cc_pass,
-            slp->dat)) == NULL)
-         goto jerr_cred;
-
       _OUT(NETLINE("AUTH CRAM-MD5"));
       _ANSWER(3, FAL0, TRU1);
 
+      if((cp = cram_md5_string(&sbp->sb_ccred.cc_user, &sbp->sb_ccred.cc_pass,
+            slp->dat)) == NULL)
+         goto jerr_cred;
       _OUT(cp);
       _ANSWER(2, FAL0, FAL0);
    }  break;
