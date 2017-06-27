@@ -445,23 +445,25 @@ jlogname:
 
    rele_sigs();
 
-   if ((n_poption & n_PO_EXISTONLY) && !(n_poption & n_PO_HEADERLIST)) {
-      rv = (msgCount == 0);
-      goto jleave;
-   }
+   rv = (msgCount == 0);
+   if(rv)
+      n_err_no = n_ERR_NODATA;
 
-   if ((!(n_pstate & n_PS_EDIT) || (fm & FEDIT_NEWMAIL)) && msgCount == 0) {
-      if (!(fm & FEDIT_NEWMAIL)) {
-         if (!ok_blook(emptystart))
-            n_err(_("No mail for %s\n"), who);
+   if(n_poption & n_PO_EXISTONLY)
+      goto jleave;
+
+   if(rv){
+      if(!(n_pstate & n_PS_EDIT) || (fm & FEDIT_NEWMAIL)){
+         if(!(fm & FEDIT_NEWMAIL)){
+            if (!ok_blook(emptystart))
+               n_err(_("No mail for %s\n"), who);
+         }
+         goto jleave;
       }
-      goto jleave;
    }
 
-   if (fm & FEDIT_NEWMAIL)
+   if(fm & FEDIT_NEWMAIL)
       newmailinfo(omsgCount);
-
-   rv = 0;
 jleave:
    if (ibuf != NULL) {
       Fclose(ibuf);
@@ -473,6 +475,7 @@ jleave:
 jem2:
    mb.mb_type = MB_VOID;
 jem1:
+   n_err_no = n_ERR_NOTOBACCO;
    rv = -1;
    goto jleave;
 }
