@@ -821,7 +821,7 @@ _ssl_load_verifications(SSL_CTX *ctxp)
             "not *ssl-no-default-ca*"));
       if(!ok_blook(ssl_ca_no_defaults) && !xv15 &&
             SSL_CTX_set_default_verify_paths(ctxp) != 1) {
-         ssl_gen_err(_("Error loading builtin default CA locations\n"));
+         ssl_gen_err(_("Error loading built-in default CA locations\n"));
          goto jleave;
       }
    }
@@ -1065,7 +1065,7 @@ _smime_cipher(char const *name)
       }
 #endif
 
-   /* Not a builtin algorithm, but we may have dynamic support for more */
+   /* Not a built-in algorithm, but we may have dynamic support for more */
 #ifdef HAVE_SSL_ALL_ALGORITHMS
    a_xssl_load_algos();
    if((cipher = EVP_get_cipherbyname(cp)) != NULL)
@@ -1290,7 +1290,7 @@ jhave_name:
          goto jleave;
       }
 
-   /* Not a builtin algorithm, but we may have dynamic support for more */
+   /* Not a built-in algorithm, but we may have dynamic support for more */
 #ifdef HAVE_SSL_ALL_ALGORITHMS
    a_xssl_load_algos();
    if((digest = EVP_get_digestbyname(cp)) != NULL)
@@ -1603,7 +1603,7 @@ c_verify(void *vp)
             "not *smime-no-default-ca*"));
       if(!ok_blook(smime_ca_no_defaults) && !xv15 &&
             X509_STORE_set_default_paths(store) != 1) {
-         ssl_gen_err(_("Error loading builtin default CA locations\n"));
+         ssl_gen_err(_("Error loading built-in default CA locations\n"));
          goto jleave;
       }
    }

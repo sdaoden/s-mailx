@@ -2424,7 +2424,7 @@ FL void        n_termcap_suspend(bool_t complete);
 # endif
 
 /* Command multiplexer, returns FAL0 on I/O error, TRU1 on success and TRUM1
- * for commands which are not available and have no builtin fallback.
+ * for commands which are not available and have no built-in fallback.
  * For query options the return represents a true value and -1 error.
  * Will return FAL0 directly unless we've been initialized.
  * By convention unused argument slots are given as -1 */
@@ -2434,7 +2434,7 @@ FL ssize_t     n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2);
 /* Query multiplexer.  If query is n__TERMCAP_QUERY_MAX1 then
  * tvp->tv_data.tvd_string must contain the name of the query to look up; this
  * is used to lookup just about *any* (string) capability.
- * Returns TRU1 on success and TRUM1 for queries for which a builtin default
+ * Returns TRU1 on success and TRUM1 for queries for which a built-in default
  * is returned; FAL0 is returned on non-availability */
 FL bool_t      n_termcap_query(enum n_termcap_query query,
                   struct n_termcap_value *tvp);

@@ -93,7 +93,7 @@ VAL_MTA_ARGV0=sendmail
 # Default *SHELL* (sh(1) path).
 # Sometimes we simply invoke a command directly via execlp(2) instead of
 # indirectly through *SHELL* -- in these cases execlp(2) may fallback to
-# it's own builtin sh(1) path
+# it's own built-in sh(1) path
 VAL_SHELL=/bin/sh
 
 # Some more default fallback values, some of which are standardized
@@ -191,7 +191,7 @@ OPT_SSL=yes
 # If $OPT_SSL: shall S-nail (try to) use mechanisms to support more
 # digest and cipher algorithms than the few that are documented?  For
 # S/MIME *smime-cipher* for example this will cause
-# EVP_get_cipherbyname(3) to be tried shall the (S-nail-) builtin
+# EVP_get_cipherbyname(3) to be tried shall the (S-nail-) built-in
 # knowledge not suffice to understand the user request.  Will create
 # a large statically linked binary; dynamically linked the costs only
 # arise once the extended lookup is actually needed (the first time).
@@ -252,7 +252,7 @@ OPT_REGEX=yes
 # Line editing and -history (manual "On terminal and line editor").
 # . OPT_MLE
 #   If ISO C (ISO/IEC 9899:1990/Amendment 1:1995) is supported on the
-#   system then our builtin MLE (Mailx-Line-Editor) version can be used.
+#   system then our built-in MLE (Mailx-Line-Editor) version can be used.
 #   An enabled & available OPT_TERMCAP may affect and improve the MLE.
 #   Can be "require"d.
 OPT_MLE=yes

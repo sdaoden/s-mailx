@@ -33,7 +33,7 @@ XOPTIONS="\
    SPAM_FILTER='Freely configurable *spam-filter-..*s' \
    DOCSTRINGS='Command documentation help strings' \
    QUOTE_FOLD='Extended *quote-fold*ing' \
-   FILTER_HTML_TAGSOUP='Simple builtin HTML-to-text display filter' \
+   FILTER_HTML_TAGSOUP='Simple built-in HTML-to-text display filter' \
    COLOUR='Coloured message display' \
    DOTLOCK='Dotlock files and privilege-separated dotlock program' \
 "

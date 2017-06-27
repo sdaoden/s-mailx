@@ -21,7 +21,7 @@
 #   . "@t@" is identical to plain "@".
 #   . "@h@" will tag the MIME type as HTML tagsoup.
 #   . "@H@" is identical to "@h@", but won't treat the MIME type as plain
-#      text if the builtin HTML tagsoup parser isn't available, i.e., it
+#      text if the built-in HTML tagsoup parser isn't available, i.e., it
 #      requires an explicit MIME type handler to be set.
 #
 # Syntax restrictions:
@@ -30,7 +30,7 @@
 #   mime_types.c:enum mime_type are allowed in this file here.
 # - MIME types without any file extensions are not handled.
 # - Note that the order of types and extensions is preserved ...
-# - Note that at least one builtin type is required (empty C array)
+# - Note that at least one built-in type is required (empty C array)
 
 # Expected frequent use
 # text/plain CHANGE: m4->text/x-m4, pod->text/x-pod; rc<-

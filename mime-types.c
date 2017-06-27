@@ -157,7 +157,7 @@ _mt_init(void)
    /*if (_mt_is_init)
     *  goto jleave;*/
 
-   /* Always load our builtins */
+   /* Always load our built-ins */
    for (tail = NULL, i = 0; i < n_NELEM(_mt_bltin); ++i) {
       struct mtbltin const *mtbp = _mt_bltin + i;
       struct mtnode *mtnp = smalloc(sizeof *mtnp);
@@ -946,7 +946,7 @@ c_mimetype(void *v){
                : (mtnp->mt_flags & _MT_USR ? " # user"
                : (mtnp->mt_flags & _MT_SYS ? " # system"
                : (mtnp->mt_flags & _MT_FSPEC ? " # f= file"
-               : (mtnp->mt_flags & _MT_CMD ? " # command" : " # builtin"))))));
+               : (mtnp->mt_flags & _MT_CMD ? " # command" : " # built-in"))))));
        }
 
       page_or_print(fp, l);
@@ -1342,7 +1342,7 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
       case _MT_SOUP_H:
          mhp->mh_ptf = &htmlflt_process_main;
          mhp->mh_msg.l = strlen(mhp->mh_msg.s =
-               n_UNCONST(_("Builtin HTML tagsoup filter")));
+               n_UNCONST(_("Built-in HTML tagsoup filter")));
          rv ^= MIME_HDL_NULL | MIME_HDL_PTF;
          goto jleave;
 #endif

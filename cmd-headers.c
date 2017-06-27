@@ -94,7 +94,7 @@ _print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded)
          memcpy(attrlist, cp, attrlen +1);
          goto jattrok;
       }
-      n_err(_("*attrlist* is not of the correct length, using builtin\n"));
+      n_err(_("*attrlist* is not of the correct length, using built-in\n"));
    }
 
    if (ok_blook(bsdcompat) || ok_blook(bsdflags)) {

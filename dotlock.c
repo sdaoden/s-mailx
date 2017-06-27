@@ -72,7 +72,7 @@ jislink:
    if(lstat(cp = di.di_file_name, &stb) == -1)
       goto jmsg;
    if(S_ISLNK(stb.st_mode)){
-      /* Use salloc() and hope we stay in builtin buffer.. */
+      /* Use salloc() and hope we stay in built-in buffer.. */
       char *x;
       size_t i;
       ssize_t sr;

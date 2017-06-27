@@ -136,7 +136,7 @@ a_shexp_findmail(char const *user, bool_t force){
          if((rv = fexpand(cp, FEXP_NSPECIAL | FEXP_NFOLDER | FEXP_NSHELL)
                ) != NULL)
             goto jleave;
-         n_err(_("*inbox* expansion failed, using $MAIL / builtin: %s\n"), cp);
+         n_err(_("*inbox* expansion failed, using $MAIL / built-in: %s\n"), cp);
       }
 
       if((cp = ok_vlook(MAIL)) != NULL){

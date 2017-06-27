@@ -1064,7 +1064,7 @@ n_child_run(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
     * TODO this can't be helped at all unless we perform complete and true
     * TODO process group separation and ensure we don't deadlock us out
     * TODO via TTY jobcontrol signal storms (could this really happen?).
-    * TODO Or have a builtin pager.  Or query any necessity BEFORE we start
+    * TODO Or have a built-in pager.  Or query any necessity BEFORE we start
     * TODO any action, and shall we find we need to run programs dump it
     * TODO all into a temporary file which is then passed through to the
     * TODO PAGER.  Ugh.  That still won't help for "needsterminal" anyway */

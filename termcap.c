@@ -364,7 +364,7 @@ a_termcap_init_altern(void){
    /* We silently ignore user _F_DISABLED requests for those entries for which
     * we have fallback entries, and which we need to ensure proper functioning.
     * I.e., this allows users to explicitly disable some termcap(5) capability
-    * and enforce usage of the builtin fallback */
+    * and enforce usage of the built-in fallback */
    /* xxx Use table-based approach for fallback strategies */
 #define a_OK(CMD) a_OOK(&a_termcap_g->tg_ents[CMD])
 #define a_OOK(TEP) \
@@ -854,7 +854,7 @@ n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
       goto jleave;
    assert(a_termcap_g != NULL);
 
-   /* Is it a builtin query? */
+   /* Is it a built-in query? */
    if(query != n__TERMCAP_QUERY_MAX1){
       tep = &a_termcap_g->tg_ents[n__TERMCAP_CMD_MAX1 + query];
 

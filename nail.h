@@ -1216,8 +1216,8 @@ enum n_termcap_captype{
  * We may use the free-form part after | for the "Variable String" and notes on
  * necessary termcap_cmd() arguments; if those are in [] brackets they are not
  * regular but are only used when the command, i.e., its effect, is somehow
- * simulated / faked by a builtin fallback implementation.
- * Availability of builtin fallback indicated by leading @ (at-sign) */
+ * simulated / faked by a built-in fallback implementation.
+ * Availability of built-in fallback indicated by leading @ (at-sign) */
 enum n_termcap_cmd{
 # ifdef HAVE_TERMCAP
    n_TERMCAP_CMD_te, /* rmcup/te, STRING | exit_ca_mode: -,- */

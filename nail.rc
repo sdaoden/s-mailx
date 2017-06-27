@@ -75,7 +75,7 @@ set emptystart
 set fullnames
 
 # [OPTION] Add more entries to the history as is done by default.
-# The latter will cause the builtin editor to save those entries, too
+# The latter will cause the built-in editor to save those entries, too
 set history-gabby history-gabby-persist
 
 # Do not move read messages of system mailboxes to MBOX by default since this
@@ -97,7 +97,7 @@ set mime-counter-evidence=0xE
 # Control loading of mime.types(5) file: the value may be a combination of the
 # letters "s" and "u": if "u" is seen ~/.mime.types will be loaded if possible;
 # "s" adds /etc/mime.types, if available; setting this without any value uses
-# only a set of builtin mimetypes; the default behaviour equals "us".
+# only a set of built-in mimetypes; the default behaviour equals "us".
 # An extended syntax that allows loading of other, specified files is available
 # if the value contains an equal sign "=", see the manual for more
 #set mimetypes-load-control
@@ -142,7 +142,7 @@ set recipients-in-cc
 # $LC_ALL / $LANG environment variables and react upon them)
 set sendcharsets=utf-8,iso-8859-1
 
-# When sending a message wait until the MTA (including the builtin SMTP one)
+# When sending a message wait until the MTA (including the built-in SMTP one)
 # exits before accepting further commands.  Only with this variable set errors
 # reported by the MTA will be recognizable!
 set sendwait

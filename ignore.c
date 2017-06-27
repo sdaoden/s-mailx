@@ -59,7 +59,7 @@ struct n_ignore{
    struct a_ignore_type i_retain;
    struct a_ignore_type i_ignore;
    bool_t i_auto;       /* In auto-reclaimed, not heap memory */
-   bool_t i_bltin;      /* Is a builtin n_IGNORE* type */
+   bool_t i_bltin;      /* Is a built-in n_IGNORE* type */
    ui8_t i_ibm_idx;     /* If .i_bltin: a_ignore_bltin_map[] idx */
    ui8_t i__dummy[5];
 };
@@ -90,7 +90,7 @@ static struct n_ignore *a_ignore_bltin[n__IGNORE_MAX + 1];
 /* Almost everyone uses `ignore'/`retain', put _TYPE in BSS */
 static struct n_ignore a_ignore_type;
 
-/* Return real self, which is xself unless that is one of the builtin specials,
+/* Return real self, which is xself unless that is one of the built-in specials,
  * in which case NULL is returned if nonexistent and docreate is false.
  * The other statics assume self has been resolved (unless noted) */
 static struct n_ignore *a_ignore_resolve_self(struct n_ignore *xself,
@@ -107,7 +107,7 @@ static bool_t a_ignore_lookup(struct n_ignore const *self, bool_t retain,
 /* Delete all retain( else ignor)ed members */
 static void a_ignore_del_allof(struct n_ignore *ip, bool_t retain);
 
-/* Try to map a string to one of the builtin types */
+/* Try to map a string to one of the built-in types */
 static struct a_ignore_bltin_map const *a_ignore_resolve_bltin(char const *cp);
 
 /* Logic behind `headerpick T T' (a.k.a. `retain'+) */
