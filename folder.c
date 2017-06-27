@@ -194,7 +194,7 @@ a_folder_info(void){
       fprintf(n_stdout, _(" %d moved"), moved);
    if (hidden > 0)
       fprintf(n_stdout, _(" %d hidden"), hidden);
-   else if (mb.mb_perm == 0)
+   if (mb.mb_perm == 0)
       fprintf(n_stdout, _(" [Read-only]"));
 
 jleave:
