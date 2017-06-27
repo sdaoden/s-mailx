@@ -561,17 +561,17 @@ jfree:
 static void
 _maildir_move(struct n_timespec const *tsp, struct message *m)
 {
-   char *fn, *new;
+   char *fn, *newfn;
    NYD_ENTER;
 
    fn = mkname(tsp, m->m_flag, m->m_maildir_file + 4);
-   new = savecat("cur/", fn);
-   if (!strcmp(m->m_maildir_file, new))
+   newfn = savecat("cur/", fn);
+   if (!strcmp(m->m_maildir_file, newfn))
       goto jleave;
-   if (link(m->m_maildir_file, new) == -1) {
+   if (link(m->m_maildir_file, newfn) == -1) {
       n_err(_("Cannot link %s to %s: message %lu not touched\n"),
          n_shexp_quote_cp(savecatsep(mailname, '/', m->m_maildir_file), FAL0),
-         n_shexp_quote_cp(savecatsep(mailname, '/', new), FAL0),
+         n_shexp_quote_cp(savecatsep(mailname, '/', newfn), FAL0),
          (ul_i)PTR2SIZE(m - message + 1));
       goto jleave;
    }

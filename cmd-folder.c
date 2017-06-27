@@ -235,7 +235,7 @@ jleave:
 FL int
 c_rename(void *v)
 {
-   char **args = v, *old, *new;
+   char **args = v, *oldn, *newn;
    enum protocol oldp;
    int ec;
    NYD_ENTER;
@@ -247,18 +247,18 @@ c_rename(void *v)
       goto jleave;
    }
 
-   if ((old = fexpand(args[0], FEXP_FULL)) == NULL)
+   if ((oldn = fexpand(args[0], FEXP_FULL)) == NULL)
       goto jleave;
-   oldp = which_protocol(old, TRU1, FAL0, NULL);
-   if ((new = fexpand(args[1], FEXP_FULL)) == NULL)
+   oldp = which_protocol(oldn, TRU1, FAL0, NULL);
+   if ((newn = fexpand(args[1], FEXP_FULL)) == NULL)
       goto jleave;
-   if(oldp != which_protocol(new, TRU1, FAL0, NULL)) {
+   if(oldp != which_protocol(newn, TRU1, FAL0, NULL)) {
       n_err(_("Can only rename folders of same type\n"));
       goto jleave;
    }
-   if (!strcmp(old, mailname) || !strcmp(new, mailname)) {
+   if (!strcmp(oldn, mailname) || !strcmp(newn, mailname)) {
       n_err(_("Cannot rename current mailbox %s\n"),
-         n_shexp_quote_cp(old, FAL0));
+         n_shexp_quote_cp(oldn, FAL0));
       goto jleave;
    }
 
@@ -268,28 +268,28 @@ c_rename(void *v)
       goto jnopop3;
    switch (oldp) {
    case PROTO_FILE:
-      if (link(old, new) == -1) {
+      if (link(oldn, newn) == -1) {
          switch (n_err_no) {
          case n_ERR_ACCES:
          case n_ERR_EXIST:
          case n_ERR_NAMETOOLONG:
          case n_ERR_NOSPC:
          case n_ERR_XDEV:
-            n_perr(new, 0);
+            n_perr(newn, 0);
             break;
          default:
-            n_perr(old, 0);
+            n_perr(oldn, 0);
             break;
          }
          ec |= 1;
-      } else if (unlink(old) == -1) {
-         n_perr(old, 0);
+      } else if (unlink(oldn) == -1) {
+         n_perr(oldn, 0);
          ec |= 1;
       }
       break;
    case PROTO_MAILDIR:
-      if (rename(old, new) == -1) {
-         n_perr(old, 0);
+      if (rename(oldn, newn) == -1) {
+         n_perr(oldn, 0);
          ec |= 1;
       }
       break;
@@ -301,7 +301,7 @@ jnopop3:
    case PROTO_UNKNOWN:
    default:
       n_err(_("Unknown protocol in %s and %s; not renamed\n"),
-         n_shexp_quote_cp(old, FAL0), n_shexp_quote_cp(new, FAL0));
+         n_shexp_quote_cp(oldn, FAL0), n_shexp_quote_cp(newn, FAL0));
       ec |= 1;
       break;
    }
