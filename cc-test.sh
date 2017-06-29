@@ -62,26 +62,6 @@ SOURCE_DATE_EPOCH=844221007
 export LC_ALL LANG TZ SOURCE_DATE_EPOCH
 unset POSIXLY_CORRECT
 
-if [ -z "${UTF8_LOCALE}" ]; then
-   UTF8_LOCALE=
-   if command -v locale >/dev/null 2>&1; then
-      UTF8_LOCALE=`locale -a | { m=
-         while read n; do
-            if { echo ${n} | ${grep} -i 'utf-\{0,1\}8'; } >/dev/null 2>&1; then
-               m=${n}
-               if { echo ${n} | ${grep} -e POSIX -e en_EN -e en_US; }; then
-                  exit 0
-               fi
-            fi
-            m=${n}
-         done
-         echo ${m}
-      }`
-   fi
-fi
-
-ESTAT=0
-
 usage() {
    echo >&2 "Usage: ./cc-test.sh [--check-only] s-mailx-binary"
    exit 1
@@ -100,6 +80,43 @@ done
 RAWMAILX=${MAILX}
 MAILX="${MEMTESTER}${MAILX}"
 export RAWMAILX MAILX
+
+if [ -z "${UTF8_LOCALE}" ]; then
+   # Try ourselfs for nl_langinfo(CODESET) output first (requires a new version)
+   i=`LC_ALL=C.utf8 "${RAWMAILX}" ${ARGS} -X '
+      \define cset_test {
+         \if [ "${ttycharset}" @i=@ utf ]
+            \echo $LC_ALL
+            \xit 0
+         \end
+         \if [ "${#}" -gt 0 ]
+            \wysh set LC_ALL="${1}.utf8"
+            \shift
+            \eval xcall cset_test "${@}"
+         \end
+         \xit 1
+      }
+      \call cset_test POSIX en_EN en_US
+   '`
+   [ $? -eq 0 ] && UTF8_LOCALE=$i
+
+   if [ -z "${UTF8_LOCALE}" ] && command -v locale >/dev/null 2>&1; then
+      UTF8_LOCALE=`locale -a | { m=
+         while read n; do
+            if { echo ${n} | ${grep} -i 'utf-\{0,1\}8'; } >/dev/null 2>&1; then
+               m=${n}
+               if { echo ${n} | ${grep} -e POSIX -e en_EN -e en_US; }; then
+                  exit 0
+               fi
+            fi
+            m=${n}
+         done
+         echo ${m}
+      }`
+   fi
+fi
+
+ESTAT=0
 
 TRAP_EXIT_ADDONS=
 trap "${rm} -rf \"${BODY}\" \"${MBOX}\" \${TRAP_EXIT_ADDONS}" EXIT
