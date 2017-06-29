@@ -847,7 +847,8 @@ jrestart:
    if(gcp->gc_data.gdc_ifcond != NULL){
       n_cnd_if_stack_del(gcp->gc_data.gdc_ifcond);
       if(!(gcm & (a_GO_CLEANUP_ERROR | a_GO_CLEANUP_SIGINT)) &&
-            !(gcp->gc_flags & a_GO_FORCE_EOF) && a_go_xcall == NULL){
+            !(gcp->gc_flags & a_GO_FORCE_EOF) && a_go_xcall == NULL &&
+            !(n_psonce & n_PSO_EXIT_MASK)){
          n_err(_("Unmatched `if' at end of %s %s\n"),
             ((gcp->gc_flags & a_GO_MACRO
              ? (gcp->gc_flags & a_GO_MACRO_CMD ? _("command") : _("macro"))
