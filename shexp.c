@@ -1808,7 +1808,7 @@ jleave:
 }
 
 FL int
-c_shcodec(void *v){
+c_shcodec(void *vp){
    struct str in;
    struct n_string sou_b, *soup;
    si32_t nerrn;
@@ -1817,7 +1817,7 @@ c_shcodec(void *v){
    char const **argv, *varname, *act, *cp;
 
    soup = n_string_creat_auto(&sou_b);
-   argv = v;
+   argv = vp;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
 
    act = *argv;
@@ -1845,7 +1845,7 @@ c_shcodec(void *v){
          if(shs & n_SHEXP_STATE_ERR_MASK){
             soup = n_string_assign_cp(soup, cp);
             nerrn = n_ERR_CANCELED;
-            v = NULL;
+            vp = NULL;
             break;
          }
          if(shs & n_SHEXP_STATE_STOP)
@@ -1854,12 +1854,11 @@ c_shcodec(void *v){
    }else
       goto jesynopsis;
 
-   assert(cp != NULL);
    if(varname != NULL){
       cp = n_string_cp(soup);
       if(!n_var_vset(varname, (uintptr_t)cp)){
          nerrn = n_ERR_NOTSUP;
-         cp = NULL;
+         vp = NULL;
       }
    }else{
       struct str out;
@@ -1869,7 +1868,7 @@ c_shcodec(void *v){
       makeprint(&in, &out);
       if(fprintf(n_stdout, "%s\n", out.s) < 0){
          nerrn = n_err_no;
-         cp = NULL;
+         vp = NULL;
       }
       free(out.s);
    }
@@ -1877,11 +1876,11 @@ c_shcodec(void *v){
 jleave:
    n_pstate_err_no = nerrn;
    NYD_LEAVE;
-   return (cp != NULL ? 0 : 1);
+   return (vp != NULL ? 0 : 1);
 jesynopsis:
    n_err(_("Synopsis: shcodec: <[+]e[ncode]|d[ecode]> <rest-of-line>\n"));
    nerrn = n_ERR_INVAL;
-   cp = NULL;
+   vp = NULL;
    goto jleave;
 }
 

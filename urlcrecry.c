@@ -635,13 +635,13 @@ FL char *
 }
 
 FL int
-c_urlcodec(void *v){
+c_urlcodec(void *vp){
    bool_t ispath;
    size_t alen;
    char const **argv, *varname, *varres, *act, *cp;
    NYD_ENTER;
 
-   argv = v;
+   argv = vp;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
 
    act = *argv;
@@ -659,20 +659,19 @@ c_urlcodec(void *v){
 
    n_pstate_err_no = n_ERR_NONE;
 
-   if(is_ascncaseprefix(act, "encode", alen)){
-      if((varres = urlxenc(cp, ispath)) == NULL){
-         n_pstate_err_no = n_ERR_CANCELED;
-         varres = cp;
-      }
-   }else if(is_ascncaseprefix(act, "decode", alen)){
-      if((varres = urlxdec(cp)) == NULL){
-         n_pstate_err_no = n_ERR_CANCELED;
-         varres = cp;
-      }
-   }else
+   if(is_ascncaseprefix(act, "encode", alen))
+      varres = urlxenc(cp, ispath);
+   else if(is_ascncaseprefix(act, "decode", alen))
+      varres = urlxdec(cp);
+   else
       goto jesynopsis;
 
-   assert(cp != NULL);
+   if(varres == NULL){
+      n_pstate_err_no = n_ERR_CANCELED;
+      varres = cp;
+      vp = NULL;
+   }
+
    if(varname != NULL){
       if(!n_var_vset(varname, (uintptr_t)varres)){
          n_pstate_err_no = n_ERR_NOTSUP;
@@ -685,19 +684,19 @@ c_urlcodec(void *v){
       makeprint(&in, &out);
       if(fprintf(n_stdout, "%s\n", out.s) < 0){
          n_pstate_err_no = n_err_no;
-         cp = NULL;
+         vp = NULL;
       }
       free(out.s);
    }
 
 jleave:
    NYD_LEAVE;
-   return (cp != NULL ? 0 : 1);
+   return (vp != NULL ? 0 : 1);
 jesynopsis:
    n_err(_("Synopsis: urlcodec: "
       "<[path]e[ncode]|[path]d[ecode]> <rest-of-line>\n"));
    n_pstate_err_no = n_ERR_INVAL;
-   cp = NULL;
+   vp = NULL;
    goto jleave;
 }
 

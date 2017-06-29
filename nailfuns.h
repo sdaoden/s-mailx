@@ -1609,7 +1609,7 @@ FL struct name *n_alternates_remove(struct name *np, bool_t keep_single);
 FL bool_t n_is_myname(char const *name);
 
 /* `addrcodec' */
-FL int c_addrcodec(void *v);
+FL int c_addrcodec(void *vp);
 
 /* `(un)?commandalias'.
  * And whether a `commandalias' name exists, returning name or NULL, pointing
@@ -1923,7 +1923,7 @@ FL char *n_shexp_quote_cp(char const *cp, bool_t rndtrip);
 FL bool_t n_shexp_is_valid_varname(char const *name);
 
 /* `shcodec' */
-FL int c_shcodec(void *v);
+FL int c_shcodec(void *vp);
 
 /*
  * signal.c
@@ -2606,10 +2606,10 @@ FL char *      urlxdec(char const *cp n_MEMORY_DEBUG_ARGS);
 #endif
 
 /* `urlcodec' */
-FL int         c_urlcodec(void *v);
+FL int c_urlcodec(void *vp);
 
-FL int         c_urlencode(void *v); /* TODO obsolete*/
-FL int         c_urldecode(void *v); /* TODO obsolete */
+FL int c_urlencode(void *v); /* TODO obsolete*/
+FL int c_urldecode(void *v); /* TODO obsolete */
 
 /* Parse a RFC 6058 'mailto' URI to a single to: (TODO yes, for now hacky).
  * Return NULL or something that can be converted to a struct name */
