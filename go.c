@@ -807,7 +807,7 @@ jrestart:
    /* Cleanup non-crucial external stuff */
    n_COLOUR(
       if(gcp->gc_data.gdc_colour != NULL)
-         n_colour_stack_del(NULL);
+         n_colour_stack_del(&gcp->gc_data);
    )
 
    /* Work the actual context (according to cleanup mode) */
@@ -845,7 +845,7 @@ jrestart:
 
    /* Cleanup crucial external stuff */
    if(gcp->gc_data.gdc_ifcond != NULL){
-      n_cnd_if_stack_del(gcp->gc_data.gdc_ifcond);
+      n_cnd_if_stack_del(&gcp->gc_data);
       if(!(gcm & (a_GO_CLEANUP_ERROR | a_GO_CLEANUP_SIGINT)) &&
             !(gcp->gc_flags & a_GO_FORCE_EOF) && a_go_xcall == NULL &&
             !(n_psonce & n_PSO_EXIT_MASK)){

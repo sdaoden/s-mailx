@@ -602,15 +602,17 @@ n_cnd_if_isskip(void){
 }
 
 FL void
-n_cnd_if_stack_del(void *vp){
-   struct a_ccnd_if_node *cinp;
+n_cnd_if_stack_del(struct n_go_data_ctx *gdcp){
+   struct a_ccnd_if_node *vp, *cinp;
    NYD2_ENTER;
 
-   do{
-      cinp = vp;
+   vp = gdcp->gdc_ifcond;
+   gdcp->gdc_ifcond = NULL;
+
+   while((cinp = vp) != NULL){
       vp = cinp->cin_outer;
       free(cinp);
-   }while((cinp = vp) != NULL);
+   }
    NYD2_LEAVE;
 }
 

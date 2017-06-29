@@ -447,7 +447,7 @@ FL int c_endif(void *v);
 FL bool_t n_cnd_if_isskip(void);
 
 /* An execution context is teared down, and it finds to have an if stack */
-FL void n_cnd_if_stack_del(void *vp);
+FL void n_cnd_if_stack_del(struct n_go_data_ctx *gdcp);
 
 /*
  * cmd-folder.c
@@ -705,8 +705,8 @@ FL int c_colour(void *v);
 FL int c_uncolour(void *v);
 
 /* An execution context is teared down, and it finds to have a colour stack.
- * If NULL is passed, go for n_go_data->gdc_colour stuff */
-FL void n_colour_stack_del(void *vp);
+ * Signals are blocked */
+FL void n_colour_stack_del(struct n_go_data_ctx *gdcp);
 
 /* We want coloured output (in this salloc() cycle), pager_used is used to
  * test whether *colour-pager* is to be inspected, if fp is given, the reset

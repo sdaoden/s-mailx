@@ -800,15 +800,13 @@ c_uncolour(void *v){
 }
 
 FL void
-n_colour_stack_del(void *vp){
-   struct n_colour_env *cep;
+n_colour_stack_del(struct n_go_data_ctx *gdcp){
+   struct n_colour_env *vp, *cep;
    NYD_ENTER;
 
-   if(vp == NULL){
-      vp = n_go_data->gdc_colour;
-      n_go_data->gdc_colour = NULL;
-      n_go_data->gdc_colour_active = FAL0;
-   }
+   vp = gdcp->gdc_colour;
+   gdcp->gdc_colour = NULL;
+   gdcp->gdc_colour_active = FAL0;
 
    while((cep = vp) != NULL){
       vp = cep->ce_last;
