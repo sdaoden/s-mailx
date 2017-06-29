@@ -279,6 +279,9 @@ FL ssize_t n_attachment_list_print(struct attachment const *aplist, FILE *fp);
  * auxlily.c
  */
 
+/* setlocale(3), *ttycharset* etc. */
+FL void n_locale_init(void);
+
 /* Compute screen size */
 FL size_t n_screensize(void);
 

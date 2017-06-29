@@ -1588,6 +1588,9 @@ ok_v_fwdheading,
    ok_b_keep_content_length,
    ok_b_keepsave,
 
+   ok_v_LANG,                          /* {vip=1,env=1,notempty=1} */
+   ok_v_LC_ALL,                     /* {name=LC_ALL,vip=1,env=1,notempty=1} */
+   ok_v_LC_CTYPE,                   /* {name=LC_CTYPE,vip=1,env=1,notempty=1} */
    ok_v_LINES,                         /* {notempty=1,posnum=1,env=1} */
    ok_v_LISTER,                     /* {env=1,notempty=1,defval=VAL_LISTER} */
    ok_v_LOGNAME,                       /* {rdonly=1,import=1} */

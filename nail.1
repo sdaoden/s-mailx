@@ -544,6 +544,7 @@ via
 may be overwritten from within resource files,
 the command line setting will be reestablished after all resource files
 have been loaded in the order they have been given on the command line.
+(\*(ID In the future such a setting may be in frozen state during startup.)
 .
 .Mx
 .It Fl s Ar subject
@@ -1590,21 +1591,18 @@ mechanisms that are controlled by the
 .Ev LC_ALL ,
 or
 .Ev LANG ,
-in that order) locale setting
-.Pf ( Xr setlocale 3
-should give an overview): the \*(UA internal variable
+in that order; see there) environment variable, the internal variable
 .Va ttycharset
 will be set to the detected terminal character set accordingly,
-and will thus show up in the output of the commands
+and will thus show up in the output of commands like, e.g.,
 .Ic set
 and
 .Ic varshow .
 .
 .Pp
-However, a user supplied
+However, the user may give a value for
 .Va ttycharset
-value is not overwritten by this detection mechanism.
-I.e., it is actually possible to send mail in a completely
+during startup, so that it is possible to send mail in a completely
 .Dq faked
 locale environment, an option which can be used to generate and send,
 e.g., 8-bit UTF-8 input data in a pure 7-bit US-ASCII
@@ -1617,8 +1615,7 @@ of the system, which stays unaffected by
 .Va ttycharset .
 .
 .Pp
-If no character set conversion capabilities have been compiled into
-\*(UA
+If the \*(OPal character set conversion capabilities are not available
 .Pf ( Va features
 does not include the term
 .Ql +iconv ) ,
@@ -1636,7 +1633,7 @@ detection fails, since in that case it defaults to
 LATIN1 a.k.a. ISO-8859-1.
 .
 .Pp
-When reading messages, their text is converted into
+\*(OP When reading messages, their text is converted into
 .Va ttycharset
 as necessary in order to display them on the users terminal.
 Unprintable characters and invalid byte sequences are detected
@@ -5699,14 +5696,25 @@ Takes a message list and marks all messages as having been read.
 .Mx
 .Mx
 .It Ic set , unset
-(se, \*(NQ uns) The latter commands will delete all given variables,
+(se, \*(NQ uns) The latter command will delete all given variables,
 the former, when used without arguments, will show all variables which
-are currently known to \*(UA; a more verbose listing will be produced if
+are currently known to \*(UA; this will not automatically link-in
+.Sx ENVIRONMENT
+variables which are known to \*(UA even if they exist in the program
+environment: only explicit addressing of variables, e.g., via
+.Ic varshow ,
+using a variable in a
+.Ic if
+condition or a string passed to
+.Ic echo ,
+or via program-internal use cases will perform this task.
+A more verbose listing will be produced if
 either of
 .Va debug
 or
 .Va verbose
 are set.
+.
 .Pp
 Otherwise the given variables (and arguments) are set or adjusted.
 Arguments are of the form
@@ -5716,10 +5724,17 @@ Arguments are of the form
 or plain
 .Ql name
 if there is no value, i.e., a boolean variable.
-Quotation marks may be placed around any part of the assignment
-statement to quote blanks or tabs, e.g.,
+\*(ID In conjunction with the
+.Cm wysh
+command prefix
+.Sx "Shell-style argument quoting"
+can be used to quote arguments as necessary.
+\*(ID Otherwise quotation marks may be placed around any part of the
+assignment statement to quote blanks or tabs.
+.
 .Pp
-.Dl set indentprefix='->'
+.Dl wysh set indentprefix=' -> '
+.
 .Pp
 If an argument begins with
 .Ql no ,
@@ -5729,6 +5744,7 @@ the effect is the same as invoking the
 .Ic unset
 command with the remaining part of the variable
 .Pf ( Ql unset save ) .
+.
 .Pp
 Any
 .Ql name
@@ -10897,9 +10913,9 @@ The character set of the terminal \*(UA operates on,
 and the one and only supported character set that \*(UA can use if no
 character set conversion capabilities have been compiled into it,
 in which case it defaults to ISO-8859-1 unless it can deduce a value
-from the
+from the locale specified in the
 .Ev LC_CTYPE
-locale environment.
+environment variable (if supported, see there for more).
 It defaults to UTF-8 if conversion is available.
 Refer to the section
 .Sx "Character sets"
@@ -11072,13 +11088,17 @@ This variable is only used when it resides in the process environment.
 .Mx
 .Mx
 .Mx
-.Mx
-.Mx
-.It Ev LANG , LC_ALL , LC_COLLATE , LC_CTYPE , LC_MESSAGES
-See
+.It Ev LC_ALL , LC_CTYPE , LANG
+\*(OP The (names in lookup order of the)
 .Xr locale 7
-and
+(and / or see
+.Xr setlocale 3 )
+which indicates the used
 .Sx "Character sets" .
+Runtime changes trigger automatic updates of the entire locale system,
+updating and overwriting also a
+.Va ttycharset
+set by the user.
 .
 .Mx
 .It Ev LINES

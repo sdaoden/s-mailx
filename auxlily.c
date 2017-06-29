@@ -53,6 +53,13 @@
 # include <netdb.h>
 #endif
 
+#ifdef HAVE_NL_LANGINFO
+# include <langinfo.h>
+#endif
+#ifdef HAVE_SETLOCALE
+# include <locale.h>
+#endif
+
 #ifndef HAVE_POSIX_RANDOM
 union rand_state{
    struct rand_arc4{
@@ -296,6 +303,49 @@ a_aux_err_map_from_no(si32_t eno){
    }
    NYD2_LEAVE;
    return aemp;
+}
+
+FL void
+n_locale_init(void){
+   NYD2_ENTER;
+
+   n_psonce &= ~(n_PSO_UNICODE | n_PSO_ENC_MBSTATE);
+
+#ifndef HAVE_SETLOCALE
+   n_mb_cur_max = 1;
+#else
+   setlocale(LC_ALL, n_empty);
+   n_mb_cur_max = MB_CUR_MAX;
+# ifdef HAVE_NL_LANGINFO
+   /* C99 */{
+      char const *cp;
+
+      /* TODO *ttycharset* may be set several times during startup unless
+       * TODO we gain a mechanism that -S fixates a setting during startup,
+       * TODO effectively turning later adjustments (during startup) in noop */
+      if((cp = nl_langinfo(CODESET)) != NULL)
+         ok_vset(ttycharset, cp);
+   }
+# endif
+
+# ifdef HAVE_C90AMEND1
+   if(n_mb_cur_max > 1){
+#  ifdef HAVE_ALWAYS_UNICODE_LOCALE
+      n_psonce |= n_PSO_UNICODE;
+#  else
+      wchar_t wc;
+      if(mbtowc(&wc, "\303\266", 2) == 2 && wc == 0xF6 &&
+            mbtowc(&wc, "\342\202\254", 3) == 3 && wc == 0x20AC)
+         n_psonce |= n_PSO_UNICODE;
+      /* Reset possibly messed up state; luckily this also gives us an
+       * indication whether the encoding has locking shift state sequences */
+      if(mbtowc(&wc, NULL, n_mb_cur_max))
+         n_psonce |= n_PSO_ENC_MBSTATE;
+#  endif
+   }
+# endif
+#endif
+   NYD2_LEAVE;
 }
 
 FL size_t

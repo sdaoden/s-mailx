@@ -43,13 +43,6 @@
 
 #include <pwd.h>
 
-#ifdef HAVE_NL_LANGINFO
-# include <langinfo.h>
-#endif
-#ifdef HAVE_SETLOCALE
-# include <locale.h>
-#endif
-
 struct a_arg{
    struct a_arg *aa_next;
    char const *aa_file;
@@ -351,33 +344,7 @@ a_main_startup(void){
          n_psonce |= n_PSO_BIG_ENDIAN;
    }
 
-#ifndef HAVE_SETLOCALE
-   n_mb_cur_max = 1;
-#else
-   setlocale(LC_ALL, n_empty);
-   n_mb_cur_max = MB_CUR_MAX;
-# ifdef HAVE_NL_LANGINFO
-   if((cp = nl_langinfo(CODESET)) != NULL)
-      ok_vset(ttycharset, cp);
-# endif
-
-# ifdef HAVE_C90AMEND1
-   if(n_mb_cur_max > 1){
-#  ifdef HAVE_ALWAYS_UNICODE_LOCALE
-      n_psonce |= n_PSO_UNICODE;
-#  else
-      wchar_t wc;
-      if(mbtowc(&wc, "\303\266", 2) == 2 && wc == 0xF6 &&
-            mbtowc(&wc, "\342\202\254", 3) == 3 && wc == 0x20AC)
-         n_psonce |= n_PSO_UNICODE;
-      /* Reset possibly messed up state; luckily this also gives us an
-       * indication whether the encoding has locking shift state sequences */
-      if(mbtowc(&wc, NULL, n_mb_cur_max))
-         n_psonce |= n_PSO_ENC_MBSTATE;
-#  endif
-   }
-# endif
-#endif
+   n_locale_init();
 
 #ifdef HAVE_ICONV
    iconvd = (iconv_t)-1;

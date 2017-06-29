@@ -910,6 +910,13 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
          *x = '\0';
          n_PS_ROOT_BLOCK(ok_vset(ifs_ws, x_b));
       }  break;
+#ifdef HAVE_SETLOCALE
+      case ok_v_LANG:
+      case ok_v_LC_ALL:
+      case ok_v_LC_CTYPE:
+         n_locale_init();
+         break;
+#endif
       case ok_b_memdebug:
          n_poption |= n_PO_MEMDEBUG;
          break;
