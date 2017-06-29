@@ -486,8 +486,8 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
      DS(N_("Either [<show>] or <clear> the error message ring")) },
    { "eval", &c_eval, (G | M | X | EM | TWYSH), 1, MAC, NULL
      DS(N_("Construct command from :<arguments>:, reuse its $? and $!")) },
-   { "exit", &c_exit, (M | X | TWYSH), 0, 0, NULL
-     DS(N_("Immediately return to the shell without saving")) },
+   { "exit", &c_exit, (M | X | TWYSH), 0, 1, NULL
+     DS(N_("Immediately return [<status>] to the shell without saving")) },
 
    { "history",
 #ifdef HAVE_HISTORY
@@ -512,8 +512,8 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
       (M | TWYSH), 0, 1, NULL
      DS(N_("[<show>], <load> or <clear> the .netrc cache")) },
 
-   { "quit", &c_quit, TWYSH, 0, 0, NULL
-     DS(N_("Terminate session, saving messages as necessary")) },
+   { "quit", &c_quit, TWYSH, 0, 1, NULL
+     DS(N_("Exit session with [<status>], saving messages as necessary")) },
 
    { "read", &c_read, (G | M | X | EM | TWYSH), 1, MAC, NULL
      DS(N_("Read a line from standard input into <variable>(s)")) },
@@ -552,8 +552,8 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
    { "version", &c_version, (H | M | X | TWYSH), 0, 0, NULL
      DS(N_("Show the version and feature set of the program")) },
 
-   { "xit"/*POSIX, first!*/, &c_exit, (M | X | TWYSH), 0, 0, NULL
-     DS(N_("Immediately return to the shell without saving")) },
+   { "xit"/*POSIX, first!*/, &c_exit, (M | X | TWYSH), 0, 1, NULL
+     DS(N_("Immediately return [<status>] to the shell without saving")) },
    { "xcall", &c_xcall, (M | X | EM | TARG), 0, 0,
       n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_call)
      DS(N_("Replace currently executing macro with macro <name> [:<arg>:]")) },

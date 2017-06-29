@@ -4473,6 +4473,11 @@ any saving of messages in the
 .Sx "secondary mailbox"
 .Ev MBOX
 as well as a possibly tracked line editor history file.
+The optional status number argument will be passed through to
+.Xr exit 3 .
+\*(ID For now it can happen that the given status will be overwritten,
+later this will only occur if a later error needs to be reported onto an
+otherwise success indicating status.
 .
 .Mx
 .It Ic File
@@ -5427,6 +5432,11 @@ then the edit file is rewritten.
 A return to the shell is effected,
 unless the rewrite of edit file fails,
 in which case the user can escape with the exit command.
+The optional status number argument will be passed through to
+.Xr exit 3 .
+\*(ID For now it can happen that the given status will be overwritten,
+later this will only occur if a later error needs to be reported onto an
+otherwise success indicating status.
 .
 .Mx
 .It Ic read

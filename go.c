@@ -263,6 +263,8 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    } flags;
    NYD_ENTER;
 
+   n_exit_status = n_EXIT_OK;
+
    flags = a_NONE;
    rv = 1;
    nerrn = n_ERR_NONE;
@@ -1229,8 +1231,6 @@ n_go_main_loop(void){ /* FIXME */
                n_pstate |= odid;
             }
          }
-
-         n_exit_status = n_EXIT_OK;
       }
 
       /* Read a line of commands and handle end of file specially */
@@ -2035,11 +2035,17 @@ jerr:
 
 FL int
 c_exit(void *vp){
+   char const **argv;
    NYD_ENTER;
-   n_UNUSED(vp);
+
+   if(*(argv = vp) != NULL && (n_idec_si32_cp(&n_exit_status, *argv, 0, NULL) &
+            (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+         ) != n_IDEC_STATE_CONSUMED)
+      n_exit_status |= n_EXIT_ERR;
+
    if(n_pstate & n_PS_COMPOSE_FORKHOOK){ /* TODO sic */
       fflush(NULL);
-      _exit(0);
+      _exit(n_exit_status);
    }else if(n_pstate & n_PS_COMPOSE_MODE) /* XXX really.. */
       n_err(_("`exit' delayed until compose mode is left\n")); /* XXX ..log? */
    n_psonce |= n_PSO_XIT;
@@ -2049,11 +2055,17 @@ c_exit(void *vp){
 
 FL int
 c_quit(void *vp){
+   char const **argv;
    NYD_ENTER;
-   n_UNUSED(vp);
+
+   if(*(argv = vp) != NULL && (n_idec_si32_cp(&n_exit_status, *argv, 0, NULL) &
+            (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+         ) != n_IDEC_STATE_CONSUMED)
+      n_exit_status |= n_EXIT_ERR;
+
    if(n_pstate & n_PS_COMPOSE_FORKHOOK){ /* TODO sic */
       fflush(NULL);
-      _exit(0);
+      _exit(n_exit_status);
    }else if(n_pstate & n_PS_COMPOSE_MODE) /* XXX really.. */
       n_err(_("`exit' delayed until compose mode is left\n")); /* XXX ..log? */
    n_psonce |= n_PSO_QUIT;
