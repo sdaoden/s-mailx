@@ -54,9 +54,10 @@ static void a_folder_info(void);
 static bool_t
 _update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Object! */
 {
+   char const *foldp;
    char *mailp, *dispp;
-   size_t i, j;
-   bool_t rv = TRU1;
+   size_t i, j, foldlen;
+   bool_t rv;
    NYD_ENTER;
 
    /* Don't realpath(3) if it's only an update request */
@@ -80,35 +81,41 @@ jdocopy:
    dispp = displayname;
 
    /* Don't display an absolute path but "+FOLDER" if under *folder* */
-   /* C99 */{
-      char const *folderp;
-
-      if(*(folderp = n_folder_query()) != '\0'){
-         i = strlen(folderp);
-         if(!strncmp(folderp, mailp, i)){
-            mailp += i;
-            *dispp++ = '+';
-         }
-      }
-   }
+   if(*(foldp = n_folder_query()) != '\0'){
+      foldlen = strlen(foldp);
+      if(strncmp(foldp, mailp, foldlen))
+         foldlen = 0;
+   }else
+      foldlen = 0;
 
    /* We want to see the name of the folder .. on the screen */
    i = strlen(mailp);
-   if (i < sizeof(displayname) -1)
-      memcpy(dispp, mailp, i +1);
-   else {
-      rv = FAL0;
+   if(i < sizeof(displayname) - 3 -1){
+      if(foldlen > 0){
+         *dispp++ = '+';
+         *dispp++ = '[';
+         memcpy(dispp, mailp, foldlen);
+         dispp += foldlen;
+         mailp += foldlen;
+         *dispp++ = ']';
+         memcpy(dispp, mailp, i -= foldlen);
+         dispp[i] = '\0';
+      }else
+         memcpy(dispp, mailp, i +1);
+      rv = TRU1;
+   }else{
       /* Avoid disrupting multibyte sequences (if possible) */
 #ifndef HAVE_C90AMEND1
-      j = sizeof(displayname) / 3 - 1;
+      j = sizeof(displayname) / 3 - 3;
       i -= sizeof(displayname) - (1/* + */ + 3) - j;
 #else
       j = field_detect_clip(sizeof(displayname) / 3, mailp, i);
       i = j + __narrow_suffix(mailp + j, i - j,
          sizeof(displayname) - (1/* + */ + 3 + 1) - j);
 #endif
-      snprintf(dispp, sizeof(displayname), "%.*s...%s",
-         (int)j, mailp, mailp + i);
+      snprintf(dispp, sizeof(displayname), "%s%.*s...%s",
+         (foldlen > 0 ? "[+]" : ""), (int)j, mailp, mailp + i);
+      rv = FAL0;
    }
 
    n_PS_ROOT_BLOCK((ok_vset(mailbox_resolved, mailname),

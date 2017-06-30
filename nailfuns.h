@@ -2144,7 +2144,7 @@ FL char *      n_strsep(char **iolist, char sep, bool_t ignore_empty);
 FL void        i_strcpy(char *dest, char const *src, size_t size);
 
 /* Is *as1* a valid prefix of *as2*? */
-FL int         is_prefix(char const *as1, char const *as2);
+FL bool_t is_prefix(char const *as1, char const *as2);
 
 /* Reverse solidus quote (" and \) v'alue, and return salloc()ed result */
 FL char *      string_quote(char const *v);

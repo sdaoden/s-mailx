@@ -232,7 +232,7 @@ i_strcpy(char *dest, char const *src, size_t size)
    NYD2_LEAVE;
 }
 
-FL int
+FL bool_t
 is_prefix(char const *as1, char const *as2) /* TODO arg order */
 {
    char c;
