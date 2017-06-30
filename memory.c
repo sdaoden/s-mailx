@@ -244,9 +244,9 @@ n_CTA(n_MEMORY_POOL_TYPE_SIZEOF >= sizeof(struct a_memory_ars_ctx),
 
 struct a_memory_ars_buffer{
    struct a_memory_ars_buffer *mab_last;
-   char *mab_bot;    /* For _autorec_fixate().  Only used for the global _ctx */
+   char *mab_bot;    /* For _autorec_fixate(): keep startup memory lingering */
    char *mab_relax;  /* If !NULL, used by _relax_unroll() instead of .mab_bot */
-   char *mab_caster; /* Point of casting memory, NULL if full */
+   char *mab_caster; /* Point of casting off memory */
    char mab_buf[n_MEMORY_AUTOREC_SIZE - (4 * sizeof(void*))];
 };
 n_CTA(sizeof(struct a_memory_ars_buffer) == n_MEMORY_AUTOREC_SIZE,

@@ -3886,6 +3886,7 @@ n_tty_signal(int sig){
       break;
 # endif
    default:
+      n_COLOUR( n_colour_env_gut(); ) /* TODO NO SIMPLE SUSPENSION POSSIBLE.. */
       a_tty_term_mode(FAL0);
       n_TERMCAP_SUSPEND(TRU1);
       a_tty_sigs_down();
@@ -3897,6 +3898,8 @@ n_tty_signal(int sig){
       /* When we come here we'll continue editing, so reestablish */
       sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
 
+      /* TODO THEREFORE NEED TO _GUT() .. _CREATE() ENTIRE ENVS!! */
+      n_COLOUR( n_colour_env_create(n_COLOUR_CTX_MLE, n_tty_fp, FAL0); )
       a_tty_sigs_up();
       n_TERMCAP_RESUME(TRU1);
       a_tty_term_mode(TRU1);
@@ -4015,12 +4018,12 @@ FL int
    n_TERMCAP_RESUME(FAL0);
    a_tty_term_mode(TRU1);
    nn = a_tty_readline(&tl, n, histok_or_null n_MEMORY_DEBUG_ARGSCALL);
+   n_COLOUR( n_colour_env_gut(); )
    a_tty_term_mode(FAL0);
    n_TERMCAP_SUSPEND(FAL0);
    a_tty_sigs_down();
    a_tty.tg_line = NULL;
 
-   n_COLOUR( n_colour_env_gut(); )
    NYD_LEAVE;
    return (int)nn;
 }

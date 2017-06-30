@@ -2,7 +2,8 @@
  *@ `(un)?colour' commands, and anything working with it.
  *@ TODO n_colour_env should be objects, n_COLOUR_IS_ACTIVE() should take
  *@ TODO such an object!  We still should work together with n_go_data,
- *@ TODO but only for cleanup purposes.  No stack, that is.
+ *@ TODO but only for cleanup purposes.  No stack at all, that is to say!
+ *@ TODO (Note we yet use autorec memory, so with JUMPS this needs care!)
  *
  * Copyright (c) 2014 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  *
