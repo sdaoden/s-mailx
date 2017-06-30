@@ -61,17 +61,19 @@ _update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Object! */
    NYD_ENTER;
 
    /* Don't realpath(3) if it's only an update request */
-   if (name != NULL) {
+   if(name != NULL){
 #ifdef HAVE_REALPATH
-      enum protocol p = which_protocol(name, TRU1, TRU1, &name);
+      char const *adjname;
+      enum protocol p = which_protocol(name, TRU1, TRU1, &adjname);
 
-      if (p == PROTO_FILE || p == PROTO_MAILDIR) {
+      if(p == PROTO_FILE || p == PROTO_MAILDIR){
+         name = adjname;
          if (realpath(name, mailname) == NULL && n_err_no != n_ERR_NOENT) {
             n_err(_("Can't canonicalize %s\n"), n_shexp_quote_cp(name, FAL0));
             rv = FAL0;
             goto jdocopy;
          }
-      } else
+      }else
 jdocopy:
 #endif
          n_strscpy(mailname, name, sizeof(mailname));
@@ -733,8 +735,9 @@ initbox(char const *name)
 FL char const *
 n_folder_query(void){
    struct n_string s, *sp = &s;
+   enum protocol proto;
    char *cp;
-   char const *rv;
+   char const *rv, *adjcp;
    bool_t err;
    NYD_ENTER;
 
@@ -764,8 +767,20 @@ n_folder_query(void){
       if((err = (cp = fexpand(cp, FEXP_NSPECIAL | FEXP_NFOLDER | FEXP_NSHELL)
             ) == NULL) || *cp == '\0')
          goto jset;
+      else{
+         size_t i;
 
-      switch(which_protocol(cp, FAL0, FAL0, NULL)){
+         for(i = strlen(cp);;){
+            if(--i == 0)
+               goto jset;
+            if(cp[i] != '/'){
+               cp[++i] = '\0';
+               break;
+            }
+         }
+      }
+
+      switch((proto = which_protocol(cp, FAL0, FAL0, &adjcp))){
       case PROTO_POP3:
          n_err(_("*folder* can't be set to a flat, read-only POP3 account\n"));
          err = TRU1;
@@ -776,7 +791,7 @@ n_folder_query(void){
       }
 
       /* Prefix HOME as necessary */
-      if(*cp != '/'){ /* XXX path_is_absolute() */
+      if(*adjcp != '/'){ /* XXX path_is_absolute() */
          size_t l1, l2;
          char const *home;
 
@@ -785,6 +800,13 @@ n_folder_query(void){
          l2 = strlen(cp);
 
          sp = n_string_reserve(sp, l1 + 1 + l2 +1);
+         if(cp != adjcp){
+            size_t i;
+
+            sp = n_string_push_buf(sp, cp, i = PTR2SIZE(adjcp - cp));
+            cp += i;
+            l2 -= i;
+         }
          sp = n_string_push_buf(sp, home, l1);
          sp = n_string_push_c(sp, '/');
          sp = n_string_push_buf(sp, cp, l2);
