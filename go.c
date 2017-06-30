@@ -1998,8 +1998,12 @@ c_xcall(void *vp){
    if((gcp = a_go_ctx)->gc_flags & a_GO_MACRO_CMD)
       gcp = gcp->gc_outer;
    if((gcp->gc_flags & (a_GO_MACRO | a_GO_MACRO_X_OPTION | a_GO_MACRO_CMD)
-         ) != a_GO_MACRO)
-      goto jerr;
+         ) != a_GO_MACRO){
+      if(n_poption & n_PO_D_V_VV)
+         n_err(_("`xcall': can only be used inside a macro, using `call'\n"));
+      rv = c_call(vp);
+      goto jleave;
+   }
 
    /* Try to roll up the stack as much as possible.
     * See a_GO_XCALL_LOOP flag description for more */
@@ -2027,11 +2031,6 @@ c_xcall(void *vp){
 jleave:
    NYD2_LEAVE;
    return rv;
-jerr:
-   n_err(_("`xcall': can only be used inside a macro\n"));
-   n_pstate_err_no = n_ERR_INVAL;
-   rv = 1;
-   goto jleave;
 }
 
 FL int

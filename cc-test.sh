@@ -1860,7 +1860,7 @@ t_behave_xcall() {
 	echo ?=$? !=$^ERRNAME
 	__EOT
 
-   check behave:xcall-1 0 "${MBOX}" '728629184 19115'
+   check behave:xcall-1 0 "${MBOX}" '2401702082 23801'
 
    ##
 

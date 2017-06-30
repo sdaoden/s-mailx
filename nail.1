@@ -6517,9 +6517,7 @@ reasons).
 .
 .Mx
 .It Ic xcall
-\*(NQ This command works only inside of a
-.Ic call Ns
-ed macro: the sole difference to
+\*(NQ The sole difference to
 .Ic call
 is that the new macro is executed in place of the current one, which
 will not regain control; all resources of the current macro will be
@@ -6528,6 +6526,10 @@ Note this implies that
 .Ic localopts
 may become cleaned up if the teared down macro context is the outermost
 level of the cleanup stack.
+If this command is not used from within a
+.Ic call Ns
+ed macro it will silently be (a more expensive variant of)
+.Ic call .
 .
 .Mx
 .It Ic xit
