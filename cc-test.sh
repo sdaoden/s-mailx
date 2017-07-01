@@ -376,9 +376,9 @@ t_behave_X_opt_input_command_stack() {
    call mac2
    echo 4
    undefine *
-   ' > "${MBOX}" 2>/dev/null
+   ' > "${MBOX}"
 
-   check behave:x_opt_input_command_stack 0 "${MBOX}" '1391275936 378'
+   check behave:x_opt_input_command_stack 0 "${MBOX}" '1786542668 416'
 
    t_epilog
 }
@@ -533,11 +533,11 @@ t_behave_input_inject_semicolon_seq() {
 	define mymac {
 		echon this_is_mymac;call mydeepmac;echon ';';
 	}
-	echon one';';~mymac;echon two";";call mymac;echo three$';';
+	echon one';';call mymac;echon two";";call mymac;echo three$';';
 	define mymac {
 		echon this_is_mymac;call mydeepmac;echon ,TOO'!;';
 	}
-	echon one';';~mymac;echon two";";call mymac;echo three$';';
+	echon one';';call mymac;echon two";";call mymac;echo three$';';
 	__EOT
 
    check behave:input_inject_semicolon_seq 0 "${MBOX}" '512117110 140'

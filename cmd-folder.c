@@ -140,13 +140,11 @@ c_noop(void *v)
    n_UNUSED(v);
 
    switch (mb.mb_type) {
-   case MB_POP3:
 #ifdef HAVE_POP3
+   case MB_POP3:
       pop3_noop();
-#else
-      rv = c_cmdnotsupp(NULL);
-#endif
       break;
+#endif
    default:
       break;
    }

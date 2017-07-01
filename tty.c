@@ -120,7 +120,7 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
    safe_signal(SIGHUP, &a_tty__acthdl);
 
    if (n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, prompt,
-         &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL) >= 0)
+         &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL,NULL) >= 0)
       rv = (boolify(termios_state.ts_linebuf, UIZ_MAX,
             noninteract_default) > 0);
 jrestore:
@@ -155,7 +155,7 @@ getuser(char const * volatile query) /* TODO v15-compat obsolete */
    safe_signal(SIGHUP, &a_tty__acthdl);
 
    if (n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, query,
-         &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL) >= 0)
+         &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL,NULL) >= 0)
       user = termios_state.ts_linebuf;
 jrestore:
    termios_state_reset();
@@ -784,15 +784,14 @@ static struct a_tty_bind_builtin_tuple const a_tty_bind_base_tuples[] = {
 # endif /* HAVE_KEY_BINDINGS */
 };
 
-/* The table for the "default" context.
- * We don't want commands to end up in history, so place an initial space */
+/* The table for the "default" context */
 static struct a_tty_bind_builtin_tuple const a_tty_bind_default_tuples[] = {
 # undef a_X
 # define a_X(K,S) \
    {TRU1, K, 0, {'\0', (char)a_TTY_BIND_FUN_REDUCE(a_TTY_BIND_FUN_ ## S),}},
 
 # undef a_X
-# define a_X(K,S) {TRU1, K, 0, {" " S}},
+# define a_X(K,S) {TRU1, K, 0, {S}},
 
    a_X('O', "dt")
 
@@ -803,7 +802,7 @@ static struct a_tty_bind_builtin_tuple const a_tty_bind_default_tuples[] = {
    /* The remains only if we have `bind' functionality available */
 # ifdef HAVE_KEY_BINDINGS
 #  undef a_X
-#  define a_X(Q,S) {FAL0, '\0', n_TERMCAP_QUERY_ ## Q, {" " S}},
+#  define a_X(Q,S) {FAL0, '\0', n_TERMCAP_QUERY_ ## Q, {S}},
 
    a_X(key_shome, "z0") a_X(key_send, "z$")
    a_X(xkey_sup, "z0") a_X(xkey_sdown, "z$")
@@ -882,8 +881,8 @@ static enum a_tty_fun_status a_tty_fun(struct a_tty_line *tlp,
                               enum a_tty_bind_flags tbf, size_t *len);
 
 /* Readline core */
-static ssize_t a_tty_readline(struct a_tty_line *tlp, size_t len
-                  n_MEMORY_DEBUG_ARGS);
+static ssize_t a_tty_readline(struct a_tty_line *tlp, size_t len,
+                  bool_t *histok_or_null n_MEMORY_DEBUG_ARGS);
 
 # ifdef HAVE_KEY_BINDINGS
 /* Find context or -1 */
@@ -1982,7 +1981,7 @@ a_tty_kht(struct a_tty_line *tlp){
 
             exp = sub;
             shs = n_shexp_parse_token((n_SHEXP_PARSE_DRYRUN |
-                  n_SHEXP_PARSE_TRIMSPACE | n_SHEXP_PARSE_IGNORE_EMPTY |
+                  n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_IGNORE_EMPTY |
                   n_SHEXP_PARSE_QUOTE_AUTO_CLOSE), NULL, &sub, NULL);
             if(sub.l != 0){
                size_t x;
@@ -1998,7 +1997,7 @@ a_tty_kht(struct a_tty_line *tlp){
                   (int)exp.l, exp.s);
                goto jnope;
             }
-            n_shexp_parse_token((n_SHEXP_PARSE_TRIMSPACE |
+            n_shexp_parse_token((n_SHEXP_PARSE_TRIM_SPACE |
                   n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_QUOTE_AUTO_CLOSE),
                   shoup, &exp, NULL);
             break;
@@ -2594,7 +2593,8 @@ jreset:
 }
 
 static ssize_t
-a_tty_readline(struct a_tty_line *tlp, size_t len n_MEMORY_DEBUG_ARGS){
+a_tty_readline(struct a_tty_line *tlp, size_t len, bool_t *histok_or_null
+      n_MEMORY_DEBUG_ARGS){
    /* We want to save code, yet we may have to incorporate a lines'
     * default content and / or default input to switch back to after some
     * history movement; let "len > 0" mean "have to display some data
@@ -2998,7 +2998,9 @@ jinject_input:{
    }
    memcpy(*tlp->tl_x_buf, cbufp, i);
    rele_all_sigs(); /* XXX v15 drop */
-   rv = (ssize_t)i -1;
+   if(histok_or_null != NULL)
+      *histok_or_null = FAL0;
+   rv = (ssize_t)--i;
    }
    goto jleave;
 }
@@ -3119,9 +3121,9 @@ a_tty_bind_parse(bool_t isbindcmd, struct a_tty_bind_parse_ctx *tbpcp){
       enum n_shexp_state shs;
 
       shin_save = shin;
-      shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC | n_SHEXP_PARSE_TRIMSPACE |
-            n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_IFS_IS_COMMA),
-            shoup, &shin, NULL);
+      shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC |
+            n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_IGNORE_EMPTY |
+            n_SHEXP_PARSE_IFS_IS_COMMA), shoup, &shin, NULL);
       if(shs & n_SHEXP_STATE_ERR_UNICODE){
          f |= a_TTY_BIND_DEFUNCT;
          if(isbindcmd && (n_poption & n_PO_D_V))
@@ -3899,7 +3901,8 @@ n_tty_signal(int sig){
 
 FL int
 (n_tty_readline)(enum n_go_input_flags gif, char const *prompt,
-      char **linebuf, size_t *linesize, size_t n n_MEMORY_DEBUG_ARGS){
+      char **linebuf, size_t *linesize, size_t n, bool_t *histok_or_null
+      n_MEMORY_DEBUG_ARGS){
    struct a_tty_line tl;
    struct n_string xprompt;
 # ifdef HAVE_COLOUR
@@ -4005,7 +4008,7 @@ FL int
    a_tty_sigs_up();
    n_TERMCAP_RESUME(FAL0);
    a_tty_term_mode(TRU1);
-   nn = a_tty_readline(&tl, n n_MEMORY_DEBUG_ARGSCALL);
+   nn = a_tty_readline(&tl, n, histok_or_null n_MEMORY_DEBUG_ARGSCALL);
    a_tty_term_mode(FAL0);
    n_TERMCAP_SUSPEND(FAL0);
    a_tty_sigs_down();
@@ -4028,7 +4031,7 @@ n_tty_addhist(char const *s, bool_t isgabby){
    n_UNUSED(isgabby);
 
 # ifdef HAVE_HISTORY
-   if(spacechar(*s) || *s == '\0' ||
+   if(*s == '\0' ||
          (!(n_psonce & n_PSO_LINE_EDITOR_INIT) && !(n_pstate & n_PS_ROOT)) ||
          a_tty.tg_hist_size_max == 0 ||
          ok_blook(line_editor_disable) ||
@@ -4198,35 +4201,20 @@ jentry:{
 # ifdef HAVE_KEY_BINDINGS
 FL int
 c_bind(void *v){
-   n_CMD_ARG_DESC_SUBCLASS_DEF(bind, 3, a_tty_bind_cad) { /* TODO cmd-tab.h */
-      {n_CMD_ARG_DESC_STRING, 0},
-      {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_OPTION |
-            n_CMD_ARG_DESC_HONOUR_STOP,
-         n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_LOG},
-      {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_OPTION | n_CMD_ARG_DESC_GREEDY |
-            n_CMD_ARG_DESC_HONOUR_STOP,
-         n_SHEXP_PARSE_IGNORE_EMPTY}
-   } n_CMD_ARG_DESC_SUBCLASS_DEF_END;
-   struct n_cmd_arg_ctx cac;
    struct a_tty_bind_ctx *tbcp;
    enum n_go_input_flags gif;
    bool_t aster, show;
    union {char const *cp; char *p; char c;} c;
+   struct n_cmd_arg_ctx *cacp;
    NYD_ENTER;
 
-   cac.cac_desc = n_CMD_ARG_DESC_SUBCLASS_CAST(&a_tty_bind_cad);
-   cac.cac_indat = v;
-   cac.cac_inlen = UIZ_MAX;
-   if(!n_cmd_arg_parse(&cac)){
-      v = NULL;
-      goto jleave;
-   }
+   cacp = v;
 
-   c.cp = cac.cac_arg->ca_arg.ca_str.s;
-   if(cac.cac_no == 1)
+   c.cp = cacp->cac_arg->ca_arg.ca_str.s;
+   if(cacp->cac_no == 1)
       show = TRU1;
    else
-      show = !asccasecmp(cac.cac_arg->ca_next->ca_arg.ca_str.s, "show");
+      show = !asccasecmp(cacp->cac_arg->ca_next->ca_arg.ca_str.s, "show");
    aster = FAL0;
 
    if((gif = a_tty_bind_ctx_find(c.cp)) == (enum n_go_input_flags)-1){
@@ -4325,15 +4313,15 @@ c_bind(void *v){
       struct n_string store;
 
       memset(&tbpc, 0, sizeof tbpc);
-      tbpc.tbpc_cmd = a_tty_bind_cad.cad_name;
-      tbpc.tbpc_in_seq = cac.cac_arg->ca_next->ca_arg.ca_str.s;
-      tbpc.tbpc_exp.s = n_string_cp(n_cmd_arg_join_greedy(&cac,
+      tbpc.tbpc_cmd = cacp->cac_desc->cad_name;
+      tbpc.tbpc_in_seq = cacp->cac_arg->ca_next->ca_arg.ca_str.s;
+      tbpc.tbpc_exp.s = n_string_cp(n_cmd_arg_join_greedy(cacp,
             n_string_creat_auto(&store)));
       tbpc.tbpc_exp.l = store.s_len;
       tbpc.tbpc_flags = gif;
       if(!a_tty_bind_create(&tbpc, TRU1))
          v = NULL;
-      n_string_gut(&store);
+      /*n_string_gut(&store);*/
    }
 jleave:
    NYD_LEAVE;
@@ -4342,28 +4330,16 @@ jleave:
 
 FL int
 c_unbind(void *v){
-   n_CMD_ARG_DESC_SUBCLASS_DEF(unbind, 2, a_tty_unbind_cad) {/* TODO cmd-tab.h*/
-      {n_CMD_ARG_DESC_STRING, 0},
-      {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_HONOUR_STOP,
-         n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_LOG}
-   } n_CMD_ARG_DESC_SUBCLASS_DEF_END;
    struct a_tty_bind_parse_ctx tbpc;
-   struct n_cmd_arg_ctx cac;
    struct a_tty_bind_ctx *tbcp;
    enum n_go_input_flags gif;
    bool_t aster;
    union {char const *cp; char *p;} c;
+   struct n_cmd_arg_ctx *cacp;
    NYD_ENTER;
 
-   cac.cac_desc = n_CMD_ARG_DESC_SUBCLASS_CAST(&a_tty_unbind_cad);
-   cac.cac_indat = v;
-   cac.cac_inlen = UIZ_MAX;
-   if(!n_cmd_arg_parse(&cac)){
-      v = NULL;
-      goto jleave;
-   }
-
-   c.cp = cac.cac_arg->ca_arg.ca_str.s;
+   cacp = v;
+   c.cp = cacp->cac_arg->ca_arg.ca_str.s;
    aster = FAL0;
 
    if((gif = a_tty_bind_ctx_find(c.cp)) == (enum n_go_input_flags)-1){
@@ -4375,7 +4351,7 @@ c_unbind(void *v){
       gif = 0;
    }
 
-   c.cp = cac.cac_arg->ca_next->ca_arg.ca_str.s;
+   c.cp = cacp->cac_arg->ca_next->ca_arg.ca_str.s;
 jredo:
    if(n_is_all_or_aster(c.cp)){
       while((tbcp = a_tty.tg_bind[gif]) != NULL){
@@ -4386,7 +4362,7 @@ jredo:
       }
    }else{
       memset(&tbpc, 0, sizeof tbpc);
-      tbpc.tbpc_cmd = a_tty_unbind_cad.cad_name;
+      tbpc.tbpc_cmd = cacp->cac_desc->cad_name;
       tbpc.tbpc_in_seq = c.cp;
       tbpc.tbpc_flags = gif;
 
@@ -4455,10 +4431,12 @@ n_tty_signal(int sig){
 
 FL int
 (n_tty_readline)(enum n_go_input_flags gif, char const *prompt,
-      char **linebuf, size_t *linesize, size_t n n_MEMORY_DEBUG_ARGS){
+      char **linebuf, size_t *linesize, size_t n, bool_t *histok_or_null
+      n_MEMORY_DEBUG_ARGS){
    struct n_string xprompt;
    int rv;
    NYD_ENTER;
+   n_UNUSED(histok_or_null);
 
    if(!(gif & n_GO_INPUT_PROMPT_NONE)){
       if(n_tty_create_prompt(n_string_creat_auto(&xprompt), prompt, gif) > 0){

@@ -327,7 +327,7 @@ makeprint(struct str const *in, struct str *out)
          } else if (n == 0)
             n = 1;
          inp += n;
-         if (!iswprint(wc) && wc != '\n' && wc != '\r' && wc != '\b' &&
+         if (!iswprint(wc) && wc != '\n' /*&& wc != '\r' && wc != '\b'*/ &&
                wc != '\t') {
             if ((wc & ~(wchar_t)037) == 0)
                wc = isuni ? 0x2400 | wc : '?';

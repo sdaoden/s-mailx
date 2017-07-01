@@ -288,12 +288,14 @@ _mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
       len = PTR2SIZE(typ - line);
 
    /* Then trim any trailing whitespace from line (including NL/CR) */
-   while (len > 0 && spacechar(line[len - 1]))
-      --len;
+   /* C99 */{
+      struct str work;
 
-   /* Isolate MIME type, trim any whitespace from it */
-   while (len > 0 && blankchar(*line))
-      ++line, --len;
+      work.s = n_UNCONST(line);
+      work.l = len;
+      line = n_str_trim(&work)->s;
+      len = work.l;
+   }
    typ = line;
 
    /* (But wait - is there a type marker?) */

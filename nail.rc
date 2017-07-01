@@ -2,7 +2,7 @@
 #@ /etc/s-nail.rc - configuration file for S-nail(1)
 #--MKRC-END--
 #@ The syntax of this file is interpreted as follows:
-#@ - A lines' leading whitespace is removed.
+#@ - Leading and trailing " \t\n" + *ifs* whitespace is removed.
 #@ - Empty lines are ignored.
 #@ - Any other line is a command line.  Such lines can be spread over
 #@   multiple lines if the newline character is "escaped" by placing

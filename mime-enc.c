@@ -231,23 +231,11 @@ jleave:
 
 static size_t
 a_me_b64_decode_prepare(struct str *work, struct str const *in){
-   char *cp;
    size_t cp_len;
    NYD2_ENTER;
 
-   cp = in->s;
-   cp_len = in->l;
-
-   while(cp_len > 0 && spacechar(*cp))
-      ++cp, --cp_len;
-   work->s = cp;
-
-   for(cp += cp_len; cp_len > 0; --cp_len){
-      --cp;
-      if(!spacechar(*cp))
-         break;
-   }
-   work->l = cp_len;
+   *work = *in;
+   cp_len = n_str_trim(work)->l;
 
    if(cp_len > 16){
       /* n_ERR_OVERFLOW */

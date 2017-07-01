@@ -1,5 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Name lists, alternates and groups: aliases, mailing lists, shortcuts.
+ *@ TODO Dynamic hashmaps; names and (these) groups have _nothing_ in common!
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -41,12 +42,14 @@
 
 enum group_type {
    /* Main types (bits not values for easier testing only) */
-   GT_ALIAS = 1u<<0,
-   GT_MLIST = 1u<<1,
-   GT_SHORTCUT = 1u<<2,
-   GT_CHARSETALIAS = 1u<<3,
-   GT_FILETYPE = 1u<< 4,
-   GT_MASK = GT_ALIAS | GT_MLIST | GT_SHORTCUT | GT_CHARSETALIAS | GT_FILETYPE,
+   GT_COMMANDALIAS = 1u<<0,
+   GT_ALIAS = 1u<<1,
+   GT_MLIST = 1u<<2,
+   GT_SHORTCUT = 1u<<3,
+   GT_CHARSETALIAS = 1u<<4,
+   GT_FILETYPE = 1u<<5,
+   GT_MASK = GT_COMMANDALIAS | GT_ALIAS | GT_MLIST | GT_SHORTCUT |
+         GT_CHARSETALIAS | GT_FILETYPE,
 
    /* Subtype bits and flags */
    GT_SUBSCRIBE = 1u<<6,
@@ -94,6 +97,10 @@ struct grp_regex {
 };
 #endif
 
+struct a_nag_cmd_alias{
+   struct str ca_expand;
+};
+
 struct a_nag_file_type{
    struct str nft_load;
    struct str nft_save;
@@ -117,6 +124,9 @@ static struct n_file_type const a_nag_OBSOLETE_xz = { /* TODO v15 compat */
 
 /* List of alternate names of user */
 struct n_strlist *a_nag_altnames;
+
+/* `commandalias' */
+static struct group     *_commandalias_heads[HSHSIZE]; /* TODO dynamic hash */
 
 /* `alias' */
 static struct group     *_alias_heads[HSHSIZE]; /* TODO dynamic hash */
@@ -439,12 +449,13 @@ _group_lookup(enum group_type gt, struct group_lookup *glp, char const *id)
    gt &= GT_MASK;
    lgp = NULL;
    glp->gl_htable =
-          ( gt & GT_ALIAS ? _alias_heads
+          ( gt & GT_COMMANDALIAS ? _commandalias_heads
+         : (gt & GT_ALIAS ? _alias_heads
          : (gt & GT_MLIST ? _mlist_heads
          : (gt & GT_SHORTCUT ? _shortcut_heads
          : (gt & GT_CHARSETALIAS ? _charsetalias_heads
          : (/*gt & GT_FILETYPE ?*/ _filetype_heads
-         )))));
+         ))))));
    gp = *(glp->gl_slot = &glp->gl_htable[n_torek_hash(id) % HSHSIZE]);
 
    for (; gp != NULL; lgp = gp, gp = gp->g_next)
@@ -481,12 +492,15 @@ _group_go_first(enum group_type gt, struct group_lookup *glp)
    size_t i;
    NYD_ENTER;
 
-   for (glp->gl_htable = gpa = (gt & GT_ALIAS ? _alias_heads
+   for (glp->gl_htable = gpa = (
+               gt & GT_COMMANDALIAS ? _commandalias_heads
+            : (gt & GT_ALIAS ? _alias_heads
             : (gt & GT_MLIST ? _mlist_heads
             : (gt & GT_SHORTCUT ? _shortcut_heads
             : (gt & GT_CHARSETALIAS ? _charsetalias_heads
             : (gt & GT_FILETYPE ? _filetype_heads
-            : NULL))))), i = 0;
+            : NULL)))))
+            ), i = 0;
          i < HSHSIZE; ++gpa, ++i)
       if ((gp = *gpa) != NULL) {
          glp->gl_slot = gpa;
@@ -537,6 +551,9 @@ _group_fetch(enum group_type gt, char const *id, size_t addsz)
 
    i = n_ALIGN(n_VSTRUCT_SIZEOF(struct group, g_id) + l);
    switch (gt & GT_MASK) {
+   case GT_COMMANDALIAS:
+      addsz += sizeof(struct a_nag_cmd_alias);
+      break;
    case GT_ALIAS:
       addsz += sizeof(struct grp_names_head);
       break;
@@ -690,12 +707,13 @@ _group_print_all(enum group_type gt)
    NYD_ENTER;
 
    xgt = gt & GT_PRINT_MASK;
-   gpa = (xgt & GT_ALIAS ? _alias_heads
+   gpa = (  xgt & GT_COMMANDALIAS ? _commandalias_heads
+         : (xgt & GT_ALIAS ? _alias_heads
          : (xgt & GT_MLIST ? _mlist_heads
          : (xgt & GT_SHORTCUT ? _shortcut_heads
          : (xgt & GT_CHARSETALIAS ? _charsetalias_heads
          : (xgt & GT_FILETYPE ? _filetype_heads
-         : NULL)))));
+         : NULL))))));
 
    for (h = 0, i = 1; h < HSHSIZE; ++h)
       for (gp = gpa[h]; gp != NULL; gp = gp->g_next)
@@ -760,7 +778,14 @@ _group_print(struct group const *gp, FILE *fo)
 
    rv = 1;
 
-   if (gp->g_type & GT_ALIAS) {
+   if(gp->g_type & GT_COMMANDALIAS){
+      struct a_nag_cmd_alias *ncap;
+
+      GP_TO_SUBCLASS(ncap, gp);
+      fprintf(fo, "commandalias %s %s\n",
+         n_shexp_quote_cp(gp->g_id, TRU1),
+         n_shexp_quote_cp(ncap->ca_expand.s, TRU1));
+   } else if (gp->g_type & GT_ALIAS) {
       struct grp_names_head *gnhp;
       struct grp_names *gnp;
 
@@ -1739,6 +1764,117 @@ jesynopsis:
    n_pstate_err_no = n_ERR_INVAL;
    vp = NULL;
    goto jleave;
+}
+
+FL int
+c_commandalias(void *vp){
+   struct group *gp;
+   char const **argv, *ccp;
+   int rv;
+   NYD_ENTER;
+
+   rv = 0;
+   argv = vp;
+
+   if((ccp = *argv) == NULL){
+      _group_print_all(GT_COMMANDALIAS);
+      goto jleave;
+   }
+
+   /* Verify the name is a valid one, and not a command modifier */
+   if(*ccp == '\0' || *n_cmd_isolate(ccp) != '\0' ||
+         !asccasecmp(ccp, "ignerr") || !asccasecmp(ccp, "wysh") ||
+         !asccasecmp(ccp, "vput")){
+      n_err(_("`commandalias': not a valid command name: %s\n"),
+         n_shexp_quote_cp(ccp, FAL0));
+      rv = 1;
+      goto jleave;
+   }
+
+   if(argv[1] == NULL){
+      if((gp = _group_find(GT_COMMANDALIAS, ccp)) != NULL)
+         _group_print(gp, n_stdout);
+      else{
+         n_err(_("No such commandalias: %s\n"), n_shexp_quote_cp(ccp, FAL0));
+         rv = 1;
+      }
+   }else{
+      /* Because one hardly ever redefines, anything is stored in one chunk */
+      char *cp;
+      size_t i, len;
+
+      /* Delete the old one, if any; don't get fooled to remove them all */
+      if(ccp[0] != '*' || ccp[1] != '\0')
+         _group_del(GT_COMMANDALIAS, ccp);
+
+      for(i = len = 0, ++argv; argv[i] != NULL; ++i)
+         len += strlen(argv[i]) + 1;
+      if(len == 0)
+         len = 1;
+
+      if((gp = _group_fetch(GT_COMMANDALIAS, ccp, len)) == NULL){
+         n_err(_("Failed to create storage for commandalias: %s\n"),
+            n_shexp_quote_cp(ccp, FAL0));
+         rv = 1;
+      }else{
+         struct a_nag_cmd_alias *ncap;
+
+         GP_TO_SUBCLASS(ncap, gp);
+         GP_TO_SUBCLASS(cp, gp);
+         cp += sizeof *ncap;
+         ncap->ca_expand.s = cp;
+         ncap->ca_expand.l = len - 1;
+
+         for(len = 0; (ccp = *argv++) != NULL;)
+            if((i = strlen(ccp)) > 0){
+               if(len++ != 0)
+                  *cp++ = ' ';
+               memcpy(cp, ccp, i);
+               cp += i;
+            }
+         *cp = '\0';
+      }
+   }
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
+c_uncommandalias(void *vp){
+   char **argv;
+   int rv;
+   NYD_ENTER;
+
+   rv = 0;
+   argv = vp;
+
+   do if(!_group_del(GT_COMMANDALIAS, *argv)){
+      n_err(_("No such `commandalias': %s\n"), n_shexp_quote_cp(*argv, FAL0));
+      rv = 1;
+   }while(*++argv != NULL);
+   NYD_LEAVE;
+   return rv;
+}
+
+FL char const *
+n_commandalias_exists(char const *name, struct str const **expansion_or_null){
+   struct group *gp;
+   NYD_ENTER;
+
+   if((gp = _group_find(GT_COMMANDALIAS, name)) != NULL){
+      name = gp->g_id;
+
+      if(expansion_or_null != NULL){
+         struct a_nag_cmd_alias *ncap;
+
+         GP_TO_SUBCLASS(ncap, gp);
+         *expansion_or_null = &ncap->ca_expand;
+      }
+   }else
+      name = NULL;
+   NYD_LEAVE;
+   return name;
 }
 
 FL bool_t

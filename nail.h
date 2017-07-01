@@ -712,6 +712,38 @@ enum expand_addr_check_mode {
    EACM_NONAME    = 1<<16
 };
 
+enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
+   * TODO i rather see the mechanism that is used in c_bind() extended and used
+   * TODO anywhere, i.e. n_cmd_arg_parse().
+   * TODO Note that we may NOT support arguments with strlen()>=UI32_MAX (?) */
+   n_CMD_ARG_TYPE_MSGLIST = 0,   /* Message list type */
+   n_CMD_ARG_TYPE_NDMLIST = 1,   /* Message list, no defaults */
+   n_CMD_ARG_TYPE_RAWDAT = 2,    /* The plain string in an argv[] */
+     n_CMD_ARG_TYPE_STRING = 3,  /* A pure string TODO obsolete */
+   n_CMD_ARG_TYPE_WYSH = 4,      /* getrawlist(), sh(1) compatible */
+      n_CMD_ARG_TYPE_RAWLIST = 5, /* getrawlist(), old style TODO obsolete */
+     n_CMD_ARG_TYPE_WYRA = 6,    /* _RAWLIST or _WYSH (with `wysh') TODO obs. */
+   n_CMD_ARG_TYPE_ARG = 7,       /* n_cmd_arg_desc/n_cmd_arg() new-style */
+   n_CMD_ARG_TYPE_MASK = 7,      /* Mask of the above */
+
+   n_CMD_ARG_A = 1u<< 4,   /* Needs an active mailbox */
+   n_CMD_ARG_F = 1u<< 5,   /* Is a conditional command */
+   n_CMD_ARG_G = 1u<< 6,   /* Is supposed to produce "gabby" history */
+   n_CMD_ARG_H = 1u<< 7,   /* Never place in `history' */
+   n_CMD_ARG_I = 1u<< 8,   /* Interactive command bit */
+   n_CMD_ARG_M = 1u<< 9,   /* Legal from send mode bit */
+   n_CMD_ARG_O = 1u<<10,   /* n_OBSOLETE()d command */
+   n_CMD_ARG_P = 1u<<11,   /* Autoprint dot after command */
+   n_CMD_ARG_R = 1u<<12,   /* Cannot be called in compose mode recursion */
+   n_CMD_ARG_S = 1u<<13,   /* Cannot be called pre-n_PSO_STARTED (POSIX) */
+   n_CMD_ARG_T = 1u<<14,   /* Is a transparent command */
+   n_CMD_ARG_V = 1u<<15,   /* Supports `vput' prefix (only WYSH/WYRA) */
+   n_CMD_ARG_W = 1u<<16,   /* Invalid when read only bit */
+   n_CMD_ARG_X = 1u<<17,   /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
+   /* XXX Note that CMD_ARG_EM implies a _real_ return value for $! */
+   n_CMD_ARG_EM = 1u<<30   /* If error: n_pstate_err_no (4 $! aka. ok_v___em) */
+};
+
 enum n_cmd_arg_desc_flags{/* TODO incomplete, misses getmsglist() */
    /* - A type */
    n_CMD_ARG_DESC_STRING = 1<<0,    /* A !blankspacechar() string */
@@ -860,11 +892,6 @@ enum n_go_input_flags{
    n_GO_INPUT_NL_FOLLOW = 1u<<11,      /* ..on such a follow line */
    n_GO_INPUT_PROMPT_NONE = 1u<<12,    /* Don't print prompt */
    n_GO_INPUT_PROMPT_EVAL = 1u<<13,    /* Instead, evaluate *prompt* */
-#if 0
-   n_GO_INPUT_DROP_TRAIL_SPC = 1u<<14, /* Drop any trailing space */
-   n_GO_INPUT_DROP_LEAD_SPC = 1u<<15,  /* ..leading ones */
-   n_GO_INPUT_TRIM_SPACE = n_GO_INPUT_DROP_TRAIL_SPC | n_GO_INPUT_DROP_LEAD_SPC,
-#endif
 
    n_GO_INPUT_HIST_ADD = 1u<<16,       /* Add the result to history list */
    n_GO_INPUT_HIST_GABBY = 1u<<17,     /* Consider history entry as gabby */
@@ -1131,38 +1158,40 @@ enum n_shexp_parse_flags{
     * used as output (implies _PARSE_META_KEEP) */
    n_SHEXP_PARSE_DRYRUN = 1u<<0,
    n_SHEXP_PARSE_TRUNC = 1u<<1,        /* Truncate result storage on entry */
-   n_SHEXP_PARSE_TRIMSPACE = 1u<<2,    /* Ignore space surrounding tokens */
-   n_SHEXP_PARSE_LOG = 1u<<3,          /* Log errors */
-   n_SHEXP_PARSE_LOG_D_V = 1u<<4,      /* Log errors if n_OPT_D_V */
-   n_SHEXP_PARSE_IFS_ADD_COMMA = 1u<<5, /* Add comma , to normal "IFS" */
-   n_SHEXP_PARSE_IFS_IS_COMMA = 1u<<6, /* Let comma , be the sole "IFS" */
-   n_SHEXP_PARSE_IGNORE_EMPTY = 1u<<7, /* Ignore empty tokens, start over */
+   n_SHEXP_PARSE_TRIM_SPACE = 1u<<2,   /* ..surrounding tokens */
+   n_SHEXP_PARSE_TRIM_IFSSPACE = 1u<<3, /* " */
+   n_SHEXP_PARSE_LOG = 1u<<4,          /* Log errors */
+   n_SHEXP_PARSE_LOG_D_V = 1u<<5,      /* Log errors if n_PO_D_V */
+   n_SHEXP_PARSE_IFS_VAR = 1u<<6,      /* IFS is *ifs*, not blankchar() */
+   n_SHEXP_PARSE_IFS_ADD_COMMA = 1u<<7, /* Add comma , to normal "IFS" */
+   n_SHEXP_PARSE_IFS_IS_COMMA = 1u<<8, /* Let comma , be the sole "IFS" */
+   n_SHEXP_PARSE_IGNORE_EMPTY = 1u<<9, /* Ignore empty tokens, start over */
 
    /* Implicitly open quotes, and ditto closing.  _AUTO_FIXED may only be used
     * if an auto-quote-mode is enabled, implies _AUTO_CLOSE and causes the
     * quote mode to be permanently active (cannot be closed) */
-   n_SHEXP_PARSE_QUOTE_AUTO_FIXED = 1u<<8,
-   n_SHEXP_PARSE_QUOTE_AUTO_SQ = 1u<<9,
-   n_SHEXP_PARSE_QUOTE_AUTO_DQ = 1u<<10,
-   n_SHEXP_PARSE_QUOTE_AUTO_DSQ = 1u<<11,
-   n_SHEXP_PARSE_QUOTE_AUTO_CLOSE = 1u<<12, /* Ignore an open quote at EOS */
+   n_SHEXP_PARSE_QUOTE_AUTO_FIXED = 1u<<16,
+   n_SHEXP_PARSE_QUOTE_AUTO_SQ = 1u<<17,
+   n_SHEXP_PARSE_QUOTE_AUTO_DQ = 1u<<18,
+   n_SHEXP_PARSE_QUOTE_AUTO_DSQ = 1u<<19,
+   n_SHEXP_PARSE_QUOTE_AUTO_CLOSE = 1u<<20, /* Ignore an open quote at EOS */
    n__SHEXP_PARSE_QUOTE_AUTO_MASK = n_SHEXP_PARSE_QUOTE_AUTO_SQ |
          n_SHEXP_PARSE_QUOTE_AUTO_DQ | n_SHEXP_PARSE_QUOTE_AUTO_DSQ,
 
    /* Recognize metacharacters to separate tokens */
-   n_SHEXP_PARSE_META_VERTBAR = 1u<<13,
-   n_SHEXP_PARSE_META_AMPERSAND = 1u<<14,
+   n_SHEXP_PARSE_META_VERTBAR = 1u<<21,
+   n_SHEXP_PARSE_META_AMPERSAND = 1u<<22,
    /* Interpret ; as a sequencing operator, go_input_inject() remainder */
-   n_SHEXP_PARSE_META_SEMICOLON = 1u<<15,
+   n_SHEXP_PARSE_META_SEMICOLON = 1u<<23,
    /* LPAREN, RPAREN, LESSTHAN, GREATERTHAN */
 
    n__SHEXP_PARSE_META_MASK = n_SHEXP_PARSE_META_VERTBAR |
          n_SHEXP_PARSE_META_AMPERSAND | n_SHEXP_PARSE_META_SEMICOLON,
 
    /* Keep the metacharacter (or IFS character), do not skip over it */
-   n_SHEXP_PARSE_META_KEEP = 1u<<16,
+   n_SHEXP_PARSE_META_KEEP = 1u<<24,
 
-   n__SHEXP_PARSE_LAST = 16
+   n__SHEXP_PARSE_LAST = 24
 };
 
 enum n_shexp_state{
@@ -1624,6 +1653,8 @@ ok_b_bsdannounce,
    ok_v_hostname,
 
    ok_b_idna_disable,
+   ok_v_ifs,                           /* {vip=1,defval=" \t\n"} */
+   ok_v_ifs_ws,                     /* {vip=1,rdonly=1,nodel=1,i3val=" \t\n"} */
    ok_b_ignore,
    ok_b_ignoreeof,
    ok_v_inbox,
@@ -1843,6 +1874,10 @@ struct n_strlist{
 };
 #define n_STRLIST_ALLOC(SZ) /* XXX -> nailfuns.h (and pimp interface) */\
    n_alloc(n_VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
+#define n_STRLIST_AUTOREC_ALLOC(SZ) \
+   n_autorec_alloc(n_VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
+#define n_STRLIST_LOFI_ALLOC(SZ) \
+   n_lofi_alloc(n_VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
 
 struct bidi_info {
    struct str  bi_start;      /* Start of (possibly) bidirectional text */
@@ -1862,22 +1897,23 @@ struct n_cmd_arg_desc{
       char cad_name[12];\
       ui32_t cad_no;\
       ui32_t cad_ent_flags[NO][2];\
-   } const VAR = { #CMD, NO,
+   } const VAR = { #CMD "\0", NO,
 #define n_CMD_ARG_DESC_SUBCLASS_DEF_END }
 #define n_CMD_ARG_DESC_SUBCLASS_CAST(P) ((struct n_cmd_arg_desc const*)P)
 
 struct n_cmd_arg_ctx{
-   struct n_cmd_arg_desc const *cac_desc;
+   struct n_cmd_arg_desc const *cac_desc; /* Input: description of command */
    char const *cac_indat;     /* Input that shall be parsed */
    size_t cac_inlen;          /* Input length (UIZ_MAX: do a strlen()) */
    size_t cac_no;             /* Output: number of parsed arguments */
    struct n_cmd_arg *cac_arg; /* Output: parsed arguments */
+   char const *cac_vput;      /* "Output": vput prefix used: varname */
 };
 
 struct n_cmd_arg{/* TODO incomplete, misses getmsglist() */
    struct n_cmd_arg *ca_next;
-   char const *ca_indat;   /* Pointer into n_cmd_arg_ctx.cac_indat */
-   size_t ca_inlen;        /* of .ca_indat of this arg (not terminated) */
+   char const *ca_indat;   /*[PRIV] Pointer into n_cmd_arg_ctx.cac_indat */
+   size_t ca_inlen;        /*[PRIV] of .ca_indat of this arg (not terminated) */
    ui32_t ca_ent_flags[2]; /* Copy of n_cmd_arg_desc.cad_ent_flags[X] */
    ui32_t ca_arg_flags;    /* [Output: _WYSH: copy of parse result flags] */
    ui8_t ca__dummy[4];
@@ -1885,6 +1921,21 @@ struct n_cmd_arg{/* TODO incomplete, misses getmsglist() */
       struct str ca_str;      /* _STRING, _WYSH */
    } ca_arg;               /* Output: parsed result */
 };
+
+struct n_cmd_desc{
+   char const *cd_name;    /* Name of command */
+   int (*cd_func)(void*);  /* Implementor of command */
+   enum n_cmd_arg_flags cd_caflags;
+   si16_t cd_msgflag;      /* Required flags of msgs */
+   si16_t cd_msgmask;      /* Relevant flags of msgs */
+   struct n_cmd_arg_desc const *cd_cadp;
+#ifdef HAVE_DOCSTRINGS
+   char const *cd_doc;     /* One line doc for command */
+#endif
+};
+/* Yechh, can't initialize unions */
+#define cd_minargs cd_msgflag /* Minimum argcount for WYSH/WYRA/RAWLIST */
+#define cd_maxargs cd_msgmask /* Max argcount for WYSH/WYRA/RAWLIST */
 
 #ifdef HAVE_COLOUR
 struct n_colour_env{
@@ -2276,37 +2327,6 @@ struct message {
 #define mailx_blockof(off)                ((int) ((off) / 4096))
 #define mailx_offsetof(off)               ((int) ((off) % 4096))
 #define mailx_positionof(block, offset)   ((off_t)(block) * 4096 + (offset))
-
-enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
-   * TODO i rather see the mechanism that is used in c_bind() extended and used
-   * TODO anywhere, i.e. n_cmd_arg_parse().
-   * TODO Note that we may NOT support arguments with strlen()>=UI32_MAX (?) */
-   n_CMD_ARG_TYPE_MSGLIST = 0,   /* Message list type */
-   n_CMD_ARG_TYPE_NDMLIST = 1,   /* Message list, no defaults */
-   n_CMD_ARG_TYPE_RAWDAT = 2,    /* The plain string in an argv[] */
-     n_CMD_ARG_TYPE_STRING = 3,  /* A pure string TODO obsolete */
-   n_CMD_ARG_TYPE_WYSH = 4,      /* getrawlist(), sh(1) compatible */
-      n_CMD_ARG_TYPE_RAWLIST = 5, /* getrawlist(), old style TODO obsolete */
-     n_CMD_ARG_TYPE_WYRA = 6,    /* _RAWLIST or _WYSH (with `wysh') TODO obs. */
-   n_CMD_ARG_TYPE_MASK = 7,      /* Mask of the above */
-
-   n_CMD_ARG_A = 1u<< 4,   /* Needs an active mailbox */
-   n_CMD_ARG_F = 1u<< 5,   /* Is a conditional command */
-   n_CMD_ARG_G = 1u<< 6,   /* Is supposed to produce "gabby" history */
-   n_CMD_ARG_H = 1u<< 7,   /* Never place in `history' */
-   n_CMD_ARG_I = 1u<< 8,   /* Interactive command bit */
-   n_CMD_ARG_M = 1u<< 9,   /* Legal from send mode bit */
-   n_CMD_ARG_O = 1u<<10,   /* n_OBSOLETE()d command */
-   n_CMD_ARG_P = 1u<<11,   /* Autoprint dot after command */
-   n_CMD_ARG_R = 1u<<12,   /* Cannot be called in compose mode recursion */
-   n_CMD_ARG_S = 1u<<13,   /* Cannot be called pre-n_PSO_STARTED (POSIX) */
-   n_CMD_ARG_T = 1u<<14,   /* Is a transparent command */
-   n_CMD_ARG_V = 1u<<15,   /* Supports `vput' prefix (only WYSH/WYRA) */
-   n_CMD_ARG_W = 1u<<16,   /* Invalid when read only bit */
-   n_CMD_ARG_X = 1u<<17,   /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
-   /* XXX Note that CMD_ARG_EM implies a _real_ return value for $! */
-   n_CMD_ARG_EM = 1u<<30   /* If error: n_pstate_err_no (4 $! aka. ok_v___em) */
-};
 
 enum gfield {
    GTO            = 1<< 0,    /* Grab To: line */

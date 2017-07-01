@@ -46,6 +46,12 @@ static char const *a_cmisc_bangexp(char const *cp);
 /* c_n?echo(), c_n?echoerr() */
 static int a_cmisc_echo(void *vp, FILE *fp, bool_t donl);
 
+/* c_read() */
+static bool_t a_cmisc_read_set(char const *cp, char const *value);
+
+/* c_version() */
+static int a_cmisc_version_cmp(void const *s1, void const *s2);
+
 static char const *
 a_cmisc_bangexp(char const *cp){
    static struct str last_bang;
@@ -107,6 +113,41 @@ a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
    fflush(fp);
    NYD2_LEAVE;
    return 0;
+}
+
+static bool_t
+a_cmisc_read_set(char const *cp, char const *value){
+   bool_t rv;
+   NYD2_ENTER;
+
+   if(!n_shexp_is_valid_varname(cp))
+      value = N_("not a valid variable name");
+   else if(!n_var_is_user_writable(cp))
+      value = N_("variable is read-only");
+   else if(!n_var_vset(cp, (uintptr_t)value))
+      value = N_("failed to update variable value");
+   else{
+      rv = TRU1;
+      goto jleave;
+   }
+   n_err("`read': %s: %s\n", V_(value), n_shexp_quote_cp(cp, FAL0));
+   rv = FAL0;
+jleave:
+   NYD2_LEAVE;
+   return rv;
+}
+
+static int
+a_cmisc_version_cmp(void const *s1, void const *s2){
+   char const * const *cp1, * const *cp2;
+   int rv;
+   NYD2_ENTER;
+
+   cp1 = s1;
+   cp2 = s2;
+   rv = strcmp(&(*cp1)[1], &(*cp2)[1]);
+   NYD2_LEAVE;
+   return rv;
 }
 
 FL int
@@ -324,6 +365,144 @@ c_echoerrn(void *v){
    NYD_ENTER;
 
    rv = a_cmisc_echo(v, n_stderr, FAL0);
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
+c_read(void * volatile vp){
+   struct n_sigman sm;
+   struct str trim;
+   struct n_string s, *sp;
+   char *linebuf;
+   size_t linesize, i;
+   int rv;
+   char const *ifs, **argv, *cp;
+   NYD2_ENTER;
+
+   sp = n_string_creat_auto(&s);
+   sp = n_string_reserve(sp, 64 -1);
+
+   ifs = ok_vlook(ifs);
+   rv = 0;
+   linesize = 0;
+   linebuf = NULL;
+   argv = vp;
+
+   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
+   case 0:
+      break;
+   default:
+      n_pstate_err_no = n_ERR_INTR;
+      rv = -1;
+      goto jleave;
+   }
+
+   n_pstate_err_no = n_ERR_NONE;
+   rv = n_go_input(((n_pstate & n_PS_COMPOSE_MODE
+            ? n_GO_INPUT_CTX_COMPOSE : n_GO_INPUT_CTX_DEFAULT) |
+         n_GO_INPUT_FORCE_STDIN | n_GO_INPUT_NL_ESC |
+         n_GO_INPUT_PROMPT_NONE /* XXX POSIX: PS2: yes! */),
+         NULL, &linebuf, &linesize, NULL, NULL);
+   if(rv < 0){
+      if(!n_go_input_is_eof())
+         n_pstate_err_no = n_ERR_BADF;
+      goto jleave;
+   }else if(rv == 0){
+      if(n_go_input_is_eof()){
+         rv = -1;
+         goto jleave;
+      }
+   }else{
+      trim.s = linebuf;
+      trim.l = linesize;
+
+      for(; *argv != NULL; ++argv){
+         if(trim.l == 0 || n_str_trim_ifs(&trim, FAL0)->l == 0)
+            break;
+
+         /* The last variable gets the remaining line less trailing IFS-WS */
+         if(argv[1] == NULL){
+jitall:
+            sp = n_string_assign_buf(sp, trim.s, trim.l);
+            trim.l = 0;
+         }else for(cp = trim.s, i = 1;; ++cp, ++i){
+            if(strchr(ifs, *cp) != NULL){
+               sp = n_string_assign_buf(sp, trim.s, i - 1);
+               trim.s += i;
+               trim.l -= i;
+               break;
+            }
+            if(i == trim.l)
+               goto jitall;
+         }
+
+         if(!a_cmisc_read_set(*argv, n_string_cp(sp))){
+            n_pstate_err_no = n_ERR_NOTSUP;
+            rv = -1;
+            break;
+         }
+      }
+   }
+
+   /* Set the remains to the empty string */
+jleave:
+   for(; *argv != NULL; ++argv)
+      if(!a_cmisc_read_set(*argv, n_empty)){
+         n_pstate_err_no = n_ERR_NOTSUP;
+         rv = -1;
+         break;
+      }
+
+   n_sigman_cleanup_ping(&sm);
+
+   if(linebuf != NULL)
+      n_free(linebuf);
+   NYD2_LEAVE;
+   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
+   return rv;
+}
+
+FL int
+c_version(void *vp){
+   int longest, rv;
+   char *iop;
+   char const *cp, **arr;
+   size_t i, i2;
+   NYD_ENTER;
+   n_UNUSED(vp);
+
+   fprintf(n_stdout,
+      _("%s %s, %s (%s)\nFeatures included (+) or not (-)\n"),
+      n_uagent, ok_vlook(version), ok_vlook(version_date),
+      ok_vlook(build_osenv));
+
+   /* *features* starts with dummy byte to avoid + -> *folder* expansions */
+   i = strlen(cp = &ok_vlook(features)[1]) +1;
+   iop = n_autorec_alloc(i);
+   memcpy(iop, cp, i);
+
+   arr = n_autorec_alloc(sizeof(cp) * VAL_FEATURES_CNT);
+   for(longest = 0, i = 0; (cp = n_strsep(&iop, ',', TRU1)) != NULL; ++i){
+      arr[i] = cp;
+      i2 = strlen(cp);
+      longest = n_MAX(longest, (int)i2);
+   }
+   qsort(arr, i, sizeof(cp), &a_cmisc_version_cmp);
+
+   /* We use aligned columns, so don't use n_SCRNWIDTH_FOR_LISTS */
+   for(++longest, i2 = 0; i-- > 0;){
+      cp = *(arr++);
+      fprintf(n_stdout, "%-*s ", longest, cp);
+      i2 += longest;
+      if(UICMP(z, ++i2 + longest, >=, n_scrnwidth) || i == 0){
+         i2 = 0;
+         putc('\n', n_stdout);
+      }
+   }
+
+   if((rv = ferror(n_stdout) != 0))
+      clearerr(n_stdout);
    NYD_LEAVE;
    return rv;
 }

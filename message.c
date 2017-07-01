@@ -140,7 +140,7 @@ static char **a_message_add_to_namelist(char ***namelist, size_t *nmlsize,
 
 /* Mark all messages that the user wanted from the command line in the message
  * structure.  Return 0 on success, -1 on error */
-static int a_message_markall(char *buf, int f);
+static int a_message_markall(char const *buf, int f);
 
 /* Turn the character after a colon modifier into a bit value */
 static int a_message_evalcol(int col);
@@ -154,7 +154,7 @@ static bool_t a_message_check(int mno, int f);
  * scanned in a_message_lexno or a_message_lexstr as appropriate.
  * In any event, store the scanned "thing" in a_message_lexstr.
  * Returns the token as a negative number when we also saw & to mark a thread */
-static int a_message_scan(char **sp);
+static int a_message_scan(char const **sp);
 
 /* See if the passed name sent the passed message */
 static bool_t a_message_match_sender(struct message *mp, char const *str,
@@ -209,8 +209,8 @@ a_message_get_header(struct message *mp){
 }
 
 static char **
-a_message_add_to_namelist(char ***namelist, size_t *nmlsize, char **np,
-      char *string){
+a_message_add_to_namelist(char ***namelist, size_t *nmlsize, /* TODO Vector */
+      char **np, char *string){
    size_t idx;
    NYD2_ENTER;
 
@@ -224,12 +224,12 @@ a_message_add_to_namelist(char ***namelist, size_t *nmlsize, char **np,
 }
 
 static int
-a_message_markall(char *buf, int f){
+a_message_markall(char const *buf, int f){
    struct message *mp, *mx;
    enum a_message_idfield idfield;
    size_t j, nmlsize;
-   char const *id;
-   char **np, **nq, **namelist, *bufp, *cp;
+   char const *id, *bufp;
+   char **np, **nq, **namelist, *cp;
    int i, valdot, beg, colmod, tok, colresult;
    enum{
       a_NONE = 0,
@@ -248,8 +248,7 @@ a_message_markall(char *buf, int f){
    n_LCTA((ui32_t)a_ALLNET == (ui32_t)TRU1,
       "Constant is converted to bool_t via AND, thus");
 
-   /* Update message array: clear MMARK but remember its former state for `.
-    * An empty selector input is identical to * asterisk */
+   /* Update message array: clear MMARK but remember its former state for ` */
    for(i = msgCount; i-- > 0;){
       enum mflag mf;
 
@@ -767,10 +766,11 @@ a_message_check(int mno, int f){
 }
 
 static int
-a_message_scan(char **sp)
+a_message_scan(char const **sp)
 {
-   char *cp, *cp2;
    struct a_message_lex const *lp;
+   char *cp2;
+   char const *cp;
    int rv, c, inquote, quotec;
    NYD_ENTER;
 
@@ -1424,7 +1424,7 @@ touch(struct message *mp){
 }
 
 FL int
-getmsglist(char *buf, int *vector, int flags)
+getmsglist(char const *buf, int *vector, int flags)
 {
    int *ip, mc;
    struct message *mp;
