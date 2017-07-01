@@ -162,9 +162,6 @@ static bool_t        _same_name(char const *n1, char const *n2);
 /* Delete the given name from a namelist */
 static struct name * delname(struct name *np, char const *name);
 
-/* Put another node onto a list of names and return the list */
-static struct name * put(struct name *list, struct name *node);
-
 /* Grab a single name (liberal name) */
 static char const *  yankname(char const *ap, char *wbuf,
                         char const *separators, int keepcomms);
@@ -175,8 +172,11 @@ static struct name * _extract1(char const *line, enum gfield ntype,
 
 /* Recursively expand a alias name.  Limit expansion to some fixed level.
  * Direct recursion is not expanded for convenience */
-static struct name * _gexpand(size_t level, struct name *nlist,
+static struct name *a_nag_gexpand(size_t level, struct name *nlist,
                         struct group *gp, bool_t metoo, int ntype);
+
+/* elide() helper */
+static int a_nag_elide_qsort(void const *s1, void const *s2);
 
 /* Lookup a group, return it or NULL, fill in glp anyway */
 static struct group * _group_lookup(enum group_type gt,
@@ -276,18 +276,6 @@ delname(struct name *np, char const *name)
       }
    NYD_LEAVE;
    return np;
-}
-
-static struct name *
-put(struct name *list, struct name *node)
-{
-   NYD_ENTER;
-   node->n_flink = list;
-   node->n_blink = NULL;
-   if (list != NULL)
-      list->n_blink = node;
-   NYD_LEAVE;
-   return node;
 }
 
 static char const *
@@ -394,50 +382,75 @@ jleave:
 }
 
 static struct name *
-_gexpand(size_t level, struct name *nlist, struct group *gp, bool_t metoo,
-   int ntype)
-{
+a_nag_gexpand(size_t level, struct name *nlist, struct group *gp, bool_t metoo,
+      int ntype){
+   struct grp_names *gnp;
+   struct name *nlist_tail;
    char const *logname;
    struct grp_names_head *gnhp;
-   struct grp_names *gnp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
-   if (UICMP(z, level++, >, MAXEXP)) {
-      n_err(_("Expanding alias to depth larger than %d\n"), MAXEXP);
+   if(UICMP(z, level++, >, n_ALIAS_MAXEXP)){
+      n_err(_("Expanding alias to depth larger than %d\n"), n_ALIAS_MAXEXP);
       goto jleave;
    }
 
    GP_TO_SUBCLASS(gnhp, gp);
    logname = ok_vlook(LOGNAME);
-   for (gnp = gnhp->gnh_head; gnp != NULL; gnp = gnp->gn_next) {
-      char *cp;
+
+   for(gnp = gnhp->gnh_head; gnp != NULL; gnp = gnp->gn_next){
       struct group *ngp;
+      char *cp;
 
-      /* FIXME we do not really support leading backslash quoting do we??? */
-      if (*(cp = gnp->gn_id) == '\\' || !strcmp(cp, gp->g_id))
-         goto jquote;
+      cp = gnp->gn_id;
 
-      if ((ngp = _group_find(GT_ALIAS, cp)) != NULL) {
+      if(!strcmp(cp, gp->g_id))
+         goto jas_is;
+
+      if((ngp = _group_find(GT_ALIAS, cp)) != NULL){
          /* For S-nail(1), the "alias" may *be* the sender in that a name maps
           * to a full address specification; aliases cannot be empty */
          struct grp_names_head *ngnhp;
          GP_TO_SUBCLASS(ngnhp, ngp);
 
          assert(ngnhp->gnh_head != NULL);
-         if (metoo || ngnhp->gnh_head->gn_next != NULL ||
+         if(metoo || ngnhp->gnh_head->gn_next != NULL ||
                !_same_name(cp, logname))
-            nlist = _gexpand(level, nlist, ngp, metoo, ntype);
+            nlist = a_nag_gexpand(level, nlist, ngp, metoo, ntype);
          continue;
       }
 
       /* Here we should allow to expand to itself if only person in alias */
-jquote:
-      if (metoo || gnhp->gnh_head->gn_next == NULL || !_same_name(cp, logname))
-         nlist = put(nlist, nalloc(cp, ntype | GFULL));
+jas_is:
+      if(metoo || gnhp->gnh_head->gn_next == NULL || !_same_name(cp, logname)){
+         struct name *np;
+
+         np = nalloc(cp, ntype | GFULL);
+         if((nlist_tail = nlist) != NULL){
+            while(nlist_tail->n_flink != NULL)
+               nlist_tail = nlist_tail->n_flink;
+            nlist_tail->n_flink = np;
+            np->n_blink = nlist_tail;
+         }else
+            nlist = np;
+      }
    }
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return nlist;
+}
+
+static int
+a_nag_elide_qsort(void const *s1, void const *s2){
+   struct name const * const *np1, * const *np2;
+   int rv;
+   NYD2_ENTER;
+
+   np1 = s1;
+   np2 = s2;
+   rv = asccasecmp((*np1)->n_name, (*np2)->n_name);
+   NYD2_LEAVE;
+   return rv;
 }
 
 static struct group *
@@ -1173,18 +1186,22 @@ jleave:
 }
 
 FL struct name *
-namelist_dup(struct name const *np, enum gfield ntype)
-{
-   struct name *nnp;
-   NYD_ENTER;
+namelist_dup(struct name const *np, enum gfield ntype){
+   struct name *nlist, *xnp;
+   NYD2_ENTER;
 
-   for (nnp = NULL; np != NULL; np = np->n_flink) {
-      struct name *x = ndup(n_UNCONST(np), (np->n_type & ~GMASK) | ntype);
-      x->n_flink = nnp;
-      nnp = x;
+   for(nlist = xnp = NULL; np != NULL; np = np->n_flink){
+      struct name *x;
+
+      x = ndup(n_UNCONST(np), (np->n_type & ~GMASK) | ntype);
+      if((x->n_blink = xnp) == NULL)
+         nlist = x;
+      else
+         xnp->n_flink = x;
+      xnp = x;
    }
-   NYD_LEAVE;
-   return nnp;
+   NYD2_LEAVE;
+   return nlist;
 }
 
 FL ui32_t
@@ -1344,12 +1361,14 @@ FL struct name *
 namelist_vaporise_head(struct header *hp, enum expand_addr_check_mode eacm,
    bool_t metoo, si8_t *set_on_error)
 {
+   /* TODO namelist_vaporise_head() is incredibly expensive and redundant */
    struct name *tolist, *np, **npp;
    NYD_ENTER;
 
-   tolist = usermap(cat(hp->h_to, cat(hp->h_cc, hp->h_bcc)), metoo);
+   tolist = cat(hp->h_to, cat(hp->h_cc, hp->h_bcc));
    hp->h_to = hp->h_cc = hp->h_bcc = NULL;
 
+   tolist = usermap(tolist, metoo);
    tolist = elide(checkaddrs(tolist, eacm, set_on_error));
 
    for (np = tolist; np != NULL; np = np->n_flink) {
@@ -1366,126 +1385,109 @@ namelist_vaporise_head(struct header *hp, enum expand_addr_check_mode eacm,
 }
 
 FL struct name *
-usermap(struct name *names, bool_t force_metoo)
-{
-   struct name *new, *np, *cp;
+usermap(struct name *names, bool_t force_metoo){
    struct group *gp;
+   struct name *nlist, *nlist_tail, *np, *cp;
    int metoo;
    NYD_ENTER;
 
-   new = NULL;
-   np = names;
    metoo = (force_metoo || ok_blook(metoo));
-   while (np != NULL) {
+   nlist = nlist_tail = NULL;
+   np = names;
+
+   for(; np != NULL; np = cp){
       assert(!(np->n_type & GDEL)); /* TODO legacy */
-      if (is_fileorpipe_addr(np) || np->n_name[0] == '\\') {
-         cp = np->n_flink;
-         new = put(new, np);
-         np = cp;
-         continue;
-      }
-      gp = _group_find(GT_ALIAS, np->n_name);
       cp = np->n_flink;
-      if (gp != NULL)
-         new = _gexpand(0, new, gp, metoo, np->n_type);
-      else
-         new = put(new, np);
-      np = cp;
+
+      if(is_fileorpipe_addr(np) ||
+            (gp = _group_find(GT_ALIAS, np->n_name)) == NULL){
+         if((np->n_blink = nlist_tail) != NULL)
+            nlist_tail->n_flink = np;
+         else
+            nlist = np;
+         nlist_tail = np;
+         np->n_flink = NULL;
+      }else{
+         nlist = a_nag_gexpand(0, nlist, gp, metoo, np->n_type);
+         if((nlist_tail = nlist) != NULL)
+            while(nlist_tail->n_flink != NULL)
+               nlist_tail = nlist_tail->n_flink;
+      }
    }
    NYD_LEAVE;
-   return new;
+   return nlist;
 }
 
 FL struct name *
 elide(struct name *names)
 {
-   struct name *np, *t, *newn, *x;
+   size_t i, j, k;
+   struct name *nlist, *np, **nparr;
    NYD_ENTER;
 
-   newn = NULL;
-   if (names == NULL)
+   nlist = NULL;
+
+   if(names == NULL)
       goto jleave;
 
-   /* Throw away all deleted nodes (XXX merge with plain sort below?) */
-   for (np = NULL; names != NULL; names = names->n_flink)
-      if  (!(names->n_type & GDEL)) {
+   /* Throw away all deleted nodes */
+   for(np = NULL, i = 0; names != NULL; names = names->n_flink)
+      if(!(names->n_type & GDEL)){
          names->n_blink = np;
-         if (np)
+         if(np != NULL)
             np->n_flink = names;
          else
-            newn = names;
+            nlist = names;
          np = names;
+         ++i;
       }
-   if (newn == NULL)
+
+   if(nlist == NULL || i == 1)
       goto jleave;
 
-   np = newn->n_flink;
-   if (np != NULL)
-      np->n_blink = NULL;
-   newn->n_flink = NULL;
+   /* Create a temporay array and sort that */
+   nparr = n_lofi_alloc(sizeof(*nparr) * i);
 
-   while (np != NULL) {
-      int cmpres;
+   for(i = 0, np = nlist; np != NULL; np = np->n_flink)
+      nparr[i++] = np;
 
-      t = newn;
-      while ((cmpres = asccasecmp(t->n_name, np->n_name)) < 0) {
-         if (t->n_flink == NULL)
-            break;
-         t = t->n_flink;
+   qsort(nparr, i, sizeof *nparr, &a_nag_elide_qsort);
+
+   /* Remove duplicates XXX speedup, or list_uniq()! */
+   for(j = 0, --i; j < i;){
+      if(asccasecmp(nparr[j]->n_name, nparr[k = j + 1]->n_name))
+         ++j;
+      else{
+         for(; k < i; ++k)
+            nparr[k] = nparr[k + 1];
+         --i;
       }
-
-      /* If we ran out of t's, put new entry after the current value of t */
-      if (cmpres < 0) {
-         t->n_flink = np;
-         np->n_blink = t;
-         t = np;
-         np = np->n_flink;
-         t->n_flink = NULL;
-         continue;
-      }
-
-      /* Otherwise, put the new entry in front of the current t.  If at the
-       * front of the list, the new guy becomes the new head of the list */
-      if (t == newn) {
-         t = np;
-         np = np->n_flink;
-         t->n_flink = newn;
-         newn->n_blink = t;
-         t->n_blink = NULL;
-         newn = t;
-         continue;
-      }
-
-      /* The normal case -- we are inserting into the middle of the list */
-      x = np;
-      np = np->n_flink;
-      x->n_flink = t;
-      x->n_blink = t->n_blink;
-      t->n_blink->n_flink = x;
-      t->n_blink = x;
    }
 
-   /* Now the list headed up by new is sorted.  Remove duplicates */
-   np = newn;
-   while (np != NULL) {
-      t = np;
-      while (t->n_flink != NULL && !asccasecmp(np->n_name, t->n_flink->n_name))
-         t = t->n_flink;
-      if (t == np) {
-         np = np->n_flink;
-         continue;
-      }
-
-      /* Now t points to the last entry with the same name as np.
-       * Make np point beyond t */
-      np->n_flink = t->n_flink;
-      if (t->n_flink != NULL)
-         t->n_flink->n_blink = np;
-      np = np->n_flink;
+   /* Throw away all list members which are not part of the array.
+    * Note this keeps the original, possibly carefully crafted, order of the
+    * addressees, thus */
+   for(np = nlist; np != NULL; np = np->n_flink){
+      for(j = 0; j <= i; ++j)
+         if(np == nparr[j]){
+            nparr[j] = NULL;
+            goto jiter;
+         }
+      /* Drop it */
+      if(np == nlist){
+         nlist = np->n_flink;
+         np->n_blink = NULL;
+      }else
+         np->n_blink->n_flink = np->n_flink;
+      if(np->n_flink != NULL)
+         np->n_flink->n_blink = np->n_blink;
+jiter:;
    }
+
+   n_lofi_free(nparr);
 jleave:
    NYD_LEAVE;
-   return newn;
+   return nlist;
 }
 
 FL int
@@ -1942,19 +1944,28 @@ jerr:
       n_err(V_(ecp), n_shexp_quote_cp(*argv, FAL0));
       rv = 1;
    } else {
+      struct grp_names *gnp_tail, *gnp;
       struct grp_names_head *gnhp;
 
       GP_TO_SUBCLASS(gnhp, gp);
 
-      for (++argv; *argv != NULL; ++argv) {
-         size_t l = strlen(*argv) +1;
-         struct grp_names *gnp = smalloc(n_VSTRUCT_SIZEOF(struct grp_names,
-               gn_id) + l);
-         gnp->gn_next = gnhp->gnh_head;
-         gnhp->gnh_head = gnp;
-         memcpy(gnp->gn_id, *argv, l);
+      if((gnp_tail = gnhp->gnh_head) != NULL)
+         while((gnp = gnp_tail->gn_next) != NULL)
+            gnp_tail = gnp;
+
+      for(++argv; *argv != NULL; ++argv){
+         size_t i;
+
+         i = strlen(*argv) +1;
+         gnp = smalloc(n_VSTRUCT_SIZEOF(struct grp_names, gn_id) + i);
+         if(gnp_tail != NULL)
+            gnp_tail->gn_next = gnp;
+         else
+            gnhp->gnh_head = gnp;
+         gnp_tail = gnp;
+         gnp->gn_next = NULL;
+         memcpy(gnp->gn_id, *argv, i);
       }
-      assert(gnhp->gnh_head != NULL);
    }
    NYD_LEAVE;
    return rv;
