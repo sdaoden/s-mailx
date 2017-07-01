@@ -1596,7 +1596,7 @@ ok_b_bsdannounce,
    ok_b_emptystart,
    ok_v_encoding,
    ok_b_errexit,
-   ok_v_escape,
+   ok_v_escape,                        /* {defval=n_ESCAPE} */
    ok_v_expandaddr,
    ok_v_expandargv,
 
@@ -1705,6 +1705,7 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_b_r_option_implicit,
    ok_b_recipients_in_cc,
    ok_v_record,
+   ok_b_record_files,
    ok_b_record_resent,
    ok_b_reply_in_same_charset,
    ok_v_reply_strings,
@@ -2266,7 +2267,7 @@ struct message {
    struct message *m_parent;  /* parent of this message */
    unsigned    m_level;       /* thread level of message */
    long        m_threadpos;   /* position in threaded display */
-   char        *m_maildir_file;  /* original maildir file of msg */
+   char const  *m_maildir_file;  /* original maildir file of msg */
    ui32_t      m_maildir_hash;   /* hash of file name in maildir sub */
    int         m_collapsed;      /* collapsed thread information */
 };
@@ -2532,6 +2533,7 @@ VL char const *n_progname;       /* Our name */
 
 VL gid_t n_group_id;             /* getgid() and getuid() */
 VL uid_t n_user_id;
+VL pid_t n_pid;                  /* getpid() (lazy initialized) */
 
 VL int n_exit_status;            /* Program exit status TODO long term: ex_no */
 VL ui32_t n_poption;             /* Bits of enum n_program_option */

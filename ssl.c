@@ -352,13 +352,12 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
    if (ferror(mb.mb_otf)) {
       n_perr(_("decrypted output data"), 0);
       x = NULL;
-      goto jleave;
+   }else{
+      x->m_size = x->m_xsize = octets;
+      x->m_lines = x->m_xlines = lines;
+      x->m_block = mailx_blockof(offset);
+      x->m_offset = mailx_offsetof(offset);
    }
-   x->m_size = x->m_xsize = octets;
-   x->m_lines = x->m_xlines = lines;
-   x->m_block = mailx_blockof(offset);
-   x->m_offset = mailx_offsetof(offset);
-jleave:
    NYD_LEAVE;
    return x;
 }

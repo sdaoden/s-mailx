@@ -1350,8 +1350,6 @@ a_coll_ocs__mac(void){
    n_psonce &= ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT);
    n_pstate |= n_PS_COMPOSE_FORKHOOK;
    temporary_compose_mode_hook_call(a_coll_ocs__macname, NULL, NULL);
-   _exit(n_EXIT_OK);
-   /* NOTREACHED */
    return 0;
 }
 
@@ -1469,7 +1467,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
       n_UNINIT(t, 0);
    }
 
-   escape_saved = escape = ((cp = ok_vlook(escape)) != NULL) ? *cp : n_ESCAPE;
+   escape_saved = escape = *(cp = ok_vlook(escape));
    _coll_hadintr = 0;
 
    if (!sigsetjmp(_coll_jmp, 1)) {
@@ -1972,7 +1970,7 @@ jout:
       char const *cmd;
 
       /* Reset *escape* to be available and guaranteed! */
-      escape = n_ESCAPE;
+      escape = n_ESCAPE[0];
 
       if(coapm != NULL){
          /* XXX Due Popen() fflush(NULL) in PTF mode, ensure nothing to flush */

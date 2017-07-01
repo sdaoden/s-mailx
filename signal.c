@@ -179,7 +179,9 @@ FL void
 n_raise(int signo)
 {
    NYD2_ENTER;
-   kill(getpid(), signo);
+   if(n_pid == 0)
+      n_pid = getpid();
+   kill(n_pid, signo);
    NYD2_LEAVE;
 }
 

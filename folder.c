@@ -245,7 +245,7 @@ jlogname:
          goto jem1;
    }
 
-   /* For at least substdate() users */
+   /* For at least substdate() users TODO -> eventloop tick */
    time_current_update(&time_current, FAL0);
 
    switch (which_protocol(orig_name = name, TRU1, TRU1, &name)) {

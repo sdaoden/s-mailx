@@ -1843,15 +1843,21 @@ mail1(struct header *hp, int printheaders, struct message *quote,
     * TODO and pipe addressees, (2) we mightrecord() and (3) we transfer
     * TODO even if (1) savedeadletter() etc.  To me this doesn't make sense? */
 
-   /* Deliver pipe and file addressees */
-   to = a_sendout_file_a_pipe(to, mtf, &_sendout_error);
-   if (_sendout_error)
-      savedeadletter(mtf, FAL0);
+   /* C99 */{
+      ui32_t cnt;
+      bool_t b;
 
-   to = elide(to); /* XXX only to drop GDELs due a_sendout_file_a_pipe()! */
+      /* Deliver pipe and file addressees */
+      b = (ok_blook(record_files) && count(to) > 0);
+      to = a_sendout_file_a_pipe(to, mtf, &_sendout_error);
 
-   {  ui32_t cnt = count(to);
-      if ((!recipient_record || cnt > 0) &&
+      if (_sendout_error)
+         savedeadletter(mtf, FAL0);
+
+      to = elide(to); /* XXX only to drop GDELs due a_sendout_file_a_pipe()! */
+      cnt = count(to);
+
+      if ((recipient_record || b || cnt > 0) &&
             !mightrecord(mtf, (recipient_record ? to : NULL), FAL0))
          goto jleave;
       if (cnt > 0) {
@@ -2279,20 +2285,29 @@ jerr_o:
    Fclose(nfo);
    rewind(nfi);
 
-   to = a_sendout_file_a_pipe(to, nfi, &_sendout_error);
+   /* C99 */{
+      bool_t b, c;
 
-   if (_sendout_error)
-      savedeadletter(nfi, FAL0);
+      /* Deliver pipe and file addressees */
+      b = (ok_blook(record_files) && count(to) > 0);
+      to = a_sendout_file_a_pipe(to, nfi, &_sendout_error);
 
-   if (count(to = elide(to)) != 0) {
-      if (!ok_blook(record_resent) || mightrecord(nfi, NULL, TRU1)) {
-         sb.sb_to = to;
-         /*sb.sb_input = nfi;*/
-         if (_transfer(&sb))
-            rv = OKAY;
-      }
-   } else if (!_sendout_error)
-      rv = OKAY;
+      if (_sendout_error)
+         savedeadletter(nfi, FAL0);
+
+      to = elide(to); /* XXX only to drop GDELs due a_sendout_file_a_pipe()! */
+      c = (count(to) > 0);
+
+      if (b || c) {
+         if (!ok_blook(record_resent) || mightrecord(nfi, NULL, TRU1)) {
+            sb.sb_to = to;
+            /*sb.sb_input = nfi;*/
+            if (!c || _transfer(&sb))
+               rv = OKAY;
+         }
+      } else if (!_sendout_error)
+         rv = OKAY;
+   }
 
    Fclose(nfi);
 jleave:
@@ -2354,7 +2369,7 @@ savedeadletter(FILE *fp, bool_t fflush_rewind_first){
 
       /* TODO It may be that we have only some plain text.  It may be that we
        * TODO have a complete MIME encoded message.  We don't know, and we
-       * TODO have no usable mechanism to dig it!!  tWe need v15! */
+       * TODO have no usable mechanism to dig it!!  We need v15! */
       if(!(flags & a_INIT)){
          size_t i;
 

@@ -140,6 +140,11 @@ Thank you!
 - [crawl]
     Developer chaos (distributed horror backup - don't use!).
 
+- [test-out]
+    This branch contains the test output files.  The test itself only
+    tests checksums, the full output is for development reference
+    purposes only.
+
 - [unix-mail,bsd-Mail,timeline]
     Sketchy efforts to collect the complete history of Unix mail and
     its successor, BSD Mail.  Anything from the pre-nail era has been
