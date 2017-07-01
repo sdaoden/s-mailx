@@ -183,16 +183,22 @@ _list_reply(int *msgvec, enum header_flags hf)
       msgvec = save_msgvec;
    }
 
+   gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
+
 jnext_msg:
-   mp = message + *msgvec - 1;
+   n_autorec_relax_create();
+   mp = &message[*msgvec - 1];
    touch(mp);
    setdot(mp);
 
    memset(&head, 0, sizeof head);
    head.h_flags = hf;
-
    head.h_subject = a_crese_reedit(hfield1("subject", mp));
-   gf = ok_blook(fullnames) ? GFULL : GSKIN;
+   head.h_mailx_command = "reply";
+   head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | gf);
+   head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | gf);
+   head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | gf);
+   head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | gf);
    rt = mft = NULL;
 
    rcv = NULL;
@@ -220,22 +226,37 @@ jnext_msg:
    np = NULL;
    if (ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL)
       np = lextract(cp, GCC | gf);
-   if ((cp = hfield1("cc", mp)) != NULL)
-      np = cat(np, lextract(cp, GCC | gf));
-   if (np != NULL)
-      head.h_cc = n_alternates_delete(np, FAL0);
+   if ((cp = hfield1("cc", mp)) != NULL) {
+      struct name *x;
+
+      if((x = lextract(cp, GCC | gf)) != NULL)
+         np = cat(np, x);
+   }
+   if (np != NULL) {
+      head.h_mailx_raw_cc = namelist_dup(np, GCC | gf);
+      head.h_cc = n_alternates_remove(np, FAL0);
+   }
 
    /* To: */
    np = NULL;
    if (rcv != NULL)
       np = (rcv == reply_to) ? namelist_dup(rt, GTO | gf)
             : lextract(rcv, GTO | gf);
-   if (!ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL)
-      np = cat(np, lextract(cp, GTO | gf));
+   if (!ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL) {
+      struct name *x;
+
+      if((x = lextract(cp, GTO | gf)) != NULL)
+         np = cat(np, x);
+   }
    /* Delete my name from reply list, and with it, all my alternate names */
-   np = n_alternates_delete(np, FAL0);
-   if (count(np) == 0)
-      np = lextract(rcv, GTO | gf);
+   if(np != NULL){
+      head.h_mailx_raw_to = namelist_dup(np, GTO | gf);
+      np = n_alternates_remove(np, FAL0);
+      if(count(np) == 0){
+         np = lextract(rcv, GTO | gf);
+         head.h_mailx_raw_to = namelist_dup(np, GTO | gf);
+      }
+   }
    head.h_to = np;
 
    /* The user may have send this to himself, don't ignore that */
@@ -345,6 +366,7 @@ j_lt_redo:
    }
    if(ok_blook(markanswered) && !(mp->m_flag & MANSWERED))
       mp->m_flag |= MANSWER | MANSWERED;
+   n_autorec_relax_gut();
 
    if (*++msgvec != 0) {
       /* TODO message (error) ring.., less sleep */
@@ -396,13 +418,13 @@ _Reply(int *msgvec, bool_t recipient_record)
    NYD_ENTER;
 
    memset(&head, 0, sizeof head);
-   gf = ok_blook(fullnames) ? GFULL : GSKIN;
+   gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
 
    for (ap = msgvec; *ap != 0; ++ap) {
       char const *rp;
       struct name *rt;
 
-      mp = message + *ap - 1;
+      mp = &message[*ap - 1];
       touch(mp);
       setdot(mp);
 
@@ -430,13 +452,19 @@ _Reply(int *msgvec, bool_t recipient_record)
          cp = nameof(mp, 2);
       head.h_to = cat(head.h_to, lextract(cp, GTO | gf));
    }
-   if (head.h_to == NULL)
+   if (head.h_to == NULL) /* XXX no recipients? */
       goto jleave;
+   head.h_mailx_raw_to = namelist_dup(head.h_to, GTO | gf);
 
-   mp = message + msgvec[0] - 1;
+   mp = &message[msgvec[0] - 1];
    head.h_subject = hfield1("subject", mp);
    head.h_subject = a_crese_reedit(head.h_subject);
    make_ref_and_cs(mp, &head);
+   head.h_mailx_command = "reply";
+   head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | gf);
+   head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | gf);
+   head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | gf);
+   head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | gf);
 
    if (ok_blook(quote_as_attachment)) {
       head.h_attach = csalloc(1, sizeof *head.h_attach);
@@ -461,9 +489,10 @@ _fwd(char *str, int recipient_record)
 {
    struct header head;
    int *msgvec, rv = 1;
-   char *recipient;
    struct message *mp;
+   enum gfield gf;
    bool_t f, forward_as_attachment;
+   char *recipient;
    NYD_ENTER;
 
    if ((recipient = laststring(str, &f, TRU1)) == NULL) {
@@ -472,6 +501,7 @@ _fwd(char *str, int recipient_record)
    }
 
    forward_as_attachment = ok_blook(forward_as_attachment);
+   gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
    msgvec = salloc((msgCount + 2) * sizeof *msgvec);
 
    if (!f) {
@@ -506,18 +536,23 @@ _fwd(char *str, int recipient_record)
          (GTO | (ok_blook(fullnames) ? GFULL : GSKIN)))) == NULL)
       goto jleave;
 
-   mp = message + *msgvec - 1;
+   mp = &message[*msgvec - 1];
+   touch(mp);
+   setdot(mp);
+   head.h_subject = hfield1("subject", mp);
+   head.h_subject = __fwdedit(head.h_subject);
+   head.h_mailx_command = "forward";
+   head.h_mailx_raw_to = namelist_dup(head.h_to, GTO | gf);
+   head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | gf);
+   head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | gf);
+   head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | gf);
+   head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | gf);
 
    if (forward_as_attachment) {
       head.h_attach = csalloc(1, sizeof *head.h_attach);
       head.h_attach->a_msgno = *msgvec;
       head.h_attach->a_content_description = _("Forwarded message");
-   } else {
-      touch(mp);
-      setdot(mp);
    }
-   head.h_subject = hfield1("subject", mp);
-   head.h_subject = __fwdedit(head.h_subject);
    rv = (mail1(&head, 1, (forward_as_attachment ? NULL : mp), NULL,
          recipient_record, 1) != OKAY); /* reverse! */
 jleave:
@@ -551,8 +586,10 @@ jleave:
 static int
 _resend1(void *v, bool_t add_resent)
 {
+   struct header head;
+   struct name *myto, *myrawto;
+   enum gfield gf;
    char *name, *str;
-   struct name *to, *sn;
    int *ip, *msgvec;
    bool_t f = TRU1;
    NYD_ENTER;
@@ -588,13 +625,42 @@ _resend1(void *v, bool_t add_resent)
       goto jleave;
    }
 
-   sn = nalloc(name, GTO | GSKIN);
-   to = usermap(sn, FAL0);
    f = TRU1;
+   gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
+
+   myrawto = nalloc(name, GTO | gf);
+   myto = usermap(namelist_dup(myrawto, myrawto->n_type), FAL0);
+   myto = n_alternates_remove(myto, TRU1);
+   if(myto == NULL){
+      n_err(_("No recipients specified\n"));
+      goto jleave;
+   }
+
+   n_autorec_relax_create();
    for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
-         ++ip)
-      if (resend_msg(message + *ip - 1, to, add_resent) != OKAY)
+         ++ip){
+      struct message *mp;
+
+      mp = &message[*ip - 1];
+      touch(mp);
+      setdot(mp);
+
+      memset(&head, 0, sizeof head);
+      head.h_to = myto;
+      head.h_mailx_command = "resend";
+      head.h_mailx_raw_to = myrawto;
+      head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | gf);
+      head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | gf);
+      head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | gf);
+      head.h_mailx_orig_bcc = lextract(hfield1("bcc", mp), GBCC | gf);
+
+      if(resend_msg(mp, &head, add_resent) != OKAY){
+         /* n_autorec_relax_gut(); XXX but is handled automatically? */
          goto jleave;
+      }
+      n_autorec_relax_unroll();
+   }
+   n_autorec_relax_gut();
    f = FAL0;
 jleave:
    NYD_LEAVE;

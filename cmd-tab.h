@@ -249,12 +249,12 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
      DS(N_("Obsolete alternative for `resend'")) },
    { "Forward", &c_Forward, (A | R | S | TSTRING), 0, MMNDEL, NULL
      DS(N_("Like `forward', but derive filename from <address>")) },
-   { "Fwd", &c_Forward, (A | R | S | TSTRING), 0, MMNDEL, NULL
-     DS(N_("Like `forward', but derive filename from <address>")) },
+   { "Fwd", &c_Forward, (O | A | R | S | TSTRING), 0, MMNDEL, NULL
+     DS(N_("Alias of `Forward'")) },
    { "forward", &c_forward, (A | R | S | TSTRING), 0, MMNDEL, NULL
      DS(N_("Forward <message> to <address>")) },
-   { "fwd", &c_forward, (A | R | S | TSTRING), 0, MMNDEL, NULL
-     DS(N_("Forward <message> to <address>")) },
+   { "fwd", &c_forward, (O | A | R | S | TSTRING), 0, MMNDEL, NULL
+     DS(N_("Alias of `forward'")) },
    { "edit", &c_editor, (G | A | I | S | TMSGLST), 0, MMNORM, NULL
      DS(N_("Edit <msglist>")) },
    { "pipe", &c_pipe, (A | TSTRING), 0, MMNDEL, NULL

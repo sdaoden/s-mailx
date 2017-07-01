@@ -684,8 +684,10 @@ FL int c_write(void *v);
  * collect.c
  */
 
-/*
- * If quotefile is (char*)-1, stdin will be used, caller has to verify that
+/* temporary_compose_mode_hook_call() etc. setter hook */
+FL void n_temporary_compose_hook_varset(void *arg);
+
+/* If quotefile is (char*)-1, stdin will be used, caller has to verify that
  * we're not running in interactive mode */
 FL FILE *      collect(struct header *hp, int printheaders, struct message *mp,
                   char const *quotefile, int doprefix, si8_t *checkaddr_err);
@@ -1598,7 +1600,7 @@ FL struct name * elide(struct name *names);
 FL int         c_alternates(void *v);
 
 /* If keep_single is set one alternates member will be allowed in np */
-FL struct name *n_alternates_delete(struct name *np, bool_t keep_single);
+FL struct name *n_alternates_remove(struct name *np, bool_t keep_single);
 
 /* Likewise, is name an alternate in broadest sense? */
 FL bool_t n_is_myname(char const *name);
@@ -1864,7 +1866,8 @@ FL int         puthead(bool_t nosend_msg, struct header *hp, FILE *fo,
                   char const *charset);
 
 /*  */
-FL enum okay   resend_msg(struct message *mp, struct name *to, int add_resent);
+FL enum okay   resend_msg(struct message *mp, struct header *hp,
+                  bool_t add_resent);
 
 /* $DEAD */
 FL void        savedeadletter(FILE *fp, bool_t fflush_rewind_first);

@@ -789,7 +789,9 @@ sendmail_internal(void *v, int recipient_record)
    NYD_ENTER;
 
    memset(&head, 0, sizeof head);
-   head.h_to = lextract(str, GTO | GFULL);
+   head.h_mailx_command = "mail";
+   if((head.h_to = lextract(str, GTO | GFULL | GSKIN)) != NULL)
+      head.h_mailx_raw_to = namelist_dup(head.h_to, head.h_to->n_type);
    rv = mail1(&head, 0, NULL, NULL, recipient_record, 0);
    NYD_LEAVE;
    return (rv != OKAY); /* reverse! */
@@ -1671,9 +1673,15 @@ mail(struct name *to, struct name *cc, struct name *bcc, char const *subject,
       mime_fromhdr(&in, &out, /* TODO ??? TD_ISPR |*/ TD_ICONV);
       head.h_subject = out.s;
    }
-   head.h_to = to;
-   head.h_cc = cc;
-   head.h_bcc = bcc;
+
+   head.h_mailx_command = "mail";
+   if((head.h_to = to) != NULL)
+      head.h_mailx_raw_to = namelist_dup(to, to->n_type);
+   if((head.h_cc = cc) != NULL)
+      head.h_mailx_raw_cc = namelist_dup(cc, cc->n_type);
+   if((head.h_bcc = bcc) != NULL)
+      head.h_mailx_raw_bcc = namelist_dup(bcc, bcc->n_type);
+
    head.h_attach = attach;
 
    mail1(&head, 0, NULL, quotefile, recipient_record, 0);
@@ -2103,12 +2111,12 @@ jto_fmt:
          mftp = &mft;
 
          /* But for that, we have to remove all incarnations of ourselfs first.
-          * TODO It is total crap that we have alternates_delete(), is_myname()
+          * TODO It is total crap that we have alternates_remove(), is_myname()
           * TODO or whatever; these work only with variables, not with data
           * TODO that is _currently_ in some header fields!!!  v15.0: complete
           * TODO rewrite, object based, lazy evaluated, on-the-fly marked.
           * TODO then this should be a really cheap thing in here... */
-         np = elide(n_alternates_delete(cat(
+         np = elide(n_alternates_remove(cat(
                namelist_dup(hp->h_to, GEXTRA | GFULL),
                namelist_dup(hp->h_cc, GEXTRA | GFULL)), FAL0));
          addr = hp->h_list_post;
@@ -2236,16 +2244,28 @@ jleave:
 }
 
 FL enum okay
-resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
+resend_msg(struct message *mp, struct header *hp, bool_t add_resent)
 {
+   struct n_sigman sm;
    struct sendbundle sb;
    FILE *ibuf, *nfo, *nfi;
    char *tempMail;
-   enum okay rv = STOP;
+   struct name *to;
+   enum okay rv;
    NYD_ENTER;
 
    _sendout_error = FAL0;
    __sendout_ident = NULL;
+   rv = STOP;
+   to = hp->h_to;
+   nfi = NULL;
+
+   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
+   case 0:
+      break;
+   default:
+      goto jleave;
+   }
 
    /* Update some globals we likely need first */
    time_current_update(&time_current, TRU1);
@@ -2273,6 +2293,16 @@ resend_msg(struct message *mp, struct name *to, int add_resent) /* TODO check */
 
    if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)
       goto jerr_io;
+
+   /* C99 */{
+      char const *cp;
+
+      if((cp = ok_vlook(on_resend_enter)) != NULL){
+         /*setup_from_and_sender(hp);*/
+         temporary_compose_mode_hook_call(cp, &n_temporary_compose_hook_varset,
+            hp);
+      }
+   }
 
    memset(&sb, 0, sizeof sb);
    sb.sb_to = to;
@@ -2324,10 +2354,21 @@ jerr_o:
    }
 
    Fclose(nfi);
+   n_sigman_cleanup_ping(&sm);
 jleave:
+   if(nfi != NULL){
+      char const *cp;
+
+      if((cp = ok_vlook(on_resend_cleanup)) != NULL)
+         temporary_compose_mode_hook_call(cp, NULL, NULL);
+
+      temporary_compose_mode_hook_unroll();
+   }
+
    if (_sendout_error)
       n_exit_status |= n_EXIT_SEND_ERROR;
    NYD_LEAVE;
+   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
 }
 

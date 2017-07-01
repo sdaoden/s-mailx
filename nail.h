@@ -1531,14 +1531,6 @@ ok_b_bsdannounce,
    ok_v_crt,                           /* {posnum=1} */
    ok_v_customhdr,                     /* {nocntrls=1} */
 
-   /* TODO likely temporary hook data, v15 drop */
-   ok_v_compose_from,                  /* {rdonly=1} */
-   ok_v_compose_sender,                /* {rdonly=1} */
-   ok_v_compose_to,                    /* {rdonly=1} */
-   ok_v_compose_cc,                    /* {rdonly=1} */
-   ok_v_compose_bcc,                   /* {rdonly=1} */
-   ok_v_compose_subject,               /* {rdonly=1} */
-
    ok_v_DEAD,                          /* {notempty=1,env=1,defval=VAL_DEAD} */
    ok_v_datefield,                     /* {i3val="%Y-%m-%d %H:%M"} */
    ok_v_datefield_markout_older,       /* {i3val="%Y-%m-%d"} */
@@ -1565,9 +1557,10 @@ ok_b_bsdannounce,
    ok_b_followup_to,
    ok_v_followup_to_honour,
    ok_b_forward_as_attachment,
+   ok_v_forward_inject_head,
    ok_v_from,
    ok_b_fullnames,
-   ok_v_fwdheading,
+ok_v_fwdheading,
 
    ok_v_HOME,                          /* {vip=1,nodel=1,notempty=1,import=1} */
    ok_b_header,                        /* {i3val=TRU1} */
@@ -1622,6 +1615,22 @@ ok_b_bsdannounce,
    ok_b_mta_no_default_arguments,
    ok_v_mta_argv0,                     /* {notempty=1,defval=VAL_MTA_ARGV0} */
 
+   /* TODO likely temporary hook data, v15 drop */
+   ok_v_mailx_command,                 /* {rdonly=1} */
+   ok_v_mailx_subject,                 /* {rdonly=1} */
+   ok_v_mailx_from,                    /* {rdonly=1} */
+   ok_v_mailx_sender,                  /* {rdonly=1} */
+   ok_v_mailx_to,                      /* {rdonly=1} */
+   ok_v_mailx_cc,                      /* {rdonly=1} */
+   ok_v_mailx_bcc,                     /* {rdonly=1} */
+   ok_v_mailx_raw_to,                  /* {rdonly=1} */
+   ok_v_mailx_raw_cc,                  /* {rdonly=1} */
+   ok_v_mailx_raw_bcc,                 /* {rdonly=1} */
+   ok_v_mailx_orig_from,               /* {rdonly=1} */
+   ok_v_mailx_orig_to,                 /* {rdonly=1} */
+   ok_v_mailx_orig_cc,                 /* {rdonly=1} */
+   ok_v_mailx_orig_bcc,                /* {rdonly=1} */
+
 ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
 ok_b_NAIL_NO_SYSTEM_RC,             /* {name=NAIL_NO_SYSTEM_RC,import=1} */
 ok_v_NAIL_HEAD,                     /* {name=NAIL_HEAD} */
@@ -1639,6 +1648,8 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_on_compose_leave,              /* {notempty=1} */
    ok_v_on_compose_splice,             /* {notempty=1} */
    ok_v_on_compose_splice_shell,       /* {notempty=1} */
+   ok_v_on_resend_cleanup,             /* {notempty=1} */
+   ok_v_on_resend_enter,               /* {notempty=1} */
    ok_b_outfolder,
 
    ok_v_PAGER,                         /* {env=1,notempty=1,defval=VAL_PAGER} */
@@ -2302,15 +2313,15 @@ struct n_header_field{
 struct header {
    ui32_t      h_flags;       /* enum header_flags bits */
    ui32_t      h_dummy;
-   struct name *h_to;         /* Dynamic "To:" string */
    char        *h_subject;    /* Subject string */
+   char const  *h_charset;    /* preferred charset */
+   struct name *h_from;       /* overridden "From:" field */
+   struct name *h_sender;     /* overridden "Sender:" field */
+   struct name *h_to;         /* Dynamic "To:" string */
    struct name *h_cc;         /* Carbon copies string */
    struct name *h_bcc;        /* Blind carbon copies */
    struct name *h_ref;        /* References (possibly overridden) */
    struct attachment *h_attach; /* MIME attachments */
-   char const  *h_charset;    /* preferred charset */
-   struct name *h_from;       /* overridden "From:" field */
-   struct name *h_sender;     /* overridden "Sender:" field */
    struct name *h_replyto;    /* overridden "Reply-To:" field */
    struct name *h_message_id; /* overridden "Message-ID:" field */
    struct name *h_in_reply_to;/* overridden "In-Reply-To:" field */
@@ -2318,6 +2329,15 @@ struct header {
    char const  *h_list_post;  /* Address from List-Post:, for `Lreply' */
    struct n_header_field *h_user_headers;
    struct n_header_field *h_custom_headers; /* (Cached result) */
+   /* Raw/original versions of the header(s). If any */
+   char const *h_mailx_command;
+   struct name *h_mailx_raw_to;
+   struct name *h_mailx_raw_cc;
+   struct name *h_mailx_raw_bcc;
+   struct name *h_mailx_orig_from;
+   struct name *h_mailx_orig_to;
+   struct name *h_mailx_orig_cc;
+   struct name *h_mailx_orig_bcc;
 };
 
 /* Handling of namelist nodes used in processing the recipients of mail and

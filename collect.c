@@ -78,10 +78,13 @@ static void       print_collf(FILE *collf, struct header *hp);
 /* Write a file, ex-like if f set */
 static si32_t a_coll_write(char const *name, FILE *fp, int f);
 
+/* *message-inject-head* */
+static bool_t a_coll_message_inject_head(FILE *fp);
+
 /* Parse off the message header from fp and store relevant fields in hp,
  * replace _coll_fp with a shiny new version without any header */
 static bool_t a_coll_makeheader(FILE *fp, struct header *hp,
-               si8_t *checkaddr_err);
+               si8_t *checkaddr_err, bool_t do_delayed_due_t);
 
 /* Edit the message being collected on fp.  On return, make the edit file the
  * new temp file.  Return errno */
@@ -111,9 +114,6 @@ static void       _collint(int s);
 static void       collhup(int s);
 
 static int        putesc(char const *s, FILE *stream); /* TODO wysh set! */
-
-/* temporary_compose_mode_hook_call() setter hook */
-static void a_coll__hook_setter(void *arg);
 
 /* *on-compose-splice* driver and *on-compose-splice(-shell)?* finalizer */
 static int a_coll_ocs__mac(void);
@@ -422,7 +422,27 @@ jerr:
 }
 
 static bool_t
-a_coll_makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err)
+a_coll_message_inject_head(FILE *fp){
+   bool_t rv;
+   char const *cp, *cp_obsolete;
+   NYD2_ENTER;
+
+   cp_obsolete = ok_vlook(NAIL_HEAD);
+   if(cp_obsolete != NULL)
+      n_OBSOLETE(_("please use *message-inject-head*, not *NAIL_HEAD*"));
+
+   if(((cp = ok_vlook(message_inject_head)) != NULL ||
+         (cp = cp_obsolete) != NULL) && putesc(cp, fp) < 0)
+      rv = FAL0;
+   else
+      rv = TRU1;
+   NYD2_LEAVE;
+   return rv;
+}
+
+static bool_t
+a_coll_makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err,
+   bool_t do_delayed_due_t)
 {
    FILE *nf;
    int c;
@@ -440,12 +460,29 @@ a_coll_makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err)
    if (checkaddr_err != NULL && *checkaddr_err != 0)
       goto jleave;
 
+   /* In template mode some things have been delayed until the template has
+    * been read */
+   if(do_delayed_due_t){
+      char const *cp;
+
+      if((cp = ok_vlook(on_compose_enter)) != NULL){
+         setup_from_and_sender(hp);
+         temporary_compose_mode_hook_call(cp, &n_temporary_compose_hook_varset,
+            hp);
+      }
+
+      if(!a_coll_message_inject_head(nf))
+         goto jleave;
+   }
+
    while ((c = getc(fp)) != EOF) /* XXX bytewise, yuck! */
       putc(c, nf);
+
    if (fp != _coll_fp)
       Fclose(_coll_fp);
    Fclose(fp);
    _coll_fp = nf;
+
    if (check_from_and_sender(hp->h_from, hp->h_sender) == NULL)
       goto jleave;
    rv = TRU1;
@@ -481,7 +518,7 @@ a_coll_edit(int c, struct header *hp) /* TODO error(return) weird */
    nf = run_editor(_coll_fp, (off_t)-1, c, FAL0, hp, NULL, SEND_MBOX, sigint);
    if (nf != NULL) {
       if (hp) {
-         if(!a_coll_makeheader(nf, hp, NULL))
+         if(!a_coll_makeheader(nf, hp, NULL, FAL0))
             rv = n_ERR_INVAL;
       } else {
          fseek(nf, 0L, SEEK_END);
@@ -689,11 +726,23 @@ a_collect__plumb_header(char const *cp, struct header *hp,
                *xp = ' ';
       }
 
+      if(!asccasecmp(cmd[2], cp = "Subject")){
+         if(cmd[3][0] != '\0'){
+            if(hp->h_subject != NULL)
+               hp->h_subject = savecatsep(hp->h_subject, ' ', cmd[3]);
+            else
+               hp->h_subject = n_UNCONST(cmd[3]);
+            fprintf(n_stdout, "210 %s 1\n", cp);
+            goto jleave;
+         }else
+            goto j501cp;
+      }
+
       mult_ok = TRU1;
       ntype = GEXTRA | GFULL | GFULLEXTRA;
       eacm = EACM_STRICT;
 
-      if(!asccasecmp(cmd[2], "from")){
+      if(!asccasecmp(cmd[2], cp = "From")){
          npp = &hp->h_from;
 jins:
          aerr = 0;
@@ -781,16 +830,16 @@ jins:
          goto jins;
       }
 
-      if(!asccasecmp(cmd[2], cp = "Subject")){
-         if(cmd[3][0] != '\0'){
-            if(hp->h_subject != NULL)
-               hp->h_subject = savecatsep(hp->h_subject, ' ', cmd[3]);
-            else
-               hp->h_subject = n_UNCONST(cmd[3]);
-            fprintf(n_stdout, "210 %s 1\n", cp);
-            goto jleave;
-         }else
-            goto j501cp;
+      if(!asccasecmp(cmd[2], cp = "Mailx-Command") ||
+            !asccasecmp(cmd[2], cp = "Mailx-Raw-To") ||
+            !asccasecmp(cmd[2], cp = "Mailx-Raw-Cc") ||
+            !asccasecmp(cmd[2], cp = "Mailx-Raw-Bcc") ||
+            !asccasecmp(cmd[2], cp = "Mailx-Orig-From") ||
+            !asccasecmp(cmd[2], cp = "Mailx-Orig-To") ||
+            !asccasecmp(cmd[2], cp = "Mailx-Orig-Cc") ||
+            !asccasecmp(cmd[2], cp = "Mailx-Orig-Bcc")){
+         fprintf(n_stdout, "505 %s\n", cp);
+         goto jleave;
       }
 
       /* Free-form header fields (note j501cp may print non-normalized name) */
@@ -827,17 +876,26 @@ jins:
 jdefault:
       if(cmd[2] == NULL){
          fputs("210", n_stdout);
+         if(hp->h_subject != NULL) fputs(" Subject", n_stdout);
          if(hp->h_from != NULL) fputs(" From", n_stdout);
          if(hp->h_sender != NULL) fputs(" Sender", n_stdout);
          if(hp->h_to != NULL) fputs(" To", n_stdout);
          if(hp->h_cc != NULL) fputs(" Cc", n_stdout);
          if(hp->h_bcc != NULL) fputs(" Bcc", n_stdout);
-         if(hp->h_subject != NULL) fputs(" Subject", n_stdout);
          if(hp->h_replyto != NULL) fputs(" Reply-To", n_stdout);
          if(hp->h_mft != NULL) fputs(" Mail-Followup-To", n_stdout);
          if(hp->h_message_id != NULL) fputs(" Message-ID", n_stdout);
          if(hp->h_ref != NULL) fputs(" References", n_stdout);
          if(hp->h_in_reply_to != NULL) fputs(" In-Reply-To", n_stdout);
+         if(hp->h_mailx_command != NULL) fputs(" Mailx-Command", n_stdout);
+         if(hp->h_mailx_raw_to != NULL) fputs(" Mailx-Raw-To", n_stdout);
+         if(hp->h_mailx_raw_cc != NULL) fputs(" Mailx-Raw-Cc", n_stdout);
+         if(hp->h_mailx_raw_bcc != NULL) fputs(" Mailx-Raw-Bcc", n_stdout);
+         if(hp->h_mailx_orig_from != NULL) fputs(" Mailx-Orig-From", n_stdout);
+         if(hp->h_mailx_orig_to != NULL) fputs(" Mailx-Orig-To", n_stdout);
+         if(hp->h_mailx_orig_cc != NULL) fputs(" Mailx-Orig-Cc", n_stdout);
+         if(hp->h_mailx_orig_bcc != NULL) fputs(" Mailx-Orig-Bcc", n_stdout);
+
          /* Print only one instance of each free-form header */
          for(hfp = hp->h_user_headers; hfp != NULL; hfp = hfp->hf_next){
             struct n_header_field *hfpx;
@@ -857,7 +915,11 @@ jdefault:
       if(cmd[3] != NULL)
          goto jecmd;
 
-      if(!asccasecmp(cmd[2], "from")){
+      if(!asccasecmp(cmd[2], cp = "Subject")){
+         np = (hp->h_subject != NULL) ? (struct name*)-1 : NULL;
+         goto jlist;
+      }
+      if(!asccasecmp(cmd[2], cp = "From")){
          np = hp->h_from;
 jlist:
          fprintf(n_stdout, "%s %s\n", (np == NULL ? "501" : "210"), cp);
@@ -879,10 +941,6 @@ jlist:
          np = hp->h_bcc;
          goto jlist;
       }
-      if(!asccasecmp(cmd[2], cp = "Subject")){
-         np = (hp->h_subject != NULL) ? (struct name*)-1 : NULL;
-         goto jlist;
-      }
       if(!asccasecmp(cmd[2], cp = "Reply-To")){
          np = hp->h_replyto;
          goto jlist;
@@ -901,6 +959,39 @@ jlist:
       }
       if(!asccasecmp(cmd[2], cp = "In-Reply-To")){
          np = hp->h_in_reply_to;
+         goto jlist;
+      }
+
+      if(!asccasecmp(cmd[2], cp = "Mailx-Command")){
+         np = (hp->h_mailx_command != NULL) ? (struct name*)-1 : NULL;
+         goto jlist;
+      }
+      if(!asccasecmp(cmd[2], cp = "Mailx-Raw-To")){
+         np = hp->h_mailx_raw_to;
+         goto jlist;
+      }
+      if(!asccasecmp(cmd[2], cp = "Mailx-Raw-Cc")){
+         np = hp->h_mailx_raw_cc;
+         goto jlist;
+      }
+      if(!asccasecmp(cmd[2], cp = "Mailx-Raw-Bcc")){
+         np = hp->h_mailx_raw_bcc;
+         goto jlist;
+      }
+      if(!asccasecmp(cmd[2], cp = "Mailx-Orig-From")){
+         np = hp->h_mailx_orig_from;
+         goto jlist;
+      }
+      if(!asccasecmp(cmd[2], cp = "Mailx-Orig-To")){
+         np = hp->h_mailx_orig_to;
+         goto jlist;
+      }
+      if(!asccasecmp(cmd[2], cp = "Mailx-Orig-Cc")){
+         np = hp->h_mailx_orig_cc;
+         goto jlist;
+      }
+      if(!asccasecmp(cmd[2], cp = "Mailx-Orig-Bcc")){
+         np = hp->h_mailx_orig_bcc;
          goto jlist;
       }
 
@@ -926,7 +1017,16 @@ jlist:
       if(cmd[2] == NULL || cmd[3] != NULL)
          goto jecmd;
 
-      if(!asccasecmp(cmd[2], "from")){
+      if(!asccasecmp(cmd[2], cp = "Subject")){
+         if(hp->h_subject != NULL){
+            hp->h_subject = NULL;
+            fprintf(n_stdout, "210 %s\n", cp);
+            goto jleave;
+         }else
+            goto j501cp;
+      }
+
+      if(!asccasecmp(cmd[2], cp = "From")){
          npp = &hp->h_from;
 jrem:
          if(*npp != NULL){
@@ -973,13 +1073,16 @@ jrem:
          goto jrem;
       }
 
-      if(!asccasecmp(cmd[2], cp = "Subject")){
-         if(hp->h_subject != NULL){
-            hp->h_subject = NULL;
-            fprintf(n_stdout, "210 %s\n", cp);
-            goto jleave;
-         }else
-            goto j501cp;
+      if(!asccasecmp(cmd[2], cp = "Mailx-Command") ||
+            !asccasecmp(cmd[2], cp = "Mailx-Raw-To") ||
+            !asccasecmp(cmd[2], cp = "Mailx-Raw-Cc") ||
+            !asccasecmp(cmd[2], cp = "Mailx-Raw-Bcc") ||
+            !asccasecmp(cmd[2], cp = "Mailx-Orig-From") ||
+            !asccasecmp(cmd[2], cp = "Mailx-Orig-To") ||
+            !asccasecmp(cmd[2], cp = "Mailx-Orig-Cc") ||
+            !asccasecmp(cmd[2], cp = "Mailx-Orig-Bcc")){
+         fprintf(n_stdout, "505 %s\n", cp);
+         goto jleave;
       }
 
       /* Free-form header fields (note j501cp may print non-normalized name) */
@@ -1020,7 +1123,16 @@ jrem:
          goto jleave;
       }
 
-      if(!asccasecmp(cmd[2], "from")){
+      if(!asccasecmp(cmd[2], cp = "Subject")){
+         if(hp->h_subject != NULL && i == 1){
+            hp->h_subject = NULL;
+            fprintf(n_stdout, "210 %s 1\n", cp);
+            goto jleave;
+         }else
+            goto j501cp;
+      }
+
+      if(!asccasecmp(cmd[2], cp = "From")){
          npp = &hp->h_from;
 jremat:
          if((np = *npp) == NULL)
@@ -1077,13 +1189,16 @@ jremat:
          goto jremat;
       }
 
-      if(!asccasecmp(cmd[2], cp = "Subject")){
-         if(hp->h_subject != NULL && i == 1){
-            hp->h_subject = NULL;
-            fprintf(n_stdout, "210 %s 1\n", cp);
-            goto jleave;
-         }else
-            goto j501cp;
+      if(!asccasecmp(cmd[2], cp = "Mailx-Command") ||
+            !asccasecmp(cmd[2], cp = "Mailx-Raw-To") ||
+            !asccasecmp(cmd[2], cp = "Mailx-Raw-Cc") ||
+            !asccasecmp(cmd[2], cp = "Mailx-Raw-Bcc") ||
+            !asccasecmp(cmd[2], cp = "Mailx-Orig-From") ||
+            !asccasecmp(cmd[2], cp = "Mailx-Orig-To") ||
+            !asccasecmp(cmd[2], cp = "Mailx-Orig-Cc") ||
+            !asccasecmp(cmd[2], cp = "Mailx-Orig-Bcc")){
+         fprintf(n_stdout, "505 %s\n", cp);
+         goto jleave;
       }
 
       /* Free-form header fields (note j501cp may print non-normalized name) */
@@ -1115,7 +1230,14 @@ jremat:
       if(cmd[2] == NULL || cmd[3] != NULL)
          goto jecmd;
 
-      if(!asccasecmp(cmd[2], "from")){
+      if(!asccasecmp(cmd[2], cp = "Subject")){
+         if(hp->h_subject == NULL)
+            goto j501cp;
+         fprintf(n_stdout, "212 %s\n%s\n\n", cp, hp->h_subject);
+         goto jleave;
+      }
+
+      if(!asccasecmp(cmd[2], cp = "From")){
          np = hp->h_from;
 jshow:
          if(np != NULL){
@@ -1165,12 +1287,39 @@ jshow:
          goto jshow;
       }
 
-      if(!asccasecmp(cmd[2], cp = "Subject")){
-         if(hp->h_subject != NULL)
-            fprintf(n_stdout, "212 %s\n%s\n\n", cp, hp->h_subject);
-         else
-            fprintf(n_stdout, "501 %s\n", cp);
+      if(!asccasecmp(cmd[2], cp = "Mailx-Command")){
+         if(hp->h_mailx_command == NULL)
+            goto j501cp;
+         fprintf(n_stdout, "212 %s\n%s\n\n", cp, hp->h_mailx_command);
          goto jleave;
+      }
+      if(!asccasecmp(cmd[2], cp = "Mailx-Raw-To")){
+         np = hp->h_mailx_raw_to;
+         goto jshow;
+      }
+      if(!asccasecmp(cmd[2], cp = "Mailx-Raw-Cc")){
+         np = hp->h_mailx_raw_cc;
+         goto jshow;
+      }
+      if(!asccasecmp(cmd[2], cp = "Mailx-Raw-Bcc")){
+         np = hp->h_mailx_raw_bcc;
+         goto jshow;
+      }
+      if(!asccasecmp(cmd[2], cp = "Mailx-Orig-From")){
+         np = hp->h_mailx_orig_from;
+         goto jshow;
+      }
+      if(!asccasecmp(cmd[2], cp = "Mailx-Orig-To")){
+         np = hp->h_mailx_orig_to;
+         goto jshow;
+      }
+      if(!asccasecmp(cmd[2], cp = "Mailx-Orig-Cc")){
+         np = hp->h_mailx_orig_cc;
+         goto jshow;
+      }
+      if(!asccasecmp(cmd[2], cp = "Mailx-Orig-Bcc")){
+         np = hp->h_mailx_orig_bcc;
+         goto jshow;
       }
 
       /* Free-form header fields (note j501cp may print non-normalized name) */
@@ -1528,35 +1677,6 @@ jleave:
    return rv;
 }
 
-static void
-a_coll__hook_setter(void *arg){ /* TODO v15: drop */
-   struct header *hp;
-   char const *val;
-   NYD2_ENTER;
-
-   hp = arg;
-
-   if((val = detract(hp->h_from, GNAMEONLY)) == NULL)
-      val = n_empty;
-   ok_vset(compose_from, val);
-   if((val = detract(hp->h_sender, 0)) == NULL)
-      val = n_empty;
-   ok_vset(compose_sender, val);
-   if((val = detract(hp->h_to, GNAMEONLY)) == NULL)
-      val = n_empty;
-   ok_vset(compose_to, val);
-   if((val = detract(hp->h_cc, GNAMEONLY)) == NULL)
-      val = n_empty;
-   ok_vset(compose_cc, val);
-   if((val = detract(hp->h_bcc, GNAMEONLY)) == NULL)
-      val = n_empty;
-   ok_vset(compose_bcc, val);
-   if((val = hp->h_subject) == NULL)
-      val = n_empty;
-   ok_vset(compose_subject, val);
-   NYD2_LEAVE;
-}
-
 static int
 a_coll_ocs__mac(void){
    /* Executes in a fork(2)ed child  TODO if remains, global MASKs for those! */
@@ -1608,6 +1728,62 @@ a_coll_ocs__finalize(void *vp){
    safe_signal(SIGPIPE, opipe);
    safe_signal(SIGINT, oint);
    rele_all_sigs();
+   NYD2_LEAVE;
+}
+
+FL void
+n_temporary_compose_hook_varset(void *arg){ /* TODO v15: drop */
+   struct header *hp;
+   char const *val;
+   NYD2_ENTER;
+
+   hp = arg;
+
+   if((val = hp->h_subject) == NULL)
+      val = n_empty;
+   ok_vset(mailx_subject, val);
+   if((val = detract(hp->h_from, GNAMEONLY)) == NULL)
+      val = n_empty;
+   ok_vset(mailx_from, val);
+   if((val = detract(hp->h_sender, GNAMEONLY)) == NULL)
+      val = n_empty;
+   ok_vset(mailx_sender, val);
+   if((val = detract(hp->h_to, GNAMEONLY)) == NULL)
+      val = n_empty;
+   ok_vset(mailx_to, val);
+   if((val = detract(hp->h_cc, GNAMEONLY)) == NULL)
+      val = n_empty;
+   ok_vset(mailx_cc, val);
+   if((val = detract(hp->h_bcc, GNAMEONLY)) == NULL)
+      val = n_empty;
+   ok_vset(mailx_bcc, val);
+
+   if((val = hp->h_mailx_command) == NULL)
+      val = n_empty;
+   ok_vset(mailx_command, val);
+
+   if((val = detract(hp->h_mailx_raw_to, GNAMEONLY)) == NULL)
+      val = n_empty;
+   ok_vset(mailx_raw_to, val);
+   if((val = detract(hp->h_mailx_raw_cc, GNAMEONLY)) == NULL)
+      val = n_empty;
+   ok_vset(mailx_raw_cc, val);
+   if((val = detract(hp->h_mailx_raw_bcc, GNAMEONLY)) == NULL)
+      val = n_empty;
+   ok_vset(mailx_raw_bcc, val);
+
+   if((val = detract(hp->h_mailx_orig_from, GNAMEONLY)) == NULL)
+      val = n_empty;
+   ok_vset(mailx_orig_from, val);
+   if((val = detract(hp->h_mailx_orig_to, GNAMEONLY)) == NULL)
+      val = n_empty;
+   ok_vset(mailx_orig_to, val);
+   if((val = detract(hp->h_mailx_orig_cc, GNAMEONLY)) == NULL)
+      val = n_empty;
+   ok_vset(mailx_orig_cc, val);
+   if((val = detract(hp->h_mailx_orig_bcc, GNAMEONLY)) == NULL)
+      val = n_empty;
+   ok_vset(mailx_orig_bcc, val);
    NYD2_LEAVE;
 }
 
@@ -1699,20 +1875,17 @@ collect(struct header *hp, int printheaders, struct message *mp,
       if (getfields)
          grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, getfields, 1);
 
-      /* Execute compose-enter TODO completely v15-compat intermediate!! */
-      if((cp = ok_vlook(on_compose_enter)) != NULL){
+      /* Execute compose-enter; delayed for -t mode */
+      if(!(n_poption & n_PO_t_FLAG) &&
+            (cp = ok_vlook(on_compose_enter)) != NULL){
          setup_from_and_sender(hp);
-         temporary_compose_mode_hook_call(cp, &a_coll__hook_setter, hp);
+         temporary_compose_mode_hook_call(cp, &n_temporary_compose_hook_varset,
+            hp);
       }
 
       /* TODO Mm: nope since it may require turning this into a multipart one */
-      if(!(n_poption & n_PO_Mm_FLAG)){
-         char const *cp_obsolete = ok_vlook(NAIL_HEAD);
-         if(cp_obsolete != NULL)
-            n_OBSOLETE(_("please use *message-inject-head*, not *NAIL_HEAD*"));
-
-         if(((cp = ok_vlook(message_inject_head)) != NULL ||
-               (cp = cp_obsolete) != NULL) && putesc(cp, _coll_fp) < 0)
+      if(!(n_poption & (n_PO_Mm_FLAG | n_PO_t_FLAG))){
+         if(!a_coll_message_inject_head(_coll_fp))
             goto jerr;
 
          /* Quote an original message */
@@ -1720,8 +1893,15 @@ collect(struct header *hp, int printheaders, struct message *mp,
             quoteitp = n_IGNORE_ALL;
             action = SEND_QUOTE;
             if (doprefix) {
+               char const *cp_v15compat;
+
                quoteitp = n_IGNORE_FWD;
-               if ((cp = ok_vlook(fwdheading)) == NULL)
+
+               if((cp_v15compat = ok_vlook(fwdheading)) != NULL)
+                  n_OBSOLETE(_("please use *forward-inject-head*, "
+                     "not *fwdheading*"));
+               cp = ok_vlook(forward_inject_head);
+               if(cp == NULL && cp_v15compat == NULL)
                   cp = "-------- Original Message --------";
                if (*cp != '\0' && fprintf(_coll_fp, "%s\n", cp) < 0)
                   goto jerr;
@@ -1844,7 +2024,7 @@ jcont:
              * *and* keep n_PO_t_FLAG for the first parse of the message!
              * TODO This is a hack, we need a clean approach for this */
             n_psonce |= n_PSO_t_FLAG;
-            if(!a_coll_makeheader(_coll_fp, hp, checkaddr_err))
+            if(!a_coll_makeheader(_coll_fp, hp, checkaddr_err, TRU1))
                goto jerr;
             n_poption &= ~n_PO_t_FLAG;
             continue;
@@ -2412,7 +2592,8 @@ jout:
    /* Execute compose-leave */
    if((cp = ok_vlook(on_compose_leave)) != NULL){
       setup_from_and_sender(hp);
-      temporary_compose_mode_hook_call(cp, &a_coll__hook_setter, hp);
+      temporary_compose_mode_hook_call(cp, &n_temporary_compose_hook_varset,
+         hp);
    }
 
    /* Add automatic receivers */
