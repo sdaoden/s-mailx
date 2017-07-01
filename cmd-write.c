@@ -147,6 +147,13 @@ save1(char *str, int domark, char const *cmd, struct n_ignore const *itp,
       n_perr(file, 0);
       goto jleave;
    }
+#if defined HAVE_POP3 && defined HAVE_IMAP
+   if(mb.mb_type == MB_POP3 && (fs & n_PROTO_MASK) == n_PROTO_IMAP){
+      Fclose(obuf);
+      n_err(_("Direct copy from POP3 to IMAP not supported before v15\n"));
+      goto jleave;
+   }
+#endif
 
    disp = (fs & n_FOPEN_STATE_EXISTS) ? _("[Appended]") : _("[New file]");
 
