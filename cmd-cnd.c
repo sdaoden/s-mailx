@@ -134,9 +134,14 @@ jesyn:
       if(!asccasecmp(cp, "true")) /* Beware! */
          rv = TRU1;
       else
-         rv = ((n_psonce & n_PSO_TTYIN) != 0);
+         rv = ((n_psonce & n_PSO_INTERACTIVE) != 0);
       break;
-   case '$':
+   case '$':{
+      enum{
+         a_NONE,
+         a_ICASE = 1u<<0
+      } flags = a_NONE;
+
       /* Look up the value in question, we need it anyway */
       if(*++cp == '{'){
          size_t i = strlen(cp);
@@ -162,6 +167,20 @@ jesyn:
       emsg = N_("unrecognized condition");
       if(argc == 2 || (c = op[0]) == '\0')
          goto jesyn;
+
+      /* May be modifier */
+      if(c == '@'){
+         for(;;){
+            c = *++op;
+            if(c == 'i')
+               flags |= a_ICASE;
+            else
+               break;
+         }
+         if(flags == a_NONE)
+            flags = a_ICASE;
+      }
+
       if(op[1] == '\0'){
          if(c != '<' && c != '>')
             goto jesyn;
@@ -171,7 +190,7 @@ jesyn:
          if(op[1] != '=')
             goto jesyn;
       }else if(c == '=' || c == '!'){
-         if(op[1] != '=' && op[1] != '@'
+         if(op[1] != '=' && op[1] != '%' && op[1] != '@'
 #ifdef HAVE_REGEX
                && op[1] != '~'
 #endif
@@ -229,7 +248,8 @@ jesyn:
          regex_t re;
          int s;
 
-         if((s = regcomp(&re, rhv, REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
+         if((s = regcomp(&re, rhv, REG_EXTENDED | REG_NOSUB |
+               (flags & a_ICASE ? REG_ICASE : 0))) != 0){
             emsg = savecat(_("invalid regular expression: "),
                   n_regex_err_to_doc(&re, s));
             goto jesyn_ntr;
@@ -241,9 +261,12 @@ jesyn:
 #endif
             if(noop)
          break;
-      else if(op[1] == '@')
-         rv = (asccasestr(lhv, rhv) == NULL) ^ (c == '=');
-      else if(c == '-'){
+      else if(op[1] == '%' || op[1] == '@'){
+         if(op[1] == '@')
+            n_OBSOLETE("`if'++: \"=@\" and \"!@\" became \"=%\" and \"!%\"");
+         rv = ((flags & a_ICASE ? asccasestr(lhv, rhv) : strstr(lhv, rhv)
+               ) == NULL) ^ (c == '=');
+      }else if(c == '-'){
          si64_t lhvi, rhvi;
 
          if(*lhv == '\0')
@@ -271,7 +294,7 @@ jesyn:
       }else{
          si32_t scmp;
 
-         scmp = asccasecmp(lhv, rhv);
+         scmp = (flags & a_ICASE) ? asccasecmp(lhv, rhv) : strcmp(lhv, rhv);
          switch(c){
          default:
          case '=': rv = (scmp == 0); break;
@@ -280,7 +303,7 @@ jesyn:
          case '>': rv = (op[1] == '\0') ? scmp > 0 : scmp >= 0; break;
          }
       }
-      break;
+   }  break;
    }
 
    if(noop && rv < 0)

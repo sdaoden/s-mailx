@@ -285,7 +285,7 @@ _mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
 
    mtnp = NULL;
 
-   /* Drop anything after a comment first */
+   /* Drop anything after a comment first TODO v15: only when read from file */
    if ((typ = memchr(line, '#', len)) != NULL)
       len = PTR2SIZE(typ - line);
 
@@ -302,28 +302,34 @@ _mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
 
    /* (But wait - is there a type marker?) */
    tlen = len;
-   if (!(orflags & (_MT_USR | _MT_SYS)) && *typ == '@') {
-      if (len < 2)
+   if(!(orflags & (_MT_USR | _MT_SYS)) && *typ == '@'){
+      if(len < 2)
          goto jeinval;
-      if (typ[1] == ' ') {
+      if(typ[1] == ' '){
          orflags |= _MT_PLAIN;
          typ += 2;
          len -= 2;
          line += 2;
-      } else if (len > 4 && typ[2] == '@' && typ[3] == ' ') {
-         switch (typ[1]) {
-         case 't':   orflags |= _MT_PLAIN;   goto jexttypmar;
-         case 'h':   orflags |= _MT_SOUP_h;  goto jexttypmar;
-         case 'H':   orflags |= _MT_SOUP_H;
-jexttypmar:
-            typ += 4;
-            len -= 4;
-            line += 4;
-            break;
-         default:
+      }else if(len > 3){
+         if(typ[2] == ' ')
+            i = 3;
+         else if(len > 4 && typ[2] == '@' && typ[3] == ' '){
+            n_OBSOLETE("`mimetype': the trailing \"@\" in \"type-marker\" "
+               "is redundant");
+            i = 4;
+         }else
             goto jeinval;
+
+         switch(typ[1]){
+         default: goto jeinval;
+         case 't': orflags |= _MT_PLAIN; break;
+         case 'h': orflags |= _MT_SOUP_h; break;
+         case 'H': orflags |= _MT_SOUP_H; break;
          }
-      } else
+         typ += i;
+         len -= i;
+         line += i;
+      }else
          goto jeinval;
    }
 
@@ -334,7 +340,7 @@ jexttypmar:
    if (len == 0 || (tlen = PTR2SIZE(line - typ)) == 0) {
       if (cmdcalled || (orflags & _MT_FSPEC)) {
          if(len == 0){
-            line = _("(no value");
+            line = _("(no value)");
             len = strlen(line);
          }
          n_err(_("Empty MIME type or no extensions given: %.*s\n"),
@@ -343,7 +349,8 @@ jexttypmar:
       goto jleave;
    }
 
-   if ((subtyp = memchr(typ, '/', tlen)) == NULL) {
+   if ((subtyp = memchr(typ, '/', tlen)) == NULL || subtyp[1] == '\0' ||
+         spacechar(subtyp[1])) {
 jeinval:
       if(cmdcalled || (orflags & _MT_FSPEC) || (n_poption & n_PO_D_V))
          n_err(_("%s MIME type: %.*s\n"),
@@ -872,64 +879,80 @@ jerr:
 }
 
 FL int
-c_mimetype(void *v)
-{
-   char **argv = v;
+c_mimetype(void *v){
+   struct n_string s, *sp;
    struct mtnode *mtnp;
+   char **argv;
    NYD_ENTER;
 
-   if (!_mt_is_init)
+   if(!_mt_is_init)
       _mt_init();
 
-   if (*argv == NULL) {
+   sp = n_string_creat_auto(&s);
+
+   if(*(argv = v) == NULL){
       FILE *fp;
       size_t l;
 
-      if (_mt_list == NULL) {
-         fprintf(n_stdout,
-            _("*mimetypes-load-control*: no mime.types(5) available\n"));
+      if(_mt_list == NULL){
+         fprintf(n_stdout, _("# `mimetype': no mime.types(5) available\n"));
          goto jleave;
       }
 
-      if ((fp = Ftmp(NULL, "mimelist", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
-            NULL) {
+      if((fp = Ftmp(NULL, "mimetype", OF_RDWR | OF_UNLINK | OF_REGISTER)
+            ) == NULL){
          n_perr(_("tmpfile"), 0);
          v = NULL;
          goto jleave;
       }
 
-      for (l = 0, mtnp = _mt_list; mtnp != NULL; ++l, mtnp = mtnp->mt_next) {
-         char const *tmark, *typ;
+      sp = n_string_reserve(sp, 63);
 
-         switch (mtnp->mt_flags & __MT_MARKMASK) {
-         case _MT_PLAIN:   tmark = "/t"; break;
-         case _MT_SOUP_h:  tmark = "/h"; break;
-         case _MT_SOUP_H:  tmark = "/H"; break;
-         default:          tmark = "  "; break;
+      for(l = 0, mtnp = _mt_list; mtnp != NULL; ++l, mtnp = mtnp->mt_next){
+         char const *cp;
+
+         sp = n_string_trunc(sp, 0);
+
+         switch(mtnp->mt_flags & __MT_MARKMASK){
+         case _MT_PLAIN: cp = "@t "; break;
+         case _MT_SOUP_h: cp = "@h "; break;
+         case _MT_SOUP_H: cp = "@H "; break;
+         default: cp = NULL; break;
          }
-         typ = ((mtnp->mt_flags & __MT_TMASK) == _MT_OTHER)
-               ? n_empty : _mt_typnames[mtnp->mt_flags & __MT_TMASK];
+         if(cp != NULL)
+            sp = n_string_push_cp(sp, cp);
 
-         fprintf(fp, "%c%s %s%.*s  %s\n",
-            (mtnp->mt_flags & _MT_USR ? 'U'
-               : (mtnp->mt_flags & _MT_SYS ? 'S'
-               : (mtnp->mt_flags & _MT_FSPEC ? 'F'
-               : (mtnp->mt_flags & _MT_CMD ? 'C' : 'B')))),
-            tmark, typ, (int)mtnp->mt_mtlen, mtnp->mt_line,
-            mtnp->mt_line + mtnp->mt_mtlen);
-      }
+         if((mtnp->mt_flags & __MT_TMASK) != _MT_OTHER)
+            sp = n_string_push_cp(sp, _mt_typnames[mtnp->mt_flags &__MT_TMASK]);
+
+         sp = n_string_push_buf(sp, mtnp->mt_line, mtnp->mt_mtlen);
+         sp = n_string_push_c(sp, ' ');
+         sp = n_string_push_c(sp, ' ');
+         sp = n_string_push_cp(sp, &mtnp->mt_line[mtnp->mt_mtlen]);
+
+         fprintf(fp, "wysh mimetype %s%s\n", n_string_cp(sp),
+            ((n_poption & n_PO_D_V) == 0 ? n_empty
+               : (mtnp->mt_flags & _MT_USR ? " # user"
+               : (mtnp->mt_flags & _MT_SYS ? " # system"
+               : (mtnp->mt_flags & _MT_FSPEC ? " # f= file"
+               : (mtnp->mt_flags & _MT_CMD ? " # command" : " # builtin"))))));
+       }
 
       page_or_print(fp, l);
       Fclose(fp);
-   } else {
-      for (; *argv != NULL; ++argv) {
-         mtnp = _mt_create(TRU1, _MT_CMD, *argv, strlen(*argv));
-         if (mtnp != NULL) {
-            mtnp->mt_next = _mt_list;
-            _mt_list = mtnp;
-         } else
-            v = NULL;
+   }else{
+      for(; *argv != NULL; ++argv){
+         if(sp->s_len > 0)
+            sp = n_string_push_c(sp, ' ');
+         sp = n_string_push_cp(sp, *argv);
       }
+
+      mtnp = _mt_create(TRU1, _MT_CMD, n_string_cp(sp), sp->s_len);
+      if(mtnp != NULL){
+         mtnp->mt_next = _mt_list;
+         _mt_list = mtnp;
+      }else
+         v = NULL;
    }
 jleave:
    NYD_LEAVE;

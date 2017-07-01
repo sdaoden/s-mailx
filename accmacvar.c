@@ -3018,33 +3018,6 @@ jenum_plusminus:
 
       i = n_torek_hash(*++argv);
       lhv = (si64_t)i;
-   }else if(is_asccaseprefix(cp, "file-expand")){
-      if(argv[1] == NULL || argv[2] != NULL)
-         goto jesynopsis;
-
-      if((varres = fexpand(argv[1], FEXP_NVAR | FEXP_NOPROTO)) == NULL)
-         goto jestr_nodata;
-   }else if(is_asccaseprefix(cp, "makeprint")){
-      struct str sin, sout;
-
-      if(argv[1] == NULL || argv[2] != NULL)
-         goto jesynopsis;
-
-      sin.l = strlen(sin.s = n_UNCONST(argv[1]));
-      makeprint(&sin, &sout);
-      varres = savestrbuf(sout.s, sout.l);
-      n_free(sout.s);
-   }else if(is_asccaseprefix(cp, "random")){
-      if(argv[1] == NULL || argv[2] != NULL)
-         goto jesynopsis;
-
-      if((n_idec_si64_cp(&lhv, argv[1], 0, NULL
-               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED || lhv < 0 || lhv > PATH_MAX)
-         goto jestr_numrange;
-      if(lhv == 0)
-         lhv = NAME_MAX;
-      varres = n_random_create_cp((size_t)lhv, NULL);
    }else if(is_asccaseprefix(cp, "find")){
       f |= a_ISNUM | a_ISDECIMAL;
       if(argv[1] == NULL || argv[2] == NULL || argv[3] != NULL)
@@ -3108,6 +3081,35 @@ jenum_plusminus:
             f |= a_SOFTOVERFLOW;
          }
       }
+   }else if(is_asccaseprefix(cp, "random")){
+      if(argv[1] == NULL || argv[2] != NULL)
+         goto jesynopsis;
+
+      if((n_idec_si64_cp(&lhv, argv[1], 0, NULL
+               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+            ) != n_IDEC_STATE_CONSUMED || lhv < 0 || lhv > PATH_MAX)
+         goto jestr_numrange;
+      if(lhv == 0)
+         lhv = NAME_MAX;
+      varres = n_random_create_cp((size_t)lhv, NULL);
+   }else if(is_asccaseprefix(cp, "file-expand")){
+      if(argv[1] == NULL || argv[2] != NULL)
+         goto jesynopsis;
+
+      if((varres = fexpand(argv[1], FEXP_NVAR | FEXP_NOPROTO)) == NULL)
+         goto jestr_nodata;
+   }else if(is_asccaseprefix(cp, "makeprint")){
+      struct str sin, sout;
+
+      if(argv[1] == NULL || argv[2] != NULL)
+         goto jesynopsis;
+
+      /* XXX using strlen for `vexpr makeprint' is wrong for UTF-16 */
+      sin.l = strlen(sin.s = n_UNCONST(argv[1]));
+      makeprint(&sin, &sout);
+      varres = savestrbuf(sout.s, sout.l);
+      n_free(sout.s);
+   /* TODO `vexpr': (wide) string length, find, etc!! */
 #ifdef HAVE_REGEX
    }else if(is_asccaseprefix(cp, "regex")) Jregex:{
       regmatch_t rema[1 + n_VEXPR_REGEX_MAX];

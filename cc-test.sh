@@ -606,10 +606,30 @@ t_behave_ifelse() {
 		else
 		   echo 5.err
 		endif
+		if $dietcurd @== 'Yoho'
+			echo 5-1.ok
+		else
+			echo 5-1.err
+		endif
+		if $dietcurd == 'Yoho'
+			echo 5-2.err
+		else
+			echo 5-2.ok
+		endif
 		if $dietcurd != 'yoho'
 		   echo 6.err
 		else
 		   echo 6.ok
+		endif
+		if $dietcurd @!= 'Yoho'
+			echo 6-1.err
+		else
+			echo 6-1.ok
+		endif
+		if $dietcurd != 'Yoho'
+			echo 6-2.ok
+		else
+			echo 6-2.err
 		endif
 		# Nesting
 		if faLse
@@ -700,7 +720,7 @@ t_behave_ifelse() {
 		else
 		   echo 10.err12
 		endif
-		# integer conversion, <..>..
+		# integer
 		set dietcurd=10
 		if $dietcurd -lt 11
 		   echo 11.ok1
@@ -740,32 +760,32 @@ t_behave_ifelse() {
 		set dietcurd=Abc
 		if $dietcurd < aBd
 		   echo 12.ok1
-		   if $dietcurd > abB
+		   if $dietcurd @> abB
 		      echo 12.ok2
 		   else
 		      echo 12.err2
 		   endif
-		   if $dietcurd == aBC
+		   if $dietcurd @== aBC
 		      echo 12.ok3
 		   else
 		      echo 12.err3
 		   endif
-		   if $dietcurd >= AbC
+		   if $dietcurd @>= AbC
 		      echo 12.ok4
 		   else
 		      echo 12.err4
 		   endif
-		   if $dietcurd <= ABc
+		   if $dietcurd @<= ABc
 		      echo 12.ok5
 		   else
 		      echo 12.err5
 		   endif
-		   if $dietcurd >= abd
+		   if $dietcurd @>= abd
 		      echo 12.err6
 		   else
 		      echo 12.ok6
 		   endif
-		   if $dietcurd <= abb
+		   if $dietcurd @<= abb
 		      echo 12.err7
 		   else
 		      echo 12.ok7
@@ -773,32 +793,67 @@ t_behave_ifelse() {
 		else
 		   echo 12.err1
 		endif
-		if $dietcurd =@ aB
+      if $dietcurd < aBc
+         echo 12-1.ok
+      else
+         echo 12-1.err
+      endif
+      if $dietcurd @< aBc
+         echo 12-2.err
+      else
+         echo 12-2.ok
+      endif
+      if $dietcurd > ABc
+         echo 12-3.ok
+      else
+         echo 12-3.err
+      endif
+      if $dietcurd @> ABc
+         echo 12-3.err
+      else
+         echo 12-3.ok
+      endif
+		if $dietcurd @i=% aB
 		   echo 13.ok
 		else
 		   echo 13.err
 		endif
-		if $dietcurd =@ bC
+		if $dietcurd =% aB
+		   echo 13-1.err
+		else
+		   echo 13-1.ok
+		endif
+		if $dietcurd @=% bC
 		   echo 14.ok
 		else
 		   echo 14.err
 		endif
-		if $dietcurd !@ aB
-		   echo 15.err
+		if $dietcurd !% aB
+		   echo 15-1.ok
 		else
-		   echo 15.ok
+		   echo 15-1.err
 		endif
-		if $dietcurd !@ bC
-		   echo 15.err
+		if $dietcurd @!% aB
+		   echo 15-2.err
 		else
-		   echo 15.ok
+		   echo 15-2.ok
 		endif
-		if $dietcurd =@ Cd
+		if $dietcurd !% bC
+		   echo 15-3.ok
+		else
+		   echo 15-3.err
+		endif
+		if $dietcurd @!% bC
+		   echo 15-4.err
+		else
+		   echo 15-4.ok
+		endif
+		if $dietcurd =% Cd
 		   echo 16.err
 		else
 		   echo 16.ok
 		endif
-		if $dietcurd !@ Cd
+		if $dietcurd !% Cd
 		   echo 17.ok
 		else
 		   echo 17.err
@@ -1136,7 +1191,7 @@ t_behave_ifelse() {
 		endif
 	__EOT
 
-   check behave:if-normal 0 "${MBOX}" '557629289 631'
+   check behave:if-normal 0 "${MBOX}" '1688759742 719'
 
    if have_feat regex; then
       ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
@@ -1146,42 +1201,52 @@ t_behave_ifelse() {
 			else
 			   echo 1.err
 			endif
-			if $dietcurd =~ '^yoho.+'
+			if $dietcurd =~ '^Yo.*'
+			   echo 1-1.err
+			else
+			   echo 1-1.ok
+			endif
+			if $dietcurd @=~ '^Yo.*'
+			   echo 1-2.ok
+			else
+			   echo 1-2.err
+			endif
+			if $dietcurd =~ '^yOho.+'
 			   echo 2.err
 			else
 			   echo 2.ok
 			endif
-			if $dietcurd !~ '.*ho$'
+			if $dietcurd @!~ '.*Ho$'
 			   echo 3.err
 			else
 			   echo 3.ok
 			endif
-			if $dietcurd !~ '.+yoho$'
+			if $dietcurd !~ '.+yohO$'
 			   echo 4.ok
 			else
 			   echo 4.err
 			endif
-			if [ $dietcurd !~ '.+yoho$' ]
+			if [ $dietcurd @i!~ '.+yoho$' ]
 			   echo 5.ok
 			else
 			   echo 5.err
 			endif
-			if ! [ $dietcurd =~ '.+yoho$' ]
+			if ! [ $dietcurd @i=~ '.+yoho$' ]
 			   echo 6.ok
 			else
 			   echo 6.err
 			endif
-			if ! ! [ $dietcurd !~ '.+yoho$' ]
+			if ! ! [ $dietcurd @i!~ '.+yoho$' ]
 			   echo 7.ok
 			else
 			   echo 7.err
 			endif
-			if ! [ ! [ $dietcurd !~ '.+yoho$' ] ]
+			if ! [ ! [ $dietcurd @i!~ '.+yoho$' ] ]
 			   echo 8.ok
 			else
 			   echo 8.err
 			endif
-			if [ ! [ ! [ $dietcurd !~ '.+yoho$' ] ] ]
+			if [ ! [ ! [ $dietcurd @i!~ '.+yoho$' ] ] ]
 			   echo 9.ok
 			else
 			   echo 9.err
@@ -1220,7 +1285,7 @@ t_behave_ifelse() {
 			endif
 		__EOT
 
-      check behave:if-regex 0 "${MBOX}" '439960016 81'
+      check behave:if-regex 0 "${MBOX}" '1115671789 95'
    else
       printf 'behave:if-regex: unsupported, skipped\n'
    fi
