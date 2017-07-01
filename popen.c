@@ -796,22 +796,22 @@ Ftmp_free(char **fn) /* TODO DROP: OF_REGISTER_FREEPATH! */
 }
 
 FL bool_t
-pipe_cloexec(int fd[2])
-{
-   bool_t rv = FAL0;
+pipe_cloexec(int fd[2]){
+   bool_t rv;
    NYD_ENTER;
 
+   rv = FAL0;
+
 #ifdef HAVE_PIPE2
-   if (pipe2(fd, O_CLOEXEC) == -1)
-      goto jleave;
+   if(pipe2(fd, O_CLOEXEC) != -1)
+      rv = TRU1;
 #else
-   if (pipe(fd) == -1)
-      goto jleave;
-   _CLOEXEC_SET(fd[0]);
-   _CLOEXEC_SET(fd[1]);
+   if(pipe(fd) != -1){
+      n_fd_cloexec_set(fd[0]);
+      n_fd_cloexec_set(fd[1]);
+      rv = TRU1;
+   }
 #endif
-   rv = TRU1;
-jleave:
    NYD_LEAVE;
    return rv;
 }

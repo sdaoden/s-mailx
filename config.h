@@ -173,12 +173,7 @@
 # define _CLOEXEC_SET(FD) do {;} while(0)
 #else
 # define _O_CLOEXEC 0
-# define _CLOEXEC_SET(FD) \
-do{\
-      int a__fd = (FD), a__fl;\
-      if((a__fl = fcntl(a__fd, F_GETFD)) != -1)\
-         (void)fcntl(a__fd, F_SETFD, a__fl |= FD_CLOEXEC);\
-}while(0)
+# define _CLOEXEC_SET(FD) n_fd_cloexec_set(FD)
 #endif
 
 #ifdef O_NOFOLLOW
