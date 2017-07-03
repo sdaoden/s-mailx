@@ -149,8 +149,8 @@ do{\
 
 # define n_fd_cloexec_set(FD) \
 do{\
-      int a__fd = (FD), a__fl;\
-      if((a__fl = fcntl(a__fd, F_GETFD)) != -1 && !(a__fl & FD_CLOEXEC))\
+      int a__fd = (FD)/*, a__fl*/;\
+      /*if((a__fl = fcntl(a__fd, F_GETFD)) != -1 && !(a__fl & FD_CLOEXEC))*/\
          (void)fcntl(a__fd, F_SETFD, FD_CLOEXEC);\
 }while(0)
 
