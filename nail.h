@@ -2237,7 +2237,7 @@ MUNLINKED = 1u<<15,     /* Unlinked from IMAP cache */
    MDRAFTED = 1u<<25,   /* message is marked as `draft' */
    MOLDMARK = 1u<<26,   /* messages was marked previously */
    MSPAM = 1u<<27,      /* message is classified as spam */
-   MSPAMUNSURE = 1u<<28, /* message may be spam, but it is unsure */
+   MSPAMUNSURE = 1u<<28  /* message may be spam, but it is unsure */
 };
 #define MMNORM          (MDELETED | MSAVED | MHIDDEN)
 #define MMNDEL          (MDELETED | MHIDDEN)
