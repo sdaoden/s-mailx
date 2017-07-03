@@ -313,11 +313,14 @@ jleave:{
 
 FL enum mime_enc
 mime_enc_target(void){
-   char const *cp;
+   char const *cp, *v15;
    enum mime_enc rv;
    NYD2_ENTER;
 
-   if((cp = ok_vlook(encoding)) == NULL)
+   if((v15 = ok_vlook(encoding)) != NULL)
+      n_OBSOLETE(_("please use *mime-encoding* instead of *encoding*"));
+
+   if((cp = ok_vlook(mime_encoding)) == NULL && (cp = v15) == NULL)
       rv = MIME_DEFAULT_ENCODING;
    else if(!asccasecmp(cp, &a_me_ctes[a_ME_CTES_S8B_OFF]) ||
          !asccasecmp(cp, &a_me_ctes[a_ME_CTES_8B_OFF]))
@@ -329,7 +332,7 @@ mime_enc_target(void){
          !asccasecmp(cp, &a_me_ctes[a_ME_CTES_QP_OFF]))
       rv = MIMEE_QP;
    else{
-      n_err(_("Warning: invalid *encoding*, using Base64: %s\n"), cp);
+      n_err(_("Warning: invalid *mime-encoding*, using Base64: %s\n"), cp);
       rv = MIMEE_B64;
    }
    NYD2_LEAVE;

@@ -63,7 +63,7 @@
 /* Ugly, but avoid dynamic allocation for the management structure! */
 #define n_MEMORY_POOL_TYPE_SIZEOF (7 * sizeof(void*))
 
-/* Default *encoding* as enum mime_enc */
+/* Default *mime-encoding* as enum mime_enc */
 #define MIME_DEFAULT_ENCODING MIMEE_B64
 
 /* Maximum allowed line length in a mail before QP folding is necessary), and

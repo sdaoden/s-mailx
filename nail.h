@@ -1549,7 +1549,7 @@ ok_b_bsdannounce,
    ok_b_editalong,
    ok_b_editheaders,
    ok_b_emptystart,
-   ok_v_encoding,
+ok_v_encoding,
    ok_b_errexit,
    ok_v_escape,                        /* {defval=n_ESCAPE} */
    ok_v_expandaddr,
@@ -1618,6 +1618,7 @@ ok_v_fwdheading,
    ok_b_mime_allow_text_controls,
    ok_b_mime_alternative_favour_rich,
    ok_v_mime_counter_evidence,         /* {posnum=1} */
+   ok_v_mime_encoding,
    ok_v_mimetypes_load_control,
    ok_v_mta,                           /* {notempty=1,defval=VAL_MTA} */
    ok_v_mta_arguments,

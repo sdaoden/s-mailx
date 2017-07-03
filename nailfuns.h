@@ -1410,7 +1410,7 @@ FL ssize_t     xmime_write(char const *ptr, size_t size, /* TODO LEGACY */
  * TODO gain clear error codes
  */
 
-/* Default MIME Content-Transfer-Encoding: as via *encoding* */
+/* Default MIME Content-Transfer-Encoding: as via *mime-encoding* */
 FL enum mime_enc mime_enc_target(void);
 
 /* Map from a Content-Transfer-Encoding: header body (which may be NULL) */
