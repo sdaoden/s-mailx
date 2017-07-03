@@ -85,7 +85,7 @@ if [ -z "${UTF8_LOCALE}" ]; then
    # Try ourselfs for nl_langinfo(CODESET) output first (requires a new version)
    i=`LC_ALL=C.utf8 "${RAWMAILX}" ${ARGS} -X '
       \define cset_test {
-         \if [ "${ttycharset}" @i=@ utf ]
+         \if [ "${ttycharset}" @i=% utf ]
             \echo $LC_ALL
             \xit 0
          \end
