@@ -1366,7 +1366,7 @@ jleave:
    else if(rv == MIME_HDL_CMD && !(xrv & MIME_HDL_COPIOUSOUTPUT) &&
          action != SEND_TODISP_PARTS){
       mhp->mh_msg.l = strlen(mhp->mh_msg.s = n_UNCONST(
-            _("[-- Use the command `partview' to display this --]\n")));
+            _("[-- Use the command `mimeview' to display this --]\n")));
       xrv &= ~MIME_HDL_TYPE_MASK;
       xrv |= (rv = MIME_HDL_MSG);
    }

@@ -498,13 +498,13 @@ c_show(void *v)
 }
 
 FL int
-c_partview(void *vp){ /* TODO direct addressable parts, multiple such */
+c_mimeview(void *vp){ /* TODO direct addressable parts, multiple such */
    struct message *mp;
    int rv, *msgvec;
    NYD_ENTER;
 
    if((msgvec = vp)[1] != 0){
-      n_err(_("`partview': can yet only take one message, sorry!\n"));/* TODO */
+      n_err(_("`mimeview': can yet only take one message, sorry!\n"));/* TODO */
       n_pstate_err_no = n_ERR_NOTSUP;
       rv = 1;
       goto jleave;

@@ -518,8 +518,8 @@ FL int c_Type(void *v);
 /* Show raw message content */
 FL int c_show(void *v);
 
-/* `partview' */
-FL int c_partview(void *vp);
+/* `mimeview' */
+FL int c_mimeview(void *vp);
 
 /* Pipe messages, honour/don't honour ignored fields, respectively */
 FL int c_pipe(void *v);

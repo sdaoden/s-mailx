@@ -365,7 +365,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
      DS(N_("Like `type', but show raw message content of <msglist>")) },
    { "Show", &c_show, (A | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Like `Type', but show raw message content of <msglist>")) },
-   { "partview", &c_partview, (A | I | EM | TMSGLST), 0, MMNDEL, NULL
+   { "mimeview", &c_mimeview, (A | I | EM | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Show non-text parts of the given <message>")) },
    { "seen", &c_seen, (A | M | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Mark <msglist> as seen")) },

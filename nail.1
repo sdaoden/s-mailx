@@ -1367,7 +1367,7 @@ message visualization (a mode which is called
 .Cd copiousoutput ) ,
 or display the content themselves, for example in an external graphical
 window: such handlers will only be considered by and for the command
-.Ic partview .
+.Ic mimeview .
 .
 .Pp
 To install a handler program for a specific MIME type an according
@@ -5222,6 +5222,18 @@ lists may also be specified as (extended) regular expressions (see
 for more on those).
 .
 .Mx
+.It Ic mimeview
+\*(ID Only available in interactive mode, this command allows to display
+MIME parts which require external MIME handler programs to run which do
+not integrate in \*(UAs normal
+.Ic type
+output (see
+.Sx "HTML mail and MIME attachments" ) .
+(\*(ID No syntax to directly address parts, this restriction may vanish.)
+The user will be asked for each non-text part of the given message in
+turn whether the registered handler shall be used to display the part.
+.
+.Mx
 .Mx
 .It Ic mlsubscribe , unmlsubscribe
 The latter command removes the subscription attribute from all given
@@ -5353,18 +5365,6 @@ on the given messages, even in non-interactive mode and as long as the
 standard output is a terminal.
 Identical to
 .Ic more .
-.
-.Mx
-.It Ic partview
-\*(ID Only available in interactive mode, this command allows to show
-MIME parts which require external MIME handler programs to run which do
-not integrate in \*(UAs normal
-.Ic type
-output (see
-.Sx "HTML mail and MIME attachments" ) .
-The user will be asked for each non-text part of the given message in
-(\*(ID no syntax to directly address parts, this restriction may vanish)
-turn whether the registered handler shall be used to display the part.
 .
 .Mx
 .It Ic Pipe
@@ -6078,7 +6078,7 @@ parts are shown, others are hidden except for their headers.
 Messages are decrypted and converted to the terminal character set
 if necessary.
 The command
-.Ic partview
+.Ic mimeview
 can be used to display parts which are not displayable as plain text.
 .
 .It Ic unaccount
@@ -9385,7 +9385,7 @@ Note that only parts which can be displayed inline as plain text (see
 .Cd copiousoutput )
 are displayed unless otherwise noted, other MIME parts will only be
 considered by and for the command
-.Ic partview .
+.Ic mimeview .
 The special value commercial at
 .Ql @
 forces interpretation of the message part as plain text, e.g.,
