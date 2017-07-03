@@ -1195,7 +1195,7 @@ __mta_start(struct sendbundle *sbp)
 
    /* Let rv mean "is smtp-based MTA" */
    if((mta = ok_vlook(smtp)) != NULL){
-      n_OBSOLETE(_("please don't use *smtp*, but assign an SMTP URL to *mta*"));
+      n_OBSOLETE(_("please don't use *smtp*: assign a smtp:// URL to *mta*!"));
       /* For *smtp* the smtp:// protocol was optional; be simple: don't check
        * that *smtp* is misused with file:// or so */
       if(n_servbyname(mta, NULL) == NULL)
