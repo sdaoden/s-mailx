@@ -471,13 +471,13 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    /* C99 */{
    struct n_string hl, *hlp;
    size_t lineno = 0;
-   bool_t hstop, hany;
+   bool_t hstop/*see below, hany*/;
 
    hlp = n_string_creat_auto(&hl); /* TODO pool [or, v15: filter!] */
    /* Reserve three lines, still not enough for references and DKIM etc. */
    hlp = n_string_reserve(hlp, n_MAX(MIME_LINELEN, MIME_LINELEN_RFC2047) * 3);
 
-   for(hstop = hany = FAL0; !hstop;){
+   for(hstop = /*see below hany =*/ FAL0; !hstop;){
       size_t lcnt;
 
       lcnt = cnt;
@@ -576,7 +576,7 @@ jhdrput:
       )
       if(dostat & 4)
          putc('\n', obuf);
-      hany = TRU1;
+      /*see below hany = TRU1;*/
 
 jhdrtrunc:
       hlp = n_string_trunc(hlp, 0);
@@ -589,11 +589,11 @@ jhdrtrunc:
     * note that we are no longer in header fields */
    if(dostat & 1){
       statusput(zmp, obuf, qf, stats);
-      hany = TRU1;
+      /*see below hany = TRU1;*/
    }
    if(dostat & 2){
       xstatusput(zmp, obuf, qf, stats);
-      hany = TRU1;
+      /*see below hany = TRU1;*/
    }
    if(/* TODO PART_INFO hany && */ doitp != n_IGNORE_ALL)
       _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
