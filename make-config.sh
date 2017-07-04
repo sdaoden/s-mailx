@@ -179,7 +179,12 @@ option_update() {
    fi
 
    if feat_no ICONV; then
-      WANT_IMAP=0
+      if feat_require IMAP; then
+         msg 'ERROR: need ICONV for required feature IMAP'
+         config_exit 13
+      fi
+      msg 'ERROR: disabling IMAP due to missing ICONV'
+      OPT_IMAP=0
    fi
 
    if feat_no MLE; then
