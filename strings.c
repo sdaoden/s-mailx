@@ -1239,7 +1239,6 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
    size_t olb, ol, il;
    NYD2_ENTER;
 
-   err = 0;
    obb = out->s;
    olb = out->l;
    ol = in->l;
@@ -1257,7 +1256,6 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
       ol = olb;
       if((err = n_iconv_buf(cd, icf, &ib, &il, &ob, &ol)) == 0 || err != E2BIG)
          break;
-      err = 0;
       olb += in->l;
 jrealloc:
       obb = n_realloc(obb, olb +1);
