@@ -2335,7 +2335,7 @@ jenomem:
             cp += llc;
             nftp->nft_load.l = --llc;
          memcpy(nftp->nft_save.s = cp, argv[2], lsc);
-            cp += lsc;
+            /*cp += lsc;*/
             nftp->nft_save.l = --lsc;
       }
    }
