@@ -875,7 +875,7 @@ imap_response_parse(void)
    char *pp;
    NYD2_ENTER;
 
-   if (parsebufsize < imapbufsize)
+   if (parsebufsize < imapbufsize + 1)
       parsebuf = srealloc(parsebuf, parsebufsize = imapbufsize);
    memcpy(parsebuf, imapbuf, strlen(imapbuf) + 1);
    pp = parsebuf;
@@ -988,7 +988,6 @@ jokay:
       case RESPONSE_NO:
       case RESPONSE_BAD:
 jstop:
-         rv = STOP;
          complete |= 2;
          if (errprnt)
             n_err(_("IMAP error: %s"), responded_text);
@@ -1009,10 +1008,8 @@ jstop:
          n_err(_("IMAP alert: %s"), &responded_text[8]);
       if (complete == 3)
          mp->mb_active &= ~MB_COMD;
-   } else {
-      rv = STOP;
+   } else
       mp->mb_active = MB_NONE;
-   }
 jleave:
    NYD2_LEAVE;
    return rv;
@@ -2009,10 +2006,10 @@ imap_fetchdata(struct mailbox *mp, struct message *m, size_t expected,
       m->m_offset = mailx_offsetof(offset);
       switch (need) {
       case NEED_HEADER:
-         m->m_content_info |= CI_HAVE_HEADER;
+         m->m_content_info = CI_HAVE_HEADER;
          break;
       case NEED_BODY:
-         m->m_content_info |= CI_HAVE_HEADER | CI_HAVE_BODY;
+         m->m_content_info = CI_HAVE_HEADER | CI_HAVE_BODY;
          m->m_xlines = m->m_lines;
          m->m_xsize = m->m_size;
          break;
@@ -2080,7 +2077,6 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
    number = (int)PTR2SIZE(m - message + 1);
    queuefp = NULL;
    headlines = 0;
-   n = -1;
    u = 0;
    ok = STOP;
 
@@ -2159,8 +2155,8 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
             u = atol(&cp[4]);
             n = 0;
          } else {
-            n = -1;
             u = 0;
+            n = -1;
          }
       } else
          n = responded_other_number;
@@ -2330,7 +2326,6 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
                   break;
             if (n <= topp && !(m[n-1].m_content_info & CI_HAVE_HEADER))
                commitmsg(mp, &m[n-1], &mt, CI_HAVE_HEADER);
-            n = 0;
          }
       }
       srelax();
@@ -3462,7 +3457,6 @@ again:
          goto again;
       }
    }
-   twice = TRU1;
 
    if (queuefp != NULL)
       Fclose(queuefp);
