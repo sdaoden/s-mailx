@@ -89,7 +89,7 @@ struct mt_class_arg {
    char const  *mtca_buf;
    size_t      mtca_len;
    ssize_t     mtca_curlen;
-   char        mtca_lastc;
+   /*char        mtca_lastc;*/
    char        mtca_c;
    enum mime_type_class mtca_mtc;
 };
@@ -529,7 +529,7 @@ _mt_classify_init(struct mt_class_arg * mtcap, enum mime_type_class initval)
 {
    NYD2_ENTER;
    memset(mtcap, 0, sizeof *mtcap);
-   mtcap->mtca_lastc = mtcap->mtca_c = EOF;
+   /*mtcap->mtca_lastc =*/ mtcap->mtca_c = EOF;
    mtcap->mtca_mtc = initval | _MT_C__1STLINE;
    NYD2_LEAVE;
    return mtcap;
@@ -555,19 +555,21 @@ _mt_classify_round(struct mt_class_arg *mtcap) /* TODO dig UTF-8 for !text/!! */
    blen = mtcap->mtca_len;
    curlen = mtcap->mtca_curlen;
    c = mtcap->mtca_c;
-   lastc = mtcap->mtca_lastc;
+   /*lastc = mtcap->mtca_lastc;*/
    mtc = mtcap->mtca_mtc;
 
    for (;; ++curlen) {
-      lastc = c;
-      if (blen == 0) {
+      if(blen == 0){
          /* Real EOF, or only current buffer end? */
-         if (mtcap->mtca_len == 0)
+         if(mtcap->mtca_len == 0){
+            lastc = c;
             c = EOF;
-         else
+         }else
             break;
-      } else
+      }else{
+         lastc = c;
          c = (uc_i)*buf++;
+      }
       --blen;
 
       if (c == '\0') {
@@ -638,7 +640,7 @@ _mt_classify_round(struct mt_class_arg *mtcap) /* TODO dig UTF-8 for !text/!! */
       mtc |= _MT_C_NOTERMNL;
 
    mtcap->mtca_curlen = curlen;
-   mtcap->mtca_lastc = lastc;
+   /*mtcap->mtca_lastc = lastc*/;
    mtcap->mtca_c = c;
    mtcap->mtca_mtc = mtc;
    NYD2_LEAVE;
@@ -666,6 +668,7 @@ _mt_classify_os_part(ui32_t mce, struct mimepart *mpp)
    outrest = inrest = dec = in;
    mc = MIME_UNKNOWN;
    n_UNINIT(mtc, 0);
+   did_inrest = FAL0;
 
    /* TODO v15-compat Note we actually bypass our usual file handling by
     * TODO directly using fseek() on mb.mb_itf -- the v15 rewrite will change
