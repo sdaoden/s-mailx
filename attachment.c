@@ -223,7 +223,6 @@ n_attachment_append(struct attachment *aplist, char const *file,
 
 jrefexp:
       if((file = fexpand(file, FEXP_LOCAL | FEXP_NVAR)) == NULL){
-         e = n_err_no;
          aerr = n_ATTACH_ERR_OTHER;
          goto jleave;
       }
