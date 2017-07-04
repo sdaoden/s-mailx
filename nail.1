@@ -2451,13 +2451,15 @@ both of which will be initialized to work with the environment variable
 Terminal control will enhance or enable interactive usage aspects, e.g.,
 .Sx "Coloured display" ,
 and extend behaviour of the Mailx-Line-Editor (MLE), which may learn the
-byte-sequences of keys like the cursor and function keys, and which will
-automatically enter the so-called
-.Dq ca-mode
-alternative screen shall the terminal support it.
+byte-sequences of keys like the cursor and function keys.
 The internal variable
 .Va termcap
 can be used to overwrite settings or to learn (correct(ed)) keycodes.
+\*(UA may also become a full-screen application by entering the
+so-called ca-mode and switching to an alternative \*(UA-exclusive screen
+shall the terminal support it and the internal variable
+.Va termcap-ca-mode
+has been set explicitly.
 Actual interaction with the chosen library can be disabled completely by
 setting the internal variable
 .Va termcap-disable ;
@@ -10760,8 +10762,9 @@ capabilities (see
 .Sx "On terminal control and line editor" ,
 escape commas with reverse solidus) to be used to overwrite or define
 entries.
-Note that this variable will only be queried once at program startup and
-can thus only be specified in resource files or on the command line.
+.Sy Note
+this variable will only be queried once at program startup and can
+thus only be specified in resource files or on the command line.
 .
 .Pp
 String capabilities form
@@ -10814,10 +10817,10 @@ but always emits ANSI / ISO 6429 escape sequences.
 .Cd exit_ca_mode
 and
 .Cd enter_ca_mode ,
-respectively: exit and enter the alternative screen
-.Dq ca-mode ,
+respectively: exit and enter the alternative screen ca-mode,
 effectively turning \*(UA into a fullscreen application.
-To disable that, set (at least) one to the empty string.
+This must be enabled explicitly by setting
+.Va termcap-ca-mode .
 .
 .It Cd smkx Ns \0or Cd ks Ns \0/ Cd rmkx Ns \0or Cd ke
 .Cd keypad_xmit
@@ -10888,6 +10891,20 @@ and
 Many more capabilities which describe key-sequences are documented for
 .Ic bind .
 .
+.
+.Mx
+.It Va termcap-ca-mode
+\*(OP Allow usage of the
+.Cd exit_ca_mode
+and
+.Cd enter_ca_mode
+terminal capabilities, effectively turning \*(UA into a fullscreen
+application, as documented for
+.Va termcap .
+.Sy Note
+this variable will only be queried once at program startup and can
+thus only be specified in resource files or on the command line.
+.
 .Mx
 .It Va termcap-disable
 \*(OP Disable any interaction with a terminal control library.
@@ -10895,7 +10912,7 @@ If set only some generic fallback built-ins and possibly the content of
 .Va termcap
 describe the terminal to \*(UA.
 .Sy Note
-that this variable will only be queried once at program startup and can
+this variable will only be queried once at program startup and can
 thus only be specified in resource files or on the command line.
 .
 .Mx
@@ -12578,27 +12595,6 @@ Does this local hostname have a domain suffix?
 RFC 6762 standardized the link-local top-level domain
 .Ql .local ,
 try again after adding an (additional) entry with this extension.
-.\" }}}
-.
-.\" .Ss "\*(UA exits quick, and output is cleared away" {{{
-.Ss "\*(UA exits quick, and output is cleared away"
-.
-When this happens even with
-.Va emptystart
-set, then this most likely indicates a problem with the creation of
-so-called dotlock files: setting
-.Va dotlock-ignore-error
-should overcome this situation.
-This only avoids symptoms, it does not address the problem, though.
-Since the output is cleared away \*(UA has support for
-.Sx "On terminal control and line editor" ,
-and switches to the
-.Dq ca-mode ,
-which causes the output clearance: by doing
-.Ql set termcap='smcup='
-this mode can be suppressed, and by setting
-.Va verbose
-(twice) the actual problem should be reported.
 .\" }}}
 .
 .\" .Ss "I cannot login to Google mail aka GMail" {{{

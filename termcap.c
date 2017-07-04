@@ -654,7 +654,8 @@ n_termcap_init(void){
    a_termcap_init_altern();
 
 #ifdef HAVE_TERMCAP
-   if(a_termcap_g->tg_ents[n_TERMCAP_CMD_te].te_flags != 0)
+   if(a_termcap_g->tg_ents[n_TERMCAP_CMD_te].te_flags != 0 &&
+         ok_blook(termcap_ca_mode))
       n_psonce |= n_PSO_TERMCAP_CA_MODE;
 #endif
    n_TERMCAP_RESUME(TRU1);

@@ -1771,6 +1771,7 @@ ok_b_ssl_no_default_ca,
    ok_v_TERM,                          /* {env=1} */
    ok_v_TMPDIR,            /* {import=1,vip=1,notempty=1,defval=VAL_TMPDIR} */
    ok_v_termcap,
+   ok_b_termcap_ca_mode,
    ok_b_termcap_disable,
    ok_v_toplines,                      /* {notempty=1,num=1,defval="5"} */
    ok_b_topsqueeze,
