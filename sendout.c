@@ -928,7 +928,6 @@ a_sendout_file_a_pipe(struct name *names, FILE *fo, bool_t *senderror){
             int xerr;
             enum n_fopen_state fs;
 
-            xerr = TRU1;
             if((fout = n_fopen_any(fname, "a+", &fs)) == NULL){
                xerr = n_err_no;
 jefile:
