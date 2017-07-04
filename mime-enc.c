@@ -692,7 +692,7 @@ qp_decode_part(struct str *out, struct str const *in, struct str *outrest,
 
       if((c = *is++) != '='){
 jpushc:
-         n_string_push_c(&s, (char)c);
+         n_string_push_c(sp, (char)c);
          continue;
       }
 
@@ -735,15 +735,15 @@ jpushc:
        * check for this special case, and simply forget we have seen one, so as
        * not to end up with the entire DOS file in a contiguous buffer */
 jsoftnl:
-      if(s.s_len > 0 && s.s_dat[s.s_len - 1] == '\n'){
+      if(sp->s_len > 0 && sp->s_dat[sp->s_len - 1] == '\n'){
 #if 0       /* TODO qp_decode_part() we do not normalize CRLF
           * TODO to LF because for that we would need
           * TODO to know if we are about to write to
           * TODO the display or do save the file!
           * TODO 'hope the MIME/send layer rewrite will
           * TODO offer the possibility to DTRT */
-         if(s.s_len > 1 && s.s_dat[s.s_len - 2] == '\r')
-            n_string_push_c(n_string_trunc(&s, s.s_len - 2), '\n');
+         if(sp->s_len > 1 && sp->s_dat[sp->s_len - 2] == '\r')
+            n_string_push_c(n_string_trunc(sp, sp->s_len - 2), '\n');
 #endif
          break;
       }
@@ -758,18 +758,18 @@ jsoftnl:
             n_str_assign_buf(inrest_or_null, is, l);
          }
          cp = outrest->s;
-         outrest->s = n_string_cp(&s);
+         outrest->s = n_string_cp(sp);
          outrest->l = s.s_len;
-         n_string_drop_ownership(&s);
+         n_string_drop_ownership(sp);
          if(cp != NULL)
             free(cp);
       }
       break;
    }
 
-   out->s = n_string_cp(&s);
-   out->l = s.s_len;
-   n_string_gut(n_string_drop_ownership(&s));
+   out->s = n_string_cp(sp);
+   out->l = sp->s_len;
+   n_string_gut(n_string_drop_ownership(sp));
 jleave:
    NYD_LEAVE;
    return (out != NULL);
