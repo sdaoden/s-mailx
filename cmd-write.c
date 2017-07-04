@@ -68,7 +68,6 @@ save1(char *str, int domark, char const *cmd, struct n_ignore const *itp,
 
    success = FAL0;
    last = 0;
-   disp = n_empty;
    shell = NULL;
    file = NULL;
 
