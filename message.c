@@ -1289,6 +1289,7 @@ setinput(struct mailbox *mp, struct message *m, enum needspec need){
    case NEED_BODY:
       ok = (m->m_content_info & CI_HAVE_BODY) ? OKAY : get_body(m);
       break;
+   default:
    case NEED_UNSPEC:
       ok = OKAY;
       break;

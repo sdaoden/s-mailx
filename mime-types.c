@@ -564,8 +564,10 @@ _mt_classify_round(struct mt_class_arg *mtcap) /* TODO dig UTF-8 for !text/!! */
          if(mtcap->mtca_len == 0){
             lastc = c;
             c = EOF;
-         }else
+         }else{
+            lastc = EOF;
             break;
+         }
       }else{
          lastc = c;
          c = (uc_i)*buf++;

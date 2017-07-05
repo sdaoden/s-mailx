@@ -1729,8 +1729,8 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    struct sendbundle sb;
    struct name *to;
    bool_t dosign;
-   FILE *mtf, *nmtf;
-   enum okay rv;
+   FILE * volatile mtf, *nmtf;
+   enum okay volatile rv;
    NYD_ENTER;
 
    _sendout_error = FAL0;
@@ -2255,10 +2255,10 @@ resend_msg(struct message *mp, struct header *hp, bool_t add_resent)
 {
    struct n_sigman sm;
    struct sendbundle sb;
-   FILE *ibuf, *nfo, *nfi;
+   FILE *ibuf, *nfo, * volatile nfi;
    char *tempMail;
    struct name *to;
-   enum okay rv;
+   enum okay volatile rv;
    NYD_ENTER;
 
    _sendout_error = FAL0;

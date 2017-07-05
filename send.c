@@ -407,9 +407,9 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    char *cp;
    char const * volatile tmpname = NULL;
    size_t linelen, cnt;
-   int volatile term_infd;
-   int dostat, c;
-   struct mimepart *volatile np;
+   int volatile dostat, term_infd;
+   int c;
+   struct mimepart * volatile np;
    FILE * volatile ibuf = NULL, * volatile pbuf = obuf,
       * volatile qbuf = obuf, *origobuf = obuf;
    enum conversion volatile convert;
