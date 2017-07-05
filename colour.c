@@ -358,7 +358,7 @@ a_colour_unmux(char **argv){
    }
 
    mapname = argv[0];
-   ctag = (mapname != NULL) ? argv[1] : mapname;
+   ctag = argv[1];
 
    if(!a_colour_g.cg_is_init)
       goto jemap;
