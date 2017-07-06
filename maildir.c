@@ -314,6 +314,8 @@ a_maildir_cmp(void const *xa, void const *xb){
       at = ac;
       if((at -= bc) != 0)
          break;
+      if(ac == '\0')
+         break;
    }
 
 jret:
