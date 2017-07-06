@@ -1218,7 +1218,7 @@ n_mimetype_classify_part(struct mimepart *mpp) /* FIXME charset=binary ??? */
    }else
       is_os = FAL0;
 
-   if(strchr(ct, '/') == NULL) /* For compatibility with non-MIME */
+   if(*ct == '\0' || strchr(ct, '/') == NULL) /* For compat with non-MIME */
       mc = MIME_TEXT;
    else if(is_asccaseprefix("text/", ct)){
       ct += sizeof("text/") -1;
