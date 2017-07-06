@@ -369,8 +369,9 @@ print_collf(FILE *cf, struct header *hp)
    rele_all_sigs();
 
    page_or_print(obuf, 0);
-jleave:
+
    Fclose(obuf);
+jleave:
    NYD_LEAVE;
 }
 
