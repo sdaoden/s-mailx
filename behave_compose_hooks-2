@@ -1,20 +1,6 @@
-on-compose-enter, mailx-command<mail>
-alternates alter1@exam.ple alter2@exam.ple
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<-> mailx-cc<> mailx-bcc<>
-mailx-raw-to<-> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<> mailx-orig-to<> mailx-orig-cc<> mailx-orig-bcc<>
-on-compose-leave, mailx-command<mail>
-alternates alter1@exam.ple alter2@exam.ple alter3@exam.ple alter4@exam.ple
-mailx-from<> mailx-sender<>
-mailx-subject<>
-mailx-to<-> mailx-cc<> mailx-bcc<>
-mailx-raw-to<-> mailx-raw-cc<> mailx-raw-bcc<>
-mailx-orig-from<> mailx-orig-to<> mailx-orig-cc<> mailx-orig-bcc<>
-From reproducible_build Wed Oct  2 01:50:07 1996
+From PrimulaVeris Wed Apr 10 22:59:00 2017
 Date: Wed, 02 Oct 1996 01:50:07 +0000
-To:
+Cc: alter1@exam.ple
 
 body
 t_ocs
@@ -62,7 +48,7 @@ t_header ENTER
 210 To 3
 210 To 4
 210 To
-3/0/NONE: - -
+35/0/NONE: this-goes@nowhere this-goes@nowhere
 38/0/NONE: To@exam.ple diet spliced <To@exam.ple>
 27/0/NONE: To2@exam.ple <To2@exam.ple>
 25/0/NONE: To3@exam.ple To3@exam.ple
@@ -317,7 +303,7 @@ t_header ENTER
 0/0/NONE: 
 4/0/NONE: mail
 0/0/NONE: 
-3/0/NONE: - -
+35/0/NONE: this-goes@nowhere this-goes@nowhere
 0/0/NONE: 
 t_header LEAVE
 t_attach ENTER
@@ -468,10 +454,24 @@ t_attach ENTER
 0/0/NONE: 
 t_attach LEAVE
 
+on-compose-enter, mailx-command<mail>
+alternates alter1@exam.ple alter2@exam.ple
+mailx-from<> mailx-sender<>
+mailx-subject<>
+mailx-to<this-goes@nowhere> mailx-cc<> mailx-bcc<>
+mailx-raw-to<this-goes@nowhere> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-orig-from<> mailx-orig-to<> mailx-orig-cc<> mailx-orig-bcc<>
+on-compose-leave, mailx-command<mail>
+alternates alter1@exam.ple alter2@exam.ple alter3@exam.ple alter4@exam.ple
+mailx-from<> mailx-sender<>
+mailx-subject<>
+mailx-to<> mailx-cc<> mailx-bcc<>
+mailx-raw-to<this-goes@nowhere> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-orig-from<> mailx-orig-to<> mailx-orig-cc<> mailx-orig-bcc<>
 on-compose-cleanup, mailx-command<mail>
 # no alternates registered
 mailx-from<> mailx-sender<>
 mailx-subject<>
-mailx-to<-> mailx-cc<> mailx-bcc<>
-mailx-raw-to<-> mailx-raw-cc<> mailx-raw-bcc<>
+mailx-to<> mailx-cc<> mailx-bcc<>
+mailx-raw-to<this-goes@nowhere> mailx-raw-cc<> mailx-raw-bcc<>
 mailx-orig-from<> mailx-orig-to<> mailx-orig-cc<> mailx-orig-bcc<>

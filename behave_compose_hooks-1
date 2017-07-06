@@ -4,7 +4,8 @@ From: diet spliced <from@exam.ple>, <from2@exam.ple>, from3@exam.ple
 Sender: <sender@exam.ple>
 To: this-goes@nowhere, diet spliced <To@exam.ple>, <To2@exam.ple>,
  To3@exam.ple
-Cc: diet spliced <cC@exam.ple>, <cC2@exam.ple>, cC3@exam.ple
+Cc: diet spliced <cC@exam.ple>, <cC2@exam.ple>, cC3@exam.ple,
+ alter1@exam.ple
 Bcc: diet spliced <bCc@exam.ple>, <bCc2@exam.ple>, bCc3@exam.ple
 Subject: <subject@exam.ple> <subject2@exam.ple> subject3@exam.ple
 Message-ID: <messAge-id@exam.ple>
