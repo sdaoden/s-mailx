@@ -2381,31 +2381,32 @@ struct header {
 /* Handling of namelist nodes used in processing the recipients of mail and
  * aliases, inspection of mail-addresses and all that kind of stuff */
 enum nameflags {
-   NAME_NAME_SALLOC        = 1<< 0, /* .n_name is doped */
-   NAME_FULLNAME_SALLOC    = 1<< 1, /* .n_fullname is doped */
-   NAME_SKINNED            = 1<< 2, /* Is actually skin()ned */
-   NAME_IDNA               = 1<< 3, /* IDNA was applied */
+   NAME_NAME_SALLOC = 1u<<0,        /* .n_name is doped */
+   NAME_FULLNAME_SALLOC = 1u<<1,    /* .n_fullname is doped */
+   NAME_SKINNED = 1u<<2,            /* Is actually skin()ned */
+   NAME_IDNA = 1u<<3,               /* IDNA was applied */
 
-   NAME_ADDRSPEC_CHECKED   = 1<< 4, /* Address has been .. and */
-   NAME_ADDRSPEC_ISFILE    = 1<< 5, /* ..is a file path */
-   NAME_ADDRSPEC_ISPIPE    = 1<< 6, /* ..is a command for piping */
+   NAME_ADDRSPEC_CHECKED = 1u<<4,   /* Address has been .. and */
+   NAME_ADDRSPEC_ISFILE = 1u<<5,    /* ..is a file path */
+   NAME_ADDRSPEC_ISPIPE = 1u<<6,    /* ..is a command for piping */
    NAME_ADDRSPEC_ISFILEORPIPE = NAME_ADDRSPEC_ISFILE | NAME_ADDRSPEC_ISPIPE,
-   NAME_ADDRSPEC_ISNAME    = 1<< 7, /* ..is an alias name */
-   NAME_ADDRSPEC_ISADDR    = 1<< 8, /* ..is a mail network address */
+   NAME_ADDRSPEC_ISNAME = 1u<<7,    /* ..is an alias name */
+   NAME_ADDRSPEC_ISADDR = 1u<<8,    /* ..is a mail network address */
 
-   NAME_ADDRSPEC_ERR_EMPTY = 1<< 9, /* An empty string (or NULL) */
-   NAME_ADDRSPEC_ERR_ATSEQ = 1<<10, /* Weird @ sequence */
-   NAME_ADDRSPEC_ERR_CHAR  = 1<<11, /* Invalid character */
-   NAME_ADDRSPEC_ERR_IDNA  = 1<<12, /* IDNA convertion failed */
-   NAME_ADDRSPEC_ERR_NAME = 1<<13, /* Alias with invalid content */
-   NAME_ADDRSPEC_INVALID   = NAME_ADDRSPEC_ERR_EMPTY |
+   NAME_ADDRSPEC_ERR_EMPTY = 1u<<9, /* An empty string (or NULL) */
+   NAME_ADDRSPEC_ERR_ATSEQ = 1u<<10, /* Weird @ sequence */
+   NAME_ADDRSPEC_ERR_CHAR = 1u<<11, /* Invalid character */
+   NAME_ADDRSPEC_ERR_IDNA = 1u<<12, /* IDNA convertion failed */
+   NAME_ADDRSPEC_ERR_NAME = 1u<<13, /* Alias with invalid content */
+   NAME_ADDRSPEC_INVALID = NAME_ADDRSPEC_ERR_EMPTY |
          NAME_ADDRSPEC_ERR_ATSEQ | NAME_ADDRSPEC_ERR_CHAR |
          NAME_ADDRSPEC_ERR_IDNA | NAME_ADDRSPEC_ERR_NAME,
 
    /* Error storage (we must fit in 31-bit) */
-   _NAME_SHIFTWC  = 14,
-   _NAME_MAXWC    = 0x1FFFF,
-   _NAME_MASKWC   = _NAME_MAXWC << _NAME_SHIFTWC
+   _NAME_SHIFTWC = 14,
+   _NAME_MAXWC = 0x1FFFF,
+   _NAME_MASKWC = _NAME_MAXWC << _NAME_SHIFTWC
+   /* Bit 31 (32) == SI32_MIN temporarily used */
 };
 
 /* In the !_ERR_EMPTY case, the failing character can be queried */
@@ -2417,14 +2418,14 @@ do {\
          (E) | (((unsigned int)(WC) & _NAME_MAXWC) << _NAME_SHIFTWC);\
 } while (0)
 
-struct name {
-   struct name *n_flink;      /* Forward link in list. */
-   struct name *n_blink;      /* Backward list link */
-   enum gfield n_type;        /* From which list it came */
-   enum nameflags n_flags;    /* enum nameflags */
-   char        *n_name;       /* This fella's address */
-   char        *n_fullname;   /* Ditto, unless GFULL including comment */
-   char        *n_fullextra;  /* GFULL, without address */
+struct name{
+   struct name *n_flink;   /* Forward link in list. */
+   struct name *n_blink;   /* Backward list link */
+   enum gfield n_type;     /* From which list it came */
+   ui32_t n_flags;         /* enum nameflags */
+   char *n_name;           /* This fella's address */
+   char *n_fullname;       /* Ditto, unless GFULL including comment */
+   char *n_fullextra;      /* GFULL, without address */
 };
 
 struct n_addrguts{

@@ -159,9 +159,8 @@ static struct group     *_filetype_heads[HSHSIZE];
 /* Same name, while taking care for *allnet*? */
 static bool_t a_nag_is_same_name(char const *n1, char const *n2);
 
-/* Delete the given name from a namelist, unless keep_single and only one */
-static struct name *a_nag_namelist_del_cp(struct name *np, char const *name,
-                     bool_t keep_single);
+/* Mark all nodes with the given name */
+static struct name *a_nag_namelist_mark_name(struct name *np, char const *name);
 
 /* Grab a single name (liberal name) */
 static char const *  yankname(char const *ap, char *wbuf,
@@ -254,23 +253,15 @@ a_nag_is_same_name(char const *n1, char const *n2){
 }
 
 static struct name *
-a_nag_namelist_del_cp(struct name *np, char const *name, bool_t keep_single){
+a_nag_namelist_mark_name(struct name *np, char const *name){
    struct name *p;
    NYD2_ENTER;
 
    for(p = np; p != NULL; p = p->n_flink)
-      if(a_nag_is_same_name(p->n_name, name)){
-         if(keep_single && np == p && np->n_flink == NULL)
-            break;
-         if(p->n_blink == NULL){
-            if((np = p->n_flink) != NULL)
-               np->n_blink = NULL;
-         }else if(p->n_flink == NULL)
-            p->n_blink->n_flink = NULL;
-         else{
-            p->n_blink->n_flink = p->n_flink;
-            p->n_flink->n_blink = p->n_blink;
-         }
+      if(!(p->n_type & GDEL) && !(p->n_flags & (ui32_t)SI32_MIN) &&
+            a_nag_is_same_name(p->n_name, name)){
+         p->n_flags |= (ui32_t)SI32_MIN;
+         break;
       }
    NYD2_LEAVE;
    return np;
@@ -1441,9 +1432,9 @@ elide(struct name *names)
          np = names;
          ++i;
       }
-
    if(nlist == NULL || i == 1)
       goto jleave;
+   np->n_flink = NULL;
 
    /* Create a temporay array and sort that */
    nparr = n_lofi_alloc(sizeof(*nparr) * i);
@@ -1568,67 +1559,60 @@ c_alternates(void *v){ /* TODO use a hashmap!! */
 
 FL struct name *
 n_alternates_remove(struct name *np, bool_t keep_single){
-   struct name *xp;
+   struct name *xp, *newnp;
    NYD_ENTER;
 
-   /* Throw away all deleted nodes: we may not allow to remove a lonely
-    * addressee if that matches an alternate, so ensure we do not need to
-    * fiddle around with GDEL; _namelist_del_cp() will fully del, too */
-   /* C99 */{
-      struct name *newnp;
+   /* Delete the temporary bit from all */
+   for(xp = np; xp != NULL; xp = xp->n_flink)
+      xp->n_flags &= ~(ui32_t)SI32_MIN;
 
-      for(xp = newnp = NULL; np != NULL; np = np->n_flink)
-         if(!(np->n_type & GDEL)){
-            np->n_blink = xp;
-            if(xp != NULL)
-               xp->n_flink = np;
-            else
-               newnp = np;
-            xp = np;
-         }
-      np = newnp;
-   }
-
-   if(np == NULL)
-      goto jleave;
-   if(keep_single && np->n_flink == NULL)
-      goto jleave;
+   /* Mark all possible alternate names (xxx sic) */
 
    if(a_nag_altnames != NULL){
       struct n_strlist *slp;
 
-      for(slp = a_nag_altnames; slp != NULL; slp = slp->sl_next){
-         np = a_nag_namelist_del_cp(np, slp->sl_dat, keep_single);
-         if(np == NULL || (keep_single && np->n_flink == NULL))
-            goto jleave;
-      }
+      for(slp = a_nag_altnames; slp != NULL; slp = slp->sl_next)
+         np = a_nag_namelist_mark_name(np, slp->sl_dat);
    }
 
-   np = a_nag_namelist_del_cp(np, ok_vlook(LOGNAME), keep_single);
-   if(np == NULL || (keep_single && np->n_flink == NULL))
-      goto jleave;
+   np = a_nag_namelist_mark_name(np, ok_vlook(LOGNAME));
 
    for(xp = lextract(ok_vlook(from), GEXTRA | GSKIN); xp != NULL;
-         xp = xp->n_flink){
-      np = a_nag_namelist_del_cp(np, xp->n_name, keep_single);
-      if(np == NULL || (keep_single && np->n_flink == NULL))
-         goto jleave;
-   }
+         xp = xp->n_flink)
+      np = a_nag_namelist_mark_name(np, xp->n_name);
 
    for(xp = extract(ok_vlook(sender), GEXTRA | GSKIN); xp != NULL;
-         xp = xp->n_flink){
-      np = a_nag_namelist_del_cp(np, xp->n_name, keep_single);
-      if(np == NULL || (keep_single && np->n_flink == NULL))
-         goto jleave;
-   }
+         xp = xp->n_flink)
+      np = a_nag_namelist_mark_name(np, xp->n_name);
 
    for(xp = lextract(ok_vlook(replyto), GEXTRA | GSKIN); xp != NULL;
-         xp = xp->n_flink){
-      np = a_nag_namelist_del_cp(np, xp->n_name, keep_single);
-      if(np == NULL || (keep_single && np->n_flink == NULL))
-         goto jleave;
-   }
-jleave:
+         xp = xp->n_flink)
+      np = a_nag_namelist_mark_name(np, xp->n_name);
+
+   /* GDEL all (but a single) marked node(s) */
+   for(xp = np; xp != NULL; xp = xp->n_flink)
+      if(xp->n_flags & (ui32_t)SI32_MIN){
+         if(!keep_single)
+            xp->n_type |= GDEL;
+         keep_single = FAL0;
+      }
+
+   /* Clean the list by throwing away all deleted nodes */
+   for(xp = newnp = NULL; np != NULL; np = np->n_flink)
+      if(!(np->n_type & GDEL)){
+         np->n_blink = xp;
+         if(xp != NULL)
+            xp->n_flink = np;
+         else
+            newnp = np;
+         xp = np;
+      }
+   np = newnp;
+
+   /* Delete the temporary bit from all remaining (again) */
+   for(xp = np; xp != NULL; xp = xp->n_flink)
+      xp->n_flags &= ~(ui32_t)SI32_MIN;
+
    NYD_LEAVE;
    return np;
 }

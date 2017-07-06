@@ -2806,10 +2806,6 @@ t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
       read ver
       echo t_ocs
       call t_header
-      if [ "$t_remove" != "" ]
-         echo "~^ header insert to -"; read es;\
-            call xerr "$es" "reinstantiate of a To:"
-      end
       call t_attach
    }
    define t_oce {
@@ -2852,7 +2848,7 @@ t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
    }
    wysh set on-compose-splice=t_ocs \
       on-compose-enter=t_oce on-compose-leave=t_ocl \
-      on-compose-cleanup=t_occ
+         on-compose-cleanup=t_occ
 __EOT__
 
    #
@@ -2863,15 +2859,15 @@ __EOT__
       -X'source ./.trc' -Smta=./.tsendmail.sh \
       >./.tall 2>&1
    ${cat} ./.tall >> "${MBOX}"
-   check behave:compose_hooks-1 0 "${MBOX}" '207648214 10083'
+   check behave:compose_hooks-1 0 "${MBOX}" '3667291468 10101'
 
    ${rm} -f "${MBOX}"
-   printf 'm -\nbody\n!.\n' |
+   printf 'm this-goes@nowhere\nbody\n!.\n' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
       -St_remove=1 -X'source ./.trc' -Smta=./.tsendmail.sh \
-      > "${MBOX}" 2>./.terr
-   ${cat} ./.terr >> "${MBOX}"
-   check behave:compose_hooks-2 0 "${MBOX}" '217089054 12397'
+      >./.tall 2>&1
+   ${cat} ./.tall >> "${MBOX}"
+   check behave:compose_hooks-2 0 "${MBOX}" '1746765053 12535'
 
    # Some state machine stress, shell compose hook, localopts for hook, etc.
    # readctl in child. ~r as HERE document
