@@ -495,6 +495,7 @@ _spamd_interact(struct spam_vc *vcp)
       n_err(_("%s`%s': can't connect to *spam-socket*: %s\n"),
          vcp->vc_esep, _spam_cmds[vcp->vc_action], n_err_to_doc(n_err_no));
       close(dsfd);
+      dsfd = -1;
       goto jleave;
    }
 
