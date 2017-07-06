@@ -826,7 +826,7 @@ _hf_store(struct htmlflt *self, char c)
          i = (self->hf_mbwidth += w);
       } else {
          if (x < 0) {
-            mbtowc(&wc, NULL, n_mb_cur_max);
+            (void)mbtowc(&wc, NULL, n_mb_cur_max);
             if (UICMP(32, l - self->hf_mboff, >=, n_mb_cur_max)) { /* XXX */
                ++self->hf_mboff;
                ++self->hf_mbwidth;
@@ -911,7 +911,7 @@ __hf_sync_mbstuff(struct htmlflt *self)
       ++w;
       --l;
 jumpin:
-      mbtowc(&wc, NULL, n_mb_cur_max);
+      (void)mbtowc(&wc, NULL, n_mb_cur_max);
    }
 
    self->hf_mboff = o;
