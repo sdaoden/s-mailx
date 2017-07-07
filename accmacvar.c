@@ -3348,7 +3348,7 @@ c_vpospar(void *v){
          : &a_amv_pospar;
 
    if(f & (a_SET | a_CLEAR)){
-      if(cacp->cac_vput != NULL && (n_poption & n_PO_D_V))
+      if(cacp->cac_vput != NULL)
          n_err(_("`vpospar': `vput' only supported for `quote' subcommand\n"));
       if(!appp->app_not_heap && appp->app_maxcount > 0){
          for(i = appp->app_maxcount; i-- != 0;)

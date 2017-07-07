@@ -3586,17 +3586,23 @@ period, the last character can also be the dollar sign:
 .Ql [[:alnum:]_#:@.-]+$? .
 .
 .Mx
-.It Ic alternates
-(alt) Manage a list of alternate addresses or names of the active user,
+.It Ic alternates , unalternates
+\*(NQ(alt) Manage a list of alternate addresses or names of the active user,
 members of which will be removed from recipient lists.
-Without arguments the current set of alternates is displayed, otherwise
-the set of alternate names is replaced by the given arguments, and the
-internal variable
-.Va alternates
-is updated accordingly.
-As an extension, if one argument is given and that is the hyphen-minus
-.Ql -
-then the set of alternates is removed.
+The latter command removes the given list of alternates, the special name
+.Ql *
+will discard all existing aliases.
+The former command manages the error number
+.Va \&!
+and shows the current set of alternates when used without arguments; in
+this mode it supports
+.Cm vput
+(see
+.Sx "Command modifiers" ) .
+Otherwise the given arguments (after being checked for validity) are
+appended to the list of alternate names; in
+.Va posix
+mode they replace that list instead.
 There is a set of implicit alternates which is formed of the values of
 .Ev LOGNAME ,
 .Va from ,
@@ -7523,11 +7529,6 @@ By default such addressees are not mentioned.
 when comparing addresses.
 .
 .Mx
-.It Va alternates
-\*(RO Is set to the list of
-.Ic alternates .
-.
-.Mx
 .It Va append
 \*(BO Causes messages saved in the
 .Mx -sx
@@ -9587,6 +9588,19 @@ one of the
 for each command which shall be allowed to fail.
 .
 .It
+.Ic alternates
+will replace the list of alternate addresses instead of appending to it.
+.
+.It
+Upon changing the active
+.Ic file
+no summary of
+.Ic headers
+will be displayed even if
+.Va header
+is set.
+.
+.It
 Setting
 .Va ignoreeof
 implies the behaviour described by
@@ -9599,15 +9613,6 @@ is extended to cover any empty mailbox, not only empty
 .Mx -sx
 .Sx "primary system mailbox" Ns
 es: they will be removed when they are left in empty state otherwise.
-.
-.It
-Upon changing the active
-.Ic file
-no summary of
-.Ic headers
-will be displayed even if
-.Va header
-is set.
 .El
 .
 .

@@ -1606,8 +1606,9 @@ FL struct name * usermap(struct name *names, bool_t force_metoo);
  * them, then checking for dups.  Return the head of the new list */
 FL struct name * elide(struct name *names);
 
-/* `alternates' deal with the list of alternate names */
-FL int         c_alternates(void *v);
+/* `(un)?alternates' deal with the list of alternate names */
+FL int c_alternates(void *v);
+FL int c_unalternates(void *v);
 
 /* If keep_single is set one alternates member will be allowed in np */
 FL struct name *n_alternates_remove(struct name *np, bool_t keep_single);

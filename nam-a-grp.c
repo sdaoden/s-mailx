@@ -42,7 +42,8 @@
 
 enum a_nag_type{
    /* Main types */
-   a_NAG_T_COMMANDALIAS = 1,
+   a_NAG_T_ALTERNATES = 1,
+   a_NAG_T_COMMANDALIAS,
    a_NAG_T_ALIAS,
    a_NAG_T_MLIST,
    a_NAG_T_SHORTCUT,
@@ -60,6 +61,7 @@ enum a_nag_type{
     * attribute set */
    a_NAG_T_PRINT_MASK = a_NAG_T_MASK | a_NAG_T_SUBSCRIBE
 };
+n_CTA(a_NAG_T_MASK >= a_NAG_T_FILETYPE, "Mask does not cover necessary bits");
 
 struct a_nag_group{
    struct a_nag_group *ng_next;
@@ -122,8 +124,8 @@ static struct n_file_type const a_nag_OBSOLETE_xz = { /* TODO v15 compat */
    "bzip2 -cz", sizeof("bzip2 -cz") -1
 };
 
-/* List of alternate names of user */
-struct n_strlist *a_nag_altnames;
+/* `alternates' */
+static struct a_nag_group *a_nag_alternates_heads[HSHSIZE];
 
 /* `commandalias' */
 static struct a_nag_group *a_nag_commandalias_heads[HSHSIZE];
@@ -207,13 +209,17 @@ static bool_t a_nag_group_del(enum a_nag_type nt, char const *id);
 static struct a_nag_group *a_nag__group_del(struct a_nag_group_lookup *nglp);
 static void a_nag__names_del(struct a_nag_group *ngp);
 
-/* Print all groups of the given type, alphasorted */
-static void a_nag_group_print_all(enum a_nag_type nt);
+/* Print all groups of the given type, alphasorted, or store in `vput' varname:
+ * only in this mode it can return failure */
+static bool_t a_nag_group_print_all(enum a_nag_type nt,
+               char const *varname);
 
 static int a_nag__group_print_qsorter(void const *a, void const *b);
 
-/* Really print a group, actually.  Return number of written lines */
-static size_t a_nag_group_print(struct a_nag_group const *ngp, FILE *fo);
+/* Really print a group, actually.  Or store in vputsp, if set.
+ * Return number of written lines */
+static size_t a_nag_group_print(struct a_nag_group const *ngp, FILE *fo,
+               struct n_string *vputsp);
 
 /* Multiplexers for list and subscribe commands */
 static int a_nag_mlmux(enum a_nag_type nt, char const **argv);
@@ -467,6 +473,10 @@ a_nag_group_lookup(enum a_nag_type nt, struct a_nag_group_lookup *nglp,
       struct a_nag_group **ngpa;
 
       switch((nt &= a_NAG_T_MASK)){
+      case a_NAG_T_ALTERNATES:
+         ngpa = a_nag_alternates_heads;
+         icase = TRU1;
+         break;
       default:
       case a_NAG_T_COMMANDALIAS:
          ngpa = a_nag_commandalias_heads;
@@ -536,6 +546,9 @@ a_nag_group_go_first(enum a_nag_type nt, struct a_nag_group_lookup *nglp){
    NYD2_ENTER;
 
    switch((nt &= a_NAG_T_MASK)){
+   case a_NAG_T_ALTERNATES:
+      ngpa = a_nag_alternates_heads;
+      break;
    default:
    case a_NAG_T_COMMANDALIAS:
       ngpa = a_nag_commandalias_heads;
@@ -608,14 +621,16 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
 
    i = n_ALIGN(n_VSTRUCT_SIZEOF(struct a_nag_group, ng_id) + l);
    switch(nt & a_NAG_T_MASK){
+   case a_NAG_T_ALTERNATES:
+   case a_NAG_T_SHORTCUT:
+   case a_NAG_T_CHARSETALIAS:
+   default:
+      break;
    case a_NAG_T_COMMANDALIAS:
       addsz += sizeof(struct a_nag_cmd_alias);
       break;
    case a_NAG_T_ALIAS:
       addsz += sizeof(struct a_nag_grp_names_head);
-      break;
-   case a_NAG_T_FILETYPE:
-      addsz += sizeof(struct a_nag_file_type);
       break;
    case a_NAG_T_MLIST:
 #ifdef HAVE_REGEX
@@ -624,10 +639,9 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
          nt |= a_NAG_T_REGEX;
       }
 #endif
-      /* FALLTHRU */
-   case a_NAG_T_SHORTCUT:
-   case a_NAG_T_CHARSETALIAS:
-   default:
+      break;
+   case a_NAG_T_FILETYPE:
+      addsz += sizeof(struct a_nag_file_type);
       break;
    }
    if(UIZ_MAX - i < addsz || UI32_MAX <= i || UI16_MAX < i - l)
@@ -639,8 +653,7 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
    ngp->ng_id_len_sub = (ui16_t)(i - --l);
    ngp->ng_type = nt;
    switch(nt & a_NAG_T_MASK){
-   default:
-      break;
+   case a_NAG_T_ALTERNATES:
    case a_NAG_T_MLIST:
    case a_NAG_T_CHARSETALIAS:
    case a_NAG_T_FILETYPE:{
@@ -649,6 +662,8 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
       for(cp = ngp->ng_id; (c = *cp) != '\0'; ++cp)
          *cp = lowerconv(c);
    }  break;
+   default:
+      break;
    }
 
    if((nt & a_NAG_T_MASK) == a_NAG_T_ALIAS){
@@ -769,8 +784,9 @@ a_nag__names_del(struct a_nag_group *ngp){
    NYD2_LEAVE;
 }
 
-static void
-a_nag_group_print_all(enum a_nag_type nt){
+static bool_t
+a_nag_group_print_all(enum a_nag_type nt, char const *varname){
+   struct n_string s;
    size_t lines;
    FILE *fp;
    char const **ida;
@@ -781,9 +797,16 @@ a_nag_group_print_all(enum a_nag_type nt){
    enum a_nag_type xnt;
    NYD_ENTER;
 
+   if(varname != NULL)
+      n_string_creat_auto(&s);
+
    xnt = nt & a_NAG_T_PRINT_MASK;
 
    switch(xnt & a_NAG_T_MASK){
+   case a_NAG_T_ALTERNATES:
+      tname = "alternates";
+      ngpa = a_nag_alternates_heads;
+      break;
    default:
    case a_NAG_T_COMMANDALIAS:
       tname = "commandalias";
@@ -811,42 +834,60 @@ a_nag_group_print_all(enum a_nag_type nt){
       break;
    }
 
-   for(h = 0, i = 1; h < HSHSIZE; ++h)
+   /* Count entries */
+   for(i = h = 0; h < HSHSIZE; ++h)
       for(ngp = ngpa[h]; ngp != NULL; ngp = ngp->ng_next)
          if((ngp->ng_type & a_NAG_T_PRINT_MASK) == xnt)
             ++i;
-
    if(i == 0){
-      fprintf(n_stdout, _("# no %s registered\n"), tname);
+      if(varname == NULL)
+         fprintf(n_stdout, _("# no %s registered\n"), tname);
       goto jleave;
    }
+   ++i;
    ida = n_autorec_alloc(i * sizeof *ida);
 
+   /* Create alpha sorted array of entries */
    for(i = h = 0; h < HSHSIZE; ++h)
       for(ngp = ngpa[h]; ngp != NULL; ngp = ngp->ng_next)
          if((ngp->ng_type & a_NAG_T_PRINT_MASK) == xnt)
             ida[i++] = ngp->ng_id;
-   ida[i] = NULL;
-
    if(i > 1)
       qsort(ida, i, sizeof *ida, &a_nag__group_print_qsorter);
+   ida[i] = NULL;
 
-   if((fp = Ftmp(NULL, "nagprint", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
+   if(varname != NULL)
+      fp = NULL;
+   else if((fp = Ftmp(NULL, "nagprint", OF_RDWR | OF_UNLINK | OF_REGISTER)
+         ) == NULL)
       fp = n_stdout;
 
+   /* Create visual result */
    lines = 0;
 
+   switch(xnt & a_NAG_T_MASK){
+   case a_NAG_T_ALTERNATES:
+      if(fp != NULL){
+         fputs(tname, fp);
+         lines = 1;
+      }
+      break;
+   default:
+      break;
+   }
+
    for(i = 0; ida[i] != NULL; ++i)
-      lines += a_nag_group_print(a_nag_group_find(nt, ida[i]), fp);
+      lines += a_nag_group_print(a_nag_group_find(nt, ida[i]), fp, &s);
 
 #ifdef HAVE_REGEX
-   if((nt & a_NAG_T_MASK) == a_NAG_T_MLIST){
+   if(varname == NULL && (nt & a_NAG_T_MASK) == a_NAG_T_MLIST){
       if(nt & a_NAG_T_SUBSCRIBE)
          i = (ui32_t)a_nag_mlsub_size, h = (ui32_t)a_nag_mlsub_hits;
       else
          i = (ui32_t)a_nag_mlist_size, h = (ui32_t)a_nag_mlist_hits;
 
       if(i > 0 && (n_poption & n_PO_D_V)){
+         assert(fp != NULL);
          fprintf(fp, _("# %s list regex(7) total: %u entries, %u hits\n"),
             (nt & a_NAG_T_SUBSCRIBE ? _("Subscribed") : _("Non-subscribed")),
             i, h);
@@ -855,12 +896,33 @@ a_nag_group_print_all(enum a_nag_type nt){
    }
 #endif
 
-   if(fp != n_stdout){
+   switch(xnt & a_NAG_T_MASK){
+   case a_NAG_T_ALTERNATES:
+      if(fp != NULL){
+         putc('\n', fp);
+         assert(lines == 1);
+      }
+      break;
+   default:
+      break;
+   }
+
+   if(varname == NULL && fp != n_stdout){
+      assert(fp != NULL);
       page_or_print(fp, lines);
       Fclose(fp);
    }
+
 jleave:
+   if(varname != NULL){
+      tname = n_string_cp(&s);
+      if(n_var_vset(varname, (uintptr_t)tname))
+         varname = NULL;
+      else
+         n_pstate_err_no = n_ERR_NOTSUP;
+   }
    NYD_LEAVE;
+   return (varname == NULL);
 }
 
 static int
@@ -874,7 +936,8 @@ a_nag__group_print_qsorter(void const *a, void const *b){
 }
 
 static size_t
-a_nag_group_print(struct a_nag_group const *ngp, FILE *fo){
+a_nag_group_print(struct a_nag_group const *ngp, FILE *fo,
+      struct n_string *vputsp){
    char const *cp;
    size_t rv;
    NYD2_ENTER;
@@ -882,9 +945,20 @@ a_nag_group_print(struct a_nag_group const *ngp, FILE *fo){
    rv = 1;
 
    switch(ngp->ng_type & a_NAG_T_MASK){
+   case a_NAG_T_ALTERNATES:{
+      if(fo != NULL)
+         fprintf(fo, " %s", ngp->ng_id);
+      else{
+         if(vputsp->s_len > 0)
+            vputsp = n_string_push_c(vputsp, ' ');
+         /*vputsp =*/ n_string_push_cp(vputsp, ngp->ng_id);
+      }
+      rv = 0;
+   }  break;
    case a_NAG_T_COMMANDALIAS:{
       struct a_nag_cmd_alias *ncap;
 
+      assert(fo != NULL); /* xxx no vput yet */
       a_NAG_GP_TO_SUBCLASS(ncap, ngp);
       fprintf(fo, "commandalias %s %s\n",
          n_shexp_quote_cp(ngp->ng_id, TRU1),
@@ -894,6 +968,7 @@ a_nag_group_print(struct a_nag_group const *ngp, FILE *fo){
       struct a_nag_grp_names_head *ngnhp;
       struct a_nag_grp_names *ngnp;
 
+      assert(fo != NULL); /* xxx no vput yet */
       fprintf(fo, "alias %s ", ngp->ng_id);
 
       a_NAG_GP_TO_SUBCLASS(ngnhp, ngp);
@@ -909,6 +984,7 @@ a_nag_group_print(struct a_nag_group const *ngp, FILE *fo){
       putc('\n', fo);
    }  break;
    case a_NAG_T_MLIST:
+      assert(fo != NULL); /* xxx no vput yet */
 #ifdef HAVE_REGEX
       if((ngp->ng_type & a_NAG_T_REGEX) && (n_poption & n_PO_D_V)){
          size_t i;
@@ -929,11 +1005,13 @@ a_nag_group_print(struct a_nag_group const *ngp, FILE *fo){
          n_shexp_quote_cp(ngp->ng_id, TRU1));
       break;
    case a_NAG_T_SHORTCUT:
+      assert(fo != NULL); /* xxx no vput yet */
       a_NAG_GP_TO_SUBCLASS(cp, ngp);
       fprintf(fo, "wysh shortcut %s %s\n",
          ngp->ng_id, n_shexp_quote_cp(cp, TRU1));
       break;
    case a_NAG_T_CHARSETALIAS:
+      assert(fo != NULL); /* xxx no vput yet */
       a_NAG_GP_TO_SUBCLASS(cp, ngp);
       fprintf(fo, "charsetalias %s %s\n",
          n_shexp_quote_cp(ngp->ng_id, TRU1), n_shexp_quote_cp(cp, TRU1));
@@ -941,6 +1019,7 @@ a_nag_group_print(struct a_nag_group const *ngp, FILE *fo){
    case a_NAG_T_FILETYPE:{
       struct a_nag_file_type *nftp;
 
+      assert(fo != NULL); /* xxx no vput yet */
       a_NAG_GP_TO_SUBCLASS(nftp, ngp);
       fprintf(fo, "filetype %s %s %s\n",
          n_shexp_quote_cp(ngp->ng_id, TRU1),
@@ -963,7 +1042,7 @@ a_nag_mlmux(enum a_nag_type nt, char const **argv){
    n_UNINIT(ecp, NULL);
 
    if(*argv == NULL)
-      a_nag_group_print_all(nt);
+      a_nag_group_print_all(nt, NULL);
    else do{
       if((ngp = a_nag_group_find(nt, *argv)) != NULL){
          if(nt & a_NAG_T_SUBSCRIBE){
@@ -1579,83 +1658,78 @@ jleave:
 }
 
 FL int
-c_alternates(void *v){ /* TODO use a hashmap!! */
+c_alternates(void *vp){
+   struct a_nag_group *ngp;
+   char const *varname, *ccp;
+   char **argv;
+   NYD_ENTER;
+
+   n_pstate_err_no = n_ERR_NONE;
+
+   argv = vp;
+   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
+
+   if(*argv == NULL){
+      if(!a_nag_group_print_all(a_NAG_T_ALTERNATES, varname))
+         vp = NULL;
+   }else{
+      if(varname != NULL)
+         n_err(_("`alternates': `vput' only supported for show mode\n"));
+
+      /* Delete the old set to "declare a list", if *posix* */
+      if(ok_blook(posix))
+         a_nag_group_del(a_NAG_T_ALTERNATES, n_star);
+
+      while((ccp = *argv++) != NULL){
+         size_t l;
+         struct name *np;
+
+         if((np = lextract(ccp, GSKIN)) == NULL || np->n_flink != NULL ||
+               (np = checkaddrs(np, EACM_STRICT, NULL)) == NULL){
+            n_err(_("Invalid `alternates' argument: %s\n"),
+               n_shexp_quote_cp(ccp, FAL0));
+            n_pstate_err_no = n_ERR_INVAL;
+            vp = NULL;
+            continue;
+         }
+         ccp = np->n_name;
+
+         l = strlen(ccp) +1;
+         if((ngp = a_nag_group_fetch(a_NAG_T_ALTERNATES, ccp, l)) == NULL){
+            n_err(_("Failed to create storage for alternates: %s\n"),
+               n_shexp_quote_cp(ccp, FAL0));
+            n_pstate_err_no = n_ERR_NOMEM;
+            vp = NULL;
+         }
+      }
+   }
+   NYD_LEAVE;
+   return (vp != NULL ? 0 : 1);
+}
+
+FL int
+c_unalternates(void *vp){
    char **argv;
    int rv;
    NYD_ENTER;
 
    rv = 0;
+   argv = vp;
 
-   if(*(argv = v) == NULL){
-      char const *ccp;
-
-      if((ccp = ok_vlook(alternates)) != NULL)
-         fprintf(n_stdout, "alternates %s\n", ccp);
-      else
-         fputs(_("# no alternates registered\n"), n_stdout);
-   }else{
-      char *cp;
-      size_t l, vl;
-      struct n_strlist *slp, **slpa;
-
-      while((slp = a_nag_altnames) != NULL){
-         a_nag_altnames = slp->sl_next;
-         n_free(slp);
-      }
-      vl = 0;
-
-      /* Extension: only clearance? */
-      if(argv[1] == NULL && argv[0][0] == '-' && argv[0][1] == '\0')
-         n_UNINIT(cp, NULL);
-      else for(slpa = &a_nag_altnames; *argv != NULL; ++argv){
-         if(**argv != '\0'){
-            struct name *np;
-
-            if((np = lextract(*argv, GSKIN)) == NULL || np->n_flink != NULL ||
-                  (np = checkaddrs(np, EACM_STRICT, NULL)) == NULL){
-               n_err(_("Invalid `alternates' argument: %s\n"),
-                  n_shexp_quote_cp(*argv, FAL0));
-               rv = 1;
-               continue;
-            }
-
-            l = strlen(np->n_name);
-            if(UIZ_MAX - l <= vl){
-               n_err(_("Failed to create storage for alternate: %s\n"),
-                  n_shexp_quote_cp(*argv, FAL0));
-               rv = 1;
-               continue;
-            }
-
-            slp = n_STRLIST_ALLOC(l);
-            slp->sl_next = NULL;
-            slp->sl_len = l;
-            memcpy(slp->sl_dat, np->n_name, ++l);
-            *slpa = slp;
-            slpa = &slp->sl_next;
-            vl += l;
-         }
-      }
-
-      /* And put it into *alternates* */
-      if(vl > 0){
-         cp = n_autorec_alloc(vl);
-         for(vl = 0, slp = a_nag_altnames; slp != NULL; slp = slp->sl_next){
-            memcpy(&cp[vl], slp->sl_dat, slp->sl_len);
-            cp[vl += slp->sl_len] = ' ';
-            ++vl;
-         }
-         cp[vl - 1] = '\0';
-      }
-
-      n_PS_ROOT_BLOCK(vl > 0 ? ok_vset(alternates, cp) : ok_vclear(alternates));
-   }
+   do if(!a_nag_group_del(a_NAG_T_ALTERNATES, *argv)){
+      n_err(_("No such `alternates': %s\n"), n_shexp_quote_cp(*argv, FAL0));
+      rv = 1;
+   }while(*++argv != NULL);
    NYD_LEAVE;
    return rv;
 }
 
 FL struct name *
 n_alternates_remove(struct name *np, bool_t keep_single){
+   /* XXX keep a single pointer, initial null, and immediate remove nodes
+    * XXX on successful match unless keep single and that pointer null! */
+   struct a_nag_group_lookup ngl;
+   struct a_nag_group *ngp;
    struct name *xp, *newnp;
    NYD_ENTER;
 
@@ -1663,14 +1737,11 @@ n_alternates_remove(struct name *np, bool_t keep_single){
    for(xp = np; xp != NULL; xp = xp->n_flink)
       xp->n_flags &= ~(ui32_t)SI32_MIN;
 
-   /* Mark all possible alternate names (xxx sic) */
-
-   if(a_nag_altnames != NULL){
-      struct n_strlist *slp;
-
-      for(slp = a_nag_altnames; slp != NULL; slp = slp->sl_next)
-         np = a_nag_namelist_mark_name(np, slp->sl_dat);
-   }
+   /* Mark all possible alternate names (xxx sic: instead walk over namelist
+    * and hash-lookup alternate instead (unless *allnet*) */
+   for(ngp = a_nag_group_go_first(a_NAG_T_ALTERNATES, &ngl); ngp != NULL;
+         ngp = a_nag_group_go_next(&ngl))
+      np = a_nag_namelist_mark_name(np, ngp->ng_id);
 
    np = a_nag_namelist_mark_name(np, ok_vlook(LOGNAME));
 
@@ -1686,29 +1757,27 @@ n_alternates_remove(struct name *np, bool_t keep_single){
          xp = xp->n_flink)
       np = a_nag_namelist_mark_name(np, xp->n_name);
 
-   /* GDEL all (but a single) marked node(s) */
-   for(xp = np; xp != NULL; xp = xp->n_flink)
-      if(xp->n_flags & (ui32_t)SI32_MIN){
+   /* Clean the list by throwing away all deleted or marked (but one) nodes */
+   for(xp = newnp = NULL; np != NULL; np = np->n_flink){
+      if(np->n_type & GDEL)
+         continue;
+      if(np->n_flags & (ui32_t)SI32_MIN){
          if(!keep_single)
-            xp->n_type |= GDEL;
+            continue;
          keep_single = FAL0;
       }
 
-   /* Clean the list by throwing away all deleted nodes */
-   for(xp = newnp = NULL; np != NULL; np = np->n_flink)
-      if(!(np->n_type & GDEL)){
-         np->n_blink = xp;
-         if(xp != NULL)
-            xp->n_flink = np;
-         else
-            newnp = np;
-         xp = np;
-      }
-   np = newnp;
-
-   /* Delete the temporary bit from all remaining (again) */
-   for(xp = np; xp != NULL; xp = xp->n_flink)
+      np->n_blink = xp;
+      if(xp != NULL)
+         xp->n_flink = np;
+      else
+         newnp = np;
+      xp = np;
       xp->n_flags &= ~(ui32_t)SI32_MIN;
+   }
+   if(xp != NULL)
+      xp->n_flink = NULL;
+   np = newnp;
 
    NYD_LEAVE;
    return np;
@@ -1716,17 +1785,21 @@ n_alternates_remove(struct name *np, bool_t keep_single){
 
 FL bool_t
 n_is_myname(char const *name){
+   struct a_nag_group_lookup ngl;
+   struct a_nag_group *ngp;
    struct name *xp;
    NYD_ENTER;
 
    if(a_nag_is_same_name(ok_vlook(LOGNAME), name))
       goto jleave;
 
-   if(a_nag_altnames != NULL){
-      struct n_strlist *slp;
-
-      for(slp = a_nag_altnames; slp != NULL; slp = slp->sl_next)
-         if(a_nag_is_same_name(slp->sl_dat, name))
+   if(!ok_blook(allnet)){
+      if(a_nag_group_lookup(a_NAG_T_ALTERNATES, &ngl, name) != NULL)
+         goto jleave;
+   }else{
+      for(ngp = a_nag_group_go_first(a_NAG_T_ALTERNATES, &ngl); ngp != NULL;
+            ngp = a_nag_group_go_next(&ngl))
+         if(a_nag_is_same_name(ngp->ng_id, name))
             goto jleave;
    }
 
@@ -1896,7 +1969,7 @@ c_commandalias(void *vp){
    argv = vp;
 
    if((ccp = *argv) == NULL){
-      a_nag_group_print_all(a_NAG_T_COMMANDALIAS);
+      a_nag_group_print_all(a_NAG_T_COMMANDALIAS, NULL);
       goto jleave;
    }
 
@@ -1912,7 +1985,7 @@ c_commandalias(void *vp){
 
    if(argv[1] == NULL){
       if((ngp = a_nag_group_find(a_NAG_T_COMMANDALIAS, ccp)) != NULL)
-         a_nag_group_print(ngp, n_stdout);
+         a_nag_group_print(ngp, n_stdout, NULL);
       else{
          n_err(_("No such commandalias: %s\n"), n_shexp_quote_cp(ccp, FAL0));
          rv = 1;
@@ -2032,13 +2105,13 @@ c_alias(void *v)
    n_UNINIT(ecp, NULL);
 
    if(*argv == NULL)
-      a_nag_group_print_all(a_NAG_T_ALIAS);
+      a_nag_group_print_all(a_NAG_T_ALIAS, NULL);
    else if(!n_alias_is_valid_name(*argv)){
       ecp = N_("Not a valid alias name: %s\n");
       goto jerr;
    }else if(argv[1] == NULL){
       if((ngp = a_nag_group_find(a_NAG_T_ALIAS, *argv)) != NULL)
-         a_nag_group_print(ngp, n_stdout);
+         a_nag_group_print(ngp, n_stdout, NULL);
       else{
          ecp = N_("No such alias: %s\n");
          goto jerr;
@@ -2214,10 +2287,10 @@ c_shortcut(void *vp){
    argv = vp;
 
    if(*argv == NULL)
-      a_nag_group_print_all(a_NAG_T_SHORTCUT);
+      a_nag_group_print_all(a_NAG_T_SHORTCUT, NULL);
    else if(argv[1] == NULL){
       if((ngp = a_nag_group_find(a_NAG_T_SHORTCUT, *argv)) != NULL)
-         a_nag_group_print(ngp, n_stdout);
+         a_nag_group_print(ngp, n_stdout, NULL);
       else{
          n_err(_("No such shortcut: %s\n"), n_shexp_quote_cp(*argv, FAL0));
          rv = 1;
@@ -2290,10 +2363,10 @@ c_charsetalias(void *vp){
    argv = vp;
 
    if(*argv == NULL)
-      a_nag_group_print_all(a_NAG_T_CHARSETALIAS);
+      a_nag_group_print_all(a_NAG_T_CHARSETALIAS, NULL);
    else if(argv[1] == NULL){
       if((ngp = a_nag_group_find(a_NAG_T_CHARSETALIAS, *argv)) != NULL)
-         a_nag_group_print(ngp, n_stdout);
+         a_nag_group_print(ngp, n_stdout, NULL);
       else{
          n_err(_("No such charsetalias: %s\n"), n_shexp_quote_cp(*argv, FAL0));
          rv = 1;
@@ -2381,10 +2454,10 @@ c_filetype(void *vp){ /* TODO support automatic chains: .tar.gz -> .gz + .tar */
    argv = vp;
 
    if(*argv == NULL)
-      a_nag_group_print_all(a_NAG_T_FILETYPE);
+      a_nag_group_print_all(a_NAG_T_FILETYPE, NULL);
    else if(argv[1] == NULL){
       if((ngp = a_nag_group_find(a_NAG_T_FILETYPE, *argv)) != NULL)
-         a_nag_group_print(ngp, n_stdout);
+         a_nag_group_print(ngp, n_stdout, NULL);
       else{
          n_err(_("No such filetype: %s\n"), n_shexp_quote_cp(*argv, FAL0));
          rv = 1;

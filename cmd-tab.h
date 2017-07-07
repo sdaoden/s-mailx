@@ -275,8 +275,10 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
      DS(N_("Part of the if..elif..else..endif statement")) },
    { "endif", &c_endif, (G | F | M | X | TWYSH), 0, 0, NULL
      DS(N_("Part of the if..elif..else..endif statement")) },
-   { "alternates", &c_alternates, (M | TWYRA), 0, MAC, NULL
-     DS(N_("Show or define an alternate address list for the invoking user")) },
+   { "alternates", &c_alternates, (M | V | TWYSH), 0, MAC, NULL
+     DS(N_("Show or define alternate <address-list> for the invoking user")) },
+   { "unalternates", &c_unalternates, (M | TWYSH), 1, MAC, NULL
+     DS(N_("Delete alternate <address-list> (* for all)")) },
    { "ignore", &c_ignore, (M | TWYRA), 0, MAC, NULL
      DS(N_("Add <header-list> to the ignored LIST, or show that list")) },
    { "discard", &c_ignore, (M | TWYRA), 0, MAC, NULL

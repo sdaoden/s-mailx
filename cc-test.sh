@@ -295,6 +295,7 @@ t_behave() {
 
    t_behave_mbox
 
+   t_behave_alternates
    t_behave_alias
    # FIXME t_behave_mlist
    t_behave_filetype
@@ -2112,6 +2113,147 @@ t_behave_mbox() {
    t_epilog
 }
 
+t_behave_alternates() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${MYSHELL} -
+		(echo 'From Valeriana Sat Jul 08 15:54:03 2017' && ${cat} && echo
+			) >> "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Smta=./.tsendmail.sh > ./.tall 2>&1
+   echo --0
+   alternates
+   echo $?/$^ERRNAME
+   alternates a1@b1 a2@b2 a3@b3
+   echo $?/$^ERRNAME
+   alternates
+   echo $?/$^ERRNAME
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+
+   echo --1
+   unalternates a2@b2
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+   unalternates a3@b3
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+   unalternates a1@b1
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+
+   echo --2
+   unalternates *
+   alternates a1@b1 a2@b2 a3@b3
+   unalternates a3@b3
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+   unalternates a2@b2
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+   unalternates a1@b1
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+
+   echo --3
+   alternates a1@b1 a2@b2 a3@b3
+   unalternates a1@b1
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+   unalternates a2@b2
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+   unalternates a3@b3
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+
+   echo --4
+   unalternates *
+   alternates a1@b1 a2@b2 a3@b3
+   unalternates *
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+
+   echo --5
+   unalternates *
+   alternates a1@b1 a1@c1 a1@d1 a2@b2 a3@b3 a3@c3 a3@d3
+   m a1@b1 a1@c1 a1@d1
+	~s all alternates, only a1@b1 remains
+	~c a2@b2
+	~b a3@b3 a3@c3 a3@d3
+	~r - '_EOT'
+   This body is!
+   This also body is!!
+_EOT
+	~.
+
+   echo --6
+   unalternates *
+   alternates a1@b1 a1@c1 a2@b2 a3@b3
+   m a1@b1 a1@c1 a1@d1
+	~s a1@b1 a1@d1, and a3@c3 a3@d3 remain
+	~c a2@b2
+	~b a3@b3 a3@c3 a3@d3
+	~r - '_EOT'
+   This body2 is!
+_EOT
+	~.
+
+   echo --7
+   alternates a1@b1 a2@b2 a3; set allnet
+   m a1@b1 a1@c1 a1@d1
+	~s all alternates via allnet, only a1@b1 remains
+	~c a2@b2
+	~b a3@b3 a3@c3 a3@d3
+	~r - '_EOT'
+   This body3 is!
+_EOT
+	~.
+
+   echo --10
+   unalternates *
+   alternates a1@b1
+   echo $?/$^ERRNAME
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+   alternates a2@b2
+   echo $?/$^ERRNAME
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+   alternates a3@b3
+   echo $?/$^ERRNAME
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+   alternates a4@b4
+   echo $?/$^ERRNAME
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+
+   unalternates *
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+
+   echo --11
+   set posix
+   alternates a1@b1 a2@b2
+   echo $?/$^ERRNAME
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+   alternates a3@b3 a4@b4
+   echo $?/$^ERRNAME
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+	__EOT
+   check behave:alternates-1 0 "${MBOX}" '142184864 515'
+   check behave:alternates-2 - .tall '1878598364 505'
+
+   t_epilog
+}
+
 t_behave_alias() {
    t_prolog
    TRAP_EXIT_ADDONS="./.t*"
@@ -2286,7 +2428,7 @@ t_behave_e_H_L_opts() {
    t_epilog
 }
 
-t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
+t_behave_compose_hooks() { # TODO monster
    t_prolog
    TRAP_EXIT_ADDONS="./.t*"
 
@@ -2823,7 +2965,8 @@ t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
    }
    define t_ocl {
       echo on-compose-leave, mailx-command<$mailx-command>
-      eval alternates $alternates alter3@exam.ple alter4@exam.ple
+      vput alternates al
+      eval alternates $al alter3@exam.ple alter4@exam.ple
       alternates
       set autobcc='alter3@exam.ple alter4@exam.ple'
       echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
@@ -2836,7 +2979,7 @@ t_behave_compose_hooks() { # TODO monster: "tests" also `alternates', at least
    }
    define t_occ {
       echo on-compose-cleanup, mailx-command<$mailx-command>
-      alternates -
+      unalternates *
       alternates
       echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
       echo mailx-subject<$mailx-subject>
@@ -3040,6 +3183,7 @@ __EOT__
          define t_ocl {
             echo on-compose-leave, mailx-command<$mailx-command>
             set t_ocl autocc=ocl@exam.ple
+            unalternates *
             alternates alter3@exam.ple alter4@exam.ple
             alternates
             echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
@@ -3054,7 +3198,7 @@ __EOT__
          define t_occ {
             echo on-compose-cleanup, mailx-command<$mailx-command>
             set t_occ autocc=occ@exam.ple
-            alternates -
+            unalternates *
             alternates
             echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
             echo mailx-subject<$mailx-subject>
