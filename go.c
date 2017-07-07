@@ -257,7 +257,7 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
       a_ALIAS_MASK = n_BITENUM_MASK(0, 2), /* Alias recursion counter bits */
       a_NOPREFIX = 1u<<4,  /* Modifier prefix not allowed right now */
       a_NOALIAS = 1u<<5,   /* "No alias!" expansion modifier */
-      /* New modifier prefixes must be reflected in a_go_c_alias()! */
+      /* New modifier prefixes must be reflected in `commandalias' handling! */
       a_IGNERR = 1u<<6,    /* ignerr modifier prefix */
       a_WYSH = 1u<<7,      /* XXX v15+ drop wysh modifier prefix */
       a_VPUT = 1u<<8,      /* vput modifier prefix */
