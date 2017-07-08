@@ -259,10 +259,8 @@ a_nag_namelist_mark_name(struct name *np, char const *name){
 
    for(p = np; p != NULL; p = p->n_flink)
       if(!(p->n_type & GDEL) && !(p->n_flags & (ui32_t)SI32_MIN) &&
-            a_nag_is_same_name(p->n_name, name)){
+            a_nag_is_same_name(p->n_name, name))
          p->n_flags |= (ui32_t)SI32_MIN;
-         break;
-      }
    NYD2_LEAVE;
    return np;
 }
