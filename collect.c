@@ -2213,10 +2213,22 @@ jearg:
          /* Add to the To: list */
          if(cnt == 0)
             goto jearg;
-         hp->h_to = cat(hp->h_to,
-               checkaddrs(lextract(cp, GTO | GFULL), EACM_NORMAL, NULL));
-         n_pstate_err_no = n_ERR_NONE; /* XXX */
-         n_pstate_ex_no = 0; /* XXX */
+         else{
+            struct name *np;
+            si8_t soe;
+
+            soe = 0;
+            if((np = checkaddrs(lextract(cp, GTO | GFULL), EACM_NORMAL, &soe)
+                  ) != NULL)
+               hp->h_to = cat(hp->h_to, np);
+            if(soe == 0){
+               n_pstate_err_no = n_ERR_NONE;
+               n_pstate_ex_no = 0;
+            }else{
+               n_pstate_ex_no = 1;
+               n_pstate_err_no = (soe < 0) ? n_ERR_PERM : n_ERR_INVAL;
+            }
+         }
          hist &= ~a_HIST_GABBY;
          break;
       case 's':
@@ -2256,20 +2268,44 @@ jearg:
          /* Add to the CC list */
          if(cnt == 0)
             goto jearg;
-         hp->h_cc = cat(hp->h_cc,
-               checkaddrs(lextract(cp, GCC | GFULL), EACM_NORMAL, NULL));
-         n_pstate_err_no = n_ERR_NONE; /* XXX */
-         n_pstate_ex_no = 0; /* XXX */
+         else{
+            struct name *np;
+            si8_t soe;
+
+            soe = 0;
+            if((np = checkaddrs(lextract(cp, GCC | GFULL), EACM_NORMAL, &soe)
+                  ) != NULL)
+               hp->h_cc = cat(hp->h_cc, np);
+            if(soe == 0){
+               n_pstate_err_no = n_ERR_NONE;
+               n_pstate_ex_no = 0;
+            }else{
+               n_pstate_ex_no = 1;
+               n_pstate_err_no = (soe < 0) ? n_ERR_PERM : n_ERR_INVAL;
+            }
+         }
          hist &= ~a_HIST_GABBY;
          break;
       case 'b':
          /* Add stuff to blind carbon copies list */
          if(cnt == 0)
             goto jearg;
-         hp->h_bcc = cat(hp->h_bcc,
-               checkaddrs(lextract(cp, GBCC | GFULL), EACM_NORMAL, NULL));
-         n_pstate_err_no = n_ERR_NONE; /* XXX */
-         n_pstate_ex_no = 0; /* XXX */
+         else{
+            struct name *np;
+            si8_t soe;
+
+            soe = 0;
+            if((np = checkaddrs(lextract(cp, GBCC | GFULL), EACM_NORMAL, &soe)
+                  ) != NULL)
+               hp->h_bcc = cat(hp->h_bcc, np);
+            if(soe == 0){
+               n_pstate_err_no = n_ERR_NONE;
+               n_pstate_ex_no = 0;
+            }else{
+               n_pstate_ex_no = 1;
+               n_pstate_err_no = (soe < 0) ? n_ERR_PERM : n_ERR_INVAL;
+            }
+         }
          hist &= ~a_HIST_GABBY;
          break;
       case 'd':
@@ -2464,13 +2500,12 @@ jearg:
 "~: <command>  Execute an internal command\n"
 "~< <file>     Insert <file> (\"~<! <command>\" inserts shell command)\n"
 "~@ [<files>]  Edit[/Add] attachments (file[=input-charset[#output-charset]])\n"
-"~A            Insert *Sign* variable (`~a': insert *sign*)\n"
 "~c <users>    Add users to Cc: list (`~b': to Bcc:)\n"
 "~d            Read in $DEAD (dead.letter)\n"
 "~e            Edit message via $EDITOR\n"
+"~F <msglist>  Read in with headers, do not *indentprefix* lines\n"
             ), n_stdout);
          fputs(_(
-"~F <msglist>  Read in with headers, do not *indentprefix* lines\n"
 "~f <msglist>  Like ~F, but honour `ignore' / `retain' configuration\n"
 "~H            Edit From:, Reply-To: and Sender:\n"
 "~h            Prompt for Subject:, To:, Cc: and \"blind\" Bcc:\n"
@@ -2478,6 +2513,7 @@ jearg:
 "~M <msglist>  Read in with headers, *indentprefix* (`~m': `retain' etc.)\n"
 "~p            Show current message compose buffer\n"
 "~r <file>     Insert <file> (`~R': likewise, but *indentprefix* lines)\n"
+"              <file> may also be <- [HERE-DELIMITER]>\n"
             ), n_stdout);
          fputs(_(
 "~s <subject>  Set Subject:\n"
