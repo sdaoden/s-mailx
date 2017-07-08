@@ -389,7 +389,7 @@ a_memory_ars_reset(struct a_memory_ars_ctx *macp){
 
    /* "alloca(3)" memory goes away, too.  XXX Must be last as long we jump */
 #ifdef HAVE_MEMORY_DEBUG
-   if(macp->mac_lofi_top != NULL)
+   if(macp->mac_lofi_top != NULL && (n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG)))
       n_alert("There still is LOFI memory upon ARS reset!");
 #endif
    while((m.alcp = macp->mac_lofi_top) != NULL)
@@ -794,8 +794,9 @@ FL void *
    /* Huge allocations are special */
    if(n_UNLIKELY(size > a_MEMORY_ARS_MAX)){
 #ifdef HAVE_MEMORY_DEBUG
-      n_alert("n_autorec_alloc() of %" PRIuZ " bytes from %s, line %d",
-         size, mdbg_file, mdbg_line);
+      if(n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG))
+         n_alert("n_autorec_alloc() of %" PRIuZ " bytes from %s, line %d",
+            size, mdbg_file, mdbg_line);
 #endif
       goto jhuge;
    }
@@ -1002,8 +1003,9 @@ FL void *
    /* Huge allocations are special */
    if(n_UNLIKELY(isheap = (size > a_MEMORY_LOFI_MAX))){
 #ifdef HAVE_MEMORY_DEBUG
-      n_alert("n_lofi_alloc() of %" PRIuZ " bytes from %s, line %d",
-         size, mdbg_file, mdbg_line);
+      if(n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG))
+         n_alert("n_lofi_alloc() of %" PRIuZ " bytes from %s, line %d",
+            size, mdbg_file, mdbg_line);
 #endif
    }else if((malp = macp->mac_lofi) != NULL &&
          ((p.p_cp = malp->mal_caster) <= &malp->mal_max[-size])){
