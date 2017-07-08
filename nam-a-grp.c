@@ -230,22 +230,27 @@ static void          _mlmux_linkout(struct group *gp);
 
 static bool_t
 a_nag_is_same_name(char const *n1, char const *n2){
-   char c1, c2;
    bool_t rv;
+   char c1, c2, c1r, c2r;
    NYD2_ENTER;
 
    if(ok_blook(allnet)){
-      rv = TRU1;
-      do{
-         c1 = *n1++;
-         c2 = *n2++;
+      for(;; ++n1, ++n2){
+         c1 = *n1;
          c1 = lowerconv(c1);
+         c1r = (c1 == '\0' || c1 == '@');
+         c2 = *n2;
          c2 = lowerconv(c2);
-         if(c1 != c2){
+         c2r = (c2 == '\0' || c2 == '@');
+
+         if(c1r || c2r){
+            rv = (c1r == c2r);
+            break;
+         }else if(c1 != c2){
             rv = FAL0;
             break;
          }
-      }while(c1 != '\0' && c2 != '\0' && c1 != '@' && c2 != '@');
+      }
    }else
       rv = !asccasecmp(n1, n2);
    NYD2_LEAVE;
