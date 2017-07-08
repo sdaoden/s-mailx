@@ -310,6 +310,7 @@ t_behave() {
    t_behave_smime
 
    t_behave_maildir
+   t_behave_mass_recipients
 }
 
 t_behave_X_opt_input_command_stack() {
@@ -3695,6 +3696,74 @@ t_behave_maildir() {
    check behave:maildir-8 0 .tmbox2 '3806905791 13100'
    ${sed} 2d < .tlst > .tlstx
    check behave:maildir-9 - .tlstx '4216815295 13645'
+
+   t_epilog
+}
+
+t_behave_mass_recipients() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${MYSHELL} -
+		(echo 'From Eucalyptus Sat Jul 08 21:14:57 2017' && ${cat} && echo
+			) >> "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   ${cat} <<'__EOT__' > ./.trc
+   define bail {
+      echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
+   }
+   define ins_addr {
+      wysh set nr=$1 hn=$2
+      echo "~$hn $hn$nr@$hn"; echo '~:echo $?'; read es
+      if [ "$es" -ne 0 ]
+        xcall bail "ins_addr $hn 1-$nr"
+      end
+      vput vexpr nr + $nr 1
+      if [ "$nr" -le "$maximum" ]
+         xcall ins_addr $nr $hn
+      end
+   }
+   define bld_alter {
+      wysh set nr=$1 hn=$2
+      alternates $hn$nr@$hn
+      vput vexpr nr + $nr 2
+      if [ "$nr" -le "$maximum" ]
+         xcall bld_alter $nr $hn
+      end
+   }
+   define t_ocs {
+      read ver
+      call ins_addr 1 t
+      call ins_addr 1 c
+      call ins_addr 1 b
+   }
+   define t_ocl {
+      if [ "$t_remove" != '' ]
+         call bld_alter 1 t
+         call bld_alter 2 c
+      end
+   }
+   set on-compose-splice=t_ocs on-compose-leave=t_ocl
+__EOT__
+
+   ${rm} -f "${MBOX}"
+   printf 'm this-goes@nowhere\nbody\n!.\n' |
+   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
+      -X'source ./.trc' -Smta=./.tsendmail.sh -Smaximum=2001 \
+      >./.tall 2>&1
+   ${cat} ./.tall >> "${MBOX}"
+   check behave:mass_recipients-1 0 "${MBOX}" '2912243346 51526'
+
+   ${rm} -f "${MBOX}"
+   printf 'm this-goes@nowhere\nbody\n!.\n' |
+   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
+      -St_remove=1 -X'source ./.trc' -Smta=./.tsendmail.sh -Smaximum=2001 \
+      >./.tall 2>&1
+   ${cat} ./.tall >> "${MBOX}"
+   check behave:mass_recipients-2 0 "${MBOX}" '4097804632 34394'
 
    t_epilog
 }

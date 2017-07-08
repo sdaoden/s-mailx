@@ -49,7 +49,7 @@
 #define n_IMAP_DELIM "/."     /* Directory separator ([0] == replacer, too) */
 #define INDENT_DEFAULT "\t"   /* *indentprefix* default as of POSIX */
 #define n_MAILDIR_SEPARATOR ':' /* Flag separator character */
-#define n_MAXARGC 512         /* Maximum list of raw strings */
+#define n_MAXARGC 512         /* Maximum list of raw strings TODO dyn vector! */
 #define n_ALIAS_MAXEXP 25     /* Maximum expansion of aliases */
 #define n_PATH_DEVNULL "/dev/null"  /* Note: manual uses /dev/null as such */
 #define REFERENCES_MAX 20     /* Maximum entries in References: */
