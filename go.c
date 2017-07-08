@@ -85,6 +85,9 @@ enum a_go_flags{
     * allocated memory pool of the global context */
    a_GO_MEMPOOL_INHERITED = 1u<<17,
 
+   /* This context has inherited the entire data context from its parent */
+   a_GO_DATACTX_INHERITED = 1u<<18,
+
    a_GO_XCALL_IS_CALL = 1u<<24,  /* n_GO_INPUT_NO_XCALL */
    /* `xcall' optimization barrier: n_go_macro() has been finished with
     * a `xcall' request, and `xcall' set this in the parent a_go_input of the
@@ -888,7 +891,19 @@ jrestart:
       n_memory_reset();
 
 jstackpop:
-   n_go_data = &(a_go_ctx = gcp->gc_outer)->gc_data;
+   /* Update a_go_ctx and n_go_data, n_pstate ... */
+   a_go_ctx = gcp->gc_outer;
+   assert(a_go_ctx != NULL);
+   /* C99 */{
+      struct a_go_ctx *x;
+
+      for(x = a_go_ctx; x->gc_flags & a_GO_DATACTX_INHERITED;){
+         x = x->gc_outer;
+         assert(x != NULL);
+      }
+      n_go_data = &x->gc_data;
+   }
+
    if((a_go_ctx->gc_flags & (a_GO_MACRO | a_GO_SUPER_MACRO)) ==
          (a_GO_MACRO | a_GO_SUPER_MACRO)){
       n_pstate &= ~n_PS_SOURCING;
@@ -1920,7 +1935,7 @@ n_go_splice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
    gcp->gc_outer = a_go_ctx;
    gcp->gc_osigmask = osigmask;
    gcp->gc_file = new_stdin;
-   gcp->gc_flags = a_GO_FREE | a_GO_SPLICE;
+   gcp->gc_flags = a_GO_FREE | a_GO_SPLICE | a_GO_DATACTX_INHERITED;
    gcp->gc_on_finalize = on_finalize;
    gcp->gc_finalize_arg = finalize_arg;
    gcp->gc_splice_stdin = n_stdin;
