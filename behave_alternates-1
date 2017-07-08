@@ -1,0 +1,23 @@
+From Valeriana Sat Jul 08 15:54:03 2017
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: a1@b1
+Subject: all alternates, only a1@b1 remains
+
+   This body is!
+   This also body is!!
+
+From Valeriana Sat Jul 08 15:54:03 2017
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: a1@b1, a1@d1
+Bcc: a3@c3, a3@d3
+Subject: a1@b1 a1@d1, and a3@c3 a3@d3 remain
+
+   This body2 is!
+
+From Valeriana Sat Jul 08 15:54:03 2017
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: a1@b1
+Subject: all alternates via allnet, only a1@b1 remains
+
+   This body3 is!
+

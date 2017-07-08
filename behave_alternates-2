@@ -1,0 +1,42 @@
+--0
+# no alternates registered
+0/NONE
+0/NONE
+alternates a1@b1 a2@b2 a3@b3
+0/NONE
+0/NONE <a1@b1 a2@b2 a3@b3>
+--1
+0/NONE <a1@b1 a3@b3>
+0/NONE <a1@b1>
+0/NONE <>
+--2
+0/NONE <a1@b1 a2@b2>
+0/NONE <a1@b1>
+0/NONE <>
+--3
+0/NONE <a2@b2 a3@b3>
+0/NONE <a3@b3>
+0/NONE <>
+--4
+0/NONE <>
+--5
+- 2/40
+--6
+- 1/18
+--7
+- 1/18
+--10
+0/NONE
+0/NONE <a1@b1>
+0/NONE
+0/NONE <a1@b1 a2@b2>
+0/NONE
+0/NONE <a1@b1 a2@b2 a3@b3>
+0/NONE
+0/NONE <a1@b1 a2@b2 a3@b3 a4@b4>
+0/NONE <>
+--11
+0/NONE
+0/NONE <a1@b1 a2@b2>
+0/NONE
+0/NONE <a3@b3 a4@b4>
