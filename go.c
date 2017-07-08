@@ -881,13 +881,13 @@ jrestart:
    else if(gcp->gc_flags & a_GO_FILE)
       Fclose(gcp->gc_file);
 
-jstackpop:
    if(!(gcp->gc_flags & a_GO_MEMPOOL_INHERITED)){
       if(gcp->gc_data.gdc_mempool != NULL)
          n_memory_pool_pop(NULL);
    }else
       n_memory_reset();
 
+jstackpop:
    n_go_data = &(a_go_ctx = gcp->gc_outer)->gc_data;
    if((a_go_ctx->gc_flags & (a_GO_MACRO | a_GO_SUPER_MACRO)) ==
          (a_GO_MACRO | a_GO_SUPER_MACRO)){
@@ -1932,6 +1932,7 @@ n_go_splice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
    n_stdout = new_stdout;
    n_psonce = new_psonce;
    a_go_ctx = gcp;
+   /* Do NOT touch n_go_data! */
    n_pstate |= n_PS_ROBOT;
 
    rele_all_sigs();
