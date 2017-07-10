@@ -1765,6 +1765,7 @@ jduppass:
       goto jleave;
    }
 
+   memset(&so, 0, sizeof so);
    so.s_fd = -1;
    if (!same_imap_account) {
       if (!disconnected(urlp->url_p_eu_h_p) && !sopen(&so, urlp)) {
