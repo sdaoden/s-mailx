@@ -1,6 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of SMTP GSS-API authentication according to RFC 4954.
- *@ TODO GSS-API should also be joined into "a VFS".  TODO LEAKS (error path)
+ *@ TODO GSS-API should also be joined into "a VFS".
  *
  * Copyright (c) 2014 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
@@ -98,8 +98,7 @@ _smtp_gssapi_error1(char const *s, OM_uint32 code, int typ)
             &msg_ctx, &msg);
       if (maj_stat == GSS_S_COMPLETE) {
          n_err(_("GSS error: %s / %s\n"), s, (char*)msg.value);
-         if (msg.length != 0)
-            gss_release_buffer(&min_stat, &msg);
+         gss_release_buffer(&min_stat, &msg);
       } else {
          n_err(_("GSS error: %s / unknown\n"), s);
          break;
@@ -121,32 +120,39 @@ static bool_t
 _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
 {
    struct str in, out;
-   gss_buffer_desc send_tok, recv_tok, *token_ptr;
+   gss_buffer_desc send_tok, recv_tok;
    gss_name_t target_name;
    gss_ctx_id_t gss_context;
    OM_uint32 maj_stat, min_stat, ret_flags;
    int conf_state;
+   enum{
+      a_F_NONE,
+      a_F_RECV_TOK = 1u<<0,
+      a_F_SEND_TOK = 1u<<1,
+      a_F_TARGET_NAME = 1u<<2,
+      a_F_GSS_CONTEXT = 1u<<3
+   } f;
    bool_t ok;
    NYD_ENTER;
 
    ok = FAL0;
+   f = a_F_NONE;
 
    if(INT_MAX - 1 - 4 <= sbp->sb_ccred.cc_user.l)
-      goto j_leave;
+      goto jleave;
 
    send_tok.value = salloc(send_tok.length = sbp->sb_url.url_host.l + 5 +1);
    memcpy(send_tok.value, "smtp@", 5);
    memcpy((char*)send_tok.value + 5, sbp->sb_url.url_host.s,
       sbp->sb_url.url_host.l +1);
-
    maj_stat = gss_import_name(&min_stat, &send_tok, GSS_C_NT_HOSTBASED_SERVICE,
          &target_name);
+   f |= a_F_TARGET_NAME;
    if (maj_stat != GSS_S_COMPLETE) {
       _smtp_gssapi_error(send_tok.value, maj_stat, min_stat);
-      goto j_leave;
+      goto jleave;
    }
 
-   token_ptr = GSS_C_NO_BUFFER;
    gss_context = GSS_C_NO_CONTEXT;
    maj_stat = gss_init_sec_context(&min_stat,
          GSS_C_NO_CREDENTIAL,
@@ -156,29 +162,26 @@ _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
          GSS_C_MUTUAL_FLAG | GSS_C_SEQUENCE_FLAG,
          0,
          GSS_C_NO_CHANNEL_BINDINGS,
-         token_ptr,
+         GSS_C_NO_BUFFER,
          NULL,
          &send_tok,
          &ret_flags,
          NULL);
+   f |= a_F_SEND_TOK | a_F_GSS_CONTEXT;
    if (maj_stat != GSS_S_COMPLETE && maj_stat != GSS_S_CONTINUE_NEEDED) {
       _smtp_gssapi_error("initializing GSS context", maj_stat, min_stat);
-      gss_release_name(&min_stat, &target_name);
-      goto j_leave;
+      goto jleave;
    }
-   recv_tok.value = out.s = NULL;
-   recv_tok.length = out.l = 0;
 
    _OUT(NETLINE("AUTH GSSAPI"));
    _ANSWER(3, FAL0, FAL0);
    while (maj_stat == GSS_S_CONTINUE_NEEDED) {
       /* Pass token obtained from first gss_init_sec_context() call */
       if(b64_encode_buf(&out, send_tok.value, send_tok.length,
-            B64_SALLOC | B64_CRLF) == NULL){
-         gss_release_buffer(&min_stat, &send_tok);
+            B64_SALLOC | B64_CRLF) == NULL)
          goto jleave;
-      }
       gss_release_buffer(&min_stat, &send_tok);
+      f &= ~a_F_SEND_TOK;
       _OUT(out.s);
       _ANSWER(3, FAL0, TRU1);
 
@@ -189,7 +192,6 @@ _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
          goto jebase64;
       recv_tok.value = out.s;
       recv_tok.length = out.l;
-      token_ptr = &recv_tok;
       maj_stat = gss_init_sec_context(&min_stat,
             GSS_C_NO_CREDENTIAL,
             &gss_context,
@@ -198,28 +200,30 @@ _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
             GSS_C_MUTUAL_FLAG | GSS_C_SEQUENCE_FLAG,
             0,
             GSS_C_NO_CHANNEL_BINDINGS,
-            token_ptr,
+            &recv_tok,
             NULL,
             &send_tok,
             &ret_flags,
             NULL);
       free(out.s);
+      f |= a_F_SEND_TOK;
       if (maj_stat != GSS_S_COMPLETE && maj_stat != GSS_S_CONTINUE_NEEDED) {
          _smtp_gssapi_error("initializing context", maj_stat, min_stat);
-         gss_release_name(&min_stat, &target_name);
          goto jleave;
       }
    }
 
-   /* Pass token obtained from second gss_init_sec_context() call */
    gss_release_name(&min_stat, &target_name);
+   f &= ~a_F_TARGET_NAME;
+
+   /* Pass token obtained from second gss_init_sec_context() call */
    if(b64_encode_buf(&out, send_tok.value, send_tok.length,
-         B64_SALLOC | B64_CRLF) == NULL){
-      gss_release_buffer(&min_stat, &send_tok);
+         B64_SALLOC | B64_CRLF) == NULL)
       goto jleave;
-   }
-   gss_release_buffer(&min_stat, &send_tok);
    _OUT(out.s);
+
+   gss_release_buffer(&min_stat, &send_tok);
+   f &= ~a_F_SEND_TOK;
 
    _ANSWER(3, FAL0, TRU1);
    out.s = NULL;
@@ -237,6 +241,8 @@ jebase64:
    maj_stat = gss_unwrap(&min_stat, gss_context, &recv_tok, &send_tok,
          &conf_state, NULL);
    free(out.s);
+   gss_release_buffer(&min_stat, &send_tok);
+   /*f &= ~a_F_SEND_TOK;*/
    if (maj_stat != GSS_S_COMPLETE) {
       _smtp_gssapi_error("unwrapping data", maj_stat, min_stat);
       goto jleave;
@@ -254,6 +260,7 @@ jebase64:
    send_tok.value = in.s;
    maj_stat = gss_wrap(&min_stat, gss_context, 0, GSS_C_QOP_DEFAULT, &send_tok,
          &conf_state, &recv_tok);
+   f |= a_F_RECV_TOK;
    if (maj_stat != GSS_S_COMPLETE) {
       _smtp_gssapi_error("wrapping data", maj_stat, min_stat);
       goto jleave;
@@ -267,9 +274,14 @@ jebase64:
 
    ok = TRU1;
 jleave:
-   gss_delete_sec_context(&min_stat, &gss_context, &recv_tok);
-   gss_release_buffer(&min_stat, &recv_tok);
-j_leave:
+   if(f & a_F_RECV_TOK)
+      gss_release_buffer(&min_stat, &recv_tok);
+   if(f & a_F_SEND_TOK)
+      gss_release_buffer(&min_stat, &send_tok);
+   if(f & a_F_TARGET_NAME)
+      gss_release_name(&min_stat, &target_name);
+   if(f & a_F_GSS_CONTEXT)
+      gss_delete_sec_context(&min_stat, &gss_context, GSS_C_NO_BUFFER);
    NYD_LEAVE;
    return ok;
 }
