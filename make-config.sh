@@ -149,6 +149,7 @@ option_setup() {
          exit 1
          ;;
       esac
+      msg_nonl "CONFIG=${CONFIG} ... "
    fi
 }
 
