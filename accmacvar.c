@@ -691,10 +691,11 @@ jleave:
 jerr:
    for(llp = ll_head; llp != NULL; llp = llp->ll_next)
       free(llp->ll_amlp);
-   if(amp != NULL){
-      free(amp->am_line_dat);
-      free(amp);
-   }
+   /*
+    * if(amp != NULL){
+    *   free(amp->am_line_dat);
+    *   free(amp);
+    *}*/
    goto jleave;
 }
 
