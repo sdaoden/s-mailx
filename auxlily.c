@@ -41,10 +41,6 @@
 
 #include <sys/utsname.h>
 
-#ifdef HAVE_GETRANDOM
-# include HAVE_GETRANDOM_HEADER
-#endif
-
 #ifdef HAVE_SOCKETS
 # ifdef HAVE_GETADDRINFO
 #  include <sys/socket.h>
@@ -58,6 +54,20 @@
 #endif
 #ifdef HAVE_SETLOCALE
 # include <locale.h>
+#endif
+
+#ifdef HAVE_GETRANDOM
+# include HAVE_GETRANDOM_HEADER
+#endif
+
+#ifdef HAVE_IDNA
+# if HAVE_IDNA == HAVE_IDNA_LIBIDNA
+#  include <idna.h>
+#  include <idn-free.h>
+#  include <stringprep.h>
+# elif HAVE_IDNA == HAVE_IDNA_IDNKIT
+#  include <idn/api.h>
+# endif
 #endif
 
 #ifndef HAVE_POSIX_RANDOM
@@ -912,6 +922,63 @@ n_nodename(bool_t mayoverride){
    NYD2_LEAVE;
    return hostname;
 }
+
+#ifdef HAVE_IDNA
+FL bool_t
+n_idna_to_ascii(struct n_string *out, char const *ibuf, size_t ilen){
+   char *idna_utf8;
+   bool_t rv;
+   NYD_ENTER;
+
+   if((rv = (ilen == 0)))
+      goto jleave;
+
+   if(ibuf[ilen] != '\0') /* TODO n_idna_to_ascii: optimise */
+      ibuf = savestrbuf(ibuf, ilen);
+   ilen = 0;
+
+   idna_utf8 = n_iconv_onetime_cp(n_ICONV_NONE, "utf-8", ok_vlook(ttycharset),
+         ibuf);
+   if(idna_utf8 == NULL)
+      goto jleave;
+
+# if HAVE_IDNA == HAVE_IDNA_LIBIDNA
+   /* C99 */{
+      char *idna_ascii;
+
+      if(idna_to_ascii_8z(idna_utf8, &idna_ascii, 0) == IDNA_SUCCESS){
+         out = n_string_assign_cp(out, idna_ascii);
+         idn_free(idna_ascii);
+         rv = TRU1;
+         ilen = out->s_len;
+      }
+   }
+# elif HAVE_IDNA == HAVE_IDNA_IDNKIT
+   ilen = strlen(idna_utf8);
+jredo:
+   switch(idn_encodename((IDN_ENCODE_APP & ~IDN_LOCALCONV), idna_utf8,
+         n_string_resize(n_string_trunc(out, 0), ilen)->s_dat, ilen)){
+   case idn_buffer_overflow:
+      ilen += HOST_NAME_MAX +1;
+      goto jredo;
+   case idn_success:
+      rv = TRU1;
+      ilen = strlen(out->s_dat);
+      break;
+   default:
+      ilen = 0;
+      break;
+   }
+
+# else
+#  error Unknown HAVE_IDNA
+# endif
+jleave:
+   out = n_string_trunc(out, ilen);
+   NYD_LEAVE;
+   return rv;
+}
+#endif /* HAVE_IDNA */
 
 FL char *
 n_random_create_cp(size_t length, ui32_t *reprocnt_or_null){

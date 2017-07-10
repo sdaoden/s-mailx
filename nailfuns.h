@@ -374,6 +374,13 @@ FL char const * n_getdeadletter(void);
 /* Detect and query the hostname to use */
 FL char *n_nodename(bool_t mayoverride);
 
+/* Convert from / to *ttycharset* */
+#ifdef HAVE_IDNA
+FL bool_t n_idna_to_ascii(struct n_string *out, char const *ibuf, size_t ilen);
+/*TODO FL bool_t n_idna_from_ascii(struct n_string *out, char const *ibuf,
+            size_t ilen);*/
+#endif
+
 /* Get a (pseudo) random string of *length* bytes; returns salloc()ed buffer.
  * If n_PSO_REPRODUCIBLE and reprocnt_or_null not NULL then we produce
  * a reproducable string by using and managing that counter instead */

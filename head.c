@@ -40,16 +40,6 @@
 # include "nail.h"
 #endif
 
-#ifdef HAVE_IDNA
-# if HAVE_IDNA == HAVE_IDNA_LIBIDNA
-#  include <idna.h>
-#  include <idn-free.h>
-#  include <stringprep.h>
-# elif HAVE_IDNA == HAVE_IDNA_IDNKIT
-#  include <idn/api.h>
-# endif
-#endif
-
 struct cmatch_data {
    size_t      tlen;    /* Length of .tdata */
    char const  *tdata;  /* Template date - see _cmatch_data[] */
@@ -296,125 +286,28 @@ a_head_jdn_to_gregorian(size_t jdn, ui32_t *yp, ui32_t *mp, ui32_t *dp){
 #endif /* 0 */
 
 #ifdef HAVE_IDNA
-# if HAVE_IDNA == HAVE_IDNA_LIBIDNA
 static struct n_addrguts *
-a_head_idna_apply(struct n_addrguts *agp)
-{
-   char *idna_utf8, *idna_ascii, *cs;
-   size_t sz, i;
+a_head_idna_apply(struct n_addrguts *agp){
+   struct n_string idna_ascii;
    NYD_ENTER;
 
-   sz = agp->ag_slen - agp->ag_sdom_start;
-   assert(sz > 0);
-   idna_utf8 = ac_alloc(sz +1);
-   memcpy(idna_utf8, agp->ag_skinned + agp->ag_sdom_start, sz);
-   idna_utf8[sz] = '\0';
+   n_string_creat_auto(&idna_ascii);
 
-   /* GNU Libidn settles on top of iconv(3) without any fallback, so let's just
-    * let it perform the charset conversion, if any should be necessary */
-   if (!(n_psonce & n_PSO_UNICODE)) {
-      char const *tcs = ok_vlook(ttycharset);
-      idna_ascii = idna_utf8;
-      idna_utf8 = stringprep_convert(idna_ascii, "utf-8", tcs);
-      i = (idna_utf8 == NULL && n_err_no == n_ERR_INVAL);
-      ac_free(idna_ascii);
-
-      if (idna_utf8 == NULL) {
-         if (i)
-            n_err(_("Cannot convert from %s to %s\n"), tcs, "utf-8");
-         agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA | NAME_ADDRSPEC_ERR_CHAR;
-         goto jleave;
-      }
-   }
-
-   if (idna_to_ascii_8z(idna_utf8, &idna_ascii, 0) != IDNA_SUCCESS) {
+   if(!n_idna_to_ascii(&idna_ascii, &agp->ag_skinned[agp->ag_sdom_start],
+         agp->ag_slen - agp->ag_sdom_start))
       agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA | NAME_ADDRSPEC_ERR_CHAR;
-      goto jleave1;
+   else{
+      /* Replace the domain part of .ag_skinned with IDNA version */
+      n_string_unshift_buf(&idna_ascii, agp->ag_skinned, agp->ag_sdom_start);
+
+      agp->ag_skinned = n_string_cp(&idna_ascii);
+      agp->ag_slen = idna_ascii.s_len;
+      NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags,
+         NAME_NAME_SALLOC | NAME_SKINNED | NAME_IDNA, 0);
    }
-
-   /* Replace the domain part of .ag_skinned with IDNA version */
-   sz = strlen(idna_ascii);
-   i = agp->ag_sdom_start;
-   cs = salloc(i + sz +1);
-   memcpy(cs, agp->ag_skinned, i);
-   memcpy(&cs[i], idna_ascii, sz);
-   i += sz;
-   cs[i] = '\0';
-
-   agp->ag_skinned = cs;
-   agp->ag_slen = i;
-   NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags,
-      NAME_NAME_SALLOC | NAME_SKINNED | NAME_IDNA, 0);
-
-   idn_free(idna_ascii);
-jleave1:
-   if (n_psonce & n_PSO_UNICODE)
-      ac_free(idna_utf8);
-   else
-      idn_free(idna_utf8);
-jleave:
    NYD_LEAVE;
    return agp;
 }
-
-# elif HAVE_IDNA == HAVE_IDNA_IDNKIT /* IDNA==LIBIDNA */
-static struct n_addrguts *
-a_head_idna_apply(struct n_addrguts *agp)
-{
-   char *idna_in, *idna_out, *cs;
-   size_t sz, i;
-   idn_result_t r;
-   NYD_ENTER;
-
-   sz = agp->ag_slen - agp->ag_sdom_start;
-   assert(sz > 0);
-   idna_in = ac_alloc(sz +1);
-   memcpy(idna_in, agp->ag_skinned + agp->ag_sdom_start, sz);
-   idna_in[sz] = '\0';
-
-   for (idna_out = NULL, sz = HOST_NAME_MAX +1;; sz += HOST_NAME_MAX) {
-      idna_out = ac_alloc(sz);
-
-      r = idn_encodename(IDN_ENCODE_APP, idna_in, idna_out, sz);
-      switch (r) {
-      case idn_success:
-      case idn_buffer_overflow:
-         break;
-      case idn_invalid_encoding:
-         n_err(_("Cannot convert from %s to %s\n"),
-            ok_vlook(ttycharset), "utf-8");
-         /* FALLTHRU */
-      default:
-         agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA | NAME_ADDRSPEC_ERR_CHAR;
-         goto jleave;
-      }
-
-      if (r == idn_success)
-         break;
-      ac_free(idna_out);
-   }
-
-   /* Replace the domain part of .ag_skinned with IDNA version */
-   sz = strlen(idna_out);
-   i = agp->ag_sdom_start;
-   cs = salloc(i + sz +1);
-   memcpy(cs, agp->ag_skinned, i);
-   memcpy(&cs[i], idna_out, sz);
-   i += sz;
-   cs[i] = '\0';
-
-   agp->ag_skinned = cs;
-   agp->ag_slen = i;
-   NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags,
-      NAME_NAME_SALLOC | NAME_SKINNED | NAME_IDNA, 0);
-
-jleave:
-   ac_free(idna_out);
-   ac_free(idna_in);
-   NYD_LEAVE;
-   return agp;
-}
-# endif /* IDNA==IDNKIT */
 #endif /* HAVE_IDNA */
 
 static bool_t

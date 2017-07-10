@@ -180,12 +180,23 @@ option_update() {
    fi
 
    if feat_no ICONV; then
-      if feat_require IMAP; then
-         msg 'ERROR: need ICONV for required feature IMAP'
-         config_exit 13
+      if feat_yes IMAP; then
+         if feat_require IMAP; then
+            msg 'ERROR: need ICONV for required feature IMAP'
+            config_exit 13
+         fi
+         msg 'ERROR: disabling IMAP due to missing ICONV'
+         OPT_IMAP=0
       fi
-      msg 'ERROR: disabling IMAP due to missing ICONV'
-      OPT_IMAP=0
+
+      if feat_yes IDNA; then
+         if feat_require IDNA; then
+            msg 'ERROR: need ICONV for required feature IDNA'
+            config_exit 13
+         fi
+         msg 'ERROR: disabling IDNA due to missing ICONV'
+         OPT_IDNA=0
+      fi
    fi
 
    if feat_no MLE; then
