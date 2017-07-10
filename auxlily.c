@@ -834,17 +834,19 @@ n_prime_next(ui32_t n){
 
 FL char const *
 n_getdeadletter(void){
-   char const *cp_base, *cp;
+   char const *cp;
+   bool_t bla;
    NYD_ENTER;
 
-   cp_base = NULL;
+   bla = FAL0;
 jredo:
    cp = fexpand(ok_vlook(DEAD), FEXP_LOCAL | FEXP_NSHELL);
    if(cp == NULL || strlen(cp) >= PATH_MAX){
-      if(cp_base == NULL){
+      if(!bla){
          n_err(_("Failed to expand *DEAD*, setting default (%s): %s\n"),
             VAL_DEAD, n_shexp_quote_cp(cp, FAL0));
          ok_vclear(DEAD);
+         bla = TRU1;
          goto jredo;
       }else{
          cp = savecatsep(ok_vlook(TMPDIR), '/', VAL_DEAD_BASENAME);
