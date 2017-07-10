@@ -81,7 +81,7 @@ struct spam_cf {
 #ifdef HAVE_SPAM_SPAMC
 struct spam_spamc {
    struct spam_cf    c_super;
-   char const        *c_cmd_arr[8];
+   char const        *c_cmd_arr[9];
 };
 #endif
 
