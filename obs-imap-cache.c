@@ -590,14 +590,13 @@ cache_setptr(enum fedit_mode fm, int transparent)
    char *name;
    unsigned long *contents;
    long contentelem;
-   struct message *omessage = NULL;
+   struct message *omessage;
    enum okay rv = STOP;
    NYD_ENTER;
 
-   if (transparent) {
-      omessage = message;
-      omsgCount = msgCount;
-   }
+   omessage = message;
+   omsgCount = msgCount;
+
    if (mb.mb_cache_directory != NULL) {
       free(mb.mb_cache_directory);
       mb.mb_cache_directory = NULL;
@@ -631,13 +630,11 @@ cache_setptr(enum fedit_mode fm, int transparent)
    mb.mb_type = MB_CACHE;
    mb.mb_perm = ((n_poption & n_PO_R_FLAG) || (fm & FEDIT_RDONLY)
          ) ? 0 : MB_DELE;
-   if (transparent)
+   if (transparent && omessage != NULL)
       transflags(omessage, omsgCount, 1);
-   else {
-      if (omessage != NULL)
-         free(omessage);
-      setdot(message);
-   }
+   if (omessage != NULL)
+      free(omessage);
+   setdot(message);
    rv = OKAY;
 jleave:
    NYD_LEAVE;
