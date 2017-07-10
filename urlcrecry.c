@@ -1047,6 +1047,19 @@ jurlp_err:
       for (cp = urlp->url_host.s, i = urlp->url_host.l; i != 0; ++cp, --i)
          *cp = lowerconv(*cp);
    }
+#ifdef HAVE_IDNA
+   if(!ok_blook(idna_disable)){
+      struct n_string idna;
+
+      if(!n_idna_to_ascii(n_string_creat_auto(&idna), urlp->url_host.s,
+               urlp->url_host.l)){
+         n_err(_("URL host fails IDNA conversion: %s\n"), urlp->url_input);
+         goto jleave;
+      }
+      urlp->url_host.s = n_string_cp(&idna);
+      urlp->url_host.l = idna.s_len;
+   }
+#endif /* HAVE_IDNA */
 
    /* .url_h_p: HOST:PORT */
    {  size_t i;
