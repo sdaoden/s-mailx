@@ -56,163 +56,11 @@ EMPTY_FILE()
 # include <openssl/x509.h>
 #endif
 
+/* */
+static bool_t a_socket_open(struct sock *sp, struct url *urlp);
+
 /* Write to socket fd, restarting on EINTR, unless anything is written */
-static long a_sock_xwrite(int fd, char const *data, size_t sz);
-
-static long
-a_sock_xwrite(int fd, char const *data, size_t sz)
-{
-   long rv = -1, wo;
-   size_t wt = 0;
-   NYD_ENTER;
-
-   do {
-      if ((wo = write(fd, data + wt, sz - wt)) < 0) {
-         if (n_err_no == n_ERR_INTR)
-            continue;
-         else
-            goto jleave;
-      }
-      wt += wo;
-   } while (wt < sz);
-   rv = (long)sz;
-jleave:
-   NYD_LEAVE;
-   return rv;
-}
-
-FL int
-sclose(struct sock *sp)
-{
-   int i;
-   NYD_ENTER;
-
-   i = sp->s_fd;
-   sp->s_fd = -1;
-   /* TODO NOTE: we MUST NOT close the descriptor 0 here...
-    * TODO of course this should be handled in a VMAILFS->open() .s_fd=-1,
-    * TODO but unfortunately it isn't yet */
-   if (i <= 0)
-      i = 0;
-   else {
-      if (sp->s_onclose != NULL)
-         (*sp->s_onclose)();
-      if (sp->s_wbuf != NULL)
-         free(sp->s_wbuf);
-# ifdef HAVE_XSSL
-      if (sp->s_use_ssl) {
-         void *s_ssl = sp->s_ssl;
-
-         sp->s_ssl = NULL;
-         sp->s_use_ssl = 0;
-         while (!SSL_shutdown(s_ssl)) /* XXX proper error handling;signals! */
-            ;
-         SSL_free(s_ssl);
-      }
-# endif
-      i = close(i);
-   }
-   NYD_LEAVE;
-   return i;
-}
-
-FL enum okay
-swrite(struct sock *sp, char const *data)
-{
-   enum okay rv;
-   NYD2_ENTER;
-
-   rv = swrite1(sp, data, strlen(data), 0);
-   NYD2_LEAVE;
-   return rv;
-}
-
-FL enum okay
-swrite1(struct sock *sp, char const *data, int sz, int use_buffer)
-{
-   enum okay rv = STOP;
-   int x;
-   NYD2_ENTER;
-
-   if (use_buffer > 0) {
-      int di;
-
-      if (sp->s_wbuf == NULL) {
-         sp->s_wbufsize = 4096;
-         sp->s_wbuf = smalloc(sp->s_wbufsize);
-         sp->s_wbufpos = 0;
-      }
-      while (sp->s_wbufpos + sz > sp->s_wbufsize) {
-         di = sp->s_wbufsize - sp->s_wbufpos;
-         sz -= di;
-         if (sp->s_wbufpos > 0) {
-            memcpy(sp->s_wbuf + sp->s_wbufpos, data, di);
-            rv = swrite1(sp, sp->s_wbuf, sp->s_wbufsize, -1);
-         } else
-            rv = swrite1(sp, data, sp->s_wbufsize, -1);
-         if (rv != OKAY)
-            goto jleave;
-         data += di;
-         sp->s_wbufpos = 0;
-      }
-      if (sz == sp->s_wbufsize) {
-         rv = swrite1(sp, data, sp->s_wbufsize, -1);
-         if (rv != OKAY)
-            goto jleave;
-      } else if (sz) {
-         memcpy(sp->s_wbuf+ sp->s_wbufpos, data, sz);
-         sp->s_wbufpos += sz;
-      }
-      rv = OKAY;
-      goto jleave;
-   } else if (use_buffer == 0 && sp->s_wbuf != NULL && sp->s_wbufpos > 0) {
-      x = sp->s_wbufpos;
-      sp->s_wbufpos = 0;
-      if ((rv = swrite1(sp, sp->s_wbuf, x, -1)) != OKAY)
-         goto jleave;
-   }
-   if (sz == 0) {
-      rv = OKAY;
-      goto jleave;
-   }
-
-# ifdef HAVE_XSSL
-   if (sp->s_use_ssl) {
-jssl_retry:
-      x = SSL_write(sp->s_ssl, data, sz);
-      if (x < 0) {
-         switch (SSL_get_error(sp->s_ssl, x)) {
-         case SSL_ERROR_WANT_READ:
-         case SSL_ERROR_WANT_WRITE:
-            goto jssl_retry;
-         }
-      }
-   } else
-# endif
-   {
-      x = a_sock_xwrite(sp->s_fd, data, sz);
-   }
-   if (x != sz) {
-      char o[512];
-
-      snprintf(o, sizeof o, "%s write error",
-         (sp->s_desc ? sp->s_desc : "socket"));
-# ifdef HAVE_XSSL
-      if (sp->s_use_ssl)
-         ssl_gen_err("%s", o);
-      else
-# endif
-         n_perr(o, 0);
-      if (x < 0)
-         sclose(sp);
-      rv = STOP;
-      goto jleave;
-   }
-   rv = OKAY;
-jleave:
-   NYD2_LEAVE;
-   return rv;
-}
+static long a_socket_xwrite(int fd, char const *data, size_t sz);
 
 static sigjmp_buf __sopen_actjmp; /* TODO someday, we won't need it no more */
 static int        __sopen_sig; /* TODO someday, we won't need it no more */
@@ -230,8 +78,8 @@ __sopen_onsig(int sig) /* TODO someday, we won't need it no more */
    }
 }
 
-FL bool_t
-sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
+static bool_t
+a_socket_open(struct sock *sp, struct url *urlp) /* TODO sigstuff; refactor */
 {
 # ifdef HAVE_SO_SNDTIMEO
    struct timeval tv;
@@ -251,7 +99,7 @@ sopen(struct sock *sp, struct url *urlp) /* TODO sighandling; refactor */
    sighandler_type volatile ohup, oint;
    char const * volatile serv;
    int volatile sofd = -1, errval;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    n_UNINIT(errval, 0);
 
@@ -509,8 +357,287 @@ jleave:
       sigprocmask(SIG_UNBLOCK, &cset, NULL);
       n_raise(__sopen_sig);
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return (sofd >= 0);
+}
+
+static long
+a_socket_xwrite(int fd, char const *data, size_t sz)
+{
+   long rv = -1, wo;
+   size_t wt = 0;
+   NYD_ENTER;
+
+   do {
+      if ((wo = write(fd, data + wt, sz - wt)) < 0) {
+         if (n_err_no == n_ERR_INTR)
+            continue;
+         else
+            goto jleave;
+      }
+      wt += wo;
+   } while (wt < sz);
+   rv = (long)sz;
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
+FL int
+sclose(struct sock *sp)
+{
+   int i;
+   NYD_ENTER;
+
+   i = sp->s_fd;
+   sp->s_fd = -1;
+   /* TODO NOTE: we MUST NOT close the descriptor 0 here...
+    * TODO of course this should be handled in a VMAILFS->open() .s_fd=-1,
+    * TODO but unfortunately it isn't yet */
+   if (i <= 0)
+      i = 0;
+   else {
+      if (sp->s_onclose != NULL)
+         (*sp->s_onclose)();
+      if (sp->s_wbuf != NULL)
+         free(sp->s_wbuf);
+# ifdef HAVE_XSSL
+      if (sp->s_use_ssl) {
+         void *s_ssl = sp->s_ssl;
+
+         sp->s_ssl = NULL;
+         sp->s_use_ssl = 0;
+         while (!SSL_shutdown(s_ssl)) /* XXX proper error handling;signals! */
+            ;
+         SSL_free(s_ssl);
+      }
+# endif
+      i = close(i);
+   }
+   NYD_LEAVE;
+   return i;
+}
+
+FL enum okay
+swrite(struct sock *sp, char const *data)
+{
+   enum okay rv;
+   NYD2_ENTER;
+
+   rv = swrite1(sp, data, strlen(data), 0);
+   NYD2_LEAVE;
+   return rv;
+}
+
+FL enum okay
+swrite1(struct sock *sp, char const *data, int sz, int use_buffer)
+{
+   enum okay rv = STOP;
+   int x;
+   NYD2_ENTER;
+
+   if (use_buffer > 0) {
+      int di;
+
+      if (sp->s_wbuf == NULL) {
+         sp->s_wbufsize = 4096;
+         sp->s_wbuf = smalloc(sp->s_wbufsize);
+         sp->s_wbufpos = 0;
+      }
+      while (sp->s_wbufpos + sz > sp->s_wbufsize) {
+         di = sp->s_wbufsize - sp->s_wbufpos;
+         sz -= di;
+         if (sp->s_wbufpos > 0) {
+            memcpy(sp->s_wbuf + sp->s_wbufpos, data, di);
+            rv = swrite1(sp, sp->s_wbuf, sp->s_wbufsize, -1);
+         } else
+            rv = swrite1(sp, data, sp->s_wbufsize, -1);
+         if (rv != OKAY)
+            goto jleave;
+         data += di;
+         sp->s_wbufpos = 0;
+      }
+      if (sz == sp->s_wbufsize) {
+         rv = swrite1(sp, data, sp->s_wbufsize, -1);
+         if (rv != OKAY)
+            goto jleave;
+      } else if (sz) {
+         memcpy(sp->s_wbuf+ sp->s_wbufpos, data, sz);
+         sp->s_wbufpos += sz;
+      }
+      rv = OKAY;
+      goto jleave;
+   } else if (use_buffer == 0 && sp->s_wbuf != NULL && sp->s_wbufpos > 0) {
+      x = sp->s_wbufpos;
+      sp->s_wbufpos = 0;
+      if ((rv = swrite1(sp, sp->s_wbuf, x, -1)) != OKAY)
+         goto jleave;
+   }
+   if (sz == 0) {
+      rv = OKAY;
+      goto jleave;
+   }
+
+# ifdef HAVE_XSSL
+   if (sp->s_use_ssl) {
+jssl_retry:
+      x = SSL_write(sp->s_ssl, data, sz);
+      if (x < 0) {
+         switch (SSL_get_error(sp->s_ssl, x)) {
+         case SSL_ERROR_WANT_READ:
+         case SSL_ERROR_WANT_WRITE:
+            goto jssl_retry;
+         }
+      }
+   } else
+# endif
+   {
+      x = a_socket_xwrite(sp->s_fd, data, sz);
+   }
+   if (x != sz) {
+      char o[512];
+
+      snprintf(o, sizeof o, "%s write error",
+         (sp->s_desc ? sp->s_desc : "socket"));
+# ifdef HAVE_XSSL
+      if (sp->s_use_ssl)
+         ssl_gen_err("%s", o);
+      else
+# endif
+         n_perr(o, 0);
+      if (x < 0)
+         sclose(sp);
+      rv = STOP;
+      goto jleave;
+   }
+   rv = OKAY;
+jleave:
+   NYD2_LEAVE;
+   return rv;
+}
+
+FL bool_t
+sopen(struct sock *sp, struct url *urlp){
+   char const *cp;
+   bool_t rv;
+   NYD_ENTER;
+
+   rv = FAL0;
+
+   /* We may have a proxy configured */
+   if((cp = xok_vlook(socks_proxy, urlp, OXM_ALL)) == NULL)
+      rv = a_socket_open(sp, urlp);
+   else{
+      ui8_t pbuf[4 + 1 + 255 + 2];
+      size_t i;
+      char const *emsg;
+      struct url url2;
+
+      if(!url_parse(&url2, CPROTO_SOCKS, cp)){
+         n_err(_("Failed to parse *socks-proxy*: %s\n"), cp);
+         goto jleave;
+      }
+      if(urlp->url_host.l > 255){
+         n_err(_("*socks-proxy*: hostname too long: %s\n"),
+            urlp->url_input);
+         goto jleave;
+      }
+
+      if (n_poption & n_PO_D_V)
+         n_err(_("Connecting via *socks-proxy* to %s:%s ...\n"),
+            urlp->url_host.s,
+            (urlp->url_port != NULL ? urlp->url_port : urlp->url_proto));
+
+      if(!a_socket_open(sp, &url2)){
+         n_err(_("Failed to connect to *socks-proxy*: %s\n"), cp);
+         goto jleave;
+      }
+
+      /* RFC 1928: version identifier/method selection message */
+      pbuf[0] = 0x05; /* VER: protocol version: X'05' */
+      pbuf[1] = 0x01; /* NMETHODS: 1 */
+      pbuf[2] = 0x00; /* METHOD: X'00' NO AUTHENTICATION REQUIRED */
+      if(write(sp->s_fd, pbuf, 3) != 3){
+jerrsocks:
+         n_perr("*socks-proxy*", 0);
+jesocks:
+         sclose(sp);
+         goto jleave;
+      }
+
+      /* Receive greeting */
+      if(read(sp->s_fd, pbuf, 2) != 2)
+         goto jerrsocks;
+      if(pbuf[0] != 0x05 || pbuf[1] != 0x00){
+jesocksreply:
+         emsg = N_("unexpected reply\n");
+jesocksreplymsg:
+         /* I18N: error message and failing URL */
+         n_err(_("*socks-proxy*: %s: %s\n"), V_(emsg), cp);
+         goto jesocks;
+      }
+
+      /* RFC 1928: CONNECT request */
+      pbuf[0] = 0x05; /* VER: protocol version: X'05' */
+      pbuf[1] = 0x01; /* CMD: CONNECT X'01' */
+      pbuf[2] = 0x00; /* RESERVED */
+      pbuf[3] = 0x03; /* ATYP: domain name */
+      pbuf[4] = (ui8_t)urlp->url_host.l;
+      memcpy(&pbuf[i = 5], urlp->url_host.s, urlp->url_host.l);
+      /* C99 */{
+         ui16_t x;
+
+         x = htons(urlp->url_portno);
+         memcpy(&pbuf[i += urlp->url_host.l], (ui8_t*)&x, sizeof x);
+         i += sizeof x;
+      }
+      if(write(sp->s_fd, pbuf, i) != (ssize_t)i)
+         goto jerrsocks;
+
+      /* Connect result */
+      if((i = read(sp->s_fd, pbuf, 4)) != 4)
+         goto jerrsocks;
+      /* Version 5, reserved must be 0 */
+      if(pbuf[0] != 0x05 || pbuf[2] != 0x00)
+         goto jesocksreply;
+      /* Result */
+      switch(pbuf[1]){
+      case 0x00: emsg = NULL; break;
+      case 0x01: emsg = N_("SOCKS server failure"); break;
+      case 0x02: emsg = N_("connection not allowed by ruleset"); break;
+      case 0x03: emsg = N_("network unreachable"); break;
+      case 0x04: emsg = N_("host unreachable"); break;
+      case 0x05: emsg = N_("connection refused"); break;
+      case 0x06: emsg = N_("TTL expired"); break;
+      case 0x07: emsg = N_("command not supported"); break;
+      case 0x08: emsg = N_("address type not supported"); break;
+      default: emsg = N_("unknown SOCKS error code"); break;
+      }
+      if(emsg != NULL)
+         goto jesocksreplymsg;
+
+      /* Address type variable; read the BND.PORT with it.
+       * This is actually false since RFC 1928 says that the BND.ADDR reply to
+       * CONNECT contains the IP address, so only 0x01 and 0x04 are allowed */
+      switch(pbuf[3]){
+      case 0x01: i = 4; break;
+      case 0x03: i = 1; break;
+      case 0x04: i = 16; break;
+      default: goto jesocksreply;
+      }
+      i += sizeof(ui16_t);
+      if(read(sp->s_fd, pbuf, i) != (ssize_t)i)
+         goto jerrsocks;
+      if(i == 1 + sizeof(ui16_t)){
+         i = pbuf[0];
+         if(read(sp->s_fd, pbuf, i) != (ssize_t)i)
+            goto jerrsocks;
+      }
+      rv = TRU1;
+   }
+jleave:
+   NYD_LEAVE;
+   return rv;
 }
 
 FL int

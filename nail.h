@@ -737,6 +737,7 @@ enum conversion {
 
 enum cproto {
    CPROTO_CCRED,     /* Special dummy credential proto (S/MIME etc.) */
+   CPROTO_SOCKS,     /* Special dummy SOCKS5 proxy proto */
    CPROTO_SMTP,
    CPROTO_POP3
 ,CPROTO_IMAP
@@ -1735,6 +1736,7 @@ ok_v_smtp_auth_user,
    ok_b_smtp_use_starttls,
    ok_v_SOURCE_DATE_EPOCH,             /* {\} */
       /* {name=SOURCE_DATE_EPOCH,rdonly=1,import=1,notempty=1,posnum=1} */
+   ok_v_socks_proxy,                   /* {notempty=1} */
    ok_v_spam_interface,
    ok_v_spam_maxsize,                  /* {notempty=1,posnum=1} */
    ok_v_spamc_command,

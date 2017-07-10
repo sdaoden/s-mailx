@@ -4538,6 +4538,8 @@ mechanisms apply.
 part is valid only for IMAP; there it defaults to
 .Ar INBOX .
 Network URLs require a special encoding as documented in the said section.
+It is possible to proxy all network traffic over a SOCKS5 server given via
+.Va socks-proxy .
 .
 .Pp
 If the resulting file protocol (MBOX database)
@@ -9044,6 +9046,8 @@ variable in order to use a specific combination of
 and
 .Va mta
 with some mail providers.
+All network traffic can be forwarded over a specified
+.Va socks-proxy .
 .
 .Pp
 .Bl -bullet -compact
@@ -10339,6 +10343,22 @@ command to make an SMTP
 .Va mta
 session SSL/TLS encrypted, i.e., to enable transport layer security.
 .
+.Mx Va socks-proxy
+.It Va socks-proxy-USER@HOST , socks-proxy-HOST , socks-proxy
+\*(OP If this is set to the hostname (SOCKS URL) of a SOCKS5 server then
+\*(UA will proxy all of its network activities through it.
+This can be used to proxy SMTP, POP3 etc. network traffic through the
+Tor anonymizer, for example.
+The following would create a local SOCKS proxy on port 10000 that
+forwards to the machine
+.Ql HOST ,
+and from which the network traffic is actually instantiated:
+.Bd -literal -offset indent
+# Create local proxy server in terminal 1 forwarding to HOST
+$ ssh -D 10000 USER@HOST
+# Then, start a client that uses it in terminal 2
+$ \*(uA -Ssocks-proxy-USER@HOST=localhost:10000
+.Ed
 .
 .Mx
 .It Va spam-interface

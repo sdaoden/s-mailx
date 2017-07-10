@@ -886,6 +886,11 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #else
       goto jeproto;
 #endif
+   case CPROTO_SOCKS:
+      a_IF("socks5", 1080);
+      a_IF("socks", 1080);
+      a_PROTOX("socks", 1080, (void)0);
+      break;
    case CPROTO_SMTP:
 #ifdef HAVE_SMTP
       a_IFS("smtps", 465)
