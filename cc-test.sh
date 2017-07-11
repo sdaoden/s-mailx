@@ -90,13 +90,14 @@ if [ -z "${UTF8_LOCALE}" ]; then
             \xit 0
          \end
          \if [ "${#}" -gt 0 ]
-            \wysh set LC_ALL="${1}.utf8"
+            \wysh set LC_ALL=${1}
             \shift
             \eval xcall cset_test "${@}"
          \end
          \xit 1
       }
-      \call cset_test POSIX en_EN en_US
+      \call cset_test C.UTF-8 POSIX.utf8 POSIX.UTF-8 en_EN.utf8 en_EN.UTF-8 \
+         en_US.utf8 en_US.UTF-8
    '`
    [ $? -eq 0 ] && UTF8_LOCALE=$i
 
