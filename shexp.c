@@ -874,7 +874,7 @@ fexpand(char const *name, enum fexp_mode fexpm) /* TODO in parts: -> URL::!! */
     * "&" can expand into "+".  "+" can expand into shell meta characters.
     * Shell meta characters expand into constants.
     * This way, we make no recursive expansion */
-   if ((fexpm & FEXP_NSHORTCUT) || (res = shortcut_expand(name)) == NULL)
+   if((fexpm & FEXP_NSHORTCUT) || (res = shortcut_expand(name)) == NULL)
       res = n_UNCONST(name);
 
 jprotonext:
@@ -895,7 +895,7 @@ jnoproto:
    if(!(fexpm & FEXP_NSPECIAL)){
 jnext:
       dyn = FAL0;
-      switch (*res) {
+      switch(*res){
       case '%':
          if(res[1] == ':' && res[2] != '\0'){
             res = &res[2];
@@ -924,20 +924,22 @@ jnext:
          if (res[1] == '\0')
             res = ok_vlook(MBOX);
          break;
+      default:
+         break;
       }
    }
 
 #ifdef HAVE_IMAP
-   if (res[0] == '@' && which_protocol(mailname, FAL0, FAL0, NULL)
-         == PROTO_IMAP) {
+   if(res[0] == '@' && which_protocol(mailname, FAL0, FAL0, NULL)
+         == PROTO_IMAP){
       res = str_concat_csvl(&s, protbase(mailname), "/", &res[1], NULL)->s;
       dyn = TRU1;
    }
 #endif
 
    /* POSIX: if *folder* unset or null, "+" shall be retained */
-   if (!(fexpm & FEXP_NFOLDER) && *res == '+' &&
-         *(cp = n_folder_query()) != '\0') {
+   if(!(fexpm & FEXP_NFOLDER) && *res == '+' &&
+         *(cp = n_folder_query()) != '\0'){
       res = str_concat_csvl(&s, cp, &res[1], NULL)->s;
       dyn = TRU1;
    }
