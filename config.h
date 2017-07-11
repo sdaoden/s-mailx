@@ -55,7 +55,7 @@
 #define REFERENCES_MAX 20     /* Maximum entries in References: */
 #define n_SIGSUSPEND_NOT_WAITPID 1 /* Not waitpid(2), but sigsuspend(2) */
 #define n_UNIREPL "\xEF\xBF\xBD" /* Unicode replacement 0xFFFD in UTF-8 */
-#define n_VEXPR_REGEX_MAX 10  /* Maximum address. `vexpr' regex(7) matches */
+#define n_VEXPR_REGEX_MAX 16  /* Maximum address. `vexpr' regex(7) matches */
 
 /* Auto-reclaimed memory storage: size of the buffers.  Maximum auto-reclaimed
  * storage is that value /2, which is n_CTA()ed to be > 1024 */
