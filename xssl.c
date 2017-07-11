@@ -1634,7 +1634,7 @@ jleave:
 FL FILE *
 smime_sign(FILE *ip, char const *addr)
 {
-   FILE *rv = NULL, *sp = NULL, *fp = NULL, *bp, *hp;
+   FILE *rv, *sp, *fp, *bp, *hp;
    X509 *cert = NULL;
    n_XSSL_STACKOF(X509) *chain = NULL;
    EVP_PKEY *pkey = NULL;
@@ -1646,6 +1646,7 @@ smime_sign(FILE *ip, char const *addr)
    NYD_ENTER;
 
    assert(addr != NULL);
+   rv = sp = /*fp =*/ bp = hp = NULL;
 
    a_xssl_init();
 
@@ -1735,6 +1736,7 @@ jerr:
       rewind(bp);
       fflush_rewind(sp);
       rv = smime_sign_assemble(hp, bp, sp, name);
+      hp = bp = sp = NULL;
    } else
 jerr1:
       Fclose(sp);
@@ -1748,6 +1750,12 @@ jleave:
       EVP_PKEY_free(pkey);
    if (fp != NULL)
       Fclose(fp);
+   if (hp != NULL)
+      Fclose(hp);
+   if (bp != NULL)
+      Fclose(bp);
+   if (sp != NULL)
+      Fclose(sp);
    NYD_LEAVE;
    return rv;
 }
