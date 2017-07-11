@@ -724,7 +724,7 @@ static char *
 mkenvelope(struct name *np)
 {
    size_t epsize;
-   char *ep, *realnam = NULL, *sourceaddr = NULL, *localpart = NULL,
+   char *ep, *realnam = NULL, /**sourceaddr = NULL,*/ *localpart = NULL,
       *domainpart = NULL, *cp, *rp, *xp, *ip;
    struct str in, out;
    int level = 0;
@@ -793,7 +793,7 @@ jdone:
    ep = n_autorec_alloc(epsize = strlen(np->n_fullname) * 2 + 40);
    snprintf(ep, epsize, "(%s %s %s %s)",
       realnam ? _imap_quotestr(realnam) : "NIL",
-      sourceaddr ? _imap_quotestr(sourceaddr) : "NIL",
+      /*sourceaddr ? _imap_quotestr(sourceaddr) :*/ "NIL",
       localpart ? _imap_quotestr(localpart) : "NIL",
       domainpart ? _imap_quotestr(domainpart) : "NIL");
    ac_free(ip);
