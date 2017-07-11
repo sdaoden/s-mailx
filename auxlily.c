@@ -844,7 +844,7 @@ jredo:
    if(cp == NULL || strlen(cp) >= PATH_MAX){
       if(!bla){
          n_err(_("Failed to expand *DEAD*, setting default (%s): %s\n"),
-            VAL_DEAD, n_shexp_quote_cp(cp, FAL0));
+            VAL_DEAD, n_shexp_quote_cp((cp == NULL ? n_empty : cp), FAL0));
          ok_vclear(DEAD);
          bla = TRU1;
          goto jredo;
