@@ -382,7 +382,7 @@ a_main_setup_vars(void){
       bool_t doenv;
 
       if(!(doenv = (ep = ok_vlook(LOGNAME)) == NULL) &&
-            (doenv = strcmp(pwuid->pw_name, ep)))
+            (doenv = (strcmp(pwuid->pw_name, ep) != 0)))
          n_err(_("Warning: $LOGNAME (%s) not identical to user (%s)!\n"),
             ep, pwuid->pw_name);
       if(doenv){
