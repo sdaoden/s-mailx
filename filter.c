@@ -1077,14 +1077,14 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
       if(c != '=')
          continue;
       /* If so, properly skip over the value */
-      if(c == '"' || c == '\''){
+      if((c = *cp++) == '"' || c == '\''){
          /* TODO i have forgotten whether reverse solidus quoting is allowed
           * TODO quoted HTML parameter values?  not supporting that for now.. */
-         for(quote = c; (c = *cp) != '\0' && c != quote; ++cp)
+         for(quote = c; (c = *cp++) != '\0' && c != quote;)
             ;
       }else
-         while((c = *cp) != '\0' && !whitechar(c) && c != '>')
-            ++cp;
+         while(c != '\0' && !whitechar(c) && c != '>')
+            c = *++cp;
       if(c == '\0')
          goto jleave;
    }
