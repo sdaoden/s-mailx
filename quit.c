@@ -153,8 +153,6 @@ jerror:
       fprintf(n_stdout, _("Held %d messages in %s\n"), p, displayname);
    rv = 0;
 jleave:
-   if (res != NULL)
-      Fclose(res);
    NYD_LEAVE;
    return rv;
 }
@@ -294,7 +292,7 @@ FL bool_t
 quit(bool_t hold_sigs_on)
 {
    int p, modify, anystat, c;
-   FILE *fbuf = NULL, *lckfp = NULL, *rbuf, *abuf;
+   FILE *fbuf, *lckfp, *rbuf, *abuf;
    struct message *mp;
    struct stat minfo;
    bool_t rv;
@@ -304,6 +302,7 @@ quit(bool_t hold_sigs_on)
       hold_sigs();
 
    rv = FAL0;
+   fbuf = lckfp = rbuf = NULL;
    temporary_folder_hook_unroll();
 
    /* If we are read only, we can't do anything, so just return quickly */
@@ -444,7 +443,6 @@ jcream:
       fseek(abuf, 0L, SEEK_SET);
       while ((c = getc(rbuf)) != EOF)
          putc(c, abuf);
-      Fclose(rbuf);
       ftrunc(abuf);
       _alter(mailname);
       rv = TRU1;
@@ -463,11 +461,14 @@ jcream:
       rv = TRU1;
    }
 jleave:
+   if(rbuf != NULL)
+      Fclose(rbuf);
    if (fbuf != NULL) {
       Fclose(fbuf);
       if (lckfp != NULL && lckfp != (FILE*)-1)
          Pclose(lckfp, FAL0);
    }
+
    if(!hold_sigs_on)
       rele_sigs();
    NYD_LEAVE;
