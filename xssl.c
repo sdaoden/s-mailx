@@ -1807,10 +1807,8 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    }
 
    rewind(ip);
-   if (smime_split(ip, &hp, &bp, -1, 0) == STOP) {
-      Fclose(yp);
+   if (smime_split(ip, &hp, &bp, -1, 0) == STOP)
       goto jerr1;
-   }
 
    yb = NULL;
    if ((bb = BIO_new_fp(bp, BIO_NOCLOSE)) == NULL ||
