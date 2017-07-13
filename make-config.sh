@@ -2658,40 +2658,7 @@ ${cat} ${tmp} >> ${h}
 ${rm} -f ${tmp}
 printf '\n' >> ${h}
 
-# Create the real mk-config.mk
-# Note we cannout use explicit ./ filename prefix for source and object
-# pathnames because of a bug in bmake(1)
-${rm} -rf ${tmp0}.* ${tmp0}*
-printf 'OBJ_SRC = ' >> ${mk}
-if feat_no AMALGAMATION; then
-   for i in `printf '%s\n' *.c | ${sort}`; do
-      if [ "${i}" = privsep.c ]; then
-         continue
-      fi
-      printf "${i} " >> ${mk}
-   done
-   printf '\nAMALGAM_TARGET =\nAMALGAM_DEP =\n' >> ${mk}
-else
-   printf 'main.c\nAMALGAM_TARGET = main.o\nAMALGAM_DEP = ' >> ${mk}
-
-   printf '\n/* HAVE_AMALGAMATION: include sources */\n' >> ${h}
-   printf '#elif _CONFIG_H + 0 == 1\n' >> ${h}
-   printf '# undef _CONFIG_H\n' >> ${h}
-   printf '# define _CONFIG_H 2\n' >> ${h}
-   for i in `printf '%s\n' *.c | ${sort}`; do
-      if [ "${i}" = "${j}" ] || [ "${i}" = main.c ] || \
-            [ "${i}" = privsep.c ]; then
-         continue
-      fi
-      printf "${i} " >> ${mk}
-      printf "# include \"${i}\"\n" >> ${h}
-   done
-   echo >> ${mk}
-   # tcc(1) fails on 2015-11-13 unless this #else clause existed
-   echo '#else' >> ${h}
-fi
-
-# Finally, create the string that is used by *features* and `version'.
+# Create the string that is used by *features* and `version'.
 # Take this nice opportunity and generate a visual listing of included and
 # non-included features for the person who runs the configuration
 msg '\nThe following features are included (+) or not (-):'
@@ -2714,8 +2681,40 @@ done
 #exec 5>&1 >>${h}
 #${awk} -v opts="${OPTIONS_DETECT} ${OPTIONS} ${OPTIONS_XTRA}" \
 #   -v xopts="${XOPTIONS_DETECT} ${XOPTIONS} ${XOPTIONS_XTRA}" \
-#
-printf '"\n#endif /* n_MK_CONFIG_H */\n' >> ${h}
+printf '"\n' >> ${h}
+
+# Create the real mk-config.mk
+# Note we cannout use explicit ./ filename prefix for source and object
+# pathnames because of a bug in bmake(1)
+${rm} -rf ${tmp0}.* ${tmp0}*
+printf 'OBJ_SRC = ' >> ${mk}
+if feat_no AMALGAMATION; then
+   for i in `printf '%s\n' *.c | ${sort}`; do
+      if [ "${i}" = privsep.c ]; then
+         continue
+      fi
+      printf "${i} " >> ${mk}
+   done
+   printf '\nAMALGAM_TARGET =\nAMALGAM_DEP =\n' >> ${mk}
+else
+   printf 'main.c\nAMALGAM_TARGET = main.o\nAMALGAM_DEP = ' >> ${mk}
+
+   printf '\n/* HAVE_AMALGAMATION: include sources */\n' >> ${h}
+   printf '#elif n_MK_CONFIG_H + 0 == 1\n' >> ${h}
+   printf '# undef n_MK_CONFIG_H\n' >> ${h}
+   printf '# define n_MK_CONFIG_H 2\n' >> ${h}
+   for i in `printf '%s\n' *.c | ${sort}`; do
+      if [ "${i}" = "${j}" ] || [ "${i}" = main.c ] || \
+            [ "${i}" = privsep.c ]; then
+         continue
+      fi
+      printf "${i} " >> ${mk}
+      printf "# include \"${i}\"\n" >> ${h}
+   done
+   echo >> ${mk}
+fi
+
+printf '#endif /* n_MK_CONFIG_H */\n' >> ${h}
 
 echo "LIBS = `${cat} ${lib}`" >> ${mk}
 echo "INCS = `${cat} ${inc}`" >> ${mk}
