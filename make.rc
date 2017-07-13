@@ -30,7 +30,7 @@
 ## IDENTITIES, PATHS AND PROGRAMS ##
 
 # Contact info (*contact-mail* and *contact-web*, respectively).
-VAL_CONTACT_MAIL=s-mailx@sdaoden.eu
+VAL_CONTACT_MAIL=s-mailx@lists.sdaoden.eu
 VAL_CONTACT_WEB=https://www.sdaoden.eu/code.html
 
 # The user ID our small privilege-separated helper program will be

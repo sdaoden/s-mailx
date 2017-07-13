@@ -50,26 +50,21 @@ cloning purposes), with mirrors at Sourceforge[5] and repo.or.cz[6].
   [5] http://sourceforge.net/projects/s-nail
   [6] http://repo.or.cz/s-mailx.git
 
-We have a mailing list[7] (later: [8]!) with moderated unsubscribed
-posting possibilities; subscriptions can be managed via web interface[9];
-Gmane added the ML their NNTP archive[10], and The Mail Archive archives
-a browser-accessible and searchable web version[11] -- thank you!
+We have a mailing list[7] with moderated unsubscribed posting
+possibilities; subscriptions can be managed via web interface[8]; Gmane
+added the ML their NNTP archive[9], and The Mail Archive archives
+a browser-accessible and searchable web version[10] -- thank you!
 Commits to the [master], [release/*] and [stable/*] branches will be
-posted to [12], and announcements will also be posted to [13], both are
+posted to [11], and announcements will also be posted to [12], both are
 receive-only mailing-lists.
 
-  [7] s-nail-users@lists.sourceforge.net
-  [8] s-mailx@sdaoden.eu
-  [9] https://lists.sourceforge.net/lists/listinfo/s-nail-users/
-  [10] news.gmane.org/gmane.mail.s-nail.user
-  [11] www.mail-archive.com/s-nail-users@lists.sourceforge.net/maillist.html
-  [12] s-mailx-commit@sdaoden.eu
-  [13] s-announce@sdaoden.eu
+  [7] s-mailx@lists.sdaoden.eu
+  [8] https://lists.sdaoden.eu/mailman/listinfo.cgi/s-mailx
+  [9] news.gmane.org/gmane.mail.s-nail.user
+  [10] www.mail-archive.com/s-nail-users@lists.sourceforge.net/maillist.html
+  [11] https://lists.sdaoden.eu/mailman/listinfo.cgi/s-mailx-commit
+  [12] https://lists.sdaoden.eu/mailman/listinfo.cgi/s-announce
 
-These and all other mailings-lists at sdaoden.eu are hosted by MLMMJ, so
-users can manage their subscriptions by appending keywords to the plain
-mailing list address, a +subscribe for subscription, and +unsubscribe
-for unsubscription, e.g., s-mailx+subscribe@sdaoden.eu.
 Our heraldic animal snailmail.jpg has been found at [+1].
 Thank you!
 
