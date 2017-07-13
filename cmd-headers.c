@@ -538,7 +538,7 @@ j_A_redo:
             break;
 #else
             c = '?';
-            goto jputc;
+            goto jputcb;
 #endif
       default:
          if (n_poption & n_PO_D_V)
