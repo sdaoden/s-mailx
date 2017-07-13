@@ -1,5 +1,5 @@
 #!/bin/sh -
-#@ Usage: ./cc-test.sh [--check-only] s-mailx-binary
+#@ Usage: ./cc-test.sh [--check-only s-mailx-binary]
 #@ TODO _All_ the tests should happen in a temporary subdir.
 # Public Domain
 
@@ -63,25 +63,21 @@ export LC_ALL LANG TZ SOURCE_DATE_EPOCH
 unset POSIXLY_CORRECT
 
 usage() {
-   echo >&2 "Usage: ./cc-test.sh [--check-only] s-mailx-binary"
+   echo >&2 "Usage: ./cc-test.sh [--check-only s-mailx-binary]"
    exit 1
 }
 
 CHECK_ONLY= MAILX=
-while [ $# -gt 0 ]; do
-   if [ "${1}" = --check-only ]; then
-      CHECK_ONLY=1
-   else
-      MAILX=${1}
-   fi
-   shift
-done
-[ -x "${MAILX}" ] || usage
+if [ "${1}" = --check-only ]; then
+   CHECK_ONLY=1
+   MAILX=${2}
+   [ -x "${MAILX}" ] || usage
+fi
 RAWMAILX=${MAILX}
 MAILX="${MEMTESTER}${MAILX}"
 export RAWMAILX MAILX
 
-if [ -z "${UTF8_LOCALE}" ]; then
+if [ -n "${CHECK_ONLY}" ] && [ -z "${UTF8_LOCALE}" ]; then
    # Try ourselfs for nl_langinfo(CODESET) output first (requires a new version)
    i=`LC_ALL=C.utf8 "${RAWMAILX}" ${ARGS} -X '
       \define cset_test {
@@ -132,6 +128,9 @@ cc_all_configs() {
          NOTME["OPT_DEBUG"] = 1
          NOTME["OPT_DEVEL"] = 1
          NOTME["OPT_NOEXTMD5"] = 1
+         NOTME["OPT_ASAN_ADDRESS"] = 1
+         NOTME["OPT_ASAN_MEMORY"] = 1
+         NOTME["OPT_FORCED_STACKPROT"] = 1
          NOTME["OPT_NOMEMDBG"] = 1
          NOTME["OPT_NYD2"] = 1
          i = 0
@@ -202,8 +201,7 @@ cc_all_configs() {
    ' | while read c; do
       printf "\n\n##########\n$c\n"
       printf "\n\n##########\n$c\n" >&2
-      sh -c "${MAKE} ${c}"
-      t_all
+      sh -c "${MAKE} ${c} all test"
    done
    ${MAKE} distclean
 }
