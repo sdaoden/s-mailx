@@ -128,7 +128,7 @@ struct a_termcap_g{
 n_CTA(sizeof a_termcap_namedat <= UI16_MAX,
    "Termcap command and query name data exceed storage datatype");
 n_CTA(a_TERMCAP_ENT_MAX1 == n_NELEM(a_termcap_control),
-   "Control array doesn't match command/query array to be controlled");
+   "Control array does not match command/query array to be controlled");
 
 static struct a_termcap_g *a_termcap_g;
 
@@ -738,10 +738,12 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
    else if((tep += cmd)->te_flags == 0 || (tep->te_flags & a_TERMCAP_F_NOENT))
       rv = TRUM1;
    else if(!(tep->te_flags & a_TERMCAP_F_ALTERN)){
-      char const *cp = a_termcap_g->tg_dat.s_dat + tep->te_off;
+      char const *cp;
 
       assert((tep->te_flags & a_TERMCAP_F_TYPE_MASK) ==
          n_TERMCAP_CAPTYPE_STRING);
+
+      cp = &a_termcap_g->tg_dat.s_dat[tep->te_off];
 
 #ifdef HAVE_TERMCAP
       if(tep->te_flags & (a_TERMCAP_F_ARG_IDX1 | a_TERMCAP_F_ARG_IDX2)){
@@ -775,7 +777,7 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
             goto jleave;
 # endif
       }
-#endif
+#endif /* HAVE_TERMCAP */
 
       for(;;){
 #ifdef HAVE_TERMCAP

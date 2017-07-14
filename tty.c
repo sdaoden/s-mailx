@@ -1525,7 +1525,7 @@ jpaint:
       phy_cur += cw;
    }
 
-   /* Write something position marker alike if it doesn't fit on screen */
+   /* Write something position marker alike if it does not fit on screen */
    if((f & a_HAVE_POSITION) &&
          ((f & (a_LEFT_MIN | a_RIGHT_MAX)) != (a_LEFT_MIN | a_RIGHT_MAX) ||
           ((f & a_HAVE_PROMPT) && !(f & a_SHOW_PROMPT)))){
@@ -3184,7 +3184,7 @@ jelen:
       /* A termcap(5)/terminfo(5) identifier? */
       if(ep->cnv_len > 1 && ep->cnv_dat[0] == ':'){
          i = --ep->cnv_len, ++ep->cnv_dat;
-#  ifndef HAVE_TERMCAP
+#  if 0 /* ndef HAVE_TERMCAP xxx User can, via *termcap*! */
          if(n_poption & n_PO_D_V)
             n_err(_("`%s': no termcap(5)/terminfo(5) support: %s: %s\n"),
                tbpcp->tbpc_cmd, ep->seq_dat, tbpcp->tbpc_in_seq);
@@ -3243,7 +3243,7 @@ jeempty:
              * struct{si32_t buf_len_iscap; si32_t cap_len; char buf[]+NUL;} */
             n_LCTAV(n_ISPOW2(a_TTY_BIND_CAPEXP_ROUNDUP));
             n_LCTA(a_TTY_BIND_CAPEXP_ROUNDUP >= sizeof(wc_t),
-               "Aligning on this constant doesn't properly align wc_t");
+               "Aligning on this constant does not properly align wc_t");
             i &= SI32_MAX;
             i *= sizeof(wc_t);
             i += sizeof(si32_t);
@@ -3442,7 +3442,7 @@ a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
             break;
          }else if(isfirst && !cntrlchar(*tv.tv_data.tvd_string)){
             if(n_poption & n_PO_D_V)
-               n_err(_("`bind': capability expansion doesn't start with "
+               n_err(_("`bind': capability expansion does not start with "
                   "control: %s: %s\n"), capname, tbcp->tbc_seq);
             tbcp->tbc_flags |= a_TTY_BIND_DEFUNCT;
             break;
