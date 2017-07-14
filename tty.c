@@ -2876,6 +2876,7 @@ jmle_fun:
                         case a_TTY_FUN_STATUS_RESTART:
                            goto jrestart;
                         case a_TTY_FUN_STATUS_END:
+                           rv = -1;
                            goto jleave;
                         }
                         assert(0);
@@ -2942,6 +2943,7 @@ jbuiltin_redo:
                      case a_TTY_FUN_STATUS_RESTART:
                         goto jrestart;
                      case a_TTY_FUN_STATUS_END:
+                        rv = -1;
                         goto jleave;
                      }
                      assert(0);
