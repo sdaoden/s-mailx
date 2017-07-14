@@ -427,14 +427,18 @@ a_main_setup_vars(void){
       ok_vset(log_prefix, cp);
    }
 
-   if(n_psonce & n_PSO_INTERACTIVE){
+   if((n_psonce & n_PSO_INTERACTIVE) ||
+         ((n_psonce & (n_PSO_TTYIN | n_PSO_TTYOUT)) &&
+          (n_poption & n_PO_BATCH_FLAG))){
       a_main_setscreensize(FAL0);
+      if(n_psonce & n_PSO_INTERACTIVE){
 #ifdef SIGWINCH
 # ifndef TTY_WANTS_SIGWINCH
-      if(safe_signal(SIGWINCH, SIG_IGN) != SIG_IGN)
+         if(safe_signal(SIGWINCH, SIG_IGN) != SIG_IGN)
 # endif
-         safe_signal(SIGWINCH, &a_main_setscreensize);
+            safe_signal(SIGWINCH, &a_main_setscreensize);
 #endif
+      }
    }else
       n_scrnheight = n_realscreenheight = 24, n_scrnwidth = 80;
    NYD_LEAVE;
@@ -458,11 +462,6 @@ a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
    if(!is_sighdl){
       char const *cp;
 
-      /* We manage those variables for our child processes, so ensure they
-       * are up to date, always */
-      assert(n_psonce & n_PSO_INTERACTIVE);
-      n_pstate |= n_PS_SIGWINCH_PEND;
-
       if((cp = ok_vlook(LINES)) != NULL){
          n_idec_ui32_cp(&n_scrnheight, cp, 0, NULL);
          n_realscreenheight = n_scrnheight;
@@ -472,13 +471,20 @@ a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
 
       if(n_scrnwidth != 0 && n_scrnheight != 0)
          goto jleave;
+
+      /* For batch mode without explicit request, stop now */
+      if(!(n_psonce & n_PSO_INTERACTIVE)){
+         n_scrnheight = n_realscreenheight = 24;
+         n_scrnwidth = 80;
+         goto jleave;
+      }
    }
 
 #ifdef TIOCGWINSZ
-   if(ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1)
+   if(ioctl(fileno(n_tty_fp), TIOCGWINSZ, &ws) == -1)
       ws.ws_col = ws.ws_row = 0;
 #elif defined TIOCGSIZE
-   if(ioctl(STDOUT_FILENO, TIOCGSIZE, &ws) == -1)
+   if(ioctl(fileno(n_tty_fp), TIOCGSIZE, &ws) == -1)
       ts.ts_lines = ts.ts_cols = 0;
 #endif
 
@@ -523,14 +529,13 @@ a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
    )
       n_scrnwidth = 80;
 
-jleave:
+   /**/
+   n_pstate |= n_PS_SIGWINCH_PEND;
 #ifdef SIGWINCH
-   if(is_sighdl){
-      assert(n_psonce & n_PSO_INTERACTIVE);
-      n_pstate |= n_PS_SIGWINCH_PEND; /* XXX Not atomic */
+   if(is_sighdl && (n_psonce & n_PSO_INTERACTIVE))
       n_tty_signal(SIGWINCH);
-   }
 #endif
+jleave:
    NYD_LEAVE;
 }
 
