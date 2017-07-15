@@ -339,6 +339,10 @@ jrestart:
    }else if(c == sizeof("vput") -1 && !asccasecmp(word, "vput")){
       flags |= a_NOPREFIX | a_VPUT;
       goto jrestart;
+   }else if(c == sizeof("u") -1 && *word == 'u'){
+      n_err(_("Ignoring yet unused `u' command modifier!"));
+      flags |= a_NOPREFIX;
+      goto jrestart;
    }
 
    /* We need to trim for a possible history entry, but do it anyway and insert

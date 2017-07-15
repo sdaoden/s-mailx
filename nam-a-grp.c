@@ -1976,7 +1976,7 @@ c_commandalias(void *vp){
    /* Verify the name is a valid one, and not a command modifier */
    if(*ccp == '\0' || *n_cmd_isolate(ccp) != '\0' ||
          !asccasecmp(ccp, "ignerr") || !asccasecmp(ccp, "wysh") ||
-         !asccasecmp(ccp, "vput")){
+         !asccasecmp(ccp, "u") || !asccasecmp(ccp, "vput")){
       n_err(_("`commandalias': not a valid command name: %s\n"),
          n_shexp_quote_cp(ccp, FAL0));
       rv = 1;
