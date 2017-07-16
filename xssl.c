@@ -1646,7 +1646,7 @@ smime_sign(FILE *ip, char const *addr)
    NYD_ENTER;
 
    assert(addr != NULL);
-   rv = sp = /*fp =*/ bp = hp = NULL;
+   rv = sp = fp = bp = hp = NULL;
 
    a_xssl_init();
 
@@ -1689,7 +1689,7 @@ smime_sign(FILE *ip, char const *addr)
 
    rewind(ip);
    if (smime_split(ip, &hp, &bp, -1, 0) == STOP)
-      goto jerr1;
+      goto jleave;
 
    sb = NULL;
    pkcs7 = NULL;
@@ -1737,9 +1737,7 @@ jerr:
       fflush_rewind(sp);
       rv = smime_sign_assemble(hp, bp, sp, name);
       hp = bp = sp = NULL;
-   } else
-jerr1:
-      Fclose(sp);
+   }
 
 jleave:
    if (chain != NULL)
@@ -1809,10 +1807,8 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    }
 
    rewind(ip);
-   if (smime_split(ip, &hp, &bp, -1, 0) == STOP) {
-      Fclose(yp);
+   if (smime_split(ip, &hp, &bp, -1, 0) == STOP)
       goto jerr1;
-   }
 
    yb = NULL;
    if ((bb = BIO_new_fp(bp, BIO_NOCLOSE)) == NULL ||
