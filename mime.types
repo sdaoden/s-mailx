@@ -21,16 +21,16 @@
 #   . "@t@" is identical to plain "@".
 #   . "@h@" will tag the MIME type as HTML tagsoup.
 #   . "@H@" is identical to "@h@", but won't treat the MIME type as plain
-#      text if the builtin HTML tagsoup parser isn't available, i.e., it
+#      text if the built-in HTML tagsoup parser isn't available, i.e., it
 #      requires an explicit MIME type handler to be set.
 #
 # Syntax restrictions:
 # - Comments must be lines of their own.
 # - Only MIME types for which we have a type constant allocated in
 #   mime_types.c:enum mime_type are allowed in this file here.
-# - MIME types without any file extensions are not handled by mk-mk.in.
+# - MIME types without any file extensions are not handled.
 # - Note that the order of types and extensions is preserved ...
-# - Note that at least one builtin type is required (empty C array)
+# - Note that at least one built-in type is required (empty C array)
 
 # Expected frequent use
 # text/plain CHANGE: m4->text/x-m4, pod->text/x-pod; rc<-
@@ -56,11 +56,19 @@ application/xml               xml xsl xsd
 # CHANGE (tika: text/plain)
 @ text/x-pod                  pod
 
-application/gzip              tgz gz emz
-application/x-bzip2           bz2 tbz2 boz
 # EXTENSION .txz
 application/x-xz              xz txz
+# EXTENSION
+application/x-lzma            lzma tlz
+# EXTENSION
+application/x-zstd            zst tzst
+application/gzip              tgz gz emz
+# EXTENSION
+application/x-lz4             lz4
 application/x-tar             tar
+application/x-bzip2           bz2 tbz2 boz
+# EXTENSIONs
+application/x-lzip            lz
 application/zip               zip
 
 application/pgp-encrypted     pgp
@@ -82,6 +90,7 @@ application/cbor              cbor
 @ application/mbox            mbox
 application/rdf+xml           rdf owl
 application/rss+xml           rss
+@ application/sql             sql
 application/x-bcpio           bcpio
 application/x-bittorrent      torrent
 application/x-bzip            bz tbz
@@ -141,11 +150,10 @@ text/x-jsp                    jsp
 @ text/x-python               py
 @ text/x-rst                  rst rest restx
 @ text/x-ruby                 rb
-@ text/x-sql                  sql
 text/x-uuencode               uu
 @ text/x-vcalendar            vcs
-@ text/x-vcard                vcf
-@ text/x-web-markdown         md mdtext mkd markdown
+@ text/vcard                  vcf
+@ text/markdown               md markdown
 @ text/x-yacc                 y
 @ text/x-yaml                 yaml
 

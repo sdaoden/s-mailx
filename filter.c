@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Filter objects.
  *
- * Copyright (c) 2013 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2013 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -32,7 +32,7 @@
  */
 
 #ifdef HAVE_QUOTE_FOLD
-CTA(QUOTE_MAX > 3);
+n_CTAV(n_QUOTE_MAX > 3);
 
 enum qf_state {
    _QF_CLEAN,
@@ -100,7 +100,7 @@ _qf_add_data(struct quoteflt *self, wchar_t wc)
    /* Unroll <tab> to spaces */
    if (wc == L'\t') {
       save_l = self->qf_datw;
-      save_w = (save_l + QUOTE_TAB_SPACES) & ~(QUOTE_TAB_SPACES - 1);
+      save_w = (save_l + n_QUOTE_TAB_SPACES) & ~(n_QUOTE_TAB_SPACES - 1);
       save_w -= save_l;
       while (save_w-- > 0) {
          ssize_t j = _qf_add_data(self, L' ');
@@ -212,13 +212,13 @@ _qf_state_prefix(struct qf_vc *vc)
          ++self->qf_wscnt;
          continue;
       }
-      if (i == 1 && ISQUOTE(wc)) {
+      if (i == 1 && n_QUOTE_IS_A(wc)) {
          self->qf_wscnt = 0;
-         if (self->qf_currq.l >= QUOTE_MAX - 3) {
-            self->qf_currq.s[QUOTE_MAX - 3] = '.';
-            self->qf_currq.s[QUOTE_MAX - 2] = '.';
-            self->qf_currq.s[QUOTE_MAX - 1] = '.';
-            self->qf_currq.l = QUOTE_MAX;
+         if (self->qf_currq.l >= n_QUOTE_MAX - 3) {
+            self->qf_currq.s[n_QUOTE_MAX - 3] = '.';
+            self->qf_currq.s[n_QUOTE_MAX - 2] = '.';
+            self->qf_currq.s[n_QUOTE_MAX - 1] = '.';
+            self->qf_currq.l = n_QUOTE_MAX;
          } else
             self->qf_currq.s[self->qf_currq.l++] = buf[-1];
          continue;
@@ -230,7 +230,7 @@ jfin:
       /* Overtake WS to the current quote in order to preserve it for eventual
        * necessary follow lines, too */
       /* TODO we de-facto "normalize" to ASCII SP here which MESSES tabs!! */
-      while (self->qf_wscnt-- > 0 && self->qf_currq.l < QUOTE_MAX)
+      while (self->qf_wscnt-- > 0 && self->qf_currq.l < n_QUOTE_MAX)
          self->qf_currq.s[self->qf_currq.l++] = ' ';
       self->qf_datw = self->qf_pfix_len + self->qf_currq.l;
       self->qf_wscnt = 0;
@@ -307,7 +307,7 @@ FL void
 quoteflt_init(struct quoteflt *self, char const *prefix)
 {
 #ifdef HAVE_QUOTE_FOLD
-   char *xcp, *cp;
+   char const *xcp, *cp;
 #endif
    NYD_ENTER;
 
@@ -316,19 +316,21 @@ quoteflt_init(struct quoteflt *self, char const *prefix)
    if ((self->qf_pfix = prefix) != NULL)
       self->qf_pfix_len = (ui32_t)strlen(prefix);
 
-   /* Check wether the user wants the more fancy quoting algorithm */
-   /* TODO *quote-fold*: QUOTE_MAX may excess it! */
+   /* Check whether the user wants the more fancy quoting algorithm */
+   /* TODO *quote-fold*: n_QUOTE_MAX may excess it! */
 #ifdef HAVE_QUOTE_FOLD
    if (self->qf_pfix_len > 0 && (cp = ok_vlook(quote_fold)) != NULL) {
-      ui32_t qmin, qmax = (ui32_t)strtol(cp, &xcp, 10);
-      /* These magic values ensure we don't bail :) */
+      ui32_t qmin, qmax;
+
+      /* These magic values ensure we don't bail */
+      n_idec_ui32_cp(&qmax, cp, 10, &xcp);
       if (qmax < self->qf_pfix_len + 6)
          qmax = self->qf_pfix_len + 6;
       --qmax; /* The newline escape */
       if (cp == xcp || *xcp == '\0')
          qmin = (qmax >> 1) + (qmax >> 2) + (qmax >> 5);
       else {
-         qmin = (ui32_t)strtol(xcp + 1, NULL, 10);
+         n_idec_ui32_cp(&qmin, &xcp[1], 10, NULL);
          if (qmin < qmax >> 1)
             qmin = qmax >> 1;
          else if (qmin > qmax - 2)
@@ -337,9 +339,9 @@ quoteflt_init(struct quoteflt *self, char const *prefix)
       self->qf_qfold_min = qmin;
       self->qf_qfold_max = qmax;
 
-      /* Add pad for takeover copies, backslash and newline */
-      self->qf_dat.s = salloc((qmax + 3) * mb_cur_max);
-      self->qf_currq.s = salloc((QUOTE_MAX + 1) * mb_cur_max);
+      /* Add pad for takeover copies, reverse solidus and newline */
+      self->qf_dat.s = salloc((qmax + 3) * n_mb_cur_max);
+      self->qf_currq.s = salloc((n_QUOTE_MAX + 1) * n_mb_cur_max);
    }
 #endif
    NYD_LEAVE;
@@ -349,7 +351,7 @@ FL void
 quoteflt_destroy(struct quoteflt *self) /* xxx inline */
 {
    NYD_ENTER;
-   UNUSED(self);
+   n_UNUSED(self);
    NYD_LEAVE;
 }
 
@@ -375,10 +377,13 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
    ssize_t rv = 0;
    NYD_ENTER;
 
+   self->qf_nl_last = (len > 0 && dat[len - 1] == '\n'); /* TODO HACK */
+
    if (len == 0)
       goto jleave;
 
-   /* Bypass? XXX Finally, this filter simply should not be used, then */
+   /* Bypass? TODO Finally, this filter simply should not be used, then
+    * (TODO It supercedes prefix_write() or something) */
    if (self->qf_pfix_len == 0) {
       if (len != fwrite(dat, 1, len, self->qf_os))
          goto jerr;
@@ -475,7 +480,7 @@ quoteflt_flush(struct quoteflt *self)
 {
    ssize_t rv = 0;
    NYD_ENTER;
-   UNUSED(self);
+   n_UNUSED(self);
 
 #ifdef HAVE_QUOTE_FOLD
    if (self->qf_dat.l > 0) {
@@ -552,7 +557,7 @@ struct htmlflt_href {
    struct htmlflt_href *hfh_next;
    ui32_t      hfh_no;     /* Running sequence */
    ui32_t      hfh_len;    /* of .hfh_dat */
-   char        hfh_dat[VFIELD_SIZE(0)];
+   char        hfh_dat[n_VFIELD_SIZE(0)];
 };
 
 struct htmlflt_tag {
@@ -563,7 +568,8 @@ struct htmlflt_tag {
    ui8_t       hft_len;    /* Useful bytes in (NUL terminated) .hft_tag */
    char const  hft_tag[10]; /* Tag less < and > surroundings (TR, /TR, ..) */
 };
-CTA(SIZEOF_FIELD(struct htmlflt_tag, hft_tag) < LINESIZE); /* .hf_ign_tag */
+n_CTA(n_SIZEOF_FIELD(struct htmlflt_tag, hft_tag) < LINESIZE,
+   "Structure field too large a size"); /* .hf_ign_tag */
 
 struct hf_ent {
    ui8_t       hfe_flags;  /* enum hf_entity_flags plus length of .hfe_ent */
@@ -726,7 +732,7 @@ _hf_dump_hrefs(struct htmlflt *self)
 
    self->hf_flags |= (putc('\n', self->hf_os) == EOF)
          ?  _HF_ERROR : _HF_NL_1 | _HF_NL_2;
-   self->hf_href_dist = (ui32_t)realscreenheight >> 1;
+   self->hf_href_dist = (ui32_t)n_realscreenheight >> 1;
 jleave:
    NYD2_LEAVE;
    return self;
@@ -761,7 +767,7 @@ jput:
    }
    self->hf_flags = f;
 
-   /* Check wether there are HREFs to dump; there is so much messy tagsoup out
+   /* Check whether there are HREFs to dump; there is so much messy tagsoup out
     * there that it seems best not to simply dump HREFs in each _dump(), but
     * only with some gap, let's say half the real screen height */
    if (--self->hf_href_dist < 0 && (f & _HF_NL_2) && self->hf_hrefs != NULL)
@@ -799,7 +805,7 @@ _hf_store(struct htmlflt *self, char c)
 
    i = l;
 # ifdef HAVE_NATCH_CHAR /* XXX This code is really ridiculous! */
-   if (mb_cur_max > 1) { /* XXX should mbrtowc() and THEN store, at least.. */
+   if (n_mb_cur_max > 1) { /* XXX should mbrtowc() and THEN store, at least.. */
       wchar_t wc;
       int w, x = mbtowc(&wc, self->hf_line + self->hf_mboff, l - self->hf_mboff);
 
@@ -820,8 +826,8 @@ _hf_store(struct htmlflt *self, char c)
          i = (self->hf_mbwidth += w);
       } else {
          if (x < 0) {
-            mbtowc(&wc, NULL, mb_cur_max);
-            if (UICMP(32, l - self->hf_mboff, >=, mb_cur_max)) { /* XXX */
+            (void)mbtowc(&wc, NULL, n_mb_cur_max);
+            if (UICMP(32, l - self->hf_mboff, >=, n_mb_cur_max)) { /* XXX */
                ++self->hf_mboff;
                ++self->hf_mbwidth;
             }
@@ -905,7 +911,7 @@ __hf_sync_mbstuff(struct htmlflt *self)
       ++w;
       --l;
 jumpin:
-      mbtowc(&wc, NULL, mb_cur_max);
+      (void)mbtowc(&wc, NULL, n_mb_cur_max);
    }
 
    self->hf_mboff = o;
@@ -1035,7 +1041,6 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
    /* Search for the parameter, take care of other quoting along the way */
    x = *param++;
    x = upperconv(x);
-   quote = '\0';
    i = strlen(param);
 
    for(hot = TRU1;;){
@@ -1072,14 +1077,14 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
       if(c != '=')
          continue;
       /* If so, properly skip over the value */
-      if(c == '"' || c == '\''){
-         /* TODO oops i have forgotten wether backslash quoting is allowed in
+      if((c = *cp++) == '"' || c == '\''){
+         /* TODO i have forgotten whether reverse solidus quoting is allowed
           * TODO quoted HTML parameter values?  not supporting that for now.. */
-         for(quote = c; (c = *cp) != '\0' && c != quote; ++cp)
+         for(quote = c; (c = *cp++) != '\0' && c != quote;)
             ;
       }else
-         while((c = *cp) != '\0' && !whitechar(c) && c != '>')
-            ++cp;
+         while(c != '\0' && !whitechar(c) && c != '>')
+            c = *++cp;
       if(c == '\0')
          goto jleave;
    }
@@ -1093,14 +1098,14 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
    }
 
    if(c == '"' || c == '\''){
-      /* TODO oops i have forgotten wether backslash quoting is allowed in
+      /* TODO i have forgotten whether reverse solisud quoting is allowed in
        * TODO quoted HTML parameter values?  not supporting that for now.. */
-      store->s = UNCONST(cp);
+      store->s = n_UNCONST(cp);
       for(quote = c; (c = *cp) != '\0' && c != quote; ++cp)
          ;
       /* XXX ... and we simply ignore a missing trailing " :> */
    }else{
-      store->s = UNCONST(cp - 1);
+      store->s = n_UNCONST(cp - 1);
       if(!whitechar(c))
          while((c = *cp) != '\0' && !whitechar(c) && c != '>')
             ++cp;
@@ -1112,7 +1117,7 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
     * value content TODO join into the parse step above! */
    for (cp = store->s; i > 0 && spacechar(*cp); ++cp, --i)
       ;
-   store->s = UNCONST(cp);
+   store->s = n_UNCONST(cp);
    for (cp += i - 1; i > 0 && spacechar(*cp); --cp, --i)
       ;
    if ((store->l = i) == 0)
@@ -1194,7 +1199,7 @@ jput_as_is:
          if (c == '>' || c == '/' || whitechar(c))
             break;
       }
-      if (PTRCMP(++hftp, >=, _hf_tags + NELEM(_hf_tags)))
+      if (PTRCMP(++hftp, >=, _hf_tags + n_NELEM(_hf_tags)))
          goto jnotknown;
    }
 
@@ -1233,7 +1238,7 @@ jput_as_is:
       self = _hf_param(self, &param, "alt");
       self = _hf_putc(self, '[');
       if (param.s == NULL) {
-         param.s = UNCONST("IMG");
+         param.s = n_UNCONST("IMG");
          param.l = 3;
          goto jimg_put;
       } /* else */ if (memchr(param.s, '&', param.l) != NULL)
@@ -1248,8 +1253,8 @@ jimg_put:
       self = _hf_param(self, &param, "href");
       /* Ignore non-external links */
       if (param.s != NULL && *param.s != '#') {
-         struct htmlflt_href *hhp = smalloc(sizeof(*hhp) -
-               VFIELD_SIZEOF(struct htmlflt_href, hfh_dat) + param.l +1);
+         struct htmlflt_href *hhp = smalloc(
+               n_VSTRUCT_SIZEOF(struct htmlflt_href, hfh_dat) + param.l +1);
 
          hhp->hfh_next = self->hf_hrefs;
          hhp->hfh_no = ++self->hf_href_no;
@@ -1320,7 +1325,7 @@ _hf_check_ent(struct htmlflt *self, char const *s, size_t l)
    char const *s_save;
    size_t l_save;
    struct hf_ent const *hfep;
-   long i;
+   size_t i;
    NYD2_ENTER;
 
    s_save = s;
@@ -1338,7 +1343,7 @@ _hf_check_ent(struct htmlflt *self, char const *s, size_t l)
       if ((i != 16 || (++s, --l) > 0) && l < sizeof(nobuf)) {
          memcpy(nobuf, s, l);
          nobuf[l] = '\0';
-         i = strtol(nobuf, NULL, i);
+         n_idec_uiz_cp(&i, nobuf, i, NULL);
          if (i <= 0x7F)
             self = _hf_putc(self, (char)i);
          else if (self->hf_flags & _HF_UTF8) {
@@ -1352,7 +1357,8 @@ jputuni:
    } else {
       ui32_t f = self->hf_flags, hf;
 
-      for (hfep = _hf_ents; PTRCMP(hfep, <, _hf_ents + NELEM(_hf_ents)); ++hfep)
+      for (hfep = _hf_ents; PTRCMP(hfep, <, _hf_ents + n_NELEM(_hf_ents));
+            ++hfep)
          if (l == ((hf = hfep->hfe_flags) & _HFE_LENGTH_MASK) &&
                !strncmp(s, hfep->hfe_ent, l)) {
             if ((hf & _HFE_HAVE_UNI) && (f & _HF_UTF8)) {
@@ -1541,7 +1547,7 @@ static void
 __hf_onpipe(int signo)
 {
    NYD_X; /* Signal handler */
-   UNUSED(signo);
+   n_UNUSED(signo);
    __hf_hadpipesig = TRU1;
 }
 
@@ -1558,11 +1564,11 @@ htmlflt_process_main(void)
    safe_signal(SIGPIPE, &__hf_onpipe);
 
    htmlflt_init(&hf);
-   htmlflt_reset(&hf, stdout);
+   htmlflt_reset(&hf, n_stdout);
 
    for (;;) {
-      if ((i = fread(buf, sizeof(buf[0]), NELEM(buf), stdin)) == 0) {
-         rv = !feof(stdin);
+      if ((i = fread(buf, sizeof(buf[0]), n_NELEM(buf), n_stdin)) == 0) {
+         rv = !feof(n_stdin);
          break;
       }
 
@@ -1620,12 +1626,12 @@ htmlflt_reset(struct htmlflt *self, FILE *f)
    memset(self, 0, sizeof *self);
 
    if (f != NULL) {
-      ui32_t sw = MAX(_HF_MINLEN, (ui32_t)scrnwidth);
+      ui32_t sw = n_MAX(_HF_MINLEN, (ui32_t)n_scrnwidth);
 
-      self->hf_line = smalloc((size_t)sw * mb_cur_max +1);
+      self->hf_line = smalloc((size_t)sw * n_mb_cur_max +1);
       self->hf_lmax = sw;
 
-      if (options & OPT_UNICODE) /* TODO not truly generic */
+      if (n_psonce & n_PSO_UNICODE) /* TODO not truly generic */
          self->hf_flags = _HF_UTF8;
       self->hf_os = f;
    }

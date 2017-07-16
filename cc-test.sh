@@ -1,11 +1,28 @@
 #!/bin/sh -
-#@ Usage: ./cc-test.sh [--check-only [s-nail-binary]]
+#@ Usage: ./cc-test.sh [--check-only s-mailx-binary]
+#@ TODO _All_ the tests should happen in a temporary subdir.
+# Public Domain
 
-SNAIL=./s-nail
-ARGS='-n# -Sstealthmua -Snosave -Sexpandaddr=restrict -Sdotlock-ignore-error'
+# We need *stealthmua* regardless of $SOURCE_DATE_EPOCH, the program name as
+# such is a compile-time variable
+ARGS='-:/ -# -Sdotlock-ignore-error -Sencoding=quoted-printable -Sstealthmua'
+   ARGS="${ARGS}"' -Snosave -Sexpandaddr=restrict'
+ADDARG_UNI=-Sttycharset=UTF-8
 CONF=./make.rc
 BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
+MAIL=/dev/null
+#UTF8_LOCALE= autodetected unless set
+
+MEMTESTER=
+#MEMTESTER='valgrind --leak-check=full --log-file=.vl-%p '
+
+if ( command -v command ) >/dev/null 2>&1; then :; else
+   command() {
+      shift
+      which "${@}"
+   }
+fi
 
 MAKE="${MAKE:-`command -v make`}"
 awk=${awk:-`command -v awk`}
@@ -15,19 +32,6 @@ rm=${rm:-`command -v rm`}
 sed=${sed:-`command -v sed`}
 grep=${grep:-`command -v grep`}
 
-##  --  >8  --  8<  --  ##
-
-export SNAIL ARGS CONF BODY MBOX MAKE awk cat cksum rm sed grep
-
-# NOTE!  UnixWare 7.1.4 gives ISO-10646-Minimum-European-Subset for
-# nl_langinfo(CODESET), then, so also overwrite ttycharset.
-# (In addition this setup allows us to succeed on TinyCore 4.4 that has no
-# other locales than C/POSIX installed by default!)
-LC=en_US.UTF-8
-LC_ALL=${LC} LANG=${LC}
-ttycharset=UTF-8
-export LC_ALL LANG ttycharset
-
 # Problem: force $SHELL to be a real shell.  It seems some testing environments
 # use nologin(?), but we need a real shell for command execution
 if { echo ${SHELL} | ${grep} nologin; } >/dev/null 2>&1; then
@@ -36,36 +40,102 @@ if { echo ${SHELL} | ${grep} nologin; } >/dev/null 2>&1; then
    export SHELL
 fi
 
-ESTAT=0
+# We sometimes "fake" sendmail(1) a.k.a. *mta* with a shell wrapper, and it
+# happens that /bin/sh is often terribly slow
+if command -v dash >/dev/null 2>&1; then
+   MYSHELL="`command -v dash`"
+elif command -v mksh >/dev/null 2>&1; then
+   MYSHELL="`command -v mksh`"
+else
+   MYSHELL="${SHELL}"
+fi
+
+##  --  >8  --  8<  --  ##
+
+export ARGS ADDARG_UNI CONF BODY MBOX MAIL  MAKE awk cat cksum rm sed grep
+
+LC_ALL=C LANG=C
+TZ=UTC
+# Wed Oct  2 01:50:07 UTC 1996
+SOURCE_DATE_EPOCH=844221007
+
+export LC_ALL LANG TZ SOURCE_DATE_EPOCH
+unset POSIXLY_CORRECT
 
 usage() {
-   echo >&2 "Usage: ./cc-test.sh [--check-only [s-nail-binary]]"
+   echo >&2 "Usage: ./cc-test.sh [--check-only s-mailx-binary]"
    exit 1
 }
 
-CHECK_ONLY=
-[ ${#} -gt 0 ] && {
-   [ "${1}" = --check-only ] || usage
-   [ ${#} -gt 2 ] && usage
-   [ ${#} -eq 2 ] && SNAIL="${2}"
-   [ -x "${SNAIL}" ] || usage
+CHECK_ONLY= MAILX=
+if [ "${1}" = --check-only ]; then
    CHECK_ONLY=1
-}
+   MAILX=${2}
+   [ -x "${MAILX}" ] || usage
+fi
+RAWMAILX=${MAILX}
+MAILX="${MEMTESTER}${MAILX}"
+export RAWMAILX MAILX
+
+if [ -n "${CHECK_ONLY}" ] && [ -z "${UTF8_LOCALE}" ]; then
+   # Try ourselfs for nl_langinfo(CODESET) output first (requires a new version)
+   i=`LC_ALL=C.utf8 "${RAWMAILX}" ${ARGS} -X '
+      \define cset_test {
+         \if [ "${ttycharset}" @i=% utf ]
+            \echo $LC_ALL
+            \xit 0
+         \end
+         \if [ "${#}" -gt 0 ]
+            \wysh set LC_ALL=${1}
+            \shift
+            \eval xcall cset_test "${@}"
+         \end
+         \xit 1
+      }
+      \call cset_test C.UTF-8 POSIX.utf8 POSIX.UTF-8 en_EN.utf8 en_EN.UTF-8 \
+         en_US.utf8 en_US.UTF-8
+   '`
+   [ $? -eq 0 ] && UTF8_LOCALE=$i
+
+   if [ -z "${UTF8_LOCALE}" ] && command -v locale >/dev/null 2>&1; then
+      UTF8_LOCALE=`locale -a | { m=
+         while read n; do
+            if { echo ${n} | ${grep} -i 'utf-\{0,1\}8'; } >/dev/null 2>&1; then
+               m=${n}
+               if { echo ${n} | ${grep} -e POSIX -e en_EN -e en_US; }; then
+                  exit 0
+               fi
+            fi
+            m=${n}
+         done
+         echo ${m}
+      }`
+   fi
+fi
+
+ESTAT=0
+
+TRAP_EXIT_ADDONS=
+trap "${rm} -rf \"${BODY}\" \"${MBOX}\" \${TRAP_EXIT_ADDONS}" EXIT
+trap "exit 1" HUP INT TERM
 
 # cc_all_configs()
 # Test all configs TODO doesn't cover all *combinations*, stupid!
 cc_all_configs() {
    < ${CONF} ${awk} '
       BEGIN {
-         NOTME["WANT_AUTOCC"] = 1
-         NOTME["WANT_DEBUG"] = 1
-         NOTME["WANT_NOEXTMD5"] = 1
-         NOTME["WANT_NOALLOCA"] = 1
-         NOTME["WANT_DEVEL"] = 1
-         NOTME["WANT_NYD2"] = 1
+         NOTME["OPT_AUTOCC"] = 1
+         NOTME["OPT_DEBUG"] = 1
+         NOTME["OPT_DEVEL"] = 1
+         NOTME["OPT_NOEXTMD5"] = 1
+         NOTME["OPT_ASAN_ADDRESS"] = 1
+         NOTME["OPT_ASAN_MEMORY"] = 1
+         NOTME["OPT_FORCED_STACKPROT"] = 1
+         NOTME["OPT_NOMEMDBG"] = 1
+         NOTME["OPT_NYD2"] = 1
          i = 0
       }
-      /^[[:space:]]*WANT_/ {
+      /^[[:space:]]*OPT_/ {
          sub(/^[[:space:]]*/, "")
          # This bails for UnixWare 7.1.4 awk(1), but preceeding = with \
          # does not seem to be a compliant escape for =
@@ -84,14 +154,14 @@ cc_all_configs() {
                printf data[k] "=1 "
             for (k = j; k < i; ++k)
                printf data[k] "=0 "
-            printf "WANT_AUTOCC=1\n"
+            printf "OPT_AUTOCC=1\n"
          }
          for (j = 1; j < i; ++j) {
             for (k = 1; k < j; ++k)
                printf data[k] "=0 "
             for (k = j; k < i; ++k)
                printf data[k] "=1 "
-            printf "WANT_AUTOCC=1\n"
+            printf "OPT_AUTOCC=1\n"
          }
          # With debug
          for (j = 1; j < i; ++j) {
@@ -99,95 +169,436 @@ cc_all_configs() {
                printf data[k] "=1 "
             for (k = j; k < i; ++k)
                printf data[k] "=0 "
-            printf "WANT_AUTOCC=1\n"
-            printf "WANT_DEBUG=1\n"
+            printf "OPT_AUTOCC=1\n"
+            printf "OPT_DEBUG=1\n"
          }
          for (j = 1; j < i; ++j) {
             for (k = 1; k < j; ++k)
                printf data[k] "=0 "
             for (k = j; k < i; ++k)
                printf data[k] "=1 "
-            printf "WANT_AUTOCC=1\n"
-            printf "WANT_DEBUG=1\n"
+            printf "OPT_AUTOCC=1\n"
+            printf "OPT_DEBUG=1\n"
          }
 
-         printf "CONFIG=NULL WANT_AUTOCC=0\n"
-         printf "CONFIG=NULL WANT_AUTOCC=1\n"
-         printf "CONFIG=NULLI WANT_AUTOCC=0\n"
-         printf "CONFIG=NULLI WANT_AUTOCC=1\n"
-         printf "CONFIG=MINIMAL WANT_AUTOCC=0\n"
-         printf "CONFIG=MINIMAL WANT_AUTOCC=1\n"
-         printf "CONFIG=MEDIUM WANT_AUTOCC=0\n"
-         printf "CONFIG=MEDIUM WANT_AUTOCC=1\n"
-         printf "CONFIG=NETSEND WANT_AUTOCC=0\n"
-         printf "CONFIG=NETSEND WANT_AUTOCC=1\n"
-         printf "CONFIG=MAXIMAL WANT_AUTOCC=0\n"
-         printf "CONFIG=MAXIMAL WANT_AUTOCC=1\n"
-         printf "CONFIG=DEVEL WANT_AUTOCC=0\n"
-         printf "CONFIG=DEVEL WANT_AUTOCC=1\n"
-         printf "CONFIG=ODEVEL WANT_AUTOCC=0\n"
-         printf "CONFIG=ODEVEL WANT_AUTOCC=1\n"
+         printf "CONFIG=NULL OPT_AUTOCC=0\n"
+         printf "CONFIG=NULL OPT_AUTOCC=1\n"
+         printf "CONFIG=NULLI OPT_AUTOCC=0\n"
+         printf "CONFIG=NULLI OPT_AUTOCC=1\n"
+         printf "CONFIG=MINIMAL OPT_AUTOCC=0\n"
+         printf "CONFIG=MINIMAL OPT_AUTOCC=1\n"
+         printf "CONFIG=MEDIUM OPT_AUTOCC=0\n"
+         printf "CONFIG=MEDIUM OPT_AUTOCC=1\n"
+         printf "CONFIG=NETSEND OPT_AUTOCC=0\n"
+         printf "CONFIG=NETSEND OPT_AUTOCC=1\n"
+         printf "CONFIG=MAXIMAL OPT_AUTOCC=0\n"
+         printf "CONFIG=MAXIMAL OPT_AUTOCC=1\n"
+         printf "CONFIG=DEVEL OPT_AUTOCC=0\n"
+         printf "CONFIG=DEVEL OPT_AUTOCC=1\n"
+         printf "CONFIG=ODEVEL OPT_AUTOCC=0\n"
+         printf "CONFIG=ODEVEL OPT_AUTOCC=1\n"
       }
    ' | while read c; do
       printf "\n\n##########\n$c\n"
       printf "\n\n##########\n$c\n" >&2
-      sh -c "${MAKE} ${c}"
-      t_all
+      sh -c "${MAKE} ${c} all test"
    done
    ${MAKE} distclean
 }
 
-# cksum_test()
-# Read mailbox $2, strip non-constant headers and MIME boundaries, query the
-# cksum(1) of the resulting data and compare against the checksum $3
-cksum_test() {
-   tid=${1} f=${2} s=${3}
-   printf "${tid}: "
-   csum="`${sed} -e '/^From /d' -e '/^Date: /d' \
-         -e '/^ boundary=/d' -e '/^--=-=/d' < \"${f}\" \
-         -e '/^\[-- Message/d' | ${cksum}`";
+have_feat() {
+   ( "${RAWMAILX}" ${ARGS} -X'echo $features' -Xx |
+      ${grep} +${1} ) >/dev/null 2>&1
+}
+
+t_prolog() {
+   ${rm} -rf "${BODY}" "${MBOX}" ${TRAP_EXIT_ADDONS}
+   TRAP_EXIT_ADDONS=
+}
+t_epilog() {
+   t_prolog
+}
+
+check() {
+   restat=${?} tid=${1} eestat=${2} f=${3} s=${4}
+       #x=`echo ${tid} | tr "/:=" "__-"`
+       #cp -f "${f}" "${TMPDIR}/${x}"
+   [ "${eestat}" != - ] && [ "${restat}" != "${eestat}" ] &&
+      err "${tid}" 'unexpected exit status: '"${restat} != ${eestat}"
+   csum="`${cksum} < ${f}`"
    if [ "${csum}" = "${s}" ]; then
-      printf 'ok\n'
+      printf '%s: ok\n' "${tid}"
    else
       ESTAT=1
-      printf 'error: checksum mismatch (got %s)\n' "${csum}"
+      printf '%s: error: checksum mismatch (got %s)\n' "${tid}" "${csum}"
    fi
 }
 
-have_feat() {
-   (
-   echo 'feat' |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} |
-   ${grep} ${1}
-   ) >/dev/null 2>&1
+err() {
+   ESTAT=1
+   printf '%s: error: %s\n' ${1} "${2}"
 }
+
+ex0_test() {
+   [ $? -ne 0 ] && err $1 'unexpected non-0 exit status'
+}
+
+exn0_test() {
+   [ $? -eq 0 ] && err $1 'unexpected 0 exit status'
+}
+
+if ( [ "$((1 + 1))" = 2 ] ) >/dev/null 2>&1; then
+   add() {
+      echo "$((${1} + ${2}))"
+   }
+elif command -v expr >/dev/null 2>&1; then
+   add() {
+      echo `expr ${1} + ${2}`
+   }
+else
+   add() {
+      echo `${awk} 'BEGIN{print '${1}' + '${2}'}'`
+   }
+fi
+
+if ( [ "$((2 % 3))" = 2 ] ) >/dev/null 2>&1; then
+   modulo() {
+      echo "$((${1} % ${2}))"
+   }
+elif command -v expr >/dev/null 2>&1; then
+   modulo() {
+      echo `expr ${1} % ${2}`
+   }
+else
+   modulo() {
+      echo `${awk} 'BEGIN{print '${1}' % '${2}'}'`
+   }
+fi
 
 # t_behave()
 # Basic (easily testable) behaviour tests
 t_behave() {
-   # Test for [d1f1a19]
-   ${rm} -f "${MBOX}"
-   printf 'echo +nix\nset folder=/\necho +nix\nset nofolder\necho +nix\nx' |
-      MAILRC=/dev/null "${SNAIL}" ${ARGS} > "${MBOX}"
-   cksum_test behave:001 "${MBOX}" '4214021069 15'
+   t_behave_X_opt_input_command_stack
+   t_behave_X_errexit
+   t_behave_wysh
+   t_behave_input_inject_semicolon_seq
+   t_behave_commandalias
+   t_behave_ifelse
+   t_behave_localopts
+   t_behave_macro_param_shift
+   t_behave_addrcodec
+   t_behave_vexpr
+   t_behave_call_ret
+   t_behave_xcall
+   t_behave_vpospar
 
-   # POSIX: setting *noprompt*/prompt='' shall prevent prompting TODO
-   # TODO for this to be testable we need a way to echo a variable
-   # TODO or to force echo of the prompt
+   t_behave_mbox
 
-   __behave_ifelse
+   t_behave_alternates
+   t_behave_alias
+   # FIXME t_behave_mlist
+   t_behave_filetype
 
-   # FIXME __behave_alias
+   t_behave_record_a_resend
 
-   # FIXME __behave_mlist
+   t_behave_e_H_L_opts
+   t_behave_compose_hooks
+   t_behave_message_injections
+   t_behave_mime_types_load_control
 
-   have_feat SSL/TLS && have_feat S/MIME && __behave_smime
+   t_behave_smime
+
+   t_behave_maildir
+   t_behave_mass_recipients
 }
 
-__behave_ifelse() {
+t_behave_X_opt_input_command_stack() {
+   t_prolog
+
+   ${cat} <<- '__EOT' > "${BODY}"
+	echo 1
+	define mac0 {
+	   echo mac0-1 via1 $0
+	}
+	call mac0
+	echo 2
+	source '\
+	   echo "define mac1 {";\
+	   echo "  echo mac1-1 via1 \$0";\
+	   echo "  call mac0";\
+	   echo "  echo mac1-2";\
+	   echo "  call mac2";\
+	   echo "  echo mac1-3";\
+	   echo "}";\
+	   echo "echo 1-1";\
+	   echo "define mac2 {";\
+	   echo "  echo mac2-1 via1 \$0";\
+	   echo "  call mac0";\
+	   echo "  echo mac2-2";\
+	   echo "}";\
+	   echo "echo 1-2";\
+	   echo "call mac1";\
+	   echo "echo 1-3";\
+	   echo "source \"\
+	      echo echo 1-1-1 via1 \$0;\
+	      echo call mac0;\
+	      echo echo 1-1-2;\
+	   | \"";\
+	   echo "echo 1-4";\
+	|  '
+	echo 3
+	call mac2
+	echo 4
+	undefine *
+	__EOT
+
+   # The -X option supports multiline arguments, and those can internally use
+   # reverse solidus newline escaping.  And all -X options are joined...
+   APO=\'
+   < "${BODY}" ${MAILX} ${ARGS} \
+      -X 'e\' \
+      -X ' c\' \
+      -X '  h\' \
+      -X '   o \' \
+      -X 1 \
+      -X'
+   define mac0 {
+      echo mac0-1 via2 $0
+   }
+   call mac0
+   echo 2
+   ' \
+      -X'
+   source '${APO}'\
+      echo "define mac1 {";\
+      echo "  echo mac1-1 via2 \$0";\
+      echo "  call mac0";\
+      echo "  echo mac1-2";\
+      echo "  call mac2";\
+      echo "  echo mac1-3";\
+      echo "}";\
+      echo "echo 1-1";\
+      echo "define mac2 {";\
+      echo "  echo mac2-1 via2 \$0";\
+      echo "  call mac0";\
+      echo "  echo mac2-2";\
+      echo "}";\
+      echo "echo 1-2";\
+      echo "call mac1";\
+      echo "echo 1-3";\
+      echo "source \"\
+         echo echo 1-1-1 via2 \$0;\
+         echo call mac0;\
+         echo echo 1-1-2;\
+      | \"";\
+      echo "echo 1-4";\
+   |  '${APO}'
+   echo 3
+   ' \
+      -X'
+   call mac2
+   echo 4
+   undefine *
+   ' > "${MBOX}"
+
+   check behave:x_opt_input_command_stack 0 "${MBOX}" '1786542668 416'
+
+   t_epilog
+}
+
+t_behave_X_errexit() {
+   t_prolog
+
+   ${cat} <<- '__EOT' > "${BODY}"
+	echo one
+	echos nono
+	echo two
+	__EOT
+
+   </dev/null ${MAILX} ${ARGS} -Snomemdebug \
+         -X'echo one' -X' echos nono ' -X'echo two' \
+      > "${MBOX}" 2>&1
+   check behave:x_errexit-1 0 "${MBOX}" '916157812 53'
+
+   </dev/null ${MAILX} ${ARGS} -X'source '"${BODY}" -Snomemdebug \
+      > "${MBOX}" 2>&1
+   check behave:x_errexit-2 0 "${MBOX}" '916157812 53'
+
+   </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u -Snomemdebug \
+      > "${MBOX}" 2>&1
+   check behave:x_errexit-3 0 "${MBOX}" '916157812 53'
+
+   ##
+
+   </dev/null ${MAILX} ${ARGS} -Serrexit -Snomemdebug \
+         -X'echo one' -X' echos nono ' -X'echo two' \
+      > "${MBOX}" 2>&1
+   check behave:x_errexit-4 1 "${MBOX}" '2118430867 49'
+
+   </dev/null ${MAILX} ${ARGS} -X'source '"${BODY}" -Serrexit -Snomemdebug \
+      > "${MBOX}" 2>&1
+   check behave:x_errexit-5 1 "${MBOX}" '2118430867 49'
+
+   </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u -Serrexit -Snomemdebug \
+      > "${MBOX}" 2>&1
+   check behave:x_errexit-6 1 "${MBOX}" '12955965 172'
+
+   </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u -Sposix -Snomemdebug \
+      > "${MBOX}" 2>&1
+   check behave:x_errexit-7 1 "${MBOX}" '12955965 172'
+
+   ## Repeat 4-7 with ignerr set
+
+   ${sed} -e 's/^echos /ignerr echos /' < "${BODY}" > "${MBOX}"
+
+   </dev/null ${MAILX} ${ARGS} -Serrexit -Snomemdebug \
+         -X'echo one' -X'ignerr echos nono ' -X'echo two' \
+      > "${BODY}" 2>&1
+   check behave:x_errexit-8 0 "${BODY}" '916157812 53'
+
+   </dev/null ${MAILX} ${ARGS} -X'source '"${MBOX}" -Serrexit -Snomemdebug \
+      > "${BODY}" 2>&1
+   check behave:x_errexit-9 0 "${BODY}" '916157812 53'
+
+   </dev/null MAILRC="${MBOX}" ${MAILX} ${ARGS} -:u -Serrexit -Snomemdebug \
+      > "${BODY}" 2>&1
+   check behave:x_errexit-10 0 "${BODY}" '916157812 53'
+
+   </dev/null MAILRC="${MBOX}" ${MAILX} ${ARGS} -:u -Sposix -Snomemdebug \
+      > "${BODY}" 2>&1
+   check behave:x_errexit-11 0 "${BODY}" '916157812 53'
+
+   t_epilog
+}
+
+t_behave_wysh() {
+   t_prolog
+
+   ${cat} <<- '__EOT' > "${BODY}"
+	#
+	echo abcd
+	echo a'b'c'd'
+	echo a"b"c"d"
+	echo a$'b'c$'d'
+	echo 'abcd'
+	echo "abcd"
+	echo $'abcd'
+	echo a\ b\ c\ d
+	echo a 'b c' d
+	echo a "b c" d
+	echo a $'b c' d
+	#
+	echo 'a$`"\'
+	echo "a\$\`'\"\\"
+	echo $'a\$`\'\"\\'
+	echo $'a\$`\'"\\'
+	# DIET=CURD TIED=
+	echo 'a${DIET}b${TIED}c\${DIET}d\${TIED}e' # COMMENT
+	echo "a${DIET}b${TIED}c\${DIET}d\${TIED}e"
+	echo $'a${DIET}b${TIED}c\${DIET}d\${TIED}e'
+	#
+	echo a$'\101\0101\x41\u0041\u41\U00000041\U41'c
+	echo a$'\u0041\u41\u0C1\U00000041\U41'c
+	echo a$'\377'c
+	echo a$'\0377'c
+	echo a$'\400'c
+	echo a$'\0400'c
+	echo a$'\U1100001'c
+	#
+	echo a$'b\0c'd
+	echo a$'b\00c'de
+	echo a$'b\000c'df
+	echo a$'b\0000c'dg
+	echo a$'b\x0c'dh
+	echo a$'b\x00c'di
+	echo a$'b\u0'dj
+	echo a$'b\u00'dk
+	echo a$'b\u000'dl
+	echo a$'b\u0000'dm
+	echo a$'b\U0'dn
+	echo a$'b\U00'do
+	echo a$'b\U000'dp
+	echo a$'b\U0000'dq
+	echo a$'b\U00000'dr
+	echo a$'b\U000000'ds
+	echo a$'b\U0000000'dt
+	echo a$'b\U00000000'du
+	#
+	echo a$'\cI'b
+	echo a$'\011'b
+	echo a$'\x9'b
+	echo a$'\u9'b
+	echo a$'\U9'b
+	echo a$'\c@'b c d
+	__EOT
+
+   if [ -z "${UTF8_LOCALE}" ]; then
+      echo 'Skip behave:wysh_unicode, no UTF8_LOCALE'
+   else
+      < "${BODY}" DIET=CURD TIED= \
+      LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} 2>/dev/null > "${MBOX}"
+      check behave:wysh_unicode 0 "${MBOX}" '475805847 317'
+   fi
+
+   < "${BODY}" DIET=CURD TIED= ${MAILX} ${ARGS} > "${MBOX}" 2>/dev/null
+   check behave:wysh_c 0 "${MBOX}" '1473887148 321'
+
+   t_epilog
+}
+
+t_behave_input_inject_semicolon_seq() {
+   t_prolog
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
+	define mydeepmac {
+		echon '(mydeepmac)';
+	}
+	define mymac {
+		echon this_is_mymac;call mydeepmac;echon ';';
+	}
+	echon one';';call mymac;echon two";";call mymac;echo three$';';
+	define mymac {
+		echon this_is_mymac;call mydeepmac;echon ,TOO'!;';
+	}
+	echon one';';call mymac;echon two";";call mymac;echo three$';';
+	__EOT
+
+   check behave:input_inject_semicolon_seq 0 "${MBOX}" '512117110 140'
+
+   t_epilog
+}
+
+t_behave_commandalias() {
+   t_prolog
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
+	commandalias echo echo hoho
+	echo stop.
+	commandalias X Xx
+	commandalias Xx XxX
+	commandalias XxX XxXx
+	commandalias XxXx XxXxX
+	commandalias XxXxX XxXxXx
+	commandalias XxXxXx echo huhu
+	commandalias XxXxXxX echo huhu
+	X
+	commandalias XxXxXx XxXxXxX
+	X
+	uncommandalias echo
+	commandalias XxXxXx echo huhu
+	X
+	__EOT
+
+   check behave:commandalias 0 "${MBOX}" '3694143612 31'
+
+   t_epilog
+}
+
+t_behave_ifelse() {
+   t_prolog
+
    # Nestable conditions test
-   ${rm} -f "${MBOX}"
-   ${cat} <<- '__EOT' | MAILRC=/dev/null "${SNAIL}" ${ARGS} > "${MBOX}"
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
 		if 0
 		   echo 1.err
 		else
@@ -214,10 +625,30 @@ __behave_ifelse() {
 		else
 		   echo 5.err
 		endif
+		if $dietcurd @== 'Yoho'
+			echo 5-1.ok
+		else
+			echo 5-1.err
+		endif
+		if $dietcurd == 'Yoho'
+			echo 5-2.err
+		else
+			echo 5-2.ok
+		endif
 		if $dietcurd != 'yoho'
 		   echo 6.err
 		else
 		   echo 6.ok
+		endif
+		if $dietcurd @!= 'Yoho'
+			echo 6-1.err
+		else
+			echo 6-1.ok
+		endif
+		if $dietcurd != 'Yoho'
+			echo 6-2.ok
+		else
+			echo 6-2.err
 		endif
 		# Nesting
 		if faLse
@@ -308,36 +739,36 @@ __behave_ifelse() {
 		else
 		   echo 10.err12
 		endif
-		# integer conversion, <..>..
+		# integer
 		set dietcurd=10
-		if $dietcurd < 11
+		if $dietcurd -lt 11
 		   echo 11.ok1
-		   if $dietcurd > 9
+		   if $dietcurd -gt 9
 		      echo 11.ok2
 		   else
 		      echo 11.err2
 		   endif
-		   if $dietcurd == 10
+		   if $dietcurd -eq 10
 		      echo 11.ok3
 		   else
 		      echo 11.err3
 		   endif
-		   if $dietcurd >= 10
+		   if $dietcurd -ge 10
 		      echo 11.ok4
 		   else
 		      echo 11.err4
 		   endif
-		   if $dietcurd <= 10
+		   if $dietcurd -le 10
 		      echo 11.ok5
 		   else
 		      echo 11.err5
 		   endif
-		   if $dietcurd >= 11
+		   if $dietcurd -ge 11
 		      echo 11.err6
 		   else
 		      echo 11.ok6
 		   endif
-		   if $dietcurd <= 9
+		   if $dietcurd -le 9
 		      echo 11.err7
 		   else
 		      echo 11.ok7
@@ -348,32 +779,32 @@ __behave_ifelse() {
 		set dietcurd=Abc
 		if $dietcurd < aBd
 		   echo 12.ok1
-		   if $dietcurd > abB
+		   if $dietcurd @> abB
 		      echo 12.ok2
 		   else
 		      echo 12.err2
 		   endif
-		   if $dietcurd == aBC
+		   if $dietcurd @== aBC
 		      echo 12.ok3
 		   else
 		      echo 12.err3
 		   endif
-		   if $dietcurd >= AbC
+		   if $dietcurd @>= AbC
 		      echo 12.ok4
 		   else
 		      echo 12.err4
 		   endif
-		   if $dietcurd <= ABc
+		   if $dietcurd @<= ABc
 		      echo 12.ok5
 		   else
 		      echo 12.err5
 		   endif
-		   if $dietcurd >= abd
+		   if $dietcurd @>= abd
 		      echo 12.err6
 		   else
 		      echo 12.ok6
 		   endif
-		   if $dietcurd <= abb
+		   if $dietcurd @<= abb
 		      echo 12.err7
 		   else
 		      echo 12.ok7
@@ -381,32 +812,67 @@ __behave_ifelse() {
 		else
 		   echo 12.err1
 		endif
-		if $dietcurd =@ aB
+      if $dietcurd < aBc
+         echo 12-1.ok
+      else
+         echo 12-1.err
+      endif
+      if $dietcurd @< aBc
+         echo 12-2.err
+      else
+         echo 12-2.ok
+      endif
+      if $dietcurd > ABc
+         echo 12-3.ok
+      else
+         echo 12-3.err
+      endif
+      if $dietcurd @> ABc
+         echo 12-3.err
+      else
+         echo 12-3.ok
+      endif
+		if $dietcurd @i=% aB
 		   echo 13.ok
 		else
 		   echo 13.err
 		endif
-		if $dietcurd =@ bC
+		if $dietcurd =% aB
+		   echo 13-1.err
+		else
+		   echo 13-1.ok
+		endif
+		if $dietcurd @=% bC
 		   echo 14.ok
 		else
 		   echo 14.err
 		endif
-		if $dietcurd !@ aB
-		   echo 15.err
+		if $dietcurd !% aB
+		   echo 15-1.ok
 		else
-		   echo 15.ok
+		   echo 15-1.err
 		endif
-		if $dietcurd !@ bC
-		   echo 15.err
+		if $dietcurd @!% aB
+		   echo 15-2.err
 		else
-		   echo 15.ok
+		   echo 15-2.ok
 		endif
-		if $dietcurd =@ Cd
+		if $dietcurd !% bC
+		   echo 15-3.ok
+		else
+		   echo 15-3.err
+		endif
+		if $dietcurd @!% bC
+		   echo 15-4.err
+		else
+		   echo 15-4.ok
+		endif
+		if $dietcurd =% Cd
 		   echo 16.err
 		else
 		   echo 16.ok
 		endif
-		if $dietcurd !@ Cd
+		if $dietcurd !% Cd
 		   echo 17.ok
 		else
 		   echo 17.err
@@ -628,7 +1094,29 @@ __behave_ifelse() {
 		else
 		   echo 59.err
 		endif
-      # Unary !
+		# Some more en-braced variables
+		set diet=yo curd=ho
+		if ${diet} == ${curd}
+		   echo 70.err
+		else
+		   echo 70.ok
+		endif
+		if ${diet} != ${curd}
+		   echo 71.ok
+		else
+		   echo 71.err
+		endif
+		if $diet == ${curd}
+		   echo 72.err
+		else
+		   echo 72.ok
+		endif
+		if ${diet} == $curd
+		   echo 73.err
+		else
+		   echo 73.ok
+		endif
+		# Unary !
 		if ! 0 && ! ! 1 && ! ! ! ! 2 && 3
 		   echo 80.ok
 		else
@@ -721,53 +1209,63 @@ __behave_ifelse() {
 		   echo 98.err
 		endif
 	__EOT
-   cksum_test behave:if-normal "${MBOX}" '3542193361 607'
 
-   if have_feat REGEX; then
-      ${rm} -f "${MBOX}"
-      ${cat} <<- '__EOT' | MAILRC=/dev/null "${SNAIL}" ${ARGS} > "${MBOX}"
+   check behave:if-normal 0 "${MBOX}" '1688759742 719'
+
+   if have_feat regex; then
+      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
 			set dietcurd=yoho
 			if $dietcurd =~ '^yo.*'
 			   echo 1.ok
 			else
 			   echo 1.err
 			endif
-			if $dietcurd =~ '^yoho.+'
+			if $dietcurd =~ '^Yo.*'
+			   echo 1-1.err
+			else
+			   echo 1-1.ok
+			endif
+			if $dietcurd @=~ '^Yo.*'
+			   echo 1-2.ok
+			else
+			   echo 1-2.err
+			endif
+			if $dietcurd =~ '^yOho.+'
 			   echo 2.err
 			else
 			   echo 2.ok
 			endif
-			if $dietcurd !~ '.*ho$'
+			if $dietcurd @!~ '.*Ho$'
 			   echo 3.err
 			else
 			   echo 3.ok
 			endif
-			if $dietcurd !~ '.+yoho$'
+			if $dietcurd !~ '.+yohO$'
 			   echo 4.ok
 			else
 			   echo 4.err
 			endif
-			if [ $dietcurd !~ '.+yoho$' ]
+			if [ $dietcurd @i!~ '.+yoho$' ]
 			   echo 5.ok
 			else
 			   echo 5.err
 			endif
-			if ! [ $dietcurd =~ '.+yoho$' ]
+			if ! [ $dietcurd @i=~ '.+yoho$' ]
 			   echo 6.ok
 			else
 			   echo 6.err
 			endif
-			if ! ! [ $dietcurd !~ '.+yoho$' ]
+			if ! ! [ $dietcurd @i!~ '.+yoho$' ]
 			   echo 7.ok
 			else
 			   echo 7.err
 			endif
-			if ! [ ! [ $dietcurd !~ '.+yoho$' ] ]
+			if ! [ ! [ $dietcurd @i!~ '.+yoho$' ] ]
 			   echo 8.ok
 			else
 			   echo 8.err
 			endif
-			if [ ! [ ! [ $dietcurd !~ '.+yoho$' ] ] ]
+			if [ ! [ ! [ $dietcurd @i!~ '.+yoho$' ] ] ]
 			   echo 9.ok
 			else
 			   echo 9.err
@@ -805,13 +1303,2144 @@ __behave_ifelse() {
 			   echo 15.err
 			endif
 		__EOT
-      cksum_test behave:if-regex "${MBOX}" '439960016 81'
+
+      check behave:if-regex 0 "${MBOX}" '1115671789 95'
+   else
+      printf 'behave:if-regex: unsupported, skipped\n'
    fi
+
+   t_epilog
 }
 
-__behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
+t_behave_localopts() {
+   t_prolog
+
+   # Nestable conditions test
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
+	define t2 {
+	   echo in: t2
+	   set t2=t2
+	   echo $t2
+	}
+	define t1 {
+	   echo in: t1
+	   set gv1=gv1
+	   localopts on
+	   set lv1=lv1 lv2=lv2
+	   set lv3=lv3
+	   call t2
+	   localopts off
+	   set gv2=gv2
+	   echo $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2
+	}
+	define t0 {
+	   echo in: t0
+	   call t1
+	   echo $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2
+	   echo "$gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t2"
+	}
+	account trouble {
+	   echo in: trouble
+	   call t0
+	}
+	call t0
+	unset gv1 gv2
+	account trouble
+	echo active trouble: $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t3
+	account null
+	echo active null: $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t3
+	__EOT
+
+   check behave:localopts 0 "${MBOX}" '1936527193 192'
+
+   t_epilog
+}
+
+t_behave_macro_param_shift() {
+   t_prolog
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>/dev/null
+	define t2 {
+	   echo in: t2
+	   echo t2.0 has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
+	   localopts on
+	   wysh set ignerr=$1
+	   shift
+	   localopts off
+	   echo t2.1 has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
+	   if [ $# > 1 ] || [ $ignerr == '' ]
+	      shift 2
+	   else
+	      ignerr shift 2
+	   endif
+	   echo t2.2:$? has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
+	   shift 0
+	   echo t2.3:$? has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
+	   if [ $# > 0 ]
+	      shift
+	   endif
+	   echo t2.4:$? has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
+	}
+	define t1 {
+	   set errexit
+	   echo in: t1
+	   call t2 1 you get four args
+	   echo t1.1: $?';' ignerr ($ignerr) should not exist
+	   call t2 1 you get 'three args'
+	   echo t1.2: $?';' ignerr ($ignerr) should not exist
+	   call t2 1 you 'get two args'
+	   echo t1.3: $?';' ignerr ($ignerr) should not exist
+	   call t2 1 'you get one arg'
+	   echo t1.4: $?';' ignerr ($ignerr) should not exist
+	   ignerr call t2 '' 'you get one arg'
+	   echo t1.5: $?';' ignerr ($ignerr) should not exist
+	}
+	call t1
+	__EOT
+
+   check behave:macro_param_shift 0 "${MBOX}" '1402489146 1682'
+
+   t_epilog
+}
+
+t_behave_addrcodec() {
+   t_prolog
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
+	vput addrcodec res e 1 <doog@def>
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res e 2 . <doog@def>
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res e 3 Sauer Dr. <doog@def>
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res e 3.50 Sauer (Ma) Dr. <doog@def>
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res e 3.51 Sauer (Ma) "Dr." <doog@def>
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	#
+	vput addrcodec res +e 4 Sauer (Ma) Dr. <doog@def>
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 5 Sauer (Ma) Braten Dr. <doog@def>
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 6 Sauer (Ma) Braten Dr. (Heu) <doog@def>
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 7 Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu)
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 8 \
+		Dr. Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu) Boom. Boom
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 9 Dr.Sauer(Ma)Braten Dr. (Heu) <doog@def>
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 10 (Ma)Braten Dr. (Heu) <doog@def>
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 11 (Ma)Braten Dr"." (Heu) <doog@def>
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 12 Dr.     Sauer  (Ma)   Braten    Dr.   (u) <doog@def>
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 13(Ma)Braten    Dr.     (Heu)     <doog@def>
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 14 Hey, Du <doog@def> Wie() findet Dr. das? ()
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 15 \
+		Hey, Du <doog@def> Wie() findet "" Dr. "" das? ()
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 16 \
+		"Hey," "Du" <doog@def> "Wie()" findet "" Dr. "" das? ()
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 17 \
+		"Hey" Du <doog@def> "Wie() findet " " Dr. """ das? ()
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 18 \
+		<doog@def> "Hey" Du "Wie() findet " " Dr. """ das? ()
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res +e 19 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	#
+	vput addrcodec res ++e 20 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
+	echo $?/$^ERRNAME $res
+	vput addrcodec res ++e 21 Hey\,\""  <doog@def> "Wie()" findet \" Dr. \" das?
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	#
+	vput addrcodec res +++e 22 Hey\\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	#
+	vput addrcodec res s \
+		"23 Hey\\,\\\" \"Wie" () "\" findet \\\" Dr. \\\" das?" <doog@def>
+	echo $?/$^ERRNAME $res
+	__EOT
+
+   check behave:addrcodec 0 "${MBOX}" '429099645 2414'
+
+   t_epilog
+}
+
+t_behave_vexpr() {
+   t_prolog
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>/dev/null
+	vput vexpr res = 9223372036854775807
+	echo $?/$^ERRNAME $res
+	vput vexpr res = 9223372036854775808
+	echo $?/$^ERRNAME $res
+	vput vexpr res =@ 9223372036854775808
+	echo $?/$^ERRNAME $res
+	vput vexpr res = -9223372036854775808
+	echo $?/$^ERRNAME $res
+	vput vexpr res = -9223372036854775809
+	echo $?/$^ERRNAME $res
+	vput vexpr res =@ -9223372036854775809
+	echo $?/$^ERRNAME $res
+	echo ' #1'
+	vput vexpr res ~ 0
+	echo $?/$^ERRNAME $res
+	vput vexpr res ~ 1
+	echo $?/$^ERRNAME $res
+	vput vexpr res ~ -1
+	echo $?/$^ERRNAME $res
+	echo ' #2'
+	vput vexpr res + 0 0
+	echo $?/$^ERRNAME $res
+	vput vexpr res + 0 1
+	echo $?/$^ERRNAME $res
+	vput vexpr res + 1 1
+	echo $?/$^ERRNAME $res
+	echo ' #3'
+	vput vexpr res + 9223372036854775807 0
+	echo $?/$^ERRNAME $res
+	vput vexpr res + 9223372036854775807 1
+	echo $?/$^ERRNAME $res
+	vput vexpr res +@ 9223372036854775807 1
+	echo $?/$^ERRNAME $res
+	vput vexpr res + 0 9223372036854775807
+	echo $?/$^ERRNAME $res
+	vput vexpr res + 1 9223372036854775807
+	echo $?/$^ERRNAME $res
+	vput vexpr res +@ 1 9223372036854775807
+	echo $?/$^ERRNAME $res
+	echo ' #4'
+	vput vexpr res + -9223372036854775808 0
+	echo $?/$^ERRNAME $res
+	vput vexpr res + -9223372036854775808 -1
+	echo $?/$^ERRNAME $res
+	vput vexpr res +@ -9223372036854775808 -1
+	echo $?/$^ERRNAME $res
+	vput vexpr res + 0 -9223372036854775808
+	echo $?/$^ERRNAME $res
+	vput vexpr res + -1 -9223372036854775808
+	echo $?/$^ERRNAME $res
+	vput vexpr res +@ -1 -9223372036854775808
+	echo $?/$^ERRNAME $res
+	echo ' #5'
+	vput vexpr res - 0 0
+	echo $?/$^ERRNAME $res
+	vput vexpr res - 0 1
+	echo $?/$^ERRNAME $res
+	vput vexpr res - 1 1
+	echo $?/$^ERRNAME $res
+	echo ' #6'
+	vput vexpr res - 9223372036854775807 0
+	echo $?/$^ERRNAME $res
+	vput vexpr res - 9223372036854775807 -1
+	echo $?/$^ERRNAME $res
+	vput vexpr res -@ 9223372036854775807 -1
+	echo $?/$^ERRNAME $res
+	vput vexpr res - 0 9223372036854775807
+	echo $?/$^ERRNAME $res
+	vput vexpr res - -1 9223372036854775807
+	echo $?/$^ERRNAME $res
+	vput vexpr res - -2 9223372036854775807
+	echo $?/$^ERRNAME $res
+	vput vexpr res -@ -2 9223372036854775807
+	echo $?/$^ERRNAME $res
+	echo ' #7'
+	vput vexpr res - -9223372036854775808 +0
+	echo $?/$^ERRNAME $res
+	vput vexpr res - -9223372036854775808 +1
+	echo $?/$^ERRNAME $res
+	vput vexpr res -@ -9223372036854775808 +1
+	echo $?/$^ERRNAME $res
+	vput vexpr res - 0 -9223372036854775808
+	echo $?/$^ERRNAME $res
+	vput vexpr res - +1 -9223372036854775808
+	echo $?/$^ERRNAME $res
+	vput vexpr res -@ +1 -9223372036854775808
+	echo $?/$^ERRNAME $res
+	echo ' #8'
+	vput vexpr res + -13 -2
+	echo $?/$^ERRNAME $res
+	vput vexpr res - 0 0
+	echo $?/$^ERRNAME $res
+	vput vexpr res - 0 1
+	echo $?/$^ERRNAME $res
+	vput vexpr res - 1 1
+	echo $?/$^ERRNAME $res
+	vput vexpr res - -13 -2
+	echo $?/$^ERRNAME $res
+	echo ' #9'
+	vput vexpr res * 0 0
+	echo $?/$^ERRNAME $res
+	vput vexpr res * 0 1
+	echo $?/$^ERRNAME $res
+	vput vexpr res * 1 1
+	echo $?/$^ERRNAME $res
+	vput vexpr res * -13 -2
+	echo $?/$^ERRNAME $res
+	echo ' #10'
+	vput vexpr res / 0 0
+	echo $?/$^ERRNAME $res
+	vput vexpr res / 0 1
+	echo $?/$^ERRNAME $res
+	vput vexpr res / 1 1
+	echo $?/$^ERRNAME $res
+	vput vexpr res / -13 -2
+	echo $?/$^ERRNAME $res
+	echo ' #11'
+	vput vexpr res % 0 0
+	echo $?/$^ERRNAME $res
+	vput vexpr res % 0 1
+	echo $?/$^ERRNAME $res
+	vput vexpr res % 1 1
+	echo $?/$^ERRNAME $res
+	vput vexpr res % -13 -2
+	echo $?/$^ERRNAME $res
+	__EOT
+
+   check behave:vexpr-numeric 0 "${MBOX}" '1723609217 1048'
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" #2>/dev/null
+	vput vexpr res find 'bananarama' 'nana'
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res find 'bananarama' 'bana'
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res find 'bananarama' 'Bana'
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res find 'bananarama' 'rama'
+	echo $?/$^ERRNAME :$res:
+	echo ' #1'
+	vput vexpr res ifind 'bananarama' 'nana'
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res ifind 'bananarama' 'bana'
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res ifind 'bananarama' 'Bana'
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res ifind 'bananarama' 'rama'
+	echo $?/$^ERRNAME :$res:
+	echo ' #2'
+	vput vexpr res substring 'bananarama' 1
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' 3
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' 5
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' 7
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' 9
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' 10
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' 1 3
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' 3 3
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' 5 3
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' 7 3
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' 9 3
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' 10 3
+	echo $?/$^ERRNAME :$res:
+	echo ' #3'
+	__EOT
+
+   check behave:vexpr-string 0 "${MBOX}" '265398700 267'
+
+   if have_feat regex; then
+      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" #2>/dev/null
+		vput vexpr res regex 'bananarama' 'nana'
+		echo $?/$^ERRNAME :$res:
+		vput vexpr res regex 'bananarama' 'bana'
+		echo $?/$^ERRNAME :$res:
+		vput vexpr res regex 'bananarama' 'Bana'
+		echo $?/$^ERRNAME :$res:
+		vput vexpr res regex 'bananarama' 'rama'
+		echo $?/$^ERRNAME :$res:
+		echo ' #1'
+		vput vexpr res iregex 'bananarama' 'nana'
+		echo $?/$^ERRNAME :$res:
+		vput vexpr res iregex 'bananarama' 'bana'
+		echo $?/$^ERRNAME :$res:
+		vput vexpr res iregex 'bananarama' 'Bana'
+		echo $?/$^ERRNAME :$res:
+		vput vexpr res iregex 'bananarama' 'rama'
+		echo $?/$^ERRNAME :$res:
+		echo ' #2'
+		vput vexpr res regex 'bananarama' '(.*)nana(.*)' '\${1}a\${0}u{\$2}'
+		echo $?/$^ERRNAME :$res:
+		vput vexpr res regex 'bananarama' '(.*)bana(.*)' '\${1}a\${0}u\$2'
+		echo $?/$^ERRNAME :$res:
+		vput vexpr res regex 'bananarama' 'Bana(.+)' '\$1\$0'
+		echo $?/$^ERRNAME :$res:
+		vput vexpr res regex 'bananarama' '(.+)rama' '\$1\$0'
+		echo $?/$^ERRNAME :$res:
+		echo ' #3'
+		vput vexpr res iregex 'bananarama' '(.*)nana(.*)' '\${1}a\${0}u{\$2}'
+		echo $?/$^ERRNAME :$res:
+		vput vexpr res iregex 'bananarama' '(.*)bana(.*)' '\${1}a\${0}u\$2'
+		echo $?/$^ERRNAME :$res:
+		vput vexpr res iregex 'bananarama' 'Bana(.+)' '\$1\$0'
+		echo $?/$^ERRNAME :$res:
+		vput vexpr res iregex 'bananarama' '(.+)rama' '\$1\$0'
+		echo $?/$^ERRNAME :$res:
+		echo ' #4'
+		__EOT
+
+      check behave:vexpr-regex 0 "${MBOX}" '3270360157 311'
+   else
+      printf 'behave:vexpr-regex: unsupported, skipped\n'
+   fi
+
+   t_epilog
+}
+
+t_behave_call_ret() {
+   t_prolog
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Snomemdebug > "${MBOX}" 2>&1
+	define w1 {
+		echon ">$1 "
+		vput vexpr i + $1 1
+		if [ $i -le 42 ]
+			vput vexpr j '&' $i 7
+			if [ $j -eq 7 ]
+				echo .
+			end
+			call w1 $i
+			wysh set i=$? k=$!
+			vput vexpr j '&' $i 7
+			echon "<$1/$i/$k "
+			if [ $j -eq 7 ]
+				echo .
+			end
+		else
+			echo ! The end for $1
+		end
+		return $1
+	}
+	# Transport $?/$! up the call chain
+	define w2 {
+		echon ">$1 "
+		vput vexpr i + $1 1
+		if [ $1 -lt 42 ]
+			call w2 $i
+			wysh set i=$? j=$! k=$^ERRNAME
+			echon "<$1/$i/$k "
+			return $i $j
+		else
+			echo ! The end for $1
+			return $i $^ERR-BUSY
+		end
+		echoerr au
+	}
+	# Up and down it goes
+	define w3 {
+		echon ">$1/$2 "
+		vput vexpr i + $1 1
+		if [ $1 -lt 42 ]
+			call w3 $i $2
+			wysh set i=$? j=$!
+			vput vexpr k - $1 $2
+			if [ $k -eq 21 ]
+				vput vexpr i + $1 1
+				vput vexpr j + $2 1
+				echo "# <$i/$j> .. "
+				call w3 $i $j
+				wysh set i=$? j=$!
+			end
+			eval echon "<\$1=\$i/\$^ERRNAME-$j "
+			return $i $j
+		else
+			echo ! The end for $1=$i/$2
+         if [ "$2" != "" ]
+            return $i $^ERR-DOM
+         else
+            return $i $^ERR-BUSY
+         end
+		end
+		echoerr au
+	}
+
+	call w1 0; echo ?=$? !=$!; echo -----;
+	call w2 0; echo ?=$? !=$^ERRNAME; echo -----;
+	call w3 0 1; echo ?=$? !=$^ERRNAME; echo -----;
+	__EOT
+
+   check behave:call_ret 0 "${MBOX}" '1572045517 5922'
+
+   t_epilog
+}
+
+t_behave_xcall() {
+   t_prolog
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Snomemdebug > "${MBOX}" 2>&1
+	define work {
+		echon "$1 "
+		vput vexpr i + $1 1
+		if [ $i -le 1111 ]
+			vput vexpr j '&' $i 7
+			if [ $j -eq 7 ]
+				echo .
+			end
+			\xcall work $i $2
+		end
+		echo ! The end for $1/$2
+		if [ "$2" != "" ]
+			return $i $^ERR-BUSY
+		end
+	}
+	define xwork {
+		\xcall work 0 $2
+	}
+	call work 0
+	echo ?=$? !=$!
+	call xwork
+	echo ?=$? !=$!
+	xcall xwork
+	echo ?=$? !=$^ERRNAME
+	#
+	call work 0 yes
+	echo ?=$? !=$^ERRNAME
+	call xwork 0 yes
+	echo ?=$? !=$^ERRNAME
+	__EOT
+
+   check behave:xcall-1 0 "${MBOX}" '2401702082 23801'
+
+   ##
+
+   ${cat} <<- '__EOT' > "${BODY}"
+	define __w {
+		echon "$1 "
+		vput vexpr i + $1 1
+		if [ $i -le 111 ]
+			vput vexpr j '&' $i 7
+			if [ $j -eq 7 ]
+				echo .
+			end
+			\xcall __w $i $2
+		end
+		echo ! The end for $1
+		if [ $2 -eq 0 ]
+			nonexistingcommand
+			echo would be err with errexit
+			return
+		end
+		echo calling exit
+		exit
+	}
+	define work {
+		echo eins
+		call __w 0 0
+		echo zwei, ?=$? !=$!
+		localopts yes; set errexit
+		ignerr call __w 0 0
+		echo drei, ?=$? !=$^ERRNAME
+		call __w 0 $1
+		echo vier, ?=$? !=$^ERRNAME, this is an error
+	}
+	ignerr call work 0
+	echo outer 1, ?=$? !=$^ERRNAME
+	xxxign call work 0
+	echo outer 2, ?=$? !=$^ERRNAME, could be error if xxxign non-empty
+	call work 1
+	echo outer 3, ?=$? !=$^ERRNAME
+	echo this is definitely an error
+	__EOT
+
+   < "${BODY}" ${MAILX} ${ARGS} -X'commandalias xxxign ignerr' -Snomemdebug \
+      > "${MBOX}" 2>&1
+   check behave:xcall-2 0 "${MBOX}" '3900716531 4200'
+
+   < "${BODY}" ${MAILX} ${ARGS} -X'commandalias xxxign " "' -Snomemdebug \
+      > "${MBOX}" 2>&1
+   check behave:xcall-3 1 "${MBOX}" '1006776201 2799'
+
+   t_epilog
+}
+
+t_behave_vpospar() {
+   t_prolog
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+   vpospar set hey, "'you    ", world!
+   echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   vput vpospar x quote; echo x<$x>
+   vpospar clear;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   vput vpospar y quote;echo y<$y>
+   eval vpospar set ${x};echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   eval vpospar set ${y};echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   eval vpospar set ${x};echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+
+   define infun2 {
+      echo infun2:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>
+      vput vpospar z quote;echo infun2:z<$z>
+   }
+
+   define infun {
+      echo infun:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>
+      vput vpospar y quote;echo infun:y<$y>
+      eval vpospar set ${x};echo infun:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>
+      vpospar clear;echo infun:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>
+      eval call infun2 $x
+      echo infun:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>
+      eval vpospar set ${y};echo infun:$?/$^ERRNAME/$#:$*/"$@"/<$1><$2><$3><$4>
+   }
+
+   call infun This "in a" fun
+   echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   vpospar clear;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+	__EOT
+   check behave:vpospar-1 0 "${MBOX}" '155175639 866'
+
+   #
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+   set ifs=\'
+   echo ifs<$ifs> ifs-ws<$ifs-ws>
+   vpospar set hey, "'you    ", world!
+   echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   vput vpospar x quote; echo x<$x>
+   vpospar clear;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   eval vpospar set ${x};echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+
+   set ifs=,
+   echo ifs<$ifs> ifs-ws<$ifs-ws>
+   vpospar set hey, "'you    ", world!
+   echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   vput vpospar x quote; echo x<$x>
+   vpospar clear;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   eval vpospar set ${x};echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+
+   wysh set ifs=$',\t'
+   echo ifs<$ifs> ifs-ws<$ifs-ws>
+   vpospar set hey, "'you    ", world!
+   echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   vput vpospar x quote; echo x<$x>
+   vpospar clear;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   eval vpospar set ${x};echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+	__EOT
+   check behave:vpospar-ifs 0 "${MBOX}" '2015927702 706'
+
+   t_epilog
+}
+
+t_behave_read() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} <<- '__EOT' > .tin
+   hey1, "'you    ", world!
+   hey2, "'you    ", bugs bunny!
+   hey3, "'you    ",     
+   hey4, "'you    "
+	__EOT
+
+   ${cat} <<- '__EOT' |\
+      ${MAILX} ${ARGS} -X'readctl create ./.tin' > "${MBOX}" 2>&1
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   readctl remove ./.tin;echo readctl remove:$?/$^ERRNAME
+	__EOT
+   check behave:read-1 0 "${MBOX}" '1527910147 173'
+
+   ${cat} <<- '__EOT' > .tin2
+   hey2.0,:"'you    ",:world!:mars.:
+   hey2.1,:"'you    ",:world!
+   hey2.2,:"'you    ",:bugs bunny!
+   hey2.3,:"'you    ",:    
+   hey2.4,:"'you    ":
+   :
+	__EOT
+
+   ${cat} <<- '__EOT' |\
+      6< .tin2 ${MAILX} ${ARGS} -X 'readctl create 6' > "${MBOX}" 2>&1
+   set ifs=:
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c
+   echo $?/$^ERRNAME / <$a><$b><$c>
+   readctl remove 6;echo readctl remove:$?/$^ERRNAME
+	__EOT
+   check behave:read-ifs 0 "${MBOX}" '890153490 298'
+
+   t_epilog
+}
+
+t_behave_mbox() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t*"
+
+   (
+      i=0
+      while [ ${i} -lt 112 ]; do
+         printf 'm file://%s\n~s Subject %s\nHello %s!\n~.\n' \
+            "${MBOX}" "${i}" "${i}"
+         i=`add ${i} 1`
+      done
+   ) | ${MAILX} ${ARGS}
+   check behave:mbox-1 0 "${MBOX}" '1140119864 13780'
+
+   printf 'File "%s"
+         copy * "%s"
+         File "%s"
+         from*
+      ' "${MBOX}" .tmbox1 .tmbox1 |
+      ${MAILX} ${ARGS} > .tlst
+   check behave:mbox-2 0 .tlst '2739893312 9103'
+
+   printf 'File "%s"
+         copy * "file://%s"
+         File "file://%s"
+         from*
+      ' "${MBOX}" .tmbox2 .tmbox2 |
+      ${MAILX} ${ARGS} > .tlst
+   check behave:mbox-3 0 .tlst '1702194178 9110'
+
+   # only the odd (even)
+   (
+      printf 'File "file://%s"
+            copy ' .tmbox2
+      i=0
+      while [ ${i} -lt 112 ]; do
+         j=`modulo ${i} 2`
+         [ ${j} -eq 1 ] && printf '%s ' "${i}"
+         i=`add ${i} 1`
+      done
+      printf ' file://%s
+            File "file://%s"
+            from*
+         ' .tmbox3 .tmbox3
+   ) | ${MAILX} ${ARGS} > .tlst
+   check behave:mbox-4 0 .tmbox3 '631132924 6890'
+   check behave:mbox-5 - .tlst '2960975049 4573'
+   # ...
+   (
+      printf 'file "file://%s"
+            move ' .tmbox2
+      i=0
+      while [ ${i} -lt 112 ]; do
+         j=`modulo ${i} 2`
+         [ ${j} -eq 0 ] && [ ${i} -ne 0 ] && printf '%s ' "${i}"
+         i=`add ${i} 1`
+      done
+      printf ' file://%s
+            File "file://%s"
+            from*
+            File "file://%s"
+            from*
+         ' .tmbox3 .tmbox3 .tmbox2
+   ) | ${MAILX} ${ARGS} > .tlst
+   check behave:mbox-6 0 .tmbox3 '1387070539 13655'
+   ${sed} 2d < .tlst > .tlstx
+   check behave:mbox-7 - .tlstx '2729940494 13645'
+
+   t_epilog
+}
+
+t_behave_alternates() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${MYSHELL} -
+		(echo 'From Valeriana Sat Jul 08 15:54:03 2017' && ${cat} && echo
+			) >> "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Smta=./.tsendmail.sh > ./.tall 2>&1
+   echo --0
+   alternates
+   echo $?/$^ERRNAME
+   alternates a1@b1 a2@b2 a3@b3
+   echo $?/$^ERRNAME
+   alternates
+   echo $?/$^ERRNAME
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+
+   echo --1
+   unalternates a2@b2
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+   unalternates a3@b3
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+   unalternates a1@b1
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+
+   echo --2
+   unalternates *
+   alternates a1@b1 a2@b2 a3@b3
+   unalternates a3@b3
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+   unalternates a2@b2
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+   unalternates a1@b1
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+
+   echo --3
+   alternates a1@b1 a2@b2 a3@b3
+   unalternates a1@b1
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+   unalternates a2@b2
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+   unalternates a3@b3
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+
+   echo --4
+   unalternates *
+   alternates a1@b1 a2@b2 a3@b3
+   unalternates *
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+
+   echo --5
+   unalternates *
+   alternates a1@b1 a1@c1 a1@d1 a2@b2 a3@b3 a3@c3 a3@d3
+   m a1@b1 a1@c1 a1@d1
+	~s all alternates, only a1@b1 remains
+	~c a2@b2
+	~b a3@b3 a3@c3 a3@d3
+	~r - '_EOT'
+   This body is!
+   This also body is!!
+_EOT
+	~.
+
+   echo --6
+   unalternates *
+   alternates a1@b1 a1@c1 a2@b2 a3@b3
+   m a1@b1 a1@c1 a1@d1
+	~s a1@b1 a1@d1, and a3@c3 a3@d3 remain
+	~c a2@b2
+	~b a3@b3 a3@c3 a3@d3
+	~r - '_EOT'
+   This body2 is!
+_EOT
+	~.
+
+   echo --7
+   alternates a1@b1 a2@b2 a3; set allnet
+   m a1@b1 a1@c1 a1@d1
+	~s all alternates via allnet, only a1@b1 remains
+	~c a2@b2
+	~b a3@b3 a3@c3 a3@d3
+	~r - '_EOT'
+   This body3 is!
+_EOT
+	~.
+
+   echo --10
+   unalternates *
+   alternates a1@b1
+   echo $?/$^ERRNAME
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+   alternates a2@b2
+   echo $?/$^ERRNAME
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+   alternates a3@b3
+   echo $?/$^ERRNAME
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+   alternates a4@b4
+   echo $?/$^ERRNAME
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+
+   unalternates *
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+
+   echo --11
+   set posix
+   alternates a1@b1 a2@b2
+   echo $?/$^ERRNAME
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+   alternates a3@b3 a4@b4
+   echo $?/$^ERRNAME
+   vput alternates rv
+   echo $?/$^ERRNAME <$rv>
+	__EOT
+   check behave:alternates-1 0 "${MBOX}" '142184864 515'
+   check behave:alternates-2 - .tall '1878598364 505'
+
+   t_epilog
+}
+
+t_behave_alias() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${MYSHELL} -
+		(echo 'From Hippocastanum Mon Jun 19 15:07:07 2017' && ${cat} && echo
+			) >> "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Smta=./.tsendmail.sh > ./.tall 2>&1
+   alias a1 ex1@a1.ple
+   alias a1 ex2@a1.ple "EX3 <ex3@a1.ple>"
+   alias a1 ex4@a1.ple
+   alias a2 ex1@a2.ple ex2@a2.ple ex3@a2.ple ex4@a2.ple
+   alias a3 a4
+   alias a4 a5 ex1@a4.ple
+   alias a5 a6
+   alias a6 a7 ex1@a6.ple
+   alias a7 a8
+   alias a8 ex1@a8.ple
+   alias a1
+   alias a2
+   alias a3
+   m a1
+	~c a2
+	~b a3
+	~r - '_EOT'
+   This body is!
+   This also body is!!
+_EOT
+	__EOT
+   check behave:alias-1 0 "${MBOX}" '2496925843 272'
+   check behave:alias-2 - .tall '3548953204 152'
+
+   # TODO t_behave_alias: n_ALIAS_MAXEXP is compile-time constant,
+   # TODO need to somehow provide its contents to the test, then test
+
+   t_epilog
+}
+
+t_behave_filetype() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${MYSHELL} -
+		(echo 'From Alchemilla Wed Apr 25 15:12:13 2017' && ${cat} && echo
+			) >> "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   printf 'm m1@e.t\nL1\nHy1\n~.\nm m2@e.t\nL2\nHy2\n~@ ./snailmail.jpg\n~.\n' |
+      ${MAILX} ${ARGS} -Smta=./.tsendmail.sh
+   check behave:filetype-1 0 "${MBOX}" '1645747150 13536'
+
+   if command -v gzip >/dev/null 2>&1; then
+      ${rm} -f ./.t.mbox*
+      {
+         printf 'File "%s"\ncopy 1 ./.t.mbox.gz
+               copy 2 ./.t.mbox.gz' "${MBOX}" |
+            ${MAILX} ${ARGS} \
+               -X'filetype gz gzip\ -dc gzip\ -c'
+         printf 'File ./.t.mbox.gz\ncopy * ./.t.mbox\n' |
+            ${MAILX} ${ARGS} \
+               -X'filetype gz gzip\ -dc gzip\ -c'
+      } >/dev/null 2>&1
+      check behave:filetype-2 0 "./.t.mbox" '1645747150 13536'
+   else
+      echo 'behave:filetype-2: unsupported, skipped'
+   fi
+
+   {
+      ${rm} -f ./.t.mbox*
+      printf 'File "%s"\ncopy 1 ./.t.mbox.gz
+            copy 2 ./.t.mbox.gz
+            copy 1 ./.t.mbox.gz
+            copy 2 ./.t.mbox.gz
+            ' "${MBOX}" |
+         ${MAILX} ${ARGS} \
+            -X'filetype gz gzip\ -dc gzip\ -c' \
+            -X'filetype mbox.gz "${sed} 1,3d|${cat}" \
+            "echo eins;echo zwei;echo und mit ${sed} bist Du dabei;${cat}"'
+      printf 'File ./.t.mbox.gz\ncopy * ./.t.mbox\n' |
+         ${MAILX} ${ARGS} \
+            -X'filetype gz gzip\ -dc gzip\ -c' \
+            -X'filetype mbox.gz "${sed} 1,3d|${cat}" kill\ 0'
+   } >/dev/null 2>&1
+
+   check behave:filetype-3 - "./.t.mbox" '238021003 27092'
+
+   t_epilog
+}
+
+t_behave_record_a_resend() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t.record ./.t.resent"
+
+   printf '
+         set record=%s
+         m %s\n~s Subject 1.\nHello.\n~.
+         set record-files add-file-recipients
+         m %s\n~s Subject 2.\nHello.\n~.
+         File %s
+         resend 2 ./.t.resent
+         Resend 1 ./.t.resent
+         set record-resent
+         resend 2 ./.t.resent
+         Resend 1 ./.t.resent
+      ' ./.t.record "${MBOX}" "${MBOX}" "${MBOX}" |
+      ${MAILX} ${ARGS}
+
+   check behave:record_a_resend-1 0 "${MBOX}" '3057873538 256'
+   check behave:record_a_resend-2 - .t.record '391356429 460'
+   check behave:record_a_resend-3 - .t.resent '2685231691 648'
+
+   t_epilog
+}
+
+t_behave_e_H_L_opts() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.tsendmail.sh ./.t.mbox"
+
+   touch ./.t.mbox
+   ${MAILX} ${ARGS} -ef ./.t.mbox
+   echo ${?} > "${MBOX}"
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${MYSHELL} -
+		(echo 'From Alchemilla Wed Apr 07 17:03:33 2017' && ${cat} && echo
+			) >> "./.t.mbox"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+   printf 'm me@exam.ple\nLine 1.\nHello.\n~.\n' |
+   ${MAILX} ${ARGS} -Smta=./.tsendmail.sh
+   printf 'm you@exam.ple\nLine 1.\nBye.\n~.\n' |
+   ${MAILX} ${ARGS} -Smta=./.tsendmail.sh
+
+   ${MAILX} ${ARGS} -ef ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -efL @t@me ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -efL @t@you ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -efL '@>@Line 1' ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -efL '@>@Hello.' ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -efL '@>@Bye.' ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -efL '@>@Good bye.' ./.t.mbox
+   echo ${?} >> "${MBOX}"
+
+   ${MAILX} ${ARGS} -fH ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -fL @t@me ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -fL @t@you ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -fL '@>@Line 1' ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -fL '@>@Hello.' ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -fL '@>@Bye.' ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -fL '@>@Good bye.' ./.t.mbox >> "${MBOX}" 2>/dev/null
+   echo ${?} >> "${MBOX}"
+
+   check behave:e_H_L_opts - "${MBOX}" '1708955574 678'
+
+   t_epilog
+}
+
+t_behave_compose_hooks() { # TODO monster
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t*"
+
+   (echo line one&&echo line two&&echo line three) > ./.treadctl
+   (echo echo four&&echo echo five&&echo echo six) > ./.tattach
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${MYSHELL} -
+		(echo 'From PrimulaVeris Wed Apr 10 22:59:00 2017' && ${cat} && echo
+         ) >> "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   ${cat} <<'__EOT__' > ./.trc
+   define bail {
+      echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
+   }
+   define xerr {
+      vput vexpr es substr "$1" 0 1
+      if [ "$es" != 2 ]
+         xcall bail "$2"
+      end
+   }
+   define read_mline_res {
+      read hl; wysh set len=$? es=$! en=$^ERRNAME;\
+         echo $len/$es/$^ERRNAME: $hl
+      if [ $es -ne $^ERR-NONE ]
+         xcall bail read_mline_res
+      elif [ $len -ne 0 ]
+         \xcall read_mline_res
+      end
+   }
+   define ins_addr {
+      wysh set xh=$1
+      echo "~^header list"; read hl; echo $hl;\
+         call xerr "$hl" "in_addr ($xh) 0-1"
+
+      echo "~^header insert $xh diet <$xh@exam.ple> spliced";\
+         read es; echo $es; call xerr "$es" "ins_addr $xh 1-1"
+      echo "~^header insert $xh <${xh}2@exam.ple>";\
+         read es; echo $es; call xerr "$es" "ins_addr $xh 1-2"
+      echo "~^header insert $xh ${xh}3@exam.ple";\
+         read es; echo $es; call xerr "$es" "ins_addr $xh 1-3"
+      echo "~^header list $xh"; read hl; echo $hl;\
+         call xerr "$hl" "ins_addr $xh 1-4"
+      echo "~^header show $xh"; read es; call xerr $es "ins_addr $xh 1-5"
+      call read_mline_res
+
+      if [ "$t_remove" == "" ]
+         return
+      end
+
+      echo "~^header remove $xh"; read es; call xerr $es "ins_addr $xh 2-1"
+      echo "~^header remove $xh"; read es; vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "ins_addr $xh 2-2"
+      end
+      echo "~^header list $xh"; read es; vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "ins_addr $xh 2-3"
+      end
+      echo "~^header show $xh"; read es; vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "ins_addr $xh 2-4"
+      end
+
+      #
+      echo "~^header insert $xh diet <$xh@exam.ple> spliced";\
+         read es; echo $es; call xerr "$es" "ins_addr $xh 3-1"
+      echo "~^header insert $xh <${xh}2@exam.ple>";\
+         read es; echo $es; call xerr "$es" "ins_addr $xh 3-2"
+      echo "~^header insert $xh ${xh}3@exam.ple";\
+         read es; echo $es; call xerr "$es" "ins_addr $xh 3-3"
+      echo "~^header list $xh"; read hl; echo $hl;\
+         call xerr "$hl" "ins_addr $xh 3-4"
+      echo "~^header show $xh"; read es; call xerr $es "ins_addr $xh 3-5"
+      call read_mline_res
+
+      echo "~^header remove-at $xh 1"; read es;\
+         call xerr $es "ins_addr $xh 3-6"
+      echo "~^header remove-at $xh 1"; read es;\
+         call xerr $es "ins_addr $xh 3-7"
+      echo "~^header remove-at $xh 1"; read es;\
+         call xerr $es "ins_addr $xh 3-8"
+      echo "~^header remove-at $xh 1"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "ins_addr $xh 3-9"
+      end
+      echo "~^header remove-at $xh T"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 505 ]
+         xcall bail "ins_addr $xh 3-10"
+      end
+      echo "~^header list $xh"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "ins_addr $xh 3-11"
+      end
+      echo "~^header show $xh"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "ins_addr $xh 3-12"
+      end
+
+      #
+      echo "~^header insert $xh diet <$xh@exam.ple> spliced";\
+         read es; echo $es; call xerr "$es" "ins_addr $xh 4-1"
+      echo "~^header insert $xh <${xh}2@exam.ple> (comment) \"Quot(e)d\"";\
+         read es; echo $es; call xerr "$es" "ins_addr $xh 4-2"
+      echo "~^header insert $xh ${xh}3@exam.ple";\
+         read es; echo $es; call xerr "$es" "ins_addr $xh 4-3"
+      echo "~^header list $xh"; read hl; echo $hl;\
+         call xerr "$hl" "header list $xh 3-4"
+      echo "~^header show $xh"; read es; call xerr $es "ins_addr $xh 4-5"
+      call read_mline_res
+
+      echo "~^header remove-at $xh 3"; read es;\
+         call xerr $es "ins_addr $xh 4-6"
+      echo "~^header remove-at $xh 2"; read es;\
+         call xerr $es "ins_addr $xh 4-7"
+      echo "~^header remove-at $xh 1"; read es;\
+         call xerr $es "ins_addr $xh 4-8"
+      echo "~^header remove-at $xh 1"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "ins_addr $xh 4-9"
+      end
+      echo "~^header remove-at $xh T"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 505 ]
+         xcall bail "ins_addr $xh 4-10"
+      end
+      echo "~^header list $xh"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "ins_addr $xh 4-11"
+      end
+      echo "~^header show $xh"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "ins_addr $xh 4-12"
+      end
+   }
+   define ins_ref {
+      wysh set xh=$1 mult=$2
+      echo "~^header list"; read hl; echo $hl;\
+         call xerr "$hl" "ins_ref ($xh) 0-1"
+
+      echo "~^header insert $xh <$xh@exam.ple>";\
+         read es; echo $es; call xerr "$es" "ins_ref $xh 1-1"
+      if [ $mult -ne 0 ]
+         echo "~^header insert $xh <${xh}2@exam.ple>";\
+            read es; echo $es; call xerr "$es" "ins_ref $xh 1-2"
+         echo "~^header insert $xh ${xh}3@exam.ple";\
+            read es; echo $es; call xerr "$es" "ins_ref $xh 1-3"
+      else
+         echo "~^header insert $xh <${xh}2@exam.ple>"; read es;\
+            vput vexpr es substr $es 0 3
+         if [ $es != 506 ]
+            xcall bail "ins_ref $xh 1-4"
+         end
+      end
+
+      echo "~^header list $xh"; read hl; echo $hl;\
+         call xerr "$hl" "ins_ref $xh 1-5"
+      echo "~^header show $xh"; read es; call xerr $es "ins_ref $xh 1-6"
+      call read_mline_res
+
+      if [ "$t_remove" == "" ]
+         return
+      end
+
+      echo "~^header remove $xh"; read es;\
+         call xerr $es "ins_ref $xh 2-1"
+      echo "~^header remove $xh"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "ins_ref $xh 2-2"
+      end
+      echo "~^header list $xh"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "$es ins_ref $xh 2-3"
+      end
+      echo "~^header show $xh"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "ins_ref $xh 2-4"
+      end
+
+      #
+      echo "~^header insert $xh <$xh@exam.ple>";\
+         read es; echo $es; call xerr "$es" "ins_ref $xh 3-1"
+      if [ $mult -ne 0 ]
+         echo "~^header insert $xh <${xh}2@exam.ple>";\
+            read es; echo $es; call xerr "$es" "ins_ref $xh 3-2"
+         echo "~^header insert $xh ${xh}3@exam.ple";\
+            read es; echo $es; call xerr "$es" "ins_ref $xh 3-3"
+      end
+      echo "~^header list $xh";\
+         read hl; echo $hl; call xerr "$hl" "ins_ref $xh 3-4"
+      echo "~^header show $xh";\
+         read es; call xerr $es "ins_ref $xh 3-5"
+      call read_mline_res
+
+      echo "~^header remove-at $xh 1"; read es;\
+         call xerr $es "ins_ref $xh 3-6"
+      if [ $mult -ne 0 ] && [ $xh != subject ]
+         echo "~^header remove-at $xh 1"; read es;\
+            call xerr $es "ins_ref $xh 3-7"
+         echo "~^header remove-at $xh 1"; read es;\
+            call xerr $es "ins_ref $xh 3-8"
+      end
+      echo "~^header remove-at $xh 1"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "ins_ref $xh 3-9"
+      end
+      echo "~^header remove-at $xh T"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 505 ]
+         xcall bail "ins_ref $xh 3-10"
+      end
+      echo "~^header show $xh"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "ins_ref $xh 3-11"
+      end
+
+      #
+      echo "~^header insert $xh <$xh@exam.ple> ";\
+         read es; echo $es; call xerr "$es" "ins_ref $xh 4-1"
+      if [ $mult -ne 0 ]
+         echo "~^header insert $xh <${xh}2@exam.ple> ";\
+            read es; echo $es; call xerr "$es" "ins_ref $xh 4-2"
+         echo "~^header insert $xh ${xh}3@exam.ple";\
+            read es; echo $es; call xerr "$es" "ins_ref $xh 4-3"
+      end
+      echo "~^header list $xh"; read hl; echo $hl;\
+         call xerr "$hl" "ins_ref $xh 4-4"
+      echo "~^header show $xh"; read es; call xerr $es "ins_ref $xh 4-5"
+      call read_mline_res
+
+      if [ $mult -ne 0 ] && [ $xh != subject ]
+         echo "~^header remove-at $xh 3"; read es;\
+            call xerr $es "ins_ref $xh 4-6"
+         echo "~^header remove-at $xh 2"; read es;\
+            call xerr $es "ins_ref $xh 4-7"
+      end
+      echo "~^header remove-at $xh 1"; read es;\
+         call xerr $es "ins_ref $xh 4-8"
+      echo "~^header remove-at $xh 1"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "ins_ref $xh 4-9"
+      end
+      echo "~^header remove-at $xh T"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 505 ]
+         xcall bail "ins_ref $xh 4-10"
+      end
+      echo "~^header show $xh"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "ins_ref $xh 4-11"
+      end
+   }
+   define t_header {
+      echo t_header ENTER
+      # In collect.c order
+      call ins_addr from
+      call ins_ref sender 0 # Not a "ref", but works
+      call ins_addr To
+      call ins_addr cC
+      call ins_addr bCc
+      call ins_addr reply-To
+      call ins_addr mail-Followup-to
+      call ins_ref messAge-id 0
+      call ins_ref rEfErEncEs 1
+      call ins_ref in-Reply-to 1
+      call ins_ref subject 1 # Not a "ref", but works (with tweaks)
+      call ins_addr freeForm1
+      call ins_addr freeform2
+
+      echo "~^header show MAILX-Command"; read es; call xerr $es "t_header 1000"
+      call read_mline_res
+      echo "~^header show MAILX-raw-TO"; read es; call xerr $es "t_header 1001"
+      call read_mline_res
+
+      echo t_header LEAVE
+   }
+   define t_attach {
+      echo t_attach ENTER
+
+      echo "~^attachment";\
+         read hl; echo $hl; vput vexpr es substr "$hl" 0 3
+      if [ "$es" != 501 ]
+         xcall bail "attach 0-1"
+      end
+
+      echo "~^attach attribute ./.treadctl";\
+         read hl; echo $hl; vput vexpr es substr "$hl" 0 3
+      if [ "$es" != 501 ]
+         xcall bail "attach 0-2"
+      end
+      echo "~^attachment attribute-at 1";\
+         read hl; echo $hl; vput vexpr es substr "$hl" 0 3
+      if [ "$es" != 501 ]
+         xcall bail "attach 0-3"
+      end
+
+      echo "~^attachment insert ./.treadctl=ascii";\
+         read hl; echo $hl; call xerr "$hl" "attach 1-1"
+      echo "~^attachment list";\
+         read es; echo $es;call xerr "$es" "attach 1-2"
+      call read_mline_res
+      echo "~^attachment attribute ./.treadctl";\
+         read es; echo $es;call xerr "$es" "attach 1-3"
+      call read_mline_res
+      echo "~^attachment attribute .treadctl";\
+         read es; echo $es;call xerr "$es" "attach 1-4"
+      call read_mline_res
+      echo "~^attachment attribute-at 1";\
+         read es; echo $es;call xerr "$es" "attach 1-5"
+      call read_mline_res
+
+      echo "~^attachment attribute-set ./.treadctl filename rctl";\
+         read es; echo $es;call xerr "$es" "attach 1-6"
+      echo "~^attachment attribute-set .treadctl content-description Au";\
+         read es; echo $es;call xerr "$es" "attach 1-7"
+      echo "~^attachment attribute-set-at 1 content-id <10.du@ich>";\
+         read es; echo $es;call xerr "$es" "attach 1-8"
+
+      echo "~^attachment attribute ./.treadctl";\
+         read es; echo $es;call xerr "$es" "attach 1-9"
+      call read_mline_res
+      echo "~^attachment attribute .treadctl";\
+         read es; echo $es;call xerr "$es" "attach 1-10"
+      call read_mline_res
+      echo "~^attachment attribute rctl";\
+         read es; echo $es;call xerr "$es" "attach 1-11"
+      call read_mline_res
+      echo "~^attachment attribute-at 1";\
+         read es; echo $es;call xerr "$es" "attach 1-12"
+      call read_mline_res
+
+      #
+      echo "~^attachment insert ./.tattach=latin1";\
+         read hl; echo $hl; call xerr "$hl" "attach 2-1"
+      echo "~^attachment list";\
+         read es; echo $es;call xerr "$es" "attach 2-2"
+      call read_mline_res
+      echo "~^attachment attribute ./.tattach";\
+         read es; echo $es;call xerr "$es" "attach 2-3"
+      call read_mline_res
+      echo "~^attachment attribute .tattach";\
+         read es; echo $es;call xerr "$es" "attach 2-4"
+      call read_mline_res
+      echo "~^attachment attribute-at 2";\
+         read es; echo $es;call xerr "$es" "attach 2-5"
+      call read_mline_res
+
+      echo "~^attachment attribute-set ./.tattach filename tat";\
+         read es; echo $es;call xerr "$es" "attach 2-6"
+      echo \
+      "~^attachment attribute-set .tattach content-description Au2";\
+         read es; echo $es;call xerr "$es" "attach 2-7"
+      echo "~^attachment attribute-set-at 2 content-id <20.du@wir>";\
+         read es; echo $es;call xerr "$es" "attach 2-8"
+      echo \
+         "~^attachment attribute-set-at 2 content-type application/x-sh";\
+        read es; echo $es;call xerr "$es" "attach 2-9"
+
+      echo "~^attachment attribute ./.tattach";\
+         read es; echo $es;call xerr "$es" "attach 2-10"
+      call read_mline_res
+      echo "~^attachment attribute .tattach";\
+         read es; echo $es;call xerr "$es" "attach 2-11"
+      call read_mline_res
+      echo "~^attachment attribute tat";\
+         read es; echo $es;call xerr "$es" "attach 2-12"
+      call read_mline_res
+      echo "~^attachment attribute-at 2";\
+         read es; echo $es;call xerr "$es" "attach 2-13"
+      call read_mline_res
+
+      #
+      if [ "$t_remove" == "" ]
+         return
+      end
+
+      echo "~^attachment remove ./.treadctl"; read es;\
+         call xerr $es "attach 3-1"
+      echo "~^attachment remove ./.tattach"; read es;\
+         call xerr $es "attach 3-2"
+      echo "~^   attachment     remove     ./.treadctl"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "attach 3-3"
+      end
+      echo "~^   attachment     remove     ./.tattach"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "attach 3-4"
+      end
+      echo "~^attachment list"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "attach 3-5"
+      end
+
+      #
+      echo "~^attachment insert ./.tattach=latin1";\
+         read hl; echo $hl; call xerr "$hl" "attach 4-1"
+      echo "~^attachment insert ./.tattach=latin1";\
+         read hl; echo $hl; call xerr "$hl" "attach 4-2"
+      echo "~^attachment list";\
+         read es; echo $es;call xerr "$es" "attach 4-3"
+      call read_mline_res
+      echo "~^   attachment     remove     .tattach"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 506 ]
+         xcall bail "attach 4-4 $es"
+      end
+      echo "~^attachment remove-at T"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 505 ]
+         xcall bail "attach 4-5"
+      end
+      echo "~^attachment remove ./.tattach"; read es;\
+         call xerr $es "attach 4-6"
+      echo "~^attachment remove ./.tattach"; read es;\
+         call xerr $es "attach 4-7"
+      echo "~^   attachment     remove     ./.tattach"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "attach 4-8 $es"
+      end
+      echo "~^attachment list"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "attach 4-9"
+      end
+
+      #
+      echo "~^attachment insert ./.tattach=latin1";\
+         read hl; echo $hl; call xerr "$hl" "attach 5-1"
+      echo "~^attachment insert ./.tattach=latin1";\
+         read hl; echo $hl; call xerr "$hl" "attach 5-2"
+      echo "~^attachment insert ./.tattach=latin1";\
+         read hl; echo $hl; call xerr "$hl" "attach 5-3"
+      echo "~^attachment list";\
+         read es; echo $es;call xerr "$es" "attach 5-4"
+      call read_mline_res
+
+      echo "~^attachment remove-at 3"; read es;\
+         call xerr $es "attach 5-5"
+      echo "~^attachment remove-at 3"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "attach 5-6"
+      end
+      echo "~^attachment remove-at 2"; read es;\
+         call xerr $es "attach 5-7"
+      echo "~^attachment remove-at 2"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "attach 5-8"
+      end
+      echo "~^attachment remove-at 1"; read es;\
+         call xerr $es "attach 5-9"
+      echo "~^attachment remove-at 1"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "attach 5-10"
+      end
+
+      echo "~^attachment list"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "attach 5-11"
+      end
+
+      #
+      echo "~^attachment insert ./.tattach=latin1";\
+         read hl; echo $hl; call xerr "$hl" "attach 6-1"
+      echo "~^attachment insert ./.tattach=latin1";\
+         read hl; echo $hl; call xerr "$hl" "attach 6-2"
+      echo "~^attachment insert ./.tattach=latin1";\
+         read hl; echo $hl; call xerr "$hl" "attach 6-3"
+      echo "~^attachment list";\
+         read es; echo $es;call xerr "$es" "attach 6-4"
+      call read_mline_res
+
+      echo "~^attachment remove-at 1"; read es;\
+         call xerr $es "attach 6-5"
+      echo "~^attachment remove-at 1"; read es;\
+         call xerr $es "attach 6-6"
+      echo "~^attachment remove-at 1"; read es;\
+         call xerr $es "attach 6-7"
+      echo "~^attachment remove-at 1"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "attach 6-8"
+      end
+
+      echo "~^attachment list"; read es;\
+         vput vexpr es substr $es 0 3
+      if [ $es != 501 ]
+         xcall bail "attach 6-9"
+      end
+
+      echo t_attach LEAVE
+   }
+   define t_ocs {
+      read ver
+      echo t_ocs
+      call t_header
+      call t_attach
+   }
+   define t_oce {
+      echo on-compose-enter, mailx-command<$mailx-command>
+      alternates alter1@exam.ple alter2@exam.ple
+      alternates
+      set autocc='alter1@exam.ple alter2@exam.ple'
+      echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
+      echo mailx-subject<$mailx-subject>
+      echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
+      echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
+         mailx-raw-bcc<$mailx-raw-bcc>
+      echo mailx-orig-from<$mailx-orig-from> mailx-orig-to<$mailx-orig-to> \
+         mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
+   }
+   define t_ocl {
+      echo on-compose-leave, mailx-command<$mailx-command>
+      vput alternates al
+      eval alternates $al alter3@exam.ple alter4@exam.ple
+      alternates
+      set autobcc='alter3@exam.ple alter4@exam.ple'
+      echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
+      echo mailx-subject<$mailx-subject>
+      echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
+      echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
+         mailx-raw-bcc<$mailx-raw-bcc>
+      echo mailx-orig-from<$mailx-orig-from> mailx-orig-to<$mailx-orig-to> \
+         mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
+   }
+   define t_occ {
+      echo on-compose-cleanup, mailx-command<$mailx-command>
+      unalternates *
+      alternates
+      echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
+      echo mailx-subject<$mailx-subject>
+      echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
+      echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
+         mailx-raw-bcc<$mailx-raw-bcc>
+      echo mailx-orig-from<$mailx-orig-from> mailx-orig-to<$mailx-orig-to> \
+         mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
+   }
+   wysh set on-compose-splice=t_ocs \
+      on-compose-enter=t_oce on-compose-leave=t_ocl \
+         on-compose-cleanup=t_occ
+__EOT__
+
+   #
+
+   ${rm} -f "${MBOX}"
+   printf 'm this-goes@nowhere\nbody\n!.\n' |
+   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
+      -X'source ./.trc' -Smta=./.tsendmail.sh \
+      >./.tall 2>&1
+   ${cat} ./.tall >> "${MBOX}"
+   check behave:compose_hooks-1 0 "${MBOX}" '3667291468 10101'
+
+   ${rm} -f "${MBOX}"
+   printf 'm this-goes@nowhere\nbody\n!.\n' |
+   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
+      -St_remove=1 -X'source ./.trc' -Smta=./.tsendmail.sh \
+      >./.tall 2>&1
+   ${cat} ./.tall >> "${MBOX}"
+   check behave:compose_hooks-2 0 "${MBOX}" '1746765053 12535'
+
+   # Some state machine stress, shell compose hook, localopts for hook, etc.
+   # readctl in child. ~r as HERE document
+   ${rm} -f "${MBOX}"
+   printf 'm ex@am.ple\nbody\n!.\nvar t_oce t_ocs t_ocs_sh t_ocl t_occ autocc' |
+   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! \
+      -Smta=./.tsendmail.sh \
+      -X'
+         define bail {
+            echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
+         }
+         define xerr {
+            vput vexpr es substr "$1" 0 1
+            if [ "$es" != 2 ]
+               xcall bail "$2"
+            end
+         }
+         define read_mline_res {
+            read hl; wysh set len=$? es=$! en=$^ERRNAME;\
+               echo $len/$es/$^ERRNAME: $hl
+            if [ $es -ne $^ERR-NONE ]
+               xcall bail read_mline_res
+            elif [ $len -ne 0 ]
+               \xcall read_mline_res
+            end
+         }
+         define _work {
+            vput vexpr i + 1 "$2"
+            if [ $i -lt 111 ]
+               vput vexpr j % $i 10
+               if [ $j -ne 0 ]
+                  set j=xcall
+               else
+                  echon "$i.. "
+                  set j=call
+               end
+               eval \\$j _work $1 $i
+               return $?
+            end
+            vput vexpr i + $i "$1"
+            return $i
+         }
+         define _read {
+            read line;wysh set es=$? en=$^ERRNAME ; echo read:$es/$en: $line
+            if [ "${es}" -ne -1 ]
+               xcall _read
+            end
+            readctl remove $cwd/.treadctl; echo readctl remove:$?/$^ERRNAME
+         }
+         define t_ocs {
+            read ver
+            echo t_ocs
+            echo "~^header list"; read hl; echo $hl;\
+               vput vexpr es substr "$hl" 0 1
+            if [ "$es" != 2 ]
+               xcall bail "header list"
+            endif
+            #
+            call _work 1; echo $?
+            echo "~^header insert cc splicy diet <splice@exam.ple> spliced";\
+               read es; echo $es; vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               xcall bail "be diet"
+            endif
+            echo "~^header insert cc <splice2@exam.ple>";\
+               read es; echo $es; vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               xcall bail "be diet2"
+            endif
+            #
+            call _work 2; echo $?
+            echo "~^header insert bcc juicy juice <juice@exam.ple> spliced";\
+               read es; echo $es;vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               xcall bail "be juicy"
+            endif
+            echo "~^header insert bcc juice2@exam.ple";\
+               read es; echo $es;vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               xcall bail "be juicy2"
+            endif
+            echo "~^header insert bcc juice3 <juice3@exam.ple>";\
+               read es; echo $es;vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               xcall bail "be juicy3"
+            endif
+            echo "~^header insert bcc juice4@exam.ple";\
+               read es; echo $es;vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               xcall bail "be juicy4"
+            endif
+            #
+            echo "~^header remove-at bcc 3";\
+               read es; echo $es;vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               xcall bail "remove juicy5"
+            endif
+            echo "~^header remove-at bcc 2";\
+               read es; echo $es;vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               xcall bail "remove juicy6"
+            endif
+            echo "~^header remove-at bcc 3";\
+               read es; echo $es;vput vexpr es substr "$es" 0 3
+            if [ "$es" != 501 ]
+               xcall bail "failed to remove-at"
+            endif
+            # Add duplicates which ought to be removed!
+            echo "~^header insert bcc juice4@exam.ple";\
+               read es; echo $es;vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               xcall bail "be juicy4-1"
+            endif
+            echo "~^header insert bcc juice4@exam.ple";\
+               read es; echo $es;vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               xcall bail "be juicy4-2"
+            endif
+            echo "~^header insert bcc juice4@exam.ple";\
+               read es; echo $es;vput vexpr es substr "$es" 0 1
+            if [ "$es" != 2 ]
+               xcall bail "be juicy4-3"
+            endif
+            echo "~:set t_ocs"
+
+            #
+            call _work 3; echo $?
+            echo "~r - '__EOT'"
+            vput ! i echo just knock if you can hear me;\
+               i=0;\
+               while [ $i -lt 24 ]; do printf "%s " $i; i=`expr $i + 1`; done;\
+               echo relax
+            echon shell-cmd says $?/$^ERRNAME: $i
+            echo "~x  will not become interpreted, we are reading until __EOT"
+            echo "__EOT"
+            read r_status; echo "~~r status output: $r_status"
+            echo "~:echo $? $! $^ERRNAME"
+            read r_status
+            echo "~~r status from parent: $r_status"
+
+            #
+            call _work 4; echo $?
+            vput cwd cwd;echo cwd:$?
+            readctl create $cwd/.treadctl     ;echo readctl:$?/$^ERRNAME;\
+            call _read
+
+            #
+            call _work 5; echo $?
+            echo "~^header show MAILX-Command"; read es;\
+               call xerr $es "t_header 1000"; call read_mline_res
+            echo "~^header show MAILX-raw-TO"; read es;\
+               call xerr $es "t_header 1001"; xcall read_mline_res
+
+            echoerr IT IS WRONG IF YOU SEE THIS
+         }
+         define t_oce {
+            echo on-compose-enter, mailx-command<$mailx-command>
+            set t_oce autobcc=oce@exam.ple
+            alternates alter1@exam.ple alter2@exam.ple
+            alternates
+            echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
+            echo mailx-subject<$mailx-subject>
+            echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
+            echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
+               mailx-raw-bcc<$mailx-raw-bcc>
+            echo mailx-orig-from<$mailx-orig-from> \
+               mailx-orig-to<$mailx-orig-to> \
+               mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
+         }
+         define t_ocl {
+            echo on-compose-leave, mailx-command<$mailx-command>
+            set t_ocl autocc=ocl@exam.ple
+            unalternates *
+            alternates alter3@exam.ple alter4@exam.ple
+            alternates
+            echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
+            echo mailx-subject<$mailx-subject>
+            echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
+            echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
+               mailx-raw-bcc<$mailx-raw-bcc>
+            echo mailx-orig-from<$mailx-orig-from> \
+               mailx-orig-to<$mailx-orig-to> \
+               mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
+         }
+         define t_occ {
+            echo on-compose-cleanup, mailx-command<$mailx-command>
+            set t_occ autocc=occ@exam.ple
+            unalternates *
+            alternates
+            echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
+            echo mailx-subject<$mailx-subject>
+            echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
+            echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
+               mailx-raw-bcc<$mailx-raw-bcc>
+            echo mailx-orig-from<$mailx-orig-from> \
+               mailx-orig-to<$mailx-orig-to> \
+               mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
+         }
+         wysh set on-compose-splice=t_ocs \
+            on-compose-splice-shell="read ver;printf \"t_ocs-shell\\n\
+               ~t shell@exam.ple\\n~:set t_ocs_sh\\n\"" \
+            on-compose-enter=t_oce on-compose-leave=t_ocl \
+            on-compose-cleanup=t_occ
+      ' > ./.tnotes 2>&1
+   ex0_test behave:compose_hooks-3
+   ${cat} ./.tnotes >> "${MBOX}"
+
+   check behave:compose_hooks-3 - "${MBOX}" '679526364 2431'
+
+   # Reply, forward, resend, Resend
+
+   ${rm} -f "${MBOX}"
+   printf 'set from=f1@z\nm t1@z\nb1\n!.\nset from=f2@z\nm t2@z\nb2\n!.\n' |
+   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! \
+      -Smta=./.tsendmail.sh
+
+   printf '
+      echo start: $? $! $^ERRNAME
+      File %s
+      echo File: $? $! $^ERRNAME;echo;echo
+      reply 1
+this is content of reply 1
+!.
+      echo reply 1: $? $! $^ERRNAME;echo;echo
+      Reply 1 2
+this is content of Reply 1 2
+!.
+      echo Reply 1 2: $? $! $^ERRNAME;echo;echo
+      forward 1 fwdex@am.ple
+this is content of forward 1
+!.
+      echo forward 1: $? $! $^ERRNAME;echo;echo
+      resend 1 2 resendex@am.ple
+      echo resend 1 2: $? $! $^ERRNAME;echo;echo
+      Resend 1 2 Resendex@am.ple
+      echo Resend 1 2: $? $! $^ERRNAME;echo;echo
+   ' "${MBOX}" |
+   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! \
+      -Smta=./.tsendmail.sh \
+      -X'
+         define bail {
+            echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
+         }
+         define xerr {
+            vput vexpr es substr "$1" 0 1
+            if [ "$es" != 2 ]
+               xcall bail "$2"
+            end
+         }
+         define read_mline_res {
+            read hl; wysh set len=$? es=$! en=$^ERRNAME;\
+               echo mline_res:$len/$es/$^ERRNAME: $hl
+            if [ $es -ne $^ERR-NONE ]
+               xcall bail read_mline_res
+            elif [ $len -ne 0 ]
+               \xcall read_mline_res
+            end
+         }
+         define work_hl {
+            echo "~^header show $1"; read es;\
+               call xerr $es "work_hl $1"; echo $1; call read_mline_res
+            if [ $# -gt 1 ]
+               shift
+               xcall work_hl "$@"
+            end
+         }
+         define t_ocs {
+            read ver
+            echo t_ocs version $ver
+            echo "~^header list"; read hl; echo $hl;\
+            echoerr the header list is $hl;\
+               call xerr "$hl" "header list"
+            eval vpospar set $hl
+            shift
+            xcall work_hl "$@"
+            echoerr IT IS WRONG IF YOU SEE THIS
+         }
+         define t_oce {
+            echo on-XY-enter, mailx-command<$mailx-command>
+            set t_oce autobcc=oce@exam.ple
+            echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
+            echo mailx-subject<$mailx-subject>
+            echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
+            echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
+               mailx-raw-bcc<$mailx-raw-bcc>
+            echo mailx-orig-from<$mailx-orig-from> \
+               mailx-orig-to<$mailx-orig-to> \
+               mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
+         }
+         define t_ocl {
+            echo on-XY-leave, mailx-command<$mailx-command>
+            set t_ocl autocc=ocl@exam.ple
+            echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
+            echo mailx-subject<$mailx-subject>
+            echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
+            echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
+               mailx-raw-bcc<$mailx-raw-bcc>
+            echo mailx-orig-from<$mailx-orig-from> \
+               mailx-orig-to<$mailx-orig-to> \
+               mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
+         }
+         define t_occ {
+            echo on-XY-cleanup, mailx-command<$mailx-command>
+            set t_occ autocc=occ@exam.ple
+            echo mailx-from<$mailx-from> mailx-sender<$mailx-sender>
+            echo mailx-subject<$mailx-subject>
+            echo mailx-to<$mailx-to> mailx-cc<$mailx-cc> mailx-bcc<$mailx-bcc>
+            echo mailx-raw-to<$mailx-raw-to> mailx-raw-cc<$mailx-raw-cc> \
+               mailx-raw-bcc<$mailx-raw-bcc>
+            echo mailx-orig-from<$mailx-orig-from> \
+               mailx-orig-to<$mailx-orig-to> \
+               mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
+         }
+         wysh set on-compose-splice=t_ocs \
+            on-compose-enter=t_oce on-compose-leave=t_ocl \
+               on-compose-cleanup=t_occ \
+            on-resend-enter=t_oce on-resend-cleanup=t_occ
+      ' > ./.tnotes 2>&1
+   ex0_test behave:compose_hooks-4
+   ${cat} ./.tnotes >> "${MBOX}"
+
+   check behave:compose_hooks-4 - "${MBOX}" '2711778338 7516'
+
+   t_epilog
+}
+
+t_behave_message_injections() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${MYSHELL} -
+		(echo 'From Echinacea Tue Jun 20 15:54:02 2017' && ${cat} && echo
+			) > "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   echo mysig > ./.tmysig
+
+   echo some-body | ${MAILX} ${ARGS} -Smta=./.tsendmail.sh \
+      -Smessage-inject-head=head-inject \
+      -Smessage-inject-tail=tail-inject \
+      -Ssignature=./.tmysig \
+      ex@am.ple > ./.tall 2>&1
+   check behave:message_injections-1 0 "${MBOX}" '2434746382 134'
+   check behave:message_injections-2 - .tall '4294967295 0' # empty file
+
+   ${cat} <<-_EOT > ./.template
+	From: me
+	To: ex1@am.ple
+	Cc: ex2@am.ple
+	Subject: This subject is
+
+   Body, body, body me.
+	_EOT
+   < ./.template ${MAILX} ${ARGS} -t -Smta=./.tsendmail.sh \
+      -Smessage-inject-head=head-inject \
+      -Smessage-inject-tail=tail-inject \
+      -Ssignature=./.tmysig \
+      > ./.tall 2>&1
+   check behave:message_injections-3 0 "${MBOX}" '3114203412 198'
+   check behave:message_injections-4 - .tall '4294967295 0' # empty file
+
+   t_epilog
+}
+
+t_behave_mime_types_load_control() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} <<-_EOT > ./.tmts1
+   @ application/mathml+xml mathml
+	_EOT
+   ${cat} <<-_EOT > ./.tmts2
+   @ x-conference/x-cooltalk ice
+   @ aga-aga aga
+   @ application/aga-aga aga
+	_EOT
+
+   ${cat} <<-_EOT > ./.tmts1.mathml
+   <head>nonsense ML</head>
+	_EOT
+   ${cat} <<-_EOT > ./.tmts2.ice
+   Icy, icy road.
+	_EOT
+   printf 'of which the crack is coming soon' > ./.tmtsx.doom
+   printf 'of which the crack is coming soon' > ./.tmtsx.aga
+
+   printf '
+         m %s
+         Schub-di-du
+~@ ./.tmts1.mathml
+~@ ./.tmts2.ice
+~@ ./.tmtsx.doom
+~@ ./.tmtsx.aga
+~.
+         File %s
+         from*
+         type
+         xit
+      ' "${MBOX}" "${MBOX}" |
+      ${MAILX} ${ARGS} \
+         -Smimetypes-load-control=f=./.tmts1,f=./.tmts2 \
+         > ./.tout 2>&1
+   ex0_test behave:mime_types_load_control
+
+   ${cat} "${MBOX}" >> ./.tout
+   check behave:mime_types_load_control-1 - ./.tout '529577037 2474'
+
+   echo type | ${MAILX} ${ARGS} -R \
+      -Smimetypes-load-control=f=./.tmts1,f=./.tmts3 \
+      -f "${MBOX}" >> ./.tout 2>&1
+   check behave:mime_types_load_control-2 0 ./.tout '2025926659 3558'
+
+   t_epilog
+}
+
+t_behave_smime() {
+   have_feat smime || {
+      echo 'behave:s/mime: unsupported, skipped'
+      return
+   }
+
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t.conf ./.tkey.pem ./.tcert.pem ./.tpair.pem"
+   TRAP_EXIT_ADDONS="${TRAP_EXIT_ADDONS} ./.VERIFY ./.DECRYPT ./.ENCRYPT"
+   TRAP_EXIT_ADDONS="${TRAP_EXIT_ADDONS} ./.tsendmail.sh"
+
    printf 'behave:s/mime: .. generating test key and certificate ..\n'
-   ${cat} <<-_EOT > ./t.conf
+   ${cat} <<-_EOT > ./.t.conf
 		[ req ]
 		default_bits           = 1024
 		default_keyfile        = keyfile.pem
@@ -832,104 +3461,310 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
 		[ req_attributes ]
 		challengePassword =
 	_EOT
-   openssl req -x509 -nodes -days 3650 -config ./t.conf \
-      -newkey rsa:1024 -keyout ./tkey.pem -out ./tcert.pem >/dev/null 2>&1
-   ${rm} -f ./t.conf
-   ${cat} ./tkey.pem ./tcert.pem > ./tpair.pem
+   openssl req -x509 -nodes -days 3650 -config ./.t.conf \
+      -newkey rsa:1024 -keyout ./.tkey.pem -out ./.tcert.pem >/dev/null 2>&1
+   ${cat} ./.tkey.pem ./.tcert.pem > ./.tpair.pem
 
-   printf "behave:s/mime:sign/verify: "
-   echo bla |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
-      -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
+   # Sign/verify
+   printf 'behave:s/mime:sign/verify: '
+   echo bla | ${MAILX} ${ARGS} \
+      -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
-      -s 'S/MIME test' ./VERIFY
-   # TODO CHECK
-   printf 'verify\nx\n' |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
-      -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
-      -Ssmime-sign -Sfrom=test@localhost \
-      -Sbatch-exit-on-error -R \
-      -f ./VERIFY >/dev/null 2>&1
+      -s 'S/MIME test' ./.VERIFY
    if [ $? -eq 0 ]; then
       printf 'ok\n'
    else
+      printf 'failed\n'
       ESTAT=1
-      printf 'error: verification failed\n'
-      ${rm} -f ./VERIFY ./tkey.pem ./tcert.pem ./tpair.pem
+      t_epilog
       return
    fi
-   ${rm} -rf ./VERIFY
+
+   ${awk} '
+      BEGIN{ skip=0 }
+      /^Content-Description: /{ skip = 2; print; next }
+      /^$/{ if(skip) --skip }
+      { if(!skip) print }
+   ' \
+      < ./.VERIFY > "${MBOX}"
+   check behave:s/mime:sign/verify:checksum - "${MBOX}" '2900817158 648'
+
+   printf 'behave:s/mime:sign/verify:verify '
+   printf 'verify\nx\n' |
+   ${MAILX} ${ARGS} \
+      -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
+      -Ssmime-sign -Sfrom=test@localhost \
+      -Serrexit -R \
+      -f ./.VERIFY >/dev/null 2>&1
+   if [ $? -eq 0 ]; then
+      printf 'ok\n'
+   else
+      printf 'failed\n'
+      ESTAT=1
+      t_epilog
+      return
+   fi
+
+   printf 'behave:s/mime:sign/verify:disproof-1 '
+   if openssl smime -verify -CAfile ./.tcert.pem \
+         -in ./.VERIFY >/dev/null 2>&1; then
+      printf 'ok\n'
+   else
+      printf 'failed\n'
+      ESTAT=1
+      t_epilog
+      return
+   fi
 
    # (signing +) encryption / decryption
-   ${cat} <<-_EOT > ./tsendmail.sh
-		#!/bin/sh -
-		(echo 'From S-Postman Thu May 10 20:40:54 2012' && ${cat}) > ./ENCRYPT
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${MYSHELL} -
+		(echo 'From Euphrasia Thu Apr 27 17:56:23 2017' && ${cat}) > ./.ENCRYPT
 	_EOT
-   chmod 0755 ./tsendmail.sh
+   chmod 0755 ./.tsendmail.sh
 
-   printf "behave:s/mime:encrypt+sign/decrypt+verify: "
+   printf 'behave:s/mime:encrypt+sign: '
    echo bla |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
+   ${MAILX} ${ARGS} \
       -Ssmime-force-encryption \
-      -Ssmime-encrypt-recei@ver.com=./tpair.pem \
-      -Ssendmail=./tsendmail.sh \
-      -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
+      -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
+      -Smta=./.tsendmail.sh \
+      -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -s 'S/MIME test' recei@ver.com
-   # TODO CHECK
-   printf 'decrypt ./DECRYPT\nfi ./DECRYPT\nverify\nx\n' |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
-      -Ssmime-force-encryption \
-      -Ssmime-encrypt-recei@ver.com=./tpair.pem \
-      -Ssendmail=./tsendmail.sh \
-      -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
-      -Ssmime-sign -Sfrom=test@localhost \
-      -Sbatch-exit-on-error -R \
-      -f ./ENCRYPT >/dev/null 2>&1
    if [ $? -eq 0 ]; then
       printf 'ok\n'
    else
       ESTAT=1
-      printf 'error: decryption+verification failed\n'
+      printf 'error: encrypt+sign failed\n'
    fi
-   ${sed} -e '/^X-Decoding-Date/d' \
-         -e \
-         '/^Content-Disposition: attachment; filename="smime.p7s"/,/^-- /d' \
-      < ./DECRYPT > ./ENCRYPT
-   cksum_test ".. checksum of decrypted content" "./ENCRYPT" '82649489 454'
 
-   ${rm} -f ./DECRYPT
-   printf "behave:s/mime:encrypt/decrypt: "
-   echo bla |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
+   ${sed} -e '/^$/,$d' < ./.ENCRYPT > "${MBOX}"
+   check behave:s/mime:encrypt+sign:checksum - "${MBOX}" '1937410597 327'
+
+   printf 'behave:s/mime:decrypt+verify: '
+   printf 'decrypt ./.DECRYPT\nfi ./.DECRYPT\nverify\nx\n' |
+   ${MAILX} ${ARGS} \
       -Ssmime-force-encryption \
-      -Ssmime-encrypt-recei@ver.com=./tpair.pem \
-      -Ssendmail=./tsendmail.sh \
-      -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
-      -Sfrom=test@localhost \
-      -s 'S/MIME test' recei@ver.com
-   printf 'decrypt ./DECRYPT\nx\n' |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
-      -Ssmime-force-encryption \
-      -Ssmime-encrypt-recei@ver.com=./tpair.pem \
-      -Ssendmail=./tsendmail.sh \
-      -Ssmime-ca-file=./tcert.pem -Ssmime-sign-cert=./tpair.pem \
-      -Sfrom=test@localhost \
-      -Sbatch-exit-on-error -R \
-      -f ./ENCRYPT >/dev/null 2>&1
+      -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
+      -Smta=./.tsendmail.sh \
+      -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
+      -Ssmime-sign -Sfrom=test@localhost \
+      -Serrexit -R \
+      -f ./.ENCRYPT >/dev/null 2>&1
    if [ $? -eq 0 ]; then
       printf 'ok\n'
    else
       ESTAT=1
-      printf 'error: decryption failed\n'
-      # FALLTHRU
+      printf 'failed\n'
    fi
-   ${sed} -e '/^X-Decoding-Date/d' \
-      < ./DECRYPT > ./ENCRYPT
-   cksum_test ".. checksum of decrypted content" "./ENCRYPT" '2694938815 239'
 
-   ${rm} -f ./tsendmail.sh ./ENCRYPT ./DECRYPT \
-      ./tkey.pem ./tcert.pem ./tpair.pem
+   ${awk} '
+      BEGIN{ skip=0 }
+      /^Content-Description: /{ skip = 2; print; next }
+      /^$/{ if(skip) --skip }
+      { if(!skip) print }
+   ' \
+      < ./.DECRYPT > "${MBOX}"
+   check behave:s/mime:decrypt+verify:checksum - "${MBOX}" '1720739247 931'
+
+   printf 'behave:s/mime:decrypt+verify:disproof-1: '
+   if (openssl smime -decrypt -inkey ./.tkey.pem -in ./.ENCRYPT |
+         openssl smime -verify -CAfile ./.tcert.pem) >/dev/null 2>&1; then
+      printf 'ok\n'
+   else
+      printf 'failed\n'
+      ESTAT=1
+   fi
+
+   printf "behave:s/mime:encrypt: "
+   echo bla | ${MAILX} ${ARGS} \
+      -Ssmime-force-encryption \
+      -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
+      -Smta=./.tsendmail.sh \
+      -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
+      -Sfrom=test@localhost \
+      -s 'S/MIME test' recei@ver.com
+   if [ $? -eq 0 ]; then
+      printf 'ok\n'
+   else
+      ESTAT=1
+      printf 'failed\n'
+   fi
+
+   # Same as behave:s/mime:encrypt+sign:checksum above
+   ${sed} -e '/^$/,$d' < ./.ENCRYPT > "${MBOX}"
+   check behave:s/mime:encrypt:checksum - "${MBOX}" '1937410597 327'
+
+   ${rm} -f ./.DECRYPT
+   printf 'decrypt ./.DECRYPT\nx\n' | ${MAILX} ${ARGS} \
+      -Ssmime-force-encryption \
+      -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
+      -Smta=./.tsendmail.sh \
+      -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
+      -Sfrom=test@localhost \
+      -Serrexit -R \
+      -f ./.ENCRYPT >/dev/null 2>&1
+   check behave:s/mime:decrypt 0 "./.DECRYPT" '2624716890 422'
+
+   printf 'behave:s/mime:decrypt:disproof-1: '
+   if openssl smime -decrypt -inkey ./.tkey.pem \
+         -in ./.ENCRYPT >/dev/null 2>&1; then
+      printf 'ok\n'
+   else
+      printf 'failed\n'
+      ESTAT=1
+   fi
+
+   t_epilog
+}
+
+t_behave_maildir() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t*"
+
+   (
+      i=0
+      while [ ${i} -lt 112 ]; do
+         printf 'm file://%s\n~s Subject %s\nHello %s!\n~.\n' \
+            "${MBOX}" "${i}" "${i}"
+         i=`add ${i} 1`
+      done
+   ) | ${MAILX} ${ARGS}
+   check behave:maildir-1 0 "${MBOX}" '1140119864 13780'
+
+   printf 'File "%s"
+         copy * "%s"
+         File "%s"
+         from*
+      ' "${MBOX}" .tmdir1 .tmdir1 |
+      ${MAILX} ${ARGS} -Snewfolders=maildir > .tlst
+   check behave:maildir-2 0 .tlst '1797938753 9103'
+
+   printf 'File "%s"
+         copy * "maildir://%s"
+         File "maildir://%s"
+         from*
+      ' "${MBOX}" .tmdir2 .tmdir2 |
+      ${MAILX} ${ARGS} > .tlst
+   check behave:maildir-3 0 .tlst '1155631089 9113'
+
+   printf 'File "maildir://%s"
+         copy * "file://%s"
+         File "file://%s"
+         from*
+      ' .tmdir2 .tmbox1 .tmbox1 |
+      ${MAILX} ${ARGS} > .tlst
+   check behave:maildir-4 0 .tmbox1 '2646131190 13220'
+   check behave:maildir-5 - .tlst '3701297796 9110'
+
+   # only the odd (even)
+   (
+      printf 'File "maildir://%s"
+            copy ' .tmdir2
+      i=0
+      while [ ${i} -lt 112 ]; do
+         j=`modulo ${i} 2`
+         [ ${j} -eq 1 ] && printf '%s ' "${i}"
+         i=`add ${i} 1`
+      done
+      printf ' file://%s
+            File "file://%s"
+            from*
+         ' .tmbox2 .tmbox2
+   ) | ${MAILX} ${ARGS} > .tlst
+   check behave:maildir-6 0 .tmbox2 '142890131 6610'
+   check behave:maildir-7 - .tlst '960096773 4573'
+   # ...
+   (
+      printf 'file "maildir://%s"
+            move ' .tmdir2
+      i=0
+      while [ ${i} -lt 112 ]; do
+         j=`modulo ${i} 2`
+         [ ${j} -eq 0 ] && [ ${i} -ne 0 ] && printf '%s ' "${i}"
+         i=`add ${i} 1`
+      done
+      printf ' file://%s
+            File "file://%s"
+            from*
+            File "maildir://%s"
+            from*
+         ' .tmbox2 .tmbox2 .tmdir2
+   ) | ${MAILX} ${ARGS} > .tlst
+   check behave:maildir-8 0 .tmbox2 '3806905791 13100'
+   ${sed} 2d < .tlst > .tlstx
+   check behave:maildir-9 - .tlstx '4216815295 13645'
+
+   t_epilog
+}
+
+t_behave_mass_recipients() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${MYSHELL} -
+		(echo 'From Eucalyptus Sat Jul 08 21:14:57 2017' && ${cat} && echo
+			) >> "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   ${cat} <<'__EOT__' > ./.trc
+   define bail {
+      echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
+   }
+   define ins_addr {
+      wysh set nr=$1 hn=$2
+      echo "~$hn $hn$nr@$hn"; echo '~:echo $?'; read es
+      if [ "$es" -ne 0 ]
+        xcall bail "ins_addr $hn 1-$nr"
+      end
+      vput vexpr nr + $nr 1
+      if [ "$nr" -le "$maximum" ]
+         xcall ins_addr $nr $hn
+      end
+   }
+   define bld_alter {
+      wysh set nr=$1 hn=$2
+      alternates $hn$nr@$hn
+      vput vexpr nr + $nr 2
+      if [ "$nr" -le "$maximum" ]
+         xcall bld_alter $nr $hn
+      end
+   }
+   define t_ocs {
+      read ver
+      call ins_addr 1 t
+      call ins_addr 1 c
+      call ins_addr 1 b
+   }
+   define t_ocl {
+      if [ "$t_remove" != '' ]
+         call bld_alter 1 t
+         call bld_alter 2 c
+      end
+   }
+   set on-compose-splice=t_ocs on-compose-leave=t_ocl
+__EOT__
+
+   ${rm} -f "${MBOX}"
+   printf 'm this-goes@nowhere\nbody\n!.\n' |
+   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
+      -X'source ./.trc' -Smta=./.tsendmail.sh -Smaximum=2001 \
+      >./.tall 2>&1
+   ${cat} ./.tall >> "${MBOX}"
+   check behave:mass_recipients-1 0 "${MBOX}" '2912243346 51526'
+
+   ${rm} -f "${MBOX}"
+   printf 'm this-goes@nowhere\nbody\n!.\n' |
+   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
+      -St_remove=1 -X'source ./.trc' -Smta=./.tsendmail.sh -Smaximum=2001 \
+      >./.tall 2>&1
+   ${cat} ./.tall >> "${MBOX}"
+   check behave:mass_recipients-2 0 "${MBOX}" '4097804632 34394'
+
+   t_epilog
 }
 
 # t_content()
@@ -938,7 +3773,7 @@ __behave_smime() { # FIXME add test/ dir, unroll tests therein, regular enable!
 # Note we unfortunately need to place some statements without proper
 # indentation because of continuation problems
 t_content() {
-   ${rm} -f "${BODY}" "${MBOX}"
+   t_prolog
 
    # MIME encoding (QP) stress message body
 printf \
@@ -1020,118 +3855,96 @@ ggggggggggggggggggggggggggggggggggg\
 ggggggggggggggggggggggggggggggggggg\
 gggggggggggggggg"
 
-   # Three tests for MIME encodign and (a bit) content classification.
+   # Three tests for MIME encoding and (a bit) content classification.
    # At the same time testing -q FILE, < FILE and -t FILE
 
-   # TODO Note: because of our weird putline() handling in <-> collect.c
    ${rm} -f "${MBOX}"
-   < "${BODY}" MAILRC=/dev/null \
-   "${SNAIL}" -nSstealthmua -Sexpandaddr -a "${BODY}" -s "${SUB}" "${MBOX}"
-   cksum_test content:001-0 "${MBOX}" '3310338268 6375'
+   < "${BODY}" ${MAILX} ${ARGS} ${ADDARG_UNI} \
+      -a "${BODY}" -s "${SUB}" "${MBOX}"
+   check content:001 0 "${MBOX}" '1145066634 6654'
 
    ${rm} -f "${MBOX}"
-   < "${BODY}" MAILRC=/dev/null \
-   "${SNAIL}" ${ARGS} -Snodot -a "${BODY}" -s "${SUB}" "${MBOX}"
-   cksum_test content:001 "${MBOX}" '62505451 6374'
-
-   ${rm} -f "${MBOX}"
-   < /dev/null MAILRC=/dev/null \
-   "${SNAIL}" ${ARGS} -a "${BODY}" -s "${SUB}" \
-      -q "${BODY}" "${MBOX}"
-   cksum_test content:002 "${MBOX}" '3310338268 6375'
+   < /dev/null ${MAILX} ${ARGS} ${ADDARG_UNI} \
+      -a "${BODY}" -s "${SUB}" -q "${BODY}" "${MBOX}"
+   check content:002 0 "${MBOX}" '1145066634 6654'
 
    ${rm} -f "${MBOX}"
    (  echo "To: ${MBOX}" && echo "Subject: ${SUB}" && echo &&
       ${cat} "${BODY}"
-   ) | MAILRC=/dev/null "${SNAIL}" ${ARGS} -Snodot -a "${BODY}" -t
-   cksum_test content:003 "${MBOX}" '62505451 6374'
+   ) | ${MAILX} ${ARGS} ${ADDARG_UNI} -Snodot -a "${BODY}" -t
+   check content:003 0 "${MBOX}" '1145066634 6654'
 
    # Test for [260e19d] (Juergen Daubert)
    ${rm} -f "${MBOX}"
-   echo body | MAILRC=/dev/null "${SNAIL}" ${ARGS} "${MBOX}"
-   cksum_test content:004 "${MBOX}" '3729232114 11'
+   echo body | ${MAILX} ${ARGS} "${MBOX}"
+   check content:004 0 "${MBOX}" '2917662811 98'
 
    # Sending of multiple mails in a single invocation
    ${rm} -f "${MBOX}"
-   (  printf "m ${MBOX}\n~s subject1\nE-Mail Körper 1\n.\n" &&
-      printf "m ${MBOX}\n~s subject2\nEmail body 2\n.\n" &&
+   (  printf "m ${MBOX}\n~s subject1\nE-Mail Körper 1\n~.\n" &&
+      printf "m ${MBOX}\n~s subject2\nEmail body 2\n~.\n" &&
       echo x
-   ) | MAILRC=/dev/null "${SNAIL}" ${ARGS}
-   cksum_test content:005 "${MBOX}" '773028641 184'
+   ) | ${MAILX} ${ARGS} ${ADDARG_UNI}
+   check content:005 0 "${MBOX}" '2098659767 358'
 
    ## $BODY CHANGED
 
    # "Test for" [d6f316a] (Gavin Troy)
    ${rm} -f "${MBOX}"
-   printf "m ${MBOX}\n~s subject1\nEmail body\n.\nfi ${MBOX}\np\nx\n" |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
-      -Spipe-text/plain="${cat}" > "${BODY}"
-   ${sed} -e 1d < "${BODY}" > "${MBOX}"
-   cksum_test content:006 "${MBOX}" '654030565 45'
+   printf "m ${MBOX}\n~s subject1\nEmail body\n~.\nfi ${MBOX}\np\nx\n" |
+   ${MAILX} ${ARGS} ${ADDARG_UNI} -Spipe-text/plain="@* ${cat}" > "${BODY}"
+   check content:006 0 "${MBOX}" '2099098650 122'
+   check content:006-1 - "${BODY}" '794542938 174'
 
    # "Test for" [c299c45] (Peter Hofmann) TODO shouldn't end up QP-encoded?
-   # TODO Note: because of our weird putline() handling in <-> collect.c
    ${rm} -f "${MBOX}"
-   LC_ALL=C ${awk} 'BEGIN{
+   ${awk} 'BEGIN{
       for(i = 0; i < 10000; ++i)
          printf "\xC3\xBC"
          #printf "\xF0\x90\x87\x90"
-      }' |
-   MAILRC=/dev/null "${SNAIL}" -nSstealthmua -Sexpandaddr \
-      -s TestSubject "${MBOX}"
-   cksum_test content:007-0 "${MBOX}" '2747333583 61729'
-
-   ${rm} -f "${MBOX}"
-   LC_ALL=C ${awk} 'BEGIN{
-      for(i = 0; i < 10000; ++i)
-         printf "\xC3\xBC"
-         #printf "\xF0\x90\x87\x90"
-      }' |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} -s TestSubject "${MBOX}"
-   cksum_test content:007 "${MBOX}" '3343002941 61728'
+      }' | ${MAILX} ${ARGS} ${ADDARG_UNI} -s TestSubject "${MBOX}"
+   check content:007 0 "${MBOX}" '534262374 61816'
 
    ## Test some more corner cases for header bodies (as good as we can today) ##
 
    #
    ${rm} -f "${MBOX}"
-   echo |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
+   echo | ${MAILX} ${ARGS} ${ADDARG_UNI} \
       -s 'a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲' \
       "${MBOX}"
-   cksum_test content:008 "${MBOX}" '3872015771 288'
+   check content:008 0 "${MBOX}" '3370931614 375'
 
    # Single word (overlong line split -- bad standard! Requires injection of
-   # artificial data!!  Bad can be prevented by using RFC 2047 encoding)
+   # artificial data!!  But can be prevented by using RFC 2047 encoding)
    ${rm} -f "${MBOX}"
-   i=`LC_ALL=C ${awk} 'BEGIN{for(i=0; i<92; ++i) printf "0123456789_"}'`
-   echo | MAILRC=/dev/null "${SNAIL}" ${ARGS} -s "${i}" "${MBOX}"
-   cksum_test content:009 "${MBOX}" '2048460448 1631'
+   i=`${awk} 'BEGIN{for(i=0; i<92; ++i) printf "0123456789_"}'`
+   echo | ${MAILX} ${ARGS} -s "${i}" "${MBOX}"
+   check content:009 0 "${MBOX}" '489922370 1718'
 
    # Combination of encoded words, space and tabs of varying sort
    ${rm} -f "${MBOX}"
-   echo | MAILRC=/dev/null "${SNAIL}" ${ARGS} \
+   echo | ${MAILX} ${ARGS} ${ADDARG_UNI} \
       -s "1Abrä Kaspas1 2Abra Katä	b_kaspas2  \
 3Abrä Kaspas3   4Abrä Kaspas4    5Abrä Kaspas5     \
 6Abra Kaspas6      7Abrä Kaspas7       8Abra Kaspas8        \
 9Abra Kaspastäb4-3 	 	 	 10Abra Kaspas1 _ 11Abra Katäb1	\
 12Abra Kadabrä1 After	Tab	after	Täb	this	is	NUTS" \
       "${MBOX}"
-   cksum_test content:010 "${MBOX}" '1272213842 504'
+   check content:010 0 "${MBOX}" '1676887734 591'
 
    # Overlong multibyte sequence that must be forcefully split
    # todo This works even before v15.0, but only by accident
    ${rm} -f "${MBOX}"
-   echo | MAILRC=/dev/null "${SNAIL}" ${ARGS} \
+   echo | ${MAILX} ${ARGS} ${ADDARG_UNI} \
       -s "✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄" \
       "${MBOX}"
-   cksum_test content:011 "${MBOX}" '2972351879 572'
+   check content:011 0 "${MBOX}" '3029301775 659'
 
    # Trailing WS
    ${rm} -f "${MBOX}"
-   echo |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
+   echo | ${MAILX} ${ARGS} \
       -s "1-1 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-2 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
@@ -1139,61 +3952,63 @@ gggggggggggggggg"
 1-5 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-6 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
       "${MBOX}"
-   cksum_test content:012 "${MBOX}" '2467265470 210'
+   check content:012 0 "${MBOX}" '4126167195 297'
 
    # Leading and trailing WS
    ${rm} -f "${MBOX}"
-   echo |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} \
+   echo | ${MAILX} ${ARGS} \
       -s "	 	 2-1 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-2 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-4 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
       "${MBOX}"
-   cksum_test content:013 "${MBOX}" '4119922611 149'
+   check content:013 0 "${MBOX}" '3600624479 236'
 
    # Quick'n dirty RFC 2231 test; i had more when implementing it, but until we
    # have a (better) test framework materialize a quick shot
    ${rm} -f "${MBOX}"
-   : > "ma'ger.txt"
-   : > "mä'ger.txt"
-   : > 'diet\ is \curd.txt'
-   : > diet \"is\" curd.txt
-   : > höde-tröge.txt
-   : > höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt
-   : > höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt
-   : > hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt
-   : > ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt
-   echo bla |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} -Snodot \
-      -a "ma'ger.txt" -a "mä'ger.txt" \
-      -a 'diet\\\ is\ \\curd.txt' -a diet \"is\" curd.txt \
-      -a höde-tröge.txt \
-      -a höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt \
-      -a höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt \
-      -a hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt \
-      -a ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt \
+   TRAP_EXIT_ADDONS=./.ttt
+   (
+      mkdir ./.ttt || exit 1
+      cd ./.ttt || exit 2
+      : > "ma'ger.txt"
+      : > "mä'ger.txt"
+      : > 'diet\ is \curd.txt'
+      : > 'diet "is" curd.txt'
+      : > höde-tröge.txt
+      : > höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt
+      : > höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt
+      : > hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt
+      : > ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt
+   )
+   echo bla | ${MAILX} ${ARGS} ${ADDARG_UNI} \
+      -a "./.ttt/ma'ger.txt" -a "./.ttt/mä'ger.txt" \
+      -a './.ttt/diet\ is \curd.txt' -a './.ttt/diet "is" curd.txt' \
+      -a ./.ttt/höde-tröge.txt \
+      -a ./.ttt/höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt \
+      -a ./.ttt/höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt \
+      -a ./.ttt/hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt \
+      -a ./.ttt/✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt \
       "${MBOX}"
-   ${rm} -f "ma'ger.txt" "mä'ger.txt" 'diet\ is \curd.txt' \
-      diet \"is\" curd.txt höde-tröge.txt \
-      höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt \
-      höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt \
-      hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt \
-      ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt
-   cksum_test content:14 "${MBOX}" '1106643854 2453'
-   # `resend' test
-   printf "Resend ${BODY}\nx\n" |
-   MAILRC=/dev/null "${SNAIL}" ${ARGS} -f "${MBOX}"
-   cksum_test content:14-2 "${MBOX}" '1106643854 2453'
+   check content:014-1 0 "${MBOX}" '684985954 3092'
 
-   ${rm} -f "${BODY}" "${MBOX}"
+   # `resend' test, reusing $MBOX
+   ${rm} -f "${BODY}"
+   printf "Resend ${BODY}\nx\n" | ${MAILX} ${ARGS} -Rf "${MBOX}"
+   check content:014-2 0 "${BODY}" '684985954 3092'
+
+   ${rm} -f "${BODY}"
+   printf "resend ${BODY}\nx\n" | ${MAILX} ${ARGS} -Rf "${MBOX}"
+   check content:014-3 0 "${BODY}" '3130352658 3148'
+
+   t_epilog
 }
 
 t_all() {
-   if have_feat DEVEL; then
-      ARGS="${ARGS} -Smemdebug"
-      export ARGS
-   fi
+#   if have_feat devel; then
+#      ARGS="${ARGS} -Smemdebug"
+#      export ARGS
+#   fi
    t_behave
    t_content
 }

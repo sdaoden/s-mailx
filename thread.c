@@ -2,7 +2,7 @@
  *@ Message threading.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 2004
@@ -245,7 +245,7 @@ _interlink(struct message *m, ui32_t cnt, int nmail)
    int i, autocollapse;
    NYD2_ENTER;
 
-   autocollapse = (!nmail && !(pstate & PS_HOOK_NEWMAIL) &&
+   autocollapse = (!nmail && !(n_pstate & n_PS_HOOK_NEWMAIL) &&
          ok_blook(autocollapse));
    ms = smalloc(sizeof *ms * cnt);
 
@@ -387,7 +387,7 @@ _makethreads(struct message *m, ui32_t cnt, int nmail)
 
    /* It is performance crucial to space this large enough in order to minimize
     * bucket sharing */
-   mprime = nextprime((cnt < UI32_MAX >> 3) ? cnt << 2 : cnt);
+   mprime = n_prime_next((cnt < UI32_MAX >> 3) ? cnt << 2 : cnt);
    mt = scalloc(mprime, sizeof *mt);
 
    srelax_hold();
@@ -402,7 +402,7 @@ _makethreads(struct message *m, ui32_t cnt, int nmail)
       }
       m[i].m_child = m[i].m_younger = m[i].m_elder = m[i].m_parent = NULL;
       m[i].m_level = 0;
-      if (!nmail && !(pstate & PS_HOOK_NEWMAIL))
+      if (!nmail && !(n_pstate & n_PS_HOOK_NEWMAIL))
          m[i].m_collapsed = 0;
       srelax();
    }
@@ -440,7 +440,7 @@ _colpt(int *msgvec, int cl)
    NYD2_ENTER;
 
    if (mb.mb_threaded != 1) {
-      puts("Not in threaded mode.");
+      fputs("Not in threaded mode.\n", n_stdout);
       rv = 1;
    } else {
       for (ip = msgvec; *ip != 0; ++ip)
@@ -534,7 +534,7 @@ c_thread(void *vp)
       mb.mb_sorted = sstrdup("thread");
    }
 
-   if (vp != NULL && vp != (void*)-1 && !(pstate & PS_HOOK_MASK) &&
+   if (vp != NULL && vp != (void*)-1 && !(n_pstate & n_PS_HOOK_MASK) &&
          ok_blook(header))
       rv = print_header_group(vp);
    else
@@ -558,7 +558,7 @@ c_unthread(void *vp)
    for (m = message; PTRCMP(m, <, message + msgCount); ++m)
       m->m_collapsed = 0;
 
-   if (vp && !(pstate & PS_HOOK_MASK) && ok_blook(header))
+   if (vp && !(n_pstate & n_PS_HOOK_MASK) && ok_blook(header))
       rv = print_header_group(vp);
    else
       rv = 0;
@@ -680,7 +680,7 @@ c_sort(void *vp)
       _args[1] = NULL;
       args = _args;
    } else if (args[0] == NULL) {
-      printf("Current sorting criterion is: %s\n",
+      fprintf(n_stdout, "Current sorting criterion is: %s\n",
             (mb.mb_sorted != NULL) ? mb.mb_sorted : "unsorted");
       i = 0;
       goto jleave;
@@ -690,8 +690,8 @@ c_sort(void *vp)
    for (;;) {
       if (*args[0] != '\0' && is_prefix(args[0], methnames[i].me_name))
          break;
-      if (UICMP(z, ++i, >=, NELEM(methnames))) {
-         n_err(_("Unknown sorting method \"%s\"\n"), args[0]);
+      if (UICMP(z, ++i, >=, n_NELEM(methnames))) {
+         n_err(_("Unknown sorting method: %s\n"), args[0]);
          i = 1;
          goto jleave;
       }
@@ -768,7 +768,7 @@ c_sort(void *vp)
                ms[n].ms_u.ms_char = sstrdup(showname ? realname(cp) : skin(cp));
                makelow(ms[n].ms_u.ms_char);
             } else
-               ms[n].ms_u.ms_char = sstrdup("");
+               ms[n].ms_u.ms_char = sstrdup(n_empty);
             break;
          default:
          case SORT_SUBJECT:
@@ -780,7 +780,7 @@ c_sort(void *vp)
                free(out.s);
                makelow(ms[n].ms_u.ms_char);
             } else
-               ms[n].ms_u.ms_char = sstrdup("");
+               ms[n].ms_u.ms_char = sstrdup(n_empty);
             break;
          }
          ms[n++].ms_n = i;
@@ -817,7 +817,7 @@ c_sort(void *vp)
    }
    ac_free(ms);
 
-   i = ((vp != NULL && vp != (void*)-1 && !(pstate & PS_HOOK_MASK) &&
+   i = ((vp != NULL && vp != (void*)-1 && !(n_pstate & n_PS_HOOK_MASK) &&
       ok_blook(header)) ? print_header_group(msgvec) : 0);
 jleave:
    NYD_LEAVE;

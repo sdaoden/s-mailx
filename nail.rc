@@ -1,10 +1,21 @@
 #--MKRC-START--
-# /etc/s-nail.rc - configuration file for S-nail(1)
+#@ /etc/s-nail.rc - configuration file for S-nail(1)
 #--MKRC-END--
-#@ S-nail(1): v14.8.16 / 2017-01-27
+#@ The syntax of this file is interpreted as follows:
+#@ - Leading and trailing " \t\n" + *ifs* whitespace is removed.
+#@ - Empty lines are ignored.
+#@ - Any other line is a command line.  Such lines can be spread over
+#@   multiple lines if the newline character is "escaped" by placing
+#@   a reverse solidus character \ as the last character of the line; any
+#@   leading whitespace of follow lines is ignored, trailing whitespace before
+#@   the escaped newline is not.
+#@ - The number sign # is the comment-command and causes the (joined) line
+#@   (content) to be ignored.
+#@ S-nail(1): v14.9.0 / 2017-07-16
 
-## The standard POSIX 2008/Cor 1-2013 mandates the following initial settings:
-# (Keep in sync: ./main.c:_startup(), ./nail.rc, ./nail.1:"Initial settings"!)
+## Variables
+
+# The standard POSIX 2008/Cor 2-2016 mandates the following initial settings:
 # [a]   noallnet, noappend, asksub, noaskbcc, noaskcc, noautoprint,
 # [b-e] nobang, nocmd, nocrt, nodebug, nodot, escape="~",
 # [f-i] noflipr, nofolder, header, nohold, noignore, noignoreeof,
@@ -12,19 +23,18 @@
 # [p-r] nopage, prompt="? ", noquiet, norecord,
 # [s]   save, nosendwait, noshowto, nosign, noSign,
 # [t-z] toplines="5"
+#
 # Notes:
+# - *hold, *keep*, *keepsave* and *sendwait* are deliberately set below.
 # - no*onehop* doesn't exist in this implementation.
-#   (To pass options through to an MTA, either add them after a "--" separator
-#   on the command line or by setting the *sendmail-arguments* variable.)
-# - *prompt* is "\\& " by default, which will act POSIX-compliant
-#   unless the user would set *bsdcompat*
-
-## The remaining content adjusts the standard-imposed default settings.
-# Note that some of the following flags are specific to S-nail(1) and may thus
-# not work with other Mail(1) / mailx(1) programs.
-# Entries are marked [OPTION] if their availability is compile-time dependent
-
-## Variables
+#   (To pass options through to the MTA, either add them after a "--"
+#   separator on the command line or set the *mta-arguments* variable.)
+# (Keep in SYNC: ./nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings"!)
+#
+# Adjust the standard-imposed default variable settings.
+# Some of the following variables are not portable and may thus have no effect
+# with other Mail(1) / mailx(1) programs.
+# Entries are marked [OPTION] if their availability is compile-time dependent.
 
 # If threaded mode is activated, automatically collapse thread
 set autocollapse
@@ -39,60 +49,59 @@ set append
 # Ask for a message subject.
 set ask
 
-# *bsdannounce* prints a header summary on folder change and thus complements
-# *header* on a per-folder basis (it is meaningless unless *header* is set)
-set bsdannounce
-
-# Uncomment this in order to get coloured output in $PAGER.
-# (Coloured output is only used if $TERM is either found in *colour-terms*
-# or includes the string "color")
+# Uncomment this in order to get coloured output in $PAGER (if possible).
 #set colour-pager
+# Btw., if your $PAGER is less(1) or lv(1) you will usually be served, as
+# documented for $PAGER in the manual, very well by doing, e.g., less(1):
+#  ? wysh set PAGER=less; environ unset LESS
 
-# Assume a CRT-like terminal and invoke a $PAGER
+# Assume a CRT-like terminal and invoke a $PAGER if output doesn't fit on a
+# the screen.  (Set crt=0 to always page; value treated as number of lines)
 set crt
 
-# Define date display in header summary
-#set datefield="%R %m-%d" datefield-markout-older="   %g-%m-%d"
-
-# When composing messages a line consisting of `.' finalizes a message
-set dot
-
-# Immediately start $EDITOR (or $VISUAL) when composing a message
+# Startup into $EDITOR (or $VISUAL) in compose mode ("automatic `~e'")
 #set editalong
 
+# When spawning an editor in compose mode (*editalong*, ~e), edit headers
+set editheaders
+
 # Startup into interactive mode even if the (given) mailbox is empty
-#set emptystart
+set emptystart
 
 # When replying to or forwarding a message the comment and name parts of email
-# addresses are removed unless this variable is set.
-#set fullnames
+# addresses are removed unless this variable is set
+set fullnames
 
-# [OPTION] Add more entries to the history as is done by default
-set history-gabby
+# [OPTION] Add more entries to the history as is done by default.
+# The latter will cause the built-in editor to save those entries, too
+set history-gabby history-gabby-persist
 
-# Do not forward to mbox by default since this is likely to be
-# irritating for most users today; also see *keepsave*
+# Do not move read messages of system mailboxes to MBOX by default since this
+# is likely to be irritating for most users today; also see *keepsave*
 set hold
 
 # Quote the original message in replies by "> " as usual on the Internet
+# Historically this was a tabulator, as in "wysh set indentprefix=$'\t'"
 set indentprefix="> "
 
 # Mark messages that have been answered
 set markanswered
 
-# Try to circumvent false or missing MIME Content-Type descriptions
-# (Can be set to values for extended behaviour, please see the manual.)
-set mime-counter-evidence
+# Try to circumvent false or missing MIME Content-Type descriptions.
+# Do set a value for extended behaviour (see the manual)
+#set mime-counter-evidence
+set mime-counter-evidence=0xE
 
 # Control loading of mime.types(5) file: the value may be a combination of the
 # letters "s" and "u": if "u" is seen ~/.mime.types will be loaded if possible;
 # "s" adds /etc/mime.types, if available; setting this without any value uses
-# only a set of builtin mimetypes; the default behaviour equals "us".
+# only a set of built-in mimetypes; the default behaviour equals "us".
 # An extended syntax that allows loading of other, specified files is available
 # if the value contains an equal sign "=", see the manual for more
 #set mimetypes-load-control
 
-# Do not remove empty mail folders.
+# Do not remove empty (MBOX) system mailboxes (or _no_ empty (MBOX) mailbox
+# at all if $POSIXLY_CORRECT / *posix* are set!).
 # This may be relevant for privacy since other users could otherwise create
 # them with different permissions
 set keep
@@ -108,18 +117,19 @@ set keepsave
 # became invalid; set this to include them nonetheless
 #set keep-content-length
 
-# A nice prompt for ISO 6429/ECMA-48 terminals
-#set prompt="\033[31m?\?[\$ \@]\& \033[0m"
+# An informational prompt (and see "Gimmicks" below).
+# Note the _real_ evaluation occurs once used (see *prompt* manual entry)
+#wysh set prompt='?\${?}!\${!}[\${account-name}#\${mailbox-display}]? '
 
 # Automatically quote the text of the message that is responded to
 set quote
 
-# On group replies, specify only the sender of the original mail in  To: and
-# mention it's other recipients in the secondary Cc: instead of placing them
-# all together in To:
+# When replying, do not merge From: and To: of the original message
+# into To:.  Instead old From: -> new To:, old To: -> merge Cc:.
 set recipients-in-cc
 
 # When responding to a message, try to answer in the same character set
+# (which is subject to `charsetalias' expansion, though)
 #set reply-in-same-charset
 
 # [OPTION] Outgoing messages are sent in UTF-8 if possible, otherwise LATIN1.
@@ -130,10 +140,10 @@ set recipients-in-cc
 # $LC_ALL / $LANG environment variables and react upon them)
 set sendcharsets=utf-8,iso-8859-1
 
-# When sending a message wait until the MTA (including the builtin SMTP one)
+# When sending a message wait until the MTA (including the built-in SMTP one)
 # exits before accepting further commands.  Only with this variable set errors
 # reported by the MTA will be recognizable!
-#set sendwait
+set sendwait
 
 # Display real sender names in header summaries instead of only addresses
 set showname
@@ -143,26 +153,68 @@ set showto
 
 ## Commands
 
-# Only include these selected header fields when forwarding messages
-fwdretain subject date from to
+# Most commands are not portable to other Mail(1) / mailx(1) programs, which is
+# why most commands are commented out.  To remain portable, place anything
+# specific in its own file, then "set mailx-extra-rc=~/.my-file" in $MAILRC
+# (usually ~/.mailrc).
+
+# Map ISO-8859-1 to LATIN1, and LATIN1 to CP1252.
+# (These mappings are not applied to character sets specified by other
+# variables, e.g., sendcharsets).
+#charsetalias iso-8859-1 latin1  latin1 cp1252
 
 # Only include the selected header fields when printing messages
-retain date from to cc subject message-id mail-followup-to reply-to
+# `headerpick' is not portable, so use the standard `retain'
+retain from_ date from to cc subject message-id mail-followup-to reply-to
+#headerpick type retain from_ date from to cc subject \
+#   message-id mail-followup-to reply-to
+# ...when forwarding messages
+#headerpick forward retain subject date from to cc
+# ...and don't include these when saving message, etc.
+#if [ "$features" =@ +regex ]
+#  headerpick save ignore '^Original-.*$' '^X-.*$'
+#end
 
 ## Some pipe-TYPE/SUBTYPE entries
 
 # HTML as text, inline display via lynx(1)
-#if $features !@ HTML-FILTER
-#   set pipe-text/html="lynx -stdin -dump -force_html"
+#if [ "$features" !@ +filter-html-tagsoup ]
+#   set pipe-text/html='lynx -stdin -dump -force_html'
 #endif
 
-# PDF display, asynchronous display via xpdf(1)
-#set pipe-application/pdf="@&set -C;\
-#   : > \"${TMPDIR}/${NAIL_FILENAME_GENERATED}\";\
-#   trap \"rm -f \\\"${TMPDIR}/${NAIL_FILENAME_GENERATED}\\\"\" \
-#      EXIT INT QUIT PIPE TERM;\
-#   set +C;\
-#   cat > \"${TMPDIR}/${NAIL_FILENAME_GENERATED}\";\
-#   xpdf \"${TMPDIR}/${NAIL_FILENAME_GENERATED}\""
+# PDF display, asynchronous display
+#wysh set pipe-application/pdf='@=&@\
+#   trap "rm -f \"${MAILX_FILENAME_TEMPORARY}\"" EXIT;\
+#   trap "trap \"\" INT QUIT TERM; exit 1" INT QUIT TERM;\
+#   mupdf "${MAILX_FILENAME_TEMPORARY}"'
+
+## Gimmicks
+
+# More key bindings for the Mailx-Line-Editor (when in interactive mode)
+#if terminal && [ "$features" =@ +key-bindings ]
+#   bind base $'\e',d mle-snarf-word-fwd
+#   bind base $'\e',$'\c?' mle-snarf-word-bwd
+#   bind base $'\e',f mle-go-word-fwd
+#   bind base $'\e',b mle-go-word-bwd
+#endif
+
+# Coloured prompt for the Mailx-Line-Editor (when in interactive mode)
+#if terminal && [ "$features" =@ +mle ] && [ "$features" =@ +colour ]
+#   colour 256 mle-position fg=202
+#   colour 256 mle-prompt fg=red
+#   colour iso mle-position ft=reverse
+#   colour iso mle-prompt fg=red
+#   colour mono mle-position ft=reverse
+#   colour mono mle-prompt ft=bold
+#endif
+
+# Install file-extension handlers to handle MBOXes in various formats
+#filetype \
+#   bz2 'bzip2 -dc' 'bzip2 -zc' \
+#   gpg 'gpg -d' 'gpg -e' \
+#   gz 'gzip -dc' 'gzip -c' \
+#   xz 'xz -dc' 'xz -zc' \
+#   zst 'zstd -dc' 'zstd -19 -zc' \
+#   zst.pgp 'gpg -d | zstd -dc' 'zstd -19 -zc | gpg -e'
 
 # s-it-mode

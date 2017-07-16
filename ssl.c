@@ -2,7 +2,7 @@
  *@ Generic SSL / S/MIME commands.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 2002
@@ -69,7 +69,7 @@ ssl_set_verify_level(struct url const *urlp)
    cp = xok_vlook(ssl_verify, urlp, OXM_ALL);
 
    if (cp != NULL) {
-      for (i = 0; i < NELEM(_ssl_verify_levels); ++i)
+      for (i = 0; i < n_NELEM(_ssl_verify_levels); ++i)
          if (!asccasecmp(_ssl_verify_levels[i].sv_name, cp)) {
             ssl_verify_level = _ssl_verify_levels[i].sv_level;
             goto jleave;
@@ -108,7 +108,7 @@ smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
    struct myline {
       struct myline  *ml_next;
       size_t         ml_len;
-      char           ml_buf[VFIELD_SIZE(0)];
+      char           ml_buf[n_VFIELD_SIZE(0)];
    } *head, *tail;
    char *buf;
    size_t bufsize, buflen, cnt;
@@ -116,11 +116,9 @@ smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
    enum okay rv = STOP;
    NYD_ENTER;
 
-   if ((*hp = Ftmp(NULL, "smimeh", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL)
+   if ((*hp = Ftmp(NULL, "smimeh", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
       goto jetmp;
-   if ((*bp = Ftmp(NULL, "smimeb", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL) {
+   if ((*bp = Ftmp(NULL, "smimeb", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==NULL) {
       Fclose(*hp);
 jetmp:
       n_perr(_("tempfile"), 0);
@@ -137,8 +135,8 @@ jetmp:
          if (keep)
             fputs("X-Encoded-", *hp);
          for (;;) {
-            struct myline *ml = smalloc(sizeof *ml -
-                  VFIELD_SIZEOF(struct myline, ml_buf) + buflen +1);
+            struct myline *ml = smalloc(n_VSTRUCT_SIZEOF(struct myline, ml_buf
+                  ) + buflen +1);
             if (tail != NULL)
                tail->ml_next = ml;
             else
@@ -187,8 +185,7 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp, char const *message_digest)
    FILE *op;
    NYD_ENTER;
 
-   if ((op = Ftmp(NULL, "smimea", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL) {
+   if ((op = Ftmp(NULL, "smimea", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL) {
       n_perr(_("tempfile"), 0);
       goto jleave;
    }
@@ -211,7 +208,8 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp, char const *message_digest)
    fprintf(op, "\n--%s\n", boundary);
    fputs("Content-Type: application/pkcs7-signature; name=\"smime.p7s\"\n"
       "Content-Transfer-Encoding: base64\n"
-      "Content-Disposition: attachment; filename=\"smime.p7s\"\n\n", op);
+      "Content-Disposition: attachment; filename=\"smime.p7s\"\n"
+      "Content-Description: S/MIME digital signature\n\n", op);
    while ((c = getc(sp)) != EOF) {
       if (c == '-') {
          while ((c = getc(sp)) != EOF && c != '\n');
@@ -246,8 +244,7 @@ smime_encrypt_assemble(FILE *hp, FILE *yp)
    int c, lastc = EOF;
    NYD_ENTER;
 
-   if ((op = Ftmp(NULL, "smimee", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL) {
+   if ((op = Ftmp(NULL, "smimee", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL) {
       n_perr(_("tempfile"), 0);
       goto jleave;
    }
@@ -259,9 +256,10 @@ smime_encrypt_assemble(FILE *hp, FILE *yp)
       lastc = c;
    }
 
-   fprintf(op, "Content-Type: application/pkcs7-mime; name=\"smime.p7m\"\n"
+   fputs("Content-Type: application/pkcs7-mime; name=\"smime.p7m\"\n"
       "Content-Transfer-Encoding: base64\n"
-      "Content-Disposition: attachment; filename=\"smime.p7m\"\n\n");
+      "Content-Disposition: attachment; filename=\"smime.p7m\"\n"
+      "Content-Description: S/MIME encrypted message\n\n", op);
    while ((c = getc(yp)) != EOF) {
       if (c == '-') {
          while ((c = getc(yp)) != EOF && c != '\n');
@@ -354,13 +352,12 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
    if (ferror(mb.mb_otf)) {
       n_perr(_("decrypted output data"), 0);
       x = NULL;
-      goto jleave;
+   }else{
+      x->m_size = x->m_xsize = octets;
+      x->m_lines = x->m_xlines = lines;
+      x->m_block = mailx_blockof(offset);
+      x->m_offset = mailx_offsetof(offset);
    }
-   x->m_size = x->m_xsize = octets;
-   x->m_lines = x->m_xlines = lines;
-   x->m_block = mailx_blockof(offset);
-   x->m_offset = mailx_offsetof(offset);
-jleave:
    NYD_LEAVE;
    return x;
 }
@@ -378,7 +375,7 @@ c_certsave(void *v)
    val = 1;
 
    if ((file = laststring(str, &f, TRU1)) == NULL ||
-         (file = file_expand(file)) == NULL) {
+         (file = fexpand(file, FEXP_LOCAL | FEXP_NOPROTO)) == NULL) {
       n_err(_("No file to save certificate given\n"));
       goto jleave;
    }
@@ -389,7 +386,7 @@ c_certsave(void *v)
    } else if (getmsglist(str, msgvec, 0) < 0)
       goto jleave;
    if (*msgvec == 0) {
-      if (pstate & PS_HOOK_MASK)
+      if (n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT))
          val = 0;
       else
          n_err(_("No applicable messages\n"));
@@ -407,7 +404,7 @@ c_certsave(void *v)
    Fclose(fp);
 
    if (val == 0)
-      printf("Certificate(s) saved\n");
+      fprintf(n_stdout, "Certificate(s) saved\n");
 jleave:
    NYD_LEAVE;
    return val;

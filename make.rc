@@ -1,59 +1,80 @@
-#@ make.rc can be used adjust the set of features, paths, etc.
-#@ You should have read "INSTALL" first.
+#@ make.rc describes the set of used features and (default) values used etc.
+#@ You should have read INSTALL first.
 #@ Notes:
+#@ . Choosing a predefined CONFIG= disallows further option fine-tuning.
+#@   (With some exceptions, e.g., OPT_DEBUG.)
+#@ . Features / options have an OPT_ prefix and need to be assigned
+#@   a boolean value, as in OPT_SSL=yes.  Booleans are 1/0, y/n,
+#@   true/false, yes/no and on/off (case doesn't matter).
+#@   The value "require" is also a true boolean, but will in addition
+#@   cause configuration to fail if the requested condition cannot be
+#@   satisfied.  This value is only available for a subset of options.
+#@ . Values use VAL_ instead, and are assigned strings.
+#@   E.g., VAL_PREFIX=/usr/local.
+#@   Variables which are only used during configuration, building,
+#@   and / or installation have no prefix, e.g., DESTDIR, VERBOSE, awk.
 #@ . Specifying settings on the command line will take precedence over
 #@   the variables in here (correctly triggering build updates as
 #@   necessary, too).
-#@ . Choosing one of the predefined CONFIG= sets overwrites a lot of
-#@   items that can be set in here / from the command line.
 #@ . This file is parsed by the shell: it is in sh(1), not in make(1)
 #@   syntax.  Evaluation occurs *after* it has been read, so command
 #@   line overwrites take effect.  To use multiline values, escape the
-#@   newlines on any but the last line with a backslash, as in "LINE \".
-#@   The parsing is sequential top-to-bottom (nonetheless) so that shell
-#@   snippets in a value can refer only to stuff yet defined.
-#@ . Boolean values can be set via 1/0, true/false, yes/no and on/off
-#@   (case doesn't matter), other values result in an error.
-#@ . However, the value "require" is also a true boolean, but will in
-#@   addition cause configuration to fail if the requested feature is
-#@   missing.  This special behaviour is only tested by a logical subset
-#@   of feature tests.
+#@   newlines on all lines but the last with a reverse solidus (back-
+#@   slash), as in "LINE \".
+#@   To embed a shell variable unexpanded, use two: "XY=\\${HOME}".
+#@   The parsing is sequential top-to-bottom (nonetheless), so that
+#@   shell snippets in a value can refer only to stuff yet defined.
 #@ . You may NOT comment out anything in here -- if you want to disable
 #@   a feature, set it to a false boolean.
 
-## PATHS AND PROGRAMS ##
+## IDENTITIES, PATHS AND PROGRAMS ##
+
+# Contact info (*contact-mail* and *contact-web*, respectively).
+VAL_CONTACT_MAIL=s-mailx@lists.sdaoden.eu
+VAL_CONTACT_WEB=https://www.sdaoden.eu/code.html
+
+# The user ID our small privilege-separated helper program will be
+# SETUID to, shall it be included ($OPT_DOTLOCK).
+# Installation will then require the chown(1) program (as below) and
+# sufficient privileges to perform a SETUID to this user ID.
+VAL_PRIVSEP_USER=root
 
 # General prefix where S-nail should be installed.
-PREFIX=/usr/local
+VAL_PREFIX=/usr/local
 
-# Fine tune individual locations, normally under $PREFIX.
+# Fine tune individual locations, normally under $VAL_PREFIX.
 # . the place of the S-nail program.
-BINDIR="${PREFIX}/bin"
-# Only if WANT_DOTLOCK is enabled:
-# . the place of the privilege-separated helper program.
-LIBEXECDIR="${PREFIX}/libexec"
+VAL_BINDIR="${VAL_PREFIX}/bin"
+# . the place of the privilege-separated helper program, the name
+#   of which is [$VAL_SID$VAL_MAILX]-privsep (see below for $VAL_SID &
+#   $VAL_MAILX).
+#   (Only with $OPT_DOTLOCK.)
+VAL_LIBEXECDIR="${VAL_PREFIX}/libexec"
 # . of the manual.
-MANDIR="${PREFIX}/share/man"
+VAL_MANDIR="${VAL_PREFIX}/share/man"
 # . of the exemplary resource file.
-SYSCONFDIR="${PREFIX}/etc"
+VAL_SYSCONFDIR="${VAL_PREFIX}/etc"
 
-# This variable is prepended to all the paths from above at installation
-# time; this feature can be used for, e.g., package building: if $PREFIX
-# is "/usr/local", but $DESTDIR is set to "here", then S-nail will still
-# think its $PREFIX is "/usr/local" whereis the build system will
-# instead use "here/usr/local".
-DESTDIR=
+# The variable $DESTDIR is prepended to all the paths from above at
+# installation time; this feature can be used for, e.g., package
+# building: if $VAL_PREFIX is "/usr/local", but $DESTDIR is set to "here",
+# then S-nail will still think its $VAL_PREFIX is "/usr/local" whereis the
+# build system will instead use "here/usr/local".
+# NOTE: it cannot be set in here, but must be given on the command line
+# when invoking the "install" make(1) (directly or indirectly).
+# (That is, if you uncomment it, it'll be update-tracked...)
+#DESTDIR=
 
-# Where the local mail system stores user mail (mbox) files.
-MAILSPOOL=`\
+# Where the local mail system stores user $MAIL files.
+VAL_MAIL=`\
    if [ -d /var/spool/mail ]; then \
       echo /var/spool/mail;\
    else \
       echo /var/mail;\
    fi`
 
-# Path to the local MTA (Mail Transport Agent).
-SENDMAIL=`\
+# Path to the local MTA (Mail-Transfer-Agent).
+VAL_MTA=`\
    if [ -x /usr/bin/sendmail ]; then \
       echo /usr/bin/sendmail;\
    elif [ -x /usr/lib/sendmail ]; then \
@@ -67,232 +88,254 @@ SENDMAIL=`\
 # mailwrapper(8) is often used, which selects the required service by
 # looking at the name by which the program actually has been invoked.
 # This variable can be used to adjust this name as necessary.
-SENDMAIL_PROGNAME=sendmail
+VAL_MTA_ARGV0=sendmail
 
 # Default *SHELL* (sh(1) path).
 # Sometimes we simply invoke a command directly via execlp(2) instead of
 # indirectly through *SHELL* -- in these cases execlp(2) may fallback to
-# it's own builtin sh(1) path (most likely `bin/sh'), effectively
-# bypassing *XSHELL*.
-XSHELL=/bin/sh
+# it's own built-in sh(1) path
+VAL_SHELL=/bin/sh
 
-# The default *LISTER* (in the $PATH).
-XLISTER=ls
+# Some more default fallback values, some of which are standardized
+# and (thus)/or documented in the manual (changes not reflected there!).
+# Note that default paths are often not (shell) quoted when displayed
+VAL_DEAD_BASENAME=dead.letter
+VAL_DEAD="~/${VAL_DEAD_BASENAME}"
+VAL_EDITOR=ed
+VAL_LISTER=ls
+VAL_MAILRC=~/.mailrc
+VAL_MBOX=~/mbox
+VAL_NETRC=~/.netrc
+VAL_PAGER=more
+VAL_TMPDIR=/tmp
+VAL_VISUAL=vi
 
-# The default *PAGER* (in the $PATH).
-XPAGER=more
+# Default locations of mime.types(5)
+VAL_MIME_TYPES_USR=~/.mime.types
+VAL_MIME_TYPES_SYS=/etc/mime.types
 
 # The following tools may be provided a.k.a. overwritten,
 # `command -v NAME` is used to query the utility otherwise:
 #  MAKE=, STRIP=, awk=, cat=, chmod=, cp=, cmp=, cksum=,
 #     grep=, mkdir=, mv=, rm=, sed=, sort=, tee=, tr=
 # Usually in administrator paths:
-#  chown= [WANT_DOTLOCK]
+#  chown= [$OPT_DOTLOCK]
 # Note that awk(1), rm(1) and tr(1) are needed before this file is read,
 # all other utilities will be checked afterwards only.  For
-# cross-compilation setting MAKE= and STRIP= may be necessary.  Due to
+# cross-compilation setting $MAKE and $STRIP may be necessary.  Due to
 # the evaluation order of the build system all those programs are
 # usually needed, but by setting any of the variables to true(1), as in
 # chown=/usr/bin/true, availability of unneeded programs can be faked.
 # We require uname(1) -s, command(1) -v, echo(1), etc.
-# uname(1) can be circumvented by setting $OS.
+# uname(1) can be circumvented by setting $OS (and $OSENV, $OSFULLSPEC).
+# $OS must be all-lowercase.
 
 ## FEATURE SET ##
 
+# Some operating systems only support the C/POSIX (7-bit, but eight bit
+# bytes are passed through unchanged) and UTF-8 based locales, e.g.,
+# Plan9, Musl based Linux variants and newer OpenBSD.  For such
+# environments we can avoid a lot of tests and may enable support for
+# features which would otherwise not be available.
+# Note that $OS is available as normalized all-lowercase upon evaluation
+OPT_ALWAYS_UNICODE_LOCALE=`\
+   if [ "${OS}" = openbsd ]; then \
+      echo yes;\
+   else \
+      echo no;\
+   fi`
+
+# For cross-compilation purposes it may be useful to not actually run
+# systemcall etc. tests (link and run the executable) but only to
+# perform the link tests necessary to detect host environment.
+OPT_CROSS_BUILD=no
+
 # Shall S-nail try to automatically detect a compiler and provide a set
 # of known-good compiler flags?  If so additions may still be provided
-# by setting $ADDCFLAGS and $ADDLDFLAGS to whatever is desired.
+# by setting $EXTRA_CFLAGS and $EXTRA_LDFLAGS to whatever is desired.
 # Thus: set this to false and use your normal $CC / $CFLAGS / $LDFLAGS,
-# set this to true and pass additional flags via ADDCFLAGS / ADDLDFLAGS:
-#     $ make ADDCFLAGS=-std=c99 install
+# otherwise pass additional flags via $EXTRA_CFLAGS / $EXTRA_LDFLAGS:
+#     $ make EXTRA_CFLAGS=-std=c99 tangerine
 # Whatever you do, the configuration is fixated and updates will force
-# rebuilds.  And far below in this file there is WANT_FORCED_STACKPROT,
+# rebuilds.  And far below in this file there is $OPT_FORCED_STACKPROT,
 # too, which can be used to cause injection of stack protectors.
-WANT_AUTOCC=yes
+# (There you could also find OPT_ASAN_ADDRESS and OPT_ASAN_MEMORY
+# (Remember, file is parsed from top to bottom, sorry).)
+OPT_AUTOCC=yes
 
 # It is possible to compile S-nail as a "single-source", meaning that
 # all source files are injected into a single compilation unit, which is
 # then compiled.  This allows the compiler to perform much more
 # optimizations, and also reduces the management overhead that is used
 # for / needed by the linker.
-WANT_AMALGAMATION=no
+OPT_AMALGAMATION=no
 
 # Character set conversion enables reading and sending of mails in
 # multiple character sets through usage of the iconv(3) library.  Please
 # read the manual section "Character sets" for the complete picture.
 # This should usually be enabled; it can be "require"d.
-WANT_ICONV=yes
+OPT_ICONV=yes
 
 # Major switch to toggle *all* network related protocols
-# (IMAP,POP3,SMTP) and related/dependent stuff (GSS-API,SSL);
+# (POP3,SMTP,IMAP) and related/dependent stuff (GSS-API,SSL);
 # can be "require"d.
-WANT_SOCKETS=yes
+OPT_SOCKETS=yes
 
-# If $WANT_SOCKETS: support for Secure Socket Layer (Transport Layer
+# If $OPT_SOCKETS: support for Secure Socket Layer (Transport Layer
 # Security, TLS), i.e., encrypted socket connections; can be "require"d.
 # This needs the OpenSSL libraries (<http://www.openssl.org>).
-WANT_SSL=yes
+# This needs the OpenSSL (https://www.openssl.org) or LibreSSL
+# (http://www.libressl.org) libraries.
+OPT_SSL=yes
 
-# If $WANT_SSL: shall S-nail (try to) use mechanisms to support more
+# If $OPT_SSL: shall S-nail (try to) use mechanisms to support more
 # digest and cipher algorithms than the few that are documented?  For
 # S/MIME *smime-cipher* for example this will cause
-# EVP_get_cipherbyname(3) to be tried shall the (S-nail-) builtin
+# EVP_get_cipherbyname(3) to be tried shall the (S-nail-) built-in
 # knowledge not suffice to understand the user request.  Will create
 # a large statically linked binary; dynamically linked the costs only
 # arise once the extended lookup is actually needed (the first time).
 # This can be "require"d.
-WANT_SSL_ALL_ALGORITHMS=yes
+OPT_SSL_ALL_ALGORITHMS=yes
 
-# If $WANT_SOCKETS: support for SMTP protocol?
+# If $OPT_SOCKETS: support for SMTP protocol?
 # (Directly sending mails over the network)  Can be "require"d.
-WANT_SMTP=yes
+OPT_SMTP=yes
 
-# If $WANT_SOCKETS: support for POP3 protocol?
+# If $OPT_SOCKETS: support for POP3 protocol?
 # (Download of mails via POP protocol)  Can be "require"d.
-WANT_POP3=yes
+OPT_POP3=yes
 
-# If $WANT_SOCKETS: support for IMAP protocol?
+# If $OPT_SOCKETS: support for IMAP protocol?
 # Requires $WANT_ICONV.
 # (Reading of mails directly on the server)  Can be "require"d.
-WANT_IMAP=yes
+OPT_IMAP=yes
 
-# If $WANT_SOCKETS: support for GSS-API (Generic Security Services
+# If $OPT_SOCKETS: support for GSS-API (Generic Security Services
 # Application Programming Interface) based authentication, e.g.,
 # Kerberos v5?  Available for IMAP and SMTP; can be "require"d.
-WANT_GSSAPI=yes
+OPT_GSSAPI=yes
 
 # Enabling the MD5 message digest adds support for several
-# authentication possibilities: POP3 (APOP), IMAP/SMTP (CRAM-MD5).
+# authentication possibilities: POP3 (APOP), IMAP and SMTP (CRAM-MD5).
 # If you don't need those, you may turn them off by excluding MD5.
-WANT_MD5=yes
+OPT_MD5=yes
 
-# If $WANT_SOCKETS: support for parsing of user and password credentials
+# If $OPT_SOCKETS: support for parsing of user and password credentials
 # from the ~/.netrc file ($NETRC; see *netrc-lookup* manual entry).
-WANT_NETRC=yes
+OPT_NETRC=yes
 
-# If $WANT_SOCKETS: passwords can also be looked up through an external
+# If $OPT_SOCKETS: passwords can also be looked up through an external
 # "agent" in order to allow for encrypted password storage (see
 # *agent-shell-lookup*).
-WANT_AGENT=yes
+# [Obsolete] Even though marked *v15-compat* this feature has been
+# obsoleted; please use an encrypted .netrc file (via *netrc-pipe*) or
+# encrypt a complete resource file and load this like, e.g.,
+#     source "gpg -qd ~/.mailprivate.gpg | "
+OPT_AGENT=yes
 
 # IDNA (internationalized domain names for applications) offers users
 # the possibility to use domain names in their native language, i.e., to
 # use non-US-ASCII content, as in, e.g., <www.räksmörgåsa.example>,
 # which the IDNA algorithm would convert to
 # <www.xn--rksmrgsa-0zap8p.example>.  :)  This either needs idnkit
-# (<https://www.nic.ad.jp/ja/idn/idnkit/download/>) or the GNU Libidn
-# library (<https://www.gnu.org/software/libidn/>).  It can be
+# (https://www.nic.ad.jp/ja/idn/idnkit/download/) or the GNU Libidn
+# library (https://www.gnu.org/software/libidn/).  It can be
 # "require"d.
-WANT_IDNA=yes
+OPT_IDNA=yes
 
 # IMAP-style SEARCH expressions can be supported.  This addressing mode
 # is available with all types of folders; for folders not located on
 # IMAP servers, or for servers unable to execute the SEARCH command, the
 # search is performed locally.
-WANT_IMAP_SEARCH=yes
+OPT_IMAP_SEARCH=yes
 
 # Regular expression (re_format(7)) support for searches, conditional
-# expressions etc.; can be "require"d.
-WANT_REGEX=yes
+# expressions etc., we use the extended ones, then; can be "require"d.
+OPT_REGEX=yes
 
-# Command line editing and -history.
-# S-nail actually supports three different command line editors, one
-# builtin and two fully fledged external libraries which may offer
-# a slightly better user experience at the cost of more memory usage and
-# CPU time; also the interactive behaviour may not be one-to-one to what
-# is documented.  Note that these are tested in shown order, and each
-# desired one must be enabled by itself!
-# . WANT_READLINE
-#   The GNU readline(3) compatible interface; can be "require"d.
-# . WANT_EDITLINE
-#   Command line editing via BSD editline(3); can be "require"d.
-# . WANT_NCL
+# Line editing and -history (manual "On terminal and line editor").
+# . OPT_MLE
 #   If ISO C (ISO/IEC 9899:1990/Amendment 1:1995) is supported on the
-#   system then our builtin NCL (Nail Command Line editor) version can
-#   be used.  It is documented in the manual section "Command line
-#   editor" and can be "require"d.
-WANT_READLINE=no
-WANT_EDITLINE=no
-WANT_NCL=yes
-# All command line editors optionally support history management.
-WANT_HISTORY=yes
-# For the NCL command line editor we optionally support
-# "expand-on-tabulator".  Turning it off shrinks the binary.
-# Please see the respective manual entry.
-WANT_TABEXPAND=yes
+#   system then our built-in MLE (Mailx-Line-Editor) version can be used.
+#   An enabled & available OPT_TERMCAP may affect and improve the MLE.
+#   Can be "require"d.
+OPT_MLE=yes
+# Add support for history management.
+OPT_HISTORY=yes
+# Add support for `(un)?bind'ing of key sequences
+OPT_KEY_BINDINGS=yes
 
-# Use termcap(3) for terminal control; can be "require"d.
-# - When *term-ca-mode* is set:
-#   . On startup emit "ti" (smcup / enter_ca_mode)
-#   . On exit emit "te" (rmcup / exit_ca_mode)
-# NOTE: requires $PAGER etc. to also support and use ca-mode, otherwise
-# the screen looks really, really ugly.
-WANT_TERMCAP=no
+# Use termcap(5) for terminal control; can be "require"d.
+# Today most environments ship a termcap(5) that in fact is part of
+# terminfo(5), and acts as a converting wrapper for this library.
+# To avoid this redundancy we also support terminfo(5), and use it
+# instead if we find it (assuming that termcap(5) is a stub, then).
+# Note that terminfo(5) offers access to more key sequences, e.g.,
+# kLFT5, for which no termcap(5) entry exists.
+# terminfo(5) support can (thus) be "require"d.
+OPT_TERMCAP=yes
+OPT_TERMCAP_VIA_TERMINFO=yes
 
 # Enable the `errors' command; S-nail is a console-based application and
 # thus errors may fly by pretty fast as other operations are in
 # progress; or $PAGERs are started and clear errors off the screen.  If
 # enabled errors are duplicated as they happen and the `errors' command
 # will show them when asked to.
-WANT_ERRORS=yes
+OPT_ERRORS=yes
 
 # Interaction with a spam email filter is possible.
 # Refer to all commands and variables with a "spam" prefix, and
 # see the manual example section "Handling spam".
-# . WANT_SPAM_SPAMC:
+# . OPT_SPAM_SPAMC:
 #   Support for interaction with spamassassin(1)s spamc(1).
-# . WANT_SPAM_SPAMD:
+# . [Obsolete] OPT_SPAM_SPAMD:
 #   Direct communication with spamassassin(1)s spamd(1).
 #   Needs unix(4) domain sockets (checked).  Can be "require"d.
-# . WANT_SPAM_FILTER:
+# . OPT_SPAM_FILTER:
 #   Generic filter hook which can be used with e.g. bogofilter(1)
 #   and sylfilter(1): see documentation for the *spam-filter-**
 #   variables for expected application behaviour.
-WANT_SPAM_SPAMC=no
-WANT_SPAM_SPAMD=no
-WANT_SPAM_FILTER=yes
+OPT_SPAM_SPAMC=no
+OPT_SPAM_SPAMD=no
+OPT_SPAM_FILTER=yes
 
-# If given an optional argument the `help' command will print a help
-# string only for the mentioned command; those strings take up space and
-# so one may disable this feature.
-WANT_DOCSTRINGS=yes
+# We may include help strings for commands, increasing size a bit
+OPT_DOCSTRINGS=yes
 
 # A simple line-based quoting mechanism can be made available via the
 # *quote-fold* mechanism.  This will be turned off automatically if the
 # required character classification is not available on the host.
+# Can be "require"d.
 # TODO shouldn't wrap lines when only WS or a NL-escaping \ follows
-WANT_QUOTE_FOLD=yes
+OPT_QUOTE_FOLD=yes
 
 # We do have a very primitive HTML tagsoup filter which can be used to
 # convert HTML to plain text for display purposes.  If enabled it'll be
 # used for all MIME types which have the @h@ or @H@ type markers (more
-# on this in the manual section "THE mime.types FILES").  And which
+# on this in the manual section "The mime.types FILES").  And which
 # don't have any user defined MIME type handler, of course.
-WANT_FILTER_HTML_TAGSOUP=yes
+OPT_FILTER_HTML_TAGSOUP=yes
 
 # A simple form of coloured output can optionally be produced.
-WANT_COLOUR=yes
+OPT_COLOUR=yes
 
 # File dotlocking is performed for "system mailbox" (%[USER] and
 # %:ANYFILE) MBOX files: when synchronizing any such FILE a FILE.lock
 # file will be created in the directory of FILE, for the duration of the
 # synchronization.
-# Set WANT_DOTLOCK to support this traditional mail spool file locking.
-# MAILSPOOL(s) where normal system mailboxes reside are usually not
+# Set $OPT_DOTLOCK to support this traditional mail spool file locking.
+# $VAL_MAIL(s) where normal system mailboxes reside are usually not
 # writable by normal users, except that a user may read and write his
 # own mailbox.  But this means that a program run by the user cannot
 # create a .lock file!  The solution is to install a privilege-separated
 # mini-program that has the sole purpose and functionality of managing
 # the dotlock file in such situations -- and only then, as a last
-# ressort.  Our small helper will be installed in LIBEXECDIR, SETUID to
-# the PRIVSEP_USER (usually root).  With it dotlock files can be created
-# for any mailbox for which the invoking user has read (or read-write)
-# permissions, and under the UID and GID of the mailbox itself!
-# The actual installation make targets will require the chown(1) program
-# (as above) and require sufficient privileges to SETUID to PRIVSEP_USER.
-# WANT_DOTLOCK can be "require"d.
-WANT_DOTLOCK=yes
-PRIVSEP_USER=root
+# ressort.  With it dotlock files can be created for any mailbox for
+# which the invoking user has read (or read-write) permissions, and
+# under the UID and GID of the mailbox itself!  We call it -privsep.
+# $OPT_DOTLOCK can be "require"d.
+OPT_DOTLOCK=yes
 
 ##  --  >8  --  8<  --  ##
 ## Normal users should not need to read any further
@@ -300,58 +343,68 @@ PRIVSEP_USER=root
 ## PATHS AND PROGRAMS, DEVELOPMENT ##
 
 # To ease the life of forkers and packagers "our" name can be changed.
-# The name is build by concatenating $SID and $NAIL, i.e.,
-# $(SID)$(NAIL).  Note that the final string must be longer than two
-# characters and may not contain any whitespace.
-SID=s-
-NAIL=nail
+# The name is build by concatenating $VAL_SID and $VAL_MAILX, i.e.,
+# $(VAL_SID)$(VAL_MAILX).  Note that the final string must be longer
+# than two characters and may not contain any whitespace.
+VAL_SID=s-
+VAL_MAILX=nail
 
 # The name of the exemplary resource template.
-# Note 1: it's not overwritten by "make install" if it yet exists!
-SYSCONFRC="${SID}${NAIL}.rc"
+# Note 1: not overwritten by "make install" if yet existent!
+VAL_SYSCONFRC="${VAL_SID}${VAL_MAILX}.rc"
 
 ## FEATURE SET, DEVELOPMENT ##
 
-# Use debug compiler flags, enable some additional commands (like
-# `sstats', `smemtrace') and some code assertions.  Note that setting
-# this also enables our own memory canaries, which require a rather
-# large amount of runtime memory, and forcefully disables alloca(3)
-# stack memory usage (see WANT_NOALLOCA below), so as to be able to
-# track usage of "stack memory" via our memory canaries.
-WANT_DEBUG=no
-
-# We use the crypto libraries' MD5 implementation if possible, unless..
-WANT_NOEXTMD5=no
-
-# The codebase makes a lot of use of alloca(3), and this will remain
-# since S-nail will continue to be compliant to ISO C89, which has no
-# variable arrays, etc.  For testing purposes it is however nice to use
-# the much slower normal S-nail heap memory allocator instead.  Note:
-# this will be forcefully set (again) if WANT_DEBUG=yes.
-WANT_NOALLOCA="${WANT_DEBUG}"
+# Use debug compiler flags, enable some additional commands and code
+# assertions.  Note that setting this also enables our own memory
+# canaries, which require a rather large amount of runtime memory.
+OPT_DEBUG=no
 
 # Experimental code etc.
-# Note: this forcefully enables WANT_DEBUG.
-WANT_DEVEL=no
+# Note: this forcefully enables OPT_DEBUG
+OPT_DEVEL=no
 
-# Our functions are instrumented with Not-Yet-Dead chirps, which print
-# a function call trace when the program crashes.  Whereas NYD will be
-# used automatically when either of WANT_DEBUG and WANT_DEVEL is
-# defined, an extended level of NYD is compiled in only on explicit
-# request.
-# TODO Separation in between NYD and NYD2 not yet fully done.
-WANT_NYD2=no
+# We use the crypto libraries' MD5 implementation if possible, unless..
+OPT_NOEXTMD5=no
 
-# With $WANT_AUTOCC we will use stack protector guards shall the
+# With $OPT_AUTOCC we can make use of the ASan AddressSanitizer and ASan
+# MemorySanitizer of Google
+# (https://github.com/google/sanitizers/wiki/AddressSanitizer).
+# These are definetely only useful for debugging.
+# Also, external libraries are often problematic (e.g., ncursesw), and
+# ASAN_MEMORY of the tried clang 4.0.0 (4.0.0-2 of ArchLinux) was faulty.
+# Can be "require"d.
+OPT_ASAN_ADDRESS=no
+OPT_ASAN_MEMORY=no
+
+# With $OPT_AUTOCC we will use stack protector guards shall the
 # detected compiler support them; this goes in line with our own (heap)
 # memory canaries and will detect buffer overflows.  It is usually only
 # useful during development, i.e., in a debug environment that tests all
-# aspects of a program.
-WANT_FORCED_STACKPROT=`\
+# aspects of a program.  But today it is often used even in shipout code.
+OPT_FORCED_STACKPROT=`\
    if feat_yes DEVEL || feat_yes DEBUG; then \
       echo yes;\
    else \
       echo no;\
    fi`
+
+# If $OPT_DEBUG is true we'll use a simple memory wrapper with
+# canaries.  This interferes with memory debuggers like valgrind(1) or
+# the LLVM -fsanitize stuff.  Enable this to not use our wrapper.
+OPT_NOMEMDBG=`\
+   if feat_yes ASAN_MEMORY || feat_yes ASAN_ADDRESS; then \
+      echo yes;\
+   else \
+      echo no;\
+   fi`
+
+# Our functions are instrumented with Not-Yet-Dead chirps, which print
+# a function call trace when the program crashes.  Whereas NYD will be
+# used automatically when either of $OPT_DEBUG and $OPT_DEVEL is
+# defined, an extended level of NYD is compiled in only on explicit
+# request.
+# TODO Separation in between NYD and NYD2 not yet fully done.
+OPT_NYD2=no
 
 # vim:set tw=72: s-it-mode

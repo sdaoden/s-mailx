@@ -4,7 +4,7 @@
  *@ TODO - more (verbose) understanding+rection upon STATUS CODES
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 2000
@@ -76,7 +76,7 @@ static void
 _smtp_onterm(int signo)
 {
    NYD_X; /* Signal handler */
-   UNUSED(signo);
+   n_UNUSED(signo);
    siglongjmp(_smtp_jmp, 1);
 }
 
@@ -95,7 +95,7 @@ _smtp_read(struct sock *sp, struct smtp_line *slp, int val,
          rv = -1;
          goto jleave;
       }
-      if (options & OPT_VERBVERB)
+      if (n_poption & n_PO_VERBVERB)
          n_err(slp->buf);
       switch (slp->buf[0]) {
       case '1':   rv = 1; break;
@@ -125,7 +125,7 @@ jleave:
 
 /* Indirect SMTP I/O */
 #define _ANSWER(X, IGNEOF, WANTDAT) \
-do if (!(options & OPT_DEBUG)) {\
+do if (!(n_poption & n_PO_DEBUG)) {\
    int y;\
    if ((y = _smtp_read(sp, slp, X, IGNEOF, WANTDAT)) != (X) &&\
          (!(IGNEOF) || y != -1))\
@@ -133,14 +133,14 @@ do if (!(options & OPT_DEBUG)) {\
 } while (0)
 #define _OUT(X) \
 do {\
-   if (options & OPT_VERBVERB)\
+   if (n_poption & n_PO_VERBVERB)\
       n_err(">>> %s", X);\
-   if (!(options & OPT_DEBUG))\
+   if (!(n_poption & n_PO_DEBUG))\
       swrite(sp, X);\
 } while (0)
 
 static bool_t
-_smtp_talk(struct sock *sp, struct sendbundle *sbp)
+_smtp_talk(struct sock *sp, struct sendbundle *sbp) /* TODO n_string etc. */
 {
    char o[LINESIZE], *hostname;
    struct smtp_line _sl, *slp = &_sl;
@@ -150,7 +150,7 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
    bool_t inhdr = TRU1, inbcc = FAL0, rv = FAL0;
    NYD_ENTER;
 
-   hostname = nodename(TRU1);
+   hostname = n_nodename(TRU1);
    slp->buf = NULL;
    slp->bufsize = 0;
 
@@ -166,7 +166,7 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
       _OUT(NETLINE("STARTTLS"));
       _ANSWER(2, FAL0, FAL0);
 
-      if (!(options & OPT_DEBUG) && ssl_open(&sbp->sb_url, sp) != OKAY)
+      if (!(n_poption & n_PO_DEBUG) && ssl_open(&sbp->sb_url, sp) != OKAY)
          goto jleave;
    }
 #else
@@ -193,44 +193,69 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp)
    default:
       /* FALLTHRU (doesn't happen) */
    case AUTHTYPE_PLAIN:
+      cnt = sbp->sb_ccred.cc_user.l;
+      if(sbp->sb_ccred.cc_pass.l >= UIZ_MAX - 2 ||
+            cnt >= UIZ_MAX - 2 - sbp->sb_ccred.cc_pass.l){
+jerr_cred:
+         n_err(_("Credentials overflow buffer sizes\n"));
+         goto jleave;
+      }
+      cnt += sbp->sb_ccred.cc_pass.l;
+
+      if(cnt >= sizeof(o) - 2)
+         goto jerr_cred;
+      cnt += 2;
+      if(b64_encode_calc_size(cnt) == UIZ_MAX)
+         goto jerr_cred;
+
       _OUT(NETLINE("AUTH PLAIN"));
       _ANSWER(3, FAL0, FAL0);
 
       snprintf(o, sizeof o, "%c%s%c%s",
          '\0', sbp->sb_ccred.cc_user.s, '\0', sbp->sb_ccred.cc_pass.s);
-      b64_encode_buf(&b64, o,
-         sbp->sb_ccred.cc_user.l + sbp->sb_ccred.cc_pass.l + 2,
-         B64_SALLOC | B64_CRLF);
+      if(b64_encode_buf(&b64, o, cnt, B64_SALLOC | B64_CRLF) == NULL)
+         goto jleave;
       _OUT(b64.s);
       _ANSWER(2, FAL0, FAL0);
       break;
    case AUTHTYPE_LOGIN:
+      if(b64_encode_calc_size(sbp->sb_ccred.cc_user.l) == UIZ_MAX ||
+            b64_encode_calc_size(sbp->sb_ccred.cc_pass.l) == UIZ_MAX)
+         goto jerr_cred;
+
       _OUT(NETLINE("AUTH LOGIN"));
       _ANSWER(3, FAL0, FAL0);
 
-      b64_encode_cp(&b64, sbp->sb_ccred.cc_user.s, B64_SALLOC | B64_CRLF);
+      if(b64_encode_buf(&b64, sbp->sb_ccred.cc_user.s, sbp->sb_ccred.cc_user.l,
+            B64_SALLOC | B64_CRLF) == NULL)
+         goto jleave;
       _OUT(b64.s);
       _ANSWER(3, FAL0, FAL0);
 
-      b64_encode_cp(&b64, sbp->sb_ccred.cc_pass.s, B64_SALLOC | B64_CRLF);
+      if(b64_encode_buf(&b64, sbp->sb_ccred.cc_pass.s, sbp->sb_ccred.cc_pass.l,
+            B64_SALLOC | B64_CRLF) == NULL)
+         goto jleave;
       _OUT(b64.s);
       _ANSWER(2, FAL0, FAL0);
       break;
 #ifdef HAVE_MD5
-   case AUTHTYPE_CRAM_MD5:
+   case AUTHTYPE_CRAM_MD5:{
+      char *cp;
+
       _OUT(NETLINE("AUTH CRAM-MD5"));
       _ANSWER(3, FAL0, TRU1);
-      {  char *cp = cram_md5_string(&sbp->sb_ccred.cc_user,
-               &sbp->sb_ccred.cc_pass, slp->dat);
-         _OUT(cp);
-      }
+
+      if((cp = cram_md5_string(&sbp->sb_ccred.cc_user, &sbp->sb_ccred.cc_pass,
+            slp->dat)) == NULL)
+         goto jerr_cred;
+      _OUT(cp);
       _ANSWER(2, FAL0, FAL0);
-      break;
+   }  break;
 #endif
 #ifdef HAVE_GSSAPI
    case AUTHTYPE_GSSAPI:
-      if (options & OPT_DEBUG)
-         n_err(">>> %s", _(">>>Would perform GSS-API authentication now\n"));
+      if (n_poption & n_PO_DEBUG)
+         n_err(_(">>> We would perform GSS-API authentication now\n"));
       else if (!_smtp_gssapi(sp, sbp, slp))
          goto jleave;
       break;
@@ -271,8 +296,9 @@ jsend:
             inbcc = FAL0;
       }
 
-      if (options & OPT_DEBUG) {
-         n_err(">>> %s%s", (*slp->buf == '.' ? "." : ""), slp->buf);
+      if (n_poption & n_PO_DEBUG) {
+         slp->buf[blen - 1] = '\0';
+         n_err(">>> %s%s\n", (*slp->buf == '.' ? "." : n_empty), slp->buf);
          continue;
       }
       if (*slp->buf == '.')
@@ -295,7 +321,7 @@ jleave:
 }
 
 #ifdef HAVE_GSSAPI
-# include "smtp_gssapi.h"
+# include "smtp-gssapi.h"
 #endif
 
 #undef _OUT
@@ -316,13 +342,13 @@ smtp_mta(struct sendbundle *sbp)
       safe_signal(SIGTERM, &_smtp_onterm);
 
    memset(&so, 0, sizeof so);
-   if (!(options & OPT_DEBUG) && !sopen(&so, &sbp->sb_url))
+   if (!(n_poption & n_PO_DEBUG) && !sopen(&so, &sbp->sb_url))
       goto jleave;
 
    so.s_desc = "SMTP";
    rv = _smtp_talk(&so, sbp);
 
-   if (!(options & OPT_DEBUG))
+   if (!(n_poption & n_PO_DEBUG))
       sclose(&so);
 jleave:
    safe_signal(SIGTERM, saveterm);

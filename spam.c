@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Spam related facilities.
  *
- * Copyright (c) 2013 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2013 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -24,9 +24,6 @@
 
 EMPTY_FILE()
 #ifdef HAVE_SPAM
-#if defined HAVE_SPAM_SPAMC || defined HAVE_SPAM_FILTER
-# include <sys/wait.h>
-#endif
 
 #ifdef HAVE_SPAM_SPAMD
 # include <sys/socket.h>
@@ -49,7 +46,7 @@ EMPTY_FILE()
 #endif
 
 #ifdef HAVE_SPAM_FILTER
-  /* NELEM() of regmatch_t groups */
+  /* n_NELEM() of regmatch_t groups */
 # define SPAM_FILTER_MATCHES  32u
 #endif
 
@@ -84,7 +81,7 @@ struct spam_cf {
 #ifdef HAVE_SPAM_SPAMC
 struct spam_spamc {
    struct spam_cf    c_super;
-   char const        *c_cmd_arr[8];
+   char const        *c_cmd_arr[9];
 };
 #endif
 
@@ -194,9 +191,9 @@ _spam_action(enum spam_action sa, int *ip)
 
    memset(&vc, 0, sizeof vc);
    vc.vc_action = sa;
-   vc.vc_verbose = ((options & OPT_VERB) != 0);
-   vc.vc_progress = (!vc.vc_verbose && ((options & OPT_INTERACTIVE) != 0));
-   vc.vc_esep = vc.vc_progress ? "\n" : "";
+   vc.vc_verbose = ((n_poption & n_PO_VERB) != 0);
+   vc.vc_progress = (!vc.vc_verbose && ((n_psonce & n_PSO_INTERACTIVE) != 0));
+   vc.vc_esep = vc.vc_progress ? "\n" : n_empty;
 
    /* Check and setup the desired spam interface */
    if ((cp = ok_vlook(spam_interface)) == NULL) {
@@ -208,7 +205,8 @@ _spam_action(enum spam_action sa, int *ip)
          goto jleave;
 #endif
 #ifdef HAVE_SPAM_SPAMD
-   } else if (!asccasecmp(cp, "spamd")) {
+   } else if (!asccasecmp(cp, "spamd")) { /* TODO v15: remove */
+      n_OBSOLETE(_("*spam-interface*=spamd is obsolete, please use =spamc"));
       if (!_spamd_setup(&vc))
          goto jleave;
 #endif
@@ -218,16 +216,14 @@ _spam_action(enum spam_action sa, int *ip)
          goto jleave;
 #endif
    } else {
-      n_err(_("`%s': unknown / unsupported *spam-interface*: \"%s\"\n"),
+      n_err(_("`%s': unknown / unsupported *spam-interface*: %s\n"),
          _spam_cmds[sa], cp);
       goto jleave;
    }
 
    /* *spam-maxsize* we do handle ourselfs instead */
-   maxsize = 0;
-   if ((cp = ok_vlook(spam_maxsize)) != NULL)
-      maxsize = (size_t)strtol(cp, NULL, 10); /* TODO strtol */
-   if (maxsize <= 0)
+   if ((cp = ok_vlook(spam_maxsize)) == NULL ||
+         (n_idec_ui32_cp(&maxsize, cp, 0, NULL), maxsize) == 0)
       maxsize = SPAM_MAXSIZE;
 
    /* Finally get an I/O buffer */
@@ -250,24 +246,25 @@ _spam_action(enum spam_action sa, int *ip)
                _spam_cmds[sa], (ul_i)vc.vc_mno, (ul_i)(size_t)vc.vc_mp->m_size,
                (ul_i)maxsize);
          else if (vc.vc_progress) {
-            fprintf(stdout, "\r%s: !%-6" PRIuZ " %6" PRIuZ "/%-6" PRIuZ,
+            fprintf(n_stdout, "\r%s: !%-6" PRIuZ " %6" PRIuZ "/%-6" PRIuZ,
                _spam_cmds[sa], vc.vc_mno, cnt, curr);
-            fflush(stdout);
+            fflush(n_stdout);
          }
          ++skipped;
       } else {
          if (vc.vc_verbose)
             n_err(_("`%s': message %lu\n"), _spam_cmds[sa], (ul_i)vc.vc_mno);
          else if (vc.vc_progress) {
-            fprintf(stdout, "\r%s: .%-6" PRIuZ " %6" PRIuZ "/%-6" PRIuZ,
+            fprintf(n_stdout, "\r%s: .%-6" PRIuZ " %6" PRIuZ "/%-6" PRIuZ,
                _spam_cmds[sa], vc.vc_mno, cnt, curr);
-            fflush(stdout);
+            fflush(n_stdout);
          }
 
          setdot(vc.vc_mp);
          if ((vc.vc_ifp = setinput(&mb, vc.vc_mp, NEED_BODY)) == NULL) {
             n_err(_("%s`%s': cannot load message %lu: %s\n"),
-               vc.vc_esep, _spam_cmds[sa], (ul_i)vc.vc_mno, strerror(errno));
+               vc.vc_esep, _spam_cmds[sa], (ul_i)vc.vc_mno,
+               n_err_to_doc(n_err_no));
             ok = FAL0;
             break;
          }
@@ -278,9 +275,9 @@ _spam_action(enum spam_action sa, int *ip)
    }
    if (vc.vc_progress) {
       if (curr > 0)
-         fprintf(stdout, _(" %s (%" PRIuZ "/%" PRIuZ " all/skipped)\n"),
-            (ok ? "done" : "ERROR"), curr, skipped);
-      fflush(stdout);
+         fprintf(n_stdout, _(" %s (%" PRIuZ "/%" PRIuZ " all/skipped)\n"),
+            (ok ? _("done") : V_(n_error)), curr, skipped);
+      fflush(n_stdout);
    }
 
    if (vc.vc_dtor != NULL)
@@ -341,16 +338,17 @@ jlearn:
 
    if ((cp = ok_vlook(spamc_user)) != NULL) {
       if (*cp == '\0')
-         cp = myname;
+         cp = ok_vlook(LOGNAME);
       *args++ = "-u";
       *args++ = cp;
    }
-   assert(PTR2SIZE(args - sscp->c_cmd_arr) <= NELEM(sscp->c_cmd_arr));
+   assert(PTR2SIZE(args - sscp->c_cmd_arr) <= n_NELEM(sscp->c_cmd_arr));
 
    *args = NULL;
    sscp->c_super.cf_cmd = str_concat_cpa(&str, sscp->c_cmd_arr, " ")->s;
    if (vcp->vc_verbose)
-      n_err(_("spamc(1) via \"%s\"\n"), sscp->c_super.cf_cmd);
+      n_err(_("spamc(1) via %s\n"),
+         n_shexp_quote_cp(sscp->c_super.cf_cmd, FAL0));
 
    _spam_cf_setup(vcp, FAL0);
 
@@ -424,8 +422,8 @@ _spamd_setup(struct spam_vc *vcp)
 
    if ((cp = ok_vlook(spamd_user)) != NULL) {
       if (*cp == '\0')
-         cp = myname;
-      ssdp->d_user.l = strlen(ssdp->d_user.s = UNCONST(cp));
+         cp = ok_vlook(LOGNAME);
+      ssdp->d_user.l = strlen(ssdp->d_user.s = n_UNCONST(cp));
    }
 
    if ((cp = ok_vlook(spamd_socket)) == NULL) {
@@ -434,8 +432,8 @@ _spamd_setup(struct spam_vc *vcp)
       goto jleave;
    }
    if ((l = strlen(cp) +1) >= sizeof(ssdp->d_sun.sun_path)) {
-      n_err(_("`%s': *spamd-socket* too long: \"%s\"\n"),
-         _spam_cmds[vcp->vc_action], cp);
+      n_err(_("`%s': *spamd-socket* too long: %s\n"),
+         _spam_cmds[vcp->vc_action], n_shexp_quote_cp(cp, FAL0));
       goto jleave;
    }
    ssdp->d_sun.sun_family = AF_UNIX;
@@ -488,15 +486,16 @@ _spamd_interact(struct spam_vc *vcp)
 
    if ((dsfd = socket(PF_UNIX, SOCK_STREAM, 0)) == -1) {
       n_err(_("%s`%s': can't create unix(4) socket: %s\n"),
-         vcp->vc_esep, _spam_cmds[vcp->vc_action], strerror(errno));
+         vcp->vc_esep, _spam_cmds[vcp->vc_action], n_err_to_doc(n_err_no));
       goto jleave;
    }
 
    if (connect(dsfd, (struct sockaddr*)&ssdp->d_sun, SUN_LEN(&ssdp->d_sun)) ==
          -1) {
       n_err(_("%s`%s': can't connect to *spam-socket*: %s\n"),
-         vcp->vc_esep, _spam_cmds[vcp->vc_action], strerror(errno));
+         vcp->vc_esep, _spam_cmds[vcp->vc_action], n_err_to_doc(n_err_no));
       close(dsfd);
+      dsfd = -1;
       goto jleave;
    }
 
@@ -506,14 +505,14 @@ _spamd_interact(struct spam_vc *vcp)
 # define _X(X) do {memcpy(lp, X, sizeof(X) -1); lp += sizeof(X) -1;} while (0)
 
    i = ((cp = ssdp->d_user.s) != NULL) ? ssdp->d_user.l : 0;
-   lp = headbuf = ac_alloc(
-         sizeof(NETLINE("A_VERY_LONG_COMMAND " SPAMD_IDENT)) +
+   size = sizeof(NETLINE("A_VERY_LONG_COMMAND " SPAMD_IDENT)) +
          sizeof(NETLINE("Content-length: 9223372036854775807")) +
          ((cp != NULL) ? sizeof("User: ") + i + sizeof(NETNL) : 0) +
          sizeof(NETLINE("Message-class: spam")) +
          sizeof(NETLINE("Set: local")) +
          sizeof(NETLINE("Remove: local")) +
-         sizeof(NETNL) /*+1*/);
+         sizeof(NETNL) /*+1*/;
+   lp = headbuf = n_lofi_alloc(size);
 
    switch (vcp->vc_action) {
    case _SPAM_RATE:
@@ -526,7 +525,7 @@ _spamd_interact(struct spam_vc *vcp)
       break;
    }
 
-   lp += snprintf(lp, 0x7FFF, NETLINE("Content-length: %" PRIuZ),
+   lp += snprintf(lp, size, NETLINE("Content-length: %" PRIuZ),
          (size_t)vcp->vc_mp->m_size);
 
    if (cp != NULL) {
@@ -562,7 +561,7 @@ _spamd_interact(struct spam_vc *vcp)
 # undef _X
 
    i = PTR2SIZE(lp - headbuf);
-   if (options & OPT_VERBVERB)
+   if (n_poption & n_PO_VERBVERB)
       n_err(">>> %.*s <<<\n", (int)i, headbuf);
    if (i != (size_t)write(dsfd, headbuf, i))
       goto jeso;
@@ -570,7 +569,7 @@ _spamd_interact(struct spam_vc *vcp)
    /* Then simply pass through the message "as-is" */
    for (size = vcp->vc_mp->m_size; size > 0;) {
       i = fread(vcp->vc_buffer, sizeof *vcp->vc_buffer,
-            MIN(size, BUFFER_SIZE), vcp->vc_ifp);
+            n_MIN(size, BUFFER_SIZE), vcp->vc_ifp);
       if (i == 0) {
          if (ferror(vcp->vc_ifp))
             goto jeso;
@@ -581,7 +580,7 @@ _spamd_interact(struct spam_vc *vcp)
       if (i != (size_t)write(dsfd, vcp->vc_buffer, i)) {
 jeso:
          n_err(_("%s`%s': I/O on *spamd-socket* failed: %s\n"),
-            vcp->vc_esep, _spam_cmds[vcp->vc_action], strerror(errno));
+            vcp->vc_esep, _spam_cmds[vcp->vc_action], n_err_to_doc(n_err_no));
          goto jleave;
       }
    }
@@ -597,7 +596,6 @@ jeso:
       if (j == 0)
          break;
       size += j;
-      i -= j;
       /* For the current way of doing things a single read will suffice.
        * Note we'll be "penaltized" when awaiting EOF on the socket, at least
        * in blocking mode, so do avoid that and break off */
@@ -611,7 +609,7 @@ jebogus:
       n_err(_("%s`%s': bogus spamd(1) I/O interaction (%lu)\n"),
          vcp->vc_esep, _spam_cmds[vcp->vc_action], (ul_i)i);
 # ifdef HAVE_DEVEL
-      if (options & OPT_VERBVERB)
+      if (n_poption & n_PO_VERBVERB)
          n_err(">>> BUFFER: %s <<<\n", vcp->vc_buffer);
 # endif
       goto jleave;
@@ -772,21 +770,22 @@ jecmd:
 # ifdef HAVE_REGEX
    if (vcp->vc_action == _SPAM_RATE &&
          (cp = ok_vlook(spamfilter_rate_scanscore)) != NULL) {
+      int s;
       char const *bp;
-      char *ep;
 
       var = strchr(cp, ';');
       if (var == NULL) {
-         n_err(_("`%s': *spamfilter-rate-scanscore*: no `;' in \"%s\"\n"),
+         n_err(_("`%s': *spamfilter-rate-scanscore*: missing semicolon;: %s\n"),
             _spam_cmds[vcp->vc_action], cp);
          goto jleave;
       }
-      bp = var + 1;
+      bp = &var[1];
 
-      var = savestrbuf(cp, PTR2SIZE(var - cp));
-      sfp->f_score_grpno = (ui32_t)strtoul(var, &ep, 0);
-      if (var == ep || *ep != '\0') {
-         n_err(_("`%s': *spamfilter-rate-scanscore*: bad group in \"%s\"\n"),
+      if((n_idec_buf(&sfp->f_score_grpno, cp, PTR2SIZE(var - cp), 0,
+                  n_IDEC_MODE_LIMIT_32BIT, NULL
+               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+            ) != n_IDEC_STATE_CONSUMED){
+         n_err(_("`%s': *spamfilter-rate-scanscore*: bad group: %s\n"),
             _spam_cmds[vcp->vc_action], cp);
          goto jleave;
       }
@@ -798,15 +797,16 @@ jecmd:
          goto jleave;
       }
 
-      if (regcomp(&sfp->f_score_regex, bp, REG_EXTENDED | REG_ICASE)) {
-         n_err(_("`%s': invalid *spamfilter-rate-scanscore* regex: \"%s\"\n"),
-            _spam_cmds[vcp->vc_action], cp);
+      if ((s = regcomp(&sfp->f_score_regex, bp, REG_EXTENDED | REG_ICASE))
+            != 0) {
+         n_err(_("`%s': invalid *spamfilter-rate-scanscore* regex: %s: %s\n"),
+            _spam_cmds[vcp->vc_action], n_shexp_quote_cp(cp, FAL0),
+            n_regex_err_to_doc(&sfp->f_score_regex, s));
          goto jleave;
       }
       if (sfp->f_score_grpno > sfp->f_score_regex.re_nsub) {
          regfree(&sfp->f_score_regex);
-         n_err(_("`%s': *spamfilter-rate-scanscore*: "
-            "no group %u in \"%s\"\n"),
+         n_err(_("`%s': *spamfilter-rate-scanscore*: no group %u: %s\n"),
             _spam_cmds[vcp->vc_action], sfp->f_score_grpno, cp);
          goto jleave;
       }
@@ -869,7 +869,7 @@ _spamfilter_interact(struct spam_vc *vcp)
    assert(sfp->f_super.cf_result != NULL);
    remp = rem + sfp->f_score_grpno;
 
-   if (regexec(&sfp->f_score_regex, sfp->f_super.cf_result, NELEM(rem), rem,
+   if (regexec(&sfp->f_score_regex, sfp->f_super.cf_result, n_NELEM(rem), rem,
          0) == REG_NOMATCH || (remp->rm_so | remp->rm_eo) < 0) {
       n_err(_("`%s': *spamfilter-rate-scanscore* "
          "doesn't match filter output!\n"),
@@ -912,30 +912,29 @@ static void
 _spam_cf_setup(struct spam_vc *vcp, bool_t useshell)
 {
    struct str s;
-   struct spam_cf *scfp;
    char const *cp;
+   struct spam_cf *scfp;
    NYD2_ENTER;
-   LCTA(3 < NELEM(scfp->cf_env));
+   n_LCTA(2 < n_NELEM(scfp->cf_env), "Preallocated buffer too small");
 
    scfp = &vcp->vc_t.cf;
 
    if ((scfp->cf_useshell = useshell)) {
-      if ((cp = ok_vlook(SHELL)) == NULL)
-         cp = XSHELL;
-      scfp->cf_acmd = cp;
+      scfp->cf_acmd = ok_vlook(SHELL);
       scfp->cf_a0 = "-c";
    }
 
-   /* NAIL_FILENAME_GENERATED *//* TODO pathconf NAME_MAX; but user can create
+   /* MAILX_FILENAME_GENERATED *//* TODO pathconf NAME_MAX; but user can create
     * TODO a file wherever he wants!  *Do* create a zero-size temporary file
-    * TODO and give *that* path as NAIL_FILENAME_TEMPORARY, clean it up once
+    * TODO and give *that* path as MAILX_FILENAME_TEMPORARY, clean it up once
     * TODO the pipe returns?  Like this we *can* verify path/name issues! */
-   scfp->cf_env[0] = str_concat_csvl(&s, NAILENV_FILENAME_GENERATED, "=",
-         getrandstring(MIN(NAME_MAX / 4, 16)), NULL)->s;
-
-   scfp->cf_env[1] = str_concat_csvl(&s, NAILENV_TMPDIR, "=", tempdir, NULL)->s;
-   scfp->cf_env[2] = str_concat_csvl(&s, "TMPDIR", "=", tempdir, NULL)->s;
-   scfp->cf_env[3] = NULL;
+   cp = n_random_create_cp(n_MIN(NAME_MAX / 4, 16), NULL);
+   scfp->cf_env[0] = str_concat_csvl(&s,
+         n_PIPEENV_FILENAME_GENERATED, "=", cp, NULL)->s;
+   /* v15 compat NAIL_ environments vanish! */
+   scfp->cf_env[1] = str_concat_csvl(&s,
+         "NAIL_FILENAME_GENERATED", "=", cp, NULL)->s;
+   scfp->cf_env[2] = NULL;
    NYD2_LEAVE;
 }
 
@@ -995,15 +994,15 @@ _spam_cf_interact(struct spam_vc *vcp)
    pid = 0; /* cc uninit */
 
    if (!pipe_cloexec(p2c)) {
-      n_err(_("%s`%s': cannot create parent pipe: %s\n"),
-         vcp->vc_esep, _spam_cmds[vcp->vc_action], strerror(errno));
+      n_err(_("%s`%s': cannot create parent communication pipe: %s\n"),
+         vcp->vc_esep, _spam_cmds[vcp->vc_action], n_err_to_doc(n_err_no));
       goto jtail;
    }
    state |= _P2C;
 
    if (!pipe_cloexec(c2p)) {
       n_err(_("%s`%s': cannot create child pipe: %s\n"),
-         vcp->vc_esep, _spam_cmds[vcp->vc_action], strerror(errno));
+         vcp->vc_esep, _spam_cmds[vcp->vc_action], n_err_to_doc(n_err_no));
       goto jtail;
    }
    state |= _C2P;
@@ -1019,7 +1018,7 @@ _spam_cf_interact(struct spam_vc *vcp)
 
    /* Start our command as requested */
    sigemptyset(&cset);
-   if ((pid = start_command(
+   if ((pid = n_child_start(
          (scfp->cf_acmd != NULL ? scfp->cf_acmd : scfp->cf_cmd),
          &cset, p2c[0], c2p[1],
          scfp->cf_a0, (scfp->cf_acmd != NULL ? scfp->cf_cmd : NULL), NULL,
@@ -1035,7 +1034,9 @@ _spam_cf_interact(struct spam_vc *vcp)
     * content does the same in effect, however much more efficiently.
     * XXX NOTE: this may mean we pass a message without From_ line! */
    for (size = vcp->vc_mp->m_size; size > 0;) {
-      size_t i = fread(vcp->vc_buffer, 1, MIN(size, BUFFER_SIZE), vcp->vc_ifp);
+      size_t i;
+
+      i = fread(vcp->vc_buffer, 1, n_MIN(size, BUFFER_SIZE), vcp->vc_ifp);
       if (i == 0) {
          if (ferror(vcp->vc_ifp))
             state |= _ERRORS;
@@ -1077,8 +1078,9 @@ jtail:
             vcp->vc_buffer[i] = '\0';
             if ((cp = strchr(vcp->vc_buffer, NETNL[0])) == NULL &&
                   (cp = strchr(vcp->vc_buffer, NETNL[1])) == NULL) {
-               n_err(_("%s`%s': program generates too much output: \"%s\"\n"),
-                  vcp->vc_esep, _spam_cmds[vcp->vc_action], scfp->cf_cmd);
+               n_err(_("%s`%s': program generates too much output: %s\n"),
+                  vcp->vc_esep, _spam_cmds[vcp->vc_action],
+                  n_shexp_quote_cp(scfp->cf_cmd, FAL0));
                state |= _ERRORS;
             } else {
                scfp->cf_result = sbufdup(vcp->vc_buffer,
@@ -1090,7 +1092,7 @@ jtail:
       }
 
       state &= ~_RUNNING;
-      wait_child(pid, &scfp->cf_waitstat);
+      n_child_wait(pid, &scfp->cf_waitstat);
       if (WIFEXITED(scfp->cf_waitstat))
          state |= _GOODRUN;
    }
@@ -1125,37 +1127,48 @@ jtail:
 #if defined HAVE_SPAM_SPAMC || defined HAVE_SPAM_SPAMD ||\
    (defined HAVE_SPAM_FILTER && defined HAVE_REGEX)
 static void
-_spam_rate2score(struct spam_vc *vcp, char *buf)
-{
-   char *cp;
+_spam_rate2score(struct spam_vc *vcp, char *buf){
    ui32_t m, s;
+   enum n_idec_state ids;
    NYD2_ENTER;
 
-   m = (ui32_t)strtol(buf, &cp, 10);
-   if (cp == buf)
-      goto jleave;
+   /* C99 */{ /* Overcome ISO C / compiler weirdness */
+      char const *cp;
+
+      cp = buf;
+      ids = n_idec_ui32_cp(&m, buf, 10, &cp);
+      if((ids & n_IDEC_STATE_EMASK) & ~n_IDEC_STATE_EBASE)
+         goto jleave;
+      buf = n_UNCONST(cp);
+   }
 
    s = 0;
-   if (*cp++ != '\0') {
+   if(!(ids & n_IDEC_STATE_CONSUMED)){
       /* Floating-point rounding for non-mathematicians */
       char c1, c2, c3;
-      if ((c1 = cp[0]) != '\0' && (c2 = cp[1]) != '\0' &&
-            (c3 = cp[2]) != '\0') {
-         cp[2] = '\0';
-         if (c3 >= '5') {
-            if (c2 == '9') {
-               if (c1 == '9') {
+
+      ++buf; /* '.' */
+      if((c1 = buf[0]) != '\0' && (c2 = buf[1]) != '\0' &&
+            (c3 = buf[2]) != '\0'){
+         buf[2] = '\0';
+         if(c3 >= '5'){
+            if(c2 == '9'){
+               if(c1 == '9'){
                   ++m;
                   goto jscore_ok;
-               } else
-                  cp[0] = ++c1;
+               }else
+                  buf[0] = ++c1;
                c2 = '0';
-            } else
+            }else
                ++c2;
-            cp[1] = c2;
+            buf[1] = c2;
          }
       }
-      s = (ui32_t)strtol(cp, NULL, 10);
+
+      ids = n_idec_ui32_cp(&s, buf, 10, NULL);
+      if((ids & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+            ) != n_IDEC_STATE_CONSUMED)
+         goto jleave;
    }
 
 jscore_ok:

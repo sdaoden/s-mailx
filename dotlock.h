@@ -1,13 +1,13 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Creation of an exclusive "dotlock" file.  This is (potentially) shared
- *@ in between dot_lock() and the privilege-separated "dotlocker"..
+ *@ in between n_dotlock() and the privilege-separated "dotlocker"..
  *@ (Which is why it doesn't use NYD or other utilities.)
  *@ The code assumes it has been chdir(2)d into the target directory and
- *@ that SIGPIPE is ignored (we react upon EPIPE).
+ *@ that SIGPIPE is ignored (we react upon ERR_PIPE).
  *@ It furtherly assumes that it can create a file name that is at least one
  *@ byte longer than the dotlock file's name!
  *
- * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 1996 Christos Zoulas.  All rights reserved.
@@ -34,7 +34,7 @@
  */
 
 /* Jump in */
-static enum dotlock_state _dotlock_create(struct dotlock_info *dip);
+static enum n_dotlock_state a_dotlock_create(struct n_dotlock_info *dip);
 
 /* Create a unique file. O_EXCL does not really work over NFS so we follow
  * the following trick (inspired by S.R. van den Berg):
@@ -43,113 +43,104 @@ static enum dotlock_state _dotlock_create(struct dotlock_info *dip);
  * - get the link count of the target
  * - unlink the mostly unique filename
  * - if the link count was 2, then we are ok; else we've failed */
-static enum dotlock_state  __dotlock_create_excl(struct dotlock_info *dip,
+static enum n_dotlock_state a_dotlock__create_excl(struct n_dotlock_info *dip,
                               char const *lname);
 
-static enum dotlock_state
-_dotlock_create(struct dotlock_info *dip)
-{
+static enum n_dotlock_state
+a_dotlock_create(struct n_dotlock_info *dip){
    /* Use PATH_MAX not NAME_MAX to catch those "we proclaim the minimum value"
     * problems (SunOS), since the pathconf(3) value came too late! */
    char lname[PATH_MAX +1];
    sigset_t nset, oset;
    size_t tries;
    ssize_t w;
-   enum dotlock_state rv, xrv;
+   enum n_dotlock_state rv, xrv;
 
    /* (Callee ensured this doesn't end up as plain "di_lock_name") */
    snprintf(lname, sizeof lname, "%s.%s.%s",
       dip->di_lock_name, dip->di_hostname, dip->di_randstr);
 
-   sigemptyset(&nset);
-   sigaddset(&nset, SIGHUP);
-   sigaddset(&nset, SIGINT);
-   sigaddset(&nset, SIGQUIT);
-   sigaddset(&nset, SIGTERM);
-   sigaddset(&nset, SIGTTIN);
-   sigaddset(&nset, SIGTTOU);
-   sigaddset(&nset, SIGTSTP);
+   sigfillset(&nset);
 
-   for (tries = 0;; ++tries) {
+   for(tries = 0;; ++tries){
       sigprocmask(SIG_BLOCK, &nset, &oset);
-      rv = __dotlock_create_excl(dip, lname);
+      rv = a_dotlock__create_excl(dip, lname);
       sigprocmask(SIG_SETMASK, &oset, NULL);
 
-      if (rv == DLS_NONE || (rv & DLS_ABANDON))
+      if(rv == n_DLS_NONE || (rv & n_DLS_ABANDON))
          break;
-      if (dip->di_pollmsecs == 0 || tries >= DOTLOCK_TRIES) {
-         rv |= DLS_ABANDON;
+      if(dip->di_pollmsecs == 0 || tries >= DOTLOCK_TRIES){
+         rv |= n_DLS_ABANDON;
          break;
       }
 
-      xrv = DLS_PING;
+      xrv = n_DLS_PING;
       w = write(STDOUT_FILENO, &xrv, sizeof xrv);
-      if (w == -1 && errno == EPIPE) {
-         rv = DLS_DUNNO | DLS_ABANDON;
+      if(w == -1 && n_err_no == n_ERR_PIPE){
+         rv = n_DLS_DUNNO | n_DLS_ABANDON;
          break;
       }
-      sleep(1); /* TODO pollmsecs -> use finer grain */
+      n_msleep(dip->di_pollmsecs, FAL0);
    }
    return rv;
 }
 
-static enum dotlock_state
-__dotlock_create_excl(struct dotlock_info *dip, char const *lname)
-{
+static enum n_dotlock_state
+a_dotlock__create_excl(struct n_dotlock_info *dip, char const *lname){
    struct stat stb;
-   int fd;
+   int fd, e;
    size_t tries;
-   enum dotlock_state rv = DLS_NONE;
+   enum n_dotlock_state rv = n_DLS_NONE;
 
    /* We try to create the unique filename */
-   for (tries = 0;; ++tries) {
+   for(tries = 0;; ++tries){
       fd = open(lname,
 #ifdef O_SYNC
-               (O_WRONLY | O_CREAT | O_TRUNC | O_EXCL | O_SYNC),
+               (O_WRONLY | O_CREAT | O_EXCL | O_SYNC),
 #else
-               (O_WRONLY | O_CREAT | O_TRUNC | O_EXCL),
+               (O_WRONLY | O_CREAT | O_EXCL),
 #endif
             S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
-      if (fd != -1) {
+      if(fd != -1){
 #ifdef n_PRIVSEP_SOURCE
-         if (dip->di_stb != NULL &&
-               fchown(fd, dip->di_stb->st_uid, dip->di_stb->st_gid)) {
-            int x = errno;
+         if(dip->di_stb != NULL &&
+               fchown(fd, dip->di_stb->st_uid, dip->di_stb->st_gid)){
+            int x = n_err_no;
             close(fd);
-            errno = x;
+            n_err_no = x;
             goto jbados;
          }
 #endif
          close(fd);
          break;
-      } else if (errno != EEXIST) {
-         rv = (errno == EROFS) ? DLS_ROFS | DLS_ABANDON : DLS_NOPERM;
+      }else if((e = n_err_no) != n_ERR_EXIST){
+         rv = (e == n_ERR_ROFS) ? n_DLS_ROFS | n_DLS_ABANDON : n_DLS_NOPERM;
          goto jleave;
-      } else if (tries >= DOTLOCK_TRIES) {
-         rv = DLS_EXIST;
+      }else if(tries >= DOTLOCK_TRIES){
+         rv = n_DLS_EXIST;
          goto jleave;
       }
    }
 
    /* We link the name to the fname */
-   if (link(lname, dip->di_lock_name) == -1)
+   if(link(lname, dip->di_lock_name) == -1)
       goto jbados;
 
    /* Note that we stat our own exclusively created name, not the
     * destination, since the destination can be affected by others */
-   if (stat(lname, &stb) == -1)
+   if(stat(lname, &stb) == -1)
       goto jbados;
 
    unlink(lname);
 
    /* If the number of links was two (one for the unique file and one for
     * the lock), we've won the race */
-   if (stb.st_nlink != 2)
-      rv = DLS_EXIST;
+   if(stb.st_nlink != 2)
+      rv = n_DLS_EXIST;
 jleave:
    return rv;
 jbados:
-   rv = (errno == EEXIST) ? DLS_EXIST : DLS_NOPERM | DLS_ABANDON;
+   rv = (n_err_no == n_ERR_EXIST) ? n_DLS_EXIST : n_DLS_NOPERM | n_DLS_ABANDON;
    unlink(lname);
    goto jleave;
 }

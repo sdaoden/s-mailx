@@ -1,8 +1,9 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Header inclusion, macros, constants, types and the global var declarations.
+ *@ TODO Place in include/, split in object-based subheaders.  And please: sort.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -32,6 +33,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#ifndef n_NAIL_H
+# define n_NAIL_H
 
 /*
  * Mail -- a mail program
@@ -39,10 +42,11 @@
  * Author: Kurt Shoens (UCB) March 25, 1978
  */
 
-#include "config.h"
+#include "mk-config.h"
 
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 
 #ifdef HAVE_GETTIMEOFDAY
 # include <sys/time.h>
@@ -81,239 +85,69 @@
 # include <regex.h>
 #endif
 
-#ifdef HAVE_OPENSSL_MD5
+#ifdef HAVE_XSSL_MD5
 # include <openssl/md5.h>
 #endif
 
-/*
- * Constants, some nail-specific macros
- */
+/* Many things possibly of interest for adjustments have been outsourced */
+#include "config.h"
 
-#if !defined NI_MAXHOST
-# define NI_MAXHOST     1025
-#endif
+/* Special FD requests for n_child_run(), n_child_start() */
+#define n_CHILD_FD_PASS -1
+#define n_CHILD_FD_NULL -2
 
-/* TODO PATH_MAX: fixed-size buffer is always wrong (think NFS) */
-#ifndef PATH_MAX
-# ifdef MAXPATHLEN
-#  define PATH_MAX      MAXPATHLEN
-# else
-#  define PATH_MAX      1024        /* _XOPEN_PATH_MAX POSIX 2008/Cor 1-2013 */
-# endif
-#endif
-
-#ifndef HOST_NAME_MAX
-# ifdef _POSIX_HOST_NAME_MAX
-#  define HOST_NAME_MAX _POSIX_HOST_NAME_MAX
-# else
-#  define HOST_NAME_MAX 255
-# endif
-#endif
-
-#ifndef NAME_MAX
-# ifdef _POSIX_NAME_MAX
-#  define NAME_MAX      _POSIX_NAME_MAX
-# else
-#  define NAME_MAX      14
-# endif
-#endif
-#if NAME_MAX < 8
-# error NAME_MAX too small
-#endif
-
-#ifndef STDIN_FILENO
-# define STDIN_FILENO   0
-#endif
-#ifndef STDOUT_FILENO
-# define STDOUT_FILENO  1
-#endif
-#ifndef STDERR_FILENO
-# define STDERR_FILENO  2
-#endif
-
-#ifdef NSIG_MAX
-# undef NSIG
-# define NSIG           NSIG_MAX
-#elif !defined NSIG
-# define NSIG           ((sizeof(sigset_t) * 8) - 1)
-#endif
-
-#ifdef O_CLOEXEC
-# define _O_CLOEXEC        O_CLOEXEC
-# define _CLOEXEC_SET(FD)  do {;} while(0)
+/* Colour stuff */
+#ifdef HAVE_COLOUR
+# define n_COLOUR(X) X
 #else
-# define _O_CLOEXEC        0
-# define _CLOEXEC_SET(FD)  \
-   do { (void)fcntl((FD), F_SETFD, FD_CLOEXEC); } while (0)
+# define n_COLOUR(X)
 #endif
 
 /*  */
-
-#if BUFSIZ + 0 > 2560               /* TODO simply use BUFSIZ? */
-# define LINESIZE       BUFSIZ      /* max readable line width */
-#else
-# define LINESIZE       2560
-#endif
-#define BUFFER_SIZE     (BUFSIZ >= (1u << 13) ? BUFSIZ : (1u << 14))
+#define n_FROM_DATEBUF 64        /* Size of RFC 4155 From_ line date */
+#define n_DATE_DAYSYEAR 365u
+#define n_DATE_NANOSSEC (n_DATE_MICROSSEC * 1000)
+#define n_DATE_MICROSSEC (n_DATE_MILLISSEC * 1000)
+#define n_DATE_MILLISSEC 1000u
+#define n_DATE_SECSMIN 60u
+#define n_DATE_MINSHOUR 60u
+#define n_DATE_HOURSDAY 24u
+#define n_DATE_SECSHOUR (n_DATE_SECSMIN * n_DATE_MINSHOUR)
+#define n_DATE_SECSDAY (n_DATE_SECSHOUR * n_DATE_HOURSDAY)
 
 /* Network protocol newline */
 #define NETNL           "\015\012"
 #define NETLINE(X)      X NETNL
 
-/* Number of Not-Yet-Dead calls that are remembered */
-#if defined HAVE_DEBUG || defined HAVE_DEVEL || defined HAVE_NYD2
-# ifdef HAVE_NYD2
-#  define NYD_CALLS_MAX (25 * 84)
-# elif defined HAVE_DEVEL
-#  define NYD_CALLS_MAX (25 * 42)
-# else
-#  define NYD_CALLS_MAX (25 * 10)
-# endif
-#endif
-
-#define APPEND                   /* New mail goes to end of mailbox */
-#define CBAD            (-15555)
-#define DOTLOCK_TRIES   5        /* Number of open(2) calls for dotlock */
-#define FILE_LOCK_TRIES 10       /* Maximum tries before file_lock() fails */
-#define ERRORS_MAX      1000     /* Maximum error ring entries TODO configable*/
-#define ESCAPE          '~'      /* Default escape for sending */
-#define FIO_STACK_SIZE  20       /* Maximum recursion for sourcing */
-#define HIST_SIZE       242      /* tty.c: history list default size */
-#define HSHSIZE         23       /* Hash prime TODO make dynamic, obsolete */
-#define MAXARGC         1024     /* Maximum list of raw strings */
-#define MAXEXP          25       /* Maximum expansion of aliases */
-#define PROMPT_BUFFER_SIZE 80    /* getprompt() bufsize (> 3!) */
-#define REFERENCES_MAX  20       /* Maximum entries in References: */
-#define FTMP_OPEN_TRIES 10       /* Maximum number of Ftmp() open(2) tries */
-
-#define ACCOUNT_NULL    "null"   /* Name of "null" account */
-#define MAILRC          "~/.mailrc"
-#define NETRC           "~/.netrc"
-#define TMPDIR_FALLBACK "/tmp"
-
-/* Some environment variables for pipe hooks */
-#define AGENT_USER      "NAIL_USER"
-#define AGENT_USER_ENC  "NAIL_USER_ENC"
-#define AGENT_HOST      "NAIL_HOST"
-#define AGENT_HOST_PORT "NAIL_HOST_PORT"
-
-#undef COLOUR
-#ifdef HAVE_COLOUR
-# define COLOUR(X)      X
-#else
-# define COLOUR(X)
-#endif
-#define COLOUR_MSGINFO  "fg=green"
-#define COLOUR_PARTINFO "fg=brown"
-#define COLOUR_FROM_    "fg=brown"
-#define COLOUR_HEADER   "fg=red"
-#define COLOUR_UHEADER  "ft=bold,fg=red"
-#define COLOUR_TERMS    \
-   "cons25,linux,rxvt,rxvt-unicode,screen,sun,vt100,vt220,wsvt25,xterm"
-#define COLOUR_USER_HEADERS "from,subject"
-
-#define FROM_DATEBUF    64    /* Size of RFC 4155 From_ line date */
-#define DATE_DAYSYEAR   365L
-#define DATE_SECSMIN    60L
-#define DATE_MINSHOUR   60L
-#define DATE_HOURSDAY   24L
-#define DATE_SECSHOUR   (DATE_SECSMIN * DATE_MINSHOUR)
-#define DATE_SECSDAY    (DATE_SECSHOUR * DATE_HOURSDAY)
-
-/* The default IMAP directory separator ([0] is used as a replacer, too) */
-#define n_IMAP_DELIM    "/."
-
-/* *indentprefix* default as of POSIX */
-#define INDENT_DEFAULT  "\t"
-
-/* Default *encoding* as enum mime_enc below */
-#define MIME_DEFAULT_ENCODING MIMEE_QP
-
-/* Maximum allowed line length in a mail before QP folding is necessary), and
- * the real limit we go for */
-#define MIME_LINELEN_MAX   998   /* Plus CRLF */
-#define MIME_LINELEN_LIMIT (MIME_LINELEN_MAX - 48)
-
-/* Ditto, SHOULD */
-#define MIME_LINELEN    78    /* Plus CRLF */
-
-/* And in headers which contain an encoded word according to RFC 2047 there is
- * yet another limit; also RFC 2045: 6.7, (5). */
-#define MIME_LINELEN_RFC2047 76
-
-/* Locations of mime.types(5) */
-#define MIME_TYPES_USR  "~/.mime.types"
-#define MIME_TYPES_SYS  "/etc/mime.types"
-
-/* Fallback MIME charsets, if *charset-7bit* and *charset-8bit* or not set */
-#define CHARSET_7BIT    "US-ASCII"
-#ifdef HAVE_ICONV
-# define CHARSET_8BIT      "UTF-8"
-# define CHARSET_8BIT_OKEY charset_8bit
-#else
-# define CHARSET_8BIT      "ISO-8859-1"
-# define CHARSET_8BIT_OKEY ttycharset
-#endif
-
-/* Some environment variables for pipe hooks etc. */
-#define NAILENV_TMPDIR              "NAIL_TMPDIR"
-#define NAILENV_FILENAME            "NAIL_FILENAME"
-#define NAILENV_FILENAME_GENERATED  "NAIL_FILENAME_GENERATED"
-#define NAILENV_CONTENT             "NAIL_CONTENT"
-#define NAILENV_CONTENT_EVIDENCE    "NAIL_CONTENT_EVIDENCE"
-
-/* Is *W* a quoting (ASCII only) character? */
-#define ISQUOTE(W)      \
-   ((W) == L'>' || (W) == L'|' || (W) == L'}' || (W) == L':')
-
-/* Maximum number of quote characters (not bytes!) that'll be used on
- * follow lines when compressing leading quote characters */
-#define QUOTE_MAX       42
-
-/* How much spaces should a <tab> count when *quote-fold*ing? (power-of-two!) */
-#define QUOTE_TAB_SPACES 8
-
-/* Smells fishy after, or asks for shell expansion, dependent on context */
-#define n_SHEXP_MAGIC_PATH_CHARS "|&;<>{}()[]*?$`'\"\\"
-
-/* Maximum size of a message that is passed through to the spam system */
-#define SPAM_MAXSIZE    420000
-
-/* String dope: dynamic buffer size, and size of the single builtin one that's
- * used first; note that these value include the size of the structure */
-#define SBUFFER_SIZE    ((0x10000u >> 1u) - 0x400)
-#define SBUFFER_BUILTIN (0x10000u >> 1u)
-
-/* These come from the configuration (named Xxy to not clash with sh(1)..) */
-#ifndef XSHELL
-# define XSHELL         "/bin/sh"
-#endif
-#ifndef XLISTER
-# define XLISTER        "ls"
-#endif
-#ifndef XPAGER
-# define XPAGER         "more"
-#endif
-
 /*
  * OS, CC support, generic macros etc.
  */
 
+#define n_ISPOW2(X) ((((X) - 1) & (X)) == 0)
+#define n_MIN(A,B) ((A) < (B) ? (A) : (B))
+#define n_MAX(A,B) ((A) < (B) ? (B) : (A))
+#define n_CLIP(X,A,B) (((X) <= (A)) ? (A) : (((X) >= (B)) ? (B) : (X)))
+#define n_ABS(A) ((A) < 0 ? -(A) : (A))
+
 /* OS: we're not a library, only set what needs special treatment somewhere */
-#define OS_DRAGONFLY    0
-#define OS_SOLARIS      0
-#define OS_SUNOS        0
+#define n_OS_DRAGONFLY 0
+#define n_OS_OPENBSD 0
+#define n_OS_SOLARIS 0
+#define n_OS_SUNOS 0
 
 #ifdef __DragonFly__
-# undef OS_DRAGONFLY
-# define OS_DRAGONFLY   1
+# undef n_OS_DRAGONFLY
+# define n_OS_DRAGONFLY 1
+#elif defined __OpenBSD__
+# undef n_OS_OPENBSD
+# define n_OS_OPENBSD 1
 #elif defined __solaris__ || defined __sun
 # if defined __SVR4 || defined __svr4__
-#  undef OS_SOLARIS
-#  define OS_SOLARIS    1
+#  undef n_OS_SOLARIS
+#  define n_OS_SOLARIS 1
 # else
-#  undef OS_SUNOS
-#  define OS_SUNOS      1
+#  undef n_OS_SUNOS
+#  define n_OS_SUNOS 1
 # endif
 #endif
 
@@ -355,8 +189,10 @@
  * XXX Wild guesses: clang(1) 1.7 and (OpenBSD) gcc(1) 4.2.1 don't work */
 #ifndef HAVE_DEVEL
 # if PREREQ_CLANG(3, 4)
-#  pragma clang diagnostic ignored "-Wunused-result"
+#  pragma clang diagnostic ignored "-Wassign-enum"
+#  pragma clang diagnostic ignored "-Wdisabled-macro-expansion"
 #  pragma clang diagnostic ignored "-Wformat"
+#  pragma clang diagnostic ignored "-Wunused-result"
 # elif PREREQ_GCC(4, 7)
 #  pragma GCC diagnostic ignored "-Wunused-local-typedefs"
 #  pragma GCC diagnostic ignored "-Wunused-result"
@@ -364,10 +200,10 @@
 # endif
 #endif
 
-/* For injection macros like DBG(), NATCH_CHAR() */
+/* For injection macros like DBG(), n_NATCH_CHAR() */
 #define COMMA           ,
 
-#define EMPTY_FILE()    typedef int CONCAT(avoid_empty_file__, n_FILE);
+#define EMPTY_FILE()    typedef int n_CONCAT(avoid_empty_file__, n_FILE);
 
 /* Pointer to size_t */
 #define PTR2SIZE(X)     ((size_t)(uintptr_t)(X))
@@ -380,32 +216,35 @@
 #define UICMP(T,A,C,B)  ((ui ## T ## _t)(A) C (ui ## T ## _t)(B))
 
 /* Align something to a size/boundary that cannot cause just any problem */
-#define n_ALIGN(X)      (((X) + 2*sizeof(void*)) & ~((2*sizeof(void*)) - 1))
+#define n_ALIGN(X) (((X) + 2*sizeof(void*)) & ~((2*sizeof(void*)) - 1))
+#define n_ALIGN_SMALL(X) \
+   (((X) + n_MAX(sizeof(size_t), sizeof(void*))) &\
+    ~(n_MAX(sizeof(size_t), sizeof(void*)) - 1))
 
 /* Members in constant array */
-#ifndef NELEM
-# define NELEM(A)       (sizeof(A) / sizeof(A[0]))
-#endif
+#define n_NELEM(A) (sizeof(A) / sizeof((A)[0]))
 
 /* sizeof() for member fields */
-#define SIZEOF_FIELD(T,F) sizeof(((T *)NULL)->F)
+#define n_SIZEOF_FIELD(T,F) sizeof(((T *)NULL)->F)
 
 /* Casts-away (*NOT* cast-away) */
-#define UNUSED(X)       ((void)(X))
-#define UNCONST(P)      ((void*)(uintptr_t)(void const*)(P))
-#define UNVOLATILE(P)   ((void*)(uintptr_t)(void volatile*)(P))
-#define UNXXX(T,C,P)    ((T)(uintptr_t)(C)(P))
+#define n_UNUSED(X) ((void)(X))
+#define n_UNCONST(P) ((void*)(uintptr_t)(void const*)(P))
+#define n_UNVOLATILE(P) ((void*)(uintptr_t)(void volatile*)(P))
+/* To avoid warnings with modern compilers for "char*i; *(si32_t*)i=;" */
+#define n_UNALIGN(T,P) ((T)(uintptr_t)(P))
+#define n_UNXXX(T,C,P) ((T)(uintptr_t)(C)(P))
 
 /* __STDC_VERSION__ is ISO C99, so also use __STDC__, which should work */
 #if defined __STDC__ || defined __STDC_VERSION__ /*|| defined __cplusplus*/
-# define STRING(X)      #X
-# define XSTRING(X)     STRING(X)
-# define CONCAT(S1,S2)  _CONCAT(S1, S2)
-# define _CONCAT(S1,S2) S1 ## S2
+# define n_STRING(X) #X
+# define n_XSTRING(X) n_STRING(X)
+# define n_CONCAT(S1,S2) n__CONCAT_1(S1, S2)
+# define n__CONCAT_1(S1,S2) S1 ## S2
 #else
-# define STRING(X)      "X"
-# define XSTRING        STRING
-# define CONCAT(S1,S2)  S1/**/S2
+# define n_STRING(X) "X"
+# define n_XSTRING STRING
+# define n_CONCAT(S1,S2) S1/* won't work out */S2
 #endif
 
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
@@ -417,25 +256,18 @@
 #endif
 
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
-# define VFIELD_SIZE(X)
-# define VFIELD_SIZEOF(T,F) (0)
+# define n_VFIELD_SIZE(X)
+# define n_VSTRUCT_SIZEOF(T,F) sizeof(T)
 #else
-# define VFIELD_SIZE(X) \
+# define n_VFIELD_SIZE(X) \
   ((X) == 0 ? sizeof(size_t) \
-   : ((ssize_t)(X) < 0 ? sizeof(size_t) - ABS(X) : (size_t)(X)))
-# define VFIELD_SIZEOF(T,F) SIZEOF_FIELD(T, F)
+   : ((ssize_t)(X) < 0 ? sizeof(size_t) - n_ABS(X) : (size_t)(X)))
+# define n_VSTRUCT_SIZEOF(T,F) (sizeof(T) - n_SIZEOF_FIELD(T, F))
 #endif
 
-#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
-# define HAVE_INLINE
-# define INLINE         inline
-# define SINLINE        static inline
-#elif CC_CLANG || PREREQ_GCC(2, 9)
-# define HAVE_INLINE
-# define INLINE         static __inline
-# define SINLINE        static __inline
+#ifdef HAVE_INLINE
+# define SINLINE        n_INLINE /* TODO obsolete */
 #else
-# define INLINE
 # define SINLINE        static
 #endif
 
@@ -445,42 +277,40 @@
 #elif CC_CLANG || PREREQ_GCC(3, 4)
 # define __FUN__        __extension__ __FUNCTION__
 #else
-# define __FUN__        uagent   /* Something that is not a literal */
+# define __FUN__        n_uagent /* Something that is not a literal */
 #endif
 
 #if defined __predict_true && defined __predict_false
-# define LIKELY(X)      __predict_true(X)
-# define UNLIKELY(X)    __predict_false(X)
+# define n_LIKELY(X) __predict_true(X)
+# define n_UNLIKELY(X) __predict_false(X)
 #elif CC_CLANG || PREREQ_GCC(2, 96)
-# define LIKELY(X)      __builtin_expect(X, 1)
-# define UNLIKELY(X)    __builtin_expect(X, 0)
+# define n_LIKELY(X) __builtin_expect(X, 1)
+# define n_UNLIKELY(X) __builtin_expect(X, 0)
 #else
-# define LIKELY(X)      (X)
-# define UNLIKELY(X)    (X)
+# define n_LIKELY(X) (X)
+# define n_UNLIKELY(X) (X)
 #endif
 
 #undef HAVE_NATCH_CHAR
-#undef NATCH_CHAR
 #if defined HAVE_SETLOCALE && defined HAVE_C90AMEND1 && defined HAVE_WCWIDTH
 # define HAVE_NATCH_CHAR
-# define NATCH_CHAR(X)  X
+# define n_NATCH_CHAR(X) X
 #else
-# define NATCH_CHAR(X)
+# define n_NATCH_CHAR(X)
 #endif
 
 /* Compile-Time-Assert
  * Problem is that some compilers warn on unused local typedefs, so add
  * a special local CTA to overcome this */
-#define CTA(TEST)       _CTA_1(TEST, n_FILE, __LINE__)
-#define LCTA(TEST)      _LCTA_1(TEST, n_FILE, __LINE__)
-
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 201112L
 # define n_CTA(T,M) _Static_assert(T, M)
 # define n_LCTA(T,M) _Static_assert(T, M)
 #else
-# define n_CTA(T,M)  _CTA_1(T, n_FILE, __LINE__)
-# define n_LCTA(T,M) _LCTA_1(T, n_FILE, __LINE__)
+# define n_CTA(T,M)  n__CTA_1(T, n_FILE, __LINE__)
+# define n_LCTA(T,M) n__LCTA_1(T, n_FILE, __LINE__)
 #endif
+#define n_CTAV(T) n_CTA(T, "Unexpected value of constant")
+#define n_LCTAV(T) n_LCTA(T, "Unexpected value of constant")
 
 #ifdef n_MAIN_SOURCE
 # define n_MCTA(T,M) n_CTA(T, M);
@@ -488,33 +318,27 @@
 # define n_MCTA(T,M)
 #endif
 
-#define _CTA_1(T,F,L)   _CTA_2(T, F, L)
-#define _CTA_2(T,F,L)  \
+#define n__CTA_1(T,F,L)   n__CTA_2(T, F, L)
+#define n__CTA_2(T,F,L) \
    typedef char ASSERTION_failed_in_file_## F ## _at_line_ ## L[(T) ? 1 : -1]
-#define _LCTA_1(T,F,L)  _LCTA_2(T, F, L)
-#define _LCTA_2(T,F,L) \
-do {\
+#define n__LCTA_1(T,F,L)  n__LCTA_2(T, F, L)
+#define n__LCTA_2(T,F,L) \
+do{\
    typedef char ASSERTION_failed_in_file_## F ## _at_line_ ## L[(T) ? 1 : -1];\
    ASSERTION_failed_in_file_## F ## _at_line_ ## L __i_am_unused__;\
-   UNUSED(__i_am_unused__);\
-} while (0)
+   n_UNUSED(__i_am_unused__);\
+}while(0)
 
-#define UNINIT(N,V)     N = V
+#define n_UNINIT(N,V)     N = V
 
-#undef ISPOW2
-#define ISPOW2(X)       ((((X) - 1) & (X)) == 0)
-#undef MIN
-#define MIN(A, B)       ((A) < (B) ? (A) : (B))
-#undef MAX
-#define MAX(A, B)       ((A) < (B) ? (B) : (A))
-#undef ABS
-#define ABS(A)          ((A) < 0 ? -(A) : (A))
+/* Create a bit mask for the bit range LO..HI -- HI can't use highest bit! */
+#define n_BITENUM_MASK(LO,HI) (((1u << ((HI) + 1)) - 1) & ~((1u << (LO)) - 1))
 
 #undef DBG
 #undef NDBG
 #ifndef HAVE_DEBUG
 # undef assert
-# define assert(X)      UNUSED(0)
+# define assert(X)      n_UNUSED(0)
 # define DBG(X)
 # define NDBG(X)        X
 # define DBGOR(X,Y)     Y
@@ -524,7 +348,7 @@ do {\
 # define DBGOR(X,Y)     X
 #endif
 
-/* Translation (init in main.c) */
+/* Translation (init in main.c): may NOT set errno! */
 #undef _
 #undef N_
 #undef V_
@@ -533,7 +357,7 @@ do {\
 #define V_(S)           S
 
 /*
- * Types
+ * Types TODO v15: n_XX_t
  */
 
 #ifdef UINT8_MAX
@@ -645,18 +469,22 @@ typedef unsigned long   ui64_t;
 typedef signed long     si64_t;
 #endif
 
-#if !defined PRIu64 || !defined PRId64 || !defined PRIX64
+/* PRIo64 for `vexpr' */
+#if !defined PRIu64 || !defined PRId64 || !defined PRIX64 || !defined PRIo64
 # undef PRIu64
 # undef PRId64
 # undef PRIX64
+# undef PRIo64
 # if defined ULLONG_MAX && UI64_MAX == ULLONG_MAX
 #  define PRIu64        "llu"
 #  define PRId64        "lld"
 #  define PRIX64        "llX"
+#  define PRIo64        "llo"
 # else
 #  define PRIu64        "lu"
 #  define PRId64        "ld"
 #  define PRIX64        "lX"
+#  define PRIo64        "lo"
 # endif
 #endif
 
@@ -718,10 +546,18 @@ n_MCTA(sizeof(size_t) == sizeof(unsigned long),
 # endif
 #endif
 
+#ifdef HAVE_C90AMEND1
+typedef wchar_t         wc_t;
+# define n_WC_C(X)      L ## X
+#else
+typedef char            wc_t; /* Yep: really 8-bit char */
+# define n_WC_C(X)      X
+#endif
+
 enum {FAL0, TRU1, TRUM1 = -1};
 typedef si8_t           bool_t;
 
-/* Add shorter aliases for "normal" integers */
+/* Add shorter aliases for "normal" integers TODO v15 -> n_XX_t */
 typedef unsigned long   ul_i;
 typedef unsigned int    ui_i;
 typedef unsigned short  us_i;
@@ -732,7 +568,18 @@ typedef signed int      si_i;
 typedef signed short    ss_i;
 typedef signed char     sc_i;
 
-typedef void (          *sighandler_type)(int);
+typedef void (          *sighandler_type)(int); /* TODO v15 obsolete */
+typedef void (          *n_sighdl_t)(int);
+
+enum n_announce_flags{
+   n_ANNOUNCE_NONE = 0,          /* Only housekeeping */
+   n_ANNOUNCE_MAIN_CALL = 1u<<0, /* POSIX covered startup call */
+   n_ANNOUNCE_STATUS = 1u<<1,    /* Only print status */
+   n_ANNOUNCE_CHANGE = 1u<<2,    /* Folder changed */
+
+   n__ANNOUNCE_HEADER = 1u<<6,
+   n__ANNOUNCE_ANY = 1u<<7
+};
 
 enum authtype {
    AUTHTYPE_NONE     = 1<<0,
@@ -746,11 +593,25 @@ enum expand_addr_flags {
    EAF_NONE       = 0,        /* -> EAF_NOFILE | EAF_NOPIPE */
    EAF_RESTRICT   = 1<<0,     /* "restrict" (do unless interaktive / -[~#]) */
    EAF_FAIL       = 1<<1,     /* "fail" */
+   EAF_FAILINVADDR = 1<<2,    /* "failinvaddr" */
+   /* TODO HACK!  In pre-v15 we have a control flow problem (it is a general
+    * TODO design problem): if collect() calls makeheader(), e.g., for -t or
+    * TODO because of ~e diting, then that will checkaddr() and that will
+    * TODO remove invalid headers.  However, this code path does not know
+    * TODO about keeping track of senderrors unless a pointer has been passed,
+    * TODO but which it doesn't for ~e, and shall not, too.  Thus, invalid
+    * TODO addresses may be automatically removed, silently, and noone will
+    * TODO ever know, in particular not regarding "failinvaddr".
+    * TODO The hacky solution is this bit -- which can ONLY be used for fields
+    * TODO which will be subject to namelist_vaporise_head() later on!! --,
+    * TODO if it is set (by extract_header()) then checkaddr() will NOT strip
+    * TODO invalid headers off IF it deals with a NULL senderror pointer */
+   EAF_MAYKEEP    = 1<<3,
    /* Bits reused by enum expand_addr_check_mode! */
-   EAF_FILE       = 1<<3,     /* +"file" targets */
-   EAF_PIPE       = 1<<4,     /* +"pipe" command pipe targets */
-   EAF_NAME       = 1<<5,     /* +"name"s (non-address) names / MTA aliases */
-   EAF_ADDR       = 1<<6,     /* +"addr" network address (contain "@") */
+   EAF_FILE       = 1<<4,     /* +"file" targets */
+   EAF_PIPE       = 1<<5,     /* +"pipe" command pipe targets */
+   EAF_NAME       = 1<<6,     /* +"name"s (non-address) names / MTA aliases */
+   EAF_ADDR       = 1<<7,     /* +"addr" network address (contain "@") */
 
    EAF_TARGET_MASK  = EAF_FILE | EAF_PIPE | EAF_NAME | EAF_ADDR,
    EAF_RESTRICT_TARGETS = EAF_NAME | EAF_ADDR /* (default set if not set) */
@@ -770,14 +631,95 @@ enum expand_addr_check_mode {
    EACM_NONAME    = 1<<16
 };
 
-enum colourspec {
-   COLOURSPEC_MSGINFO,
-   COLOURSPEC_PARTINFO,
-   COLOURSPEC_FROM_,
-   COLOURSPEC_HEADER,
-   COLOURSPEC_UHEADER,
-   COLOURSPEC_RESET
+enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
+   * TODO i rather see the mechanism that is used in c_bind() extended and used
+   * TODO anywhere, i.e. n_cmd_arg_parse().
+   * TODO Note that we may NOT support arguments with strlen()>=UI32_MAX (?) */
+   n_CMD_ARG_TYPE_MSGLIST = 0,   /* Message list type */
+   n_CMD_ARG_TYPE_NDMLIST = 1,   /* Message list, no defaults */
+   n_CMD_ARG_TYPE_RAWDAT = 2,    /* The plain string in an argv[] */
+     n_CMD_ARG_TYPE_STRING = 3,  /* A pure string TODO obsolete */
+   n_CMD_ARG_TYPE_WYSH = 4,      /* getrawlist(), sh(1) compatible */
+      n_CMD_ARG_TYPE_RAWLIST = 5, /* getrawlist(), old style TODO obsolete */
+     n_CMD_ARG_TYPE_WYRA = 6,    /* _RAWLIST or _WYSH (with `wysh') TODO obs. */
+   n_CMD_ARG_TYPE_ARG = 7,       /* n_cmd_arg_desc/n_cmd_arg() new-style */
+   n_CMD_ARG_TYPE_MASK = 7,      /* Mask of the above */
+
+   n_CMD_ARG_A = 1u<< 4,   /* Needs an active mailbox */
+   n_CMD_ARG_F = 1u<< 5,   /* Is a conditional command */
+   n_CMD_ARG_G = 1u<< 6,   /* Is supposed to produce "gabby" history */
+   n_CMD_ARG_H = 1u<< 7,   /* Never place in `history' */
+   n_CMD_ARG_I = 1u<< 8,   /* Interactive command bit */
+   n_CMD_ARG_M = 1u<< 9,   /* Legal from send mode bit */
+   n_CMD_ARG_O = 1u<<10,   /* n_OBSOLETE()d command */
+   n_CMD_ARG_P = 1u<<11,   /* Autoprint dot after command */
+   n_CMD_ARG_R = 1u<<12,   /* Cannot be called in compose mode recursion */
+   n_CMD_ARG_S = 1u<<13,   /* Cannot be called pre-n_PSO_STARTED (POSIX) */
+   n_CMD_ARG_T = 1u<<14,   /* Is a transparent command */
+   n_CMD_ARG_V = 1u<<15,   /* Supports `vput' prefix (only WYSH/WYRA) */
+   n_CMD_ARG_W = 1u<<16,   /* Invalid when read only bit */
+   n_CMD_ARG_X = 1u<<17,   /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
+   /* XXX Note that CMD_ARG_EM implies a _real_ return value for $! */
+   n_CMD_ARG_EM = 1u<<30   /* If error: n_pstate_err_no (4 $! aka. ok_v___em) */
 };
+
+enum n_cmd_arg_desc_flags{/* TODO incomplete, misses getmsglist() */
+   /* - A type */
+   n_CMD_ARG_DESC_STRING = 1u<<0,   /* A !blankspacechar() string */
+   n_CMD_ARG_DESC_WYSH = 1u<<1,     /* sh(1)ell-style quoted */
+
+   n__CMD_ARG_DESC_TYPE_MASK = n_CMD_ARG_DESC_STRING | n_CMD_ARG_DESC_WYSH,
+
+   /* - Optional flags */
+   /* It is not an error if an optional argument is missing; once an argument
+    * has been declared optional only optional arguments may follow */
+   n_CMD_ARG_DESC_OPTION = 1u<<16,
+   /* GREEDY: parse as many of that type as possible; must be last entry */
+   n_CMD_ARG_DESC_GREEDY = 1u<<17,
+   /* If greedy, join all given arguments separated by ASCII SP right away */
+   n_CMD_ARG_DESC_GREEDY_JOIN = 1u<<18,
+   /* Honour an overall "stop" request in one of the arguments (\c@ or #) */
+   n_CMD_ARG_DESC_HONOUR_STOP = 1u<<19,
+
+   n__CMD_ARG_DESC_FLAG_MASK = n_CMD_ARG_DESC_OPTION | n_CMD_ARG_DESC_GREEDY |
+         n_CMD_ARG_DESC_GREEDY_JOIN | n_CMD_ARG_DESC_HONOUR_STOP
+};
+
+#ifdef HAVE_COLOUR
+/* We do have several contexts of colour IDs; since only one of them can be
+ * active at any given time let's share the value range */
+enum n_colour_ctx{
+   n_COLOUR_CTX_SUM,
+   n_COLOUR_CTX_VIEW,
+   n_COLOUR_CTX_MLE,
+   n__COLOUR_CTX_MAX1
+};
+
+enum n_colour_id{
+   /* Header summary */
+   n_COLOUR_ID_SUM_DOTMARK = 0,
+   n_COLOUR_ID_SUM_HEADER,
+   n_COLOUR_ID_SUM_THREAD,
+
+   /* Message display */
+   n_COLOUR_ID_VIEW_FROM_ = 0,
+   n_COLOUR_ID_VIEW_HEADER,
+   n_COLOUR_ID_VIEW_MSGINFO,
+   n_COLOUR_ID_VIEW_PARTINFO,
+
+   /* Mailx-Line-Editor */
+   n_COLOUR_ID_MLE_POSITION = 0,
+   n_COLOUR_ID_MLE_PROMPT,
+
+   n__COLOUR_IDS = n_COLOUR_ID_VIEW_PARTINFO + 1
+};
+
+/* Colour preconditions, let's call them tags, cannot be an enum because for
+ * message display they are the actual header name of the current header.  Thus
+ * let's use constants of pseudo pointers */
+# define n_COLOUR_TAG_SUM_DOT ((char*)-2)
+# define n_COLOUR_TAG_SUM_OLDER ((char*)-3)
+#endif /* HAVE_COLOUR */
 
 enum conversion {
    CONV_NONE,        /* no conversion */
@@ -794,57 +736,160 @@ enum conversion {
 };
 
 enum cproto {
+   CPROTO_CCRED,     /* Special dummy credential proto (S/MIME etc.) */
+   CPROTO_SOCKS,     /* Special dummy SOCKS5 proxy proto */
    CPROTO_SMTP,
-   CPROTO_POP3,
-   CPROTO_IMAP
+   CPROTO_POP3
+,CPROTO_IMAP
 };
 
-enum dotlock_state {
-   DLS_NONE,
-   DLS_CANT_CHDIR,            /* Failed to chdir(2) into desired path */
-   DLS_NAMETOOLONG,           /* Lock file name would be too long */
-   DLS_ROFS,                  /* Read-only filesystem (no error, mailbox RO) */
-   DLS_NOPERM,                /* No permission to creat lock file */
-   DLS_NOEXEC,                /* Privilege separated dotlocker not found */
-   DLS_PRIVFAILED,            /* Rising privileges failed in dotlocker */
-   DLS_EXIST,                 /* Lock file already exists, stale lock? */
-   DLS_FISHY,                 /* Something makes us think bad of situation */
-   DLS_DUNNO,                 /* Catch-all error */
-   DLS_PING,                  /* Not an error, but have to wait for lock */
-   DLS_ABANDON    = 1<<7      /* ORd to any but _NONE: give up, don't retry */
+enum n_dotlock_state{
+   n_DLS_NONE,
+   n_DLS_CANT_CHDIR,    /* Failed to chdir(2) into desired path */
+   n_DLS_NAMETOOLONG,   /* Lock file name would be too long */
+   n_DLS_ROFS,          /* Read-only filesystem (no error, mailbox RO) */
+   n_DLS_NOPERM,        /* No permission to creat lock file */
+   n_DLS_NOEXEC,        /* Privilege separated dotlocker not found */
+   n_DLS_PRIVFAILED,    /* Rising privileges failed in dotlocker */
+   n_DLS_EXIST,         /* Lock file already exists, stale lock? */
+   n_DLS_FISHY,         /* Something makes us think bad of situation */
+   n_DLS_DUNNO,         /* Catch-all error */
+   n_DLS_PING,          /* Not an error, but have to wait for lock */
+   n_DLS_ABANDON = 1<<7 /* ORd to any but _NONE: give up, don't retry */
 };
 
-enum exit_status {
-   EXIT_OK        = EXIT_SUCCESS,
-   EXIT_ERR       = EXIT_FAILURE,
-   EXIT_USE       = 64,       /* sysexits.h:EX_USAGE */
-   EXIT_NOUSER    = 67,       /* :EX_NOUSER */
-   EXIT_COLL_ABORT = 1<<1,    /* Message collection was aborted */
-   EXIT_SEND_ERROR = 1<<2     /* Unspecified send error occurred */
+/* enum n_err_number from mk-config.h, which is in sync with
+ * n_err_to_doc(), n_err_to_name() and n_err_from_name() */
+
+enum n_exit_status{
+   n_EXIT_OK = EXIT_SUCCESS,
+   n_EXIT_ERR = EXIT_FAILURE,
+   n_EXIT_USE = 64,           /* sysexits.h:EX_USAGE */
+   n_EXIT_NOUSER = 67,        /* :EX_NOUSER */
+   n_EXIT_COLL_ABORT = 1<<1,  /* Message collection was aborted */
+   n_EXIT_SEND_ERROR = 1<<2   /* Unspecified send error occurred */
 };
 
 enum fedit_mode {
    FEDIT_NONE     = 0,
    FEDIT_SYSBOX   = 1<<0,     /* %: prefix */
-   FEDIT_RDONLY   = 1<<1,     /* Readonly (per-box, OPT_R_FLAG is global) */
+   FEDIT_RDONLY   = 1<<1,     /* Readonly (per-box, n_OPT_R_FLAG is global) */
    FEDIT_NEWMAIL  = 1<<2      /* `newmail' operation TODO OBSOLETE THIS! */
 };
 
 enum fexp_mode {
    FEXP_FULL,                 /* Full expansion */
-   FEXP_LOCAL     = 1<<0,     /* Result must be local file/maildir */
-   FEXP_SHELL     = 1<<1,     /* No folder %,#,&,+ stuff, yet sh(1) */
-   FEXP_FOLDER    = 1<<2,     /* No folder %,#,&, but + and so */
-   FEXP_NSHORTCUT = 1<<3,     /* Don't expand shortcuts */
-   FEXP_SILENT    = 1<<4,     /* Don't print but only return errors */
-   FEXP_MULTIOK   = 1<<5,     /* Expansion to many entries is ok */
-   FEXP_NSHELL    = 1<<6      /* Don't do shell word exp. (but ~/, $VAR) */
+   FEXP_NOPROTO = 1<<0,       /* TODO no which_protocol() to decide expansion */
+   FEXP_SILENT = 1<<1,        /* Don't print but only return errors */
+   FEXP_MULTIOK = 1<<2,       /* Expansion to many entries is ok */
+   FEXP_LOCAL = 1<<3,         /* Result must be local file/maildir */
+   FEXP_NSHORTCUT = 1<<4,     /* Don't expand shortcuts */
+   FEXP_NSPECIAL = 1<<5,      /* No %,#,& specials */
+   FEXP_NFOLDER = 1<<6,       /* NSPECIAL and no + folder, too */
+   FEXP_NSHELL = 1<<7,        /* Don't do shell word exp. (but ~/, $VAR) */
+   FEXP_NVAR = 1<<8           /* ..not even $VAR expansion */
 };
 
-enum file_lock_type {
+enum n_file_lock_type{
    FLT_READ,
    FLT_WRITE
 };
+
+enum n_fopen_state{ /* TODO add n_fopen_mode, too */
+   /* First n__PROTO_SHIFT bits are enum protocol!  n_MCTA()d below */
+   n_FOPEN_STATE_NONE = 0,
+   n_FOPEN_STATE_EXISTS = 1u<<5
+};
+
+enum n_go_input_flags{
+   n_GO_INPUT_NONE,
+   n_GO_INPUT_CTX_BASE = 0,            /* Generic shared base: don't use! */
+   n_GO_INPUT_CTX_DEFAULT = 1,         /* Default input */
+   n_GO_INPUT_CTX_COMPOSE = 2,         /* Compose mode input */
+   n__GO_INPUT_CTX_MASK = 3,
+   n__GO_INPUT_CTX_MAX1 = n_GO_INPUT_CTX_COMPOSE + 1,
+
+   n_GO_INPUT_HOLDALLSIGS = 1u<<8,     /* hold_all_sigs() active TODO */
+   /* `xcall' is `call' (at the level where this is set): to be set when
+    * teardown of top level has undesired effects, e.g., for `account's and
+    * folder hooks etc., where we do not to loose our `localopts' unroll list */
+   n_GO_INPUT_NO_XCALL = 1u<<9,
+
+   n_GO_INPUT_FORCE_STDIN = 1u<<10,    /* Even in macro, use stdin (`read')! */
+   n_GO_INPUT_NL_ESC = 1u<<11,         /* Support "\\$" line continuation */
+   n_GO_INPUT_NL_FOLLOW = 1u<<12,      /* ..on such a follow line */
+   n_GO_INPUT_PROMPT_NONE = 1u<<13,    /* Don't print prompt */
+   n_GO_INPUT_PROMPT_EVAL = 1u<<14,    /* Instead, evaluate *prompt* */
+
+   n_GO_INPUT_HIST_ADD = 1u<<16,       /* Add the result to history list */
+   n_GO_INPUT_HIST_GABBY = 1u<<17,     /* Consider history entry as gabby */
+
+   n__GO_FREEBIT = 24
+};
+
+enum n_go_input_inject_flags{
+   n_GO_INPUT_INJECT_NONE = 0,
+   n_GO_INPUT_INJECT_COMMIT = 1u<<0,   /* Auto-commit input */
+   n_GO_INPUT_INJECT_HISTORY = 1u<<1   /* Allow history addition */
+};
+
+enum n_iconv_flags{
+   n_ICONV_NONE = 0,
+   n_ICONV_IGN_ILSEQ = 1<<0,     /* Ignore EILSEQ in input (replacement char) */
+   n_ICONV_IGN_NOREVERSE = 1<<1, /* .. non-reversible conversions in output */
+   n_ICONV_UNIREPL = 1<<2,       /* Use Unicode replacement 0xFFFD = EF BF BD */
+   n_ICONV_DEFAULT = n_ICONV_IGN_ILSEQ | n_ICONV_IGN_NOREVERSE,
+   n_ICONV_UNIDEFAULT = n_ICONV_DEFAULT | n_ICONV_UNIREPL
+};
+
+/* Special ignore (where _TYPE is covered by POSIX `ignore' / `retain').
+ * _ALL is very special in that it doesn't have a backing object.
+ * Go over enum to avoid cascads of (different) CC warnings for used CTA()s */
+#define n_IGNORE_ALL ((struct n_ignore*)n__IGNORE_ALL)
+#define n_IGNORE_TYPE ((struct n_ignore*)n__IGNORE_TYPE)
+#define n_IGNORE_SAVE ((struct n_ignore*)n__IGNORE_SAVE)
+#define n_IGNORE_FWD ((struct n_ignore*)n__IGNORE_FWD)
+#define n_IGNORE_TOP ((struct n_ignore*)n__IGNORE_TOP)
+
+enum{
+   n__IGNORE_ALL = -2,
+   n__IGNORE_TYPE = -3,
+   n__IGNORE_SAVE = -4,
+   n__IGNORE_FWD = -5,
+   n__IGNORE_TOP = -6,
+   n__IGNORE_ADJUST = 3,
+   n__IGNORE_MAX = 6 - n__IGNORE_ADJUST
+};
+
+enum n_idec_mode{
+   n_IDEC_MODE_NONE,
+   n_IDEC_MODE_SIGNED_TYPE = 1<<0,  /* To choose limits, error constants etc. */
+#if 0
+   n_IDEC_MODE_SIGN_FORCE_SIGNED_TYPE = 1<<2,
+#endif
+   n_IDEC_MODE_LIMIT_8BIT = 1<<3,   /* Saturate if result exceeds 8-bit */
+   n_IDEC_MODE_LIMIT_16BIT = 2<<3,
+   n_IDEC_MODE_LIMIT_32BIT = 3<<3,
+   n__IDEC_MODE_LIMIT_MASK = 3<<3,
+   n_IDEC_MODE_LIMIT_NOERROR = 1<<5, /* Not an error if limit is excessed! */
+   /* These bits are duplicated in the _state result bits! */
+   n__IDEC_MODE_MASK = (1<<6) - 1
+};
+
+enum n_idec_state{
+   n_IDEC_STATE_NONE,
+   /* Malformed input, no usable result has been stored */
+   n_IDEC_STATE_EINVAL = 1<<8,
+   /* Bad character according to base, but we have seen some good before,
+    * otherwise _EINVAL would have been used */
+   n_IDEC_STATE_EBASE = 2<<8,
+   n_IDEC_STATE_EOVERFLOW = 3<<8,   /* Result too large */
+   n_IDEC_STATE_EMASK = (3<<8),     /* Any errors, that is */
+   n_IDEC_STATE_SEEN_MINUS = 1<<16, /* Seen - in input? */
+   n_IDEC_STATE_CONSUMED = 1<<17,   /* All the input buffer was consumed */
+   n__IDEC_PRIVATE_SHIFT1 = 24
+};
+n_MCTA(n__IDEC_MODE_MASK <= (1<<8) - 1, "Shared bit range overlaps")
 
 enum mimecontent {
    MIME_UNKNOWN,     /* unknown content */
@@ -857,6 +902,8 @@ enum mimecontent {
    MIME_ALTERNATIVE, /* multipart/alternative content */
    MIME_RELATED,     /* mime/related (RFC 2387) */
    MIME_DIGEST,      /* multipart/digest content */
+   MIME_SIGNED,      /* multipart/signed */
+   MIME_ENCRYPTED,   /* multipart/encrypted */
    MIME_MULTI,       /* other multipart/ content */
    MIME_PKCS7,       /* PKCS7 content */
    MIME_DISCARD      /* content is discarded */
@@ -899,12 +946,12 @@ enum mime_enc_flags {
     * inject the desired line-ending whenever a linewrap is desired */
    MIMEEF_MULTILINE  = 1<<4,
    /* (encode) Quote with header rules, do not generate soft NL breaks?
-    * For mustquote(), specifies wether special RFC 2047 header rules
+    * For mustquote(), specifies whether special RFC 2047 header rules
     * should be used instead */
    MIMEEF_ISHEAD     = 1<<5,
    /* (encode) Ditto; for mustquote() this furtherly fine-tunes behaviour in
     * that characters which would not be reported as "must-quote" when
-    * detecting wether quoting is necessary at all will be reported as
+    * detecting whether quoting is necessary at all will be reported as
     * "must-quote" if they have to be encoded in an encoded word */
    MIMEEF_ISENCWORD  = 1<<6,
    __MIMEEF_LAST     = 6
@@ -936,14 +983,28 @@ enum b64flags {
    B64_NOPAD      = 1<<(__MIMEEF_LAST+2)
 };
 
-/* Special handler return values for mime_type_mimepart_handler() */
-#define MIME_TYPE_HANDLER_TEXT   (char*)-1
-#define MIME_TYPE_HANDLER_HTML   (char*)-2
-
 enum mime_parse_flags {
    MIME_PARSE_NONE      = 0,
    MIME_PARSE_DECRYPT   = 1<<0,
-   MIME_PARSE_PARTS     = 1<<1
+   MIME_PARSE_PARTS     = 1<<1,
+   MIME_PARSE_SHALLOW   = 1<<2
+};
+
+enum mime_handler_flags {
+   MIME_HDL_NULL,                /* No pipe- mimetype handler, go away */
+   MIME_HDL_CMD,                 /* Normal command */
+   MIME_HDL_TEXT,                /* @ special cmd to force treatment as text */
+   MIME_HDL_PTF,                 /* A special pointer-to-function handler */
+   MIME_HDL_MSG,                 /* Display msg (returned as command string) */
+   MIME_HDL_TYPE_MASK = 7u,
+   MIME_HDL_COPIOUSOUTPUT = 1u<<4, /* _CMD produces reintegratable text */
+   MIME_HDL_ISQUOTE = 1u<<5,     /* Is quote action (we have info, keep it!) */
+   MIME_HDL_NOQUOTE = 1u<<6,     /* No MIME for quoting */
+   MIME_HDL_ASYNC = 1u<<7,       /* Should run asynchronously */
+   MIME_HDL_NEEDSTERM = 1u<<8,   /* Takes over terminal */
+   MIME_HDL_TMPF = 1u<<9,        /* Create temporary file (zero-sized) */
+   MIME_HDL_TMPF_FILL = 1u<<10,  /* Fill in the msg body content */
+   MIME_HDL_TMPF_UNLINK = 1u<<11 /* Delete it later again */
 };
 
 enum mlist_state {
@@ -963,7 +1024,9 @@ enum oflags {
    OF_CLOEXEC     = 1<<7,     /* TODO not used, always implied!  CHANGE!! */
    OF_UNLINK      = 1<<8,     /* Only for Ftmp(): unlink(2) after creation */
    OF_HOLDSIGS    = 1<<9,     /* Mutual with OF_UNLINK - await Ftmp_free() */
-   OF_REGISTER    = 1<<10     /* Register file in our file table */
+   OF_REGISTER    = 1<<10,    /* Register file in our file table */
+   OF_REGISTER_UNLINK = 1<<11, /* unlink(2) upon unreg.; _REGISTER asserted! */
+   OF_SUFFIX      = 1<<12     /* Ftmp() name hint is mandatory! extension! */
 };
 
 enum okay {
@@ -987,18 +1050,29 @@ enum prompt_exp {
 };
 
 enum protocol {
-   PROTO_FILE,       /* refers to a local file */
-   PROTO_POP3,       /* is a pop3 server string */
-   PROTO_IMAP,       /* is an imap server string */
-   PROTO_MAILDIR,    /* refers to a maildir folder */
-   PROTO_UNKNOWN     /* unknown protocol */
+   n_PROTO_NONE,
+   n_PROTO_FILE,        /* refers to a local file */
+PROTO_FILE = n_PROTO_FILE,
+   n_PROTO_POP3,        /* is a pop3 server string */
+PROTO_POP3 = n_PROTO_POP3,
+n_PROTO_IMAP,
+PROTO_IMAP = n_PROTO_IMAP,
+   n_PROTO_MAILDIR,     /* refers to a maildir folder */
+PROTO_MAILDIR = n_PROTO_MAILDIR,
+   n_PROTO_UNKNOWN,     /* unknown protocol */
+PROTO_UNKNOWN = n_PROTO_UNKNOWN,
+
+   n__PROTO_SHIFT = n_PROTO_UNKNOWN,
+   n_PROTO_MASK = (1u << n__PROTO_SHIFT) - 1
 };
+n_MCTA(n__PROTO_SHIFT == 5, "enum n_fopen_state shift value must be adjusted!")
 
 enum sendaction {
    SEND_MBOX,        /* no conversion to perform */
    SEND_RFC822,      /* no conversion, no From_ line */
    SEND_TODISP,      /* convert to displayable form */
    SEND_TODISP_ALL,  /* same, include all MIME parts */
+   SEND_TODISP_PARTS, /* same, but only interactive, user-selected parts */
    SEND_SHOW,        /* convert to 'show' command form */
    SEND_TOSRCH,      /* convert for IMAP SEARCH */
    SEND_TOFILE,      /* convert for saving body to a file */
@@ -1006,6 +1080,101 @@ enum sendaction {
    SEND_QUOTE,       /* convert for quoting */
    SEND_QUOTE_ALL,   /* same, include all MIME parts */
    SEND_DECRYPT      /* decrypt */
+};
+
+enum n_shexp_parse_flags{
+   n_SHEXP_PARSE_NONE,
+   /* Don't perform expansions or interpret reverse solidus escape sequences.
+    * Output may be NULL, otherwise the possibly trimmed non-expanded input is
+    * used as output (implies _PARSE_META_KEEP) */
+   n_SHEXP_PARSE_DRYRUN = 1u<<0,
+   n_SHEXP_PARSE_TRUNC = 1u<<1,        /* Truncate result storage on entry */
+   n_SHEXP_PARSE_TRIM_SPACE = 1u<<2,   /* ..surrounding tokens */
+   n_SHEXP_PARSE_TRIM_IFSSPACE = 1u<<3, /* " */
+   n_SHEXP_PARSE_LOG = 1u<<4,          /* Log errors */
+   n_SHEXP_PARSE_LOG_D_V = 1u<<5,      /* Log errors if n_PO_D_V */
+   n_SHEXP_PARSE_IFS_VAR = 1u<<6,      /* IFS is *ifs*, not blankchar() */
+   n_SHEXP_PARSE_IFS_ADD_COMMA = 1u<<7, /* Add comma , to normal "IFS" */
+   n_SHEXP_PARSE_IFS_IS_COMMA = 1u<<8, /* Let comma , be the sole "IFS" */
+   n_SHEXP_PARSE_IGNORE_EMPTY = 1u<<9, /* Ignore empty tokens, start over */
+
+   /* Implicitly open quotes, and ditto closing.  _AUTO_FIXED may only be used
+    * if an auto-quote-mode is enabled, implies _AUTO_CLOSE and causes the
+    * quote mode to be permanently active (cannot be closed) */
+   n_SHEXP_PARSE_QUOTE_AUTO_FIXED = 1u<<16,
+   n_SHEXP_PARSE_QUOTE_AUTO_SQ = 1u<<17,
+   n_SHEXP_PARSE_QUOTE_AUTO_DQ = 1u<<18,
+   n_SHEXP_PARSE_QUOTE_AUTO_DSQ = 1u<<19,
+   n_SHEXP_PARSE_QUOTE_AUTO_CLOSE = 1u<<20, /* Ignore an open quote at EOS */
+   n__SHEXP_PARSE_QUOTE_AUTO_MASK = n_SHEXP_PARSE_QUOTE_AUTO_SQ |
+         n_SHEXP_PARSE_QUOTE_AUTO_DQ | n_SHEXP_PARSE_QUOTE_AUTO_DSQ,
+
+   /* Recognize metacharacters to separate tokens */
+   n_SHEXP_PARSE_META_VERTBAR = 1u<<21,
+   n_SHEXP_PARSE_META_AMPERSAND = 1u<<22,
+   /* Interpret ; as a sequencing operator, go_input_inject() remainder */
+   n_SHEXP_PARSE_META_SEMICOLON = 1u<<23,
+   /* LPAREN, RPAREN, LESSTHAN, GREATERTHAN */
+
+   n__SHEXP_PARSE_META_MASK = n_SHEXP_PARSE_META_VERTBAR |
+         n_SHEXP_PARSE_META_AMPERSAND | n_SHEXP_PARSE_META_SEMICOLON,
+
+   /* Keep the metacharacter (or IFS character), do not skip over it */
+   n_SHEXP_PARSE_META_KEEP = 1u<<24,
+
+   n__SHEXP_PARSE_LAST = 24
+};
+
+enum n_shexp_state{
+   n_SHEXP_STATE_NONE,
+   /* We have produced some output (or would have, with _PARSE_DRYRUN).
+    * Note that empty quotes like '' produce no output but set this bit */
+   n_SHEXP_STATE_OUTPUT = 1u<<0,
+   /* Don't call the parser again (# comment seen; out of input).
+    * Not (necessarily) mutual with _OUTPUT) */
+   n_SHEXP_STATE_STOP = 1u<<1,
+   n_SHEXP_STATE_UNICODE = 1u<<2,         /* \[Uu] used */
+   n_SHEXP_STATE_CONTROL = 1u<<3,         /* Control characters seen */
+   n_SHEXP_STATE_QUOTE = 1u<<4,           /* Any quotes seen */
+   n_SHEXP_STATE_WS_LEAD = 1u<<5,         /* _TRIM_{IFS,}SPACE: seen.. */
+   n_SHEXP_STATE_WS_TRAIL = 1u<<6,        /* .. leading / trailing WS */
+   n_SHEXP_STATE_META_VERTBAR = 1u<<7,    /* Metacharacter | follows/ed */
+   n_SHEXP_STATE_META_AMPERSAND = 1u<<8,  /* Metacharacter & follows/ed */
+   n_SHEXP_STATE_META_SEMICOLON = 1u<<9,  /* Metacharacter ; follows/ed */
+
+   n_SHEXP_STATE_ERR_CONTROL = 1u<<16,    /* \c notation with invalid arg. */
+   n_SHEXP_STATE_ERR_UNICODE = 1u<<17,    /* Valid \[Uu] and !n_PSO_UNICODE */
+   n_SHEXP_STATE_ERR_NUMBER = 1u<<18,     /* Bad number (\[UuXx]) */
+   n_SHEXP_STATE_ERR_BRACE = 1u<<19,      /* _QUOTEOPEN + no } brace 4 ${VAR */
+   n_SHEXP_STATE_ERR_IDENTIFIER = 1u<<20, /* Invalid identifier */
+   n_SHEXP_STATE_ERR_BADSUB = 1u<<21,     /* Empty/bad ${} substitution */
+   n_SHEXP_STATE_ERR_QUOTEOPEN = 1u<<22,  /* Quote remains open at EOS */
+
+   n_SHEXP_STATE_ERR_MASK = n_BITENUM_MASK(16, 22)
+};
+
+enum n_sigman_flags{
+   n_SIGMAN_NONE = 0,
+   n_SIGMAN_HUP = 1<<0,
+   n_SIGMAN_INT = 1<<1,
+   n_SIGMAN_QUIT = 1<<2,
+   n_SIGMAN_TERM = 1<<3,
+   n_SIGMAN_PIPE = 1<<4,
+
+   n_SIGMAN_IGN_HUP = 1<<5,
+   n_SIGMAN_IGN_INT = 1<<6,
+   n_SIGMAN_IGN_QUIT = 1<<7,
+   n_SIGMAN_IGN_TERM = 1<<8,
+
+   n_SIGMAN_ALL = 0xFF,
+   /* Mostly for _leave() reraise flags */
+   n_SIGMAN_VIPSIGS = n_SIGMAN_HUP | n_SIGMAN_INT | n_SIGMAN_QUIT |
+         n_SIGMAN_TERM,
+   n_SIGMAN_NTTYOUT_PIPE = 1<<16,
+   n_SIGMAN_VIPSIGS_NTTYOUT = n_SIGMAN_HUP | n_SIGMAN_INT | n_SIGMAN_QUIT |
+         n_SIGMAN_TERM | n_SIGMAN_NTTYOUT_PIPE,
+
+   n__SIGMAN_PING = 1<<17
 };
 
 #ifdef HAVE_SSL
@@ -1031,94 +1200,301 @@ enum tdflags {
    _TD_BUFCOPY    = 1<<15     /* Buffer may be constant, copy it */
 };
 
-enum user_options {
-   OPT_NONE,
-   OPT_DEBUG      = 1u<< 0,   /* -d / *debug* */
-   OPT_VERB       = 1u<< 1,   /* -v / *verbose* */
-   OPT_VERBVERB   = 1u<< 2,   /* .. even more verbosity */
-   OPT_EXISTONLY  = 1u<< 3,   /* -e */
-   OPT_HEADERSONLY = 1u<<4,   /* -H */
-   OPT_HEADERLIST = 1u<< 5,   /* -L */
-   OPT_QUICKRUN_MASK = OPT_EXISTONLY | OPT_HEADERSONLY | OPT_HEADERLIST,
-   OPT_NOSRC      = 1u<< 6,   /* -n */
-   OPT_E_FLAG     = 1u<< 7,   /* -E / *skipemptybody* */
-   OPT_F_FLAG     = 1u<< 8,   /* -F */
-   OPT_N_FLAG     = 1u<< 9,   /* -N / *header* */
-   OPT_R_FLAG     = 1u<<10,   /* -R */
-   OPT_r_FLAG     = 1u<<11,   /* -r (plus option_r_arg) */
-   OPT_t_FLAG     = 1u<<12,   /* -t */
-   OPT_u_FLAG     = 1u<<13,   /* -u / $USER and pw->pw_uid != getuid(2) */
-   OPT_TILDE_FLAG = 1u<<14,   /* -~ */
-   OPT_BATCH_FLAG = 1u<<15,   /* -# */
+#ifdef n_HAVE_TCAP
+enum n_termcap_captype{
+   n_TERMCAP_CAPTYPE_NONE = 0,
+   /* Internally we share the bitspace, so ensure no value ends up as 0 */
+   n_TERMCAP_CAPTYPE_BOOL = 1,
+   n_TERMCAP_CAPTYPE_NUMERIC,
+   n_TERMCAP_CAPTYPE_STRING,
+   n__TERMCAP_CAPTYPE_MAX1
+};
+
+/* Termcap commands; different to queries commands perform actions.
+ * Commands are resolved upon init time, and are all termcap(5)-compatible,
+ * therefore we use the short termcap(5) names.
+ * Note this is parsed by make-tcap-map.pl, which expects the syntax
+ * "CONSTANT, COMMENT" where COMMENT is "Capname/TCap-Code, TYPE[, FLAGS]",
+ * and one of Capname and TCap-Code may be the string "-" meaning ENOENT;
+ * a | vertical bar or end-of-comment ends processing; see termcap.c.
+ * We may use the free-form part after | for the "Variable String" and notes on
+ * necessary termcap_cmd() arguments; if those are in [] brackets they are not
+ * regular but are only used when the command, i.e., its effect, is somehow
+ * simulated / faked by a built-in fallback implementation.
+ * Availability of built-in fallback indicated by leading @ (at-sign) */
+enum n_termcap_cmd{
+# ifdef HAVE_TERMCAP
+   n_TERMCAP_CMD_te, /* rmcup/te, STRING | exit_ca_mode: -,- */
+   n_TERMCAP_CMD_ti, /* smcup/ti, STRING | enter_ca_mode: -,- */
+
+   n_TERMCAP_CMD_ks, /* smkx/ks, STRING | keypad_xmit: -,- */
+   n_TERMCAP_CMD_ke, /* rmkx/ke, STRING | keypad_local: -,- */
+
+   n_TERMCAP_CMD_cd, /* ed/cd, STRING | clr_eos: -,- */
+   n_TERMCAP_CMD_cl, /* clear/cl, STRING | clear_screen(+home): -,- */
+   n_TERMCAP_CMD_ho, /* home/ho, STRING | cursor_home: -,- */
+# endif
+
+# ifdef HAVE_MLE
+   n_TERMCAP_CMD_ce, /* el/ce, STRING | @ clr_eol: [start-column],- */
+   n_TERMCAP_CMD_ch, /* hpa/ch, STRING, IDX1 | column_address: column,- */
+   n_TERMCAP_CMD_cr, /* cr/cr, STRING | @ carriage_return: -,- */
+   n_TERMCAP_CMD_le, /* cub1/le, STRING, CNT | @ cursor_left: count,- */
+   n_TERMCAP_CMD_nd, /* cuf1/nd, STRING, CNT | @ cursor_right: count,- */
+# endif
+
+   n__TERMCAP_CMD_MAX1,
+   n__TERMCAP_CMD_MASK = (1<<24) - 1,
+
+   /* Only perform command if ca-mode is used */
+   n_TERMCAP_CMD_FLAG_CA_MODE = 1<<29,
+   /* I/O should be flushed after command completed */
+   n_TERMCAP_CMD_FLAG_FLUSH = 1<<30
+};
+
+/* Termcap queries; a query is a command that returns a struct n_termcap_value.
+ * Queries are resolved once they are used first, and may not be termcap(5)-
+ * compatible, therefore we use terminfo(5) names.
+ * Note this is parsed by make-tcap-map.pl, which expects the syntax
+ * "CONSTANT, COMMENT" where COMMENT is "Capname/TCap-Code, TYPE[, FLAGS]",
+ * and one of Capname and TCap-Code may be the string "-" meaning ENOENT;
+ * a | vertical bar or end-of-comment ends processing; see termcap.c.
+ * We may use the free-form part after | for the "Variable String" and notes.
+ * The "xkey | X:" keys are Dickey's xterm extensions, see (our) manual */
+enum n_termcap_query{
+# ifdef HAVE_COLOUR
+   n_TERMCAP_QUERY_colors, /* colors/Co, NUMERIC | max_colors */
+# endif
+
+   /* --make-tcap-map--: only KEY_BINDINGS follow.  DON'T CHANGE THIS LINE! */
+   /* Update the `bind' manual on change! */
+# ifdef HAVE_KEY_BINDINGS
+   n_TERMCAP_QUERY_key_backspace, /* kbs/kb, STRING */
+   n_TERMCAP_QUERY_key_dc,       /* kdch1/kD, STRING | delete-character */
+      n_TERMCAP_QUERY_key_sdc,      /* kDC / *4, STRING | ..shifted */
+   n_TERMCAP_QUERY_key_eol,      /* kel/kE, STRING | clear-to-end-of-line */
+   n_TERMCAP_QUERY_key_exit,     /* kext/@9, STRING */
+   n_TERMCAP_QUERY_key_ic,       /* kich1/kI, STRING | insert character */
+      n_TERMCAP_QUERY_key_sic,      /* kIC/#3, STRING | ..shifted */
+   n_TERMCAP_QUERY_key_home,     /* khome/kh, STRING */
+      n_TERMCAP_QUERY_key_shome,    /* kHOM/#2, STRING | ..shifted */
+   n_TERMCAP_QUERY_key_end,      /* kend/@7, STRING */
+      n_TERMCAP_QUERY_key_send,     /* kEND / *7, STRING | ..shifted */
+   n_TERMCAP_QUERY_key_npage,    /* knp/kN, STRING */
+   n_TERMCAP_QUERY_key_ppage,    /* kpp/kP, STRING */
+   n_TERMCAP_QUERY_key_left,     /* kcub1/kl, STRING */
+      n_TERMCAP_QUERY_key_sleft,    /* kLFT/#4, STRING | ..shifted */
+      n_TERMCAP_QUERY_xkey_aleft,   /* kLFT3/-, STRING | X: Alt+left */
+      n_TERMCAP_QUERY_xkey_cleft,   /* kLFT5/-, STRING | X: Control+left */
+   n_TERMCAP_QUERY_key_right,    /* kcuf1/kr, STRING */
+      n_TERMCAP_QUERY_key_sright,   /* kRIT/%i, STRING | ..shifted */
+      n_TERMCAP_QUERY_xkey_aright,  /* kRIT3/-, STRING | X: Alt+right */
+      n_TERMCAP_QUERY_xkey_cright,  /* kRIT5/-, STRING | X: Control+right */
+   n_TERMCAP_QUERY_key_down,     /* kcud1/kd, STRING */
+      n_TERMCAP_QUERY_xkey_sdown,   /* kDN/-, STRING | ..shifted */
+      n_TERMCAP_QUERY_xkey_adown,   /* kDN3/-, STRING | X: Alt+down */
+      n_TERMCAP_QUERY_xkey_cdown,   /* kDN5/-, STRING | X: Control+down */
+   n_TERMCAP_QUERY_key_up,       /* kcuu1/ku, STRING */
+      n_TERMCAP_QUERY_xkey_sup,     /* kUP/-, STRING | ..shifted */
+      n_TERMCAP_QUERY_xkey_aup,     /* kUP3/-, STRING | X: Alt+up */
+      n_TERMCAP_QUERY_xkey_cup,     /* kUP5/-, STRING | X: Control+up */
+   n_TERMCAP_QUERY_kf0,          /* kf0/k0, STRING */
+   n_TERMCAP_QUERY_kf1,          /* kf1/k1, STRING */
+   n_TERMCAP_QUERY_kf2,          /* kf2/k2, STRING */
+   n_TERMCAP_QUERY_kf3,          /* kf3/k3, STRING */
+   n_TERMCAP_QUERY_kf4,          /* kf4/k4, STRING */
+   n_TERMCAP_QUERY_kf5,          /* kf5/k5, STRING */
+   n_TERMCAP_QUERY_kf6,          /* kf6/k6, STRING */
+   n_TERMCAP_QUERY_kf7,          /* kf7/k7, STRING */
+   n_TERMCAP_QUERY_kf8,          /* kf8/k8, STRING */
+   n_TERMCAP_QUERY_kf9,          /* kf9/k9, STRING */
+   n_TERMCAP_QUERY_kf10,         /* kf10/k;, STRING */
+   n_TERMCAP_QUERY_kf11,         /* kf11/F1, STRING */
+   n_TERMCAP_QUERY_kf12,         /* kf12/F2, STRING */
+   n_TERMCAP_QUERY_kf13,         /* kf13/F3, STRING */
+   n_TERMCAP_QUERY_kf14,         /* kf14/F4, STRING */
+   n_TERMCAP_QUERY_kf15,         /* kf15/F5, STRING */
+   n_TERMCAP_QUERY_kf16,         /* kf16/F6, STRING */
+   n_TERMCAP_QUERY_kf17,         /* kf17/F7, STRING */
+   n_TERMCAP_QUERY_kf18,         /* kf18/F8, STRING */
+   n_TERMCAP_QUERY_kf19,         /* kf19/F9, STRING */
+# endif /* HAVE_KEY_BINDINGS */
+
+   n__TERMCAP_QUERY_MAX1
+};
+#endif /* n_HAVE_TCAP */
+
+enum n_url_flags{
+   n_URL_TLS_REQUIRED = 1<<0, /* Whether protocol always uses SSL/TLS.. */
+   n_URL_TLS_OPTIONAL = 1<<1, /* ..may later upgrade to SSL/TLS */
+   n_URL_TLS_MASK = n_URL_TLS_REQUIRED | n_URL_TLS_OPTIONAL,
+   n_URL_HAD_USER = 1<<2,     /* Whether .url_user was part of the URL */
+   n_URL_HOST_IS_NAME = 1<<3  /* .url_host not numeric address */
+};
+
+enum n_visual_info_flags{
+   n_VISUAL_INFO_NONE,
+   n_VISUAL_INFO_ONE_CHAR = 1<<0,         /* Step only one char, then return */
+   n_VISUAL_INFO_SKIP_ERRORS = 1<<1,      /* Treat via replacement, step byte */
+   n_VISUAL_INFO_WIDTH_QUERY = 1<<2,      /* Detect visual character widths */
+
+   /* Rest only with HAVE_C90AMEND1, mutual with _ONE_CHAR */
+   n_VISUAL_INFO_WOUT_CREATE = 1<<8,      /* Use/create .vic_woudat */
+   n_VISUAL_INFO_WOUT_SALLOC = 1<<9,      /* ..salloc() it first */
+   /* Only visuals into .vic_woudat - implies _WIDTH_QUERY */
+   n_VISUAL_INFO_WOUT_PRINTABLE = 1<<10,
+   n__VISUAL_INFO_FLAGS = n_VISUAL_INFO_WOUT_CREATE |
+         n_VISUAL_INFO_WOUT_SALLOC | n_VISUAL_INFO_WOUT_PRINTABLE
+};
+
+enum n_program_option{
+   n_PO_DEBUG = 1u<<0,        /* -d / *debug* */
+   n_PO_VERB = 1u<<1,         /* -v / *verbose* */
+   n_PO_VERBVERB = 1u<<2,     /* .. even more verbosity */
+   n_PO_EXISTONLY = 1u<<3,    /* -e */
+   n_PO_HEADERSONLY = 1u<<4,  /* -H */
+   n_PO_HEADERLIST = 1u<<5,   /* -L */
+   n_PO_QUICKRUN_MASK = n_PO_EXISTONLY | n_PO_HEADERSONLY | n_PO_HEADERLIST,
+   n_PO_E_FLAG = 1u<<6,       /* -E / *skipemptybody* */
+   n_PO_F_FLAG = 1u<<7,       /* -F */
+   n_PO_Mm_FLAG = 1u<<8,      /* -M or -m (plus n_poption_arg_Mm) */
+   n_PO_R_FLAG = 1u<<9,       /* -R */
+   n_PO_r_FLAG = 1u<<10,      /* -r (plus n_poption_arg_r) */
+   n_PO_t_FLAG = 1u<<11,      /* -t */
+   n_PO_TILDE_FLAG = 1u<<12,  /* -~ */
+   n_PO_BATCH_FLAG = 1u<<13,  /* -# */
 
    /*  */
-   OPT_MEMDEBUG   = 1<<16,    /* *memdebug* */
-
-   /*  */
-   OPT_SENDMODE   = 1u<<17,   /* Usage case forces send mode */
-   OPT_INTERACTIVE = 1u<<18,  /* isatty(0) */
-   OPT_TTYIN      = OPT_INTERACTIVE,
-   OPT_TTYOUT     = 1u<<19,
-   OPT_UNICODE    = 1u<<20,   /* We're in an UTF-8 environment */
-   OPT_ENC_MBSTATE = 1u<<21,  /* Multibyte environment with shift states */
+   n_PO_MEMDEBUG = 1<<24,     /* *memdebug* */
 
    /* Some easy-access shortcuts */
-   OPT_D_V        = OPT_DEBUG | OPT_VERB,
-   OPT_D_VV       = OPT_DEBUG | OPT_VERBVERB,
-   OPT_D_V_VV     = OPT_DEBUG | OPT_VERB | OPT_VERBVERB
+   n_PO_D_V = n_PO_DEBUG | n_PO_VERB,
+   n_PO_D_VV = n_PO_DEBUG | n_PO_VERBVERB,
+   n_PO_D_V_VV = n_PO_DEBUG | n_PO_VERB | n_PO_VERBVERB
 };
 
-#define IS_TTY_SESSION() \
-   ((options & (OPT_TTYIN | OPT_TTYOUT)) == (OPT_TTYIN | OPT_TTYOUT))
-
-#define OBSOLETE(X) \
-do {\
-   if (options & OPT_D_V_VV)\
+#define n_OBSOLETE(X) \
+do{\
+   if(n_poption & n_PO_D_V_VV)\
       n_err("%s: %s\n", _("Obsoletion warning"), X);\
-} while (0)
-#define OBSOLETE2(X,Y) \
-do {\
-   if (options & OPT_D_V_VV)\
+}while(0)
+#define n_OBSOLETE2(X,Y) \
+do{\
+   if(n_poption & n_PO_D_V_VV)\
       n_err("%s: %s: %s\n", _("Obsoletion warning"), X, Y);\
-} while (0)
+}while(0)
 
-enum program_state {
-   PS_STARTED        = 1<< 0,       /* main.c startup code passed, functional */
+/* Program state bits which may regulary fluctuate */
+enum n_program_state{
+   n_PS_ROOT = 1u<<30,                 /* Temporary "bypass any checks" bit */
+#define n_PS_ROOT_BLOCK(ACT) \
+do{\
+   bool_t a___reset___ = !(n_pstate & n_PS_ROOT);\
+   n_pstate |= n_PS_ROOT;\
+   ACT;\
+   if(a___reset___)\
+      n_pstate &= ~n_PS_ROOT;\
+}while(0)
 
-   PS_LOADING        = 1<< 1,       /* Loading user resource files, startup */
-   PS_SOURCING       = 1<< 2,       /* Sourcing a resource file */
-   PS_IN_LOAD        = PS_LOADING | PS_SOURCING,
+   /* XXX These are internal to the state machine and do not belong here,
+    * XXX yet this was the easiest (accessible) approach */
+   n_PS_ERR_XIT = 1u<<0,               /* Unless `ignerr' seen -> n_PSO_XIT */
+   n_PS_ERR_QUIT = 1u<<1,              /* ..ditto: -> n_PSO_QUIT */
+   n_PS_ERR_EXIT_MASK = n_PS_ERR_XIT | n_PS_ERR_QUIT,
 
-   PS_EVAL_ERROR     = 1<< 4,       /* Last evaluate() command failed */
+   n_PS_SOURCING = 1u<<2,              /* During load() or `source' */
+   n_PS_ROBOT = 1u<<3,                 /* .. even more robotic */
+   n_PS_COMPOSE_MODE = 1u<<4,          /* State machine recursed */
+   n_PS_COMPOSE_FORKHOOK = 1u<<5,      /* A hook running in a subprocess */
 
-   PS_HOOK_NEWMAIL   = 1<< 6,
-   PS_HOOK           = 1<< 7,
-   PS_HOOK_MASK      = PS_HOOK_NEWMAIL | PS_HOOK,
+   n_PS_HOOK_NEWMAIL = 1u<<7,
+   n_PS_HOOK = 1u<<8,
+   n_PS_HOOK_MASK = n_PS_HOOK_NEWMAIL | n_PS_HOOK,
 
-   PS_EDIT           = 1<< 8,       /* Current mailbox not a "system mailbox" */
-   PS_SAW_COMMAND    = 1<< 9,       /* ..after mailbox switch */
+   n_PS_EDIT = 1u<<9,                  /* Current mailbox no "system mailbox" */
+   n_PS_SETFILE_OPENED = 1u<<10,       /* (hack) setfile() opened a new box */
+   n_PS_SAW_COMMAND = 1u<<11,          /* ..after mailbox switch */
+   n_PS_DID_PRINT_DOT = 1u<<12,        /* Current message has been printed */
 
-   PS_DID_PRINT_DOT  = 1<<16,       /* Current message has been printed */
+   n_PS_SIGWINCH_PEND = 1u<<13,        /* Need update of $COLUMNS/$LINES */
+   n_PS_PSTATE_PENDMASK = n_PS_SIGWINCH_PEND, /* pstate housekeeping needed */
 
-   PS_MSGLIST_SAW_NO = 1<<17,       /* Last *LIST saw numerics */
-   PS_MSGLIST_DIRECT = 1<<18,       /* One msg was directly chosen by number */
-   PS_MSGLIST_MASK   = PS_MSGLIST_SAW_NO | PS_MSGLIST_DIRECT,
+   n_PS_ARGLIST_MASK = n_BITENUM_MASK(14, 16),
+   n_PS_ARGMOD_VPUT = 1u<<16,          /* "vput" modifier TODO struct CmdCtx */
+   n_PS_MSGLIST_GABBY = 1u<<14,        /* getmsglist() saw something gabby */
+   n_PS_MSGLIST_DIRECT = 1u<<15,       /* A msg was directly chosen by number */
+   /* TODO HACK: until v15 PS_MSGLIST_SAW_NO is an indication whether an entry
+    * TODO may be placed in the history or not (grep this, see commands()),
+    * TODO so avoid reusing this bit */
+   n_PS_WYSHLIST_SAW_CONTROL = 1u<<15, /* ..saw C0+ control characters */
 
-   PS_HEADER_NEEDED_MIME = 1<<20,   /* mime_write_tohdr() needed x TODO HACK! */
+   n_PS_EXPAND_MULTIRESULT = 1u<<17,   /* Last fexpand() with MULTIOK had .. */
+   n_PS_ERRORS_PROMPT = 1u<<18,        /* New error to be reported in prompt */
 
-   /* Various first-time-init switches */
-   PS_ERRORS_NOTED   = 1<<24,       /* Ring of `errors' content, print msg */
-   PS_ATTACHMENTS_NOTED = 1<<25,    /* Attachment filename quoting noted */
-   PS_t_FLAG         = 1<<26        /* OPT_t_FLAG made persistant */
+   /* Bad hacks */
+   n_PS_HEADER_NEEDED_MIME = 1u<<24,   /* mime_write_tohdr() not ASCII clean */
+   n_PS_READLINE_NL = 1u<<25,          /* readline_input()+ saw a \n */
+   n_PS_BASE64_STRIP_CR = 1u<<26       /* Go for text output, strip CR's */
 };
 
-/* A large enum with all the binary and value options a.k.a their keys.
+/* Various states set once, and first time messages or initializers */
+enum n_program_state_once{
+   /* Exit request pending (quick) */
+   n_PSO_XIT = 1u<<0,
+   n_PSO_QUIT = 1u<<1,
+   n_PSO_EXIT_MASK = n_PSO_XIT | n_PSO_QUIT,
+
+   /* Pre _STARTED */
+   n_PSO_SENDMODE = 1u<<2,
+   n_PSO_INTERACTIVE = 1u<<3,
+   n_PSO_TTYIN = 1u<<4,
+   n_PSO_TTYOUT = 1u<<5, /* TODO should be TTYERR! */
+
+   n_PSO_BIG_ENDIAN = 1u<<8,
+   n_PSO_UNICODE = 1u<<9,
+   n_PSO_ENC_MBSTATE = 1u<<10,
+
+   n_PSO_REPRODUCIBLE = 1u<<14,
+
+   /* main.c startup code passed, we are functional! */
+   n_PSO_STARTED = 1u<<15,
+
+   /* (Likely) Post _STARTED */
+   n_PSO_ATTACH_QUOTE_NOTED = 1u<<16,
+   n_PSO_ERRORS_NOTED = 1u<<17,
+   n_PSO_TERMCAP_DISABLE = 1u<<18,
+   n_PSO_TERMCAP_CA_MODE = 1u<<19,
+   n_PSO_LINE_EDITOR_INIT = 1u<<20,
+
+   /* A subtile hack which works in conjunction with n_OPT_t_FLAG so as to
+    * allow to have multiple states regarding the related header setup */
+   n_PSO_t_FLAG = 1u<<30
+};
+
+/* {{{ A large enum with all the boolean and value options a.k.a their keys.
  * Only the constant keys are in here, to be looked up via ok_[bv]look(),
  * ok_[bv]set() and ok_[bv]clear().
- * Note: see the comments in accmacvar.c before changing *anything* in here! */
+ * Variable properties are placed in {PROP=VALUE[:,PROP=VALUE:]} comments,
+ * a {\} comment causes the next line to be read for (overlong) properties.
+ * Notes:
+ * - see the comments in accmacvar.c before changing *anything* in here!
+ * - virt= implies rdonly,nodel
+ * - import= implies env
+ * - num and posnum are mutual exclusive
+ * - most default VAL_ues come from in from build system via ./make.rc
+ * (Keep in SYNC: ./nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings") */
 enum okeys {
-   /* Option keys for binary options */
+   /* This is used for all macro(-local) variables etc., i.e.,
+    * [*@#]|[1-9][0-9]*, in order to have something with correct properties.
+    * It is also used for the ${^.+} multiplexer */
+   ok_v___special_param,   /* {nolopts=1,rdonly=1,nodel=1} */
+   /*__qm/__em aka ?/! should be num=1 but that more expensive than what now */
+   ok_v___qm,              /* {name=?,nolopts=1,rdonly=1,nodel=1} */
+   ok_v___em,              /* {name=!,nolopts=1,rdonly=1,nodel=1} */
+
+   ok_v_account,                       /* {nolopts=1,rdonly=1,nodel=1} */
    ok_b_add_file_recipients,
+ok_v_agent_shell_lookup,
    ok_b_allnet,
    ok_b_append,
    ok_b_ask,
@@ -1127,195 +1503,247 @@ enum okeys {
    ok_b_askbcc,
    ok_b_askcc,
    ok_b_asksign,
-   ok_b_asksub,
-   ok_b_attachment_ask_content_description,
-   ok_b_attachment_ask_content_disposition,
-   ok_b_attachment_ask_content_id,
-   ok_b_attachment_ask_content_type,
+   ok_b_asksub,                        /* {i3val=TRU1} */
+   ok_v_attrlist,
+   ok_v_autobcc,
+   ok_v_autocc,
    ok_b_autocollapse,
    ok_b_autoprint,
-   ok_b_autothread,
+ok_b_autothread,
+   ok_v_autosort,
+
    ok_b_bang,
-   ok_b_batch_exit_on_error,
-   ok_b_bsdannounce,
+ok_b_batch_exit_on_error,
+   ok_v_bind_timeout,                  /* {notempty=1,posnum=1} */
+ok_b_bsdannounce,
    ok_b_bsdcompat,
    ok_b_bsdflags,
    ok_b_bsdheadline,
    ok_b_bsdmsgs,
    ok_b_bsdorder,
-   ok_b_bsdset,
+   ok_v_build_os,                      /* {virt=VAL_BUILD_OS} */
+   ok_v_build_osenv,                   /* {virt=VAL_BUILD_OSENV} */
+
+   ok_v_COLUMNS,                       /* {notempty=1,posnum=1,env=1} */
+   ok_v_charset_7bit,            /* {lower=1,notempty=1,defval=CHARSET_7BIT} */
+   /* But unused without HAVE_ICONV, we use ok_vlook(CHARSET_8BIT_OKEY)! */
+   ok_v_charset_8bit,            /* {lower=1,notempty=1,defval=CHARSET_8BIT} */
+   ok_v_charset_unknown_8bit,          /* {lower=1} */
+   ok_v_cmd,
    ok_b_colour_disable,
    ok_b_colour_pager,
-   ok_b_debug,                         /* {special=1} */
-   ok_b_disconnected,
+   ok_v_contact_mail,                  /* {virt=VAL_CONTACT_MAIL} */
+   ok_v_contact_web,                   /* {virt=VAL_CONTACT_WEB} */
+   ok_v_crt,                           /* {posnum=1} */
+   ok_v_customhdr,                     /* {nocntrls=1} */
+
+   ok_v_DEAD,                          /* {notempty=1,env=1,defval=VAL_DEAD} */
+   ok_v_datefield,                     /* {i3val="%Y-%m-%d %H:%M"} */
+   ok_v_datefield_markout_older,       /* {i3val="%Y-%m-%d"} */
+   ok_b_debug,                         /* {vip=1} */
    ok_b_disposition_notification_send,
    ok_b_dot,
    ok_b_dotlock_ignore_error,
+
+   ok_v_EDITOR,                     /* {env=1,notempty=1,defval=VAL_EDITOR} */
    ok_b_editalong,
    ok_b_editheaders,
-   ok_b_emptybox,
    ok_b_emptystart,
+ok_v_encoding,
+   ok_b_errexit,
+   ok_v_escape,                        /* {defval=n_ESCAPE} */
+   ok_v_expandaddr,
+   ok_v_expandargv,
+
+   ok_v_features,                      /* {virt=VAL_FEATURES} */
    ok_b_flipr,
+   ok_v_folder,                        /* {vip=1} */
+   ok_v_folder_resolved,               /* {rdonly=1,nodel=1} */
+   ok_v_folder_hook,
    ok_b_followup_to,
+   ok_v_followup_to_honour,
    ok_b_forward_as_attachment,
+   ok_v_forward_inject_head,
+   ok_v_from,
    ok_b_fullnames,
-   ok_b_header,                        /* {special=1} */
+ok_v_fwdheading,
+
+   ok_v_HOME,                          /* {vip=1,nodel=1,notempty=1,import=1} */
+   ok_b_header,                        /* {i3val=TRU1} */
+   ok_v_headline,
+   ok_v_headline_bidi,
+   ok_v_history_file,
    ok_b_history_gabby,
    ok_b_history_gabby_persist,
+   ok_v_history_size,                  /* {notempty=1,posnum=1} */
    ok_b_hold,
+   ok_v_hostname,
+
    ok_b_idna_disable,
+   ok_v_ifs,                           /* {vip=1,defval=" \t\n"} */
+   ok_v_ifs_ws,                     /* {vip=1,rdonly=1,nodel=1,i3val=" \t\n"} */
    ok_b_ignore,
    ok_b_ignoreeof,
-   ok_b_imap_use_starttls,
+   ok_v_inbox,
+   ok_v_indentprefix,
+
    ok_b_keep,
    ok_b_keep_content_length,
    ok_b_keepsave,
+
+   ok_v_LANG,                          /* {vip=1,env=1,notempty=1} */
+   ok_v_LC_ALL,                     /* {name=LC_ALL,vip=1,env=1,notempty=1} */
+   ok_v_LC_CTYPE,                   /* {name=LC_CTYPE,vip=1,env=1,notempty=1} */
+   ok_v_LINES,                         /* {notempty=1,posnum=1,env=1} */
+   ok_v_LISTER,                     /* {env=1,notempty=1,defval=VAL_LISTER} */
+   ok_v_LOGNAME,                       /* {rdonly=1,import=1} */
    ok_b_line_editor_disable,
+   ok_b_line_editor_no_defaults,
+   ok_v_log_prefix,                    /* {nodel=1,i3val=VAL_UAGENT ": "} */
+
+   ok_v_MAIL,                          /* {env=1} */
+   ok_v_MAILRC,                  /* {import=1,notempty=1,defval=VAL_MAILRC} */
+   ok_b_MAILX_NO_SYSTEM_RC,            /* {name=MAILX_NO_SYSTEM_RC,import=1} */
+   ok_v_MBOX,                          /* {env=1,notempty=1,defval=VAL_MBOX} */
+   ok_v_mailbox_resolved,              /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_v_mailbox_display,               /* {nolopts=1,rdonly=1,nodel=1} */
+   ok_v_mailx_extra_rc,
    ok_b_markanswered,
+   ok_b_mbox_rfc4155,
+   ok_b_memdebug,                      /* {vip=1} */
    ok_b_message_id_disable,
+   ok_v_message_inject_head,
+   ok_v_message_inject_tail,
    ok_b_metoo,
    ok_b_mime_allow_text_controls,
+   ok_b_mime_alternative_favour_rich,
+   ok_v_mime_counter_evidence,         /* {posnum=1} */
+   ok_v_mime_encoding,
+   ok_v_mimetypes_load_control,
+   ok_v_mta,                           /* {notempty=1,defval=VAL_MTA} */
+   ok_v_mta_arguments,
+   ok_b_mta_no_default_arguments,
+   ok_v_mta_argv0,                     /* {notempty=1,defval=VAL_MTA_ARGV0} */
+
+   /* TODO likely temporary hook data, v15 drop */
+   ok_v_mailx_command,                 /* {rdonly=1} */
+   ok_v_mailx_subject,                 /* {rdonly=1} */
+   ok_v_mailx_from,                    /* {rdonly=1} */
+   ok_v_mailx_sender,                  /* {rdonly=1} */
+   ok_v_mailx_to,                      /* {rdonly=1} */
+   ok_v_mailx_cc,                      /* {rdonly=1} */
+   ok_v_mailx_bcc,                     /* {rdonly=1} */
+   ok_v_mailx_raw_to,                  /* {rdonly=1} */
+   ok_v_mailx_raw_cc,                  /* {rdonly=1} */
+   ok_v_mailx_raw_bcc,                 /* {rdonly=1} */
+   ok_v_mailx_orig_from,               /* {rdonly=1} */
+   ok_v_mailx_orig_to,                 /* {rdonly=1} */
+   ok_v_mailx_orig_cc,                 /* {rdonly=1} */
+   ok_v_mailx_orig_bcc,                /* {rdonly=1} */
+
+ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
+ok_b_NAIL_NO_SYSTEM_RC,             /* {name=NAIL_NO_SYSTEM_RC,import=1} */
+ok_v_NAIL_HEAD,                     /* {name=NAIL_HEAD} */
+ok_v_NAIL_HISTFILE,                 /* {name=NAIL_HISTFILE} */
+ok_v_NAIL_HISTSIZE,                 /* {name=NAIL_HISTSIZE,notempty=1,num=1} */
+ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
+   ok_v_NETRC,                         /* {env=1,notempty=1,defval=VAL_NETRC} */
    ok_b_netrc_lookup,
+   ok_v_netrc_pipe,
+   ok_v_newfolders,
+   ok_v_newmail,
+
+   ok_v_on_compose_cleanup,            /* {notempty=1} */
+   ok_v_on_compose_enter,              /* {notempty=1} */
+   ok_v_on_compose_leave,              /* {notempty=1} */
+   ok_v_on_compose_splice,             /* {notempty=1} */
+   ok_v_on_compose_splice_shell,       /* {notempty=1} */
+   ok_v_on_resend_cleanup,             /* {notempty=1} */
+   ok_v_on_resend_enter,               /* {notempty=1} */
    ok_b_outfolder,
+
+   ok_v_PAGER,                         /* {env=1,notempty=1,defval=VAL_PAGER} */
+   ok_v_PATH,                          /* {nodel=1,import=1} */
+   ok_b_POSIXLY_CORRECT,            /* {vip=1,import=1,name=POSIXLY_CORRECT} */
    ok_b_page,
+   ok_v_password,
    ok_b_piperaw,
+   ok_v_pop3_auth,
    ok_b_pop3_bulk_load,
+   ok_v_pop3_keepalive,                /* {notempty=1,posnum=1} */
    ok_b_pop3_no_apop,
    ok_b_pop3_use_starttls,
-   ok_b_print_all_chars,
+   ok_b_posix,                         /* {vip=1} */
    ok_b_print_alternatives,
+   ok_v_prompt,                        /* {i3val="? "} */
+   ok_v_prompt2,                       /* {i3val=".. "} */
+
    ok_b_quiet,
+   ok_v_quote,
    ok_b_quote_as_attachment,
+   ok_v_quote_fold,
+
+   ok_b_r_option_implicit,
    ok_b_recipients_in_cc,
+   ok_v_record,
+   ok_b_record_files,
    ok_b_record_resent,
    ok_b_reply_in_same_charset,
+   ok_v_reply_strings,
+   ok_v_replyto,
+   ok_v_reply_to_honour,
    ok_b_rfc822_body_from_,             /* {name=rfc822-body-from_} */
-   ok_b_save,
+
+   ok_v_SHELL,                      /* {import=1,notempty=1,defval=VAL_SHELL} */
+ok_b_SYSV3,                         /* {env=1} */
+   ok_b_save,                          /* {i3val=TRU1} */
+   ok_v_screen,                        /* {notempty=1,posnum=1} */
    ok_b_searchheaders,
+   ok_v_sendcharsets,                  /* {lower=1} */
    ok_b_sendcharsets_else_ttycharset,
+   ok_v_sender,
+ok_v_sendmail,
+ok_v_sendmail_arguments,
+ok_b_sendmail_no_default_arguments,
+ok_v_sendmail_progname,
    ok_b_sendwait,
    ok_b_showlast,
    ok_b_showname,
    ok_b_showto,
-   ok_b_skipemptybody,                 /* {special=1} */
-   ok_b_smime_force_encryption,
-   ok_b_smime_no_default_ca,
-   ok_b_smime_sign,
-   ok_b_smtp_use_starttls,
-   ok_b_ssl_no_default_ca,
-   ok_b_term_ca_mode,
-   ok_b_v15_compat,
-   ok_b_verbose,                       /* {special=1} */
-   ok_b_writebackedited,
-   ok_b_memdebug,                      /* {special=1} */
-
-   /* Option keys for values options */
-   ok_v_agent_shell_lookup,
-   ok_v_attrlist,
-   ok_v_autobcc,
-   ok_v_autocc,
-   ok_v_autosort,
-   ok_v_charset_7bit,
-   ok_v_charset_8bit,
-   ok_v_charset_unknown_8bit,
-   ok_v_cmd,
-   ok_v_colour_from_,                  /* {name=colour-from_} */
-   ok_v_colour_header,
-   ok_v_colour_msginfo,
-   ok_v_colour_partinfo,
-   ok_v_colour_terms,
-   ok_v_colour_uheader,
-   ok_v_colour_user_headers,
-   ok_v_crt,
-   ok_v_datefield,
-   ok_v_datefield_markout_older,
-   ok_v_DEAD,
-   ok_v_EDITOR,
-   ok_v_encoding,
-   ok_v_escape,
-   ok_v_expandaddr,
-   ok_v_expandargv,
-   ok_v_features,                      /* {rdonly=1,virtual=_features} */
-   ok_v_folder,                        /* {special=1} */
-   ok_v_folder_hook,
-   ok_v_followup_to_honour,
-   ok_v_from,
-   ok_v_fwdheading,
-   ok_v_headline,
-   ok_v_headline_bidi,
-   ok_v_hostname,
-   ok_v_imap_auth,
-   ok_v_imap_cache,
-   ok_v_imap_delim,
-   ok_v_imap_keepalive,
-   ok_v_imap_list_depth,
-   ok_v_inbox,
-   ok_v_indentprefix,
-   ok_v_line_editor_cursor_right,      /* {special=1} */
-   ok_v_LISTER,
-   ok_v_MAIL,
-   ok_v_MBOX,
-   ok_v_mime_counter_evidence,
-   /* TODO v15-compat: mimetypes-load-control -> mimetypes-load / mimetypes */
-   ok_v_mimetypes_load_control,
-   ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
-   /* TODO v15-compat: NAIL_HEAD -> message-head? */
-   ok_v_NAIL_HEAD,                     /* {name=NAIL_HEAD} */
-   /* TODO v15-compat: NAIL_HISTFILE -> history-file */
-   ok_v_NAIL_HISTFILE,                 /* {name=NAIL_HISTFILE} */
-   /* TODO v15-compat: NAIL_HISTSIZE -> history-size{,limit} */
-   ok_v_NAIL_HISTSIZE,                 /* {name=NAIL_HISTSIZE} */
-   /* TODO v15-compat: NAIL_TAIL -> message-tail? */
-   ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
-   ok_v_newfolders,
-   ok_v_newmail,
-   ok_v_ORGANIZATION,
-   ok_v_PAGER,
-   ok_v_password,
-   /* TODO pop3_auth is yet a dummy to enable easier impl. of ccred_lookup()! */
-   ok_v_pop3_auth,
-   ok_v_pop3_keepalive,
-   ok_v_prompt,
-   ok_v_quote,
-   ok_v_quote_fold,
-   ok_v_record,
-   ok_v_reply_strings,
-   ok_v_replyto,
-   ok_v_reply_to_honour,
-   ok_v_screen,
-   ok_v_sendcharsets,
-   ok_v_sender,
-   ok_v_sendmail,
-   ok_v_sendmail_arguments,
-   /* FIXME this is not falsely sorted, but this entire enum including the
-    * FIXME manual should be sorted alphabetically instead of binary/value */
-   ok_b_sendmail_no_default_arguments,
-   ok_v_sendmail_progname,
-   ok_v_SHELL,
    ok_v_Sign,
    ok_v_sign,
    ok_v_signature,
+   ok_b_skipemptybody,                 /* {vip=1} */
    ok_v_smime_ca_dir,
    ok_v_smime_ca_file,
+   ok_v_smime_ca_flags,
+   ok_b_smime_ca_no_defaults,
    ok_v_smime_cipher,
    ok_v_smime_crl_dir,
    ok_v_smime_crl_file,
+   /* smime-encrypt-USER@HOST */
+   ok_b_smime_force_encryption,
+ok_b_smime_no_default_ca,
+   ok_b_smime_sign,
    ok_v_smime_sign_cert,
    ok_v_smime_sign_include_certs,
    ok_v_smime_sign_message_digest,
-   ok_v_smtp,
-   /* TODO v15-compat: smtp-auth: drop */
+ok_v_smtp,
    ok_v_smtp_auth,
-   ok_v_smtp_auth_password,
-   ok_v_smtp_auth_user,
+ok_v_smtp_auth_password,
+ok_v_smtp_auth_user,
    ok_v_smtp_hostname,
+   ok_b_smtp_use_starttls,
+   ok_v_SOURCE_DATE_EPOCH,             /* {\} */
+      /* {name=SOURCE_DATE_EPOCH,rdonly=1,import=1,notempty=1,posnum=1} */
+   ok_v_socks_proxy,                   /* {notempty=1} */
    ok_v_spam_interface,
-   ok_v_spam_maxsize,
+   ok_v_spam_maxsize,                  /* {notempty=1,posnum=1} */
    ok_v_spamc_command,
    ok_v_spamc_arguments,
    ok_v_spamc_user,
-   ok_v_spamd_socket,
-   ok_v_spamd_user,
+ok_v_spamd_socket,
+ok_v_spamd_user,
    ok_v_spamfilter_ham,
    ok_v_spamfilter_noham,
    ok_v_spamfilter_nospam,
@@ -1324,39 +1752,69 @@ enum okeys {
    ok_v_spamfilter_spam,
    ok_v_ssl_ca_dir,
    ok_v_ssl_ca_file,
+   ok_v_ssl_ca_flags,
+   ok_b_ssl_ca_no_defaults,
    ok_v_ssl_cert,
    ok_v_ssl_cipher_list,
    ok_v_ssl_config_file,
+   ok_v_ssl_curves,
    ok_v_ssl_crl_dir,
    ok_v_ssl_crl_file,
    ok_v_ssl_key,
    ok_v_ssl_method,
+ok_b_ssl_no_default_ca,
    ok_v_ssl_protocol,
    ok_v_ssl_rand_egd,
    ok_v_ssl_rand_file,
    ok_v_ssl_verify,
    ok_v_stealthmua,
-   ok_v_toplines,
-   ok_v_ttycharset,
+
+   ok_v_TERM,                          /* {env=1} */
+   ok_v_TMPDIR,            /* {import=1,vip=1,notempty=1,defval=VAL_TMPDIR} */
+   ok_v_termcap,
+   ok_b_termcap_ca_mode,
+   ok_b_termcap_disable,
+   ok_v_toplines,                      /* {notempty=1,num=1,defval="5"} */
+   ok_b_topsqueeze,
+   ok_v_ttycharset,              /* {lower=1,notempty=1,defval=CHARSET_8BIT} */
+   ok_b_typescript_mode,               /* {vip=1} */
+
+   ok_v_USER,                          /* {rdonly=1,import=1} */
+   ok_v_umask,                      /* {vip=1,nodel=1,posnum=1,i3val="0077"} */
    ok_v_user,
-   ok_v_version,                       /* {rdonly=1,virtual=VERSION} */
-   ok_v_version_major,                 /* {rdonly=1,virtual=VERSION_MAJOR} */
-   ok_v_version_minor,                 /* {rdonly=1,virtual=VERSION_MINOR} */
-   ok_v_version_update,                /* {rdonly=1,virtual=VERSION_UPDATE} */
-   ok_v_VISUAL
-};
+
+   ok_v_VISUAL,                     /* {env=1,notempty=1,defval=VAL_VISUAL} */
+   ok_b_v15_compat,
+   ok_b_verbose,                       /* {vip=1} */
+   ok_v_version,                       /* {virt=n_VERSION} */
+   ok_v_version_date,                  /* {virt=n_VERSION_DATE} */
+   ok_v_version_major,                 /* {virt=n_VERSION_MAJOR} */
+   ok_v_version_minor,                 /* {virt=n_VERSION_MINOR} */
+   ok_v_version_update,                /* {virt=n_VERSION_UPDATE} */
+
+   ok_b_writebackedited
+
+,  /* Obsolete IMAP related non-sorted */
+ok_b_disconnected,
+ok_v_imap_auth,
+ok_v_imap_cache,
+ok_v_imap_delim,
+ok_v_imap_keepalive,
+ok_v_imap_list_depth,
+ok_b_imap_use_starttls
+}; /* }}} */
 
 /* Locale-independent character classes */
 enum {
-   C_CNTRL        = 0000,
-   C_BLANK        = 0001,
-   C_WHITE        = 0002,
-   C_SPACE        = 0004,
-   C_PUNCT        = 0010,
-   C_OCTAL        = 0020,
-   C_DIGIT        = 0040,
-   C_UPPER        = 0100,
-   C_LOWER        = 0200
+   C_CNTRL        = 1<<0,
+   C_BLANK        = 1<<1,
+   C_WHITE        = 1<<2,
+   C_SPACE        = 1<<3,
+   C_PUNCT        = 1<<4,
+   C_OCTAL        = 1<<5,
+   C_DIGIT        = 1<<6,
+   C_UPPER        = 1<<7,
+   C_LOWER        = 1<<8
 };
 
 struct str {
@@ -1364,10 +1822,24 @@ struct str {
    size_t   l;       /* the stings's length */
 };
 
-struct colour_table {
-   /* Plus a copy of *colour-user-headers* */
-   struct str  ct_csinfo[COLOURSPEC_RESET+1 + 1];
+struct n_string{
+   char *s_dat;         /*@ May contain NULs, not automatically terminated */
+   ui32_t s_len;        /*@ gth of string */
+   ui32_t s_auto : 1;   /* Stored in auto-reclaimed storage? */
+   ui32_t s_size : 31;  /* of .s_dat, -1 */
 };
+
+struct n_strlist{
+   struct n_strlist *sl_next;
+   size_t sl_len;
+   char sl_dat[n_VFIELD_SIZE(0)];
+};
+#define n_STRLIST_ALLOC(SZ) /* XXX -> nailfuns.h (and pimp interface) */\
+   n_alloc(n_VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
+#define n_STRLIST_AUTOREC_ALLOC(SZ) \
+   n_autorec_alloc(n_VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
+#define n_STRLIST_LOFI_ALLOC(SZ) \
+   n_lofi_alloc(n_VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
 
 struct bidi_info {
    struct str  bi_start;      /* Start of (possibly) bidirectional text */
@@ -1375,11 +1847,77 @@ struct bidi_info {
    size_t      bi_pad;        /* No of visual columns to reserve for BIDI pad */
 };
 
+struct n_cmd_arg_desc{
+   char cad_name[12];   /* Name of command */
+   ui32_t cad_no;       /* Number of entries in cad_ent_flags */
+   /* [enum n_cmd_arg_desc_flags,arg-dep] */
+   ui32_t cad_ent_flags[n_VFIELD_SIZE(0)][2];
+};
+/* ISO C(99) doesn't allow initialization of "flex array" */
+#define n_CMD_ARG_DESC_SUBCLASS_DEF(CMD,NO,VAR) \
+   struct n_cmd_arg_desc_ ## CMD {\
+      char cad_name[12];\
+      ui32_t cad_no;\
+      ui32_t cad_ent_flags[NO][2];\
+   } const VAR = { #CMD "\0", NO,
+#define n_CMD_ARG_DESC_SUBCLASS_DEF_END }
+#define n_CMD_ARG_DESC_SUBCLASS_CAST(P) ((struct n_cmd_arg_desc const*)P)
+
+struct n_cmd_arg_ctx{
+   struct n_cmd_arg_desc const *cac_desc; /* Input: description of command */
+   char const *cac_indat;     /* Input that shall be parsed */
+   size_t cac_inlen;          /* Input length (UIZ_MAX: do a strlen()) */
+   size_t cac_no;             /* Output: number of parsed arguments */
+   struct n_cmd_arg *cac_arg; /* Output: parsed arguments */
+   char const *cac_vput;      /* "Output": vput prefix used: varname */
+};
+
+struct n_cmd_arg{/* TODO incomplete, misses getmsglist() */
+   struct n_cmd_arg *ca_next;
+   char const *ca_indat;   /*[PRIV] Pointer into n_cmd_arg_ctx.cac_indat */
+   size_t ca_inlen;        /*[PRIV] of .ca_indat of this arg (not terminated) */
+   ui32_t ca_ent_flags[2]; /* Copy of n_cmd_arg_desc.cad_ent_flags[X] */
+   ui32_t ca_arg_flags;    /* [Output: _WYSH: copy of parse result flags] */
+   ui8_t ca__dummy[4];
+   union{
+      struct str ca_str;      /* _STRING, _WYSH */
+   } ca_arg;               /* Output: parsed result */
+};
+
+struct n_cmd_desc{
+   char const *cd_name;    /* Name of command */
+   int (*cd_func)(void*);  /* Implementor of command */
+   enum n_cmd_arg_flags cd_caflags;
+   si16_t cd_msgflag;      /* Required flags of msgs */
+   si16_t cd_msgmask;      /* Relevant flags of msgs */
+   struct n_cmd_arg_desc const *cd_cadp;
+#ifdef HAVE_DOCSTRINGS
+   char const *cd_doc;     /* One line doc for command */
+#endif
+};
+/* Yechh, can't initialize unions */
+#define cd_minargs cd_msgflag /* Minimum argcount for WYSH/WYRA/RAWLIST */
+#define cd_maxargs cd_msgmask /* Max argcount for WYSH/WYRA/RAWLIST */
+
+#ifdef HAVE_COLOUR
+struct n_colour_env{
+   struct n_colour_env *ce_last;
+   bool_t ce_enabled;   /* Colour enabled on this level */
+   ui8_t ce_ctx;        /* enum n_colour_ctx */
+   ui8_t ce_ispipe;     /* .ce_outfp known to be a pipe */
+   ui8_t ce__pad[5];
+   FILE *ce_outfp;
+   struct a_colour_map *ce_current; /* Active colour or NULL */
+};
+
+struct n_colour_pen;
+#endif
+
 struct url {
    char const     *url_input;       /* Input as given (really) */
-   enum cproto    url_cproto;       /* Communication protocol as given */
-   bool_t         url_needs_tls;    /* Wether the protocol uses SSL/TLS */
-   bool_t         url_had_user;     /* Wether .url_user was part of the URL */
+   ui32_t         url_flags;
+   ui8_t          url_cproto;       /* enum cproto as given */
+   ui8_t          url__pad1[1];
    ui16_t         url_portno;       /* atoi .url_port or default, host endian */
    char const     *url_port;        /* Port (if given) or NULL */
    char           url_proto[14];    /* Communication protocol as 'xy\0//' */
@@ -1388,8 +1926,12 @@ struct url {
    struct str     url_user;         /* User, exactly as given / looked up */
    struct str     url_user_enc;     /* User, urlxenc()oded */
    struct str     url_pass;         /* Pass (urlxdec()oded) or NULL */
-   struct str     url_host;         /* Service hostname */
-   struct str     url_path;         /* CPROTO_IMAP: path suffix or NULL */
+   /* TODO we don't know whether .url_host is a name or an address.  Us
+    * TODO Net::IPAddress::fromString() to check that, then set
+    * TODO n_URL_HOST_IS_NAME solely based on THAT!  Until then,
+    * TODO n_URL_HOST_IS_NAME ONLY set if n_URL_TLS_MASK and HAVE_GETADDRINFO */
+   struct str     url_host;         /* Service hostname TODO we don't know */
+   struct str     url_path;         /* Path suffix or NULL */
    /* TODO: url_get_component(url *, enum COMPONENT, str *store) */
    struct str     url_h_p;          /* .url_host[:.url_port] */
    /* .url_user@.url_host
@@ -1412,21 +1954,49 @@ struct ccred {
 };
 
 #ifdef HAVE_DOTLOCK
-struct dotlock_info {
-   char const  *di_file_name;
-   char const  *di_lock_name;
-   char const  *di_hostname;
-   char const  *di_randstr;
-   size_t      di_pollmsecs;
+struct n_dotlock_info{
+   char const *di_file_name;  /* Mailbox to lock */
+   char const *di_lock_name;  /* .di_file_name + .lock */
+   char const *di_hostname;   /* ..filled in parent (due resolver delays) */
+   char const *di_randstr;    /* ..ditto, random string */
+   size_t di_pollmsecs;       /* Delay in between locking attempts */
    struct stat *di_stb;
 };
 #endif
 
-struct time_current {
-   time_t      tc_time;
-   struct tm   tc_gm;
-   struct tm   tc_local;
-   char        tc_ctime[32];
+struct n_file_type{
+   char const *ft_ext_dat;    /* Extension this handles, without first period */
+   size_t ft_ext_len;
+   char const *ft_load_dat;   /* And the load and save command strings */
+   size_t ft_load_len;
+   char const *ft_save_dat;
+   size_t ft_save_len;
+};
+
+struct n_go_data_ctx{
+   /* The memory pool may be inherited from outer context, so we
+    * .gdc_mempool may be NE .gdc__mempool_buf */
+   void *gdc_mempool;
+   void *gdc_ifcond; /* Saved state of conditional stack */
+#ifdef HAVE_COLOUR
+   struct n_colour_env *gdc_colour;
+   bool_t gdc_colour_active;
+   ui8_t gdc__colour_pad[7];
+# define n_COLOUR_IS_ACTIVE() \
+   (/*n_go_data->gc_data.gdc_colour != NULL &&*/\
+    /*n_go_data->gc_data.gdc_colour->ce_enabled*/ n_go_data->gdc_colour_active)
+#endif
+   char gdc__mempool_buf[n_MEMORY_POOL_TYPE_SIZEOF];
+};
+n_MCTA(n_MEMORY_POOL_TYPE_SIZEOF % sizeof(void*) == 0,
+   "Inacceptible size of n_go_data_ctx.gdc_mempool")
+
+struct mime_handler {
+   enum mime_handler_flags mh_flags;
+   struct str  mh_msg;           /* Message describing this command */
+   /* XXX union{} the following? */
+   char const  *mh_shell_cmd;    /* For MIME_HDL_CMD */
+   int         (*mh_ptf)(void);  /* PTF main() for MIME_HDL_PTF */
 };
 
 struct quoteflt {
@@ -1434,11 +2004,17 @@ struct quoteflt {
    char const  *qf_pfix;
    ui32_t      qf_pfix_len;   /* Length of prefix: 0: bypass */
    ui32_t      qf_qfold_min;  /* Simple way: wrote prefix? */
-#ifdef HAVE_QUOTE_FOLD
-   ui32_t      qf_qfold_max;  /* Otherwise: line lengths */
+   /* TODO quoteflt.qf_nl_last is a hack that i have introduced so that we
+    * TODO finally can gracefully place a newline last in the visual display.
+    * TODO I.e., for cases where quoteflt shouldn't be used at all ;} */
+   bool_t      qf_nl_last;    /* Last thing written/seen was NL */
+#ifndef HAVE_QUOTE_FOLD
+   ui8_t       __dummy[7];
+#else
+   ui8_t       __dummy[1];
    ui8_t       qf_state;      /* *quote-fold* state machine */
    bool_t      qf_brk_isws;   /* Breakpoint is at WS */
-   ui8_t       __dummy[2];
+   ui32_t      qf_qfold_max;  /* Otherwise: line lengths */
    ui32_t      qf_wscnt;      /* Whitespace count */
    ui32_t      qf_brkl;       /* Breakpoint */
    ui32_t      qf_brkw;       /* Visual width, breakpoint */
@@ -1477,13 +2053,22 @@ struct search_expr {
 #endif
 };
 
-struct eval_ctx {
-   struct str  ev_line;          /* The terminated data to evaluate */
-   ui32_t      ev_line_size;     /* May be used to store line memory size */
-   bool_t      ev_is_recursive;  /* Evaluation in evaluation? (collect ~:) */
-   ui8_t       __dummy[3];
-   bool_t      ev_add_history;   /* Add command to history (TRUM1=gabby)? */
-   char const  *ev_new_content;  /* History: reenter line, start with this */
+/* This is somewhat temporary for pre v15 */
+struct n_sigman{
+   ui32_t sm_flags;           /* enum n_sigman_flags */
+   int sm_signo;
+   struct n_sigman *sm_outer;
+   sighandler_type sm_ohup;
+   sighandler_type sm_oint;
+   sighandler_type sm_oquit;
+   sighandler_type sm_oterm;
+   sighandler_type sm_opipe;
+   sigjmp_buf sm_jump;
+};
+
+struct n_timespec{
+   si64_t ts_sec;
+   siz_t ts_nsec;
 };
 
 struct termios_state {
@@ -1496,16 +2081,54 @@ struct termios_state {
 #define termios_state_reset() \
 do {\
    if (termios_state.ts_needs_reset) {\
-      tcsetattr(0, TCSADRAIN, &termios_state.ts_tios);\
+      tcsetattr(STDIN_FILENO, TCSADRAIN, &termios_state.ts_tios);\
       termios_state.ts_needs_reset = FAL0;\
    }\
 } while (0)
+
+#ifdef n_HAVE_TCAP
+struct n_termcap_value{
+   enum n_termcap_captype tv_captype;
+   ui8_t tv__dummy[4];
+   union n_termcap_value_data{
+      bool_t tvd_bool;
+      ui32_t tvd_numeric;
+      char const *tvd_string;
+   } tv_data;
+};
+#endif
+
+struct n_visual_info_ctx{
+   char const *vic_indat;  /*I Input data */
+   size_t vic_inlen;       /*I If UIZ_MAX, strlen(.vic_indat) */
+   char const *vic_oudat;  /*O remains */
+   size_t vic_oulen;
+   size_t vic_chars_seen;  /*O number of characters processed */
+   size_t vic_bytes_seen;  /*O number of bytes passed */
+   size_t vic_vi_width;    /*[O] visual width of the entire range */
+   wc_t *vic_woudat;       /*[O] if so requested */
+   size_t vic_woulen;      /*[O] entries in .vic_woudat, if used */
+   wc_t vic_waccu;         /*O The last wchar_t/char processed (if any) */
+   enum n_visual_info_flags vic_flags; /*O Copy of parse flags */
+   /* TODO bidi */
+#ifdef HAVE_C90AMEND1
+   mbstate_t *vic_mbstate; /*IO .vic_mbs_def used if NULL */
+   mbstate_t vic_mbs_def;
+#endif
+};
+
+struct time_current {
+   time_t      tc_time;
+   struct tm   tc_gm;
+   struct tm   tc_local;
+   char        tc_ctime[32];
+};
 
 struct sock {                 /* data associated with a socket */
    int         s_fd;          /* file descriptor */
 #ifdef HAVE_SSL
    int         s_use_ssl;     /* SSL is used */
-# ifdef HAVE_OPENSSL
+# ifdef HAVE_XSSL
    void        *s_ssl;        /* SSL object */
 # endif
 #endif
@@ -1538,12 +2161,12 @@ struct mailbox {
    FILE        *mb_otf;       /* same, write open */
    char        *mb_sorted;    /* sort method */
    enum {
-      MB_VOID,       /* no type (e. g. connection failed) */
-      MB_FILE,       /* local file */
-      MB_POP3,       /* POP3 mailbox */
-      MB_IMAP,       /* IMAP mailbox */
-      MB_MAILDIR,    /* maildir folder */
-      MB_CACHE       /* cached mailbox */
+      MB_VOID,    /* no type (e. g. connection failed) */
+      MB_FILE,    /* local file */
+      MB_POP3,    /* POP3 mailbox */
+MB_IMAP,          /* IMAP mailbox */
+MB_CACHE,         /* IMAP cache */
+      MB_MAILDIR  /* maildir folder */
    }           mb_type;       /* type of mailbox */
    enum {
       MB_DELE = 01,  /* may delete messages in mailbox */
@@ -1560,7 +2183,7 @@ struct mailbox {
    char        *mb_imap_pass;       /* xxx v15-compat URL workaround */
    char        *mb_imap_mailbox;    /* name of current IMAP mailbox */
    char        *mb_cache_directory; /* name of cache directory */
-   char mb_imap_delim[8];
+   char mb_imap_delim[8];     /* Directory separator(s), [0] += replacer */
 #endif
    struct sock mb_sock;       /* socket structure */
 };
@@ -1571,43 +2194,52 @@ enum needspec {
    NEED_BODY         /* need header and body of a message */
 };
 
-enum havespec {
-   HAVE_NOTHING,              /* nothing downloaded yet */
-   HAVE_HEADER    = 01,       /* header is downloaded */
-   HAVE_BODY      = 02        /* entire message is downloaded */
+enum content_info {
+   CI_NOTHING,                /* Nothing downloaded yet */
+   CI_HAVE_HEADER = 1u<<0,    /* Header is downloaded */
+   CI_HAVE_BODY = 1u<<1,      /* Entire message is downloaded */
+   CI_HAVE_MASK = CI_HAVE_HEADER | CI_HAVE_BODY,
+   CI_MIME_ERRORS = 1u<<2,    /* Defective MIME structure */
+   CI_EXPANDED = 1u<<3,       /* Container part (pk7m) exploded into X */
+   CI_SIGNED = 1u<<4,         /* Has a signature.. */
+   CI_SIGNED_OK = 1u<<5,      /* ..verified ok.. */
+   CI_SIGNED_BAD = 1u<<6,     /* ..verified bad (missing key).. */
+   CI_ENCRYPTED = 1u<<7,      /* Is encrypted.. */
+   CI_ENCRYPTED_OK = 1u<<8,   /* ..decryption possible/ok.. */
+   CI_ENCRYPTED_BAD = 1u<<9   /* ..not possible/ok */
 };
 
-/* flag bits. Attention: Flags that are used in cache.c may not change */
+/* Note: flags that are used in obs-imap-cache.c may not change */
 enum mflag {
-   MUSED          = (1<< 0),  /* entry is used, but this bit isn't */
-   MDELETED       = (1<< 1),  /* entry has been deleted */
-   MSAVED         = (1<< 2),  /* entry has been saved */
-   MTOUCH         = (1<< 3),  /* entry has been noticed */
-   MPRESERVE      = (1<< 4),  /* keep entry in sys mailbox */
-   MMARK          = (1<< 5),  /* message is marked! */
-   MODIFY         = (1<< 6),  /* message has been modified */
-   MNEW           = (1<< 7),  /* message has never been seen */
-   MREAD          = (1<< 8),  /* message has been read sometime. */
-   MSTATUS        = (1<< 9),  /* message status has changed */
-   MBOX           = (1<<10),  /* Send this to mbox, regardless */
-   MNOFROM        = (1<<11),  /* no From line */
-   MHIDDEN        = (1<<12),  /* message is hidden to user */
-   MFULLYCACHED   = (1<<13),  /* message is completely cached */
-   MBOXED         = (1<<14),  /* message has been sent to mbox */
-   MUNLINKED      = (1<<15),  /* message was unlinked from cache */
-   MNEWEST        = (1<<16),  /* message is very new (newmail) */
-   MFLAG          = (1<<17),  /* message has been flagged recently */
-   MUNFLAG        = (1<<18),  /* message has been unflagged */
-   MFLAGGED       = (1<<19),  /* message is `flagged' */
-   MANSWER        = (1<<20),  /* message has been answered recently */
-   MUNANSWER      = (1<<21),  /* message has been unanswered */
-   MANSWERED      = (1<<22),  /* message is `answered' */
-   MDRAFT         = (1<<23),  /* message has been drafted recently */
-   MUNDRAFT       = (1<<24),  /* message has been undrafted */
-   MDRAFTED       = (1<<25),  /* message is marked as `draft' */
-   MOLDMARK       = (1<<26),  /* messages was marked previously */
-   MSPAM          = (1<<27),  /* message is classified as spam */
-   MSPAMUNSURE    = (1<<28)   /* message may be spam, but it is unsure */
+   MUSED = 1u<<0,       /* entry is used, but this bit isn't */
+   MDELETED = 1u<<1,    /* entry has been deleted */
+   MSAVED = 1u<<2,      /* entry has been saved */
+   MTOUCH = 1u<<3,      /* entry has been noticed */
+   MPRESERVE = 1u<<4,   /* keep entry in sys mailbox */
+   MMARK = 1u<<5,       /* message is marked! */
+   MODIFY = 1u<<6,      /* message has been modified */
+   MNEW = 1u<<7,        /* message has never been seen */
+   MREAD = 1u<<8,       /* message has been read sometime. */
+   MSTATUS = 1u<<9,     /* message status has changed */
+   MBOX = 1u<<10,       /* Send this to mbox, regardless */
+   MNOFROM = 1u<<11,    /* no From line */
+   MHIDDEN = 1u<<12,    /* message is hidden to user */
+MFULLYCACHED = 1u<<13,  /* IMAP cached */
+   MBOXED = 1u<<14,     /* message has been sent to mbox */
+MUNLINKED = 1u<<15,     /* Unlinked from IMAP cache */
+   MNEWEST = 1u<<16,    /* message is very new (newmail) */
+   MFLAG = 1u<<17,      /* message has been flagged recently */
+   MUNFLAG = 1u<<18,    /* message has been unflagged */
+   MFLAGGED = 1u<<19,   /* message is `flagged' */
+   MANSWER = 1u<<20,    /* message has been answered recently */
+   MUNANSWER = 1u<<21,  /* message has been unanswered */
+   MANSWERED = 1u<<22,  /* message is `answered' */
+   MDRAFT = 1u<<23,     /* message has been drafted recently */
+   MUNDRAFT = 1u<<24,   /* message has been undrafted */
+   MDRAFTED = 1u<<25,   /* message is marked as `draft' */
+   MOLDMARK = 1u<<26,   /* messages was marked previously */
+   MSPAM = 1u<<27,      /* message is classified as spam */
+   MSPAMUNSURE = 1u<<28  /* message may be spam, but it is unsure */
 };
 #define MMNORM          (MDELETED | MSAVED | MHIDDEN)
 #define MMNDEL          (MDELETED | MHIDDEN)
@@ -1615,8 +2247,8 @@ enum mflag {
 #define visible(mp)     (((mp)->m_flag & MMNDEL) == 0)
 
 struct mimepart {
-   enum mflag  m_flag;        /* flags */
-   enum havespec m_have;      /* downloaded parts of the part */
+   enum mflag  m_flag;
+   enum content_info m_content_info;
 #ifdef HAVE_SPAM
    ui32_t      m_spamscore;   /* Spam score as int, 24:8 bits */
 #endif
@@ -1624,8 +2256,8 @@ struct mimepart {
    size_t      m_offset;      /* offset in block of part */
    size_t      m_size;        /* Bytes in the part */
    size_t      m_xsize;       /* Bytes in the full part */
-   long        m_lines;       /* Lines in the message */
-   long        m_xlines;      /* Lines in the full message */
+   long        m_lines;       /* Lines in the message: write format! */
+   long        m_xlines;      /* Lines in the full message; ditto */
    time_t      m_time;        /* time the message was sent */
    char const  *m_from;       /* message sender */
    struct mimepart *m_nextpart;     /* next part at same level */
@@ -1634,17 +2266,19 @@ struct mimepart {
    char const  *m_ct_type;          /* content-type */
    char const  *m_ct_type_plain;    /* content-type without specs */
    char const  *m_ct_type_usr_ovwr; /* Forcefully overwritten one */
-   enum mimecontent m_mimecontent;  /* same in enum */
-   char const  *m_charset;    /* charset */
-   char const  *m_ct_enc;     /* content-transfer-encoding */
-   enum mime_enc m_mime_enc;     /* same in enum */
-   char        *m_partstring; /* part level string */
-   char        *m_filename;   /* attachment filename */
+   enum mimecontent m_mimecontent;  /* ..in enum */
+   char const  *m_charset;
+   char const  *m_ct_enc;           /* Content-Transfer-Encoding */
+   enum mime_enc m_mime_enc;        /* ..in enum */
+   char        *m_partstring;       /* Part level string */
+   char        *m_filename;         /* ..of attachment */
+   char const  *m_content_description;
+   struct mime_handler *m_handler;  /* MIME handler if yet classified */
 };
 
 struct message {
    enum mflag  m_flag;        /* flags */
-   enum havespec m_have;      /* downloaded parts of the message */
+   enum content_info m_content_info;
 #ifdef HAVE_SPAM
    ui32_t      m_spamscore;   /* Spam score as int, 24:8 bits */
 #endif
@@ -1666,7 +2300,7 @@ struct message {
 #ifdef HAVE_IMAP
    unsigned long m_uid;       /* IMAP unique identifier */
 #endif
-   char        *m_maildir_file;  /* original maildir file of msg */
+   char const  *m_maildir_file;  /* original maildir file of msg */
    ui32_t      m_maildir_hash;   /* hash of file name in maildir sub */
    int         m_collapsed;      /* collapsed thread information */
 };
@@ -1676,30 +2310,6 @@ struct message {
 #define mailx_offsetof(off)               ((int) ((off) % 4096))
 #define mailx_positionof(block, offset)   ((off_t)(block) * 4096 + (offset))
 
-/* Argument types */
-enum argtype {
-   ARG_MSGLIST    = 0,        /* Message list type */
-   ARG_STRLIST    = 1,        /* A pure string */
-   ARG_RAWLIST    = 2,        /* Shell string list */
-   ARG_NOLIST     = 3,        /* Just plain 0 */
-   ARG_NDMLIST    = 4,        /* Message list, no defaults */
-   ARG_ECHOLIST   = 5,        /* Like raw list, but keep quote chars */
-   ARG_ARGMASK    = 7,        /* Mask of the above */
-
-   ARG_A          = 1u<< 4,   /* Needs an active mailbox */
-   ARG_F          = 1u<< 5,   /* Is a conditional command */
-   ARG_G          = 1u<< 6,   /* Is supposed to produce "gabby" history */
-   ARG_H          = 1u<< 7,   /* Never place in history */
-   ARG_I          = 1u<< 8,   /* Interactive command bit */
-   ARG_M          = 1u<< 9,   /* Legal from send mode bit */
-   ARG_P          = 1u<<10,   /* Autoprint dot after command */
-   ARG_R          = 1u<<11,   /* Cannot be called from collect / recursion */
-   ARG_T          = 1u<<12,   /* Is a transparent command */
-   ARG_V          = 1u<<13,   /* Places data in temporary_arg_v_store */
-   ARG_W          = 1u<<14,   /* Invalid when read only bit */
-   ARG_O          = 1u<<15    /* OBSOLETE()d command */
-};
-
 enum gfield {
    GTO            = 1<< 0,    /* Grab To: line */
    GSUBJECT       = 1<< 1,    /* Likewise, Subject: line */
@@ -1708,13 +2318,14 @@ enum gfield {
 
    GNL            = 1<< 4,    /* Print blank line after */
    GDEL           = 1<< 5,    /* Entity removed from list */
-   GCOMMA         = 1<< 6,    /* detract puts in commas */
+   GCOMMA         = 1<< 6,    /* detract() puts in commas */
    GUA            = 1<< 7,    /* User-Agent field */
    GMIME          = 1<< 8,    /* MIME 1.0 fields */
    GMSGID         = 1<< 9,    /* a Message-ID */
+   GNAMEONLY      = 1<<10,    /* detract() does NOT use fullnames */
 
-   GIDENT         = 1<<11,    /* From:, Reply-To:, Organization:, MFT: */
-   GREF           = 1<<12,    /* References:, In-Reply-To:, (Message-Id:) */
+   GIDENT         = 1<<11,    /* From:, Reply-To:, MFT: (user headers) */
+   GREF           = 1<<12,    /* References:, In-Reply-To:, (Message-ID:) */
    GDATE          = 1<<13,    /* Date: field */
    GFULL          = 1<<14,    /* Include full names, comments etc. */
    GSKIN          = 1<<15,    /* Skin names */
@@ -1733,53 +2344,72 @@ enum header_flags {
 };
 
 /* Structure used to pass about the current state of a message (header) */
+struct n_header_field{
+   struct n_header_field *hf_next;
+   ui32_t hf_nl;              /* Field-name length */
+   ui32_t hf_bl;              /* Field-body length*/
+   char hf_dat[n_VFIELD_SIZE(0)];
+};
+
 struct header {
    ui32_t      h_flags;       /* enum header_flags bits */
    ui32_t      h_dummy;
-   struct name *h_to;         /* Dynamic "To:" string */
    char        *h_subject;    /* Subject string */
+   char const  *h_charset;    /* preferred charset */
+   struct name *h_from;       /* overridden "From:" field */
+   struct name *h_sender;     /* overridden "Sender:" field */
+   struct name *h_to;         /* Dynamic "To:" string */
    struct name *h_cc;         /* Carbon copies string */
    struct name *h_bcc;        /* Blind carbon copies */
    struct name *h_ref;        /* References (possibly overridden) */
    struct attachment *h_attach; /* MIME attachments */
-   char        *h_charset;    /* preferred charset */
-   struct name *h_from;       /* overridden "From:" field */
-   struct name *h_sender;     /* overridden "Sender:" field */
    struct name *h_replyto;    /* overridden "Reply-To:" field */
    struct name *h_message_id; /* overridden "Message-ID:" field */
    struct name *h_in_reply_to;/* overridden "In-Reply-To:" field */
    struct name *h_mft;        /* Mail-Followup-To */
    char const  *h_list_post;  /* Address from List-Post:, for `Lreply' */
-   char        *h_organization; /* overridden "Organization:" field */
+   struct n_header_field *h_user_headers;
+   struct n_header_field *h_custom_headers; /* (Cached result) */
+   /* Raw/original versions of the header(s). If any */
+   char const *h_mailx_command;
+   struct name *h_mailx_raw_to;
+   struct name *h_mailx_raw_cc;
+   struct name *h_mailx_raw_bcc;
+   struct name *h_mailx_orig_from;
+   struct name *h_mailx_orig_to;
+   struct name *h_mailx_orig_cc;
+   struct name *h_mailx_orig_bcc;
 };
 
 /* Handling of namelist nodes used in processing the recipients of mail and
  * aliases, inspection of mail-addresses and all that kind of stuff */
 enum nameflags {
-   NAME_NAME_SALLOC        = 1<< 0, /* .n_name is doped */
-   NAME_FULLNAME_SALLOC    = 1<< 1, /* .n_fullname is doped */
-   NAME_SKINNED            = 1<< 2, /* Is actually skin()ned */
-   NAME_IDNA               = 1<< 3, /* IDNA was applied */
+   NAME_NAME_SALLOC = 1u<<0,        /* .n_name is doped */
+   NAME_FULLNAME_SALLOC = 1u<<1,    /* .n_fullname is doped */
+   NAME_SKINNED = 1u<<2,            /* Is actually skin()ned */
+   NAME_IDNA = 1u<<3,               /* IDNA was applied */
 
-   NAME_ADDRSPEC_CHECKED   = 1<< 4, /* Address has been .. and */
-   NAME_ADDRSPEC_ISFILE    = 1<< 5, /* ..is a file path */
-   NAME_ADDRSPEC_ISPIPE    = 1<< 6, /* ..is a command for piping */
+   NAME_ADDRSPEC_CHECKED = 1u<<4,   /* Address has been .. and */
+   NAME_ADDRSPEC_ISFILE = 1u<<5,    /* ..is a file path */
+   NAME_ADDRSPEC_ISPIPE = 1u<<6,    /* ..is a command for piping */
    NAME_ADDRSPEC_ISFILEORPIPE = NAME_ADDRSPEC_ISFILE | NAME_ADDRSPEC_ISPIPE,
-   NAME_ADDRSPEC_ISNAME    = 1<< 7, /* ..is a valid mail network address */
-   NAME_ADDRSPEC_ISADDR    = 1<< 8, /* ..is a valid mail network address */
+   NAME_ADDRSPEC_ISNAME = 1u<<7,    /* ..is an alias name */
+   NAME_ADDRSPEC_ISADDR = 1u<<8,    /* ..is a mail network address */
 
-   NAME_ADDRSPEC_ERR_EMPTY = 1<< 9, /* An empty string (or NULL) */
-   NAME_ADDRSPEC_ERR_ATSEQ = 1<<10, /* Weird @ sequence */
-   NAME_ADDRSPEC_ERR_CHAR  = 1<<11, /* Invalid character */
-   NAME_ADDRSPEC_ERR_IDNA  = 1<<12, /* IDNA convertion failed */
-   NAME_ADDRSPEC_INVALID   = NAME_ADDRSPEC_ERR_EMPTY |
+   NAME_ADDRSPEC_ERR_EMPTY = 1u<<9, /* An empty string (or NULL) */
+   NAME_ADDRSPEC_ERR_ATSEQ = 1u<<10, /* Weird @ sequence */
+   NAME_ADDRSPEC_ERR_CHAR = 1u<<11, /* Invalid character */
+   NAME_ADDRSPEC_ERR_IDNA = 1u<<12, /* IDNA convertion failed */
+   NAME_ADDRSPEC_ERR_NAME = 1u<<13, /* Alias with invalid content */
+   NAME_ADDRSPEC_INVALID = NAME_ADDRSPEC_ERR_EMPTY |
          NAME_ADDRSPEC_ERR_ATSEQ | NAME_ADDRSPEC_ERR_CHAR |
-         NAME_ADDRSPEC_ERR_IDNA,
+         NAME_ADDRSPEC_ERR_IDNA | NAME_ADDRSPEC_ERR_NAME,
 
    /* Error storage (we must fit in 31-bit) */
-   _NAME_SHIFTWC  = 13,
-   _NAME_MAXWC    = 0x3FFFF,
-   _NAME_MASKWC   = _NAME_MAXWC << _NAME_SHIFTWC
+   _NAME_SHIFTWC = 14,
+   _NAME_MAXWC = 0x1FFFF,
+   _NAME_MASKWC = _NAME_MAXWC << _NAME_SHIFTWC
+   /* Bit 31 (32) == SI32_MIN temporarily used */
 };
 
 /* In the !_ERR_EMPTY case, the failing character can be queried */
@@ -1791,42 +2421,53 @@ do {\
          (E) | (((unsigned int)(WC) & _NAME_MAXWC) << _NAME_SHIFTWC);\
 } while (0)
 
-struct name {
-   struct name *n_flink;      /* Forward link in list. */
-   struct name *n_blink;      /* Backward list link */
-   enum gfield n_type;        /* From which list it came */
-   enum nameflags n_flags;    /* enum nameflags */
-   char        *n_name;       /* This fella's address */
-   char        *n_fullname;   /* Ditto, unless GFULL including comment */
-   char        *n_fullextra;  /* GFULL, without address */
+struct name{
+   struct name *n_flink;   /* Forward link in list. */
+   struct name *n_blink;   /* Backward list link */
+   enum gfield n_type;     /* From which list it came */
+   ui32_t n_flags;         /* enum nameflags */
+   char *n_name;           /* This fella's address */
+   char *n_fullname;       /* Ditto, unless GFULL including comment */
+   char *n_fullextra;      /* GFULL, without address */
 };
 
-struct addrguts {
-   char const  *ag_input;     /* Input string as given */
-   size_t      ag_ilen;       /* strlen() of input */
-   size_t      ag_iaddr_start; /* Start of *addr-spec* in .ag_input */
-   size_t      ag_iaddr_aend; /* ..and one past its end */
-   char        *ag_skinned;   /* Output (alloced if !=.ag_input) */
-   size_t      ag_slen;       /* strlen() of .ag_skinned */
-   size_t      ag_sdom_start; /* Start of domain in .ag_skinned, */
+struct n_addrguts{
+   /* Input string as given (maybe replaced with a fixed one!) */
+   char const *ag_input;
+   size_t ag_ilen;            /* strlen() of input */
+   size_t ag_iaddr_start;     /* Start of *addr-spec* in .ag_input */
+   size_t ag_iaddr_aend;      /* ..and one past its end */
+   char *ag_skinned;          /* Output (alloced if !=.ag_input) */
+   size_t ag_slen;            /* strlen() of .ag_skinned */
+   size_t ag_sdom_start;      /* Start of domain in .ag_skinned, */
    enum nameflags ag_n_flags; /* enum nameflags of .ag_skinned */
 };
 
 /* MIME attachments */
 enum attach_conv {
    AC_DEFAULT,       /* _get_lc() -> _iter_*() */
-   AC_FIX_OUTCS,     /* _get_lc() -> "charset=" .a_charset */
    AC_FIX_INCS,      /* "charset=".a_input_charset (nocnv) */
    AC_TMPFILE        /* attachment.a_tmpf is converted */
 };
 
+enum n_attach_error{
+   n_ATTACH_ERR_NONE,
+   n_ATTACH_ERR_FILE_OPEN,
+   n_ATTACH_ERR_ICONV_FAILED,
+   n_ATTACH_ERR_ICONV_NAVAIL,
+   n_ATTACH_ERR_OTHER
+};
+
 struct attachment {
-   struct attachment *a_flink;   /* Forward link in list. */
-   struct attachment *a_blink;   /* Backward list link */
-   char const  *a_name;       /* file name */
+   struct attachment *a_flink; /* Forward link in list. */
+   struct attachment *a_blink; /* Backward list link */
+   char const  *a_path_user;  /* Path as given (maybe including iconv spec) */
+   char const  *a_path;       /* Path as opened */
+   char const  *a_path_bname; /* Basename of path as opened */
+   char const  *a_name;       /* File name to be stored (EQ a_path_bname) */
    char const  *a_content_type;  /* content type */
    char const  *a_content_disposition; /* content disposition */
-   char const  *a_content_id; /* content id */
+   struct name *a_content_id; /* content id */
    char const  *a_content_description; /* content description */
    char const  *a_input_charset; /* Interpretation depends on .a_conv */
    char const  *a_charset;    /* ... */
@@ -1842,15 +2483,6 @@ struct sendbundle {
    struct str     sb_signer;  /* USER@HOST for signing+ */
    struct url     sb_url;
    struct ccred   sb_ccred;
-};
-
-/* Structure of the hash table of ignored header fields */
-struct ignoretab {
-   int         i_count;       /* Number of entries */
-   struct ignored {
-      struct ignored *i_link;    /* Next ignored field in bucket */
-      char           *i_field;   /* This ignored field */
-   }           *i_head[HSHSIZE];
 };
 
 /* For saving the current directory and later returning */
@@ -1873,62 +2505,86 @@ struct cw {
 # ifndef HAVE_AMALGAMATION
 #  define VL
 # else
-#  define VL            static
+#  define VL static
 # endif
 #else
-# define VL             extern
+# define VL extern
 #endif
 
-VL int         mb_cur_max;          /* Value of MB_CUR_MAX */
-VL int         realscreenheight;    /* The real screen height */
-VL int         scrnwidth;           /* Screen width, or best guess */
-VL int         scrnheight;          /* Screen height/guess (4 header) */
+#ifndef HAVE_AMALGAMATION
+VL char const n_month_names[12 + 1][4];
+VL char const n_weekday_names[7 + 1][4];
 
-VL char const  *homedir;            /* Path name of home directory */
-VL char const  *myname;             /* My login name */
-VL char const  *progname;           /* Our name */
-VL char const  *tempdir;            /* The temporary directory */
+VL char const n_uagent[sizeof VAL_UAGENT];
+VL char const n_error[sizeof n_ERROR];
+VL char const n_path_devnull[sizeof n_PATH_DEVNULL];
+VL char const n_reproducible_name[sizeof "reproducible_build"];
+VL char const n_unirepl[sizeof n_UNIREPL];
+VL char const n_empty[1];
+VL char const n_0[2];
+VL char const n_1[2];
+VL char const n_m1[3];     /* -1 */
+VL char const n_qm[2];     /* Question-mark ? */
+VL char const n_em[2];     /* Exclamation-mark ! */
+VL char const n_star[2];   /* Asterisk * */
+VL char const n_at[2];     /* Commercial at @ */
+VL char const n_ns[2];     /* Number sign # */
+VL ui16_t const n_class_char[1 + 0x7F];
+#endif
 
-VL gid_t       group_id;            /* getgid() and getuid() */
-VL uid_t       user_id;
+VL FILE *n_stdin;
+VL FILE *n_stdout;
+VL FILE *n_stderr;
+VL FILE *n_tty_fp;               /* Our terminal output TODO input channel */
+VL void *n_readctl_overlay;      /* `readctl' overlay (see c_readctl()) */
 
-VL int         exit_status;         /* Exit status */
-VL ui32_t      options;             /* Bits of enum user_options */
-VL struct name *option_r_arg;       /* Argument to -r option */
-VL char const  **smopts;            /* sendmail(1) opts from commline */
-VL size_t      smopts_count;        /* Entries in smopts */
+VL ui32_t n_mb_cur_max;          /* Value of MB_CUR_MAX */
+VL ui32_t n_realscreenheight;    /* The real screen height */
+VL ui32_t n_scrnwidth;           /* Screen width/guess; also n_SCRNWIDTH_LIST */
+VL ui32_t n_scrnheight;          /* Screen height/guess (for header summary+) */
 
-VL ui32_t      pstate;              /* Bits of enum program_state */
-VL size_t      noreset;             /* String resets suspended (recursive) */
+VL char const *n_progname;       /* Our name */
+
+VL gid_t n_group_id;             /* getgid() and getuid() */
+VL uid_t n_user_id;
+VL pid_t n_pid;                  /* getpid() (lazy initialized) */
+
+VL int n_exit_status;            /* Program exit status TODO long term: ex_no */
+VL ui32_t n_poption;             /* Bits of enum n_program_option */
+VL char const *n_poption_arg_Mm; /* Argument for -[Mm] aka n_PO_[Mm]_FLAG */
+VL struct name *n_poption_arg_r; /* Argument to -r option */
+VL char const **n_smopts;        /* MTA options from command line */
+VL size_t n_smopts_cnt;          /* Entries in n_smopts */
+
+/* The current execution data context */
+VL struct n_go_data_ctx *n_go_data;
+VL ui32_t n_psonce;              /* Bits of enum n_program_state_once */
+VL ui32_t n_pstate;              /* Bits of enum n_program_state */
+/* TODO "cmd_tab.h ARG_EM set"-storage (n_[01..]) as long as we don't have a
+ * TODO struct CmdCtx where each command has its own ARGC/ARGV, errno and exit
+ * TODO status and may-place-in-history bit, need to manage a global bypass.. */
+VL si32_t n_pstate_err_no;       /* What backs $! n_ERR_* TODO ..HACK */
+VL si32_t n_pstate_ex_no;        /* What backs $? n_EX_* TODO ..HACK ->64-bit */
+#define n_err_no errno           /* Don't use errno directly, for later XXX */
 
 /* XXX stylish sorting */
 VL int            msgCount;            /* Count of messages read in */
 VL struct mailbox mb;                  /* Current mailbox */
-VL int            image;               /* File descriptor for msg image */
 VL char           mailname[PATH_MAX];  /* Name of current file TODO URL/object*/
-VL char           displayname[80 - 40]; /* Prettyfied for display TODO URL/obj*/
+VL char           displayname[80 - 16]; /* Prettyfied for display TODO URL/obj*/
 VL char           prevfile[PATH_MAX];  /* Name of previous file TODO URL/obj */
-VL char const     *account_name;       /* Current account name or NULL */
 VL off_t          mailsize;            /* Size of system mailbox */
 VL struct message *dot;                /* Pointer to current message */
 VL struct message *prevdot;            /* Previous current message */
 VL struct message *message;            /* The actual message structure */
 VL struct message *threadroot;         /* first threaded message */
+VL int            *n_msgvec;           /* Folder setmsize(), list.c res. store*/
+#ifdef HAVE_IMAP
 VL int            imap_created_mailbox; /* hack to get feedback from imap */
-
-VL struct ignoretab  ignore[2];        /* ignored and retained fields
-                                        * 0 is ignore, 1 is retain */
-VL struct ignoretab  saveignore[2];    /* ignored and retained fields
-                                        * on save to folder */
-VL struct ignoretab  allignore[2];     /* special, ignore all headers */
-VL struct ignoretab  fwdignore[2];     /* fields to ignore for forwarding */
+#endif
 
 VL struct time_current  time_current;  /* time(3); send: mail1() XXXcarrier */
 VL struct termios_state termios_state; /* getpassword(); see commands().. */
-
-#ifdef HAVE_COLOUR
-VL struct colour_table  *colour_table;
-#endif
 
 #ifdef HAVE_SSL
 VL enum ssl_verify_level   ssl_verify_level; /* SSL verification level */
@@ -1938,30 +2594,8 @@ VL enum ssl_verify_level   ssl_verify_level; /* SSL verification level */
 VL iconv_t     iconvd;
 #endif
 
-VL sigjmp_buf  srbuf;
-VL int         interrupts;
+VL volatile int interrupts; /* TODO rid! */
 VL sighandler_type dflpipe;
-VL sighandler_type handlerstacktop;
-#define handlerpush(f)  (savedtop = handlerstacktop, handlerstacktop = (f))
-#define handlerpop()    (handlerstacktop = savedtop)
-
-/* TODO Temporary hacks unless the codebase doesn't jump and uses pass-by-value
- * TODO carrier structs instead of locals */
-VL char        *temporary_arg_v_store;
-VL void        *temporary_localopts_store;
-/* TODO temporary storage to overcome which_protocol() mess (for PROTO_FILE) */
-VL char const  *temporary_protocol_ext;
-
-/* The remaining variables need initialization */
-
-#ifndef HAVE_AMALGAMATION
-VL char const  month_names[12 + 1][4];
-VL char const  weekday_names[7 + 1][4];
-
-VL char const  uagent[sizeof UAGENT];
-
-VL uc_i const  class_char[1 + 0x7F];
-#endif
 
 /*
  * Finally, let's include the function prototypes XXX embed
@@ -1971,4 +2605,5 @@ VL uc_i const  class_char[1 + 0x7F];
 # include "nailfuns.h"
 #endif
 
+#endif /* n_NAIL_H */
 /* s-it-mode */

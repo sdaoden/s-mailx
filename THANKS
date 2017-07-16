@@ -4,25 +4,44 @@ Gunnar Ritter and which was itself based upon Berkeley Mail that
 originates in 2BSD (Kurt Shoens (UCB) March 25, 1978).
 
 Other people contributed by reporting problems, suggesting various
-improvements or submitting actual code.  Here is a list of those
-people.  I hope the list is complete and free of errors.
+improvements, whether directly or indirectly, or submitting actual
+code.  Here is a list of those people.  I hope the list is
+complete and free of errors.
 
+Afan                      snailmail at ottenheimer dot com
 Hilko Bengen              bengen at debian dot org
 Gaetan Bisson             bisson at archlinux dot org
 Karol Błażewicz           karol dot blazewicz at gmail dot com
 Salvatore Bonaccorso      carnil at debian dot org
+Ismael Bouya              ismael at bouya dot org
 Martin Brandenburg        martin at martinbrandenburg dot com
 Peter Bray                pdb_ml at yahoo dot com dot au
-Jan Chaloupka             jchaloup at redhat dot com
 Claudio Cappelli          claudio dot cappelli dot linux at gmail dot com
+Pietro Cerutti            gahr at gahr dot ch
+Jan Chaloupka             jchaloup at redhat dot com
+Noel Chiappa              jnc at mercury dot lcs dot mit dot edu
+Michael Convey            smconvey at gmail dot com
 Ralph Corderoy            ralph at inputplus dot co dot uk
 Jérémie Courrèges-Anglas  jca at wxcvbn dot org
+Baptiste Daroussin        bapt at FreeBSD dot org
 Jürgen Daubert            jue at jue dot li
+Thomas Dickey             dickey at his dot com
+Matthew Dillon            dillon at backplane dot com
 John Dodson               johnd at physiol dot usyd dot edu dot au
+Riccardo Ductor           r dot ductor at gmail dot com
+Paul Eggert               eggert at cs dot ucla dot edu
+Justin Ellingwood         JustinEllingwood at gmail dot com
+Robert Elz                kre at munnari dot OZ dot AU
+Dr. Werner Fink           werner at suse dot de
+Mike Frysinger            vapier at gentoo dot org
 Ezequiel Garzón           garzon dot lucero at gmail dot com
+Felipe Gasper             felipe at felipegasper dot com
 Philip Guenther           guenther at openbsd dot org
 Peter Hofmann             snailusers at uninformativ dot de
 Frantisek Holop           minusf at obiit dot org
+Ken Hornstein             kenh at pobox dot com
+Walter Alejandro Iglesias eloi at roquesor dot com
+Doug McIlroy              doug at cs dot dartmouth dot edu
 Stephen Isard             3s9xh9m02 at sneakemail dot com
 Josef Jurek               josef dot jurek at gmail dot com
 Ryan Kavanagh             rak at debian dot org
@@ -30,32 +49,44 @@ Tarqi Kazan               tarqi at cfs dot or dot gs
 Matthias Kilian           kili at outback dot escape dot de
 Vincent Lefevre           vincent at vinc17 dot net
 David Levine              levinedl at acm dot org
+Xin LI                    delphij at FreeBSD dot org
 Johannes Löthberg         johannes at kyriasis dot com
 Wiesław Magusiak          wiemag at poczta dot onet dot pl
 Sergey Matveev            stargrave at stargrave dot org
 Dominic Meskys            dominicmeskys at gmail dot com
 Dagobert Michelsen        dam at opencsw dot org
 Mantas Mikulėnas          grawity at gmail dot com
+Todd C. Miller            Todd dot Miller at courtesan dot com
+Donald Mugnai             donaldmugnai at gmail dot com
 Martin Neitzel            neitzel at escape dot de
 Lyndon Nerenberg          lyndon at orthanc dot ca
 Marius Nestor             www.softpedia.com
+Sven Neuhaus              sven-snail at sven dot de
 Sunil Nimmagadda          sunil at sunilnimmagadda dot com
 Björn Persson             bjorn at xn--rombobjrn-67a dot se
 Dirk-Wilhelm Peters       peters at schwertfisch dot de
 Predrag Punosevac         punosevac72 at gmail dot com
 Allan McRae               allan at archlinux dot org
 Antonio Radici            antonio at debian dot org
+rain1                     rain1 at openmailbox dot org
 Gianluca Ramunno          ramunno dot gianluca at gmail dot com
+Random832                 random832 at fastmail dot com
 Aharon Robbins            arnold at skeeve dot com
+Juan RP                   xtraeme at voidlinux dot eu
 Rich Salz                 rsalz at akamai dot com
+Jörg Schilling            Joerg dot Schilling at fokus dot fraunhofer dot de
+Jens Schleusener          Jens dot Schleusener at t-online dot de
 Georg Schlisio            g dot schlisio at dukun dot de
 Martin Sebor              msebor at redhat dot com
 Andy Switala              andy dot switala at gmail dot com
+Rudolf Sykora             rudolf dot sykora at gmail dot com
+Viktor Szépe              viktor at szepe dot net
 Bob Tennent               rdt at cs dot queensu dot ca
 Tim                       trondd at kagu-tsuchi dot com
 Gavin Troy                gavtroy at fastmail dot fm
 Paul Vojta                vojta at math dot berkeley dot edu
 wapiflapi                 wapiflapi at yahoo dot fr
+Colin Watson              cjwatson at debian dot org
 William Yodlowsky         william at OpenBSD dot org
 Ypnose                    ypnx at mailoo dot org
 

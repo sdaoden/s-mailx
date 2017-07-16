@@ -1,10 +1,11 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ TTY interaction.
+ *@ TTY (command line) editing interaction.
+ *@ Because we have (had) multiple line-editor implementations, including our
+ *@ own M(ailx) L(ine) E(ditor), change the file layout a bit and place those
+ *@ one after the other below the other externals.
  *
- * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
- */
-/* The NCL version is
+ * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
  * copyright notice and this permission notice appear in all copies.
@@ -17,34 +18,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-/*
- * Copyright (c) 1980, 1993
- *      The Regents of the University of California.  All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
- */
 #undef n_FILE
 #define n_FILE tty
 
@@ -52,86 +25,67 @@
 # include "nail.h"
 #endif
 
-#ifdef HAVE_READLINE
-# include <readline/readline.h>
-# ifdef HAVE_HISTORY
-#  include <readline/history.h>
-# endif
-#elif defined HAVE_EDITLINE
-# include <histedit.h>
+#if defined HAVE_MLE || defined HAVE_TERMCAP
+# define a_TTY_SIGNALS
 #endif
 
-/* Shared history support macros */
-#ifdef HAVE_HISTORY
-# define _CL_HISTFILE(S) \
-do {\
-   S = ok_vlook(NAIL_HISTFILE);\
-   if ((S) != NULL)\
-      S = fexpand(S, FEXP_LOCAL);\
-} while (0)
+#ifdef a_TTY_SIGNALS
+static sighandler_type a_tty_oint, a_tty_oquit, a_tty_oterm,
+   a_tty_ohup,
+   a_tty_otstp, a_tty_ottin, a_tty_ottou;
+#endif
 
-# define _CL_HISTSIZE(V) \
-do {\
-   char const *__sv = ok_vlook(NAIL_HISTSIZE);\
-   long __rv;\
-   if (__sv == NULL || *__sv == '\0' || (__rv = strtol(__sv, NULL, 10)) == 0)\
-      (V) = HIST_SIZE;\
-   else if (__rv < 0)\
-      (V) = 0;\
-   else\
-      (V) = __rv;\
-} while (0)
+#ifdef a_TTY_SIGNALS
+static void a_tty_sigs_up(void), a_tty_sigs_down(void);
+#endif
 
-# define _CL_CHECK_ADDHIST(S,NOACT) \
-do {\
-   switch (*(S)) {\
-   case '\0':\
-   case ' ':\
-      NOACT;\
-   default:\
-      break;\
-   }\
-} while (0)
-
-# define C_HISTORY_SHARED \
-   char **argv = v;\
-   long entry;\
-   NYD_ENTER;\
-\
-   if (*argv == NULL)\
-      goto jlist;\
-   if (argv[1] != NULL)\
-      goto jerr;\
-   if (!asccasecmp(*argv, "show"))\
-      goto jlist;\
-   if (!asccasecmp(*argv, "clear"))\
-      goto jclear;\
-   if ((entry = strtol(*argv, argv, 10)) > 0 && **argv == '\0')\
-      goto jentry;\
-jerr:\
-   n_err(_("Synopsis: history: %s\n" \
-      "<show> (default), <clear> or select <NO> from editor history"));\
-   v = NULL;\
-jleave:\
-   NYD_LEAVE;\
-   return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
-#endif /* HAVE_HISTORY */
-
-/* fexpand() flags for expand-on-tab */
-#define _CL_TAB_FEXP_FL (FEXP_FULL | FEXP_SILENT | FEXP_MULTIOK)
-
-/*
- * Because we have multiple identical implementations, change file layout a bit
- * and place the implementations one after the other below the other externals
- */
-
-static sigjmp_buf __tty_actjmp; /* TODO someday, we won't need it no more */
+#ifdef a_TTY_SIGNALS
 static void
-__tty_acthdl(int s) /* TODO someday, we won't need it no more */
+a_tty_sigs_up(void){
+   sigset_t nset, oset;
+   NYD2_ENTER;
+
+   sigfillset(&nset);
+
+   sigprocmask(SIG_BLOCK, &nset, &oset);
+   a_tty_oint = safe_signal(SIGINT, &n_tty_signal);
+   a_tty_oquit = safe_signal(SIGQUIT, &n_tty_signal);
+   a_tty_oterm = safe_signal(SIGTERM, &n_tty_signal);
+   a_tty_ohup = safe_signal(SIGHUP, &n_tty_signal);
+   a_tty_otstp = safe_signal(SIGTSTP, &n_tty_signal);
+   a_tty_ottin = safe_signal(SIGTTIN, &n_tty_signal);
+   a_tty_ottou = safe_signal(SIGTTOU, &n_tty_signal);
+   sigprocmask(SIG_SETMASK, &oset, NULL);
+   NYD2_LEAVE;
+}
+
+static void
+a_tty_sigs_down(void){
+   sigset_t nset, oset;
+   NYD2_ENTER;
+
+   sigfillset(&nset);
+
+   sigprocmask(SIG_BLOCK, &nset, &oset);
+   safe_signal(SIGINT, a_tty_oint);
+   safe_signal(SIGQUIT, a_tty_oquit);
+   safe_signal(SIGTERM, a_tty_oterm);
+   safe_signal(SIGHUP, a_tty_ohup);
+   safe_signal(SIGTSTP, a_tty_otstp);
+   safe_signal(SIGTTIN, a_tty_ottin);
+   safe_signal(SIGTTOU, a_tty_ottou);
+   sigprocmask(SIG_SETMASK, &oset, NULL);
+   NYD2_LEAVE;
+}
+#endif /* a_TTY_SIGNALS */
+
+static sigjmp_buf a_tty__actjmp; /* TODO someday, we won't need it no more */
+static void
+a_tty__acthdl(int s) /* TODO someday, we won't need it no more */
 {
    NYD_X; /* Signal handler */
    termios_state_reset();
-   siglongjmp(__tty_actjmp, s);
+   siglongjmp(a_tty__actjmp, s);
 }
 
 FL bool_t
@@ -142,25 +96,31 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
    int volatile sig;
    NYD_ENTER;
 
-   if (!(options & OPT_INTERACTIVE)) {
+   if(!(n_psonce & n_PSO_INTERACTIVE)){
       sig = 0;
       rv = noninteract_default;
       goto jleave;
    }
    rv = FAL0;
 
-   if (prompt == NULL)
-      prompt = noninteract_default ? _(" ([yes]/no)? ") : _(" ([no]/yes)? ");
+   /* C99 */{
+      char const *quest = noninteract_default
+            ? _("[yes]/no? ") : _("[no]/yes? ");
+
+      if (prompt == NULL)
+         prompt = _("Continue");
+      prompt = savecatsep(prompt, ' ', quest);
+   }
 
    oint = safe_signal(SIGINT, SIG_IGN);
    ohup = safe_signal(SIGHUP, SIG_IGN);
-   if ((sig = sigsetjmp(__tty_actjmp, 1)) != 0)
+   if ((sig = sigsetjmp(a_tty__actjmp, 1)) != 0)
       goto jrestore;
-   safe_signal(SIGINT, &__tty_acthdl);
-   safe_signal(SIGHUP, &__tty_acthdl);
+   safe_signal(SIGINT, &a_tty__acthdl);
+   safe_signal(SIGHUP, &a_tty__acthdl);
 
-   if (readline_input(prompt, FAL0, &termios_state.ts_linebuf,
-         &termios_state.ts_linesize, NULL) >= 0)
+   if (n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, prompt,
+         &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL,NULL) >= 0)
       rv = (boolify(termios_state.ts_linebuf, UIZ_MAX,
             noninteract_default) > 0);
 jrestore:
@@ -189,13 +149,13 @@ getuser(char const * volatile query) /* TODO v15-compat obsolete */
 
    oint = safe_signal(SIGINT, SIG_IGN);
    ohup = safe_signal(SIGHUP, SIG_IGN);
-   if ((sig = sigsetjmp(__tty_actjmp, 1)) != 0)
+   if ((sig = sigsetjmp(a_tty__actjmp, 1)) != 0)
       goto jrestore;
-   safe_signal(SIGINT, &__tty_acthdl);
-   safe_signal(SIGHUP, &__tty_acthdl);
+   safe_signal(SIGINT, &a_tty__acthdl);
+   safe_signal(SIGHUP, &a_tty__acthdl);
 
-   if (readline_input(query, FAL0, &termios_state.ts_linebuf,
-         &termios_state.ts_linesize, NULL) >= 0)
+   if (n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, query,
+         &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL,NULL) >= 0)
       user = termios_state.ts_linebuf;
 jrestore:
    termios_state_reset();
@@ -209,1906 +169,4310 @@ jrestore:
 }
 
 FL char *
-getpassword(char const *query)
+getpassword(char const *query)/* TODO v15: use _only_ n_tty_fp! */
 {
    sighandler_type volatile oint, ohup;
    struct termios tios;
-   char * volatile pass = NULL;
+   char * volatile pass;
    int volatile sig;
    NYD_ENTER;
 
+   pass = NULL;
+   if(!(n_psonce & n_PSO_TTYIN))
+      goto j_leave;
+
    if (query == NULL)
       query = _("Password: ");
-   fputs(query, stdout);
-   fflush(stdout);
+   fputs(query, n_tty_fp);
+   fflush(n_tty_fp);
 
    /* FIXME everywhere: tcsetattr() generates SIGTTOU when we're not in
     * FIXME foreground pgrp, and can fail with EINTR!! also affects
     * FIXME termios_state_reset() */
-   if (options & OPT_TTYIN) {
-      tcgetattr(STDIN_FILENO, &termios_state.ts_tios);
-      memcpy(&tios, &termios_state.ts_tios, sizeof tios);
-      termios_state.ts_needs_reset = TRU1;
-      tios.c_iflag &= ~(ISTRIP);
-      tios.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
-   }
+   tcgetattr(STDIN_FILENO, &termios_state.ts_tios);
+   memcpy(&tios, &termios_state.ts_tios, sizeof tios);
+   termios_state.ts_needs_reset = TRU1;
+   tios.c_iflag &= ~(ISTRIP);
+   tios.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
 
    oint = safe_signal(SIGINT, SIG_IGN);
    ohup = safe_signal(SIGHUP, SIG_IGN);
-   if ((sig = sigsetjmp(__tty_actjmp, 1)) != 0)
+   if ((sig = sigsetjmp(a_tty__actjmp, 1)) != 0)
       goto jrestore;
-   safe_signal(SIGINT, &__tty_acthdl);
-   safe_signal(SIGHUP, &__tty_acthdl);
+   safe_signal(SIGINT, &a_tty__acthdl);
+   safe_signal(SIGHUP, &a_tty__acthdl);
 
-   if (options & OPT_TTYIN)
-      tcsetattr(STDIN_FILENO, TCSAFLUSH, &tios);
-
-   if (readline_restart(stdin, &termios_state.ts_linebuf,
+   tcsetattr(STDIN_FILENO, TCSAFLUSH, &tios);
+   if (readline_restart(n_stdin, &termios_state.ts_linebuf,
          &termios_state.ts_linesize, 0) >= 0)
       pass = termios_state.ts_linebuf;
 jrestore:
    termios_state_reset();
-   if (options & OPT_TTYIN)
-      putc('\n', stdout);
+   putc('\n', n_tty_fp);
 
    safe_signal(SIGHUP, ohup);
    safe_signal(SIGINT, oint);
    NYD_LEAVE;
    if (sig != 0)
       n_raise(sig);
+j_leave:
    return pass;
 }
 #endif /* HAVE_SOCKETS */
 
-/*
- * readline(3)
- */
+FL ui32_t
+n_tty_create_prompt(struct n_string *store, char const *xprompt,
+      enum n_go_input_flags gif){
+   struct n_visual_info_ctx vic;
+   struct str in, out;
+   ui32_t pwidth;
+   char const *cp;
+   NYD2_ENTER;
 
-#ifdef HAVE_READLINE
-static sighandler_type  _rl_shup;
-static char *           _rl_buf;    /* pre_input() hook: initial line */
-static int              _rl_buflen; /* content, and its length */
-
-static int  _rl_pre_input(void);
-
-static int
-_rl_pre_input(void)
-{
-   NYD_ENTER;
-   /* Handle leftover data from \ escaped former line */
-   rl_extend_line_buffer(_rl_buflen + 10);
-   memcpy(rl_line_buffer, _rl_buf, _rl_buflen + 1);
-   rl_point = rl_end = _rl_buflen;
-   rl_pre_input_hook = (rl_hook_func_t*)NULL;
-   rl_redisplay();
-   NYD_LEAVE;
-   return 0;
-}
-
-FL void
-tty_init(void)
-{
-# ifdef HAVE_HISTORY
-   long hs;
-   char *v;
-# endif
-   NYD_ENTER;
-
-   rl_readline_name = UNCONST(uagent);
-# ifdef HAVE_HISTORY
-   _CL_HISTSIZE(hs);
-   using_history();
-   stifle_history((int)hs);
-# endif
-   rl_read_init_file(NULL);
-
-   /* Because rl_read_init_file() may have introduced yet a different
-    * history size limit, simply load and incorporate the history, leave
-    * it up to readline(3) to do the rest */
-# ifdef HAVE_HISTORY
-   _CL_HISTFILE(v);
-   if (v != NULL)
-      read_history(v);
-# endif
-   NYD_LEAVE;
-}
-
-FL void
-tty_destroy(void)
-{
-# ifdef HAVE_HISTORY
-   char *v;
-# endif
-   NYD_ENTER;
-
-# ifdef HAVE_HISTORY
-   _CL_HISTFILE(v);
-   if (v != NULL)
-      write_history(v);
-# endif
-   NYD_LEAVE;
-}
-
-FL void
-tty_signal(int sig)
-{
-   sigset_t nset, oset;
-   NYD_X; /* Signal handler */
-
-   switch (sig) {
-# ifdef SIGWINCH
-   case SIGWINCH:
-      break;
-# endif
-   case SIGHUP:
-      /* readline(3) doesn't catch it :( */
-      rl_free_line_state();
-      rl_cleanup_after_signal();
-      safe_signal(SIGHUP, _rl_shup);
-      sigemptyset(&nset);
-      sigaddset(&nset, sig);
-      sigprocmask(SIG_UNBLOCK, &nset, &oset);
-      n_raise(sig);
-      /* XXX When we come here we'll continue editing, so reestablish
-       * XXX cannot happen */
-      sigprocmask(SIG_BLOCK, &oset, NULL);
-      _rl_shup = safe_signal(SIGHUP, &tty_signal);
-      rl_reset_after_signal();
-      break;
-   default:
-      break;
+   /* Prompt creation indicates that prompt printing is directly ahead, so take
+    * this opportunity of UI-in-a-known-state and advertise the error ring */
+#ifdef HAVE_ERRORS
+   if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_ERRORS_NOTED)
+         ) == n_PSO_INTERACTIVE && (n_pstate & n_PS_ERRORS_PROMPT)){
+      n_psonce |= n_PSO_ERRORS_NOTED;
+      fprintf(n_stdout, _("There are new messages in the error message ring "
+         "(denoted by %s)\n"
+         "  The `errors' command manages this message ring\n"),
+         V_(n_error));
    }
-}
+#endif
 
-FL int
-(tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
-   SMALLOC_DEBUG_ARGS)
-{
-   int nn;
-   char *line;
-   NYD_ENTER;
+jredo:
+   n_string_trunc(store, 0);
 
-   if (n > 0) {
-      _rl_buf = *linebuf;
-      _rl_buflen = (int)n;
-      rl_pre_input_hook = &_rl_pre_input;
-   }
-
-   _rl_shup = safe_signal(SIGHUP, &tty_signal);
-   line = readline(prompt != NULL ? prompt : "");
-   safe_signal(SIGHUP, _rl_shup);
-
-   if (line == NULL) {
-      nn = -1;
+   if(gif & n_GO_INPUT_PROMPT_NONE){
+      pwidth = 0;
       goto jleave;
    }
-   n = strlen(line);
-
-   if (n >= *linesize) {
-      *linesize = LINESIZE + n +1;
-      *linebuf = (srealloc)(*linebuf, *linesize SMALLOC_DEBUG_ARGSCALL);
+#ifdef HAVE_ERRORS
+   if(n_pstate & n_PS_ERRORS_PROMPT){
+      n_pstate &= ~n_PS_ERRORS_PROMPT;
+      store = n_string_push_cp(store, V_(n_error));
+      store = n_string_push_c(store, '#');
+      store = n_string_push_c(store, ' ');
    }
-   memcpy(*linebuf, line, n);
-   (free)(line);
-   (*linebuf)[n] = '\0';
-   nn = (int)n;
-jleave:
-   NYD_LEAVE;
-   return nn;
-}
+#endif
 
-FL void
-tty_addhist(char const *s, bool_t isgabby)
-{
-   NYD_ENTER;
-   UNUSED(s);
-   UNUSED(isgabby);
-# ifdef HAVE_HISTORY
-   if (isgabby && !ok_blook(history_gabby))
-      goto jleave;
-   _CL_CHECK_ADDHIST(s, goto jleave);
-   hold_all_sigs();  /* XXX too heavy */
-   add_history(s);   /* XXX yet we jump away! */
-   rele_all_sigs();  /* XXX remove jumps */
-jleave:
-# endif
-   NYD_LEAVE;
-}
+   cp = (gif & n_GO_INPUT_PROMPT_EVAL)
+         ? (gif & n_GO_INPUT_NL_FOLLOW ? ok_vlook(prompt2) : ok_vlook(prompt))
+         : xprompt;
+   if(cp != NULL && *cp != '\0'){
+      enum n_shexp_state shs;
 
-# ifdef HAVE_HISTORY
-FL int
-c_history(void *v)
-{
-   C_HISTORY_SHARED;
+      store = n_string_push_cp(store, cp);
+      in.s = n_string_cp(store);
+      in.l = store->s_len;
+      out = in;
+      store = n_string_drop_ownership(store);
 
-jlist: {
-   FILE *fp;
-   HISTORY_STATE *hs;
-   HIST_ENTRY **hl;
-   ul_i i, b;
-
-   if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL) {
-      n_perr(_("tmpfile"), 0);
-      v = NULL;
-      goto jleave;
-   }
-
-   hs = history_get_history_state();
-
-   for (i = (ul_i)hs->length, hl = hs->entries + i, b = 0; i > 0; --i) {
-      char *cp = (*--hl)->line;
-      size_t sl = strlen(cp);
-      fprintf(fp, "%4lu. %-50.50s (%4lu+%2lu bytes)\n", i, cp, b, sl);
-      b += sl;
-   }
-
-   page_or_print(fp, (size_t)hs->length);
-   Fclose(fp);
-   }
-   goto jleave;
-
-jclear:
-   clear_history();
-   goto jleave;
-
-jentry: {
-   HISTORY_STATE *hs = history_get_history_state();
-
-   if (UICMP(z, entry, <=, hs->length))
-      v = temporary_arg_v_store = hs->entries[entry - 1]->line;
-   else
-      v = NULL;
-   }
-   goto jleave;
-}
-# endif /* HAVE_HISTORY */
-#endif /* HAVE_READLINE */
-
-/*
- * BSD editline(3)
- */
-
-#ifdef HAVE_EDITLINE
-static EditLine *    _el_el;     /* editline(3) handle */
-static char const *  _el_prompt; /* Current prompt */
-# ifdef HAVE_HISTORY
-static History *     _el_hcom;   /* History handle for commline */
-# endif
-
-static char const *  _el_getprompt(void);
-
-static char const *
-_el_getprompt(void)
-{
-   return _el_prompt;
-}
-
-FL void
-tty_init(void)
-{
-# ifdef HAVE_HISTORY
-   HistEvent he;
-   long hs;
-   char *v;
-# endif
-   NYD_ENTER;
-
-# ifdef HAVE_HISTORY
-   _CL_HISTSIZE(hs);
-   _el_hcom = history_init();
-   history(_el_hcom, &he, H_SETSIZE, (int)hs);
-   /* We unroll our own one history(_el_hcom, &he, H_SETUNIQUE, 1);*/
-# endif
-
-   _el_el = el_init(uagent, stdin, stdout, stderr);
-   el_set(_el_el, EL_SIGNAL, 1);
-   el_set(_el_el, EL_TERMINAL, NULL);
-   /* Need to set HIST before EDITOR, otherwise it won't work automatic */
-# ifdef HAVE_HISTORY
-   el_set(_el_el, EL_HIST, &history, _el_hcom);
-# endif
-   el_set(_el_el, EL_EDITOR, "emacs");
-# ifdef EL_PROMPT_ESC
-   el_set(_el_el, EL_PROMPT_ESC, &_el_getprompt, '\1');
-# else
-   el_set(_el_el, EL_PROMPT, &_el_getprompt);
-# endif
-# if 0
-   el_set(_el_el, EL_ADDFN, "tab_complete",
-      "editline(3) internal completion function", &_el_file_cpl);
-   el_set(_el_el, EL_BIND, "^I", "tab_complete", NULL);
-# endif
-# ifdef HAVE_HISTORY
-   el_set(_el_el, EL_BIND, "^R", "ed-search-prev-history", NULL);
-# endif
-   el_source(_el_el, NULL); /* Source ~/.editrc */
-
-   /* Because el_source() may have introduced yet a different history size
-    * limit, simply load and incorporate the history, leave it up to
-    * editline(3) to do the rest */
-# ifdef HAVE_HISTORY
-   _CL_HISTFILE(v);
-   if (v != NULL)
-      history(_el_hcom, &he, H_LOAD, v);
-# endif
-   NYD_LEAVE;
-}
-
-FL void
-tty_destroy(void)
-{
-# ifdef HAVE_HISTORY
-   HistEvent he;
-   char *v;
-# endif
-   NYD_ENTER;
-
-   el_end(_el_el);
-
-# ifdef HAVE_HISTORY
-   _CL_HISTFILE(v);
-   if (v != NULL)
-      history(_el_hcom, &he, H_SAVE, v);
-   history_end(_el_hcom);
-# endif
-   NYD_LEAVE;
-}
-
-FL void
-tty_signal(int sig)
-{
-   NYD_X; /* Signal handler */
-   switch (sig) {
-# ifdef SIGWINCH
-   case SIGWINCH:
-      el_resize(_el_el);
-      break;
-# endif
-   default:
-      break;
-   }
-}
-
-FL int
-(tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
-   SMALLOC_DEBUG_ARGS)
-{
-   int nn;
-   char const *line;
-   NYD_ENTER;
-
-   _el_prompt = (prompt != NULL) ? prompt : "";
-   if (n > 0)
-      el_push(_el_el, *linebuf);
-   line = el_gets(_el_el, &nn);
-
-   if (line == NULL) {
-      nn = -1;
-      goto jleave;
-   }
-   assert(nn >= 0);
-   n = (size_t)nn;
-   if (n > 0 && line[n - 1] == '\n')
-      nn = (int)--n;
-
-   if (n >= *linesize) {
-      *linesize = LINESIZE + n + 1;
-      *linebuf = (srealloc)(*linebuf, *linesize SMALLOC_DEBUG_ARGSCALL);
-   }
-   memcpy(*linebuf, line, n);
-   (*linebuf)[n] = '\0';
-jleave:
-   NYD_LEAVE;
-   return nn;
-}
-
-FL void
-tty_addhist(char const *s, bool_t isgabby)
-{
-# ifdef HAVE_HISTORY
-   /* Enlarge meaning of unique .. to something that rocks;
-    * xxx unfortunately this is expensive to do with editline(3)
-    * xxx maybe it would be better to hook the ptfs instead? */
-   HistEvent he;
-   int i;
-# endif
-   NYD_ENTER;
-   UNUSED(s);
-   UNUSED(isgabby);
-
-# ifdef HAVE_HISTORY
-   if (isgabby && !ok_blook(history_gabby))
-      goto jleave;
-   _CL_CHECK_ADDHIST(s, goto jleave);
-
-   hold_all_sigs(); /* XXX too heavy, yet we jump away! */
-   for (i = history(_el_hcom, &he, H_FIRST); i >= 0;
-         i = history(_el_hcom, &he, H_NEXT))
-      if (!strcmp(he.str, s)) {
-         history(_el_hcom, &he, H_DEL, he.num);
-         break;
+      shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
+            n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
+            n_SHEXP_PARSE_QUOTE_AUTO_DSQ), store, &in, NULL);
+      if((shs & n_SHEXP_STATE_ERR_MASK) || !(shs & n_SHEXP_STATE_STOP)){
+         store = n_string_clear(store);
+         store = n_string_take_ownership(store, out.s, out.l +1, out.l);
+jeeval:
+         n_err(_("*prompt2?* evaluation failed, actively unsetting it\n"));
+         if(gif & n_GO_INPUT_NL_FOLLOW)
+            ok_vclear(prompt2);
+         else
+            ok_vclear(prompt);
+         goto jredo;
       }
-   history(_el_hcom, &he, H_ENTER, s);
-   rele_all_sigs(); /* XXX remove jumps */
-jleave:
-# endif
-   NYD_LEAVE;
-}
 
-# ifdef HAVE_HISTORY
-FL int
-c_history(void *v)
-{
-   C_HISTORY_SHARED;
-
-jlist: {
-   HistEvent he;
-   FILE *fp;
-   size_t i, b;
-   int x;
-
-   if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL) {
-      n_perr(_("tmpfile"), 0);
-      v = NULL;
-      goto jleave;
+      if(!store->s_auto)
+         free(out.s);
    }
 
-   i = (size_t)((history(_el_hcom, &he, H_GETSIZE) >= 0) ? he.num : 0);
-   b = 0;
-   for (x = history(_el_hcom, &he, H_FIRST); x >= 0;
-         x = history(_el_hcom, &he, H_NEXT)) {
-      size_t sl = strlen(he.str);
-      fprintf(fp, "%4lu. %-50.50s (%4lu+%2lu bytes)\n",
-         (ul_i)i, he.str, (ul_i)b, (ul_i)sl);
-      --i;
-      b += sl;
-   }
+   /* Make all printable TODO not know, we want to pass through ESC/CSI! */
+#if 0
+   in.s = n_string_cp(store);
+   in.l = store->s_len;
+   makeprint(&in, &out);
+   store = n_string_assign_buf(store, out.s, out.l);
+   free(out.s);
+#endif
 
-   page_or_print(fp, i);
-   Fclose(fp);
-   }
-   goto jleave;
+   /* We need the visual width.. */
+   memset(&vic, 0, sizeof vic);
+   vic.vic_indat = n_string_cp(store);
+   vic.vic_inlen = store->s_len;
+   for(pwidth = 0; vic.vic_inlen > 0;){
+      /* but \[ .. \] is not taken into account */
+      if(vic.vic_indat[0] == '\\' && vic.vic_inlen > 1 &&
+            vic.vic_indat[1] == '['){
+         size_t i;
 
-jclear: {
-   HistEvent he;
-   history(_el_hcom, &he, H_CLEAR);
-   }
-   goto jleave;
-
-jentry: {
-   HistEvent he;
-   size_t i;
-   int x;
-
-   i = (size_t)((history(_el_hcom, &he, H_GETSIZE) >= 0) ? he.num : 0);
-   if (UICMP(z, entry, <=, i)) {
-      entry = (long)i - entry;
-      for (x = history(_el_hcom, &he, H_FIRST); x >= 0;
-            x = history(_el_hcom, &he, H_NEXT))
-         if (entry-- == 0) {
-            v = temporary_arg_v_store = UNCONST(he.str);
-            goto jleave;
+         i = PTR2SIZE(vic.vic_indat - store->s_dat);
+         store = n_string_cut(store, i, 2);
+         cp = &n_string_cp(store)[i];
+         i = store->s_len - i;
+         for(;; ++cp, --i){
+            if(i < 2){
+               n_err(_("Open \\[ sequence not closed in *prompt2?*\n"));
+               goto jeeval;
+            }
+            if(cp[0] == '\\' && cp[1] == ']')
+               break;
          }
+         i = PTR2SIZE(cp - store->s_dat);
+         store = n_string_cut(store, i, 2);
+         vic.vic_indat = &n_string_cp(store)[i];
+         vic.vic_inlen = store->s_len - i;
+      }else if(!n_visual_info(&vic, n_VISUAL_INFO_WIDTH_QUERY |
+            n_VISUAL_INFO_ONE_CHAR)){
+         n_err(_("Character set error in evaluation of *prompt2?*\n"));
+         goto jeeval;
+      }else{
+         pwidth += (ui32_t)vic.vic_vi_width;
+         vic.vic_indat = vic.vic_oudat;
+         vic.vic_inlen = vic.vic_oulen;
+      }
    }
-   v = NULL;
+
+   /* And there may be colour support, too */
+#ifdef HAVE_COLOUR
+   if(n_COLOUR_IS_ACTIVE()){
+      struct str const *psp, *rsp;
+      struct n_colour_pen *ccp;
+
+      if((ccp = n_colour_pen_create(n_COLOUR_ID_MLE_PROMPT, NULL)) != NULL &&
+            (psp = n_colour_pen_to_str(ccp)) != NULL &&
+            (rsp = n_colour_reset_to_str()) != NULL){
+         store = n_string_unshift_buf(store, psp->s, psp->l);
+         /*store =*/ n_string_push_buf(store, rsp->s, rsp->l);
+      }
    }
-   goto jleave;
+#endif /* HAVE_COLOUR */
+
+jleave:
+   NYD2_LEAVE;
+   return pwidth;
 }
-# endif /* HAVE_HISTORY */
-#endif /* HAVE_EDITLINE */
 
 /*
- * NCL: our homebrew version (inspired from NetBSD sh(1) / dash(1)s hetio.c).
+ * MLE: the Mailx-Line-Editor, our homebrew editor
+ * (inspired from NetBSDs sh(1) and dash(1)s hetio.c).
  *
- * Only used in interactive mode, simply use STDIN_FILENO as point of interest.
- * We do not handle character widths because the terminal must deal with that
- * anyway on the one hand, and also wcwidth(3) doesn't support zero-width
- * characters by definition on the other.  We're addicted.
- *
- * To avoid memory leaks etc. with the current codebase that simply longjmp(3)s
- * we're forced to use the very same buffer--the one that is passed through to
- * us from the outside--to store anything we need, i.e., a `struct cell[]', and
- * convert that on-the-fly back to the plain char* result once we're done.
- * To simplify our live, use savestr() buffers for all other needed memory
+ * Only used in interactive mode.
+ * TODO . This code should be splitted in funs/raw input/bind modules.
+ * TODO . We work with wide characters, but not for buffer takeovers and
+ * TODO   cell2save()ings.  This should be changed.  For the former the buffer
+ * TODO   thus needs to be converted to wide first, and then simply be fed in.
+ * TODO . We repaint too much.  To overcome this use the same approach that my
+ * TODO   terminal library uses, add a true "virtual screen line" that stores
+ * TODO   the actually visible content, keep a notion of "first modified slot"
+ * TODO   and "last modified slot" (including "unknown" and "any" specials),
+ * TODO   update that virtual instead, then synchronize what has truly changed.
+ * TODO   I.e., add an indirection layer.
+ * TODO . No BIDI support.
+ * TODO . `bind': we currently use only one lookup tree.
+ * TODO   For absolute graceful behaviour in conjunction (with HAVE_TERMCAP) we
+ * TODO   need a lower level tree, which possibly combines bytes into "symbolic
+ * TODO   wchar_t values", into "keys" that is, as applicable, and an upper
+ * TODO   layer which only works on "keys" in order to possibly combine them
+ * TODO   into key sequences.  We can reuse existent tree code for that.
+ * TODO   We need an additional hashmap which maps termcap/terminfo names to
+ * TODO   (their byte representations and) a dynamically assigned unique
+ * TODO   "symbolic wchar_t value".  This implies we may have incompatibilities
+ * TODO   when __STDC_ISO_10646__ is not defined.  Also we do need takeover-
+ * TODO   bytes storage, but it can be a string_creat_auto in the line struct.
+ * TODO   Until then we can run into ambiguities; in rare occasions.
  */
+#ifdef HAVE_MLE
+/* To avoid memory leaks etc. with the current codebase that simply longjmp(3)s
+ * we're forced to use the very same buffer--the one that is passed through to
+ * us from the outside--to store anything we need, i.e., a "struct cell[]", and
+ * convert that on-the-fly back to the plain char* result once we're done.
+ * To simplify our live, use savestr() buffers for all other needed memory */
 
-#ifdef HAVE_NCL
-# ifndef MAX_INPUT
-#  define MAX_INPUT 255    /* (_POSIX_MAX_INPUT = 255 as of Issue 7 TC1) */
+# ifdef HAVE_KEY_BINDINGS
+/* Default *bind-timeout* key-sequence continuation timeout, in tenths of
+ * a second.  Must fit in 8-bit!  Update the manual upon change! */
+#  define a_TTY_BIND_TIMEOUT 2
+#  define a_TTY_BIND_TIMEOUT_MAX SI8_MAX
+
+n_CTAV(a_TTY_BIND_TIMEOUT_MAX <= UI8_MAX);
+
+/* We have a chicken-and-egg problem with `bind' and our termcap layer,
+ * because we may not initialize the latter automatically to allow users to
+ * specify *termcap-disable* and let it mean exactly that.
+ * On the other hand users can be expected to use `bind' in resource file(s).
+ * Therefore bindings which involve termcap/terminfo sequences, and which are
+ * defined before n_PSO_STARTED signals usability of termcap/terminfo, will be
+ * (partially) delayed until tty_init() is called.
+ * And we preallocate space for the expansion of the resolved capability */
+#  define a_TTY_BIND_CAPNAME_MAX 15
+#  define a_TTY_BIND_CAPEXP_ROUNDUP 16
+
+n_CTAV(n_ISPOW2(a_TTY_BIND_CAPEXP_ROUNDUP));
+n_CTA(a_TTY_BIND_CAPEXP_ROUNDUP <= SI8_MAX / 2, "Variable must fit in 6-bit");
+n_CTA(a_TTY_BIND_CAPEXP_ROUNDUP >= 8, "Variable too small");
+# endif /* HAVE_KEY_BINDINGS */
+
+/* The maximum size (of a_tty_cell's) in a line */
+# define a_TTY_LINE_MAX SI32_MAX
+
+/* (Some more CTAs around) */
+n_CTA(a_TTY_LINE_MAX <= SI32_MAX,
+   "a_TTY_LINE_MAX larger than SI32_MAX, but the MLE uses 32-bit arithmetic");
+
+/* When shall the visual screen be scrolled, in % of usable screen width */
+# define a_TTY_SCROLL_MARGIN_LEFT 15
+# define a_TTY_SCROLL_MARGIN_RIGHT 10
+
+/* fexpand() flags for expand-on-tab */
+# define a_TTY_TAB_FEXP_FL \
+   (FEXP_NOPROTO | FEXP_FULL | FEXP_SILENT | FEXP_MULTIOK)
+
+/* Columns to ripoff: outermost may not be touched, plus position indicator.
+ * Must thus be at least 1, but should be >= 1+4 to dig the position indicator
+ * that we place (if there is sufficient space) */
+# define a_TTY_WIDTH_RIPOFF 5
+
+/* The implementation of the MLE functions always exists, and is based upon
+ * the a_TTY_BIND_FUN_* constants, so most of this enum is always necessary */
+enum a_tty_bind_flags{
+# ifdef HAVE_KEY_BINDINGS
+   a_TTY_BIND_RESOLVE = 1u<<8,   /* Term cap. yet needs to be resolved */
+   a_TTY_BIND_DEFUNCT = 1u<<9,   /* Unicode/term cap. used but not avail. */
+   a_TTY__BIND_MASK = a_TTY_BIND_RESOLVE | a_TTY_BIND_DEFUNCT,
+   /* MLE fun assigned to a one-byte-sequence: this may be used for special
+    * key-sequence bypass processing */
+   a_TTY_BIND_MLE1CNTRL = 1u<<10,
+   a_TTY_BIND_NOCOMMIT = 1u<<11, /* Expansion shall be editable */
 # endif
 
-  /* Since we simply fputs(3) the prompt, assume each character requires two
-   * visual cells -- and we need to restrict the maximum prompt size because
-   * of MAX_INPUT and our desire to have room for some error message left */
-# define _PROMPT_VLEN(P)   (strlen(P) * 2)
-# define _PROMPT_MAX       ((MAX_INPUT / 2) + (MAX_INPUT / 4))
+   /* MLE internal commands */
+   a_TTY_BIND_FUN_INTERNAL = 1u<<15,
+   a_TTY__BIND_FUN_SHIFT = 16u,
+   a_TTY__BIND_FUN_SHIFTMAX = 24u,
+   a_TTY__BIND_FUN_MASK = ((1u << a_TTY__BIND_FUN_SHIFTMAX) - 1) &
+         ~((1u << a_TTY__BIND_FUN_SHIFT) - 1),
+# define a_TTY_BIND_FUN_REDUCE(X) \
+   (((ui32_t)(X) & a_TTY__BIND_FUN_MASK) >> a_TTY__BIND_FUN_SHIFT)
+# define a_TTY_BIND_FUN_EXPAND(X) \
+   (((ui32_t)(X) & (a_TTY__BIND_FUN_MASK >> a_TTY__BIND_FUN_SHIFT)) << \
+      a_TTY__BIND_FUN_SHIFT)
+# undef a_X
+# define a_X(N,I)\
+   a_TTY_BIND_FUN_ ## N = a_TTY_BIND_FUN_EXPAND(I),
 
-struct xtios {
-   struct termios told;
-   struct termios tnew;
+   a_X(BELL,  0)
+   a_X(GO_BWD,  1) a_X(GO_FWD,  2)
+   a_X(GO_WORD_BWD,  3) a_X(GO_WORD_FWD,  4)
+   a_X(GO_HOME,  5) a_X(GO_END,  6)
+   a_X(DEL_BWD,  7) a_X(DEL_FWD,   8)
+   a_X(SNARF_WORD_BWD,  9) a_X(SNARF_WORD_FWD, 10)
+   a_X(SNARF_END, 11) a_X(SNARF_LINE, 12)
+   a_X(HIST_BWD, 13) a_X(HIST_FWD, 14)
+   a_X(HIST_SRCH_BWD, 15) a_X(HIST_SRCH_FWD, 16)
+   a_X(REPAINT, 17)
+   a_X(QUOTE_RNDTRIP, 18)
+   a_X(PROMPT_CHAR, 19)
+   a_X(COMPLETE, 20)
+   a_X(PASTE, 21)
+
+   a_X(CANCEL, 22)
+   a_X(RESET, 23)
+   a_X(FULLRESET, 24)
+   a_X(COMMIT, 25) /* Must be last one! */
+# undef a_X
+
+   a_TTY__BIND_LAST = 1<<25
+};
+# ifdef HAVE_KEY_BINDINGS
+n_CTA((ui32_t)a_TTY_BIND_RESOLVE >= (ui32_t)n__GO_INPUT_CTX_MAX1,
+   "Bit carrier lower boundary must be raised to avoid value sharing");
+# endif
+n_CTA(a_TTY_BIND_FUN_EXPAND(a_TTY_BIND_FUN_COMMIT) <
+      (1 << a_TTY__BIND_FUN_SHIFTMAX),
+   "Bit carrier range must be expanded to represent necessary bits");
+n_CTA(a_TTY__BIND_LAST >= (1u << a_TTY__BIND_FUN_SHIFTMAX),
+   "Bit carrier upper boundary must be raised to avoid value sharing");
+n_CTA(UICMP(64, a_TTY__BIND_LAST, <=, SI32_MAX),
+   "Flag bits excess storage datatype" /* And we need one bit free */);
+
+enum a_tty_fun_status{
+   a_TTY_FUN_STATUS_OK,       /* Worked, next character */
+   a_TTY_FUN_STATUS_COMMIT,   /* Line done */
+   a_TTY_FUN_STATUS_RESTART,  /* Complete restart, reset multibyte etc. */
+   a_TTY_FUN_STATUS_END       /* End, return EOF */
 };
 
-struct cell {
-   wchar_t  wc;
-   ui32_t   count;
-   char     cbuf[MB_LEN_MAX * 2];   /* .. plus reset shift sequence */
+enum a_tty_visual_flags{
+   a_TTY_VF_NONE,
+   a_TTY_VF_MOD_CURSOR = 1u<<0,  /* Cursor moved */
+   a_TTY_VF_MOD_CONTENT = 1u<<1, /* Content modified */
+   a_TTY_VF_MOD_DIRTY = 1u<<2,   /* Needs complete repaint */
+   a_TTY_VF_MOD_SINGLE = 1u<<3,  /* TODO Drop when indirection as above comes */
+   a_TTY_VF_REFRESH = a_TTY_VF_MOD_DIRTY | a_TTY_VF_MOD_CURSOR |
+         a_TTY_VF_MOD_CONTENT | a_TTY_VF_MOD_SINGLE,
+   a_TTY_VF_BELL = 1u<<8,        /* Ring the bell */
+   a_TTY_VF_SYNC = 1u<<9,        /* Flush/Sync I/O channel */
+
+   a_TTY_VF_ALL_MASK = a_TTY_VF_REFRESH | a_TTY_VF_BELL | a_TTY_VF_SYNC,
+   a_TTY__VF_LAST = a_TTY_VF_SYNC
 };
 
-struct line {
-   size_t         cursor;     /* Current cursor position */
-   size_t         topins;     /* Outermost cursor col set */
-   union {
-      char          *cbuf;    /* *x_buf */
-      struct cell   *cells;
-   }              line;
-   struct str     defc;       /* Current default content */
-   struct str     savec;      /* Saved default content */
-# ifdef HAVE_HISTORY
-   struct hist   *hist;       /* History cursor */
-# endif
-   char const    *prompt;
-   char const    *nd;         /* Cursor right */
-   char         **x_buf;      /* Caller pointers */
-   size_t        *x_bufsize;
+# ifdef HAVE_KEY_BINDINGS
+struct a_tty_bind_ctx{
+   struct a_tty_bind_ctx *tbc_next;
+   char *tbc_seq;       /* quence as given (poss. re-quoted), in .tb__buf */
+   char *tbc_exp;       /* ansion, in .tb__buf */
+   /* The .tbc_seq'uence with any terminal capabilities resolved; in fact an
+    * array of structures, the first entry of which is {si32_t buf_len_iscap;}
+    * where the signed bit indicates whether the buffer is a resolved terminal
+    * capability instead of a (possibly multibyte) character.  In .tbc__buf */
+   char *tbc_cnv;
+   ui32_t tbc_seq_len;
+   ui32_t tbc_exp_len;
+   ui32_t tbc_cnv_len;
+   ui32_t tbc_flags;
+   char tbc__buf[n_VFIELD_SIZE(0)];
 };
 
+struct a_tty_bind_ctx_map{
+   enum n_go_input_flags tbcm_ctx;
+   char const tbcm_name[12];  /* Name of `bind' context */
+};
+# endif /* HAVE_KEY_BINDINGS */
+
+struct a_tty_bind_builtin_tuple{
+   bool_t tbbt_iskey;   /* Whether this is a control key; else termcap query */
+   char tbbt_ckey;      /* Control code */
+   ui16_t tbbt_query;   /* enum n_termcap_query (instead) */
+   char tbbt_exp[12];   /* String or [0]=NUL/[1]=BIND_FUN_REDUCE() */
+};
+n_CTA(n__TERMCAP_QUERY_MAX1 <= UI16_MAX,
+   "Enumeration cannot be stored in datatype");
+
+# ifdef HAVE_KEY_BINDINGS
+struct a_tty_bind_parse_ctx{
+   char const *tbpc_cmd;      /* Command which parses */
+   char const *tbpc_in_seq;   /* In: key sequence */
+   struct str tbpc_exp;       /* In/Out: expansion (or NULL) */
+   struct a_tty_bind_ctx *tbpc_tbcp;  /* Out: if yet existent */
+   struct a_tty_bind_ctx *tbpc_ltbcp; /* Out: the one before .tbpc_tbcp */
+   char *tbpc_seq;            /* Out: normalized sequence */
+   char *tbpc_cnv;            /* Out: sequence when read(2)ing it */
+   ui32_t tbpc_seq_len;
+   ui32_t tbpc_cnv_len;
+   ui32_t tbpc_cnv_align_mask; /* For creating a_tty_bind_ctx.tbc_cnv */
+   ui32_t tbpc_flags;         /* n_go_input_flags | a_tty_bind_flags */
+};
+
+/* Input character tree */
+struct a_tty_bind_tree{
+   struct a_tty_bind_tree *tbt_sibling; /* s at same level */
+   struct a_tty_bind_tree *tbt_childs; /* Sequence continues.. here */
+   struct a_tty_bind_tree *tbt_parent;
+   struct a_tty_bind_ctx *tbt_bind;    /* NULL for intermediates */
+   wchar_t tbt_char;                   /* acter this level represents */
+   bool_t tbt_isseq;                   /* Belongs to multibyte sequence */
+   bool_t tbt_isseq_trail;             /* ..is trailing byte of it */
+   ui8_t tbt__dummy[2];
+};
+# endif /* HAVE_KEY_BINDINGS */
+
+struct a_tty_cell{
+   wchar_t tc_wc;
+   ui16_t tc_count;  /* ..of bytes */
+   ui8_t tc_width;   /* Visual width; TAB==UI8_MAX! */
+   bool_t tc_novis;  /* Don't display visually as such (control character) */
+   char tc_cbuf[MB_LEN_MAX * 2]; /* .. plus reset shift sequence */
+};
+
+struct a_tty_global{
+   struct a_tty_line *tg_line;   /* To be able to access it from signal hdl */
 # ifdef HAVE_HISTORY
-struct hist {
-   struct hist   *older;
-   struct hist   *younger;
-   ui32_t         isgabby : 1;
-   ui32_t         len     : 31;
-   char           dat[VFIELD_SIZE(sizeof(ui32_t))];
+   struct a_tty_hist *tg_hist;
+   struct a_tty_hist *tg_hist_tail;
+   size_t tg_hist_size;
+   size_t tg_hist_size_max;
+# endif
+# ifdef HAVE_KEY_BINDINGS
+   ui32_t tg_bind_cnt;           /* Overall number of bindings */
+   bool_t tg_bind_isdirty;
+   bool_t tg_bind_isbuild;
+#  define a_TTY_SHCUT_MAX (3 +1) /* Note: update manual on change! */
+   ui8_t tg_bind__dummy[2];
+   char tg_bind_shcut_cancel[n__GO_INPUT_CTX_MAX1][a_TTY_SHCUT_MAX];
+   char tg_bind_shcut_prompt_char[n__GO_INPUT_CTX_MAX1][a_TTY_SHCUT_MAX];
+   struct a_tty_bind_ctx *tg_bind[n__GO_INPUT_CTX_MAX1];
+   struct a_tty_bind_tree *tg_bind_tree[n__GO_INPUT_CTX_MAX1][HSHSIZE];
+# endif
+   struct termios tg_tios_old;
+   struct termios tg_tios_new;
+};
+# ifdef HAVE_KEY_BINDINGS
+n_CTA(n__GO_INPUT_CTX_MAX1 == 3 && a_TTY_SHCUT_MAX == 4 &&
+   n_SIZEOF_FIELD(struct a_tty_global, tg_bind__dummy) == 2,
+   "Value results in array sizes that results in bad structure layout");
+n_CTA(a_TTY_SHCUT_MAX > 1,
+   "Users need at least one shortcut, plus NUL terminator");
+# endif
+
+# ifdef HAVE_HISTORY
+struct a_tty_hist{
+   struct a_tty_hist *th_older;
+   struct a_tty_hist *th_younger;
+   ui32_t th_isgabby : 1;
+   ui32_t th_len : 31;
+   char th_dat[n_VFIELD_SIZE(sizeof(ui32_t))];
 };
 # endif
 
-static sighandler_type  _ncl_oint;
-static sighandler_type  _ncl_oquit;
-static sighandler_type  _ncl_oterm;
-static sighandler_type  _ncl_ohup;
-static sighandler_type  _ncl_otstp;
-static sighandler_type  _ncl_ottin;
-static sighandler_type  _ncl_ottou;
-static struct xtios     _ncl_tios;
+struct a_tty_line{
+   /* Caller pointers */
+   char **tl_x_buf;
+   size_t *tl_x_bufsize;
+   /* Input processing */
+# ifdef HAVE_KEY_BINDINGS
+   wchar_t tl_bind_takeover;     /* Leftover byte to consume next */
+   ui8_t tl_bind_timeout;        /* In-seq. inter-byte-timer, in 1/10th secs */
+   ui8_t tl__bind_dummy[3];
+   char (*tl_bind_shcut_cancel)[a_TTY_SHCUT_MAX]; /* Special _CANCEL control */
+   char (*tl_bind_shcut_prompt_char)[a_TTY_SHCUT_MAX]; /* ..for _PROMPT_CHAR */
+   struct a_tty_bind_tree *(*tl_bind_tree_hmap)[HSHSIZE]; /* Bind lookup tree */
+   struct a_tty_bind_tree *tl_bind_tree;
+# endif
+   /* Line data / content handling */
+   ui32_t tl_count;              /* ..of a_tty_cell's (<= a_TTY_LINE_MAX) */
+   ui32_t tl_cursor;             /* Current a_tty_cell insertion point */
+   union{
+      char *cbuf;                /* *.tl_x_buf */
+      struct a_tty_cell *cells;
+   } tl_line;
+   struct str tl_defc;           /* Current default content */
+   size_t tl_defc_cursor_byte;   /* Desired position of cursor after takeover */
+   struct str tl_savec;          /* Saved default content */
+   struct str tl_pastebuf;       /* Last snarfed data */
 # ifdef HAVE_HISTORY
-static struct hist      *_ncl_hist;
-static struct hist      *_ncl_hist_tail;
-static size_t           _ncl_hist_size;
-static size_t           _ncl_hist_size_max;
-static bool_t           _ncl_hist_load;
+   struct a_tty_hist *tl_hist;   /* History cursor */
 # endif
-
-static void    _ncl_sigs_up(void);
-static void    _ncl_sigs_down(void);
-
-static void    _ncl_term_mode(bool_t raw);
-
-static void    _ncl_check_grow(struct line *l, size_t no SMALLOC_DEBUG_ARGS);
-static void    _ncl_bs_eof_dvup(struct cell *cap, size_t i);
-static ssize_t _ncl_wboundary(struct line *l, ssize_t dir);
-static ssize_t _ncl_cell2dat(struct line *l);
-# if defined HAVE_HISTORY || defined HAVE_TABEXPAND
-static void    _ncl_cell2save(struct line *l);
+   ui32_t tl_count_max;          /* ..before buffer needs to grow */
+   /* Visual data representation handling */
+   ui32_t tl_vi_flags;           /* enum a_tty_visual_flags */
+   ui32_t tl_lst_count;          /* .tl_count after last sync */
+   ui32_t tl_lst_cursor;         /* .tl_cursor after last sync */
+   /* TODO Add another indirection layer by adding a tl_phy_line of
+    * TODO a_tty_cell objects, incorporate changes in visual layer,
+    * TODO then check what _really_ has changed, sync those changes only */
+   struct a_tty_cell const *tl_phy_start; /* First visible cell, left border */
+   ui32_t tl_phy_cursor;         /* Physical cursor position */
+   bool_t tl_quote_rndtrip;      /* For _kht() expansion */
+   ui8_t tl__dummy2[3];
+   ui32_t tl_prompt_length;      /* Preclassified (TODO needed as a_tty_cell) */
+   ui32_t tl_prompt_width;
+   char const *tl_prompt;        /* Preformatted prompt (including colours) */
+   /* .tl_pos_buf is a hack */
+# ifdef HAVE_COLOUR
+   char *tl_pos_buf;             /* mle-position colour-on, [4], reset seq. */
+   char *tl_pos;                 /* Address of the [4] */
 # endif
+};
 
-static void    _ncl_khome(struct line *l, bool_t dobell);
-static void    _ncl_kend(struct line *l);
-static void    _ncl_kbs(struct line *l);
-static void    _ncl_kkill(struct line *l, bool_t dobell);
-static ssize_t _ncl_keof(struct line *l);
-static void    _ncl_kleft(struct line *l);
-static void    _ncl_kright(struct line *l);
-static void    _ncl_krefresh(struct line *l);
-static void    _ncl_kbwddelw(struct line *l);
-static void    _ncl_kgow(struct line *l, ssize_t dir);
-static void    _ncl_kother(struct line *l, wchar_t wc);
+# ifdef HAVE_KEY_BINDINGS
+/* C99: use [INDEX]={} */
+n_CTAV(n_GO_INPUT_CTX_BASE == 0);
+n_CTAV(n_GO_INPUT_CTX_DEFAULT == 1);
+n_CTAV(n_GO_INPUT_CTX_COMPOSE == 2);
+static struct a_tty_bind_ctx_map const
+      a_tty_bind_ctx_maps[n__GO_INPUT_CTX_MAX1] = {
+   {n_GO_INPUT_CTX_BASE, "base"},
+   {n_GO_INPUT_CTX_DEFAULT, "default"},
+   {n_GO_INPUT_CTX_COMPOSE, "compose"}
+};
+
+/* Special functions which our MLE provides internally.
+ * Update the manual upon change! */
+static char const a_tty_bind_fun_names[][24] = {
+#  undef a_X
+#  define a_X(I,N) \
+   n_FIELD_INITI(a_TTY_BIND_FUN_REDUCE(a_TTY_BIND_FUN_ ## I)) "mle-" N "\0",
+
+   a_X(BELL, "bell")
+   a_X(GO_BWD, "go-bwd") a_X(GO_FWD, "go-fwd")
+   a_X(GO_WORD_BWD, "go-word-bwd") a_X(GO_WORD_FWD, "go-word-fwd")
+   a_X(GO_HOME, "go-home") a_X(GO_END, "go-end")
+   a_X(DEL_BWD, "del-bwd") a_X(DEL_FWD, "del-fwd")
+   a_X(SNARF_WORD_BWD, "snarf-word-bwd") a_X(SNARF_WORD_FWD, "snarf-word-fwd")
+   a_X(SNARF_END, "snarf-end") a_X(SNARF_LINE, "snarf-line")
+   a_X(HIST_BWD, "hist-bwd") a_X(HIST_FWD, "hist-fwd")
+   a_X(HIST_SRCH_BWD, "hist-srch-bwd") a_X(HIST_SRCH_FWD, "hist-srch-fwd")
+   a_X(REPAINT, "repaint")
+   a_X(QUOTE_RNDTRIP, "quote-rndtrip")
+   a_X(PROMPT_CHAR, "prompt-char")
+   a_X(COMPLETE, "complete")
+   a_X(PASTE, "paste")
+
+   a_X(CANCEL, "cancel")
+   a_X(RESET, "reset")
+   a_X(FULLRESET, "fullreset")
+   a_X(COMMIT, "commit")
+
+#  undef a_X
+};
+# endif /* HAVE_KEY_BINDINGS */
+
+/* The default key bindings (unless disallowed).  Update manual upon change!
+ * A logical subset of this table is also used if !HAVE_KEY_BINDINGS (more
+ * expensive than a switch() on control codes directly, but less redundant).
+ * The table for the "base" context */
+static struct a_tty_bind_builtin_tuple const a_tty_bind_base_tuples[] = {
+# undef a_X
+# define a_X(K,S) \
+   {TRU1, K, 0, {'\0', (char)a_TTY_BIND_FUN_REDUCE(a_TTY_BIND_FUN_ ## S),}},
+
+   a_X('A', GO_HOME)
+   a_X('B', GO_BWD)
+   /* C: SIGINT */
+   a_X('D', DEL_FWD)
+   a_X('E', GO_END)
+   a_X('F', GO_FWD)
+   a_X('G', RESET)
+   a_X('H', DEL_BWD)
+   a_X('I', COMPLETE)
+   a_X('J', COMMIT)
+   a_X('K', SNARF_END)
+   a_X('L', REPAINT)
+   /* M: same as J */
+   a_X('N', HIST_FWD)
+   /* O: below */
+   a_X('P', HIST_BWD)
+   a_X('Q', QUOTE_RNDTRIP)
+   a_X('R', HIST_SRCH_BWD)
+   a_X('S', HIST_SRCH_FWD)
+   a_X('T', PASTE)
+   a_X('U', SNARF_LINE)
+   a_X('V', PROMPT_CHAR)
+   a_X('W', SNARF_WORD_BWD)
+   a_X('X', GO_WORD_FWD)
+   a_X('Y', GO_WORD_BWD)
+   /* Z: SIGTSTP */
+
+   a_X('[', CANCEL)
+   /* \: below */
+   /* ]: below */
+   /* ^: below */
+   a_X('_', SNARF_WORD_FWD)
+
+   a_X('?', DEL_BWD)
+
+# undef a_X
+# define a_X(K,S) {TRU1, K, 0, {S}},
+
+   /* The remains only if we have `bind' functionality available */
+# ifdef HAVE_KEY_BINDINGS
+#  undef a_X
+#  define a_X(Q,S) \
+   {FAL0, '\0', n_TERMCAP_QUERY_ ## Q,\
+      {'\0', (char)a_TTY_BIND_FUN_REDUCE(a_TTY_BIND_FUN_ ## S),}},
+
+   a_X(key_backspace, DEL_BWD) a_X(key_dc, DEL_FWD)
+   a_X(key_eol, SNARF_END)
+   a_X(key_home, GO_HOME) a_X(key_end, GO_END)
+   a_X(key_left, GO_BWD) a_X(key_right, GO_FWD)
+   a_X(key_sleft, GO_HOME) a_X(key_sright, GO_END)
+   a_X(key_up, HIST_BWD) a_X(key_down, HIST_FWD)
+# endif /* HAVE_KEY_BINDINGS */
+};
+
+/* The table for the "default" context */
+static struct a_tty_bind_builtin_tuple const a_tty_bind_default_tuples[] = {
+# undef a_X
+# define a_X(K,S) \
+   {TRU1, K, 0, {'\0', (char)a_TTY_BIND_FUN_REDUCE(a_TTY_BIND_FUN_ ## S),}},
+
+# undef a_X
+# define a_X(K,S) {TRU1, K, 0, {S}},
+
+   a_X('O', "dt")
+
+   a_X('\\', "z+")
+   a_X(']', "z$")
+   a_X('^', "z0")
+
+   /* The remains only if we have `bind' functionality available */
+# ifdef HAVE_KEY_BINDINGS
+#  undef a_X
+#  define a_X(Q,S) {FAL0, '\0', n_TERMCAP_QUERY_ ## Q, {S}},
+
+   a_X(key_shome, "z0") a_X(key_send, "z$")
+   a_X(xkey_sup, "z0") a_X(xkey_sdown, "z$")
+   a_X(key_ppage, "z-") a_X(key_npage, "z+")
+   a_X(xkey_cup, "dotmove-") a_X(xkey_cdown, "dotmove+")
+# endif /* HAVE_KEY_BINDINGS */
+};
+# undef a_X
+
+static struct a_tty_global a_tty;
+
+/* Change from canonical to raw, non-canonical mode, and way back */
+static void a_tty_term_mode(bool_t raw);
+
+/* Initialize .tg_hist_size_max and return desired history file, or NULL */
 # ifdef HAVE_HISTORY
-static size_t  __ncl_khist_shared(struct line *l, struct hist *hp);
-static size_t  _ncl_khist(struct line *l, bool_t backwd);
-static size_t  _ncl_krhist(struct line *l);
+static char const *a_tty_hist_query_config(void);
 # endif
-# ifdef HAVE_TABEXPAND
-static size_t  _ncl_kht(struct line *l);
+
+/* Adjust an active raw mode to use / not use a timeout */
+# ifdef HAVE_KEY_BINDINGS
+static void a_tty_term_rawmode_timeout(struct a_tty_line *tlp, bool_t enable);
 # endif
-static ssize_t _ncl_readline(char const *prompt, char **buf, size_t *bufsize,
-                  size_t len SMALLOC_DEBUG_ARGS);
+
+/* 0-X (2), UI8_MAX == \t / TAB */
+static ui8_t a_tty_wcwidth(wchar_t wc);
+
+/* Memory / cell / word generics */
+static void a_tty_check_grow(struct a_tty_line *tlp, ui32_t no
+               n_MEMORY_DEBUG_ARGS);
+static ssize_t a_tty_cell2dat(struct a_tty_line *tlp);
+static void a_tty_cell2save(struct a_tty_line *tlp);
+
+/* Save away data bytes of given range (max = non-inclusive) */
+static void a_tty_copy2paste(struct a_tty_line *tlp, struct a_tty_cell *tcpmin,
+               struct a_tty_cell *tcpmax);
+
+/* Ask user for hexadecimal number, interpret as UTF-32 */
+static wchar_t a_tty_vinuni(struct a_tty_line *tlp);
+
+/* Visual screen synchronization */
+static bool_t a_tty_vi_refresh(struct a_tty_line *tlp);
+
+static bool_t a_tty_vi__paint(struct a_tty_line *tlp);
+
+/* Search for word boundary, starting at tl_cursor, in "dir"ection (<> 0).
+ * Return <0 when moving is impossible (backward direction but in position 0,
+ * forward direction but in outermost column), and relative distance to
+ * tl_cursor otherwise */
+static si32_t a_tty_wboundary(struct a_tty_line *tlp, si32_t dir);
+
+/* Most function implementations */
+static void a_tty_khome(struct a_tty_line *tlp, bool_t dobell);
+static void a_tty_kend(struct a_tty_line *tlp);
+static void a_tty_kbs(struct a_tty_line *tlp);
+static void a_tty_ksnarf(struct a_tty_line *tlp, bool_t cplline, bool_t dobell);
+static si32_t a_tty_kdel(struct a_tty_line *tlp);
+static void a_tty_kleft(struct a_tty_line *tlp);
+static void a_tty_kright(struct a_tty_line *tlp);
+static void a_tty_ksnarfw(struct a_tty_line *tlp, bool_t fwd);
+static void a_tty_kgow(struct a_tty_line *tlp, si32_t dir);
+static bool_t a_tty_kother(struct a_tty_line *tlp, wchar_t wc);
+static ui32_t a_tty_kht(struct a_tty_line *tlp);
+
+# ifdef HAVE_HISTORY
+/* Return UI32_MAX on "exhaustion" */
+static ui32_t a_tty_khist(struct a_tty_line *tlp, bool_t fwd);
+static ui32_t a_tty_khist_search(struct a_tty_line *tlp, bool_t fwd);
+
+static ui32_t a_tty__khist_shared(struct a_tty_line *tlp,
+                  struct a_tty_hist *thp);
+# endif
+
+/* Handle a function */
+static enum a_tty_fun_status a_tty_fun(struct a_tty_line *tlp,
+                              enum a_tty_bind_flags tbf, size_t *len);
+
+/* Readline core */
+static ssize_t a_tty_readline(struct a_tty_line *tlp, size_t len,
+                  bool_t *histok_or_null n_MEMORY_DEBUG_ARGS);
+
+# ifdef HAVE_KEY_BINDINGS
+/* Find context or -1 */
+static enum n_go_input_flags a_tty_bind_ctx_find(char const *name);
+
+/* Create (or replace, if allowed) a binding */
+static bool_t a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp,
+               bool_t replace);
+
+/* Shared implementation to parse `bind' and `unbind' "key-sequence" and
+ * "expansion" command line arguments into something that we can work with */
+static bool_t a_tty_bind_parse(bool_t isbindcmd,
+               struct a_tty_bind_parse_ctx *tbpcp);
+
+/* Lazy resolve a termcap(5)/terminfo(5) (or *termcap*!) capability */
+static void a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp);
+
+/* Delete an existing binding */
+static void a_tty_bind_del(struct a_tty_bind_parse_ctx *tbpcp);
+
+/* Life cycle of all input node trees */
+static void a_tty_bind_tree_build(void);
+static void a_tty_bind_tree_teardown(void);
+
+static void a_tty__bind_tree_add(ui32_t hmap_idx,
+               struct a_tty_bind_tree *store[HSHSIZE],
+               struct a_tty_bind_ctx *tbcp);
+static struct a_tty_bind_tree *a_tty__bind_tree_add_wc(
+               struct a_tty_bind_tree **treep, struct a_tty_bind_tree *parentp,
+               wchar_t wc, bool_t isseq);
+static void a_tty__bind_tree_free(struct a_tty_bind_tree *tbtp);
+# endif /* HAVE_KEY_BINDINGS */
 
 static void
-_ncl_sigs_up(void)
-{
-   sigset_t nset, oset;
-   NYD2_ENTER;
-
-   sigfillset(&nset);
-
-   sigprocmask(SIG_BLOCK, &nset, &oset);
-   _ncl_oint = safe_signal(SIGINT, &tty_signal);
-   _ncl_oquit = safe_signal(SIGQUIT, &tty_signal);
-   _ncl_oterm = safe_signal(SIGTERM, &tty_signal);
-   _ncl_ohup = safe_signal(SIGHUP, &tty_signal);
-   _ncl_otstp = safe_signal(SIGTSTP, &tty_signal);
-   _ncl_ottin = safe_signal(SIGTTIN, &tty_signal);
-   _ncl_ottou = safe_signal(SIGTTOU, &tty_signal);
-   sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
-   NYD2_LEAVE;
-}
-
-static void
-_ncl_sigs_down(void)
-{
-   sigset_t nset, oset;
-   NYD2_ENTER;
-
-   sigfillset(&nset);
-
-   sigprocmask(SIG_BLOCK, &nset, &oset);
-   safe_signal(SIGINT, _ncl_oint);
-   safe_signal(SIGQUIT, _ncl_oquit);
-   safe_signal(SIGTERM, _ncl_oterm);
-   safe_signal(SIGHUP, _ncl_ohup);
-   safe_signal(SIGTSTP, _ncl_otstp);
-   safe_signal(SIGTTIN, _ncl_ottin);
-   safe_signal(SIGTTOU, _ncl_ottou);
-   sigprocmask(SIG_SETMASK, &oset, (sigset_t*)NULL);
-   NYD2_LEAVE;
-}
-
-static void
-_ncl_term_mode(bool_t raw)
-{
+a_tty_term_mode(bool_t raw){
    struct termios *tiosp;
    NYD2_ENTER;
 
-   tiosp = &_ncl_tios.told;
-   if (!raw)
+   tiosp = &a_tty.tg_tios_old;
+   if(!raw)
       goto jleave;
 
    /* Always requery the attributes, in case we've been moved from background
     * to foreground or however else in between sessions */
    /* XXX Always enforce ECHO and ICANON in the OLD attributes - do so as long
-    * XXX as we don't handle terminal stuff when starting commands and don't
-    * XXX properly deal with TTIN and TTOU from all that */
-   tcgetattr(STDIN_FILENO, tiosp);
+    * XXX as we don't properly deal with TTIN and TTOU etc. */
+   tcgetattr(STDIN_FILENO, tiosp); /* TODO v15: use _only_ n_tty_fp! */
    tiosp->c_lflag |= ECHO | ICANON;
 
-   memcpy(&_ncl_tios.tnew, tiosp, sizeof *tiosp);
-   tiosp = &_ncl_tios.tnew;
+   memcpy(&a_tty.tg_tios_new, tiosp, sizeof *tiosp);
+   tiosp = &a_tty.tg_tios_new;
    tiosp->c_cc[VMIN] = 1;
    tiosp->c_cc[VTIME] = 0;
-   tiosp->c_iflag &= ~(ISTRIP);
+   /* Enable ^\, ^Q and ^S to be used for key bindings */
+   tiosp->c_cc[VQUIT] = tiosp->c_cc[VSTART] = tiosp->c_cc[VSTOP] = '\0';
+   tiosp->c_iflag &= ~(ISTRIP | IGNCR);
    tiosp->c_lflag &= ~(ECHO /*| ECHOE | ECHONL */| ICANON | IEXTEN);
 jleave:
    tcsetattr(STDIN_FILENO, TCSADRAIN, tiosp);
    NYD2_LEAVE;
 }
 
-static void
-_ncl_check_grow(struct line *l, size_t no SMALLOC_DEBUG_ARGS)
-{
-   size_t i;
+# ifdef HAVE_HISTORY
+static char const *
+a_tty_hist_query_config(void){
+   char const *rv, *cp;
    NYD2_ENTER;
 
-   i = (l->topins + no) * sizeof(struct cell) + 2 * sizeof(struct cell);
-   if (i >= *l->x_bufsize) {
-      i <<= 1;
-      *l->x_bufsize = i;
-      l->line.cbuf =
-      *l->x_buf = (srealloc)(*l->x_buf, i SMALLOC_DEBUG_ARGSCALL);
-   }
-   NYD2_LEAVE;
-}
-
-static void
-_ncl_bs_eof_dvup(struct cell *cap, size_t i)
-{
-   size_t j;
-   NYD2_ENTER;
-
-   if (i > 0)
-      memmove(cap, cap + 1, i * sizeof(*cap));
-
-   /* And.. the (rest of the) visual update */
-   for (j = 0; j < i; ++j)
-      fwrite(cap[j].cbuf, sizeof *cap->cbuf, cap[j].count, stdout);
-   fputs(" \b", stdout);
-   for (j = 0; j < i; ++j)
-      putchar('\b');
-   NYD2_LEAVE;
-}
-
-static ssize_t
-_ncl_wboundary(struct line *l, ssize_t dir)
-{
-   size_t c, t, i;
-   struct cell *cap;
-   bool_t anynon;
-   NYD2_ENTER;
-
-   c = l->cursor;
-   t = l->topins;
-   i = (size_t)-1;
-
-   if (dir < 0) {
-      if (c == 0)
-         goto jleave;
-   } else if (c == t)
-      goto jleave;
+   if((cp = ok_vlook(NAIL_HISTSIZE)) != NULL)
+      n_OBSOLETE(_("please use *history-size* instead of *NAIL_HISTSIZE*"));
+   if((rv = ok_vlook(history_size)) == NULL)
+      rv = cp;
+   if(rv == NULL)
+      a_tty.tg_hist_size_max = UIZ_MAX;
    else
-      --t, --c; /* Unsigned wrapping may occur (twice), then */
+      (void)n_idec_uiz_cp(&a_tty.tg_hist_size_max, rv, 10, NULL);
 
-   for (i = 0, cap = l->line.cells, anynon = FAL0;;) {
-      wchar_t wc = cap[c + dir].wc;
-      if (iswblank(wc) || iswpunct(wc)) {
-         if (anynon)
-            break;
-      } else
-         anynon = TRU1;
-      ++i;
-      c += dir;
-      if (dir < 0) {
-         if (c == 0)
-            break;
-      } else if (c == t)
-         break;
-   }
-jleave:
+   if((cp = ok_vlook(NAIL_HISTFILE)) != NULL)
+      n_OBSOLETE(_("please use *history-file* instead of *NAIL_HISTFILE*"));
+   if((rv = ok_vlook(history_file)) == NULL)
+      rv = cp;
+   if(rv != NULL)
+      rv = fexpand(rv, FEXP_LOCAL | FEXP_NSHELL);
    NYD2_LEAVE;
-   return (ssize_t)i;
+   return rv;
+}
+# endif /* HAVE_HISTORY */
+
+# ifdef HAVE_KEY_BINDINGS
+static void
+a_tty_term_rawmode_timeout(struct a_tty_line *tlp, bool_t enable){
+   NYD2_ENTER;
+   if(enable){
+      ui8_t bt;
+
+      a_tty.tg_tios_new.c_cc[VMIN] = 0;
+      if((bt = tlp->tl_bind_timeout) == 0)
+         bt = a_TTY_BIND_TIMEOUT;
+      a_tty.tg_tios_new.c_cc[VTIME] = bt;
+   }else{
+      a_tty.tg_tios_new.c_cc[VMIN] = 1;
+      a_tty.tg_tios_new.c_cc[VTIME] = 0;
+   }
+   tcsetattr(STDIN_FILENO, TCSANOW, &a_tty.tg_tios_new);
+   NYD2_LEAVE;
+}
+# endif /* HAVE_KEY_BINDINGS */
+
+static ui8_t
+a_tty_wcwidth(wchar_t wc){
+   ui8_t rv;
+   NYD2_ENTER;
+
+   /* Special case the reverse solidus at first */
+   if(wc == '\t')
+      rv = UI8_MAX;
+   else{
+      int i;
+
+# ifdef HAVE_WCWIDTH
+      rv = ((i = wcwidth(wc)) > 0) ? (ui8_t)i : 0;
+# else
+      rv = iswprint(wc) ? 1 + (wc >= 0x1100u) : 0; /* TODO use S-CText */
+# endif
+   }
+   NYD2_LEAVE;
+   return rv;
+}
+
+static void
+a_tty_check_grow(struct a_tty_line *tlp, ui32_t no n_MEMORY_DEBUG_ARGS){
+   ui32_t cmax;
+   NYD2_ENTER;
+
+   if(n_UNLIKELY((cmax = tlp->tl_count + no) > tlp->tl_count_max)){
+      size_t i;
+
+      i = cmax * sizeof(struct a_tty_cell) + 2 * sizeof(struct a_tty_cell);
+      if(n_LIKELY(i >= *tlp->tl_x_bufsize)){
+         hold_all_sigs(); /* XXX v15 drop */
+         i <<= 1;
+         tlp->tl_line.cbuf =
+         *tlp->tl_x_buf = (n_realloc)(*tlp->tl_x_buf, i
+               n_MEMORY_DEBUG_ARGSCALL);
+         rele_all_sigs(); /* XXX v15 drop */
+      }
+      tlp->tl_count_max = cmax;
+      *tlp->tl_x_bufsize = i;
+   }
+   NYD2_LEAVE;
 }
 
 static ssize_t
-_ncl_cell2dat(struct line *l)
-{
-   size_t len = 0, i;
+a_tty_cell2dat(struct a_tty_line *tlp){
+   size_t len, i;
    NYD2_ENTER;
 
-   if (l->topins > 0)
-      for (i = 0; i < l->topins; ++i) {
-         struct cell *cap = l->line.cells + i;
-         memcpy(l->line.cbuf + len, cap->cbuf, cap->count);
-         len += cap->count;
-      }
-   l->line.cbuf[len] = '\0';
+   len = 0;
+
+   if(n_LIKELY((i = tlp->tl_count) > 0)){
+      struct a_tty_cell const *tcap;
+
+      tcap = tlp->tl_line.cells;
+      do{
+         memcpy(tlp->tl_line.cbuf + len, tcap->tc_cbuf, tcap->tc_count);
+         len += tcap->tc_count;
+      }while(++tcap, --i > 0);
+   }
+
+   tlp->tl_line.cbuf[len] = '\0';
    NYD2_LEAVE;
    return (ssize_t)len;
 }
 
-# if defined HAVE_HISTORY || defined HAVE_TABEXPAND
 static void
-_ncl_cell2save(struct line *l)
-{
+a_tty_cell2save(struct a_tty_line *tlp){
    size_t len, i;
-   struct cell *cap;
+   struct a_tty_cell *tcap;
    NYD2_ENTER;
 
-   l->savec.s = NULL, l->savec.l = 0;
-   if (l->topins == 0)
+   tlp->tl_savec.s = NULL;
+   tlp->tl_savec.l = 0;
+
+   if(n_UNLIKELY(tlp->tl_count == 0))
       goto jleave;
 
-   for (cap = l->line.cells, len = i = 0; i < l->topins; ++cap, ++i)
-      len += cap->count;
+   for(tcap = tlp->tl_line.cells, len = 0, i = tlp->tl_count; i > 0;
+         ++tcap, --i)
+      len += tcap->tc_count;
 
-   l->savec.l = len;
-   l->savec.s = salloc(len + 1);
+   tlp->tl_savec.s = salloc((tlp->tl_savec.l = len) +1);
 
-   for (cap = l->line.cells, len = i = 0; i < l->topins; ++cap, ++i) {
-      memcpy(l->savec.s + len, cap->cbuf, cap->count);
-      len += cap->count;
+   for(tcap = tlp->tl_line.cells, len = 0, i = tlp->tl_count; i > 0;
+         ++tcap, --i){
+      memcpy(tlp->tl_savec.s + len, tcap->tc_cbuf, tcap->tc_count);
+      len += tcap->tc_count;
    }
-   l->savec.s[len] = '\0';
+   tlp->tl_savec.s[len] = '\0';
 jleave:
    NYD2_LEAVE;
 }
+
+static void
+a_tty_copy2paste(struct a_tty_line *tlp, struct a_tty_cell *tcpmin,
+      struct a_tty_cell *tcpmax){
+   char *cp;
+   struct a_tty_cell *tcp;
+   size_t l;
+   NYD2_ENTER;
+
+   l = 0;
+   for(tcp = tcpmin; tcp < tcpmax; ++tcp)
+      l += tcp->tc_count;
+
+   tlp->tl_pastebuf.s = cp = salloc((tlp->tl_pastebuf.l = l) +1);
+
+   for(tcp = tcpmin; tcp < tcpmax; cp += l, ++tcp)
+      memcpy(cp, tcp->tc_cbuf, l = tcp->tc_count);
+   *cp = '\0';
+   NYD2_LEAVE;
+}
+
+static wchar_t
+a_tty_vinuni(struct a_tty_line *tlp){
+   char buf[16];
+   uiz_t i;
+   wchar_t wc;
+   NYD2_ENTER;
+
+   wc = '\0';
+
+   if(!n_termcap_cmdx(n_TERMCAP_CMD_cr) ||
+         !n_termcap_cmd(n_TERMCAP_CMD_ce, 0, -1))
+      goto jleave;
+
+   /* C99 */{
+      struct str const *cpre, *csuf;
+
+      cpre = csuf = NULL;
+#ifdef HAVE_COLOUR
+      if(n_COLOUR_IS_ACTIVE()){
+         struct n_colour_pen *cpen;
+
+         cpen = n_colour_pen_create(n_COLOUR_ID_MLE_PROMPT, NULL);
+         if((cpre = n_colour_pen_to_str(cpen)) != NULL)
+            csuf = n_colour_reset_to_str();
+      }
+#endif
+      fprintf(n_tty_fp, _("%sPlease enter Unicode code point:%s "),
+         (cpre != NULL ? cpre->s : n_empty),
+         (csuf != NULL ? csuf->s : n_empty));
+   }
+   fflush(n_tty_fp);
+
+   buf[sizeof(buf) -1] = '\0';
+   for(i = 0;;){
+      if(read(STDIN_FILENO, &buf[i], 1) != 1){
+         if(n_err_no == n_ERR_INTR) /* xxx #if !SA_RESTART ? */
+            continue;
+         goto jleave;
+      }
+      if(buf[i] == '\n')
+         break;
+      if(!hexchar(buf[i])){
+         char const emsg[] = "[0-9a-fA-F]";
+
+         n_LCTA(sizeof emsg <= sizeof(buf), "Preallocated buffer too small");
+         memcpy(buf, emsg, sizeof emsg);
+         goto jerr;
+      }
+
+      putc(buf[i], n_tty_fp);
+      fflush(n_tty_fp);
+      if(++i == sizeof buf)
+         goto jerr;
+   }
+   buf[i] = '\0';
+
+   if((n_idec_uiz_cp(&i, buf, 16, NULL
+            ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+         ) != n_IDEC_STATE_CONSUMED || i > 0x10FFFF/* XXX magic; CText */){
+jerr:
+      n_err(_("\nInvalid input: %s\n"), buf);
+      goto jleave;
+   }
+
+   wc = (wchar_t)i;
+jleave:
+   tlp->tl_vi_flags |= a_TTY_VF_MOD_DIRTY | (wc == '\0' ? a_TTY_VF_BELL : 0);
+   NYD2_LEAVE;
+   return wc;
+}
+
+static bool_t
+a_tty_vi_refresh(struct a_tty_line *tlp){
+   bool_t rv;
+   NYD2_ENTER;
+
+   if(tlp->tl_vi_flags & a_TTY_VF_BELL){
+      tlp->tl_vi_flags |= a_TTY_VF_SYNC;
+      if(putc('\a', n_tty_fp) == EOF)
+         goto jerr;
+   }
+
+   if(tlp->tl_vi_flags & a_TTY_VF_REFRESH){
+      /* kht may want to restore a cursor position after inserting some
+       * data somewhere */
+      if(tlp->tl_defc_cursor_byte > 0){
+         size_t i, j;
+         ssize_t k;
+
+         a_tty_khome(tlp, FAL0);
+
+         i = tlp->tl_defc_cursor_byte;
+         tlp->tl_defc_cursor_byte = 0;
+         for(j = 0; tlp->tl_cursor < tlp->tl_count; ++j){
+            a_tty_kright(tlp);
+            if((k = tlp->tl_line.cells[j].tc_count) > i)
+               break;
+            i -= k;
+         }
+      }
+
+      if(!a_tty_vi__paint(tlp))
+         goto jerr;
+   }
+
+   if(tlp->tl_vi_flags & a_TTY_VF_SYNC){
+      tlp->tl_vi_flags &= ~a_TTY_VF_SYNC;
+      if(fflush(n_tty_fp))
+         goto jerr;
+   }
+
+   rv = TRU1;
+jleave:
+   tlp->tl_vi_flags &= ~a_TTY_VF_ALL_MASK;
+   NYD2_LEAVE;
+   return rv;
+
+jerr:
+   clearerr(n_tty_fp); /* xxx I/O layer rewrite */
+   n_err(_("Visual refresh failed!  Is $TERM set correctly?\n"
+      "  Setting *line-editor-disable* to get us through!\n"));
+   ok_bset(line_editor_disable);
+   rv = FAL0;
+   goto jleave;
+}
+
+static bool_t
+a_tty_vi__paint(struct a_tty_line *tlp){
+   enum{
+      a_TRUE_RV = a_TTY__VF_LAST<<1,         /* Return value bit */
+      a_HAVE_PROMPT = a_TTY__VF_LAST<<2,     /* Have a prompt */
+      a_SHOW_PROMPT = a_TTY__VF_LAST<<3,     /* Shall print the prompt */
+      a_MOVE_CURSOR = a_TTY__VF_LAST<<4,     /* Move visual cursor for user! */
+      a_LEFT_MIN = a_TTY__VF_LAST<<5,        /* On left boundary */
+      a_RIGHT_MAX = a_TTY__VF_LAST<<6,
+      a_HAVE_POSITION = a_TTY__VF_LAST<<7,   /* Print the position indicator */
+
+      /* We carry some flags over invocations (not worth a specific field) */
+      a_VISIBLE_PROMPT = a_TTY__VF_LAST<<8,  /* The prompt is on the screen */
+      a_PERSIST_MASK = a_VISIBLE_PROMPT,
+      a__LAST = a_PERSIST_MASK
+   };
+
+   ui32_t f, w, phy_wid_base, phy_wid, phy_base, phy_cur, cnt,
+      DBG(lstcur COMMA) cur,
+      vi_left, /*vi_right,*/ phy_nxtcur;
+   struct a_tty_cell const *tccp, *tcp_left, *tcp_right, *tcxp;
+   NYD2_ENTER;
+   n_LCTA(UICMP(64, a__LAST, <, UI32_MAX), "Flag bits excess storage datatype");
+
+   f = tlp->tl_vi_flags;
+   tlp->tl_vi_flags = (f & ~(a_TTY_VF_REFRESH | a_PERSIST_MASK)) |
+         a_TTY_VF_SYNC;
+   f |= a_TRUE_RV;
+   if((w = tlp->tl_prompt_width) > 0)
+      f |= a_HAVE_PROMPT;
+   f |= a_HAVE_POSITION;
+
+   /* XXX We don't have a OnTerminalResize event (see main.c) yet, so we need
+    * XXX to reevaluate our circumstances over and over again */
+   /* Don't display prompt or position indicator on very small screens */
+   if((phy_wid_base = (ui32_t)n_scrnwidth) <= a_TTY_WIDTH_RIPOFF)
+      f &= ~(a_HAVE_PROMPT | a_HAVE_POSITION);
+   else{
+      phy_wid_base -= a_TTY_WIDTH_RIPOFF;
+
+      /* Disable the prompt if the screen is too small; due to lack of some
+       * indicator simply add a second ripoff */
+      if((f & a_HAVE_PROMPT) && w + a_TTY_WIDTH_RIPOFF >= phy_wid_base)
+         f &= ~a_HAVE_PROMPT;
+   }
+
+   phy_wid = phy_wid_base;
+   phy_base = 0;
+   phy_cur = tlp->tl_phy_cursor;
+   cnt = tlp->tl_count;
+   DBG( lstcur = tlp->tl_lst_cursor; )
+
+   /* XXX Assume dirty screen if shrunk */
+   if(cnt < tlp->tl_lst_count)
+      f |= a_TTY_VF_MOD_DIRTY;
+
+   /* TODO Without HAVE_TERMCAP, it would likely be much cheaper to simply
+    * TODO always "cr + paint + ce + ch", since ce is simulated via spaces.. */
+
+   /* Quickshot: if the line is empty, possibly print prompt and out */
+   if(cnt == 0){
+      /* In that special case dirty anything if it seems better */
+      if((f & a_TTY_VF_MOD_CONTENT) || tlp->tl_lst_count > 0)
+         f |= a_TTY_VF_MOD_DIRTY;
+
+      if((f & a_TTY_VF_MOD_DIRTY) && phy_cur != 0){
+         if(!n_termcap_cmdx(n_TERMCAP_CMD_cr))
+            goto jerr;
+         phy_cur = 0;
+      }
+
+      if((f & (a_TTY_VF_MOD_DIRTY | a_HAVE_PROMPT)) ==
+            (a_TTY_VF_MOD_DIRTY | a_HAVE_PROMPT)){
+         if(fputs(tlp->tl_prompt, n_tty_fp) == EOF)
+            goto jerr;
+         phy_cur = tlp->tl_prompt_width + 1;
+      }
+
+      /* May need to clear former line content */
+      if((f & a_TTY_VF_MOD_DIRTY) &&
+            !n_termcap_cmd(n_TERMCAP_CMD_ce, phy_cur, -1))
+         goto jerr;
+
+      tlp->tl_phy_start = tlp->tl_line.cells;
+      goto jleave;
+   }
+
+   /* Try to get an idea of the visual window */
+
+   /* Find the left visual boundary */
+   phy_wid = (phy_wid >> 1) + (phy_wid >> 2);
+   if((cur = tlp->tl_cursor) == cnt)
+      --cur;
+
+   w = (tcp_left = tccp = tlp->tl_line.cells + cur)->tc_width;
+   if(w == UI8_MAX) /* TODO yet TAB == SPC */
+      w = 1;
+   while(tcp_left > tlp->tl_line.cells){
+      ui16_t cw = tcp_left[-1].tc_width;
+
+      if(cw == UI8_MAX) /* TODO yet TAB == SPC */
+         cw = 1;
+      if(w + cw >= phy_wid)
+         break;
+      w += cw;
+      --tcp_left;
+   }
+   vi_left = w;
+
+   /* If the left hand side of our visual viewpoint consumes less than half
+    * of the screen width, show the prompt */
+   if(tcp_left == tlp->tl_line.cells)
+      f |= a_LEFT_MIN;
+
+   if((f & (a_LEFT_MIN | a_HAVE_PROMPT)) == (a_LEFT_MIN | a_HAVE_PROMPT) &&
+         w + tlp->tl_prompt_width < phy_wid){
+      phy_base = tlp->tl_prompt_width;
+      f |= a_SHOW_PROMPT;
+   }
+
+   /* Then search for right boundary.  We always leave the rightmost column
+    * empty because some terminals [cw]ould wrap the line if we write into
+    * that.  XXX terminfo(5)/termcap(5) have the semi_auto_right_margin/sam/YE
+    * XXX capability to indicate this, but we don't look at that */
+   phy_wid = phy_wid_base - phy_base;
+   tcp_right = tlp->tl_line.cells + cnt;
+
+   while(&tccp[1] < tcp_right){
+      ui16_t cw = tccp[1].tc_width;
+      ui32_t i;
+
+      if(cw == UI8_MAX) /* TODO yet TAB == SPC */
+         cw = 1;
+      i = w + cw;
+      if(i > phy_wid)
+         break;
+      w = i;
+      ++tccp;
+   }
+   /*vi_right = w - vi_left;*/
+
+   /* If the complete line including prompt fits on the screen, show prompt */
+   if(--tcp_right == tccp){
+      f |= a_RIGHT_MAX;
+
+      /* Since we did brute-force walk also for the left boundary we may end up
+       * in a situation were anything effectively fits on the screen, including
+       * the prompt that is, but were we don't recognize this since we
+       * restricted the search to fit in some visual viewpoint.  Therefore try
+       * again to extend the left boundary to overcome that */
+      if(!(f & a_LEFT_MIN)){
+         struct a_tty_cell const *tc1p = tlp->tl_line.cells;
+         ui32_t vil1 = vi_left;
+
+         assert(!(f & a_SHOW_PROMPT));
+         w += tlp->tl_prompt_width;
+         for(tcxp = tcp_left;;){
+            ui32_t i = tcxp[-1].tc_width;
+
+            if(i == UI8_MAX) /* TODO yet TAB == SPC */
+               i = 1;
+            vil1 += i;
+            i += w;
+            if(i > phy_wid)
+               break;
+            w = i;
+            if(--tcxp == tc1p){
+               tcp_left = tc1p;
+               /*vi_left = vil1;*/
+               f |= a_LEFT_MIN;
+               break;
+            }
+         }
+         /*w -= tlp->tl_prompt_width;*/
+      }
+   }
+   tcp_right = tccp;
+   tccp = tlp->tl_line.cells + cur;
+
+   if((f & (a_LEFT_MIN | a_RIGHT_MAX | a_HAVE_PROMPT | a_SHOW_PROMPT)) ==
+            (a_LEFT_MIN | a_RIGHT_MAX | a_HAVE_PROMPT) &&
+         w + tlp->tl_prompt_width <= phy_wid){
+      phy_wid -= (phy_base = tlp->tl_prompt_width);
+      f |= a_SHOW_PROMPT;
+   }
+
+   /* Try to avoid repainting the complete line - this is possible if the
+    * cursor "did not leave the screen" and the prompt status hasn't changed.
+    * I.e., after clamping virtual viewpoint, compare relation to physical */
+   if((f & (a_TTY_VF_MOD_SINGLE/*FIXME*/ |
+            a_TTY_VF_MOD_CONTENT/* xxx */ | a_TTY_VF_MOD_DIRTY)) ||
+         (tcxp = tlp->tl_phy_start) == NULL ||
+         tcxp > tccp || tcxp <= tcp_right)
+         f |= a_TTY_VF_MOD_DIRTY;
+   else{
+         f |= a_TTY_VF_MOD_DIRTY;
+#if 0
+      struct a_tty_cell const *tcyp;
+      si32_t cur_displace;
+      ui32_t phy_lmargin, phy_rmargin, fx, phy_displace;
+
+      phy_lmargin = (fx = phy_wid) / 100;
+      phy_rmargin = fx - (phy_lmargin * a_TTY_SCROLL_MARGIN_RIGHT);
+      phy_lmargin *= a_TTY_SCROLL_MARGIN_LEFT;
+      fx = (f & (a_SHOW_PROMPT | a_VISIBLE_PROMPT));
+
+      if(fx == 0 || fx == (a_SHOW_PROMPT | a_VISIBLE_PROMPT)){
+      }
+#endif
+   }
+   goto jpaint;
+
+   /* We know what we have to paint, start synchronizing */
+jpaint:
+   assert(phy_cur == tlp->tl_phy_cursor);
+   assert(phy_wid == phy_wid_base - phy_base);
+   assert(cnt == tlp->tl_count);
+   assert(cnt > 0);
+   assert(lstcur == tlp->tl_lst_cursor);
+   assert(tccp == tlp->tl_line.cells + cur);
+
+   phy_nxtcur = phy_base; /* FIXME only if repaint cpl. */
+
+   /* Quickshot: is it only cursor movement within the visible screen? */
+   if((f & a_TTY_VF_REFRESH) == a_TTY_VF_MOD_CURSOR){
+      f |= a_MOVE_CURSOR;
+      goto jcursor;
+   }
+
+   /* To be able to apply some quick jump offs, clear line if possible */
+   if(f & a_TTY_VF_MOD_DIRTY){
+      /* Force complete clearance and cursor reinitialization */
+      if(!n_termcap_cmdx(n_TERMCAP_CMD_cr) ||
+            !n_termcap_cmd(n_TERMCAP_CMD_ce, 0, -1))
+         goto jerr;
+      tlp->tl_phy_start = tcp_left;
+      phy_cur = 0;
+   }
+
+   if((f & (a_TTY_VF_MOD_DIRTY | a_SHOW_PROMPT)) && phy_cur != 0){
+      if(!n_termcap_cmdx(n_TERMCAP_CMD_cr))
+         goto jerr;
+      phy_cur = 0;
+   }
+
+   if(f & a_SHOW_PROMPT){
+      assert(phy_base == tlp->tl_prompt_width);
+      if(fputs(tlp->tl_prompt, n_tty_fp) == EOF)
+         goto jerr;
+      phy_cur = phy_nxtcur;
+      f |= a_VISIBLE_PROMPT;
+   }else
+      f &= ~a_VISIBLE_PROMPT;
+
+/* FIXME reposition cursor for paint */
+   for(w = phy_nxtcur; tcp_left <= tcp_right; ++tcp_left){
+      ui16_t cw;
+
+      cw = tcp_left->tc_width;
+
+      if(n_LIKELY(!tcp_left->tc_novis)){
+         if(fwrite(tcp_left->tc_cbuf, sizeof *tcp_left->tc_cbuf,
+               tcp_left->tc_count, n_tty_fp) != tcp_left->tc_count)
+            goto jerr;
+      }else{ /* XXX Shouldn't be here <-> CText, ui_str.c */
+         char wbuf[8]; /* XXX magic */
+
+         if(n_psonce & n_PSO_UNICODE){
+            ui32_t wc;
+
+            wc = (ui32_t)tcp_left->tc_wc;
+            if((wc & ~0x1Fu) == 0)
+               wc |= 0x2400;
+            else if(wc == 0x7F)
+               wc = 0x2421;
+            else
+               wc = 0x2426;
+            n_utf32_to_utf8(wc, wbuf);
+         }else
+            wbuf[0] = '?', wbuf[1] = '\0';
+
+         if(fputs(wbuf, n_tty_fp) == EOF)
+            goto jerr;
+         cw = 1;
+      }
+
+      if(cw == UI8_MAX) /* TODO yet TAB == SPC */
+         cw = 1;
+      w += cw;
+      if(tcp_left == tccp)
+         phy_nxtcur = w;
+      phy_cur += cw;
+   }
+
+   /* Write something position marker alike if it does not fit on screen */
+   if((f & a_HAVE_POSITION) &&
+         ((f & (a_LEFT_MIN | a_RIGHT_MAX)) != (a_LEFT_MIN | a_RIGHT_MAX) ||
+          ((f & a_HAVE_PROMPT) && !(f & a_SHOW_PROMPT)))){
+# ifdef HAVE_COLOUR
+      char *posbuf = tlp->tl_pos_buf, *pos = tlp->tl_pos;
+# else
+      char posbuf[5], *pos = posbuf;
+
+      pos[4] = '\0';
 # endif
 
-static void
-_ncl_khome(struct line *l, bool_t dobell)
-{
-   size_t c;
-   NYD2_ENTER;
+      if(phy_cur != (w = phy_wid_base) &&
+            !n_termcap_cmd(n_TERMCAP_CMD_ch, phy_cur = w, 0))
+         goto jerr;
 
-   c = l->cursor;
-   if (c > 0) {
-      l->cursor = 0;
-      while (c-- != 0)
-         putchar('\b');
-   } else if (dobell)
-      putchar('\a');
-   NYD2_LEAVE;
-}
+      *pos++ = '|';
+      if((f & a_LEFT_MIN) && (!(f & a_HAVE_PROMPT) || (f & a_SHOW_PROMPT)))
+         memcpy(pos, "^.+", 3);
+      else if(f & a_RIGHT_MAX)
+         memcpy(pos, ".+$", 3);
+      else{
+         /* Theoretical line length limit a_TTY_LINE_MAX, choose next power of
+          * ten (10 ** 10) to represent 100 percent, since we don't have a macro
+          * that generates a constant, and i don't trust the standard "u type
+          * suffix automatically scales" calculate the large number */
+         static char const itoa[] = "0123456789";
 
-static void
-_ncl_kend(struct line *l)
-{
-   ssize_t i;
-   NYD2_ENTER;
+         ui64_t const fact100 = (ui64_t)0x3B9ACA00u * 10u, fact = fact100 / 100;
+         ui32_t i = (ui32_t)(((fact100 / cnt) * tlp->tl_cursor) / fact);
+         n_LCTA(a_TTY_LINE_MAX <= SI32_MAX, "a_TTY_LINE_MAX too large");
 
-   i = (ssize_t)(l->topins - l->cursor);
+         if(i < 10)
+            pos[0] = ' ', pos[1] = itoa[i];
+         else
+            pos[1] = itoa[i % 10], pos[0] = itoa[i / 10];
+         pos[2] = '%';
+      }
 
-   if (i > 0) {
-      l->cursor = l->topins;
-      while (i-- != 0)
-         fputs(l->nd, stdout);
-   } else
-      putchar('\a');
-   NYD2_LEAVE;
-}
-
-static void
-_ncl_kbs(struct line *l)
-{
-   ssize_t c, t;
-   NYD2_ENTER;
-
-   c = l->cursor;
-   t = l->topins;
-
-   if (c > 0) {
-      putchar('\b');
-      l->cursor = --c;
-      l->topins = --t;
-      t -= c;
-      _ncl_bs_eof_dvup(l->line.cells + c, t);
-   } else
-      putchar('\a');
-   NYD2_LEAVE;
-}
-
-static void
-_ncl_kkill(struct line *l, bool_t dobell)
-{
-   size_t j, c, i;
-   NYD2_ENTER;
-
-   c = l->cursor;
-   i = (size_t)(l->topins - c);
-
-   if (i > 0) {
-      l->topins = c;
-      for (j = i; j != 0; --j)
-         putchar(' ');
-      for (j = i; j != 0; --j)
-         putchar('\b');
-   } else if (dobell)
-      putchar('\a');
-   NYD2_LEAVE;
-}
-
-static ssize_t
-_ncl_keof(struct line *l)
-{
-   size_t c, t;
-   ssize_t i;
-   NYD2_ENTER;
-
-   c = l->cursor;
-   t = l->topins;
-   i = (ssize_t)(t - c);
-
-   if (i > 0) {
-      l->topins = --t;
-      _ncl_bs_eof_dvup(l->line.cells + c, --i);
-   } else if (t == 0 /*&& !ok_blook(ignoreeof)*/) {
-      /*fputs("^D", stdout);
-      fflush(stdout);*/
-      i = -1;
-   /*} else {
-      putchar('\a');
-      i = 0;*/
+      if(fputs(posbuf, n_tty_fp) == EOF)
+         goto jerr;
+      phy_cur += 4;
    }
+
+   /* Users are used to see the cursor right of the point of interest, so we
+    * need some further adjustments unless in special conditions.  Be aware
+    * that we may have adjusted cur at the beginning, too */
+   if((cur = tlp->tl_cursor) == 0)
+      phy_nxtcur = phy_base;
+   else if(cur != cnt){
+      ui16_t cw = tccp->tc_width;
+
+      if(cw == UI8_MAX) /* TODO yet TAB == SPC */
+         cw = 1;
+      phy_nxtcur -= cw;
+   }
+
+jcursor:
+   if(((f & a_MOVE_CURSOR) || phy_nxtcur != phy_cur) &&
+         !n_termcap_cmd(n_TERMCAP_CMD_ch, phy_cur = phy_nxtcur, 0))
+      goto jerr;
+
+jleave:
+   tlp->tl_vi_flags |= (f & a_PERSIST_MASK);
+   tlp->tl_lst_count = tlp->tl_count;
+   tlp->tl_lst_cursor = tlp->tl_cursor;
+   tlp->tl_phy_cursor = phy_cur;
+
+   NYD2_LEAVE;
+   return ((f & a_TRUE_RV) != 0);
+jerr:
+   f &= ~a_TRUE_RV;
+   goto jleave;
+}
+
+static si32_t
+a_tty_wboundary(struct a_tty_line *tlp, si32_t dir){/* TODO shell token-wise */
+   bool_t anynon;
+   struct a_tty_cell *tcap;
+   ui32_t cur, cnt;
+   si32_t rv;
+   NYD2_ENTER;
+
+   assert(dir == 1 || dir == -1);
+
+   rv = -1;
+   cnt = tlp->tl_count;
+   cur = tlp->tl_cursor;
+
+   if(dir < 0){
+      if(cur == 0)
+         goto jleave;
+   }else if(cur + 1 >= cnt)
+      goto jleave;
+   else
+      --cnt, --cur; /* xxx Unsigned wrapping may occur (twice), then */
+
+   for(rv = 0, tcap = tlp->tl_line.cells, anynon = FAL0;;){
+      wchar_t wc;
+
+      wc = tcap[cur += (ui32_t)dir].tc_wc;
+      if(iswblank(wc) || iswpunct(wc)){
+         if(anynon)
+            break;
+      }else
+         anynon = TRU1;
+
+      ++rv;
+
+      if(dir < 0){
+         if(cur == 0)
+            break;
+      }else if(cur + 1 >= cnt){
+         ++rv;
+         break;
+      }
+   }
+jleave:
+   NYD2_LEAVE;
+   return rv;
+}
+
+static void
+a_tty_khome(struct a_tty_line *tlp, bool_t dobell){
+   ui32_t f;
+   NYD2_ENTER;
+
+   if(n_LIKELY(tlp->tl_cursor > 0)){
+      tlp->tl_cursor = 0;
+      f = a_TTY_VF_MOD_CURSOR;
+   }else if(dobell)
+      f = a_TTY_VF_BELL;
+   else
+      f = a_TTY_VF_NONE;
+
+   tlp->tl_vi_flags |= f;
+   NYD2_LEAVE;
+}
+
+static void
+a_tty_kend(struct a_tty_line *tlp){
+   ui32_t f;
+   NYD2_ENTER;
+
+   if(n_LIKELY(tlp->tl_cursor < tlp->tl_count)){
+      tlp->tl_cursor = tlp->tl_count;
+      f = a_TTY_VF_MOD_CURSOR;
+   }else
+      f = a_TTY_VF_BELL;
+
+   tlp->tl_vi_flags |= f;
+   NYD2_LEAVE;
+}
+
+static void
+a_tty_kbs(struct a_tty_line *tlp){
+   ui32_t f, cur, cnt;
+   NYD2_ENTER;
+
+   cur = tlp->tl_cursor;
+   cnt = tlp->tl_count;
+
+   if(n_LIKELY(cur > 0)){
+      tlp->tl_cursor = --cur;
+      tlp->tl_count = --cnt;
+
+      if((cnt -= cur) > 0){
+         struct a_tty_cell *tcap;
+
+         tcap = tlp->tl_line.cells + cur;
+         memmove(tcap, &tcap[1], cnt *= sizeof(*tcap));
+      }
+      f = a_TTY_VF_MOD_CURSOR | a_TTY_VF_MOD_CONTENT;
+   }else
+      f = a_TTY_VF_BELL;
+
+   tlp->tl_vi_flags |= f;
+   NYD2_LEAVE;
+}
+
+static void
+a_tty_ksnarf(struct a_tty_line *tlp, bool_t cplline, bool_t dobell){
+   ui32_t i, f;
+   NYD2_ENTER;
+
+   f = a_TTY_VF_NONE;
+   i = tlp->tl_cursor;
+
+   if(cplline && i > 0){
+      tlp->tl_cursor = i = 0;
+      f = a_TTY_VF_MOD_CURSOR;
+   }
+
+   if(n_LIKELY(i < tlp->tl_count)){
+      struct a_tty_cell *tcap;
+
+      tcap = &tlp->tl_line.cells[0];
+      a_tty_copy2paste(tlp, &tcap[i], &tcap[tlp->tl_count]);
+      tlp->tl_count = i;
+      f = a_TTY_VF_MOD_CONTENT;
+   }else if(dobell)
+      f |= a_TTY_VF_BELL;
+
+   tlp->tl_vi_flags |= f;
+   NYD2_LEAVE;
+}
+
+static si32_t
+a_tty_kdel(struct a_tty_line *tlp){
+   ui32_t cur, cnt, f;
+   si32_t i;
+   NYD2_ENTER;
+
+   cur = tlp->tl_cursor;
+   cnt = tlp->tl_count;
+   i = (si32_t)(cnt - cur);
+
+   if(n_LIKELY(i > 0)){
+      tlp->tl_count = --cnt;
+
+      if(n_LIKELY(--i > 0)){
+         struct a_tty_cell *tcap;
+
+         tcap = &tlp->tl_line.cells[cur];
+         memmove(tcap, &tcap[1], (ui32_t)i * sizeof(*tcap));
+      }
+      f = a_TTY_VF_MOD_CONTENT;
+   }else if(cnt == 0 && !ok_blook(ignoreeof)){
+      putc('^', n_tty_fp);
+      putc('D', n_tty_fp);
+      i = -1;
+      f = a_TTY_VF_NONE;
+   }else{
+      i = 0;
+      f = a_TTY_VF_BELL;
+   }
+
+   tlp->tl_vi_flags |= f;
    NYD2_LEAVE;
    return i;
 }
 
 static void
-_ncl_kleft(struct line *l)
-{
+a_tty_kleft(struct a_tty_line *tlp){
+   ui32_t f;
    NYD2_ENTER;
-   if (l->cursor > 0) {
-      --l->cursor;
-      putchar('\b');
-   } else
-      putchar('\a');
+
+   if(n_LIKELY(tlp->tl_cursor > 0)){
+      --tlp->tl_cursor;
+      f = a_TTY_VF_MOD_CURSOR;
+   }else
+      f = a_TTY_VF_BELL;
+
+   tlp->tl_vi_flags |= f;
    NYD2_LEAVE;
 }
 
 static void
-_ncl_kright(struct line *l)
-{
+a_tty_kright(struct a_tty_line *tlp){
+   ui32_t i;
    NYD2_ENTER;
-   if (l->cursor < l->topins) {
-      ++l->cursor;
-      fputs(l->nd, stdout);
-   } else
-      putchar('\a');
+
+   if(n_LIKELY((i = tlp->tl_cursor + 1) <= tlp->tl_count)){
+      tlp->tl_cursor = i;
+      i = a_TTY_VF_MOD_CURSOR;
+   }else
+      i = a_TTY_VF_BELL;
+
+   tlp->tl_vi_flags |= i;
    NYD2_LEAVE;
 }
 
 static void
-_ncl_krefresh(struct line *l)
-{
-   struct cell *cap;
-   size_t i;
+a_tty_ksnarfw(struct a_tty_line *tlp, bool_t fwd){
+   struct a_tty_cell *tcap;
+   ui32_t cnt, cur, f;
+   si32_t i;
    NYD2_ENTER;
 
-   putchar('\r');
-   if (l->prompt != NULL && *l->prompt != '\0')
-      fputs(l->prompt, stdout);
-   for (cap = l->line.cells, i = l->topins; i > 0; ++cap, --i)
-      fwrite(cap->cbuf, sizeof *cap->cbuf, cap->count, stdout);
-   for (i = l->topins - l->cursor; i > 0; --i)
-      putchar('\b');
-   NYD2_LEAVE;
-}
-
-static void
-_ncl_kbwddelw(struct line *l)
-{
-   ssize_t i;
-   size_t c, t, j;
-   struct cell *cap;
-   NYD2_ENTER;
-
-   i = _ncl_wboundary(l, -1);
-   if (i <= 0) {
-      if (i < 0)
-         putchar('\a');
+   if(n_UNLIKELY((i = a_tty_wboundary(tlp, (fwd ? +1 : -1))) <= 0)){
+      f = (i < 0) ? a_TTY_VF_BELL : a_TTY_VF_NONE;
       goto jleave;
    }
 
-   c = l->cursor - i;
-   t = l->topins;
-   l->topins = t - i;
-   l->cursor = c;
-   cap = l->line.cells + c;
+   cnt = tlp->tl_count - (ui32_t)i;
+   cur = tlp->tl_cursor;
+   if(!fwd)
+      cur -= (ui32_t)i;
+   tcap = &tlp->tl_line.cells[cur];
 
-   if (l->topins != l->cursor) {
-      j = t - c + i;
-      memmove(cap, cap + i, j * sizeof(*cap));
+   a_tty_copy2paste(tlp, &tcap[0], &tcap[i]);
+
+   if((tlp->tl_count = cnt) != (tlp->tl_cursor = cur)){
+      cnt -= cur;
+      memmove(&tcap[0], &tcap[i], cnt * sizeof(*tcap)); /* FIXME*/
    }
 
-   for (j = i; j > 0; --j)
-      putchar('\b');
-   for (j = l->topins - c; j > 0; ++cap, --j)
-      fwrite(cap[0].cbuf, sizeof *cap->cbuf, cap[0].count, stdout);
-   for (j = i; j > 0; --j)
-      putchar(' ');
-   for (j = t - c; j > 0; --j)
-      putchar('\b');
+   f = a_TTY_VF_MOD_CURSOR | a_TTY_VF_MOD_CONTENT;
 jleave:
+   tlp->tl_vi_flags |= f;
    NYD2_LEAVE;
 }
 
 static void
-_ncl_kgow(struct line *l, ssize_t dir)
-{
-   ssize_t i;
+a_tty_kgow(struct a_tty_line *tlp, si32_t dir){
+   ui32_t f;
+   si32_t i;
    NYD2_ENTER;
 
-   i = _ncl_wboundary(l, dir);
-   if (i <= 0) {
-      if (i < 0)
-         putchar('\a');
-      goto jleave;
+   if(n_UNLIKELY((i = a_tty_wboundary(tlp, dir)) <= 0))
+      f = (i < 0) ? a_TTY_VF_BELL : a_TTY_VF_NONE;
+   else{
+      if(dir < 0)
+         i = -i;
+      tlp->tl_cursor += (ui32_t)i;
+      f = a_TTY_VF_MOD_CURSOR;
    }
 
-   if (dir < 0) {
-      l->cursor -= i;
-      while (i-- > 0)
-         putchar('\b');
-   } else {
-      l->cursor += i;
-      while (i-- > 0)
-         fputs(l->nd, stdout);
-   }
-jleave:
+   tlp->tl_vi_flags |= f;
    NYD2_LEAVE;
 }
 
-static void
-_ncl_kother(struct line *l, wchar_t wc)
-{
+static bool_t
+a_tty_kother(struct a_tty_line *tlp, wchar_t wc){
    /* Append if at EOL, insert otherwise;
     * since we may move around character-wise, always use a fresh ps */
    mbstate_t ps;
-   struct cell cell, *cap;
-   size_t i, c;
+   struct a_tty_cell tc, *tcap;
+   ui32_t f, cur, cnt;
+   bool_t rv;
    NYD2_ENTER;
 
-   /* First init a cell and see wether we'll really handle this wc */
-   cell.wc = wc;
-   memset(&ps, 0, sizeof ps);
-   i = wcrtomb(cell.cbuf, wc, &ps);
-   if (i > MB_LEN_MAX)
+   rv = FAL0;
+   f = a_TTY_VF_NONE;
+
+   n_LCTA(a_TTY_LINE_MAX <= SI32_MAX, "a_TTY_LINE_MAX too large");
+   if(tlp->tl_count + 1 >= a_TTY_LINE_MAX){
+      n_err(_("Stop here, we can't extend line beyond size limit\n"));
       goto jleave;
-   cell.count = (ui32_t)i;
-   if (options & OPT_ENC_MBSTATE) {
-      i = wcrtomb(cell.cbuf + i, L'\0', &ps);
-      if (i == 1)
-         ;
-      else if (--i < MB_LEN_MAX)
-         cell.count += (ui32_t)i;
-      else
+   }
+
+   /* First init a cell and see whether we'll really handle this wc */
+   memset(&ps, 0, sizeof ps);
+   /* C99 */{
+      size_t l;
+
+      l = wcrtomb(tc.tc_cbuf, tc.tc_wc = wc, &ps);
+      if(n_UNLIKELY(l > MB_LEN_MAX)){
+jemb:
+         n_err(_("wcrtomb(3) error: too many multibyte character bytes\n"));
          goto jleave;
+      }
+      tc.tc_count = (ui16_t)l;
+
+      if(n_UNLIKELY((n_psonce & n_PSO_ENC_MBSTATE) != 0)){
+         l = wcrtomb(&tc.tc_cbuf[l], L'\0', &ps);
+         if(n_LIKELY(l == 1))
+            /* Only NUL terminator */;
+         else if(n_LIKELY(--l < MB_LEN_MAX))
+            tc.tc_count += (ui16_t)l;
+         else
+            goto jemb;
+      }
    }
 
    /* Yes, we will!  Place it in the array */
-   c = l->cursor++;
-   i = l->topins++ - c;
-   cap = l->line.cells + c;
-   if (i > 0)
-      memmove(cap + 1, cap, i * sizeof(cell));
-   memcpy(cap, &cell, sizeof cell);
+   tc.tc_novis = (iswprint(wc) == 0);
+   tc.tc_width = a_tty_wcwidth(wc);
+   /* TODO if(tc.tc_novis && tc.tc_width > 0) */
 
-   /* And update visual */
-   c = i;
-   do
-      fwrite(cap->cbuf, sizeof *cap->cbuf, cap->count, stdout);
-   while ((++cap, i-- != 0));
-   while (c-- != 0)
-      putchar('\b');
+   cur = tlp->tl_cursor++;
+   cnt = tlp->tl_count++ - cur;
+   tcap = &tlp->tl_line.cells[cur];
+   if(cnt >= 1){
+      memmove(&tcap[1], tcap, cnt * sizeof(*tcap));
+      f = a_TTY_VF_MOD_CONTENT;
+   }else
+      f = a_TTY_VF_MOD_SINGLE;
+   memcpy(tcap, &tc, sizeof *tcap);
+
+   f |= a_TTY_VF_MOD_CURSOR;
+   rv = TRU1;
 jleave:
-   NYD2_LEAVE;
-}
-
-# ifdef HAVE_HISTORY
-static size_t
-__ncl_khist_shared(struct line *l, struct hist *hp)
-{
-   size_t rv;
-   NYD2_ENTER;
-
-   if ((l->hist = hp) != NULL) {
-      l->defc.s = savestrbuf(hp->dat, hp->len);
-      rv =
-      l->defc.l = hp->len;
-      if (l->topins > 0) {
-         _ncl_khome(l, FAL0);
-         _ncl_kkill(l, FAL0);
-      }
-   } else {
-      putchar('\a');
-      rv = 0;
-   }
+   if(!rv)
+      f |= a_TTY_VF_BELL;
+   tlp->tl_vi_flags |= f;
    NYD2_LEAVE;
    return rv;
 }
 
-static size_t
-_ncl_khist(struct line *l, bool_t backwd)
-{
-   struct hist *hp;
-   size_t rv;
+static ui32_t
+a_tty_kht(struct a_tty_line *tlp){
+   ui8_t (*mempool)[n_MEMORY_POOL_TYPE_SIZEOF], *mempool_persist;
+   struct stat sb;
+   struct str orig, bot, topp, sub, exp, preexp;
+   struct n_string shou, *shoup;
+   struct a_tty_cell *ctop, *cx;
+   bool_t wedid, set_savec;
+   ui32_t rv, f;
    NYD2_ENTER;
-
-   /* If we're not in history mode yet, save line content;
-    * also, disallow forward search, then, and, of course, bail unless we
-    * do have any history at all */
-   if ((hp = l->hist) == NULL) {
-      if (!backwd)
-         goto jleave;
-      if ((hp = _ncl_hist) == NULL)
-         goto jleave;
-      _ncl_cell2save(l);
-      goto jleave;
-   }
-
-   hp = backwd ? hp->older : hp->younger;
-jleave:
-   rv = __ncl_khist_shared(l, hp);
-   NYD2_LEAVE;
-   return rv;
-}
-
-static size_t
-_ncl_krhist(struct line *l)
-{
-   struct str orig_savec;
-   struct hist *hp = NULL;
-   size_t rv;
-   NYD2_ENTER;
-
-   /* We cannot complete an empty line */
-   if (l->topins == 0) {
-      /* XXX The upcoming hard reset would restore a set savec buffer,
-       * XXX so forcefully reset that.  A cleaner solution would be to
-       * XXX reset it whenever a restore is no longer desired */
-      l->savec.s = NULL, l->savec.l = 0;
-      goto jleave;
-   }
-   if ((hp = l->hist) == NULL) {
-      if ((hp = _ncl_hist) == NULL)
-         goto jleave;
-      orig_savec.s = NULL;
-      orig_savec.l = 0; /* silence CC */
-   } else if ((hp = hp->older) == NULL)
-      goto jleave;
-   else
-      orig_savec = l->savec;
-
-   if (orig_savec.s == NULL)
-      _ncl_cell2save(l);
-   for (; hp != NULL; hp = hp->older)
-      if (is_prefix(l->savec.s, hp->dat))
-         break;
-   if (orig_savec.s != NULL)
-      l->savec = orig_savec;
-jleave:
-   rv = __ncl_khist_shared(l, hp);
-   NYD2_LEAVE;
-   return rv;
-}
-# endif
-
-# ifdef HAVE_TABEXPAND
-static size_t
-_ncl_kht(struct line *l)
-{
-   struct str orig, bot, topp, sub, exp;
-   struct cell *cword, *ctop, *cx;
-   bool_t set_savec = FAL0;
-   size_t rv = 0;
-   NYD2_ENTER;
-
-   /* We cannot expand an empty line */
-   if (l->topins == 0)
-      goto jleave;
 
    /* Get plain line data; if this is the first expansion/xy, update the
     * very original content so that ^G gets the origin back */
-   orig = l->savec;
-   _ncl_cell2save(l);
-   exp = l->savec;
-   if (orig.s != NULL)
-      l->savec = orig;
-   else
+   orig = tlp->tl_savec;
+   a_tty_cell2save(tlp);
+   exp = tlp->tl_savec;
+   if(orig.s != NULL){
+      /*tlp->tl_savec = orig;*/
+      set_savec = FAL0;
+   }else
       set_savec = TRU1;
    orig = exp;
 
-   cword = l->line.cells;
-   ctop = cword + l->cursor;
+   mempool_persist = n_go_data->gdc_mempool;
+   n_memory_pool_push(mempool = n_lofi_alloc(sizeof *mempool));
 
-   /* topp: separate data right of cursor */
-   if ((cx = cword + l->topins) != ctop) {
-      for (rv = 0; cx > ctop; --cx)
-         rv += cx->count;
-      topp.l = rv;
-      topp.s = orig.s + orig.l - rv;
-   } else
-      topp.s = NULL, topp.l = 0;
+   shoup = n_string_creat_auto(&shou);
+   f = a_TTY_VF_NONE;
 
-   /* bot, sub: we cannot expand the entire data left of cursor, but only
-    * the last "word", so separate them */
-   while (cx > cword && !iswspace(cx[-1].wc))
-      --cx;
-   for (rv = 0; cword < cx; ++cword)
-      rv += cword->count;
-   sub =
-   bot = orig;
-   bot.l = rv;
-   sub.s += rv;
-   sub.l -= rv;
-   sub.l -= topp.l;
+   /* C99 */{
+      size_t max;
+      struct a_tty_cell *cword;
 
-   /* Leave room for "implicit asterisk" expansion, as below */
-   if (sub.l == 0) {
-      sub.s = UNCONST("*");
-      sub.l = 1;
-   } else {
-      exp.s = salloc(sub.l + 1 +1);
-      memcpy(exp.s, sub.s, sub.l);
-      exp.s[sub.l] = '\0';
-      sub.s = exp.s;
-   }
+      /* Find the word to be expanded */
+      cword = tlp->tl_line.cells;
+      ctop = &cword[tlp->tl_cursor];
+      cx = &cword[tlp->tl_count];
 
-   /* TODO there is a TODO note upon fexpand() with multi-return;
-    * TODO if that will change, the if() below can be simplified */
-   /* Super-Heavy-Metal: block all sigs, avoid leaks on jump */
-jredo:
-   hold_all_sigs();
-   exp.s = fexpand(sub.s, _CL_TAB_FEXP_FL);
-   rele_all_sigs();
+      /* topp: separate data right of cursor */
+      if(cx > ctop){
+         for(rv = 0; ctop < cx; ++ctop)
+            rv += ctop->tc_count;
+         topp.l = rv;
+         topp.s = orig.s + orig.l - rv;
+         ctop = cword + tlp->tl_cursor;
+      }else
+         topp.s = NULL, topp.l = 0;
 
-   if (exp.s == NULL || (exp.l = strlen(exp.s)) == 0)
-      goto jnope;
-   /* If the expansion equals the original string, assume the user wants what
-    * is usually known as tab completion, append `*' and restart */
-   if (exp.l == sub.l && !strcmp(exp.s, sub.s)) {
-         if (sub.s[sub.l - 1] == '*')
-            goto jnope;
-         sub.s[sub.l++] = '*';
-         sub.s[sub.l] = '\0';
-         goto jredo;
-   }
+      /* Find the shell token that corresponds to the cursor position */
+      max = 0;
+      if(ctop > cword){
+         for(; cword < ctop; ++cword)
+            max += cword->tc_count;
+      }
+      bot = sub = orig;
+      bot.l = 0;
+      sub.l = max;
 
-   /* Cramp expansion length to MAX_INPUT, or 255 if not defined.
-    * Take care to take *prompt* into account, since we don't know
-    * anything about it's visual length (fputs(3) is used), simply
-    * assume each character requires two columns */
-   /* TODO the problem is that we loose control otherwise; in the best
-    * TODO case the user can control via ^A and ^K etc., but be safe;
-    * TODO we cannot simply adjust fexpand() because we don't know how
-    * TODO that is implemented...  The real solution would be to check
-    * TODO wether we fit on a line, and start a pager if not.
-    * TODO However, that should be part of a real tab-COMPLETION, then,
-    * TODO i.e., don't EXPAND, but SHOW COMPLETIONS, page-wise if needed.
-    * TODO And: MAX_INPUT is dynamic: pathconf(2), _SC_MAX_INPUT */
-   rv = (l->prompt != NULL) ? _PROMPT_VLEN(l->prompt) : 0;
-   if (rv + bot.l + exp.l + topp.l >= MAX_INPUT) {
-      exp.s = UNCONST("[ERR_TOO_LONG]");
-      exp.l = sizeof("[ERR_TOO_LONG]") - 1;
-      topp.l = 0;
-      if (rv + bot.l + exp.l >= MAX_INPUT)
-         bot.l = 0;
-      if (rv + exp.l >= MAX_INPUT) {
-         exp.s = UNCONST("[ERR]");
-         exp.l = sizeof("[ERR]") - 1;
+      if(max > 0){
+         for(;;){
+            enum n_shexp_state shs;
+
+            exp = sub;
+            shs = n_shexp_parse_token((n_SHEXP_PARSE_DRYRUN |
+                  n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_IGNORE_EMPTY |
+                  n_SHEXP_PARSE_QUOTE_AUTO_CLOSE), NULL, &sub, NULL);
+            if(sub.l != 0){
+               size_t x;
+
+               assert(max >= sub.l);
+               x = max - sub.l;
+               bot.l += x;
+               max -= x;
+               continue;
+            }
+            if(shs & n_SHEXP_STATE_ERR_MASK){
+               n_err(_("Invalid completion pattern: %.*s\n"),
+                  (int)exp.l, exp.s);
+               goto jnope;
+            }
+
+            /* All WS?  Trailing WS that has been "jumped over"? */
+            if(exp.l == 0 || (shs & n_SHEXP_STATE_WS_TRAIL))
+               break;
+
+            n_shexp_parse_token((n_SHEXP_PARSE_TRIM_SPACE |
+                  n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_QUOTE_AUTO_CLOSE),
+                  shoup, &exp, NULL);
+            break;
+         }
+
+         sub.s = n_string_cp(shoup);
+         sub.l = shoup->s_len;
       }
    }
 
-   orig.l = bot.l + exp.l + topp.l;
-   orig.s = salloc(orig.l + 5 +1);
-   if ((rv = bot.l) > 0)
+   /* Leave room for "implicit asterisk" expansion, as below */
+   if(sub.l == 0){
+      sub.s = n_UNCONST(n_star);
+      sub.l = sizeof(n_star) -1;
+   }
+
+   preexp.s = n_UNCONST(n_empty);
+   preexp.l = sizeof(n_empty) -1;
+   wedid = FAL0;
+jredo:
+   /* TODO Super-Heavy-Metal: block all sigs, avoid leaks on jump */
+   hold_all_sigs();
+   exp.s = fexpand(sub.s, a_TTY_TAB_FEXP_FL);
+   rele_all_sigs();
+
+   if(exp.s == NULL || (exp.l = strlen(exp.s)) == 0){
+      /* No.  But maybe the users' desire was to complete only a part of the
+       * shell token of interest!  TODO This can be improved, we would need to
+       * TODO have shexp_parse to create a DOM structure of parsed snippets, so
+       * TODO that we can tell for each snippet which quote is active and
+       * TODO whether we may cross its boundary and/or apply expansion for it */
+      if(wedid == TRU1){
+         size_t i, li;
+
+         wedid = TRUM1;
+         for(li = UIZ_MAX, i = sub.l; i-- > 0;){
+            char c;
+
+            if((c = sub.s[i]) == '/' || c == '+' /* *folder*! */)
+               li = i;
+            /* Do stop once some "magic" characters are seen XXX magic set */
+            else if(c == '<' || c == '>' || c == '=' || c == ':')
+               break;
+         }
+         if(li != UIZ_MAX){
+            preexp = sub;
+            preexp.l = li;
+            sub.l -= li;
+            sub.s += li;
+            goto jredo;
+         }
+      }
+      goto jnope;
+   }
+
+   if(wedid == TRUM1 && preexp.l > 0)
+      preexp.s = savestrbuf(preexp.s, preexp.l);
+
+   /* May be multi-return! */
+   if(n_pstate & n_PS_EXPAND_MULTIRESULT)
+      goto jmulti;
+
+   /* xxx That is not really true since the limit counts characters not bytes */
+   n_LCTA(a_TTY_LINE_MAX <= SI32_MAX, "a_TTY_LINE_MAX too large");
+   if(exp.l >= a_TTY_LINE_MAX - 1 || a_TTY_LINE_MAX - 1 - exp.l < preexp.l){
+      n_err(_("Tabulator expansion would extend beyond line size limit\n"));
+      goto jnope;
+   }
+
+   /* If the expansion equals the original string, assume the user wants what
+    * is usually known as tab completion, append `*' and restart */
+   if(!wedid && exp.l == sub.l && !memcmp(exp.s, sub.s, exp.l)){
+      if(sub.s[sub.l - 1] == '*')
+         goto jnope;
+
+      wedid = TRU1;
+      shoup = n_string_push_c(shoup, '*');
+      sub.s = n_string_cp(shoup);
+      sub.l = shoup->s_len;
+      goto jredo;
+   }
+
+   /* If it is a directory, and there is not yet a / appended, then we want the
+    * user to confirm that he wants to dive in -- with only a HT */
+   if(wedid && exp.l == --sub.l && !memcmp(exp.s, sub.s, exp.l) &&
+         exp.s[exp.l - 1] != '/'){
+      if(stat(exp.s, &sb) || !S_ISDIR(sb.st_mode))
+         goto jnope;
+      sub.s = salloc(exp.l + 1 +1);
+      memcpy(sub.s, exp.s, exp.l);
+      sub.s[exp.l++] = '/';
+      sub.s[exp.l] = '\0';
+      exp.s = sub.s;
+      wedid = FAL0;
+      goto jset;
+   }else{
+      if(wedid && (wedid = (exp.s[exp.l - 1] == '*')))
+         --exp.l;
+      exp.s[exp.l] = '\0';
+jset:
+      exp.l = strlen(exp.s = n_shexp_quote_cp(exp.s, tlp->tl_quote_rndtrip));
+      tlp->tl_defc_cursor_byte = bot.l + preexp.l + exp.l -1;
+      if(wedid)
+         goto jnope;
+   }
+
+   orig.l = bot.l + preexp.l + exp.l + topp.l;
+   orig.s = n_autorec_alloc_from_pool(mempool_persist, orig.l + 5 +1);
+   if((rv = (ui32_t)bot.l) > 0)
       memcpy(orig.s, bot.s, rv);
-   memcpy(orig.s + rv, exp.s, exp.l);
+   if(preexp.l > 0){
+      memcpy(&orig.s[rv], preexp.s, preexp.l);
+      rv += preexp.l;
+   }
+   memcpy(&orig.s[rv], exp.s, exp.l);
    rv += exp.l;
-   if (topp.l > 0) {
-      memcpy(orig.s + rv, topp.s, topp.l);
+   if(topp.l > 0){
+      memcpy(&orig.s[rv], topp.s, topp.l);
       rv += topp.l;
    }
    orig.s[rv] = '\0';
 
-   l->defc = orig;
-   _ncl_khome(l, FAL0);
-   _ncl_kkill(l, FAL0);
+   tlp->tl_defc = orig;
+   tlp->tl_count = tlp->tl_cursor = 0;
+   f |= a_TTY_VF_MOD_DIRTY;
 jleave:
+   n_memory_pool_pop(mempool);
+   n_lofi_free(mempool);
+   tlp->tl_vi_flags |= f;
    NYD2_LEAVE;
    return rv;
+
+jmulti:{
+      struct n_visual_info_ctx vic;
+      struct str input;
+      wc_t c2, c1;
+      bool_t isfirst;
+      char const *lococp;
+      size_t locolen, scrwid, lnlen, lncnt, prefixlen;
+      FILE *fp;
+
+      if((fp = Ftmp(NULL, "tabex", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+         n_perr(_("tmpfile"), 0);
+         fp = n_tty_fp;
+      }
+
+      /* How long is the result string for real?  Search the NUL NUL
+       * terminator.  While here, detect the longest entry to perform an
+       * initial allocation of our accumulator string */
+      locolen = preexp.l;
+      do{
+         size_t i;
+
+         i = strlen(&exp.s[++exp.l]);
+         locolen = n_MAX(locolen, i);
+         exp.l += i;
+      }while(exp.s[exp.l + 1] != '\0');
+
+      shoup = n_string_reserve(n_string_trunc(shoup, 0),
+            locolen + (locolen >> 1));
+
+      /* Iterate (once again) over all results */
+      scrwid = n_SCRNWIDTH_FOR_LISTS;
+      lnlen = lncnt = 0;
+      n_UNINIT(prefixlen, 0);
+      n_UNINIT(lococp, NULL);
+      n_UNINIT(c1, '\0');
+      for(isfirst = TRU1; exp.l > 0; isfirst = FAL0, c1 = c2){
+         size_t i;
+         char const *fullpath;
+
+         /* Next result */
+         sub = exp;
+         sub.l = i = strlen(sub.s);
+         assert(exp.l >= i);
+         if((exp.l -= i) > 0)
+            --exp.l;
+         exp.s += ++i;
+
+         /* Separate dirname and basename */
+         fullpath = sub.s;
+         if(isfirst){
+            char const *cp;
+
+            if((cp = strrchr(fullpath, '/')) != NULL)
+               prefixlen = PTR2SIZE(++cp - fullpath);
+            else
+               prefixlen = 0;
+         }
+         if(prefixlen > 0 && prefixlen < sub.l){
+            sub.l -= prefixlen;
+            sub.s += prefixlen;
+         }
+
+         /* We want case-insensitive sort-order */
+         memset(&vic, 0, sizeof vic);
+         vic.vic_indat = sub.s;
+         vic.vic_inlen = sub.l;
+         c2 = n_visual_info(&vic, n_VISUAL_INFO_ONE_CHAR) ? vic.vic_waccu
+               : (ui8_t)*sub.s;
+#ifdef HAVE_C90AMEND1
+         c2 = towlower(c2);
+#else
+         c2 = lowerconv(c2);
+#endif
+
+         /* Query longest common prefix along the way */
+         if(isfirst){
+            c1 = c2;
+            lococp = sub.s;
+            locolen = sub.l;
+         }else if(locolen > 0){
+            for(i = 0; i < locolen; ++i)
+               if(lococp[i] != sub.s[i]){
+                  i = field_detect_clip(i, lococp, i);
+                  locolen = i;
+                  break;
+               }
+         }
+
+         /* Prepare display */
+         input = sub;
+         shoup = n_shexp_quote(n_string_trunc(shoup, 0), &input,
+               tlp->tl_quote_rndtrip);
+         memset(&vic, 0, sizeof vic);
+         vic.vic_indat = shoup->s_dat;
+         vic.vic_inlen = shoup->s_len;
+         if(!n_visual_info(&vic,
+               n_VISUAL_INFO_SKIP_ERRORS | n_VISUAL_INFO_WIDTH_QUERY))
+            vic.vic_vi_width = shoup->s_len;
+
+         /* Put on screen.  Indent follow lines of same sort slot.
+          * Leave enough room for filename tagging */
+         if((c1 = (c1 != c2))){
+#ifdef HAVE_C90AMEND1
+            c1 = (iswalnum(c2) != 0);
+#else
+            c1 = (alnumchar(c2) != 0);
+#endif
+         }
+         if(isfirst || c1 ||
+               scrwid < lnlen || scrwid - lnlen <= vic.vic_vi_width + 2){
+            putc('\n', fp);
+            if(scrwid < lnlen)
+               ++lncnt;
+            ++lncnt, lnlen = 0;
+            if(!isfirst && !c1)
+               goto jsep;
+         }else if(lnlen > 0){
+jsep:
+            fputs("  ", fp);
+            lnlen += 2;
+         }
+         fputs(n_string_cp(shoup), fp);
+         lnlen += vic.vic_vi_width;
+
+         /* Support the known filename tagging
+          * XXX *line-editor-completion-filetype* or so */
+         if(!lstat(fullpath, &sb)){
+            char c = '\0';
+
+            if(S_ISDIR(sb.st_mode))
+               c = '/';
+            else if(S_ISLNK(sb.st_mode))
+               c = '@';
+# ifdef S_ISFIFO
+            else if(S_ISFIFO(sb.st_mode))
+               c = '|';
+# endif
+# ifdef S_ISSOCK
+            else if(S_ISSOCK(sb.st_mode))
+               c = '=';
+# endif
+# ifdef S_ISCHR
+            else if(S_ISCHR(sb.st_mode))
+               c = '%';
+# endif
+# ifdef S_ISBLK
+            else if(S_ISBLK(sb.st_mode))
+               c = '#';
+# endif
+
+            if(c != '\0'){
+               putc(c, fp);
+               ++lnlen;
+            }
+         }
+      }
+      putc('\n', fp);
+      ++lncnt;
+
+      page_or_print(fp, lncnt);
+      if(fp != n_tty_fp)
+         Fclose(fp);
+
+      n_string_gut(shoup);
+
+      /* A common prefix of 0 means we cannot provide the user any auto
+       * completed characters */
+      if(locolen == 0)
+         goto jnope;
+
+      /* Otherwise we can, so extend the visual line content by the common
+       * prefix (in a reversible way) */
+      (exp.s = n_UNCONST(lococp))[locolen] = '\0';
+      exp.s -= prefixlen;
+      exp.l = (locolen += prefixlen);
+
+      /* XXX Indicate that there is multiple choice */
+      /* XXX f |= a_TTY_VF_BELL; -> *line-editor-completion-bell*? or so */
+      wedid = FAL0;
+      goto jset;
+   }
+
 jnope:
    /* If we've provided a default content, but failed to expand, there is
     * nothing we can "revert to": drop that default again */
-   if (set_savec)
-      l->savec.s = NULL, l->savec.l = 0;
+   if(set_savec){
+      tlp->tl_savec.s = NULL;
+      tlp->tl_savec.l = 0;
+   }
+   f = a_TTY_VF_NONE;
    rv = 0;
    goto jleave;
 }
-# endif /* HAVE_TABEXPAND */
+
+# ifdef HAVE_HISTORY
+static ui32_t
+a_tty__khist_shared(struct a_tty_line *tlp, struct a_tty_hist *thp){
+   ui32_t f, rv;
+   NYD2_ENTER;
+
+   if(n_LIKELY((tlp->tl_hist = thp) != NULL)){
+      tlp->tl_defc.s = savestrbuf(thp->th_dat, thp->th_len);
+      rv = tlp->tl_defc.l = thp->th_len;
+      f = (tlp->tl_count > 0) ? a_TTY_VF_MOD_DIRTY : a_TTY_VF_NONE;
+      tlp->tl_count = tlp->tl_cursor = 0;
+   }else{
+      f = a_TTY_VF_BELL;
+      rv = UI32_MAX;
+   }
+
+   tlp->tl_vi_flags |= f;
+   NYD2_LEAVE;
+   return rv;
+}
+
+static ui32_t
+a_tty_khist(struct a_tty_line *tlp, bool_t fwd){
+   struct a_tty_hist *thp;
+   ui32_t rv;
+   NYD2_ENTER;
+
+   /* If we're not in history mode yet, save line content */
+   if((thp = tlp->tl_hist) == NULL){
+      a_tty_cell2save(tlp);
+      if((thp = a_tty.tg_hist) == NULL)
+         goto jleave;
+      if(fwd)
+         while(thp->th_older != NULL)
+            thp = thp->th_older;
+      goto jleave;
+   }
+
+   thp = fwd ? thp->th_younger : thp->th_older;
+jleave:
+   rv = a_tty__khist_shared(tlp, thp);
+   NYD2_LEAVE;
+   return rv;
+}
+
+static ui32_t
+a_tty_khist_search(struct a_tty_line *tlp, bool_t fwd){
+   struct str orig_savec;
+   struct a_tty_hist *thp;
+   ui32_t rv;
+   NYD2_ENTER;
+
+   thp = NULL;
+
+   /* We cannot complete an empty line */
+   if(n_UNLIKELY(tlp->tl_count == 0)){
+      /* XXX The upcoming hard reset would restore a set savec buffer,
+       * XXX so forcefully reset that.  A cleaner solution would be to
+       * XXX reset it whenever a restore is no longer desired */
+      tlp->tl_savec.s = NULL;
+      tlp->tl_savec.l = 0;
+      goto jleave;
+   }
+
+   if((thp = tlp->tl_hist) == NULL){
+      a_tty_cell2save(tlp);
+      if((thp = a_tty.tg_hist) == NULL) /* TODO Should end "doing nothing"! */
+         goto jleave;
+      if(fwd)
+         while(thp->th_older != NULL)
+            thp = thp->th_older;
+      orig_savec.s = NULL;
+      orig_savec.l = 0; /* silence CC */
+   }else if((thp = (fwd ? thp->th_younger : thp->th_older)) == NULL)
+      goto jleave;
+   else
+      orig_savec = tlp->tl_savec;
+
+   if(orig_savec.s == NULL)
+      a_tty_cell2save(tlp);
+
+   for(; thp != NULL; thp = (fwd ? thp->th_younger : thp->th_older))
+      if(is_prefix(tlp->tl_savec.s, thp->th_dat))
+         break;
+
+   if(orig_savec.s != NULL)
+      tlp->tl_savec = orig_savec;
+jleave:
+   rv = a_tty__khist_shared(tlp, thp);
+   NYD2_LEAVE;
+   return rv;
+}
+# endif /* HAVE_HISTORY */
+
+static enum a_tty_fun_status
+a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, size_t *len){
+   enum a_tty_fun_status rv;
+   NYD2_ENTER;
+
+   rv = a_TTY_FUN_STATUS_OK;
+# undef a_X
+# define a_X(N) a_TTY_BIND_FUN_REDUCE(a_TTY_BIND_FUN_ ## N)
+   switch(a_TTY_BIND_FUN_REDUCE(tbf)){
+   case a_X(BELL):
+      tlp->tl_vi_flags |= a_TTY_VF_BELL;
+      break;
+   case a_X(GO_BWD):
+      a_tty_kleft(tlp);
+      break;
+   case a_X(GO_FWD):
+      a_tty_kright(tlp);
+      break;
+   case a_X(GO_WORD_BWD):
+      a_tty_kgow(tlp, -1);
+      break;
+   case a_X(GO_WORD_FWD):
+      a_tty_kgow(tlp, +1);
+      break;
+   case a_X(GO_HOME):
+      a_tty_khome(tlp, TRU1);
+      break;
+   case a_X(GO_END):
+      a_tty_kend(tlp);
+      break;
+   case a_X(DEL_BWD):
+      a_tty_kbs(tlp);
+      break;
+   case a_X(DEL_FWD):
+      if(a_tty_kdel(tlp) < 0)
+         rv = a_TTY_FUN_STATUS_END;
+      break;
+   case a_X(SNARF_WORD_BWD):
+      a_tty_ksnarfw(tlp, FAL0);
+      break;
+   case a_X(SNARF_WORD_FWD):
+      a_tty_ksnarfw(tlp, TRU1);
+      break;
+   case a_X(SNARF_END):
+      a_tty_ksnarf(tlp, FAL0, TRU1);
+      break;
+   case a_X(SNARF_LINE):
+      a_tty_ksnarf(tlp, TRU1, (tlp->tl_count == 0));
+      break;
+
+   case a_X(HIST_FWD):{
+# ifdef HAVE_HISTORY
+         bool_t isfwd = TRU1;
+
+         if(0){
+# endif
+      /* FALLTHRU */
+   case a_X(HIST_BWD):
+# ifdef HAVE_HISTORY
+            isfwd = FAL0;
+         }
+         if((*len = a_tty_khist(tlp, isfwd)) != UI32_MAX){
+            rv = a_TTY_FUN_STATUS_RESTART;
+            break;
+         }
+         goto jreset;
+# endif
+      }
+      tlp->tl_vi_flags |= a_TTY_VF_BELL;
+      break;
+
+   case a_X(HIST_SRCH_FWD):{
+# ifdef HAVE_HISTORY
+      bool_t isfwd = TRU1;
+
+      if(0){
+# endif
+      /* FALLTHRU */
+   case a_X(HIST_SRCH_BWD):
+# ifdef HAVE_HISTORY
+         isfwd = FAL0;
+      }
+      if((*len = a_tty_khist_search(tlp, isfwd)) != UI32_MAX){
+         rv = a_TTY_FUN_STATUS_RESTART;
+         break;
+      }
+      goto jreset;
+# else
+      tlp->tl_vi_flags |= a_TTY_VF_BELL;
+# endif
+   }  break;
+
+   case a_X(REPAINT):
+      tlp->tl_vi_flags |= a_TTY_VF_MOD_DIRTY;
+      break;
+   case a_X(QUOTE_RNDTRIP):
+      tlp->tl_quote_rndtrip = !tlp->tl_quote_rndtrip;
+      break;
+   case a_X(PROMPT_CHAR):{
+      wchar_t wc;
+
+      if((wc = a_tty_vinuni(tlp)) > 0)
+         a_tty_kother(tlp, wc);
+   }  break;
+   case a_X(COMPLETE):
+      if((*len = a_tty_kht(tlp)) > 0)
+         rv = a_TTY_FUN_STATUS_RESTART;
+      break;
+
+   case a_X(PASTE):
+      if(tlp->tl_pastebuf.l > 0)
+         *len = (tlp->tl_defc = tlp->tl_pastebuf).l;
+      else
+         tlp->tl_vi_flags |= a_TTY_VF_BELL;
+      break;
+
+
+   case a_X(CANCEL):
+      /* Normally this just causes a restart and thus resets the state
+       * machine  */
+      if(tlp->tl_savec.l == 0 && tlp->tl_defc.l == 0){
+      }
+# ifdef HAVE_KEY_BINDINGS
+      tlp->tl_bind_takeover = '\0';
+# endif
+      tlp->tl_vi_flags |= a_TTY_VF_BELL;
+      rv = a_TTY_FUN_STATUS_RESTART;
+      break;
+
+   case a_X(RESET):
+      if(tlp->tl_count == 0 && tlp->tl_savec.l == 0 && tlp->tl_defc.l == 0){
+# ifdef HAVE_KEY_BINDINGS
+         tlp->tl_bind_takeover = '\0';
+# endif
+         tlp->tl_vi_flags |= a_TTY_VF_MOD_DIRTY | a_TTY_VF_BELL;
+         break;
+      }else if(0){
+   case a_X(FULLRESET):
+         tlp->tl_savec.s = tlp->tl_defc.s = NULL;
+         tlp->tl_savec.l = tlp->tl_defc.l = 0;
+         tlp->tl_defc_cursor_byte = 0;
+         tlp->tl_vi_flags |= a_TTY_VF_BELL;
+      }
+jreset:
+# ifdef HAVE_KEY_BINDINGS
+      tlp->tl_bind_takeover = '\0';
+# endif
+      tlp->tl_vi_flags |= a_TTY_VF_MOD_DIRTY;
+      tlp->tl_cursor = tlp->tl_count = 0;
+# ifdef HAVE_HISTORY
+      tlp->tl_hist = NULL;
+# endif
+      if((*len = tlp->tl_savec.l) != 0){
+         tlp->tl_defc = tlp->tl_savec;
+         tlp->tl_savec.s = NULL;
+         tlp->tl_savec.l = 0;
+      }else
+         *len = tlp->tl_defc.l;
+      rv = a_TTY_FUN_STATUS_RESTART;
+      break;
+
+   default:
+   case a_X(COMMIT):
+      rv = a_TTY_FUN_STATUS_COMMIT;
+      break;
+   }
+# undef a_X
+
+   NYD2_LEAVE;
+   return rv;
+}
 
 static ssize_t
-_ncl_readline(char const *prompt, char **buf, size_t *bufsize, size_t len
-   SMALLOC_DEBUG_ARGS)
-{
+a_tty_readline(struct a_tty_line *tlp, size_t len, bool_t *histok_or_null
+      n_MEMORY_DEBUG_ARGS){
    /* We want to save code, yet we may have to incorporate a lines'
     * default content and / or default input to switch back to after some
     * history movement; let "len > 0" mean "have to display some data
-    * buffer", and only otherwise read(2) it */
+    * buffer" -> a_BUFMODE, and only otherwise read(2) it */
    mbstate_t ps[2];
-   struct line l;
-   char cbuf_base[MB_LEN_MAX * 2], *cbuf, *cbufp, cursor_maybe, cursor_store;
-   wchar_t wc;
+   char cbuf_base[MB_LEN_MAX * 2], *cbuf, *cbufp;
    ssize_t rv;
+   struct a_tty_bind_tree *tbtp;
+   wchar_t wc;
+   enum a_tty_bind_flags tbf;
+   enum {a_NONE, a_WAS_HERE = 1<<0, a_BUFMODE = 1<<1, a_MAYBEFUN = 1<<2,
+      a_TIMEOUT = 1<<3, a_TIMEOUT_EXPIRED = 1<<4,
+         a_TIMEOUT_MASK = a_TIMEOUT | a_TIMEOUT_EXPIRED,
+      a_READ_LOOP_MASK = ~(a_WAS_HERE | a_MAYBEFUN | a_TIMEOUT_MASK)
+   } flags;
    NYD_ENTER;
 
-   memset(&l, 0, sizeof l);
-   l.line.cbuf = *buf;
-   if (len != 0) {
-      l.defc.s = savestrbuf(*buf, len);
-      l.defc.l = len;
-   }
-   if ((l.prompt = prompt) != NULL && _PROMPT_VLEN(prompt) > _PROMPT_MAX)
-      l.prompt = prompt = "?ERR?";
-   /* TODO *l.nd=='\0' : instead adjust accmacvar.c to disallow empty vals */
-   if ((l.nd = ok_vlook(line_editor_cursor_right)) == NULL || *l.nd == '\0')
-      l.nd = "\033[C"; /* XXX no "magic" constant */
-   l.x_buf = buf;
-   l.x_bufsize = bufsize;
-
-   if (prompt != NULL && *prompt != '\0')
-      fputs(prompt, stdout);
-   fflush(stdout);
-
+   n_UNINIT(rv, 0);
+# ifdef HAVE_KEY_BINDINGS
+   assert(tlp->tl_bind_takeover == '\0');
+# endif
 jrestart:
    memset(ps, 0, sizeof ps);
-   cursor_maybe = cursor_store = 0;
-   /* TODO: NCL: we should output the reset sequence when we jrestart:
-    * TODO: NCL: if we are using a stateful encoding? !
-    * TODO: NCL: in short: this is not yet well understood */
-   for (;;) {
-      _ncl_check_grow(&l, len SMALLOC_DEBUG_ARGSCALL);
+   flags = a_NONE;
+   tlp->tl_vi_flags |= a_TTY_VF_REFRESH | a_TTY_VF_SYNC;
 
-      /* Normal read(2)?  Else buffer-takeover: speed this one up */
-      if (len == 0)
+jinput_loop:
+   for(;;){
+      if(len != 0)
+         flags |= a_BUFMODE;
+
+      /* Ensure we have valid pointers, and room for grow */
+      a_tty_check_grow(tlp, ((flags & a_BUFMODE) ? (ui32_t)len : 1)
+         n_MEMORY_DEBUG_ARGSCALL);
+
+      /* Handle visual state flags, except in buffer mode */
+      if(!(flags & a_BUFMODE) && (tlp->tl_vi_flags & a_TTY_VF_ALL_MASK))
+         if(!a_tty_vi_refresh(tlp)){
+            rv = -1;
+            goto jleave;
+         }
+
+      /* Ready for messing around.
+       * Normal read(2)?  Else buffer mode: speed this one up */
+      if(!(flags & a_BUFMODE)){
          cbufp =
          cbuf = cbuf_base;
-      else {
-         assert(l.defc.l > 0 && l.defc.s != NULL);
+      }else{
+         assert(tlp->tl_defc.l > 0 && tlp->tl_defc.s != NULL);
+         assert(tlp->tl_defc.l >= len);
          cbufp =
-         cbuf = l.defc.s + (l.defc.l - len);
+         cbuf = tlp->tl_defc.s + (tlp->tl_defc.l - len);
          cbufp += len;
       }
 
       /* Read in the next complete multibyte character */
-      for (;;) {
-         if (len == 0) {
-            if ((rv = read(STDIN_FILENO, cbufp, 1)) < 1) {
-               if (errno == EINTR) /* xxx #if !SA_RESTART ? */
-                  continue;
-               goto jleave;
-            }
-            ++cbufp;
-         }
+      /* C99 */{
+# ifdef HAVE_KEY_BINDINGS
+         struct a_tty_bind_tree *xtbtp;
+         struct inseq{
+            struct inseq *last;
+            struct inseq *next;
+            struct a_tty_bind_tree *tbtp;
+         } *isp_head, *isp;
 
-         /* Ach! the ISO C multibyte handling!
-          * Encodings with locking shift states cannot really be helped, since
-          * it is impossible to only query the shift state, as opposed to the
-          * entire shift state + character pair (via ISO C functions) */
-         rv = (ssize_t)mbrtowc(&wc, cbuf, PTR2SIZE(cbufp - cbuf), ps + 0);
-         if (rv <= 0) {
-            /* Any error during take-over can only result in a hard reset;
-             * Otherwise, if it's a hard error, or if too many redundant shift
-             * sequences overflow our buffer, also perform a hard reset */
-            if (len != 0 || rv == -1 ||
-                  sizeof cbuf_base == PTR2SIZE(cbufp - cbuf)) {
-               l.savec.s = l.defc.s = NULL,
-               l.savec.l = l.defc.l = len = 0;
-               putchar('\a');
-               wc = 'G';
-               goto jreset;
-            }
-            /* Otherwise, due to the way we deal with the buffer, we need to
-             * restore the mbstate_t from before this conversion */
-            ps[0] = ps[1];
-            continue;
-         }
+         isp_head = isp = NULL;
+# endif
 
-         if (len != 0 && (len -= (size_t)rv) == 0)
-            l.defc.s = NULL, l.defc.l = 0;
-         ps[1] = ps[0];
-         break;
-      }
+         for(flags &= a_READ_LOOP_MASK;;){
+# ifdef HAVE_KEY_BINDINGS
+            if(!(flags & a_BUFMODE) && tlp->tl_bind_takeover != '\0'){
+               wc = tlp->tl_bind_takeover;
+               tlp->tl_bind_takeover = '\0';
+            }else
+# endif
+            {
+               if(!(flags & a_BUFMODE)){
+                  /* Let me at least once dream of iomon(itor), timer with
+                   * one-shot, enwrapped with key_event and key_sequence_event,
+                   * all driven by an event_loop */
+                  /* TODO v15 Until we have SysV signal handling all through we
+                   * TODO need to temporarily adjust our BSD signal handler with
+                   * TODO a SysV one, here */
+                  n_sighdl_t otstp, ottin, ottou;
 
-      /* Don't interpret control bytes during buffer take-over */
-      if (cbuf != cbuf_base)
-         goto jprint;
-      switch (wc) {
-      case 'A' ^ 0x40: /* cursor home */
-         _ncl_khome(&l, TRU1);
-         break;
-      case 'B' ^ 0x40: /* backward character */
-j_b:
-         _ncl_kleft(&l);
-         break;
-      /* 'C': interrupt (CTRL-C) */
-      case 'D' ^ 0x40: /* delete char forward if any, else EOF */
-         if ((rv = _ncl_keof(&l)) < 0)
-            goto jleave;
-         break;
-      case 'E' ^ 0x40: /* end of line */
-         _ncl_kend(&l);
-         break;
-      case 'F' ^ 0x40: /* forward character */
-j_f:
-         _ncl_kright(&l);
-         break;
-      /* 'G' below */
-      case 'H' ^ 0x40: /* backspace */
-      case '\177':
-         _ncl_kbs(&l);
-         break;
-      case 'I' ^ 0x40: /* horizontal tab */
-# ifdef HAVE_TABEXPAND
-         if ((len = _ncl_kht(&l)) > 0)
-            goto jrestart;
+                  otstp = n_signal(SIGTSTP, &n_tty_signal);
+                  ottin = n_signal(SIGTTIN, &n_tty_signal);
+                  ottou = n_signal(SIGTTOU, &n_tty_signal);
+# ifdef HAVE_KEY_BINDINGS
+                  flags &= ~a_TIMEOUT_MASK;
+                  if(isp != NULL && (tbtp = isp->tbtp)->tbt_isseq &&
+                        !tbtp->tbt_isseq_trail){
+                     a_tty_term_rawmode_timeout(tlp, TRU1);
+                     flags |= a_TIMEOUT;
+                  }
 # endif
-         goto jbell;
-      case 'J' ^ 0x40: /* NL (\n) */
-         goto jdone;
-      case 'G' ^ 0x40: /* full reset */
-jreset:
-         /* FALLTHRU */
-      case 'U' ^ 0x40: /* ^U: ^A + ^K */
-         _ncl_khome(&l, FAL0);
-         /* FALLTHRU */
-      case 'K' ^ 0x40: /* kill from cursor to end of line */
-         _ncl_kkill(&l, (wc == ('K' ^ 0x40) || l.topins == 0));
-         /* (Handle full reset?) */
-         if (wc == ('G' ^ 0x40)) {
-# ifdef HAVE_HISTORY
-            l.hist = NULL;
+
+                  while((rv = read(STDIN_FILENO, cbufp, 1)) < 1){
+                     if(rv == -1){
+                        if(n_err_no == n_ERR_INTR){
+                           if((tlp->tl_vi_flags & a_TTY_VF_MOD_DIRTY) &&
+                                 !a_tty_vi_refresh(tlp))
+                              break;
+                           continue;
+                        }
+                        break;
+                     }
+
+# ifdef HAVE_KEY_BINDINGS
+                     /* Timeout expiration */
+                     if(rv == 0){
+                        assert(flags & a_TIMEOUT);
+                        assert(isp != NULL);
+                        a_tty_term_rawmode_timeout(tlp, FAL0);
+
+                        /* Something "atomic" broke.  Maybe the current one can
+                         * also be terminated already, by itself? xxx really? */
+                        if((tbtp = isp->tbtp)->tbt_bind != NULL){
+                           tlp->tl_bind_takeover = wc;
+                           goto jhave_bind;
+                        }
+
+                        /* Or, maybe there is a second path without a timeout;
+                         * this should be covered by .tbt_isseq_trail, but then
+                         * again a single-layer implementation cannot "know" */
+                        for(xtbtp = tbtp; (xtbtp = xtbtp->tbt_sibling) != NULL;)
+                           if(xtbtp->tbt_char == tbtp->tbt_char){
+                              assert(!xtbtp->tbt_isseq);
+                              break;
+                           }
+                        /* Lay down on read(2)? */
+                        if(xtbtp != NULL)
+                           continue;
+                        goto jtake_over;
+                     }
+# endif /* HAVE_KEY_BINDINGS */
+                  }
+
+# ifdef HAVE_KEY_BINDINGS
+                  if(flags & a_TIMEOUT)
+                     a_tty_term_rawmode_timeout(tlp, FAL0);
 # endif
-            if ((len = l.savec.l) != 0) {
-               l.defc = l.savec;
-               l.savec.s = NULL, l.savec.l = 0;
-            } else
-               len = l.defc.l;
-         }
-         fflush(stdout);
-         goto jrestart;
-      case 'L' ^ 0x40: /* repaint line */
-j_l:
-         _ncl_krefresh(&l);
-         break;
-      /* 'M': CR (\r) */
-      case 'N' ^ 0x40: /* history next */
-j_n:
-# ifdef HAVE_HISTORY
-         if (l.hist == NULL)
-            goto jbell;
-         if ((len = _ncl_khist(&l, FAL0)) > 0)
-            goto jrestart;
-         wc = 'G' ^ 0x40;
-         goto jreset;
-# else
-         goto jbell;
-# endif
-      /* 'O' */
-      case 'O' ^ 0x40: /* `dp' */
-         putchar('\n');
-         cbuf_base[0] = 'd';
-         cbuf_base[1] = 'p';
-         cbuf_base[2] = '\0';
-         pstate &= ~PS_HOOK_MASK;
-         execute(cbuf_base, 2);
-         goto j_l;
-      case 'P' ^ 0x40: /* history previous */
-j_p:
-# ifdef HAVE_HISTORY
-         if ((len = _ncl_khist(&l, TRU1)) > 0)
-            goto jrestart;
-         wc = 'G' ^ 0x40;
-         goto jreset;
-# else
-         goto jbell;
-# endif
-      /* 'Q': no code */
-      case 'R' ^ 0x40: /* reverse history search */
-# ifdef HAVE_HISTORY
-         if ((len = _ncl_krhist(&l)) > 0)
-            goto jrestart;
-         wc = 'G' ^ 0x40;
-         goto jreset;
-# else
-         goto jbell;
-# endif
-      /* 'S': no code */
-      /* 'U' above */
-      /*case 'V' ^ 0x40: TODO*/ /* forward delete "word" */
-      case 'W' ^ 0x40: /* backward delete "word" */
-         _ncl_kbwddelw(&l);
-         break;
-      case 'X' ^ 0x40: /* move cursor forward "word" */
-         _ncl_kgow(&l, +1);
-         break;
-      case 'Y' ^ 0x40: /* move cursor backward "word" */
-         _ncl_kgow(&l, -1);
-         break;
-      /* 'Z': suspend (CTRL-Z) */
-      case 0x1B:
-         if (cursor_maybe++ != 0)
-            goto jreset;
-         continue;
-      default:
-         /* XXX Handle usual ^[[[ABCD1456] cursor keys: UGLY,"MAGIC",INFLEX */
-         if (cursor_maybe > 0) {
-            if (++cursor_maybe == 2) {
-               if (wc == L'[')
-                  continue;
-               cursor_maybe = 0;
-            } else if (cursor_maybe == 3) {
-               cursor_maybe = 0;
-               switch (wc) {
-               default:    break;
-               case L'A':  goto j_p;
-               case L'B':  goto j_n;
-               case L'C':  goto j_f;
-               case L'D':  goto j_b;
-               case L'H':
-                  cursor_store = '0';
-                  goto J_xterm_noapp;
-               case L'F':
-                  cursor_store = '$';
-                  goto J_xterm_noapp;
-               case L'1':
-               case L'4':
-               case L'5':
-               case L'6':
-                  cursor_store = ((wc == L'1') ? '0' :
-                        (wc == L'4' ? '$' : (wc == L'5' ? '-' : '+')));
-                  cursor_maybe = 3;
+                  safe_signal(SIGTSTP, otstp);
+                  safe_signal(SIGTTIN, ottin);
+                  safe_signal(SIGTTOU, ottou);
+                  if(rv < 0)
+                     goto jleave;
+
+                  ++cbufp;
+               }
+
+               rv = (ssize_t)mbrtowc(&wc, cbuf, PTR2SIZE(cbufp - cbuf), &ps[0]);
+               if(rv <= 0){
+                  /* Any error during buffer mode can only result in a hard
+                   * reset;  Otherwise, if it's a hard error, or if too many
+                   * redundant shift sequences overflow our buffer: perform
+                   * hard reset */
+                  if((flags & a_BUFMODE) || rv == -1 ||
+                        sizeof cbuf_base == PTR2SIZE(cbufp - cbuf)){
+                     a_tty_fun(tlp, a_TTY_BIND_FUN_FULLRESET, &len);
+                     goto jrestart;
+                  }
+                  /* Otherwise, due to the way we deal with the buffer, we need
+                   * to restore the mbstate_t from before this conversion */
+                  ps[0] = ps[1];
                   continue;
                }
-               _ncl_kother(&l, L'[');
-            } else {
-               cursor_maybe = 0;
-               if (wc == L'~')
-J_xterm_noapp: {
-                  char x[2];
-                  x[0] = cursor_store;
-                  x[1] = '\0';
-                  putchar('\n');
-                  c_scroll(x);
-                  cursor_store = 0;
-                  goto j_l;
+               cbufp = cbuf;
+               ps[1] = ps[0];
+            }
+
+            /* Normal read(2)ing is subject to detection of key-bindings */
+# ifdef HAVE_KEY_BINDINGS
+            if(!(flags & a_BUFMODE)){
+               /* Check for special bypass functions before we try to embed
+                * this character into the tree */
+               if(n_uasciichar(wc)){
+                  char c;
+                  char const *cp;
+
+                  for(c = (char)wc, cp = &(*tlp->tl_bind_shcut_prompt_char)[0];
+                        *cp != '\0'; ++cp){
+                     if(c == *cp){
+                        wc = a_tty_vinuni(tlp);
+                        break;
+                     }
+                  }
+                  if(wc == '\0'){
+                     tlp->tl_vi_flags |= a_TTY_VF_BELL;
+                     goto jinput_loop;
+                  }
                }
-               _ncl_kother(&l, L'[');
-               _ncl_kother(&l, (wchar_t)cursor_store);
-               cursor_store = 0;
+               if(n_uasciichar(wc))
+                  flags |= a_MAYBEFUN;
+               else
+                  flags &= ~a_MAYBEFUN;
+
+               /* Search for this character in the bind tree */
+               tbtp = (isp != NULL) ? isp->tbtp->tbt_childs
+                     : (*tlp->tl_bind_tree_hmap)[wc % HSHSIZE];
+               for(; tbtp != NULL; tbtp = tbtp->tbt_sibling){
+                  if(tbtp->tbt_char == wc){
+                     struct inseq *nisp;
+
+                     /* If this one cannot continue we're likely finished! */
+                     if(tbtp->tbt_childs == NULL){
+                        assert(tbtp->tbt_bind != NULL);
+                        tbf = tbtp->tbt_bind->tbc_flags;
+                        goto jmle_fun;
+                     }
+
+                     /* This needs to read more characters */
+                     nisp = salloc(sizeof *nisp);
+                     if((nisp->last = isp) == NULL)
+                        isp_head = nisp;
+                     else
+                        isp->next = nisp;
+                     nisp->next = NULL;
+                     nisp->tbtp = tbtp;
+                     isp = nisp;
+                     flags &= ~a_WAS_HERE;
+                     break;
+                  }
+               }
+               if(tbtp != NULL)
+                  continue;
+
+               /* Was there a binding active, but couldn't be continued? */
+               if(isp != NULL){
+                  /* A binding had a timeout, it didn't expire, but we saw
+                   * something non-expected.  Something "atomic" broke.
+                   * Maybe there is a second path without a timeout, that
+                   * continues like we've seen it.  I.e., it may just have been
+                   * the user, typing too fast.  We definitely want to allow
+                   * bindings like \e,d etc. to succeed: users are so used to
+                   * them that a timeout cannot be the mechanism to catch up!
+                   * A single-layer implementation cannot "know" */
+                  if((tbtp = isp->tbtp)->tbt_isseq && (isp->last == NULL ||
+                        !(xtbtp = isp->last->tbtp)->tbt_isseq ||
+                        xtbtp->tbt_isseq_trail)){
+                     for(xtbtp = (tbtp = isp->tbtp);
+                           (xtbtp = xtbtp->tbt_sibling) != NULL;)
+                        if(xtbtp->tbt_char == tbtp->tbt_char){
+                           assert(!xtbtp->tbt_isseq);
+                           break;
+                        }
+                     if(xtbtp != NULL){
+                        isp->tbtp = xtbtp;
+                        tlp->tl_bind_takeover = wc;
+                        continue;
+                     }
+                  }
+
+                  /* Check for CANCEL shortcut now */
+                  if(flags & a_MAYBEFUN){
+                     char c;
+                     char const *cp;
+
+                     for(c = (char)wc, cp = &(*tlp->tl_bind_shcut_cancel)[0];
+                           *cp != '\0'; ++cp)
+                        if(c == *cp){
+                           tbf = a_TTY_BIND_FUN_INTERNAL |a_TTY_BIND_FUN_CANCEL;
+                           goto jmle_fun;
+                        }
+                  }
+
+                  /* So: maybe the current sequence can be terminated here? */
+                  if((tbtp = isp->tbtp)->tbt_bind != NULL){
+jhave_bind:
+                     tbf = tbtp->tbt_bind->tbc_flags;
+jmle_fun:
+                     if(tbf & a_TTY_BIND_FUN_INTERNAL){
+                        switch(a_tty_fun(tlp, tbf, &len)){
+                        case a_TTY_FUN_STATUS_OK:
+                           goto jinput_loop;
+                        case a_TTY_FUN_STATUS_COMMIT:
+                           goto jdone;
+                        case a_TTY_FUN_STATUS_RESTART:
+                           goto jrestart;
+                        case a_TTY_FUN_STATUS_END:
+                           rv = -1;
+                           goto jleave;
+                        }
+                        assert(0);
+                     }else if(tbtp->tbt_bind->tbc_flags & a_TTY_BIND_NOCOMMIT){
+                        struct a_tty_bind_ctx *tbcp;
+
+                        tbcp = tbtp->tbt_bind;
+                        memcpy(tlp->tl_defc.s = salloc(
+                              (tlp->tl_defc.l = len = tbcp->tbc_exp_len) +1),
+                           tbcp->tbc_exp, tbcp->tbc_exp_len +1);
+                        goto jrestart;
+                     }else{
+                        cbufp = tbtp->tbt_bind->tbc_exp;
+                        goto jinject_input;
+                     }
+                  }
+               }
+
+               /* Otherwise take over all chars "as is" */
+jtake_over:
+               for(; isp_head != NULL; isp_head = isp_head->next)
+                  if(a_tty_kother(tlp, isp_head->tbtp->tbt_char)){
+                     /* FIXME */
+                  }
+               /* And the current one too */
+               goto jkother;
+            }
+# endif /* HAVE_KEY_BINDINGS */
+
+            if((flags & a_BUFMODE) && (len -= (size_t)rv) == 0){
+               /* Buffer mode completed */
+               tlp->tl_defc.s = NULL;
+               tlp->tl_defc.l = 0;
+               flags &= ~a_BUFMODE;
+            }
+            break;
+         }
+
+# ifndef HAVE_KEY_BINDINGS
+         /* Don't interpret control bytes during buffer mode.
+          * Otherwise, if it's a control byte check whether it is a MLE
+          * function.  Remarks: initially a complete duplicate to be able to
+          * switch(), later converted to simply iterate over (an #ifdef'd
+          * subset of) the MLE base_tuple table in order to have "a SPOF" */
+         if(cbuf == cbuf_base && n_uasciichar(wc) && cntrlchar((char)wc)){
+            struct a_tty_bind_builtin_tuple const *tbbtp, *tbbtp_max;
+            char c;
+
+            c = (char)wc ^ 0x40;
+            tbbtp = a_tty_bind_base_tuples;
+            tbbtp_max = &tbbtp[n_NELEM(a_tty_bind_base_tuples)];
+jbuiltin_redo:
+            for(; tbbtp < tbbtp_max; ++tbbtp){
+               /* Assert default_tuple table is properly subset'ed */
+               assert(tbbtp->tbdt_iskey);
+               if(tbbtp->tbbt_ckey == c){
+                  if(tbbtp->tbbt_exp[0] == '\0'){
+                     tbf = a_TTY_BIND_FUN_EXPAND((ui8_t)tbbtp->tbbt_exp[1]);
+                     switch(a_tty_fun(tlp, tbf, &len)){
+                     case a_TTY_FUN_STATUS_OK:
+                        goto jinput_loop;
+                     case a_TTY_FUN_STATUS_COMMIT:
+                        goto jdone;
+                     case a_TTY_FUN_STATUS_RESTART:
+                        goto jrestart;
+                     case a_TTY_FUN_STATUS_END:
+                        rv = -1;
+                        goto jleave;
+                     }
+                     assert(0);
+                  }else{
+                     cbufp = tbbtp->tbbt_exp;
+                     goto jinject_input;
+                  }
+               }
+            }
+            if(tbbtp ==
+                  &a_tty_bind_base_tuples[n_NELEM(a_tty_bind_base_tuples)]){
+               tbbtp = a_tty_bind_default_tuples;
+               tbbtp_max = &tbbtp[n_NELEM(a_tty_bind_default_tuples)];
+               goto jbuiltin_redo;
             }
          }
-jprint:
-         if (iswprint(wc)) {
-            _ncl_kother(&l, wc);
-            /* Don't clear the history during takeover..
-             * ..and also avoid fflush()ing unless we've worked entire buffer */
-            if (len > 0)
-               continue;
-# ifdef HAVE_HISTORY
-            if (cbuf == cbuf_base)
-               l.hist = NULL;
+#  endif /* !HAVE_KEY_BINDINGS */
+
+# ifdef HAVE_KEY_BINDINGS
+jkother:
 # endif
-         } else {
-jbell:
-            putchar('\a');
+         if(a_tty_kother(tlp, wc)){
+            /* Don't clear the history during buffer mode.. */
+# ifdef HAVE_HISTORY
+            if(!(flags & a_BUFMODE) && cbuf == cbuf_base)
+               tlp->tl_hist = NULL;
+# endif
          }
-         break;
       }
-      fflush(stdout);
    }
 
    /* We have a completed input line, convert the struct cell data to its
     * plain character equivalent */
 jdone:
-   putchar('\n');
-   fflush(stdout);
-   len = _ncl_cell2dat(&l);
-   rv = (ssize_t)len;
+   rv = a_tty_cell2dat(tlp);
 jleave:
+   putc('\n', n_tty_fp);
+   fflush(n_tty_fp);
    NYD_LEAVE;
+   return rv;
+
+jinject_input:{
+   size_t i;
+
+   hold_all_sigs(); /* XXX v15 drop */
+   i = a_tty_cell2dat(tlp);
+   n_go_input_inject(n_GO_INPUT_INJECT_NONE, tlp->tl_line.cbuf, i);
+   i = strlen(cbufp) +1;
+   if(i >= *tlp->tl_x_bufsize){
+      *tlp->tl_x_buf = (n_realloc)(*tlp->tl_x_buf, i n_MEMORY_DEBUG_ARGSCALL);
+      *tlp->tl_x_bufsize = i;
+   }
+   memcpy(*tlp->tl_x_buf, cbufp, i);
+   rele_all_sigs(); /* XXX v15 drop */
+   if(histok_or_null != NULL)
+      *histok_or_null = FAL0;
+   rv = (ssize_t)--i;
+   }
+   goto jleave;
+}
+
+# ifdef HAVE_KEY_BINDINGS
+static enum n_go_input_flags
+a_tty_bind_ctx_find(char const *name){
+   enum n_go_input_flags rv;
+   struct a_tty_bind_ctx_map const *tbcmp;
+   NYD2_ENTER;
+
+   tbcmp = a_tty_bind_ctx_maps;
+   do if(!asccasecmp(tbcmp->tbcm_name, name)){
+      rv = tbcmp->tbcm_ctx;
+      goto jleave;
+   }while(PTRCMP(++tbcmp, <,
+      &a_tty_bind_ctx_maps[n_NELEM(a_tty_bind_ctx_maps)]));
+
+   rv = (enum n_go_input_flags)-1;
+jleave:
+   NYD2_LEAVE;
    return rv;
 }
 
-FL void
-tty_init(void)
-{
-# ifdef HAVE_HISTORY
-   long hs;
-   char *v, *lbuf;
-   FILE *f;
-   size_t lsize, cnt, llen;
-# endif
-   NYD_ENTER;
+static bool_t
+a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, bool_t replace){
+   struct a_tty_bind_ctx *tbcp;
+   bool_t rv;
+   NYD2_ENTER;
 
-# ifdef HAVE_HISTORY
-   _CL_HISTSIZE(hs);
-   _ncl_hist_size = 0;
-   _ncl_hist_size_max = hs;
-   if (hs == 0)
+   rv = FAL0;
+
+   if(!a_tty_bind_parse(TRU1, tbpcp))
       goto jleave;
 
-   _CL_HISTFILE(v);
-   if (v == NULL)
+   /* Since we use a single buffer for it all, need to replace as such */
+   if(tbpcp->tbpc_tbcp != NULL){
+      if(!replace)
+         goto jleave;
+      a_tty_bind_del(tbpcp);
+   }else if(a_tty.tg_bind_cnt == UI32_MAX){
+      n_err(_("`bind': maximum number of bindings already established\n"));
       goto jleave;
-
-   hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
-   f = fopen(v, "r"); /* TODO HISTFILE LOAD: use linebuf pool */
-   if (f == NULL)
-      goto jdone;
-   (void)file_lock(fileno(f), FLT_READ, 0,0, 500);
-
-   lbuf = NULL;
-   lsize = 0;
-   cnt = fsize(f);
-   while (fgetline(&lbuf, &lsize, &cnt, &llen, f, FAL0) != NULL) {
-      if (llen > 0 && lbuf[llen - 1] == '\n')
-         lbuf[--llen] = '\0';
-      if (llen == 0 || lbuf[0] == '#') /* xxx comments? noone! */
-         continue;
-      else {
-         bool_t isgabby = (lbuf[0] == '*');
-         _ncl_hist_load = TRU1;
-         tty_addhist(lbuf + isgabby, isgabby);
-         _ncl_hist_load = FAL0;
-      }
    }
-   if (lbuf != NULL)
-      free(lbuf);
 
-   fclose(f);
-jdone:
-   rele_all_sigs(); /* XXX remove jumps */
+   /* C99 */{
+      size_t i, j;
+
+      tbcp = smalloc(n_VSTRUCT_SIZEOF(struct a_tty_bind_ctx, tbc__buf) +
+            tbpcp->tbpc_seq_len + tbpcp->tbpc_exp.l +
+            n_MAX(sizeof(si32_t), sizeof(wc_t)) + tbpcp->tbpc_cnv_len +3);
+      if(tbpcp->tbpc_ltbcp != NULL){
+         tbcp->tbc_next = tbpcp->tbpc_ltbcp->tbc_next;
+         tbpcp->tbpc_ltbcp->tbc_next = tbcp;
+      }else{
+         enum n_go_input_flags gif;
+
+         gif = tbpcp->tbpc_flags & n__GO_INPUT_CTX_MASK;
+         tbcp->tbc_next = a_tty.tg_bind[gif];
+         a_tty.tg_bind[gif] = tbcp;
+      }
+      memcpy(tbcp->tbc_seq = &tbcp->tbc__buf[0],
+         tbpcp->tbpc_seq, i = (tbcp->tbc_seq_len = tbpcp->tbpc_seq_len) +1);
+      memcpy(tbcp->tbc_exp = &tbcp->tbc__buf[i],
+         tbpcp->tbpc_exp.s, j = (tbcp->tbc_exp_len = tbpcp->tbpc_exp.l) +1);
+      i += j;
+      i = (i + tbpcp->tbpc_cnv_align_mask) & ~tbpcp->tbpc_cnv_align_mask;
+      memcpy(tbcp->tbc_cnv = &tbcp->tbc__buf[i],
+         tbpcp->tbpc_cnv, (tbcp->tbc_cnv_len = tbpcp->tbpc_cnv_len) +1);
+      tbcp->tbc_flags = tbpcp->tbpc_flags;
+   }
+
+   /* Directly resolve any termcap(5) symbol if we are already setup */
+   if((n_psonce & n_PSO_STARTED) &&
+         (tbcp->tbc_flags & (a_TTY_BIND_RESOLVE | a_TTY_BIND_DEFUNCT)) ==
+          a_TTY_BIND_RESOLVE)
+      a_tty_bind_resolve(tbcp);
+
+   ++a_tty.tg_bind_cnt;
+   /* If this binding is usable invalidate the key input lookup trees */
+   if(!(tbcp->tbc_flags & a_TTY_BIND_DEFUNCT))
+      a_tty.tg_bind_isdirty = TRU1;
+   rv = TRU1;
 jleave:
-# endif /* HAVE_HISTORY */
-   NYD_LEAVE;
+   NYD2_LEAVE;
+   return rv;
 }
 
-FL void
-tty_destroy(void)
-{
-# ifdef HAVE_HISTORY
-   long hs;
-   char *v;
-   struct hist *hp;
-   bool_t dogabby;
-   FILE *f;
-# endif
-   NYD_ENTER;
+static bool_t
+a_tty_bind_parse(bool_t isbindcmd, struct a_tty_bind_parse_ctx *tbpcp){
+   enum{a_TRUE_RV = a_TTY__BIND_LAST<<1};
 
-# ifdef HAVE_HISTORY
-   _CL_HISTSIZE(hs);
-   if (hs == 0)
+   struct n_visual_info_ctx vic;
+   struct str shin_save, shin;
+   struct n_string shou, *shoup;
+   size_t i;
+   struct kse{
+      struct kse *next;
+      char *seq_dat;
+      wc_t *cnv_dat;
+      ui32_t seq_len;
+      ui32_t cnv_len;      /* High bit set if a termap to be resolved */
+      ui32_t calc_cnv_len; /* Ditto, but aligned etc. */
+      ui8_t kse__dummy[4];
+   } *head, *tail;
+   ui32_t f;
+   NYD2_ENTER;
+   n_LCTA(UICMP(64, a_TRUE_RV, <, UI32_MAX),
+      "Flag bits excess storage datatype");
+
+   f = n_GO_INPUT_NONE;
+   shoup = n_string_creat_auto(&shou);
+   head = tail = NULL;
+
+   /* Parse the key-sequence */
+   for(shin.s = n_UNCONST(tbpcp->tbpc_in_seq), shin.l = UIZ_MAX;;){
+      struct kse *ep;
+      enum n_shexp_state shs;
+
+      shin_save = shin;
+      shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC |
+            n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_IGNORE_EMPTY |
+            n_SHEXP_PARSE_IFS_IS_COMMA), shoup, &shin, NULL);
+      if(shs & n_SHEXP_STATE_ERR_UNICODE){
+         f |= a_TTY_BIND_DEFUNCT;
+         if(isbindcmd && (n_poption & n_PO_D_V))
+            n_err(_("`%s': \\uNICODE not available in locale: %s\n"),
+               tbpcp->tbpc_cmd, tbpcp->tbpc_in_seq);
+      }
+      if((shs & n_SHEXP_STATE_ERR_MASK) & ~n_SHEXP_STATE_ERR_UNICODE){
+         n_err(_("`%s': failed to parse key-sequence: %s\n"),
+            tbpcp->tbpc_cmd, tbpcp->tbpc_in_seq);
+         goto jleave;
+      }
+      if((shs & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_STOP)) ==
+            n_SHEXP_STATE_STOP)
+         break;
+
+      ep = salloc(sizeof *ep);
+      if(head == NULL)
+         head = ep;
+      else
+         tail->next = ep;
+      tail = ep;
+      ep->next = NULL;
+      if(!(shs & n_SHEXP_STATE_ERR_UNICODE)){
+         i = strlen(ep->seq_dat = n_shexp_quote_cp(n_string_cp(shoup), TRU1));
+         if(i >= SI32_MAX - 1)
+            goto jelen;
+         ep->seq_len = (ui32_t)i;
+      }else{
+         /* Otherwise use the original buffer, _we_ can only quote it the wrong
+          * way (e.g., an initial $'\u3a' becomes '\u3a'), _then_ */
+         if((i = shin_save.l - shin.l) >= SI32_MAX - 1)
+            goto jelen;
+         ep->seq_len = (ui32_t)i;
+         ep->seq_dat = savestrbuf(shin_save.s, i);
+      }
+
+      memset(&vic, 0, sizeof vic);
+      vic.vic_inlen = shoup->s_len;
+      vic.vic_indat = shoup->s_dat;
+      if(!n_visual_info(&vic,
+            n_VISUAL_INFO_WOUT_CREATE | n_VISUAL_INFO_WOUT_SALLOC)){
+         n_err(_("`%s': key-sequence seems to contain invalid "
+            "characters: %s: %s\n"),
+            tbpcp->tbpc_cmd, n_string_cp(shoup), tbpcp->tbpc_in_seq);
+         f |= a_TTY_BIND_DEFUNCT;
+         goto jleave;
+      }else if(vic.vic_woulen == 0 ||
+            vic.vic_woulen >= (SI32_MAX - 2) / sizeof(wc_t)){
+jelen:
+         n_err(_("`%s': length of key-sequence unsupported: %s: %s\n"),
+            tbpcp->tbpc_cmd, n_string_cp(shoup), tbpcp->tbpc_in_seq);
+         f |= a_TTY_BIND_DEFUNCT;
+         goto jleave;
+      }
+      ep->cnv_dat = vic.vic_woudat;
+      ep->cnv_len = (ui32_t)vic.vic_woulen;
+
+      /* A termcap(5)/terminfo(5) identifier? */
+      if(ep->cnv_len > 1 && ep->cnv_dat[0] == ':'){
+         i = --ep->cnv_len, ++ep->cnv_dat;
+#  if 0 /* ndef HAVE_TERMCAP xxx User can, via *termcap*! */
+         if(n_poption & n_PO_D_V)
+            n_err(_("`%s': no termcap(5)/terminfo(5) support: %s: %s\n"),
+               tbpcp->tbpc_cmd, ep->seq_dat, tbpcp->tbpc_in_seq);
+         f |= a_TTY_BIND_DEFUNCT;
+#  endif
+         if(i > a_TTY_BIND_CAPNAME_MAX){
+            n_err(_("`%s': termcap(5)/terminfo(5) name too long: %s: %s\n"),
+               tbpcp->tbpc_cmd, ep->seq_dat, tbpcp->tbpc_in_seq);
+            f |= a_TTY_BIND_DEFUNCT;
+         }
+         while(i > 0)
+            /* (We store it as char[]) */
+            if((ui32_t)ep->cnv_dat[--i] & ~0x7Fu){
+               n_err(_("`%s': invalid termcap(5)/terminfo(5) name content: "
+                  "%s: %s\n"),
+                  tbpcp->tbpc_cmd, ep->seq_dat, tbpcp->tbpc_in_seq);
+               f |= a_TTY_BIND_DEFUNCT;
+               break;
+            }
+         ep->cnv_len |= SI32_MIN; /* Needs resolve */
+         f |= a_TTY_BIND_RESOLVE;
+      }
+
+      if(shs & n_SHEXP_STATE_STOP)
+         break;
+   }
+
+   if(head == NULL){
+jeempty:
+      n_err(_("`%s': effectively empty key-sequence: %s\n"),
+         tbpcp->tbpc_cmd, tbpcp->tbpc_in_seq);
       goto jleave;
-   _CL_HISTFILE(v);
-   if (v == NULL)
-      goto jleave;
+   }
 
-   dogabby = ok_blook(history_gabby_persist);
+   if(isbindcmd) /* (Or always, just "1st time init") */
+      tbpcp->tbpc_cnv_align_mask = n_MAX(sizeof(si32_t), sizeof(wc_t)) - 1;
 
-   if ((hp = _ncl_hist) != NULL)
-      for (; hp->older != NULL; hp = hp->older)
-         if ((dogabby || !hp->isgabby) && --hs == 0)
+   /* C99 */{
+      struct a_tty_bind_ctx *ltbcp, *tbcp;
+      char *cpbase, *cp, *cnv;
+      size_t sl, cl;
+
+      /* Unite the parsed sequence(s) into single string representations */
+      for(sl = cl = 0, tail = head; tail != NULL; tail = tail->next){
+         sl += tail->seq_len + 1;
+
+         if(!isbindcmd)
+            continue;
+
+         /* Preserve room for terminal capabilities to be resolved.
+          * Above we have ensured the buffer will fit in these calculations */
+         if((i = tail->cnv_len) & SI32_MIN){
+            /* For now
+             * struct{si32_t buf_len_iscap; si32_t cap_len; wc_t name[]+NUL;}
+             * later
+             * struct{si32_t buf_len_iscap; si32_t cap_len; char buf[]+NUL;} */
+            n_LCTAV(n_ISPOW2(a_TTY_BIND_CAPEXP_ROUNDUP));
+            n_LCTA(a_TTY_BIND_CAPEXP_ROUNDUP >= sizeof(wc_t),
+               "Aligning on this constant does not properly align wc_t");
+            i &= SI32_MAX;
+            i *= sizeof(wc_t);
+            i += sizeof(si32_t);
+            if(i < a_TTY_BIND_CAPEXP_ROUNDUP)
+               i = (i + (a_TTY_BIND_CAPEXP_ROUNDUP - 1)) &
+                     ~(a_TTY_BIND_CAPEXP_ROUNDUP - 1);
+         }else
+            /* struct{si32_t buf_len_iscap; wc_t buf[]+NUL;} */
+            i *= sizeof(wc_t);
+         i += sizeof(si32_t) + sizeof(wc_t); /* (buf_len_iscap, NUL) */
+         cl += i;
+         if(tail->cnv_len & SI32_MIN){
+            tail->cnv_len &= SI32_MAX;
+            i |= SI32_MIN;
+         }
+         tail->calc_cnv_len = (ui32_t)i;
+      }
+      --sl;
+
+      tbpcp->tbpc_seq_len = sl;
+      tbpcp->tbpc_cnv_len = cl;
+      /* C99 */{
+         size_t j;
+
+         j = i = sl + 1; /* Room for comma separator */
+         if(isbindcmd){
+            i = (i + tbpcp->tbpc_cnv_align_mask) & ~tbpcp->tbpc_cnv_align_mask;
+            j = i;
+            i += cl;
+         }
+         tbpcp->tbpc_seq = cp = cpbase = salloc(i);
+         tbpcp->tbpc_cnv = cnv = &cpbase[j];
+      }
+
+      for(tail = head; tail != NULL; tail = tail->next){
+         memcpy(cp, tail->seq_dat, tail->seq_len);
+         cp += tail->seq_len;
+         *cp++ = ',';
+
+         if(isbindcmd){
+            char * const save_cnv = cnv;
+
+            n_UNALIGN(si32_t*,cnv)[0] = (si32_t)(i = tail->calc_cnv_len);
+            cnv += sizeof(si32_t);
+            if(i & SI32_MIN){
+               /* For now
+                * struct{si32_t buf_len_iscap; si32_t cap_len; wc_t name[];}
+                * later
+                * struct{si32_t buf_len_iscap; si32_t cap_len; char buf[];} */
+               n_UNALIGN(si32_t*,cnv)[0] = tail->cnv_len;
+               cnv += sizeof(si32_t);
+            }
+            i = tail->cnv_len * sizeof(wc_t);
+            memcpy(cnv, tail->cnv_dat, i);
+            cnv += i;
+            *n_UNALIGN(wc_t*,cnv) = '\0';
+
+            cnv = save_cnv + (tail->calc_cnv_len & SI32_MAX);
+         }
+      }
+      *--cp = '\0';
+
+      /* Search for a yet existing identical mapping */
+      /* C99 */{
+         enum n_go_input_flags gif;
+
+         gif = tbpcp->tbpc_flags & n__GO_INPUT_CTX_MASK;
+
+         for(ltbcp = NULL, tbcp = a_tty.tg_bind[gif]; tbcp != NULL;
+               ltbcp = tbcp, tbcp = tbcp->tbc_next)
+            if(tbcp->tbc_seq_len == sl && !memcmp(tbcp->tbc_seq, cpbase, sl)){
+               tbpcp->tbpc_tbcp = tbcp;
+               break;
+            }
+      }
+      tbpcp->tbpc_ltbcp = ltbcp;
+      tbpcp->tbpc_flags |= (f & a_TTY__BIND_MASK);
+   }
+
+   /* Create single string expansion if so desired */
+   if(isbindcmd){
+      char *exp;
+
+      exp = tbpcp->tbpc_exp.s;
+
+      i = tbpcp->tbpc_exp.l;
+      if(i > 0 && exp[i - 1] == '@'){
+         while(--i > 0){
+            if(!blankspacechar(exp[i - 1]))
+               break;
+         }
+         if(i == 0)
+            goto jeempty;
+
+         exp[tbpcp->tbpc_exp.l = i] = '\0';
+         tbpcp->tbpc_flags |= a_TTY_BIND_NOCOMMIT;
+      }
+
+      /* Reverse solidus cannot be placed last in expansion to avoid (at the
+       * time of this writing) possible problems with newline escaping.
+       * Don't care about (un)even number thereof */
+      if(i > 0 && exp[i - 1] == '\\'){
+         n_err(_("`%s': reverse solidus cannot be last in expansion: %s\n"),
+            tbpcp->tbpc_cmd, tbpcp->tbpc_in_seq);
+         goto jleave;
+      }
+
+      /* It may map to an internal MLE command! */
+      for(i = 0; i < n_NELEM(a_tty_bind_fun_names); ++i)
+         if(!asccasecmp(exp, a_tty_bind_fun_names[i])){
+            tbpcp->tbpc_flags |= a_TTY_BIND_FUN_EXPAND(i) |
+                  a_TTY_BIND_FUN_INTERNAL |
+                  (head->next == NULL ? a_TTY_BIND_MLE1CNTRL : 0);
+            if((n_poption & n_PO_D_V) &&
+                  (tbpcp->tbpc_flags & a_TTY_BIND_NOCOMMIT))
+               n_err(_("`%s': MLE commands can't be made editable via @: %s\n"),
+                  tbpcp->tbpc_cmd, exp);
+            tbpcp->tbpc_flags &= ~a_TTY_BIND_NOCOMMIT;
             break;
+         }
+   }
 
-   hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
-   f = fopen(v, "w"); /* TODO temporary + rename?! */
-   if (f == NULL)
-      goto jdone;
-   (void)file_lock(fileno(f), FLT_WRITE, 0,0, 500);
-   if (fchmod(fileno(f), S_IRUSR | S_IWUSR) != 0)
-      goto jclose;
+  f |= a_TRUE_RV; /* TODO because we only now true and false; DEFUNCT.. */
+jleave:
+   n_string_gut(shoup);
+   NYD2_LEAVE;
+   return (f & a_TRUE_RV) != 0;
+}
 
-   for (; hp != NULL; hp = hp->younger) {
-      if (!hp->isgabby || dogabby) {
-         if (hp->isgabby)
-            putc('*', f);
-         fwrite(hp->dat, sizeof *hp->dat, hp->len, f);
-         putc('\n', f);
+static void
+a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
+   char capname[a_TTY_BIND_CAPNAME_MAX +1];
+   struct n_termcap_value tv;
+   size_t len;
+   bool_t isfirst; /* TODO For now: first char must be control! */
+   char *cp, *next;
+   NYD2_ENTER;
+
+   n_UNINIT(next, NULL);
+   for(cp = tbcp->tbc_cnv, isfirst = TRU1, len = tbcp->tbc_cnv_len;
+         len > 0; isfirst = FAL0, cp = next){
+      /* C99 */{
+         si32_t i, j;
+
+         i = n_UNALIGN(si32_t*,cp)[0];
+         j = i & SI32_MAX;
+         next = &cp[j];
+         len -= j;
+         if(i == j)
+            continue;
+
+         /* struct{si32_t buf_len_iscap; si32_t cap_len; wc_t name[];} */
+         cp += sizeof(si32_t);
+         i = n_UNALIGN(si32_t*,cp)[0];
+         cp += sizeof(si32_t);
+         for(j = 0; j < i; ++j)
+            capname[j] = n_UNALIGN(wc_t*,cp)[j];
+         capname[j] = '\0';
+      }
+
+      /* Use generic lookup mechanism if not a known query */
+      /* C99 */{
+         si32_t tq;
+
+         tq = n_termcap_query_for_name(capname, n_TERMCAP_CAPTYPE_STRING);
+         if(tq == -1){
+            tv.tv_data.tvd_string = capname;
+            tq = n__TERMCAP_QUERY_MAX1;
+         }
+
+         if(tq < 0 || !n_termcap_query(tq, &tv)){
+            if(n_poption & n_PO_D_V)
+               n_err(_("`bind': unknown or unsupported capability: %s: %s\n"),
+                  capname, tbcp->tbc_seq);
+            tbcp->tbc_flags |= a_TTY_BIND_DEFUNCT;
+            break;
+         }
+      }
+
+      /* struct{si32_t buf_len_iscap; si32_t cap_len; char buf[]+NUL;} */
+      /* C99 */{
+         size_t i;
+
+         i = strlen(tv.tv_data.tvd_string);
+         if(/*i > SI32_MAX ||*/ i >= PTR2SIZE(next - cp)){
+            if(n_poption & n_PO_D_V)
+               n_err(_("`bind': capability expansion too long: %s: %s\n"),
+                  capname, tbcp->tbc_seq);
+            tbcp->tbc_flags |= a_TTY_BIND_DEFUNCT;
+            break;
+         }else if(i == 0){
+            if(n_poption & n_PO_D_V)
+               n_err(_("`bind': empty capability expansion: %s: %s\n"),
+                  capname, tbcp->tbc_seq);
+            tbcp->tbc_flags |= a_TTY_BIND_DEFUNCT;
+            break;
+         }else if(isfirst && !cntrlchar(*tv.tv_data.tvd_string)){
+            if(n_poption & n_PO_D_V)
+               n_err(_("`bind': capability expansion does not start with "
+                  "control: %s: %s\n"), capname, tbcp->tbc_seq);
+            tbcp->tbc_flags |= a_TTY_BIND_DEFUNCT;
+            break;
+         }
+         n_UNALIGN(si32_t*,cp)[-1] = (si32_t)i;
+         memcpy(cp, tv.tv_data.tvd_string, i);
+         cp[i] = '\0';
       }
    }
-jclose:
-   fclose(f);
-jdone:
-   rele_all_sigs(); /* XXX remove jumps */
+   NYD2_LEAVE;
+}
+
+static void
+a_tty_bind_del(struct a_tty_bind_parse_ctx *tbpcp){
+   struct a_tty_bind_ctx *ltbcp, *tbcp;
+   NYD2_ENTER;
+
+   tbcp = tbpcp->tbpc_tbcp;
+
+   if((ltbcp = tbpcp->tbpc_ltbcp) != NULL)
+      ltbcp->tbc_next = tbcp->tbc_next;
+   else
+      a_tty.tg_bind[tbpcp->tbpc_flags & n__GO_INPUT_CTX_MASK] = tbcp->tbc_next;
+   free(tbcp);
+
+   --a_tty.tg_bind_cnt;
+   a_tty.tg_bind_isdirty = TRU1;
+   NYD2_LEAVE;
+}
+
+static void
+a_tty_bind_tree_build(void){
+   size_t i;
+   NYD2_ENTER;
+
+   for(i = 0; i < n__GO_INPUT_CTX_MAX1; ++i){
+      struct a_tty_bind_ctx *tbcp;
+      n_LCTAV(n_GO_INPUT_CTX_BASE == 0);
+
+      /* Somewhat wasteful, but easier to handle: simply clone the entire
+       * primary key onto the secondary one, then only modify it */
+      for(tbcp = a_tty.tg_bind[n_GO_INPUT_CTX_BASE]; tbcp != NULL;
+            tbcp = tbcp->tbc_next)
+         if(!(tbcp->tbc_flags & a_TTY_BIND_DEFUNCT))
+            a_tty__bind_tree_add(n_GO_INPUT_CTX_BASE, &a_tty.tg_bind_tree[i][0],
+               tbcp);
+
+      if(i != n_GO_INPUT_CTX_BASE)
+         for(tbcp = a_tty.tg_bind[i]; tbcp != NULL; tbcp = tbcp->tbc_next)
+            if(!(tbcp->tbc_flags & a_TTY_BIND_DEFUNCT))
+               a_tty__bind_tree_add(i, &a_tty.tg_bind_tree[i][0], tbcp);
+   }
+
+   a_tty.tg_bind_isbuild = TRU1;
+   NYD2_LEAVE;
+}
+
+static void
+a_tty_bind_tree_teardown(void){
+   size_t i, j;
+   NYD2_ENTER;
+
+   memset(&a_tty.tg_bind_shcut_cancel[0], 0,
+      sizeof(a_tty.tg_bind_shcut_cancel));
+   memset(&a_tty.tg_bind_shcut_prompt_char[0], 0,
+      sizeof(a_tty.tg_bind_shcut_prompt_char));
+
+   for(i = 0; i < n__GO_INPUT_CTX_MAX1; ++i)
+      for(j = 0; j < HSHSIZE; ++j)
+         a_tty__bind_tree_free(a_tty.tg_bind_tree[i][j]);
+   memset(&a_tty.tg_bind_tree[0], 0, sizeof(a_tty.tg_bind_tree));
+
+   a_tty.tg_bind_isdirty = a_tty.tg_bind_isbuild = FAL0;
+   NYD2_LEAVE;
+}
+
+static void
+a_tty__bind_tree_add(ui32_t hmap_idx, struct a_tty_bind_tree *store[HSHSIZE],
+      struct a_tty_bind_ctx *tbcp){
+   ui32_t cnvlen;
+   char const *cnvdat;
+   struct a_tty_bind_tree *ntbtp;
+   NYD2_ENTER;
+   n_UNUSED(hmap_idx);
+
+   ntbtp = NULL;
+
+   for(cnvdat = tbcp->tbc_cnv, cnvlen = tbcp->tbc_cnv_len; cnvlen > 0;){
+      union {wchar_t const *wp; char const *cp;} u;
+      si32_t entlen;
+
+      /* {si32_t buf_len_iscap;} */
+      entlen = *n_UNALIGN(si32_t const*,cnvdat);
+
+      if(entlen & SI32_MIN){
+         /* struct{si32_t buf_len_iscap; si32_t cap_len; char buf[]+NUL;}
+          * Note that empty capabilities result in DEFUNCT */
+         for(u.cp = (char const*)&n_UNALIGN(si32_t const*,cnvdat)[2];
+               *u.cp != '\0'; ++u.cp)
+            ntbtp = a_tty__bind_tree_add_wc(store, ntbtp, *u.cp, TRU1);
+         assert(ntbtp != NULL);
+         ntbtp->tbt_isseq_trail = TRU1;
+         entlen &= SI32_MAX;
+      }else{
+         /* struct{si32_t buf_len_iscap; wc_t buf[]+NUL;} */
+         bool_t isseq;
+
+         u.wp = (wchar_t const*)&n_UNALIGN(si32_t const*,cnvdat)[1];
+
+         /* May be a special shortcut function? */
+         if(ntbtp == NULL && (tbcp->tbc_flags & a_TTY_BIND_MLE1CNTRL)){
+            char *cp;
+            ui32_t ctx, fun;
+
+            ctx = tbcp->tbc_flags & n__GO_INPUT_CTX_MASK;
+            fun = tbcp->tbc_flags & a_TTY__BIND_FUN_MASK;
+
+            if(fun == a_TTY_BIND_FUN_CANCEL){
+               for(cp = &a_tty.tg_bind_shcut_cancel[ctx][0];
+                     PTRCMP(cp, <, &a_tty.tg_bind_shcut_cancel[ctx]
+                        [n_NELEM(a_tty.tg_bind_shcut_cancel[ctx]) - 1]); ++cp)
+                  if(*cp == '\0'){
+                     *cp = (char)*u.wp;
+                     break;
+                  }
+            }else if(fun == a_TTY_BIND_FUN_PROMPT_CHAR){
+               for(cp = &a_tty.tg_bind_shcut_prompt_char[ctx][0];
+                     PTRCMP(cp, <, &a_tty.tg_bind_shcut_prompt_char[ctx]
+                        [n_NELEM(a_tty.tg_bind_shcut_prompt_char[ctx]) - 1]);
+                     ++cp)
+                  if(*cp == '\0'){
+                     *cp = (char)*u.wp;
+                     break;
+                  }
+            }
+         }
+
+         isseq = (u.wp[1] != '\0');
+         for(; *u.wp != '\0'; ++u.wp)
+            ntbtp = a_tty__bind_tree_add_wc(store, ntbtp, *u.wp, isseq);
+         if(isseq){
+            assert(ntbtp != NULL);
+            ntbtp->tbt_isseq_trail = TRU1;
+         }
+      }
+
+      cnvlen -= entlen;
+      cnvdat += entlen;
+   }
+
+   /* Should have been rendered defunctional at first instead */
+   assert(ntbtp != NULL);
+   ntbtp->tbt_bind = tbcp;
+   NYD2_LEAVE;
+}
+
+static struct a_tty_bind_tree *
+a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep,
+      struct a_tty_bind_tree *parentp, wchar_t wc, bool_t isseq){
+   struct a_tty_bind_tree *tbtp, *xtbtp;
+   NYD2_ENTER;
+
+   if(parentp == NULL){
+      treep += wc % HSHSIZE;
+
+      /* Having no parent also means that the tree slot is possibly empty */
+      for(tbtp = *treep; tbtp != NULL;
+            parentp = tbtp, tbtp = tbtp->tbt_sibling){
+         if(tbtp->tbt_char != wc)
+            continue;
+         if(tbtp->tbt_isseq == isseq)
+            goto jleave;
+         /* isseq MUST be linked before !isseq, so record this "parent"
+          * sibling, but continue searching for now.
+          * Otherwise it is impossible that we'll find what we look for */
+         if(isseq){
+#ifdef HAVE_DEBUG
+            while((tbtp = tbtp->tbt_sibling) != NULL)
+               assert(tbtp->tbt_char != wc);
+#endif
+            break;
+         }
+      }
+
+      tbtp = smalloc(sizeof *tbtp);
+      memset(tbtp, 0, sizeof *tbtp);
+      tbtp->tbt_char = wc;
+      tbtp->tbt_isseq = isseq;
+
+      if(parentp == NULL){
+         tbtp->tbt_sibling = *treep;
+         *treep = tbtp;
+      }else{
+         tbtp->tbt_sibling = parentp->tbt_sibling;
+         parentp->tbt_sibling = tbtp;
+      }
+   }else{
+      if((tbtp = *(treep = &parentp->tbt_childs)) != NULL){
+         for(;; tbtp = xtbtp){
+            if(tbtp->tbt_char == wc){
+               if(tbtp->tbt_isseq == isseq)
+                  goto jleave;
+               /* isseq MUST be linked before, so it is impossible that we'll
+                * find what we look for */
+               if(isseq){
+#ifdef HAVE_DEBUG
+                  while((tbtp = tbtp->tbt_sibling) != NULL)
+                     assert(tbtp->tbt_char != wc);
+#endif
+                  tbtp = NULL;
+                  break;
+               }
+            }
+
+            if((xtbtp = tbtp->tbt_sibling) == NULL){
+               treep = &tbtp->tbt_sibling;
+               break;
+            }
+         }
+      }
+
+      xtbtp = smalloc(sizeof *xtbtp);
+      memset(xtbtp, 0, sizeof *xtbtp);
+      xtbtp->tbt_parent = parentp;
+      xtbtp->tbt_char = wc;
+      xtbtp->tbt_isseq = isseq;
+      tbtp = xtbtp;
+      *treep = tbtp;
+   }
 jleave:
+   NYD2_LEAVE;
+   return tbtp;
+}
+
+static void
+a_tty__bind_tree_free(struct a_tty_bind_tree *tbtp){
+   NYD2_ENTER;
+   while(tbtp != NULL){
+      struct a_tty_bind_tree *tmp;
+
+      if((tmp = tbtp->tbt_childs) != NULL)
+         a_tty__bind_tree_free(tmp);
+
+      tmp = tbtp->tbt_sibling;
+      free(tbtp);
+      tbtp = tmp;
+   }
+   NYD2_LEAVE;
+}
+# endif /* HAVE_KEY_BINDINGS */
+
+FL void
+n_tty_init(void){
+   NYD_ENTER;
+
+   if(ok_blook(line_editor_disable))
+      goto jleave;
+
+   /* Load the history file */
+# ifdef HAVE_HISTORY
+   do/* for break */{
+      char const *v;
+      char *lbuf;
+      FILE *f;
+      size_t lsize, cnt, llen;
+
+      if((v = a_tty_hist_query_config()) == NULL ||
+            a_tty.tg_hist_size_max == 0)
+         break;
+
+      hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
+      f = fopen(v, "r"); /* TODO HISTFILE LOAD: use linebuf pool */
+      if(f == NULL)
+         goto jhist_done;
+      (void)n_file_lock(fileno(f), FLT_READ, 0,0, UIZ_MAX);
+
+      assert(!(n_pstate & n_PS_ROOT));
+      n_pstate |= n_PS_ROOT; /* Allow calling addhist() */
+      lbuf = NULL;
+      lsize = 0;
+      cnt = (size_t)fsize(f);
+      while(fgetline(&lbuf, &lsize, &cnt, &llen, f, FAL0) != NULL){
+         if(llen > 0 && lbuf[llen - 1] == '\n')
+            lbuf[--llen] = '\0';
+         if(llen == 0 || lbuf[0] == '#') /* xxx comments? noone! */
+            continue;
+         else{
+            bool_t isgabby;
+
+            isgabby = (lbuf[0] == '*');
+            n_tty_addhist(lbuf + isgabby, isgabby);
+         }
+      }
+      if(lbuf != NULL)
+         free(lbuf);
+      n_pstate &= ~n_PS_ROOT;
+
+      fclose(f);
+jhist_done:
+      rele_all_sigs(); /* XXX remove jumps */
+   }while(0);
 # endif /* HAVE_HISTORY */
+
+   /* Force immediate resolve for anything which follows */
+   n_psonce |= n_PSO_LINE_EDITOR_INIT;
+
+# ifdef HAVE_KEY_BINDINGS
+   /* `bind's (and `unbind's) done from within resource files couldn't be
+    * performed for real since our termcap driver wasn't yet loaded, and we
+    * can't perform automatic init since the user may have disallowed so */
+   /* C99 */{
+      struct a_tty_bind_ctx *tbcp;
+      enum n_go_input_flags gif;
+
+      for(gif = 0; gif < n__GO_INPUT_CTX_MAX1; ++gif)
+         for(tbcp = a_tty.tg_bind[gif]; tbcp != NULL; tbcp = tbcp->tbc_next)
+            if((tbcp->tbc_flags & (a_TTY_BIND_RESOLVE | a_TTY_BIND_DEFUNCT)) ==
+                  a_TTY_BIND_RESOLVE)
+               a_tty_bind_resolve(tbcp);
+   }
+
+   /* And we want to (try to) install some default key bindings */
+   if(!ok_blook(line_editor_no_defaults)){
+      char buf[8];
+      struct a_tty_bind_parse_ctx tbpc;
+      struct a_tty_bind_builtin_tuple const *tbbtp, *tbbtp_max;
+      ui32_t flags;
+
+      buf[0] = '$', buf[1] = '\'', buf[2] = '\\', buf[3] = 'c',
+         buf[5] = '\'', buf[6] = '\0';
+
+      tbbtp = a_tty_bind_base_tuples;
+      tbbtp_max = &tbbtp[n_NELEM(a_tty_bind_base_tuples)];
+      flags = n_GO_INPUT_CTX_BASE;
+jbuiltin_redo:
+      for(; tbbtp < tbbtp_max; ++tbbtp){
+         memset(&tbpc, 0, sizeof tbpc);
+         tbpc.tbpc_cmd = "bind";
+         if(tbbtp->tbbt_iskey){
+            buf[4] = tbbtp->tbbt_ckey;
+            tbpc.tbpc_in_seq = buf;
+         }else
+            tbpc.tbpc_in_seq = savecatsep(":", '\0',
+               n_termcap_name_of_query(tbbtp->tbbt_query));
+         tbpc.tbpc_exp.s = n_UNCONST(tbbtp->tbbt_exp[0] == '\0'
+               ? a_tty_bind_fun_names[(ui8_t)tbbtp->tbbt_exp[1]]
+               : tbbtp->tbbt_exp);
+         tbpc.tbpc_exp.l = strlen(tbpc.tbpc_exp.s);
+         tbpc.tbpc_flags = flags;
+         /* ..but don't want to overwrite any user settings */
+         a_tty_bind_create(&tbpc, FAL0);
+      }
+      if(flags == n_GO_INPUT_CTX_BASE){
+         tbbtp = a_tty_bind_default_tuples;
+         tbbtp_max = &tbbtp[n_NELEM(a_tty_bind_default_tuples)];
+         flags = n_GO_INPUT_CTX_DEFAULT;
+         goto jbuiltin_redo;
+      }
+   }
+# endif /* HAVE_KEY_BINDINGS */
+
+jleave:
    NYD_LEAVE;
 }
 
 FL void
-tty_signal(int sig)
-{
+n_tty_destroy(bool_t xit_fastpath){
+   NYD_ENTER;
+
+   if(!(n_psonce & n_PSO_LINE_EDITOR_INIT))
+      goto jleave;
+
+# ifdef HAVE_HISTORY
+   if(!xit_fastpath) do/* for break */{
+      size_t i;
+      char const *v;
+      struct a_tty_hist *thp;
+      bool_t dogabby;
+      FILE *f;
+
+      if((v = a_tty_hist_query_config()) == NULL ||
+            a_tty.tg_hist_size_max == 0)
+         break;
+
+      dogabby = ok_blook(history_gabby_persist);
+
+      if((thp = a_tty.tg_hist) != NULL)
+         for(i = a_tty.tg_hist_size_max; thp->th_older != NULL;
+               thp = thp->th_older)
+            if((dogabby || !thp->th_isgabby) && --i == 0)
+               break;
+
+      hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
+      f = fopen(v, "w"); /* TODO temporary + rename?! */
+      if(f == NULL)
+         goto jhist_done;
+      (void)n_file_lock(fileno(f), FLT_WRITE, 0,0, UIZ_MAX);
+
+      for(; thp != NULL; thp = thp->th_younger){
+         if(dogabby || !thp->th_isgabby){
+            if(thp->th_isgabby)
+               putc('*', f);
+            fwrite(thp->th_dat, sizeof *thp->th_dat, thp->th_len, f);
+            putc('\n', f);
+         }
+      }
+      fclose(f);
+jhist_done:
+      rele_all_sigs(); /* XXX remove jumps */
+   }while(0);
+# endif /* HAVE_HISTORY */
+
+# if defined HAVE_KEY_BINDINGS && defined HAVE_DEBUG
+   n_go_command(n_GO_INPUT_NONE, "unbind * *");
+# endif
+
+# ifdef HAVE_DEBUG
+   memset(&a_tty, 0, sizeof a_tty);
+
+   n_psonce &= ~n_PSO_LINE_EDITOR_INIT;
+# endif
+jleave:
+   NYD_LEAVE;
+}
+
+FL void
+n_tty_signal(int sig){
    sigset_t nset, oset;
    NYD_X; /* Signal handler */
 
-   switch (sig) {
+   switch(sig){
+# ifdef SIGWINCH
    case SIGWINCH:
-      /* We don't deal with SIGWINCH, yet get called from main.c */
+      /* We don't deal with SIGWINCH, yet get called from main.c.
+       * Note this case might get called even if !n_PO_LINE_EDITOR_INIT */
       break;
+# endif
    default:
-      _ncl_term_mode(FAL0);
-      _ncl_sigs_down();
+      n_COLOUR( n_colour_env_gut(); ) /* TODO NO SIMPLE SUSPENSION POSSIBLE.. */
+      a_tty_term_mode(FAL0);
+      n_TERMCAP_SUSPEND(TRU1);
+      a_tty_sigs_down();
+
       sigemptyset(&nset);
       sigaddset(&nset, sig);
       sigprocmask(SIG_UNBLOCK, &nset, &oset);
       n_raise(sig);
       /* When we come here we'll continue editing, so reestablish */
       sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
-      _ncl_sigs_up();
-      _ncl_term_mode(TRU1);
+
+      /* TODO THEREFORE NEED TO _GUT() .. _CREATE() ENTIRE ENVS!! */
+      n_COLOUR( n_colour_env_create(n_COLOUR_CTX_MLE, n_tty_fp, FAL0); )
+      a_tty_sigs_up();
+      n_TERMCAP_RESUME(TRU1);
+      a_tty_term_mode(TRU1);
+      a_tty.tg_line->tl_vi_flags |= a_TTY_VF_MOD_DIRTY;
       break;
    }
 }
 
 FL int
-(tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
-   SMALLOC_DEBUG_ARGS)
-{
+(n_tty_readline)(enum n_go_input_flags gif, char const *prompt,
+      char **linebuf, size_t *linesize, size_t n, bool_t *histok_or_null
+      n_MEMORY_DEBUG_ARGS){
+   struct a_tty_line tl;
+   struct n_string xprompt;
+# ifdef HAVE_COLOUR
+   char *posbuf, *pos;
+# endif
    ssize_t nn;
    NYD_ENTER;
+   n_UNUSED(gif);
 
-   /* Of course we have races here, but they cannot be avoided on POSIX
-    * (except by even *more* actions) */
-   _ncl_sigs_up();
-   _ncl_term_mode(TRU1);
-   nn = _ncl_readline(prompt, linebuf, linesize, n SMALLOC_DEBUG_ARGSCALL);
-   _ncl_term_mode(FAL0);
-   _ncl_sigs_down();
+   assert(!ok_blook(line_editor_disable));
+   if(!(n_psonce & n_PSO_LINE_EDITOR_INIT))
+      n_tty_init();
+   assert(n_psonce & n_PSO_LINE_EDITOR_INIT);
+
+# ifdef HAVE_COLOUR
+   n_colour_env_create(n_COLOUR_CTX_MLE, n_tty_fp, FAL0);
+
+   /* .tl_pos_buf is a hack */
+   posbuf = pos = NULL;
+
+   if(n_COLOUR_IS_ACTIVE()){
+      char const *ccol;
+      struct n_colour_pen *ccp;
+      struct str const *sp;
+
+      if((ccp = n_colour_pen_create(n_COLOUR_ID_MLE_POSITION, NULL)) != NULL &&
+            (sp = n_colour_pen_to_str(ccp)) != NULL){
+         ccol = sp->s;
+         if((sp = n_colour_reset_to_str()) != NULL){
+            size_t l1, l2;
+
+            l1 = strlen(ccol);
+            l2 = strlen(sp->s);
+            posbuf = salloc(l1 + 4 + l2 +1);
+            memcpy(posbuf, ccol, l1);
+            pos = &posbuf[l1];
+            memcpy(&pos[4], sp->s, ++l2);
+         }
+      }
+   }
+
+   if(posbuf == NULL){
+      posbuf = pos = salloc(4 +1);
+      pos[4] = '\0';
+   }
+# endif /* HAVE_COLOUR */
+
+   memset(&tl, 0, sizeof tl);
+
+# ifdef HAVE_KEY_BINDINGS
+   /* C99 */{
+      char const *cp;
+
+      if((cp = ok_vlook(bind_timeout)) != NULL){
+         ui64_t uib;
+
+         n_idec_ui64_cp(&uib, cp, 0, NULL);
+
+         if(uib > 0 &&
+               /* Convert to tenths of a second, unfortunately */
+               (uib = (uib + 99) / 100) <= a_TTY_BIND_TIMEOUT_MAX)
+            tl.tl_bind_timeout = (ui8_t)uib;
+         else if(n_poption & n_PO_D_V)
+            n_err(_("Ignoring invalid *bind-timeout*: %s\n"), cp);
+      }
+   }
+
+   if(a_tty.tg_bind_isdirty)
+      a_tty_bind_tree_teardown();
+   if(a_tty.tg_bind_cnt > 0 && !a_tty.tg_bind_isbuild)
+      a_tty_bind_tree_build();
+   tl.tl_bind_tree_hmap = &a_tty.tg_bind_tree[gif & n__GO_INPUT_CTX_MASK];
+   tl.tl_bind_shcut_cancel =
+         &a_tty.tg_bind_shcut_cancel[gif & n__GO_INPUT_CTX_MASK];
+   tl.tl_bind_shcut_prompt_char =
+         &a_tty.tg_bind_shcut_prompt_char[gif & n__GO_INPUT_CTX_MASK];
+# endif /* HAVE_KEY_BINDINGS */
+
+# ifdef HAVE_COLOUR
+   tl.tl_pos_buf = posbuf;
+   tl.tl_pos = pos;
+# endif
+
+   if(!(gif & n_GO_INPUT_PROMPT_NONE)){
+      n_string_creat_auto(&xprompt);
+
+      if((tl.tl_prompt_width = n_tty_create_prompt(&xprompt, prompt, gif)
+               ) > 0){
+         tl.tl_prompt = n_string_cp_const(&xprompt);
+         tl.tl_prompt_length = (ui32_t)xprompt.s_len;
+      }
+   }
+
+   tl.tl_line.cbuf = *linebuf;
+   if(n != 0){
+      tl.tl_defc.s = savestrbuf(*linebuf, n);
+      tl.tl_defc.l = n;
+   }
+   tl.tl_x_buf = linebuf;
+   tl.tl_x_bufsize = linesize;
+
+   a_tty.tg_line = &tl;
+   a_tty_sigs_up();
+   n_TERMCAP_RESUME(FAL0);
+   a_tty_term_mode(TRU1);
+   nn = a_tty_readline(&tl, n, histok_or_null n_MEMORY_DEBUG_ARGSCALL);
+   n_COLOUR( n_colour_env_gut(); )
+   a_tty_term_mode(FAL0);
+   n_TERMCAP_SUSPEND(FAL0);
+   a_tty_sigs_down();
+   a_tty.tg_line = NULL;
+
    NYD_LEAVE;
    return (int)nn;
 }
 
 FL void
-tty_addhist(char const *s, bool_t isgabby)
-{
+n_tty_addhist(char const *s, bool_t isgabby){
 # ifdef HAVE_HISTORY
    /* Super-Heavy-Metal: block all sigs, avoid leaks+ on jump */
    ui32_t l;
-   struct hist *h, *o, *y;
+   struct a_tty_hist *thp, *othp, *ythp;
 # endif
    NYD_ENTER;
-   UNUSED(s);
-   UNUSED(isgabby);
+   n_UNUSED(s);
+   n_UNUSED(isgabby);
 
 # ifdef HAVE_HISTORY
-   if (isgabby && !ok_blook(history_gabby))
+   if(*s == '\0' ||
+         (!(n_psonce & n_PSO_LINE_EDITOR_INIT) && !(n_pstate & n_PS_ROOT)) ||
+         a_tty.tg_hist_size_max == 0 ||
+         ok_blook(line_editor_disable) ||
+         (isgabby && !ok_blook(history_gabby)))
       goto j_leave;
-   if (_ncl_hist_size_max == 0)
-      goto j_leave;
-   _CL_CHECK_ADDHIST(s, goto j_leave);
 
    l = (ui32_t)strlen(s);
 
    /* Eliminating duplicates is expensive, but simply inacceptable so
     * during the load of a potentially large history file! */
-   if (!_ncl_hist_load)
-      for (h = _ncl_hist; h != NULL; h = h->older)
-         if (h->len == l && !strcmp(h->dat, s)) {
+   if(n_psonce & n_PSO_LINE_EDITOR_INIT)
+      for(thp = a_tty.tg_hist; thp != NULL; thp = thp->th_older)
+         if(thp->th_len == l && !strcmp(thp->th_dat, s)){
             hold_all_sigs(); /* TODO */
-            if (h->isgabby)
-               h->isgabby = !!isgabby;
-            o = h->older;
-            y = h->younger;
-            if (o != NULL)
-               o->younger = y;
+            if(thp->th_isgabby)
+               thp->th_isgabby = !!isgabby;
+            othp = thp->th_older;
+            ythp = thp->th_younger;
+            if(othp != NULL)
+               othp->th_younger = ythp;
             else
-               _ncl_hist_tail = y;
-            if (y != NULL)
-               y->older = o;
+               a_tty.tg_hist_tail = ythp;
+            if(ythp != NULL)
+               ythp->th_older = othp;
             else
-               _ncl_hist = o;
+               a_tty.tg_hist = othp;
             goto jleave;
          }
    hold_all_sigs();
 
-   ++_ncl_hist_size;
-   if (!_ncl_hist_load && _ncl_hist_size > _ncl_hist_size_max) {
-      --_ncl_hist_size;
-      if ((h = _ncl_hist_tail) != NULL) {
-         if ((_ncl_hist_tail = h->younger) == NULL)
-            _ncl_hist = NULL;
+   ++a_tty.tg_hist_size;
+   if((n_psonce & n_PSO_LINE_EDITOR_INIT) &&
+         a_tty.tg_hist_size > a_tty.tg_hist_size_max){
+      --a_tty.tg_hist_size;
+      if((thp = a_tty.tg_hist_tail) != NULL){
+         if((a_tty.tg_hist_tail = thp->th_younger) == NULL)
+            a_tty.tg_hist = NULL;
          else
-            _ncl_hist_tail->older = NULL;
-         free(h);
+            a_tty.tg_hist_tail->th_older = NULL;
+         free(thp);
       }
    }
 
-   h = smalloc((sizeof(struct hist) - VFIELD_SIZEOF(struct hist, dat)) + l +1);
-   h->isgabby = !!isgabby;
-   h->len = l;
-   memcpy(h->dat, s, l +1);
+   thp = smalloc(n_VSTRUCT_SIZEOF(struct a_tty_hist, th_dat) + l +1);
+   thp->th_isgabby = !!isgabby;
+   thp->th_len = l;
+   memcpy(thp->th_dat, s, l +1);
 jleave:
-   if ((h->older = _ncl_hist) != NULL)
-      _ncl_hist->younger = h;
+   if((thp->th_older = a_tty.tg_hist) != NULL)
+      a_tty.tg_hist->th_younger = thp;
    else
-      _ncl_hist_tail = h;
-   h->younger = NULL;
-   _ncl_hist = h;
+      a_tty.tg_hist_tail = thp;
+   thp->th_younger = NULL;
+   a_tty.tg_hist = thp;
 
    rele_all_sigs();
 j_leave:
-# endif
+# endif /* HAVE_HISTORY */
    NYD_LEAVE;
 }
 
 # ifdef HAVE_HISTORY
 FL int
-c_history(void *v)
-{
-   C_HISTORY_SHARED;
+c_history(void *v){
+   siz_t entry;
+   struct a_tty_hist *thp;
+   char **argv;
+   NYD_ENTER;
 
-jlist: {
-   FILE *fp;
+   if(ok_blook(line_editor_disable)){
+      n_err(_("history: *line-editor-disable* is set\n"));
+      goto jerr;
+   }
+
+   if(!(n_psonce & n_PSO_LINE_EDITOR_INIT)){
+      n_tty_init();
+      assert(n_psonce & n_PSO_LINE_EDITOR_INIT);
+   }
+
+   if(*(argv = v) == NULL)
+      goto jlist;
+   if(argv[1] != NULL)
+      goto jerr;
+   if(!asccasecmp(*argv, "show"))
+      goto jlist;
+   if(!asccasecmp(*argv, "clear"))
+      goto jclear;
+   if((n_idec_siz_cp(&entry, *argv, 10, NULL
+            ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+         ) == n_IDEC_STATE_CONSUMED)
+      goto jentry;
+jerr:
+   n_err(_("Synopsis: history: %s\n"),
+      /* Same string as in cmd-tab.h, still hoping...) */
+      _("<show> (default), <clear> or select <NO> from editor history"));
+   v = NULL;
+jleave:
+   NYD_LEAVE;
+   return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
+
+jlist:{
    size_t i, b;
-   struct hist *h;
+   FILE *fp;
 
-   if (_ncl_hist == NULL)
+   if(a_tty.tg_hist == NULL)
       goto jleave;
 
-   if ((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER, 0600)) ==
-         NULL) {
+   if((fp = Ftmp(NULL, "hist", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
       n_perr(_("tmpfile"), 0);
       v = NULL;
       goto jleave;
    }
 
-   i = _ncl_hist_size;
+   i = a_tty.tg_hist_size;
    b = 0;
-   for (h = _ncl_hist; h != NULL; --i, b += h->len, h = h->older)
-      fprintf(fp,
-         "%c%4" PRIuZ ". %-50.50s (%4" PRIuZ "+%2" PRIu32 " bytes)\n",
-         (h->isgabby ? '*' : ' '), i, h->dat, b, h->len);
+   for(thp = a_tty.tg_hist; thp != NULL;
+         --i, b += thp->th_len, thp = thp->th_older){
+      fprintf(fp, "%c%" PRIuZ, (thp->th_isgabby ? '*' : ' '), i);
+      if(n_poption & n_PO_D_V)
+         fprintf(fp, " (%" PRIuZ "+%" PRIu32 ")", b, thp->th_len);
+      putc('\t', fp);
+      fputs(thp->th_dat, fp);
+      putc('\n', fp);
+   }
 
    page_or_print(fp, i);
    Fclose(fp);
    }
    goto jleave;
 
-jclear: {
-   struct hist *h;
-
-   while ((h = _ncl_hist) != NULL) {
-      _ncl_hist = h->older;
-      free(h);
+jclear:
+   while((thp = a_tty.tg_hist) != NULL){
+      a_tty.tg_hist = thp->th_older;
+      free(thp);
    }
-   _ncl_hist_tail = NULL;
-   _ncl_hist_size = 0;
-   }
+   a_tty.tg_hist_tail = NULL;
+   a_tty.tg_hist_size = 0;
    goto jleave;
 
-jentry: {
-   struct hist *h;
+jentry:{
+   siz_t ep;
 
-   if (UICMP(z, entry, <=, _ncl_hist_size)) {
-      entry = (long)_ncl_hist_size - entry;
-      for (h = _ncl_hist;; h = h->older)
-         if (h == NULL)
+   ep = (entry < 0) ? -entry : entry;
+
+   if(ep != 0 && UICMP(z, ep, <=, a_tty.tg_hist_size)){
+      if(ep != entry)
+         --ep;
+      else
+         ep = (siz_t)a_tty.tg_hist_size - ep;
+      for(thp = a_tty.tg_hist;; thp = thp->th_older){
+         assert(thp != NULL);
+         if(ep-- == 0){
+            n_go_input_inject((n_GO_INPUT_INJECT_COMMIT |
+               n_GO_INPUT_INJECT_HISTORY), v = thp->th_dat, thp->th_len);
             break;
-         else if (entry-- != 0)
-            continue;
-         else {
-            v = temporary_arg_v_store = h->dat;
-            goto jleave;
          }
+      }
+   }else{
+      n_err(_("`history': no such entry: %" PRIdZ "\n"), entry);
+      v = NULL;
    }
-   v = NULL;
    }
    goto jleave;
 }
 # endif /* HAVE_HISTORY */
-#endif /* HAVE_NCL */
 
+# ifdef HAVE_KEY_BINDINGS
+FL int
+c_bind(void *v){
+   struct a_tty_bind_ctx *tbcp;
+   enum n_go_input_flags gif;
+   bool_t aster, show;
+   union {char const *cp; char *p; char c;} c;
+   struct n_cmd_arg_ctx *cacp;
+   NYD_ENTER;
+
+   cacp = v;
+
+   c.cp = cacp->cac_arg->ca_arg.ca_str.s;
+   if(cacp->cac_no == 1)
+      show = TRU1;
+   else
+      show = !asccasecmp(cacp->cac_arg->ca_next->ca_arg.ca_str.s, "show");
+   aster = FAL0;
+
+   if((gif = a_tty_bind_ctx_find(c.cp)) == (enum n_go_input_flags)-1){
+      if(!(aster = n_is_all_or_aster(c.cp)) || !show){
+         n_err(_("`bind': invalid context: %s\n"), c.cp);
+         v = NULL;
+         goto jleave;
+      }
+      gif = 0;
+   }
+
+   if(show){
+      ui32_t lns;
+      FILE *fp;
+
+      if((fp = Ftmp(NULL, "bind", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+         n_perr(_("tmpfile"), 0);
+         v = NULL;
+         goto jleave;
+      }
+
+      lns = 0;
+      for(;;){
+         for(tbcp = a_tty.tg_bind[gif]; tbcp != NULL;
+               ++lns, tbcp = tbcp->tbc_next){
+            /* Print the bytes of resolved terminal capabilities, then */
+            if((n_poption & n_PO_D_V) &&
+                  (tbcp->tbc_flags & (a_TTY_BIND_RESOLVE | a_TTY_BIND_DEFUNCT)
+                  ) == a_TTY_BIND_RESOLVE){
+               char cbuf[8];
+               union {wchar_t const *wp; char const *cp;} u;
+               si32_t entlen;
+               ui32_t cnvlen;
+               char const *cnvdat, *bsep, *cbufp;
+
+               putc('#', fp);
+               putc(' ', fp);
+
+               cbuf[0] = '=', cbuf[2] = '\0';
+               for(cnvdat = tbcp->tbc_cnv, cnvlen = tbcp->tbc_cnv_len;
+                     cnvlen > 0;){
+                  if(cnvdat != tbcp->tbc_cnv)
+                     putc(',', fp);
+
+                  /* {si32_t buf_len_iscap;} */
+                  entlen = *n_UNALIGN(si32_t const*,cnvdat);
+                  if(entlen & SI32_MIN){
+                     /* struct{si32_t buf_len_iscap; si32_t cap_len;
+                      * char buf[]+NUL;} */
+                     for(bsep = n_empty,
+                              u.cp = (char const*)
+                                    &n_UNALIGN(si32_t const*,cnvdat)[2];
+                           (c.c = *u.cp) != '\0'; ++u.cp){
+                        if(asciichar(c.c) && !cntrlchar(c.c))
+                           cbuf[1] = c.c, cbufp = cbuf;
+                        else
+                           cbufp = n_empty;
+                        fprintf(fp, "%s%02X%s",
+                           bsep, (ui32_t)(ui8_t)c.c, cbufp);
+                        bsep = " ";
+                     }
+                     entlen &= SI32_MAX;
+                  }else
+                     putc('-', fp);
+
+                  cnvlen -= entlen;
+                  cnvdat += entlen;
+               }
+
+               fputs("\n  ", fp);
+               ++lns;
+            }
+
+            fprintf(fp, "%sbind %s %s %s%s%s\n",
+               ((tbcp->tbc_flags & a_TTY_BIND_DEFUNCT)
+               /* I18N: `bind' sequence not working, either because it is
+                * I18N: using Unicode and that is not available in the locale,
+                * I18N: or a termcap(5)/terminfo(5) sequence won't work out */
+                  ? _("# <Defunctional> ") : n_empty),
+               a_tty_bind_ctx_maps[gif].tbcm_name, tbcp->tbc_seq,
+               n_shexp_quote_cp(tbcp->tbc_exp, TRU1),
+               (tbcp->tbc_flags & a_TTY_BIND_NOCOMMIT ? n_at : n_empty),
+               (!(n_poption & n_PO_D_VV) ? n_empty
+                  : (tbcp->tbc_flags & a_TTY_BIND_FUN_INTERNAL
+                     ? _(" # MLE internal") : n_empty))
+               );
+         }
+         if(!aster || ++gif >= n__GO_INPUT_CTX_MAX1)
+            break;
+      }
+      page_or_print(fp, lns);
+
+      Fclose(fp);
+   }else{
+      struct a_tty_bind_parse_ctx tbpc;
+      struct n_cmd_arg *cap;
+
+      memset(&tbpc, 0, sizeof tbpc);
+      tbpc.tbpc_cmd = cacp->cac_desc->cad_name;
+      tbpc.tbpc_in_seq = (cap = cacp->cac_arg->ca_next)->ca_arg.ca_str.s;
+      if((cap = cap->ca_next) != NULL){
+         tbpc.tbpc_exp.s = cap->ca_arg.ca_str.s;
+         tbpc.tbpc_exp.l = cap->ca_arg.ca_str.l;
+      }
+      tbpc.tbpc_flags = gif;
+      if(!a_tty_bind_create(&tbpc, TRU1))
+         v = NULL;
+   }
+jleave:
+   NYD_LEAVE;
+   return (v != NULL) ? n_EXIT_OK : n_EXIT_ERR;
+}
+
+FL int
+c_unbind(void *v){
+   struct a_tty_bind_parse_ctx tbpc;
+   struct a_tty_bind_ctx *tbcp;
+   enum n_go_input_flags gif;
+   bool_t aster;
+   union {char const *cp; char *p;} c;
+   struct n_cmd_arg_ctx *cacp;
+   NYD_ENTER;
+
+   cacp = v;
+   c.cp = cacp->cac_arg->ca_arg.ca_str.s;
+   aster = FAL0;
+
+   if((gif = a_tty_bind_ctx_find(c.cp)) == (enum n_go_input_flags)-1){
+      if(!(aster = n_is_all_or_aster(c.cp))){
+         n_err(_("`unbind': invalid context: %s\n"), c.cp);
+         v = NULL;
+         goto jleave;
+      }
+      gif = 0;
+   }
+
+   c.cp = cacp->cac_arg->ca_next->ca_arg.ca_str.s;
+jredo:
+   if(n_is_all_or_aster(c.cp)){
+      while((tbcp = a_tty.tg_bind[gif]) != NULL){
+         memset(&tbpc, 0, sizeof tbpc);
+         tbpc.tbpc_tbcp = tbcp;
+         tbpc.tbpc_flags = gif;
+         a_tty_bind_del(&tbpc);
+      }
+   }else{
+      memset(&tbpc, 0, sizeof tbpc);
+      tbpc.tbpc_cmd = cacp->cac_desc->cad_name;
+      tbpc.tbpc_in_seq = c.cp;
+      tbpc.tbpc_flags = gif;
+
+      if(n_UNLIKELY(!a_tty_bind_parse(FAL0, &tbpc)))
+         v = NULL;
+      else if(n_UNLIKELY((tbcp = tbpc.tbpc_tbcp) == NULL)){
+         n_err(_("`unbind': no such `bind'ing: %s  %s\n"),
+            a_tty_bind_ctx_maps[gif].tbcm_name, c.cp);
+         v = NULL;
+      }else
+         a_tty_bind_del(&tbpc);
+   }
+
+   if(aster && ++gif < n__GO_INPUT_CTX_MAX1)
+      goto jredo;
+jleave:
+   NYD_LEAVE;
+   return (v != NULL) ? n_EXIT_OK : n_EXIT_ERR;
+}
+# endif /* HAVE_KEY_BINDINGS */
+
+#else /* HAVE_MLE */
 /*
  * The really-nothing-at-all implementation
  */
 
-#if !defined HAVE_READLINE && !defined HAVE_EDITLINE && !defined HAVE_NCL
+# if 0
 FL void
-tty_init(void)
-{
+n_tty_init(void){
    NYD_ENTER;
    NYD_LEAVE;
 }
 
 FL void
-tty_destroy(void)
-{
+n_tty_destroy(bool_t xit_fastpath){
    NYD_ENTER;
+   n_UNUSED(xit_fastpath);
    NYD_LEAVE;
 }
+# endif /* 0 */
 
 FL void
-tty_signal(int sig)
-{
+n_tty_signal(int sig){
    NYD_X; /* Signal handler */
-   UNUSED(sig);
+   n_UNUSED(sig);
+
+# ifdef HAVE_TERMCAP
+   switch(sig){
+   default:{
+      sigset_t nset, oset;
+
+      n_TERMCAP_SUSPEND(TRU1);
+      a_tty_sigs_down();
+
+      sigemptyset(&nset);
+      sigaddset(&nset, sig);
+      sigprocmask(SIG_UNBLOCK, &nset, &oset);
+      n_raise(sig);
+      /* When we come here we'll continue editing, so reestablish */
+      sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
+
+      a_tty_sigs_up();
+      n_TERMCAP_RESUME(TRU1);
+      break;
+   }
+   }
+# endif /* HAVE_TERMCAP */
 }
 
 FL int
-(tty_readline)(char const *prompt, char **linebuf, size_t *linesize, size_t n
-   SMALLOC_DEBUG_ARGS)
-{
+(n_tty_readline)(enum n_go_input_flags gif, char const *prompt,
+      char **linebuf, size_t *linesize, size_t n, bool_t *histok_or_null
+      n_MEMORY_DEBUG_ARGS){
+   struct n_string xprompt;
    int rv;
    NYD_ENTER;
+   n_UNUSED(histok_or_null);
 
-   if (prompt != NULL) {
-      if (*prompt != '\0')
-         fputs(prompt, stdout);
-      fflush(stdout);
+   if(!(gif & n_GO_INPUT_PROMPT_NONE)){
+      if(n_tty_create_prompt(n_string_creat_auto(&xprompt), prompt, gif) > 0){
+         fwrite(xprompt.s_dat, 1, xprompt.s_len, n_tty_fp);
+         fflush(n_tty_fp);
+      }
    }
-   rv = (readline_restart)(stdin, linebuf, linesize,n SMALLOC_DEBUG_ARGSCALL);
+
+# ifdef HAVE_TERMCAP
+   a_tty_sigs_up();
+   n_TERMCAP_RESUME(FAL0);
+# endif
+   rv = (readline_restart)(n_stdin, linebuf, linesize,n n_MEMORY_DEBUG_ARGSCALL);
+# ifdef HAVE_TERMCAP
+   n_TERMCAP_SUSPEND(FAL0);
+   a_tty_sigs_down();
+# endif
    NYD_LEAVE;
    return rv;
 }
 
 FL void
-tty_addhist(char const *s, bool_t isgabby)
-{
+n_tty_addhist(char const *s, bool_t isgabby){
    NYD_ENTER;
-   UNUSED(s);
-   UNUSED(isgabby);
+   n_UNUSED(s);
+   n_UNUSED(isgabby);
    NYD_LEAVE;
 }
 #endif /* nothing at all */
 
+#undef a_TTY_SIGNALS
 /* s-it-mode */

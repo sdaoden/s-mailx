@@ -2,7 +2,7 @@
  *@ Perform message editing functions.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2015 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -51,8 +51,6 @@ edit1(int *msgvec, int viored)
    struct message *mp;
    off_t size;
    bool_t wb, lastnl;
-   char *line = NULL; /* TODO line pool */
-   size_t linesize = 0;
    NYD_ENTER;
 
    wb = ok_blook(writebackedited);
@@ -61,23 +59,17 @@ edit1(int *msgvec, int viored)
    for (i = 0; msgvec[i] != 0 && i < msgCount; ++i) {
       sighandler_type sigint;
 
-      if (i > 0) { /* TODO getapproval(): return APPROV_{YES,NO,QUIT}: USE! */
-         char *p;
+      if(i > 0){
+         char prompt[64];
 
-         printf(_("Edit message %d [ynq]? "), msgvec[i]);
-         fflush(stdout);
-         if (readline_restart(stdin, &line, &linesize, 0) < 0)
-            break;
-         for (p = line; blankchar(*p); ++p)
-            ;
-         if (*p == 'q')
-            break;
-         if (*p == 'n')
+         snprintf(prompt, sizeof prompt, _("Edit message %d"), msgvec[i]);
+         if(!getapproval(prompt, FAL0))
             continue;
       }
+
       mp = message + msgvec[i] - 1;
       setdot(mp);
-      pstate |= PS_DID_PRINT_DOT;
+      n_pstate |= n_PS_DID_PRINT_DOT;
       touch(mp);
 
       sigint = safe_signal(SIGINT, SIG_IGN);
@@ -117,9 +109,6 @@ edit1(int *msgvec, int viored)
 
       safe_signal(SIGINT, sigint);
    }
-
-   if (line != NULL)
-      free(line);
    NYD_LEAVE;
    return 0;
 }
@@ -153,33 +142,31 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
    struct stat statb;
    sigset_t cset;
    FILE *nf = NULL;
-   int t;
+   int t, ws;
    time_t modtime;
    off_t modsize;
-   char const *ed;
    char *tempEdit;
    NYD_ENTER;
 
-   if ((nf = Ftmp(&tempEdit, "runed", OF_WRONLY | OF_REGISTER,
-         (readonly ? 0400 : 0600))) == NULL) {
+   if ((nf = Ftmp(&tempEdit, "runed", OF_WRONLY | OF_REGISTER)) == NULL) {
       n_perr(_("temporary mail edit file"), 0);
       goto jleave;
    }
 
    if (hp != NULL) {
+      assert(mp == NULL);
       t = GTO | GSUBJECT | GCC | GBCC | GNL | GCOMMA;
       if ((hp->h_from != NULL || myaddrs(hp) != NULL) ||
             (hp->h_sender != NULL || ok_vlook(sender) != NULL) ||
             (hp->h_replyto != NULL || ok_vlook(replyto) != NULL) ||
-            (hp->h_organization != NULL || ok_vlook(ORGANIZATION) != NULL) ||
             hp->h_list_post != NULL || (hp->h_flags & HF_LIST_REPLY))
          t |= GIDENT;
-      puthead(hp, nf, t, SEND_TODISP, CONV_NONE, NULL, NULL);
+      puthead(TRUM1, hp, nf, t, SEND_TODISP, CONV_NONE, NULL, NULL);
    }
 
    if (mp != NULL) {
-      if (sendmp(mp, nf, 0, NULL, action, NULL) < 0) {
-         n_err(_("Failed to prepare editable message"));
+      if (sendmp(mp, nf, NULL, NULL, action, NULL) < 0) {
+         n_err(_("Failed to prepare editable message\n"));
          goto jleave;
       }
    } else {
@@ -192,11 +179,16 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
    }
 
    fflush(nf);
-   if (fstat(fileno(nf), &statb) == -1)
-      modtime = 0, modsize = 0;
-   else
-      modtime = statb.st_mtime, modsize = statb.st_size;
-   t = ferror(nf);
+   if ((t = ferror(nf)) == 0) {
+      if (fstat(fileno(nf), &statb) == -1)
+         modtime = 0, modsize = 0;
+      else
+         modtime = statb.st_mtime, modsize = statb.st_size;
+
+      if (readonly)
+         t = (fchmod(fileno(nf), S_IRUSR) != 0);
+   }
+
    if (Fclose(nf) < 0 || t != 0) {
       n_perr(tempEdit, 0);
       t = 1;
@@ -205,13 +197,11 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
    if (t != 0)
       goto jleave;
 
-   ed = (viored == 'e') ? ok_vlook(EDITOR) : ok_vlook(VISUAL);
-   if (ed == NULL)
-      ed = (viored == 'e') ? "ed" : "vi"; /* XXX no magics, -> nail.h */
-
    sigemptyset(&cset);
-   if (run_command(ed, (oldint != SIG_IGN ? &cset : NULL), -1, -1, tempEdit,
-         NULL, NULL) < 0)
+   if (n_child_run((viored == 'e' ? ok_vlook(EDITOR) : ok_vlook(VISUAL)),
+            (oldint != SIG_IGN ? &cset : NULL),
+            n_CHILD_FD_PASS, n_CHILD_FD_PASS, tempEdit, NULL, NULL, NULL, &ws
+         ) < 0 || WEXITSTATUS(ws) != 0)
       goto jleave;
 
    /* If in read only mode or file unchanged, just remove the editor temporary
@@ -224,11 +214,11 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
    }
 
    if ((modtime != statb.st_mtime || modsize != statb.st_size) &&
-         (nf = Fopen(tempEdit, "a+")) == NULL)
+         (nf = Fopen(tempEdit, "r+")) == NULL)
       n_perr(tempEdit, 0);
 jleave:
-   if (tempEdit != NULL) {
-      unlink(tempEdit);
+   if (tempEdit != NULL) { /* TODO i'd rather do more signal handling */
+      unlink(tempEdit);    /* TODO in here */
       Ftmp_free(&tempEdit);
    }
    NYD_LEAVE;
