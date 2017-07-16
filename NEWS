@@ -230,7 +230,7 @@ NOTES, ChangeLog (packager-affine)
 
       ? copy . '| cat; echo huhu'
 
-- Support for custom headers via the new ~^#322 compose-mode
+- Support for custom headers via the new `~^'#322 compose-mode
   command escape and in addition, or alternatively, with the
   internal variable *customhdr*#369, which also can be covered by
   `localopts'#197.  (Sergey Matveev)
@@ -239,7 +239,7 @@ NOTES, ChangeLog (packager-affine)
 
   + Command escape ~e#302 supports _any_ header.
 
-  + Command escape ~^#322 supports _any_ header.
+  + Command escape `~^'#322 supports _any_ header.
 
 - New -:#51 command line option can be used to more easily select
   which startup files should be loaded, e.g., -:/ loads none.
@@ -262,7 +262,7 @@ NOTES, ChangeLog (packager-affine)
   parent via their standard input and output, and therefore can
   do anything and act as if they were the user.
 
-  `localopts'#?197 are enabled and cannot be disabled (and extend
+  `localopts'#197 are enabled and cannot be disabled (and extend
   until the message is sent).
   (Jens Schleusener, Rudolf Sykora)
 
@@ -529,8 +529,8 @@ NOTES, ChangeLog (packager-affine)
 - New variable *ifs*#404 acts a bit like the sh(1)ell's $IFS for,
   e.g., the new `read'#226 command.
 
-  There is a `readctl'#? command which can be used to manage
-  the active channel used by `read'#?.
+  There is a `readctl'#228 command which can be used to manage
+  the active channel used by `read'#227.
 
 - The `~' alias for `call'#132 is gone.
 
@@ -634,7 +634,7 @@ ChangeLog
     $ echo Hey,\ you | s-nail -:/ -Sexpandaddr -sUB -
 
 - The -s#74 command line option, the ~s#313 command escape
-  as well as the corresponding slots of ~^#321 will actively
+  as well as the corresponding slots of `~^'#321 will actively
   strip [\r\n] from their value (Debian #419840).
 
 - New `read'#226 and `echoerr'#161 commands, mostly for
@@ -705,7 +705,7 @@ ChangeLog
 - Socket connections use TLS S(erver)N(ame)I(ndication) as
   appropriate (RFC 7817).
 
-- `alternates'#?127 checks arguments and supports `vput'#111.
+- `alternates'#127 checks arguments and supports `vput'#111.
   It by default no longer replaces but appends alternates, unless
   *posix*#463 mode is active.  There is a new `unalternates'#128
   command to remove alternates.
@@ -724,7 +724,7 @@ ChangeLog
        zst 'zstd -dc' 'zstd -19 -zc' \
        zst.pgp 'gpg -d | zstd -dc' 'zstd -19 -zc | gpg -e'
 
-- ~<#293 now offers a "- [HERE-delimiter]" mode for pasting etc.
+- `~<#'293 now offers a "- [HERE-delimiter]" mode for pasting etc.
   (Ralph Corderoy)
 
 - `exit'#171 and `quit'#225 take an optional exit status.
