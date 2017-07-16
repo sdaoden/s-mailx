@@ -282,8 +282,6 @@ c_rename(void *v)
 
    ec = 0;
 
-   if (oldp == PROTO_POP3)
-      goto jnopop3;
    switch (oldp) {
    case PROTO_FILE:
       if (link(oldn, newn) == -1) {
@@ -312,7 +310,6 @@ c_rename(void *v)
       }
       break;
    case PROTO_POP3:
-jnopop3:
       n_err(_("Cannot rename POP3 mailboxes\n"));
       ec |= 1;
       break;

@@ -340,7 +340,7 @@ jleave:
    if (line != NULL)
       free(line);
    NYD_LEAVE;
-   return (ip != NULL);
+   return TRU1;
 }
 
 static void

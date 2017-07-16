@@ -76,7 +76,7 @@ EMPTY_FILE()
  * TODO This entire module needs MASSIVE work! */
 #define IMAP_OUT(X,Y,ACTION)  IMAP_XOUT(X, Y, ACTION, return STOP)
 #define IMAP_XOUT(X,Y,ACTIONERR,ACTIONBAIL) \
-do {\
+{\
    if (mp->mb_type != MB_CACHE) {\
       if (imap_finish(mp) == STOP) {\
          ACTIONBAIL;\
@@ -91,7 +91,7 @@ do {\
       if (queuefp != NULL)\
          fputs(X, queuefp);\
    }\
-} while (0);
+}
 
 static struct record {
    struct record  *rec_next;

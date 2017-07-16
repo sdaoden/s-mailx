@@ -369,8 +369,9 @@ print_collf(FILE *cf, struct header *hp)
    rele_all_sigs();
 
    page_or_print(obuf, 0);
-jleave:
+
    Fclose(obuf);
+jleave:
    NYD_LEAVE;
 }
 
@@ -1901,7 +1902,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
                   n_OBSOLETE(_("please use *forward-inject-head*, "
                      "not *fwdheading*"));
                cp = ok_vlook(forward_inject_head);
-               if(cp == NULL && cp_v15compat == NULL)
+               if(cp == NULL && (cp = cp_v15compat) == NULL)
                   cp = "-------- Original Message --------";
                if (*cp != '\0' && fprintf(_coll_fp, "%s\n", cp) < 0)
                   goto jerr;

@@ -2014,11 +2014,11 @@ a_tty_kht(struct a_tty_line *tlp){
    /* Leave room for "implicit asterisk" expansion, as below */
    if(sub.l == 0){
       sub.s = n_UNCONST(n_star);
-      sub.l = 1;
+      sub.l = sizeof(n_star) -1;
    }
 
    preexp.s = n_UNCONST(n_empty);
-   preexp.l = 0;
+   preexp.l = sizeof(n_empty) -1;
    wedid = FAL0;
 jredo:
    /* TODO Super-Heavy-Metal: block all sigs, avoid leaks on jump */

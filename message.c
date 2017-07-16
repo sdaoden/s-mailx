@@ -1105,13 +1105,13 @@ jmsg:
       /* This is not a special name, so take care for the "skin" prefix !
        * and possible abbreviations */
       /* C99 */{
+         char const x[][8] = {"from", "to", "cc", "bcc", "subject"};
          struct name *np;
          bool_t doskin;
 
          if((doskin = (*cfield == '~')))
             ++cfield;
          if(cfield[0] != '\0' && cfield[1] == '\0'){
-            char const x[][8] = {"from", "to", "cc", "bcc", "subject"};
             size_t i;
             char c1;
 
