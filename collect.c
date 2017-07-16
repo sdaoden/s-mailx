@@ -173,7 +173,6 @@ jleave:
 static si32_t
 a_coll_include_file(char const *name, bool_t indent, bool_t writestat){
    FILE *fbuf;
-   bool_t quoted;
    char const *heredb, *indb;
    size_t linesize, heredl, indl, cnt, linelen;
    char *linebuf;
@@ -187,7 +186,6 @@ a_coll_include_file(char const *name, bool_t indent, bool_t writestat){
    linesize = 0;
    heredb = NULL;
    heredl = 0;
-   quoted = FAL0;
 
    /* The -M case is special */
    if(name == (char*)-1){
@@ -213,7 +211,7 @@ jdelim_empty:
             goto jleave;
          }
 
-         if((quoted = (*heredb == '\''))){
+         if(*heredb == '\''){
             for(indb = ++heredb; *indb != '\0' && *indb != '\''; ++indb)
                ;
             if(*indb == '\0'){
@@ -501,6 +499,7 @@ a_coll_edit(int c, struct header *hp) /* TODO error(return) weird */
    si32_t volatile rv;
    NYD_ENTER;
 
+   n_UNINIT(sigint, SIG_ERR);
    rv = n_ERR_NONE;
 
    if(!(saved = ok_blook(add_file_recipients)))
@@ -1104,7 +1103,7 @@ jrem:
                   fprintf(n_stdout, "210 %s\n", &hfp->hf_dat[0]);
                any = TRU1;
             }else
-               hfp = *(hfpp = &hfp->hf_next);
+               hfpp = &hfp->hf_next;
          }
          if(!any)
             goto j501cp;
@@ -1218,7 +1217,7 @@ jremat:
                fprintf(n_stdout, "210 %s %" PRIuZ "\n", &hfp->hf_dat[0], i);
                break;
             }else
-               hfp = *(hfpp = &hfp->hf_next);
+               hfpp = &hfp->hf_next;
          }
          if(hfp == NULL)
             goto j501cp;
@@ -1820,6 +1819,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
    eofcnt = 0;
    ifs_saved = coapm = NULL;
    coap = NULL;
+   sp = NULL;
 
    /* Start catching signals from here, but we're still die on interrupts
     * until we're in the main loop */
@@ -1938,7 +1938,6 @@ collect(struct header *hp, int printheaders, struct message *mp,
             goto jerr;
       }
 
-      sp = NULL;
       if(n_psonce & n_PSO_INTERACTIVE){
          if(!(n_pstate & n_PS_SOURCING)){
             sp = n_string_creat_auto(&s);

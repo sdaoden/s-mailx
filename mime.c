@@ -1138,14 +1138,13 @@ mime_fromaddr(char const *name)
    }
    if (cp > lastcp)
       _append_str(&res, &ressz, &rescur, lastcp, PTR2SIZE(cp - lastcp));
-   /* TODO rescur==0: inserted to silence Coverity ...; check that */
-   if (rescur == 0)
-      res = n_UNCONST(n_empty);
-   else
-      res[rescur] = '\0';
-   {  char *x = res;
-      res = savestr(res);
-      free(x);
+   /* C99 */{
+      char *x;
+
+      x = res;
+      res = savestrbuf(res, rescur);
+      if(rescur > 0)
+         free(x);
    }
 jleave:
    NYD_LEAVE;

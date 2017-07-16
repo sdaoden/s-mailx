@@ -763,7 +763,7 @@ jpush:
                size_t il2, il3;
 
                ib2 = ib;
-               il3 = il2 = il;
+               il2 = il;
                if((uc = n_utf8_to_utf32(&ib2, &il2)) != UI32_MAX){
                   char itoa[32];
                   char const *cp;
@@ -802,7 +802,7 @@ jpush:
                char const *ib2;
                size_t il2, il3;
 
-               il3 = il2 = strlen(ib2 = vic.vic_indat);
+               il2 = strlen(ib2 = vic.vic_indat);
                if((uc = n_utf8_to_utf32(&ib2, &il2)) != UI32_MAX){
                   char itoa[32];
 
@@ -982,7 +982,7 @@ jnext:
                break;
          }
          res = n_string_cp(shoup);
-         shoup = n_string_drop_ownership(shoup);
+         /*shoup = n_string_drop_ownership(shoup);*/
          dyn = TRU1;
 
          if(res[0] == '~')
@@ -1467,7 +1467,6 @@ je_ib_save:
                         if(!(flags & n_SHEXP_PARSE_DRYRUN))
                            store = n_string_reserve(store, n_MAX(j, 4));
 
-                        c2 = FAL0;
                         if(no > 0x10FFFF){ /* XXX magic; CText */
                            if(flags & n_SHEXP_PARSE_LOG)
                               n_err(_("\\U argument exceeds 0x10FFFF: %.*s\n"),

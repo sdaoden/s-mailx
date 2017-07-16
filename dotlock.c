@@ -86,7 +86,6 @@ jislink:
          }
          if(UICMP(z, sr, <, i)){
             x[sr] = '\0';
-            i = (size_t)sr;
             break;
          }
       }

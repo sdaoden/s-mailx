@@ -840,7 +840,7 @@ jput_quote_esc:
 
       agp->ag_input = n_string_cp(ostp);
       agp->ag_ilen = ostp->s_len;
-      ostp = n_string_drop_ownership(ostp);
+      /*ostp = n_string_drop_ownership(ostp);*/
    }
 jleave:
    NYD_LEAVE;
@@ -1756,7 +1756,7 @@ skin(char const *name)
    NYD_ENTER;
 
    if(name != NULL){
-      name = n_addrspec_with_guts(&ag,name, TRU1, FAL0);
+      /*name =*/ n_addrspec_with_guts(&ag, name, TRU1, FAL0);
       rv = ag.ag_skinned;
       if(!(ag.ag_n_flags & NAME_NAME_SALLOC))
          rv = savestrbuf(rv, ag.ag_slen);

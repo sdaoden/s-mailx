@@ -1041,7 +1041,6 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
    /* Search for the parameter, take care of other quoting along the way */
    x = *param++;
    x = upperconv(x);
-   quote = '\0';
    i = strlen(param);
 
    for(hot = TRU1;;){

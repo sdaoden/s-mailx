@@ -426,7 +426,6 @@ c_read(void * volatile vp){
    sp = n_string_reserve(sp, 64 -1);
 
    ifs = ok_vlook(ifs);
-   rv = 0;
    linesize = 0;
    linebuf = NULL;
    argv = vp;

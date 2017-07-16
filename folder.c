@@ -70,7 +70,6 @@ _update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Object! */
          name = adjname;
          if (realpath(name, mailname) == NULL && n_err_no != n_ERR_NOENT) {
             n_err(_("Can't canonicalize %s\n"), n_shexp_quote_cp(name, FAL0));
-            rv = FAL0;
             goto jdocopy;
          }
       }else
@@ -840,14 +839,14 @@ n_folder_query(void){
          sp = n_string_drop_ownership(sp);
       }
 
-      rv = cp;
-
       /* TODO Since our visual mailname is resolved via realpath(3) if available
        * TODO to avoid that we loose track of our currently open folder in case
        * TODO we chdir away, but still checks the leading path portion against
        * TODO n_folder_query() to be able to abbreviate to the +FOLDER syntax if
        * TODO possible, we need to realpath(3) the folder, too */
-#ifdef HAVE_REALPATH
+#ifndef HAVE_REALPATH
+      rv = cp;
+#else
       assert(sp->s_len == 0 && sp->s_dat == NULL);
 # ifndef HAVE_REALPATH_NULL
       sp = n_string_reserve(sp, PATH_MAX +1);

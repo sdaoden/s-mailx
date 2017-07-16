@@ -595,7 +595,6 @@ jeso:
       if (j == 0)
          break;
       size += j;
-      i -= j;
       /* For the current way of doing things a single read will suffice.
        * Note we'll be "penaltized" when awaiting EOF on the socket, at least
        * in blocking mode, so do avoid that and break off */

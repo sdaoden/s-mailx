@@ -48,9 +48,11 @@ FL char *
    char *news;
    NYD_ENTER;
 
-   size = strlen(str) +1;
-   news = (n_autorec_alloc_from_pool)(NULL, size n_MEMORY_DEBUG_ARGSCALL);
-   memcpy(news, str, size);
+   size = strlen(str);
+   news = (n_autorec_alloc_from_pool)(NULL, size +1 n_MEMORY_DEBUG_ARGSCALL);
+   if(size > 0)
+      memcpy(news, str, size);
+   news[size] = '\0';
    NYD_LEAVE;
    return news;
 }
@@ -63,7 +65,8 @@ FL char *
 
    news = (n_autorec_alloc_from_pool)(NULL, sbuf_len +1
          n_MEMORY_DEBUG_ARGSCALL);
-   memcpy(news, sbuf, sbuf_len);
+   if(sbuf_len > 0)
+      memcpy(news, sbuf, sbuf_len);
    news[sbuf_len] = 0;
    NYD_LEAVE;
    return news;
@@ -85,7 +88,8 @@ FL char *
       if (sep != '\0')
          news[l1++] = sep;
    }
-   memcpy(news + l1, s2, l2);
+   if(l2 > 0)
+      memcpy(news + l1, s2, l2);
    news[l1 + l2] = '\0';
    NYD_LEAVE;
    return news;
@@ -102,9 +106,11 @@ FL char *
    char *dest;
    NYD_ENTER;
 
-   sz = strlen(src) +1;
-   dest = (n_autorec_alloc_from_pool)(NULL, sz n_MEMORY_DEBUG_ARGSCALL);
-   i_strcpy(dest, src, sz);
+   sz = strlen(src);
+   dest = (n_autorec_alloc_from_pool)(NULL, sz +1 n_MEMORY_DEBUG_ARGSCALL);
+   if(sz > 0)
+      i_strcpy(dest, src, sz);
+   dest[sz] = '\0';
    NYD_LEAVE;
    return dest;
 }
@@ -127,9 +133,13 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 
    va_start(vl, self);
    for (l = 0; (cs = va_arg(vl, char const*)) != NULL;) {
-      size_t i = strlen(cs);
-      memcpy(self->s + l, cs, i);
-      l += i;
+      size_t i;
+
+      i = strlen(cs);
+      if(i > 0){
+         memcpy(self->s + l, cs, i);
+         l += i;
+      }
    }
    self->s[l] = '\0';
    va_end(vl);
@@ -154,9 +164,13 @@ FL struct str *
    self->s = (n_autorec_alloc_from_pool)(NULL, l +1 n_MEMORY_DEBUG_ARGSCALL);
 
    for (l = 0, xcpa = cpa; *xcpa != NULL; ++xcpa) {
-      size_t i = strlen(*xcpa);
-      memcpy(self->s + l, *xcpa, i);
-      l += i;
+      size_t i;
+
+      i = strlen(*xcpa);
+      if(i > 0){
+         memcpy(self->s + l, *xcpa, i);
+         l += i;
+      }
       if (sonl > 0) {
          memcpy(self->s + l, sep_o_null, sonl);
          l += sonl;
@@ -1225,7 +1239,6 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
    size_t olb, ol, il;
    NYD2_ENTER;
 
-   err = 0;
    obb = out->s;
    olb = out->l;
    ol = in->l;
@@ -1243,7 +1256,6 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
       ol = olb;
       if((err = n_iconv_buf(cd, icf, &ib, &il, &ob, &ol)) == 0 || err != E2BIG)
          break;
-      err = 0;
       olb += in->l;
 jrealloc:
       obb = n_realloc(obb, olb +1);

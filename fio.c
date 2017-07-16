@@ -272,7 +272,7 @@ setptr(FILE *ibuf, off_t offset)
    offset = ftell(mb.mb_otf);
    need_rfc4155 = ok_blook(mbox_rfc4155);
    maybe = TRU1;
-   from_ = inhead = FAL0;
+   inhead = FAL0;
 
    for (;;) {
       if (fgetline(&linebuf, &linesize, &filesize, &cnt, ibuf, 0) == NULL) {

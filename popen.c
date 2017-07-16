@@ -718,7 +718,6 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
       if (i > maxname - xlen - _RANDCHARS) {
          size_t j = maxname - xlen - _RANDCHARS;
          x -= i - j;
-         i = j;
       }
 
       if ((oflags & OF_SUFFIX) && xlen > 0)
@@ -733,21 +732,19 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
    if (oflags & OF_APPEND)
       osoflags |= O_APPEND;
 
-   for (i = 0;; ++i) {
+   for(relesigs = TRU1, i = 0;; ++i){
       memcpy(cp, n_random_create_cp(_RANDCHARS, NULL), _RANDCHARS);
 
       hold_all_sigs();
-      relesigs = TRU1;
 
-      if ((fd = open(cp_base, osoflags, 0600)) != -1) {
+      if((fd = open(cp_base, osoflags, 0600)) != -1){
          _CLOEXEC_SET(fd);
          break;
       }
-      if (i >= FTMP_OPEN_TRIES) {
+      if(i >= FTMP_OPEN_TRIES){
          e = n_err_no;
          goto jfree;
       }
-      relesigs = FAL0;
       rele_all_sigs();
    }
 

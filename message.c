@@ -1275,12 +1275,11 @@ jcall:
 
 FL FILE *
 setinput(struct mailbox *mp, struct message *m, enum needspec need){
-   FILE *rv;
    enum okay ok;
+   FILE *rv;
    NYD_ENTER;
 
    rv = NULL;
-   ok = STOP;
 
    switch(need){
    case NEED_HEADER:

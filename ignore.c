@@ -386,8 +386,6 @@ a_ignore_delcmd_mux(struct n_ignore *ip, char const **list, bool_t retain){
    bool_t rv;
    NYD2_ENTER;
 
-   rv = TRU1;
-
    ip = a_ignore_resolve_self(ip, rv = (*list != NULL));
    itp = retain ? &ip->i_retain : &ip->i_ignore;
 

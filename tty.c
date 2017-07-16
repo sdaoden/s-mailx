@@ -345,7 +345,7 @@ jeeval:
             (psp = n_colour_pen_to_str(ccp)) != NULL &&
             (rsp = n_colour_reset_to_str()) != NULL){
          store = n_string_unshift_buf(store, psp->s, psp->l);
-         store = n_string_push_buf(store, rsp->s, rsp->l);
+         /*store =*/ n_string_push_buf(store, rsp->s, rsp->l);
       }
    }
 #endif /* HAVE_COLOUR */
@@ -1099,7 +1099,6 @@ a_tty_copy2paste(struct a_tty_line *tlp, struct a_tty_cell *tcpmin,
 
    tlp->tl_pastebuf.s = cp = salloc((tlp->tl_pastebuf.l = l) +1);
 
-   l = 0;
    for(tcp = tcpmin; tcp < tcpmax; cp += l, ++tcp)
       memcpy(cp, tcp->tc_cbuf, l = tcp->tc_count);
    *cp = '\0';
@@ -1400,7 +1399,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
             w = i;
             if(--tcxp == tc1p){
                tcp_left = tc1p;
-               vi_left = vil1;
+               /*vi_left = vil1;*/
                f |= a_LEFT_MIN;
                break;
             }
@@ -1922,7 +1921,7 @@ a_tty_kht(struct a_tty_line *tlp){
    struct stat sb;
    struct str orig, bot, topp, sub, exp, preexp;
    struct n_string shou, *shoup;
-   struct a_tty_cell *cword, *ctop, *cx;
+   struct a_tty_cell *ctop, *cx;
    bool_t wedid, set_savec;
    ui32_t rv, f;
    NYD2_ENTER;
@@ -1945,31 +1944,30 @@ a_tty_kht(struct a_tty_line *tlp){
    shoup = n_string_creat_auto(&shou);
    f = a_TTY_VF_NONE;
 
-   /* Find the word to be expanded */
-
-   cword = tlp->tl_line.cells;
-   ctop = cword + tlp->tl_cursor;
-   cx = cword + tlp->tl_count;
-
-   /* topp: separate data right of cursor */
-   if(cx > ctop){
-      for(rv = 0; ctop < cx; ++ctop)
-         rv += ctop->tc_count;
-      topp.l = rv;
-      topp.s = orig.s + orig.l - rv;
-      ctop = cword + tlp->tl_cursor;
-   }else
-      topp.s = NULL, topp.l = 0;
-
-   /* Find the shell token that corresponds to the cursor position */
    /* C99 */{
       size_t max;
+      struct a_tty_cell *cword;
 
+      /* Find the word to be expanded */
+      cword = tlp->tl_line.cells;
+      ctop = &cword[tlp->tl_cursor];
+      cx = &cword[tlp->tl_count];
+
+      /* topp: separate data right of cursor */
+      if(cx > ctop){
+         for(rv = 0; ctop < cx; ++ctop)
+            rv += ctop->tc_count;
+         topp.l = rv;
+         topp.s = orig.s + orig.l - rv;
+         ctop = cword + tlp->tl_cursor;
+      }else
+         topp.s = NULL, topp.l = 0;
+
+      /* Find the shell token that corresponds to the cursor position */
       max = 0;
       if(ctop > cword){
          for(; cword < ctop; ++cword)
             max += cword->tc_count;
-         cword = tlp->tl_line.cells;
       }
       bot = sub = orig;
       bot.l = 0;
@@ -2015,7 +2013,6 @@ a_tty_kht(struct a_tty_line *tlp){
 
    /* Leave room for "implicit asterisk" expansion, as below */
    if(sub.l == 0){
-      wedid = TRU1;
       sub.s = n_UNCONST(n_star);
       sub.l = 1;
    }
@@ -2396,7 +2393,6 @@ a_tty_khist_search(struct a_tty_line *tlp, bool_t fwd){
 
    if((thp = tlp->tl_hist) == NULL){
       a_tty_cell2save(tlp);
-      rv = tlp->tl_count;
       if((thp = a_tty.tg_hist) == NULL) /* TODO Should end "doing nothing"! */
          goto jleave;
       if(fwd)
@@ -2624,7 +2620,6 @@ a_tty_readline(struct a_tty_line *tlp, size_t len, bool_t *histok_or_null
 jrestart:
    memset(ps, 0, sizeof ps);
    flags = a_NONE;
-   tbf = 0;
    tlp->tl_vi_flags |= a_TTY_VF_REFRESH | a_TTY_VF_SYNC;
 
 jinput_loop:
@@ -2938,8 +2933,6 @@ jbuiltin_redo:
                assert(tbbtp->tbdt_iskey);
                if(tbbtp->tbbt_ckey == c){
                   if(tbbtp->tbbt_exp[0] == '\0'){
-                     enum a_tty_bind_flags tbf;
-
                      tbf = a_TTY_BIND_FUN_EXPAND((ui8_t)tbbtp->tbbt_exp[1]);
                      switch(a_tty_fun(tlp, tbf, &len)){
                      case a_TTY_FUN_STATUS_OK:
@@ -3588,8 +3581,10 @@ a_tty__bind_tree_add(ui32_t hmap_idx, struct a_tty_bind_tree *store[HSHSIZE],
          isseq = (u.wp[1] != '\0');
          for(; *u.wp != '\0'; ++u.wp)
             ntbtp = a_tty__bind_tree_add_wc(store, ntbtp, *u.wp, isseq);
-         if(isseq)
+         if(isseq){
+            assert(ntbtp != NULL);
             ntbtp->tbt_isseq_trail = TRU1;
+         }
       }
 
       cnvlen -= entlen;
@@ -3619,11 +3614,9 @@ a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep,
          if(tbtp->tbt_isseq == isseq)
             goto jleave;
          /* isseq MUST be linked before !isseq, so record this "parent"
-          * sibling, but continue searching for now */
-         if(!isseq)
-            parentp = tbtp;
-         /* Otherwise it is impossible that we'll find what we look for */
-         else{
+          * sibling, but continue searching for now.
+          * Otherwise it is impossible that we'll find what we look for */
+         if(isseq){
 #ifdef HAVE_DEBUG
             while((tbtp = tbtp->tbt_sibling) != NULL)
                assert(tbtp->tbt_char != wc);
