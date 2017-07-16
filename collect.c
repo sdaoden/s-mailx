@@ -481,11 +481,14 @@ a_coll_makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err,
       Fclose(_coll_fp);
    Fclose(fp);
    _coll_fp = nf;
+   nf = NULL;
 
    if (check_from_and_sender(hp->h_from, hp->h_sender) == NULL)
       goto jleave;
    rv = TRU1;
 jleave:
+   if(nf != NULL)
+      Fclose(nf);
    NYD_LEAVE;
    return rv;
 }

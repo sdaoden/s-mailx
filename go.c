@@ -1317,6 +1317,7 @@ n_go_main_loop(void){ /* FIXME */
             cc = savecatsep(cc, ' ', ca);
          else if(ca != NULL)
             cc = ca;
+         assert(cc != NULL);
          n_tty_addhist(cc, ((gec.gec_hist_flags & a_GO_HIST_GABBY) != 0));
       }
 

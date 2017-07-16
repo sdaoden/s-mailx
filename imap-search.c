@@ -724,8 +724,8 @@ static char *
 mkenvelope(struct name *np)
 {
    size_t epsize;
-   char *ep, *realnam = NULL, *sourceaddr = NULL, *localpart = NULL,
-      *domainpart = NULL, *cp, *rp, *xp, *ip;
+   char *ep, *realnam = NULL, /**sourceaddr = NULL,*/ *localpart,
+      *domainpart, *cp, *rp, *xp, *ip;
    struct str in, out;
    int level = 0;
    bool_t hadphrase = FAL0;
@@ -788,13 +788,14 @@ jdone:
    if ((cp = strrchr(localpart, '@')) != NULL) {
       *cp = '\0';
       domainpart = cp + 1;
-   }
+   }else
+      domainpart = NULL;
 
    ep = n_autorec_alloc(epsize = strlen(np->n_fullname) * 2 + 40);
    snprintf(ep, epsize, "(%s %s %s %s)",
       realnam ? _imap_quotestr(realnam) : "NIL",
-      sourceaddr ? _imap_quotestr(sourceaddr) : "NIL",
-      localpart ? _imap_quotestr(localpart) : "NIL",
+      /*sourceaddr ? _imap_quotestr(sourceaddr) :*/ "NIL",
+      _imap_quotestr(localpart),
       domainpart ? _imap_quotestr(domainpart) : "NIL");
    ac_free(ip);
    NYD_LEAVE;

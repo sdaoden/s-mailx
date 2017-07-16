@@ -1634,7 +1634,7 @@ jleave:
 FL FILE *
 smime_sign(FILE *ip, char const *addr)
 {
-   FILE *rv = NULL, *sp = NULL, *fp = NULL, *bp, *hp;
+   FILE *rv, *sp, *fp, *bp, *hp;
    X509 *cert = NULL;
    n_XSSL_STACKOF(X509) *chain = NULL;
    EVP_PKEY *pkey = NULL;
@@ -1646,6 +1646,7 @@ smime_sign(FILE *ip, char const *addr)
    NYD_ENTER;
 
    assert(addr != NULL);
+   rv = sp = /*fp =*/ bp = hp = NULL;
 
    a_xssl_init();
 
@@ -1735,6 +1736,7 @@ jerr:
       rewind(bp);
       fflush_rewind(sp);
       rv = smime_sign_assemble(hp, bp, sp, name);
+      hp = bp = sp = NULL;
    } else
 jerr1:
       Fclose(sp);
@@ -1748,6 +1750,12 @@ jleave:
       EVP_PKEY_free(pkey);
    if (fp != NULL)
       Fclose(fp);
+   if (hp != NULL)
+      Fclose(hp);
+   if (bp != NULL)
+      Fclose(bp);
+   if (sp != NULL)
+      Fclose(sp);
    NYD_LEAVE;
    return rv;
 }
@@ -1755,15 +1763,18 @@ jleave:
 FL FILE *
 smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
 {
-   FILE *rv = NULL, *yp, *fp, *bp, *hp;
+   FILE *rv, *yp, *fp, *bp, *hp;
    X509 *cert;
    PKCS7 *pkcs7;
    BIO *bb, *yb;
    n_XSSL_STACKOF(X509) *certs;
    EVP_CIPHER const *cipher;
    char *certfile;
-   bool_t bail = FAL0;
+   bool_t bail;
    NYD_ENTER;
+
+   bail = FAL0;
+   rv = yp = fp = bp = hp = NULL;
 
    if ((certfile = fexpand(xcertfile, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
       goto jleave;
@@ -1772,19 +1783,20 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
 
    if ((cipher = _smime_cipher(to)) == NULL)
       goto jleave;
+
    if ((fp = Fopen(certfile, "r")) == NULL) {
       n_perr(certfile, 0);
       goto jleave;
    }
-
    if ((cert = PEM_read_X509(fp, NULL, &ssl_password_cb, NULL)) == NULL) {
       ssl_gen_err(_("Error reading encryption certificate from %s"),
          n_shexp_quote_cp(certfile, FAL0));
       bail = TRU1;
    }
-   Fclose(fp);
    if (bail)
       goto jleave;
+   Fclose(fp);
+   fp = NULL;
    bail = FAL0;
 
    certs = sk_X509_new_null();
@@ -1827,15 +1839,23 @@ jerr2:
    if (yb != NULL)
       BIO_free(yb);
    Fclose(bp);
-   if (bail)
-      Fclose(yp);
-   else {
+   bp = NULL;
+   if (!bail) {
       fflush_rewind(yp);
       rv = smime_encrypt_assemble(hp, yp);
+      hp = yp = NULL;
    }
 jerr1:
    sk_X509_pop_free(certs, X509_free);
 jleave:
+   if(yp != NULL)
+      Fclose(yp);
+   if(fp != NULL)
+      Fclose(fp);
+   if(bp != NULL)
+      Fclose(bp);
+   if(hp != NULL)
+      Fclose(hp);
    NYD_LEAVE;
    return rv;
 }
