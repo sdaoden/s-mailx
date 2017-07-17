@@ -724,7 +724,7 @@ ChangeLog
        zst 'zstd -dc' 'zstd -19 -zc' \
        zst.pgp 'gpg -d | zstd -dc' 'zstd -19 -zc | gpg -e'
 
-- `~<#'293 now offers a "- [HERE-delimiter]" mode for pasting etc.
+- `~<'#293 now offers a "- [HERE-delimiter]" mode for pasting etc.
   (Ralph Corderoy)
 
 - `exit'#171 and `quit'#225 take an optional exit status.
@@ -733,7 +733,7 @@ ChangeLog
 - We have a useful -h / --help output.  (Doug McIlroy)
 
 - *encoding* obsoleted in favour of new *mime-encoding*#429, which
-  now default to base64.
+  now defaults to base64.
 
 - *allnet*#335 now works (broken since nail 10.00, 2002-09-29).
 
