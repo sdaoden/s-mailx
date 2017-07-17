@@ -13,6 +13,8 @@
 : ${MAILTO:?"May need \$MAILTO for announcement"}
 : ${MAILBCC:?"May need \$MAILBCC for announcement"}
 
+: ${awk:=awk}
+
 ##  --  >8  --  8<  --  ##
 
 ORIG_LC_ALL=${LC_ALL} LC_ALL=C
@@ -47,7 +49,7 @@ if [ -z "${brref}" ]; then
    exit 1
 fi
 if [ "`git status --porcelain --ignored |
-      awk 'BEGIN{no=0}{++no}END{print no}'`" -ne 0 ]; then
+      ${awk} 'BEGIN{no=0}{++no}END{print no}'`" -ne 0 ]; then
    echo >&2 'Directory not clean, see git status --ignored'
    exit 2
 fi
@@ -72,11 +74,11 @@ if yesno 'Is '${PROGRAM}' <v'${REL}'> correct?'; then :; else
    exit 3
 fi
 
-stblbrname=stable/v${vmaj}.${vmin}
+stblbrname=stable/v${vmaj}.${vmin} need_stblbrname=
 brref=`git rev-parse --verify ${stblbrname} 2>/dev/null`
 if [ -z "${brref}" ]; then
-   if yesno 'Create and switch to new branch '"${stblbrname}"; then
-      git checkout -b ${stblbrname}
+   if yesno 'Create new branch '"${stblbrname}"' after release tag'; then
+      need_stblbrname=1
    fi
 elif [ ${brref} != ${headref} ] || [ ${brname} != ${stblbrname} ]; then
    echo >&2 "For ${REL} we should be on ${stblbrname}, not ${brname}"
@@ -120,6 +122,17 @@ update_stable_hook
 
 LC_ALL=${ORIG_LC_ALL} git commit -S -m "${stblmsg}"
 LC_ALL=${ORIG_LC_ALL} git tag -s -f -m "${stblmsg}" v${REL}
+
+if [ -n "${need_stblbrname}" ]; then
+   git checkout -b ${stblbrname}
+fi
+# Normally done in post-commit hook, but not once initially created
+if yesno 'Shall i update stable/latest "symlink"?'; then
+   git update-ref refs/heads/stable/latest ${stblbrname}
+fi
+if yesno 'Shall i update stable/stable "symlink"?'; then
+   git update-ref refs/heads/stable/stable ${stblbrname}
+fi
 
 ##
 
@@ -216,7 +229,7 @@ if yesno 'Prepare announcement?'; then
          cks=`< "${TMPDIR}/${PROGRAM}-${REL}.cksum" sed -e 's/ //' -e '/^$/,$d'`
          < "${TMPDIR}/${PROGRAM}-${REL}.cksum" sed '1,/^$/d' \
             > "${TMPDIR}/.${PROGRAM}-${REL}.sigs"
-         < .git/make-release.txt awk \
+         < .git/make-release.txt ${awk} \
                -v INS="${cks}" -v SIGS="${TMPDIR}/.${PROGRAM}-${REL}.sigs" \
                -v NEWS="${TMPDIR}/.${PROGRAM}-${REL}.news" '
             /-----CHECKSUMS-----/{
@@ -247,7 +260,7 @@ if yesno 'Prepare announcement?'; then
          ' >> "${TMPDIR}/${PROGRAM}-${REL}.txt"
          rm -f "${TMPDIR}/.${PROGRAM}-${REL}.sigs"
       else
-         < .git/make-release.txt awk \
+         < .git/make-release.txt ${awk} \
                -v NEWS="${TMPDIR}/.${PROGRAM}-${REL}.news" '
             /-----NEWS-----/{
                while(getline sl < NEWS)
@@ -268,9 +281,8 @@ if yesno 'Prepare announcement?'; then
 
    # HTML convert ready for S-Web42
    APO=\'
-   < "${TMPDIR}/${PROGRAM}-${REL}.txt" awk -v manual="${MANUAL}" '
+   < "${TMPDIR}/${PROGRAM}-${REL}.txt" ${awk} -v manual="${MANUAL}" '
    BEGIN{
-      header = 1
       hot = 0
       print "<?begin?><?mode icewatsm?><pre>"
    }
@@ -307,28 +319,21 @@ if yesno 'Prepare announcement?'; then
       $0 = any ? res : s
    }
    /^[[:space:]]*s-.*-mode[[:space:]]*$/{
-      header = 1
+      exit 0
+   }
+   /^(NOTES|ChangeLog)/{
+      hot = 1
+      strips()
+      print
       next
    }
-   /ChangeLog|shortlog/{
-      if(header)
-         next
-      if(hot == 0)
-         hot = 1
-      strips()
-   }
-   /Appendix/{
-      if(header)
-         next
+   /^(Appendix|git\(1\) shortlog)/{
       hot = -1
       strips()
+      print
+      next
    }
    {
-      if(header){
-         if(length == 0)
-            header = 0
-         next
-      }
       strips()
       urls()
       if(hot <= 0){
@@ -338,20 +343,27 @@ if yesno 'Prepare announcement?'; then
       any = 0
       res = ""
       s = $0
+      # Create S-Web42 local references for the possible anchors:
+      #     *XY*# / $XY# / -XY# / `XY${APO}# / `~XY${APO}# / "XY"#
+      # (where the mdocmx(7) anchor follows the number sign).
+      # Ideally the anchors have been automatically expanded by
+      # mdocmx-anchor-expand.sh before.
       while(match(s,
-            /("[^"]+"|\*[^\*]+\*|`[^'${APO}']+'${APO}'|[-~][-\/:_.[:alnum:]]+|\$[_[:alnum:]]+)#[0-9]+(\|#_?[0-9]+)?/))
+            /(^|\(|[[:space:]]+)("[^"]+"|\*[^\*]+\*|`[^'${APO}']+'${APO}'|[-~][-\/:_.[:alnum:]]+|\$[_[:alnum:]]+)#[0-9]+/))
       {
-         pre = substr(s, 1, RSTART - 1)
+         pre = (RSTART > 1) ? substr(s, 1, RSTART - 1) : ""
          mat = substr(s, RSTART, RLENGTH)
          s = substr(s, RSTART + RLENGTH)
 
-         if(match(mat, /\|#_?[0-9]+/)){
-            targ = substr(mat, RSTART + 2)
-            mat = substr(mat, 1, RSTART - 1)
-         }else{
-            match(mat, /#[0-9]+/)
-            targ = substr(mat, RSTART + 1, RLENGTH)
+         # Unfortunately groups are not supported
+         if(match(mat, /^(\(|[[:space:]]+)/) != 0 && RLENGTH > 0){
+            pre = pre substr(mat, 1, RLENGTH)
+            mat = substr(mat, RSTART + RLENGTH)
          }
+
+         match(mat, /#[0-9]+/)
+         targ = substr(mat, RSTART + 1, RLENGTH)
+         mat = substr(mat, 1, RSTART)
          res = res pre "<?lreft " manual "#" targ "<>" mat "?>"
          any = 1
       }
