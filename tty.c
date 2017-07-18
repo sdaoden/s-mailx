@@ -1993,6 +1993,7 @@ a_tty_kht(struct a_tty_line *tlp){
             if(shs & n_SHEXP_STATE_ERR_MASK){
                n_err(_("Invalid completion pattern: %.*s\n"),
                   (int)exp.l, exp.s);
+               f |= a_TTY_VF_BELL;
                goto jnope;
             }
 
@@ -2067,6 +2068,7 @@ jredo:
    n_LCTA(a_TTY_LINE_MAX <= SI32_MAX, "a_TTY_LINE_MAX too large");
    if(exp.l >= a_TTY_LINE_MAX - 1 || a_TTY_LINE_MAX - 1 - exp.l < preexp.l){
       n_err(_("Tabulator expansion would extend beyond line size limit\n"));
+      f |= a_TTY_VF_BELL;
       goto jnope;
    }
 
@@ -2083,29 +2085,19 @@ jredo:
       goto jredo;
    }
 
-   /* If it is a directory, and there is not yet a / appended, then we want the
-    * user to confirm that he wants to dive in -- with only a HT */
-   if(wedid && exp.l == --sub.l && !memcmp(exp.s, sub.s, exp.l) &&
-         exp.s[exp.l - 1] != '/'){
-      if(stat(exp.s, &sb) || !S_ISDIR(sb.st_mode))
-         goto jnope;
-      sub.s = salloc(exp.l + 1 +1);
-      memcpy(sub.s, exp.s, exp.l);
-      sub.s[exp.l++] = '/';
-      sub.s[exp.l] = '\0';
-      exp.s = sub.s;
-      wedid = FAL0;
-      goto jset;
-   }else{
-      if(wedid && (wedid = (exp.s[exp.l - 1] == '*')))
-         --exp.l;
-      exp.s[exp.l] = '\0';
-jset:
-      exp.l = strlen(exp.s = n_shexp_quote_cp(exp.s, tlp->tl_quote_rndtrip));
-      tlp->tl_defc_cursor_byte = bot.l + preexp.l + exp.l -1;
-      if(wedid)
-         goto jnope;
+   if(exp.s[exp.l - 1] != '/'){
+      if(stat(exp.s, &sb) || S_ISDIR(sb.st_mode)){
+         shoup = n_string_assign_buf(shoup, exp.s, exp.l);
+         shoup = n_string_push_c(shoup, '/');
+         exp.s = n_string_cp(shoup);
+         goto jset;
+      }
    }
+   exp.s[exp.l] = '\0';
+
+jset:
+   exp.l = strlen(exp.s = n_shexp_quote_cp(exp.s, tlp->tl_quote_rndtrip));
+   tlp->tl_defc_cursor_byte = bot.l + preexp.l + exp.l -1;
 
    orig.l = bot.l + preexp.l + exp.l + topp.l;
    orig.s = n_autorec_alloc_from_pool(mempool_persist, orig.l + 5 +1);
@@ -2299,20 +2291,16 @@ jsep:
       n_string_gut(shoup);
 
       /* A common prefix of 0 means we cannot provide the user any auto
-       * completed characters */
-      if(locolen == 0)
-         goto jnope;
-
-      /* Otherwise we can, so extend the visual line content by the common
+       * completed characters for the multiple possible results.
+       * Otherwise we can, so extend the visual line content by the common
        * prefix (in a reversible way) */
-      (exp.s = n_UNCONST(lococp))[locolen] = '\0';
-      exp.s -= prefixlen;
-      exp.l = (locolen += prefixlen);
-
-      /* XXX Indicate that there is multiple choice */
-      /* XXX f |= a_TTY_VF_BELL; -> *line-editor-completion-bell*? or so */
-      wedid = FAL0;
-      goto jset;
+      f |= a_TTY_VF_BELL; /* XXX -> *line-editor-completion-bell*? or so */
+      if(locolen > 0){
+         (exp.s = n_UNCONST(lococp))[locolen] = '\0';
+         exp.s -= prefixlen;
+         exp.l = (locolen += prefixlen);
+         goto jset;
+      }
    }
 
 jnope:
@@ -2322,7 +2310,7 @@ jnope:
       tlp->tl_savec.s = NULL;
       tlp->tl_savec.l = 0;
    }
-   f = a_TTY_VF_NONE;
+   f &= a_TTY_VF_BELL; /* XXX -> *line-editor-completion-bell*? or so */
    rv = 0;
    goto jleave;
 }
