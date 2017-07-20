@@ -349,7 +349,7 @@ argument will undergo some special
 .Ic file ) .
 Note that
 .Ar file
-is not a argument to the flag
+is not an argument to the flag
 .Fl \&\&f ,
 but is instead taken from the command line after option processing has
 been completed.
@@ -1233,7 +1233,7 @@ will display a header summary of the given message specification list
 instead of their content, e.g., the following will search for subjects:
 .
 .Pp
-.Dl from "'@Some subject to search for'"
+.Dl ? from "'@Some subject to search for'"
 .
 .Pp
 In the default setup all header fields of a message will be
@@ -1408,7 +1408,7 @@ text, and to open PDF attachments in an external PDF viewer,
 asynchronously and with some other magic attached:
 .
 .Bd -literal -offset indent
-? if [ "$features" !@ +filter-html-tagsoup ]
+? if [ "$features" !% +filter-html-tagsoup ]
 ?  #set pipe-text/html='@* elinks -force-html -dump 1'
 ?  set pipe-text/html='@* lynx -stdin -dump -force_html'
 ?  # Display HTML as plain text instead
@@ -1519,9 +1519,9 @@ that in the certificate, and that the message text has not been altered.
 Signing a message does not change its regular text;
 it can be read regardless of whether the recipient's software is able to
 handle S/MIME.
+It is thus usually possible to sign all outgoing messages if so desired.
 .
 .Pp
-It is thus usually possible to sign all outgoing messages if so desired.
 Encryption, in contrast, makes the message text invisible for all people
 except those who have access to the secret decryption key.
 To encrypt a message, the specific recipient's public encryption key
@@ -1545,7 +1545,7 @@ If you trust the source of your OpenSSL software installation,
 this offers reasonable security for S/MIME on the Internet.
 Otherwise set
 .Va smime-ca-no-defaults
-to avoid using the default certificate and point
+to avoid using the default certificates and point
 .Va smime-ca-file
 and/or
 .Va smime-ca-dir
@@ -5961,7 +5961,7 @@ can be used to quote arguments as necessary.
 assignment statement to quote blanks or tabs.
 .
 .Pp
-.Dl wysh set indentprefix=' -> '
+.Dl ? wysh set indentprefix=' -> '
 .
 .Pp
 If an argument begins with
@@ -8096,7 +8096,7 @@ reverse solidus.
 \*(ID Overwriting of automatically managed headers is neither supported
 nor prevented.
 .Pp
-.Dl set customhdr='Hdr1: Body1-1\e, Body1-2,  Hdr2: Body2'
+.Dl ? set customhdr='Hdr1: Body1-1\e, Body1-2,  Hdr2: Body2'
 .
 .Mx
 .It Va datefield
@@ -9309,8 +9309,6 @@ If this variable is set then the mailwrapper (the program that is
 actually executed when calling the file-based
 .Va mta )
 will treat its contents as that name.
-The default is
-.Ql sendmail .
 .
 .Mx Va netrc-lookup
 .It Va netrc-lookup-USER@HOST , netrc-lookup-HOST , netrc-lookup
@@ -9509,7 +9507,7 @@ define ocsm {
   if [ "$es" != 2 ]
     echoerr 'Cannot read header list'; echo '~x'; xit
   endif
-  if [ "$hl" @i!@ ' cc' ]
+  if [ "$hl" @i!% ' cc' ]
     echo '~^h i cc Diet is your <mirr.or>'; read es;\e
       vput vexpr es substring "${es}" 0 1
     if [ "$es" != 2 ]
