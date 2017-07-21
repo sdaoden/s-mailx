@@ -310,13 +310,6 @@ Low-Level
      one.
      + That also is: redefinition of names that have yet-pending
      deletion requests are possible.
- 12. It is annoying that you cannot `source' your MAILRC multiple times.
-     Defining a macro/account/xy should overwrite the current thing,
-     just as it does anyway for normal variables!
-     This is no different than 11. plus additional re-addition.
-     (Same exception: what if the currently active account is
-     overwritten?  Same answer, plus a message "new settings take effect
-     when account is switched to the next time".)
  20. The attachment charset selection loop can then be rewritten to
      check whether an ^C occurred and treat that as end-of-loop
      condition.  In v14.6.3 this was introduced, but it should act
