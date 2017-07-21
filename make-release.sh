@@ -35,7 +35,7 @@ update_stable_hook() {
             if (written++ != 0)
                next
             print ".\\\"--MKREL-START--"
-            print ".\\\"@ '"${UPROGRAM}"'(1): v'"${REL}"' / '"${DATE_ISO}"'"
+            print ".\\\"@ '"${UPROGRAM}"' v'"${REL}"' / '"${DATE_ISO}"'"
             print ".Dd '"${DATE_MAN}"'"
             print ".ds VV \\\\%v'"${REL}"'"
             print ".\\\"--MKREL-END--"
@@ -54,7 +54,7 @@ update_stable_hook() {
             if (written++ != 0)
                next
             print "#--MKREL-START--"
-            print "#@ '"${UPROGRAM}"'(1): v'"${REL}"' / '"${DATE_ISO}"'"
+            print "#@ '"${UPROGRAM}"' v'"${REL}"' / '"${DATE_ISO}"'"
             print "#--MKREL-END--"
             next
          }

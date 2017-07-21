@@ -148,7 +148,7 @@ urc.rc: nail.rc
 		ln = tolower(ENVIRON["_UAGENT"]);\
 		cn = toupper(substr(ln, 1, 1)) substr(ln, 2);\
 		print "#@ ", ENVIRON["_SYSCONFRC"];\
-		print "#@ Configuration file for ", cn, "(1) v",\
+		print "#@ Configuration file for ", cn, " v",\
 			ENVIRON["VERSION"];\
 		OFS = " ";\
 		next\
