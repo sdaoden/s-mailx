@@ -866,9 +866,8 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
             n_err(_("$HOME is not a directory or not accessible: %s\n"),
                n_shexp_quote_cp(val, FAL0));
             ok = FAL0;
-            break;
          }
-         /* FALLTHRU */
+         break;
       case ok_v_TMPDIR:
          if(!n_is_dir(val, TRU1)){
             n_err(_("$TMPDIR is not a directory or not accessible: %s\n"),
