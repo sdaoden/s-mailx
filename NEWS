@@ -139,7 +139,7 @@ NOTES, ChangeLog (packager-affine)
     repository gained a [test-out] branch with some expected plain
     text outputs.  (reproducible-builds.org; Colin Watson)
 
-    The new *log-prefix*#416  variable aids in improving the
+    The new *log-prefix*#416 variable aids in improving the
     reproducibility of error messages.
 
   o These are upward compatible changes.
@@ -219,12 +219,12 @@ NOTES, ChangeLog (packager-affine)
 
   + Support for 256-colour terminals. (Gavin Troy)
 
-- `source'#260 series support shell pipes if the last character
+- `source'#259 series support shell pipes if the last character
    of the "filename" ends with a vertical bar |, e.g.,
 
       ? source 'gpg -qd ~/.s-nailrc-private.gpg |'
 
-- Shell pipes are also supported as targets for `move'#209,
+- Shell pipes are also supported as targets for `move'#210,
   `copy'#147 etc., yet unfortunately not with via a sh(1)ell token
   parser, so that the target still has to be a single argument.
 
@@ -237,7 +237,7 @@ NOTES, ChangeLog (packager-affine)
 
   + Support of $ORGANIZATION has been dropped.
 
-  + Command escape ~e#302 supports _any_ header.
+  + Command escape `~e'#302 supports _any_ header.
 
   + Command escape `~^'#322 supports _any_ header.
 
@@ -443,10 +443,10 @@ NOTES, ChangeLog (packager-affine)
     $ echo 'vput cwd resvar;echo $resvar' | s-nail -#:/
     /home/steffen/src/nail.git
 
-  And the usual sh(1) stuff: `return'#241, `shift'#252, `eval'#170,
-  plus a `xcall'#284 stack-avoidance optimization (to be used in
-  place of a `call'#132 which would be the last called command).
-  And an "expr(1) like thing", yet simple, `vexpr'#280.
+  And the usual sh(1) stuff: `return'#242, `shift'#253, `eval'#171,
+  plus a `xcall'#285 stack-avoidance optimization (to be used in
+  place of a `call'#133 which would be the last called command).
+  And an "expr(1) like thing", yet simple, `vexpr'#281.
 
     $ echo 'vexpr + 1 2' | s-nail -#:/
     00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000011
@@ -454,7 +454,7 @@ NOTES, ChangeLog (packager-affine)
     $ echo 'vput vexpr resvar + 1 2;echo $resvar' | s-nail -#:/
     3
 
-  We actually start walking (*?*#322, *^*#324).
+  We actually start walking (*?*#323, *^*#325).
 
     ? vput vexpr res regex 'bananarama' 'Bana(.+)' '\$1\$0'
     ? echo $?/$^ERRNAME :$res:
@@ -463,7 +463,7 @@ NOTES, ChangeLog (packager-affine)
     ? echo $?/$^ERRNAME :$res:
     0/NONE :bananabananarama:
 
-  The command `vpospar'#281 can be used to manage the stack of
+  The command `vpospar'#282 can be used to manage the stack of
   positional parameters, i.e., much like "set --".
   It also offers the possibility to save and restore the stack to
   and from variables.  Etc.
@@ -473,7 +473,7 @@ NOTES, ChangeLog (packager-affine)
 
     ? echo $contact-web; eval mail $contact-mail
 
-- `if'#193 no longer performs automatic number conversion, we
+- `if'#194 no longer performs automatic number conversion, we
   use the explicit -lt, -gt etc. syntax of the sh(1).
   Note: `if' will change to be almost identical to sh(1) if(1),
   so please ensure proper test bracketing, even if it is less
@@ -518,26 +518,26 @@ NOTES, ChangeLog (packager-affine)
   will be 1 (the empty string) not 0.
 
 - Using an explicit proto:// prefix should get you the desired
-  thing apart of *newfolders*#437, e.g.:
+  thing apart of *newfolders*#438, e.g.:
 
     ? File maildir:///tmp/x.mdir
     ? copy * file:///tmp/x.mbox
 
-- New variable *record-files*#474 can be set to extend the meaning
-  of *record*#473.  *record-resent*#475 was there already.
+- New variable *record-files*#475 can be set to extend the meaning
+  of *record*#474.  *record-resent*#476 was there already.
 
-- New variable *ifs*#404 acts a bit like the sh(1)ell's $IFS for,
-  e.g., the new `read'#226 command.
+- New variable *ifs*#405 acts a bit like the sh(1)ell's $IFS for,
+  e.g., the new `read'#227 command.
 
   There is a `readctl'#228 command which can be used to manage
   the active channel used by `read'#227.
 
-- The `~' alias for `call'#132 is gone.
+- The `~' alias for `call'#133 is gone.
 
-- `mimetype'#201 only allows specification of a single type per
+- `mimetype'#202 only allows specification of a single type per
   call, on the other hand no need to quote that.
 
-- `mimeview'#205 must now be used explicitly to look at any
+- `mimeview'#206 must now be used explicitly to look at any
   non-text MIME part, for normal display etc. purposes we only
   support "copiousoutput"#592 MIME handlers.
 
@@ -555,11 +555,11 @@ ChangeLog
   Respiranto, Thomas Dickey, Donald Mugnai)
 
 - To support RFC 1524 a.k.a. .mailcap files (see below) many
-  "trigger"-characters have been added for *pipe-TYPE/SUBTYPE*#450,
+  "trigger"-characters have been added for *pipe-TYPE/SUBTYPE*#451,
   which may (rarely) affect existing values.
   The .mailcap support itself is not yet implemented.
 
-- *mime-counter-evidence*#428 gained bit 4 (perform proper in-depth
+- *mime-counter-evidence*#429 gained bit 4 (perform proper in-depth
   content inspection as necessary; set to 0xE for all bits).
   (Aharon Robbins)
 
@@ -577,10 +577,10 @@ ChangeLog
   which has been standardized a long time ago.
   (Matthew Dillon)
 
-- `retain'#240, `ignore'#194 etc. now differentiate in between
+- `retain'#241, `ignore'#195 etc. now differentiate in between
   From (the From: header) and From_ (the MBOX ident).
 
-  In fact we now have a new `headerpick'#187 command which
+  In fact we now have a new `headerpick'#188 command which
   is a multiplexer for all retain and ignore lists used, call it
   without arguments to see the current setting(s).
   In v15 only `headerpick' and the standard-imposed wrappers
@@ -598,11 +598,11 @@ ChangeLog
         mail-followup-to openpgp reply-to subject to
       #headerpick forward ignore currently covers no fields
 
-- `top'#267 has been rewritten completely, `Top'#266 is new.
+- `top'#268 has been rewritten completely, `Top'#267 is new.
   It uses a built-in set of retain/ignore headers, but it is
-  possible to register a custom set via `headerpick'#187.
-  Also, *toplines*#542 has been extended a bit and the new
-  *topsqueeze*#543 variable may pimp your `top' experience.
+  possible to register a custom set via `headerpick'#188.
+  Also, *toplines*#543 has been extended a bit and the new
+  *topsqueeze*#544 variable may pimp your `top' experience.
 
     ? headerpick top retain add subject
     ? top
@@ -612,18 +612,18 @@ ChangeLog
     I wrote:
         3.22. bounce_delivered
 
-- `features' has been dropped, `version'#279 extended.
+- `features' has been dropped, `version'#280 extended.
 
-- The *prompt*#465 handling has changed: we lost the capability to
-  expand \?, \@ and \$, instead new "private" variables *?*#322,
-  *account*#333, *mailbox-resolved*#417  and
-  *mailbox-display*#416 have been introduced, and the prompt
+- The *prompt*#466 handling has changed: we lost the capability to
+  expand \?, \@ and \$, instead new "private" variables *?*#323,
+  *account*#334, *mailbox-resolved*#418 and
+  *mailbox-display*#417 have been introduced, and the prompt
   is completely shell expanded (thus twice with `wysh' or in v15),
   as if dollar-single-quote quoted.  We do support the reverse-
   solidus escaped bracket notation for embedding characters which
   should not be counted when calculating the width of the prompt.
-  The `colour'#141 command has a slot for the prompt colour.
-  We gained *prompt2*#466 as a second level prompt.
+  The `colour'#142 command has a slot for the prompt colour.
+  We gained *prompt2*#467 as a second level prompt.
 
     ? var prompt
     wysh set \
@@ -633,16 +633,16 @@ ChangeLog
 
     $ echo Hey,\ you | s-nail -:/ -Sexpandaddr -sUB -
 
-- The -s#74 command line option, the ~s#313 command escape
-  as well as the corresponding slots of `~^'#321 will actively
+- The -s#74 command line option, the `~s'#314 command escape
+  as well as the corresponding slots of `~^'#322 will actively
   strip [\r\n] from their value (Debian #419840).
 
-- New `read'#226 and `echoerr'#161 commands, mostly for
-  *on-compose-splice*#443.
-  But also `echon'#162 and `echoerrn'#163, which do not write
+- New `read'#227 and `echoerr'#162 commands, mostly for
+  *on-compose-splice*#444.
+  But also `echon'#163 and `echoerrn'#164, which do not write
   a trailing newline.
 
-- New variable *r-option-implicit*#471 may be helpful to those
+- New variable *r-option-implicit*#472 may be helpful to those
   who regulary need the functionality of the -r#72 command
   line option.  (Felipe Gasper, Martin Neitzel)
 
@@ -654,23 +654,23 @@ ChangeLog
   bob@exam.ple.smime-cert-key, bob@exam.ple.smime-cert-cert and
   bob@exam.ple.smime-include-certs.
   Like this the password can be stored in an encrypted .netrc file
-  when *netrc-lookup*#435 and *netrc-pipe*#436 are set, or it may
+  when *netrc-lookup*#436 and *netrc-pipe*#437 are set, or it may
   be stored in an encrypted resource file that has been loaded via
-  `source'#258 as a simple *password*#448 variable.
+  `source'#259 as a simple *password*#449 variable.
 
   Note that the prompting that happens as a last resort of
   password lookup will still interfere with a possibly running
-  $PAGER#572 instance, dependent on the setting of *crt*#367, of
+  $PAGER#573 instance, dependent on the setting of *crt*#368, of
   course.  Proper job control handling and recognizing that we are
   running $PAGER when doing that prompt is a TODO for v15.  Sorry.
 
-- Some commands, like `set'#246, `help'#190, `list'#195,
-  `mlist'#203 etc., now react upon the setting of *verbose*#549
-  and(/or) *debug*#371.
+- Some commands, like `set'#247, `help'#191, `list'#196,
+  `mlist'#204 etc., now react upon the setting of *verbose*#550
+  and(/or) *debug*#372.
 
-- `write'#283 uses iconv(3) as appropriate.
+- `write'#284 uses iconv(3) as appropriate.
 
-- *mbox-rfc4155*#420 has first been dropped, and was then
+- *mbox-rfc4155*#421 has first been dropped, and was then
   reintroduced with different semantics.  Because, it can be
   helpful if a messed up MBOX is read, in which case we henceforth
   will warn you and point you to this:
@@ -690,29 +690,29 @@ ChangeLog
   And also in v15 we will not apply (proper) so-called MBOXO
   quoting, but instead (simply MIME) re-encode mail messages.
 
-- `call_if'#133 is new and, different to "? ignerr call", silent
+- `call_if'#134 is new and, different to "? ignerr call", silent
   and not messing with the return status.
 
-- The new *smime-ca-flags*#497 and *ssl-ca-flags*#525 can be used
+- The new *smime-ca-flags*#498 and *ssl-ca-flags*#526 can be used
   to fine-tune X509_STORE_set_flags(3) a.k.a the X509 CA
   certificate verification.
 
     ? set ssl-ca-flags=partial-chain
     ? wysh set smime-ca-flags="${ssl-ca-flags}"
 
-  Also, *ssl-curves*#530 for TLSv1.3.
+  Also, *ssl-curves*#531 for TLSv1.3.
 
 - Socket connections use TLS S(erver)N(ame)I(ndication) as
   appropriate (RFC 7817).
 
 - `alternates'#127 checks arguments and supports `vput'#111.
   It by default no longer replaces but appends alternates, unless
-  *posix*#463 mode is active.  There is a new `unalternates'#128
+  *posix*#464 mode is active.  There is a new `unalternates'#128
   command to remove alternates.
 
-- A new `charsetalias'#136 command.  (Pietro Cerutti, mutt#3925)
+- A new `charsetalias'#137 command.  (Pietro Cerutti, mutt#3925)
 
-- New commands `filetype'#174 and `unfiletype'#175: in the future
+- New commands `filetype'#175 and `unfiletype'#176: in the future
   we will no longer know any builtin filetypes, in fact we already
   simulate .gz etc. via the new mechanism as necessary:
 
@@ -724,18 +724,18 @@ ChangeLog
        zst 'zstd -dc' 'zstd -19 -zc' \
        zst.pgp 'gpg -d | zstd -dc' 'zstd -19 -zc | gpg -e'
 
-- `~<'#293 now offers a "- [HERE-delimiter]" mode for pasting etc.
+- `~<'#294 now offers a "- [HERE-delimiter]" mode for pasting etc.
   (Ralph Corderoy)
 
-- `exit'#171 and `quit'#225 take an optional exit status.
+- `exit'#172 and `quit'#226 take an optional exit status.
   (That is not fixated yet, though.)
 
 - We have a useful -h / --help output.  (Doug McIlroy)
 
-- *encoding* obsoleted in favour of new *mime-encoding*#429, which
+- *encoding* obsoleted in favour of new *mime-encoding*#430, which
   now defaults to base64.
 
-- *allnet*#335 now works (broken since nail 10.00, 2002-09-29).
+- *allnet*#336 now works (broken since nail 10.00, 2002-09-29).
 
 git(1) shortlog (abbreviated)
 '''''''''''''''''''''''''''''
