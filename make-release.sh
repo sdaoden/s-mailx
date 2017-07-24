@@ -70,6 +70,8 @@ update_stable_hook() {
 }
 
 update_release_hook() {
+   git rm -f make-news-anchors.sh
+
    if [ -f nail.1 ]; then
       sed -E -e '/^\.\\"--MKREL-(START|END)--/d' \
          -e '/--BEGINSTRIP--/,$ {' \
