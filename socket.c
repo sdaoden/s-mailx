@@ -188,7 +188,7 @@ jpseudo_jump:
          (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
 #  endif
          if (connect(sofd, res->ai_addr, res->ai_addrlen)) {
-            errval = n_err_no;
+            n_perr("connect(2) failed:", errval = n_err_no);
             close(sofd);
             sofd = -1;
          }
@@ -267,7 +267,7 @@ jjumped:
    (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
 #  endif
    if (connect(sofd, (struct sockaddr*)&servaddr, sizeof servaddr)) {
-      errval = n_err_no;
+      n_perr("connect(2) failed:", errval = n_err_no);
       close(sofd);
       sofd = -1;
    }
