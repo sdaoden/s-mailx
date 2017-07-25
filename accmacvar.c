@@ -862,7 +862,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
          /* Note this gets called from main.c during initialization, and they
           * simply set this to pw_dir as a fallback: don't verify _that_ call.
           * See main.c! */
-         if(!(n_pstate & n_PS_ROOT) && !n_is_dir(val, TRU1)){
+         if(!(n_pstate & n_PS_ROOT) && !n_is_dir(val, TRUM1)){
             n_err(_("$HOME is not a directory or not accessible: %s\n"),
                n_shexp_quote_cp(val, FAL0));
             ok = FAL0;

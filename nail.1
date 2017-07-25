@@ -11329,6 +11329,14 @@ A default editor is used if this value is not defined.
 .It Ev HOME
 The user's home directory.
 This variable is only used when it resides in the process environment.
+The calling user's home directory will be used instead if this directory
+does not exist, is not accessible or cannot be read.
+(No test for being writable is performed to allow usage by
+non-privileged users within read-only jails, but dependent on the
+variable settings this directory is a default write target, e.g. for
+.Ev DEAD ,
+.Ev MBOX
+and more.)
 .
 .Mx
 .Mx
@@ -11524,7 +11532,7 @@ and for terminal management in general to
 .It Ev TMPDIR
 Used as directory for temporary files instead of
 .Pa /tmp ,
-if set.
+if set, existent, accessible as well as read- and writable.
 This variable is only used when it resides in the process environment,
 but \*(UA will ensure at startup that this environment variable is
 updated to contain a usable temporary directory.

@@ -1676,7 +1676,8 @@ FL bool_t n_filetype_exists(struct n_file_type *res_or_null, char const *file);
  */
 
 /* Test to see if the passed file name is a directory, return true if it is.
- * If check_access is set, we also access(2) */
+ * If check_access is set, we also access(2): if it is TRUM1 only X_OK|R_OK is
+ * tested, otherwise X_OK|R_OK|W_OK. */
 FL bool_t n_is_dir(char const *name, bool_t check_access);
 
 /* Recursively create a directory */
