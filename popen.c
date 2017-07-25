@@ -563,14 +563,14 @@ n_fopen_any(char const *file, char const *oflags, /* TODO should take flags */
 
    /* We don't want to find mbox.bz2 when doing "copy * mbox", but only for
     * "file mbox", so don't try hooks when writing */
-   p = which_protocol(file, TRU1, ((omode & W_OK) == 0), &file);
+   p = which_protocol(csave = file, TRU1, ((omode & W_OK) == 0), &file);
    fs = (enum n_fopen_state)p;
    switch(p){
    default:
       goto jleave;
    case n_PROTO_IMAP:
 #ifdef HAVE_IMAP
-      file = savecat("imap://", file);
+      file = csave;
       flags |= FP_IMAP;
       osflags = O_RDWR | O_APPEND | O_CREAT | n_O_NOFOLLOW;
       infd = -1;
