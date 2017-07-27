@@ -15,3 +15,99 @@ gv1 gv2,
 gv1    gv2, 
 active trouble: gv1 gv2,
 active null: ,
+----- call off: on -> on -> on
+ll-1.1=
+ll0.1=0
+ll1.1=1
+ll2=2
+ll1.2=1
+ll0.2=0
+ll-1.2=
+----- call off: off -> on -> on
+ll-1.1=
+ll0.1=0
+ll1.1=1
+ll2=2
+ll1.2=1
+ll0.2=0
+ll-1.2=0
+----- call off: on -> off -> on
+ll-1.1=
+ll0.1=0
+ll1.1=1
+ll2=2
+ll1.2=1
+ll0.2=1
+ll-1.2=
+----- call off: on -> off -> off
+ll-1.1=
+ll0.1=0
+ll1.1=1
+ll2=2
+ll1.2=2
+ll0.2=2
+ll-1.2=
+----- call-fixate on: on -> on -> on
+ll-1.1=
+ll0.1=0
+ll1.1=1
+ll2=2
+ll1.2=1
+ll0.2=0
+ll-1.2=
+----- call-fixate on: off -> on -> on
+ll-1.1=
+ll0.1=0
+ll1.1=1
+ll2=2
+ll1.2=1
+ll0.2=0
+ll-1.2=
+----- call-fixate on: on -> off -> on
+ll-1.1=
+ll0.1=0
+ll1.1=1
+ll2=2
+ll1.2=1
+ll0.2=0
+ll-1.2=
+----- call-fixate on: on -> off -> off
+ll-1.1=
+ll0.1=0
+ll1.1=1
+ll2=2
+ll1.2=1
+ll0.2=0
+ll-1.2=
+----- call on: on -> on -> on
+ll-1.1=
+ll0.1=0
+ll1.1=1
+ll2=2
+ll1.2=1
+ll0.2=0
+ll-1.2=
+----- call on: off -> on -> on
+ll-1.1=
+ll0.1=0
+ll1.1=1
+ll2=2
+ll1.2=1
+ll0.2=0
+ll-1.2=0
+----- call on: on -> off -> on
+ll-1.1=
+ll0.1=0
+ll1.1=1
+ll2=2
+ll1.2=1
+ll0.2=1
+ll-1.2=
+----- call on: on -> off -> off
+ll-1.1=
+ll0.1=0
+ll1.1=1
+ll2=2
+ll1.2=2
+ll0.2=2
+ll-1.2=
