@@ -477,8 +477,8 @@ jexec:
       }
       /* TODO Nothing should prevent n_CMD_ARG_R in conjunction with
        * TODO n_PS_ROBOT|_SOURCING; see a.._may_yield_control()! */
-      if(n_pstate & (n_PS_ROBOT | n_PS_SOURCING) && n_go_may_yield_control()){
-         n_err(_("Cannot invoke `%s' from a macro or during file inclusion\n"),
+      if(n_pstate & (n_PS_ROBOT | n_PS_SOURCING) && !n_go_may_yield_control()){
+         n_err(_("Cannot invoke `%s' in this program state\n"),
             cdp->cd_name);
          goto jleave;
       }
