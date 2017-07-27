@@ -1493,7 +1493,7 @@ addressed and not all of them are subscribed lists.
 .Pp
 For convenience \*(UA will, temporarily, automatically add a list
 address that is presented in the
-.Ql List-To:
+.Ql List-Post:
 header of a message that is being responded to to the list of known
 mailing lists.
 Shall that header have existed \*(UA will instead, dependent on the
@@ -1504,7 +1504,7 @@ use an also set
 for this purpose in order to accept a list administrators' wish that
 is supposed to have been manifested like that (but only if it provides
 a single address which resides on the same domain as what is stated in
-.Ql List-To: ) .
+.Ql List-Post: ) .
 .\" }}}
 .
 .\" .Ss "Signed and encrypted messages with S/MIME" {{{
@@ -12325,6 +12325,7 @@ set ssl-protocol='-ALL,+TLSv1.2'
 # In reality it is possibly best to only use ssl-cipher-list-HOST
 # (or -USER@HOST), as necessary, again..
 set ssl-cipher-list=TLSv1.2:!aNULL:!eNULL:@STRENGTH
+
 # - TLSv1.2:!aNULL:!eNULL:\e
 #     ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:\e
 #     DHE-RSA-AES256-SHA:@STRENGTH
