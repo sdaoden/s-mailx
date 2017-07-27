@@ -45,7 +45,7 @@ static char *a_crese_reedit(char const *subj);
 static void       make_ref_and_cs(struct message *mp, struct header *head);
 
 /* `reply' and `Lreply' workhorse */
-static int        _list_reply(int *msgvec, enum header_flags hf);
+static int a_crese_list_reply(int *msgvec, enum header_flags hf);
 
 /* Get PTF to implementation of command c (i.e., take care for *flipr*) */
 static int (*     _reply_or_Reply(char c))(int *, bool_t);
@@ -160,7 +160,7 @@ jleave:
 }
 
 static int
-_list_reply(int *msgvec, enum header_flags hf)
+a_crese_list_reply(int *msgvec, enum header_flags hf)
 {
    struct header head;
    struct message *mp;
@@ -316,7 +316,7 @@ jnext_msg:
           * Reply-To: and mailing lists which don't overwrite this (or only
           * extend this, shall such exist), only do so if reply_to exists of
           * a single address which points to the same domain as List-Post: */
-         if (reply_to != NULL && rt->n_flink == NULL &&
+         if (rt != NULL && rt->n_flink == NULL &&
                name_is_same_domain(x, rt))
             cp = rt->n_name; /* rt is EACM_STRICT tested */
 
@@ -402,7 +402,8 @@ _reply(int *msgvec, bool_t recipient_record)
    int rv;
    NYD_ENTER;
 
-   rv = _list_reply(msgvec, recipient_record ? HF_RECIPIENT_RECORD : HF_NONE);
+   rv = a_crese_list_reply(msgvec,
+         (recipient_record ? HF_RECIPIENT_RECORD : HF_NONE));
    NYD_LEAVE;
    return rv;
 }
@@ -717,7 +718,7 @@ c_Lreply(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = _list_reply(v, HF_LIST_REPLY);
+   rv = a_crese_list_reply(v, HF_LIST_REPLY);
    NYD_LEAVE;
    return rv;
 }
