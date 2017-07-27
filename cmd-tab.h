@@ -502,8 +502,8 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
 
    { "list", &a_ctab_c_list, (M | TWYSH), 0, 1, NULL
      DS(N_("List all commands (with argument: in prefix search order)")) },
-   { "localopts", &c_localopts, (H | M | X | TWYSH), 1, 1, NULL
-     DS(N_("Inside `define' / `account': isolate modifications? <boolean>"))},
+   { "localopts", &c_localopts, (H | M | X | TWYSH), 1, 2, NULL
+     DS(N_("Localize variable modifications? [<attribute>] <boolean>"))},
 
    { "netrc",
 #ifdef HAVE_NETRC

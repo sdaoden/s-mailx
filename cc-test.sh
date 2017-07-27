@@ -1316,7 +1316,7 @@ t_behave_localopts() {
    t_prolog
 
    # Nestable conditions test
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
 	define t2 {
 	   echo in: t2
 	   set t2=t2
@@ -1349,9 +1349,55 @@ t_behave_localopts() {
 	echo active trouble: $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t3
 	account null
 	echo active null: $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t3
+
+   #
+   define ll2 {
+      localopts $1
+      set x=2
+      echo ll2=$x
+   }
+   define ll1 {
+      wysh set y=$1; shift; eval localopts $y; localopts $1; shift
+      set x=1
+      echo ll1.1=$x
+      call ll2 $1
+      echo ll1.2=$x
+   }
+   define ll0 {
+      wysh set y=$1; shift; eval localopts $y; localopts $1; shift
+      set x=0
+      echo ll0.1=$x
+      call ll1 $y "$@"
+      echo ll0.2=$x
+   }
+   define llx {
+      echo ----- $1: $2 -> $3 -> $4
+      echo ll-1.1=$x
+      eval localopts $1
+      call ll0 "$@"
+      echo ll-1.2=$x
+      unset x
+   }
+   define lly {
+      call llx 'call off' on on on
+      call llx 'call off' off on on
+      call llx 'call off' on off on
+      call llx 'call off' on off off
+      localopts call-fixate on
+      call llx 'call-fixate on' on on on
+      call llx 'call-fixate on' off on on
+      call llx 'call-fixate on' on off on
+      call llx 'call-fixate on' on off off
+      unset x;localopts call on
+      call llx 'call on' on on on
+      call llx 'call on' off on on
+      call llx 'call on' on off on
+      call llx 'call on' on off off
+   }
+   call lly
 	__EOT
 
-   check behave:localopts 0 "${MBOX}" '1936527193 192'
+   check behave:localopts 0 "${MBOX}" '4016155249 1246'
 
    t_epilog
 }

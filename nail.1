@@ -4011,6 +4011,13 @@ results in a
 .Va ^ERR Ns -OVERFLOW ) ,
 and are otherwise controllable via
 .Ic vpospar .
+Changes to other
+.Sx ENVIRONMENT
+as well as
+.Sx "INTERNAL VARIABLES"
+can be reverted before the current level regains control by setting
+.Ic localopts
+for called macro(s) (or in them, of course).
 Macro execution can be terminated at any time by calling
 .Ic return .
 .
@@ -5291,53 +5298,76 @@ e.g., from within a macro that is called via
 .Va on-compose-splice .
 .El
 .
+.
 .Mx
 .It Ic localopts
-This command can be used to localize changes to variables, meaning that
-their state will be reverted to the former one once the covered scope
+This command can be used to localize changes to (linked)
+.Sx ENVIRONMENT
+as well as
+.Sx "INTERNAL VARIABLES" ,
+meaning that their state will be reverted to the former one once the
+.Dq covered scope
 is left.
 It can only be used inside of macro definition blocks introduced by
 .Ic account
 or
-.Ic define ,
-and is interpreted as a boolean (string, see
-.Sx "INTERNAL VARIABLES" ) ;
-the
-.Dq covered scope
-of an account is left once it is switched off again.
+.Ic define .
+The covered scope of an
+.Ic account
+is left once a different account is activated, and some macros, notably
+.Va folder-hook Ns s ,
+use their own specific notion of covered scope, here it will be extended
+until the folder is left again.
+.
+.Pp
+This setting stacks up: i.e., if
+.Ql macro1
+enables change localization and calls
+.Ql macro2 ,
+which explicitly resets localization, then any value changes within
+.Ql macro2
+will still be reverted when the scope of
+.Ql macro1
+is left.
+(Caveats: if in this example
+.Ql macro2
+changes to a different
+.Ic account
+which sets some variables that are already covered by localizations,
+their scope will be extended, and in fact leaving the
+.Ic account
+will (thus) restore settings in (likely) global scope which actually
+were defined in a local, macro private context!)
+.
+.Pp
+This command takes one or two arguments, the optional first one
+specifies an attribute that may be one of
+.Cm scope ,
+which refers to the current scope and is thus the default,
+.Cm call ,
+which causes any macro that is being
+.Ic call Ns
+ed to be started with localization enabled by default, as well as
+.Cm call-fixate ,
+which (if enabled) disallows any called macro to turn off localization:
+like this it can be ensured that once the current scope regains control,
+any changes made in deeper levels have been reverted.
+The latter two are mutually exclusive.
+The (second) argument is interpreted as a boolean (string, see
+.Sx "INTERNAL VARIABLES" )
+and states whether the given attribute shall be turned on or off.
+.
 .Bd -literal -offset indent
 define temporary_settings {
   set possibly_global_option1
   localopts on
   set local_option1
   set local_option2
-  localopts off
+  localopts scope off
   set possibly_global_option2
 }
 .Ed
-.Pp
-.Sy Note
-that this setting
-.Dq stacks up :
-i.e., if
-.Ql macro1
-enables change localization and calls
-.Ql macro2 ,
-which explicitly resets localization, then any value changes within
-.Ql macro2
-will still be reverted by
-.Ql macro1 !
-\*(ID Once the outermost level, the one which enabled localization
-first, is left, but no earlier, all adjustments will be unrolled.
-\*(ID Likewise worth knowing, if in this example
-.Ql macro2
-changes to a different
-.Ic account
-which sets some variables that are yet covered by localizations, their
-scope will be extended, and in fact leaving the
-.Ic account
-will (thus) restore settings in (likely) global scope which actually
-were defined in a local, private context.
+.
 .
 .Mx
 .It Ic Lreply

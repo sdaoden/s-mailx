@@ -169,9 +169,9 @@ FL int c_account(void *v);
 FL int c_unaccount(void *v);
 
 /* `localopts', `shift', `return' */
-FL int c_localopts(void *v);
-FL int c_shift(void *v);
-FL int c_return(void *v);
+FL int c_localopts(void *vp);
+FL int c_shift(void *vp);
+FL int c_return(void *vp);
 
 /* TODO Check whether a *folder-hook* exists for the currently active mailbox */
 FL bool_t temporary_folder_hook_check(bool_t nmail);
