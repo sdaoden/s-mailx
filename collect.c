@@ -113,7 +113,7 @@ static void       _collint(int s);
 
 static void       collhup(int s);
 
-static int        putesc(char const *s, FILE *stream); /* TODO wysh set! */
+static bool_t a_coll_putesc(char const *s, bool_t addnl, FILE *stream);
 
 /* *on-compose-splice* driver and *on-compose-splice(-shell)?* finalizer */
 static int a_coll_ocs__mac(void);
@@ -431,7 +431,7 @@ a_coll_message_inject_head(FILE *fp){
       n_OBSOLETE(_("please use *message-inject-head*, not *NAIL_HEAD*"));
 
    if(((cp = ok_vlook(message_inject_head)) != NULL ||
-         (cp = cp_obsolete) != NULL) && putesc(cp, fp) < 0)
+         (cp = cp_obsolete) != NULL) && !a_coll_putesc(cp, TRU1, fp))
       rv = FAL0;
    else
       rv = TRU1;
@@ -1644,37 +1644,40 @@ collhup(int s)
    exit(n_EXIT_ERR);
 }
 
-static int
-putesc(char const *s, FILE *stream) /* TODO: v15: drop */
+static bool_t
+a_coll_putesc(char const *s, bool_t addnl, FILE *stream) /* TODO: v15: drop */
 {
-   int n = 0, rv = -1;
+   bool_t rv;
    NYD_ENTER;
 
-   while (s[0] != '\0') {
+   rv = FAL0;
+
+   while (s[0] != '\0') { /* TODO v15: user resp upon `set' time! */
       if (s[0] == '\\') {
          if (s[1] == 't') {
             if (putc('\t', stream) == EOF)
                goto jleave;
-            ++n;
             s += 2;
             continue;
          }
          if (s[1] == 'n') {
             if (putc('\n', stream) == EOF)
                goto jleave;
-            ++n;
             s += 2;
             continue;
          }
       }
       if (putc(s[0], stream) == EOF)
          goto jleave;
-      ++n;
       ++s;
    }
-   if (putc('\n', stream) == EOF)
-      goto jleave;
-   rv = ++n;
+
+   if(addnl){
+      if(putc('\n', stream) == EOF)
+         goto jleave;
+   }
+
+   rv = TRU1;
 jleave:
    NYD_LEAVE;
    return rv;
@@ -2376,14 +2379,16 @@ jearg:
          n_pstate_ex_no = 0; /* XXX */
          break;
       case 'i':
+      case 'I':
          /* Insert a variable into the file */
          if(cnt == 0)
             goto jearg;
          if((cp = n_var_vlook(cp, TRU1)) == NULL || *cp == '\0')
             break;
-         if(putesc(cp, _coll_fp) < 0) /* TODO v15: user resp upon `set' time */
+         if(!a_coll_putesc(cp, (c != 'I'), _coll_fp))
             goto jerr;
-         if((n_psonce & n_PSO_INTERACTIVE) && putesc(cp, n_stdout) < 0)
+         if((n_psonce & n_PSO_INTERACTIVE) &&
+               !a_coll_putesc(cp, (c != 'I'), n_stdout))
             goto jerr;
          n_pstate_err_no = n_ERR_NONE; /* XXX */
          n_pstate_ex_no = 0; /* XXX */
@@ -2395,9 +2400,10 @@ jearg:
             goto jearg;
          cp = (c == 'a') ? ok_vlook(sign) : ok_vlook(Sign);
          if(cp != NULL && *cp != '\0'){
-            if(putesc(cp, _coll_fp) < 0) /* TODO v15: user upon `set' time */
+            if(!a_coll_putesc(cp, TRU1, _coll_fp))
                goto jerr;
-            if((n_psonce & n_PSO_INTERACTIVE) && putesc(cp, n_stdout) < 0)
+            if((n_psonce & n_PSO_INTERACTIVE) &&
+                  !a_coll_putesc(cp, TRU1, n_stdout))
                goto jerr;
          }
          n_pstate_err_no = n_ERR_NONE; /* XXX */
@@ -2701,9 +2707,9 @@ jout:
 
    if((cp = ok_vlook(message_inject_tail)) != NULL ||
          (cp = cp_obsolete) != NULL){
-      if(putesc(cp, _coll_fp) < 0)
+      if(!a_coll_putesc(cp, TRU1, _coll_fp))
          goto jerr;
-      if((n_psonce & n_PSO_INTERACTIVE) && putesc(cp, n_stdout) < 0)
+      if((n_psonce & n_PSO_INTERACTIVE) && !a_coll_putesc(cp, TRU1, n_stdout))
          goto jerr;
    }
    }

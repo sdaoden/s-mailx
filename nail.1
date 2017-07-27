@@ -7003,9 +7003,8 @@ and
 by typing each one in turn and allowing the user to edit the field.
 .
 .Mx
-.It Ic ~i Ar variable
-Insert the value of the specified variable into the message,
-adding a newline character at the end.
+.It Ic ~I Ar variable
+Insert the value of the specified variable into the message.
 The message remains unaltered if the variable is unset or empty.
 \*(OB The escape sequences tabulator
 .Ql \et
@@ -7016,6 +7015,12 @@ are understood (use the
 prefix when
 .Ic set Ns
 ting the variable(s) instead).
+.
+.Mx
+.It Ic ~i Ar variable
+Identical to
+.Ic ~I ,
+but adds a newline character at the end of a successful insertion.
 .
 .Mx
 .It Ic ~M Ar messages
