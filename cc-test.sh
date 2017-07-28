@@ -291,6 +291,7 @@ t_behave() {
    t_behave_call_ret
    t_behave_xcall
    t_behave_vpospar
+   t_behave_atxplode
 
    t_behave_mbox
 
@@ -2022,6 +2023,36 @@ t_behave_vpospar() {
    eval vpospar set ${x};echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
 	__EOT
    check behave:vpospar-ifs 0 "${MBOX}" '2015927702 706'
+
+   t_epilog
+}
+
+t_behave_atxplode() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} > ./.t.sh <<- '___'; ${cat} > ./.t.rc <<- '___'
+	x() { echo $#; }
+	set --
+	x "$@"
+	x "$@"''
+	x " $@"
+	x "$@ "
+	___
+	define x {
+	  echo $#
+	}
+	vpospar set
+	call x "$@"
+	call x "$@"''
+	call x " $@"
+	call x "$@ "
+	___
+
+   ${SHELL} ./.t.sh > "${MBOX}" 2>&1
+   echo ----- >> "${MBOX}"
+   ${MAILX} ${ARGS} -X'source ./.t.rc' -Xx >> "${MBOX}" 2>&1
+   check behave:atxplode 0 "${MBOX}" '3471687974 22'
 
    t_epilog
 }

@@ -2961,42 +2961,40 @@ and
 .\" .Sh COMMANDS {{{
 .Sh COMMANDS
 .
-Each command is typed on a line by itself,
-and may take arguments following the command word.
+\*(UA reads input in lines.
 An unquoted reverse solidus
 .Ql \e
 at the end of a command line
 .Dq escapes
 the newline character: it is discarded and the next line of input is
 used as a follow-up line, with all leading whitespace removed;
-once the entire command line is completed, and after removal of the
-whitespace characters
+once an entire line is completed, the whitespace characters
 .Cm space , tabulator , newline
 as well as those defined by the variable
 .Va ifs
-from the beginning and end of the line, the processing documented in the
-following begins.
+are removed from the beginning and end.
 Placing any whitespace characters at the beginning of a line will
 prevent a possible addition of the command line to the \*(OPal
 .Ic history .
 .
 .Pp
-Apart from this generic cleanup mechanism \*(UA uses command-specific
-syntax rules for command line arguments, documented in the following.
-This is a completely different approach to the
-.Xr sh 1 Ns
-ell, which implements a standardized (programming) language, and
-performs several successive transformation steps after decomposing the
-given command line into tokens adhering standardized syntax guidelines.
-This sometimes has side-effects for shell-style arguments, for example
-.Ql \(dq$@\(dq
-without positional parameters is not collapsed to nothing, as can be
-seen in the example shown for the command
-.Ic call .
+The beginning of such input lines is then scanned for the name of
+a known command: command names may be abbreviated, in which case the
+first command that matches the given prefix will be used.
+.Sx "Command modifiers"
+may prefix a command in order to modify its behaviour.
+A name may also be a
+.Ic commandalias ,
+which will become expanded until no more expansion is possible.
+Once the command that shall be executed is known, the remains of the
+input line will be interpreted according to command-specific rules:
+(\*(ID) some commands use
+.Sx "Shell-style argument quoting" ,
+so that a single input line may actually consist of multiple commands,
+but others pass it unchanged as
+.Sx "Raw data arguments for codec commands" .
 .
 .Pp
-Command names may be abbreviated, in which case the first command that
-matches the given prefix will be used.
 The command
 .Ic list
 can be used to show the list of all commands, either alphabetically
@@ -4040,38 +4038,6 @@ define exmac {
   return 1000 0
 }
 call exmac Hello macro exmac!
-.Ed
-.
-.Pp
-Caveats: \*(UA parses  entire input lines and decides on a per-command
-base what to do with the rest of the line, different to the
-.Xr sh 1 Ns
-ell, which implements a standardized (programming) language, and
-performs several successive transformation steps after decomposing the
-given command line into tokens adhering standardized syntax guidelines.
-E.g., in the following code snippets of otherwise identical meaning,
-a shell will see zero arguments, whereas \*(UA sees one, unless an
-additional expansion (via
-.Ic eval )
-is explicitly used:
-.
-.Bd -literal -offset indent
-$ cat > t.sh << '___'; cat > t.rc << '___'
-x() { echo $#; }
-set --
-x "$@"
-___
-define x {
-  echo $#
-}
-vpospar set
-call x "$@"
-eval call x "$@"
-___
-$ sh t.sh; \*(uA -X'source t.rc' -Xx
-0
-1
-0
 .Ed
 .
 .
