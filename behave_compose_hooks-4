@@ -53,7 +53,7 @@ mline_res:9/0/NONE: f1@z f1@z
 mline_res:9/0/NONE: f2@z f2@z
 mline_res:0/0/NONE: 
 Mailx-Command
-mline_res:5/0/NONE: reply
+mline_res:5/0/NONE: Reply
 mline_res:0/0/NONE: 
 Mailx-Raw-To
 mline_res:9/0/NONE: f1@z f1@z
@@ -157,20 +157,20 @@ mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
 reply 1: 0 0 NONE
 
 
-on-XY-enter, mailx-command<reply>
+on-XY-enter, mailx-command<Reply>
 mailx-from<> mailx-sender<>
 mailx-subject<>
 mailx-to<f1@z f2@z> mailx-cc<> mailx-bcc<>
 mailx-raw-to<f1@z f2@z> mailx-raw-cc<> mailx-raw-bcc<>
 mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
 the header list is 210 To Mailx-Command Mailx-Raw-To Mailx-Orig-From Mailx-Orig-To
-on-XY-leave, mailx-command<reply>
+on-XY-leave, mailx-command<Reply>
 mailx-from<> mailx-sender<>
 mailx-subject<>
 mailx-to<f1@z f2@z> mailx-cc<> mailx-bcc<>
 mailx-raw-to<f1@z f2@z> mailx-raw-cc<> mailx-raw-bcc<>
 mailx-orig-from<f1@z> mailx-orig-to<t1@z> mailx-orig-cc<> mailx-orig-bcc<>
-on-XY-cleanup, mailx-command<reply>
+on-XY-cleanup, mailx-command<Reply>
 mailx-from<> mailx-sender<>
 mailx-subject<>
 mailx-to<f1@z f2@z> mailx-cc<> mailx-bcc<>
