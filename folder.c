@@ -64,7 +64,9 @@ _update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Object! */
    if(name != NULL){
 #ifdef HAVE_REALPATH
       char const *adjname;
-      enum protocol p = which_protocol(name, TRU1, TRU1, &adjname);
+      enum protocol p;
+
+      p = which_protocol(name, TRU1, TRU1, &adjname);
 
       if(p == PROTO_FILE || p == PROTO_MAILDIR){
          name = adjname;

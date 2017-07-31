@@ -1735,6 +1735,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 
    _sendout_error = FAL0;
    __sendout_ident = NULL;
+   n_pstate_err_no = n_ERR_INVAL;
    rv = STOP;
    mtf = NULL;
 
@@ -1761,13 +1762,17 @@ mail1(struct header *hp, int printheaders, struct message *quote,
          dosign = getapproval(_("Sign this message"), TRU1);
    }
 
-   if (fsize(mtf) == 0) {
-      if (n_poption & n_PO_E_FLAG)
+   if(fsize(mtf) == 0){
+      if(n_poption & n_PO_E_FLAG){
+         n_pstate_err_no = n_ERR_NONE;
+         rv = OKAY;
          goto jleave;
-      if (hp->h_subject == NULL)
-         fprintf(n_stdout, _("No message, no subject; hope that's ok\n"));
-      else if (ok_blook(bsdcompat) || ok_blook(bsdmsgs))
-         fprintf(n_stdout, _("Null message body; hope that's ok\n"));
+      }
+
+      if(hp->h_subject == NULL)
+         n_err(_("No message, no subject; hope that's ok\n"));
+      else if(ok_blook(bsdcompat) || ok_blook(bsdmsgs))
+         n_err(_("Null message body; hope that's ok\n"));
    }
 
    if (dosign == TRUM1)
@@ -1808,12 +1813,14 @@ mail1(struct header *hp, int printheaders, struct message *quote,
           (!(expandaddr_to_eaf() & EAF_NAME) ? EACM_NONAME : EACM_NONE)),
          TRU1, &_sendout_error);
 
-   if (to == NULL) {
+   if(to == NULL){
       n_err(_("No recipients specified\n"));
+      n_pstate_err_no = n_ERR_DESTADDRREQ;
       goto jfail_dead;
    }
-   if (_sendout_error < 0) {
+   if(_sendout_error < 0){
       n_err(_("Some addressees were classified as \"hard error\"\n"));
+      n_pstate_err_no = n_ERR_PERM;
       goto jfail_dead;
    }
 
@@ -1822,10 +1829,12 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    sb.sb_hp = hp;
    sb.sb_to = to;
    sb.sb_input = mtf;
-   if ((dosign || count_nonlocal(to) > 0) &&
-         !_sendbundle_setup_creds(&sb, (dosign > 0)))
+   if((dosign || count_nonlocal(to) > 0) &&
+         !_sendbundle_setup_creds(&sb, (dosign > 0))){
       /* TODO saving $DEAD and recovering etc is not yet well defined */
+      assert(n_pstate_err_no == n_ERR_INVAL);
       goto jfail_dead;
+   }
 
    /* 'Bit ugly kind of control flow until we find a charset that does it */
    for (charset_iter_reset(hp->h_charset);; charset_iter_next()) {
@@ -1841,6 +1850,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
       }
 
       n_perr(_("Failed to create encoded message"), 0);
+      n_pstate_err_no = n_ERR_NOTSUP;
       goto jfail_dead;
    }
    mtf = nmtf;
@@ -1900,6 +1910,8 @@ jleave:
    }
    if (_sendout_error)
       n_exit_status |= n_EXIT_SEND_ERROR;
+   if(rv == OKAY)
+      n_pstate_err_no = n_ERR_NONE;
    NYD_LEAVE;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
@@ -2157,9 +2169,9 @@ j_mft_add:
                   } /* XXX write some warning?  if verbose?? */
                   continue;
                }
-               /* And if this is a reply that honoured a MFT: header then we'll
-                * also add all members of the original MFT: that are still
-                * addressed by us, regardless of all other circumstances */
+               /* And if this is a reply that honoured a M-F-T: header then
+                * we'll also add all members of the original M-F-T: that are
+                * still addressed by us, regardless of other circumstances */
                else if(f & _HADMFT){
                   struct name *ox;
 
@@ -2263,9 +2275,10 @@ resend_msg(struct message *mp, struct header *hp, bool_t add_resent)
 
    _sendout_error = FAL0;
    __sendout_ident = NULL;
+   n_pstate_err_no = n_ERR_INVAL;
    rv = STOP;
    to = hp->h_to;
-   nfi = NULL;
+   nfi = ibuf = NULL;
 
    n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL) {
    case 0:
@@ -2277,29 +2290,38 @@ resend_msg(struct message *mp, struct header *hp, bool_t add_resent)
    /* Update some globals we likely need first */
    time_current_update(&time_current, TRU1);
 
-   if ((to = checkaddrs(to,
+   /* If we fail we delay that a bit until we can write $DEAD! */
+
+   if((to = checkaddrs(to,
          (EACM_NORMAL |
           (!(expandaddr_to_eaf() & EAF_NAME) ? EACM_NONAME : EACM_NONE)),
-         &_sendout_error)) == NULL)
-      goto jleave;
-   /* For the _sendout_error<0 case we want to wait until we can write DEAD! */
-   if (_sendout_error < 0)
+         &_sendout_error)) == NULL){
+      n_err(_("No recipients specified\n"));
+      n_pstate_err_no = n_ERR_DESTADDRREQ;
+   }else if(_sendout_error < 0){
       n_err(_("Some addressees were classified as \"hard error\"\n"));
+      n_pstate_err_no = n_ERR_PERM;
+   }
 
-   if ((nfo = Ftmp(&tempMail, "resend", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER))
-         == NULL) {
+   if((nfo = Ftmp(&tempMail, "resend", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER)
+         ) == NULL) {
       _sendout_error = TRU1;
       n_perr(_("temporary mail file"), 0);
+      n_pstate_err_no = n_ERR_IO;
       goto jleave;
    }
-   if ((nfi = Fopen(tempMail, "r")) == NULL)
+   if((nfi = Fopen(tempMail, "r")) == NULL){
       n_perr(tempMail, 0);
+      n_pstate_err_no = n_ERR_IO;
+   }
    Ftmp_release(&tempMail);
-   if (nfi == NULL)
+   if(nfi == NULL)
       goto jerr_o;
 
-   if ((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL)
+   if((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL){
+      n_pstate_err_no = n_ERR_IO;
       goto jerr_io;
+   }
 
    /* C99 */{
       char const *cp;
@@ -2314,11 +2336,13 @@ resend_msg(struct message *mp, struct header *hp, bool_t add_resent)
    memset(&sb, 0, sizeof sb);
    sb.sb_to = to;
    sb.sb_input = nfi;
-   if (count_nonlocal(to) > 0 && !_sendbundle_setup_creds(&sb, FAL0))
+   if(!_sendout_error &&
+         count_nonlocal(to) > 0 && !_sendbundle_setup_creds(&sb, FAL0)){
       /* ..wait until we can write DEAD */
       _sendout_error = -1;
+   }
 
-   if (infix_resend(ibuf, nfo, mp, to, add_resent) != 0) {
+   if(infix_resend(ibuf, nfo, mp, to, add_resent) != 0){
 jfail_dead:
       savedeadletter(nfi, TRU1);
       n_err(_("... message not sent\n"));
@@ -2330,7 +2354,7 @@ jerr_o:
       goto jleave;
    }
 
-   if (_sendout_error < 0)
+   if(_sendout_error < 0)
       goto jfail_dead;
 
    Fclose(nfo);
@@ -2343,37 +2367,42 @@ jerr_o:
       b = (ok_blook(record_files) && count(to) > 0);
       to = a_sendout_file_a_pipe(to, nfi, &_sendout_error);
 
-      if (_sendout_error)
+      if(_sendout_error)
          savedeadletter(nfi, FAL0);
 
       to = elide(to); /* XXX only to drop GDELs due a_sendout_file_a_pipe()! */
       c = (count(to) > 0);
 
-      if (b || c) {
-         if (!ok_blook(record_resent) || mightrecord(nfi, NULL, TRU1)) {
+      if(b || c){
+         if(!ok_blook(record_resent) || mightrecord(nfi, NULL, TRU1)){
             sb.sb_to = to;
             /*sb.sb_input = nfi;*/
-            if (!c || _transfer(&sb))
+            if(!c || _transfer(&sb))
                rv = OKAY;
          }
-      } else if (!_sendout_error)
+      }else if(!_sendout_error)
          rv = OKAY;
    }
 
-   Fclose(nfi);
    n_sigman_cleanup_ping(&sm);
 jleave:
    if(nfi != NULL){
       char const *cp;
 
-      if((cp = ok_vlook(on_resend_cleanup)) != NULL)
-         temporary_compose_mode_hook_call(cp, NULL, NULL);
+      Fclose(nfi);
 
-      temporary_compose_mode_hook_unroll();
+      if(ibuf != NULL){
+         if((cp = ok_vlook(on_resend_cleanup)) != NULL)
+            temporary_compose_mode_hook_call(cp, NULL, NULL);
+
+         temporary_compose_mode_hook_unroll();
+      }
    }
 
    if (_sendout_error)
       n_exit_status |= n_EXIT_SEND_ERROR;
+   if(rv == OKAY)
+      n_pstate_err_no = n_ERR_NONE;
    NYD_LEAVE;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;

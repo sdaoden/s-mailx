@@ -5,8 +5,8 @@
 
 # We need *stealthmua* regardless of $SOURCE_DATE_EPOCH, the program name as
 # such is a compile-time variable
-ARGS='-:/ -# -Sdotlock-ignore-error -Sencoding=quoted-printable -Sstealthmua'
-   ARGS="${ARGS}"' -Snosave -Sexpandaddr=restrict'
+ARGS='-:/ -# -Sdotlock-ignore-error -Sexpandaddr=restrict'
+   ARGS="${ARGS}"' -Smime-encoding=quoted-printable -Snosave -Sstealthmua'
 ADDARG_UNI=-Sttycharset=UTF-8
 CONF=./make.rc
 BODY=./.cc-body.txt
@@ -291,6 +291,7 @@ t_behave() {
    t_behave_call_ret
    t_behave_xcall
    t_behave_vpospar
+   t_behave_atxplode
 
    t_behave_mbox
 
@@ -310,6 +311,7 @@ t_behave() {
 
    t_behave_maildir
    t_behave_mass_recipients
+   t_behave_lreply_futh_rth_etc
 }
 
 t_behave_X_opt_input_command_stack() {
@@ -1316,7 +1318,7 @@ t_behave_localopts() {
    t_prolog
 
    # Nestable conditions test
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
 	define t2 {
 	   echo in: t2
 	   set t2=t2
@@ -1349,9 +1351,55 @@ t_behave_localopts() {
 	echo active trouble: $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t3
 	account null
 	echo active null: $gv1 $lv1 ${lv2} ${lv3} ${gv2}, $t3
+
+   #
+   define ll2 {
+      localopts $1
+      set x=2
+      echo ll2=$x
+   }
+   define ll1 {
+      wysh set y=$1; shift; eval localopts $y; localopts $1; shift
+      set x=1
+      echo ll1.1=$x
+      call ll2 $1
+      echo ll1.2=$x
+   }
+   define ll0 {
+      wysh set y=$1; shift; eval localopts $y; localopts $1; shift
+      set x=0
+      echo ll0.1=$x
+      call ll1 $y "$@"
+      echo ll0.2=$x
+   }
+   define llx {
+      echo ----- $1: $2 -> $3 -> $4
+      echo ll-1.1=$x
+      eval localopts $1
+      call ll0 "$@"
+      echo ll-1.2=$x
+      unset x
+   }
+   define lly {
+      call llx 'call off' on on on
+      call llx 'call off' off on on
+      call llx 'call off' on off on
+      call llx 'call off' on off off
+      localopts call-fixate on
+      call llx 'call-fixate on' on on on
+      call llx 'call-fixate on' off on on
+      call llx 'call-fixate on' on off on
+      call llx 'call-fixate on' on off off
+      unset x;localopts call on
+      call llx 'call on' on on on
+      call llx 'call on' off on on
+      call llx 'call on' on off on
+      call llx 'call on' on off off
+   }
+   call lly
 	__EOT
 
-   check behave:localopts 0 "${MBOX}" '1936527193 192'
+   check behave:localopts 0 "${MBOX}" '4016155249 1246'
 
    t_epilog
 }
@@ -1976,6 +2024,68 @@ t_behave_vpospar() {
    eval vpospar set ${x};echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
 	__EOT
    check behave:vpospar-ifs 0 "${MBOX}" '2015927702 706'
+
+   t_epilog
+}
+
+t_behave_atxplode() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} > ./.t.sh <<- '___'; ${cat} > ./.t.rc <<- '___'
+	x() { echo $#; }
+	xxx() {
+	  printf " (1/$#: <$1>)"
+	  shift
+	  if [ $# -gt 0 ]; then
+	    xxx "$@"
+	  else
+	    echo
+	  fi
+	}
+	yyy() {
+	  eval "$@ ' ball"
+	}
+	set --
+	x "$@"
+	x "$@"''
+	x " $@"
+	x "$@ "
+	printf yyy;yyy 'xxx' "b\$'\t'u ' "
+	printf xxx;xxx arg ,b      u.
+	printf xxx;xxx arg ,  .
+	printf xxx;xxx arg ,ball.
+	___
+	define x {
+	  echo $#
+	}
+	define xxx {
+	  echon " (1/$#: <$1>)"
+	  shift
+	  if [ $# -gt 0 ]
+	    \xcall xxx "$@"
+	  endif
+     echo
+	}
+	define yyy {
+	  eval "$@ ' ball"
+	}
+	vpospar set
+	call x "$@"
+	call x "$@"''
+	call x " $@"
+	call x "$@ "
+	echon yyy;call yyy '\call xxx' "b\$'\t'u ' "
+	echon xxx;call xxx arg ,b      u.
+	echon xxx;call xxx arg ,  .
+	echon xxx;call xxx arg ,ball.
+	___
+
+   ${MAILX} ${ARGS} -X'source ./.t.rc' -Xx > "${MBOX}" 2>&1
+   check behave:atxplode-1 0 "${MBOX}" '41566293 164'
+
+   #${SHELL} ./.t.sh > ./.tshout 2>&1
+   #check behave:atxplode:disproof-1 0 ./.tshout '41566293 164'
 
    t_epilog
 }
@@ -3332,7 +3442,7 @@ this is content of forward 1
    ex0_test behave:compose_hooks-4
    ${cat} ./.tnotes >> "${MBOX}"
 
-   check behave:compose_hooks-4 - "${MBOX}" '2711778338 7516'
+   check behave:compose_hooks-4 - "${MBOX}" '3038884027 7516'
 
    t_epilog
 }
@@ -3767,6 +3877,142 @@ __EOT__
    t_epilog
 }
 
+t_behave_lreply_futh_rth_etc() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${MYSHELL} -
+		(echo 'From HumulusLupulus Thu Jul 27 14:41:20 2017' && ${cat} && echo
+			) >> "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   ${cat} <<-_EOT > ./.tmbox
+	From neverneverland  Sun Jul 23 13:46:25 2017
+	Subject: Bugstop: five miles out 1
+	Reply-To: mister originator2 <mr2@originator>, bugstop@five.miles.out
+	From: mister originator <mr@originator>
+	To: bugstop-commit@five.miles.out, laber@backe.eu
+	Cc: is@a.list
+	Mail-Followup-To: bugstop@five.miles.out, laber@backe.eu, is@a.list
+	In-reply-to: <20170719111113.bkcMz%laber@backe.eu>
+	Date: Wed, 19 Jul 2017 09:22:57 -0400
+	Message-Id: <20170719132257.766AF781267@originator>
+	Status: RO
+	
+	 >  |Sorry, I think I misunderstand something.  I would think that
+	
+	That's appalling.
+	
+	From neverneverland  Fri Jul  7 22:39:11 2017
+	Subject: Bugstop: five miles out 2
+	Reply-To: mister originator2<mr2@originator>,bugstop@five.miles.out,is@a.list
+	Content-Transfer-Encoding: 7bit
+	From: mister originator <mr@originator>
+	To: bugstop-commit@five.miles.out
+	Cc: is@a.list
+	Message-ID: <149945963975.28888.6950788126957753723.reportbug@five.miles.out>
+	Date: Fri, 07 Jul 2017 16:33:59 -0400
+	Status: R
+	
+	capable of changing back.
+	
+	From neverneverland  Fri Jul  7 22:42:00 2017
+	Subject: Bugstop: five miles out 3
+	Reply-To: mister originator2 <mr2@originator>, bugstop@five.miles.out
+	Content-Transfer-Encoding: 7bit
+	From: mister originator <mr@originator>
+	To: bugstop-commit@five.miles.out
+	Cc: is@a.list
+	Message-ID: <149945963975.28888.6950788126957753746.reportbug@five.miles.out>
+	Date: Fri, 07 Jul 2017 16:33:59 -0400
+	List-Post: <mailto:bugstop@five.miles.out>
+	Status: R
+	
+	are you ready, boots?
+	
+	_EOT
+
+   #
+
+   printf '
+      define r {
+         wysh set m="This is text of \\\"reply ${1}."
+         reply 1 2 3
+!I m
+1".
+!.
+!I m
+2".
+!.
+!I m
+3".
+!.
+         echo -----After reply $1.1 - $1.3: $?/$^ERRNAME
+      }
+      define R {
+         wysh set m="This is text of \\\"Reply ${1}."
+         eval Reply $2
+!I m
+!I 2
+".
+!.
+         echo -----After Reply $1.$2: $?/$^ERRNAME
+      }
+      define _Lh {
+         read protover
+         echo '"'"'~I m'"'"'
+         echo '"'"'~I n'"'"'
+         echo '"'"'".'"'"'
+      }
+      define _Ls {
+         wysh set m="This is text of \\\"Lreply ${1}." \
+            on-compose-splice=_Lh n=$2
+         eval Lreply $2
+      }
+      define L {
+         # We need two indirections for this test: one for the case that Lreply
+         # fails because if missing recipients, we need to read EOF next, thus
+         # place this in _Ls last, and second for the succeeding cases EOF is
+         # not what these should read, so go over the backside and splice it in!
+         call _Ls "$@"
+         echo -----After Lreply $1.$2: $?/$^ERRNAME
+      }
+      define x {
+         localopts call-fixate yes
+         call r $1
+         call R $1 1; call R $1 2; call R $1 3
+         call L $1 1; call L $1 2; call L $1 3
+      }
+      define tweak {
+         echo;echo '"'"'===== CHANGING === '"'"'"$*"'"'"' ====='"'"';echo
+         eval "$@"
+      }
+
+      set from=laber@backe.eu
+      mlist is@a.list
+      call x 1
+      call tweak set reply-to-honour
+      call x 2
+      call tweak set followup-to
+      call x 3
+      call tweak set followup-to-honour
+      call x 4
+      call tweak mlist bugstop@five.miles.out
+      call x 5
+      call tweak mlsubscribe bugstop@five.miles.out
+      call x 6
+      call tweak set recipients-in-cc
+      call x 7
+   ' | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh \
+      -Rf ./.tmbox >> "${MBOX}" 2>&1
+
+   check behave:lreply_futh_rth_etc 0 "${MBOX}" '2491739775 22062'
+
+   t_epilog
+}
+
 # t_content()
 # Some basic tests regarding correct sending of mails, via STDIN / -t / -q,
 # including basic MIME Content-Transfer-Encoding correctness (quoted-printable)
@@ -4009,6 +4255,7 @@ t_all() {
 #      ARGS="${ARGS} -Smemdebug"
 #      export ARGS
 #   fi
+
    t_behave
    t_content
 }

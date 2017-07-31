@@ -169,9 +169,9 @@ FL int c_account(void *v);
 FL int c_unaccount(void *v);
 
 /* `localopts', `shift', `return' */
-FL int c_localopts(void *v);
-FL int c_shift(void *v);
-FL int c_return(void *v);
+FL int c_localopts(void *vp);
+FL int c_shift(void *vp);
+FL int c_return(void *vp);
 
 /* TODO Check whether a *folder-hook* exists for the currently active mailbox */
 FL bool_t temporary_folder_hook_check(bool_t nmail);
@@ -616,30 +616,30 @@ FL int c_version(void *vp);
  */
 
 /* All thinkable sorts of `reply' / `respond' and `followup'.. */
-FL int c_reply(void *v);
-FL int c_replyall(void *v);
-FL int c_replysender(void *v);
-FL int c_Reply(void *v);
-FL int c_followup(void *v);
-FL int c_followupall(void *v);
-FL int c_followupsender(void *v);
-FL int c_Followup(void *v);
+FL int c_reply(void *vp);
+FL int c_replyall(void *vp);
+FL int c_replysender(void *vp);
+FL int c_Reply(void *vp);
+FL int c_followup(void *vp);
+FL int c_followupall(void *vp);
+FL int c_followupsender(void *vp);
+FL int c_Followup(void *vp);
 
 /* ..and a mailing-list reply */
-FL int c_Lreply(void *v);
+FL int c_Lreply(void *vp);
 
 /* The 'forward' command */
-FL int c_forward(void *v);
+FL int c_forward(void *vp);
 
 /* Similar to forward, saving the message in a file named after the first
  * recipient */
-FL int c_Forward(void *v);
+FL int c_Forward(void *vp);
 
 /* Resend a message list to a third person */
-FL int c_resend(void *v);
+FL int c_resend(void *vp);
 
 /* Resend a message list to a third person without adding headers */
-FL int c_Resend(void *v);
+FL int c_Resend(void *vp);
 
 /*
  * cmd-tab.c
@@ -1676,7 +1676,8 @@ FL bool_t n_filetype_exists(struct n_file_type *res_or_null, char const *file);
  */
 
 /* Test to see if the passed file name is a directory, return true if it is.
- * If check_access is set, we also access(2) */
+ * If check_access is set, we also access(2): if it is TRUM1 only X_OK|R_OK is
+ * tested, otherwise X_OK|R_OK|W_OK. */
 FL bool_t n_is_dir(char const *name, bool_t check_access);
 
 /* Recursively create a directory */

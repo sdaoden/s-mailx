@@ -30,9 +30,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"@ S-nail(1): v14.9.0 / 2017-07-16
-.Dd July 16, 2017
-.ds VV \\%v14.9.0
+.\"@ S-nail v14.9.1 / 2017-07-31
+.Dd July 31, 2017
+.ds VV \\%v14.9.1
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -359,6 +359,7 @@
 .Mx -anchor-spass Ic "~f"
 .Mx -anchor-spass Ic "~H"
 .Mx -anchor-spass Ic "~h"
+.Mx -anchor-spass Ic "~I"
 .Mx -anchor-spass Ic "~i"
 .Mx -anchor-spass Ic "~M"
 .Mx -anchor-spass Ic "~m"
@@ -928,7 +929,7 @@ argument will undergo some special
 .Ic file ) .
 Note that
 .Ar file
-is not a argument to the flag
+is not an argument to the flag
 .Fl \&\&f ,
 but is instead taken from the command line after option processing has
 been completed.
@@ -1747,7 +1748,7 @@ The command
 will display a header summary of the given message specification list
 instead of their content, e.g., the following will search for subjects:
 .Pp
-.Dl from "'@Some subject to search for'"
+.Dl ? from "'@Some subject to search for'"
 .Pp
 In the default setup all header fields of a message will be
 .Ic type Ns
@@ -1909,7 +1910,7 @@ teach \*(UA about MathML documents and make it display them as plain
 text, and to open PDF attachments in an external PDF viewer,
 asynchronously and with some other magic attached:
 .Bd -literal -offset indent
-? if [ "$features" !@ +filter-html-tagsoup ]
+? if [ "$features" !% +filter-html-tagsoup ]
 ?  #set pipe-text/html='@* elinks -force-html -dump 1'
 ?  set pipe-text/html='@* lynx -stdin -dump -force_html'
 ?  # Display HTML as plain text instead
@@ -1986,7 +1987,7 @@ addressed and not all of them are subscribed lists.
 .Pp
 For convenience \*(UA will, temporarily, automatically add a list
 address that is presented in the
-.Ql List-To:
+.Ql List-Post:
 header of a message that is being responded to to the list of known
 mailing lists.
 Shall that header have existed \*(UA will instead, dependent on the
@@ -1997,7 +1998,7 @@ use an also set
 for this purpose in order to accept a list administrators' wish that
 is supposed to have been manifested like that (but only if it provides
 a single address which resides on the same domain as what is stated in
-.Ql List-To: ) .
+.Ql List-Post: ) .
 .Ss "Signed and encrypted messages with S/MIME"
 \*(OP S/MIME provides two central mechanisms:
 message signing and message encryption.
@@ -2008,8 +2009,8 @@ that in the certificate, and that the message text has not been altered.
 Signing a message does not change its regular text;
 it can be read regardless of whether the recipient's software is able to
 handle S/MIME.
-.Pp
 It is thus usually possible to sign all outgoing messages if so desired.
+.Pp
 Encryption, in contrast, makes the message text invisible for all people
 except those who have access to the secret decryption key.
 To encrypt a message, the specific recipient's public encryption key
@@ -2032,7 +2033,7 @@ If you trust the source of your OpenSSL software installation,
 this offers reasonable security for S/MIME on the Internet.
 Otherwise set
 .Va smime-ca-no-defaults
-to avoid using the default certificate and point
+to avoid using the default certificates and point
 .Va smime-ca-file
 and/or
 .Va smime-ca-dir
@@ -3305,40 +3306,38 @@ See also the documentation for the variables
 and
 .Va spamfilter-rate-scanscore .
 .Sh COMMANDS
-Each command is typed on a line by itself,
-and may take arguments following the command word.
+\*(UA reads input in lines.
 An unquoted reverse solidus
 .Ql \e
 at the end of a command line
 .Dq escapes
 the newline character: it is discarded and the next line of input is
 used as a follow-up line, with all leading whitespace removed;
-once the entire command line is completed, and after removal of the
-whitespace characters
+once an entire line is completed, the whitespace characters
 .Cm space , tabulator , newline
 as well as those defined by the variable
 .Va ifs
-from the beginning and end of the line, the processing documented in the
-following begins.
+are removed from the beginning and end.
 Placing any whitespace characters at the beginning of a line will
 prevent a possible addition of the command line to the \*(OPal
 .Ic history .
 .Pp
-Apart from this generic cleanup mechanism \*(UA uses command-specific
-syntax rules for command line arguments, documented in the following.
-This is a completely different approach to the
-.Xr sh 1 Ns
-ell, which implements a standardized (programming) language, and
-performs several successive transformation steps after decomposing the
-given command line into tokens adhering standardized syntax guidelines.
-This sometimes has side-effects for shell-style arguments, for example
-.Ql \(dq$@\(dq
-without positional parameters is not collapsed to nothing, as can be
-seen in the example shown for the command
-.Ic call .
+The beginning of such input lines is then scanned for the name of
+a known command: command names may be abbreviated, in which case the
+first command that matches the given prefix will be used.
+.Sx "Command modifiers"
+may prefix a command in order to modify its behaviour.
+A name may also be a
+.Ic commandalias ,
+which will become expanded until no more expansion is possible.
+Once the command that shall be executed is known, the remains of the
+input line will be interpreted according to command-specific rules:
+(\*(ID) some commands use
+.Sx "Shell-style argument quoting" ,
+so that a single input line may actually consist of multiple commands,
+but others pass it unchanged as
+.Sx "Raw data arguments for codec commands" .
 .Pp
-Command names may be abbreviated, in which case the first command that
-matches the given prefix will be used.
 The command
 .Ic list
 can be used to show the list of all commands, either alphabetically
@@ -4265,6 +4264,13 @@ results in a
 .Va ^ERR Ns -OVERFLOW ) ,
 and are otherwise controllable via
 .Ic vpospar .
+Changes to other
+.Sx ENVIRONMENT
+as well as
+.Sx "INTERNAL VARIABLES"
+can be reverted before the current level regains control by setting
+.Ic localopts
+for called macro(s) (or in them, of course).
 Macro execution can be terminated at any time by calling
 .Ic return .
 .Pp
@@ -4285,36 +4291,6 @@ define exmac {
   return 1000 0
 }
 call exmac Hello macro exmac!
-.Ed
-.Pp
-Caveats: \*(UA parses  entire input lines and decides on a per-command
-base what to do with the rest of the line, different to the
-.Xr sh 1 Ns
-ell, which implements a standardized (programming) language, and
-performs several successive transformation steps after decomposing the
-given command line into tokens adhering standardized syntax guidelines.
-E.g., in the following code snippets of otherwise identical meaning,
-a shell will see zero arguments, whereas \*(UA sees one, unless an
-additional expansion (via
-.Ic eval )
-is explicitly used:
-.Bd -literal -offset indent
-$ cat > t.sh << '___'; cat > t.rc << '___'
-x() { echo $#; }
-set --
-x "$@"
-___
-define x {
-  echo $#
-}
-vpospar set
-call x "$@"
-eval call x "$@"
-___
-$ sh t.sh; \*(uA -X'source t.rc' -Xx
-0
-1
-0
 .Ed
 .Mx
 .It Ic call_if
@@ -5106,6 +5082,23 @@ and recipient addresses will be stripped from comments, names etc.
 unless the internal variable
 .Va fullnames
 is set.
+.Pp
+This may generate the errors
+.Va ^ERR Ns -DESTADDRREQ
+if no receiver has been specified,
+.Va ^ERR Ns -PERM
+if some addressees where rejected by
+.Va expandaddr ,
+.Va ^ERR Ns -NODATA
+if no applicable messages have been given,
+.Va ^ERR Ns -NOTSUP
+if multiple messages have been specified,
+.Va ^ERR Ns -IO
+if an I/O error occurs,
+.Va ^ERR Ns -NOTSUP
+if a necessary character set conversion fails, and
+.Va ^ERR Ns -INVAL
+for other errors.
 .Mx
 .It Ic from
 (f) Takes a list of message specifications and displays a summary of
@@ -5445,51 +5438,69 @@ e.g., from within a macro that is called via
 .El
 .Mx
 .It Ic localopts
-This command can be used to localize changes to variables, meaning that
-their state will be reverted to the former one once the covered scope
+This command can be used to localize changes to (linked)
+.Sx ENVIRONMENT
+as well as
+.Sx "INTERNAL VARIABLES" ,
+meaning that their state will be reverted to the former one once the
+.Dq covered scope
 is left.
 It can only be used inside of macro definition blocks introduced by
 .Ic account
 or
-.Ic define ,
-and is interpreted as a boolean (string, see
-.Sx "INTERNAL VARIABLES" ) ;
-the
-.Dq covered scope
-of an account is left once it is switched off again.
+.Ic define .
+The covered scope of an
+.Ic account
+is left once a different account is activated, and some macros, notably
+.Va folder-hook Ns s ,
+use their own specific notion of covered scope, here it will be extended
+until the folder is left again.
+.Pp
+This setting stacks up: i.e., if
+.Ql macro1
+enables change localization and calls
+.Ql macro2 ,
+which explicitly resets localization, then any value changes within
+.Ql macro2
+will still be reverted when the scope of
+.Ql macro1
+is left.
+(Caveats: if in this example
+.Ql macro2
+changes to a different
+.Ic account
+which sets some variables that are already covered by localizations,
+their scope will be extended, and in fact leaving the
+.Ic account
+will (thus) restore settings in (likely) global scope which actually
+were defined in a local, macro private context!)
+.Pp
+This command takes one or two arguments, the optional first one
+specifies an attribute that may be one of
+.Cm scope ,
+which refers to the current scope and is thus the default,
+.Cm call ,
+which causes any macro that is being
+.Ic call Ns
+ed to be started with localization enabled by default, as well as
+.Cm call-fixate ,
+which (if enabled) disallows any called macro to turn off localization:
+like this it can be ensured that once the current scope regains control,
+any changes made in deeper levels have been reverted.
+The latter two are mutually exclusive.
+The (second) argument is interpreted as a boolean (string, see
+.Sx "INTERNAL VARIABLES" )
+and states whether the given attribute shall be turned on or off.
 .Bd -literal -offset indent
 define temporary_settings {
   set possibly_global_option1
   localopts on
   set local_option1
   set local_option2
-  localopts off
+  localopts scope off
   set possibly_global_option2
 }
 .Ed
-.Pp
-.Sy Note
-that this setting
-.Dq stacks up :
-i.e., if
-.Ql macro1
-enables change localization and calls
-.Ql macro2 ,
-which explicitly resets localization, then any value changes within
-.Ql macro2
-will still be reverted by
-.Ql macro1 !
-\*(ID Once the outermost level, the one which enabled localization
-first, is left, but no earlier, all adjustments will be unrolled.
-\*(ID Likewise worth knowing, if in this example
-.Ql macro2
-changes to a different
-.Ic account
-which sets some variables that are yet covered by localizations, their
-scope will be extended, and in fact leaving the
-.Ic account
-will (thus) restore settings in (likely) global scope which actually
-were defined in a local, private context.
 .Mx
 .It Ic Lreply
 Reply to messages that come in via known
@@ -5509,6 +5520,22 @@ header if that seems useful, regardless of the setting of the variable
 .Va followup-to .
 For more documentation please refer to
 .Sx "On sending mail, and non-interactive mode" .
+.Pp
+This may generate the errors
+.Va ^ERR Ns -DESTADDRREQ
+if no receiver has been specified,
+.Va ^ERR Ns -PERM
+if some addressees where rejected by
+.Va expandaddr ,
+.Va ^ERR Ns -NODATA
+if no applicable messages have been given,
+.Va ^ERR Ns -IO
+if an I/O error occurs,
+.Va ^ERR Ns -NOTSUP
+if a necessary character set conversion fails, and
+.Va ^ERR Ns -INVAL
+for other errors.
+Any error stops processing of further messages.
 .Mx
 .It Ic Mail
 Similar to
@@ -5523,6 +5550,23 @@ or asks on standard input if none were given;
 then collects the remaining mail content and sends it out.
 For more documentation please refer to
 .Sx "On sending mail, and non-interactive mode" .
+.Pp
+This may generate the errors
+.Va ^ERR Ns -DESTADDRREQ
+if no receiver has been specified,
+.Va ^ERR Ns -PERM
+if some addressees where rejected by
+.Va expandaddr ,
+.Va ^ERR Ns -NODATA
+if no applicable messages have been given,
+.Va ^ERR Ns -NOTSUP
+if multiple messages have been specified,
+.Va ^ERR Ns -IO
+if an I/O error occurs,
+.Va ^ERR Ns -NOTSUP
+if a necessary character set conversion fails, and
+.Va ^ERR Ns -INVAL
+for other errors.
 .Mx
 .It Ic mbox
 (mb) The given message list is to be sent to the
@@ -5875,6 +5919,25 @@ will exchange this command with
 Unless the internal variable
 .Va fullnames
 is set the recipient address will be stripped from comments, names etc.
+.Ql Reply-To:
+headers will be inspected if
+.Va reply-to-honour
+is set.
+.Pp
+This may generate the errors
+.Va ^ERR Ns -DESTADDRREQ
+if no receiver has been specified,
+.Va ^ERR Ns -PERM
+if some addressees where rejected by
+.Va expandaddr ,
+.Va ^ERR Ns -NODATA
+if no applicable messages have been given,
+.Va ^ERR Ns -IO
+if an I/O error occurs,
+.Va ^ERR Ns -NOTSUP
+if a necessary character set conversion fails, and
+.Va ^ERR Ns -INVAL
+for other errors.
 .Mx
 .It Ic reply
 (r) Take a message and group-responds to it by addressing the sender
@@ -5902,6 +5965,22 @@ The command
 offers special support for replying to mailing lists.
 For more documentation please refer to
 .Sx "On sending mail, and non-interactive mode" .
+.Pp
+This may generate the errors
+.Va ^ERR Ns -DESTADDRREQ
+if no receiver has been specified,
+.Va ^ERR Ns -PERM
+if some addressees where rejected by
+.Va expandaddr ,
+.Va ^ERR Ns -NODATA
+if no applicable messages have been given,
+.Va ^ERR Ns -IO
+if an I/O error occurs,
+.Va ^ERR Ns -NOTSUP
+if a necessary character set conversion fails, and
+.Va ^ERR Ns -INVAL
+for other errors.
+Any error stops processing of further messages.
 .Mx
 .It Ic replyall
 Similar to
@@ -5932,6 +6011,22 @@ Saving in
 is only performed if
 .Va record-resent
 is set.
+.Pp
+This may generate the errors
+.Va ^ERR Ns -DESTADDRREQ
+if no receiver has been specified,
+.Va ^ERR Ns -PERM
+if some addressees where rejected by
+.Va expandaddr ,
+.Va ^ERR Ns -NODATA
+if no applicable messages have been given,
+.Va ^ERR Ns -IO
+if an I/O error occurs,
+.Va ^ERR Ns -NOTSUP
+if a necessary character set conversion fails, and
+.Va ^ERR Ns -INVAL
+for other errors.
+Any error stops processing of further messages.
 .Mx
 .It Ic Respond
 Same as
@@ -6058,7 +6153,7 @@ can be used to quote arguments as necessary.
 \*(ID Otherwise quotation marks may be placed around any part of the
 assignment statement to quote blanks or tabs.
 .Pp
-.Dl wysh set indentprefix=' -> '
+.Dl ? wysh set indentprefix=' -> '
 .Pp
 If an argument begins with
 .Ql no ,
@@ -6760,10 +6855,9 @@ reasons).
 is that the new macro is executed in place of the current one, which
 will not regain control: all resources of the current macro will be
 released first.
-This implies that
+This implies that any setting covered by
 .Ic localopts
-may become cleaned up if the teared down macro context is the outermost
-level of the cleanup stack.
+will be forgotten and covered variables will become cleaned up.
 If this command is not used from within a
 .Ic call Ns
 ed macro it will silently be (a more expensive variant of)
@@ -6992,9 +7086,8 @@ and
 .Ql Subject:
 by typing each one in turn and allowing the user to edit the field.
 .Mx
-.It Ic ~i Ar variable
-Insert the value of the specified variable into the message,
-adding a newline character at the end.
+.It Ic ~I Ar variable
+Insert the value of the specified variable into the message.
 The message remains unaltered if the variable is unset or empty.
 \*(OB The escape sequences tabulator
 .Ql \et
@@ -7005,6 +7098,11 @@ are understood (use the
 prefix when
 .Ic set Ns
 ting the variable(s) instead).
+.Mx
+.It Ic ~i Ar variable
+Identical to
+.Ic ~I ,
+but adds a newline character at the end of a successful insertion.
 .Mx
 .It Ic ~M Ar messages
 Read the named messages into the message being sent,
@@ -7127,9 +7225,11 @@ the \*(UA private namespace, which may not exist (except for the first):
 .Bl -tag -compact -width ".It Va BaNg"
 .It Ql Mailx-Command:
 The name of the command that generates the message, one of
-.Ql mail ,
-.Ql reply ,
 .Ql forward ,
+.Ql Lreply ,
+.Ql mail ,
+.Ql Reply ,
+.Ql reply ,
 .Ql resend .
 .It Ql Mailx-Raw-To:
 .It Ql Mailx-Raw-Cc:
@@ -7971,7 +8071,7 @@ reverse solidus.
 \*(ID Overwriting of automatically managed headers is neither supported
 nor prevented.
 .Pp
-.Dl set customhdr='Hdr1: Body1-1\e, Body1-2,  Hdr2: Body2'
+.Dl ? set customhdr='Hdr1: Body1-1\e, Body1-2,  Hdr2: Body2'
 .Mx
 .It Va datefield
 Controls the appearance of the
@@ -9100,8 +9200,6 @@ If this variable is set then the mailwrapper (the program that is
 actually executed when calling the file-based
 .Va mta )
 will treat its contents as that name.
-The default is
-.Ql sendmail .
 .Mx Va netrc-lookup
 .It Va netrc-lookup-USER@HOST , netrc-lookup-HOST , netrc-lookup
 \*(BO\*(IN\*(OP Used to control usage of the users
@@ -9288,7 +9386,7 @@ define ocsm {
   if [ "$es" != 2 ]
     echoerr 'Cannot read header list'; echo '~x'; xit
   endif
-  if [ "$hl" @i!@ ' cc' ]
+  if [ "$hl" @i!% ' cc' ]
     echo '~^h i cc Diet is your <mirr.or>'; read es;\e
       vput vexpr es substring "${es}" 0 1
     if [ "$es" != 2 ]
@@ -10940,6 +11038,14 @@ A default editor is used if this value is not defined.
 .It Ev HOME
 The user's home directory.
 This variable is only used when it resides in the process environment.
+The calling user's home directory will be used instead if this directory
+does not exist, is not accessible or cannot be read.
+(No test for being writable is performed to allow usage by
+non-privileged users within read-only jails, but dependent on the
+variable settings this directory is a default write target, e.g. for
+.Ev DEAD ,
+.Ev MBOX
+and more.)
 .Mx
 .Mx
 .Mx
@@ -11117,7 +11223,7 @@ and for terminal management in general to
 .It Ev TMPDIR
 Used as directory for temporary files instead of
 .Pa /tmp ,
-if set.
+if set, existent, accessible as well as read- and writable.
 This variable is only used when it resides in the process environment,
 but \*(UA will ensure at startup that this environment variable is
 updated to contain a usable temporary directory.
@@ -11811,6 +11917,7 @@ set ssl-protocol='-ALL,+TLSv1.2'
 # In reality it is possibly best to only use ssl-cipher-list-HOST
 # (or -USER@HOST), as necessary, again..
 set ssl-cipher-list=TLSv1.2:!aNULL:!eNULL:@STRENGTH
+
 # - TLSv1.2:!aNULL:!eNULL:\e
 #     ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:\e
 #     DHE-RSA-AES256-SHA:@STRENGTH

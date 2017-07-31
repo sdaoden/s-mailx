@@ -1034,7 +1034,7 @@ jurlp_err:
          if(trailsol){
             urlp->url_path.s = n_autorec_alloc(i + sizeof("/INBOX"));
             memcpy(urlp->url_path.s, x, i);
-            memcpy(&urlp->url_path.s, "/INBOX", sizeof("/INBOX"));
+            memcpy(&urlp->url_path.s[i], "/INBOX", sizeof("/INBOX"));
             urlp->url_path.l = (i += sizeof("/INBOX") -1);
          }else
 #endif

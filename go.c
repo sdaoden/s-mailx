@@ -477,8 +477,8 @@ jexec:
       }
       /* TODO Nothing should prevent n_CMD_ARG_R in conjunction with
        * TODO n_PS_ROBOT|_SOURCING; see a.._may_yield_control()! */
-      if(n_pstate & (n_PS_ROBOT | n_PS_SOURCING) && n_go_may_yield_control()){
-         n_err(_("Cannot invoke `%s' from a macro or during file inclusion\n"),
+      if(n_pstate & (n_PS_ROBOT | n_PS_SOURCING) && !n_go_may_yield_control()){
+         n_err(_("Cannot invoke `%s' in this program state\n"),
             cdp->cd_name);
          goto jleave;
       }
@@ -1590,11 +1590,9 @@ jforce_stdin:
       /* POSIX says:
        *    An unquoted <backslash> at the end of a command line shall
        *    be discarded and the next line shall continue the command */
-      if(!(gif & n_GO_INPUT_NL_ESC) || (*linebuf)[n - 1] != '\\'){
-         if(dotty)
-            n_pstate |= n_PS_READLINE_NL;
+      if(!(gif & n_GO_INPUT_NL_ESC) || (*linebuf)[n - 1] != '\\')
          break;
-      }
+
       /* Definitely outside of quotes, thus the quoting rules are so that an
        * uneven number of successive reverse solidus at EOL is a continuation */
       if(n > 1){
@@ -1612,6 +1610,8 @@ jforce_stdin:
 
    if(n < 0)
       goto jleave;
+   if(dotty)
+      n_pstate |= n_PS_READLINE_NL;
    (*linebuf)[*linesize = n] = '\0';
 
 jhave_dat:

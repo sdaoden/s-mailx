@@ -156,9 +156,9 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
      DS(N_("Delete the current message, then type the next")) },
    { "undelete", &c_undelete, (A | P | TMSGLST), MDELETED, MMNDEL, NULL
      DS(N_("Un`delete' <msglist>")) },
-   { "mail", &c_sendmail, (I | M | R | S | TSTRING), 0, 0, NULL
+   { "mail", &c_sendmail, (I | M | R | S | EM | TSTRING), 0, 0, NULL
      DS(N_("Compose mail; recipients may be given as arguments")) },
-   { "Mail", &c_Sendmail, (I | M | R | S | TSTRING), 0, 0, NULL
+   { "Mail", &c_Sendmail, (I | M | R | S | EM | TSTRING), 0, 0, NULL
      DS(N_("Like `mail', but derive filename from first recipient")) },
    { "mbox", &c_mboxit, (A | W | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Indicate that <msglist> is to be stored in *MBOX*")) },
@@ -221,39 +221,41 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
      DS(N_("Show help [[Option] for the given command]]")) },
    { n_qm, &a_ctab_c_help, (M | X | TWYRA), 0, 1, NULL
      DS(N_("Show help [[Option] for the given command]]")) },
-   { "Reply", &c_Reply, (A | I | R | S | TMSGLST), 0, MMNDEL, NULL
+   { "Reply", &c_Reply, (A | I | R | S | EM | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Reply to originator, exclusively")) },
-   { "Respond", &c_Reply, (A | I | R | S | TMSGLST), 0, MMNDEL, NULL
+   { "Respond", &c_Reply, (A | I | R | S | EM | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Reply to originator, exclusively")) },
-   { "Followup", &c_Followup, (A | I | R | S | TMSGLST), 0, MMNDEL, NULL
+   { "Followup", &c_Followup, (A | I | R | S | EM | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Like `Reply', but derive filename from first sender")) },
-   { "reply", &c_reply, (A | I | R | S | TMSGLST), 0, MMNDEL, NULL
+   { "reply", &c_reply, (A | I | R | S | EM | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Reply to originator and recipients of <msglist>")) },
-   { "replyall", &c_replyall, (A | I | R | S | TMSGLST), 0, MMNDEL, NULL
+   { "replyall", &c_replyall, (A | I | R | S | EM | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Reply to originator and recipients of <msglist>")) },
-   { "replysender", &c_replysender, (A | I | R | S | TMSGLST), 0, MMNDEL, NULL
+   { "replysender", &c_replysender, (A | I | R | S | EM | TMSGLST),
+         0, MMNDEL, NULL
      DS(N_("Reply to originator, exclusively")) },
-   { "respond", &c_reply, (A | I | R | S | TMSGLST), 0, MMNDEL, NULL
+   { "respond", &c_reply, (A | I | R | S | EM | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Reply to originators and recipients of <msglist>")) },
-   { "respondall", &c_replyall, (A | I | R | S | TMSGLST), 0, MMNDEL, NULL
+   { "respondall", &c_replyall, (A | I | R | S | EM | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Reply to originators and recipients of <msglist>")) },
-   { "respondsender", &c_replysender, (A | I | R | S | TMSGLST),0, MMNDEL, NULL
+   { "respondsender", &c_replysender, (A | I | R | S | EM | TMSGLST),
+         0, MMNDEL, NULL
      DS(N_("Reply to originator, exclusively")) },
-   { "Resend", &c_Resend, (A | R | S | TSTRING), 0, MMNDEL, NULL
+   { "Resend", &c_Resend, (A | R | S | EM | TSTRING), 0, MMNDEL, NULL
      DS(N_("Like `resend', but don't add Resent-* header lines")) },
-   { "Redirect", &c_Resend, (O | A | R | S | TSTRING), 0, MMNDEL, NULL
+   { "Redirect", &c_Resend, (O | A | R | S | EM | TSTRING), 0, MMNDEL, NULL
      DS(N_("Obsolete alternative for `Resend'")) },
-   { "resend", &c_resend, (A | R | S | TSTRING), 0, MMNDEL, NULL
+   { "resend", &c_resend, (A | R | S | EM | TSTRING), 0, MMNDEL, NULL
      DS(N_("Resend <msglist> to <user>, add Resent-* header lines")) },
-   { "redirect", &c_resend, (O | A | R | S | TSTRING), 0, MMNDEL, NULL
+   { "redirect", &c_resend, (O | A | R | S | EM | TSTRING), 0, MMNDEL, NULL
      DS(N_("Obsolete alternative for `resend'")) },
-   { "Forward", &c_Forward, (A | R | S | TSTRING), 0, MMNDEL, NULL
+   { "Forward", &c_Forward, (A | R | S | EM | TSTRING), 0, MMNDEL, NULL
      DS(N_("Like `forward', but derive filename from <address>")) },
-   { "Fwd", &c_Forward, (O | A | R | S | TSTRING), 0, MMNDEL, NULL
+   { "Fwd", &c_Forward, (O | A | R | S | EM | TSTRING), 0, MMNDEL, NULL
      DS(N_("Alias of `Forward'")) },
-   { "forward", &c_forward, (A | R | S | TSTRING), 0, MMNDEL, NULL
+   { "forward", &c_forward, (A | R | S | EM | TSTRING), 0, MMNDEL, NULL
      DS(N_("Forward <message> to <address>")) },
-   { "fwd", &c_forward, (O | A | R | S | TSTRING), 0, MMNDEL, NULL
+   { "fwd", &c_forward, (O | A | R | S | EM | TSTRING), 0, MMNDEL, NULL
      DS(N_("Alias of `forward'")) },
    { "edit", &c_editor, (G | A | I | S | TMSGLST), 0, MMNORM, NULL
      DS(N_("Edit <msglist>")) },
@@ -449,7 +451,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
      DS(N_("Show all mailing list subscriptions or define some")) },
    { "unmlsubscribe", &c_unmlsubscribe, (M | TWYRA), 1, MAC, NULL
      DS(N_("Un`mlsubscribe' <name-list> (* for all)"))},
-   { "Lreply", &c_Lreply, (A | I | R | S | TMSGLST), 0, MMNDEL, NULL
+   { "Lreply", &c_Lreply, (A | I | R | S | EM | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Mailing-list reply to the given <msglist>")) },
    { "dotmove", &c_dotmove, (A | TSTRING), 1, 1, NULL
      DS(N_("Move the dot up <-> or down <+> by one")) },
@@ -502,8 +504,8 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
 
    { "list", &a_ctab_c_list, (M | TWYSH), 0, 1, NULL
      DS(N_("List all commands (with argument: in prefix search order)")) },
-   { "localopts", &c_localopts, (H | M | X | TWYSH), 1, 1, NULL
-     DS(N_("Inside `define' / `account': isolate modifications? <boolean>"))},
+   { "localopts", &c_localopts, (H | M | X | TWYSH), 1, 2, NULL
+     DS(N_("Localize variable modifications? [<attribute>] <boolean>"))},
 
    { "netrc",
 #ifdef HAVE_NETRC

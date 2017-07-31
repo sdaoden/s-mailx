@@ -50,18 +50,22 @@ cloning purposes), with mirrors at Sourceforge[5] and repo.or.cz[6].
   [5] http://sourceforge.net/projects/s-nail
   [6] http://repo.or.cz/s-mailx.git
 
-We have a mailing list[7] with moderated unsubscribed posting
-possibilities; subscriptions can be managed via web interface[8]; Gmane
-added the ML their NNTP archive[9], and The Mail Archive archives
-a browser-accessible and searchable web version[10] -- thank you!
-Commits to the [master], [release/*] and [stable/*] branches will be
-posted to [11], and announcements will also be posted to [12], both are
-receive-only mailing-lists.
+We have a mailing list[7] with moderated unsubscribed posting possi-
+bilities; subscriptions can be managed via web interface[8] (it is
+a GNU Mailman list, so posting to LISTNAME-request@ and the subject
+"subscribe" will also do).  The Mail Archive archives
+a browser-accessible and searchable web version[9], and i have sub-
+scribed the RSS feed that The Mail Archive produces to Gwene.org[10],
+thanks all of you!
+
+Commits to the [master], [release/*] and [stable/*] branches are
+posted to [11], and announcements will also be posted to [12], both
+are receive-only mailing-lists.
 
   [7] s-mailx@lists.sdaoden.eu
   [8] https://lists.sdaoden.eu/mailman/listinfo.cgi/s-mailx
-  [9] news.gmane.org/gmane.mail.s-nail.user
-  [10] www.mail-archive.com/s-nail-users@lists.sourceforge.net/maillist.html
+  [9] https://www.mail-archive.com/s-mailx@lists.sdaoden.eu/
+  [10] news.gwene.org/gwene.mail.s-mailx
   [11] https://lists.sdaoden.eu/mailman/listinfo.cgi/s-mailx-commit
   [12] https://lists.sdaoden.eu/mailman/listinfo.cgi/s-announce
 
@@ -84,10 +88,10 @@ Thank you!
     date fixation, manual preprocessing, removal of data which doesn't
     make sense in release tarballs, etc.
 
-    (Whereas all this is not true for older releases, the new repository
-    layout was introduced after v14.8.10, and used [timeline] as
-    a source for most references, therefore the signed tag v14.8.7.ar
-    protects all elder references within [release/]:
+    All this is not true for older releases, the new repository layout
+    was introduced after v14.8.10.  But it used [timeline] as a source
+    for most references, therefore the signed tag v14.8.7.ar protects
+    all elder references within [release/]:
 
       $ git describe --contains heads/release/v1.3.0
       v14.8.7.ar~113
@@ -147,7 +151,7 @@ Thank you!
     release balls.
 
     The [timeline] branch was the original effort, and it will be
-    continuously be extended whenever new releases will be made, but its
+    continuously extended whenever new releases will be made, but its
     history won't be rewritten, which is why it is a sketchy effort.
     The [unix-mail] and [bsd-Mail] branches have been added later, and
     will hopefully offer the most complete picture possible as time goes

@@ -199,13 +199,13 @@ Please ensure OPT_DEBUG=yes is enabled during compilation, as in
 
   $ make CONFIG=MAXIMAL OPT_DEBUG=yes
 
-If $OPT_AUTOCC is enabled then the build system should automatically
+If OPT_AUTOCC is enabled then the build system should automatically
 adjust the compiler flags accordingly, please see make.rc for more.
 There is also a `devel'opment target which does most of this by itself:
 
   $ make devel
 
-$OPT_DEBUG (`devel') will enable memory bound debug canaries and
+OPT_DEBUG (`devel') will enable memory bound debug canaries and
 Not-Yet-Dead function graph listings etc.  Whereas the latter will try
 to write its listing into a file named after your favourite MUA in
 your $TMPDIR (or "/tmp" or "./", in order), falling back to STDERR shall
@@ -241,7 +241,7 @@ Thank you!
     statements in nail.h).
 
     By forcing ISO C99 mode when compiling these warnings vanish, e.g.,
-    with gcc(1) and clang(1): with $OPT_AUTOCC pass
+    with gcc(1) and clang(1): with OPT_AUTOCC pass
     "EXTRA_CFLAGS=-std=c99", otherwise ensure -std=c99 is set in $CFLAGS.
 
 Development and/or regular tests:
@@ -261,9 +261,9 @@ Occasional tests:
     supports CRC-32 (POSIX).  We look into /opt/csw/gnu/cksum, but if
     that cannot be found you have to adjust the $cksum variable (see
     above) to something that works.
-  * With $OPT_AUTOCC: we try to use Sun cc(1) whenever we find it.
+  * With OPT_AUTOCC: we try to use Sun cc(1) whenever we find it.
     If your gcc(1) installation is doing alright you have to turn
-    $OPT_AUTOCC off and use $CC, $CFLAGS and $LDFLAGS.
+    OPT_AUTOCC off and use $CC, $CFLAGS and $LDFLAGS.
   * Warnings about iconv(3) prototypes which i will not address.
   * Some notes collected on earlier trials:
     + We may forcefully disable stack protectors on SunOS/gcc because of
@@ -273,7 +273,7 @@ Occasional tests:
          symbol                             in file
         __builtin_stdarg_start              auxlily.o
       then you have to overwrite this symbol with __builtin_va_start,
-      e.g., in conjunction with $OPT_AUTOCC add this:
+      e.g., in conjunction with OPT_AUTOCC add this:
        EXTRA_CFLAGS='-D__builtin_stdarg_start=__builtin_va_start'
     + I couldn't get us going on SunOS 5.9 Sparc: the build system had
       to be extended to check for UINTPTR_MAX being defined as the empty

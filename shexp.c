@@ -1622,8 +1622,18 @@ j_dollar_ungetc:
                    * properly quoted tokens (instead).  The first exploded
                    * cookie will join with the current token */
                   if((state & a_EXPLODE) && !(flags & n_SHEXP_PARSE_DRYRUN) &&
-                        cookie != NULL && n_var_vexplode(cookie)){
-                     state |= a_COOKIE;
+                        cookie != NULL){
+                     if(n_var_vexplode(cookie))
+                        state |= a_COOKIE;
+                     /* On the other hand, if $@ expands to nothing and is the
+                      * sole content of this quote then act like the shell does
+                      * and throw away the entire atxplode construct */
+                     else if(!(rv & n_SHEXP_STATE_OUTPUT) &&
+                           il == 1 && *ib == '"' &&
+                           ib_save == &input->s[1] && ib_save[-1] == '"')
+                        ++ib, --il;
+                     else
+                        continue;
                      input->s = n_UNCONST(ib);
                      input->l = il;
                      goto jrestart_empty;

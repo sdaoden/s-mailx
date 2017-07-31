@@ -46,8 +46,14 @@ n_is_dir(char const *name, bool_t check_access){
    NYD2_ENTER;
 
    if((rv = (stat(name, &sbuf) == 0))){
-      if((rv = (S_ISDIR(sbuf.st_mode) != 0)) && check_access)
-         rv = (access(name, R_OK | W_OK | X_OK) == 0);
+      if((rv = (S_ISDIR(sbuf.st_mode) != 0)) && check_access){
+         int mode;
+
+         mode = R_OK | X_OK;
+         if(check_access != TRUM1)
+            mode |= W_OK;
+         rv = (access(name, mode) == 0);
+      }
    }
    NYD2_LEAVE;
    return rv;
