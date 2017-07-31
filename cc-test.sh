@@ -2084,8 +2084,8 @@ t_behave_atxplode() {
    ${MAILX} ${ARGS} -X'source ./.t.rc' -Xx > "${MBOX}" 2>&1
    check behave:atxplode-1 0 "${MBOX}" '41566293 164'
 
-   ${SHELL} ./.t.sh > ./.tshout 2>&1
-   check behave:atxplode:disproof-1 0 ./.tshout '41566293 164'
+   #${SHELL} ./.t.sh > ./.tshout 2>&1
+   #check behave:atxplode:disproof-1 0 ./.tshout '41566293 164'
 
    t_epilog
 }
