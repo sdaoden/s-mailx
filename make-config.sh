@@ -848,20 +848,26 @@ path_check() {
    do
       [ -z "${i}" ] && continue
       [ -d "${i}" ] || continue
-      # Skip any fakeroot packager environment
-      case "${i}" in *fakeroot*) continue;; esac
       if [ -n "${j}" ]; then
          if { z=${y}; echo "${z}"; } | ${grep} ":${i}:" >/dev/null 2>&1; then
             :
          else
             y="${y} :${i}:"
             j="${j}:${i}"
-            [ -n "${addflag}" ] && k="${k} ${addflag}${i}"
+            # But do not link any fakeroot path into our binaries!
+            if [ -n "${addflag}" ]; then
+               case "${i}" in *fakeroot*) continue;; esac
+               k="${k} ${addflag}${i}"
+            fi
          fi
       else
          y=" :${i}:"
          j="${i}"
-         [ -n "${addflag}" ] && k="${addflag}${i}"
+         # But do not link any fakeroot path into our binaries!
+         if [ -n "${addflag}" ]; then
+            case "${i}" in *fakeroot*) continue;; esac
+            k="${k} ${addflag}${i}"
+         fi
       fi
    done
    eval "${varname}=\"${j}\""
@@ -877,6 +883,8 @@ ld_runtime_flags() {
       IFS=${i}
       for i
       do
+         # But do not link any fakeroot path into our binaries!
+         case "${i}" in *fakeroot*) continue;; esac
          LDFLAGS="${LDFLAGS} ${need_R_ldflags}${i}"
          _LDFLAGS="${_LDFLAGS} ${need_R_ldflags}${i}"
       done
