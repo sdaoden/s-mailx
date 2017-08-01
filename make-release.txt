@@ -16,8 +16,8 @@ Number games
 ^^^^^^^^^^^^
 
 The tagged release commits are [master  stable/v]:[], and
-[release/v]:[] (actual release content).
-		The release has also been stored as [timeline]:[].
+[release/v .ar]:[] (actual release content).
+	The release has also been stored as [timeline]:[].
 The git(1) release commits and tags, as well as the release balls
 have been signed with the OpenPGP key
   steffen@sdaoden.eu  /  95F382CE
@@ -40,52 +40,6 @@ s-nail-latest.txt (a copy of this announcement text).
   git(1) clone : \https?://git.sdaoden.eu/scm/s-nail.git
   git(1) browse: https?://git.sdaoden.eu/cgit/s-nail.git
 
-  In the following mdocmx(7) anchors are denoted by a number-sign #:
-  typing "^A ANCHOR" while reading the man(1)ual in a capable less(1)
-  will scroll to the manual's Point-Of-Interest, and pointing a web-
-  browser to the "#ANCHOR" of the online manual will do so, too.
-
-NOTES, ChangeLog (packager-affine)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-ChangeLog
-^^^^^^^^^
-
 -----NEWS-----
-
-git(1) shortlog (edited)
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-:read!git shortlog -w78,0,8 --format="\%h \%s" x..y
-
-Appendix
-^^^^^^^^
-
-The complete changelog of commits in between two versions OLD and
-NEW can be inspected by using the git(1) `log' command:
-
-  $ git log --reverse --topo-order --abbrev-commit OLD..NEW
-  # Only topic branch headers (--no-merges for content commits only):
-  $ git log --oneline --reverse --topo-order --merges OLD..NEW
-  # Same, but truly accessible:
-  $ git log --oneline --reverse --topo-order --merges --parents OLD..NEW |
-    while read c1 c2 c3 c4 c5 c6; do
-      printf "%-24s: \$ git log --oneline --no-merges %s ^%s\n" \
-        "${c6}" "${c1}" "${c2}";
-    done
-
-Entries for releases before v14.9.0 have been cut off and can be
-found in the git(1) repository:
-
-  v14.8.0 - v14.8.16: $ git show v14.8.16:NEWS
-  v13     - v14.8.5 : $ git show v14.8.5:NEWS
-  9.0     - 12.5    : $ git show heirloom:ChangeLog
-
-Also accessible via HTTPS?, just replace X.Y.Z accordingly:
-
-  \https?://git.sdaoden.eu/cgit/s-nail.git/tree/NEWS?h=vX.Y.Y
-
-For even older releases you need to look into the [timeline]
-branch, but no changelog has been administrated for them.
 
 -----SIGNATURES-----
