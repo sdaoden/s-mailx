@@ -43,7 +43,7 @@ referenced manual can also be viewed as HTML online[2].
 There are browsable git(1) repositories at sdaoden.eu[3] (use [4] for
 cloning purposes), with mirrors at Sourceforge[5] and repo.or.cz[6].
 
-  [1] https?://www.sdaoden.eu/downloads/s-nail-latest.tar.{gz,xz}{,.asc}
+  [1] https?://ftp.sdaoden.eu/s-nail-latest.tar.{gz,xz}{,.asc}
   [2] https?://www.sdaoden.eu/code.html#s-mailx
   [3] https?://git.sdaoden.eu/cgit/s-nail.git
   [4] https?://git.sdaoden.eu/scm/s-nail.git
