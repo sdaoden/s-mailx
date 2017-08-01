@@ -21,12 +21,13 @@ the v14.9.0 announcement.
 
 ChangeLog
 ^^^^^^^^^
+
 - In compose mode the MLE allows empty lines again.
 
-- We no longer require a writable $HOME.  Due to false code flow
-  (but but but: with correct comment) a non-writable $HOME entry
-  in /etc/password (i.e., from getpwuid(3)) would lead to a crash.
-  (Felix Fontain; Ralph Corderoy)
+- We no longer require a writable $HOME#?.  Due to false code
+  flow (but but but: with correct comment) a non-writable $HOME
+  entry in /etc/password (i.e., from getpwuid(3)) would lead to
+  a crash.  (Felix Fontain; Ralph Corderoy)
 
 - Two faulty string operations slipped into the IMAP code,
   resulting in a crash and a "is-same-host" test that would fail
@@ -34,7 +35,7 @@ ChangeLog
   implicit IMAP protocol for the target of those operations (thus
   IMAP != IMAPS).  (Paul Vojta)
 
-- The MLE tab-expansion will not automatically append a "/" if
+- The MLE tab-expansion will now automatically append a "/" if
   there is only one possible expansion and that is a directory,
   saving the user one <TAB>.  (Christos Zoulas)
 
@@ -61,7 +62,7 @@ ChangeLog
   the context (i.e., *reply-to-honour*#481, *followup-to-honour*#391,
   see "Mailing lists"#10 for the picture), and if they did, use
   this list as the receivers exclusively.  It now honours
-  *receivers-in-cc* even for such addressees.  (And now i wonder
+  *receivers-in-cc*#? even for such addressees.  (And now i wonder
   whether i should have credited Paul Vojta for that.)
 
   Also `Lreply' would have crashed for mails with Reply-To: but
