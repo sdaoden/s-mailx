@@ -183,11 +183,8 @@ a_crese_mail_followup_to(struct message *mp){
 static void
 a_crese_polite_rt_mft_move(struct message *mp, struct header *hp,
       struct name *np){
-   struct name *np_orig;
    NYD2_ENTER;
    n_UNUSED(mp);
-
-   np_orig = np;
 
    if(np == hp->h_to)
       hp->h_to = NULL;
@@ -313,7 +310,7 @@ a_crese_list_reply(int *msgvec, enum header_flags hf){
    struct message *mp;
    char const *cp, *cp2;
    enum gfield gf;
-   struct name *rt, *mft, *np, *rcv;
+   struct name *rt, *mft, *np;
    int *save_msgvec;
    NYD2_ENTER;
 
