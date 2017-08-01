@@ -145,7 +145,10 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
       needsep = TRU1;
    }
 
-   if (mpp->m_multipart == NULL/* TODO */ && (cp = mpp->m_ct_enc) != NULL) {
+   if(mpp->m_multipart == NULL/* TODO */ && (cp = mpp->m_ct_enc) != NULL &&
+         (!asccasecmp(cp, "7bit") ||
+          n_ignore_is_ign(doitp, "content-transfer-encoding",
+            sizeof("content-transfer-encoding") -1))){
       if(needsep)
          _out(", ", 2, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
       if (to.l > 25 && !asccasecmp(cp, "quoted-printable"))
@@ -161,7 +164,9 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
       _out(cp, strlen(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
    }
 
-   _out(" --]", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+   needsep = !needsep;
+   _out(&" --]"[needsep], 4 - needsep,
+      obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
    if (csuf != NULL)
       _out(csuf->s, csuf->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
    _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
