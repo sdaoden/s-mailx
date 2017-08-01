@@ -26,13 +26,13 @@ Content-Disposition: attachment; filename=".tmts2.ice"
 
    Icy, icy road.
 
-[-- #1.4 6/195 base64 --]
+[-- #1.4 6/195 --]
 Content-Type: application/octet-stream; charset=binary
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename=".tmtsx.doom"
 
 
-[-- #1.5 6/189 base64 --]
+[-- #1.5 6/189 --]
 Content-Type: application/aga-aga; charset=binary
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename=".tmtsx.aga"
@@ -107,13 +107,13 @@ Content-Type: x-conference/x-cooltalk; charset=us-ascii
 Content-Disposition: attachment; filename=".tmts2.ice"
 
 
-[-- #1.4 6/195 base64 --]
+[-- #1.4 6/195 --]
 Content-Type: application/octet-stream; charset=binary
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename=".tmtsx.doom"
 
 
-[-- #1.5 6/189 base64 --]
+[-- #1.5 6/189 --]
 Content-Type: application/aga-aga; charset=binary
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename=".tmtsx.aga"
