@@ -4256,6 +4256,12 @@ t_all() {
 #      export ARGS
 #   fi
 
+   if [ -n "${UTF8_LOCALE}" ]; then
+      printf 'Using Unicode locale %s\n' "${UTF8_LOCALE}"
+   else
+      printf 'No Unicode locale found, disabling Unicode tests\n'
+   fi
+
    t_behave
    t_content
 }
