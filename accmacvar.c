@@ -479,7 +479,7 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
    assert(amp != NULL && amp != a_AMV_MACKY_MACK);
    ++amp->am_refcnt;
    /* XXX Unfortunately we yet need to dup the macro lines! :( */
-   args_base = args = smalloc(sizeof(*args) * (amp->am_line_cnt +1));
+   args_base = args = n_alloc(sizeof(*args) * (amp->am_line_cnt +1));
    for(amlp = amp->am_line_dat; *amlp != NULL; ++amlp)
       *(args++) = sbufdup((*amlp)->aml_dat, (*amlp)->aml_len);
    *args = NULL;
@@ -662,7 +662,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
             ll_tail->ll_next = llp;
          ll_tail = llp;
          llp->ll_next = NULL;
-         llp->ll_amlp = amlp = smalloc(n_VSTRUCT_SIZEOF(struct a_amv_mac_line,
+         llp->ll_amlp = amlp = n_alloc(n_VSTRUCT_SIZEOF(struct a_amv_mac_line,
                aml_dat) + n.ui);
          amlp->aml_len = n.ui -1;
          amlp->aml_prespc = leaspc;
@@ -676,8 +676,8 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
 
    /* Create the new macro */
    n.s = strlen(name) +1;
-   amp = smalloc(n_VSTRUCT_SIZEOF(struct a_amv_mac, am_name) + n.s);
-   memset(amp, 0, sizeof *amp);
+   amp = n_alloc(n_VSTRUCT_SIZEOF(struct a_amv_mac, am_name) + n.s);
+   memset(amp, 0, n_VSTRUCT_SIZEOF(struct a_amv_mac, am_name));
    amp->am_maxlen = maxlen;
    amp->am_line_cnt = line_cnt;
    amp->am_flags = amf;
@@ -685,7 +685,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
    /* C99 */{
       struct a_amv_mac_line **amlpp;
 
-      amp->am_line_dat = amlpp = smalloc(sizeof(*amlpp) * ++line_cnt);
+      amp->am_line_dat = amlpp = n_alloc(sizeof(*amlpp) * ++line_cnt);
       for(llp = ll_head; llp != NULL; llp = llp->ll_next)
          *amlpp++ = llp->ll_amlp;
       *amlpp = NULL;
@@ -780,7 +780,7 @@ a_amv_lopts_add(struct a_amv_lostack *alp, char const *name,
 
    nl = strlen(name) +1;
    vl = (oavp != NULL) ? strlen(oavp->av_value) +1 : 0;
-   avp = smalloc(n_VSTRUCT_SIZEOF(struct a_amv_var, av_name) + nl + vl);
+   avp = n_alloc(n_VSTRUCT_SIZEOF(struct a_amv_var, av_name) + nl + vl);
    avp->av_link = alp->as_lopts;
    alp->as_lopts = avp;
    memcpy(avp->av_name, name, nl);
@@ -843,7 +843,7 @@ a_amv_var_copy(char const *str){
    else{
 jheap:
       len = strlen(str) +1;
-      news = smalloc(len);
+      news = n_alloc(len);
       memcpy(news, str, len);
    }
    NYD2_LEAVE;
@@ -1296,7 +1296,7 @@ jnewval:
 
       l = strlen(avcp->avc_name) +1;
       avcp->avc_var =
-      avp = smalloc(n_VSTRUCT_SIZEOF(struct a_amv_var, av_name) + l);
+      avp = n_alloc(n_VSTRUCT_SIZEOF(struct a_amv_var, av_name) + l);
       avp->av_link = *(avpp = &a_amv_vars[avcp->avc_prime]);
       *avpp = avp;
       memcpy(avp->av_name, avcp->avc_name, l);
@@ -1589,7 +1589,7 @@ jeavmp:
       size_t l;
 
       l = strlen(avcp->avc_name) +1;
-      avcp->avc_var = avp = smalloc(n_VSTRUCT_SIZEOF(struct a_amv_var, av_name
+      avcp->avc_var = avp = n_alloc(n_VSTRUCT_SIZEOF(struct a_amv_var, av_name
             ) + l);
       avp->av_link = *(avpp = &a_amv_vars[avcp->avc_prime]);
       *avpp = avp;
