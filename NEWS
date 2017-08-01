@@ -6,25 +6,32 @@ S - n a i l / S - m a i l x  N e w s
   will scroll to the manual's Point-Of-Interest, and pointing
   a web- browser to the "#ANCHOR" of the online manual works.
 
-v14.9.1 ("Crested tit"), 2017-07-31
+v14.9.2 ("Crested tit"), 2017-08-01
 -----------------------------------
 
 This is a bugfix release but which ships some improvements, too.
+It silently replaces v14.9.1 from yesterday, which was broken.
 
 Credits, in order of commit appearance: Felix Fontein, Paul Vojta,
-Ralph Corderoy, Christos Zoulas.
+Ralph Corderoy, Christos Zoulas, Gavin Troy, Gaetan Bisson.
 
 We welcome Christos Zoulas in THANKS.
 
 Apologies to Viktor Szépe for the false spelling of his name in
 the v14.9.0 announcement.
 
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- fakeroot support was blindly taken from Debian and broken.
+  (Gavin Troy, Gaetan Bisson)
+
 ChangeLog
 ^^^^^^^^^
 
 - In compose mode the MLE allows empty lines again.
 
-- We no longer require a writable $HOME#?.  Due to false code
+- We no longer require a writable $HOME#561.  Due to false code
   flow (but but but: with correct comment) a non-writable $HOME
   entry in /etc/password (i.e., from getpwuid(3)) would lead to
   a crash.  (Felix Fontain; Ralph Corderoy)
@@ -62,7 +69,7 @@ ChangeLog
   the context (i.e., *reply-to-honour*#481, *followup-to-honour*#391,
   see "Mailing lists"#10 for the picture), and if they did, use
   this list as the receivers exclusively.  It now honours
-  *receivers-in-cc*#? even for such addressees.  (And now i wonder
+  *recipients-in-cc*#474 even for such addressees.  (And now i wonder
   whether i should have credited Paul Vojta for that.)
 
   Also `Lreply' would have crashed for mails with Reply-To: but
@@ -78,6 +85,9 @@ git(1) shortlog (edited)
 1cc0d3de Allow non-writable $HOME (Felix Fontain, Ralph Corderoy)
 32e5c7c2 MLE: KHT: auto-append / for directories at once (Christos Zoulas)
 e2bb54b7 THANKS: Christos Zoulas
+f593fc18 make-config.sh: do NOT skip fakeroot paths
+        (Gavin Troy, Gaetan Bisson)
+4fe971ea FIX [4047a432] possible bound excess in memset()!
 
 v14.9.0 ("Long-tailed tit"), 2017-07-16
 ---------------------------------------
