@@ -363,7 +363,7 @@ if yesno 'Prepare announcement?'; then
 
          match(mat, /#[0-9]+/)
          targ = substr(mat, RSTART + 1, RLENGTH)
-         mat = substr(mat, 1, RSTART)
+         mat = substr(mat, 1, RSTART - 1)
          res = res pre "<?lreft " manual "#" targ "<>" mat "?>"
          any = 1
       }
