@@ -20,7 +20,7 @@ cd ..
 : ${UPLOAD:=steffen@sdaoden.eu:/var/www/localhost/downloads}
 
 # Mail
-: ${MAILX:=s-nail -Snofollowup-to -Ssmime-sign}
+: ${MAILX:=s-nail -Snofollowup-to -Sreply-to=mailx -Ssmime-sign}
 : ${ACCOUNT:=ich}
 : ${MAILBCC:=mailx-announce-bcc}
 : ${MAILTO:=mailx-announce}
