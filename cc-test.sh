@@ -14,6 +14,8 @@ MBOX=./.cc-test.mbox
 MAIL=/dev/null
 #UTF8_LOCALE= autodetected unless set
 
+# Note valgrind has problems with FDs in forked childs, which causes some tests
+# to fail (the FD is rewound and thus will be dumped twice)
 MEMTESTER=
 #MEMTESTER='valgrind --leak-check=full --log-file=.vl-%p '
 
