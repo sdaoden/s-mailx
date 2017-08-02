@@ -1693,7 +1693,8 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_b_record_resent,
    ok_b_reply_in_same_charset,
    ok_v_reply_strings,
-   ok_v_replyto,
+ok_v_replyto,
+   ok_v_reply_to,                      /* {notempty=1} */
    ok_v_reply_to_honour,
    ok_b_rfc822_body_from_,             /* {name=rfc822-body-from_} */
 
@@ -2366,7 +2367,7 @@ struct header {
    struct name *h_bcc;        /* Blind carbon copies */
    struct name *h_ref;        /* References (possibly overridden) */
    struct attachment *h_attach; /* MIME attachments */
-   struct name *h_replyto;    /* overridden "Reply-To:" field */
+   struct name *h_reply_to;   /* overridden "Reply-To:" field */
    struct name *h_message_id; /* overridden "Message-ID:" field */
    struct name *h_in_reply_to;/* overridden "In-Reply-To:" field */
    struct name *h_mft;        /* Mail-Followup-To */

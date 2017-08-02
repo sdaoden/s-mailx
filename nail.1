@@ -568,7 +568,7 @@ then it will be used in favour of one given on the command line.
 Also understood are
 .Ql Reply-To:
 (possibly overriding
-.Va replyto ) ,
+.Va reply-to ) ,
 .Ql Sender:
 .Pf ( Va sender ) ,
 .Ql From:
@@ -3767,7 +3767,7 @@ There is a set of implicit alternates which is formed of the values of
 .Va from ,
 .Va sender
 and
-.Va replyto .
+.Va reply-to .
 .
 .Mx
 .Mx
@@ -7083,7 +7083,7 @@ and
 .Ql Sender:
 by typing each one in turn and allowing the user to edit the field.
 The default values for these fields originate from the
-.Va from , replyto
+.Va from , reply-to
 and
 .Va sender
 variables.
@@ -10108,13 +10108,17 @@ which often has been seen in the wild;
 I.e., the separating colon has to be specified explicitly.
 .
 .Mx
-.It Va replyto
+.It Va reply-to
 A list of addresses to put into the
 .Ql Reply-To:
 field of the message header.
 Members of this list are handled as if they were in the
 .Ic alternates
 list.
+.
+.It Va replyto
+\*(OB Variant of
+.Va reply-to .
 .
 .Mx
 .It Va reply-to-honour

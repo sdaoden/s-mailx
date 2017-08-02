@@ -804,7 +804,7 @@ jins:
          goto jins;
       }
       if(!asccasecmp(cmd[2], cp = "Reply-To")){
-         npp = &hp->h_replyto;
+         npp = &hp->h_reply_to;
          eacm = EACM_NONAME;
          goto jins;
       }
@@ -885,7 +885,7 @@ jdefault:
          if(hp->h_to != NULL) fputs(" To", n_stdout);
          if(hp->h_cc != NULL) fputs(" Cc", n_stdout);
          if(hp->h_bcc != NULL) fputs(" Bcc", n_stdout);
-         if(hp->h_replyto != NULL) fputs(" Reply-To", n_stdout);
+         if(hp->h_reply_to != NULL) fputs(" Reply-To", n_stdout);
          if(hp->h_mft != NULL) fputs(" Mail-Followup-To", n_stdout);
          if(hp->h_message_id != NULL) fputs(" Message-ID", n_stdout);
          if(hp->h_ref != NULL) fputs(" References", n_stdout);
@@ -945,7 +945,7 @@ jlist:
          goto jlist;
       }
       if(!asccasecmp(cmd[2], cp = "Reply-To")){
-         np = hp->h_replyto;
+         np = hp->h_reply_to;
          goto jlist;
       }
       if(!asccasecmp(cmd[2], cp = "Mail-Followup-To")){
@@ -1056,7 +1056,7 @@ jrem:
          goto jrem;
       }
       if(!asccasecmp(cmd[2], cp = "Reply-To")){
-         npp = &hp->h_replyto;
+         npp = &hp->h_reply_to;
          goto jrem;
       }
       if(!asccasecmp(cmd[2], cp = "Mail-Followup-To")){
@@ -1172,7 +1172,7 @@ jremat:
          goto jremat;
       }
       if(!asccasecmp(cmd[2], cp = "Reply-To")){
-         npp = &hp->h_replyto;
+         npp = &hp->h_reply_to;
          goto jremat;
       }
       if(!asccasecmp(cmd[2], cp = "Mail-Followup-To")){
@@ -1270,7 +1270,7 @@ jshow:
          goto jshow;
       }
       if(!asccasecmp(cmd[2], cp = "Reply-To")){
-         np = hp->h_replyto;
+         np = hp->h_reply_to;
          goto jshow;
       }
       if(!asccasecmp(cmd[2], cp = "Mail-Followup-To")){

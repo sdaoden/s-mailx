@@ -2099,10 +2099,17 @@ jto_fmt:
    if (w & GIDENT) {
       /* Reply-To:.  Be careful not to destroy a possible user input, duplicate
        * the list first.. TODO it is a terrible codebase.. */
-      if ((np = hp->h_replyto) != NULL)
+      if((np = hp->h_reply_to) != NULL)
          np = namelist_dup(np, np->n_type);
-      else if ((addr = ok_vlook(replyto)) != NULL)
+      else{
+         char const *v15compat;
+
+         if((v15compat = ok_vlook(replyto)) != NULL)
+            n_OBSOLETE(_("please use *reply-to*, not *replyto*"));
+         if((addr = ok_vlook(reply_to)) == NULL)
+            addr = v15compat;
          np = lextract(addr, GEXTRA | GFULL);
+      }
       if (np != NULL &&
             (np = elide(
                checkaddrs(usermap(np, TRU1), EACM_STRICT | EACM_NOLOG,

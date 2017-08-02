@@ -911,11 +911,19 @@ need_hdrconv(struct header *hp) /* TODO once only, then iter */
          goto jneeds;
    } else if (_has_highbit(myaddrs(NULL)))
       goto jneeds;
-   if (hp->h_replyto) {
-      if (_name_highbit(hp->h_replyto))
+   if (hp->h_reply_to) {
+      if (_name_highbit(hp->h_reply_to))
          goto jneeds;
-   } else if (_has_highbit(ok_vlook(replyto)))
-      goto jneeds;
+   } else {
+      char const *v15compat;
+
+      if((v15compat = ok_vlook(replyto)) != NULL)
+         n_OBSOLETE(_("please use *reply-to*, not *replyto*"));
+      if(_has_highbit(v15compat))
+         goto jneeds;
+      if(_has_highbit(ok_vlook(reply_to)))
+         goto jneeds;
+   }
    if (hp->h_sender) {
       if (_name_highbit(hp->h_sender))
          goto jneeds;
