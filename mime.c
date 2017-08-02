@@ -170,7 +170,10 @@ _fwrite_td(struct str const *input, enum tdflags flags, struct str *outrest,
 
 #ifdef HAVE_ICONV
    if ((flags & TD_ICONV) && iconvd != (iconv_t)-1) {
-      char *buf = NULL;
+      int err;
+      char *buf;
+
+      buf = NULL;
 
       if (outrest != NULL && outrest->l > 0) {
          in.l = outrest->l + input->l;
@@ -180,10 +183,12 @@ _fwrite_td(struct str const *input, enum tdflags flags, struct str *outrest,
          outrest->l = 0;
       }
 
-      if (n_iconv_str(iconvd, n_ICONV_UNIDEFAULT, &out, &in, &in) != 0 &&
-            outrest != NULL && in.l > 0) {
-         n_iconv_reset(iconvd);
-         /* Incomplete multibyte at EOF is special */
+      if((err = n_iconv_str(iconvd, n_ICONV_UNIDEFAULT, &out, &in, &in)) != 0 &&
+            outrest != NULL && in.l > 0){
+         if(err != n_ERR_INVAL)
+            n_iconv_reset(iconvd);
+
+         /* Incomplete multibyte at EOF is special xxx _INVAL? */
          if (flags & _TD_EOF) {
             out.s = srealloc(out.s, out.l + sizeof(n_unirepl));
             if(n_psonce & n_PSO_UNICODE){
@@ -202,7 +207,7 @@ _fwrite_td(struct str const *input, enum tdflags flags, struct str *outrest,
       if (buf != NULL)
          free(buf);
    }else
-#endif
+#endif /* HAVE_ICONV */
    /* Else, if we will modify the data bytes and thus introduce the potential
     * of messing up multibyte sequences which become splitted over buffer
     * boundaries TODO and unless we don't have our filter chain which will
@@ -1161,14 +1166,15 @@ jleave:
 
 FL ssize_t
 xmime_write(char const *ptr, size_t size, FILE *f, enum conversion convert,
-   enum tdflags dflags)
+   enum tdflags dflags, struct str * volatile outrest,
+   struct str * volatile inrest)
 {
    ssize_t rv;
    struct quoteflt *qf;
    NYD_ENTER;
 
    quoteflt_reset(qf = quoteflt_dummy(), f);
-   rv = mime_write(ptr, size, f, convert, dflags, qf, NULL, NULL);
+   rv = mime_write(ptr, size, f, convert, dflags, qf, outrest, inrest);
    quoteflt_flush(qf);
    NYD_LEAVE;
    return rv;
@@ -1193,7 +1199,8 @@ mime_write(char const *ptr, size_t size, FILE *f,
 {
    /* TODO note: after send/MIME layer rewrite we will have a string pool
     * TODO so that memory allocation count drops down massively; for now,
-    * TODO v14.0 that is, we pay a lot & heavily depend on the allocator */
+    * TODO v14.0 that is, we pay a lot & heavily depend on the allocator.
+    * TODO P.S.: furthermore all this encapsulated in filter objects instead */
    struct str in, out;
    ssize_t volatile sz;
    NYD_ENTER;
@@ -1201,27 +1208,20 @@ mime_write(char const *ptr, size_t size, FILE *f,
    dflags |= _TD_BUFCOPY;
    in.s = n_UNCONST(ptr);
    in.l = size;
-
-   if(inrest != NULL && inrest->l > 0){
-      out.s = smalloc(inrest->l + size + 1);
-      memcpy(out.s, inrest->s, inrest->l);
-      if(size > 0)
-         memcpy(&out.s[inrest->l], in.s, size);
-      size += inrest->l;
-      inrest->l = 0;
-      (in.s = out.s)[in.l = size] = '\0';
-      dflags &= ~_TD_BUFCOPY;
-   }
-
    out.s = NULL;
    out.l = 0;
 
-   if ((sz = size) == 0) {
-      if (outrest != NULL && outrest->l != 0)
+   if((sz = size) == 0){
+      if(inrest != NULL && inrest->l != 0)
+         goto jinrest;
+      if(outrest != NULL && outrest->l != 0)
          goto jconvert;
       goto jleave;
    }
 
+   /* TODO This crap requires linewise input, then.  We need a filter chain
+    * TODO as in input->iconv->base64 where each filter can have its own
+    * TODO buffer, with a filter->fflush() call to get rid of those! */
 #ifdef HAVE_ICONV
    if ((dflags & TD_ICONV) && iconvd != (iconv_t)-1 &&
          (convert == CONV_TOQP || convert == CONV_8BIT ||
@@ -1229,7 +1229,7 @@ mime_write(char const *ptr, size_t size, FILE *f,
       if (n_iconv_str(iconvd, n_ICONV_IGN_NOREVERSE, &out, &in, NULL) != 0) {
          n_iconv_reset(iconvd);
          /* TODO This causes hard-failure.  We would need to have an action
-          * TODO policy FAIL|IGNORE|SETERROR(but continue).  Better huh? */
+          * TODO policy FAIL|IGNORE|SETERROR(but continue) */
          sz = -1;
          goto jleave;
       }
@@ -1238,6 +1238,26 @@ mime_write(char const *ptr, size_t size, FILE *f,
       dflags &= ~_TD_BUFCOPY;
    }
 #endif
+
+jinrest:
+   if(inrest != NULL && inrest->l > 0){
+      if(size == 0){
+         in = *inrest;
+         inrest->s = NULL;
+         inrest->l = 0;
+      }else{
+         out.s = n_alloc(in.l + inrest->l + 1);
+         memcpy(out.s, inrest->s, inrest->l);
+         if(in.l > 0)
+            memcpy(&out.s[inrest->l], in.s, in.l);
+         if(in.s != ptr)
+            n_free(in.s);
+         (in.s = out.s)[in.l += inrest->l] = '\0';
+         inrest->l = 0;
+         out.s = NULL;
+      }
+      dflags &= ~_TD_BUFCOPY;
+   }
 
 jconvert:
    __mimemw_sig = 0;
@@ -1284,6 +1304,37 @@ jqpb64_dec:
       }
       break;
    case CONV_TOB64:
+      /* TODO hack which is necessary unless this is a filter based approach
+       * TODO and each filter has its own buffer (as necessary): we must not
+       * TODO pass through a number of bytes which causes padding, otherwise we
+       * TODO produce multiple adjacent base64 streams, and that is not treated
+       * TODO in the same relaxed fashion like completely bogus bytes by at
+       * TODO least mutt and OpenSSL.  So we need an expensive workaround
+       * TODO unless we have input->iconv->base64 filter chain as such!! :( */
+      if(size != 0){
+         if(in.l > B64_ENCODE_INPUT_PER_LINE){
+            size_t i;
+
+            i = in.l % B64_ENCODE_INPUT_PER_LINE;
+            in.l -= i;
+
+            if(i != 0){
+               assert(inrest != NULL);
+               assert(inrest->l == 0);
+               inrest->s = n_realloc(inrest->s, i +1);
+               memcpy(inrest->s, &in.s[in.l], i);
+               inrest->s[inrest->l = i] = '\0';
+            }
+         }else if(in.l < B64_ENCODE_INPUT_PER_LINE){
+            assert(inrest != NULL);
+            inrest->s = n_realloc(inrest->s, in.l +1);
+            memcpy(inrest->s, in.s, in.l);
+            inrest->s[inrest->l = in.l] = '\0';
+            in.l = 0;
+            sz = 0;
+            break;
+         }
+      }
       if(b64_encode(&out, &in, B64_LF | B64_MULTILINE) == NULL){
          sz = -1;
          break;
@@ -1316,6 +1367,7 @@ jqpb64_enc:
       sz = _fwrite_td(&in, dflags, NULL, qf);
       break;
    }
+
 jleave:
    if (out.s != NULL)
       free(out.s);

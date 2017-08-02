@@ -923,7 +923,7 @@ enum mime_counter_evidence {
 #define QP_LINESIZE     (4 * 19)       /* Max. compliant QP linesize */
 
 #define B64_LINESIZE    (4 * 19)       /* Max. compliant Base64 linesize */
-#define B64_ENCODE_INPUT_PER_LINE 57   /* Max. input for Base64 encode/line */
+#define B64_ENCODE_INPUT_PER_LINE ((B64_LINESIZE / 4) * 3)
 
 enum mime_enc {
    MIMEE_NONE,       /* message is not in MIME format */

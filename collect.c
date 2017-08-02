@@ -1922,7 +1922,8 @@ collect(struct header *hp, int printheaders, struct message *mp,
             } else {
                cp = hfield1("from", mp);
                if (cp != NULL && (cnt = (long)strlen(cp)) > 0) {
-                  if (xmime_write(cp, cnt, _coll_fp, CONV_FROMHDR, TD_NONE) < 0)
+                  if (xmime_write(cp, cnt, _coll_fp, CONV_FROMHDR, TD_NONE,
+                        NULL, NULL) < 0)
                      goto jerr;
                   if (fprintf(_coll_fp, _(" wrote:\n\n")) < 0)
                      goto jerr;

@@ -65,14 +65,17 @@ static enum okay     _putname(char const *line, enum gfield w,
 
 /* Place Content-Type:, Content-Transfer-Encoding:, Content-Disposition:
  * headers, respectively */
-static int           _put_ct(FILE *fo, char const *contenttype,
-                        char const *charset);
-SINLINE int          _put_cte(FILE *fo, enum conversion conv);
-static int           _put_cd(FILE *fo, char const *cd, char const *filename);
+static int a_sendout_put_ct(FILE *fo, char const *contenttype,
+               char const *charset);
+SINLINE int a_sendout_put_cte(FILE *fo, enum conversion conv);
+static int a_sendout_put_cd(FILE *fo, char const *cd, char const *filename);
 
 /* Put all entries of the given header list */
 static bool_t        _sendout_header_list(FILE *fo, struct n_header_field *hfp,
                         bool_t nodisp);
+
+/* */
+static int a_sendout_body(FILE *fo, FILE *fi, enum conversion convert);
 
 /* Write an attachment to the file buffer, converting to MIME */
 static int a_sendout_attach_file(struct header *hp, struct attachment *ap,
@@ -154,42 +157,50 @@ _putname(char const *line, enum gfield w, enum sendaction action,
 }
 
 static int
-_put_ct(FILE *fo, char const *contenttype, char const *charset)
-{
-   int rv, i;
+a_sendout_put_ct(FILE *fo, char const *contenttype, char const *charset){
+   int rv;
    NYD2_ENTER;
 
-   if ((rv = fprintf(fo, "Content-Type: %s", contenttype)) < 0)
+   if((rv = fprintf(fo, "Content-Type: %s", contenttype)) < 0)
       goto jerr;
 
-   if (charset == NULL)
+   if(charset == NULL)
       goto jend;
 
-   if (putc(';', fo) == EOF)
+   if(putc(';', fo) == EOF)
       goto jerr;
    ++rv;
 
-   if (strlen(contenttype) + sizeof("Content-Type: ;")-1 > 50) {
-      if (putc('\n', fo) == EOF)
+   if(strlen(contenttype) + sizeof("Content-Type: ;")-1 > 50){
+      if(putc('\n', fo) == EOF)
          goto jerr;
       ++rv;
    }
 
    /* C99 */{
-      size_t l = strlen(charset);
-      char *lcs = salloc(l +1);
+      int i;
+      char *lcs;
+      size_t l;
+
+      l = strlen(charset);
+      lcs = n_lofi_alloc(l +1);
 
       for(l = 0; *charset != '\0'; ++l, ++charset)
          lcs[l] = lowerconv(*charset);
       lcs[l] = '\0';
       charset = lcs;
+
+      i = fprintf(fo, " charset=%s", charset);
+
+      n_lofi_free(lcs);
+
+      if(i < 0)
+         goto jerr;
+      rv += i;
    }
-   if ((i = fprintf(fo, " charset=%s", charset)) < 0)
-      goto jerr;
-   rv += i;
 
 jend:
-   if (putc('\n', fo) == EOF)
+   if(putc('\n', fo) == EOF)
       goto jerr;
    ++rv;
 jleave:
@@ -201,8 +212,7 @@ jerr:
 }
 
 SINLINE int
-_put_cte(FILE *fo, enum conversion conv)
-{
+a_sendout_put_cte(FILE *fo, enum conversion conv){
    int rv;
    NYD2_ENTER;
 
@@ -219,8 +229,7 @@ _put_cte(FILE *fo, enum conversion conv)
 }
 
 static int
-_put_cd(FILE *fo, char const *cd, char const *filename)
-{
+a_sendout_put_cd(FILE *fo, char const *cd, char const *filename){
    struct str f;
    si8_t mpc;
    int rv;
@@ -229,18 +238,18 @@ _put_cd(FILE *fo, char const *cd, char const *filename)
    f.s = NULL;
 
    /* xxx Ugly with the trailing space in case of wrap! */
-   if ((rv = fprintf(fo, "Content-Disposition: %s; ", cd)) < 0)
+   if((rv = fprintf(fo, "Content-Disposition: %s; ", cd)) < 0)
       goto jerr;
 
-   if (!(mpc = mime_param_create(&f, "filename", filename)))
+   if(!(mpc = mime_param_create(&f, "filename", filename)))
       goto jerr;
    /* Always fold if result contains newlines */
-   if (mpc < 0 || f.l + rv > MIME_LINELEN) { /* FIXME MIME_LINELEN_MAX */
-      if (putc('\n', fo) == EOF || putc(' ', fo) == EOF)
+   if(mpc < 0 || f.l + rv > MIME_LINELEN) { /* FIXME MIME_LINELEN_MAX */
+      if(putc('\n', fo) == EOF || putc(' ', fo) == EOF)
          goto jerr;
       rv += 2;
    }
-   if (fputs(f.s, fo) == EOF || putc('\n', fo) == EOF)
+   if(fputs(f.s, fo) == EOF || putc('\n', fo) == EOF)
       goto jerr;
    rv += (int)++f.l;
 
@@ -263,12 +272,69 @@ _sendout_header_list(FILE *fo, struct n_header_field *hfp, bool_t nodisp){
             putc(':', fo) == EOF || putc(' ', fo) == EOF ||
             xmime_write(hfp->hf_dat + hfp->hf_nl +1, hfp->hf_bl, fo,
                (!nodisp ? CONV_NONE : CONV_TOHDR),
-               (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV)) < 0 ||
+               (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL, NULL) < 0 ||
             putc('\n', fo) == EOF){
          rv = FAL0;
          break;
       }
    NYD_LEAVE;
+   return rv;
+}
+
+static int
+a_sendout_body(FILE *fo, FILE *fi, enum conversion convert){
+   struct str outrest, inrest;
+   char *buf;
+   size_t sz, bufsize, cnt;
+   bool_t iseof;
+   int rv;
+   NYD2_ENTER;
+
+   rv = n_ERR_INVAL;
+   iseof = FAL0;
+   buf = n_alloc(bufsize = SEND_LINESIZE);
+   outrest.s = inrest.s = NULL;
+   outrest.l = inrest.l = 0;
+
+   if(convert == CONV_TOQP
+#ifdef HAVE_ICONV
+         || iconvd != (iconv_t)-1
+#endif
+   ){
+      fflush(fi);
+      cnt = fsize(fi);
+   }
+
+   while(!iseof){
+      if(convert == CONV_TOQP
+#ifdef HAVE_ICONV
+            || iconvd != (iconv_t)-1
+#endif
+      ){
+         if(fgetline(&buf, &bufsize, &cnt, &sz, fi, 0) == NULL)
+            break;
+      }else if((sz = fread(buf, sizeof *buf, bufsize, fi)) == 0)
+         break;
+joutln:
+      if(xmime_write(buf, sz, fo, convert, TD_ICONV, &outrest,
+            (iseof > FAL0 ? NULL : &inrest)) < 0)
+         goto jleave;
+   }
+   if(iseof <= FAL0 && (outrest.l != 0 || inrest.l != 0)){
+      sz = 0;
+      iseof = (iseof || inrest.l == 0) ? TRU1 : TRUM1;
+      goto joutln;
+   }
+
+   rv = ferror(fi) ? n_ERR_IO : n_ERR_NONE;
+jleave:
+   if(outrest.s != NULL)
+      n_free(outrest.s);
+   if(inrest.s != NULL)
+      n_free(inrest.s);
+   n_free(buf);
+
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -337,8 +403,6 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo)
    FILE *fi;
    char const *charset;
    enum conversion convert;
-   char *buf;
-   size_t bufsize, lncnt, inlen;
    NYD_ENTER;
 
    /* Either charset-converted temporary file, or plain path */
@@ -364,8 +428,9 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo)
          do_iconv = 0;
 
       if (fprintf(fo, "\n--%s\n", _sendout_boundary) < 0 ||
-            _put_ct(fo, ct, charset) < 0 || _put_cte(fo, convert) < 0 ||
-            _put_cd(fo, ap->a_content_disposition, ap->a_name) < 0)
+            a_sendout_put_ct(fo, ct, charset) < 0 ||
+            a_sendout_put_cte(fo, convert) < 0 ||
+            a_sendout_put_cd(fo, ap->a_content_disposition, ap->a_name) < 0)
          goto jerr_header;
 
       if((cp = ok_vlook(stealthmua)) == NULL || !strcmp(cp, "noagent")){
@@ -382,8 +447,8 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo)
 
       if ((cp = ap->a_content_description) != NULL &&
             (fputs("Content-Description: ", fo) == EOF ||
-             xmime_write(cp, strlen(cp), fo, CONV_TOHDR, (TD_ISPR | TD_ICONV)
-               ) < 0 || putc('\n', fo) == EOF))
+             xmime_write(cp, strlen(cp), fo, CONV_TOHDR, (TD_ISPR | TD_ICONV),
+               NULL, NULL) < 0 || putc('\n', fo) == EOF))
          goto jerr_header;
 
       if (putc('\n', fo) == EOF) {
@@ -410,36 +475,11 @@ jerr_header:
    }
 #endif
 
-   bufsize = SEND_LINESIZE;
-   buf = smalloc(bufsize);
-   if (convert == CONV_TOQP
-#ifdef HAVE_ICONV
-         || iconvd != (iconv_t)-1
-#endif
-   )
-      lncnt = fsize(fi);
-   for (;;) {
-      if (convert == CONV_TOQP
-#ifdef HAVE_ICONV
-            || iconvd != (iconv_t)-1
-#endif
-      ) {
-         if (fgetline(&buf, &bufsize, &lncnt, &inlen, fi, 0) == NULL)
-            break;
-      } else if ((inlen = fread(buf, sizeof *buf, bufsize, fi)) == 0)
-         break;
-      if (xmime_write(buf, inlen, fo, convert, TD_ICONV) < 0) {
-         err = n_err_no;
-         goto jerr;
-      }
-   }
-   if (ferror(fi))
-      err = n_ERR_DOM;
-jerr:
-   free(buf);
+   err = a_sendout_body(fo, fi, convert);
 jerr_fclose:
-   if (ap->a_conv != AC_TMPFILE)
+   if(ap->a_conv != AC_TMPFILE)
       Fclose(fi);
+
 jleave:
    NYD_LEAVE;
    return err;
@@ -554,14 +594,12 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
    NYD_ENTER;
 
    fputs("This is a multi-part message in MIME format.\n", fo);
-   if (fsize(fi) != 0) {
+   if(fsize(fi) != 0){
       char const *cp;
-      char *buf;
-      size_t sz, bufsize, cnt;
 
-      if (fprintf(fo, "\n--%s\n", _sendout_boundary) < 0 ||
-            _put_ct(fo, contenttype, charset) < 0 ||
-            _put_cte(fo, convert) < 0 ||
+      if(fprintf(fo, "\n--%s\n", _sendout_boundary) < 0 ||
+            a_sendout_put_ct(fo, contenttype, charset) < 0 ||
+            a_sendout_put_cte(fo, convert) < 0 ||
             fprintf(fo, "Content-Disposition: inline\n") < 0)
          goto jleave;
       if (((cp = ok_vlook(stealthmua)) == NULL || !strcmp(cp, "noagent")) &&
@@ -571,34 +609,10 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
       if(putc('\n', fo) == EOF)
          goto jleave;
 
-      buf = smalloc(bufsize = SEND_LINESIZE);
-      if (convert == CONV_TOQP
-#ifdef HAVE_ICONV
-            || iconvd != (iconv_t)-1
-#endif
-      ) {
-         fflush(fi);
-         cnt = fsize(fi);
-      }
-      for (;;) {
-         if (convert == CONV_TOQP
-#ifdef HAVE_ICONV
-               || iconvd != (iconv_t)-1
-#endif
-         ) {
-            if (fgetline(&buf, &bufsize, &cnt, &sz, fi, 0) == NULL)
-               break;
-         } else if ((sz = fread(buf, sizeof *buf, bufsize, fi)) == 0)
-            break;
+      if(a_sendout_body(fo, fi, convert) != 0)
+         goto jleave;
 
-         if (xmime_write(buf, sz, fo, convert, TD_ICONV) < 0) {
-            free(buf);
-            goto jleave;
-         }
-      }
-      free(buf);
-
-      if (ferror(fi))
+      if(ferror(fi))
          goto jleave;
    }
 
@@ -646,7 +660,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
 
    n_pstate &= ~n_PS_HEADER_NEEDED_MIME; /* TODO hack -> be carrier tracked */
 
-   contenttype = "text/plain"; /* XXX mail body - always text/plain, want XX? */
+   contenttype = "text/plain";
    if((n_poption & n_PO_Mm_FLAG) && n_poption_arg_Mm != NULL)
       contenttype = n_poption_arg_Mm;
    convert = n_mimetype_classify_file(fi, &contenttype, &charset, &do_iconv);
@@ -686,69 +700,34 @@ jiconv_err:
    }
 #endif
 
-   if (hp->h_attach != NULL) {
-      if (make_multipart(hp, convert, fi, nfo, contenttype, charset) != 0)
+   if(hp->h_attach != NULL){
+      if(make_multipart(hp, convert, fi, nfo, contenttype, charset) != 0){
+         err = 1;
          goto jerr;
-   } else {
-      size_t sz, bufsize, cnt;
-      char *buf;
-
-      if (convert == CONV_TOQP
-#ifdef HAVE_ICONV
-            || iconvd != (iconv_t)-1
-#endif
-      ) {
-         fflush(fi);
-         cnt = fsize(fi);
       }
-      buf = smalloc(bufsize = SEND_LINESIZE);
-      for (err = 0;;) {
-         if (convert == CONV_TOQP
-#ifdef HAVE_ICONV
-               || iconvd != (iconv_t)-1
-#endif
-         ) {
-            if (fgetline(&buf, &bufsize, &cnt, &sz, fi, 0) == NULL)
-               break;
-         } else if ((sz = fread(buf, sizeof *buf, bufsize, fi)) == 0)
-            break;
-         if (xmime_write(buf, sz, nfo, convert, TD_ICONV) < 0) {
-            err = 1;
-            break;
-         }
-      }
-      free(buf);
-
-      if (err || ferror(fi)) {
-jerr:
-         Fclose(nfo);
-         Fclose(nfi);
-#ifdef HAVE_ICONV
-         if (iconvd != (iconv_t)-1)
-            n_iconv_close(iconvd);
-#endif
-         nfi = NULL;
-         goto jleave;
-      }
+   }else if(a_sendout_body(nfo, fi, convert) != 0){
+      err = 1;
+      goto jerr;
    }
 
-#ifdef HAVE_ICONV
-   if (iconvd != (iconv_t)-1)
-      n_iconv_close(iconvd);
-#endif
-
    fflush(nfo);
-   if ((err = ferror(nfo)))
+   if((err = ferror(nfo)))
       n_perr(_("temporary mail file"), 0);
+jerr:
    Fclose(nfo);
-   if (!err) {
+
+   if(!err){
       fflush_rewind(nfi);
       Fclose(fi);
-   } else {
+   }else{
       Fclose(nfi);
       nfi = NULL;
    }
 jleave:
+#ifdef HAVE_ICONV
+   if(iconvd != (iconv_t)-1)
+      n_iconv_close(iconvd);
+#endif
    NYD_LEAVE;
    return nfi;
 }
@@ -1574,7 +1553,8 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
             len += 2;
          }
          len = xmime_write(hb, len, fo,
-               ((ff & FMT_DOMIME) ? CONV_TOHDR_A : CONV_NONE), TD_ICONV);
+               ((ff & FMT_DOMIME) ? CONV_TOHDR_A : CONV_NONE), TD_ICONV,
+               NULL, NULL);
          if(np->n_type & GREF)
             n_lofi_free(hb);
       }
@@ -2059,13 +2039,13 @@ jto_fmt:
             if (sublen > 0 &&
                   xmime_write(sub, sublen, fo,
                      (!nodisp ? CONV_NONE : CONV_TOHDR),
-                     (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV)) < 0)
+                     (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL, NULL) < 0)
                goto jleave;
          }
          /* This may be, e.g., a Fwd: XXX yes, unfortunately we do like that */
          else if (*sub != '\0') {
             if (xmime_write(sub, sublen, fo, (!nodisp ? CONV_NONE : CONV_TOHDR),
-                  (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV)) < 0)
+                  (!nodisp ? TD_ISPR | TD_ICONV : TD_ICONV), NULL, NULL) < 0)
                goto jleave;
          }
       }
@@ -2254,7 +2234,8 @@ j_mft_add:
                _sendout_boundary) < 0)
             goto jleave;
       } else {
-         if (_put_ct(fo, contenttype, charset) < 0 || _put_cte(fo, convert) < 0)
+         if(a_sendout_put_ct(fo, contenttype, charset) < 0 ||
+               a_sendout_put_cte(fo, convert) < 0)
             goto jleave;
       }
    }
