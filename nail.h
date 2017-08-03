@@ -1116,7 +1116,7 @@ enum n_shexp_parse_flags{
    n_SHEXP_PARSE_META_SEMICOLON = 1u<<23,
    /* LPAREN, RPAREN, LESSTHAN, GREATERTHAN */
 
-   n__SHEXP_PARSE_META_MASK = n_SHEXP_PARSE_META_VERTBAR |
+   n_SHEXP_PARSE_META_MASK = n_SHEXP_PARSE_META_VERTBAR |
          n_SHEXP_PARSE_META_AMPERSAND | n_SHEXP_PARSE_META_SEMICOLON,
 
    /* Keep the metacharacter (or IFS character), do not skip over it */
@@ -1141,6 +1141,9 @@ enum n_shexp_state{
    n_SHEXP_STATE_META_VERTBAR = 1u<<7,    /* Metacharacter | follows/ed */
    n_SHEXP_STATE_META_AMPERSAND = 1u<<8,  /* Metacharacter & follows/ed */
    n_SHEXP_STATE_META_SEMICOLON = 1u<<9,  /* Metacharacter ; follows/ed */
+
+   n_SHEXP_STATE_META_MASK = n_SHEXP_STATE_META_VERTBAR |
+         n_SHEXP_STATE_META_AMPERSAND | n_SHEXP_STATE_META_SEMICOLON,
 
    n_SHEXP_STATE_ERR_CONTROL = 1u<<16,    /* \c notation with invalid arg. */
    n_SHEXP_STATE_ERR_UNICODE = 1u<<17,    /* Valid \[Uu] and !n_PSO_UNICODE */
