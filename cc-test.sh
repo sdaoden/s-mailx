@@ -314,6 +314,7 @@ t_behave() {
    t_behave_maildir
    t_behave_mass_recipients
    t_behave_lreply_futh_rth_etc
+   t_behave_iconv_mbyte_base64
 }
 
 t_behave_X_opt_input_command_stack() {
@@ -3969,7 +3970,7 @@ t_behave_lreply_futh_rth_etc() {
          echo '"'"'".'"'"'
       }
       define _Ls {
-         wysh set m="This is text of \\\"Lreply ${1}." \
+         wysh set m="This is text of \\\"Lreply ${1}." \\
             on-compose-splice=_Lh n=$2
          eval Lreply $2
       }
@@ -4011,6 +4012,110 @@ t_behave_lreply_futh_rth_etc() {
       -Rf ./.tmbox >> "${MBOX}" 2>&1
 
    check behave:lreply_futh_rth_etc 0 "${MBOX}" '2491739775 22062'
+
+   t_epilog
+}
+
+t_behave_iconv_mbyte_base64() {
+   t_prolog
+   TRAP_EXIT_ADDONS="./.t*"
+
+   if [ -n "${UTF8_LOCALE}" ] && have_feat iconv &&
+         command -v iconv >/dev/null 2>&1 &&
+         ( iconv -l | ${grep} -i -e iso-2022-jp -e euc-jp) >/dev/null 2>&1; then
+      :
+   else
+      echo 'behave:iconv_mbyte_base64: unsupported, skipped'
+      return
+   fi
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${MYSHELL} -
+		(echo 'From DroseriaRotundifolia Thu Aug 03 17:26:25 2017' && ${cat} &&
+         echo) >> "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   if ( iconv -l | ${grep} -i iso-2022-jp ) >/dev/null 2>&1; then
+      printf '
+         set ttycharset=utf-8 sendcharsets=iso-2022-jp
+         m t1@exam.ple
+!s Japanese from UTF-8 to ISO-2022-JP
+シジュウカラ科（シジュウカラか、学名 Paridae）は、鳥類スズメ目の科である。シジュウカラ（四十雀）と総称されるが、狭義にはこの1種をシジュウカラと呼ぶ。
+
+カンムリガラ（学名Parus cristatus）は、スズメ目シジュウカラ科に分類される鳥類の一種。
+
+
+カンムリガラ（学名Parus cristatus）は、スズメ目シジュウカラ科に分類される鳥類の一種。
+
+シジュウカラ科（シジュウカラか、学名 Paridae）は、鳥類スズメ目の科である。シジュウカラ（四十雀）と総称されるが、狭義にはこの1種をシジュウカラと呼ぶ。
+!.
+
+         set ttycharset=iso-2022-jp charset-7bit=iso-2022-jp sendcharsets=utf-8
+         m t2@exam.ple
+!s Japanese from ISO-2022-JP to UTF-8, eh, no, also ISO-2022-JP
+$B%%7%%8%%e%%&%%+%%i2J!J%%7%%8%%e%%&%%+%%i$+!"3XL>(B Paridae$B!K$O!"D;N`%%9%%:%%aL\$N2J$G$"$k!#%%7%%8%%e%%&%%+%%i!J;M==?}!K$HAm>N$5$l$k$,!"695A$K$O$3$N(B1$B<o$r%%7%%8%%e%%&%%+%%i$H8F$V!#(B
+
+$B%%+%%s%%`%%j%%,%%i!J3XL>(BParus cristatus$B!K$O!"%%9%%:%%aL\%%7%%8%%e%%&%%+%%i2J$KJ,N`$5$l$kD;N`$N0l<o!#(B
+
+
+$B%%+%%s%%`%%j%%,%%i!J3XL>(BParus cristatus$B!K$O!"%%9%%:%%aL\%%7%%8%%e%%&%%+%%i2J$KJ,N`$5$l$kD;N`$N0l<o!#(B
+
+$B%%7%%8%%e%%&%%+%%i2J!J%%7%%8%%e%%&%%+%%i$+!"3XL>(B Paridae$B!K$O!"D;N`%%9%%:%%aL\$N2J$G$"$k!#%%7%%8%%e%%&%%+%%i!J;M==?}!K$HAm>N$5$l$k$,!"695A$K$O$3$N(B1$B<o$r%%7%%8%%e%%&%%+%%i$H8F$V!#(B
+!.
+      ' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} -Smta=./.tsendmail.sh \
+         -Sescape=! -Smime-encoding=base64 2>./.terr
+      check behave:iconv_mbyte_base64-1 0 "${MBOX}" '3428985079 1976'
+      check behave:iconv_mbyte_base64-2 - ./.terr '4294967295 0'
+
+      printf 'eval f 1; write ./.twrite\n' |
+         ${MAILX} ${ARGS} ${ADDARG_UNI} -Rf "${MBOX}" >./.tlog 2>&1
+      check behave:iconv_mbyte_base64-3 0 ./.twrite '1259742080 686'
+      check behave:iconv_mbyte_base64-4 - ./.tlog '3956097665 119'
+   else
+      echo 'behave:iconv_mbyte_base64: ISO-2022-JP unsupported, skipping 1-4'
+   fi
+
+   if ( iconv -l | ${grep} -i euc-jp ) >/dev/null 2>&1; then
+      rm -f "${MBOX}" ./.twrite
+      printf '
+         set ttycharset=utf-8 sendcharsets=euc-jp
+         m t1@exam.ple
+!s Japanese from UTF-8 to EUC-JP
+シジュウカラ科（シジュウカラか、学名 Paridae）は、鳥類スズメ目の科である。シジュウカラ（四十雀）と総称されるが、狭義にはこの1種をシジュウカラと呼ぶ。
+
+カンムリガラ（学名Parus cristatus）は、スズメ目シジュウカラ科に分類される鳥類の一種。
+
+
+カンムリガラ（学名Parus cristatus）は、スズメ目シジュウカラ科に分類される鳥類の一種。
+
+シジュウカラ科（シジュウカラか、学名 Paridae）は、鳥類スズメ目の科である。シジュウカラ（四十雀）と総称されるが、狭義にはこの1種をシジュウカラと呼ぶ。
+!.
+
+         set ttycharset=EUC-JP sendcharsets=utf-8
+         m t2@exam.ple
+!s Japanese from EUC-JP to UTF-8
+�����奦����ʡʥ����奦���餫����̾ Paridae�ˤϡ�Ļ�ॹ�����ܤβʤǤ��롣�����奦����ʻͽ����ˤ����Τ���뤬�������ˤϤ���1��򥷥��奦����ȸƤ֡�
+
+�����ꥬ��ʳ�̾Parus cristatus�ˤϡ��������ܥ����奦����ʤ�ʬ�व���Ļ��ΰ�
+
+
+�����ꥬ��ʳ�̾Parus cristatus�ˤϡ��������ܥ����奦����ʤ�ʬ�व���Ļ��ΰ�
+
+�����奦����ʡʥ����奦���餫����̾ Paridae�ˤϡ�Ļ�ॹ�����ܤβʤǤ��롣�����奦����ʻͽ����ˤ����Τ���뤬�������ˤϤ���1��򥷥��奦����ȸƤ֡�
+!.
+      ' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} -Smta=./.tsendmail.sh \
+         -Sescape=! -Smime-encoding=base64 2>./.terr
+      check behave:iconv_mbyte_base64-5 0 "${MBOX}" '1686827547 2051'
+      check behave:iconv_mbyte_base64-6 - ./.terr '4294967295 0'
+
+      printf 'eval f 1; write ./.twrite\n' |
+         ${MAILX} ${ARGS} ${ADDARG_UNI} -Rf "${MBOX}" >./.tlog 2>&1
+      check behave:iconv_mbyte_base64-7 0 ./.twrite '1259742080 686'
+      check behave:iconv_mbyte_base64-8 - ./.tlog '500059195 119'
+   else
+      echo 'behave:iconv_mbyte_base64: EUC-JP unsupported, skipping 5-8'
+   fi
 
    t_epilog
 }
