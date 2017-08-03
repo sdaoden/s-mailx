@@ -1311,7 +1311,7 @@ jqpb64_dec:
        * TODO in the same relaxed fashion like completely bogus bytes by at
        * TODO least mutt and OpenSSL.  So we need an expensive workaround
        * TODO unless we have input->iconv->base64 filter chain as such!! :( */
-      if(size != 0){
+      if(size != 0 && /* for Coverity, else assert() */ inrest != NULL){
          if(in.l > B64_ENCODE_INPUT_PER_LINE){
             size_t i;
 
@@ -1319,14 +1319,12 @@ jqpb64_dec:
             in.l -= i;
 
             if(i != 0){
-               assert(inrest != NULL);
                assert(inrest->l == 0);
                inrest->s = n_realloc(inrest->s, i +1);
                memcpy(inrest->s, &in.s[in.l], i);
                inrest->s[inrest->l = i] = '\0';
             }
          }else if(in.l < B64_ENCODE_INPUT_PER_LINE){
-            assert(inrest != NULL);
             inrest->s = n_realloc(inrest->s, in.l +1);
             memcpy(inrest->s, in.s, in.l);
             inrest->s[inrest->l = in.l] = '\0';

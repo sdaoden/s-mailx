@@ -635,15 +635,19 @@ jleave:
 static FILE *
 infix(struct header *hp, FILE *fi) /* TODO check */
 {
-   FILE *nfo, *nfi = NULL;
    char *tempMail;
-   char const *contenttype, *charset = NULL;
    enum conversion convert;
-   int do_iconv = 0, err;
+   int do_iconv, err;
+   char const *contenttype, *charset;
+   FILE *nfo, *nfi;
 #ifdef HAVE_ICONV
    char const *tcs, *convhdr = NULL;
 #endif
    NYD_ENTER;
+
+   nfi = NULL;
+   charset = NULL;
+   do_iconv = 0;
 
    if ((nfo = Ftmp(&tempMail, "infix", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER))
          == NULL) {
@@ -676,10 +680,12 @@ infix(struct header *hp, FILE *fi) /* TODO check */
          goto jiconv_err;
    }
 #endif
-   if (puthead(FAL0, hp, nfo,
+   if(puthead(FAL0, hp, nfo,
          (GTO | GSUBJECT | GCC | GBCC | GNL | GCOMMA | GUA | GMIME | GMSGID |
-         GIDENT | GREF | GDATE), SEND_MBOX, convert, contenttype, charset))
+         GIDENT | GREF | GDATE), SEND_MBOX, convert, contenttype, charset)){
+      err = 1;
       goto jerr;
+   }
 #ifdef HAVE_ICONV
    if (iconvd != (iconv_t)-1)
       n_iconv_close(iconvd);
@@ -2336,6 +2342,7 @@ jfail_dead:
       n_err(_("... message not sent\n"));
 jerr_io:
       Fclose(nfi);
+      nfi = NULL;
 jerr_o:
       Fclose(nfo);
       _sendout_error = TRU1;
