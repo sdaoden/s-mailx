@@ -2336,6 +2336,7 @@ jfail_dead:
       n_err(_("... message not sent\n"));
 jerr_io:
       Fclose(nfi);
+      nfi = NULL;
 jerr_o:
       Fclose(nfo);
       _sendout_error = TRU1;
