@@ -2255,7 +2255,7 @@ resend_msg(struct message *mp, struct header *hp, bool_t add_resent)
 {
    struct n_sigman sm;
    struct sendbundle sb;
-   FILE *ibuf, *nfo, * volatile nfi;
+   FILE * volatile ibuf, *nfo, * volatile nfi;
    char *tempMail;
    struct name *to;
    enum okay volatile rv;
