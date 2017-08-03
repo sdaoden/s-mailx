@@ -279,7 +279,7 @@ Occasional tests:
       to be extended to check for UINTPTR_MAX being defined as the empty
       string and similar very special things.
   - The OpenCSW build cluster consists of SunOS 5.9 - 5.11 machines
-    under SPARC and i386.  And it looked good on 2017-07-01.
+    under SPARC and i386.  And it looked good on 2017-08-03.
 . Void Linux <https://www.voidlinux.eu/> (x86; not in 2017 FIXME)
 
 # s-ts-mode

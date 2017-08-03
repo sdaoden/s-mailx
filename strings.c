@@ -1215,7 +1215,7 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
             --*outbleft;
             continue;
          }
-         err = E2BIG;
+         err = n_ERR_2BIG;
          goto jleave;
       }else if(*outbleft > 0){
          **outb = '\0';
@@ -1254,7 +1254,8 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
       il = in->l;
       ob = obb;
       ol = olb;
-      if((err = n_iconv_buf(cd, icf, &ib, &il, &ob, &ol)) == 0 || err != E2BIG)
+      if((err = n_iconv_buf(cd, icf, &ib, &il, &ob, &ol)) == 0 ||
+            err != n_ERR_2BIG)
          break;
       olb += in->l;
 jrealloc:

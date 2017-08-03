@@ -1173,7 +1173,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
          }
       } else if ((val = thisfield(linebuf, "reply-to")) != NULL) {
          ++seenfields;
-         hq->h_replyto = cat(hq->h_replyto,
+         hq->h_reply_to = cat(hq->h_reply_to,
                checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT, NULL));
       } else if ((val = thisfield(linebuf, "sender")) != NULL) {
          if (!(n_psonce & n_PSO_t_FLAG) || (n_poption & n_PO_t_FLAG)) {
@@ -1286,7 +1286,7 @@ jebadhead:
       hp->h_cc = hq->h_cc;
       hp->h_bcc = hq->h_bcc;
       hp->h_from = hq->h_from;
-      hp->h_replyto = hq->h_replyto;
+      hp->h_reply_to = hq->h_reply_to;
       hp->h_sender = hq->h_sender;
       if (hq->h_subject != NULL || !(n_psonce & n_PSO_t_FLAG) ||
             !(n_poption & n_PO_t_FLAG))
@@ -2460,9 +2460,16 @@ grab_headers(enum n_go_input_flags gif, struct header *hp, enum gfield gflags,
          hp->h_from = lextract(myaddrs(hp), GEXTRA | GFULL | GFULLEXTRA);
       hp->h_from = grab_names(gif, "From: ", hp->h_from, comma,
             GEXTRA | GFULL | GFULLEXTRA);
-      if (hp->h_replyto == NULL)
-         hp->h_replyto = lextract(ok_vlook(replyto), GEXTRA | GFULL);
-      hp->h_replyto = grab_names(gif, "Reply-To: ", hp->h_replyto, comma,
+      if (hp->h_reply_to == NULL) {
+         struct name *v15compat;
+
+         if((v15compat = lextract(ok_vlook(replyto), GEXTRA | GFULL)) != NULL)
+            n_OBSOLETE(_("please use *reply-to*, not *replyto*"));
+         hp->h_reply_to = lextract(ok_vlook(reply_to), GEXTRA | GFULL);
+         if(hp->h_reply_to == NULL) /* v15 */
+            hp->h_reply_to = v15compat;
+      }
+      hp->h_reply_to = grab_names(gif, "Reply-To: ", hp->h_reply_to, comma,
             GEXTRA | GFULL);
       if (hp->h_sender == NULL)
          hp->h_sender = extract(ok_vlook(sender), GEXTRA | GFULL);

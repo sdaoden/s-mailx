@@ -923,7 +923,7 @@ enum mime_counter_evidence {
 #define QP_LINESIZE     (4 * 19)       /* Max. compliant QP linesize */
 
 #define B64_LINESIZE    (4 * 19)       /* Max. compliant Base64 linesize */
-#define B64_ENCODE_INPUT_PER_LINE 57   /* Max. input for Base64 encode/line */
+#define B64_ENCODE_INPUT_PER_LINE ((B64_LINESIZE / 4) * 3)
 
 enum mime_enc {
    MIMEE_NONE,       /* message is not in MIME format */
@@ -1116,7 +1116,7 @@ enum n_shexp_parse_flags{
    n_SHEXP_PARSE_META_SEMICOLON = 1u<<23,
    /* LPAREN, RPAREN, LESSTHAN, GREATERTHAN */
 
-   n__SHEXP_PARSE_META_MASK = n_SHEXP_PARSE_META_VERTBAR |
+   n_SHEXP_PARSE_META_MASK = n_SHEXP_PARSE_META_VERTBAR |
          n_SHEXP_PARSE_META_AMPERSAND | n_SHEXP_PARSE_META_SEMICOLON,
 
    /* Keep the metacharacter (or IFS character), do not skip over it */
@@ -1141,6 +1141,9 @@ enum n_shexp_state{
    n_SHEXP_STATE_META_VERTBAR = 1u<<7,    /* Metacharacter | follows/ed */
    n_SHEXP_STATE_META_AMPERSAND = 1u<<8,  /* Metacharacter & follows/ed */
    n_SHEXP_STATE_META_SEMICOLON = 1u<<9,  /* Metacharacter ; follows/ed */
+
+   n_SHEXP_STATE_META_MASK = n_SHEXP_STATE_META_VERTBAR |
+         n_SHEXP_STATE_META_AMPERSAND | n_SHEXP_STATE_META_SEMICOLON,
 
    n_SHEXP_STATE_ERR_CONTROL = 1u<<16,    /* \c notation with invalid arg. */
    n_SHEXP_STATE_ERR_UNICODE = 1u<<17,    /* Valid \[Uu] and !n_PSO_UNICODE */
@@ -1690,7 +1693,8 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_b_record_resent,
    ok_b_reply_in_same_charset,
    ok_v_reply_strings,
-   ok_v_replyto,
+ok_v_replyto,
+   ok_v_reply_to,                      /* {notempty=1} */
    ok_v_reply_to_honour,
    ok_b_rfc822_body_from_,             /* {name=rfc822-body-from_} */
 
@@ -2363,7 +2367,7 @@ struct header {
    struct name *h_bcc;        /* Blind carbon copies */
    struct name *h_ref;        /* References (possibly overridden) */
    struct attachment *h_attach; /* MIME attachments */
-   struct name *h_replyto;    /* overridden "Reply-To:" field */
+   struct name *h_reply_to;   /* overridden "Reply-To:" field */
    struct name *h_message_id; /* overridden "Message-ID:" field */
    struct name *h_in_reply_to;/* overridden "In-Reply-To:" field */
    struct name *h_mft;        /* Mail-Followup-To */

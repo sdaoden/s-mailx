@@ -30,9 +30,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"@ S-nail v14.9.2 / 2017-08-01
-.Dd August 01, 2017
-.ds VV \\%v14.9.2
+.\"@ S-nail v14.9.3 / 2017-08-03
+.Dd August 03, 2017
+.ds VV \\%v14.9.3
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -532,7 +532,7 @@
 .Mx -anchor-spass Va "record-resent"
 .Mx -anchor-spass Va "reply-in-same-charset"
 .Mx -anchor-spass Va "reply-strings"
-.Mx -anchor-spass Va "replyto"
+.Mx -anchor-spass Va "reply-to"
 .Mx -anchor-spass Va "reply-to-honour"
 .Mx -anchor-spass Va "rfc822-body-from_"
 .Mx -anchor-spass Va "save"
@@ -1129,7 +1129,7 @@ then it will be used in favour of one given on the command line.
 Also understood are
 .Ql Reply-To:
 (possibly overriding
-.Va replyto ) ,
+.Va reply-to ) ,
 .Ql Sender:
 .Pf ( Va sender ) ,
 .Ql From:
@@ -2288,6 +2288,24 @@ Changing the value does not mean much beside that, because several
 aspects of the real character set are implied by the locale environment
 of the system, which stays unaffected by
 .Va ttycharset .
+.Pp
+Messages and attachments which consist of 7-bit clean data will be
+classified as consisting of
+.Va charset-7bit
+character data.
+This is a problem if the
+.Va ttycharset
+character set is a multibyte character set that is also 7-bit clean.
+For example, the Japanese character set ISO-2022-JP is 7-bit clean but
+capable to encode the rich set of Japanese Kanji, Hiragana and Katakana
+characters: in order to notify receivers of this character set the mail
+message must be MIME encoded so that the character set ISO-2022-JP can
+be advertised!
+To achieve this, the variable
+.Va charset-7bit
+must be set to ISO-2022-JP.
+(Today a better approach regarding email is the usage of UTF-8, which
+uses 8-bit bytes for non-US-ASCII data.)
 .Pp
 If the \*(OPal character set conversion capabilities are not available
 .Pf ( Va features
@@ -4036,7 +4054,7 @@ There is a set of implicit alternates which is formed of the values of
 .Va from ,
 .Va sender
 and
-.Va replyto .
+.Va reply-to .
 .Mx
 .Mx
 .It Ic answered , unanswered
@@ -7072,7 +7090,7 @@ and
 .Ql Sender:
 by typing each one in turn and allowing the user to edit the field.
 The default values for these fields originate from the
-.Va from , replyto
+.Va from , reply-to
 and
 .Va sender
 variables.
@@ -9829,13 +9847,16 @@ and the
 which often has been seen in the wild;
 I.e., the separating colon has to be specified explicitly.
 .Mx
-.It Va replyto
+.It Va reply-to
 A list of addresses to put into the
 .Ql Reply-To:
 field of the message header.
 Members of this list are handled as if they were in the
 .Ic alternates
 list.
+.It Va replyto
+\*(OB Variant of
+.Va reply-to .
 .Mx
 .It Va reply-to-honour
 Controls whether a

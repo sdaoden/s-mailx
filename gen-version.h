@@ -1,5 +1,5 @@
-#define n_VERSION "v14.9.2"
-#define n_VERSION_DATE "2017-08-01"
+#define n_VERSION "v14.9.3"
+#define n_VERSION_DATE "2017-08-03"
 #define n_VERSION_MAJOR "14"
 #define n_VERSION_MINOR "9"
-#define n_VERSION_UPDATE "2"
+#define n_VERSION_UPDATE "3"

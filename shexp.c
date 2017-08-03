@@ -1221,36 +1221,33 @@ jrestart:
             goto jleave;
          }
          /* Metacharacters which separate tokens must be turned on explicitly */
-         else if(c == '|'){
+         else if(c == '|' && (flags & n_SHEXP_PARSE_META_VERTBAR)){
             rv |= n_SHEXP_STATE_META_VERTBAR;
+
             /* The parsed sequence may be _the_ output, so ensure we don't
              * include the metacharacter, then. */
-            /*if(flags & n_SHEXP_PARSE_META_VERTBAR) TODO trail ws strip then */
             if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
                ++il, --ib;
             /*last_known_meta_trim_len = UI32_MAX;*/
             break;
-         }else if(c == '&'){
+         }else if(c == '&' && (flags & n_SHEXP_PARSE_META_AMPERSAND)){
             rv |= n_SHEXP_STATE_META_AMPERSAND;
+
             /* The parsed sequence may be _the_ output, so ensure we don't
              * include the metacharacter, then. */
-            /*if(flags & n_SHEXP_PARSE_META_AMPERSAND)TODO trail ws strip then*/
             if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
                ++il, --ib;
             /*last_known_meta_trim_len = UI32_MAX;*/
             break;
-         }else if(c == ';'){
-            rv |= n_SHEXP_STATE_META_SEMICOLON;
-            if(flags & n_SHEXP_PARSE_META_SEMICOLON){
-               if(il > 0)
-                  n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, ib, il);
-               state |= a_CONSUME;
-               rv |= n_SHEXP_STATE_STOP;
-               if(!(flags & n_SHEXP_PARSE_DRYRUN) &&
-                     (rv & n_SHEXP_STATE_OUTPUT) &&
-                     last_known_meta_trim_len != UI32_MAX)
-                  store = n_string_trunc(store, last_known_meta_trim_len);
-            }
+         }else if(c == ';' && (flags & n_SHEXP_PARSE_META_SEMICOLON)){
+            if(il > 0)
+               n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, ib, il);
+            rv |= n_SHEXP_STATE_META_SEMICOLON | n_SHEXP_STATE_STOP;
+            state |= a_CONSUME;
+            if(!(flags & n_SHEXP_PARSE_DRYRUN) && (rv & n_SHEXP_STATE_OUTPUT) &&
+                  last_known_meta_trim_len != UI32_MAX)
+               store = n_string_trunc(store, last_known_meta_trim_len);
+
             /* The parsed sequence may be _the_ output, so ensure we don't
              * include the metacharacter, then. */
             if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
@@ -1719,15 +1716,15 @@ jleave:
    }
 
    if(!(rv & n_SHEXP_STATE_STOP)){
-      if(!(rv & n_SHEXP_STATE_OUTPUT) && (flags & n_SHEXP_PARSE_IGNORE_EMPTY) &&
-            il > 0)
+      if(!(rv & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_META_MASK)) &&
+            (flags & n_SHEXP_PARSE_IGNORE_EMPTY) && il > 0)
          goto jrestart_empty;
       if(/*!(rv & n_SHEXP_STATE_OUTPUT) &&*/ il == 0)
          rv |= n_SHEXP_STATE_STOP;
    }
 
    if((state & a_SKIPT) && !(rv & n_SHEXP_STATE_STOP) &&
-         (flags & n__SHEXP_PARSE_META_MASK))
+         (flags & n_SHEXP_PARSE_META_MASK))
       goto jrestart;
 jleave_quick:
    assert((rv & n_SHEXP_STATE_OUTPUT) || !(rv & n_SHEXP_STATE_UNICODE));

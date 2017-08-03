@@ -1753,7 +1753,18 @@ n_alternates_remove(struct name *np, bool_t keep_single){
          xp = xp->n_flink)
       np = a_nag_namelist_mark_name(np, xp->n_name);
 
-   for(xp = lextract(ok_vlook(replyto), GEXTRA | GSKIN); xp != NULL;
+   /* C99 */{
+      char const *v15compat;
+
+      if((v15compat = ok_vlook(replyto)) != NULL){
+         n_OBSOLETE(_("please use *reply-to*, not *replyto*"));
+         for(xp = lextract(v15compat, GEXTRA | GSKIN); xp != NULL;
+               xp = xp->n_flink)
+            np = a_nag_namelist_mark_name(np, xp->n_name);
+      }
+   }
+
+   for(xp = lextract(ok_vlook(reply_to), GEXTRA | GSKIN); xp != NULL;
          xp = xp->n_flink)
       np = a_nag_namelist_mark_name(np, xp->n_name);
 
@@ -1808,7 +1819,19 @@ n_is_myname(char const *name){
       if(a_nag_is_same_name(xp->n_name, name))
          goto jleave;
 
-   for(xp = lextract(ok_vlook(replyto), GEXTRA | GSKIN); xp != NULL;
+   /* C99 */{
+      char const *v15compat;
+
+      if((v15compat = ok_vlook(replyto)) != NULL){
+         n_OBSOLETE(_("please use *reply-to*, not *replyto*"));
+         for(xp = lextract(v15compat, GEXTRA | GSKIN); xp != NULL;
+               xp = xp->n_flink)
+            if(a_nag_is_same_name(xp->n_name, name))
+               goto jleave;
+      }
+   }
+
+   for(xp = lextract(ok_vlook(reply_to), GEXTRA | GSKIN); xp != NULL;
          xp = xp->n_flink)
       if(a_nag_is_same_name(xp->n_name, name))
          goto jleave;

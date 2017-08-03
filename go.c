@@ -525,7 +525,7 @@ jexec:
          emsg = line.s; /* xxx Cannot pass &char* as char const**, so no cp */
          arglist[0] = n_shexp_parse_token_cp((n_SHEXP_PARSE_TRIM_SPACE |
                n_SHEXP_PARSE_TRIM_IFSSPACE | n_SHEXP_PARSE_LOG |
-               n_SHEXP_PARSE_META_KEEP), &emsg);
+               n_SHEXP_PARSE_META_SEMICOLON | n_SHEXP_PARSE_META_KEEP), &emsg);
          line.l -= PTR2SIZE(emsg - line.s);
          line.s = cp = n_UNCONST(emsg);
          if(cp == NULL)

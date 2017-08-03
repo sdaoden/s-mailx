@@ -6,25 +6,37 @@ S - n a i l / S - m a i l x  N e w s
   will scroll to the manual's Point-Of-Interest, and pointing
   a web- browser to the "#ANCHOR" of the online manual works.
 
-v14.9.2 ("Crested tit"), 2017-08-01
------------------------------------
+v14.9.3 ("Crested tit nibbling sunflower seeds"), 2017-08-03
+------------------------------------------------------------
 
 This is a bugfix release but which ships some improvements, too.
-It silently replaces v14.9.1 from yesterday, which was broken.
+It silently replaces both of v14.9.1 v14.9.2 from earlier this
+week, which were broken or not entirely fixed.
 
 Credits, in order of commit appearance: Felix Fontein, Paul Vojta,
 Ralph Corderoy, Christos Zoulas, Gavin Troy, Gaetan Bisson.
+Thanks, Coverity.com.
 
 We welcome Christos Zoulas in THANKS.
 
 Apologies to Viktor Szépe for the false spelling of his name in
 the v14.9.0 announcement.
+And to Gaetan Bisson for not giving credit for [14fbce97]!
 
 NOTES, ChangeLog (packager-affine)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 - fakeroot support was blindly taken from Debian and broken.
   (Gavin Troy, Gaetan Bisson)
+
+- Base64 output was broken for cases which involved iconv(3).
+  The data is not lost, you can read it with S-nail v14.9.0 and
+  above, and save it somewhere.  I know of no other base64 decoder
+  which reads those things correctly, though.  We now have tests.
+  Along this i fixed an iconv(3) error which likely caused
+  stateful decoding (like, e.g., for ISO-2022-JP) to fail because
+  of an unnecessary reset of the iconv(3) state machine.
+  Thanks to Gaetan Bisson for mentioning this issue!
 
 ChangeLog
 ^^^^^^^^^
@@ -45,6 +57,11 @@ ChangeLog
 - The MLE tab-expansion will now automatically append a "/" if
   there is only one possible expansion and that is a directory,
   saving the user one <TAB>.  (Christos Zoulas)
+
+  The shell expression parser had a bug regarding understood
+  metacharacters (;|&), which in turn could cause an infinite loop
+  in the MLE tab-expansion for, e.g., "move &9 +<TAB>", because
+  the "&" would never have been stepped over.
 
 - New `~I'#307 command escape is like `~i'#308 but does not append
   a newline.
@@ -75,6 +92,8 @@ ChangeLog
   Also `Lreply' would have crashed for mails with Reply-To: but
   without *reply-to-honour*#481 set.  We now have a test.
 
+  Note *replyto* is obsoleted in favour of *reply-to*#480.
+
 git(1) shortlog (edited)
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -88,6 +107,8 @@ e2bb54b7 THANKS: Christos Zoulas
 f593fc18 make-config.sh: do NOT skip fakeroot paths
         (Gavin Troy, Gaetan Bisson)
 4fe971ea FIX [4047a432] possible bound excess in memset()!
+84efbcab FIX shexp parser regarding metachars (and poss. endless <TAB> loop)
+14fbce97 FIX: OH!  The codebase NEVER supported *mime-encoding*=base64!
 
 v14.9.0 ("Long-tailed tit"), 2017-07-16
 ---------------------------------------
@@ -954,7 +975,7 @@ found in the git(1) repository:
 
 Also accessible via HTTPS?, just replace X.Y.Z accordingly:
 
-  https?://git.sdaoden.eu/cgit/s-nail.git/tree/NEWS?h=vX.Y.Y
+  \https?://git.sdaoden.eu/cgit/s-nail.git/tree/NEWS?h=vX.Y.Y
 
 For even older releases you need to look into the [timeline]
 branch, but no changelog has been administrated for them.

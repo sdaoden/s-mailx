@@ -1404,7 +1404,8 @@ FL ssize_t     mime_write(char const *ptr, size_t size, FILE *f,
                   struct quoteflt *qf, struct str *outrest,
                   struct str *inrest);
 FL ssize_t     xmime_write(char const *ptr, size_t size, /* TODO LEGACY */
-                  FILE *f, enum conversion convert, enum tdflags dflags);
+                  FILE *f, enum conversion convert, enum tdflags dflags,
+                  struct str *outrest, struct str *inrest);
 
 /*
  * mime-enc.c
