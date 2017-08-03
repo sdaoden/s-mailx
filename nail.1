@@ -1828,6 +1828,25 @@ of the system, which stays unaffected by
 .Va ttycharset .
 .
 .Pp
+Messages and attachments which consist of 7-bit clean data will be
+classified as consisting of
+.Va charset-7bit
+character data.
+This is a problem if the
+.Va ttycharset
+character set is a multibyte character set that is also 7-bit clean.
+For example, the Japanese character set ISO-2022-JP is 7-bit clean but
+capable to encode the rich set of Japanese Kanji, Hiragana and Katakana
+characters: in order to notify receivers of this character set the mail
+message must be MIME encoded so that the character set ISO-2022-JP can
+be advertised!
+To achieve this, the variable
+.Va charset-7bit
+must be set to ISO-2022-JP.
+(Today a better approach regarding email is the usage of UTF-8, which
+uses 8-bit bytes for non-US-ASCII data.)
+.
+.Pp
 If the \*(OPal character set conversion capabilities are not available
 .Pf ( Va features
 does not include the term
