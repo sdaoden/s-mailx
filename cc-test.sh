@@ -4054,14 +4054,14 @@ t_behave_iconv_mbyte_base64() {
          set ttycharset=iso-2022-jp charset-7bit=iso-2022-jp sendcharsets=utf-8
          m t2@exam.ple
 !s Japanese from ISO-2022-JP to UTF-8, eh, no, also ISO-2022-JP
-$B%%7%%8%%e%%&%%+%%i2J!J%%7%%8%%e%%&%%+%%i$+!"3XL>(B Paridae$B!K$O!"D;N`%%9%%:%%aL\$N2J$G$"$k!#%%7%%8%%e%%&%%+%%i!J;M==?}!K$HAm>N$5$l$k$,!"695A$K$O$3$N(B1$B<o$r%%7%%8%%e%%&%%+%%i$H8F$V!#(B
+$B%%7%%8%%e%%&%%+%%i2J!J%%7%%8%%e%%&%%+%%i$+!"3XL>(B Paridae$B!K$O!"D;N`%%9%%:%%aL\\$N2J$G$"$k!#%%7%%8%%e%%&%%+%%i!J;M==?}!K$HAm>N$5$l$k$,!"695A$K$O$3$N(B1$B<o$r%%7%%8%%e%%&%%+%%i$H8F$V!#(B
 
-$B%%+%%s%%`%%j%%,%%i!J3XL>(BParus cristatus$B!K$O!"%%9%%:%%aL\%%7%%8%%e%%&%%+%%i2J$KJ,N`$5$l$kD;N`$N0l<o!#(B
+$B%%+%%s%%`%%j%%,%%i!J3XL>(BParus cristatus$B!K$O!"%%9%%:%%aL\\%%7%%8%%e%%&%%+%%i2J$KJ,N`$5$l$kD;N`$N0l<o!#(B
 
 
-$B%%+%%s%%`%%j%%,%%i!J3XL>(BParus cristatus$B!K$O!"%%9%%:%%aL\%%7%%8%%e%%&%%+%%i2J$KJ,N`$5$l$kD;N`$N0l<o!#(B
+$B%%+%%s%%`%%j%%,%%i!J3XL>(BParus cristatus$B!K$O!"%%9%%:%%aL\\%%7%%8%%e%%&%%+%%i2J$KJ,N`$5$l$kD;N`$N0l<o!#(B
 
-$B%%7%%8%%e%%&%%+%%i2J!J%%7%%8%%e%%&%%+%%i$+!"3XL>(B Paridae$B!K$O!"D;N`%%9%%:%%aL\$N2J$G$"$k!#%%7%%8%%e%%&%%+%%i!J;M==?}!K$HAm>N$5$l$k$,!"695A$K$O$3$N(B1$B<o$r%%7%%8%%e%%&%%+%%i$H8F$V!#(B
+$B%%7%%8%%e%%&%%+%%i2J!J%%7%%8%%e%%&%%+%%i$+!"3XL>(B Paridae$B!K$O!"D;N`%%9%%:%%aL\\$N2J$G$"$k!#%%7%%8%%e%%&%%+%%i!J;M==?}!K$HAm>N$5$l$k$,!"695A$K$O$3$N(B1$B<o$r%%7%%8%%e%%&%%+%%i$H8F$V!#(B
 !.
       ' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} -Smta=./.tsendmail.sh \
          -Sescape=! -Smime-encoding=base64 2>./.terr
