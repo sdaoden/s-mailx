@@ -1791,14 +1791,114 @@ combinations may therefore be involved \(en on the other hand those
 unusual cases become possible.
 The usual case is as short as:
 .
-.Pp
-.Dl set mta=smtp://USER:PASS@HOST smtp-use-starttls \e
-.Dl \ \ \ \ smime-sign smime-sign-cert=+smime.pair
+.Bd -literal -offset indent
+set mta=smtp://USER:PASS@HOST smtp-use-starttls \e
+    smime-sign smime-sign-cert=+smime.pair
+.Ed
 .
 .Pp
 The section
 .Sx EXAMPLES
 contains complete example configurations.
+.\" }}}
+.
+.\" .Ss "Encrypted network communication" {{{
+.Ss "Encrypted network communication"
+.
+SSL (Secure Sockets Layer) a.k.a. its successor TLS (Transport Layer
+Security) are protocols which aid in securing communication by providing
+a safely initiated and encrypted network connection.
+A central concept to SSL/TLS is that of certificates: as part of each
+network connection setup a (set of) certificates will be exchanged, and
+by using those the identity of the network peer can be cryptographically
+verified.
+SSL/TLS works by using a locally installed pool of trusted certificates,
+and verifying the connection peer succeeds if that provides
+a certificate which has been issued or is trusted by any certificate in
+the trusted local pool.
+.
+.Pp
+The local pool of trusted so-called CA (Certification Authority)
+certificates is usually delivered with the used SSL/TLS library (e.g.,
+OpenSSL), and will be selected automatically.
+It is also possible to create and use an own pool of trusted certificates.
+If this is desired, set
+.Va ssl-ca-no-defaults
+to avoid using the default certificate pool, and point
+.Va ssl-ca-file
+and/or
+.Va ssl-ca-dir
+to a trusted pool of certificates.
+A certificate cannot be more secure than the method its CA certificate
+has been retrieved with.
+.
+.Pp
+It depends on the used protocol whether encrypted communication is
+possible, and which configuration steps have to be taken to enable it.
+Some protocols, e.g., POP3S, are implicitly encrypted, others, like
+POP3, can upgrade a plain text connection if so requested: POP3 offers
+.Ql STLS ,
+which will be used if the variable
+.Va pop3-use-starttls
+(which is a variable chain, as documented in
+.Sx "On URL syntax and credential lookup")
+is set:
+.
+.Bd -literal -offset indent
+shortcut encpop1 pop3s://pop1.exam.ple
+
+shortcut encpop2 pop3://pop2.exam.ple
+set pop3-use-starttls-pop2.exam.ple
+
+set mta=smtps://smtp.exam.ple:465
+set mta=smtp://smtp.exam.ple smtp-use-starttls
+.Ed
+.
+.Pp
+Normally that is all there is to do, however plenty of knobs exist to
+adjust settings shall the necessity or desire arise.
+E.g., it is possible to fine-tune certificate verification via
+.Va ssl-ca-flags .
+Also interesting may be the possibility to configure the allowed
+.Va ssl-protocol Ns
+s that a communication channel may use: whereas in the past hints of
+how to restrict the set of protocols to highly secure ones were
+indicated, as of the time of this writing the allowed protocols, or at
+least the allowed
+.Va ssl-cipher-list ,
+may need to become relaxed in order to be able to connect to some
+servers.
+E.g., the following example settings allows connection of a
+.Dq Lion
+which uses OpenSSL 0.9.8za from June 2014:
+.
+.Bd -literal -offset indent
+set ssl-protocol-LION=ALL,-SSLv3,-TLSv1
+set ssl-cipher-list-LION=TLSv1.2:!aNULL:!eNULL:\e
+    ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:\e
+    DHE-RSA-AES256-SHA:@STRENGTH
+.Ed
+.
+.Pp
+The OpenSSL program
+.Xr ciphers 1
+can be used and should be referred to when creating a custom cipher list.
+Variables of interest for SSL/TLS in general are
+.Va ssl-ca-dir ,
+.Va ssl-ca-file ,
+.Va ssl-ca-flags ,
+.Va ssl-ca-no-defaults ,
+.Va ssl-cert ,
+.Va ssl-cipher-list ,
+.Va ssl-config-file ,
+.Va ssl-curves ,
+.Va ssl-crl-dir ,
+.Va ssl-crl-file ,
+.Va ssl-key ,
+.Va ssl-protocol ,
+.Va ssl-rand-file
+as well as
+.Va ssl-verify .
 .\" }}}
 .
 .\" .Ss "Character sets" {{{
@@ -4739,8 +4839,11 @@ if a protocol prefix is used the mailbox type is fixated and neither
 the auto-detection (read on) nor the
 .Va newfolders
 mechanisms apply.
-\*(OPally URLs can also be used to access network resources, and it is
-possible to proxy all network traffic over a SOCKS5 server given via
+\*(OPally URLs can also be used to access network resources, which may
+be accessed securely via
+.Sx "Encrypted network communication"
+if so supported, and it is possible to proxy all network traffic over
+a SOCKS5 server given via
 .Va socks-proxy .
 .
 .Pp
@@ -9384,6 +9487,11 @@ as well as possibly
 \*(OPally \*(UA can send mail over SMTP network connections to a single
 defined SMTP smart host by specifying a SMTP URL as the value (see
 .Sx "On URL syntax and credential lookup" ) .
+Encrypted network connections are \*(OPally available, the section
+.Sx "Encrypted network communication"
+should give an overview and provide links to more information on this.
+\*(UA also supports forwarding of all network traffic over a specified
+.Va socks-proxy .
 Note that with some mail providers it may be necessary to set the
 .Va smtp-hostname
 variable in order to use a specific combination of
@@ -9391,8 +9499,6 @@ variable in order to use a specific combination of
 .Va hostname
 and
 .Va mta .
-\*(UA also supports forwarding of all network traffic over a specified
-.Va socks-proxy .
 The following SMTP variants may be used:
 .
 .Bl -bullet
@@ -12561,7 +12667,14 @@ filetype bz2 'bzip2 -dc' 'bzip2 -zc' \e
 define XooglX {
   set folder=~/spool/XooglX inbox=+syste.mbox sent=+sent
   set from='Your Name <address@examp.ple>'
+
+  set pop3-no-apop-pop.gmXil.com
+  shortcut pop %:pop3s://pop.gmXil.com
+  shortcut imap %:imaps://imap.gmXil.com
+
   set mta=smtp://USER:PASS@smtp.gmXil.com smtp-use-starttls
+  # Alternatively:
+  set mta=smtps://USER:PASS@smtp.gmail.com:465
 }
 account XooglX {
   \ecall XooglX
@@ -12576,6 +12689,9 @@ account XooglX {
 define XandeX {
   set folder=~/spool/XandeX inbox=+syste.mbox sent=+sent
   set from='Your Name <address@exam.ple>'
+
+  shortcut pop %:pop3s://pop.yaXXex.ru
+
   set mta=smtps://USER:PASS@smtp.yaXXex.ru:465 \e
     hostname=yaXXex.com smtp-hostname=
 }
