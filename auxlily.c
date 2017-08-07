@@ -390,12 +390,7 @@ n_pager_get(char const **env_addon){
        *    *colour-pager*, $PAGER */
       if(strstr(rv, "less") != NULL){
          if(getenv("LESS") == NULL)
-            *env_addon =
-#ifdef HAVE_TERMCAP
-                  (n_psonce & n_PSO_TERMCAP_CA_MODE) ? "LESS=Ri"
-                     : !(n_psonce & n_PSO_TERMCAP_DISABLE) ? "LESS=FRi" :
-#endif
-                        "LESS=FRXi";
+            *env_addon = "LESS=RXi";
       }else if(strstr(rv, "lv") != NULL){
          if(getenv("LV") == NULL)
             *env_addon = "LV=-c";
