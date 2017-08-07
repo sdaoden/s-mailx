@@ -2086,7 +2086,7 @@ jredo:
    }
 
    if(exp.s[exp.l - 1] != '/'){
-      if(stat(exp.s, &sb) || S_ISDIR(sb.st_mode)){
+      if(!stat(exp.s, &sb) && S_ISDIR(sb.st_mode)){
          shoup = n_string_assign_buf(shoup, exp.s, exp.l);
          shoup = n_string_push_c(shoup, '/');
          exp.s = n_string_cp(shoup);
