@@ -863,33 +863,33 @@ enum{
 
 enum n_idec_mode{
    n_IDEC_MODE_NONE,
-   n_IDEC_MODE_SIGNED_TYPE = 1<<0,  /* To choose limits, error constants etc. */
+   n_IDEC_MODE_SIGNED_TYPE = 1u<<0, /* To choose limits, error constants etc. */
 #if 0
-   n_IDEC_MODE_SIGN_FORCE_SIGNED_TYPE = 1<<2,
+   n_IDEC_MODE_SIGN_FORCE_SIGNED_TYPE = 1u<<2,
 #endif
-   n_IDEC_MODE_LIMIT_8BIT = 1<<3,   /* Saturate if result exceeds 8-bit */
-   n_IDEC_MODE_LIMIT_16BIT = 2<<3,
-   n_IDEC_MODE_LIMIT_32BIT = 3<<3,
-   n__IDEC_MODE_LIMIT_MASK = 3<<3,
-   n_IDEC_MODE_LIMIT_NOERROR = 1<<5, /* Not an error if limit is excessed! */
+   n_IDEC_MODE_LIMIT_8BIT = 1u<<3,  /* Saturate if result exceeds 8-bit */
+   n_IDEC_MODE_LIMIT_16BIT = 2u<<3,
+   n_IDEC_MODE_LIMIT_32BIT = 3u<<3,
+   n__IDEC_MODE_LIMIT_MASK = 3u<<3,
+   n_IDEC_MODE_LIMIT_NOERROR = 1u<<5, /* Not an error if limit is excessed! */
    /* These bits are duplicated in the _state result bits! */
-   n__IDEC_MODE_MASK = (1<<6) - 1
+   n__IDEC_MODE_MASK = (1u<<6) - 1
 };
 
 enum n_idec_state{
    n_IDEC_STATE_NONE,
    /* Malformed input, no usable result has been stored */
-   n_IDEC_STATE_EINVAL = 1<<8,
+   n_IDEC_STATE_EINVAL = 1u<<8,
    /* Bad character according to base, but we have seen some good before,
     * otherwise _EINVAL would have been used */
-   n_IDEC_STATE_EBASE = 2<<8,
-   n_IDEC_STATE_EOVERFLOW = 3<<8,   /* Result too large */
-   n_IDEC_STATE_EMASK = (3<<8),     /* Any errors, that is */
-   n_IDEC_STATE_SEEN_MINUS = 1<<16, /* Seen - in input? */
-   n_IDEC_STATE_CONSUMED = 1<<17,   /* All the input buffer was consumed */
-   n__IDEC_PRIVATE_SHIFT1 = 24
+   n_IDEC_STATE_EBASE = 2u<<8,
+   n_IDEC_STATE_EOVERFLOW = 3u<<8,  /* Result too large */
+   n_IDEC_STATE_EMASK = 3u<<8,      /* Any errors, that is */
+   n_IDEC_STATE_SEEN_MINUS = 1u<<16, /* Seen - in input? */
+   n_IDEC_STATE_CONSUMED = 1u<<17,  /* All the input buffer was consumed */
+   n__IDEC_PRIVATE_SHIFT1 = 24u
 };
-n_MCTA(n__IDEC_MODE_MASK <= (1<<8) - 1, "Shared bit range overlaps")
+n_MCTA(n__IDEC_MODE_MASK <= (1u<<8) - 1, "Shared bit range overlaps")
 
 enum mimecontent {
    MIME_UNKNOWN,     /* unknown content */

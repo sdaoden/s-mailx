@@ -595,6 +595,10 @@ n_idec_buf(void *resp, char const *cbuf, uiz_t clen, ui8_t base,
    }else if(clen == 0)
       goto jeinval;
 
+   assert(base != 1 && base <= 36);
+   /*if(base == 1 || base > 36)
+    *   goto jeinval;*/
+
    /* Leading WS */
    while(spacechar(*cbuf))
       if(*++cbuf == '\0' || --clen == 0)
@@ -638,8 +642,19 @@ n_idec_buf(void *resp, char const *cbuf, uiz_t clen, ui8_t base,
          case 'B':
             if((base & 16) == 0){
                base = 2; /* 0b10 */
-               /* Char after prefix must be valid */
+               /* Char after prefix must be valid.  However, after some error
+                * in the tor software all libraries (which had to) turned to
+                * an interpretation of the C standard which says that the
+                * prefix may optionally precede an otherwise valid sequence,
+                * which means that "0x" is not a STATE_INVAL error but gives
+                * a "0" result with a "STATE_BASE" error and a rest of "x" */
 jprefix_skip:
+#if 1
+               if(clen > 1 && a_aux_idec_atoi[(ui8_t)cbuf[1]] < base){
+                  --clen;
+                  ++cbuf;
+               }
+#else
                if(*++cbuf == '\0' || --clen == 0)
                   goto jeinval;
 
@@ -647,6 +662,7 @@ jprefix_skip:
                currc = a_aux_idec_atoi[(ui8_t)*cbuf];
                if(currc >= base)
                   goto jeinval;
+#endif
             }
             break;
          default:
