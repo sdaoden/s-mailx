@@ -850,11 +850,13 @@ custom headers can be created (more specifically than with
 .Va customhdr ) .
 .Ic ~?
 gives an overview of most other available command escapes.
-Typing
+The command escape
+.Ic ~.
+will leave compose mode and send the message once it is completed.
+Alternatively typing
 .Ql control-D
 .Pf ( Ql ^D )
-at the beginning of an empty line leaves compose mode and causes the
-message to be sent, whereas typing
+at the beginning of an empty line has the same effect, whereas typing
 .Ql control-C
 .Pf ( Ql ^C )
 twice will abort the current letter (saving its contents in the file
