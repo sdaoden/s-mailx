@@ -20,7 +20,7 @@ $(VAL_UAGENT): $(OBJ) uman.1 urc.rc
 	$(SIZE_CHECK)
 
 $(OBJ): mk-config.h config.h nail.h nailfuns.h $(AMALGAM_DEP)
-$(AMALGAM_TARGET) auxlily.c: gen-errors.h
+$(AMALGAM_TARGET) auxlily.o: gen-errors.h
 $(AMALGAM_TARGET) accmacvar.o: gen-okeys.h gen-version.h
 $(AMALGAM_TARGET) cmd-tab.o: cmd-tab.h
 $(AMALGAM_TARGET) dotlock.o: dotlock.h
