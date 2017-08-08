@@ -7,45 +7,41 @@ _version_from_header = VERSION="`< gen-version.h $(sed) \
 		-e '/ n_VERSION /b X' -e d -e ':X' \
 		-e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`"
 
-OBJ = $(OBJ_SRC:.c=.o)
-.SUFFIXES: .o .c .y
-.c.o:
-	$(ECHO_CC)$(CC) $(CFLAGS) $(INCS) -c $(<)
-.c: ;
-
 all: $(VAL_UAGENT) $(OPTIONAL_PRIVSEP)
 
 $(VAL_UAGENT): $(OBJ) uman.1 urc.rc
 	$(ECHO_LINK)$(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)
 	$(SIZE_CHECK)
 
-$(OBJ): mk-config.h config.h nail.h nailfuns.h $(AMALGAM_DEP)
-$(AMALGAM_TARGET) auxlily.o: gen-errors.h
-$(AMALGAM_TARGET) accmacvar.o: gen-okeys.h gen-version.h
-$(AMALGAM_TARGET) cmd-tab.o: cmd-tab.h
-$(AMALGAM_TARGET) dotlock.o: dotlock.h
-$(AMALGAM_TARGET) obs-imap.o: obs-imap-gssapi.h
+$(OBJ): mk-config.h config.h $(SRCDIR)nail.h $(SRCDIR)nailfuns.h \
+		$(AMALGAM_DEP)
+$(AMALGAM_TARGET) auxlily.o: $(SRCDIR)gen-errors.h
+$(AMALGAM_TARGET) accmacvar.o: $(SRCDIR)gen-okeys.h gen-version.h
+$(AMALGAM_TARGET) cmd-tab.o: $(SRCDIR)cmd-tab.h
+$(AMALGAM_TARGET) dotlock.o: $(SRCDIR)dotlock.h
+$(AMALGAM_TARGET) obs-imap.o: $(SRCDIR)obs-imap-gssapi.h
 $(AMALGAM_TARGET) mime-types.o: gen-mime-types.h
-$(AMALGAM_TARGET) obs-imap.o pop3.o smtp.o urlcrecry.o: rfc1321.h
-$(AMALGAM_TARGET) smtp.o: smtp-gssapi.h
-$(AMALGAM_TARGET) termcap.o: gen-tcaps.h
+$(AMALGAM_TARGET) obs-imap.o pop3.o smtp.o urlcrecry.o: $(SRCDIR)rfc1321.h
+$(AMALGAM_TARGET) smtp.o: $(SRCDIR)smtp-gssapi.h
+$(AMALGAM_TARGET) termcap.o: $(SRCDIR)gen-tcaps.h
 
 $(VAL_PRIVSEP): privsep.o
 	$(ECHO_LINK)$(CC) $(LDFLAGS) -o $(@) privsep.o $(BASE_LIBS)
 	$(SIZE_CHECK)
 
-privsep.o: privsep.c mk-config.h config.h nail.h dotlock.h
-	$(ECHO_CC)$(CC) $(CFLAGS) $(BASE_INCS) -c privsep.c
+privsep.o: $(SRCDIR)privsep.c mk-config.h config.h \
+		$(SRCDIR)nail.h $(SRCDIR)dotlock.h
+	$(ECHO_CC)$(CC) $(CFLAGS) $(BASE_INCS) -c $(SRCDIR)privsep.c
 
 test: all
 	$(ECHO_TEST)\
 	MAKE=$(MAKE) \
 	awk=$(awk) cat=$(cat) cksum=$(cksum) rm=$(rm) sed=$(sed) grep=$(grep) \
-	$(SHELL) ./cc-test.sh --check-only ./$(VAL_UAGENT)
+	$(SHELL) $(SRCDIR)cc-test.sh --check-only ./$(VAL_UAGENT)
 
-gen-mime-types.h: mime.types
+gen-mime-types.h: $(SRCDIR)mime.types
 	$(ECHO_GEN)\
-	LC_ALL=C < ./mime.types > $(@) $(awk) '\
+	LC_ALL=C < $(SRCDIR)mime.types > $(@) $(awk) '\
 	function add(mt, ln) {\
 		gsub(/[[:space:]]+/, " ", ln);\
 		i = split(ln, i_a);\
@@ -107,11 +103,11 @@ gen-mime-types.h: mime.types
 	}\
 	'
 
-uman.1: nail.1
+uman.1: $(SRCDIR)nail.1
 	$(ECHO_GEN)\
 	LC_ALL=C _SYSCONFRC="$(VAL_SYSCONFRC)" _UAGENT="$(VAL_UAGENT)" \
 		$(_version_from_header) \
-	< ./nail.1 > $(@) $(awk) '\
+	< $(SRCDIR)nail.1 > $(@) $(awk) '\
 	BEGIN { written = 0 }\
 	/\.\\"--MKMAN-START--/, /\.\\"--MKMAN-END--/ {\
 		if (written++ != 0)\
@@ -135,11 +131,11 @@ uman.1: nail.1
 	{print}\
 	'
 
-urc.rc: nail.rc
+urc.rc: $(SRCDIR)nail.rc
 	$(ECHO_GEN)\
 	LC_ALL=C _SYSCONFRC="$(VAL_SYSCONFRC)" _UAGENT="$(VAL_UAGENT)" \
 		$(_version_from_header) \
-	< ./nail.rc > $(@) $(awk) 'BEGIN {written = 0}\
+	< $(SRCDIR)nail.rc > $(@) $(awk) 'BEGIN {written = 0}\
 	/^#--MKRC-START--/, /^#--MKRC-END--/ {\
 		if (written == 1)\
 			next;\
@@ -258,7 +254,8 @@ distclean: clean
 _update-version:
 	@LC_ALL=C; export LC_ALL;\
 	if [ -z "$(VERSION)" ]; then \
-		eval VERSION="`(git describe --tags) 2>/dev/null`";\
+		eval VERSION="`(cd $(SRCDIR);\
+			git describe --tags) 2>/dev/null`";\
 		if [ -n "$${VERSION}" ]; then \
 			VERSION="`echo $${VERSION} |\
 				$(sed) -e 's/^v\{0,1\}\(.*\)/\1/'`";\

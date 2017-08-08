@@ -48,6 +48,9 @@ mechanism, e.g.:
 would create a "s-nail" binary and install a "s-nail" manual etc.  under
 the prefix "/usr" but rooted under "[./]xy", i.e., the binary would be
 installed as "[./]xy/usr/bin/s-nail".
+Out-of-tree compilation is supported; to use it, create the target
+directory of desire, change into it and run the make-emerge.sh script
+shipped with S-nail, then proceed as with normal in-tree building.
 The following make(1) targets exists, the default being `build':
 
 - tangerine   Shorthand for "$ make config build test install":
@@ -279,7 +282,7 @@ Occasional tests:
       to be extended to check for UINTPTR_MAX being defined as the empty
       string and similar very special things.
   - The OpenCSW build cluster consists of SunOS 5.9 - 5.11 machines
-    under SPARC and i386.  And it looked good on 2017-08-03.
+    under SPARC and i386.  And it looked good on 2017-08-09.
 . Void Linux <https://www.voidlinux.eu/> (x86; not in 2017 FIXME)
 
 # s-ts-mode

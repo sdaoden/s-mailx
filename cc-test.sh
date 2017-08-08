@@ -2420,8 +2420,8 @@ t_behave_filetype() {
 	_EOT
    chmod 0755 ./.tsendmail.sh
 
-   printf 'm m1@e.t\nL1\nHy1\n~.\nm m2@e.t\nL2\nHy2\n~@ ./snailmail.jpg\n~.\n' |
-      ${MAILX} ${ARGS} -Smta=./.tsendmail.sh
+   printf 'm m1@e.t\nL1\nHy1\n~.\nm m2@e.t\nL2\nHy2\n~@ %s\n~.\n' \
+      "${SRCDIR}snailmail.jpg" | ${MAILX} ${ARGS} -Smta=./.tsendmail.sh
    check behave:filetype-1 0 "${MBOX}" '1645747150 13536'
 
    if command -v gzip >/dev/null 2>&1; then

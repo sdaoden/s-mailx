@@ -4,6 +4,8 @@
 LC_ALL=C
 export LC_ALL
 
+: ${SHELL:=/bin/sh}
+
 # The feature set, to be kept in sync with make.rc
 # If no documentation given, the option is used as such; if doc is a hyphen,
 # entry is suppressed when configuration overview is printed, and also in the
@@ -1083,6 +1085,7 @@ check_tool grep "${grep:-`command -v grep`}"
 path_check PATH
 
 # awk(1) above
+check_tool basename "${basename:-`command -v basename`}"
 check_tool cat "${cat:-`command -v cat`}"
 check_tool chmod "${chmod:-`command -v chmod`}"
 check_tool cp "${cp:-`command -v cp`}"
@@ -1135,7 +1138,8 @@ else
 fi
 
 for i in \
-      awk cat chmod chown cp cmp grep mkdir mv rm sed sort tee tr \
+      SRCDIR \
+      awk basename cat chmod chown cp cmp grep mkdir mv rm sed sort tee tr \
       MAKE MAKEFLAGS make SHELL strip \
       cksum; do
    eval j=\$${i}
@@ -1146,6 +1150,7 @@ done
 printf "\n" >> ${newev}
 
 # Build a basic set of INCS and LIBS according to user environment.
+C_INCLUDE_PATH="./:${SRCDIR}:${C_INCLUDE_PATH}"
 path_check C_INCLUDE_PATH -I _INCS
 INCS="${INCS} ${_INCS}"
 path_check LD_LIBRARY_PATH -L _LIBS
@@ -1299,7 +1304,8 @@ echo '#define VAL_BUILD_OSENV "'"${OSENV}"'"' >> ${h}
 # Generate n_err_number OS mappings
 (
    feat_yes DEVEL && NV= || NV=noverbose
-   TARGET="${h}" awk="${awk}" ./make-errors.sh ${NV} config
+   SRCDIR="${SRCDIR}" TARGET="${h}" awk="${awk}" \
+      ${SHELL} "${SRCDIR}"make-errors.sh ${NV} config
 ) |
    xrun_check oserrno 'OS error mapping table generated' || config_exit 1
 
@@ -2695,39 +2701,48 @@ printf '"\n' >> ${h}
 # Note we cannout use explicit ./ filename prefix for source and object
 # pathnames because of a bug in bmake(1)
 ${rm} -rf ${tmp0}.* ${tmp0}*
-printf 'OBJ_SRC = ' >> ${mk}
+srclist= objlist=
 if feat_no AMALGAMATION; then
-   for i in `printf '%s\n' *.c | ${sort}`; do
-      if [ "${i}" = privsep.c ]; then
+   for i in `printf '%s\n' "${SRCDIR}"*.c | ${sort}`; do
+      i=`basename "${i}" .c`
+      if [ "${i}" = privsep ]; then
          continue
       fi
-      printf "${i} " >> ${mk}
+      objlist="${objlist} ${i}.o"
+      srclist="${srclist} \$(SRCDIR)${i}.c"
+      printf '%s: %s\n\t$(ECHO_CC)$(CC) $(CFLAGS) $(INCS) -c %s\n' \
+         "${i}.o" "\$(SRCDIR)${i}.c" "\$(SRCDIR)${i}.c" >> ${mk}
    done
    printf '\nAMALGAM_TARGET =\nAMALGAM_DEP =\n' >> ${mk}
 else
-   printf 'main.c\nAMALGAM_TARGET = main.o\nAMALGAM_DEP = ' >> ${mk}
+   printf '%s:\n\t$(ECHO_CC)$(CC) $(CFLAGS) $(INCS) -c $(SRCDIR)%s\n' \
+      "main.o" "main.c" >> ${mk}
+   srclist=main.c objlist=main.o
+   printf '\nAMALGAM_TARGET = main.o\nAMALGAM_DEP = ' >> ${mk}
 
    printf '\n/* HAVE_AMALGAMATION: include sources */\n' >> ${h}
    printf '#elif n_MK_CONFIG_H + 0 == 1\n' >> ${h}
    printf '# undef n_MK_CONFIG_H\n' >> ${h}
    printf '# define n_MK_CONFIG_H 2\n' >> ${h}
-   for i in `printf '%s\n' *.c | ${sort}`; do
-      if [ "${i}" = "${j}" ] || [ "${i}" = main.c ] || \
+   for i in `printf '%s\n' "${SRCDIR}"*.c | ${sort}`; do
+      i=`basename "${i}"`
+      if [ "${i}" = main.c ] ||
             [ "${i}" = privsep.c ]; then
          continue
       fi
-      printf "${i} " >> ${mk}
-      printf "# include \"${i}\"\n" >> ${h}
+      printf '$(SRCDIR)%s ' "${i}" >> ${mk}
+      printf '# include "%s%s"\n' "${SRCDIR}" "${i}" >> ${h}
    done
    echo >> ${mk}
 fi
+printf 'OBJ_SRC = %s\nOBJ = %s\n' "${srclist}" "${objlist}" >> "${mk}"
 
 printf '#endif /* n_MK_CONFIG_H */\n' >> ${h}
 
 echo "LIBS = `${cat} ${lib}`" >> ${mk}
 echo "INCS = `${cat} ${inc}`" >> ${mk}
 echo >> ${mk}
-${cat} ./make-config.in >> ${mk}
+${cat} "${SRCDIR}"make-config.in >> ${mk}
 
 ## Finished!
 

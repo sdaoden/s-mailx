@@ -9,7 +9,7 @@ MAXDISTANCE_PENALTY=5
 VERB=1
 
 MAILX='LC_ALL=C s-nail -#:/'
-OUT=gen-errors.h
+OUT="${SRCDIR}"gen-errors.h
 
 ##
 
