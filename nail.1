@@ -4917,8 +4917,8 @@ slot of the white- and blacklisting command
 .Ic headerpick .
 Only the first part of a multipart message is included unless
 .Va forward-as-attachment ,
-and recipient addresses will be stripped from comments, names etc.
-unless the internal variable
+and recipient addresses will be stripped from comments, names
+etc. unless the internal variable
 .Va fullnames
 is set.
 .Pp
@@ -6009,6 +6009,10 @@ If editing a
 the messages are marked for deletion.
 .Sx "Filename transformations"
 will be applied.
+To filter the saved header fields to the desired subset use the
+.Ql save
+slot of the white- and blacklisting command
+.Ic headerpick .
 .
 .It Ic savediscard
 \*(OB Superseded by the multiplexer
