@@ -14,6 +14,7 @@ System specific notes can be found in the next section.
 All (optional) features are documented (and adjustable) in make.rc.
 Adjustments may also take place, and are usually done, from the command
 line, overriding those made in make.rc (if any).
+
 Without any adjustments all non-experimental features will be enabled,
 except some which provide redundant functionality (e.g., OPT_SPAMC is
 disabled because the generic OPT_SPAM_FILTER can do the same).
@@ -21,6 +22,8 @@ None of the features are "require"d by default, so that configuration
 won't fail shall any of them not be available or usable.
 The generated configuration is tracked: changes will be recognized
 and cause automatic cleanups and rebuilds as necessary.
+Experts could find it valuable to adjust some settings in config.h.
+Perhaps.
 
   $ make tangerine  # equals "$ make config build test install"
   $ make distclean  # *Completely* cleanup working directory
@@ -89,6 +92,7 @@ The following make(1) targets exists, the default being `build':
 Setting the make(1) variable $VERBOSE to an arbitrary value during
 `config' time, as in "$ make VERBOSE=xy tangerine", will change the
 output of the `all', `install' etc. targets to a more verbose one.
+
 If some libraries are missing that you know are installed on your
 system, or if other errors occur due to missing files but which you know
 exist, please ensure that the environment variable $C_INCLUDE_PATH
@@ -113,9 +117,8 @@ to override things which usually exist in standard locations.
 If all else fails you can also forcefully pass in include directives and
 library paths by passing prefilled $INCS and $LIBS variables:
 
-  $ make INCS=-I/mypath/lib LIBS=-l/mypath/iconv tangerine
+  $ make INCS=-I/mypath/include LIBS="-L/mypath/lib -lmylib" tangerine
 
-Experts may find it valuable to adjust some settings in config.h.
 There are also some predefined configuration sets available, ment to be
 used instead of doing manual adjustments (in make.rc or) on the command
 line (names are case-insensitive).
