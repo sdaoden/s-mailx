@@ -65,11 +65,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
-# include <stdint.h>
-#else
-# include <inttypes.h>
-#endif
+#include <inttypes.h>
 
 #ifdef HAVE_C90AMEND1
 # include <wchar.h>
