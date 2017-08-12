@@ -78,9 +78,7 @@ option_maximal() {
    do
       eval OPT_${i}=1
    done
-   OPT_ICONV=require
-   OPT_REGEX=require
-   OPT_DOTLOCK=require
+   OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
 }
 
 option_setup() {
@@ -91,63 +89,52 @@ option_setup() {
 
    # Predefined CONFIG= urations take precedence over anything else
    if [ -n "${CONFIG}" ]; then
+      option_reset
       case "${CONFIG}" in
       [nN][uU][lL][lL])
-         option_reset
          ;;
       [nN][uU][lL][lL][iI])
-         option_reset
          OPT_ICONV=require
          ;;
       [mM][iI][nN][iI][mM][aA][lL])
-         option_reset
-         OPT_ICONV=1
-         OPT_REGEX=1
-         OPT_DOTLOCK=require
-         ;;
-      [mM][eE][dD][iI][uU][mM])
-         option_reset
-         OPT_ICONV=require
+         OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
+         OPT_COLOUR=1
+         OPT_DOCSTRINGS=1
+         OPT_ERRORS=1
          OPT_IDNA=1
-         OPT_REGEX=1
          OPT_MLE=1
             OPT_HISTORY=1 OPT_KEY_BINDINGS=1
-         OPT_ERRORS=1
          OPT_SPAM_FILTER=1
-         OPT_DOCSTRINGS=1
-         OPT_COLOUR=1
-         OPT_DOTLOCK=require
          ;;
       [nN][eE][tT][sS][eE][nN][dD])
-         option_reset
-         OPT_ICONV=require
-         OPT_SOCKETS=1
+         OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
+         OPT_SOCKETS=require
             OPT_SSL=require
             OPT_SMTP=require
-            OPT_GSSAPI=1 OPT_NETRC=1 OPT_AGENT=1
+            OPT_GSSAPI=1 OPT_NETRC=1
+               OPT_AGENT=1
+         OPT_COLOUR=1
+         OPT_DOCSTRINGS=1
+         OPT_ERRORS=1
          OPT_IDNA=1
-         OPT_REGEX=1
          OPT_MLE=1
             OPT_HISTORY=1 OPT_KEY_BINDINGS=1
-         OPT_DOCSTRINGS=1
-         OPT_COLOUR=1
-         OPT_DOTLOCK=require
+         OPT_SPAM_FILTER=1
          ;;
       [mM][aA][xX][iI][mM][aA][lL])
-         option_reset
          option_maximal
          ;;
       [dD][eE][vV][eE][lL])
-         OPT_DEVEL=1 OPT_DEBUG=1 OPT_NYD2=1
          option_maximal
+         OPT_DEVEL=1 OPT_DEBUG=1 OPT_NYD2=1
          ;;
       [oO][dD][eE][vV][eE][lL])
-         OPT_DEVEL=1
          option_maximal
+         OPT_DEVEL=1
          ;;
       *)
          echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
-         echo >&2 '   NULL, NULLI, MINIMAL, MEDIUM, NETSEND, MAXIMAL'
+         echo >&2 '   NULL, NULLI, MINIMAL, NETSEND, MAXIMAL'
          exit 1
          ;;
       esac
@@ -299,8 +286,8 @@ os_setup() {
 
    # On pkgsrc(7) systems automatically add /usr/pkg/*
    if [ -d /usr/pkg ]; then
-      C_INCLUDE_PATH="${C_INCLUDE_PATH}:/usr/pkg/include"
-      LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/pkg/lib"
+      C_INCLUDE_PATH="/usr/pkg/include:${C_INCLUDE_PATH}"
+      LD_LIBRARY_PATH="/usr/pkg/lib:${LD_LIBRARY_PATH}"
    fi
 }
 
@@ -310,8 +297,8 @@ _os_setup_sunos() {
 
    # Include packages
    if [ -d /opt/csw ]; then
-      C_INCLUDE_PATH="${C_INCLUDE_PATH}:/opt/csw/include"
-      LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/opt/csw/lib"
+      C_INCLUDE_PATH="/opt/csw/include:${C_INCLUDE_PATH}"
+      LD_LIBRARY_PATH="/opt/csw/lib:${LD_LIBRARY_PATH}"
    fi
 
    OS_DEFINES="${OS_DEFINES}#define __EXTENSIONS__\n"

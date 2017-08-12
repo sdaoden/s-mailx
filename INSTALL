@@ -107,59 +107,43 @@ a Bourne / Korn / POSIX compatible shell:
   $ export C_INCLUDE_PATH LD_LIBRARY_PATH
   $ make tangerine
 
-The S-nail make system will also automatically integrate pkgsrc(7) paths
-into this mechanism.  (pkgsrc(7) is a portable package management system
-that is used as a default on diverse operating systems.)
-And if all else fails you can also forcefully pass in include directives
-and library paths by passing prefilled $INCS and $LIBS variables:
+Other than the standard paths /usr/{bin,include,lib} and /usr/local/[.]
+should possibly be placed first instead, presuming that they are meant
+to override things which usually exist in standard locations.
+If all else fails you can also forcefully pass in include directives and
+library paths by passing prefilled $INCS and $LIBS variables:
 
   $ make INCS=-I/mypath/lib LIBS=-l/mypath/iconv tangerine
 
 Experts may find it valuable to adjust some settings in config.h.
-Note there are also some predefined configuration sets available, ment
-to be used instead of doing manual adjustments (in make.rc or) on the
-command line (names are case-insensitive):
+There are also some predefined configuration sets available, ment to be
+used instead of doing manual adjustments (in make.rc or) on the command
+line (names are case-insensitive).
 
 - CONFIG=NULL, CONFIG=NULLI
   Anything that can be turned off is off.  MIME can't.
   The latter adds and "require"s iconv(3), though.
 
 - CONFIG=MINIMAL
-  This is the most plain mailx(1)-alike mode, but with MIME support and
-  (if available) character set conversion and regular expressions
-  built-in.  Dotlock files and the privileged separated dotlock helper.
-
-  "Require"s dotlocking and the privileged separated dotlock helper.
-
-- CONFIG=MEDIUM
   Possibly what people want who need nothing but a MIME-capable mailx(1)
   and don't regret improved usability for the rare interactive use
-  occasions.
+  occasions.  Adds documentation strings, the built-in line editor (MLE)
+  with history support and key bindings, error tracking, basic colour
+  support and IDNA addresses, as well as generic spam filter support.
 
-  Like MINIMAL, but with documentation strings, the built-in line editor
-  (MLE) with history support and key bindings, error tracking, basic
-  colour support and IDNA addresses.
-
-  "Require"s iconv(3), dotlocking and the privileged separated dotlock
-  helper.
+  "Require"s iconv(3), regex(3) and the dotlock helper.
 
 - CONFIG=NETSEND
   Sending messages directly to the mail provider via the SMTP protocol,
   instead of requiring a local mail-transfer-agent (MTA) who does.
 
-  Adds SSL/TLS, GSSAPI and .netrc file parsing on top of MEDIUM, on the
-  other hand spam filter support is removed.
+  Adds SSL/TLS, SMTP, GSSAPI and .netrc file parsing on top of MINIMAL.
 
-  "Require"s iconv(3), SSL/TLS, SMTP (sockets), dotlocking and the
-  privileged separated dotlock helper.
+  "Require"s iconv(3), SSL/TLS, SMTP (sockets) and the dotlock helper.
 
 - CONFIG=MAXIMAL
-  Anything on, including experimental features.
-  S-nail(1) gains mail fetching capabilities and heads more towards
-  being a full-featured mail-user-agent (MUA) with this configuration.
-
-  "Require"s iconv(3), regex(3), the MLE as well as dotlocking and the
-  privileged separated dotlock helper.
+  Like MINIMAL, but turns on all (other) options, also obsolete or
+  redundant ones, but none of them required.
 
 1.1 What if configuration fails?
 --------------------------------
