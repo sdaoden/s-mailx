@@ -2150,6 +2150,18 @@ t_behave_read() {
 	__EOT
    check behave:read-ifs 0 "${MBOX}" '890153490 298'
 
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+   readctl create .tin
+   readall d; echo $?/$^ERRNAME / <$d>
+   wysh set d;readall d;echo $?/$^ERRNAME / <$d>
+   readctl create .tin2
+   readall d; echo $?/$^ERRNAME / <$d>
+   wysh set d;readall d;echo $?/$^ERRNAME / <$d>
+   readctl remove .tin;echo $?/$^ERRNAME;\
+      readctl remove .tin2;echo $?/$^ERRNAME
+	__EOT
+   check behave:readall 0 "${MBOX}" '860434889 333'
+
    t_epilog
 }
 

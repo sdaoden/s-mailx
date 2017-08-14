@@ -504,6 +504,83 @@ jleave:
 }
 
 FL int
+c_readall(void * vp){ /* TODO 64-bit retval */
+   struct n_sigman sm;
+   struct n_string s, *sp;
+   char *linebuf;
+   size_t linesize;
+   int rv;
+   char const **argv;
+   NYD2_ENTER;
+
+   sp = n_string_creat_auto(&s);
+   sp = n_string_reserve(sp, 64 -1);
+
+   linesize = 0;
+   linebuf = NULL;
+   argv = vp;
+
+   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
+   case 0:
+      break;
+   default:
+      n_pstate_err_no = n_ERR_INTR;
+      rv = -1;
+      goto jleave;
+   }
+
+   n_pstate_err_no = n_ERR_NONE;
+
+   for(;;){
+      rv = n_go_input(((n_pstate & n_PS_COMPOSE_MODE
+               ? n_GO_INPUT_CTX_COMPOSE : n_GO_INPUT_CTX_DEFAULT) |
+            n_GO_INPUT_FORCE_STDIN | /*n_GO_INPUT_NL_ESC |*/
+            n_GO_INPUT_PROMPT_NONE),
+            NULL, &linebuf, &linesize, NULL, NULL);
+      if(rv < 0){
+         if(!n_go_input_is_eof()){
+            n_pstate_err_no = n_ERR_BADF;
+            goto jleave;
+         }
+         if(sp->s_len == 0)
+            goto jleave;
+         break;
+      }else if(rv == 0){ /* xxx will not get*/
+         if(n_go_input_is_eof()){
+            if(sp->s_len == 0){
+               rv = -1;
+               goto jleave;
+            }
+            break;
+         }
+      }else if(UICMP(32, SI32_MAX - sp->s_len, <=, rv)){
+         n_pstate_err_no = n_ERR_OVERFLOW;
+         rv = -1;
+         goto jleave;
+      }else{
+         sp = n_string_push_buf(sp, linebuf, rv);
+         if(n_pstate & n_PS_READLINE_NL)
+            sp = n_string_push_c(sp, '\n');
+      }
+   }
+
+   if(!a_cmisc_read_set(argv[0], n_string_cp(sp))){
+      n_pstate_err_no = n_ERR_NOTSUP;
+      rv = -1;
+      goto jleave;
+   }
+   rv = sp->s_len;
+
+   n_sigman_cleanup_ping(&sm);
+jleave:
+   if(linebuf != NULL)
+      n_free(linebuf);
+   NYD2_LEAVE;
+   n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
+   return rv;
+}
+
+FL int
 c_version(void *vp){
    int longest, rv;
    char *iop;

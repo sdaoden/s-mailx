@@ -1013,7 +1013,7 @@ a_go_file(char const *file, bool_t silent_open_error){
       if((fip = Popen(nbuf /* #if 0 above = savestrbuf(file, nlen)*/, "r",
             ok_vlook(SHELL), NULL, n_CHILD_FD_NULL)) == NULL)
          goto jeopencheck;
-   }else if((nbuf = fexpand(file, FEXP_LOCAL)) == NULL)
+   }else if((nbuf = fexpand(file, FEXP_LOCAL | FEXP_NVAR)) == NULL)
       goto jeopencheck;
    else if((fip = Fopen(nbuf, "r")) == NULL){
 jeopencheck:

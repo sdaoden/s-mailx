@@ -608,6 +608,9 @@ FL int c_echoerrn(void *v);
 /* `read' */
 FL int c_read(void *vp);
 
+/* `readall' */
+FL int c_readall(void *vp);
+
 /* `version' */
 FL int c_version(void *vp);
 

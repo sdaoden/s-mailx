@@ -521,6 +521,8 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
 
    { "read", &c_read, (G | M | X | EM | TWYSH), 1, MAC, NULL
      DS(N_("Read a line from standard input into <variable>(s)")) },
+   { "readall", &c_readall, (G | M | X | EM | TWYSH), 1, 1, NULL
+     DS(N_("Read anything from standard input until EOF into <variable>")) },
    { "readctl", &c_readctl, (G | M | X | EM | TARG), 0, 0,
       n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_readctl)
      DS(N_(

@@ -5888,9 +5888,33 @@ hey2.0,:"'you    ",:world!:mars.:
 .Ed
 .
 .Mx
+.It Ic readall
+\*(NQ Read anything from standard input, or the channel set active via
+.Ic readctl ,
+and assign the data to the given variable.
+The variable name is checked by the same rules as documented for
+.Cm vput ,
+and the same error codes will be seen in
+.Va \&! ;
+the exit status
+.Va \&?
+indicates the number of bytes read, it will be
+.Ql -1
+with the error number
+.Va \&!
+set to
+.Va ^ERR Ns -BADF
+in case of I/O errors, or
+.Va ^ERR Ns -NONE
+upon End-Of-File.
+\*(ID The input data length is restricted to 31-bits.
+.
+.Mx
 .It Ic readctl
 \*(NQ Manages input channels for
-.Ic read ,
+.Ic read
+and
+.Ic readall ,
 to be used to avoid complicated or impracticable code, like calling
 .Ic \&\&read
 from within a macro in non-interactive mode.
