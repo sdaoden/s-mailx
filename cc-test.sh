@@ -1746,9 +1746,34 @@ t_behave_vexpr() {
 	vput vexpr res substring 'bananarama' 10 3
 	echo $?/$^ERRNAME :$res:
 	echo ' #3'
+	vput vexpr res substring 'bananarama' -1
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' -3
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' -5
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' -7
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' -9
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' -10
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' 1 -3
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' 3 -3
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' 5 -3
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' 7 -3
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' 9 -3
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' 10 -3
+	echo $?/$^ERRNAME :$res:
+	echo ' #4'
 	__EOT
 
-   check behave:vexpr-string 0 "${MBOX}" '265398700 267'
+   check behave:vexpr-string 0 "${MBOX}" '1344669764 447'
 
    if have_feat regex; then
       ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" #2>/dev/null

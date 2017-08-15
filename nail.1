@@ -6840,80 +6840,91 @@ as
 .Pp
 Character set agnostic string functions have no notion of locale
 settings and character sets.
-There is
-.Ql file-expand ,
-which performs the usual
+.
+.Bl -hang -width ".It Cm random"
+.It Cm file-expand
+Performs the usual
 .Sx "Filename transformations"
-on its argument, and
-.Ql random ,
-which generates a random string of the given length, or of
+on its argument.
+.It Cm random
+Generates a random string of the given length, or of
 .Dv \&\&PATH_MAX
 bytes (a constant from
 .Pa /usr/include )
 if the value 0 is given; the random string will be base64url encoded
 according to RFC 4648, and thus be usable as a (portable) filename.
+.El
 .
 .Pp
 Byte string operations work on 8-bit bytes and have no notion of locale
 settings and character sets, effectively assuming ASCII data.
-Operations that take one argument are
-.Ql length ,
-which queries the length of the given argument, and
-.Ql hash ,
-which calculates the Chris Torek hash of the given argument.
 .
-.Pp
-Byte string operations with two or more arguments are
-.Ql find ,
-which byte-searches in the first for the second argument, and shows the
-resulting 0-based offset shall it have been found,
-.Ql ifind ,
-which is identical to
-.Ql find ,
+.
+.Bl -hang -width ".It Cm length"
+.It Cm length
+Queries the length of the given argument.
+.
+.It Cm hash
+Calculates the Chris Torek hash of the given argument.
+.
+.It Cm find
+Byte-searches in the first for the second argument.
+Shows the resulting 0-based offset shall it have been found.
+.
+.It Cm ifind
+Identical to
+.Cm find ,
 but works case-insensitively according to the rules of the ASCII
 character set.
-.Ql substring
-will show a substring of its first argument:
-the second argument is the 0-based starting offset, the optional third
-argument can be used to specify the length of the desired substring,
-by default the entire string is used;
+.
+.It Cm substring
+Creates a substring of its first argument.
+The second argument is the 0-based starting offset, a negative one
+counts from the end;
+the optional third argument specifies the length of the desired result,
+a negative length leaves off the given number of bytes at the end of the
+original string, by default the entire string is used;
 this operation tries to work around faulty arguments (set
 .Va verbose
 for error logs), but reports them via the error number
 .Va \&!
 as
 .Va ^ERR Ns -OVERFLOW .
+.El
+.
 .
 .Pp
 String operations work, sufficient support provided, according to the
 active user's locale encoding and character set (see
 .Sx "Character sets" ) .
-There is the one argument operation
-.Ql makeprint ,
-which (one-way) converts the argument to something safely printable on
-the terminal.
 .
-.Pp
-\*(OP
-.Ql regex
-is a string operation that will try to match the first argument with the
-regular expression given as the second argument, as does
-.Ql iregex ,
-but which is case-insensitive.
+.
+.Bl -hang -width ".It Cm regex"
+.It Cm makeprint
+(One-way) Converts the argument to something safely printable on the
+terminal.
+.
+.It Cm regex
+\*(OP A string operation that will try to match the first argument with
+the regular expression given as the second argument.
 If the optional third argument has been given then instead of showing
-the match offset a replacement operation is performed:
-the third argument is treated as if specified via dollar-single-quote
-(see
+the match offset a replacement operation is performed: the third
+argument is treated as if specified via dollar-single-quote (see
 .Sx "Shell-style argument quoting" ) ,
 and any occurrence of a positional parameter, e.g.,
 .Va 1 ,
-is replaced by the corresponding match group of the regular expression.
-.
+is replaced by the corresponding match group of the regular expression:
 .Bd -literal -offset indent
 ? vexpr -@ +1 -9223372036854775808
-? vput vexpr res ir bananarama (.*)NanA(.*) '\e${1}au\e$2'
+? vput vexpr res ir bananarama \e
+    (.*)NanA(.*) '\e${1}au\e$2'
 ? echo $0 $res
 .Ed
+.
+.It Cm iregex
+On otherwise identical case-insensitive equivalent to
+.Cm regex .
+.El
 .
 .
 .Mx

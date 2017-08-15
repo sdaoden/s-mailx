@@ -3092,10 +3092,16 @@ jenum_plusminus:
                ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
             ) != n_IDEC_STATE_CONSUMED)
          goto jestr_numrange;
+      if(lhv < 0){
+         if(UICMP(64, i, <, -lhv))
+            goto jesubstring_off;
+         lhv = i + lhv;
+      }
       if(UICMP(64, i, >=, lhv)){
          i -= lhv;
          varres += lhv;
       }else{
+jesubstring_off:
          if(n_poption & n_PO_D_V)
             n_err(_("`vexpr': substring: offset argument too large: %s\n"),
                n_shexp_quote_cp(argv[-1], FAL0));
@@ -3109,10 +3115,16 @@ jenum_plusminus:
                   ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
                ) != n_IDEC_STATE_CONSUMED)
             goto jestr_numrange;
+         if(lhv < 0){
+            if(UICMP(64, i, <, -lhv))
+               goto jesubstring_len;
+            lhv = i + lhv;
+         }
          if(UICMP(64, i, >=, lhv)){
             if(UICMP(64, i, !=, lhv))
                varres = savestrbuf(varres, (size_t)lhv);
          }else{
+jesubstring_len:
             if(n_poption & n_PO_D_V)
                n_err(_("`vexpr': substring: length argument too large: %s\n"),
                   n_shexp_quote_cp(argv[-2], FAL0));
