@@ -189,8 +189,6 @@ cc_all_configs() {
          printf "CONFIG=NULLI OPT_AUTOCC=1\n"
          printf "CONFIG=MINIMAL OPT_AUTOCC=0\n"
          printf "CONFIG=MINIMAL OPT_AUTOCC=1\n"
-         printf "CONFIG=MEDIUM OPT_AUTOCC=0\n"
-         printf "CONFIG=MEDIUM OPT_AUTOCC=1\n"
          printf "CONFIG=NETSEND OPT_AUTOCC=0\n"
          printf "CONFIG=NETSEND OPT_AUTOCC=1\n"
          printf "CONFIG=MAXIMAL OPT_AUTOCC=0\n"
