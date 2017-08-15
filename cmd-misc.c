@@ -456,7 +456,7 @@ c_read(void * volatile vp){
       }
    }else{
       trim.s = linebuf;
-      trim.l = linesize;
+      trim.l = rv;
 
       for(; *argv != NULL; ++argv){
          if(trim.l == 0 || n_str_trim_ifs(&trim, FAL0)->l == 0)
@@ -487,7 +487,6 @@ jitall:
    }
 
    /* Set the remains to the empty string */
-jleave:
    for(; *argv != NULL; ++argv)
       if(!a_cmisc_read_set(*argv, n_empty)){
          n_pstate_err_no = n_ERR_NOTSUP;
@@ -496,7 +495,7 @@ jleave:
       }
 
    n_sigman_cleanup_ping(&sm);
-
+jleave:
    if(linebuf != NULL)
       n_free(linebuf);
    NYD2_LEAVE;

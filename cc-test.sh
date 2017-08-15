@@ -2114,7 +2114,7 @@ t_behave_read() {
    echo $?/$^ERRNAME / <$a><$b><$c>
    read a b c
    echo $?/$^ERRNAME / <$a><$b><$c>
-   read a b c
+   unset a b c;read a b c
    echo $?/$^ERRNAME / <$a><$b><$c>
    readctl remove ./.tin;echo readctl remove:$?/$^ERRNAME
 	__EOT
@@ -2144,7 +2144,7 @@ t_behave_read() {
    echo $?/$^ERRNAME / <$a><$b><$c>
    read a b c
    echo $?/$^ERRNAME / <$a><$b><$c>
-   read a b c
+   unset a b c;read a b c
    echo $?/$^ERRNAME / <$a><$b><$c>
    read a b c
    echo $?/$^ERRNAME / <$a><$b><$c>
@@ -3167,7 +3167,8 @@ __EOT__
             return $i
          }
          define _read {
-            read line;wysh set es=$? en=$^ERRNAME ; echo read:$es/$en: $line
+            wysh set line; read line;wysh set es=$? en=$^ERRNAME ;\
+               echo read:$es/$en: $line
             if [ "${es}" -ne -1 ]
                xcall _read
             end
