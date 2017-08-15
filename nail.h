@@ -1718,7 +1718,7 @@ ok_v_sendmail_progname,
    ok_b_showto,
    ok_v_Sign,
    ok_v_sign,
-   ok_v_signature,
+ok_v_signature,
    ok_b_skipemptybody,                 /* {vip=1} */
    ok_v_smime_ca_dir,
    ok_v_smime_ca_file,

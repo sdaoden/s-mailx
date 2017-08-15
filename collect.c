@@ -2394,7 +2394,7 @@ jearg:
          break;
       case 'a':
       case 'A':
-         /* Insert the contents of a signature variable */
+         /* Insert the contents of a sign variable */
          if(cnt != 0)
             goto jearg;
          cp = (c == 'a') ? ok_vlook(sign) : ok_vlook(Sign);
@@ -2662,8 +2662,11 @@ jout:
       goto jskiptails;
 
    /* Place signature? */
-   if((cp = ok_vlook(signature)) != NULL && *cp != '\0'){
+   if((cp = ok_vlook(signature)) != NULL && *cp != '\0'){ /* TODO OBSOLETE */
       char const *cpq;
+
+      n_OBSOLETE(_("please use *on-compose-{leave,splice}* and/or "
+         "*message-inject-tail*, not *signature*"));
 
       if((cpq = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL){
          n_err(_("*signature* expands to invalid file: %s\n"),

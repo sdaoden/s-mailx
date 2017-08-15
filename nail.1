@@ -411,8 +411,7 @@ set to the given
 .Ar type
 and use it as the main message body.
 \*(ID Using this option will bypass processing of
-.Va message-inject-head ,
-.Va signature
+.Va message-inject-head
 and
 .Va message-inject-tail .
 Also see
@@ -424,8 +423,7 @@ Special send mode that will MIME classify the specified
 .Ar file
 and use it as the main message body.
 \*(ID Using this option will bypass processing of
-.Va message-inject-head ,
-.Va signature
+.Va message-inject-head
 and
 .Va message-inject-tail .
 Also see
@@ -1059,7 +1057,7 @@ as well as
 variables, the former also to be set to a
 .Ic define Ns
 d macro, increasingly powerful mechanisms to perform automated message
-adjustments are available.
+adjustments, including signature creation, are available.
 (\*(ID These hooks work for commands which newly create messages, namely
 .Ic forward , mail , reply
 and variants;
@@ -9692,34 +9690,39 @@ This hook is run even in case of fatal errors, and it is advisable to
 perform only absolutely necessary actions, like cleaning up
 .Ic alternates ,
 for example.
+.Pp
 For compose mode hooks that may affect the message content please see
 .Va on-compose-enter , on-compose-leave , on-compose-splice .
-\*(ID This hook exists only because
+\*(ID This hook exists because
 .Ic alias , alternates , commandalias , shortcut ,
-to name a few, are currently not covered by
-.Ic localopts
-or a similar mechanism: any changes applied in compose mode will
-continue to be in effect thereafter.
+to name a few, are not covered by
+.Ic localopts :
+changes applied in compose mode will continue to be in effect thereafter.
+.
 .
 .Mx
 .Mx
 .It Va on-compose-enter , on-compose-leave
-Macro hooks which will be called before compose mode is entered,
-and after composing has been finished (but before the
-.Va signature
-is injected, etc.), respectively.
+Macro hooks which will be called once compose mode is entered,
+and after composing has been finished, but before a set
+.Va message-inject-tail
+has been injected etc., respectively.
 .Ic localopts
-are enabled for these hooks, causing any setting to be forgotten after
-the message has been sent;
+are enabled for these hooks, and changes on variables will be forgotten
+after the message has been sent.
 .Va on-compose-cleanup
-can be used to perform any other necessary cleanup.
+can be used to perform other necessary cleanup steps.
+.Pp
 The following (read-only) variables will be set temporarily during
 execution of the macros to represent the according message headers, or
 the empty string for non-existent; they correspond to accoding virtual
-temporary message headers that can be accessed via
+temporary message headers that can be accessed (also from within
+.Va on-compose-splice
+hooks) via
 .Ic ~^ ,
 one of the
 .Sx "COMMAND ESCAPES" :
+.
 .Pp
 .Bl -tag -compact -width ".It Va mailx_subject"
 .It Va mailx-command
@@ -9747,6 +9750,37 @@ When replying, forwarding or resending, this will be set to the
 receivers of the given message.
 .El
 .
+.Pp
+Here is am example that injects a signature via
+.Va message-inject-tail ;
+instead using
+.Va on-compose-splice
+to simply inject the file of desire via
+.Ic ~<
+or
+.Ic ~<!
+may be a better approach.
+.
+.Bd -literal -offset indent
+define t_ocl {
+  vput ! i cat ~/.mysig
+  if [ $? -eq 0 ]
+     vput vexpr message-inject-tail trim-end $i
+  end
+  return
+  # Alternatively
+  readctl create ~/.mysig
+  if [ $? -eq 0 ]
+    readall i
+    if [ $? -eq 0 ]
+      vput vexpr message-inject-tail trim-end $i
+    end
+    readctl remove ~/.mysig
+  end
+}
+set on-compose-leave=t_ocl
+.Ed
+.
 .
 .Mx
 .Mx
@@ -9754,7 +9788,7 @@ receivers of the given message.
 These hooks run once the normal compose mode is finished, but before the
 .Va on-compose-leave
 macro hook is called, the
-.Va signature
+.Va message-inject-tail
 is injected etc.
 Both hooks will be executed in a subprocess, with their input and output
 connected to \*(UA such that they can act as if they would be an
@@ -9805,6 +9839,12 @@ it is likely that in the future these scripts will be placed in an
 isolated session, which is signalled in its entirety as necessary.
 .
 .Bd -literal -offset indent
+define ocs_signature {
+  read version
+  echo '~< ~/.mysig' # '~<! fortune pathtofortunefile'
+}
+set on-compose-splice=ocs_signature
+
 wysh set on-compose-splice-shell=$'\e
   read version;\e
   printf "hello $version!  Headers: ";\e
@@ -9813,10 +9853,9 @@ wysh set on-compose-splice-shell=$'\e
   echo "status=$status result=$result";\e
   '
 
-set on-compose-splice=ocsm
 define ocsm {
-  read ver
-  echo Splice protocol version is $ver
+  read version
+  echo Splice protocol version is $version
   echo '~^h l'; read hl; vput vexpr es substring "${hl}" 0 1
   if [ "$es" != 2 ]
     echoerr 'Cannot read header list'; echo '~x'; xit
@@ -9826,9 +9865,11 @@ define ocsm {
       vput vexpr es substring "${es}" 0 1
     if [ "$es" != 2 ]
       echoerr 'Cannot insert Cc: header'; echo '~x'
+      # (no xit, macro finishs anyway)
     endif
   endif
 }
+set on-compose-splice=ocsm
 .Ed
 .
 .
@@ -10510,11 +10551,15 @@ to (see
 .
 .Mx
 .It Va signature
-Must correspond to the name of a readable file if set.
-The file's content is then appended to each singlepart message
-and to the first part of each multipart message.
-Be warned that there is no possibility to edit the signature for an
-individual message.
+\*(OB Please use
+.Va on-compose-splice
+or
+.Va on-compose-splice-shell
+or
+.Va on-compose-leave
+and (if necessary)
+.Va message-inject-tail
+instead!
 .
 .Mx
 .It Va skipemptybody
