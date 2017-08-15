@@ -2235,7 +2235,7 @@ jfound:
          fp = safe_fopen(emsg, "r", NULL);
       }else if(fd == STDIN_FILENO || fd == STDOUT_FILENO ||
             fd == STDERR_FILENO){
-         n_err(_("`readctl': create: standard descriptors are not allowed"));
+         n_err(_("`readctl': create: standard descriptors are not allowed\n"));
          goto jeinval;
       }else{
          /* xxx Avoid */
