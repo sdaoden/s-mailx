@@ -259,12 +259,15 @@ os_setup() {
    : ${OSFULLSPEC:=`uname -a`}
    msg 'Operating system is %s' ${OS}
 
-   if [ ${OS} = sunos ]; then
+   if [ ${OS} = darwin ]; then
+      msg ' . have special Darwin environmental addons...'
+      LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${DYLD_LIBRARY_PATH}
+   elif [ ${OS} = sunos ]; then
       msg ' . have special SunOS / Solaris "setup" rules ...'
       _os_setup_sunos
    elif [ ${OS} = unixware ]; then
-      msg ' . have special UnixWare environmental rules ...'
       if feat_yes AUTOCC && command -v cc >/dev/null 2>&1; then
+         msg ' . have special UnixWare environmental rules ...'
          CC=cc
          feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
 
@@ -286,19 +289,19 @@ os_setup() {
 
    # On pkgsrc(7) systems automatically add /usr/pkg/*
    if [ -d /usr/pkg ]; then
-      C_INCLUDE_PATH="/usr/pkg/include:${C_INCLUDE_PATH}"
-      LD_LIBRARY_PATH="/usr/pkg/lib:${LD_LIBRARY_PATH}"
+      C_INCLUDE_PATH=/usr/pkg/include:${C_INCLUDE_PATH}
+      LD_LIBRARY_PATH=/usr/pkg/lib:${LD_LIBRARY_PATH}
    fi
 }
 
 _os_setup_sunos() {
-   C_INCLUDE_PATH="/usr/xpg4/include:${C_INCLUDE_PATH}"
-   LD_LIBRARY_PATH="/usr/xpg4/lib:${LD_LIBRARY_PATH}"
+   C_INCLUDE_PATH=/usr/xpg4/include:${C_INCLUDE_PATH}
+   LD_LIBRARY_PATH=/usr/xpg4/lib:${LD_LIBRARY_PATH}
 
    # Include packages
    if [ -d /opt/csw ]; then
-      C_INCLUDE_PATH="/opt/csw/include:${C_INCLUDE_PATH}"
-      LD_LIBRARY_PATH="/opt/csw/lib:${LD_LIBRARY_PATH}"
+      C_INCLUDE_PATH=/opt/csw/include:${C_INCLUDE_PATH}
+      LD_LIBRARY_PATH=/opt/csw/lib:${LD_LIBRARY_PATH}
    fi
 
    OS_DEFINES="${OS_DEFINES}#define __EXTENSIONS__\n"
