@@ -1549,6 +1549,9 @@ jforce_stdin:
                n_MEMORY_DEBUG_ARGSCALL);
 
          hold_all_sigs();
+
+         if(n < 0 && !ferror(ifile)) /* EOF never i guess */
+            a_go_ctx->gc_flags |= a_GO_IS_EOF;
       }else{
          if(!(gif & n_GO_INPUT_PROMPT_NONE))
             n_tty_create_prompt(&xprompt, prompt, gif);
@@ -1565,7 +1568,7 @@ jforce_stdin:
 
          hold_all_sigs();
 
-         if(n < 0 && feof(ifile))
+         if(n < 0 && !ferror(ifile))
             a_go_ctx->gc_flags |= a_GO_IS_EOF;
 
          if(n > 0 && nold > 0){
