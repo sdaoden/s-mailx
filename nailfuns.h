@@ -2234,7 +2234,7 @@ FL struct str * n_str_add_buf(struct str *self, char const *buf, uiz_t buflen
  * The ->s and ->l of the string will be adjusted, but no NUL termination will
  * be applied to a possibly adjusted buffer!
  * If dofaults is set, " \t\n" is always trimmed (in addition) */
-FL struct str *n_str_trim(struct str *self);
+FL struct str *n_str_trim(struct str *self, enum n_str_trim_flags stf);
 FL struct str *n_str_trim_ifs(struct str *self, bool_t dodefaults);
 
 /* struct n_string

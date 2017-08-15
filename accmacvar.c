@@ -3131,7 +3131,28 @@ jesubstring_len:
             f |= a_SOFTOVERFLOW;
          }
       }
-   }else if(is_asccaseprefix(cp, "random")){
+   }else if(is_asccaseprefix(cp, "trim")) Jtrim: {
+      struct str trim;
+      enum n_str_trim_flags stf;
+
+      if(argv[1] == NULL || argv[2] != NULL)
+         goto jesynopsis;
+
+      if(is_asccaseprefix(cp, "trim-front"))
+         stf = n_STR_TRIM_FRONT;
+      else if(is_asccaseprefix(cp, "trim-end"))
+         stf = n_STR_TRIM_END;
+      else
+         stf = n_STR_TRIM_BOTH;
+
+      trim.l = strlen(trim.s = n_UNCONST(argv[1]));
+      (void)n_str_trim(&trim, stf);
+      varres = savestrbuf(trim.s, trim.l);
+   }else if(is_asccaseprefix(cp, "trim-front"))
+      goto Jtrim;
+   else if(is_asccaseprefix(cp, "trim-end"))
+      goto Jtrim;
+   else if(is_asccaseprefix(cp, "random")){
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
 

@@ -235,7 +235,7 @@ a_me_b64_decode_prepare(struct str *work, struct str const *in){
    NYD2_ENTER;
 
    *work = *in;
-   cp_len = n_str_trim(work)->l;
+   cp_len = n_str_trim(work, n_STR_TRIM_BOTH)->l;
 
    if(cp_len > 16){
       /* n_ERR_OVERFLOW */

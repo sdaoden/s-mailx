@@ -639,14 +639,14 @@ FL struct str *
 }
 
 FL struct str *
-n_str_trim(struct str *self){
+n_str_trim(struct str *self, enum n_str_trim_flags stf){
    size_t l;
    char const *cp;
    NYD2_ENTER;
 
    cp = self->s;
 
-   if((l = self->l) > 0){
+   if((l = self->l) > 0 && (stf & n_STR_TRIM_FRONT)){
       while(spacechar(*cp)){
          ++cp;
          if(--l == 0)
@@ -655,7 +655,7 @@ n_str_trim(struct str *self){
       self->s = n_UNCONST(cp);
    }
 
-   if(l > 0){
+   if(l > 0 && (stf & n_STR_TRIM_END)){
       for(cp += l -1; spacechar(*cp); --cp)
          if(--l == 0)
             break;

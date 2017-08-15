@@ -1185,6 +1185,12 @@ enum ssl_verify_level {
 };
 #endif
 
+enum n_str_trim_flags{
+   n_STR_TRIM_FRONT = 1u<<0,
+   n_STR_TRIM_END = 1u<<1,
+   n_STR_TRIM_BOTH = n_STR_TRIM_FRONT | n_STR_TRIM_END
+};
+
 enum tdflags {
    TD_NONE,                   /* no display conversion */
    TD_ISPR        = 1<<0,     /* use isprint() checks */

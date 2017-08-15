@@ -295,7 +295,7 @@ _mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
 
       work.s = n_UNCONST(line);
       work.l = len;
-      line = n_str_trim(&work)->s;
+      line = n_str_trim(&work, n_STR_TRIM_BOTH)->s;
       len = work.l;
    }
    typ = line;

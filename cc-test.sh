@@ -1771,9 +1771,21 @@ t_behave_vexpr() {
 	vput vexpr res substring 'bananarama' 10 -3
 	echo $?/$^ERRNAME :$res:
 	echo ' #4'
+	vput vexpr res trim 'Cocoon  Cocoon'
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res trim '  Cocoon  Cocoon 	  '
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res trim-front 'Cocoon  Cocoon'
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res trim-front '  Cocoon  Cocoon 	  '
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res trim-end 'Cocoon  Cocoon'
+	echo $?/$^ERRNAME :$res:
+	vput vexpr res trim-end '  Cocoon  Cocoon 	  '
+	echo $?/$^ERRNAME :$res:
 	__EOT
 
-   check behave:vexpr-string 0 "${MBOX}" '1344669764 447'
+   check behave:vexpr-string 0 "${MBOX}" '3182004322 601'
 
    if have_feat regex; then
       ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" #2>/dev/null

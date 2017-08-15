@@ -6890,6 +6890,15 @@ for error logs), but reports them via the error number
 .Va \&!
 as
 .Va ^ERR Ns -OVERFLOW .
+.
+.It Cm trim
+Trim away whitespace characters from both ends of the argument.
+.
+.It Cm trim-front
+Trim away whitespace characters from the begin of the argument.
+.
+.It Cm trim-end
+Trim away whitespace characters from the end of the argument.
 .El
 .
 .
@@ -9261,21 +9270,29 @@ MIME header fields.
 .
 .Mx
 .It Va message-inject-head
-A string to put at the beginning of each new message.
-The escape sequences tabulator
+A string to put at the beginning of each new message, followed by a newline.
+\*(OB The escape sequences tabulator
 .Ql \et
 and newline
 .Ql \en
-are understood.
+are understood (use the
+.Cm wysh
+prefix when
+.Ic set Ns
+ting the variable(s) instead).
 .
 .Mx
 .It Va message-inject-tail
-A string to put at the end of each new message.
-The escape sequences tabulator
+A string to put at the end of each new message, followed by a newline.
+\*(OB The escape sequences tabulator
 .Ql \et
 and newline
 .Ql \en
-are understood.
+are understood (use the
+.Cm wysh
+prefix when
+.Ic set Ns
+ting the variable(s) instead).
 .
 .Mx
 .It Va metoo
