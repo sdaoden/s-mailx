@@ -1,6 +1,8 @@
 #@ make-config.in -- mk-config.mk template, completed by make-config.sh.
 #@ Please see INSTALL and make.rc instead.
 
+.PHONY: all test install uninstall clean distclean
+
 SIZE_CHECK = @if ( command -v size ) > /dev/null 2>&1; then size $(@); fi
 
 _version_from_header = VERSION="`< gen-version.h $(sed) \
