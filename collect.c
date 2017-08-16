@@ -113,6 +113,7 @@ static void       _collint(int s);
 
 static void       collhup(int s);
 
+/* ~[AaIi], *message-inject-**: put value, expand \[nt] if *posix* */
 static bool_t a_coll_putesc(char const *s, bool_t addnl, FILE *stream);
 
 /* *on-compose-splice* driver and *on-compose-splice(-shell)?* finalizer */
@@ -1643,42 +1644,35 @@ collhup(int s)
 }
 
 static bool_t
-a_coll_putesc(char const *s, bool_t addnl, FILE *stream) /* TODO: v15: drop */
-{
-   bool_t rv;
-   NYD_ENTER;
+a_coll_putesc(char const *s, bool_t addnl, FILE *stream){
+   char c1, c2;
+   bool_t isposix;
+   NYD2_ENTER;
 
-   rv = FAL0;
+   isposix = ok_blook(posix);
 
-   while (s[0] != '\0') { /* TODO v15: user resp upon `set' time! */
-      if (s[0] == '\\') {
-         if (s[1] == 't') {
-            if (putc('\t', stream) == EOF)
-               goto jleave;
-            s += 2;
-            continue;
+   while((c1 = *s++) != '\0'){
+      if(c1 == '\\' && ((c2 = *s) == 't' || c2 == 'n')){
+         if(!isposix){
+            isposix = TRU1; /* TODO v15 OBSOLETE! */
+            n_err(_("Compose mode warning: expanding \\t or \\n in variable "
+                  "without *posix*!"
+               "\n  Support remains only for ~A,~a,~I,~i in *posix* mode!\n"));
          }
-         if (s[1] == 'n') {
-            if (putc('\n', stream) == EOF)
-               goto jleave;
-            s += 2;
-            continue;
-         }
+         ++s;
+         c1 = (c2 == 't') ? '\t' : '\n';
       }
-      if (putc(s[0], stream) == EOF)
-         goto jleave;
-      ++s;
-   }
 
-   if(addnl){
-      if(putc('\n', stream) == EOF)
+      if(putc(c1, stream) == EOF)
          goto jleave;
    }
 
-   rv = TRU1;
+   if(addnl && putc('\n', stream) == EOF)
+      goto jleave;
+
 jleave:
-   NYD_LEAVE;
-   return rv;
+   NYD2_LEAVE;
+   return (c1 == '\0');
 }
 
 static int
@@ -2122,6 +2116,7 @@ jputnl:
          }
       }
 
+      /* Switch over all command escapes */
       switch(c){
       default:
          if(1){
@@ -2155,8 +2150,12 @@ jearg:
             n_pstate_ex_no = c_shell(argv); /* TODO history norm.; errexit? */
          }
          goto jhistcont;
+      case '.':
+         /* Simulate end of file on input */
+         if(cnt != 0 || coap != NULL)
+            goto jearg;
+         goto jout; /* TODO does not enter history, thus */
       case ':':
-         /* FALLTHRU */
       case '_':
          /* Escape to command mode, but be nice! *//* TODO command expansion
           * TODO should be handled here so that we have unique history! */
@@ -2172,88 +2171,42 @@ jearg:
          if(coap == NULL)
             escape = *ok_vlook(escape);
          break;
-      case '.':
-         /* Simulate end of file on input */
-         if(cnt != 0 || coap != NULL)
-            goto jearg;
-         goto jout; /* TODO does not enter history, thus */
-      case 'x':
-         /* Same as 'q', but no *DEAD* saving */
-         /* FALLTHRU */
-      case 'q':
-         /* Force a quit, act like an interrupt had happened */
+      /* case '<': <> 'd' */
+      case '?':
+         fputs(_(
+"COMMAND ESCAPES (to be placed after a newline) excerpt:\n"
+"~.            Commit and send message\n"
+"~: <command>  Execute an internal command\n"
+"~< <file>     Insert <file> (\"~<! <command>\" inserts shell command)\n"
+"~@ [<files>]  Edit[/Add] attachments (file[=input-charset[#output-charset]])\n"
+"~c <users>    Add users to Cc: list (`~b': to Bcc:)\n"
+"~d            Read in $DEAD (dead.letter)\n"
+"~e            Edit message via $EDITOR\n"
+"~F <msglist>  Read in with headers, do not *indentprefix* lines\n"
+            ), n_stdout);
+         fputs(_(
+"~f <msglist>  Like ~F, but honour `ignore' / `retain' configuration\n"
+"~H            Edit From:, Reply-To: and Sender:\n"
+"~h            Prompt for Subject:, To:, Cc: and \"blind\" Bcc:\n"
+"~i <variable> Insert a value and a newline\n"
+"~M <msglist>  Read in with headers, *indentprefix* (`~m': `retain' etc.)\n"
+"~p            Show current message compose buffer\n"
+"~r <file>     Insert <file> (`~R': likewise, but *indentprefix* lines)\n"
+"              <file> may also be <- [HERE-DELIMITER]>\n"
+            ), n_stdout);
+         fputs(_(
+"~s <subject>  Set Subject:\n"
+"~t <users>    Add users to To: list\n"
+"~u <msglist>  Read in message(s) without headers (`~U': indent lines)\n"
+"~v            Edit message via $VISUAL\n"
+"~w <file>     Write message onto file\n"
+"~x            Abort composition, discard message (`~q': save in $DEAD)\n"
+"~| <command>  Pipe message through shell filter\n"
+            ), n_stdout);
          if(cnt != 0)
             goto jearg;
-         /* If we are running a splice hook, assume it quits on its own now,
-          * otherwise we (no true out-of-band IPC to signal this state, XXX sic)
-          * have to SIGTERM it in order to stop this wild beast */
-         flags |= a_COAP_NOSIGTERM;
-         ++_coll_hadintr;
-         _collint((c == 'x') ? 0 : SIGINT);
-         exit(n_EXIT_ERR);
-         /*NOTREACHED*/
-      case 'h':
-         /* Grab a bunch of headers */
-         if(cnt != 0)
-            goto jearg;
-         do
-            grab_headers(n_GO_INPUT_CTX_COMPOSE, hp,
-              (GTO | GSUBJECT | GCC | GBCC),
-              (ok_blook(bsdcompat) && ok_blook(bsdorder)));
-         while(hp->h_to == NULL);
-         n_pstate_err_no = n_ERR_NONE; /* XXX */
-         n_pstate_ex_no = 0; /* XXX */
-         break;
-      case 'H':
-         /* Grab extra headers */
-         if(cnt != 0)
-            goto jearg;
-         do
-            grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, GEXTRA, 0);
-         while(check_from_and_sender(hp->h_from, hp->h_sender) == NULL);
-         n_pstate_err_no = n_ERR_NONE; /* XXX */
-         n_pstate_ex_no = 0; /* XXX */
-         break;
-      case 't':
-         /* Add to the To: list */
-         if(cnt == 0)
-            goto jearg;
-         else{
-            struct name *np;
-            si8_t soe;
-
-            soe = 0;
-            if((np = checkaddrs(lextract(cp, GTO | GFULL), EACM_NORMAL, &soe)
-                  ) != NULL)
-               hp->h_to = cat(hp->h_to, np);
-            if(soe == 0){
-               n_pstate_err_no = n_ERR_NONE;
-               n_pstate_ex_no = 0;
-            }else{
-               n_pstate_ex_no = 1;
-               n_pstate_err_no = (soe < 0) ? n_ERR_PERM : n_ERR_INVAL;
-            }
-         }
-         hist &= ~a_HIST_GABBY;
-         break;
-      case 's':
-         /* Set the Subject list */
-         if(cnt == 0)
-            goto jearg;
-         /* Subject:; take care for Debian #419840 and strip any \r and \n */
-         if(n_anyof_cp("\n\r", hp->h_subject = savestr(cp))){
-            char *xp;
-
-            n_err(_("-s: normalizing away invalid ASCII NL / CR bytes\n"));
-            for(xp = hp->h_subject; *xp != '\0'; ++xp)
-               if(*xp == '\n' || *xp == '\r')
-                  *xp = ' ';
-            n_pstate_err_no = n_ERR_INVAL;
-            n_pstate_ex_no = 1;
-         }else{
-            n_pstate_err_no = n_ERR_NONE;
-            n_pstate_ex_no = 0;
-         }
+         n_pstate_err_no = n_ERR_NONE;
+         n_pstate_ex_no = 0;
          break;
       case '@':{
          struct attachment *aplist;
@@ -2269,30 +2222,39 @@ jearg:
          n_pstate_err_no = n_ERR_NONE; /* XXX ~@ does NOT handle $!/$?! */
          n_pstate_ex_no = 0; /* XXX */
       }  break;
-      case 'c':
-         /* Add to the CC list */
-         if(cnt == 0)
+      case '^':
+         if(!a_collect_plumbing(cp, hp)){
+            if(ferror(_coll_fp))
+               goto jerr;
             goto jearg;
-         else{
-            struct name *np;
-            si8_t soe;
-
-            soe = 0;
-            if((np = checkaddrs(lextract(cp, GCC | GFULL), EACM_NORMAL, &soe)
-                  ) != NULL)
-               hp->h_cc = cat(hp->h_cc, np);
-            if(soe == 0){
-               n_pstate_err_no = n_ERR_NONE;
-               n_pstate_ex_no = 0;
-            }else{
-               n_pstate_ex_no = 1;
-               n_pstate_err_no = (soe < 0) ? n_ERR_PERM : n_ERR_INVAL;
-            }
          }
+         n_pstate_err_no = n_ERR_NONE; /* XXX */
+         n_pstate_ex_no = 0; /* XXX */
          hist &= ~a_HIST_GABBY;
          break;
+      /* case '_': <> ':' */
+      case '|':
+         /* Pipe message through command. Collect output as new message */
+         if(cnt == 0)
+            goto jearg;
+         rewind(_coll_fp);
+         if((n_pstate_err_no = a_coll_pipe(cp)) == n_ERR_NONE)
+            n_pstate_ex_no = 0;
+         else if(a_HARDERR())
+            goto jerr;
+         else
+            n_pstate_ex_no = 1;
+         hist &= ~a_HIST_GABBY;
+         goto jhistcont;
+      case 'A':
+      case 'a':
+         /* Insert the contents of a sign variable */
+         if(cnt != 0)
+            goto jearg;
+         cp = (c == 'a') ? ok_vlook(sign) : ok_vlook(Sign);
+         goto jIi_putesc;
       case 'b':
-         /* Add stuff to blind carbon copies list */
+         /* Add stuff to blind carbon copies list TODO join 'c' */
          if(cnt == 0)
             goto jearg;
          else{
@@ -2313,15 +2275,36 @@ jearg:
          }
          hist &= ~a_HIST_GABBY;
          break;
+      case 'c':
+         /* Add to the CC list TODO join 'b' */
+         if(cnt == 0)
+            goto jearg;
+         else{
+            struct name *np;
+            si8_t soe;
+
+            soe = 0;
+            if((np = checkaddrs(lextract(cp, GCC | GFULL), EACM_NORMAL, &soe)
+                  ) != NULL)
+               hp->h_cc = cat(hp->h_cc, np);
+            if(soe == 0){
+               n_pstate_err_no = n_ERR_NONE;
+               n_pstate_ex_no = 0;
+            }else{
+               n_pstate_ex_no = 1;
+               n_pstate_err_no = (soe < 0) ? n_ERR_PERM : n_ERR_INVAL;
+            }
+         }
+         hist &= ~a_HIST_GABBY;
+         break;
       case 'd':
          if(cnt != 0)
             goto jearg;
          cp = n_getdeadletter();
          if(0){
-            /*FALLTHRU*/
+      case '<':
       case 'R':
       case 'r':
-      case '<':
             /* Invoke a file: Search for the file name, then open it and copy
              * the contents to _coll_fp */
             if(cnt == 0){
@@ -2377,12 +2360,72 @@ jearg:
          n_pstate_err_no = n_ERR_NONE; /* XXX */
          n_pstate_ex_no = 0; /* XXX */
          break;
-      case 'i':
+      case 'e':
+      case 'v':
+         /* Edit the current message.  'e' -> use EDITOR, 'v' -> use VISUAL */
+         if(cnt != 0 || coap != NULL)
+            goto jearg;
+         rewind(_coll_fp);
+         if((n_pstate_err_no = a_coll_edit(c, ok_blook(editheaders) ? hp : NULL)
+               ) == n_ERR_NONE)
+            n_pstate_ex_no = 0;
+         else if(ferror(_coll_fp))
+            goto jerr;
+         else if(a_HARDERR())
+            goto jerr;
+         else
+            n_pstate_ex_no = 1;
+         goto jhistcont;
+      case 'F':
+      case 'f':
+      case 'M':
+      case 'm':
+      case 'U':
+      case 'u':
+         /* Interpolate the named messages, if we are in receiving mail mode.
+          * Does the standard list processing garbage.  If ~f is given, we
+          * don't shift over */
+         if(cnt == 0)
+            goto jearg;
+         if((n_pstate_err_no = a_coll_forward(cp, _coll_fp, c)) == n_ERR_NONE)
+            n_pstate_ex_no = 0;
+         else if(ferror(_coll_fp))
+            goto jerr;
+         else if(a_HARDERR())
+            goto jerr;
+         else
+            n_pstate_ex_no = 1;
+         break;
+      case 'H':
+         /* Grab extra headers */
+         if(cnt != 0)
+            goto jearg;
+         do
+            grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, GEXTRA, 0);
+         while(check_from_and_sender(hp->h_from, hp->h_sender) == NULL);
+         n_pstate_err_no = n_ERR_NONE; /* XXX */
+         n_pstate_ex_no = 0; /* XXX */
+         break;
+      case 'h':
+         /* Grab a bunch of headers */
+         if(cnt != 0)
+            goto jearg;
+         do
+            grab_headers(n_GO_INPUT_CTX_COMPOSE, hp,
+              (GTO | GSUBJECT | GCC | GBCC),
+              (ok_blook(bsdcompat) && ok_blook(bsdorder)));
+         while(hp->h_to == NULL);
+         n_pstate_err_no = n_ERR_NONE; /* XXX */
+         n_pstate_ex_no = 0; /* XXX */
+         break;
       case 'I':
+      case 'i':
          /* Insert a variable into the file */
          if(cnt == 0)
             goto jearg;
-         if((cp = n_var_vlook(cp, TRU1)) == NULL || *cp == '\0')
+         cp = n_var_vlook(cp, TRU1);
+jIi_putesc:
+         if(cp == NULL || *cp == '\0')
             break;
          if(!a_coll_putesc(cp, (c != 'I'), _coll_fp))
             goto jerr;
@@ -2392,22 +2435,77 @@ jearg:
          n_pstate_err_no = n_ERR_NONE; /* XXX */
          n_pstate_ex_no = 0; /* XXX */
          break;
-      case 'a':
-      case 'A':
-         /* Insert the contents of a sign variable */
+      /* case 'M': <> 'F' */
+      /* case 'm': <> 'f' */
+      case 'p':
+         /* Print current state of the message without altering anything */
          if(cnt != 0)
             goto jearg;
-         cp = (c == 'a') ? ok_vlook(sign) : ok_vlook(Sign);
-         if(cp != NULL && *cp != '\0'){
-            if(!a_coll_putesc(cp, TRU1, _coll_fp))
-               goto jerr;
-            if((n_psonce & n_PSO_INTERACTIVE) &&
-                  !a_coll_putesc(cp, TRU1, n_stdout))
-               goto jerr;
-         }
+         print_collf(_coll_fp, hp); /* XXX pstate_err_no ++ */
+         if(ferror(_coll_fp))
+            goto jerr;
          n_pstate_err_no = n_ERR_NONE; /* XXX */
          n_pstate_ex_no = 0; /* XXX */
          break;
+      case 'q':
+      case 'x':
+         /* Force a quit, act like an interrupt had happened */
+         if(cnt != 0)
+            goto jearg;
+         /* If we are running a splice hook, assume it quits on its own now,
+          * otherwise we (no true out-of-band IPC to signal this state, XXX sic)
+          * have to SIGTERM it in order to stop this wild beast */
+         flags |= a_COAP_NOSIGTERM;
+         ++_coll_hadintr;
+         _collint((c == 'x') ? 0 : SIGINT);
+         exit(n_EXIT_ERR);
+         /*NOTREACHED*/
+      /* case 'R': <> 'd' */
+      /* case 'r': <> 'd' */
+      case 's':
+         /* Set the Subject list */
+         if(cnt == 0)
+            goto jearg;
+         /* Subject:; take care for Debian #419840 and strip any \r and \n */
+         if(n_anyof_cp("\n\r", hp->h_subject = savestr(cp))){
+            char *xp;
+
+            n_err(_("-s: normalizing away invalid ASCII NL / CR bytes\n"));
+            for(xp = hp->h_subject; *xp != '\0'; ++xp)
+               if(*xp == '\n' || *xp == '\r')
+                  *xp = ' ';
+            n_pstate_err_no = n_ERR_INVAL;
+            n_pstate_ex_no = 1;
+         }else{
+            n_pstate_err_no = n_ERR_NONE;
+            n_pstate_ex_no = 0;
+         }
+         break;
+      case 't':
+         /* Add to the To: list TODO join 'b', 'c' */
+         if(cnt == 0)
+            goto jearg;
+         else{
+            struct name *np;
+            si8_t soe;
+
+            soe = 0;
+            if((np = checkaddrs(lextract(cp, GTO | GFULL), EACM_NORMAL, &soe)
+                  ) != NULL)
+               hp->h_to = cat(hp->h_to, np);
+            if(soe == 0){
+               n_pstate_err_no = n_ERR_NONE;
+               n_pstate_ex_no = 0;
+            }else{
+               n_pstate_ex_no = 1;
+               n_pstate_err_no = (soe < 0) ? n_ERR_PERM : n_ERR_INVAL;
+            }
+         }
+         hist &= ~a_HIST_GABBY;
+         break;
+      /* case 'U': <> 'F' */
+      /* case 'u': <> 'f' */
+      /* case 'v': <> 'e' */
       case 'w':
          /* Write the message on a file */
          if(cnt == 0)
@@ -2430,113 +2528,7 @@ jearg:
          else
             n_pstate_ex_no = 1;
          break;
-      case 'm':
-      case 'M':
-      case 'f':
-      case 'F':
-      case 'u':
-      case 'U':
-         /* Interpolate the named messages, if we are in receiving mail mode.
-          * Does the standard list processing garbage.  If ~f is given, we
-          * don't shift over */
-         if(cnt == 0)
-            goto jearg;
-         if((n_pstate_err_no = a_coll_forward(cp, _coll_fp, c)) == n_ERR_NONE)
-            n_pstate_ex_no = 0;
-         else if(ferror(_coll_fp))
-            goto jerr;
-         else if(a_HARDERR())
-            goto jerr;
-         else
-            n_pstate_ex_no = 1;
-         break;
-      case 'p':
-         /* Print current state of the message without altering anything */
-         if(cnt != 0)
-            goto jearg;
-         print_collf(_coll_fp, hp); /* XXX pstate_err_no ++ */
-         if(ferror(_coll_fp))
-            goto jerr;
-         n_pstate_err_no = n_ERR_NONE; /* XXX */
-         n_pstate_ex_no = 0; /* XXX */
-         break;
-      case '|':
-         /* Pipe message through command. Collect output as new message */
-         if(cnt == 0)
-            goto jearg;
-         rewind(_coll_fp);
-         if((n_pstate_err_no = a_coll_pipe(cp)) == n_ERR_NONE)
-            n_pstate_ex_no = 0;
-         else if(a_HARDERR())
-            goto jerr;
-         else
-            n_pstate_ex_no = 1;
-         hist &= ~a_HIST_GABBY;
-         goto jhistcont;
-      case 'v':
-      case 'e':
-         /* Edit the current message.  'e' -> use EDITOR, 'v' -> use VISUAL */
-         if(cnt != 0 || coap != NULL)
-            goto jearg;
-         rewind(_coll_fp);
-         if((n_pstate_err_no = a_coll_edit(c, ok_blook(editheaders) ? hp : NULL)
-               ) == n_ERR_NONE)
-            n_pstate_ex_no = 0;
-         else if(ferror(_coll_fp))
-            goto jerr;
-         else if(a_HARDERR())
-            goto jerr;
-         else
-            n_pstate_ex_no = 1;
-         goto jhistcont;
-      case '^':
-         if(!a_collect_plumbing(cp, hp)){
-            if(ferror(_coll_fp))
-               goto jerr;
-            goto jearg;
-         }
-         n_pstate_err_no = n_ERR_NONE; /* XXX */
-         n_pstate_ex_no = 0; /* XXX */
-         hist &= ~a_HIST_GABBY;
-         break;
-      case '?':
-         /* Last the lengthy help string.  (Very ugly, but take care for
-          * compiler supported string lengths :() */
-         fputs(_(
-"COMMAND ESCAPES (to be placed after a newline) excerpt:\n"
-"~.            Commit and send message\n"
-"~: <command>  Execute an internal command\n"
-"~< <file>     Insert <file> (\"~<! <command>\" inserts shell command)\n"
-"~@ [<files>]  Edit[/Add] attachments (file[=input-charset[#output-charset]])\n"
-"~c <users>    Add users to Cc: list (`~b': to Bcc:)\n"
-"~d            Read in $DEAD (dead.letter)\n"
-"~e            Edit message via $EDITOR\n"
-"~F <msglist>  Read in with headers, do not *indentprefix* lines\n"
-            ), n_stdout);
-         fputs(_(
-"~f <msglist>  Like ~F, but honour `ignore' / `retain' configuration\n"
-"~H            Edit From:, Reply-To: and Sender:\n"
-"~h            Prompt for Subject:, To:, Cc: and \"blind\" Bcc:\n"
-"~i <variable> Insert a value and a newline\n"
-"~M <msglist>  Read in with headers, *indentprefix* (`~m': `retain' etc.)\n"
-"~p            Show current message compose buffer\n"
-"~r <file>     Insert <file> (`~R': likewise, but *indentprefix* lines)\n"
-"              <file> may also be <- [HERE-DELIMITER]>\n"
-            ), n_stdout);
-         fputs(_(
-"~s <subject>  Set Subject:\n"
-"~t <users>    Add users to To: list\n"
-"~u <msglist>  Read in message(s) without headers (`~U': indent lines)\n"
-"~v            Edit message via $VISUAL\n"
-"~w <file>     Write message onto file\n"
-"~x            Abort composition, discard message (`~q': save in $DEAD)\n"
-"~| <command>  Pipe message through shell filter\n"
-            ), n_stdout);
-         if(cnt != 0)
-            goto jearg;
-         n_pstate_err_no = n_ERR_NONE;
-         n_pstate_ex_no = 0;
-         break;
+      /* case 'x': <> 'q' */
       }
 
       /* Finally place an entry in history as applicable */

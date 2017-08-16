@@ -773,6 +773,7 @@ to not remove empty system MBOX mailbox files in order not to mangle
 file permissions when files eventually get recreated (all empty (MBOX)
 mailbox files will be removed unless this variable is set whenever
 .Ev POSIXLY_CORRECT
+.Pf a.k.a.\0 Va posix
 mode has been enabled).
 .
 .Pp
@@ -7155,10 +7156,6 @@ Execute the given \*(UA command.
 Not all commands, however, are allowed.
 .
 .Mx
-.It Ic ~?
-Write a summary of command escapes.
-.
-.Mx
 .It Ic ~< Ar filename
 Identical to
 .Ic ~r .
@@ -7168,6 +7165,10 @@ Identical to
 .Ar command
 is executed using the shell.
 Its standard output is inserted into the message.
+.
+.Mx
+.It Ic ~?
+Write a summary of command escapes.
 .
 .Mx
 .It Ic ~@ Op Ar filename...
@@ -7204,225 +7205,6 @@ the given message is attached as a
 .Ql message/rfc822
 MIME message part.
 As the shell comment character the number sign must be quoted.
-.
-.Mx
-.It Ic ~A
-Inserts the string contained in the
-.Va Sign
-variable (same as
-.Ql Ic ~i Ns \0Sign ) .
-\*(OB The escape sequences tabulator
-.Ql \et
-and newline
-.Ql \en
-are understood (use the
-.Cm wysh
-prefix when
-.Ic set Ns
-ting the variable(s) instead).
-.
-.Mx
-.It Ic ~a
-Inserts the string contained in the
-.Va sign
-variable (same as
-.Ql Ic ~i Ns \0sign ) .
-\*(OB The escape sequences tabulator
-.Ql \et
-and newline
-.Ql \en
-are understood (use the
-.Cm wysh
-prefix when
-.Ic set Ns
-ting the variable(s) instead).
-.
-.Mx
-.It Ic ~b Ar name ...
-Add the given names to the list of blind carbon copy recipients.
-.
-.Mx
-.It Ic ~c Ar name ...
-Add the given names to the list of carbon copy recipients.
-.
-.Mx
-.It Ic ~d
-Read the file specified by the
-.Ev DEAD
-variable into the message.
-.
-.Mx
-.It Ic ~e
-Invoke the text editor on the message collected so far.
-After the editing session is finished,
-the user may continue appending text to the message.
-.
-.Mx
-.It Ic ~F Ar messages
-Read the named messages into the message being sent, including all
-message headers and MIME parts.
-If no messages are specified, read in the current message, the
-.Dq dot .
-.
-.Mx
-.It Ic ~f Ar messages
-Read the named messages into the message being sent.
-If no messages are specified, read in the current message, the
-.Dq dot .
-Strips down the list of header fields according to the
-.Ql type
-white- and blacklist selection of
-.Ic headerpick .
-For MIME multipart messages,
-only the first displayable part is included.
-.
-.Mx
-.It Ic ~H
-Edit the message header fields
-.Ql From: ,
-.Ql Reply-To:
-and
-.Ql Sender:
-by typing each one in turn and allowing the user to edit the field.
-The default values for these fields originate from the
-.Va from , reply-to
-and
-.Va sender
-variables.
-.
-.Mx
-.It Ic ~h
-Edit the message header fields
-.Ql To: ,
-.Ql Cc: ,
-.Ql Bcc:
-and
-.Ql Subject:
-by typing each one in turn and allowing the user to edit the field.
-.
-.Mx
-.It Ic ~I Ar variable
-Insert the value of the specified variable into the message.
-The message remains unaltered if the variable is unset or empty.
-\*(OB The escape sequences tabulator
-.Ql \et
-and newline
-.Ql \en
-are understood (use the
-.Cm wysh
-prefix when
-.Ic set Ns
-ting the variable(s) instead).
-.
-.Mx
-.It Ic ~i Ar variable
-Identical to
-.Ic ~I ,
-but adds a newline character at the end of a successful insertion.
-.
-.Mx
-.It Ic ~M Ar messages
-Read the named messages into the message being sent,
-indented by
-.Va indentprefix .
-If no messages are specified, read the current message, the
-.Dq dot .
-.
-.Mx
-.It Ic ~m Ar messages
-Read the named messages into the message being sent,
-indented by
-.Va indentprefix .
-If no messages are specified, read the current message, the
-.Dq dot .
-Strips down the list of header fields according to the
-.Ql type
-white- and blacklist selection of
-.Ic headerpick .
-For MIME multipart messages,
-only the first displayable part is included.
-.
-.Mx
-.It Ic ~p
-Display the message collected so far,
-prefaced by the message header fields
-and followed by the attachment list, if any.
-.
-.Mx
-.It Ic ~q
-Abort the message being sent,
-copying it to the file specified by the
-.Ev DEAD
-variable if
-.Va save
-is set.
-.
-.Mx
-.It Ic ~R Ar filename
-Identical to
-.Ic ~r ,
-but indent each line that has been read by
-.Va indentprefix .
-.
-.Mx
-.It Ic ~r Ar filename Op Ar HERE-delimiter
-Read the named file, object to the usual
-.Sx "Filename transformations" ,
-into the message; if (the expanded)
-.Ar filename
-is the hyphen-minus
-.Ql -
-then standard input is used, e.g., for pasting purposes.
-Only in this latter mode
-.Ar HERE-delimiter
-may be given: if it is data will be read in until the given
-.Ar HERE-delimiter
-is seen on a line by itself, and encountering EOF is an error; the
-.Ar HERE-delimiter
-is a required argument in non-interactive mode; if it is single-quote
-quoted then the pasted content will not be expanded, \*(ID otherwise
-a future version of \*(UA may perform shell-style expansion on the content.
-.
-.Mx
-.It Ic ~s Ar string
-Cause the named string to become the current subject field.
-Newline (NL) and carriage-return (CR) bytes are invalid and will be
-normalized to space (SP) characters.
-.
-.Mx
-.It Ic ~t Ar name ...
-Add the given name(s) to the direct recipient list.
-.
-.Mx
-.It Ic ~U Ar messages
-Read in the given / current message(s) excluding all headers, indented by
-.Va indentprefix .
-.
-.Mx
-.It Ic ~u Ar messages
-Read in the given / current message(s), excluding all headers.
-.
-.Mx
-.It Ic ~v
-Invoke an alternate editor (defined by the
-.Ev VISUAL
-environment variable) on the message collected so far.
-Usually, the alternate editor will be a screen editor.
-After the editor is quit,
-the user may resume appending text to the end of the message.
-.
-.Mx
-.It Ic ~w Ar filename
-Write the message onto the named file, which is object to the usual
-.Sx "Filename transformations" .
-If the file exists,
-the message is appended to it.
-.
-.Mx
-.It Ic ~x
-Same as
-.Ic ~q ,
-except that the message is not saved at all.
 .
 .Mx
 .It Ic ~| Ar command
@@ -7745,6 +7527,213 @@ and is otherwise identical to
 .El
 .
 .
+.Mx
+.It Ic ~A
+The same as
+.Ql Ic ~i Ns \| Va Sign .
+.
+.Mx
+.It Ic ~a
+The same as
+.Ql Ic ~i Ns \| Va sign .
+.
+.Mx
+.It Ic ~b Ar name ...
+Add the given names to the list of blind carbon copy recipients.
+.
+.Mx
+.It Ic ~c Ar name ...
+Add the given names to the list of carbon copy recipients.
+.
+.Mx
+.It Ic ~d
+Read the file specified by the
+.Ev DEAD
+variable into the message.
+.
+.Mx
+.It Ic ~e
+Invoke the text editor on the message collected so far.
+After the editing session is finished,
+the user may continue appending text to the message.
+.
+.Mx
+.It Ic ~F Ar messages
+Read the named messages into the message being sent, including all
+message headers and MIME parts.
+If no messages are specified, read in the current message, the
+.Dq dot .
+.
+.Mx
+.It Ic ~f Ar messages
+Read the named messages into the message being sent.
+If no messages are specified, read in the current message, the
+.Dq dot .
+Strips down the list of header fields according to the
+.Ql type
+white- and blacklist selection of
+.Ic headerpick .
+For MIME multipart messages,
+only the first displayable part is included.
+.
+.Mx
+.It Ic ~H
+Edit the message header fields
+.Ql From: ,
+.Ql Reply-To:
+and
+.Ql Sender:
+by typing each one in turn and allowing the user to edit the field.
+The default values for these fields originate from the
+.Va from , reply-to
+and
+.Va sender
+variables.
+.
+.Mx
+.It Ic ~h
+Edit the message header fields
+.Ql To: ,
+.Ql Cc: ,
+.Ql Bcc:
+and
+.Ql Subject:
+by typing each one in turn and allowing the user to edit the field.
+.
+.Mx
+.It Ic ~I Ar variable
+Insert the value of the specified variable into the message.
+The message remains unaltered if the variable is unset or empty.
+Any embedded character sequences
+.Ql \et
+horizontal tabulator and
+.Ql \en
+line feed are expanded in
+.Va posix
+mode; otherwise the expansion should occur at
+.Ic set
+time by using the command modifier
+.Va wysh .
+.
+.Mx
+.It Ic ~i Ar variable
+Insert the value of the specified variable followed by a newline
+character into the message.
+The message remains unaltered if the variable is unset or empty.
+Any embedded character sequences
+.Ql \et
+horizontal tabulator and
+.Ql \en
+line feed are expanded in
+.Va posix
+mode; otherwise the expansion should occur at
+.Ic set
+time by using the command modifier
+.Va wysh .
+.
+.Mx
+.It Ic ~M Ar messages
+Read the named messages into the message being sent,
+indented by
+.Va indentprefix .
+If no messages are specified, read the current message, the
+.Dq dot .
+.
+.Mx
+.It Ic ~m Ar messages
+Read the named messages into the message being sent,
+indented by
+.Va indentprefix .
+If no messages are specified, read the current message, the
+.Dq dot .
+Strips down the list of header fields according to the
+.Ql type
+white- and blacklist selection of
+.Ic headerpick .
+For MIME multipart messages,
+only the first displayable part is included.
+.
+.Mx
+.It Ic ~p
+Display the message collected so far,
+prefaced by the message header fields
+and followed by the attachment list, if any.
+.
+.Mx
+.It Ic ~q
+Abort the message being sent,
+copying it to the file specified by the
+.Ev DEAD
+variable if
+.Va save
+is set.
+.
+.Mx
+.It Ic ~R Ar filename
+Identical to
+.Ic ~r ,
+but indent each line that has been read by
+.Va indentprefix .
+.
+.Mx
+.It Ic ~r Ar filename Op Ar HERE-delimiter
+Read the named file, object to the usual
+.Sx "Filename transformations" ,
+into the message; if (the expanded)
+.Ar filename
+is the hyphen-minus
+.Ql -
+then standard input is used, e.g., for pasting purposes.
+Only in this latter mode
+.Ar HERE-delimiter
+may be given: if it is data will be read in until the given
+.Ar HERE-delimiter
+is seen on a line by itself, and encountering EOF is an error; the
+.Ar HERE-delimiter
+is a required argument in non-interactive mode; if it is single-quote
+quoted then the pasted content will not be expanded, \*(ID otherwise
+a future version of \*(UA may perform shell-style expansion on the content.
+.
+.Mx
+.It Ic ~s Ar string
+Cause the named string to become the current subject field.
+Newline (NL) and carriage-return (CR) bytes are invalid and will be
+normalized to space (SP) characters.
+.
+.Mx
+.It Ic ~t Ar name ...
+Add the given name(s) to the direct recipient list.
+.
+.Mx
+.It Ic ~U Ar messages
+Read in the given / current message(s) excluding all headers, indented by
+.Va indentprefix .
+.
+.Mx
+.It Ic ~u Ar messages
+Read in the given / current message(s), excluding all headers.
+.
+.Mx
+.It Ic ~v
+Invoke an alternate editor (defined by the
+.Ev VISUAL
+environment variable) on the message collected so far.
+Usually, the alternate editor will be a screen editor.
+After the editor is quit,
+the user may resume appending text to the end of the message.
+.
+.Mx
+.It Ic ~w Ar filename
+Write the message onto the named file, which is object to the usual
+.Sx "Filename transformations" .
+If the file exists,
+the message is appended to it.
+.
+.Mx
+.It Ic ~x
+Same as
+.Ic ~q ,
+except that the message is not saved at all.
 .El
 .
 .\" }}}
@@ -9137,8 +9126,8 @@ Be sure to quote the value if it contains spaces or tabs.
 .Sx "primary system mailbox"
 file is not removed.
 Note that, in conjunction with
-.Ev POSIXLY_CORRECT
-any empty file will be removed unless this variable is set.
+.Va posix
+mode any empty file will be removed unless this variable is set.
 This may improve the interoperability with other mail user agents
 when using a common folder directory, and prevents malicious users
 from creating fake mailboxes in a world-writable spool directory.
@@ -10138,6 +10127,21 @@ for each command which shall be allowed to fail.
 will replace the list of alternate addresses instead of appending to it.
 .
 .It
+The variable inserting
+.Sx "COMMAND ESCAPES"
+.Ic ~A ,
+.Ic ~a ,
+.Ic ~I
+and
+.Ic ~i
+will expand embedded character sequences
+.Ql \et
+horizontal tabulator and
+.Ql \en
+line feed.
+\*(ID For compatibility reasons this step will always be performed.
+.
+.It
 Upon changing the active
 .Ic file
 no summary of
@@ -10537,17 +10541,27 @@ summary if the message was sent by the user.
 .
 .Mx
 .It Va Sign
-The string to expand
-.Ic ~A
-to (see
-.Sx "COMMAND ESCAPES" ) .
+The value backing
+.Ic ~A ,
+one of the
+.Sx "COMMAND ESCAPES" .
+Also see
+.Va message-inject-tail ,
+.Va on-compose-leave
+and
+.Va on-compose-splice .
 .
 .Mx
 .It Va sign
-The string to expand
-.Ic ~a
-to (see
-.Sx "COMMAND ESCAPES" ) .
+The value backing
+.Ic ~a ,
+one of the
+.Sx "COMMAND ESCAPES" .
+Also see
+.Va message-inject-tail ,
+.Va on-compose-leave
+and
+.Va on-compose-splice .
 .
 .Mx
 .It Va signature
