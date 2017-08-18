@@ -2054,9 +2054,37 @@ c_account(void *v){
 
    oqf = savequitflags();
 
+   /* Shutdown the active account */
    if(a_amv_acc_curr != NULL){
+      char const *cp;
+      char *var;
+
+      /* Is there a cleanup hook? */
+      var = savecat("on-account-cleanup-", a_amv_acc_curr->am_name);
+      if((cp = n_var_vlook(var, FAL0)) != NULL ||
+            (cp = ok_vlook(on_account_cleanup)) != NULL){
+         struct a_amv_mac *amphook;
+
+         if((amphook = a_amv_mac_lookup(cp, NULL, a_AMV_MF_NONE)) != NULL){
+            amcap = n_lofi_alloc(sizeof *amcap);
+            memset(amcap, 0, sizeof *amcap);
+            amcap->amca_name = cp;
+            amcap->amca_amp = amphook;
+            amcap->amca_unroller = &a_amv_acc_curr->am_lopts;
+            amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
+            amcap->amca_no_xcall = TRU1;
+            n_pstate |= n_PS_HOOK;
+            rv = a_amv_mac_exec(amcap);
+            n_pstate &= ~n_PS_HOOK_MASK;
+         }else
+            n_err(_("*on-account-leave* hook %s does not exist\n"),
+               n_shexp_quote_cp(cp, FAL0));
+      }
+
+      /* `localopts'? */
       if(a_amv_acc_curr->am_lopts != NULL)
          a_amv_lopts_unroll(&a_amv_acc_curr->am_lopts);
+
       /* For accounts this lingers */
       --a_amv_acc_curr->am_refcnt;
       if(a_amv_acc_curr->am_flags & a_AMV_MF_DELETE)
@@ -2065,6 +2093,7 @@ c_account(void *v){
 
    a_amv_acc_curr = amp;
 
+   /* And switch to any non-"null" account */
    if(amp != NULL){
       assert(amp->am_lopts == NULL);
       amcap = n_lofi_alloc(sizeof *amcap);
@@ -2085,7 +2114,8 @@ c_account(void *v){
    n_PS_ROOT_BLOCK((amp != NULL ? ok_vset(account, amp->am_name)
       : ok_vclear(account)));
 
-   if((n_psonce & n_PSO_STARTED) && !(n_pstate & n_PS_HOOK_MASK)){
+   if(n_psonce & n_PSO_STARTED){
+      assert(!(n_pstate & n_PS_HOOK_MASK));
       nqf = savequitflags(); /* TODO obsolete (leave -> void -> new box!) */
       restorequitflags(oqf);
       if((i = setfile("%", 0)) < 0)

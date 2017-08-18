@@ -661,8 +661,9 @@ jheaders_skip:
                break;
             /* FALLTHRU */
          case MIME_HDL_MSG:/* TODO these should be part of partinfo! */
-            _out(mh.mh_msg.s, mh.mh_msg.l, obuf, CONV_NONE, SEND_MBOX, qf,
-               stats, NULL, NULL);
+            if(mh.mh_msg.l > 0)
+               _out(mh.mh_msg.s, mh.mh_msg.l, obuf, CONV_NONE, SEND_MBOX,
+                  qf, stats, NULL, NULL);
             /* We would print this as plain text, so better force going home */
             goto jleave;
          case MIME_HDL_CMD:
@@ -707,8 +708,9 @@ jheaders_skip:
                goto jleave;
             /* FALLTHRU */
          case MIME_HDL_MSG:/* TODO these should be part of partinfo! */
-            _out(mh.mh_msg.s, mh.mh_msg.l, obuf, CONV_NONE, SEND_MBOX, qf,
-               stats, NULL, NULL);
+            if(mh.mh_msg.l > 0)
+               _out(mh.mh_msg.s, mh.mh_msg.l, obuf, CONV_NONE, SEND_MBOX,
+                  qf, stats, NULL, NULL);
             /* We would print this as plain text, so better force going home */
             goto jleave;
          case MIME_HDL_CMD:

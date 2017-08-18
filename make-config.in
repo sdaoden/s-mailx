@@ -44,61 +44,63 @@ test: all
 gen-mime-types.h: $(SRCDIR)mime.types
 	$(ECHO_GEN)\
 	LC_ALL=C < $(SRCDIR)mime.types > $(@) $(awk) '\
-	function add(mt, ln) {\
+	function add(mt, ln){\
 		gsub(/[[:space:]]+/, " ", ln);\
 		i = split(ln, i_a);\
 		e = "";\
-		for (j = 1; j <= i; ++j) {\
+		for(j = 1; j <= i; ++j){\
 			k = i_a[j];\
 			e = (e ? e " " : "") k\
 		}\
-		if (e) {\
-			if (e_a[mt])\
+		if(e){\
+			if(e_a[mt])\
 				e_a[mt] = e_a[mt] " ";\
 			e_a[mt] = e_a[mt] e\
 		}\
 	}\
-	/^[[:space:]]*#/ {next}\
-	/^[[:space:]]*$$/ {ltype = ""; next}\
-	/^[[:space:]]/ {\
-		if (!ltype)\
+	/^[[:space:]]*#/{next}\
+	/^[[:space:]]*$$/{ltype = ""; next}\
+	/^[[:space:]]/{\
+		if(!ltype)\
 			print "FAULTY CONTINUATION: " $$0 >> "/dev/stderr";\
 		add(ltype, $$0);\
 		next\
 	}\
-	/^(@([thH]@)? )?[[:alpha:]]/ {\
-		if ($$1 ~ /^@([thH]@)?$$/) {\
+	/^(@([thHq]@)? )?[[:alpha:]]/{\
+		if($$1 ~ /^@([thHq]@)?$$/){\
 			pa = $$1;\
 			$$1 = $$2;\
 			$$2 = ""\
-		} else\
+		}else\
 			pa = "";\
-		if ($$1 !~ /^([[:alnum:]]+)\/([[:alnum:]_+-]+)$$/)\
+		if($$1 !~ /^([[:alnum:]]+)\/([[:alnum:]_+-]+)$$/)\
 			print "FAULTY MIME TYPE: <" $$1 ">" >> "/dev/stderr";\
 		ltype = $$1; $$1 = "";\
-		if (pa)\
+		if(pa)\
 			p_a[ltype] = pa;\
-		if (!nt_a[ltype])\
+		if(!nt_a[ltype])\
 			no_a[++no_ai] = nt_a[ltype] = ltype;\
 		add(ltype, $$0)\
 	}\
-	END {\
-		for (z = 1; z <= no_ai; ++z) {\
+	END{\
+		for(z = 1; z <= no_ai; ++z){\
 			t = no_a[z];\
 			j = index(t, "/");\
 			mt = toupper(substr(t, 1, j - 1));\
 			j = substr(t, j + 1);\
 			l = length(j);\
-			if (!p_a[t])\
+			if(!p_a[t])\
 				mt = "_MT_" mt;\
-			else {\
+			else{\
 				tm = p_a[t];\
-				if (tm == "@" || tm == "@t@")\
-					mt = "_MT_" mt " | _MT_PLAIN";\
-				else if (tm == "@h@")\
-					mt = "_MT_" mt " | _MT_SOUP_h";\
-				else if (tm == "@H@")\
-					mt = "_MT_" mt " | _MT_SOUP_H";\
+				if(tm == "@" || tm == "@t@")\
+					mt = "_MT_" mt " | a_MT_TM_PLAIN";\
+				else if(tm == "@h@")\
+					mt = "_MT_" mt " | a_MT_TM_SOUP_h";\
+				else if(tm == "@H@")\
+					mt = "_MT_" mt " | a_MT_TM_SOUP_H";\
+				else if(tm == "@q@")\
+					mt = "_MT_" mt " | a_MT_TM_QUIET";\
 			}\
 			print "   {" mt ", " l ", \"" j e_a[t] "\"},"\
 		}\
