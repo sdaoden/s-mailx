@@ -3055,7 +3055,10 @@ $ \*(uA -Sspam-interface=filter -Sspam-maxsize=500000 \e
 .Pp
 Because messages must exist on local storage in order to be scored (or
 used for Bayesian filter training), it is possibly a good idea to
-perform the local spam check last:
+perform the local spam check last.
+Spam can be checked automatically when opening specific folders by
+setting a specialized form of the internal variable
+.Va folder-hook .
 .
 .Bd -literal -offset indent
 define spamdelhook {
@@ -3069,7 +3072,7 @@ define spamdelhook {
   del :s
   move :S +maybe-spam
 }
-set folder-hook-FOLDER=spamdelhook
+set folder-hook-SOMEFOLDER=spamdelhook
 .Ed
 .
 .Pp
@@ -8659,9 +8662,9 @@ Once the actual value is evaluated first, the internal variable
 .Va folder-resolved
 will be updated for caching purposes.
 .
-.Mx
-.It Va folder-hook
-This variable can be set to the name of a
+.Mx Va folder-hook
+.It Va folder-hook-FOLDER , Va folder-hook
+Names a
 .Ic define Ns d
 macro which will be called whenever a
 .Ic file
@@ -8672,13 +8675,10 @@ only include newly arrived messages then.
 .Ic localopts
 are activated by default in a folder hook, causing the covered settings
 to be reverted once the folder is left again.
-.
-.Mx
-.It Va folder-hook-FOLDER
-Overrides
-.Va folder-hook
-for a folder named
-.Ql FOLDER .
+.Pp
+The specialized form will override the generic one if
+.Ql FOLDER
+matches the file that is opened.
 Unlike other folder specifications, the fully expanded name of a folder,
 without metacharacters, is used to avoid ambiguities.
 However, if the mailbox resides under
@@ -10050,7 +10050,6 @@ The only possible value as of now is
 .Ql plain ,
 which is thus the default.
 .
-.Mx
 .Mx Va pop3-bulk-load
 .It Va pop3-bulk-load-USER@HOST , pop3-bulk-load-HOST , pop3-bulk-load
 \*(BO\*(OP When accessing a POP3 server \*(UA loads the headers of
