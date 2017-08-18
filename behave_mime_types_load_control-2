@@ -31,6 +31,7 @@ Content-Type: application/octet-stream; charset=binary
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename=".tmtsx.doom"
 
+[-- No MIME handler installed, or not applicable --]
 
 [-- #1.5 6/189 --]
 Content-Type: application/aga-aga; charset=binary
@@ -106,15 +107,18 @@ Content-Disposition: attachment; filename=".tmts1.mathml"
 Content-Type: x-conference/x-cooltalk; charset=us-ascii
 Content-Disposition: attachment; filename=".tmts2.ice"
 
+[-- No MIME handler installed, or not applicable --]
 
 [-- #1.4 6/195 --]
 Content-Type: application/octet-stream; charset=binary
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename=".tmtsx.doom"
 
+[-- No MIME handler installed, or not applicable --]
 
 [-- #1.5 6/189 --]
 Content-Type: application/aga-aga; charset=binary
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename=".tmtsx.aga"
 
+[-- No MIME handler installed, or not applicable --]
