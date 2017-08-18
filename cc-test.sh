@@ -3530,12 +3530,12 @@ t_behave_mime_types_load_control() {
    ex0_test behave:mime_types_load_control
 
    ${cat} "${MBOX}" >> ./.tout
-   check behave:mime_types_load_control-1 - ./.tout '3270459399 2460'
+   check behave:mime_types_load_control-1 - ./.tout '4049496531 2513'
 
    echo type | ${MAILX} ${ARGS} -R \
       -Smimetypes-load-control=f=./.tmts1,f=./.tmts3 \
       -f "${MBOX}" >> ./.tout 2>&1
-   check behave:mime_types_load_control-2 0 ./.tout '2258163974 3530'
+   check behave:mime_types_load_control-2 0 ./.tout '2418616932 3742'
 
    t_epilog
 }

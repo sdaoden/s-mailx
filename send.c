@@ -703,7 +703,8 @@ jheaders_skip:
          switch (n_mimetype_handler(&mh, ip, action)) {
          default:
          case MIME_HDL_NULL:
-            if (action != SEND_TODISP_ALL && (level != 0 || cnt))
+            if (action != SEND_TODISP && action != SEND_TODISP_ALL &&
+                  (level != 0 || cnt))
                goto jleave;
             /* FALLTHRU */
          case MIME_HDL_MSG:/* TODO these should be part of partinfo! */
