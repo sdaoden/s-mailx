@@ -227,7 +227,7 @@ tmp2=./${tmp0}2$$
 
 # TODO cc_maxopt is brute simple, we should compile test program and dig real
 # compiler versions for known compilers, then be more specific
-cc_maxopt=100
+: ${cc_maxopt:=100}
 _CFLAGS= _LDFLAGS=
 
 os_early_setup() {
