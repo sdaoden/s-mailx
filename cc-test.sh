@@ -3105,15 +3105,13 @@ t_behave_compose_hooks() { # TODO monster
          on-compose-cleanup=t_occ
 __EOT__
 
-   #
-
    ${rm} -f "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.\n' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
       -X'source ./.trc' -Smta=./.tsendmail.sh \
       >./.tall 2>&1
    ${cat} ./.tall >> "${MBOX}"
-   check behave:compose_hooks-1 0 "${MBOX}" '3667291468 10101'
+   check behave:compose_hooks-1 0 "${MBOX}" '3479456964 10101'
 
    ${rm} -f "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.\n' |
@@ -3121,7 +3119,9 @@ __EOT__
       -St_remove=1 -X'source ./.trc' -Smta=./.tsendmail.sh \
       >./.tall 2>&1
    ${cat} ./.tall >> "${MBOX}"
-   check behave:compose_hooks-2 0 "${MBOX}" '1746765053 12535'
+   check behave:compose_hooks-2 0 "${MBOX}" '3654000499 12535'
+
+   ##
 
    # Some state machine stress, shell compose hook, localopts for hook, etc.
    # readctl in child. ~r as HERE document

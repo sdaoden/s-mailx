@@ -845,7 +845,7 @@ jins:
          goto jleave;
       }
 
-      /* Free-form header fields (note j501cp may print non-normalized name) */
+      /* Free-form header fields */
       /* C99 */{
          size_t nl, bl;
          struct n_header_field **hfpp;
@@ -864,12 +864,10 @@ jins:
          *hfpp = hfp = salloc(n_VSTRUCT_SIZEOF(struct n_header_field, hf_dat
                ) + nl + bl);
          hfp->hf_next = NULL;
-         hfp->hf_nl = --nl;
+         hfp->hf_nl = nl - 1;
          hfp->hf_bl = bl - 1;
-         hfp->hf_dat[nl = 0] = upperconv(*cp);
-         while(*cp++ != '\0')
-            hfp->hf_dat[++nl] = lowerconv(*cp);
-         memcpy(&hfp->hf_dat[++nl], cmd[3], bl);
+         memcpy(&hfp->hf_dat[0], cp, nl);
+         memcpy(&hfp->hf_dat[nl], cmd[3], bl);
          fprintf(n_stdout, "210 %s %" PRIuZ "\n", &hfp->hf_dat[0], ++i);
       }
       goto jleave;
@@ -908,7 +906,7 @@ jdefault:
                   putc(' ', n_stdout);
                   fputs(&hfp->hf_dat[0], n_stdout);
                   break;
-               }else if(!strcmp(&hfpx->hf_dat[0], &hfp->hf_dat[0]))
+               }else if(!asccasecmp(&hfpx->hf_dat[0], &hfp->hf_dat[0]))
                   break;
          }
          putc('\n', n_stdout);
@@ -998,7 +996,7 @@ jlist:
          goto jlist;
       }
 
-      /* Free-form header fields (note j501cp may print non-normalized name) */
+      /* Free-form header fields */
       for(cp = cmd[2]; *cp != '\0'; ++cp)
          if(!fieldnamechar(*cp)){
             cp = cmd[2];
@@ -1204,7 +1202,7 @@ jremat:
          goto jleave;
       }
 
-      /* Free-form header fields (note j501cp may print non-normalized name) */
+      /* Free-form header fields */
       /* C99 */{
          struct n_header_field **hfpp;
 
@@ -1325,7 +1323,7 @@ jshow:
          goto jshow;
       }
 
-      /* Free-form header fields (note j501cp may print non-normalized name) */
+      /* Free-form header fields */
       /* C99 */{
          bool_t any;
 
