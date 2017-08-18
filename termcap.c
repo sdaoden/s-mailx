@@ -52,7 +52,7 @@ EMPTY_FILE()
  * Since for (such) elder non-emulated terminals really weird things will
  * happen if an entry would require more than 1024 bytes, don't really mind.
  * Use a ui16_t for storage */
-#define a_TERMCAP_ENTRYSIZE_MAX ((2668 + 64) & ~64) /* As of ncurses 6.0 */
+#define a_TERMCAP_ENTRYSIZE_MAX ((2668 + 128) & ~127) /* As of ncurses 6.0 */
 
 n_CTA(a_TERMCAP_ENTRYSIZE_MAX < UI16_MAX,
    "Chosen buffer size exceeds datatype capability");
