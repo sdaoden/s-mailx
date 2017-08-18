@@ -252,51 +252,51 @@ t_header ENTER
 56/0/NONE: <subject@exam.ple> <subject2@exam.ple> subject3@exam.ple
 0/0/NONE: 
 210 Mailx-Command Mailx-Raw-To
-210 Freeform1 1
-210 Freeform1 2
-210 Freeform1 3
-210 Freeform1
+210 freeForm1 1
+210 freeForm1 2
+210 freeForm1 3
+210 freeForm1
 33/0/NONE: diet <freeForm1@exam.ple> spliced
 21/0/NONE: <freeForm12@exam.ple>
 19/0/NONE: freeForm13@exam.ple
 0/0/NONE: 
-210 Freeform1 1
-210 Freeform1 2
-210 Freeform1 3
-210 Freeform1
+210 freeForm1 1
+210 freeForm1 2
+210 freeForm1 3
+210 freeForm1
 33/0/NONE: diet <freeForm1@exam.ple> spliced
 21/0/NONE: <freeForm12@exam.ple>
 19/0/NONE: freeForm13@exam.ple
 0/0/NONE: 
-210 Freeform1 1
-210 Freeform1 2
-210 Freeform1 3
-210 Freeform1
+210 freeForm1 1
+210 freeForm1 2
+210 freeForm1 3
+210 freeForm1
 33/0/NONE: diet <freeForm1@exam.ple> spliced
 42/0/NONE: <freeForm12@exam.ple> (comment) "Quot(e)d"
 19/0/NONE: freeForm13@exam.ple
 0/0/NONE: 
 210 Mailx-Command Mailx-Raw-To
-210 Freeform2 1
-210 Freeform2 2
-210 Freeform2 3
-210 Freeform2
+210 freeform2 1
+210 freeform2 2
+210 freeform2 3
+210 freeform2
 33/0/NONE: diet <freeform2@exam.ple> spliced
 21/0/NONE: <freeform22@exam.ple>
 19/0/NONE: freeform23@exam.ple
 0/0/NONE: 
-210 Freeform2 1
-210 Freeform2 2
-210 Freeform2 3
-210 Freeform2
+210 freeform2 1
+210 freeform2 2
+210 freeform2 3
+210 freeform2
 33/0/NONE: diet <freeform2@exam.ple> spliced
 21/0/NONE: <freeform22@exam.ple>
 19/0/NONE: freeform23@exam.ple
 0/0/NONE: 
-210 Freeform2 1
-210 Freeform2 2
-210 Freeform2 3
-210 Freeform2
+210 freeform2 1
+210 freeform2 2
+210 freeform2 3
+210 freeform2
 33/0/NONE: diet <freeform2@exam.ple> spliced
 42/0/NONE: <freeform22@exam.ple> (comment) "Quot(e)d"
 19/0/NONE: freeform23@exam.ple
