@@ -3015,12 +3015,21 @@ A name may also be a
 .Ic commandalias ,
 which will become expanded until no more expansion is possible.
 Once the command that shall be executed is known, the remains of the
-input line will be interpreted according to command-specific rules:
-(\*(ID) some commands use
-.Sx "Shell-style argument quoting" ,
-so that a single input line may actually consist of multiple commands,
-but others pass it unchanged as
-.Sx "Raw data arguments for codec commands" .
+input line will be interpreted according to command-specific rules,
+documented in the following.
+.
+.Pp
+This behaviour is different to the
+.Xr sh 1 Ns
+ell, which is a programming language with syntactic elements of clearly
+defined semantics, and therefore capable to sequentially expand and
+evaluate individual elements of a line.
+\*(UA will never be able to handle
+.Ql ? set one=value two=$one
+in a single statement, because the variable assignment is performed by
+the command
+.Pf ( Ic set ) ,
+not the language.
 .
 .Pp
 The command
