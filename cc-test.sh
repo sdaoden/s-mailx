@@ -3934,6 +3934,19 @@ t_behave_lreply_futh_rth_etc() {
 	
 	are you ready, boots?
 	
+	From neverneverland  Sat Aug 19 23:15:00 2017
+	Subject: Bugstop: five miles out 4
+	Reply-To: mister originator2 <mr2@originator>, bugstop@five.miles.out
+	Content-Transfer-Encoding: 7bit
+	From: mister originator <mr@originator>
+	To: bugstop@five.miles.out
+	Cc: is@a.list
+	Message-ID: <149945963975.28888.6950788126qtewrqwer.reportbug@five.miles.out>
+	Date: Fri, 07 Jul 2017 16:33:59 -0400
+	List-Post: <mailto:bugstop@five.miles.out>
+	Status: R
+	
+	are you ready, boots?
 	_EOT
 
    #
@@ -3984,7 +3997,7 @@ t_behave_lreply_futh_rth_etc() {
       define x {
          localopts call-fixate yes
          call r $1
-         call R $1 1; call R $1 2; call R $1 3
+         call R $1 1; call R $1 2; call R $1 3; call R $1 4
          call L $1 1; call L $1 2; call L $1 3
       }
       define tweak {
@@ -4010,7 +4023,7 @@ t_behave_lreply_futh_rth_etc() {
    ' | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh \
       -Rf ./.tmbox >> "${MBOX}" 2>&1
 
-   check behave:lreply_futh_rth_etc 0 "${MBOX}" '2491739775 22062'
+   check behave:lreply_futh_rth_etc 0 "${MBOX}" '1375746559 24495'
 
    t_epilog
 }
