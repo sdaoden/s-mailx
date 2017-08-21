@@ -455,9 +455,10 @@ _cc_flags_generic() {
    _CFLAGS= _LDFLAGS=
    feat_yes DEVEL && cc_check -std=c89 || cc_check -std=c99
 
-   if [ ${cc_maxopt} -gt 1 ] && feat_yes NOMEMDBG ||
-         feat_yes ASAN_ADDRESS || feat_yes ASAN_MEMORY; then
-      msg 'OP_NOMEMDBG or OPT_ASAN_{ADDRESS,MEMORY}, setting cc_maxopt=1 (-O1)'
+   # E.g., valgrind does not work well with high optimization
+   if [ ${cc_maxopt} -gt 1 ] && feat_yes NOMEMDBG &&
+         feat_no ASAN_ADDRESS && feat_no ASAN_MEMORY; then
+      msg 'OP_NOMEMDBG, setting cc_maxopt=1 (-O1)'
       cc_maxopt=1
    fi
    # Check -g first since some others may rely upon -g / optim. level
