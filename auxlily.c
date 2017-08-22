@@ -188,26 +188,39 @@ a_aux_rand_init(void){
    a_aux_rand = n_alloc(sizeof *a_aux_rand);
 
 # ifdef HAVE_GETRANDOM
-   /* getrandom(2) guarantees 256 without n_ERR_INTR.. */
+   /* getrandom(2) guarantees 256 without n_ERR_INTR..
+    * However, support sequential reading to avoid possible hangs that have
+    * been reported on the ML (2017-08-22, s-nail/s-mailx freezes when
+    * HAVE_GETRANDOM is #defined) */
    n_LCTA(sizeof(a_aux_rand->a._dat) <= 256,
       "Buffer too large to be served without n_ERR_INTR error");
    n_LCTA(sizeof(a_aux_rand->a._dat) >= 256,
       "Buffer too small to serve used array indices");
-   for(;;){
-      ssize_t gr;
+   /* C99 */{
+      size_t o, i;
 
-      gr = HAVE_GETRANDOM(a_aux_rand->a._dat, sizeof a_aux_rand->a._dat);
-      a_aux_rand->a._i = a_aux_rand->a._dat[a_aux_rand->a._dat[1] ^
-            a_aux_rand->a._dat[84]];
-      a_aux_rand->a._j = a_aux_rand->a._dat[a_aux_rand->a._dat[65] ^
-            a_aux_rand->a._dat[42]];
-      /* ..but be on the safe side */
-      if(UICMP(z, gr, ==, sizeof(a_aux_rand->a._dat)))
-         break;
-      n_msleep(250, FAL0);
+      for(o = 0, i = sizeof a_aux_rand->a._dat;;){
+         ssize_t gr;
+
+         gr = HAVE_GETRANDOM(&a_aux_rand->a._dat[o], i);
+         a_aux_rand->a._i = a_aux_rand->a._dat[a_aux_rand->a._dat[1] ^
+               a_aux_rand->a._dat[84]];
+         a_aux_rand->a._j = a_aux_rand->a._dat[a_aux_rand->a._dat[65] ^
+               a_aux_rand->a._dat[42]];
+         /* ..but be on the safe side */
+         if(gr > 0){
+            i -= (size_t)gr;
+            if(i == 0)
+               break;
+            o += (size_t)gr;
+         }
+         n_err(_("Not enough entropy for the PseudoRandomNumberGenerator, "
+            "waiting a bit\n"));
+         n_msleep(250, FAL0);
+      }
    }
 
-# else
+# else /* HAVE_GETRANDOM */
    if((u.fd = open("/dev/urandom", O_RDONLY)) != -1){
       bool_t ok;
 
