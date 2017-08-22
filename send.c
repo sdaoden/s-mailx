@@ -638,8 +638,7 @@ jheaders_skip:
          goto jmulti;
       case SEND_TOFILE:
       case SEND_TOPIPE:
-         if (ok_blook(rfc822_body_from_))
-            put_from_(obuf, ip->m_multipart, stats);
+         put_from_(obuf, ip->m_multipart, stats);
          /* FALLTHRU */
       case SEND_MBOX:
       case SEND_RFC822:
@@ -918,7 +917,7 @@ jmulti:
                 * TODO than asking the user for something stupid.
                 * TODO oh, wait, we did ask for a filename for this MIME mail,
                 * TODO and that outer container is useless anyway ;-P */
-               if (np->m_multipart != NULL) {
+               if (np->m_multipart != NULL && np->m_mimecontent != MIME_822) {
                   if ((obuf = Fopen(n_path_devnull, "w")) == NULL)
                      continue;
                } else if ((obuf = newfile(np, &ispipe)) == NULL)
