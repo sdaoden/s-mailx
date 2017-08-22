@@ -1169,7 +1169,9 @@ jleave:
       }
       c = (menc == MIMEE_7B ? CONV_7BIT
             : (menc == MIMEE_8B ? CONV_8BIT
-            : CONV_NONE));
+            /* May have only 7-bit, 8-bit and binary.  Try to avoid latter */
+            : ((mtc & _MT_C_HASNUL) ? CONV_NONE
+            : ((mtc & _MT_C_HIGHBIT) ? CONV_8BIT : CONV_7BIT))));
    } else
 jnorfc822:
       c = (menc == MIMEE_7B ? CONV_7BIT
