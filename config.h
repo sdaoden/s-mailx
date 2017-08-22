@@ -90,6 +90,13 @@
 # define CHARSET_8BIT_OKEY ttycharset
 #endif
 
+/* Simply use RAND_bytes(3) for randoms */
+#ifdef HAVE_XSSL
+# define n_RANDOM_USE_XSSL 1
+#else
+# define n_RANDOM_USE_XSSL 0
+#endif
+
 /* Some environment variables for pipe hooks etc. */
 #define n_PIPEENV_FILENAME "MAILX_FILENAME"
 #define n_PIPEENV_FILENAME_GENERATED "MAILX_FILENAME_GENERATED"

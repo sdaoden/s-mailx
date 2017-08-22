@@ -330,11 +330,14 @@ static enum okay  load_crls(X509_STORE *store, enum okeys fok, enum okeys dok);
 
 static bool_t
 a_xssl_rand_init(void){
+#define a_XSSL_RAND_ENTROPY 32
+   char b64buf[a_XSSL_RAND_ENTROPY * 5 +1], *randfile;
    char const *cp, *x;
-   bool_t rv;
-   NYD_ENTER;
+   bool_t err;
+   NYD2_ENTER;
 
-   rv = FAL0;
+   err = TRU1;
+   randfile = NULL;
 
    /* Shall use some external daemon? */ /* TODO obsolete *ssl_rand_egd* */
    if((cp = ok_vlook(ssl_rand_egd)) != NULL){ /* TODO no one supports it now! */
@@ -342,7 +345,7 @@ a_xssl_rand_init(void){
 #ifdef HAVE_XSSL_RAND_EGD
       if((x = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) != NULL &&
             RAND_egd(cp = x) != -1){
-         rv = TRU1;
+         err = FAL0;
          goto jleave;
       }
       n_err(_("*ssl_rand_egd* daemon at %s not available\n"),
@@ -359,46 +362,56 @@ a_xssl_rand_init(void){
       x = NULL;
       if(*cp != '\0'){
          if((x = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
-            n_err(_("*ssl-rand-file*: filename expansion of %s failed\n"),
+            n_err(_("*ssl-rand-file*: expansion of %s failed "
+                  "(using OpenSSL default)\n"),
                n_shexp_quote_cp(cp, FAL0));
       }
       cp = x;
    }
-
-   /* If the SSL PRNG is initialized don't put any more effort in this if the
-    * user defined entropy isn't usable */
    if(cp == NULL){
-      if(RAND_status()){
-         rv = TRU1;
-         goto jleave;
-      }
-
-      if((cp = RAND_file_name(salloc(PATH_MAX), PATH_MAX)) == NULL){
+      randfile = n_lofi_alloc(PATH_MAX);
+      if((cp = RAND_file_name(randfile, PATH_MAX)) == NULL){
          n_err(_("*ssl-rand-file*: no SSL entropy file, can't seed PRNG\n"));
          goto jleave;
       }
    }
 
-   if(RAND_load_file(cp, a_XSSL_RAND_LOAD_FILE_MAXBYTES) != -1){
-      for(x = (char*)-1;;){
-         RAND_seed(n_random_create_cp(32, NULL), 32);
-         if((rv = (RAND_status() != 0)))
-            break;
-         if((x = (char*)((uintptr_t)x >> 1)) == NULL){
-            n_err(_("*ssl-rand-file*: can't seed SSL PRNG with entropy\n"));
-            goto jleave;
-         }
-      }
+   (void)RAND_load_file(cp, a_XSSL_RAND_LOAD_FILE_MAXBYTES);
 
-      if(RAND_write_file(cp) == -1)
-         n_err(_("*ssl-rand-file*: writing entropy to %s failed\n"),
-            n_shexp_quote_cp(cp, FAL0));
-   }else
-      n_err(_("*ssl-rand-file*: %s cannot be loaded\n"),
-         n_shexp_quote_cp(cp, FAL0));
+   /* And feed in some data, then write the updated file.
+    * While this rather feeds the PRNG with itself in the n_RANDOM_USE_XSSL
+    * case, let us stir the buffer a little bit.
+    * Estimate a low but likely still too high number of entropy bytes, use
+    * 20%: base64 uses 3 input = 4 output bytes relation, and the base64
+    * alphabet is a 6 bit one */
+   n_LCTAV(n_RANDOM_USE_XSSL == 0 || n_RANDOM_USE_XSSL == 1);
+   for(x = (char*)-1;;){
+      RAND_add(n_random_create_buf(b64buf, sizeof(b64buf) -1, NULL),
+         sizeof(b64buf) -1, a_XSSL_RAND_ENTROPY);
+      if((x = (char*)((uintptr_t)x >> (1 + (n_RANDOM_USE_XSSL * 3)))) == NULL){
+         err = (RAND_status() == 0);
+         break;
+      }
+#if !n_RANDOM_USE_XSSL
+      if(!(err = (RAND_status() == 0)))
+         break;
+#endif
+   }
+
+   if(!err)
+      err = (RAND_write_file(cp) == -1);
+
 jleave:
-   NYD_LEAVE;
-   return rv;
+   if(randfile != NULL)
+      n_lofi_free(randfile);
+   if(err)
+      n_panic(_("Cannot seed the *SSL PseudoRandomNumberGenerator, "
+            "RAND_status() is 0!\n"
+         "  Please set *ssl-rand-file* to a file with sufficient entropy.\n"
+         "  On a machine with entropy: "
+            "\"$ dd if=/dev/urandom of=FILE bs=1024 count=1\"\n"));
+   NYD2_LEAVE;
+   return err;
 }
 
 static void
@@ -1398,6 +1411,26 @@ jleave:
    NYD_LEAVE;
    return rv;
 }
+
+#if n_RANDOM_USE_XSSL
+FL void
+ssl_rand_bytes(void *buf, size_t blen){
+   NYD_ENTER;
+
+   if(!(a_xssl_state & a_XSSL_S_RAND_INIT) && a_xssl_rand_init())
+      a_xssl_state |= a_XSSL_S_RAND_INIT;
+
+   while(blen > 0){
+      si32_t i;
+
+      i = n_MIN(SI32_MAX, blen);
+      blen -= i;
+      RAND_bytes(buf, i);
+      buf = (ui8_t*)buf + i;
+   }
+   NYD_LEAVE;
+}
+#endif
 
 FL enum okay
 ssl_open(struct url const *urlp, struct sock *sp)

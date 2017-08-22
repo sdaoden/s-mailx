@@ -56,7 +56,7 @@
 # include <locale.h>
 #endif
 
-#ifdef HAVE_GETRANDOM
+#if defined HAVE_GETRANDOM && !n_RANDOM_USE_XSSL
 # include HAVE_GETRANDOM_HEADER
 #endif
 
@@ -70,7 +70,7 @@
 # endif
 #endif
 
-#ifndef HAVE_POSIX_RANDOM
+#if !defined HAVE_POSIX_RANDOM && !n_RANDOM_USE_XSSL
 union rand_state{
    struct rand_arc4{
       ui8_t _dat[256];
@@ -147,7 +147,7 @@ n__ERR_NUMBER_TO_MAPOFF
 #undef a_X
 };
 
-#ifndef HAVE_POSIX_RANDOM
+#if !defined HAVE_POSIX_RANDOM && !n_RANDOM_USE_XSSL
 static union rand_state *a_aux_rand;
 #endif
 
@@ -160,7 +160,7 @@ static size_t a_aux_err_linelen;
 
 /* Our ARC4 random generator with its completely unacademical pseudo
  * initialization (shall /dev/urandom fail) */
-#ifndef HAVE_POSIX_RANDOM
+#if !defined HAVE_POSIX_RANDOM && !n_RANDOM_USE_XSSL
 static void a_aux_rand_init(void);
 SINLINE ui8_t a_aux_rand_get8(void);
 # ifndef HAVE_GETRANDOM
@@ -171,7 +171,7 @@ static ui32_t a_aux_rand_weak(ui32_t seed);
 /* Find the descriptive mapping of an error number, or _ERR_INVAL */
 static struct a_aux_err_map const *a_aux_err_map_from_no(si32_t eno);
 
-#ifndef HAVE_POSIX_RANDOM
+#if !defined HAVE_POSIX_RANDOM && !n_RANDOM_USE_XSSL
 static void
 a_aux_rand_init(void){
 # ifndef HAVE_GETRANDOM
@@ -285,7 +285,7 @@ a_aux_rand_weak(ui32_t seed){
    return seed;
 }
 # endif /* HAVE_GETRANDOM */
-#endif /* !HAVE_POSIX_RANDOM */
+#endif /* !HAVE_POSIX_RANDOM && !n_RANDOM_USE_XSSL */
 
 static struct a_aux_err_map const *
 a_aux_err_map_from_no(si32_t eno){
@@ -992,27 +992,59 @@ jleave:
 #endif /* HAVE_IDNA */
 
 FL char *
-n_random_create_cp(size_t length, ui32_t *reprocnt_or_null){
+n_random_create_buf(char *dat, size_t len, ui32_t *reprocnt_or_null){
    struct str b64;
-   char *data, *cp;
-   size_t i;
+   char *indat, *cp, *oudat;
+   size_t i, inlen, oulen;
    NYD_ENTER;
 
-#ifndef HAVE_POSIX_RANDOM
-   if(a_aux_rand == NULL)
+   if(!(n_psonce & n_PSO_RANDOM_INIT)){
+      n_psonce |= n_PSO_RANDOM_INIT;
+
+      if(n_poption & n_PO_D_V){
+         char const *prngn;
+
+#if n_RANDOM_USE_XSSL
+         prngn = "*SSL RAND_*";
+#elif defined HAVE_POSIX_RANDOM
+         prngn = "POSIX/arc4random";
+#else
+         prngn = "builtin ARC4";
+#endif
+         n_err(_("Setting up PseudoRandomNumberGenerator: %s\n"), prngn);
+      }
+
+#if !defined HAVE_POSIX_RANDOM && !n_RANDOM_USE_XSSL
       a_aux_rand_init();
 #endif
+   }
 
    /* We use our base64 encoder with _NOPAD set, so ensure the encoded result
-    * with PAD stripped is still longer than what the user requests, easy way */
-   data = n_lofi_alloc(i = length + 3);
+    * with PAD stripped is still longer than what the user requests, easy way.
+    * The relation of base64 is fixed 3 in = 4 out, and we do not want to
+    * include the base64 PAD characters in our random string: give some pad */
+   i = len;
+   if((inlen = i % 3) != 0)
+      i += 3 - inlen;
+jinc1:
+   inlen = i >> 2;
+   oulen = inlen << 2;
+   if(oulen < len){
+      i += 3;
+      goto jinc1;
+   }
+   inlen = inlen + (inlen << 1);
+
+   indat = n_lofi_alloc(inlen +1);
 
    if(!(n_psonce & n_PSO_REPRODUCIBLE) || reprocnt_or_null == NULL){
-#ifndef HAVE_POSIX_RANDOM
-      while(i-- > 0)
-         data[i] = (char)a_aux_rand_get8();
+#if n_RANDOM_USE_XSSL
+      ssl_rand_bytes(indat, inlen);
+#elif !defined HAVE_POSIX_RANDOM
+      for(i = inlen; i-- > 0;)
+         indat[i] = (char)a_aux_rand_get8();
 #else
-      for(cp = data; i > 0;){
+      for(cp = indat, i = inlen; i > 0;){
          union {ui32_t i4; char c[4];} r;
          size_t j;
 
@@ -1028,7 +1060,7 @@ n_random_create_cp(size_t length, ui32_t *reprocnt_or_null){
       }
 #endif
    }else{
-      for(cp = data; i > 0;){
+      for(cp = indat, i = inlen; i > 0;){
          union {ui32_t i4; char c[4];} r;
          size_t j;
 
@@ -1054,15 +1086,30 @@ n_random_create_cp(size_t length, ui32_t *reprocnt_or_null){
       }
    }
 
-   assert(length + 3 < UIZ_MAX / 4);
-   b64_encode_buf(&b64, data, length + 3,
-      B64_SALLOC | B64_RFC4648URL | B64_NOPAD);
-   n_lofi_free(data);
+   oudat = (len >= oulen) ? dat : n_lofi_alloc(oulen +1);
+   b64.s = oudat;
+   b64_encode_buf(&b64, indat, inlen, B64_BUF | B64_RFC4648URL | B64_NOPAD);
+   assert(b64.l >= len);
+   memcpy(dat, b64.s, len);
+   dat[len] = '\0';
+   if(oudat != dat)
+      n_lofi_free(oudat);
 
-   assert(b64.l >= length);
-   b64.s[length] = '\0';
+   n_lofi_free(indat);
+
    NYD_LEAVE;
-   return b64.s;
+   return dat;
+}
+
+FL char *
+n_random_create_cp(size_t len, ui32_t *reprocnt_or_null){
+   char *dat;
+   NYD_ENTER;
+
+   dat = n_autorec_alloc(len +1);
+   dat = n_random_create_buf(dat, len, reprocnt_or_null);
+   NYD_LEAVE;
+   return dat;
 }
 
 FL si8_t

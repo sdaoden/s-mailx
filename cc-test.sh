@@ -3162,7 +3162,7 @@ __EOT__
       -X'source ./.trc' -Smta=./.tsendmail.sh \
       >./.tall 2>&1
    ${cat} ./.tall >> "${MBOX}"
-   check behave:compose_hooks-1 0 "${MBOX}" '3479456964 10101'
+   check behave:compose_hooks-1 0 "${MBOX}" '522535560 10101'
 
    ${rm} -f "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.\n' |

@@ -1470,6 +1470,7 @@ enum n_program_state_once{
    n_PSO_TERMCAP_DISABLE = 1u<<18,
    n_PSO_TERMCAP_CA_MODE = 1u<<19,
    n_PSO_LINE_EDITOR_INIT = 1u<<20,
+   n_PSO_RANDOM_INIT = 1u<<21,
 
    /* A subtile hack which works in conjunction with n_OPT_t_FLAG so as to
     * allow to have multiple states regarding the related header setup */

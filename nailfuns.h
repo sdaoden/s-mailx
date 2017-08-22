@@ -381,10 +381,12 @@ FL bool_t n_idna_to_ascii(struct n_string *out, char const *ibuf, size_t ilen);
             size_t ilen);*/
 #endif
 
-/* Get a (pseudo) random string of *length* bytes; returns salloc()ed buffer.
+/* Get a (pseudo) random string of *len* bytes, _not_ counting the NUL
+ * terminator, the second returns an n_autorec_alloc()ed buffer.
  * If n_PSO_REPRODUCIBLE and reprocnt_or_null not NULL then we produce
  * a reproducable string by using and managing that counter instead */
-FL char *n_random_create_cp(size_t length, ui32_t *reprocnt_or_null);
+FL char *n_random_create_buf(char *dat, size_t len, ui32_t *reprocnt_or_null);
+FL char *n_random_create_cp(size_t len, ui32_t *reprocnt_or_null);
 
 /* Check whether the argument string is a true (1) or false (0) boolean, or an
  * invalid string, in which case -1 is returned; if emptyrv is not -1 then it,
@@ -2693,6 +2695,11 @@ FL void        hmac_md5(unsigned char *text, int text_len, unsigned char *key,
  */
 
 #ifdef HAVE_XSSL
+/* Our wrapper for RAND_bytes(3) */
+# if n_RANDOM_USE_XSSL
+FL void ssl_rand_bytes(void *buf, size_t blen);
+# endif
+
 /*  */
 FL enum okay   ssl_open(struct url const *urlp, struct sock *sp);
 
