@@ -266,7 +266,8 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    } flags;
    NYD_ENTER;
 
-   n_exit_status = n_EXIT_OK;
+   if(!(n_pstate & n_PS_ERR_EXIT_MASK))
+      n_exit_status = n_EXIT_OK;
 
    flags = a_NONE;
    rv = 1;
@@ -715,7 +716,8 @@ jleave:
 
    if(flags & a_IGNERR){
       n_pstate &= ~n_PS_ERR_EXIT_MASK;
-      n_exit_status = n_EXIT_OK;
+      if(!(n_pstate & n_PS_ERR_EXIT_MASK))
+         n_exit_status = n_EXIT_OK;
    }else if(rv != 0){
       bool_t bo;
 
@@ -966,7 +968,7 @@ jerr:
              ? (gcp->gc_flags & a_GO_MACRO_X_OPTION
                 ? _("evaluating command line") : _("evaluating macro"))
              : _("loading initialization resource"))),
-         gcp->gc_name,
+         n_shexp_quote_cp(gcp->gc_name, FAL0),
          (n_poption & n_PO_DEBUG ? n_empty : _(" (enable *debug* for trace)")));
    goto jleave;
 }
