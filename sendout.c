@@ -436,6 +436,9 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo)
       if((cp = ok_vlook(stealthmua)) == NULL || !strcmp(cp, "noagent")){
          struct name *np;
 
+         /* TODO RFC 2046 specifies that the same Content-ID should be used
+          * TODO for identical data; this is too hard for use right now,
+          * TODO because if done right it should be checksum based!?! */
          if((np = ap->a_content_id) != NULL)
             cp = np->n_name;
          else
