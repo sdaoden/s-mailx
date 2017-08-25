@@ -1850,7 +1850,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
          t |= GCOMMA;
 
       if(n_psonce & n_PSO_INTERACTIVE){
-         if(hp->h_subject == NULL && (ok_blook(ask) || ok_blook(asksub)))
+         if(hp->h_subject == NULL && ok_blook(asksub)/* *ask* auto warped! */)
             t &= ~GNL, getfields |= GSUBJECT;
 
          if(hp->h_to == NULL)

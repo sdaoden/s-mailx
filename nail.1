@@ -8064,11 +8064,6 @@ to be appended to the end rather than prepended.
 This should always be set.
 .
 .Mx
-.It Va ask
-\*(BO Causes \*(UA to prompt for the subject upon entering compose mode
-unless a subject already exists.
-.
-.Mx
 .It Va askatend
 \*(BO Causes the prompts for
 .Ql Cc:
@@ -8109,8 +8104,9 @@ variable is ignored when this variable is set.
 .
 .Mx
 .It Va asksub
-\*(BO Alternative name for
-.Va ask .
+.\" The alternative *ask* is not documented on purpose
+\*(BO Causes \*(UA to prompt for the subject upon entering compose mode
+unless a subject already exists.
 .
 .Mx
 .It Va attrlist

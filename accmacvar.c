@@ -903,6 +903,9 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
       switch(okey){
       default:
          break;
+      case ok_b_ask:
+         ok_bset(asksub);
+         break;
       case ok_b_debug:
          n_poption |= n_PO_DEBUG;
          break;
@@ -964,6 +967,9 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
    }else{
       switch(okey){
       default:
+         break;
+      case ok_b_ask:
+         ok_bclear(asksub);
          break;
       case ok_b_debug:
          n_poption &= ~n_PO_DEBUG;

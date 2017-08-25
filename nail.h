@@ -1503,7 +1503,8 @@ enum okeys {
 ok_v_agent_shell_lookup,
    ok_b_allnet,
    ok_b_append,
-   ok_b_ask,
+   /* *ask* is auto-mapped to *asksub* as imposed by standard! */
+   ok_b_ask,                           /* {vip=1} */
    ok_b_askatend,
    ok_b_askattach,
    ok_b_askbcc,
