@@ -2641,10 +2641,12 @@ jout:
 
    /* Add automatic receivers */
    if ((cp = ok_vlook(autocc)) != NULL && *cp != '\0')
-      hp->h_cc = cat(hp->h_cc, checkaddrs(lextract(cp, GCC | GFULL),
+      hp->h_cc = cat(hp->h_cc, checkaddrs(lextract(cp, GCC |
+            (ok_blook(fullnames) ? GFULL | GSKIN : GSKIN)),
             EACM_NORMAL, checkaddr_err));
    if ((cp = ok_vlook(autobcc)) != NULL && *cp != '\0')
-      hp->h_bcc = cat(hp->h_bcc, checkaddrs(lextract(cp, GBCC | GFULL),
+      hp->h_bcc = cat(hp->h_bcc, checkaddrs(lextract(cp, GBCC |
+            (ok_blook(fullnames) ? GFULL | GSKIN : GSKIN)),
             EACM_NORMAL, checkaddr_err));
    if (*checkaddr_err != 0)
       goto jerr;

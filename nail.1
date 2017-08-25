@@ -828,7 +828,8 @@ $ \*(uA -s ubject -a ttach.txt bill@exam.ple
 # But... try it in an isolated dry-run mode (-d) first
 $ LC_ALL=C \*(uA -d -:/ -Ssendwait -Sttycharset=utf8 \e
    -b bcc@exam.ple -c cc@exam.ple \e
-   -. '(Lovely) Bob <bob@exam.ple>' eric@exam.ple
+   -Sfullnames -. \e
+   '(Lovely) Bob <bob@exam.ple>' eric@exam.ple
 
 # With SMTP
 $ LC_ALL=C \*(uA -d -:/ -Sv15-compat -Ssendwait -Sttycharset=utf8 \e
@@ -1087,7 +1088,8 @@ $ env LC_ALL=C \*(uA -:/ \e
     -S mta=smtps://mylogin@exam.ple:465 -Ssmtp-auth=login \e
     -S from=scriptreply@exam.ple \e
     -s 'Subject to go' -a attachment_file \e
-    -. 'Recipient 1 <rec1@exam.ple>' rec2@exam.ple \e
+    -Sfullnames -. \e
+    'Recipient 1 <rec1@exam.ple>' rec2@exam.ple \e
     < content_file
 .Ed
 .
@@ -1315,10 +1317,6 @@ exclusively to the sender(s).
 ing a message will allow editing the new message: the original message
 will be contained in the message body, adjusted according to
 .Ic headerpick .
-When replying to or forwarding a message recipient addresses will be
-stripped from comments and names unless the internal variable
-.Va fullnames
-is set.
 It is possible to
 .Ic resend
 or
@@ -1330,6 +1328,10 @@ messages editing is not possible and no copy will be saved even with
 .Va record
 unless the additional variable
 .Va record-resent
+is set.
+When sending, replying or forwarding messages comments and full names
+will be stripped from recipient addresses unless the internal variable
+.Va fullnames
 is set.
 Of course messages can be
 .Ic delete Ql d ,
@@ -5556,6 +5558,9 @@ recipient's address (instead of in
 (m) Takes a (list of) recipient address(es) as (an) argument(s),
 or asks on standard input if none were given;
 then collects the remaining mail content and sends it out.
+Unless the internal variable
+.Va fullnames
+is set recipient addresses will be stripped from comments, names etc.
 For more documentation please refer to
 .Sx "On sending mail, and non-interactive mode" .
 .Pp
@@ -8796,10 +8801,10 @@ picture on this topic), or by setting the internal variable
 .
 .Mx
 .It Va fullnames
-\*(BO When replying to or forwarding a message \*(UA normally removes
-the comment and name parts of email addresses.
-If this variable is set such stripping is not performed,
-and comments, names etc. are retained.
+\*(BO Due to historical reasons comments and name parts of email
+addresses are removed by default when sending mail, replying to or
+forwarding a message.
+If this variable is set such stripping is not performed.
 .
 .It Va fwdheading
 \*(OB Predecessor of
@@ -12765,7 +12770,7 @@ set mta=(smtps?|submission)://[USER[:PASS]@]SERVER[:PORT] \e
 # Never refuse to start into interactive mode, and more
 set emptystart \e
   colour-pager crt= \e
-  followup-to followup-to-honour=ask-yes \e
+  followup-to followup-to-honour=ask-yes fullnames \e
   history-file=+.\*(uAhist history-size=-1 history-gabby \e
   mime-counter-evidence=0xE \e
   prompt='?\e$?!\e$!/\e$^ERRNAME[\e$account#\e$mailbox-display]? ' \e
@@ -12820,9 +12825,10 @@ define XandeX {
   set folder=~/spool/XandeX inbox=+syste.mbox sent=+sent
   set from='Your Name <address@exam.ple>'
 
-  shortcut pop %:pop3s://pop.yaXXex.ru
+  shortcut pop %:pop3s://pop.yaXXex.com
+  shortcut imap %:imaps://imap.yaXXex.com
 
-  set mta=smtps://USER:PASS@smtp.yaXXex.ru:465 \e
+  set mta=smtps://USER:PASS@smtp.yaXXex.com:465 \e
     hostname=yaXXex.com smtp-hostname=
 }
 account XandeX {

@@ -57,6 +57,9 @@ static char const *__sendout_ident; /* TODO temporary hack; rewrite puthead() */
 static char *  _sendout_boundary;
 static si8_t   _sendout_error;
 
+/* *fullnames* appears after command line arguments have been parsed */
+static struct name *a_sendout_fullnames_cleanup(struct name *np);
+
 /* */
 static enum okay     _putname(char const *line, enum gfield w,
                         enum sendaction action, size_t *gotcha,
@@ -132,6 +135,21 @@ static int           fmt(char const *str, struct name *np, FILE *fo,
 /* Rewrite a message for resending, adding the Resent-Headers */
 static int           infix_resend(FILE *fi, FILE *fo, struct message *mp,
                         struct name *to, int add_resent);
+
+static struct name *
+a_sendout_fullnames_cleanup(struct name *np){
+   struct name *xp;
+   NYD2_ENTER;
+
+   for(xp = np; xp != NULL; xp = xp->n_flink){
+      xp->n_type &= ~(GFULL | GFULLEXTRA);
+      xp->n_flags &= ~NAME_FULLNAME_SALLOC;
+      xp->n_fullname = xp->n_name;
+      xp->n_fullextra = NULL;
+   }
+   NYD2_LEAVE;
+   return np;
+}
 
 static enum okay
 _putname(char const *line, enum gfield w, enum sendaction action,
@@ -778,7 +796,8 @@ sendmail_internal(void *v, int recipient_record)
 
    memset(&head, 0, sizeof head);
    head.h_mailx_command = "mail";
-   if((head.h_to = lextract(str, GTO | GFULL | GSKIN)) != NULL)
+   if((head.h_to = lextract(str, GTO |
+         (ok_blook(fullnames) ? GFULL | GSKIN : GSKIN))) != NULL)
       head.h_mailx_raw_to = namelist_dup(head.h_to, head.h_to->n_type);
    rv = mail1(&head, 0, NULL, NULL, recipient_record, 0);
    NYD_LEAVE;
@@ -1658,6 +1677,7 @@ mail(struct name *to, struct name *cc, struct name *bcc, char const *subject,
 {
    struct header head;
    struct str in, out;
+   bool_t fullnames;
    NYD_ENTER;
 
    memset(&head, 0, sizeof head);
@@ -1670,13 +1690,24 @@ mail(struct name *to, struct name *cc, struct name *bcc, char const *subject,
       head.h_subject = out.s;
    }
 
+   fullnames = ok_blook(fullnames);
+
    head.h_mailx_command = "mail";
-   if((head.h_to = to) != NULL)
+   if((head.h_to = to) != NULL){
+      if(!fullnames)
+         head.h_to = to = a_sendout_fullnames_cleanup(to);
       head.h_mailx_raw_to = namelist_dup(to, to->n_type);
-   if((head.h_cc = cc) != NULL)
+   }
+   if((head.h_cc = cc) != NULL){
+      if(!fullnames)
+         head.h_cc = cc = a_sendout_fullnames_cleanup(cc);
       head.h_mailx_raw_cc = namelist_dup(cc, cc->n_type);
-   if((head.h_bcc = bcc) != NULL)
+   }
+   if((head.h_bcc = bcc) != NULL){
+      if(!fullnames)
+         head.h_bcc = bcc = a_sendout_fullnames_cleanup(bcc);
       head.h_mailx_raw_bcc = namelist_dup(bcc, bcc->n_type);
+   }
 
    head.h_attach = attach;
 
@@ -2102,7 +2133,8 @@ jto_fmt:
             n_OBSOLETE(_("please use *reply-to*, not *replyto*"));
          if((addr = ok_vlook(reply_to)) == NULL)
             addr = v15compat;
-         np = lextract(addr, GEXTRA | GFULL);
+         np = lextract(addr, GEXTRA |
+               (ok_blook(fullnames) ? GFULL | GSKIN : GSKIN));
       }
       if (np != NULL &&
             (np = elide(

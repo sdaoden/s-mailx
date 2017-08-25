@@ -70,8 +70,8 @@ set editheaders
 # Startup into interactive mode even if the (given) mailbox is empty
 set emptystart
 
-# When replying to or forwarding a message the comment and name parts of email
-# addresses are removed unless this variable is set
+# Name parts and comments are stripped from receiver addresses unless this
+# variable is set
 set fullnames
 
 # [OPTION] Add more entries to the history as is done by default.
