@@ -84,7 +84,6 @@ static void
 a_tty__acthdl(int s) /* TODO someday, we won't need it no more */
 {
    NYD_X; /* Signal handler */
-   termios_state_reset();
    siglongjmp(a_tty__actjmp, s);
 }
 
@@ -124,8 +123,6 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
       rv = (boolify(termios_state.ts_linebuf, UIZ_MAX,
             noninteract_default) > 0);
 jrestore:
-   termios_state_reset();
-
    safe_signal(SIGHUP, ohup);
    safe_signal(SIGINT, oint);
 jleave:
@@ -157,11 +154,11 @@ getuser(char const * volatile query) /* TODO v15-compat obsolete */
    if (n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, query,
          &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL,NULL) >= 0)
       user = termios_state.ts_linebuf;
-jrestore:
-   termios_state_reset();
 
+jrestore:
    safe_signal(SIGHUP, ohup);
    safe_signal(SIGINT, oint);
+
    NYD_LEAVE;
    if (sig != 0)
       n_raise(sig);
