@@ -95,7 +95,7 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
    int volatile sig;
    NYD_ENTER;
 
-   if(!(n_psonce & n_PSO_INTERACTIVE)){
+   if(!(n_psonce & n_PSO_INTERACTIVE) || (n_pstate & n_PS_ROBOT)){
       sig = 0;
       rv = noninteract_default;
       goto jleave;

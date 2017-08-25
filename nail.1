@@ -894,7 +894,9 @@ allows editing of headers additionally to plain body content, whereas
 and
 .Va askbcc
 will cause the user to be prompted actively for (blind) carbon-copy
-recipients, respectively.
+recipients, respectively, whereas (the default)
+.Va asksend
+will request confirmation whether the message shall be send.
 .
 .Pp
 Especially when using public mail provider accounts with the SMTP
@@ -8093,6 +8095,13 @@ recipients (at the end of each message if
 or
 .Va bsdcompat
 are set).
+.
+.Mx
+.It Va asksend
+\*(BO Causes the user to be prompted for confirmation to send the
+message or reenter compose mode after having been shown an envelope
+summary.
+This is by default enabled.
 .
 .Mx
 .It Va asksign

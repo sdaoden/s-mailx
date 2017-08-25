@@ -1181,7 +1181,7 @@ quadify(char const *inbuf, uiz_t inlen, char const *prompt, si8_t emptyrv)
    else if ((rv = boolify(inbuf, inlen, -1)) < 0 &&
          !ascncasecmp(inbuf, "ask-", 4) &&
          (rv = boolify(inbuf + 4, inlen - 4, -1)) >= 0 &&
-         (n_psonce & n_PSO_INTERACTIVE))
+         (n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT))
       rv = getapproval(prompt, rv);
    NYD_LEAVE;
    return rv;

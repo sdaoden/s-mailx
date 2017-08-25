@@ -350,7 +350,7 @@ print_collf(FILE *cf, struct header *hp)
 
    hold_all_sigs();
 
-   fprintf(obuf, _("-------\nMessage contains:\n"));
+   fprintf(obuf, _("-------\nMessage contains:\n")); /* xxx SEARCH112 */
    puthead(TRU1, hp, obuf,
       (GIDENT | GTO | GSUBJECT | GCC | GBCC | GNL | GFILES | GCOMMA),
       SEND_TODISP, CONV_NONE, NULL, NULL);
@@ -1849,7 +1849,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
       if(ok_blook(fullnames))
          t |= GCOMMA;
 
-      if(n_psonce & n_PSO_INTERACTIVE){
+      if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)){
          if(hp->h_subject == NULL && ok_blook(asksub)/* *ask* auto warped! */)
             t &= ~GNL, getfields |= GSUBJECT;
 
@@ -1944,7 +1944,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
             sp = n_string_reserve(sp, 80);
          }
 
-         if(!(n_poption & n_PO_Mm_FLAG)){
+         if(!(n_poption & n_PO_Mm_FLAG) && !(n_pstate & n_PS_ROBOT)){
             /* Print what we have sofar also on the terminal (if useful) */
             if (!ok_blook(editalong)) {
                if (printheaders)
@@ -1962,7 +1962,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
                   goto jerr;
                /* Print msg mandated by the Mail Reference Manual */
 jcont:
-               if(n_psonce & n_PSO_INTERACTIVE)
+               if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT))
                   fputs(_("(continue)\n"), n_stdout);
             }
             fflush(n_stdout);
@@ -1971,7 +1971,8 @@ jcont:
    } else {
       /* Come here for printing the after-signal message.  Duplicate messages
        * won't be printed because the write is aborted if we get a SIGTTOU */
-      if (_coll_hadintr)
+      if(_coll_hadintr && (n_psonce & n_PSO_INTERACTIVE) &&
+            !(n_pstate & n_PS_ROBOT))
          n_err(_("\n(Interrupt -- one more to kill letter)\n"));
    }
 
@@ -2027,8 +2028,8 @@ jcont:
                goto jerr;
             n_poption &= ~n_PO_t_FLAG;
             continue;
-         }else if((n_psonce & n_PSO_INTERACTIVE) && ok_blook(ignoreeof) &&
-               ++eofcnt < 4){
+         }else if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT) &&
+               ok_blook(ignoreeof) && ++eofcnt < 4){
             fprintf(n_stdout,
                _("*ignoreeof* set, use `~.' to terminate letter\n"));
             n_go_input_clearerr();
@@ -2429,7 +2430,7 @@ jIi_putesc:
             break;
          if(!a_coll_putesc(cp, (c != 'I'), _coll_fp))
             goto jerr;
-         if((n_psonce & n_PSO_INTERACTIVE) &&
+         if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT) &&
                !a_coll_putesc(cp, (c != 'I'), n_stdout))
             goto jerr;
          n_pstate_err_no = n_ERR_NONE; /* XXX */
@@ -2615,7 +2616,7 @@ jout:
    }
 
    /* Final chance to edit headers, if not already above */
-   if(n_psonce & n_PSO_INTERACTIVE){
+   if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)){
       if(ok_blook(bsdcompat) || ok_blook(askatend)){
          enum gfield gf;
 
@@ -2650,6 +2651,31 @@ jout:
             EACM_NORMAL, checkaddr_err));
    if (*checkaddr_err != 0)
       goto jerr;
+
+   if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT) &&
+         ok_blook(asksend)){
+      bool_t b;
+
+      ifs_saved = coapm = NULL;
+      coap = NULL;
+
+      fprintf(n_stdout, _("-------\nEnvelope contains:\n")); /* xxx SEARCH112 */
+      puthead(TRU1, hp, n_stdout, GIDENT | GSUBJECT | GTO | GCC | GBCC | GCOMMA,
+         SEND_TODISP, CONV_NONE, NULL, NULL);
+
+      while((cp = n_go_input_cp(n_GO_INPUT_CTX_COMPOSE | n_GO_INPUT_NL_ESC,
+            _("Send this message [yes/no, or recompose]? "), NULL)) == NULL)
+         if(n_go_input_is_eof()){
+            cp = n_1;
+            break;
+         }
+
+      b = boolify(cp, UIZ_MAX, TRU1);
+      if(b < FAL0)
+         goto jcont;
+      else if(!b)
+         goto jerr;
+   }
 
    /* TODO Cannot do since it may require turning this into a multipart one */
    if(n_poption & n_PO_Mm_FLAG)
@@ -2712,7 +2738,8 @@ jout:
          (cp = cp_obsolete) != NULL){
       if(!a_coll_putesc(cp, TRU1, _coll_fp))
          goto jerr;
-      if((n_psonce & n_PSO_INTERACTIVE) && !a_coll_putesc(cp, TRU1, n_stdout))
+      if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT) &&
+            !a_coll_putesc(cp, TRU1, n_stdout))
          goto jerr;
    }
    }
@@ -2767,7 +2794,7 @@ jerr:
          n_err(_("Some addressees were classified as \"hard error\"\n"));
    }else if(_coll_hadintr == 0){
       *checkaddr_err = TRU1; /* TODO ugly: "sendout_error" now.. */
-      n_err(_("Failed to prepare composed message (I/O error, disk full?)\n"));
+      n_err(_("Failed to prepare composed message\n"));
    }
    goto jleave;
 

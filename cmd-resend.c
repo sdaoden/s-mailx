@@ -121,7 +121,7 @@ a_crese_reply_to(struct message *mp){
       size_t l;
       char const *tr;
 
-      if(n_psonce & n_PSO_INTERACTIVE){
+      if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)){
          fprintf(n_stdout, _("Reply-To: header contains:"));
          for(np = rt; np != NULL; np = np->n_flink)
             fprintf(n_stdout, " %s", np->n_name);
@@ -159,7 +159,7 @@ a_crese_mail_followup_to(struct message *mp){
       size_t l;
       char const *tr;
 
-      if(n_psonce & n_PSO_INTERACTIVE){
+      if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)){
          fprintf(n_stdout, _("Mail-Followup-To: header contains:"));
          for(np = mft; np != NULL; np = np->n_flink)
             fprintf(n_stdout, " %s", np->n_name);
