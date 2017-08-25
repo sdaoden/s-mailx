@@ -1850,26 +1850,26 @@ collect(struct header *hp, int printheaders, struct message *mp,
    /* If we are going to prompt for a subject, refrain from printing a newline
     * after the headers (since some people mind) */
    getfields = 0;
-   if (!(n_poption & n_PO_t_FLAG)) {
+   if(!(n_poption & n_PO_t_FLAG)){
       t = GTO | GSUBJECT | GCC | GNL;
-      if (ok_blook(fullnames))
+      if(ok_blook(fullnames))
          t |= GCOMMA;
 
-      if (n_psonce & n_PSO_INTERACTIVE) {
-         if (hp->h_subject == NULL && (ok_blook(ask) || ok_blook(asksub)))
+      if(n_psonce & n_PSO_INTERACTIVE){
+         if(hp->h_subject == NULL && (ok_blook(ask) || ok_blook(asksub)))
             t &= ~GNL, getfields |= GSUBJECT;
 
-         if (hp->h_to == NULL)
+         if(hp->h_to == NULL)
             t &= ~GNL, getfields |= GTO;
 
-         if (!ok_blook(bsdcompat) && !ok_blook(askatend)) {
-            if (hp->h_bcc == NULL && ok_blook(askbcc))
+         if(!ok_blook(bsdcompat) && !ok_blook(askatend)){
+            if(ok_blook(askbcc))
                t &= ~GNL, getfields |= GBCC;
-            if (hp->h_cc == NULL && ok_blook(askcc))
+            if(ok_blook(askcc))
                t &= ~GNL, getfields |= GCC;
          }
       }
-   } else {
+   }else{
       n_UNINIT(t, 0);
    }
 
@@ -2623,15 +2623,22 @@ jout:
    }
 
    /* Final chance to edit headers, if not already above */
-   if (ok_blook(bsdcompat) || ok_blook(askatend)) {
-      if (hp->h_cc == NULL && ok_blook(askcc))
-         grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, GCC, 1);
-      if (hp->h_bcc == NULL && ok_blook(askbcc))
-         grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, GBCC, 1);
+   if(n_psonce & n_PSO_INTERACTIVE){
+      if(ok_blook(bsdcompat) || ok_blook(askatend)){
+         enum gfield gf;
+
+         gf = GNONE;
+         if(ok_blook(askcc))
+            gf |= GCC;
+         if(ok_blook(askbcc))
+            gf |= GBCC;
+         if(gf != 0)
+            grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, gf, 1);
+      }
+      if(ok_blook(askattach))
+         hp->h_attach = n_attachment_list_edit(hp->h_attach,
+               n_GO_INPUT_CTX_COMPOSE);
    }
-   if (hp->h_attach == NULL && ok_blook(askattach))
-      hp->h_attach = n_attachment_list_edit(hp->h_attach,
-            n_GO_INPUT_CTX_COMPOSE);
 
    /* Execute compose-leave */
    if((cp = ok_vlook(on_compose_leave)) != NULL){

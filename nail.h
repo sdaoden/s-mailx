@@ -2310,28 +2310,29 @@ struct message {
 #define mailx_offsetof(off)               ((int) ((off) % 4096))
 #define mailx_positionof(block, offset)   ((off_t)(block) * 4096 + (offset))
 
-enum gfield {
-   GTO            = 1<< 0,    /* Grab To: line */
-   GSUBJECT       = 1<< 1,    /* Likewise, Subject: line */
-   GCC            = 1<< 2,    /* And the Cc: line */
-   GBCC           = 1<< 3,    /* And also the Bcc: line */
+enum gfield{ /* TODO -> enum m_grab_head, m_GH_xy */
+   GNONE,
+   GTO = 1u<<0,         /* Grab To: line */
+   GSUBJECT = 1u<<1,    /* Likewise, Subject: line */
+   GCC = 1u<<2,         /* And the Cc: line */
+   GBCC = 1u<<3,        /* And also the Bcc: line */
 
-   GNL            = 1<< 4,    /* Print blank line after */
-   GDEL           = 1<< 5,    /* Entity removed from list */
-   GCOMMA         = 1<< 6,    /* detract() puts in commas */
-   GUA            = 1<< 7,    /* User-Agent field */
-   GMIME          = 1<< 8,    /* MIME 1.0 fields */
-   GMSGID         = 1<< 9,    /* a Message-ID */
-   GNAMEONLY      = 1<<10,    /* detract() does NOT use fullnames */
+   GNL = 1u<<4,         /* Print blank line after */
+   GDEL = 1u<<5,        /* Entity removed from list */
+   GCOMMA = 1u<<6,      /* detract() puts in commas */
+   GUA = 1u<<7,         /* User-Agent field */
+   GMIME = 1u<<8,       /* MIME 1.0 fields */
+   GMSGID = 1u<<9,      /* a Message-ID */
+   GNAMEONLY = 1u<<10,  /* detract() does NOT use fullnames */
 
-   GIDENT         = 1<<11,    /* From:, Reply-To:, MFT: (user headers) */
-   GREF           = 1<<12,    /* References:, In-Reply-To:, (Message-ID:) */
-   GDATE          = 1<<13,    /* Date: field */
-   GFULL          = 1<<14,    /* Include full names, comments etc. */
-   GSKIN          = 1<<15,    /* Skin names */
-   GEXTRA         = 1<<16,    /* Extra fields (mostly like GIDENT XXX) */
-   GFILES         = 1<<17,    /* Include filename and pipe addresses */
-   GFULLEXTRA     = 1<<18     /* Only with GFULL: GFULL less address */
+   GIDENT = 1u<<11,     /* From:, Reply-To:, MFT: (user headers) */
+   GREF = 1u<<12,       /* References:, In-Reply-To:, (Message-ID:) */
+   GDATE = 1u<<13,      /* Date: field */
+   GFULL = 1u<<14,      /* Include full names, comments etc. */
+   GSKIN = 1u<<15,      /* Skin names */
+   GEXTRA = 1u<<16,     /* Extra fields (mostly like GIDENT XXX) */
+   GFILES = 1u<<17,     /* Include filename and pipe addresses */
+   GFULLEXTRA = 1u<<18  /* Only with GFULL: GFULL less address */
 };
 #define GMASK           (GTO | GSUBJECT | GCC | GBCC)
 

@@ -7910,9 +7910,8 @@ This should always be set.
 .
 .Mx
 .It Va ask
-\*(BO Causes \*(UA to prompt for the subject of each message sent.
-If the user responds with simply a newline,
-no subject field will be sent.
+\*(BO Causes \*(UA to prompt for the subject upon entering compose mode
+unless a subject already exists.
 .
 .Mx
 .It Va askatend
@@ -7924,8 +7923,7 @@ lists to appear after the message has been edited.
 .
 .Mx
 .It Va askattach
-\*(BO If set, \*(UA asks for files to attach at the end of each message,
-shall the list be found empty at that time.
+\*(BO If set, \*(UA asks for files to attach at the end of each message.
 An empty line finalizes the list.
 .
 .Mx
@@ -7935,8 +7933,7 @@ An empty line finalizes the list.
 .Va askatend
 or
 .Va bsdcompat
-are set) shall the list be found empty (at that time).
-An empty line finalizes the list.
+are set).
 .
 .Mx
 .It Va askbcc
@@ -7945,8 +7942,7 @@ recipients (at the end of each message if
 .Va askatend
 or
 .Va bsdcompat
-are set) shall the list be found empty (at that time).
-An empty line finalizes the list.
+are set).
 .
 .Mx
 .It Va asksign

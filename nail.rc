@@ -121,7 +121,7 @@ set keepsave
 
 # An informational prompt (and see "Gimmicks" below).
 # Note the _real_ evaluation occurs once used (see *prompt* manual entry)
-#wysh set prompt='?\${?}!\${!}[\${account-name}#\${mailbox-display}]? '
+#wysh set prompt='?\$?!\$!/\$^ERRNAME[\${account-name}#\${mailbox-display}]? '
 
 # Automatically quote the text of the message that is responded to
 set quote
