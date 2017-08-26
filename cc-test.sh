@@ -1,5 +1,7 @@
 #!/bin/sh -
-#@ Usage: ./cc-test.sh [--check-only s-mailx-binary]
+#@ Synopsis: ./cc-test.sh [--check-only s-mailx-binary]
+#@           ./cc-test.sh --mae-test s-mailx-binary [:TESTNAME:]
+#@ The latter generates output files.
 #@ TODO _All_ the tests should happen in a temporary subdir.
 # Public Domain
 
@@ -26,13 +28,13 @@ if ( command -v command ) >/dev/null 2>&1; then :; else
    }
 fi
 
-MAKE="${MAKE:-`command -v make`}"
-awk=${awk:-`command -v awk`}
-cat=${cat:-`command -v cat`}
-cksum=${cksum:-`command -v cksum`}
-rm=${rm:-`command -v rm`}
-sed=${sed:-`command -v sed`}
-grep=${grep:-`command -v grep`}
+: ${MAKE:=`command -v make`}
+: ${awk:=`command -v awk`}
+: ${cat:=`command -v cat`}
+: ${cksum:=`command -v cksum`}
+: ${rm:=`command -v rm`}
+: ${sed:=`command -v sed`}
+: ${grep:=`command -v grep`}
 
 # Problem: force $SHELL to be a real shell.  It seems some testing environments
 # use nologin(?), but we need a real shell for command execution
@@ -65,21 +67,30 @@ export LC_ALL LANG TZ SOURCE_DATE_EPOCH
 unset POSIXLY_CORRECT
 
 usage() {
-   echo >&2 "Usage: ./cc-test.sh [--check-only s-mailx-binary]"
+   echo >&2 "Synopsis: ./cc-test.sh [--check-only s-mailx-binary]"
+   echo >&2 "Synopsis: ./cc-test.sh --mae-test s-mailx-binary [:TESTNAME:]"
    exit 1
 }
 
-CHECK_ONLY= MAILX=
+CHECK_ONLY= MAE_TEST= MAILX=
 if [ "${1}" = --check-only ]; then
    CHECK_ONLY=1
    MAILX=${2}
    [ -x "${MAILX}" ] || usage
+   shift 2
+elif [ "${1}" = --mae-test ]; then
+   MAE_TEST=1
+   MAILX=${2}
+   [ -x "${MAILX}" ] || usage
+   shift 2
+   : ${cp:=`command -v cp`} # XXX
+   : ${tr:=`command -v tr`} # XXX
 fi
 RAWMAILX=${MAILX}
 MAILX="${MEMTESTER}${MAILX}"
 export RAWMAILX MAILX
 
-if [ -n "${CHECK_ONLY}" ] && [ -z "${UTF8_LOCALE}" ]; then
+if [ -n "${CHECK_ONLY}${MAE_TEST}" ] && [ -z "${UTF8_LOCALE}" ]; then
    # Try ourselfs for nl_langinfo(CODESET) output first (requires a new version)
    i=`LC_ALL=C.utf8 "${RAWMAILX}" ${ARGS} -X '
       \define cset_test {
@@ -214,6 +225,7 @@ have_feat() {
 t_prolog() {
    ${rm} -rf "${BODY}" "${MBOX}" ${TRAP_EXIT_ADDONS}
    TRAP_EXIT_ADDONS=
+   [ ${#} -gt 0 ] && printf '[%s]\n' "${1}"
 }
 t_epilog() {
    t_prolog
@@ -221,8 +233,6 @@ t_epilog() {
 
 check() {
    restat=${?} tid=${1} eestat=${2} f=${3} s=${4}
-       #x=`echo ${tid} | tr "/:=" "__-"`
-       #cp -f "${f}" "${TMPDIR}/${x}"
    [ "${eestat}" != - ] && [ "${restat}" != "${eestat}" ] &&
       err "${tid}" 'unexpected exit status: '"${restat} != ${eestat}"
    csum="`${cksum} < ${f}`"
@@ -231,6 +241,10 @@ check() {
    else
       ESTAT=1
       printf '%s: error: checksum mismatch (got %s)\n' "${tid}" "${csum}"
+   fi
+   if [ -n "${MAE_TEST}" ]; then
+      x=`echo ${tid} | ${tr} "/:=" "__-"`
+      ${cp} -f "${f}" ./mae-test-"${x}"
    fi
 }
 
@@ -307,7 +321,7 @@ t_behave() {
    t_behave_message_injections
    t_behave_mime_types_load_control
 
-   t_behave_smime
+   t_behave_s_mime
 
    t_behave_maildir
    t_behave_mass_recipients
@@ -316,7 +330,7 @@ t_behave() {
 }
 
 t_behave_X_opt_input_command_stack() {
-   t_prolog
+   t_prolog t_behave_X_opt_input_command_stack
 
    ${cat} <<- '__EOT' > "${BODY}"
 	echo 1
@@ -410,7 +424,7 @@ t_behave_X_opt_input_command_stack() {
 }
 
 t_behave_X_errexit() {
-   t_prolog
+   t_prolog t_behave_X_errexit
 
    ${cat} <<- '__EOT' > "${BODY}"
 	echo one
@@ -475,7 +489,7 @@ t_behave_X_errexit() {
 }
 
 t_behave_wysh() {
-   t_prolog
+   t_prolog t_behave_wysh
 
    ${cat} <<- '__EOT' > "${BODY}"
 	#
@@ -550,7 +564,7 @@ t_behave_wysh() {
 }
 
 t_behave_input_inject_semicolon_seq() {
-   t_prolog
+   t_prolog t_behave_input_inject_semicolon_seq
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
 	define mydeepmac {
@@ -572,7 +586,7 @@ t_behave_input_inject_semicolon_seq() {
 }
 
 t_behave_commandalias() {
-   t_prolog
+   t_prolog t_behave_commandalias
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
 	commandalias echo echo hoho
@@ -598,7 +612,7 @@ t_behave_commandalias() {
 }
 
 t_behave_ifelse() {
-   t_prolog
+   t_prolog t_behave_ifelse
 
    # Nestable conditions test
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
@@ -1316,7 +1330,7 @@ t_behave_ifelse() {
 }
 
 t_behave_localopts() {
-   t_prolog
+   t_prolog t_behave_localopts
 
    # Nestable conditions test
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
@@ -1406,7 +1420,7 @@ t_behave_localopts() {
 }
 
 t_behave_macro_param_shift() {
-   t_prolog
+   t_prolog t_behave_macro_param_shift
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>/dev/null
 	define t2 {
@@ -1453,7 +1467,7 @@ t_behave_macro_param_shift() {
 }
 
 t_behave_addrcodec() {
-   t_prolog
+   t_prolog t_behave_addrcodec
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
 	vput addrcodec res e 1 <doog@def>
@@ -1570,7 +1584,7 @@ t_behave_addrcodec() {
 }
 
 t_behave_vexpr() {
-   t_prolog
+   t_prolog t_behave_vexpr
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>/dev/null
 	vput vexpr res = 9223372036854775807
@@ -1836,7 +1850,7 @@ t_behave_vexpr() {
 }
 
 t_behave_call_ret() {
-   t_prolog
+   t_prolog t_behave_call_ret
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Snomemdebug > "${MBOX}" 2>&1
 	define w1 {
@@ -1913,7 +1927,7 @@ t_behave_call_ret() {
 }
 
 t_behave_xcall() {
-   t_prolog
+   t_prolog t_behave_xcall
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Snomemdebug > "${MBOX}" 2>&1
 	define work {
@@ -2002,7 +2016,7 @@ t_behave_xcall() {
 }
 
 t_behave_vpospar() {
-   t_prolog
+   t_prolog t_behave_vpospar
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
    vpospar set hey, "'you    ", world!
@@ -2067,7 +2081,7 @@ t_behave_vpospar() {
 }
 
 t_behave_atxplode() {
-   t_prolog
+   t_prolog t_behave_atxplode
    TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} > ./.t.sh <<- '___'; ${cat} > ./.t.rc <<- '___'
@@ -2129,7 +2143,7 @@ t_behave_atxplode() {
 }
 
 t_behave_read() {
-   t_prolog
+   t_prolog t_behave_read
    TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<- '__EOT' > .tin
@@ -2203,7 +2217,7 @@ t_behave_read() {
 }
 
 t_behave_mbox() {
-   t_prolog
+   t_prolog t_behave_mbox
    TRAP_EXIT_ADDONS="./.t*"
 
    (
@@ -2216,55 +2230,38 @@ t_behave_mbox() {
    ) | ${MAILX} ${ARGS}
    check behave:mbox-1 0 "${MBOX}" '1140119864 13780'
 
-   printf 'File "%s"
-         copy * "%s"
-         File "%s"
-         from*
-      ' "${MBOX}" .tmbox1 .tmbox1 |
+   printf 'File "%s"\ncopy * "%s"\nFile "%s"\nfrom*' "${MBOX}" .tmbox1 .tmbox1 |
       ${MAILX} ${ARGS} > .tlst
    check behave:mbox-2 0 .tlst '2739893312 9103'
 
-   printf 'File "%s"
-         copy * "file://%s"
-         File "file://%s"
-         from*
-      ' "${MBOX}" .tmbox2 .tmbox2 |
-      ${MAILX} ${ARGS} > .tlst
+   printf 'File "%s"\ncopy * "file://%s"\nFile "file://%s"\nfrom*' \
+      "${MBOX}" .tmbox2 .tmbox2 | ${MAILX} ${ARGS} > .tlst
    check behave:mbox-3 0 .tlst '1702194178 9110'
 
    # only the odd (even)
    (
-      printf 'File "file://%s"
-            copy ' .tmbox2
+      printf 'File "file://%s"\ncopy ' .tmbox2
       i=0
       while [ ${i} -lt 112 ]; do
          j=`modulo ${i} 2`
          [ ${j} -eq 1 ] && printf '%s ' "${i}"
          i=`add ${i} 1`
       done
-      printf ' file://%s
-            File "file://%s"
-            from*
-         ' .tmbox3 .tmbox3
+      printf 'file://%s\nFile "file://%s"\nfrom*' .tmbox3 .tmbox3
    ) | ${MAILX} ${ARGS} > .tlst
    check behave:mbox-4 0 .tmbox3 '631132924 6890'
    check behave:mbox-5 - .tlst '2960975049 4573'
    # ...
    (
-      printf 'file "file://%s"
-            move ' .tmbox2
+      printf 'file "file://%s"\nmove ' .tmbox2
       i=0
       while [ ${i} -lt 112 ]; do
          j=`modulo ${i} 2`
          [ ${j} -eq 0 ] && [ ${i} -ne 0 ] && printf '%s ' "${i}"
          i=`add ${i} 1`
       done
-      printf ' file://%s
-            File "file://%s"
-            from*
-            File "file://%s"
-            from*
-         ' .tmbox3 .tmbox3 .tmbox2
+      printf 'file://%s\nFile "file://%s"\nfrom*\nFile "file://%s"\nfrom*' \
+         .tmbox3 .tmbox3 .tmbox2
    ) | ${MAILX} ${ARGS} > .tlst
    check behave:mbox-6 0 .tmbox3 '1387070539 13655'
    ${sed} 2d < .tlst > .tlstx
@@ -2274,7 +2271,7 @@ t_behave_mbox() {
 }
 
 t_behave_alternates() {
-   t_prolog
+   t_prolog t_behave_alternates
    TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<-_EOT > ./.tsendmail.sh
@@ -2415,7 +2412,7 @@ _EOT
 }
 
 t_behave_alias() {
-   t_prolog
+   t_prolog t_behave_alias
    TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<-_EOT > ./.tsendmail.sh
@@ -2457,7 +2454,7 @@ _EOT
 }
 
 t_behave_filetype() {
-   t_prolog
+   t_prolog t_behave_filetype
    TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<-_EOT > ./.tsendmail.sh
@@ -2474,13 +2471,11 @@ t_behave_filetype() {
    if command -v gzip >/dev/null 2>&1; then
       ${rm} -f ./.t.mbox*
       {
-         printf 'File "%s"\ncopy 1 ./.t.mbox.gz
-               copy 2 ./.t.mbox.gz' "${MBOX}" |
-            ${MAILX} ${ARGS} \
+         printf 'File "%s"\ncopy 1 ./.t.mbox.gz\ncopy 2 ./.t.mbox.gz' \
+            "${MBOX}" | ${MAILX} ${ARGS} \
                -X'filetype gz gzip\ -dc gzip\ -c'
          printf 'File ./.t.mbox.gz\ncopy * ./.t.mbox\n' |
-            ${MAILX} ${ARGS} \
-               -X'filetype gz gzip\ -dc gzip\ -c'
+            ${MAILX} ${ARGS} -X'filetype gz gzip\ -dc gzip\ -c'
       } > ./.t.out 2>&1
       check behave:filetype-2 - "./.t.mbox" '1594682963 13520'
       check behave:filetype-3 - "./.t.out" '2494681730 102'
@@ -2512,7 +2507,7 @@ t_behave_filetype() {
 }
 
 t_behave_record_a_resend() {
-   t_prolog
+   t_prolog t_behave_record_a_resend
    TRAP_EXIT_ADDONS="./.t.record ./.t.resent"
 
    printf '
@@ -2537,7 +2532,7 @@ t_behave_record_a_resend() {
 }
 
 t_behave_e_H_L_opts() {
-   t_prolog
+   t_prolog t_behave_e_H_L_opts
    TRAP_EXIT_ADDONS="./.tsendmail.sh ./.t.mbox"
 
    touch ./.t.mbox
@@ -2591,7 +2586,7 @@ t_behave_e_H_L_opts() {
 }
 
 t_behave_compose_hooks() { # TODO monster
-   t_prolog
+   t_prolog t_behave_compose_hooks
    TRAP_EXIT_ADDONS="./.t*"
 
    (echo line one&&echo line two&&echo line three) > ./.treadctl
@@ -3501,7 +3496,7 @@ this is content of forward 1
 }
 
 t_behave_message_injections() {
-   t_prolog
+   t_prolog t_behave_message_injections
    TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<-_EOT > ./.tsendmail.sh
@@ -3541,7 +3536,7 @@ t_behave_message_injections() {
 }
 
 t_behave_mime_types_load_control() {
-   t_prolog
+   t_prolog t_behave_mime_types_load_control
    TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<-_EOT > ./.tmts1
@@ -3591,13 +3586,13 @@ t_behave_mime_types_load_control() {
    t_epilog
 }
 
-t_behave_smime() {
+t_behave_s_mime() {
    have_feat smime || {
       echo 'behave:s/mime: unsupported, skipped'
       return
    }
 
-   t_prolog
+   t_prolog t_behave_s_mime
    TRAP_EXIT_ADDONS="./.t.conf ./.tkey.pem ./.tcert.pem ./.tpair.pem"
    TRAP_EXIT_ADDONS="${TRAP_EXIT_ADDONS} ./.VERIFY ./.DECRYPT ./.ENCRYPT"
    TRAP_EXIT_ADDONS="${TRAP_EXIT_ADDONS} ./.tsendmail.sh"
@@ -3783,7 +3778,7 @@ t_behave_smime() {
 }
 
 t_behave_maildir() {
-   t_prolog
+   t_prolog t_behave_maildir
    TRAP_EXIT_ADDONS="./.t*"
 
    (
@@ -3863,7 +3858,7 @@ t_behave_maildir() {
 }
 
 t_behave_mass_recipients() {
-   t_prolog
+   t_prolog t_behave_mass_recipients
    TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<-_EOT > ./.tsendmail.sh
@@ -3931,7 +3926,7 @@ __EOT__
 }
 
 t_behave_lreply_futh_rth_etc() {
-   t_prolog
+   t_prolog t_behave_lreply_futh_rth_etc
    TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<-_EOT > ./.tsendmail.sh
@@ -4079,7 +4074,7 @@ t_behave_lreply_futh_rth_etc() {
 }
 
 t_behave_iconv_mbyte_base64() {
-   t_prolog
+   t_prolog t_behave_iconv_mbyte_base64
    TRAP_EXIT_ADDONS="./.t*"
 
    if [ -n "${UTF8_LOCALE}" ] && have_feat iconv &&
@@ -4099,7 +4094,9 @@ t_behave_iconv_mbyte_base64() {
    chmod 0755 ./.tsendmail.sh
 
    if ( iconv -l | ${grep} -i iso-2022-jp ) >/dev/null 2>&1; then
-      printf '
+      cat <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
+            -Smta=./.tsendmail.sh \
+            -Sescape=! -Smime-encoding=base64 2>./.terr
          set ttycharset=utf-8 sendcharsets=iso-2022-jp
          m t1@exam.ple
 !s Japanese from UTF-8 to ISO-2022-JP
@@ -4116,17 +4113,16 @@ t_behave_iconv_mbyte_base64() {
          set ttycharset=iso-2022-jp charset-7bit=iso-2022-jp sendcharsets=utf-8
          m t2@exam.ple
 !s Japanese from ISO-2022-JP to UTF-8, eh, no, also ISO-2022-JP
-$B%%7%%8%%e%%&%%+%%i2J!J%%7%%8%%e%%&%%+%%i$+!"3XL>(B Paridae$B!K$O!"D;N`%%9%%:%%aL\\$N2J$G$"$k!#%%7%%8%%e%%&%%+%%i!J;M==?}!K$HAm>N$5$l$k$,!"695A$K$O$3$N(B1$B<o$r%%7%%8%%e%%&%%+%%i$H8F$V!#(B
+$B%7%8%e%&%+%i2J!J%7%8%e%&%+%i$+!"3XL>(B Paridae$B!K$O!"D;N`%9%:%aL\$N2J$G$"$k!#%7%8%e%&%+%i!J;M==?}!K$HAm>N$5$l$k$,!"695A$K$O$3$N(B1$B<o$r%7%8%e%&%+%i$H8F$V!#(B
 
-$B%%+%%s%%`%%j%%,%%i!J3XL>(BParus cristatus$B!K$O!"%%9%%:%%aL\\%%7%%8%%e%%&%%+%%i2J$KJ,N`$5$l$kD;N`$N0l<o!#(B
+$B%+%s%`%j%,%i!J3XL>(BParus cristatus$B!K$O!"%9%:%aL\%7%8%e%&%+%i2J$KJ,N`$5$l$kD;N`$N0l<o!#(B
 
 
-$B%%+%%s%%`%%j%%,%%i!J3XL>(BParus cristatus$B!K$O!"%%9%%:%%aL\\%%7%%8%%e%%&%%+%%i2J$KJ,N`$5$l$kD;N`$N0l<o!#(B
+$B%+%s%`%j%,%i!J3XL>(BParus cristatus$B!K$O!"%9%:%aL\%7%8%e%&%+%i2J$KJ,N`$5$l$kD;N`$N0l<o!#(B
 
-$B%%7%%8%%e%%&%%+%%i2J!J%%7%%8%%e%%&%%+%%i$+!"3XL>(B Paridae$B!K$O!"D;N`%%9%%:%%aL\\$N2J$G$"$k!#%%7%%8%%e%%&%%+%%i!J;M==?}!K$HAm>N$5$l$k$,!"695A$K$O$3$N(B1$B<o$r%%7%%8%%e%%&%%+%%i$H8F$V!#(B
+$B%7%8%e%&%+%i2J!J%7%8%e%&%+%i$+!"3XL>(B Paridae$B!K$O!"D;N`%9%:%aL\$N2J$G$"$k!#%7%8%e%&%+%i!J;M==?}!K$HAm>N$5$l$k$,!"695A$K$O$3$N(B1$B<o$r%7%8%e%&%+%i$H8F$V!#(B
 !.
-      ' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} -Smta=./.tsendmail.sh \
-         -Sescape=! -Smime-encoding=base64 2>./.terr
+		_EOT
       check behave:iconv_mbyte_base64-1 0 "${MBOX}" '3428985079 1976'
       check behave:iconv_mbyte_base64-2 - ./.terr '4294967295 0'
 
@@ -4140,7 +4136,9 @@ t_behave_iconv_mbyte_base64() {
 
    if ( iconv -l | ${grep} -i euc-jp ) >/dev/null 2>&1; then
       rm -f "${MBOX}" ./.twrite
-      printf '
+      cat <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
+            -Smta=./.tsendmail.sh \
+            -Sescape=! -Smime-encoding=base64 2>./.terr
          set ttycharset=utf-8 sendcharsets=euc-jp
          m t1@exam.ple
 !s Japanese from UTF-8 to EUC-JP
@@ -4166,8 +4164,7 @@ t_behave_iconv_mbyte_base64() {
 
 ¥·¥¸¥å¥¦¥«¥é²Ê¡Ê¥·¥¸¥å¥¦¥«¥é¤«¡¢³ØÌ¾ Paridae¡Ë¤Ï¡¢Ä»Îà¥¹¥º¥áÌÜ¤Î²Ê¤Ç¤¢¤ë¡£¥·¥¸¥å¥¦¥«¥é¡Ê»Í½½¿ý¡Ë¤ÈÁí¾Î¤µ¤ì¤ë¤¬¡¢¶¹µÁ¤Ë¤Ï¤³¤Î1¼ï¤ò¥·¥¸¥å¥¦¥«¥é¤È¸Æ¤Ö¡£
 !.
-      ' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} -Smta=./.tsendmail.sh \
-         -Sescape=! -Smime-encoding=base64 2>./.terr
+		_EOT
       check behave:iconv_mbyte_base64-5 0 "${MBOX}" '1686827547 2051'
       check behave:iconv_mbyte_base64-6 - ./.terr '4294967295 0'
 
@@ -4188,7 +4185,7 @@ t_behave_iconv_mbyte_base64() {
 # Note we unfortunately need to place some statements without proper
 # indentation because of continuation problems
 t_content() {
-   t_prolog
+   t_prolog t_content
 
    # MIME encoding (QP) stress message body
 printf \
@@ -4435,10 +4432,15 @@ t_all() {
    t_content
 }
 
-if [ -z "${CHECK_ONLY}" ]; then
+if [ -z "${CHECK_ONLY}${MAE_TEST}" ]; then
    cc_all_configs
-else
+elif [ -z "${MAE_TEST}" ] || [ ${#} -eq 0 ]; then
    t_all
+else
+   while [ ${#} -gt 0 ]; do
+      ${1}
+      shift
+   done
 fi
 
 [ ${ESTAT} -eq 0 ] && echo Ok || echo >&2 'Errors occurred'

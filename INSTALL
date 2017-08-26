@@ -189,8 +189,19 @@ to the mailing-list.
 That would be a disaster.  Please contact the mailing-list!
 If you have used OPT_AUTOCC (the default) and a non-debug target, you
 could try to reconfigure with an additional cc_maxopt=1 on the command
-line and report whether that makes testing succeed.  Thank you!
+line and report whether that makes testing succeed.
 
+Otherwise you could run the cc-test.sh script in --mae-test mode and
+invoke the failing tests (testing echoes the actual test names in
+brackets): this will produce output files of the form mae-test-TESTXY.
+It would be nice if these outputs could be send to the mailing-list;
+possibly stored in a compressed tar(1) file.  For example:
+
+  $ ./cc-test.sh --mae-test ./s-nail t_behave_localopts t_behave_mbox
+  $ tar -czf badtests.tar.gz mae-test-*
+  $ rm mae-test-*
+
+Thank you!
 
 1.4 How can i enable debugging?
 -------------------------------
