@@ -2420,7 +2420,7 @@ t_behave_filetype() {
 
    printf 'm m1@e.t\nL1\nHy1\n~.\nm m2@e.t\nL2\nHy2\n~@ %s\n~.\n' \
       "${SRCDIR}snailmail.jpg" | ${MAILX} ${ARGS} -Smta=./.tsendmail.sh
-   check behave:filetype-1 0 "${MBOX}" '1645747150 13536'
+   check behave:filetype-1 0 "${MBOX}" '1594682963 13520'
 
    if command -v gzip >/dev/null 2>&1; then
       ${rm} -f ./.t.mbox*
@@ -2432,10 +2432,12 @@ t_behave_filetype() {
          printf 'File ./.t.mbox.gz\ncopy * ./.t.mbox\n' |
             ${MAILX} ${ARGS} \
                -X'filetype gz gzip\ -dc gzip\ -c'
-      } >/dev/null 2>&1
-      check behave:filetype-2 0 "./.t.mbox" '1645747150 13536'
+      } > ./.t.out 2>&1
+      check behave:filetype-2 - "./.t.mbox" '1594682963 13520'
+      check behave:filetype-3 - "./.t.out" '2494681730 102'
    else
       echo 'behave:filetype-2: unsupported, skipped'
+      echo 'behave:filetype-3: unsupported, skipped'
    fi
 
    {
@@ -2453,9 +2455,9 @@ t_behave_filetype() {
          ${MAILX} ${ARGS} \
             -X'filetype gz gzip\ -dc gzip\ -c' \
             -X'filetype mbox.gz "${sed} 1,3d|${cat}" kill\ 0'
-   } >/dev/null 2>&1
-
-   check behave:filetype-3 - "./.t.mbox" '238021003 27092'
+   } > ./.t.out 2>&1
+   check behave:filetype-4 - "./.t.mbox" '2886541147 27060'
+   check behave:filetype-5 - "./.t.out" '838452520 172'
 
    t_epilog
 }
@@ -3530,12 +3532,12 @@ t_behave_mime_types_load_control() {
    ex0_test behave:mime_types_load_control
 
    ${cat} "${MBOX}" >> ./.tout
-   check behave:mime_types_load_control-1 - ./.tout '4049496531 2513'
+   check behave:mime_types_load_control-1 - ./.tout '1441260727 2449'
 
    echo type | ${MAILX} ${ARGS} -R \
       -Smimetypes-load-control=f=./.tmts1,f=./.tmts3 \
       -f "${MBOX}" >> ./.tout 2>&1
-   check behave:mime_types_load_control-2 0 ./.tout '2418616932 3742'
+   check behave:mime_types_load_control-2 0 ./.tout '1441391438 3646'
 
    t_epilog
 }

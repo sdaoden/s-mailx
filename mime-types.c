@@ -1130,8 +1130,8 @@ n_mimetype_classify_file(FILE *fp, char const **contenttype,
          goto jcharset;
       if (mtc & (_MT_C_NCTT | _MT_C_ISTXT))
          *contenttype = "application/octet-stream";
-      if (*charset == NULL)
-         *charset = "binary";
+      /* if (*charset == NULL)
+       *  *charset = "binary";*/
       goto jleave;
    }
 
