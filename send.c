@@ -799,6 +799,12 @@ jalter_redo:
                   default:
                      mh.mh_flags = MIME_HDL_NULL;
                      continue; /* break; break; */
+                  case MIME_HDL_CMD:
+                     if(!(mh.mh_flags & MIME_HDL_COPIOUSOUTPUT)){
+                        mh.mh_flags = MIME_HDL_NULL;
+                        continue; /* break; break; */
+                     }
+                     /* FALLTHRU */
                   case MIME_HDL_PTF:
                      if (!ok_blook(mime_alternative_favour_rich)) {/* TODO */
                         struct mimepart *x = np;
@@ -832,6 +838,10 @@ jalter_redo:
                         struct mime_handler mhx;
 
                         switch (n_mimetype_handler(&mhx, x, action)) {
+                        case MIME_HDL_CMD:
+                           if(!(mhx.mh_flags & MIME_HDL_COPIOUSOUTPUT))
+                              continue;
+                           /* FALLTHRU */
                         case MIME_HDL_PTF:
                            break;
                         default:
