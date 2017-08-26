@@ -8202,7 +8202,7 @@ adjustments dependent on the value of the environment variable
 \*(RO Addresses for contact per email and web, respectively, e.g., for
 bug reports, suggestions, or help regarding \*(UA.
 The former can be used directly:
-.Ql ? eval mail $contact-mail .
+.Ql ? Ns \| Ic eval Ns \| Ic mail Ns \| $contact-mail .
 .
 .Mx
 .It Va crt
@@ -13207,22 +13207,14 @@ that was originally written by Kurt Shoens.
 .
 .Sh AUTHORS
 .
+.An -nosplit
 .An "Kurt Shoens" ,
 .An "Edward Wang" ,
 .An "Keith Bostic" ,
 .An "Christos Zoulas" ,
-.An "Gunnar Ritter" ,
-.An "Steffen Nurpmeso" .
-.
-.Pp
-The variables
-.Va contact-mail
-and
-.Va contact-web
-provide contact addresses:
-.Pp
-.\" v15-compat: drop eval as `mail' will expand variable?
-.Dl ? echo $contact-web; eval mail $contact-mail
+.An "Gunnar Ritter" .
+\*(UA is developed by
+.An "Steffen Nurpmeso" Aq steffen@sdaoden.eu .
 .
 .
 .\" .Sh CAVEATS {{{
@@ -13268,5 +13260,14 @@ occasionally (this is may and very).
 The file
 .Pa TODO
 in the source repository lists future directions.
+.
+.Pp
+Please report bugs to the
+.Va contact-mail
+address, e.g., from within \*(uA:
+.\" v15-compat: drop eval as `mail' will expand variable?
+.Ql ? Ns \| Ic eval Ns \| Ic mail Ns \| $contact-mail .
+More information is available on the web:
+.Ql $ \*(uA -X 'echo Ns \| $ Ns Va contact-web Ns ' -Xx .
 .
 .\" s-ts-mode
