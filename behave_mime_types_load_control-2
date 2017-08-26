@@ -1,6 +1,6 @@
 reproducible_build: mime.types(5): invalid MIME type: aga-aga
->N  1 reproducible_build 1996-10-02 01:50   43/1269                             
-[-- Message  1 -- 43 lines, 1269 bytes --]:
+>N  1 reproducible_build 1996-10-02 01:50   43/1237                             
+[-- Message  1 -- 43 lines, 1237 bytes --]:
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 To:
@@ -26,15 +26,15 @@ Content-Disposition: attachment; filename=".tmts2.ice"
 
    Icy, icy road.
 
-[-- #1.4 6/195 --]
-Content-Type: application/octet-stream; charset=binary
+[-- #1.4 6/179 --]
+Content-Type: application/octet-stream
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename=".tmtsx.doom"
 
 [-- No MIME handler installed, or not applicable --]
 
-[-- #1.5 6/189 --]
-Content-Type: application/aga-aga; charset=binary
+[-- #1.5 6/173 --]
+Content-Type: application/aga-aga
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename=".tmtsx.aga"
 
@@ -67,14 +67,14 @@ Content-Disposition: attachment; filename=".tmts2.ice"
    Icy, icy road.
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/octet-stream; charset=binary
+Content-Type: application/octet-stream
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename=".tmtsx.doom"
 
 b2Ygd2hpY2ggdGhlIGMBcmFjayBpcyBjb21pbmcgc29vbg==
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
-Content-Type: application/aga-aga; charset=binary
+Content-Type: application/aga-aga
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename=".tmtsx.aga"
 
@@ -82,7 +82,7 @@ b2Ygd2hpY2ggdGhlIGMBcmFjayBpcyBjb21pbmcgc29vbg==
 
 --=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=--
 
-[-- Message  1 -- 43 lines, 1269 bytes --]:
+[-- Message  1 -- 43 lines, 1237 bytes --]:
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 To:
@@ -109,15 +109,15 @@ Content-Disposition: attachment; filename=".tmts2.ice"
 
 [-- No MIME handler installed, or not applicable --]
 
-[-- #1.4 6/195 --]
-Content-Type: application/octet-stream; charset=binary
+[-- #1.4 6/179 --]
+Content-Type: application/octet-stream
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename=".tmtsx.doom"
 
 [-- No MIME handler installed, or not applicable --]
 
-[-- #1.5 6/189 --]
-Content-Type: application/aga-aga; charset=binary
+[-- #1.5 6/173 --]
+Content-Type: application/aga-aga
 Content-Transfer-Encoding: base64
 Content-Disposition: attachment; filename=".tmtsx.aga"
 
