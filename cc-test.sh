@@ -4025,7 +4025,7 @@ t_behave_lreply_futh_rth_etc() {
    ' | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh \
       -Rf ./.tmbox >> "${MBOX}" 2>&1
 
-   check behave:lreply_futh_rth_etc 0 "${MBOX}" '1375746559 24495'
+   check behave:lreply_futh_rth_etc 0 "${MBOX}" '940818845 29373'
 
    t_epilog
 }

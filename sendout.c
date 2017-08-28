@@ -2070,12 +2070,17 @@ jto_fmt:
    }
 
    if(w & GREF){
-      if((np = hp->h_ref) != NULL){
+      struct name *xnp;
+
+      if((xnp = np = hp->h_ref) != NULL){
          if(fmt("References:", np, fo, 0))
             goto jleave;
          ++gotcha;
       }
-      if((np = hp->h_in_reply_to) != NULL){
+      if((np = hp->h_in_reply_to) != NULL || xnp != NULL){
+         if(np == NULL)
+            for(; xnp != NULL; xnp = xnp->n_flink)
+               np = xnp;
          if(fmt("In-Reply-To:", np, fo, 0))
             goto jleave;
          ++gotcha;
