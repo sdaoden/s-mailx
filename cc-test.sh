@@ -3953,77 +3953,76 @@ t_behave_lreply_futh_rth_etc() {
 
    #
 
-   printf '
-      define r {
-         wysh set m="This is text of \\\"reply ${1}."
-         reply 1 2 3
-!I m
-1".
-!.
-!I m
-2".
-!.
-!I m
-3".
-!.
-         echo -----After reply $1.1 - $1.3: $?/$^ERRNAME
-      }
-      define R {
-         wysh set m="This is text of \\\"Reply ${1}."
-         eval Reply $2
-!I m
-!I 2
-".
-!.
-         echo -----After Reply $1.$2: $?/$^ERRNAME
-      }
-      define _Lh {
-         read protover
-         echo '"'"'~I m'"'"'
-         echo '"'"'~I n'"'"'
-         echo '"'"'".'"'"'
-      }
-      define _Ls {
-         wysh set m="This is text of \\\"Lreply ${1}." \\
-            on-compose-splice=_Lh n=$2
-         eval Lreply $2
-      }
-      define L {
-         # We need two indirections for this test: one for the case that Lreply
-         # fails because if missing recipients, we need to read EOF next, thus
-         # place this in _Ls last, and second for the succeeding cases EOF is
-         # not what these should read, so go over the backside and splice it in!
-         call _Ls "$@"
-         echo -----After Lreply $1.$2: $?/$^ERRNAME
-      }
-      define x {
-         localopts call-fixate yes
-         call r $1
-         call R $1 1; call R $1 2; call R $1 3; call R $1 4
-         call L $1 1; call L $1 2; call L $1 3
-      }
-      define tweak {
-         echo;echo '"'"'===== CHANGING === '"'"'"$*"'"'"' ====='"'"';echo
-         eval "$@"
-      }
-
-      set from=laber@backe.eu
-      mlist is@a.list
-      call x 1
-      call tweak set reply-to-honour
-      call x 2
-      call tweak set followup-to
-      call x 3
-      call tweak set followup-to-honour
-      call x 4
-      call tweak mlist bugstop@five.miles.out
-      call x 5
-      call tweak mlsubscribe bugstop@five.miles.out
-      call x 6
-      call tweak set recipients-in-cc
-      call x 7
-   ' | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh \
-      -Rf ./.tmbox >> "${MBOX}" 2>&1
+   ${cat} <<-'_EOT' | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh \
+         -Rf ./.tmbox >> "${MBOX}" 2>&1
+	define r {
+	   wysh set m="This is text of \"reply ${1}."
+	   reply 1 2 3
+	!I m
+	1".
+	!.
+	!I m
+	2".
+	!.
+	!I m
+	3".
+	!.
+	   echo -----After reply $1.1 - $1.3: $?/$^ERRNAME
+	}
+	define R {
+	   wysh set m="This is text of \"Reply ${1}."
+	   eval Reply $2
+	!I m
+	!I 2
+	".
+	!.
+	   echo -----After Reply $1.$2: $?/$^ERRNAME
+	}
+	define _Lh {
+	   read protover
+	   echo '~I m'
+	   echo '~I n'
+	   echo '".'
+	}
+	define _Ls {
+	   wysh set m="This is text of \"Lreply ${1}." on-compose-splice=_Lh n=$2
+	   eval Lreply $2
+	}
+	define L {
+	   # We need two indirections for this test: one for the case that Lreply
+	   # fails because of missing recipients: we need to read EOF next, thus
+	   # place this in _Ls last; and second for the succeeding cases EOF is
+	   # not what these should read, so go over the backside and splice it in!
+	   call _Ls "$@"
+	   echo -----After Lreply $1.$2: $?/$^ERRNAME
+	}
+	define x {
+	   localopts call-fixate yes
+	   call r $1
+	   call R $1 1; call R $1 2; call R $1 3; call R $1 4
+	   call L $1 1; call L $1 2; call L $1 3
+	}
+	define tweak {
+	   echo;echo '===== CHANGING === '"$*"' =====';echo
+	   eval "$@"
+	}
+	#
+	set from=laber@backe.eu
+	mlist is@a.list
+	call x 1
+	call tweak set reply-to-honour
+	call x 2
+	call tweak set followup-to
+	call x 3
+	call tweak set followup-to-honour
+	call x 4
+	call tweak mlist bugstop@five.miles.out
+	call x 5
+	call tweak mlsubscribe bugstop@five.miles.out
+	call x 6
+	call tweak set recipients-in-cc
+	call x 7
+	_EOT
 
    check behave:lreply_futh_rth_etc 0 "${MBOX}" '940818845 29373'
 
