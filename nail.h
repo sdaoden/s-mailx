@@ -649,12 +649,13 @@ enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
    n_CMD_ARG_M = 1u<< 9,   /* Legal from send mode bit */
    n_CMD_ARG_O = 1u<<10,   /* n_OBSOLETE()d command */
    n_CMD_ARG_P = 1u<<11,   /* Autoprint dot after command */
-   n_CMD_ARG_R = 1u<<12,   /* Cannot be called in compose mode recursion */
-   n_CMD_ARG_S = 1u<<13,   /* Cannot be called pre-n_PSO_STARTED (POSIX) */
-   n_CMD_ARG_T = 1u<<14,   /* Is a transparent command */
-   n_CMD_ARG_V = 1u<<15,   /* Supports `vput' prefix (only WYSH/WYRA) */
-   n_CMD_ARG_W = 1u<<16,   /* Invalid when read only bit */
-   n_CMD_ARG_X = 1u<<17,   /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
+   n_CMD_ARG_R = 1u<<12,   /* Forbidden in compose mode recursion */
+   n_CMD_ARG_SC = 1u<<13,  /* Forbidden pre-n_PSO_STARTED_CONFIG */
+   n_CMD_ARG_S = 1u<<14,   /* Forbidden pre-n_PSO_STARTED (POSIX) */
+   n_CMD_ARG_T = 1u<<15,   /* Is a transparent command */
+   n_CMD_ARG_V = 1u<<16,   /* Supports `vput' prefix (only WYSH/WYRA) */
+   n_CMD_ARG_W = 1u<<17,   /* Invalid when read only bit */
+   n_CMD_ARG_X = 1u<<18,   /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
    /* XXX Note that CMD_ARG_EM implies a _real_ return value for $! */
    n_CMD_ARG_EM = 1u<<30   /* If error: n_pstate_err_no (4 $! aka. ok_v___em) */
 };
@@ -1444,36 +1445,39 @@ do{\
 
 /* Various states set once, and first time messages or initializers */
 enum n_program_state_once{
+   /* We have four program states: (0) pre getopt() done, (_GETOPT) pre rcfile
+    * loaded etc., (_CONFIG) only -X evaluation missing still, followed by
+    * _STARTED when we are fully setup */
+   n_PSO_STARTED_GETOPT = 1u<<0,
+   n_PSO_STARTED_CONFIG = 1u<<1,
+   n_PSO_STARTED = 1u<<2,
+
    /* Exit request pending (quick) */
-   n_PSO_XIT = 1u<<0,
-   n_PSO_QUIT = 1u<<1,
+   n_PSO_XIT = 1u<<3,
+   n_PSO_QUIT = 1u<<4,
    n_PSO_EXIT_MASK = n_PSO_XIT | n_PSO_QUIT,
 
    /* Pre _STARTED */
-   n_PSO_SENDMODE = 1u<<2,
-   n_PSO_INTERACTIVE = 1u<<3,
-   n_PSO_TTYIN = 1u<<4,
-   n_PSO_TTYOUT = 1u<<5, /* TODO should be TTYERR! */
+   n_PSO_BIG_ENDIAN = 1u<<5,
+   n_PSO_UNICODE = 1u<<6,
+   n_PSO_ENC_MBSTATE = 1u<<7,
 
-   n_PSO_BIG_ENDIAN = 1u<<8,
-   n_PSO_UNICODE = 1u<<9,
-   n_PSO_ENC_MBSTATE = 1u<<10,
+   n_PSO_REPRODUCIBLE = 1u<<8,
+   n_PSO_SENDMODE = 1u<<9,
+   n_PSO_INTERACTIVE = 1u<<10,
+   n_PSO_TTYIN = 1u<<11,
+   n_PSO_TTYOUT = 1u<<12, /* TODO should be TTYERR! */
 
-   n_PSO_REPRODUCIBLE = 1u<<14,
-
-   /* main.c startup code passed, we are functional! */
-   n_PSO_STARTED = 1u<<15,
-
-   /* (Likely) Post _STARTED */
+   /* "Later" */
    n_PSO_ATTACH_QUOTE_NOTED = 1u<<16,
    n_PSO_ERRORS_NOTED = 1u<<17,
-   n_PSO_TERMCAP_DISABLE = 1u<<18,
-   n_PSO_TERMCAP_CA_MODE = 1u<<19,
-   n_PSO_LINE_EDITOR_INIT = 1u<<20,
-   n_PSO_RANDOM_INIT = 1u<<21,
+   n_PSO_LINE_EDITOR_INIT = 1u<<18,
+   n_PSO_RANDOM_INIT = 1u<<19,
+   n_PSO_TERMCAP_DISABLE = 1u<<20,
+   n_PSO_TERMCAP_CA_MODE = 1u<<21,
 
-   /* A subtile hack which works in conjunction with n_OPT_t_FLAG so as to
-    * allow to have multiple states regarding the related header setup */
+   /* TODO A subtile HACK which works in conjunction with n_OPT_t_FLAG so as
+    * to allow to have multiple states regarding the related header setup */
    n_PSO_t_FLAG = 1u<<30
 };
 

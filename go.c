@@ -484,7 +484,7 @@ jexec:
          goto jleave;
       }
    }
-   if((cdp->cd_caflags & n_CMD_ARG_S) && !(n_psonce & n_PSO_STARTED)){
+   if((cdp->cd_caflags & n_CMD_ARG_S) && !(n_psonce & n_PSO_STARTED_CONFIG)){
       n_err(_("May not execute `%s' during startup\n"), cdp->cd_name);
       goto jleave;
    }

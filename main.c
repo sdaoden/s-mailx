@@ -1023,8 +1023,10 @@ jgetopt_done:
    }
 
    /*
-    * Likely to go, perform more setup
+    * We have reached our second program state, the command line options have
+    * been worked and verified a bit, we are likely to go, perform more setup
     */
+   n_psonce |= n_PSO_STARTED_GETOPT;
 
    a_main_setup_vars();
 
@@ -1118,6 +1120,11 @@ jgetopt_done:
       c_account(a);
    }
 
+   /*
+    * Almost setup, only -X commands are missing!
+    */
+   n_psonce |= n_PSO_STARTED_CONFIG;
+
    /* "load()" commands given on command line */
    if(Xargs_cnt > 0){
       if(!n_go_Xargs(Xargs, Xargs_cnt))
@@ -1143,7 +1150,7 @@ jgetopt_done:
    }
 
    /*
-    * We're finally completely setup and ready to go
+    * We're finally completely setup and ready to go!
     */
    n_psonce |= n_PSO_STARTED;
 
