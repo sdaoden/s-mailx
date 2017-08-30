@@ -16,8 +16,11 @@ only sane approach) SysV signal handling, without SA_RESTART.
 
 But some things are already pretty good, except for normal iterations
 and a review once we have a better signal handling, and can be taken
-with us.  For example termcap.c, most of tty.c, shexp.c, memory.c, for
-example.
+with us.  For example termcap.c, most of tty.c, shexp.c, memory.c.
+It all has to be converted to use a m_ prefix and follow the coding
+style of the mentioned.  Note n_(UN)?LIKELY() usage is yet a bit weird,
+we should not use it for entire conditions but instead repeat its use
+for each subcondition.
 
 - We should have generic ENOMEM conditions, now that we have $!.
   I.e., test overflow (e.g., nam-a-grp.c, whether an alias _can_ be
@@ -621,8 +624,6 @@ Low-Level
     non self-contained encoded-words).
   . Group addresses, especially the undisclosed recipients but also
     "Bla": addresses; are missing.
-  . It is terrible that -S sets variables twice, at once and after the
-    resource files have been loaded.  Instead we should set a bit
   . Cleanup:  n_ is anything public / external,
     _n_ is public/e but not really, FILENAME/ABBREV_symbol are statics,
     FILENAME/ABBREV__symbol are helpers of a single other static
