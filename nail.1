@@ -1816,7 +1816,7 @@ contains complete example configurations.
 SSL (Secure Sockets Layer) a.k.a. its successor TLS (Transport Layer
 Security) are protocols which aid in securing communication by providing
 a safely initiated and encrypted network connection.
-A central concept to SSL/TLS is that of certificates: as part of each
+A central concept of SSL/TLS is that of certificates: as part of each
 network connection setup a (set of) certificates will be exchanged, and
 by using those the identity of the network peer can be cryptographically
 verified.
@@ -1827,9 +1827,9 @@ the trusted local pool.
 .
 .Pp
 The local pool of trusted so-called CA (Certification Authority)
-certificates is usually delivered with the used SSL/TLS library (e.g.,
-OpenSSL), and will be selected automatically.
-It is also possible to create and use an own pool of trusted certificates.
+certificates is usually delivered with the used SSL/TLS library, and
+will be selected automatically, but it is also possible to create and
+use an own pool of trusted certificates.
 If this is desired, set
 .Va ssl-ca-no-defaults
 to avoid using the default certificate pool, and point
@@ -1846,10 +1846,8 @@ possible, and which configuration steps have to be taken to enable it.
 Some protocols, e.g., POP3S, are implicitly encrypted, others, like
 POP3, can upgrade a plain text connection if so requested: POP3 offers
 .Ql STLS ,
-which will be used if the variable
+which will be used if the variable (chain)
 .Va pop3-use-starttls
-(which is a variable chain, as documented in
-.Sx "On URL syntax and credential lookup")
 is set:
 .
 .Bd -literal -offset indent
@@ -1863,28 +1861,28 @@ set mta=smtp://smtp.exam.ple smtp-use-starttls
 .Ed
 .
 .Pp
-Normally that is all there is to do, however plenty of knobs exist to
-adjust settings shall the necessity or desire arise.
-E.g., it is possible to fine-tune certificate verification via
-.Va ssl-ca-flags .
-Also interesting may be the possibility to configure the allowed
-.Va ssl-protocol Ns
-s that a communication channel may use: whereas in the past hints of
-how to restrict the set of protocols to highly secure ones were
-indicated, as of the time of this writing the allowed protocols, or at
-least the allowed
-.Va ssl-cipher-list ,
-may need to become relaxed in order to be able to connect to some
-servers.
-E.g., the following example settings allows connection of a
+Normally that is all there is to do, given that SSL/TLS libraries try to
+provide safe defaults, plenty of knobs however exist to adjust settings.
+For example certificate verification settings can be fine-tuned via
+.Va ssl-ca-flags ,
+and the SSL/TLS configuration basics are accessible via
+.Va ssl-config-pairs ,
+e.g., to specify the allowed protocols or cipher lists that
+a communication channel may use.
+In the past hints of how to restrict the set of protocols to highly
+secure ones were indicated, as of the time of this writing the allowed
+protocols or cipher list may need to become relaxed in order to be able
+to connect to some servers; the following example allows connecting to a
 .Dq Lion
-which uses OpenSSL 0.9.8za from June 2014:
+that uses OpenSSL 0.9.8za from June 2014 (refer to
+.Sx "INTERNAL VARIABLES"
+for more on variable chains):
 .
 .Bd -literal -offset indent
-set ssl-protocol-LION=ALL,-SSLv3,-TLSv1
-set ssl-cipher-list-LION=TLSv1.2:!aNULL:!eNULL:\e
-    ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:\e
-    DHE-RSA-AES256-SHA:@STRENGTH
+wysh set ssl-config-pairs-lion@exam.ple='MinProtocol=TLSv1.1,\e
+    CipherList=TLSv1.2:!aNULL:!eNULL:\e
+      ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:\e
+      DHE-RSA-AES256-SHA:@STRENGTH'
 .Ed
 .
 .Pp
@@ -1896,14 +1894,11 @@ Variables of interest for SSL/TLS in general are
 .Va ssl-ca-file ,
 .Va ssl-ca-flags ,
 .Va ssl-ca-no-defaults ,
-.Va ssl-cert ,
-.Va ssl-cipher-list ,
 .Va ssl-config-file ,
-.Va ssl-curves ,
+.Va ssl-config-module ,
+.Va ssl-config-pairs
 .Va ssl-crl-dir ,
 .Va ssl-crl-file ,
-.Va ssl-key ,
-.Va ssl-protocol ,
 .Va ssl-rand-file
 as well as
 .Va ssl-verify .
@@ -8654,9 +8649,9 @@ or
 .
 .Mx
 .It Va features
-\*(RO String giving a list of features \*(UA, preceded with a plus sign
+\*(RO String giving a list of optional features, preceded with a plus sign
 .Ql +
-if the feature is available, and a hyphen-minus
+if it is available, and a hyphen-minus
 .Ql -
 otherwise.
 The output of the command
@@ -11116,9 +11111,10 @@ Then the latter is used to parse the first output line of the
 hook, and, in case the evaluation is successful, the group that has been
 specified via the number is interpreted as a floating point scan score.
 .
-.Mx
-.Mx
-.It Va ssl-ca-dir , ssl-ca-file
+.Mx Va ssl-ca-dir
+.Mx Va ssl-ca-file
+.It Va ssl-ca-dir-USER@HOST , ssl-ca-dir-HOST , ssl-ca-dir ,\
+  ssl-ca-file-USER@HOST , ssl-ca-file-HOST , ssl-ca-file
 \*(OP Specify the location of trusted CA certificates in PEM (Privacy
 Enhanced Mail) format as a directory and a file, respectively, for the
 purpose of verification of SSL/TLS server certificates.
@@ -11136,8 +11132,8 @@ for more information.
 establishing TLS connections to servers identified with hostnames.
 .
 .
-.Mx
-.It Va ssl-ca-flags
+.Mx Va ssl-ca-flags
+.It Va ssl-ca-flags-USER@HOST , ssl-ca-flags-HOST , ssl-ca-flags
 \*(OP Can be used to fine-tune behaviour of the X509 CA certificate
 storage, and the certificate verification that is used (also see
 .Va ssl-verify ) .
@@ -11183,64 +11179,222 @@ it by default, resulting in the same behaviour; also see
 .El
 .
 .
-.Mx
-.It Va ssl-ca-no-defaults
+.Mx Va ssl-ca-no-defaults
+.It Va ssl-ca-no-defaults-USER@HOST , ssl-ca-no-defaults-HOST ,\
+  ssl-ca-no-defaults
 \*(BO\*(OP Do not load the default CA locations that are built into the
 used to SSL/TLS library to verify SSL/TLS server certificates.
 .
 .Mx Va ssl-cert
 .It Va ssl-cert-USER@HOST , ssl-cert-HOST , ssl-cert
-\*(OP Variable chain that sets the filename for a SSL/TLS client
-certificate required by some servers.
-This is a direct interface to the
-.Ql Certificate
-slot of the
-.Xr SSL_CONF_cmd 3
-function of the OpenSSL library, if available.
+\*(OB\*(OP Please use the
+.Cd Certificate
+slot of
+.Va ssl-config-pairs .
 .
 .Mx Va ssl-cipher-list
 .It Va ssl-cipher-list-USER@HOST , ssl-cipher-list-HOST , ssl-cipher-list
-\*(OP Specifies a list of ciphers for SSL/TLS connections.
-This is a direct interface to the
-.Ql CipherString
-slot of the
-.Xr SSL_CONF_cmd 3
-function of the OpenSSL library, if available; see
-.Xr ciphers 1
-and
-.Xr SSL_CTX_set_cipher_list 3
-for more information.
-By default \*(UA does not set a list of ciphers, in effect using a
-.Va ssl-protocol
-specific cipher (protocol standards ship with a list of acceptable
-ciphers), possibly cramped to what the actually used SSL/TLS library
-supports \(en the manual section
-.Sx "An example configuration"
-also contains a SSL/TLS use case.
+\*(OB\*(OP Please use the
+.Cd CipherList
+slot of
+.Va ssl-config-pairs .
 .
 .Mx
 .It Va ssl-config-file
-\*(OP If this variable is set \*(UA will call
+\*(OP If this variable is set
 .Xr CONF_modules_load_file 3
-to allow OpenSSL to be configured according to the host system wide
-security settings.
-If a non-empty value is given then this will be used to specify the
-configuration file to be used instead of the global OpenSSL default;
-note that in this case it is an error if the file cannot be loaded.
+(if announced via
+.Ql +modules-load-file
+in
+.Va ssl-features )
+is used to allow resource file based configuration of the SSL/TLS library.
+This happens once the library is used first, which may also be early
+during startup (logged with
+.Va verbose ) !
+If a non-empty value is given then the given file, after performing
+.Sx "Filename transformations" ,
+will be used instead of the global OpenSSL default, and it is an error
+if the file cannot be loaded.
 The application name will always be passed as
-.Dq \*(uA .
+.Ql \*(uA .
+Some SSL/TLS libraries support application-specific configuration via
+resource files loaded like this, please see
+.Va ssl-config-module .
 .
-.Mx Va ssl-curves
-.It Va ssl-curves-USER@HOST , ssl-curves-HOST , ssl-curves
-\*(OP Specifies a list of supported curves for SSL/TLS connections.
-This is a direct interface to the
-.Ql Curves
-slot of the
-.Xr SSL_CONF_cmd 3
-function of the OpenSSL library, if available; see
-.Xr SSL_CTX_set1_curves_list 3
-for more information.
-By default \*(UA does not set a list of curves.
+.Mx Va ssl-config-module
+.It Va ssl-config-module-USER@HOST , ssl-config-module-HOST ,\
+  ssl-config-module
+\*(OP If file based application-specific configuration via
+.Va ssl-config-file
+is available, announced as
+.Ql +ctx-config
+by
+.Va ssl-features ,
+indicating availability of
+.Xr SSL_CTX_config 3 ,
+then, it becomes possible to use a central SSL/TLS configuration file
+for all programs, including \*(uA, e.g.:
+.Bd -literal -offset indent
+# Register a configuration section for \*(uA
+\*(uA = mailx_master
+# The top configuration section creates a relation
+# in between dynamic SSL configuration and an actual
+# program specific configuration section
+[mailx_master]
+ssl_conf = mailx_ssl_config
+# Well that actual program specific configuration section
+# now can map individual ssl-config-module names to sections,
+# e.g., ssl-config-module=account_xy
+[mailx_ssl_config]
+account_xy = mailx_account_xy
+account_yz = mailx_account_yz
+[mailx_account_xy]
+MinProtocol = TLSv1.2
+Curves=P-521
+[mailx_account_yz]
+CipherString = TLSv1.2:!aNULL:!eNULL:
+MinProtocol = TLSv1.1
+Options = Bugs
+.Ed
+.
+.
+.Mx Va ssl-config-pairs
+.It Va ssl-config-pairs-USER@HOST , ssl-config-pairs-HOST , ssl-config-pairs
+\*(OP The value of this variable chain will be interpreted as
+a comma-separated list of directive/value pairs.
+Different to when placing these pairs in a
+.Va ssl-config-module
+section of a
+.Va ssl-config-file
+commas
+.Ql \&,
+need to be escaped with a reverse solidus
+.Ql \e
+when included in pairs.
+Just likewise directives and values need to be separated by equals signs
+.Ql = ,
+any whitespace surrounding pair members is removed.
+Keys are (usually) case-insensitive.
+Unless proper support is announced by
+.Va ssl-features
+.Pf ( Ql +conf-ctx )
+only the keys below are supported, otherwise the pairs will be used
+directly as arguments to the function
+.Xr SSL_CONF_cmd 3 .
+Said equals sign
+.Ql =
+may be preceded with an asterisk
+.Ql *
+to indicate that
+.Sx "Filename transformations"
+shall be performed on the value; it is an error if these fail.
+.
+.Pp
+.Bl -tag -compact -width ".It Cd C_rtificate"
+.It Cd Certificate
+Filename of a SSL/TLS client certificate (chain) required by some servers.
+Fallback support via
+.Xr SSL_CTX_use_certificate_chain_file 3 .
+.Sx "Filename transformations"
+are performed.
+.\" v15compat: remove the next sentence
+.Sy Note:
+if you use this you need to specify the private key via
+.Cd PrivateKey ,
+.Va ssl-key
+will not be used!
+.
+.It Cd CipherList
+A list of ciphers for SSL/TLS connections, see
+.Xr ciphers 1 .
+By default no list of ciphers is set, resulting in a
+.Cd Protocol Ns - Ns
+specific list of ciphers (the protocol standards define lists of
+acceptable ciphers; possibly cramped by the used SSL/TLS library).
+Fallback support via
+.Xr SSL_CTX_set_cipher_list 3 .
+.
+.It Cd Curves
+A list of supported elliptic curves, if applicable.
+By default no curves are set.
+Fallback support via
+.Xr SSL_CTX_set1_curves_list 3 ,
+if available.
+.
+.It Cd MaxProtocol , MinProtocol
+The maximum and minimum supported SSL/TLS versions, respectively.
+Optional fallback support via
+.Xr SSL_CTX_set_max_proto_version 3
+and
+.Xr SSL_CTX_set_min_proto_version 3
+if
+.Va ssl-features
+announces
+.Ql +ctx-set-maxmin-proto ,
+otherwise this directive results in an error.
+The fallback uses an internal parser which understands the strings
+.Ql SSLv3 ,
+.Ql TLSv1 ,
+.Ql TLSv1.1 ,
+.Ql TLSv1.2 ,
+and the special value
+.Ql None ,
+which disables the given limit.
+.
+.It Cd Options
+Various flags to set.
+Fallback via
+.Xr SSL_CTX_set_options 3 ,
+in which case any other value but (exactly)
+.Ql Bugs
+results in an error.
+.
+.It Cd PrivateKey
+Filename of the private key in PEM format of a SSL/TLS client certificate.
+If unset, the name of the certificate file is used.
+.Sx "Filename transformations"
+are performed.
+Fallback via
+.Xr SSL_CTX_use_PrivateKey_file 3 .
+.\" v15compat: remove the next sentence
+.Sy Note:
+if you use this you need to specify the certificate (chain) via
+.Cd Certificate ,
+.Va ssl-cert
+will not be used!
+.
+.It Cd Protocol
+The used SSL/TLS protocol.
+If
+.Va ssl-features
+announces
+.Ql +conf-ctx
+or
+.Ql ctx-set-maxmin-proto
+then using
+.Cd MaxProtocol
+and
+.Cd MinProtocol
+is preferable.
+Fallback is
+.Xr SSL_CTX_set_options 3 ,
+driven via an internal parser which understands the strings
+.Ql SSLv3 ,
+.Ql TLSv1 ,
+.Ql TLSv1.1 ,
+.Ql TLSv1.2 ,
+and the special value
+.Ql ALL .
+Multiple protocols may be given as a comma-separated list, any
+whitespace is ignored, an optional plus sign
+.Ql +
+prefix enables, a hyphen-minus
+.Ql -
+prefix disables a protocol, so that
+.Ql -ALL, TLSv1.2
+enables only the TLSv1.2 protocol.
+.El
+.
 .
 .Mx
 .Mx
@@ -11248,85 +11402,70 @@ By default \*(UA does not set a list of curves.
 \*(OP Specify a directory / a file, respectively that contains a CRL in
 PEM format to use when verifying SSL/TLS server certificates.
 .
+.Mx Va ssl-curves
+.It Va ssl-curves-USER@HOST , ssl-curves-HOST , ssl-curves
+\*(OB\*(OP Please use the
+.Cd Curves
+slot of
+.Va ssl-config-pairs .
+.
+.Mx
+.It Va ssl-features
+\*(OP\*(RO This expands to a comma separated list of the TLS/SSL library
+identity and optional TLS/SSL library features.
+Currently supported identities are
+.Ql libressl
+(LibreSSL) ,
+.Ql libssl-0x10100
+(OpenSSL v1.1.x series)
+and
+.Ql libssl-0x10000
+(elder OpenSSL series, other clones).
+Optional features are preceded with a plus sign
+.Ql +
+when available, and with a hyphen-minus
+.Ql -
+otherwise:
+.Ql modules-load-file
+.Pf ( Va ssl-config-file ) ,
+.Ql conf-ctx
+.Pf ( Va ssl-config-pairs ) ,
+.Ql ctx-config
+.Pf ( Va ssl-config-module ) ,
+.Ql ctx-set-maxmin-proto
+.Pf ( Va ssl-config-pairs )
+and
+.Ql rand-egd
+.Pf ( Va ssl-rand-egd ) .
+.
 .Mx Va ssl-key
 .It Va ssl-key-USER@HOST , ssl-key-HOST , ssl-key
-\*(OP Variable chain that sets the filename for the private key of
-a SSL/TLS client certificate.
-If unset, the name of the certificate file is used.
-The file is expected to be in PEM format.
-This is a direct interface to the
-.Ql PrivateKey
-slot of the
-.Xr SSL_CONF_cmd 3
-function of the OpenSSL library, if available.
+\*(OB\*(OP Please use the
+.Cd PrivateKey
+slot of
+.Va ssl-config-pairs .
 .
 .It Va ssl-method-USER@HOST , ssl-method-HOST , ssl-method
-\*(OB\*(OP Please use the newer and more flexible
-.Va ssl-protocol
-instead: if both values are set,
-.Va ssl-protocol
-will take precedence!
-Can be set to the following values, the actually used
-.Va ssl-protocol
-specification to which it is mapped is shown in parenthesis:
-.Ql tls1.2
-.Pf ( Ql -ALL, TLSv1.2 ) ,
-.Ql tls1.1
-.Pf ( Ql -ALL, TLSv1.1 ) ,
-.Ql tls1
-.Pf ( Ql -ALL, TLSv1 )
-and
-.Ql ssl3
-.Pf ( Ql -ALL, SSLv3 ) ;
-the special value
-.Ql auto
-is mapped to
-.Ql ALL, -SSLv2
-and thus includes the SSLv3 protocol.
-Note that SSLv2 is no longer supported at all.
+\*(OB\*(OP Please use the
+.Cd Protocol
+slot of
+.Va ssl-config-pairs .
 .
 .Mx Va ssl-protocol
 .It Va ssl-protocol-USER@HOST , ssl-protocol-HOST , ssl-protocol
-\*(OP Specify the used SSL/TLS protocol.
-This is a direct interface to the
-.Ql Protocol
-slot of the
-.Xr SSL_CONF_cmd 3
-function of the OpenSSL library, if available;
-otherwise an \*(UA internal parser is used which understands the
-following subset of (case-insensitive) command strings:
-.Ql SSLv3 ,
-.Ql TLSv1 ,
-.Ql TLSv1.1
-and
-.Ql TLSv1.2 ,
-as well as the special value
-.Ql ALL .
-Multiple specifications may be given via a comma-separated list which
-ignores any whitespace.
-An optional
-.Ql +
-plus sign prefix will enable a protocol, a
-.Ql -
-hyphen-minus prefix will disable it, so that
-.Ql -ALL, TLSv1.2
-will enable only the TLSv1.2 protocol.
-.Pp
-It depends upon the used TLS/SSL library which protocols are actually
-supported and which protocols are used if
-.Va ssl-protocol
-is not set, but note that SSLv2 is no longer supported at all and
-actively disabled.
-Especially for older protocols explicitly securing
-.Va ssl-cipher-list
-may be worthwile, see
-.Sx "An example configuration" .
+\*(OB\*(OP Please use the
+.Cd Protocol
+slot of
+.Va ssl-config-pairs .
 .
 .Mx
 .It Va ssl-rand-egd
 \*(OP Gives the pathname to an entropy daemon socket, see
 .Xr RAND_egd 3 .
-Not all SSL/TLS libraries support this.
+Not all SSL/TLS libraries support this,
+.Va ssl-features
+announces availability with
+.Ql +rand-egd .
 .
 .Mx
 .It Va ssl-rand-file
@@ -11336,11 +11475,11 @@ If this variable is not set, or set to the empty string, or if the
 .Sx "Filename transformations"
 fail, then
 .Xr RAND_file_name 3
-will be used to create the filename if, and only if,
-.Xr RAND_status 3
-documents that the SSL PRNG is not yet sufficiently seeded.
-If \*(UA successfully seeded the SSL PRNG then it will update the file
-.Pf ( Xr RAND_write_file 3 ) .
+will be used to create the filename.
+If the SSL PRNG was seeded successfully
+The file will be updated
+.Pf ( Xr RAND_write_file 3 )
+if and only if seeding and buffer stirring succeeds.
 This variable is only used if
 .Va ssl-rand-egd
 is not set (or not supported by the SSL/TLS library).
@@ -12724,10 +12863,10 @@ This is merely for FTP purposes.
 # This example assumes v15.0 compatibility mode
 set v15-compat
 
-# Request strict transport security checks!
+# Request strict SSL/TLS transport security checks
 set ssl-verify=strict
 
-# Where are the up-to-date SSL certificates?
+# Where are the up-to-date SSL/TLS certificates?
 # (Since we manage up-to-date ones explicitly, do not use any,
 # possibly outdated, default certificates shipped with OpenSSL)
 #set ssl-ca-dir=/etc/ssl/certs
@@ -12737,26 +12876,29 @@ set ssl-ca-no-defaults
 wysh set smime-ca-file="${ssl-ca-file}" \e
   smime-ca-no-defaults #smime-ca-flags="${ssl-ca-flags}"
 
-# Do not use protocols older than TLS v1.2.
-# Change this only when the remote server does not support it:
-# maybe use ssl-protocol-HOST (or -USER@HOST) syntax to define
-# such explicit exceptions, then, e.g.
-#   set ssl-protocol-exam.ple='-ALL,+TLSv1.1'
-set ssl-protocol='-ALL,+TLSv1.2'
-
-# Explicitly define the list of ciphers, which may improve security,
-# especially with protocols older than TLS v1.2.  See ciphers(1).
-# Including "@STRENGTH" will sort the final list by algorithm strength.
-# In reality it is possibly best to only use ssl-cipher-list-HOST
-# (or -USER@HOST), as necessary, again..
-set ssl-cipher-list=TLSv1.2:!aNULL:!eNULL:@STRENGTH
-
-# - TLSv1.2:!aNULL:!eNULL:\e
-#     ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:\e
-#     DHE-RSA-AES256-SHA:@STRENGTH
-# -ALL:!aNULL:!eNULL:!MEDIUM:!LOW:!MD5:!RC4:!EXPORT:@STRENGTH
-# Especially with TLSv1.3 curves selection may be desired:
-#set ssl-curves=P-521:P-384:P-256
+# This could be outsourced to a central configuration file via
+# ssl-config-file plus ssl-config-module if the used library allows.
+# CipherList: explicitly define the list of ciphers, which may
+#   improve security, especially with protocols older than TLS v1.2.
+#   See ciphers(1).  Possibly best to only use ssl-cipher-list-HOST
+#   (or -USER@HOST), as necessary, again..
+# Curves: especially with TLSv1.3 curves selection may be desired.
+# MinProtocol,MaxProtocol: do not use protocols older than TLS v1.2.
+#   Change this only when the remote server does not support it:
+#   maybe use chain support via ssl-config-pairs-HOST / -USER@HOST
+#   to define such explicit exceptions, then, e.g.
+#     MinProtocol=TLSv1.1
+if [ "$ssl-features" =% +ctx-set-maxmin-proto ]
+  wysh set ssl-config-pairs='\e
+      CipherList=TLSv1.2:!aNULL:!eNULL:@STRENGTH,\e
+      Curves=P-521:P-384:P-256,\e
+      MinProtocol=TLSv1.1'
+else
+  wysh set ssl-config-pairs='\e
+      CipherList=TLSv1.2:!aNULL:!eNULL:@STRENGTH,\e
+      Curves=P-521:P-384:P-256,\e
+      Protocol=-ALL\e,+TLSv1.1 \e, +TLSv1.2'
+endif
 
 # Essential setting: select allowed character sets
 set sendcharsets=utf-8,iso-8859-1

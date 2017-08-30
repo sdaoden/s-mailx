@@ -2144,6 +2144,7 @@ int main(void){
 }
 !
 
+VAL_SSL_FEATURES=
 if feat_yes SSL; then # {{{
    # {{{ LibreSSL decided to define OPENSSL_VERSION_NUMBER with a useless value
    # instead of keeping it at the one that corresponds to the OpenSSL at fork
@@ -2161,6 +2162,7 @@ if feat_yes SSL; then # {{{
 !
    then
       ossl_v1_1=
+      VAL_SSL_FEATURES=libressl
    # TODO OPENSSL_IS_BORINGSSL, but never tried that one!
    elif compile_check _xssl 'TLS/SSL (OpenSSL >= v1.1.0)' \
       '#define HAVE_SSL
@@ -2174,6 +2176,7 @@ if feat_yes SSL; then # {{{
 !
    then
       ossl_v1_1=1
+      VAL_SSL_FEATURES=libssl-0x10100
    elif compile_check _xssl 'TLS/SSL (OpenSSL)' \
       '#define HAVE_SSL
       #define HAVE_XSSL
@@ -2186,16 +2189,17 @@ if feat_yes SSL; then # {{{
 !
    then
       ossl_v1_1=
+      VAL_SSL_FEATURES=libssl-0x10000
    else
       feat_bail_required SSL
    fi # }}}
 
    if feat_yes SSL; then # {{{
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xssl 'TLS/SSL (new style *_client_method(3ssl))' \
+         without_check yes xssl 'TLS/SSL new style TLS_client_method(3ssl)' \
             '#define n_XSSL_CLIENT_METHOD TLS_client_method' \
             '-lssl -lcrypto'
-      elif link_check xssl 'TLS/SSL (new style *_client_method(3ssl))' \
+      elif link_check xssl 'TLS/SSL new style TLS_client_method(3ssl)' \
             '#define n_XSSL_CLIENT_METHOD TLS_client_method' \
             '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
@@ -2216,7 +2220,7 @@ int main(void){
 !
       then
          :
-      elif link_check xssl 'TLS/SSL (old style *_client_method(3ssl))' \
+      elif link_check xssl 'TLS/SSL old style SSLv23_client_method(3ssl)' \
             '#define n_XSSL_CLIENT_METHOD SSLv23_client_method' \
             '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
@@ -2244,6 +2248,31 @@ int main(void){
    fi # }}}
 
    if feat_yes SSL; then # {{{
+      if feat_yes SSL_ALL_ALGORITHMS; then
+         if [ -n "${ossl_v1_1}" ]; then
+            without_check yes ssl_all_algo 'TLS/SSL all-algorithms support' \
+               '#define HAVE_SSL_ALL_ALGORITHMS'
+         elif link_check ssl_all_algo 'TLS/SSL all-algorithms support' \
+            '#define HAVE_SSL_ALL_ALGORITHMS' << \!
+#include <openssl/evp.h>
+int main(void){
+   OpenSSL_add_all_algorithms();
+   EVP_get_cipherbyname("two cents i never exist");
+   EVP_cleanup();
+   return 0;
+}
+!
+         then
+            :
+         else
+            feat_bail_required SSL_ALL_ALGORITHMS
+         fi
+      elif [ -n "${ossl_v1_1}" ]; then
+         without_check yes ssl_all_algo \
+            'TLS/SSL all-algorithms (always available in v1.1.0+)' \
+            '#define HAVE_SSL_ALL_ALGORITHMS'
+      fi
+
       if [ -n "${ossl_v1_1}" ]; then
          without_check yes xssl_stack_of 'TLS/SSL STACK_OF()' \
             '#define HAVE_XSSL_STACK_OF'
@@ -2267,9 +2296,11 @@ int main(void){
       fi
 
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xssl_conf 'TLS/SSL OpenSSL_modules_load_file()' \
+         without_check yes xssl_conf 'TLS/SSL OpenSSL_modules_load_file(3ssl)' \
             '#define HAVE_XSSL_CONFIG'
-      elif link_check xssl_conf 'TLS/SSL OpenSSL_modules_load_file() support' \
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+modules-load-file"
+      elif link_check xssl_conf \
+            'TLS/SSL OpenSSL_modules_load_file(3ssl) support' \
             '#define HAVE_XSSL_CONFIG' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/conf.h>
@@ -2280,12 +2311,15 @@ int main(void){
 }
 !
       then
-         :
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+modules-load-file"
+      else
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-modules-load-file"
       fi
 
       if [ -n "${ossl_v1_1}" ]; then
          without_check yes xssl_conf_ctx 'TLS/SSL SSL_CONF_CTX support' \
             '#define HAVE_XSSL_CONF_CTX'
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+conf-ctx"
       elif link_check xssl_conf_ctx 'TLS/SSL SSL_CONF_CTX support' \
          '#define HAVE_XSSL_CONF_CTX' << \!
 #include <openssl/ssl.h>
@@ -2306,13 +2340,54 @@ int main(void){
 }
 !
       then
-         :
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+conf-ctx"
+      else
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-conf-ctx"
       fi
 
       if [ -n "${ossl_v1_1}" ]; then
-         without_check no xssl_rand_egd 'TLS/SSL RAND_egd(3ssl)' \
-            '#define HAVE_XSSL_RAND_EGD'
-      elif link_check xssl_rand_egd 'TLS/SSL RAND_egd(3ssl)' \
+         without_check yes xssl_ctx_config 'TLS/SSL SSL_CTX_config(3ssl)' \
+            '#define HAVE_XSSL_CTX_CONFIG'
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+ctx-config"
+      elif [ -n "${have_xssl_conf}" ] && [ -n "${have_xssl_conf_ctx}" ] &&
+            link_check xssl_ctx_config 'TLS/SSL SSL_CTX_config(3ssl)' \
+               '#define HAVE_XSSL_CTX_CONFIG' << \!
+#include <stdio.h> /* For C89 NULL */
+#include <openssl/ssl.h>
+int main(void){
+   SSL_CTX_config(NULL, "SOMEVAL");
+   return 0;
+}
+!
+      then
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+ctx-config"
+      else
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-ctx-config"
+      fi
+
+      if [ -n "${ossl_v1_1}" ] && [ -n "${have_xssl_conf_ctx}" ]; then
+         without_check yes xssl_set_maxmin_proto \
+            'TLS/SSL SSL_CTX_set_min_proto_version(3ssl)' \
+            '#define HAVE_XSSL_SET_MIN_PROTO_VERSION'
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+ctx-set-maxmin-proto"
+      elif link_check xssl_set_maxmin_proto \
+         'TLS/SSL SSL_CTX_set_min_proto_version(3ssl)' \
+         '#define HAVE_XSSL_SET_MIN_PROTO_VERSION' << \!
+#include <stdio.h> /* For C89 NULL */
+#include <openssl/ssl.h>
+int main(void){
+   SSL_CTX_set_min_proto_version(NULL, 0);
+   SSL_CTX_set_max_proto_version(NULL, 10);
+   return 0;
+}
+!
+      then
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+ctx-set-maxmin-proto"
+      else
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-ctx-set-maxmin-proto"
+      fi
+
+      if link_check xssl_rand_egd 'TLS/SSL RAND_egd(3ssl)' \
             '#define HAVE_XSSL_RAND_EGD' << \!
 #include <openssl/rand.h>
 int main(void){
@@ -2320,28 +2395,9 @@ int main(void){
 }
 !
       then
-         :
-      fi
-
-      if feat_yes SSL_ALL_ALGORITHMS; then
-         if [ -n "${ossl_v1_1}" ]; then
-            without_check yes ssl_all_algo 'TLS/SSL all-algorithms support' \
-               '#define HAVE_SSL_ALL_ALGORITHMS'
-         elif link_check ssl_all_algo 'TLS/SSL all-algorithms support' \
-            '#define HAVE_SSL_ALL_ALGORITHMS' << \!
-#include <openssl/evp.h>
-int main(void){
-   OpenSSL_add_all_algorithms();
-   EVP_get_cipherbyname("two cents i never exist");
-   EVP_cleanup();
-   return 0;
-}
-!
-         then
-            :
-         else
-            feat_bail_required SSL_ALL_ALGORITHMS
-         fi
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+rand-egd"
+      else
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-rand-egd"
       fi
    fi # feat_yes SSL }}}
 
@@ -2376,6 +2432,7 @@ int main(void){
 else
    echo '/* OPT_SSL=0 */' >> ${h}
 fi # }}} feat_yes SSL
+printf '#define VAL_SSL_FEATURES "#'"${VAL_SSL_FEATURES}"'"\n' >> ${h}
 
 if [ "${have_xssl}" = yes ]; then
    OPT_SMIME=1

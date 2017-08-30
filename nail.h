@@ -1764,20 +1764,23 @@ ok_v_spamd_user,
    ok_v_spamfilter_rate,
    ok_v_spamfilter_rate_scanscore,
    ok_v_spamfilter_spam,
-   ok_v_ssl_ca_dir,
-   ok_v_ssl_ca_file,
-   ok_v_ssl_ca_flags,
-   ok_b_ssl_ca_no_defaults,
-   ok_v_ssl_cert,                      /* {chain=1} */
-   ok_v_ssl_cipher_list,               /* {chain=1} */
+   ok_v_ssl_ca_dir,                    /* {chain=1} */
+   ok_v_ssl_ca_file,                   /* {chain=1} */
+   ok_v_ssl_ca_flags,                  /* {chain=1} */
+   ok_b_ssl_ca_no_defaults,            /* {chain=1} */
+ok_v_ssl_cert,                         /* {chain=1} */
+ok_v_ssl_cipher_list,                  /* {chain=1} */
    ok_v_ssl_config_file,
-   ok_v_ssl_curves,                    /* {chain=1} */
+   ok_v_ssl_config_module,             /* {chain=1} */
+   ok_v_ssl_config_pairs,              /* {chain=1} */
+ok_v_ssl_curves,                    /* {chain=1} */
    ok_v_ssl_crl_dir,
    ok_v_ssl_crl_file,
-   ok_v_ssl_key,                       /* {chain=1} */
+   ok_v_ssl_features,                  /* {virt=VAL_SSL_FEATURES} */
+ok_v_ssl_key,                       /* {chain=1} */
 ok_v_ssl_method,                    /* {chain=1} */
 ok_b_ssl_no_default_ca,
-   ok_v_ssl_protocol,                  /* {chain=1} */
+ok_v_ssl_protocol,                  /* {chain=1} */
    ok_v_ssl_rand_egd,
    ok_v_ssl_rand_file,
    ok_v_ssl_verify,                    /* {chain=1} */
