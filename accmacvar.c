@@ -4,13 +4,15 @@
  *@ - add an entry to nail.h:enum okeys
  *@ - run make-okey-map.pl
  *@ - update the manual!
+ *@ TODO . Improve support for chains so that we can apply the property checks
+ *@ TODO   of the base variable to -HOST and -USER@HOST variants!  Add some!!
+ *@ TODO . once we can have non-fatal !0 returns for commands, we should
+ *@ TODO   return error if "(environ)? unset" goes for non-existent.
  *@ TODO . should be recursive environment based.
  *@ TODO   Otherwise, the `localopts' should be an attribute of the go.c
  *@ TODO   command context, so that it belongs to the execution context
  *@ TODO   we are running in, instead of being global data.  See, e.g.,
  *@ TODO   the a_GO_SPLICE comment in go.c.
- *@ TODO . once we can have non-fatal !0 returns for commands, we should
- *@ TODO   return error if "(environ)? unset" goes for non-existent.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -90,23 +92,30 @@ enum a_amv_loflags{
  * _IMPORT implies _ENV; it doesn't verify anything... */
 enum a_amv_var_flags{
    a_AMV_VF_NONE = 0,
+
+   /* The basic set of flags, also present in struct a_amv_var_map.avm_flags */
    a_AMV_VF_BOOL = 1u<<0,     /* ok_b_* */
    a_AMV_VF_VIRT = 1u<<1,     /* "Stateless" automatic variable */
-   a_AMV_VF_NOLOPTS = 1u<<2,  /* May not be tracked by `localopts' */
-   a_AMV_VF_RDONLY = 1u<<3,   /* May not be set by user */
-   a_AMV_VF_NODEL = 1u<<4,    /* May not be deleted */
-   a_AMV_VF_NOTEMPTY = 1u<<5, /* May not be assigned an empty value */
-   a_AMV_VF_NOCNTRLS = 1u<<6, /* Value may not contain control characters */
-   a_AMV_VF_NUM = 1u<<7,      /* Value must be a 32-bit number */
-   a_AMV_VF_POSNUM = 1u<<8,   /* Value must be positive 32-bit number */
-   a_AMV_VF_LOWER = 1u<<9,    /* Values will be stored in a lowercase version */
-   a_AMV_VF_VIP = 1u<<10,     /* Wants _var_check_vips() evaluation */
-   a_AMV_VF_IMPORT = 1u<<11,  /* Import ONLY from environ (pre n_PSO_STARTED) */
-   a_AMV_VF_ENV = 1u<<12,     /* Update environment on change */
-   a_AMV_VF_I3VAL = 1u<<13,   /* Has an initial value */
-   a_AMV_VF_DEFVAL = 1u<<14,  /* Has a default value */
-   a_AMV_VF_LINKED = 1u<<15,  /* `environ' linked */
-   a_AMV_VF__MASK = (1u<<(15+1)) - 1
+   a_AMV_VF_CHAIN = 1u<<2,    /* Is a variable chain (-USER{,@HOST} variants) */
+   a_AMV_VF_VIP = 1u<<3,      /* Wants _var_check_vips() evaluation */
+   a_AMV_VF_RDONLY = 1u<<4,   /* May not be set by user */
+   a_AMV_VF_NODEL = 1u<<5,    /* May not be deleted */
+   a_AMV_VF_I3VAL = 1u<<6,    /* Has an initial value */
+   a_AMV_VF_DEFVAL = 1u<<7,   /* Has a default value */
+   a_AMV_VF_IMPORT = 1u<<8,   /* Import ONLY from environ (pre n_PSO_STARTED) */
+   a_AMV_VF_ENV = 1u<<9,      /* Update environment on change */
+   a_AMV_VF_NOLOPTS = 1u<<10, /* May not be tracked by `localopts' */
+   a_AMV_VF_NOTEMPTY = 1u<<11, /* May not be assigned an empty value */
+   a_AMV_VF_NOCNTRLS = 1u<<12, /* Value may not contain control characters */
+   a_AMV_VF_NUM = 1u<<13,     /* Value must be a 32-bit number */
+   a_AMV_VF_POSNUM = 1u<<14,  /* Value must be positive 32-bit number */
+   a_AMV_VF_LOWER = 1u<<15,   /* Values will be stored in a lowercase version */
+   a_AMV_VF__MASK = (1u<<(15+1)) - 1,
+
+   /* Extended flags, not part of struct a_amv_var_map.avm_flags */
+   a_AMV_VF_E_LINKED = 1u<<24,   /* `environ' link'ed */
+   a_AMV_VF_E_FROZEN = 1u<<25,   /* Has been set by -S TODO NOT IMPLEMENTED! */
+   a_AMV_VF_E__MASK = (1u<<(25+1)) - 1
 };
 
 /* We support some special parameter names for one(+)-letter variable names;
@@ -197,10 +206,10 @@ struct a_amv_var{
 #ifdef HAVE_PUTENV
    char *av_env;              /* Actively managed putenv(3) memory */
 #endif
-   ui16_t av_flags;           /* enum a_amv_var_flags */
-   char av_name[n_VFIELD_SIZE(6)];
+   ui32_t av_flags;           /* enum a_amv_var_flags */
+   char av_name[n_VFIELD_SIZE(4)];
 };
-n_CTA(a_AMV_VF__MASK <= UI16_MAX, "Enumeration excesses storage datatype");
+n_CTA(a_AMV_VF_E__MASK <= UI32_MAX, "Enumeration excesses storage datatype");
 
 struct a_amv_var_map{
    ui32_t avm_hash;
@@ -320,7 +329,7 @@ static bool_t a_amv_var_revlookup(struct a_amv_var_carrier *avcp,
 
 /* Lookup a variable from .avc_(map|name|hash), return whether it was found.
  * Sets .avc_prime; .avc_var is NULL if not found.
- * Here it is where we care for _I3VAL and _DEFVAL, too.
+ * Here it is where we care for _I3VAL and _DEFVAL, as well as _E_STARTUP.
  * An _I3VAL will be "consumed" as necessary anyway, but it won't be used to
  * create a new variable if i3val_nonew is true; if i3val_nonew is TRUM1 then
  * we set .avc_var to -1 and return true if that was the case, otherwise we'll
@@ -696,17 +705,17 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
    rv = TRU1;
 jleave:
    if(line.s != NULL)
-      free(line.s);
+      n_free(line.s);
    NYD2_LEAVE;
    return rv;
 
 jerr:
    for(llp = ll_head; llp != NULL; llp = llp->ll_next)
-      free(llp->ll_amlp);
+      n_free(llp->ll_amlp);
    /*
     * if(amp != NULL){
-    *   free(amp->am_line_dat);
-    *   free(amp);
+    *   n_free(amp->am_line_dat);
+    *   n_free(amp);
     *}*/
    goto jleave;
 }
@@ -751,9 +760,9 @@ a_amv_mac_free(struct a_amv_mac *amp){
    NYD2_ENTER;
 
    for(amlpp = amp->am_line_dat; *amlpp != NULL; ++amlpp)
-      free(*amlpp);
-   free(amp->am_line_dat);
-   free(amp);
+      n_free(*amlpp);
+   n_free(amp->am_line_dat);
+   n_free(amp);
    NYD2_LEAVE;
 }
 
@@ -817,7 +826,7 @@ a_amv_lopts_unroll(struct a_amv_var **avpp){
       x = avp;
       avp = avp->av_link;
       n_PS_ROOT_BLOCK(n_var_vset(x->av_name, (uintptr_t)x->av_value));
-      free(x);
+      n_free(x);
    }
    a_amv_lopts = save_alp;
    NYD2_LEAVE;
@@ -854,7 +863,7 @@ static void
 a_amv_var_free(char *cp){
    NYD2_ENTER;
    if(cp[0] != '\0' && cp != n_0 && cp != n_1 && cp != n_m1)
-      free(cp);
+      n_free(cp);
    NYD2_LEAVE;
 }
 
@@ -1627,8 +1636,8 @@ jeavmp:
    }
 
    if(force_env && !(avp->av_flags & a_AMV_VF_ENV))
-      avp->av_flags |= a_AMV_VF_LINKED;
-   if(avp->av_flags & (a_AMV_VF_ENV | a_AMV_VF_LINKED))
+      avp->av_flags |= a_AMV_VF_E_LINKED;
+   if(avp->av_flags & (a_AMV_VF_ENV | a_AMV_VF_E_LINKED))
       rv = a_amv_var__putenv(avcp, avp);
    if(avp->av_flags & a_AMV_VF_VIP)
       a_amv_var_check_vips(a_AMV_VIP_SET_POST, avcp->avc_okey, value);
@@ -1655,10 +1664,10 @@ a_amv_var__putenv(struct a_amv_var_carrier *avcp, struct a_amv_var *avp){
       char *ocp;
 
       if((ocp = avp->av_env) != NULL)
-         free(ocp);
+         n_free(ocp);
       avp->av_env = cp;
    }else
-      free(cp);
+      n_free(cp);
 #endif
    NYD2_LEAVE;
    return rv;
@@ -1720,11 +1729,11 @@ jforce_env:
 #else
       envval = avp->av_env;
 #endif
-      if((avp->av_flags & (a_AMV_VF_ENV | a_AMV_VF_LINKED)) || envval != NULL)
+      if((avp->av_flags & (a_AMV_VF_ENV | a_AMV_VF_E_LINKED)) || envval != NULL)
          rv = a_amv_var__clearenv(avp->av_name, envval);
    }
    a_amv_var_free(avp->av_value);
-   free(avp);
+   n_free(avp);
 
    /* XXX Fun part, extremely simple-minded for now: if this variable has
     * XXX a default value, immediately reinstantiate it!  TODO Heh? */
@@ -1752,7 +1761,7 @@ a_amv_var__clearenv(char const *name, char *value){
    if(value != NULL)
       for(ecpp = environ; *ecpp != NULL; ++ecpp)
          if(*ecpp == value){
-            free(value);
+            n_free(value);
             do
                ecpp[0] = ecpp[1];
             while(*ecpp++ != NULL);
@@ -1847,17 +1856,18 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
             char msg[22];
          } const tbase[] = {
             {a_AMV_VF_VIRT, "virtual"},
+            {a_AMV_VF_CHAIN, "variable chain"},
             {a_AMV_VF_RDONLY, "read-only"},
             {a_AMV_VF_NODEL, "nodelete"},
+            {a_AMV_VF_I3VAL, "initial-value"},
+            {a_AMV_VF_DEFVAL, "default-value"},
+            {a_AMV_VF_IMPORT, "import-environ-first\0"}, /* assert NUL in max */
+            {a_AMV_VF_ENV, "sync-environ"},
+            {a_AMV_VF_NOLOPTS, "no-localopts"},
             {a_AMV_VF_NOTEMPTY, "notempty"},
             {a_AMV_VF_NOCNTRLS, "no-control-chars"},
             {a_AMV_VF_NUM, "number"},
             {a_AMV_VF_POSNUM, "positive-number"},
-            {a_AMV_VF_IMPORT, "import-environ-first\0"},
-            {a_AMV_VF_ENV, "sync-environ"},
-            {a_AMV_VF_I3VAL, "initial-value"},
-            {a_AMV_VF_DEFVAL, "default-value"},
-            {a_AMV_VF_LINKED, "`environ' link"}
          }, *tp;
 
          for(tp = tbase; PTRCMP(tp, <, &tbase[n_NELEM(tbase)]); ++tp)
@@ -1889,7 +1899,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
          msgp = n_string_push_cp(msgp, "wysh ");
    }else if(n_poption & n_PO_D_V)
       msgp = n_string_push_cp(msgp, "wysh ");
-   if(avc.avc_var->av_flags & a_AMV_VF_LINKED)
+   if(avc.avc_var->av_flags & a_AMV_VF_E_LINKED)
       msgp = n_string_push_cp(msgp, "environ ");
    msgp = n_string_push_cp(msgp, "set ");
    msgp = n_string_push_cp(msgp, name);
@@ -2786,16 +2796,17 @@ c_environ(void *v){
          a_amv_var_revlookup(&avc, *ap);
 
          if(a_amv_var_lookup(&avc, FAL0) && (islnk ||
-               (avc.avc_var->av_flags & a_AMV_VF_LINKED))){
+               (avc.avc_var->av_flags & a_AMV_VF_E_LINKED))){
             if(!islnk){
-               avc.avc_var->av_flags &= ~a_AMV_VF_LINKED;
+               avc.avc_var->av_flags &= ~a_AMV_VF_E_LINKED;
                continue;
-            }else if(avc.avc_var->av_flags & (a_AMV_VF_ENV | a_AMV_VF_LINKED)){
+            }else if(avc.avc_var->av_flags &
+                  (a_AMV_VF_ENV | a_AMV_VF_E_LINKED)){
                if(n_poption & n_PO_D_V)
                   n_err(_("`environ': link: already established: %s\n"), *ap);
                continue;
             }
-            avc.avc_var->av_flags |= a_AMV_VF_LINKED;
+            avc.avc_var->av_flags |= a_AMV_VF_E_LINKED;
             if(!(avc.avc_var->av_flags & a_AMV_VF_ENV))
                a_amv_var__putenv(&avc, avc.avc_var);
          }else if(!islnk){

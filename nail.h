@@ -1638,20 +1638,20 @@ ok_v_fwdheading,
    ok_v_mta_argv0,                     /* {notempty=1,defval=VAL_MTA_ARGV0} */
 
    /* TODO likely temporary hook data, v15 drop */
-   ok_v_mailx_command,                 /* {rdonly=1} */
-   ok_v_mailx_subject,                 /* {rdonly=1} */
-   ok_v_mailx_from,                    /* {rdonly=1} */
-   ok_v_mailx_sender,                  /* {rdonly=1} */
-   ok_v_mailx_to,                      /* {rdonly=1} */
-   ok_v_mailx_cc,                      /* {rdonly=1} */
-   ok_v_mailx_bcc,                     /* {rdonly=1} */
-   ok_v_mailx_raw_to,                  /* {rdonly=1} */
-   ok_v_mailx_raw_cc,                  /* {rdonly=1} */
-   ok_v_mailx_raw_bcc,                 /* {rdonly=1} */
-   ok_v_mailx_orig_from,               /* {rdonly=1} */
-   ok_v_mailx_orig_to,                 /* {rdonly=1} */
-   ok_v_mailx_orig_cc,                 /* {rdonly=1} */
-   ok_v_mailx_orig_bcc,                /* {rdonly=1} */
+   ok_v_mailx_command,                 /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_subject,                 /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_from,                    /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_sender,                  /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_to,                      /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_cc,                      /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_bcc,                     /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_raw_to,                  /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_raw_cc,                  /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_raw_bcc,                 /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_orig_from,               /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_orig_to,                 /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_orig_cc,                 /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_orig_bcc,                /* {rdonly=1,nodel=1,nolopts=1} */
 
 ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
 ok_b_NAIL_NO_SYSTEM_RC,             /* {name=NAIL_NO_SYSTEM_RC,import=1} */
@@ -1660,7 +1660,7 @@ ok_v_NAIL_HISTFILE,                 /* {name=NAIL_HISTFILE} */
 ok_v_NAIL_HISTSIZE,                 /* {name=NAIL_HISTSIZE,notempty=1,num=1} */
 ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_NETRC,                         /* {env=1,notempty=1,defval=VAL_NETRC} */
-   ok_b_netrc_lookup,
+   ok_b_netrc_lookup,                  /* {chain=1} */
    ok_v_netrc_pipe,
    ok_v_newfolders,
    ok_v_newmail,
@@ -1679,13 +1679,13 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_PATH,                          /* {nodel=1,import=1} */
    ok_b_POSIXLY_CORRECT,            /* {vip=1,import=1,name=POSIXLY_CORRECT} */
    ok_b_page,
-   ok_v_password,
+   ok_v_password,                      /* {chain=1} */
    ok_b_piperaw,
-   ok_v_pop3_auth,
+   ok_v_pop3_auth,                     /* {chain=1} */
    ok_b_pop3_bulk_load,
    ok_v_pop3_keepalive,                /* {notempty=1,posnum=1} */
-   ok_b_pop3_no_apop,
-   ok_b_pop3_use_starttls,
+   ok_b_pop3_no_apop,                  /* {chain=1} */
+   ok_b_pop3_use_starttls,             /* {chain=1} */
    ok_b_posix,                         /* {vip=1} */
    ok_b_print_alternatives,
    ok_v_prompt,                        /* {i3val="? "} */
@@ -1732,25 +1732,25 @@ ok_v_signature,
    ok_v_smime_ca_file,
    ok_v_smime_ca_flags,
    ok_b_smime_ca_no_defaults,
-   ok_v_smime_cipher,
+   ok_v_smime_cipher,                  /* {chain=1} */
    ok_v_smime_crl_dir,
    ok_v_smime_crl_file,
-   /* smime-encrypt-USER@HOST */
+   ok_v_smime_encrypt,                 /* {chain=1} */
    ok_b_smime_force_encryption,
 ok_b_smime_no_default_ca,
    ok_b_smime_sign,
-   ok_v_smime_sign_cert,
-   ok_v_smime_sign_include_certs,
-   ok_v_smime_sign_message_digest,
+   ok_v_smime_sign_cert,               /* {chain=1} */
+   ok_v_smime_sign_include_certs,      /* {chain=1} */
+   ok_v_smime_sign_message_digest,     /* {chain=1} */
 ok_v_smtp,
-   ok_v_smtp_auth,
+   ok_v_smtp_auth,                     /* {chain=1} */
 ok_v_smtp_auth_password,
 ok_v_smtp_auth_user,
    ok_v_smtp_hostname,
-   ok_b_smtp_use_starttls,
+   ok_b_smtp_use_starttls,             /* {chain=1} */
    ok_v_SOURCE_DATE_EPOCH,             /* {\} */
       /* {name=SOURCE_DATE_EPOCH,rdonly=1,import=1,notempty=1,posnum=1} */
-   ok_v_socks_proxy,                   /* {notempty=1} */
+   ok_v_socks_proxy,                   /* {chain=1,notempty=1} */
    ok_v_spam_interface,
    ok_v_spam_maxsize,                  /* {notempty=1,posnum=1} */
    ok_v_spamc_command,
@@ -1768,19 +1768,19 @@ ok_v_spamd_user,
    ok_v_ssl_ca_file,
    ok_v_ssl_ca_flags,
    ok_b_ssl_ca_no_defaults,
-   ok_v_ssl_cert,
-   ok_v_ssl_cipher_list,
+   ok_v_ssl_cert,                      /* {chain=1} */
+   ok_v_ssl_cipher_list,               /* {chain=1} */
    ok_v_ssl_config_file,
-   ok_v_ssl_curves,
+   ok_v_ssl_curves,                    /* {chain=1} */
    ok_v_ssl_crl_dir,
    ok_v_ssl_crl_file,
-   ok_v_ssl_key,
-   ok_v_ssl_method,
+   ok_v_ssl_key,                       /* {chain=1} */
+ok_v_ssl_method,                    /* {chain=1} */
 ok_b_ssl_no_default_ca,
-   ok_v_ssl_protocol,
+   ok_v_ssl_protocol,                  /* {chain=1} */
    ok_v_ssl_rand_egd,
    ok_v_ssl_rand_file,
-   ok_v_ssl_verify,
+   ok_v_ssl_verify,                    /* {chain=1} */
    ok_v_stealthmua,
 
    ok_v_TERM,                          /* {env=1} */
@@ -1795,7 +1795,7 @@ ok_b_ssl_no_default_ca,
 
    ok_v_USER,                          /* {rdonly=1,import=1} */
    ok_v_umask,                      /* {vip=1,nodel=1,posnum=1,i3val="0077"} */
-   ok_v_user,
+   ok_v_user,                       /* {chain=1} */
 
    ok_v_VISUAL,                     /* {env=1,notempty=1,defval=VAL_VISUAL} */
    ok_b_v15_compat,
@@ -1809,13 +1809,13 @@ ok_b_ssl_no_default_ca,
    ok_b_writebackedited
 
 ,  /* Obsolete IMAP related non-sorted */
-ok_b_disconnected,
-ok_v_imap_auth,
+ok_b_disconnected,               /* {chain=1} */
+ok_v_imap_auth,                  /* {chain=1} */
 ok_v_imap_cache,
-ok_v_imap_delim,
-ok_v_imap_keepalive,
+ok_v_imap_delim,                 /* {chain=1} */
+ok_v_imap_keepalive,             /* {chain=1} */
 ok_v_imap_list_depth,
-ok_b_imap_use_starttls
+ok_b_imap_use_starttls           /* {chain=1} */
 }; /* }}} */
 
 /* Locale-independent character classes */

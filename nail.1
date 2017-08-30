@@ -546,9 +546,10 @@ via
 may be overwritten from within resource files,
 the command line setting will be reestablished after all resource files
 have been loaded.
-(\*(ID In the future such a setting may instead become
+\*(ID In the future such a setting may instead become
 .Dq frozen
-until the startup is complete.)
+until the startup is complete, silently ignoring any tries to set or
+unset the variable.
 .
 .Mx
 .It Fl s Ar subject
