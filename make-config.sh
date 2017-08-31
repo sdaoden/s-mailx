@@ -918,6 +918,7 @@ ld_check() {
    return 1
 }
 
+dump_test_program=1
 _check_preface() {
    variable=$1 topic=$2 define=$3
 
@@ -925,12 +926,16 @@ _check_preface() {
    msg_nonl ' . %s ... ' "${topic}"
    echo "/* checked ${topic} */" >> ${h}
    ${rm} -f ${tmp} ${tmp}.o
-   echo '*** test program is'
-   { echo '#include <'"${h_name}"'>'; cat; } | ${tee} ${tmp}.c
+   if [ "${dump_test_program}" = 1 ]; then
+      echo '*** test program is'
+      { echo '#include <'"${h_name}"'>'; cat; } | ${tee} ${tmp}.c
+   else
+      { echo '#include <'"${h_name}"'>'; cat; } > ${tmp}.c
+   fi
    #echo '*** the preprocessor generates'
    #${make} -f ${makefile} ${tmp}.x
    #${cat} ${tmp}.x
-   echo '*** results are'
+   echo '*** tests results'
 }
 
 without_check() {
@@ -1298,12 +1303,14 @@ echo '#define VAL_BUILD_OS "'"${OS}"'"' >> ${h}
 echo '#define VAL_BUILD_OSENV "'"${OSENV}"'"' >> ${h}
 
 # Generate n_err_number OS mappings
+dump_test_program=0
 (
    feat_yes DEVEL && NV= || NV=noverbose
    SRCDIR="${SRCDIR}" TARGET="${h}" awk="${awk}" \
       ${SHELL} "${SRCDIR}"make-errors.sh ${NV} config
 ) |
    xrun_check oserrno 'OS error mapping table generated' || config_exit 1
+dump_test_program=1
 
 feat_def ALWAYS_UNICODE_LOCALE
 feat_def AMALGAMATION
