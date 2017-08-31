@@ -152,15 +152,17 @@ EMPTY_FILE()
 # define a_XSSL_X509_V_ANY
 #endif
 
-/* Some became meaningless with HAVE_XSSL_OPENSSL>=0x10100 */
 enum a_xssl_state{
-   a_XSSL_S_INIT = 1<<0,
-   a_XSSL_S_RAND_INIT = 1<<1,
-   a_XSSL_S_EXIT_HDL = 1<<2,
-   a_XSSL_S_CONF_LOAD = 1<<3,
-   a_XSSL_S_ALGO_LOAD = 1<<4,
+   a_XSSL_S_INIT = 1u<<0,
+   a_XSSL_S_RAND_INIT = 1u<<1,
+   a_XSSL_S_CONF_LOAD = 1u<<2,
 
-   a_XSSL_S_VERIFY_ERROR = 1<<7
+#if HAVE_XSSL_OPENSSL < 0x10100
+   a_XSSL_S_EXIT_HDL = 1u<<8,
+   a_XSSL_S_ALGO_LOAD = 1u<<9,
+#endif
+
+   a_XSSL_S_VERIFY_ERROR = 1u<<16
 };
 
 /* We go for the OpenSSL v1.0.2+ SSL_CONF_CTX if available even if
@@ -430,12 +432,11 @@ a_xssl_init(void)
             | OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS
 # endif
          , NULL);
-# ifdef HAVE_SSL_ALL_ALGORITHMS
-      a_xssl_state |= a_XSSL_S_ALGO_LOAD;
-# endif
-#else
+
+#else /* OPENSSL >= 0x10100 */
       SSL_load_error_strings();
       SSL_library_init();
+      a_xssl_load_algos();
 #endif
       a_xssl_state |= a_XSSL_S_INIT;
    }
@@ -1080,7 +1081,6 @@ _smime_cipher(char const *name)
 
    /* Not a built-in algorithm, but we may have dynamic support for more */
 #ifdef HAVE_SSL_ALL_ALGORITHMS
-   a_xssl_load_algos();
    if((cipher = EVP_get_cipherbyname(cp)) != NULL)
       goto jleave;
 #endif
@@ -1305,7 +1305,6 @@ jhave_name:
 
    /* Not a built-in algorithm, but we may have dynamic support for more */
 #ifdef HAVE_SSL_ALL_ALGORITHMS
-   a_xssl_load_algos();
    if((digest = EVP_get_digestbyname(cp)) != NULL)
       goto jleave;
 #endif
