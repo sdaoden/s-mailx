@@ -533,7 +533,11 @@ the internal
 .Ar var Ns
 iable and, in case of a non-boolean variable which has a value, assign
 .Ar value
-to it.
+to it; in case the operation fails the program will exit if the variables
+.Va errexit
+or
+.Va posix
+are set.
 Even though
 .Sx "INTERNAL VARIABLES"
 .Ic \&\&set

@@ -349,6 +349,10 @@ a_main_startup(void){
 #ifdef HAVE_ICONV
    iconvd = (iconv_t)-1;
 #endif
+
+   /* Ensure some variables get loaded and/or verified */
+
+   (void)ok_blook(POSIXLY_CORRECT);
    NYD_LEAVE;
 }
 
@@ -358,7 +362,7 @@ a_main_grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt){
    char const **newcpp;
    NYD_ENTER;
 
-   newcpp = salloc(sizeof(char*) * (newsize + 1));
+   newcpp = n_autorec_alloc(sizeof(char*) * (newsize + 1));
 
    if(oldcnt > 0)
       memcpy(newcpp, *cpp, oldcnt * sizeof(char*));
@@ -414,7 +418,6 @@ a_main_setup_vars(void){
    }
 
    (void)ok_vlook(TMPDIR);
-   (void)ok_blook(POSIXLY_CORRECT);
 
    /* Are we in a reproducible-builds.org environment? */
    if(ok_vlook(SOURCE_DATE_EPOCH) != NULL){
@@ -680,7 +683,7 @@ main(int argc, char *argv[]){
          struct a_arg *nap;
 
          n_psonce |= n_PSO_SENDMODE;
-         nap = salloc(sizeof(struct a_arg));
+         nap = n_autorec_alloc(sizeof(struct a_arg));
          if(a_head == NULL)
             a_head = nap;
          else
@@ -703,14 +706,12 @@ main(int argc, char *argv[]){
          cc = cat(cc, lextract(a_main_oarg, GCC | GFULL));
          break;
       case 'd':
-         ok_bset(debug);
-         okey = "debug";
-         goto joarg;
+         a_main_oarg = "debug";
+         goto jsetvar;
       case 'E':
          n_OBSOLETE(_("-E will be removed, please use \"-Sskipemptybody\""));
-         ok_bset(skipemptybody);
-         okey = "skipemptybody";
-         goto joarg;
+         a_main_oarg = "skipemptybody";
+         goto jsetvar;
       case 'e':
          n_poption |= n_PO_EXISTONLY;
          break;
@@ -732,9 +733,8 @@ main(int argc, char *argv[]){
          goto j_leave;
       case 'i':
          /* Ignore interrupts */
-         ok_bset(ignore);
-         okey = "ignore";
-         goto joarg;
+         a_main_oarg = "ignore";
+         goto jsetvar;
       case 'L':
          Larg = a_main_oarg;
          n_poption |= n_PO_HEADERLIST;
@@ -765,9 +765,8 @@ main(int argc, char *argv[]){
          break;
       case 'N':
          /* Avoid initial header printing */
-         ok_bclear(header);
-         okey = "noheader";
-         goto joarg;
+         a_main_oarg = "noheader";
+         goto jsetvar;
       case 'n':
          /* Don't source "unspecified system start-up file" */
          if(resfiles & a_RF_SET){
@@ -816,12 +815,12 @@ jeMmq:
              * TODO an interactive session!
              * TODO Maybe disable setting of from?
              * TODO Warn user?  Update manual!! */
-            okey = savecat("from=", fa->n_fullname);
-            goto joarg;
+            a_main_oarg = savecat("from=", fa->n_fullname);
+            goto jsetvar;
          }
          break;
       case 'S':
-         /* Set variable (TODO twice [only if successful]) */
+jsetvar: /* Set variable (TODO twice [only if successful]) */
          {  char const *a[2];
             bool_t b;
 
@@ -830,10 +829,11 @@ jeMmq:
             n_pstate |= n_PS_ROBOT;
             b = (c_set(a) == 0);
             n_pstate &= ~n_PS_ROBOT;
-            if(!b)
-               break;
+            if(!b && (ok_blook(errexit) || ok_blook(posix))){
+               emsg = N_("-S failed to adjust variable");
+               goto jusage;
+            }
          }
-joarg:
          if(oargs_cnt == oargs_size)
             oargs_size = a_main_grow_cpp(&oargs, oargs_size + 8, oargs_cnt);
          oargs[oargs_cnt++] = okey;
@@ -862,9 +862,8 @@ joarg:
          goto j_leave;
       case 'v':
          /* Be verbose */
-         ok_bset(verbose);
-         okey = "verbose";
-         goto joarg;
+         a_main_oarg = "verbose";
+         goto jsetvar;
       case 'X':
          /* Add to list of commands to exec before entering normal operation */
          if(Xargs_cnt == Xargs_size)
@@ -960,8 +959,8 @@ jgetopt_done:
    }
    a_main_oind = i;
 
-   /* ...BUT, since we use salloc() for the MTA n_smopts storage we need to
-    * allocate the necessary space for them before we fixate that storage! */
+   /* ...BUT, since we use n_autorec_alloc() for the MTA n_smopts storage we
+    * need to allocate the space for them before we fixate that storage! */
    while(argv[i] != NULL)
       ++i;
    if(n_smopts_cnt + i > smopts_size)
