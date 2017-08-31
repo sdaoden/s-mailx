@@ -3203,6 +3203,16 @@ one of the
 will be set to the real exit status of the command regardless.
 .
 .It
+.Mx
+.Cm local
+does yet not implement any functionality.
+.
+.It
+.Mx
+.Cm u
+does yet not implement any functionality.
+.
+.It
 Some commands support the
 .Mx
 .Cm vput
@@ -5450,6 +5460,16 @@ as well as
 meaning that their state will be reverted to the former one once the
 .Dq covered scope
 is left.
+\*(ID Note in the future the coverage may be extended to none or any of
+.Ic alias ,
+.Ic alternates ,
+.Ic charsetalias ,
+.Ic commandalias ,
+.Ic filetype ,
+.Ic mlist ,
+.Ic mlsubscribe ,
+.Ic shortcut ,
+to name a few.
 It can only be used inside of macro definition blocks introduced by
 .Ic account
 or

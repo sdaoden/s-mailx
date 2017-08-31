@@ -257,11 +257,12 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
       a_ALIAS_MASK = n_BITENUM_MASK(0, 2), /* Alias recursion counter bits */
       a_NOPREFIX = 1u<<4,  /* Modifier prefix not allowed right now */
       a_NOALIAS = 1u<<5,   /* "No alias!" expansion modifier */
-      /* New modifier prefixes must be reflected in `commandalias' handling! */
       a_IGNERR = 1u<<6,    /* ignerr modifier prefix */
-      a_WYSH = 1u<<7,      /* XXX v15+ drop wysh modifier prefix */
-      a_VPUT = 1u<<8,      /* vput modifier prefix */
-      a_MODE_MASK = n_BITENUM_MASK(5, 8),
+      a_LOCAL = 1u<<7,     /* TODO local modifier prefix */
+      a_U = 1u<<8,         /* TODO UTF-8 modifier prefix */
+      a_VPUT = 1u<<9,      /* vput modifier prefix */
+      a_WYSH = 1u<<10,      /* XXX v15+ drop wysh modifier prefix */
+      a_MODE_MASK = n_BITENUM_MASK(5, 10),
       a_NO_ERRNO = 1u<<16  /* Don't set n_pstate_err_no */
    } flags;
    NYD_ENTER;
@@ -330,20 +331,41 @@ jrestart:
    line.s = cp;
 
    /* It may be a modifier.
-    * Note: adding modifiers must be reflected in commandalias handling code */
-   if(c == sizeof("ignerr") -1 && !asccasecmp(word, "ignerr")){
-      flags |= a_NOPREFIX | a_IGNERR;
-      goto jrestart;
-   }else if(c == sizeof("wysh") -1 && !asccasecmp(word, "wysh")){
-      flags |= a_NOPREFIX | a_WYSH;
-      goto jrestart;
-   }else if(c == sizeof("vput") -1 && !asccasecmp(word, "vput")){
-      flags |= a_NOPREFIX | a_VPUT;
-      goto jrestart;
-   }else if(c == sizeof("u") -1 && *word == 'u'){
-      n_err(_("Ignoring yet unused `u' command modifier!"));
-      flags |= a_NOPREFIX;
-      goto jrestart;
+    * Note: changing modifiers must be reflected in `commandalias' handling
+    * code as well as in the manual (of course)! */
+   switch(c){
+   default:
+      break;
+   case sizeof("ignerr") -1:
+      if(!asccasecmp(word, "ignerr")){
+         flags |= a_NOPREFIX | a_IGNERR;
+         goto jrestart;
+      }
+      break;
+   case sizeof("local") -1:
+      if(!asccasecmp(word, "local")){
+         n_err(_("Ignoring yet unused `local' command modifier!"));
+         flags |= a_NOPREFIX | a_LOCAL;
+         goto jrestart;
+      }
+      break;
+   case sizeof("u") -1:
+      if(!asccasecmp(word, "u")){
+         n_err(_("Ignoring yet unused `u' command modifier!"));
+         flags |= a_NOPREFIX | a_U;
+         goto jrestart;
+      }
+      break;
+   /*case sizeof("vput") -1:*/
+   case sizeof("wysh") -1:
+      if(!asccasecmp(word, "wysh")){
+         flags |= a_NOPREFIX | a_WYSH;
+         goto jrestart;
+      }else if(!asccasecmp(word, "vput")){
+         flags |= a_NOPREFIX | a_VPUT;
+         goto jrestart;
+      }
+      break;
    }
 
    /* We need to trim for a possible history entry, but do it anyway and insert
@@ -515,7 +537,7 @@ jexec:
 
    if((flags & a_WYSH) &&
          (cdp->cd_caflags & n_CMD_ARG_TYPE_MASK) != n_CMD_ARG_TYPE_WYRA){
-      n_err(_("`wysh' prefix does not affect `%s'\n"), cdp->cd_name);
+      n_err(_("`wysh' command modifier does not affect `%s'\n"), cdp->cd_name);
       flags &= ~a_WYSH;
    }
 

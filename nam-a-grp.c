@@ -1996,10 +1996,12 @@ c_commandalias(void *vp){
       goto jleave;
    }
 
-   /* Verify the name is a valid one, and not a command modifier */
+   /* Verify the name is a valid one, and not a command modifier.
+    * XXX This list duplicates settings isolated somewhere else (go.c) */
    if(*ccp == '\0' || *n_cmd_isolate(ccp) != '\0' ||
-         !asccasecmp(ccp, "ignerr") || !asccasecmp(ccp, "wysh") ||
-         !asccasecmp(ccp, "u") || !asccasecmp(ccp, "vput")){
+         !asccasecmp(ccp, "ignerr") || !asccasecmp(ccp, "local") ||
+         !asccasecmp(ccp, "wysh") || !asccasecmp(ccp, "u") ||
+         !asccasecmp(ccp, "vput")){
       n_err(_("`commandalias': not a valid command name: %s\n"),
          n_shexp_quote_cp(ccp, FAL0));
       rv = 1;
