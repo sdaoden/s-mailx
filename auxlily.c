@@ -343,11 +343,9 @@ n_locale_init(void){
    /* C99 */{
       char const *cp;
 
-      /* TODO *ttycharset* may be set several times during startup unless
-       * TODO we gain a mechanism that -S fixates a setting during startup,
-       * TODO effectively turning later adjustments (during startup) in noop */
       if((cp = nl_langinfo(CODESET)) != NULL)
-         ok_vset(ttycharset, cp);
+         /* Avoid logging if user set that via -S! */
+         n_PS_ROOT_BLOCK(ok_vset(ttycharset, cp));
    }
 # endif
 

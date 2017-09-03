@@ -132,7 +132,7 @@
 .
 .Bd -filled -compact -offset indent
 .Sy Compatibility note:
-S-nail (\*(UA) will wrap up into \%S-mailx in v15.0 (circa 2019).
+S-nail (\*(UA) will wrap up into \%S-mailx in v15.0 (circa 2020).
 Backward incompatibility has to be expected \(en
 .Sx COMMANDS
 will use
@@ -529,27 +529,29 @@ accordingly or the user is member of a group with special privileges.
 .Mx
 .It Fl S Ar var Ns Op = Ns value
 .Ic set
-the internal
+(or, with a prefix string
+.Ql no ,
+as documented in
+.Sx "INTERNAL VARIABLES" ,
+.Ic unset )
 .Ar var Ns
-iable and, in case of a non-boolean variable which has a value, assign
-.Ar value
-to it; in case the operation fails the program will exit if the variables
+iable and optionally assign
+.Ar value ,
+if supported.
+If the operation fails the program will exit if any of
 .Va errexit
 or
 .Va posix
 are set.
-Even though
-.Sx "INTERNAL VARIABLES"
-.Ic \&\&set
-via
+Settings established via
 .Fl \&\&S
-may be overwritten from within resource files,
-the command line setting will be reestablished after all resource files
-have been loaded.
-\*(ID In the future such a setting may instead become
-.Dq frozen
-until the startup is complete, silently ignoring any tries to set or
-unset the variable.
+cannot be changed from within
+.Sx "Resource files"
+or an account switch initiated by
+.Fl A .
+They will become mutable again before commands registered via
+.Fl X
+are executed.
 .
 .Mx
 .It Fl s Ar subject
@@ -668,7 +670,7 @@ set of (interactive) commands is available, processing of
 is enabled in compose mode, and diverse
 .Sx "INTERNAL VARIABLES"
 are adjusted for batch necessities, exactly as if done via
-.Fl S :
+.Ic set :
 .Va emptystart ,
 .Pf no Va errexit ,
 .Pf no Va header ,

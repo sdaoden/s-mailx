@@ -281,7 +281,7 @@ c_shell(void *v)
          n_pstate_err_no = n_ERR_NOTSUP;
          rv = -1;
       }
-   }else if(rv >= 0){
+   }else if(rv >= 0 && (n_psonce & n_PSO_INTERACTIVE)){
       fprintf(n_stdout, "!\n");
       /* Line buffered fflush(n_stdout); */
    }

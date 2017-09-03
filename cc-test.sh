@@ -355,6 +355,7 @@ fi
 t_behave() {
    t_behave_X_opt_input_command_stack
    t_behave_X_errexit
+   t_behave_S_freeze
    t_behave_wysh
    t_behave_input_inject_semicolon_seq
    t_behave_commandalias
@@ -546,6 +547,106 @@ t_behave_X_errexit() {
       > "${BODY}" 2>&1
    check behave:x_errexit-11 0 "${BODY}" '916157812 53'
 
+   t_epilog
+}
+
+t_behave_S_freeze() {
+   t_prolog t_behave_S_freeze
+   oterm=$TERM
+   unset TERM
+
+   # Test basic assumption
+   </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} \
+      -X'echo asksub<$asksub> dietcurd<$dietcurd>' \
+      -Xx > "${MBOX}" 2>&1
+   check behave:s_freeze-1 0 "${MBOX}" '270686329 21'
+
+   #
+   ${cat} <<- '__EOT' > "${BODY}"
+	echo asksub<$asksub>
+	set asksub
+	echo asksub<$asksub>
+	__EOT
+   </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u \
+      -Snoasksub -Sasksub -Snoasksub \
+      -X'echo asksub<$asksub>' -X'set asksub' -X'echo asksub<$asksub>' \
+      -Xx > "${MBOX}" 2>&1
+   check behave:s_freeze-2 0 "${MBOX}" '3182942628 37'
+
+   ${cat} <<- '__EOT' > "${BODY}"
+	echo asksub<$asksub>
+	unset asksub
+	echo asksub<$asksub>
+	__EOT
+   </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u \
+      -Snoasksub -Sasksub \
+      -X'echo asksub<$asksub>' -X'unset asksub' -X'echo asksub<$asksub>' \
+      -Xx > "${MBOX}" 2>&1
+   check behave:s_freeze-3 0 "${MBOX}" '2006554293 39'
+
+   #
+   ${cat} <<- '__EOT' > "${BODY}"
+	echo dietcurd<$dietcurd>
+	set dietcurd=cherry
+	echo dietcurd<$dietcurd>
+	__EOT
+   </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u \
+      -Sdietcurd=strawberry -Snodietcurd -Sdietcurd=vanilla \
+      -X'echo dietcurd<$dietcurd>' -X'unset dietcurd' \
+         -X'echo dietcurd<$dietcurd>' \
+      -Xx > "${MBOX}" 2>&1
+   check behave:s_freeze-4 0 "${MBOX}" '1985768109 65'
+
+   ${cat} <<- '__EOT' > "${BODY}"
+	echo dietcurd<$dietcurd>
+	unset dietcurd
+	echo dietcurd<$dietcurd>
+	__EOT
+   </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u \
+      -Sdietcurd=strawberry -Snodietcurd \
+      -X'echo dietcurd<$dietcurd>' -X'set dietcurd=vanilla' \
+         -X'echo dietcurd<$dietcurd>' \
+      -Xx > "${MBOX}" 2>&1
+   check behave:s_freeze-5 0 "${MBOX}" '151574279 51'
+
+   # TODO once we have a detached one with env=1..
+   if [ -n "`</dev/null ${MAILX} ${ARGS} -:/ -X'!echo $TERM' -Xx`" ]; then
+      echo 'behave:s_freeze-{5,6}: shell sets $TERM, skipped'
+   else
+      ${cat} <<- '__EOT' > "${BODY}"
+		!echo "shell says TERM<$TERM>"
+	echo TERM<$TERM>
+		!echo "shell says TERM<$TERM>"
+	set TERM=cherry
+		!echo "shell says TERM<$TERM>"
+	echo TERM<$TERM>
+		!echo "shell says TERM<$TERM>"
+		__EOT
+      </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u \
+         -STERM=strawberry -SnoTERM -STERM=vanilla \
+         -X'echo mail<$TERM>' -X'unset TERM' \
+         -X'!echo "shell says TERM<$TERM>"' -X'echo TERM<$TERM>' \
+         -Xx > "${MBOX}" 2>&1
+   check behave:s_freeze-6 0 "${MBOX}" '1211476036 167'
+
+      ${cat} <<- '__EOT' > "${BODY}"
+		!echo "shell says TERM<$TERM>"
+	echo TERM<$TERM>
+		!echo "shell says TERM<$TERM>"
+	set TERM=cherry
+		!echo "shell says TERM<$TERM>"
+	echo TERM<$TERM>
+		!echo "shell says TERM<$TERM>"
+	__EOT
+      </dev/null MAILRC="${BODY}" ${MAILX} ${ARGS} -:u \
+         -STERM=strawberry -SnoTERM \
+         -X'echo TERM<$TERM>' -X'set TERM=vanilla' \
+         -X'!echo "shell says TERM<$TERM>"' -X'echo TERM<$TERM>' \
+         -Xx > "${MBOX}" 2>&1
+      check behave:s_freeze-7 0 "${MBOX}" '3365080441 132'
+   fi
+
+   TERM=$oterm
    t_epilog
 }
 

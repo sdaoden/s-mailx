@@ -645,8 +645,8 @@ main(int argc, char *argv[]){
       a_RF_USER = 1<<2,
       a_RF_ALL = a_RF_SYSTEM | a_RF_USER
    } resfiles;
-   size_t oargs_size, oargs_cnt, Xargs_size, Xargs_cnt, smopts_size;
-   char const *Aarg, *emsg, *folder, *Larg, *okey, **oargs, *qf,
+   size_t Xargs_size, Xargs_cnt, smopts_size;
+   char const *Aarg, *emsg, *folder, *Larg, *okey, *qf,
       *subject, *uarg, **Xargs;
    struct attachment *attach;
    struct name *to, *cc, *bcc;
@@ -658,8 +658,8 @@ main(int argc, char *argv[]){
    to = cc = bcc = NULL;
    attach = NULL;
    Aarg = emsg = folder = Larg = okey = qf = subject = uarg = NULL;
-   oargs = Xargs = NULL;
-   oargs_size = oargs_cnt = Xargs_size = Xargs_cnt = smopts_size = 0;
+   Xargs = NULL;
+   Xargs_size = Xargs_cnt = smopts_size = 0;
    resfiles = a_RF_ALL;
 
    /*
@@ -706,12 +706,12 @@ main(int argc, char *argv[]){
          cc = cat(cc, lextract(a_main_oarg, GCC | GFULL));
          break;
       case 'd':
-         a_main_oarg = "debug";
-         goto jsetvar;
+         ok_bset(debug);
+         break;
       case 'E':
          n_OBSOLETE(_("-E will be removed, please use \"-Sskipemptybody\""));
-         a_main_oarg = "skipemptybody";
-         goto jsetvar;
+         ok_bset(skipemptybody);
+         break;
       case 'e':
          n_poption |= n_PO_EXISTONLY;
          break;
@@ -733,8 +733,8 @@ main(int argc, char *argv[]){
          goto j_leave;
       case 'i':
          /* Ignore interrupts */
-         a_main_oarg = "ignore";
-         goto jsetvar;
+         ok_bset(ignore);
+         break;
       case 'L':
          Larg = a_main_oarg;
          n_poption |= n_PO_HEADERLIST;
@@ -765,8 +765,8 @@ main(int argc, char *argv[]){
          break;
       case 'N':
          /* Avoid initial header printing */
-         a_main_oarg = "noheader";
-         goto jsetvar;
+         ok_bclear(header);
+         break;
       case 'n':
          /* Don't source "unspecified system start-up file" */
          if(resfiles & a_RF_SET){
@@ -820,7 +820,8 @@ jeMmq:
          }
          break;
       case 'S':
-jsetvar: /* Set variable (TODO twice [only if successful]) */
+         n_poption |= n_PO_S_FLAG_TEMPORARY;
+jsetvar: /* Set variable */
          {  char const *a[2];
             bool_t b;
 
@@ -828,15 +829,13 @@ jsetvar: /* Set variable (TODO twice [only if successful]) */
             a[1] = NULL;
             n_pstate |= n_PS_ROBOT;
             b = (c_set(a) == 0);
-            n_pstate &= ~n_PS_ROBOT;
+            n_pstate &= ~(n_PS_ROOT | n_PS_ROBOT);
+            n_poption &= ~n_PO_S_FLAG_TEMPORARY;
             if(!b && (ok_blook(errexit) || ok_blook(posix))){
                emsg = N_("-S failed to adjust variable");
                goto jusage;
             }
          }
-         if(oargs_cnt == oargs_size)
-            oargs_size = a_main_grow_cpp(&oargs, oargs_size + 8, oargs_cnt);
-         oargs[oargs_cnt++] = okey;
          break;
       case 's':
          /* Subject:; take care for Debian #419840 and strip any \r and \n */
@@ -862,8 +861,8 @@ jsetvar: /* Set variable (TODO twice [only if successful]) */
          goto j_leave;
       case 'v':
          /* Be verbose */
-         a_main_oarg = "verbose";
-         goto jsetvar;
+         ok_bset(verbose);
+         break;
       case 'X':
          /* Add to list of commands to exec before entering normal operation */
          if(Xargs_cnt == Xargs_size)
@@ -897,19 +896,17 @@ jsetvar: /* Set variable (TODO twice [only if successful]) */
             setvbuf(n_stdin, NULL, _IOLBF, 0);
          n_poption |= n_PO_TILDE_FLAG | n_PO_BATCH_FLAG;
          folder = n_path_devnull;
-         if(oargs_cnt + 10 >= oargs_size)
-            oargs_size = a_main_grow_cpp(&oargs, oargs_size + 11, oargs_cnt);
          n_pstate |= n_PS_ROBOT; /* (be silent unsetting undefined variables) */
-         ok_vset(MAIL, folder), oargs[oargs_cnt++] = "MAIL=" n_PATH_DEVNULL;
-         ok_vset(MBOX, folder), oargs[oargs_cnt++] = "MBOX=" n_PATH_DEVNULL;
-         ok_bset(emptystart), oargs[oargs_cnt++] = "emptystart";
-         ok_bclear(errexit), oargs[oargs_cnt++] = "noerrexit";
-         ok_bclear(header), oargs[oargs_cnt++] = "noheader";
-         ok_vset(inbox, folder), oargs[oargs_cnt++] = "inbox=" n_PATH_DEVNULL;
-         ok_bclear(posix), oargs[oargs_cnt++] = "noposix";
-         ok_bset(quiet), oargs[oargs_cnt++] = "quiet";
-         ok_bset(sendwait), oargs[oargs_cnt++] = "sendwait";
-         ok_bset(typescript_mode), oargs[oargs_cnt++] = "typescript-mode";
+         ok_vset(MAIL, folder);
+         ok_vset(MBOX, folder);
+         ok_bset(emptystart);
+         ok_bclear(errexit);
+         ok_bclear(header);
+         ok_vset(inbox, folder);
+         ok_bclear(posix);
+         ok_bset(quiet);
+         ok_bset(sendwait);
+         ok_bset(typescript_mode);
          n_pstate &= ~n_PS_ROBOT;
          break;
       case '.':
@@ -1056,19 +1053,6 @@ jgetopt_done:
       if((cp != NULL || (cp = ok_vlook(mailx_extra_rc)) != NULL) &&
             !n_go_load(fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)))
          goto j_leave;
-   }
-
-   /* Ensure the -S and other command line options take precedence over
-    * anything that may have been placed in resource files.
-    * Our "ternary binary" option *verbose* needs special treament */
-   if((n_poption & (n_PO_VERB | n_PO_VERBVERB)) == n_PO_VERB)
-      n_poption &= ~n_PO_VERB;
-   /* ..and be silent when unsetting undefined variables again */
-   if(oargs_cnt > 0){
-      n_pstate |= n_PS_ROBOT;
-      oargs[oargs_cnt] = NULL;
-      c_set(oargs);
-      n_pstate &= ~n_PS_ROBOT;
    }
 
    /* Cause possible umask(2) to be applied, now that any setting is

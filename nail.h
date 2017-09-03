@@ -1366,9 +1366,10 @@ enum n_program_option{
    n_PO_Mm_FLAG = 1u<<8,      /* -M or -m (plus n_poption_arg_Mm) */
    n_PO_R_FLAG = 1u<<9,       /* -R */
    n_PO_r_FLAG = 1u<<10,      /* -r (plus n_poption_arg_r) */
-   n_PO_t_FLAG = 1u<<11,      /* -t */
-   n_PO_TILDE_FLAG = 1u<<12,  /* -~ */
-   n_PO_BATCH_FLAG = 1u<<13,  /* -# */
+   n_PO_S_FLAG_TEMPORARY = 1u<<11, /* -S about to set a variable */
+   n_PO_t_FLAG = 1u<<12,      /* -t */
+   n_PO_TILDE_FLAG = 1u<<13,  /* -~ */
+   n_PO_BATCH_FLAG = 1u<<14,  /* -# */
 
    /*  */
    n_PO_MEMDEBUG = 1<<24,     /* *memdebug* */
