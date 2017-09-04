@@ -348,7 +348,7 @@ cc_setup() {
       export CFLAGS LDFLAGS
    fi
 
-   [ -n "${CC}" ] && [ "${CC}" != cc ] && { _cc_default; return; }
+   [ -n "${CC}" ] && { _cc_default; return; }
 
    msg_nonl 'Searching for a usable C compiler .. $CC='
    if acmd_set CC clang || acmd_set CC gcc ||
