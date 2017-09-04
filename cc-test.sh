@@ -21,20 +21,83 @@ MAIL=/dev/null
 MEMTESTER=
 #MEMTESTER='valgrind --leak-check=full --log-file=.vl-%p '
 
-if ( command -v command ) >/dev/null 2>&1; then :; else
-   command() {
-      shift
-      which "${@}"
-   }
-fi
+##  -- (>8  --  8<)  --  ##
 
-: ${MAKE:=`command -v make`}
-: ${awk:=`command -v awk`}
-: ${cat:=`command -v cat`}
-: ${cksum:=`command -v cksum`}
-: ${rm:=`command -v rm`}
-: ${sed:=`command -v sed`}
-: ${grep:=`command -v grep`}
+( set -o noglob ) >/dev/null 2>&1 && noglob_shell=1 || unset noglob_shell
+
+msg() {
+   fmt=${1}
+   shift
+   printf >&2 -- "${fmt}\\n" "${@}"
+}
+
+# which(1) not standardized, command(1) -v may return non-executable: unroll!
+acmd_test() { __acmd "${1}" 1 0 0; }
+acmd_test_fail() { __acmd "${1}" 1 1 0; }
+acmd_set() { __acmd "${2}" 0 0 0 "${1}"; }
+acmd_set_fail() { __acmd "${2}" 0 1 0 "${1}"; }
+acmd_testandset() { __acmd "${2}" 1 0 0 "${1}"; }
+acmd_testandset_fail() { __acmd "${2}" 1 1 0 "${1}"; }
+thecmd_set() { __acmd "${2}" 0 0 1 "${1}"; }
+thecmd_set_fail() { __acmd "${2}" 0 1 1 "${1}"; }
+thecmd_testandset() { __acmd "${2}" 1 0 1 "${1}"; }
+thecmd_testandset_fail() { __acmd "${2}" 1 1 1 "${1}"; }
+__acmd() {
+   pname=${1} dotest=${2} dofail=${3} verbok=${4} varname=${5}
+
+   if [ "${dotest}" -ne 0 ]; then
+      eval dotest=\$${varname}
+      if [ -n "${dotest}" ]; then
+         [ -n "${VERBOSE}" ] && [ ${verbok} -ne 0 ] &&
+            msg ' . ${%s} ... %s' "${pname}" "${dotest}"
+         return 0
+      fi
+   fi
+
+   oifs=${IFS} IFS=:
+   [ -n "${noglob_shell}" ] && set -o noglob
+   set -- ${PATH}
+   [ -n "${noglob_shell}" ] && set +o noglob
+   IFS=${oifs}
+   for path
+   do
+      if [ -z "${path}" ] || [ "${path}" = . ]; then
+         if [ -d "${PWD}" ]; then
+            path=${PWD}
+         else
+            path=.
+         fi
+      fi
+      if [ -f "${path}/${pname}" ] && [ -x "${path}/${pname}" ]; then
+         [ -n "${VERBOSE}" ] && [ ${verbok} -ne 0 ] &&
+            msg ' . ${%s} ... %s' "${pname}" "${path}/${pname}"
+         [ -n "${varname}" ] && eval ${varname}="${path}/${pname}"
+         return 0
+      fi
+   done
+
+   # We may have no builtin string functions, we yet have no programs we can
+   # use, try to access once from the root, assuming it is an absolute path if
+   # that finds the executable
+   if ( cd && [ -f "${pname}" ] && [ -x "${pname}" ] ); then
+     [ -n "${VERBOSE}" ] && [ ${verbok} -ne 0 ] &&
+            msg ' . ${%s} ... %s' "${pname}" "${pname}"
+      [ -n "${varname}" ] && eval ${varname}="${pname}"
+      return 0
+   fi
+
+   [ ${dofail} -eq 0 ] && return 1
+   msg 'ERROR: no trace of utility '"${pname}"
+   exit 1
+}
+
+thecmd_testandset_fail MAKE make
+thecmd_testandset_fail awk awk
+thecmd_testandset_fail cat cat
+thecmd_testandset_fail cksum cksum
+thecmd_testandset_fail rm rm
+thecmd_testandset_fail sed sed
+thecmd_testandset_fail grep grep
 
 # Problem: force $SHELL to be a real shell.  It seems some testing environments
 # use nologin(?), but we need a real shell for command execution
@@ -46,12 +109,10 @@ fi
 
 # We sometimes "fake" sendmail(1) a.k.a. *mta* with a shell wrapper, and it
 # happens that /bin/sh is often terribly slow
-if command -v dash >/dev/null 2>&1; then
-   MYSHELL="`command -v dash`"
-elif command -v mksh >/dev/null 2>&1; then
-   MYSHELL="`command -v mksh`"
+if acmd_set MYSHELL dash || acmd_set MYSHELL mksh; then
+   :
 else
-   MYSHELL="${SHELL}"
+   thecmd_testandset_fail MYSHELL "${SHELL}"
 fi
 
 ##  --  >8  --  8<  --  ##
@@ -83,8 +144,8 @@ elif [ "${1}" = --mae-test ]; then
    MAILX=${2}
    [ -x "${MAILX}" ] || usage
    shift 2
-   : ${cp:=`command -v cp`} # XXX
-   : ${tr:=`command -v tr`} # XXX
+   thecmd_testandset_fail cp cp
+   thecmd_testandset_fail tr tr
 fi
 RAWMAILX=${MAILX}
 MAILX="${MEMTESTER}${MAILX}"
@@ -110,8 +171,8 @@ if [ -n "${CHECK_ONLY}${MAE_TEST}" ] && [ -z "${UTF8_LOCALE}" ]; then
    '`
    [ $? -eq 0 ] && UTF8_LOCALE=$i
 
-   if [ -z "${UTF8_LOCALE}" ] && command -v locale >/dev/null 2>&1; then
-      UTF8_LOCALE=`locale -a | { m=
+   if [ -z "${UTF8_LOCALE}" ] && acmd_set i locale; then
+      UTF8_LOCALE=`${i} -a | { m=
          while read n; do
             if { echo ${n} | ${grep} -i 'utf-\{0,1\}8'; } >/dev/null 2>&1; then
                m=${n}
@@ -265,9 +326,9 @@ if ( [ "$((1 + 1))" = 2 ] ) >/dev/null 2>&1; then
    add() {
       echo "$((${1} + ${2}))"
    }
-elif command -v expr >/dev/null 2>&1; then
+elif acmd_set expr expr; then
    add() {
-      echo `expr ${1} + ${2}`
+      echo `${expr} ${1} + ${2}`
    }
 else
    add() {
@@ -279,9 +340,9 @@ if ( [ "$((2 % 3))" = 2 ] ) >/dev/null 2>&1; then
    modulo() {
       echo "$((${1} % ${2}))"
    }
-elif command -v expr >/dev/null 2>&1; then
+elif acmd_set modexpr expr; then
    modulo() {
-      echo `expr ${1} % ${2}`
+      echo `${modexpr} ${1} % ${2}`
    }
 else
    modulo() {
@@ -2468,14 +2529,14 @@ t_behave_filetype() {
       "${SRCDIR}snailmail.jpg" | ${MAILX} ${ARGS} -Smta=./.tsendmail.sh
    check behave:filetype-1 0 "${MBOX}" '1594682963 13520'
 
-   if command -v gzip >/dev/null 2>&1; then
+   if acmd_set gzip gzip; then
       ${rm} -f ./.t.mbox*
       {
          printf 'File "%s"\ncopy 1 ./.t.mbox.gz\ncopy 2 ./.t.mbox.gz' \
             "${MBOX}" | ${MAILX} ${ARGS} \
-               -X'filetype gz gzip\ -dc gzip\ -c'
+               -X'filetype gz '"${gzip}"'\ -dc '"${gzip}"'\ -c'
          printf 'File ./.t.mbox.gz\ncopy * ./.t.mbox\n' |
-            ${MAILX} ${ARGS} -X'filetype gz gzip\ -dc gzip\ -c'
+            ${MAILX} ${ARGS} -X'filetype gz '"${gzip}"'\ -dc '"${gzip}"'\ -c'
       } > ./.t.out 2>&1
       check behave:filetype-2 - "./.t.mbox" '1594682963 13520'
       check behave:filetype-3 - "./.t.out" '2494681730 102'
@@ -4077,9 +4138,9 @@ t_behave_iconv_mbyte_base64() {
    t_prolog t_behave_iconv_mbyte_base64
    TRAP_EXIT_ADDONS="./.t*"
 
-   if [ -n "${UTF8_LOCALE}" ] && have_feat iconv &&
-         command -v iconv >/dev/null 2>&1 &&
-         ( iconv -l | ${grep} -i -e iso-2022-jp -e euc-jp) >/dev/null 2>&1; then
+   if [ -n "${UTF8_LOCALE}" ] && have_feat iconv && acmd_set iconv iconv &&
+         ( ${iconv} -l | ${grep} -i -e iso-2022-jp -e euc-jp) >/dev/null 2>&1
+   then
       :
    else
       echo 'behave:iconv_mbyte_base64: unsupported, skipped'
@@ -4093,7 +4154,7 @@ t_behave_iconv_mbyte_base64() {
 	_EOT
    chmod 0755 ./.tsendmail.sh
 
-   if ( iconv -l | ${grep} -i iso-2022-jp ) >/dev/null 2>&1; then
+   if ( ${iconv} -l | ${grep} -i iso-2022-jp ) >/dev/null 2>&1; then
       cat <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
             -Smta=./.tsendmail.sh \
             -Sescape=! -Smime-encoding=base64 2>./.terr
@@ -4134,7 +4195,7 @@ t_behave_iconv_mbyte_base64() {
       echo 'behave:iconv_mbyte_base64: ISO-2022-JP unsupported, skipping 1-4'
    fi
 
-   if ( iconv -l | ${grep} -i euc-jp ) >/dev/null 2>&1; then
+   if ( ${iconv} -l | ${grep} -i euc-jp ) >/dev/null 2>&1; then
       rm -f "${MBOX}" ./.twrite
       cat <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
             -Smta=./.tsendmail.sh \

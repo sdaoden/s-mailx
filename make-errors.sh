@@ -16,7 +16,7 @@ OUT="${SRCDIR}"gen-errors.h
 LC_ALL=C
 export LC_ALL MAXDISTANCE_PENALTY VERB MAILX OUT
 
-: ${awk:=`command -v awk`}
+[ -n "${awk}" ] || awk=awk
 
 # The set of errors we support
 ERRORS="\

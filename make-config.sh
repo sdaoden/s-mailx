@@ -4,7 +4,8 @@
 LC_ALL=C
 export LC_ALL
 
-: ${SHELL:=/bin/sh}
+[ -n "${SHELL}" ] || SHELL=/bin/sh
+export SHELL
 
 # The feature set, to be kept in sync with make.rc
 # If no documentation given, the option is used as such; if doc is a hyphen,
@@ -227,14 +228,15 @@ tmp2=./${tmp0}2$$
 
 # TODO cc_maxopt is brute simple, we should compile test program and dig real
 # compiler versions for known compilers, then be more specific
-: ${cc_maxopt:=100}
+[ -n "${cc_maxopt}" ] || cc_maxopt=100
 _CFLAGS= _LDFLAGS=
 
 os_early_setup() {
    # We don't "have any utility": only path adjustments and such in here!
-   i="${OS:-`uname -s`}"
+   [ -n "${OS}" ] || OS=`uname -s`
+   export OS
 
-   if [ ${i} = SunOS ]; then
+   if [ ${OS} = SunOS ]; then
       msg 'SunOS / Solaris?  Applying some "early setup" rules ...'
       _os_early_setup_sunos
    fi
@@ -254,9 +256,9 @@ _os_early_setup_sunos() {
 os_setup() {
    # OSENV ends up in *build-osenv*
    # OSFULLSPEC is used to recognize changes (i.e., machine type, updates etc.)
-   : ${OS:=`uname -s | ${tr} '[A-Z]' '[a-z]'`}
-   : ${OSENV:=`uname -srm`}
-   : ${OSFULLSPEC:=`uname -a`}
+   OS=`echo ${OS} | ${tr} '[A-Z]' '[a-z]'`
+   [ -n "${OSENV}" ] || OSENV=`uname -srm`
+   [ -n "${OSFULLSPEC}" ] || OSFULLSPEC=`uname -a`
    msg 'Operating system is %s' ${OS}
 
    if [ ${OS} = darwin ]; then
@@ -266,9 +268,8 @@ os_setup() {
       msg ' . have special SunOS / Solaris "setup" rules ...'
       _os_setup_sunos
    elif [ ${OS} = unixware ]; then
-      if feat_yes AUTOCC && command -v cc >/dev/null 2>&1; then
+      if feat_yes AUTOCC && acmd_set CC cc; then
          msg ' . have special UnixWare environmental rules ...'
-         CC=cc
          feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
 
          CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
@@ -317,8 +318,7 @@ _os_setup_sunos() {
    fi
 
    if feat_yes AUTOCC; then
-      if command -v cc >/dev/null 2>&1; then
-         CC=cc
+      if acmd_set CC cc; then
          feat_yes DEBUG && _CFLAGS="-v -Xa -g" || _CFLAGS="-Xa -O"
 
          CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
@@ -351,28 +351,16 @@ cc_setup() {
    [ -n "${CC}" ] && [ "${CC}" != cc ] && { _cc_default; return; }
 
    msg_nonl 'Searching for a usable C compiler .. $CC='
-   if { i="`command -v clang`"; }; then
-      CC=${i}
-   elif { i="`command -v gcc`"; }; then
-      CC=${i}
-   elif { i="`command -v c99`"; }; then
-      CC=${i}
-   elif { i="`command -v tcc`"; }; then
-      CC=${i}
-   elif { i="`command -v pcc`"; }; then
-      CC=${i}
+   if acmd_set CC clang || acmd_set CC gcc ||
+         acmd_set CC tcc || acmd_set CC pcc ||
+         acmd_set CC c89 || acmd_set CC c99; then
+      :
    else
-      if [ "${CC}" = cc ]; then
-         :
-      elif { i="`command -v c89`"; }; then
-         CC=${i}
-      else
-         msg 'boing booom tschak'
-         msg 'ERROR: I cannot find a compiler!'
-         msg ' Neither of clang(1), gcc(1), tcc(1), pcc(1), c89(1) and c99(1).'
-         msg ' Please set ${CC} environment variable, maybe ${CFLAGS}, rerun.'
-         config_exit 1
-      fi
+      msg 'boing booom tschak'
+      msg 'ERROR: I cannot find a compiler!'
+      msg ' Neither of clang(1), gcc(1), tcc(1), pcc(1), c89(1) and c99(1).'
+      msg ' Please set ${CC} environment variable, maybe ${CFLAGS}, rerun.'
+      config_exit 1
    fi
    msg '%s' "${CC}"
    export CC
@@ -584,8 +572,80 @@ _cc_flags_generic() {
 ## and redefine them as necessary.
 ## And, since we have those functions, simply use them for whatever
 
+t1=ten10one1ten10one1
+if ( [ ${t1##*ten10} = one1 ] && [ ${t1#*ten10} = one1ten10one1 ] &&
+      [ ${t1%%one1*} = ten10 ] && [ ${t1%one1*} = ten10one1ten10 ]
+      ) > /dev/null 2>&1; then
+   good_shell=1
+else
+   unset good_shell
+fi
+unset t1
+
+( set -o noglob ) >/dev/null 2>&1 && noglob_shell=1 || unset noglob_shell
+
 config_exit() {
    exit ${1}
+}
+
+# which(1) not standardized, command(1) -v may return non-executable: unroll!
+acmd_test() { __acmd "${1}" 1 0 0; }
+acmd_test_fail() { __acmd "${1}" 1 1 0; }
+acmd_set() { __acmd "${2}" 0 0 0 "${1}"; }
+acmd_set_fail() { __acmd "${2}" 0 1 0 "${1}"; }
+acmd_testandset() { __acmd "${2}" 1 0 0 "${1}"; }
+acmd_testandset_fail() { __acmd "${2}" 1 1 0 "${1}"; }
+thecmd_set() { __acmd "${2}" 0 0 1 "${1}"; }
+thecmd_set_fail() { __acmd "${2}" 0 1 1 "${1}"; }
+thecmd_testandset() { __acmd "${2}" 1 0 1 "${1}"; }
+thecmd_testandset_fail() { __acmd "${2}" 1 1 1 "${1}"; }
+__acmd() {
+   pname=${1} dotest=${2} dofail=${3} verbok=${4} varname=${5}
+
+   if [ "${dotest}" -ne 0 ]; then
+      eval dotest=\$${varname}
+      if [ -n "${dotest}" ]; then
+         [ -n "${VERBOSE}" ] && [ ${verbok} -ne 0 ] &&
+            msg ' . ${%s} ... %s' "${pname}" "${dotest}"
+         return 0
+      fi
+   fi
+
+   oifs=${IFS} IFS=:
+   [ -n "${noglob_shell}" ] && set -o noglob
+   set -- ${PATH}
+   [ -n "${noglob_shell}" ] && set +o noglob
+   IFS=${oifs}
+   for path
+   do
+      if [ -z "${path}" ] || [ "${path}" = . ]; then
+         if [ -d "${PWD}" ]; then
+            path=${PWD}
+         else
+            path=.
+         fi
+      fi
+      if [ -f "${path}/${pname}" ] && [ -x "${path}/${pname}" ]; then
+         [ -n "${VERBOSE}" ] && [ ${verbok} -ne 0 ] &&
+            msg ' . ${%s} ... %s' "${pname}" "${path}/${pname}"
+         [ -n "${varname}" ] && eval ${varname}="${path}/${pname}"
+         return 0
+      fi
+   done
+
+   # We may have no builtin string functions, we yet have no programs we can
+   # use, try to access once from the root, assuming it is an absolute path if
+   # that finds the executable
+   if ( cd && [ -f "${pname}" ] && [ -x "${pname}" ] ); then
+     [ -n "${VERBOSE}" ] && [ ${verbok} -ne 0 ] &&
+            msg ' . ${%s} ... %s' "${pname}" "${pname}"
+      [ -n "${varname}" ] && eval ${varname}="${pname}"
+      return 0
+   fi
+
+   [ ${dofail} -eq 0 ] && return 1
+   msg 'ERROR: no trace of utility '"${pname}"
+   exit 1
 }
 
 msg() {
@@ -598,34 +658,6 @@ msg_nonl() {
    fmt=${1}
    shift
    printf >&2 -- "${fmt}" "${@}"
-}
-
-t1=ten10one1ten10one1
-if ( [ ${t1##*ten10} = one1 ] && [ ${t1#*ten10} = one1ten10one1 ] &&
-      [ ${t1%%one1*} = ten10 ] && [ ${t1%one1*} = ten10one1ten10 ]
-      ) > /dev/null 2>&1; then
-   good_shell=1
-else
-   unset good_shell
-fi
-unset t1
-
-# We need some standard utilities
-unset -f command
-check_tool() {
-   n=${1} i=${2} opt=${3:-0}
-   # Evaluate, just in case user comes in with shell snippets (..well..)
-   eval i="${i}"
-   if type "${i}" >/dev/null 2>&1; then # XXX why have i type not command -v?
-      [ -n "${VERBOSE}" ] && msg ' . ${%s} ... %s' "${n}" "${i}"
-      eval ${n}=${i}
-      return 0
-   fi
-   if [ ${opt} -eq 0 ]; then
-      msg 'ERROR: no trace of utility %s' "${n}"
-      config_exit 1
-   fi
-   return 1
 }
 
 # Our feature check environment
@@ -839,7 +871,9 @@ path_check() {
    varname=${1} addflag=${2} flagvarname=${3}
    j=${IFS}
    IFS=:
+   [ -n "${noglob_shell}" ] && set -o noglob
    eval "set -- \$${1}"
+   [ -n "${noglob_shell}" ] && set +o noglob
    IFS=${j}
    j= k= y= z=
    for i
@@ -1057,9 +1091,9 @@ os_early_setup
 
 # Check those tools right now that we need before including $rc
 msg 'Checking for basic utility set'
-check_tool awk "${awk:-`command -v awk`}"
-check_tool rm "${rm:-`command -v rm`}"
-check_tool tr "${tr:-`command -v tr`}"
+thecmd_testandset_fail awk awk
+thecmd_testandset_fail rm rm
+thecmd_testandset_fail tr tr
 
 # Initialize the option set
 msg_nonl 'Setting up configuration options ... '
@@ -1080,36 +1114,36 @@ msg 'done'
 os_setup
 
 msg 'Checking for remaining set of utilities'
-check_tool grep "${grep:-`command -v grep`}"
+thecmd_testandset_fail grep grep
 
 # Before we step ahead with the other utilities perform a path cleanup first.
 path_check PATH
 
 # awk(1) above
-check_tool basename "${basename:-`command -v basename`}"
-check_tool cat "${cat:-`command -v cat`}"
-check_tool chmod "${chmod:-`command -v chmod`}"
-check_tool cp "${cp:-`command -v cp`}"
-check_tool cmp "${cmp:-`command -v cmp`}"
+thecmd_testandset_fail basename basename
+thecmd_testandset_fail cat cat
+thecmd_testandset_fail chmod chmod
+thecmd_testandset_fail cp cp
+thecmd_testandset_fail cmp cmp
 # grep(1) above
-check_tool mkdir "${mkdir:-`command -v mkdir`}"
-check_tool mv "${mv:-`command -v mv`}"
+thecmd_testandset_fail mkdir mkdir
+thecmd_testandset_fail mv mv
 # rm(1) above
-check_tool sed "${sed:-`command -v sed`}"
-check_tool sort "${sort:-`command -v sort`}"
-check_tool tee "${tee:-`command -v tee`}"
-
-check_tool chown "${chown:-`command -v chown`}" 1 ||
-   check_tool chown "/sbin/chown" 1 ||
-   check_tool chown "/usr/sbin/chown"
-
-check_tool make "${MAKE:-`command -v make`}"
+thecmd_testandset_fail sed sed
+thecmd_testandset_fail sort sort
+thecmd_testandset_fail tee tee
+__PATH=${PATH}
+thecmd_testandset chown chown ||
+   PATH="/sbin:${PATH}" thecmd_set chown chown ||
+   PATH="/usr/sbin:${PATH}" thecmd_set_fail chown chown
+PATH=${__PATH}
+thecmd_testandset_fail make make
 MAKE=${make}
-check_tool strip "${STRIP:-`command -v strip`}" 1 &&
-   HAVE_STRIP=1 || HAVE_STRIP=0
+export MAKE
+thecmd_testandset strip strip && HAVE_STRIP=1 || HAVE_STRIP=0
 
 # For ./cc-test.sh only
-check_tool cksum "${cksum:-`command -v cksum`}"
+thecmd_testandset_fail cksum cksum
 
 # Update OPT_ options now, in order to get possible inter-dependencies right
 option_update
@@ -1308,8 +1342,7 @@ dump_test_program=0
    feat_yes DEVEL && NV= || NV=noverbose
    SRCDIR="${SRCDIR}" TARGET="${h}" awk="${awk}" \
       ${SHELL} "${SRCDIR}"make-errors.sh ${NV} config
-) |
-   xrun_check oserrno 'OS error mapping table generated' || config_exit 1
+) | xrun_check oserrno 'OS error mapping table generated' || config_exit 1
 dump_test_program=1
 
 feat_def ALWAYS_UNICODE_LOCALE
@@ -2366,8 +2399,7 @@ int main(void){
 !
    ${sed} -e '1s/gssapi\///' < ${tmp2}.c > ${tmp3}.c
 
-   if command -v krb5-config >/dev/null 2>&1; then
-      i=`command -v krb5-config`
+   if acmd_set i krb5-config; then
       GSS_LIBS="`CFLAGS= ${i} --libs gssapi`"
       GSS_INCS="`CFLAGS= ${i} --cflags`"
       i='GSS-API via krb5-config(1)'
@@ -2626,8 +2658,8 @@ else
 fi
 
 if feat_def SPAM_SPAMC; then
-   if command -v spamc >/dev/null 2>&1; then
-      echo "#define SPAM_SPAMC_PATH \"`command -v spamc`\"" >> ${h}
+   if acmd_set i spamc; then
+      echo "#define SPAM_SPAMC_PATH \"${i}\"" >> ${h}
    fi
 fi
 
