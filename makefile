@@ -15,7 +15,7 @@ config:
 build:
 	@$(_prestop); LC_ALL=C $${MAKE} -f mk-config.mk $(MAKEJOBS) all
 install packager-install: build
-	@$(_prestop);
+	@$(_prestop);\
 	LC_ALL=C $${MAKE} -f mk-config.mk DESTDIR="$(DESTDIR)" install
 uninstall:
 	@$(_prestop); LC_ALL=C $${MAKE} -f mk-config.mk uninstall
