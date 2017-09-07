@@ -361,6 +361,12 @@ jisfile:
    }
 
 jaddr_check:
+   /* TODO This is false.  If super correct this should work on wide
+    * TODO characters, just in case (some bytes of) the ASCII set is (are)
+    * TODO shared; it may yet tear apart multibyte sequences, possibly.
+    * TODO All this should interact with mime_enc_mustquote(), too!
+    * TODO That is: once this is an object, we need to do this in a way
+    * TODO that it is valid for the wire format (instead)! */
    in_quote = FAL0;
    in_domain = hadat = 0;
 
@@ -407,6 +413,7 @@ jaddr_check:
    }
 
    if(!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR)){
+      /* TODO This may be an UUCP address */
       agp->ag_n_flags |= NAME_ADDRSPEC_ISNAME;
       if(!n_alias_is_valid_name(agp->ag_input))
          NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_NAME, '.');
@@ -563,11 +570,16 @@ jnode_redo:
                tp->t_f |= a_T_SPECIAL;
                if(cp < cpmax)
                   ++cp;
+               break;
             }
-            /* Is this plain RFC 5322 "atext", or "specials"?  Because we don't
-             * TODO know structured/unstructured, nor anything else, we need to
-             * TODO treat "dot-atom" as being identical to "specials" */
-            else if(!alnumchar(c.c) &&
+
+            /* Is this plain RFC 5322 "atext", or "specials"?
+             * TODO Because we don't know structured/unstructured, nor anything
+             * TODO else, we need to treat "dot-atom" as being identical to
+             * TODO "specials".
+             * However, if the 8th bit is set, this will be RFC 2047 converted
+             * and the entire sequence is skipped */
+            if(!(c.u & 0x80) && !alnumchar(c.c) &&
                   c.c != '!' && c.c != '#' && c.c != '$' && c.c != '%' &&
                   c.c != '&' && c.c != '\'' && c.c != '*' && c.c != '+' &&
                   c.c != '-' && c.c != '/' && c.c != '=' && c.c != '?' &&
