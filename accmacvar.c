@@ -1350,7 +1350,7 @@ a_amv_var_vsc_global(struct a_amv_var_carrier *avcp){
 
    avcp->avc_hash = avmp->avm_hash;
    avcp->avc_map = avmp;
-   rv = a_amv_var_lookup(avcp, TRU1) ? avcp->avc_var->av_value : NULL;
+   rv = a_amv_var_lookup(avcp, FAL0) ? avcp->avc_var->av_value : NULL;
    NYD2_LEAVE;
    return rv;
 }
