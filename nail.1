@@ -903,67 +903,37 @@ and
 will cause the user to be prompted actively for (blind) carbon-copy
 recipients, respectively, whereas (the default)
 .Va asksend
-will request confirmation whether the message shall be send.
+will request confirmation whether the message shall be sent.
 .
 .Pp
-Especially when using public mail provider accounts with the SMTP
-.Va mta
-it is often necessary to set
-.Va from
-and/or
+The envelope sender address is defined by
+.Va from ,
+explicitly defining an originating
 .Va hostname
-(even finer control via
-.Va smtp-hostname ) ,
-which (even if empty) also causes creation of
-.Ql Message-ID:
-and
-.Ql Content-ID:
-header fields unless
-.Va stealthmua
-is set.
+may be desired, especially with the builtin SMTP Mail-Transfer-Agent
+.Va mta .
+.Sx "Character sets"
+for outgoing message and MIME part content are configurable via
+.Va sendcharsets ,
+whereas input data is assumed to be in
+.Va ttycharset .
+Message data will be passed over the wire in a
+.Va mime-encoding .
+MIME parts a.k.a. attachments need to be assigned a
+.Ic mimetype ,
+usually taken out of
+.Sx "The mime.types files" .
 Saving a copy of sent messages in a
 .Va record
 mailbox may be desirable \(en as for most mailbox
 .Ic file
 targets the value will undergo
 .Sx "Filename transformations" .
-Defining user email
-.Ic account Ns s
-for the purpose of arranging a complete environment of settings that can
-be switched to with a single command or command line option may be
-useful.
-.Pf ( Sx EXAMPLES
-has example configurations for some of the well-known public mail
-providers, and also gives a compact overview on how to setup a secure
-SSL/TLS environment.)
 Some introductional
 .Fl d
 or
 .Va debug
 sandbox dry-run tests will prove correctness.
-.
-.Pp
-The section
-.Sx "On URL syntax and credential lookup"
-will spread light on the different ways of how to specify user email
-account credentials, the
-.Ql USER@HOST
-variable chains, and accessing protocol-specific resources,
-the section
-.Sx "Character sets"
-goes into the details of character encodings, and how to use them for
-interpreting the input data given in
-.Va ttycharset
-and representing messages and MIME part contents in
-.Va sendcharsets ,
-and reading the section
-.Sx "The mime.types files"
-should help to understand how the MIME-type of outgoing attachments are
-classified, and what can be done for fine-tuning.
-Over the wire a configurable
-.Va mime-encoding
-.Pf ( Ql Content-Transfer-Encoding: )
-may be applied to the message data.
 .
 .Pp
 Message recipients (as specified on the command line or defined in
@@ -1079,6 +1049,28 @@ for now provide only the hooks
 .Va on-resend-enter
 and
 .Va on-resend-cleanup . )
+.
+.Pp
+For the purpose of arranging a complete environment of settings that can
+be switched to with a single command or command line option there are
+.Ic account Ns s .
+Alternatively it is also possible to use a flat configuration, making use
+of so-called variable chains which automatically pick
+.Ql USER@HOST
+or
+.Ql HOST
+context-dependend variable variants: for example addressing
+.Ql Ic File Ns \& pop3://yaa@exam.ple
+would find
+.Va \&\&pop3-no-apop-yaa@exam.ple ,
+.Va \&\&pop3-no-apop-exam.ple
+and
+.Va pop3-no-apop
+in order.
+See
+.Sx "On URL syntax and credential lookup"
+and
+.Sx "INTERNAL VARIABLES" .
 .
 .Pp
 To avoid environmental noise scripts should
@@ -7810,7 +7802,8 @@ implicitly, others can be imported explicitly with the command
 and henceforth share said properties.
 .
 .Pp
-Two different kinds of internal variables exist.
+Two different kinds of internal variables exist, and both of which can
+also form chains.
 There are boolean variables, which can only be in one of the two states
 .Dq set
 and
@@ -7858,6 +7851,30 @@ as in
 .Ql ask-yes ,
 which causes prompting of the user in interactive mode, with the given
 boolean as the default value.
+.
+.Pp
+Variable chains extend a plain
+.Ql variable
+with
+.Ql variable-HOST
+and
+.Ql variable-USER@HOST
+variants.
+Here
+.Ql HOST
+indeed means
+.Ql server:port
+if a
+.Ql port
+had been specified in the contextual Uniform Resource Locator URL (see
+.Sx "On URL syntax and credential lookup" ) .
+Even though this mechanism is based on URLs no URL percent encoding may
+be applied to neither of
+.Ql USER
+nor
+.Ql HOST ,
+variable chains need to be specified using raw data.
+Variables which support chains are explicitly documented as such.
 .
 .\" .Ss "Initial settings" {{{
 .\" (Keep in SYNC: ./nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings")
@@ -8787,6 +8804,7 @@ This variable is ignored if the
 .Va forward-as-attachment
 variable is set.
 .
+.
 .Mx
 .It Va from
 The address (or a list of addresses) to put into the
@@ -8794,29 +8812,20 @@ The address (or a list of addresses) to put into the
 field of the message header, quoting RFC 5322:
 the author(s) of the message, that is, the mailbox(es) of the person(s)
 or system(s) responsible for the writing of the message.
+According to that RFC setting the
+.Va sender
+variable is required if
+.Va \&\&from
+contains more than one address.
 When
 .Ic reply Ns
 ing to messages these addresses are handled as if they were in the
 .Ic alternates
 list.
-.Pp
-If the machine's hostname is not valid at the Internet (for example at
-a dialup machine) then either this variable or
-.Va hostname
-(\*(IN and with a defined SMTP protocol in
-.Va mta
-.Va smtp-hostname
-adds even more fine-tuning capabilities),
-have to be set.
-If
-.Va \&\&from
-contains more than one address,
-setting the
-.Va sender
-variable is required (according to the standard RFC 5322).
+.
 .Pp
 If a file-based MTA is used, then
-.Va from
+.Va \&\&from
 (or, if that contains multiple addresses,
 .Va sender )
 can nonetheless be enforced to appear as the envelope sender address at
@@ -8825,6 +8834,24 @@ the MTA protocol level (the RFC 5321 reverse-path), either by using the
 command line option (with an empty argument; see there for the complete
 picture on this topic), or by setting the internal variable
 .Va r-option-implicit .
+.
+.Pp
+If the machine's hostname is not valid at the Internet (for example at
+a dialup machine) then either this variable or
+.Va hostname
+(\*(IN a SMTP-based
+.Va mta
+adds even more fine-tuning capabilities with
+.Va smtp-hostname ) ,
+have to be set; if so the message and MIME part related unique ID fields
+.Ql Message-ID:
+and
+.Ql Content-ID:
+will be created (except when disallowed by
+.Va message-id-disable
+or
+.Va stealthmua ) .
+.
 .
 .Mx
 .It Va fullnames
@@ -9023,18 +9050,22 @@ and it is set by default.
 .
 .Mx
 .It Va hostname
-Use this string as hostname when expanding local addresses instead of
-the value obtained from
+Used instead of the value obtained from
 .Xr uname 3
 and
-.Xr getaddrinfo 3 .
-It is used, e.g., in
+.Xr getaddrinfo 3
+as the hostname when expanding local addresses, e.g., in
+.Ql From: .
+If either of
+.Va from
+or this variable Is set the message and MIME part related unique ID fields
 .Ql Message-ID:
 and
-.Ql From:
-fields, as well as when generating
 .Ql Content-ID:
-MIME part related unique ID fields.
+will be created (except when disallowed by
+.Va message-id-disable
+or
+.Va stealthmua ) .
 Setting it to the empty string will cause the normal hostname to be
 used, but nonetheless enables creation of said ID fields.
 \*(IN in conjunction with the built-in SMTP
@@ -9280,15 +9311,15 @@ call mboxfix /tmp/bad.mbox /tmp/good.mbox
 .It Va message-id-disable
 \*(BO By setting this variable the generation of
 .Ql Message-ID:
-can be completely suppressed, effectively leaving this task up to the
+and
+.Ql Content-ID:
+message and MIME part headers can be completely suppressed, effectively
+leaving this task up to the
 .Va mta
 (Mail-Transfer-Agent) or the SMTP server.
-(According to RFC 5321 a SMTP server is not required to add this
+Note that according to RFC 5321 a SMTP server is not required to add this
 field by itself, so it should be ensured that it accepts messages without
-.Ql Message-ID . )
-This variable also affects automatic generation of
-.Va Content-ID:
-MIME header fields.
+.Ql Message-ID .
 .
 .Mx
 .It Va message-inject-head
@@ -11971,14 +12002,12 @@ Note this is not a search path, but a path search.
 Is used as a startup file instead of
 .Pa \*(ur
 if set.
-When \*(UA scripts are invoked on behalf of other users,
-either this variable should be set to
+In order to avoid side-effects from configuration files scripts should
+either set this variable to
 .Pa /dev/null
 or the
 .Fl \&:
-command line option should be used in order to avoid side-effects from
-reading their configuration files.
-This variable is only used when it resides in the process environment.
+command line option should be used.
 .
 .Mx
 .It Ev MAILX_NO_SYSTEM_RC
