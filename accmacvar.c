@@ -1184,6 +1184,7 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
       if(n_UNLIKELY((avmp->avm_flags & (a_AMV_VF_IMPORT | a_AMV_VF_ENV)) != 0)){
          if(n_LIKELY((cp = getenv(avcp->avc_name)) != NULL)){
             /* May be better not to use that one, though? */
+            /* TODO Outsource the tests into a _shared_ test function! */
             bool_t isempty, isbltin;
 
             isempty = (*cp == '\0' &&
@@ -1192,6 +1193,8 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
                   ) != 0);
 
             if(n_UNLIKELY(isempty)){
+               n_err(_("Environment variable must not be empty: %s\n"),
+                  avcp->avc_name);
                if(!isbltin)
                   goto jerr;
             }else if(n_LIKELY(*cp != '\0')){

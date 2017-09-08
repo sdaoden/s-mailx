@@ -358,8 +358,12 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
       case n_ERR_ACCES:
          ccp = N_("file permission for file (sub)pattern denied");
          goto jerr;
+      case n_ERR_NFILE:
+      case n_ERR_MFILE:
+         ccp = N_("file descriptor limit reached, cannot open directory");
+         goto jerr;
       default:
-         ccp = N_("cannot handle file (sub)pattern");
+         ccp = N_("cannot open path component as directory");
          goto jerr;
       }
    }
