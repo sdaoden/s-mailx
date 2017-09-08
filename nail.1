@@ -3771,14 +3771,24 @@ these aliases become expanded after message composing is completed.
 The latter command removes the given list of aliases, the special name
 .Ql *
 will discard all existing aliases.
+.Pp
 The former command shows all currently defined aliases when used without
 arguments, and with one argument the expansion of the given alias.
 With more than one argument, creates or appends to the alias name given
 as the first argument the remaining arguments.
-Alias names are restricted to alphabetic characters, digits, the
-underscore, hyphen-minus, the number sign, colon, commercial at and
-period, the last character can also be the dollar sign:
-.Ql [[:alnum:]_#:@.-]+$? .
+Alias names adhere to the Postfix MTA
+.Xr aliases 5
+rules and are thus restricted to alphabetic characters, digits, the
+underscore, hyphen-minus, the number sign, colon and commercial at,
+the last character can also be the dollar sign; the regular expression:
+.Ql [[:alnum:]_#:@-]+$? .
+As extensions the exclamation mark
+.Ql \&! ,
+period
+.Ql \&.
+as well as
+.Dq any character that has the high bit set
+may be used.
 .
 .Mx
 .Mx

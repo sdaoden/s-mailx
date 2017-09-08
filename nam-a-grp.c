@@ -2100,11 +2100,12 @@ n_alias_is_valid_name(char const *name){
    NYD2_ENTER;
 
    for(rv = TRU1, cp = name++; (c = *cp++) != '\0';)
-      /* User names, plus things explicitly mentioned in Postfix aliases(5).
-       * As an extension, allow period: [[:alnum:]_#:@.-]+$? */
+      /* User names, plus things explicitly mentioned in Postfix aliases(5),
+       * i.e., [[:alnum:]_#:@.-]+$?.
+       * As extensions allow high-bit bytes, semicolon and period. */
       if(!alnumchar(c) && c != '_' && c != '-' &&
             c != '#' && c != ':' && c != '@' &&
-            c != '.'){
+            !((ui8_t)c & 0x80) && c != '!' && c != '.'){
          if(c == '$' && cp != name && *cp == '\0')
             break;
          rv = FAL0;
