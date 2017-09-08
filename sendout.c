@@ -1014,7 +1014,7 @@ mightrecord(FILE *fp, struct name *to, bool_t resend){
                      goto jbail;
                   }
 #endif
-                  ccp = str_concat_csvl(&s, ccp, folder, nccp)->s;
+                  ccp = str_concat_csvl(&s, ccp, folder, nccp, NULL)->s;
                   /* FALLTHRU */
                default:
                   break;
