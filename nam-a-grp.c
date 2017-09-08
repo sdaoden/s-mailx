@@ -502,7 +502,7 @@ a_nag_group_lookup(enum a_nag_type nt, struct a_nag_group_lookup *nglp,
       }
 
       nglp->ngl_htable = ngpa;
-      h = icase ? n_torek_hash(id) : n_torek_ihash(id);
+      h = icase ? n_torek_ihash(id) : n_torek_hash(id);
       ngp = *(nglp->ngl_slot = &ngpa[h % HSHSIZE]);
    }
 
