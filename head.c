@@ -116,9 +116,6 @@ static int                 charcount(char *str, int c);
 
 static char const *        nexttoken(char const *cp);
 
-/* TODO v15: change *customhdr* syntax and use shell tokens?! */
-static char *a_head_customhdr__sep(char **iolist);
-
 static char const *
 _from__skipword(char const *wp)
 {
@@ -920,54 +917,6 @@ nexttoken(char const *cp)
    }
    NYD2_LEAVE;
    return cp;
-}
-
-static char *
-a_head_customhdr__sep(char **iolist){
-   char *cp, c, *base;
-   bool_t isesc, anyesc;
-   NYD2_ENTER;
-
-   for(base = *iolist; base != NULL; base = *iolist){
-      while((c = *base) != '\0' && blankspacechar(c))
-         ++base;
-
-      for(isesc = anyesc = FAL0, cp = base;; ++cp){
-         if(n_UNLIKELY((c = *cp) == '\0')){
-            *iolist = NULL;
-            break;
-         }else if(!isesc){
-            if(c == ','){
-               *iolist = cp + 1;
-               break;
-            }
-            isesc = (c == '\\');
-         }else{
-            isesc = FAL0;
-            anyesc |= (c == ',');
-         }
-      }
-
-      while(cp > base && blankspacechar(cp[-1]))
-         --cp;
-      *cp = '\0';
-
-      if(*base != '\0'){
-         if(anyesc){
-            char *ins;
-
-            for(ins = cp = base;; ++ins)
-               if((c = *cp) == '\\' && cp[1] == ','){
-                  *ins = ',';
-                  cp += 2;
-               }else if((*ins = (++cp, c)) == '\0')
-                  break;
-         }
-         break;
-      }
-   }
-   NYD2_LEAVE;
-   return base;
 }
 
 FL char const *
@@ -2554,7 +2503,7 @@ n_customhdr_query(void){
       tail = &rv;
       buf = savestr(vp);
 jch_outer:
-      while((vp = a_head_customhdr__sep(&buf)) != NULL){
+      while((vp = n_strsep_esc(&buf, ',', TRU1)) != NULL){
          ui32_t nl, bl;
          char const *nstart, *cp;
 

@@ -2157,9 +2157,10 @@ FL bool_t      n_anyof_buf(char const *template, char const *dat, size_t len);
  * next entry, trimming surrounding whitespace, and point *iolist to the next
  * entry or to NULL if no more entries are contained.  If ignore_empty is
  * set empty entries are started over.
- * See n_shexp_parse_token() for the new way that supports sh(1) quoting.
+ * strsep_esc() is identical but allows reverse solidus escaping of sep, too.
  * Return NULL or an entry */
-FL char *      n_strsep(char **iolist, char sep, bool_t ignore_empty);
+FL char *n_strsep(char **iolist, char sep, bool_t ignore_empty);
+FL char *n_strsep_esc(char **iolist, char sep, bool_t ignore_empty);
 
 /* Copy a string, lowercasing it as we go; *size* is buffer size of *dest*;
  * *dest* will always be terminated unless *size* is 0 */
