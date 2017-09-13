@@ -4,6 +4,8 @@
 
 .PHONY: ohno tangerine all config build install uninstall clean distclean test \
 	devel odevel
+
+CWDDIR=./
 SRCDIR=./
 
 ohno: build
@@ -48,7 +50,7 @@ d-gettext:
 		--add-comments=I18N --foreign-user \
 		-o messages.pot *.c *.h
 
-_prego = SHELL="$(SHELL)" MAKE="$(MAKE)" SRCDIR="$(SRCDIR)" \
+_prego = SHELL="$(SHELL)" MAKE="$(MAKE)" CWDDIR="$(CWDDIR)" SRCDIR="$(SRCDIR)" \
 	CC="$(CC)" CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" \
 	$(SHELL) "$(SRCDIR)"make-config.sh || exit 1
 _prestop = if [ -f ./mk-config.mk ]; then :; else \

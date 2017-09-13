@@ -259,11 +259,11 @@ _update-version:
 	@LC_ALL=C; export LC_ALL;\
 	if [ -z "$(VERSION)" ]; then \
 		eval VERSION="`(cd $(SRCDIR);\
-			git describe --tags) 2>/dev/null`";\
+			[ -d .git ] && git describe --tags) 2>/dev/null`";\
 		if [ -n "$${VERSION}" ]; then \
 			VERSION="`echo $${VERSION} |\
 				$(sed) -e 's/^v\{0,1\}\(.*\)/\1/'`";\
-			[ "`git status --porcelain |\
+			[ "`(cd $(SRCDIR) && git status --porcelain) |\
 				$(awk) '\
 					BEGIN {n=0}\
 					/gen-version\.h/ {next}\

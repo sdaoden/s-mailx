@@ -137,7 +137,7 @@ static ui64_t const a_aux_idec_cutlimit[35] = {
 #undef a_X
 
 /* Include the constant make-errors.sh output */
-#include "gen-errors.h"
+#include <gen-errors.h>
 
 /* And these things come from mk-config.h (config-time make-errors.sh output) */
 static n__ERR_NUMBER_TYPE const a_aux_err_no2mapoff[][2] = {

@@ -1185,7 +1185,7 @@ done
 printf "\n" >> ${newev}
 
 # Build a basic set of INCS and LIBS according to user environment.
-C_INCLUDE_PATH="./:${SRCDIR}:${C_INCLUDE_PATH}"
+C_INCLUDE_PATH="${CWDDIR}:${SRCDIR}:${C_INCLUDE_PATH}"
 path_check C_INCLUDE_PATH -I _INCS
 INCS="${INCS} ${_INCS}"
 path_check LD_LIBRARY_PATH -L _LIBS

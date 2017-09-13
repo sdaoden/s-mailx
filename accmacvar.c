@@ -245,8 +245,8 @@ struct a_amv_var_carrier{
 };
 
 /* Include constant make-okey-map.pl output, and the generated version data */
-#include "gen-version.h"
-#include "gen-okeys.h"
+#include <gen-version.h>
+#include <gen-okeys.h>
 
 /* The currently active account */
 static struct a_amv_mac *a_amv_acc_curr;

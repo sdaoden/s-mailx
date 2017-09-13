@@ -112,6 +112,7 @@ srcdir="${srcdir}"/
 
 ${awk} -v srcdir="${srcdir}" -v blddir="${blddir}" '
    {
+      gsub(/^CWDDIR=\.\/$/, "CWDDIR=" blddir)
       gsub(/^SRCDIR=\.\/$/, "SRCDIR=" srcdir)
       print
    }

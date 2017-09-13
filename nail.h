@@ -42,7 +42,7 @@
  * Author: Kurt Shoens (UCB) March 25, 1978
  */
 
-#include "mk-config.h"
+#include <mk-config.h>
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -86,7 +86,7 @@
 #endif
 
 /* Many things possibly of interest for adjustments have been outsourced */
-#include "config.h"
+#include <config.h>
 
 /* Special FD requests for n_child_run(), n_child_start() */
 #define n_CHILD_FD_PASS -1
