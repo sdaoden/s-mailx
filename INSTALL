@@ -24,15 +24,15 @@ won't fail shall any of them not be available or usable.
 The generated configuration is tracked: changes will be recognized
 and cause automatic cleanups and rebuilds as necessary.
 Experts could find it valuable to adjust some settings in config.h.
-Perhaps.
 
   $ make tangerine  # equals "$ make config build test install"
+  $ make citron     # equals "$ make config build install"
   $ make distclean  # *Completely* cleanup working directory
 
 With adjustments:
 
   $ make OPT_POP3=no OPT_SMTP=require tangerine
-  $ make OPT_CROSS_BUILD=y VAL_PREFIX=/some/nasty/prefix tangerine
+  $ make OPT_CROSS_BUILD=y VAL_PREFIX=/some/nasty/prefix citron
 
 With utility program and feature adjustments:
 
@@ -57,16 +57,16 @@ directory of desire, change into it and run the make-emerge.sh script
 shipped with S-nail, then proceed as with normal in-tree building.
 The following make(1) targets exists, the default being `build':
 
-- tangerine   Shorthand for "$ make config build test install":
-              create or check and update configuration, build, test and
-              install.
+- tangerine   Shorthand for "$ make config build test install": create
+              or check and update configuration, build, test and install.
               The variable $DESTDIR will be honoured (see make.rc),
               but not be tracked in the configuration.
               In order to parallelize the `build' step pass a $MAKEJOBS
               variable, as shown below.
+- citron      Shorthand for "$ make config build install".
+              `build' parallelization via $MAKEJOBS, as shown below.
 - all         Shorthand for "$ make config build".
-              In order to parallelize the `build' step pass a $MAKEJOBS
-              variable, as shown below.
+              `build' parallelization via $MAKEJOBS, as shown below.
 
 - config      Only create or check and update the configuration.
 - build       Only build (using the existing configuration).
@@ -121,12 +121,11 @@ library paths by passing prefilled $INCS and $LIBS variables:
   $ make INCS=-I/mypath/include LIBS="-L/mypath/lib -lmylib" tangerine
 
 There are also some predefined configuration sets available, ment to be
-used instead of doing manual adjustments (in make.rc or) on the command
-line (names are case-insensitive).
+used instead of doing manual adjustments.
 
 - CONFIG=NULL, CONFIG=NULLI
-  Anything that can be turned off is off.  MIME can't.
-  The latter adds and "require"s iconv(3), though.
+  Anything that can be turned off is off.  MIME cannot.
+  The latter adds and "require"s iconv(3).
 
 - CONFIG=MINIMAL
   Possibly what people want who need nothing but a MIME-capable mailx(1)
@@ -159,7 +158,7 @@ The configuration process creates some files named "mk-config.*":
                  (Removing this file reenables configuration even after
                  a screwed up configuration, e.g., due to power failure.)
 - mk-config.h    C program header produced according to mk-config.lst.
-- mk-config.ev   A set of sh(1) variable for reproducible compile runs.
+- mk-config.ev   A set of sh(1) variables for reproducible compile runs.
 - mk-config.inc  List of C header include paths, as compiler directives.
 - mk-config.lib  List of used library information, as compiler directives.
 
@@ -189,13 +188,13 @@ to the mailing-list.
 That would be a disaster.  Please contact the mailing-list!
 If you have used OPT_AUTOCC (the default) and a non-debug target, you
 could try to reconfigure with an additional cc_maxopt=1 on the command
-line and report whether that makes testing succeed.
+line and report whether that turns the green testing light on.
 
 Otherwise you could run the cc-test.sh script in --mae-test mode and
 invoke the failing tests (testing echoes the actual test names in
 brackets): this will produce output files of the form mae-test-TESTXY.
 It would be nice if these outputs could be send to the mailing-list;
-possibly stored in a compressed tar(1) file.  For example:
+possibly stored altogether in a compressed tar(1) file.  For example:
 
   $ ./cc-test.sh --mae-test ./s-nail t_behave_localopts t_behave_mbox
   $ tar -czf badtests.tar.gz mae-test-*
@@ -253,7 +252,7 @@ Thank you!
 
     By forcing ISO C99 mode when compiling these warnings vanish, e.g.,
     with gcc(1) and clang(1): with OPT_AUTOCC pass
-    "EXTRA_CFLAGS=-std=c99", otherwise ensure -std=c99 is set in $CFLAGS.
+    "EXTRA_CFLAGS=-std=c99", otherwise ensure -std=c99 in $CFLAGS.
 
 Development and/or regular tests:
 
@@ -275,7 +274,6 @@ Occasional tests:
   * With OPT_AUTOCC: we try to use Sun cc(1) whenever we find it.
     If your gcc(1) installation is doing alright you have to turn
     OPT_AUTOCC off and use $CC, $CFLAGS and $LDFLAGS.
-  * Warnings about iconv(3) prototypes which i will not address.
   * Some notes collected on earlier trials:
     + We may forcefully disable stack protectors on SunOS/gcc because of
       linking errors seen in earlier tests.
@@ -286,11 +284,8 @@ Occasional tests:
       then you have to overwrite this symbol with __builtin_va_start,
       e.g., in conjunction with OPT_AUTOCC add this:
        EXTRA_CFLAGS='-D__builtin_stdarg_start=__builtin_va_start'
-    + I couldn't get us going on SunOS 5.9 Sparc: the build system had
-      to be extended to check for UINTPTR_MAX being defined as the empty
-      string and similar very special things.
   - The OpenCSW build cluster consists of SunOS 5.9 - 5.11 machines
-    under SPARC and i386.  And it looked good on 2017-08-09.
+    under SPARC and i386.  And it looked good on 2017-09-15.
 . Void Linux <https://www.voidlinux.eu/> (x86; not in 2017 FIXME)
 
 # s-ts-mode
