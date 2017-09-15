@@ -669,6 +669,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
    nfi = NULL;
    charset = NULL;
    do_iconv = 0;
+   n_UNINIT(err, 0);
 
    if ((nfo = Ftmp(&tempMail, "infix", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER))
          == NULL) {
