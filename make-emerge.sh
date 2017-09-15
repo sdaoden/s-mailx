@@ -4,7 +4,17 @@
 #@       ~/src/nail.git/make-emerge.sh && make tangerine DESTDIR=.ddir
 # Public Domain
 
-# See make-config.sh, the source of all this!
+## See make-config.sh, the source of all this!
+
+# For heaven's sake auto-redirect on SunOS/Solaris
+if [ "x${SHELL}" = x ] || [ "${SHELL}" = /bin/sh ] && \
+      [ -f /usr/xpg4/bin/sh ] && [ -x /usr/xpg4/bin/sh ]; then
+   SHELL=/usr/xpg4/bin/sh
+   export SHELL
+   exec /usr/xpg4/bin/sh "${0}" "${@}"
+fi
+[ -n "${SHELL}" ] || SHELL=/bin/sh
+export SHELL
 
 ( set -o noglob ) >/dev/null 2>&1 && noglob_shell=1 || unset noglob_shell
 

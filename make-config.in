@@ -37,7 +37,7 @@ privsep.o: $(SRCDIR)privsep.c mk-config.h config.h \
 
 test: all
 	$(ECHO_TEST)\
-	MAKE=$(MAKE) \
+	MAKE=$(MAKE) SHELL=$(SHELL) \
 	awk=$(awk) cat=$(cat) cksum=$(cksum) rm=$(rm) sed=$(sed) grep=$(grep) \
 	$(SHELL) $(SRCDIR)cc-test.sh --check-only ./$(VAL_UAGENT)
 

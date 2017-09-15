@@ -4,6 +4,13 @@
 LC_ALL=C
 export LC_ALL
 
+# For heaven's sake auto-redirect on SunOS/Solaris
+if [ "x${SHELL}" = x ] || [ "${SHELL}" = /bin/sh ] && \
+      [ -f /usr/xpg4/bin/sh ] && [ -x /usr/xpg4/bin/sh ]; then
+   SHELL=/usr/xpg4/bin/sh
+   export SHELL
+   exec /usr/xpg4/bin/sh "${0}" "${@}"
+fi
 [ -n "${SHELL}" ] || SHELL=/bin/sh
 export SHELL
 

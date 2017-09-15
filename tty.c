@@ -1623,7 +1623,8 @@ a_tty_wboundary(struct a_tty_line *tlp, si32_t dir){/* TODO shell token-wise */
       wchar_t wc;
 
       wc = tcap[cur += (ui32_t)dir].tc_wc;
-      if(iswblank(wc) || iswpunct(wc)){
+      if(/*TODO not everywhere iswblank(wc)*/ wc == L' ' || wc == L'\t' ||
+            iswpunct(wc)){
          if(anynon)
             break;
       }else

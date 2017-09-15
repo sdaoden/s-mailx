@@ -23,6 +23,16 @@ MEMTESTER=
 
 ##  -- (>8  --  8<)  --  ##
 
+# For heaven's sake auto-redirect on SunOS/Solaris
+if [ "x${SHELL}" = x ] || [ "${SHELL}" = /bin/sh ] && \
+      [ -f /usr/xpg4/bin/sh ] && [ -x /usr/xpg4/bin/sh ]; then
+   SHELL=/usr/xpg4/bin/sh
+   export SHELL
+   exec /usr/xpg4/bin/sh "${0}" "${@}"
+fi
+[ -n "${SHELL}" ] || SHELL=/bin/sh
+export SHELL
+
 ( set -o noglob ) >/dev/null 2>&1 && noglob_shell=1 || unset noglob_shell
 
 msg() {
@@ -91,12 +101,6 @@ __acmd() {
    exit 1
 }
 
-thecmd_testandset_fail MAKE make
-thecmd_testandset_fail awk awk
-thecmd_testandset_fail cat cat
-thecmd_testandset_fail cksum cksum
-thecmd_testandset_fail rm rm
-thecmd_testandset_fail sed sed
 thecmd_testandset_fail grep grep
 
 # Problem: force $SHELL to be a real shell.  It seems some testing environments
@@ -105,7 +109,15 @@ if { echo ${SHELL} | ${grep} nologin; } >/dev/null 2>&1; then
    echo >&2 '$SHELL seems to be nologin, overwriting to /bin/sh!'
    SHELL=/bin/sh
    export SHELL
+   exec /bin/sh "${0}" "${@}"
 fi
+
+thecmd_testandset_fail MAKE make
+thecmd_testandset_fail awk awk
+thecmd_testandset_fail cat cat
+thecmd_testandset_fail cksum cksum
+thecmd_testandset_fail rm rm
+thecmd_testandset_fail sed sed
 
 # We sometimes "fake" sendmail(1) a.k.a. *mta* with a shell wrapper, and it
 # happens that /bin/sh is often terribly slow

@@ -523,22 +523,8 @@ n_MCTA(sizeof(size_t) == sizeof(unsigned long),
 #ifndef UINTPTR_MAX
 # ifdef SIZE_MAX
 #  define uintptr_t     size_t
-#  define UINTPTR_MAX   SIZE_MAX
 # else
 #  define uintptr_t     unsigned long
-#  define UINTPTR_MAX   ULONG_MAX
-# endif
-#endif
-
-#if !defined PRIuPTR || !defined PRIXPTR
-# undef PRIuPTR
-# undef PRIXPTR
-# if UINTPTR_MAX == ULONG_MAX
-#  define PRIuPTR       "lu"
-#  define PRIXPTR       "lX"
-# else
-#  define PRIuPTR       "u"
-#  define PRIXPTR       "X"
 # endif
 #endif
 
