@@ -239,7 +239,8 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
    char const *tmpname, int term_infd)
 {
    struct str s;
-   char const *env_addon[8 +8/*v15*/], *cp, *sh;
+   char const *env_addon[9 +8/*v15*/], *cp, *sh;
+   size_t i;
    FILE *rbuf;
    NYD_ENTER;
 
@@ -266,46 +267,50 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
       goto jleave;
    }
 
+   i = 0;
+
    /* MAILX_FILENAME */
    if (mpp == NULL || (cp = mpp->m_filename) == NULL)
       cp = n_empty;
-   env_addon[0] = str_concat_csvl(&s, n_PIPEENV_FILENAME, "=", cp, NULL)->s;
-env_addon[1] = str_concat_csvl(&s, "NAIL_FILENAME", "=", cp, NULL)->s;/* v15 */
+   env_addon[i++] = str_concat_csvl(&s, n_PIPEENV_FILENAME, "=", cp, NULL)->s;
+env_addon[i++] = str_concat_csvl(&s, "NAIL_FILENAME", "=", cp, NULL)->s;/*v15*/
 
    /* MAILX_FILENAME_GENERATED *//* TODO pathconf NAME_MAX; but user can create
     * TODO a file wherever he wants!  *Do* create a zero-size temporary file
     * TODO and give *that* path as MAILX_FILENAME_TEMPORARY, clean it up once
     * TODO the pipe returns?  Like this we *can* verify path/name issues! */
    cp = n_random_create_cp(n_MIN(NAME_MAX / 4, 16), NULL);
-   env_addon[2] = str_concat_csvl(&s, n_PIPEENV_FILENAME_GENERATED, "=", cp,
+   env_addon[i++] = str_concat_csvl(&s, n_PIPEENV_FILENAME_GENERATED, "=", cp,
          NULL)->s;
-env_addon[3] = str_concat_csvl(&s, "NAIL_FILENAME_GENERATED", "=", cp,/* v15 */
+env_addon[i++] = str_concat_csvl(&s, "NAIL_FILENAME_GENERATED", "=", cp,/*v15*/
       NULL)->s;
 
    /* MAILX_CONTENT{,_EVIDENCE} */
    if (mpp == NULL || (cp = mpp->m_ct_type_plain) == NULL)
       cp = n_empty;
-   env_addon[4] = str_concat_csvl(&s, n_PIPEENV_CONTENT, "=", cp, NULL)->s;
-env_addon[5] = str_concat_csvl(&s, "NAIL_CONTENT", "=", cp, NULL)->s;/* v15 */
+   env_addon[i++] = str_concat_csvl(&s, n_PIPEENV_CONTENT, "=", cp, NULL)->s;
+env_addon[i++] = str_concat_csvl(&s, "NAIL_CONTENT", "=", cp, NULL)->s;/*v15*/
 
    if (mpp != NULL && mpp->m_ct_type_usr_ovwr != NULL)
       cp = mpp->m_ct_type_usr_ovwr;
-   env_addon[6] = str_concat_csvl(&s, n_PIPEENV_CONTENT_EVIDENCE, "=", cp,
+   env_addon[i++] = str_concat_csvl(&s, n_PIPEENV_CONTENT_EVIDENCE, "=", cp,
          NULL)->s;
-env_addon[7] = str_concat_csvl(&s, "NAIL_CONTENT_EVIDENCE", "=", cp,/* v15 */
+env_addon[i++] = str_concat_csvl(&s, "NAIL_CONTENT_EVIDENCE", "=", cp,/* v15 */
       NULL)->s;
 
-   env_addon[8] = NULL;
+   /* message/external-body, access-type=url */
+   env_addon[i++] = str_concat_csvl(&s, n_PIPEENV_EXTERNAL_BODY_URL, "=",
+         ((cp = mpp->m_external_body_url) != NULL ? cp : n_empty), NULL)->s;
 
    /* MAILX_FILENAME_TEMPORARY? */
    if (tmpname != NULL) {
-      env_addon[8] = str_concat_csvl(&s,
+      env_addon[i++] = str_concat_csvl(&s,
             n_PIPEENV_FILENAME_TEMPORARY, "=", tmpname, NULL)->s;
-   env_addon[9] = str_concat_csvl(&s,
+env_addon[i++] = str_concat_csvl(&s,
          "NAIL_FILENAME_TEMPORARY", "=", tmpname, NULL)->s;/* v15 */
-      env_addon[10] = NULL;
    }
 
+   env_addon[i] = NULL;
    sh = ok_vlook(SHELL);
 
    if (mhp->mh_flags & MIME_HDL_NEEDSTERM) {

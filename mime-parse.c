@@ -127,6 +127,12 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
       }
    }
 
+   assert(ip->m_external_body_url == NULL);
+   if(!asccasecmp(ip->m_ct_type_plain, "message/external-body") &&
+         (cp = mime_param_get("access-type", ip->m_ct_type)) != NULL &&
+         !asccasecmp(cp, "URL"))
+      ip->m_external_body_url = mime_param_get("url", ip->m_ct_type);
+
    if (mpf & MIME_PARSE_PARTS) {
       if (level > 9999) { /* TODO MAGIC */
          n_err(_("MIME content too deeply nested\n"));

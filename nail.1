@@ -10095,6 +10095,12 @@ MIME content-type; not only then identical to
 otherwise.
 .
 .Mx
+.It Ev MAILX_EXTERNAL_BODY_URL
+MIME parts of type
+.Ql message/external-body access-type=url
+will store the access URL in this variable, it is empty otherwise.
+.
+.Mx
 .It Ev MAILX_FILENAME
 The filename, if any is set, the empty string otherwise.
 .
@@ -13041,6 +13047,8 @@ account XandeX {
 # Create some new commands so that, e.g., `ls /tmp' will..
 commandalias lls '!ls ${LS_COLOR_FLAG} -aFlrS'
 commandalias llS '!ls ${LS_COLOR_FLAG} -aFlS'
+
+wysh set pipe-message/external-body='@* echo $MAILX_EXTERNAL_BODY_URL'
 
 # We do not support gpg(1) directly yet.  But simple --clearsign'd
 # message parts can be dealt with as follows:

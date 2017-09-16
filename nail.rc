@@ -190,6 +190,9 @@ retain from_ date from to cc subject message-id mail-followup-to reply-to
 #   trap "trap \"\" INT QUIT TERM; exit 1" INT QUIT TERM;\
 #   mupdf "${MAILX_FILENAME_TEMPORARY}"'
 
+# "External body", URL type
+#wysh set pipe-message/external-body='@* echo $MAILX_EXTERNAL_BODY_URL'
+
 ## Gimmicks
 
 # More key bindings for the Mailx-Line-Editor (when in interactive mode)
