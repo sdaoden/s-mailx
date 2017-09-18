@@ -666,6 +666,7 @@ FL void
 n_termcap_destroy(void){
    NYD_ENTER;
    assert((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK));
+   assert(a_termcap_g != NULL);
 
    n_TERMCAP_SUSPEND(TRU1);
 
@@ -689,8 +690,7 @@ n_termcap_destroy(void){
 FL void
 n_termcap_resume(bool_t complete){
    NYD_ENTER;
-   if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_TERMCAP_DISABLE)
-         ) == n_PSO_INTERACTIVE && !(n_poption & n_PO_QUICKRUN_MASK)){
+   if(a_termcap_g != NULL && !(n_psonce & n_PSO_TERMCAP_DISABLE)){
       if(complete && (n_psonce & n_PSO_TERMCAP_CA_MODE))
          n_termcap_cmdx(n_TERMCAP_CMD_ti);
       n_termcap_cmdx(n_TERMCAP_CMD_ks);
@@ -702,8 +702,7 @@ n_termcap_resume(bool_t complete){
 FL void
 n_termcap_suspend(bool_t complete){
    NYD_ENTER;
-   if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_TERMCAP_DISABLE)
-         ) == n_PSO_INTERACTIVE && !(n_poption & n_PO_QUICKRUN_MASK)){
+   if(a_termcap_g != NULL && !(n_psonce & n_PSO_TERMCAP_DISABLE)){
       n_termcap_cmdx(n_TERMCAP_CMD_ke);
       if(complete && (n_psonce & n_PSO_TERMCAP_CA_MODE))
          n_termcap_cmdx(n_TERMCAP_CMD_te);
@@ -724,9 +723,8 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
    n_UNUSED(a2);
 
    rv = FAL0;
-   if(!(n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_QUICKRUN_MASK))
+   if(a_termcap_g == NULL)
       goto jleave;
-   assert(a_termcap_g != NULL);
 
    flags = cmd & ~n__TERMCAP_CMD_MASK;
    cmd &= n__TERMCAP_CMD_MASK;
@@ -851,11 +849,10 @@ n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
    NYD2_ENTER;
 
    assert(tvp != NULL);
-   rv = FAL0;
 
-   if(!(n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_QUICKRUN_MASK))
+   rv = FAL0;
+   if(a_termcap_g == NULL)
       goto jleave;
-   assert(a_termcap_g != NULL);
 
    /* Is it a built-in query? */
    if(query != n__TERMCAP_QUERY_MAX1){
