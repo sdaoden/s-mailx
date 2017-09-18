@@ -257,16 +257,18 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
       a_ALIAS_MASK = n_BITENUM_MASK(0, 2), /* Alias recursion counter bits */
       a_NOPREFIX = 1u<<4,  /* Modifier prefix not allowed right now */
       a_NOALIAS = 1u<<5,   /* "No alias!" expansion modifier */
-      /* New modifier prefixes must be reflected in `commandalias' handling! */
       a_IGNERR = 1u<<6,    /* ignerr modifier prefix */
-      a_WYSH = 1u<<7,      /* XXX v15+ drop wysh modifier prefix */
-      a_VPUT = 1u<<8,      /* vput modifier prefix */
-      a_MODE_MASK = n_BITENUM_MASK(5, 8),
+      a_LOCAL = 1u<<7,     /* TODO local modifier prefix */
+      a_U = 1u<<8,         /* TODO UTF-8 modifier prefix */
+      a_VPUT = 1u<<9,      /* vput modifier prefix */
+      a_WYSH = 1u<<10,      /* XXX v15+ drop wysh modifier prefix */
+      a_MODE_MASK = n_BITENUM_MASK(5, 10),
       a_NO_ERRNO = 1u<<16  /* Don't set n_pstate_err_no */
    } flags;
    NYD_ENTER;
 
-   n_exit_status = n_EXIT_OK;
+   if(!(n_pstate & n_PS_ERR_EXIT_MASK))
+      n_exit_status = n_EXIT_OK;
 
    flags = a_NONE;
    rv = 1;
@@ -329,20 +331,41 @@ jrestart:
    line.s = cp;
 
    /* It may be a modifier.
-    * Note: adding modifiers must be reflected in commandalias handling code */
-   if(c == sizeof("ignerr") -1 && !asccasecmp(word, "ignerr")){
-      flags |= a_NOPREFIX | a_IGNERR;
-      goto jrestart;
-   }else if(c == sizeof("wysh") -1 && !asccasecmp(word, "wysh")){
-      flags |= a_NOPREFIX | a_WYSH;
-      goto jrestart;
-   }else if(c == sizeof("vput") -1 && !asccasecmp(word, "vput")){
-      flags |= a_NOPREFIX | a_VPUT;
-      goto jrestart;
-   }else if(c == sizeof("u") -1 && *word == 'u'){
-      n_err(_("Ignoring yet unused `u' command modifier!"));
-      flags |= a_NOPREFIX;
-      goto jrestart;
+    * Note: changing modifiers must be reflected in `commandalias' handling
+    * code as well as in the manual (of course)! */
+   switch(c){
+   default:
+      break;
+   case sizeof("ignerr") -1:
+      if(!asccasecmp(word, "ignerr")){
+         flags |= a_NOPREFIX | a_IGNERR;
+         goto jrestart;
+      }
+      break;
+   case sizeof("local") -1:
+      if(!asccasecmp(word, "local")){
+         n_err(_("Ignoring yet unused `local' command modifier!"));
+         flags |= a_NOPREFIX | a_LOCAL;
+         goto jrestart;
+      }
+      break;
+   case sizeof("u") -1:
+      if(!asccasecmp(word, "u")){
+         n_err(_("Ignoring yet unused `u' command modifier!"));
+         flags |= a_NOPREFIX | a_U;
+         goto jrestart;
+      }
+      break;
+   /*case sizeof("vput") -1:*/
+   case sizeof("wysh") -1:
+      if(!asccasecmp(word, "wysh")){
+         flags |= a_NOPREFIX | a_WYSH;
+         goto jrestart;
+      }else if(!asccasecmp(word, "vput")){
+         flags |= a_NOPREFIX | a_VPUT;
+         goto jrestart;
+      }
+      break;
    }
 
    /* We need to trim for a possible history entry, but do it anyway and insert
@@ -483,7 +506,7 @@ jexec:
          goto jleave;
       }
    }
-   if((cdp->cd_caflags & n_CMD_ARG_S) && !(n_psonce & n_PSO_STARTED)){
+   if((cdp->cd_caflags & n_CMD_ARG_S) && !(n_psonce & n_PSO_STARTED_CONFIG)){
       n_err(_("May not execute `%s' during startup\n"), cdp->cd_name);
       goto jleave;
    }
@@ -514,7 +537,7 @@ jexec:
 
    if((flags & a_WYSH) &&
          (cdp->cd_caflags & n_CMD_ARG_TYPE_MASK) != n_CMD_ARG_TYPE_WYRA){
-      n_err(_("`wysh' prefix does not affect `%s'\n"), cdp->cd_name);
+      n_err(_("`wysh' command modifier does not affect `%s'\n"), cdp->cd_name);
       flags &= ~a_WYSH;
    }
 
@@ -715,7 +738,8 @@ jleave:
 
    if(flags & a_IGNERR){
       n_pstate &= ~n_PS_ERR_EXIT_MASK;
-      n_exit_status = n_EXIT_OK;
+      if(!(n_pstate & n_PS_ERR_EXIT_MASK))
+         n_exit_status = n_EXIT_OK;
    }else if(rv != 0){
       bool_t bo;
 
@@ -966,7 +990,7 @@ jerr:
              ? (gcp->gc_flags & a_GO_MACRO_X_OPTION
                 ? _("evaluating command line") : _("evaluating macro"))
              : _("loading initialization resource"))),
-         gcp->gc_name,
+         n_shexp_quote_cp(gcp->gc_name, FAL0),
          (n_poption & n_PO_DEBUG ? n_empty : _(" (enable *debug* for trace)")));
    goto jleave;
 }
@@ -1011,7 +1035,7 @@ a_go_file(char const *file, bool_t silent_open_error){
       if((fip = Popen(nbuf /* #if 0 above = savestrbuf(file, nlen)*/, "r",
             ok_vlook(SHELL), NULL, n_CHILD_FD_NULL)) == NULL)
          goto jeopencheck;
-   }else if((nbuf = fexpand(file, FEXP_LOCAL)) == NULL)
+   }else if((nbuf = fexpand(file, FEXP_LOCAL | FEXP_NVAR)) == NULL)
       goto jeopencheck;
    else if((fip = Fopen(nbuf, "r")) == NULL){
 jeopencheck:
@@ -1549,6 +1573,9 @@ jforce_stdin:
                n_MEMORY_DEBUG_ARGSCALL);
 
          hold_all_sigs();
+
+         if(n < 0 && !ferror(ifile)) /* EOF never i guess */
+            a_go_ctx->gc_flags |= a_GO_IS_EOF;
       }else{
          if(!(gif & n_GO_INPUT_PROMPT_NONE))
             n_tty_create_prompt(&xprompt, prompt, gif);
@@ -1565,7 +1592,7 @@ jforce_stdin:
 
          hold_all_sigs();
 
-         if(n < 0 && feof(ifile))
+         if(n < 0 && !ferror(ifile))
             a_go_ctx->gc_flags |= a_GO_IS_EOF;
 
          if(n > 0 && nold > 0){
@@ -2235,7 +2262,7 @@ jfound:
          fp = safe_fopen(emsg, "r", NULL);
       }else if(fd == STDIN_FILENO || fd == STDOUT_FILENO ||
             fd == STDERR_FILENO){
-         n_err(_("`readctl': create: standard descriptors are not allowed"));
+         n_err(_("`readctl': create: standard descriptors are not allowed\n"));
          goto jeinval;
       }else{
          /* xxx Avoid */

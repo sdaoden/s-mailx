@@ -89,12 +89,12 @@ sub parse_nail_h{
             $1 =~ /([^=]+)=(.+)/;
             die "Unsupported special directive: $1"
                if($1 ne 'name' &&
-                  $1 ne 'virt' && $1 ne 'nolopts' &&
-                  $1 ne 'rdonly' && $1 ne 'nodel' && $1 ne 'notempty' &&
-                     $1 ne 'nocntrls' &&
-                  $1 ne 'num' && $1 ne 'posnum' && $1 ne 'lower' &&
-                  $1 ne 'vip' && $1 ne 'import' && $1 ne 'env' &&
-                  $1 ne 'i3val' && $1 ne 'defval');
+                  $1 ne 'virt' && $1 ne 'chain' && $1 ne 'vip' &&
+                  $1 ne 'rdonly' && $1 ne 'nodel' &&
+                  $1 ne 'i3val' && $1 ne 'defval' &&
+                  $1 ne 'import' && $1 ne 'env' && $1 ne 'nolopts' &&
+                  $1 ne 'notempty' && $1 ne 'nocntrls' &&
+                     $1 ne 'num' && $1 ne 'posnum' && $1 ne 'lower');
             $vals{$1} = $2
          }
       }
@@ -126,23 +126,25 @@ sub create_c_tool{
 
 enum a_amv_var_flags{
    a_AMV_VF_NONE = 0,
+
+   /* The basic set of flags, also present in struct a_amv_var_map.avm_flags */
    a_AMV_VF_BOOL = 1u<<0,     /* ok_b_* */
    a_AMV_VF_VIRT = 1u<<1,     /* "Stateless" automatic variable */
-   a_AMV_VF_NOLOPTS = 1u<<2,  /* May not be tracked by `localopts' */
-   a_AMV_VF_RDONLY = 1u<<3,   /* May not be set by user */
-   a_AMV_VF_NODEL = 1u<<4,    /* May not be deleted */
-   a_AMV_VF_NOTEMPTY = 1u<<5, /* May not be assigned an empty value */
-   a_AMV_VF_NOCNTRLS = 1u<<6, /* Value may not contain control characters */
-   a_AMV_VF_NUM = 1u<<7,      /* Value must be a 32-bit number */
-   a_AMV_VF_POSNUM = 1u<<8,   /* Value must be positive 32-bit number */
-   a_AMV_VF_LOWER = 1u<<9,    /* Values will be stored in a lowercase version */
-   a_AMV_VF_VIP = 1u<<10,     /* Wants _var_check_vips() evaluation */
-   a_AMV_VF_IMPORT = 1u<<11,  /* Import ONLY from environ (pre n_PSO_STARTED) */
-   a_AMV_VF_ENV = 1u<<12,     /* Update environment on change */
-   a_AMV_VF_I3VAL = 1u<<13,   /* Has an initial value */
-   a_AMV_VF_DEFVAL = 1u<<14,  /* Has a default value */
-   a_AMV_VF_LINKED = 1u<<15,  /* `environ' linked */
-   a_AMV_VF__MASK = (1u<<(15+1)) - 1
+   a_AMV_VF_CHAIN = 1u<<2,    /* Is a variable chain (-USER{,@HOST} variants) */
+   a_AMV_VF_VIP = 1u<<3,      /* Wants _var_check_vips() evaluation */
+   a_AMV_VF_RDONLY = 1u<<4,   /* May not be set by user */
+   a_AMV_VF_NODEL = 1u<<5,    /* May not be deleted */
+   a_AMV_VF_I3VAL = 1u<<6,    /* Has an initial value */
+   a_AMV_VF_DEFVAL = 1u<<7,   /* Has a default value */
+   a_AMV_VF_IMPORT = 1u<<8,   /* Import ONLY from environ (pre n_PSO_STARTED) */
+   a_AMV_VF_ENV = 1u<<9,      /* Update environment on change */
+   a_AMV_VF_NOLOPTS = 1u<<10, /* May not be tracked by `localopts' */
+   a_AMV_VF_NOTEMPTY = 1u<<11, /* May not be assigned an empty value */
+   a_AMV_VF_NOCNTRLS = 1u<<12, /* Value may not contain control characters */
+   a_AMV_VF_NUM = 1u<<13,     /* Value must be a 32-bit number */
+   a_AMV_VF_POSNUM = 1u<<14,  /* Value must be positive 32-bit number */
+   a_AMV_VF_LOWER = 1u<<15,   /* Values will be stored in a lowercase version */
+   a_AMV_VF__MASK = (1u<<(15+1)) - 1,
 };
 
 struct a_amv_var_map{
@@ -264,6 +266,10 @@ sub dump_map{
          $virts{$k} = $e;
          push @fa, 'a_AMV_VF_VIRT'
       }
+      if($e->{chain}) {push @fa, 'a_AMV_VF_CHAIN'}
+      if($e->{vip}) {push @fa, 'a_AMV_VF_VIP'}
+      if($e->{rdonly}) {push @fa, 'a_AMV_VF_RDONLY'}
+      if($e->{nodel}) {push @fa, 'a_AMV_VF_NODEL'}
       if(defined $e->{i3val}){
          $i3vals{$k} = $e;
          push @fa, 'a_AMV_VF_I3VAL'
@@ -276,16 +282,13 @@ sub dump_map{
          $e->{env} = 1;
          push @fa, 'a_AMV_VF_IMPORT'
       }
+      if($e->{env}) {push @fa, 'a_AMV_VF_ENV'}
       if($e->{nolopts}) {push @fa, 'a_AMV_VF_NOLOPTS'}
-      if($e->{rdonly}) {push @fa, 'a_AMV_VF_RDONLY'}
-      if($e->{nodel}) {push @fa, 'a_AMV_VF_NODEL'}
       if($e->{notempty}) {push @fa, 'a_AMV_VF_NOTEMPTY'}
       if($e->{nocntrls}) {push @fa, 'a_AMV_VF_NOCNTRLS'}
       if($e->{num}) {push @fa, 'a_AMV_VF_NUM'}
       if($e->{posnum}) {push @fa, 'a_AMV_VF_POSNUM'}
       if($e->{lower}) {push @fa, 'a_AMV_VF_LOWER'}
-      if($e->{vip}) {push @fa, 'a_AMV_VF_VIP'}
-      if($e->{env}) {push @fa, 'a_AMV_VF_ENV'}
       $e->{flags} = \@fa;
       my $f = join('|', @fa);
       $f = ', ' . $f if length $f;
@@ -332,7 +335,7 @@ _EOT
       print F "${S}struct a_amv_var *av_link;\n";
       print F "${S}char const *av_value;\n";
       print F "${S}a_X(char *av_env;)\n";
-      print F "${S}ui16_t av_flags;\n";
+      print F "${S}ui32_t av_flags;\n";
       print F "${S}char const av_name[", length($e->{name}), " +1];\n";
       my $f = $VERB ? 'a_AMV_VF_NONE' : '0';
       my $fa = join '|', @{$e->{flags}};

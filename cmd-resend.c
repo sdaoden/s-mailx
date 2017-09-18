@@ -121,7 +121,7 @@ a_crese_reply_to(struct message *mp){
       size_t l;
       char const *tr;
 
-      if(n_psonce & n_PSO_INTERACTIVE){
+      if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)){
          fprintf(n_stdout, _("Reply-To: header contains:"));
          for(np = rt; np != NULL; np = np->n_flink)
             fprintf(n_stdout, " %s", np->n_name);
@@ -159,7 +159,7 @@ a_crese_mail_followup_to(struct message *mp){
       size_t l;
       char const *tr;
 
-      if(n_psonce & n_PSO_INTERACTIVE){
+      if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)){
          fprintf(n_stdout, _("Mail-Followup-To: header contains:"));
          for(np = mft; np != NULL; np = np->n_flink)
             fprintf(n_stdout, " %s", np->n_name);
@@ -183,6 +183,7 @@ a_crese_mail_followup_to(struct message *mp){
 static void
 a_crese_polite_rt_mft_move(struct message *mp, struct header *hp,
       struct name *np){
+   bool_t once;
    NYD2_ENTER;
    n_UNUSED(mp);
 
@@ -191,6 +192,10 @@ a_crese_polite_rt_mft_move(struct message *mp, struct header *hp,
    if(np == hp->h_cc)
       hp->h_cc = NULL;
 
+   /* We may find that in the end To: is empty but Cc: is not, in which case we
+    * upgrade Cc: to To:, and jump back and redo the thing slightly different */
+   once = FAL0;
+jredo:
    while(np != NULL){
       enum gfield gf;
       struct name *nnp, **xpp, *xp;
@@ -198,20 +203,30 @@ a_crese_polite_rt_mft_move(struct message *mp, struct header *hp,
       nnp = np;
       np = np->n_flink;
 
-      /* Try primary, then secondary.  If this receiver came in only via R-T:
-       * or M-F-T:, place her/him/it in To: */
-      gf = GTO;
-      xpp = &hp->h_to;
+      if(once){
+         gf = GTO;
+         xpp = &hp->h_to;
+      }else{
+         gf = GCC;
+         xpp = &hp->h_cc;
+      }
+
+      /* Try primary, then secondary */
       for(xp = hp->h_mailx_orig_to; xp != NULL; xp = xp->n_flink)
          if(!asccasecmp(xp->n_name, nnp->n_name))
             goto jlink;
 
-      gf = GCC;
-      xpp = &hp->h_cc;
+      if(once){
+         gf = GCC;
+         xpp = &hp->h_cc;
+      }
+
       for(xp = hp->h_mailx_orig_cc; xp != NULL; xp = xp->n_flink)
          if(!asccasecmp(xp->n_name, nnp->n_name))
             goto jlink;
 
+      /* If this receiver came in only via R-T: or M-F-T:, place her/him/it in
+       * To: due to lack of a better place */
       gf = GTO;
       xpp = &hp->h_to;
 jlink:
@@ -230,11 +245,14 @@ jlink:
 
    /* If afterwards only Cc: data remains, upgrade all of it to To: */
    if(hp->h_to == NULL){
-      hp->h_to = np = hp->h_cc;
+      np = hp->h_cc;
       hp->h_cc = NULL;
-
-      for(; np != NULL; np = np->n_flink)
-         np->n_type = (np->n_type & ~GMASK) | GTO;
+      if(!once){
+         hp->h_to = NULL;
+         once = TRU1;
+         goto jredo;
+      }
+      hp->h_to = np;
    }
    NYD2_LEAVE;
 }

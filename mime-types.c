@@ -32,19 +32,20 @@ enum mime_type {
    _MT_TEXT,
    _MT_VIDEO,
    _MT_OTHER,
-   __MT_TMIN   = 0,
-   __MT_TMAX   = _MT_OTHER,
-   __MT_TMASK  = 0x07,
+   __MT_TMIN = 0u,
+   __MT_TMAX = _MT_OTHER,
+   __MT_TMASK = 0x07u,
 
-   _MT_CMD     = 1<< 8,       /* Via `mimetype' (not struct mtbltin) */
-   _MT_USR     = 1<< 9,       /* VAL_MIME_TYPES_USR */
-   _MT_SYS     = 1<<10,       /* VAL_MIME_TYPES_SYS */
-   _MT_FSPEC   = 1<<11,       /* Loaded via f= *mimetypes-load-control* spec. */
+   _MT_CMD = 1u<< 8,          /* Via `mimetype' (not struct mtbltin) */
+   _MT_USR = 1u<< 9,          /* VAL_MIME_TYPES_USR */
+   _MT_SYS = 1u<<10,          /* VAL_MIME_TYPES_SYS */
+   _MT_FSPEC = 1u<<11,        /* Loaded via f= *mimetypes-load-control* spec. */
 
-   _MT_PLAIN   = 1<<16,       /* Without pipe handler display as text */
-   _MT_SOUP_h  = 2<<16,       /* Ditto, but HTML tagsoup parser if possible */
-   _MT_SOUP_H  = 3<<16,       /* HTML tagsoup parser, else NOT plain text */
-   __MT_MARKMASK = _MT_SOUP_H
+   a_MT_TM_PLAIN = 1u<<16,    /* Without pipe handler display as text */
+   a_MT_TM_SOUP_h = 2u<<16,   /* Ditto, but HTML tagsoup parser if possible */
+   a_MT_TM_SOUP_H = 3u<<16,   /* HTML tagsoup parser, else NOT plain text */
+   a_MT_TM_QUIET = 4u<<16,    /* No "no mime handler available" message */
+   a_MT__TM_MARKMASK = 7u<<16
 };
 
 enum mime_type_class {
@@ -95,7 +96,7 @@ struct mt_class_arg {
 };
 
 static struct mtbltin const   _mt_bltin[] = {
-#include "gen-mime-types.h"
+#include <gen-mime-types.h>
 };
 
 static char const             _mt_typnames[][16] = {
@@ -295,7 +296,7 @@ _mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
 
       work.s = n_UNCONST(line);
       work.l = len;
-      line = n_str_trim(&work)->s;
+      line = n_str_trim(&work, n_STR_TRIM_BOTH)->s;
       len = work.l;
    }
    typ = line;
@@ -306,7 +307,7 @@ _mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
       if(len < 2)
          goto jeinval;
       if(typ[1] == ' '){
-         orflags |= _MT_PLAIN;
+         orflags |= a_MT_TM_PLAIN;
          typ += 2;
          len -= 2;
          line += 2;
@@ -322,9 +323,10 @@ _mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
 
          switch(typ[1]){
          default: goto jeinval;
-         case 't': orflags |= _MT_PLAIN; break;
-         case 'h': orflags |= _MT_SOUP_h; break;
-         case 'H': orflags |= _MT_SOUP_H; break;
+         case 't': orflags |= a_MT_TM_PLAIN; break;
+         case 'h': orflags |= a_MT_TM_SOUP_h; break;
+         case 'H': orflags |= a_MT_TM_SOUP_H; break;
+         case 'q': orflags |= a_MT_TM_QUIET; break;
          }
          typ += i;
          len -= i;
@@ -929,10 +931,11 @@ c_mimetype(void *v){
 
          sp = n_string_trunc(sp, 0);
 
-         switch(mtnp->mt_flags & __MT_MARKMASK){
-         case _MT_PLAIN: cp = "@t "; break;
-         case _MT_SOUP_h: cp = "@h "; break;
-         case _MT_SOUP_H: cp = "@H "; break;
+         switch(mtnp->mt_flags & a_MT__TM_MARKMASK){
+         case a_MT_TM_PLAIN: cp = "@t "; break;
+         case a_MT_TM_SOUP_h: cp = "@h "; break;
+         case a_MT_TM_SOUP_H: cp = "@H "; break;
+         case a_MT_TM_QUIET: cp = "@q "; break;
          default: cp = NULL; break;
          }
          if(cp != NULL)
@@ -1130,8 +1133,8 @@ n_mimetype_classify_file(FILE *fp, char const **contenttype,
          goto jcharset;
       if (mtc & (_MT_C_NCTT | _MT_C_ISTXT))
          *contenttype = "application/octet-stream";
-      if (*charset == NULL)
-         *charset = "binary";
+      /* if (*charset == NULL)
+       *  *charset = "binary";*/
       goto jleave;
    }
 
@@ -1169,7 +1172,9 @@ jleave:
       }
       c = (menc == MIMEE_7B ? CONV_7BIT
             : (menc == MIMEE_8B ? CONV_8BIT
-            : CONV_NONE));
+            /* May have only 7-bit, 8-bit and binary.  Try to avoid latter */
+            : ((mtc & _MT_C_HASNUL) ? CONV_NONE
+            : ((mtc & _MT_C_HIGHBIT) ? CONV_8BIT : CONV_7BIT))));
    } else
 jnorfc822:
       c = (menc == MIMEE_7B ? CONV_7BIT
@@ -1337,14 +1342,14 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
    }
 
    if (_mt_by_mtname(&mtl, cs) != NULL)
-      switch (mtl.mtl_node->mt_flags & __MT_MARKMASK) {
+      switch (mtl.mtl_node->mt_flags & a_MT__TM_MARKMASK) {
 #ifndef HAVE_FILTER_HTML_TAGSOUP
-      case _MT_SOUP_H:
+      case a_MT_TM_SOUP_H:
          break;
 #endif
-      case _MT_SOUP_h:
+      case a_MT_TM_SOUP_h:
 #ifdef HAVE_FILTER_HTML_TAGSOUP
-      case _MT_SOUP_H:
+      case a_MT_TM_SOUP_H:
          mhp->mh_ptf = &htmlflt_process_main;
          mhp->mh_msg.l = strlen(mhp->mh_msg.s =
                n_UNCONST(_("Built-in HTML tagsoup filter")));
@@ -1352,9 +1357,13 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
          goto jleave;
 #endif
          /* FALLTHRU */
-      case _MT_PLAIN:
+      case a_MT_TM_PLAIN:
          mhp->mh_msg.l = strlen(mhp->mh_msg.s = n_UNCONST(_("Plain text")));
          rv ^= MIME_HDL_NULL | MIME_HDL_TEXT;
+         goto jleave;
+      case a_MT_TM_QUIET:
+         mhp->mh_msg.l = 0;
+         mhp->mh_msg.s = n_UNCONST(n_empty);
          goto jleave;
       default:
          break;
@@ -1365,10 +1374,11 @@ jleave:
       n_lofi_free(buf);
 
    xrv = rv;
-   if((rv &= MIME_HDL_TYPE_MASK) == MIME_HDL_NULL)
-      mhp->mh_msg.l = strlen(mhp->mh_msg.s = n_UNCONST(
-            _("[-- No MIME handler installed, or not applicable --]\n")));
-   else if(rv == MIME_HDL_CMD && !(xrv & MIME_HDL_COPIOUSOUTPUT) &&
+   if((rv &= MIME_HDL_TYPE_MASK) == MIME_HDL_NULL){
+      if(mhp->mh_msg.s == NULL)
+         mhp->mh_msg.l = strlen(mhp->mh_msg.s = n_UNCONST(
+               _("[-- No MIME handler installed, or not applicable --]\n")));
+   }else if(rv == MIME_HDL_CMD && !(xrv & MIME_HDL_COPIOUSOUTPUT) &&
          action != SEND_TODISP_PARTS){
       mhp->mh_msg.l = strlen(mhp->mh_msg.s = n_UNCONST(
             _("[-- Use the command `mimeview' to display this --]\n")));

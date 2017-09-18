@@ -4,6 +4,16 @@
 LC_ALL=C
 export LC_ALL
 
+# For heaven's sake auto-redirect on SunOS/Solaris
+if [ "x${SHELL}" = x ] || [ "${SHELL}" = /bin/sh ] && \
+      [ -f /usr/xpg4/bin/sh ] && [ -x /usr/xpg4/bin/sh ]; then
+   SHELL=/usr/xpg4/bin/sh
+   export SHELL
+   exec /usr/xpg4/bin/sh "${0}" "${@}"
+fi
+[ -n "${SHELL}" ] || SHELL=/bin/sh
+export SHELL
+
 # The feature set, to be kept in sync with make.rc
 # If no documentation given, the option is used as such; if doc is a hyphen,
 # entry is suppressed when configuration overview is printed, and also in the
@@ -76,9 +86,7 @@ option_maximal() {
    do
       eval OPT_${i}=1
    done
-   OPT_ICONV=require
-   OPT_REGEX=require
-   OPT_DOTLOCK=require
+   OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
 }
 
 option_setup() {
@@ -89,63 +97,52 @@ option_setup() {
 
    # Predefined CONFIG= urations take precedence over anything else
    if [ -n "${CONFIG}" ]; then
+      option_reset
       case "${CONFIG}" in
       [nN][uU][lL][lL])
-         option_reset
          ;;
       [nN][uU][lL][lL][iI])
-         option_reset
          OPT_ICONV=require
          ;;
       [mM][iI][nN][iI][mM][aA][lL])
-         option_reset
-         OPT_ICONV=1
-         OPT_REGEX=1
-         OPT_DOTLOCK=require
-         ;;
-      [mM][eE][dD][iI][uU][mM])
-         option_reset
-         OPT_ICONV=require
+         OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
+         OPT_COLOUR=1
+         OPT_DOCSTRINGS=1
+         OPT_ERRORS=1
          OPT_IDNA=1
-         OPT_REGEX=1
          OPT_MLE=1
             OPT_HISTORY=1 OPT_KEY_BINDINGS=1
-         OPT_ERRORS=1
          OPT_SPAM_FILTER=1
-         OPT_DOCSTRINGS=1
-         OPT_COLOUR=1
-         OPT_DOTLOCK=require
          ;;
       [nN][eE][tT][sS][eE][nN][dD])
-         option_reset
-         OPT_ICONV=require
-         OPT_SOCKETS=1
+         OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
+         OPT_SOCKETS=require
             OPT_SSL=require
             OPT_SMTP=require
-            OPT_GSSAPI=1 OPT_NETRC=1 OPT_AGENT=1
+            OPT_GSSAPI=1 OPT_NETRC=1
+               OPT_AGENT=1
+         OPT_COLOUR=1
+         OPT_DOCSTRINGS=1
+         OPT_ERRORS=1
          OPT_IDNA=1
-         OPT_REGEX=1
          OPT_MLE=1
             OPT_HISTORY=1 OPT_KEY_BINDINGS=1
-         OPT_DOCSTRINGS=1
-         OPT_COLOUR=1
-         OPT_DOTLOCK=require
+         OPT_SPAM_FILTER=1
          ;;
       [mM][aA][xX][iI][mM][aA][lL])
-         option_reset
          option_maximal
          ;;
       [dD][eE][vV][eE][lL])
-         OPT_DEVEL=1 OPT_DEBUG=1 OPT_NYD2=1
          option_maximal
+         OPT_DEVEL=1 OPT_DEBUG=1 OPT_NYD2=1
          ;;
       [oO][dD][eE][vV][eE][lL])
-         OPT_DEVEL=1
          option_maximal
+         OPT_DEVEL=1
          ;;
       *)
          echo >&2 "Unknown CONFIG= setting: ${CONFIG}"
-         echo >&2 '   NULL, NULLI, MINIMAL, MEDIUM, NETSEND, MAXIMAL'
+         echo >&2 '   NULL, NULLI, MINIMAL, NETSEND, MAXIMAL'
          exit 1
          ;;
       esac
@@ -238,14 +235,15 @@ tmp2=./${tmp0}2$$
 
 # TODO cc_maxopt is brute simple, we should compile test program and dig real
 # compiler versions for known compilers, then be more specific
-cc_maxopt=100
+[ -n "${cc_maxopt}" ] || cc_maxopt=100
 _CFLAGS= _LDFLAGS=
 
 os_early_setup() {
    # We don't "have any utility": only path adjustments and such in here!
-   i="${OS:-`uname -s`}"
+   [ -n "${OS}" ] || OS=`uname -s`
+   export OS
 
-   if [ ${i} = SunOS ]; then
+   if [ ${OS} = SunOS ]; then
       msg 'SunOS / Solaris?  Applying some "early setup" rules ...'
       _os_early_setup_sunos
    fi
@@ -265,18 +263,20 @@ _os_early_setup_sunos() {
 os_setup() {
    # OSENV ends up in *build-osenv*
    # OSFULLSPEC is used to recognize changes (i.e., machine type, updates etc.)
-   : ${OS:=`uname -s | ${tr} '[A-Z]' '[a-z]'`}
-   : ${OSENV:=`uname -srm`}
-   : ${OSFULLSPEC:=`uname -a`}
+   OS=`echo ${OS} | ${tr} '[A-Z]' '[a-z]'`
+   [ -n "${OSENV}" ] || OSENV=`uname -srm`
+   [ -n "${OSFULLSPEC}" ] || OSFULLSPEC=`uname -a`
    msg 'Operating system is %s' ${OS}
 
-   if [ ${OS} = sunos ]; then
+   if [ ${OS} = darwin ]; then
+      msg ' . have special Darwin environmental addons...'
+      LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:${DYLD_LIBRARY_PATH}
+   elif [ ${OS} = sunos ]; then
       msg ' . have special SunOS / Solaris "setup" rules ...'
       _os_setup_sunos
    elif [ ${OS} = unixware ]; then
-      msg ' . have special UnixWare environmental rules ...'
-      if feat_yes AUTOCC && command -v cc >/dev/null 2>&1; then
-         CC=cc
+      if feat_yes AUTOCC && acmd_set CC cc; then
+         msg ' . have special UnixWare environmental rules ...'
          feat_yes DEBUG && _CFLAGS='-v -Xa -g' || _CFLAGS='-Xa -O'
 
          CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
@@ -297,19 +297,19 @@ os_setup() {
 
    # On pkgsrc(7) systems automatically add /usr/pkg/*
    if [ -d /usr/pkg ]; then
-      C_INCLUDE_PATH="${C_INCLUDE_PATH}:/usr/pkg/include"
-      LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/pkg/lib"
+      C_INCLUDE_PATH=/usr/pkg/include:${C_INCLUDE_PATH}
+      LD_LIBRARY_PATH=/usr/pkg/lib:${LD_LIBRARY_PATH}
    fi
 }
 
 _os_setup_sunos() {
-   C_INCLUDE_PATH="/usr/xpg4/include:${C_INCLUDE_PATH}"
-   LD_LIBRARY_PATH="/usr/xpg4/lib:${LD_LIBRARY_PATH}"
+   C_INCLUDE_PATH=/usr/xpg4/include:${C_INCLUDE_PATH}
+   LD_LIBRARY_PATH=/usr/xpg4/lib:${LD_LIBRARY_PATH}
 
    # Include packages
    if [ -d /opt/csw ]; then
-      C_INCLUDE_PATH="${C_INCLUDE_PATH}:/opt/csw/include"
-      LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/opt/csw/lib"
+      C_INCLUDE_PATH=/opt/csw/include:${C_INCLUDE_PATH}
+      LD_LIBRARY_PATH=/opt/csw/lib:${LD_LIBRARY_PATH}
    fi
 
    OS_DEFINES="${OS_DEFINES}#define __EXTENSIONS__\n"
@@ -325,8 +325,7 @@ _os_setup_sunos() {
    fi
 
    if feat_yes AUTOCC; then
-      if command -v cc >/dev/null 2>&1; then
-         CC=cc
+      if acmd_set CC cc; then
          feat_yes DEBUG && _CFLAGS="-v -Xa -g" || _CFLAGS="-Xa -O"
 
          CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
@@ -356,31 +355,19 @@ cc_setup() {
       export CFLAGS LDFLAGS
    fi
 
-   [ -n "${CC}" ] && [ "${CC}" != cc ] && { _cc_default; return; }
+   [ -n "${CC}" ] && { _cc_default; return; }
 
    msg_nonl 'Searching for a usable C compiler .. $CC='
-   if { i="`command -v clang`"; }; then
-      CC=${i}
-   elif { i="`command -v gcc`"; }; then
-      CC=${i}
-   elif { i="`command -v c99`"; }; then
-      CC=${i}
-   elif { i="`command -v tcc`"; }; then
-      CC=${i}
-   elif { i="`command -v pcc`"; }; then
-      CC=${i}
+   if acmd_set CC clang || acmd_set CC gcc ||
+         acmd_set CC tcc || acmd_set CC pcc ||
+         acmd_set CC c89 || acmd_set CC c99; then
+      :
    else
-      if [ "${CC}" = cc ]; then
-         :
-      elif { i="`command -v c89`"; }; then
-         CC=${i}
-      else
-         msg 'boing booom tschak'
-         msg 'ERROR: I cannot find a compiler!'
-         msg ' Neither of clang(1), gcc(1), tcc(1), pcc(1), c89(1) and c99(1).'
-         msg ' Please set ${CC} environment variable, maybe ${CFLAGS}, rerun.'
-         config_exit 1
-      fi
+      msg 'boing booom tschak'
+      msg 'ERROR: I cannot find a compiler!'
+      msg ' Neither of clang(1), gcc(1), tcc(1), pcc(1), c89(1) and c99(1).'
+      msg ' Please set ${CC} environment variable, maybe ${CFLAGS}, rerun.'
+      config_exit 1
    fi
    msg '%s' "${CC}"
    export CC
@@ -463,6 +450,12 @@ _cc_flags_generic() {
    _CFLAGS= _LDFLAGS=
    feat_yes DEVEL && cc_check -std=c89 || cc_check -std=c99
 
+   # E.g., valgrind does not work well with high optimization
+   if [ ${cc_maxopt} -gt 1 ] && feat_yes NOMEMDBG &&
+         feat_no ASAN_ADDRESS && feat_no ASAN_MEMORY; then
+      msg 'OP_NOMEMDBG, setting cc_maxopt=1 (-O1)'
+      cc_maxopt=1
+   fi
    # Check -g first since some others may rely upon -g / optim. level
    if feat_yes DEBUG; then
       cc_check -O
@@ -586,8 +579,80 @@ _cc_flags_generic() {
 ## and redefine them as necessary.
 ## And, since we have those functions, simply use them for whatever
 
+t1=ten10one1ten10one1
+if ( [ ${t1##*ten10} = one1 ] && [ ${t1#*ten10} = one1ten10one1 ] &&
+      [ ${t1%%one1*} = ten10 ] && [ ${t1%one1*} = ten10one1ten10 ]
+      ) > /dev/null 2>&1; then
+   good_shell=1
+else
+   unset good_shell
+fi
+unset t1
+
+( set -o noglob ) >/dev/null 2>&1 && noglob_shell=1 || unset noglob_shell
+
 config_exit() {
    exit ${1}
+}
+
+# which(1) not standardized, command(1) -v may return non-executable: unroll!
+acmd_test() { __acmd "${1}" 1 0 0; }
+acmd_test_fail() { __acmd "${1}" 1 1 0; }
+acmd_set() { __acmd "${2}" 0 0 0 "${1}"; }
+acmd_set_fail() { __acmd "${2}" 0 1 0 "${1}"; }
+acmd_testandset() { __acmd "${2}" 1 0 0 "${1}"; }
+acmd_testandset_fail() { __acmd "${2}" 1 1 0 "${1}"; }
+thecmd_set() { __acmd "${2}" 0 0 1 "${1}"; }
+thecmd_set_fail() { __acmd "${2}" 0 1 1 "${1}"; }
+thecmd_testandset() { __acmd "${2}" 1 0 1 "${1}"; }
+thecmd_testandset_fail() { __acmd "${2}" 1 1 1 "${1}"; }
+__acmd() {
+   pname=${1} dotest=${2} dofail=${3} verbok=${4} varname=${5}
+
+   if [ "${dotest}" -ne 0 ]; then
+      eval dotest=\$${varname}
+      if [ -n "${dotest}" ]; then
+         [ -n "${VERBOSE}" ] && [ ${verbok} -ne 0 ] &&
+            msg ' . ${%s} ... %s' "${pname}" "${dotest}"
+         return 0
+      fi
+   fi
+
+   oifs=${IFS} IFS=:
+   [ -n "${noglob_shell}" ] && set -o noglob
+   set -- ${PATH}
+   [ -n "${noglob_shell}" ] && set +o noglob
+   IFS=${oifs}
+   for path
+   do
+      if [ -z "${path}" ] || [ "${path}" = . ]; then
+         if [ -d "${PWD}" ]; then
+            path=${PWD}
+         else
+            path=.
+         fi
+      fi
+      if [ -f "${path}/${pname}" ] && [ -x "${path}/${pname}" ]; then
+         [ -n "${VERBOSE}" ] && [ ${verbok} -ne 0 ] &&
+            msg ' . ${%s} ... %s' "${pname}" "${path}/${pname}"
+         [ -n "${varname}" ] && eval ${varname}="${path}/${pname}"
+         return 0
+      fi
+   done
+
+   # We may have no builtin string functions, we yet have no programs we can
+   # use, try to access once from the root, assuming it is an absolute path if
+   # that finds the executable
+   if ( cd && [ -f "${pname}" ] && [ -x "${pname}" ] ); then
+     [ -n "${VERBOSE}" ] && [ ${verbok} -ne 0 ] &&
+            msg ' . ${%s} ... %s' "${pname}" "${pname}"
+      [ -n "${varname}" ] && eval ${varname}="${pname}"
+      return 0
+   fi
+
+   [ ${dofail} -eq 0 ] && return 1
+   msg 'ERROR: no trace of utility '"${pname}"
+   exit 1
 }
 
 msg() {
@@ -600,34 +665,6 @@ msg_nonl() {
    fmt=${1}
    shift
    printf >&2 -- "${fmt}" "${@}"
-}
-
-t1=ten10one1ten10one1
-if ( [ ${t1##*ten10} = one1 ] && [ ${t1#*ten10} = one1ten10one1 ] &&
-      [ ${t1%%one1*} = ten10 ] && [ ${t1%one1*} = ten10one1ten10 ]
-      ) > /dev/null 2>&1; then
-   good_shell=1
-else
-   unset good_shell
-fi
-unset t1
-
-# We need some standard utilities
-unset -f command
-check_tool() {
-   n=${1} i=${2} opt=${3:-0}
-   # Evaluate, just in case user comes in with shell snippets (..well..)
-   eval i="${i}"
-   if type "${i}" >/dev/null 2>&1; then # XXX why have i type not command -v?
-      [ -n "${VERBOSE}" ] && msg ' . ${%s} ... %s' "${n}" "${i}"
-      eval ${n}=${i}
-      return 0
-   fi
-   if [ ${opt} -eq 0 ]; then
-      msg 'ERROR: no trace of utility %s' "${n}"
-      config_exit 1
-   fi
-   return 1
 }
 
 # Our feature check environment
@@ -841,7 +878,9 @@ path_check() {
    varname=${1} addflag=${2} flagvarname=${3}
    j=${IFS}
    IFS=:
+   [ -n "${noglob_shell}" ] && set -o noglob
    eval "set -- \$${1}"
+   [ -n "${noglob_shell}" ] && set +o noglob
    IFS=${j}
    j= k= y= z=
    for i
@@ -920,6 +959,7 @@ ld_check() {
    return 1
 }
 
+dump_test_program=1
 _check_preface() {
    variable=$1 topic=$2 define=$3
 
@@ -927,12 +967,16 @@ _check_preface() {
    msg_nonl ' . %s ... ' "${topic}"
    echo "/* checked ${topic} */" >> ${h}
    ${rm} -f ${tmp} ${tmp}.o
-   echo '*** test program is'
-   { echo '#include <'"${h_name}"'>'; cat; } | ${tee} ${tmp}.c
+   if [ "${dump_test_program}" = 1 ]; then
+      echo '*** test program is'
+      { echo '#include <'"${h_name}"'>'; cat; } | ${tee} ${tmp}.c
+   else
+      { echo '#include <'"${h_name}"'>'; cat; } > ${tmp}.c
+   fi
    #echo '*** the preprocessor generates'
    #${make} -f ${makefile} ${tmp}.x
    #${cat} ${tmp}.x
-   echo '*** results are'
+   echo '*** tests results'
 }
 
 without_check() {
@@ -1054,9 +1098,9 @@ os_early_setup
 
 # Check those tools right now that we need before including $rc
 msg 'Checking for basic utility set'
-check_tool awk "${awk:-`command -v awk`}"
-check_tool rm "${rm:-`command -v rm`}"
-check_tool tr "${tr:-`command -v tr`}"
+thecmd_testandset_fail awk awk
+thecmd_testandset_fail rm rm
+thecmd_testandset_fail tr tr
 
 # Initialize the option set
 msg_nonl 'Setting up configuration options ... '
@@ -1077,35 +1121,36 @@ msg 'done'
 os_setup
 
 msg 'Checking for remaining set of utilities'
-check_tool grep "${grep:-`command -v grep`}"
+thecmd_testandset_fail grep grep
 
 # Before we step ahead with the other utilities perform a path cleanup first.
 path_check PATH
 
 # awk(1) above
-check_tool cat "${cat:-`command -v cat`}"
-check_tool chmod "${chmod:-`command -v chmod`}"
-check_tool cp "${cp:-`command -v cp`}"
-check_tool cmp "${cmp:-`command -v cmp`}"
+thecmd_testandset_fail basename basename
+thecmd_testandset_fail cat cat
+thecmd_testandset_fail chmod chmod
+thecmd_testandset_fail cp cp
+thecmd_testandset_fail cmp cmp
 # grep(1) above
-check_tool mkdir "${mkdir:-`command -v mkdir`}"
-check_tool mv "${mv:-`command -v mv`}"
+thecmd_testandset_fail mkdir mkdir
+thecmd_testandset_fail mv mv
 # rm(1) above
-check_tool sed "${sed:-`command -v sed`}"
-check_tool sort "${sort:-`command -v sort`}"
-check_tool tee "${tee:-`command -v tee`}"
-
-check_tool chown "${chown:-`command -v chown`}" 1 ||
-   check_tool chown "/sbin/chown" 1 ||
-   check_tool chown "/usr/sbin/chown"
-
-check_tool make "${MAKE:-`command -v make`}"
+thecmd_testandset_fail sed sed
+thecmd_testandset_fail sort sort
+thecmd_testandset_fail tee tee
+__PATH=${PATH}
+thecmd_testandset chown chown ||
+   PATH="/sbin:${PATH}" thecmd_set chown chown ||
+   PATH="/usr/sbin:${PATH}" thecmd_set_fail chown chown
+PATH=${__PATH}
+thecmd_testandset_fail make make
 MAKE=${make}
-check_tool strip "${STRIP:-`command -v strip`}" 1 &&
-   HAVE_STRIP=1 || HAVE_STRIP=0
+export MAKE
+thecmd_testandset strip strip && HAVE_STRIP=1 || HAVE_STRIP=0
 
 # For ./cc-test.sh only
-check_tool cksum "${cksum:-`command -v cksum`}"
+thecmd_testandset_fail cksum cksum
 
 # Update OPT_ options now, in order to get possible inter-dependencies right
 option_update
@@ -1135,7 +1180,8 @@ else
 fi
 
 for i in \
-      awk cat chmod chown cp cmp grep mkdir mv rm sed sort tee tr \
+      SRCDIR \
+      awk basename cat chmod chown cp cmp grep mkdir mv rm sed sort tee tr \
       MAKE MAKEFLAGS make SHELL strip \
       cksum; do
    eval j=\$${i}
@@ -1146,6 +1192,7 @@ done
 printf "\n" >> ${newev}
 
 # Build a basic set of INCS and LIBS according to user environment.
+C_INCLUDE_PATH="${CWDDIR}:${SRCDIR}:${C_INCLUDE_PATH}"
 path_check C_INCLUDE_PATH -I _INCS
 INCS="${INCS} ${_INCS}"
 path_check LD_LIBRARY_PATH -L _LIBS
@@ -1297,11 +1344,13 @@ echo '#define VAL_BUILD_OS "'"${OS}"'"' >> ${h}
 echo '#define VAL_BUILD_OSENV "'"${OSENV}"'"' >> ${h}
 
 # Generate n_err_number OS mappings
+dump_test_program=0
 (
    feat_yes DEVEL && NV= || NV=noverbose
-   TARGET="${h}" awk="${awk}" ./make-errors.sh ${NV} config
-) |
-   xrun_check oserrno 'OS error mapping table generated' || config_exit 1
+   SRCDIR="${SRCDIR}" TARGET="${h}" awk="${awk}" \
+      ${SHELL} "${SRCDIR}"make-errors.sh ${NV} config
+) | xrun_check oserrno 'OS error mapping table generated' || config_exit 1
+dump_test_program=1
 
 feat_def ALWAYS_UNICODE_LOCALE
 feat_def AMALGAMATION
@@ -2102,6 +2151,7 @@ int main(void){
 }
 !
 
+VAL_SSL_FEATURES=
 if feat_yes SSL; then # {{{
    # {{{ LibreSSL decided to define OPENSSL_VERSION_NUMBER with a useless value
    # instead of keeping it at the one that corresponds to the OpenSSL at fork
@@ -2119,6 +2169,7 @@ if feat_yes SSL; then # {{{
 !
    then
       ossl_v1_1=
+      VAL_SSL_FEATURES=libressl
    # TODO OPENSSL_IS_BORINGSSL, but never tried that one!
    elif compile_check _xssl 'TLS/SSL (OpenSSL >= v1.1.0)' \
       '#define HAVE_SSL
@@ -2132,6 +2183,7 @@ if feat_yes SSL; then # {{{
 !
    then
       ossl_v1_1=1
+      VAL_SSL_FEATURES=libssl-0x10100
    elif compile_check _xssl 'TLS/SSL (OpenSSL)' \
       '#define HAVE_SSL
       #define HAVE_XSSL
@@ -2144,16 +2196,17 @@ if feat_yes SSL; then # {{{
 !
    then
       ossl_v1_1=
+      VAL_SSL_FEATURES=libssl-0x10000
    else
       feat_bail_required SSL
    fi # }}}
 
    if feat_yes SSL; then # {{{
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xssl 'TLS/SSL (new style *_client_method(3ssl))' \
+         without_check yes xssl 'TLS/SSL new style TLS_client_method(3ssl)' \
             '#define n_XSSL_CLIENT_METHOD TLS_client_method' \
             '-lssl -lcrypto'
-      elif link_check xssl 'TLS/SSL (new style *_client_method(3ssl))' \
+      elif link_check xssl 'TLS/SSL new style TLS_client_method(3ssl)' \
             '#define n_XSSL_CLIENT_METHOD TLS_client_method' \
             '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
@@ -2174,7 +2227,7 @@ int main(void){
 !
       then
          :
-      elif link_check xssl 'TLS/SSL (old style *_client_method(3ssl))' \
+      elif link_check xssl 'TLS/SSL old style SSLv23_client_method(3ssl)' \
             '#define n_XSSL_CLIENT_METHOD SSLv23_client_method' \
             '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
@@ -2202,6 +2255,31 @@ int main(void){
    fi # }}}
 
    if feat_yes SSL; then # {{{
+      if feat_yes SSL_ALL_ALGORITHMS; then
+         if [ -n "${ossl_v1_1}" ]; then
+            without_check yes ssl_all_algo 'TLS/SSL all-algorithms support' \
+               '#define HAVE_SSL_ALL_ALGORITHMS'
+         elif link_check ssl_all_algo 'TLS/SSL all-algorithms support' \
+            '#define HAVE_SSL_ALL_ALGORITHMS' << \!
+#include <openssl/evp.h>
+int main(void){
+   OpenSSL_add_all_algorithms();
+   EVP_get_cipherbyname("two cents i never exist");
+   EVP_cleanup();
+   return 0;
+}
+!
+         then
+            :
+         else
+            feat_bail_required SSL_ALL_ALGORITHMS
+         fi
+      elif [ -n "${ossl_v1_1}" ]; then
+         without_check yes ssl_all_algo \
+            'TLS/SSL all-algorithms (always available in v1.1.0+)' \
+            '#define HAVE_SSL_ALL_ALGORITHMS'
+      fi
+
       if [ -n "${ossl_v1_1}" ]; then
          without_check yes xssl_stack_of 'TLS/SSL STACK_OF()' \
             '#define HAVE_XSSL_STACK_OF'
@@ -2225,9 +2303,11 @@ int main(void){
       fi
 
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xssl_conf 'TLS/SSL OpenSSL_modules_load_file()' \
+         without_check yes xssl_conf 'TLS/SSL OpenSSL_modules_load_file(3ssl)' \
             '#define HAVE_XSSL_CONFIG'
-      elif link_check xssl_conf 'TLS/SSL OpenSSL_modules_load_file() support' \
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+modules-load-file"
+      elif link_check xssl_conf \
+            'TLS/SSL OpenSSL_modules_load_file(3ssl) support' \
             '#define HAVE_XSSL_CONFIG' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/conf.h>
@@ -2238,12 +2318,15 @@ int main(void){
 }
 !
       then
-         :
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+modules-load-file"
+      else
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-modules-load-file"
       fi
 
       if [ -n "${ossl_v1_1}" ]; then
          without_check yes xssl_conf_ctx 'TLS/SSL SSL_CONF_CTX support' \
             '#define HAVE_XSSL_CONF_CTX'
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+conf-ctx"
       elif link_check xssl_conf_ctx 'TLS/SSL SSL_CONF_CTX support' \
          '#define HAVE_XSSL_CONF_CTX' << \!
 #include <openssl/ssl.h>
@@ -2264,13 +2347,54 @@ int main(void){
 }
 !
       then
-         :
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+conf-ctx"
+      else
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-conf-ctx"
       fi
 
       if [ -n "${ossl_v1_1}" ]; then
-         without_check no xssl_rand_egd 'TLS/SSL RAND_egd(3ssl)' \
-            '#define HAVE_XSSL_RAND_EGD'
-      elif link_check xssl_rand_egd 'TLS/SSL RAND_egd(3ssl)' \
+         without_check yes xssl_ctx_config 'TLS/SSL SSL_CTX_config(3ssl)' \
+            '#define HAVE_XSSL_CTX_CONFIG'
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+ctx-config"
+      elif [ -n "${have_xssl_conf}" ] && [ -n "${have_xssl_conf_ctx}" ] &&
+            link_check xssl_ctx_config 'TLS/SSL SSL_CTX_config(3ssl)' \
+               '#define HAVE_XSSL_CTX_CONFIG' << \!
+#include <stdio.h> /* For C89 NULL */
+#include <openssl/ssl.h>
+int main(void){
+   SSL_CTX_config(NULL, "SOMEVAL");
+   return 0;
+}
+!
+      then
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+ctx-config"
+      else
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-ctx-config"
+      fi
+
+      if [ -n "${ossl_v1_1}" ] && [ -n "${have_xssl_conf_ctx}" ]; then
+         without_check yes xssl_set_maxmin_proto \
+            'TLS/SSL SSL_CTX_set_min_proto_version(3ssl)' \
+            '#define HAVE_XSSL_SET_MIN_PROTO_VERSION'
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+ctx-set-maxmin-proto"
+      elif link_check xssl_set_maxmin_proto \
+         'TLS/SSL SSL_CTX_set_min_proto_version(3ssl)' \
+         '#define HAVE_XSSL_SET_MIN_PROTO_VERSION' << \!
+#include <stdio.h> /* For C89 NULL */
+#include <openssl/ssl.h>
+int main(void){
+   SSL_CTX_set_min_proto_version(NULL, 0);
+   SSL_CTX_set_max_proto_version(NULL, 10);
+   return 0;
+}
+!
+      then
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+ctx-set-maxmin-proto"
+      else
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-ctx-set-maxmin-proto"
+      fi
+
+      if link_check xssl_rand_egd 'TLS/SSL RAND_egd(3ssl)' \
             '#define HAVE_XSSL_RAND_EGD' << \!
 #include <openssl/rand.h>
 int main(void){
@@ -2278,28 +2402,9 @@ int main(void){
 }
 !
       then
-         :
-      fi
-
-      if feat_yes SSL_ALL_ALGORITHMS; then
-         if [ -n "${ossl_v1_1}" ]; then
-            without_check yes ssl_all_algo 'TLS/SSL all-algorithms support' \
-               '#define HAVE_SSL_ALL_ALGORITHMS'
-         elif link_check ssl_all_algo 'TLS/SSL all-algorithms support' \
-            '#define HAVE_SSL_ALL_ALGORITHMS' << \!
-#include <openssl/evp.h>
-int main(void){
-   OpenSSL_add_all_algorithms();
-   EVP_get_cipherbyname("two cents i never exist");
-   EVP_cleanup();
-   return 0;
-}
-!
-         then
-            :
-         else
-            feat_bail_required SSL_ALL_ALGORITHMS
-         fi
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+rand-egd"
+      else
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-rand-egd"
       fi
    fi # feat_yes SSL }}}
 
@@ -2334,6 +2439,7 @@ int main(void){
 else
    echo '/* OPT_SSL=0 */' >> ${h}
 fi # }}} feat_yes SSL
+printf '#define VAL_SSL_FEATURES "#'"${VAL_SSL_FEATURES}"'"\n' >> ${h}
 
 if [ "${have_xssl}" = yes ]; then
    OPT_SMIME=1
@@ -2357,8 +2463,7 @@ int main(void){
 !
    ${sed} -e '1s/gssapi\///' < ${tmp2}.c > ${tmp3}.c
 
-   if command -v krb5-config >/dev/null 2>&1; then
-      i=`command -v krb5-config`
+   if acmd_set i krb5-config; then
       GSS_LIBS="`CFLAGS= ${i} --libs gssapi`"
       GSS_INCS="`CFLAGS= ${i} --cflags`"
       i='GSS-API via krb5-config(1)'
@@ -2617,8 +2722,8 @@ else
 fi
 
 if feat_def SPAM_SPAMC; then
-   if command -v spamc >/dev/null 2>&1; then
-      echo "#define SPAM_SPAMC_PATH \"`command -v spamc`\"" >> ${h}
+   if acmd_set i spamc; then
+      echo "#define SPAM_SPAMC_PATH \"${i}\"" >> ${h}
    fi
 fi
 
@@ -2695,39 +2800,48 @@ printf '"\n' >> ${h}
 # Note we cannout use explicit ./ filename prefix for source and object
 # pathnames because of a bug in bmake(1)
 ${rm} -rf ${tmp0}.* ${tmp0}*
-printf 'OBJ_SRC = ' >> ${mk}
+srclist= objlist=
 if feat_no AMALGAMATION; then
-   for i in `printf '%s\n' *.c | ${sort}`; do
-      if [ "${i}" = privsep.c ]; then
+   for i in `printf '%s\n' "${SRCDIR}"*.c | ${sort}`; do
+      i=`basename "${i}" .c`
+      if [ "${i}" = privsep ]; then
          continue
       fi
-      printf "${i} " >> ${mk}
+      objlist="${objlist} ${i}.o"
+      srclist="${srclist} \$(SRCDIR)${i}.c"
+      printf '%s: %s\n\t$(ECHO_CC)$(CC) $(CFLAGS) $(INCS) -c %s\n' \
+         "${i}.o" "\$(SRCDIR)${i}.c" "\$(SRCDIR)${i}.c" >> ${mk}
    done
    printf '\nAMALGAM_TARGET =\nAMALGAM_DEP =\n' >> ${mk}
 else
-   printf 'main.c\nAMALGAM_TARGET = main.o\nAMALGAM_DEP = ' >> ${mk}
+   printf '%s:\n\t$(ECHO_CC)$(CC) $(CFLAGS) $(INCS) -c $(SRCDIR)%s\n' \
+      "main.o" "main.c" >> ${mk}
+   srclist=main.c objlist=main.o
+   printf '\nAMALGAM_TARGET = main.o\nAMALGAM_DEP = ' >> ${mk}
 
    printf '\n/* HAVE_AMALGAMATION: include sources */\n' >> ${h}
    printf '#elif n_MK_CONFIG_H + 0 == 1\n' >> ${h}
    printf '# undef n_MK_CONFIG_H\n' >> ${h}
    printf '# define n_MK_CONFIG_H 2\n' >> ${h}
-   for i in `printf '%s\n' *.c | ${sort}`; do
-      if [ "${i}" = "${j}" ] || [ "${i}" = main.c ] || \
+   for i in `printf '%s\n' "${SRCDIR}"*.c | ${sort}`; do
+      i=`basename "${i}"`
+      if [ "${i}" = main.c ] ||
             [ "${i}" = privsep.c ]; then
          continue
       fi
-      printf "${i} " >> ${mk}
-      printf "# include \"${i}\"\n" >> ${h}
+      printf '$(SRCDIR)%s ' "${i}" >> ${mk}
+      printf '# include "%s%s"\n' "${SRCDIR}" "${i}" >> ${h}
    done
    echo >> ${mk}
 fi
+printf 'OBJ_SRC = %s\nOBJ = %s\n' "${srclist}" "${objlist}" >> "${mk}"
 
 printf '#endif /* n_MK_CONFIG_H */\n' >> ${h}
 
 echo "LIBS = `${cat} ${lib}`" >> ${mk}
 echo "INCS = `${cat} ${inc}`" >> ${mk}
 echo >> ${mk}
-${cat} ./make-config.in >> ${mk}
+${cat} "${SRCDIR}"make-config.in >> ${mk}
 
 ## Finished!
 

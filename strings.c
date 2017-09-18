@@ -205,25 +205,75 @@ n_anyof_buf(char const *template, char const *dat, size_t len){
 }
 
 FL char *
-n_strsep(char **iolist, char sep, bool_t ignore_empty)
-{
+n_strsep(char **iolist, char sep, bool_t ignore_empty){
    char *base, *cp;
    NYD2_ENTER;
 
-   for (base = *iolist; base != NULL; base = *iolist) {
-      while (*base != '\0' && blankspacechar(*base))
+   for(base = *iolist; base != NULL; base = *iolist){
+      while(*base != '\0' && blankspacechar(*base))
          ++base;
+
       cp = strchr(base, sep);
-      if (cp != NULL)
-         *iolist = cp + 1;
-      else {
+      if(cp != NULL)
+         *iolist = &cp[1];
+      else{
          *iolist = NULL;
-         cp = base + strlen(base);
+         cp = &base[strlen(base)];
       }
-      while (cp > base && blankspacechar(cp[-1]))
+      while(cp > base && blankspacechar(cp[-1]))
          --cp;
       *cp = '\0';
-      if (*base != '\0' || !ignore_empty)
+      if(*base != '\0' || !ignore_empty)
+         break;
+   }
+   NYD2_LEAVE;
+   return base;
+}
+
+FL char *
+n_strsep_esc(char **iolist, char sep, bool_t ignore_empty){
+   char *cp, c, *base;
+   bool_t isesc, anyesc;
+   NYD2_ENTER;
+
+   for(base = *iolist; base != NULL; base = *iolist){
+      while((c = *base) != '\0' && blankspacechar(c))
+         ++base;
+
+      for(isesc = anyesc = FAL0, cp = base;; ++cp){
+         if(n_UNLIKELY((c = *cp) == '\0')){
+            *iolist = NULL;
+            break;
+         }else if(!isesc){
+            if(c == sep){
+               *iolist = &cp[1];
+               break;
+            }
+            isesc = (c == '\\');
+         }else{
+            isesc = FAL0;
+            anyesc |= (c == sep);
+         }
+      }
+
+      while(cp > base && blankspacechar(cp[-1]))
+         --cp;
+      *cp = '\0';
+
+      if(*base != '\0'){
+         if(anyesc){
+            char *ins;
+
+            for(ins = cp = base;; ++ins)
+               if((c = *cp) == '\\' && cp[1] == sep){
+                  *ins = sep;
+                  cp += 2;
+               }else if((*ins = (++cp, c)) == '\0')
+                  break;
+         }
+      }
+
+      if(*base != '\0' || !ignore_empty)
          break;
    }
    NYD2_LEAVE;
@@ -639,14 +689,14 @@ FL struct str *
 }
 
 FL struct str *
-n_str_trim(struct str *self){
+n_str_trim(struct str *self, enum n_str_trim_flags stf){
    size_t l;
    char const *cp;
    NYD2_ENTER;
 
    cp = self->s;
 
-   if((l = self->l) > 0){
+   if((l = self->l) > 0 && (stf & n_STR_TRIM_FRONT)){
       while(spacechar(*cp)){
          ++cp;
          if(--l == 0)
@@ -655,7 +705,7 @@ n_str_trim(struct str *self){
       self->s = n_UNCONST(cp);
    }
 
-   if(l > 0){
+   if(l > 0 && (stf & n_STR_TRIM_END)){
       for(cp += l -1; spacechar(*cp); --cp)
          if(--l == 0)
             break;

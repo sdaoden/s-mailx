@@ -56,7 +56,7 @@
 # include <locale.h>
 #endif
 
-#ifdef HAVE_GETRANDOM
+#if defined HAVE_GETRANDOM && !n_RANDOM_USE_XSSL
 # include HAVE_GETRANDOM_HEADER
 #endif
 
@@ -70,7 +70,7 @@
 # endif
 #endif
 
-#ifndef HAVE_POSIX_RANDOM
+#if !defined HAVE_POSIX_RANDOM && !n_RANDOM_USE_XSSL
 union rand_state{
    struct rand_arc4{
       ui8_t _dat[256];
@@ -137,7 +137,7 @@ static ui64_t const a_aux_idec_cutlimit[35] = {
 #undef a_X
 
 /* Include the constant make-errors.sh output */
-#include "gen-errors.h"
+#include <gen-errors.h>
 
 /* And these things come from mk-config.h (config-time make-errors.sh output) */
 static n__ERR_NUMBER_TYPE const a_aux_err_no2mapoff[][2] = {
@@ -147,7 +147,7 @@ n__ERR_NUMBER_TO_MAPOFF
 #undef a_X
 };
 
-#ifndef HAVE_POSIX_RANDOM
+#if !defined HAVE_POSIX_RANDOM && !n_RANDOM_USE_XSSL
 static union rand_state *a_aux_rand;
 #endif
 
@@ -160,7 +160,7 @@ static size_t a_aux_err_linelen;
 
 /* Our ARC4 random generator with its completely unacademical pseudo
  * initialization (shall /dev/urandom fail) */
-#ifndef HAVE_POSIX_RANDOM
+#if !defined HAVE_POSIX_RANDOM && !n_RANDOM_USE_XSSL
 static void a_aux_rand_init(void);
 SINLINE ui8_t a_aux_rand_get8(void);
 # ifndef HAVE_GETRANDOM
@@ -171,7 +171,7 @@ static ui32_t a_aux_rand_weak(ui32_t seed);
 /* Find the descriptive mapping of an error number, or _ERR_INVAL */
 static struct a_aux_err_map const *a_aux_err_map_from_no(si32_t eno);
 
-#ifndef HAVE_POSIX_RANDOM
+#if !defined HAVE_POSIX_RANDOM && !n_RANDOM_USE_XSSL
 static void
 a_aux_rand_init(void){
 # ifndef HAVE_GETRANDOM
@@ -188,26 +188,39 @@ a_aux_rand_init(void){
    a_aux_rand = n_alloc(sizeof *a_aux_rand);
 
 # ifdef HAVE_GETRANDOM
-   /* getrandom(2) guarantees 256 without n_ERR_INTR.. */
+   /* getrandom(2) guarantees 256 without n_ERR_INTR..
+    * However, support sequential reading to avoid possible hangs that have
+    * been reported on the ML (2017-08-22, s-nail/s-mailx freezes when
+    * HAVE_GETRANDOM is #defined) */
    n_LCTA(sizeof(a_aux_rand->a._dat) <= 256,
       "Buffer too large to be served without n_ERR_INTR error");
    n_LCTA(sizeof(a_aux_rand->a._dat) >= 256,
       "Buffer too small to serve used array indices");
-   for(;;){
-      ssize_t gr;
+   /* C99 */{
+      size_t o, i;
 
-      gr = HAVE_GETRANDOM(a_aux_rand->a._dat, sizeof a_aux_rand->a._dat);
-      a_aux_rand->a._i = a_aux_rand->a._dat[a_aux_rand->a._dat[1] ^
-            a_aux_rand->a._dat[84]];
-      a_aux_rand->a._j = a_aux_rand->a._dat[a_aux_rand->a._dat[65] ^
-            a_aux_rand->a._dat[42]];
-      /* ..but be on the safe side */
-      if(UICMP(z, gr, ==, sizeof(a_aux_rand->a._dat)))
-         break;
-      n_msleep(250, FAL0);
+      for(o = 0, i = sizeof a_aux_rand->a._dat;;){
+         ssize_t gr;
+
+         gr = HAVE_GETRANDOM(&a_aux_rand->a._dat[o], i);
+         a_aux_rand->a._i = a_aux_rand->a._dat[a_aux_rand->a._dat[1] ^
+               a_aux_rand->a._dat[84]];
+         a_aux_rand->a._j = a_aux_rand->a._dat[a_aux_rand->a._dat[65] ^
+               a_aux_rand->a._dat[42]];
+         /* ..but be on the safe side */
+         if(gr > 0){
+            i -= (size_t)gr;
+            if(i == 0)
+               break;
+            o += (size_t)gr;
+         }
+         n_err(_("Not enough entropy for the PseudoRandomNumberGenerator, "
+            "waiting a bit\n"));
+         n_msleep(250, FAL0);
+      }
    }
 
-# else
+# else /* HAVE_GETRANDOM */
    if((u.fd = open("/dev/urandom", O_RDONLY)) != -1){
       bool_t ok;
 
@@ -285,7 +298,7 @@ a_aux_rand_weak(ui32_t seed){
    return seed;
 }
 # endif /* HAVE_GETRANDOM */
-#endif /* !HAVE_POSIX_RANDOM */
+#endif /* !HAVE_POSIX_RANDOM && !n_RANDOM_USE_XSSL */
 
 static struct a_aux_err_map const *
 a_aux_err_map_from_no(si32_t eno){
@@ -330,11 +343,9 @@ n_locale_init(void){
    /* C99 */{
       char const *cp;
 
-      /* TODO *ttycharset* may be set several times during startup unless
-       * TODO we gain a mechanism that -S fixates a setting during startup,
-       * TODO effectively turning later adjustments (during startup) in noop */
       if((cp = nl_langinfo(CODESET)) != NULL)
-         ok_vset(ttycharset, cp);
+         /* Avoid logging if user set that via -S! */
+         n_PS_ROOT_BLOCK(ok_vset(ttycharset, cp));
    }
 # endif
 
@@ -390,12 +401,7 @@ n_pager_get(char const **env_addon){
        *    *colour-pager*, $PAGER */
       if(strstr(rv, "less") != NULL){
          if(getenv("LESS") == NULL)
-            *env_addon =
-#ifdef HAVE_TERMCAP
-                  (n_psonce & n_PSO_TERMCAP_CA_MODE) ? "LESS=Ri"
-                     : !(n_psonce & n_PSO_TERMCAP_DISABLE) ? "LESS=FRi" :
-#endif
-                        "LESS=FRXi";
+            *env_addon = "LESS=RXi";
       }else if(strstr(rv, "lv") != NULL){
          if(getenv("LV") == NULL)
             *env_addon = "LV=-c";
@@ -600,6 +606,10 @@ n_idec_buf(void *resp, char const *cbuf, uiz_t clen, ui8_t base,
    }else if(clen == 0)
       goto jeinval;
 
+   assert(base != 1 && base <= 36);
+   /*if(base == 1 || base > 36)
+    *   goto jeinval;*/
+
    /* Leading WS */
    while(spacechar(*cbuf))
       if(*++cbuf == '\0' || --clen == 0)
@@ -643,8 +653,19 @@ n_idec_buf(void *resp, char const *cbuf, uiz_t clen, ui8_t base,
          case 'B':
             if((base & 16) == 0){
                base = 2; /* 0b10 */
-               /* Char after prefix must be valid */
+               /* Char after prefix must be valid.  However, after some error
+                * in the tor software all libraries (which had to) turned to
+                * an interpretation of the C standard which says that the
+                * prefix may optionally precede an otherwise valid sequence,
+                * which means that "0x" is not a STATE_INVAL error but gives
+                * a "0" result with a "STATE_BASE" error and a rest of "x" */
 jprefix_skip:
+#if 1
+               if(clen > 1 && a_aux_idec_atoi[(ui8_t)cbuf[1]] < base){
+                  --clen;
+                  ++cbuf;
+               }
+#else
                if(*++cbuf == '\0' || --clen == 0)
                   goto jeinval;
 
@@ -652,6 +673,7 @@ jprefix_skip:
                currc = a_aux_idec_atoi[(ui8_t)*cbuf];
                if(currc >= base)
                   goto jeinval;
+#endif
             }
             break;
          default:
@@ -981,27 +1003,59 @@ jleave:
 #endif /* HAVE_IDNA */
 
 FL char *
-n_random_create_cp(size_t length, ui32_t *reprocnt_or_null){
+n_random_create_buf(char *dat, size_t len, ui32_t *reprocnt_or_null){
    struct str b64;
-   char *data, *cp;
-   size_t i;
+   char *indat, *cp, *oudat;
+   size_t i, inlen, oulen;
    NYD_ENTER;
 
-#ifndef HAVE_POSIX_RANDOM
-   if(a_aux_rand == NULL)
+   if(!(n_psonce & n_PSO_RANDOM_INIT)){
+      n_psonce |= n_PSO_RANDOM_INIT;
+
+      if(n_poption & n_PO_D_V){
+         char const *prngn;
+
+#if n_RANDOM_USE_XSSL
+         prngn = "*SSL RAND_*";
+#elif defined HAVE_POSIX_RANDOM
+         prngn = "POSIX/arc4random";
+#else
+         prngn = "builtin ARC4";
+#endif
+         n_err(_("Setting up PseudoRandomNumberGenerator: %s\n"), prngn);
+      }
+
+#if !defined HAVE_POSIX_RANDOM && !n_RANDOM_USE_XSSL
       a_aux_rand_init();
 #endif
+   }
 
    /* We use our base64 encoder with _NOPAD set, so ensure the encoded result
-    * with PAD stripped is still longer than what the user requests, easy way */
-   data = n_lofi_alloc(i = length + 3);
+    * with PAD stripped is still longer than what the user requests, easy way.
+    * The relation of base64 is fixed 3 in = 4 out, and we do not want to
+    * include the base64 PAD characters in our random string: give some pad */
+   i = len;
+   if((inlen = i % 3) != 0)
+      i += 3 - inlen;
+jinc1:
+   inlen = i >> 2;
+   oulen = inlen << 2;
+   if(oulen < len){
+      i += 3;
+      goto jinc1;
+   }
+   inlen = inlen + (inlen << 1);
+
+   indat = n_lofi_alloc(inlen +1);
 
    if(!(n_psonce & n_PSO_REPRODUCIBLE) || reprocnt_or_null == NULL){
-#ifndef HAVE_POSIX_RANDOM
-      while(i-- > 0)
-         data[i] = (char)a_aux_rand_get8();
+#if n_RANDOM_USE_XSSL
+      ssl_rand_bytes(indat, inlen);
+#elif !defined HAVE_POSIX_RANDOM
+      for(i = inlen; i-- > 0;)
+         indat[i] = (char)a_aux_rand_get8();
 #else
-      for(cp = data; i > 0;){
+      for(cp = indat, i = inlen; i > 0;){
          union {ui32_t i4; char c[4];} r;
          size_t j;
 
@@ -1017,7 +1071,7 @@ n_random_create_cp(size_t length, ui32_t *reprocnt_or_null){
       }
 #endif
    }else{
-      for(cp = data; i > 0;){
+      for(cp = indat, i = inlen; i > 0;){
          union {ui32_t i4; char c[4];} r;
          size_t j;
 
@@ -1043,15 +1097,30 @@ n_random_create_cp(size_t length, ui32_t *reprocnt_or_null){
       }
    }
 
-   assert(length + 3 < UIZ_MAX / 4);
-   b64_encode_buf(&b64, data, length + 3,
-      B64_SALLOC | B64_RFC4648URL | B64_NOPAD);
-   n_lofi_free(data);
+   oudat = (len >= oulen) ? dat : n_lofi_alloc(oulen +1);
+   b64.s = oudat;
+   b64_encode_buf(&b64, indat, inlen, B64_BUF | B64_RFC4648URL | B64_NOPAD);
+   assert(b64.l >= len);
+   memcpy(dat, b64.s, len);
+   dat[len] = '\0';
+   if(oudat != dat)
+      n_lofi_free(oudat);
 
-   assert(b64.l >= length);
-   b64.s[length] = '\0';
+   n_lofi_free(indat);
+
    NYD_LEAVE;
-   return b64.s;
+   return dat;
+}
+
+FL char *
+n_random_create_cp(size_t len, ui32_t *reprocnt_or_null){
+   char *dat;
+   NYD_ENTER;
+
+   dat = n_autorec_alloc(len +1);
+   dat = n_random_create_buf(dat, len, reprocnt_or_null);
+   NYD_LEAVE;
+   return dat;
 }
 
 FL si8_t
@@ -1110,7 +1179,7 @@ quadify(char const *inbuf, uiz_t inlen, char const *prompt, si8_t emptyrv)
    else if ((rv = boolify(inbuf, inlen, -1)) < 0 &&
          !ascncasecmp(inbuf, "ask-", 4) &&
          (rv = boolify(inbuf + 4, inlen - 4, -1)) >= 0 &&
-         (n_psonce & n_PSO_INTERACTIVE))
+         (n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT))
       rv = getapproval(prompt, rv);
    NYD_LEAVE;
    return rv;

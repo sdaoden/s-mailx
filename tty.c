@@ -84,7 +84,6 @@ static void
 a_tty__acthdl(int s) /* TODO someday, we won't need it no more */
 {
    NYD_X; /* Signal handler */
-   termios_state_reset();
    siglongjmp(a_tty__actjmp, s);
 }
 
@@ -96,7 +95,7 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
    int volatile sig;
    NYD_ENTER;
 
-   if(!(n_psonce & n_PSO_INTERACTIVE)){
+   if(!(n_psonce & n_PSO_INTERACTIVE) || (n_pstate & n_PS_ROBOT)){
       sig = 0;
       rv = noninteract_default;
       goto jleave;
@@ -124,8 +123,6 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
       rv = (boolify(termios_state.ts_linebuf, UIZ_MAX,
             noninteract_default) > 0);
 jrestore:
-   termios_state_reset();
-
    safe_signal(SIGHUP, ohup);
    safe_signal(SIGINT, oint);
 jleave:
@@ -157,11 +154,11 @@ getuser(char const * volatile query) /* TODO v15-compat obsolete */
    if (n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, query,
          &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL,NULL) >= 0)
       user = termios_state.ts_linebuf;
-jrestore:
-   termios_state_reset();
 
+jrestore:
    safe_signal(SIGHUP, ohup);
    safe_signal(SIGINT, oint);
+
    NYD_LEAVE;
    if (sig != 0)
       n_raise(sig);
@@ -1626,7 +1623,8 @@ a_tty_wboundary(struct a_tty_line *tlp, si32_t dir){/* TODO shell token-wise */
       wchar_t wc;
 
       wc = tcap[cur += (ui32_t)dir].tc_wc;
-      if(iswblank(wc) || iswpunct(wc)){
+      if(/*TODO not everywhere iswblank(wc)*/ wc == L' ' || wc == L'\t' ||
+            iswpunct(wc)){
          if(anynon)
             break;
       }else
@@ -2086,7 +2084,7 @@ jredo:
    }
 
    if(exp.s[exp.l - 1] != '/'){
-      if(stat(exp.s, &sb) || S_ISDIR(sb.st_mode)){
+      if(!stat(exp.s, &sb) && S_ISDIR(sb.st_mode)){
          shoup = n_string_assign_buf(shoup, exp.s, exp.l);
          shoup = n_string_push_c(shoup, '/');
          exp.s = n_string_cp(shoup);

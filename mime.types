@@ -72,9 +72,9 @@ application/x-lzip            lz
 application/zip               zip
 
 application/pgp-encrypted     pgp
-application/pgp-signature     sig asc
+@q@ application/pgp-signature     sig asc
 application/pkcs7-mime        p7m p7c
-application/pkcs7-signature   p7s
+@q@ application/pkcs7-signature   p7s
 application/postscript        ps eps epsf epsi
 
 image/gif                     gif

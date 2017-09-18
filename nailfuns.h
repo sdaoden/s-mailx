@@ -381,10 +381,12 @@ FL bool_t n_idna_to_ascii(struct n_string *out, char const *ibuf, size_t ilen);
             size_t ilen);*/
 #endif
 
-/* Get a (pseudo) random string of *length* bytes; returns salloc()ed buffer.
+/* Get a (pseudo) random string of *len* bytes, _not_ counting the NUL
+ * terminator, the second returns an n_autorec_alloc()ed buffer.
  * If n_PSO_REPRODUCIBLE and reprocnt_or_null not NULL then we produce
  * a reproducable string by using and managing that counter instead */
-FL char *n_random_create_cp(size_t length, ui32_t *reprocnt_or_null);
+FL char *n_random_create_buf(char *dat, size_t len, ui32_t *reprocnt_or_null);
+FL char *n_random_create_cp(size_t len, ui32_t *reprocnt_or_null);
 
 /* Check whether the argument string is a true (1) or false (0) boolean, or an
  * invalid string, in which case -1 is returned; if emptyrv is not -1 then it,
@@ -607,6 +609,9 @@ FL int c_echoerrn(void *v);
 
 /* `read' */
 FL int c_read(void *vp);
+
+/* `readall' */
+FL int c_readall(void *vp);
 
 /* `version' */
 FL int c_version(void *vp);
@@ -2152,9 +2157,10 @@ FL bool_t      n_anyof_buf(char const *template, char const *dat, size_t len);
  * next entry, trimming surrounding whitespace, and point *iolist to the next
  * entry or to NULL if no more entries are contained.  If ignore_empty is
  * set empty entries are started over.
- * See n_shexp_parse_token() for the new way that supports sh(1) quoting.
+ * strsep_esc() is identical but allows reverse solidus escaping of sep, too.
  * Return NULL or an entry */
-FL char *      n_strsep(char **iolist, char sep, bool_t ignore_empty);
+FL char *n_strsep(char **iolist, char sep, bool_t ignore_empty);
+FL char *n_strsep_esc(char **iolist, char sep, bool_t ignore_empty);
 
 /* Copy a string, lowercasing it as we go; *size* is buffer size of *dest*;
  * *dest* will always be terminated unless *size* is 0 */
@@ -2231,7 +2237,7 @@ FL struct str * n_str_add_buf(struct str *self, char const *buf, uiz_t buflen
  * The ->s and ->l of the string will be adjusted, but no NUL termination will
  * be applied to a possibly adjusted buffer!
  * If dofaults is set, " \t\n" is always trimmed (in addition) */
-FL struct str *n_str_trim(struct str *self);
+FL struct str *n_str_trim(struct str *self, enum n_str_trim_flags stf);
 FL struct str *n_str_trim_ifs(struct str *self, bool_t dodefaults);
 
 /* struct n_string
@@ -2690,6 +2696,11 @@ FL void        hmac_md5(unsigned char *text, int text_len, unsigned char *key,
  */
 
 #ifdef HAVE_XSSL
+/* Our wrapper for RAND_bytes(3) */
+# if n_RANDOM_USE_XSSL
+FL void ssl_rand_bytes(void *buf, size_t blen);
+# endif
+
 /*  */
 FL enum okay   ssl_open(struct url const *urlp, struct sock *sp);
 

@@ -9,14 +9,14 @@ MAXDISTANCE_PENALTY=5
 VERB=1
 
 MAILX='LC_ALL=C s-nail -#:/'
-OUT=gen-errors.h
+OUT="${SRCDIR}"gen-errors.h
 
 ##
 
 LC_ALL=C
 export LC_ALL MAXDISTANCE_PENALTY VERB MAILX OUT
 
-: ${awk:=`command -v awk`}
+[ -n "${awk}" ] || awk=awk
 
 # The set of errors we support
 ERRORS="\

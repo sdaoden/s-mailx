@@ -4,7 +4,8 @@ I n s t a l l i n g  S - n a i l / S - m a i l x
 1.  Compilation
 1.1 What if configuration fails?
 1.2 What if building fails?
-1.3 How can i enable debugging?
+1.3 What if tests fail?
+1.4 How can i enable debugging?
 2.  Notes on building the latest release
 
 1. Compilation
@@ -14,6 +15,7 @@ System specific notes can be found in the next section.
 All (optional) features are documented (and adjustable) in make.rc.
 Adjustments may also take place, and are usually done, from the command
 line, overriding those made in make.rc (if any).
+
 Without any adjustments all non-experimental features will be enabled,
 except some which provide redundant functionality (e.g., OPT_SPAMC is
 disabled because the generic OPT_SPAM_FILTER can do the same).
@@ -21,14 +23,16 @@ None of the features are "require"d by default, so that configuration
 won't fail shall any of them not be available or usable.
 The generated configuration is tracked: changes will be recognized
 and cause automatic cleanups and rebuilds as necessary.
+Experts could find it valuable to adjust some settings in config.h.
 
   $ make tangerine  # equals "$ make config build test install"
+  $ make citron     # equals "$ make config build install"
   $ make distclean  # *Completely* cleanup working directory
 
 With adjustments:
 
   $ make OPT_POP3=no OPT_SMTP=require tangerine
-  $ make OPT_CROSS_BUILD=y VAL_PREFIX=/some/nasty/prefix tangerine
+  $ make OPT_CROSS_BUILD=y VAL_PREFIX=/some/nasty/prefix citron
 
 With utility program and feature adjustments:
 
@@ -48,18 +52,21 @@ mechanism, e.g.:
 would create a "s-nail" binary and install a "s-nail" manual etc.  under
 the prefix "/usr" but rooted under "[./]xy", i.e., the binary would be
 installed as "[./]xy/usr/bin/s-nail".
+Out-of-tree compilation is supported; to use it, create the target
+directory of desire, change into it and run the make-emerge.sh script
+shipped with S-nail, then proceed as with normal in-tree building.
 The following make(1) targets exists, the default being `build':
 
-- tangerine   Shorthand for "$ make config build test install":
-              create or check and update configuration, build, test and
-              install.
+- tangerine   Shorthand for "$ make config build test install": create
+              or check and update configuration, build, test and install.
               The variable $DESTDIR will be honoured (see make.rc),
               but not be tracked in the configuration.
               In order to parallelize the `build' step pass a $MAKEJOBS
               variable, as shown below.
+- citron      Shorthand for "$ make config build install".
+              `build' parallelization via $MAKEJOBS, as shown below.
 - all         Shorthand for "$ make config build".
-              In order to parallelize the `build' step pass a $MAKEJOBS
-              variable, as shown below.
+              `build' parallelization via $MAKEJOBS, as shown below.
 
 - config      Only create or check and update the configuration.
 - build       Only build (using the existing configuration).
@@ -86,6 +93,7 @@ The following make(1) targets exists, the default being `build':
 Setting the make(1) variable $VERBOSE to an arbitrary value during
 `config' time, as in "$ make VERBOSE=xy tangerine", will change the
 output of the `all', `install' etc. targets to a more verbose one.
+
 If some libraries are missing that you know are installed on your
 system, or if other errors occur due to missing files but which you know
 exist, please ensure that the environment variable $C_INCLUDE_PATH
@@ -104,59 +112,41 @@ a Bourne / Korn / POSIX compatible shell:
   $ export C_INCLUDE_PATH LD_LIBRARY_PATH
   $ make tangerine
 
-The S-nail make system will also automatically integrate pkgsrc(7) paths
-into this mechanism.  (pkgsrc(7) is a portable package management system
-that is used as a default on diverse operating systems.)
-And if all else fails you can also forcefully pass in include directives
-and library paths by passing prefilled $INCS and $LIBS variables:
+Other than the standard paths /usr/{bin,include,lib} and /usr/local/[.]
+should possibly be placed first instead, presuming that they are meant
+to override things which usually exist in standard locations.
+If all else fails you can also forcefully pass in include directives and
+library paths by passing prefilled $INCS and $LIBS variables:
 
-  $ make INCS=-I/mypath/lib LIBS=-l/mypath/iconv tangerine
+  $ make INCS=-I/mypath/include LIBS="-L/mypath/lib -lmylib" tangerine
 
-Experts may find it valuable to adjust some settings in config.h.
-Note there are also some predefined configuration sets available, ment
-to be used instead of doing manual adjustments (in make.rc or) on the
-command line (names are case-insensitive):
+There are also some predefined configuration sets available, ment to be
+used instead of doing manual adjustments.
 
 - CONFIG=NULL, CONFIG=NULLI
-  Anything that can be turned off is off.  MIME can't.
-  The latter adds and "require"s iconv(3), though.
+  Anything that can be turned off is off.  MIME cannot.
+  The latter adds and "require"s iconv(3).
 
 - CONFIG=MINIMAL
-  This is the most plain mailx(1)-alike mode, but with MIME support and
-  (if available) character set conversion and regular expressions
-  built-in.  Dotlock files and the privileged separated dotlock helper.
-
-  "Require"s dotlocking and the privileged separated dotlock helper.
-
-- CONFIG=MEDIUM
   Possibly what people want who need nothing but a MIME-capable mailx(1)
   and don't regret improved usability for the rare interactive use
-  occasions.
+  occasions.  Adds documentation strings, the built-in line editor (MLE)
+  with history support and key bindings, error tracking, basic colour
+  support and IDNA addresses, as well as generic spam filter support.
 
-  Like MINIMAL, but with documentation strings, the built-in line editor
-  (MLE) with history support and key bindings, error tracking, basic
-  colour support and IDNA addresses.
-
-  "Require"s iconv(3), dotlocking and the privileged separated dotlock
-  helper.
+  "Require"s iconv(3), regex(3) and the dotlock helper.
 
 - CONFIG=NETSEND
   Sending messages directly to the mail provider via the SMTP protocol,
   instead of requiring a local mail-transfer-agent (MTA) who does.
 
-  Adds SSL/TLS, GSSAPI and .netrc file parsing on top of MEDIUM, on the
-  other hand spam filter support is removed.
+  Adds SSL/TLS, SMTP, GSSAPI and .netrc file parsing on top of MINIMAL.
 
-  "Require"s iconv(3), SSL/TLS, SMTP (sockets), dotlocking and the
-  privileged separated dotlock helper.
+  "Require"s iconv(3), SSL/TLS, SMTP (sockets) and the dotlock helper.
 
 - CONFIG=MAXIMAL
-  Anything on, including experimental features.
-  S-nail(1) gains mail fetching capabilities and heads more towards
-  being a full-featured mail-user-agent (MUA) with this configuration.
-
-  "Require"s iconv(3), regex(3), the MLE as well as dotlocking and the
-  privileged separated dotlock helper.
+  Like MINIMAL, but turns on all (other) options, also obsolete or
+  redundant ones, but none of them required.
 
 1.1 What if configuration fails?
 --------------------------------
@@ -168,7 +158,7 @@ The configuration process creates some files named "mk-config.*":
                  (Removing this file reenables configuration even after
                  a screwed up configuration, e.g., due to power failure.)
 - mk-config.h    C program header produced according to mk-config.lst.
-- mk-config.ev   A set of sh(1) variable for reproducible compile runs.
+- mk-config.ev   A set of sh(1) variables for reproducible compile runs.
 - mk-config.inc  List of C header include paths, as compiler directives.
 - mk-config.lib  List of used library information, as compiler directives.
 
@@ -192,7 +182,27 @@ Even worse!  This should not happen if configuration succeeded!  It
 would be very kind and highly appreciated if you would report this
 to the mailing-list.
 
-1.3 How can i enable debugging?
+1.3 What if tests fail?
+-----------------------
+
+That would be a disaster.  Please contact the mailing-list!
+If you have used OPT_AUTOCC (the default) and a non-debug target, you
+could try to reconfigure with an additional cc_maxopt=1 on the command
+line and report whether that turns the green testing light on.
+
+Otherwise you could run the cc-test.sh script in --mae-test mode and
+invoke the failing tests (testing echoes the actual test names in
+brackets): this will produce output files of the form mae-test-TESTXY.
+It would be nice if these outputs could be send to the mailing-list;
+possibly stored altogether in a compressed tar(1) file.  For example:
+
+  $ ./cc-test.sh --mae-test ./s-nail t_behave_localopts t_behave_mbox
+  $ tar -czf badtests.tar.gz mae-test-*
+  $ rm mae-test-*
+
+Thank you!
+
+1.4 How can i enable debugging?
 -------------------------------
 
 Please ensure OPT_DEBUG=yes is enabled during compilation, as in
@@ -242,7 +252,7 @@ Thank you!
 
     By forcing ISO C99 mode when compiling these warnings vanish, e.g.,
     with gcc(1) and clang(1): with OPT_AUTOCC pass
-    "EXTRA_CFLAGS=-std=c99", otherwise ensure -std=c99 is set in $CFLAGS.
+    "EXTRA_CFLAGS=-std=c99", otherwise ensure -std=c99 in $CFLAGS.
 
 Development and/or regular tests:
 
@@ -264,7 +274,6 @@ Occasional tests:
   * With OPT_AUTOCC: we try to use Sun cc(1) whenever we find it.
     If your gcc(1) installation is doing alright you have to turn
     OPT_AUTOCC off and use $CC, $CFLAGS and $LDFLAGS.
-  * Warnings about iconv(3) prototypes which i will not address.
   * Some notes collected on earlier trials:
     + We may forcefully disable stack protectors on SunOS/gcc because of
       linking errors seen in earlier tests.
@@ -275,11 +284,8 @@ Occasional tests:
       then you have to overwrite this symbol with __builtin_va_start,
       e.g., in conjunction with OPT_AUTOCC add this:
        EXTRA_CFLAGS='-D__builtin_stdarg_start=__builtin_va_start'
-    + I couldn't get us going on SunOS 5.9 Sparc: the build system had
-      to be extended to check for UINTPTR_MAX being defined as the empty
-      string and similar very special things.
   - The OpenCSW build cluster consists of SunOS 5.9 - 5.11 machines
-    under SPARC and i386.  And it looked good on 2017-08-03.
+    under SPARC and i386.  And it looked good on 2017-09-15.
 . Void Linux <https://www.voidlinux.eu/> (x86; not in 2017 FIXME)
 
 # s-ts-mode

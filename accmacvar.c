@@ -4,13 +4,15 @@
  *@ - add an entry to nail.h:enum okeys
  *@ - run make-okey-map.pl
  *@ - update the manual!
+ *@ TODO . Improve support for chains so that we can apply the property checks
+ *@ TODO   of the base variable to -HOST and -USER@HOST variants!  Add some!!
+ *@ TODO . once we can have non-fatal !0 returns for commands, we should
+ *@ TODO   return error if "(environ)? unset" goes for non-existent.
  *@ TODO . should be recursive environment based.
  *@ TODO   Otherwise, the `localopts' should be an attribute of the go.c
  *@ TODO   command context, so that it belongs to the execution context
  *@ TODO   we are running in, instead of being global data.  See, e.g.,
  *@ TODO   the a_GO_SPLICE comment in go.c.
- *@ TODO . once we can have non-fatal !0 returns for commands, we should
- *@ TODO   return error if "(environ)? unset" goes for non-existent.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -90,23 +92,32 @@ enum a_amv_loflags{
  * _IMPORT implies _ENV; it doesn't verify anything... */
 enum a_amv_var_flags{
    a_AMV_VF_NONE = 0,
+
+   /* The basic set of flags, also present in struct a_amv_var_map.avm_flags */
    a_AMV_VF_BOOL = 1u<<0,     /* ok_b_* */
    a_AMV_VF_VIRT = 1u<<1,     /* "Stateless" automatic variable */
-   a_AMV_VF_NOLOPTS = 1u<<2,  /* May not be tracked by `localopts' */
-   a_AMV_VF_RDONLY = 1u<<3,   /* May not be set by user */
-   a_AMV_VF_NODEL = 1u<<4,    /* May not be deleted */
-   a_AMV_VF_NOTEMPTY = 1u<<5, /* May not be assigned an empty value */
-   a_AMV_VF_NOCNTRLS = 1u<<6, /* Value may not contain control characters */
-   a_AMV_VF_NUM = 1u<<7,      /* Value must be a 32-bit number */
-   a_AMV_VF_POSNUM = 1u<<8,   /* Value must be positive 32-bit number */
-   a_AMV_VF_LOWER = 1u<<9,    /* Values will be stored in a lowercase version */
-   a_AMV_VF_VIP = 1u<<10,     /* Wants _var_check_vips() evaluation */
-   a_AMV_VF_IMPORT = 1u<<11,  /* Import ONLY from environ (pre n_PSO_STARTED) */
-   a_AMV_VF_ENV = 1u<<12,     /* Update environment on change */
-   a_AMV_VF_I3VAL = 1u<<13,   /* Has an initial value */
-   a_AMV_VF_DEFVAL = 1u<<14,  /* Has a default value */
-   a_AMV_VF_LINKED = 1u<<15,  /* `environ' linked */
-   a_AMV_VF__MASK = (1u<<(15+1)) - 1
+   a_AMV_VF_CHAIN = 1u<<2,    /* Is a variable chain (-USER{,@HOST} variants) */
+   a_AMV_VF_VIP = 1u<<3,      /* Wants _var_check_vips() evaluation */
+   a_AMV_VF_RDONLY = 1u<<4,   /* May not be set by user */
+   a_AMV_VF_NODEL = 1u<<5,    /* May not be deleted */
+   a_AMV_VF_I3VAL = 1u<<6,    /* Has an initial value */
+   a_AMV_VF_DEFVAL = 1u<<7,   /* Has a default value */
+   a_AMV_VF_IMPORT = 1u<<8,   /* Import ONLY from environ (pre n_PSO_STARTED) */
+   a_AMV_VF_ENV = 1u<<9,      /* Update environment on change */
+   a_AMV_VF_NOLOPTS = 1u<<10, /* May not be tracked by `localopts' */
+   a_AMV_VF_NOTEMPTY = 1u<<11, /* May not be assigned an empty value */
+   a_AMV_VF_NOCNTRLS = 1u<<12, /* Value may not contain control characters */
+   a_AMV_VF_NUM = 1u<<13,     /* Value must be a 32-bit number */
+   a_AMV_VF_POSNUM = 1u<<14,  /* Value must be positive 32-bit number */
+   a_AMV_VF_LOWER = 1u<<15,   /* Values will be stored in a lowercase version */
+   a_AMV_VF__MASK = (1u<<(15+1)) - 1,
+
+   /* Extended flags, not part of struct a_amv_var_map.avm_flags */
+   a_AMV_VF_EXT_LINKED = 1u<<24,       /* `environ' link'ed */
+   a_AMV_VF_EXT_FROZEN = 1u<<25,       /* Has been set by -S,.. */
+   a_AMV_VF_EXT_FROZEN_UNSET = 1u<<26, /* ..and was used to unset a variable */
+   a_AMV_VF_EXT__FROZEN_MASK = a_AMV_VF_EXT_FROZEN | a_AMV_VF_EXT_FROZEN_UNSET,
+   a_AMV_VF_EXT__MASK = (1u<<(26+1)) - 1
 };
 
 /* We support some special parameter names for one(+)-letter variable names;
@@ -195,17 +206,17 @@ struct a_amv_var{
    struct a_amv_var *av_link;
    char *av_value;
 #ifdef HAVE_PUTENV
-   char *av_env;              /* Actively managed putenv(3) memory */
+   char *av_env;              /* Actively managed putenv(3) memory, or NULL */
 #endif
-   ui16_t av_flags;           /* enum a_amv_var_flags */
-   char av_name[n_VFIELD_SIZE(6)];
+   ui32_t av_flags;           /* enum a_amv_var_flags inclusive extended bits */
+   char av_name[n_VFIELD_SIZE(4)];
 };
-n_CTA(a_AMV_VF__MASK <= UI16_MAX, "Enumeration excesses storage datatype");
+n_CTA(a_AMV_VF_EXT__MASK <= UI32_MAX, "Enumeration excesses storage datatype");
 
 struct a_amv_var_map{
    ui32_t avm_hash;
    ui16_t avm_keyoff;
-   ui16_t avm_flags;    /* enum a_amv_var_flags */
+   ui16_t avm_flags;    /* enum a_amv_var_flags without extended bits */
 };
 n_CTA(a_AMV_VF__MASK <= UI16_MAX, "Enumeration excesses storage datatype");
 
@@ -236,8 +247,8 @@ struct a_amv_var_carrier{
 };
 
 /* Include constant make-okey-map.pl output, and the generated version data */
-#include "gen-version.h"
-#include "gen-okeys.h"
+#include <gen-version.h>
+#include <gen-okeys.h>
 
 /* The currently active account */
 static struct a_amv_mac *a_amv_acc_curr;
@@ -320,7 +331,7 @@ static bool_t a_amv_var_revlookup(struct a_amv_var_carrier *avcp,
 
 /* Lookup a variable from .avc_(map|name|hash), return whether it was found.
  * Sets .avc_prime; .avc_var is NULL if not found.
- * Here it is where we care for _I3VAL and _DEFVAL, too.
+ * Here it is where we care for _I3VAL and _DEFVAL.
  * An _I3VAL will be "consumed" as necessary anyway, but it won't be used to
  * create a new variable if i3val_nonew is true; if i3val_nonew is TRUM1 then
  * we set .avc_var to -1 and return true if that was the case, otherwise we'll
@@ -344,7 +355,7 @@ static bool_t a_amv_var__putenv(struct a_amv_var_carrier *avcp,
 /* Clear var from .avc_(map|name|hash); sets .avc_var=NULL, return success */
 static bool_t a_amv_var_clear(struct a_amv_var_carrier *avcp, bool_t force_env);
 
-static bool_t a_amv_var__clearenv(char const *name, char *value);
+static bool_t a_amv_var__clearenv(char const *name, struct a_amv_var *avp);
 
 /* List all variables */
 static void a_amv_var_show_all(void);
@@ -555,8 +566,7 @@ a_amv_mac_show(enum a_amv_mac_flags amf){
 
    if((fp = Ftmp(NULL, "deflist", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
          NULL){
-      n_perr(_("Can't create temporary file for `define' or `account' listing"),
-         0);
+      n_perr(_("`define' or `account' list: cannot create temporary file"), 0);
       goto jleave;
    }
 
@@ -696,17 +706,17 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
    rv = TRU1;
 jleave:
    if(line.s != NULL)
-      free(line.s);
+      n_free(line.s);
    NYD2_LEAVE;
    return rv;
 
 jerr:
    for(llp = ll_head; llp != NULL; llp = llp->ll_next)
-      free(llp->ll_amlp);
+      n_free(llp->ll_amlp);
    /*
     * if(amp != NULL){
-    *   free(amp->am_line_dat);
-    *   free(amp);
+    *   n_free(amp->am_line_dat);
+    *   n_free(amp);
     *}*/
    goto jleave;
 }
@@ -751,9 +761,9 @@ a_amv_mac_free(struct a_amv_mac *amp){
    NYD2_ENTER;
 
    for(amlpp = amp->am_line_dat; *amlpp != NULL; ++amlpp)
-      free(*amlpp);
-   free(amp->am_line_dat);
-   free(amp);
+      n_free(*amlpp);
+   n_free(amp->am_line_dat);
+   n_free(amp);
    NYD2_LEAVE;
 }
 
@@ -780,24 +790,21 @@ a_amv_lopts_add(struct a_amv_lostack *alp, char const *name,
 
    nl = strlen(name) +1;
    vl = (oavp != NULL) ? strlen(oavp->av_value) +1 : 0;
-   avp = n_alloc(n_VSTRUCT_SIZEOF(struct a_amv_var, av_name) + nl + vl);
+   avp = n_calloc(1, n_VSTRUCT_SIZEOF(struct a_amv_var, av_name) + nl + vl);
    avp->av_link = alp->as_lopts;
    alp->as_lopts = avp;
-   memcpy(avp->av_name, name, nl);
-   if(vl == 0){
-      avp->av_value = NULL;
-      avp->av_flags = 0;
-#ifdef HAVE_PUTENV
-      avp->av_env = NULL;
-#endif
-   }else{
+   if(vl != 0){
       avp->av_value = &avp->av_name[nl];
       avp->av_flags = oavp->av_flags;
       memcpy(avp->av_value, oavp->av_value, vl);
 #ifdef HAVE_PUTENV
-      avp->av_env = (oavp->av_env == NULL) ? NULL : sstrdup(oavp->av_env);
+      if(oavp->av_env != NULL)
+         avp->av_env = sstrdup(oavp->av_env);
+      assert(avp->av_env == NULL ||
+         (avp->av_flags & (a_AMV_VF_ENV | a_AMV_VF_EXT_LINKED)));
 #endif
    }
+   memcpy(avp->av_name, name, nl);
 jleave:
    NYD2_LEAVE;
 }
@@ -817,7 +824,7 @@ a_amv_lopts_unroll(struct a_amv_var **avpp){
       x = avp;
       avp = avp->av_link;
       n_PS_ROOT_BLOCK(n_var_vset(x->av_name, (uintptr_t)x->av_value));
-      free(x);
+      n_free(x);
    }
    a_amv_lopts = save_alp;
    NYD2_LEAVE;
@@ -854,7 +861,7 @@ static void
 a_amv_var_free(char *cp){
    NYD2_ENTER;
    if(cp[0] != '\0' && cp != n_0 && cp != n_1 && cp != n_m1)
-      free(cp);
+      n_free(cp);
    NYD2_LEAVE;
 }
 
@@ -902,6 +909,9 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
    }else if(avvm == a_AMV_VIP_SET_POST){
       switch(okey){
       default:
+         break;
+      case ok_b_ask:
+         ok_bset(asksub);
          break;
       case ok_b_debug:
          n_poption |= n_PO_DEBUG;
@@ -964,6 +974,9 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
    }else{
       switch(okey){
       default:
+         break;
+      case ok_b_ask:
+         ok_bclear(asksub);
          break;
       case ok_b_debug:
          n_poption &= ~n_PO_DEBUG;
@@ -1167,11 +1180,29 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
       for(lavp = NULL, avp = *avpp; avp != NULL; lavp = avp, avp = avp->av_link)
          if(!strcmp(avp->av_name, avcp->avc_name)){
             /* Relink as head, hope it "sorts on usage" over time.
-             * _clear() relies on this behaviour */
+             * The code relies on this behaviour! */
             if(lavp != NULL){
                lavp->av_link = avp->av_link;
                avp->av_link = *avpp;
                *avpp = avp;
+            }
+
+            /* If this setting has been established via -S and we still have
+             * not reached the _STARTED_CONFIG program state, it may have been
+             * an explicit "clearance" that is to be treated as unset.
+             * Because that is a special condition that (has been hacked in
+             * later and) needs to be encapsulated in lower levels, but not
+             * of interest if _set() or _clear() called us */
+            switch(avp->av_flags & a_AMV_VF_EXT__FROZEN_MASK){
+            case a_AMV_VF_EXT_FROZEN | a_AMV_VF_EXT_FROZEN_UNSET:
+               if(!i3val_nonew){
+                  avcp->avc_var = avp;
+                  avp = NULL;
+                  goto j_leave;
+               }
+               /* FALLTHRU */
+            default:
+               break;
             }
             goto jleave;
          }
@@ -1184,6 +1215,7 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
       if(n_UNLIKELY((avmp->avm_flags & (a_AMV_VF_IMPORT | a_AMV_VF_ENV)) != 0)){
          if(n_LIKELY((cp = getenv(avcp->avc_name)) != NULL)){
             /* May be better not to use that one, though? */
+            /* TODO Outsource the tests into a _shared_ test function! */
             bool_t isempty, isbltin;
 
             isempty = (*cp == '\0' &&
@@ -1192,6 +1224,8 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
                   ) != 0);
 
             if(n_UNLIKELY(isempty)){
+               n_err(_("Environment variable must not be empty: %s\n"),
+                  avcp->avc_name);
                if(!isbltin)
                   goto jerr;
             }else if(n_LIKELY(*cp != '\0')){
@@ -1233,7 +1267,7 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
 
          for(i = 0; arr[i] != NULL; ++i)
             if(arr[i]->avdv_okey == avcp->avc_okey){
-               cp = (avmp->avm_flags & a_AMV_VF_BOOL) ? n_empty
+               cp = (avmp->avm_flags & a_AMV_VF_BOOL) ? n_1
                      : arr[i]->avdv_value;
                /* Remove this entry, hope entire block becomes no-op asap */
                do
@@ -1248,6 +1282,17 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
             }
       }
 
+      /* */
+jdefval:
+      if(n_UNLIKELY(avmp->avm_flags & a_AMV_VF_DEFVAL) != 0){
+         for(i = 0; i < a_AMV_VAR_DEFVALS_CNT; ++i)
+            if(a_amv_var_defvals[i].avdv_okey == avcp->avc_okey){
+               cp = (avmp->avm_flags & a_AMV_VF_BOOL) ? n_1
+                     : a_amv_var_defvals[i].avdv_value;
+               goto jnewval;
+            }
+      }
+
       /* The virtual variables */
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_VIRT) != 0)){
          for(i = 0; i < a_AMV_VAR_VIRTS_CNT; ++i)
@@ -1257,24 +1302,13 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
             }
          /* Not reached */
       }
-
-      /* Place this last because once it is set first the variable will never
-       * be removed again and thus match in the first block above */
-jdefval:
-      if(n_UNLIKELY(avmp->avm_flags & a_AMV_VF_DEFVAL) != 0){
-         for(i = 0; i < a_AMV_VAR_DEFVALS_CNT; ++i)
-            if(a_amv_var_defvals[i].avdv_okey == avcp->avc_okey){
-               cp = (avmp->avm_flags & a_AMV_VF_BOOL) ? n_empty
-                     : a_amv_var_defvals[i].avdv_value;
-               goto jnewval;
-            }
-      }
    }
 
 jerr:
    avp = NULL;
 jleave:
    avcp->avc_var = avp;
+j_leave:
    NYD2_LEAVE;
    return (avp != NULL);
 
@@ -1296,15 +1330,12 @@ jnewval:
 
       l = strlen(avcp->avc_name) +1;
       avcp->avc_var =
-      avp = n_alloc(n_VSTRUCT_SIZEOF(struct a_amv_var, av_name) + l);
+      avp = n_calloc(1, n_VSTRUCT_SIZEOF(struct a_amv_var, av_name) + l);
       avp->av_link = *(avpp = &a_amv_vars[avcp->avc_prime]);
       *avpp = avp;
-      memcpy(avp->av_name, avcp->avc_name, l);
-#ifdef HAVE_PUTENV
-      avp->av_env = NULL;
-#endif
       avp->av_flags = avmp->avm_flags;
       avp->av_value = a_amv_var_copy(cp);
+      memcpy(avp->av_name, avcp->avc_name, l);
 
       if(avp->av_flags & a_AMV_VF_ENV)
          a_amv_var__putenv(avcp, avp);
@@ -1350,7 +1381,7 @@ a_amv_var_vsc_global(struct a_amv_var_carrier *avcp){
 
    avcp->avc_hash = avmp->avm_hash;
    avcp->avc_map = avmp;
-   rv = a_amv_var_lookup(avcp, TRU1) ? avcp->avc_var->av_value : NULL;
+   rv = a_amv_var_lookup(avcp, FAL0) ? avcp->avc_var->av_value : NULL;
    NYD2_LEAVE;
    return rv;
 }
@@ -1578,51 +1609,85 @@ jeavmp:
 
    rv = TRU1;
    a_amv_var_lookup(avcp, TRU1);
+   avp = avcp->avc_var;
 
-   /* Don't care what happens later on, store this in the unroll list */
-   if(a_amv_lopts != NULL &&
+   /* If this setting had been established via -S and we still have not reached
+    * the _STARTED_CONFIG program state, silently ignore request! */
+   if(n_UNLIKELY(avp != NULL) &&
+         n_UNLIKELY((avp->av_flags & a_AMV_VF_EXT__FROZEN_MASK) != 0)){
+      if(!(n_psonce & n_PSO_STARTED_CONFIG)){
+         if((n_pstate & n_PS_ROOT) ||
+               (!(n_psonce & n_PSO_STARTED_GETOPT) &&
+                (n_poption & n_PO_S_FLAG_TEMPORARY)))
+            goto joval_and_go;
+         if(n_poption & n_PO_D_VV)
+            n_err(_("Temporarily frozen by -S, not `set'ing: %s\n"),
+               avcp->avc_name);
+         goto jleave;
+      }
+
+      /* Otherwise, if -S freezing was an `unset' request, be very simple and
+       * avoid tampering with that very special case we are not really prepared
+       * for just one more line of code: throw the old thing away! */
+      if(!(avp->av_flags & a_AMV_VF_EXT_FROZEN_UNSET))
+         avp->av_flags &= ~a_AMV_VF_EXT__FROZEN_MASK;
+      else{
+         assert(avp->av_value == n_empty);
+         a_amv_vars[avcp->avc_prime] = avp->av_link;
+         n_free(avp);
+         avcp->avc_var = avp = NULL;
+      }
+   }
+
+   if(n_UNLIKELY(a_amv_lopts != NULL) &&
          (avmp == NULL || !(avmp->avm_flags & a_AMV_VF_NOLOPTS)))
       a_amv_lopts_add(a_amv_lopts, avcp->avc_name, avcp->avc_var);
 
-   if((avp = avcp->avc_var) == NULL){
+   if(avp != NULL)
+joval_and_go:
+      oval = avp->av_value;
+   else{
       struct a_amv_var **avpp;
       size_t l;
 
       l = strlen(avcp->avc_name) +1;
-      avcp->avc_var = avp = n_alloc(n_VSTRUCT_SIZEOF(struct a_amv_var, av_name
-            ) + l);
+      avcp->avc_var = avp = n_calloc(1,
+            n_VSTRUCT_SIZEOF(struct a_amv_var, av_name) + l);
       avp->av_link = *(avpp = &a_amv_vars[avcp->avc_prime]);
       *avpp = avp;
-#ifdef HAVE_PUTENV
-      avp->av_env = NULL;
-#endif
-      memcpy(avp->av_name, avcp->avc_name, l);
       avp->av_flags = (avmp != NULL) ? avmp->avm_flags : 0;
+      memcpy(avp->av_name, avcp->avc_name, l);
       oval = n_UNCONST(n_empty);
-   }else
-      oval = avp->av_value;
+   }
 
    if(avmp == NULL)
       avp->av_value = a_amv_var_copy(value);
    else{
       /* Via `set' etc. the user may give even boolean options non-boolean
        * values, ignore that and force boolean */
-      if(avp->av_flags & a_AMV_VF_BOOL){
+      if(!(avp->av_flags & a_AMV_VF_BOOL))
+         avp->av_value = a_amv_var_copy(value);
+      else{
          if(!(n_pstate & n_PS_ROOT) && (n_poption & n_PO_D_VV) &&
                *value != '\0')
             n_err(_("Ignoring value of boolean variable: %s: %s\n"),
                avcp->avc_name, value);
          avp->av_value = n_UNCONST(n_1);
-      }else
-         avp->av_value = a_amv_var_copy(value);
+      }
    }
 
    if(force_env && !(avp->av_flags & a_AMV_VF_ENV))
-      avp->av_flags |= a_AMV_VF_LINKED;
-   if(avp->av_flags & (a_AMV_VF_ENV | a_AMV_VF_LINKED))
+      avp->av_flags |= a_AMV_VF_EXT_LINKED;
+   if(avp->av_flags & (a_AMV_VF_ENV | a_AMV_VF_EXT_LINKED))
       rv = a_amv_var__putenv(avcp, avp);
    if(avp->av_flags & a_AMV_VF_VIP)
       a_amv_var_check_vips(a_AMV_VIP_SET_POST, avcp->avc_okey, value);
+
+   avp->av_flags &= ~a_AMV_VF_EXT__FROZEN_MASK;
+   if(!(n_psonce & n_PSO_STARTED_GETOPT) &&
+         (n_poption & n_PO_S_FLAG_TEMPORARY) != 0)
+      avp->av_flags |= a_AMV_VF_EXT_FROZEN;
+
    a_amv_var_free(oval);
 jleave:
    NYD2_LEAVE;
@@ -1645,11 +1710,13 @@ a_amv_var__putenv(struct a_amv_var_carrier *avcp, struct a_amv_var *avp){
    if((rv = (putenv(cp) == 0))){
       char *ocp;
 
-      if((ocp = avp->av_env) != NULL)
-         free(ocp);
+      ocp = avp->av_env;
       avp->av_env = cp;
-   }else
-      free(cp);
+      cp = ocp;
+   }
+
+   if(cp != NULL)
+      n_free(cp);
 #endif
    NYD2_LEAVE;
    return rv;
@@ -1680,77 +1747,130 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp, bool_t force_env){
    rv = TRU1;
 
    if(n_UNLIKELY(!a_amv_var_lookup(avcp, TRUM1))){
-      if(force_env){
+      assert(avcp->avc_var == NULL);
+      /* This may be a clearance request from the command line, via -S, and we
+       * need to keep track of that!  Unfortunately we are not prepared for
+       * this, really, so we need to create a fake entry that is known and
+       * handled correctly by the lowermost variable layer! */
+      if(n_UNLIKELY(!(n_psonce & n_PSO_STARTED_GETOPT)) &&
+            (n_poption & n_PO_S_FLAG_TEMPORARY)) Jfreeze:{
+         size_t l;
+
+         l = strlen(avcp->avc_name) +1;
+         avp = n_calloc(1, n_VSTRUCT_SIZEOF(struct a_amv_var, av_name) + l);
+         avp->av_link = *(avpp = &a_amv_vars[avcp->avc_prime]);
+         *avpp = avp;
+         avp->av_value = n_UNCONST(n_empty); /* Sth. covered by _var_free()! */
+         avp->av_flags = (avmp != NULL ? avmp->avm_flags : 0) |
+               a_AMV_VF_EXT_FROZEN | a_AMV_VF_EXT_FROZEN_UNSET;
+         memcpy(avp->av_name, avcp->avc_name, l);
+
+         if(force_env || (avmp != NULL && (avmp->avm_flags & a_AMV_VF_ENV)))
+            goto jforce_env;
+      }else if(force_env){
 jforce_env:
          rv = a_amv_var__clearenv(avcp->avc_name, NULL);
       }else if(!(n_pstate & (n_PS_ROOT | n_PS_ROBOT)) && (n_poption & n_PO_D_V))
-         n_err(_("Can't unset undefined variable: %s\n"), avcp->avc_name);
+         n_err(_("Cannot unset undefined variable: %s\n"), avcp->avc_name);
       goto jleave;
-   }else if(avcp->avc_var == (struct a_amv_var*)-1){
+   }else if((avp = avcp->avc_var) == (struct a_amv_var*)-1){
+      /* Clearance request from command line, via -S?  As above.. */
+      if(n_UNLIKELY(!(n_psonce & n_PSO_STARTED_GETOPT) &&
+            (n_poption & n_PO_S_FLAG_TEMPORARY) != 0))
+         goto Jfreeze;
       avcp->avc_var = NULL;
       if(force_env)
          goto jforce_env;
       goto jleave;
    }
 
-   if(a_amv_lopts != NULL &&
+   /* If this setting has been established via -S and we still have not reached
+    * the _STARTED_CONFIG program state, silently ignore request!
+    * XXX All this is very complicated for the tenth of a second */
+   if(avp != NULL &&
+         n_UNLIKELY((avp->av_flags & a_AMV_VF_EXT__FROZEN_MASK) != 0)){
+      if(!(n_psonce & n_PSO_STARTED_CONFIG)){
+         if((n_pstate & n_PS_ROOT) ||
+               (!(n_psonce & n_PSO_STARTED_GETOPT) &&
+                (n_poption & n_PO_S_FLAG_TEMPORARY))){
+            /* Be aware this may turn a set into an unset! */
+            if(!(avp->av_flags & a_AMV_VF_EXT_FROZEN_UNSET)){
+               if(avp->av_flags & a_AMV_VF_DEFVAL)
+                  goto jdefault_path;
+               a_amv_var_free(avp->av_value);
+               avp->av_flags |= a_AMV_VF_EXT_FROZEN_UNSET;
+               avp->av_value = n_UNCONST(n_empty); /* _var_free() covered */
+               if(avp->av_flags & (a_AMV_VF_ENV | a_AMV_VF_EXT_LINKED))
+                  goto jforce_env;
+            }
+            goto jleave;
+         }
+         if(n_poption & n_PO_D_VV)
+            n_err(_("Temporarily frozen by -S, not `unset'ting: %s\n"),
+               avcp->avc_name);
+         goto jleave;
+      }
+      avp->av_flags &= ~a_AMV_VF_EXT__FROZEN_MASK;
+   }
+
+   if(n_UNLIKELY(a_amv_lopts != NULL) &&
          (avmp == NULL || !(avmp->avm_flags & a_AMV_VF_NOLOPTS)))
       a_amv_lopts_add(a_amv_lopts, avcp->avc_name, avcp->avc_var);
 
+jdefault_path:
    avp = avcp->avc_var;
    avcp->avc_var = NULL;
    avpp = &a_amv_vars[avcp->avc_prime];
    assert(*avpp == avp); /* (always listhead after lookup()) */
    *avpp = (*avpp)->av_link;
 
-   /* C99 */{
-      char *envval;
-
-#ifdef HAVE_SETENV
-      envval = NULL;
-#else
-      envval = avp->av_env;
-#endif
-      if((avp->av_flags & (a_AMV_VF_ENV | a_AMV_VF_LINKED)) || envval != NULL)
-         rv = a_amv_var__clearenv(avp->av_name, envval);
-   }
+   if(avp->av_flags & (a_AMV_VF_ENV | a_AMV_VF_EXT_LINKED))
+      rv = a_amv_var__clearenv(avp->av_name, avp);
    a_amv_var_free(avp->av_value);
-   free(avp);
+   n_free(avp);
 
    /* XXX Fun part, extremely simple-minded for now: if this variable has
     * XXX a default value, immediately reinstantiate it!  TODO Heh? */
-   if(n_UNLIKELY(avmp != NULL && (avmp->avm_flags & a_AMV_VF_DEFVAL) != 0))
+   if(n_UNLIKELY(avmp != NULL && (avmp->avm_flags & a_AMV_VF_DEFVAL) != 0)){
       a_amv_var_lookup(avcp, TRU1);
+      if(n_UNLIKELY(!(n_psonce & n_PSO_STARTED_GETOPT)) &&
+                  (n_poption & n_PO_S_FLAG_TEMPORARY))
+         avp->av_flags |= a_AMV_VF_EXT_FROZEN;
+   }
 jleave:
    NYD2_LEAVE;
    return rv;
 }
 
 static bool_t
-a_amv_var__clearenv(char const *name, char *value){
+a_amv_var__clearenv(char const *name, struct a_amv_var *avp){
 #ifndef HAVE_SETENV
    extern char **environ;
    char **ecpp;
 #endif
    bool_t rv;
    NYD2_ENTER;
-   n_UNUSED(value);
 
 #ifdef HAVE_SETENV
+   n_UNUSED(avp);
    unsetenv(name);
    rv = TRU1;
 #else
-   if(value != NULL)
+   n_UNUSED(name);
+   /* TODO a_amv_var__clearenv without HAVE_SETENV does not handle yet
+    * TODO existing (non-linked) environment variables! */
+   if(avp != NULL)
       for(ecpp = environ; *ecpp != NULL; ++ecpp)
-         if(*ecpp == value){
-            free(value);
+         if(*ecpp == avp->av_env){
             do
                ecpp[0] = ecpp[1];
             while(*ecpp++ != NULL);
+            n_free(avp->av_env);
+            avp->av_env = NULL;
             break;
          }
    rv = TRU1;
-#endif
+#endif /* HAVE_SETENV */
    NYD2_LEAVE;
    return rv;
 }
@@ -1765,7 +1885,7 @@ a_amv_var_show_all(void){
    NYD2_ENTER;
 
    if((fp = Ftmp(NULL, "setlist", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
-      n_perr(_("Can't create temporary file for `set' listing"), 0);
+      n_perr(_("`set' list: cannot create temporary file"), 0);
       goto jleave;
    }
 
@@ -1818,6 +1938,7 @@ static size_t
 a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
    struct a_amv_var_carrier avc;
    char const *quote;
+   struct a_amv_var *avp;
    bool_t isset;
    size_t i;
    NYD2_ENTER;
@@ -1827,6 +1948,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
 
    a_amv_var_revlookup(&avc, name);
    isset = a_amv_var_lookup(&avc, FAL0);
+   avp = avc.avc_var;
 
    if(n_poption & n_PO_D_V){
       if(avc.avc_map == NULL){
@@ -1838,32 +1960,40 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
             char msg[22];
          } const tbase[] = {
             {a_AMV_VF_VIRT, "virtual"},
+            {a_AMV_VF_CHAIN, "variable chain"},
             {a_AMV_VF_RDONLY, "read-only"},
             {a_AMV_VF_NODEL, "nodelete"},
+            {a_AMV_VF_I3VAL, "initial-value"},
+            {a_AMV_VF_DEFVAL, "default-value"},
+            {a_AMV_VF_IMPORT, "import-environ-first\0"}, /* assert NUL in max */
+            {a_AMV_VF_ENV, "sync-environ"},
+            {a_AMV_VF_NOLOPTS, "no-localopts"},
             {a_AMV_VF_NOTEMPTY, "notempty"},
             {a_AMV_VF_NOCNTRLS, "no-control-chars"},
             {a_AMV_VF_NUM, "number"},
             {a_AMV_VF_POSNUM, "positive-number"},
-            {a_AMV_VF_IMPORT, "import-environ-first\0"},
-            {a_AMV_VF_ENV, "sync-environ"},
-            {a_AMV_VF_I3VAL, "initial-value"},
-            {a_AMV_VF_DEFVAL, "default-value"},
-            {a_AMV_VF_LINKED, "`environ' link"}
          }, *tp;
 
          for(tp = tbase; PTRCMP(tp, <, &tbase[n_NELEM(tbase)]); ++tp)
-            if(isset ? (avc.avc_var->av_flags & tp->flag)
+            if(isset ? (avp->av_flags & tp->flag)
                   : (avc.avc_map->avm_flags & tp->flag)){
                msgp = n_string_push_c(msgp, (i++ == 0 ? '#' : ','));
                msgp = n_string_push_cp(msgp, tp->msg);
             }
       }
+
+      if(avp != NULL && (avp->av_flags & a_AMV_VF_EXT_FROZEN)){
+         msgp = n_string_push_c(msgp, (i++ == 0 ? '#' : ','));
+         msgp = n_string_push_cp(msgp, "(un)?set via -S");
+      }
+
       if(i > 0)
          msgp = n_string_push_cp(msgp, "\n  ");
    }
 
-   if(!isset || (avc.avc_var->av_flags & a_AMV_VF_RDONLY)){
-      msgp = n_string_push_c(msgp, *n_ns);
+   /* (Read-only variables are generally shown via comments..) */
+   if(!isset || (avp->av_flags & a_AMV_VF_RDONLY)){
+      msgp = n_string_push_c(msgp, n_ns[0]);
       if(!isset){
          if(avc.avc_map != NULL && (avc.avc_map->avm_flags & a_AMV_VF_BOOL))
             msgp = n_string_push_cp(msgp, "boolean; ");
@@ -1874,17 +2004,17 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
    }
 
    n_UNINIT(quote, NULL);
-   if(!(avc.avc_var->av_flags & a_AMV_VF_BOOL)){
-      quote = n_shexp_quote_cp(avc.avc_var->av_value, TRU1);
-      if(strcmp(quote, avc.avc_var->av_value))
+   if(!(avp->av_flags & a_AMV_VF_BOOL)){
+      quote = n_shexp_quote_cp(avp->av_value, TRU1);
+      if(strcmp(quote, avp->av_value))
          msgp = n_string_push_cp(msgp, "wysh ");
    }else if(n_poption & n_PO_D_V)
-      msgp = n_string_push_cp(msgp, "wysh ");
-   if(avc.avc_var->av_flags & a_AMV_VF_LINKED)
+      msgp = n_string_push_cp(msgp, "wysh "); /* (for shell-style comment) */
+   if(avp->av_flags & a_AMV_VF_EXT_LINKED)
       msgp = n_string_push_cp(msgp, "environ ");
    msgp = n_string_push_cp(msgp, "set ");
    msgp = n_string_push_cp(msgp, name);
-   if(!(avc.avc_var->av_flags & a_AMV_VF_BOOL)){
+   if(!(avp->av_flags & a_AMV_VF_BOOL)){
       msgp = n_string_push_c(msgp, '=');
       msgp = n_string_push_cp(msgp, quote);
    }else if(n_poption & n_PO_D_V)
@@ -1911,8 +2041,8 @@ jouter:
 
       for(; (c = *cp) != '=' && c != '\0'; ++cp){
          if(cntrlchar(c) || spacechar(c)){
-            n_err(_("Variable name with control character ignored: %s\n"),
-               ap[-1]);
+            n_err(_("Variable name with control or space character ignored: "
+               "%s\n"), ap[-1]);
             ++errs;
             goto jouter;
          }
@@ -2036,7 +2166,7 @@ c_account(void *v){
    }
 
    if(n_pstate & n_PS_HOOK_MASK){
-      n_err(_("`account': can't change account from within a hook\n"));
+      n_err(_("`account': cannot change account from within a hook\n"));
       goto jleave;
    }
 
@@ -2051,9 +2181,37 @@ c_account(void *v){
 
    oqf = savequitflags();
 
+   /* Shutdown the active account */
    if(a_amv_acc_curr != NULL){
+      char const *cp;
+      char *var;
+
+      /* Is there a cleanup hook? */
+      var = savecat("on-account-cleanup-", a_amv_acc_curr->am_name);
+      if((cp = n_var_vlook(var, FAL0)) != NULL ||
+            (cp = ok_vlook(on_account_cleanup)) != NULL){
+         struct a_amv_mac *amphook;
+
+         if((amphook = a_amv_mac_lookup(cp, NULL, a_AMV_MF_NONE)) != NULL){
+            amcap = n_lofi_alloc(sizeof *amcap);
+            memset(amcap, 0, sizeof *amcap);
+            amcap->amca_name = cp;
+            amcap->amca_amp = amphook;
+            amcap->amca_unroller = &a_amv_acc_curr->am_lopts;
+            amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
+            amcap->amca_no_xcall = TRU1;
+            n_pstate |= n_PS_HOOK;
+            rv = a_amv_mac_exec(amcap);
+            n_pstate &= ~n_PS_HOOK_MASK;
+         }else
+            n_err(_("*on-account-leave* hook %s does not exist\n"),
+               n_shexp_quote_cp(cp, FAL0));
+      }
+
+      /* `localopts'? */
       if(a_amv_acc_curr->am_lopts != NULL)
          a_amv_lopts_unroll(&a_amv_acc_curr->am_lopts);
+
       /* For accounts this lingers */
       --a_amv_acc_curr->am_refcnt;
       if(a_amv_acc_curr->am_flags & a_AMV_MF_DELETE)
@@ -2062,6 +2220,7 @@ c_account(void *v){
 
    a_amv_acc_curr = amp;
 
+   /* And switch to any non-"null" account */
    if(amp != NULL){
       assert(amp->am_lopts == NULL);
       amcap = n_lofi_alloc(sizeof *amcap);
@@ -2082,7 +2241,8 @@ c_account(void *v){
    n_PS_ROOT_BLOCK((amp != NULL ? ok_vset(account, amp->am_name)
       : ok_vclear(account)));
 
-   if((n_psonce & n_PSO_STARTED) && !(n_pstate & n_PS_HOOK_MASK)){
+   if(n_psonce & n_PSO_STARTED){
+      assert(!(n_pstate & n_PS_HOOK_MASK));
       nqf = savequitflags(); /* TODO obsolete (leave -> void -> new box!) */
       restorequitflags(oqf);
       if((i = setfile("%", 0)) < 0)
@@ -2679,7 +2839,7 @@ c_varedit(void *v){
 
       if((of = Ftmp(NULL, "varedit", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
             NULL){
-         n_perr(_("`varedit': can't create temporary file, bailing out"), 0);
+         n_perr(_("`varedit': cannot create temporary file"), 0);
          err = 1;
          break;
       }else if(avc.avc_var != NULL && *(val = avc.avc_var->av_value) != '\0' &&
@@ -2722,7 +2882,7 @@ c_varedit(void *v){
 
          Fclose(nf);
       }else{
-         n_err(_("`varedit': can't start $EDITOR, bailing out\n"));
+         n_err(_("`varedit': cannot start $EDITOR\n"));
          err = 1;
          break;
       }
@@ -2747,16 +2907,17 @@ c_environ(void *v){
          a_amv_var_revlookup(&avc, *ap);
 
          if(a_amv_var_lookup(&avc, FAL0) && (islnk ||
-               (avc.avc_var->av_flags & a_AMV_VF_LINKED))){
+               (avc.avc_var->av_flags & a_AMV_VF_EXT_LINKED))){
             if(!islnk){
-               avc.avc_var->av_flags &= ~a_AMV_VF_LINKED;
+               avc.avc_var->av_flags &= ~a_AMV_VF_EXT_LINKED;
                continue;
-            }else if(avc.avc_var->av_flags & (a_AMV_VF_ENV | a_AMV_VF_LINKED)){
+            }else if(avc.avc_var->av_flags &
+                  (a_AMV_VF_ENV | a_AMV_VF_EXT_LINKED)){
                if(n_poption & n_PO_D_V)
                   n_err(_("`environ': link: already established: %s\n"), *ap);
                continue;
             }
-            avc.avc_var->av_flags |= a_AMV_VF_LINKED;
+            avc.avc_var->av_flags |= a_AMV_VF_EXT_LINKED;
             if(!(avc.avc_var->av_flags & a_AMV_VF_ENV))
                a_amv_var__putenv(&avc, avc.avc_var);
          }else if(!islnk){
@@ -3089,10 +3250,16 @@ jenum_plusminus:
                ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
             ) != n_IDEC_STATE_CONSUMED)
          goto jestr_numrange;
+      if(lhv < 0){
+         if(UICMP(64, i, <, -lhv))
+            goto jesubstring_off;
+         lhv = i + lhv;
+      }
       if(UICMP(64, i, >=, lhv)){
          i -= lhv;
          varres += lhv;
       }else{
+jesubstring_off:
          if(n_poption & n_PO_D_V)
             n_err(_("`vexpr': substring: offset argument too large: %s\n"),
                n_shexp_quote_cp(argv[-1], FAL0));
@@ -3106,17 +3273,44 @@ jenum_plusminus:
                   ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
                ) != n_IDEC_STATE_CONSUMED)
             goto jestr_numrange;
+         if(lhv < 0){
+            if(UICMP(64, i, <, -lhv))
+               goto jesubstring_len;
+            lhv = i + lhv;
+         }
          if(UICMP(64, i, >=, lhv)){
             if(UICMP(64, i, !=, lhv))
                varres = savestrbuf(varres, (size_t)lhv);
          }else{
+jesubstring_len:
             if(n_poption & n_PO_D_V)
                n_err(_("`vexpr': substring: length argument too large: %s\n"),
                   n_shexp_quote_cp(argv[-2], FAL0));
             f |= a_SOFTOVERFLOW;
          }
       }
-   }else if(is_asccaseprefix(cp, "random")){
+   }else if(is_asccaseprefix(cp, "trim")) Jtrim: {
+      struct str trim;
+      enum n_str_trim_flags stf;
+
+      if(argv[1] == NULL || argv[2] != NULL)
+         goto jesynopsis;
+
+      if(is_asccaseprefix(cp, "trim-front"))
+         stf = n_STR_TRIM_FRONT;
+      else if(is_asccaseprefix(cp, "trim-end"))
+         stf = n_STR_TRIM_END;
+      else
+         stf = n_STR_TRIM_BOTH;
+
+      trim.l = strlen(trim.s = n_UNCONST(argv[1]));
+      (void)n_str_trim(&trim, stf);
+      varres = savestrbuf(trim.s, trim.l);
+   }else if(is_asccaseprefix(cp, "trim-front"))
+      goto Jtrim;
+   else if(is_asccaseprefix(cp, "trim-end"))
+      goto Jtrim;
+   else if(is_asccaseprefix(cp, "random")){
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
 

@@ -42,7 +42,7 @@
  * Author: Kurt Shoens (UCB) March 25, 1978
  */
 
-#include "mk-config.h"
+#include <mk-config.h>
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -65,11 +65,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
-# include <stdint.h>
-#else
-# include <inttypes.h>
-#endif
+#include <inttypes.h>
 
 #ifdef HAVE_C90AMEND1
 # include <wchar.h>
@@ -90,7 +86,7 @@
 #endif
 
 /* Many things possibly of interest for adjustments have been outsourced */
-#include "config.h"
+#include <config.h>
 
 /* Special FD requests for n_child_run(), n_child_start() */
 #define n_CHILD_FD_PASS -1
@@ -527,22 +523,8 @@ n_MCTA(sizeof(size_t) == sizeof(unsigned long),
 #ifndef UINTPTR_MAX
 # ifdef SIZE_MAX
 #  define uintptr_t     size_t
-#  define UINTPTR_MAX   SIZE_MAX
 # else
 #  define uintptr_t     unsigned long
-#  define UINTPTR_MAX   ULONG_MAX
-# endif
-#endif
-
-#if !defined PRIuPTR || !defined PRIXPTR
-# undef PRIuPTR
-# undef PRIXPTR
-# if UINTPTR_MAX == ULONG_MAX
-#  define PRIuPTR       "lu"
-#  define PRIXPTR       "lX"
-# else
-#  define PRIuPTR       "u"
-#  define PRIXPTR       "X"
 # endif
 #endif
 
@@ -653,12 +635,13 @@ enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
    n_CMD_ARG_M = 1u<< 9,   /* Legal from send mode bit */
    n_CMD_ARG_O = 1u<<10,   /* n_OBSOLETE()d command */
    n_CMD_ARG_P = 1u<<11,   /* Autoprint dot after command */
-   n_CMD_ARG_R = 1u<<12,   /* Cannot be called in compose mode recursion */
-   n_CMD_ARG_S = 1u<<13,   /* Cannot be called pre-n_PSO_STARTED (POSIX) */
-   n_CMD_ARG_T = 1u<<14,   /* Is a transparent command */
-   n_CMD_ARG_V = 1u<<15,   /* Supports `vput' prefix (only WYSH/WYRA) */
-   n_CMD_ARG_W = 1u<<16,   /* Invalid when read only bit */
-   n_CMD_ARG_X = 1u<<17,   /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
+   n_CMD_ARG_R = 1u<<12,   /* Forbidden in compose mode recursion */
+   n_CMD_ARG_SC = 1u<<13,  /* Forbidden pre-n_PSO_STARTED_CONFIG */
+   n_CMD_ARG_S = 1u<<14,   /* Forbidden pre-n_PSO_STARTED (POSIX) */
+   n_CMD_ARG_T = 1u<<15,   /* Is a transparent command */
+   n_CMD_ARG_V = 1u<<16,   /* Supports `vput' prefix (only WYSH/WYRA) */
+   n_CMD_ARG_W = 1u<<17,   /* Invalid when read only bit */
+   n_CMD_ARG_X = 1u<<18,   /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
    /* XXX Note that CMD_ARG_EM implies a _real_ return value for $! */
    n_CMD_ARG_EM = 1u<<30   /* If error: n_pstate_err_no (4 $! aka. ok_v___em) */
 };
@@ -863,33 +846,33 @@ enum{
 
 enum n_idec_mode{
    n_IDEC_MODE_NONE,
-   n_IDEC_MODE_SIGNED_TYPE = 1<<0,  /* To choose limits, error constants etc. */
+   n_IDEC_MODE_SIGNED_TYPE = 1u<<0, /* To choose limits, error constants etc. */
 #if 0
-   n_IDEC_MODE_SIGN_FORCE_SIGNED_TYPE = 1<<2,
+   n_IDEC_MODE_SIGN_FORCE_SIGNED_TYPE = 1u<<2,
 #endif
-   n_IDEC_MODE_LIMIT_8BIT = 1<<3,   /* Saturate if result exceeds 8-bit */
-   n_IDEC_MODE_LIMIT_16BIT = 2<<3,
-   n_IDEC_MODE_LIMIT_32BIT = 3<<3,
-   n__IDEC_MODE_LIMIT_MASK = 3<<3,
-   n_IDEC_MODE_LIMIT_NOERROR = 1<<5, /* Not an error if limit is excessed! */
+   n_IDEC_MODE_LIMIT_8BIT = 1u<<3,  /* Saturate if result exceeds 8-bit */
+   n_IDEC_MODE_LIMIT_16BIT = 2u<<3,
+   n_IDEC_MODE_LIMIT_32BIT = 3u<<3,
+   n__IDEC_MODE_LIMIT_MASK = 3u<<3,
+   n_IDEC_MODE_LIMIT_NOERROR = 1u<<5, /* Not an error if limit is excessed! */
    /* These bits are duplicated in the _state result bits! */
-   n__IDEC_MODE_MASK = (1<<6) - 1
+   n__IDEC_MODE_MASK = (1u<<6) - 1
 };
 
 enum n_idec_state{
    n_IDEC_STATE_NONE,
    /* Malformed input, no usable result has been stored */
-   n_IDEC_STATE_EINVAL = 1<<8,
+   n_IDEC_STATE_EINVAL = 1u<<8,
    /* Bad character according to base, but we have seen some good before,
     * otherwise _EINVAL would have been used */
-   n_IDEC_STATE_EBASE = 2<<8,
-   n_IDEC_STATE_EOVERFLOW = 3<<8,   /* Result too large */
-   n_IDEC_STATE_EMASK = (3<<8),     /* Any errors, that is */
-   n_IDEC_STATE_SEEN_MINUS = 1<<16, /* Seen - in input? */
-   n_IDEC_STATE_CONSUMED = 1<<17,   /* All the input buffer was consumed */
-   n__IDEC_PRIVATE_SHIFT1 = 24
+   n_IDEC_STATE_EBASE = 2u<<8,
+   n_IDEC_STATE_EOVERFLOW = 3u<<8,  /* Result too large */
+   n_IDEC_STATE_EMASK = 3u<<8,      /* Any errors, that is */
+   n_IDEC_STATE_SEEN_MINUS = 1u<<16, /* Seen - in input? */
+   n_IDEC_STATE_CONSUMED = 1u<<17,  /* All the input buffer was consumed */
+   n__IDEC_PRIVATE_SHIFT1 = 24u
 };
-n_MCTA(n__IDEC_MODE_MASK <= (1<<8) - 1, "Shared bit range overlaps")
+n_MCTA(n__IDEC_MODE_MASK <= (1u<<8) - 1, "Shared bit range overlaps")
 
 enum mimecontent {
    MIME_UNKNOWN,     /* unknown content */
@@ -1189,6 +1172,12 @@ enum ssl_verify_level {
 };
 #endif
 
+enum n_str_trim_flags{
+   n_STR_TRIM_FRONT = 1u<<0,
+   n_STR_TRIM_END = 1u<<1,
+   n_STR_TRIM_BOTH = n_STR_TRIM_FRONT | n_STR_TRIM_END
+};
+
 enum tdflags {
    TD_NONE,                   /* no display conversion */
    TD_ISPR        = 1<<0,     /* use isprint() checks */
@@ -1363,9 +1352,10 @@ enum n_program_option{
    n_PO_Mm_FLAG = 1u<<8,      /* -M or -m (plus n_poption_arg_Mm) */
    n_PO_R_FLAG = 1u<<9,       /* -R */
    n_PO_r_FLAG = 1u<<10,      /* -r (plus n_poption_arg_r) */
-   n_PO_t_FLAG = 1u<<11,      /* -t */
-   n_PO_TILDE_FLAG = 1u<<12,  /* -~ */
-   n_PO_BATCH_FLAG = 1u<<13,  /* -# */
+   n_PO_S_FLAG_TEMPORARY = 1u<<11, /* -S about to set a variable */
+   n_PO_t_FLAG = 1u<<12,      /* -t */
+   n_PO_TILDE_FLAG = 1u<<13,  /* -~ */
+   n_PO_BATCH_FLAG = 1u<<14,  /* -# */
 
    /*  */
    n_PO_MEMDEBUG = 1<<24,     /* *memdebug* */
@@ -1442,35 +1432,39 @@ do{\
 
 /* Various states set once, and first time messages or initializers */
 enum n_program_state_once{
+   /* We have four program states: (0) pre getopt() done, (_GETOPT) pre rcfile
+    * loaded etc., (_CONFIG) only -X evaluation missing still, followed by
+    * _STARTED when we are fully setup */
+   n_PSO_STARTED_GETOPT = 1u<<0,
+   n_PSO_STARTED_CONFIG = 1u<<1,
+   n_PSO_STARTED = 1u<<2,
+
    /* Exit request pending (quick) */
-   n_PSO_XIT = 1u<<0,
-   n_PSO_QUIT = 1u<<1,
+   n_PSO_XIT = 1u<<3,
+   n_PSO_QUIT = 1u<<4,
    n_PSO_EXIT_MASK = n_PSO_XIT | n_PSO_QUIT,
 
    /* Pre _STARTED */
-   n_PSO_SENDMODE = 1u<<2,
-   n_PSO_INTERACTIVE = 1u<<3,
-   n_PSO_TTYIN = 1u<<4,
-   n_PSO_TTYOUT = 1u<<5, /* TODO should be TTYERR! */
+   n_PSO_BIG_ENDIAN = 1u<<5,
+   n_PSO_UNICODE = 1u<<6,
+   n_PSO_ENC_MBSTATE = 1u<<7,
 
-   n_PSO_BIG_ENDIAN = 1u<<8,
-   n_PSO_UNICODE = 1u<<9,
-   n_PSO_ENC_MBSTATE = 1u<<10,
+   n_PSO_REPRODUCIBLE = 1u<<8,
+   n_PSO_SENDMODE = 1u<<9,
+   n_PSO_INTERACTIVE = 1u<<10,
+   n_PSO_TTYIN = 1u<<11,
+   n_PSO_TTYOUT = 1u<<12, /* TODO should be TTYERR! */
 
-   n_PSO_REPRODUCIBLE = 1u<<14,
-
-   /* main.c startup code passed, we are functional! */
-   n_PSO_STARTED = 1u<<15,
-
-   /* (Likely) Post _STARTED */
+   /* "Later" */
    n_PSO_ATTACH_QUOTE_NOTED = 1u<<16,
    n_PSO_ERRORS_NOTED = 1u<<17,
-   n_PSO_TERMCAP_DISABLE = 1u<<18,
-   n_PSO_TERMCAP_CA_MODE = 1u<<19,
-   n_PSO_LINE_EDITOR_INIT = 1u<<20,
+   n_PSO_LINE_EDITOR_INIT = 1u<<18,
+   n_PSO_RANDOM_INIT = 1u<<19,
+   n_PSO_TERMCAP_DISABLE = 1u<<20,
+   n_PSO_TERMCAP_CA_MODE = 1u<<21,
 
-   /* A subtile hack which works in conjunction with n_OPT_t_FLAG so as to
-    * allow to have multiple states regarding the related header setup */
+   /* TODO A subtile HACK which works in conjunction with n_OPT_t_FLAG so as
+    * to allow to have multiple states regarding the related header setup */
    n_PSO_t_FLAG = 1u<<30
 };
 
@@ -1500,12 +1494,14 @@ enum okeys {
 ok_v_agent_shell_lookup,
    ok_b_allnet,
    ok_b_append,
-   ok_b_ask,
+   /* *ask* is auto-mapped to *asksub* as imposed by standard! */
+   ok_b_ask,                           /* {vip=1} */
    ok_b_askatend,
    ok_b_askattach,
    ok_b_askbcc,
    ok_b_askcc,
    ok_b_asksign,
+   ok_b_asksend,                       /* {i3val=TRU1} */
    ok_b_asksub,                        /* {i3val=TRU1} */
    ok_v_attrlist,
    ok_v_autobcc,
@@ -1629,20 +1625,20 @@ ok_v_fwdheading,
    ok_v_mta_argv0,                     /* {notempty=1,defval=VAL_MTA_ARGV0} */
 
    /* TODO likely temporary hook data, v15 drop */
-   ok_v_mailx_command,                 /* {rdonly=1} */
-   ok_v_mailx_subject,                 /* {rdonly=1} */
-   ok_v_mailx_from,                    /* {rdonly=1} */
-   ok_v_mailx_sender,                  /* {rdonly=1} */
-   ok_v_mailx_to,                      /* {rdonly=1} */
-   ok_v_mailx_cc,                      /* {rdonly=1} */
-   ok_v_mailx_bcc,                     /* {rdonly=1} */
-   ok_v_mailx_raw_to,                  /* {rdonly=1} */
-   ok_v_mailx_raw_cc,                  /* {rdonly=1} */
-   ok_v_mailx_raw_bcc,                 /* {rdonly=1} */
-   ok_v_mailx_orig_from,               /* {rdonly=1} */
-   ok_v_mailx_orig_to,                 /* {rdonly=1} */
-   ok_v_mailx_orig_cc,                 /* {rdonly=1} */
-   ok_v_mailx_orig_bcc,                /* {rdonly=1} */
+   ok_v_mailx_command,                 /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_subject,                 /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_from,                    /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_sender,                  /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_to,                      /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_cc,                      /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_bcc,                     /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_raw_to,                  /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_raw_cc,                  /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_raw_bcc,                 /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_orig_from,               /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_orig_to,                 /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_orig_cc,                 /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_orig_bcc,                /* {rdonly=1,nodel=1,nolopts=1} */
 
 ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
 ok_b_NAIL_NO_SYSTEM_RC,             /* {name=NAIL_NO_SYSTEM_RC,import=1} */
@@ -1651,11 +1647,12 @@ ok_v_NAIL_HISTFILE,                 /* {name=NAIL_HISTFILE} */
 ok_v_NAIL_HISTSIZE,                 /* {name=NAIL_HISTSIZE,notempty=1,num=1} */
 ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_NETRC,                         /* {env=1,notempty=1,defval=VAL_NETRC} */
-   ok_b_netrc_lookup,
+   ok_b_netrc_lookup,                  /* {chain=1} */
    ok_v_netrc_pipe,
    ok_v_newfolders,
    ok_v_newmail,
 
+   ok_v_on_account_cleanup,            /* {notempty=1} */
    ok_v_on_compose_cleanup,            /* {notempty=1} */
    ok_v_on_compose_enter,              /* {notempty=1} */
    ok_v_on_compose_leave,              /* {notempty=1} */
@@ -1669,13 +1666,13 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_v_PATH,                          /* {nodel=1,import=1} */
    ok_b_POSIXLY_CORRECT,            /* {vip=1,import=1,name=POSIXLY_CORRECT} */
    ok_b_page,
-   ok_v_password,
+   ok_v_password,                      /* {chain=1} */
    ok_b_piperaw,
-   ok_v_pop3_auth,
+   ok_v_pop3_auth,                     /* {chain=1} */
    ok_b_pop3_bulk_load,
    ok_v_pop3_keepalive,                /* {notempty=1,posnum=1} */
-   ok_b_pop3_no_apop,
-   ok_b_pop3_use_starttls,
+   ok_b_pop3_no_apop,                  /* {chain=1} */
+   ok_b_pop3_use_starttls,             /* {chain=1} */
    ok_b_posix,                         /* {vip=1} */
    ok_b_print_alternatives,
    ok_v_prompt,                        /* {i3val="? "} */
@@ -1716,31 +1713,31 @@ ok_v_sendmail_progname,
    ok_b_showto,
    ok_v_Sign,
    ok_v_sign,
-   ok_v_signature,
+ok_v_signature,
    ok_b_skipemptybody,                 /* {vip=1} */
    ok_v_smime_ca_dir,
    ok_v_smime_ca_file,
    ok_v_smime_ca_flags,
    ok_b_smime_ca_no_defaults,
-   ok_v_smime_cipher,
+   ok_v_smime_cipher,                  /* {chain=1} */
    ok_v_smime_crl_dir,
    ok_v_smime_crl_file,
-   /* smime-encrypt-USER@HOST */
+   ok_v_smime_encrypt,                 /* {chain=1} */
    ok_b_smime_force_encryption,
 ok_b_smime_no_default_ca,
    ok_b_smime_sign,
-   ok_v_smime_sign_cert,
-   ok_v_smime_sign_include_certs,
-   ok_v_smime_sign_message_digest,
+   ok_v_smime_sign_cert,               /* {chain=1} */
+   ok_v_smime_sign_include_certs,      /* {chain=1} */
+   ok_v_smime_sign_message_digest,     /* {chain=1} */
 ok_v_smtp,
-   ok_v_smtp_auth,
+   ok_v_smtp_auth,                     /* {chain=1} */
 ok_v_smtp_auth_password,
 ok_v_smtp_auth_user,
    ok_v_smtp_hostname,
-   ok_b_smtp_use_starttls,
+   ok_b_smtp_use_starttls,             /* {chain=1} */
    ok_v_SOURCE_DATE_EPOCH,             /* {\} */
       /* {name=SOURCE_DATE_EPOCH,rdonly=1,import=1,notempty=1,posnum=1} */
-   ok_v_socks_proxy,                   /* {notempty=1} */
+   ok_v_socks_proxy,                   /* {chain=1,notempty=1} */
    ok_v_spam_interface,
    ok_v_spam_maxsize,                  /* {notempty=1,posnum=1} */
    ok_v_spamc_command,
@@ -1754,23 +1751,26 @@ ok_v_spamd_user,
    ok_v_spamfilter_rate,
    ok_v_spamfilter_rate_scanscore,
    ok_v_spamfilter_spam,
-   ok_v_ssl_ca_dir,
-   ok_v_ssl_ca_file,
-   ok_v_ssl_ca_flags,
-   ok_b_ssl_ca_no_defaults,
-   ok_v_ssl_cert,
-   ok_v_ssl_cipher_list,
+   ok_v_ssl_ca_dir,                    /* {chain=1} */
+   ok_v_ssl_ca_file,                   /* {chain=1} */
+   ok_v_ssl_ca_flags,                  /* {chain=1} */
+   ok_b_ssl_ca_no_defaults,            /* {chain=1} */
+ok_v_ssl_cert,                         /* {chain=1} */
+ok_v_ssl_cipher_list,                  /* {chain=1} */
    ok_v_ssl_config_file,
-   ok_v_ssl_curves,
+   ok_v_ssl_config_module,             /* {chain=1} */
+   ok_v_ssl_config_pairs,              /* {chain=1} */
+ok_v_ssl_curves,                    /* {chain=1} */
    ok_v_ssl_crl_dir,
    ok_v_ssl_crl_file,
-   ok_v_ssl_key,
-   ok_v_ssl_method,
+   ok_v_ssl_features,                  /* {virt=VAL_SSL_FEATURES} */
+ok_v_ssl_key,                       /* {chain=1} */
+ok_v_ssl_method,                    /* {chain=1} */
 ok_b_ssl_no_default_ca,
-   ok_v_ssl_protocol,
+ok_v_ssl_protocol,                  /* {chain=1} */
    ok_v_ssl_rand_egd,
    ok_v_ssl_rand_file,
-   ok_v_ssl_verify,
+   ok_v_ssl_verify,                    /* {chain=1} */
    ok_v_stealthmua,
 
    ok_v_TERM,                          /* {env=1} */
@@ -1785,7 +1785,7 @@ ok_b_ssl_no_default_ca,
 
    ok_v_USER,                          /* {rdonly=1,import=1} */
    ok_v_umask,                      /* {vip=1,nodel=1,posnum=1,i3val="0077"} */
-   ok_v_user,
+   ok_v_user,                       /* {chain=1} */
 
    ok_v_VISUAL,                     /* {env=1,notempty=1,defval=VAL_VISUAL} */
    ok_b_v15_compat,
@@ -1799,13 +1799,13 @@ ok_b_ssl_no_default_ca,
    ok_b_writebackedited
 
 ,  /* Obsolete IMAP related non-sorted */
-ok_b_disconnected,
-ok_v_imap_auth,
+ok_b_disconnected,               /* {chain=1} */
+ok_v_imap_auth,                  /* {chain=1} */
 ok_v_imap_cache,
-ok_v_imap_delim,
-ok_v_imap_keepalive,
+ok_v_imap_delim,                 /* {chain=1} */
+ok_v_imap_keepalive,             /* {chain=1} */
 ok_v_imap_list_depth,
-ok_b_imap_use_starttls
+ok_b_imap_use_starttls           /* {chain=1} */
 }; /* }}} */
 
 /* Locale-independent character classes */
@@ -2270,13 +2270,14 @@ struct mimepart {
    char const  *m_ct_type;          /* content-type */
    char const  *m_ct_type_plain;    /* content-type without specs */
    char const  *m_ct_type_usr_ovwr; /* Forcefully overwritten one */
-   enum mimecontent m_mimecontent;  /* ..in enum */
    char const  *m_charset;
    char const  *m_ct_enc;           /* Content-Transfer-Encoding */
+   enum mimecontent m_mimecontent;  /* ..in enum */
    enum mime_enc m_mime_enc;        /* ..in enum */
    char        *m_partstring;       /* Part level string */
    char        *m_filename;         /* ..of attachment */
    char const  *m_content_description;
+   char const *m_external_body_url; /* message/external-body: access-type=URL */
    struct mime_handler *m_handler;  /* MIME handler if yet classified */
 };
 
@@ -2314,28 +2315,29 @@ struct message {
 #define mailx_offsetof(off)               ((int) ((off) % 4096))
 #define mailx_positionof(block, offset)   ((off_t)(block) * 4096 + (offset))
 
-enum gfield {
-   GTO            = 1<< 0,    /* Grab To: line */
-   GSUBJECT       = 1<< 1,    /* Likewise, Subject: line */
-   GCC            = 1<< 2,    /* And the Cc: line */
-   GBCC           = 1<< 3,    /* And also the Bcc: line */
+enum gfield{ /* TODO -> enum m_grab_head, m_GH_xy */
+   GNONE,
+   GTO = 1u<<0,         /* Grab To: line */
+   GSUBJECT = 1u<<1,    /* Likewise, Subject: line */
+   GCC = 1u<<2,         /* And the Cc: line */
+   GBCC = 1u<<3,        /* And also the Bcc: line */
 
-   GNL            = 1<< 4,    /* Print blank line after */
-   GDEL           = 1<< 5,    /* Entity removed from list */
-   GCOMMA         = 1<< 6,    /* detract() puts in commas */
-   GUA            = 1<< 7,    /* User-Agent field */
-   GMIME          = 1<< 8,    /* MIME 1.0 fields */
-   GMSGID         = 1<< 9,    /* a Message-ID */
-   GNAMEONLY      = 1<<10,    /* detract() does NOT use fullnames */
+   GNL = 1u<<4,         /* Print blank line after */
+   GDEL = 1u<<5,        /* Entity removed from list */
+   GCOMMA = 1u<<6,      /* detract() puts in commas */
+   GUA = 1u<<7,         /* User-Agent field */
+   GMIME = 1u<<8,       /* MIME 1.0 fields */
+   GMSGID = 1u<<9,      /* a Message-ID */
+   GNAMEONLY = 1u<<10,  /* detract() does NOT use fullnames */
 
-   GIDENT         = 1<<11,    /* From:, Reply-To:, MFT: (user headers) */
-   GREF           = 1<<12,    /* References:, In-Reply-To:, (Message-ID:) */
-   GDATE          = 1<<13,    /* Date: field */
-   GFULL          = 1<<14,    /* Include full names, comments etc. */
-   GSKIN          = 1<<15,    /* Skin names */
-   GEXTRA         = 1<<16,    /* Extra fields (mostly like GIDENT XXX) */
-   GFILES         = 1<<17,    /* Include filename and pipe addresses */
-   GFULLEXTRA     = 1<<18     /* Only with GFULL: GFULL less address */
+   GIDENT = 1u<<11,     /* From:, Reply-To:, MFT: (user headers) */
+   GREF = 1u<<12,       /* References:, In-Reply-To:, (Message-ID:) */
+   GDATE = 1u<<13,      /* Date: field */
+   GFULL = 1u<<14,      /* Include full names, comments etc. */
+   GSKIN = 1u<<15,      /* Skin names */
+   GEXTRA = 1u<<16,     /* Extra fields (mostly like GIDENT XXX) */
+   GFILES = 1u<<17,     /* Include filename and pipe addresses */
+   GFULLEXTRA = 1u<<18  /* Only with GFULL: GFULL less address */
 };
 #define GMASK           (GTO | GSUBJECT | GCC | GBCC)
 

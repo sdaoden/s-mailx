@@ -1,5 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ TLS/SSL functions. TODO this needs an overhaul -- there _are_ stack leaks!?
+ *@ OpenSSL client implementation according to: John Viega, Matt Messier,
+ *@ Pravir Chandra: Network Security with OpenSSL. Sebastopol, CA 2002.
+ *@ TODO This needs an overhaul -- there _are_ stack leaks!?
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -65,14 +67,7 @@ EMPTY_FILE()
 # include <dirent.h>
 #endif
 
-/*
- * OpenSSL client implementation according to: John Viega, Matt Messier,
- * Pravir Chandra: Network Security with OpenSSL. Sebastopol, CA 2002.
- */
-
-/* Update manual on changes (for all those)! */
-#define n_XSSL_DISABLED_PROTOCOLS "-SSLv2"
-
+/* Compatibility shims which assume 0/-1 cannot really happen */
 #ifndef HAVE_XSSL_CONF_CTX
 # ifndef SSL_OP_NO_SSLv2
 #  define SSL_OP_NO_SSLv2 0
@@ -89,12 +84,27 @@ EMPTY_FILE()
 # ifndef SSL_OP_NO_TLSv1_2
 #  define SSL_OP_NO_TLSv1_2 0
 # endif
-
   /* SSL_CONF_CTX and _OP_NO_SSL_MASK were both introduced with 1.0.2!?! */
 # ifndef SSL_OP_NO_SSL_MASK
 #  define SSL_OP_NO_SSL_MASK \
    (SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |\
    SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_TLSv1_2)
+# endif
+
+# ifndef SSL2_VERSION
+#  define SSL2_VERSION 0
+# endif
+# ifndef SSL3_VERSION
+#  define SSL3_VERSION 0
+# endif
+# ifndef TLS1_VERSION
+#  define TLS1_VERSION 0
+# endif
+# ifndef TLS1_1_VERSION
+#  define TLS1_1_VERSION 0
+# endif
+# ifndef TLS1_2_VERSION
+#  define TLS1_2_VERSION 0
 # endif
 #endif
 
@@ -152,27 +162,17 @@ EMPTY_FILE()
 # define a_XSSL_X509_V_ANY
 #endif
 
-/* Some became meaningless with HAVE_XSSL_OPENSSL>=0x10100 */
 enum a_xssl_state{
-   a_XSSL_S_INIT = 1<<0,
-   a_XSSL_S_RAND_INIT = 1<<1,
-   a_XSSL_S_EXIT_HDL = 1<<2,
-   a_XSSL_S_CONF_LOAD = 1<<3,
-   a_XSSL_S_ALGO_LOAD = 1<<4,
+   a_XSSL_S_INIT = 1u<<0,
+   a_XSSL_S_RAND_INIT = 1u<<1,
+   a_XSSL_S_CONF_LOAD = 1u<<2,
 
-   a_XSSL_S_VERIFY_ERROR = 1<<7
-};
+#if HAVE_XSSL_OPENSSL < 0x10100
+   a_XSSL_S_EXIT_HDL = 1u<<8,
+   a_XSSL_S_ALGO_LOAD = 1u<<9,
+#endif
 
-/* We go for the OpenSSL v1.0.2+ SSL_CONF_CTX if available even if
- * the library does internally what we'd otherwise do ourselfs.
- * But eventually we can drop the direct use cases */
-enum a_xssl_conf_type{
-   a_XSSL_CT_CERTIFICATE,
-   a_XSSL_CT_CIPHER_STRING,
-   a_XSSL_CT_CURVES,
-   a_XSSL_CT_PRIVATE_KEY,
-   a_XSSL_CT_OPTIONS,
-   a_XSSL_CT_PROTOCOL
+   a_XSSL_S_VERIFY_ERROR = 1u<<16
 };
 
 struct ssl_method { /* TODO v15 obsolete */
@@ -182,8 +182,12 @@ struct ssl_method { /* TODO v15 obsolete */
 
 #ifndef HAVE_XSSL_CONF_CTX
 struct a_xssl_protocol{
-   char const *sp_name;
-   sl_i sp_flag;
+   char const sp_name[8];
+   sl_i sp_op_no;             /* SSL_OP_NO_* bit */
+   ui16_t sp_version;         /* *_VERSION number */
+   bool_t sp_ok_minmaxproto;  /* Valid for {Min,Max}Protocol= */
+   bool_t sp_ok_proto;        /* Valid for Protocol= */
+   ui8_t sp__dummy[4];
 };
 #endif
 
@@ -203,7 +207,6 @@ struct a_xssl_x509_v_flags{
 };
 
 /* Supported SSL/TLS methods: update manual on change! */
-
 static struct ssl_method const   _ssl_methods[] = { /* TODO obsolete */
    {"auto",    "ALL,-SSLv2"},
    {"ssl3",    "-ALL,SSLv3"},
@@ -212,17 +215,20 @@ static struct ssl_method const   _ssl_methods[] = { /* TODO obsolete */
    {"tls1.2",  "-ALL,TLSv1.2"}
 };
 
-/* Update manual on change! */
+/* Update manual on change!
+ * Ensure array size by adding \0 to longest entry.
+ * Strictly to be sorted new/up to old/down, [0]=ALL, [x-1]=None! */
 #ifndef HAVE_XSSL_CONF_CTX
 static struct a_xssl_protocol const a_xssl_protocols[] = {
-   {"ALL", SSL_OP_NO_SSL_MASK},
-   {"TLSv1.2", SSL_OP_NO_TLSv1_2},
-   {"TLSv1.1", SSL_OP_NO_TLSv1_1},
-   {"TLSv1", SSL_OP_NO_TLSv1},
-   {"SSLv3", SSL_OP_NO_SSLv3},
-   {"SSLv2", 0}
+   {"ALL", SSL_OP_NO_SSL_MASK, 0, FAL0, TRU1, {0}},
+   {"TLSv1.2\0", SSL_OP_NO_TLSv1_2, TLS1_2_VERSION, TRU1, TRU1, {0}},
+   {"TLSv1.1", SSL_OP_NO_TLSv1_1, TLS1_1_VERSION, TRU1, TRU1, {0}},
+   {"TLSv1", SSL_OP_NO_TLSv1, TLS1_VERSION, TRU1, TRU1, {0}},
+   {"SSLv3", SSL_OP_NO_SSLv3, SSL3_VERSION, TRU1, TRU1, {0}},
+   {"SSLv2", SSL_OP_NO_SSLv2, SSL2_VERSION, TRU1, TRU1, {0}},
+   {"None", SSL_OP_NO_SSL_MASK, 0, TRU1, FAL0, {0}}
 };
-#endif
+#endif /* HAVE_XSSL_CONF_CTX */
 
 /* Supported S/MIME cipher algorithms */
 static struct a_xssl_smime_cipher const a_xssl_smime_ciphers[] = { /* Manual! */
@@ -280,7 +286,9 @@ static struct a_xssl_x509_v_flags const a_xssl_x509_v_flags[] = { /* Manual! */
 static enum a_xssl_state a_xssl_state;
 static size_t a_xssl_msgno;
 
-static bool_t a_xssl_rand_init(void);
+static void a_xssl_rand_init(void);
+static void a_xssl_init(void);
+
 #if HAVE_XSSL_OPENSSL < 0x10100
 # ifdef HAVE_SSL_ALL_ALGORITHMS
 static void a_xssl__load_algos(void);
@@ -302,12 +310,13 @@ static int        _ssl_verify_cb(int success, X509_STORE_CTX *store);
 static void a_xssl_ca_flags(X509_STORE *store, char const *flags);
 
 /* SSL_CTX configuration */
-static void *     _ssl_conf_setup(SSL_CTX *ctxp);
-static bool_t     _ssl_conf(void *confp, enum a_xssl_conf_type ct,
-                     char const *value);
-static bool_t     _ssl_conf_finish(void **confp, bool_t error);
+static void * a_xssl_conf_setup(SSL_CTX *ctxp, struct url const *urlp);
+static bool_t a_xssl_conf(void *confp, char const *cmd, char const *value);
+static bool_t a_xssl_conf_finish(void **confp, bool_t error);
 
-static bool_t     _ssl_load_verifications(SSL_CTX *ctxp);
+static bool_t a_xssl_obsolete_conf_vars(void *confp, struct url const *urlp);
+static bool_t a_xssl_config_pairs(void *confp, struct url const *urlp);
+static bool_t a_xssl_load_verifications(SSL_CTX *ctxp, struct url const *urlp);
 
 static enum okay  ssl_check_host(struct sock *sp, struct url const *urlp);
 
@@ -328,21 +337,30 @@ static enum okay  load_crl1(X509_STORE *store, char const *name);
 #endif
 static enum okay  load_crls(X509_STORE *store, enum okeys fok, enum okeys dok);
 
-static bool_t
+static void
 a_xssl_rand_init(void){
+#define a_XSSL_RAND_ENTROPY 32
+   char b64buf[a_XSSL_RAND_ENTROPY * 5 +1], *randfile;
    char const *cp, *x;
-   bool_t rv;
-   NYD_ENTER;
+   bool_t err;
+   NYD2_ENTER;
 
-   rv = FAL0;
+   a_xssl_state |= a_XSSL_S_RAND_INIT;
 
-   /* Shall use some external daemon? */ /* TODO obsolete *ssl_rand_egd* */
-   if((cp = ok_vlook(ssl_rand_egd)) != NULL){ /* TODO no one supports it now! */
-      n_OBSOLETE(_("all *SSL libraries removed *ssl-rand-egd* support"));
+   err = TRU1;
+   randfile = NULL;
+
+#ifdef HAVE_XSSL_CONFIG
+   if(!(a_xssl_state & a_XSSL_S_INIT))
+      a_xssl_init();
+#endif
+
+   /* Shall use some external daemon? */
+   if((cp = ok_vlook(ssl_rand_egd)) != NULL){
 #ifdef HAVE_XSSL_RAND_EGD
       if((x = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) != NULL &&
             RAND_egd(cp = x) != -1){
-         rv = TRU1;
+         err = FAL0;
          goto jleave;
       }
       n_err(_("*ssl_rand_egd* daemon at %s not available\n"),
@@ -359,84 +377,100 @@ a_xssl_rand_init(void){
       x = NULL;
       if(*cp != '\0'){
          if((x = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
-            n_err(_("*ssl-rand-file*: filename expansion of %s failed\n"),
+            n_err(_("*ssl-rand-file*: expansion of %s failed "
+                  "(using OpenSSL default)\n"),
                n_shexp_quote_cp(cp, FAL0));
       }
       cp = x;
    }
-
-   /* If the SSL PRNG is initialized don't put any more effort in this if the
-    * user defined entropy isn't usable */
    if(cp == NULL){
-      if(RAND_status()){
-         rv = TRU1;
-         goto jleave;
-      }
-
-      if((cp = RAND_file_name(salloc(PATH_MAX), PATH_MAX)) == NULL){
+      randfile = n_lofi_alloc(PATH_MAX);
+      if((cp = RAND_file_name(randfile, PATH_MAX)) == NULL){
          n_err(_("*ssl-rand-file*: no SSL entropy file, can't seed PRNG\n"));
          goto jleave;
       }
    }
 
-   if(RAND_load_file(cp, a_XSSL_RAND_LOAD_FILE_MAXBYTES) != -1){
-      for(x = (char*)-1;;){
-         RAND_seed(n_random_create_cp(32, NULL), 32);
-         if((rv = (RAND_status() != 0)))
-            break;
-         if((x = (char*)((uintptr_t)x >> 1)) == NULL){
-            n_err(_("*ssl-rand-file*: can't seed SSL PRNG with entropy\n"));
-            goto jleave;
-         }
-      }
+   (void)RAND_load_file(cp, a_XSSL_RAND_LOAD_FILE_MAXBYTES);
 
-      if(RAND_write_file(cp) == -1)
-         n_err(_("*ssl-rand-file*: writing entropy to %s failed\n"),
-            n_shexp_quote_cp(cp, FAL0));
-   }else
-      n_err(_("*ssl-rand-file*: %s cannot be loaded\n"),
-         n_shexp_quote_cp(cp, FAL0));
+   /* And feed in some data, then write the updated file.
+    * While this rather feeds the PRNG with itself in the n_RANDOM_USE_XSSL
+    * case, let us stir the buffer a little bit.
+    * Estimate a low but likely still too high number of entropy bytes, use
+    * 20%: base64 uses 3 input = 4 output bytes relation, and the base64
+    * alphabet is a 6 bit one */
+   n_LCTAV(n_RANDOM_USE_XSSL == 0 || n_RANDOM_USE_XSSL == 1);
+   for(x = (char*)-1;;){
+      RAND_add(n_random_create_buf(b64buf, sizeof(b64buf) -1, NULL),
+         sizeof(b64buf) -1, a_XSSL_RAND_ENTROPY);
+      if((x = (char*)((uintptr_t)x >> (1 + (n_RANDOM_USE_XSSL * 3)))) == NULL){
+         err = (RAND_status() == 0);
+         break;
+      }
+#if !n_RANDOM_USE_XSSL
+      if(!(err = (RAND_status() == 0)))
+         break;
+#endif
+   }
+
+   if(!err)
+      err = (RAND_write_file(cp) == -1);
+
 jleave:
-   NYD_LEAVE;
-   return rv;
+   if(randfile != NULL)
+      n_lofi_free(randfile);
+   if(err)
+      n_panic(_("Cannot seed the *SSL PseudoRandomNumberGenerator, "
+            "RAND_status() is 0!\n"
+         "  Please set *ssl-rand-file* to a file with sufficient entropy.\n"
+         "  On a machine with entropy: "
+            "\"$ dd if=/dev/urandom of=FILE bs=1024 count=1\"\n"));
+   NYD2_LEAVE;
 }
 
 static void
-a_xssl_init(void)
-{
+a_xssl_init(void){
 #ifdef HAVE_XSSL_CONFIG
    char const *cp;
 #endif
-   NYD_ENTER;
+   NYD2_ENTER;
 
-   if(!(a_xssl_state & a_XSSL_S_INIT)){
+   if(a_xssl_state & a_XSSL_S_INIT)
+      goto jleave;
+
 #if HAVE_XSSL_OPENSSL >= 0x10100
-      OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS |
-         OPENSSL_INIT_LOAD_CRYPTO_STRINGS
+   OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS |
+      OPENSSL_INIT_LOAD_CRYPTO_STRINGS
 # ifdef HAVE_SSL_ALL_ALGORITHMS
-            | OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS
+         | OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS
 # endif
-         , NULL);
-# ifdef HAVE_SSL_ALL_ALGORITHMS
-      a_xssl_state |= a_XSSL_S_ALGO_LOAD;
-# endif
+      , NULL);
 #else
-      SSL_load_error_strings();
-      SSL_library_init();
+   SSL_load_error_strings();
+   SSL_library_init();
+   a_xssl_load_algos();
 #endif
-      a_xssl_state |= a_XSSL_S_INIT;
-   }
+   a_xssl_state |= a_XSSL_S_INIT;
+
 
    /* Load openssl.cnf or whatever was given in *ssl-config-file* */
 #ifdef HAVE_XSSL_CONFIG
-   if(!(a_xssl_state & a_XSSL_S_CONF_LOAD) &&
-         (cp = ok_vlook(ssl_config_file)) != NULL){
-      ul_i flags = CONF_MFLAGS_IGNORE_MISSING_FILE;
+   if((cp = ok_vlook(ssl_config_file)) != NULL){
+      char const *msg;
+      ul_i flags;
 
       if(*cp == '\0'){
+         msg = "[default]";
          cp = NULL;
+         flags = CONF_MFLAGS_IGNORE_MISSING_FILE;
+      }else if((msg = cp, cp = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) != NULL)
          flags = 0;
+      else{
+         n_err(_("*ssl-config-file*: file expansion failed: %s\n"),
+            n_shexp_quote_cp(msg, FAL0));
+         goto jefile;
       }
+
       if(CONF_modules_load_file(cp, n_uagent, flags) == 1){
          a_xssl_state |= a_XSSL_S_CONF_LOAD;
 # if HAVE_XSSL_OPENSSL < 0x10100
@@ -445,14 +479,19 @@ a_xssl_init(void)
             atexit(&a_xssl_atexit); /* TODO generic program-wide event mech. */
          }
 # endif
+         if(n_poption & n_PO_D_V)
+            n_err(_("Loaded SSL/TLS configuration for %s from %s\n"), n_uagent,
+               n_shexp_quote_cp(msg, FAL0));
+jefile:;
       }else
-         ssl_gen_err(_("Ignoring CONF_modules_load_file() load error"));
+         ssl_gen_err(_("SSL/TLS CONF_modules_load_file() load error"));
    }
-#endif
+#endif /* HAVE_XSSL_CONFIG */
 
-   if(!(a_xssl_state & a_XSSL_S_RAND_INIT) && a_xssl_rand_init())
-      a_xssl_state |= a_XSSL_S_RAND_INIT;
-   NYD_LEAVE;
+   if(!(a_xssl_state & a_XSSL_S_RAND_INIT))
+      a_xssl_rand_init();
+jleave:
+   NYD2_LEAVE;
 }
 
 #if HAVE_XSSL_OPENSSL < 0x10100
@@ -592,153 +631,193 @@ jouter:
 
 #ifdef HAVE_XSSL_CONF_CTX
 static void *
-_ssl_conf_setup(SSL_CTX *ctxp)
-{
+a_xssl_conf_setup(SSL_CTX *ctxp, struct url const *urlp){
+   char const *cp;
    SSL_CONF_CTX *sccp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
-   if ((sccp = SSL_CONF_CTX_new()) != NULL) {
+   sccp = NULL;
+
+   if((cp = xok_vlook(ssl_config_module, urlp, OXM_ALL)) != NULL){
+# ifdef HAVE_XSSL_CTX_CONFIG
+      if(!(a_xssl_state & a_XSSL_S_CONF_LOAD)){
+         n_err(_("*ssl-config-module*: no *ssl-config-file* loaded: %s\n"),
+            n_shexp_quote_cp(cp, FAL0));
+         goto jleave;
+      }else if(!SSL_CTX_config(ctxp, cp)){
+         ssl_gen_err(_("*ssl-config-module*: load error for %s, section [%s]"),
+               n_uagent, n_shexp_quote_cp(cp, FAL0));
+         goto jleave;
+      }
+# else
+      n_err(_("*ssl-config-module*: set but not supported: %s\n"),
+         n_shexp_quote_cp(cp, FAL0));
+      goto jleave;
+# endif
+   }
+
+   if((sccp = SSL_CONF_CTX_new()) != NULL){
       SSL_CONF_CTX_set_flags(sccp,
          SSL_CONF_FLAG_FILE | SSL_CONF_FLAG_CLIENT |
          SSL_CONF_FLAG_CERTIFICATE | SSL_CONF_FLAG_SHOW_ERRORS);
 
       SSL_CONF_CTX_set_ssl_ctx(sccp, ctxp);
-   } else
+   }else
       ssl_gen_err(_("SSL_CONF_CTX_new() failed"));
-
-   NYD_LEAVE;
+jleave:
+   NYD2_LEAVE;
    return sccp;
 }
 
 static bool_t
-_ssl_conf(void *confp, enum a_xssl_conf_type ct, char const *value)
-{
+a_xssl_conf(void *confp, char const *cmd, char const *value){
    int rv;
-   char const *cmsg;
-   SSL_CONF_CTX *sccp = (SSL_CONF_CTX*)confp;
-   NYD_ENTER;
+   SSL_CONF_CTX *sccp;
+   NYD2_ENTER;
 
-   switch (ct) {
-   case a_XSSL_CT_CERTIFICATE:
-      cmsg = "ssl-cert";
-      rv = SSL_CONF_cmd(sccp, "Certificate", value);
-      break;
-   case a_XSSL_CT_CIPHER_STRING:
-      cmsg = "ssl-cipher-list";
-      rv = SSL_CONF_cmd(sccp, "CipherString", value);
-      break;
-   case a_XSSL_CT_PRIVATE_KEY:
-      cmsg = "ssl-key";
-      rv = SSL_CONF_cmd(sccp, "PrivateKey", value);
-      break;
-   default:
-   case a_XSSL_CT_OPTIONS:
-      cmsg = "ssl-options";
-      rv = SSL_CONF_cmd(sccp, "Options", "Bugs");
-      break;
-   case a_XSSL_CT_PROTOCOL:
-      cmsg = "ssl-protocol";
-      rv = SSL_CONF_cmd(sccp, "Protocol", value);
-      break;
-   case a_XSSL_CT_CURVES:
-      cmsg = "ssl-curves";
-      rv = SSL_CONF_cmd(sccp, "Curves", value);
-      break;
-   }
+   if(n_poption & n_PO_D_V)
+      n_err(_("SSL/TLS: applying config: %s = %s\n"),
+            n_shexp_quote_cp(cmd, FAL0), n_shexp_quote_cp(value, FAL0));
 
-   if (rv == 2)
+   rv = SSL_CONF_cmd(sccp = confp, cmd, value);
+   if(rv == 2)
       rv = 0;
-   else {
-      if (rv == 0)
-         ssl_gen_err(_("SSL_CONF_CTX_cmd() failed for *%s*"), cmsg);
+   else{
+      cmd = n_shexp_quote_cp(cmd, FAL0);
+      value = n_shexp_quote_cp(value, FAL0);
+      if(rv == 0)
+         ssl_gen_err(_("SSL/TLS: config failure: %s = %s"), cmd, value);
       else
-         n_err(_("%s: *%s* implementation error, please report this\n"),
-            n_uagent, cmsg);
+         n_err(_("SSL/TLS: please report this config error: %s = %s\n"),
+            cmd, value);
       rv = 1;
    }
-
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return (rv == 0);
 }
 
 static bool_t
-_ssl_conf_finish(void **confp, bool_t error)
-{
-   SSL_CONF_CTX **sccp = (SSL_CONF_CTX**)confp;
+a_xssl_conf_finish(void **confp, bool_t error){
+   SSL_CONF_CTX **sccp;
    bool_t rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
-   if (!(rv = error))
+   sccp = (SSL_CONF_CTX**)confp;
+
+   if(!(rv = error))
       rv = (SSL_CONF_CTX_finish(*sccp) != 0);
 
    SSL_CONF_CTX_free(*sccp);
 
    *sccp = NULL;
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
 #else /* HAVE_XSSL_CONF_CTX */
+# ifdef HAVE_XSSL_CTX_CONFIG
+#  error SSL_CTX_config(3) support unexpected without SSL_CONF_CTX support
+# endif
+
 static void *
-_ssl_conf_setup(SSL_CTX* ctxp)
-{
+a_xssl_conf_setup(SSL_CTX* ctxp, struct url const *urlp){
+   char const *cp;
+   NYD2_ENTER;
+
+   if((cp = xok_vlook(ssl_config_module, urlp, OXM_ALL)) != NULL){
+      n_err(_("*ssl-config-module*: set but not supported: %s\n"),
+         n_shexp_quote_cp(cp, FAL0));
+      ctxp = NULL;
+   }
+   NYD2_LEAVE;
    return ctxp;
 }
 
 static bool_t
-_ssl_conf(void *confp, enum a_xssl_conf_type ct, char const *value){
+a_xssl_conf(void *confp, char const *cmd, char const *value){
+   char const *xcmd, *emsg;
    SSL_CTX *ctxp;
    NYD2_ENTER;
 
+   if(n_poption & n_PO_D_V)
+      n_err(_("SSL/TLS: applying config: %s = %s\n"),
+            n_shexp_quote_cp(cmd, FAL0), n_shexp_quote_cp(value, FAL0));
+
    ctxp = confp;
 
-   switch(ct){
-   case a_XSSL_CT_CERTIFICATE:
+   if(!asccasecmp(cmd, xcmd = "Certificate")){
       if(SSL_CTX_use_certificate_chain_file(ctxp, value) != 1){
-         ssl_gen_err(_("Can't load certificate from file %s\n"),
-            n_shexp_quote_cp(value, FAL0));
-         confp = NULL;
+         emsg = N_("SSL/TLS: %s: cannot load from file %s\n");
+         goto jerr;
       }
-      break;
-   case a_XSSL_CT_CIPHER_STRING:
+   }else if(!asccasecmp(cmd, xcmd = "CipherList")){
       if(SSL_CTX_set_cipher_list(ctxp, value) != 1){
-         ssl_gen_err(_("Invalid cipher string: %s\n"), value);
-         confp = NULL;
+         emsg = N_("SSL/TLS: %s: invalid: %s\n");
+         goto jerr;
       }
-      break;
-   case a_XSSL_CT_CURVES:
+   }else if(!asccasecmp(cmd, xcmd = "Curves")){
 #ifdef SSL_CTRL_SET_CURVES_LIST
       if(SSL_CTX_set1_curves_list(ctxp, value) != 1){
-         ssl_gen_err(_("Invalid curves string: %s\n"), value);
-         confp = NULL;
+         emsg = N_("SSL/TLS: %s: invalid: %s\n");
+         goto jerr;
       }
 #else
-      n_err(_("*ssl-curves*: as such not supported\n"));
-      confp = NULL;
+      value = NULL;
+      emsg = N_("SSL/TLS: %s: directive not supported\n");
+      goto jxerr;
 #endif
-      break;
-   case a_XSSL_CT_PRIVATE_KEY:
-      if(SSL_CTX_use_PrivateKey_file(ctxp, value, SSL_FILETYPE_PEM) != 1){
-         ssl_gen_err(_("Can't load private key from file %s\n"),
-            n_shexp_quote_cp(value, FAL0));
-         confp = NULL;
+   }else if((emsg = NULL, !asccasecmp(cmd, xcmd = "MaxProtocol")) ||
+         (emsg = (char*)-1, !asccasecmp(cmd, xcmd = "MinProtocol"))){
+#ifndef HAVE_XSSL_SET_MIN_PROTO_VERSION
+      value = NULL;
+      emsg = N_("SSL/TLS: %s: directive not supported\n");
+      goto jxerr;
+#else
+      struct a_xssl_protocol const *xpp;
+      size_t i;
+
+      for(i = 1 /* [0] == ALL */;;){
+         xpp = &a_xssl_protocols[i];
+
+         if(xpp->sp_ok_minmaxproto && !asccasecmp(value, xpp->sp_name))
+            break;
+
+         if(++i >= n_NELEM(a_xssl_protocols)){
+            emsg = N_("SSL/TLS: %s: unsupported element: %s\n");
+            goto jxerr;
+         }
       }
-      break;
-   case a_XSSL_CT_OPTIONS:
-      /* "Options"="Bugs" TODO *ssl-options* */
+
+      if((emsg == NULL ? SSL_CTX_set_max_proto_version(ctxp, xpp->sp_version)
+            : SSL_CTX_set_min_proto_version(ctxp, xpp->sp_version)) != 1){
+         emsg = N_("SSL/TLS: %s: invalid protocol: %s\n");
+         goto jerr;
+      }
+#endif /* !HAVE_XSSL_SET_MIN_PROTO_VERSION */
+   }else if(!asccasecmp(cmd, xcmd = "Options")){
+      if(asccasecmp(value, "Bugs")){
+         emsg = N_("SSL/TLS: %s: fallback only supports value \"Bugs\": %s\n");
+         goto jxerr;
+      }
       SSL_CTX_set_options(ctxp, SSL_OP_ALL);
-      break;
-   case a_XSSL_CT_PROTOCOL:{
+   }else if(!asccasecmp(cmd, xcmd = "PrivateKey")){
+      if(SSL_CTX_use_PrivateKey_file(ctxp, value, SSL_FILETYPE_PEM) != 1){
+         emsg = N_("%s: cannot load from file %s\n");
+         goto jerr;
+      }
+   }else if(!asccasecmp(cmd, xcmd = "Protocol")){
       char *iolist, *cp, addin;
       size_t i;
-      sl_i opts = 0;
+      sl_i opts;
 
-      confp = NULL;
+      opts = 0;
+
       for(iolist = cp = savestr(value);
             (cp = n_strsep(&iolist, ',', FAL0)) != NULL;){
          if(*cp == '\0'){
-            n_err(_("*ssl-protocol*: empty arguments are not supported\n"));
-            goto jleave;
+            value = NULL;
+            emsg = N_("SSL/TLS: %s: empty elements are not supported\n");
+            goto jxerr;
          }
 
          addin = TRU1;
@@ -749,32 +828,51 @@ _ssl_conf(void *confp, enum a_xssl_conf_type ct, char const *value){
          }
 
          for(i = 0;;){
-            if(!asccasecmp(cp, a_xssl_protocols[i].sp_name)){
+            struct a_xssl_protocol const *xpp;
+
+            xpp = &a_xssl_protocols[i];
+
+            if(xpp->sp_ok_proto && !asccasecmp(cp, xpp->sp_name)){
                /* We need to inverse the meaning of the _NO_s */
                if(!addin)
-                  opts |= a_xssl_protocols[i].sp_flag;
+                  opts |= xpp->sp_op_no;
                else
-                  opts &= ~a_xssl_protocols[i].sp_flag;
+                  opts &= ~xpp->sp_op_no;
                break;
             }
-            if(++i < n_NELEM(a_xssl_protocols))
-               continue;
-            n_err(_("*ssl-protocol*: unsupported value: %s\n"), cp);
-            goto jleave;
+
+            if(++i >= n_NELEM(a_xssl_protocols)){
+               emsg = N_("SSL/TLS: %s: unsupported element: %s\n");
+               goto jxerr;
+            }
          }
       }
-      confp = ctxp;
+
+      SSL_CTX_clear_options(ctxp, SSL_OP_NO_SSL_MASK);
       SSL_CTX_set_options(ctxp, opts);
-   }  break;
+   }else{
+      xcmd = n_shexp_quote_cp(cmd, FAL0);
+      emsg = N_("SSL/TLS: unsupported directive: %s: value: %s\n");
+      goto jxerr;
    }
+
 jleave:
    NYD2_LEAVE;
    return (confp != NULL);
+jerr:
+   ssl_gen_err(V_(emsg), xcmd, n_shexp_quote_cp(value, FAL0));
+   confp = NULL;
+   goto jleave;
+jxerr:
+   if(value != NULL)
+      value = n_shexp_quote_cp(value, FAL0);
+   n_err(V_(emsg), xcmd, value);
+   confp = NULL;
+   goto jleave;
 }
 
 static bool_t
-_ssl_conf_finish(void **confp, bool_t error)
-{
+a_xssl_conf_finish(void **confp, bool_t error){
    n_UNUSED(confp);
    n_UNUSED(error);
    return TRU1;
@@ -782,31 +880,221 @@ _ssl_conf_finish(void **confp, bool_t error)
 #endif /* !HAVE_XSSL_CONF_CTX */
 
 static bool_t
-_ssl_load_verifications(SSL_CTX *ctxp)
-{
+a_xssl_obsolete_conf_vars(void *confp, struct url const *urlp){
+   char const *cp, *cp_base, *certchain;
+   bool_t rv;
+   NYD2_ENTER;
+
+   rv = FAL0;
+
+   /* Certificate via ssl-cert */
+   if((certchain = cp = xok_vlook(ssl_cert, urlp, OXM_ALL)) != NULL){
+      n_OBSOLETE(_("please use *ssl-config-pairs* instead of *ssl-cert*"));
+      if((cp_base = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL){
+         n_err(_("*ssl-cert* value expansion failed: %s\n"),
+            n_shexp_quote_cp(cp, FAL0));
+         goto jleave;
+      }
+      if(!a_xssl_conf(confp, "Certificate", certchain = cp_base))
+         goto jleave;
+   }
+
+   /* CipherList via ssl-ciper-list */
+   if((cp = xok_vlook(ssl_cipher_list, urlp, OXM_ALL)) != NULL){
+      n_OBSOLETE(_("please use *ssl-config-pairs* instead of "
+         "*ssl-cipher-list*"));
+      if(!a_xssl_conf(confp, "CipherList", cp))
+         goto jleave;
+   }
+
+   /* Curves via ssl-curves */
+   if((cp = xok_vlook(ssl_curves, urlp, OXM_ALL)) != NULL){
+      n_OBSOLETE(_("please use *ssl-config-pairs* instead of *ssl-curves*"));
+      if(!a_xssl_conf(confp, "Curves", cp))
+         goto jleave;
+   }
+
+   /* PrivateKey via ssl-key */
+   if((cp = xok_vlook(ssl_key, urlp, OXM_ALL)) != NULL){
+      n_OBSOLETE(_("please use *ssl-config-pairs* instead of *ssl-curves*"));
+      if((cp_base = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL){
+         n_err(_("*ssl-key* value expansion failed: %s\n"),
+            n_shexp_quote_cp(cp, FAL0));
+         goto jleave;
+      }
+      cp = cp_base;
+      if(certchain == NULL){
+         n_err(_("*ssl-key* can only be used together with *ssl-cert*! "
+            "And use *ssl-config-pairs*!\n"));
+         goto jleave;
+      }
+   }
+   if((cp != NULL || (cp = certchain) != NULL) &&
+         !a_xssl_conf(confp, "PrivateKey", cp))
+      goto jleave;
+
+   /* Protocol via ssl-method or ssl-protocol */
+   if((cp = xok_vlook(ssl_method, urlp, OXM_ALL)) != NULL){
+      size_t i;
+
+      n_OBSOLETE(_("please use *ssl-config-pairs* instead of *ssl-method*"));
+      for(i = 0;;){
+         if(!asccasecmp(_ssl_methods[i].sm_name, cp)){
+            cp = _ssl_methods[i].sm_map;
+            break;
+         }
+         if(++i == n_NELEM(_ssl_methods)){
+            n_err(_("Unsupported TLS/SSL method: %s\n"), cp);
+            goto jleave;
+         }
+      }
+   }
+   if((cp_base = xok_vlook(ssl_protocol, urlp, OXM_ALL)) != NULL){
+      n_OBSOLETE(_("please use *ssl-config-pairs* instead of *ssl-protocol*"));
+      if(cp != NULL && (n_poption & n_PO_D_V))
+         n_err(_("*ssl-protocol* overrides *ssl-method*! "
+            "And please use *ssl-config-pairs* instead!\n"));
+      cp = cp_base;
+   }
+   if(cp != NULL && !a_xssl_conf(confp, "Protocol", cp))
+      goto jleave;
+
+   rv = TRU1;
+jleave:
+   NYD2_LEAVE;
+   return rv;
+}
+
+static bool_t
+a_xssl_config_pairs(void *confp, struct url const *urlp){
+   /* Due to interdependencies some commands have to be delayed a bit */
+   static char const cmdcert[] = "Certificate", cmdprivkey[] = "PrivateKey";
+   char const *valcert, *valprivkey;
+   char *pairs, *cp, *cmd, *val;
+   NYD2_ENTER;
+
+   if((pairs = n_UNCONST(xok_vlook(ssl_config_pairs, urlp, OXM_ALL))) == NULL)
+      goto jleave;
+   pairs = savestr(pairs);
+
+   valcert = valprivkey = NULL;
+
+   while((cp = n_strsep_esc(&pairs, ',', FAL0)) != NULL){
+      char c;
+      enum{
+         a_NONE,
+         a_EXPAND = 1u<<0,
+         a_CERT = 1u<<1,
+         a_PRIVKEY = 1u<<2,
+         a_EXPAND_MASK = a_EXPAND | a_CERT | a_PRIVKEY
+      } f;
+
+      /* Directive, space trimmed */
+      if((cmd = strchr(cp, '=')) == NULL){
+jenocmd:
+         if(pairs == NULL)
+            pairs = n_UNCONST(n_empty);
+         n_err(_("*ssl-config-pairs*: missing directive: %s; rest: %s\n"),
+            n_shexp_quote_cp(cp, FAL0), n_shexp_quote_cp(pairs, FAL0));
+         goto jleave;
+      }
+      val = &cmd[1];
+
+      if((cmd > cp && cmd[-1] == '*')){
+         --cmd;
+         f = a_EXPAND;
+      }else
+         f = a_NONE;
+      while(cmd > cp && (c = cmd[-1], blankspacechar(c)))
+         --cmd;
+      if(cmd == cp)
+         goto jenocmd;
+      *cmd = '\0';
+      cmd = cp;
+
+      /* Command with special treatment? */
+      if(!asccasecmp(cmd, cmdcert))
+         f |= a_CERT;
+      else if(!asccasecmp(cmd, cmdprivkey))
+         f |= a_PRIVKEY;
+
+      /* Value, space trimmed */
+      while((c = *val) != '\0' && blankspacechar(c))
+         ++val;
+      cp = &val[strlen(val)];
+      while(cp > val && (c = cp[-1], blankspacechar(c)))
+         --cp;
+      *cp = '\0';
+      if(cp == val){
+         if(pairs == NULL)
+            pairs = n_UNCONST(n_empty);
+         n_err(_("*ssl-config-pairs*: missing value: %s; rest: %s\n"),
+            n_shexp_quote_cp(cmd, FAL0), n_shexp_quote_cp(pairs, FAL0));
+         goto jleave;
+      }
+
+      /* Filename transformations to be applied? */
+      if(f & a_EXPAND_MASK){
+         if((cp = fexpand(val, FEXP_LOCAL | FEXP_NOPROTO)) == NULL){
+            if(pairs == NULL)
+               pairs = n_UNCONST(n_empty);
+            n_err(_("*ssl-config-pairs*: value expansion failed: %s: %s; "
+                  "rest: %s\n"),
+               n_shexp_quote_cp(cmd, FAL0), n_shexp_quote_cp(val, FAL0),
+               n_shexp_quote_cp(pairs, FAL0));
+            goto jleave;
+         }
+         val = cp;
+      }
+
+      /* Some things have to be delayed */
+      if(f & a_CERT)
+         valcert = val;
+      else if(f & a_PRIVKEY)
+         valprivkey = val;
+      else if(!a_xssl_conf(confp, cmd, val)){
+         pairs = n_UNCONST(n_empty);
+         goto jleave;
+      }
+   }
+
+   /* Work the delayed ones */
+   if((valcert != NULL && !a_xssl_conf(confp, cmdcert, valcert)) ||
+         ((valprivkey != NULL || (valprivkey = valcert) != NULL) &&
+          !a_xssl_conf(confp, cmdprivkey, valprivkey)))
+      pairs = n_UNCONST(n_empty);
+
+jleave:
+   NYD2_LEAVE;
+   return (pairs == NULL);
+}
+
+static bool_t
+a_xssl_load_verifications(SSL_CTX *ctxp, struct url const *urlp){
    char *ca_dir, *ca_file;
    X509_STORE *store;
-   bool_t rv = FAL0;
-   NYD_ENTER;
+   bool_t rv;
+   NYD2_ENTER;
 
-   if (ssl_verify_level == SSL_VERIFY_IGNORE) {
+   if(ssl_verify_level == SSL_VERIFY_IGNORE){
       rv = TRU1;
       goto jleave;
    }
+   rv = FAL0;
 
-   if ((ca_dir = ok_vlook(ssl_ca_dir)) != NULL)
+   if((ca_dir = xok_vlook(ssl_ca_dir, urlp, OXM_ALL)) != NULL)
       ca_dir = fexpand(ca_dir, FEXP_LOCAL | FEXP_NOPROTO);
-   if ((ca_file = ok_vlook(ssl_ca_file)) != NULL)
+   if((ca_file = xok_vlook(ssl_ca_file, urlp, OXM_ALL)) != NULL)
       ca_file = fexpand(ca_file, FEXP_LOCAL | FEXP_NOPROTO);
 
-   if ((ca_dir != NULL || ca_file != NULL) &&
-         SSL_CTX_load_verify_locations(ctxp, ca_file, ca_dir) != 1) {
+   if((ca_dir != NULL || ca_file != NULL) &&
+         SSL_CTX_load_verify_locations(ctxp, ca_file, ca_dir) != 1){
       char const *m1, *m2, *m3;
 
-      if (ca_dir != NULL) {
+      if(ca_dir != NULL){
          m1 = ca_dir;
          m2 = (ca_file != NULL) ? _(" or ") : n_empty;
-      } else
+      }else
          m1 = m2 = n_empty;
       m3 = (ca_file != NULL) ? ca_file : n_empty;
       ssl_gen_err(_("Error loading %s%s%s\n"), m1, m2, m3);
@@ -819,7 +1107,7 @@ _ssl_load_verifications(SSL_CTX *ctxp)
       if((xv15 = ok_blook(ssl_no_default_ca)))
          n_OBSOLETE(_("please use *ssl-ca-no-defaults*, "
             "not *ssl-no-default-ca*"));
-      if(!ok_blook(ssl_ca_no_defaults) && !xv15 &&
+      if(!xok_blook(ssl_ca_no_defaults, urlp, OXM_ALL) && !xv15 &&
             SSL_CTX_set_default_verify_paths(ctxp) != 1) {
          ssl_gen_err(_("Error loading built-in default CA locations\n"));
          goto jleave;
@@ -831,11 +1119,11 @@ _ssl_load_verifications(SSL_CTX *ctxp)
    SSL_CTX_set_verify(ctxp, SSL_VERIFY_PEER, &_ssl_verify_cb);
    store = SSL_CTX_get_cert_store(ctxp);
    load_crls(store, ok_v_ssl_crl_file, ok_v_ssl_crl_dir);
-   a_xssl_ca_flags(store, ok_vlook(ssl_ca_flags));
+   a_xssl_ca_flags(store, xok_vlook(ssl_ca_flags, urlp, OXM_ALL));
 
    rv = TRU1;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -1067,7 +1355,6 @@ _smime_cipher(char const *name)
 
    /* Not a built-in algorithm, but we may have dynamic support for more */
 #ifdef HAVE_SSL_ALL_ALGORITHMS
-   a_xssl_load_algos();
    if((cipher = EVP_get_cipherbyname(cp)) != NULL)
       goto jleave;
 #endif
@@ -1292,7 +1579,6 @@ jhave_name:
 
    /* Not a built-in algorithm, but we may have dynamic support for more */
 #ifdef HAVE_SSL_ALL_ALGORITHMS
-   a_xssl_load_algos();
    if((digest = EVP_get_digestbyname(cp)) != NULL)
       goto jleave;
 #endif
@@ -1399,21 +1685,39 @@ jleave:
    return rv;
 }
 
+#if n_RANDOM_USE_XSSL
+FL void
+ssl_rand_bytes(void *buf, size_t blen){
+   NYD_ENTER;
+
+   if(!(a_xssl_state & a_XSSL_S_RAND_INIT))
+      a_xssl_rand_init();
+
+   while(blen > 0){
+      si32_t i;
+
+      i = n_MIN(SI32_MAX, blen);
+      blen -= i;
+      RAND_bytes(buf, i);
+      buf = (ui8_t*)buf + i;
+   }
+   NYD_LEAVE;
+}
+#endif
+
 FL enum okay
-ssl_open(struct url const *urlp, struct sock *sp)
-{
-   SSL_CTX *ctxp;
+ssl_open(struct url const *urlp, struct sock *sp){
    void *confp;
-   char const *cp, *cp_base;
-   size_t i;
-   enum okay rv = STOP;
+   SSL_CTX *ctxp;
+   enum okay rv;
    NYD_ENTER;
 
    a_xssl_init();
 
+   rv = STOP;
    ssl_set_verify_level(urlp);
 
-   if ((ctxp = SSL_CTX_new(n_XSSL_CLIENT_METHOD())) == NULL) {
+   if((ctxp = SSL_CTX_new(n_XSSL_CLIENT_METHOD())) == NULL){
       ssl_gen_err(_("SSL_CTX_new() failed"));
       goto jleave;
    }
@@ -1423,78 +1727,18 @@ ssl_open(struct url const *urlp, struct sock *sp)
    SSL_CTX_set_mode(ctxp, SSL_MODE_AUTO_RETRY);
 #endif
 
-   if ((confp = _ssl_conf_setup(ctxp)) == NULL)
+   if((confp = a_xssl_conf_setup(ctxp, urlp)) == NULL)
       goto jerr0;
 
-   /* TODO obsolete Check for *ssl-method*, warp to a *ssl-protocol* value */
-   if ((cp = xok_vlook(ssl_method, urlp, OXM_ALL)) != NULL) {
-      n_OBSOLETE(_("please use *ssl-protocol* instead of *ssl-method*"));
-      if (n_poption & n_PO_D_V)
-         n_err(_("*ssl-method*: %s\n"), cp);
-      for (i = 0;;) {
-         if (!asccasecmp(_ssl_methods[i].sm_name, cp)) {
-            cp = _ssl_methods[i].sm_map;
-            break;
-         }
-         if (++i == n_NELEM(_ssl_methods)) {
-            n_err(_("Unsupported TLS/SSL method: %s\n"), cp);
-            goto jerr1;
-         }
-      }
-   }
-   /* *ssl-protocol* */
-   if ((cp_base = xok_vlook(ssl_protocol, urlp, OXM_ALL)) != NULL) {
-      if (n_poption & n_PO_D_V)
-         n_err(_("*ssl-protocol*: %s\n"), cp_base);
-      cp = cp_base;
-   }
-   cp = (cp != NULL ? savecatsep(cp, ',', n_XSSL_DISABLED_PROTOCOLS)
-         : n_XSSL_DISABLED_PROTOCOLS);
-   if (!_ssl_conf(confp, a_XSSL_CT_PROTOCOL, cp))
+   if(!a_xssl_obsolete_conf_vars(confp, urlp))
       goto jerr1;
-
-   /* *ssl-cert* */
-   if ((cp = xok_vlook(ssl_cert, urlp, OXM_ALL)) != NULL) {
-      if (n_poption & n_PO_D_V)
-         n_err(_("*ssl-cert* %s\n"), n_shexp_quote_cp(cp, FAL0));
-      if ((cp_base = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL) {
-         n_err(_("*ssl-cert* value expansion failed: %s\n"),
-            n_shexp_quote_cp(cp, FAL0));
-         goto jerr1;
-      }
-      cp = cp_base;
-      if (!_ssl_conf(confp, a_XSSL_CT_CERTIFICATE, cp))
-         goto jerr1;
-
-      /* *ssl-key* */
-      if ((cp_base = xok_vlook(ssl_key, urlp, OXM_ALL)) != NULL) {
-         if (n_poption & n_PO_D_V)
-            n_err(_("*ssl-key* %s\n"), n_shexp_quote_cp(cp_base, FAL0));
-         if ((cp = fexpand(cp_base, FEXP_LOCAL | FEXP_NOPROTO)) == NULL) {
-            n_err(_("*ssl-key* value expansion failed: %s\n"),
-               n_shexp_quote_cp(cp_base, FAL0));
-            goto jerr1;
-         }
-      }
-      if (!_ssl_conf(confp, a_XSSL_CT_PRIVATE_KEY, cp))
-         goto jerr1;
-   }
-
-   if ((cp = xok_vlook(ssl_cipher_list, urlp, OXM_ALL)) != NULL &&
-         !_ssl_conf(confp, a_XSSL_CT_CIPHER_STRING, cp))
+   if(!a_xssl_config_pairs(confp, urlp))
       goto jerr1;
-   if ((cp = xok_vlook(ssl_curves, urlp, OXM_ALL)) != NULL &&
-         !_ssl_conf(confp, a_XSSL_CT_CURVES, cp))
-      goto jerr1;
-
-   if (!_ssl_load_verifications(ctxp))
-      goto jerr1;
-
-   if (!_ssl_conf(confp, a_XSSL_CT_OPTIONS, NULL)) /* TODO *ssl-options* */
+   if(!a_xssl_load_verifications(ctxp, urlp))
       goto jerr1;
 
    /* Done with context setup, create our new per-connection structure */
-   if (!_ssl_conf_finish(&confp, FAL0))
+   if(!a_xssl_conf_finish(&confp, FAL0))
       goto jerr0;
 
    if ((sp->s_ssl = SSL_new(ctxp)) == NULL) {
@@ -1505,7 +1749,7 @@ ssl_open(struct url const *urlp, struct sock *sp)
    /* Try establish SNI extension; even though this is a TLS extension the
     * protocol isn't checked once the host name is set, and therefore i've
     * refrained from changing so much code just to check out whether we are
-    * using SSLv3, which should become rarer and rarer */
+    * using SSLv3, which should become more and more rare */
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
    if((urlp->url_flags & n_URL_TLS_MASK) &&
          (urlp->url_flags & n_URL_HOST_IS_NAME)){
@@ -1545,7 +1789,7 @@ jerr2:
    sp->s_ssl = NULL;
 jerr1:
    if (confp != NULL)
-      _ssl_conf_finish(&confp, TRU1);
+      a_xssl_conf_finish(&confp, TRU1);
 jerr0:
    SSL_CTX_free(ctxp);
    goto jleave;

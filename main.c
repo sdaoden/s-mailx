@@ -349,6 +349,10 @@ a_main_startup(void){
 #ifdef HAVE_ICONV
    iconvd = (iconv_t)-1;
 #endif
+
+   /* Ensure some variables get loaded and/or verified */
+
+   (void)ok_blook(POSIXLY_CORRECT);
    NYD_LEAVE;
 }
 
@@ -358,7 +362,7 @@ a_main_grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt){
    char const **newcpp;
    NYD_ENTER;
 
-   newcpp = salloc(sizeof(char*) * (newsize + 1));
+   newcpp = n_autorec_alloc(sizeof(char*) * (newsize + 1));
 
    if(oldcnt > 0)
       memcpy(newcpp, *cpp, oldcnt * sizeof(char*));
@@ -414,7 +418,6 @@ a_main_setup_vars(void){
    }
 
    (void)ok_vlook(TMPDIR);
-   (void)ok_blook(POSIXLY_CORRECT);
 
    /* Are we in a reproducible-builds.org environment? */
    if(ok_vlook(SOURCE_DATE_EPOCH) != NULL){
@@ -642,8 +645,8 @@ main(int argc, char *argv[]){
       a_RF_USER = 1<<2,
       a_RF_ALL = a_RF_SYSTEM | a_RF_USER
    } resfiles;
-   size_t oargs_size, oargs_cnt, Xargs_size, Xargs_cnt, smopts_size;
-   char const *Aarg, *emsg, *folder, *Larg, *okey, **oargs, *qf,
+   size_t Xargs_size, Xargs_cnt, smopts_size;
+   char const *Aarg, *emsg, *folder, *Larg, *okey, *qf,
       *subject, *uarg, **Xargs;
    struct attachment *attach;
    struct name *to, *cc, *bcc;
@@ -655,8 +658,8 @@ main(int argc, char *argv[]){
    to = cc = bcc = NULL;
    attach = NULL;
    Aarg = emsg = folder = Larg = okey = qf = subject = uarg = NULL;
-   oargs = Xargs = NULL;
-   oargs_size = oargs_cnt = Xargs_size = Xargs_cnt = smopts_size = 0;
+   Xargs = NULL;
+   Xargs_size = Xargs_cnt = smopts_size = 0;
    resfiles = a_RF_ALL;
 
    /*
@@ -680,7 +683,7 @@ main(int argc, char *argv[]){
          struct a_arg *nap;
 
          n_psonce |= n_PSO_SENDMODE;
-         nap = salloc(sizeof(struct a_arg));
+         nap = n_autorec_alloc(sizeof(struct a_arg));
          if(a_head == NULL)
             a_head = nap;
          else
@@ -704,13 +707,11 @@ main(int argc, char *argv[]){
          break;
       case 'd':
          ok_bset(debug);
-         okey = "debug";
-         goto joarg;
+         break;
       case 'E':
          n_OBSOLETE(_("-E will be removed, please use \"-Sskipemptybody\""));
          ok_bset(skipemptybody);
-         okey = "skipemptybody";
-         goto joarg;
+         break;
       case 'e':
          n_poption |= n_PO_EXISTONLY;
          break;
@@ -733,8 +734,7 @@ main(int argc, char *argv[]){
       case 'i':
          /* Ignore interrupts */
          ok_bset(ignore);
-         okey = "ignore";
-         goto joarg;
+         break;
       case 'L':
          Larg = a_main_oarg;
          n_poption |= n_PO_HEADERLIST;
@@ -766,8 +766,7 @@ main(int argc, char *argv[]){
       case 'N':
          /* Avoid initial header printing */
          ok_bclear(header);
-         okey = "noheader";
-         goto joarg;
+         break;
       case 'n':
          /* Don't source "unspecified system start-up file" */
          if(resfiles & a_RF_SET){
@@ -816,12 +815,13 @@ jeMmq:
              * TODO an interactive session!
              * TODO Maybe disable setting of from?
              * TODO Warn user?  Update manual!! */
-            okey = savecat("from=", fa->n_fullname);
-            goto joarg;
+            a_main_oarg = savecat("from=", fa->n_fullname);
+            goto jsetvar;
          }
          break;
       case 'S':
-         /* Set variable (TODO twice [only if successful]) */
+         n_poption |= n_PO_S_FLAG_TEMPORARY;
+jsetvar: /* Set variable */
          {  char const *a[2];
             bool_t b;
 
@@ -829,14 +829,13 @@ jeMmq:
             a[1] = NULL;
             n_pstate |= n_PS_ROBOT;
             b = (c_set(a) == 0);
-            n_pstate &= ~n_PS_ROBOT;
-            if(!b)
-               break;
+            n_pstate &= ~(n_PS_ROOT | n_PS_ROBOT);
+            n_poption &= ~n_PO_S_FLAG_TEMPORARY;
+            if(!b && (ok_blook(errexit) || ok_blook(posix))){
+               emsg = N_("-S failed to adjust variable");
+               goto jusage;
+            }
          }
-joarg:
-         if(oargs_cnt == oargs_size)
-            oargs_size = a_main_grow_cpp(&oargs, oargs_size + 8, oargs_cnt);
-         oargs[oargs_cnt++] = okey;
          break;
       case 's':
          /* Subject:; take care for Debian #419840 and strip any \r and \n */
@@ -863,8 +862,7 @@ joarg:
       case 'v':
          /* Be verbose */
          ok_bset(verbose);
-         okey = "verbose";
-         goto joarg;
+         break;
       case 'X':
          /* Add to list of commands to exec before entering normal operation */
          if(Xargs_cnt == Xargs_size)
@@ -898,19 +896,17 @@ joarg:
             setvbuf(n_stdin, NULL, _IOLBF, 0);
          n_poption |= n_PO_TILDE_FLAG | n_PO_BATCH_FLAG;
          folder = n_path_devnull;
-         if(oargs_cnt + 10 >= oargs_size)
-            oargs_size = a_main_grow_cpp(&oargs, oargs_size + 11, oargs_cnt);
          n_pstate |= n_PS_ROBOT; /* (be silent unsetting undefined variables) */
-         ok_vset(MAIL, folder), oargs[oargs_cnt++] = "MAIL=" n_PATH_DEVNULL;
-         ok_vset(MBOX, folder), oargs[oargs_cnt++] = "MBOX=" n_PATH_DEVNULL;
-         ok_bset(emptystart), oargs[oargs_cnt++] = "emptystart";
-         ok_bclear(errexit), oargs[oargs_cnt++] = "noerrexit";
-         ok_bclear(header), oargs[oargs_cnt++] = "noheader";
-         ok_vset(inbox, folder), oargs[oargs_cnt++] = "inbox=" n_PATH_DEVNULL;
-         ok_bclear(posix), oargs[oargs_cnt++] = "noposix";
-         ok_bset(quiet), oargs[oargs_cnt++] = "quiet";
-         ok_bset(sendwait), oargs[oargs_cnt++] = "sendwait";
-         ok_bset(typescript_mode), oargs[oargs_cnt++] = "typescript-mode";
+         ok_vset(MAIL, folder);
+         ok_vset(MBOX, folder);
+         ok_bset(emptystart);
+         ok_bclear(errexit);
+         ok_bclear(header);
+         ok_vset(inbox, folder);
+         ok_bclear(posix);
+         ok_bset(quiet);
+         ok_bset(sendwait);
+         ok_bset(typescript_mode);
          n_pstate &= ~n_PS_ROBOT;
          break;
       case '.':
@@ -960,8 +956,8 @@ jgetopt_done:
    }
    a_main_oind = i;
 
-   /* ...BUT, since we use salloc() for the MTA n_smopts storage we need to
-    * allocate the necessary space for them before we fixate that storage! */
+   /* ...BUT, since we use n_autorec_alloc() for the MTA n_smopts storage we
+    * need to allocate the space for them before we fixate that storage! */
    while(argv[i] != NULL)
       ++i;
    if(n_smopts_cnt + i > smopts_size)
@@ -1023,8 +1019,10 @@ jgetopt_done:
    }
 
    /*
-    * Likely to go, perform more setup
+    * We have reached our second program state, the command line options have
+    * been worked and verified a bit, we are likely to go, perform more setup
     */
+   n_psonce |= n_PSO_STARTED_GETOPT;
 
    a_main_setup_vars();
 
@@ -1055,19 +1053,6 @@ jgetopt_done:
       if((cp != NULL || (cp = ok_vlook(mailx_extra_rc)) != NULL) &&
             !n_go_load(fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)))
          goto j_leave;
-   }
-
-   /* Ensure the -S and other command line options take precedence over
-    * anything that may have been placed in resource files.
-    * Our "ternary binary" option *verbose* needs special treament */
-   if((n_poption & (n_PO_VERB | n_PO_VERBVERB)) == n_PO_VERB)
-      n_poption &= ~n_PO_VERB;
-   /* ..and be silent when unsetting undefined variables again */
-   if(oargs_cnt > 0){
-      n_pstate |= n_PS_ROBOT;
-      oargs[oargs_cnt] = NULL;
-      c_set(oargs);
-      n_pstate &= ~n_PS_ROBOT;
    }
 
    /* Cause possible umask(2) to be applied, now that any setting is
@@ -1118,6 +1103,11 @@ jgetopt_done:
       c_account(a);
    }
 
+   /*
+    * Almost setup, only -X commands are missing!
+    */
+   n_psonce |= n_PSO_STARTED_CONFIG;
+
    /* "load()" commands given on command line */
    if(Xargs_cnt > 0){
       if(!n_go_Xargs(Xargs, Xargs_cnt))
@@ -1143,7 +1133,7 @@ jgetopt_done:
    }
 
    /*
-    * We're finally completely setup and ready to go
+    * We're finally completely setup and ready to go!
     */
    n_psonce |= n_PSO_STARTED;
 
@@ -1191,7 +1181,7 @@ j_leave:
 
 /* Source the others in that case! */
 #ifdef HAVE_AMALGAMATION
-# include "mk-config.h"
+# include <mk-config.h>
 #endif
 
 /* s-it-mode */

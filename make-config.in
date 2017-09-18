@@ -1,17 +1,13 @@
 #@ make-config.in -- mk-config.mk template, completed by make-config.sh.
 #@ Please see INSTALL and make.rc instead.
 
+.PHONY: all test install uninstall clean distclean
+
 SIZE_CHECK = @if ( command -v size ) > /dev/null 2>&1; then size $(@); fi
 
 _version_from_header = VERSION="`< gen-version.h $(sed) \
 		-e '/ n_VERSION /b X' -e d -e ':X' \
 		-e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`"
-
-OBJ = $(OBJ_SRC:.c=.o)
-.SUFFIXES: .o .c .y
-.c.o:
-	$(ECHO_CC)$(CC) $(CFLAGS) $(INCS) -c $(<)
-.c: ;
 
 all: $(VAL_UAGENT) $(OPTIONAL_PRIVSEP)
 
@@ -19,99 +15,103 @@ $(VAL_UAGENT): $(OBJ) uman.1 urc.rc
 	$(ECHO_LINK)$(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)
 	$(SIZE_CHECK)
 
-$(OBJ): mk-config.h config.h nail.h nailfuns.h $(AMALGAM_DEP)
-$(AMALGAM_TARGET) auxlily.c: gen-errors.h
-$(AMALGAM_TARGET) accmacvar.o: gen-okeys.h gen-version.h
-$(AMALGAM_TARGET) cmd-tab.o: cmd-tab.h
-$(AMALGAM_TARGET) dotlock.o: dotlock.h
-$(AMALGAM_TARGET) obs-imap.o: obs-imap-gssapi.h
+$(OBJ): mk-config.h config.h $(SRCDIR)nail.h $(SRCDIR)nailfuns.h \
+		$(AMALGAM_DEP)
+$(AMALGAM_TARGET) auxlily.o: $(SRCDIR)gen-errors.h
+$(AMALGAM_TARGET) accmacvar.o: $(SRCDIR)gen-okeys.h gen-version.h
+$(AMALGAM_TARGET) cmd-tab.o: $(SRCDIR)cmd-tab.h
+$(AMALGAM_TARGET) dotlock.o: $(SRCDIR)dotlock.h
+$(AMALGAM_TARGET) obs-imap.o: $(SRCDIR)obs-imap-gssapi.h
 $(AMALGAM_TARGET) mime-types.o: gen-mime-types.h
-$(AMALGAM_TARGET) obs-imap.o pop3.o smtp.o urlcrecry.o: rfc1321.h
-$(AMALGAM_TARGET) smtp.o: smtp-gssapi.h
-$(AMALGAM_TARGET) termcap.o: gen-tcaps.h
+$(AMALGAM_TARGET) obs-imap.o pop3.o smtp.o urlcrecry.o: $(SRCDIR)rfc1321.h
+$(AMALGAM_TARGET) smtp.o: $(SRCDIR)smtp-gssapi.h
+$(AMALGAM_TARGET) termcap.o: $(SRCDIR)gen-tcaps.h
 
 $(VAL_PRIVSEP): privsep.o
 	$(ECHO_LINK)$(CC) $(LDFLAGS) -o $(@) privsep.o $(BASE_LIBS)
 	$(SIZE_CHECK)
 
-privsep.o: privsep.c mk-config.h config.h nail.h dotlock.h
-	$(ECHO_CC)$(CC) $(CFLAGS) $(BASE_INCS) -c privsep.c
+privsep.o: $(SRCDIR)privsep.c mk-config.h config.h \
+		$(SRCDIR)nail.h $(SRCDIR)dotlock.h
+	$(ECHO_CC)$(CC) $(CFLAGS) $(BASE_INCS) -c $(SRCDIR)privsep.c
 
 test: all
 	$(ECHO_TEST)\
-	MAKE=$(MAKE) \
+	MAKE=$(MAKE) SHELL=$(SHELL) \
 	awk=$(awk) cat=$(cat) cksum=$(cksum) rm=$(rm) sed=$(sed) grep=$(grep) \
-	$(SHELL) ./cc-test.sh --check-only ./$(VAL_UAGENT)
+	$(SHELL) $(SRCDIR)cc-test.sh --check-only ./$(VAL_UAGENT)
 
-gen-mime-types.h: mime.types
+gen-mime-types.h: $(SRCDIR)mime.types
 	$(ECHO_GEN)\
-	LC_ALL=C < ./mime.types > $(@) $(awk) '\
-	function add(mt, ln) {\
+	LC_ALL=C < $(SRCDIR)mime.types > $(@) $(awk) '\
+	function add(mt, ln){\
 		gsub(/[[:space:]]+/, " ", ln);\
 		i = split(ln, i_a);\
 		e = "";\
-		for (j = 1; j <= i; ++j) {\
+		for(j = 1; j <= i; ++j){\
 			k = i_a[j];\
 			e = (e ? e " " : "") k\
 		}\
-		if (e) {\
-			if (e_a[mt])\
+		if(e){\
+			if(e_a[mt])\
 				e_a[mt] = e_a[mt] " ";\
 			e_a[mt] = e_a[mt] e\
 		}\
 	}\
-	/^[[:space:]]*#/ {next}\
-	/^[[:space:]]*$$/ {ltype = ""; next}\
-	/^[[:space:]]/ {\
-		if (!ltype)\
+	/^[[:space:]]*#/{next}\
+	/^[[:space:]]*$$/{ltype = ""; next}\
+	/^[[:space:]]/{\
+		if(!ltype)\
 			print "FAULTY CONTINUATION: " $$0 >> "/dev/stderr";\
 		add(ltype, $$0);\
 		next\
 	}\
-	/^(@([thH]@)? )?[[:alpha:]]/ {\
-		if ($$1 ~ /^@([thH]@)?$$/) {\
+	/^(@([thHq]@)? )?[[:alpha:]]/{\
+		if($$1 ~ /^@([thHq]@)?$$/){\
 			pa = $$1;\
 			$$1 = $$2;\
 			$$2 = ""\
-		} else\
+		}else\
 			pa = "";\
-		if ($$1 !~ /^([[:alnum:]]+)\/([[:alnum:]_+-]+)$$/)\
+		if($$1 !~ /^([[:alnum:]]+)\/([[:alnum:]_+-]+)$$/)\
 			print "FAULTY MIME TYPE: <" $$1 ">" >> "/dev/stderr";\
 		ltype = $$1; $$1 = "";\
-		if (pa)\
+		if(pa)\
 			p_a[ltype] = pa;\
-		if (!nt_a[ltype])\
+		if(!nt_a[ltype])\
 			no_a[++no_ai] = nt_a[ltype] = ltype;\
 		add(ltype, $$0)\
 	}\
-	END {\
-		for (z = 1; z <= no_ai; ++z) {\
+	END{\
+		for(z = 1; z <= no_ai; ++z){\
 			t = no_a[z];\
 			j = index(t, "/");\
 			mt = toupper(substr(t, 1, j - 1));\
 			j = substr(t, j + 1);\
 			l = length(j);\
-			if (!p_a[t])\
+			if(!p_a[t])\
 				mt = "_MT_" mt;\
-			else {\
+			else{\
 				tm = p_a[t];\
-				if (tm == "@" || tm == "@t@")\
-					mt = "_MT_" mt " | _MT_PLAIN";\
-				else if (tm == "@h@")\
-					mt = "_MT_" mt " | _MT_SOUP_h";\
-				else if (tm == "@H@")\
-					mt = "_MT_" mt " | _MT_SOUP_H";\
+				if(tm == "@" || tm == "@t@")\
+					mt = "_MT_" mt " | a_MT_TM_PLAIN";\
+				else if(tm == "@h@")\
+					mt = "_MT_" mt " | a_MT_TM_SOUP_h";\
+				else if(tm == "@H@")\
+					mt = "_MT_" mt " | a_MT_TM_SOUP_H";\
+				else if(tm == "@q@")\
+					mt = "_MT_" mt " | a_MT_TM_QUIET";\
 			}\
 			print "   {" mt ", " l ", \"" j e_a[t] "\"},"\
 		}\
 	}\
 	'
 
-uman.1: nail.1
+uman.1: $(SRCDIR)nail.1
 	$(ECHO_GEN)\
 	LC_ALL=C _SYSCONFRC="$(VAL_SYSCONFRC)" _UAGENT="$(VAL_UAGENT)" \
 		$(_version_from_header) \
-	< ./nail.1 > $(@) $(awk) '\
+	< $(SRCDIR)nail.1 > $(@) $(awk) '\
 	BEGIN { written = 0 }\
 	/\.\\"--MKMAN-START--/, /\.\\"--MKMAN-END--/ {\
 		if (written++ != 0)\
@@ -135,11 +135,11 @@ uman.1: nail.1
 	{print}\
 	'
 
-urc.rc: nail.rc
+urc.rc: $(SRCDIR)nail.rc
 	$(ECHO_GEN)\
 	LC_ALL=C _SYSCONFRC="$(VAL_SYSCONFRC)" _UAGENT="$(VAL_UAGENT)" \
 		$(_version_from_header) \
-	< ./nail.rc > $(@) $(awk) 'BEGIN {written = 0}\
+	< $(SRCDIR)nail.rc > $(@) $(awk) 'BEGIN {written = 0}\
 	/^#--MKRC-START--/, /^#--MKRC-END--/ {\
 		if (written == 1)\
 			next;\
@@ -258,11 +258,12 @@ distclean: clean
 _update-version:
 	@LC_ALL=C; export LC_ALL;\
 	if [ -z "$(VERSION)" ]; then \
-		eval VERSION="`(git describe --tags) 2>/dev/null`";\
+		eval VERSION="`(cd $(SRCDIR);\
+			[ -d .git ] && git describe --tags) 2>/dev/null`";\
 		if [ -n "$${VERSION}" ]; then \
 			VERSION="`echo $${VERSION} |\
 				$(sed) -e 's/^v\{0,1\}\(.*\)/\1/'`";\
-			[ "`git status --porcelain |\
+			[ "`(cd $(SRCDIR) && git status --porcelain) |\
 				$(awk) '\
 					BEGIN {n=0}\
 					/gen-version\.h/ {next}\

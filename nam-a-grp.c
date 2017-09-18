@@ -502,7 +502,7 @@ a_nag_group_lookup(enum a_nag_type nt, struct a_nag_group_lookup *nglp,
       }
 
       nglp->ngl_htable = ngpa;
-      h = icase ? n_torek_hash(id) : n_torek_ihash(id);
+      h = icase ? n_torek_ihash(id) : n_torek_hash(id);
       ngp = *(nglp->ngl_slot = &ngpa[h % HSHSIZE]);
    }
 
@@ -1996,10 +1996,12 @@ c_commandalias(void *vp){
       goto jleave;
    }
 
-   /* Verify the name is a valid one, and not a command modifier */
+   /* Verify the name is a valid one, and not a command modifier.
+    * XXX This list duplicates settings isolated somewhere else (go.c) */
    if(*ccp == '\0' || *n_cmd_isolate(ccp) != '\0' ||
-         !asccasecmp(ccp, "ignerr") || !asccasecmp(ccp, "wysh") ||
-         !asccasecmp(ccp, "u") || !asccasecmp(ccp, "vput")){
+         !asccasecmp(ccp, "ignerr") || !asccasecmp(ccp, "local") ||
+         !asccasecmp(ccp, "wysh") || !asccasecmp(ccp, "u") ||
+         !asccasecmp(ccp, "vput")){
       n_err(_("`commandalias': not a valid command name: %s\n"),
          n_shexp_quote_cp(ccp, FAL0));
       rv = 1;
@@ -2100,11 +2102,12 @@ n_alias_is_valid_name(char const *name){
    NYD2_ENTER;
 
    for(rv = TRU1, cp = name++; (c = *cp++) != '\0';)
-      /* User names, plus things explicitly mentioned in Postfix aliases(5).
-       * As an extension, allow period: [[:alnum:]_#:@.-]+$? */
+      /* User names, plus things explicitly mentioned in Postfix aliases(5),
+       * i.e., [[:alnum:]_#:@.-]+$?.
+       * As extensions allow high-bit bytes, semicolon and period. */
       if(!alnumchar(c) && c != '_' && c != '-' &&
             c != '#' && c != ':' && c != '@' &&
-            c != '.'){
+            !((ui8_t)c & 0x80) && c != '!' && c != '.'){
          if(c == '$' && cp != name && *cp == '\0')
             break;
          rv = FAL0;

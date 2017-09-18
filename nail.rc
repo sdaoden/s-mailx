@@ -11,7 +11,7 @@
 #@   the escaped newline is not.
 #@ - The number sign # is the comment-command and causes the (joined) line
 #@   (content) to be ignored.
-#@ S-nail v14.9.3 / 2017-08-03
+#@ S-nail v14.9.4 / 2017-09-18
 
 ## Variables
 
@@ -68,8 +68,8 @@ set editheaders
 # Startup into interactive mode even if the (given) mailbox is empty
 set emptystart
 
-# When replying to or forwarding a message the comment and name parts of email
-# addresses are removed unless this variable is set
+# Name parts and comments are stripped from receiver addresses unless this
+# variable is set
 set fullnames
 
 # [OPTION] Add more entries to the history as is done by default.
@@ -119,7 +119,7 @@ set keepsave
 
 # An informational prompt (and see "Gimmicks" below).
 # Note the _real_ evaluation occurs once used (see *prompt* manual entry)
-#wysh set prompt='?\${?}!\${!}[\${account-name}#\${mailbox-display}]? '
+#wysh set prompt='?\$?!\$!/\$^ERRNAME[\${account-name}#\${mailbox-display}]? '
 
 # Automatically quote the text of the message that is responded to
 set quote
@@ -187,6 +187,9 @@ retain from_ date from to cc subject message-id mail-followup-to reply-to
 #   trap "rm -f \"${MAILX_FILENAME_TEMPORARY}\"" EXIT;\
 #   trap "trap \"\" INT QUIT TERM; exit 1" INT QUIT TERM;\
 #   mupdf "${MAILX_FILENAME_TEMPORARY}"'
+
+# "External body", URL type
+#wysh set pipe-message/external-body='@* echo $MAILX_EXTERNAL_BODY_URL'
 
 ## Gimmicks
 
