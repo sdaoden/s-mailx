@@ -46,8 +46,9 @@
 
 #include <dirent.h>
 
-static struct message **a_maildir_table;
-static ui32_t a_maildir_prime;
+/* a_maildir_tbl should be a hash-indexed array of trees! */
+static struct message **a_maildir_tbl, **a_maildir_tbl_top;
+static ui32_t a_maildir_tbl_prime, a_maildir_tbl_maxdist;
 static sigjmp_buf    _maildir_jmp;
 
 static void             __maildircatch(int s);
@@ -423,14 +424,14 @@ _maildir_append(char const *name, char const *sub, char const *fn)
 
       i = strlen(fn) +1;
       sz = strlen(sub);
-      m->m_maildir_file = tmp = smalloc(sz + 1 + i);
+      m->m_maildir_file = tmp = n_alloc(sz + 1 + i);
       memcpy(tmp, sub, sz);
       tmp[sz++] = '/';
       memcpy(&tmp[sz], fn, i);
    }
    m->m_time = t;
    m->m_flag = f;
-   m->m_maildir_hash = ~n_torek_hash(fn);
+   m->m_maildir_hash = n_torek_hash(fn);
 jleave:
    NYD_LEAVE;
    return;
@@ -787,29 +788,35 @@ mkmaildir(char const *name) /* TODO proper cleanup on error; use path[] loop */
 static struct message *
 mdlook(char const *name, struct message *data)
 {
-   struct message *mp;
-   ui32_t c, h, n = 0;
+   struct message **mpp, *mp;
+   ui32_t h, i;
    NYD_ENTER;
 
-   if (data && data->m_maildir_hash)
-      h = ~data->m_maildir_hash;
+   if(data != NULL)
+      i = data->m_maildir_hash;
    else
-      h = n_torek_hash(name);
-   h %= a_maildir_prime;
-   c = h;
-   mp = a_maildir_table[c];
+      i = n_torek_hash(name);
+   h = i;
+   mpp = &a_maildir_tbl[i %= a_maildir_tbl_prime];
 
-   while (mp != NULL) {
-      if (!strcmp(mp->m_maildir_file + 4, name))
+   for(i = 0;;){
+      if((mp = *mpp) == NULL){
+         if(n_UNLIKELY(data != NULL)){
+            *mpp = mp = data;
+            if(i > a_maildir_tbl_maxdist)
+               a_maildir_tbl_maxdist = i;
+         }
          break;
-      c += (n & 1) ? -((n+1)/2) * ((n+1)/2) : ((n+1)/2) * ((n+1)/2);
-      n++;
-      while (c >= a_maildir_prime)
-         c -= a_maildir_prime;
-      mp = a_maildir_table[c];
+      }else if(mp->m_maildir_hash == h && !strcmp(&mp->m_maildir_file[4], name))
+         break;
+
+      if(n_UNLIKELY(mpp++ == a_maildir_tbl_top))
+         mpp = a_maildir_tbl;
+      if(++i > a_maildir_tbl_maxdist && n_UNLIKELY(data == NULL)){
+         mp = NULL;
+         break;
+      }
    }
-   if (data != NULL && mp == NULL)
-      mp = data;
    NYD_LEAVE;
    return mp;
 }
@@ -821,10 +828,16 @@ mktable(void)
    size_t i;
    NYD_ENTER;
 
-   a_maildir_prime = n_prime_next(msgCount);
-   a_maildir_table = scalloc(a_maildir_prime, sizeof *a_maildir_table);
-   for (mp = message, i = msgCount; i-- != 0; ++mp)
-      mdlook(mp->m_maildir_file + 4, mp);
+   i = a_maildir_tbl_prime = msgCount;
+   i <<= 1;
+   do
+      a_maildir_tbl_prime = n_prime_next(a_maildir_tbl_prime);
+   while(a_maildir_tbl_prime < i);
+   a_maildir_tbl = n_calloc(a_maildir_tbl_prime, sizeof *a_maildir_tbl);
+   a_maildir_tbl_top = &a_maildir_tbl[a_maildir_tbl_prime - 1];
+   a_maildir_tbl_maxdist = 0;
+   for(mp = message, i = msgCount; i-- != 0; ++mp)
+      mdlook(&mp->m_maildir_file[4], mp);
    NYD_LEAVE;
 }
 
@@ -934,7 +947,7 @@ jerr:
       goto jleave;
    }
 
-   a_maildir_table = NULL;
+   a_maildir_tbl = NULL;
    if (sigsetjmp(_maildir_jmp, 1) == 0) {
       if (fm & FEDIT_NEWMAIL)
          mktable();
@@ -942,8 +955,8 @@ jerr:
          safe_signal(SIGINT, &__maildircatch);
       i = _maildir_setfile1(name, fm, omsgCount);
    }
-   if ((fm & FEDIT_NEWMAIL) && a_maildir_table != NULL)
-      free(a_maildir_table);
+   if ((fm & FEDIT_NEWMAIL) && a_maildir_tbl != NULL)
+      n_free(a_maildir_tbl);
 
    safe_signal(SIGINT, saveint);
 
