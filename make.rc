@@ -126,7 +126,7 @@ VAL_MIME_TYPES_SYS=/etc/mime.types
 # the evaluation order of the build system all those programs are
 # usually needed, but by setting any of the variables to true(1), as in
 # chown=/usr/bin/true, availability of unneeded programs can be faked.
-# We require uname(1) -s, command(1) -v, echo(1), etc.
+# We require uname(1) -s, echo(1), printf(1) etc.
 # uname(1) can be circumvented by setting $OS (and $OSENV, $OSFULLSPEC).
 # $OS must be all-lowercase.
 
@@ -190,7 +190,8 @@ OPT_SOCKETS=yes
 
 # If $OPT_SOCKETS: support for Secure Socket Layer (Transport Layer
 # Security, TLS), i.e., encrypted socket connections; can be "require"d.
-# This needs the OpenSSL libraries (<http://www.openssl.org>).
+# It also automatically enables support for S/MIME message signing,
+# verification, en- and decryption.
 # This needs the OpenSSL (https://www.openssl.org) or LibreSSL
 # (http://www.libressl.org) libraries.
 OPT_SSL=yes
@@ -319,10 +320,10 @@ OPT_DOCSTRINGS=yes
 OPT_QUOTE_FOLD=yes
 
 # We do have a very primitive HTML tagsoup filter which can be used to
-# convert HTML to plain text for display purposes.  If enabled it'll be
-# used for all MIME types which have the @h@ or @H@ type markers (more
-# on this in the manual section "The mime.types FILES").  And which
-# don't have any user defined MIME type handler, of course.
+# convert HTML to plain text for display purposes.  If enabled it will
+# be used for all MIME types which have the @h@ or @H@ type markers
+# (more on this in the manual section "The mime.types files").  And
+# which do not have any user defined MIME type handler, of course.
 OPT_FILTER_HTML_TAGSOUP=yes
 
 # A simple form of coloured output can optionally be produced.
@@ -331,8 +332,8 @@ OPT_COLOUR=yes
 # File dotlocking is performed for "system mailbox" (%[USER] and
 # %:ANYFILE) MBOX files: when synchronizing any such FILE a FILE.lock
 # file will be created in the directory of FILE, for the duration of the
-# synchronization.
-# Set $OPT_DOTLOCK to support this traditional mail spool file locking.
+# synchronization: set $OPT_DOTLOCK to support this traditional mail
+# spool file locking.
 # $VAL_MAIL(s) where normal system mailboxes reside are usually not
 # writable by normal users, except that a user may read and write his
 # own mailbox.  But this means that a program run by the user cannot
