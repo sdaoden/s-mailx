@@ -1938,6 +1938,7 @@ static size_t
 a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
    struct a_amv_var_carrier avc;
    char const *quote;
+   struct a_amv_var *avp;
    bool_t isset;
    size_t i;
    NYD2_ENTER;
@@ -1947,6 +1948,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
 
    a_amv_var_revlookup(&avc, name);
    isset = a_amv_var_lookup(&avc, FAL0);
+   avp = avc.avc_var;
 
    if(n_poption & n_PO_D_V){
       if(avc.avc_map == NULL){
@@ -1973,14 +1975,14 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
          }, *tp;
 
          for(tp = tbase; PTRCMP(tp, <, &tbase[n_NELEM(tbase)]); ++tp)
-            if(isset ? (avc.avc_var->av_flags & tp->flag)
+            if(isset ? (avp->av_flags & tp->flag)
                   : (avc.avc_map->avm_flags & tp->flag)){
                msgp = n_string_push_c(msgp, (i++ == 0 ? '#' : ','));
                msgp = n_string_push_cp(msgp, tp->msg);
             }
       }
 
-      if(avc.avc_var != NULL && (avc.avc_var->av_flags & a_AMV_VF_EXT_FROZEN)){
+      if(avp != NULL && (avp->av_flags & a_AMV_VF_EXT_FROZEN)){
          msgp = n_string_push_c(msgp, (i++ == 0 ? '#' : ','));
          msgp = n_string_push_cp(msgp, "(un)?set via -S");
       }
@@ -1989,8 +1991,9 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
          msgp = n_string_push_cp(msgp, "\n  ");
    }
 
-   if(!isset || (avc.avc_var->av_flags & a_AMV_VF_RDONLY)){
-      msgp = n_string_push_c(msgp, *n_ns);
+   /* (Read-only variables are generally shown via comments..) */
+   if(!isset || (avp->av_flags & a_AMV_VF_RDONLY)){
+      msgp = n_string_push_c(msgp, n_ns[0]);
       if(!isset){
          if(avc.avc_map != NULL && (avc.avc_map->avm_flags & a_AMV_VF_BOOL))
             msgp = n_string_push_cp(msgp, "boolean; ");
@@ -2001,17 +2004,17 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
    }
 
    n_UNINIT(quote, NULL);
-   if(!(avc.avc_var->av_flags & a_AMV_VF_BOOL)){
-      quote = n_shexp_quote_cp(avc.avc_var->av_value, TRU1);
-      if(strcmp(quote, avc.avc_var->av_value))
+   if(!(avp->av_flags & a_AMV_VF_BOOL)){
+      quote = n_shexp_quote_cp(avp->av_value, TRU1);
+      if(strcmp(quote, avp->av_value))
          msgp = n_string_push_cp(msgp, "wysh ");
    }else if(n_poption & n_PO_D_V)
       msgp = n_string_push_cp(msgp, "wysh "); /* (for shell-style comment) */
-   if(avc.avc_var->av_flags & a_AMV_VF_EXT_LINKED)
+   if(avp->av_flags & a_AMV_VF_EXT_LINKED)
       msgp = n_string_push_cp(msgp, "environ ");
    msgp = n_string_push_cp(msgp, "set ");
    msgp = n_string_push_cp(msgp, name);
-   if(!(avc.avc_var->av_flags & a_AMV_VF_BOOL)){
+   if(!(avp->av_flags & a_AMV_VF_BOOL)){
       msgp = n_string_push_c(msgp, '=');
       msgp = n_string_push_cp(msgp, quote);
    }else if(n_poption & n_PO_D_V)
