@@ -756,8 +756,10 @@ using it is a smooth experience.
 (Rather complete configuration examples can be found in the section
 .Sx EXAMPLES . )
 The default global
-.Pa \*(UR
-resource file bends those standard imposed settings of the
+.Pa \*(UR ,
+one of the
+.Sx "Resource files" ,
+bends those standard imposed settings of the
 .Sx "INTERNAL VARIABLES"
 a bit towards more user friendliness and safety already.
 .
@@ -817,7 +819,7 @@ d for evaluation, also during startup from within the
 .\" .Ss "On sending mail, and non-interactive mode" {{{
 .Ss "On sending mail, and non-interactive mode"
 .
-To send a message to one or more people, using a local or a built-in
+To send a message to one or more people, using a local or built-in
 .Va mta
 (Mail-Transfer-Agent) transport to actually deliver the generated mail
 message, \*(UA can be invoked with arguments which are the names of
@@ -895,12 +897,12 @@ ting (also via
 .Va editalong
 will automatically startup a text editor when compose mode is entered,
 .Va editheaders
-allows editing of headers additionally to plain body content, whereas
+allows editing of headers additionally to plain body content,
 .Va askcc
 and
 .Va askbcc
 will cause the user to be prompted actively for (blind) carbon-copy
-recipients, respectively, whereas (the default)
+recipients, respectively, and (the default)
 .Va asksend
 will request confirmation whether the message shall be sent.
 .
@@ -909,7 +911,7 @@ The envelope sender address is defined by
 .Va from ,
 explicitly defining an originating
 .Va hostname
-may be desired, especially with the builtin SMTP Mail-Transfer-Agent
+may be desirable, especially with the builtin SMTP Mail-Transfer-Agent
 .Va mta .
 .Sx "Character sets"
 for outgoing message and MIME part content are configurable via
@@ -5210,11 +5212,11 @@ becomes the new
 .Mx
 .It Ic history
 \*(OP Either
-.Ar show
+.Cm show
 (this mode also supports a more
 .Va verbose
 output) or
-.Ar clear
+.Cm clear
 the list of history entries;
 a decimal
 .Ar NUMBER
@@ -5224,7 +5226,7 @@ offset to the current command, e.g.,
 .Ql -1
 will select the last command, the history top.
 The default mode if no arguments are given is
-.Ar show .
+.Cm show .
 Please see
 .Sx "On terminal control and line editor"
 for more on this topic.
@@ -6900,6 +6902,10 @@ Any catched overflow will be reported via the error number
 .Va \&!
 as
 .Va ^ERR Ns -OVERFLOW .
+.Bd -literal -offset indent
+? vexpr -@ +1 -9223372036854775808
+? echo $?/$!/$^ERRNAME
+.Ed
 .
 .Pp
 Character set agnostic string functions have no notion of locale
@@ -6988,15 +6994,19 @@ and any occurrence of a positional parameter, e.g.,
 .Va 1 ,
 is replaced by the corresponding match group of the regular expression:
 .Bd -literal -offset indent
-? vexpr -@ +1 -9223372036854775808
-? vput vexpr res ir bananarama \e
+? vput vexpr res regex bananarama \e
     (.*)NanA(.*) '\e${1}au\e$2'
-? echo $0 $res
+? echo $?/$!/$^ERRNAME: $res
 .Ed
 .
 .It Cm iregex
 On otherwise identical case-insensitive equivalent to
-.Cm regex .
+.Cm regex :
+.Bd -literal -offset indent
+? vput vexpr res ire bananarama \e
+    (.*)NanA(.*) '\e${1}au\e$2'
+? echo $?/$!/$^ERRNAME: $res
+.Ed
 .El
 .
 .
@@ -9822,14 +9832,15 @@ after the message has been sent.
 can be used to perform other necessary cleanup steps.
 .Pp
 The following (read-only) variables will be set temporarily during
-execution of the macros to represent the according message headers, or
-the empty string for non-existent; they correspond to accoding virtual
-temporary message headers that can be accessed (also from within
-.Va on-compose-splice
-hooks) via
+execution of the macros to represent respective message headers, to
+the empty string otherwise; most of them correspond to according virtual
+message headers that can be accessed via
 .Ic ~^ ,
 one of the
-.Sx "COMMAND ESCAPES" :
+.Sx "COMMAND ESCAPES"
+(also from within
+.Va on-compose-splice
+hooks):
 .
 .Pp
 .Bl -tag -compact -width ".It Va mailx_subject"
@@ -9875,7 +9886,7 @@ define t_ocl {
   if [ $? -eq 0 ]
      vput vexpr message-inject-tail trim-end $i
   end
-  return
+
   # Alternatively
   readctl create ~/.mysig
   if [ $? -eq 0 ]
