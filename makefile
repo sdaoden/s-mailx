@@ -58,7 +58,7 @@ _prego = if CWDDIR="$(CWDDIR)" SRCDIR="$(SRCDIR)" \
 	$(SHELL) "$(SRCDIR)"make-config.sh; then :; else exit 1; fi
 _prestop = if [ -f ./mk-config.mk ]; then :; else \
 		echo 'Program not configured, nothing to do';\
-		echo 'Use one of the targets: config, all, tangerine';\
+		echo 'Use one of the targets: config, all, tangerine, citron';\
 		exit 1;\
 	fi;\
 	< ./mk-config.ev read __ev__; eval $${__ev__}; unset __ev__
