@@ -244,7 +244,7 @@
 #endif
 
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
-# define n_FIELD_INITN(N) CONCAT(., N) =
+# define n_FIELD_INITN(N) n_CONCAT(., N) =
 # define n_FIELD_INITI(I) [I] =
 #else
 # define n_FIELD_INITN(N)
@@ -273,7 +273,7 @@
 #elif CC_CLANG || PREREQ_GCC(3, 4)
 # define __FUN__        __extension__ __FUNCTION__
 #else
-# define __FUN__        n_uagent /* Something that is not a literal */
+# define __FUN__        n_empty /* Something that is not a literal */
 #endif
 
 #if defined __predict_true && defined __predict_false
