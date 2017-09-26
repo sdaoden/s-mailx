@@ -45,7 +45,9 @@ set autocollapse
 #set autosort=thread
 
 # Append rather than prepend when writing to mbox automatically.
-# This has no effect unless *hold* is unset (it is set below)
+# This has no effect unless *hold* is unset (it is set below), it is
+# a compile-time setting for other cases.
+# This is a traditional entry and should usually be set.
 set append
 
 # Ask for a message subject.
@@ -53,77 +55,67 @@ set ask
 
 # Uncomment this in order to get coloured output in $PAGER (if possible).
 #set colour-pager
-# Btw., if your $PAGER is less(1) or lv(1) you will usually be served, as
-# documented for $PAGER in the manual, very well by doing, e.g., less(1):
+# If your $PAGER is less(1) or lv(1) you will usually be served with
 #  ? wysh set PAGER=less; environ unset LESS
+#  ? wysh set PAGER=lv; environ unset LV
 
 # Assume a CRT-like terminal and invoke a $PAGER if output doesn't fit on a
-# the screen.  (Set crt=0 to always page; value treated as number of lines)
+# the screen.  (Set crt=0 to always page; value treated as number of lines.)
 set crt
 
-# Startup into $EDITOR (or $VISUAL) in compose mode ("automatic `~e'")
+# Startup into $EDITOR in compose mode ("automatic `~e'").
 #set editalong
 
-# When spawning an editor in compose mode (*editalong*, ~e), edit headers
+# When spawning an editor in compose mode (*editalong*, ~e), edit headers.
 set editheaders
 
-# Startup into interactive mode even if the (given) mailbox is empty
+# Startup into interactive mode even if the (given) mailbox is empty.
 set emptystart
 
-# Name parts and comments are stripped from receiver addresses unless this
-# variable is set
+# When `reply'ing etc. name parts and comments are stripped from receiver
+# addresses unless this variable is set.
 set fullnames
 
 # [OPTION] Add more entries to the history as is done by default.
-# The latter will cause the built-in editor to save those entries, too
+# The latter will cause the built-in editor to save those entries, too.
+# (The *history-file* variable controls persistency of the history.)
 set history-gabby history-gabby-persist
 
 # Do not move read messages of system mailboxes to MBOX by default since this
-# is likely to be irritating for most users today; also see *keepsave*
+# is likely to be irritating for most users today; also see *keepsave*.
 set hold
 
 # Quote the original message in replies by "> " as usual on the Internet
-# Historically this was a tabulator, as in "wysh set indentprefix=$'\t'"
+# Historically this was a tabulator, as in "wysh set indentprefix=$'\t'".
 set indentprefix="> "
 
-# Mark messages that have been answered
+# Mark messages that have been answered.
 set markanswered
 
 # Try to circumvent false or missing MIME Content-Type descriptions.
-# Do set a value for extended behaviour (see the manual)
+# Do set a value for extended behaviour (see the manual).
 #set mime-counter-evidence
 set mime-counter-evidence=0xE
 
-# Control loading of mime.types(5) file: the value may be a combination of the
-# letters "s" and "u": if "u" is seen ~/.mime.types will be loaded if possible;
-# "s" adds /etc/mime.types, if available; setting this without any value uses
-# only a set of built-in mimetypes; the default behaviour equals "us".
-# An extended syntax that allows loading of other, specified files is available
-# if the value contains an equal sign "=", see the manual for more
+# Control loading of mime.types(5) file, "s"ystem and/or "u"ser, etc.
+# Builtin types exist and may be sufficient.  The default equals "us".
 #set mimetypes-load-control
 
-# Do not remove empty (MBOX) system mailboxes (or _no_ empty (MBOX) mailbox
-# at all if $POSIXLY_CORRECT / *posix* are set!).
+# Do not remove empty (MBOX) system mailboxes.  (_No_ empty (MBOX) mailbox
+# at all if $POSIXLY_CORRECT a.k.a. *posix* is set!)
 # This may be relevant for privacy since other users could otherwise create
-# them with different permissions
+# them with different permissions.
 set keep
 
-# Do not move `save'd or `write'n message to mbox by default since this is
-# likely to be irritating for most users today; also see *hold*
+# Do not move `save'd or `write'n message to $MBOX by default since this is
+# likely to be irritating for most users today; also see *hold*.
 set keepsave
 
-# When writing mailbox files we strip Content-Length: and Lines: header fields
-# from edited / changed messages, because S-nail doesn't deal with these
-# (non-standard) fields -- and since other MUAs may rely on their content, if
-# present, it seems more useful to strip them than to keep them, now that they
-# became invalid; set this to include them nonetheless
-#set keep-content-length
-
 # An informational prompt (and see "Gimmicks" below).
-# Note the _real_ evaluation occurs once used (see *prompt* manual entry)
+# Note the _real_ evaluation occurs once used (see *prompt* manual entry).
 #wysh set prompt='?\$?!\$!/\$^ERRNAME[\${account-name}#\${mailbox-display}]? '
 
-# Automatically quote the text of the message that is responded to
+# Automatically quote the text of the message that is responded to.
 set quote
 
 # When replying, do not merge From: and To: of the original message
@@ -131,7 +123,7 @@ set quote
 set recipients-in-cc
 
 # When responding to a message, try to answer in the same character set
-# (which is subject to `charsetalias' expansion, though)
+# (which is subject to `charsetalias' expansion, though).
 #set reply-in-same-charset
 
 # [OPTION] Outgoing messages are sent in UTF-8 if possible, otherwise LATIN1.
@@ -139,7 +131,7 @@ set recipients-in-cc
 # manual in order to understand all the possibilities that exist to fine-tune
 # charset usage (variables also of interest: *ttycharset*, *charset-8bit*,
 # *sendcharsets-else-ttycharset*; and of course we inherit the $LC_CTYPE /
-# $LC_ALL / $LANG environment variables and react upon them)
+# $LC_ALL / $LANG environment variables and react upon them).
 set sendcharsets=utf-8,iso-8859-1
 
 # When sending a message wait until the MTA (including the built-in SMTP one)
@@ -147,10 +139,10 @@ set sendcharsets=utf-8,iso-8859-1
 # reported by the MTA will be recognizable!
 set sendwait
 
-# Display real sender names in header summaries instead of only addresses
+# Display real sender names in header summaries instead of only addresses.
 set showname
 
-# Show recipients of messages sent by the user himself in header summaries
+# Show recipients of messages sent by the user himself in header summaries.
 set showto
 
 ## Commands
@@ -179,23 +171,23 @@ retain from_ date from to cc subject message-id mail-followup-to reply-to
 
 ## Some pipe-TYPE/SUBTYPE entries
 
-# HTML as text, inline display via lynx(1)
+# HTML as text, inline display via lynx(1).
 #if [ "$features" !@ +filter-html-tagsoup ]
-#   set pipe-text/html='lynx -stdin -dump -force_html'
+#   set pipe-text/html='@* lynx -stdin -dump -force_html'
 #endif
 
-# PDF display, asynchronous display
+# "External body", URL type supported only.
+#wysh set pipe-message/external-body='@* echo $MAILX_EXTERNAL_BODY_URL'
+
+# PDF display, asynchronous display: via `mimeview' command only.
 #wysh set pipe-application/pdf='@=&@\
 #   trap "rm -f \"${MAILX_FILENAME_TEMPORARY}\"" EXIT;\
 #   trap "trap \"\" INT QUIT TERM; exit 1" INT QUIT TERM;\
 #   mupdf "${MAILX_FILENAME_TEMPORARY}"'
 
-# "External body", URL type
-#wysh set pipe-message/external-body='@* echo $MAILX_EXTERNAL_BODY_URL'
-
 ## Gimmicks
 
-# More key bindings for the Mailx-Line-Editor (when in interactive mode)
+# More key bindings for the Mailx-Line-Editor (when in interactive mode).
 #if terminal && [ "$features" =@ +key-bindings ]
 #   bind base $'\e',d mle-snarf-word-fwd
 #   bind base $'\e',$'\c?' mle-snarf-word-bwd
@@ -203,7 +195,7 @@ retain from_ date from to cc subject message-id mail-followup-to reply-to
 #   bind base $'\e',b mle-go-word-bwd
 #endif
 
-# Coloured prompt for the Mailx-Line-Editor (when in interactive mode)
+# Coloured prompt for the Mailx-Line-Editor (when in interactive mode).
 #if terminal && [ "$features" =@ +mle ] && [ "$features" =@ +colour ]
 #   colour 256 mle-position fg=202
 #   colour 256 mle-prompt fg=red
@@ -213,7 +205,7 @@ retain from_ date from to cc subject message-id mail-followup-to reply-to
 #   colour mono mle-prompt ft=bold
 #endif
 
-# Install file-extension handlers to handle MBOXes in various formats
+# Install file-extension handlers to handle MBOXes in various formats.
 #filetype \
 #   bz2 'bzip2 -dc' 'bzip2 -zc' \
 #   gpg 'gpg -d' 'gpg -e' \
