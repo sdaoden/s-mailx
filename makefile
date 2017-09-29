@@ -52,9 +52,10 @@ d-gettext:
 		--add-comments=I18N --foreign-user \
 		-o messages.pot *.c *.h
 
-_prego = SHELL="$(SHELL)" MAKE="$(MAKE)" CWDDIR="$(CWDDIR)" SRCDIR="$(SRCDIR)" \
-	CC="$(CC)" CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" \
-	$(SHELL) "$(SRCDIR)"make-config.sh || exit 1
+_prego = if CWDDIR="$(CWDDIR)" SRCDIR="$(SRCDIR)" \
+	SHELL="$(SHELL)" MAKE="$(MAKE)" CC="$(CC)" \
+	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" \
+	$(SHELL) "$(SRCDIR)"make-config.sh; then :; else exit 1; fi
 _prestop = if [ -f ./mk-config.mk ]; then :; else \
 		echo 'Program not configured, nothing to do';\
 		echo 'Use one of the targets: config, all, tangerine';\
