@@ -135,10 +135,6 @@
 #endif
 #define BUFFER_SIZE (BUFSIZ >= (1u << 13) ? BUFSIZ : (1u << 14))
 
-#ifndef NI_MAXHOST
-# define NI_MAXHOST 1025
-#endif
-
 /* TODO PATH_MAX: fixed-size buffer is always wrong (think NFS) */
 #ifndef PATH_MAX
 # ifdef MAXPATHLEN
