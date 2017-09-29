@@ -137,7 +137,7 @@ TZ=UTC
 SOURCE_DATE_EPOCH=844221007
 
 export LC_ALL LANG TZ SOURCE_DATE_EPOCH
-unset POSIXLY_CORRECT
+unset POSIXLY_CORRECT LOGNAME USER
 
 usage() {
    echo >&2 "Synopsis: ./cc-test.sh [--check-only s-mailx-binary]"
