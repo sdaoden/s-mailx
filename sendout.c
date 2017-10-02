@@ -2180,6 +2180,7 @@ jto_fmt:
 
             np = np->n_flink;
 
+            /* XXX is_mlist_mp()?? */
             if((ml = is_mlist(x->n_name, FAL0)) == MLIST_OTHER &&
                   addr != NULL && !asccasecmp(addr, x->n_name))
                ml = MLIST_KNOWN;

@@ -2302,6 +2302,50 @@ jleave:
    return rv;
 }
 
+FL enum mlist_state
+is_mlist_mp(struct message *mp, enum mlist_state what){
+   struct name *np;
+   bool_t cc;
+   enum mlist_state rv;
+   NYD_ENTER;
+
+   rv = MLIST_OTHER;
+
+   cc = FAL0;
+   np = lextract(hfield1("to", mp), GTO | GSKIN);
+jredo:
+   for(; np != NULL; np = np->n_flink){
+      switch(is_mlist(np->n_name, FAL0)){
+      case MLIST_OTHER:
+         break;
+      case MLIST_KNOWN:
+         if(what == MLIST_KNOWN || what == MLIST_OTHER){
+            if(rv == MLIST_OTHER)
+               rv = MLIST_KNOWN;
+            if(what == MLIST_KNOWN)
+               goto jleave;
+         }
+         break;
+      case MLIST_SUBSCRIBED:
+         if(what == MLIST_SUBSCRIBED || what == MLIST_OTHER){
+            if(rv != MLIST_SUBSCRIBED)
+               rv = MLIST_SUBSCRIBED;
+            goto jleave;
+         }
+         break;
+      }
+   }
+
+   if(!cc){
+      cc = TRU1;
+      np = lextract(hfield1("cc", mp), GCC | GSKIN);
+      goto jredo;
+   }
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
 FL int
 c_shortcut(void *vp){
    struct a_nag_group *ngp;

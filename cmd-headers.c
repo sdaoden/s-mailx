@@ -494,26 +494,13 @@ jputcb:
                wleft = 0;
          }
          break;
-      case 'T': { /* Message recipient flags */
-         /* We never can reuse "name" since it's the full name */
-         struct name const *np = lextract(hfield1("to", mp), GTO | GSKIN);
-         c = ' ';
-         i = 0;
-j_A_redo:
-         for (; np != NULL; np = np->n_flink) {
-            switch (is_mlist(np->n_name, FAL0)) {
-            case MLIST_SUBSCRIBED:  c = 'S'; goto jputcb;
-            case MLIST_KNOWN:       c = 'L'; goto jputcb;
-            case MLIST_OTHER:
-            default:                break;
-            }
+      case 'T': /* Message recipient flags */
+         switch(is_mlist_mp(mp, MLIST_OTHER)){
+         case MLIST_OTHER: c = ' '; break;
+         case MLIST_KNOWN: c = 'l'; break;
+         case MLIST_SUBSCRIBED: c = 'L'; break;
          }
-         if (i != 0)
-            goto jputcb;
-         ++i;
-         np = lextract(hfield1("cc", mp), GCC | GSKIN);
-         goto j_A_redo;
-      }
+         goto jputcb;
       case 't':
          if (n == 0) {
             n = 3;

@@ -65,16 +65,18 @@ enum a_message_idfield{
 };
 
 enum a_message_state{
-   a_MESSAGE_S_NEW = 1<<0,
-   a_MESSAGE_S_OLD = 1<<1,
-   a_MESSAGE_S_UNREAD = 1<<2,
-   a_MESSAGE_S_DELETED = 1<<3,
-   a_MESSAGE_S_READ = 1<<4,
-   a_MESSAGE_S_FLAG = 1<<5,
-   a_MESSAGE_S_ANSWERED = 1<<6,
-   a_MESSAGE_S_DRAFT = 1<<7,
-   a_MESSAGE_S_SPAM = 1<<8,
-   a_MESSAGE_S_SPAMUNSURE = 1<<9
+   a_MESSAGE_S_NEW = 1u<<0,
+   a_MESSAGE_S_OLD = 1u<<1,
+   a_MESSAGE_S_UNREAD = 1u<<2,
+   a_MESSAGE_S_DELETED = 1u<<3,
+   a_MESSAGE_S_READ = 1u<<4,
+   a_MESSAGE_S_FLAG = 1u<<5,
+   a_MESSAGE_S_ANSWERED = 1u<<6,
+   a_MESSAGE_S_DRAFT = 1u<<7,
+   a_MESSAGE_S_SPAM = 1u<<8,
+   a_MESSAGE_S_SPAMUNSURE = 1u<<9,
+   a_MESSAGE_S_MLIST = 1u<<10,
+   a_MESSAGE_S_MLSUBSCRIBE = 1u<<11
 };
 
 struct a_message_coltab{
@@ -100,7 +102,10 @@ static struct a_message_coltab const a_message_coltabs[] = {
    {'a', {0,}, a_MESSAGE_S_ANSWERED, MANSWERED, MANSWERED},
    {'t', {0,}, a_MESSAGE_S_DRAFT, MDRAFTED, MDRAFTED},
    {'s', {0,}, a_MESSAGE_S_SPAM, MSPAM, MSPAM},
-   {'S', {0,}, a_MESSAGE_S_SPAMUNSURE, MSPAMUNSURE, MSPAMUNSURE}
+   {'S', {0,}, a_MESSAGE_S_SPAMUNSURE, MSPAMUNSURE, MSPAMUNSURE},
+   /* These have no per-message flags, but must be evaluated */
+   {'l', {0,}, a_MESSAGE_S_MLIST, 0, 0},
+   {'L', {0,}, a_MESSAGE_S_MLSUBSCRIBE, 0, 0},
 };
 
 static struct a_message_lex const a_message_singles[] = {
@@ -714,11 +719,25 @@ jnamesearch_sepfree:
          for(colp = a_message_coltabs;
                PTRCMP(colp, <, &a_message_coltabs[n_NELEM(a_message_coltabs)]);
                ++colp)
-            if((colp->mco_bit & colmod) &&
-                  ((mp->m_flag & colp->mco_mask) == (unsigned)colp->mco_equal)){
-               mark(i + 1, f);
-               flags |= a_ANY;
-               break;
+            if(colp->mco_bit & colmod){
+               /* Is this a colon modifier that requires evaluation? */
+               if(colp->mco_mask == 0){
+                  if(colp->mco_bit & (a_MESSAGE_S_MLIST |
+                           a_MESSAGE_S_MLSUBSCRIBE)){
+                     enum mlist_state what;
+
+                     what = (colp->mco_bit & a_MESSAGE_S_MLIST) ? MLIST_KNOWN
+                           : MLIST_SUBSCRIBED;
+                     if(what == is_mlist_mp(mp, what))
+                        goto jcolonmod_mark;
+                  }
+               }else if((mp->m_flag & colp->mco_mask
+                     ) == (enum mflag)colp->mco_equal){
+jcolonmod_mark:
+                  mark(i + 1, f);
+                  flags |= a_ANY;
+                  break;
+               }
             }
       }
    }

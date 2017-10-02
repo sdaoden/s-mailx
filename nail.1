@@ -2404,13 +2404,35 @@ search expression is to be matched against, prefix the header name
 .Dl @~f@@a\e.safe\e.domain\e.match$
 .
 .It Ar :c
-All messages of state
+All messages of state or with matching condition
 .Ql c ,
 where
 .Ql c
 is one or multiple of the following colon modifiers:
 .Pp
 .Bl -tag -compact -width ".It Ar :M"
+.It Ar a
+.Ic answered
+messages (cf. the variable
+.Va markanswered ) .
+.It Ar d
+.Ql deleted
+messages (for the
+.Ic undelete
+and
+.Ic from
+commands only).
+.It Ar f
+.Ic flag Ns
+ged messages.
+.It Ar L
+Messages with receivers that match
+.Ic mlsubscribe Ns
+d addresses.
+.It Ar l
+Messages with receivers that match
+.Ic mlist Ns
+ed addresses.
 .It Ar n
 .Ql new
 messages.
@@ -2419,34 +2441,20 @@ Old messages (any not in state
 .Ql read
 or
 .Ql new ) .
-.It Ar u
-.Ql unread
-messages.
-.It Ar d
-.Ql deleted
-messages (for the
-.Ic undelete
-and
-.Ic from
-commands only).
 .It Ar r
 .Ql read
 messages.
-.It Ar f
-.Ic flag Ns
-ged messages.
-.It Ar a
-.Ic answered
-messages (cf. the variable
-.Va markanswered ) .
+.It Ar S
+\*(OP Messages with unsure spam classification (see
+.Sx "Handling spam" ) .
+.It Ar s
+\*(OP Messages classified as spam.
 .It Ar t
 Messages marked as
 .Ic draft .
-.It Ar s
-\*(OP Messages classified as spam (see
-.Sx "Handling spam" . )
-.It Ar S
-\*(OP Messages with unsure spam classification.
+.It Ar u
+.Ql unread
+messages.
 .El
 .El
 .
@@ -5658,6 +5666,9 @@ If the \*(OPal regular expression support is available then mailing
 lists may also be specified as (extended) regular expressions (see
 .Xr re_format 7
 for more on those).
+The
+.Ic mlsubscribe
+pair of commands manages subscription attributes of mailing-lists.
 .
 .Mx
 .It Ic mimeview
