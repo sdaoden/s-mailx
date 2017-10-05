@@ -281,7 +281,7 @@ a_main_usage(FILE *fp){
 static void
 a_main_startup(void){
    char *cp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    n_stdin = stdin;
    n_stdout = stdout;
@@ -353,21 +353,21 @@ a_main_startup(void){
    /* Ensure some variables get loaded and/or verified */
 
    (void)ok_blook(POSIXLY_CORRECT);
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static size_t
 a_main_grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt){
    /* Just use auto-reclaimed storage, it will be preserved */
    char const **newcpp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    newcpp = n_autorec_alloc(sizeof(char*) * (newsize + 1));
 
    if(oldcnt > 0)
       memcpy(newcpp, *cpp, oldcnt * sizeof(char*));
    *cpp = newcpp;
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return newsize;
 }
 
@@ -375,7 +375,7 @@ static void
 a_main_setup_vars(void){
    struct passwd *pwuid;
    char const *cp;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    n_group_id = getgid();
    if((pwuid = getpwuid(n_user_id = getuid())) == NULL)
@@ -435,16 +435,20 @@ a_main_setup_vars(void){
           (n_poption & n_PO_BATCH_FLAG))){
       a_main_setscreensize(FAL0);
       if(n_psonce & n_PSO_INTERACTIVE){
+         /* XXX Yet WINCH after SIGWINCH/SIGCONT, but see POSIX TOSTOP flag */
 #ifdef SIGWINCH
 # ifndef TTY_WANTS_SIGWINCH
          if(safe_signal(SIGWINCH, SIG_IGN) != SIG_IGN)
 # endif
             safe_signal(SIGWINCH, &a_main_setscreensize);
 #endif
+#ifdef SIGCONT
+         safe_signal(SIGCONT, &a_main_setscreensize);
+#endif
       }
    }else
       n_scrnheight = n_realscreenheight = 24, n_scrnwidth = 80;
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static void
@@ -455,7 +459,7 @@ a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
 #elif defined TIOCGSIZE
    struct ttysize ts;
 #endif
-   NYD_ENTER;
+   NYD2_ENTER;
 
    n_scrnheight = n_realscreenheight = n_scrnwidth = 0;
 
@@ -492,24 +496,26 @@ a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
 #endif
 
    if(n_scrnheight == 0){
-      speed_t ospeed;
-
-      ospeed = ((tcgetattr(fileno(n_tty_fp), &tbuf) == -1)
-            ? B9600 : cfgetospeed(&tbuf));
-
-      if(ospeed < B1200)
-         n_scrnheight = 9;
-      else if(ospeed == B1200)
-         n_scrnheight = 14;
 #ifdef TIOCGWINSZ
-      else if(ws.ws_row != 0)
+      if(ws.ws_row != 0)
          n_scrnheight = ws.ws_row;
 #elif defined TIOCGSIZE
-      else if(ts.ts_lines != 0)
+      if(ts.ts_lines != 0)
          n_scrnheight = ts.ts_lines;
 #endif
-      else
-         n_scrnheight = 24;
+      else{
+         speed_t ospeed;
+
+         ospeed = ((tcgetattr(fileno(n_tty_fp), &tbuf) == -1)
+               ? B9600 : cfgetospeed(&tbuf));
+
+         if(ospeed < B1200)
+            n_scrnheight = 9;
+         else if(ospeed == B1200)
+            n_scrnheight = 14;
+         else
+            n_scrnheight = 24;
+      }
 
 #if defined TIOCGWINSZ || defined TIOCGSIZE
       if(0 ==
@@ -534,12 +540,8 @@ a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
 
    /**/
    n_pstate |= n_PS_SIGWINCH_PEND;
-#ifdef SIGWINCH
-   if(is_sighdl && (n_psonce & n_PSO_INTERACTIVE))
-      n_tty_signal(SIGWINCH);
-#endif
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
 static sigjmp_buf a_main__hdrjmp; /* XXX */

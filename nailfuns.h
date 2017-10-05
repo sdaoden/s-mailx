@@ -2540,12 +2540,6 @@ FL char *getpassword(char const *query);
 FL ui32_t n_tty_create_prompt(struct n_string *store, char const *xprompt,
             enum n_go_input_flags gif);
 
-/* At least readline(3) (formerly supported) desires to handle SIGWINCH and
- * install its own handler */
-#if 0
-# define TTY_WANTS_SIGWINCH
-#endif
-
 /* Overall interactive terminal life cycle for command line editor library */
 #ifdef HAVE_MLE
 FL void n_tty_init(void);
@@ -2554,9 +2548,6 @@ FL void n_tty_destroy(bool_t xit_fastpath);
 # define n_tty_init() do{;}while(0)
 # define n_tty_destroy(B) do{;}while(0)
 #endif
-
-/* Rather for main.c / SIGWINCH interaction only */
-FL void n_tty_signal(int sig);
 
 /* Read a line after printing prompt (if set and non-empty).
  * If n>0 assumes that *linebuf has n bytes of default content.
