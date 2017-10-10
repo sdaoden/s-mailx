@@ -197,6 +197,7 @@ OPT_SSL=yes
 # knowledge not suffice to understand the user request.  Will create
 # a large statically linked binary; dynamically linked the costs only
 # arise once the extended lookup is actually needed (the first time).
+# Some SSL libraries will always support all algorithms.
 # This can be "require"d.
 OPT_SSL_ALL_ALGORITHMS=yes
 

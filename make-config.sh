@@ -150,8 +150,12 @@ option_setup() {
    fi
 }
 
-# Inter-relationships
+# Inter-relationships XXX sort this!
 option_update() {
+   if feat_no SSL; then
+      OPT_SSL_ALL_ALGORITHMS=0
+   fi
+
    if feat_no SMTP && feat_no POP3 && feat_no IMAP; then
       OPT_SOCKETS=0
    fi
