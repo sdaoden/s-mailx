@@ -5,6 +5,21 @@
 #@ TODO _All_ the tests should happen in a temporary subdir.
 # Public Domain
 
+if [ -f ./mk-config.ev ]; then
+   . ./mk-config.ev
+   if [ -z "${MAILX__CC_TEST_RUNNING}" ]; then
+      MAILX__CC_TEST_RUNNING=1
+      export MAILX__CC_TEST_RUNNING
+      exec "${SHELL}" "${0}" "${@}"
+   fi
+else
+   echo >&2 'S-nail/S-mailx is not configured.'
+   echo >&2 'This test script requires the shell environment that only the'
+   echo >&2 'configuration script can figure out, even if it will be used to'
+   echo >&2 'test a different binary than the one that would be produced!'
+   exit 41
+fi
+
 # We need *stealthmua* regardless of $SOURCE_DATE_EPOCH, the program name as
 # such is a compile-time variable
 ARGS='-:/ -# -Sdotlock-ignore-error -Sexpandaddr=restrict'
@@ -23,16 +38,6 @@ MEMTESTER=
 
 ##  -- (>8  --  8<)  --  ##
 
-# For heaven's sake auto-redirect on SunOS/Solaris
-if [ "x${SHELL}" = x ] || [ "${SHELL}" = /bin/sh ] && \
-      [ -f /usr/xpg4/bin/sh ] && [ -x /usr/xpg4/bin/sh ]; then
-   SHELL=/usr/xpg4/bin/sh
-   export SHELL
-   exec /usr/xpg4/bin/sh "${0}" "${@}"
-fi
-[ -n "${SHELL}" ] || SHELL=/bin/sh
-export SHELL
-
 ( set -o noglob ) >/dev/null 2>&1 && noglob_shell=1 || unset noglob_shell
 
 msg() {
@@ -40,92 +45,6 @@ msg() {
    shift
    printf >&2 -- "${fmt}\\n" "${@}"
 }
-
-# which(1) not standardized, command(1) -v may return non-executable: unroll!
-acmd_test() { __acmd "${1}" 1 0 0; }
-acmd_test_fail() { __acmd "${1}" 1 1 0; }
-acmd_set() { __acmd "${2}" 0 0 0 "${1}"; }
-acmd_set_fail() { __acmd "${2}" 0 1 0 "${1}"; }
-acmd_testandset() { __acmd "${2}" 1 0 0 "${1}"; }
-acmd_testandset_fail() { __acmd "${2}" 1 1 0 "${1}"; }
-thecmd_set() { __acmd "${2}" 0 0 1 "${1}"; }
-thecmd_set_fail() { __acmd "${2}" 0 1 1 "${1}"; }
-thecmd_testandset() { __acmd "${2}" 1 0 1 "${1}"; }
-thecmd_testandset_fail() { __acmd "${2}" 1 1 1 "${1}"; }
-__acmd() {
-   pname=${1} dotest=${2} dofail=${3} verbok=${4} varname=${5}
-
-   if [ "${dotest}" -ne 0 ]; then
-      eval dotest=\$${varname}
-      if [ -n "${dotest}" ]; then
-         [ -n "${VERBOSE}" ] && [ ${verbok} -ne 0 ] &&
-            msg ' . ${%s} ... %s' "${pname}" "${dotest}"
-         return 0
-      fi
-   fi
-
-   oifs=${IFS} IFS=:
-   [ -n "${noglob_shell}" ] && set -o noglob
-   set -- ${PATH}
-   [ -n "${noglob_shell}" ] && set +o noglob
-   IFS=${oifs}
-   for path
-   do
-      if [ -z "${path}" ] || [ "${path}" = . ]; then
-         if [ -d "${PWD}" ]; then
-            path=${PWD}
-         else
-            path=.
-         fi
-      fi
-      if [ -f "${path}/${pname}" ] && [ -x "${path}/${pname}" ]; then
-         [ -n "${VERBOSE}" ] && [ ${verbok} -ne 0 ] &&
-            msg ' . ${%s} ... %s' "${pname}" "${path}/${pname}"
-         [ -n "${varname}" ] && eval ${varname}="${path}/${pname}"
-         return 0
-      fi
-   done
-
-   # We may have no builtin string functions, we yet have no programs we can
-   # use, try to access once from the root, assuming it is an absolute path if
-   # that finds the executable
-   if ( cd && [ -f "${pname}" ] && [ -x "${pname}" ] ); then
-     [ -n "${VERBOSE}" ] && [ ${verbok} -ne 0 ] &&
-            msg ' . ${%s} ... %s' "${pname}" "${pname}"
-      [ -n "${varname}" ] && eval ${varname}="${pname}"
-      return 0
-   fi
-
-   [ ${dofail} -eq 0 ] && return 1
-   msg 'ERROR: no trace of utility '"${pname}"
-   exit 1
-}
-
-thecmd_testandset_fail grep grep
-
-# Problem: force $SHELL to be a real shell.  It seems some testing environments
-# use nologin(?), but we need a real shell for command execution
-if { echo ${SHELL} | ${grep} nologin; } >/dev/null 2>&1; then
-   echo >&2 '$SHELL seems to be nologin, overwriting to /bin/sh!'
-   SHELL=/bin/sh
-   export SHELL
-   exec /bin/sh "${0}" "${@}"
-fi
-
-thecmd_testandset_fail MAKE make
-thecmd_testandset_fail awk awk
-thecmd_testandset_fail cat cat
-thecmd_testandset_fail cksum cksum
-thecmd_testandset_fail rm rm
-thecmd_testandset_fail sed sed
-
-# We sometimes "fake" sendmail(1) a.k.a. *mta* with a shell wrapper, and it
-# happens that /bin/sh is often terribly slow
-if acmd_set MYSHELL dash || acmd_set MYSHELL mksh; then
-   :
-else
-   thecmd_testandset_fail MYSHELL "${SHELL}"
-fi
 
 ##  --  >8  --  8<  --  ##
 
@@ -156,8 +75,6 @@ elif [ "${1}" = --mae-test ]; then
    MAILX=${2}
    [ -x "${MAILX}" ] || usage
    shift 2
-   thecmd_testandset_fail cp cp
-   thecmd_testandset_fail tr tr
 fi
 RAWMAILX=${MAILX}
 MAILX="${MEMTESTER}${MAILX}"
@@ -183,8 +100,8 @@ if [ -n "${CHECK_ONLY}${MAE_TEST}" ] && [ -z "${UTF8_LOCALE}" ]; then
    '`
    [ $? -eq 0 ] && UTF8_LOCALE=$i
 
-   if [ -z "${UTF8_LOCALE}" ] && acmd_set i locale; then
-      UTF8_LOCALE=`${i} -a | { m=
+   if [ -z "${UTF8_LOCALE}" ] && (locale yesexpr) >/dev/null 2>&1; then
+      UTF8_LOCALE=`locale -a | { m=
          while read n; do
             if { echo ${n} | ${grep} -i 'utf-\{0,1\}8'; } >/dev/null 2>&1; then
                m=${n}
@@ -338,10 +255,6 @@ if ( [ "$((1 + 1))" = 2 ] ) >/dev/null 2>&1; then
    add() {
       echo "$((${1} + ${2}))"
    }
-elif acmd_set expr expr; then
-   add() {
-      echo `${expr} ${1} + ${2}`
-   }
 else
    add() {
       echo `${awk} 'BEGIN{print '${1}' + '${2}'}'`
@@ -351,10 +264,6 @@ fi
 if ( [ "$((2 % 3))" = 2 ] ) >/dev/null 2>&1; then
    modulo() {
       echo "$((${1} % ${2}))"
-   }
-elif acmd_set modexpr expr; then
-   modulo() {
-      echo `${modexpr} ${1} % ${2}`
    }
 else
    modulo() {
@@ -2449,7 +2358,7 @@ t_behave_alternates() {
    TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${MYSHELL} -
+		#!${SHELL} -
 		(echo 'From Valeriana Sat Jul 08 15:54:03 2017' && ${cat} && echo
 			) >> "${MBOX}"
 	_EOT
@@ -2590,7 +2499,7 @@ t_behave_alias() {
    TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${MYSHELL} -
+		#!${SHELL} -
 		(echo 'From Hippocastanum Mon Jun 19 15:07:07 2017' && ${cat} && echo
 			) >> "${MBOX}"
 	_EOT
@@ -2632,7 +2541,7 @@ t_behave_filetype() {
    TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${MYSHELL} -
+		#!${SHELL} -
 		(echo 'From Alchemilla Wed Apr 25 15:12:13 2017' && ${cat} && echo
 			) >> "${MBOX}"
 	_EOT
@@ -2642,7 +2551,7 @@ t_behave_filetype() {
       "${SRCDIR}snailmail.jpg" | ${MAILX} ${ARGS} -Smta=./.tsendmail.sh
    check behave:filetype-1 0 "${MBOX}" '1594682963 13520'
 
-   if acmd_set gzip gzip; then
+   if (gzip -h) >/dev/null 2>&1; then
       ${rm} -f ./.t.mbox*
       {
          printf 'File "%s"\ncopy 1 ./.t.mbox.gz\ncopy 2 ./.t.mbox.gz' \
@@ -2714,7 +2623,7 @@ t_behave_e_H_L_opts() {
    echo ${?} > "${MBOX}"
 
    ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${MYSHELL} -
+		#!${SHELL} -
 		(echo 'From Alchemilla Wed Apr 07 17:03:33 2017' && ${cat} && echo
 			) >> "./.t.mbox"
 	_EOT
@@ -2767,7 +2676,7 @@ t_behave_compose_hooks() { # TODO monster
    (echo echo four&&echo echo five&&echo echo six) > ./.tattach
 
    ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${MYSHELL} -
+		#!${SHELL} -
 		(echo 'From PrimulaVeris Wed Apr 10 22:59:00 2017' && ${cat} && echo
          ) >> "${MBOX}"
 	_EOT
@@ -3674,7 +3583,7 @@ t_behave_message_injections() {
    TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${MYSHELL} -
+		#!${SHELL} -
 		(echo 'From Echinacea Tue Jun 20 15:54:02 2017' && ${cat} && echo
 			) > "${MBOX}"
 	_EOT
@@ -3850,7 +3759,7 @@ t_behave_s_mime() {
 
    # (signing +) encryption / decryption
    ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${MYSHELL} -
+		#!${SHELL} -
 		(echo 'From Euphrasia Thu Apr 27 17:56:23 2017' && ${cat}) > ./.ENCRYPT
 	_EOT
    chmod 0755 ./.tsendmail.sh
@@ -4036,7 +3945,7 @@ t_behave_mass_recipients() {
    TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${MYSHELL} -
+		#!${SHELL} -
 		(echo 'From Eucalyptus Sat Jul 08 21:14:57 2017' && ${cat} && echo
 			) >> "${MBOX}"
 	_EOT
@@ -4104,7 +4013,7 @@ t_behave_lreply_futh_rth_etc() {
    TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${MYSHELL} -
+		#!${SHELL} -
 		(echo 'From HumulusLupulus Thu Jul 27 14:41:20 2017' && ${cat} && echo
 			) >> "${MBOX}"
 	_EOT
@@ -4251,7 +4160,7 @@ t_behave_iconv_mbyte_base64() {
    t_prolog t_behave_iconv_mbyte_base64
    TRAP_EXIT_ADDONS="./.t*"
 
-   if [ -n "${UTF8_LOCALE}" ] && have_feat iconv && acmd_set iconv iconv &&
+   if [ -n "${UTF8_LOCALE}" ] && have_feat iconv &&
          ( ${iconv} -l | ${grep} -i -e iso-2022-jp -e euc-jp) >/dev/null 2>&1
    then
       :
@@ -4261,7 +4170,7 @@ t_behave_iconv_mbyte_base64() {
    fi
 
    ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${MYSHELL} -
+		#!${SHELL} -
 		(echo 'From DroseriaRotundifolia Thu Aug 03 17:26:25 2017' && ${cat} &&
          echo) >> "${MBOX}"
 	_EOT

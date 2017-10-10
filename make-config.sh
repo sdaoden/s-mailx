@@ -1148,8 +1148,8 @@ thecmd_testandset chown chown ||
    PATH="/sbin:${PATH}" thecmd_set chown chown ||
    PATH="/usr/sbin:${PATH}" thecmd_set_fail chown chown
 PATH=${__PATH}
-thecmd_testandset_fail make make
-MAKE=${make}
+thecmd_testandset_fail MAKE make
+make=${MAKE}
 export MAKE
 thecmd_testandset strip strip && HAVE_STRIP=1 || HAVE_STRIP=0
 
