@@ -237,6 +237,7 @@ Low-Level
      for some arguments (i.e., the first two or three) automatic
      normalization can be specified, like whitespace trimming, like
      automatic expansion of variables etc.  For getrawlist.
+     It knows about the short synopsis and longer help of its program.
 
       - and: commands that work only in interactive mode, and are
         _silently_ ignored otherwise (no error).
