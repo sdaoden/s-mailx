@@ -1875,7 +1875,7 @@ a_amv_var__clearenv(char const *name, struct a_amv_var *avp){
 
       if((l = strlen(name)) > 0){
          for(; *ecpp != NULL; ++ecpp)
-            if(!strncmp(*ecpp, name, l)){
+            if(!strncmp(*ecpp, name, l) && (*ecpp)[l] == '='){
                do
                   ecpp[0] = ecpp[1];
                while(*ecpp++ != NULL);
