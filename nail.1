@@ -3242,7 +3242,8 @@ will be set to
 the exit status
 .Va \&?
 should be set to
-.Ql -1 .
+.Ql -1 ,
+but some commands deviate from the latter, which is documented.
 .
 .It
 Last, but not least, the modifier
@@ -4651,6 +4652,16 @@ does not.
 is used,
 .Sx "Filename transformations"
 are applied to the expanded arguments.
+This command also supports
+.Cm vput
+as documented in
+.Sx "Command modifiers" ,
+and manages the error number
+.Va \&! :
+if data is stored in a variable then the return value reflects the
+length of the result string in case of success and is
+.Ql -1
+on error.
 .
 .Mx
 .It Ic echoerr
@@ -4661,19 +4672,21 @@ Also see
 .Ic echoerrn .
 In interactive sessions the \*(OPal message ring queue for
 .Ic errors
-will be used instead, if available.
+will be used instead, if available and
+.Cm vput
+was not used.
 .
 .Mx
 .It Ic echon
 \*(NQ Identical to
 .Ic echo ,
-but does not write a trailing newline.
+but does not write or store a trailing newline.
 .
 .Mx
 .It Ic echoerrn
 \*(NQ Identical to
 .Ic echoerr ,
-but does not write a trailing newline.
+but does not write or store a trailing newline.
 .
 .Mx
 .It Ic edit
