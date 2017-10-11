@@ -1856,20 +1856,34 @@ a_amv_var__clearenv(char const *name, struct a_amv_var *avp){
    unsetenv(name);
    rv = TRU1;
 #else
-   n_UNUSED(name);
-   /* TODO a_amv_var__clearenv without HAVE_SETENV does not handle yet
-    * TODO existing (non-linked) environment variables! */
-   if(avp != NULL)
-      for(ecpp = environ; *ecpp != NULL; ++ecpp)
+   rv = FAL0;
+   ecpp = environ;
+
+   if(avp != NULL && avp->av_env != NULL){
+      for(; *ecpp != NULL; ++ecpp)
          if(*ecpp == avp->av_env){
             do
                ecpp[0] = ecpp[1];
             while(*ecpp++ != NULL);
             n_free(avp->av_env);
             avp->av_env = NULL;
+            rv = TRU1;
             break;
          }
-   rv = TRU1;
+   }else{
+      size_t l;
+
+      if((l = strlen(name)) > 0){
+         for(; *ecpp != NULL; ++ecpp)
+            if(!strncmp(*ecpp, name, l)){
+               do
+                  ecpp[0] = ecpp[1];
+               while(*ecpp++ != NULL);
+               rv = TRU1;
+               break;
+            }
+      }
+   }
 #endif /* HAVE_SETENV */
    NYD2_LEAVE;
    return rv;
