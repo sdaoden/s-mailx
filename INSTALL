@@ -256,7 +256,7 @@ Thank you!
 
 Development and/or regular tests:
 
-. AlpineLinux <https://www.alpinelinux.org/> (3.6; x86-64).
+. AlpineLinux <https://www.alpinelinux.org/> (3.6, edge; x86-64).
 . ArchLinux <https://www.archlinux.org/> (weekly updated; x86-64).
 . CRUX Linux <https://www.crux.nu/> (3.3; x86-64).
 . FreeBSD <https://www.freebsd.org/> (10.3; x86).

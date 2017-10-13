@@ -150,6 +150,11 @@ OPT_ALWAYS_UNICODE_LOCALE=`\
 # perform the link tests necessary to detect host environment.
 OPT_CROSS_BUILD=no
 
+# Whether package system, for example pkgsrc(7) on NetBSD and more,
+# OpenCSW on SunOS/Solaris, etc., specific paths shall be automatically
+# included in $C_INCLUDE_PATH and $LD_LIBRARY_PATH when seen?
+OPT_USE_PKGSYS=yes
+
 # Shall S-nail try to automatically detect a compiler and detect and
 # provide a set of known-good compiler flags?  It will use $CC if this
 # variable is set, otherwise a compiler is actively searched for.

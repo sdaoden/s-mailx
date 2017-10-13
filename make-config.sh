@@ -300,7 +300,8 @@ os_setup() {
    #[ ${OS} = darwin ] && OS_DEFINES="${OS_DEFINES}#define _DARWIN_C_SOURCE\n"
 
    # On pkgsrc(7) systems automatically add /usr/pkg/*
-   if [ -d /usr/pkg ]; then
+   if [ -d /usr/pkg ] && feat_yes USE_PKGSYS; then
+      msg ' . found pkgsrc(7), merging C_INCLUDE_PATH and LD_LIBRARY_PATH'
       C_INCLUDE_PATH=/usr/pkg/include:${C_INCLUDE_PATH}
       LD_LIBRARY_PATH=/usr/pkg/lib:${LD_LIBRARY_PATH}
    fi
@@ -311,9 +312,15 @@ _os_setup_sunos() {
    LD_LIBRARY_PATH=/usr/xpg4/lib:${LD_LIBRARY_PATH}
 
    # Include packages
-   if [ -d /opt/csw ]; then
+   if [ -d /opt/csw ] && feat_yes USE_PKGSYS; then
+      msg ' . found OpenCSW PKGSYS, merging C_INCLUDE_PATH and LD_LIBRARY_PATH'
       C_INCLUDE_PATH=/opt/csw/include:${C_INCLUDE_PATH}
       LD_LIBRARY_PATH=/opt/csw/lib:${LD_LIBRARY_PATH}
+   fi
+   if [ -d /opt/schily ] && feat_yes USE_PKGSYS; then
+      msg ' . found Schily PKGSYS, merging C_INCLUDE_PATH and LD_LIBRARY_PATH'
+      C_INCLUDE_PATH=/opt/schily/include:${C_INCLUDE_PATH}
+      LD_LIBRARY_PATH=/opt/schily/lib:${LD_LIBRARY_PATH}
    fi
 
    OS_DEFINES="${OS_DEFINES}#define __EXTENSIONS__\n"
@@ -2855,7 +2862,7 @@ if feat_yes DOTLOCK; then
    msg ' . libexecdir: %s' "${VAL_LIBEXECDIR}"
 fi
 msg ' . mandir: %s' "${VAL_MANDIR}"
-msg ' . M(ail)T(ransfer)A(gent): %s (argv0 %s)' "${VAL_MTA}" "${VAL_MTA_ARGV0}"
+msg ' . M(ail)T(ransfer)A(gent): %s (argv0: %s)' "${VAL_MTA}" "${VAL_MTA_ARGV0}"
 msg ' . $MAIL spool directory: %s' "${VAL_MAIL}"
 msg ''
 
