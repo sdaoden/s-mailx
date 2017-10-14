@@ -532,7 +532,7 @@ t_behave_S_freeze() {
 
    # TODO once we have a detached one with env=1..
    if [ -n "`</dev/null ${MAILX} ${ARGS} -:/ -X'!echo $TERM' -Xx`" ]; then
-      echo 'behave:s_freeze-{5,6}: shell sets $TERM, skipped'
+      echo 'behave:s_freeze-{6,7}: shell sets $TERM, skipped'
    else
       ${cat} <<- '__EOT' > "${BODY}"
 		!echo "shell says TERM<$TERM>"
