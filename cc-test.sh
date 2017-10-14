@@ -2551,14 +2551,14 @@ t_behave_filetype() {
       "${SRCDIR}snailmail.jpg" | ${MAILX} ${ARGS} -Smta=./.tsendmail.sh
    check behave:filetype-1 0 "${MBOX}" '1594682963 13520'
 
-   if (gzip -h) >/dev/null 2>&1; then
+   if (echo | gzip -c) >/dev/null 2>&1; then
       ${rm} -f ./.t.mbox*
       {
          printf 'File "%s"\ncopy 1 ./.t.mbox.gz\ncopy 2 ./.t.mbox.gz' \
             "${MBOX}" | ${MAILX} ${ARGS} \
-               -X'filetype gz '"${gzip}"'\ -dc '"${gzip}"'\ -c'
+               -X'filetype gz gzip\ -dc gzip\ -c'
          printf 'File ./.t.mbox.gz\ncopy * ./.t.mbox\n' |
-            ${MAILX} ${ARGS} -X'filetype gz '"${gzip}"'\ -dc '"${gzip}"'\ -c'
+            ${MAILX} ${ARGS} -X'filetype gz gzip\ -dc gzip\ -c'
       } > ./.t.out 2>&1
       check behave:filetype-2 - "./.t.mbox" '1594682963 13520'
       check behave:filetype-3 - "./.t.out" '2494681730 102'
@@ -4161,7 +4161,7 @@ t_behave_iconv_mbyte_base64() {
    TRAP_EXIT_ADDONS="./.t*"
 
    if [ -n "${UTF8_LOCALE}" ] && have_feat iconv &&
-         ( ${iconv} -l | ${grep} -i -e iso-2022-jp -e euc-jp) >/dev/null 2>&1
+         ( iconv -l | ${grep} -i -e iso-2022-jp -e euc-jp) >/dev/null 2>&1
    then
       :
    else
@@ -4176,7 +4176,7 @@ t_behave_iconv_mbyte_base64() {
 	_EOT
    chmod 0755 ./.tsendmail.sh
 
-   if ( ${iconv} -l | ${grep} -i iso-2022-jp ) >/dev/null 2>&1; then
+   if ( iconv -l | ${grep} -i iso-2022-jp ) >/dev/null 2>&1; then
       cat <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
             -Smta=./.tsendmail.sh \
             -Sescape=! -Smime-encoding=base64 2>./.terr
@@ -4217,7 +4217,7 @@ t_behave_iconv_mbyte_base64() {
       echo 'behave:iconv_mbyte_base64: ISO-2022-JP unsupported, skipping 1-4'
    fi
 
-   if ( ${iconv} -l | ${grep} -i euc-jp ) >/dev/null 2>&1; then
+   if ( iconv -l | ${grep} -i euc-jp ) >/dev/null 2>&1; then
       rm -f "${MBOX}" ./.twrite
       cat <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
             -Smta=./.tsendmail.sh \
