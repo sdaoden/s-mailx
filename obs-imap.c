@@ -243,7 +243,6 @@ static enum okay  imap_list1(struct mailbox *mp, const char *base,
                      int level);
 static enum okay  imap_list(struct mailbox *mp, const char *base, int strip,
                      FILE *fp);
-static void       dopr(FILE *fp);
 static enum okay  imap_copy1(struct mailbox *mp, struct message *m, int n,
                      const char *name);
 static enum okay  imap_copyuid_parse(const char *cp,
@@ -3329,7 +3328,7 @@ imap_folders(const char * volatile name, int strip)
    if (n_psonce & n_PSO_TTYOUT) {
       rewind(fp);
       if (fsize(fp) > 0){
-         dopr(fp);
+         page_or_print(fp, 0);
          rv = 0;
       }else
          n_err(_("Folder not found\n"));
@@ -3345,45 +3344,6 @@ jleave:
    if (interrupts)
       n_go_onintr_for_imap();
    return rv;
-}
-
-static void
-dopr(FILE *fp)
-{
-   char o[LINESIZE];
-   int c;
-   long n = 0, mx = 0, columns, width;
-   FILE *out;
-   NYD_ENTER;
-
-   if ((out = Ftmp(NULL, "imapdopr", OF_RDWR | OF_UNLINK | OF_REGISTER))
-         == NULL) {
-      n_perr(_("tmpfile"), 0);
-      goto jleave;
-   }
-
-   while ((c = getc(fp)) != EOF) {
-      if (c == '\n') {
-         if (n > mx)
-            mx = n;
-         n = 0;
-      } else
-         ++n;
-   }
-   rewind(fp);
-
-   width = n_scrnwidth;
-   if (mx < width / 2) {
-      columns = width / (mx+2);
-      snprintf(o, sizeof o, "sort | pr -%lu -w%lu -t", columns, width);
-   } else
-      strncpy(o, "sort", sizeof o)[sizeof o - 1] = '\0';
-   n_child_run(ok_vlook(SHELL), NULL, fileno(fp), fileno(out), "-c", o, NULL,
-      NULL, NULL);
-   page_or_print(out, 0);
-   Fclose(out);
-jleave:
-   NYD_LEAVE;
 }
 
 static enum okay

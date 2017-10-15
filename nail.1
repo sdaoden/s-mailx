@@ -13467,7 +13467,9 @@ to an IMAP mailbox, all names that begin with `+' then refer to IMAP
 mailboxes below the
 .Va folder
 target box, while folder names prefixed by `@' refer to folders below
-the hierarchy base.
+the hierarchy base, e.g., the following lists all folders below the
+current one when in an IMAP mailbox:
+.Ql folders @ .
 .
 .Pp
 Note: some IMAP servers do not accept the creation of mailboxes in
