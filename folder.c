@@ -239,7 +239,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
          fexpm = FEXP_NSHORTCUT/* XXX | FEXP_NSHELL*/;
          name = who;
       }else
-         fexpm = FEXP_FULL/* XXX FEXP_NSHELL*/;
+         fexpm = FEXP_NSHELL;
 
       if(name[0] == '%'){
          char const *cp;

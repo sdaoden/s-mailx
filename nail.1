@@ -237,8 +237,7 @@ and
 .Sx "Filename transformations"
 (also see
 .Ic file )
-will be performed, but shell word expansion is restricted to the tilde
-.Ql ~ .
+will be performed, except that shell variables are not expanded.
 Shall
 .Ar file
 not be accessible but contain a
@@ -3647,12 +3646,9 @@ mailbox instead of simply being flagged as read.
 .El
 .
 .It
-Meta expansions are applied to the resulting filename, as applicable to
-the resulting file access protocol (also see
+Meta expansions may be applied to the resulting filename, as allowed by
+the operation and applicable to the resulting access protocol (also see
 .Sx "On URL syntax and credential lookup" ) .
-If the fully expanded filename results in multiple pathnames and the
-command is expecting only one file, an error results.
-.Pp
 For the file-protocol, a leading tilde
 .Ql ~
 character will be replaced by the expansion of
@@ -3660,9 +3656,9 @@ character will be replaced by the expansion of
 except when followed by a valid user name, in which case the home
 directory of the given user is used instead.
 .Pp
-In addition a shell expansion as if specified in double-quotes (see
+A shell expansion as if specified in double-quotes (see
 .Sx "Shell-style argument quoting" )
-is applied, so that any occurrence of
+may be applied, so that any occurrence of
 .Ql $VARIABLE
 (or
 .Ql ${VARIABLE} )
@@ -3671,6 +3667,12 @@ will be replaced by the expansion of the variable, if possible;
 as well as
 .Sx ENVIRONMENT
 (shell) variables can be accessed through this mechanism.
+.Pp
+Shell pathname wildcard pattern expansions
+.Pf ( Xr glob 7 )
+may be applied as documented.
+If the fully expanded filename results in multiple pathnames and the
+command is expecting only one file, an error results.
 .Pp
 In interactive context, in order to allow simple value acceptance (via
 .Dq ENTER ) ,
@@ -6003,6 +6005,10 @@ hey, you
 .Mx
 .It Ic remove
 Removes the named files or directories.
+.Sx "Filename transformations"
+including shell pathname wildcard pattern expansions
+.Pf ( Xr glob 7 )
+are performed on the arguments.
 If a name refer to a mailbox, e.g., a Maildir mailbox, then a mailbox
 type specific removal will be performed, deleting the complete mailbox.
 The user is asked for confirmation in interactive mode.
@@ -6012,6 +6018,10 @@ The user is asked for confirmation in interactive mode.
 Takes the name of an existing folder
 and the name for the new folder
 and renames the first to the second one.
+.Sx "Filename transformations"
+including shell pathname wildcard pattern expansions
+.Pf ( Xr glob 7 )
+are performed on both arguments.
 Both folders must be of the same type.
 .
 .Mx
@@ -6199,6 +6209,10 @@ is inspected to decide on the actual storage location.
 .It Ic save
 (s) Takes a message list and a filename and appends each message in turn
 to the end of the file.
+.Sx "Filename transformations"
+including shell pathname wildcard pattern expansions
+.Pf ( Xr glob 7 )
+is performed on the filename.
 If no filename is given, the
 .Mx -sx
 .Sx "secondary mailbox"
@@ -7069,7 +7083,10 @@ Shell piping the part content by specifying a leading vertical bar
 character for the filename is supported.
 Other user input undergoes the usual
 .Sx "Filename transformations" ,
-and contents of the destination file are overwritten if the file
+including shell pathname wildcard pattern expansions
+.Pf ( Xr glob 7 )
+and shell variable expansion for the message as such, not the individual
+parts, and contents of the destination file are overwritten if the file
 previously existed.
 .Pp
 \*(ID In non-interactive mode any part which does not specify a filename
@@ -13039,6 +13056,8 @@ define XooglX {
   set pop3-no-apop-pop.gmXil.com
   shortcut pop %:pop3s://pop.gmXil.com
   shortcut imap %:imaps://imap.gmXil.com
+  #set record="+[Gmail]/Sent Mail"
+  # Select: File imaps://imap.gmXil.com/[Gmail]/Sent\e Mail
 
   set mta=smtp://USER:PASS@smtp.gmXil.com smtp-use-starttls
   # Alternatively:

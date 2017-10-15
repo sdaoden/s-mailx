@@ -1010,7 +1010,7 @@ mightrecord(FILE *fp, struct name *to, bool_t resend){
       ccp = ok_vlook(record);
 
    if(ccp != NULL){
-      if((cp = fexpand(ccp, FEXP_FULL)) == NULL)
+      if((cp = fexpand(ccp, FEXP_NSHELL)) == NULL)
          goto jbail;
 
       switch(*(ccp = cp)){
