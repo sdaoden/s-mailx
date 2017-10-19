@@ -2572,6 +2572,7 @@ VL ui32_t n_pstate;              /* Bits of enum n_program_state */
 VL si32_t n_pstate_err_no;       /* What backs $! n_ERR_* TODO ..HACK */
 VL si32_t n_pstate_ex_no;        /* What backs $? n_EX_* TODO ..HACK ->64-bit */
 #define n_err_no errno           /* Don't use errno directly, for later XXX */
+VL si32_t n_iconv_err_no;        /* TODO HACK: part of CTX to not get lost */
 
 /* XXX stylish sorting */
 VL int            msgCount;            /* Count of messages read in */

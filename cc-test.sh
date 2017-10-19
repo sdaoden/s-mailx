@@ -244,11 +244,25 @@ err() {
 }
 
 ex0_test() {
-   [ $? -ne 0 ] && err $1 'unexpected non-0 exit status'
+   # $1=test name [$2=status]
+   __qm__=${?}
+   [ ${#} -gt 1 ] && __qm__=${2}
+   if [ ${__qm__} -ne 0 ]; then
+      err $1 'unexpected non-0 exit status'
+   else
+      printf '%s: ok\n' "${1}"
+   fi
 }
 
 exn0_test() {
-   [ $? -eq 0 ] && err $1 'unexpected 0 exit status'
+   # $1=test name [$2=status]
+   __qm__=${?}
+   [ ${#} -gt 1 ] && __qm__=${2}
+   if [ ${__qm__} -eq 0 ]; then
+      err $1 'unexpected 0 exit status'
+   else
+      printf '%s: ok\n' "${1}"
+   fi
 }
 
 if ( [ "$((1 + 1))" = 2 ] ) >/dev/null 2>&1; then
@@ -310,6 +324,7 @@ t_behave() {
    t_behave_mass_recipients
    t_behave_lreply_futh_rth_etc
    t_behave_iconv_mbyte_base64
+   t_behave_iconv_mainbody
 }
 
 t_behave_X_opt_input_command_stack() {
@@ -4161,8 +4176,8 @@ t_behave_iconv_mbyte_base64() {
    TRAP_EXIT_ADDONS="./.t*"
 
    if [ -n "${UTF8_LOCALE}" ] && have_feat iconv &&
-         ( iconv -l | ${grep} -i -e iso-2022-jp -e euc-jp) >/dev/null 2>&1
-   then
+         (</dev/null iconv -f ascii -t iso-2022-jp) >/dev/null 2>&1 ||
+         (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
       :
    else
       echo 'behave:iconv_mbyte_base64: unsupported, skipped'
@@ -4176,7 +4191,7 @@ t_behave_iconv_mbyte_base64() {
 	_EOT
    chmod 0755 ./.tsendmail.sh
 
-   if ( iconv -l | ${grep} -i iso-2022-jp ) >/dev/null 2>&1; then
+   if (</dev/null iconv -f ascii -t iso-2022-jp) >/dev/null 2>&1; then
       cat <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
             -Smta=./.tsendmail.sh \
             -Sescape=! -Smime-encoding=base64 2>./.terr
@@ -4217,7 +4232,7 @@ t_behave_iconv_mbyte_base64() {
       echo 'behave:iconv_mbyte_base64: ISO-2022-JP unsupported, skipping 1-4'
    fi
 
-   if ( iconv -l | ${grep} -i euc-jp ) >/dev/null 2>&1; then
+   if (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
       rm -f "${MBOX}" ./.twrite
       cat <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
             -Smta=./.tsendmail.sh \
@@ -4257,6 +4272,68 @@ t_behave_iconv_mbyte_base64() {
       check behave:iconv_mbyte_base64-8 - ./.tlog '500059195 119'
    else
       echo 'behave:iconv_mbyte_base64: EUC-JP unsupported, skipping 5-8'
+   fi
+
+   t_epilog
+}
+
+t_behave_iconv_mainbody() {
+   t_prolog t_behave_iconv_mainbody
+   TRAP_EXIT_ADDONS="./.t*"
+
+   i=
+   if have_feat iconv &&
+         (</dev/null iconv -f utf-8 -t ascii) >/dev/null 2>&1; then
+      j="`printf '–' | iconv -f utf-8 -t ascii 2>/dev/null`"
+      # This assumes iconv(1) behaves like iconv(3), but well
+      if [ ${?} -ne 0 ]; then
+         i=1
+      elif [ x"${j}" = 'x?' ]; then
+         i=2
+      elif [ x"${j}" = 'x*' ]; then
+         i=3
+      fi
+   fi
+   if [ -z "${i}" ]; then
+      echo 'behave:iconv_mainbody: unsupported, skipped'
+      return
+   fi
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${SHELL} -
+		(echo 'From HamamelisVirginiana Fri Oct 20 16:23:21 2017' && ${cat} &&
+			echo) >> "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   printf '–' | ${MAILX} ${ARGS} ${ADDARG_UNI} -Smta=./.tsendmail.sh \
+      -S charset-7bit=us-ascii -S charset-8bit=utf-8 \
+      -s '–' over-the@rain.bow 2>./.terr
+   check behave:iconv_mainbody-1 0 "${MBOX}" '3634015017 251'
+   check behave:iconv_mainbody-2 - ./.terr '4294967295 0'
+
+   printf '–' | ${MAILX} ${ARGS} ${ADDARG_UNI} -Smta=./.tsendmail.sh \
+      -S charset-7bit=us-ascii -S charset-8bit=us-ascii \
+      -s '–' over-the@rain.bow 2>./.terr
+   exn0_test behave:iconv_mainbody-3
+   check behave:iconv_mainbody-3 - "${MBOX}" '3634015017 251'
+   check behave:iconv_mainbody-4 - ./.terr '1960148192 128'
+
+   printf 'p\nx\n' | ${MAILX} ${ARGS} -Rf "${MBOX}" >./.tout 2>./.terr
+   j=${?}
+   if [ ${i} -eq 1 ]; then
+      # yuck, just assume ???, we need a test program for that one!
+      ex0_test behave:iconv_mainbody-5-1 ${j}
+      check behave:iconv_mainbody-6-1 - ./.tout '1959197095 283'
+      check behave:iconv_mainbody-7-1 - ./.terr '4294967295 0'
+   elif [ ${i} -eq 2 ]; then
+      ex0_test behave:iconv_mainbody-5-2 ${j}
+      check behave:iconv_mainbody-6-2 - ./.tout '1959197095 283'
+      check behave:iconv_mainbody-7-2 - ./.terr '4294967295 0'
+   else
+      ex0_test behave:iconv_mainbody-5-3 ${j}
+      check behave:iconv_mainbody-6-3 - ./.tout '3196380198 279'
+      check behave:iconv_mainbody-7-3 - ./.terr '4294967295 0'
    fi
 
    t_epilog

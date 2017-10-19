@@ -2410,7 +2410,10 @@ FL void        n_iconv_reset(iconv_t cd);
  * iconv_str() auto-grows on ERR_2BIG errors; in and in_rest_or_null may be
  * the same object.
  * Note: ERR_INVAL (incomplete sequence at end of input) is NOT handled, so the
- * replacement character must be added manually if that happens at EOF! */
+ * replacement character must be added manually if that happens at EOF!
+ * TODO These must be contexts.  For now we duplicate n_err_no into
+ * TODO n_iconv_err_no in order to be able to access it when stuff happens
+ * TODO "in between"! */
 FL int         n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
                   char const **inb, size_t *inbleft,
                   char **outb, size_t *outbleft);

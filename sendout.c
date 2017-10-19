@@ -1865,12 +1865,13 @@ mail1(struct header *hp, int printheaders, struct message *quote,
          ;
       else if ((nmtf = infix(hp, mtf)) != NULL)
          break;
-      else if ((err = n_err_no) == n_ERR_ILSEQ || err == n_ERR_INVAL) {
+      else if ((err = n_iconv_err_no) == n_ERR_ILSEQ || err == n_ERR_INVAL ||
+            err == n_ERR_NOENT) {
          rewind(mtf);
          continue;
       }
 
-      n_perr(_("Failed to create encoded message"), 0);
+      n_perr(_("Failed to create encoded message"), err);
       n_pstate_err_no = n_ERR_NOTSUP;
       goto jfail_dead;
    }

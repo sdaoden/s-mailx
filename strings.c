@@ -1275,6 +1275,7 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
    }
    err = 0;
 jleave:
+   n_iconv_err_no = err;
    NYD2_LEAVE;
    return err;
 }
