@@ -64,7 +64,7 @@ ERRORS="\
    NOBUFS='No buffer space available' \
    NODATA='No data available' \
    NODEV='Operation not supported by device' \
-   NOENT='No such file or directory' \
+   NOENT='No such entry, file or directory' \
    NOEXEC='Exec format error' \
    NOLCK='No locks available' \
    NOLINK='Link has been severed' \
@@ -532,7 +532,7 @@ _EOT
 
 sub reverser{
    my $argv2 = $ENV{VERB} ? ' verb' : '';
-   system("c99 -I. -o $CTOOL_EXE $CTOOL");
+   system("\$CC -I. -o $CTOOL_EXE $CTOOL");
    my $t = (@ENTS < 0xFF ? 'ui8_t' : (@ENTS < 0xFFFF ? 'ui16_t' : 'ui32_t'));
    `$CTOOL_EXE $t$argv2 >> $ENV{OUT}`
 }

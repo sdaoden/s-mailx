@@ -406,7 +406,7 @@ _EOT
 
 sub reverser{
    my $argv2 = $VERB ? ' verb' : '';
-   system("c99 -I. -o $CTOOL_EXE $CTOOL");
+   system("\$CC -I. -o $CTOOL_EXE $CTOOL");
    my $t = (@ENTS < 0xFF ? 'ui8_t' : (@ENTS < 0xFFFF ? 'ui16_t' : 'ui32_t'));
    `$CTOOL_EXE $t$argv2 >> $OUT`
 }
