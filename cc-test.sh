@@ -546,7 +546,7 @@ t_behave_S_freeze() {
    check behave:s_freeze-5 0 "${MBOX}" '151574279 51'
 
    # TODO once we have a detached one with env=1..
-   if [ -n "`</dev/null ${MAILX} ${ARGS} -:/ -X'!echo $TERM' -Xx`" ]; then
+   if [ -n "`</dev/null ${MAILX} ${ARGS} -X'!echo \$TERM' -Xx`" ]; then
       echo 'behave:s_freeze-{6,7}: shell sets $TERM, skipped'
    else
       ${cat} <<- '__EOT' > "${BODY}"
