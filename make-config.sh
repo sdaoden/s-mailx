@@ -337,8 +337,7 @@ _os_setup_sunos() {
          export CC CFLAGS LDFLAGS
          OPT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
       else
-         # Assume gcc(1), which supports -R for compat
-         cc_maxopt=2 force_no_stackprot=1 need_R_ldflags=-Wl,-R
+         cc_maxopt=2 #force_no_stackprot=1
       fi
    fi
 }
