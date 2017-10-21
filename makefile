@@ -29,9 +29,6 @@ clean:
 distclean:
 	@$(_prestop); LC_ALL=C $${MAKE} -f mk-config.mk distclean
 
-test:
-	@$(_prestop); LC_ALL=C $${MAKE} -f mk-config.mk $(MAKEJOBS) test
-
 devel:
 	@CONFIG=DEVEL; export CONFIG; $(_prego); $(_prestop);\
 	LC_ALL=C $${MAKE} -f mk-config.mk _update-version &&\
@@ -45,6 +42,10 @@ d-b:
 	LC_ALL=C $${MAKE} -f mk-config.mk _update-version &&\
 	LC_ALL=C $${MAKE} -f mk-config.mk $(MAKEJOBS) all
 
+# The test should inherit the user runtime environment!
+test:
+	@$(__prestop); LC_ALL=C $(MAKE) -f mk-config.mk test
+
 d-gettext:
 	cd "$(SRCDIR)" &&\
 	 LC_ALL=C xgettext --sort-by-file --strict --add-location \
@@ -56,11 +57,12 @@ _prego = if CWDDIR="$(CWDDIR)" SRCDIR="$(SRCDIR)" \
 	SHELL="$(SHELL)" MAKE="$(MAKE)" CC="$(CC)" \
 	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" \
 	$(SHELL) "$(SRCDIR)"make-config.sh; then :; else exit 1; fi
-_prestop = if [ -f ./mk-config.mk ]; then :; else \
+__prestop = if [ -f ./mk-config.mk ]; then :; else \
 		echo 'Program not configured, nothing to do';\
 		echo 'Use one of the targets: config, all, tangerine, citron';\
 		exit 1;\
-	fi;\
+	fi
+_prestop = $(__prestop);\
 	< ./mk-config.ev read __ev__; eval $${__ev__}; unset __ev__
 
 # s-mk-mode

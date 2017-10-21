@@ -457,7 +457,7 @@ _cc_flags_tcc() {
       if [ -z "${ld_rpath_not_runpath}" ]; then
          ld_check -Wl,--enable-new-dtags
       else
-         msg '$LD_LIBRARY_PATH adjusted, not trying --enable-new-dtags'
+         msg ' ! $LD_LIBRARY_PATH adjusted, not trying --enable-new-dtags'
       fi
       ld_runtime_flags # update!
    fi
@@ -474,7 +474,7 @@ _cc_flags_generic() {
    # E.g., valgrind does not work well with high optimization
    if [ ${cc_maxopt} -gt 1 ] && feat_yes NOMEMDBG &&
          feat_no ASAN_ADDRESS && feat_no ASAN_MEMORY; then
-      msg 'OP_NOMEMDBG, setting cc_maxopt=1 (-O1)'
+      msg ' ! OPT_NOMEMDBG, setting cc_maxopt=1 (-O1)'
       cc_maxopt=1
    fi
    # Check -g first since some others may rely upon -g / optim. level
@@ -531,9 +531,9 @@ _cc_flags_generic() {
             cc_check -D_FORTIFY_SOURCE=2
          fi
       else
-         msg 'Not checking for -fstack-protector compiler option,'
-         msg 'since that caused errors in a "similar" configuration.'
-         msg 'You may turn off OPT_AUTOCC and use your own settings, rerun'
+         msg ' ! Not checking for -fstack-protector compiler option,'
+         msg ' ! since that caused errors in a "similar" configuration.'
+         msg ' ! You may turn off OPT_AUTOCC and use your own settings, rerun'
       fi
    fi
 
@@ -572,7 +572,7 @@ _cc_flags_generic() {
       if [ -z "${ld_rpath_not_runpath}" ]; then
          ld_check -Wl,--enable-new-dtags
       else
-         msg '$LD_LIBRARY_PATH adjusted, not trying --enable-new-dtags'
+         msg ' ! $LD_LIBRARY_PATH adjusted, not trying --enable-new-dtags'
       fi
       ld_runtime_flags # update!
    elif ld_check -Wl,-R ./ no; then
@@ -580,7 +580,7 @@ _cc_flags_generic() {
       if [ -z "${ld_rpath_not_runpath}" ]; then
          ld_check -Wl,--enable-new-dtags
       else
-         msg '$LD_LIBRARY_PATH adjusted, not trying --enable-new-dtags'
+         msg ' ! $LD_LIBRARY_PATH adjusted, not trying --enable-new-dtags'
       fi
       ld_runtime_flags # update!
    fi
@@ -1196,10 +1196,25 @@ msg_nonl 'Evaluating all configuration items ... '
 option_evaluate
 msg 'done'
 
-# Add the known utility and some other variables
 printf "#define VAL_UAGENT \"${VAL_SID}${VAL_MAILX}\"\n" >> ${newh}
 printf "VAL_UAGENT = ${VAL_SID}${VAL_MAILX}\n" >> ${newmk}
 
+# The problem now is that the test should be able to run in the users linker
+# and path environment, so we need to place the test: rule first, before
+# injecting the relevant make variables.  Set up necessary environment
+if [ -z "${VERBOSE}" ]; then
+   printf -- "ECHO_CC = @echo '  'CC \$(@);\n" >> ${newmk}
+   printf -- "ECHO_LINK = @echo '  'LINK \$(@);\n" >> ${newmk}
+   printf -- "ECHO_GEN = @echo '  'GEN \$(@);\n" >> ${newmk}
+   printf -- "ECHO_TEST = @\n" >> ${newmk}
+   printf -- "ECHO_CMD = @echo '  CMD';\n" >> ${newmk}
+   printf -- "ECHO_BLOCK_BEGIN = @( \n" >> ${newmk}
+   printf -- "ECHO_BLOCK_END = ) >/dev/null\n" >> ${newmk}
+fi
+printf 'test: all\n\t$(ECHO_TEST)%s %scc-test.sh --check-only ./%s\n' \
+   "${SHELL}" "${SRCDIR}" "${VAL_SID}${VAL_MAILX}" >> ${newmk}
+
+# Add the known utility and some other variables
 printf "#define VAL_PRIVSEP \"${VAL_SID}${VAL_MAILX}-privsep\"\n" >> ${newh}
 printf "VAL_PRIVSEP = \$(VAL_UAGENT)-privsep\n" >> ${newmk}
 if feat_yes DOTLOCK; then
@@ -1310,16 +1325,6 @@ ${mv} -f ${newlst} ${lst}
 ${mv} -f ${newev} ${ev}
 ${mv} -f ${newh} ${h}
 ${mv} -f ${newmk} ${mk}
-
-if [ -z "${VERBOSE}" ]; then
-   printf -- "ECHO_CC = @echo '  'CC \$(@);\n" >> ${mk}
-   printf -- "ECHO_LINK = @echo '  'LINK \$(@);\n" >> ${mk}
-   printf -- "ECHO_GEN = @echo '  'GEN \$(@);\n" >> ${mk}
-   printf -- "ECHO_TEST = @\n" >> ${mk}
-   printf -- "ECHO_CMD = @echo '  CMD';\n" >> ${mk}
-   printf -- "ECHO_BLOCK_BEGIN = @( \n" >> ${mk}
-   printf -- "ECHO_BLOCK_END = ) >/dev/null\n" >> ${mk}
-fi
 
 ## Compile and link checking
 

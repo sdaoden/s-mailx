@@ -5,6 +5,9 @@
 #@ TODO _All_ the tests should happen in a temporary subdir.
 # Public Domain
 
+# Instead of figuring out the environment in here, require a configured build
+# system and include that!  Our makefile and configure ensure that this test
+# does not run in the configured, but the user environment nonetheless!
 if [ -f ./mk-config.ev ]; then
    . ./mk-config.ev
    if [ -z "${MAILX__CC_TEST_RUNNING}" ]; then
