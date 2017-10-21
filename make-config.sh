@@ -240,6 +240,10 @@ tmp2=./${tmp0}2$$
 # TODO cc_maxopt is brute simple, we should compile test program and dig real
 # compiler versions for known compilers, then be more specific
 [ -n "${cc_maxopt}" ] || cc_maxopt=100
+#cc_force_no_stackprot=
+#ld_rpath_not_runpath=
+#ld_need_R_flags=
+
 _CFLAGS= _LDFLAGS=
 
 os_early_setup() {
@@ -286,7 +290,7 @@ os_setup() {
          CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
          LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
          export CC CFLAGS LDFLAGS
-         OPT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
+         OPT_AUTOCC=0 ld_need_R_flags=-R
       fi
    elif [ -n "${VERBOSE}" ]; then
       msg ' . no special treatment for this system necessary or known'
@@ -304,6 +308,7 @@ os_setup() {
       msg ' . found pkgsrc(7), merging C_INCLUDE_PATH and LD_LIBRARY_PATH'
       C_INCLUDE_PATH=/usr/pkg/include:${C_INCLUDE_PATH}
       LD_LIBRARY_PATH=/usr/pkg/lib:${LD_LIBRARY_PATH}
+      ld_rpath_not_runpath=1
    fi
 }
 
@@ -316,11 +321,13 @@ _os_setup_sunos() {
       msg ' . found OpenCSW PKGSYS, merging C_INCLUDE_PATH and LD_LIBRARY_PATH'
       C_INCLUDE_PATH=/opt/csw/include:${C_INCLUDE_PATH}
       LD_LIBRARY_PATH=/opt/csw/lib:${LD_LIBRARY_PATH}
+      ld_rpath_not_runpath=1
    fi
    if [ -d /opt/schily ] && feat_yes USE_PKGSYS; then
       msg ' . found Schily PKGSYS, merging C_INCLUDE_PATH and LD_LIBRARY_PATH'
       C_INCLUDE_PATH=/opt/schily/include:${C_INCLUDE_PATH}
       LD_LIBRARY_PATH=/opt/schily/lib:${LD_LIBRARY_PATH}
+      ld_rpath_not_runpath=1
    fi
 
    OS_DEFINES="${OS_DEFINES}#define __EXTENSIONS__\n"
@@ -342,9 +349,9 @@ _os_setup_sunos() {
          CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
          LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
          export CC CFLAGS LDFLAGS
-         OPT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
+         OPT_AUTOCC=0 ld_need_R_flags=-R
       else
-         cc_maxopt=2 #force_no_stackprot=1
+         cc_maxopt=2 cc_force_no_stackprot=1
       fi
    fi
 }
@@ -415,7 +422,7 @@ cc_flags() {
          # As of pcc CVS 2016-04-02, stack protection support is announced but
          # will break if used on Linux
          if { echo "${i}" | ${grep} pcc; } >/dev/null 2>&1; then
-            force_no_stackprot=1
+            cc_force_no_stackprot=1
          fi
          _cc_flags_generic
       fi
@@ -446,8 +453,12 @@ _cc_flags_tcc() {
    fi
 
    if ld_check -Wl,-rpath =./ no; then
-      need_R_ldflags=-Wl,-rpath=
-      ld_check -Wl,--enable-new-dtags
+      ld_need_R_flags=-Wl,-rpath=
+      if [ -z "${ld_rpath_not_runpath}" ]; then
+         ld_check -Wl,--enable-new-dtags
+      else
+         msg '$LD_LIBRARY_PATH adjusted, not trying --enable-new-dtags'
+      fi
       ld_runtime_flags # update!
    fi
 
@@ -514,7 +525,7 @@ _cc_flags_generic() {
    fi
 
    if feat_yes DEBUG || feat_yes FORCED_STACKPROT; then
-      if [ -z "${force_no_stackprot}" ]; then
+      if [ -z "${cc_force_no_stackprot}" ]; then
          if cc_check -fstack-protector-strong ||
                cc_check -fstack-protector-all; then
             cc_check -D_FORTIFY_SOURCE=2
@@ -556,13 +567,21 @@ _cc_flags_generic() {
    ld_check -Wl,-z,now
    ld_check -Wl,-z,noexecstack
    if ld_check -Wl,-rpath =./ no; then
-      need_R_ldflags=-Wl,-rpath=
+      ld_need_R_flags=-Wl,-rpath=
       # Choose DT_RUNPATH (after $LD_LIBRARY_PATH) over DT_RPATH (before)
-      ld_check -Wl,--enable-new-dtags
+      if [ -z "${ld_rpath_not_runpath}" ]; then
+         ld_check -Wl,--enable-new-dtags
+      else
+         msg '$LD_LIBRARY_PATH adjusted, not trying --enable-new-dtags'
+      fi
       ld_runtime_flags # update!
    elif ld_check -Wl,-R ./ no; then
-      need_R_ldflags=-Wl,-R
-      ld_check -Wl,--enable-new-dtags
+      ld_need_R_flags=-Wl,-R
+      if [ -z "${ld_rpath_not_runpath}" ]; then
+         ld_check -Wl,--enable-new-dtags
+      else
+         msg '$LD_LIBRARY_PATH adjusted, not trying --enable-new-dtags'
+      fi
       ld_runtime_flags # update!
    fi
 
@@ -925,7 +944,7 @@ path_check() {
 }
 
 ld_runtime_flags() {
-   if [ -n "${need_R_ldflags}" ]; then
+   if [ -n "${ld_need_R_flags}" ]; then
       i=${IFS}
       IFS=:
       set -- ${LD_LIBRARY_PATH}
@@ -934,13 +953,13 @@ ld_runtime_flags() {
       do
          # But do not link any fakeroot path into our binaries!
          case "${i}" in *fakeroot*) continue;; esac
-         LDFLAGS="${LDFLAGS} ${need_R_ldflags}${i}"
-         _LDFLAGS="${_LDFLAGS} ${need_R_ldflags}${i}"
+         LDFLAGS="${LDFLAGS} ${ld_need_R_flags}${i}"
+         _LDFLAGS="${_LDFLAGS} ${ld_need_R_flags}${i}"
       done
       export LDFLAGS
    fi
    # Disable it for a possible second run.
-   need_R_ldflags=
+   ld_need_R_flags=
 }
 
 cc_check() {
