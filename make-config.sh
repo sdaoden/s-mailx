@@ -1624,7 +1624,7 @@ int main(void){
 then
    :
 else
-   msg 'ERROR: we require termios.h and the tc*() family of functions.'
+   msg 'ERROR: we require termios.h and the tc[gs]etattr() family of functions.'
    msg 'That much Unix we indulge ourselfs.'
    config_exit 1
 fi
@@ -1719,6 +1719,16 @@ int main(void){
    if(!pipe2(fds, O_CLOEXEC) || errno != ENOSYS)
       return 0;
    return 1;
+}
+!
+
+link_check tcgetwinsize 'tcgetwinsize(3)' '#define HAVE_TCGETWINSIZE' << \!
+#include <termios.h>
+int main(void){
+   struct winsize ws;
+
+   tcgetwinsize(0, &ws);
+   return 0;
 }
 !
 

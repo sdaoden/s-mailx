@@ -454,7 +454,7 @@ a_main_setup_vars(void){
 static void
 a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
    struct termios tbuf;
-#ifdef TIOCGWINSZ
+#if defined HAVE_TCGETWINSIZE || defined TIOCGWINSZ
    struct winsize ws;
 #elif defined TIOCGSIZE
    struct ttysize ts;
@@ -487,7 +487,10 @@ a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
       }
    }
 
-#ifdef TIOCGWINSZ
+#ifdef HAVE_TCGETWINSIZE
+   if(tcgetwinsize(fileno(n_tty_fp), &ws) == -1)
+      ws.ws_col = ws.ws_row = 0;
+#elif defined TIOCGWINSZ
    if(ioctl(fileno(n_tty_fp), TIOCGWINSZ, &ws) == -1)
       ws.ws_col = ws.ws_row = 0;
 #elif defined TIOCGSIZE
@@ -496,7 +499,7 @@ a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
 #endif
 
    if(n_scrnheight == 0){
-#ifdef TIOCGWINSZ
+#if defined HAVE_TCGETWINSIZE || defined TIOCGWINSZ
       if(ws.ws_row != 0)
          n_scrnheight = ws.ws_row;
 #elif defined TIOCGSIZE
@@ -517,9 +520,9 @@ a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
             n_scrnheight = 24;
       }
 
-#if defined TIOCGWINSZ || defined TIOCGSIZE
+#if defined HAVE_TCGETWINSIZE || defined TIOCGWINSZ || defined TIOCGSIZE
       if(0 ==
-# ifdef TIOCGWINSZ
+# if defined HAVE_TCGETWINSIZE || defined TIOCGWINSZ
             (n_realscreenheight = ws.ws_row)
 # else
             (n_realscreenheight = ts.ts_lines)
@@ -530,7 +533,7 @@ a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
    }
 
    if(n_scrnwidth == 0 && 0 ==
-#ifdef TIOCGWINSZ
+#if defined HAVE_TCGETWINSIZE || defined TIOCGWINSZ
          (n_scrnwidth = ws.ws_col)
 #elif defined TIOCGSIZE
          (n_scrnwidth = ts.ts_cols)
