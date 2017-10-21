@@ -3836,9 +3836,10 @@ and manages the error number
 .Va \&! .
 The first argument must be either
 .Ar [+[+[+]]]e[ncode] ,
-.Ar d[ecode]
+.Ar d[ecode] ,
+.Ar s[kin]
 or
-.Ar s[kin] ,
+.Ar skinl[ist]
 and specifies the operation to perform on the rest of the line.
 .
 .Pp
@@ -3859,6 +3860,19 @@ set to
 .Va ^ERR Ns -INVAL
 if decoding fails to find a(n) (valid) email address, in which case the
 unmodified input will be output again.
+.
+.Pp
+.Ar skinlist
+first performs a skin operation, and thereafter checks a valid
+address for whether it is a registered mailing-list (see
+.Ic mlist
+and
+.Ic mlsubscribe ) ,
+eventually reporting that state in the error number
+.Va \&!
+as
+.Va ^ERR Ns -EXIST .
+(This state could later become overwritten by an I/O error, though.)
 .
 .Pp
 Encoding supports four different modes, lesser automated versions can be

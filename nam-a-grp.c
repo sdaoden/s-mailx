@@ -1942,7 +1942,8 @@ c_addrcodec(void *vp){
             }
          }
          cp = n_string_cp(sp);
-      }else if(is_ascncaseprefix(act, "skin", alen)){
+      }else if(is_ascncaseprefix(act, "skin", alen) ||
+            (mode = 1, is_ascncaseprefix(act, "skinlist", alen))){
          /* Let's just use the is-single-address hack for this one, too.. */
          if(n_addrspec_with_guts(&ag, cp, TRU1, TRU1) == NULL ||
                (ag.ag_n_flags & (NAME_ADDRSPEC_ISADDR | NAME_ADDRSPEC_INVALID)
@@ -1954,6 +1955,9 @@ c_addrcodec(void *vp){
 
             np = nalloc(ag.ag_input, GTO | GFULL | GSKIN);
             cp = np->n_name;
+
+            if(mode == 1 && is_mlist(cp, FAL0) != MLIST_OTHER)
+               n_pstate_err_no = n_ERR_EXIST;
          }
       }else
          goto jesynopsis;

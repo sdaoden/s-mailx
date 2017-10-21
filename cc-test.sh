@@ -1570,7 +1570,7 @@ t_behave_macro_param_shift() {
 t_behave_addrcodec() {
    t_prolog t_behave_addrcodec
 
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
 	vput addrcodec res e 1 <doog@def>
 	echo $?/$^ERRNAME $res
 	eval vput addrcodec res d $res
@@ -1679,7 +1679,27 @@ t_behave_addrcodec() {
 	echo $?/$^ERRNAME $res
 	__EOT
 
-   check behave:addrcodec 0 "${MBOX}" '429099645 2414'
+   check behave:addrcodec-1 0 "${MBOX}" '429099645 2414'
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+   mlist isa1@list
+   mlsubscribe isa2@list
+   #
+   vput addrcodec res skin Hey\\,\"  <isa0@list> "Wie()" find \" Dr. \" das?
+   echo $?/$^ERRNAME $res
+   vput addrcodec res skinlist Hey\\,\"  <isa0@list> "Wie()" find \" Dr. \" das?
+   echo $?/$^ERRNAME $res
+   vput addrcodec res skin Hey\\,\"  <isa1@list> "Wie()" find \" Dr. \" das?
+   echo $?/$^ERRNAME $res
+   vput addrcodec res skinlist Hey\\,\"  <isa1@list> "Wie()" find \" Dr. \" das?
+   echo $?/$^ERRNAME $res
+   vput addrcodec res skin Hey\\,\"  <isa2@list> "Wie()" find \" Dr. \" das?
+   echo $?/$^ERRNAME $res
+   vput addrcodec res skinlist Hey\\,\"  <isa2@list> "Wie()" find \" Dr. \" das?
+   echo $?/$^ERRNAME $res
+	__EOT
+
+   check behave:addrcodec-2 0 "${MBOX}" '1391779299 104'
 
    t_epilog
 }
