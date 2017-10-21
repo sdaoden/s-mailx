@@ -1942,7 +1942,8 @@ c_addrcodec(void *vp){
             }
          }
          cp = n_string_cp(sp);
-      }else if(is_ascncaseprefix(act, "skin", alen)){
+      }else if(is_ascncaseprefix(act, "skin", alen) ||
+            (mode = 1, is_ascncaseprefix(act, "skinlist", alen))){
          /* Let's just use the is-single-address hack for this one, too.. */
          if(n_addrspec_with_guts(&ag, cp, TRU1, TRU1) == NULL ||
                (ag.ag_n_flags & (NAME_ADDRSPEC_ISADDR | NAME_ADDRSPEC_INVALID)
@@ -1954,6 +1955,9 @@ c_addrcodec(void *vp){
 
             np = nalloc(ag.ag_input, GTO | GFULL | GSKIN);
             cp = np->n_name;
+
+            if(mode == 1 && is_mlist(cp, FAL0) != MLIST_OTHER)
+               n_pstate_err_no = n_ERR_EXIST;
          }
       }else
          goto jesynopsis;
@@ -2297,6 +2301,50 @@ jregex_redo:
    assert(rv == MLIST_OTHER);
 #endif /* HAVE_REGEX */
 
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
+FL enum mlist_state
+is_mlist_mp(struct message *mp, enum mlist_state what){
+   struct name *np;
+   bool_t cc;
+   enum mlist_state rv;
+   NYD_ENTER;
+
+   rv = MLIST_OTHER;
+
+   cc = FAL0;
+   np = lextract(hfield1("to", mp), GTO | GSKIN);
+jredo:
+   for(; np != NULL; np = np->n_flink){
+      switch(is_mlist(np->n_name, FAL0)){
+      case MLIST_OTHER:
+         break;
+      case MLIST_KNOWN:
+         if(what == MLIST_KNOWN || what == MLIST_OTHER){
+            if(rv == MLIST_OTHER)
+               rv = MLIST_KNOWN;
+            if(what == MLIST_KNOWN)
+               goto jleave;
+         }
+         break;
+      case MLIST_SUBSCRIBED:
+         if(what == MLIST_SUBSCRIBED || what == MLIST_OTHER){
+            if(rv != MLIST_SUBSCRIBED)
+               rv = MLIST_SUBSCRIBED;
+            goto jleave;
+         }
+         break;
+      }
+   }
+
+   if(!cc){
+      cc = TRU1;
+      np = lextract(hfield1("cc", mp), GCC | GSKIN);
+      goto jredo;
+   }
 jleave:
    NYD_LEAVE;
    return rv;

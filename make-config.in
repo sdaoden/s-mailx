@@ -35,12 +35,6 @@ privsep.o: $(SRCDIR)privsep.c mk-config.h config.h \
 		$(SRCDIR)nail.h $(SRCDIR)dotlock.h
 	$(ECHO_CC)$(CC) $(CFLAGS) $(BASE_INCS) -c $(SRCDIR)privsep.c
 
-test: all
-	$(ECHO_TEST)\
-	MAKE=$(MAKE) SHELL=$(SHELL) \
-	awk=$(awk) cat=$(cat) cksum=$(cksum) rm=$(rm) sed=$(sed) grep=$(grep) \
-	$(SHELL) $(SRCDIR)cc-test.sh --check-only ./$(VAL_UAGENT)
-
 gen-mime-types.h: $(SRCDIR)mime.types
 	$(ECHO_GEN)\
 	LC_ALL=C < $(SRCDIR)mime.types > $(@) $(awk) '\

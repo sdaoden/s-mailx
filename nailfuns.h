@@ -1648,13 +1648,16 @@ FL bool_t n_alias_is_valid_name(char const *name);
 FL int         c_alias(void *v);
 FL int         c_unalias(void *v);
 
-/* `(un)?ml(ist|subscribe)', and a check whether a name is a (wanted) list */
+/* `(un)?ml(ist|subscribe)', and a check whether a name is a (wanted) list;
+ * give MLIST_OTHER to the latter to search for any, in which case all
+ * receivers are searched until EOL or MLIST_SUBSCRIBED is seen */
 FL int         c_mlist(void *v);
 FL int         c_unmlist(void *v);
 FL int         c_mlsubscribe(void *v);
 FL int         c_unmlsubscribe(void *v);
 
 FL enum mlist_state is_mlist(char const *name, bool_t subscribed_only);
+FL enum mlist_state is_mlist_mp(struct message *mp, enum mlist_state what);
 
 /* `(un)?shortcut', and check if str is one, return expansion or NULL */
 FL int         c_shortcut(void *v);
@@ -2410,7 +2413,10 @@ FL void        n_iconv_reset(iconv_t cd);
  * iconv_str() auto-grows on ERR_2BIG errors; in and in_rest_or_null may be
  * the same object.
  * Note: ERR_INVAL (incomplete sequence at end of input) is NOT handled, so the
- * replacement character must be added manually if that happens at EOF! */
+ * replacement character must be added manually if that happens at EOF!
+ * TODO These must be contexts.  For now we duplicate n_err_no into
+ * TODO n_iconv_err_no in order to be able to access it when stuff happens
+ * TODO "in between"! */
 FL int         n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
                   char const **inb, size_t *inbleft,
                   char **outb, size_t *outbleft);
@@ -2534,12 +2540,6 @@ FL char *getpassword(char const *query);
 FL ui32_t n_tty_create_prompt(struct n_string *store, char const *xprompt,
             enum n_go_input_flags gif);
 
-/* At least readline(3) (formerly supported) desires to handle SIGWINCH and
- * install its own handler */
-#if 0
-# define TTY_WANTS_SIGWINCH
-#endif
-
 /* Overall interactive terminal life cycle for command line editor library */
 #ifdef HAVE_MLE
 FL void n_tty_init(void);
@@ -2548,9 +2548,6 @@ FL void n_tty_destroy(bool_t xit_fastpath);
 # define n_tty_init() do{;}while(0)
 # define n_tty_destroy(B) do{;}while(0)
 #endif
-
-/* Rather for main.c / SIGWINCH interaction only */
-FL void n_tty_signal(int sig);
 
 /* Read a line after printing prompt (if set and non-empty).
  * If n>0 assumes that *linebuf has n bytes of default content.

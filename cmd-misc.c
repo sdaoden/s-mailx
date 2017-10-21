@@ -98,40 +98,51 @@ jleave:
 
 static int
 a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
-   char const **argv, **ap, *cp;
+   struct n_string s, *sp;
    int rv;
    bool_t doerr;
+   char const **argv, *varname, **ap, *cp;
    NYD2_ENTER;
 
+   argv = vp;
+   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
+   sp = n_string_reserve(n_string_creat_auto(&s), 121/* XXX */);
 #ifdef HAVE_ERRORS
    doerr = (fp == n_stderr &&  (n_psonce & n_PSO_INTERACTIVE));
 #else
    doerr = FAL0;
 #endif
 
-   for(ap = argv = vp; *ap != NULL; ++ap){
-      if(ap != argv){
-         if(doerr)
-            n_err(" ");
-         else
-            putc(' ', fp);
-      }
+   for(ap = argv; *ap != NULL; ++ap){
+      if(ap != argv)
+         sp = n_string_push_c(sp, ' ');
       if((cp = fexpand(*ap, FEXP_NSHORTCUT | FEXP_NVAR)) == NULL)
          cp = *ap;
-      if(doerr)
-         n_err(cp);
-      else
-         fputs(cp, fp);
+      sp = n_string_push_cp(sp, cp);
    }
-   if(donl){
-      if(doerr)
-         n_err("\n");
-      else
-         putc('\n', fp);
-   }
+   if(donl)
+      sp = n_string_push_c(sp, '\n');
+   cp = n_string_cp(sp);
 
-   rv = (fflush(fp) == EOF);
-   rv |= ferror(fp) ? 1 : 0;
+   if(varname == NULL){
+      si32_t e;
+
+      e = n_ERR_NONE;
+      if(doerr)
+         n_err("%s", cp);
+      else if(fputs(cp, fp) == EOF)
+         e = n_err_no;
+      if((rv = (fflush(fp) == EOF)))
+         e = n_err_no;
+      rv |= ferror(fp) ? 1 : 0;
+      n_pstate_err_no = e;
+   }else if(!n_var_vset(varname, (uintptr_t)cp)){
+      n_pstate_err_no = n_ERR_NOTSUP;
+      rv = -1;
+   }else{
+      n_pstate_err_no = n_ERR_NONE;
+      rv = (int)sp->s_len;
+   }
    NYD2_LEAVE;
    return rv;
 }

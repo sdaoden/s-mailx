@@ -272,7 +272,7 @@ snarf(char *linebuf, bool_t *flag, bool_t usembox)
    if ((cp = laststring(linebuf, flag, TRU1)) == NULL) {
       if (usembox) {
          *flag = FAL0;
-         cp = fexpand("&", FEXP_FULL);
+         cp = fexpand("&", FEXP_NVAR);
       } else
          n_err(_("No file specified\n"));
    }

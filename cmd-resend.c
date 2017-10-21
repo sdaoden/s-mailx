@@ -471,6 +471,7 @@ jrecipients_done:
          else
             cp = x->n_name;
 
+         /* XXX is_mlist_mp()?? */
          if(is_mlist(cp, FAL0) == MLIST_OTHER)
             head.h_list_post = cp;
       }
@@ -489,6 +490,7 @@ j_lt_redo:
          np = nhp;
          nhp = nhp->n_flink;
 
+         /* XXX is_mlist_mp()?? */
          if((cp != NULL && !asccasecmp(cp, np->n_name)) ||
                is_mlist(np->n_name, FAL0) != MLIST_OTHER){
             if((np->n_blink = tail) != NULL)

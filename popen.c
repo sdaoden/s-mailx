@@ -1223,9 +1223,20 @@ n_child_start(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
 
 FL int
 n_child_fork(void){
+   /* Strictly speaking we should do so in the waitpid(2) case too, but since
+    * we explicitly waitpid(2) on the pid if just the structure exists, which
+    * n_child_wait() does in the parent, all is fine */
+#if n_SIGSUSPEND_NOT_WAITPID
+   sigset_t nset, oset;
+#endif
    struct child *cp;
    int pid;
    NYD2_ENTER;
+
+#if n_SIGSUSPEND_NOT_WAITPID
+   sigfillset(&nset);
+   sigprocmask(SIG_BLOCK, &nset, &oset);
+#endif
 
    cp = a_popen_child_find(0, TRU1);
 
@@ -1233,6 +1244,10 @@ n_child_fork(void){
       a_popen_child_del(cp);
       n_perr(_("fork"), 0);
    }
+
+#if n_SIGSUSPEND_NOT_WAITPID
+   sigprocmask(SIG_SETMASK, &oset, NULL);
+#endif
    NYD2_LEAVE;
    return pid;
 }

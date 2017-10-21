@@ -67,7 +67,8 @@ static bool_t           _name_highbit(struct name *np);
 #endif
 
 /* fwrite(3) while checking for displayability */
-static ssize_t          _fwrite_td(struct str const *input, enum tdflags flags,
+static ssize_t          _fwrite_td(struct str const *input,
+                           bool_t failiconv, enum tdflags flags,
                            struct str *outrest, struct quoteflt *qf);
 
 /* Convert header fields to RFC 2047 format and write to the file fo */
@@ -142,8 +143,8 @@ __mimefwtd_onsig(int sig) /* TODO someday, we won't need it no more */
 }
 
 static ssize_t
-_fwrite_td(struct str const *input, enum tdflags flags, struct str *outrest,
-   struct quoteflt *qf)
+_fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
+   struct str *outrest, struct quoteflt *qf)
 {
    /* TODO note: after send/MIME layer rewrite we will have a string pool
     * TODO so that memory allocation count drops down massively; for now,
@@ -162,6 +163,7 @@ _fwrite_td(struct str const *input, enum tdflags flags, struct str *outrest,
    struct str in, out;
    ssize_t rv;
    NYD_ENTER;
+   n_UNUSED(failiconv);
    n_UNUSED(outrest);
 
    in = *input;
@@ -183,29 +185,36 @@ _fwrite_td(struct str const *input, enum tdflags flags, struct str *outrest,
          outrest->l = 0;
       }
 
-      if((err = n_iconv_str(iconvd, n_ICONV_UNIDEFAULT, &out, &in, &in)) != 0 &&
-            outrest != NULL && in.l > 0){
+      rv = 0;
+      if((err = n_iconv_str(iconvd,
+            (failiconv ? n_ICONV_NONE : n_ICONV_UNIDEFAULT),
+            &out, &in, &in)) != 0){
          if(err != n_ERR_INVAL)
             n_iconv_reset(iconvd);
 
-         /* Incomplete multibyte at EOF is special xxx _INVAL? */
-         if (flags & _TD_EOF) {
-            out.s = srealloc(out.s, out.l + sizeof(n_unirepl));
-            if(n_psonce & n_PSO_UNICODE){
-               memcpy(&out.s[out.l], n_unirepl, sizeof(n_unirepl) -1);
-               out.l += sizeof(n_unirepl) -1;
-            }else
-               out.s[out.l++] = '?';
-         } else
-            n_str_add(outrest, &in);
+         if(outrest != NULL && in.l > 0){
+            /* Incomplete multibyte at EOF is special xxx _INVAL? */
+            if (flags & _TD_EOF) {
+               out.s = srealloc(out.s, out.l + sizeof(n_unirepl));
+               if(n_psonce & n_PSO_UNICODE){
+                  memcpy(&out.s[out.l], n_unirepl, sizeof(n_unirepl) -1);
+                  out.l += sizeof(n_unirepl) -1;
+               }else
+                  out.s[out.l++] = '?';
+            } else
+               n_str_add(outrest, &in);
+         }else
+            rv = -1;
       }
       in = out;
       out.l = 0;
       out.s = NULL;
       flags &= ~_TD_BUFCOPY;
 
-      if (buf != NULL)
+      if(buf != NULL)
          free(buf);
+      if(rv < 0)
+         goto jleave;
    }else
 #endif /* HAVE_ICONV */
    /* Else, if we will modify the data bytes and thus introduce the potential
@@ -721,7 +730,7 @@ a_mime__convhdra(struct str *inp, FILE *fp, size_t *colp,
 
    if(inp->l > 0 && iconvd != (iconv_t)-1){
       ciconv.l = 0;
-      if(n_iconv_str(iconvd, n_ICONV_IGN_NOREVERSE, &ciconv, inp, NULL) != 0){
+      if(n_iconv_str(iconvd, n_ICONV_NONE, &ciconv, inp, NULL) != 0){
          n_iconv_reset(iconvd);
          goto jleave;
       }
@@ -1226,7 +1235,7 @@ mime_write(char const *ptr, size_t size, FILE *f,
    if ((dflags & TD_ICONV) && iconvd != (iconv_t)-1 &&
          (convert == CONV_TOQP || convert == CONV_8BIT ||
          convert == CONV_TOB64 || convert == CONV_TOHDR)) {
-      if (n_iconv_str(iconvd, n_ICONV_IGN_NOREVERSE, &out, &in, NULL) != 0) {
+      if (n_iconv_str(iconvd, n_ICONV_NONE, &out, &in, NULL) != 0) {
          n_iconv_reset(iconvd);
          /* TODO This causes hard-failure.  We would need to have an action
           * TODO policy FAIL|IGNORE|SETERROR(but continue) */
@@ -1299,7 +1308,7 @@ jeb64:
 jqpb64_dec:
       if ((sz = out.l) != 0) {
          ui32_t opl = qf->qf_pfix_len;
-         sz = _fwrite_td(&out, (dflags & ~_TD_BUFCOPY), outrest, qf);
+         sz = _fwrite_td(&out, FAL0, (dflags & ~_TD_BUFCOPY), outrest, qf);
          qf->qf_pfix_len = opl;
       }
       break;
@@ -1362,7 +1371,7 @@ jqpb64_enc:
       sz = mime_write_tohdr_a(&in, f, &col);
    }  break;
    default:
-      sz = _fwrite_td(&in, dflags, NULL, qf);
+      sz = _fwrite_td(&in, TRU1, dflags, NULL, qf);
       break;
    }
 

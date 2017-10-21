@@ -88,6 +88,9 @@ a_socket_open(struct sock *sp, struct url *urlp) /* TODO sigstuff; refactor */
    struct linger li;
 # endif
 # ifdef HAVE_GETADDRINFO
+#  ifndef NI_MAXHOST
+#   define NI_MAXHOST 1025
+#  endif
    char hbuf[NI_MAXHOST];
    struct addrinfo hints, *res0 = NULL, *res;
 # else

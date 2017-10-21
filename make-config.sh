@@ -150,8 +150,12 @@ option_setup() {
    fi
 }
 
-# Inter-relationships
+# Inter-relationships XXX sort this!
 option_update() {
+   if feat_no SSL; then
+      OPT_SSL_ALL_ALGORITHMS=0
+   fi
+
    if feat_no SMTP && feat_no POP3 && feat_no IMAP; then
       OPT_SOCKETS=0
    fi
@@ -236,6 +240,11 @@ tmp2=./${tmp0}2$$
 # TODO cc_maxopt is brute simple, we should compile test program and dig real
 # compiler versions for known compilers, then be more specific
 [ -n "${cc_maxopt}" ] || cc_maxopt=100
+#cc_force_no_stackprot=
+#ld_need_R_flags=
+#ld_no_bind_now=
+#ld_rpath_not_runpath=
+
 _CFLAGS= _LDFLAGS=
 
 os_early_setup() {
@@ -282,7 +291,7 @@ os_setup() {
          CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
          LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
          export CC CFLAGS LDFLAGS
-         OPT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
+         OPT_AUTOCC=0 ld_need_R_flags=-R
       fi
    elif [ -n "${VERBOSE}" ]; then
       msg ' . no special treatment for this system necessary or known'
@@ -296,9 +305,11 @@ os_setup() {
    #[ ${OS} = darwin ] && OS_DEFINES="${OS_DEFINES}#define _DARWIN_C_SOURCE\n"
 
    # On pkgsrc(7) systems automatically add /usr/pkg/*
-   if [ -d /usr/pkg ]; then
+   if [ -d /usr/pkg ] && feat_yes USE_PKGSYS; then
+      msg ' . found pkgsrc(7), merging C_INCLUDE_PATH and LD_LIBRARY_PATH'
       C_INCLUDE_PATH=/usr/pkg/include:${C_INCLUDE_PATH}
       LD_LIBRARY_PATH=/usr/pkg/lib:${LD_LIBRARY_PATH}
+      ld_rpath_not_runpath=1
    fi
 }
 
@@ -307,9 +318,17 @@ _os_setup_sunos() {
    LD_LIBRARY_PATH=/usr/xpg4/lib:${LD_LIBRARY_PATH}
 
    # Include packages
-   if [ -d /opt/csw ]; then
+   if [ -d /opt/csw ] && feat_yes USE_PKGSYS; then
+      msg ' . found OpenCSW PKGSYS, merging C_INCLUDE_PATH and LD_LIBRARY_PATH'
       C_INCLUDE_PATH=/opt/csw/include:${C_INCLUDE_PATH}
       LD_LIBRARY_PATH=/opt/csw/lib:${LD_LIBRARY_PATH}
+      ld_no_bind_now=1 ld_rpath_not_runpath=1
+   fi
+   if [ -d /opt/schily ] && feat_yes USE_PKGSYS; then
+      msg ' . found Schily PKGSYS, merging C_INCLUDE_PATH and LD_LIBRARY_PATH'
+      C_INCLUDE_PATH=/opt/schily/include:${C_INCLUDE_PATH}
+      LD_LIBRARY_PATH=/opt/schily/lib:${LD_LIBRARY_PATH}
+      ld_no_bind_now=1 ld_rpath_not_runpath=1
    fi
 
    OS_DEFINES="${OS_DEFINES}#define __EXTENSIONS__\n"
@@ -331,10 +350,9 @@ _os_setup_sunos() {
          CFLAGS="${_CFLAGS} ${EXTRA_CFLAGS}"
          LDFLAGS="${_LDFLAGS} ${EXTRA_LDFLAGS}"
          export CC CFLAGS LDFLAGS
-         OPT_AUTOCC=0 had_want_autocc=1 need_R_ldflags=-R
+         OPT_AUTOCC=0 ld_need_R_flags=-R
       else
-         # Assume gcc(1), which supports -R for compat
-         cc_maxopt=2 force_no_stackprot=1 need_R_ldflags=-Wl,-R
+         cc_maxopt=2 cc_force_no_stackprot=1
       fi
    fi
 }
@@ -405,7 +423,7 @@ cc_flags() {
          # As of pcc CVS 2016-04-02, stack protection support is announced but
          # will break if used on Linux
          if { echo "${i}" | ${grep} pcc; } >/dev/null 2>&1; then
-            force_no_stackprot=1
+            cc_force_no_stackprot=1
          fi
          _cc_flags_generic
       fi
@@ -436,8 +454,12 @@ _cc_flags_tcc() {
    fi
 
    if ld_check -Wl,-rpath =./ no; then
-      need_R_ldflags=-Wl,-rpath=
-      ld_check -Wl,--enable-new-dtags
+      ld_need_R_flags=-Wl,-rpath=
+      if [ -z "${ld_rpath_not_runpath}" ]; then
+         ld_check -Wl,--enable-new-dtags
+      else
+         msg ' ! $LD_LIBRARY_PATH adjusted, not trying --enable-new-dtags'
+      fi
       ld_runtime_flags # update!
    fi
 
@@ -453,7 +475,7 @@ _cc_flags_generic() {
    # E.g., valgrind does not work well with high optimization
    if [ ${cc_maxopt} -gt 1 ] && feat_yes NOMEMDBG &&
          feat_no ASAN_ADDRESS && feat_no ASAN_MEMORY; then
-      msg 'OP_NOMEMDBG, setting cc_maxopt=1 (-O1)'
+      msg ' ! OPT_NOMEMDBG, setting cc_maxopt=1 (-O1)'
       cc_maxopt=1
    fi
    # Check -g first since some others may rely upon -g / optim. level
@@ -504,15 +526,15 @@ _cc_flags_generic() {
    fi
 
    if feat_yes DEBUG || feat_yes FORCED_STACKPROT; then
-      if [ -z "${force_no_stackprot}" ]; then
+      if [ -z "${cc_force_no_stackprot}" ]; then
          if cc_check -fstack-protector-strong ||
                cc_check -fstack-protector-all; then
             cc_check -D_FORTIFY_SOURCE=2
          fi
       else
-         msg 'Not checking for -fstack-protector compiler option,'
-         msg 'since that caused errors in a "similar" configuration.'
-         msg 'You may turn off OPT_AUTOCC and use your own settings, rerun'
+         msg ' ! Not checking for -fstack-protector compiler option,'
+         msg ' ! since that caused errors in a "similar" configuration.'
+         msg ' ! You may turn off OPT_AUTOCC and use your own settings, rerun'
       fi
    fi
 
@@ -543,16 +565,28 @@ _cc_flags_generic() {
    fi
 
    ld_check -Wl,-z,relro
-   ld_check -Wl,-z,now
+   if [ -z "${ld_no_bind_now}" ]; then
+      ld_check -Wl,-z,now
+   else
+      msg ' ! $LD_LIBRARY_PATH adjusted, not trying -Wl,-z,now'
+   fi
    ld_check -Wl,-z,noexecstack
    if ld_check -Wl,-rpath =./ no; then
-      need_R_ldflags=-Wl,-rpath=
+      ld_need_R_flags=-Wl,-rpath=
       # Choose DT_RUNPATH (after $LD_LIBRARY_PATH) over DT_RPATH (before)
-      ld_check -Wl,--enable-new-dtags
+      if [ -z "${ld_rpath_not_runpath}" ]; then
+         ld_check -Wl,--enable-new-dtags
+      else
+         msg ' ! $LD_LIBRARY_PATH adjusted, not trying --enable-new-dtags'
+      fi
       ld_runtime_flags # update!
    elif ld_check -Wl,-R ./ no; then
-      need_R_ldflags=-Wl,-R
-      ld_check -Wl,--enable-new-dtags
+      ld_need_R_flags=-Wl,-R
+      if [ -z "${ld_rpath_not_runpath}" ]; then
+         ld_check -Wl,--enable-new-dtags
+      else
+         msg ' ! $LD_LIBRARY_PATH adjusted, not trying --enable-new-dtags'
+      fi
       ld_runtime_flags # update!
    fi
 
@@ -915,7 +949,7 @@ path_check() {
 }
 
 ld_runtime_flags() {
-   if [ -n "${need_R_ldflags}" ]; then
+   if [ -n "${ld_need_R_flags}" ]; then
       i=${IFS}
       IFS=:
       set -- ${LD_LIBRARY_PATH}
@@ -924,13 +958,13 @@ ld_runtime_flags() {
       do
          # But do not link any fakeroot path into our binaries!
          case "${i}" in *fakeroot*) continue;; esac
-         LDFLAGS="${LDFLAGS} ${need_R_ldflags}${i}"
-         _LDFLAGS="${_LDFLAGS} ${need_R_ldflags}${i}"
+         LDFLAGS="${LDFLAGS} ${ld_need_R_flags}${i}"
+         _LDFLAGS="${_LDFLAGS} ${ld_need_R_flags}${i}"
       done
       export LDFLAGS
    fi
    # Disable it for a possible second run.
-   need_R_ldflags=
+   ld_need_R_flags=
 }
 
 cc_check() {
@@ -1144,8 +1178,8 @@ thecmd_testandset chown chown ||
    PATH="/sbin:${PATH}" thecmd_set chown chown ||
    PATH="/usr/sbin:${PATH}" thecmd_set_fail chown chown
 PATH=${__PATH}
-thecmd_testandset_fail make make
-MAKE=${make}
+thecmd_testandset_fail MAKE make
+make=${MAKE}
 export MAKE
 thecmd_testandset strip strip && HAVE_STRIP=1 || HAVE_STRIP=0
 
@@ -1167,10 +1201,25 @@ msg_nonl 'Evaluating all configuration items ... '
 option_evaluate
 msg 'done'
 
-# Add the known utility and some other variables
 printf "#define VAL_UAGENT \"${VAL_SID}${VAL_MAILX}\"\n" >> ${newh}
 printf "VAL_UAGENT = ${VAL_SID}${VAL_MAILX}\n" >> ${newmk}
 
+# The problem now is that the test should be able to run in the users linker
+# and path environment, so we need to place the test: rule first, before
+# injecting the relevant make variables.  Set up necessary environment
+if [ -z "${VERBOSE}" ]; then
+   printf -- "ECHO_CC = @echo '  'CC \$(@);\n" >> ${newmk}
+   printf -- "ECHO_LINK = @echo '  'LINK \$(@);\n" >> ${newmk}
+   printf -- "ECHO_GEN = @echo '  'GEN \$(@);\n" >> ${newmk}
+   printf -- "ECHO_TEST = @\n" >> ${newmk}
+   printf -- "ECHO_CMD = @echo '  CMD';\n" >> ${newmk}
+   printf -- "ECHO_BLOCK_BEGIN = @( \n" >> ${newmk}
+   printf -- "ECHO_BLOCK_END = ) >/dev/null\n" >> ${newmk}
+fi
+printf 'test: all\n\t$(ECHO_TEST)%s %scc-test.sh --check-only ./%s\n' \
+   "${SHELL}" "${SRCDIR}" "${VAL_SID}${VAL_MAILX}" >> ${newmk}
+
+# Add the known utility and some other variables
 printf "#define VAL_PRIVSEP \"${VAL_SID}${VAL_MAILX}-privsep\"\n" >> ${newh}
 printf "VAL_PRIVSEP = \$(VAL_UAGENT)-privsep\n" >> ${newmk}
 if feat_yes DOTLOCK; then
@@ -1281,16 +1330,6 @@ ${mv} -f ${newlst} ${lst}
 ${mv} -f ${newev} ${ev}
 ${mv} -f ${newh} ${h}
 ${mv} -f ${newmk} ${mk}
-
-if [ -z "${VERBOSE}" ]; then
-   printf -- "ECHO_CC = @echo '  'CC \$(@);\n" >> ${mk}
-   printf -- "ECHO_LINK = @echo '  'LINK \$(@);\n" >> ${mk}
-   printf -- "ECHO_GEN = @echo '  'GEN \$(@);\n" >> ${mk}
-   printf -- "ECHO_TEST = @\n" >> ${mk}
-   printf -- "ECHO_CMD = @echo '  CMD';\n" >> ${mk}
-   printf -- "ECHO_BLOCK_BEGIN = @( \n" >> ${mk}
-   printf -- "ECHO_BLOCK_END = ) >/dev/null\n" >> ${mk}
-fi
 
 ## Compile and link checking
 
@@ -1614,7 +1653,7 @@ int main(void){
 then
    :
 else
-   msg 'ERROR: we require termios.h and the tc*() family of functions.'
+   msg 'ERROR: we require termios.h and the tc[gs]etattr() family of functions.'
    msg 'That much Unix we indulge ourselfs.'
    config_exit 1
 fi
@@ -1709,6 +1748,16 @@ int main(void){
    if(!pipe2(fds, O_CLOEXEC) || errno != ENOSYS)
       return 0;
    return 1;
+}
+!
+
+link_check tcgetwinsize 'tcgetwinsize(3)' '#define HAVE_TCGETWINSIZE' << \!
+#include <termios.h>
+int main(void){
+   struct winsize ws;
+
+   tcgetwinsize(0, &ws);
+   return 0;
 }
 !
 
@@ -2852,7 +2901,7 @@ if feat_yes DOTLOCK; then
    msg ' . libexecdir: %s' "${VAL_LIBEXECDIR}"
 fi
 msg ' . mandir: %s' "${VAL_MANDIR}"
-msg ' . M(ail)T(ransfer)A(gent): %s (argv0 %s)' "${VAL_MTA}" "${VAL_MTA_ARGV0}"
+msg ' . M(ail)T(ransfer)A(gent): %s (argv0: %s)' "${VAL_MTA}" "${VAL_MTA_ARGV0}"
 msg ' . $MAIL spool directory: %s' "${VAL_MAIL}"
 msg ''
 

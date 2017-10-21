@@ -39,6 +39,9 @@ static sighandler_type a_tty_oint, a_tty_oquit, a_tty_oterm,
 static void a_tty_sigs_up(void), a_tty_sigs_down(void);
 #endif
 
+/* Prototype here, implementation is specific to chosen editor */
+static void a_tty_signal(int sig);
+
 #ifdef a_TTY_SIGNALS
 static void
 a_tty_sigs_up(void){
@@ -48,13 +51,13 @@ a_tty_sigs_up(void){
    sigfillset(&nset);
 
    sigprocmask(SIG_BLOCK, &nset, &oset);
-   a_tty_oint = safe_signal(SIGINT, &n_tty_signal);
-   a_tty_oquit = safe_signal(SIGQUIT, &n_tty_signal);
-   a_tty_oterm = safe_signal(SIGTERM, &n_tty_signal);
-   a_tty_ohup = safe_signal(SIGHUP, &n_tty_signal);
-   a_tty_otstp = safe_signal(SIGTSTP, &n_tty_signal);
-   a_tty_ottin = safe_signal(SIGTTIN, &n_tty_signal);
-   a_tty_ottou = safe_signal(SIGTTOU, &n_tty_signal);
+   a_tty_oint = safe_signal(SIGINT, &a_tty_signal);
+   a_tty_oquit = safe_signal(SIGQUIT, &a_tty_signal);
+   a_tty_oterm = safe_signal(SIGTERM, &a_tty_signal);
+   a_tty_ohup = safe_signal(SIGHUP, &a_tty_signal);
+   a_tty_otstp = safe_signal(SIGTSTP, &a_tty_signal);
+   a_tty_ottin = safe_signal(SIGTTIN, &a_tty_signal);
+   a_tty_ottou = safe_signal(SIGTTOU, &a_tty_signal);
    sigprocmask(SIG_SETMASK, &oset, NULL);
    NYD2_LEAVE;
 }
@@ -912,6 +915,32 @@ static struct a_tty_bind_tree *a_tty__bind_tree_add_wc(
                wchar_t wc, bool_t isseq);
 static void a_tty__bind_tree_free(struct a_tty_bind_tree *tbtp);
 # endif /* HAVE_KEY_BINDINGS */
+
+static void
+a_tty_signal(int sig){
+   /* Prototype at top */
+   sigset_t nset, oset;
+   NYD_X; /* Signal handler */
+
+   n_COLOUR( n_colour_env_gut(); ) /* TODO NO SIMPLE SUSPENSION POSSIBLE.. */
+   a_tty_term_mode(FAL0);
+   n_TERMCAP_SUSPEND(TRU1);
+   a_tty_sigs_down();
+
+   sigemptyset(&nset);
+   sigaddset(&nset, sig);
+   sigprocmask(SIG_UNBLOCK, &nset, &oset);
+   n_raise(sig);
+   /* When we come here we'll continue editing, so reestablish */
+   sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
+
+   /* TODO THEREFORE NEED TO _GUT() .. _CREATE() ENTIRE ENVS!! */
+   n_COLOUR( n_colour_env_create(n_COLOUR_CTX_MLE, n_tty_fp, FAL0); )
+   a_tty_sigs_up();
+   n_TERMCAP_RESUME(TRU1);
+   a_tty_term_mode(TRU1);
+   a_tty.tg_line->tl_vi_flags |= a_TTY_VF_MOD_DIRTY;
+}
 
 static void
 a_tty_term_mode(bool_t raw){
@@ -2667,9 +2696,9 @@ jinput_loop:
                    * TODO a SysV one, here */
                   n_sighdl_t otstp, ottin, ottou;
 
-                  otstp = n_signal(SIGTSTP, &n_tty_signal);
-                  ottin = n_signal(SIGTTIN, &n_tty_signal);
-                  ottou = n_signal(SIGTTOU, &n_tty_signal);
+                  otstp = n_signal(SIGTSTP, &a_tty_signal);
+                  ottin = n_signal(SIGTTIN, &a_tty_signal);
+                  ottou = n_signal(SIGTTOU, &a_tty_signal);
 # ifdef HAVE_KEY_BINDINGS
                   flags &= ~a_TIMEOUT_MASK;
                   if(isp != NULL && (tbtp = isp->tbtp)->tbt_isseq &&
@@ -3854,41 +3883,6 @@ jleave:
    NYD_LEAVE;
 }
 
-FL void
-n_tty_signal(int sig){
-   sigset_t nset, oset;
-   NYD_X; /* Signal handler */
-
-   switch(sig){
-# ifdef SIGWINCH
-   case SIGWINCH:
-      /* We don't deal with SIGWINCH, yet get called from main.c.
-       * Note this case might get called even if !n_PO_LINE_EDITOR_INIT */
-      break;
-# endif
-   default:
-      n_COLOUR( n_colour_env_gut(); ) /* TODO NO SIMPLE SUSPENSION POSSIBLE.. */
-      a_tty_term_mode(FAL0);
-      n_TERMCAP_SUSPEND(TRU1);
-      a_tty_sigs_down();
-
-      sigemptyset(&nset);
-      sigaddset(&nset, sig);
-      sigprocmask(SIG_UNBLOCK, &nset, &oset);
-      n_raise(sig);
-      /* When we come here we'll continue editing, so reestablish */
-      sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
-
-      /* TODO THEREFORE NEED TO _GUT() .. _CREATE() ENTIRE ENVS!! */
-      n_COLOUR( n_colour_env_create(n_COLOUR_CTX_MLE, n_tty_fp, FAL0); )
-      a_tty_sigs_up();
-      n_TERMCAP_RESUME(TRU1);
-      a_tty_term_mode(TRU1);
-      a_tty.tg_line->tl_vi_flags |= a_TTY_VF_MOD_DIRTY;
-      break;
-   }
-}
-
 FL int
 (n_tty_readline)(enum n_go_input_flags gif, char const *prompt,
       char **linebuf, size_t *linesize, size_t n, bool_t *histok_or_null
@@ -4379,6 +4373,31 @@ jleave:
  * The really-nothing-at-all implementation
  */
 
+static void
+a_tty_signal(int sig){
+   /* Prototype at top */
+# ifdef HAVE_TERMCAP
+   sigset_t nset, oset;
+# endif
+   NYD_X; /* Signal handler */
+   n_UNUSED(sig);
+
+# ifdef HAVE_TERMCAP
+   n_TERMCAP_SUSPEND(TRU1);
+   a_tty_sigs_down();
+
+   sigemptyset(&nset);
+   sigaddset(&nset, sig);
+   sigprocmask(SIG_UNBLOCK, &nset, &oset);
+   n_raise(sig);
+   /* When we come here we'll continue editing, so reestablish */
+   sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
+
+   a_tty_sigs_up();
+   n_TERMCAP_RESUME(TRU1);
+# endif /* HAVE_TERMCAP */
+}
+
 # if 0
 FL void
 n_tty_init(void){
@@ -4393,34 +4412,6 @@ n_tty_destroy(bool_t xit_fastpath){
    NYD_LEAVE;
 }
 # endif /* 0 */
-
-FL void
-n_tty_signal(int sig){
-   NYD_X; /* Signal handler */
-   n_UNUSED(sig);
-
-# ifdef HAVE_TERMCAP
-   switch(sig){
-   default:{
-      sigset_t nset, oset;
-
-      n_TERMCAP_SUSPEND(TRU1);
-      a_tty_sigs_down();
-
-      sigemptyset(&nset);
-      sigaddset(&nset, sig);
-      sigprocmask(SIG_UNBLOCK, &nset, &oset);
-      n_raise(sig);
-      /* When we come here we'll continue editing, so reestablish */
-      sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
-
-      a_tty_sigs_up();
-      n_TERMCAP_RESUME(TRU1);
-      break;
-   }
-   }
-# endif /* HAVE_TERMCAP */
-}
 
 FL int
 (n_tty_readline)(enum n_go_input_flags gif, char const *prompt,

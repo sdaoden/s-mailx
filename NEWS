@@ -6,6 +6,75 @@ S - n a i l / S - m a i l x  N e w s
   will scroll to the manual's Point-Of-Interest, and pointing
   a web- browser to the "#ANCHOR" of the online manual works.
 
+v14.9.5 ("Marsh tit engaged with a peanut"), 2017-10-21
+-------------------------------------------------------
+
+A bugfix release which fixes two bugs which were cast in stone.
+A few compatibility improvements (AlpineLinux, Solaris).
+And minor features.
+
+Apologies to Jörg Schilling, a git bug i think it was who caused
+joining of changesets, loosing a credit, and it had been pushed to
+[master] before the problem was realized.
+
+Credits, in order of commit appearance: Jörg Schilling,
+Doug McIlroy, Random832, Nick Stoughton and Ivan Tham.
+
+We welcome Nick Stoughton and Ivan Tham in THANKS.
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- New OPT_USE_PKGSYS option can be disabled to not automatically
+  pick known package system paths (pkg(7), OpenCSW, schily).
+  (Jörg Schilling)
+
+ChangeLog
+^^^^^^^^^
+
+- The software indeed _never_ dealt with iconv(3) output character
+  set errors (as opposed to invalid input character set byte
+  sequences etc.) for the main message body!
+  And I have missed that when i tweaked our iconv layer a bit!
+
+- Fixed a race condition with sigsuspend(2) that i could only see
+  on OpenBSD.  config.h offers n_SIGSUSPEND_NOT_WAITPID, by the
+  way, which saves some systemcalls and did not run races, but
+  noone adjusts this file.
+
+- Message list specifications gained two new colon modifiers, one
+  can now "search :Ll" to find "Mailing lists"#10.
+  The *headline*#400 format %T now also uses L and l rather than
+  S and L accordingly.
+
+  New `addrcodec'#? subcommand `skinlist' acts like `skin'
+  but stores in *!*#329 *^ERR*#?-EXIST if the address is
+  one of the known "Mailing lists"#10.
+
+- `echo'#? family now supports `vput'#114 and *!*#329 error
+  storage, offering some kind of printf(1) experience, almost.
+
+git(1) shortlog (edited)
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Steffen Nurpmeso (35):
+d76fd200 Fully support putenv(3) fallback (Jörg Schilling)
+ab0cd3b8 FIX iconv for main body part (since EVER!) (Doug McIlroy,
+        Random832)..
+8d472b37 FIX sigsuspend(2) race condition (since EVER! Only seen on OpenBSD)..
+ca045d7d Add is_mlist_mp() and :Ll colon modifiers, and use "Ll" for
+        *headline*'s %T
+88a69abf Set termsize after SIGCONT; n_signal(): use sigfillset (Nick
+        Stoughton)..
+f169483d THANKS: Nick Stoughton
+2f1e46ee `echo' family: support `vput' and *!* error storage
+22ac50c7 make.rc, make-config.sh: add OPT_USE_PKGSYS (Jörg Schilling)
+09a8b2ef Even less shell globbing (Ivan Tham)
+b35ccc6d THANKS: Ivan Tham
+820d02b4 obs-imap.c: drop dopr(), pr(1) often not available
+2a05fcd9 main.c, make-config.sh: preparate for tcgetwinsize(3)
+9feaf8ae `addrcodec': add skinlist subcommand, skin+check whether mlist
+
 v14.9.4 ("(5th anniversary) Marsh tit"), 2017-09-18
 ---------------------------------------------------
 

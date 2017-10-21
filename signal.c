@@ -193,7 +193,7 @@ safe_signal(int signum, sighandler_type handler)
    NYD2_ENTER;
 
    nact.sa_handler = handler;
-   sigemptyset(&nact.sa_mask);
+   sigfillset(&nact.sa_mask);
    nact.sa_flags = SA_RESTART;
    rv = (sigaction(signum, &nact, &oact) != 0) ? SIG_ERR : oact.sa_handler;
    NYD2_LEAVE;
@@ -206,7 +206,7 @@ n_signal(int signo, n_sighdl_t hdl){
    NYD2_ENTER;
 
    nact.sa_handler = hdl;
-   sigemptyset(&nact.sa_mask);
+   sigfillset(&nact.sa_mask);
    nact.sa_flags = 0;
    hdl = (sigaction(signo, &nact, &oact) != 0) ? SIG_ERR : oact.sa_handler;
    NYD2_LEAVE;

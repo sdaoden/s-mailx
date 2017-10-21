@@ -30,9 +30,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"@ S-nail v14.9.4 / 2017-09-18
-.Dd September 18, 2017
-.ds VV \\%v14.9.4
+.\"@ S-nail v14.9.5 / 2017-10-21
+.Dd October 21, 2017
+.ds VV \\%v14.9.5
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -832,8 +832,7 @@ and
 .Sx "Filename transformations"
 (also see
 .Ic file )
-will be performed, but shell word expansion is restricted to the tilde
-.Ql ~ .
+will be performed, except that shell variables are not expanded.
 Shall
 .Ar file
 not be accessible but contain a
@@ -1312,8 +1311,10 @@ using it is a smooth experience.
 (Rather complete configuration examples can be found in the section
 .Sx EXAMPLES . )
 The default global
-.Pa \*(UR
-resource file bends those standard imposed settings of the
+.Pa \*(UR ,
+one of the
+.Sx "Resource files" ,
+bends those standard imposed settings of the
 .Sx "INTERNAL VARIABLES"
 a bit towards more user friendliness and safety already.
 .Pp
@@ -1366,7 +1367,7 @@ Files and shell pipe output can be
 d for evaluation, also during startup from within the
 .Sx "Resource files" .
 .Ss "On sending mail, and non-interactive mode"
-To send a message to one or more people, using a local or a built-in
+To send a message to one or more people, using a local or built-in
 .Va mta
 (Mail-Transfer-Agent) transport to actually deliver the generated mail
 message, \*(UA can be invoked with arguments which are the names of
@@ -1441,12 +1442,12 @@ ting (also via
 .Va editalong
 will automatically startup a text editor when compose mode is entered,
 .Va editheaders
-allows editing of headers additionally to plain body content, whereas
+allows editing of headers additionally to plain body content,
 .Va askcc
 and
 .Va askbcc
 will cause the user to be prompted actively for (blind) carbon-copy
-recipients, respectively, whereas (the default)
+recipients, respectively, and (the default)
 .Va asksend
 will request confirmation whether the message shall be sent.
 .Pp
@@ -1454,7 +1455,7 @@ The envelope sender address is defined by
 .Va from ,
 explicitly defining an originating
 .Va hostname
-may be desired, especially with the builtin SMTP Mail-Transfer-Agent
+may be desirable, especially with the builtin SMTP Mail-Transfer-Agent
 .Va mta .
 .Sx "Character sets"
 for outgoing message and MIME part content are configurable via
@@ -2823,13 +2824,35 @@ search expression is to be matched against, prefix the header name
 .Pp
 .Dl @~f@@a\e.safe\e.domain\e.match$
 .It Ar :c
-All messages of state
+All messages of state or with matching condition
 .Ql c ,
 where
 .Ql c
 is one or multiple of the following colon modifiers:
 .Pp
 .Bl -tag -compact -width ".It Ar :M"
+.It Ar a
+.Ic answered
+messages (cf. the variable
+.Va markanswered ) .
+.It Ar d
+.Ql deleted
+messages (for the
+.Ic undelete
+and
+.Ic from
+commands only).
+.It Ar f
+.Ic flag Ns
+ged messages.
+.It Ar L
+Messages with receivers that match
+.Ic mlsubscribe Ns
+d addresses.
+.It Ar l
+Messages with receivers that match
+.Ic mlist Ns
+ed addresses.
 .It Ar n
 .Ql new
 messages.
@@ -2838,34 +2861,20 @@ Old messages (any not in state
 .Ql read
 or
 .Ql new ) .
-.It Ar u
-.Ql unread
-messages.
-.It Ar d
-.Ql deleted
-messages (for the
-.Ic undelete
-and
-.Ic from
-commands only).
 .It Ar r
 .Ql read
 messages.
-.It Ar f
-.Ic flag Ns
-ged messages.
-.It Ar a
-.Ic answered
-messages (cf. the variable
-.Va markanswered ) .
+.It Ar S
+\*(OP Messages with unsure spam classification (see
+.Sx "Handling spam" ) .
+.It Ar s
+\*(OP Messages classified as spam.
 .It Ar t
 Messages marked as
 .Ic draft .
-.It Ar s
-\*(OP Messages classified as spam (see
-.Sx "Handling spam" . )
-.It Ar S
-\*(OP Messages with unsure spam classification.
+.It Ar u
+.Ql unread
+messages.
 .El
 .El
 .Pp
@@ -3563,7 +3572,8 @@ will be set to
 the exit status
 .Va \&?
 should be set to
-.Ql -1 .
+.Ql -1 ,
+but some commands deviate from the latter, which is documented.
 .It
 Last, but not least, the modifier
 .Mx
@@ -3925,12 +3935,9 @@ session will be moved to the
 mailbox instead of simply being flagged as read.
 .El
 .It
-Meta expansions are applied to the resulting filename, as applicable to
-the resulting file access protocol (also see
+Meta expansions may be applied to the resulting filename, as allowed by
+the operation and applicable to the resulting access protocol (also see
 .Sx "On URL syntax and credential lookup" ) .
-If the fully expanded filename results in multiple pathnames and the
-command is expecting only one file, an error results.
-.Pp
 For the file-protocol, a leading tilde
 .Ql ~
 character will be replaced by the expansion of
@@ -3938,9 +3945,9 @@ character will be replaced by the expansion of
 except when followed by a valid user name, in which case the home
 directory of the given user is used instead.
 .Pp
-In addition a shell expansion as if specified in double-quotes (see
+A shell expansion as if specified in double-quotes (see
 .Sx "Shell-style argument quoting" )
-is applied, so that any occurrence of
+may be applied, so that any occurrence of
 .Ql $VARIABLE
 (or
 .Ql ${VARIABLE} )
@@ -3949,6 +3956,12 @@ will be replaced by the expansion of the variable, if possible;
 as well as
 .Sx ENVIRONMENT
 (shell) variables can be accessed through this mechanism.
+.Pp
+Shell pathname wildcard pattern expansions
+.Pf ( Xr glob 7 )
+may be applied as documented.
+If the fully expanded filename results in multiple pathnames and the
+command is expecting only one file, an error results.
 .Pp
 In interactive context, in order to allow simple value acceptance (via
 .Dq ENTER ) ,
@@ -4092,9 +4105,10 @@ and manages the error number
 .Va \&! .
 The first argument must be either
 .Ar [+[+[+]]]e[ncode] ,
-.Ar d[ecode]
+.Ar d[ecode] ,
+.Ar s[kin]
 or
-.Ar s[kin] ,
+.Ar skinl[ist]
 and specifies the operation to perform on the rest of the line.
 .Pp
 Decoding will show how a standard-compliant MUA will display the given
@@ -4113,6 +4127,18 @@ set to
 .Va ^ERR Ns -INVAL
 if decoding fails to find a(n) (valid) email address, in which case the
 unmodified input will be output again.
+.Pp
+.Ar skinlist
+first performs a skin operation, and thereafter checks a valid
+address for whether it is a registered mailing-list (see
+.Ic mlist
+and
+.Ic mlsubscribe ) ,
+eventually reporting that state in the error number
+.Va \&!
+as
+.Va ^ERR Ns -EXIST .
+(This state could later become overwritten by an I/O error, though.)
 .Pp
 Encoding supports four different modes, lesser automated versions can be
 chosen by prefixing one, two or three plus signs: the standard imposes
@@ -4857,6 +4883,16 @@ does not.
 is used,
 .Sx "Filename transformations"
 are applied to the expanded arguments.
+This command also supports
+.Cm vput
+as documented in
+.Sx "Command modifiers" ,
+and manages the error number
+.Va \&! :
+if data is stored in a variable then the return value reflects the
+length of the result string in case of success and is
+.Ql -1
+on error.
 .Mx
 .It Ic echoerr
 \*(NQ Identical to
@@ -4866,17 +4902,19 @@ Also see
 .Ic echoerrn .
 In interactive sessions the \*(OPal message ring queue for
 .Ic errors
-will be used instead, if available.
+will be used instead, if available and
+.Cm vput
+was not used.
 .Mx
 .It Ic echon
 \*(NQ Identical to
 .Ic echo ,
-but does not write a trailing newline.
+but does not write or store a trailing newline.
 .Mx
 .It Ic echoerrn
 \*(NQ Identical to
 .Ic echoerr ,
-but does not write a trailing newline.
+but does not write or store a trailing newline.
 .Mx
 .It Ic edit
 (e) Point the text editor (as defined in
@@ -5352,11 +5390,11 @@ becomes the new
 .Mx
 .It Ic history
 \*(OP Either
-.Ar show
+.Cm show
 (this mode also supports a more
 .Va verbose
 output) or
-.Ar clear
+.Cm clear
 the list of history entries;
 a decimal
 .Ar NUMBER
@@ -5366,7 +5404,7 @@ offset to the current command, e.g.,
 .Ql -1
 will select the last command, the history top.
 The default mode if no arguments are given is
-.Ar show .
+.Cm show .
 Please see
 .Sx "On terminal control and line editor"
 for more on this topic.
@@ -5795,6 +5833,9 @@ If the \*(OPal regular expression support is available then mailing
 lists may also be specified as (extended) regular expressions (see
 .Xr re_format 7
 for more on those).
+The
+.Ic mlsubscribe
+pair of commands manages subscription attributes of mailing-lists.
 .Mx
 .It Ic mimeview
 \*(ID Only available in interactive mode, this command allows to display
@@ -6090,6 +6131,10 @@ hey, you
 .Mx
 .It Ic remove
 Removes the named files or directories.
+.Sx "Filename transformations"
+including shell pathname wildcard pattern expansions
+.Pf ( Xr glob 7 )
+are performed on the arguments.
 If a name refer to a mailbox, e.g., a Maildir mailbox, then a mailbox
 type specific removal will be performed, deleting the complete mailbox.
 The user is asked for confirmation in interactive mode.
@@ -6098,6 +6143,10 @@ The user is asked for confirmation in interactive mode.
 Takes the name of an existing folder
 and the name for the new folder
 and renames the first to the second one.
+.Sx "Filename transformations"
+including shell pathname wildcard pattern expansions
+.Pf ( Xr glob 7 )
+are performed on both arguments.
 Both folders must be of the same type.
 .Mx
 .It Ic Reply
@@ -6271,6 +6320,10 @@ is inspected to decide on the actual storage location.
 .It Ic save
 (s) Takes a message list and a filename and appends each message in turn
 to the end of the file.
+.Sx "Filename transformations"
+including shell pathname wildcard pattern expansions
+.Pf ( Xr glob 7 )
+is performed on the filename.
 If no filename is given, the
 .Mx -sx
 .Sx "secondary mailbox"
@@ -6886,6 +6939,10 @@ Any catched overflow will be reported via the error number
 .Va \&!
 as
 .Va ^ERR Ns -OVERFLOW .
+.Bd -literal -offset indent
+? vexpr -@ +1 -9223372036854775808
+? echo $?/$!/$^ERRNAME
+.Ed
 .Pp
 Character set agnostic string functions have no notion of locale
 settings and character sets.
@@ -6957,14 +7014,18 @@ and any occurrence of a positional parameter, e.g.,
 .Va 1 ,
 is replaced by the corresponding match group of the regular expression:
 .Bd -literal -offset indent
-? vexpr -@ +1 -9223372036854775808
-? vput vexpr res ir bananarama \e
+? vput vexpr res regex bananarama \e
     (.*)NanA(.*) '\e${1}au\e$2'
-? echo $0 $res
+? echo $?/$!/$^ERRNAME: $res
 .Ed
 .It Cm iregex
 On otherwise identical case-insensitive equivalent to
-.Cm regex .
+.Cm regex :
+.Bd -literal -offset indent
+? vput vexpr res ire bananarama \e
+    (.*)NanA(.*) '\e${1}au\e$2'
+? echo $?/$!/$^ERRNAME: $res
+.Ed
 .El
 .Mx
 .It Ic vpospar
@@ -7044,7 +7105,10 @@ Shell piping the part content by specifying a leading vertical bar
 character for the filename is supported.
 Other user input undergoes the usual
 .Sx "Filename transformations" ,
-and contents of the destination file are overwritten if the file
+including shell pathname wildcard pattern expansions
+.Pf ( Xr glob 7 )
+and shell variable expansion for the message as such, not the individual
+parts, and contents of the destination file are overwritten if the file
 previously existed.
 .Pp
 \*(ID In non-interactive mode any part which does not specify a filename
@@ -9536,14 +9600,15 @@ after the message has been sent.
 can be used to perform other necessary cleanup steps.
 .Pp
 The following (read-only) variables will be set temporarily during
-execution of the macros to represent the according message headers, or
-the empty string for non-existent; they correspond to accoding virtual
-temporary message headers that can be accessed (also from within
-.Va on-compose-splice
-hooks) via
+execution of the macros to represent respective message headers, to
+the empty string otherwise; most of them correspond to according virtual
+message headers that can be accessed via
 .Ic ~^ ,
 one of the
-.Sx "COMMAND ESCAPES" :
+.Sx "COMMAND ESCAPES"
+(also from within
+.Va on-compose-splice
+hooks):
 .Pp
 .Bl -tag -compact -width ".It Va mailx_subject"
 .It Va mailx-command
@@ -9586,7 +9651,7 @@ define t_ocl {
   if [ $? -eq 0 ]
      vput vexpr message-inject-tail trim-end $i
   end
-  return
+
   # Alternatively
   readctl create ~/.mysig
   if [ $? -eq 0 ]
@@ -12458,6 +12523,8 @@ define XooglX {
   set pop3-no-apop-pop.gmXil.com
   shortcut pop %:pop3s://pop.gmXil.com
   shortcut imap %:imaps://imap.gmXil.com
+  #set record="+[Gmail]/Sent Mail"
+  # Select: File imaps://imap.gmXil.com/[Gmail]/Sent\e Mail
 
   set mta=smtp://USER:PASS@smtp.gmXil.com smtp-use-starttls
   # Alternatively:
@@ -12809,7 +12876,9 @@ to an IMAP mailbox, all names that begin with `+' then refer to IMAP
 mailboxes below the
 .Va folder
 target box, while folder names prefixed by `@' refer to folders below
-the hierarchy base.
+the hierarchy base, e.g., the following lists all folders below the
+current one when in an IMAP mailbox:
+.Ql folders @ .
 .Pp
 Note: some IMAP servers do not accept the creation of mailboxes in
 the hierarchy base, but require that they are created as subfolders of

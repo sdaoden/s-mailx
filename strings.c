@@ -1067,6 +1067,7 @@ n_utf8_to_utf32(char const **bdat, size_t *blen) /* TODO check false UTF8 */
    if (x <= 0x7Fu)
       c = x;
    else {
+      /* TODO UTF-8 decoder false sequences: Zhang Boyang, TinyCC [a82c11f] */
       if ((x & 0xE0u) == 0xC0u) {
          if (l < 1)
             goto jerr;
@@ -1274,6 +1275,7 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
    }
    err = 0;
 jleave:
+   n_iconv_err_no = err;
    NYD2_LEAVE;
    return err;
 }

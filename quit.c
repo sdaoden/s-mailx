@@ -630,7 +630,7 @@ save_mbox_for_possible_quitstuff(void){ /* TODO try to get rid of that */
    char const *cp;
    NYD2_ENTER;
 
-   if((cp = fexpand("&", FEXP_FULL)) == NULL)
+   if((cp = fexpand("&", FEXP_NVAR)) == NULL)
       cp = n_empty;
    n_strscpy(_mboxname, cp, sizeof _mboxname);
    NYD2_LEAVE;

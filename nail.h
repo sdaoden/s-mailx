@@ -244,7 +244,7 @@
 #endif
 
 #if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
-# define n_FIELD_INITN(N) CONCAT(., N) =
+# define n_FIELD_INITN(N) n_CONCAT(., N) =
 # define n_FIELD_INITI(I) [I] =
 #else
 # define n_FIELD_INITN(N)
@@ -273,7 +273,7 @@
 #elif CC_CLANG || PREREQ_GCC(3, 4)
 # define __FUN__        __extension__ __FUNCTION__
 #else
-# define __FUN__        n_uagent /* Something that is not a literal */
+# define __FUN__        n_empty /* Something that is not a literal */
 #endif
 
 #if defined __predict_true && defined __predict_false
@@ -2572,6 +2572,7 @@ VL ui32_t n_pstate;              /* Bits of enum n_program_state */
 VL si32_t n_pstate_err_no;       /* What backs $! n_ERR_* TODO ..HACK */
 VL si32_t n_pstate_ex_no;        /* What backs $? n_EX_* TODO ..HACK ->64-bit */
 #define n_err_no errno           /* Don't use errno directly, for later XXX */
+VL si32_t n_iconv_err_no;        /* TODO HACK: part of CTX to not get lost */
 
 /* XXX stylish sorting */
 VL int            msgCount;            /* Count of messages read in */

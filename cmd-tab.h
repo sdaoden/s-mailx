@@ -471,13 +471,13 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
    { "cwd", &c_cwd, (M | V | X | TWYSH), 0, 0, NULL
      DS(N_("Print current working directory (CWD)")) },
 
-   { "echo", &c_echo, (G | M | X | TWYSH), 0, MAC, NULL
+   { "echo", &c_echo, (G | M | V | X | EM | TWYSH), 0, MAC, NULL
      DS(N_("Echo arguments, and a trailing newline, to standard output")) },
-   { "echoerr", &c_echoerr, (G | M | X | TWYSH), 0, MAC, NULL
+   { "echoerr", &c_echoerr, (G | M | V | X | EM | TWYSH), 0, MAC, NULL
      DS(N_("Echo arguments, and a trailing newline, to standard error")) },
-   { "echon", &c_echon, (G | M | X | TWYSH), 0, MAC, NULL
+   { "echon", &c_echon, (G | M | V | X | EM | TWYSH), 0, MAC, NULL
      DS(N_("Echo arguments, without a trailing newline, to standard output")) },
-   { "echoerrn", &c_echoerrn, (G | M | X | TWYSH), 0, MAC, NULL
+   { "echoerrn", &c_echoerrn, (G | M | V| X | EM | TWYSH), 0, MAC, NULL
      DS(N_("Echo arguments, without a trailing newline, to standard error")) },
    { "environ", &c_environ, (G | M | X | TWYSH), 2, MAC, NULL
      DS(N_("<link|set|unset> (an) environment <variable>(s)")) },

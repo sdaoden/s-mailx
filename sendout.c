@@ -1010,7 +1010,7 @@ mightrecord(FILE *fp, struct name *to, bool_t resend){
       ccp = ok_vlook(record);
 
    if(ccp != NULL){
-      if((cp = fexpand(ccp, FEXP_FULL)) == NULL)
+      if((cp = fexpand(ccp, FEXP_NSHELL)) == NULL)
          goto jbail;
 
       switch(*(ccp = cp)){
@@ -1865,12 +1865,13 @@ mail1(struct header *hp, int printheaders, struct message *quote,
          ;
       else if ((nmtf = infix(hp, mtf)) != NULL)
          break;
-      else if ((err = n_err_no) == n_ERR_ILSEQ || err == n_ERR_INVAL) {
+      else if ((err = n_iconv_err_no) == n_ERR_ILSEQ || err == n_ERR_INVAL ||
+            err == n_ERR_NOENT) {
          rewind(mtf);
          continue;
       }
 
-      n_perr(_("Failed to create encoded message"), 0);
+      n_perr(_("Failed to create encoded message"), err);
       n_pstate_err_no = n_ERR_NOTSUP;
       goto jfail_dead;
    }
@@ -2179,6 +2180,7 @@ jto_fmt:
 
             np = np->n_flink;
 
+            /* XXX is_mlist_mp()?? */
             if((ml = is_mlist(x->n_name, FAL0)) == MLIST_OTHER &&
                   addr != NULL && !asccasecmp(addr, x->n_name))
                ml = MLIST_KNOWN;
