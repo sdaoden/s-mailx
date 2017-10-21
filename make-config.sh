@@ -241,8 +241,9 @@ tmp2=./${tmp0}2$$
 # compiler versions for known compilers, then be more specific
 [ -n "${cc_maxopt}" ] || cc_maxopt=100
 #cc_force_no_stackprot=
-#ld_rpath_not_runpath=
 #ld_need_R_flags=
+#ld_no_bind_now=
+#ld_rpath_not_runpath=
 
 _CFLAGS= _LDFLAGS=
 
@@ -321,13 +322,13 @@ _os_setup_sunos() {
       msg ' . found OpenCSW PKGSYS, merging C_INCLUDE_PATH and LD_LIBRARY_PATH'
       C_INCLUDE_PATH=/opt/csw/include:${C_INCLUDE_PATH}
       LD_LIBRARY_PATH=/opt/csw/lib:${LD_LIBRARY_PATH}
-      ld_rpath_not_runpath=1
+      ld_no_bind_now=1 ld_rpath_not_runpath=1
    fi
    if [ -d /opt/schily ] && feat_yes USE_PKGSYS; then
       msg ' . found Schily PKGSYS, merging C_INCLUDE_PATH and LD_LIBRARY_PATH'
       C_INCLUDE_PATH=/opt/schily/include:${C_INCLUDE_PATH}
       LD_LIBRARY_PATH=/opt/schily/lib:${LD_LIBRARY_PATH}
-      ld_rpath_not_runpath=1
+      ld_no_bind_now=1 ld_rpath_not_runpath=1
    fi
 
    OS_DEFINES="${OS_DEFINES}#define __EXTENSIONS__\n"
@@ -564,7 +565,11 @@ _cc_flags_generic() {
    fi
 
    ld_check -Wl,-z,relro
-   ld_check -Wl,-z,now
+   if [ -z "${ld_no_bind_now}" ]; then
+      ld_check -Wl,-z,now
+   else
+      msg ' ! $LD_LIBRARY_PATH adjusted, not trying -Wl,-z,now'
+   fi
    ld_check -Wl,-z,noexecstack
    if ld_check -Wl,-rpath =./ no; then
       ld_need_R_flags=-Wl,-rpath=
