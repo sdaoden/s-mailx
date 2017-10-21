@@ -1,8 +1,3 @@
-To: mailx-announce
-Bcc: mailx-announce-bcc
-# NOT YET, should be left alone for that! Mail-Followup-To: mailx
-Reply-To: mailx
-
 Hello list,
 
 hereby i announce S-nail vXX.X.X, the "".
