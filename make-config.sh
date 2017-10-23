@@ -2803,7 +2803,6 @@ feat_def FILTER_HTML_TAGSOUP
 feat_def COLOUR
 feat_def DOTLOCK
 feat_def MD5
-feat_def NOMEMDBG
 
 ## Summarizing
 
