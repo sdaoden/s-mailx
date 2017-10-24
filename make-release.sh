@@ -11,6 +11,8 @@ if [ "`basename \`pwd\``" != .git ]; then
 fi
 cd ..
 
+command -v perl >/dev/null 2>&1 || exit 42
+
 ## Variables
 
 : ${PROGRAM:=s-nail}
