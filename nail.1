@@ -9730,6 +9730,13 @@ standard command line options to a file-based
 (Mail-Transfer-Agent), see there for more.
 .
 .Mx
+.It Va mta-no-receiver-arguments
+\*(BO By default a file-based
+.Va mta
+will be passed all receiver addresses on the command line.
+This variable can be set to suppress any such argument.
+.
+.Mx
 .It Va mta-argv0
 Many systems use a so-called
 .Xr mailwrapper 8

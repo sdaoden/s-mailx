@@ -1414,9 +1414,10 @@ __mta_prepare_args(struct name *to, struct header *hp)
       args[i++] = "--";
 
    /* Receivers follow */
-   for (; to != NULL; to = to->n_flink)
-      if (!(to->n_type & GDEL))
-         args[i++] = to->n_name;
+   if(!ok_blook(mta_no_receiver_arguments))
+      for (; to != NULL; to = to->n_flink)
+         if (!(to->n_type & GDEL))
+            args[i++] = to->n_name;
    args[i] = NULL;
 
    if(vas != NULL)

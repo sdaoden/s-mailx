@@ -1622,6 +1622,7 @@ ok_v_fwdheading,
    ok_v_mta,                           /* {notempty=1,defval=VAL_MTA} */
    ok_v_mta_arguments,
    ok_b_mta_no_default_arguments,
+   ok_b_mta_no_receiver_arguments,
    ok_v_mta_argv0,                     /* {notempty=1,defval=VAL_MTA_ARGV0} */
 
    /* TODO likely temporary hook data, v15 drop */
