@@ -1626,20 +1626,20 @@ ok_v_fwdheading,
    ok_v_mta_argv0,                     /* {notempty=1,defval=VAL_MTA_ARGV0} */
 
    /* TODO likely temporary hook data, v15 drop */
-   ok_v_mailx_command,                 /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_subject,                 /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_from,                    /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_sender,                  /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_to,                      /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_cc,                      /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_bcc,                     /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_raw_to,                  /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_raw_cc,                  /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_raw_bcc,                 /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_orig_from,               /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_orig_to,                 /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_orig_cc,                 /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_orig_bcc,                /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_command,                 /* {rdonly=1,nodel=1} */
+   ok_v_mailx_subject,                 /* {rdonly=1,nodel=1} */
+   ok_v_mailx_from,                    /* {rdonly=1,nodel=1} */
+   ok_v_mailx_sender,                  /* {rdonly=1,nodel=1} */
+   ok_v_mailx_to,                      /* {rdonly=1,nodel=1} */
+   ok_v_mailx_cc,                      /* {rdonly=1,nodel=1} */
+   ok_v_mailx_bcc,                     /* {rdonly=1,nodel=1} */
+   ok_v_mailx_raw_to,                  /* {rdonly=1,nodel=1} */
+   ok_v_mailx_raw_cc,                  /* {rdonly=1,nodel=1} */
+   ok_v_mailx_raw_bcc,                 /* {rdonly=1,nodel=1} */
+   ok_v_mailx_orig_from,               /* {rdonly=1,nodel=1} */
+   ok_v_mailx_orig_to,                 /* {rdonly=1,nodel=1} */
+   ok_v_mailx_orig_cc,                 /* {rdonly=1,nodel=1} */
+   ok_v_mailx_orig_bcc,                /* {rdonly=1,nodel=1} */
 
 ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
 ok_b_NAIL_NO_SYSTEM_RC,             /* {name=NAIL_NO_SYSTEM_RC,import=1} */

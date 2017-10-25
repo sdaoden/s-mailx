@@ -3293,8 +3293,14 @@ __EOT__
    # Some state machine stress, shell compose hook, localopts for hook, etc.
    # readctl in child. ~r as HERE document
    ${rm} -f "${MBOX}"
-   printf 'm ex@am.ple\nbody\n!.\nvar t_oce t_ocs t_ocs_sh t_ocl t_occ autocc' |
-   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! \
+   printf 'm ex@am.ple\nbody\n!.
+      echon ${mailx-command}${mailx-subject}
+      echon ${mailx-from}${mailx-sender}
+      echon ${mailx-to}${mailx-cc}${mailx-bcc}
+      echon ${mailx-raw-to}${mailx-raw-cc}${mailx-raw-bcc}
+      echon ${mailx-orig-from}${mailx-orig-to}${mailx-orig-gcc}${mailx-orig-bcc}
+      var t_oce t_ocs t_ocs_sh t_ocl t_occ autocc
+   ' | ${MAILX} ${ARGS} -Snomemdebug -Sescape=! \
       -Smta=./.tsendmail.sh \
       -X'
          define bail {
@@ -3494,7 +3500,7 @@ __EOT__
             on-compose-enter=t_oce on-compose-leave=t_ocl \
             on-compose-cleanup=t_occ
       ' > ./.tnotes 2>&1
-   ex0_test behave:compose_hooks-3
+   ex0_test behave:compose_hooks-3-estat
    ${cat} ./.tnotes >> "${MBOX}"
 
    check behave:compose_hooks-3 - "${MBOX}" '679526364 2431'
@@ -3608,7 +3614,7 @@ this is content of forward 1
                on-compose-cleanup=t_occ \
             on-resend-enter=t_oce on-resend-cleanup=t_occ
       ' > ./.tnotes 2>&1
-   ex0_test behave:compose_hooks-4
+   ex0_test behave:compose_hooks-4-estat
    ${cat} ./.tnotes >> "${MBOX}"
 
    check behave:compose_hooks-4 - "${MBOX}" '3038884027 7516'
