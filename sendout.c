@@ -1928,9 +1928,10 @@ jleave:
 
       if((cp = ok_vlook(on_compose_cleanup)) != NULL)
          temporary_compose_mode_hook_call(cp, NULL, NULL);
-
-      temporary_compose_mode_hook_unroll();
    }
+
+   temporary_compose_mode_hook_unroll();
+
    if (_sendout_error)
       n_exit_status |= n_EXIT_SEND_ERROR;
    if(rv == OKAY)
