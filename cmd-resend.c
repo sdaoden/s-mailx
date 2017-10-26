@@ -251,8 +251,9 @@ jlink:
          hp->h_to = NULL;
          once = TRU1;
          goto jredo;
-      }
-      hp->h_to = np;
+      }else
+         for(hp->h_to = np; np != NULL; np = np->n_flink)
+            np->n_type = (np->n_type & ~GMASK) | GTO;
    }
    NYD2_LEAVE;
 }

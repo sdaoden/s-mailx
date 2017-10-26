@@ -4195,7 +4195,30 @@ t_behave_lreply_futh_rth_etc() {
 	call x 7
 	_EOT
 
-   check behave:lreply_futh_rth_etc 0 "${MBOX}" '940818845 29373'
+   check behave:lreply_futh_rth_etc-1 0 "${MBOX}" '940818845 29373'
+
+   ##
+
+   ${cat} <<-_EOT > ./.tmbox
+	From tom@i-i.example Thu Oct 26 03:15:55 2017
+	Date: Wed, 25 Oct 2017 21:15:46 -0400
+	From: tom <tom@i-i.example>
+	To: Steffen Nurpmeso <steffen@sdaoden.eu>
+	Cc: tom <tom@i-i.example>
+	Subject: Re: xxxx yyyyyyyy configure does not really like a missing zzzzz
+	Message-ID: <20171026011546.GA11643@i-i.example>
+	Reply-To: tom@i-i.example
+	References: <20171025214601.T2pNd%steffen@sdaoden.eu>
+	In-Reply-To: <20171025214601.T2pNd%steffen@sdaoden.eu>
+	Status: R
+	
+	The report's useful :-)
+	_EOT
+
+   printf 'reply 1\nthank you\n!.\n' |
+      ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh -Sreply-to-honour \
+         -Rf ./.tmbox > "${MBOX}" 2>&1
+   check behave:lreply_futh_rth_etc-2 0 "${MBOX}" '1045866991 331'
 
    t_epilog
 }
