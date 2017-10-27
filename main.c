@@ -316,8 +316,8 @@ a_main_startup(void){
    if(isatty(STDIN_FILENO)){
       n_psonce |= n_PSO_TTYIN;
 #if defined HAVE_MLE || defined HAVE_TERMCAP
-      n_tty_fp = fdopen(fileno(n_stdin), "w");
-      setvbuf(n_tty_fp, NULL, _IOLBF, 0);
+      if((n_tty_fp = fdopen(fileno(n_stdin), "w")) != NULL)
+         setvbuf(n_tty_fp, NULL, _IOLBF, 0);
 #endif
    }
    if(isatty(STDOUT_FILENO))
