@@ -299,6 +299,7 @@ t_behave() {
    t_behave_commandalias
    t_behave_ifelse
    t_behave_localopts
+   t_behave_local
    t_behave_macro_param_shift
    t_behave_addrcodec
    t_behave_vexpr
@@ -1518,6 +1519,54 @@ t_behave_localopts() {
 	__EOT
 
    check behave:localopts 0 "${MBOX}" '4016155249 1246'
+
+   t_epilog
+}
+
+t_behave_local() {
+   t_prolog t_behave_local
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+	define du2 {
+	   echo du2-1 du=$du
+	   local set du=$1
+	   echo du2-2 du=$du
+	   local unset du
+	   echo du2-3 du=$du
+	}
+	define du {
+	   local set du=dudu
+	   echo du-1 du=$du
+	   call du2 du2du2
+	   echo du-2 du=$du
+	   local set nodu
+	   echo du-3 du=$du
+	}
+	define ich {
+	   echo ich-1 du=$du
+	   call du
+	   echo ich-2 du=$du
+	}
+	define wir {
+	   localopts $1
+	   set du=wirwir
+	   echo wir-1 du=$du
+	   call ich
+	   echo wir-2 du=$du
+	}
+	echo ------- global-1 du=$du
+	call ich
+	echo ------- global-2 du=$du
+	set du=global
+	call ich
+	echo ------- global-3 du=$du
+	call wir on
+	echo ------- global-4 du=$du
+	call wir off
+	echo ------- global-5 du=$du
+	__EOT
+
+   check behave:local-1 0 "${MBOX}" '2411598140 641'
 
    t_epilog
 }

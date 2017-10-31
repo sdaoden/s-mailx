@@ -111,6 +111,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
 #define G n_CMD_ARG_G
 #define H n_CMD_ARG_H
 #define I n_CMD_ARG_I
+#define L n_CMD_ARG_L
 #define M n_CMD_ARG_M
 #define O n_CMD_ARG_O
 #define P n_CMD_ARG_P
@@ -193,7 +194,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
      DS(N_("Append <msglist> to <file>")) },
    { "Save", &c_Save, (A | SC | TSTRING), 0, 0, NULL
      DS(N_("Like `save', but derive filename from first sender")) },
-   { "set", &c_set, (G | M | X | TWYRA), 0, MAC, NULL
+   { "set", &c_set, (G | L | M | X | TWYRA), 0, MAC, NULL
      DS(N_("Print all variables, or set (a) <variable>(s)")) },
    { "unalias", &c_unalias, (M | TWYRA), 1, MAC, NULL
      DS(N_("Un`alias' <name-list> (* for all)")) },
@@ -543,7 +544,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
    { "source_if", &c_source_if, (M | TWYSH), 1, 1, NULL
      DS(N_("If <file> can be opened successfully, read commands from it")) },
 
-   { "unset", &c_unset, (G | M | X | TWYSH), 1, MAC, NULL
+   { "unset", &c_unset, (G | L | M | X | TWYSH), 1, MAC, NULL
      DS(N_("Unset <option-list>")) },
 
    { "varshow", &c_varshow, (G | M | X | TWYSH), 1, MAC, NULL

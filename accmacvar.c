@@ -6,11 +6,18 @@
  *@ - update the manual!
  *@ TODO . Improve support for chains so that we can apply the property checks
  *@ TODO   of the base variable to -HOST and -USER@HOST variants!  Add some!!
- *@ TODO . should be recursive environment based.
- *@ TODO   Otherwise, the `localopts' should be an attribute of the go.c
- *@ TODO   command context, so that it belongs to the execution context
- *@ TODO   we are running in, instead of being global data.  See, e.g.,
- *@ TODO   the a_GO_SPLICE comment in go.c.
+ *@ TODO   Now with `local' modifier we need to be able to catch that, as well
+ *@ TODO   as linked environment variables: both of which are not catched and
+ *@ TODO   can be shadowed, which is documented for `set' - change on change!!
+ *@ TODO . `localopts' should act like an automatic permanent `scope' command
+ *@ TODO    modifier!  We need an OnScopeLeaveEvent, then.
+ *@ TODO   Also see the a_GO_SPLICE comment in go.c.
+ *@ TODO . Optimize: with the dynamic hashmaps, and the object based approach
+ *@ TODO   it should become possible to strip down the implementation again.
+ *@ TODO   E.g., FREEZE is much too complicated: use an overlay object ptr,
+ *@ TODO   UNLIKELY() it, and add a OnProgramStartupCompletedEvent to
+ *@ TODO   incorporate what it tracks, then drop it.  Etc.
+ *@ TODO   Global -> Scope -> Local, all "overlay" objects.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -77,11 +84,11 @@ enum a_amv_mac_flags{
 
 enum a_amv_loflags{
    a_AMV_LF_NONE = 0,
-   a_AMV_LF_SCOPE = 1u<<0,       /* Current scope `localopts' on */
-   a_AMV_LF_SCOPE_FIXATE = 1u<<1, /* Ditto, but fixated */
+   a_AMV_LF_SCOPE = 1u<<0,          /* Current scope `localopts' on */
+   a_AMV_LF_SCOPE_FIXATE = 1u<<1,   /* Ditto, but fixated */
    a_AMV_LF_SCOPE_MASK = a_AMV_LF_SCOPE | a_AMV_LF_SCOPE_FIXATE,
-   a_AMV_LF_CALL = 1u<<2,        /* `localopts' on for `call'ed scopes */
-   a_AMV_LF_CALL_FIXATE = 1u<<3, /* Ditto, but fixated */
+   a_AMV_LF_CALL = 1u<<2,           /* `localopts' on for `call'ed scopes */
+   a_AMV_LF_CALL_FIXATE = 1u<<3,    /* Ditto, but fixated */
    a_AMV_LF_CALL_MASK = a_AMV_LF_CALL | a_AMV_LF_CALL_FIXATE,
    a_AMV_LF_CALL_TO_SCOPE_SHIFT = 2
 };
@@ -111,11 +118,27 @@ enum a_amv_var_flags{
    a_AMV_VF__MASK = (1u<<(15+1)) - 1,
 
    /* Extended flags, not part of struct a_amv_var_map.avm_flags */
+   a_AMV_VF_EXT_LOCAL = 1u<<23,        /* `local' */
    a_AMV_VF_EXT_LINKED = 1u<<24,       /* `environ' link'ed */
    a_AMV_VF_EXT_FROZEN = 1u<<25,       /* Has been set by -S,.. */
    a_AMV_VF_EXT_FROZEN_UNSET = 1u<<26, /* ..and was used to unset a variable */
    a_AMV_VF_EXT__FROZEN_MASK = a_AMV_VF_EXT_FROZEN | a_AMV_VF_EXT_FROZEN_UNSET,
    a_AMV_VF_EXT__MASK = (1u<<(26+1)) - 1
+};
+
+enum a_amv_var_lookup_flags{
+   a_AMV_VLOOK_NONE = 0,
+   a_AMV_VLOOK_LOCAL = 1u<<0,       /* Query `local' layer first */
+   a_AMV_VLOOK_LOCAL_ONLY = 1u<<1,  /* MUST be a `local' variable */
+   /* Do not allocate new var for _I3VAL, see _var_lookup() for more */
+   a_AMV_VLOOK_I3VAL_NONEW = 1u<<2,
+   a_AMV_VLOOK_I3VAL_NONEW_REPORT = 1u<<3
+};
+
+enum a_amv_var_setclr_flags{
+   a_AMV_VSETCLR_NONE = 0,
+   a_AMV_VSETCLR_LOCAL = 1u<<0,     /* Use `local' variables only */
+   a_AMV_VSETCLR_ENV = 1u<<1        /* `environ' or otherwise environ */
 };
 
 /* We support some special parameter names for one(+)-letter variable names;
@@ -154,7 +177,7 @@ struct a_amv_pospar{
    ui16_t app_maxcount;    /* == slots in .app_dat */
    ui16_t app_count;       /* Maximum a_AMV_POSPAR_MAX */
    ui16_t app_idx;         /* `shift' moves this one, decs .app_count */
-   bool_t app_not_heap;    /* .app_dat stuff not on dynamically allocated */
+   bool_t app_not_heap;    /* .app_dat stuff not dynamically allocated */
    ui8_t app__dummy[1];
    char const **app_dat;   /* NULL terminated (for "$@" explosion support) */
 };
@@ -188,6 +211,7 @@ struct a_amv_mac_call_args{
    bool_t amca_ps_hook_mask;
    bool_t amca_no_xcall;         /* We want n_GO_INPUT_NO_XCALL for this */
    ui8_t amca__pad[5];
+   struct a_amv_var *(*amca_local_vars)[a_AMV_PRIME]; /* `local's, or NULL */
    struct a_amv_pospar amca_pospar;
 };
 
@@ -331,11 +355,11 @@ static bool_t a_amv_var_revlookup(struct a_amv_var_carrier *avcp,
  * Sets .avc_prime; .avc_var is NULL if not found.
  * Here it is where we care for _I3VAL and _DEFVAL.
  * An _I3VAL will be "consumed" as necessary anyway, but it won't be used to
- * create a new variable if i3val_nonew is true; if i3val_nonew is TRUM1 then
- * we set .avc_var to -1 and return true if that was the case, otherwise we'll
- * return FAL0, then! */
+ * create a new variable if _VLOOK_I3VAL_NONEW is set; if
+ * _VLOOK_I3VAL_NONEW_REPORT is set then we set .avc_var to -1 and return true
+ * if that was the case, otherwise we'll return FAL0, then! */
 static bool_t a_amv_var_lookup(struct a_amv_var_carrier *avcp,
-               bool_t i3val_nonew);
+               enum a_amv_var_lookup_flags avlf);
 
 /* Lookup functions for special category variables, _pospar drives all
  * positional parameter etc. special categories */
@@ -345,13 +369,14 @@ static char const *a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp);
 
 /* Set var from .avc_(map|name|hash), return success */
 static bool_t a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
-               bool_t force_env);
+               enum a_amv_var_setclr_flags avscf);
 
 static bool_t a_amv_var__putenv(struct a_amv_var_carrier *avcp,
                struct a_amv_var *avp);
 
 /* Clear var from .avc_(map|name|hash); sets .avc_var=NULL, return success */
-static bool_t a_amv_var_clear(struct a_amv_var_carrier *avcp, bool_t force_env);
+static bool_t a_amv_var_clear(struct a_amv_var_carrier *avcp,
+               enum a_amv_var_setclr_flags avscf);
 
 static bool_t a_amv_var__clearenv(char const *name, struct a_amv_var *avp);
 
@@ -364,7 +389,7 @@ static int a_amv_var__show_cmp(void const *s1, void const *s2);
 static size_t a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp);
 
 /* Shared c_set() and c_environ():set impl, return success */
-static bool_t a_amv_var_c_set(char **ap, bool_t issetenv);
+static bool_t a_amv_var_c_set(char **ap, enum a_amv_var_setclr_flags avscf);
 
 static struct a_amv_mac *
 a_amv_mac_lookup(char const *name, struct a_amv_mac *newamp,
@@ -526,6 +551,7 @@ a_amv_mac__finalize(void *vp){
 
    amcap = losp->as_amcap;
 
+   /* Delete positional parameter stack */
    if(!amcap->amca_pospar.app_not_heap && amcap->amca_pospar.app_maxcount > 0){
       ui16_t i;
 
@@ -534,6 +560,26 @@ a_amv_mac__finalize(void *vp){
       n_free(amcap->amca_pospar.app_dat);
    }
 
+   /* `local' variable hashmap.  These have no environment map, never */
+   if(amcap->amca_local_vars != NULL){
+      struct a_amv_var **avpp_base, **avpp, *avp;
+
+      for(avpp_base = *amcap->amca_local_vars, avpp = &avpp_base[a_AMV_PRIME];
+            avpp-- != avpp_base;)
+         while((avp = *avpp)){
+            assert((avp->av_flags & (a_AMV_VF_NOLOPTS | a_AMV_VF_EXT_LOCAL)) ==
+               (a_AMV_VF_NOLOPTS | a_AMV_VF_EXT_LOCAL));
+            assert(!(avp->av_flags &
+                  ((a_AMV_VF__MASK | a_AMV_VF_EXT__MASK) &
+                     ~(a_AMV_VF_NOLOPTS | a_AMV_VF_EXT_LOCAL))));
+            *avpp = avp->av_link;
+            a_amv_var_free(avp->av_value);
+            n_free(avp);
+         }
+      n_free(avpp_base);
+   }
+
+   /* Unroll `localopts', if applicable */
    if(amcap->amca_unroller == NULL){
       if(losp->as_lopts != NULL)
          a_amv_lopts_unroll(&losp->as_lopts);
@@ -624,7 +670,8 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
 
    /* TODO We should have our input state machine which emits Line events,
     * TODO and hook different consumers dependent on our content, as stated
-    * TODO in i think lex_input; */
+    * TODO in i think lex_input: like this local macros etc. would become
+    * TODO possible from the input side */
    /* Read in the lines which form the macro content */
    for(ll_tail = ll_head = NULL, line_cnt = maxlen = 0;;){
       ui32_t leaspc;
@@ -1145,9 +1192,12 @@ jno_special_param:
 #endif
       }
    }
+
    avcp->avc_map = NULL;
    avcp = NULL;
 jleave:
+   assert(avcp == NULL || avcp->avc_map != NULL ||
+      avcp->avc_special_cat == a_AMV_VSC_NONE);
    NYD2_LEAVE;
    return (avcp != NULL);
 
@@ -1163,17 +1213,49 @@ jspecial_param:
 }
 
 static bool_t
-a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
+a_amv_var_lookup(struct a_amv_var_carrier *avcp,
+      enum a_amv_var_lookup_flags avlf){
    size_t i;
    char const *cp;
    struct a_amv_var_map const *avmp;
    struct a_amv_var *avp;
    NYD2_ENTER;
 
+   assert(!(avlf & a_AMV_VLOOK_LOCAL_ONLY) || (avlf & a_AMV_VLOOK_LOCAL));
+   assert(!(avlf & a_AMV_VLOOK_I3VAL_NONEW_REPORT) ||
+      (avlf & a_AMV_VLOOK_I3VAL_NONEW));
+
    /* C99 */{
       struct a_amv_var **avpp, *lavp;
 
-      avpp = &a_amv_vars[avcp->avc_prime = a_AMV_HASH2PRIME(avcp->avc_hash)];
+      avcp->avc_prime = a_AMV_HASH2PRIME(avcp->avc_hash);
+
+      /* Optionally macro-`local' variables first */
+      if(avlf & a_AMV_VLOOK_LOCAL){
+         if(a_amv_lopts != NULL &&
+               (avpp = *a_amv_lopts->as_amcap->amca_local_vars) != NULL){
+            avpp += avcp->avc_prime;
+
+            for(lavp = NULL, avp = *avpp; avp != NULL;
+                  lavp = avp, avp = avp->av_link)
+               if(!strcmp(avp->av_name, avcp->avc_name)){
+                  /* Relink as head, hope it "sorts on usage" over time.
+                   * The code relies on this behaviour! */
+                  if(lavp != NULL){
+                     lavp->av_link = avp->av_link;
+                     avp->av_link = *avpp;
+                     *avpp = avp;
+                  }
+                  goto jleave;
+               }
+         }
+
+         if(avlf & a_AMV_VLOOK_LOCAL_ONLY)
+            goto jerr;
+      }
+
+      /* Global variable map */
+      avpp = &a_amv_vars[avcp->avc_prime];
 
       for(lavp = NULL, avp = *avpp; avp != NULL; lavp = avp, avp = avp->av_link)
          if(!strcmp(avp->av_name, avcp->avc_name)){
@@ -1193,7 +1275,7 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
              * of interest if _set() or _clear() called us */
             switch(avp->av_flags & a_AMV_VF_EXT__FROZEN_MASK){
             case a_AMV_VF_EXT_FROZEN | a_AMV_VF_EXT_FROZEN_UNSET:
-               if(!i3val_nonew){
+               if(!(avlf & a_AMV_VLOOK_I3VAL_NONEW)){
                   avcp->avc_var = avp;
                   avp = NULL;
                   goto j_leave;
@@ -1272,9 +1354,9 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp, bool_t i3val_nonew){
                   arr[i] = arr[i + 1];
                while(arr[i++] != NULL);
 
-               if(!i3val_nonew)
+               if(!(avlf & a_AMV_VLOOK_I3VAL_NONEW))
                   goto jnewval;
-               if(i3val_nonew == TRUM1)
+               if(avlf & a_AMV_VLOOK_I3VAL_NONEW_REPORT)
                   avp = (struct a_amv_var*)-1;
                goto jleave;
             }
@@ -1379,7 +1461,8 @@ a_amv_var_vsc_global(struct a_amv_var_carrier *avcp){
 
    avcp->avc_hash = avmp->avm_hash;
    avcp->avc_map = avmp;
-   rv = a_amv_var_lookup(avcp, FAL0) ? avcp->avc_var->av_value : NULL;
+   rv = a_amv_var_lookup(avcp, a_AMV_VLOOK_NONE)
+         ? avcp->avc_var->av_value : NULL;
    NYD2_LEAVE;
    return rv;
 }
@@ -1547,7 +1630,7 @@ jleave:
 
 static bool_t
 a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
-      bool_t force_env){
+      enum a_amv_var_setclr_flags avscf){
    struct a_amv_var *avp;
    char *oval;
    struct a_amv_var_map const *avmp;
@@ -1555,7 +1638,7 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
    NYD2_ENTER;
 
    if(value == NULL){
-      rv = a_amv_var_clear(avcp, force_env);
+      rv = a_amv_var_clear(avcp, avscf);
       goto jleave;
    }
 
@@ -1614,9 +1697,17 @@ jeavmp:
       }
    }
 
+   /* Lookup possibly existing var.  For */
+
    rv = TRU1;
-   a_amv_var_lookup(avcp, TRU1);
+   a_amv_var_lookup(avcp, (a_AMV_VLOOK_I3VAL_NONEW |
+         ((avscf & a_AMV_VSETCLR_LOCAL)
+          ? (a_AMV_VLOOK_LOCAL | a_AMV_VLOOK_LOCAL_ONLY) : 0)));
    avp = avcp->avc_var;
+
+   /* A `local' setting is never covered by `localopts' nor frozen */
+   if(avscf & a_AMV_VSETCLR_LOCAL)
+      goto jislocal;
 
    /* If this setting had been established via -S and we still have not reached
     * the _STARTED_CONFIG program state, silently ignore request! */
@@ -1646,23 +1737,35 @@ jeavmp:
       }
    }
 
+   /* Optionally cover by `localopts' */
    if(n_UNLIKELY(a_amv_lopts != NULL) &&
          (avmp == NULL || !(avmp->avm_flags & a_AMV_VF_NOLOPTS)))
       a_amv_lopts_add(a_amv_lopts, avcp->avc_name, avcp->avc_var);
 
+jislocal:
    if(avp != NULL)
 joval_and_go:
       oval = avp->av_value;
    else{
-      struct a_amv_var **avpp;
       size_t l;
+      struct a_amv_var **avpp;
+
+      if(avscf & a_AMV_VSETCLR_LOCAL){
+         if((avpp = *a_amv_lopts->as_amcap->amca_local_vars) == NULL)
+            avpp = *(a_amv_lopts->as_amcap->amca_local_vars =
+                  n_calloc(1, sizeof(*a_amv_lopts->as_amcap->amca_local_vars)));
+         avpp += avcp->avc_prime;
+      }else
+         avpp = &a_amv_vars[avcp->avc_prime];
 
       l = strlen(avcp->avc_name) +1;
       avcp->avc_var = avp = n_calloc(1,
             n_VSTRUCT_SIZEOF(struct a_amv_var, av_name) + l);
-      avp->av_link = *(avpp = &a_amv_vars[avcp->avc_prime]);
+      avp->av_link = *avpp;
       *avpp = avp;
-      avp->av_flags = (avmp != NULL) ? avmp->avm_flags : 0;
+      avp->av_flags = (avscf & a_AMV_VSETCLR_LOCAL)
+            ? a_AMV_VF_NOLOPTS | a_AMV_VF_EXT_LOCAL
+            : (avmp != NULL) ? avmp->avm_flags : 0;
       memcpy(avp->av_name, avcp->avc_name, l);
       oval = n_UNCONST(n_empty);
    }
@@ -1670,6 +1773,7 @@ joval_and_go:
    if(avmp == NULL)
       avp->av_value = a_amv_var_copy(value);
    else{
+      assert(!(avscf & a_AMV_VSETCLR_LOCAL));
       /* Via `set' etc. the user may give even boolean options non-boolean
        * values, ignore that and force boolean */
       if(!(avp->av_flags & a_AMV_VF_BOOL))
@@ -1683,17 +1787,20 @@ joval_and_go:
       }
    }
 
-   if(force_env && !(avp->av_flags & a_AMV_VF_ENV))
-      avp->av_flags |= a_AMV_VF_EXT_LINKED;
-   if(avp->av_flags & (a_AMV_VF_ENV | a_AMV_VF_EXT_LINKED))
-      rv = a_amv_var__putenv(avcp, avp);
-   if(avp->av_flags & a_AMV_VF_VIP)
-      a_amv_var_check_vips(a_AMV_VIP_SET_POST, avcp->avc_okey, value);
+   /* A `local' setting can skip all the crude special things */
+   if(!(avscf & a_AMV_VSETCLR_LOCAL)){
+      if((avscf & a_AMV_VSETCLR_ENV) && !(avp->av_flags & a_AMV_VF_ENV))
+         avp->av_flags |= a_AMV_VF_EXT_LINKED;
+      if(avp->av_flags & (a_AMV_VF_ENV | a_AMV_VF_EXT_LINKED))
+         rv = a_amv_var__putenv(avcp, avp);
+      if(avp->av_flags & a_AMV_VF_VIP)
+         a_amv_var_check_vips(a_AMV_VIP_SET_POST, avcp->avc_okey, value);
 
-   avp->av_flags &= ~a_AMV_VF_EXT__FROZEN_MASK;
-   if(!(n_psonce & n_PSO_STARTED_GETOPT) &&
-         (n_poption & n_PO_S_FLAG_TEMPORARY) != 0)
-      avp->av_flags |= a_AMV_VF_EXT_FROZEN;
+      avp->av_flags &= ~a_AMV_VF_EXT__FROZEN_MASK;
+      if(!(n_psonce & n_PSO_STARTED_GETOPT) &&
+            (n_poption & n_PO_S_FLAG_TEMPORARY) != 0)
+         avp->av_flags |= a_AMV_VF_EXT_FROZEN;
+   }
 
    a_amv_var_free(oval);
 jleave:
@@ -1730,7 +1837,8 @@ a_amv_var__putenv(struct a_amv_var_carrier *avcp, struct a_amv_var *avp){
 }
 
 static bool_t
-a_amv_var_clear(struct a_amv_var_carrier *avcp, bool_t force_env){
+a_amv_var_clear(struct a_amv_var_carrier *avcp,
+      enum a_amv_var_setclr_flags avscf){
    struct a_amv_var **avpp, *avp;
    struct a_amv_var_map const *avmp;
    bool_t rv;
@@ -1753,12 +1861,18 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp, bool_t force_env){
 
    rv = TRU1;
 
-   if(n_UNLIKELY(!a_amv_var_lookup(avcp, TRUM1))){
+   if(n_UNLIKELY(!a_amv_var_lookup(avcp,
+         (((avscf & a_AMV_VSETCLR_LOCAL)
+            ? (a_AMV_VLOOK_LOCAL | a_AMV_VLOOK_LOCAL_ONLY) : 0) |
+          a_AMV_VLOOK_I3VAL_NONEW | a_AMV_VLOOK_I3VAL_NONEW_REPORT)))){
       assert(avcp->avc_var == NULL);
       /* This may be a clearance request from the command line, via -S, and we
        * need to keep track of that!  Unfortunately we are not prepared for
        * this, really, so we need to create a fake entry that is known and
-       * handled correctly by the lowermost variable layer! */
+       * handled correctly by the lowermost variable layer!
+       * However, all this cannot happen for plain unset of `local' variables */
+      if(avscf & a_AMV_VSETCLR_LOCAL)
+         goto jleave;
       if(n_UNLIKELY(!(n_psonce & n_PSO_STARTED_GETOPT)) &&
             (n_poption & n_PO_S_FLAG_TEMPORARY)) Jfreeze:{
          size_t l;
@@ -1772,13 +1886,16 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp, bool_t force_env){
                a_AMV_VF_EXT_FROZEN | a_AMV_VF_EXT_FROZEN_UNSET;
          memcpy(avp->av_name, avcp->avc_name, l);
 
-         if(force_env || (avmp != NULL && (avmp->avm_flags & a_AMV_VF_ENV)))
+         if((avscf & a_AMV_VSETCLR_ENV) ||
+               (avmp != NULL && (avmp->avm_flags & a_AMV_VF_ENV)))
             a_amv_var__clearenv(avcp->avc_name, NULL);
-      }else if(force_env){
+      }else if(avscf & a_AMV_VSETCLR_ENV){
 jforce_env:
          if(!(rv = a_amv_var__clearenv(avcp->avc_name, NULL)))
             goto jerr_env_unset;
       }else{
+         /* TODO "cannot unset undefined variable" not echoed in "ROBOT" state,
+          * TODO should only be like that with "ignerr"! */
 jerr_env_unset:
          if(!(n_pstate & (n_PS_ROOT | n_PS_ROBOT)) && (n_poption & n_PO_D_V))
             n_err(_("Cannot unset undefined variable: %s\n"), avcp->avc_name);
@@ -1790,16 +1907,20 @@ jerr_env_unset:
             (n_poption & n_PO_S_FLAG_TEMPORARY) != 0))
          goto Jfreeze;
       avcp->avc_var = NULL;
-      if(force_env)
+      if(avscf & a_AMV_VSETCLR_ENV)
          goto jforce_env;
       goto jleave;
    }
+   assert(avcp->avc_var != NULL);
+
+   /* `local' variables bypass "frozen" checks and `localopts' coverage etc. */
+   if(avp->av_flags & a_AMV_VF_EXT_LOCAL)
+      goto jdefault_path;
 
    /* If this setting has been established via -S and we still have not reached
     * the _STARTED_CONFIG program state, silently ignore request!
     * XXX All this is very complicated for the tenth of a second */
-   if(avp != NULL &&
-         n_UNLIKELY((avp->av_flags & a_AMV_VF_EXT__FROZEN_MASK) != 0)){
+   /*else*/ if(n_UNLIKELY((avp->av_flags & a_AMV_VF_EXT__FROZEN_MASK) != 0)){
       if(!(n_psonce & n_PSO_STARTED_CONFIG)){
          if((n_pstate & n_PS_ROOT) ||
                (!(n_psonce & n_PSO_STARTED_GETOPT) &&
@@ -1829,9 +1950,11 @@ jerr_env_unset:
       a_amv_lopts_add(a_amv_lopts, avcp->avc_name, avcp->avc_var);
 
 jdefault_path:
-   avp = avcp->avc_var;
+   assert(avp == avcp->avc_var);
    avcp->avc_var = NULL;
-   avpp = &a_amv_vars[avcp->avc_prime];
+   avpp = &((avp->av_flags & a_AMV_VF_EXT_LOCAL)
+         ? *a_amv_lopts->as_amcap->amca_local_vars : a_amv_vars
+         )[avcp->avc_prime];
    assert(*avpp == avp); /* (always listhead after lookup()) */
    *avpp = (*avpp)->av_link;
 
@@ -1843,9 +1966,9 @@ jdefault_path:
    /* XXX Fun part, extremely simple-minded for now: if this variable has
     * XXX a default value, immediately reinstantiate it!  TODO Heh? */
    if(n_UNLIKELY(avmp != NULL && (avmp->avm_flags & a_AMV_VF_DEFVAL) != 0)){
-      a_amv_var_lookup(avcp, TRU1);
+      a_amv_var_lookup(avcp, a_AMV_VLOOK_I3VAL_NONEW);
       if(n_UNLIKELY(!(n_psonce & n_PSO_STARTED_GETOPT)) &&
-                  (n_poption & n_PO_S_FLAG_TEMPORARY))
+            (n_poption & n_PO_S_FLAG_TEMPORARY))
          avp->av_flags |= a_AMV_VF_EXT_FROZEN;
    }
 jleave:
@@ -1972,7 +2095,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
    i = 0;
 
    a_amv_var_revlookup(&avc, name);
-   isset = a_amv_var_lookup(&avc, FAL0);
+   isset = a_amv_var_lookup(&avc, a_AMV_VLOOK_NONE);
    avp = avc.avc_var;
 
    if(n_poption & n_PO_D_V){
@@ -2035,10 +2158,12 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
          msgp = n_string_push_cp(msgp, "wysh ");
    }else if(n_poption & n_PO_D_V)
       msgp = n_string_push_cp(msgp, "wysh "); /* (for shell-style comment) */
+
    if(avp->av_flags & a_AMV_VF_EXT_LINKED)
       msgp = n_string_push_cp(msgp, "environ ");
    msgp = n_string_push_cp(msgp, "set ");
    msgp = n_string_push_cp(msgp, name);
+
    if(!(avp->av_flags & a_AMV_VF_BOOL)){
       msgp = n_string_push_c(msgp, '=');
       msgp = n_string_push_cp(msgp, quote);
@@ -2053,7 +2178,7 @@ jleave:
 }
 
 static bool_t
-a_amv_var_c_set(char **ap, bool_t issetenv){
+a_amv_var_c_set(char **ap, enum a_amv_var_setclr_flags avscf){
    char *cp, *cp2, *varbuf, c;
    size_t errs;
    NYD2_ENTER;
@@ -2091,10 +2216,15 @@ jouter:
 
          a_amv_var_revlookup(&avc, varbuf);
 
-         if(isunset)
-            errs += !a_amv_var_clear(&avc, issetenv);
+         if((avscf & a_AMV_VSETCLR_LOCAL) && avc.avc_map != NULL){
+            if(n_poption & n_PO_D_V)
+               n_err(_("Builtin variable not overwritten by `local': %s\n"),
+                  varbuf);
+            ++errs;
+         }else if(isunset)
+            errs += !a_amv_var_clear(&avc, avscf);
          else
-            errs += !a_amv_var_set(&avc, cp, issetenv);
+            errs += !a_amv_var_set(&avc, cp, avscf);
       }
    }
    NYD2_LEAVE;
@@ -2309,8 +2439,7 @@ c_localopts(void *vp){
    rv = 1;
 
    if(a_amv_lopts == NULL){
-      n_err(_("Cannot use `localopts' in this context "
-         "(not in `define' or `account', nor special hook)\n"));
+      n_err(_("Cannot use `localopts' in this context\n"));
       goto jleave;
    }
 
@@ -2342,7 +2471,7 @@ jleave:
 }
 
 FL int
-c_shift(void *vp){
+c_shift(void *vp){ /* xxx move to bottom, not in macro part! */
    struct a_amv_pospar *appp;
    ui16_t i;
    int rv;
@@ -2608,11 +2737,11 @@ n_var_oklook(enum okeys okey){
    NYD_ENTER;
 
    avc.avc_map = avmp = &a_amv_var_map[okey];
-   avc.avc_name = a_amv_var_names + avmp->avm_keyoff;
+   avc.avc_name = &a_amv_var_names[avmp->avm_keyoff];
    avc.avc_hash = avmp->avm_hash;
    avc.avc_okey = okey;
 
-   if(a_amv_var_lookup(&avc, FAL0))
+   if(a_amv_var_lookup(&avc, a_AMV_VLOOK_NONE))
       rv = avc.avc_var->av_value;
    else
       rv = NULL;
@@ -2628,11 +2757,12 @@ n_var_okset(enum okeys okey, uintptr_t val){
    NYD_ENTER;
 
    avc.avc_map = avmp = &a_amv_var_map[okey];
-   avc.avc_name = a_amv_var_names + avmp->avm_keyoff;
+   avc.avc_name = &a_amv_var_names[avmp->avm_keyoff];
    avc.avc_hash = avmp->avm_hash;
    avc.avc_okey = okey;
 
-   ok = a_amv_var_set(&avc, (val == 0x1 ? n_empty : (char const*)val), FAL0);
+   ok = a_amv_var_set(&avc, (val == 0x1 ? n_empty : (char const*)val),
+         a_AMV_VSETCLR_NONE);
    NYD_LEAVE;
    return ok;
 }
@@ -2645,11 +2775,11 @@ n_var_okclear(enum okeys okey){
    NYD_ENTER;
 
    avc.avc_map = avmp = &a_amv_var_map[okey];
-   avc.avc_name = a_amv_var_names + avmp->avm_keyoff;
+   avc.avc_name = &a_amv_var_names[avmp->avm_keyoff];
    avc.avc_hash = avmp->avm_hash;
    avc.avc_okey = okey;
 
-   rv = a_amv_var_clear(&avc, FAL0);
+   rv = a_amv_var_clear(&avc, a_AMV_VSETCLR_NONE);
    NYD_LEAVE;
    return rv;
 }
@@ -2665,7 +2795,7 @@ n_var_vlook(char const *vokey, bool_t try_getenv){
    switch((enum a_amv_var_special_category)avc.avc_special_cat){
    default: /* silence CC */
    case a_AMV_VSC_NONE:
-      if(a_amv_var_lookup(&avc, FAL0))
+      if(a_amv_var_lookup(&avc, a_AMV_VLOOK_LOCAL))
          rv = avc.avc_var->av_value;
       /* Only check the environment for something that is otherwise unknown */
       else if(try_getenv && avc.avc_map == NULL)
@@ -2708,7 +2838,8 @@ n_var_vset(char const *vokey, uintptr_t val){
 
    a_amv_var_revlookup(&avc, vokey);
 
-   ok = a_amv_var_set(&avc, (val == 0x1 ? n_empty : (char const*)val), FAL0);
+   ok = a_amv_var_set(&avc, (val == 0x1 ? n_empty : (char const*)val),
+         a_AMV_VSETCLR_NONE);
    NYD_LEAVE;
    return ok;
 }
@@ -2721,7 +2852,7 @@ n_var_vclear(char const *vokey){
 
    a_amv_var_revlookup(&avc, vokey);
 
-   ok = a_amv_var_clear(&avc, FAL0);
+   ok = a_amv_var_clear(&avc, a_AMV_VSETCLR_NONE);
    NYD_LEAVE;
    return ok;
 }
@@ -2746,7 +2877,7 @@ n_var_xoklook(enum okeys okey, struct url const *urlp,
    }
 
    avc.avc_map = avmp = &a_amv_var_map[okey];
-   avc.avc_name = a_amv_var_names + avmp->avm_keyoff;
+   avc.avc_name = &a_amv_var_names[avmp->avm_keyoff];
    avc.avc_okey = okey;
 
    us = (oxm & OXM_U_H_P) ? &urlp->url_u_h_p : &urlp->url_h_p;
@@ -2759,7 +2890,7 @@ n_var_xoklook(enum okeys okey, struct url const *urlp,
    memcpy(nbuf + nlen, us->s, us->l +1);
    avc.avc_name = a_amv_var_canonify(nbuf);
    avc.avc_hash = a_AMV_NAME2HASH(avc.avc_name);
-   if(a_amv_var_lookup(&avc, FAL0))
+   if(a_amv_var_lookup(&avc, a_AMV_VLOOK_LOCAL))
       goto jvar;
 
    /* The second */
@@ -2768,7 +2899,7 @@ n_var_xoklook(enum okeys okey, struct url const *urlp,
       memcpy(nbuf + nlen, us->s, us->l +1);
       avc.avc_name = a_amv_var_canonify(nbuf);
       avc.avc_hash = a_AMV_NAME2HASH(avc.avc_name);
-      if(a_amv_var_lookup(&avc, FAL0)){
+      if(a_amv_var_lookup(&avc, a_AMV_VLOOK_LOCAL)){
 jvar:
          rv = avc.avc_var->av_value;
          goto jleave;
@@ -2786,28 +2917,59 @@ jleave:
 #endif /* HAVE_SOCKETS */
 
 FL int
-c_set(void *v){
-   char **ap;
+c_set(void *vp){
    int err;
+   char **ap;
    NYD_ENTER;
 
-   if(*(ap = v) == NULL){
+   if(*(ap = vp) == NULL){
       a_amv_var_show_all();
       err = 0;
-   }else
-      err = !a_amv_var_c_set(ap, FAL0);
+   }else{
+      enum a_amv_var_setclr_flags avscf;
+
+      if(!(n_pstate & n_PS_ARGMOD_LOCAL))
+         avscf = a_AMV_VSETCLR_NONE;
+      else{
+         if(a_amv_lopts == NULL){
+            n_err(_("`set': cannot use `local' in this context\n"));
+            err = 1;
+            goto jleave;
+         }
+         avscf = a_AMV_VSETCLR_LOCAL;
+      }
+      err = !a_amv_var_c_set(ap, avscf);
+   }
+jleave:
    NYD_LEAVE;
    return err;
 }
 
 FL int
-c_unset(void *v){
+c_unset(void *vp){
+   struct a_amv_var_carrier avc;
    char **ap;
    int err;
+   enum a_amv_var_setclr_flags avscf;
    NYD_ENTER;
 
-   for(err = 0, ap = v; *ap != NULL; ++ap)
-      err |= !n_var_vclear(*ap);
+   if(!(n_pstate & n_PS_ARGMOD_LOCAL))
+      avscf = a_AMV_VSETCLR_NONE;
+   else{
+      if(a_amv_lopts == NULL){
+         n_err(_("`unset': cannot use `local' in this context\n"));
+         err = 1;
+         goto jleave;
+      }
+      avscf = a_AMV_VSETCLR_LOCAL;
+   }
+
+   for(err = 0, ap = vp; *ap != NULL; ++ap){
+      a_amv_var_revlookup(&avc, *ap);
+
+      err |= !a_amv_var_clear(&avc, avscf);
+   }
+jleave:
    NYD_LEAVE;
    return err;
 }
@@ -2860,7 +3022,7 @@ c_varedit(void *v){
          }
       }
 
-      a_amv_var_lookup(&avc, FAL0);
+      a_amv_var_lookup(&avc, a_AMV_VLOOK_NONE);
 
       if((of = Ftmp(NULL, "varedit", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
             NULL){
@@ -2902,7 +3064,7 @@ c_varedit(void *v){
             }
          }
 
-         if(!a_amv_var_set(&avc, varres, FAL0))
+         if(!a_amv_var_set(&avc, varres, a_AMV_VSETCLR_NONE))
             err = 1;
 
          Fclose(nf);
@@ -2931,7 +3093,7 @@ c_environ(void *v){
       for(err = 0; *++ap != NULL;){
          a_amv_var_revlookup(&avc, *ap);
 
-         if(a_amv_var_lookup(&avc, FAL0) && (islnk ||
+         if(a_amv_var_lookup(&avc, a_AMV_VLOOK_NONE) && (islnk ||
                (avc.avc_var->av_flags & a_AMV_VF_EXT_LINKED))){
             if(!islnk){
                avc.avc_var->av_flags &= ~a_AMV_VF_EXT_LINKED;
@@ -2952,7 +3114,7 @@ c_environ(void *v){
             char const *evp = getenv(*ap);
 
             if(evp != NULL)
-               err |= !a_amv_var_set(&avc, evp, TRU1);
+               err |= !a_amv_var_set(&avc, evp, a_AMV_VSETCLR_ENV);
             else{
                n_err(_("`environ': link: cannot link to non-existent: %s\n"),
                   *ap);
@@ -2961,12 +3123,12 @@ c_environ(void *v){
          }
       }
    }else if(is_asccaseprefix(*ap, "set"))
-      err = !a_amv_var_c_set(++ap, TRU1);
+      err = !a_amv_var_c_set(++ap, a_AMV_VSETCLR_ENV);
    else if(is_asccaseprefix(*ap, "unset")){
       for(err = 0; *++ap != NULL;){
          a_amv_var_revlookup(&avc, *ap);
 
-         if(!a_amv_var_clear(&avc, TRU1))
+         if(!a_amv_var_clear(&avc, a_AMV_VSETCLR_ENV))
             err = 1;
       }
    }else{

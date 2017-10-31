@@ -224,9 +224,10 @@ FL char *n_var_xoklook(enum okeys okey, struct url const *urlp,
 # define xok_vlook(C,URL,M) xok_VLOOK(n_CONCAT(ok_v_, C), URL, M)
 #endif
 
-/* User variable access: `set' and `unset' */
-FL int c_set(void *v);
-FL int c_unset(void *v);
+/* User variable access: `set', `local' and `unset' */
+FL int c_set(void *vp);
+FL int c_local(void *vp);
+FL int c_unset(void *vp);
 
 /* `varshow' */
 FL int c_varshow(void *v);

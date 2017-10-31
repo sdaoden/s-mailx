@@ -806,7 +806,7 @@ ing.
 .
 .Pp
 Some random remarks.
-The file mode creation mask can be explicitly managed via the variable
+The file mode creation mask can be managed explicitly via the variable
 .Va umask .
 Sufficient system support provided symbolic links will not be followed
 when files are opened for writing.
@@ -1038,7 +1038,7 @@ as well as
 .Va on-compose-splice-shell
 variables, the former also to be set to a
 .Ic define Ns
-d macro, increasingly powerful mechanisms to perform automated message
+d macro, increasingly powerful mechanisms to perform automatized message
 adjustments, including signature creation, are available.
 (\*(ID These hooks work for commands which newly create messages, namely
 .Ic forward , mail , reply
@@ -1060,7 +1060,7 @@ of so-called variable chains which automatically pick
 .Ql USER@HOST
 or
 .Ql HOST
-context-dependend variable variants: for example addressing
+context-dependent variable variants: for example addressing
 .Ql Ic File Ns \& pop3://yaa@exam.ple
 would find
 .Va \&\&pop3-no-apop-yaa@exam.ple ,
@@ -3185,6 +3185,12 @@ information which applies; a handy suggestion might thus be:
 .Ss "Command modifiers"
 .
 Commands may be prefixed by one or multiple command modifiers.
+Some command modifiers can be used with a restricted set of commands
+only, the
+.Va verbose
+version of
+.Ic list
+will (\*(OPally) show which modifiers apply.
 .
 .Bl -bullet
 .It
@@ -3220,6 +3226,23 @@ will be set to the real exit status of the command regardless.
 .It
 .Mx
 .Cm local
+will alter the called command to apply changes only temporarily,
+local to block-scope, and can thus only be used inside of a
+.Ic define Ns
+d macro or an
+.Ic account
+definition.
+Specifying it implies the modifier
+.Cm wysh .
+Block-scope settings will not be inherited by macros deeper in the
+.Ic call
+chain, and will be garbage collected once the current block is left.
+To record and unroll changes in the global scope use the command
+.Ic localopts .
+.
+.It
+.Mx
+.Cm scope
 does yet not implement any functionality.
 .
 .It
@@ -3887,7 +3910,7 @@ as
 (This state could later become overwritten by an I/O error, though.)
 .
 .Pp
-Encoding supports four different modes, lesser automated versions can be
+Encoding supports four different modes, lesser automatized versions can be
 chosen by prefixing one, two or three plus signs: the standard imposes
 a special meaning on some characters, which thus have to be transformed
 to so-called quoted-pairs by pairing them with a reverse solidus
@@ -4192,33 +4215,9 @@ may help shall keys and sequences be falsely recognized.
 .It Ic call
 \*(NQ Calls the given macro, which must have been created via
 .Ic define ,
-otherwise a
+otherwise an
 .Va ^ERR Ns -NOENT
 error occurs.
-Parameters given to macros are implicitly local to the macro's scope, and
-may be accessed via special (positional) parameters, e.g.,
-.Va 1 ,
-.Va * ,
-.Va @ ,
-.Va # .
-The positional parameters may be removed by
-.Ic shift Ns
-ing them off the stack (exceeding the supported number of arguments
-results in a
-.Va ^ERR Ns -OVERFLOW ) ,
-and are otherwise controllable via
-.Ic vpospar .
-Changes to other
-.Sx ENVIRONMENT
-as well as
-.Sx "INTERNAL VARIABLES"
-can be reverted before the current level regains control by setting
-.Ic localopts
-for called macro(s) (or in them, of course).
-Macro execution can be terminated at any time by calling
-.Ic return .
-.
-.Pp
 Calling macros recursively will at some time excess the stack size
 limit, causing a hard program abortion; if recursively calling a macro
 is the last command of the current macro, consider to use the command
@@ -4230,14 +4229,6 @@ Numeric and string operations can be performed via
 and
 .Ic eval
 may be helpful to recreate argument lists.
-.
-.Bd -literal -offset indent
-define exmac {
-  echo Parameter 1 of ${#} is ${1}, all: ${*} / ${@}
-  return 1000 0
-}
-call exmac Hello macro exmac!
-.Ed
 .
 .
 .Mx
@@ -4566,21 +4557,18 @@ Encrypted messages are first decrypted, if possible, and then copied.
 .Ic copy ;
 Encrypted messages are first decrypted, if possible, and then copied.
 .
+.
 .Mx
 .Mx
 .It Ic define , undefine
-Without arguments the current list of macros, including their content,
-is shown, otherwise a macro is defined, replacing an existing macro of
-the same name.
-A macro definition is a sequence of commands in the following form:
-.Bd -literal -offset indent
-define name {
-  command1
-  command2
-  ...
-  commandN
-}
-.Ed
+The latter command deletes the given macro, the special name
+.Ql *
+will discard all existing macros.
+Deletion of (a) macro(s) can be performed from within running macro(s).
+Without arguments the former command prints the current list of macros,
+including their content, otherwise it it defines a macro, replacing an
+existing one of the same name as applicable.
+.
 .Pp
 A defined macro can be invoked explicitly by using the
 .Ic call ,
@@ -4589,30 +4577,61 @@ and
 .Ic xcall
 commands, or implicitly if a macro hook is triggered, e.g., a
 .Va folder-hook .
-It is possible to localize adjustments, like creation, deletion and
-modification of
-.Sx "INTERNAL VARIABLES" ,
-by using the
+Execution of a macro body can be stopped from within by calling
+.Ic return .
+.
+.Pp
+Temporary macro block-scope variables can be created or deleted with the
+.Cm local
+command modifier in conjunction with the commands
+.Ic set
+and
+.Ic unset ,
+respectively.
+To enforce unrolling of changes made to (global)
+.Sx "INTERNAL VARIABLES"
+the command
 .Ic localopts
-command; the scope which is localized depends on how (i.e.,
+can be used instead; its covered scope depends on how (i.e.,
 .Dq as what :
 normal macro, folder hook, hook,
 .Ic account
 switch) the macro is invoked.
-Execution of a macro body can be stopped from within by calling
-.Ic return .
+.
+.Pp
 Inside a
 .Ic call Ns
-ed macro, given positional parameters can be
+ed macro, the given positional parameters are implicitly local
+to the macro's scope, and may be accessed via the variables
+.Va * ,
+.Va @ ,
+.Va #
+and
+.Va 1
+as well as any other positive unsigned decimal number (less than
+.Va # ) .
+Positional parameters can be
 .Ic shift Ns
 ed, or become completely replaced, removed etc. via
 .Ic vpospar .
-.Pp
-The latter command deletes the given macro, the special name
-.Ql *
-will discard all existing macros.
-Creation and deletion of (a) macro(s) can be performed from within
-a running macro.
+.
+.Bd -literal -offset indent
+define name {
+  command1
+  command2
+  ...
+  commandN
+}
+
+# E.g.
+define exmac {
+  echo Parameter 1 of ${#} is ${1}, all: ${*} / ${@}
+  return 1000 0
+}
+call exmac Hello macro exmac!
+echo ${?}/${!}/${^ERRNAME}
+.Ed
+.
 .
 .Mx
 .Mx
@@ -5500,22 +5519,15 @@ e.g., from within a macro that is called via
 .It Ic localopts
 This command can be used to localize changes to (linked)
 .Sx ENVIRONMENT
-as well as
+as well as (global)
 .Sx "INTERNAL VARIABLES" ,
 meaning that their state will be reverted to the former one once the
 .Dq covered scope
 is left.
-\*(ID Note in the future the coverage may be extended to none or any of
-.Ic alias ,
-.Ic alternates ,
-.Ic charsetalias ,
-.Ic commandalias ,
-.Ic filetype ,
-.Ic mlist ,
-.Ic mlsubscribe ,
-.Ic shortcut ,
-to name a few.
-It can only be used inside of macro definition blocks introduced by
+Just like the command modifier
+.Cm local ,
+which provides block-scope localization for some commands (instead),
+it can only be used inside of macro definition blocks introduced by
 .Ic account
 or
 .Ic define .
@@ -5549,7 +5561,7 @@ were defined in a local, macro private context!)
 .Pp
 This command takes one or two arguments, the optional first one
 specifies an attribute that may be one of
-.Cm scope ,
+.Cm \&\&scope ,
 which refers to the current scope and is thus the default,
 .Cm call ,
 which causes any macro that is being
@@ -5559,7 +5571,8 @@ ed to be started with localization enabled by default, as well as
 which (if enabled) disallows any called macro to turn off localization:
 like this it can be ensured that once the current scope regains control,
 any changes made in deeper levels have been reverted.
-The latter two are mutually exclusive.
+The latter two are mutually exclusive, and neither affects
+.Ic xcall .
 The (second) argument is interpreted as a boolean (string, see
 .Sx "INTERNAL VARIABLES" )
 and states whether the given attribute shall be turned on or off.
@@ -5568,8 +5581,8 @@ and states whether the given attribute shall be turned on or off.
 define temporary_settings {
   set possibly_global_option1
   localopts on
-  set local_option1
-  set local_option2
+  set localized_option1
+  set localized_option2
   localopts scope off
   set possibly_global_option2
 }
@@ -6294,16 +6307,17 @@ Takes a message list and marks all messages as having been read.
 .Mx
 .Mx
 .It Ic set , unset
-(se, \*(NQ uns) The latter command will delete all given variables,
-the former, when used without arguments, will show all variables which
-are currently known to \*(UA.
-A more verbose listing will be produced if
-either of
+(se, \*(NQ uns) The latter command will delete all given global
+variables, or only block-scope local ones if the
+.Cm local
+command modifier has been used.
+The former, when used without arguments, will show all
+currently known variables, being more verbose if either of
 .Va debug
 or
 .Va verbose
-are set.
-Remarks: the list mode will not automatically link-in known
+is set.
+Remarks: this list mode will not automatically link-in known
 .Sx ENVIRONMENT
 variables, but only explicit addressing will, e.g., via
 .Ic varshow ,
@@ -6312,7 +6326,7 @@ using a variable in an
 condition or a string passed to
 .Ic echo ,
 explicit
-.Ic set Ns
+.Ic \&\&set Ns
 ting, as well as some program-internal use cases.
 .
 .Pp
@@ -6324,35 +6338,39 @@ Arguments are of the form
 or plain
 .Ql name
 if there is no value, i.e., a boolean variable.
+If a name begins with
+.Ql no ,
+as in
+.Ql set nosave ,
+the effect is the same as invoking the
+.Ic \&\&unset
+command with the remaining part of the variable
+.Pf ( Ql unset save ) .
 \*(ID In conjunction with the
 .Cm wysh
-command prefix
+.Pf (or\0 Cm local )
+command prefix(es)
 .Sx "Shell-style argument quoting"
 can be used to quote arguments as necessary.
 \*(ID Otherwise quotation marks may be placed around any part of the
 assignment statement to quote blanks or tabs.
 .
 .Pp
-.Dl ? wysh set indentprefix=' -> '
-.
-.Pp
-If an argument begins with
-.Ql no ,
-as in
-.Ql set nosave ,
-the effect is the same as invoking the
-.Ic unset
-command with the remaining part of the variable
-.Pf ( Ql unset save ) .
-.
-.Pp
-Any
+When operating in global scope any
 .Ql name
 that is known to map to an environment variable will automatically cause
 updates in the program environment (unsetting a variable in the
 environment requires corresponding system support) \(em use the command
 .Ic environ
 for further environmental control.
+If the command modifier
+.Cm local
+has been used to alter the command to work in block-scope all variables
+have values (may they be empty), and creation of names which shadow
+.Sx "INTERNAL VARIABLES"
+is actively prevented (\*(ID shadowing of linked
+.Sx ENVIRONMENT
+variables and free-form versions of variable chains is not yet detected).
 Also see
 .Ic varedit ,
 .Ic varshow
@@ -6360,6 +6378,11 @@ and the sections
 .Sx "INTERNAL VARIABLES"
 and
 .Sx ENVIRONMENT .
+.
+.Bd -literal -offset indent
+? wysh set indentprefix=' -> '
+? wysh set atab=$'\t' aspace=' ' zero=0
+.Ed
 .
 .
 .Mx
@@ -8515,7 +8538,7 @@ Define a set of custom headers to be injected into newly composed or
 forwarded messages; it is also possible to create custom headers in
 compose mode with
 .Ic ~^ ,
-which can be automated by setting one of the hooks
+which can be automatized by setting one of the hooks
 .Va on-compose-splice
 or
 .Va on-compose-splice-shell .

@@ -626,21 +626,22 @@ enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
    n_CMD_ARG_TYPE_ARG = 7,       /* n_cmd_arg_desc/n_cmd_arg() new-style */
    n_CMD_ARG_TYPE_MASK = 7,      /* Mask of the above */
 
-   n_CMD_ARG_A = 1u<< 4,   /* Needs an active mailbox */
-   n_CMD_ARG_F = 1u<< 5,   /* Is a conditional command */
-   n_CMD_ARG_G = 1u<< 6,   /* Is supposed to produce "gabby" history */
-   n_CMD_ARG_H = 1u<< 7,   /* Never place in `history' */
-   n_CMD_ARG_I = 1u<< 8,   /* Interactive command bit */
-   n_CMD_ARG_M = 1u<< 9,   /* Legal from send mode bit */
-   n_CMD_ARG_O = 1u<<10,   /* n_OBSOLETE()d command */
-   n_CMD_ARG_P = 1u<<11,   /* Autoprint dot after command */
-   n_CMD_ARG_R = 1u<<12,   /* Forbidden in compose mode recursion */
-   n_CMD_ARG_SC = 1u<<13,  /* Forbidden pre-n_PSO_STARTED_CONFIG */
-   n_CMD_ARG_S = 1u<<14,   /* Forbidden pre-n_PSO_STARTED (POSIX) */
-   n_CMD_ARG_T = 1u<<15,   /* Is a transparent command */
-   n_CMD_ARG_V = 1u<<16,   /* Supports `vput' prefix (only WYSH/WYRA) */
-   n_CMD_ARG_W = 1u<<17,   /* Invalid when read only bit */
-   n_CMD_ARG_X = 1u<<18,   /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
+   n_CMD_ARG_A = 1u<<4,    /* Needs an active mailbox */
+   n_CMD_ARG_F = 1u<<5,    /* Is a conditional command */
+   n_CMD_ARG_G = 1u<<6,    /* Is supposed to produce "gabby" history */
+   n_CMD_ARG_H = 1u<<7,    /* Never place in `history' */
+   n_CMD_ARG_I = 1u<<8,    /* Interactive command bit */
+   n_CMD_ARG_L = 1u<<9,    /* Supports `local' prefix (only WYSH/WYRA) */
+   n_CMD_ARG_M = 1u<<10,   /* Legal from send mode bit */
+   n_CMD_ARG_O = 1u<<11,   /* n_OBSOLETE()d command */
+   n_CMD_ARG_P = 1u<<12,   /* Autoprint dot after command */
+   n_CMD_ARG_R = 1u<<13,   /* Forbidden in compose mode recursion */
+   n_CMD_ARG_SC = 1u<<14,  /* Forbidden pre-n_PSO_STARTED_CONFIG */
+   n_CMD_ARG_S = 1u<<15,   /* Forbidden pre-n_PSO_STARTED (POSIX) */
+   n_CMD_ARG_T = 1u<<16,   /* Is a transparent command */
+   n_CMD_ARG_V = 1u<<17,   /* Supports `vput' prefix (only WYSH/WYRA) */
+   n_CMD_ARG_W = 1u<<18,   /* Invalid when read only bit */
+   n_CMD_ARG_X = 1u<<19,   /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
    /* XXX Note that CMD_ARG_EM implies a _real_ return value for $! */
    n_CMD_ARG_EM = 1u<<30   /* If error: n_pstate_err_no (4 $! aka. ok_v___em) */
 };
@@ -1412,6 +1413,7 @@ do{\
    n_PS_PSTATE_PENDMASK = n_PS_SIGWINCH_PEND, /* pstate housekeeping needed */
 
    n_PS_ARGLIST_MASK = n_BITENUM_MASK(14, 16),
+   n_PS_ARGMOD_LOCAL = 1u<<14,         /* "local" modifier TODO struct CmdCtx */
    n_PS_ARGMOD_VPUT = 1u<<16,          /* "vput" modifier TODO struct CmdCtx */
    n_PS_MSGLIST_GABBY = 1u<<14,        /* getmsglist() saw something gabby */
    n_PS_MSGLIST_DIRECT = 1u<<15,       /* A msg was directly chosen by number */

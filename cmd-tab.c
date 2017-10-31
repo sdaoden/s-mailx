@@ -149,6 +149,8 @@ a_ctab_cmdinfo(struct n_cmd_desc const *cdp){
    if(cp != NULL)
       rv = n_string_push_cp(rv, V_(cp));
 
+   if(cdp->cd_caflags & n_CMD_ARG_L)
+      rv = n_string_push_cp(rv, _(" | local modifier"));
    if(cdp->cd_caflags & n_CMD_ARG_V)
       rv = n_string_push_cp(rv, _(" | vput modifier"));
    if(cdp->cd_caflags & n_CMD_ARG_EM)
