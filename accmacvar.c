@@ -6,8 +6,6 @@
  *@ - update the manual!
  *@ TODO . Improve support for chains so that we can apply the property checks
  *@ TODO   of the base variable to -HOST and -USER@HOST variants!  Add some!!
- *@ TODO . once we can have non-fatal !0 returns for commands, we should
- *@ TODO   return error if "(environ)? unset" goes for non-existent.
  *@ TODO . should be recursive environment based.
  *@ TODO   Otherwise, the `localopts' should be an attribute of the go.c
  *@ TODO   command context, so that it belongs to the execution context
@@ -1775,12 +1773,16 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp, bool_t force_env){
          memcpy(avp->av_name, avcp->avc_name, l);
 
          if(force_env || (avmp != NULL && (avmp->avm_flags & a_AMV_VF_ENV)))
-            goto jforce_env;
+            a_amv_var__clearenv(avcp->avc_name, NULL);
       }else if(force_env){
 jforce_env:
-         rv = a_amv_var__clearenv(avcp->avc_name, NULL);
-      }else if(!(n_pstate & (n_PS_ROOT | n_PS_ROBOT)) && (n_poption & n_PO_D_V))
-         n_err(_("Cannot unset undefined variable: %s\n"), avcp->avc_name);
+         if(!(rv = a_amv_var__clearenv(avcp->avc_name, NULL)))
+            goto jerr_env_unset;
+      }else{
+jerr_env_unset:
+         if(!(n_pstate & (n_PS_ROOT | n_PS_ROBOT)) && (n_poption & n_PO_D_V))
+            n_err(_("Cannot unset undefined variable: %s\n"), avcp->avc_name);
+      }
       goto jleave;
    }else if((avp = avcp->avc_var) == (struct a_amv_var*)-1){
       /* Clearance request from command line, via -S?  As above.. */
@@ -1853,21 +1855,16 @@ jleave:
 
 static bool_t
 a_amv_var__clearenv(char const *name, struct a_amv_var *avp){
-#ifndef HAVE_SETENV
    extern char **environ;
    char **ecpp;
-#endif
    bool_t rv;
    NYD2_ENTER;
-
-#ifdef HAVE_SETENV
    n_UNUSED(avp);
-   unsetenv(name);
-   rv = TRU1;
-#else
+
    rv = FAL0;
    ecpp = environ;
 
+#ifndef HAVE_SETENV
    if(avp != NULL && avp->av_env != NULL){
       for(; *ecpp != NULL; ++ecpp)
          if(*ecpp == avp->av_env){
@@ -1879,21 +1876,26 @@ a_amv_var__clearenv(char const *name, struct a_amv_var *avp){
             rv = TRU1;
             break;
          }
-   }else{
+   }else
+#endif
+   {
       size_t l;
 
       if((l = strlen(name)) > 0){
          for(; *ecpp != NULL; ++ecpp)
             if(!strncmp(*ecpp, name, l) && (*ecpp)[l] == '='){
+#ifdef HAVE_SETENV
+               unsetenv(name);
+#else
                do
                   ecpp[0] = ecpp[1];
                while(*ecpp++ != NULL);
+#endif
                rv = TRU1;
                break;
             }
       }
    }
-#endif /* HAVE_SETENV */
    NYD2_LEAVE;
    return rv;
 }
