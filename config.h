@@ -64,7 +64,7 @@
 #define n_MEMORY_POOL_TYPE_SIZEOF (7 * sizeof(void*))
 
 /* Default *mime-encoding* as enum mime_enc */
-#define MIME_DEFAULT_ENCODING MIMEE_B64
+#define MIME_DEFAULT_ENCODING MIMEE_8B
 
 /* Maximum allowed line length in a mail before QP folding is necessary), and
  * the real limit we go for */
