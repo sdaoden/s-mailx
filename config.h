@@ -181,11 +181,17 @@
 # define _CLOEXEC_SET(FD) n_fd_cloexec_set(FD)
 #endif
 
+#ifdef O_NOCTTY
+# define n_O_NOCTTY O_NOCTTY
+#else
+# define n_O_NOCTTY 0
+#endif
 #ifdef O_NOFOLLOW
 # define n_O_NOFOLLOW O_NOFOLLOW
 #else
 # define n_O_NOFOLLOW 0
 #endif
+#define n_O_NOXY_BITS (n_O_NOCTTY | n_O_NOFOLLOW)
 
 #ifdef NSIG_MAX
 # undef NSIG

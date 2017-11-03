@@ -255,7 +255,7 @@ edstop(void) /* TODO oh my god */
 #else
       int fd;
 
-      if((fd = open(mailname, (O_WRONLY | O_CREAT | n_O_NOFOLLOW | O_TRUNC),
+      if((fd = open(mailname, (O_WRONLY | O_CREAT | n_O_NOXY_BITS | O_TRUNC),
             0600)) != -1)
          close(fd);
 #endif
@@ -452,8 +452,8 @@ jcream:
 #else
       int fd;
 
-      if((fd = open(mailname, (O_WRONLY | O_CREAT | n_O_NOFOLLOW | O_TRUNC),
-               0600)) != -1)
+      if((fd = open(mailname, (O_WRONLY | O_CREAT | n_O_NOXY_BITS | O_TRUNC),
+            0600)) != -1)
          close(fd);
 #endif
       if(!ok_blook(keep))
@@ -545,8 +545,8 @@ makembox(void) /* TODO oh my god */
       }
       Fclose(obuf);
 
-      if ((c = open(mbox, (O_WRONLY | O_CREAT | n_O_NOFOLLOW | O_TRUNC), 0666)
-            ) != -1)
+      if ((c = open(mbox, (O_WRONLY | O_CREAT | n_O_NOXY_BITS | O_TRUNC),
+            0666)) != -1)
          close(c);
       if ((obuf = n_fopen_any(mbox, "r+", &fs)) == NULL) {
          n_perr(mbox, 0);

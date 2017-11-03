@@ -113,10 +113,10 @@ a_popen_scan_mode(char const *mode, int *omode){
       int omode;
    } const maps[] = {
       {"r", O_RDONLY},
-      {"w", O_WRONLY | O_CREAT | n_O_NOFOLLOW | O_TRUNC},
+      {"w", O_WRONLY | O_CREAT | n_O_NOXY_BITS | O_TRUNC},
       {"wx", O_WRONLY | O_CREAT | O_EXCL},
-      {"a", O_WRONLY | O_APPEND | O_CREAT | n_O_NOFOLLOW},
-      {"a+", O_RDWR | O_APPEND | O_CREAT | n_O_NOFOLLOW},
+      {"a", O_WRONLY | O_APPEND | O_CREAT | n_O_NOXY_BITS},
+      {"a+", O_RDWR | O_APPEND | O_CREAT | n_O_NOXY_BITS},
       {"r+", O_RDWR},
       {"w+", O_RDWR | O_CREAT | O_EXCL}
    };
@@ -204,7 +204,7 @@ _file_save(struct fp *fpp)
 
    outfd = open(fpp->realfile,
          ((fpp->omode | O_CREAT | (fpp->omode & O_APPEND ? 0 : O_TRUNC) |
-            n_O_NOFOLLOW) & ~O_EXCL), 0666);
+            n_O_NOXY_BITS) & ~O_EXCL), 0666);
    if (outfd == -1) {
       outfd = n_err_no;
       n_err(_("Fatal: cannot create %s: %s\n"),
@@ -572,7 +572,7 @@ n_fopen_any(char const *file, char const *oflags, /* TODO should take flags */
 #ifdef HAVE_IMAP
       file = csave;
       flags |= FP_IMAP;
-      osflags = O_RDWR | O_APPEND | O_CREAT | n_O_NOFOLLOW;
+      osflags = O_RDWR | O_APPEND | O_CREAT | n_O_NOXY_BITS;
       infd = -1;
       break;
 #else
@@ -583,7 +583,7 @@ n_fopen_any(char const *file, char const *oflags, /* TODO should take flags */
       if(fs_or_null != NULL && !access(file, F_OK))
          fs |= n_FOPEN_STATE_EXISTS;
       flags |= FP_MAILDIR;
-      osflags = O_RDWR | O_APPEND | O_CREAT | n_O_NOFOLLOW;
+      osflags = O_RDWR | O_APPEND | O_CREAT | n_O_NOXY_BITS;
       infd = -1;
       break;
    case n_PROTO_FILE:{
