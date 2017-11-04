@@ -9536,7 +9536,6 @@ unchanged, but may cause problems when transferring mail messages over
 channels that are not ESMTP (RFC 1869) compliant.
 Also, several input data constructs are not allowed by the
 specifications and may cause a different transfer-encoding to be used.
-It is the default encoding.
 .It Ql quoted-printable
 .Pf (Or\0 Ql qp . )
 Quoted-printable encoding is 7-bit clean and has the property that ASCII
@@ -9546,6 +9545,7 @@ share many characters with ASCII, like, e.g., ISO-8859-1.
 The encoding will cause a large overhead for messages in other character
 sets: e.g., it will require up to twelve (12) bytes to encode a single
 UTF-8 character of four (4) bytes.
+It is the default encoding.
 .It Ql base64
 .Pf (Or\0 Ql b64 . )
 This encoding is 7-bit clean and will always be used for binary data.
