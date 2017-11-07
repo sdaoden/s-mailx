@@ -2826,7 +2826,9 @@ followed by
 .Pf ( Cd mle-snarf-line ) .
 .
 .It Ql \ecV
-Prompts for a Unicode character (its hexadecimal number) to be inserted
+Prompts for a Unicode character (hexadecimal number without prefix, see
+.Ic vexpr )
+to be inserted
 .Mx
 .Pf ( Cd mle-prompt-char ) .
 Note this command needs to be assigned to a single-letter control code
@@ -3527,12 +3529,13 @@ A 0 byte will suppress further output for the quoted argument.
 .It Ql \exHH
 eight-bit byte with the hexadecimal value
 .Ql HH
-(one or two hexadecimal characters).
+(one or two hexadecimal characters, no prefix, see
+.Ic vexpr ) .
 A 0 byte will suppress further output for the quoted argument.
 .It Ql \eUHHHHHHHH
 the Unicode / ISO-10646 character with the hexadecimal codepoint value
 .Ql HHHHHHHH
-(one to eight hexadecimal digits) \(em note that Unicode defines the
+(one to eight hexadecimal characters) \(em note that Unicode defines the
 maximum codepoint ever to be supported as
 .Ql 0x10FFFF
 (in planes of
@@ -3547,7 +3550,7 @@ The character NUL will suppress further output for the quoted argument.
 .It Ql \euHHHH
 Identical to
 .Ql \eUHHHHHHHH
-except it takes only one to four hexadecimal digits.
+except it takes only one to four hexadecimal characters.
 .It Ql \ecX
 Emits the non-printable (ASCII and compatible) C0 control codes
 0 (NUL) to 31 (US), and 127 (DEL).
@@ -6911,6 +6914,24 @@ as the numeric error
 .
 .Pp
 Numeric operations work on one or two signed 64-bit integers.
+Numbers prefixed with
+.Ql 0x
+or
+.Ql 0X
+are interpreted as hexadecimal (base 16) numbers, whereas
+.Ql 0
+indicates octal (base 8), and
+.Ql 0b
+as well as
+.Ql 0B
+denote binary (base 2) numbers.
+It is possible to use any base in between 2 and 36, inclusive, with the
+.Ql BASE#number
+notation, e.g.,
+.Ql 16#AFFE
+is a different way of specifying a hexadecimal number.
+.
+.Pp
 One integer is expected by assignment (equals sign
 .Ql = ) ,
 which does nothing but parsing the argument, thus detecting validity and
@@ -7927,9 +7948,16 @@ documents the supported quoting rules.
 .Ed
 .
 .Pp
-Dependent upon the actual option the string values will be interpreted
-as numbers, colour names, normal text etc., but there also exists
-a special kind of string value, the
+Dependent upon the actual option string values may become interpreted as
+colour names, command specifications, normal text, etc.
+They may be treated as numbers, in which case decimal values are
+expected if so documented, but otherwise any numeric format and
+base that is valid and understood by the
+.Ic vexpr
+command may be used, too.
+.
+.Pp
+There also exists a special kind of string value, the
 .Dq boolean string ,
 which must either be a decimal integer (in which case
 .Ql 0

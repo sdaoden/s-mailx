@@ -628,8 +628,30 @@ n_idec_buf(void *resp, char const *cbuf, uiz_t clen, ui8_t base,
 
    /* Base detection/skip */
    if(*cbuf != '0'){
-      if(base == 0)
+      if(base == 0){
          base = 10;
+
+         /* Support BASE#number prefix, where BASE is decimal 2-36 */
+         if(clen > 1){
+            char c1, c2;
+
+            if(((c1 = cbuf[0]) >= '0' && c1 <= '9') &&
+                  (((c2 = cbuf[1]) == '#') ||
+                   (c2 >= '0' && c2 <= '9' && clen > 2 && cbuf[2] == '#'))){
+               base = a_aux_idec_atoi[(ui8_t)c1];
+               if(c2 == '#')
+                  clen -= 2, cbuf += 2;
+               else{
+                  clen -= 3, cbuf += 3;
+                  base *= 10;
+                  base += a_aux_idec_atoi[(ui8_t)c2];
+               }
+               if(base < 2 || base > 36)
+                  goto jeinval;
+            }
+         }
+      }
+
       /* Character must be valid for base */
       currc = a_aux_idec_atoi[(ui8_t)*cbuf];
       if(currc >= base)
@@ -661,10 +683,8 @@ n_idec_buf(void *resp, char const *cbuf, uiz_t clen, ui8_t base,
                 * a "0" result with a "STATE_BASE" error and a rest of "x" */
 jprefix_skip:
 #if 1
-               if(clen > 1 && a_aux_idec_atoi[(ui8_t)cbuf[1]] < base){
-                  --clen;
-                  ++cbuf;
-               }
+               if(clen > 1 && a_aux_idec_atoi[(ui8_t)cbuf[1]] < base)
+                  --clen, ++cbuf;
 #else
                if(*++cbuf == '\0' || --clen == 0)
                   goto jeinval;
@@ -799,7 +819,7 @@ jeover:
 j_maxval:
    if(rv & n_IDEC_MODE_SIGNED_TYPE)
       res = (rv & n_IDEC_STATE_SEEN_MINUS) ? (ui64_t)SI64_MIN
-         : (ui64_t)SI64_MAX;
+            : (ui64_t)SI64_MAX;
    else
       res = UI64_MAX;
    rv &= ~n_IDEC_STATE_SEEN_MINUS;
