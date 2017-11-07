@@ -1369,7 +1369,7 @@ jqpb64_enc:
       }
       col = 0;
       sz = mime_write_tohdr_a(&in, f, &col);
-   }  break;
+      }break;
    default:
       sz = _fwrite_td(&in, TRU1, dflags, NULL, qf);
       break;

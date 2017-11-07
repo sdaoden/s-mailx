@@ -458,7 +458,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
             slp->sl_dat[j += i] = '\0';
             slp->sl_len = j;
          }
-      }  break;
+         }break;
       case FNM_NOMATCH:
          break;
       default:

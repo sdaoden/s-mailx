@@ -611,7 +611,7 @@ n_fopen_any(char const *file, char const *oflags, /* TODO should take flags */
             fs |= n_FOPEN_STATE_EXISTS;
          goto jleave;
       }
-   }  break;
+      }break;
    }
 
    /* Note rv is not yet register_file()d, fclose() it in error path! */

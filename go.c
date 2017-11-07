@@ -703,7 +703,7 @@ jemsglist:
       rv = (*cdp->cd_func)(&cac);
       if(a_go_xcall != NULL)
          goto jret0;
-   }  break;
+      }break;
 
    default:
       DBG( n_panic(_("Implementation error: unknown argument type: %d"),

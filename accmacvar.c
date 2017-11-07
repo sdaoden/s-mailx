@@ -931,7 +931,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
                *x++ = c;
          *x = '\0';
          n_PS_ROOT_BLOCK(ok_vset(ifs_ws, x_b));
-      }  break;
+         }break;
 #ifdef HAVE_SETLOCALE
       case ok_v_LANG:
       case ok_v_LC_ALL:
@@ -1537,7 +1537,7 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
 
       rv = cp = n_autorec_alloc(sizeof("65535"));
       snprintf(cp, sizeof("65535"), "%hu", argc);
-   }  break;
+      }break;
    default:
       rv = n_empty;
       break;

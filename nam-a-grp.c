@@ -661,7 +661,7 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
 
       for(cp = ngp->ng_id; (c = *cp) != '\0'; ++cp)
          *cp = lowerconv(c);
-   }  break;
+      }break;
    default:
       break;
    }
@@ -954,7 +954,7 @@ a_nag_group_print(struct a_nag_group const *ngp, FILE *fo,
          /*vputsp =*/ n_string_push_cp(vputsp, ngp->ng_id);
       }
       rv = 0;
-   }  break;
+      }break;
    case a_NAG_T_COMMANDALIAS:{
       struct a_nag_cmd_alias *ncap;
 
@@ -963,7 +963,7 @@ a_nag_group_print(struct a_nag_group const *ngp, FILE *fo,
       fprintf(fo, "commandalias %s %s\n",
          n_shexp_quote_cp(ngp->ng_id, TRU1),
          n_shexp_quote_cp(ncap->nca_expand.s, TRU1));
-   }  break;
+      }break;
    case a_NAG_T_ALIAS:{
       struct a_nag_grp_names_head *ngnhp;
       struct a_nag_grp_names *ngnp;
@@ -982,7 +982,7 @@ a_nag_group_print(struct a_nag_group const *ngp, FILE *fo,
          }while(ngnp != NULL);
       }
       putc('\n', fo);
-   }  break;
+      }break;
    case a_NAG_T_MLIST:
       assert(fo != NULL); /* xxx no vput yet */
 #ifdef HAVE_REGEX
@@ -1025,7 +1025,7 @@ a_nag_group_print(struct a_nag_group const *ngp, FILE *fo,
          n_shexp_quote_cp(ngp->ng_id, TRU1),
          n_shexp_quote_cp(nftp->nft_load.s, TRU1),
          n_shexp_quote_cp(nftp->nft_save.s, TRU1));
-   }  break;
+      }break;
    }
    NYD2_LEAVE;
    return rv;

@@ -476,7 +476,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
          tep->te_off = (ui16_t)n_MIN(UI16_MAX, r);
       else
          tep->te_flags |= a_TERMCAP_F_NOENT;
-   }  break;
+      }break;
    default:
    case n_TERMCAP_CAPTYPE_STRING:{
       char *cp;
@@ -487,7 +487,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
          n_string_push_buf(&a_termcap_g->tg_dat, cp, strlen(cp) +1);
       }else
          tep->te_flags |= a_TERMCAP_F_NOENT;
-   }  break;
+      }break;
    }
    NYD2_LEAVE;
    return rv;
@@ -541,7 +541,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
          tep->te_off = (ui16_t)n_MIN(UI16_MAX, r);
       else
          tep->te_flags |= a_TERMCAP_F_NOENT;
-   }  break;
+      }break;
    default:
    case n_TERMCAP_CAPTYPE_STRING:{
 # ifndef HAVE_TGETENT_NULL_BUF
@@ -558,7 +558,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
 # undef a_BUF
       }else
          tep->te_flags |= a_TERMCAP_F_NOENT;
-   }  break;
+      }break;
    }
    NYD2_LEAVE;
    return rv;

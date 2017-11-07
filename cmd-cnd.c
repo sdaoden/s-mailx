@@ -303,7 +303,7 @@ jesyn:
          case '>': rv = (op[1] == '\0') ? scmp > 0 : scmp >= 0; break;
          }
       }
-   }  break;
+      }break;
    }
 
    if(noop && rv < 0)

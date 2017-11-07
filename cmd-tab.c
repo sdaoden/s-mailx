@@ -144,7 +144,7 @@ a_ctab_cmdinfo(struct n_cmd_desc const *cdp){
             rv = n_string_push_c(rv, ']');
       }
       cp = NULL;
-   }  break;
+      }break;
    }
    if(cp != NULL)
       rv = n_string_push_cp(rv, V_(cp));
@@ -457,7 +457,7 @@ jredo:
          shin.s = cp;
          shin.l = i;
          addca = TRU1;
-      }  break;
+         }break;
       default:
       case n_CMD_ARG_DESC_WYSH:{
          struct n_string shou, *shoup;
@@ -496,7 +496,7 @@ jredo:
             addca = TRUM1;
          }else
             addca = TRU1;
-      }  break;
+         }break;
       }
       ++parsed_args;
 

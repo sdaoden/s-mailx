@@ -704,7 +704,7 @@ main(int argc, char *argv[]){
          nap->aa_next = NULL;
          nap->aa_file = a_main_oarg;
          a_curr = nap;
-      }  break;
+         }break;
       case 'B':
          n_OBSOLETE(_("-B is obsolete, please use -# as necessary"));
          break;

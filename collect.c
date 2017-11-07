@@ -1542,7 +1542,7 @@ jatt_ins:
          for(i = 0; ap != NULL; ++i, ap = ap->a_blink)
             ;
          fprintf(n_stdout, "210 %" PRIuZ "\n", i);
-      }  break;
+         }break;
       }
       goto jleave;
    }
@@ -2222,7 +2222,7 @@ jearg:
                   n_GO_INPUT_CTX_COMPOSE);
          n_pstate_err_no = n_ERR_NONE; /* XXX ~@ does NOT handle $!/$?! */
          n_pstate_ex_no = 0; /* XXX */
-      }  break;
+         }break;
       case '^':
          if(!a_collect_plumbing(cp, hp)){
             if(ferror(_coll_fp))

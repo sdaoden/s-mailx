@@ -2526,7 +2526,7 @@ a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, size_t *len){
 # else
       tlp->tl_vi_flags |= a_TTY_VF_BELL;
 # endif
-   }  break;
+      }break;
 
    case a_X(REPAINT):
       tlp->tl_vi_flags |= a_TTY_VF_MOD_DIRTY;
@@ -2539,7 +2539,7 @@ a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, size_t *len){
 
       if((wc = a_tty_vinuni(tlp)) > 0)
          a_tty_kother(tlp, wc);
-   }  break;
+      }break;
    case a_X(COMPLETE):
       if((*len = a_tty_kht(tlp)) > 0)
          rv = a_TTY_FUN_STATUS_RESTART;
