@@ -12176,14 +12176,15 @@ A default shell is used if this environment variable is not defined.
 .
 .Mx
 .It Ev SOURCE_DATE_EPOCH
-This specifies a time in seconds since the Unix epoch (1970-01-01) to be
+Specifies a time in seconds since the Unix epoch (1970-01-01) to be
 used in place of the current time.
 This variable is looked up upon program startup, and its existence will
-switch \*(UA to a completely reproducible mode which causes
-deterministic random numbers, a special fixed (non-existent?)
+switch \*(UA to a reproducable mode
+.Pf ( Lk https://reproducible-builds.org )
+which uses deterministic random numbers, a special fixated pseudo
 .Ev LOGNAME
-and more to be used and set.
-It is to be used during development or by software packagers.
+and more.
+This operation mode is used for development and by software packagers.
 \*(ID Currently an invalid setting is only ignored, rather than causing
 a program abortion.
 .Pp

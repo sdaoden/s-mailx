@@ -377,11 +377,11 @@ a_main_setup_vars(void){
    char const *cp;
    NYD2_ENTER;
 
+   /* Detect, verify and fixate our invoking user (environment) */
    n_group_id = getgid();
    if((pwuid = getpwuid(n_user_id = getuid())) == NULL)
       n_panic(_("Cannot associate a name with uid %lu"), (ul_i)n_user_id);
-
-   /* C99 */{
+   else{
       char const *ep;
       bool_t doenv;
 
@@ -395,6 +395,7 @@ a_main_setup_vars(void){
          n_pstate &= ~n_PS_ROOT;
       }
 
+      /* BSD compat */
       if((ep = ok_vlook(USER)) != NULL && strcmp(pwuid->pw_name, ep)){
          n_err(_("Warning: $USER (%s) not identical to user (%s)!\n"),
             ep, pwuid->pw_name);
@@ -402,29 +403,36 @@ a_main_setup_vars(void){
          ok_vset(USER, pwuid->pw_name);
          n_pstate &= ~n_PS_ROOT;
       }
+
+      /* XXX myfullname = pw->pw_gecos[OPTIONAL!] -> GUT THAT; TODO pw_shell */
    }
 
-   /* XXX myfullname = pw->pw_gecos[OPTIONAL!] -> GUT THAT; TODO pw_shell */
-
-   /* Ensure some variables get loaded and/or verified */
+   /* Ensure some variables get loaded and/or verified.
+    * While doing so, take special care for invocations as root */
 
    /* This is not automatized just as $TMPDIR is for the initial setting, since
     * we have the pwuid at hand and can simply use it!  See accmacvar.c! */
-   if((cp = ok_vlook(HOME)) == NULL){
+   if(n_user_id == 0 || (cp = ok_vlook(HOME)) == NULL){
       cp = pwuid->pw_dir;
       n_pstate |= n_PS_ROOT;
       ok_vset(HOME, cp);
       n_pstate &= ~n_PS_ROOT;
    }
 
-   (void)ok_vlook(TMPDIR);
+   /* Do not honour TMPDIR if root */
+   if(n_user_id == 0)
+      ok_vset(TMPDIR, NULL);
+   else
+      (void)ok_vlook(TMPDIR);
 
-   /* Are we in a reproducible-builds.org environment? */
+   /* Are we in a reproducible-builds.org environment?
+    * That special mode bends some settings (again) */
    if(ok_vlook(SOURCE_DATE_EPOCH) != NULL){
       n_psonce |= n_PSO_REPRODUCIBLE;
       n_pstate |= n_PS_ROOT;
       n_progname = n_reproducible_name;
       ok_vset(LOGNAME, n_reproducible_name);
+      /* Do not care about USER at all in this special mode! */
       n_pstate &= ~n_PS_ROOT;
       cp = savecat(n_reproducible_name, ": ");
       ok_vset(log_prefix, cp);
