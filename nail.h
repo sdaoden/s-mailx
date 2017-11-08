@@ -1131,9 +1131,9 @@ enum n_shexp_state{
    n_SHEXP_STATE_ERR_CONTROL = 1u<<16,    /* \c notation with invalid arg. */
    n_SHEXP_STATE_ERR_UNICODE = 1u<<17,    /* Valid \[Uu] and !n_PSO_UNICODE */
    n_SHEXP_STATE_ERR_NUMBER = 1u<<18,     /* Bad number (\[UuXx]) */
-   n_SHEXP_STATE_ERR_BRACE = 1u<<19,      /* _QUOTEOPEN + no } brace 4 ${VAR */
-   n_SHEXP_STATE_ERR_IDENTIFIER = 1u<<20, /* Invalid identifier */
-   n_SHEXP_STATE_ERR_BADSUB = 1u<<21,     /* Empty/bad ${} substitution */
+   n_SHEXP_STATE_ERR_IDENTIFIER = 1u<<19, /* Invalid identifier */
+   n_SHEXP_STATE_ERR_BADSUB = 1u<<20,     /* Empty/bad ${}/[] substitution */
+   n_SHEXP_STATE_ERR_GROUPOPEN = 1u<<21,  /* _QUOTEOPEN + no }/]/)/ 4 ${/[/( */
    n_SHEXP_STATE_ERR_QUOTEOPEN = 1u<<22,  /* Quote remains open at EOS */
 
    n_SHEXP_STATE_ERR_MASK = n_BITENUM_MASK(16, 22)
