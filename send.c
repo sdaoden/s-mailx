@@ -1332,7 +1332,7 @@ jgetname:
       /* Be very picky in non-interactive mode: actively disallow pipes,
        * prevent directory separators, and any filename member that would
        * become expanded by the shell if the name would be echo(1)ed */
-      if(anyof(f, "/" n_SHEXP_MAGIC_PATH_CHARS)){
+      if(n_anyof_cp("/" n_SHEXP_MAGIC_PATH_CHARS, f)){
          char c;
 
          for(out.s = salloc((strlen(f) * 3) +1), out.l = 0; (c = *f++) != '\0';)

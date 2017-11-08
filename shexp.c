@@ -951,7 +951,7 @@ jnext:
    /* Do some meta expansions */
    if((fexpm & (FEXP_NSHELL | FEXP_NVAR)) != FEXP_NVAR &&
          ((fexpm & FEXP_NSHELL) ? (strchr(res, '$') != NULL)
-          : anyof(res, "{}[]*?$"))){
+          : n_anyof_cp("{}[]*?$", res))){
       bool_t doexp;
 
       if(fexpm & FEXP_NOPROTO)
