@@ -1504,8 +1504,14 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
    }
 
    switch(avcp->avc_special_prop){ /* XXX OPTIMIZE */
-   case a_AMV_VST_STAR:
+   case a_AMV_VST_STAR:{
+      char sep;
+
+      sep = *ok_vlook(ifs);
+      if(0){
    case a_AMV_VST_AT:
+         sep = ' ';
+      }
       for(i = j = 0; i < argc; ++i)
          j += strlen(argv[i]) + 1;
       if(j == 0)
@@ -1518,11 +1524,14 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
             j = strlen(argv[i]);
             memcpy(cp, argv[i], j);
             cp += j;
-            *cp++ = ' ';
+            if(sep != '\0')
+               *cp++ = sep;
          }
-         *--cp = '\0';
+         if(sep != '\0')
+            --cp;
+         *cp = '\0';
       }
-      break;
+      }break;
    case a_AMV_VST_NOSIGN:{
       char *cp;
 
