@@ -170,7 +170,8 @@ a_crese_mail_followup_to(struct message *mp){
       l = strlen(tr) + strlen(mft->n_name) + 3 +1;
       sp = n_lofi_alloc(l);
 
-      snprintf(sp, l, tr, mft->n_name, (mft->n_flink != NULL ? "..." : n_empty));
+      snprintf(sp, l, tr, mft->n_name,
+         (mft->n_flink != NULL ? "..." : n_empty));
       if(quadify(cp, UIZ_MAX, sp, TRU1) <= FAL0)
          mft = NULL;
 

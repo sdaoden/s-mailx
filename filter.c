@@ -805,11 +805,12 @@ _hf_store(struct htmlflt *self, char c)
 
    i = l;
 # ifdef HAVE_NATCH_CHAR /* XXX This code is really ridiculous! */
-   if (n_mb_cur_max > 1) { /* XXX should mbrtowc() and THEN store, at least.. */
+   if (n_mb_cur_max > 1) { /* XXX should mbrtowc() and THEN store, at least */
       wchar_t wc;
-      int w, x = mbtowc(&wc, self->hf_line + self->hf_mboff, l - self->hf_mboff);
+      int w, x;
 
-      if (x > 0) {
+      if((x = mbtowc(&wc, self->hf_line + self->hf_mboff, l - self->hf_mboff)
+            ) > 0){
          if ((w = wcwidth(wc)) == -1 ||
                /* Actively filter out L-TO-R and R-TO-R marks TODO ctext */
                (wc == 0x200E || wc == 0x200F ||

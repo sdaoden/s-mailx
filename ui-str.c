@@ -336,7 +336,7 @@ makeprint(struct str const *in, struct str *out)
             else
                wc = isuni ? 0x2426 : '?';
          }else if(isuni){ /* TODO ctext */
-            /* We need to actively filter out L-TO-R and R-TO-R marks TODO ctext */
+            /* Need to filter out L-TO-R and R-TO-R marks TODO ctext */
             if(wc == 0x200E || wc == 0x200F || (wc >= 0x202A && wc <= 0x202E))
                continue;
             /* And some zero-width messes */

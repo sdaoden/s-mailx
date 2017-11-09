@@ -48,7 +48,8 @@ static char *     _fgetline_byone(char **line, size_t *linesize, size_t *llen,
                      FILE *fp, int appendnl, size_t n n_MEMORY_DEBUG_ARGS);
 
 /* Workhorse */
-static bool_t a_file_lock(int fd, enum n_file_lock_type ft, off_t off, off_t len);
+static bool_t a_file_lock(int fd, enum n_file_lock_type ft, off_t off,
+               off_t len);
 
 static size_t
 _length_of_line(char const *line, size_t linesize)

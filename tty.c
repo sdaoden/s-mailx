@@ -4433,7 +4433,8 @@ FL int
    a_tty_sigs_up();
    n_TERMCAP_RESUME(FAL0);
 # endif
-   rv = (readline_restart)(n_stdin, linebuf, linesize,n n_MEMORY_DEBUG_ARGSCALL);
+   rv = (readline_restart)(n_stdin, linebuf, linesize, n
+         n_MEMORY_DEBUG_ARGSCALL);
 # ifdef HAVE_TERMCAP
    n_TERMCAP_SUSPEND(FAL0);
    a_tty_sigs_down();
