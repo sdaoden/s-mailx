@@ -106,11 +106,12 @@ FL char *
    char *dest;
    NYD_ENTER;
 
-   sz = strlen(src);
-   dest = (n_autorec_alloc_from_pool)(NULL, sz +1 n_MEMORY_DEBUG_ARGSCALL);
-   if(sz > 0)
+   sz = strlen(src) +1;
+   dest = (n_autorec_alloc_from_pool)(NULL, sz n_MEMORY_DEBUG_ARGSCALL);
+   if(sz > 1)
       i_strcpy(dest, src, sz);
-   dest[sz] = '\0';
+   else
+      dest[sz] = '\0';
    NYD_LEAVE;
    return dest;
 }
@@ -284,11 +285,11 @@ FL void
 i_strcpy(char *dest, char const *src, size_t size)
 {
    NYD2_ENTER;
-   if (size > 0) {
-      for (;; ++dest, ++src)
-         if ((*dest = lowerconv(*src)) == '\0') {
+   if(size > 0){
+      for(;; ++dest, ++src)
+         if((*dest = lowerconv(*src)) == '\0'){
             break;
-         } else if (--size == 0) {
+         }else if(--size == 0){
             *dest = '\0';
             break;
          }
