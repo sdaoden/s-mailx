@@ -89,7 +89,8 @@
 #define fieldnamechar(c) \
    (asciichar(c) && (c) > 040 && (c) != 0177 && (c) != ':')
 
-/* Could the string contain a regular expression? */
+/* Could the string contain a regular expression?
+ * NOTE: on change: manual contains several occurrences of this string! */
 #define n_is_maybe_regex(S) n_is_maybe_regex_buf(S, UIZ_MAX)
 #define n_is_maybe_regex_buf(D,L) n_anyof_buf("^[]*+?|$", D, L)
 

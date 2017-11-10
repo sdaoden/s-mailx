@@ -1156,7 +1156,9 @@ the command
 will give a listing of all available commands and
 .Ic help
 will give a summary of some common ones.
-If the \*(OPal documentation strings are available one can type
+If the \*(OPal documentation strings are available (see
+.Va features )
+one can type
 .Ql help X
 .Pf "(or " Ql ?X )
 and see the actual expansion of
@@ -1351,7 +1353,9 @@ automatic moving of read messages to the
 .Mx -sx
 .Sx "secondary mailbox"
 .Ev MBOX
-as well as updating the \*(OPal line editor
+as well as updating the \*(OPal (see
+.Va features )
+line editor
 .Va history-file ,
 or use the command
 .Ic exit Ql x
@@ -1458,9 +1462,15 @@ can be used to mark out messages with configured list addresses
 in the header display.
 .
 .Pp
-\*(OPally mailing lists may also be specified as (extended) regular
-expressions, which allows matching of many addresses with a single
-expression.
+If the \*(OPal regular expression support is available a mailing list
+specification that contains any of the
+.Dq magical
+regular expression characters
+.Ql ^[]*+?|$
+(see
+.Xr re_format 7 )
+will be interpreted as one, which allows matching of many addresses with
+a single expression.
 However, all fully qualified list addresses are matched via a fast
 dictionary, whereas expressions are placed in (a) list(s) which is
 (are) matched sequentially.
@@ -2206,11 +2216,15 @@ Mark messages which need special attention.
 .\" .Ss "Specifying messages" {{{
 .Ss "Specifying messages"
 .
-Commands such as
-.Ic from ,
+Commands which take
+.Sx "Message list arguments" ,
+such as
+.Ic from
+a.k.a.\&
+.Ic search ,
 .Ic type
 and
-.Ic delete
+.Ic delete ,
 can be given a list of message numbers as arguments to apply to a number
 of messages at once.
 Thus
@@ -2338,16 +2352,14 @@ the string from the previous specification of that type is used again.
 .Xc
 All messages that contain the given case-insensitive search
 .Ar expr Ns
-ession; if the \*(OPal regular expression (see
-.Xr re_format 7 )
-support is available
+ession;  If the \*(OPal regular expression support is available
 .Ar expr
 will be interpreted as (an extended) one if any of the
 .Dq magical
-(extended) regular expression characters is seen: in this case this
-should match strings correctly which are in the locale
-.Ev LC_CTYPE
-encoding.
+regular expression characters
+.Ql ^[]*+?|$
+is seen (see
+.Xr re_format 7 ) .
 If the optional
 .Ar @ Ns Ar name-list
 part is missing, the search is restricted to the subject field body,
@@ -5693,10 +5705,15 @@ or
 are set.
 Otherwise all given arguments will be added and henceforth be recognized
 as mailing lists.
-If the \*(OPal regular expression support is available then mailing
-lists may also be specified as (extended) regular expressions (see
-.Xr re_format 7
-for more on those).
+If the \*(OPal regular expression support is available then any argument
+which contains any of the
+.Dq magical
+regular expression characters
+.Ql ^[]*+?|$
+(see
+.Xr re_format 7 )
+will be interpreted as one, which allows matching of many addresses with
+a single expression.
 The
 .Ic mlsubscribe
 pair of commands manages subscription attributes of mailing-lists.
@@ -8734,9 +8751,10 @@ or
 .
 .Mx
 .It Va features
-\*(RO String giving a list of optional features, preceded with a plus sign
+\*(RO String giving a list of optional features.
+Features are preceded with a plus sign
 .Ql +
-if it is available, and a hyphen-minus
+if they are available, with a hyphen-minus
 .Ql -
 otherwise.
 The output of the command
