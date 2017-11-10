@@ -256,7 +256,8 @@ a_message_markall(char const *buf, int f){
 #ifdef HAVE_IMAP
       a_HAVE_IMAP_HEADERS = 1u<<14,
 #endif
-      a_TMP = 1u<<15
+      a_LOG = 1u<<29,      /* Log errors */
+      a_TMP = 1u<<30
    } flags;
    NYD_ENTER;
    n_LCTA((ui32_t)a_ALLNET == (ui32_t)TRU1,
@@ -287,13 +288,15 @@ a_message_markall(char const *buf, int f){
    n_UNINIT(beg, 0);
    n_UNINIT(idfield, a_MESSAGE_ID_REFERENCES);
    a_message_threadflag = FAL0;
-   a_message_lexstr.s = ac_alloc(a_message_lexstr.l = 2 * strlen(buf) +1);
-   np = namelist = smalloc((nmlsize = 8) * sizeof *namelist); /* TODO vector */
+   a_message_lexstr.s = n_lofi_alloc(a_message_lexstr.l = 2 * strlen(buf) +1);
+   np = namelist = n_alloc((nmlsize = 8) * sizeof *namelist); /* TODO vector */
    bufp = buf;
    valdot = (int)PTR2SIZE(dot - message + 1);
    colmod = 0;
    id = NULL;
-   flags = a_ALLOC | (mb.mb_threaded ? a_THREADED : 0);
+   flags = a_ALLOC | (mb.mb_threaded ? a_THREADED : 0) |
+         ((!(n_pstate & n_PS_HOOK_MASK) || (n_poption & n_PO_D_V))
+            ? a_LOG : 0);
 
    while((tok = a_message_scan(&bufp)) != a_MESSAGE_T_EOL){
       if((a_message_threadflag = (tok < 0)))
@@ -445,7 +448,9 @@ jnumber__thr:
             while(*++cp != '\0'){
                colresult = a_message_evalcol(*cp);
                if(colresult == 0){
-                  n_err(_("Unknown colon modifier: %s\n"), a_message_lexstr.s);
+                  if(flags & a_LOG)
+                     n_err(_("Unknown colon modifier: %s\n"),
+                        a_message_lexstr.s);
                   goto jerr;
                }
                if(colresult == a_MESSAGE_S_DELETED){
@@ -473,8 +478,9 @@ jnumber__thr:
             }
          }
 #else
-         n_err(_("Optional selector is not available: %s\n"),
-            a_message_lexstr.s);
+         if(flags & a_LOG)
+            n_err(_("Optional selector is not available: %s\n"),
+               a_message_lexstr.s);
 #endif
          goto jerr;
       case a_MESSAGE_T_DOLLAR:
@@ -549,7 +555,7 @@ jnumber__thr:
                id = N_("Message-ID of parent of \"dot\" is indeterminable\n");
                goto jerrmsg;
             }
-         }else if(!(n_pstate & n_PS_HOOK) && (n_poption & n_PO_D_V))
+         }else if(flags & a_LOG)
             n_err(_("Ignoring redundant specification of , selector\n"));
          break;
       case a_MESSAGE_T_ERROR:
@@ -560,7 +566,7 @@ jnumber__thr:
 
       /* Explicitly disallow invalid ranges for future safety */
       if(bufp[0] == '-' && !(flags & a_RANGE)){
-         if(!(n_pstate & n_PS_HOOK))
+         if(flags & a_LOG)
             n_err(_("Ignoring invalid range before: %s\n"), bufp);
          ++bufp;
       }
@@ -590,22 +596,29 @@ jnumber__thr:
 
    /* If any names were given, add any messages which match */
    if(np > namelist || id != NULL){
-      struct search_expr *sep = NULL;
+      struct search_expr *sep;
+
+      sep = NULL;
 
       /* The @ search works with struct search_expr, so build an array.
        * To simplify array, i.e., regex_t destruction, and optimize for the
        * common case we walk the entire array even in case of errors */
+      /* XXX Like many other things around here: this should be outsourced */
       if(np > namelist){
-         sep = scalloc(PTR2SIZE(np - namelist), sizeof(*sep));
-         for(j = 0, nq = namelist; *nq != NULL; ++j, ++nq){
-            char *x, *y;
+         j = PTR2SIZE(np - namelist) * sizeof(*sep);
+         sep = n_lofi_alloc(j);
+         memset(sep, 0, j);
 
-            sep[j].ss_sexpr = x = *nq;
+         for(j = 0, nq = namelist; *nq != NULL; ++j, ++nq){
+            char *xsave, *x, *y;
+
+            sep[j].ss_body = x = xsave = *nq;
             if(*x != '@' || (flags & a_ERROR))
                continue;
 
+            /* Cramp the namelist */
             for(y = &x[1];; ++y){
-               if(*y == '\0' || !fieldnamechar(*y)){
+               if(*y == '\0'){
                   x = NULL;
                   break;
                }
@@ -614,32 +627,77 @@ jnumber__thr:
                   break;
                }
             }
-            sep[j].ss_where = (x == NULL || x - 1 == *nq)
-                  ? "subject" : savestrbuf(&(*nq)[1], PTR2SIZE(x - *nq) - 1);
+            if(x == NULL || &x[-1] == xsave)
+jat_where_default:
+               sep[j].ss_field = "subject";
+            else{
+               ++xsave;
+               if(*xsave == '~'){
+                  sep[j].ss_skin = TRU1;
+                  if(++xsave >= x){
+                     if(flags & a_LOG)
+                        n_err(_("[@..]@ search expression: no namelist, "
+                           "only \"~\" skin indicator\n"));
+                     flags |= a_ERROR;
+                     continue;
+                  }
+               }
+               cp = savestrbuf(xsave, PTR2SIZE(x - xsave));
 
-            x = (x == NULL ? *nq : x) + 1;
-            if(*x == '\0'){ /* XXX Simply remove from list instead? */
-               n_err(_("Empty [@..]@ search expression\n"));
-               flags |= a_ERROR;
-               continue;
-            }
+               /* Namelist could be a regular expression, too */
 #ifdef HAVE_REGEX
-            if(n_is_maybe_regex(x)){
+               if(n_is_maybe_regex(cp)){
+                  int s;
+
+                  assert(sep[j].ss_field == NULL);
+                  if((s = regcomp(&sep[j].ss__fieldre_buf, cp,
+                        REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
+                     if(flags & a_LOG)
+                        n_err(_("Invalid regular expression: %s: %s\n"),
+                           n_shexp_quote_cp(cp, FAL0),
+                           n_regex_err_to_doc(NULL, s));
+                     flags |= a_ERROR;
+                     continue;
+                  }
+                  sep[j].ss_fieldre = &sep[j].ss__fieldre_buf;
+               }else
+#endif
+                    {
+                  struct str sio;
+
+                  /* Because of the special cases we need to trim explicitly
+                   * here, they are not covered by n_strsep() */
+                  sio.s = cp;
+                  sio.l = PTR2SIZE(x - xsave);
+                  if(*(cp = n_str_trim(&sio, n_STR_TRIM_BOTH)->s) == '\0')
+                     goto jat_where_default;
+                  sep[j].ss_field = cp;
+               }
+            }
+
+            /* The actual search expression.  If it is empty we only test the
+             * field(s) for existence  */
+            x = &(x == NULL ? *nq : x)[1];
+            if(*x == '\0'){
+               sep[j].ss_field_exists = TRU1;
+#ifdef HAVE_REGEX
+            }else if(n_is_maybe_regex(x)){
                int s;
 
-               sep[j].ss_sexpr = NULL;
-               if((s = regcomp(&sep[j].ss_regex, x,
+               sep[j].ss_body = NULL;
+               if((s = regcomp(&sep[j].ss__bodyre_buf, x,
                      REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
-                  if(!(n_pstate & n_PS_HOOK))
+                  if(flags & a_LOG)
                      n_err(_("Invalid regular expression: %s: %s\n"),
                         n_shexp_quote_cp(x, FAL0),
                         n_regex_err_to_doc(NULL, s));
                   flags |= a_ERROR;
                   continue;
                }
-            }else
+               sep[j].ss_bodyre = &sep[j].ss__bodyre_buf;
 #endif
-               sep[j].ss_sexpr = x;
+            }else
+               sep[j].ss_body = x;
          }
          if(flags & a_ERROR)
             goto jnamesearch_sepfree;
@@ -652,9 +710,9 @@ jnumber__thr:
             imap_getheaders(1, msgCount);
          }
 #endif
-      srelax_hold();
       if(ok_blook(allnet))
          flags |= a_ALLNET;
+      n_autorec_relax_create();
       for(i = 0; i < msgCount; ++i){
          if((mp = &message[i])->m_flag & (MMARK | MHIDDEN))
             continue;
@@ -665,7 +723,7 @@ jnumber__thr:
          if(np > namelist){
             for(nq = namelist; *nq != NULL; ++nq){
                if(**nq == '@'){
-                  if(a_message_match_at(mp, sep + PTR2SIZE(nq - namelist))){
+                  if(a_message_match_at(mp, &sep[PTR2SIZE(nq - namelist)])){
                      flags |= a_TMP;
                      break;
                   }
@@ -688,18 +746,21 @@ jnumber__thr:
             mark(i + 1, f);
             flags |= a_ANY;
          }
-         srelax();
+         n_autorec_relax_unroll();
       }
-      srelax_rele();
+      n_autorec_relax_gut();
 
 jnamesearch_sepfree:
       if(sep != NULL){
 #ifdef HAVE_REGEX
-         for(j = PTR2SIZE(np - namelist); j-- != 0;)
-            if(sep[j].ss_sexpr == NULL)
-               regfree(&sep[j].ss_regex);
+         for(j = PTR2SIZE(np - namelist); j-- != 0;){
+            if(sep[j].ss_fieldre != NULL)
+               regfree(sep[j].ss_fieldre);
+            if(sep[j].ss_bodyre != NULL)
+               regfree(sep[j].ss_bodyre);
+         }
 #endif
-         free(sep);
+         n_lofi_free(sep);
       }
       if(flags & a_ERROR)
          goto jerr;
@@ -752,8 +813,8 @@ jcolonmod_mark:
    assert(!(flags & a_ERROR));
 jleave:
    if(flags & a_ALLOC){
-      free(namelist);
-      ac_free(a_message_lexstr.s);
+      n_free(namelist);
+      n_lofi_free(a_message_lexstr.s);
    }
    NYD_LEAVE;
    return (flags & a_ERROR) ? -1 : 0;
@@ -764,7 +825,7 @@ jebadrange:
 jenoapp:
    id = N_("No applicable messages\n");
 jerrmsg:
-   if(!(n_pstate & n_PS_HOOK_MASK))
+   if(flags & a_LOG)
       n_err(V_(id));
 jerr:
    flags |= a_ERROR;
@@ -1091,89 +1152,28 @@ jleave:
 
 static bool_t
 a_message_match_at(struct message *mp, struct search_expr *sep){
-   struct str in, out;
-   char *nfield;
-   char const *cfield;
+   char const *field;
    bool_t rv;
    NYD2_ENTER;
 
-   rv = FAL0;
-   nfield = savestr(sep->ss_where);
-
-   while((cfield = n_strsep(&nfield, ',', TRU1)) != NULL){
-      if(!asccasecmp(cfield, "body") ||
-            (cfield[1] == '\0' && cfield[0] == '>')){
+   /* Namelist regex only matches headers.
+    * And there are the special cases header/<, "body"/> and "text"/=, the
+    * latter two of which need to be handled in here */
+   if((field = sep->ss_field) != NULL){
+      if(!asccasecmp(field, "body") || (field[1] == '\0' && field[0] == '>')){
          rv = FAL0;
 jmsg:
-         if((rv = message_match(mp, sep, rv)))
-            break;
-         continue;
-      }else if(!asccasecmp(cfield, "text") ||
-            (cfield[1] == '\0' && cfield[0] == '=')){
+         rv = message_match(mp, sep, rv);
+         goto jleave;
+      }else if(!asccasecmp(field, "text") ||
+            (field[1] == '\0' && field[0] == '=')){
          rv = TRU1;
          goto jmsg;
       }
-
-      if(!asccasecmp(cfield, "header") ||
-            (cfield[1] == '\0' && cfield[0] == '<')){
-         if((rv = header_match(mp, sep)))
-            break;
-         continue;
-      }
-
-      /* This is not a special name, so take care for the "skin" prefix !
-       * and possible abbreviations */
-      /* C99 */{
-         char const x[][8] = {"from", "to", "cc", "bcc", "subject"};
-         struct name *np;
-         bool_t doskin;
-
-         if((doskin = (*cfield == '~')))
-            ++cfield;
-         if(cfield[0] != '\0' && cfield[1] == '\0'){
-            size_t i;
-            char c1;
-
-            c1 = lowerconv(cfield[0]);
-            for(i = 0; i < n_NELEM(x); ++i){
-               if(c1 == x[i][0]){
-                  cfield = x[i];
-                  break;
-               }
-            }
-         }
-         if((in.s = hfieldX(cfield, mp)) == NULL)
-            continue;
-
-         /* Shall we split into address list and match the addresses only? */
-         if(doskin){
-            np = lextract(in.s, GSKIN);
-            if(np == NULL)
-               continue;
-            out.s = np->n_name;
-         }else{
-            np = NULL;
-            in.l = strlen(in.s);
-            mime_fromhdr(&in, &out, TD_ICONV);
-         }
-
-jnext_name:
-#ifdef HAVE_REGEX
-         if(sep->ss_sexpr == NULL)
-            rv = (regexec(&sep->ss_regex, out.s, 0,NULL, 0) != REG_NOMATCH);
-         else
-#endif
-            rv = substr(out.s, sep->ss_sexpr);
-         if(np == NULL)
-            free(out.s);
-         if(rv)
-            break;
-         if(np != NULL && (np = np->n_flink) != NULL){
-            out.s = np->n_name;
-            goto jnext_name;
-         }
-      }
    }
+
+   rv = n_header_match(mp, sep);
+jleave:
    NYD2_LEAVE;
    return rv;
 }
@@ -1425,17 +1425,17 @@ message_match(struct message *mp, struct search_expr const *sep,
 
    if(!with_headers)
       while(fgetline(line, linesize, &cnt, NULL, fp, 0))
-         if (**line == '\n')
+         if(**line == '\n')
             break;
 
    while(fgetline(line, linesize, &cnt, NULL, fp, 0)){
 #ifdef HAVE_REGEX
-      if(sep->ss_sexpr == NULL){
-         if(regexec(&sep->ss_regex, *line, 0,NULL, 0) == REG_NOMATCH)
+      if(sep->ss_bodyre != NULL){
+         if(regexec(sep->ss_bodyre, *line, 0,NULL, 0) == REG_NOMATCH)
             continue;
       }else
 #endif
-      if(!substr(*line, sep->ss_sexpr))
+            if(!substr(*line, sep->ss_body))
          continue;
       rv = TRU1;
       break;

@@ -2052,10 +2052,17 @@ struct htmlflt {
 #endif
 
 struct search_expr {
-   char const  *ss_where;     /* ..to search for the expr. (not always used) */
-   char const  *ss_sexpr;     /* String search expr.; NULL: use .ss_regex */
+   /* XXX Type of search should not be evaluated but be enum */
+   bool_t ss_field_exists; /* Only check whether field spec. exists */
+   bool_t ss_skin;         /* Shall work on (skin()ned) addresses */
+   ui8_t ss__pad[6];
+   char const *ss_field;   /* Field spec. where to search (not always used) */
+   char const *ss_body;    /* Field body search expression */
 #ifdef HAVE_REGEX
-   regex_t     ss_regex;
+   regex_t *ss_fieldre;    /* Could be instead of .ss_field */
+   regex_t *ss_bodyre;     /* Ditto, .ss_body */
+   regex_t ss__fieldre_buf;
+   regex_t ss__bodyre_buf;
 #endif
 };
 

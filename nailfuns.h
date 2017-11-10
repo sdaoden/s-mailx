@@ -1135,8 +1135,9 @@ FL char *      getsender(struct message *m);
 FL int         grab_headers(enum n_go_input_flags gif, struct header *hp,
                   enum gfield gflags, int subjfirst);
 
-/* Check whether sep->ss_sexpr (or ->ss_regex) matches any header of mp */
-FL bool_t      header_match(struct message *mp, struct search_expr const *sep);
+/* Check whether sep->ss_sexpr (or ->ss_sregex) matches any header of mp.
+ * If sep->s_where (or >s_where_wregex) is set, restrict to given headers */
+FL bool_t n_header_match(struct message *mp, struct search_expr const *sep);
 
 /* Query *customhdr* */
 FL struct n_header_field *n_customhdr_query(void);
@@ -1220,7 +1221,7 @@ FL void        message_append(struct message *mp);
 /* Append a NULL message */
 FL void        message_append_null(void);
 
-/* Check whether sep->ss_sexpr (or ->ss_regex) matches mp.  If with_headers is
+/* Check whether sep->ss_sexpr (or ->ss_sregex) matches mp.  If with_headers is
  * true then the headers will also be searched (as plain text) */
 FL bool_t      message_match(struct message *mp, struct search_expr const *sep,
                bool_t with_headers);

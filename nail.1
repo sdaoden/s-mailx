@@ -2338,7 +2338,7 @@ search expression.
 .It Ar / Ns Ar string
 All messages that contain
 .Ar string
-in the subject field (case ignored).
+in the subject field (case ignored according to locale).
 See also the
 .Va searchheaders
 variable.
@@ -2346,6 +2346,7 @@ If
 .Ar string
 is empty,
 the string from the previous specification of that type is used again.
+.
 .
 .It Xo Op Ar @ Ns Ar name-list Ns
 .Ar @ Ns Ar expr
@@ -2362,18 +2363,23 @@ is seen (see
 .Xr re_format 7 ) .
 If the optional
 .Ar @ Ns Ar name-list
-part is missing, the search is restricted to the subject field body,
+part is missing the search is restricted to the subject field body,
 but otherwise
 .Ar name-list
-specifies a comma-separated list of header fields to search, as in
+specifies a comma-separated list of header fields to search, e.g.,
+.
 .Pp
 .Dl '@to,from,cc@Someone i ought to know'
+.
 .Pp
 In order to search for a string that includes a
 .Ql @
 (commercial at) character the
 .Ar name-list
 is effectively non-optional, but may be given as the empty string.
+Also, specifying an empty search
+.Ar expr Ns
+ession will effectively test for existence of the given header fields.
 Some special header fields may be abbreviated:
 .Ql f ,
 .Ql t ,
@@ -2389,6 +2395,14 @@ will match
 and
 .Ql Subject ,
 respectively and case-insensitively.
+\*(OPally, and just like
+.Ar expr ,
+.Ar name-list
+will be interpreted as (an extended) regular expression if any of the
+.Dq magical
+regular expression characters is seen.
+.
+.Pp
 The special names
 .Ql header
 or
@@ -2402,19 +2416,25 @@ and
 .Ql text
 or
 .Ql =
-can be used to perform full text searches \(en whereas the former
-searches only the body, the latter also searches the message header.
+will perform full text searches \(en whereas the former searches only
+the body, the latter also searches the message header (\*(ID this mode
+yet brute force searches over the entire decoded content of messages,
+including administrativa strings).
+.
 .Pp
-This message specification performs full text comparison, but even with
+This specification performs full text comparison, but even with
 regular expression support it is almost impossible to write a search
 expression that savely matches only a specific address domain.
-To request that the content of the header is treated as a list of
+To request that the body content of the header is treated as a list of
 addresses, and to strip those down to the plain email address which the
-search expression is to be matched against, prefix the header name
-(abbreviation) with a tilde
+search expression is to be matched against, prefix the effective
+.Ar name-list
+with a tilde
 .Ql ~ :
+.
 .Pp
 .Dl @~f@@a\e.safe\e.domain\e.match$
+.
 .
 .It Ar :c
 All messages of state or with matching condition
