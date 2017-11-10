@@ -3378,7 +3378,7 @@ jesubstring_len:
          reflrv |= REG_ICASE;
       if((reflrv = regcomp(&re, argv[2], reflrv))){
          n_err(_("`vexpr': invalid regular expression: %s: %s\n"),
-            n_shexp_quote_cp(argv[2], FAL0), n_regex_err_to_doc(&re, reflrv));
+            n_shexp_quote_cp(argv[2], FAL0), n_regex_err_to_doc(NULL, reflrv));
          assert(f & a_ERR);
          n_pstate_err_no = n_ERR_INVAL;
          goto jestr;

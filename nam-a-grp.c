@@ -682,8 +682,7 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
       if((s = regcomp(&ngrp->ngr_regex, id,
             REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
          n_err(_("Invalid regular expression: %s: %s\n"),
-            n_shexp_quote_cp(id, FAL0),
-            n_regex_err_to_doc(&ngrp->ngr_regex, s));
+            n_shexp_quote_cp(id, FAL0), n_regex_err_to_doc(NULL, s));
          n_free(ngp);
          ngp = NULL;
          goto jleave;

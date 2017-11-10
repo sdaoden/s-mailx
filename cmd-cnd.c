@@ -251,7 +251,7 @@ jesyn:
          if((s = regcomp(&re, rhv, REG_EXTENDED | REG_NOSUB |
                (flags & a_ICASE ? REG_ICASE : 0))) != 0){
             emsg = savecat(_("invalid regular expression: "),
-                  n_regex_err_to_doc(&re, s));
+                  n_regex_err_to_doc(NULL, s));
             goto jesyn_ntr;
          }
          if(!noop)
