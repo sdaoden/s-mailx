@@ -260,10 +260,8 @@
 # define n_VSTRUCT_SIZEOF(T,F) (sizeof(T) - n_SIZEOF_FIELD(T, F))
 #endif
 
-#ifdef HAVE_INLINE
-# define SINLINE        n_INLINE /* TODO obsolete */
-#else
-# define SINLINE        static
+#ifndef HAVE_INLINE
+# define n_INLINE static
 #endif
 
 #undef __FUN__

@@ -70,7 +70,7 @@ static enum okay     _putname(char const *line, enum gfield w,
  * headers, respectively */
 static int a_sendout_put_ct(FILE *fo, char const *contenttype,
                char const *charset);
-SINLINE int a_sendout_put_cte(FILE *fo, enum conversion conv);
+n_INLINE int a_sendout_put_cte(FILE *fo, enum conversion conv);
 static int a_sendout_put_cd(FILE *fo, char const *cd, char const *filename);
 
 /* Put all entries of the given header list */
@@ -229,7 +229,7 @@ jerr:
    goto jleave;
 }
 
-SINLINE int
+n_INLINE int
 a_sendout_put_cte(FILE *fo, enum conversion conv){
    int rv;
    NYD2_ENTER;

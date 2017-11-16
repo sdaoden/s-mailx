@@ -148,7 +148,7 @@ static bool_t a_termcap_load(char const *term);
 /* Query the capability tcp and fill in tep (upon success) */
 static bool_t a_termcap_ent_query(struct a_termcap_ent *tep,
                char const *cname, ui16_t cflags);
-SINLINE bool_t a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
+n_INLINE bool_t a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
                   struct a_termcap_control const *tcp);
 
 /* Output PTF for both, termcap(5) and terminfo(5) */
@@ -493,7 +493,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
    return rv;
 }
 
-SINLINE bool_t
+n_INLINE bool_t
 a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
       struct a_termcap_control const *tcp){
    assert(!(n_psonce & n_PSO_TERMCAP_DISABLE));
@@ -564,7 +564,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
    return rv;
 }
 
-SINLINE bool_t
+n_INLINE bool_t
 a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
       struct a_termcap_control const *tcp){
    assert(!(n_psonce & n_PSO_TERMCAP_DISABLE));

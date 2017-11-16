@@ -53,7 +53,7 @@ static FILE *        _pipefile(struct mime_handler *mhp,
                         char const *tmpname, int term_infd);
 
 /* Call mime_write() as approbiate and adjust statistics */
-SINLINE ssize_t      _out(char const *buf, size_t len, FILE *fp,
+n_INLINE ssize_t      _out(char const *buf, size_t len, FILE *fp,
                         enum conversion convert, enum sendaction action,
                         struct quoteflt *qf, ui64_t *stats, struct str *outrest,
                         struct str *inrest);
@@ -339,7 +339,7 @@ jleave:
    return rbuf;
 }
 
-SINLINE ssize_t
+n_INLINE ssize_t
 _out(char const *buf, size_t len, FILE *fp, enum conversion convert, enum
    sendaction action, struct quoteflt *qf, ui64_t *stats, struct str *outrest,
    struct str *inrest)
