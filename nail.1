@@ -1901,7 +1901,7 @@ Variables of interest for SSL/TLS in general are
 .Va ssl-ca-no-defaults ,
 .Va ssl-config-file ,
 .Va ssl-config-module ,
-.Va ssl-config-pairs
+.Va ssl-config-pairs ,
 .Va ssl-crl-dir ,
 .Va ssl-crl-file ,
 .Va ssl-rand-file
@@ -3470,7 +3470,7 @@ Arguments enclosed in
 extend normal single quotes in that reverse solidus escape sequences are
 expanded as follows:
 .Pp
-.Bl -tag -compact -width "Ql \eNNN"
+.Bl -tag -compact -width ".Ql \eNNN"
 .It Ql \ea
 bell control character (ASCII and ISO-10646 BEL).
 .It Ql \eb
@@ -8096,7 +8096,8 @@ a name or number, in which case the expansion refers to the given error.
 Note this is a direct mapping of (a subset of) the system error values:
 .Bd -literal -offset indent
 define work {
-  eval echo \e$1: \e$^ERR-$1: \e$^ERRNAME-$1: \e$^ERRDOC-$1
+  eval echo \e$1: \e$^ERR-$1:\e
+    \e$^ERRNAME-$1: \e$^ERRDOC-$1
   vput vexpr i + "$1" 1
   if [ $i -lt 16 ]
     \excall work $i
@@ -12026,7 +12027,8 @@ A default editor is used if this value is not defined.
 The user's home directory.
 This variable is only used when it resides in the process environment.
 The calling user's home directory will be used instead if this directory
-does not exist, is not accessible or cannot be read.
+does not exist, is not accessible or cannot be read;
+it will always be used for the root user.
 (No test for being writable is performed to allow usage by
 non-privileged users within read-only jails, but dependent on the
 variable settings this directory is a default write target, e.g. for
@@ -12219,9 +12221,11 @@ and for terminal management in general to
 .
 .Mx
 .It Ev TMPDIR
-Used as directory for temporary files instead of
-.Pa /tmp ,
-if set, existent, accessible as well as read- and writable.
+Except for the root user this variable defines the directory for
+temporary files to be used instead of
+.Pa /tmp
+(or the given compile-time constant) if set, existent, accessible as
+well as read- and writable.
 This variable is only used when it resides in the process environment,
 but \*(UA will ensure at startup that this environment variable is
 updated to contain a usable temporary directory.
