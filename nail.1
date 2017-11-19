@@ -802,7 +802,9 @@ to not strip down addresses in compose mode, and
 .Va quote
 to include the message that is being responded to when
 .Ic reply Ns
-ing.
+ing, which is indented by an
+.Va indentprefix
+that also deviates from standard imposed settings.
 .
 .Pp
 Some random remarks.
@@ -9336,10 +9338,10 @@ and
 and by the
 .Va quote
 option for indenting messages,
-in place of the normal tabulator character
-.Ql ^I ,
-which is the default.
-Be sure to quote the value if it contains spaces or tabs.
+in place of the POSIX mandated default tabulator character
+.Ql \et .
+Also see
+.Va quote-chars .
 .
 .Mx
 .It Va keep
@@ -10503,11 +10505,19 @@ Note this works regardless of the setting of
 .Va quote .
 .
 .Mx
+.It Va quote-chars
+Can be set to a string consisting of non-whitespace ASCII characters
+which shall be treated as quotation leaders, the default being
+.Ql >|}: .
+.
+.Mx
 .It Va quote-fold
 \*(OP Can be set in addition to
 .Va indentprefix .
 Setting this turns on a more fancy quotation algorithm in that leading
-quotation characters are compressed and overlong lines are folded.
+quotation characters
+.Pf ( Va quote-chars )
+are compressed and overlong lines are folded.
 .Va \&\&quote-fold
 can be set to either one or two (space separated) numeric values,
 which are interpreted as the maximum (goal) and the minimum line length,

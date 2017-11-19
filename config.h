@@ -47,7 +47,6 @@
 #define FTMP_OPEN_TRIES 10    /* Maximum number of Ftmp() open(2) tries */
 #define HSHSIZE 23            /* Hash prime TODO make dynamic, obsolete */
 #define n_IMAP_DELIM "/."     /* Directory separator ([0] == replacer, too) */
-#define INDENT_DEFAULT "\t"   /* *indentprefix* default as of POSIX */
 #define n_MAILDIR_SEPARATOR ':' /* Flag separator character */
 #define n_MAXARGC 512         /* Maximum list of raw strings TODO dyn vector! */
 #define n_ALIAS_MAXEXP 25     /* Maximum expansion of aliases */
@@ -104,11 +103,6 @@
 #define n_PIPEENV_CONTENT "MAILX_CONTENT"
 #define n_PIPEENV_CONTENT_EVIDENCE "MAILX_CONTENT_EVIDENCE"
 #define n_PIPEENV_EXTERNAL_BODY_URL "MAILX_EXTERNAL_BODY_URL"
-
-/* Is *W* a quoting (ASCII only) character? */
-#define n_QUOTE_IS_A(W) \
-   ((W) == n_WC_C('>') || (W) == n_WC_C('|') ||\
-    (W) == n_WC_C('}') || (W) == n_WC_C(':'))
 
 /* Maximum number of quote characters (not bytes!) that'll be used on
  * follow lines when compressing leading quote characters */

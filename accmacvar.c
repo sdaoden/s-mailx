@@ -932,6 +932,15 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
             ok = FAL0;
          }
          break;
+      case ok_v_quote_chars:{
+         char c;
+
+         while((c = *val++) != '\0')
+            if(!asciichar(c) || blankspacechar(c)){
+               ok = FAL0;
+               break;
+            }
+         }break;
       case ok_v_TMPDIR:
          if(!n_is_dir(val, TRU1)){
             n_err(_("$TMPDIR is not a directory or not accessible: %s\n"),

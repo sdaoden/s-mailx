@@ -85,8 +85,8 @@ set history-gabby history-gabby-persist
 # is likely to be irritating for most users today; also see *keepsave*.
 set hold
 
-# Quote the original message in replies by "> " as usual on the Internet
-# Historically this was a tabulator, as in "wysh set indentprefix=$'\t'".
+# Quote the original message in replies by "> " as usual on the Internet.
+# POSIX mandates tabulator ("wysh set indentprefix=$'\t'") as default.
 set indentprefix="> "
 
 # Mark messages that have been answered.

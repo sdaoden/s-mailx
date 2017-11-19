@@ -1583,7 +1583,7 @@ ok_v_fwdheading,
    ok_b_ignore,
    ok_b_ignoreeof,
    ok_v_inbox,
-   ok_v_indentprefix,
+   ok_v_indentprefix,                  /* {defval="\t"} */
 
    ok_b_keep,
    ok_b_keep_content_length,
@@ -1681,6 +1681,7 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_b_quiet,
    ok_v_quote,
    ok_b_quote_as_attachment,
+   ok_v_quote_chars,                   /* {vip=1,notempty=1,defval=">|}:"} */
    ok_v_quote_fold,
 
    ok_b_r_option_implicit,
@@ -2020,6 +2021,7 @@ struct quoteflt {
    bool_t      qf_brk_isws;   /* Breakpoint is at WS */
    ui32_t      qf_qfold_max;  /* Otherwise: line lengths */
    ui32_t      qf_wscnt;      /* Whitespace count */
+   char const *qf_quote_chars; /* *quote-chars* */
    ui32_t      qf_brkl;       /* Breakpoint */
    ui32_t      qf_brkw;       /* Visual width, breakpoint */
    ui32_t      qf_datw;       /* Current visual output line width */
