@@ -13476,6 +13476,33 @@ $ cat -v
 .Ed
 .\" }}}
 .
+.\" .Ss "Can \*(UA git-send-email?" {{{
+.Ss "Can \*(UA git-send-email?"
+.
+Yes.
+Put (at least parts of) the following in your
+.Pa ~/.gitconfig :
+.
+.Bd -literal -offset indent
+[sendemail]
+smtpserver = /usr/bin/s-mailx
+smtpserveroption = -t
+#smtpserveroption = -Sexpandaddr
+smtpserveroption = -Athe-account-you-need
+##
+suppresscc = all
+suppressfrom = false
+assume8bitEncoding = UTF-8
+#to = /tmp/OUT
+confirm = always
+chainreplyto = true
+multiedit = false
+thread = true
+quiet = true
+annotate = true
+.Ed
+.\" }}}
+.
 .\" }}}
 .
 .
