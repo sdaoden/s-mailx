@@ -965,10 +965,13 @@ enum b64flags {
 };
 
 enum mime_parse_flags {
-   MIME_PARSE_NONE      = 0,
-   MIME_PARSE_DECRYPT   = 1<<0,
-   MIME_PARSE_PARTS     = 1<<1,
-   MIME_PARSE_SHALLOW   = 1<<2
+   MIME_PARSE_NONE,
+   MIME_PARSE_DECRYPT = 1u<<0,
+   MIME_PARSE_PARTS = 1u<<1,
+   MIME_PARSE_SHALLOW = 1u<<2,
+   /* In effect we parse this message for user display or quoting purposes, so
+    * relaxed rules regarding content inspection may be applicable */
+   MIME_PARSE_FOR_USER_CONTEXT = 1u<<3
 };
 
 enum mime_handler_flags {

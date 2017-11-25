@@ -95,7 +95,7 @@ set markanswered
 # Try to circumvent false or missing MIME Content-Type descriptions.
 # Do set a value for extended behaviour (see the manual).
 #set mime-counter-evidence
-set mime-counter-evidence=0xE
+set mime-counter-evidence=0b1111
 
 # Control loading of mime.types(5) file, "s"ystem and/or "u"ser, etc.
 # Builtin types exist and may be sufficient.  The default equals "us".

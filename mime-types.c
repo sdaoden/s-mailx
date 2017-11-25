@@ -49,19 +49,21 @@ enum mime_type {
 };
 
 enum mime_type_class {
-   _MT_C_CLEAN    = 0,        /* Plain RFC 5322 message */
-   _MT_C_NCTT     = 1<<0,     /* *contenttype == NULL */
-   _MT_C_ISTXT    = 1<<1,     /* *contenttype =~ text\/ */
-   _MT_C_ISTXTCOK = 1<<2,     /* _ISTXT + *mime-allow-text-controls* */
-   _MT_C_HIGHBIT  = 1<<3,     /* Not 7bit clean */
-   _MT_C_LONGLINES = 1<<4,    /* MIME_LINELEN_LIMIT exceed. */
-   _MT_C_CTRLCHAR = 1<<5,     /* Control characters seen */
-   _MT_C_HASNUL   = 1<<6,     /* Contains \0 characters */
-   _MT_C_NOTERMNL = 1<<7,     /* Lacks a final newline */
-   _MT_C_FROM_    = 1<<8,     /* ^From_ seen */
-   _MT_C_FROM_1STLINE = 1<<9, /* From_ line seen */
-   _MT_C_SUGGEST_DONE = 1<<16, /* Inspector suggests to stop further parse */
-   _MT_C__1STLINE = 1<<17     /* .. */
+   _MT_C_NONE,
+   _MT_C_CLEAN = _MT_C_NONE,  /* Plain RFC 5322 message */
+   _MT_C_DEEP_INSPECT = 1u<<0,   /* Always test all the file */
+   _MT_C_NCTT = 1u<<1,        /* *contenttype == NULL */
+   _MT_C_ISTXT = 1u<<2,       /* *contenttype =~ text\/ */
+   _MT_C_ISTXTCOK = 1u<<3,    /* _ISTXT + *mime-allow-text-controls* */
+   _MT_C_HIGHBIT = 1u<<4,     /* Not 7bit clean */
+   _MT_C_LONGLINES = 1u<<5,   /* MIME_LINELEN_LIMIT exceed. */
+   _MT_C_CTRLCHAR = 1u<<6,    /* Control characters seen */
+   _MT_C_HASNUL = 1u<<7,      /* Contains \0 characters */
+   _MT_C_NOTERMNL = 1u<<8,    /* Lacks a final newline */
+   _MT_C_FROM_ = 1u<<9,       /* ^From_ seen */
+   _MT_C_FROM_1STLINE = 1u<<10,  /* From_ line seen */
+   _MT_C_SUGGEST_DONE = 1u<<16,  /* Inspector suggests to stop further parse */
+   _MT_C__1STLINE = 1u<<17    /* .. */
 };
 
 struct mtbltin {
@@ -87,12 +89,16 @@ struct mtlookup {
 };
 
 struct mt_class_arg {
-   char const  *mtca_buf;
-   size_t      mtca_len;
-   ssize_t     mtca_curlen;
-   /*char        mtca_lastc;*/
-   char        mtca_c;
+   char const *mtca_buf;
+   size_t mtca_len;
+   ssize_t mtca_curlnlen;
+   /*char mtca_lastc;*/
+   char mtca_c;
+   ui8_t mtca__dummy[3];
    enum mime_type_class mtca_mtc;
+   ui64_t mtca_all_len;
+   ui64_t mtca_all_highbit; /* TODO not yet interpreted */
+   ui64_t mtca_all_bogus;
 };
 
 static struct mtbltin const   _mt_bltin[] = {
@@ -138,7 +144,8 @@ n_INLINE struct mt_class_arg * _mt_classify_init(struct mt_class_arg *mtcap,
 static enum mime_type_class   _mt_classify_round(struct mt_class_arg *mtcap);
 
 /* We need an in-depth inspection of an application/octet-stream part */
-static enum mimecontent _mt_classify_os_part(ui32_t mce, struct mimepart *mpp);
+static enum mimecontent _mt_classify_os_part(ui32_t mce, struct mimepart *mpp,
+                           bool_t deep_inspect);
 
 /* Check whether a *pipe-XY* handler is applicable, and adjust flags according
  * to the defined trigger characters; upon entry MIME_HDL_NULL is set, and that
@@ -548,19 +555,21 @@ _mt_classify_round(struct mt_class_arg *mtcap) /* TODO dig UTF-8 for !text/!! */
    char f_buf[F_SIZEOF], *f_p = f_buf;
    char const *buf;
    size_t blen;
-   ssize_t curlen;
+   ssize_t curlnlen;
+   si64_t alllen;
    int c, lastc;
    enum mime_type_class mtc;
    NYD2_ENTER;
 
    buf = mtcap->mtca_buf;
    blen = mtcap->mtca_len;
-   curlen = mtcap->mtca_curlen;
+   curlnlen = mtcap->mtca_curlnlen;
+   alllen = mtcap->mtca_all_len;
    c = mtcap->mtca_c;
    /*lastc = mtcap->mtca_lastc;*/
    mtc = mtcap->mtca_mtc;
 
-   for (;; ++curlen) {
+   for (;; ++curlnlen) {
       if(blen == 0){
          /* Real EOF, or only current buffer end? */
          if(mtcap->mtca_len == 0){
@@ -571,6 +580,7 @@ _mt_classify_round(struct mt_class_arg *mtcap) /* TODO dig UTF-8 for !text/!! */
             break;
          }
       }else{
+         ++alllen;
          lastc = c;
          c = (uc_i)*buf++;
       }
@@ -586,13 +596,12 @@ _mt_classify_round(struct mt_class_arg *mtcap) /* TODO dig UTF-8 for !text/!! */
       }
       if (c == '\n' || c == EOF) {
          mtc &= ~_MT_C__1STLINE;
-         if (curlen >= MIME_LINELEN_LIMIT)
+         if (curlnlen >= MIME_LINELEN_LIMIT)
             mtc |= _MT_C_LONGLINES;
-         if (c == EOF) {
+         if (c == EOF)
             break;
-         }
          f_p = f_buf;
-         curlen = -1;
+         curlnlen = -1;
          continue;
       }
       /* A bit hairy is handling of \r=\x0D=CR.
@@ -609,6 +618,7 @@ _mt_classify_round(struct mt_class_arg *mtcap) /* TODO dig UTF-8 for !text/!! */
          /* RFC 2045, 6.7, as above ... */
          if (c != '\t' && c != '\r')
             mtc |= _MT_C_CTRLCHAR;
+
          /* If there is a escape sequence in reverse solidus notation defined
           * for this in ANSI X3.159-1989 (ANSI C89), don't treat it as a control
           * for real.  I.e., \a=\x07=BEL, \b=\x08=BS, \t=\x09=HT.  Don't follow
@@ -616,6 +626,15 @@ _mt_classify_round(struct mt_class_arg *mtcap) /* TODO dig UTF-8 for !text/!! */
           * \e=\x1B=ESC */
          if ((c >= '\x07' && c <= '\x0D') || c == '\x1B')
             continue;
+
+         /* As a special case, if we are going for displaying data to the user
+          * or quoting a message then simply continue this, in the end, in case
+          * we get there, we will decide upon the all_len/all_bogus ratio
+          * whether this is usable plain text or not */
+         ++mtcap->mtca_all_bogus;
+         if(mtc & _MT_C_DEEP_INSPECT)
+            continue;
+
          mtc |= _MT_C_HASNUL; /* Force base64 */
          if (!(mtc & _MT_C_ISTXTCOK)) {
             mtc |= _MT_C_SUGGEST_DONE;
@@ -623,15 +642,14 @@ _mt_classify_round(struct mt_class_arg *mtcap) /* TODO dig UTF-8 for !text/!! */
          }
       } else if ((ui8_t)c & 0x80) {
          mtc |= _MT_C_HIGHBIT;
-         /* TODO count chars with HIGHBIT? libmagic?
-          * TODO try encode part - base64 if bails? */
+         ++mtcap->mtca_all_highbit;
          if (!(mtc & (_MT_C_NCTT | _MT_C_ISTXT))) { /* TODO _NCTT?? */
             mtc |= _MT_C_HASNUL /* Force base64 */ | _MT_C_SUGGEST_DONE;
             break;
          }
-      } else if (!(mtc & _MT_C_FROM_) && UICMP(z, curlen, <, F_SIZEOF)) {
+      } else if (!(mtc & _MT_C_FROM_) && UICMP(z, curlnlen, <, F_SIZEOF)) {
          *f_p++ = (char)c;
-         if (UICMP(z, curlen, ==, F_SIZEOF - 1) &&
+         if (UICMP(z, curlnlen, ==, F_SIZEOF - 1) &&
                PTR2SIZE(f_p - f_buf) == F_SIZEOF &&
                !memcmp(f_buf, F_, F_SIZEOF)){
             mtc |= _MT_C_FROM_;
@@ -643,10 +661,11 @@ _mt_classify_round(struct mt_class_arg *mtcap) /* TODO dig UTF-8 for !text/!! */
    if (c == EOF && lastc != '\n')
       mtc |= _MT_C_NOTERMNL;
 
-   mtcap->mtca_curlen = curlen;
+   mtcap->mtca_curlnlen = curlnlen;
    /*mtcap->mtca_lastc = lastc*/;
    mtcap->mtca_c = c;
    mtcap->mtca_mtc = mtc;
+   mtcap->mtca_all_len = alllen;
    NYD2_LEAVE;
    return mtc;
 #undef F_
@@ -654,7 +673,7 @@ _mt_classify_round(struct mt_class_arg *mtcap) /* TODO dig UTF-8 for !text/!! */
 }
 
 static enum mimecontent
-_mt_classify_os_part(ui32_t mce, struct mimepart *mpp)
+_mt_classify_os_part(ui32_t mce, struct mimepart *mpp, bool_t deep_inspect)
 {
    struct str in = {NULL, 0}, outrest, inrest, dec;
    struct mt_class_arg mtca;
@@ -694,8 +713,12 @@ jos_leave:
       goto jos_leave;
 
    /* So now let's inspect the part content, decoding content-transfer-encoding
-    * along the way TODO this should simply be "mime_factory_create(MPP)"! */
-   _mt_classify_init(&mtca, _MT_C_ISTXT);
+    * along the way TODO this should simply be "mime_factory_create(MPP)"!
+    * TODO In fact m_mime_classifier_(setup|call|call_part|finalize)() and the
+    * TODO state(s) (the _MT_C states) should become reported to the outer
+    * TODO world like that (see MIME boundary TODO around here) */
+   _mt_classify_init(&mtca, (_MT_C_ISTXT |
+      (deep_inspect ? _MT_C_DEEP_INSPECT : _MT_C_NONE)));
 
    for (lsz = 0;;) {
       bool_t dobuf;
@@ -782,6 +805,13 @@ jstopit:
    fseek(mb.mb_itf, start_off, SEEK_SET);
 
    if (!(mtc & (_MT_C_HASNUL /*| _MT_C_CTRLCHAR XXX really? */))) {
+      /* In that special relaxed case we may very well wave through
+       * octet-streams full of control characters, as they do no harm
+       * TODO This should be part of m_mime_classifier_finalize() then! */
+      if(deep_inspect &&
+            mtca.mtca_all_len - mtca.mtca_all_bogus < mtca.mtca_all_len >> 2)
+         goto jleave;
+
       mc = MIME_TEXT_PLAIN;
       if (mce & MIMECE_ALL_OVWR)
          mpp->m_ct_type_plain = "text/plain";
@@ -1185,8 +1215,8 @@ jnorfc822:
 }
 
 FL enum mimecontent
-n_mimetype_classify_part(struct mimepart *mpp) /* FIXME charset=binary ??? */
-{
+n_mimetype_classify_part(struct mimepart *mpp, bool_t for_user_context){
+   /* TODO n_mimetype_classify_part() <-> m_mime_classifier_ with life cycle */
    struct mtlookup mtl;
    enum mimecontent mc;
    char const *ct;
@@ -1272,8 +1302,8 @@ jleave:
 
 jos_content_check:
    if((mce.f & MIMECE_BIN_PARSE) && mpp->m_mime_enc != MIMEE_BIN &&
-         mpp->m_charset != NULL && asccasecmp(mpp->m_charset, "binary"))
-      mc = _mt_classify_os_part(mce.f, mpp);
+         mpp->m_charset != NULL)
+      mc = _mt_classify_os_part(mce.f, mpp, for_user_context);
    goto jleave;
 }
 

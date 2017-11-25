@@ -1550,8 +1550,10 @@ FL enum conversion n_mimetype_classify_file(FILE *fp, char const **contenttype,
                      char const **charset, int *do_iconv);
 
 /* Dependend on *mime-counter-evidence* mpp->m_ct_type_usr_ovwr will be set,
- * but otherwise mpp is const */
-FL enum mimecontent n_mimetype_classify_part(struct mimepart *mpp);
+ * but otherwise mpp is const.  for_user_context rather maps 1:1 to
+ * MIME_PARSE_FOR_USER_CONTEXT */
+FL enum mimecontent n_mimetype_classify_part(struct mimepart *mpp,
+                        bool_t for_user_context);
 
 /* Query handler for a part, return the plain type (& MIME_HDL_TYPE_MASK).
  * mhp is anyway initialized (mh_flags, mh_msg) */

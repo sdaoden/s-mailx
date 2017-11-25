@@ -1586,6 +1586,9 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
    mpf = MIME_PARSE_NONE;
    if (action != SEND_MBOX && action != SEND_RFC822 && action != SEND_SHOW)
       mpf |= MIME_PARSE_PARTS | MIME_PARSE_DECRYPT;
+   if(action == SEND_TODISP || action == SEND_TODISP_ALL ||
+         action == SEND_QUOTE || action == SEND_QUOTE_ALL)
+      mpf |= MIME_PARSE_FOR_USER_CONTEXT;
    if ((ip = mime_parse_msg(mp, mpf)) == NULL)
       goto jleave;
 

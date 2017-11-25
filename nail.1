@@ -805,6 +805,8 @@ to include the message that is being responded to when
 ing, which is indented by an
 .Va indentprefix
 that also deviates from standard imposed settings.
+.Va mime-counter-evidence
+is fully enabled, too.
 .
 .Pp
 Some random remarks.
@@ -9586,16 +9588,12 @@ If this variable is set then \*(UA will try to re-classify such MIME
 message parts, if possible, for example via a possibly existing
 attachment filename.
 A non-empty value may also be given, in which case a number is expected,
-actually a carrier of bits.
-Creating the bit-carrying number is a simple addition:
-.Bd -literal -offset indent
-? !echo Value should be set to $((2 + 4 + 8))
-Value should be set to 14
-.Ed
+actually a carrier of bits, best specified as a binary value, e.g.,
+.Ql 0b1111 .
 .Pp
 .Bl -bullet -compact
 .It
-If bit two is set (2) then the detected
+If bit two is set (counting from 1, decimal 2) then the detected
 .Ic mimetype
 will be carried along with the message and be used for deciding which
 MIME handler is to be used, for example;
@@ -9603,14 +9601,17 @@ when displaying such a MIME part the part-info will indicate the
 overridden content-type by showing a plus sign
 .Ql + .
 .It
-If bit three is set (4) then the counter-evidence is always produced
-and a positive result will be used as the MIME type, even forcefully
-overriding the parts given MIME type.
+If bit three is set (decimal 4) then the counter-evidence is always
+produced and a positive result will be used as the MIME type, even
+forcefully overriding the parts given MIME type.
 .It
-If bit four is set (8) then as a last resort the actual content of
+If bit four is set (decimal 8) as a last resort the actual content of
 .Ql application/octet-stream
 parts will be inspected, so that data which looks like plain text can be
 treated as such.
+This mode is even more relaxed when data is to be displayed to the user
+or used as a message quote (data consumers which mangle data for display
+purposes, which includes masking of control characters, for example).
 .El
 .
 .Mx
@@ -13160,7 +13161,7 @@ set emptystart \e
   colour-pager crt= \e
   followup-to followup-to-honour=ask-yes fullnames \e
   history-file=+.\*(uAhist history-size=-1 history-gabby \e
-  mime-counter-evidence=0xE \e
+  mime-counter-evidence=0b1111 \e
   prompt='?\e$?!\e$!/\e$^ERRNAME[\e$account#\e$mailbox-display]? ' \e
   reply-to-honour=ask-yes \e
   umask=
