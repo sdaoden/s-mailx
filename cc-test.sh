@@ -2183,18 +2183,22 @@ t_behave_vpospar() {
    set ifs=,
    echo ifs<$ifs> ifs-ws<$ifs-ws>
    vpospar set hey, "'you    ", world!
-   echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   unset ifs;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   set ifs=,
    vput vpospar x quote; echo x<$x>
    vpospar clear;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
-   eval vpospar set ${x};echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   eval vpospar set ${x};\
+      unset ifs;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
 
    wysh set ifs=$',\t'
    echo ifs<$ifs> ifs-ws<$ifs-ws>
    vpospar set hey, "'you    ", world!
-   echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   unset ifs; echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   wysh set ifs=$',\t'
    vput vpospar x quote; echo x<$x>
    vpospar clear;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
-   eval vpospar set ${x};echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
+   eval vpospar set ${x};\
+   unset ifs;echo $?/$^ERRNAME/$#: $* / "$@" / <$1><$2><$3><$4>
 	__EOT
    check behave:vpospar-ifs 0 "${MBOX}" '2015927702 706'
 
