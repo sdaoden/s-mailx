@@ -54,6 +54,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <setjmp.h>
 #include <signal.h>
@@ -64,8 +65,6 @@
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
-
-#include <inttypes.h>
 
 #ifdef HAVE_C90AMEND1
 # include <wchar.h>
