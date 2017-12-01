@@ -10,15 +10,14 @@ We welcome  in THANKS.
 Number games
 ^^^^^^^^^^^^
 
-The tagged release commits are [v..] ([master stable/v.]:[]),
-and [v .ar] ([release/v..]:[], the release content).
-	The release has also been stored as [timeline]:[].
+The tagged release commit is [v .ar] ([release/v..]:[].
+	, and it has also been stored as [timeline]:[].
+The development branch was tagged [v..] ([master stable/v.]:[]).
 The git(1) release commits and tags, as well as the release balls
 have been signed with the OpenPGP key
-  steffen@sdaoden.eu  /  95F382CE
-  (232C 220B CB56 90A3 7BD2  2FFD EB66 0227 95F3 82CE)
-available on OpenPGP key servers, my website and download area,
-and also in the repository (blob tagged steffen-pgp-pub).
+  steffen@sdaoden.eu  /  1883A0DD
+  (EE19 E1C1 F2F7 054F 8D39  54D8 3089 64B5 1883 A0DD)
+available on OpenPGP key servers, my website and download area.
 
 Release balls and OpenPGP signatures (.asc) can be downloaded via
 HTTPS/HTTP at \https?://ftp.sdaoden.eu.  Copies of the signatures
