@@ -1244,7 +1244,7 @@ nalloc(char const *str, enum gfield ntype)
          }
          s += i;
          in.s[in.l = s] = '\0';
-         mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
+         mime_fromhdr(&in, &out, /* TODO TD_ISPR |*/ TD_ICONV);
 
          for (cp = out.s, i = out.l; i > 0 && spacechar(*cp); --i, ++cp)
             ;
@@ -1281,7 +1281,7 @@ jskipfullextra:
          in.l = l;
       }
 #endif
-      mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
+      mime_fromhdr(&in, &out, /* TODO TD_ISPR |*/ TD_ICONV);
       np->n_fullname = savestr(out.s);
       n_free(out.s);
 #ifdef HAVE_IDNA

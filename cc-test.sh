@@ -308,26 +308,28 @@ t_behave() {
    t_behave_atxplode
 
    t_behave_mbox
+   t_behave_maildir
+   t_behave_record_a_resend
+   t_behave_e_H_L_opts
 
    t_behave_alternates
    t_behave_alias
    # FIXME t_behave_mlist
    t_behave_filetype
 
-   t_behave_record_a_resend
-
-   t_behave_e_H_L_opts
-   t_behave_compose_hooks
    t_behave_message_injections
-   t_behave_mime_types_load_control
-
-   t_behave_s_mime
-
-   t_behave_maildir
+   t_behave_compose_hooks
    t_behave_mass_recipients
+   t_behave_mime_types_load_control
    t_behave_lreply_futh_rth_etc
+
+   t_behave_xxxheads_rfc2047
+   t_behave_rfc2231
    t_behave_iconv_mbyte_base64
    t_behave_iconv_mainbody
+   t_behave_q_t_etc_opts
+
+   t_behave_s_mime
 }
 
 t_behave_X_opt_input_command_stack() {
@@ -2395,6 +2397,165 @@ t_behave_mbox() {
    t_epilog
 }
 
+t_behave_maildir() {
+   t_prolog t_behave_maildir
+   TRAP_EXIT_ADDONS="./.t*"
+
+   (
+      i=0
+      while [ ${i} -lt 112 ]; do
+         printf 'm file://%s\n~s Subject %s\nHello %s!\n~.\n' \
+            "${MBOX}" "${i}" "${i}"
+         i=`add ${i} 1`
+      done
+   ) | ${MAILX} ${ARGS}
+   check behave:maildir-1 0 "${MBOX}" '1140119864 13780'
+
+   printf 'File "%s"
+         copy * "%s"
+         File "%s"
+         from*
+      ' "${MBOX}" .tmdir1 .tmdir1 |
+      ${MAILX} ${ARGS} -Snewfolders=maildir > .tlst
+   check behave:maildir-2 0 .tlst '1797938753 9103'
+
+   printf 'File "%s"
+         copy * "maildir://%s"
+         File "maildir://%s"
+         from*
+      ' "${MBOX}" .tmdir2 .tmdir2 |
+      ${MAILX} ${ARGS} > .tlst
+   check behave:maildir-3 0 .tlst '1155631089 9113'
+
+   printf 'File "maildir://%s"
+         copy * "file://%s"
+         File "file://%s"
+         from*
+      ' .tmdir2 .tmbox1 .tmbox1 |
+      ${MAILX} ${ARGS} > .tlst
+   check behave:maildir-4 0 .tmbox1 '2646131190 13220'
+   check behave:maildir-5 - .tlst '3701297796 9110'
+
+   # only the odd (even)
+   (
+      printf 'File "maildir://%s"
+            copy ' .tmdir2
+      i=0
+      while [ ${i} -lt 112 ]; do
+         j=`modulo ${i} 2`
+         [ ${j} -eq 1 ] && printf '%s ' "${i}"
+         i=`add ${i} 1`
+      done
+      printf ' file://%s
+            File "file://%s"
+            from*
+         ' .tmbox2 .tmbox2
+   ) | ${MAILX} ${ARGS} > .tlst
+   check behave:maildir-6 0 .tmbox2 '142890131 6610'
+   check behave:maildir-7 - .tlst '960096773 4573'
+   # ...
+   (
+      printf 'file "maildir://%s"
+            move ' .tmdir2
+      i=0
+      while [ ${i} -lt 112 ]; do
+         j=`modulo ${i} 2`
+         [ ${j} -eq 0 ] && [ ${i} -ne 0 ] && printf '%s ' "${i}"
+         i=`add ${i} 1`
+      done
+      printf ' file://%s
+            File "file://%s"
+            from*
+            File "maildir://%s"
+            from*
+         ' .tmbox2 .tmbox2 .tmdir2
+   ) | ${MAILX} ${ARGS} > .tlst
+   check behave:maildir-8 0 .tmbox2 '3806905791 13100'
+   ${sed} 2d < .tlst > .tlstx
+   check behave:maildir-9 - .tlstx '4216815295 13645'
+
+   t_epilog
+}
+
+t_behave_record_a_resend() {
+   t_prolog t_behave_record_a_resend
+   TRAP_EXIT_ADDONS="./.t.record ./.t.resent"
+
+   printf '
+         set record=%s
+         m %s\n~s Subject 1.\nHello.\n~.
+         set record-files add-file-recipients
+         m %s\n~s Subject 2.\nHello.\n~.
+         File %s
+         resend 2 ./.t.resent
+         Resend 1 ./.t.resent
+         set record-resent
+         resend 2 ./.t.resent
+         Resend 1 ./.t.resent
+      ' ./.t.record "${MBOX}" "${MBOX}" "${MBOX}" |
+      ${MAILX} ${ARGS}
+
+   check behave:record_a_resend-1 0 "${MBOX}" '3057873538 256'
+   check behave:record_a_resend-2 - .t.record '391356429 460'
+   check behave:record_a_resend-3 - .t.resent '2685231691 648'
+
+   t_epilog
+}
+
+t_behave_e_H_L_opts() {
+   t_prolog t_behave_e_H_L_opts
+   TRAP_EXIT_ADDONS="./.tsendmail.sh ./.t.mbox"
+
+   touch ./.t.mbox
+   ${MAILX} ${ARGS} -ef ./.t.mbox
+   echo ${?} > "${MBOX}"
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${SHELL} -
+		(echo 'From Alchemilla Wed Apr 07 17:03:33 2017' && ${cat} && echo
+			) >> "./.t.mbox"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+   printf 'm me@exam.ple\nLine 1.\nHello.\n~.\n' |
+   ${MAILX} ${ARGS} -Smta=./.tsendmail.sh
+   printf 'm you@exam.ple\nLine 1.\nBye.\n~.\n' |
+   ${MAILX} ${ARGS} -Smta=./.tsendmail.sh
+
+   ${MAILX} ${ARGS} -ef ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -efL @t@me ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -efL @t@you ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -efL '@>@Line 1' ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -efL '@>@Hello.' ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -efL '@>@Bye.' ./.t.mbox
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -efL '@>@Good bye.' ./.t.mbox
+   echo ${?} >> "${MBOX}"
+
+   ${MAILX} ${ARGS} -fH ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -fL @t@me ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -fL @t@you ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -fL '@>@Line 1' ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -fL '@>@Hello.' ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -fL '@>@Bye.' ./.t.mbox >> "${MBOX}"
+   echo ${?} >> "${MBOX}"
+   ${MAILX} ${ARGS} -fL '@>@Good bye.' ./.t.mbox >> "${MBOX}" 2>/dev/null
+   echo ${?} >> "${MBOX}"
+
+   check behave:e_H_L_opts - "${MBOX}" '1708955574 678'
+
+   t_epilog
+}
+
 t_behave_alternates() {
    t_prolog t_behave_alternates
    TRAP_EXIT_ADDONS="./.t*"
@@ -2631,81 +2792,42 @@ t_behave_filetype() {
    t_epilog
 }
 
-t_behave_record_a_resend() {
-   t_prolog t_behave_record_a_resend
-   TRAP_EXIT_ADDONS="./.t.record ./.t.resent"
-
-   printf '
-         set record=%s
-         m %s\n~s Subject 1.\nHello.\n~.
-         set record-files add-file-recipients
-         m %s\n~s Subject 2.\nHello.\n~.
-         File %s
-         resend 2 ./.t.resent
-         Resend 1 ./.t.resent
-         set record-resent
-         resend 2 ./.t.resent
-         Resend 1 ./.t.resent
-      ' ./.t.record "${MBOX}" "${MBOX}" "${MBOX}" |
-      ${MAILX} ${ARGS}
-
-   check behave:record_a_resend-1 0 "${MBOX}" '3057873538 256'
-   check behave:record_a_resend-2 - .t.record '391356429 460'
-   check behave:record_a_resend-3 - .t.resent '2685231691 648'
-
-   t_epilog
-}
-
-t_behave_e_H_L_opts() {
-   t_prolog t_behave_e_H_L_opts
-   TRAP_EXIT_ADDONS="./.tsendmail.sh ./.t.mbox"
-
-   touch ./.t.mbox
-   ${MAILX} ${ARGS} -ef ./.t.mbox
-   echo ${?} > "${MBOX}"
+t_behave_message_injections() {
+   t_prolog t_behave_message_injections
+   TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<-_EOT > ./.tsendmail.sh
 		#!${SHELL} -
-		(echo 'From Alchemilla Wed Apr 07 17:03:33 2017' && ${cat} && echo
-			) >> "./.t.mbox"
+		(echo 'From Echinacea Tue Jun 20 15:54:02 2017' && ${cat} && echo
+			) > "${MBOX}"
 	_EOT
    chmod 0755 ./.tsendmail.sh
-   printf 'm me@exam.ple\nLine 1.\nHello.\n~.\n' |
-   ${MAILX} ${ARGS} -Smta=./.tsendmail.sh
-   printf 'm you@exam.ple\nLine 1.\nBye.\n~.\n' |
-   ${MAILX} ${ARGS} -Smta=./.tsendmail.sh
 
-   ${MAILX} ${ARGS} -ef ./.t.mbox
-   echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -efL @t@me ./.t.mbox
-   echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -efL @t@you ./.t.mbox
-   echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -efL '@>@Line 1' ./.t.mbox
-   echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -efL '@>@Hello.' ./.t.mbox
-   echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -efL '@>@Bye.' ./.t.mbox
-   echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -efL '@>@Good bye.' ./.t.mbox
-   echo ${?} >> "${MBOX}"
+   echo mysig > ./.tmysig
 
-   ${MAILX} ${ARGS} -fH ./.t.mbox >> "${MBOX}"
-   echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -fL @t@me ./.t.mbox >> "${MBOX}"
-   echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -fL @t@you ./.t.mbox >> "${MBOX}"
-   echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -fL '@>@Line 1' ./.t.mbox >> "${MBOX}"
-   echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -fL '@>@Hello.' ./.t.mbox >> "${MBOX}"
-   echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -fL '@>@Bye.' ./.t.mbox >> "${MBOX}"
-   echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -fL '@>@Good bye.' ./.t.mbox >> "${MBOX}" 2>/dev/null
-   echo ${?} >> "${MBOX}"
+   echo some-body | ${MAILX} ${ARGS} -Smta=./.tsendmail.sh \
+      -Smessage-inject-head=head-inject \
+      -Smessage-inject-tail=tail-inject \
+      -Ssignature=./.tmysig \
+      ex@am.ple > ./.tall 2>&1
+   check behave:message_injections-1 0 "${MBOX}" '2434746382 134'
+   check behave:message_injections-2 - .tall '4294967295 0' # empty file
 
-   check behave:e_H_L_opts - "${MBOX}" '1708955574 678'
+   ${cat} <<-_EOT > ./.template
+	From: me
+	To: ex1@am.ple
+	Cc: ex2@am.ple
+	Subject: This subject is
+
+   Body, body, body me.
+	_EOT
+   < ./.template ${MAILX} ${ARGS} -t -Smta=./.tsendmail.sh \
+      -Smessage-inject-head=head-inject \
+      -Smessage-inject-tail=tail-inject \
+      -Ssignature=./.tmysig \
+      > ./.tall 2>&1
+   check behave:message_injections-3 0 "${MBOX}" '3114203412 198'
+   check behave:message_injections-4 - .tall '4294967295 0' # empty file
 
    t_epilog
 }
@@ -3626,42 +3748,70 @@ this is content of forward 1
    t_epilog
 }
 
-t_behave_message_injections() {
-   t_prolog t_behave_message_injections
+t_behave_mass_recipients() {
+   t_prolog t_behave_mass_recipients
    TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<-_EOT > ./.tsendmail.sh
 		#!${SHELL} -
-		(echo 'From Echinacea Tue Jun 20 15:54:02 2017' && ${cat} && echo
-			) > "${MBOX}"
+		(echo 'From Eucalyptus Sat Jul 08 21:14:57 2017' && ${cat} && echo
+			) >> "${MBOX}"
 	_EOT
    chmod 0755 ./.tsendmail.sh
 
-   echo mysig > ./.tmysig
+   ${cat} <<'__EOT__' > ./.trc
+   define bail {
+      echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
+   }
+   define ins_addr {
+      wysh set nr=$1 hn=$2
+      echo "~$hn $hn$nr@$hn"; echo '~:echo $?'; read es
+      if [ "$es" -ne 0 ]
+        xcall bail "ins_addr $hn 1-$nr"
+      end
+      vput vexpr nr + $nr 1
+      if [ "$nr" -le "$maximum" ]
+         xcall ins_addr $nr $hn
+      end
+   }
+   define bld_alter {
+      wysh set nr=$1 hn=$2
+      alternates $hn$nr@$hn
+      vput vexpr nr + $nr 2
+      if [ "$nr" -le "$maximum" ]
+         xcall bld_alter $nr $hn
+      end
+   }
+   define t_ocs {
+      read ver
+      call ins_addr 1 t
+      call ins_addr 1 c
+      call ins_addr 1 b
+   }
+   define t_ocl {
+      if [ "$t_remove" != '' ]
+         call bld_alter 1 t
+         call bld_alter 2 c
+      end
+   }
+   set on-compose-splice=t_ocs on-compose-leave=t_ocl
+__EOT__
 
-   echo some-body | ${MAILX} ${ARGS} -Smta=./.tsendmail.sh \
-      -Smessage-inject-head=head-inject \
-      -Smessage-inject-tail=tail-inject \
-      -Ssignature=./.tmysig \
-      ex@am.ple > ./.tall 2>&1
-   check behave:message_injections-1 0 "${MBOX}" '2434746382 134'
-   check behave:message_injections-2 - .tall '4294967295 0' # empty file
+   ${rm} -f "${MBOX}"
+   printf 'm this-goes@nowhere\nbody\n!.\n' |
+   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
+      -X'source ./.trc' -Smta=./.tsendmail.sh -Smaximum=2001 \
+      >./.tall 2>&1
+   ${cat} ./.tall >> "${MBOX}"
+   check behave:mass_recipients-1 0 "${MBOX}" '2912243346 51526'
 
-   ${cat} <<-_EOT > ./.template
-	From: me
-	To: ex1@am.ple
-	Cc: ex2@am.ple
-	Subject: This subject is
-
-   Body, body, body me.
-	_EOT
-   < ./.template ${MAILX} ${ARGS} -t -Smta=./.tsendmail.sh \
-      -Smessage-inject-head=head-inject \
-      -Smessage-inject-tail=tail-inject \
-      -Ssignature=./.tmysig \
-      > ./.tall 2>&1
-   check behave:message_injections-3 0 "${MBOX}" '3114203412 198'
-   check behave:message_injections-4 - .tall '4294967295 0' # empty file
+   ${rm} -f "${MBOX}"
+   printf 'm this-goes@nowhere\nbody\n!.\n' |
+   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
+      -St_remove=1 -X'source ./.trc' -Smta=./.tsendmail.sh -Smaximum=2001 \
+      >./.tall 2>&1
+   ${cat} ./.tall >> "${MBOX}"
+   check behave:mass_recipients-2 0 "${MBOX}" '4097804632 34394'
 
    t_epilog
 }
@@ -3713,6 +3863,500 @@ t_behave_mime_types_load_control() {
       -Smimetypes-load-control=f=./.tmts1,f=./.tmts3 \
       -f "${MBOX}" >> ./.tout 2>&1
    check behave:mime_types_load_control-2 0 ./.tout '1441391438 3646'
+
+   t_epilog
+}
+
+t_behave_lreply_futh_rth_etc() {
+   t_prolog t_behave_lreply_futh_rth_etc
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${SHELL} -
+		(echo 'From HumulusLupulus Thu Jul 27 14:41:20 2017' && ${cat} && echo
+			) >> "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   ${cat} <<-_EOT > ./.tmbox
+	From neverneverland  Sun Jul 23 13:46:25 2017
+	Subject: Bugstop: five miles out 1
+	Reply-To: mister originator2 <mr2@originator>, bugstop@five.miles.out
+	From: mister originator <mr@originator>
+	To: bugstop-commit@five.miles.out, laber@backe.eu
+	Cc: is@a.list
+	Mail-Followup-To: bugstop@five.miles.out, laber@backe.eu, is@a.list
+	In-reply-to: <20170719111113.bkcMz%laber@backe.eu>
+	Date: Wed, 19 Jul 2017 09:22:57 -0400
+	Message-Id: <20170719132257.766AF781267@originator>
+	Status: RO
+	
+	 >  |Sorry, I think I misunderstand something.  I would think that
+	
+	That's appalling.
+	
+	From neverneverland  Fri Jul  7 22:39:11 2017
+	Subject: Bugstop: five miles out 2
+	Reply-To: mister originator2<mr2@originator>,bugstop@five.miles.out,is@a.list
+	Content-Transfer-Encoding: 7bit
+	From: mister originator <mr@originator>
+	To: bugstop-commit@five.miles.out
+	Cc: is@a.list
+	Message-ID: <149945963975.28888.6950788126957753723.reportbug@five.miles.out>
+	Date: Fri, 07 Jul 2017 16:33:59 -0400
+	Status: R
+	
+	capable of changing back.
+	
+	From neverneverland  Fri Jul  7 22:42:00 2017
+	Subject: Bugstop: five miles out 3
+	Reply-To: mister originator2 <mr2@originator>, bugstop@five.miles.out
+	Content-Transfer-Encoding: 7bit
+	From: mister originator <mr@originator>
+	To: bugstop-commit@five.miles.out
+	Cc: is@a.list
+	Message-ID: <149945963975.28888.6950788126957753746.reportbug@five.miles.out>
+	Date: Fri, 07 Jul 2017 16:33:59 -0400
+	List-Post: <mailto:bugstop@five.miles.out>
+	Status: R
+	
+	are you ready, boots?
+	
+	From neverneverland  Sat Aug 19 23:15:00 2017
+	Subject: Bugstop: five miles out 4
+	Reply-To: mister originator2 <mr2@originator>, bugstop@five.miles.out
+	Content-Transfer-Encoding: 7bit
+	From: mister originator <mr@originator>
+	To: bugstop@five.miles.out
+	Cc: is@a.list
+	Message-ID: <149945963975.28888.6950788126qtewrqwer.reportbug@five.miles.out>
+	Date: Fri, 07 Jul 2017 16:33:59 -0400
+	List-Post: <mailto:bugstop@five.miles.out>
+	Status: R
+	
+	are you ready, boots?
+	_EOT
+
+   #
+
+   ${cat} <<-'_EOT' | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh \
+         -Rf ./.tmbox >> "${MBOX}" 2>&1
+	define r {
+	   wysh set m="This is text of \"reply ${1}."
+	   reply 1 2 3
+	!I m
+	1".
+	!.
+	!I m
+	2".
+	!.
+	!I m
+	3".
+	!.
+	   echo -----After reply $1.1 - $1.3: $?/$^ERRNAME
+	}
+	define R {
+	   wysh set m="This is text of \"Reply ${1}."
+	   eval Reply $2
+	!I m
+	!I 2
+	".
+	!.
+	   echo -----After Reply $1.$2: $?/$^ERRNAME
+	}
+	define _Lh {
+	   read protover
+	   echo '~I m'
+	   echo '~I n'
+	   echo '".'
+	}
+	define _Ls {
+	   wysh set m="This is text of \"Lreply ${1}." on-compose-splice=_Lh n=$2
+	   eval Lreply $2
+	}
+	define L {
+	   # We need two indirections for this test: one for the case that Lreply
+	   # fails because of missing recipients: we need to read EOF next, thus
+	   # place this in _Ls last; and second for the succeeding cases EOF is
+	   # not what these should read, so go over the backside and splice it in!
+	   call _Ls "$@"
+	   echo -----After Lreply $1.$2: $?/$^ERRNAME
+	}
+	define x {
+	   localopts call-fixate yes
+	   call r $1
+	   call R $1 1; call R $1 2; call R $1 3; call R $1 4
+	   call L $1 1; call L $1 2; call L $1 3
+	}
+	define tweak {
+	   echo;echo '===== CHANGING === '"$*"' =====';echo
+	   eval "$@"
+	}
+	#
+	set from=laber@backe.eu
+	mlist is@a.list
+	call x 1
+	call tweak set reply-to-honour
+	call x 2
+	call tweak set followup-to
+	call x 3
+	call tweak set followup-to-honour
+	call x 4
+	call tweak mlist bugstop@five.miles.out
+	call x 5
+	call tweak mlsubscribe bugstop@five.miles.out
+	call x 6
+	call tweak set recipients-in-cc
+	call x 7
+	_EOT
+
+   check behave:lreply_futh_rth_etc-1 0 "${MBOX}" '940818845 29373'
+
+   ##
+
+   ${cat} <<-_EOT > ./.tmbox
+	From tom@i-i.example Thu Oct 26 03:15:55 2017
+	Date: Wed, 25 Oct 2017 21:15:46 -0400
+	From: tom <tom@i-i.example>
+	To: Steffen Nurpmeso <steffen@sdaoden.eu>
+	Cc: tom <tom@i-i.example>
+	Subject: Re: xxxx yyyyyyyy configure does not really like a missing zzzzz
+	Message-ID: <20171026011546.GA11643@i-i.example>
+	Reply-To: tom@i-i.example
+	References: <20171025214601.T2pNd%steffen@sdaoden.eu>
+	In-Reply-To: <20171025214601.T2pNd%steffen@sdaoden.eu>
+	Status: R
+	
+	The report's useful :-)
+	_EOT
+
+   printf 'reply 1\nthank you\n!.\n' |
+      ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh -Sreply-to-honour \
+         -Rf ./.tmbox > "${MBOX}" 2>&1
+   check behave:lreply_futh_rth_etc-2 0 "${MBOX}" '1045866991 331'
+
+   t_epilog
+}
+
+t_behave_xxxheads_rfc2047() {
+   t_prolog t_behave_xxxheads_rfc2047
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${SHELL} -
+		(echo 'From GentianaLutea Mon Dec 04 17:15:29 2017' && ${cat} &&
+         echo) >> "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   #
+   ${rm} -f "${MBOX}"
+   echo | ${MAILX} ${ARGS} ${ADDARG_UNI} \
+      -s 'a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲' \
+      "${MBOX}"
+   check behave:xxxheads_rfc2047-1 0 "${MBOX}" '3370931614 375'
+
+   # Single word (overlong line split -- bad standard! Requires injection of
+   # artificial data!!  But can be prevented by using RFC 2047 encoding)
+   ${rm} -f "${MBOX}"
+   i=`${awk} 'BEGIN{for(i=0; i<92; ++i) printf "0123456789_"}'`
+   echo | ${MAILX} ${ARGS} -s "${i}" "${MBOX}"
+   check behave:xxxheads_rfc2047-2 0 "${MBOX}" '489922370 1718'
+
+   # Combination of encoded words, space and tabs of varying sort
+   ${rm} -f "${MBOX}"
+   echo | ${MAILX} ${ARGS} ${ADDARG_UNI} \
+      -s "1Abrä Kaspas1 2Abra Katä	b_kaspas2  \
+3Abrä Kaspas3   4Abrä Kaspas4    5Abrä Kaspas5     \
+6Abra Kaspas6      7Abrä Kaspas7       8Abra Kaspas8        \
+9Abra Kaspastäb4-3 	 	 	 10Abra Kaspas1 _ 11Abra Katäb1	\
+12Abra Kadabrä1 After	Tab	after	Täb	this	is	NUTS" \
+      "${MBOX}"
+   check behave:xxxheads_rfc2047-3 0 "${MBOX}" '1676887734 591'
+
+   # Overlong multibyte sequence that must be forcefully split
+   # todo This works even before v15.0, but only by accident
+   ${rm} -f "${MBOX}"
+   echo | ${MAILX} ${ARGS} ${ADDARG_UNI} \
+      -s "✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
+✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
+✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄" \
+      "${MBOX}"
+   check behave:xxxheads_rfc2047-4 0 "${MBOX}" '3029301775 659'
+
+   # Trailing WS
+   ${rm} -f "${MBOX}"
+   echo | ${MAILX} ${ARGS} \
+      -s "1-1 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
+1-2 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
+1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
+1-4 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
+1-5 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
+1-6 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
+      "${MBOX}"
+   check behave:xxxheads_rfc2047-5 0 "${MBOX}" '4126167195 297'
+
+   # Leading and trailing WS
+   ${rm} -f "${MBOX}"
+   echo | ${MAILX} ${ARGS} \
+      -s "	 	 2-1 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
+1-2 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
+1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
+1-4 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
+      "${MBOX}"
+   check behave:xxxheads_rfc2047-6 0 "${MBOX}" '3600624479 236'
+
+   # RFC 2047 in an address field!  (Missing test caused v14.9.6!)
+   ${rm} -f "${MBOX}"
+   echo 'Dat Fr�chtchen riecht h�u�lich' |
+      ${MAILX} ${ARGS} ${ADDARG_UNI} -Smta=./.tsendmail.sh \
+      -sH�h�ttchen "'Tr�ges \"Fr�chtchen\" <do@du> (h�)'"
+   check behave:xxxheads_rfc2047-7 0 "${MBOX}" '4074547884 269'
+
+   # RFC 2047 in an address field!  (Missing test caused v14.9.6!)
+   AE=`printf "\xC3\xA4"`
+   OE=`printf "\xC3\xB6"`
+   SZ=`printf "\xC3\x9F"`
+   UE=`printf "\xC3\xBC"`
+   ${rm} -f "${MBOX}"
+   echo "Dat Fr${UE}chtchen riecht h${AE}u${SZ}lich" |
+      ${MAILX} ${ARGS} ${ADDARG_UNI} -Sfullnames -Smta=./.tsendmail.sh \
+         -s H${UE}h${OE}ttchen \
+         'Schn'${OE}'des "Fr'${UE}'chtchen" <do@du> (H'${AE}'!)'
+   check behave:xxxheads_rfc2047-7 0 "${MBOX}" '800505986 368'
+
+   t_epilog
+}
+
+t_behave_rfc2231() {
+   t_prolog t_behave_rfc2231
+   TRAP_EXIT_ADDONS="./.t*"
+
+   (
+      mkdir ./.ttt || exit 1
+      cd ./.ttt || exit 2
+      : > "ma'ger.txt"
+      : > "mä'ger.txt"
+      : > 'diet\ is \curd.txt'
+      : > 'diet "is" curd.txt'
+      : > höde-tröge.txt
+      : > höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt
+      : > höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt
+      : > hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt
+      : > ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt
+   )
+   echo bla | ${MAILX} ${ARGS} ${ADDARG_UNI} \
+      -a "./.ttt/ma'ger.txt" -a "./.ttt/mä'ger.txt" \
+      -a './.ttt/diet\ is \curd.txt' -a './.ttt/diet "is" curd.txt' \
+      -a ./.ttt/höde-tröge.txt \
+      -a ./.ttt/höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt \
+      -a ./.ttt/höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt \
+      -a ./.ttt/hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt \
+      -a ./.ttt/✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt \
+      "${MBOX}"
+   check behave:rfc2231-1 0 "${MBOX}" '684985954 3092'
+
+   # `resend' test, reusing $MBOX
+   printf "Resend ./.t2\nx\n" | ${MAILX} ${ARGS} -Rf "${MBOX}"
+   check behave:rfc2231-2 0 ./.t2 '684985954 3092'
+
+   printf "resend ./.t3\nx\n" | ${MAILX} ${ARGS} -Rf "${MBOX}"
+   check behave:rfc2231-3 0 ./.t3 '3130352658 3148'
+
+   t_epilog
+}
+
+t_behave_iconv_mbyte_base64() {
+   t_prolog t_behave_iconv_mbyte_base64
+   TRAP_EXIT_ADDONS="./.t*"
+
+   if [ -n "${UTF8_LOCALE}" ] && have_feat iconv &&
+         (</dev/null iconv -f ascii -t iso-2022-jp) >/dev/null 2>&1 ||
+         (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
+      :
+   else
+      echo 'behave:iconv_mbyte_base64: unsupported, skipped'
+      return
+   fi
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${SHELL} -
+		(echo 'From DroseriaRotundifolia Thu Aug 03 17:26:25 2017' && ${cat} &&
+         echo) >> "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   if (</dev/null iconv -f ascii -t iso-2022-jp) >/dev/null 2>&1; then
+      cat <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
+            -Smta=./.tsendmail.sh \
+            -Sescape=! -Smime-encoding=base64 2>./.terr
+         set ttycharset=utf-8 sendcharsets=iso-2022-jp
+         m t1@exam.ple
+!s Japanese from UTF-8 to ISO-2022-JP
+シジュウカラ科（シジュウカラか、学名 Paridae）は、鳥類スズメ目の科である。シジュウカラ（四十雀）と総称されるが、狭義にはこの1種をシジュウカラと呼ぶ。
+
+カンムリガラ（学名Parus cristatus）は、スズメ目シジュウカラ科に分類される鳥類の一種。
+
+
+カンムリガラ（学名Parus cristatus）は、スズメ目シジュウカラ科に分類される鳥類の一種。
+
+シジュウカラ科（シジュウカラか、学名 Paridae）は、鳥類スズメ目の科である。シジュウカラ（四十雀）と総称されるが、狭義にはこの1種をシジュウカラと呼ぶ。
+!.
+
+         set ttycharset=iso-2022-jp charset-7bit=iso-2022-jp sendcharsets=utf-8
+         m t2@exam.ple
+!s Japanese from ISO-2022-JP to UTF-8, eh, no, also ISO-2022-JP
+$B%7%8%e%&%+%i2J!J%7%8%e%&%+%i$+!"3XL>(B Paridae$B!K$O!"D;N`%9%:%aL\$N2J$G$"$k!#%7%8%e%&%+%i!J;M==?}!K$HAm>N$5$l$k$,!"695A$K$O$3$N(B1$B<o$r%7%8%e%&%+%i$H8F$V!#(B
+
+$B%+%s%`%j%,%i!J3XL>(BParus cristatus$B!K$O!"%9%:%aL\%7%8%e%&%+%i2J$KJ,N`$5$l$kD;N`$N0l<o!#(B
+
+
+$B%+%s%`%j%,%i!J3XL>(BParus cristatus$B!K$O!"%9%:%aL\%7%8%e%&%+%i2J$KJ,N`$5$l$kD;N`$N0l<o!#(B
+
+$B%7%8%e%&%+%i2J!J%7%8%e%&%+%i$+!"3XL>(B Paridae$B!K$O!"D;N`%9%:%aL\$N2J$G$"$k!#%7%8%e%&%+%i!J;M==?}!K$HAm>N$5$l$k$,!"695A$K$O$3$N(B1$B<o$r%7%8%e%&%+%i$H8F$V!#(B
+!.
+		_EOT
+      check behave:iconv_mbyte_base64-1 0 "${MBOX}" '3428985079 1976'
+      check behave:iconv_mbyte_base64-2 - ./.terr '4294967295 0'
+
+      printf 'eval f 1; write ./.twrite\n' |
+         ${MAILX} ${ARGS} ${ADDARG_UNI} -Rf "${MBOX}" >./.tlog 2>&1
+      check behave:iconv_mbyte_base64-3 0 ./.twrite '1259742080 686'
+      check behave:iconv_mbyte_base64-4 - ./.tlog '3956097665 119'
+   else
+      echo 'behave:iconv_mbyte_base64: ISO-2022-JP unsupported, skipping 1-4'
+   fi
+
+   if (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
+      rm -f "${MBOX}" ./.twrite
+      cat <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
+            -Smta=./.tsendmail.sh \
+            -Sescape=! -Smime-encoding=base64 2>./.terr
+         set ttycharset=utf-8 sendcharsets=euc-jp
+         m t1@exam.ple
+!s Japanese from UTF-8 to EUC-JP
+シジュウカラ科（シジュウカラか、学名 Paridae）は、鳥類スズメ目の科である。シジュウカラ（四十雀）と総称されるが、狭義にはこの1種をシジュウカラと呼ぶ。
+
+カンムリガラ（学名Parus cristatus）は、スズメ目シジュウカラ科に分類される鳥類の一種。
+
+
+カンムリガラ（学名Parus cristatus）は、スズメ目シジュウカラ科に分類される鳥類の一種。
+
+シジュウカラ科（シジュウカラか、学名 Paridae）は、鳥類スズメ目の科である。シジュウカラ（四十雀）と総称されるが、狭義にはこの1種をシジュウカラと呼ぶ。
+!.
+
+         set ttycharset=EUC-JP sendcharsets=utf-8
+         m t2@exam.ple
+!s Japanese from EUC-JP to UTF-8
+�����奦����ʡʥ����奦���餫����̾ Paridae�ˤϡ�Ļ�ॹ�����ܤβʤǤ��롣�����奦����ʻͽ����ˤ����Τ���뤬�������ˤϤ���1��򥷥��奦����ȸƤ֡�
+
+�����ꥬ��ʳ�̾Parus cristatus�ˤϡ��������ܥ����奦����ʤ�ʬ�व���Ļ��ΰ�
+
+
+�����ꥬ��ʳ�̾Parus cristatus�ˤϡ��������ܥ����奦����ʤ�ʬ�व���Ļ��ΰ�
+
+�����奦����ʡʥ����奦���餫����̾ Paridae�ˤϡ�Ļ�ॹ�����ܤβʤǤ��롣�����奦����ʻͽ����ˤ����Τ���뤬�������ˤϤ���1��򥷥��奦����ȸƤ֡�
+!.
+		_EOT
+      check behave:iconv_mbyte_base64-5 0 "${MBOX}" '1686827547 2051'
+      check behave:iconv_mbyte_base64-6 - ./.terr '4294967295 0'
+
+      printf 'eval f 1; write ./.twrite\n' |
+         ${MAILX} ${ARGS} ${ADDARG_UNI} -Rf "${MBOX}" >./.tlog 2>&1
+      check behave:iconv_mbyte_base64-7 0 ./.twrite '1259742080 686'
+      check behave:iconv_mbyte_base64-8 - ./.tlog '500059195 119'
+   else
+      echo 'behave:iconv_mbyte_base64: EUC-JP unsupported, skipping 5-8'
+   fi
+
+   t_epilog
+}
+
+t_behave_iconv_mainbody() {
+   t_prolog t_behave_iconv_mainbody
+   TRAP_EXIT_ADDONS="./.t*"
+
+   i=
+   if have_feat iconv &&
+         (</dev/null iconv -f utf-8 -t ascii) >/dev/null 2>&1; then
+      j="`printf '–' | iconv -f utf-8 -t ascii 2>/dev/null`"
+      # This assumes iconv(1) behaves like iconv(3), but well
+      if [ ${?} -ne 0 ]; then
+         i=1
+      elif [ x"${j}" = 'x?' ]; then
+         i=2
+      elif [ x"${j}" = 'x*' ]; then
+         i=3
+      fi
+   fi
+   if [ -z "${i}" ]; then
+      echo 'behave:iconv_mainbody: unsupported, skipped'
+      return
+   fi
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${SHELL} -
+		(echo 'From HamamelisVirginiana Fri Oct 20 16:23:21 2017' && ${cat} &&
+			echo) >> "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   printf '–' | ${MAILX} ${ARGS} ${ADDARG_UNI} -Smta=./.tsendmail.sh \
+      -S charset-7bit=us-ascii -S charset-8bit=utf-8 \
+      -s '–' over-the@rain.bow 2>./.terr
+   check behave:iconv_mainbody-1 0 "${MBOX}" '3634015017 251'
+   check behave:iconv_mainbody-2 - ./.terr '4294967295 0'
+
+   printf '–' | ${MAILX} ${ARGS} ${ADDARG_UNI} -Smta=./.tsendmail.sh \
+      -S charset-7bit=us-ascii -S charset-8bit=us-ascii \
+      -s '–' over-the@rain.bow 2>./.terr
+   exn0_test behave:iconv_mainbody-3
+   check behave:iconv_mainbody-3 - "${MBOX}" '3634015017 251'
+   check behave:iconv_mainbody-4 - ./.terr '1960148192 128'
+
+   printf 'p\nx\n' | ${MAILX} ${ARGS} -Rf "${MBOX}" >./.tout 2>./.terr
+   j=${?}
+   if [ ${i} -eq 1 ]; then
+      # yuck, just assume ???, we need a test program for that one!
+      ex0_test behave:iconv_mainbody-5-1 ${j}
+      check behave:iconv_mainbody-6-1 - ./.tout '1959197095 283'
+      check behave:iconv_mainbody-7-1 - ./.terr '4294967295 0'
+   elif [ ${i} -eq 2 ]; then
+      ex0_test behave:iconv_mainbody-5-2 ${j}
+      check behave:iconv_mainbody-6-2 - ./.tout '1959197095 283'
+      check behave:iconv_mainbody-7-2 - ./.terr '4294967295 0'
+   else
+      ex0_test behave:iconv_mainbody-5-3 ${j}
+      check behave:iconv_mainbody-6-3 - ./.tout '3196380198 279'
+      check behave:iconv_mainbody-7-3 - ./.terr '4294967295 0'
+   fi
+
+   t_epilog
+}
+
+t_behave_q_t_etc_opts() {
+   t_prolog t_behave_q_t_etc_opts
+   TRAP_EXIT_ADDONS="./.t*"
+
+   # Three tests for MIME encoding and (a bit) content classification.
+   # At the same time testing -q FILE, < FILE and -t FILE
+   t__put_body > ./.tin
+
+   ${rm} -f "${MBOX}"
+   < ./.tin ${MAILX} ${ARGS} ${ADDARG_UNI} \
+      -a ./.tin -s "`t__put_subject`" "${MBOX}"
+   check behave:q_t_etc_opts-1 0 "${MBOX}" '3570973309 6646'
+
+   ${rm} -f "${MBOX}"
+   < /dev/null ${MAILX} ${ARGS} ${ADDARG_UNI} \
+      -a ./.tin -s "`t__put_subject`" -q ./.tin "${MBOX}"
+   check behave:q_t_etc_opts-2 0 "${MBOX}" '3570973309 6646'
+
+   ${rm} -f "${MBOX}"
+   (  echo "To: ${MBOX}" && echo "Subject: `t__put_subject`" && echo &&
+      ${cat} ./.tin
+   ) | ${MAILX} ${ARGS} ${ADDARG_UNI} -Snodot -a ./.tin -t
+   check behave:q_t_etc_opts-3 0 "${MBOX}" '3570973309 6646'
 
    t_epilog
 }
@@ -3908,503 +4552,63 @@ t_behave_s_mime() {
    t_epilog
 }
 
-t_behave_maildir() {
-   t_prolog t_behave_maildir
-   TRAP_EXIT_ADDONS="./.t*"
-
-   (
-      i=0
-      while [ ${i} -lt 112 ]; do
-         printf 'm file://%s\n~s Subject %s\nHello %s!\n~.\n' \
-            "${MBOX}" "${i}" "${i}"
-         i=`add ${i} 1`
-      done
-   ) | ${MAILX} ${ARGS}
-   check behave:maildir-1 0 "${MBOX}" '1140119864 13780'
-
-   printf 'File "%s"
-         copy * "%s"
-         File "%s"
-         from*
-      ' "${MBOX}" .tmdir1 .tmdir1 |
-      ${MAILX} ${ARGS} -Snewfolders=maildir > .tlst
-   check behave:maildir-2 0 .tlst '1797938753 9103'
-
-   printf 'File "%s"
-         copy * "maildir://%s"
-         File "maildir://%s"
-         from*
-      ' "${MBOX}" .tmdir2 .tmdir2 |
-      ${MAILX} ${ARGS} > .tlst
-   check behave:maildir-3 0 .tlst '1155631089 9113'
-
-   printf 'File "maildir://%s"
-         copy * "file://%s"
-         File "file://%s"
-         from*
-      ' .tmdir2 .tmbox1 .tmbox1 |
-      ${MAILX} ${ARGS} > .tlst
-   check behave:maildir-4 0 .tmbox1 '2646131190 13220'
-   check behave:maildir-5 - .tlst '3701297796 9110'
-
-   # only the odd (even)
-   (
-      printf 'File "maildir://%s"
-            copy ' .tmdir2
-      i=0
-      while [ ${i} -lt 112 ]; do
-         j=`modulo ${i} 2`
-         [ ${j} -eq 1 ] && printf '%s ' "${i}"
-         i=`add ${i} 1`
-      done
-      printf ' file://%s
-            File "file://%s"
-            from*
-         ' .tmbox2 .tmbox2
-   ) | ${MAILX} ${ARGS} > .tlst
-   check behave:maildir-6 0 .tmbox2 '142890131 6610'
-   check behave:maildir-7 - .tlst '960096773 4573'
-   # ...
-   (
-      printf 'file "maildir://%s"
-            move ' .tmdir2
-      i=0
-      while [ ${i} -lt 112 ]; do
-         j=`modulo ${i} 2`
-         [ ${j} -eq 0 ] && [ ${i} -ne 0 ] && printf '%s ' "${i}"
-         i=`add ${i} 1`
-      done
-      printf ' file://%s
-            File "file://%s"
-            from*
-            File "maildir://%s"
-            from*
-         ' .tmbox2 .tmbox2 .tmdir2
-   ) | ${MAILX} ${ARGS} > .tlst
-   check behave:maildir-8 0 .tmbox2 '3806905791 13100'
-   ${sed} 2d < .tlst > .tlstx
-   check behave:maildir-9 - .tlstx '4216815295 13645'
-
-   t_epilog
-}
-
-t_behave_mass_recipients() {
-   t_prolog t_behave_mass_recipients
-   TRAP_EXIT_ADDONS="./.t*"
-
-   ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${SHELL} -
-		(echo 'From Eucalyptus Sat Jul 08 21:14:57 2017' && ${cat} && echo
-			) >> "${MBOX}"
-	_EOT
-   chmod 0755 ./.tsendmail.sh
-
-   ${cat} <<'__EOT__' > ./.trc
-   define bail {
-      echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
-   }
-   define ins_addr {
-      wysh set nr=$1 hn=$2
-      echo "~$hn $hn$nr@$hn"; echo '~:echo $?'; read es
-      if [ "$es" -ne 0 ]
-        xcall bail "ins_addr $hn 1-$nr"
-      end
-      vput vexpr nr + $nr 1
-      if [ "$nr" -le "$maximum" ]
-         xcall ins_addr $nr $hn
-      end
-   }
-   define bld_alter {
-      wysh set nr=$1 hn=$2
-      alternates $hn$nr@$hn
-      vput vexpr nr + $nr 2
-      if [ "$nr" -le "$maximum" ]
-         xcall bld_alter $nr $hn
-      end
-   }
-   define t_ocs {
-      read ver
-      call ins_addr 1 t
-      call ins_addr 1 c
-      call ins_addr 1 b
-   }
-   define t_ocl {
-      if [ "$t_remove" != '' ]
-         call bld_alter 1 t
-         call bld_alter 2 c
-      end
-   }
-   set on-compose-splice=t_ocs on-compose-leave=t_ocl
-__EOT__
-
-   ${rm} -f "${MBOX}"
-   printf 'm this-goes@nowhere\nbody\n!.\n' |
-   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
-      -X'source ./.trc' -Smta=./.tsendmail.sh -Smaximum=2001 \
-      >./.tall 2>&1
-   ${cat} ./.tall >> "${MBOX}"
-   check behave:mass_recipients-1 0 "${MBOX}" '2912243346 51526'
-
-   ${rm} -f "${MBOX}"
-   printf 'm this-goes@nowhere\nbody\n!.\n' |
-   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
-      -St_remove=1 -X'source ./.trc' -Smta=./.tsendmail.sh -Smaximum=2001 \
-      >./.tall 2>&1
-   ${cat} ./.tall >> "${MBOX}"
-   check behave:mass_recipients-2 0 "${MBOX}" '4097804632 34394'
-
-   t_epilog
-}
-
-t_behave_lreply_futh_rth_etc() {
-   t_prolog t_behave_lreply_futh_rth_etc
-   TRAP_EXIT_ADDONS="./.t*"
-
-   ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${SHELL} -
-		(echo 'From HumulusLupulus Thu Jul 27 14:41:20 2017' && ${cat} && echo
-			) >> "${MBOX}"
-	_EOT
-   chmod 0755 ./.tsendmail.sh
-
-   ${cat} <<-_EOT > ./.tmbox
-	From neverneverland  Sun Jul 23 13:46:25 2017
-	Subject: Bugstop: five miles out 1
-	Reply-To: mister originator2 <mr2@originator>, bugstop@five.miles.out
-	From: mister originator <mr@originator>
-	To: bugstop-commit@five.miles.out, laber@backe.eu
-	Cc: is@a.list
-	Mail-Followup-To: bugstop@five.miles.out, laber@backe.eu, is@a.list
-	In-reply-to: <20170719111113.bkcMz%laber@backe.eu>
-	Date: Wed, 19 Jul 2017 09:22:57 -0400
-	Message-Id: <20170719132257.766AF781267@originator>
-	Status: RO
-	
-	 >  |Sorry, I think I misunderstand something.  I would think that
-	
-	That's appalling.
-	
-	From neverneverland  Fri Jul  7 22:39:11 2017
-	Subject: Bugstop: five miles out 2
-	Reply-To: mister originator2<mr2@originator>,bugstop@five.miles.out,is@a.list
-	Content-Transfer-Encoding: 7bit
-	From: mister originator <mr@originator>
-	To: bugstop-commit@five.miles.out
-	Cc: is@a.list
-	Message-ID: <149945963975.28888.6950788126957753723.reportbug@five.miles.out>
-	Date: Fri, 07 Jul 2017 16:33:59 -0400
-	Status: R
-	
-	capable of changing back.
-	
-	From neverneverland  Fri Jul  7 22:42:00 2017
-	Subject: Bugstop: five miles out 3
-	Reply-To: mister originator2 <mr2@originator>, bugstop@five.miles.out
-	Content-Transfer-Encoding: 7bit
-	From: mister originator <mr@originator>
-	To: bugstop-commit@five.miles.out
-	Cc: is@a.list
-	Message-ID: <149945963975.28888.6950788126957753746.reportbug@five.miles.out>
-	Date: Fri, 07 Jul 2017 16:33:59 -0400
-	List-Post: <mailto:bugstop@five.miles.out>
-	Status: R
-	
-	are you ready, boots?
-	
-	From neverneverland  Sat Aug 19 23:15:00 2017
-	Subject: Bugstop: five miles out 4
-	Reply-To: mister originator2 <mr2@originator>, bugstop@five.miles.out
-	Content-Transfer-Encoding: 7bit
-	From: mister originator <mr@originator>
-	To: bugstop@five.miles.out
-	Cc: is@a.list
-	Message-ID: <149945963975.28888.6950788126qtewrqwer.reportbug@five.miles.out>
-	Date: Fri, 07 Jul 2017 16:33:59 -0400
-	List-Post: <mailto:bugstop@five.miles.out>
-	Status: R
-	
-	are you ready, boots?
-	_EOT
-
-   #
-
-   ${cat} <<-'_EOT' | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh \
-         -Rf ./.tmbox >> "${MBOX}" 2>&1
-	define r {
-	   wysh set m="This is text of \"reply ${1}."
-	   reply 1 2 3
-	!I m
-	1".
-	!.
-	!I m
-	2".
-	!.
-	!I m
-	3".
-	!.
-	   echo -----After reply $1.1 - $1.3: $?/$^ERRNAME
-	}
-	define R {
-	   wysh set m="This is text of \"Reply ${1}."
-	   eval Reply $2
-	!I m
-	!I 2
-	".
-	!.
-	   echo -----After Reply $1.$2: $?/$^ERRNAME
-	}
-	define _Lh {
-	   read protover
-	   echo '~I m'
-	   echo '~I n'
-	   echo '".'
-	}
-	define _Ls {
-	   wysh set m="This is text of \"Lreply ${1}." on-compose-splice=_Lh n=$2
-	   eval Lreply $2
-	}
-	define L {
-	   # We need two indirections for this test: one for the case that Lreply
-	   # fails because of missing recipients: we need to read EOF next, thus
-	   # place this in _Ls last; and second for the succeeding cases EOF is
-	   # not what these should read, so go over the backside and splice it in!
-	   call _Ls "$@"
-	   echo -----After Lreply $1.$2: $?/$^ERRNAME
-	}
-	define x {
-	   localopts call-fixate yes
-	   call r $1
-	   call R $1 1; call R $1 2; call R $1 3; call R $1 4
-	   call L $1 1; call L $1 2; call L $1 3
-	}
-	define tweak {
-	   echo;echo '===== CHANGING === '"$*"' =====';echo
-	   eval "$@"
-	}
-	#
-	set from=laber@backe.eu
-	mlist is@a.list
-	call x 1
-	call tweak set reply-to-honour
-	call x 2
-	call tweak set followup-to
-	call x 3
-	call tweak set followup-to-honour
-	call x 4
-	call tweak mlist bugstop@five.miles.out
-	call x 5
-	call tweak mlsubscribe bugstop@five.miles.out
-	call x 6
-	call tweak set recipients-in-cc
-	call x 7
-	_EOT
-
-   check behave:lreply_futh_rth_etc-1 0 "${MBOX}" '940818845 29373'
-
-   ##
-
-   ${cat} <<-_EOT > ./.tmbox
-	From tom@i-i.example Thu Oct 26 03:15:55 2017
-	Date: Wed, 25 Oct 2017 21:15:46 -0400
-	From: tom <tom@i-i.example>
-	To: Steffen Nurpmeso <steffen@sdaoden.eu>
-	Cc: tom <tom@i-i.example>
-	Subject: Re: xxxx yyyyyyyy configure does not really like a missing zzzzz
-	Message-ID: <20171026011546.GA11643@i-i.example>
-	Reply-To: tom@i-i.example
-	References: <20171025214601.T2pNd%steffen@sdaoden.eu>
-	In-Reply-To: <20171025214601.T2pNd%steffen@sdaoden.eu>
-	Status: R
-	
-	The report's useful :-)
-	_EOT
-
-   printf 'reply 1\nthank you\n!.\n' |
-      ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh -Sreply-to-honour \
-         -Rf ./.tmbox > "${MBOX}" 2>&1
-   check behave:lreply_futh_rth_etc-2 0 "${MBOX}" '1045866991 331'
-
-   t_epilog
-}
-
-t_behave_iconv_mbyte_base64() {
-   t_prolog t_behave_iconv_mbyte_base64
-   TRAP_EXIT_ADDONS="./.t*"
-
-   if [ -n "${UTF8_LOCALE}" ] && have_feat iconv &&
-         (</dev/null iconv -f ascii -t iso-2022-jp) >/dev/null 2>&1 ||
-         (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
-      :
-   else
-      echo 'behave:iconv_mbyte_base64: unsupported, skipped'
-      return
-   fi
-
-   ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${SHELL} -
-		(echo 'From DroseriaRotundifolia Thu Aug 03 17:26:25 2017' && ${cat} &&
-         echo) >> "${MBOX}"
-	_EOT
-   chmod 0755 ./.tsendmail.sh
-
-   if (</dev/null iconv -f ascii -t iso-2022-jp) >/dev/null 2>&1; then
-      cat <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
-            -Smta=./.tsendmail.sh \
-            -Sescape=! -Smime-encoding=base64 2>./.terr
-         set ttycharset=utf-8 sendcharsets=iso-2022-jp
-         m t1@exam.ple
-!s Japanese from UTF-8 to ISO-2022-JP
-シジュウカラ科（シジュウカラか、学名 Paridae）は、鳥類スズメ目の科である。シジュウカラ（四十雀）と総称されるが、狭義にはこの1種をシジュウカラと呼ぶ。
-
-カンムリガラ（学名Parus cristatus）は、スズメ目シジュウカラ科に分類される鳥類の一種。
-
-
-カンムリガラ（学名Parus cristatus）は、スズメ目シジュウカラ科に分類される鳥類の一種。
-
-シジュウカラ科（シジュウカラか、学名 Paridae）は、鳥類スズメ目の科である。シジュウカラ（四十雀）と総称されるが、狭義にはこの1種をシジュウカラと呼ぶ。
-!.
-
-         set ttycharset=iso-2022-jp charset-7bit=iso-2022-jp sendcharsets=utf-8
-         m t2@exam.ple
-!s Japanese from ISO-2022-JP to UTF-8, eh, no, also ISO-2022-JP
-$B%7%8%e%&%+%i2J!J%7%8%e%&%+%i$+!"3XL>(B Paridae$B!K$O!"D;N`%9%:%aL\$N2J$G$"$k!#%7%8%e%&%+%i!J;M==?}!K$HAm>N$5$l$k$,!"695A$K$O$3$N(B1$B<o$r%7%8%e%&%+%i$H8F$V!#(B
-
-$B%+%s%`%j%,%i!J3XL>(BParus cristatus$B!K$O!"%9%:%aL\%7%8%e%&%+%i2J$KJ,N`$5$l$kD;N`$N0l<o!#(B
-
-
-$B%+%s%`%j%,%i!J3XL>(BParus cristatus$B!K$O!"%9%:%aL\%7%8%e%&%+%i2J$KJ,N`$5$l$kD;N`$N0l<o!#(B
-
-$B%7%8%e%&%+%i2J!J%7%8%e%&%+%i$+!"3XL>(B Paridae$B!K$O!"D;N`%9%:%aL\$N2J$G$"$k!#%7%8%e%&%+%i!J;M==?}!K$HAm>N$5$l$k$,!"695A$K$O$3$N(B1$B<o$r%7%8%e%&%+%i$H8F$V!#(B
-!.
-		_EOT
-      check behave:iconv_mbyte_base64-1 0 "${MBOX}" '3428985079 1976'
-      check behave:iconv_mbyte_base64-2 - ./.terr '4294967295 0'
-
-      printf 'eval f 1; write ./.twrite\n' |
-         ${MAILX} ${ARGS} ${ADDARG_UNI} -Rf "${MBOX}" >./.tlog 2>&1
-      check behave:iconv_mbyte_base64-3 0 ./.twrite '1259742080 686'
-      check behave:iconv_mbyte_base64-4 - ./.tlog '3956097665 119'
-   else
-      echo 'behave:iconv_mbyte_base64: ISO-2022-JP unsupported, skipping 1-4'
-   fi
-
-   if (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
-      rm -f "${MBOX}" ./.twrite
-      cat <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
-            -Smta=./.tsendmail.sh \
-            -Sescape=! -Smime-encoding=base64 2>./.terr
-         set ttycharset=utf-8 sendcharsets=euc-jp
-         m t1@exam.ple
-!s Japanese from UTF-8 to EUC-JP
-シジュウカラ科（シジュウカラか、学名 Paridae）は、鳥類スズメ目の科である。シジュウカラ（四十雀）と総称されるが、狭義にはこの1種をシジュウカラと呼ぶ。
-
-カンムリガラ（学名Parus cristatus）は、スズメ目シジュウカラ科に分類される鳥類の一種。
-
-
-カンムリガラ（学名Parus cristatus）は、スズメ目シジュウカラ科に分類される鳥類の一種。
-
-シジュウカラ科（シジュウカラか、学名 Paridae）は、鳥類スズメ目の科である。シジュウカラ（四十雀）と総称されるが、狭義にはこの1種をシジュウカラと呼ぶ。
-!.
-
-         set ttycharset=EUC-JP sendcharsets=utf-8
-         m t2@exam.ple
-!s Japanese from EUC-JP to UTF-8
-�����奦����ʡʥ����奦���餫����̾ Paridae�ˤϡ�Ļ�ॹ�����ܤβʤǤ��롣�����奦����ʻͽ����ˤ����Τ���뤬�������ˤϤ���1��򥷥��奦����ȸƤ֡�
-
-�����ꥬ��ʳ�̾Parus cristatus�ˤϡ��������ܥ����奦����ʤ�ʬ�व���Ļ��ΰ�
-
-
-�����ꥬ��ʳ�̾Parus cristatus�ˤϡ��������ܥ����奦����ʤ�ʬ�व���Ļ��ΰ�
-
-�����奦����ʡʥ����奦���餫����̾ Paridae�ˤϡ�Ļ�ॹ�����ܤβʤǤ��롣�����奦����ʻͽ����ˤ����Τ���뤬�������ˤϤ���1��򥷥��奦����ȸƤ֡�
-!.
-		_EOT
-      check behave:iconv_mbyte_base64-5 0 "${MBOX}" '1686827547 2051'
-      check behave:iconv_mbyte_base64-6 - ./.terr '4294967295 0'
-
-      printf 'eval f 1; write ./.twrite\n' |
-         ${MAILX} ${ARGS} ${ADDARG_UNI} -Rf "${MBOX}" >./.tlog 2>&1
-      check behave:iconv_mbyte_base64-7 0 ./.twrite '1259742080 686'
-      check behave:iconv_mbyte_base64-8 - ./.tlog '500059195 119'
-   else
-      echo 'behave:iconv_mbyte_base64: EUC-JP unsupported, skipping 5-8'
-   fi
-
-   t_epilog
-}
-
-t_behave_iconv_mainbody() {
-   t_prolog t_behave_iconv_mainbody
-   TRAP_EXIT_ADDONS="./.t*"
-
-   i=
-   if have_feat iconv &&
-         (</dev/null iconv -f utf-8 -t ascii) >/dev/null 2>&1; then
-      j="`printf '–' | iconv -f utf-8 -t ascii 2>/dev/null`"
-      # This assumes iconv(1) behaves like iconv(3), but well
-      if [ ${?} -ne 0 ]; then
-         i=1
-      elif [ x"${j}" = 'x?' ]; then
-         i=2
-      elif [ x"${j}" = 'x*' ]; then
-         i=3
-      fi
-   fi
-   if [ -z "${i}" ]; then
-      echo 'behave:iconv_mainbody: unsupported, skipped'
-      return
-   fi
-
-   ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${SHELL} -
-		(echo 'From HamamelisVirginiana Fri Oct 20 16:23:21 2017' && ${cat} &&
-			echo) >> "${MBOX}"
-	_EOT
-   chmod 0755 ./.tsendmail.sh
-
-   printf '–' | ${MAILX} ${ARGS} ${ADDARG_UNI} -Smta=./.tsendmail.sh \
-      -S charset-7bit=us-ascii -S charset-8bit=utf-8 \
-      -s '–' over-the@rain.bow 2>./.terr
-   check behave:iconv_mainbody-1 0 "${MBOX}" '3634015017 251'
-   check behave:iconv_mainbody-2 - ./.terr '4294967295 0'
-
-   printf '–' | ${MAILX} ${ARGS} ${ADDARG_UNI} -Smta=./.tsendmail.sh \
-      -S charset-7bit=us-ascii -S charset-8bit=us-ascii \
-      -s '–' over-the@rain.bow 2>./.terr
-   exn0_test behave:iconv_mainbody-3
-   check behave:iconv_mainbody-3 - "${MBOX}" '3634015017 251'
-   check behave:iconv_mainbody-4 - ./.terr '1960148192 128'
-
-   printf 'p\nx\n' | ${MAILX} ${ARGS} -Rf "${MBOX}" >./.tout 2>./.terr
-   j=${?}
-   if [ ${i} -eq 1 ]; then
-      # yuck, just assume ???, we need a test program for that one!
-      ex0_test behave:iconv_mainbody-5-1 ${j}
-      check behave:iconv_mainbody-6-1 - ./.tout '1959197095 283'
-      check behave:iconv_mainbody-7-1 - ./.terr '4294967295 0'
-   elif [ ${i} -eq 2 ]; then
-      ex0_test behave:iconv_mainbody-5-2 ${j}
-      check behave:iconv_mainbody-6-2 - ./.tout '1959197095 283'
-      check behave:iconv_mainbody-7-2 - ./.terr '4294967295 0'
-   else
-      ex0_test behave:iconv_mainbody-5-3 ${j}
-      check behave:iconv_mainbody-6-3 - ./.tout '3196380198 279'
-      check behave:iconv_mainbody-7-3 - ./.terr '4294967295 0'
-   fi
-
-   t_epilog
-}
-
 # t_content()
 # Some basic tests regarding correct sending of mails, via STDIN / -t / -q,
 # including basic MIME Content-Transfer-Encoding correctness (quoted-printable)
 # Note we unfortunately need to place some statements without proper
 # indentation because of continuation problems
+# xxx Note: t_content() was the first test (series) written.  Today many
+# xxx aspects are (better) covered by other tests above, some are not.
+# xxx At some future date and time, convert the last remains not covered
+# xxx elsewhere to a real t_behave_* test and drop t_content()
 t_content() {
    t_prolog t_content
+ 
+   # Test for [260e19d] (Juergen Daubert)
+   ${rm} -f "${MBOX}"
+   echo body | ${MAILX} ${ARGS} "${MBOX}"
+   check content:004 0 "${MBOX}" '2917662811 98'
 
+   # "Test for" [d6f316a] (Gavin Troy)
+   ${rm} -f "${MBOX}"
+   printf "m ${MBOX}\n~s subject1\nEmail body\n~.\nfi ${MBOX}\np\nx\n" |
+   ${MAILX} ${ARGS} ${ADDARG_UNI} -Spipe-text/plain="@* ${cat}" > "${BODY}"
+   check content:006 0 "${MBOX}" '2099098650 122'
+   check content:006-1 - "${BODY}" '794542938 174'
+
+   # "Test for" [c299c45] (Peter Hofmann) TODO shouldn't end up QP-encoded?
+   ${rm} -f "${MBOX}"
+   ${awk} 'BEGIN{
+      for(i = 0; i < 10000; ++i)
+         printf "\xC3\xBC"
+         #printf "\xF0\x90\x87\x90"
+      }' | ${MAILX} ${ARGS} ${ADDARG_UNI} -s TestSubject "${MBOX}"
+   check content:007 0 "${MBOX}" '534262374 61816'
+
+   t_epilog
+}
+
+t__put_subject() {
+   # MIME encoding (QP) stress message subject
+   printf 'Äbrä  Kä?dä=brö 	 Fü?di=bus? '\
+'adadaddsssssssddddddddddddddddddddd'\
+'ddddddddddddddddddddddddddddddddddd'\
+'ddddddddddddddddddddddddddddddddddd'\
+'dddddddddddddddddddd Hallelulja? Od'\
+'er?? eeeeeeeeeeeeeeeeeeeeeeeeeeeeee'\
+'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'\
+'eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee f'\
+'fffffffffffffffffffffffffffffffffff'\
+'fffffffffffffffffffff ggggggggggggg'\
+'ggggggggggggggggggggggggggggggggggg'\
+'ggggggggggggggggggggggggggggggggggg'\
+'ggggggggggggggggggggggggggggggggggg'\
+'gggggggggggggggg'
+}
+
+t__put_body() {
    # MIME encoding (QP) stress message body
-printf \
+   printf \
 'Ich bin eine DÖS-Datäi mit sehr langen Zeilen und auch '\
 'sonst bin ich ganz schön am Schleudern, da kannste denke '\
 "wasde willst, gelle, gelle, gelle, gelle, gelle.\r\n"\
@@ -4464,172 +4668,7 @@ printf \
 "=VIER = EQUAL SIGNS=ON A LINE=\n"\
 " \n"\
 "Die letzte Zeile war ein Leerschritt.\n"\
-' '\
- > "${BODY}"
-
-   # MIME encoding (QP) stress message subject
-SUB="Äbrä  Kä?dä=brö 	 Fü?di=bus? \
-adadaddsssssssddddddddddddddddddddd\
-ddddddddddddddddddddddddddddddddddd\
-ddddddddddddddddddddddddddddddddddd\
-dddddddddddddddddddd Hallelulja? Od\
-er?? eeeeeeeeeeeeeeeeeeeeeeeeeeeeee\
-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\
-eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee f\
-fffffffffffffffffffffffffffffffffff\
-fffffffffffffffffffff ggggggggggggg\
-ggggggggggggggggggggggggggggggggggg\
-ggggggggggggggggggggggggggggggggggg\
-ggggggggggggggggggggggggggggggggggg\
-gggggggggggggggg"
-
-   # Three tests for MIME encoding and (a bit) content classification.
-   # At the same time testing -q FILE, < FILE and -t FILE
-
-   ${rm} -f "${MBOX}"
-   < "${BODY}" ${MAILX} ${ARGS} ${ADDARG_UNI} \
-      -a "${BODY}" -s "${SUB}" "${MBOX}"
-   check content:001 0 "${MBOX}" '1145066634 6654'
-
-   ${rm} -f "${MBOX}"
-   < /dev/null ${MAILX} ${ARGS} ${ADDARG_UNI} \
-      -a "${BODY}" -s "${SUB}" -q "${BODY}" "${MBOX}"
-   check content:002 0 "${MBOX}" '1145066634 6654'
-
-   ${rm} -f "${MBOX}"
-   (  echo "To: ${MBOX}" && echo "Subject: ${SUB}" && echo &&
-      ${cat} "${BODY}"
-   ) | ${MAILX} ${ARGS} ${ADDARG_UNI} -Snodot -a "${BODY}" -t
-   check content:003 0 "${MBOX}" '1145066634 6654'
-
-   # Test for [260e19d] (Juergen Daubert)
-   ${rm} -f "${MBOX}"
-   echo body | ${MAILX} ${ARGS} "${MBOX}"
-   check content:004 0 "${MBOX}" '2917662811 98'
-
-   # Sending of multiple mails in a single invocation
-   ${rm} -f "${MBOX}"
-   (  printf "m ${MBOX}\n~s subject1\nE-Mail Körper 1\n~.\n" &&
-      printf "m ${MBOX}\n~s subject2\nEmail body 2\n~.\n" &&
-      echo x
-   ) | ${MAILX} ${ARGS} ${ADDARG_UNI}
-   check content:005 0 "${MBOX}" '2098659767 358'
-
-   ## $BODY CHANGED
-
-   # "Test for" [d6f316a] (Gavin Troy)
-   ${rm} -f "${MBOX}"
-   printf "m ${MBOX}\n~s subject1\nEmail body\n~.\nfi ${MBOX}\np\nx\n" |
-   ${MAILX} ${ARGS} ${ADDARG_UNI} -Spipe-text/plain="@* ${cat}" > "${BODY}"
-   check content:006 0 "${MBOX}" '2099098650 122'
-   check content:006-1 - "${BODY}" '794542938 174'
-
-   # "Test for" [c299c45] (Peter Hofmann) TODO shouldn't end up QP-encoded?
-   ${rm} -f "${MBOX}"
-   ${awk} 'BEGIN{
-      for(i = 0; i < 10000; ++i)
-         printf "\xC3\xBC"
-         #printf "\xF0\x90\x87\x90"
-      }' | ${MAILX} ${ARGS} ${ADDARG_UNI} -s TestSubject "${MBOX}"
-   check content:007 0 "${MBOX}" '534262374 61816'
-
-   ## Test some more corner cases for header bodies (as good as we can today) ##
-
-   #
-   ${rm} -f "${MBOX}"
-   echo | ${MAILX} ${ARGS} ${ADDARG_UNI} \
-      -s 'a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲' \
-      "${MBOX}"
-   check content:008 0 "${MBOX}" '3370931614 375'
-
-   # Single word (overlong line split -- bad standard! Requires injection of
-   # artificial data!!  But can be prevented by using RFC 2047 encoding)
-   ${rm} -f "${MBOX}"
-   i=`${awk} 'BEGIN{for(i=0; i<92; ++i) printf "0123456789_"}'`
-   echo | ${MAILX} ${ARGS} -s "${i}" "${MBOX}"
-   check content:009 0 "${MBOX}" '489922370 1718'
-
-   # Combination of encoded words, space and tabs of varying sort
-   ${rm} -f "${MBOX}"
-   echo | ${MAILX} ${ARGS} ${ADDARG_UNI} \
-      -s "1Abrä Kaspas1 2Abra Katä	b_kaspas2  \
-3Abrä Kaspas3   4Abrä Kaspas4    5Abrä Kaspas5     \
-6Abra Kaspas6      7Abrä Kaspas7       8Abra Kaspas8        \
-9Abra Kaspastäb4-3 	 	 	 10Abra Kaspas1 _ 11Abra Katäb1	\
-12Abra Kadabrä1 After	Tab	after	Täb	this	is	NUTS" \
-      "${MBOX}"
-   check content:010 0 "${MBOX}" '1676887734 591'
-
-   # Overlong multibyte sequence that must be forcefully split
-   # todo This works even before v15.0, but only by accident
-   ${rm} -f "${MBOX}"
-   echo | ${MAILX} ${ARGS} ${ADDARG_UNI} \
-      -s "✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
-✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
-✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄" \
-      "${MBOX}"
-   check content:011 0 "${MBOX}" '3029301775 659'
-
-   # Trailing WS
-   ${rm} -f "${MBOX}"
-   echo | ${MAILX} ${ARGS} \
-      -s "1-1 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
-1-2 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
-1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
-1-4 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
-1-5 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
-1-6 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
-      "${MBOX}"
-   check content:012 0 "${MBOX}" '4126167195 297'
-
-   # Leading and trailing WS
-   ${rm} -f "${MBOX}"
-   echo | ${MAILX} ${ARGS} \
-      -s "	 	 2-1 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
-1-2 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
-1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
-1-4 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
-      "${MBOX}"
-   check content:013 0 "${MBOX}" '3600624479 236'
-
-   # Quick'n dirty RFC 2231 test; i had more when implementing it, but until we
-   # have a (better) test framework materialize a quick shot
-   ${rm} -f "${MBOX}"
-   TRAP_EXIT_ADDONS=./.ttt
-   (
-      mkdir ./.ttt || exit 1
-      cd ./.ttt || exit 2
-      : > "ma'ger.txt"
-      : > "mä'ger.txt"
-      : > 'diet\ is \curd.txt'
-      : > 'diet "is" curd.txt'
-      : > höde-tröge.txt
-      : > höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt
-      : > höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt
-      : > hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt
-      : > ✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt
-   )
-   echo bla | ${MAILX} ${ARGS} ${ADDARG_UNI} \
-      -a "./.ttt/ma'ger.txt" -a "./.ttt/mä'ger.txt" \
-      -a './.ttt/diet\ is \curd.txt' -a './.ttt/diet "is" curd.txt' \
-      -a ./.ttt/höde-tröge.txt \
-      -a ./.ttt/höde__tröge__müde__dätte__hätte__vülle__gülle__äse__äße__säuerliche__kräuter__österliche__grüße__mäh.txt \
-      -a ./.ttt/höde__tröge__müde__dätte__hätte__vuelle__guelle__aese__aesse__sauerliche__kräuter__österliche__grüße__mäh.txt \
-      -a ./.ttt/hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt \
-      -a ./.ttt/✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt \
-      "${MBOX}"
-   check content:014-1 0 "${MBOX}" '684985954 3092'
-
-   # `resend' test, reusing $MBOX
-   ${rm} -f "${BODY}"
-   printf "Resend ${BODY}\nx\n" | ${MAILX} ${ARGS} -Rf "${MBOX}"
-   check content:014-2 0 "${BODY}" '684985954 3092'
-
-   ${rm} -f "${BODY}"
-   printf "resend ${BODY}\nx\n" | ${MAILX} ${ARGS} -Rf "${MBOX}"
-   check content:014-3 0 "${BODY}" '3130352658 3148'
-
-   t_epilog
+' '
 }
 
 t_all() {
