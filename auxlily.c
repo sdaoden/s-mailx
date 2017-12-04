@@ -344,10 +344,10 @@ n_locale_init(void){
       char const *cp;
 
       if((cp = nl_langinfo(CODESET)) != NULL)
-         /* Avoid logging if user set that via -S! */
-         n_PS_ROOT_BLOCK(ok_vset(ttycharset, cp));
+         /* (Will log during startup if user set that via -S) */
+         ok_vset(ttycharset, cp);
    }
-# endif
+# endif /* HAVE_SETLOCALE */
 
 # ifdef HAVE_C90AMEND1
    if(n_mb_cur_max > 1){
@@ -365,7 +365,7 @@ n_locale_init(void){
 #  endif
    }
 # endif
-#endif
+#endif /* HAVE_C90AMEND1 */
    NYD2_LEAVE;
 }
 

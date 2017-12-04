@@ -12047,9 +12047,10 @@ and more.)
 which indicates the used
 .Sx "Character sets" .
 Runtime changes trigger automatic updates of the entire locale system,
-updating and overwriting also a
+which includes updating
 .Va ttycharset
-set by the user.
+(except during startup if the variable has been frozen via
+.Fl S ) .
 .
 .Mx
 .It Ev LINES
