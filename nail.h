@@ -1796,9 +1796,10 @@ ok_v_ssl_protocol,                  /* {chain=1} */
    ok_b_verbose,                       /* {vip=1} */
    ok_v_version,                       /* {virt=n_VERSION} */
    ok_v_version_date,                  /* {virt=n_VERSION_DATE} */
-   ok_v_version_major,                 /* {virt=n_VERSION_MAJOR} */
-   ok_v_version_minor,                 /* {virt=n_VERSION_MINOR} */
-   ok_v_version_update,                /* {virt=n_VERSION_UPDATE} */
+   ok_v_version_hexnum,                /* {virt=n_VERSION_HEXNUM,posnum=1} */
+   ok_v_version_major,                 /* {virt=n_VERSION_MAJOR,posnum=1} */
+   ok_v_version_minor,                 /* {virt=n_VERSION_MINOR,posnum=1} */
+   ok_v_version_update,                /* {virt=n_VERSION_UPDATE,posnum=1} */
 
    ok_b_writebackedited
 

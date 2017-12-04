@@ -11998,11 +11998,16 @@ is sufficient to disable verbosity as such.
 .Mx
 .Mx
 .Mx
-.It Va version , version-date , version-major , version-minor , version-update
-\*(RO \*(UA version information: the first variable contains a string
-containing the complete version identification, the latter three contain
-only digits: the major, minor and update version numbers.
-The date is in ISO 8601 notation.
+.It Va version , version-date , \
+  version-hexnum , version-major , version-minor , version-update
+\*(RO \*(UA version information: the first variable is a string with
+the complete version identification, the second the release date in ISO
+8601 notation without time.
+The third is a 32-bit hexadecimal number with the upper 8 bits storing
+the major, followed by the minor and update version numbers which occupy
+12 bits each.
+The latter three variables contain only decimal digits: the major, minor
+and update version numbers.
 The output of the command
 .Ic version
 will include this information.
