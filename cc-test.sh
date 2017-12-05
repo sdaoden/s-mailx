@@ -307,6 +307,7 @@ t_behave() {
    t_behave_xcall
    t_behave_vpospar
    t_behave_atxplode
+   t_behave_read
 
    t_behave_mbox
    t_behave_maildir
