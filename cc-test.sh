@@ -4157,21 +4157,10 @@ t_behave_xxxheads_rfc2047() {
 
    # RFC 2047 in an address field!  (Missing test caused v14.9.6!)
    ${rm} -f "${MBOX}"
-   echo 'Dat Früchtchen riecht häußlich' |
-      ${MAILX} ${ARGS} ${ADDARG_UNI} -Smta=./.tsendmail.sh \
-      -sHühöttchen "'Tröges \"Früchtchen\" <do@du> (hä)'"
-   check behave:xxxheads_rfc2047-7 0 "${MBOX}" '4074547884 269'
-
-   # RFC 2047 in an address field!  (Missing test caused v14.9.6!)
-   AE=`printf "\xC3\xA4"`
-   OE=`printf "\xC3\xB6"`
-   SZ=`printf "\xC3\x9F"`
-   UE=`printf "\xC3\xBC"`
-   ${rm} -f "${MBOX}"
-   echo "Dat Fr${UE}chtchen riecht h${AE}u${SZ}lich" |
+   echo "Dat FrÃ¼chtchen riecht hÃ¤uÃŸlich" |
       ${MAILX} ${ARGS} ${ADDARG_UNI} -Sfullnames -Smta=./.tsendmail.sh \
-         -s H${UE}h${OE}ttchen \
-         'Schn'${OE}'des "Fr'${UE}'chtchen" <do@du> (H'${AE}'!)'
+         -s HÃ¼hÃ¶ttchen \
+         'SchnÃ¶des "FrÃ¼chtchen" <do@du> (HÃ¤!)'
    check behave:xxxheads_rfc2047-7 0 "${MBOX}" '800505986 368'
 
    t_epilog
