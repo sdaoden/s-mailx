@@ -61,9 +61,6 @@ for each subcondition.
 
 - Having a newsreader would be a really cool thing.  (RFC 977 and 2980)
 
-- There should be a variable that controls whether leading and trailing
-  empty lines of parts and/or messages as such should be printed or not.
-
 - printhead()/hprf(): support %n newline format (%t tab?).
   Make it possible to use the *datefield* algorithm for plain From_ derived
   dates (needs a From_ parser, i.e., strptime()-alike).
@@ -258,7 +255,7 @@ Low-Level
      Some (hopefully) duplicate occurrances of such strings can vanish.
   2.1 We have some commands which offer "show" subcommands.
       Those should only work in interactive mode OR SO.
-      This could be done with a flag, too.
+      This could be done with a flag, too.  (Driven from the lexer.)
   X. Offer a central "`[un]onevent' EVENT MACRO [conditions]" register.
      Change all hooks to use that one, optimize the case where a single
      macro is registered for a single event but with different
@@ -279,6 +276,8 @@ Low-Level
       where `message' (or so) would refer to the currently active
       message (in compose mode) or the "dot" (otherwise).
       `message' would gain some keywords.  Something like that.
+      `~^' for compose mode is a starter, but we need such access from
+      the top level, too.
   8. The line buffer used in evaluate() that is passed through to
      commands (thus: in cmd_ctx, then) needs to become `const'.
      (I tried to do so in the past, but some commands write into it,
@@ -300,20 +299,6 @@ Low-Level
      do the BSDish SA_RESTART, which is why we still suffer the way we
      do and need jumps.  I can't dig BSD signal handling, and never ever
      did so myself until i got here.
- 11. Macro execution is potentially recursive.  Meaning that
-     `undefine', etc. can occur while macros are executing.
-     The simplemost approach would be to have some recursion counter for
-     each macro and a delete_later flag that gets honoured when the
-     recursion counter gets zero.  It would be already possible to
-     immediately remove the macro from the hashtable, so that deeper
-     levels wouldn't find it anymore.  To avoid leaks (which *are*) we
-     need to have a jump location for our upcoming signal handler
-     anyway.  (Also to get rid of the temporary_localopts_free() hack.
-     + The same is true for `account's.  Here things are complicated by
-     the global `account_name', i.e., the account could be the current
-     one.
-     + That also is: redefinition of names that have yet-pending
-     deletion requests are possible.
  20. The attachment charset selection loop can then be rewritten to
      check whether an ^C occurred and treat that as end-of-loop
      condition.  In v14.6.3 this was introduced, but it should act
@@ -407,6 +392,8 @@ Low-Level
      such mails.  All this is wrong at the time of this writing!
      We still need to special treat things like, e.g., RFC 2046, 5.2.1.
      But on top of we-can, as opposed to the opposite.
+
+    (Brezn Stangl, brezn DOT stangl AT yandex DOT com)
  99. Now i'm dreaming some more: with the new object-based approach
      multiple mailboxes could be in an open state.  And it should be
      possible to do so for the user (`file' and `folder' are required to
@@ -427,6 +414,7 @@ Low-Level
 
   The current sort fails to recognize that F and the thread starting at
   B are related, which results in a mess.
+  Tests: 41.bad-thread, 58.bad-thread ..
 
 -- Being able to sort the outermost level of threads was a suggestion
    of Rudolf Sykora, especially being able to sort the outermost level
@@ -461,12 +449,6 @@ Low-Level
     should this be documented?  What does NetBSD Mail do?  Should we NOT
     be interactive??  POSIX says for sh(1) (APPLICATION USAGE): 'sh
     2>FILE' is not interactive, even though it accepts terminal input.)
-  . It would be cool if ghosts, shortcuts, alternates could
-    (optionally?) be tracked via localopts.  And macros.  And inner macros.
-    (Additional entry on xy-local xy somewhere above)
-    And / or local to a macro/account if defined in one.
-    Should be per-carrier copy-on-write environments.
-    Just like TeX with def / gdef ...
   . Just like the RFC 3676 link above, it would be nice if it would be
     somehow possible to recognize links in a document; i don't know yet
     how this could be achieved without loosing formatting information (i
@@ -507,6 +489,11 @@ Low-Level
     has the carrier.  Use flip states and add aux funs with only update the
     state+toggle on success -- CURRENTLY MBTOWC FAILURES ARE PRACTICALLY NOT
     HANDLED!!
+    P.S.: the standards do not allow that well at all.
+    Since we work so much with *ttycharset* we would need
+    a setlocale_from_charset(), but which does not exist (except
+    implicitly for UTF-8 locales).  But we need char classification!
+    This task up to S-CText.
   . pop3,mime_cte +++: \r,\n -> \015,\012, to avoid ANY problems..
     Maybe our passed carrier should pass desired output newline (as
     opposed to data-embedded newlines)
@@ -563,9 +550,6 @@ Low-Level
     I.e., if i send a message to s-nail-users@ then i most likely want
     to get a copy to the corresponding box, regardless of whoever the
     message was sent To: Cc: or Bcc: else..
-  . why not simply sucking in complete MIME messages via -t?  In a way
-    that parses it as a MIME message, that is!
-    (Brezn Stangl, brezn DOT stangl AT yandex DOT com)
   . mutt list handling (`~') is very powerful
   . We have some use of *at() functions, especially anything which
     temporarily switches cwd.
@@ -596,11 +580,6 @@ Low-Level
   . __narrow_suffix() is wrong (for stateful encodings that we
     don't support yet) and should inject a reset sequence if it shortens
     the string.
-  .. THAT IS TO SAY: the entire codebase doesn't really support stateful
-    encodings, including the bidi_ things that i've done (but the MLE
-    does iirc?  what is this??).  We should have a global string that
-    has the multibyte reset sequence plus length available for easy
-    access.
   . When a user edits a specific header, it should no longer be
     modified.  (Do not loose knowledge that collect() edited it.)
   . Regular expression list resorting is no good; the user should be
@@ -615,8 +594,7 @@ Low-Level
      Then install a resorter function when we actually have lookups and
      one-shot sort the entire thing once (when the loop ticks).
      Instead of busy resorting, that is.
-  . We need more hooks: on-leave, on-connect.. whatever
-  . The new internal ~/$ expansion mechanism should possibly get support
+  . The new internal ~/$ expansion mechanism should get support
      for POSIX parameter expansions ${[:]-} and ${[:]+} (and ${[:]?}).
      There is no real way to get the functionality otherwise...
   . Make S/MIME an option separate of SSL/TLS, i.e., optional.
@@ -625,8 +603,8 @@ Low-Level
     non self-contained encoded-words).
   . Group addresses, especially the undisclosed recipients but also
     "Bla": addresses; are missing.
-  . Cleanup:  n_ is anything public / external,
-    _n_ is public/e but not really, FILENAME/ABBREV_symbol are statics,
+  . Cleanup:  mx_ is anything public / external,
+    mx__ is public/e but not really, FILENAME/ABBREV_symbol are statics,
     FILENAME/ABBREV__symbol are helpers of a single other static
     (function group) (-> colour.c, lex_input.c: done).
   . Per-folder (S/MIME) en- and decryption key (Tarqi Kazan): if a xy
@@ -659,13 +637,7 @@ Low-Level
        possible to explicitly define a file/dev to be used, but falling
        back to stderr in batch mode otherwise. (think S-Web42)
   . Exit status handling is sick.
-  . Especially in interactive mode MIME classification should count
-    (non-NUL) control characters and the number of different thereof,
-    giving users an option to treat something as text nonetheless.
-    E.g., roff files often use controls as separators in conditionals,
-    some shell scripts use controls for $IFS field separation, and that
-    will end up with charset=binary.
-  .. *mime-allow-text-controls* is a no-brainer: instead we should
+  . *mime-allow-text-controls* is a no-brainer: instead we should
      introduce something that allows us to switch and detect UTF-16 once
      we run into the problematic situation, then start all over in an
      Unicode mode?  I.e.: continue to force the user to set such
@@ -708,10 +680,6 @@ Low-Level
 
 . with *mime-alternative-favour-rich* it is possibly time to support GMAIL
   style quotes, as well as class="quote" and such.
-
-. can we introduce a BUILD_DIR thing?  or OBJ_DIR OBJDIR (what was the BSD
-  name for this again?)  I really would like to be able to have separate
-  build directories!  (PREFIXDEV, however, won't work out for a while.)
 
 . We should be much smarter regarding when we allow a PAGER
   etc. to be used, which is supposed to be a possibly useful thing in
