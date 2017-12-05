@@ -10,9 +10,9 @@ We welcome  in THANKS.
 Number games
 ^^^^^^^^^^^^
 
-The tagged release commit is [v .ar] ([release/v..]:[].
+The release commit is [v .ar] ([release/v..]:[]).
 	, and it has also been stored as [timeline]:[].
-The development branch was tagged [v..] ([master stable/v.]:[]).
+The master/stable branch was tagged [v..] ([master stable/v.]:[]).
 The git(1) release commits and tags, as well as the release balls
 have been signed with the OpenPGP key
   steffen@sdaoden.eu  /  1883A0DD
