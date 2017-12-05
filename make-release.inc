@@ -120,7 +120,7 @@ if [ -f gen-version.h ] && [ -f make-config.in ]; then
 fi
 update_stable_hook
 
-LC_ALL=${ORIG_LC_ALL} git commit -S -m "${stblmsg}"
+LC_ALL=${ORIG_LC_ALL} git commit -S -n -m "${stblmsg}"
 LC_ALL=${ORIG_LC_ALL} git tag -s -f -m "${stblmsg}" v${REL}
 
 if [ -n "${need_stblbrname}" ]; then
@@ -142,7 +142,7 @@ if yesno 'Create release/ branch?'; then
    git rm -f .gitignore .mailmap TODO make-release.*
    update_release_hook
 
-   LC_ALL=${ORIG_LC_ALL} git commit -S -m "${relmsg}"
+   LC_ALL=${ORIG_LC_ALL} git commit -S -n -m "${relmsg}"
    LC_ALL=${ORIG_LC_ALL} git tag -s -f -m "${relmsg}" v${REL}.ar
 
    if yesno 'Shall i update release/latest "symlink"?'; then
@@ -165,7 +165,7 @@ if [ ${relbrname} != ${stblbrname} ] &&
    git rm -rf '*'
    git archive --format=tar "v${REL}.ar" | tar -x -f -
    git add .
-   LC_ALL=${ORIG_LC_ALL} git commit -S -m "${relmsg}"
+   LC_ALL=${ORIG_LC_ALL} git commit -S -n -m "${relmsg}"
 fi
 
 ##
