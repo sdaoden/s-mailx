@@ -148,7 +148,7 @@ static bool_t a_termcap_load(char const *term);
 /* Query the capability tcp and fill in tep (upon success) */
 static bool_t a_termcap_ent_query(struct a_termcap_ent *tep,
                char const *cname, ui16_t cflags);
-SINLINE bool_t a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
+n_INLINE bool_t a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
                   struct a_termcap_control const *tcp);
 
 /* Output PTF for both, termcap(5) and terminfo(5) */
@@ -476,7 +476,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
          tep->te_off = (ui16_t)n_MIN(UI16_MAX, r);
       else
          tep->te_flags |= a_TERMCAP_F_NOENT;
-   }  break;
+      }break;
    default:
    case n_TERMCAP_CAPTYPE_STRING:{
       char *cp;
@@ -487,13 +487,13 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
          n_string_push_buf(&a_termcap_g->tg_dat, cp, strlen(cp) +1);
       }else
          tep->te_flags |= a_TERMCAP_F_NOENT;
-   }  break;
+      }break;
    }
    NYD2_LEAVE;
    return rv;
 }
 
-SINLINE bool_t
+n_INLINE bool_t
 a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
       struct a_termcap_control const *tcp){
    assert(!(n_psonce & n_PSO_TERMCAP_DISABLE));
@@ -541,7 +541,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
          tep->te_off = (ui16_t)n_MIN(UI16_MAX, r);
       else
          tep->te_flags |= a_TERMCAP_F_NOENT;
-   }  break;
+      }break;
    default:
    case n_TERMCAP_CAPTYPE_STRING:{
 # ifndef HAVE_TGETENT_NULL_BUF
@@ -558,13 +558,13 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
 # undef a_BUF
       }else
          tep->te_flags |= a_TERMCAP_F_NOENT;
-   }  break;
+      }break;
    }
    NYD2_LEAVE;
    return rv;
 }
 
-SINLINE bool_t
+n_INLINE bool_t
 a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
       struct a_termcap_control const *tcp){
    assert(!(n_psonce & n_PSO_TERMCAP_DISABLE));

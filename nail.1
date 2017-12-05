@@ -30,9 +30,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"@ S-nail v14.9.5 / 2017-10-21
-.Dd October 21, 2017
-.ds VV \\%v14.9.5
+.\"@ S-nail v14.9.6 / 2017-12-05
+.Dd December 05, 2017
+.ds VV \\%v14.9.6
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -98,6 +98,7 @@
 .Mx -anchor-spass Ss "\*(UA shortly hangs on startup" 11
 .Mx -anchor-spass Ss "I cannot login to Google mail aka GMail" 11
 .Mx -anchor-spass Ss "Not \(dqdefunctional\(dq, but the editor key does not work" 11
+.Mx -anchor-spass Ss "Can \*(UA git-send-email?" 11
 .Mx -anchor-spass Sh "IMAP CLIENT" 12
 .Mx -anchor-spass Sh "SEE ALSO" 13
 .Mx -anchor-spass Sh "HISTORY" 14
@@ -165,6 +166,7 @@
 .Mx -anchor-spass Cm "\e"
 .Mx -anchor-spass Cm "ignerr"
 .Mx -anchor-spass Cm "local"
+.Mx -anchor-spass Cm "scope"
 .Mx -anchor-spass Cm "u"
 .Mx -anchor-spass Cm "vput"
 .Mx -anchor-spass Cm "wysh"
@@ -491,6 +493,7 @@
 .Mx -anchor-spass Va "mta"
 .Mx -anchor-spass Va "mta-arguments"
 .Mx -anchor-spass Va "mta-no-default-arguments"
+.Mx -anchor-spass Va "mta-no-receiver-arguments"
 .Mx -anchor-spass Va "mta-argv0"
 .Mx -anchor-spass Va "netrc-lookup"
 .Mx -anchor-spass Va "netrc-pipe"
@@ -528,6 +531,7 @@
 .Mx -anchor-spass Va "quiet"
 .Mx -anchor-spass Va "quote"
 .Mx -anchor-spass Va "quote-as-attachment"
+.Mx -anchor-spass Va "quote-chars"
 .Mx -anchor-spass Va "quote-fold"
 .Mx -anchor-spass Va "r-option-implicit"
 .Mx -anchor-spass Va "recipients-in-cc"
@@ -613,9 +617,9 @@
 .Mx -anchor-spass Va "verbose"
 .Mx -anchor-spass Va "version"
 .Mx -anchor-spass Va "version-date"
+.Mx -anchor-spass Va "version-hexnum"
 .Mx -anchor-spass Va "version-major"
 .Mx -anchor-spass Va "version-minor"
-.Mx -anchor-spass Va "version-update"
 .Mx -anchor-spass Va "writebackedited"
 .Mx -anchor-spass Ev "COLUMNS"
 .Mx -anchor-spass Ev "DEAD"
@@ -1355,10 +1359,14 @@ to not strip down addresses in compose mode, and
 .Va quote
 to include the message that is being responded to when
 .Ic reply Ns
-ing.
+ing, which is indented by an
+.Va indentprefix
+that also deviates from standard imposed settings.
+.Va mime-counter-evidence
+is fully enabled, too.
 .Pp
 Some random remarks.
-The file mode creation mask can be explicitly managed via the variable
+The file mode creation mask can be managed explicitly via the variable
 .Va umask .
 Sufficient system support provided symbolic links will not be followed
 when files are opened for writing.
@@ -1574,7 +1582,7 @@ as well as
 .Va on-compose-splice-shell
 variables, the former also to be set to a
 .Ic define Ns
-d macro, increasingly powerful mechanisms to perform automated message
+d macro, increasingly powerful mechanisms to perform automatized message
 adjustments, including signature creation, are available.
 (\*(ID These hooks work for commands which newly create messages, namely
 .Ic forward , mail , reply
@@ -1595,7 +1603,7 @@ of so-called variable chains which automatically pick
 .Ql USER@HOST
 or
 .Ql HOST
-context-dependend variable variants: for example addressing
+context-dependent variable variants: for example addressing
 .Ql Ic File Ns \& pop3://yaa@exam.ple
 would find
 .Va \&\&pop3-no-apop-yaa@exam.ple ,
@@ -1682,7 +1690,9 @@ the command
 will give a listing of all available commands and
 .Ic help
 will give a summary of some common ones.
-If the \*(OPal documentation strings are available one can type
+If the \*(OPal documentation strings are available (see
+.Va features )
+one can type
 .Ql help X
 .Pf "(or " Ql ?X )
 and see the actual expansion of
@@ -1869,7 +1879,9 @@ automatic moving of read messages to the
 .Mx -sx
 .Sx "secondary mailbox"
 .Ev MBOX
-as well as updating the \*(OPal line editor
+as well as updating the \*(OPal (see
+.Va features )
+line editor
 .Va history-file ,
 or use the command
 .Ic exit Ql x
@@ -1962,9 +1974,15 @@ format
 can be used to mark out messages with configured list addresses
 in the header display.
 .Pp
-\*(OPally mailing lists may also be specified as (extended) regular
-expressions, which allows matching of many addresses with a single
-expression.
+If the \*(OPal regular expression support is available a mailing list
+specification that contains any of the
+.Dq magical
+regular expression characters
+.Ql ^[]*+?|$
+(see
+.Xr re_format 7 )
+will be interpreted as one, which allows matching of many addresses with
+a single expression.
 However, all fully qualified list addresses are matched via a fast
 dictionary, whereas expressions are placed in (a) list(s) which is
 (are) matched sequentially.
@@ -2355,7 +2373,7 @@ Variables of interest for SSL/TLS in general are
 .Va ssl-ca-no-defaults ,
 .Va ssl-config-file ,
 .Va ssl-config-module ,
-.Va ssl-config-pairs
+.Va ssl-config-pairs ,
 .Va ssl-crl-dir ,
 .Va ssl-crl-file ,
 .Va ssl-rand-file
@@ -2640,11 +2658,15 @@ Mark messages as being a draft.
 Mark messages which need special attention.
 .El
 .Ss "Specifying messages"
-Commands such as
-.Ic from ,
+Commands which take
+.Sx "Message list arguments" ,
+such as
+.Ic from
+a.k.a.\&
+.Ic search ,
 .Ic type
 and
-.Ic delete
+.Ic delete ,
 can be given a list of message numbers as arguments to apply to a number
 of messages at once.
 Thus
@@ -2745,7 +2767,7 @@ search expression.
 .It Ar / Ns Ar string
 All messages that contain
 .Ar string
-in the subject field (case ignored).
+in the subject field (case ignored according to locale).
 See also the
 .Va searchheaders
 variable.
@@ -2758,22 +2780,20 @@ the string from the previous specification of that type is used again.
 .Xc
 All messages that contain the given case-insensitive search
 .Ar expr Ns
-ession; if the \*(OPal regular expression (see
-.Xr re_format 7 )
-support is available
+ession;  If the \*(OPal regular expression support is available
 .Ar expr
 will be interpreted as (an extended) one if any of the
 .Dq magical
-(extended) regular expression characters is seen: in this case this
-should match strings correctly which are in the locale
-.Ev LC_CTYPE
-encoding.
+regular expression characters
+.Ql ^[]*+?|$
+is seen (see
+.Xr re_format 7 ) .
 If the optional
 .Ar @ Ns Ar name-list
-part is missing, the search is restricted to the subject field body,
+part is missing the search is restricted to the subject field body,
 but otherwise
 .Ar name-list
-specifies a comma-separated list of header fields to search, as in
+specifies a comma-separated list of header fields to search, e.g.,
 .Pp
 .Dl '@to,from,cc@Someone i ought to know'
 .Pp
@@ -2782,6 +2802,9 @@ In order to search for a string that includes a
 (commercial at) character the
 .Ar name-list
 is effectively non-optional, but may be given as the empty string.
+Also, specifying an empty search
+.Ar expr Ns
+ession will effectively test for existence of the given header fields.
 Some special header fields may be abbreviated:
 .Ql f ,
 .Ql t ,
@@ -2797,6 +2820,13 @@ will match
 and
 .Ql Subject ,
 respectively and case-insensitively.
+\*(OPally, and just like
+.Ar expr ,
+.Ar name-list
+will be interpreted as (an extended) regular expression if any of the
+.Dq magical
+regular expression characters is seen.
+.Pp
 The special names
 .Ql header
 or
@@ -2810,16 +2840,19 @@ and
 .Ql text
 or
 .Ql =
-can be used to perform full text searches \(en whereas the former
-searches only the body, the latter also searches the message header.
+will perform full text searches \(en whereas the former searches only
+the body, the latter also searches the message header (\*(ID this mode
+yet brute force searches over the entire decoded content of messages,
+including administrativa strings).
 .Pp
-This message specification performs full text comparison, but even with
+This specification performs full text comparison, but even with
 regular expression support it is almost impossible to write a search
 expression that savely matches only a specific address domain.
-To request that the content of the header is treated as a list of
+To request that the body content of the header is treated as a list of
 addresses, and to strip those down to the plain email address which the
-search expression is to be matched against, prefix the header name
-(abbreviation) with a tilde
+search expression is to be matched against, prefix the effective
+.Ar name-list
+with a tilde
 .Ql ~ :
 .Pp
 .Dl @~f@@a\e.safe\e.domain\e.match$
@@ -3195,7 +3228,9 @@ followed by
 .Mx
 .Pf ( Cd mle-snarf-line ) .
 .It Ql \ecV
-Prompts for a Unicode character (its hexadecimal number) to be inserted
+Prompts for a Unicode character (hexadecimal number without prefix, see
+.Ic vexpr )
+to be inserted
 .Mx
 .Pf ( Cd mle-prompt-char ) .
 Note this command needs to be assigned to a single-letter control code
@@ -3507,6 +3542,12 @@ information which applies; a handy suggestion might thus be:
 .Ed
 .Ss "Command modifiers"
 Commands may be prefixed by one or multiple command modifiers.
+Some command modifiers can be used with a restricted set of commands
+only, the
+.Va verbose
+version of
+.Ic list
+will (\*(OPally) show which modifiers apply.
 .Bl -bullet
 .It
 The modifier reverse solidus
@@ -3539,6 +3580,22 @@ will be set to the real exit status of the command regardless.
 .It
 .Mx
 .Cm local
+will alter the called command to apply changes only temporarily,
+local to block-scope, and can thus only be used inside of a
+.Ic define Ns
+d macro or an
+.Ic account
+definition.
+Specifying it implies the modifier
+.Cm wysh .
+Block-scope settings will not be inherited by macros deeper in the
+.Ic call
+chain, and will be garbage collected once the current block is left.
+To record and unroll changes in the global scope use the command
+.Ic localopts .
+.It
+.Mx
+.Cm scope
 does yet not implement any functionality.
 .It
 .Mx
@@ -3759,7 +3816,7 @@ Arguments enclosed in
 extend normal single quotes in that reverse solidus escape sequences are
 expanded as follows:
 .Pp
-.Bl -tag -compact -width "Ql \eNNN"
+.Bl -tag -compact -width ".Ql \eNNN"
 .It Ql \ea
 bell control character (ASCII and ISO-10646 BEL).
 .It Ql \eb
@@ -3793,12 +3850,13 @@ A 0 byte will suppress further output for the quoted argument.
 .It Ql \exHH
 eight-bit byte with the hexadecimal value
 .Ql HH
-(one or two hexadecimal characters).
+(one or two hexadecimal characters, no prefix, see
+.Ic vexpr ) .
 A 0 byte will suppress further output for the quoted argument.
 .It Ql \eUHHHHHHHH
 the Unicode / ISO-10646 character with the hexadecimal codepoint value
 .Ql HHHHHHHH
-(one to eight hexadecimal digits) \(em note that Unicode defines the
+(one to eight hexadecimal characters) \(em note that Unicode defines the
 maximum codepoint ever to be supported as
 .Ql 0x10FFFF
 (in planes of
@@ -3813,7 +3871,7 @@ The character NUL will suppress further output for the quoted argument.
 .It Ql \euHHHH
 Identical to
 .Ql \eUHHHHHHHH
-except it takes only one to four hexadecimal digits.
+except it takes only one to four hexadecimal characters.
 .It Ql \ecX
 Emits the non-printable (ASCII and compatible) C0 control codes
 0 (NUL) to 31 (US), and 127 (DEL).
@@ -4140,7 +4198,7 @@ as
 .Va ^ERR Ns -EXIST .
 (This state could later become overwritten by an I/O error, though.)
 .Pp
-Encoding supports four different modes, lesser automated versions can be
+Encoding supports four different modes, lesser automatized versions can be
 chosen by prefixing one, two or three plus signs: the standard imposes
 a special meaning on some characters, which thus have to be transformed
 to so-called quoted-pairs by pairing them with a reverse solidus
@@ -4427,32 +4485,9 @@ may help shall keys and sequences be falsely recognized.
 .It Ic call
 \*(NQ Calls the given macro, which must have been created via
 .Ic define ,
-otherwise a
+otherwise an
 .Va ^ERR Ns -NOENT
 error occurs.
-Parameters given to macros are implicitly local to the macro's scope, and
-may be accessed via special (positional) parameters, e.g.,
-.Va 1 ,
-.Va * ,
-.Va @ ,
-.Va # .
-The positional parameters may be removed by
-.Ic shift Ns
-ing them off the stack (exceeding the supported number of arguments
-results in a
-.Va ^ERR Ns -OVERFLOW ) ,
-and are otherwise controllable via
-.Ic vpospar .
-Changes to other
-.Sx ENVIRONMENT
-as well as
-.Sx "INTERNAL VARIABLES"
-can be reverted before the current level regains control by setting
-.Ic localopts
-for called macro(s) (or in them, of course).
-Macro execution can be terminated at any time by calling
-.Ic return .
-.Pp
 Calling macros recursively will at some time excess the stack size
 limit, causing a hard program abortion; if recursively calling a macro
 is the last command of the current macro, consider to use the command
@@ -4464,13 +4499,6 @@ Numeric and string operations can be performed via
 and
 .Ic eval
 may be helpful to recreate argument lists.
-.Bd -literal -offset indent
-define exmac {
-  echo Parameter 1 of ${#} is ${1}, all: ${*} / ${@}
-  return 1000 0
-}
-call exmac Hello macro exmac!
-.Ed
 .Mx
 .It Ic call_if
 Identical to
@@ -4776,18 +4804,13 @@ Encrypted messages are first decrypted, if possible, and then copied.
 .Mx
 .Mx
 .It Ic define , undefine
-Without arguments the current list of macros, including their content,
-is shown, otherwise a macro is defined, replacing an existing macro of
-the same name.
-A macro definition is a sequence of commands in the following form:
-.Bd -literal -offset indent
-define name {
-  command1
-  command2
-  ...
-  commandN
-}
-.Ed
+The latter command deletes the given macro, the special name
+.Ql *
+will discard all existing macros.
+Deletion of (a) macro(s) can be performed from within running macro(s).
+Without arguments the former command prints the current list of macros,
+including their content, otherwise it it defines a macro, replacing an
+existing one of the same name as applicable.
 .Pp
 A defined macro can be invoked explicitly by using the
 .Ic call ,
@@ -4796,30 +4819,57 @@ and
 .Ic xcall
 commands, or implicitly if a macro hook is triggered, e.g., a
 .Va folder-hook .
-It is possible to localize adjustments, like creation, deletion and
-modification of
-.Sx "INTERNAL VARIABLES" ,
-by using the
+Execution of a macro body can be stopped from within by calling
+.Ic return .
+.Pp
+Temporary macro block-scope variables can be created or deleted with the
+.Cm local
+command modifier in conjunction with the commands
+.Ic set
+and
+.Ic unset ,
+respectively.
+To enforce unrolling of changes made to (global)
+.Sx "INTERNAL VARIABLES"
+the command
 .Ic localopts
-command; the scope which is localized depends on how (i.e.,
+can be used instead; its covered scope depends on how (i.e.,
 .Dq as what :
 normal macro, folder hook, hook,
 .Ic account
 switch) the macro is invoked.
-Execution of a macro body can be stopped from within by calling
-.Ic return .
+.Pp
 Inside a
 .Ic call Ns
-ed macro, given positional parameters can be
+ed macro, the given positional parameters are implicitly local
+to the macro's scope, and may be accessed via the variables
+.Va * ,
+.Va @ ,
+.Va #
+and
+.Va 1
+as well as any other positive unsigned decimal number (less than
+.Va # ) .
+Positional parameters can be
 .Ic shift Ns
 ed, or become completely replaced, removed etc. via
 .Ic vpospar .
-.Pp
-The latter command deletes the given macro, the special name
-.Ql *
-will discard all existing macros.
-Creation and deletion of (a) macro(s) can be performed from within
-a running macro.
+.Bd -literal -offset indent
+define name {
+  command1
+  command2
+  ...
+  commandN
+}
+
+# E.g.
+define exmac {
+  echo Parameter 1 of ${#} is ${1}, all: ${*} / ${@}
+  return 1000 0
+}
+call exmac Hello macro exmac!
+echo ${?}/${!}/${^ERRNAME}
+.Ed
 .Mx
 .Mx
 .It Ic delete , undelete
@@ -5634,22 +5684,15 @@ e.g., from within a macro that is called via
 .It Ic localopts
 This command can be used to localize changes to (linked)
 .Sx ENVIRONMENT
-as well as
+as well as (global)
 .Sx "INTERNAL VARIABLES" ,
 meaning that their state will be reverted to the former one once the
 .Dq covered scope
 is left.
-\*(ID Note in the future the coverage may be extended to none or any of
-.Ic alias ,
-.Ic alternates ,
-.Ic charsetalias ,
-.Ic commandalias ,
-.Ic filetype ,
-.Ic mlist ,
-.Ic mlsubscribe ,
-.Ic shortcut ,
-to name a few.
-It can only be used inside of macro definition blocks introduced by
+Just like the command modifier
+.Cm local ,
+which provides block-scope localization for some commands (instead),
+it can only be used inside of macro definition blocks introduced by
 .Ic account
 or
 .Ic define .
@@ -5681,7 +5724,7 @@ were defined in a local, macro private context!)
 .Pp
 This command takes one or two arguments, the optional first one
 specifies an attribute that may be one of
-.Cm scope ,
+.Cm \&\&scope ,
 which refers to the current scope and is thus the default,
 .Cm call ,
 which causes any macro that is being
@@ -5691,7 +5734,8 @@ ed to be started with localization enabled by default, as well as
 which (if enabled) disallows any called macro to turn off localization:
 like this it can be ensured that once the current scope regains control,
 any changes made in deeper levels have been reverted.
-The latter two are mutually exclusive.
+The latter two are mutually exclusive, and neither affects
+.Ic xcall .
 The (second) argument is interpreted as a boolean (string, see
 .Sx "INTERNAL VARIABLES" )
 and states whether the given attribute shall be turned on or off.
@@ -5699,8 +5743,8 @@ and states whether the given attribute shall be turned on or off.
 define temporary_settings {
   set possibly_global_option1
   localopts on
-  set local_option1
-  set local_option2
+  set localized_option1
+  set localized_option2
   localopts scope off
   set possibly_global_option2
 }
@@ -5829,10 +5873,15 @@ or
 are set.
 Otherwise all given arguments will be added and henceforth be recognized
 as mailing lists.
-If the \*(OPal regular expression support is available then mailing
-lists may also be specified as (extended) regular expressions (see
-.Xr re_format 7
-for more on those).
+If the \*(OPal regular expression support is available then any argument
+which contains any of the
+.Dq magical
+regular expression characters
+.Ql ^[]*+?|$
+(see
+.Xr re_format 7 )
+will be interpreted as one, which allows matching of many addresses with
+a single expression.
 The
 .Ic mlsubscribe
 pair of commands manages subscription attributes of mailing-lists.
@@ -6365,16 +6414,17 @@ Takes a message list and marks all messages as having been read.
 .Mx
 .Mx
 .It Ic set , unset
-(se, \*(NQ uns) The latter command will delete all given variables,
-the former, when used without arguments, will show all variables which
-are currently known to \*(UA.
-A more verbose listing will be produced if
-either of
+(se, \*(NQ uns) The latter command will delete all given global
+variables, or only block-scope local ones if the
+.Cm local
+command modifier has been used.
+The former, when used without arguments, will show all
+currently known variables, being more verbose if either of
 .Va debug
 or
 .Va verbose
-are set.
-Remarks: the list mode will not automatically link-in known
+is set.
+Remarks: this list mode will not automatically link-in known
 .Sx ENVIRONMENT
 variables, but only explicit addressing will, e.g., via
 .Ic varshow ,
@@ -6383,7 +6433,7 @@ using a variable in an
 condition or a string passed to
 .Ic echo ,
 explicit
-.Ic set Ns
+.Ic \&\&set Ns
 ting, as well as some program-internal use cases.
 .Pp
 Otherwise the given variables (and arguments) are set or adjusted.
@@ -6394,32 +6444,38 @@ Arguments are of the form
 or plain
 .Ql name
 if there is no value, i.e., a boolean variable.
+If a name begins with
+.Ql no ,
+as in
+.Ql set nosave ,
+the effect is the same as invoking the
+.Ic \&\&unset
+command with the remaining part of the variable
+.Pf ( Ql unset save ) .
 \*(ID In conjunction with the
 .Cm wysh
-command prefix
+.Pf (or\0 Cm local )
+command prefix(es)
 .Sx "Shell-style argument quoting"
 can be used to quote arguments as necessary.
 \*(ID Otherwise quotation marks may be placed around any part of the
 assignment statement to quote blanks or tabs.
 .Pp
-.Dl ? wysh set indentprefix=' -> '
-.Pp
-If an argument begins with
-.Ql no ,
-as in
-.Ql set nosave ,
-the effect is the same as invoking the
-.Ic unset
-command with the remaining part of the variable
-.Pf ( Ql unset save ) .
-.Pp
-Any
+When operating in global scope any
 .Ql name
 that is known to map to an environment variable will automatically cause
 updates in the program environment (unsetting a variable in the
 environment requires corresponding system support) \(em use the command
 .Ic environ
 for further environmental control.
+If the command modifier
+.Cm local
+has been used to alter the command to work in block-scope all variables
+have values (may they be empty), and creation of names which shadow
+.Sx "INTERNAL VARIABLES"
+is actively prevented (\*(ID shadowing of linked
+.Sx ENVIRONMENT
+variables and free-form versions of variable chains is not yet detected).
 Also see
 .Ic varedit ,
 .Ic varshow
@@ -6427,6 +6483,10 @@ and the sections
 .Sx "INTERNAL VARIABLES"
 and
 .Sx ENVIRONMENT .
+.Bd -literal -offset indent
+? wysh set indentprefix=' -> '
+? wysh set atab=$'\t' aspace=' ' zero=0
+.Ed
 .Mx
 .It Ic shcodec
 Apply shell quoting rules to the given raw-data arguments.
@@ -6895,6 +6955,23 @@ as the numeric error
 .Va ^ERR Ns -RANGE .
 .Pp
 Numeric operations work on one or two signed 64-bit integers.
+Numbers prefixed with
+.Ql 0x
+or
+.Ql 0X
+are interpreted as hexadecimal (base 16) numbers, whereas
+.Ql 0
+indicates octal (base 8), and
+.Ql 0b
+as well as
+.Ql 0B
+denote binary (base 2) numbers.
+It is possible to use any base in between 2 and 36, inclusive, with the
+.Ql BASE#number
+notation, e.g.,
+.Ql 16#AFFE
+is a different way of specifying a hexadecimal number.
+.Pp
 One integer is expected by assignment (equals sign
 .Ql = ) ,
 which does nothing but parsing the argument, thus detecting validity and
@@ -7794,9 +7871,15 @@ documents the supported quoting rules.
     unset one two three four
 .Ed
 .Pp
-Dependent upon the actual option the string values will be interpreted
-as numbers, colour names, normal text etc., but there also exists
-a special kind of string value, the
+Dependent upon the actual option string values may become interpreted as
+colour names, command specifications, normal text, etc.
+They may be treated as numbers, in which case decimal values are
+expected if so documented, but otherwise any numeric format and
+base that is valid and understood by the
+.Ic vexpr
+command may be used, too.
+.Pp
+There also exists a special kind of string value, the
 .Dq boolean string ,
 which must either be a decimal integer (in which case
 .Ql 0
@@ -7971,7 +8054,8 @@ a name or number, in which case the expansion refers to the given error.
 Note this is a direct mapping of (a subset of) the system error values:
 .Bd -literal -offset indent
 define work {
-  eval echo \e$1: \e$^ERR-$1: \e$^ERRNAME-$1: \e$^ERRDOC-$1
+  eval echo \e$1: \e$^ERR-$1:\e
+    \e$^ERRNAME-$1: \e$^ERRDOC-$1
   vput vexpr i + "$1" 1
   if [ $i -lt 16 ]
     \excall work $i
@@ -7984,7 +8068,8 @@ call work 0
 .It Va *
 \*(RO Expands all positional parameters (see
 .Va 1 ) ,
-separated by a space character.
+separated by the first character of the value of
+.Va ifs .
 \*(ID The special semantics of the equally named special parameter of the
 .Xr sh 1
 are not yet supported.
@@ -8346,7 +8431,7 @@ Define a set of custom headers to be injected into newly composed or
 forwarded messages; it is also possible to create custom headers in
 compose mode with
 .Ic ~^ ,
-which can be automated by setting one of the hooks
+which can be automatized by setting one of the hooks
 .Va on-compose-splice
 or
 .Va on-compose-splice-shell .
@@ -8561,9 +8646,10 @@ or
 .Fl # .
 .Mx
 .It Va features
-\*(RO String giving a list of optional features, preceded with a plus sign
+\*(RO String giving a list of optional features.
+Features are preceded with a plus sign
 .Ql +
-if it is available, and a hyphen-minus
+if they are available, with a hyphen-minus
 .Ql -
 otherwise.
 The output of the command
@@ -9039,10 +9125,10 @@ and
 and by the
 .Va quote
 option for indenting messages,
-in place of the normal tabulator character
-.Ql ^I ,
-which is the default.
-Be sure to quote the value if it contains spaces or tabs.
+in place of the POSIX mandated default tabulator character
+.Ql \et .
+Also see
+.Va quote-chars .
 .Mx
 .It Va keep
 \*(BO If set, an empty
@@ -9268,16 +9354,12 @@ If this variable is set then \*(UA will try to re-classify such MIME
 message parts, if possible, for example via a possibly existing
 attachment filename.
 A non-empty value may also be given, in which case a number is expected,
-actually a carrier of bits.
-Creating the bit-carrying number is a simple addition:
-.Bd -literal -offset indent
-? !echo Value should be set to $((2 + 4 + 8))
-Value should be set to 14
-.Ed
+actually a carrier of bits, best specified as a binary value, e.g.,
+.Ql 0b1111 .
 .Pp
 .Bl -bullet -compact
 .It
-If bit two is set (2) then the detected
+If bit two is set (counting from 1, decimal 2) then the detected
 .Ic mimetype
 will be carried along with the message and be used for deciding which
 MIME handler is to be used, for example;
@@ -9285,14 +9367,17 @@ when displaying such a MIME part the part-info will indicate the
 overridden content-type by showing a plus sign
 .Ql + .
 .It
-If bit three is set (4) then the counter-evidence is always produced
-and a positive result will be used as the MIME type, even forcefully
-overriding the parts given MIME type.
+If bit three is set (decimal 4) then the counter-evidence is always
+produced and a positive result will be used as the MIME type, even
+forcefully overriding the parts given MIME type.
 .It
-If bit four is set (8) then as a last resort the actual content of
+If bit four is set (decimal 8) as a last resort the actual content of
 .Ql application/octet-stream
 parts will be inspected, so that data which looks like plain text can be
 treated as such.
+This mode is even more relaxed when data is to be displayed to the user
+or used as a message quote (data consumers which mangle data for display
+purposes, which includes masking of control characters, for example).
 .El
 .Mx
 .It Va mime-encoding
@@ -9319,10 +9404,10 @@ share many characters with ASCII, like, e.g., ISO-8859-1.
 The encoding will cause a large overhead for messages in other character
 sets: e.g., it will require up to twelve (12) bytes to encode a single
 UTF-8 character of four (4) bytes.
+It is the default encoding.
 .It Ql base64
 .Pf (Or\0 Ql b64 . )
-The default encoding, it is 7-bit clean and will always be used for
-binary data.
+This encoding is 7-bit clean and will always be used for binary data.
 This encoding has a constant input:output ratio of 3:4, regardless of
 the character set of the input data it will encode three bytes of input
 to four bytes of output.
@@ -9492,6 +9577,12 @@ from other sources, and then passed individually to the MTA:
 standard command line options to a file-based
 .Va mta
 (Mail-Transfer-Agent), see there for more.
+.Mx
+.It Va mta-no-receiver-arguments
+\*(BO By default a file-based
+.Va mta
+will be passed all receiver addresses on the command line.
+This variable can be set to suppress any such argument.
 .Mx
 .It Va mta-argv0
 Many systems use a so-called
@@ -10102,11 +10193,18 @@ MIME attachment when replying to a message.
 Note this works regardless of the setting of
 .Va quote .
 .Mx
+.It Va quote-chars
+Can be set to a string consisting of non-whitespace ASCII characters
+which shall be treated as quotation leaders, the default being
+.Ql >|}: .
+.Mx
 .It Va quote-fold
 \*(OP Can be set in addition to
 .Va indentprefix .
 Setting this turns on a more fancy quotation algorithm in that leading
-quotation characters are compressed and overlong lines are folded.
+quotation characters
+.Pf ( Va quote-chars )
+are compressed and overlong lines are folded.
 .Va \&\&quote-fold
 can be set to either one or two (space separated) numeric values,
 which are interpreted as the maximum (goal) and the minimum line length,
@@ -11462,11 +11560,16 @@ is sufficient to disable verbosity as such.
 .Mx
 .Mx
 .Mx
-.It Va version , version-date , version-major , version-minor , version-update
-\*(RO \*(UA version information: the first variable contains a string
-containing the complete version identification, the latter three contain
-only digits: the major, minor and update version numbers.
-The date is in ISO 8601 notation.
+.It Va version , version-date , \
+  version-hexnum , version-major , version-minor , version-update
+\*(RO \*(UA version information: the first variable is a string with
+the complete version identification, the second the release date in ISO
+8601 notation without time.
+The third is a 32-bit hexadecimal number with the upper 8 bits storing
+the major, followed by the minor and update version numbers which occupy
+12 bits each.
+The latter three variables contain only decimal digits: the major, minor
+and update version numbers.
 The output of the command
 .Ic version
 will include this information.
@@ -11559,7 +11662,8 @@ A default editor is used if this value is not defined.
 The user's home directory.
 This variable is only used when it resides in the process environment.
 The calling user's home directory will be used instead if this directory
-does not exist, is not accessible or cannot be read.
+does not exist, is not accessible or cannot be read;
+it will always be used for the root user.
 (No test for being writable is performed to allow usage by
 non-privileged users within read-only jails, but dependent on the
 variable settings this directory is a default write target, e.g. for
@@ -11577,9 +11681,10 @@ and more.)
 which indicates the used
 .Sx "Character sets" .
 Runtime changes trigger automatic updates of the entire locale system,
-updating and overwriting also a
+which includes updating
 .Va ttycharset
-set by the user.
+(except during startup if the variable has been frozen via
+.Fl S ) .
 .Mx
 .It Ev LINES
 The user's preferred number of lines on a page or the vertical screen
@@ -11712,14 +11817,15 @@ and when starting subprocesses.
 A default shell is used if this environment variable is not defined.
 .Mx
 .It Ev SOURCE_DATE_EPOCH
-This specifies a time in seconds since the Unix epoch (1970-01-01) to be
+Specifies a time in seconds since the Unix epoch (1970-01-01) to be
 used in place of the current time.
 This variable is looked up upon program startup, and its existence will
-switch \*(UA to a completely reproducible mode which causes
-deterministic random numbers, a special fixed (non-existent?)
+switch \*(UA to a reproducable mode
+.Pf ( Lk https://reproducible-builds.org )
+which uses deterministic random numbers, a special fixated pseudo
 .Ev LOGNAME
-and more to be used and set.
-It is to be used during development or by software packagers.
+and more.
+This operation mode is used for development and by software packagers.
 \*(ID Currently an invalid setting is only ignored, rather than causing
 a program abortion.
 .Pp
@@ -11733,9 +11839,11 @@ and for terminal management in general to
 .Sx "On terminal control and line editor" .
 .Mx
 .It Ev TMPDIR
-Used as directory for temporary files instead of
-.Pa /tmp ,
-if set, existent, accessible as well as read- and writable.
+Except for the root user this variable defines the directory for
+temporary files to be used instead of
+.Pa /tmp
+(or the given compile-time constant) if set, existent, accessible as
+well as read- and writable.
 This variable is only used when it resides in the process environment,
 but \*(UA will ensure at startup that this environment variable is
 updated to contain a usable temporary directory.
@@ -12489,7 +12597,7 @@ set emptystart \e
   colour-pager crt= \e
   followup-to followup-to-honour=ask-yes fullnames \e
   history-file=+.\*(uAhist history-size=-1 history-gabby \e
-  mime-counter-evidence=0xE \e
+  mime-counter-evidence=0b1111 \e
   prompt='?\e$?!\e$!/\e$^ERRNAME[\e$account#\e$mailbox-display]? ' \e
   reply-to-honour=ask-yes \e
   umask=
@@ -12838,6 +12946,28 @@ $ cat -v
 ? bind*
 # 1B 5B=[ 48=H
   bind base :kHOM z0
+.Ed
+.Ss "Can \*(UA git-send-email?"
+Yes.
+Put (at least parts of) the following in your
+.Pa ~/.gitconfig :
+.Bd -literal -offset indent
+[sendemail]
+smtpserver = /usr/bin/s-mailx
+smtpserveroption = -t
+#smtpserveroption = -Sexpandaddr
+smtpserveroption = -Athe-account-you-need
+##
+suppresscc = all
+suppressfrom = false
+assume8bitEncoding = UTF-8
+#to = /tmp/OUT
+confirm = always
+chainreplyto = true
+multiedit = false
+thread = true
+quiet = true
+annotate = true
 .Ed
 .Sh "IMAP CLIENT"
 \*(OPally there is IMAP client support available.

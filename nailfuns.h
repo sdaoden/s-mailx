@@ -89,7 +89,8 @@
 #define fieldnamechar(c) \
    (asciichar(c) && (c) > 040 && (c) != 0177 && (c) != ':')
 
-/* Could the string contain a regular expression? */
+/* Could the string contain a regular expression?
+ * NOTE: on change: manual contains several occurrences of this string! */
 #define n_is_maybe_regex(S) n_is_maybe_regex_buf(S, UIZ_MAX)
 #define n_is_maybe_regex_buf(D,L) n_anyof_buf("^[]*+?|$", D, L)
 
@@ -223,9 +224,10 @@ FL char *n_var_xoklook(enum okeys okey, struct url const *urlp,
 # define xok_vlook(C,URL,M) xok_VLOOK(n_CONCAT(ok_v_, C), URL, M)
 #endif
 
-/* User variable access: `set' and `unset' */
-FL int c_set(void *v);
-FL int c_unset(void *v);
+/* User variable access: `set', `local' and `unset' */
+FL int c_set(void *vp);
+FL int c_local(void *vp);
+FL int c_unset(void *vp);
 
 /* `varshow' */
 FL int c_varshow(void *v);
@@ -1133,8 +1135,9 @@ FL char *      getsender(struct message *m);
 FL int         grab_headers(enum n_go_input_flags gif, struct header *hp,
                   enum gfield gflags, int subjfirst);
 
-/* Check whether sep->ss_sexpr (or ->ss_regex) matches any header of mp */
-FL bool_t      header_match(struct message *mp, struct search_expr const *sep);
+/* Check whether sep->ss_sexpr (or ->ss_sregex) matches any header of mp.
+ * If sep->s_where (or >s_where_wregex) is set, restrict to given headers */
+FL bool_t n_header_match(struct message *mp, struct search_expr const *sep);
 
 /* Query *customhdr* */
 FL struct n_header_field *n_customhdr_query(void);
@@ -1218,7 +1221,7 @@ FL void        message_append(struct message *mp);
 /* Append a NULL message */
 FL void        message_append_null(void);
 
-/* Check whether sep->ss_sexpr (or ->ss_regex) matches mp.  If with_headers is
+/* Check whether sep->ss_sexpr (or ->ss_sregex) matches mp.  If with_headers is
  * true then the headers will also be searched (as plain text) */
 FL bool_t      message_match(struct message *mp, struct search_expr const *sep,
                bool_t with_headers);
@@ -1547,8 +1550,10 @@ FL enum conversion n_mimetype_classify_file(FILE *fp, char const **contenttype,
                      char const **charset, int *do_iconv);
 
 /* Dependend on *mime-counter-evidence* mpp->m_ct_type_usr_ovwr will be set,
- * but otherwise mpp is const */
-FL enum mimecontent n_mimetype_classify_part(struct mimepart *mpp);
+ * but otherwise mpp is const.  for_user_context rather maps 1:1 to
+ * MIME_PARSE_FOR_USER_CONTEXT */
+FL enum mimecontent n_mimetype_classify_part(struct mimepart *mpp,
+                        bool_t for_user_context);
 
 /* Query handler for a part, return the plain type (& MIME_HDL_TYPE_MASK).
  * mhp is anyway initialized (mh_flags, mh_msg) */
@@ -2151,10 +2156,9 @@ FL struct str * str_concat_cpa(struct str *self, char const * const *cpa,
 
 /* Plain char* support, not auto-reclaimed (unless noted) */
 
-/* Are any of the characters in the two strings the same? */
-FL bool_t      n_anyof_buf(char const *template, char const *dat, size_t len);
+/* Are any of the characters in template contained in dat? */
+FL bool_t n_anyof_buf(char const *template, char const *dat, size_t len);
 #define n_anyof_cp(S1,S2) n_anyof_buf(S1, S2, UIZ_MAX)
-#define anyof(S1,S2) n_anyof_buf(S1, S2, UIZ_MAX)
 
 /* Treat *iolist as a sep separated list of strings; find and return the
  * next entry, trimming surrounding whitespace, and point *iolist to the next

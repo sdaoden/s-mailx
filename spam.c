@@ -801,7 +801,7 @@ jecmd:
             != 0) {
          n_err(_("`%s': invalid *spamfilter-rate-scanscore* regex: %s: %s\n"),
             _spam_cmds[vcp->vc_action], n_shexp_quote_cp(cp, FAL0),
-            n_regex_err_to_doc(&sfp->f_score_regex, s));
+            n_regex_err_to_doc(NULL, s));
          goto jleave;
       }
       if (sfp->f_score_grpno > sfp->f_score_regex.re_nsub) {

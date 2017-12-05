@@ -144,11 +144,13 @@ a_ctab_cmdinfo(struct n_cmd_desc const *cdp){
             rv = n_string_push_c(rv, ']');
       }
       cp = NULL;
-   }  break;
+      }break;
    }
    if(cp != NULL)
       rv = n_string_push_cp(rv, V_(cp));
 
+   if(cdp->cd_caflags & n_CMD_ARG_L)
+      rv = n_string_push_cp(rv, _(" | local modifier"));
    if(cdp->cd_caflags & n_CMD_ARG_V)
       rv = n_string_push_cp(rv, _(" | vput modifier"));
    if(cdp->cd_caflags & n_CMD_ARG_EM)
@@ -457,7 +459,7 @@ jredo:
          shin.s = cp;
          shin.l = i;
          addca = TRU1;
-      }  break;
+         }break;
       default:
       case n_CMD_ARG_DESC_WYSH:{
          struct n_string shou, *shoup;
@@ -496,7 +498,7 @@ jredo:
             addca = TRUM1;
          }else
             addca = TRU1;
-      }  break;
+         }break;
       }
       ++parsed_args;
 

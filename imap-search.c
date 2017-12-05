@@ -492,8 +492,9 @@ itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
       rv = UICMP(z, m->m_time, <, n->n_n);
       break;
    case ITBODY:
-      se.ss_sexpr = n->n_v;
-      se.ss_where = "body";
+      memset(&se, 0, sizeof se);
+      se.ss_field = "body";
+      se.ss_body = n->n_v;
       rv = message_match(m, &se, FAL0);
       break;
    case ITCC:
@@ -562,8 +563,9 @@ itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
       rv = matchfield(m, "subject", n->n_v);
       break;
    case ITTEXT:
-      se.ss_sexpr = n->n_v;
-      se.ss_where = "text";
+      memset(&se, 0, sizeof se);
+      se.ss_field = "text";
+      se.ss_body = n->n_v;
       rv = message_match(m, &se, TRU1);
       break;
    case ITTO:

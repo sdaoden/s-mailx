@@ -256,14 +256,14 @@ Thank you!
 
 Development and/or regular tests:
 
-. AlpineLinux <https://www.alpinelinux.org/> (3.6, edge; x86-64).
+. AlpineLinux <https://www.alpinelinux.org/> (3.7, edge; x86-64).
 . ArchLinux <https://www.archlinux.org/> (weekly updated; x86-64).
 . CRUX Linux <https://www.crux.nu/> (3.3; x86-64).
-. FreeBSD <https://www.freebsd.org/> (10.3; x86).
+. FreeBSD <https://www.freebsd.org/> (11.1; x86).
+. OpenBSD <https://www.openbsd.org/> (6.2; x86).
 
 Occasional tests:
 
-. OpenBSD <https://www.openbsd.org/> (6.1; x86).
 . Solaris <http://opencsw.org/>
   @ First of all: thanks to OpenCSW.org for offering SSH access to
     their Solaris build cluster!

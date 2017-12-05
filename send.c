@@ -53,7 +53,7 @@ static FILE *        _pipefile(struct mime_handler *mhp,
                         char const *tmpname, int term_infd);
 
 /* Call mime_write() as approbiate and adjust statistics */
-SINLINE ssize_t      _out(char const *buf, size_t len, FILE *fp,
+n_INLINE ssize_t      _out(char const *buf, size_t len, FILE *fp,
                         enum conversion convert, enum sendaction action,
                         struct quoteflt *qf, ui64_t *stats, struct str *outrest,
                         struct str *inrest);
@@ -339,7 +339,7 @@ jleave:
    return rbuf;
 }
 
-SINLINE ssize_t
+n_INLINE ssize_t
 _out(char const *buf, size_t len, FILE *fp, enum conversion convert, enum
    sendaction action, struct quoteflt *qf, ui64_t *stats, struct str *outrest,
    struct str *inrest)
@@ -1332,7 +1332,7 @@ jgetname:
       /* Be very picky in non-interactive mode: actively disallow pipes,
        * prevent directory separators, and any filename member that would
        * become expanded by the shell if the name would be echo(1)ed */
-      if(anyof(f, "/" n_SHEXP_MAGIC_PATH_CHARS)){
+      if(n_anyof_cp("/" n_SHEXP_MAGIC_PATH_CHARS, f)){
          char c;
 
          for(out.s = salloc((strlen(f) * 3) +1), out.l = 0; (c = *f++) != '\0';)
@@ -1586,6 +1586,9 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
    mpf = MIME_PARSE_NONE;
    if (action != SEND_MBOX && action != SEND_RFC822 && action != SEND_SHOW)
       mpf |= MIME_PARSE_PARTS | MIME_PARSE_DECRYPT;
+   if(action == SEND_TODISP || action == SEND_TODISP_ALL ||
+         action == SEND_QUOTE || action == SEND_QUOTE_ALL)
+      mpf |= MIME_PARSE_FOR_USER_CONTEXT;
    if ((ip = mime_parse_msg(mp, mpf)) == NULL)
       goto jleave;
 

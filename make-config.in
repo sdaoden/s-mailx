@@ -287,6 +287,9 @@ _update-version:
 	printf >> ./version.tmp "#define n_VERSION_MAJOR \"$${vmaj}\"\n";\
 	printf >> ./version.tmp "#define n_VERSION_MINOR \"$${vmin}\"\n";\
 	printf >> ./version.tmp "#define n_VERSION_UPDATE \"$${vupd}\"\n";\
+	printf >> ./version.tmp \
+		"#define n_VERSION_HEXNUM \"0x%02X%03X%03X\"\n" \
+		"$${vmaj}" "$${vmin}" "$${vupd}";\
 	$(cmp) ./version.tmp ./gen-version.h >/dev/null 2>&1 && exit;\
 	$(mv) ./version.tmp ./gen-version.h;\
 	trap : 0 1 2 15

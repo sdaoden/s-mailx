@@ -11,7 +11,7 @@
 #@   the escaped newline is not.
 #@ - The number sign # is the comment-command and causes the (joined) line
 #@   (content) to be ignored.
-#@ S-nail v14.9.5 / 2017-10-21
+#@ S-nail v14.9.6 / 2017-12-05
 
 ## Variables
 
@@ -83,8 +83,8 @@ set history-gabby history-gabby-persist
 # is likely to be irritating for most users today; also see *keepsave*.
 set hold
 
-# Quote the original message in replies by "> " as usual on the Internet
-# Historically this was a tabulator, as in "wysh set indentprefix=$'\t'".
+# Quote the original message in replies by "> " as usual on the Internet.
+# POSIX mandates tabulator ("wysh set indentprefix=$'\t'") as default.
 set indentprefix="> "
 
 # Mark messages that have been answered.
@@ -93,7 +93,7 @@ set markanswered
 # Try to circumvent false or missing MIME Content-Type descriptions.
 # Do set a value for extended behaviour (see the manual).
 #set mime-counter-evidence
-set mime-counter-evidence=0xE
+set mime-counter-evidence=0b1111
 
 # Control loading of mime.types(5) file, "s"ystem and/or "u"ser, etc.
 # Builtin types exist and may be sufficient.  The default equals "us".

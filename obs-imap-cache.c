@@ -77,7 +77,7 @@ static const char README2[] = "\n\
 The first 128 bytes of these files are used to store message attributes; the\n\
 following data is equivalent to compress(1) output. So if you have to save a\n\
 message by hand because of an emergency, throw away the first 128 bytes and\n\
-decompress the rest, as e.g. \"dd if=MESSAGEFILE skip=1 bs=128 | zcat\" does.\n";
+decompress the rest, as e.g. \"dd if=FILE skip=1 bs=128 | zcat\" does.\n";
 static const char README3[] = "\n\
 Files named QUEUE contain data that will be sent do the IMAP server next\n\
 time a connection is made in online mode.\n";

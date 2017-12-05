@@ -116,7 +116,8 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
    if ((cp = hfield1("content-description", (struct message*)ip)) != NULL)
       ip->m_content_description = cp;
 
-   if ((ip->m_mimecontent = n_mimetype_classify_part(ip)) == MIME_822) {
+   if ((ip->m_mimecontent = n_mimetype_classify_part(ip,
+         ((mpf & MIME_PARSE_FOR_USER_CONTEXT) != 0))) == MIME_822) {
       /* TODO (v15) HACK: message/rfc822 is treated special, that this one is
        * TODO too stupid to apply content-decoding when (falsely) applied */
       if (ip->m_mime_enc != MIMEE_8B && ip->m_mime_enc != MIMEE_7B) {

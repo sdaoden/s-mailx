@@ -360,14 +360,18 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
                      (xcp = strstr(cp, "[-- ")) != NULL &&
                       strstr(&xcp[1], " --]") != NULL)
                   c = '\0';
-               else for(; (c = *cp) != '\0'; ++cp){
-                  if(!asciichar(c))
-                     break;
-                  if(!blankspacechar(c)){
-                     if(!n_QUOTE_IS_A(c))
+               else{
+                  char const *qcp;
+
+                  for(qcp = ok_vlook(quote_chars); (c = *cp) != '\0'; ++cp){
+                     if(!asciichar(c))
                         break;
-                     c = '\0';
-                     break;
+                     if(!blankspacechar(c)){
+                        if(strchr(qcp, c) == NULL)
+                           break;
+                        c = '\0';
+                        break;
+                     }
                   }
                }
 

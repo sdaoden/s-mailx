@@ -258,11 +258,12 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
       a_NOPREFIX = 1u<<4,  /* Modifier prefix not allowed right now */
       a_NOALIAS = 1u<<5,   /* "No alias!" expansion modifier */
       a_IGNERR = 1u<<6,    /* ignerr modifier prefix */
-      a_LOCAL = 1u<<7,     /* TODO local modifier prefix */
-      a_U = 1u<<8,         /* TODO UTF-8 modifier prefix */
-      a_VPUT = 1u<<9,      /* vput modifier prefix */
-      a_WYSH = 1u<<10,      /* XXX v15+ drop wysh modifier prefix */
-      a_MODE_MASK = n_BITENUM_MASK(5, 10),
+      a_LOCAL = 1u<<7,     /* local modifier prefix */
+      a_SCOPE = 1u<<8,     /* TODO scope modifier prefix */
+      a_U = 1u<<9,         /* TODO UTF-8 modifier prefix */
+      a_VPUT = 1u<<10,     /* vput modifier prefix */
+      a_WYSH = 1u<<11,      /* XXX v15+ drop wysh modifier prefix */
+      a_MODE_MASK = n_BITENUM_MASK(5, 11),
       a_NO_ERRNO = 1u<<16  /* Don't set n_pstate_err_no */
    } flags;
    NYD_ENTER;
@@ -331,7 +332,7 @@ jrestart:
    line.s = cp;
 
    /* It may be a modifier.
-    * Note: changing modifiers must be reflected in `commandalias' handling
+    * NOTE: changing modifiers must be reflected in `commandalias' handling
     * code as well as in the manual (of course)! */
    switch(c){
    default:
@@ -342,10 +343,15 @@ jrestart:
          goto jrestart;
       }
       break;
+   /*case sizeof("scope") -1:*/
    case sizeof("local") -1:
       if(!asccasecmp(word, "local")){
-         n_err(_("Ignoring yet unused `local' command modifier!"));
          flags |= a_NOPREFIX | a_LOCAL;
+         goto jrestart;
+      }else if(!asccasecmp(word, "scope")){
+         /* This will be an extended per-command `localopts' */
+         n_err(_("Ignoring yet unused `scope' command modifier!"));
+         flags |= a_NOPREFIX | a_SCOPE;
          goto jrestart;
       }
       break;
@@ -538,7 +544,19 @@ jexec:
    if((flags & a_WYSH) &&
          (cdp->cd_caflags & n_CMD_ARG_TYPE_MASK) != n_CMD_ARG_TYPE_WYRA){
       n_err(_("`wysh' command modifier does not affect `%s'\n"), cdp->cd_name);
-      flags &= ~a_WYSH;
+      goto jleave;
+   }
+
+   if(flags & a_LOCAL){
+      if(!(cdp->cd_caflags & n_CMD_ARG_L)){
+         n_err(_("`local' command modifier does not affect `%s'\n"),
+            cdp->cd_name);
+         goto jleave;
+      }
+      flags |= a_WYSH;
+      n_pstate |= n_PS_ARGMOD_LOCAL; /* TODO YET useless since stripped later
+         * TODO on in getrawlist() etc., i.e., the argument vector producers,
+         * TODO therefore yet needs to be set again based on flags&a_LOCAL! */
    }
 
    if(flags & a_VPUT){
@@ -625,6 +643,7 @@ jemsglist:
          n_err_no = 0;
       rv = (*cdp->cd_func)(cp);
       break;
+
    case n_CMD_ARG_TYPE_RAWDAT:
       /* Just the straight string, placed in argv[] */
       *arglist++ = line.s;
@@ -667,6 +686,8 @@ jemsglist:
       }
 #undef cd_maxargs
 
+      if(flags & a_LOCAL)
+         n_pstate |= n_PS_ARGMOD_LOCAL;
       if(flags & a_VPUT)
          n_pstate |= n_PS_ARGMOD_VPUT;
 
@@ -703,7 +724,7 @@ jemsglist:
       rv = (*cdp->cd_func)(&cac);
       if(a_go_xcall != NULL)
          goto jret0;
-   }  break;
+      }break;
 
    default:
       DBG( n_panic(_("Implementation error: unknown argument type: %d"),

@@ -661,7 +661,7 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
 
       for(cp = ngp->ng_id; (c = *cp) != '\0'; ++cp)
          *cp = lowerconv(c);
-   }  break;
+      }break;
    default:
       break;
    }
@@ -682,8 +682,7 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
       if((s = regcomp(&ngrp->ngr_regex, id,
             REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
          n_err(_("Invalid regular expression: %s: %s\n"),
-            n_shexp_quote_cp(id, FAL0),
-            n_regex_err_to_doc(&ngrp->ngr_regex, s));
+            n_shexp_quote_cp(id, FAL0), n_regex_err_to_doc(NULL, s));
          n_free(ngp);
          ngp = NULL;
          goto jleave;
@@ -954,7 +953,7 @@ a_nag_group_print(struct a_nag_group const *ngp, FILE *fo,
          /*vputsp =*/ n_string_push_cp(vputsp, ngp->ng_id);
       }
       rv = 0;
-   }  break;
+      }break;
    case a_NAG_T_COMMANDALIAS:{
       struct a_nag_cmd_alias *ncap;
 
@@ -963,7 +962,7 @@ a_nag_group_print(struct a_nag_group const *ngp, FILE *fo,
       fprintf(fo, "commandalias %s %s\n",
          n_shexp_quote_cp(ngp->ng_id, TRU1),
          n_shexp_quote_cp(ncap->nca_expand.s, TRU1));
-   }  break;
+      }break;
    case a_NAG_T_ALIAS:{
       struct a_nag_grp_names_head *ngnhp;
       struct a_nag_grp_names *ngnp;
@@ -982,7 +981,7 @@ a_nag_group_print(struct a_nag_group const *ngp, FILE *fo,
          }while(ngnp != NULL);
       }
       putc('\n', fo);
-   }  break;
+      }break;
    case a_NAG_T_MLIST:
       assert(fo != NULL); /* xxx no vput yet */
 #ifdef HAVE_REGEX
@@ -1025,7 +1024,7 @@ a_nag_group_print(struct a_nag_group const *ngp, FILE *fo,
          n_shexp_quote_cp(ngp->ng_id, TRU1),
          n_shexp_quote_cp(nftp->nft_load.s, TRU1),
          n_shexp_quote_cp(nftp->nft_save.s, TRU1));
-   }  break;
+      }break;
    }
    NYD2_LEAVE;
    return rv;
@@ -1245,7 +1244,7 @@ nalloc(char const *str, enum gfield ntype)
          }
          s += i;
          in.s[in.l = s] = '\0';
-         mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
+         mime_fromhdr(&in, &out, /* TODO TD_ISPR |*/ TD_ICONV);
 
          for (cp = out.s, i = out.l; i > 0 && spacechar(*cp); --i, ++cp)
             ;
@@ -1282,7 +1281,7 @@ jskipfullextra:
          in.l = l;
       }
 #endif
-      mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
+      mime_fromhdr(&in, &out, /* TODO TD_ISPR |*/ TD_ICONV);
       np->n_fullname = savestr(out.s);
       n_free(out.s);
 #ifdef HAVE_IDNA
@@ -2001,11 +2000,11 @@ c_commandalias(void *vp){
    }
 
    /* Verify the name is a valid one, and not a command modifier.
-    * XXX This list duplicates settings isolated somewhere else (go.c) */
+    * NOTE: this list duplicates settings isolated somewhere else (go.c) */
    if(*ccp == '\0' || *n_cmd_isolate(ccp) != '\0' ||
          !asccasecmp(ccp, "ignerr") || !asccasecmp(ccp, "local") ||
-         !asccasecmp(ccp, "wysh") || !asccasecmp(ccp, "u") ||
-         !asccasecmp(ccp, "vput")){
+         !asccasecmp(ccp, "wysh") || !asccasecmp(ccp, "vput") ||
+         !asccasecmp(ccp, "scope") || !asccasecmp(ccp, "u")){
       n_err(_("`commandalias': not a valid command name: %s\n"),
          n_shexp_quote_cp(ccp, FAL0));
       rv = 1;

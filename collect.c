@@ -236,13 +236,7 @@ jdelim_empty:
       goto jleave;
    }
 
-   if(!indent)
-      indl = 0;
-   else{
-      if((indb = ok_vlook(indentprefix)) == NULL)
-         indb = INDENT_DEFAULT;
-      indl = strlen(indb);
-   }
+   indl = indent ? strlen(indb = ok_vlook(indentprefix)) : 0;
 
    if(fbuf != n_stdin)
       cnt = fsize(fbuf);
@@ -611,8 +605,8 @@ a_coll_forward(char const *ms, FILE *fp, int f)
 
    if (f == 'f' || f == 'F' || f == 'u')
       tabst = NULL;
-   else if ((tabst = ok_vlook(indentprefix)) == NULL)
-      tabst = INDENT_DEFAULT;
+   else
+      tabst = ok_vlook(indentprefix);
    if (f == 'u' || f == 'U')
       itp = n_IGNORE_ALL;
    else
@@ -1542,7 +1536,7 @@ jatt_ins:
          for(i = 0; ap != NULL; ++i, ap = ap->a_blink)
             ;
          fprintf(n_stdout, "210 %" PRIuZ "\n", i);
-      }  break;
+         }break;
       }
       goto jleave;
    }
@@ -1923,11 +1917,9 @@ collect(struct header *hp, int printheaders, struct message *mp,
             }
             if (fflush(_coll_fp))
                goto jerr;
-            if (doprefix)
-               cp = NULL;
-            else if ((cp = ok_vlook(indentprefix)) == NULL)
-               cp = INDENT_DEFAULT;
-            if (sendmp(mp, _coll_fp, quoteitp, cp, action, NULL) < 0)
+            if (sendmp(mp, _coll_fp, quoteitp,
+                  (doprefix ? NULL : ok_vlook(indentprefix)),
+                  action, NULL) < 0)
                goto jerr;
          }
       }
@@ -2222,7 +2214,7 @@ jearg:
                   n_GO_INPUT_CTX_COMPOSE);
          n_pstate_err_no = n_ERR_NONE; /* XXX ~@ does NOT handle $!/$?! */
          n_pstate_ex_no = 0; /* XXX */
-      }  break;
+         }break;
       case '^':
          if(!a_collect_plumbing(cp, hp)){
             if(ferror(_coll_fp))

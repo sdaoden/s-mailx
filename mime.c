@@ -75,18 +75,16 @@ static ssize_t          _fwrite_td(struct str const *input,
 static ssize_t          mime_write_tohdr(struct str *in, FILE *fo,
                            size_t *colp, enum a_mime_structure_hack msh);
 
-/* Write len characters of the passed string to the passed file, doing charset
- * and header conversion */
-
-/* Write an address to a header field */
-static ssize_t          mime_write_tohdr_a(struct str *in, FILE *f,
-                           size_t *colp);
 #ifdef HAVE_ICONV
 static ssize_t a_mime__convhdra(struct str *inp, FILE *fp, size_t *colp,
                   enum a_mime_structure_hack msh);
 #else
 # define a_mime__convhdra(S,F,C,MSH) mime_write_tohdr(S, F, C, MSH)
 #endif
+
+/* Write an address to a header field */
+static ssize_t          mime_write_tohdr_a(struct str *in, FILE *f,
+                           size_t *colp, enum a_mime_structure_hack msh);
 
 /* Append to buf, handling resizing */
 static void             _append_str(char **buf, size_t *sz, size_t *pos,
@@ -634,8 +632,38 @@ jenc_retry_same:
    return sz;
 }
 
+#ifdef HAVE_ICONV
 static ssize_t
-mime_write_tohdr_a(struct str *in, FILE *f, size_t *colp)
+a_mime__convhdra(struct str *inp, FILE *fp, size_t *colp,
+      enum a_mime_structure_hack msh){
+   struct str ciconv;
+   ssize_t rv;
+   NYD_ENTER;
+
+   rv = 0;
+   ciconv.s = NULL;
+
+   if(inp->l > 0 && iconvd != (iconv_t)-1){
+      ciconv.l = 0;
+      if(n_iconv_str(iconvd, n_ICONV_NONE, &ciconv, inp, NULL) != 0){
+         n_iconv_reset(iconvd);
+         goto jleave;
+      }
+      *inp = ciconv;
+   }
+
+   rv = mime_write_tohdr(inp, fp, colp, msh);
+jleave:
+   if(ciconv.s != NULL)
+      free(ciconv.s);
+   NYD_LEAVE;
+   return rv;
+}
+#endif /* HAVE_ICONV */
+
+static ssize_t
+mime_write_tohdr_a(struct str *in, FILE *f, size_t *colp,
+   enum a_mime_structure_hack msh)
 {
    struct str xin;
    size_t i;
@@ -644,16 +672,16 @@ mime_write_tohdr_a(struct str *in, FILE *f, size_t *colp)
    NYD_ENTER;
 
    in->s[in->l] = '\0';
-   lastcp = in->s;
-   if((cp = routeaddr(in->s)) != NULL && cp > lastcp) {
-      xin.s = in->s;
-      xin.l = PTR2SIZE(cp - in->s);
-      if ((sz = mime_write_tohdr_a(&xin, f, colp)) < 0)
+
+   if((cp = routeaddr(lastcp = in->s)) != NULL && cp > lastcp) {
+      xin.s = n_UNCONST(lastcp);
+      xin.l = PTR2SIZE(cp - lastcp);
+      if ((sz = mime_write_tohdr(&xin, f, colp, msh)) < 0)
          goto jleave;
       xin.s[xin.l] = '<';
       lastcp = cp;
    } else {
-      cp = in->s;
+      cp = lastcp;
       sz = 0;
    }
 
@@ -716,35 +744,6 @@ jerr:
    sz = -1;
    goto jleave;
 }
-
-#ifdef HAVE_ICONV
-static ssize_t
-a_mime__convhdra(struct str *inp, FILE *fp, size_t *colp,
-      enum a_mime_structure_hack msh){
-   struct str ciconv;
-   ssize_t rv;
-   NYD_ENTER;
-
-   rv = 0;
-   ciconv.s = NULL;
-
-   if(inp->l > 0 && iconvd != (iconv_t)-1){
-      ciconv.l = 0;
-      if(n_iconv_str(iconvd, n_ICONV_NONE, &ciconv, inp, NULL) != 0){
-         n_iconv_reset(iconvd);
-         goto jleave;
-      }
-      *inp = ciconv;
-   }
-
-   rv = mime_write_tohdr(inp, fp, colp, msh);
-jleave:
-   if(ciconv.s != NULL)
-      free(ciconv.s);
-   NYD_LEAVE;
-   return rv;
-}
-#endif /* HAVE_ICONV */
 
 static void
 _append_str(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
@@ -1368,8 +1367,8 @@ jqpb64_enc:
          dflags &= ~_TD_BUFCOPY;
       }
       col = 0;
-      sz = mime_write_tohdr_a(&in, f, &col);
-   }  break;
+      sz = mime_write_tohdr_a(&in, f, &col, a_MIME_SH_NONE);
+      }break;
    default:
       sz = _fwrite_td(&in, TRU1, dflags, NULL, qf);
       break;

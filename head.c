@@ -106,8 +106,8 @@ static bool_t a_head_addrspec_check(struct n_addrguts *agp, bool_t skinned);
  * Return >= 0 if something found, < 0 elsewise.
  * "colon" is set to point to the colon in the header.
  * Must deal with \ continuations & other such fraud */
-static int                 gethfield(FILE *f, char **linebuf, size_t *linesize,
-                              int rem, char **colon);
+static long a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem,
+            char **colon);
 
 static int                 msgidnextc(char const **cp, int *status);
 
@@ -749,8 +749,8 @@ jleave:
    return ((agp->ag_n_flags & NAME_ADDRSPEC_INVALID) == 0);
 }
 
-static int
-gethfield(FILE *f, char **linebuf, size_t *linesize, int rem, char **colon)
+static long
+a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem, char **colon)
 {
    char *line2 = NULL, *cp, *cp2;
    size_t line2size = 0;
@@ -792,7 +792,7 @@ gethfield(FILE *f, char **linebuf, size_t *linesize, int rem, char **colon)
          ungetc(c = getc(f), f);
          if (!blankchar(c))
             break;
-         c = readline_restart(f, &line2, &line2size, 0);
+         c = readline_restart(f, &line2, &line2size, 0); /* TODO linepool! */
          if (c < 0)
             break;
          --rem;
@@ -1091,7 +1091,8 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
    struct header nh, *hq = &nh;
    char *linebuf = NULL /* TODO line pool */, *colon;
    size_t linesize = 0, seenfields = 0;
-   int lc, c;
+   int c;
+   long lc;
    char const *val, *cp;
    NYD_ENTER;
 
@@ -1108,7 +1109,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
 
    /* TODO yippieia, cat(check(lextract)) :-) */
    rewind(fp);
-   while ((lc = gethfield(fp, &linebuf, &linesize, lc, &colon)) >= 0) {
+   while ((lc = a_gethfield(fp, &linebuf, &linesize, lc, &colon)) >= 0) {
       struct name *np;
 
       /* We explicitly allow EAF_NAME for some addressees since aliases are not
@@ -1194,7 +1195,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
          }else
             goto jebadhead;
       }
-      /* A free-form user header; gethfield() did some verification already.. */
+      /* A free-form header; a_gethfield() did some verification already.. */
       else{
          struct n_header_field *hfp;
          ui32_t nl, bl;
@@ -1281,8 +1282,8 @@ FL char *
 hfield_mult(char const *field, struct message *mp, int mult)
 {
    FILE *ibuf;
-   int lc;
    struct str hfs;
+   long lc;
    size_t linesize = 0; /* TODO line pool */
    char *linebuf = NULL, *colon;
    char const *hfield;
@@ -1303,7 +1304,7 @@ hfield_mult(char const *field, struct message *mp, int mult)
          readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
       goto jleave;
    while (lc > 0) {
-      if ((lc = gethfield(ibuf, &linebuf, &linesize, lc, &colon)) < 0)
+      if ((lc = a_gethfield(ibuf, &linebuf, &linesize, lc, &colon)) < 0)
          break;
       if ((hfield = thisfield(linebuf, field)) != NULL && *hfield != '\0') {
          if (mult)
@@ -2446,45 +2447,142 @@ grab_headers(enum n_go_input_flags gif, struct header *hp, enum gfield gflags,
 }
 
 FL bool_t
-header_match(struct message *mp, struct search_expr const *sep)
-{
-   struct str in, out;
+n_header_match(struct message *mp, struct search_expr const *sep){
+   struct str fiter, in, out;
+   char const *field;
+   long lc;
    FILE *ibuf;
-   int lc;
-   size_t linesize = 0; /* TODO line pool */
-   char *linebuf = NULL, *colon;
-   bool_t rv = FAL0;
+   size_t *linesize;
+   char **linebuf, *colon;
+   enum {a_NONE, a_ALL, a_ITER, a_RE} match;
+   bool_t rv;
    NYD_ENTER;
 
-   if ((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
+   rv = FAL0;
+   match = a_NONE;
+   linebuf = &termios_state.ts_linebuf; /* XXX line pool */
+   linesize = &termios_state.ts_linesize; /* XXX line pool */
+   n_UNINIT(fiter.l, 0);
+   n_UNINIT(fiter.s, NULL);
+
+   if((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
       goto jleave;
-   if ((lc = mp->m_lines - 1) < 0)
+   if((lc = mp->m_lines - 1) < 0)
       goto jleave;
 
-   if ((mp->m_flag & MNOFROM) == 0 &&
-         readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
+   if((mp->m_flag & MNOFROM) == 0 &&
+         readline_restart(ibuf, linebuf, linesize, 0) < 0)
       goto jleave;
-   while (lc > 0) {
-      if (gethfield(ibuf, &linebuf, &linesize, lc, &colon) <= 0)
-         break;
-      if (blankchar(*++colon))
-         ++colon;
-      in.l = strlen(in.s = colon);
-      mime_fromhdr(&in, &out, TD_ICONV);
+
+   /* */
+   if((field = sep->ss_field) != NULL){
+      if(!asccasecmp(field, "header") || (field[0] == '<' && field[1] == '\0'))
+         match = a_ALL;
+      else{
+         fiter.s = n_lofi_alloc((fiter.l = strlen(field)) +1);
+         match = a_ITER;
+      }
 #ifdef HAVE_REGEX
-      if (sep->ss_sexpr == NULL)
-         rv = (regexec(&sep->ss_regex, out.s, 0,NULL, 0) != REG_NOMATCH);
+   }else if(sep->ss_fieldre != NULL){
+      match = a_RE;
+#endif
+   }else
+      match = a_ALL;
+
+   /* Iterate over all the headers */
+   while(lc > 0){
+      struct name *np;
+
+      if((lc = a_gethfield(ibuf, linebuf, linesize, lc, &colon)) <= 0)
+         break;
+
+      /* Is this a header we are interested in? */
+      if(match == a_ITER){
+         char *itercp;
+
+         memcpy(itercp = fiter.s, sep->ss_field, fiter.l +1);
+         while((field = n_strsep(&itercp, ',', TRU1)) != NULL){
+            /* It may be an abbreviation */
+            char const x[][8] = {"from", "to", "cc", "bcc", "subject"};
+            size_t i;
+            char c1;
+
+            if(field[0] != '\0' && field[1] == '\0'){
+               c1 = lowerconv(field[0]);
+               for(i = 0; i < n_NELEM(x); ++i){
+                  if(c1 == x[i][0]){
+                     field = x[i];
+                     break;
+                  }
+               }
+            }
+
+            if(!ascncasecmp(field, *linebuf, PTR2SIZE(colon - *linebuf)))
+               break;
+         }
+         if(field == NULL)
+            continue;
+#ifdef HAVE_REGEX
+      }else if(match == a_RE){
+         char *cp;
+         size_t i;
+
+         i = PTR2SIZE(colon - *linebuf);
+         cp = n_lofi_alloc(i +1);
+         memcpy(cp, *linebuf, i);
+         cp[i] = '\0';
+         i = (regexec(sep->ss_fieldre, cp, 0,NULL, 0) != REG_NOMATCH);
+         n_lofi_free(cp);
+         if(!i)
+            continue;
+#endif
+      }
+
+      /* It could be a plain existence test */
+      if(sep->ss_field_exists){
+         rv = TRU1;
+         break;
+      }
+
+      /* Need to check the body */
+      while(blankchar(*++colon))
+         ;
+      in.s = colon;
+
+      /* Shall we split into address list and match as/the addresses only?
+       * TODO at some later time we should ignore and log efforts to search
+       * TODO a skinned address list if we know the header has none such */
+      if(sep->ss_skin){
+         if((np = lextract(in.s, GSKIN)) == NULL)
+            continue;
+         out.s = np->n_name;
+      }else{
+         np = NULL;
+         in.l = strlen(in.s);
+         mime_fromhdr(&in, &out, TD_ICONV);
+      }
+
+jnext_name:
+#ifdef HAVE_REGEX
+      if(sep->ss_bodyre != NULL)
+         rv = (regexec(sep->ss_bodyre, out.s, 0,NULL, 0) != REG_NOMATCH);
       else
 #endif
-         rv = substr(out.s, sep->ss_sexpr);
-      free(out.s);
-      if (rv)
+         rv = substr(out.s, sep->ss_body);
+
+      if(np == NULL)
+         free(out.s);
+      if(rv)
          break;
+      if(np != NULL && (np = np->n_flink) != NULL){
+         out.s = np->n_name;
+         goto jnext_name;
+      }
    }
 
 jleave:
-   if (linebuf != NULL)
-      free(linebuf);
+   if(match == a_ITER)
+      n_lofi_free(fiter.s);
    NYD_LEAVE;
    return rv;
 }

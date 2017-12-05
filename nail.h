@@ -54,6 +54,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <inttypes.h>
 #include <limits.h>
 #include <setjmp.h>
 #include <signal.h>
@@ -64,8 +65,6 @@
 #include <termios.h>
 #include <time.h>
 #include <unistd.h>
-
-#include <inttypes.h>
 
 #ifdef HAVE_C90AMEND1
 # include <wchar.h>
@@ -261,10 +260,8 @@
 # define n_VSTRUCT_SIZEOF(T,F) (sizeof(T) - n_SIZEOF_FIELD(T, F))
 #endif
 
-#ifdef HAVE_INLINE
-# define SINLINE        n_INLINE /* TODO obsolete */
-#else
-# define SINLINE        static
+#ifndef HAVE_INLINE
+# define n_INLINE static
 #endif
 
 #undef __FUN__
@@ -627,21 +624,22 @@ enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
    n_CMD_ARG_TYPE_ARG = 7,       /* n_cmd_arg_desc/n_cmd_arg() new-style */
    n_CMD_ARG_TYPE_MASK = 7,      /* Mask of the above */
 
-   n_CMD_ARG_A = 1u<< 4,   /* Needs an active mailbox */
-   n_CMD_ARG_F = 1u<< 5,   /* Is a conditional command */
-   n_CMD_ARG_G = 1u<< 6,   /* Is supposed to produce "gabby" history */
-   n_CMD_ARG_H = 1u<< 7,   /* Never place in `history' */
-   n_CMD_ARG_I = 1u<< 8,   /* Interactive command bit */
-   n_CMD_ARG_M = 1u<< 9,   /* Legal from send mode bit */
-   n_CMD_ARG_O = 1u<<10,   /* n_OBSOLETE()d command */
-   n_CMD_ARG_P = 1u<<11,   /* Autoprint dot after command */
-   n_CMD_ARG_R = 1u<<12,   /* Forbidden in compose mode recursion */
-   n_CMD_ARG_SC = 1u<<13,  /* Forbidden pre-n_PSO_STARTED_CONFIG */
-   n_CMD_ARG_S = 1u<<14,   /* Forbidden pre-n_PSO_STARTED (POSIX) */
-   n_CMD_ARG_T = 1u<<15,   /* Is a transparent command */
-   n_CMD_ARG_V = 1u<<16,   /* Supports `vput' prefix (only WYSH/WYRA) */
-   n_CMD_ARG_W = 1u<<17,   /* Invalid when read only bit */
-   n_CMD_ARG_X = 1u<<18,   /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
+   n_CMD_ARG_A = 1u<<4,    /* Needs an active mailbox */
+   n_CMD_ARG_F = 1u<<5,    /* Is a conditional command */
+   n_CMD_ARG_G = 1u<<6,    /* Is supposed to produce "gabby" history */
+   n_CMD_ARG_H = 1u<<7,    /* Never place in `history' */
+   n_CMD_ARG_I = 1u<<8,    /* Interactive command bit */
+   n_CMD_ARG_L = 1u<<9,    /* Supports `local' prefix (only WYSH/WYRA) */
+   n_CMD_ARG_M = 1u<<10,   /* Legal from send mode bit */
+   n_CMD_ARG_O = 1u<<11,   /* n_OBSOLETE()d command */
+   n_CMD_ARG_P = 1u<<12,   /* Autoprint dot after command */
+   n_CMD_ARG_R = 1u<<13,   /* Forbidden in compose mode recursion */
+   n_CMD_ARG_SC = 1u<<14,  /* Forbidden pre-n_PSO_STARTED_CONFIG */
+   n_CMD_ARG_S = 1u<<15,   /* Forbidden pre-n_PSO_STARTED (POSIX) */
+   n_CMD_ARG_T = 1u<<16,   /* Is a transparent command */
+   n_CMD_ARG_V = 1u<<17,   /* Supports `vput' prefix (only WYSH/WYRA) */
+   n_CMD_ARG_W = 1u<<18,   /* Invalid when read only bit */
+   n_CMD_ARG_X = 1u<<19,   /* Valid command in n_PS_COMPOSE_FORKHOOK mode */
    /* XXX Note that CMD_ARG_EM implies a _real_ return value for $! */
    n_CMD_ARG_EM = 1u<<30   /* If error: n_pstate_err_no (4 $! aka. ok_v___em) */
 };
@@ -967,10 +965,13 @@ enum b64flags {
 };
 
 enum mime_parse_flags {
-   MIME_PARSE_NONE      = 0,
-   MIME_PARSE_DECRYPT   = 1<<0,
-   MIME_PARSE_PARTS     = 1<<1,
-   MIME_PARSE_SHALLOW   = 1<<2
+   MIME_PARSE_NONE,
+   MIME_PARSE_DECRYPT = 1u<<0,
+   MIME_PARSE_PARTS = 1u<<1,
+   MIME_PARSE_SHALLOW = 1u<<2,
+   /* In effect we parse this message for user display or quoting purposes, so
+    * relaxed rules regarding content inspection may be applicable */
+   MIME_PARSE_FOR_USER_CONTEXT = 1u<<3
 };
 
 enum mime_handler_flags {
@@ -1131,9 +1132,9 @@ enum n_shexp_state{
    n_SHEXP_STATE_ERR_CONTROL = 1u<<16,    /* \c notation with invalid arg. */
    n_SHEXP_STATE_ERR_UNICODE = 1u<<17,    /* Valid \[Uu] and !n_PSO_UNICODE */
    n_SHEXP_STATE_ERR_NUMBER = 1u<<18,     /* Bad number (\[UuXx]) */
-   n_SHEXP_STATE_ERR_BRACE = 1u<<19,      /* _QUOTEOPEN + no } brace 4 ${VAR */
-   n_SHEXP_STATE_ERR_IDENTIFIER = 1u<<20, /* Invalid identifier */
-   n_SHEXP_STATE_ERR_BADSUB = 1u<<21,     /* Empty/bad ${} substitution */
+   n_SHEXP_STATE_ERR_IDENTIFIER = 1u<<19, /* Invalid identifier */
+   n_SHEXP_STATE_ERR_BADSUB = 1u<<20,     /* Empty/bad ${}/[] substitution */
+   n_SHEXP_STATE_ERR_GROUPOPEN = 1u<<21,  /* _QUOTEOPEN + no }/]/)/ 4 ${/[/( */
    n_SHEXP_STATE_ERR_QUOTEOPEN = 1u<<22,  /* Quote remains open at EOS */
 
    n_SHEXP_STATE_ERR_MASK = n_BITENUM_MASK(16, 22)
@@ -1413,6 +1414,7 @@ do{\
    n_PS_PSTATE_PENDMASK = n_PS_SIGWINCH_PEND, /* pstate housekeeping needed */
 
    n_PS_ARGLIST_MASK = n_BITENUM_MASK(14, 16),
+   n_PS_ARGMOD_LOCAL = 1u<<14,         /* "local" modifier TODO struct CmdCtx */
    n_PS_ARGMOD_VPUT = 1u<<16,          /* "vput" modifier TODO struct CmdCtx */
    n_PS_MSGLIST_GABBY = 1u<<14,        /* getmsglist() saw something gabby */
    n_PS_MSGLIST_DIRECT = 1u<<15,       /* A msg was directly chosen by number */
@@ -1584,7 +1586,7 @@ ok_v_fwdheading,
    ok_b_ignore,
    ok_b_ignoreeof,
    ok_v_inbox,
-   ok_v_indentprefix,
+   ok_v_indentprefix,                  /* {defval="\t"} */
 
    ok_b_keep,
    ok_b_keep_content_length,
@@ -1622,23 +1624,24 @@ ok_v_fwdheading,
    ok_v_mta,                           /* {notempty=1,defval=VAL_MTA} */
    ok_v_mta_arguments,
    ok_b_mta_no_default_arguments,
+   ok_b_mta_no_receiver_arguments,
    ok_v_mta_argv0,                     /* {notempty=1,defval=VAL_MTA_ARGV0} */
 
    /* TODO likely temporary hook data, v15 drop */
-   ok_v_mailx_command,                 /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_subject,                 /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_from,                    /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_sender,                  /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_to,                      /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_cc,                      /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_bcc,                     /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_raw_to,                  /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_raw_cc,                  /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_raw_bcc,                 /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_orig_from,               /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_orig_to,                 /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_orig_cc,                 /* {rdonly=1,nodel=1,nolopts=1} */
-   ok_v_mailx_orig_bcc,                /* {rdonly=1,nodel=1,nolopts=1} */
+   ok_v_mailx_command,                 /* {rdonly=1,nodel=1} */
+   ok_v_mailx_subject,                 /* {rdonly=1,nodel=1} */
+   ok_v_mailx_from,                    /* {rdonly=1,nodel=1} */
+   ok_v_mailx_sender,                  /* {rdonly=1,nodel=1} */
+   ok_v_mailx_to,                      /* {rdonly=1,nodel=1} */
+   ok_v_mailx_cc,                      /* {rdonly=1,nodel=1} */
+   ok_v_mailx_bcc,                     /* {rdonly=1,nodel=1} */
+   ok_v_mailx_raw_to,                  /* {rdonly=1,nodel=1} */
+   ok_v_mailx_raw_cc,                  /* {rdonly=1,nodel=1} */
+   ok_v_mailx_raw_bcc,                 /* {rdonly=1,nodel=1} */
+   ok_v_mailx_orig_from,               /* {rdonly=1,nodel=1} */
+   ok_v_mailx_orig_to,                 /* {rdonly=1,nodel=1} */
+   ok_v_mailx_orig_cc,                 /* {rdonly=1,nodel=1} */
+   ok_v_mailx_orig_bcc,                /* {rdonly=1,nodel=1} */
 
 ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
 ok_b_NAIL_NO_SYSTEM_RC,             /* {name=NAIL_NO_SYSTEM_RC,import=1} */
@@ -1681,6 +1684,7 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_b_quiet,
    ok_v_quote,
    ok_b_quote_as_attachment,
+   ok_v_quote_chars,                   /* {vip=1,notempty=1,defval=">|}:"} */
    ok_v_quote_fold,
 
    ok_b_r_option_implicit,
@@ -1792,9 +1796,10 @@ ok_v_ssl_protocol,                  /* {chain=1} */
    ok_b_verbose,                       /* {vip=1} */
    ok_v_version,                       /* {virt=n_VERSION} */
    ok_v_version_date,                  /* {virt=n_VERSION_DATE} */
-   ok_v_version_major,                 /* {virt=n_VERSION_MAJOR} */
-   ok_v_version_minor,                 /* {virt=n_VERSION_MINOR} */
-   ok_v_version_update,                /* {virt=n_VERSION_UPDATE} */
+   ok_v_version_hexnum,                /* {virt=n_VERSION_HEXNUM,posnum=1} */
+   ok_v_version_major,                 /* {virt=n_VERSION_MAJOR,posnum=1} */
+   ok_v_version_minor,                 /* {virt=n_VERSION_MINOR,posnum=1} */
+   ok_v_version_update,                /* {virt=n_VERSION_UPDATE,posnum=1} */
 
    ok_b_writebackedited
 
@@ -2020,6 +2025,7 @@ struct quoteflt {
    bool_t      qf_brk_isws;   /* Breakpoint is at WS */
    ui32_t      qf_qfold_max;  /* Otherwise: line lengths */
    ui32_t      qf_wscnt;      /* Whitespace count */
+   char const *qf_quote_chars; /* *quote-chars* */
    ui32_t      qf_brkl;       /* Breakpoint */
    ui32_t      qf_brkw;       /* Visual width, breakpoint */
    ui32_t      qf_datw;       /* Current visual output line width */
@@ -2050,10 +2056,17 @@ struct htmlflt {
 #endif
 
 struct search_expr {
-   char const  *ss_where;     /* ..to search for the expr. (not always used) */
-   char const  *ss_sexpr;     /* String search expr.; NULL: use .ss_regex */
+   /* XXX Type of search should not be evaluated but be enum */
+   bool_t ss_field_exists; /* Only check whether field spec. exists */
+   bool_t ss_skin;         /* Shall work on (skin()ned) addresses */
+   ui8_t ss__pad[6];
+   char const *ss_field;   /* Field spec. where to search (not always used) */
+   char const *ss_body;    /* Field body search expression */
 #ifdef HAVE_REGEX
-   regex_t     ss_regex;
+   regex_t *ss_fieldre;    /* Could be instead of .ss_field */
+   regex_t *ss_bodyre;     /* Ditto, .ss_body */
+   regex_t ss__fieldre_buf;
+   regex_t ss__bodyre_buf;
 #endif
 };
 

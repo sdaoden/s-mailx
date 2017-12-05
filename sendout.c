@@ -70,7 +70,7 @@ static enum okay     _putname(char const *line, enum gfield w,
  * headers, respectively */
 static int a_sendout_put_ct(FILE *fo, char const *contenttype,
                char const *charset);
-SINLINE int a_sendout_put_cte(FILE *fo, enum conversion conv);
+n_INLINE int a_sendout_put_cte(FILE *fo, enum conversion conv);
 static int a_sendout_put_cd(FILE *fo, char const *cd, char const *filename);
 
 /* Put all entries of the given header list */
@@ -229,7 +229,7 @@ jerr:
    goto jleave;
 }
 
-SINLINE int
+n_INLINE int
 a_sendout_put_cte(FILE *fo, enum conversion conv){
    int rv;
    NYD2_ENTER;
@@ -391,7 +391,7 @@ a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo)
    charset_iter_recurse(charset_iter_orig);
    for (charset_iter_reset(NULL);; charset_iter_next()) {
       if (!charset_iter_is_valid()) {
-         err = n_ERR_ILSEQ;
+         err = n_ERR_NOENT;
          break;
       }
       err = a_sendout__attach_file(hp, ap, fo);
@@ -1414,9 +1414,10 @@ __mta_prepare_args(struct name *to, struct header *hp)
       args[i++] = "--";
 
    /* Receivers follow */
-   for (; to != NULL; to = to->n_flink)
-      if (!(to->n_type & GDEL))
-         args[i++] = to->n_name;
+   if(!ok_blook(mta_no_receiver_arguments))
+      for (; to != NULL; to = to->n_flink)
+         if (!(to->n_type & GDEL))
+            args[i++] = to->n_name;
    args[i] = NULL;
 
    if(vas != NULL)
@@ -1862,7 +1863,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
       int err;
 
       if (!charset_iter_is_valid())
-         ;
+         err = n_ERR_NOENT;
       else if ((nmtf = infix(hp, mtf)) != NULL)
          break;
       else if ((err = n_iconv_err_no) == n_ERR_ILSEQ || err == n_ERR_INVAL ||
@@ -1927,9 +1928,10 @@ jleave:
 
       if((cp = ok_vlook(on_compose_cleanup)) != NULL)
          temporary_compose_mode_hook_call(cp, NULL, NULL);
-
-      temporary_compose_mode_hook_unroll();
    }
+
+   temporary_compose_mode_hook_unroll();
+
    if (_sendout_error)
       n_exit_status |= n_EXIT_SEND_ERROR;
    if(rv == OKAY)

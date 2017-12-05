@@ -287,8 +287,13 @@ jnobidi:
 }
 
 FL void
-makeprint(struct str const *in, struct str *out)
+makeprint(struct str const *in, struct str *out) /* TODO <-> TTYCHARSET!! */
 {
+   /* TODO: makeprint() should honour *ttycharset*.  This of course does not
+    * TODO work with ISO C / POSIX since mbrtowc() do know about locales, not
+    * TODO charsets, and ditto iswprint() etc. do work with the locale too.
+    * TODO I hope S-CText can do something about that, and/or otherwise add
+    * TODO some special treatment for UTF-8 (take it from S-CText too then) */
    char const *inp, *maxp;
    char *outp;
    DBG( size_t msz; )
@@ -336,7 +341,7 @@ makeprint(struct str const *in, struct str *out)
             else
                wc = isuni ? 0x2426 : '?';
          }else if(isuni){ /* TODO ctext */
-            /* We need to actively filter out L-TO-R and R-TO-R marks TODO ctext */
+            /* Need to filter out L-TO-R and R-TO-R marks TODO ctext */
             if(wc == 0x200E || wc == 0x200F || (wc >= 0x202A && wc <= 0x202E))
                continue;
             /* And some zero-width messes */

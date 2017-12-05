@@ -162,7 +162,7 @@ static size_t a_aux_err_linelen;
  * initialization (shall /dev/urandom fail) */
 #if !defined HAVE_POSIX_RANDOM && !n_RANDOM_USE_XSSL
 static void a_aux_rand_init(void);
-SINLINE ui8_t a_aux_rand_get8(void);
+n_INLINE ui8_t a_aux_rand_get8(void);
 # ifndef HAVE_GETRANDOM
 static ui32_t a_aux_rand_weak(ui32_t seed);
 # endif
@@ -268,7 +268,7 @@ jleave:
    NYD2_LEAVE;
 }
 
-SINLINE ui8_t
+n_INLINE ui8_t
 a_aux_rand_get8(void){
    ui8_t si, sj;
 
@@ -344,10 +344,10 @@ n_locale_init(void){
       char const *cp;
 
       if((cp = nl_langinfo(CODESET)) != NULL)
-         /* Avoid logging if user set that via -S! */
-         n_PS_ROOT_BLOCK(ok_vset(ttycharset, cp));
+         /* (Will log during startup if user set that via -S) */
+         ok_vset(ttycharset, cp);
    }
-# endif
+# endif /* HAVE_SETLOCALE */
 
 # ifdef HAVE_C90AMEND1
    if(n_mb_cur_max > 1){
@@ -365,7 +365,7 @@ n_locale_init(void){
 #  endif
    }
 # endif
-#endif
+#endif /* HAVE_C90AMEND1 */
    NYD2_LEAVE;
 }
 
@@ -628,8 +628,30 @@ n_idec_buf(void *resp, char const *cbuf, uiz_t clen, ui8_t base,
 
    /* Base detection/skip */
    if(*cbuf != '0'){
-      if(base == 0)
+      if(base == 0){
          base = 10;
+
+         /* Support BASE#number prefix, where BASE is decimal 2-36 */
+         if(clen > 1){
+            char c1, c2;
+
+            if(((c1 = cbuf[0]) >= '0' && c1 <= '9') &&
+                  (((c2 = cbuf[1]) == '#') ||
+                   (c2 >= '0' && c2 <= '9' && clen > 2 && cbuf[2] == '#'))){
+               base = a_aux_idec_atoi[(ui8_t)c1];
+               if(c2 == '#')
+                  clen -= 2, cbuf += 2;
+               else{
+                  clen -= 3, cbuf += 3;
+                  base *= 10;
+                  base += a_aux_idec_atoi[(ui8_t)c2];
+               }
+               if(base < 2 || base > 36)
+                  goto jeinval;
+            }
+         }
+      }
+
       /* Character must be valid for base */
       currc = a_aux_idec_atoi[(ui8_t)*cbuf];
       if(currc >= base)
@@ -661,10 +683,8 @@ n_idec_buf(void *resp, char const *cbuf, uiz_t clen, ui8_t base,
                 * a "0" result with a "STATE_BASE" error and a rest of "x" */
 jprefix_skip:
 #if 1
-               if(clen > 1 && a_aux_idec_atoi[(ui8_t)cbuf[1]] < base){
-                  --clen;
-                  ++cbuf;
-               }
+               if(clen > 1 && a_aux_idec_atoi[(ui8_t)cbuf[1]] < base)
+                  --clen, ++cbuf;
 #else
                if(*++cbuf == '\0' || --clen == 0)
                   goto jeinval;
@@ -799,7 +819,7 @@ jeover:
 j_maxval:
    if(rv & n_IDEC_MODE_SIGNED_TYPE)
       res = (rv & n_IDEC_STATE_SEEN_MINUS) ? (ui64_t)SI64_MIN
-         : (ui64_t)SI64_MAX;
+            : (ui64_t)SI64_MAX;
    else
       res = UI64_MAX;
    rv &= ~n_IDEC_STATE_SEEN_MINUS;

@@ -250,7 +250,7 @@ jerr_cred:
          goto jerr_cred;
       _OUT(cp);
       _ANSWER(2, FAL0, FAL0);
-   }  break;
+      }break;
 #endif
 #ifdef HAVE_GSSAPI
    case AUTHTYPE_GSSAPI:

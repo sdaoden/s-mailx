@@ -212,7 +212,8 @@ _qf_state_prefix(struct qf_vc *vc)
          ++self->qf_wscnt;
          continue;
       }
-      if (i == 1 && n_QUOTE_IS_A(wc)) {
+      if (i == 1 && n_uasciichar(wc) &&
+            strchr(self->qf_quote_chars, (char)wc) != NULL){
          self->qf_wscnt = 0;
          if (self->qf_currq.l >= n_QUOTE_MAX - 3) {
             self->qf_currq.s[n_QUOTE_MAX - 3] = '.';
@@ -338,6 +339,7 @@ quoteflt_init(struct quoteflt *self, char const *prefix)
       }
       self->qf_qfold_min = qmin;
       self->qf_qfold_max = qmax;
+      self->qf_quote_chars = ok_vlook(quote_chars);
 
       /* Add pad for takeover copies, reverse solidus and newline */
       self->qf_dat.s = salloc((qmax + 3) * n_mb_cur_max);
@@ -805,11 +807,12 @@ _hf_store(struct htmlflt *self, char c)
 
    i = l;
 # ifdef HAVE_NATCH_CHAR /* XXX This code is really ridiculous! */
-   if (n_mb_cur_max > 1) { /* XXX should mbrtowc() and THEN store, at least.. */
+   if (n_mb_cur_max > 1) { /* XXX should mbrtowc() and THEN store, at least */
       wchar_t wc;
-      int w, x = mbtowc(&wc, self->hf_line + self->hf_mboff, l - self->hf_mboff);
+      int w, x;
 
-      if (x > 0) {
+      if((x = mbtowc(&wc, self->hf_line + self->hf_mboff, l - self->hf_mboff)
+            ) > 0){
          if ((w = wcwidth(wc)) == -1 ||
                /* Actively filter out L-TO-R and R-TO-R marks TODO ctext */
                (wc == 0x200E || wc == 0x200F ||
