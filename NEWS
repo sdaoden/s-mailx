@@ -6,6 +6,104 @@ S - n a i l / S - m a i l x  N e w s
   will scroll to the manual's Point-Of-Interest, and pointing
   a web- browser to the "#ANCHOR" of the online manual works.
 
+v14.9.6 ("Marsh tit abiding a snow storm"), 2017-12-05
+------------------------------------------------------
+
+A bugfix release which fixes four serious and three other bugs.
+A few new features came in, too.
+
+Many thanks go to Ralph Corderoy who reported an issue that was
+caused by a terrible, terrible word reversal that i managed to
+produce in December 2016, and which caused the v14.9.x series to
+not MIME encode (non-address) content of address header fields!
+
+Credits, in order of commit appearance: Thomas Dickey,
+Andreas Baumann, Erich Eckner, Gaetan Bisson, Solar Designer, Cág,
+Ivan Tham, Ralph Corderoy and Doug McIlroy.
+
+We welcome Andreas Baumann, Erich Eckner, Solar Designer and Cág
+in THANKS.
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- After USB stick loss the authors OpenPGP key has been switched to
+
+    pub   4096R/1883A0DD 2017-11-30 [expires: 2027-11-28]
+          Key fingerprint =
+            EE19 E1C1 F2F7 054F 8D39  54D8 3089 64B5 1883 A0DD
+    uid                  Steffen Nurpmeso <steffen@sdaoden.eu>
+
+- $TMPDIR#591 no longer honoured for root runs.  (Solar Designer)
+
+- *mime-encoding*#436 defaults to quoted-printable again.  (Cág)
+
+- We _can_ MIME encode even header fields which contain addresses.
+  Thanks to Ralph Corderoy we now also _do_ so again!
+
+ChangeLog
+^^^^^^^^^
+
+- ***#336 now uses *ifs*#411 when splitting.
+
+- Freezing *ttycharset*#557 via -S#75 also survives using or
+  setting any of $LC_ALL#573, $LC_CTYPE#574 and $LANG#575 during
+  program startup.
+
+- New `local'#113 command modifier to localize changes.
+  Yet supported only for `set'#253, i.e., we have gained
+  macro-local variables.
+
+- `vexpr'#287 now supports a BASE#number notation for integers,
+  like 16#AFFE as an alternative to 0xAFFE.
+
+  Hint: variable settings can most often use several bases, too,
+  e.g., i have "set mime-counter-evidence=0b1111".
+
+- Very simple form of *quote-chars*#479 to adjust our knowledge of
+  what actually is to be treated as a quote character.
+
+- *mime-counter-evidence*#435 deep inspection (bit four) has
+  been improved for the sole cases of quoting or displaying
+  a message.  So messages with less than 25% of control characters
+  and such will now be displayed (made printable).  This is yet
+  not configurable nor do we have a way to easily access a message
+  with more than that.  (Doug McIlroy)
+
+git(1) shortlog (edited)
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Steffen Nurpmeso (44):
+9bdfeba2 Introduce *mta-no-receiver-arguments* to bypass OpenSMTPD behaviour..
+4ce4f80d mail1(): fix: unroll compose-mode `localopts' even on compose
+        failure!
+3dc1d4ee FIX debug assertion (Thomas Dickey)..
+b039b309 a_main_startup(): isatty() yay fdopen(,"w") nay (A. B., E. E., G.
+        B.)..
+e6ec2b06 THANKS: Andreas Baumann
+5e808dc1 THANKS: Erich Eckner
+7cc7fd0a Invent n_O_NOXY_BITS for more O_NO* etc. (Solar Designer)
+409c5df7 THANKS: Solar Designer
+62d5947a config.h: no, change [f64eb665], use MIMEE_QP again (Cág)
+43449982 THANKS: Cág
+cd212599 Do not honour $TMPDIR if run by root (Solar Designer)
+3e283d18 Fix semantics of $* to go for *ifs*
+6d437ab6 FIX i_strdup(), broken since [354fc47e] as of 2017-07-16..
+c20b6b7c nail.1: WHEN is a mlist a regex (Ivan Tham)
+bd72268c nail.1: FAQ: Can S-nail git-send-email? (Cág)
+ffd29558 FIX [0ede309c] as of 2016-12-26! (Ralph Corderoy)..
+fce7d5ca FIX: LC_ALL/LC_CTYPE/LANG: do not _force_ overwrite of *ttycharset*..
+16fb7bf7 `environ' unset: report errors (remove respective TODO)..
+8eb67f95 Add `local' command modifier: alter command to work on block-scope
+23327af7 n_idec*(), `vexpr': support BASE#number (2 <= x <= 36) notation
+78727768 "[@fields]@" spec.: support regex in fields, empty body: header
+        exists
+ca35643c Add *quote-chars* (simple)
+429a294d Improve *mime-counter-evidence* deep inspection (Doug McIlroy)..
+c0fcb67c Introduce *version-hexnum*
+090819a2 Fix [ab0cd3b8]..
+8c72989b cc-test.sh: fix test of [ffd29558]..
+
 v14.9.5 ("Marsh tit engaged with a peanut"), 2017-10-21
 -------------------------------------------------------
 
@@ -44,14 +142,14 @@ ChangeLog
 
 - Message list specifications gained two new colon modifiers, one
   can now "search :Ll" to find "Mailing lists"#10.
-  The *headline*#400 format %T now also uses L and l rather than
+  The *headline*#402 format %T now also uses L and l rather than
   S and L accordingly.
 
-  New `addrcodec'#? subcommand `skinlist' acts like `skin'
-  but stores in *!*#329 *^ERR*#?-EXIST if the address is
+  New `addrcodec'#129 subcommand `skinlist' acts like `skin'
+  but stores in *!*#331 *^ERR*#333-EXIST if the address is
   one of the known "Mailing lists"#10.
 
-- `echo'#? family now supports `vput'#114 and *!*#329 error
+- `echo'#166 family now supports `vput'#116 and *!*#331 error
   storage, offering some kind of printf(1) experience, almost.
 
 git(1) shortlog (edited)
@@ -112,11 +210,11 @@ NOTES, ChangeLog (packager-affine)
   support new possibilities of OpenSSL (and LibreSSL) without
   ending up and introducing more and more variables.
 
-  Instead we now have *ssl-config-pairs*#536, a comma-separated
+  Instead we now have *ssl-config-pairs*#540, a comma-separated
   list of all options.  With e.g. OpenSSL 1.1.xx this will be
   directly passed through to SSL_CONF_cmd(), so there _anything_
   can be passed, otherwise we use a builtin parser to map.
-  The new *ssl-features*#540 states what is supported.  E.g.:
+  The new *ssl-features*#544 states what is supported.  E.g.:
 
     if [ "$ssl-features" =% +ctx-set-maxmin-proto ]
       wysh set ssl-config-pairs='\
@@ -132,57 +230,57 @@ NOTES, ChangeLog (packager-affine)
 
   OpenSSL v1.1.xx also introduces an interesting and neat idea to
   centralize SSL/TLS configuration of (all) programs in a single
-  file.  This can be driven via *ssl-config-file*#534 and the new
-  *ssl-config-module*#535 variables, several entries per program
-  are allowed, see *ssl-config-module*#535 for an example.
+  file.  This can be driven via *ssl-config-file*#538 and the new
+  *ssl-config-module*#539 variables, several entries per program
+  are allowed, see *ssl-config-module*#539 for an example.
 
   New manual section "Encrypted network communication"#13.
 
-- Variables set or unset via -S#74 are now frozen until program
+- Variables set or unset via -S#75 are now frozen until program
   startup is complete.
 
 ChangeLog
 ^^^^^^^^^
 
-- Historical behaviour of *askcc*#345 / *askbcc*#346 has been
+- Historical behaviour of *askcc*#347 / *askbcc*#348 has been
   reintroduced.  (Norman Ramsey)
 
-  A new *asksend*#347 variable will show a final header summary
+  A new *asksend*#349 variable will show a final header summary
   and allows reentering compose mode.  Set by default.
 
-  POSIX mirrors *ask* onto *asksub*#349, so dropped" the former.
+  POSIX mirrors *ask* onto *asksub*#351, so dropped" the former.
 
-- `~^'#302 no longer normalizes header names to titlecase.
+- `~^'#304 no longer normalizes header names to titlecase.
 
 - We no longer generate charset=binary MIME parameters.
   This was introduced on 2013-01-02 and was i think owed to
   file(1)s -i output as i failed to find any other reference.
   (Normal Ramsey)
 
-- *mime-alternative-favour-rich*#432 now also works for handlers
-  installed via *pipe-TYPE/SUBTYPE*#456. (Viktor Szépe)
+- *mime-alternative-favour-rich*#434 now also works for handlers
+  installed via *pipe-TYPE/SUBTYPE*#459. (Viktor Szépe)
 
 - v14.9.* series did not generate In-Reply-To: headers!
 
-- `alias'#128 now supports high-bit bytes and semicolon.
+- `alias'#130 now supports high-bit bytes and semicolon.
   Expect that at some later time the input must be valid according
   to the locale, though. (Norman Ramsey)
 
-- Combinations of *record*#479 could crash because of an
+- Combinations of *record*#483 could crash because of an
   unterminated variable function argument list. (Norman Ramsey)
 
-- New command `readall'#231 loads an entire file into a variable.
+- New command `readall'#233 loads an entire file into a variable.
 
-  *signature*#499 has been obsoleted.
+  *signature*#503 has been obsoleted.
 
-- `vexpr'#285 now supports negative arguments for the substring
+- `vexpr'#287 now supports negative arguments for the substring
   subcommand and adds trim, trim-front and trim-end subcommands.
 
-- `!'#118 can be used in send mode.
+- `!'#120 can be used in send mode.
 
-- `~A'#303, `~a'#304, `~I'#313 and `~i'#314 will henceforth expand
-  \t and \n only if *posix*#469 is set.
-  Please use `set'#251 instead (with `wysh'#115, until v15).
+- `~A'#305, `~a'#306, `~I'#315 and `~i'#316 will henceforth expand
+  \t and \n only if *posix*#472 is set.
+  Please use `set'#253 instead (with `wysh'#117, until v15).
 
 - New "The mime.types files"#35 type marker: @q ("quiet").
 
@@ -276,14 +374,14 @@ ChangeLog
 
 - In compose mode the MLE allows empty lines again.
 
-- We no longer require a writable $HOME#568.  Due to false code
+- We no longer require a writable $HOME#572.  Due to false code
   flow (but but but: with correct comment) a non-writable $HOME
   entry in /etc/password (i.e., from getpwuid(3)) would lead to
   a crash.  (Felix Fontain; Ralph Corderoy)
 
 - Two faulty string operations slipped into the IMAP code,
   resulting in a crash and a "is-same-host" test that would fail
-  for IMAPS connections like `save'#248 or `copy'#150 because of an
+  for IMAPS connections like `save'#250 or `copy'#152 because of an
   implicit IMAP protocol for the target of those operations (thus
   IMAP != IMAPS).  (Paul Vojta)
 
@@ -296,36 +394,36 @@ ChangeLog
   in the MLE tab-expansion for, e.g., "move &9 +<TAB>", because
   the "&" would never have been stepped over.
 
-- New `~I'#313 command escape is like `~i'#314 but does not append
+- New `~I'#315 command escape is like `~i'#316 but does not append
   a newline.
 
-- `localopts'#200 gained an optional second argument.
-  It is now possible to specify that any macro `call'#136ed
+- `localopts'#202 gained an optional second argument.
+  It is now possible to specify that any macro `call'#138ed
   will have localopts enabled, and it is possible to fixate the
   setting so that it cannot be reverted.
 
-- *@*#335 should now act completely compatible to the sh(1)ell,
+- *@*#337 should now act completely compatible to the sh(1)ell,
   thus obsoleting my hysteric warnings in the v14.9.0 announcement.
 
-- The `Lreply'#201, `reply'#236, `Reply'#235 series as well as
-  `mail'#203 now manage the error status *!*#329.
-  I.e., there are now errors like *^ERR*#331-DESTADDRREQ,
+- The `Lreply'#203, `reply'#238, `Reply'#237 series as well as
+  `mail'#205 now manage the error status *!*#331.
+  I.e., there are now errors like *^ERR*#333-DESTADDRREQ,
   ^ERR-NODATA, ^ERR-PERM and similar.  It is not perfect yet,
-  because $DEAD#566 may have been written (with *save*#487) or not,
+  because $DEAD#570 may have been written (with *save*#491) or not,
   for example.
 
   `Lreply' and `reply' have been rewritten rather completely
   indeed.  They join Reply-To: and Mail-Followup-To: dependent on
-  the context (i.e., *reply-to-honour*#485, *followup-to-honour*#394,
+  the context (i.e., *reply-to-honour*#489, *followup-to-honour*#396,
   see "Mailing lists"#10 for the picture), and if they did, use
   this list as the receivers exclusively.  It now honours
-  *recipients-in-cc*#478 even for such addressees.  (And now i wonder
+  *recipients-in-cc*#482 even for such addressees.  (And now i wonder
   whether i should have credited Paul Vojta for that.)
 
   Also `Lreply' would have crashed for mails with Reply-To: but
-  without *reply-to-honour*#485 set.  We now have a test.
+  without *reply-to-honour*#489 set.  We now have a test.
 
-  Note *replyto* is obsoleted in favour of *reply-to*#484.
+  Note *replyto* is obsoleted in favour of *reply-to*#488.
 
 git(1) shortlog (edited)
 ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -471,12 +569,12 @@ NOTES, ChangeLog (packager-affine)
   o The LD_LIBRARY_PATH etc. building processes will skip any path
     which contains the string "fakeroot".  (Hilko Bengen)
 
-  o We honour a set $SOURCE_DATE_EPOCH#585 environment variable to
+  o We honour a set $SOURCE_DATE_EPOCH#589 environment variable to
     an extend that allows reproducible tests, which is why the
     repository gained a [test-out] branch with some expected plain
     text outputs.  (reproducible-builds.org; Colin Watson)
 
-    The new *log-prefix*#420 variable aids in improving the
+    The new *log-prefix*#422 variable aids in improving the
     reproducibility of error messages.
 
   o These are upward compatible changes.
@@ -488,7 +586,7 @@ NOTES, ChangeLog (packager-affine)
   completely.  Notes:
 
   o This means that, e.g., "$ password=NOT_SECRET s-nail" will
-    **NOT** work no more, since *password*#454 is an internal
+    **NOT** work no more, since *password*#457 is an internal
     variable!
 
   o But if you do, e.g., "? set TMPDIR=~/tmp", then this will
@@ -498,41 +596,41 @@ NOTES, ChangeLog (packager-affine)
   o Therefore we no longer have `setenv' and `unsetenv'.
 
   o To integrate any other environment variable transparently
-    into our variable management, the new command `environ'#172
+    into our variable management, the new command `environ'#174
     needs to be used, e.g., "? environ set NEWVAR=value" or
     "? environ link EXISTINGVAR".
 
-- -H#63 and -L#66 have been decoupled:
-   it used to be -e#60 -L#66 instead!
+- -H#64 and -L#67 have been decoupled:
+   it used to be -e#61 -L#67 instead!
 
 - *NAIL_{HEAD,TAIL}* have been obsoleted in favour of
-  *message-inject-head*#428 and *message-inject-tail*#429.
+  *message-inject-head*#430 and *message-inject-tail*#431.
 
   *NAIL_HIST{FILE,SIZE}* have been obsoleted in favour of
-  *history-file*#402 and *history-size*#405.
+  *history-file*#404 and *history-size*#407.
 
   *NAIL_EXTRA_RC* has been obsoleted in favour of
-  *mailx-extra-rc*#423.
+  *mailx-extra-rc*#425.
 
-  *batch-exit-on-error* has been obsoleted by *errexit*#384, which
+  *batch-exit-on-error* has been obsoleted by *errexit*#386, which
   works just like the POSIX sh(1)ell "set -e" construct; the
-  `ignerr'#111 command modifier (`-' for command escapes in compose
+  `ignerr'#112 command modifier (`-' for command escapes in compose
   mode, and see below) can be used to ignore command errors even
   then.  (This will remain even if we at some later time will
   support at least some of the sh(1) constructs which "swallow"
   failures with set -e.)
 
   *bsdannounce* is obsolete, the feature is integrated in
-  *header*#399 as this is much more useful.  (This is however also
-  dependent upon the also new but well-known $POSIXLY_CORRECT#583
-  <> *posix*#469, but that is just how it is; these affect more
+  *header*#401 as this is much more useful.  (This is however also
+  dependent upon the also new but well-known $POSIXLY_CORRECT#587
+  <> *posix*#472, but that is just how it is; these affect more
   behaviour, and increasing.)
 
 - Colour support has been changed backward in- and upward (from
   user interface side) compatibly, see the manual section
   "Coloured display"#18.
 
-  + New commands: `colour'#145 and `uncolour'#146.
+  + New commands: `colour'#147 and `uncolour'#148.
     You can define context-sensitive, terminal-capability-
     sensitive settings, e.g.:
 
@@ -543,11 +641,11 @@ NOTES, ChangeLog (packager-affine)
         colour mono view-header ft=bold,ft=reverse subject,from
       endif
 
-  + The variable *colour-pager*#370 defines whether colour and font
+  + The variable *colour-pager*#372 defines whether colour and font
     attribute sequences should be generated when viewing something
-    in $PAGER#581.
+    in $PAGER#585.
 
-  + Set the variable *colour-disable*#369 to turn colour off
+  + Set the variable *colour-disable*#371 to turn colour off
     without affecting established settings.
 
   + It is deduced via termcap(5) (see below) whether the terminal
@@ -556,50 +654,50 @@ NOTES, ChangeLog (packager-affine)
 
   + Support for 256-colour terminals. (Gavin Troy)
 
-- `source'#263 series support shell pipes if the last character
+- `source'#265 series support shell pipes if the last character
    of the "filename" ends with a vertical bar |, e.g.,
 
       ? source 'gpg -qd ~/.s-nailrc-private.gpg |'
 
-- Shell pipes are also supported as targets for `move'#213,
-  `copy'#150 etc., yet unfortunately not with via a sh(1)ell token
+- Shell pipes are also supported as targets for `move'#215,
+  `copy'#152 etc., yet unfortunately not with via a sh(1)ell token
   parser, so that the target still has to be a single argument.
 
       ? copy . '| cat; echo huhu'
 
-- Support for custom headers via the new `~^'#302 compose-mode
+- Support for custom headers via the new `~^'#304 compose-mode
   command escape and in addition, or alternatively, with the
-  internal variable *customhdr*#374, which also can be covered by
-  `localopts'#200.  (Sergey Matveev)
+  internal variable *customhdr*#376, which also can be covered by
+  `localopts'#202.  (Sergey Matveev)
 
   + Support of $ORGANIZATION has been dropped.
 
-  + Command escape `~e'#308 supports _any_ header.
+  + Command escape `~e'#310 supports _any_ header.
 
-  + Command escape `~^'#302 supports _any_ header.
+  + Command escape `~^'#304 supports _any_ header.
 
-- New -:#52 command line option can be used to more easily select
+- New -:#53 command line option can be used to more easily select
   which startup files should be loaded, e.g., -:/ loads none.
   (Robert Elz)
 
-- `account'#125s and *folder-hook*#391s now have `localopts'#200
+- `account'#127s and *folder-hook*#393s now have `localopts'#202
    enabled by default.
 
 - A first simple form of compose-mode hooks has been implemented:
-  *on-compose-enter*#447, *on-compose-leave*#448 and
-  *on-compose-cleanup*#446 can be set to macros which get invoked
+  *on-compose-enter*#450, *on-compose-leave*#451 and
+  *on-compose-cleanup*#449 can be set to macros which get invoked
   at appropriate times.
-  For the `resend'#240 series there is *on-resend-enter*#452 and
-  *on-resend-cleanup*#451: this is very likely to change once
+  For the `resend'#242 series there is *on-resend-enter*#455 and
+  *on-resend-cleanup*#454: this is very likely to change once
   true message access is possible even in this mode.
 
   An even more powerful mechanism is available via the also new
-  *on-compose-splice*#449 and *on-compose-splice-shell*#450 hooks.
+  *on-compose-splice*#452 and *on-compose-splice-shell*#453 hooks.
   These are executed in child processes and communicate with the
   parent via their standard input and output, and therefore can
   do anything and act as if they were the user.
 
-  `localopts'#200 are enabled and cannot be disabled (and extend
+  `localopts'#202 are enabled and cannot be disabled (and extend
   until the message is sent).
   (Jens Schleusener, Rudolf Sykora)
 
@@ -626,9 +724,9 @@ NOTES, ChangeLog (packager-affine)
   + gained support for comments.
     (Walter Alejandro Iglesias, Ralph Corderoy)
 
-  + `netrc'#216 now has a "load" subcommand.
+  + `netrc'#218 now has a "load" subcommand.
 
-  + the new *netrc-pipe*#441 obsoletes OPT_AGENT and
+  + the new *netrc-pipe*#444 obsoletes OPT_AGENT and
     *agent-shell-lookup*, and can be used to load an encrypted
     .netrc file, e.g.:
 
@@ -646,14 +744,14 @@ NOTES, ChangeLog (packager-affine)
     OPT_TERMCAP_VIA_TERMINFO can be used to (try to) use
     terminfo(5) instead.
 
-  + The variable *termcap*#548 can be used to freely define or
-    override terminal capabilities, and *termcap-disable*#550 will
+  + The variable *termcap*#552 can be used to freely define or
+    override terminal capabilities, and *termcap-disable*#554 will
     disable interaction with the chosen library, leaving only
     *termcap* in charge.
 
     To use the so-called ca-mode on supporting terminals,
     effectively turning S-nail into a fullscreen application,
-    *termcap-ca-mode*#549 must be set.
+    *termcap-ca-mode*#553 must be set.
 
   + The built-in line editor has been rather completely rewritten
     to be the Mailx-Line-Editor (OPT_MLE, default yes), and
@@ -663,10 +761,10 @@ NOTES, ChangeLog (packager-affine)
 
   + Optionally (OPT_KEY_BINDINGS, default yes) it has become
     possible to freely define key bindings for the MLE via the new
-    `bind'#134 and `unbind'#135 commands.  These key bindings can
+    `bind'#136 and `unbind'#137 commands.  These key bindings can
     make use of termcap(5) and/or terminfo(5) names.  The MLE will
     install a set of default bindings (unless there is a set
-    *line-editor-no-defaults*#419), more so with OPT_TERMCAP,
+    *line-editor-no-defaults*#421), more so with OPT_TERMCAP,
     i.e., try "? bind*".
 
     Sufficient support provided, one can now, e.g., type "p " and
@@ -679,48 +777,48 @@ NOTES, ChangeLog (packager-affine)
     Tip: in an UTF-8 locale try "? !touch /tmp/hall{,öchen}" and
     then autocomplete that: once, then ^Q, and again.
 
-- `source'#263 can be used in `call'#136ed macros.
+- `source'#265 can be used in `call'#138ed macros.
   What sounds so innocent replaced an entire machinery and got rid
   of a brilliant idea of Kurt Shoens from the 70s, but which never
   worked with Nail/Heirloom extensions, namely macros, and in the
   right order.
-  Accompanying this -X#80 can (dig multiline arguments and can) be
+  Accompanying this -X#81 can (dig multiline arguments and can) be
   used to define macros and run them etc.  Should work:
 
     $ s-nail -X'define x {' -Xversion -Xx -X'}' -X'call x'
     $ s-nail -X'source \' -X'"echo version|"' -Xx
 
-  Macros can be `undefine'#155d from within themselves, and re-
-  `define'#154d.  It is still not possible to define macros
+  Macros can be `undefine'#157d from within themselves, and re-
+  `define'#156d.  It is still not possible to define macros
   from within macros, and/or have inner macros, not to talk
   about local scoping or anything more sophisticated such.
 
-- -u#77 / $LOGNAME#574 ($USER) handling has been redefined,
+- -u#78 / $LOGNAME#578 ($USER) handling has been redefined,
   and "-u USER" is now exactly the same as "-f %USER", and
   $LOGNAME (and $USER) is actively set to the active user.  (Afan)
 
-  $LOGNAME#574 is POSIX standardized and henceforth used and
+  $LOGNAME#578 is POSIX standardized and henceforth used and
   preferred over $USER, which came from BSD.  (Todd C. Miller)
 
 - In the future (at least non-message-list) argument handling will
   be changed backward-incompatibly to be sh(1)ell compatible (and
   thus POSIX standardized), see "Shell-style argument quoting"#24.
-  New commands use it already today (`bind'#134, `colour'#145,
-  `headerpick'#191), some others (most importantly, `set'#251) can
-  be forced to do so via the new `wysh'#115 command prefix, as in:
+  New commands use it already today (`bind'#136, `colour'#147,
+  `headerpick'#193), some others (most importantly, `set'#253) can
+  be forced to do so via the new `wysh'#117 command prefix, as in:
 
     ? wysh set message-inject-tail=$'\n--steffen'
     ? bind base $'\cA,\x61' 'echo control-A and small a'
 
-- We now actively manage *umask*#555: 0077 by default, but an
+- We now actively manage *umask*#559: 0077 by default, but an
   empty string will use the setting that is active upon startup.
   Just like changes to (known) environment variables, this setting
   will also be inherited by any child process.
   (Walter Alejandro Iglesias)
 
-- Anything SENDMAIL / *sendmail*-ish has been renamed to *mta*#436,
-  *mta-arguments*#437, *mta-no-default-arguments*#438 and
-  *mta-argv0*#439.
+- Anything SENDMAIL / *sendmail*-ish has been renamed to *mta*#438,
+  *mta-arguments*#439, *mta-no-default-arguments*#440 and
+  *mta-argv0*#442.
 
   The reason is that in v15 we won't even have *smtp*: it is just
   another form of MTA, and thus obsolete by itself.
@@ -733,23 +831,23 @@ NOTES, ChangeLog (packager-affine)
   *mta*, too, but that is also the default if there is no protocol.
   E.g.: "? set mta=smtp://a:b@xy.z"
 
-- The "spamd" *spam-interface*#518 is obsolete.  I haven't tested
+- The "spamd" *spam-interface*#522 is obsolete.  I haven't tested
   it since my main machine died, it is error prone since it assumes
   internals of the spamassassin wire protocol, and there never was
   a speed improvement over "spamc".  (However it could react upon
   the "is-spam" state of a message, which "spamc" doesn't allow.)
 
-- The new *inbox*#413 variable will henceforth be looked up when
+- The new *inbox*#415 variable will henceforth be looked up when
   searching for a primary system mailbox (as in "? File %"),
-  followed by the usual $MAIL#575 and compile-time defined local
+  followed by the usual $MAIL#579 and compile-time defined local
   mailspool search.  (Stephen Isard, Jürgen Daubert)
 
-- The semantic of -a#54 and `~@'#300 have been changed, and both
+- The semantic of -a#55 and `~@'#302 have been changed, and both
   commands now use the same syntax:
 
     -a file[=input-charset[#output-charset]]
 
-- New "failinvaddr" keyword for *expandaddr*#386.
+- New "failinvaddr" keyword for *expandaddr*#388.
 
 - We finally "can" the so-called (by myself) "Dr. Problem" (a bit):
   (Dr. Werner Fink)
@@ -758,8 +856,8 @@ NOTES, ChangeLog (packager-affine)
       grep To:
     s-nail: >>> To: "Dr. D. Iet" <z@a.k>
 
-  This can be done via the new `addrcodec'#127, too, note this
-  supports multiple modes (and the `vput'#114 command modifier):
+  This can be done via the new `addrcodec'#129, too, note this
+  supports multiple modes (and the `vput'#116 command modifier):
 
     $ echo 'addrcodec e Dr. Diet <to@fu.soj> Curd' | s-nail -#:/
     "Dr. Diet Curd" <to@fu.soj>
@@ -767,23 +865,23 @@ NOTES, ChangeLog (packager-affine)
 - All commands with the string "codec" in their name use different
   argument quoting, namely none at all, please read
   "Raw data arguments for codec commands"#25.
-  This means that `urlcodec'#280 (and `imapcodec'#613) has
+  This means that `urlcodec'#282 (and `imapcodec'#617) has
   slightly changed semantics.
-  And, while here: there is a new `shcodec'#253, too.
+  And, while here: there is a new `shcodec'#255, too.
 
-- We gained "Command modifiers"#21: `\'#110 (avoid expansion of
-  `commandalias'#147es), `vput'#114 (store result in variable),
-  `ignerr'#111  (ignore an error of the following command, even
-  if the new *errexit*#384 is set), `wysh'#115 (use shell-style
+- We gained "Command modifiers"#21: `\'#111 (avoid expansion of
+  `commandalias'#149es), `vput'#116 (store result in variable),
+  `ignerr'#112  (ignore an error of the following command, even
+  if the new *errexit*#386 is set), `wysh'#117 (use shell-style
   arguments).
 
     $ echo 'vput cwd resvar;echo $resvar' | s-nail -#:/
     /home/steffen/src/nail.git
 
-  And the usual sh(1) stuff: `return'#246, `shift'#257, `eval'#174,
-  plus a `xcall'#289 stack-avoidance optimization (to be used in
-  place of a `call'#136 which would be the last called command).
-  And an "expr(1) like thing", yet simple, `vexpr'#285.
+  And the usual sh(1) stuff: `return'#248, `shift'#259, `eval'#176,
+  plus a `xcall'#291 stack-avoidance optimization (to be used in
+  place of a `call'#138 which would be the last called command).
+  And an "expr(1) like thing", yet simple, `vexpr'#287.
 
     $ echo 'vexpr + 1 2' | s-nail -#:/
     00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000011
@@ -791,7 +889,7 @@ NOTES, ChangeLog (packager-affine)
     $ echo 'vput vexpr resvar + 1 2;echo $resvar' | s-nail -#:/
     3
 
-  We actually start walking (*?*#328, *^*#330).
+  We actually start walking (*?*#330, *^*#332).
 
     ? vput vexpr res regex 'bananarama' 'Bana(.+)' '\$1\$0'
     ? echo $?/$^ERRNAME :$res:
@@ -800,7 +898,7 @@ NOTES, ChangeLog (packager-affine)
     ? echo $?/$^ERRNAME :$res:
     0/NONE :bananabananarama:
 
-  The command `vpospar'#286 can be used to manage the stack of
+  The command `vpospar'#288 can be used to manage the stack of
   positional parameters, i.e., much like "set --".
   It also offers the possibility to save and restore the stack to
   and from variables.  Etc.
@@ -810,7 +908,7 @@ NOTES, ChangeLog (packager-affine)
 
     ? echo $contact-web; eval mail $contact-mail
 
-- `if'#197 no longer performs automatic number conversion, we
+- `if'#199 no longer performs automatic number conversion, we
   use the explicit -lt, -gt etc. syntax of the sh(1).
   Note: `if' will change to be almost identical to sh(1) if(1),
   so please ensure proper test bracketing, even if it is less
@@ -855,30 +953,30 @@ NOTES, ChangeLog (packager-affine)
   will be 1 (the empty string) not 0.
 
 - Using an explicit proto:// prefix should get you the desired
-  thing apart of *newfolders*#442, e.g.:
+  thing apart of *newfolders*#445, e.g.:
 
     ? File maildir:///tmp/x.mdir
     ? copy * file:///tmp/x.mbox
 
-- New variable *record-files*#480 can be set to extend the meaning
-  of *record*#479.  *record-resent*#481 was there already.
+- New variable *record-files*#484 can be set to extend the meaning
+  of *record*#483.  *record-resent*#485 was there already.
 
-- New variable *ifs*#409 acts a bit like the sh(1)ell's $IFS for,
-  e.g., the new `read'#230 command.
+- New variable *ifs*#411 acts a bit like the sh(1)ell's $IFS for,
+  e.g., the new `read'#232 command.
 
-  There is a `readctl'#232 command which can be used to manage
-  the active channel used by `read'#230.
+  There is a `readctl'#234 command which can be used to manage
+  the active channel used by `read'#232.
 
-- The `~' alias for `call'#136 is gone.
+- The `~' alias for `call'#138 is gone.
 
-- `mimetype'#205 only allows specification of a single type per
+- `mimetype'#207 only allows specification of a single type per
   call, on the other hand no need to quote that.
 
-- `mimeview'#209 must now be used explicitly to look at any
+- `mimeview'#211 must now be used explicitly to look at any
   non-text MIME part, for normal display etc. purposes we only
-  support "copiousoutput"#600 MIME handlers.
+  support "copiousoutput"#604 MIME handlers.
 
-- New *socks-proxy*#517 can be used to proxy all network traffic
+- New *socks-proxy*#521 can be used to proxy all network traffic
   over a SOCKS5 proxy.  (Gaetan Bisson)
 
 ChangeLog
@@ -892,18 +990,18 @@ ChangeLog
   Respiranto, Thomas Dickey, Donald Mugnai)
 
 - To support RFC 1524 a.k.a. .mailcap files (see below) many
-  "trigger"-characters have been added for *pipe-TYPE/SUBTYPE*#456,
+  "trigger"-characters have been added for *pipe-TYPE/SUBTYPE*#459,
   which may (rarely) affect existing values.
   The .mailcap support itself is not yet implemented.
 
-- *mime-counter-evidence*#433 gained bit 4 (perform proper in-depth
+- *mime-counter-evidence*#435 gained bit 4 (perform proper in-depth
   content inspection as necessary; set to 0xE for all bits).
   (Aharon Robbins)
 
 - Maildir paths are now created recursively as necessary.
   (Justin Ellingwood)
 
-- -M#67 and -m#68 options have been added to enforce a special
+- -M#68 and -m#69 options have been added to enforce a special
   send mode that will flag standard input / the given file with
   the specified / detected MIME 'Content-Type:'.  This can be used
   to directly send, e.g., HTML log output.
@@ -914,10 +1012,10 @@ ChangeLog
   which has been standardized a long time ago.
   (Matthew Dillon)
 
-- `retain'#245, `ignore'#198 etc. now differentiate in between
+- `retain'#247, `ignore'#200 etc. now differentiate in between
   From (the From: header) and From_ (the MBOX ident).
 
-  In fact we now have a new `headerpick'#191 command which
+  In fact we now have a new `headerpick'#193 command which
   is a multiplexer for all retain and ignore lists used, call it
   without arguments to see the current setting(s).
   In v15 only `headerpick' and the standard-imposed wrappers
@@ -935,11 +1033,11 @@ ChangeLog
         mail-followup-to openpgp reply-to subject to
       #headerpick forward ignore currently covers no fields
 
-- `top'#272 has been rewritten completely, `Top'#271 is new.
+- `top'#274 has been rewritten completely, `Top'#273 is new.
   It uses a built-in set of retain/ignore headers, but it is
-  possible to register a custom set via `headerpick'#191.
-  Also, *toplines*#551 has been extended a bit and the new
-  *topsqueeze*#552 variable may pimp your `top' experience.
+  possible to register a custom set via `headerpick'#193.
+  Also, *toplines*#555 has been extended a bit and the new
+  *topsqueeze*#556 variable may pimp your `top' experience.
 
     ? headerpick top retain add subject
     ? top
@@ -949,18 +1047,18 @@ ChangeLog
     I wrote:
         3.22. bounce_delivered
 
-- `features' has been dropped, `version'#284 extended.
+- `features' has been dropped, `version'#286 extended.
 
-- The *prompt*#471 handling has changed: we lost the capability to
-  expand \?, \@ and \$, instead new "private" variables *?*#328,
-  *account*#339, *mailbox-resolved*#422 and
-  *mailbox-display*#421 have been introduced, and the prompt
+- The *prompt*#474 handling has changed: we lost the capability to
+  expand \?, \@ and \$, instead new "private" variables *?*#330,
+  *account*#341, *mailbox-resolved*#424 and
+  *mailbox-display*#423 have been introduced, and the prompt
   is completely shell expanded (thus twice with `wysh' or in v15),
   as if dollar-single-quote quoted.  We do support the reverse-
   solidus escaped bracket notation for embedding characters which
   should not be counted when calculating the width of the prompt.
-  The `colour'#145 command has a slot for the prompt colour.
-  We gained *prompt2*#472 as a second level prompt.
+  The `colour'#147 command has a slot for the prompt colour.
+  We gained *prompt2*#475 as a second level prompt.
 
     ? var prompt
     wysh set \
@@ -970,17 +1068,17 @@ ChangeLog
 
     $ echo Hey,\ you | s-nail -:/ -Sexpandaddr -sUB -
 
-- The -s#75 command line option, the `~s'#321 command escape
-  as well as the corresponding slots of `~^'#302 will actively
+- The -s#76 command line option, the `~s'#323 command escape
+  as well as the corresponding slots of `~^'#304 will actively
   strip [\r\n] from their value (Debian #419840).
 
-- New `read'#230 and `echoerr'#165 commands, mostly for
-  *on-compose-splice*#449.
-  But also `echon'#166 and `echoerrn'#167, which do not write
+- New `read'#232 and `echoerr'#167 commands, mostly for
+  *on-compose-splice*#452.
+  But also `echon'#168 and `echoerrn'#169, which do not write
   a trailing newline.
 
-- New variable *r-option-implicit*#477 may be helpful to those
-  who regulary need the functionality of the -r#73 command
+- New variable *r-option-implicit*#481 may be helpful to those
+  who regulary need the functionality of the -r#74 command
   line option.  (Felipe Gasper, Martin Neitzel)
 
 - By using new "pseudo-URLs" one can automatize the use of S/MIME
@@ -991,23 +1089,23 @@ ChangeLog
   bob@exam.ple.smime-cert-key, bob@exam.ple.smime-cert-cert and
   bob@exam.ple.smime-include-certs.
   Like this the password can be stored in an encrypted .netrc file
-  when *netrc-lookup*#440 and *netrc-pipe*#441 are set, or it may
+  when *netrc-lookup*#443 and *netrc-pipe*#444 are set, or it may
   be stored in an encrypted resource file that has been loaded via
-  `source'#263 as a simple *password*#454 variable.
+  `source'#265 as a simple *password*#457 variable.
 
   Note that the prompting that happens as a last resort of
   password lookup will still interfere with a possibly running
-  $PAGER#581 instance, dependent on the setting of *crt*#373, of
+  $PAGER#585 instance, dependent on the setting of *crt*#375, of
   course.  Proper job control handling and recognizing that we are
   running $PAGER when doing that prompt is a TODO for v15.  Sorry.
 
-- Some commands, like `set'#251, `help'#194, `list'#199,
-  `mlist'#207 etc., now react upon the setting of *verbose*#558
-  and(/or) *debug*#377.
+- Some commands, like `set'#253, `help'#196, `list'#201,
+  `mlist'#209 etc., now react upon the setting of *verbose*#562
+  and(/or) *debug*#379.
 
-- `write'#288 uses iconv(3) as appropriate.
+- `write'#290 uses iconv(3) as appropriate.
 
-- *mbox-rfc4155*#425 has first been dropped, and was then
+- *mbox-rfc4155*#427 has first been dropped, and was then
   reintroduced with different semantics.  Because, it can be
   helpful if a messed up MBOX is read, in which case we henceforth
   will warn you and point you to this:
@@ -1027,29 +1125,29 @@ ChangeLog
   And also in v15 we will not apply (proper) so-called MBOXO
   quoting, but instead (simply MIME) re-encode mail messages.
 
-- `call_if'#137 is new and, different to "? ignerr call", silent
+- `call_if'#139 is new and, different to "? ignerr call", silent
   and not messing with the return status.
 
-- The new *smime-ca-flags*#503 and *ssl-ca-flags*#530 can be used
+- The new *smime-ca-flags*#507 and *ssl-ca-flags*#534 can be used
   to fine-tune X509_STORE_set_flags(3) a.k.a the X509 CA
   certificate verification.
 
     ? set ssl-ca-flags=partial-chain
     ? wysh set smime-ca-flags="${ssl-ca-flags}"
 
-  Also, *ssl-curves*#539 for TLSv1.3.
+  Also, *ssl-curves*#543 for TLSv1.3.
 
 - Socket connections use TLS S(erver)N(ame)I(ndication) as
   appropriate (RFC 7817).
 
-- `alternates'#130 checks arguments and supports `vput'#114.
+- `alternates'#132 checks arguments and supports `vput'#116.
   It by default no longer replaces but appends alternates, unless
-  *posix*#469 mode is active.  There is a new `unalternates'#131
+  *posix*#472 mode is active.  There is a new `unalternates'#133
   command to remove alternates.
 
-- A new `charsetalias'#140 command.  (Pietro Cerutti, mutt#3925)
+- A new `charsetalias'#142 command.  (Pietro Cerutti, mutt#3925)
 
-- New commands `filetype'#178 and `unfiletype'#179: in the future
+- New commands `filetype'#180 and `unfiletype'#181: in the future
   we will no longer know any builtin filetypes, in fact we already
   simulate .gz etc. via the new mechanism as necessary:
 
@@ -1061,18 +1159,18 @@ ChangeLog
        zst 'zstd -dc' 'zstd -19 -zc' \
        zst.pgp 'gpg -d | zstd -dc' 'zstd -19 -zc | gpg -e'
 
-- `~<'#297 now offers a "- [HERE-delimiter]" mode for pasting etc.
+- `~<'#299 now offers a "- [HERE-delimiter]" mode for pasting etc.
   (Ralph Corderoy)
 
-- `exit'#175 and `quit'#229 take an optional exit status.
+- `exit'#177 and `quit'#231 take an optional exit status.
   (That is not fixated yet, though.)
 
 - We have a useful -h / --help output.  (Doug McIlroy)
 
-- *encoding* obsoleted in favour of new *mime-encoding*#434, which
+- *encoding* obsoleted in favour of new *mime-encoding*#436, which
   now defaults to base64.
 
-- *allnet*#341 now works (broken since nail 10.00, 2002-09-29).
+- *allnet*#343 now works (broken since nail 10.00, 2002-09-29).
 
 git(1) shortlog (abbreviated)
 '''''''''''''''''''''''''''''
