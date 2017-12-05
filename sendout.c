@@ -391,7 +391,7 @@ a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo)
    charset_iter_recurse(charset_iter_orig);
    for (charset_iter_reset(NULL);; charset_iter_next()) {
       if (!charset_iter_is_valid()) {
-         err = n_ERR_ILSEQ;
+         err = n_ERR_NOENT;
          break;
       }
       err = a_sendout__attach_file(hp, ap, fo);
@@ -1863,7 +1863,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
       int err;
 
       if (!charset_iter_is_valid())
-         ;
+         err = n_ERR_NOENT;
       else if ((nmtf = infix(hp, mtf)) != NULL)
          break;
       else if ((err = n_iconv_err_no) == n_ERR_ILSEQ || err == n_ERR_INVAL ||

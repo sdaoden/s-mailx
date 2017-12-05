@@ -4329,9 +4329,14 @@ t_behave_iconv_mainbody() {
    if have_feat iconv &&
          (</dev/null iconv -f utf-8 -t ascii) >/dev/null 2>&1; then
       j="`printf '–' | iconv -f utf-8 -t ascii 2>/dev/null`"
-      # This assumes iconv(1) behaves like iconv(3), but well
+      # This assumes iconv(1) behaves like iconv(3), but well.
+      # This is flaky because the behaviour is so non-uniform
       if [ ${?} -ne 0 ]; then
-         i=1
+         if [ x"${j}" = 'x?' ]; then
+            i=4
+         else
+            i=1
+         fi
       elif [ x"${j}" = 'x?' ]; then
          i=2
       elif [ x"${j}" = 'x*' ]; then
@@ -4365,19 +4370,20 @@ t_behave_iconv_mainbody() {
 
    printf 'p\nx\n' | ${MAILX} ${ARGS} -Rf "${MBOX}" >./.tout 2>./.terr
    j=${?}
-   if [ ${i} -eq 1 ]; then
+   ex0_test behave:iconv_mainbody-5-0 ${j}
+   if [ x${i} = x1 ]; then
       # yuck, just assume ???, we need a test program for that one!
-      ex0_test behave:iconv_mainbody-5-1 ${j}
-      check behave:iconv_mainbody-6-1 - ./.tout '1959197095 283'
-      check behave:iconv_mainbody-7-1 - ./.terr '4294967295 0'
-   elif [ ${i} -eq 2 ]; then
-      ex0_test behave:iconv_mainbody-5-2 ${j}
-      check behave:iconv_mainbody-6-2 - ./.tout '1959197095 283'
-      check behave:iconv_mainbody-7-2 - ./.terr '4294967295 0'
+      check behave:iconv_mainbody-5-1-1 - ./.tout '1959197095 283'
+      check behave:iconv_mainbody-5-1-1 - ./.terr '4294967295 0'
+   elif [ x${i} = x2 ]; then
+      check behave:iconv_mainbody-5-2-1 - ./.tout '1959197095 283'
+      check behave:iconv_mainbody-5-2-2 - ./.terr '4294967295 0'
+   elif [ x${i} = x3 ]; then
+      check behave:iconv_mainbody-5-3-1 - ./.tout '3196380198 279'
+      check behave:iconv_mainbody-5-3-2 - ./.terr '4294967295 0'
    else
-      ex0_test behave:iconv_mainbody-5-3 ${j}
-      check behave:iconv_mainbody-6-3 - ./.tout '3196380198 279'
-      check behave:iconv_mainbody-7-3 - ./.terr '4294967295 0'
+      check behave:iconv_mainbody-5-4-1 - ./.tout '3760313827 279'
+      check behave:iconv_mainbody-5-4-2 - ./.terr '4294967295 0'
    fi
 
    t_epilog
