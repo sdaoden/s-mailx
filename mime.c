@@ -1059,9 +1059,41 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
                n_str_assign_cp(&cout, _("[Invalid Base64 encoding]"));
          }else if(!qp_decode_header(&cout, &cin))
             n_str_assign_cp(&cout, _("[Invalid Quoted-Printable encoding]"));
+         /* Normalize all decoded newlines to spaces XXX only \0/\n yet */
+         /* C99 */{
+            char const *xcp;
+            bool_t any;
+            uiz_t i, j;
+
+            for(any = FAL0, i = cout.l; i-- != 0;)
+               switch(cout.s[i]){
+               case '\0':
+               case '\n':
+                  any = TRU1;
+                  cout.s[i] = ' ';
+                  /* FALLTHRU */
+               default:
+                  break;
+
+               }
+
+            if(any){
+               /* I18N: must be non-empty, last must be closing bracket/xy */
+               xcp = _("[Content normalized: ]");
+               i = strlen(xcp);
+               j = cout.l;
+               n_str_add_buf(&cout, xcp, i);
+               memmove(&cout.s[i - 1], cout.s, j);
+               memcpy(&cout.s[0], xcp, i - 1);
+               cout.s[cout.l - 1] = xcp[i - 1];
+            }
+         }
+
 
          out->l = lastenc;
 #ifdef HAVE_ICONV
+         /* TODO Does not really work if we have assigned some ASCII or even
+          * TODO translated strings because of errors! */
          if ((flags & TD_ICONV) && fhicd != (iconv_t)-1) {
             cin.s = NULL, cin.l = 0; /* XXX string pool ! */
             convert = n_iconv_str(fhicd, n_ICONV_UNIDEFAULT, &cin, &cout, NULL);
