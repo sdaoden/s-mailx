@@ -5476,14 +5476,16 @@ will reverse the result.
 if $debug
   echo *debug* is set
 endif
-if [ "$ttycharset" == UTF-8 ] || [ "$ttycharset" @i== UTF8 ]
+if [ "$ttycharset" == UTF-8 ] || \e
+    [ "$ttycharset" @i== UTF8 ]
   echo *ttycharset* is UTF-8, the former case-sensitive!
 endif
 set t1=one t2=one
 if [ "${t1}" == "${t2}" ]
   echo These two variables are equal
 endif
-if [ "$features" =% +regex ] && [ "$TERM" @i=~ "^xterm\&.*" ]
+if [ "$features" =% +regex ] && \e
+    [ "$TERM" @i=~ "^xterm\&.*" ]
   echo ..in an X terminal
 endif
 if [ [ true ] && [ [ "${debug}" != '' ] || \e
@@ -5514,17 +5516,20 @@ additional information will be provided for each command: the argument
 type will be indicated, the documentation string will be shown,
 and the set of command flags will show up:
 .Pp
-.Bl -tag -compact -width ".It Ql BaNg"
-.It Ql "vput modifier"
+.Bl -tag -compact -width ".It Ql NEEDS_BOX"
+.It Ql "`local'"
+command supports the command modifier
+.Cm local .
+.It Ql "`vput'"
 command supports the command modifier
 .Cm vput .
-.It Ql "errno in *!*"
+.It Ql "*!*"
 the error number is tracked in
 .Va \&! .
 .It Ql "needs box"
 commands needs an active mailbox, a
 .Ic file .
-.It Ql "ok: batch or interactive"
+.It Ql "ok: batch/interactive"
 command may only be used in interactive or
 .Fl #
 batch mode.
@@ -5532,13 +5537,18 @@ batch mode.
 command can be used in send mode.
 .It Ql "not ok: compose mode"
 command is not available when in compose mode.
-.It Ql "not ok: during startup"
+.It Ql "not ok: startup"
 command cannot be used during program startup, e.g., while loading
 .Sx "Resource files" .
-.It Ql "ok: in subprocess"
+.It Ql "ok: subprocess"
 command is allowed to be used when running in a subprocess instance,
 e.g., from within a macro that is called via
 .Va on-compose-splice .
+.It Ql "gabby"
+The command produces
+.Va history-gabby
+.Ic history
+entries.
 .El
 .
 .
@@ -13235,7 +13245,7 @@ account XandeX {
 commandalias lls '!ls ${LS_COLOR_FLAG} -aFlrS'
 commandalias llS '!ls ${LS_COLOR_FLAG} -aFlS'
 
-wysh set pipe-message/external-body='@* echo $MAILX_EXTERNAL_BODY_URL'
+set pipe-message/external-body='@* echo $MAILX_EXTERNAL_BODY_URL'
 
 # We do not support gpg(1) directly yet.  But simple --clearsign'd
 # message parts can be dealt with as follows:
