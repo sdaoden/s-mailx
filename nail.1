@@ -2783,9 +2783,9 @@ Horizontal tabulator:
 try to expand the word before the cursor, supporting the usual
 .Sx "Filename transformations"
 .Mx
-.Pf ( Cd mle-complete ) .
-This is affected by
-.Cd mle-quote-rndtrip .
+.Pf ( Cd mle-complete ;
+this is affected by
+.Cd mle-quote-rndtrip ) .
 .
 .It Ql \ecJ
 Newline:
@@ -11942,11 +11942,16 @@ command series will strip adjacent empty lines and quotations.
 The character set of the terminal \*(UA operates on,
 and the one and only supported character set that \*(UA can use if no
 character set conversion capabilities have been compiled into it,
-in which case it defaults to ISO-8859-1 unless it can deduce a value
-from the locale specified in the
-.Ev LC_CTYPE
-environment variable (if supported, see there for more).
-It defaults to UTF-8 if conversion is available.
+in which case it defaults to ISO-8859-1.
+Otherwise it defaults to UTF-8.
+Sufficient locale support provided the default will be preferably
+deduced from the locale environment if that is set (e.g.,
+.Ev LC_CTYPE ,
+see there for more); runtime locale changes will be reflected by
+.Va \&\&ttycharset
+except during the program startup phase and if
+.Fl S
+had been used to freeze the given value.
 Refer to the section
 .Sx "Character sets"
 for the complete picture about character sets.
