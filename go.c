@@ -1367,7 +1367,9 @@ n_go_main_loop(void){ /* FIXME */
          else if(ca != NULL)
             cc = ca;
          assert(cc != NULL);
-         n_tty_addhist(cc, ((gec.gec_hist_flags & a_GO_HIST_GABBY) != 0));
+         n_tty_addhist(cc, (n_GO_INPUT_CTX_DEFAULT |
+            (gec.gec_hist_flags & a_GO_HIST_GABBY ? n_GO_INPUT_HIST_GABBY
+               : n_GO_INPUT_NONE)));
       }
 
       switch(n_pstate & n_PS_ERR_EXIT_MASK){
@@ -1710,7 +1712,7 @@ n_go_input_cp(enum n_go_input_flags gif, char const *prompt,
    if(n > 0 && *(rv = savestrbuf(linebuf, (size_t)n)) != '\0' &&
          (gif & n_GO_INPUT_HIST_ADD) && (n_psonce & n_PSO_INTERACTIVE) &&
          histadd)
-      n_tty_addhist(rv, ((gif & n_GO_INPUT_HIST_GABBY) != 0));
+      n_tty_addhist(rv, gif);
 
    n_sigman_cleanup_ping(&sm);
 jleave:

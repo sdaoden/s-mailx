@@ -502,7 +502,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
       NULL,
 #endif
       (H | I | M | TWYSH), 0, 1, NULL
-     DS(N_("<show> (default), <clear> or select <NO> from editor history")) },
+     DS(N_("<show (default)|load|save|clear> or select history <NO>")) },
 
    { "list", &a_ctab_c_list, (M | TWYSH), 0, 1, NULL
      DS(N_("List all commands (with argument: in prefix search order)")) },

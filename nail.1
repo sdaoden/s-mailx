@@ -5284,22 +5284,26 @@ becomes the new
 .
 .Mx
 .It Ic history
-\*(OP Either
+\*(OP Without arguments or when given
 .Cm show
-(this mode also supports a more
+all history entries are shown (this mode also supports a more
 .Va verbose
-output) or
+output).
+.Cm load
+will replace the list of entries with the content of
+.Va history-file ,
+and
+.Cm save
+will dump the current list to said file, replacing former content.
 .Cm clear
-the list of history entries;
-a decimal
-.Ar NUMBER
-argument selects and evaluates the respective history entry,
-which will become the new history top; a negative number is used as an
-offset to the current command, e.g.,
+will delete all history entries.
+The argument can also be a signed decimal
+.Ar NUMBER ,
+which will select and evaluate the respective history entry, and move it
+to the top of the history; a negative number is used as an offset to the
+current command, e.g.,
 .Ql -1
 will select the last command, the history top.
-The default mode if no arguments are given is
-.Cm show .
 Please see
 .Sx "On terminal control and line editor"
 for more on this topic.
@@ -9206,13 +9210,16 @@ again reserves room for two spaces in addition.
 .Mx
 .It Va history-file
 \*(OP If a line editor is available then this can be set to
-name the (expandable) path of the location of a permanent history file.
-Also see
+name the (expandable) path of the location of a permanent
+.Ic history
+file; also see
 .Va history-size .
 .
 .Mx
 .It Va history-gabby
-\*(BO\*(OP Add more entries to the history as is normally done.
+\*(BO\*(OP Add more entries to the
+.Ic history
+as is normally done.
 .
 .Mx
 .It Va history-gabby-persist
@@ -9227,9 +9234,10 @@ Also see
 .Mx
 .It Va history-size
 \*(OP Setting this variable imposes a limit on the number of concurrent
-history entries.
-If set to the value 0 then no further history entries will be added, and
-loading and incorporation of the
+.Ic history
+entries.
+If set to the value 0 then no further history entries will be added,
+and loading and incorporation of the
 .Va history-file
 upon program startup can also be suppressed by doing this.
 Runtime changes will not be reflected, but will affect the number of

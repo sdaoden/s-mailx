@@ -2568,9 +2568,10 @@ FL int n_tty_readline(enum n_go_input_flags gif, char const *prompt,
 #endif
 
 /* Add a line (most likely as returned by n_tty_readline()) to the history.
- * Whether an entry added for real depends on the isgabby / *history-gabby*
- * relation, and / or whether s is non-empty */
-FL void n_tty_addhist(char const *s, bool_t isgabby);
+ * Whether and how an entry is added for real depends on gif, e.g.,
+ * n_GO_INPUT_HIST_GABBY / *history-gabby* relation.
+ * Empty strings are never stored */
+FL void n_tty_addhist(char const *s, enum n_go_input_flags gif);
 
 #ifdef HAVE_HISTORY
 FL int c_history(void *v);

@@ -2530,8 +2530,13 @@ jhistcont:
          c = '\1';
       }else
          c = '\0';
-      if(hist & a_HIST_ADD)
-         n_tty_addhist(n_string_cp(sp), ((hist & a_HIST_GABBY) != 0));
+      if(hist & a_HIST_ADD){
+         /* Do not add *escape* to the history in order to allow history search
+          * to be handled generically in the MLE regardless of actual *escape*
+          * settings etc. */
+         n_tty_addhist(&n_string_cp(sp)[1], (n_GO_INPUT_CTX_COMPOSE |
+            (hist & a_HIST_GABBY ? n_GO_INPUT_HIST_GABBY : n_GO_INPUT_NONE)));
+      }
       if(c != '\0')
          goto jcont;
    }
