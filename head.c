@@ -323,12 +323,13 @@ a_head_addrspec_check(struct n_addrguts *agp, bool_t skinned)
    use_idna = ok_blook(idna_disable) ? 0 : 1;
 #endif
    agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED;
-   addr = agp->ag_skinned;
 
    if (agp->ag_iaddr_aend - agp->ag_iaddr_start == 0) {
       NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_EMPTY, 0);
       goto jleave;
    }
+
+   addr = agp->ag_skinned;
 
    /* If the field is not a recipient, it cannot be a file or a pipe */
    if (!skinned)
@@ -364,10 +365,13 @@ jaddr_check:
     * TODO All this should interact with mime_enc_mustquote(), too!
     * TODO That is: once this is an object, we need to do this in a way
     * TODO that it is valid for the wire format (instead)! */
+   /* TODO addrspec_check: we need a real RFC 5322 (un)?structured parser!
+    * TODO Note this correlats with addrspec_with_guts() which is in front
+    * TODO of us and encapsulates (what it thinks is, sigh) the address
+    * TODO boundary.  ALL THIS should be one object that knows how to deal */
    in_quote = FAL0;
    in_domain = hadat = 0;
 
-   /* TODO addrspec_check: we need a real RFC 5322 (un)?structured parser! */
    for (p = addr; (c.c = *p++) != '\0';) {
       if (c.c == '"') {
          in_quote = !in_quote;
@@ -400,7 +404,7 @@ jaddr_check:
          continue;
       } else if (c.c == '(' || c.c == ')' || c.c == '<' || c.c == '>' ||
             c.c == '[' || c.c == ']' || c.c == ':' || c.c == ';' ||
-            c.c == '\\' || c.c == ',')
+            c.c == '\\' || c.c == ',' || blankchar(c.c))
          break;
       hadat = 0;
    }
@@ -421,18 +425,19 @@ jaddr_check:
        * TODO unstructured, and just parse correctly overall!
        * TODO In addition, this can be optimised a lot.
        * TODO And it is far from perfect: it should not forget whether no
-       * TODO whitespace followed some snippet, and it was written hastily */
+       * TODO whitespace followed some snippet, and it was written hastily.
+       * TODO It is even wrong sometimes.  Not only for strange cases */
       struct a_token{
          struct a_token *t_last;
          struct a_token *t_next;
          enum{
-            a_T_TATOM = 1<<0,
-            a_T_TCOMM = 1<<1,
-            a_T_TQUOTE = 1<<2,
-            a_T_TADDR = 1<<3,
-            a_T_TMASK = (1<<4) - 1,
+            a_T_TATOM = 1u<<0,
+            a_T_TCOMM = 1u<<1,
+            a_T_TQUOTE = 1u<<2,
+            a_T_TADDR = 1u<<3,
+            a_T_TMASK = (1u<<4) - 1,
 
-            a_T_SPECIAL = 1<<8      /* An atom actually needs to go TQUOTE */
+            a_T_SPECIAL = 1u<<8     /* An atom actually needs to go TQUOTE */
          } t_f;
          ui8_t t__pad[4];
          size_t t_start;
@@ -458,6 +463,9 @@ jaddr_check:
       cp = agp->ag_input;
 
       /* Nothing to do if there is only an address (in angle brackets) */
+      /* TODO This is wrong since we allow invalid constructs in local-part
+       * TODO and domain, AT LEAST in so far as a"bc"d@abc should become
+       * TODO "abcd"@abc.  Etc. */
       if(agp->ag_iaddr_start == 0){
          if(agp->ag_iaddr_aend == agp->ag_ilen)
             goto jleave;
@@ -591,15 +599,57 @@ jnode_redo:
 
       if(hadat == FAL0){
          hadat = TRU1;
-         tp = n_lofi_alloc(sizeof *tp);
-         tp->t_next = NULL;
-         if((tp->t_last = tcurr) != NULL)
-            tcurr->t_next = tp;
-         else
-            thead = tp;
-         tcurr = tp;
-         tp->t_f = a_T_TADDR;
-         tp->t_start = agp->ag_iaddr_start;
+         /* The local-part may be in quotes.. */
+         if((tp = tcurr) != NULL && (tp->t_f & a_T_TQUOTE) &&
+               tp->t_end == agp->ag_iaddr_start - 1){
+            /* ..so backward extend it, including the starting quote */
+            /* TODO This is false and the code below #if 0 away.  We would
+             * TODO need to create a properly quoted local-part HERE AND NOW
+             * TODO and REPLACE the original data with that version, but the
+             * TODO current code cannot do that.  The node needs the data,
+             * TODO not only offsets for that, for example.  If we had all that
+             * TODO the code below could produce a really valid thing */
+            if(tp->t_start > 0)
+               --tp->t_start;
+            if(tp->t_start > 0 &&
+                  (tp->t_last == NULL || tp->t_last->t_end < tp->t_start) &&
+                     agp->ag_input[tp->t_start - 1] == '\\')
+               --tp->t_start;
+            tp->t_f = a_T_TADDR | a_T_SPECIAL;
+         }else{
+            tp = n_lofi_alloc(sizeof *tp);
+            tp->t_next = NULL;
+            if((tp->t_last = tcurr) != NULL)
+               tcurr->t_next = tp;
+            else
+               thead = tp;
+            tcurr = tp;
+            tp->t_f = a_T_TADDR;
+            tp->t_start = agp->ag_iaddr_start;
+            /* TODO Very special case because of our hacky non-object-based and
+             * TODO non-compliant address parser.  Note */
+            if(tp->t_last == NULL && tp->t_start > 0)
+               tp->t_start = 0;
+
+            /* TODO Very special check for whether we need to massage the
+             * TODO local part.  This is wrong, but otherwise even more so */
+#if 0
+            cp = &agp->ag_input[tp->t_start];
+            cpmax = &agp->ag_input[agp->ag_iaddr_aend];
+            while(cp < cpmax){
+               c.c = *cp++;
+               if(!(c.u & 0x80) && !alnumchar(c.c) &&
+                     c.c != '!' && c.c != '#' && c.c != '$' && c.c != '%' &&
+                     c.c != '&' && c.c != '\'' && c.c != '*' && c.c != '+' &&
+                     c.c != '-' && c.c != '/' && c.c != '=' && c.c != '?' &&
+                     c.c != '^' && c.c != '_' && c.c != '`' && c.c != '{' &&
+                     c.c != '}' && c.c != '|' && c.c != '}' && c.c != '~'){
+                  tp->t_f |= a_T_SPECIAL;
+                  break;
+               }
+            }
+#endif
+         }
          tp->t_end = agp->ag_iaddr_aend;
          tp = NULL;
 
@@ -669,12 +719,46 @@ jnode_redo:
          if(tcurr != thead)
             ostp = n_string_push_c(ostp, ' ');
          if(tcurr->t_f & a_T_TADDR){
-            ostp = n_string_push_c(ostp, '<');
+            if(tcurr->t_last != NULL)
+               ostp = n_string_push_c(ostp, '<');
             agp->ag_iaddr_start = ostp->s_len;
-            ostp = n_string_push_buf(ostp, &cp1st[tcurr->t_start],
-                  (tcurr->t_end - tcurr->t_start));
+            /* Now it is terrible to say, but if that thing contained
+             * quotes, then those may contain quoted-pairs! */
+#if 0
+            if(!(tcurr->t_f & a_T_SPECIAL)){
+#endif
+               ostp = n_string_push_buf(ostp, &cp1st[tcurr->t_start],
+                     (tcurr->t_end - tcurr->t_start));
+#if 0
+            }else{
+               bool_t quot, esc;
+
+               ostp = n_string_push_c(ostp, '"');
+               quot = TRU1;
+
+               cp = &cp1st[tcurr->t_start];
+               cpmax = &cp1st[tcurr->t_end];
+               for(esc = FAL0; cp < cpmax;){
+                  if((c.c = *cp++) == '\\' && !esc){
+                     if(cp < cpmax && (*cp == '"' || *cp == '\\'))
+                        esc = TRU1;
+                  }else{
+                     if(esc || c.c == '"')
+                        ostp = n_string_push_c(ostp, '\\');
+                     else if(c.c == '@'){
+                        ostp = n_string_push_c(ostp, '"');
+                        quot = FAL0;
+                     }
+                     ostp = n_string_push_c(ostp, c.c);
+                     esc = FAL0;
+                  }
+               }
+            }
+#endif
             agp->ag_iaddr_aend = ostp->s_len;
-            ostp = n_string_push_c(ostp, '>');
+
+            if(tcurr->t_last != NULL)
+               ostp = n_string_push_c(ostp, '>');
             tcurr = tcurr->t_next;
          }else if(tcurr->t_f & a_T_TCOMM){
             ostp = n_string_push_c(ostp, '(');
@@ -747,6 +831,58 @@ jput_quote_esc:
       agp->ag_input = n_string_cp(ostp);
       agp->ag_ilen = ostp->s_len;
       /*ostp = n_string_drop_ownership(ostp);*/
+
+      /* Name and domain must be non-empty, the second */
+      cp = &agp->ag_input[agp->ag_iaddr_start];
+      cpmax = &agp->ag_input[agp->ag_iaddr_aend];
+      if(*cp == '@' || &cp[2] > cpmax || cpmax[-1] == '@'){
+         c.c = '@';
+         NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_ATSEQ, c.u);
+         goto jleave;
+      }
+
+      agp->ag_skinned = savestrbuf(cp, PTR2SIZE(cpmax - cp));
+
+      /* TODO This parser is a mess.  We do not know whether this is truly
+       * TODO valid, and all our checks are not truly RFC conforming.
+       * TODO Do check the skinned thing by itself once more, in order
+       * TODO to catch problems from reordering, e.g., this additional
+       * TODO test catches a final address without AT..
+       * TODO This is a plain copy+paste of the weird thing above, no care */
+      agp->ag_n_flags &= ~NAME_ADDRSPEC_ISADDR;
+      in_domain = hadat = 0;
+      for (p = addr; (c.c = *p++) != '\0';) {
+         if (c.c == '"') {
+            in_quote = !in_quote;
+         } else if (c.u < 040 || c.u >= 0177) {
+               break;
+         } else if (in_domain == 2) {
+            if ((c.c == ']' && *p != '\0') || c.c == '\\' || whitechar(c.c))
+               break;
+         } else if (in_quote && in_domain == 0) {
+            /*EMPTY*/;
+         } else if (c.c == '\\' && *p != '\0') {
+            ++p;
+         } else if (c.c == '@') {
+            if (hadat++ > 0) {
+               NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_ATSEQ,
+                  c.u);
+               goto jleave;
+            }
+            agp->ag_n_flags |= NAME_ADDRSPEC_ISADDR; /* TODO .. really? */
+            in_domain = (*p == '[') ? 2 : 1;
+            continue;
+         } else if (c.c == '(' || c.c == ')' || c.c == '<' || c.c == '>' ||
+               c.c == '[' || c.c == ']' || c.c == ':' || c.c == ';' ||
+               c.c == '\\' || c.c == ',' || blankchar(c.c))
+            break;
+         hadat = 0;
+      }
+      if(c.c != '\0')
+         NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_CHAR, c.u);
+      else if(!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR))
+         NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_ATSEQ,
+            p[-1]);
    }
 jleave:
    NYD_LEAVE;
