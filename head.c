@@ -641,6 +641,8 @@ jnode_redo:
             tp = tcurr;
             while((tp = tp->t_next) != NULL && (tp->t_f & a_T_TATOM))
                tp->t_f |= a_T_SPECIAL;
+            if(tp == NULL)
+               break;
          }
       }
 
@@ -653,6 +655,8 @@ jnode_redo:
             tp = tcurr;
             while((tp = tp->t_next) != NULL && (tp->t_f & a_T_TATOM))
                tp->t_f |= a_T_SPECIAL;
+            if(tp == NULL)
+               break;
          }
       }
 
