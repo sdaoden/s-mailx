@@ -101,21 +101,22 @@ enum a_amv_var_flags{
    /* The basic set of flags, also present in struct a_amv_var_map.avm_flags */
    a_AMV_VF_BOOL = 1u<<0,     /* ok_b_* */
    a_AMV_VF_VIRT = 1u<<1,     /* "Stateless" automatic variable */
-   a_AMV_VF_CHAIN = 1u<<2,    /* Is a variable chain (-USER{,@HOST} variants) */
-   a_AMV_VF_VIP = 1u<<3,      /* Wants _var_check_vips() evaluation */
-   a_AMV_VF_RDONLY = 1u<<4,   /* May not be set by user */
-   a_AMV_VF_NODEL = 1u<<5,    /* May not be deleted */
-   a_AMV_VF_I3VAL = 1u<<6,    /* Has an initial value */
-   a_AMV_VF_DEFVAL = 1u<<7,   /* Has a default value */
-   a_AMV_VF_IMPORT = 1u<<8,   /* Import ONLY from environ (pre n_PSO_STARTED) */
-   a_AMV_VF_ENV = 1u<<9,      /* Update environment on change */
-   a_AMV_VF_NOLOPTS = 1u<<10, /* May not be tracked by `localopts' */
-   a_AMV_VF_NOTEMPTY = 1u<<11, /* May not be assigned an empty value */
-   a_AMV_VF_NOCNTRLS = 1u<<12, /* Value may not contain control characters */
+   a_AMV_VF_VIP = 1u<<2,      /* Wants _var_check_vips() evaluation */
+   a_AMV_VF_RDONLY = 1u<<3,   /* May not be set by user */
+   a_AMV_VF_NODEL = 1u<<4,    /* May not be deleted */
+   a_AMV_VF_I3VAL = 1u<<5,    /* Has an initial value */
+   a_AMV_VF_DEFVAL = 1u<<6,   /* Has a default value */
+   a_AMV_VF_IMPORT = 1u<<7,   /* Import ONLY from env (pre n_PSO_STARTED) */
+   a_AMV_VF_ENV = 1u<<8,      /* Update environment on change */
+   a_AMV_VF_NOLOPTS = 1u<<9,  /* May not be tracked by `localopts' */
+   a_AMV_VF_NOTEMPTY = 1u<<10, /* May not be assigned an empty value */
+   a_AMV_VF_NOCNTRLS = 1u<<11, /* Value may not contain control characters */
    /* TODO _VF_NUM, _VF_POSNUM: we also need 64-bit limit numbers! */
-   a_AMV_VF_NUM = 1u<<13,     /* Value must be a 32-bit number */
-   a_AMV_VF_POSNUM = 1u<<14,  /* Value must be positive 32-bit number */
-   a_AMV_VF_LOWER = 1u<<15,   /* Values will be stored in a lowercase version */
+   a_AMV_VF_NUM = 1u<<12,     /* Value must be a 32-bit number */
+   a_AMV_VF_POSNUM = 1u<<13,  /* Value must be positive 32-bit number */
+   a_AMV_VF_LOWER = 1u<<14,   /* Values will be stored in lowercase version */
+   a_AMV_VF_CHAIN = 0/*TODO*/,/* Is variable chain (-USER{,@HOST} variants) */
+   a_AMV_VF_OBSOLETE = 1u<<15, /* Is obsolete? */
    a_AMV_VF__MASK = (1u<<(15+1)) - 1,
 
    /* Extended flags, not part of struct a_amv_var_map.avm_flags */
@@ -1706,6 +1707,10 @@ jeavmp:
          for(; (c = *oval) != '\0'; ++oval)
             *oval = lowerconv(c);
       }
+
+      /* Obsoletion warning */
+      if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_OBSOLETE) != 0))
+         n_OBSOLETE2(_("obsoleted variable"), avcp->avc_name);
    }
 
    /* Lookup possibly existing var.  For */
@@ -1790,7 +1795,7 @@ joval_and_go:
       if(!(avp->av_flags & a_AMV_VF_BOOL))
          avp->av_value = a_amv_var_copy(value);
       else{
-         if(!(n_pstate & n_PS_ROOT) && (n_poption & n_PO_D_VV) &&
+         if(!(n_pstate & n_PS_ROOT) && (n_poption & n_PO_D_V) &&
                *value != '\0')
             n_err(_("Ignoring value of boolean variable: %s: %s\n"),
                avcp->avc_name, value);
@@ -2119,7 +2124,6 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
             char msg[22];
          } const tbase[] = {
             {a_AMV_VF_VIRT, "virtual"},
-            {a_AMV_VF_CHAIN, "variable chain"},
             {a_AMV_VF_RDONLY, "read-only"},
             {a_AMV_VF_NODEL, "nodelete"},
             {a_AMV_VF_I3VAL, "initial-value"},
@@ -2131,6 +2135,8 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
             {a_AMV_VF_NOCNTRLS, "no-control-chars"},
             {a_AMV_VF_NUM, "number"},
             {a_AMV_VF_POSNUM, "positive-number"},
+            {a_AMV_VF_CHAIN, "variable chain"},
+            {a_AMV_VF_OBSOLETE, "obsoleted"},
          }, *tp;
 
          for(tp = tbase; PTRCMP(tp, <, &tbase[n_NELEM(tbase)]); ++tp)

@@ -1493,7 +1493,7 @@ enum okeys {
 
    ok_v_account,                       /* {nolopts=1,rdonly=1,nodel=1} */
    ok_b_add_file_recipients,
-ok_v_agent_shell_lookup,
+ok_v_agent_shell_lookup, /* {obsolete=1} */
    ok_b_allnet,
    ok_b_append,
    /* *ask* is auto-mapped to *asksub* as imposed by standard! */
@@ -1510,13 +1510,13 @@ ok_v_agent_shell_lookup,
    ok_v_autocc,
    ok_b_autocollapse,
    ok_b_autoprint,
-ok_b_autothread,
+ok_b_autothread, /* {obsolete=1} */
    ok_v_autosort,
 
    ok_b_bang,
-ok_b_batch_exit_on_error,
+ok_b_batch_exit_on_error, /* {obsolete=1} */
    ok_v_bind_timeout,                  /* {notempty=1,posnum=1} */
-ok_b_bsdannounce,
+ok_b_bsdannounce, /* {obsolete=1} */
    ok_b_bsdcompat,
    ok_b_bsdflags,
    ok_b_bsdheadline,
@@ -1550,7 +1550,7 @@ ok_b_bsdannounce,
    ok_b_editalong,
    ok_b_editheaders,
    ok_b_emptystart,
-ok_v_encoding,
+ok_v_encoding, /* {obsolete=1} */
    ok_b_errexit,
    ok_v_escape,                        /* {defval=n_ESCAPE} */
    ok_v_expandaddr,
@@ -1567,7 +1567,7 @@ ok_v_encoding,
    ok_v_forward_inject_head,
    ok_v_from,
    ok_b_fullnames,
-ok_v_fwdheading,
+ok_v_fwdheading, /* {obsolete=1} */
 
    ok_v_HOME,                          /* {vip=1,nodel=1,notempty=1,import=1} */
    ok_b_header,                        /* {i3val=TRU1} */
@@ -1643,12 +1643,12 @@ ok_v_fwdheading,
    ok_v_mailx_orig_cc,                 /* {rdonly=1,nodel=1} */
    ok_v_mailx_orig_bcc,                /* {rdonly=1,nodel=1} */
 
-ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
-ok_b_NAIL_NO_SYSTEM_RC,             /* {name=NAIL_NO_SYSTEM_RC,import=1} */
-ok_v_NAIL_HEAD,                     /* {name=NAIL_HEAD} */
-ok_v_NAIL_HISTFILE,                 /* {name=NAIL_HISTFILE} */
-ok_v_NAIL_HISTSIZE,                 /* {name=NAIL_HISTSIZE,notempty=1,num=1} */
-ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
+ok_v_NAIL_EXTRA_RC, /* {name=NAIL_EXTRA_RC,obsolete=1} */
+ok_b_NAIL_NO_SYSTEM_RC, /* {name=NAIL_NO_SYSTEM_RC,import=1,obsolete=1} */
+ok_v_NAIL_HEAD, /* {name=NAIL_HEAD,obsolete=1} */
+ok_v_NAIL_HISTFILE, /* {name=NAIL_HISTFILE,obsolete=1} */
+ok_v_NAIL_HISTSIZE, /* {name=NAIL_HISTSIZE,notempty=1,num=1,obsolete=1} */
+ok_v_NAIL_TAIL, /* {name=NAIL_TAIL,obsolete=1} */
    ok_v_NETRC,                         /* {env=1,notempty=1,defval=VAL_NETRC} */
    ok_b_netrc_lookup,                  /* {chain=1} */
    ok_v_netrc_pipe,
@@ -1694,30 +1694,30 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_b_record_resent,
    ok_b_reply_in_same_charset,
    ok_v_reply_strings,
-ok_v_replyto,
+ok_v_replyto, /* {obsolete=1} */
    ok_v_reply_to,                      /* {notempty=1} */
    ok_v_reply_to_honour,
    ok_b_rfc822_body_from_,             /* {name=rfc822-body-from_} */
 
    ok_v_SHELL,                      /* {import=1,notempty=1,defval=VAL_SHELL} */
-ok_b_SYSV3,                         /* {env=1} */
+ok_b_SYSV3, /* {env=1,obsolete=1} */
    ok_b_save,                          /* {i3val=TRU1} */
    ok_v_screen,                        /* {notempty=1,posnum=1} */
    ok_b_searchheaders,
    ok_v_sendcharsets,                  /* {lower=1} */
    ok_b_sendcharsets_else_ttycharset,
    ok_v_sender,
-ok_v_sendmail,
-ok_v_sendmail_arguments,
-ok_b_sendmail_no_default_arguments,
-ok_v_sendmail_progname,
+ok_v_sendmail, /* {obsolete=1} */
+ok_v_sendmail_arguments, /* {obsolete=1} */
+ok_b_sendmail_no_default_arguments, /* {obsolete=1} */
+ok_v_sendmail_progname, /* {obsolete=1} */
    ok_b_sendwait,
    ok_b_showlast,
    ok_b_showname,
    ok_b_showto,
    ok_v_Sign,
    ok_v_sign,
-ok_v_signature,
+ok_v_signature, /* {obsolete=1} */
    ok_b_skipemptybody,                 /* {vip=1} */
    ok_v_smime_ca_dir,
    ok_v_smime_ca_file,
@@ -1728,15 +1728,15 @@ ok_v_signature,
    ok_v_smime_crl_file,
    ok_v_smime_encrypt,                 /* {chain=1} */
    ok_b_smime_force_encryption,
-ok_b_smime_no_default_ca,
+ok_b_smime_no_default_ca, /* {obsolete=1} */
    ok_b_smime_sign,
    ok_v_smime_sign_cert,               /* {chain=1} */
    ok_v_smime_sign_include_certs,      /* {chain=1} */
    ok_v_smime_sign_message_digest,     /* {chain=1} */
-ok_v_smtp,
+ok_v_smtp, /* {obsolete=1} */
    ok_v_smtp_auth,                     /* {chain=1} */
-ok_v_smtp_auth_password,
-ok_v_smtp_auth_user,
+ok_v_smtp_auth_password, /* {obsolete=1} */
+ok_v_smtp_auth_user, /* {obsolete=1} */
    ok_v_smtp_hostname,
    ok_b_smtp_use_starttls,             /* {chain=1} */
    ok_v_SOURCE_DATE_EPOCH,             /* {\} */
@@ -1747,8 +1747,8 @@ ok_v_smtp_auth_user,
    ok_v_spamc_command,
    ok_v_spamc_arguments,
    ok_v_spamc_user,
-ok_v_spamd_socket,
-ok_v_spamd_user,
+ok_v_spamd_socket, /* {obsolete=1} */
+ok_v_spamd_user, /* {obsolete=1} */
    ok_v_spamfilter_ham,
    ok_v_spamfilter_noham,
    ok_v_spamfilter_nospam,
@@ -1759,19 +1759,19 @@ ok_v_spamd_user,
    ok_v_ssl_ca_file,                   /* {chain=1} */
    ok_v_ssl_ca_flags,                  /* {chain=1} */
    ok_b_ssl_ca_no_defaults,            /* {chain=1} */
-ok_v_ssl_cert,                         /* {chain=1} */
-ok_v_ssl_cipher_list,                  /* {chain=1} */
+ok_v_ssl_cert, /* {chain=1,obsolete=1} */
+ok_v_ssl_cipher_list, /* {chain=1,obsolete=1} */
    ok_v_ssl_config_file,
    ok_v_ssl_config_module,             /* {chain=1} */
    ok_v_ssl_config_pairs,              /* {chain=1} */
-ok_v_ssl_curves,                    /* {chain=1} */
+ok_v_ssl_curves, /* {chain=1,obsolete=1} */
    ok_v_ssl_crl_dir,
    ok_v_ssl_crl_file,
    ok_v_ssl_features,                  /* {virt=VAL_SSL_FEATURES} */
-ok_v_ssl_key,                       /* {chain=1} */
-ok_v_ssl_method,                    /* {chain=1} */
+ok_v_ssl_key, /* {chain=1,obsolete=1} */
+ok_v_ssl_method, /* {chain=1,obsolete=1} */
 ok_b_ssl_no_default_ca,
-ok_v_ssl_protocol,                  /* {chain=1} */
+ok_v_ssl_protocol, /* {chain=1,obsolete=1} */
    ok_v_ssl_rand_egd,
    ok_v_ssl_rand_file,
    ok_v_ssl_verify,                    /* {chain=1} */
