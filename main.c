@@ -693,6 +693,7 @@ main(int argc, char *argv[]){
          Aarg = a_main_oarg;
          break;
       case 'a':{
+         /* Add an attachment */
          struct a_arg *nap;
 
          n_psonce |= n_PSO_SENDMODE;
@@ -704,17 +705,17 @@ main(int argc, char *argv[]){
          nap->aa_next = NULL;
          nap->aa_file = a_main_oarg;
          a_curr = nap;
-         }break;
+      }  break;
       case 'B':
          n_OBSOLETE(_("-B is obsolete, please use -# as necessary"));
          break;
       case 'b':
-         /* Get Blind Carbon Copy Recipient list */
+         /* Add (a) blind carbon copy recipient (list) */
          n_psonce |= n_PSO_SENDMODE;
          bcc = cat(bcc, lextract(a_main_oarg, GBCC | GFULL));
          break;
       case 'c':
-         /* Get Carbon Copy Recipient list */
+         /* Add (a) carbon copy recipient (list) */
          n_psonce |= n_PSO_SENDMODE;
          cc = cat(cc, lextract(a_main_oarg, GCC | GFULL));
          break;
@@ -726,9 +727,11 @@ main(int argc, char *argv[]){
          ok_bset(skipemptybody);
          break;
       case 'e':
+         /* Check if mail (matching -L) exists in given box, exit status */
          n_poption |= n_PO_EXISTONLY;
          break;
       case 'F':
+         /* Save msg in file named after local part of first recipient */
          n_poption |= n_PO_F_FLAG;
          n_psonce |= n_PSO_SENDMODE;
          break;
@@ -739,6 +742,7 @@ main(int argc, char *argv[]){
          folder = "&";
          break;
       case 'H':
+         /* Display summary of headers, exit */
          n_poption |= n_PO_HEADERSONLY;
          break;
       case 'h':
@@ -749,6 +753,8 @@ main(int argc, char *argv[]){
          ok_bset(ignore);
          break;
       case 'L':
+         /* Display summary of headers which match given spec, exit.
+          * In conjunction with -e, only test the given spec for existence */
          Larg = a_main_oarg;
          n_poption |= n_PO_HEADERLIST;
          if(*Larg == '"' || *Larg == '\''){ /* TODO list.c:listspec_check() */
@@ -762,6 +768,7 @@ main(int argc, char *argv[]){
          }
          break;
       case 'M':
+         /* Flag message body (standard input) with given MIME type */
          if(qf != NULL && (!(n_poption & n_PO_Mm_FLAG) || qf != (char*)-1))
             goto jeMmq;
          n_poption_arg_Mm = a_main_oarg;
@@ -769,6 +776,7 @@ main(int argc, char *argv[]){
          if(0){
             /* FALLTHRU*/
       case 'm':
+            /* Flag the given file with MIME type and use as message body */
             if(qf != NULL && (!(n_poption & n_PO_Mm_FLAG) || qf == (char*)-1))
                goto jeMmq;
             qf = a_main_oarg;
@@ -796,12 +804,13 @@ main(int argc, char *argv[]){
          n_smopts[n_smopts_cnt++] = a_main_oarg;
          break;
       case 'q':
+         /* "Quote" file: use as message body (-t without headers etc.) */
+         /* XXX Traditional.  Add -Q to initialize as *quote*d content? */
          if(qf != NULL && (n_poption & n_PO_Mm_FLAG)){
 jeMmq:
             emsg = N_("Only one of -M, -m or -q may be given");
             goto jusage;
          }
-         /* Quote file TODO drop? -Q with real quote?? what ? */
          n_psonce |= n_PSO_SENDMODE;
          /* Allow for now, we have to special check validity of -q- later on! */
          qf = (a_main_oarg[0] == '-' && a_main_oarg[1] == '\0')
@@ -861,11 +870,12 @@ jsetvar: /* Set variable */
          n_psonce |= n_PSO_SENDMODE;
          break;
       case 't':
-         /* Read defined set of headers from mail to be sent */
+         /* Use the given message as send template */
          n_poption |= n_PO_t_FLAG;
          n_psonce |= n_PSO_SENDMODE;
          break;
       case 'u':
+         /* Open primary mailbox of the given user */
          uarg = savecat("%", a_main_oarg);
          break;
       case 'V':
@@ -923,6 +933,7 @@ jsetvar: /* Set variable */
          n_pstate &= ~n_PS_ROBOT;
          break;
       case '.':
+         /* Enforce send mode */
          n_psonce |= n_PSO_SENDMODE;
          goto jgetopt_done;
       case '?':
