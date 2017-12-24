@@ -2,6 +2,7 @@
 #@ Synopsis: ./cc-test.sh [--check-only s-mailx-binary]
 #@           ./cc-test.sh --mae-test s-mailx-binary [:TESTNAME:]
 #@ The latter generates output files.
+#@ TODO All ex0_test should say TESTNUMBER-estat instead of having own numbers
 #@ TODO _All_ the tests should happen in a temporary subdir.
 # Public Domain
 
@@ -321,6 +322,8 @@ t_behave() {
 
    t_behave_message_injections
    t_behave_compose_hooks
+   t_behave_C_opt_customhdr
+
    t_behave_mass_recipients
    t_behave_mime_types_load_control
    t_behave_lreply_futh_rth_etc
@@ -3847,6 +3850,49 @@ this is content of forward 1
    t_epilog
 }
 
+t_behave_C_opt_customhdr() {
+   t_prolog t_behave_C_opt_customhdr
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${SHELL} -
+		(echo 'From CimicifugaRacemosa Mon Dec 25 21:33:40 2017' &&
+            ${cat} && echo
+			) >> "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   echo bla |
+   ${MAILX} ${ARGS} -Smta=./.tsendmail.sh \
+      -C 'C-One  :  Custom One Body' \
+      -C 'C-Two:CustomTwoBody' \
+      -S customhdr='chdr1:  chdr1 body, chdr2:chdr2 body' \
+      this-goes@nowhere >./.tall 2>&1
+   ex0_test behave:C_opt_customhdr-1-estat
+   ${cat} ./.tall >> "${MBOX}"
+   check behave:C_opt_customhdr-1 0 "${MBOX}" '2400078426 195'
+
+   ${rm} -f "${MBOX}"
+   printf 'm this-goes@nowhere\nbody\n!.
+      unset customhdr
+      m this-goes2@nowhere\nbody2\n!.
+      set customhdr=%ccustom1 :  custom1  body%c
+      m this-goes2@nowhere\nbody2\n!.
+      set customhdr=%ccustom1 :  custom1\\,  body  ,  custom2: custom2  body%c
+      m this-goes3@nowhere\nbody3\n!.
+   ' "'" "'" "'" "'" |
+   ${MAILX} ${ARGS} -Smta=./.tsendmail.sh -Sescape=! \
+      -C 'C-One  :  Custom One Body' \
+      -C 'C-Two:CustomTwoBody' \
+      -S customhdr='chdr1:  chdr1 body, chdr2:chdr2 body' \
+      >./.tall 2>&1
+   ex0_test behave:C_opt_customhdr-2-estat
+   ${cat} ./.tall >> "${MBOX}"
+   check behave:C_opt_customhdr-2 0 "${MBOX}" '3546878678 752'
+
+   t_epilog
+}
+
 t_behave_mass_recipients() {
    t_prolog t_behave_mass_recipients
    TRAP_EXIT_ADDONS="./.t*"
@@ -3896,21 +3942,22 @@ t_behave_mass_recipients() {
    set on-compose-splice=t_ocs on-compose-leave=t_ocl
 __EOT__
 
-   ${rm} -f "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.\n' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
       -X'source ./.trc' -Smta=./.tsendmail.sh -Smaximum=2001 \
       >./.tall 2>&1
+   ex0_test behave:mass_recipients-1-estat
    ${cat} ./.tall >> "${MBOX}"
-   check behave:mass_recipients-1 0 "${MBOX}" '2912243346 51526'
+   check behave:mass_recipients-1 - "${MBOX}" '2912243346 51526'
 
    ${rm} -f "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.\n' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
       -St_remove=1 -X'source ./.trc' -Smta=./.tsendmail.sh -Smaximum=2001 \
       >./.tall 2>&1
+   ex0_test behave:mass_recipients-2-estat
    ${cat} ./.tall >> "${MBOX}"
-   check behave:mass_recipients-2 0 "${MBOX}" '4097804632 34394'
+   check behave:mass_recipients-2 - "${MBOX}" '4097804632 34394'
 
    t_epilog
 }
@@ -3953,8 +4000,7 @@ t_behave_mime_types_load_control() {
       ${MAILX} ${ARGS} \
          -Smimetypes-load-control=f=./.tmts1,f=./.tmts2 \
          > ./.tout 2>&1
-   ex0_test behave:mime_types_load_control
-
+   ex0_test behave:mime_types_load_control-1-estat
    ${cat} "${MBOX}" >> ./.tout
    check behave:mime_types_load_control-1 - ./.tout '1441260727 2449'
 

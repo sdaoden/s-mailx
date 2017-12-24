@@ -828,14 +828,7 @@ jins:
          goto jins;
       }
 
-      if(!asccasecmp(cmd[2], cp = "Mailx-Command") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Raw-To") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Raw-Cc") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Raw-Bcc") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-From") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-To") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-Cc") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-Bcc")){
+      if((cp = n_header_is_standard(cmd[2], UIZ_MAX)) != NULL){
          fprintf(n_stdout, "505 %s\n", cp);
          goto jleave;
       }
@@ -1069,14 +1062,7 @@ jrem:
          goto jrem;
       }
 
-      if(!asccasecmp(cmd[2], cp = "Mailx-Command") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Raw-To") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Raw-Cc") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Raw-Bcc") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-From") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-To") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-Cc") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-Bcc")){
+      if((cp = n_header_is_standard(cmd[2], UIZ_MAX)) != NULL){
          fprintf(n_stdout, "505 %s\n", cp);
          goto jleave;
       }
@@ -1185,14 +1171,7 @@ jremat:
          goto jremat;
       }
 
-      if(!asccasecmp(cmd[2], cp = "Mailx-Command") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Raw-To") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Raw-Cc") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Raw-Bcc") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-From") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-To") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-Cc") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-Bcc")){
+      if((cp = n_header_is_standard(cmd[2], UIZ_MAX)) != NULL){
          fprintf(n_stdout, "505 %s\n", cp);
          goto jleave;
       }

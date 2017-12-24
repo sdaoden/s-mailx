@@ -2719,63 +2719,99 @@ jleave:
    return rv;
 }
 
-FL struct n_header_field *
-n_customhdr_query(void){
-   char const *vp;
-   struct n_header_field *rv, **tail, *hfp;
+FL char const *
+n_header_is_standard(char const *name, size_t len){
+   static char const * const names[] = {
+      "Bcc", "Cc", "From",
+      "In-Reply-To", "Mail-Followup-To",
+      "Message-ID", "References", "Reply-To",
+      "Sender", "Subject", "To",
+      "Mailx-Command",
+      "Mailx-Orig-Bcc", "Mailx-Orig-Cc", "Mailx-Orig-From", "Mailx-Orig-To",
+      "Mailx-Raw-Bcc", "Mailx-Raw-Cc", "Mailx-Raw-To",
+      NULL
+   };
+   char const * const *rv;
    NYD_ENTER;
 
-   rv = NULL;
+   if(len == UIZ_MAX)
+      len = strlen(name);
 
-   if((vp = ok_vlook(customhdr)) != NULL){
-      char *buf;
-
-      tail = &rv;
-      buf = savestr(vp);
-jch_outer:
-      while((vp = n_strsep_esc(&buf, ',', TRU1)) != NULL){
-         ui32_t nl, bl;
-         char const *nstart, *cp;
-
-         for(nstart = cp = vp;; ++cp){
-            if(fieldnamechar(*cp))
-               continue;
-            if(*cp == '\0'){
-               if(cp == nstart){
-                  n_err(_("Invalid nameless *customhdr* entry\n"));
-                  goto jch_outer;
-               }
-            }else if(*cp != ':' && !blankchar(*cp)){
-jch_badent:
-               n_err(_("Invalid *customhdr* entry: %s\n"), vp);
-               goto jch_outer;
-            }
-            break;
-         }
-         nl = (ui32_t)PTR2SIZE(cp - nstart);
-
-         while(blankchar(*cp))
-            ++cp;
-         if(*cp++ != ':')
-            goto jch_badent;
-         while(blankchar(*cp))
-            ++cp;
-         bl = (ui32_t)strlen(cp) +1;
-
-         *tail =
-         hfp = salloc(n_VSTRUCT_SIZEOF(struct n_header_field, hf_dat) +
-               nl +1 + bl);
-            tail = &hfp->hf_next;
-         hfp->hf_next = NULL;
-         hfp->hf_nl = nl;
-         hfp->hf_bl = bl - 1;
-         memcpy(hfp->hf_dat, nstart, nl);
-            hfp->hf_dat[nl++] = '\0';
-            memcpy(hfp->hf_dat + nl, cp, bl);
-      }
-   }
+   for(rv = names; *rv != NULL; ++rv)
+      if(!ascncasecmp(*rv, name, len))
+         break;
    NYD_LEAVE;
-   return rv;
+   return *rv;
+}
+
+FL bool_t
+n_header_add_custom(struct n_header_field **hflp, char const *dat,
+      bool_t heap){
+   size_t i;
+   ui32_t nl, bl;
+   char const *cp;
+   struct n_header_field *hfp;
+   NYD_ENTER;
+
+   hfp = NULL;
+
+   /* For (-C) convenience, allow leading WS */
+   while(blankchar(*dat))
+      ++dat;
+
+   /* Isolate the header field from the body */
+   for(cp = dat;; ++cp){
+      if(fieldnamechar(*cp))
+         continue;
+      if(*cp == '\0'){
+         if(cp == dat)
+            goto jename;
+      }else if(*cp != ':' && !blankchar(*cp)){
+jename:
+         cp = N_("Invalid custom header (not \"field: body\"): %s\n");
+         goto jerr;
+      }
+      break;
+   }
+   nl = (ui32_t)PTR2SIZE(cp - dat);
+   if(nl == 0)
+      goto jename;
+
+   /* Verify the custom header does not use standard/managed field name */
+   if(n_header_is_standard(dat, nl) != NULL){
+      cp = N_("Custom headers cannot use standard header names: %s\n");
+      goto jerr;
+   }
+
+   /* Skip on over to the body */
+   while(blankchar(*cp))
+      ++cp;
+   if(*cp++ != ':')
+      goto jename;
+   while(blankchar(*cp))
+      ++cp;
+   bl = (ui32_t)strlen(cp);
+   for(i = bl++; i-- != 0;)
+      if(cntrlchar(cp[i])){
+         cp = N_("Invalid custom header: contains control characters: %s\n");
+         goto jerr;
+      }
+
+   i = n_VSTRUCT_SIZEOF(struct n_header_field, hf_dat) + nl +1 + bl;
+   *hflp = hfp = heap ? n_alloc(i) : n_autorec_alloc(i);
+   hfp->hf_next = NULL;
+   hfp->hf_nl = nl;
+   hfp->hf_bl = bl - 1;
+   memcpy(hfp->hf_dat, dat, nl);
+      hfp->hf_dat[nl++] = '\0';
+      memcpy(hfp->hf_dat + nl, cp, bl);
+jleave:
+   NYD_LEAVE;
+   return (hfp != NULL);
+
+jerr:
+   n_err(V_(cp), n_shexp_quote_cp(dat, FAL0));
+   goto jleave;
 }
 
 /* s-it-mode */

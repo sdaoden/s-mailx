@@ -1141,8 +1141,14 @@ FL int         grab_headers(enum n_go_input_flags gif, struct header *hp,
  * If sep->s_where (or >s_where_wregex) is set, restrict to given headers */
 FL bool_t n_header_match(struct message *mp, struct search_expr const *sep);
 
-/* Query *customhdr* */
-FL struct n_header_field *n_customhdr_query(void);
+/* Verify whether len (UIZ_MAX=strlen) bytes of name form a standard or
+ * otherwise known header name (that must not be used as a custom header).
+ * Return the (standard) header name, or NULL */
+FL char const *n_header_is_standard(char const *name, size_t len);
+
+/* Add a custom header to the given list, in auto-reclaimed or heap memory */
+FL bool_t n_header_add_custom(struct n_header_field **hflp, char const *dat,
+            bool_t heap);
 
 /*
  * ignore.c

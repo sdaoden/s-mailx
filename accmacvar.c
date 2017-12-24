@@ -100,22 +100,21 @@ enum a_amv_var_flags{
 
    /* The basic set of flags, also present in struct a_amv_var_map.avm_flags */
    a_AMV_VF_BOOL = 1u<<0,     /* ok_b_* */
-   a_AMV_VF_VIRT = 1u<<1,     /* "Stateless" automatic variable */
-   a_AMV_VF_VIP = 1u<<2,      /* Wants _var_check_vips() evaluation */
-   a_AMV_VF_RDONLY = 1u<<3,   /* May not be set by user */
-   a_AMV_VF_NODEL = 1u<<4,    /* May not be deleted */
-   a_AMV_VF_I3VAL = 1u<<5,    /* Has an initial value */
-   a_AMV_VF_DEFVAL = 1u<<6,   /* Has a default value */
-   a_AMV_VF_IMPORT = 1u<<7,   /* Import ONLY from env (pre n_PSO_STARTED) */
-   a_AMV_VF_ENV = 1u<<8,      /* Update environment on change */
-   a_AMV_VF_NOLOPTS = 1u<<9,  /* May not be tracked by `localopts' */
-   a_AMV_VF_NOTEMPTY = 1u<<10, /* May not be assigned an empty value */
-   a_AMV_VF_NOCNTRLS = 1u<<11, /* Value may not contain control characters */
+   a_AMV_VF_CHAIN = 1u<<1,    /* Is variable chain (-USER{,@HOST} variants) */
+   a_AMV_VF_VIRT = 1u<<2,     /* "Stateless" automatic variable */
+   a_AMV_VF_VIP = 1u<<3,      /* Wants _var_check_vips() evaluation */
+   a_AMV_VF_RDONLY = 1u<<4,   /* May not be set by user */
+   a_AMV_VF_NODEL = 1u<<5,    /* May not be deleted */
+   a_AMV_VF_I3VAL = 1u<<6,    /* Has an initial value */
+   a_AMV_VF_DEFVAL = 1u<<7,   /* Has a default value */
+   a_AMV_VF_IMPORT = 1u<<8,   /* Import ONLY from env (pre n_PSO_STARTED) */
+   a_AMV_VF_ENV = 1u<<9,      /* Update environment on change */
+   a_AMV_VF_NOLOPTS = 1u<<10, /* May not be tracked by `localopts' */
+   a_AMV_VF_NOTEMPTY = 1u<<11, /* May not be assigned an empty value */
    /* TODO _VF_NUM, _VF_POSNUM: we also need 64-bit limit numbers! */
    a_AMV_VF_NUM = 1u<<12,     /* Value must be a 32-bit number */
    a_AMV_VF_POSNUM = 1u<<13,  /* Value must be positive 32-bit number */
    a_AMV_VF_LOWER = 1u<<14,   /* Values will be stored in lowercase version */
-   a_AMV_VF_CHAIN = 0/*TODO*/,/* Is variable chain (-USER{,@HOST} variants) */
    a_AMV_VF_OBSOLETE = 1u<<15, /* Is obsolete? */
    a_AMV_VF__MASK = (1u<<(15+1)) - 1,
 
@@ -337,8 +336,7 @@ static void a_amv_var_free(char *cp);
 static bool_t a_amv_var_check_vips(enum a_amv_var_vip_mode avvm,
                enum okeys okey, char const *val);
 
-/* _VF_NOCNTRLS, _VF_NUM / _VF_POSNUM */
-static bool_t a_amv_var_check_nocntrls(char const *val);
+/* _VF_NUM / _VF_POSNUM */
 static bool_t a_amv_var_check_num(char const *val, bool_t posnum);
 
 /* If a variable name begins with a lowercase-character and contains at
@@ -924,6 +922,34 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
       switch(okey){
       default:
          break;
+      case ok_v_customhdr:{
+         char const *vp;
+         char *buf;
+         struct n_header_field *hflp, **hflpp, *hfp;
+         NYD_ENTER;
+
+         buf = savestr(val);
+         hflp = NULL;
+         hflpp = &hflp;
+
+         while((vp = n_strsep_esc(&buf, ',', TRU1)) != NULL){
+            if(!n_header_add_custom(hflpp, vp, TRU1)){
+               n_err(_("Invalid *customhdr* entry: %s\n"),
+                     n_shexp_quote_cp(val, FAL0));
+               ok = FAL0;
+               break;
+            }
+            hflpp = &(*hflpp)->hf_next;
+         }
+
+         hflpp = ok ? &n_customhdr_list : &hflp;
+         while((hfp = *hflpp) != NULL){
+            *hflpp = hfp->hf_next;
+            n_free(hfp);
+         }
+         if(ok)
+            n_customhdr_list = hflp;
+      }  break;
       case ok_v_HOME:
          /* Note this gets called from main.c during initialization, and they
           * simply set this to pw_dir as a fallback: don't verify _that_ call.
@@ -942,7 +968,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
                ok = FAL0;
                break;
             }
-         }break;
+      }  break;
       case ok_v_TMPDIR:
          if(!n_is_dir(val, TRU1)){
             n_err(_("$TMPDIR is not a directory or not accessible: %s\n"),
@@ -987,7 +1013,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
                *x++ = c;
          *x = '\0';
          n_PS_ROOT_BLOCK(ok_vset(ifs_ws, x_b));
-         }break;
+      }  break;
 #ifdef HAVE_SETLOCALE
       case ok_v_LANG:
       case ok_v_LC_ALL:
@@ -1037,6 +1063,14 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
       case ok_b_debug:
          n_poption &= ~n_PO_DEBUG;
          break;
+      case ok_v_customhdr:{
+         struct n_header_field *hfp;
+
+         while((hfp = n_customhdr_list) != NULL){
+            n_customhdr_list = hfp->hf_next;
+            n_free(hfp);
+         }
+      }  break;
       case ok_v_HOME:
          /* Invalidate any resolved folder then, too
           * FALLTHRU */
@@ -1064,18 +1098,6 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
    }
    NYD2_LEAVE;
    return ok;
-}
-
-static bool_t
-a_amv_var_check_nocntrls(char const *val){
-   char c;
-   NYD2_ENTER;
-
-   while((c = *val++) != '\0')
-      if(cntrlchar(c))
-         break;
-   NYD2_LEAVE;
-   return (c == '\0');
 }
 
 static bool_t
@@ -1321,12 +1343,6 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp,
                if(!isbltin)
                   goto jerr;
             }else if(n_LIKELY(*cp != '\0')){
-                if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_NOCNTRLS) &&
-                     !a_amv_var_check_nocntrls(cp))){
-                  n_err(_("Ignoring environment, control characters "
-                     "invalid in variable: %s\n"), avcp->avc_name);
-                  goto jerr;
-               }
                if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_NUM) &&
                      !a_amv_var_check_num(cp, FAL0))){
                   n_err(_("Environment variable value not a number "
@@ -1665,11 +1681,6 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
       }
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_NOTEMPTY) && *value == '\0')){
          value = N_("Variable must not be empty: %s\n");
-         goto jeavmp;
-      }
-      if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_NOCNTRLS) != 0 &&
-            !a_amv_var_check_nocntrls(value))){
-         value = N_("Variable forbids control characters: %s\n");
          goto jeavmp;
       }
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_NUM) &&
@@ -2123,6 +2134,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
             ui16_t flag;
             char msg[22];
          } const tbase[] = {
+            {a_AMV_VF_CHAIN, "variable chain"},
             {a_AMV_VF_VIRT, "virtual"},
             {a_AMV_VF_RDONLY, "read-only"},
             {a_AMV_VF_NODEL, "nodelete"},
@@ -2132,10 +2144,8 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
             {a_AMV_VF_ENV, "sync-environ"},
             {a_AMV_VF_NOLOPTS, "no-localopts"},
             {a_AMV_VF_NOTEMPTY, "notempty"},
-            {a_AMV_VF_NOCNTRLS, "no-control-chars"},
             {a_AMV_VF_NUM, "number"},
             {a_AMV_VF_POSNUM, "positive-number"},
-            {a_AMV_VF_CHAIN, "variable chain"},
             {a_AMV_VF_OBSOLETE, "obsoleted"},
          }, *tp;
 

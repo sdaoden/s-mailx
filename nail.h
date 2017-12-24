@@ -1536,7 +1536,7 @@ ok_b_bsdannounce, /* {obsolete=1} */
    ok_v_contact_mail,                  /* {virt=VAL_CONTACT_MAIL} */
    ok_v_contact_web,                   /* {virt=VAL_CONTACT_WEB} */
    ok_v_crt,                           /* {posnum=1} */
-   ok_v_customhdr,                     /* {nocntrls=1} */
+   ok_v_customhdr,                     /* {vip=1} */
 
    ok_v_DEAD,                          /* {notempty=1,env=1,defval=VAL_DEAD} */
    ok_v_datefield,                     /* {i3val="%Y-%m-%d %H:%M"} */
@@ -2570,6 +2570,7 @@ VL pid_t n_pid;                  /* getpid() (lazy initialized) */
 
 VL int n_exit_status;            /* Program exit status TODO long term: ex_no */
 VL ui32_t n_poption;             /* Bits of enum n_program_option */
+VL struct n_header_field *n_poption_arg_C; /* -C custom header list */
 VL char const *n_poption_arg_Mm; /* Argument for -[Mm] aka n_PO_[Mm]_FLAG */
 VL struct name *n_poption_arg_r; /* Argument to -r option */
 VL char const **n_smopts;        /* MTA options from command line */
@@ -2602,6 +2603,8 @@ VL int            *n_msgvec;           /* Folder setmsize(), list.c res. store*/
 #ifdef HAVE_IMAP
 VL int            imap_created_mailbox; /* hack to get feedback from imap */
 #endif
+
+VL struct n_header_field *n_customhdr_list; /* *customhdr* list */
 
 VL struct time_current  time_current;  /* time(3); send: mail1() XXXcarrier */
 VL struct termios_state termios_state; /* getpassword(); see commands().. */

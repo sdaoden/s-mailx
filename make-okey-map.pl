@@ -130,21 +130,20 @@ enum a_amv_var_flags{
 
    /* The basic set of flags, also present in struct a_amv_var_map.avm_flags */
    a_AMV_VF_BOOL = 1u<<0,     /* ok_b_* */
-   a_AMV_VF_VIRT = 1u<<1,     /* "Stateless" automatic variable */
-   a_AMV_VF_VIP = 1u<<2,      /* Wants _var_check_vips() evaluation */
-   a_AMV_VF_RDONLY = 1u<<3,   /* May not be set by user */
-   a_AMV_VF_NODEL = 1u<<4,    /* May not be deleted */
-   a_AMV_VF_I3VAL = 1u<<5,    /* Has an initial value */
-   a_AMV_VF_DEFVAL = 1u<<6,   /* Has a default value */
-   a_AMV_VF_IMPORT = 1u<<7,   /* Import ONLY from env (pre n_PSO_STARTED) */
-   a_AMV_VF_ENV = 1u<<8,      /* Update environment on change */
-   a_AMV_VF_NOLOPTS = 1u<<9,  /* May not be tracked by `localopts' */
-   a_AMV_VF_NOTEMPTY = 1u<<10, /* May not be assigned an empty value */
-   a_AMV_VF_NOCNTRLS = 1u<<11, /* Value may not contain control characters */
+   a_AMV_VF_CHAIN = 1u<<1,    /* Is variable chain (-USER{,@HOST} variants) */
+   a_AMV_VF_VIRT = 1u<<2,     /* "Stateless" automatic variable */
+   a_AMV_VF_VIP = 1u<<3,      /* Wants _var_check_vips() evaluation */
+   a_AMV_VF_RDONLY = 1u<<4,   /* May not be set by user */
+   a_AMV_VF_NODEL = 1u<<5,    /* May not be deleted */
+   a_AMV_VF_I3VAL = 1u<<6,    /* Has an initial value */
+   a_AMV_VF_DEFVAL = 1u<<7,   /* Has a default value */
+   a_AMV_VF_IMPORT = 1u<<8,   /* Import ONLY from env (pre n_PSO_STARTED) */
+   a_AMV_VF_ENV = 1u<<9,      /* Update environment on change */
+   a_AMV_VF_NOLOPTS = 1u<<10, /* May not be tracked by `localopts' */
+   a_AMV_VF_NOTEMPTY = 1u<<11, /* May not be assigned an empty value */
    a_AMV_VF_NUM = 1u<<12,     /* Value must be a 32-bit number */
    a_AMV_VF_POSNUM = 1u<<13,  /* Value must be positive 32-bit number */
    a_AMV_VF_LOWER = 1u<<14,   /* Values will be stored in lowercase version */
-   a_AMV_VF_CHAIN = 0/*TODO*/,/* Is variable chain (-USER{,@HOST} variants) */
    a_AMV_VF_OBSOLETE = 1u<<15, /* Is obsolete? */
    a_AMV_VF__MASK = (1u<<(15+1)) - 1,
 

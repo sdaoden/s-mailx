@@ -904,16 +904,20 @@ need_hdrconv(struct header *hp) /* TODO once only, then iter */
 
    rv = NULL;
 
-   if((hfp = hp->h_user_headers) != NULL)
-      do if(_has_highbit(hfp->hf_dat + hfp->hf_nl +1))
-         goto jneeds;
-      while((hfp = hfp->hf_next) != NULL);
+   /* C99 */{
+      struct n_header_field *chlp[3]; /* TODO JOINED AFTER COMPOSE! */
+      ui32_t i;
 
-   if((hfp = hp->h_custom_headers) != NULL ||
-         (hp->h_custom_headers = hfp = n_customhdr_query()) != NULL)
-      do if(_has_highbit(hfp->hf_dat + hfp->hf_nl +1))
-         goto jneeds;
-      while((hfp = hfp->hf_next) != NULL);
+      chlp[0] = n_poption_arg_C;
+      chlp[1] = n_customhdr_list;
+      chlp[2] = hp->h_user_headers;
+
+      for(i = 0; i < n_NELEM(chlp); ++i)
+         if((hfp = chlp[i]) != NULL)
+            do if(_has_highbit(hfp->hf_dat + hfp->hf_nl +1))
+               goto jneeds;
+            while((hfp = hfp->hf_next) != NULL);
+   }
 
    if (hp->h_mft != NULL) {
       if (_name_highbit(hp->h_mft))

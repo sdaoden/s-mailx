@@ -78,6 +78,7 @@
 .Op Fl A Ar account
 .Op : Ns Fl a Ar attachment Ns \&:
 .Op : Ns Fl b Ar bcc-addr Ns \&:
+.Op : Ns Fl C Ar """custom:\0header""" Ns \&:
 .Op : Ns Fl c Ar cc-addr Ns \&:
 .Op Fl M Ar type | Fl m Ar file | Fl q Ar file | Fl t
 .Op Fl r Ar from-addr
@@ -96,6 +97,7 @@
 .Op Fl BdEeHiNnRv~#
 .Op Fl \&: Ar spec
 .Op Fl A Ar account
+.Op : Ns Fl C Ar """custom:\0header""" Ns \&:
 .Op Fl L Ar spec
 .Op Fl r Ar from-addr
 .Oo : Ns
@@ -110,6 +112,7 @@
 .Op Fl BdEeHiNnRv~#
 .Op Fl \&: Ar spec
 .Op Fl A Ar account
+.Op : Ns Fl C Ar """custom:\0header""" Ns \&:
 .Fl f
 .Op Fl L Ar spec
 .Op Fl r Ar from-addr
@@ -293,6 +296,23 @@ allows.
 The option may be used multiple times.
 Also see the section
 .Sx "On sending mail, and non-interactive mode" .
+.
+.Mx
+.It Fl C Ar """field: body"""
+Create a custom header which persists for an entire session.
+A custom header consists of the field name followed by a colon
+.Ql \&:
+and the field content body, e.g.,
+.Ql -C """Blah: Neminem laede; imo omnes, quantum potes, juva""" Ns .
+Standard header field names cannot be overwritten by a custom header.
+A changeable way to create custom headers is available via the variable
+.Va customhdr ,
+and in compose mode
+.Ic ~^ ,
+one of the
+.Sx "COMMAND ESCAPES" ,
+offers the most flexible and powerful possibility of managing headers.
+This option may be used multiple times.
 .
 .Mx
 .It Fl c Ar addr
@@ -591,6 +611,7 @@ by default created automatically dependent on message context, will
 be used if specified (a special address massage will however still occur
 for the latter).
 Any other custom header field (also see
+.Fl C ,
 .Va customhdr
 and
 .Ic ~^ )
@@ -866,6 +887,8 @@ will start the text editor to revise the message in its current state,
 allows editing of the most important message headers, with
 .Ic ~^
 custom headers can be created (more specifically than with
+.Fl C
+and
 .Va customhdr ) .
 .Ic ~?
 gives an overview of most other available command escapes.
@@ -8625,18 +8648,19 @@ of the message, is unrelated to the number of display lines.
 .Mx
 .It Va customhdr
 Define a set of custom headers to be injected into newly composed or
-forwarded messages; it is also possible to create custom headers in
-compose mode with
-.Ic ~^ ,
-which can be automatized by setting one of the hooks
-.Va on-compose-splice
-or
-.Va on-compose-splice-shell .
-The value is interpreted as a comma-separated list of custom headers to
-be injected, to include commas in the header bodies escape them with
-reverse solidus.
-\*(ID Overwriting of automatically managed headers is neither supported
-nor prevented.
+forwarded messages.
+A custom header consists of the field name followed by a colon
+.Ql \&:
+and the field content body.
+Standard header field names cannot be overwritten by a custom header.
+Different to the command line option
+.Fl C
+the variable value is interpreted as a comma-separated list of custom
+headers: to include commas in header bodies they need to become escaped
+with reverse solidus
+.Ql \e .
+Headers can be managed more freely in compose mode via
+.Ic ~^ .
 .Pp
 .Dl ? set customhdr='Hdr1: Body1-1\e, Body1-2,  Hdr2: Body2'
 .

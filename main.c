@@ -241,27 +241,27 @@ a_main_usage(FILE *fp){
    buf[i] = '\0';
 
    fprintf(fp, _("%s (%s %s): send and receive Internet mail\n"),
-         n_progname, n_uagent, ok_vlook(version));
+      n_progname, n_uagent, ok_vlook(version));
    fprintf(fp, _(
-         "Send-only mode: send mail \"to-address\" receiver(s):\n"
-         "  %s [-BdEFinv~#] [-: spec] [-A account]\n"
-         "  %s [:-a attachment:] [:-b bcc-address:] [:-c cc-address:]\n"
-         "  %s [-M type | -m file | -q file | -t] [-r from-address]\n"
-         "  %s [:-S var[=value]:] [-s subject] [:-X cmd:]\n"
-         "  %s [-.] :to-address: [-- :mta-option:]\n"),
-         n_progname, buf, buf, buf, buf);
+      "Send-only mode: send mail \"to-address\" receiver(s):\n"
+      "  %s [-BdEFinv~#] [-: spec] [-A account] [:-C \"custom: header\":]\n"
+      "  %s [:-a attachment:] [:-b bcc-address:]\n"
+      "  %s [:-c cc-address:] [-M type | -m file | -q file | -t]\n"
+      "  %s [-r from-address] [:-S var[=value]:] [-s subject] [:-X cmd:]\n"
+      "  %s [-.] :to-address: [-- :mta-option:]\n"),
+      n_progname, buf, buf, buf, buf);
    fprintf(fp, _(
-         "\"Receive\" mode, starting on -u user, primary *inbox* or [$MAIL]:\n"
-         "  %s [-BdEeHiNnRv~#] [-: spec] [-A account]\n"
-         "  %s [-L spec] [-r from-address] [:-S var[=value]:]\n"
-         "  %s [-u user] [:-X cmd:] [-- :mta-option:]\n"),
-         n_progname, buf, buf);
+      "\"Receive\" mode, starting on -u user, primary *inbox* or [$MAIL]:\n"
+      "  %s [-BdEeHiNnRv~#] [-: spec] [-A account] [:-C \"custom: header\":]\n"
+      "  %s [-L spec] [-r from-address] [:-S var[=value]:]\n"
+      "  %s [-u user] [:-X cmd:] [-- :mta-option:]\n"),
+      n_progname, buf, buf);
    fprintf(fp, _(
-         "\"Receive\" mode, starting on -f (secondary $MBOX or [file]):\n"
-         "  %s [-BdEeHiNnRv~#] [-: spec] [-A account] -f\n"
-         "  %s [-L spec] [-r from-address] [:-S var[=value]:]\n"
-         "  %s [:-X cmd:] [file] [-- :mta-option:]\n"),
-         n_progname, buf, buf);
+      "\"Receive\" mode, starting on -f (secondary $MBOX or [file]):\n"
+      "  %s [-BdEeHiNnRv~#] [-: spec] [-A account] [:-C \"custom: header\":]\n"
+      "  %s -f [-L spec] [-r from-address] [:-S var[=value]:]\n"
+      "  %s [:-X cmd:] [file] [-- :mta-option:]\n"),
+      n_progname, buf, buf);
 
    if(fp != n_stderr)
       putc('\n', fp);
@@ -648,7 +648,7 @@ main(int argc, char *argv[]){
     * TODO Like so we can get rid of some stack locals etc. */
    /* Keep in SYNC: ./nail.1:"SYNOPSIS, main() */
    static char const optstr[] =
-         "A:a:Bb:c:dEeFfHhiL:M:m:NnO:q:Rr:S:s:tu:VvX:::~#.";
+         "A:a:Bb:C:c:dEeFfHhiL:M:m:NnO:q:Rr:S:s:tu:VvX:::~#.";
    int i;
    char *cp;
    enum{
@@ -714,6 +714,20 @@ main(int argc, char *argv[]){
          n_psonce |= n_PSO_SENDMODE;
          bcc = cat(bcc, lextract(a_main_oarg, GBCC | GFULL));
          break;
+      case 'C':{
+         /* Create custom header (at list tail) */
+         struct n_header_field **hflpp;
+
+         if(*(hflpp = &n_poption_arg_C) != NULL){
+            while((*hflpp)->hf_next != NULL)
+               *hflpp = (*hflpp)->hf_next;
+            hflpp = &(*hflpp)->hf_next;
+         }
+         if(!n_header_add_custom(hflpp, a_main_oarg, FAL0)){
+            emsg = N_("Invalid custom header data with -C");
+            goto jusage;
+         }
+      }  break;
       case 'c':
          /* Add (a) carbon copy recipient (list) */
          n_psonce |= n_PSO_SENDMODE;
