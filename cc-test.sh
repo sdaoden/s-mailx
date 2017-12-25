@@ -1729,9 +1729,19 @@ t_behave_addrcodec() {
 	vput addrcodec res s \
 		"23 Hey\\,\\\" \"Wie" () "\" findet \\\" Dr. \\\" das?" <doog@def>
 	echo $?/$^ERRNAME $res
+	#
+	# Fix for [f3852f88]
+	vput addrcodec res ++e <from2@exam.ple> 100 (comment) "Quot(e)d"
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res e <from2@exam.ple> 100 (comment) "Quot(e)d"
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
 	__EOT
 
-   check behave:addrcodec-1 0 "${MBOX}" '429099645 2414'
+   check behave:addrcodec-1 0 "${MBOX}" '1047317989 2612'
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
    mlist isa1@list

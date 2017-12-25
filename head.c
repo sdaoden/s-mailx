@@ -630,6 +630,8 @@ jnode_redo:
              * TODO non-compliant address parser.  Note */
             if(tp->t_last == NULL && tp->t_start > 0)
                tp->t_start = 0;
+            if(agp->ag_input[tp->t_start] == '<')
+               ++tp->t_start;
 
             /* TODO Very special check for whether we need to massage the
              * TODO local part.  This is wrong, but otherwise even more so */
@@ -651,6 +653,7 @@ jnode_redo:
 #endif
          }
          tp->t_end = agp->ag_iaddr_aend;
+         assert(tp->t_start <= tp->t_end);
          tp = NULL;
 
          cp = &agp->ag_input[agp->ag_iaddr_aend + 1];
