@@ -46,3 +46,7 @@
 0/NONE "22 Hey\\,\" Wie() findet \" Dr. \" das?" <doog@def>
 0/NONE 22 Hey\," Wie() findet " Dr. " das? <doog@def>
 0/NONE doog@def
+0/NONE 100 (comment) "Quot(e)d" <from2@exam.ple>
+0/NONE 100 (comment) Quot(e)d <from2@exam.ple>
+0/NONE "100 (comment) \"Quot(e)d\"" <from2@exam.ple>
+0/NONE 100 (comment) "Quot(e)d" <from2@exam.ple>
