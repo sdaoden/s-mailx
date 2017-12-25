@@ -1,0 +1,37 @@
+From CimicifugaRacemosa Mon Dec 25 21:33:40 2017
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: this-goes@nowhere
+C-One: Custom One Body
+C-Two: CustomTwoBody
+chdr1: chdr1 body
+chdr2: chdr2 body
+
+body
+
+From CimicifugaRacemosa Mon Dec 25 21:33:40 2017
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: this-goes2@nowhere
+C-One: Custom One Body
+C-Two: CustomTwoBody
+
+body2
+
+From CimicifugaRacemosa Mon Dec 25 21:33:40 2017
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: this-goes2@nowhere
+C-One: Custom One Body
+C-Two: CustomTwoBody
+custom1: custom1  body
+
+body2
+
+From CimicifugaRacemosa Mon Dec 25 21:33:40 2017
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: this-goes3@nowhere
+C-One: Custom One Body
+C-Two: CustomTwoBody
+custom1: custom1,  body
+custom2: custom2  body
+
+body3
+
