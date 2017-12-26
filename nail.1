@@ -8034,15 +8034,20 @@ indeed means
 .Ql server:port
 if a
 .Ql port
-had been specified in the contextual Uniform Resource Locator URL (see
-.Sx "On URL syntax and credential lookup" ) .
+had been specified in the contextual Uniform Resource Locator URL, see
+.Sx "On URL syntax and credential lookup" .
 Even though this mechanism is based on URLs no URL percent encoding may
 be applied to neither of
 .Ql USER
 nor
 .Ql HOST ,
-variable chains need to be specified using raw data.
-Variables which support chains are explicitly documented as such.
+variable chains need to be specified using raw data;
+the mentioned section contains examples.
+Variables which support chains are explicitly documented as such, and
+\*(UA treats the base name of any such variable special, meaning that
+users should not create custom names like
+.Ql variable-xyz
+in order to avoid false classifications and treatment of such variables.
 .
 .\" .Ss "Initial settings" {{{
 .\" (Keep in SYNC: ./nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings")
