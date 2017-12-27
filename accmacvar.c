@@ -3252,8 +3252,7 @@ jnumop_again:
                      lhv = rhv;
                      break;
                   }
-               }
-               if(SI64_MAX - rhv < lhv)
+               }else if(SI64_MAX - rhv < lhv)
                   goto jenum_plusminus;
                lhv += rhv;
                break;
@@ -3269,15 +3268,15 @@ jnumop_again:
                      lhv = rhv;
                      break;
                   }
-               }
-               if(SI64_MIN + rhv > lhv){
+               }else if(SI64_MIN + rhv > lhv){
 jenum_plusminus:
                   if(!(f & a_SATURATED))
                      goto jenum_overflow;
                   f |= a_SOFTOVERFLOW;
                   lhv = (lhv < 0 || xop == '-') ? SI64_MIN : SI64_MAX;
-               }else
-                  lhv -= rhv;
+                  break;
+               }
+               lhv -= rhv;
                break;
             case '*':
                /* Will the result be positive? */
