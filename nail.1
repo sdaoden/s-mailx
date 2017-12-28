@@ -6992,6 +6992,16 @@ It is possible to use any base in between 2 and 36, inclusive, with the
 notation, where the base is given as an unsigned decimal number, e.g.,
 .Ql 16#AFFE
 is a different way of specifying a hexadecimal number.
+Unsigned interpretation of a number can be enforced by prefixing a
+.Ql u
+(case-insensitively), e.g.,
+.Ql u-110 ;
+this is not necessary for power-of-two bases (2, 4, 8, 16 and 32),
+which will be interpreted as unsigned by default, but it still makes
+a difference regarding overflow detection and overflow constant.
+It is possible to enforce signed interpretation by (instead) prefixing a
+.Ql s
+(case-insensitively).
 .
 .Pp
 One integer is expected by assignment (equals sign

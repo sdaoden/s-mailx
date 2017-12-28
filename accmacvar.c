@@ -3170,6 +3170,7 @@ FL int
 c_vexpr(void *v){ /* TODO POSIX expr(1) comp. exit status; overly complicat. */
    size_t i;
    enum n_idec_state ids;
+   enum n_idec_mode idm;
    si64_t lhv, rhv;
    char op, varbuf[64 + 64 / 8 +1];
    char const **argv, *varname, *varres, *cp;
@@ -3205,13 +3206,21 @@ jnumop:
 
          if(*(cp = *++argv) == '\0')
             lhv = 0;
-         else if(((ids = n_idec_si64_cp(&lhv, cp, 0, NULL)
-                  ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-               ) != n_IDEC_STATE_CONSUMED){
-            if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
-               goto jenum_range;
-            f |= a_SOFTOVERFLOW;
-            break;
+         else{
+            idm = ((*cp == 'u' || *cp == 'U')
+                  ? (++cp, n_IDEC_MODE_NONE)
+                  : ((*cp == 's' || *cp == 'S')
+                     ? (++cp, n_IDEC_MODE_SIGNED_TYPE)
+                     : n_IDEC_MODE_SIGNED_TYPE |
+                        n_IDEC_MODE_POW2BASE_UNSIGNED));
+            if(((ids = n_idec_cp(&lhv, cp, 0, idm, NULL)
+                     ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+                  ) != n_IDEC_STATE_CONSUMED){
+               if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
+                  goto jenum_range;
+               f |= a_SOFTOVERFLOW;
+               break;
+            }
          }
          if(op == '~')
             lhv = ~lhv;
@@ -3234,25 +3243,41 @@ jnumop:
 
             if(*(cp = *++argv) == '\0')
                lhv = 0;
-            else if(((ids = n_idec_si64_cp(&lhv, cp, 0, NULL)
-                     ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-                  ) != n_IDEC_STATE_CONSUMED){
-               if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
-                  goto jenum_range;
-               f |= a_SOFTOVERFLOW;
-               break;
+            else{
+               idm = ((*cp == 'u' || *cp == 'U')
+                     ? (++cp, n_IDEC_MODE_NONE)
+                     : ((*cp == 's' || *cp == 'S')
+                        ? (++cp, n_IDEC_MODE_SIGNED_TYPE)
+                        : n_IDEC_MODE_SIGNED_TYPE |
+                           n_IDEC_MODE_POW2BASE_UNSIGNED));
+               if(((ids = n_idec_cp(&lhv, cp, 0, idm, NULL)
+                        ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+                     ) != n_IDEC_STATE_CONSUMED){
+                  if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
+                     goto jenum_range;
+                  f |= a_SOFTOVERFLOW;
+                  break;
+               }
             }
 
             if(*(cp = *++argv) == '\0')
                rhv = 0;
-            else if(((ids = n_idec_si64_cp(&rhv, cp, 0, NULL)
-                     ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-                  ) != n_IDEC_STATE_CONSUMED){
-               if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
-                  goto jenum_range;
-               f |= a_SOFTOVERFLOW;
-               lhv = rhv;
-               break;
+            else{
+               idm = ((*cp == 'u' || *cp == 'U')
+                     ? (++cp, n_IDEC_MODE_NONE)
+                     : ((*cp == 's' || *cp == 'S')
+                        ? (++cp, n_IDEC_MODE_SIGNED_TYPE)
+                        : n_IDEC_MODE_SIGNED_TYPE |
+                           n_IDEC_MODE_POW2BASE_UNSIGNED));
+               if(((ids = n_idec_cp(&rhv, cp, 0, idm, NULL)
+                        ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+                     ) != n_IDEC_STATE_CONSUMED){
+                  if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
+                     goto jenum_range;
+                  f |= a_SOFTOVERFLOW;
+                  lhv = rhv;
+                  break;
+               }
             }
 
             xop = op;
@@ -3700,7 +3725,7 @@ jleave:
          }
          varbuf[64 + 64 / 8 -1] = '\0';
          if(fprintf(n_stdout,
-               "%s\n0%" PRIo64 " | 0x%" PRIX64 " | %" PRId64 "\n",
+               "0b %s\n0%" PRIo64 " | 0x%" PRIX64 " | %" PRId64 "\n",
                varbuf, lhv, lhv, lhv) < 0){
             n_pstate_err_no = n_err_no;
             f |= a_ERR;

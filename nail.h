@@ -845,6 +845,10 @@ enum{
 enum n_idec_mode{
    n_IDEC_MODE_NONE,
    n_IDEC_MODE_SIGNED_TYPE = 1u<<0, /* To choose limits, error constants etc. */
+   /* If a power-of-two is used explicitly, or if base 0 is used and a known
+    * standard prefix is seen, enforce interpretation as unsigned.  This only
+    * makes a difference in conjunction with n_IDEC_MODE_SIGNED_TYPE */
+   n_IDEC_MODE_POW2BASE_UNSIGNED = 1u<<1,
 #if 0
    n_IDEC_MODE_SIGN_FORCE_SIGNED_TYPE = 1u<<2,
 #endif

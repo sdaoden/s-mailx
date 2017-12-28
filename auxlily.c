@@ -97,6 +97,7 @@ struct a_aux_err_map{
    si32_t aem_err_no;   /* The OS error value for this one */
 };
 
+/* IDEC: byte to integer value lookup table */
 static ui8_t const a_aux_idec_atoi[256] = {
    0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
    0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
@@ -126,7 +127,8 @@ static ui8_t const a_aux_idec_atoi[256] = {
    0xFF,0xFF,0xFF,0xFF,0xFF,0xFF
 };
 
-#define a_X(X) ((ui64_t)-1 / (X))
+/* IDEC: avoid divisions for cutlimit calculation (indexed by base-2) */
+#define a_X(X) (UI64_MAX / (X))
 static ui64_t const a_aux_idec_cutlimit[35] = {
    a_X( 2), a_X( 3), a_X( 4), a_X( 5), a_X( 6), a_X( 7), a_X( 8),
    a_X( 9), a_X(10), a_X(11), a_X(12), a_X(13), a_X(14), a_X(15),
@@ -590,7 +592,6 @@ jerr:
 FL enum n_idec_state
 n_idec_buf(void *resp, char const *cbuf, uiz_t clen, ui8_t base,
       enum n_idec_mode idm, char const **endptr_or_null){
-   /* XXX Brute simple and */
    ui8_t currc;
    ui64_t res, cut;
    enum n_idec_state rv;
@@ -631,8 +632,7 @@ n_idec_buf(void *resp, char const *cbuf, uiz_t clen, ui8_t base,
       if(base == 0){
          base = 10;
 
-         /* Support BASE#number prefix, where BASE is decimal 2-36.
-          * Enter this only if anything is to follow after that prefix*/
+         /* Support BASE#number prefix, where BASE is decimal 2-36 */
          if(clen > 2){
             char c1, c2, c3;
 
@@ -640,9 +640,9 @@ n_idec_buf(void *resp, char const *cbuf, uiz_t clen, ui8_t base,
                   (((c2 = cbuf[1]) == '#') ||
                    (c2 >= '0' && c2 <= '9' && clen > 3 && cbuf[2] == '#'))){
                base = a_aux_idec_atoi[(ui8_t)c1];
-               if(c2 == '#'){
+               if(c2 == '#')
                   c3 = cbuf[2];
-               }else{
+               else{
                   c3 = cbuf[3];
                   base *= 10; /* xxx Inline atoi decimal base */
                   base += a_aux_idec_atoi[(ui8_t)c2];
@@ -751,10 +751,12 @@ jleave:
       case n_IDEC_MODE_LIMIT_32BIT: uimask = UI32_MAX; break;
       default: uimask = UI64_MAX; break;
       }
-      if(rv & n_IDEC_MODE_SIGNED_TYPE)
+      if((rv & n_IDEC_MODE_SIGNED_TYPE) &&
+            (!(rv & n_IDEC_MODE_POW2BASE_UNSIGNED) || !n_ISPOW2(base)))
          uimask >>= 1;
 
       if(res & ~uimask){
+         /* XXX never entered unless _SIGNED_TYPE! */
          if((rv & (n_IDEC_MODE_SIGNED_TYPE | n_IDEC_STATE_SEEN_MINUS)
                ) == (n_IDEC_MODE_SIGNED_TYPE | n_IDEC_STATE_SEEN_MINUS)){
             if(res > uimask + 1){

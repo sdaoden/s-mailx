@@ -1812,9 +1812,12 @@ t_behave_vexpr() {
    t_prolog t_behave_vexpr
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>/dev/null
+	echo ' #0.0'
 	vput vexpr res = 9223372036854775807
 	echo $?/$^ERRNAME $res
 	vput vexpr res = 9223372036854775808
+	echo $?/$^ERRNAME $res
+	vput vexpr res = u9223372036854775808
 	echo $?/$^ERRNAME $res
 	vput vexpr res @= 9223372036854775808
 	echo $?/$^ERRNAME $res
@@ -1823,6 +1826,88 @@ t_behave_vexpr() {
 	vput vexpr res = -9223372036854775809
 	echo $?/$^ERRNAME $res
 	vput vexpr res @= -9223372036854775809
+	echo $?/$^ERRNAME $res
+	vput vexpr res = U9223372036854775809
+	echo $?/$^ERRNAME $res
+	echo ' #0.1'
+	vput vexpr res = \
+		0b0111111111111111111111111111111111111111111111111111111111111111
+	echo $?/$^ERRNAME $res
+	vput vexpr res = \
+		S0b1000000000000000000000000000000000000000000000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= \
+		S0b1000000000000000000000000000000000000000000000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = \
+		U0b1000000000000000000000000000000000000000000000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = \
+		0b1000000000000000000000000000000000000000000000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= \
+		0b1000000000000000000000000000000000000000000000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = \
+		-0b1000000000000000000000000000000000000000000000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = \
+		S0b1000000000000000000000000000000000000000000000000000000000000001
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= \
+		S0b1000000000000000000000000000000000000000000000000000000000000001
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= \
+		-0b1000000000000000000000000000000000000000000000000000000000000001
+	echo $?/$^ERRNAME $res
+	vput vexpr res = \
+		U0b1000000000000000000000000000000000000000000000000000000000000001
+	echo $?/$^ERRNAME $res
+	echo ' #0.2'
+	vput vexpr res = 0777777777777777777777
+	echo $?/$^ERRNAME $res
+	vput vexpr res = S01000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= S01000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = U01000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = 01000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= 01000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = -01000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = S01000000000000000000001
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= S01000000000000000000001
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= -01000000000000000000001
+	echo $?/$^ERRNAME $res
+	vput vexpr res = U01000000000000000000001
+	echo $?/$^ERRNAME $res
+	echo ' #0.3'
+	vput vexpr res = 0x7FFFFFFFFFFFFFFF
+	echo $?/$^ERRNAME $res
+	vput vexpr res = S0x8000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= S0x8000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = U0x8000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = 0x8000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= 0x8000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = -0x8000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = S0x8000000000000001
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= S0x8000000000000001
+	echo $?/$^ERRNAME $res
+   vput vexpr res @= -0x8000000000000001
+   echo $?/$^ERRNAME $res
+	vput vexpr res = u0x8000000000000001
 	echo $?/$^ERRNAME $res
 	echo ' #1'
 	vput vexpr res ~ 0
@@ -1939,7 +2024,7 @@ t_behave_vexpr() {
 	echo $?/$^ERRNAME $res
 	__EOT
 
-   check behave:vexpr-numeric 0 "${MBOX}" '1723609217 1048'
+   check behave:vexpr-numeric 0 "${MBOX}" '960821755 1962'
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
 	vput vexpr res find 'bananarama' 'nana'
