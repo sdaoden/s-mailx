@@ -631,23 +631,33 @@ n_idec_buf(void *resp, char const *cbuf, uiz_t clen, ui8_t base,
       if(base == 0){
          base = 10;
 
-         /* Support BASE#number prefix, where BASE is decimal 2-36 */
-         if(clen > 1){
-            char c1, c2;
+         /* Support BASE#number prefix, where BASE is decimal 2-36.
+          * Enter this only if anything is to follow after that prefix*/
+         if(clen > 2){
+            char c1, c2, c3;
 
             if(((c1 = cbuf[0]) >= '0' && c1 <= '9') &&
                   (((c2 = cbuf[1]) == '#') ||
-                   (c2 >= '0' && c2 <= '9' && clen > 2 && cbuf[2] == '#'))){
+                   (c2 >= '0' && c2 <= '9' && clen > 3 && cbuf[2] == '#'))){
                base = a_aux_idec_atoi[(ui8_t)c1];
-               if(c2 == '#')
-                  clen -= 2, cbuf += 2;
-               else{
-                  clen -= 3, cbuf += 3;
-                  base *= 10;
+               if(c2 == '#'){
+                  c3 = cbuf[2];
+               }else{
+                  c3 = cbuf[3];
+                  base *= 10; /* xxx Inline atoi decimal base */
                   base += a_aux_idec_atoi[(ui8_t)c2];
                }
-               if(base < 2 || base > 36)
-                  goto jeinval;
+
+               /* We do not interpret this as BASE#number at all if either we
+                * did not get a valid base or if the first char is not valid
+                * according to base, to comply to the latest interpretion of
+                * "prefix", see comment for standard prefixes below */
+               if(base < 2 || base > 36 || a_aux_idec_atoi[(ui8_t)c3] >= base)
+                  base = 10;
+               else if(c2 == '#')
+                  clen -= 2, cbuf += 2;
+               else
+                  clen -= 3, cbuf += 3;
             }
          }
       }
