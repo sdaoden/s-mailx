@@ -1816,13 +1816,13 @@ t_behave_vexpr() {
 	echo $?/$^ERRNAME $res
 	vput vexpr res = 9223372036854775808
 	echo $?/$^ERRNAME $res
-	vput vexpr res =@ 9223372036854775808
+	vput vexpr res @= 9223372036854775808
 	echo $?/$^ERRNAME $res
 	vput vexpr res = -9223372036854775808
 	echo $?/$^ERRNAME $res
 	vput vexpr res = -9223372036854775809
 	echo $?/$^ERRNAME $res
-	vput vexpr res =@ -9223372036854775809
+	vput vexpr res @= -9223372036854775809
 	echo $?/$^ERRNAME $res
 	echo ' #1'
 	vput vexpr res ~ 0
@@ -1843,26 +1843,26 @@ t_behave_vexpr() {
 	echo $?/$^ERRNAME $res
 	vput vexpr res + 9223372036854775807 1
 	echo $?/$^ERRNAME $res
-	vput vexpr res +@ 9223372036854775807 1
+	vput vexpr res @+ 9223372036854775807 1
 	echo $?/$^ERRNAME $res
 	vput vexpr res + 0 9223372036854775807
 	echo $?/$^ERRNAME $res
 	vput vexpr res + 1 9223372036854775807
 	echo $?/$^ERRNAME $res
-	vput vexpr res +@ 1 9223372036854775807
+	vput vexpr res @+ 1 9223372036854775807
 	echo $?/$^ERRNAME $res
 	echo ' #4'
 	vput vexpr res + -9223372036854775808 0
 	echo $?/$^ERRNAME $res
 	vput vexpr res + -9223372036854775808 -1
 	echo $?/$^ERRNAME $res
-	vput vexpr res +@ -9223372036854775808 -1
+	vput vexpr res @+ -9223372036854775808 -1
 	echo $?/$^ERRNAME $res
 	vput vexpr res + 0 -9223372036854775808
 	echo $?/$^ERRNAME $res
 	vput vexpr res + -1 -9223372036854775808
 	echo $?/$^ERRNAME $res
-	vput vexpr res +@ -1 -9223372036854775808
+	vput vexpr res @+ -1 -9223372036854775808
 	echo $?/$^ERRNAME $res
 	echo ' #5'
 	vput vexpr res - 0 0
@@ -1876,7 +1876,7 @@ t_behave_vexpr() {
 	echo $?/$^ERRNAME $res
 	vput vexpr res - 9223372036854775807 -1
 	echo $?/$^ERRNAME $res
-	vput vexpr res -@ 9223372036854775807 -1
+	vput vexpr res @- 9223372036854775807 -1
 	echo $?/$^ERRNAME $res
 	vput vexpr res - 0 9223372036854775807
 	echo $?/$^ERRNAME $res
@@ -1884,20 +1884,20 @@ t_behave_vexpr() {
 	echo $?/$^ERRNAME $res
 	vput vexpr res - -2 9223372036854775807
 	echo $?/$^ERRNAME $res
-	vput vexpr res -@ -2 9223372036854775807
+	vput vexpr res @- -2 9223372036854775807
 	echo $?/$^ERRNAME $res
 	echo ' #7'
 	vput vexpr res - -9223372036854775808 +0
 	echo $?/$^ERRNAME $res
 	vput vexpr res - -9223372036854775808 +1
 	echo $?/$^ERRNAME $res
-	vput vexpr res -@ -9223372036854775808 +1
+	vput vexpr res @- -9223372036854775808 +1
 	echo $?/$^ERRNAME $res
 	vput vexpr res - 0 -9223372036854775808
 	echo $?/$^ERRNAME $res
 	vput vexpr res - +1 -9223372036854775808
 	echo $?/$^ERRNAME $res
-	vput vexpr res -@ +1 -9223372036854775808
+	vput vexpr res @- +1 -9223372036854775808
 	echo $?/$^ERRNAME $res
 	echo ' #8'
 	vput vexpr res + -13 -2

@@ -7025,10 +7025,10 @@ as well as for the unsigned right shift
 .Ql >>> .
 .
 .Pp
-All numeric operators can be suffixed with a commercial at
+All numeric operators can be prefixed with a commercial at
 .Ql @ ,
 e.g.,
-.Ql *@ :
+.Ql @* :
 this will turn the operation into a saturated one, which means that
 overflow errors and division and modulo by zero are no longer reported
 via the exit status, but the result will linger at the minimum or
@@ -7040,7 +7040,7 @@ Any caught overflow will be reported via the error number
 as
 .Va ^ERR Ns -OVERFLOW .
 .Bd -literal -offset indent
-? vexpr -@ +1 -9223372036854775808
+? vexpr @- +1 -9223372036854775808
 ? echo $?/$!/$^ERRNAME
 .Ed
 .

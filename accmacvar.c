@@ -3177,10 +3177,10 @@ c_vexpr(void *v){ /* TODO POSIX expr(1) comp. exit status; overly complicat. */
       a_ERR = 1u<<0,
       a_SOFTOVERFLOW = 1u<<1,
       a_ISNUM = 1u<<2,
-      a_ISDECIMAL = 1u<<3, /* Print only decimal result */
+      a_ISDECIMAL = 1u<<3,    /* Print only decimal result */
       a_SATURATED = 1u<<4,
       a_ICASE = 1u<<5,
-      a_UNSIGNED = 1u<<6,  /* Unsigned right shift (share bit ok) */
+      a_UNSIGNED_OP = 1u<<6,  /* Unsigned right shift (share bit ok) */
       a_TMP = 1u<<30
    } f;
    NYD_ENTER;
@@ -3370,7 +3370,7 @@ jenum_plusminus:
                }
                if(op == '<')
                   lhv <<= (ui8_t)rhv;
-               else if(f & a_UNSIGNED)
+               else if(f & a_UNSIGNED_OP)
                   lhv = (ui64_t)lhv >> (ui8_t)rhv;
                else
                   lhv >>= (ui8_t)rhv;
@@ -3381,14 +3381,11 @@ jenum_plusminus:
       default:
          goto jesubcmd;
       }
-   }else if(cp[2] == '\0' && cp[1] == '@'){
-      f |= a_SATURATED;
-      op = cp[0];
-      goto jnumop;
    }else if(cp[0] == '<'){
       if(*++cp != '<')
          goto jesubcmd;
       if(*++cp == '@'){
+         n_OBSOLETE(_("`vexpr': please use @ modifier as prefix not suffix"));
          f |= a_SATURATED;
          ++cp;
       }
@@ -3401,10 +3398,11 @@ jenum_plusminus:
       if(*++cp != '>')
          goto jesubcmd;
       if(*++cp == '>'){
-         f |= a_UNSIGNED;
+         f |= a_UNSIGNED_OP;
          ++cp;
       }
       if(*cp == '@'){
+         n_OBSOLETE(_("`vexpr': please use @ modifier as prefix not suffix"));
          f |= a_SATURATED;
          ++cp;
       }
@@ -3412,6 +3410,36 @@ jenum_plusminus:
          goto jesubcmd;
       f |= a_TMP;
       op = '>';
+      goto jnumop;
+   }else if(cp[2] == '\0' && cp[1] == '@'){
+      n_OBSOLETE(_("`vexpr': please use @ modifier as prefix, not suffix"));
+      f |= a_SATURATED;
+      op = cp[0];
+      goto jnumop;
+   }else if(cp[0] == '@'){
+      f |= a_SATURATED;
+      op = *++cp;
+      if(*++cp != '\0'){
+         if(op != *cp)
+            goto jesubcmd;
+         switch(op){
+         case '<':
+            if(*++cp != '\0')
+               goto jesubcmd;
+            f |= a_TMP;
+            break;
+         case '>':
+            if(*++cp != '\0'){
+               if(*cp != '>' || *++cp != '\0')
+                  goto jesubcmd;
+               f |= a_UNSIGNED_OP;
+            }
+            f |= a_TMP;
+            break;
+         default:
+            goto jesubcmd;
+         }
+      }
       goto jnumop;
    }else if(is_asccaseprefix(cp, "length")){
       f |= a_ISNUM | a_ISDECIMAL;
