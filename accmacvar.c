@@ -3341,8 +3341,10 @@ jenum_plusminus:
                break;
             case '<':
             case '>':
-               if(!(f & a_TMP))
+               if(!(f & a_TMP)){
+                  argv -= 2;
                   goto jesubcmd;
+               }
                if(rhv > 63){ /* xxx 63? */
                   if(!(f & a_SATURATED))
                      goto jenum_overflow;
