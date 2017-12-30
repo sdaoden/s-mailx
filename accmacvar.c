@@ -3168,11 +3168,11 @@ c_environ(void *v){
 
 FL int
 c_vexpr(void *v){ /* TODO POSIX expr(1) comp. exit status; overly complicat. */
+   char pbase, op, iencbuf[2+1/* BASE# prefix*/ + n_IENC_BUFFER_SIZE + 1];
    size_t i;
    enum n_idec_state ids;
    enum n_idec_mode idm;
    si64_t lhv, rhv;
-   char op, varbuf[64 + 64 / 8 +1];
    char const **argv, *varname, *varres, *cp;
    enum{
       a_ERR = 1u<<0,
@@ -3182,6 +3182,7 @@ c_vexpr(void *v){ /* TODO POSIX expr(1) comp. exit status; overly complicat. */
       a_SATURATED = 1u<<4,
       a_ICASE = 1u<<5,
       a_UNSIGNED_OP = 1u<<6,  /* Unsigned right shift (share bit ok) */
+      a_PBASE = 1u<<7,        /* Print additional number base */
       a_TMP = 1u<<30
    } f;
    NYD_ENTER;
@@ -3190,6 +3191,7 @@ c_vexpr(void *v){ /* TODO POSIX expr(1) comp. exit status; overly complicat. */
    argv = v;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
    n_UNINIT(varres, n_empty);
+   n_UNINIT(pbase, '\0');
 
    if((cp = argv[0])[0] == '\0')
       goto jesubcmd;
@@ -3466,6 +3468,20 @@ jenum_plusminus:
          }
       }
       goto jnumop;
+   }else if(is_asccaseprefix(cp, "pbase")){
+      if(argv[1] == NULL || argv[2] == NULL || argv[3] != NULL)
+         goto jesynopsis;
+
+      if(((ids = n_idec_si8_cp(&pbase, argv[1], 0, NULL)
+               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+            ) != n_IDEC_STATE_CONSUMED || pbase < 2 || pbase > 36)
+         goto jenum_range;
+
+      f |= a_PBASE;
+      op = *(argv[0] = cp = "=");
+      argv[1] = argv[2];
+      argv[2] = NULL;
+      goto jnumop;
    }else if(is_asccaseprefix(cp, "length")){
       f |= a_ISNUM | a_ISDECIMAL;
       if(argv[1] == NULL || argv[2] != NULL)
@@ -3705,28 +3721,38 @@ jesubstring_len:
    /* Generate the variable value content for numerics.
     * Anticipate in our handling below!  (Don't do needless work) */
 jleave:
-   if((f & a_ISNUM) && ((f & a_ISDECIMAL) || varname != NULL)){
-      snprintf(varbuf, sizeof varbuf, "%" PRId64 , lhv);
-      varres = varbuf;
+   if((f & a_ISNUM) && ((f & (a_ISDECIMAL | a_PBASE)) || varname != NULL)){
+      cp = n_ienc_buf(iencbuf, lhv, (f & a_PBASE ? pbase : 10),
+            n_IENC_MODE_SIGNED_TYPE);
+      if(cp != NULL)
+         varres = cp;
+      else{
+         f |= a_ERR;
+         varres = n_empty;
+      }
    }
 
    if(varname == NULL){
       /* If there was no error and we are printing a numeric result, print some
        * more bases for the fun of it */
       if((f & (a_ERR | a_ISNUM | a_ISDECIMAL)) == a_ISNUM){
+         char binabuf[64 + 64 / 8 +1];
          size_t j;
 
          for(j = 1, i = 0; i < 64; ++i){
-            varbuf[63 + 64 / 8 -j - i] = (lhv & ((ui64_t)1 << i)) ? '1' : '0';
+            binabuf[63 + 64 / 8 -j - i] = (lhv & ((ui64_t)1 << i)) ? '1' : '0';
             if((i & 7) == 7 && i != 63){
                ++j;
-               varbuf[63 + 64 / 8 -j - i] = ' ';
+               binabuf[63 + 64 / 8 -j - i] = ' ';
             }
          }
-         varbuf[64 + 64 / 8 -1] = '\0';
+         binabuf[64 + 64 / 8 -1] = '\0';
+
          if(fprintf(n_stdout,
-               "0b %s\n0%" PRIo64 " | 0x%" PRIX64 " | %" PRId64 "\n",
-               varbuf, lhv, lhv, lhv) < 0){
+                  "0b %s\n0%" PRIo64 " | 0x%" PRIX64 " | %" PRId64 "\n",
+                  binabuf, lhv, lhv, lhv) < 0 ||
+               ((f & a_PBASE) && (assert(varres != NULL),
+                fprintf(n_stdout, "%s\n", varres) < 0))){
             n_pstate_err_no = n_err_no;
             f |= a_ERR;
          }
