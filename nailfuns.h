@@ -360,6 +360,11 @@ FL enum n_idec_state n_idec_buf(void *resp, char const *cbuf, uiz_t clen,
    n_idec_buf(RP, CBP, UIZ_MAX, B, (n_IDEC_MODE_SIGNED_TYPE), CLP)
 #endif
 
+/* Encode an integer value according to base (2-36) and mode iem, return
+ * pointer to starting byte or NULL on error */
+FL char *n_ienc_buf(char cbuf[n_IENC_BUFFER_SIZE], ui64_t value, ui8_t base,
+            enum n_ienc_mode iem);
+
 /* Hash the passed string -- uses Chris Torek's hash algorithm.
  * i*() hashes case-insensitively (ASCII), and *n() uses maximally len bytes;
  * if len is UIZ_MAX, we go .), since we anyway stop for NUL */

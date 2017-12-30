@@ -876,6 +876,20 @@ enum n_idec_state{
 };
 n_MCTA(n__IDEC_MODE_MASK <= (1u<<8) - 1, "Shared bit range overlaps")
 
+/* Buffer size needed by n_ienc_buf() including NUL and base prefixes */
+#define n_IENC_BUFFER_SIZE 80
+
+enum n_ienc_mode{
+   n_IENC_MODE_NONE,
+   n_IENC_MODE_SIGNED_TYPE = 1u<<1, /* Signedness correction etc. necessary */
+   n_IENC_MODE_SIGNED_PLUS = 1u<<2, /* Positive nubers shall have + prefix */
+   n_IENC_MODE_SIGNED_SPACE = 1u<<3, /* Ditto, ASCII SPC (lesser priority) */
+   n_IENC_MODE_NO_PREFIX = 1u<<4,   /* No base prefixes shall be written */
+   n_IENC_MODE_LOWERCASE = 1u<<5,   /* Use lowercase letters (not prefix) */
+   n__IENC_MODE_SHIFT = 6u,
+   n__IENC_MODE_MASK = (1u<<n__IENC_MODE_SHIFT) - 1
+};
+
 enum mimecontent {
    MIME_UNKNOWN,     /* unknown content */
    MIME_SUBHDR,      /* inside a multipart subheader */

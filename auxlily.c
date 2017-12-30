@@ -138,6 +138,20 @@ static ui64_t const a_aux_idec_cutlimit[35] = {
 };
 #undef a_X
 
+/* IENC: is power-of-two table, and if, shift (indexed by base-2) */
+static ui8_t const a_aux_ienc_shifts[35] = {
+         1, 0, 2, 0, 0, 0, 3, 0,   /*  2 ..  9 */
+   0, 0, 0, 0, 0, 0, 4, 0, 0, 0,   /* 10 .. 19 */
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   /* 20 .. 29 */
+   0, 0, 5, 0, 0, 0, 0             /* 30 .. 36 */
+};
+
+/* IENC: integer to byte lookup tables */
+static char const a_aux_ienc_itoa_upper[36] =
+      "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+static char const a_aux_ienc_itoa_lower[36] =
+      "0123456789abcdefghijklmnopqrstuvwxyz";
+
 /* Include the constant make-errors.sh output */
 #include <gen-errors.h>
 
@@ -836,6 +850,95 @@ j_maxval:
       res = UI64_MAX;
    rv &= ~n_IDEC_STATE_SEEN_MINUS;
    goto jleave;
+}
+
+FL char *
+n_ienc_buf(char cbuf[n_IENC_BUFFER_SIZE], ui64_t value, ui8_t base,
+      enum n_ienc_mode iem){
+   enum{a_ISNEG = 1u<<n__IENC_MODE_SHIFT};
+
+   ui8_t shiftmodu;
+   char const *itoa;
+   char *rv;
+   NYD_ENTER;
+
+   iem &= n__IENC_MODE_MASK;
+
+   assert(base != 1 && base <= 36);
+   /*if(base == 1 || base > 36){
+    *   rv = NULL;
+    *   goto jleave;
+    *}*/
+
+   rv = &cbuf[n_IENC_BUFFER_SIZE];
+   *--rv = '\0';
+   itoa =  (iem & n_IENC_MODE_LOWERCASE) ? a_aux_ienc_itoa_lower
+         : a_aux_ienc_itoa_upper;
+
+   if((si64_t)value < 0){
+      iem |= a_ISNEG;
+      if(iem & n_IENC_MODE_SIGNED_TYPE){
+         /* self->is_negative = TRU1; */
+         value = -value;
+      }
+   }
+
+   if((shiftmodu = a_aux_ienc_shifts[base - 2]) != 0){
+      --base; /* convert to mask */
+      do{
+         *--rv = itoa[value & base];
+         value >>= shiftmodu;
+      }while(value != 0);
+
+      if(!(iem & n_IENC_MODE_NO_PREFIX)){
+         /* self->before_prefix = cp; */
+         if(shiftmodu == 4)
+            *--rv = 'x';
+         else if(shiftmodu == 1)
+            *--rv = 'b';
+         else if(shiftmodu != 3){
+            ++base; /* Reconvert from mask */
+            goto jnumber_sign_prefix;
+         }
+         *--rv = '0';
+      }
+   }else{
+      do{
+         shiftmodu = value % base;
+         value /= base;
+         *--rv = itoa[shiftmodu];
+      }while(value != 0);
+
+      if(!(iem & n_IENC_MODE_NO_PREFIX) && base != 10){
+jnumber_sign_prefix:
+         value = base;
+         base = 10;
+         *--rv = '#';
+         do{
+            shiftmodu = value % base;
+            value /= base;
+            *--rv = itoa[shiftmodu];
+         }while(value != 0);
+      }
+
+      if(iem & n_IENC_MODE_SIGNED_TYPE){
+         char c;
+
+         if(iem & a_ISNEG)
+            c = '-';
+         else if(iem & n_IENC_MODE_SIGNED_PLUS)
+            c = '+';
+         else if(iem & n_IENC_MODE_SIGNED_SPACE)
+            c = ' ';
+         else
+            c = '\0';
+
+         if(c != '\0')
+            *--rv = c;
+      }
+   }
+   NYD_LEAVE;
+   return rv;
 }
 
 FL ui32_t
