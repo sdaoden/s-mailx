@@ -6,7 +6,7 @@
  *@ TODO generic parser.  But at least a bit.
  *@ TODO See cmd-tab.h for sort and speedup TODOs.
  *
- * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /* Command table and getrawlist() also:
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.

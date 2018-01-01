@@ -8,7 +8,7 @@
  *@ - update the *termcap* member documentation on changes!
  *@ Bug: in case of clashes of two-letter names terminfo(5) wins.
  *
- * Copyright (c) 2016 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2016 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
