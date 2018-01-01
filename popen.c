@@ -599,11 +599,10 @@ n_fopen_any(char const *file, char const *oflags, /* TODO should take flags */
          /* Cause truncation for compressor/hook output files */
          osflags &= ~O_APPEND;
          rof &= ~OF_APPEND;
-         if((infd = open(file, (omode & W_OK ? O_RDWR : O_RDONLY))) == -1){
-            if(!(osflags & O_CREAT) || n_err_no != n_ERR_NOENT)
-               goto jleave;
-         }
-         fs |= n_FOPEN_STATE_EXISTS;
+         if((infd = open(file, (omode & W_OK ? O_RDWR : O_RDONLY))) != -1)
+            fs |= n_FOPEN_STATE_EXISTS;
+         else if(!(osflags & O_CREAT) || n_err_no != n_ERR_NOENT)
+            goto jleave;
       }else{
          /*flags |= FP_RAW;*/
          rv = Fopen(file, oflags);
