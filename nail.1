@@ -7336,7 +7336,24 @@ is set, then return to the message.
 .
 .Mx
 .It Ic ~.
-Same effect as typing the end-of-file character.
+End compose mode and send the message.
+The hooks
+.Va on-compose-splice-shell
+and
+.Va on-compose-splice ,
+in order, will be called when set, after which
+.Va askatend
+will be checked, a set
+.Va on-compose-leave
+hook will be called,
+.Va autocc
+and
+.Va autobcc
+will be joined in if set,
+.Va asksend
+will be honoured in interactive mode, finally a given
+.Va message-inject-tail
+will be incorporated, after which the compose mode is left.
 .
 .Mx
 .It Ic ~: Ar \*(UA-command Ns \0or Ic ~_ Ar \*(UA-command
