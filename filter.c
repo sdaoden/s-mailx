@@ -522,18 +522,19 @@ enum hf_limits {
 };
 
 enum hf_flags {
-   _HF_UTF8    = 1<<0,     /* Data is in UTF-8 */
-   _HF_ERROR   = 1<<1,     /* A hard error occurred, bail as soon as possible */
-   _HF_NOPUT   = 1<<2,     /* (In a tag,) Don't generate output */
-   _HF_IGN     = 1<<3,     /* Ignore mode on */
-   _HF_ANY     = 1<<4,     /* Yet seen just any output */
-   _HF_PRE     = 1<<5,     /* In <pre>formatted mode */
-   _HF_ENT     = 1<<6,     /* Currently parsing an entity */
-   _HF_BLANK   = 1<<7,     /* Whitespace last */
-   _HF_HREF    = 1<<8,     /* External <a href=> was the last href seen */
+   _HF_BQUOTE_MASK = 0xFFFFu,
+   _HF_UTF8 = 1u<<16,   /* Data is in UTF-8 */
+   _HF_ERROR = 1u<<17,  /* A hard error occurred, bail as soon as possible */
+   _HF_NOPUT = 1u<<18,  /* (In a tag,) Don't generate output */
+   _HF_IGN = 1u<<19,    /* Ignore mode on */
+   _HF_ANY = 1u<<20,    /* Yet seen just any output */
+   _HF_PRE = 1u<<21,    /* In <pre>formatted mode */
+   _HF_ENT = 1u<<22,    /* Currently parsing an entity */
+   _HF_BLANK = 1u<<23,  /* Whitespace last */
+   _HF_HREF = 1u<<24,   /* External <a href=> was the last href seen */
 
-   _HF_NL_1    = 1<<9,     /* One \n seen */
-   _HF_NL_2    = 2<<9,     /* We have produced an all empty line */
+   _HF_NL_1 = 1u<<25,   /* One \n seen */
+   _HF_NL_2 = 2u<<25,   /* We have produced an all empty line */
    _HF_NL_MASK = _HF_NL_1 | _HF_NL_2
 };
 
@@ -545,7 +546,9 @@ enum hf_special_actions {
    _HFSA_PRE_END  = -5,
    _HFSA_IMG      = -6,    /* <img> */
    _HFSA_HREF     = -7,    /* <a>.. */
-   _HFSA_HREF_END = -8
+   _HFSA_HREF_END = -8,
+   _HFSA_BQUOTE   = -9,    /* <blockquote>, interpreted as citation! */
+   _HFSA_BQUOTE_END = -10
 };
 
 enum hf_entity_flags {
@@ -587,6 +590,10 @@ static struct htmlflt_tag const  _hf_tags[] = {
 # undef _XC
 # define _X(S,A)     {A, '\0', sizeof(S) -1, S "\0"}
 # define _XC(S,C,A)  {A, C, sizeof(S) -1, S "\0"}
+
+# if 0 /* This is treated very special (to avoid wasting space in .hft_tag) */
+   _X("BLOCKQUOTE", _HFSA_BQUOTE), _X("/BLOCKQUOTE", _HFSA_BQUOTE_END),
+# endif
 
    _X("P", _HFSA_NEEDSEP),       _X("/P", _HFSA_NEEDNL),
    _X("DIV", _HFSA_NEEDSEP),     _X("/DIV", _HFSA_NEEDNL),
@@ -782,13 +789,39 @@ jleave:
 static struct htmlflt *
 _hf_store(struct htmlflt *self, char c)
 {
-   ui32_t f, l, i;
+   ui32_t l, i;
    NYD2_ENTER;
 
    assert(c != '\n');
 
-   f = self->hf_flags;
    l = self->hf_len;
+   if(n_UNLIKELY(l == 0) && (i = (self->hf_flags & _HF_BQUOTE_MASK)) != 0 &&
+         self->hf_lmax > _HF_MINLEN){
+      ui32_t len, j;
+      char const *ip;
+
+      ip = ok_vlook(indentprefix);
+      len = strlen(ip);
+      if(len == 0 || len >= _HF_MINLEN){
+         ip = "   |"; /* XXX something from *quote-chars* */
+         len = sizeof("   |") -1;
+      }
+
+      self->hf_len = len;
+      for(j = len; j-- != 0;){
+         char x;
+
+         if((x = ip[j]) == '\t')
+            x = ' ';
+         self->hf_line[j] = x;
+      }
+
+      while(--i > 0 && self->hf_len < self->hf_lmax - _HF_BRKSUB)
+         self = _hf_store(self, '|'); /* XXX something from *quote-chars* */
+
+      l = self->hf_len;
+   }
+
    self->hf_line[l] = (c == '\t' ? ' ' : c);
    self->hf_len = ++l;
    if (blankspacechar(c)) {
@@ -842,10 +875,11 @@ _hf_store(struct htmlflt *self, char c)
 
    /* Do we need to break the line? */
    if (i >= self->hf_lmax - _HF_BRKSUB) {
-      ui32_t lim = self->hf_lmax >> 1;
+      ui32_t f, lim;
+
 
       /* Let's hope we saw a sane place to break this line! */
-      if (self->hf_last_ws >= lim) {
+      if (self->hf_last_ws >= (lim = self->hf_lmax >> 1)) {
 jput:
          i = self->hf_len = self->hf_last_ws;
          self = _hf_dump(self);
@@ -860,6 +894,7 @@ jput:
       }
 
       /* Any 7-bit characters? */
+      f = self->hf_flags;
       for (i = l; i-- >= lim;)
          if (asciichar((c = self->hf_line[i]))) {
             self->hf_last_ws = ++i;
@@ -1202,8 +1237,37 @@ jput_as_is:
          if (c == '>' || c == '/' || whitechar(c))
             break;
       }
-      if (PTRCMP(++hftp, >=, _hf_tags + n_NELEM(_hf_tags)))
-         goto jnotknown;
+      if (n_UNLIKELY(PTRCMP(++hftp, >=, _hf_tags + n_NELEM(_hf_tags)))){
+         /* A <blockquote> is very special xxx */
+         bool_t isct;
+
+         if((isct = (i > 1 && *s == '/'))){
+            ++s;
+            --i;
+         }
+
+         if(i != sizeof("blockquote") -1 || ascncasecmp(s, "blockquote", i) ||
+               ((c = s[sizeof("blockquote") -1]) != '>' && !whitechar(c))){
+            s -= isct;
+            i += isct;
+            goto jnotknown;
+         }
+
+         if(!isct && !(self->hf_flags & _HF_NL_2))
+            self = _hf_nl(self);
+         if(!(self->hf_flags & _HF_NL_1))
+            self = _hf_nl(self);
+         f = self->hf_flags;
+         f &= _HF_BQUOTE_MASK;
+         if(!isct){
+            if(f != _HF_BQUOTE_MASK)
+               ++f;
+         }else if(f > 0)
+            --f;
+         f |= (self->hf_flags & ~_HF_BQUOTE_MASK);
+         self->hf_flags = f;
+         goto jleave;
+      }
    }
 
    f = self->hf_flags;
