@@ -26,6 +26,14 @@
 
 #include "nail.h"
 
+#if defined HAVE_PRCTL_DUMPABLE
+# include <sys/prctl.h>
+#elif defined HAVE_PTRACE_DENY
+# include <sys/ptrace.h>
+#elif defined HAVE_SETPFLAGS_PROTECT
+# include <priv.h>
+#endif
+
 static void _ign_signal(int signum);
 static uiz_t n_msleep(uiz_t millis, bool_t ignint);
 
@@ -159,6 +167,18 @@ jeuse:
       goto jmsg;
 
    dls = n_DLS_PRIVFAILED | n_DLS_ABANDON;
+
+   /* We are SETUID and do not want to become traced or being attached to */
+#if defined HAVE_PRCTL_DUMPABLE
+   if(prctl(PR_SET_DUMPABLE, 0))
+      goto jmsg;
+#elif defined HAVE_PTRACE_DENY
+   if(ptrace(PT_DENY_ATTACH, 0, 0, 0) == -1)
+      goto jmsg;
+#elif defined HAVE_SETPFLAGS_PROTECT
+   if(setpflags(__PROC_PROTECT, 1))
+      goto jmsg;
+#endif
 
    /* This privsep helper only gets executed when needed, it thus doesn't make
     * sense to try to continue with initial privileges */

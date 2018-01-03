@@ -1840,7 +1840,7 @@ int main(void){
 }
 !
 
-if run_check realpath 'realpath(3)' '#define HAVE_REALPATH' << \!
+if link_check realpath 'realpath(3)' '#define HAVE_REALPATH' << \!
 #include <stdlib.h>
 int main(void){
    char x_buf[4096], *x = realpath(".", x_buf);
@@ -1900,6 +1900,46 @@ int main(void){
       :
    else
       feat_bail_required DOTLOCK
+   fi
+fi
+
+if feat_yes DOTLOCK; then
+   if run_check prctl_dumpable 'prctl(2) + PR_SET_DUMPABLE' \
+         '#define HAVE_PRCTL_DUMPABLE' << \!
+#include <sys/prctl.h>
+# include <errno.h>
+int main(void){
+   if(!prctl(PR_SET_DUMPABLE, 0) || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+   then
+      :
+   elif run_check prtrace_deny 'ptrace(2) + PT_DENY_ATTACH' \
+         '#define HAVE_PTRACE_DENY' << \!
+#include <sys/ptrace.h>
+# include <errno.h>
+int main(void){
+   if(ptrace(PT_DENY_ATTACH, 0, 0, 0) != -1 || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+   then
+      :
+   elif run_check setpflags_protect 'setpflags(2) + __PROC_PROTECT' \
+         '#define HAVE_SETPFLAGS_PROTECT' << \!
+#include <priv.h>
+# include <errno.h>
+int main(void){
+   if(!setpflags(__PROC_PROTECT, 1) || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+   then
+      :
    fi
 fi
 
