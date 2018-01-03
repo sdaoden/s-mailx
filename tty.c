@@ -850,7 +850,7 @@ static char const *a_tty_hist__query_config(void);
 static void a_tty_term_rawmode_timeout(struct a_tty_line *tlp, bool_t enable);
 # endif
 
-/* 0-X (2), UI8_MAX == \t / TAB */
+/* 0-X (2), UI8_MAX == \t / HT */
 static ui8_t a_tty_wcwidth(wchar_t wc);
 
 /* Memory / cell / word generics */
@@ -1576,12 +1576,12 @@ a_tty_vi__paint(struct a_tty_line *tlp){
       --cur;
 
    w = (tcp_left = tccp = tlp->tl_line.cells + cur)->tc_width;
-   if(w == UI8_MAX) /* TODO yet TAB == SPC */
+   if(w == UI8_MAX) /* TODO yet HT == SPACE */
       w = 1;
    while(tcp_left > tlp->tl_line.cells){
       ui16_t cw = tcp_left[-1].tc_width;
 
-      if(cw == UI8_MAX) /* TODO yet TAB == SPC */
+      if(cw == UI8_MAX) /* TODO yet HT == SPACE */
          cw = 1;
       if(w + cw >= phy_wid)
          break;
@@ -1612,7 +1612,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
       ui16_t cw = tccp[1].tc_width;
       ui32_t i;
 
-      if(cw == UI8_MAX) /* TODO yet TAB == SPC */
+      if(cw == UI8_MAX) /* TODO yet HT == SPACE */
          cw = 1;
       i = w + cw;
       if(i > phy_wid)
@@ -1640,7 +1640,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
          for(tcxp = tcp_left;;){
             ui32_t i = tcxp[-1].tc_width;
 
-            if(i == UI8_MAX) /* TODO yet TAB == SPC */
+            if(i == UI8_MAX) /* TODO yet HT == SPACE */
                i = 1;
             vil1 += i;
             i += w;
@@ -1767,7 +1767,7 @@ jpaint:
          cw = 1;
       }
 
-      if(cw == UI8_MAX) /* TODO yet TAB == SPC */
+      if(cw == UI8_MAX) /* TODO yet HT == SPACE */
          cw = 1;
       w += cw;
       if(tcp_left == tccp)
@@ -1827,7 +1827,7 @@ jpaint:
    else if(cur != cnt){
       ui16_t cw = tccp->tc_width;
 
-      if(cw == UI8_MAX) /* TODO yet TAB == SPC */
+      if(cw == UI8_MAX) /* TODO yet HT == SPACE */
          cw = 1;
       phy_nxtcur -= cw;
    }

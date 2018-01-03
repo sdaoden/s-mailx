@@ -198,7 +198,7 @@ n_CTA(a_AMV_MF__MAX <= UI8_MAX, "Enumeration excesses storage datatype");
 
 struct a_amv_mac_line{
    ui32_t aml_len;
-   ui32_t aml_prespc;   /* Number of leading SPC, for display purposes */
+   ui32_t aml_prespc;   /* Number of leading SPACEs, for display purposes */
    char aml_dat[n_VFIELD_SIZE(0)];
 };
 

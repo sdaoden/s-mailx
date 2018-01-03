@@ -400,7 +400,7 @@ a_termcap_init_altern(void){
 #endif
 
 #ifdef HAVE_MLE
-   /* ce == ch + [:SPC:] (start column specified by argument) */
+   /* ce == ch + [:SPACE:] (start column specified by argument) */
    tep = &a_termcap_g->tg_ents[n_TERMCAP_CMD_ce];
    if(!a_OOK(tep))
       a_SET(tep, n_TERMCAP_CMD_ce, TRU1);
@@ -807,7 +807,7 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
 #endif
 
 #ifdef HAVE_MLE
-      case n_TERMCAP_CMD_ce: /* ce == ch + [:SPC:] */
+      case n_TERMCAP_CMD_ce: /* ce == ch + [:SPACE:] */
          if(a1 > 0)
             --a1;
          if((rv = n_termcap_cmd(n_TERMCAP_CMD_ch, a1, 0)) > 0){

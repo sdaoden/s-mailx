@@ -883,7 +883,7 @@ enum n_ienc_mode{
    n_IENC_MODE_NONE,
    n_IENC_MODE_SIGNED_TYPE = 1u<<1, /* Signedness correction etc. necessary */
    n_IENC_MODE_SIGNED_PLUS = 1u<<2, /* Positive nubers shall have + prefix */
-   n_IENC_MODE_SIGNED_SPACE = 1u<<3, /* Ditto, ASCII SPC (lesser priority) */
+   n_IENC_MODE_SIGNED_SPACE = 1u<<3, /* Ditto, ASCII SPACE (lesser priority) */
    n_IENC_MODE_NO_PREFIX = 1u<<4,   /* No base prefixes shall be written */
    n_IENC_MODE_LOWERCASE = 1u<<5,   /* Use lowercase letters (not prefix) */
    n__IENC_MODE_SHIFT = 6u,
