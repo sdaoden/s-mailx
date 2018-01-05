@@ -2824,7 +2824,7 @@ t_behave_filetype() {
             ${MAILX} ${ARGS} -X'filetype gz gzip\ -dc gzip\ -c'
       } > ./.t.out 2>&1
       check behave:filetype-2 - "./.t.mbox" '1594682963 13520'
-      check behave:filetype-3 - "./.t.out" '2494681730 102'
+      check behave:filetype-3 - "./.t.out" '2392348396 102'
    else
       echo 'behave:filetype-2: unsupported, skipped'
       echo 'behave:filetype-3: unsupported, skipped'
@@ -2847,7 +2847,7 @@ t_behave_filetype() {
             -X'filetype mbox.gz "${sed} 1,3d|${cat}" kill\ 0'
    } > ./.t.out 2>&1
    check behave:filetype-4 - "./.t.mbox" '2886541147 27060'
-   check behave:filetype-5 - "./.t.out" '838452520 172'
+   check behave:filetype-5 - "./.t.out" '852335377 172'
 
    t_epilog
 }
