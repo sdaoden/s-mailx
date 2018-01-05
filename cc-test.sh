@@ -4338,7 +4338,7 @@ t_behave_iconv_mainbody() {
             i=1
          fi
       elif [ x"${j}" = 'x?' ]; then
-         i=2
+         i=4
       elif [ x"${j}" = 'x*' ]; then
          i=3
       fi
