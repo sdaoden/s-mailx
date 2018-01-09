@@ -1309,7 +1309,7 @@ jrestart:
             /* A sole <reverse solidus> at EOS is treated as-is!  This is ok
              * since the "closing quote" error will occur next, anyway */
             if(il == 0)
-               break;
+               ;
             else if((c2 = *ib) == quotec){
                --il, ++ib;
                c = quotec;

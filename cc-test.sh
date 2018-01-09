@@ -665,6 +665,16 @@ t_behave_wysh() {
    < "${BODY}" DIET=CURD TIED= ${MAILX} ${ARGS} > "${MBOX}" 2>/dev/null
    check behave:wysh_c 0 "${MBOX}" '1473887148 321'
 
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
+   wysh set mager='\hey\'
+   varshow mager
+   wysh set mager="\hey\\"
+   varshow mager
+   wysh set mager=$'\hey\\'
+   varshow mager
+	__EOT
+   check behave:wysh-3 0 "${MBOX}" '1289698238 69'
+
    t_epilog
 }
 
