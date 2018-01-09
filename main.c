@@ -857,18 +857,45 @@ jeMmq:
          break;
       case 'S':
          n_poption |= n_PO_S_FLAG_TEMPORARY;
-jsetvar: /* Set variable */
-         {  char const *a[2];
+jsetvar: /* Set variable TODO optimize v15-compat case */
+         {  struct str sin;
+            struct n_string s, *sp;
+            char const *a[2];
             bool_t b;
 
-            okey = a[0] = a_main_oarg;
+            if(!ok_blook(v15_compat)){
+               okey = a[0] = a_main_oarg;
+               sp = NULL;
+            }else{
+               enum n_shexp_state shs;
+
+               n_autorec_relax_create();
+               sp = n_string_creat_auto(&s);
+               sin.s = n_UNCONST(a_main_oarg);
+               sin.l = UIZ_MAX;
+               shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
+                     n_SHEXP_PARSE_IGNORE_EMPTY |
+                     n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
+                     n_SHEXP_PARSE_QUOTE_AUTO_DSQ), sp, &sin, NULL);
+               if((shs & n_SHEXP_STATE_ERR_MASK) ||
+                     !(shs & n_SHEXP_STATE_STOP)){
+                  n_autorec_relax_gut();
+                  goto je_S;
+               }
+               okey = a[0] = n_string_cp_const(sp);
+            }
+
             a[1] = NULL;
             n_pstate |= n_PS_ROBOT;
             b = (c_set(a) == 0);
             n_pstate &= ~(n_PS_ROOT | n_PS_ROBOT);
             n_poption &= ~n_PO_S_FLAG_TEMPORARY;
+
+            if(sp != NULL)
+               n_autorec_relax_gut();
             if(!b && (ok_blook(errexit) || ok_blook(posix))){
-               emsg = N_("-S failed to adjust variable");
+je_S:
+               emsg = N_("-S failed to set variable");
                goto jusage;
             }
          }

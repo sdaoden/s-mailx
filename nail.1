@@ -556,7 +556,12 @@ as documented in
 .Ar var Ns
 iable and optionally assign
 .Ar value ,
-if supported.
+if supported; \*(ID the entire expression is evaluated as if specified
+within dollar-single-quotes (see
+.Sx "Shell-style argument quoting" )
+if the internal variable
+.Va v15-compat
+is set.
 If the operation fails the program will exit if any of
 .Va errexit
 or
@@ -7143,7 +7148,7 @@ terminal.
 the regular expression given as the second argument.
 If the optional third argument has been given then instead of showing
 the match offset a replacement operation is performed: the third
-argument is treated as if specified via dollar-single-quote (see
+argument is treated as if specified within dollar-single-quote (see
 .Sx "Shell-style argument quoting" ) ,
 and any occurrence of a positional parameter, e.g.,
 .Va 1 ,
@@ -10523,8 +10528,8 @@ just as if the surrounding part was of type
 .Mx
 .It Va prompt
 The string used as a prompt in interactive mode.
-Whenever the variable is evaluated the value is expanded as via
-dollar-single-quote expansion (see
+Whenever the variable is evaluated the value is treated as if specified
+within dollar-single-quotes (see
 .Sx "Shell-style argument quoting" ) .
 This (post-assignment, i.e., second) expansion can be used to embed
 status information, for example
