@@ -4366,7 +4366,7 @@ t_behave_iconv_mainbody() {
       -s '–' over-the@rain.bow 2>./.terr
    exn0_test behave:iconv_mainbody-3
    check behave:iconv_mainbody-3 - "${MBOX}" '3634015017 251'
-   check behave:iconv_mainbody-4 - ./.terr '1960148192 128'
+   check behave:iconv_mainbody-4 - ./.terr '2579894983 148'
 
    printf 'p\nx\n' | ${MAILX} ${ARGS} -Rf "${MBOX}" >./.tout 2>./.terr
    j=${?}

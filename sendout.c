@@ -1872,7 +1872,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
          continue;
       }
 
-      n_perr(_("Failed to create encoded message"), err);
+      n_perr(_("Cannot find a usable character set to encode message"), err);
       n_pstate_err_no = n_ERR_NOTSUP;
       goto jfail_dead;
    }
