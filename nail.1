@@ -4620,7 +4620,8 @@ Encrypted messages are first decrypted, if possible, and then copied.
 The latter command deletes the given macro, the special name
 .Ql *
 will discard all existing macros.
-Deletion of (a) macro(s) can be performed from within running macro(s).
+Deletion of (a) macro(s) can be performed from within running (a)
+macro(s), including self-deletion.
 Without arguments the former command prints the current list of macros,
 including their content, otherwise it it defines a macro, replacing an
 existing one of the same name as applicable.
@@ -4664,8 +4665,8 @@ to the macro's scope, and may be accessed via the variables
 .Va #
 and
 .Va 1
-as well as any other positive unsigned decimal number (less than
-.Va # ) .
+and any other positive unsigned decimal number less than or equal to
+.Va # .
 Positional parameters can be
 .Ic shift Ns
 ed, or become completely replaced, removed etc. via
@@ -12058,15 +12059,15 @@ Unsetting it does not restore the former state of the covered settings.
 .
 .Mx
 .It Va umask
-For a safety-by-default policy \*(UA sets its process
+For a safe-by-default policy the process file mode creation mask
 .Xr umask 2
-to
-.Ql 0077 ,
-but this variable can be used to override that:
-set it to an empty value to do not change the (current) setting (on
-startup), otherwise the process file mode creation mask is updated to
-the new value.
-Child processes inherit the process file mode creation mask.
+will be set to
+.Ql 0077
+on program startup by default.
+Child processes inherit the file mode creation mask of their parent, and
+by setting this variable to an empty value no change will be applied,
+and the inherited value will be used.
+Otherwise the given value will be made the new file mode creation mask.
 .
 .Mx Va user
 .It Va user-HOST , user
