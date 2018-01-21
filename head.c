@@ -377,12 +377,9 @@ jaddr_check:
          in_quote = !in_quote;
       } else if (c.u < 040 || c.u >= 0177) { /* TODO no magics: !bodychar()? */
 #ifdef HAVE_IDNA
-         if (in_domain && use_idna > 0) {
-            if (use_idna == 1)
-               NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_IDNA,
-                  c.u);
+         if (in_domain && use_idna > 0)
             use_idna = 2;
-         } else
+         else
 #endif
             break;
       } else if (in_domain == 2) {
@@ -454,11 +451,6 @@ jaddr_check:
          NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_ATSEQ, c.u);
          goto jleave;
       }
-
-#ifdef HAVE_IDNA
-      if(use_idna == 2)
-         agp = a_head_idna_apply(agp);
-#endif
 
       cp = agp->ag_input;
 
@@ -858,7 +850,10 @@ jput_quote_esc:
          if (c.c == '"') {
             in_quote = !in_quote;
          } else if (c.u < 040 || c.u >= 0177) {
-               break;
+#ifdef HAVE_IDNA
+               if(!in_domain)
+#endif
+                  break;
          } else if (in_domain == 2) {
             if ((c.c == ']' && *p != '\0') || c.c == '\\' || whitechar(c.c))
                break;
@@ -887,9 +882,12 @@ jput_quote_esc:
          NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_ATSEQ,
             p[-1]);
    }
+
 jleave:
+   if(!(agp->ag_n_flags & NAME_ADDRSPEC_INVALID) && use_idna == 2)
+      agp = a_head_idna_apply(agp);
    NYD_LEAVE;
-   return ((agp->ag_n_flags & NAME_ADDRSPEC_INVALID) == 0);
+   return !(agp->ag_n_flags & NAME_ADDRSPEC_INVALID);
 }
 
 static long

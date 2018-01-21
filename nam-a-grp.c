@@ -1849,6 +1849,7 @@ jleave:
 FL int
 c_addrcodec(void *vp){
    struct n_addrguts ag;
+   struct str trims;
    struct n_string s_b, *sp;
    size_t alen;
    int mode;
@@ -1875,14 +1876,11 @@ c_addrcodec(void *vp){
    if(*cp != '\0')
       ++cp;
 
-   /* C99 */{
-      size_t i;
-
-      i = strlen(cp);
-      if(i <= UIZ_MAX / 4)
-         i <<= 1;
-      sp = n_string_reserve(sp, i);
-   }
+   trims.l = strlen(trims.s = n_UNCONST(cp));
+   cp = savestrbuf(n_str_trim(&trims, n_STR_TRIM_BOTH)->s, trims.l);
+   if(trims.l <= UIZ_MAX / 4)
+         trims.l <<= 1;
+   sp = n_string_reserve(sp, trims.l);
 
    n_pstate_err_no = n_ERR_NONE;
 

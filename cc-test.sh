@@ -1773,6 +1773,35 @@ t_behave_addrcodec() {
 
    check behave:addrcodec-2 0 "${MBOX}" '1391779299 104'
 
+   if have_feat idna; then
+      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} ${ADDARG_UNI} > "${MBOX}" 2>&1
+      vput addrcodec res e    (heu) <du@blödiän> "stroh" du   
+      echo $?/$^ERRNAME $res
+      eval vput addrcodec res d $res
+      echo $?/$^ERRNAME $res
+      vput addrcodec res e       <du@blödiän>   du     
+      echo $?/$^ERRNAME $res
+      eval vput addrcodec res d $res
+      echo $?/$^ERRNAME $res
+      vput addrcodec res e     du    <du@blödiän>   
+      echo $?/$^ERRNAME $res
+      eval vput addrcodec res d $res
+      echo $?/$^ERRNAME $res
+      vput addrcodec res e        <du@blödiän>    
+      echo $?/$^ERRNAME $res
+      eval vput addrcodec res d $res
+      echo $?/$^ERRNAME $res
+      vput addrcodec res e        du@blödiän    
+      echo $?/$^ERRNAME $res
+      eval vput addrcodec res d $res
+      echo $?/$^ERRNAME $res
+		__EOT
+
+      check behave:addrcodec-idna 0 "${MBOX}" '498775983 326'
+   else
+      printf 'behave:addrcodec-idna: unsupported, skipped\n'
+   fi
+
    t_epilog
 }
 
@@ -1909,7 +1938,7 @@ t_behave_vexpr() {
 
    check behave:vexpr-numeric 0 "${MBOX}" '1723609217 1048'
 
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" #2>/dev/null
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
 	vput vexpr res find 'bananarama' 'nana'
 	echo $?/$^ERRNAME :$res:
 	vput vexpr res find 'bananarama' 'bana'
@@ -1995,7 +2024,7 @@ t_behave_vexpr() {
    check behave:vexpr-string 0 "${MBOX}" '3182004322 601'
 
    if have_feat regex; then
-      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" #2>/dev/null
+      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
 		vput vexpr res regex 'bananarama' 'nana'
 		echo $?/$^ERRNAME :$res:
 		vput vexpr res regex 'bananarama' 'bana'
