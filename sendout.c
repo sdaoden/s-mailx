@@ -1854,7 +1854,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    if((dosign || count_nonlocal(to) > 0) &&
          !_sendbundle_setup_creds(&sb, (dosign > 0))){
       /* TODO saving $DEAD and recovering etc is not yet well defined */
-      assert(n_pstate_err_no == n_ERR_INVAL);
+      n_pstate_err_no = n_ERR_INVAL;
       goto jfail_dead;
    }
 
@@ -2378,6 +2378,7 @@ resend_msg(struct message *mp, struct header *hp, bool_t add_resent)
    if(!_sendout_error &&
          count_nonlocal(to) > 0 && !_sendbundle_setup_creds(&sb, FAL0)){
       /* ..wait until we can write DEAD */
+      n_pstate_err_no = n_ERR_INVAL;
       _sendout_error = -1;
    }
 

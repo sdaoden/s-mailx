@@ -1077,10 +1077,11 @@ myaddrs(struct header *hp) /* TODO */
    }
 
    if((rv = ok_vlook(from)) != NULL){
-      if((np = lextract(rv, GEXTRA | GFULL)) == NULL)
+      if((np = lextract(rv, GEXTRA | GFULL)) == NULL){
 jefrom:
          n_err(_("An address given in *from* is invalid: %s\n"), rv);
-      else for(; np != NULL; np = np->n_flink)
+         rv = NULL;
+      }else for(; np != NULL; np = np->n_flink)
          if(is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
             goto jefrom;
       goto jleave;
