@@ -8845,11 +8845,9 @@ Unless this variable is set additional
 (Mail-Transfer-Agent)
 arguments from the command line, as can be given after a
 .Fl \&\&-
-separator, are ignored due to safety reasons.
-However, if set to the special (case-insensitive) value
-.Ql fail ,
-then the presence of additional MTA arguments is treated as a hard
-error that causes \*(UA to exit with failure status.
+separator, results in a program termination with failure status.
+The same can be accomplished by using the special (case-insensitive) value
+.Ql fail .
 A lesser strict variant is the otherwise identical
 .Ql restrict ,
 which does accept such arguments in interactive mode, or if tilde
@@ -8857,6 +8855,7 @@ commands were enabled explicitly by using one of the command line options
 .Fl ~
 or
 .Fl # .
+The empty value will allow unconditional usage.
 .
 .Mx
 .It Va features

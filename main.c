@@ -1097,6 +1097,7 @@ jgetopt_done:
       if((cp = argv[i]) != NULL){
          if(isfail || (isrestrict && (!(n_poption & n_PO_TILDE_FLAG) ||
                   !(n_psonce & n_PSO_INTERACTIVE)))){
+je_expandargv:
             n_err(_("*expandargv* doesn't allow MTA arguments; consider "
                "using *mta-arguments*\n"));
             n_exit_status = n_EXIT_USE | n_EXIT_SEND_ERROR;
@@ -1107,8 +1108,8 @@ jgetopt_done:
             n_smopts[n_smopts_cnt++] = cp;
          }while((cp = argv[++i]) != NULL);
       }
-   }else if(argv[i] != NULL && (n_poption & n_PO_D_V))
-      n_err(_("*expandargv* not set, ignoring given MTA arguments\n"));
+   }else if(argv[i] != NULL)
+      goto je_expandargv;
 
    /* We had to wait until the resource files are loaded and any command line
     * setting has been restored, but get the termcap up and going before we
