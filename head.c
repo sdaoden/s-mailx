@@ -1076,16 +1076,9 @@ myaddrs(struct header *hp) /* TODO */
          goto jleave;
    }
 
-   if((rv = ok_vlook(from)) != NULL){
-      if((np = lextract(rv, GEXTRA | GFULL)) == NULL){
-jefrom:
-         n_err(_("An address given in *from* is invalid: %s\n"), rv);
-         rv = NULL;
-      }else for(; np != NULL; np = np->n_flink)
-         if(is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
-            goto jefrom;
+   /* Verified once variable had been set */
+   if((rv = ok_vlook(from)) != NULL)
       goto jleave;
-   }
 
    /* When invoking *sendmail* directly, it's its task to generate an otherwise
     * undeterminable From: address.  However, if the user sets *hostname*,
@@ -1125,14 +1118,10 @@ myorigin(struct header *hp) /* TODO */
          (np = lextract(ccp, GEXTRA | GFULL)) != NULL){
       if(np->n_flink == NULL)
          rv = ccp;
-      else if((ccp = ok_vlook(sender)) != NULL) {
-         if((np = lextract(ccp, GEXTRA | GFULL)) == NULL ||
-               np->n_flink != NULL ||
-               is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
-            n_err(_("The address given in *sender* is invalid: %s\n"), ccp);
-         else
-            rv = ccp;
-      }
+      /* Verified upon variable set time */
+      else if((ccp = ok_vlook(sender)) != NULL)
+         rv = ccp;
+      /* TODO why not else rv = n_poption_arg_r; ?? */
    }
    NYD_LEAVE;
    return rv;

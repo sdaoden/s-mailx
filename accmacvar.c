@@ -94,7 +94,8 @@ enum a_amv_loflags{
 };
 
 /* make-okey-map.pl ensures that _VIRT implies _RDONLY and _NODEL, and that
- * _IMPORT implies _ENV; it doesn't verify anything... */
+ * _IMPORT implies _ENV; it doesn't verify anything...
+ * More description at nail.h:enum okeys */
 enum a_amv_var_flags{
    a_AMV_VF_NONE = 0,
 
@@ -913,6 +914,7 @@ a_amv_var_free(char *cp){
 static bool_t
 a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
       char const *val){
+   char const *emsg;
    bool_t ok;
    NYD2_ENTER;
 
@@ -934,8 +936,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
 
          while((vp = n_strsep_esc(&buf, ',', TRU1)) != NULL){
             if(!n_header_add_custom(hflpp, vp, TRU1)){
-               n_err(_("Invalid *customhdr* entry: %s\n"),
-                     n_shexp_quote_cp(val, FAL0));
+               emsg = N_("Invalid *customhdr* entry: %s\n");
                ok = FAL0;
                break;
             }
@@ -947,17 +948,32 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
             *hflpp = hfp->hf_next;
             n_free(hfp);
          }
-         if(ok)
-            n_customhdr_list = hflp;
+         if(!ok)
+            goto jerr;
+         n_customhdr_list = hflp;
+      }  break;
+      case ok_v_from:
+      case ok_v_sender:{
+         struct name *np;
+
+         if((np = lextract(val, GEXTRA | GFULL)) == NULL){
+jefrom:
+            emsg = N_("*from* / *sender*: invalid  address(es): %s\n");
+            goto jerr;
+         }else if(okey == ok_v_sender && np->n_flink != NULL){
+            emsg = N_("*sender*: may not contain multiple addresses: %s\n");
+            goto jerr;
+         }else for(; np != NULL; np = np->n_flink)
+            if(is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
+               goto jefrom;
       }  break;
       case ok_v_HOME:
          /* Note this gets called from main.c during initialization, and they
           * simply set this to pw_dir as a fallback: don't verify _that_ call.
           * See main.c! */
          if(!(n_pstate & n_PS_ROOT) && !n_is_dir(val, TRUM1)){
-            n_err(_("$HOME is not a directory or not accessible: %s\n"),
-               n_shexp_quote_cp(val, FAL0));
-            ok = FAL0;
+            emsg = N_("$HOME is not a directory or not accessible: %s\n");
+            goto jerr;
          }
          break;
       case ok_v_quote_chars:{
@@ -971,9 +987,8 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
       }  break;
       case ok_v_TMPDIR:
          if(!n_is_dir(val, TRU1)){
-            n_err(_("$TMPDIR is not a directory or not accessible: %s\n"),
-               n_shexp_quote_cp(val, FAL0));
-            ok = FAL0;
+            emsg = N_("$TMPDIR is not a directory or not accessible: %s\n");
+            goto jerr;
          }
          break;
       case ok_v_umask:
@@ -982,8 +997,8 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
 
             n_idec_ui64_cp(&uib, val, 0, NULL);
             if(uib & ~0777u){ /* (is valid _VF_POSNUM) */
-               n_err(_("Invalid *umask* setting: %s\n"), val);
-               ok = FAL0;
+               emsg = N_("Invalid *umask* setting: %s\n");
+               goto jerr;
             }
          }
          break;
@@ -1096,8 +1111,14 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
          break;
       }
    }
+
+jleave:
    NYD2_LEAVE;
    return ok;
+jerr:
+   n_err(V_(emsg), n_shexp_quote_cp(val, FAL0));
+   ok = FAL0;
+   goto jleave;
 }
 
 static bool_t
@@ -1694,6 +1715,7 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
                "or out of range: %s\n");
          goto jeavmp;
       }
+
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_IMPORT) != 0 &&
             !(n_psonce & n_PSO_STARTED) && !(n_pstate & n_PS_ROOT))){
          value = N_("Variable cannot be set in a resource file: %s\n");

@@ -1583,7 +1583,7 @@ ok_v_encoding, /* {obsolete=1} */
    ok_v_followup_to_honour,
    ok_b_forward_as_attachment,
    ok_v_forward_inject_head,
-   ok_v_from,
+   ok_v_from,                          /* {vip=1} */
    ok_b_fullnames,
 ok_v_fwdheading, /* {obsolete=1} */
 
@@ -1724,7 +1724,7 @@ ok_b_SYSV3, /* {env=1,obsolete=1} */
    ok_b_searchheaders,
    ok_v_sendcharsets,                  /* {lower=1} */
    ok_b_sendcharsets_else_ttycharset,
-   ok_v_sender,
+   ok_v_sender,                        /* {vip=1} */
 ok_v_sendmail, /* {obsolete=1} */
 ok_v_sendmail_arguments, /* {obsolete=1} */
 ok_b_sendmail_no_default_arguments, /* {obsolete=1} */
