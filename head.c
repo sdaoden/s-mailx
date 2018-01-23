@@ -885,7 +885,9 @@ jput_quote_esc:
 
 jleave:
    if(!(agp->ag_n_flags & NAME_ADDRSPEC_INVALID) && use_idna == 2)
+#ifdef HAVE_IDNA
       agp = a_head_idna_apply(agp);
+#endif
    NYD_LEAVE;
    return !(agp->ag_n_flags & NAME_ADDRSPEC_INVALID);
 }
