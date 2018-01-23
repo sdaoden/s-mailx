@@ -984,6 +984,14 @@ is not set then only network addresses (see
 for a description of mail addresses) and plain user names (including MTA
 aliases) may be used, other types will be filtered out, giving a warning
 message.
+A network address that contains no domain-, but only a valid local user
+.Ql <name>
+in angle brackets will be automatically expanded to a valid address when
+.Va hostname
+is set to a non-empty value; setting it to the empty value instructs
+\*(UA that the used
+.Va mta
+will perform the necessary expansion.
 The command
 .Ic addrcodec
 can be used to generate standard compliant network addresses.
@@ -4014,6 +4022,9 @@ rules and are thus restricted to alphabetic characters, digits, the
 underscore, hyphen-minus, the number sign, colon and commercial at,
 the last character can also be the dollar sign; the regular expression:
 .Ql [[:alnum:]_#:@-]+$? .
+.\" ALIASCOLON next sentence
+\*(ID Unfortunately the colon is currently not supported, as it
+interferes with normal address parsing rules.
 As extensions the exclamation mark
 .Ql \&! ,
 period
@@ -4021,6 +4032,9 @@ period
 as well as
 .Dq any character that has the high bit set
 may be used.
+.\" ALIASCOLON next sentence
+\*(ID Such high bit characters will likely cause warnings at the moment
+for the same reasons why colon is unsupported.
 .
 .Mx
 .Mx
@@ -9316,6 +9330,10 @@ will be created (except when disallowed by
 .Va message-id-disable
 or
 .Va stealthmua ) .
+If the \*(OPal IDNA support is available (see
+.Va idna-disable )
+variable assignment is aborted when a necessary conversion fails.
+.Pp
 Setting it to the empty string will cause the normal hostname to be
 used, but nonetheless enables creation of said ID fields.
 \*(IN in conjunction with the built-in SMTP
@@ -11256,6 +11274,9 @@ Setting this variable also influences generated
 and
 .Ql Content-ID:
 header fields.
+If the \*(OPal IDNA support is available (see
+.Va idna-disable )
+variable assignment is aborted when a necessary conversion fails.
 .
 .Mx Va smtp-use-starttls
 .It Va smtp-use-starttls-USER@HOST , smtp-use-starttls-HOST , smtp-use-starttls

@@ -1042,8 +1042,12 @@ n_nodename(bool_t mayoverride){
    if(mayoverride && (hn = ok_vlook(hostname)) != NULL && *hn != '\0'){
       ;
    }else if((hn = sys_hostname) == NULL){
+      bool_t lofi;
+
+      lofi = FAL0;
       uname(&ut);
       hn = ut.nodename;
+
 #ifdef HAVE_SOCKETS
 # ifdef HAVE_GETADDRINFO
       memset(&hints, 0, sizeof hints);
@@ -1055,6 +1059,7 @@ n_nodename(bool_t mayoverride){
 
             l = strlen(res->ai_canonname) +1;
             hn = n_lofi_alloc(l);
+            lofi = TRU1;
             memcpy(hn, res->ai_canonname, l);
          }
          freeaddrinfo(res);
@@ -1064,12 +1069,27 @@ n_nodename(bool_t mayoverride){
       if(hent != NULL)
          hn = hent->h_name;
 # endif
-#endif
+#endif /* HAVE_SOCKETS */
+
+#ifdef HAVE_IDNA
+      /* C99 */{
+         struct n_string cnv;
+
+         n_string_creat(&cnv);
+         if(!n_idna_to_ascii(&cnv, hn, UIZ_MAX))
+            n_panic(_("The system hostname is invalid, "
+                  "IDNA conversion failed: %s\n"),
+               n_shexp_quote_cp(hn, FAL0));
+         sys_hostname = n_string_cp(&cnv);
+         n_string_drop_ownership(&cnv);
+         /*n_string_gut(&cnv);*/
+      }
+#else
       sys_hostname = sstrdup(hn);
-#if defined HAVE_SOCKETS && defined HAVE_GETADDRINFO
-      if(hn != ut.nodename)
-         n_lofi_free(hn);
 #endif
+
+      if(lofi)
+         n_lofi_free(hn);
       hn = sys_hostname;
    }
 
@@ -1084,14 +1104,23 @@ n_nodename(bool_t mayoverride){
 FL bool_t
 n_idna_to_ascii(struct n_string *out, char const *ibuf, size_t ilen){
    char *idna_utf8;
-   bool_t rv;
+   bool_t lofi, rv;
    NYD_ENTER;
+
+   if(ilen == UIZ_MAX)
+      ilen = strlen(ibuf);
+
+   lofi = FAL0;
 
    if((rv = (ilen == 0)))
       goto jleave;
-
-   if(ibuf[ilen] != '\0') /* TODO n_idna_to_ascii: optimise */
-      ibuf = savestrbuf(ibuf, ilen);
+   if(ibuf[ilen] != '\0'){
+      lofi = TRU1;
+      idna_utf8 = n_lofi_alloc(ilen +1);
+      memcpy(idna_utf8, ibuf, ilen);
+      idna_utf8[ilen] = '\0';
+      ibuf = idna_utf8;
+   }
    ilen = 0;
 
    idna_utf8 = n_iconv_onetime_cp(n_ICONV_NONE, "utf-8", ok_vlook(ttycharset),
@@ -1131,6 +1160,8 @@ jredo:
 #  error Unknown HAVE_IDNA
 # endif
 jleave:
+   if(lofi)
+      n_lofi_free(n_UNCONST(ibuf));
    out = n_string_trunc(out, ilen);
    NYD_LEAVE;
    return rv;

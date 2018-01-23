@@ -335,7 +335,7 @@ static void a_amv_var_free(char *cp);
 /* Check for special housekeeping.  _VIP_SET_POST and _VIP_CLEAR do not fail
  * (or propagate errors), _VIP_SET_PRE may and should case abortion */
 static bool_t a_amv_var_check_vips(enum a_amv_var_vip_mode avvm,
-               enum okeys okey, char const *val);
+               enum okeys okey, char const **val);
 
 /* _VF_NUM / _VF_POSNUM */
 static bool_t a_amv_var_check_num(char const *val, bool_t posnum);
@@ -913,7 +913,7 @@ a_amv_var_free(char *cp){
 
 static bool_t
 a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
-      char const *val){
+      char const **val){
    char const *emsg;
    bool_t ok;
    NYD2_ENTER;
@@ -930,7 +930,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
          struct n_header_field *hflp, **hflpp, *hfp;
          NYD_ENTER;
 
-         buf = savestr(val);
+         buf = savestr(*val);
          hflp = NULL;
          hflpp = &hflp;
 
@@ -956,7 +956,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
       case ok_v_sender:{
          struct name *np;
 
-         if((np = lextract(val, GEXTRA | GFULL)) == NULL){
+         if((np = lextract(*val, GEXTRA | GFULL)) == NULL){
 jefrom:
             emsg = N_("*from* / *sender*: invalid  address(es): %s\n");
             goto jerr;
@@ -971,31 +971,50 @@ jefrom:
          /* Note this gets called from main.c during initialization, and they
           * simply set this to pw_dir as a fallback: don't verify _that_ call.
           * See main.c! */
-         if(!(n_pstate & n_PS_ROOT) && !n_is_dir(val, TRUM1)){
+         if(!(n_pstate & n_PS_ROOT) && !n_is_dir(*val, TRUM1)){
             emsg = N_("$HOME is not a directory or not accessible: %s\n");
             goto jerr;
          }
          break;
+      case ok_v_hostname:
+      case ok_v_smtp_hostname:
+#ifdef HAVE_IDNA
+         if(*val != '\0'){
+            struct n_string cnv;
+
+            n_string_creat_auto(&cnv);
+            if(!n_idna_to_ascii(&cnv, *val, UIZ_MAX)){
+               /*n_string_gut(&res);*/
+               emsg = N_("*hostname*/*smtp_hostname*: "
+                     "IDNA encoding failed: %s\n");
+               goto jerr;
+            }
+            *val = n_string_cp(&cnv);
+            /*n_string_drop_ownership(&cnv);*/
+         }
+#endif
+         break;
       case ok_v_quote_chars:{
          char c;
+         char const *cp;
 
-         while((c = *val++) != '\0')
+         for(cp = *val; (c = *cp++) != '\0';)
             if(!asciichar(c) || blankspacechar(c)){
                ok = FAL0;
                break;
             }
       }  break;
       case ok_v_TMPDIR:
-         if(!n_is_dir(val, TRU1)){
+         if(!n_is_dir(*val, TRU1)){
             emsg = N_("$TMPDIR is not a directory or not accessible: %s\n");
             goto jerr;
          }
          break;
       case ok_v_umask:
-         if(*val != '\0'){
+         if(**val != '\0'){
             ui64_t uib;
 
-            n_idec_ui64_cp(&uib, val, 0, NULL);
+            n_idec_ui64_cp(&uib, *val, 0, NULL);
             if(uib & ~0777u){ /* (is valid _VF_POSNUM) */
                emsg = N_("Invalid *umask* setting: %s\n");
                goto jerr;
@@ -1021,9 +1040,11 @@ jefrom:
          break;
       case ok_v_ifs:{
          char *x_b, *x, c;
+         char const *cp;
 
-         x_b = x = n_autorec_alloc(strlen(val) +1);
-         while((c = *val++) != '\0')
+         cp = *val;
+         x_b = x = n_autorec_alloc(strlen(cp) +1);
+         while((c = *cp++) != '\0')
             if(spacechar(c))
                *x++ = c;
          *x = '\0';
@@ -1057,10 +1078,10 @@ jefrom:
             ok_bset(termcap_disable);
          break;
       case ok_v_umask:
-         if(*val != '\0'){
+         if(**val != '\0'){
             ui64_t uib;
 
-            n_idec_ui64_cp(&uib, val, 0, NULL);
+            n_idec_ui64_cp(&uib, *val, 0, NULL);
             umask((mode_t)uib);
          }
          break;
@@ -1116,7 +1137,7 @@ jleave:
    NYD2_LEAVE;
    return ok;
 jerr:
-   n_err(V_(emsg), n_shexp_quote_cp(val, FAL0));
+   n_err(V_(emsg), n_shexp_quote_cp(*val, FAL0));
    ok = FAL0;
    goto jleave;
 }
@@ -1445,7 +1466,7 @@ jnewval:
    /* E.g., $TMPDIR may be set to non-existent, so we need to be able to catch
     * that and redirect to a possible default value */
    if((avmp->avm_flags & a_AMV_VF_VIP) &&
-         !a_amv_var_check_vips(a_AMV_VIP_SET_PRE, avcp->avc_okey, cp)){
+         !a_amv_var_check_vips(a_AMV_VIP_SET_PRE, avcp->avc_okey, &cp)){
 #ifdef HAVE_SETENV
       if(avmp->avm_flags & (a_AMV_VF_IMPORT | a_AMV_VF_ENV))
          unsetenv(avcp->avc_name);
@@ -1469,7 +1490,7 @@ jnewval:
       if(avp->av_flags & a_AMV_VF_ENV)
          a_amv_var__putenv(avcp, avp);
       if(avmp->avm_flags & a_AMV_VF_VIP)
-         a_amv_var_check_vips(a_AMV_VIP_SET_POST, avcp->avc_okey, cp);
+         a_amv_var_check_vips(a_AMV_VIP_SET_POST, avcp->avc_okey, &cp);
       goto jleave;
    }
 }
@@ -1724,7 +1745,7 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
 
       /* Any more complicated inter-dependency? */
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_VIP) != 0 &&
-            !a_amv_var_check_vips(a_AMV_VIP_SET_PRE, avcp->avc_okey, value))){
+            !a_amv_var_check_vips(a_AMV_VIP_SET_PRE, avcp->avc_okey, &value))){
          value = N_("Assignment of variable aborted: %s\n");
 jeavmp:
          n_err(V_(value), avcp->avc_name);
@@ -1843,7 +1864,7 @@ joval_and_go:
       if(avp->av_flags & (a_AMV_VF_ENV | a_AMV_VF_EXT_LINKED))
          rv = a_amv_var__putenv(avcp, avp);
       if(avp->av_flags & a_AMV_VF_VIP)
-         a_amv_var_check_vips(a_AMV_VIP_SET_POST, avcp->avc_okey, value);
+         a_amv_var_check_vips(a_AMV_VIP_SET_POST, avcp->avc_okey, &value);
 
       avp->av_flags &= ~a_AMV_VF_EXT__FROZEN_MASK;
       if(!(n_psonce & n_PSO_STARTED_GETOPT) &&

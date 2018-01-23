@@ -40,6 +40,8 @@
 # include "nail.h"
 #endif
 
+#include <pwd.h>
+
 struct cmatch_data {
    size_t      tlen;    /* Length of .tdata */
    char const  *tdata;  /* Template date - see _cmatch_data[] */
@@ -99,8 +101,10 @@ static struct n_addrguts *a_head_idna_apply(struct n_addrguts *agp);
 /* Classify and check a (possibly skinned) header body according to RFC
  * *addr-spec* rules; if it (is assumed to has been) skinned it may however be
  * also a file or a pipe command, so check that first, then.
- * Otherwise perform content checking and isolate the domain part (for IDNA) */
-static bool_t a_head_addrspec_check(struct n_addrguts *agp, bool_t skinned);
+ * Otherwise perform content checking and isolate the domain part (for IDNA).
+ * issingle_hack has the same meaning as for n_addrspec_with_guts() */
+static bool_t a_head_addrspec_check(struct n_addrguts *agp, bool_t skinned,
+               bool_t issingle_hack);
 
 /* Return the next header field found in the given message.
  * Return >= 0 if something found, < 0 elsewise.
@@ -308,21 +312,30 @@ a_head_idna_apply(struct n_addrguts *agp){
 #endif /* HAVE_IDNA */
 
 static bool_t
-a_head_addrspec_check(struct n_addrguts *agp, bool_t skinned)
+a_head_addrspec_check(struct n_addrguts *agp, bool_t skinned,
+      bool_t issingle_hack)
 {
    char *addr, *p;
-   bool_t in_quote;
-   ui8_t in_domain, hadat;
    union {bool_t b; char c; unsigned char u; ui32_t ui32; si32_t si32;} c;
-#ifdef HAVE_IDNA
-   ui8_t use_idna;
-#endif
+   enum{
+      a_NONE,
+      a_IDNA_ENABLE = 1u<<0,
+      a_IDNA_APPLY = 1u<<1,
+      a_REDO_NODE_AFTER_ADDR = 1u<<2,
+      a_RESET_MASK = a_IDNA_ENABLE | a_IDNA_APPLY | a_REDO_NODE_AFTER_ADDR,
+      a_IN_QUOTE = 1u<<8,
+      a_IN_AT = 1u<<9,
+      a_IN_DOMAIN = 1u<<10,
+      a_DOMAIN_V6 = 1u<<11,
+      a_DOMAIN_MASK = a_IN_DOMAIN | a_DOMAIN_V6
+   } flags;
    NYD_ENTER;
 
+   flags = a_NONE;
 #ifdef HAVE_IDNA
-   use_idna = ok_blook(idna_disable) ? 0 : 1;
+   if(!ok_blook(idna_disable))
+      flags = a_IDNA_ENABLE;
 #endif
-   agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED;
 
    if (agp->ag_iaddr_aend - agp->ag_iaddr_start == 0) {
       NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_EMPTY, 0);
@@ -369,48 +382,55 @@ jaddr_check:
     * TODO Note this correlats with addrspec_with_guts() which is in front
     * TODO of us and encapsulates (what it thinks is, sigh) the address
     * TODO boundary.  ALL THIS should be one object that knows how to deal */
-   in_quote = FAL0;
-   in_domain = hadat = 0;
-
+   flags &= a_RESET_MASK;
    for (p = addr; (c.c = *p++) != '\0';) {
       if (c.c == '"') {
-         in_quote = !in_quote;
+         flags ^= a_IN_QUOTE;
       } else if (c.u < 040 || c.u >= 0177) { /* TODO no magics: !bodychar()? */
 #ifdef HAVE_IDNA
-         if (in_domain && use_idna > 0)
-            use_idna = 2;
+         if ((flags & (a_IN_DOMAIN | a_IDNA_ENABLE)) ==
+               (a_IN_DOMAIN | a_IDNA_ENABLE))
+            flags |= a_IDNA_APPLY;
          else
 #endif
             break;
-      } else if (in_domain == 2) {
+      } else if ((flags & a_DOMAIN_MASK) == a_DOMAIN_MASK) {
          if ((c.c == ']' && *p != '\0') || c.c == '\\' || whitechar(c.c))
             break;
-      } else if (in_quote && in_domain == 0) {
+      } else if ((flags & (a_IN_QUOTE | a_DOMAIN_MASK)) == a_IN_QUOTE) {
          /*EMPTY*/;
       } else if (c.c == '\\' && *p != '\0') {
          ++p;
       } else if (c.c == '@') {
-         if (hadat++ > 0) {
+         if(flags & a_IN_AT){
             NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_ATSEQ,
                c.u);
             goto jleave;
          }
          agp->ag_sdom_start = PTR2SIZE(p - addr);
          agp->ag_n_flags |= NAME_ADDRSPEC_ISADDR; /* TODO .. really? */
-         in_domain = (*p == '[') ? 2 : 1;
+         flags &= ~a_DOMAIN_MASK;
+         flags |= (*p == '[') ? a_IN_AT | a_IN_DOMAIN | a_DOMAIN_V6
+               : a_IN_AT | a_IN_DOMAIN;
          continue;
-      } else if (c.c == '(' || c.c == ')' || c.c == '<' || c.c == '>' ||
+      }
+      /* TODO This interferes with our alias handling, which allows :!
+       * TODO Update manual on support (search the several ALIASCOLON)! */
+      else if (c.c == '(' || c.c == ')' || c.c == '<' || c.c == '>' ||
             c.c == '[' || c.c == ']' || c.c == ':' || c.c == ';' ||
             c.c == '\\' || c.c == ',' || blankchar(c.c))
          break;
-      hadat = 0;
+      flags &= ~a_IN_AT;
    }
    if (c.c != '\0') {
       NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_CHAR, c.u);
       goto jleave;
    }
 
-   if(!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR)){
+   /* If we do not think this is an address we may treat it as an alias name
+    * if and only if the original input is identical to the skinned version */
+   if(!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR) &&
+         !strcmp(agp->ag_skinned, agp->ag_input)){
       /* TODO This may be an UUCP address */
       agp->ag_n_flags |= NAME_ADDRSPEC_ISNAME;
       if(!n_alias_is_valid_name(agp->ag_input))
@@ -447,6 +467,7 @@ jaddr_check:
 
       /* Name and domain must be non-empty */
       if(*addr == '@' || &addr[2] >= p || p[-2] == '@'){
+jeat:
          c.c = '@';
          NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_ATSEQ, c.u);
          goto jleave;
@@ -459,12 +480,22 @@ jaddr_check:
        * TODO and domain, AT LEAST in so far as a"bc"d@abc should become
        * TODO "abcd"@abc.  Etc. */
       if(agp->ag_iaddr_start == 0){
+         /* No @ seen? */
+         if(!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR))
+            goto jeat;
          if(agp->ag_iaddr_aend == agp->ag_ilen)
             goto jleave;
       }else if(agp->ag_iaddr_start == 1 && *cp == '<' &&
             agp->ag_iaddr_aend == agp->ag_ilen - 1 &&
-            cp[agp->ag_iaddr_aend] == '>')
+            cp[agp->ag_iaddr_aend] == '>'){
+         /* No @ seen?  Possibly insert n_nodename() */
+         if(!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR)){
+            cp = &agp->ag_input[agp->ag_iaddr_start];
+            cpmax = &agp->ag_input[agp->ag_iaddr_aend];
+            goto jinsert_domain;
+         }
          goto jleave;
+      }
 
       /* It is not, so parse off all tokens, then resort and rejoin */
       lofi_snap = n_lofi_snap_create();
@@ -475,7 +506,6 @@ jaddr_check:
       cpmax = &cp[c.ui32];
 
       thead = tcurr = NULL;
-      hadat = FAL0;
 jnode_redo:
       for(tp = NULL; cp < cpmax;){
          switch((c.c = *cp)){
@@ -589,8 +619,9 @@ jnode_redo:
       if(tp != NULL)
          tp->t_end = PTR2SIZE(cp - cp1st);
 
-      if(hadat == FAL0){
-         hadat = TRU1;
+      if(!(flags & a_REDO_NODE_AFTER_ADDR)){
+         flags |= a_REDO_NODE_AFTER_ADDR;
+
          /* The local-part may be in quotes.. */
          if((tp = tcurr) != NULL && (tp->t_f & a_T_TQUOTE) &&
                tp->t_end == agp->ag_iaddr_start - 1){
@@ -836,7 +867,7 @@ jput_quote_esc:
          goto jleave;
       }
 
-      agp->ag_skinned = savestrbuf(cp, PTR2SIZE(cpmax - cp));
+      addr = agp->ag_skinned = savestrbuf(cp, PTR2SIZE(cpmax - cp));
 
       /* TODO This parser is a mess.  We do not know whether this is truly
        * TODO valid, and all our checks are not truly RFC conforming.
@@ -845,47 +876,81 @@ jput_quote_esc:
        * TODO test catches a final address without AT..
        * TODO This is a plain copy+paste of the weird thing above, no care */
       agp->ag_n_flags &= ~NAME_ADDRSPEC_ISADDR;
-      in_domain = hadat = 0;
+      flags &= a_RESET_MASK;
       for (p = addr; (c.c = *p++) != '\0';) {
-         if (c.c == '"') {
-            in_quote = !in_quote;
-         } else if (c.u < 040 || c.u >= 0177) {
+         if(c.c == '"')
+            flags ^= a_IN_QUOTE;
+         else if (c.u < 040 || c.u >= 0177) {
 #ifdef HAVE_IDNA
-               if(!in_domain)
+               if(!(flags & a_IN_DOMAIN))
 #endif
                   break;
-         } else if (in_domain == 2) {
+         } else if ((flags & a_DOMAIN_MASK) == a_DOMAIN_MASK) {
             if ((c.c == ']' && *p != '\0') || c.c == '\\' || whitechar(c.c))
                break;
-         } else if (in_quote && in_domain == 0) {
+         } else if ((flags & (a_IN_QUOTE | a_DOMAIN_MASK)) == a_IN_QUOTE) {
             /*EMPTY*/;
          } else if (c.c == '\\' && *p != '\0') {
             ++p;
          } else if (c.c == '@') {
-            if (hadat++ > 0) {
+            if(flags & a_IN_AT){
                NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_ATSEQ,
                   c.u);
                goto jleave;
             }
+            flags |= a_IN_AT;
             agp->ag_n_flags |= NAME_ADDRSPEC_ISADDR; /* TODO .. really? */
-            in_domain = (*p == '[') ? 2 : 1;
+            flags &= ~a_DOMAIN_MASK;
+            flags |= (*p == '[') ? a_IN_DOMAIN | a_DOMAIN_V6 : a_IN_DOMAIN;
             continue;
          } else if (c.c == '(' || c.c == ')' || c.c == '<' || c.c == '>' ||
                c.c == '[' || c.c == ']' || c.c == ':' || c.c == ';' ||
                c.c == '\\' || c.c == ',' || blankchar(c.c))
             break;
-         hadat = 0;
+         flags &= ~a_IN_AT;
       }
       if(c.c != '\0')
          NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_CHAR, c.u);
-      else if(!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR))
-         NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_ATSEQ,
-            p[-1]);
+      else if(!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR)){
+         /* This is not an address, but if we had seen angle brackets convert
+          * it to a n_nodename() address if the name is a valid user */
+jinsert_domain:
+         if(cp > &agp->ag_input[0] && cp[-1] == '<' &&
+               cpmax <= &agp->ag_input[agp->ag_ilen] && cpmax[0] == '>' &&
+               (!strcmp(addr, ok_vlook(LOGNAME)) || getpwnam(addr) != NULL)){
+            /* XXX However, if hostname is set to the empty string this
+             * XXX indicates that the used *mta* will perform the
+             * XXX auto-expansion instead.  Not so with `addrcodec' though */
+            agp->ag_n_flags |= NAME_ADDRSPEC_ISADDR;
+            if(!issingle_hack &&
+                  (cp = ok_vlook(hostname)) != NULL && *cp == '\0')
+               agp->ag_n_flags |= NAME_ADDRSPEC_WITHOUT_DOMAIN;
+            else{
+               c.ui32 = strlen(cp = n_nodename(TRU1));
+               /* This is yet IDNA converted.. */
+               ostp = n_string_creat_auto(&ost);
+               ostp = n_string_assign_buf(ostp, agp->ag_input, agp->ag_ilen);
+               ostp = n_string_insert_c(ostp, agp->ag_iaddr_aend++, '@');
+               ostp = n_string_insert_buf(ostp, agp->ag_iaddr_aend, cp,
+                     c.ui32);
+               agp->ag_iaddr_aend += c.ui32;
+               agp->ag_input = n_string_cp(ostp);
+               agp->ag_ilen = ostp->s_len;
+               /*ostp = n_string_drop_ownership(ostp);*/
+
+               cp = &agp->ag_input[agp->ag_iaddr_start];
+               cpmax = &agp->ag_input[agp->ag_iaddr_aend];
+               agp->ag_skinned = savestrbuf(cp, PTR2SIZE(cpmax - cp));
+            }
+         }else
+            NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_ATSEQ,
+               '@');
+      }
    }
 
 jleave:
-   if(!(agp->ag_n_flags & NAME_ADDRSPEC_INVALID) && use_idna == 2)
 #ifdef HAVE_IDNA
+   if(!(agp->ag_n_flags & NAME_ADDRSPEC_INVALID) && (flags & a_IDNA_APPLY))
       agp = a_head_idna_apply(agp);
 #endif
    NYD_LEAVE;
@@ -1775,7 +1840,6 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
    if((agp->ag_input = name) == NULL || (agp->ag_ilen = strlen(name)) == 0){
       agp->ag_skinned = n_UNCONST(n_empty); /* ok: NAME_SALLOC is not set */
       agp->ag_slen = 0;
-      agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED;
       NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_EMPTY, 0);
       goto jleave;
    }else if(!doskin){
@@ -1905,7 +1969,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
    n_lofi_free(nbuf);
    agp->ag_n_flags = NAME_NAME_SALLOC | NAME_SKINNED;
 jcheck:
-   if(a_head_addrspec_check(agp, doskin) <= FAL0)
+   if(a_head_addrspec_check(agp, doskin, issingle_hack) <= FAL0)
       name = NULL;
    else
       name = agp->ag_input;

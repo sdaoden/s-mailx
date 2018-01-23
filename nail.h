@@ -1596,7 +1596,7 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_b_history_gabby_persist,
    ok_v_history_size,                  /* {notempty=1,posnum=1} */
    ok_b_hold,
-   ok_v_hostname,
+   ok_v_hostname,                      /* {vip=1} */
 
    ok_b_idna_disable,
    ok_v_ifs,                           /* {vip=1,defval=" \t\n"} */
@@ -1755,7 +1755,7 @@ ok_v_smtp, /* {obsolete=1} */
    ok_v_smtp_auth,                     /* {chain=1} */
 ok_v_smtp_auth_password, /* {obsolete=1} */
 ok_v_smtp_auth_user, /* {obsolete=1} */
-   ok_v_smtp_hostname,
+   ok_v_smtp_hostname,                 /* {vip=1} */
    ok_b_smtp_use_starttls,             /* {chain=1} */
    ok_v_SOURCE_DATE_EPOCH,             /* {\} */
       /* {name=SOURCE_DATE_EPOCH,rdonly=1,import=1,notempty=1,posnum=1} */
@@ -2421,17 +2421,16 @@ struct header {
 /* Handling of namelist nodes used in processing the recipients of mail and
  * aliases, inspection of mail-addresses and all that kind of stuff */
 enum nameflags {
-   NAME_NAME_SALLOC = 1u<<0,        /* .n_name is doped */
-   NAME_FULLNAME_SALLOC = 1u<<1,    /* .n_fullname is doped */
-   NAME_SKINNED = 1u<<2,            /* Is actually skin()ned */
-   NAME_IDNA = 1u<<3,               /* IDNA was applied */
+   NAME_SKINNED = 1u<<0,            /* Is actually skin()ned */
+   NAME_IDNA = 1u<<1,               /* IDNA was applied */
+   NAME_NAME_SALLOC = 1u<<2,        /* .n_name is doped */
 
-   NAME_ADDRSPEC_CHECKED = 1u<<4,   /* Address has been .. and */
-   NAME_ADDRSPEC_ISFILE = 1u<<5,    /* ..is a file path */
-   NAME_ADDRSPEC_ISPIPE = 1u<<6,    /* ..is a command for piping */
+   NAME_ADDRSPEC_ISFILE = 1u<<3,    /* ..is a file path */
+   NAME_ADDRSPEC_ISPIPE = 1u<<4,    /* ..is a command for piping */
    NAME_ADDRSPEC_ISFILEORPIPE = NAME_ADDRSPEC_ISFILE | NAME_ADDRSPEC_ISPIPE,
-   NAME_ADDRSPEC_ISNAME = 1u<<7,    /* ..is an alias name */
-   NAME_ADDRSPEC_ISADDR = 1u<<8,    /* ..is a mail network address */
+   NAME_ADDRSPEC_ISNAME = 1u<<5,    /* ..is an alias name */
+   NAME_ADDRSPEC_ISADDR = 1u<<6,    /* ..is a mail network address.. */
+   NAME_ADDRSPEC_WITHOUT_DOMAIN = 1u<<7, /* ..but without domain name */
 
    NAME_ADDRSPEC_ERR_EMPTY = 1u<<9, /* An empty string (or NULL) */
    NAME_ADDRSPEC_ERR_ATSEQ = 1u<<10, /* Weird @ sequence */

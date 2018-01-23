@@ -143,7 +143,6 @@ a_sendout_fullnames_cleanup(struct name *np){
 
    for(xp = np; xp != NULL; xp = xp->n_flink){
       xp->n_type &= ~(GFULL | GFULLEXTRA);
-      xp->n_flags &= ~NAME_FULLNAME_SALLOC;
       xp->n_fullname = xp->n_name;
       xp->n_fullextra = NULL;
    }
