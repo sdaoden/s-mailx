@@ -5227,7 +5227,12 @@ for other errors.
 .It Ic from
 (f) Takes a list of message specifications and displays a summary of
 their message headers, exactly as via
-.Ic headers .
+.Ic headers ,
+making the first message of the result the new
+.Dq dot
+(the last message if
+.Va showlast
+is set).
 An alias of this command is
 .Ic search .
 Also see

@@ -1031,12 +1031,15 @@ jerr:
 }
 
 FL int
-c_from(void *v)
+c_from(void *vp)
 {
-   int *msgvec = v, *ip, n;
+   int *msgvec, *ip, n;
    char *cp;
    FILE * volatile obuf;
    NYD_ENTER;
+
+   if(*(msgvec = vp) == 0)
+      goto jleave;
 
    time_current_update(&time_current, FAL0);
 
@@ -1059,10 +1062,9 @@ c_from(void *v)
    }
 
    /* Update dot before display so that the dotmark etc. are correct */
-   for (ip = msgvec; *ip != 0; ++ip)
+   for (ip = msgvec; ip[1] != 0; ++ip)
       ;
-   if (--ip >= msgvec)
-      setdot(message + *ip - 1);
+   setdot(&message[(ok_blook(showlast) ? *ip : *msgvec) - 1]);
 
    n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, obuf, obuf != n_stdout); )
    srelax_hold();
@@ -1075,6 +1077,7 @@ c_from(void *v)
 
    if (obuf != n_stdout)
       n_pager_close(obuf);
+jleave:
    NYD_LEAVE;
    return 0;
 }

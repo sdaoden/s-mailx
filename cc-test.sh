@@ -2545,11 +2545,11 @@ t_behave_mbox() {
    check behave:mbox-1 0 "${MBOX}" '1140119864 13780'
 
    printf 'File "%s"\ncopy * "%s"\nFile "%s"\nfrom*' "${MBOX}" .tmbox1 .tmbox1 |
-      ${MAILX} ${ARGS} > .tlst
+      ${MAILX} ${ARGS} -Sshowlast > .tlst
    check behave:mbox-2 0 .tlst '2739893312 9103'
 
    printf 'File "%s"\ncopy * "file://%s"\nFile "file://%s"\nfrom*' \
-      "${MBOX}" .tmbox2 .tmbox2 | ${MAILX} ${ARGS} > .tlst
+      "${MBOX}" .tmbox2 .tmbox2 | ${MAILX} ${ARGS} -Sshowlast > .tlst
    check behave:mbox-3 0 .tlst '1702194178 9110'
 
    # only the odd (even)
@@ -2562,7 +2562,7 @@ t_behave_mbox() {
          i=`add ${i} 1`
       done
       printf 'file://%s\nFile "file://%s"\nfrom*' .tmbox3 .tmbox3
-   ) | ${MAILX} ${ARGS} > .tlst
+   ) | ${MAILX} ${ARGS} -Sshowlast > .tlst
    check behave:mbox-4 0 .tmbox3 '631132924 6890'
    check behave:mbox-5 - .tlst '2960975049 4573'
    # ...
@@ -2576,7 +2576,7 @@ t_behave_mbox() {
       done
       printf 'file://%s\nFile "file://%s"\nfrom*\nFile "file://%s"\nfrom*' \
          .tmbox3 .tmbox3 .tmbox2
-   ) | ${MAILX} ${ARGS} > .tlst
+   ) | ${MAILX} ${ARGS} -Sshowlast > .tlst
    check behave:mbox-6 0 .tmbox3 '1387070539 13655'
    ${sed} 2d < .tlst > .tlstx
    check behave:mbox-7 - .tlstx '2729940494 13645'
@@ -2603,7 +2603,7 @@ t_behave_maildir() {
          File "%s"
          from*
       ' "${MBOX}" .tmdir1 .tmdir1 |
-      ${MAILX} ${ARGS} -Snewfolders=maildir > .tlst
+      ${MAILX} ${ARGS} -Snewfolders=maildir -Sshowlast > .tlst
    check behave:maildir-2 0 .tlst '1797938753 9103'
 
    printf 'File "%s"
@@ -2611,7 +2611,7 @@ t_behave_maildir() {
          File "maildir://%s"
          from*
       ' "${MBOX}" .tmdir2 .tmdir2 |
-      ${MAILX} ${ARGS} > .tlst
+      ${MAILX} ${ARGS} -Sshowlast > .tlst
    check behave:maildir-3 0 .tlst '1155631089 9113'
 
    printf 'File "maildir://%s"
@@ -2619,7 +2619,7 @@ t_behave_maildir() {
          File "file://%s"
          from*
       ' .tmdir2 .tmbox1 .tmbox1 |
-      ${MAILX} ${ARGS} > .tlst
+      ${MAILX} ${ARGS} -Sshowlast > .tlst
    check behave:maildir-4 0 .tmbox1 '2646131190 13220'
    check behave:maildir-5 - .tlst '3701297796 9110'
 
@@ -2637,7 +2637,7 @@ t_behave_maildir() {
             File "file://%s"
             from*
          ' .tmbox2 .tmbox2
-   ) | ${MAILX} ${ARGS} > .tlst
+   ) | ${MAILX} ${ARGS} -Sshowlast > .tlst
    check behave:maildir-6 0 .tmbox2 '142890131 6610'
    check behave:maildir-7 - .tlst '960096773 4573'
    # ...
@@ -2656,7 +2656,7 @@ t_behave_maildir() {
             File "maildir://%s"
             from*
          ' .tmbox2 .tmbox2 .tmdir2
-   ) | ${MAILX} ${ARGS} > .tlst
+   ) | ${MAILX} ${ARGS} -Sshowlast > .tlst
    check behave:maildir-8 0 .tmbox2 '3806905791 13100'
    ${sed} 2d < .tlst > .tlstx
    check behave:maildir-9 - .tlstx '4216815295 13645'
