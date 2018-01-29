@@ -5324,7 +5324,10 @@ and the style of which can be adjusted with the variable
 If a message-specification is given the group of headers containing the
 first message therein is shown and the message at the top of the screen
 becomes the new
-.Dq dot .
+.Dq dot ;
+the last message is targeted if
+.Va showlast
+is set.
 .
 .Mx
 .It Ic help
@@ -10908,7 +10911,10 @@ the exit status of \*(UA will also be non-zero.
 .Mx
 .It Va showlast
 \*(BO This setting causes \*(UA to start at the last message
-instead of the first one when opening a mail folder.
+instead of the first one when opening a mail folder, as well as with
+.Ic from
+and
+.Ic headers .
 .
 .Mx
 .It Va showname
