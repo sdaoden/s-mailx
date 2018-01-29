@@ -317,7 +317,8 @@ jredo:
       fputs(n_progname, n_stdout);
       fputs(_(
          " commands -- <msglist> denotes message specifications,\n"
-         "e.g., 1-5, :n or ., separated by spaces:\n"), n_stdout);
+         "e.g., 1-5, :n or . (current, the \"dot\"), separated by spaces:\n"),
+         n_stdout);
       fputs(_(
 "\n"
 "type <msglist>         type (`print') messages (honour `headerpick' etc.)\n"
