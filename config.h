@@ -56,6 +56,36 @@
 #define n_UNIREPL "\xEF\xBF\xBD" /* Unicode replacement 0xFFFD in UTF-8 */
 #define n_VEXPR_REGEX_MAX 16  /* Maximum address. `vexpr' regex(7) matches */
 
+/* * */
+
+/* Fallback MIME charsets, if *charset-7bit* and *charset-8bit* are not set.
+ * Note: must be lowercase!
+ * (Keep in SYNC: ./nail.1:"Character sets", ./config.h:CHARSET_*!) */
+#define CHARSET_7BIT "us-ascii"
+#ifdef HAVE_ICONV
+# define CHARSET_8BIT "utf-8"
+# define CHARSET_8BIT_OKEY charset_8bit
+#else
+# define CHARSET_8BIT "iso-8859-1"
+# define CHARSET_8BIT_OKEY ttycharset
+#endif
+
+#ifndef HOST_NAME_MAX
+# ifdef _POSIX_HOST_NAME_MAX
+#  define HOST_NAME_MAX _POSIX_HOST_NAME_MAX
+# else
+#  define HOST_NAME_MAX 255
+# endif
+#endif
+
+/* Max readable line width TODO simply use BUFSIZ? */
+#if BUFSIZ + 0 > 2560
+# define LINESIZE BUFSIZ
+#else
+# define LINESIZE 2560
+#endif
+#define BUFFER_SIZE (BUFSIZ >= (1u << 13) ? BUFSIZ : (1u << 14))
+
 /* Auto-reclaimed memory storage: size of the buffers.  Maximum auto-reclaimed
  * storage is that value /2, which is n_CTA()ed to be > 1024 */
 #define n_MEMORY_AUTOREC_SIZE 0x2000u
@@ -77,23 +107,13 @@
  * yet another limit; also RFC 2045: 6.7, (5). */
 #define MIME_LINELEN_RFC2047 76
 
-/* Fallback MIME charsets, if *charset-7bit* and *charset-8bit* are not set.
- * Note: must be lowercase!
- * (Keep in SYNC: ./nail.1:"Character sets", ./config.h:CHARSET_*!) */
-#define CHARSET_7BIT "us-ascii"
-#ifdef HAVE_ICONV
-# define CHARSET_8BIT "utf-8"
-# define CHARSET_8BIT_OKEY charset_8bit
-#else
-# define CHARSET_8BIT "iso-8859-1"
-# define CHARSET_8BIT_OKEY ttycharset
-#endif
-
-/* Simply use RAND_bytes(3) for randoms */
-#ifdef HAVE_XSSL
-# define n_RANDOM_USE_XSSL 1
-#else
-# define n_RANDOM_USE_XSSL 0
+/* TODO PATH_MAX: fixed-size buffer is always wrong (think NFS) */
+#ifndef PATH_MAX
+# ifdef MAXPATHLEN
+#  define PATH_MAX MAXPATHLEN
+# else
+#  define PATH_MAX 1024 /* _XOPEN_PATH_MAX POSIX 2008/Cor 1-2013 */
+# endif
 #endif
 
 /* Some environment variables for pipe hooks etc. */
@@ -111,6 +131,13 @@
 /* How much spaces should a <tab> count when *quote-fold*ing? (power-of-two!) */
 #define n_QUOTE_TAB_SPACES 8
 
+/* Simply use RAND_bytes(3) for randoms */
+#ifdef HAVE_XSSL
+# define n_RANDOM_USE_XSSL 1
+#else
+# define n_RANDOM_USE_XSSL 0
+#endif
+
 /* For long iterative output, like `list', tabulator-completion, etc.,
  * determine the screen width that should be used */
 #define n_SCRNWIDTH_FOR_LISTS ((size_t)n_scrnwidth - ((size_t)n_scrnwidth >> 3))
@@ -118,33 +145,13 @@
 /* Smells fishy after, or asks for shell expansion, dependent on context */
 #define n_SHEXP_MAGIC_PATH_CHARS "|&;<>{}()[]*?$`'\"\\"
 
+/* Port to native MS-Windows and to ancient UNIX */
+#if !defined S_ISDIR && defined S_IFDIR && defined S_IFMT
+# define S_ISDIR(mode) (((mode) & S_IFMT) == S_IFDIR)
+#endif
+
 /* Maximum size of a message that is passed through to the spam system */
 #define SPAM_MAXSIZE 420000
-
-/* Max readable line width TODO simply use BUFSIZ? */
-#if BUFSIZ + 0 > 2560
-# define LINESIZE BUFSIZ
-#else
-# define LINESIZE 2560
-#endif
-#define BUFFER_SIZE (BUFSIZ >= (1u << 13) ? BUFSIZ : (1u << 14))
-
-/* TODO PATH_MAX: fixed-size buffer is always wrong (think NFS) */
-#ifndef PATH_MAX
-# ifdef MAXPATHLEN
-#  define PATH_MAX MAXPATHLEN
-# else
-#  define PATH_MAX 1024 /* _XOPEN_PATH_MAX POSIX 2008/Cor 1-2013 */
-# endif
-#endif
-
-#ifndef HOST_NAME_MAX
-# ifdef _POSIX_HOST_NAME_MAX
-#  define HOST_NAME_MAX _POSIX_HOST_NAME_MAX
-# else
-#  define HOST_NAME_MAX 255
-# endif
-#endif
 
 #ifndef NAME_MAX
 # ifdef _POSIX_NAME_MAX
@@ -193,6 +200,8 @@
 #elif !defined NSIG
 # define NSIG ((sizeof(sigset_t) * 8) - 1)
 #endif
+
+/* * */
 
 /* Switch indicating necessity of terminal access interface (termcap.c) */
 #if defined HAVE_TERMCAP || defined HAVE_COLOUR || defined HAVE_MLE
