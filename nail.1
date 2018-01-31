@@ -9717,9 +9717,9 @@ the MIME type cache).
 .Mx
 .It Va mta
 To choose an alternate Mail-Transfer-Agent, set this option to either
-the full pathname of an executable (optionally prefixed with a
-.Ql file://
-protocol indicator), or \*(OPally a SMTP protocol URL, e.g., \*(IN
+the full pathname of an executable (optionally prefixed with the protocol
+.Ql file:// ) ,
+or \*(OPally a SMTP a.k.a. SUBMISSION protocol URL, e.g., \*(IN
 .Pp
 .Dl smtps?://[user[:password]@]server[:port]
 .Pp
@@ -9780,14 +9780,15 @@ as well as possibly
 .Fl \&\&F .
 .
 .Pp
-\*(OPally \*(UA can send mail over SMTP network connections to a single
-defined SMTP smart host by specifying a SMTP URL as the value (see
+\*(OPally \*(UA can send mail over SMTP a.k.a. SUBMISSION network
+connections to a single defined smart host by setting this variable to
+a SMTP or SUBMISSION URL (see
 .Sx "On URL syntax and credential lookup" ) .
+An authentification scheme can be specified via the variable chain
+.Va smtp-auth .
 Encrypted network connections are \*(OPally available, the section
 .Sx "Encrypted network communication"
 should give an overview and provide links to more information on this.
-\*(UA also supports forwarding of all network traffic over a specified
-.Va socks-proxy .
 Note that with some mail providers it may be necessary to set the
 .Va smtp-hostname
 variable in order to use a specific combination of
@@ -9795,6 +9796,8 @@ variable in order to use a specific combination of
 .Va hostname
 and
 .Va mta .
+\*(UA also supports forwarding of all network traffic over a specified
+.Va socks-proxy .
 The following SMTP variants may be used:
 .
 .Bl -bullet
@@ -9826,15 +9829,22 @@ specify the port as
 .Ql :465 ,
 however.
 .It
-Finally there is the SUBMISSION protocol (RFC 6409), which usually
-lives on server port 587 and is practically identically to the SMTP
-protocol from \*(UA's point of view beside that; it requires setting the
+The SUBMISSION protocol (RFC 6409) lives on server port 587 and
+is identically to the SMTP protocol from \*(UA's point of view;
+it requires setting
 .Va smtp-use-starttls
-variable to enter a SSL/TLS secured session state.
-Assign a value like \*(IN
-.Ql submission://[user[:password]@]server[:port]
-(\*(OU
-.Ql submission://server[:port] ) .
+to enter a SSL/TLS secured session state; e.g., \*(IN
+.Ql submission://[user[:password]@]server[:port] .
+.It
+The SUBMISSIONS protocol (RFC 8314) that lives on server port 465 and is
+SSL/TLS secured by default.
+It can be chosen by assigning a value like \*(IN
+.Ql submissions://[user[:password]@]server[:port] .
+Due to the problems mentioned for SMTPS above and the fact that
+SUBMISSIONS is new and a successor that lives on the same port as the
+historical engineering mismanagement named SMTPS, it is usually
+necessary to explicitly specify the port as
+.Ql :465 .
 .El
 .
 .

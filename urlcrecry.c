@@ -807,8 +807,9 @@ n_servbyname(char const *proto, ui16_t *irv_or_null){
       ui16_t portno;
    } const tbl[] = {
       { "smtp", "25", 25},
-      { "submission", "587", 587},
       { "smtps", "465", 465},
+      { "submission", "587", 587},
+      { "submissions", "465", 465},
       { "pop3", "110", 110},
       { "pop3s", "995", 995},
       { "imap", "143", 143},
@@ -896,6 +897,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
       a_IFS("smtps", 465)
       a_IFs("smtp", 25)
       a_IFs("submission", 587)
+      a_IFS("submissions", 465)
       a_PROTOX("smtp", 25, urlp->url_flags |= n_URL_TLS_OPTIONAL);
       break;
 #else
