@@ -2221,14 +2221,45 @@ fakefrom(struct message *mp)
 FL char const *
 fakedate(time_t t)
 {
-   char *cp, *cq;
+   char *cq, *cp;
+   int i;
+   struct tm *tmp;
    NYD_ENTER;
 
-   cp = ctime(&t);
-   for (cq = cp; *cq != '\0' && *cq != '\n'; ++cq)
+   /* Problem is that t may be invalid for the representation of ctime(3),
+    * which indeed is asctime(localtime(t)); musl libc says for asctime(3):
+    *    ISO C requires us to use the above format string,
+    *    even if it will not fit in the buffer. Thus asctime_r
+    *    is _supposed_ to crash if the fields in tm are too large.
+    *    We follow this behavior and crash "gracefully" to warn
+    *    application developers that they may not be so lucky
+    *    on other implementations (e.g. stack smashing..).
+    * So we need to be a bit careful or the libc kills us */
+jredo:
+   if((tmp = localtime(&t)) == NULL){
+      /* TODO error log */
+      t = 0;
+      goto jredo;
+   }
+
+   i = 64;
+jredo2:
+   cq = n_lofi_alloc(i);
+   if(snprintf(cq, i, "%.3s %.3s%3d %.2d:%.2d:%.2d %d\n",
+         n_weekday_names[tmp->tm_wday], n_month_names[tmp->tm_mon],
+         tmp->tm_mday, tmp->tm_hour, tmp->tm_min, tmp->tm_sec,
+         tmp->tm_year + 1900) >= i){
+      n_lofi_free(cq);
+      i <<= 1;
+      goto jredo2;
+   }
+
+   for(cp = cq; *cp != '\0' && *cp != '\n'; ++cp)
       ;
-   *cq = '\0';
-   cp = savestr(cp);
+   *cp = '\0';
+   cp = savestr(cq);
+
+   n_lofi_free(cq);
    NYD_LEAVE;
    return cp;
 }
