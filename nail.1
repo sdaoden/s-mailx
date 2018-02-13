@@ -1042,7 +1042,7 @@ as well as
 .Va on-compose-splice-shell
 variables, the former also to be set to a
 .Ic define Ns
-d macro, increasingly powerful mechanisms to perform automatized message
+d macro, increasingly powerful mechanisms to perform automated message
 adjustments, including signature creation, are available.
 (\*(ID These hooks work for commands which newly create messages, namely
 .Ic forward , mail , reply
@@ -2428,7 +2428,7 @@ including administrativa strings).
 .Pp
 This specification performs full text comparison, but even with
 regular expression support it is almost impossible to write a search
-expression that savely matches only a specific address domain.
+expression that safely matches only a specific address domain.
 To request that the body content of the header is treated as a list of
 addresses, and to strip those down to the plain email address which the
 search expression is to be matched against, prefix the effective
@@ -3523,7 +3523,7 @@ expanded as follows:
 .It Ql \ea
 bell control character (ASCII and ISO-10646 BEL).
 .It Ql \eb
-backspace control characer (ASCII and ISO-10646 BS).
+backspace control character (ASCII and ISO-10646 BS).
 .It Ql \eE
 escape control character (ASCII and ISO-10646 ESC).
 .It Ql \ee
@@ -3834,7 +3834,7 @@ and
 and see how the output changes.
 This mode also supports a more
 .Va verbose
-output, which will provide the informations documented for
+output, which will provide the information documented for
 .Ic list .
 .
 .Mx
@@ -3937,7 +3937,7 @@ as
 (This state could later become overwritten by an I/O error, though.)
 .
 .Pp
-Encoding supports four different modes, lesser automatized versions can be
+Encoding supports four different modes, lesser automated versions can be
 chosen by prefixing one, two or three plus signs: the standard imposes
 a special meaning on some characters, which thus have to be transformed
 to so-called quoted-pairs by pairing them with a reverse solidus
@@ -5771,9 +5771,9 @@ pair of commands manages subscription attributes of mailing-lists.
 .
 .Mx
 .It Ic mimeview
-\*(ID Only available in interactive mode, this command allows to display
-MIME parts which require external MIME handler programs to run which do
-not integrate in \*(UAs normal
+\*(ID Only available in interactive mode, this command allows one to
+display MIME parts which require external MIME handler programs to run
+which do not integrate in \*(UAs normal
 .Ic type
 output (see
 .Sx "HTML mail and MIME attachments" ) .
@@ -5990,7 +5990,7 @@ otherwise success indicating status.
 .It Ic read
 \*(NQ Read a line from standard input, or the channel set active via
 .Ic readctl ,
-and assign the data, which will be splitted as indicated by
+and assign the data, which will be split as indicated by
 .Va ifs ,
 to the given variables.
 The variable names are checked by the same rules as documented for
@@ -7008,7 +7008,7 @@ via the exit status, but the result will linger at the minimum or
 maximum possible value, instead of overflowing (or trapping).
 This is true also for the argument parse step.
 For the bitwise shifts, the saturated maximum is 63.
-Any catched overflow will be reported via the error number
+Any caught overflow will be reported via the error number
 .Va \&!
 as
 .Va ^ERR Ns -OVERFLOW .
@@ -8606,7 +8606,7 @@ Usage of the
 can be forced by setting this to the value
 .Ql 0 ,
 setting it without a value will deduce the current height of the
-terminal screen to compute the treshold (see
+terminal screen to compute the threshold (see
 .Ev LINES ,
 .Va screen
 and
@@ -9666,7 +9666,7 @@ specifications and may cause a different transfer-encoding to be used.
 .Pf (Or\0 Ql qp . )
 Quoted-printable encoding is 7-bit clean and has the property that ASCII
 characters are passed through unchanged, so that an english message can
-be read as-is; it is also acceptible for other single-byte locales that
+be read as-is; it is also acceptable for other single-byte locales that
 share many characters with ASCII, like, e.g., ISO-8859-1.
 The encoding will cause a large overhead for messages in other character
 sets: e.g., it will require up to twelve (12) bytes to encode a single
@@ -9784,7 +9784,7 @@ as well as possibly
 connections to a single defined smart host by setting this variable to
 a SMTP or SUBMISSION URL (see
 .Sx "On URL syntax and credential lookup" ) .
-An authentification scheme can be specified via the variable chain
+An authentication scheme can be specified via the variable chain
 .Va smtp-auth .
 Encrypted network connections are \*(OPally available, the section
 .Sx "Encrypted network communication"
@@ -11022,7 +11022,7 @@ for the private key
 .Ql USER@HOST.smime-cert-cert
 for the certificate stored in the same file)
 will be used for performing any necessary password lookup,
-therefore the lookup can be automatized via the mechanisms described in
+therefore the lookup can be automated via the mechanisms described in
 .Sx "On URL syntax and credential lookup" .
 For example, the hypothetical address
 .Ql bob@exam.ple
@@ -11059,7 +11059,7 @@ refers to the content of the internal variable
 The pseudo-host
 .Ql USER@HOST.smime-include-certs
 will be used for performing password lookups for these certificates,
-shall they have been given one, therefore the lookup can be automatized
+shall they have been given one, therefore the lookup can be automated
 via the mechanisms described in
 .Sx "On URL syntax and credential lookup" .
 .
@@ -12071,7 +12071,7 @@ Note that the editor will be pointed to the raw message content in that
 case, i.e., neither MIME decoding nor decryption will have been
 performed, and proper RFC 4155
 .Ql From_
-quoting of newly added or edited content is also left as an excercise to
+quoting of newly added or edited content is also left as an exercise to
 the user.
 .El
 .\" }}} (Variables)
@@ -12335,7 +12335,7 @@ A default shell is used if this environment variable is not defined.
 Specifies a time in seconds since the Unix epoch (1970-01-01) to be
 used in place of the current time.
 This variable is looked up upon program startup, and its existence will
-switch \*(UA to a reproducable mode
+switch \*(UA to a reproducible mode
 .Pf ( Lk https://reproducible-builds.org )
 which uses deterministic random numbers, a special fixated pseudo
 .Ev LOGNAME
@@ -13531,7 +13531,7 @@ try again after adding an (additional) entry with this extension.
 .
 Since 2014 some free service providers classify programs as
 .Dq less secure
-unless they use a special authentification method (OAuth 2.0) which
+unless they use a special authentication method (OAuth 2.0) which
 was not standardized for non-HTTP protocol authentication token query
 until August 2015 (RFC 7628).
 .
