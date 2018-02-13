@@ -548,7 +548,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
      DS(N_("Unset <option-list>")) },
 
    { "varshow", &c_varshow, (G | M | X | TWYSH), 1, MAC, NULL
-     DS(N_("Show some informations about the given <variables>")) },
+     DS(N_("Show some information about the given <variables>")) },
    { "varedit", &c_varedit, (G | I | M | S | TWYSH), 1, MAC, NULL
      DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
    { "vexpr", &c_vexpr, (G | M | V | X | EM | TWYSH), 2, MAC, NULL

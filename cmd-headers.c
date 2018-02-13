@@ -529,7 +529,7 @@ jputcb:
 #endif
       default:
          if (n_poption & n_PO_D_V)
-            n_err(_("Unkown *headline* format: %%%c\n"), c);
+            n_err(_("Unknown *headline* format: %%%c\n"), c);
          c = '?';
          goto jputcb;
       }
