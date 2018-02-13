@@ -169,9 +169,23 @@ jredo:
          i |= (*fp != '\0') ? 2 | 4 : 2; /* XXX no magics */
 
       /* May we strftime(3)? */
-      if (i & (1 | 4))
-         memcpy(&time_current.tc_local, localtime(&datet),
-            sizeof time_current.tc_local);
+      if (i & (1 | 4)){
+         /* This localtime(3) should not fail since rfctime(3).. but .. */
+         struct tm *tmp;
+         time_t datet2;
+
+         /* TODO the datetime stuff is horror: mails should be parsed into
+          * TODO an object tree, and date: etc. have a datetime object, which
+          * TODO verifies upon parse time; then ALL occurrences of datetime are
+          * TODO valid all through the program; and: to_wire, to_user! */
+         datet2 = datet;
+jredo_localtime:
+         if((tmp = localtime(&datet2)) == NULL){
+            datet2 = 0;
+            goto jredo_localtime;
+         }
+         memcpy(&time_current.tc_local, tmp, sizeof(*tmp));
+      }
 
       if ((i & 2) &&
             (UICMP(64,datet, >, time_current.tc_time + n_DATE_SECSDAY) ||
@@ -375,8 +389,9 @@ jputcb:
             if (i != 0)
                date = datebuf;
             else
-               n_err(_("Ignored date format, it excesses the target "
-                  "buffer (%lu bytes)\n"), (ul_i)sizeof(datebuf));
+               n_err(_("Ignoring date format, it is either empty or "
+                  "excesses buffer size (%lu bytes)\n"),
+                  (ul_i)sizeof(datebuf));
             datefmt = NULL;
          }
          if (n == 0)

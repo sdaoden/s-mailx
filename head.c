@@ -2219,10 +2219,10 @@ fakefrom(struct message *mp)
 }
 
 FL char const *
-fakedate(time_t t)
-{
+fakedate(time_t t){
    char *cq, *cp;
    int i;
+   char const *wdn, *mn;
    struct tm *tmp;
    NYD_ENTER;
 
@@ -2242,12 +2242,16 @@ jredo:
       goto jredo;
    }
 
+   wdn = (tmp->tm_wday >= 0 && tmp->tm_wday <= 6)
+         ? n_weekday_names[tmp->tm_wday] : n_qm;
+   mn = (tmp->tm_mon >= 0 && tmp->tm_mon <= 11)
+         ? n_month_names[tmp->tm_mon] : n_qm;
+
    i = 64;
 jredo2:
    cq = n_lofi_alloc(i);
    if(snprintf(cq, i, "%.3s %.3s%3d %.2d:%.2d:%.2d %d\n",
-         n_weekday_names[tmp->tm_wday], n_month_names[tmp->tm_mon],
-         tmp->tm_mday, tmp->tm_hour, tmp->tm_min, tmp->tm_sec,
+         wdn, mn, tmp->tm_mday, tmp->tm_hour, tmp->tm_min, tmp->tm_sec,
          tmp->tm_year + 1900) >= i){
       n_lofi_free(cq);
       i <<= 1;
@@ -2313,7 +2317,7 @@ unixtime(char const *fromline)
    if((tmptr = localtime(&t)) == NULL)
       goto jinvalid;
    if (tmptr->tm_isdst > 0)
-      tzdiff += 3600;
+      tzdiff += 3600; /* TODO simply adding an hour for ISDST is .. buuh */
    t -= tzdiff;
 jleave:
    NYD2_LEAVE;

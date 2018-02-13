@@ -4322,20 +4322,35 @@ FL const char *
 imap_make_date_time(time_t t)
 {
    static char s[40];
-   struct tm *tmptr;
+   char const *mn;
+   struct tm *tmp;
    int tzdiff, tzdiff_hour, tzdiff_min;
+   time_t t2;
    NYD2_ENTER;
 
-   tzdiff = t - mktime(gmtime(&t));
+jredo:
+   if((t2 = mktime(gmtime(&t))) == (time_t)-1){
+      t = 0;
+      goto jredo;
+   }
+   tzdiff = t - t2;
+   if((tmp = localtime(&t)) == NULL){
+      t = 0;
+      goto jredo;
+   }
+
    tzdiff_hour = (int)(tzdiff / 60);
    tzdiff_min = tzdiff_hour % 60;
    tzdiff_hour /= 60;
-   tmptr = localtime(&t);
-   if (tmptr->tm_isdst > 0)
+   if (tmp->tm_isdst > 0)
       tzdiff_hour++;
+
+   mn = (tmp->tm_mon >= 0 && tmp->tm_mon <= 11)
+         ? n_month_names[tmp->tm_mon] : n_qm;
+
    snprintf(s, sizeof s, "\"%02d-%s-%04d %02d:%02d:%02d %+03d%02d\"",
-         tmptr->tm_mday, n_month_names[tmptr->tm_mon], tmptr->tm_year + 1900,
-         tmptr->tm_hour, tmptr->tm_min, tmptr->tm_sec, tzdiff_hour, tzdiff_min);
+         tmp->tm_mday, mn, tmp->tm_year + 1900,
+         tmp->tm_hour, tmp->tm_min, tmp->tm_sec, tzdiff_hour, tzdiff_min);
    NYD2_LEAVE;
    return s;
 }
