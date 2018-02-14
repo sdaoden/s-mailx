@@ -1303,8 +1303,10 @@ for i in \
       OSFULLSPEC \
       ; do
    eval j=\$${i}
-   printf -- "${i} = ${j}\n" >> ${newmk}
-   printf -- "${i}=${j}\n" >> ${newlst}
+   if [ -n "${j}" ]; then
+       printf -- "${i} = ${j}\n" >> ${newmk}
+       printf -- "${i}=${j}\n" >> ${newlst}
+   fi
 done
 
 # Now finally check whether we already have a configuration and if so, whether
