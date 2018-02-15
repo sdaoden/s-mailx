@@ -1,7 +1,8 @@
-S-nail is maintained and developed by Steffen Nurpmeso.  It is
-based upon Heirloom mailx (formerly nail) which was developed by
-Gunnar Ritter and which was itself based upon Berkeley Mail that
-originates in 2BSD (Kurt Shoens (UCB) March 25, 1978).
+S-nail is maintained and developed by Steffen Nurpmeso.
+This software originates in the codebase of Heirloom mailx, formerly
+known as nail, which itself is based upon Berkeley Mail that has
+a history back to 1978, and which has been written to replace Unix
+mail, a program that already shipped with First Edition Unix.
 
 Other people contributed by reporting problems, suggesting various
 improvements, whether directly or indirectly, or submitting actual

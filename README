@@ -18,10 +18,10 @@ people who have helped improving and deserve acknowledgement.
 
 This software originates in the codebase of Heirloom mailx, formerly
 known as nail, which itself is based upon Berkeley Mail that has
-a history back to 1978 and which superseded Unix mail, a program that
-already shipped with First Edition Unix from 1971 -- M. Douglas McIlroy
-writes in his article "A Research UNIX Reader: Annotated Excerpts from
-the Programmer's Manual, 1971-1986":
+a history back to 1978, and which has been written to replace Unix mail,
+a program that already shipped with First Edition Unix from 1971 --
+M. Douglas McIlroy writes in his article "A Research UNIX Reader:
+Annotated Excerpts from the Programmer's Manual, 1971-1986":
 
   MAIL (v1 page 21, v7 page 22)
     Electronic mail was there from the start. Never satisfied with its
