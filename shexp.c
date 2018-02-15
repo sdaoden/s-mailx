@@ -1079,6 +1079,9 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
    if(flags & (n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_TRIM_IFSSPACE)){
       ifs = ok_vlook(ifs);
       ifs_ws = ok_vlook(ifs_ws);
+   }else{
+      n_UNINIT(ifs, n_empty);
+      n_UNINIT(ifs_ws, n_empty);
    }
 
    state = a_NONE;
