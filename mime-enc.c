@@ -978,7 +978,7 @@ b64_decode_part(struct str *out, struct str const *in, struct str *outrest,
 
    n_string_creat(&s);
    if((len = out->l) > 0 && out->s[len] == '\0')
-      n_string_take_ownership(&s, out->s, len +1, len);
+      (void)n_string_take_ownership(&s, out->s, len +1, len);
    else{
       if(len > 0)
          n_string_push_buf(&s, out->s, len);
