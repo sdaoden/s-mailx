@@ -455,6 +455,8 @@ jleave:
 FL struct attachment *
 n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
    char prefix[32];
+   struct str shin;
+   struct n_string shou, *shoup;
    struct attachment *naplist, *ap;
    ui32_t attno;
    NYD_ENTER;
@@ -466,12 +468,12 @@ n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
          _("# Only supports sh(1)ell-style quoting for file names\n"));
    }
 
+   shoup = n_string_creat_auto(&shou);
+
    /* Modify already present ones?  Append some more? */
    attno = 1;
 
    for(naplist = NULL;;){
-      char const *filename;
-
       snprintf(prefix, sizeof prefix, _("#%" PRIu32 " filename: "), attno);
 
       if(aplist != NULL){
@@ -480,13 +482,30 @@ n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
           * TODO file if the new user input matches the original value! */
          if(aplist->a_conv == AC_TMPFILE)
             Fclose(aplist->a_tmpf);
-         filename = n_shexp_quote_cp(aplist->a_path_user, FAL0);
+         shin.s = n_shexp_quote_cp(aplist->a_path_user, FAL0);
       }else
-         filename = n_empty;
+         shin.s = n_UNCONST(n_empty);
 
       ap = NULL;
-      if((filename = n_go_input_cp(gif, prefix, filename)) != NULL){
-         naplist = n_attachment_append(naplist, filename, NULL, &ap);
+      if((shin.s = n_go_input_cp(gif, prefix, shin.s)) != NULL){
+         enum n_shexp_state shs;
+         char const *s_save;
+
+         s_save = shin.s;
+         shin.l = UIZ_MAX;
+         shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC |
+               n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_LOG |
+               n_SHEXP_PARSE_IGNORE_EMPTY),
+               shoup, &shin, NULL);
+         if(!(shs & n_SHEXP_STATE_STOP))
+            n_err(_("# May be given one argument a time only: %s\n"),
+               n_shexp_quote_cp(s_save, FAL0));
+         if((shs & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_STOP |
+                  n_SHEXP_STATE_ERR_MASK)
+               ) != (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_STOP))
+            break;
+
+         naplist = n_attachment_append(naplist, n_string_cp(shoup), NULL, &ap);
          if(ap != NULL){
             if(n_psonce & n_PSO_INTERACTIVE)
                a_attachment_yay(ap);

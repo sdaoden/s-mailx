@@ -7403,13 +7403,14 @@ entered or the session can be quit by committing an empty
 .Dq new
 attachment.
 .Pp
-For all mode, if a given filename solely consists of the number sign
+For all modes, if a given filename solely consists of the number sign
 .Ql #
 followed by a valid message number of the currently active mailbox, then
 the given message is attached as a
 .Ql message/rfc822
 MIME message part.
-As the shell comment character the number sign must be quoted.
+The number sign must be quoted to avoid misinterpretation with the shell
+comment character.
 .
 .Mx
 .It Ic ~| Ar command
