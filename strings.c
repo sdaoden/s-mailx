@@ -2,7 +2,7 @@
  *@ String support routines.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -1054,56 +1054,103 @@ n_string_cp_const(struct n_string const *self){
  */
 
 FL ui32_t
-n_utf8_to_utf32(char const **bdat, size_t *blen) /* TODO check false UTF8 */
-{
-   char const *cp;
-   size_t l;
-   ui32_t c, x;
+n_utf8_to_utf32(char const **bdat, size_t *blen){
+   ui32_t c, x, x1;
+   char const *cp, *cpx;
+   size_t l, lx;
    NYD2_ENTER;
 
-   cp = *bdat;
-   l = *blen - 1;
-   x = (ui8_t)*cp++;
+   lx = l = *blen - 1;
+   x = *(cp = *bdat);
+   cpx = ++cp;
 
-   if (x <= 0x7Fu)
+   if(n_LIKELY(x <= 0x7Fu))
       c = x;
-   else {
-      /* TODO UTF-8 decoder false sequences: Zhang Boyang, TinyCC [a82c11f] */
-      if ((x & 0xE0u) == 0xC0u) {
-         if (l < 1)
-            goto jerr;
-         l -= 1;
-         c = x & ~0xC0u;
-      } else if ((x & 0xF0u) == 0xE0u) {
-         if (l < 2)
-            goto jerr;
-         l -= 2;
-         c = x & ~0xE0u;
-         c <<= 6;
-         x = (ui8_t)*cp++;
-         c |= x & 0x7Fu;
-      } else {
-         if (l < 3)
-            goto jerr;
-         l -= 3;
-         c = x & ~0xF0u;
-         c <<= 6;
-         x = (ui8_t)*cp++;
-         c |= x & 0x7Fu;
-         c <<= 6;
-         x = (ui8_t)*cp++;
-         c |= x & 0x7Fu;
-      }
-      c <<= 6;
-      x = (ui8_t)*cp++;
-      c |= x & 0x7Fu;
-   }
+   /* 0xF8, but Unicode guarantees maximum of 0x10FFFFu -> F4 8F BF BF.
+    * Unicode 9.0, 3.9, UTF-8, Table 3-7. Well-Formed UTF-8 Byte Sequences */
+   else if(n_LIKELY(x > 0xC0u && x <= 0xF4u)){
+      if(n_LIKELY(x < 0xE0u)){
+         if(n_UNLIKELY(l < 1))
+            goto jenobuf;
+         --l;
 
+         c = (x &= 0x1Fu);
+      }else if(n_LIKELY(x < 0xF0u)){
+         if(n_UNLIKELY(l < 2))
+            goto jenobuf;
+         l -= 2;
+
+         x1 = x;
+         c = (x &= 0x0Fu);
+
+         /* Second byte constraints */
+         x = (ui8_t)*cp++;
+         switch(x1){
+         case 0xE0u:
+            if(n_UNLIKELY(x < 0xA0u || x > 0xBFu))
+               goto jerr;
+            break;
+         case 0xEDu:
+            if(n_UNLIKELY(x < 0x80u || x > 0x9Fu))
+               goto jerr;
+            break;
+         default:
+            if(n_UNLIKELY((x & 0xC0u) != 0x80u))
+               goto jerr;
+            break;
+         }
+         c <<= 6;
+         c |= (x &= 0x3Fu);
+      }else{
+         if(n_UNLIKELY(l < 3))
+            goto jenobuf;
+         l -= 3;
+
+         x1 = x;
+         c = (x &= 0x07u);
+
+         /* Second byte constraints */
+         x = (ui8_t)*cp++;
+         switch(x1){
+         case 0xF0u:
+            if(n_UNLIKELY(x < 0x90u || x > 0xBFu))
+               goto jerr;
+            break;
+         case 0xF4u:
+            if(n_UNLIKELY((x & 0xF0u) != 0x80u)) /* 80..8F */
+               goto jerr;
+            break;
+         default:
+            if(n_UNLIKELY((x & 0xC0u) != 0x80u))
+               goto jerr;
+            break;
+         }
+         c <<= 6;
+         c |= (x &= 0x3Fu);
+
+         x = (ui8_t)*cp++;
+         if(n_UNLIKELY((x & 0xC0u) != 0x80u))
+            goto jerr;
+         c <<= 6;
+         c |= (x &= 0x3Fu);
+      }
+
+      x = (ui8_t)*cp++;
+      if(n_UNLIKELY((x & 0xC0u) != 0x80u))
+         goto jerr;
+      c <<= 6;
+      c |= x & 0x3Fu;
+   }else
+      goto jerr;
+
+   cpx = cp;
+   lx = l;
 jleave:
-   *bdat = cp;
-   *blen = l;
+   *bdat = cpx;
+   *blen = lx;
    NYD2_LEAVE;
    return c;
+jenobuf:
 jerr:
    c = UI32_MAX;
    goto jleave;

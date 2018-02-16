@@ -20,7 +20,7 @@
  *@ TODO   Global -> Scope -> Local, all "overlay" objects.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -94,27 +94,29 @@ enum a_amv_loflags{
 };
 
 /* make-okey-map.pl ensures that _VIRT implies _RDONLY and _NODEL, and that
- * _IMPORT implies _ENV; it doesn't verify anything... */
+ * _IMPORT implies _ENV; it doesn't verify anything...
+ * More description at nail.h:enum okeys */
 enum a_amv_var_flags{
    a_AMV_VF_NONE = 0,
 
    /* The basic set of flags, also present in struct a_amv_var_map.avm_flags */
    a_AMV_VF_BOOL = 1u<<0,     /* ok_b_* */
-   a_AMV_VF_VIRT = 1u<<1,     /* "Stateless" automatic variable */
-   a_AMV_VF_CHAIN = 1u<<2,    /* Is a variable chain (-USER{,@HOST} variants) */
+   a_AMV_VF_CHAIN = 1u<<1,    /* Is variable chain (-USER{,@HOST} variants) */
+   a_AMV_VF_VIRT = 1u<<2,     /* "Stateless" automatic variable */
    a_AMV_VF_VIP = 1u<<3,      /* Wants _var_check_vips() evaluation */
    a_AMV_VF_RDONLY = 1u<<4,   /* May not be set by user */
    a_AMV_VF_NODEL = 1u<<5,    /* May not be deleted */
    a_AMV_VF_I3VAL = 1u<<6,    /* Has an initial value */
    a_AMV_VF_DEFVAL = 1u<<7,   /* Has a default value */
-   a_AMV_VF_IMPORT = 1u<<8,   /* Import ONLY from environ (pre n_PSO_STARTED) */
+   a_AMV_VF_IMPORT = 1u<<8,   /* Import ONLY from env (pre n_PSO_STARTED) */
    a_AMV_VF_ENV = 1u<<9,      /* Update environment on change */
    a_AMV_VF_NOLOPTS = 1u<<10, /* May not be tracked by `localopts' */
    a_AMV_VF_NOTEMPTY = 1u<<11, /* May not be assigned an empty value */
-   a_AMV_VF_NOCNTRLS = 1u<<12, /* Value may not contain control characters */
-   a_AMV_VF_NUM = 1u<<13,     /* Value must be a 32-bit number */
-   a_AMV_VF_POSNUM = 1u<<14,  /* Value must be positive 32-bit number */
-   a_AMV_VF_LOWER = 1u<<15,   /* Values will be stored in a lowercase version */
+   /* TODO _VF_NUM, _VF_POSNUM: we also need 64-bit limit numbers! */
+   a_AMV_VF_NUM = 1u<<12,     /* Value must be a 32-bit number */
+   a_AMV_VF_POSNUM = 1u<<13,  /* Value must be positive 32-bit number */
+   a_AMV_VF_LOWER = 1u<<14,   /* Values will be stored in lowercase version */
+   a_AMV_VF_OBSOLETE = 1u<<15, /* Is obsolete? */
    a_AMV_VF__MASK = (1u<<(15+1)) - 1,
 
    /* Extended flags, not part of struct a_amv_var_map.avm_flags */
@@ -197,7 +199,7 @@ n_CTA(a_AMV_MF__MAX <= UI8_MAX, "Enumeration excesses storage datatype");
 
 struct a_amv_mac_line{
    ui32_t aml_len;
-   ui32_t aml_prespc;   /* Number of leading SPC, for display purposes */
+   ui32_t aml_prespc;   /* Number of leading SPACEs, for display purposes */
    char aml_dat[n_VFIELD_SIZE(0)];
 };
 
@@ -333,10 +335,9 @@ static void a_amv_var_free(char *cp);
 /* Check for special housekeeping.  _VIP_SET_POST and _VIP_CLEAR do not fail
  * (or propagate errors), _VIP_SET_PRE may and should case abortion */
 static bool_t a_amv_var_check_vips(enum a_amv_var_vip_mode avvm,
-               enum okeys okey, char const *val);
+               enum okeys okey, char const **val);
 
-/* _VF_NOCNTRLS, _VF_NUM / _VF_POSNUM */
-static bool_t a_amv_var_check_nocntrls(char const *val);
+/* _VF_NUM / _VF_POSNUM */
 static bool_t a_amv_var_check_num(char const *val, bool_t posnum);
 
 /* If a variable name begins with a lowercase-character and contains at
@@ -912,7 +913,8 @@ a_amv_var_free(char *cp){
 
 static bool_t
 a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
-      char const *val){
+      char const **val){
+   char const *emsg;
    bool_t ok;
    NYD2_ENTER;
 
@@ -922,40 +924,100 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
       switch(okey){
       default:
          break;
+      case ok_v_customhdr:{
+         char const *vp;
+         char *buf;
+         struct n_header_field *hflp, **hflpp, *hfp;
+         NYD_ENTER;
+
+         buf = savestr(*val);
+         hflp = NULL;
+         hflpp = &hflp;
+
+         while((vp = n_strsep_esc(&buf, ',', TRU1)) != NULL){
+            if(!n_header_add_custom(hflpp, vp, TRU1)){
+               emsg = N_("Invalid *customhdr* entry: %s\n");
+               ok = FAL0;
+               break;
+            }
+            hflpp = &(*hflpp)->hf_next;
+         }
+
+         hflpp = ok ? &n_customhdr_list : &hflp;
+         while((hfp = *hflpp) != NULL){
+            *hflpp = hfp->hf_next;
+            n_free(hfp);
+         }
+         if(!ok)
+            goto jerr;
+         n_customhdr_list = hflp;
+      }  break;
+      case ok_v_from:
+      case ok_v_sender:{
+         struct name *np;
+
+         if((np = lextract(*val, GEXTRA | GFULL)) == NULL){
+jefrom:
+            emsg = N_("*from* / *sender*: invalid  address(es): %s\n");
+            goto jerr;
+         }else if(okey == ok_v_sender && np->n_flink != NULL){
+            emsg = N_("*sender*: may not contain multiple addresses: %s\n");
+            goto jerr;
+         }else for(; np != NULL; np = np->n_flink)
+            if(is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
+               goto jefrom;
+      }  break;
       case ok_v_HOME:
          /* Note this gets called from main.c during initialization, and they
           * simply set this to pw_dir as a fallback: don't verify _that_ call.
           * See main.c! */
-         if(!(n_pstate & n_PS_ROOT) && !n_is_dir(val, TRUM1)){
-            n_err(_("$HOME is not a directory or not accessible: %s\n"),
-               n_shexp_quote_cp(val, FAL0));
-            ok = FAL0;
+         if(!(n_pstate & n_PS_ROOT) && !n_is_dir(*val, TRUM1)){
+            emsg = N_("$HOME is not a directory or not accessible: %s\n");
+            goto jerr;
          }
+         break;
+      case ok_v_hostname:
+      case ok_v_smtp_hostname:
+#ifdef HAVE_IDNA
+         if(*val != '\0'){
+            struct n_string cnv;
+
+            n_string_creat_auto(&cnv);
+            if(!n_idna_to_ascii(&cnv, *val, UIZ_MAX)){
+               /*n_string_gut(&res);*/
+               emsg = N_("*hostname*/*smtp_hostname*: "
+                     "IDNA encoding failed: %s\n");
+               goto jerr;
+            }
+            *val = n_string_cp(&cnv);
+            /*n_string_drop_ownership(&cnv);*/
+         }
+#endif
          break;
       case ok_v_quote_chars:{
          char c;
+         char const *cp;
 
-         while((c = *val++) != '\0')
+         for(cp = *val; (c = *cp++) != '\0';)
             if(!asciichar(c) || blankspacechar(c)){
                ok = FAL0;
                break;
             }
-         }break;
+      }  break;
       case ok_v_TMPDIR:
-         if(!n_is_dir(val, TRU1)){
-            n_err(_("$TMPDIR is not a directory or not accessible: %s\n"),
-               n_shexp_quote_cp(val, FAL0));
-            ok = FAL0;
+         if(!n_is_dir(*val, TRU1)){
+            emsg = N_("$TMPDIR is not a directory or not accessible: %s\n");
+            goto jerr;
          }
          break;
       case ok_v_umask:
-         if(*val != '\0'){
+         if(**val != '\0'){
             ui64_t uib;
 
-            n_idec_ui64_cp(&uib, val, 0, NULL);
+            n_idec_ui64_cp(&uib, *val, 0, NULL);
             if(uib & ~0777u){ /* (is valid _VF_POSNUM) */
-               n_err(_("Invalid *umask* setting: %s\n"), val);
-               ok = FAL0;
+               emsg = N_("Invalid *umask* setting: %s\n");
+               goto jerr;
             }
          }
          break;
@@ -978,14 +1040,16 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
          break;
       case ok_v_ifs:{
          char *x_b, *x, c;
+         char const *cp;
 
-         x_b = x = n_autorec_alloc(strlen(val) +1);
-         while((c = *val++) != '\0')
+         cp = *val;
+         x_b = x = n_autorec_alloc(strlen(cp) +1);
+         while((c = *cp++) != '\0')
             if(spacechar(c))
                *x++ = c;
          *x = '\0';
          n_PS_ROOT_BLOCK(ok_vset(ifs_ws, x_b));
-         }break;
+      }  break;
 #ifdef HAVE_SETLOCALE
       case ok_v_LANG:
       case ok_v_LC_ALL:
@@ -1014,10 +1078,10 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
             ok_bset(termcap_disable);
          break;
       case ok_v_umask:
-         if(*val != '\0'){
+         if(**val != '\0'){
             ui64_t uib;
 
-            n_idec_ui64_cp(&uib, val, 0, NULL);
+            n_idec_ui64_cp(&uib, *val, 0, NULL);
             umask((mode_t)uib);
          }
          break;
@@ -1035,6 +1099,14 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
       case ok_b_debug:
          n_poption &= ~n_PO_DEBUG;
          break;
+      case ok_v_customhdr:{
+         struct n_header_field *hfp;
+
+         while((hfp = n_customhdr_list) != NULL){
+            n_customhdr_list = hfp->hf_next;
+            n_free(hfp);
+         }
+      }  break;
       case ok_v_HOME:
          /* Invalidate any resolved folder then, too
           * FALLTHRU */
@@ -1060,20 +1132,14 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
          break;
       }
    }
+
+jleave:
    NYD2_LEAVE;
    return ok;
-}
-
-static bool_t
-a_amv_var_check_nocntrls(char const *val){
-   char c;
-   NYD2_ENTER;
-
-   while((c = *val++) != '\0')
-      if(cntrlchar(c))
-         break;
-   NYD2_LEAVE;
-   return (c == '\0');
+jerr:
+   n_err(V_(emsg), n_shexp_quote_cp(*val, FAL0));
+   ok = FAL0;
+   goto jleave;
 }
 
 static bool_t
@@ -1092,7 +1158,8 @@ a_amv_var_check_num(char const *val, bool_t posnum){
       enum n_idec_state ids;
 
       ids = n_idec_cp(&uib, val, 0,
-            (posnum ?  n_IDEC_MODE_SIGNED_TYPE : n_IDEC_MODE_NONE), NULL);
+            (n_IDEC_MODE_LIMIT_32BIT |
+             (posnum ?  n_IDEC_MODE_SIGNED_TYPE : n_IDEC_MODE_NONE)), NULL);
       if((ids & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
             ) != n_IDEC_STATE_CONSUMED)
          rv = FAL0;
@@ -1318,12 +1385,6 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp,
                if(!isbltin)
                   goto jerr;
             }else if(n_LIKELY(*cp != '\0')){
-                if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_NOCNTRLS) &&
-                     !a_amv_var_check_nocntrls(cp))){
-                  n_err(_("Ignoring environment, control characters "
-                     "invalid in variable: %s\n"), avcp->avc_name);
-                  goto jerr;
-               }
                if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_NUM) &&
                      !a_amv_var_check_num(cp, FAL0))){
                   n_err(_("Environment variable value not a number "
@@ -1405,7 +1466,7 @@ jnewval:
    /* E.g., $TMPDIR may be set to non-existent, so we need to be able to catch
     * that and redirect to a possible default value */
    if((avmp->avm_flags & a_AMV_VF_VIP) &&
-         !a_amv_var_check_vips(a_AMV_VIP_SET_PRE, avcp->avc_okey, cp)){
+         !a_amv_var_check_vips(a_AMV_VIP_SET_PRE, avcp->avc_okey, &cp)){
 #ifdef HAVE_SETENV
       if(avmp->avm_flags & (a_AMV_VF_IMPORT | a_AMV_VF_ENV))
          unsetenv(avcp->avc_name);
@@ -1429,7 +1490,7 @@ jnewval:
       if(avp->av_flags & a_AMV_VF_ENV)
          a_amv_var__putenv(avcp, avp);
       if(avmp->avm_flags & a_AMV_VF_VIP)
-         a_amv_var_check_vips(a_AMV_VIP_SET_POST, avcp->avc_okey, cp);
+         a_amv_var_check_vips(a_AMV_VIP_SET_POST, avcp->avc_okey, &cp);
       goto jleave;
    }
 }
@@ -1664,11 +1725,6 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
          value = N_("Variable must not be empty: %s\n");
          goto jeavmp;
       }
-      if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_NOCNTRLS) != 0 &&
-            !a_amv_var_check_nocntrls(value))){
-         value = N_("Variable forbids control characters: %s\n");
-         goto jeavmp;
-      }
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_NUM) &&
             !a_amv_var_check_num(value, FAL0))){
          value = N_("Variable value not a number or out of range: %s\n");
@@ -1680,6 +1736,7 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
                "or out of range: %s\n");
          goto jeavmp;
       }
+
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_IMPORT) != 0 &&
             !(n_psonce & n_PSO_STARTED) && !(n_pstate & n_PS_ROOT))){
          value = N_("Variable cannot be set in a resource file: %s\n");
@@ -1688,7 +1745,7 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
 
       /* Any more complicated inter-dependency? */
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_VIP) != 0 &&
-            !a_amv_var_check_vips(a_AMV_VIP_SET_PRE, avcp->avc_okey, value))){
+            !a_amv_var_check_vips(a_AMV_VIP_SET_PRE, avcp->avc_okey, &value))){
          value = N_("Assignment of variable aborted: %s\n");
 jeavmp:
          n_err(V_(value), avcp->avc_name);
@@ -1704,6 +1761,10 @@ jeavmp:
          for(; (c = *oval) != '\0'; ++oval)
             *oval = lowerconv(c);
       }
+
+      /* Obsoletion warning */
+      if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_OBSOLETE) != 0))
+         n_OBSOLETE2(_("obsoleted variable"), avcp->avc_name);
    }
 
    /* Lookup possibly existing var.  For */
@@ -1788,7 +1849,7 @@ joval_and_go:
       if(!(avp->av_flags & a_AMV_VF_BOOL))
          avp->av_value = a_amv_var_copy(value);
       else{
-         if(!(n_pstate & n_PS_ROOT) && (n_poption & n_PO_D_VV) &&
+         if(!(n_pstate & n_PS_ROOT) && (n_poption & n_PO_D_V) &&
                *value != '\0')
             n_err(_("Ignoring value of boolean variable: %s: %s\n"),
                avcp->avc_name, value);
@@ -1803,7 +1864,7 @@ joval_and_go:
       if(avp->av_flags & (a_AMV_VF_ENV | a_AMV_VF_EXT_LINKED))
          rv = a_amv_var__putenv(avcp, avp);
       if(avp->av_flags & a_AMV_VF_VIP)
-         a_amv_var_check_vips(a_AMV_VIP_SET_POST, avcp->avc_okey, value);
+         a_amv_var_check_vips(a_AMV_VIP_SET_POST, avcp->avc_okey, &value);
 
       avp->av_flags &= ~a_AMV_VF_EXT__FROZEN_MASK;
       if(!(n_psonce & n_PSO_STARTED_GETOPT) &&
@@ -2116,8 +2177,8 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
             ui16_t flag;
             char msg[22];
          } const tbase[] = {
-            {a_AMV_VF_VIRT, "virtual"},
             {a_AMV_VF_CHAIN, "variable chain"},
+            {a_AMV_VF_VIRT, "virtual"},
             {a_AMV_VF_RDONLY, "read-only"},
             {a_AMV_VF_NODEL, "nodelete"},
             {a_AMV_VF_I3VAL, "initial-value"},
@@ -2126,9 +2187,9 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
             {a_AMV_VF_ENV, "sync-environ"},
             {a_AMV_VF_NOLOPTS, "no-localopts"},
             {a_AMV_VF_NOTEMPTY, "notempty"},
-            {a_AMV_VF_NOCNTRLS, "no-control-chars"},
             {a_AMV_VF_NUM, "number"},
             {a_AMV_VF_POSNUM, "positive-number"},
+            {a_AMV_VF_OBSOLETE, "obsoleted"},
          }, *tp;
 
          for(tp = tbase; PTRCMP(tp, <, &tbase[n_NELEM(tbase)]); ++tp)
@@ -3150,19 +3211,21 @@ c_environ(void *v){
 
 FL int
 c_vexpr(void *v){ /* TODO POSIX expr(1) comp. exit status; overly complicat. */
+   char pbase, op, iencbuf[2+1/* BASE# prefix*/ + n_IENC_BUFFER_SIZE + 1];
    size_t i;
    enum n_idec_state ids;
+   enum n_idec_mode idm;
    si64_t lhv, rhv;
-   char op, varbuf[64 + 64 / 8 +1];
    char const **argv, *varname, *varres, *cp;
    enum{
       a_ERR = 1u<<0,
       a_SOFTOVERFLOW = 1u<<1,
       a_ISNUM = 1u<<2,
-      a_ISDECIMAL = 1u<<3, /* Print only decimal result */
+      a_ISDECIMAL = 1u<<3,    /* Print only decimal result */
       a_SATURATED = 1u<<4,
       a_ICASE = 1u<<5,
-      a_UNSIGNED = 1u<<6,  /* Unsigned right shift (share bit ok) */
+      a_UNSIGNED_OP = 1u<<6,  /* Unsigned right shift (share bit ok) */
+      a_PBASE = 1u<<7,        /* Print additional number base */
       a_TMP = 1u<<30
    } f;
    NYD_ENTER;
@@ -3171,6 +3234,7 @@ c_vexpr(void *v){ /* TODO POSIX expr(1) comp. exit status; overly complicat. */
    argv = v;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
    n_UNINIT(varres, n_empty);
+   n_UNINIT(pbase, '\0');
 
    if((cp = argv[0])[0] == '\0')
       goto jesubcmd;
@@ -3187,13 +3251,21 @@ jnumop:
 
          if(*(cp = *++argv) == '\0')
             lhv = 0;
-         else if(((ids = n_idec_si64_cp(&lhv, cp, 0, NULL)
-                  ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-               ) != n_IDEC_STATE_CONSUMED){
-            if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
-               goto jenum_range;
-            f |= a_SOFTOVERFLOW;
-            break;
+         else{
+            idm = ((*cp == 'u' || *cp == 'U')
+                  ? (++cp, n_IDEC_MODE_NONE)
+                  : ((*cp == 's' || *cp == 'S')
+                     ? (++cp, n_IDEC_MODE_SIGNED_TYPE)
+                     : n_IDEC_MODE_SIGNED_TYPE |
+                        n_IDEC_MODE_POW2BASE_UNSIGNED));
+            if(((ids = n_idec_cp(&lhv, cp, 0, idm, NULL)
+                     ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+                  ) != n_IDEC_STATE_CONSUMED){
+               if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
+                  goto jenum_range;
+               f |= a_SOFTOVERFLOW;
+               break;
+            }
          }
          if(op == '~')
             lhv = ~lhv;
@@ -3216,25 +3288,41 @@ jnumop:
 
             if(*(cp = *++argv) == '\0')
                lhv = 0;
-            else if(((ids = n_idec_si64_cp(&lhv, cp, 0, NULL)
-                     ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-                  ) != n_IDEC_STATE_CONSUMED){
-               if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
-                  goto jenum_range;
-               f |= a_SOFTOVERFLOW;
-               break;
+            else{
+               idm = ((*cp == 'u' || *cp == 'U')
+                     ? (++cp, n_IDEC_MODE_NONE)
+                     : ((*cp == 's' || *cp == 'S')
+                        ? (++cp, n_IDEC_MODE_SIGNED_TYPE)
+                        : n_IDEC_MODE_SIGNED_TYPE |
+                           n_IDEC_MODE_POW2BASE_UNSIGNED));
+               if(((ids = n_idec_cp(&lhv, cp, 0, idm, NULL)
+                        ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+                     ) != n_IDEC_STATE_CONSUMED){
+                  if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
+                     goto jenum_range;
+                  f |= a_SOFTOVERFLOW;
+                  break;
+               }
             }
 
             if(*(cp = *++argv) == '\0')
                rhv = 0;
-            else if(((ids = n_idec_si64_cp(&rhv, cp, 0, NULL)
-                     ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-                  ) != n_IDEC_STATE_CONSUMED){
-               if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
-                  goto jenum_range;
-               f |= a_SOFTOVERFLOW;
-               lhv = rhv;
-               break;
+            else{
+               idm = ((*cp == 'u' || *cp == 'U')
+                     ? (++cp, n_IDEC_MODE_NONE)
+                     : ((*cp == 's' || *cp == 'S')
+                        ? (++cp, n_IDEC_MODE_SIGNED_TYPE)
+                        : n_IDEC_MODE_SIGNED_TYPE |
+                           n_IDEC_MODE_POW2BASE_UNSIGNED));
+               if(((ids = n_idec_cp(&rhv, cp, 0, idm, NULL)
+                        ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+                     ) != n_IDEC_STATE_CONSUMED){
+                  if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
+                     goto jenum_range;
+                  f |= a_SOFTOVERFLOW;
+                  lhv = rhv;
+                  break;
+               }
             }
 
             xop = op;
@@ -3252,8 +3340,7 @@ jnumop_again:
                      lhv = rhv;
                      break;
                   }
-               }
-               if(SI64_MAX - rhv < lhv)
+               }else if(SI64_MAX - rhv < lhv)
                   goto jenum_plusminus;
                lhv += rhv;
                break;
@@ -3269,15 +3356,15 @@ jnumop_again:
                      lhv = rhv;
                      break;
                   }
-               }
-               if(SI64_MIN + rhv > lhv){
+               }else if(SI64_MIN + rhv > lhv){
 jenum_plusminus:
                   if(!(f & a_SATURATED))
                      goto jenum_overflow;
                   f |= a_SOFTOVERFLOW;
                   lhv = (lhv < 0 || xop == '-') ? SI64_MIN : SI64_MAX;
-               }else
-                  lhv -= rhv;
+                  break;
+               }
+               lhv -= rhv;
                break;
             case '*':
                /* Will the result be positive? */
@@ -3342,8 +3429,10 @@ jenum_plusminus:
                break;
             case '<':
             case '>':
-               if(!(f & a_TMP))
+               if(!(f & a_TMP)){
+                  argv -= 2;
                   goto jesubcmd;
+               }
                if(rhv > 63){ /* xxx 63? */
                   if(!(f & a_SATURATED))
                      goto jenum_overflow;
@@ -3351,7 +3440,7 @@ jenum_plusminus:
                }
                if(op == '<')
                   lhv <<= (ui8_t)rhv;
-               else if(f & a_UNSIGNED)
+               else if(f & a_UNSIGNED_OP)
                   lhv = (ui64_t)lhv >> (ui8_t)rhv;
                else
                   lhv >>= (ui8_t)rhv;
@@ -3362,14 +3451,11 @@ jenum_plusminus:
       default:
          goto jesubcmd;
       }
-   }else if(cp[2] == '\0' && cp[1] == '@'){
-      f |= a_SATURATED;
-      op = cp[0];
-      goto jnumop;
    }else if(cp[0] == '<'){
       if(*++cp != '<')
          goto jesubcmd;
       if(*++cp == '@'){
+         n_OBSOLETE(_("`vexpr': please use @ modifier as prefix not suffix"));
          f |= a_SATURATED;
          ++cp;
       }
@@ -3382,10 +3468,11 @@ jenum_plusminus:
       if(*++cp != '>')
          goto jesubcmd;
       if(*++cp == '>'){
-         f |= a_UNSIGNED;
+         f |= a_UNSIGNED_OP;
          ++cp;
       }
       if(*cp == '@'){
+         n_OBSOLETE(_("`vexpr': please use @ modifier as prefix not suffix"));
          f |= a_SATURATED;
          ++cp;
       }
@@ -3393,6 +3480,50 @@ jenum_plusminus:
          goto jesubcmd;
       f |= a_TMP;
       op = '>';
+      goto jnumop;
+   }else if(cp[2] == '\0' && cp[1] == '@'){
+      n_OBSOLETE(_("`vexpr': please use @ modifier as prefix, not suffix"));
+      f |= a_SATURATED;
+      op = cp[0];
+      goto jnumop;
+   }else if(cp[0] == '@'){
+      f |= a_SATURATED;
+      op = *++cp;
+      if(*++cp != '\0'){
+         if(op != *cp)
+            goto jesubcmd;
+         switch(op){
+         case '<':
+            if(*++cp != '\0')
+               goto jesubcmd;
+            f |= a_TMP;
+            break;
+         case '>':
+            if(*++cp != '\0'){
+               if(*cp != '>' || *++cp != '\0')
+                  goto jesubcmd;
+               f |= a_UNSIGNED_OP;
+            }
+            f |= a_TMP;
+            break;
+         default:
+            goto jesubcmd;
+         }
+      }
+      goto jnumop;
+   }else if(is_asccaseprefix(cp, "pbase")){
+      if(argv[1] == NULL || argv[2] == NULL || argv[3] != NULL)
+         goto jesynopsis;
+
+      if(((ids = n_idec_si8_cp(&pbase, argv[1], 0, NULL)
+               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
+            ) != n_IDEC_STATE_CONSUMED || pbase < 2 || pbase > 36)
+         goto jenum_range;
+
+      f |= a_PBASE;
+      op = *(argv[0] = cp = "=");
+      argv[1] = argv[2];
+      argv[2] = NULL;
       goto jnumop;
    }else if(is_asccaseprefix(cp, "length")){
       f |= a_ISNUM | a_ISDECIMAL;
@@ -3633,28 +3764,38 @@ jesubstring_len:
    /* Generate the variable value content for numerics.
     * Anticipate in our handling below!  (Don't do needless work) */
 jleave:
-   if((f & a_ISNUM) && ((f & a_ISDECIMAL) || varname != NULL)){
-      snprintf(varbuf, sizeof varbuf, "%" PRId64 , lhv);
-      varres = varbuf;
+   if((f & a_ISNUM) && ((f & (a_ISDECIMAL | a_PBASE)) || varname != NULL)){
+      cp = n_ienc_buf(iencbuf, lhv, (f & a_PBASE ? pbase : 10),
+            n_IENC_MODE_SIGNED_TYPE);
+      if(cp != NULL)
+         varres = cp;
+      else{
+         f |= a_ERR;
+         varres = n_empty;
+      }
    }
 
    if(varname == NULL){
       /* If there was no error and we are printing a numeric result, print some
        * more bases for the fun of it */
       if((f & (a_ERR | a_ISNUM | a_ISDECIMAL)) == a_ISNUM){
+         char binabuf[64 + 64 / 8 +1];
          size_t j;
 
          for(j = 1, i = 0; i < 64; ++i){
-            varbuf[63 + 64 / 8 -j - i] = (lhv & ((ui64_t)1 << i)) ? '1' : '0';
+            binabuf[63 + 64 / 8 -j - i] = (lhv & ((ui64_t)1 << i)) ? '1' : '0';
             if((i & 7) == 7 && i != 63){
                ++j;
-               varbuf[63 + 64 / 8 -j - i] = ' ';
+               binabuf[63 + 64 / 8 -j - i] = ' ';
             }
          }
-         varbuf[64 + 64 / 8 -1] = '\0';
+         binabuf[64 + 64 / 8 -1] = '\0';
+
          if(fprintf(n_stdout,
-               "%s\n0%" PRIo64 " | 0x%" PRIX64 " | %" PRId64 "\n",
-               varbuf, lhv, lhv, lhv) < 0){
+                  "0b %s\n0%" PRIo64 " | 0x%" PRIX64 " | %" PRId64 "\n",
+                  binabuf, lhv, lhv, lhv) < 0 ||
+               ((f & a_PBASE) && (assert(varres != NULL),
+                fprintf(n_stdout, "%s\n", varres) < 0))){
             n_pstate_err_no = n_err_no;
             f |= a_ERR;
          }

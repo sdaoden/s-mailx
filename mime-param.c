@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ MIME parameter handling.
  *
- * Copyright (c) 2016 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2016 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above

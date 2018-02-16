@@ -2,7 +2,7 @@
  *@ IMAP v4r1 client following RFC 2060.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  */
 /*
  * Copyright (c) 2004
@@ -4322,20 +4322,53 @@ FL const char *
 imap_make_date_time(time_t t)
 {
    static char s[40];
-   struct tm *tmptr;
+   char const *mn;
+   si32_t y, md, th, tm, ts;
+   struct tm *tmp;
    int tzdiff, tzdiff_hour, tzdiff_min;
+   time_t t2;
    NYD2_ENTER;
 
-   tzdiff = t - mktime(gmtime(&t));
+jredo:
+   if((t2 = mktime(gmtime(&t))) == (time_t)-1){
+      t = 0;
+      goto jredo;
+   }
+   tzdiff = t - t2;
+   if((tmp = localtime(&t)) == NULL){
+      t = 0;
+      goto jredo;
+   }
+
    tzdiff_hour = (int)(tzdiff / 60);
    tzdiff_min = tzdiff_hour % 60;
    tzdiff_hour /= 60;
-   tmptr = localtime(&t);
-   if (tmptr->tm_isdst > 0)
+   if (tmp->tm_isdst > 0)
       tzdiff_hour++;
+
+   if(n_UNLIKELY((y = tmp->tm_year) < 0 || y >= 9999/*SI32_MAX*/ - 1900)){
+      y = 1970;
+      mn = n_month_names[0];
+      md = 1;
+      th = tm = ts = 0;
+   }else{
+      y += 1900;
+      mn = (tmp->tm_mon >= 0 && tmp->tm_mon <= 11)
+            ? n_month_names[tmp->tm_mon] : n_qm;
+
+      if((md = tmp->tm_mday) < 1 || md > 31)
+         md = 1;
+
+      if((th = tmp->tm_hour) < 0 || th > 23)
+         th = 0;
+      if((tm = tmp->tm_min) < 0 || tm > 59)
+         tm = 0;
+      if((ts = tmp->tm_sec) < 0 || ts > 60)
+         ts = 0;
+   }
+
    snprintf(s, sizeof s, "\"%02d-%s-%04d %02d:%02d:%02d %+03d%02d\"",
-         tmptr->tm_mday, n_month_names[tmptr->tm_mon], tmptr->tm_year + 1900,
-         tmptr->tm_hour, tmptr->tm_min, tmptr->tm_sec, tzdiff_hour, tzdiff_min);
+         md, mn, y, th, tm, ts, tzdiff_hour, tzdiff_min);
    NYD2_LEAVE;
    return s;
 }

@@ -2,6 +2,7 @@
 #@ Synopsis: ./cc-test.sh [--check-only s-mailx-binary]
 #@           ./cc-test.sh --mae-test s-mailx-binary [:TESTNAME:]
 #@ The latter generates output files.
+#@ TODO All ex0_test should say TESTNUMBER-estat instead of having own numbers
 #@ TODO _All_ the tests should happen in a temporary subdir.
 # Public Domain
 
@@ -307,6 +308,7 @@ t_behave() {
    t_behave_xcall
    t_behave_vpospar
    t_behave_atxplode
+   t_behave_read
 
    t_behave_mbox
    t_behave_maildir
@@ -320,6 +322,8 @@ t_behave() {
 
    t_behave_message_injections
    t_behave_compose_hooks
+   t_behave_C_opt_customhdr
+
    t_behave_mass_recipients
    t_behave_mime_types_load_control
    t_behave_lreply_futh_rth_etc
@@ -663,6 +667,16 @@ t_behave_wysh() {
 
    < "${BODY}" DIET=CURD TIED= ${MAILX} ${ARGS} > "${MBOX}" 2>/dev/null
    check behave:wysh_c 0 "${MBOX}" '1473887148 321'
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
+   wysh set mager='\hey\'
+   varshow mager
+   wysh set mager="\hey\\"
+   varshow mager
+   wysh set mager=$'\hey\\'
+   varshow mager
+	__EOT
+   check behave:wysh-3 0 "${MBOX}" '1289698238 69'
 
    t_epilog
 }
@@ -1728,9 +1742,19 @@ t_behave_addrcodec() {
 	vput addrcodec res s \
 		"23 Hey\\,\\\" \"Wie" () "\" findet \\\" Dr. \\\" das?" <doog@def>
 	echo $?/$^ERRNAME $res
+	#
+	# Fix for [f3852f88]
+	vput addrcodec res ++e <from2@exam.ple> 100 (comment) "Quot(e)d"
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
+	vput addrcodec res e <from2@exam.ple> 100 (comment) "Quot(e)d"
+	echo $?/$^ERRNAME $res
+	eval vput addrcodec res d $res
+	echo $?/$^ERRNAME $res
 	__EOT
 
-   check behave:addrcodec-1 0 "${MBOX}" '429099645 2414'
+   check behave:addrcodec-1 0 "${MBOX}" '1047317989 2612'
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
    mlist isa1@list
@@ -1752,6 +1776,35 @@ t_behave_addrcodec() {
 
    check behave:addrcodec-2 0 "${MBOX}" '1391779299 104'
 
+   if have_feat idna; then
+      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} ${ADDARG_UNI} > "${MBOX}" 2>&1
+      vput addrcodec res e    (heu) <du@blödiän> "stroh" du   
+      echo $?/$^ERRNAME $res
+      eval vput addrcodec res d $res
+      echo $?/$^ERRNAME $res
+      vput addrcodec res e       <du@blödiän>   du     
+      echo $?/$^ERRNAME $res
+      eval vput addrcodec res d $res
+      echo $?/$^ERRNAME $res
+      vput addrcodec res e     du    <du@blödiän>   
+      echo $?/$^ERRNAME $res
+      eval vput addrcodec res d $res
+      echo $?/$^ERRNAME $res
+      vput addrcodec res e        <du@blödiän>    
+      echo $?/$^ERRNAME $res
+      eval vput addrcodec res d $res
+      echo $?/$^ERRNAME $res
+      vput addrcodec res e        du@blödiän    
+      echo $?/$^ERRNAME $res
+      eval vput addrcodec res d $res
+      echo $?/$^ERRNAME $res
+		__EOT
+
+      check behave:addrcodec-idna 0 "${MBOX}" '498775983 326'
+   else
+      printf 'behave:addrcodec-idna: unsupported, skipped\n'
+   fi
+
    t_epilog
 }
 
@@ -1759,17 +1812,102 @@ t_behave_vexpr() {
    t_prolog t_behave_vexpr
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>/dev/null
+	echo ' #0.0'
 	vput vexpr res = 9223372036854775807
 	echo $?/$^ERRNAME $res
 	vput vexpr res = 9223372036854775808
 	echo $?/$^ERRNAME $res
-	vput vexpr res =@ 9223372036854775808
+	vput vexpr res = u9223372036854775808
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= 9223372036854775808
 	echo $?/$^ERRNAME $res
 	vput vexpr res = -9223372036854775808
 	echo $?/$^ERRNAME $res
 	vput vexpr res = -9223372036854775809
 	echo $?/$^ERRNAME $res
-	vput vexpr res =@ -9223372036854775809
+	vput vexpr res @= -9223372036854775809
+	echo $?/$^ERRNAME $res
+	vput vexpr res = U9223372036854775809
+	echo $?/$^ERRNAME $res
+	echo ' #0.1'
+	vput vexpr res = \
+		0b0111111111111111111111111111111111111111111111111111111111111111
+	echo $?/$^ERRNAME $res
+	vput vexpr res = \
+		S0b1000000000000000000000000000000000000000000000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= \
+		S0b1000000000000000000000000000000000000000000000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = \
+		U0b1000000000000000000000000000000000000000000000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = \
+		0b1000000000000000000000000000000000000000000000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= \
+		0b1000000000000000000000000000000000000000000000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = \
+		-0b1000000000000000000000000000000000000000000000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = \
+		S0b1000000000000000000000000000000000000000000000000000000000000001
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= \
+		S0b1000000000000000000000000000000000000000000000000000000000000001
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= \
+		-0b1000000000000000000000000000000000000000000000000000000000000001
+	echo $?/$^ERRNAME $res
+	vput vexpr res = \
+		U0b1000000000000000000000000000000000000000000000000000000000000001
+	echo $?/$^ERRNAME $res
+	echo ' #0.2'
+	vput vexpr res = 0777777777777777777777
+	echo $?/$^ERRNAME $res
+	vput vexpr res = S01000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= S01000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = U01000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = 01000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= 01000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = -01000000000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = S01000000000000000000001
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= S01000000000000000000001
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= -01000000000000000000001
+	echo $?/$^ERRNAME $res
+	vput vexpr res = U01000000000000000000001
+	echo $?/$^ERRNAME $res
+	echo ' #0.3'
+	vput vexpr res = 0x7FFFFFFFFFFFFFFF
+	echo $?/$^ERRNAME $res
+	vput vexpr res = S0x8000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= S0x8000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = U0x8000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = 0x8000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= 0x8000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = -0x8000000000000000
+	echo $?/$^ERRNAME $res
+	vput vexpr res = S0x8000000000000001
+	echo $?/$^ERRNAME $res
+	vput vexpr res @= S0x8000000000000001
+	echo $?/$^ERRNAME $res
+   vput vexpr res @= -0x8000000000000001
+   echo $?/$^ERRNAME $res
+	vput vexpr res = u0x8000000000000001
 	echo $?/$^ERRNAME $res
 	echo ' #1'
 	vput vexpr res ~ 0
@@ -1790,26 +1928,26 @@ t_behave_vexpr() {
 	echo $?/$^ERRNAME $res
 	vput vexpr res + 9223372036854775807 1
 	echo $?/$^ERRNAME $res
-	vput vexpr res +@ 9223372036854775807 1
+	vput vexpr res @+ 9223372036854775807 1
 	echo $?/$^ERRNAME $res
 	vput vexpr res + 0 9223372036854775807
 	echo $?/$^ERRNAME $res
 	vput vexpr res + 1 9223372036854775807
 	echo $?/$^ERRNAME $res
-	vput vexpr res +@ 1 9223372036854775807
+	vput vexpr res @+ 1 9223372036854775807
 	echo $?/$^ERRNAME $res
 	echo ' #4'
 	vput vexpr res + -9223372036854775808 0
 	echo $?/$^ERRNAME $res
 	vput vexpr res + -9223372036854775808 -1
 	echo $?/$^ERRNAME $res
-	vput vexpr res +@ -9223372036854775808 -1
+	vput vexpr res @+ -9223372036854775808 -1
 	echo $?/$^ERRNAME $res
 	vput vexpr res + 0 -9223372036854775808
 	echo $?/$^ERRNAME $res
 	vput vexpr res + -1 -9223372036854775808
 	echo $?/$^ERRNAME $res
-	vput vexpr res +@ -1 -9223372036854775808
+	vput vexpr res @+ -1 -9223372036854775808
 	echo $?/$^ERRNAME $res
 	echo ' #5'
 	vput vexpr res - 0 0
@@ -1823,7 +1961,7 @@ t_behave_vexpr() {
 	echo $?/$^ERRNAME $res
 	vput vexpr res - 9223372036854775807 -1
 	echo $?/$^ERRNAME $res
-	vput vexpr res -@ 9223372036854775807 -1
+	vput vexpr res @- 9223372036854775807 -1
 	echo $?/$^ERRNAME $res
 	vput vexpr res - 0 9223372036854775807
 	echo $?/$^ERRNAME $res
@@ -1831,20 +1969,20 @@ t_behave_vexpr() {
 	echo $?/$^ERRNAME $res
 	vput vexpr res - -2 9223372036854775807
 	echo $?/$^ERRNAME $res
-	vput vexpr res -@ -2 9223372036854775807
+	vput vexpr res @- -2 9223372036854775807
 	echo $?/$^ERRNAME $res
 	echo ' #7'
 	vput vexpr res - -9223372036854775808 +0
 	echo $?/$^ERRNAME $res
 	vput vexpr res - -9223372036854775808 +1
 	echo $?/$^ERRNAME $res
-	vput vexpr res -@ -9223372036854775808 +1
+	vput vexpr res @- -9223372036854775808 +1
 	echo $?/$^ERRNAME $res
 	vput vexpr res - 0 -9223372036854775808
 	echo $?/$^ERRNAME $res
 	vput vexpr res - +1 -9223372036854775808
 	echo $?/$^ERRNAME $res
-	vput vexpr res -@ +1 -9223372036854775808
+	vput vexpr res @- +1 -9223372036854775808
 	echo $?/$^ERRNAME $res
 	echo ' #8'
 	vput vexpr res + -13 -2
@@ -1886,9 +2024,9 @@ t_behave_vexpr() {
 	echo $?/$^ERRNAME $res
 	__EOT
 
-   check behave:vexpr-numeric 0 "${MBOX}" '1723609217 1048'
+   check behave:vexpr-numeric 0 "${MBOX}" '960821755 1962'
 
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" #2>/dev/null
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
 	vput vexpr res find 'bananarama' 'nana'
 	echo $?/$^ERRNAME :$res:
 	vput vexpr res find 'bananarama' 'bana'
@@ -1974,7 +2112,7 @@ t_behave_vexpr() {
    check behave:vexpr-string 0 "${MBOX}" '3182004322 601'
 
    if have_feat regex; then
-      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" #2>/dev/null
+      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
 		vput vexpr res regex 'bananarama' 'nana'
 		echo $?/$^ERRNAME :$res:
 		vput vexpr res regex 'bananarama' 'bana'
@@ -2407,11 +2545,11 @@ t_behave_mbox() {
    check behave:mbox-1 0 "${MBOX}" '1140119864 13780'
 
    printf 'File "%s"\ncopy * "%s"\nFile "%s"\nfrom*' "${MBOX}" .tmbox1 .tmbox1 |
-      ${MAILX} ${ARGS} > .tlst
+      ${MAILX} ${ARGS} -Sshowlast > .tlst
    check behave:mbox-2 0 .tlst '2739893312 9103'
 
    printf 'File "%s"\ncopy * "file://%s"\nFile "file://%s"\nfrom*' \
-      "${MBOX}" .tmbox2 .tmbox2 | ${MAILX} ${ARGS} > .tlst
+      "${MBOX}" .tmbox2 .tmbox2 | ${MAILX} ${ARGS} -Sshowlast > .tlst
    check behave:mbox-3 0 .tlst '1702194178 9110'
 
    # only the odd (even)
@@ -2424,7 +2562,7 @@ t_behave_mbox() {
          i=`add ${i} 1`
       done
       printf 'file://%s\nFile "file://%s"\nfrom*' .tmbox3 .tmbox3
-   ) | ${MAILX} ${ARGS} > .tlst
+   ) | ${MAILX} ${ARGS} -Sshowlast > .tlst
    check behave:mbox-4 0 .tmbox3 '631132924 6890'
    check behave:mbox-5 - .tlst '2960975049 4573'
    # ...
@@ -2438,7 +2576,7 @@ t_behave_mbox() {
       done
       printf 'file://%s\nFile "file://%s"\nfrom*\nFile "file://%s"\nfrom*' \
          .tmbox3 .tmbox3 .tmbox2
-   ) | ${MAILX} ${ARGS} > .tlst
+   ) | ${MAILX} ${ARGS} -Sshowlast > .tlst
    check behave:mbox-6 0 .tmbox3 '1387070539 13655'
    ${sed} 2d < .tlst > .tlstx
    check behave:mbox-7 - .tlstx '2729940494 13645'
@@ -2465,7 +2603,7 @@ t_behave_maildir() {
          File "%s"
          from*
       ' "${MBOX}" .tmdir1 .tmdir1 |
-      ${MAILX} ${ARGS} -Snewfolders=maildir > .tlst
+      ${MAILX} ${ARGS} -Snewfolders=maildir -Sshowlast > .tlst
    check behave:maildir-2 0 .tlst '1797938753 9103'
 
    printf 'File "%s"
@@ -2473,7 +2611,7 @@ t_behave_maildir() {
          File "maildir://%s"
          from*
       ' "${MBOX}" .tmdir2 .tmdir2 |
-      ${MAILX} ${ARGS} > .tlst
+      ${MAILX} ${ARGS} -Sshowlast > .tlst
    check behave:maildir-3 0 .tlst '1155631089 9113'
 
    printf 'File "maildir://%s"
@@ -2481,7 +2619,7 @@ t_behave_maildir() {
          File "file://%s"
          from*
       ' .tmdir2 .tmbox1 .tmbox1 |
-      ${MAILX} ${ARGS} > .tlst
+      ${MAILX} ${ARGS} -Sshowlast > .tlst
    check behave:maildir-4 0 .tmbox1 '2646131190 13220'
    check behave:maildir-5 - .tlst '3701297796 9110'
 
@@ -2499,7 +2637,7 @@ t_behave_maildir() {
             File "file://%s"
             from*
          ' .tmbox2 .tmbox2
-   ) | ${MAILX} ${ARGS} > .tlst
+   ) | ${MAILX} ${ARGS} -Sshowlast > .tlst
    check behave:maildir-6 0 .tmbox2 '142890131 6610'
    check behave:maildir-7 - .tlst '960096773 4573'
    # ...
@@ -2518,7 +2656,7 @@ t_behave_maildir() {
             File "maildir://%s"
             from*
          ' .tmbox2 .tmbox2 .tmdir2
-   ) | ${MAILX} ${ARGS} > .tlst
+   ) | ${MAILX} ${ARGS} -Sshowlast > .tlst
    check behave:maildir-8 0 .tmbox2 '3806905791 13100'
    ${sed} 2d < .tlst > .tlstx
    check behave:maildir-9 - .tlstx '4216815295 13645'
@@ -2813,7 +2951,7 @@ t_behave_filetype() {
             ${MAILX} ${ARGS} -X'filetype gz gzip\ -dc gzip\ -c'
       } > ./.t.out 2>&1
       check behave:filetype-2 - "./.t.mbox" '1594682963 13520'
-      check behave:filetype-3 - "./.t.out" '2494681730 102'
+      check behave:filetype-3 - "./.t.out" '2392348396 102'
    else
       echo 'behave:filetype-2: unsupported, skipped'
       echo 'behave:filetype-3: unsupported, skipped'
@@ -2836,7 +2974,7 @@ t_behave_filetype() {
             -X'filetype mbox.gz "${sed} 1,3d|${cat}" kill\ 0'
    } > ./.t.out 2>&1
    check behave:filetype-4 - "./.t.mbox" '2886541147 27060'
-   check behave:filetype-5 - "./.t.out" '838452520 172'
+   check behave:filetype-5 - "./.t.out" '852335377 172'
 
    t_epilog
 }
@@ -3797,6 +3935,49 @@ this is content of forward 1
    t_epilog
 }
 
+t_behave_C_opt_customhdr() {
+   t_prolog t_behave_C_opt_customhdr
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${SHELL} -
+		(echo 'From CimicifugaRacemosa Mon Dec 25 21:33:40 2017' &&
+            ${cat} && echo
+			) >> "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   echo bla |
+   ${MAILX} ${ARGS} -Smta=./.tsendmail.sh \
+      -C 'C-One  :  Custom One Body' \
+      -C 'C-Two:CustomTwoBody' \
+      -S customhdr='chdr1:  chdr1 body, chdr2:chdr2 body' \
+      this-goes@nowhere >./.tall 2>&1
+   ex0_test behave:C_opt_customhdr-1-estat
+   ${cat} ./.tall >> "${MBOX}"
+   check behave:C_opt_customhdr-1 0 "${MBOX}" '2400078426 195'
+
+   ${rm} -f "${MBOX}"
+   printf 'm this-goes@nowhere\nbody\n!.
+      unset customhdr
+      m this-goes2@nowhere\nbody2\n!.
+      set customhdr=%ccustom1 :  custom1  body%c
+      m this-goes2@nowhere\nbody2\n!.
+      set customhdr=%ccustom1 :  custom1\\,  body  ,  custom2: custom2  body%c
+      m this-goes3@nowhere\nbody3\n!.
+   ' "'" "'" "'" "'" |
+   ${MAILX} ${ARGS} -Smta=./.tsendmail.sh -Sescape=! \
+      -C 'C-One  :  Custom One Body' \
+      -C 'C-Two:CustomTwoBody' \
+      -S customhdr='chdr1:  chdr1 body, chdr2:chdr2 body' \
+      >./.tall 2>&1
+   ex0_test behave:C_opt_customhdr-2-estat
+   ${cat} ./.tall >> "${MBOX}"
+   check behave:C_opt_customhdr-2 0 "${MBOX}" '3546878678 752'
+
+   t_epilog
+}
+
 t_behave_mass_recipients() {
    t_prolog t_behave_mass_recipients
    TRAP_EXIT_ADDONS="./.t*"
@@ -3846,21 +4027,22 @@ t_behave_mass_recipients() {
    set on-compose-splice=t_ocs on-compose-leave=t_ocl
 __EOT__
 
-   ${rm} -f "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.\n' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
       -X'source ./.trc' -Smta=./.tsendmail.sh -Smaximum=2001 \
       >./.tall 2>&1
+   ex0_test behave:mass_recipients-1-estat
    ${cat} ./.tall >> "${MBOX}"
-   check behave:mass_recipients-1 0 "${MBOX}" '2912243346 51526'
+   check behave:mass_recipients-1 - "${MBOX}" '2912243346 51526'
 
    ${rm} -f "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.\n' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
       -St_remove=1 -X'source ./.trc' -Smta=./.tsendmail.sh -Smaximum=2001 \
       >./.tall 2>&1
+   ex0_test behave:mass_recipients-2-estat
    ${cat} ./.tall >> "${MBOX}"
-   check behave:mass_recipients-2 0 "${MBOX}" '4097804632 34394'
+   check behave:mass_recipients-2 - "${MBOX}" '4097804632 34394'
 
    t_epilog
 }
@@ -3903,8 +4085,7 @@ t_behave_mime_types_load_control() {
       ${MAILX} ${ARGS} \
          -Smimetypes-load-control=f=./.tmts1,f=./.tmts2 \
          > ./.tout 2>&1
-   ex0_test behave:mime_types_load_control
-
+   ex0_test behave:mime_types_load_control-1-estat
    ${cat} "${MBOX}" >> ./.tout
    check behave:mime_types_load_control-1 - ./.tout '1441260727 2449'
 
@@ -4314,25 +4495,9 @@ t_behave_iconv_mainbody() {
    t_prolog t_behave_iconv_mainbody
    TRAP_EXIT_ADDONS="./.t*"
 
-   i=
-   if have_feat iconv &&
-         (</dev/null iconv -f utf-8 -t ascii) >/dev/null 2>&1; then
-      j="`printf '–' | iconv -f utf-8 -t ascii 2>/dev/null`"
-      # This assumes iconv(1) behaves like iconv(3), but well.
-      # This is flaky because the behaviour is so non-uniform
-      if [ ${?} -ne 0 ]; then
-         if [ x"${j}" = 'x?' ]; then
-            i=4
-         else
-            i=1
-         fi
-      elif [ x"${j}" = 'x?' ]; then
-         i=2
-      elif [ x"${j}" = 'x*' ]; then
-         i=3
-      fi
-   fi
-   if [ -z "${i}" ]; then
+   if [ -n "${UTF8_LOCALE}" ] && have_feat iconv; then
+      :
+   else
       echo 'behave:iconv_mainbody: unsupported, skipped'
       return
    fi
@@ -4355,24 +4520,27 @@ t_behave_iconv_mainbody() {
       -s '–' over-the@rain.bow 2>./.terr
    exn0_test behave:iconv_mainbody-3
    check behave:iconv_mainbody-3 - "${MBOX}" '3634015017 251'
-   check behave:iconv_mainbody-4 - ./.terr '1960148192 128'
+   check behave:iconv_mainbody-4 - ./.terr '2579894983 148'
 
-   printf 'p\nx\n' | ${MAILX} ${ARGS} -Rf "${MBOX}" >./.tout 2>./.terr
-   j=${?}
-   ex0_test behave:iconv_mainbody-5-0 ${j}
-   if [ x${i} = x1 ]; then
-      # yuck, just assume ???, we need a test program for that one!
-      check behave:iconv_mainbody-5-1-1 - ./.tout '1959197095 283'
-      check behave:iconv_mainbody-5-1-1 - ./.terr '4294967295 0'
-   elif [ x${i} = x2 ]; then
-      check behave:iconv_mainbody-5-2-1 - ./.tout '1959197095 283'
-      check behave:iconv_mainbody-5-2-2 - ./.terr '4294967295 0'
-   elif [ x${i} = x3 ]; then
-      check behave:iconv_mainbody-5-3-1 - ./.tout '3196380198 279'
-      check behave:iconv_mainbody-5-3-2 - ./.terr '4294967295 0'
+   # The different iconv(3) implementations use different replacement sequence
+   # types (character-wise, byte-wise, and the character(s) used differ)
+   i="${MAILX_ICONV_MODE}"
+   if [ -n "${i}" ]; then
+      printf 'p\nx\n' | ${MAILX} ${ARGS} -Rf "${MBOX}" >./.tout 2>./.terr
+      j=${?}
+      ex0_test behave:iconv_mainbody-5-0 ${j}
+      check behave:iconv_mainbody-5-1 - ./.terr '4294967295 0'
+      if [ ${i} -eq 13 ]; then
+         check behave:iconv_mainbody-5-2 - ./.tout '189327996 283'
+      elif [ ${i} -eq 12 ]; then
+         check behave:iconv_mainbody-5-3 - ./.tout '1959197095 283'
+      elif [ ${i} -eq 3 ]; then
+         check behave:iconv_mainbody-5-4 - ./.tout '3196380198 279'
+      else
+         check behave:iconv_mainbody-5-5 - ./.tout '3760313827 279'
+      fi
    else
-      check behave:iconv_mainbody-5-4-1 - ./.tout '3760313827 279'
-      check behave:iconv_mainbody-5-4-2 - ./.terr '4294967295 0'
+      echo 'behave:iconv_mainbody-5: unsupported, skipped'
    fi
 
    t_epilog

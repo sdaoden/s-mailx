@@ -3,7 +3,7 @@
  *@ This file is also used to materialize externals.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -241,27 +241,27 @@ a_main_usage(FILE *fp){
    buf[i] = '\0';
 
    fprintf(fp, _("%s (%s %s): send and receive Internet mail\n"),
-         n_progname, n_uagent, ok_vlook(version));
+      n_progname, n_uagent, ok_vlook(version));
    fprintf(fp, _(
-         "Send-only mode: send mail \"to-address\" receiver(s):\n"
-         "  %s [-BdEFinv~#] [-: spec] [-A account]\n"
-         "  %s [:-a attachment:] [:-b bcc-address:] [:-c cc-address:]\n"
-         "  %s [-M type | -m file | -q file | -t] [-r from-address]\n"
-         "  %s [:-S var[=value]:] [-s subject] [:-X cmd:]\n"
-         "  %s [-.] :to-address: [-- :mta-option:]\n"),
-         n_progname, buf, buf, buf, buf);
+      "Send-only mode: send mail \"to-address\" receiver(s):\n"
+      "  %s [-BdEFinv~#] [-: spec] [-A account] [:-C \"custom: header\":]\n"
+      "  %s [:-a attachment:] [:-b bcc-address:]\n"
+      "  %s [:-c cc-address:] [-M type | -m file | -q file | -t]\n"
+      "  %s [-r from-address] [:-S var[=value]:] [-s subject] [:-X cmd:]\n"
+      "  %s [-.] :to-address: [-- :mta-option:]\n"),
+      n_progname, buf, buf, buf, buf);
    fprintf(fp, _(
-         "\"Receive\" mode, starting on -u user, primary *inbox* or [$MAIL]:\n"
-         "  %s [-BdEeHiNnRv~#] [-: spec] [-A account]\n"
-         "  %s [-L spec] [-r from-address] [:-S var[=value]:]\n"
-         "  %s [-u user] [:-X cmd:] [-- :mta-option:]\n"),
-         n_progname, buf, buf);
+      "\"Receive\" mode, starting on -u user, primary *inbox* or [$MAIL]:\n"
+      "  %s [-BdEeHiNnRv~#] [-: spec] [-A account] [:-C \"custom: header\":]\n"
+      "  %s [-L spec] [-r from-address] [:-S var[=value]:]\n"
+      "  %s [-u user] [:-X cmd:] [-- :mta-option:]\n"),
+      n_progname, buf, buf);
    fprintf(fp, _(
-         "\"Receive\" mode, starting on -f (secondary $MBOX or [file]):\n"
-         "  %s [-BdEeHiNnRv~#] [-: spec] [-A account] -f\n"
-         "  %s [-L spec] [-r from-address] [:-S var[=value]:]\n"
-         "  %s [:-X cmd:] [file] [-- :mta-option:]\n"),
-         n_progname, buf, buf);
+      "\"Receive\" mode, starting on -f (secondary $MBOX or [file]):\n"
+      "  %s [-BdEeHiNnRv~#] [-: spec] [-A account] [:-C \"custom: header\":]\n"
+      "  %s -f [-L spec] [-r from-address] [:-S var[=value]:]\n"
+      "  %s [:-X cmd:] [file] [-- :mta-option:]\n"),
+      n_progname, buf, buf);
 
    if(fp != n_stderr)
       putc('\n', fp);
@@ -648,7 +648,7 @@ main(int argc, char *argv[]){
     * TODO Like so we can get rid of some stack locals etc. */
    /* Keep in SYNC: ./nail.1:"SYNOPSIS, main() */
    static char const optstr[] =
-         "A:a:Bb:c:dEeFfHhiL:M:m:NnO:q:Rr:S:s:tu:VvX:::~#.";
+         "A:a:Bb:C:c:dEeFfHhiL:M:m:NnO:q:Rr:S:s:tu:VvX:::~#.";
    int i;
    char *cp;
    enum{
@@ -693,6 +693,7 @@ main(int argc, char *argv[]){
          Aarg = a_main_oarg;
          break;
       case 'a':{
+         /* Add an attachment */
          struct a_arg *nap;
 
          n_psonce |= n_PSO_SENDMODE;
@@ -704,17 +705,31 @@ main(int argc, char *argv[]){
          nap->aa_next = NULL;
          nap->aa_file = a_main_oarg;
          a_curr = nap;
-         }break;
+      }  break;
       case 'B':
          n_OBSOLETE(_("-B is obsolete, please use -# as necessary"));
          break;
       case 'b':
-         /* Get Blind Carbon Copy Recipient list */
+         /* Add (a) blind carbon copy recipient (list) */
          n_psonce |= n_PSO_SENDMODE;
          bcc = cat(bcc, lextract(a_main_oarg, GBCC | GFULL));
          break;
+      case 'C':{
+         /* Create custom header (at list tail) */
+         struct n_header_field **hflpp;
+
+         if(*(hflpp = &n_poption_arg_C) != NULL){
+            while((*hflpp)->hf_next != NULL)
+               *hflpp = (*hflpp)->hf_next;
+            hflpp = &(*hflpp)->hf_next;
+         }
+         if(!n_header_add_custom(hflpp, a_main_oarg, FAL0)){
+            emsg = N_("Invalid custom header data with -C");
+            goto jusage;
+         }
+      }  break;
       case 'c':
-         /* Get Carbon Copy Recipient list */
+         /* Add (a) carbon copy recipient (list) */
          n_psonce |= n_PSO_SENDMODE;
          cc = cat(cc, lextract(a_main_oarg, GCC | GFULL));
          break;
@@ -726,9 +741,11 @@ main(int argc, char *argv[]){
          ok_bset(skipemptybody);
          break;
       case 'e':
+         /* Check if mail (matching -L) exists in given box, exit status */
          n_poption |= n_PO_EXISTONLY;
          break;
       case 'F':
+         /* Save msg in file named after local part of first recipient */
          n_poption |= n_PO_F_FLAG;
          n_psonce |= n_PSO_SENDMODE;
          break;
@@ -739,6 +756,7 @@ main(int argc, char *argv[]){
          folder = "&";
          break;
       case 'H':
+         /* Display summary of headers, exit */
          n_poption |= n_PO_HEADERSONLY;
          break;
       case 'h':
@@ -749,6 +767,8 @@ main(int argc, char *argv[]){
          ok_bset(ignore);
          break;
       case 'L':
+         /* Display summary of headers which match given spec, exit.
+          * In conjunction with -e, only test the given spec for existence */
          Larg = a_main_oarg;
          n_poption |= n_PO_HEADERLIST;
          if(*Larg == '"' || *Larg == '\''){ /* TODO list.c:listspec_check() */
@@ -762,6 +782,7 @@ main(int argc, char *argv[]){
          }
          break;
       case 'M':
+         /* Flag message body (standard input) with given MIME type */
          if(qf != NULL && (!(n_poption & n_PO_Mm_FLAG) || qf != (char*)-1))
             goto jeMmq;
          n_poption_arg_Mm = a_main_oarg;
@@ -769,6 +790,7 @@ main(int argc, char *argv[]){
          if(0){
             /* FALLTHRU*/
       case 'm':
+            /* Flag the given file with MIME type and use as message body */
             if(qf != NULL && (!(n_poption & n_PO_Mm_FLAG) || qf == (char*)-1))
                goto jeMmq;
             qf = a_main_oarg;
@@ -796,12 +818,13 @@ main(int argc, char *argv[]){
          n_smopts[n_smopts_cnt++] = a_main_oarg;
          break;
       case 'q':
+         /* "Quote" file: use as message body (-t without headers etc.) */
+         /* XXX Traditional.  Add -Q to initialize as *quote*d content? */
          if(qf != NULL && (n_poption & n_PO_Mm_FLAG)){
 jeMmq:
             emsg = N_("Only one of -M, -m or -q may be given");
             goto jusage;
          }
-         /* Quote file TODO drop? -Q with real quote?? what ? */
          n_psonce |= n_PSO_SENDMODE;
          /* Allow for now, we have to special check validity of -q- later on! */
          qf = (a_main_oarg[0] == '-' && a_main_oarg[1] == '\0')
@@ -834,18 +857,45 @@ jeMmq:
          break;
       case 'S':
          n_poption |= n_PO_S_FLAG_TEMPORARY;
-jsetvar: /* Set variable */
-         {  char const *a[2];
+jsetvar: /* Set variable TODO optimize v15-compat case */
+         {  struct str sin;
+            struct n_string s, *sp;
+            char const *a[2];
             bool_t b;
 
-            okey = a[0] = a_main_oarg;
+            if(!ok_blook(v15_compat)){
+               okey = a[0] = a_main_oarg;
+               sp = NULL;
+            }else{
+               enum n_shexp_state shs;
+
+               n_autorec_relax_create();
+               sp = n_string_creat_auto(&s);
+               sin.s = n_UNCONST(a_main_oarg);
+               sin.l = UIZ_MAX;
+               shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
+                     n_SHEXP_PARSE_IGNORE_EMPTY |
+                     n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
+                     n_SHEXP_PARSE_QUOTE_AUTO_DSQ), sp, &sin, NULL);
+               if((shs & n_SHEXP_STATE_ERR_MASK) ||
+                     !(shs & n_SHEXP_STATE_STOP)){
+                  n_autorec_relax_gut();
+                  goto je_S;
+               }
+               okey = a[0] = n_string_cp_const(sp);
+            }
+
             a[1] = NULL;
             n_pstate |= n_PS_ROBOT;
             b = (c_set(a) == 0);
             n_pstate &= ~(n_PS_ROOT | n_PS_ROBOT);
             n_poption &= ~n_PO_S_FLAG_TEMPORARY;
+
+            if(sp != NULL)
+               n_autorec_relax_gut();
             if(!b && (ok_blook(errexit) || ok_blook(posix))){
-               emsg = N_("-S failed to adjust variable");
+je_S:
+               emsg = N_("-S failed to set variable");
                goto jusage;
             }
          }
@@ -861,11 +911,12 @@ jsetvar: /* Set variable */
          n_psonce |= n_PSO_SENDMODE;
          break;
       case 't':
-         /* Read defined set of headers from mail to be sent */
+         /* Use the given message as send template */
          n_poption |= n_PO_t_FLAG;
          n_psonce |= n_PSO_SENDMODE;
          break;
       case 'u':
+         /* Open primary mailbox of the given user */
          uarg = savecat("%", a_main_oarg);
          break;
       case 'V':
@@ -923,6 +974,7 @@ jsetvar: /* Set variable */
          n_pstate &= ~n_PS_ROBOT;
          break;
       case '.':
+         /* Enforce send mode */
          n_psonce |= n_PSO_SENDMODE;
          goto jgetopt_done;
       case '?':
@@ -1086,6 +1138,7 @@ jgetopt_done:
       if((cp = argv[i]) != NULL){
          if(isfail || (isrestrict && (!(n_poption & n_PO_TILDE_FLAG) ||
                   !(n_psonce & n_PSO_INTERACTIVE)))){
+je_expandargv:
             n_err(_("*expandargv* doesn't allow MTA arguments; consider "
                "using *mta-arguments*\n"));
             n_exit_status = n_EXIT_USE | n_EXIT_SEND_ERROR;
@@ -1096,8 +1149,8 @@ jgetopt_done:
             n_smopts[n_smopts_cnt++] = cp;
          }while((cp = argv[++i]) != NULL);
       }
-   }else if(argv[i] != NULL && (n_poption & n_PO_D_V))
-      n_err(_("*expandargv* not set, ignoring given MTA arguments\n"));
+   }else if(argv[i] != NULL)
+      goto je_expandargv;
 
    /* We had to wait until the resource files are loaded and any command line
     * setting has been restored, but get the termcap up and going before we

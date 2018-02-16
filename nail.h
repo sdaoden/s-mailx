@@ -3,7 +3,7 @@
  *@ TODO Place in include/, split in object-based subheaders.  And please: sort.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -845,6 +845,10 @@ enum{
 enum n_idec_mode{
    n_IDEC_MODE_NONE,
    n_IDEC_MODE_SIGNED_TYPE = 1u<<0, /* To choose limits, error constants etc. */
+   /* If a power-of-two is used explicitly, or if base 0 is used and a known
+    * standard prefix is seen, enforce interpretation as unsigned.  This only
+    * makes a difference in conjunction with n_IDEC_MODE_SIGNED_TYPE */
+   n_IDEC_MODE_POW2BASE_UNSIGNED = 1u<<1,
 #if 0
    n_IDEC_MODE_SIGN_FORCE_SIGNED_TYPE = 1u<<2,
 #endif
@@ -871,6 +875,20 @@ enum n_idec_state{
    n__IDEC_PRIVATE_SHIFT1 = 24u
 };
 n_MCTA(n__IDEC_MODE_MASK <= (1u<<8) - 1, "Shared bit range overlaps")
+
+/* Buffer size needed by n_ienc_buf() including NUL and base prefixes */
+#define n_IENC_BUFFER_SIZE 80
+
+enum n_ienc_mode{
+   n_IENC_MODE_NONE,
+   n_IENC_MODE_SIGNED_TYPE = 1u<<1, /* Signedness correction etc. necessary */
+   n_IENC_MODE_SIGNED_PLUS = 1u<<2, /* Positive nubers shall have + prefix */
+   n_IENC_MODE_SIGNED_SPACE = 1u<<3, /* Ditto, ASCII SPACE (lesser priority) */
+   n_IENC_MODE_NO_PREFIX = 1u<<4,   /* No base prefixes shall be written */
+   n_IENC_MODE_LOWERCASE = 1u<<5,   /* Use lowercase letters (not prefix) */
+   n__IENC_MODE_SHIFT = 6u,
+   n__IENC_MODE_MASK = (1u<<n__IENC_MODE_SHIFT) - 1
+};
 
 enum mimecontent {
    MIME_UNKNOWN,     /* unknown content */
@@ -1493,7 +1511,7 @@ enum okeys {
 
    ok_v_account,                       /* {nolopts=1,rdonly=1,nodel=1} */
    ok_b_add_file_recipients,
-ok_v_agent_shell_lookup,
+ok_v_agent_shell_lookup, /* {obsolete=1} */
    ok_b_allnet,
    ok_b_append,
    /* *ask* is auto-mapped to *asksub* as imposed by standard! */
@@ -1510,13 +1528,13 @@ ok_v_agent_shell_lookup,
    ok_v_autocc,
    ok_b_autocollapse,
    ok_b_autoprint,
-ok_b_autothread,
+ok_b_autothread, /* {obsolete=1} */
    ok_v_autosort,
 
    ok_b_bang,
-ok_b_batch_exit_on_error,
+ok_b_batch_exit_on_error, /* {obsolete=1} */
    ok_v_bind_timeout,                  /* {notempty=1,posnum=1} */
-ok_b_bsdannounce,
+ok_b_bsdannounce, /* {obsolete=1} */
    ok_b_bsdcompat,
    ok_b_bsdflags,
    ok_b_bsdheadline,
@@ -1536,7 +1554,7 @@ ok_b_bsdannounce,
    ok_v_contact_mail,                  /* {virt=VAL_CONTACT_MAIL} */
    ok_v_contact_web,                   /* {virt=VAL_CONTACT_WEB} */
    ok_v_crt,                           /* {posnum=1} */
-   ok_v_customhdr,                     /* {nocntrls=1} */
+   ok_v_customhdr,                     /* {vip=1} */
 
    ok_v_DEAD,                          /* {notempty=1,env=1,defval=VAL_DEAD} */
    ok_v_datefield,                     /* {i3val="%Y-%m-%d %H:%M"} */
@@ -1550,7 +1568,7 @@ ok_b_bsdannounce,
    ok_b_editalong,
    ok_b_editheaders,
    ok_b_emptystart,
-ok_v_encoding,
+ok_v_encoding, /* {obsolete=1} */
    ok_b_errexit,
    ok_v_escape,                        /* {defval=n_ESCAPE} */
    ok_v_expandaddr,
@@ -1565,9 +1583,9 @@ ok_v_encoding,
    ok_v_followup_to_honour,
    ok_b_forward_as_attachment,
    ok_v_forward_inject_head,
-   ok_v_from,
+   ok_v_from,                          /* {vip=1} */
    ok_b_fullnames,
-ok_v_fwdheading,
+ok_v_fwdheading, /* {obsolete=1} */
 
    ok_v_HOME,                          /* {vip=1,nodel=1,notempty=1,import=1} */
    ok_b_header,                        /* {i3val=TRU1} */
@@ -1578,7 +1596,7 @@ ok_v_fwdheading,
    ok_b_history_gabby_persist,
    ok_v_history_size,                  /* {notempty=1,posnum=1} */
    ok_b_hold,
-   ok_v_hostname,
+   ok_v_hostname,                      /* {vip=1} */
 
    ok_b_idna_disable,
    ok_v_ifs,                           /* {vip=1,defval=" \t\n"} */
@@ -1643,12 +1661,12 @@ ok_v_fwdheading,
    ok_v_mailx_orig_cc,                 /* {rdonly=1,nodel=1} */
    ok_v_mailx_orig_bcc,                /* {rdonly=1,nodel=1} */
 
-ok_v_NAIL_EXTRA_RC,                 /* {name=NAIL_EXTRA_RC} */
-ok_b_NAIL_NO_SYSTEM_RC,             /* {name=NAIL_NO_SYSTEM_RC,import=1} */
-ok_v_NAIL_HEAD,                     /* {name=NAIL_HEAD} */
-ok_v_NAIL_HISTFILE,                 /* {name=NAIL_HISTFILE} */
-ok_v_NAIL_HISTSIZE,                 /* {name=NAIL_HISTSIZE,notempty=1,num=1} */
-ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
+ok_v_NAIL_EXTRA_RC, /* {name=NAIL_EXTRA_RC,obsolete=1} */
+ok_b_NAIL_NO_SYSTEM_RC, /* {name=NAIL_NO_SYSTEM_RC,import=1,obsolete=1} */
+ok_v_NAIL_HEAD, /* {name=NAIL_HEAD,obsolete=1} */
+ok_v_NAIL_HISTFILE, /* {name=NAIL_HISTFILE,obsolete=1} */
+ok_v_NAIL_HISTSIZE, /* {name=NAIL_HISTSIZE,notempty=1,num=1,obsolete=1} */
+ok_v_NAIL_TAIL, /* {name=NAIL_TAIL,obsolete=1} */
    ok_v_NETRC,                         /* {env=1,notempty=1,defval=VAL_NETRC} */
    ok_b_netrc_lookup,                  /* {chain=1} */
    ok_v_netrc_pipe,
@@ -1694,30 +1712,30 @@ ok_v_NAIL_TAIL,                     /* {name=NAIL_TAIL} */
    ok_b_record_resent,
    ok_b_reply_in_same_charset,
    ok_v_reply_strings,
-ok_v_replyto,
+ok_v_replyto, /* {obsolete=1} */
    ok_v_reply_to,                      /* {notempty=1} */
    ok_v_reply_to_honour,
    ok_b_rfc822_body_from_,             /* {name=rfc822-body-from_} */
 
    ok_v_SHELL,                      /* {import=1,notempty=1,defval=VAL_SHELL} */
-ok_b_SYSV3,                         /* {env=1} */
+ok_b_SYSV3, /* {env=1,obsolete=1} */
    ok_b_save,                          /* {i3val=TRU1} */
    ok_v_screen,                        /* {notempty=1,posnum=1} */
    ok_b_searchheaders,
    ok_v_sendcharsets,                  /* {lower=1} */
    ok_b_sendcharsets_else_ttycharset,
-   ok_v_sender,
-ok_v_sendmail,
-ok_v_sendmail_arguments,
-ok_b_sendmail_no_default_arguments,
-ok_v_sendmail_progname,
+   ok_v_sender,                        /* {vip=1} */
+ok_v_sendmail, /* {obsolete=1} */
+ok_v_sendmail_arguments, /* {obsolete=1} */
+ok_b_sendmail_no_default_arguments, /* {obsolete=1} */
+ok_v_sendmail_progname, /* {obsolete=1} */
    ok_b_sendwait,
    ok_b_showlast,
    ok_b_showname,
    ok_b_showto,
    ok_v_Sign,
    ok_v_sign,
-ok_v_signature,
+ok_v_signature, /* {obsolete=1} */
    ok_b_skipemptybody,                 /* {vip=1} */
    ok_v_smime_ca_dir,
    ok_v_smime_ca_file,
@@ -1728,16 +1746,16 @@ ok_v_signature,
    ok_v_smime_crl_file,
    ok_v_smime_encrypt,                 /* {chain=1} */
    ok_b_smime_force_encryption,
-ok_b_smime_no_default_ca,
+ok_b_smime_no_default_ca, /* {obsolete=1} */
    ok_b_smime_sign,
    ok_v_smime_sign_cert,               /* {chain=1} */
    ok_v_smime_sign_include_certs,      /* {chain=1} */
    ok_v_smime_sign_message_digest,     /* {chain=1} */
-ok_v_smtp,
+ok_v_smtp, /* {obsolete=1} */
    ok_v_smtp_auth,                     /* {chain=1} */
-ok_v_smtp_auth_password,
-ok_v_smtp_auth_user,
-   ok_v_smtp_hostname,
+ok_v_smtp_auth_password, /* {obsolete=1} */
+ok_v_smtp_auth_user, /* {obsolete=1} */
+   ok_v_smtp_hostname,                 /* {vip=1} */
    ok_b_smtp_use_starttls,             /* {chain=1} */
    ok_v_SOURCE_DATE_EPOCH,             /* {\} */
       /* {name=SOURCE_DATE_EPOCH,rdonly=1,import=1,notempty=1,posnum=1} */
@@ -1747,8 +1765,8 @@ ok_v_smtp_auth_user,
    ok_v_spamc_command,
    ok_v_spamc_arguments,
    ok_v_spamc_user,
-ok_v_spamd_socket,
-ok_v_spamd_user,
+ok_v_spamd_socket, /* {obsolete=1} */
+ok_v_spamd_user, /* {obsolete=1} */
    ok_v_spamfilter_ham,
    ok_v_spamfilter_noham,
    ok_v_spamfilter_nospam,
@@ -1759,19 +1777,19 @@ ok_v_spamd_user,
    ok_v_ssl_ca_file,                   /* {chain=1} */
    ok_v_ssl_ca_flags,                  /* {chain=1} */
    ok_b_ssl_ca_no_defaults,            /* {chain=1} */
-ok_v_ssl_cert,                         /* {chain=1} */
-ok_v_ssl_cipher_list,                  /* {chain=1} */
+ok_v_ssl_cert, /* {chain=1,obsolete=1} */
+ok_v_ssl_cipher_list, /* {chain=1,obsolete=1} */
    ok_v_ssl_config_file,
    ok_v_ssl_config_module,             /* {chain=1} */
    ok_v_ssl_config_pairs,              /* {chain=1} */
-ok_v_ssl_curves,                    /* {chain=1} */
+ok_v_ssl_curves, /* {chain=1,obsolete=1} */
    ok_v_ssl_crl_dir,
    ok_v_ssl_crl_file,
    ok_v_ssl_features,                  /* {virt=VAL_SSL_FEATURES} */
-ok_v_ssl_key,                       /* {chain=1} */
-ok_v_ssl_method,                    /* {chain=1} */
+ok_v_ssl_key, /* {chain=1,obsolete=1} */
+ok_v_ssl_method, /* {chain=1,obsolete=1} */
 ok_b_ssl_no_default_ca,
-ok_v_ssl_protocol,                  /* {chain=1} */
+ok_v_ssl_protocol, /* {chain=1,obsolete=1} */
    ok_v_ssl_rand_egd,
    ok_v_ssl_rand_file,
    ok_v_ssl_verify,                    /* {chain=1} */
@@ -2134,7 +2152,7 @@ struct n_visual_info_ctx{
 #endif
 };
 
-struct time_current {
+struct time_current { /* TODO si64_t, etc. */
    time_t      tc_time;
    struct tm   tc_gm;
    struct tm   tc_local;
@@ -2403,17 +2421,16 @@ struct header {
 /* Handling of namelist nodes used in processing the recipients of mail and
  * aliases, inspection of mail-addresses and all that kind of stuff */
 enum nameflags {
-   NAME_NAME_SALLOC = 1u<<0,        /* .n_name is doped */
-   NAME_FULLNAME_SALLOC = 1u<<1,    /* .n_fullname is doped */
-   NAME_SKINNED = 1u<<2,            /* Is actually skin()ned */
-   NAME_IDNA = 1u<<3,               /* IDNA was applied */
+   NAME_SKINNED = 1u<<0,            /* Is actually skin()ned */
+   NAME_IDNA = 1u<<1,               /* IDNA was applied */
+   NAME_NAME_SALLOC = 1u<<2,        /* .n_name is doped */
 
-   NAME_ADDRSPEC_CHECKED = 1u<<4,   /* Address has been .. and */
-   NAME_ADDRSPEC_ISFILE = 1u<<5,    /* ..is a file path */
-   NAME_ADDRSPEC_ISPIPE = 1u<<6,    /* ..is a command for piping */
+   NAME_ADDRSPEC_ISFILE = 1u<<3,    /* ..is a file path */
+   NAME_ADDRSPEC_ISPIPE = 1u<<4,    /* ..is a command for piping */
    NAME_ADDRSPEC_ISFILEORPIPE = NAME_ADDRSPEC_ISFILE | NAME_ADDRSPEC_ISPIPE,
-   NAME_ADDRSPEC_ISNAME = 1u<<7,    /* ..is an alias name */
-   NAME_ADDRSPEC_ISADDR = 1u<<8,    /* ..is a mail network address */
+   NAME_ADDRSPEC_ISNAME = 1u<<5,    /* ..is an alias name */
+   NAME_ADDRSPEC_ISADDR = 1u<<6,    /* ..is a mail network address.. */
+   NAME_ADDRSPEC_WITHOUT_DOMAIN = 1u<<7, /* ..but without domain name */
 
    NAME_ADDRSPEC_ERR_EMPTY = 1u<<9, /* An empty string (or NULL) */
    NAME_ADDRSPEC_ERR_ATSEQ = 1u<<10, /* Weird @ sequence */
@@ -2570,6 +2587,7 @@ VL pid_t n_pid;                  /* getpid() (lazy initialized) */
 
 VL int n_exit_status;            /* Program exit status TODO long term: ex_no */
 VL ui32_t n_poption;             /* Bits of enum n_program_option */
+VL struct n_header_field *n_poption_arg_C; /* -C custom header list */
 VL char const *n_poption_arg_Mm; /* Argument for -[Mm] aka n_PO_[Mm]_FLAG */
 VL struct name *n_poption_arg_r; /* Argument to -r option */
 VL char const **n_smopts;        /* MTA options from command line */
@@ -2602,6 +2620,8 @@ VL int            *n_msgvec;           /* Folder setmsize(), list.c res. store*/
 #ifdef HAVE_IMAP
 VL int            imap_created_mailbox; /* hack to get feedback from imap */
 #endif
+
+VL struct n_header_field *n_customhdr_list; /* *customhdr* list */
 
 VL struct time_current  time_current;  /* time(3); send: mail1() XXXcarrier */
 VL struct termios_state termios_state; /* getpassword(); see commands().. */

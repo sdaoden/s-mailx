@@ -2,7 +2,7 @@
  *@ Header display, search, etc., related user commands.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -162,16 +162,30 @@ jredo:
          goto jredo;
       }
       datet = rfctime(fp);
-      date = fakedate(datet);
+      date = n_time_ctime(datet, NULL);
       fp = ok_vlook(datefield_markout_older);
       i = (*datefmt != '\0');
       if (fp != NULL)
          i |= (*fp != '\0') ? 2 | 4 : 2; /* XXX no magics */
 
       /* May we strftime(3)? */
-      if (i & (1 | 4))
-         memcpy(&time_current.tc_local, localtime(&datet),
-            sizeof time_current.tc_local);
+      if (i & (1 | 4)){
+         /* This localtime(3) should not fail since rfctime(3).. but .. */
+         struct tm *tmp;
+         time_t datet2;
+
+         /* TODO the datetime stuff is horror: mails should be parsed into
+          * TODO an object tree, and date: etc. have a datetime object, which
+          * TODO verifies upon parse time; then ALL occurrences of datetime are
+          * TODO valid all through the program; and: to_wire, to_user! */
+         datet2 = datet;
+jredo_localtime:
+         if((tmp = localtime(&datet2)) == NULL){
+            datet2 = 0;
+            goto jredo_localtime;
+         }
+         memcpy(&time_current.tc_local, tmp, sizeof(*tmp));
+      }
 
       if ((i & 2) &&
             (UICMP(64,datet, >, time_current.tc_time + n_DATE_SECSDAY) ||
@@ -197,7 +211,7 @@ jredo:
       _parse_from_(mp, datebuf);
       date = datebuf;
    } else
-      date = fakedate(datet);
+      date = n_time_ctime(datet, NULL);
 
    flags |= _ISADDR;
    name = name1(mp, 0);
@@ -375,8 +389,9 @@ jputcb:
             if (i != 0)
                date = datebuf;
             else
-               n_err(_("Ignored date format, it excesses the target "
-                  "buffer (%lu bytes)\n"), (ul_i)sizeof(datebuf));
+               n_err(_("Ignoring date format, it is either empty or "
+                  "excesses buffer size (%lu bytes)\n"),
+                  (ul_i)sizeof(datebuf));
             datefmt = NULL;
          }
          if (n == 0)
@@ -529,7 +544,7 @@ jputcb:
 #endif
       default:
          if (n_poption & n_PO_D_V)
-            n_err(_("Unkown *headline* format: %%%c\n"), c);
+            n_err(_("Unknown *headline* format: %%%c\n"), c);
          c = '?';
          goto jputcb;
       }
@@ -799,15 +814,20 @@ jleave:
 static int
 _headers(int msgspec) /* TODO rework v15 */
 {
-   ui32_t volatile flag;
+   bool_t needdot, showlast;
    int g, k, mesg, size;
-   int volatile lastg = 1;
-   struct message *mp, *mq, *lastmq = NULL;
-   enum mflag fl = MNEW | MFLAGGED;
+   struct message *lastmq, *mp, *mq;
+   int volatile lastg;
+   ui32_t volatile flag;
+   enum mflag fl;
    NYD_ENTER;
 
    time_current_update(&time_current, FAL0);
+
+   fl = MNEW | MFLAGGED;
    flag = 0;
+   lastg = 1;
+   lastmq = NULL;
 
    size = (int)/*TODO*/n_screensize();
    if (_screen < 0)
@@ -824,6 +844,9 @@ _headers(int msgspec) /* TODO rework v15 */
       k = msgCount - size;
    if (k < 0)
       k = 0;
+
+   needdot = (msgspec == 0) ? TRU1 : (dot != &message[msgspec - 1]);
+   showlast = ok_blook(showlast);
 
    if (mb.mb_threaded == 0) {
       g = 0;
@@ -849,34 +872,40 @@ _headers(int msgspec) /* TODO rework v15 */
          mq = lastmq;
       }
       _screen = g / size;
-
       mp = mq;
-      mesg = (int)PTR2SIZE(mp - message);
-      if (PTRCMP(dot, !=, message + msgspec - 1)) { /* TODO really?? */
-         for (mq = mp; PTRCMP(mq, <, message + msgCount); ++mq)
-            if (visible(mq)) {
-               setdot(mq);
-               break;
-            }
-      }
 
+      mesg = (int)PTR2SIZE(mp - message);
 #ifdef HAVE_IMAP
       if (mb.mb_type == MB_IMAP)
          imap_getheaders(mesg + 1, mesg + size);
 #endif
       n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, n_stdout, FAL0); )
       srelax_hold();
-      for (; PTRCMP(mp, <, message + msgCount); ++mp) {
+      for(lastmq = NULL, mq = &message[msgCount]; mp < mq; lastmq = mp, ++mp){
          ++mesg;
          if (!visible(mp))
             continue;
-         if (UICMP(32, flag++, >=, size))
+         if (UICMP(32, flag, >=, size))
             break;
+         if(needdot){
+            if(showlast){
+               if(UICMP(32, flag, ==, size - 1) || &mp[1] == mq)
+                  goto jdot_unsort;
+            }else if(flag == 0){
+jdot_unsort:
+               needdot = FAL0;
+               setdot(mp);
+            }
+         }
+         ++flag;
          _print_head(0, mesg, n_stdout, 0);
          srelax();
       }
+      if(needdot && ok_blook(showlast)) /* xxx will not show */
+         setdot(lastmq);
       srelax_rele();
       n_COLOUR( n_colour_env_gut(); )
+
    } else { /* threaded */
       g = 0;
       mq = threadroot;
@@ -904,33 +933,39 @@ _headers(int msgspec) /* TODO rework v15 */
       }
       _screen = g / size;
       mp = mq;
-      if (PTRCMP(dot, !=, message + msgspec - 1)) { /* TODO really?? */
-         for (mq = mp; mq; mq = next_in_thread(mq))
-            if (visible(mq) && mq->m_collapsed <= 0) {
-               setdot(mq);
-               break;
-            }
-      }
 
       n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, n_stdout, FAL0); )
       srelax_hold();
-      while (mp) {
+      for(lastmq = NULL; mp != NULL; lastmq = mp, mp = mq){
+         mq = next_in_thread(mp);
          if (visible(mp) &&
                (mp->m_collapsed <= 0 ||
                 PTRCMP(mp, ==, message + msgspec - 1))) {
-            if (UICMP(32, flag++, >=, size))
+            if (UICMP(32, flag, >=, size))
                break;
-            _print_head(flag - 1, PTR2SIZE(mp - message + 1), n_stdout,
+            if(needdot){
+               if(showlast){
+                  if(UICMP(32, flag, ==, size - 1) || mq == NULL)
+                     goto jdot_sort;
+               }else if(flag == 0){
+jdot_sort:
+                  needdot = FAL0;
+                  setdot(mp);
+               }
+            }
+            _print_head(flag, PTR2SIZE(mp - message + 1), n_stdout,
                mb.mb_threaded);
+            ++flag;
             srelax();
          }
-         mp = next_in_thread(mp);
       }
+      if(needdot && ok_blook(showlast)) /* xxx will not show */
+         setdot(lastmq);
       srelax_rele();
       n_COLOUR( n_colour_env_gut(); )
    }
 
-   if (!flag) {
+   if (flag == 0) {
       fprintf(n_stdout, _("No more mail.\n"));
       if (n_pstate & (n_PS_ROBOT | n_PS_HOOK_MASK))
          flag = !flag;
@@ -1016,12 +1051,15 @@ jerr:
 }
 
 FL int
-c_from(void *v)
+c_from(void *vp)
 {
-   int *msgvec = v, *ip, n;
+   int *msgvec, *ip, n;
    char *cp;
    FILE * volatile obuf;
    NYD_ENTER;
+
+   if(*(msgvec = vp) == 0)
+      goto jleave;
 
    time_current_update(&time_current, FAL0);
 
@@ -1044,10 +1082,9 @@ c_from(void *v)
    }
 
    /* Update dot before display so that the dotmark etc. are correct */
-   for (ip = msgvec; *ip != 0; ++ip)
+   for (ip = msgvec; ip[1] != 0; ++ip)
       ;
-   if (--ip >= msgvec)
-      setdot(message + *ip - 1);
+   setdot(&message[(ok_blook(showlast) ? *ip : *msgvec) - 1]);
 
    n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, obuf, obuf != n_stdout); )
    srelax_hold();
@@ -1060,6 +1097,7 @@ c_from(void *v)
 
    if (obuf != n_stdout)
       n_pager_close(obuf);
+jleave:
    NYD_LEAVE;
    return 0;
 }

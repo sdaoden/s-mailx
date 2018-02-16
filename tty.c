@@ -4,7 +4,7 @@
  *@ own M(ailx) L(ine) E(ditor), change the file layout a bit and place those
  *@ one after the other below the other externals.
  *
- * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -286,7 +286,7 @@ jeeval:
       }
 
       if(!store->s_auto)
-         free(out.s);
+         n_free(out.s);
    }
 
    /* Make all printable TODO not know, we want to pass through ESC/CSI! */
@@ -295,7 +295,7 @@ jeeval:
    in.l = store->s_len;
    makeprint(&in, &out);
    store = n_string_assign_buf(store, out.s, out.l);
-   free(out.s);
+   n_free(out.s);
 #endif
 
    /* We need the visual width.. */
@@ -372,7 +372,7 @@ jleave:
  * TODO   I.e., add an indirection layer.
  * TODO . No BIDI support.
  * TODO . `bind': we currently use only one lookup tree.
- * TODO   For absolute graceful behaviour in conjunction (with HAVE_TERMCAP) we
+ * TODO   For absolute graceful behaviour (in conjunction with HAVE_TERMCAP) we
  * TODO   need a lower level tree, which possibly combines bytes into "symbolic
  * TODO   wchar_t values", into "keys" that is, as applicable, and an upper
  * TODO   layer which only works on "keys" in order to possibly combine them
@@ -392,21 +392,21 @@ jleave:
  * To simplify our live, use savestr() buffers for all other needed memory */
 
 # ifdef HAVE_KEY_BINDINGS
-/* Default *bind-timeout* key-sequence continuation timeout, in tenths of
- * a second.  Must fit in 8-bit!  Update the manual upon change! */
+   /* Default *bind-timeout* key-sequence continuation timeout, in tenths of
+    * a second.  Must fit in 8-bit!  Update the manual upon change! */
 #  define a_TTY_BIND_TIMEOUT 2
 #  define a_TTY_BIND_TIMEOUT_MAX SI8_MAX
 
 n_CTAV(a_TTY_BIND_TIMEOUT_MAX <= UI8_MAX);
 
-/* We have a chicken-and-egg problem with `bind' and our termcap layer,
- * because we may not initialize the latter automatically to allow users to
- * specify *termcap-disable* and let it mean exactly that.
- * On the other hand users can be expected to use `bind' in resource file(s).
- * Therefore bindings which involve termcap/terminfo sequences, and which are
- * defined before n_PSO_STARTED signals usability of termcap/terminfo, will be
- * (partially) delayed until tty_init() is called.
- * And we preallocate space for the expansion of the resolved capability */
+   /* We have a chicken-and-egg problem with `bind' and our termcap layer,
+    * because we may not initialize the latter automatically to allow users to
+    * specify *termcap-disable* and let it mean exactly that.
+    * On the other hand users can be expected to use `bind' in resources.
+    * Therefore bindings which involve termcap/terminfo sequences, and which
+    * are defined before n_PSO_STARTED signals usability of termcap/terminfo,
+    * will be (partially) delayed until tty_init() is called.
+    * And we preallocate space for the expansion of the resolved capability */
 #  define a_TTY_BIND_CAPNAME_MAX 15
 #  define a_TTY_BIND_CAPEXP_ROUNDUP 16
 
@@ -414,6 +414,11 @@ n_CTAV(n_ISPOW2(a_TTY_BIND_CAPEXP_ROUNDUP));
 n_CTA(a_TTY_BIND_CAPEXP_ROUNDUP <= SI8_MAX / 2, "Variable must fit in 6-bit");
 n_CTA(a_TTY_BIND_CAPEXP_ROUNDUP >= 8, "Variable too small");
 # endif /* HAVE_KEY_BINDINGS */
+
+# ifdef HAVE_HISTORY
+   /* The first line of the history file is used as a marker after >v14.9.6 */
+#  define a_TTY_HIST_MARKER "@s-mailx history v2"
+# endif
 
 /* The maximum size (of a_tty_cell's) in a line */
 # define a_TTY_LINE_MAX SI32_MAX
@@ -504,6 +509,18 @@ enum a_tty_fun_status{
    a_TTY_FUN_STATUS_RESTART,  /* Complete restart, reset multibyte etc. */
    a_TTY_FUN_STATUS_END       /* End, return EOF */
 };
+
+# ifdef HAVE_HISTORY
+enum a_tty_hist_flags{
+   a_TTY_HIST_CTX_DEFAULT = n_GO_INPUT_CTX_DEFAULT,
+   a_TTY_HIST_CTX_COMPOSE = n_GO_INPUT_CTX_COMPOSE,
+   a_TTY_HIST_CTX_MASK = n__GO_INPUT_CTX_MASK,
+   /* Cannot use enum n_go_input_flags for the rest, need to stay in 8-bit */
+   a_TTY_HIST_GABBY = 1u<<7,
+   a_TTY_HIST__MAX = a_TTY_HIST_GABBY
+};
+n_CTA(a_TTY_HIST_CTX_MASK < a_TTY_HIST_GABBY, "Enumeration value overlap");
+# endif
 
 enum a_tty_visual_flags{
    a_TTY_VF_NONE,
@@ -622,10 +639,11 @@ n_CTA(a_TTY_SHCUT_MAX > 1,
 struct a_tty_hist{
    struct a_tty_hist *th_older;
    struct a_tty_hist *th_younger;
-   ui32_t th_isgabby : 1;
-   ui32_t th_len : 31;
-   char th_dat[n_VFIELD_SIZE(sizeof(ui32_t))];
+   ui32_t th_len;
+   ui8_t th_flags;                  /* enum a_tty_hist_flags */
+   char th_dat[n_VFIELD_SIZE(3)];
 };
+n_CTA(UI8_MAX >= a_TTY_HIST__MAX, "Value exceeds datatype storage");
 # endif
 
 struct a_tty_line{
@@ -667,7 +685,8 @@ struct a_tty_line{
    struct a_tty_cell const *tl_phy_start; /* First visible cell, left border */
    ui32_t tl_phy_cursor;         /* Physical cursor position */
    bool_t tl_quote_rndtrip;      /* For _kht() expansion */
-   ui8_t tl__dummy2[3];
+   ui8_t tl__dummy2[3 + 4];
+   ui32_t tl_goinflags;          /* enum n_go_input_flags */
    ui32_t tl_prompt_length;      /* Preclassified (TODO needed as a_tty_cell) */
    ui32_t tl_prompt_width;
    char const *tl_prompt;        /* Preformatted prompt (including colours) */
@@ -817,9 +836,13 @@ static struct a_tty_global a_tty;
 /* Change from canonical to raw, non-canonical mode, and way back */
 static void a_tty_term_mode(bool_t raw);
 
-/* Initialize .tg_hist_size_max and return desired history file, or NULL */
 # ifdef HAVE_HISTORY
-static char const *a_tty_hist_query_config(void);
+/* Load and save the history file, respectively */
+static bool_t a_tty_hist_load(void);
+static bool_t a_tty_hist_save(void);
+
+/* Initialize .tg_hist_size_max and return desired history file, or NULL */
+static char const *a_tty_hist__query_config(void);
 # endif
 
 /* Adjust an active raw mode to use / not use a timeout */
@@ -827,7 +850,7 @@ static char const *a_tty_hist_query_config(void);
 static void a_tty_term_rawmode_timeout(struct a_tty_line *tlp, bool_t enable);
 # endif
 
-/* 0-X (2), UI8_MAX == \t / TAB */
+/* 0-X (2), UI8_MAX == \t / HT */
 static ui8_t a_tty_wcwidth(wchar_t wc);
 
 /* Memory / cell / word generics */
@@ -972,8 +995,209 @@ jleave:
 }
 
 # ifdef HAVE_HISTORY
+static bool_t
+a_tty_hist_load(void){
+   ui8_t version;
+   size_t lsize, cnt, llen;
+   char *lbuf, esc, *cp;
+   FILE *f;
+   char const *v;
+   bool_t rv;
+   NYD_ENTER;
+
+   rv = TRU1;
+
+   if((v = a_tty_hist__query_config()) == NULL ||
+         a_tty.tg_hist_size_max == 0)
+      goto jleave;
+
+   hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
+   f = fopen(v, "r"); /* TODO HISTFILE LOAD: use linebuf pool */
+   if(f == NULL){
+      int e;
+
+      e = errno;
+      n_err(_("Cannot read *history-file*=%s: %s\n"),
+         n_shexp_quote_cp(v, FAL0), n_err_to_doc(e));
+      rv = FAL0;
+      goto jrele;
+   }
+   (void)n_file_lock(fileno(f), FLT_READ, 0,0, UIZ_MAX);
+
+   /* Clear old history */
+   /* C99 */{
+      struct a_tty_hist *thp;
+
+      while((thp = a_tty.tg_hist) != NULL){
+         a_tty.tg_hist = thp->th_older;
+         n_free(thp);
+      }
+      a_tty.tg_hist_tail = NULL;
+      a_tty.tg_hist_size = 0;
+   }
+
+   assert(!(n_pstate & n_PS_ROOT));
+   n_pstate |= n_PS_ROOT; /* Allow calling addhist() */
+   lbuf = NULL;
+   n_UNINIT(esc, '\0');
+   lsize = 0;
+   cnt = (size_t)fsize(f);
+   version = 0;
+
+   while(fgetline(&lbuf, &lsize, &cnt, &llen, f, FAL0) != NULL){
+      cp = lbuf;
+      /* Hand-edited history files may have this, probably */
+      while(llen > 0 && spacechar(cp[0])){
+         ++cp;
+         --llen;
+      }
+      if(llen > 0 && cp[llen - 1] == '\n')
+         cp[--llen] = '\0';
+
+      /* Skip empty and comment lines */
+      if(llen == 0 || cp[0] == '#')
+         continue;
+
+      if(n_UNLIKELY(version == 0)){
+         switch((version = strcmp(cp, a_TTY_HIST_MARKER) ? 1 : 2)){
+         case 1:
+            if((esc = ok_vlook(escape)[0]) == '\0')
+               esc = n_ESCAPE[0];
+            break;
+         default:
+            continue;
+         }
+      }
+
+      /* C99 */{
+         enum n_go_input_flags gif;
+
+         if(version == 2){
+            if(llen <= 2){
+               /* XXX n_err(_("Skipped invalid *history-file* entry: %s\n"),
+                * XXX  n_shexp_quote_cp(cp));*/
+               continue;
+            }
+            switch(*cp++){
+            default:
+            case 'd':
+               gif = n_GO_INPUT_CTX_DEFAULT; /* == a_TTY_HIST_CTX_DEFAULT */
+               break;
+            case 'c':
+               gif = n_GO_INPUT_CTX_COMPOSE; /* == a_TTY_HIST_CTX_COMPOSE */
+               break;
+            }
+
+            if(*cp++ == '*')
+               gif |= n_GO_INPUT_HIST_GABBY;
+
+            while(*cp == ' ')
+               ++cp;
+         }else{
+            gif = n_GO_INPUT_CTX_DEFAULT;
+            if(cp[0] == '*'){
+               ++cp;
+               gif |= n_GO_INPUT_HIST_GABBY;
+            }
+         }
+
+         n_tty_addhist(cp, gif);
+      }
+   }
+
+   if(lbuf != NULL)
+      n_free(lbuf);
+   n_pstate &= ~n_PS_ROOT;
+
+   fclose(f);
+jrele:
+   rele_all_sigs(); /* XXX remove jumps */
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
+static bool_t
+a_tty_hist_save(void){
+   size_t i;
+   struct a_tty_hist *thp;
+   FILE *f;
+   char const *v;
+   bool_t rv, dogabby;
+   NYD_ENTER;
+
+   rv = TRU1;
+
+   if((v = a_tty_hist__query_config()) == NULL ||
+         a_tty.tg_hist_size_max == 0)
+      goto jleave;
+
+   dogabby = ok_blook(history_gabby_persist);
+
+   if((thp = a_tty.tg_hist) != NULL)
+      for(i = a_tty.tg_hist_size_max; thp->th_older != NULL;
+            thp = thp->th_older)
+         if((dogabby || !(thp->th_flags & a_TTY_HIST_GABBY)) && --i == 0)
+            break;
+
+   hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
+   if((f = fopen(v, "w")) == NULL){ /* TODO temporary + rename?! */
+      int e;
+
+      e = errno;
+      n_err(_("Cannot write *history-file*=%s: %s\n"),
+         n_shexp_quote_cp(v, FAL0), n_err_to_doc(e));
+      rv = FAL0;
+      goto jrele;
+   }
+   (void)n_file_lock(fileno(f), FLT_WRITE, 0,0, UIZ_MAX);
+
+   if(fwrite(a_TTY_HIST_MARKER "\n", sizeof *a_TTY_HIST_MARKER,
+         sizeof(a_TTY_HIST_MARKER "\n") -1, f) !=
+         sizeof(a_TTY_HIST_MARKER "\n") -1)
+      goto jioerr;
+   else for(; thp != NULL; thp = thp->th_younger){
+      if(dogabby || !(thp->th_flags & a_TTY_HIST_GABBY)){
+         char c;
+
+         switch(thp->th_flags & a_TTY_HIST_CTX_MASK){
+         default:
+         case a_TTY_HIST_CTX_DEFAULT:
+            c = 'd';
+            break;
+         case a_TTY_HIST_CTX_COMPOSE:
+            c = 'c';
+            break;
+         }
+         if(putc(c, f) == EOF)
+            goto jioerr;
+
+         if((thp->th_flags & a_TTY_HIST_GABBY) && putc('*', f) == EOF)
+            goto jioerr;
+
+         if(putc(' ', f) == EOF ||
+               fwrite(thp->th_dat, sizeof *thp->th_dat, thp->th_len, f) !=
+                  sizeof(*thp->th_dat) * thp->th_len ||
+               putc('\n', f) == EOF){
+jioerr:
+            n_err(_("I/O error while writing *history-file* %s\n"),
+               n_shexp_quote_cp(v, FAL0));
+            rv = FAL0;
+            break;
+         }
+      }
+   }
+
+   fclose(f);
+jrele:
+   rele_all_sigs(); /* XXX remove jumps */
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
 static char const *
-a_tty_hist_query_config(void){
+a_tty_hist__query_config(void){
    char const *rv, *cp;
    NYD2_ENTER;
 
@@ -1099,7 +1323,7 @@ a_tty_cell2save(struct a_tty_line *tlp){
          ++tcap, --i)
       len += tcap->tc_count;
 
-   tlp->tl_savec.s = salloc((tlp->tl_savec.l = len) +1);
+   tlp->tl_savec.s = n_autorec_alloc((tlp->tl_savec.l = len) +1);
 
    for(tcap = tlp->tl_line.cells, len = 0, i = tlp->tl_count; i > 0;
          ++tcap, --i){
@@ -1123,7 +1347,7 @@ a_tty_copy2paste(struct a_tty_line *tlp, struct a_tty_cell *tcpmin,
    for(tcp = tcpmin; tcp < tcpmax; ++tcp)
       l += tcp->tc_count;
 
-   tlp->tl_pastebuf.s = cp = salloc((tlp->tl_pastebuf.l = l) +1);
+   tlp->tl_pastebuf.s = cp = n_autorec_alloc((tlp->tl_pastebuf.l = l) +1);
 
    for(tcp = tcpmin; tcp < tcpmax; cp += l, ++tcp)
       memcpy(cp, tcp->tc_cbuf, l = tcp->tc_count);
@@ -1352,12 +1576,12 @@ a_tty_vi__paint(struct a_tty_line *tlp){
       --cur;
 
    w = (tcp_left = tccp = tlp->tl_line.cells + cur)->tc_width;
-   if(w == UI8_MAX) /* TODO yet TAB == SPC */
+   if(w == UI8_MAX) /* TODO yet HT == SPACE */
       w = 1;
    while(tcp_left > tlp->tl_line.cells){
       ui16_t cw = tcp_left[-1].tc_width;
 
-      if(cw == UI8_MAX) /* TODO yet TAB == SPC */
+      if(cw == UI8_MAX) /* TODO yet HT == SPACE */
          cw = 1;
       if(w + cw >= phy_wid)
          break;
@@ -1388,7 +1612,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
       ui16_t cw = tccp[1].tc_width;
       ui32_t i;
 
-      if(cw == UI8_MAX) /* TODO yet TAB == SPC */
+      if(cw == UI8_MAX) /* TODO yet HT == SPACE */
          cw = 1;
       i = w + cw;
       if(i > phy_wid)
@@ -1416,7 +1640,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
          for(tcxp = tcp_left;;){
             ui32_t i = tcxp[-1].tc_width;
 
-            if(i == UI8_MAX) /* TODO yet TAB == SPC */
+            if(i == UI8_MAX) /* TODO yet HT == SPACE */
                i = 1;
             vil1 += i;
             i += w;
@@ -1543,7 +1767,7 @@ jpaint:
          cw = 1;
       }
 
-      if(cw == UI8_MAX) /* TODO yet TAB == SPC */
+      if(cw == UI8_MAX) /* TODO yet HT == SPACE */
          cw = 1;
       w += cw;
       if(tcp_left == tccp)
@@ -1603,7 +1827,7 @@ jpaint:
    else if(cur != cnt){
       ui16_t cw = tccp->tc_width;
 
-      if(cw == UI8_MAX) /* TODO yet TAB == SPC */
+      if(cw == UI8_MAX) /* TODO yet HT == SPACE */
          cw = 1;
       phy_nxtcur -= cw;
    }
@@ -2349,8 +2573,24 @@ a_tty__khist_shared(struct a_tty_line *tlp, struct a_tty_hist *thp){
    NYD2_ENTER;
 
    if(n_LIKELY((tlp->tl_hist = thp) != NULL)){
-      tlp->tl_defc.s = savestrbuf(thp->th_dat, thp->th_len);
-      rv = tlp->tl_defc.l = thp->th_len;
+      char *cp;
+      size_t i;
+
+      i = thp->th_len;
+      if(tlp->tl_goinflags & n_GO_INPUT_CTX_COMPOSE){
+         ++i;
+         if(!(thp->th_flags & a_TTY_HIST_CTX_COMPOSE))
+            ++i;
+      }
+      tlp->tl_defc.s = cp = n_autorec_alloc(i +1);
+      if(tlp->tl_goinflags & n_GO_INPUT_CTX_COMPOSE){
+         *cp++ = ok_vlook(escape)[0]; /* Do not care whether \0 == disabled! */
+         if(!(thp->th_flags & a_TTY_HIST_CTX_COMPOSE))
+            *cp++ = ':';
+      }
+      memcpy(cp, thp->th_dat, thp->th_len +1);
+      rv = tlp->tl_defc.l = i;
+
       f = (tlp->tl_count > 0) ? a_TTY_VF_MOD_DIRTY : a_TTY_VF_NONE;
       tlp->tl_count = tlp->tl_cursor = 0;
    }else{
@@ -2380,7 +2620,13 @@ a_tty_khist(struct a_tty_line *tlp, bool_t fwd){
       goto jleave;
    }
 
-   thp = fwd ? thp->th_younger : thp->th_older;
+   while((thp = fwd ? thp->th_younger : thp->th_older) != NULL){
+      /* Applicable to input context?  Compose mode swallows anything */
+      if((tlp->tl_goinflags & n__GO_INPUT_CTX_MASK) == n_GO_INPUT_CTX_COMPOSE)
+         break;
+      if((thp->th_flags & a_TTY_HIST_CTX_MASK) != a_TTY_HIST_CTX_COMPOSE)
+         break;
+   }
 jleave:
    rv = a_tty__khist_shared(tlp, thp);
    NYD2_LEAVE;
@@ -2390,8 +2636,8 @@ jleave:
 static ui32_t
 a_tty_khist_search(struct a_tty_line *tlp, bool_t fwd){
    struct str orig_savec;
+   ui32_t xoff, rv;
    struct a_tty_hist *thp;
-   ui32_t rv;
    NYD2_ENTER;
 
    thp = NULL;
@@ -2406,6 +2652,16 @@ a_tty_khist_search(struct a_tty_line *tlp, bool_t fwd){
       goto jleave;
    }
 
+   /* xxx It is a bit of a hack, but let's just hard-code the knowledge that
+    * xxx in compose mode the first character is *escape* and must be skipped
+    * xxx when searching the history.  Alternatively we would need to have
+    * xxx context-specific history search hooks which would do the search,
+    * xxx which is overkill for our sole special case compose mode */
+   if((tlp->tl_goinflags & n__GO_INPUT_CTX_MASK) == n_GO_INPUT_CTX_COMPOSE)
+      xoff = 1;
+   else
+      xoff = 0;
+
    if((thp = tlp->tl_hist) == NULL){
       a_tty_cell2save(tlp);
       if((thp = a_tty.tg_hist) == NULL) /* TODO Should end "doing nothing"! */
@@ -2415,17 +2671,36 @@ a_tty_khist_search(struct a_tty_line *tlp, bool_t fwd){
             thp = thp->th_older;
       orig_savec.s = NULL;
       orig_savec.l = 0; /* silence CC */
-   }else if((thp = (fwd ? thp->th_younger : thp->th_older)) == NULL)
-      goto jleave;
-   else
+   }else{
+      while((thp = fwd ? thp->th_younger : thp->th_older) != NULL){
+         /* Applicable to input context?  Compose mode swallows anything */
+         if(xoff != 0)
+            break;
+         if((thp->th_flags & a_TTY_HIST_CTX_MASK) != a_TTY_HIST_CTX_COMPOSE)
+            break;
+      }
+      if(thp == NULL)
+         goto jleave;
+
       orig_savec = tlp->tl_savec;
+   }
+
+   if(xoff >= tlp->tl_savec.l){
+      thp = NULL;
+      goto jleave;
+   }
 
    if(orig_savec.s == NULL)
       a_tty_cell2save(tlp);
 
-   for(; thp != NULL; thp = (fwd ? thp->th_younger : thp->th_older))
-      if(is_prefix(tlp->tl_savec.s, thp->th_dat))
+   for(; thp != NULL; thp = fwd ? thp->th_younger : thp->th_older){
+      /* Applicable to input context?  Compose mode swallows anything */
+      if(xoff != 1 && (thp->th_flags & a_TTY_HIST_CTX_MASK) ==
+            a_TTY_HIST_CTX_COMPOSE)
+         continue;
+      if(is_prefix(&tlp->tl_savec.s[xoff], thp->th_dat))
          break;
+   }
 
    if(orig_savec.s != NULL)
       tlp->tl_savec = orig_savec;
@@ -2823,7 +3098,7 @@ jinput_loop:
                      }
 
                      /* This needs to read more characters */
-                     nisp = salloc(sizeof *nisp);
+                     nisp = n_autorec_alloc(sizeof *nisp);
                      if((nisp->last = isp) == NULL)
                         isp_head = nisp;
                      else
@@ -2899,7 +3174,7 @@ jmle_fun:
                         struct a_tty_bind_ctx *tbcp;
 
                         tbcp = tbtp->tbt_bind;
-                        memcpy(tlp->tl_defc.s = salloc(
+                        memcpy(tlp->tl_defc.s = n_autorec_alloc(
                               (tlp->tl_defc.l = len = tbcp->tbc_exp_len) +1),
                            tbcp->tbc_exp, tbcp->tbc_exp_len +1);
                         goto jrestart;
@@ -3064,7 +3339,7 @@ a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, bool_t replace){
    /* C99 */{
       size_t i, j;
 
-      tbcp = smalloc(n_VSTRUCT_SIZEOF(struct a_tty_bind_ctx, tbc__buf) +
+      tbcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_tty_bind_ctx, tbc__buf) +
             tbpcp->tbpc_seq_len + tbpcp->tbpc_exp.l +
             n_MAX(sizeof(si32_t), sizeof(wc_t)) + tbpcp->tbpc_cnv_len +3);
       if(tbpcp->tbpc_ltbcp != NULL){
@@ -3154,7 +3429,7 @@ a_tty_bind_parse(bool_t isbindcmd, struct a_tty_bind_parse_ctx *tbpcp){
             n_SHEXP_STATE_STOP)
          break;
 
-      ep = salloc(sizeof *ep);
+      ep = n_autorec_alloc(sizeof *ep);
       if(head == NULL)
          head = ep;
       else
@@ -3289,7 +3564,7 @@ jeempty:
             j = i;
             i += cl;
          }
-         tbpcp->tbpc_seq = cp = cpbase = salloc(i);
+         tbpcp->tbpc_seq = cp = cpbase = n_autorec_alloc(i);
          tbpcp->tbpc_cnv = cnv = &cpbase[j];
       }
 
@@ -3481,7 +3756,7 @@ a_tty_bind_del(struct a_tty_bind_parse_ctx *tbpcp){
       ltbcp->tbc_next = tbcp->tbc_next;
    else
       a_tty.tg_bind[tbpcp->tbpc_flags & n__GO_INPUT_CTX_MASK] = tbcp->tbc_next;
-   free(tbcp);
+   n_free(tbcp);
 
    --a_tty.tg_bind_cnt;
    a_tty.tg_bind_isdirty = TRU1;
@@ -3642,7 +3917,7 @@ a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep,
          }
       }
 
-      tbtp = smalloc(sizeof *tbtp);
+      tbtp = n_alloc(sizeof *tbtp);
       memset(tbtp, 0, sizeof *tbtp);
       tbtp->tbt_char = wc;
       tbtp->tbt_isseq = isseq;
@@ -3679,7 +3954,7 @@ a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep,
          }
       }
 
-      xtbtp = smalloc(sizeof *xtbtp);
+      xtbtp = n_alloc(sizeof *xtbtp);
       memset(xtbtp, 0, sizeof *xtbtp);
       xtbtp->tbt_parent = parentp;
       xtbtp->tbt_char = wc;
@@ -3702,7 +3977,7 @@ a_tty__bind_tree_free(struct a_tty_bind_tree *tbtp){
          a_tty__bind_tree_free(tmp);
 
       tmp = tbtp->tbt_sibling;
-      free(tbtp);
+      n_free(tbtp);
       tbtp = tmp;
    }
    NYD2_LEAVE;
@@ -3718,48 +3993,8 @@ n_tty_init(void){
 
    /* Load the history file */
 # ifdef HAVE_HISTORY
-   do/* for break */{
-      char const *v;
-      char *lbuf;
-      FILE *f;
-      size_t lsize, cnt, llen;
-
-      if((v = a_tty_hist_query_config()) == NULL ||
-            a_tty.tg_hist_size_max == 0)
-         break;
-
-      hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
-      f = fopen(v, "r"); /* TODO HISTFILE LOAD: use linebuf pool */
-      if(f == NULL)
-         goto jhist_done;
-      (void)n_file_lock(fileno(f), FLT_READ, 0,0, UIZ_MAX);
-
-      assert(!(n_pstate & n_PS_ROOT));
-      n_pstate |= n_PS_ROOT; /* Allow calling addhist() */
-      lbuf = NULL;
-      lsize = 0;
-      cnt = (size_t)fsize(f);
-      while(fgetline(&lbuf, &lsize, &cnt, &llen, f, FAL0) != NULL){
-         if(llen > 0 && lbuf[llen - 1] == '\n')
-            lbuf[--llen] = '\0';
-         if(llen == 0 || lbuf[0] == '#') /* xxx comments? noone! */
-            continue;
-         else{
-            bool_t isgabby;
-
-            isgabby = (lbuf[0] == '*');
-            n_tty_addhist(lbuf + isgabby, isgabby);
-         }
-      }
-      if(lbuf != NULL)
-         free(lbuf);
-      n_pstate &= ~n_PS_ROOT;
-
-      fclose(f);
-jhist_done:
-      rele_all_sigs(); /* XXX remove jumps */
-   }while(0);
-# endif /* HAVE_HISTORY */
+   a_tty_hist_load();
+# endif
 
    /* Force immediate resolve for anything which follows */
    n_psonce |= n_PSO_LINE_EDITOR_INIT;
@@ -3768,7 +4003,7 @@ jhist_done:
    /* `bind's (and `unbind's) done from within resource files couldn't be
     * performed for real since our termcap driver wasn't yet loaded, and we
     * can't perform automatic init since the user may have disallowed so */
-   /* C99 */{
+   /* C99 */{ /* TODO outsource into own file */
       struct a_tty_bind_ctx *tbcp;
       enum n_go_input_flags gif;
 
@@ -3830,45 +4065,11 @@ n_tty_destroy(bool_t xit_fastpath){
    if(!(n_psonce & n_PSO_LINE_EDITOR_INIT))
       goto jleave;
 
+   /* Write the history file */
 # ifdef HAVE_HISTORY
-   if(!xit_fastpath) do/* for break */{
-      size_t i;
-      char const *v;
-      struct a_tty_hist *thp;
-      bool_t dogabby;
-      FILE *f;
-
-      if((v = a_tty_hist_query_config()) == NULL ||
-            a_tty.tg_hist_size_max == 0)
-         break;
-
-      dogabby = ok_blook(history_gabby_persist);
-
-      if((thp = a_tty.tg_hist) != NULL)
-         for(i = a_tty.tg_hist_size_max; thp->th_older != NULL;
-               thp = thp->th_older)
-            if((dogabby || !thp->th_isgabby) && --i == 0)
-               break;
-
-      hold_all_sigs(); /* TODO too heavy, yet we may jump even here!? */
-      f = fopen(v, "w"); /* TODO temporary + rename?! */
-      if(f == NULL)
-         goto jhist_done;
-      (void)n_file_lock(fileno(f), FLT_WRITE, 0,0, UIZ_MAX);
-
-      for(; thp != NULL; thp = thp->th_younger){
-         if(dogabby || !thp->th_isgabby){
-            if(thp->th_isgabby)
-               putc('*', f);
-            fwrite(thp->th_dat, sizeof *thp->th_dat, thp->th_len, f);
-            putc('\n', f);
-         }
-      }
-      fclose(f);
-jhist_done:
-      rele_all_sigs(); /* XXX remove jumps */
-   }while(0);
-# endif /* HAVE_HISTORY */
+   if(!xit_fastpath)
+      a_tty_hist_save();
+# endif
 
 # if defined HAVE_KEY_BINDINGS && defined HAVE_DEBUG
    n_go_command(n_GO_INPUT_NONE, "unbind * *");
@@ -3894,7 +4095,6 @@ FL int
 # endif
    ssize_t nn;
    NYD_ENTER;
-   n_UNUSED(gif);
 
    assert(!ok_blook(line_editor_disable));
    if(!(n_psonce & n_PSO_LINE_EDITOR_INIT))
@@ -3920,7 +4120,7 @@ FL int
 
             l1 = strlen(ccol);
             l2 = strlen(sp->s);
-            posbuf = salloc(l1 + 4 + l2 +1);
+            posbuf = n_autorec_alloc(l1 + 4 + l2 +1);
             memcpy(posbuf, ccol, l1);
             pos = &posbuf[l1];
             memcpy(&pos[4], sp->s, ++l2);
@@ -3929,12 +4129,13 @@ FL int
    }
 
    if(posbuf == NULL){
-      posbuf = pos = salloc(4 +1);
+      posbuf = pos = n_autorec_alloc(4 +1);
       pos[4] = '\0';
    }
 # endif /* HAVE_COLOUR */
 
    memset(&tl, 0, sizeof tl);
+   tl.tl_goinflags = gif;
 
 # ifdef HAVE_KEY_BINDINGS
    /* C99 */{
@@ -4004,7 +4205,7 @@ FL int
 }
 
 FL void
-n_tty_addhist(char const *s, bool_t isgabby){
+n_tty_addhist(char const *s, enum n_go_input_flags gif){
 # ifdef HAVE_HISTORY
    /* Super-Heavy-Metal: block all sigs, avoid leaks+ on jump */
    ui32_t l;
@@ -4012,14 +4213,14 @@ n_tty_addhist(char const *s, bool_t isgabby){
 # endif
    NYD_ENTER;
    n_UNUSED(s);
-   n_UNUSED(isgabby);
+   n_UNUSED(gif);
 
 # ifdef HAVE_HISTORY
    if(*s == '\0' ||
          (!(n_psonce & n_PSO_LINE_EDITOR_INIT) && !(n_pstate & n_PS_ROOT)) ||
          a_tty.tg_hist_size_max == 0 ||
          ok_blook(line_editor_disable) ||
-         (isgabby && !ok_blook(history_gabby)))
+         ((gif & n_GO_INPUT_HIST_GABBY) && !ok_blook(history_gabby)))
       goto j_leave;
 
    l = (ui32_t)strlen(s);
@@ -4030,8 +4231,8 @@ n_tty_addhist(char const *s, bool_t isgabby){
       for(thp = a_tty.tg_hist; thp != NULL; thp = thp->th_older)
          if(thp->th_len == l && !strcmp(thp->th_dat, s)){
             hold_all_sigs(); /* TODO */
-            if(thp->th_isgabby)
-               thp->th_isgabby = !!isgabby;
+            thp->th_flags = (gif & a_TTY_HIST_CTX_MASK) |
+                  (gif & n_GO_INPUT_HIST_GABBY ? a_TTY_HIST_GABBY : 0);
             othp = thp->th_older;
             ythp = thp->th_younger;
             if(othp != NULL)
@@ -4055,13 +4256,14 @@ n_tty_addhist(char const *s, bool_t isgabby){
             a_tty.tg_hist = NULL;
          else
             a_tty.tg_hist_tail->th_older = NULL;
-         free(thp);
+         n_free(thp);
       }
    }
 
-   thp = smalloc(n_VSTRUCT_SIZEOF(struct a_tty_hist, th_dat) + l +1);
-   thp->th_isgabby = !!isgabby;
+   thp = n_alloc(n_VSTRUCT_SIZEOF(struct a_tty_hist, th_dat) + l +1);
    thp->th_len = l;
+   thp->th_flags = (gif & a_TTY_HIST_CTX_MASK) |
+         (gif & n_GO_INPUT_HIST_GABBY ? a_TTY_HIST_GABBY : 0);
    memcpy(thp->th_dat, s, l +1);
 jleave:
    if((thp->th_older = a_tty.tg_hist) != NULL)
@@ -4103,6 +4305,18 @@ c_history(void *v){
       goto jlist;
    if(!asccasecmp(*argv, "clear"))
       goto jclear;
+
+   if(!asccasecmp(*argv, "load")){
+      if(!a_tty_hist_load())
+         v = NULL;
+      goto jleave;
+   }
+   if(!asccasecmp(*argv, "save")){
+      if(!a_tty_hist_save())
+         v = NULL;
+      goto jleave;
+   }
+
    if((n_idec_siz_cp(&entry, *argv, 10, NULL
             ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
          ) == n_IDEC_STATE_CONSUMED)
@@ -4110,14 +4324,14 @@ c_history(void *v){
 jerr:
    n_err(_("Synopsis: history: %s\n"),
       /* Same string as in cmd-tab.h, still hoping...) */
-      _("<show> (default), <clear> or select <NO> from editor history"));
+      _("<show (default)|load|save|clear> or select history <NO>"));
    v = NULL;
 jleave:
    NYD_LEAVE;
    return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 
 jlist:{
-   size_t i, b;
+   size_t no, l, b;
    FILE *fp;
 
    if(a_tty.tg_hist == NULL)
@@ -4129,19 +4343,33 @@ jlist:{
       goto jleave;
    }
 
-   i = a_tty.tg_hist_size;
-   b = 0;
+   no = a_tty.tg_hist_size;
+   l = b = 0;
+
    for(thp = a_tty.tg_hist; thp != NULL;
-         --i, b += thp->th_len, thp = thp->th_older){
-      fprintf(fp, "%c%" PRIuZ, (thp->th_isgabby ? '*' : ' '), i);
+         --no, ++l, thp = thp->th_older){
+      char c1, c2;
+
+      b += thp->th_len;
+
+      switch(thp->th_flags & a_TTY_HIST_CTX_MASK){
+      default:
+      case a_TTY_HIST_CTX_DEFAULT:
+         c1 = 'd';
+         break;
+      case a_TTY_HIST_CTX_COMPOSE:
+         c1 = 'c';
+         break;
+      }
+      c2 = (thp->th_flags & a_TTY_HIST_GABBY) ? '*' : ' ';
+
       if(n_poption & n_PO_D_V)
-         fprintf(fp, " (%" PRIuZ "+%" PRIu32 ")", b, thp->th_len);
-      putc('\t', fp);
-      fputs(thp->th_dat, fp);
-      putc('\n', fp);
+         fprintf(fp, "# Length +%" PRIu32 ", total %" PRIuZ "\n",
+            thp->th_len, b);
+      fprintf(fp, "%c%c%4" PRIuZ "\t%s\n", c1, c2, no, thp->th_dat);
    }
 
-   page_or_print(fp, i);
+   page_or_print(fp, l);
    Fclose(fp);
    }
    goto jleave;
@@ -4149,7 +4377,7 @@ jlist:{
 jclear:
    while((thp = a_tty.tg_hist) != NULL){
       a_tty.tg_hist = thp->th_older;
-      free(thp);
+      n_free(thp);
    }
    a_tty.tg_hist_tail = NULL;
    a_tty.tg_hist_size = 0;
@@ -4444,10 +4672,10 @@ FL int
 }
 
 FL void
-n_tty_addhist(char const *s, bool_t isgabby){
+n_tty_addhist(char const *s, enum n_go_input_flags gif){
    NYD_ENTER;
    n_UNUSED(s);
-   n_UNUSED(isgabby);
+   n_UNUSED(gif);
    NYD_LEAVE;
 }
 #endif /* nothing at all */

@@ -3,7 +3,7 @@
  *@ TODO This needs a complete rewrite, with carriers, etc.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -828,14 +828,7 @@ jins:
          goto jins;
       }
 
-      if(!asccasecmp(cmd[2], cp = "Mailx-Command") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Raw-To") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Raw-Cc") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Raw-Bcc") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-From") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-To") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-Cc") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-Bcc")){
+      if((cp = n_header_is_standard(cmd[2], UIZ_MAX)) != NULL){
          fprintf(n_stdout, "505 %s\n", cp);
          goto jleave;
       }
@@ -1069,14 +1062,7 @@ jrem:
          goto jrem;
       }
 
-      if(!asccasecmp(cmd[2], cp = "Mailx-Command") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Raw-To") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Raw-Cc") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Raw-Bcc") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-From") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-To") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-Cc") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-Bcc")){
+      if((cp = n_header_is_standard(cmd[2], UIZ_MAX)) != NULL){
          fprintf(n_stdout, "505 %s\n", cp);
          goto jleave;
       }
@@ -1185,14 +1171,7 @@ jremat:
          goto jremat;
       }
 
-      if(!asccasecmp(cmd[2], cp = "Mailx-Command") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Raw-To") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Raw-Cc") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Raw-Bcc") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-From") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-To") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-Cc") ||
-            !asccasecmp(cmd[2], cp = "Mailx-Orig-Bcc")){
+      if((cp = n_header_is_standard(cmd[2], UIZ_MAX)) != NULL){
          fprintf(n_stdout, "505 %s\n", cp);
          goto jleave;
       }
@@ -2530,8 +2509,13 @@ jhistcont:
          c = '\1';
       }else
          c = '\0';
-      if(hist & a_HIST_ADD)
-         n_tty_addhist(n_string_cp(sp), ((hist & a_HIST_GABBY) != 0));
+      if(hist & a_HIST_ADD){
+         /* Do not add *escape* to the history in order to allow history search
+          * to be handled generically in the MLE regardless of actual *escape*
+          * settings etc. */
+         n_tty_addhist(&n_string_cp(sp)[1], (n_GO_INPUT_CTX_COMPOSE |
+            (hist & a_HIST_GABBY ? n_GO_INPUT_HIST_GABBY : n_GO_INPUT_NONE)));
+      }
       if(c != '\0')
          goto jcont;
    }

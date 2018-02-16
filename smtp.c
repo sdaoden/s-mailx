@@ -4,7 +4,7 @@
  *@ TODO - more (verbose) understanding+rection upon STATUS CODES
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 2000
@@ -133,7 +133,7 @@ do if (!(n_poption & n_PO_DEBUG)) {\
 } while (0)
 #define _OUT(X) \
 do {\
-   if (n_poption & n_PO_VERBVERB)\
+   if (n_poption & n_PO_D_VV)\
       n_err(">>> %s", X);\
    if (!(n_poption & n_PO_DEBUG))\
       swrite(sp, X);\
@@ -142,7 +142,8 @@ do {\
 static bool_t
 _smtp_talk(struct sock *sp, struct sendbundle *sbp) /* TODO n_string etc. */
 {
-   char o[LINESIZE], *hostname;
+   char o[LINESIZE];
+   char const *hostname;
    struct smtp_line _sl, *slp = &_sl;
    struct str b64;
    struct name *n;
@@ -267,9 +268,13 @@ jsend:
    _OUT(o);
    _ANSWER(2, FAL0, FAL0);
 
-   for (n = sbp->sb_to; n != NULL; n = n->n_flink) {
-      if (!(n->n_type & GDEL)) {
-         snprintf(o, sizeof o, NETLINE("RCPT TO:<%s>"), skinned_name(n));
+   for(n = sbp->sb_to; n != NULL; n = n->n_flink){
+      if (!(n->n_type & GDEL)) { /* TODO should not happen!?! */
+         if(n->n_flags & NAME_ADDRSPEC_WITHOUT_DOMAIN)
+            snprintf(o, sizeof o, NETLINE("RCPT TO:<%s@%s>"),
+               skinned_name(n), hostname);
+         else
+            snprintf(o, sizeof o, NETLINE("RCPT TO:<%s>"), skinned_name(n));
          _OUT(o);
          _ANSWER(2, FAL0, FAL0);
       }

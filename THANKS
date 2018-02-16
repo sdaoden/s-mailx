@@ -1,7 +1,8 @@
-S-nail is maintained and developed by Steffen Nurpmeso.  It is
-based upon Heirloom mailx (formerly nail) which was developed by
-Gunnar Ritter and which was itself based upon Berkeley Mail that
-originates in 2BSD (Kurt Shoens (UCB) March 25, 1978).
+S-nail is maintained and developed by Steffen Nurpmeso.
+This software originates in the codebase of Heirloom mailx, formerly
+known as nail, which itself is based upon Berkeley Mail that has
+a history back to 1978, and which has been written to replace Unix
+mail, a program that already shipped with First Edition Unix.
 
 Other people contributed by reporting problems, suggesting various
 improvements, whether directly or indirectly, or submitting actual
@@ -11,6 +12,7 @@ complete and free of errors.
 Afan                      snailmail at ottenheimer dot com
 Andreas Baumann           mail at andreasbaumann dot cc
 Hilko Bengen              bengen at debian dot org
+Joseph Bisch              joseph dot bisch at gmail dot com
 Gaetan Bisson             bisson at archlinux dot org
 Karol Błażewicz           karol dot blazewicz at gmail dot com
 Salvatore Bonaccorso      carnil at debian dot org
@@ -47,6 +49,7 @@ Philip Guenther           guenther at openbsd dot org
 Alexander Harm            contact at aharm dot de
 Peter Hofmann             snailusers at uninformativ dot de
 Frantisek Holop           minusf at obiit dot org
+Peter J. Holzer           hjp-luga2 at hjp dot at
 Ken Hornstein             kenh at pobox dot com
 Walter Alejandro Iglesias eloi at roquesor dot com
 Doug McIlroy              doug at cs dot dartmouth dot edu
@@ -56,6 +59,7 @@ Ryan Kavanagh             rak at debian dot org
 Tarqi Kazan               tarqi at cfs dot or dot gs
 Matthias Kilian           kili at outback dot escape dot de
 Vincent Lefevre           vincent at vinc17 dot net
+Paride Legovini           pl at ninthfloor dot org
 David Levine              levinedl at acm dot org
 Xin LI                    delphij at FreeBSD dot org
 Johannes Löthberg         johannes at kyriasis dot com

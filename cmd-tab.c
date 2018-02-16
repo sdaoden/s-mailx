@@ -6,7 +6,7 @@
  *@ TODO generic parser.  But at least a bit.
  *@ TODO See cmd-tab.h for sort and speedup TODOs.
  *
- * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /* Command table and getrawlist() also:
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
@@ -149,28 +149,29 @@ a_ctab_cmdinfo(struct n_cmd_desc const *cdp){
    if(cp != NULL)
       rv = n_string_push_cp(rv, V_(cp));
 
+   /* Note: on updates, change the manual! */
    if(cdp->cd_caflags & n_CMD_ARG_L)
-      rv = n_string_push_cp(rv, _(" | local modifier"));
+      rv = n_string_push_cp(rv, _(" | `local'"));
    if(cdp->cd_caflags & n_CMD_ARG_V)
-      rv = n_string_push_cp(rv, _(" | vput modifier"));
+      rv = n_string_push_cp(rv, _(" | `vput'"));
    if(cdp->cd_caflags & n_CMD_ARG_EM)
-      rv = n_string_push_cp(rv, _(" | error in *!*"));
+      rv = n_string_push_cp(rv, _(" | *!*"));
 
    if(cdp->cd_caflags & n_CMD_ARG_A)
       rv = n_string_push_cp(rv, _(" | needs box"));
    if(cdp->cd_caflags & n_CMD_ARG_I)
-      rv = n_string_push_cp(rv, _(" | ok: batch or interactive"));
+      rv = n_string_push_cp(rv, _(" | ok: batch/interactive"));
    if(cdp->cd_caflags & n_CMD_ARG_M)
       rv = n_string_push_cp(rv, _(" | ok: send mode"));
    if(cdp->cd_caflags & n_CMD_ARG_R)
       rv = n_string_push_cp(rv, _(" | not ok: compose mode"));
    if(cdp->cd_caflags & n_CMD_ARG_S)
-      rv = n_string_push_cp(rv, _(" | not ok: during startup"));
+      rv = n_string_push_cp(rv, _(" | not ok: startup"));
    if(cdp->cd_caflags & n_CMD_ARG_X)
       rv = n_string_push_cp(rv, _(" | ok: subprocess"));
 
    if(cdp->cd_caflags & n_CMD_ARG_G)
-      rv = n_string_push_cp(rv, _(" | gabby history"));
+      rv = n_string_push_cp(rv, _(" | gabby"));
 
    cp = n_string_cp(rv);
    NYD2_LEAVE;
@@ -316,7 +317,8 @@ jredo:
       fputs(n_progname, n_stdout);
       fputs(_(
          " commands -- <msglist> denotes message specifications,\n"
-         "e.g., 1-5, :n or ., separated by spaces:\n"), n_stdout);
+         "e.g., 1-5, :n or . (current, the \"dot\"), separated by spaces:\n"),
+         n_stdout);
       fputs(_(
 "\n"
 "type <msglist>         type (`print') messages (honour `headerpick' etc.)\n"

@@ -3,7 +3,7 @@
  *@ TODO Dynamic hashmaps; names and (these) groups have _nothing_ in common!
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -1203,8 +1203,6 @@ nalloc(char const *str, enum gfield ntype)
    np->n_flink = NULL;
    np->n_blink = NULL;
    np->n_type = ntype;
-   np->n_flags = 0;
-
    np->n_fullname = np->n_name = ag.ag_skinned;
    np->n_fullextra = NULL;
    np->n_flags = ag.ag_n_flags;
@@ -1288,7 +1286,6 @@ jskipfullextra:
       if (ag.ag_n_flags & NAME_IDNA)
          n_lofi_free(in.s);
 #endif
-      np->n_flags |= NAME_FULLNAME_SALLOC;
    }
 jleave:
    NYD_LEAVE;
@@ -1309,14 +1306,12 @@ ndup(struct name *np, enum gfield ntype)
    nnp = n_autorec_alloc(sizeof *np);
    nnp->n_flink = nnp->n_blink = NULL;
    nnp->n_type = ntype;
-   nnp->n_flags = (np->n_flags & ~(NAME_NAME_SALLOC | NAME_FULLNAME_SALLOC)) |
-         NAME_NAME_SALLOC;
+   nnp->n_flags = np->n_flags | NAME_NAME_SALLOC;
    nnp->n_name = savestr(np->n_name);
    if (np->n_name == np->n_fullname || !(ntype & (GFULL | GSKIN))) {
       nnp->n_fullname = nnp->n_name;
       nnp->n_fullextra = NULL;
    } else {
-      nnp->n_flags |= NAME_FULLNAME_SALLOC;
       nnp->n_fullname = savestr(np->n_fullname);
       nnp->n_fullextra = (np->n_fullextra == NULL) ? NULL
             : savestr(np->n_fullextra);
@@ -1849,6 +1844,7 @@ jleave:
 FL int
 c_addrcodec(void *vp){
    struct n_addrguts ag;
+   struct str trims;
    struct n_string s_b, *sp;
    size_t alen;
    int mode;
@@ -1875,14 +1871,11 @@ c_addrcodec(void *vp){
    if(*cp != '\0')
       ++cp;
 
-   /* C99 */{
-      size_t i;
-
-      i = strlen(cp);
-      if(i <= UIZ_MAX / 4)
-         i <<= 1;
-      sp = n_string_reserve(sp, i);
-   }
+   trims.l = strlen(trims.s = n_UNCONST(cp));
+   cp = savestrbuf(n_str_trim(&trims, n_STR_TRIM_BOTH)->s, trims.l);
+   if(trims.l <= UIZ_MAX / 4)
+         trims.l <<= 1;
+   sp = n_string_reserve(sp, trims.l);
 
    n_pstate_err_no = n_ERR_NONE;
 

@@ -2,7 +2,7 @@
  *@ Function prototypes and function-alike macros.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -360,6 +360,11 @@ FL enum n_idec_state n_idec_buf(void *resp, char const *cbuf, uiz_t clen,
    n_idec_buf(RP, CBP, UIZ_MAX, B, (n_IDEC_MODE_SIGNED_TYPE), CLP)
 #endif
 
+/* Encode an integer value according to base (2-36) and mode iem, return
+ * pointer to starting byte or NULL on error */
+FL char *n_ienc_buf(char cbuf[n_IENC_BUFFER_SIZE], ui64_t value, ui8_t base,
+            enum n_ienc_mode iem);
+
 /* Hash the passed string -- uses Chris Torek's hash algorithm.
  * i*() hashes case-insensitively (ASCII), and *n() uses maximally len bytes;
  * if len is UIZ_MAX, we go .), since we anyway stop for NUL */
@@ -415,6 +420,10 @@ FL struct n_timespec const *n_time_now(bool_t force_update);
 /* Update *tc* to now; only .tc_time updated unless *full_update* is true */
 FL void        time_current_update(struct time_current *tc,
                   bool_t full_update);
+
+/* ctime(3), but do ensure 26 byte limit, do not crash XXX static buffer.
+ * NOTE: no trailing newline */
+FL char *n_time_ctime(si64_t secsepoch, struct tm const *localtime_or_nil);
 
 /* Returns 0 if fully slept, number of millis left if ignint is true and we
  * were interrupted.  Actual resolution may be second or less.
@@ -1104,8 +1113,6 @@ FL int         msgidcmp(char const *s1, char const *s2);
 /* Fake Sender for From_ lines if missing, e. g. with POP3 */
 FL char const * fakefrom(struct message *mp);
 
-FL char const * fakedate(time_t t);
-
 /* From username Fri Jan  2 20:13:51 2004
  *               |    |    |    |    |
  *               0    5   10   15   20 */
@@ -1139,8 +1146,14 @@ FL int         grab_headers(enum n_go_input_flags gif, struct header *hp,
  * If sep->s_where (or >s_where_wregex) is set, restrict to given headers */
 FL bool_t n_header_match(struct message *mp, struct search_expr const *sep);
 
-/* Query *customhdr* */
-FL struct n_header_field *n_customhdr_query(void);
+/* Verify whether len (UIZ_MAX=strlen) bytes of name form a standard or
+ * otherwise known header name (that must not be used as a custom header).
+ * Return the (standard) header name, or NULL */
+FL char const *n_header_is_standard(char const *name, size_t len);
+
+/* Add a custom header to the given list, in auto-reclaimed or heap memory */
+FL bool_t n_header_add_custom(struct n_header_field **hflp, char const *dat,
+            bool_t heap);
 
 /*
  * ignore.c
@@ -2566,9 +2579,10 @@ FL int n_tty_readline(enum n_go_input_flags gif, char const *prompt,
 #endif
 
 /* Add a line (most likely as returned by n_tty_readline()) to the history.
- * Whether an entry added for real depends on the isgabby / *history-gabby*
- * relation, and / or whether s is non-empty */
-FL void n_tty_addhist(char const *s, bool_t isgabby);
+ * Whether and how an entry is added for real depends on gif, e.g.,
+ * n_GO_INPUT_HIST_GABBY / *history-gabby* relation.
+ * Empty strings are never stored */
+FL void n_tty_addhist(char const *s, enum n_go_input_flags gif);
 
 #ifdef HAVE_HISTORY
 FL int c_history(void *v);

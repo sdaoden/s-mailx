@@ -4,7 +4,7 @@
  *@ not implement the SEARCH command.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 2004
@@ -598,7 +598,7 @@ jleave:
 static time_t
 _imap_read_date(char const *cp)
 {
-   time_t t = (time_t)-1;
+   time_t t, t2;
    si32_t year, month, day, i, tzdiff;
    struct tm *tmptr;
    char const *xp, *yp;
@@ -608,32 +608,38 @@ _imap_read_date(char const *cp)
       ++cp;
    n_idec_si32_cp(&day, cp, 10, &xp);
    if (day <= 0 || day > 31 || *xp++ != '-')
-      goto jleave;
+      goto jerr;
 
    for (i = 0;;) {
       if (!ascncasecmp(xp, n_month_names[i], 3))
          break;
       if (n_month_names[++i][0] == '\0')
-         goto jleave;
+         goto jerr;
    }
    month = i + 1;
    if (xp[3] != '-')
-      goto jleave;
+      goto jerr;
    n_idec_si32_cp(&year, &xp[4], 10, &yp);
    if (year < 1970 || year > 2037 || PTRCMP(yp, !=, xp + 8))
-      goto jleave;
+      goto jerr;
    if (yp[0] != '\0' && (yp[1] != '"' || yp[2] != '\0'))
-      goto jleave;
+      goto jerr;
    if ((t = combinetime(year, month, day, 0, 0, 0)) == (time_t)-1)
-      goto jleave;
-   tzdiff = t - mktime(gmtime(&t));
-   tmptr = localtime(&t);
+      goto jleave/*jerr*/;
+   if((t2 = mktime(gmtime(&t))) == (time_t)-1)
+      goto jerr;
+   tzdiff = t - t2;
+   if((tmptr = localtime(&t)) == NULL)
+      goto jerr;
    if (tmptr->tm_isdst > 0)
       tzdiff += 3600;
    t -= tzdiff;
 jleave:
    NYD_LEAVE;
    return t;
+jerr:
+   t = (time_t)-1;
+   goto jleave;
 }
 
 static char *

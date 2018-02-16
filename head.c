@@ -3,7 +3,7 @@
  *@ TODO Mostly a hackery, we need RFC compliant parsers instead.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -39,6 +39,8 @@
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
+
+#include <pwd.h>
 
 struct cmatch_data {
    size_t      tlen;    /* Length of .tdata */
@@ -99,8 +101,10 @@ static struct n_addrguts *a_head_idna_apply(struct n_addrguts *agp);
 /* Classify and check a (possibly skinned) header body according to RFC
  * *addr-spec* rules; if it (is assumed to has been) skinned it may however be
  * also a file or a pipe command, so check that first, then.
- * Otherwise perform content checking and isolate the domain part (for IDNA) */
-static bool_t a_head_addrspec_check(struct n_addrguts *agp, bool_t skinned);
+ * Otherwise perform content checking and isolate the domain part (for IDNA).
+ * issingle_hack has the same meaning as for n_addrspec_with_guts() */
+static bool_t a_head_addrspec_check(struct n_addrguts *agp, bool_t skinned,
+               bool_t issingle_hack);
 
 /* Return the next header field found in the given message.
  * Return >= 0 if something found, < 0 elsewise.
@@ -308,27 +312,37 @@ a_head_idna_apply(struct n_addrguts *agp){
 #endif /* HAVE_IDNA */
 
 static bool_t
-a_head_addrspec_check(struct n_addrguts *agp, bool_t skinned)
+a_head_addrspec_check(struct n_addrguts *agp, bool_t skinned,
+      bool_t issingle_hack)
 {
    char *addr, *p;
-   bool_t in_quote;
-   ui8_t in_domain, hadat;
    union {bool_t b; char c; unsigned char u; ui32_t ui32; si32_t si32;} c;
-#ifdef HAVE_IDNA
-   ui8_t use_idna;
-#endif
+   enum{
+      a_NONE,
+      a_IDNA_ENABLE = 1u<<0,
+      a_IDNA_APPLY = 1u<<1,
+      a_REDO_NODE_AFTER_ADDR = 1u<<2,
+      a_RESET_MASK = a_IDNA_ENABLE | a_IDNA_APPLY | a_REDO_NODE_AFTER_ADDR,
+      a_IN_QUOTE = 1u<<8,
+      a_IN_AT = 1u<<9,
+      a_IN_DOMAIN = 1u<<10,
+      a_DOMAIN_V6 = 1u<<11,
+      a_DOMAIN_MASK = a_IN_DOMAIN | a_DOMAIN_V6
+   } flags;
    NYD_ENTER;
 
+   flags = a_NONE;
 #ifdef HAVE_IDNA
-   use_idna = ok_blook(idna_disable) ? 0 : 1;
+   if(!ok_blook(idna_disable))
+      flags = a_IDNA_ENABLE;
 #endif
-   agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED;
-   addr = agp->ag_skinned;
 
    if (agp->ag_iaddr_aend - agp->ag_iaddr_start == 0) {
       NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_EMPTY, 0);
       goto jleave;
    }
+
+   addr = agp->ag_skinned;
 
    /* If the field is not a recipient, it cannot be a file or a pipe */
    if (!skinned)
@@ -364,52 +378,59 @@ jaddr_check:
     * TODO All this should interact with mime_enc_mustquote(), too!
     * TODO That is: once this is an object, we need to do this in a way
     * TODO that it is valid for the wire format (instead)! */
-   in_quote = FAL0;
-   in_domain = hadat = 0;
-
-   /* TODO addrspec_check: we need a real RFC 5322 (un)?structured parser! */
+   /* TODO addrspec_check: we need a real RFC 5322 (un)?structured parser!
+    * TODO Note this correlats with addrspec_with_guts() which is in front
+    * TODO of us and encapsulates (what it thinks is, sigh) the address
+    * TODO boundary.  ALL THIS should be one object that knows how to deal */
+   flags &= a_RESET_MASK;
    for (p = addr; (c.c = *p++) != '\0';) {
       if (c.c == '"') {
-         in_quote = !in_quote;
+         flags ^= a_IN_QUOTE;
       } else if (c.u < 040 || c.u >= 0177) { /* TODO no magics: !bodychar()? */
 #ifdef HAVE_IDNA
-         if (in_domain && use_idna > 0) {
-            if (use_idna == 1)
-               NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_IDNA,
-                  c.u);
-            use_idna = 2;
-         } else
+         if ((flags & (a_IN_DOMAIN | a_IDNA_ENABLE)) ==
+               (a_IN_DOMAIN | a_IDNA_ENABLE))
+            flags |= a_IDNA_APPLY;
+         else
 #endif
             break;
-      } else if (in_domain == 2) {
+      } else if ((flags & a_DOMAIN_MASK) == a_DOMAIN_MASK) {
          if ((c.c == ']' && *p != '\0') || c.c == '\\' || whitechar(c.c))
             break;
-      } else if (in_quote && in_domain == 0) {
+      } else if ((flags & (a_IN_QUOTE | a_DOMAIN_MASK)) == a_IN_QUOTE) {
          /*EMPTY*/;
       } else if (c.c == '\\' && *p != '\0') {
          ++p;
       } else if (c.c == '@') {
-         if (hadat++ > 0) {
+         if(flags & a_IN_AT){
             NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_ATSEQ,
                c.u);
             goto jleave;
          }
          agp->ag_sdom_start = PTR2SIZE(p - addr);
          agp->ag_n_flags |= NAME_ADDRSPEC_ISADDR; /* TODO .. really? */
-         in_domain = (*p == '[') ? 2 : 1;
+         flags &= ~a_DOMAIN_MASK;
+         flags |= (*p == '[') ? a_IN_AT | a_IN_DOMAIN | a_DOMAIN_V6
+               : a_IN_AT | a_IN_DOMAIN;
          continue;
-      } else if (c.c == '(' || c.c == ')' || c.c == '<' || c.c == '>' ||
+      }
+      /* TODO This interferes with our alias handling, which allows :!
+       * TODO Update manual on support (search the several ALIASCOLON)! */
+      else if (c.c == '(' || c.c == ')' || c.c == '<' || c.c == '>' ||
             c.c == '[' || c.c == ']' || c.c == ':' || c.c == ';' ||
-            c.c == '\\' || c.c == ',')
+            c.c == '\\' || c.c == ',' || blankchar(c.c))
          break;
-      hadat = 0;
+      flags &= ~a_IN_AT;
    }
    if (c.c != '\0') {
       NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_CHAR, c.u);
       goto jleave;
    }
 
-   if(!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR)){
+   /* If we do not think this is an address we may treat it as an alias name
+    * if and only if the original input is identical to the skinned version */
+   if(!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR) &&
+         !strcmp(agp->ag_skinned, agp->ag_input)){
       /* TODO This may be an UUCP address */
       agp->ag_n_flags |= NAME_ADDRSPEC_ISNAME;
       if(!n_alias_is_valid_name(agp->ag_input))
@@ -421,18 +442,19 @@ jaddr_check:
        * TODO unstructured, and just parse correctly overall!
        * TODO In addition, this can be optimised a lot.
        * TODO And it is far from perfect: it should not forget whether no
-       * TODO whitespace followed some snippet, and it was written hastily */
+       * TODO whitespace followed some snippet, and it was written hastily.
+       * TODO It is even wrong sometimes.  Not only for strange cases */
       struct a_token{
          struct a_token *t_last;
          struct a_token *t_next;
          enum{
-            a_T_TATOM = 1<<0,
-            a_T_TCOMM = 1<<1,
-            a_T_TQUOTE = 1<<2,
-            a_T_TADDR = 1<<3,
-            a_T_TMASK = (1<<4) - 1,
+            a_T_TATOM = 1u<<0,
+            a_T_TCOMM = 1u<<1,
+            a_T_TQUOTE = 1u<<2,
+            a_T_TADDR = 1u<<3,
+            a_T_TMASK = (1u<<4) - 1,
 
-            a_T_SPECIAL = 1<<8      /* An atom actually needs to go TQUOTE */
+            a_T_SPECIAL = 1u<<8     /* An atom actually needs to go TQUOTE */
          } t_f;
          ui8_t t__pad[4];
          size_t t_start;
@@ -445,26 +467,35 @@ jaddr_check:
 
       /* Name and domain must be non-empty */
       if(*addr == '@' || &addr[2] >= p || p[-2] == '@'){
+jeat:
          c.c = '@';
          NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_ATSEQ, c.u);
          goto jleave;
       }
 
-#ifdef HAVE_IDNA
-      if(use_idna == 2)
-         agp = a_head_idna_apply(agp);
-#endif
-
       cp = agp->ag_input;
 
       /* Nothing to do if there is only an address (in angle brackets) */
+      /* TODO This is wrong since we allow invalid constructs in local-part
+       * TODO and domain, AT LEAST in so far as a"bc"d@abc should become
+       * TODO "abcd"@abc.  Etc. */
       if(agp->ag_iaddr_start == 0){
+         /* No @ seen? */
+         if(!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR))
+            goto jeat;
          if(agp->ag_iaddr_aend == agp->ag_ilen)
             goto jleave;
       }else if(agp->ag_iaddr_start == 1 && *cp == '<' &&
             agp->ag_iaddr_aend == agp->ag_ilen - 1 &&
-            cp[agp->ag_iaddr_aend] == '>')
+            cp[agp->ag_iaddr_aend] == '>'){
+         /* No @ seen?  Possibly insert n_nodename() */
+         if(!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR)){
+            cp = &agp->ag_input[agp->ag_iaddr_start];
+            cpmax = &agp->ag_input[agp->ag_iaddr_aend];
+            goto jinsert_domain;
+         }
          goto jleave;
+      }
 
       /* It is not, so parse off all tokens, then resort and rejoin */
       lofi_snap = n_lofi_snap_create();
@@ -475,7 +506,6 @@ jaddr_check:
       cpmax = &cp[c.ui32];
 
       thead = tcurr = NULL;
-      hadat = FAL0;
 jnode_redo:
       for(tp = NULL; cp < cpmax;){
          switch((c.c = *cp)){
@@ -589,18 +619,64 @@ jnode_redo:
       if(tp != NULL)
          tp->t_end = PTR2SIZE(cp - cp1st);
 
-      if(hadat == FAL0){
-         hadat = TRU1;
-         tp = n_lofi_alloc(sizeof *tp);
-         tp->t_next = NULL;
-         if((tp->t_last = tcurr) != NULL)
-            tcurr->t_next = tp;
-         else
-            thead = tp;
-         tcurr = tp;
-         tp->t_f = a_T_TADDR;
-         tp->t_start = agp->ag_iaddr_start;
+      if(!(flags & a_REDO_NODE_AFTER_ADDR)){
+         flags |= a_REDO_NODE_AFTER_ADDR;
+
+         /* The local-part may be in quotes.. */
+         if((tp = tcurr) != NULL && (tp->t_f & a_T_TQUOTE) &&
+               tp->t_end == agp->ag_iaddr_start - 1){
+            /* ..so backward extend it, including the starting quote */
+            /* TODO This is false and the code below #if 0 away.  We would
+             * TODO need to create a properly quoted local-part HERE AND NOW
+             * TODO and REPLACE the original data with that version, but the
+             * TODO current code cannot do that.  The node needs the data,
+             * TODO not only offsets for that, for example.  If we had all that
+             * TODO the code below could produce a really valid thing */
+            if(tp->t_start > 0)
+               --tp->t_start;
+            if(tp->t_start > 0 &&
+                  (tp->t_last == NULL || tp->t_last->t_end < tp->t_start) &&
+                     agp->ag_input[tp->t_start - 1] == '\\')
+               --tp->t_start;
+            tp->t_f = a_T_TADDR | a_T_SPECIAL;
+         }else{
+            tp = n_lofi_alloc(sizeof *tp);
+            tp->t_next = NULL;
+            if((tp->t_last = tcurr) != NULL)
+               tcurr->t_next = tp;
+            else
+               thead = tp;
+            tcurr = tp;
+            tp->t_f = a_T_TADDR;
+            tp->t_start = agp->ag_iaddr_start;
+            /* TODO Very special case because of our hacky non-object-based and
+             * TODO non-compliant address parser.  Note */
+            if(tp->t_last == NULL && tp->t_start > 0)
+               tp->t_start = 0;
+            if(agp->ag_input[tp->t_start] == '<')
+               ++tp->t_start;
+
+            /* TODO Very special check for whether we need to massage the
+             * TODO local part.  This is wrong, but otherwise even more so */
+#if 0
+            cp = &agp->ag_input[tp->t_start];
+            cpmax = &agp->ag_input[agp->ag_iaddr_aend];
+            while(cp < cpmax){
+               c.c = *cp++;
+               if(!(c.u & 0x80) && !alnumchar(c.c) &&
+                     c.c != '!' && c.c != '#' && c.c != '$' && c.c != '%' &&
+                     c.c != '&' && c.c != '\'' && c.c != '*' && c.c != '+' &&
+                     c.c != '-' && c.c != '/' && c.c != '=' && c.c != '?' &&
+                     c.c != '^' && c.c != '_' && c.c != '`' && c.c != '{' &&
+                     c.c != '}' && c.c != '|' && c.c != '}' && c.c != '~'){
+                  tp->t_f |= a_T_SPECIAL;
+                  break;
+               }
+            }
+#endif
+         }
          tp->t_end = agp->ag_iaddr_aend;
+         assert(tp->t_start <= tp->t_end);
          tp = NULL;
 
          cp = &agp->ag_input[agp->ag_iaddr_aend + 1];
@@ -641,6 +717,8 @@ jnode_redo:
             tp = tcurr;
             while((tp = tp->t_next) != NULL && (tp->t_f & a_T_TATOM))
                tp->t_f |= a_T_SPECIAL;
+            if(tp == NULL)
+               break;
          }
       }
 
@@ -653,6 +731,8 @@ jnode_redo:
             tp = tcurr;
             while((tp = tp->t_next) != NULL && (tp->t_f & a_T_TATOM))
                tp->t_f |= a_T_SPECIAL;
+            if(tp == NULL)
+               break;
          }
       }
 
@@ -665,12 +745,46 @@ jnode_redo:
          if(tcurr != thead)
             ostp = n_string_push_c(ostp, ' ');
          if(tcurr->t_f & a_T_TADDR){
-            ostp = n_string_push_c(ostp, '<');
+            if(tcurr->t_last != NULL)
+               ostp = n_string_push_c(ostp, '<');
             agp->ag_iaddr_start = ostp->s_len;
-            ostp = n_string_push_buf(ostp, &cp1st[tcurr->t_start],
-                  (tcurr->t_end - tcurr->t_start));
+            /* Now it is terrible to say, but if that thing contained
+             * quotes, then those may contain quoted-pairs! */
+#if 0
+            if(!(tcurr->t_f & a_T_SPECIAL)){
+#endif
+               ostp = n_string_push_buf(ostp, &cp1st[tcurr->t_start],
+                     (tcurr->t_end - tcurr->t_start));
+#if 0
+            }else{
+               bool_t quot, esc;
+
+               ostp = n_string_push_c(ostp, '"');
+               quot = TRU1;
+
+               cp = &cp1st[tcurr->t_start];
+               cpmax = &cp1st[tcurr->t_end];
+               for(esc = FAL0; cp < cpmax;){
+                  if((c.c = *cp++) == '\\' && !esc){
+                     if(cp < cpmax && (*cp == '"' || *cp == '\\'))
+                        esc = TRU1;
+                  }else{
+                     if(esc || c.c == '"')
+                        ostp = n_string_push_c(ostp, '\\');
+                     else if(c.c == '@'){
+                        ostp = n_string_push_c(ostp, '"');
+                        quot = FAL0;
+                     }
+                     ostp = n_string_push_c(ostp, c.c);
+                     esc = FAL0;
+                  }
+               }
+            }
+#endif
             agp->ag_iaddr_aend = ostp->s_len;
-            ostp = n_string_push_c(ostp, '>');
+
+            if(tcurr->t_last != NULL)
+               ostp = n_string_push_c(ostp, '>');
             tcurr = tcurr->t_next;
          }else if(tcurr->t_f & a_T_TCOMM){
             ostp = n_string_push_c(ostp, '(');
@@ -743,10 +857,104 @@ jput_quote_esc:
       agp->ag_input = n_string_cp(ostp);
       agp->ag_ilen = ostp->s_len;
       /*ostp = n_string_drop_ownership(ostp);*/
+
+      /* Name and domain must be non-empty, the second */
+      cp = &agp->ag_input[agp->ag_iaddr_start];
+      cpmax = &agp->ag_input[agp->ag_iaddr_aend];
+      if(*cp == '@' || &cp[2] > cpmax || cpmax[-1] == '@'){
+         c.c = '@';
+         NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_ATSEQ, c.u);
+         goto jleave;
+      }
+
+      addr = agp->ag_skinned = savestrbuf(cp, PTR2SIZE(cpmax - cp));
+
+      /* TODO This parser is a mess.  We do not know whether this is truly
+       * TODO valid, and all our checks are not truly RFC conforming.
+       * TODO Do check the skinned thing by itself once more, in order
+       * TODO to catch problems from reordering, e.g., this additional
+       * TODO test catches a final address without AT..
+       * TODO This is a plain copy+paste of the weird thing above, no care */
+      agp->ag_n_flags &= ~NAME_ADDRSPEC_ISADDR;
+      flags &= a_RESET_MASK;
+      for (p = addr; (c.c = *p++) != '\0';) {
+         if(c.c == '"')
+            flags ^= a_IN_QUOTE;
+         else if (c.u < 040 || c.u >= 0177) {
+#ifdef HAVE_IDNA
+               if(!(flags & a_IN_DOMAIN))
+#endif
+                  break;
+         } else if ((flags & a_DOMAIN_MASK) == a_DOMAIN_MASK) {
+            if ((c.c == ']' && *p != '\0') || c.c == '\\' || whitechar(c.c))
+               break;
+         } else if ((flags & (a_IN_QUOTE | a_DOMAIN_MASK)) == a_IN_QUOTE) {
+            /*EMPTY*/;
+         } else if (c.c == '\\' && *p != '\0') {
+            ++p;
+         } else if (c.c == '@') {
+            if(flags & a_IN_AT){
+               NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_ATSEQ,
+                  c.u);
+               goto jleave;
+            }
+            flags |= a_IN_AT;
+            agp->ag_n_flags |= NAME_ADDRSPEC_ISADDR; /* TODO .. really? */
+            flags &= ~a_DOMAIN_MASK;
+            flags |= (*p == '[') ? a_IN_DOMAIN | a_DOMAIN_V6 : a_IN_DOMAIN;
+            continue;
+         } else if (c.c == '(' || c.c == ')' || c.c == '<' || c.c == '>' ||
+               c.c == '[' || c.c == ']' || c.c == ':' || c.c == ';' ||
+               c.c == '\\' || c.c == ',' || blankchar(c.c))
+            break;
+         flags &= ~a_IN_AT;
+      }
+      if(c.c != '\0')
+         NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_CHAR, c.u);
+      else if(!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR)){
+         /* This is not an address, but if we had seen angle brackets convert
+          * it to a n_nodename() address if the name is a valid user */
+jinsert_domain:
+         if(cp > &agp->ag_input[0] && cp[-1] == '<' &&
+               cpmax <= &agp->ag_input[agp->ag_ilen] && cpmax[0] == '>' &&
+               (!strcmp(addr, ok_vlook(LOGNAME)) || getpwnam(addr) != NULL)){
+            /* XXX However, if hostname is set to the empty string this
+             * XXX indicates that the used *mta* will perform the
+             * XXX auto-expansion instead.  Not so with `addrcodec' though */
+            agp->ag_n_flags |= NAME_ADDRSPEC_ISADDR;
+            if(!issingle_hack &&
+                  (cp = ok_vlook(hostname)) != NULL && *cp == '\0')
+               agp->ag_n_flags |= NAME_ADDRSPEC_WITHOUT_DOMAIN;
+            else{
+               c.ui32 = strlen(cp = n_nodename(TRU1));
+               /* This is yet IDNA converted.. */
+               ostp = n_string_creat_auto(&ost);
+               ostp = n_string_assign_buf(ostp, agp->ag_input, agp->ag_ilen);
+               ostp = n_string_insert_c(ostp, agp->ag_iaddr_aend++, '@');
+               ostp = n_string_insert_buf(ostp, agp->ag_iaddr_aend, cp,
+                     c.ui32);
+               agp->ag_iaddr_aend += c.ui32;
+               agp->ag_input = n_string_cp(ostp);
+               agp->ag_ilen = ostp->s_len;
+               /*ostp = n_string_drop_ownership(ostp);*/
+
+               cp = &agp->ag_input[agp->ag_iaddr_start];
+               cpmax = &agp->ag_input[agp->ag_iaddr_aend];
+               agp->ag_skinned = savestrbuf(cp, PTR2SIZE(cpmax - cp));
+            }
+         }else
+            NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_ATSEQ,
+               '@');
+      }
    }
+
 jleave:
+#ifdef HAVE_IDNA
+   if(!(agp->ag_n_flags & NAME_ADDRSPEC_INVALID) && (flags & a_IDNA_APPLY))
+      agp = a_head_idna_apply(agp);
+#endif
    NYD_LEAVE;
-   return ((agp->ag_n_flags & NAME_ADDRSPEC_INVALID) == 0);
+   return !(agp->ag_n_flags & NAME_ADDRSPEC_INVALID);
 }
 
 static long
@@ -933,15 +1141,9 @@ myaddrs(struct header *hp) /* TODO */
          goto jleave;
    }
 
-   if((rv = ok_vlook(from)) != NULL){
-      if((np = lextract(rv, GEXTRA | GFULL)) == NULL)
-jefrom:
-         n_err(_("An address given in *from* is invalid: %s\n"), rv);
-      else for(; np != NULL; np = np->n_flink)
-         if(is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
-            goto jefrom;
+   /* Verified once variable had been set */
+   if((rv = ok_vlook(from)) != NULL)
       goto jleave;
-   }
 
    /* When invoking *sendmail* directly, it's its task to generate an otherwise
     * undeterminable From: address.  However, if the user sets *hostname*,
@@ -981,14 +1183,10 @@ myorigin(struct header *hp) /* TODO */
          (np = lextract(ccp, GEXTRA | GFULL)) != NULL){
       if(np->n_flink == NULL)
          rv = ccp;
-      else if((ccp = ok_vlook(sender)) != NULL) {
-         if((np = lextract(ccp, GEXTRA | GFULL)) == NULL ||
-               np->n_flink != NULL ||
-               is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
-            n_err(_("The address given in *sender* is invalid: %s\n"), ccp);
-         else
-            rv = ccp;
-      }
+      /* Verified upon variable set time */
+      else if((ccp = ok_vlook(sender)) != NULL)
+         rv = ccp;
+      /* TODO why not else rv = n_poption_arg_r; ?? */
    }
    NYD_LEAVE;
    return rv;
@@ -1642,7 +1840,6 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
    if((agp->ag_input = name) == NULL || (agp->ag_ilen = strlen(name)) == 0){
       agp->ag_skinned = n_UNCONST(n_empty); /* ok: NAME_SALLOC is not set */
       agp->ag_slen = 0;
-      agp->ag_n_flags |= NAME_ADDRSPEC_CHECKED;
       NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_EMPTY, 0);
       goto jleave;
    }else if(!doskin){
@@ -1772,7 +1969,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
    n_lofi_free(nbuf);
    agp->ag_n_flags = NAME_NAME_SALLOC | NAME_SKINNED;
 jcheck:
-   if(a_head_addrspec_check(agp, doskin) <= FAL0)
+   if(a_head_addrspec_check(agp, doskin, issingle_hack) <= FAL0)
       name = NULL;
    else
       name = agp->ag_input;
@@ -2074,27 +2271,12 @@ fakefrom(struct message *mp)
    return name;
 }
 
-FL char const *
-fakedate(time_t t)
-{
-   char *cp, *cq;
-   NYD_ENTER;
-
-   cp = ctime(&t);
-   for (cq = cp; *cq != '\0' && *cq != '\n'; ++cq)
-      ;
-   *cq = '\0';
-   cp = savestr(cp);
-   NYD_LEAVE;
-   return cp;
-}
-
 #if defined HAVE_IMAP_SEARCH || defined HAVE_IMAP
 FL time_t
 unixtime(char const *fromline)
 {
    char const *fp, *xp;
-   time_t t;
+   time_t t, t2;
    si32_t i, year, month, day, hour, minute, second, tzdiff;
    struct tm *tmptr;
    NYD2_ENTER;
@@ -2132,10 +2314,13 @@ unixtime(char const *fromline)
       goto jinvalid;
    if ((t = combinetime(year, month, day, hour, minute, second)) == (time_t)-1)
       goto jinvalid;
-   tzdiff = t - mktime(gmtime(&t));
-   tmptr = localtime(&t);
+   if((t2 = mktime(gmtime(&t))) == (time_t)-1)
+      goto jinvalid;
+   tzdiff = t - t2;
+   if((tmptr = localtime(&t)) == NULL)
+      goto jinvalid;
    if (tmptr->tm_isdst > 0)
-      tzdiff += 3600;
+      tzdiff += 3600; /* TODO simply adding an hour for ISDST is .. buuh */
    t -= tzdiff;
 jleave:
    NYD2_LEAVE;
@@ -2587,63 +2772,99 @@ jleave:
    return rv;
 }
 
-FL struct n_header_field *
-n_customhdr_query(void){
-   char const *vp;
-   struct n_header_field *rv, **tail, *hfp;
+FL char const *
+n_header_is_standard(char const *name, size_t len){
+   static char const * const names[] = {
+      "Bcc", "Cc", "From",
+      "In-Reply-To", "Mail-Followup-To",
+      "Message-ID", "References", "Reply-To",
+      "Sender", "Subject", "To",
+      "Mailx-Command",
+      "Mailx-Orig-Bcc", "Mailx-Orig-Cc", "Mailx-Orig-From", "Mailx-Orig-To",
+      "Mailx-Raw-Bcc", "Mailx-Raw-Cc", "Mailx-Raw-To",
+      NULL
+   };
+   char const * const *rv;
    NYD_ENTER;
 
-   rv = NULL;
+   if(len == UIZ_MAX)
+      len = strlen(name);
 
-   if((vp = ok_vlook(customhdr)) != NULL){
-      char *buf;
-
-      tail = &rv;
-      buf = savestr(vp);
-jch_outer:
-      while((vp = n_strsep_esc(&buf, ',', TRU1)) != NULL){
-         ui32_t nl, bl;
-         char const *nstart, *cp;
-
-         for(nstart = cp = vp;; ++cp){
-            if(fieldnamechar(*cp))
-               continue;
-            if(*cp == '\0'){
-               if(cp == nstart){
-                  n_err(_("Invalid nameless *customhdr* entry\n"));
-                  goto jch_outer;
-               }
-            }else if(*cp != ':' && !blankchar(*cp)){
-jch_badent:
-               n_err(_("Invalid *customhdr* entry: %s\n"), vp);
-               goto jch_outer;
-            }
-            break;
-         }
-         nl = (ui32_t)PTR2SIZE(cp - nstart);
-
-         while(blankchar(*cp))
-            ++cp;
-         if(*cp++ != ':')
-            goto jch_badent;
-         while(blankchar(*cp))
-            ++cp;
-         bl = (ui32_t)strlen(cp) +1;
-
-         *tail =
-         hfp = salloc(n_VSTRUCT_SIZEOF(struct n_header_field, hf_dat) +
-               nl +1 + bl);
-            tail = &hfp->hf_next;
-         hfp->hf_next = NULL;
-         hfp->hf_nl = nl;
-         hfp->hf_bl = bl - 1;
-         memcpy(hfp->hf_dat, nstart, nl);
-            hfp->hf_dat[nl++] = '\0';
-            memcpy(hfp->hf_dat + nl, cp, bl);
-      }
-   }
+   for(rv = names; *rv != NULL; ++rv)
+      if(!ascncasecmp(*rv, name, len))
+         break;
    NYD_LEAVE;
-   return rv;
+   return *rv;
+}
+
+FL bool_t
+n_header_add_custom(struct n_header_field **hflp, char const *dat,
+      bool_t heap){
+   size_t i;
+   ui32_t nl, bl;
+   char const *cp;
+   struct n_header_field *hfp;
+   NYD_ENTER;
+
+   hfp = NULL;
+
+   /* For (-C) convenience, allow leading WS */
+   while(blankchar(*dat))
+      ++dat;
+
+   /* Isolate the header field from the body */
+   for(cp = dat;; ++cp){
+      if(fieldnamechar(*cp))
+         continue;
+      if(*cp == '\0'){
+         if(cp == dat)
+            goto jename;
+      }else if(*cp != ':' && !blankchar(*cp)){
+jename:
+         cp = N_("Invalid custom header (not \"field: body\"): %s\n");
+         goto jerr;
+      }
+      break;
+   }
+   nl = (ui32_t)PTR2SIZE(cp - dat);
+   if(nl == 0)
+      goto jename;
+
+   /* Verify the custom header does not use standard/managed field name */
+   if(n_header_is_standard(dat, nl) != NULL){
+      cp = N_("Custom headers cannot use standard header names: %s\n");
+      goto jerr;
+   }
+
+   /* Skip on over to the body */
+   while(blankchar(*cp))
+      ++cp;
+   if(*cp++ != ':')
+      goto jename;
+   while(blankchar(*cp))
+      ++cp;
+   bl = (ui32_t)strlen(cp);
+   for(i = bl++; i-- != 0;)
+      if(cntrlchar(cp[i])){
+         cp = N_("Invalid custom header: contains control characters: %s\n");
+         goto jerr;
+      }
+
+   i = n_VSTRUCT_SIZEOF(struct n_header_field, hf_dat) + nl +1 + bl;
+   *hflp = hfp = heap ? n_alloc(i) : n_autorec_alloc(i);
+   hfp->hf_next = NULL;
+   hfp->hf_nl = nl;
+   hfp->hf_bl = bl - 1;
+   memcpy(hfp->hf_dat, dat, nl);
+      hfp->hf_dat[nl++] = '\0';
+      memcpy(hfp->hf_dat + nl, cp, bl);
+jleave:
+   NYD_LEAVE;
+   return (hfp != NULL);
+
+jerr:
+   n_err(V_(cp), n_shexp_quote_cp(dat, FAL0));
+   goto jleave;
 }
 
 /* s-it-mode */

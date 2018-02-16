@@ -1238,6 +1238,8 @@ for i in \
    printf "${i}=${j}\n" >> ${newlst}
    printf "${i}=\"${j}\";export ${i}; " >> ${newev}
 done
+# Note that makefile reads and eval'uates one line of this file, whereas other
+# consumers source it via .(1)
 printf "\n" >> ${newev}
 
 # Build a basic set of INCS and LIBS according to user environment.
@@ -1303,8 +1305,10 @@ for i in \
       OSFULLSPEC \
       ; do
    eval j=\$${i}
-   printf -- "${i} = ${j}\n" >> ${newmk}
-   printf -- "${i}=${j}\n" >> ${newlst}
+   if [ -n "${j}" ]; then
+       printf -- "${i} = ${j}\n" >> ${newmk}
+       printf -- "${i}=${j}\n" >> ${newlst}
+   fi
 done
 
 # Now finally check whether we already have a configuration and if so, whether
@@ -1836,7 +1840,7 @@ int main(void){
 }
 !
 
-if run_check realpath 'realpath(3)' '#define HAVE_REALPATH' << \!
+if link_check realpath 'realpath(3)' '#define HAVE_REALPATH' << \!
 #include <stdlib.h>
 int main(void){
    char x_buf[4096], *x = realpath(".", x_buf);
@@ -1896,6 +1900,46 @@ int main(void){
       :
    else
       feat_bail_required DOTLOCK
+   fi
+fi
+
+if feat_yes DOTLOCK; then
+   if run_check prctl_dumpable 'prctl(2) + PR_SET_DUMPABLE' \
+         '#define HAVE_PRCTL_DUMPABLE' << \!
+#include <sys/prctl.h>
+# include <errno.h>
+int main(void){
+   if(!prctl(PR_SET_DUMPABLE, 0) || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+   then
+      :
+   elif run_check prtrace_deny 'ptrace(2) + PT_DENY_ATTACH' \
+         '#define HAVE_PTRACE_DENY' << \!
+#include <sys/ptrace.h>
+# include <errno.h>
+int main(void){
+   if(ptrace(PT_DENY_ATTACH, 0, 0, 0) != -1 || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+   then
+      :
+   elif run_check setpflags_protect 'setpflags(2) + __PROC_PROTECT' \
+         '#define HAVE_SETPFLAGS_PROTECT' << \!
+#include <priv.h>
+# include <errno.h>
+int main(void){
+   if(!setpflags(__PROC_PROTECT, 1) || errno != ENOSYS)
+      return 0;
+   return 1;
+}
+!
+   then
+      :
    fi
 fi
 
@@ -1987,15 +2031,48 @@ int main(void){
 ## optional and selectable
 
 if feat_yes ICONV; then
+   # To be able to create tests we need to figure out which replacement
+   # sequence the iconv(3) implementation creates
    ${cat} > ${tmp2}.c << \!
 #include <stdio.h> /* For C89 NULL */
+#include <string.h>
 #include <iconv.h>
 int main(void){
+   char inb[16], oub[16], *inbp, *oubp;
    iconv_t id;
+   size_t inl, oul;
 
-   id = iconv_open("foo", "bar");
-   iconv(id, NULL, NULL, NULL, NULL);
+   memcpy(inbp = inb, "\342\200\223", sizeof("\342\200\223"));
+   inl = sizeof("\342\200\223") -1;
+   oul = sizeof oub;
+   oubp = oub;
+
+   if((id = iconv_open("ascii", "utf-8")) == (iconv_t)-1)
+     return 1;
+   if(iconv(id, &inbp, &inl, &oubp, &oul) == (size_t)-1)
+      return 1;
    iconv_close(id);
+
+   *oubp = '\0';
+   oul = (size_t)(oubp - oub);
+   if(oul == 0)
+      return 1;
+   /* Character-wise replacement? */
+   if(oul == 1){
+      if(oub[0] == '?')
+         return 2;
+      if(oub[0] == '*')
+         return 3;
+      return 1;
+   }
+   /* Byte-wise replacement? */
+   if(oul == sizeof("\342\200\223") -1){
+      if(!memcmp(oub, "???????", sizeof("\342\200\223") -1))
+         return 12;
+      if(!memcmp(oub, "*******", sizeof("\342\200\223") -1))
+         return 13;
+      return 1;
+   }
    return 0;
 }
 !
@@ -2004,6 +2081,17 @@ int main(void){
       < ${tmp2}.c link_check iconv 'iconv(3) functionality (via -liconv)' \
          '#define HAVE_ICONV' '-liconv' ||
       feat_bail_required ICONV
+
+   if feat_no CROSS_BUILD; then
+      { ./${tmp}; } >/dev/null 2>&1
+      case ${?} in
+      2) echo 'MAILX_ICONV_MODE=2;export MAILX_ICONV_MODE;' >> ${ev};;
+      3) echo 'MAILX_ICONV_MODE=3;export MAILX_ICONV_MODE;' >> ${ev};;
+      12) echo 'MAILX_ICONV_MODE=12;export MAILX_ICONV_MODE;' >> ${ev};;
+      13) echo 'MAILX_ICONV_MODE=13;export MAILX_ICONV_MODE;' >> ${ev};;
+      *) msg 'WARN: cannot test iconv(3), do not know replacement';;
+      esac
+   fi
 else
    echo '/* OPT_ICONV=0 */' >> ${h}
 fi # feat_yes ICONV

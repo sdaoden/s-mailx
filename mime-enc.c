@@ -7,7 +7,7 @@
  *@ TODO This is not final yet, v15 will bring "filters".
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /* QP quoting idea, _b64_decode(), b64_encode() taken from NetBSDs mailx(1): */
 /* $NetBSD: mime_codecs.c,v 1.9 2009/04/10 13:08:25 christos Exp $ */
@@ -978,7 +978,7 @@ b64_decode_part(struct str *out, struct str const *in, struct str *outrest,
 
    n_string_creat(&s);
    if((len = out->l) > 0 && out->s[len] == '\0')
-      n_string_take_ownership(&s, out->s, len +1, len);
+      (void)n_string_take_ownership(&s, out->s, len +1, len);
    else{
       if(len > 0)
          n_string_push_buf(&s, out->s, len);

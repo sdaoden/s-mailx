@@ -2,7 +2,7 @@
  *@ Message sending lifecycle, header composing, etc.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -143,7 +143,6 @@ a_sendout_fullnames_cleanup(struct name *np){
 
    for(xp = np; xp != NULL; xp = xp->n_flink){
       xp->n_type &= ~(GFULL | GFULLEXTRA);
-      xp->n_flags &= ~NAME_FULLNAME_SALLOC;
       xp->n_fullname = xp->n_name;
       xp->n_fullextra = NULL;
    }
@@ -1775,6 +1774,10 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    mtf = collect(hp, printheaders, quote, quotefile, doprefix, &_sendout_error);
    if (mtf == NULL)
       goto jleave;
+   /* TODO All custom headers should be joined here at latest
+    * TODO In fact that should happen before we enter compose mode, so that the
+    * TODO -C headers can be managed (removed etc.) via ~^, too, but the
+    * TODO *customhdr* ones are fixated at this very place here, no sooner! */
 
    dosign = TRUM1;
 
@@ -1854,7 +1857,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    if((dosign || count_nonlocal(to) > 0) &&
          !_sendbundle_setup_creds(&sb, (dosign > 0))){
       /* TODO saving $DEAD and recovering etc is not yet well defined */
-      assert(n_pstate_err_no == n_ERR_INVAL);
+      n_pstate_err_no = n_ERR_INVAL;
       goto jfail_dead;
    }
 
@@ -1872,7 +1875,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
          continue;
       }
 
-      n_perr(_("Failed to create encoded message"), err);
+      n_perr(_("Cannot find a usable character set to encode message"), err);
       n_pstate_err_no = n_ERR_NOTSUP;
       goto jfail_dead;
    }
@@ -2245,25 +2248,27 @@ j_mft_add:
       ++gotcha;
    }
 
+   /* Custom headers, as via -C and *customhdr* TODO JOINED AFTER COMPOSE! */
+   if(!nosend_msg){
+      struct n_header_field *chlp[2], *hfp;
+      ui32_t i;
+
+      chlp[0] = n_poption_arg_C;
+      chlp[1] = n_customhdr_list;
+
+      for(i = 0; i < n_NELEM(chlp); ++i)
+         if((hfp = chlp[i]) != NULL){
+            if(!_sendout_header_list(fo, hfp, nodisp))
+               goto jleave;
+            ++gotcha;
+         }
+   }
+
    /* The user may have placed headers when editing */
    if(1){
       struct n_header_field *hfp;
 
       if((hfp = hp->h_user_headers) != NULL){
-         if(!_sendout_header_list(fo, hfp, nodisp))
-            goto jleave;
-         ++gotcha;
-      }
-   }
-
-   /* Custom headers, as via *customhdr* */
-   if(!nosend_msg){
-      struct n_header_field *hfp;
-
-      /* With iconv support we likely have a cached result */
-      if((hfp = hp->h_custom_headers) == NULL)
-         hp->h_custom_headers = hfp = n_customhdr_query();
-      if(hfp != NULL){
          if(!_sendout_header_list(fo, hfp, nodisp))
             goto jleave;
          ++gotcha;
@@ -2378,6 +2383,7 @@ resend_msg(struct message *mp, struct header *hp, bool_t add_resent)
    if(!_sendout_error &&
          count_nonlocal(to) > 0 && !_sendbundle_setup_creds(&sb, FAL0)){
       /* ..wait until we can write DEAD */
+      n_pstate_err_no = n_ERR_INVAL;
       _sendout_error = -1;
    }
 

@@ -3,7 +3,7 @@
  *@ TODO v15: peek signal states while opendir/readdir/etc.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -1079,6 +1079,9 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
    if(flags & (n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_TRIM_IFSSPACE)){
       ifs = ok_vlook(ifs);
       ifs_ws = ok_vlook(ifs_ws);
+   }else{
+      n_UNINIT(ifs, n_empty);
+      n_UNINIT(ifs_ws, n_empty);
    }
 
    state = a_NONE;
@@ -1309,7 +1312,7 @@ jrestart:
             /* A sole <reverse solidus> at EOS is treated as-is!  This is ok
              * since the "closing quote" error will occur next, anyway */
             if(il == 0)
-               break;
+               ;
             else if((c2 = *ib) == quotec){
                --il, ++ib;
                c = quotec;

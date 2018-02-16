@@ -6,7 +6,7 @@
  *@ It should be started when chdir(2)d to the lock file's directory,
  *@ with a symlink-resolved target and with SIGPIPE being ignored.
  *
- * Copyright (c) 2015 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2015 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -25,6 +25,14 @@
 #define n_PRIVSEP_SOURCE
 
 #include "nail.h"
+
+#if defined HAVE_PRCTL_DUMPABLE
+# include <sys/prctl.h>
+#elif defined HAVE_PTRACE_DENY
+# include <sys/ptrace.h>
+#elif defined HAVE_SETPFLAGS_PROTECT
+# include <priv.h>
+#endif
 
 static void _ign_signal(int signum);
 static uiz_t n_msleep(uiz_t millis, bool_t ignint);
@@ -159,6 +167,18 @@ jeuse:
       goto jmsg;
 
    dls = n_DLS_PRIVFAILED | n_DLS_ABANDON;
+
+   /* We are SETUID and do not want to become traced or being attached to */
+#if defined HAVE_PRCTL_DUMPABLE
+   if(prctl(PR_SET_DUMPABLE, 0))
+      goto jmsg;
+#elif defined HAVE_PTRACE_DENY
+   if(ptrace(PT_DENY_ATTACH, 0, 0, 0) == -1)
+      goto jmsg;
+#elif defined HAVE_SETPFLAGS_PROTECT
+   if(setpflags(__PROC_PROTECT, 1))
+      goto jmsg;
+#endif
 
    /* This privsep helper only gets executed when needed, it thus doesn't make
     * sense to try to continue with initial privileges */

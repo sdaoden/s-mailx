@@ -18,10 +18,10 @@ people who have helped improving and deserve acknowledgement.
 
 This software originates in the codebase of Heirloom mailx, formerly
 known as nail, which itself is based upon Berkeley Mail that has
-a history back to 1978 and which superseded Unix mail, a program that
-already shipped with First Edition Unix from 1971 -- M. Douglas McIlroy
-writes in his article "A Research UNIX Reader: Annotated Excerpts from
-the Programmer's Manual, 1971-1986":
+a history back to 1978, and which has been written to replace Unix mail,
+a program that already shipped with First Edition Unix from 1971 --
+M. Douglas McIlroy writes in his article "A Research UNIX Reader:
+Annotated Excerpts from the Programmer's Manual, 1971-1986":
 
   MAIL (v1 page 21, v7 page 22)
     Electronic mail was there from the start. Never satisfied with its
@@ -56,10 +56,11 @@ a GNU Mailman list, so posting to LISTNAME-request@ and the subject
 "subscribe" will also do).  We have a browser-accessible and searchable
 archive[9], and The Mail Archive is so kind and offers it, with all its
 services, too [10]!  For example, i have subscribed the RSS feed that
-The Mail Archive produces to Gwene.org[11], thanks to all of you!
+The Mail Archive produces to Gwene.org[11].  And Gmane.org was so kind
+and took us, we are here[12].  Thanks to all of you!
 
 Commits to the [master], [release/*] and [stable/*] branches are
-posted to [12], and announcements will also be posted to [13], both
+posted to [13], and announcements will also be posted to [14], both
 are receive-only mailing-lists.
 
   [7] s-mailx@lists.sdaoden.eu
@@ -67,8 +68,9 @@ are receive-only mailing-lists.
   [9] https://lists.sdaoden.eu/pipermail/s-mailx/
   [10] https://www.mail-archive.com/s-mailx@lists.sdaoden.eu/
   [11] news.gwene.org/gwene.mail.s-mailx
-  [12] https://lists.sdaoden.eu/mailman/listinfo.cgi/s-mailx-commit
-  [13] https://lists.sdaoden.eu/mailman/listinfo.cgi/s-announce
+  [12] news.gmane.org/gmane.mail.s-mailx.general
+  [13] https://lists.sdaoden.eu/mailman/listinfo.cgi/s-mailx-commit
+  [14] https://lists.sdaoden.eu/mailman/listinfo.cgi/s-announce
 
 Our heraldic animal snailmail.jpg has been found at [+1].
 Thank you!
@@ -192,7 +194,7 @@ And then, assuming the last had been done:
 
 - CVE-2004-2771, and CVE-2014-7844.
   http://seclists.org/oss-sec/2014/q4/1066.
-  Fixed in: v14.7.9 (on day after announcement on oss-sec)
+  Fixed in: v14.7.9 (on day of announcement on oss-sec)
 
   Affected all BSD Mail-based codebases.
 

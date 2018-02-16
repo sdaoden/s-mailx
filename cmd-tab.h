@@ -9,7 +9,7 @@
  *@ TODO comments in or before the function source, to be collected by script.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -502,7 +502,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
       NULL,
 #endif
       (H | I | M | TWYSH), 0, 1, NULL
-     DS(N_("<show> (default), <clear> or select <NO> from editor history")) },
+     DS(N_("<show (default)|load|save|clear> or select history <NO>")) },
 
    { "list", &a_ctab_c_list, (M | TWYSH), 0, 1, NULL
      DS(N_("List all commands (with argument: in prefix search order)")) },
@@ -548,7 +548,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
      DS(N_("Unset <option-list>")) },
 
    { "varshow", &c_varshow, (G | M | X | TWYSH), 1, MAC, NULL
-     DS(N_("Show some informations about the given <variables>")) },
+     DS(N_("Show some information about the given <variables>")) },
    { "varedit", &c_varedit, (G | I | M | S | TWYSH), 1, MAC, NULL
      DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
    { "vexpr", &c_vexpr, (G | M | V | X | EM | TWYSH), 2, MAC, NULL

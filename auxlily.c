@@ -2,7 +2,7 @@
  *@ Auxiliary functions that don't fit anywhere else.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -97,7 +97,8 @@ struct a_aux_err_map{
    si32_t aem_err_no;   /* The OS error value for this one */
 };
 
-static ui8_t a_aux_idec_atoi[256] = {
+/* IDEC: byte to integer value lookup table */
+static ui8_t const a_aux_idec_atoi[256] = {
    0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
    0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
    0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
@@ -126,7 +127,8 @@ static ui8_t a_aux_idec_atoi[256] = {
    0xFF,0xFF,0xFF,0xFF,0xFF,0xFF
 };
 
-#define a_X(X) ((ui64_t)-1 / (X))
+/* IDEC: avoid divisions for cutlimit calculation (indexed by base-2) */
+#define a_X(X) (UI64_MAX / (X))
 static ui64_t const a_aux_idec_cutlimit[35] = {
    a_X( 2), a_X( 3), a_X( 4), a_X( 5), a_X( 6), a_X( 7), a_X( 8),
    a_X( 9), a_X(10), a_X(11), a_X(12), a_X(13), a_X(14), a_X(15),
@@ -135,6 +137,20 @@ static ui64_t const a_aux_idec_cutlimit[35] = {
    a_X(30), a_X(31), a_X(32), a_X(33), a_X(34), a_X(35), a_X(36)
 };
 #undef a_X
+
+/* IENC: is power-of-two table, and if, shift (indexed by base-2) */
+static ui8_t const a_aux_ienc_shifts[35] = {
+         1, 0, 2, 0, 0, 0, 3, 0,   /*  2 ..  9 */
+   0, 0, 0, 0, 0, 0, 4, 0, 0, 0,   /* 10 .. 19 */
+   0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   /* 20 .. 29 */
+   0, 0, 5, 0, 0, 0, 0             /* 30 .. 36 */
+};
+
+/* IENC: integer to byte lookup tables */
+static char const a_aux_ienc_itoa_upper[36] =
+      "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+static char const a_aux_ienc_itoa_lower[36] =
+      "0123456789abcdefghijklmnopqrstuvwxyz";
 
 /* Include the constant make-errors.sh output */
 #include <gen-errors.h>
@@ -590,7 +606,6 @@ jerr:
 FL enum n_idec_state
 n_idec_buf(void *resp, char const *cbuf, uiz_t clen, ui8_t base,
       enum n_idec_mode idm, char const **endptr_or_null){
-   /* XXX Brute simple and */
    ui8_t currc;
    ui64_t res, cut;
    enum n_idec_state rv;
@@ -632,22 +647,31 @@ n_idec_buf(void *resp, char const *cbuf, uiz_t clen, ui8_t base,
          base = 10;
 
          /* Support BASE#number prefix, where BASE is decimal 2-36 */
-         if(clen > 1){
-            char c1, c2;
+         if(clen > 2){
+            char c1, c2, c3;
 
             if(((c1 = cbuf[0]) >= '0' && c1 <= '9') &&
                   (((c2 = cbuf[1]) == '#') ||
-                   (c2 >= '0' && c2 <= '9' && clen > 2 && cbuf[2] == '#'))){
+                   (c2 >= '0' && c2 <= '9' && clen > 3 && cbuf[2] == '#'))){
                base = a_aux_idec_atoi[(ui8_t)c1];
                if(c2 == '#')
-                  clen -= 2, cbuf += 2;
+                  c3 = cbuf[2];
                else{
-                  clen -= 3, cbuf += 3;
-                  base *= 10;
+                  c3 = cbuf[3];
+                  base *= 10; /* xxx Inline atoi decimal base */
                   base += a_aux_idec_atoi[(ui8_t)c2];
                }
-               if(base < 2 || base > 36)
-                  goto jeinval;
+
+               /* We do not interpret this as BASE#number at all if either we
+                * did not get a valid base or if the first char is not valid
+                * according to base, to comply to the latest interpretion of
+                * "prefix", see comment for standard prefixes below */
+               if(base < 2 || base > 36 || a_aux_idec_atoi[(ui8_t)c3] >= base)
+                  base = 10;
+               else if(c2 == '#')
+                  clen -= 2, cbuf += 2;
+               else
+                  clen -= 3, cbuf += 3;
             }
          }
       }
@@ -741,10 +765,12 @@ jleave:
       case n_IDEC_MODE_LIMIT_32BIT: uimask = UI32_MAX; break;
       default: uimask = UI64_MAX; break;
       }
-      if(rv & n_IDEC_MODE_SIGNED_TYPE)
+      if((rv & n_IDEC_MODE_SIGNED_TYPE) &&
+            (!(rv & n_IDEC_MODE_POW2BASE_UNSIGNED) || !n_ISPOW2(base)))
          uimask >>= 1;
 
       if(res & ~uimask){
+         /* XXX never entered unless _SIGNED_TYPE! */
          if((rv & (n_IDEC_MODE_SIGNED_TYPE | n_IDEC_STATE_SEEN_MINUS)
                ) == (n_IDEC_MODE_SIGNED_TYPE | n_IDEC_STATE_SEEN_MINUS)){
             if(res > uimask + 1){
@@ -824,6 +850,95 @@ j_maxval:
       res = UI64_MAX;
    rv &= ~n_IDEC_STATE_SEEN_MINUS;
    goto jleave;
+}
+
+FL char *
+n_ienc_buf(char cbuf[n_IENC_BUFFER_SIZE], ui64_t value, ui8_t base,
+      enum n_ienc_mode iem){
+   enum{a_ISNEG = 1u<<n__IENC_MODE_SHIFT};
+
+   ui8_t shiftmodu;
+   char const *itoa;
+   char *rv;
+   NYD_ENTER;
+
+   iem &= n__IENC_MODE_MASK;
+
+   assert(base != 1 && base <= 36);
+   /*if(base == 1 || base > 36){
+    *   rv = NULL;
+    *   goto jleave;
+    *}*/
+
+   rv = &cbuf[n_IENC_BUFFER_SIZE];
+   *--rv = '\0';
+   itoa =  (iem & n_IENC_MODE_LOWERCASE) ? a_aux_ienc_itoa_lower
+         : a_aux_ienc_itoa_upper;
+
+   if((si64_t)value < 0){
+      iem |= a_ISNEG;
+      if(iem & n_IENC_MODE_SIGNED_TYPE){
+         /* self->is_negative = TRU1; */
+         value = -value;
+      }
+   }
+
+   if((shiftmodu = a_aux_ienc_shifts[base - 2]) != 0){
+      --base; /* convert to mask */
+      do{
+         *--rv = itoa[value & base];
+         value >>= shiftmodu;
+      }while(value != 0);
+
+      if(!(iem & n_IENC_MODE_NO_PREFIX)){
+         /* self->before_prefix = cp; */
+         if(shiftmodu == 4)
+            *--rv = 'x';
+         else if(shiftmodu == 1)
+            *--rv = 'b';
+         else if(shiftmodu != 3){
+            ++base; /* Reconvert from mask */
+            goto jnumber_sign_prefix;
+         }
+         *--rv = '0';
+      }
+   }else{
+      do{
+         shiftmodu = value % base;
+         value /= base;
+         *--rv = itoa[shiftmodu];
+      }while(value != 0);
+
+      if(!(iem & n_IENC_MODE_NO_PREFIX) && base != 10){
+jnumber_sign_prefix:
+         value = base;
+         base = 10;
+         *--rv = '#';
+         do{
+            shiftmodu = value % base;
+            value /= base;
+            *--rv = itoa[shiftmodu];
+         }while(value != 0);
+      }
+
+      if(iem & n_IENC_MODE_SIGNED_TYPE){
+         char c;
+
+         if(iem & a_ISNEG)
+            c = '-';
+         else if(iem & n_IENC_MODE_SIGNED_PLUS)
+            c = '+';
+         else if(iem & n_IENC_MODE_SIGNED_SPACE)
+            c = ' ';
+         else
+            c = '\0';
+
+         if(c != '\0')
+            *--rv = c;
+      }
+   }
+   NYD_LEAVE;
+   return rv;
 }
 
 FL ui32_t
@@ -927,8 +1042,12 @@ n_nodename(bool_t mayoverride){
    if(mayoverride && (hn = ok_vlook(hostname)) != NULL && *hn != '\0'){
       ;
    }else if((hn = sys_hostname) == NULL){
+      bool_t lofi;
+
+      lofi = FAL0;
       uname(&ut);
       hn = ut.nodename;
+
 #ifdef HAVE_SOCKETS
 # ifdef HAVE_GETADDRINFO
       memset(&hints, 0, sizeof hints);
@@ -940,6 +1059,7 @@ n_nodename(bool_t mayoverride){
 
             l = strlen(res->ai_canonname) +1;
             hn = n_lofi_alloc(l);
+            lofi = TRU1;
             memcpy(hn, res->ai_canonname, l);
          }
          freeaddrinfo(res);
@@ -949,12 +1069,27 @@ n_nodename(bool_t mayoverride){
       if(hent != NULL)
          hn = hent->h_name;
 # endif
-#endif
+#endif /* HAVE_SOCKETS */
+
+#ifdef HAVE_IDNA
+      /* C99 */{
+         struct n_string cnv;
+
+         n_string_creat(&cnv);
+         if(!n_idna_to_ascii(&cnv, hn, UIZ_MAX))
+            n_panic(_("The system hostname is invalid, "
+                  "IDNA conversion failed: %s\n"),
+               n_shexp_quote_cp(hn, FAL0));
+         sys_hostname = n_string_cp(&cnv);
+         n_string_drop_ownership(&cnv);
+         /*n_string_gut(&cnv);*/
+      }
+#else
       sys_hostname = sstrdup(hn);
-#if defined HAVE_SOCKETS && defined HAVE_GETADDRINFO
-      if(hn != ut.nodename)
-         n_lofi_free(hn);
 #endif
+
+      if(lofi)
+         n_lofi_free(hn);
       hn = sys_hostname;
    }
 
@@ -969,14 +1104,23 @@ n_nodename(bool_t mayoverride){
 FL bool_t
 n_idna_to_ascii(struct n_string *out, char const *ibuf, size_t ilen){
    char *idna_utf8;
-   bool_t rv;
+   bool_t lofi, rv;
    NYD_ENTER;
+
+   if(ilen == UIZ_MAX)
+      ilen = strlen(ibuf);
+
+   lofi = FAL0;
 
    if((rv = (ilen == 0)))
       goto jleave;
-
-   if(ibuf[ilen] != '\0') /* TODO n_idna_to_ascii: optimise */
-      ibuf = savestrbuf(ibuf, ilen);
+   if(ibuf[ilen] != '\0'){
+      lofi = TRU1;
+      idna_utf8 = n_lofi_alloc(ilen +1);
+      memcpy(idna_utf8, ibuf, ilen);
+      idna_utf8[ilen] = '\0';
+      ibuf = idna_utf8;
+   }
    ilen = 0;
 
    idna_utf8 = n_iconv_onetime_cp(n_ICONV_NONE, "utf-8", ok_vlook(ttycharset),
@@ -1016,6 +1160,8 @@ jredo:
 #  error Unknown HAVE_IDNA
 # endif
 jleave:
+   if(lofi)
+      n_lofi_free(n_UNCONST(ibuf));
    out = n_string_trunc(out, ilen);
    NYD_LEAVE;
    return rv;
@@ -1220,8 +1366,9 @@ n_time_now(bool_t force_update){ /* TODO event loop update IF cmd requests! */
    static struct n_timespec ts_now;
    NYD2_ENTER;
 
-   if(n_psonce & n_PSO_REPRODUCIBLE){
-      (void)n_idec_ui64_cp(&ts_now.ts_sec, ok_vlook(SOURCE_DATE_EPOCH), 0,NULL);
+   if(n_UNLIKELY((n_psonce & n_PSO_REPRODUCIBLE) != 0)){
+      /* Guaranteed 32-bit posnum TODO SOURCE_DATE_EPOCH should be 64-bit! */
+      (void)n_idec_si64_cp(&ts_now.ts_sec, ok_vlook(SOURCE_DATE_EPOCH), 0,NULL);
       ts_now.ts_nsec = 0;
    }else if(force_update || ts_now.ts_sec == 0){
 #ifdef HAVE_CLOCK_GETTIME
@@ -1241,21 +1388,102 @@ n_time_now(bool_t force_update){ /* TODO event loop update IF cmd requests! */
       ts_now.ts_nsec = 0;
 #endif
    }
+
+   /* Just in case.. */
+   if(n_UNLIKELY(ts_now.ts_sec < 0))
+      ts_now.ts_sec = 0;
    NYD2_LEAVE;
    return &ts_now;
 }
 
 FL void
-time_current_update(struct time_current *tc, bool_t full_update)
-{
+time_current_update(struct time_current *tc, bool_t full_update){
    NYD_ENTER;
    tc->tc_time = (time_t)n_time_now(TRU1)->ts_sec;
-   if (full_update) {
-      memcpy(&tc->tc_gm, gmtime(&tc->tc_time), sizeof tc->tc_gm);
-      memcpy(&tc->tc_local, localtime(&tc->tc_time), sizeof tc->tc_local);
-      sstpcpy(tc->tc_ctime, ctime(&tc->tc_time));
+
+   if(full_update){
+      char *cp;
+      struct tm *tmp;
+      time_t t;
+
+      t = tc->tc_time;
+jredo:
+      if((tmp = gmtime(&t)) == NULL){
+         t = 0;
+         goto jredo;
+      }
+      memcpy(&tc->tc_gm, tmp, sizeof tc->tc_gm);
+      if((tmp = localtime(&t)) == NULL){
+         t = 0;
+         goto jredo;
+      }
+      memcpy(&tc->tc_local, tmp, sizeof tc->tc_local);
+      cp = sstpcpy(tc->tc_ctime, n_time_ctime((si64_t)tc->tc_time, tmp));
+      *cp++ = '\n';
+      *cp = '\0';
+      assert(PTR2SIZE(++cp - tc->tc_ctime) < sizeof(tc->tc_ctime));
    }
    NYD_LEAVE;
+}
+
+FL char *
+n_time_ctime(si64_t secsepoch, struct tm const *localtime_or_nil){/* TODO err*/
+   /* Problem is that secsepoch may be invalid for representation of ctime(3),
+    * which indeed is asctime(localtime(t)); musl libc says for asctime(3):
+    *    ISO C requires us to use the above format string,
+    *    even if it will not fit in the buffer. Thus asctime_r
+    *    is _supposed_ to crash if the fields in tm are too large.
+    *    We follow this behavior and crash "gracefully" to warn
+    *    application developers that they may not be so lucky
+    *    on other implementations (e.g. stack smashing..).
+    * So we need to do it on our own or the libc may kill us */
+   static char buf[32]; /* TODO static buffer (-> datetime_to_format()) */
+
+   si32_t y, md, th, tm, ts;
+   char const *wdn, *mn;
+   struct tm const *tmp;
+   NYD_ENTER;
+
+   if((tmp = localtime_or_nil) == NULL){
+      time_t t;
+
+      t = (time_t)secsepoch;
+jredo:
+      if((tmp = localtime(&t)) == NULL){
+         /* TODO error log */
+         t = 0;
+         goto jredo;
+      }
+   }
+
+   if(n_UNLIKELY((y = tmp->tm_year) < 0 || y >= 9999/*SI32_MAX*/ - 1900)){
+      y = 1970;
+      wdn = n_weekday_names[4];
+      mn = n_month_names[0];
+      md = 1;
+      th = tm = ts = 0;
+   }else{
+      y += 1900;
+      wdn = (tmp->tm_wday >= 0 && tmp->tm_wday <= 6)
+            ? n_weekday_names[tmp->tm_wday] : n_qm;
+      mn = (tmp->tm_mon >= 0 && tmp->tm_mon <= 11)
+            ? n_month_names[tmp->tm_mon] : n_qm;
+
+      if((md = tmp->tm_mday) < 1 || md > 31)
+         md = 1;
+
+      if((th = tmp->tm_hour) < 0 || th > 23)
+         th = 0;
+      if((tm = tmp->tm_min) < 0 || tm > 59)
+         tm = 0;
+      if((ts = tmp->tm_sec) < 0 || ts > 60)
+         ts = 0;
+   }
+
+   (void)snprintf(buf, sizeof buf, "%3s %3s%3d %.2d:%.2d:%.2d %d",
+         wdn, mn, md, th, tm, ts, y);
+   NYD_LEAVE;
+   return buf;
 }
 
 FL uiz_t

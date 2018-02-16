@@ -2,7 +2,7 @@
  *@ Message content preparation (sendmp()).
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2017 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 /*
  * Copyright (c) 1980, 1993
@@ -1452,7 +1452,7 @@ put_from_(FILE *fp, struct mimepart *ip, ui64_t *stats)
 
    if (ip != NULL && ip->m_from != NULL) {
       froma = ip->m_from;
-      date = fakedate(ip->m_time);
+      date = n_time_ctime(ip->m_time, NULL);
       nl = "\n";
    } else {
       froma = ok_vlook(LOGNAME);
@@ -1539,7 +1539,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
          sz = fprintf(obuf, "%s%.*sFrom %s %s%s\n",
                cpre, (int)qf.qf_pfix_len,
                (qf.qf_pfix_len != 0 ? qf.qf_pfix : n_empty), fakefrom(mp),
-               fakedate(mp->m_time), csuf);
+               n_time_ctime(mp->m_time, NULL), csuf);
    } else if (nozap) {
       if (qf.qf_pfix_len > 0) {
          i = fwrite(qf.qf_pfix, sizeof *qf.qf_pfix, qf.qf_pfix_len, obuf);
