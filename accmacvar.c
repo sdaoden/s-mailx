@@ -112,6 +112,7 @@ enum a_amv_var_flags{
    a_AMV_VF_NOLOPTS = 1u<<10, /* May not be tracked by `localopts' */
    a_AMV_VF_NOTEMPTY = 1u<<11, /* May not be assigned an empty value */
    a_AMV_VF_NOCNTRLS = 1u<<12, /* Value may not contain control characters */
+   /* TODO _VF_NUM, _VF_POSNUM: we also need 64-bit limit numbers! */
    a_AMV_VF_NUM = 1u<<13,     /* Value must be a 32-bit number */
    a_AMV_VF_POSNUM = 1u<<14,  /* Value must be positive 32-bit number */
    a_AMV_VF_LOWER = 1u<<15,   /* Values will be stored in a lowercase version */
@@ -1092,7 +1093,8 @@ a_amv_var_check_num(char const *val, bool_t posnum){
       enum n_idec_state ids;
 
       ids = n_idec_cp(&uib, val, 0,
-            (posnum ?  n_IDEC_MODE_SIGNED_TYPE : n_IDEC_MODE_NONE), NULL);
+            (n_IDEC_MODE_LIMIT_32BIT |
+             (posnum ?  n_IDEC_MODE_SIGNED_TYPE : n_IDEC_MODE_NONE)), NULL);
       if((ids & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
             ) != n_IDEC_STATE_CONSUMED)
          rv = FAL0;
