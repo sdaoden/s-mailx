@@ -72,9 +72,9 @@ a_attachment_is_msg(char const *file){
       uiz_t ib;
 
       /* TODO Message numbers should be size_t, and 0 may be a valid one */
-      if((n_idec_uiz_cp(&ib, file, 10, NULL
+      if((n_idec_uiz_cp(&ib, &file[1], 10, NULL
                ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED || rv == 0 || UICMP(z, rv, >, msgCount))
+            ) != n_IDEC_STATE_CONSUMED || ib == 0 || UICMP(z, ib, >, msgCount))
          rv = -1;
       else
          rv = (int)ib;
