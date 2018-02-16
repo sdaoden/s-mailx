@@ -4364,24 +4364,9 @@ t_behave_iconv_mainbody() {
    t_prolog t_behave_iconv_mainbody
    TRAP_EXIT_ADDONS="./.t*"
 
-   i=
-   if have_feat iconv &&
-         (</dev/null iconv -f utf-8 -t ascii) >/dev/null 2>&1; then
-      j="`printf '–' | iconv -f utf-8 -t ascii 2>/dev/null`"
-      # This assumes iconv(1) behaves like iconv(3), but well.
-      # This is flaky because the behaviour is so non-uniform
-      if [ ${?} -ne 0 ]; then
-         if [ x"${j}" = 'x?' ]; then
-            i=4
-         else
-            i=1
-         fi
-      elif [ x"${j}" = 'x?' ]; then
-         i=4
-      elif [ x"${j}" = 'x*' ]; then
-         i=3
-      fi
-   fi
+   # The different iconv(3) implementations use different replacement sequence
+   # types (character-wise, byte-wise, and the character(s) used differ)
+   i="${MAILX_ICONV_MODE}"
    if [ -z "${i}" ]; then
       echo 'behave:iconv_mainbody: unsupported, skipped'
       return
@@ -4410,19 +4395,15 @@ t_behave_iconv_mainbody() {
    printf 'p\nx\n' | ${MAILX} ${ARGS} -Rf "${MBOX}" >./.tout 2>./.terr
    j=${?}
    ex0_test behave:iconv_mainbody-5-0 ${j}
-   if [ x${i} = x1 ]; then
-      # yuck, just assume ???, we need a test program for that one!
-      check behave:iconv_mainbody-5-1-1 - ./.tout '1959197095 283'
-      check behave:iconv_mainbody-5-1-1 - ./.terr '4294967295 0'
-   elif [ x${i} = x2 ]; then
-      check behave:iconv_mainbody-5-2-1 - ./.tout '1959197095 283'
-      check behave:iconv_mainbody-5-2-2 - ./.terr '4294967295 0'
-   elif [ x${i} = x3 ]; then
-      check behave:iconv_mainbody-5-3-1 - ./.tout '3196380198 279'
-      check behave:iconv_mainbody-5-3-2 - ./.terr '4294967295 0'
+   check behave:iconv_mainbody-5-1 - ./.terr '4294967295 0'
+   if [ ${i} -eq 13 ]; then
+      check behave:iconv_mainbody-5-2 - ./.tout '189327996 283'
+   elif [ ${i} -eq 12 ]; then
+      check behave:iconv_mainbody-5-3 - ./.tout '1959197095 283'
+   elif [ ${i} -eq 3 ]; then
+      check behave:iconv_mainbody-5-4 - ./.tout '3196380198 279'
    else
-      check behave:iconv_mainbody-5-4-1 - ./.tout '3760313827 279'
-      check behave:iconv_mainbody-5-4-2 - ./.terr '4294967295 0'
+      check behave:iconv_mainbody-5-5 - ./.tout '3760313827 279'
    fi
 
    t_epilog
