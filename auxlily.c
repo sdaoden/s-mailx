@@ -1230,8 +1230,9 @@ n_time_now(bool_t force_update){ /* TODO event loop update IF cmd requests! */
    static struct n_timespec ts_now;
    NYD2_ENTER;
 
-   if(n_psonce & n_PSO_REPRODUCIBLE){
-      (void)n_idec_ui64_cp(&ts_now.ts_sec, ok_vlook(SOURCE_DATE_EPOCH), 0,NULL);
+   if(n_UNLIKELY((n_psonce & n_PSO_REPRODUCIBLE) != 0)){
+      /* Guaranteed 32-bit posnum TODO SOURCE_DATE_EPOCH should be 64-bit! */
+      (void)n_idec_si64_cp(&ts_now.ts_sec, ok_vlook(SOURCE_DATE_EPOCH), 0,NULL);
       ts_now.ts_nsec = 0;
    }else if(force_update || ts_now.ts_sec == 0){
 #ifdef HAVE_CLOCK_GETTIME
@@ -1251,21 +1252,102 @@ n_time_now(bool_t force_update){ /* TODO event loop update IF cmd requests! */
       ts_now.ts_nsec = 0;
 #endif
    }
+
+   /* Just in case.. */
+   if(n_UNLIKELY(ts_now.ts_sec < 0))
+      ts_now.ts_sec = 0;
    NYD2_LEAVE;
    return &ts_now;
 }
 
 FL void
-time_current_update(struct time_current *tc, bool_t full_update)
-{
+time_current_update(struct time_current *tc, bool_t full_update){
    NYD_ENTER;
    tc->tc_time = (time_t)n_time_now(TRU1)->ts_sec;
-   if (full_update) {
-      memcpy(&tc->tc_gm, gmtime(&tc->tc_time), sizeof tc->tc_gm);
-      memcpy(&tc->tc_local, localtime(&tc->tc_time), sizeof tc->tc_local);
-      sstpcpy(tc->tc_ctime, ctime(&tc->tc_time));
+
+   if(full_update){
+      char *cp;
+      struct tm *tmp;
+      time_t t;
+
+      t = tc->tc_time;
+jredo:
+      if((tmp = gmtime(&t)) == NULL){
+         t = 0;
+         goto jredo;
+      }
+      memcpy(&tc->tc_gm, tmp, sizeof tc->tc_gm);
+      if((tmp = localtime(&t)) == NULL){
+         t = 0;
+         goto jredo;
+      }
+      memcpy(&tc->tc_local, tmp, sizeof tc->tc_local);
+      cp = sstpcpy(tc->tc_ctime, n_time_ctime((si64_t)tc->tc_time, tmp));
+      *cp++ = '\n';
+      *cp = '\0';
+      assert(PTR2SIZE(++cp - tc->tc_ctime) < sizeof(tc->tc_ctime));
    }
    NYD_LEAVE;
+}
+
+FL char *
+n_time_ctime(si64_t secsepoch, struct tm const *localtime_or_nil){/* TODO err*/
+   /* Problem is that secsepoch may be invalid for representation of ctime(3),
+    * which indeed is asctime(localtime(t)); musl libc says for asctime(3):
+    *    ISO C requires us to use the above format string,
+    *    even if it will not fit in the buffer. Thus asctime_r
+    *    is _supposed_ to crash if the fields in tm are too large.
+    *    We follow this behavior and crash "gracefully" to warn
+    *    application developers that they may not be so lucky
+    *    on other implementations (e.g. stack smashing..).
+    * So we need to do it on our own or the libc may kill us */
+   static char buf[32]; /* TODO static buffer (-> datetime_to_format()) */
+
+   si32_t y, md, th, tm, ts;
+   char const *wdn, *mn;
+   struct tm const *tmp;
+   NYD_ENTER;
+
+   if((tmp = localtime_or_nil) == NULL){
+      time_t t;
+
+      t = (time_t)secsepoch;
+jredo:
+      if((tmp = localtime(&t)) == NULL){
+         /* TODO error log */
+         t = 0;
+         goto jredo;
+      }
+   }
+
+   if(n_UNLIKELY((y = tmp->tm_year) < 0 || y >= 9999/*SI32_MAX*/ - 1900)){
+      y = 1970;
+      wdn = n_weekday_names[4];
+      mn = n_month_names[0];
+      md = 1;
+      th = tm = ts = 0;
+   }else{
+      y += 1900;
+      wdn = (tmp->tm_wday >= 0 && tmp->tm_wday <= 6)
+            ? n_weekday_names[tmp->tm_wday] : n_qm;
+      mn = (tmp->tm_mon >= 0 && tmp->tm_mon <= 11)
+            ? n_month_names[tmp->tm_mon] : n_qm;
+
+      if((md = tmp->tm_mday) < 1 || md > 31)
+         md = 1;
+
+      if((th = tmp->tm_hour) < 0 || th > 23)
+         th = 0;
+      if((tm = tmp->tm_min) < 0 || tm > 59)
+         tm = 0;
+      if((ts = tmp->tm_sec) < 0 || ts > 60)
+         ts = 0;
+   }
+
+   (void)snprintf(buf, sizeof buf, "%3s %3s%3d %.2d:%.2d:%.2d %d",
+         wdn, mn, md, th, tm, ts, y);
+   NYD_LEAVE;
+   return buf;
 }
 
 FL uiz_t

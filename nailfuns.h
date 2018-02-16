@@ -416,6 +416,10 @@ FL struct n_timespec const *n_time_now(bool_t force_update);
 FL void        time_current_update(struct time_current *tc,
                   bool_t full_update);
 
+/* ctime(3), but do ensure 26 byte limit, do not crash XXX static buffer.
+ * NOTE: no trailing newline */
+FL char *n_time_ctime(si64_t secsepoch, struct tm const *localtime_or_nil);
+
 /* Returns 0 if fully slept, number of millis left if ignint is true and we
  * were interrupted.  Actual resolution may be second or less.
  * Note in case of HAVE_SLEEP this may be SIGALARM based. */
@@ -1103,8 +1107,6 @@ FL int         msgidcmp(char const *s1, char const *s2);
 
 /* Fake Sender for From_ lines if missing, e. g. with POP3 */
 FL char const * fakefrom(struct message *mp);
-
-FL char const * fakedate(time_t t);
 
 /* From username Fri Jan  2 20:13:51 2004
  *               |    |    |    |    |

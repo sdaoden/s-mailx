@@ -162,7 +162,7 @@ jredo:
          goto jredo;
       }
       datet = rfctime(fp);
-      date = fakedate(datet);
+      date = n_time_ctime(datet, NULL);
       fp = ok_vlook(datefield_markout_older);
       i = (*datefmt != '\0');
       if (fp != NULL)
@@ -211,7 +211,7 @@ jredo_localtime:
       _parse_from_(mp, datebuf);
       date = datebuf;
    } else
-      date = fakedate(datet);
+      date = n_time_ctime(datet, NULL);
 
    flags |= _ISADDR;
    name = name1(mp, 0);

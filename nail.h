@@ -2134,7 +2134,7 @@ struct n_visual_info_ctx{
 #endif
 };
 
-struct time_current {
+struct time_current { /* TODO si64_t, etc. */
    time_t      tc_time;
    struct tm   tc_gm;
    struct tm   tc_local;
