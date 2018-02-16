@@ -12,7 +12,7 @@ static char const a_amv_var_names[] = {
    'a','c','c','o','u','n','t','\0',
    /* 4. [28]+19 add-file-recipients, a_AMV_VF_BOOL */
    'a','d','d','-','f','i','l','e','-','r','e','c','i','p','i','e','n','t','s','\0',
-   /* 5. [48]+18 agent-shell-lookup */
+   /* 5. [48]+18 agent-shell-lookup, a_AMV_VF_OBSOLETE */
    'a','g','e','n','t','-','s','h','e','l','l','-','l','o','o','k','u','p','\0',
    /* 6. [67]+6 allnet, a_AMV_VF_BOOL */
    'a','l','l','n','e','t','\0',
@@ -44,17 +44,17 @@ static char const a_amv_var_names[] = {
    'a','u','t','o','c','o','l','l','a','p','s','e','\0',
    /* 20. [177]+9 autoprint, a_AMV_VF_BOOL */
    'a','u','t','o','p','r','i','n','t','\0',
-   /* 21. [187]+10 autothread, a_AMV_VF_BOOL */
+   /* 21. [187]+10 autothread, a_AMV_VF_BOOL|a_AMV_VF_OBSOLETE */
    'a','u','t','o','t','h','r','e','a','d','\0',
    /* 22. [198]+8 autosort */
    'a','u','t','o','s','o','r','t','\0',
    /* 23. [207]+4 bang, a_AMV_VF_BOOL */
    'b','a','n','g','\0',
-   /* 24. [212]+19 batch-exit-on-error, a_AMV_VF_BOOL */
+   /* 24. [212]+19 batch-exit-on-error, a_AMV_VF_BOOL|a_AMV_VF_OBSOLETE */
    'b','a','t','c','h','-','e','x','i','t','-','o','n','-','e','r','r','o','r','\0',
    /* 25. [232]+12 bind-timeout, a_AMV_VF_NOTEMPTY|a_AMV_VF_POSNUM */
    'b','i','n','d','-','t','i','m','e','o','u','t','\0',
-   /* 26. [245]+11 bsdannounce, a_AMV_VF_BOOL */
+   /* 26. [245]+11 bsdannounce, a_AMV_VF_BOOL|a_AMV_VF_OBSOLETE */
    'b','s','d','a','n','n','o','u','n','c','e','\0',
    /* 27. [257]+9 bsdcompat, a_AMV_VF_BOOL */
    'b','s','d','c','o','m','p','a','t','\0',
@@ -90,7 +90,7 @@ static char const a_amv_var_names[] = {
    'c','o','n','t','a','c','t','-','w','e','b','\0',
    /* 43. [438]+3 crt, a_AMV_VF_POSNUM */
    'c','r','t','\0',
-   /* 44. [442]+9 customhdr, a_AMV_VF_NOCNTRLS */
+   /* 44. [442]+9 customhdr, a_AMV_VF_VIP */
    'c','u','s','t','o','m','h','d','r','\0',
    /* 45. [452]+4 DEAD, a_AMV_VF_DEFVAL|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY */
    'D','E','A','D','\0',
@@ -114,7 +114,7 @@ static char const a_amv_var_names[] = {
    'e','d','i','t','h','e','a','d','e','r','s','\0',
    /* 55. [581]+10 emptystart, a_AMV_VF_BOOL */
    'e','m','p','t','y','s','t','a','r','t','\0',
-   /* 56. [592]+8 encoding */
+   /* 56. [592]+8 encoding, a_AMV_VF_OBSOLETE */
    'e','n','c','o','d','i','n','g','\0',
    /* 57. [601]+7 errexit, a_AMV_VF_BOOL */
    'e','r','r','e','x','i','t','\0',
@@ -142,11 +142,11 @@ static char const a_amv_var_names[] = {
    'f','o','r','w','a','r','d','-','a','s','-','a','t','t','a','c','h','m','e','n','t','\0',
    /* 69. [741]+19 forward-inject-head */
    'f','o','r','w','a','r','d','-','i','n','j','e','c','t','-','h','e','a','d','\0',
-   /* 70. [761]+4 from */
+   /* 70. [761]+4 from, a_AMV_VF_VIP */
    'f','r','o','m','\0',
    /* 71. [766]+9 fullnames, a_AMV_VF_BOOL */
    'f','u','l','l','n','a','m','e','s','\0',
-   /* 72. [776]+10 fwdheading */
+   /* 72. [776]+10 fwdheading, a_AMV_VF_OBSOLETE */
    'f','w','d','h','e','a','d','i','n','g','\0',
    /* 73. [787]+4 HOME, a_AMV_VF_VIP|a_AMV_VF_NODEL|a_AMV_VF_IMPORT|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY */
    'H','O','M','E','\0',
@@ -166,7 +166,7 @@ static char const a_amv_var_names[] = {
    'h','i','s','t','o','r','y','-','s','i','z','e','\0',
    /* 81. [884]+4 hold, a_AMV_VF_BOOL */
    'h','o','l','d','\0',
-   /* 82. [889]+8 hostname */
+   /* 82. [889]+8 hostname, a_AMV_VF_VIP */
    'h','o','s','t','n','a','m','e','\0',
    /* 83. [898]+12 idna-disable, a_AMV_VF_BOOL */
    'i','d','n','a','-','d','i','s','a','b','l','e','\0',
@@ -282,17 +282,17 @@ static char const a_amv_var_names[] = {
    'm','a','i','l','x','-','o','r','i','g','-','c','c','\0',
    /* 139. [1629]+14 mailx-orig-bcc, a_AMV_VF_RDONLY|a_AMV_VF_NODEL */
    'm','a','i','l','x','-','o','r','i','g','-','b','c','c','\0',
-   /* 140. [1644]+13 NAIL_EXTRA_RC */
+   /* 140. [1644]+13 NAIL_EXTRA_RC, a_AMV_VF_OBSOLETE */
    'N','A','I','L','_','E','X','T','R','A','_','R','C','\0',
-   /* 141. [1658]+17 NAIL_NO_SYSTEM_RC, a_AMV_VF_BOOL|a_AMV_VF_IMPORT|a_AMV_VF_ENV */
+   /* 141. [1658]+17 NAIL_NO_SYSTEM_RC, a_AMV_VF_BOOL|a_AMV_VF_IMPORT|a_AMV_VF_ENV|a_AMV_VF_OBSOLETE */
    'N','A','I','L','_','N','O','_','S','Y','S','T','E','M','_','R','C','\0',
-   /* 142. [1676]+9 NAIL_HEAD */
+   /* 142. [1676]+9 NAIL_HEAD, a_AMV_VF_OBSOLETE */
    'N','A','I','L','_','H','E','A','D','\0',
-   /* 143. [1686]+13 NAIL_HISTFILE */
+   /* 143. [1686]+13 NAIL_HISTFILE, a_AMV_VF_OBSOLETE */
    'N','A','I','L','_','H','I','S','T','F','I','L','E','\0',
-   /* 144. [1700]+13 NAIL_HISTSIZE, a_AMV_VF_NOTEMPTY|a_AMV_VF_NUM */
+   /* 144. [1700]+13 NAIL_HISTSIZE, a_AMV_VF_NOTEMPTY|a_AMV_VF_NUM|a_AMV_VF_OBSOLETE */
    'N','A','I','L','_','H','I','S','T','S','I','Z','E','\0',
-   /* 145. [1714]+9 NAIL_TAIL */
+   /* 145. [1714]+9 NAIL_TAIL, a_AMV_VF_OBSOLETE */
    'N','A','I','L','_','T','A','I','L','\0',
    /* 146. [1724]+5 NETRC, a_AMV_VF_DEFVAL|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY */
    'N','E','T','R','C','\0',
@@ -376,7 +376,7 @@ static char const a_amv_var_names[] = {
    'r','e','p','l','y','-','i','n','-','s','a','m','e','-','c','h','a','r','s','e','t','\0',
    /* 186. [2237]+13 reply-strings */
    'r','e','p','l','y','-','s','t','r','i','n','g','s','\0',
-   /* 187. [2251]+7 replyto */
+   /* 187. [2251]+7 replyto, a_AMV_VF_OBSOLETE */
    'r','e','p','l','y','t','o','\0',
    /* 188. [2259]+8 reply-to, a_AMV_VF_NOTEMPTY */
    'r','e','p','l','y','-','t','o','\0',
@@ -386,7 +386,7 @@ static char const a_amv_var_names[] = {
    'r','f','c','8','2','2','-','b','o','d','y','-','f','r','o','m','_','\0',
    /* 191. [2302]+5 SHELL, a_AMV_VF_DEFVAL|a_AMV_VF_IMPORT|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY */
    'S','H','E','L','L','\0',
-   /* 192. [2308]+5 SYSV3, a_AMV_VF_BOOL|a_AMV_VF_ENV */
+   /* 192. [2308]+5 SYSV3, a_AMV_VF_BOOL|a_AMV_VF_ENV|a_AMV_VF_OBSOLETE */
    'S','Y','S','V','3','\0',
    /* 193. [2314]+4 save, a_AMV_VF_BOOL|a_AMV_VF_I3VAL */
    's','a','v','e','\0',
@@ -398,15 +398,15 @@ static char const a_amv_var_names[] = {
    's','e','n','d','c','h','a','r','s','e','t','s','\0',
    /* 197. [2353]+28 sendcharsets-else-ttycharset, a_AMV_VF_BOOL */
    's','e','n','d','c','h','a','r','s','e','t','s','-','e','l','s','e','-','t','t','y','c','h','a','r','s','e','t','\0',
-   /* 198. [2382]+6 sender */
+   /* 198. [2382]+6 sender, a_AMV_VF_VIP */
    's','e','n','d','e','r','\0',
-   /* 199. [2389]+8 sendmail */
+   /* 199. [2389]+8 sendmail, a_AMV_VF_OBSOLETE */
    's','e','n','d','m','a','i','l','\0',
-   /* 200. [2398]+18 sendmail-arguments */
+   /* 200. [2398]+18 sendmail-arguments, a_AMV_VF_OBSOLETE */
    's','e','n','d','m','a','i','l','-','a','r','g','u','m','e','n','t','s','\0',
-   /* 201. [2417]+29 sendmail-no-default-arguments, a_AMV_VF_BOOL */
+   /* 201. [2417]+29 sendmail-no-default-arguments, a_AMV_VF_BOOL|a_AMV_VF_OBSOLETE */
    's','e','n','d','m','a','i','l','-','n','o','-','d','e','f','a','u','l','t','-','a','r','g','u','m','e','n','t','s','\0',
-   /* 202. [2447]+17 sendmail-progname */
+   /* 202. [2447]+17 sendmail-progname, a_AMV_VF_OBSOLETE */
    's','e','n','d','m','a','i','l','-','p','r','o','g','n','a','m','e','\0',
    /* 203. [2465]+8 sendwait, a_AMV_VF_BOOL */
    's','e','n','d','w','a','i','t','\0',
@@ -420,7 +420,7 @@ static char const a_amv_var_names[] = {
    'S','i','g','n','\0',
    /* 208. [2504]+4 sign */
    's','i','g','n','\0',
-   /* 209. [2509]+9 signature */
+   /* 209. [2509]+9 signature, a_AMV_VF_OBSOLETE */
    's','i','g','n','a','t','u','r','e','\0',
    /* 210. [2519]+13 skipemptybody, a_AMV_VF_BOOL|a_AMV_VF_VIP */
    's','k','i','p','e','m','p','t','y','b','o','d','y','\0',
@@ -442,7 +442,7 @@ static char const a_amv_var_names[] = {
    's','m','i','m','e','-','e','n','c','r','y','p','t','\0',
    /* 219. [2652]+22 smime-force-encryption, a_AMV_VF_BOOL */
    's','m','i','m','e','-','f','o','r','c','e','-','e','n','c','r','y','p','t','i','o','n','\0',
-   /* 220. [2675]+19 smime-no-default-ca, a_AMV_VF_BOOL */
+   /* 220. [2675]+19 smime-no-default-ca, a_AMV_VF_BOOL|a_AMV_VF_OBSOLETE */
    's','m','i','m','e','-','n','o','-','d','e','f','a','u','l','t','-','c','a','\0',
    /* 221. [2695]+10 smime-sign, a_AMV_VF_BOOL */
    's','m','i','m','e','-','s','i','g','n','\0',
@@ -452,21 +452,21 @@ static char const a_amv_var_names[] = {
    's','m','i','m','e','-','s','i','g','n','-','i','n','c','l','u','d','e','-','c','e','r','t','s','\0',
    /* 224. [2747]+25 smime-sign-message-digest, a_AMV_VF_CHAIN */
    's','m','i','m','e','-','s','i','g','n','-','m','e','s','s','a','g','e','-','d','i','g','e','s','t','\0',
-   /* 225. [2773]+4 smtp */
+   /* 225. [2773]+4 smtp, a_AMV_VF_OBSOLETE */
    's','m','t','p','\0',
    /* 226. [2778]+9 smtp-auth, a_AMV_VF_CHAIN */
    's','m','t','p','-','a','u','t','h','\0',
-   /* 227. [2788]+18 smtp-auth-password */
+   /* 227. [2788]+18 smtp-auth-password, a_AMV_VF_OBSOLETE */
    's','m','t','p','-','a','u','t','h','-','p','a','s','s','w','o','r','d','\0',
-   /* 228. [2807]+14 smtp-auth-user */
+   /* 228. [2807]+14 smtp-auth-user, a_AMV_VF_OBSOLETE */
    's','m','t','p','-','a','u','t','h','-','u','s','e','r','\0',
-   /* 229. [2822]+13 smtp-hostname */
+   /* 229. [2822]+13 smtp-hostname, a_AMV_VF_VIP */
    's','m','t','p','-','h','o','s','t','n','a','m','e','\0',
    /* 230. [2836]+17 smtp-use-starttls, a_AMV_VF_BOOL|a_AMV_VF_CHAIN */
    's','m','t','p','-','u','s','e','-','s','t','a','r','t','t','l','s','\0',
    /* 231. [2854]+17 SOURCE_DATE_EPOCH, a_AMV_VF_RDONLY|a_AMV_VF_IMPORT|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY|a_AMV_VF_POSNUM */
    'S','O','U','R','C','E','_','D','A','T','E','_','E','P','O','C','H','\0',
-   /* 232. [2872]+11 socks-proxy, a_AMV_VF_CHAIN|a_AMV_VF_NOTEMPTY */
+   /* 232. [2872]+11 socks-proxy, a_AMV_VF_NOTEMPTY|a_AMV_VF_CHAIN */
    's','o','c','k','s','-','p','r','o','x','y','\0',
    /* 233. [2884]+14 spam-interface */
    's','p','a','m','-','i','n','t','e','r','f','a','c','e','\0',
@@ -478,9 +478,9 @@ static char const a_amv_var_names[] = {
    's','p','a','m','c','-','a','r','g','u','m','e','n','t','s','\0',
    /* 237. [2942]+10 spamc-user */
    's','p','a','m','c','-','u','s','e','r','\0',
-   /* 238. [2953]+12 spamd-socket */
+   /* 238. [2953]+12 spamd-socket, a_AMV_VF_OBSOLETE */
    's','p','a','m','d','-','s','o','c','k','e','t','\0',
-   /* 239. [2966]+10 spamd-user */
+   /* 239. [2966]+10 spamd-user, a_AMV_VF_OBSOLETE */
    's','p','a','m','d','-','u','s','e','r','\0',
    /* 240. [2977]+14 spamfilter-ham */
    's','p','a','m','f','i','l','t','e','r','-','h','a','m','\0',
@@ -502,9 +502,9 @@ static char const a_amv_var_names[] = {
    's','s','l','-','c','a','-','f','l','a','g','s','\0',
    /* 249. [3121]+18 ssl-ca-no-defaults, a_AMV_VF_BOOL|a_AMV_VF_CHAIN */
    's','s','l','-','c','a','-','n','o','-','d','e','f','a','u','l','t','s','\0',
-   /* 250. [3140]+8 ssl-cert, a_AMV_VF_CHAIN */
+   /* 250. [3140]+8 ssl-cert, a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE */
    's','s','l','-','c','e','r','t','\0',
-   /* 251. [3149]+15 ssl-cipher-list, a_AMV_VF_CHAIN */
+   /* 251. [3149]+15 ssl-cipher-list, a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE */
    's','s','l','-','c','i','p','h','e','r','-','l','i','s','t','\0',
    /* 252. [3165]+15 ssl-config-file */
    's','s','l','-','c','o','n','f','i','g','-','f','i','l','e','\0',
@@ -512,7 +512,7 @@ static char const a_amv_var_names[] = {
    's','s','l','-','c','o','n','f','i','g','-','m','o','d','u','l','e','\0',
    /* 254. [3199]+16 ssl-config-pairs, a_AMV_VF_CHAIN */
    's','s','l','-','c','o','n','f','i','g','-','p','a','i','r','s','\0',
-   /* 255. [3216]+10 ssl-curves, a_AMV_VF_CHAIN */
+   /* 255. [3216]+10 ssl-curves, a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE */
    's','s','l','-','c','u','r','v','e','s','\0',
    /* 256. [3227]+11 ssl-crl-dir */
    's','s','l','-','c','r','l','-','d','i','r','\0',
@@ -520,13 +520,13 @@ static char const a_amv_var_names[] = {
    's','s','l','-','c','r','l','-','f','i','l','e','\0',
    /* 258. [3252]+12 ssl-features, a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL */
    's','s','l','-','f','e','a','t','u','r','e','s','\0',
-   /* 259. [3265]+7 ssl-key, a_AMV_VF_CHAIN */
+   /* 259. [3265]+7 ssl-key, a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE */
    's','s','l','-','k','e','y','\0',
-   /* 260. [3273]+10 ssl-method, a_AMV_VF_CHAIN */
+   /* 260. [3273]+10 ssl-method, a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE */
    's','s','l','-','m','e','t','h','o','d','\0',
    /* 261. [3284]+17 ssl-no-default-ca, a_AMV_VF_BOOL */
    's','s','l','-','n','o','-','d','e','f','a','u','l','t','-','c','a','\0',
-   /* 262. [3302]+12 ssl-protocol, a_AMV_VF_CHAIN */
+   /* 262. [3302]+12 ssl-protocol, a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE */
    's','s','l','-','p','r','o','t','o','c','o','l','\0',
    /* 263. [3315]+12 ssl-rand-egd */
    's','s','l','-','r','a','n','d','-','e','g','d','\0',
@@ -603,7 +603,7 @@ static struct a_amv_var_map const a_amv_var_map[] = {
    {33u, 18u, a_AMV_VF_NONE|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_NOLOPTS},   /* ! */
    {419304365u, 20u, a_AMV_VF_NONE|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_NOLOPTS},   /* account */
    {3722159545u, 28u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* add-file-recipients */
-   {838023451u, 48u, a_AMV_VF_NONE},   /* agent-shell-lookup */
+   {838023451u, 48u, a_AMV_VF_NONE|a_AMV_VF_OBSOLETE},   /* agent-shell-lookup */
    {3928217024u, 67u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* allnet */
    {3933094936u, 74u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* append */
    {109535u, 81u, a_AMV_VF_NONE|a_AMV_VF_BOOL|a_AMV_VF_VIP},   /* ask */
@@ -619,12 +619,12 @@ static struct a_amv_var_map const a_amv_var_map[] = {
    {3939178815u, 157u, a_AMV_VF_NONE},   /* autocc */
    {2551200844u, 164u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* autocollapse */
    {163072614u, 177u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* autoprint */
-   {1231424433u, 187u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* autothread */
+   {1231424433u, 187u, a_AMV_VF_NONE|a_AMV_VF_BOOL|a_AMV_VF_OBSOLETE},   /* autothread */
    {3388960065u, 198u, a_AMV_VF_NONE},   /* autosort */
    {3631192u, 207u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* bang */
-   {625280330u, 212u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* batch-exit-on-error */
+   {625280330u, 212u, a_AMV_VF_NONE|a_AMV_VF_BOOL|a_AMV_VF_OBSOLETE},   /* batch-exit-on-error */
    {321383761u, 232u, a_AMV_VF_NONE|a_AMV_VF_NOTEMPTY|a_AMV_VF_POSNUM},   /* bind-timeout */
-   {170960u, 245u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* bsdannounce */
+   {170960u, 245u, a_AMV_VF_NONE|a_AMV_VF_BOOL|a_AMV_VF_OBSOLETE},   /* bsdannounce */
    {3120210877u, 257u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* bsdcompat */
    {4132654694u, 267u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* bsdflags */
    {2716084787u, 276u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* bsdheadline */
@@ -642,7 +642,7 @@ static struct a_amv_var_map const a_amv_var_map[] = {
    {2717291452u, 413u, a_AMV_VF_NONE|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},   /* contact-mail */
    {2294912087u, 426u, a_AMV_VF_NONE|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},   /* contact-web */
    {111689u, 438u, a_AMV_VF_NONE|a_AMV_VF_POSNUM},   /* crt */
-   {2974539481u, 442u, a_AMV_VF_NONE|a_AMV_VF_NOCNTRLS},   /* customhdr */
+   {2974539481u, 442u, a_AMV_VF_NONE|a_AMV_VF_VIP},   /* customhdr */
    {2521070u, 452u, a_AMV_VF_NONE|a_AMV_VF_DEFVAL|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY},   /* DEAD */
    {3657134018u, 457u, a_AMV_VF_NONE|a_AMV_VF_I3VAL},   /* datefield */
    {2384089013u, 467u, a_AMV_VF_NONE|a_AMV_VF_I3VAL},   /* datefield-markout-older */
@@ -654,7 +654,7 @@ static struct a_amv_var_map const a_amv_var_map[] = {
    {3877730807u, 559u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* editalong */
    {1055429730u, 569u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* editheaders */
    {2449114909u, 581u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* emptystart */
-   {947851527u, 592u, a_AMV_VF_NONE},   /* encoding */
+   {947851527u, 592u, a_AMV_VF_NONE|a_AMV_VF_OBSOLETE},   /* encoding */
    {1894672387u, 601u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* errexit */
    {4092722801u, 609u, a_AMV_VF_NONE|a_AMV_VF_DEFVAL},   /* escape */
    {3254669595u, 616u, a_AMV_VF_NONE},   /* expandaddr */
@@ -668,9 +668,9 @@ static struct a_amv_var_map const a_amv_var_map[] = {
    {1360940784u, 700u, a_AMV_VF_NONE},   /* followup-to-honour */
    {2102400300u, 719u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* forward-as-attachment */
    {1488952766u, 741u, a_AMV_VF_NONE},   /* forward-inject-head */
-   {3793492u, 761u, a_AMV_VF_NONE},   /* from */
+   {3793492u, 761u, a_AMV_VF_NONE|a_AMV_VF_VIP},   /* from */
    {3777473511u, 766u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* fullnames */
-   {1142629489u, 776u, a_AMV_VF_NONE},   /* fwdheading */
+   {1142629489u, 776u, a_AMV_VF_NONE|a_AMV_VF_OBSOLETE},   /* fwdheading */
    {2676105u, 787u, a_AMV_VF_NONE|a_AMV_VF_VIP|a_AMV_VF_NODEL|a_AMV_VF_IMPORT|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY},   /* HOME */
    {4193457129u, 792u, a_AMV_VF_NONE|a_AMV_VF_BOOL|a_AMV_VF_I3VAL},   /* header */
    {1124823322u, 799u, a_AMV_VF_NONE},   /* headline */
@@ -680,7 +680,7 @@ static struct a_amv_var_map const a_amv_var_map[] = {
    {4251937947u, 849u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* history-gabby-persist */
    {78670330u, 871u, a_AMV_VF_NONE|a_AMV_VF_NOTEMPTY|a_AMV_VF_POSNUM},   /* history-size */
    {3861991u, 884u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* hold */
-   {1878076063u, 889u, a_AMV_VF_NONE},   /* hostname */
+   {1878076063u, 889u, a_AMV_VF_NONE|a_AMV_VF_VIP},   /* hostname */
    {2723216029u, 898u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* idna-disable */
    {117826u, 911u, a_AMV_VF_NONE|a_AMV_VF_VIP|a_AMV_VF_DEFVAL},   /* ifs */
    {4234366009u, 915u, a_AMV_VF_NONE|a_AMV_VF_VIP|a_AMV_VF_RDONLY|a_AMV_VF_NODEL|a_AMV_VF_I3VAL},   /* ifs-ws */
@@ -738,12 +738,12 @@ static struct a_amv_var_map const a_amv_var_map[] = {
    {1394747753u, 1601u, a_AMV_VF_NONE|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},   /* mailx-orig-to */
    {1394747180u, 1615u, a_AMV_VF_NONE|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},   /* mailx-orig-cc */
    {3076982990u, 1629u, a_AMV_VF_NONE|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},   /* mailx-orig-bcc */
-   {4280681563u, 1644u, a_AMV_VF_NONE},   /* NAIL_EXTRA_RC */
-   {2845755096u, 1658u, a_AMV_VF_NONE|a_AMV_VF_BOOL|a_AMV_VF_IMPORT|a_AMV_VF_ENV},   /* NAIL_NO_SYSTEM_RC */
-   {639934357u, 1676u, a_AMV_VF_NONE},   /* NAIL_HEAD */
-   {1058233243u, 1686u, a_AMV_VF_NONE},   /* NAIL_HISTFILE */
-   {1058700886u, 1700u, a_AMV_VF_NONE|a_AMV_VF_NOTEMPTY|a_AMV_VF_NUM},   /* NAIL_HISTSIZE */
-   {640361517u, 1714u, a_AMV_VF_NONE},   /* NAIL_TAIL */
+   {4280681563u, 1644u, a_AMV_VF_NONE|a_AMV_VF_OBSOLETE},   /* NAIL_EXTRA_RC */
+   {2845755096u, 1658u, a_AMV_VF_NONE|a_AMV_VF_BOOL|a_AMV_VF_IMPORT|a_AMV_VF_ENV|a_AMV_VF_OBSOLETE},   /* NAIL_NO_SYSTEM_RC */
+   {639934357u, 1676u, a_AMV_VF_NONE|a_AMV_VF_OBSOLETE},   /* NAIL_HEAD */
+   {1058233243u, 1686u, a_AMV_VF_NONE|a_AMV_VF_OBSOLETE},   /* NAIL_HISTFILE */
+   {1058700886u, 1700u, a_AMV_VF_NONE|a_AMV_VF_NOTEMPTY|a_AMV_VF_NUM|a_AMV_VF_OBSOLETE},   /* NAIL_HISTSIZE */
+   {640361517u, 1714u, a_AMV_VF_NONE|a_AMV_VF_OBSOLETE},   /* NAIL_TAIL */
    {95075740u, 1724u, a_AMV_VF_NONE|a_AMV_VF_DEFVAL|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY},   /* NETRC */
    {1137717571u, 1730u, a_AMV_VF_NONE|a_AMV_VF_BOOL|a_AMV_VF_CHAIN},   /* netrc-lookup */
    {4047680087u, 1743u, a_AMV_VF_NONE},   /* netrc-pipe */
@@ -785,29 +785,29 @@ static struct a_amv_var_map const a_amv_var_map[] = {
    {3191066333u, 2201u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* record-resent */
    {3710195994u, 2215u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* reply-in-same-charset */
    {4144529571u, 2237u, a_AMV_VF_NONE},   /* reply-strings */
-   {993007855u, 2251u, a_AMV_VF_NONE},   /* replyto */
+   {993007855u, 2251u, a_AMV_VF_NONE|a_AMV_VF_OBSOLETE},   /* replyto */
    {2704411100u, 2259u, a_AMV_VF_NONE|a_AMV_VF_NOTEMPTY},   /* reply-to */
    {4037862148u, 2268u, a_AMV_VF_NONE},   /* reply-to-honour */
    {145783858u, 2284u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* rfc822-body-from_ */
    {101096632u, 2302u, a_AMV_VF_NONE|a_AMV_VF_DEFVAL|a_AMV_VF_IMPORT|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY},   /* SHELL */
-   {101723112u, 2308u, a_AMV_VF_NONE|a_AMV_VF_BOOL|a_AMV_VF_ENV},   /* SYSV3 */
+   {101723112u, 2308u, a_AMV_VF_NONE|a_AMV_VF_BOOL|a_AMV_VF_ENV|a_AMV_VF_OBSOLETE},   /* SYSV3 */
    {4242383u, 2314u, a_AMV_VF_NONE|a_AMV_VF_BOOL|a_AMV_VF_I3VAL},   /* save */
    {327219328u, 2319u, a_AMV_VF_NONE|a_AMV_VF_NOTEMPTY|a_AMV_VF_POSNUM},   /* screen */
    {2344495826u, 2326u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* searchheaders */
    {1707020871u, 2340u, a_AMV_VF_NONE|a_AMV_VF_LOWER},   /* sendcharsets */
    {259282709u, 2353u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* sendcharsets-else-ttycharset */
-   {329446337u, 2382u, a_AMV_VF_NONE},   /* sender */
-   {2285047981u, 2389u, a_AMV_VF_NONE},   /* sendmail */
-   {2932368656u, 2398u, a_AMV_VF_NONE},   /* sendmail-arguments */
-   {1421298860u, 2417u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* sendmail-no-default-arguments */
-   {4267157331u, 2447u, a_AMV_VF_NONE},   /* sendmail-progname */
+   {329446337u, 2382u, a_AMV_VF_NONE|a_AMV_VF_VIP},   /* sender */
+   {2285047981u, 2389u, a_AMV_VF_NONE|a_AMV_VF_OBSOLETE},   /* sendmail */
+   {2932368656u, 2398u, a_AMV_VF_NONE|a_AMV_VF_OBSOLETE},   /* sendmail-arguments */
+   {1421298860u, 2417u, a_AMV_VF_NONE|a_AMV_VF_BOOL|a_AMV_VF_OBSOLETE},   /* sendmail-no-default-arguments */
+   {4267157331u, 2447u, a_AMV_VF_NONE|a_AMV_VF_OBSOLETE},   /* sendmail-progname */
    {2285407359u, 2465u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* sendwait */
    {1926116885u, 2474u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* showlast */
    {1926188546u, 2483u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* showname */
    {333061220u, 2492u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* showto */
    {3100625u, 2499u, a_AMV_VF_NONE},   /* Sign */
    {4250609u, 2504u, a_AMV_VF_NONE},   /* sign */
-   {994697266u, 2509u, a_AMV_VF_NONE},   /* signature */
+   {994697266u, 2509u, a_AMV_VF_NONE|a_AMV_VF_OBSOLETE},   /* signature */
    {3875901652u, 2519u, a_AMV_VF_NONE|a_AMV_VF_BOOL|a_AMV_VF_VIP},   /* skipemptybody */
    {3002585464u, 2533u, a_AMV_VF_NONE},   /* smime-ca-dir */
    {301144281u, 2546u, a_AMV_VF_NONE},   /* smime-ca-file */
@@ -818,26 +818,26 @@ static struct a_amv_var_map const a_amv_var_map[] = {
    {4225767190u, 2623u, a_AMV_VF_NONE},   /* smime-crl-file */
    {3457328877u, 2638u, a_AMV_VF_NONE|a_AMV_VF_CHAIN},   /* smime-encrypt */
    {3116904399u, 2652u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* smime-force-encryption */
-   {3384448360u, 2675u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* smime-no-default-ca */
+   {3384448360u, 2675u, a_AMV_VF_NONE|a_AMV_VF_BOOL|a_AMV_VF_OBSOLETE},   /* smime-no-default-ca */
    {105885657u, 2695u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* smime-sign */
    {2215302260u, 2706u, a_AMV_VF_NONE|a_AMV_VF_CHAIN},   /* smime-sign-cert */
    {1036659416u, 2722u, a_AMV_VF_NONE|a_AMV_VF_CHAIN},   /* smime-sign-include-certs */
    {3719373112u, 2747u, a_AMV_VF_NONE|a_AMV_VF_CHAIN},   /* smime-sign-message-digest */
-   {4255396u, 2773u, a_AMV_VF_NONE},   /* smtp */
+   {4255396u, 2773u, a_AMV_VF_NONE|a_AMV_VF_OBSOLETE},   /* smtp */
    {3589879203u, 2778u, a_AMV_VF_NONE|a_AMV_VF_CHAIN},   /* smtp-auth */
-   {1996663907u, 2788u, a_AMV_VF_NONE},   /* smtp-auth-password */
-   {2594939183u, 2807u, a_AMV_VF_NONE},   /* smtp-auth-user */
-   {2613227248u, 2822u, a_AMV_VF_NONE},   /* smtp-hostname */
+   {1996663907u, 2788u, a_AMV_VF_NONE|a_AMV_VF_OBSOLETE},   /* smtp-auth-password */
+   {2594939183u, 2807u, a_AMV_VF_NONE|a_AMV_VF_OBSOLETE},   /* smtp-auth-user */
+   {2613227248u, 2822u, a_AMV_VF_NONE|a_AMV_VF_VIP},   /* smtp-hostname */
    {1310886988u, 2836u, a_AMV_VF_NONE|a_AMV_VF_BOOL|a_AMV_VF_CHAIN},   /* smtp-use-starttls */
    {3578734108u, 2854u, a_AMV_VF_NONE|a_AMV_VF_RDONLY|a_AMV_VF_IMPORT|a_AMV_VF_ENV|a_AMV_VF_NOTEMPTY|a_AMV_VF_POSNUM},   /* SOURCE_DATE_EPOCH */
-   {2053806514u, 2872u, a_AMV_VF_NONE|a_AMV_VF_CHAIN|a_AMV_VF_NOTEMPTY},   /* socks-proxy */
+   {2053806514u, 2872u, a_AMV_VF_NONE|a_AMV_VF_NOTEMPTY|a_AMV_VF_CHAIN},   /* socks-proxy */
    {2190606319u, 2884u, a_AMV_VF_NONE},   /* spam-interface */
    {2952684415u, 2899u, a_AMV_VF_NONE|a_AMV_VF_NOTEMPTY|a_AMV_VF_POSNUM},   /* spam-maxsize */
    {3055596256u, 2912u, a_AMV_VF_NONE},   /* spamc-command */
    {3800420503u, 2926u, a_AMV_VF_NONE},   /* spamc-arguments */
    {4245507488u, 2942u, a_AMV_VF_NONE},   /* spamc-user */
-   {1558523435u, 2953u, a_AMV_VF_NONE},   /* spamd-socket */
-   {4284642881u, 2966u, a_AMV_VF_NONE},   /* spamd-user */
+   {1558523435u, 2953u, a_AMV_VF_NONE|a_AMV_VF_OBSOLETE},   /* spamd-socket */
+   {4284642881u, 2966u, a_AMV_VF_NONE|a_AMV_VF_OBSOLETE},   /* spamd-user */
    {2420736634u, 2977u, a_AMV_VF_NONE},   /* spamfilter-ham */
    {3374858487u, 2992u, a_AMV_VF_NONE},   /* spamfilter-noham */
    {3996559026u, 3009u, a_AMV_VF_NONE},   /* spamfilter-nospam */
@@ -848,19 +848,19 @@ static struct a_amv_var_map const a_amv_var_map[] = {
    {266904560u, 3096u, a_AMV_VF_NONE|a_AMV_VF_CHAIN},   /* ssl-ca-file */
    {218011901u, 3108u, a_AMV_VF_NONE|a_AMV_VF_CHAIN},   /* ssl-ca-flags */
    {2201204466u, 3121u, a_AMV_VF_NONE|a_AMV_VF_BOOL|a_AMV_VF_CHAIN},   /* ssl-ca-no-defaults */
-   {3041879213u, 3140u, a_AMV_VF_NONE|a_AMV_VF_CHAIN},   /* ssl-cert */
-   {2789248355u, 3149u, a_AMV_VF_NONE|a_AMV_VF_CHAIN},   /* ssl-cipher-list */
+   {3041879213u, 3140u, a_AMV_VF_NONE|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},   /* ssl-cert */
+   {2789248355u, 3149u, a_AMV_VF_NONE|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},   /* ssl-cipher-list */
    {390091074u, 3165u, a_AMV_VF_NONE},   /* ssl-config-file */
    {4183181448u, 3181u, a_AMV_VF_NONE|a_AMV_VF_CHAIN},   /* ssl-config-module */
    {4294639841u, 3199u, a_AMV_VF_NONE|a_AMV_VF_CHAIN},   /* ssl-config-pairs */
-   {1205658103u, 3216u, a_AMV_VF_NONE|a_AMV_VF_CHAIN},   /* ssl-curves */
+   {1205658103u, 3216u, a_AMV_VF_NONE|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},   /* ssl-curves */
    {1004865324u, 3227u, a_AMV_VF_NONE},   /* ssl-crl-dir */
    {3095856397u, 3239u, a_AMV_VF_NONE},   /* ssl-crl-file */
    {2147211742u, 3252u, a_AMV_VF_NONE|a_AMV_VF_VIRT|a_AMV_VF_RDONLY|a_AMV_VF_NODEL},   /* ssl-features */
-   {2825347880u, 3265u, a_AMV_VF_NONE|a_AMV_VF_CHAIN},   /* ssl-key */
-   {1578094240u, 3273u, a_AMV_VF_NONE|a_AMV_VF_CHAIN},   /* ssl-method */
+   {2825347880u, 3265u, a_AMV_VF_NONE|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},   /* ssl-key */
+   {1578094240u, 3273u, a_AMV_VF_NONE|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},   /* ssl-method */
    {1961350591u, 3284u, a_AMV_VF_NONE|a_AMV_VF_BOOL},   /* ssl-no-default-ca */
-   {3286757489u, 3302u, a_AMV_VF_NONE|a_AMV_VF_CHAIN},   /* ssl-protocol */
+   {3286757489u, 3302u, a_AMV_VF_NONE|a_AMV_VF_CHAIN|a_AMV_VF_OBSOLETE},   /* ssl-protocol */
    {2083698465u, 3315u, a_AMV_VF_NONE},   /* ssl-rand-egd */
    {42611089u, 3328u, a_AMV_VF_NONE},   /* ssl-rand-file */
    {1930241716u, 3342u, a_AMV_VF_NONE|a_AMV_VF_CHAIN},   /* ssl-verify */
