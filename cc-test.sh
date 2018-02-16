@@ -4364,10 +4364,9 @@ t_behave_iconv_mainbody() {
    t_prolog t_behave_iconv_mainbody
    TRAP_EXIT_ADDONS="./.t*"
 
-   # The different iconv(3) implementations use different replacement sequence
-   # types (character-wise, byte-wise, and the character(s) used differ)
-   i="${MAILX_ICONV_MODE}"
-   if [ -z "${i}" ]; then
+   if [ -n "${UTF8_LOCALE}" ] && have_feat iconv; then
+      :
+   else
       echo 'behave:iconv_mainbody: unsupported, skipped'
       return
    fi
@@ -4392,18 +4391,25 @@ t_behave_iconv_mainbody() {
    check behave:iconv_mainbody-3 - "${MBOX}" '3634015017 251'
    check behave:iconv_mainbody-4 - ./.terr '2579894983 148'
 
-   printf 'p\nx\n' | ${MAILX} ${ARGS} -Rf "${MBOX}" >./.tout 2>./.terr
-   j=${?}
-   ex0_test behave:iconv_mainbody-5-0 ${j}
-   check behave:iconv_mainbody-5-1 - ./.terr '4294967295 0'
-   if [ ${i} -eq 13 ]; then
-      check behave:iconv_mainbody-5-2 - ./.tout '189327996 283'
-   elif [ ${i} -eq 12 ]; then
-      check behave:iconv_mainbody-5-3 - ./.tout '1959197095 283'
-   elif [ ${i} -eq 3 ]; then
-      check behave:iconv_mainbody-5-4 - ./.tout '3196380198 279'
+   # The different iconv(3) implementations use different replacement sequence
+   # types (character-wise, byte-wise, and the character(s) used differ)
+   i="${MAILX_ICONV_MODE}"
+   if [ -n "${i}" ]; then
+      printf 'p\nx\n' | ${MAILX} ${ARGS} -Rf "${MBOX}" >./.tout 2>./.terr
+      j=${?}
+      ex0_test behave:iconv_mainbody-5-0 ${j}
+      check behave:iconv_mainbody-5-1 - ./.terr '4294967295 0'
+      if [ ${i} -eq 13 ]; then
+         check behave:iconv_mainbody-5-2 - ./.tout '189327996 283'
+      elif [ ${i} -eq 12 ]; then
+         check behave:iconv_mainbody-5-3 - ./.tout '1959197095 283'
+      elif [ ${i} -eq 3 ]; then
+         check behave:iconv_mainbody-5-4 - ./.tout '3196380198 279'
+      else
+         check behave:iconv_mainbody-5-5 - ./.tout '3760313827 279'
+      fi
    else
-      check behave:iconv_mainbody-5-5 - ./.tout '3760313827 279'
+      echo 'behave:iconv_mainbody-5: unsupported, skipped'
    fi
 
    t_epilog
