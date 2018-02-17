@@ -2089,7 +2089,7 @@ int main(void){
       3) echo 'MAILX_ICONV_MODE=3;export MAILX_ICONV_MODE;' >> ${ev};;
       12) echo 'MAILX_ICONV_MODE=12;export MAILX_ICONV_MODE;' >> ${ev};;
       13) echo 'MAILX_ICONV_MODE=13;export MAILX_ICONV_MODE;' >> ${ev};;
-      *) msg 'WARN: cannot test iconv(3), do not know replacement';;
+      *) msg 'WARN: will restrict iconv(3) tests due to unknown replacement';;
       esac
    fi
 else
