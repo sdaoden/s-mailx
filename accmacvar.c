@@ -979,7 +979,7 @@ jefrom:
       case ok_v_hostname:
       case ok_v_smtp_hostname:
 #ifdef HAVE_IDNA
-         if(*val != '\0'){
+         if(**val != '\0'){
             struct n_string cnv;
 
             n_string_creat_auto(&cnv);
