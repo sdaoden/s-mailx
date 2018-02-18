@@ -321,6 +321,7 @@ t_behave() {
    t_behave_filetype
 
    t_behave_message_injections
+   t_behave_attachments
    t_behave_compose_hooks
    t_behave_C_opt_customhdr
 
@@ -3015,6 +3016,107 @@ t_behave_message_injections() {
       > ./.tall 2>&1
    check behave:message_injections-3 0 "${MBOX}" '3114203412 198'
    check behave:message_injections-4 - .tall '4294967295 0' # empty file
+
+   t_epilog
+}
+
+t_behave_attachments() {
+   t_prolog t_behave_attachments
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${SHELL} -
+		(echo 'From Cannabis Sun Feb 18 02:02:46 2018' && ${cat} && echo
+			) >> "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   cat <<-_EOT  > ./.tx
+	From steffen Sun Feb 18 02:48:40 2018
+	Date: Sun, 18 Feb 2018 02:48:40 +0100
+	To:
+	Subject: m1
+	User-Agent: s-nail v14.9.7
+	
+	
+	From steffen Sun Feb 18 02:48:42 2018
+	Date: Sun, 18 Feb 2018 02:48:42 +0100
+	To:
+	Subject: m2
+	User-Agent: s-nail v14.9.7
+	
+	
+	_EOT
+   echo att1 > ./.t1
+   printf 'att2-1\natt2-2\natt2-4\n' > ./'.t 2'
+   printf 'att3-1\natt3-2\natt3-4\n' > ./.t3
+   printf 'att4-1\natt4-2\natt4-4\n' > './.t 4'
+
+   printf '\
+!@  ./.t3              "./.t 4"             ""
+!p
+!@
+   ./.t3
+ "./.t 2"
+
+!p
+!.
+   ' | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh \
+      -a ./.t1 -a './.t 2' \
+      -s attachment-test \
+      ex@am.ple > ./.tall 2>&1
+   check behave:attachments-1 0 "${MBOX}" '4107062253 634'
+   check behave:attachments-2 - .tall '1108539632 642'
+
+   ${rm} -f "${MBOX}"
+   printf '\
+      mail ex@amp.ple
+!s This the subject is
+!@  ./.t3        "#2"      "./.t 4"          "#1"   ""
+!p
+!@
+   "./.t 4"
+ "#2"
+
+!p
+!.
+      mail ex@amp.ple
+!s Subject two
+!@  ./.t3        "#2"      "./.t 4"          "#1"   ""
+!p
+!@
+
+!p
+!.
+      mail ex@amp.ple
+!s Subject three
+!@  ./.t3     ""   "#2"    ""  "./.t 4"   ""       "#1"   ""
+!p
+!@
+ ./.t3
+
+!p
+!.
+      mail ex@amp.ple
+!s Subject Four
+!@  ./.t3     ""   "#2"    ""  "./.t 4"   ""       "#1"   ""
+!p
+!@
+ "#1"
+
+!p
+!.
+      mail ex@amp.ple
+!s Subject Five
+!@
+ "#2"
+
+!p
+!.
+   ' | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh -Rf ./.tx \
+         > ./.tall 2>&1
+   check behave:attachments-3 0 "${MBOX}" '798122412 2285'
+   check behave:attachments-4 - .tall '3902179297 1780'
 
    t_epilog
 }

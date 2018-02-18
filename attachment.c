@@ -214,8 +214,13 @@ n_attachment_append(struct attachment *aplist, char const *file,
 #endif
    aerr = n_ATTACH_ERR_NONE;
    nap = NULL;
-   file_user = savestr(file); /* TODO recreate after fexpand()!?! */
    incs = oucs = NULL;
+
+   if(*file == '\0'){
+      aerr = n_ATTACH_ERR_OTHER;
+      goto jleave;
+   }
+   file_user = savestr(file); /* TODO recreate after fexpand()!?! */
 
    if((msgno = a_attachment_is_msg(file)) < 0){
       int e;
@@ -513,9 +518,13 @@ n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
          }
       }
 
-      if(aplist != NULL)
+      if(aplist != NULL){
          aplist = aplist->a_flink;
-      else if(ap == NULL)
+         /* In non-interactive or batch mode an empty line ends processing */
+         if((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_BATCH_FLAG))
+            continue;
+      }
+      if(ap == NULL)
          break;
    }
    NYD_LEAVE;

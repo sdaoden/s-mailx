@@ -7476,6 +7476,10 @@ once the end of the list is reached either new attachments may be
 entered or the session can be quit by committing an empty
 .Dq new
 attachment.
+In non-interactive mode or in batch mode
+.Pf ( Fl # ) ,
+the list of attachments is effectively not edited but instead recreated;
+again, an empty input ends list creation.
 .Pp
 For all modes, if a given filename solely consists of the number sign
 .Ql #
