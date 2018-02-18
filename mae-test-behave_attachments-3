@@ -1,0 +1,106 @@
+From Cannabis Sun Feb 18 02:02:46 2018
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: ex@amp.ple
+Subject: This the subject is
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
+
+This is a multi-part message in MIME format.
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename=".t 4"
+
+att4-1
+att4-2
+att4-4
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Type: message/rfc822
+Content-Disposition: inline
+
+Date: Sun, 18 Feb 2018 02:48:42 +0100
+To:
+Subject: m2
+User-Agent: s-nail v14.9.7
+Status: R
+
+
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=--
+
+From Cannabis Sun Feb 18 02:02:46 2018
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: ex@amp.ple
+Subject: Subject two
+
+
+From Cannabis Sun Feb 18 02:02:46 2018
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: ex@amp.ple
+Subject: Subject three
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-="
+
+This is a multi-part message in MIME format.
+
+--=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename=".t3"
+
+att3-1
+att3-2
+att3-4
+
+--=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=--
+
+From Cannabis Sun Feb 18 02:02:46 2018
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: ex@amp.ple
+Subject: Subject Four
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="=-=DwAAEAAAABEAAAASAAAAEwAAABQAAAAVAAAA=-="
+
+This is a multi-part message in MIME format.
+
+--=-=DwAAEAAAABEAAAASAAAAEwAAABQAAAAVAAAA=-=
+Content-Type: message/rfc822
+Content-Disposition: inline
+
+Date: Sun, 18 Feb 2018 02:48:40 +0100
+To:
+Subject: m1
+User-Agent: s-nail v14.9.7
+Status: R
+
+
+
+--=-=DwAAEAAAABEAAAASAAAAEwAAABQAAAAVAAAA=-=--
+
+From Cannabis Sun Feb 18 02:02:46 2018
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: ex@amp.ple
+Subject: Subject Five
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="=-=FgAAFwAAABgAAAAZAAAAGgAAABsAAAAcAAAA=-="
+
+This is a multi-part message in MIME format.
+
+--=-=FgAAFwAAABgAAAAZAAAAGgAAABsAAAAcAAAA=-=
+Content-Type: message/rfc822
+Content-Disposition: inline
+
+Date: Sun, 18 Feb 2018 02:48:42 +0100
+To:
+Subject: m2
+User-Agent: s-nail v14.9.7
+Status: R
+
+
+
+--=-=FgAAFwAAABgAAAAZAAAAGgAAABsAAAAcAAAA=-=--
+

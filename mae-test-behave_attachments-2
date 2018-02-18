@@ -1,0 +1,20 @@
+-------
+Message contains:
+To: ex@am.ple
+Subject: attachment-test
+
+-------
+Attachments:
+#1: .t1 [./.t1 -- unclassified content, incs=ascii -> oucs=*sendcharsets*]
+#2: '.t 2' ['./.t 2' -- unclassified content, incs=ascii -> oucs=*sendcharsets*]
+#3: .t3 [./.t3 -- unclassified content, incs=ascii -> oucs=*sendcharsets*]
+#4: '.t 4' ['./.t 4' -- unclassified content, incs=ascii -> oucs=*sendcharsets*]
+-------
+Message contains:
+To: ex@am.ple
+Subject: attachment-test
+
+-------
+Attachments:
+#1: .t3 [./.t3 -- unclassified content, incs=ascii -> oucs=*sendcharsets*]
+#2: '.t 2' ['./.t 2' -- unclassified content, incs=ascii -> oucs=*sendcharsets*]

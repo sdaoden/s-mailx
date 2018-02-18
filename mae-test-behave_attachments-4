@@ -1,0 +1,82 @@
+-------
+Message contains:
+To: ex@amp.ple
+Subject: This the subject is
+
+-------
+Attachments:
+#1: .t3 [./.t3 -- unclassified content, incs=ascii -> oucs=*sendcharsets*]
+#2. message/rfc822: 2
+#3: '.t 4' ['./.t 4' -- unclassified content, incs=ascii -> oucs=*sendcharsets*]
+#4. message/rfc822: 1
+-------
+Message contains:
+To: ex@amp.ple
+Subject: This the subject is
+
+-------
+Attachments:
+#1: '.t 4' ['./.t 4' -- unclassified content, incs=ascii -> oucs=*sendcharsets*]
+#2. message/rfc822: 2
+-------
+Message contains:
+To: ex@amp.ple
+Subject: Subject two
+
+-------
+Attachments:
+#1: .t3 [./.t3 -- unclassified content, incs=ascii -> oucs=*sendcharsets*]
+#2. message/rfc822: 2
+#3: '.t 4' ['./.t 4' -- unclassified content, incs=ascii -> oucs=*sendcharsets*]
+#4. message/rfc822: 1
+-------
+Message contains:
+To: ex@amp.ple
+Subject: Subject two
+
+-------
+Message contains:
+To: ex@amp.ple
+Subject: Subject three
+
+-------
+Attachments:
+#1: .t3 [./.t3 -- unclassified content, incs=ascii -> oucs=*sendcharsets*]
+#2. message/rfc822: 2
+#3: '.t 4' ['./.t 4' -- unclassified content, incs=ascii -> oucs=*sendcharsets*]
+#4. message/rfc822: 1
+-------
+Message contains:
+To: ex@amp.ple
+Subject: Subject three
+
+-------
+Attachments:
+#1: .t3 [./.t3 -- unclassified content, incs=ascii -> oucs=*sendcharsets*]
+-------
+Message contains:
+To: ex@amp.ple
+Subject: Subject Four
+
+-------
+Attachments:
+#1: .t3 [./.t3 -- unclassified content, incs=ascii -> oucs=*sendcharsets*]
+#2. message/rfc822: 2
+#3: '.t 4' ['./.t 4' -- unclassified content, incs=ascii -> oucs=*sendcharsets*]
+#4. message/rfc822: 1
+-------
+Message contains:
+To: ex@amp.ple
+Subject: Subject Four
+
+-------
+Attachments:
+#1. message/rfc822: 1
+-------
+Message contains:
+To: ex@amp.ple
+Subject: Subject Five
+
+-------
+Attachments:
+#1. message/rfc822: 2
