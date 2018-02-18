@@ -5060,6 +5060,8 @@ as necessary a privilege-separated dotlock child process will be used
 to accommodate for necessary privilege adjustments in order to create
 the dotlock file in the same directory
 and with the same user and group identities as the file of interest.
+Possible dotlock creation errors can be catched by setting
+.Va dotlock-ignore-error .
 .
 .Pp
 \*(UA by default uses tolerant POSIX rules when reading MBOX database
@@ -9348,7 +9350,9 @@ Used instead of the value obtained from
 and
 .Xr getaddrinfo 3
 as the hostname when expanding local addresses, e.g., in
-.Ql From: .
+.Ql From:
+(also see
+.Sx "On sending mail, and non-interactive mode" ) .
 If either of
 .Va from
 or this variable Is set the message and MIME part related unique ID fields
