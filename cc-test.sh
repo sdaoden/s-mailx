@@ -3032,7 +3032,7 @@ t_behave_attachments() {
 	_EOT
    chmod 0755 ./.tsendmail.sh
 
-   cat <<-_EOT  > ./.tx
+   ${cat} <<-_EOT  > ./.tx
 	From steffen Sun Feb 18 02:48:40 2018
 	Date: Sun, 18 Feb 2018 02:48:40 +0100
 	To:
@@ -4509,7 +4509,7 @@ t_behave_iconv_mbyte_base64() {
    chmod 0755 ./.tsendmail.sh
 
    if (</dev/null iconv -f ascii -t iso-2022-jp) >/dev/null 2>&1; then
-      cat <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
+      ${cat} <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
             -Smta=./.tsendmail.sh \
             -Sescape=! -Smime-encoding=base64 2>./.terr
          set ttycharset=utf-8 sendcharsets=iso-2022-jp
@@ -4551,7 +4551,7 @@ t_behave_iconv_mbyte_base64() {
 
    if (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
       rm -f "${MBOX}" ./.twrite
-      cat <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
+      ${cat} <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
             -Smta=./.tsendmail.sh \
             -Sescape=! -Smime-encoding=base64 2>./.terr
          set ttycharset=utf-8 sendcharsets=euc-jp
