@@ -347,7 +347,7 @@ if yesno 'Prepare announcement?'; then
       #     *XY*# / $XY# / -XY# / `XY${APO}# / `~XY${APO}# / "XY"#
       # (where the mdocmx(7) anchor follows the number sign).
       # Ideally the anchors have been automatically expanded by
-      # mdocmx-anchor-expand.sh before.
+      # make-news-anchors.sh before.
       while(match(s,
             /(^|\(|[[:space:]]+)("[^"]+"|\*[^\*]+\*|`[^'${APO}']+'${APO}'|[-~][-\/:_.[:alnum:]]+|\$[_[:alnum:]]+)#[0-9]+/))
       {

@@ -31,6 +31,7 @@ command -v perl >/dev/null 2>&1 || exit 42
 
 update_stable_hook() {
    if [ -f nail.1 ]; then
+      echo 'nail.1: expanding MKREL'
       < nail.1 > nail.1x awk '
          BEGIN { written = 0 }
          /\.\\"--MKREL-START--/, /\.\\"--MKREL-END--/ {
@@ -47,9 +48,21 @@ update_stable_hook() {
       ' &&
       mv -f nail.1x nail.1
       git add nail.1
+
+      echo 'NEWS: updating anchors'
+      if command -v mdocmx.sh >/dev/null 2>&1 &&
+            command -v groff >/dev/null 2>&1; then
+         < nail.1 mdocmx.sh |
+            MDOCMX_ENABLE=1 groff -U -Tutf8 -mdoc \
+               -dmx-anchor-dump=/tmp/anchors -dmx-toc-force=tree >/dev/null
+         sh ./make-news-anchors.sh /tmp/anchors < NEWS > NEWSx
+         mv -f NEWSx NEWS
+         git add NEWS
+      fi
    fi
 
    if [ -f nail.rc ]; then
+      echo 'nail.rc: expanding MKREL'
       < nail.rc > nail.rcx awk '
          BEGIN { written = 0 }
          /^#--MKREL-START--/, /^#--MKREL-END--/ {
@@ -75,6 +88,7 @@ update_release_hook() {
    git rm -f make-news-anchors.sh
 
    if [ -f nail.1 ]; then
+      echo 'nail.1: stripping MKREL etc.'
       sed -E -e '/^\.\\"--MKREL-(START|END)--/d' \
          -e '/--BEGINSTRIP--/,$ {' \
             -e '/^\.[[:space:]]*$/d' -e '/^\.[[:space:]]*\\"/d' \
@@ -90,6 +104,7 @@ update_release_hook() {
    fi
 
    if [ -f nail.rc ]; then
+      echo 'nail.rc: stripping MKREL etc.'
       sed -Ee '/^#--MKREL-(START|END)--/d' < nail.rc > nail.rcx
       mv -f nail.rcx nail.rc
       git add nail.rc
