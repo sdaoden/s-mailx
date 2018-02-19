@@ -1178,7 +1178,7 @@ jsend:
    }
 
    quoteflt_reset(qf, pbuf);
-   if(dostat & 4)
+   if((dostat & 4) && pbuf == stdout) /* TODO */
       n_pstate |= n_PS_BASE64_STRIP_CR;
    while (!eof && fgetline(linedat, linesize, &cnt, &linelen, ibuf, 0)) {
 joutln:

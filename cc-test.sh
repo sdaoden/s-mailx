@@ -333,6 +333,7 @@ t_behave() {
    t_behave_rfc2231
    t_behave_iconv_mbyte_base64
    t_behave_iconv_mainbody
+   t_behave_binary_mainbody
    t_behave_q_t_etc_opts
 
    t_behave_s_mime
@@ -4644,6 +4645,27 @@ t_behave_iconv_mainbody() {
    else
       echo 'behave:iconv_mainbody-5: unsupported, skipped'
    fi
+
+   t_epilog
+}
+
+t_behave_binary_mainbody() {
+   t_prolog t_behave_binary_mainbody
+   TRAP_EXIT_ADDONS="./.t*"
+
+   printf 'abra\0\nka\r\ndabra' |
+      ${MAILX} ${ARGS} ${ADDARG_UNI} -s 'binary with carriage-return!' \
+      "${MBOX}" 2>./.terr
+   check behave:binary_mainbody-1 0 "${MBOX}" '2430168141 243'
+   check behave:binary_mainbody-2 - ./.terr '4294967295 0'
+
+   printf 'p\necho\necho writing now\nwrite ./.twrite\n' |
+      ${MAILX} ${ARGS} -Rf \
+         -Spipe-application/octet-stream="@* ${cat} > ./.tcat" \
+         "${MBOX}" >./.tall 2>&1
+   check behave:binary_mainbody-3 0 ./.tall '1151843761 324'
+   check behave:binary_mainbody-4 - ./.tcat '3817108933 15'
+   check behave:binary_mainbody-5 - ./.twrite '3817108933 15'
 
    t_epilog
 }
