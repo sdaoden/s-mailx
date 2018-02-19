@@ -77,6 +77,11 @@ for each subcondition.
 	(Delivered-To thread on nmh.  Will be hard to do because of
 	codepaths!)
 
+- -r should be the Sender:, which should automatically propagate to
+  From: if possible and/or necessary.  It should be possible to suppress
+  -r stuff from From: and Sender:, but fallback to special -r arg as
+  appropriate.
+
 Low-Level
 ---------
 
