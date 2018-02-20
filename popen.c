@@ -215,6 +215,10 @@ _file_save(struct fp *fpp)
    cmd[2] = NULL;
    switch(fpp->flags & FP_MASK){
    case FP_HOOK:
+      if(n_poption & n_PO_D_V)
+         n_err(_("Using `filetype' handler %s to save %s\n"),
+            n_shexp_quote_cp(fpp->save_cmd, FAL0),
+            n_shexp_quote_cp(fpp->realfile, FAL0));
       cmd[0] = ok_vlook(SHELL);
       cmd[1] = "-c";
       cmd[2] = fpp->save_cmd;
@@ -599,9 +603,12 @@ n_fopen_any(char const *file, char const *oflags, /* TODO should take flags */
          /* Cause truncation for compressor/hook output files */
          osflags &= ~O_APPEND;
          rof &= ~OF_APPEND;
-         if((infd = open(file, (omode & W_OK ? O_RDWR : O_RDONLY))) != -1)
+         if((infd = open(file, (omode & W_OK ? O_RDWR : O_RDONLY))) != -1){
             fs |= n_FOPEN_STATE_EXISTS;
-         else if(!(osflags & O_CREAT) || n_err_no != n_ERR_NOENT)
+            if(n_poption & n_PO_D_V)
+               n_err(_("Using `filetype' handler %s to load %s\n"),
+                  n_shexp_quote_cp(cload, FAL0), n_shexp_quote_cp(file, FAL0));
+         }else if(!(osflags & O_CREAT) || n_err_no != n_ERR_NOENT)
             goto jleave;
       }else{
          /*flags |= FP_RAW;*/

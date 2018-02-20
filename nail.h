@@ -1379,7 +1379,7 @@ enum n_program_option{
    /*  */
    n_PO_MEMDEBUG = 1<<24,     /* *memdebug* */
 
-   /* Some easy-access shortcuts */
+   /* Some easy-access shortcuts TODO n_PO_VERB+ should be mask(s) already! */
    n_PO_D_V = n_PO_DEBUG | n_PO_VERB,
    n_PO_D_VV = n_PO_DEBUG | n_PO_VERBVERB,
    n_PO_D_V_VV = n_PO_DEBUG | n_PO_VERB | n_PO_VERBVERB
