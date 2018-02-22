@@ -17,10 +17,10 @@ Adjustments may also take place, and are usually done, from the command
 line, overriding those made in make.rc (if any).
 
 Without any adjustments all non-experimental features will be enabled,
-except some which provide redundant functionality (e.g., OPT_SPAMC is
-disabled because the generic OPT_SPAM_FILTER can do the same).
+except some which provide redundant functionality (e.g., OPT_SPAM_SPAMC
+is disabled because the generic OPT_SPAM_FILTER can do the same).
 None of the features are "require"d by default, so that configuration
-won't fail shall any of them not be available or usable.
+will not fail shall any of them not be available or usable.
 The generated configuration is tracked: changes will be recognized
 and cause automatic cleanups and rebuilds as necessary.
 Experts could find it valuable to adjust some settings in config.h.
@@ -129,7 +129,7 @@ used instead of doing manual adjustments.
 
 - CONFIG=MINIMAL
   Possibly what people want who need nothing but a MIME-capable mailx(1)
-  and don't regret improved usability for the rare interactive use
+  and do not regret improved usability for the rare interactive use
   occasions.  Adds documentation strings, the built-in line editor (MLE)
   with history support and key bindings, error tracking, basic colour
   support and IDNA addresses, as well as generic spam filter support.
@@ -171,10 +171,6 @@ $LD_LIBRARY_PATH, etc.).
 Otherwise it is getting complicated, and it would be appreciated if you
 would contact the mailing-list!
 
-If you hit an actual bug in the configuration system, and "make
-distclean" will not help you out, please "reset" the state by doing
-a simple "$ rm mk-*".
-
 1.2 What if building fails?
 ---------------------------
 
@@ -194,7 +190,8 @@ Otherwise you could run the cc-test.sh script in --mae-test mode and
 invoke the failing tests (testing echoes the actual test names in
 brackets): this will produce output files of the form mae-test-TESTXY.
 It would be nice if these outputs could be send to the mailing-list;
-possibly stored altogether in a compressed tar(1) file.  For example:
+possibly stored altogether in a compressed tar(1) file (the mailing-list
+has a message size restriction).  For example:
 
   $ ./cc-test.sh --mae-test ./s-nail t_behave_localopts t_behave_mbox
   $ tar -czf badtests.tar.gz mae-test-*
@@ -219,7 +216,7 @@ OPT_DEBUG (`devel') will enable memory bound debug canaries and
 Not-Yet-Dead function graph listings etc.  Whereas the latter will try
 to write its listing into a file named after your favourite MUA in
 your $TMPDIR (or "/tmp" or "./", in order), falling back to STDERR shall
-creation of the file not be possible (we won't overwrite an existing
+creation of the file not be possible (we will not overwrite an existing
 file), the debug facilities in general make their appearance on the
 standard error channel; because this can be a quite long output, then,
 it is possibly a good idea to redirect it to a file:

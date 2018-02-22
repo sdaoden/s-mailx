@@ -58,7 +58,7 @@ VAL_SYSCONFDIR="${VAL_PREFIX}/etc"
 # The variable $DESTDIR is prepended to all the paths from above at
 # installation time; this feature can be used for, e.g., package
 # building: if $VAL_PREFIX is "/usr/local", but $DESTDIR is set to "here",
-# then S-nail will still think its $VAL_PREFIX is "/usr/local" whereis the
+# then S-nail will still think its $VAL_PREFIX is "/usr/local" whereas the
 # build system will instead use "here/usr/local".
 # NOTE: it cannot be set in here, but must be given on the command line
 # when invoking the "install" make(1) (directly or indirectly).
@@ -90,15 +90,15 @@ VAL_MTA=`\
 # This variable can be used to adjust this name as necessary.
 VAL_MTA_ARGV0=sendmail
 
-# Default *SHELL* (sh(1) path).
+# Default $SHELL (sh(1) path).
 # Sometimes we simply invoke a command directly via execlp(2) instead of
 # indirectly through *SHELL* -- in these cases execlp(2) may fallback to
-# it's own built-in sh(1) path
+# it's own built-in sh(1) path.
 VAL_SHELL=/bin/sh
 
 # Some more default fallback values, some of which are standardized
 # and (thus)/or documented in the manual (changes not reflected there!).
-# Note that default paths are often not (shell) quoted when displayed
+# Note that default paths are often not (shell) quoted when displayed.
 VAL_DEAD_BASENAME=dead.letter
 VAL_DEAD="~/${VAL_DEAD_BASENAME}"
 VAL_EDITOR=ed
@@ -110,7 +110,7 @@ VAL_PAGER=more
 VAL_TMPDIR=/tmp
 VAL_VISUAL=vi
 
-# Default locations of mime.types(5)
+# Default locations of mime.types(5).
 VAL_MIME_TYPES_USR=~/.mime.types
 VAL_MIME_TYPES_SYS=/etc/mime.types
 
@@ -139,9 +139,9 @@ VAL_MIME_TYPES_SYS=/etc/mime.types
 # Plan9, Musl based Linux variants and newer OpenBSD.  For such
 # environments we can avoid a lot of tests and may enable support for
 # features which would otherwise not be available.
-# Note that $OS is available as normalized all-lowercase upon evaluation
+# Note: $OS is available as normalized all-lowercase upon evaluation.
 OPT_ALWAYS_UNICODE_LOCALE=`\
-   if [ "${OS}" = openbsd ]; then \
+   if [ "${OS}" = openbsd ] || [ -f /lib/ld-musl-x86_64.so.1 ]; then \
       echo yes;\
    else \
       echo no;\
@@ -281,7 +281,7 @@ OPT_REGEX=yes
 OPT_MLE=yes
 # Add support for history management.
 OPT_HISTORY=yes
-# Add support for `(un)?bind'ing of key sequences
+# Add support for `(un)?bind'ing of key sequences.
 OPT_KEY_BINDINGS=yes
 
 # Use termcap(5) for terminal control; can be "require"d.
@@ -318,7 +318,7 @@ OPT_SPAM_SPAMC=no
 OPT_SPAM_SPAMD=no
 OPT_SPAM_FILTER=yes
 
-# We may include help strings for commands, increasing size a bit
+# We may include help strings for commands, increasing size a bit.
 OPT_DOCSTRINGS=yes
 
 # A simple line-based quoting mechanism can be made available via the
