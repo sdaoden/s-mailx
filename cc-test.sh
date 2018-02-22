@@ -3067,7 +3067,7 @@ t_behave_attachments() {
       -s attachment-test \
       ex@am.ple > ./.tall 2>&1
    check behave:attachments-1 0 "${MBOX}" '4107062253 634'
-   check behave:attachments-2 - .tall '1108539632 642'
+   check behave:attachments-2 - .tall '1928331872 720'
 
    ${rm} -f "${MBOX}"
    printf '\
@@ -3117,7 +3117,7 @@ t_behave_attachments() {
    ' | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh -Rf ./.tx \
          > ./.tall 2>&1
    check behave:attachments-3 0 "${MBOX}" '798122412 2285'
-   check behave:attachments-4 - .tall '3902179297 1780'
+   check behave:attachments-4 - .tall '2526106274 1910'
 
    t_epilog
 }

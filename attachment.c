@@ -544,6 +544,14 @@ n_attachment_list_print(struct attachment const *aplist, FILE *fp){
       if(ap->a_msgno > 0)
          fprintf(fp, "#%" PRIu32 ". message/rfc822: %u\n", attno, ap->a_msgno);
       else{
+         char const *incs, *oucs;
+
+         if(!(n_psonce & n_PSO_REPRODUCIBLE)){
+            incs = ap->a_input_charset;
+            oucs = ap->a_charset;
+         }else
+            incs = oucs = n_reproducible_name;
+
          fprintf(fp, "#%" PRIu32 ": %s [%s -- %s",
             attno, n_shexp_quote_cp(ap->a_name, FAL0),
             n_shexp_quote_cp(ap->a_path, FAL0),
@@ -553,15 +561,14 @@ n_attachment_list_print(struct attachment const *aplist, FILE *fp){
          if(ap->a_conv == AC_TMPFILE)
             /* I18N: input and output character set as given */
             fprintf(fp, _(", incs=%s -> oucs=%s (readily converted)"),
-               ap->a_input_charset, ap->a_charset);
+               incs, oucs);
          else if(ap->a_conv == AC_FIX_INCS)
             /* I18N: input character set as given, no conversion to apply */
-            fprintf(fp, _(", incs=%s (no conversion)"), ap->a_input_charset);
+            fprintf(fp, _(", incs=%s (no conversion)"), incs);
          else if(ap->a_conv == AC_DEFAULT){
-            if(ap->a_input_charset != NULL)
+            if(incs != NULL)
                /* I18N: input character set as given, output iterates */
-               fprintf(fp, _(", incs=%s -> oucs=*sendcharsets*"),
-                  ap->a_input_charset);
+               fprintf(fp, _(", incs=%s -> oucs=*sendcharsets*"), incs);
             else if(ap->a_content_type == NULL ||
                   !ascncasecmp(ap->a_content_type, "text/", 5))
                fprintf(fp, _(", default character set handling"));
