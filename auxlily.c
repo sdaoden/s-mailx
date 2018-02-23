@@ -61,10 +61,11 @@
 #endif
 
 #ifdef HAVE_IDNA
-# if HAVE_IDNA == HAVE_IDNA_LIBIDNA
+# if HAVE_IDNA == HAVE_IDNA_LIBIDN2
+#  include <idn2.h>
+# elif HAVE_IDNA == HAVE_IDNA_LIBIDNA
 #  include <idna.h>
 #  include <idn-free.h>
-#  include <stringprep.h>
 # elif HAVE_IDNA == HAVE_IDNA_IDNKIT
 #  include <idn/api.h>
 # endif
@@ -1123,12 +1124,35 @@ n_idna_to_ascii(struct n_string *out, char const *ibuf, size_t ilen){
    }
    ilen = 0;
 
-   idna_utf8 = n_iconv_onetime_cp(n_ICONV_NONE, "utf-8", ok_vlook(ttycharset),
-         ibuf);
-   if(idna_utf8 == NULL)
+# ifndef HAVE_ALWAYS_UNICODE_LOCALE
+   if(n_psonce & n_PSO_UNICODE)
+# endif
+      idna_utf8 = n_UNCONST(ibuf);
+# ifndef HAVE_ALWAYS_UNICODE_LOCALE
+   else if((idna_utf8 = n_iconv_onetime_cp(n_ICONV_NONE, "utf-8",
+         ok_vlook(ttycharset), ibuf)) == NULL)
       goto jleave;
+# endif
 
-# if HAVE_IDNA == HAVE_IDNA_LIBIDNA
+# if HAVE_IDNA == HAVE_IDNA_LIBIDN2
+   /* C99 */{
+      char *idna_ascii;
+      int f, rc;
+
+      f = IDN2_NONTRANSITIONAL;
+jidn2_redo:
+      if((rc = idn2_to_ascii_8z(idna_utf8, &idna_ascii, f)) == IDN2_OK){
+         out = n_string_assign_cp(out, idna_ascii);
+         idn2_free(idna_ascii);
+         rv = TRU1;
+         ilen = out->s_len;
+      }else if(rc == IDN2_DISALLOWED && f != IDN2_TRANSITIONAL){
+         f = IDN2_TRANSITIONAL;
+         goto jidn2_redo;
+      }
+   }
+
+# elif HAVE_IDNA == HAVE_IDNA_LIBIDNA
    /* C99 */{
       char *idna_ascii;
 
@@ -1139,6 +1163,7 @@ n_idna_to_ascii(struct n_string *out, char const *ibuf, size_t ilen){
          ilen = out->s_len;
       }
    }
+
 # elif HAVE_IDNA == HAVE_IDNA_IDNKIT
    ilen = strlen(idna_utf8);
 jredo:

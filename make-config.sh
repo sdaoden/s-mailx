@@ -2653,11 +2653,29 @@ feat_def NETRC
 feat_def AGENT
 
 if feat_yes IDNA; then
-   if link_check idna 'GNU Libidn' '#define HAVE_IDNA HAVE_IDNA_LIBIDNA' \
+   if link_check idna 'Libidn2' '#define HAVE_IDNA HAVE_IDNA_LIBIDN2' \
+         '-lidn2' << \!
+#include <idn2.h>
+int main(void){
+   char *idna_utf8, *idna_lc;
+
+   if(idn2_to_ascii_8z("does.this.work", &idna_utf8,
+         IDN2_NONTRANSITIONAL | IDN2_TRANSITIONAL) != IDN2_OK)
+      return 1;
+   if(idn2_to_unicode_8zlz(idna_utf8, &idna_lc, 0) != IDN2_OK)
+      return 1;
+   idn2_free(idna_lc);
+   idn2_free(idna_utf8);
+   return 0;
+}
+!
+   then
+      :
+   elif link_check idna 'GNU Libidn' '#define HAVE_IDNA HAVE_IDNA_LIBIDNA' \
          '-lidn' << \!
 #include <idna.h>
 #include <idn-free.h>
-#include <stringprep.h>
+#include <stringprep.h> /* XXX we actually use our own iconv instead */
 int main(void){
    char *utf8, *idna_ascii, *idna_utf8;
 
@@ -2704,8 +2722,9 @@ int main(void){
    fi
 
    if [ -n "${have_idna}" ]; then
-      echo '#define HAVE_IDNA_LIBIDNA 0' >> ${h}
-      echo '#define HAVE_IDNA_IDNKIT 1' >> ${h}
+      echo '#define HAVE_IDNA_LIBIDN2 0' >> ${h}
+      echo '#define HAVE_IDNA_LIBIDNA 1' >> ${h}
+      echo '#define HAVE_IDNA_IDNKIT 2' >> ${h}
    fi
 else
    echo '/* OPT_IDNA=0 */' >> ${h}
