@@ -2268,16 +2268,18 @@ FL struct str *n_str_trim_ifs(struct str *self, bool_t dodefaults);
    ((S)->s_dat = NULL, (S)->s_len = (S)->s_auto = (S)->s_size = 0, (S))
 #define n_string_creat_auto(S) \
    ((S)->s_dat = NULL, (S)->s_len = (S)->s_size = 0, (S)->s_auto = TRU1, (S))
-#define n_string_gut(S) ((S)->s_size != 0 ? (void)n_string_clear(S) : (void)0)
+#define n_string_gut(S) \
+      ((S)->s_dat != NULL ? (void)n_string_clear(S) : (void)0)
 
 /* Truncate to size, which must be LE current length */
 #define n_string_trunc(S,L) \
    (assert(UICMP(z, L, <=, (S)->s_len)), (S)->s_len = (ui32_t)(L), (S))
 
-/* Check whether a buffer of Len bytes can be inserted into Self */
+/* Check whether a buffer of Len bytes can be inserted into S(elf) */
+#define n_string_get_can_swallow(L) ((uiz_t)SI32_MAX - n_ALIGN(1) > L)
 #define n_string_can_swallow(S,L) \
-   (UICMP(z, SI32_MAX - n_ALIGN(1), >=, L) &&\
-    UICMP(z, SI32_MAX - n_ALIGN(1) - (L), >, (S)->s_len))
+   (n_string_get_can_swallow(L) &&\
+    (uiz_t)SI32_MAX - n_ALIGN(1) - (L) > (S)->s_len)
 
 /* Take/Release buffer ownership */
 #define n_string_take_ownership(SP,B,S,L) \
