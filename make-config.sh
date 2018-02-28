@@ -187,12 +187,15 @@ option_update() {
 
    if feat_no ICONV; then
       if feat_yes IMAP; then
-         if feat_require IMAP; then
+         if feat_yes ALWAYS_UNICODE_LOCALE; then
+            msg 'WARN: no ICONV, keeping IMAP due to ALWAYS_UNICODE_LOCALE!'
+         elif feat_require IMAP; then
             msg 'ERROR: need ICONV for required feature IMAP'
             config_exit 13
+         else
+            msg 'ERROR: disabling IMAP due to missing ICONV'
+            OPT_IMAP=0
          fi
-         msg 'ERROR: disabling IMAP due to missing ICONV'
-         OPT_IMAP=0
       fi
 
       if feat_yes IDNA; then

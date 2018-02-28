@@ -224,7 +224,8 @@ OPT_SMTP=yes
 OPT_POP3=yes
 
 # If $OPT_SOCKETS: support for IMAP protocol?
-# Requires $WANT_ICONV.
+# Requires $OPT_ICONV unless $OPT_ALWAYS_UNICODE_LOCALE, in which case
+#  it only warns.
 # (Reading of mails directly on the server)  Can be "require"d.
 OPT_IMAP=yes
 

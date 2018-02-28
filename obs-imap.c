@@ -397,7 +397,7 @@ jleave:
 FL char const *
 imap_path_encode(char const *cp, bool_t *err_or_null){
    /* To a large extend inspired by dovecot(1) */
-   struct str in, out;
+   struct str out;
    bool_t err_def;
    ui8_t *be16p_base, *be16p;
    char const *emsg;
@@ -422,40 +422,26 @@ imap_path_encode(char const *cp, bool_t *err_or_null){
     * local charset to UTF-8, then convert all characters which need to be
     * encoded (except plain "&") to UTF-16BE first, then that to mUTF-7.
     * We can skip the UTF-8 conversion occasionally, however */
+#if (defined HAVE_DEVEL && defined HAVE_ICONV) ||\
+      !defined HAVE_ALWAYS_UNICODE_LOCALE
    if(!(n_psonce & n_PSO_UNICODE)){
-      int ir;
-      iconv_t icd;
+      char const *x;
 
       emsg = N_("iconv(3) from locale charset to UTF-8 failed");
-
-      if((icd = iconv_open("utf-8", ok_vlook(ttycharset))) == (iconv_t)-1)
+      if((x = n_iconv_onetime_cp(n_ICONV_NONE, "utf-8", ok_vlook(ttycharset),
+            cp)) == NULL)
          goto jerr;
+      cp = x;
 
-      out.s = NULL, out.l = 0;
-      in.s = n_UNCONST(cp); /* logical */
-      l += strlen(&cp[l]);
-      in.l = l;
-      if((ir = n_iconv_str(icd, n_ICONV_NONE, &out, &in, NULL)) == 0)
-         cp = savestrbuf(out.s, out.l);
-
-      if(out.s != NULL)
-         free(out.s);
-      iconv_close(icd);
-
-      if(ir != 0)
-         goto jerr;
-
-      /*
-       * So: Why not start all over again?
-       */
-
-      /* Is this a string that works out as "plain US-ASCII"? */
+      /* So: Why not start all over again?
+       * Is this a string that works out as "plain US-ASCII"? */
       for(l = 0;; ++l)
          if((c = cp[l]) == '\0')
             goto jleave;
          else if(c <= 0x1F || c >= 0x7F || c == '&')
             break;
    }
+#endif
 
    /* We need to encode, save what we have, encode the rest */
    l_plain = l;
@@ -559,7 +545,6 @@ jerr:
 FL char *
 imap_path_decode(char const *path, bool_t *err_or_null){
    /* To a large extend inspired by dovecot(1) TODO use string */
-   struct str in, out;
    bool_t err_def;
    ui8_t *mb64p_base, *mb64p, *mb64xp;
    char const *emsg, *cp;
@@ -746,28 +731,14 @@ jeincpl:
    *rv = '\0';
 
    /* We can skip the UTF-8 conversion occasionally */
+#if (defined HAVE_DEVEL && defined HAVE_ICONV) ||\
+      !defined HAVE_ALWAYS_UNICODE_LOCALE
    if(!(n_psonce & n_PSO_UNICODE)){
-      int ir;
-      iconv_t icd;
-
       emsg = N_("iconv(3) from UTF-8 to locale charset failed");
-
-      if((icd = iconv_open(ok_vlook(ttycharset), "utf-8")) == (iconv_t)-1)
-         goto jerr;
-
-      out.s = NULL, out.l = 0;
-      in.l = strlen(in.s = rv_base);
-      if((ir = n_iconv_str(icd, n_ICONV_NONE, &out, &in, NULL)) == 0)
-         /* Because the length of this is unpredictable, copy */
-         rv_base = savestrbuf(out.s, out.l);
-
-      if(out.s != NULL)
-         free(out.s);
-      iconv_close(icd);
-
-      if(ir != 0)
+      if((rv = n_iconv_onetime_cp(n_ICONV_NONE, NULL, NULL, rv_base)) == NULL)
          goto jerr;
    }
+#endif
 
    *err_or_null = FAL0;
    rv = rv_base;
@@ -3717,21 +3688,13 @@ imap_search2(struct mailbox *mp, struct message *m, int cnt, const char *spec,
    if (c & 0200) {
       cp = ok_vlook(ttycharset);
 # ifdef HAVE_ICONV
-      if (asccasecmp(cp, "utf-8") && asccasecmp(cp, "utf8")) {
-         iconv_t  it;
-         char *nsp, *nspec;
-         size_t sz, nsz;
+      if(asccasecmp(cp, "utf-8") && asccasecmp(cp, "utf8")){ /* XXX */
+         char const *nspec;
 
-         if ((it = n_iconv_open("utf-8", cp)) != (iconv_t)-1) {
-            sz = strlen(spec) + 1;
-            nsp = nspec = salloc(nsz = 6*strlen(spec) + 1);
-            if (n_iconv_buf(it, n_ICONV_DEFAULT,
-                     (char const**)&spec, &sz, &nsp, &nsz) == 0 &&
-                  sz == 0) {
-               spec = nspec;
-               cp = "utf-8";
-            }
-            n_iconv_close(it);
+         if((nspec = n_iconv_onetime_cp(n_ICONV_DEFAULT, "utf-8", cp, spec)
+               ) != NULL){
+            spec = nspec;
+            cp = "utf-8";
          }
       }
 # endif
