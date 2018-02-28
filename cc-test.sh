@@ -4538,13 +4538,17 @@ t_behave_iconv_mbyte_base64() {
 $B%7%8%e%&%+%i2J!J%7%8%e%&%+%i$+!"3XL>(B Paridae$B!K$O!"D;N`%9%:%aL\$N2J$G$"$k!#%7%8%e%&%+%i!J;M==?}!K$HAm>N$5$l$k$,!"695A$K$O$3$N(B1$B<o$r%7%8%e%&%+%i$H8F$V!#(B
 !.
 		_EOT
-      check behave:iconv_mbyte_base64-1 0 "${MBOX}" '3428985079 1976'
+      # May not presume iconv output as long as roundtrip possible [489a7122]
+      ex0_test behave:iconv_mbyte_base64-1-estat
+      ${awk} 'BEGIN{h=1}/^$/{++h;next}{if(h % 2 == 1)print}' \
+         < "${MBOX}" > ./.tcksum
+      check behave:iconv_mbyte_base64-1 - ./.tcksum '2694609714 520'
       check behave:iconv_mbyte_base64-2 - ./.terr '4294967295 0'
 
-      printf 'eval f 1; write ./.twrite\n' |
-         ${MAILX} ${ARGS} ${ADDARG_UNI} -Rf "${MBOX}" >./.tlog 2>&1
+      printf 'eval f 1; eval write ./.twrite; eval type 1; eval type 2\n' |
+         LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} -Rf "${MBOX}" >./.tlog 2>&1
       check behave:iconv_mbyte_base64-3 0 ./.twrite '1259742080 686'
-      check behave:iconv_mbyte_base64-4 - ./.tlog '3956097665 119'
+      check behave:iconv_mbyte_base64-4 - ./.tlog '3214068822 2123'
    else
       echo 'behave:iconv_mbyte_base64: ISO-2022-JP unsupported, skipping 1-4'
    fi
@@ -4580,13 +4584,16 @@ t_behave_iconv_mbyte_base64() {
 ¥·¥¸¥å¥¦¥«¥é²Ê¡Ê¥·¥¸¥å¥¦¥«¥é¤«¡¢³ØÌ¾ Paridae¡Ë¤Ï¡¢Ä»Îà¥¹¥º¥áÌÜ¤Î²Ê¤Ç¤¢¤ë¡£¥·¥¸¥å¥¦¥«¥é¡Ê»Í½½¿ý¡Ë¤ÈÁí¾Î¤µ¤ì¤ë¤¬¡¢¶¹µÁ¤Ë¤Ï¤³¤Î1¼ï¤ò¥·¥¸¥å¥¦¥«¥é¤È¸Æ¤Ö¡£
 !.
 		_EOT
-      check behave:iconv_mbyte_base64-5 0 "${MBOX}" '1686827547 2051'
+      ex0_test behave:iconv_mbyte_base64-5-estat
+      ${awk} 'BEGIN{h=1}/^$/{++h;next}{if(h % 2 == 1)print}' \
+         < "${MBOX}" > ./.tcksum
+      check behave:iconv_mbyte_base64-5 - ./.tcksum '2870183985 473'
       check behave:iconv_mbyte_base64-6 - ./.terr '4294967295 0'
 
-      printf 'eval f 1; write ./.twrite\n' |
-         ${MAILX} ${ARGS} ${ADDARG_UNI} -Rf "${MBOX}" >./.tlog 2>&1
+      printf 'eval f 1; eval write ./.twrite; eval type 1; eval type 2\n' |
+         LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} -Rf "${MBOX}" >./.tlog 2>&1
       check behave:iconv_mbyte_base64-7 0 ./.twrite '1259742080 686'
-      check behave:iconv_mbyte_base64-8 - ./.tlog '500059195 119'
+      check behave:iconv_mbyte_base64-8 - ./.tlog '2506063395 2075'
    else
       echo 'behave:iconv_mbyte_base64: EUC-JP unsupported, skipping 5-8'
    fi
