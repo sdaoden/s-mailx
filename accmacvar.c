@@ -3957,7 +3957,7 @@ c_vpospar(void *v){
 
          for(i = 0; i < appp->app_count; ++i){
             if(sp->s_len){
-               if(!n_string_can_swallow(sp, 2))
+               if(!n_string_can_book(sp, 2))
                   goto jeover;
                sp = n_string_push_c(sp, sep1);
                if(sep2 != '\0')
@@ -3965,7 +3965,7 @@ c_vpospar(void *v){
             }
             in.l = strlen(in.s = n_UNCONST(appp->app_dat[i + appp->app_idx]));
 
-            if(!n_string_can_swallow(sp, in.l)){
+            if(!n_string_can_book(sp, in.l)){
 jeover:
                n_err(_("`vpospar': overflow: string too long!\n"));
                n_pstate_err_no = n_ERR_OVERFLOW;

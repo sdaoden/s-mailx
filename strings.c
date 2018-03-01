@@ -1338,14 +1338,14 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
    NYD2_ENTER;
 
    il = in->l;
-   if(!n_string_get_can_swallow(il) || !n_string_get_can_swallow(out->l)){
+   if(!n_string_get_can_book(il) || !n_string_get_can_book(out->l)){
       err = n_ERR_INVAL;
       goto j_leave;
    }
    ib = in->s;
 
    sp = n_string_creat(sp);
-   sp = n_string_take_ownership(sp, out->s, out->l, out->l);
+   sp = n_string_take_ownership(sp, out->s, out->l, 0);
 
    for(;;){
       char *ob_base, *ob;
@@ -1355,9 +1355,9 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
          nol = il;
       assert(sizeof(sp->s_len) == sizeof(ui32_t));
       nol = (nol << 1) - (nol >> 4);
-      if(!n_string_can_swallow(sp, nol)){
+      if(!n_string_can_book(sp, nol)){
          nol = ol + 64;
-         if(!n_string_can_swallow(sp, nol)){
+         if(!n_string_can_book(sp, nol)){
             err = n_ERR_INVAL;
             goto jleave;
          }

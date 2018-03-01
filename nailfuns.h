@@ -2275,12 +2275,6 @@ FL struct str *n_str_trim_ifs(struct str *self, bool_t dodefaults);
 #define n_string_trunc(S,L) \
    (assert(UICMP(z, L, <=, (S)->s_len)), (S)->s_len = (ui32_t)(L), (S))
 
-/* Check whether a buffer of Len bytes can be inserted into S(elf) */
-#define n_string_get_can_swallow(L) ((uiz_t)SI32_MAX - n_ALIGN(1) > L)
-#define n_string_can_swallow(S,L) \
-   (n_string_get_can_swallow(L) &&\
-    (uiz_t)SI32_MAX - n_ALIGN(1) - (L) > (S)->s_len)
-
 /* Take/Release buffer ownership */
 #define n_string_take_ownership(SP,B,S,L) \
    (assert((SP)->s_dat == NULL), assert((S) == 0 || (B) != NULL),\
@@ -2299,9 +2293,16 @@ FL struct n_string *n_string_clear(struct n_string *self n_MEMORY_DEBUG_ARGS);
 # define n_string_clear(S)       ((S)->s_size != 0 ? (n_string_clear)(S) : (S))
 #endif
 
+/* Check whether a buffer of Len bytes can be inserted into S(elf) */
+#define n_string_get_can_book(L) ((uiz_t)SI32_MAX - n_ALIGN(1) > L)
+#define n_string_can_book(S,L) \
+   (n_string_get_can_book(L) &&\
+    (uiz_t)SI32_MAX - n_ALIGN(1) - (L) > (S)->s_len)
+
 /* Reserve room for noof additional bytes, but don't adjust length (yet) */
 FL struct n_string *n_string_reserve(struct n_string *self, size_t noof
                      n_MEMORY_DEBUG_ARGS);
+#define n_string_book n_string_reserve
 
 /* Resize to exactly nlen bytes; any new storage isn't initialized */
 FL struct n_string *n_string_resize(struct n_string *self, size_t nlen
