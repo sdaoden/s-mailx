@@ -271,9 +271,10 @@ _os_early_setup_sunos() {
 
 os_setup() {
    # OSENV ends up in *build-osenv*
-   # OSFULLSPEC is used to recognize changes (i.e., machine type, updates etc.)
+   # OSFULLSPEC is used to recognize changes (i.e., machine type, updates
+   # etc.), it is not baked into the binary
    OS=`echo ${OS} | ${tr} '[A-Z]' '[a-z]'`
-   [ -n "${OSENV}" ] || OSENV=`uname -srm`
+   [ -n "${OSENV}" ] || OSENV=`uname -sm`
    [ -n "${OSFULLSPEC}" ] || OSFULLSPEC=`uname -a`
    msg 'Operating system is %s' ${OS}
 
