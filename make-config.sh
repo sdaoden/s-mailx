@@ -249,7 +249,7 @@ _CFLAGS= _LDFLAGS=
 
 os_early_setup() {
    # We don't "have any utility": only path adjustments and such in here!
-   [ -n "${OS}" ] || OS=`uname -s`
+   [ -n "${OS}" ] || OS=`${uname} -s`
    export OS
 
    if [ ${OS} = SunOS ]; then
@@ -274,8 +274,8 @@ os_setup() {
    # OSFULLSPEC is used to recognize changes (i.e., machine type, updates
    # etc.), it is not baked into the binary
    OS=`echo ${OS} | ${tr} '[A-Z]' '[a-z]'`
-   [ -n "${OSENV}" ] || OSENV=`uname -sm`
-   [ -n "${OSFULLSPEC}" ] || OSFULLSPEC=`uname -a`
+   [ -n "${OSENV}" ] || OSENV=`${uname} -sm`
+   [ -n "${OSFULLSPEC}" ] || OSFULLSPEC=`${uname} -a`
    msg 'Operating system is %s' ${OS}
 
    if [ ${OS} = darwin ]; then
@@ -1129,6 +1129,7 @@ squeeze_em() {
 
 # Very easy checks for the operating system in order to be able to adjust paths
 # or similar very basic things which we need to be able to go at all
+thecmd_testandset_fail uname uname
 os_early_setup
 
 # Check those tools right now that we need before including $rc

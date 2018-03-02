@@ -117,20 +117,20 @@ VAL_MIME_TYPES_SYS=/etc/mime.types
 # The following tools may be provided a.k.a. overwritten,
 # `command -v NAME` is used to query the utility otherwise:
 #  MAKE=, STRIP=, awk=, basename=, cat=, chmod=, cp=, cmp=, cksum=,
-#     grep=, mkdir=, mv=, rm=, sed=, sort=, tee=, tr=
+#     grep=, mkdir=, mv=, rm=, sed=, sort=, tee=, tr=, uname=
 # Usually in administrator paths:
 #  chown= [$OPT_DOTLOCK]
-# Note that awk(1), rm(1) and tr(1) are needed before this file is read,
-# all other utilities will be checked afterwards only.  For
-# cross-compilation setting $MAKE and $STRIP may be necessary.  Due to
-# the evaluation order of the build system all those programs are
-# usually needed, but by setting any of the variables to true(1), as in
-# chown=/usr/bin/true, availability of unneeded programs can be faked.
-# We require uname(1) -s, echo(1), printf(1) etc.
-# uname(1) can be circumvented by setting $OS (uname -s), $OSENV (uname
+# Note that awk(1), rm(1), tr(1) and uname(1) are needed before this
+# file is read, all other utilities will be checked afterwards only.
+# uname(1) is in fact needed before the initial OS setup and thus no OS
+# specific adjustments (e.g., $PATH) have been performed yet, but its
+# use can be circumvented by setting $OS (uname -s), $OSENV (uname
 # -sm) and $OSFULLSPEC (uname -a: this is not baked into the binary, it
 # is only used to recognize build environment changes).
 # $OS must be all-lowercase.
+# Due to the evaluation order of the build system all those programs are
+# usually needed, but by setting any of the variables to true(1), as in
+# chown=/usr/bin/true, availability of unneeded programs can be faked.
 
 ## FEATURE SET ##
 
