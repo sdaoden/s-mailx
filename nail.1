@@ -4614,7 +4614,7 @@ Supports
 (see
 .Sx "Command modifiers" ) .
 The return status is tracked via
-.Va \&! .
+.Va \&? .
 .
 .Mx
 .It Ic Decrypt
@@ -6970,7 +6970,11 @@ Shows the
 .Va version
 and
 .Va features
-of \*(UA.
+of \*(UA, as well as the build and running system environment.
+Supports
+.Cm vput
+(see
+.Sx "Command modifiers" ) .
 .
 .
 .Mx
@@ -14097,6 +14101,18 @@ Please report bugs to the
 address, e.g., from within \*(uA:
 .\" v15-compat: drop eval as `mail' will expand variable?
 .Ql ? Ns \| Ic eval Ns \| Ic mail Ns \| $contact-mail .
+Including the output of the command
+.Ic version
+may be helpful, e.g.,
+.
+.Bd -literal -offset indent
+? vput version xy; wysh set escape=!; eval mail $contact-mail
+Bug subject
+!I xy
+!.
+.Ed
+.
+.Pp
 More information is available on the web:
 .Ql $ \*(uA -X 'echo Ns \| $ Ns Va contact-web Ns ' -Xx .
 .

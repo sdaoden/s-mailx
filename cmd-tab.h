@@ -557,7 +557,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
       n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_vpospar)
      DS(N_("Positional parameters: <clear>, <quote>, or <set> from :<arg>:"))},
 
-   { "version", &c_version, (H | M | X | TWYSH), 0, 0, NULL
+   { "version", &c_version, (H | M | V | X | TWYSH), 0, 0, NULL
      DS(N_("Show the version and feature set of the program")) },
 
    { "xit"/*POSIX, first!*/, &c_exit, (M | X | TWYSH), 0, 1, NULL
