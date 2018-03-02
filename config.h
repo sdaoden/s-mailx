@@ -131,13 +131,6 @@
 /* How much spaces should a <tab> count when *quote-fold*ing? (power-of-two!) */
 #define n_QUOTE_TAB_SPACES 8
 
-/* Simply use RAND_bytes(3) for randoms */
-#ifdef HAVE_XSSL
-# define n_RANDOM_USE_XSSL 1
-#else
-# define n_RANDOM_USE_XSSL 0
-#endif
-
 /* For long iterative output, like `list', tabulator-completion, etc.,
  * determine the screen width that should be used */
 #define n_SCRNWIDTH_FOR_LISTS ((size_t)n_scrnwidth - ((size_t)n_scrnwidth >> 3))

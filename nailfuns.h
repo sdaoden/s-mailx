@@ -2715,7 +2715,7 @@ FL void        hmac_md5(unsigned char *text, int text_len, unsigned char *key,
 
 #ifdef HAVE_XSSL
 /* Our wrapper for RAND_bytes(3) */
-# if n_RANDOM_USE_XSSL
+# ifdef HAVE_SSL_RANDOM
 FL void ssl_rand_bytes(void *buf, size_t blen);
 # endif
 

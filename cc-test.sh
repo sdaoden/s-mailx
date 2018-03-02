@@ -134,7 +134,6 @@ cc_all_configs() {
          NOTME["OPT_AUTOCC"] = 1
          NOTME["OPT_DEBUG"] = 1
          NOTME["OPT_DEVEL"] = 1
-         NOTME["OPT_NOEXTMD5"] = 1
          NOTME["OPT_ASAN_ADDRESS"] = 1
          NOTME["OPT_ASAN_MEMORY"] = 1
          NOTME["OPT_FORCED_STACKPROT"] = 1

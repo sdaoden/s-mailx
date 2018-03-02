@@ -22,6 +22,7 @@ XOPTIONS="\
    ICONV='Character set conversion using iconv(3)' \
    SOCKETS='Network support' \
       SSL='SSL/TLS (OpenSSL / LibreSSL)' \
+         SSL_RANDOM='-' \
          SSL_ALL_ALGORITHMS='Support of all digest and cipher algorithms' \
       SMTP='Simple Mail Transfer Protocol client' \
       POP3='Post Office Protocol Version 3 client' \
@@ -152,8 +153,12 @@ option_setup() {
 
 # Inter-relationships XXX sort this!
 option_update() {
+   if feat_yes NOEXTRANDOM; then
+      OPT_SSL_RANDOM=0
+   fi
+
    if feat_no SSL; then
-      OPT_SSL_ALL_ALGORITHMS=0
+      OPT_SSL_RANDOM=0 OPT_SSL_ALL_ALGORITHMS=0
    fi
 
    if feat_no SMTP && feat_no POP3 && feat_no IMAP; then
@@ -172,7 +177,7 @@ option_update() {
          msg 'ERROR: need SOCKETS for required feature IMAP'
          config_exit 13
       fi
-      OPT_SSL=0 OPT_SSL_ALL_ALGORITHMS=0
+      OPT_SSL=0 OPT_SSL_RANDOM=0 OPT_SSL_ALL_ALGORITHMS=0
       OPT_SMTP=0 OPT_POP3=0 OPT_IMAP=0
       OPT_GSSAPI=0 OPT_NETRC=0 OPT_AGENT=0
    fi
@@ -1785,46 +1790,7 @@ int main(void){
 
 ##
 
-# XXX Add POSIX check once standardized
-if link_check posix_random 'arc4random(3)' '#define HAVE_POSIX_RANDOM 0' << \!
-#include <stdlib.h>
-int main(void){
-   arc4random();
-   return 0;
-}
-!
-then
-   :
-elif link_check getrandom 'getrandom(2) (in sys/random.h)' \
-      '#define HAVE_GETRANDOM(B,S) getrandom(B, S, 0)
-      #define HAVE_GETRANDOM_HEADER <sys/random.h>' <<\!
-#include <sys/random.h>
-int main(void){
-   char buf[256];
-   getrandom(buf, sizeof buf, 0);
-   return 0;
-}
-!
-then
-   :
-elif link_check getrandom 'getrandom(2) (via syscall(2))' \
-      '#define HAVE_GETRANDOM(B,S) syscall(SYS_getrandom, B, S, 0)
-      #define HAVE_GETRANDOM_HEADER <sys/syscall.h>' <<\!
-#include <sys/syscall.h>
-int main(void){
-   char buf[256];
-   syscall(SYS_getrandom, buf, sizeof buf, 0);
-   return 0;
-}
-!
-then
-   :
-elif [ -n "${have_no_subsecond_time}" ]; then
-   msg 'ERROR: %s %s' 'without a native random' \
-      'one of clock_gettime(2) and gettimeofday(2) is required.'
-   config_exit 1
-fi
-
+# The random check has been moved to below SSL detection due to OPT_SSL_RANDOM
 
 link_check putc_unlocked 'putc_unlocked(3)' '#define HAVE_PUTC_UNLOCKED' <<\!
 #include <stdio.h>
@@ -2575,7 +2541,13 @@ int main(void){
 }
 !
    fi # }}}
+fi
+if feat_yes SSL; then
+   feat_def SSL_RANDOM
+   feat_def SSL_ALL_ALGORITHMS
 else
+   feat_bail_required SSL_RANDOM
+   feat_bail_required SSL_ALL_ALGORITHMS
    echo '/* OPT_SSL=0 */' >> ${h}
 fi # }}} feat_yes SSL
 printf '#define VAL_SSL_FEATURES "#'"${VAL_SSL_FEATURES}"'"\n' >> ${h}
@@ -2586,6 +2558,51 @@ else
    OPT_SMIME=0
 fi
 feat_def SMIME
+
+# Native random check (had been delayed due to OPT_SSL_RAMDOM) {{{
+# XXX Add POSIX check once standardized
+if feat_yes NOEXTRANDOM; then
+   echo '#define HAVE_NOEXTRANDOM' >> ${h}
+elif feat_yes SSL_RANDOM; then
+   :
+elif link_check arc4random 'arc4random(3)' '#define HAVE_POSIX_RANDOM 0' << \!
+#include <stdlib.h>
+int main(void){
+   arc4random();
+   return 0;
+}
+!
+then
+   :
+elif link_check getrandom 'getrandom(2) (in sys/random.h)' \
+      '#define HAVE_GETRANDOM(B,S) getrandom(B, S, 0)
+      #define HAVE_GETRANDOM_HEADER <sys/random.h>' <<\!
+#include <sys/random.h>
+int main(void){
+   char buf[256];
+   getrandom(buf, sizeof buf, 0);
+   return 0;
+}
+!
+then
+   :
+elif link_check getrandom 'getrandom(2) (via syscall(2))' \
+      '#define HAVE_GETRANDOM(B,S) syscall(SYS_getrandom, B, S, 0)
+      #define HAVE_GETRANDOM_HEADER <sys/syscall.h>' <<\!
+#include <sys/syscall.h>
+int main(void){
+   char buf[256];
+   syscall(SYS_getrandom, buf, sizeof buf, 0);
+   return 0;
+}
+!
+then
+   :
+elif [ -n "${have_no_subsecond_time}" ]; then
+   msg 'ERROR: %s %s' 'without a native random' \
+      'one of clock_gettime(2) and gettimeofday(2) is required.'
+   config_exit 1
+fi # }}}
 
 feat_def SMTP
 feat_def POP3

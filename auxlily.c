@@ -56,7 +56,7 @@
 # include <locale.h>
 #endif
 
-#if defined HAVE_GETRANDOM && !n_RANDOM_USE_XSSL
+#if defined HAVE_GETRANDOM
 # include HAVE_GETRANDOM_HEADER
 #endif
 
@@ -71,7 +71,7 @@
 # endif
 #endif
 
-#if !defined HAVE_POSIX_RANDOM && !n_RANDOM_USE_XSSL
+#if !defined HAVE_POSIX_RANDOM && !defined HAVE_SSL_RANDOM
 union rand_state{
    struct rand_arc4{
       ui8_t _dat[256];
@@ -164,7 +164,7 @@ n__ERR_NUMBER_TO_MAPOFF
 #undef a_X
 };
 
-#if !defined HAVE_POSIX_RANDOM && !n_RANDOM_USE_XSSL
+#if !defined HAVE_POSIX_RANDOM && !defined HAVE_SSL_RANDOM
 static union rand_state *a_aux_rand;
 #endif
 
@@ -177,29 +177,25 @@ static size_t a_aux_err_linelen;
 
 /* Our ARC4 random generator with its completely unacademical pseudo
  * initialization (shall /dev/urandom fail) */
-#if !defined HAVE_POSIX_RANDOM && !n_RANDOM_USE_XSSL
+#if !defined HAVE_POSIX_RANDOM && !defined HAVE_SSL_RANDOM
 static void a_aux_rand_init(void);
 n_INLINE ui8_t a_aux_rand_get8(void);
-# ifndef HAVE_GETRANDOM
 static ui32_t a_aux_rand_weak(ui32_t seed);
-# endif
 #endif
 
 /* Find the descriptive mapping of an error number, or _ERR_INVAL */
 static struct a_aux_err_map const *a_aux_err_map_from_no(si32_t eno);
 
-#if !defined HAVE_POSIX_RANDOM && !n_RANDOM_USE_XSSL
+#if !defined HAVE_POSIX_RANDOM && !defined HAVE_SSL_RANDOM
 static void
 a_aux_rand_init(void){
-# ifndef HAVE_GETRANDOM
-#  ifdef HAVE_CLOCK_GETTIME
+# ifdef HAVE_CLOCK_GETTIME
    struct timespec ts;
-#  else
+# else
    struct timeval ts;
-#  endif
+# endif
    union {int fd; size_t i;} u;
    ui32_t seed, rnd;
-# endif
    NYD2_ENTER;
 
    a_aux_rand = n_alloc(sizeof *a_aux_rand);
@@ -220,6 +216,8 @@ a_aux_rand_init(void){
          ssize_t gr;
 
          gr = HAVE_GETRANDOM(&a_aux_rand->a._dat[o], i);
+         if(gr == -1 && n_err_no == n_ERR_NOSYS)
+            break;
          a_aux_rand->a._i = a_aux_rand->a._dat[a_aux_rand->a._dat[1] ^
                a_aux_rand->a._dat[84]];
          a_aux_rand->a._j = a_aux_rand->a._dat[a_aux_rand->a._dat[65] ^
@@ -228,7 +226,7 @@ a_aux_rand_init(void){
          if(gr > 0){
             i -= (size_t)gr;
             if(i == 0)
-               break;
+               goto jleave;
             o += (size_t)gr;
          }
          n_err(_("Not enough entropy for the PseudoRandomNumberGenerator, "
@@ -237,7 +235,7 @@ a_aux_rand_init(void){
       }
    }
 
-# else /* HAVE_GETRANDOM */
+# elif !defined HAVE_NOEXTRANDOM
    if((u.fd = open("/dev/urandom", O_RDONLY)) != -1){
       bool_t ok;
 
@@ -252,18 +250,21 @@ a_aux_rand_init(void){
       if(ok)
          goto jleave;
    }
+# endif
 
+   /* As a fallback, a homebrew seed */
+   n_err(_("PseudoRandomNumberGenerator: generating homebrew seed\n"));
    for(seed = (uintptr_t)a_aux_rand & UI32_MAX, rnd = 21; rnd != 0; --rnd){
       for(u.i = n_NELEM(a_aux_rand->b32); u.i-- != 0;){
          ui32_t t, k;
 
-#  ifdef HAVE_CLOCK_GETTIME
+# ifdef HAVE_CLOCK_GETTIME
          clock_gettime(CLOCK_REALTIME, &ts);
          t = (ui32_t)ts.tv_nsec;
-#  else
+# else
          gettimeofday(&ts, NULL);
          t = (ui32_t)ts.tv_usec;
-#  endif
+# endif
          if(rnd & 1)
             t = (t >> 16) | (t << 16);
          a_aux_rand->b32[u.i] ^= a_aux_rand_weak(seed ^ t);
@@ -281,7 +282,6 @@ a_aux_rand_init(void){
    for(u.i = 5 * sizeof(a_aux_rand->b8); u.i != 0; --u.i)
       a_aux_rand_get8();
 jleave:
-# endif /* !HAVE_GETRANDOM */
    NYD2_LEAVE;
 }
 
@@ -296,7 +296,6 @@ a_aux_rand_get8(void){
    return a_aux_rand->a._dat[(ui8_t)(si + sj)];
 }
 
-# ifndef HAVE_GETRANDOM
 static ui32_t
 a_aux_rand_weak(ui32_t seed){
    /* From "Random number generators: good ones are hard to find",
@@ -314,8 +313,7 @@ a_aux_rand_weak(ui32_t seed){
       seed += SI32_MAX;
    return seed;
 }
-# endif /* HAVE_GETRANDOM */
-#endif /* !HAVE_POSIX_RANDOM && !n_RANDOM_USE_XSSL */
+#endif /* !HAVE_POSIX_RANDOM && !HAVE_SSL_RANDOM */
 
 static struct a_aux_err_map const *
 a_aux_err_map_from_no(si32_t eno){
@@ -1206,17 +1204,21 @@ n_random_create_buf(char *dat, size_t len, ui32_t *reprocnt_or_null){
       if(n_poption & n_PO_D_V){
          char const *prngn;
 
-#if n_RANDOM_USE_XSSL
-         prngn = "*SSL RAND_*";
-#elif defined HAVE_POSIX_RANDOM
+#if defined HAVE_POSIX_RANDOM
          prngn = "POSIX/arc4random";
+#elif defined HAVE_SSL_RANDOM
+         prngn = "*SSL RAND_*";
+#elif defined HAVE_GETRANDOM
+         prngn = "getrandom(2/3) + builtin ARC4";
+#elif !defined HAVE_NOEXTRANDOM
+         prngn = "/dev/urandom + builtin ARC4";
 #else
          prngn = "builtin ARC4";
 #endif
-         n_err(_("Setting up PseudoRandomNumberGenerator: %s\n"), prngn);
+         n_err(_("P(seudo)R(andomNumber)G(enerator): %s\n"), prngn);
       }
 
-#if !defined HAVE_POSIX_RANDOM && !n_RANDOM_USE_XSSL
+#if !defined HAVE_POSIX_RANDOM && !defined HAVE_SSL_RANDOM
       a_aux_rand_init();
 #endif
    }
@@ -1240,7 +1242,7 @@ jinc1:
    indat = n_lofi_alloc(inlen +1);
 
    if(!(n_psonce & n_PSO_REPRODUCIBLE) || reprocnt_or_null == NULL){
-#if n_RANDOM_USE_XSSL
+#ifdef HAVE_SSL_RANDOM
       ssl_rand_bytes(indat, inlen);
 #elif !defined HAVE_POSIX_RANDOM
       for(i = inlen; i-- > 0;)
