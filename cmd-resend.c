@@ -133,7 +133,7 @@ a_crese_reply_to(struct message *mp){
       sp = n_lofi_alloc(l);
 
       snprintf(sp, l, tr, rt->n_name, (rt->n_flink != NULL ? "..." : n_empty));
-      if(quadify(cp, UIZ_MAX, sp, TRU1) <= FAL0)
+      if(n_quadify(cp, UIZ_MAX, sp, TRU1) <= FAL0)
          rt = NULL;
 
       n_lofi_free(sp);
@@ -172,7 +172,7 @@ a_crese_mail_followup_to(struct message *mp){
 
       snprintf(sp, l, tr, mft->n_name,
          (mft->n_flink != NULL ? "..." : n_empty));
-      if(quadify(cp, UIZ_MAX, sp, TRU1) <= FAL0)
+      if(n_quadify(cp, UIZ_MAX, sp, TRU1) <= FAL0)
          mft = NULL;
 
       n_lofi_free(sp);

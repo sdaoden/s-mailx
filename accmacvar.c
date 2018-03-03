@@ -2531,8 +2531,10 @@ c_localopts(void *vp){
       goto jleave;
    }
 
+   if((rv = n_boolify(*argv, UIZ_MAX, FAL0)) < FAL0)
+      goto jesynopsis;
    a_amv_lopts->as_loflags &= ~alm;
-   if(boolify(*argv, UIZ_MAX, FAL0) > 0)
+   if(rv > FAL0)
       a_amv_lopts->as_loflags |= alf;
    rv = 0;
 jleave:

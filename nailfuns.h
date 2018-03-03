@@ -395,19 +395,18 @@ FL bool_t n_idna_to_ascii(struct n_string *out, char const *ibuf, size_t ilen);
 FL char *n_random_create_buf(char *dat, size_t len, ui32_t *reprocnt_or_null);
 FL char *n_random_create_cp(size_t len, ui32_t *reprocnt_or_null);
 
-/* Check whether the argument string is a true (1) or false (0) boolean, or an
- * invalid string, in which case -1 is returned; if emptyrv is not -1 then it,
- * treated as a boolean, is used as the return value shall inbuf be empty.
+/* Check whether the argument string is a TRU1 or FAL0 boolean, or an invalid
+ * string, in which case TRUM1 is returned.
+ * If the input buffer is empty emptyrv is used as the return: if it is GE
+ * FAL0 it will be made a binary boolean, otherwise TRU2 is returned.
  * inlen may be UIZ_MAX to force strlen() detection */
-FL si8_t       boolify(char const *inbuf, uiz_t inlen, si8_t emptyrv);
+FL bool_t n_boolify(char const *inbuf, uiz_t inlen, bool_t emptyrv);
 
-/* Dig a "quadoption" in inbuf (possibly going through getapproval() in
- * interactive mode).  Returns a boolean or -1 if inbuf content is invalid;
- * if emptyrv is not -1 then it,  treated as a boolean, is used as the return
- * value shall inbuf be empty.  If prompt is set it is printed first if intera.
- * inlen may be UIZ_MAX to force strlen() detection */
-FL si8_t       quadify(char const *inbuf, uiz_t inlen, char const *prompt,
-                  si8_t emptyrv);
+/* Dig a "quadoption" in inbuf, possibly going through getapproval() in
+ * interactive mode, in which case prompt is printed first if set.
+.  Just like n_boolify() otherwise */
+FL bool_t n_quadify(char const *inbuf, uiz_t inlen, char const *prompt,
+            bool_t emptyrv);
 
 /* Is the argument "all" (case-insensitive) or "*" */
 FL bool_t n_is_all_or_aster(char const *name);
@@ -2537,7 +2536,7 @@ FL void        uncollapse1(struct message *mp, int always);
 
 /* Return whether user says yes, on STDIN if interactive.
  * Uses noninteract_default, the return value for non-interactive use cases,
- * as a hint for boolify() and chooses the yes/no string to append to prompt
+ * as a hint for n_boolify() and chooses the yes/no string to append to prompt
  * accordingly.  If prompt is NULL "Continue" is used instead.
  * Handles+reraises SIGINT */
 FL bool_t getapproval(char const *prompt, bool_t noninteract_default);

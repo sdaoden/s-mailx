@@ -121,10 +121,17 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
    safe_signal(SIGINT, &a_tty__acthdl);
    safe_signal(SIGHUP, &a_tty__acthdl);
 
-   if (n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, prompt,
-         &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL,NULL) >= 0)
-      rv = (boolify(termios_state.ts_linebuf, UIZ_MAX,
-            noninteract_default) > 0);
+   while(n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, prompt,
+            &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL,NULL
+         ) >= 0){
+      bool_t x;
+
+      x = n_boolify(termios_state.ts_linebuf, UIZ_MAX, noninteract_default);
+      if(x >= FAL0){
+         rv = x;
+         break;
+      }
+   }
 jrestore:
    safe_signal(SIGHUP, ohup);
    safe_signal(SIGINT, oint);

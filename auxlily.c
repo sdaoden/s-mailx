@@ -1316,75 +1316,71 @@ n_random_create_cp(size_t len, ui32_t *reprocnt_or_null){
    return dat;
 }
 
-FL si8_t
-boolify(char const *inbuf, uiz_t inlen, si8_t emptyrv)
-{
-   si8_t rv;
-   NYD_ENTER;
-
+FL bool_t
+n_boolify(char const *inbuf, uiz_t inlen, bool_t emptyrv){
+   bool_t rv;
+   NYD2_ENTER;
    assert(inlen == 0 || inbuf != NULL);
 
-   if (inlen == UIZ_MAX)
+   if(inlen == UIZ_MAX)
       inlen = strlen(inbuf);
 
-   if (inlen == 0)
-      rv = (emptyrv >= 0) ? (emptyrv == 0 ? 0 : 1) : -1;
-   else {
-      if ((inlen == 1 && (*inbuf == '1' || *inbuf == 'y' || *inbuf == 'Y')) ||
+   if(inlen == 0)
+      rv = (emptyrv >= FAL0) ? (emptyrv == FAL0 ? FAL0 : TRU1) : TRU2;
+   else{
+      if((inlen == 1 && (*inbuf == '1' || *inbuf == 'y' || *inbuf == 'Y')) ||
             !ascncasecmp(inbuf, "true", inlen) ||
             !ascncasecmp(inbuf, "yes", inlen) ||
             !ascncasecmp(inbuf, "on", inlen))
-         rv = 1;
-      else if ((inlen == 1 &&
+         rv = TRU1;
+      else if((inlen == 1 &&
                (*inbuf == '0' || *inbuf == 'n' || *inbuf == 'N')) ||
             !ascncasecmp(inbuf, "false", inlen) ||
             !ascncasecmp(inbuf, "no", inlen) ||
             !ascncasecmp(inbuf, "off", inlen))
-         rv = 0;
-      else {
+         rv = FAL0;
+      else{
          ui64_t ib;
 
          if((n_idec_buf(&ib, inbuf, inlen, 0, 0, NULL
                   ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
                ) != n_IDEC_STATE_CONSUMED)
-            rv = -1;
+            rv = TRUM1;
          else
             rv = (ib != 0);
       }
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
-FL si8_t
-quadify(char const *inbuf, uiz_t inlen, char const *prompt, si8_t emptyrv)
-{
-   si8_t rv;
-   NYD_ENTER;
-
+FL bool_t
+n_quadify(char const *inbuf, uiz_t inlen, char const *prompt, bool_t emptyrv){
+   bool_t rv;
+   NYD2_ENTER;
    assert(inlen == 0 || inbuf != NULL);
 
-   if (inlen == UIZ_MAX)
+   if(inlen == UIZ_MAX)
       inlen = strlen(inbuf);
 
-   if (inlen == 0)
-      rv = (emptyrv >= 0) ? (emptyrv == 0 ? 0 : 1) : -1;
-   else if ((rv = boolify(inbuf, inlen, -1)) < 0 &&
+   if(inlen == 0)
+      rv = (emptyrv >= FAL0) ? (emptyrv == FAL0 ? FAL0 : TRU1) : TRU2;
+   else if((rv = n_boolify(inbuf, inlen, emptyrv)) < FAL0 &&
          !ascncasecmp(inbuf, "ask-", 4) &&
-         (rv = boolify(inbuf + 4, inlen - 4, -1)) >= 0 &&
+         (rv = n_boolify(&inbuf[4], inlen - 4, emptyrv)) >= FAL0 &&
          (n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT))
       rv = getapproval(prompt, rv);
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
 FL bool_t
 n_is_all_or_aster(char const *name){
    bool_t rv;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    rv = ((name[0] == '*' && name[1] == '\0') || !asccasecmp(name, "all"));
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 

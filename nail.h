@@ -533,7 +533,7 @@ typedef char            wc_t; /* Yep: really 8-bit char */
 # define n_WC_C(X)      X
 #endif
 
-enum {FAL0, TRU1, TRUM1 = -1};
+enum {FAL0, TRU1, TRU2, TRUM1 = -1};
 typedef si8_t           bool_t;
 
 /* Add shorter aliases for "normal" integers TODO v15 -> n_XX_t */
