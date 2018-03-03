@@ -4446,6 +4446,30 @@ t_behave_xxxheads_rfc2047() {
          'Schnödes "Früchtchen" <do@du> (Hä!)'
    check behave:xxxheads_rfc2047-7 0 "${MBOX}" '800505986 368'
 
+   # RFC 2047 in an address field, and iconv involved
+   if have_feat iconv; then
+      ${rm} -f "${MBOX}"
+      ${cat} > ./.trebox <<_EOT
+From zaza@exam.ple  Fri Mar  2 21:31:56 2018
+Date: Fri, 2 Mar 2018 20:31:45 +0000
+From: z=?iso-8859-1?Q?=E1?=za <zaza@exam.ple>
+To: dude <dude@exam.ple>
+Subject: houston(...)
+Message-ID: <abra@1>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+
+_EOT
+      echo reply | ${MAILX} ${ARGS} ${ADDARG_UNI} \
+         -Sfullnames -Sreply-in-same-charset \
+         -Smta=./.tsendmail.sh -Rf ./.trebox
+      check behave:xxxheads_rfc2047-8 0 "${MBOX}" '2821484185 280'
+   else
+      echo 'behave:xxxheads_rfc2047-8: iconv unsupported, skipped'
+   fi
+
    t_epilog
 }
 
