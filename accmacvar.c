@@ -2520,6 +2520,7 @@ c_localopts(void *vp){
    else if(is_asccaseprefix(argv[-1], "call-fixate"))
       alf = a_AMV_LF_CALL_FIXATE, alm = a_AMV_LF_CALL_MASK;
    else{
+jesynopsis:
       n_err(_("Synopsis: localopts: [<scope|call|call-fixate>] <boolean>\n"));
       goto jleave;
    }
