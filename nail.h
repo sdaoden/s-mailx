@@ -1591,6 +1591,7 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_b_header,                        /* {i3val=TRU1} */
    ok_v_headline,
    ok_v_headline_bidi,
+   ok_b_headline_plain,
    ok_v_history_file,
    ok_b_history_gabby,
    ok_b_history_gabby_persist,

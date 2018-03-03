@@ -9177,13 +9177,17 @@ A plain percent sign.
 a space character but for the current message
 .Pf ( Dq dot ) ,
 for which it expands to
-.Ql > .
+.Ql >
+(dependent on
+.Va headline-plain ) .
 .It Ql %<
 .Dq Dotmark :
 a space character but for the current message
 .Pf ( Dq dot ) ,
 for which it expands to
-.Ql < .
+.Ql <
+(dependent on
+.Va headline-plain ) .
 .It Ql %$
 \*(OP The spam score of the message, as has been classified via the
 command
@@ -9209,7 +9213,8 @@ The indenting level in threaded mode.
 The address of the message sender.
 .It Ql %i
 The message thread tree structure.
-(Note that this format does not support a field width.)
+(Note that this format does not support a field width, and honours
+.Va headline-plain . )
 .It Ql %l
 The number of lines of the message, if available.
 .It Ql %m
@@ -9238,7 +9243,8 @@ if
 .Va bsdcompat
 is set.
 Also see
-.Va attrlist
+.Va attrlist ,
+.Va headline-plain
 and
 .Va headline-bidi .
 .
@@ -9285,6 +9291,13 @@ and
 .Ql 3
 select Unicode 1.1 support (U+200E, LEFT-TO-RIGHT MARK); the latter
 again reserves room for two spaces in addition.
+.
+.Mx
+.It Va headline-plain
+\*(BO On Unicode (UTF-8) aware terminals enhanced graphical symbols are
+used by default for certain entries of
+.Va headline .
+If this variable is set only basic US-ASCII symbols will be used.
 .
 .Mx
 .It Va history-file

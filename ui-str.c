@@ -420,36 +420,6 @@ prout(char const *s, size_t sz, FILE *fp)
    return n;
 }
 
-FL size_t
-putuc(int u, int c, FILE *fp)
-{
-   size_t rv;
-   NYD_ENTER;
-   n_UNUSED(u);
-
-#ifdef HAVE_NATCH_CHAR
-   if ((n_psonce & n_PSO_UNICODE) && (u & ~(wchar_t)0177)) {
-      char mbb[MB_LEN_MAX];
-      int i, n;
-
-      if ((n = wctomb(mbb, u)) > 0) {
-         rv = wcwidth(u);
-         for (i = 0; i < n; ++i)
-            if (putc(mbb[i] & 0377, fp) == EOF) {
-               rv = 0;
-               break;
-            }
-      } else if (n == 0)
-         rv = (putc('\0', fp) != EOF);
-      else
-         rv = 0;
-   } else
-#endif
-      rv = (putc(c, fp) != EOF);
-   NYD_LEAVE;
-   return rv;
-}
-
 FL bool_t
 bidi_info_needed(char const *bdat, size_t blen)
 {

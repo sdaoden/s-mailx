@@ -2621,10 +2621,6 @@ FL size_t      delctrl(char *cp, size_t len);
 FL char *      prstr(char const *s);
 FL int         prout(char const *s, size_t sz, FILE *fp);
 
-/* Print out a Unicode character or a substitute for it, return 0 on error or
- * wcwidth() (or 1) on success */
-FL size_t      putuc(int u, int c, FILE *fp);
-
 /* Check whether bidirectional info maybe needed for blen bytes of bdat */
 FL bool_t      bidi_info_needed(char const *bdat, size_t blen);
 
