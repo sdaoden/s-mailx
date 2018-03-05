@@ -6,6 +6,86 @@ S - n a i l / S - m a i l x  N e w s
   will scroll to the manual's Point-Of-Interest, and pointing
   a web- browser to the "#ANCHOR" of the online manual works.
 
+v14.9.8 ("Marsh tit savours first spring sun") 2018-03-05
+---------------------------------------------------------
+
+A bugfix release.
+I hope with this the fallout of the Christmas 2016 "address the
+Dr. Problem workshop" has been fully resolved and thus MIME for
+header address fields, even if iconv(3) is involved, been fully
+restored!  We have even more tests for this now.
+
+Sorry for the inconvenience!
+
+Credits, in order of commit appearance: Slavko, Matej Mužila,
+Rich Felker, Simon McVittie, Paride Legovini, Cág,
+Predrag Punosevac.
+
+We welcom Slavko, Matej Mužila, Rich Felker and Simon McVittie in
+THANKS.
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- The v14.9.* series called *pipe-TYPE/SUBTYPE*#? handlers in
+  display or quote mode with CR (carriage-return) bytes stripped
+  because of a missing output file comparison check, which broke
+  binary formats etc.  (Slavko)
+
+- We now have native support for Libidn2.  (Matej Mužila)
+
+- uname(1) is now hookable by setting the shell variable uname
+  when calling make ("uname=MY-UNAME make config" etc.).
+  (Simon McVittie)
+
+  We no longer bake the kernel version into the binary, and
+  `version'#? includes uname(2) output.
+  (Simon McVittie, Paride Legovini)
+
+- We now support a fallback P(seudo)R(andomNumber)G(enerator)
+  initialization even if getrandom(2)/getrandom(3) has been found
+  by the configuration, just like we do for "/dev/urandom" usage.
+  This does not affect systems with arc4random(3) or OpenSSL
+  random usage.  (David Čepelík, Simon McVittie)
+
+  A new OPT_SSL_RANDOM make.rc variable, by default initialized to
+  the value of OPT_SSL.
+
+ChangeLog
+^^^^^^^^^
+
+- `~@'#? list-edit behaviour in -##? batch mode was broken.
+
+- Character set names will now undergo generic normalization,
+  including stripping of iconv(3) //SUFFIXes.
+
+git(1) shortlog (edited)
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Steffen Nurpmeso (33):
+e9fdc08a a_amv_var_check_vips(): fix comparison (Slavko)
+dd6e4084 THANKS: Slavko
+caa5de77 make-config.sh: tweak new iconv(3) replacement warning (Slavko)
+9e1c55f6 Fix ~@ list-edit behaviour in -# batch mode; add ~@ test
+69225c69 Fix: do not strip CRs when "displaying" through a *pipe-** handler
+        (Slavko)
+940d84f2 Add support for Libidn2 (Matej Mužila)..
+38f33e37 THANKS: Matej Mužila
+1d67806c Our iconv wrapper was completely broken!  Now fixed (Rich Felker)..
+a27d23ef cc-test.sh: fix t_behave_iconv_mbyte_base64 (Rich Felker)..
+70a18a40 THANKS: Rich Felker
+a46c4a0a Do not bake kernel version into binary (Simon McVittie, Paride
+        Legovini)..
+7f848761 THANKS: Simon McVittie
+19673cbd Make uname(1) hookable (Simon McVittie)
+1a488de9 Add OPT_SSL_RANDOM+, "fix" getrandom(2) (David Čepelík, Simon
+        McVittie)..
+8a9237c5 Fix n_boolify() with empty argument
+ac67d755 FIX: again fallout of [0ede309c], not covered by [ffd29558] (Cág)..
+dd6adbb3 IMAP does not need ICONV if ALWAYS_UNICODE_LOCALE (Predrag Punosevac)
+c86a5ec6 `version': support vput and include uname(2) output (Simon McVittie)
+1b018a36 Add *headline-plain* to force ASCII graphics (Cág)
+
 v14.9.7 ("Marsh tit patiently scraping bark") 2018-02-16
 --------------------------------------------------------
 
