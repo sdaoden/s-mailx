@@ -196,21 +196,8 @@ a_sendout_put_ct(FILE *fo, char const *contenttype, char const *charset){
 
    /* C99 */{
       int i;
-      char *lcs;
-      size_t l;
-
-      l = strlen(charset);
-      lcs = n_lofi_alloc(l +1);
-
-      for(l = 0; *charset != '\0'; ++l, ++charset)
-         lcs[l] = lowerconv(*charset);
-      lcs[l] = '\0';
-      charset = lcs;
 
       i = fprintf(fo, " charset=%s", charset);
-
-      n_lofi_free(lcs);
-
       if(i < 0)
          goto jerr;
       rv += i;

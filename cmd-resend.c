@@ -262,7 +262,8 @@ jlink:
 static void
 a_crese_make_ref_and_cs(struct message *mp, struct header *head) /* TODO ASAP */
 {
-   char *oldref, *oldmsgid, *newref, *cp;
+   char const *ccp;
+   char *oldref, *oldmsgid, *newref;
    size_t oldreflen = 0, oldmsgidlen = 0, reflen;
    unsigned i;
    struct name *n;
@@ -310,14 +311,11 @@ a_crese_make_ref_and_cs(struct message *mp, struct header *head) /* TODO ASAP */
    n->n_blink = NULL;
    head->h_ref = n;
    if (ok_blook(reply_in_same_charset) &&
-         (cp = hfield1("content-type", mp)) != NULL){
-      if((head->h_charset = cp = mime_param_get("charset", cp)) != NULL){
-         char *cpo, c;
-
-         for(cpo = cp; (c = *cpo) != '\0'; ++cpo)
-            *cpo = lowerconv(c);
-
-         head->h_charset = n_charsetalias_expand(cp);
+         (ccp = hfield1("content-type", mp)) != NULL){
+      if((head->h_charset = ccp = mime_param_get("charset", ccp)) != NULL){
+         if((ccp = n_iconv_normalize_name(ccp)) != NULL)
+            ccp = n_charsetalias_expand(ccp);
+         head->h_charset = ccp;
       }
    }
 jleave:

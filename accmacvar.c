@@ -924,6 +924,13 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
       switch(okey){
       default:
          break;
+      case ok_v_charset_7bit:
+      case ok_v_charset_8bit:
+      case ok_v_charset_unknown_8bit:
+      case ok_v_ttycharset:
+         if((*val = n_iconv_normalize_name(*val)) == NULL)
+            ok = FAL0;
+         break;
       case ok_v_customhdr:{
          char const *vp;
          char *buf;
@@ -1003,6 +1010,26 @@ jefrom:
                ok = FAL0;
                break;
             }
+      }  break;
+      case ok_v_sendcharsets:{
+         struct n_string s, *sp = &s;
+         char *csv, *cp;
+
+         sp = n_string_creat_auto(sp);
+         csv = savestr(*val);
+
+         while((cp = n_strsep(&csv, ',', TRU1)) != NULL){
+            if((cp = n_iconv_normalize_name(cp)) == NULL){
+               ok = FAL0;
+               break;
+            }
+            if(sp->s_len > 0)
+               sp = n_string_push_c(sp, ',');
+            sp = n_string_push_cp(sp, cp);
+         }
+
+         *val = n_string_cp(sp);
+         /* n_string_drop_ownership(sp); */
       }  break;
       case ok_v_TMPDIR:
          if(!n_is_dir(*val, TRU1)){

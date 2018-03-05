@@ -1211,6 +1211,42 @@ j0:
  * Our iconv(3) wrapper
  */
 
+FL char *
+n_iconv_normalize_name(char const *cset){
+   char *cp, c, *tcp, tc;
+   bool_t any;
+   NYD2_ENTER;
+
+   /* We need to strip //SUFFIXes off, we want to normalize to all lowercase,
+    * and we perform some slight content testing, too */
+   for(any = FAL0, cp = n_UNCONST(cset); (c = *cp) != '\0'; ++cp){
+      if(!alnumchar(c) && !punctchar(c)){
+         n_err(_("Invalid character set name %s\n"),
+            n_shexp_quote_cp(cset, FAL0));
+         cset = NULL;
+         goto jleave;
+      }else if(c == '/')
+         break;
+      else if(upperchar(c))
+         any = TRU1;
+   }
+
+   if(any || c != '\0'){
+      cp = savestrbuf(cset, PTR2SIZE(cp - cset));
+      for(tcp = cp; (tc = *tcp) != '\0'; ++tcp)
+         *tcp = lowerconv(tc);
+
+      if(c != '\0' && (n_poption & n_PO_D_V))
+         n_err(_("Stripped off character set suffix: %s -> %s\n"),
+            n_shexp_quote_cp(cset, FAL0), n_shexp_quote_cp(cp, FAL0));
+
+      cset = cp;
+   }
+jleave:
+   NYD2_LEAVE;
+   return n_UNCONST(cset);
+}
+
 #ifdef HAVE_ICONV
 FL iconv_t
 n_iconv_open(char const *tocode, char const *fromcode){

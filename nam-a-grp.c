@@ -2439,32 +2439,38 @@ c_charsetalias(void *vp){
       }
    }else for(; *argv != NULL; argv += 2){
       /* Because one hardly ever redefines, anything is stored in one chunk */
-      char const *ccp;
       char *cp, c;
-      size_t l;
+      size_t dstl;
+      char const *dst, *src;
 
-      if(argv[1] == NULL){
+      if((dst = argv[1]) == NULL){
          n_err(_("Synopsis: charsetalias: <charset> <charset-alias>\n"));
          rv = 1;
          break;
+      }else if((dst = n_iconv_normalize_name(dst)) == NULL){
+         n_err(_("charsetalias: invalid target charset %s\n"),
+            n_shexp_quote_cp(argv[1], FAL0));
+         rv = 1;
+         continue;
+      }else if((src = n_iconv_normalize_name(argv[0])) == NULL){
+         n_err(_("charsetalias: invalid source charset %s\n"),
+            n_shexp_quote_cp(argv[0], FAL0));
+         rv = 1;
+         continue;
       }
 
       /* Delete the old one, if any; don't get fooled to remove them all */
-      ccp = argv[0];
-      if(ccp[0] != '*' || ccp[1] != '\0')
-         a_nag_group_del(a_NAG_T_CHARSETALIAS, ccp);
+      if(src[0] != '*' || src[1] != '\0')
+         a_nag_group_del(a_NAG_T_CHARSETALIAS, src);
 
-      l = strlen(argv[1]) +1;
-      if((ngp = a_nag_group_fetch(a_NAG_T_CHARSETALIAS, ccp, l)) == NULL){
+      dstl = strlen(dst) +1;
+      if((ngp = a_nag_group_fetch(a_NAG_T_CHARSETALIAS, src, dstl)) == NULL){
          n_err(_("Failed to create storage for charsetalias: %s\n"),
-            n_shexp_quote_cp(ccp, FAL0));
+            n_shexp_quote_cp(src, FAL0));
          rv = 1;
       }else{
          a_NAG_GP_TO_SUBCLASS(cp, ngp);
-
-         for(ccp = argv[1]; (c = *ccp++) != '\0';)
-            *cp++ = lowerconv(c);
-         *cp = '\0';
+         memcpy(cp, dst, dstl);
       }
    }
    NYD_LEAVE;
@@ -2473,16 +2479,20 @@ c_charsetalias(void *vp){
 
 FL int
 c_uncharsetalias(void *vp){
-   char **argv;
+   char **argv, *cp;
    int rv;
    NYD_ENTER;
 
    rv = 0;
    argv = vp;
 
-   do if(!a_nag_group_del(a_NAG_T_CHARSETALIAS, *argv)){
-      n_err(_("No such `charsetalias': %s\n"), n_shexp_quote_cp(*argv, FAL0));
-      rv = 1;
+   do{
+      if((cp = n_iconv_normalize_name(*argv)) == NULL ||
+            !a_nag_group_del(a_NAG_T_CHARSETALIAS, cp)){
+         n_err(_("No such `charsetalias': %s\n"),
+            n_shexp_quote_cp(*argv, FAL0));
+         rv = 1;
+      }
    }while(*++argv != NULL);
    NYD_LEAVE;
    return rv;

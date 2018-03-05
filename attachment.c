@@ -256,7 +256,6 @@ jrefexp:
             char *nfp, c;
 
             nfp = savestrbuf(file, PTR2SIZE(cp - file));
-            file = nfp;
 
             for(ncp = ++cp; (c = *cp) != '\0'; ++cp)
                if(!alnumchar(c) && !punctchar(c))
@@ -264,8 +263,13 @@ jrefexp:
                else if(c == '#'){
                   if(incs == NULL){
                      i = PTR2SIZE(cp - ncp);
-                     incs = (i == 0 || (i == 1 && ncp[0] == '-'))
-                           ? (char*)-1 : savestrbuf(ncp, i);
+                     if(i == 0 || (i == 1 && ncp[0] == '-'))
+                        incs = (char*)-1;
+                     else if((incs = n_iconv_normalize_name(savestrbuf(ncp, i))
+                           ) == NULL){
+                        e = n_ERR_INVAL;
+                        goto jerr_fopen;
+                     }
                      ncp = &cp[1];
                   }else
                      break;
@@ -276,8 +280,11 @@ jrefexp:
                i = PTR2SIZE(cp - ncp);
                if(i == 0 || (i == 1 && ncp[0] == '-'))
                   xp = (char*)-1;
-               else
-                  xp = savestrbuf(ncp, i);
+               else if((xp = n_iconv_normalize_name(savestrbuf(ncp, i))
+                     ) == NULL){
+                  e = n_ERR_INVAL;
+                  goto jerr_fopen;
+               }
                if(incs == NULL)
                   incs = xp;
                else
@@ -287,6 +294,7 @@ jrefexp:
             }
          }
 
+jerr_fopen:
          n_err(_("Failed to access attachment %s: %s\n"),
             n_shexp_quote_cp(file, FAL0), n_err_to_doc(e));
          aerr = n_ATTACH_ERR_FILE_OPEN;

@@ -1682,7 +1682,8 @@ FL int         c_unshortcut(void *v);
 
 FL char const * shortcut_expand(char const *str);
 
-/* `(un)?charsetalias', and try to expand a charset, return mapping or itself */
+/* `(un)?charsetalias', and try to expand a charset, return mapping or itself.
+ * The charset to expand must have gone through iconv_normalize_name() */
 FL int c_charsetalias(void *vp);
 FL int c_uncharsetalias(void *vp);
 
@@ -2419,6 +2420,10 @@ FL size_t      n_utf32_to_utf8(ui32_t c, char *buf);
 
 /* Our iconv(3) wrappers */
 
+/* Returns a newly n_autorec_alloc()ated thing if there were adjustments.
+ * Return value is always smaller or of equal size.
+ * NULL will be returned if cset is an invalid character set name */
+FL char *n_iconv_normalize_name(char const *cset);
 #ifdef HAVE_ICONV
 FL iconv_t     n_iconv_open(char const *tocode, char const *fromcode);
 /* If *cd* == *iconvd*, assigns -1 to the latter */

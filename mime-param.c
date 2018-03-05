@@ -869,19 +869,18 @@ mime_param_create(struct str *result, char const *name, char const *value)
 
    memset(&top, 0, sizeof top);
    top.mpb_result = result;
-   if ((i = strlen(top.mpb_name = name)) > UI32_MAX)
+   if ((i = strlen(top.mpb_name = name)) >= UI32_MAX)
       goto jleave;
    top.mpb_name_len = (ui32_t)i;
-   if ((i = strlen(top.mpb_value = value)) > UI32_MAX)
+   if ((i = strlen(top.mpb_value = value)) >= UI32_MAX)
       goto jleave;
    top.mpb_value_len = (ui32_t)i;
-   if ((i = strlen(name = ok_vlook(ttycharset))) > UI32_MAX)
+   if ((i = strlen(name = ok_vlook(ttycharset))) >= UI32_MAX)
       goto jleave;
-   top.mpb_charset = salloc((top.mpb_charset_len = (ui32_t)i) +1);
-   for (i = 0; *name != '\0'; ++i, ++name)
-      ((char*)n_UNCONST(top.mpb_charset))[i] = lowerconv(*name);
-   ((char*)n_UNCONST(top.mpb_charset))[i] = '\0';
-   if(top.mpb_charset_len >= 4 && !ascncasecmp(top.mpb_charset, "utf", 3) &&
+   top.mpb_charset_len = (ui32_t)i;
+   top.mpb_charset = salloc(++i);
+   memcpy(n_UNCONST(top.mpb_charset), name, i);
+   if(top.mpb_charset_len >= 4 && !memcmp(top.mpb_charset, "utf", 3) &&
          ((top.mpb_charset[3] == '-' && top.mpb_charset[4] == '8' &&
           top.mpb_charset_len == 5) || (top.mpb_charset[3] == '8' &&
           top.mpb_charset_len == 4)))

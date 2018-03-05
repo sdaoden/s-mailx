@@ -96,8 +96,11 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
       ip->m_ct_type_plain = "text/plain";
    ip->m_ct_type_usr_ovwr = NULL;
 
-   if (ip->m_ct_type != NULL)
-      ip->m_charset = mime_param_get("charset", ip->m_ct_type);
+   if(ip->m_ct_type != NULL &&
+         (ip->m_charset = cp = mime_param_get("charset", ip->m_ct_type)
+            ) != NULL)
+      ip->m_charset = n_iconv_normalize_name(cp);
+
    if (ip->m_charset == NULL)
       ip->m_charset = ok_vlook(charset_7bit);
    else
