@@ -214,8 +214,13 @@ n_attachment_append(struct attachment *aplist, char const *file,
 #endif
    aerr = n_ATTACH_ERR_NONE;
    nap = NULL;
-   file_user = savestr(file); /* TODO recreate after fexpand()!?! */
    incs = oucs = NULL;
+
+   if(*file == '\0'){
+      aerr = n_ATTACH_ERR_OTHER;
+      goto jleave;
+   }
+   file_user = savestr(file); /* TODO recreate after fexpand()!?! */
 
    if((msgno = a_attachment_is_msg(file)) < 0){
       int e;
@@ -251,7 +256,6 @@ jrefexp:
             char *nfp, c;
 
             nfp = savestrbuf(file, PTR2SIZE(cp - file));
-            file = nfp;
 
             for(ncp = ++cp; (c = *cp) != '\0'; ++cp)
                if(!alnumchar(c) && !punctchar(c))
@@ -259,8 +263,13 @@ jrefexp:
                else if(c == '#'){
                   if(incs == NULL){
                      i = PTR2SIZE(cp - ncp);
-                     incs = (i == 0 || (i == 1 && ncp[0] == '-'))
-                           ? (char*)-1 : savestrbuf(ncp, i);
+                     if(i == 0 || (i == 1 && ncp[0] == '-'))
+                        incs = (char*)-1;
+                     else if((incs = n_iconv_normalize_name(savestrbuf(ncp, i))
+                           ) == NULL){
+                        e = n_ERR_INVAL;
+                        goto jerr_fopen;
+                     }
                      ncp = &cp[1];
                   }else
                      break;
@@ -271,8 +280,11 @@ jrefexp:
                i = PTR2SIZE(cp - ncp);
                if(i == 0 || (i == 1 && ncp[0] == '-'))
                   xp = (char*)-1;
-               else
-                  xp = savestrbuf(ncp, i);
+               else if((xp = n_iconv_normalize_name(savestrbuf(ncp, i))
+                     ) == NULL){
+                  e = n_ERR_INVAL;
+                  goto jerr_fopen;
+               }
                if(incs == NULL)
                   incs = xp;
                else
@@ -282,6 +294,7 @@ jrefexp:
             }
          }
 
+jerr_fopen:
          n_err(_("Failed to access attachment %s: %s\n"),
             n_shexp_quote_cp(file, FAL0), n_err_to_doc(e));
          aerr = n_ATTACH_ERR_FILE_OPEN;
@@ -513,9 +526,13 @@ n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
          }
       }
 
-      if(aplist != NULL)
+      if(aplist != NULL){
          aplist = aplist->a_flink;
-      else if(ap == NULL)
+         /* In non-interactive or batch mode an empty line ends processing */
+         if((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_BATCH_FLAG))
+            continue;
+      }
+      if(ap == NULL)
          break;
    }
    NYD_LEAVE;
@@ -535,6 +552,14 @@ n_attachment_list_print(struct attachment const *aplist, FILE *fp){
       if(ap->a_msgno > 0)
          fprintf(fp, "#%" PRIu32 ". message/rfc822: %u\n", attno, ap->a_msgno);
       else{
+         char const *incs, *oucs;
+
+         if(!(n_psonce & n_PSO_REPRODUCIBLE)){
+            incs = ap->a_input_charset;
+            oucs = ap->a_charset;
+         }else
+            incs = oucs = n_reproducible_name;
+
          fprintf(fp, "#%" PRIu32 ": %s [%s -- %s",
             attno, n_shexp_quote_cp(ap->a_name, FAL0),
             n_shexp_quote_cp(ap->a_path, FAL0),
@@ -544,15 +569,14 @@ n_attachment_list_print(struct attachment const *aplist, FILE *fp){
          if(ap->a_conv == AC_TMPFILE)
             /* I18N: input and output character set as given */
             fprintf(fp, _(", incs=%s -> oucs=%s (readily converted)"),
-               ap->a_input_charset, ap->a_charset);
+               incs, oucs);
          else if(ap->a_conv == AC_FIX_INCS)
             /* I18N: input character set as given, no conversion to apply */
-            fprintf(fp, _(", incs=%s (no conversion)"), ap->a_input_charset);
+            fprintf(fp, _(", incs=%s (no conversion)"), incs);
          else if(ap->a_conv == AC_DEFAULT){
-            if(ap->a_input_charset != NULL)
+            if(incs != NULL)
                /* I18N: input character set as given, output iterates */
-               fprintf(fp, _(", incs=%s -> oucs=*sendcharsets*"),
-                  ap->a_input_charset);
+               fprintf(fp, _(", incs=%s -> oucs=*sendcharsets*"), incs);
             else if(ap->a_content_type == NULL ||
                   !ascncasecmp(ap->a_content_type, "text/", 5))
                fprintf(fp, _(", default character set handling"));

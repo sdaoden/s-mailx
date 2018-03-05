@@ -121,10 +121,17 @@ getapproval(char const * volatile prompt, bool_t noninteract_default)
    safe_signal(SIGINT, &a_tty__acthdl);
    safe_signal(SIGHUP, &a_tty__acthdl);
 
-   if (n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, prompt,
-         &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL,NULL) >= 0)
-      rv = (boolify(termios_state.ts_linebuf, UIZ_MAX,
-            noninteract_default) > 0);
+   while(n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, prompt,
+            &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL,NULL
+         ) >= 0){
+      bool_t x;
+
+      x = n_boolify(termios_state.ts_linebuf, UIZ_MAX, noninteract_default);
+      if(x >= FAL0){
+         rv = x;
+         break;
+      }
+   }
 jrestore:
    safe_signal(SIGHUP, ohup);
    safe_signal(SIGINT, oint);
@@ -999,7 +1006,7 @@ static bool_t
 a_tty_hist_load(void){
    ui8_t version;
    size_t lsize, cnt, llen;
-   char *lbuf, esc, *cp;
+   char *lbuf, *cp;
    FILE *f;
    char const *v;
    bool_t rv;
@@ -1039,7 +1046,6 @@ a_tty_hist_load(void){
    assert(!(n_pstate & n_PS_ROOT));
    n_pstate |= n_PS_ROOT; /* Allow calling addhist() */
    lbuf = NULL;
-   n_UNINIT(esc, '\0');
    lsize = 0;
    cnt = (size_t)fsize(f);
    version = 0;
@@ -1058,16 +1064,9 @@ a_tty_hist_load(void){
       if(llen == 0 || cp[0] == '#')
          continue;
 
-      if(n_UNLIKELY(version == 0)){
-         switch((version = strcmp(cp, a_TTY_HIST_MARKER) ? 1 : 2)){
-         case 1:
-            if((esc = ok_vlook(escape)[0]) == '\0')
-               esc = n_ESCAPE[0];
-            break;
-         default:
-            continue;
-         }
-      }
+      if(n_UNLIKELY(version == 0) &&
+            (version = strcmp(cp, a_TTY_HIST_MARKER) ? 1 : 2) != 1)
+         continue;
 
       /* C99 */{
          enum n_go_input_flags gif;
@@ -2584,7 +2583,9 @@ a_tty__khist_shared(struct a_tty_line *tlp, struct a_tty_hist *thp){
       }
       tlp->tl_defc.s = cp = n_autorec_alloc(i +1);
       if(tlp->tl_goinflags & n_GO_INPUT_CTX_COMPOSE){
-         *cp++ = ok_vlook(escape)[0]; /* Do not care whether \0 == disabled! */
+         if((*cp = ok_vlook(escape)[0]) == '\0')
+            *cp = n_ESCAPE[0];
+         ++cp;
          if(!(thp->th_flags & a_TTY_HIST_CTX_COMPOSE))
             *cp++ = ':';
       }

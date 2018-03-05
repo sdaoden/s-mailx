@@ -840,15 +840,12 @@ FL struct n_string *
 (n_string_reserve)(struct n_string *self, size_t noof n_MEMORY_DEBUG_ARGS){
    ui32_t i, l, s;
    NYD_ENTER;
-
    assert(self != NULL);
 
    s = self->s_size;
    l = self->s_len;
-#if 0 /* FIXME memory alloc too large */
-   if(SI32_MAX - n_ALIGN(1) - l <= noof)
+   if((size_t)SI32_MAX - n_ALIGN(1) - l <= noof)
       n_panic(_("Memory allocation too large"));
-#endif
 
    if((i = s - l) <= ++noof){
       i += l + (ui32_t)noof;
@@ -873,12 +870,10 @@ FL struct n_string *
 FL struct n_string *
 (n_string_resize)(struct n_string *self, size_t nlen n_MEMORY_DEBUG_ARGS){
    NYD_ENTER;
-
    assert(self != NULL);
-#if 0 /* FIXME memory alloc too large */
-   if(SI32_MAX - n_ALIGN(1) - l <= noof)
+
+   if(UICMP(z, SI32_MAX, <=, nlen))
       n_panic(_("Memory allocation too large"));
-#endif
 
    if(self->s_len < nlen)
       self = (n_string_reserve)(self, nlen n_MEMORY_DEBUG_ARGSCALL);
@@ -1216,6 +1211,42 @@ j0:
  * Our iconv(3) wrapper
  */
 
+FL char *
+n_iconv_normalize_name(char const *cset){
+   char *cp, c, *tcp, tc;
+   bool_t any;
+   NYD2_ENTER;
+
+   /* We need to strip //SUFFIXes off, we want to normalize to all lowercase,
+    * and we perform some slight content testing, too */
+   for(any = FAL0, cp = n_UNCONST(cset); (c = *cp) != '\0'; ++cp){
+      if(!alnumchar(c) && !punctchar(c)){
+         n_err(_("Invalid character set name %s\n"),
+            n_shexp_quote_cp(cset, FAL0));
+         cset = NULL;
+         goto jleave;
+      }else if(c == '/')
+         break;
+      else if(upperchar(c))
+         any = TRU1;
+   }
+
+   if(any || c != '\0'){
+      cp = savestrbuf(cset, PTR2SIZE(cp - cset));
+      for(tcp = cp; (tc = *tcp) != '\0'; ++tcp)
+         *tcp = lowerconv(tc);
+
+      if(c != '\0' && (n_poption & n_PO_D_V))
+         n_err(_("Stripped off character set suffix: %s -> %s\n"),
+            n_shexp_quote_cp(cset, FAL0), n_shexp_quote_cp(cp, FAL0));
+
+      cset = cp;
+   }
+jleave:
+   NYD2_LEAVE;
+   return n_UNCONST(cset);
+}
+
 #ifdef HAVE_ICONV
 FL iconv_t
 n_iconv_open(char const *tocode, char const *fromcode){
@@ -1288,15 +1319,19 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
    for(;;){
       size_t sz;
 
-      sz = iconv(cd, __INBCAST(inb), inbleft, outb, outbleft);
-      if(sz > 0 && !(icf & n_ICONV_IGN_NOREVERSE)){
-         err = n_ERR_NOENT;
-         goto jleave;
-      }
-      if(sz != (size_t)-1)
+      if((sz = iconv(cd, __INBCAST(inb), inbleft, outb, outbleft)) == 0)
          break;
+      if(sz != (size_t)-1){
+         if(!(icf & n_ICONV_IGN_NOREVERSE)){
+            err = n_ERR_NOENT;
+            goto jleave;
+         }
+         break;
+      }
 
-      err = n_err_no;
+      if((err = n_err_no) == n_ERR_2BIG)
+         goto jleave;
+
       if(!(icf & n_ICONV_IGN_ILSEQ) || err != n_ERR_ILSEQ)
          goto jleave;
       if(*inbleft > 0){
@@ -1331,43 +1366,59 @@ jleave:
 
 FL int
 n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
-   struct str *out, struct str const *in, struct str *in_rest_or_null)
-{
-   int err;
-   char *obb, *ob;
+      struct str *out, struct str const *in, struct str *in_rest_or_null){
+   struct n_string s, *sp = &s;
    char const *ib;
-   size_t olb, ol, il;
+   int err;
+   size_t il;
    NYD2_ENTER;
 
-   obb = out->s;
-   olb = out->l;
-   ol = in->l;
-
-   ol = (ol << 1) - (ol >> 4);
-   if (olb <= ol) {
-      olb = ol;
-      goto jrealloc;
+   il = in->l;
+   if(!n_string_get_can_book(il) || !n_string_get_can_book(out->l)){
+      err = n_ERR_INVAL;
+      goto j_leave;
    }
+   ib = in->s;
 
-   for (;;) {
-      ib = in->s;
-      il = in->l;
-      ob = obb;
-      ol = olb;
-      if((err = n_iconv_buf(cd, icf, &ib, &il, &ob, &ol)) == 0 ||
-            err != n_ERR_2BIG)
+   sp = n_string_creat(sp);
+   sp = n_string_take_ownership(sp, out->s, out->l, 0);
+
+   for(;;){
+      char *ob_base, *ob;
+      ui64_t ol, nol;
+
+      if((nol = ol = sp->s_len) < il)
+         nol = il;
+      assert(sizeof(sp->s_len) == sizeof(ui32_t));
+      nol = (nol << 1) - (nol >> 4);
+      if(!n_string_can_book(sp, nol)){
+         nol = ol + 64;
+         if(!n_string_can_book(sp, nol)){
+            err = n_ERR_INVAL;
+            goto jleave;
+         }
+      }
+      sp = n_string_resize(sp, (size_t)nol);
+
+      ob = ob_base = &sp->s_dat[ol];
+      nol -= ol;
+      err = n_iconv_buf(cd, icf, &ib, &il, &ob, &nol);
+      sp = n_string_trunc(sp, ol + PTR2SIZE(ob - ob_base));
+      if(err == 0 || err != n_ERR_2BIG)
          break;
-      olb += in->l;
-jrealloc:
-      obb = n_realloc(obb, olb +1);
    }
 
-   if (in_rest_or_null != NULL) {
+   if(in_rest_or_null != NULL){
       in_rest_or_null->s = n_UNCONST(ib);
       in_rest_or_null->l = il;
    }
-   out->s = obb;
-   out->s[out->l = olb - ol] = '\0';
+
+jleave:
+   out->s = n_string_cp(sp);
+   out->l = sp->s_len;
+   sp = n_string_drop_ownership(sp);
+   /* n_string_gut(sp)*/
+j_leave:
    NYD2_LEAVE;
    return err;
 }

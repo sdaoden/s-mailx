@@ -2639,17 +2639,20 @@ jout:
       puthead(TRU1, hp, n_stdout, GIDENT | GSUBJECT | GTO | GCC | GBCC | GCOMMA,
          SEND_TODISP, CONV_NONE, NULL, NULL);
 
+jreasksend:
       while((cp = n_go_input_cp(n_GO_INPUT_CTX_COMPOSE | n_GO_INPUT_NL_ESC,
-            _("Send this message [yes/no, or recompose]? "), NULL)) == NULL)
+            _("Send this message [yes/no, empty: recompose]? "), NULL)
+               ) == NULL)
          if(n_go_input_is_eof()){
             cp = n_1;
             break;
          }
 
-      b = boolify(cp, UIZ_MAX, TRU1);
-      if(b < FAL0)
+      if((b = n_boolify(cp, UIZ_MAX, TRUM1)) < FAL0)
+         goto jreasksend;
+      if(b == TRU2)
          goto jcont;
-      else if(!b)
+      if(!b)
          goto jerr;
    }
 

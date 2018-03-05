@@ -924,6 +924,13 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
       switch(okey){
       default:
          break;
+      case ok_v_charset_7bit:
+      case ok_v_charset_8bit:
+      case ok_v_charset_unknown_8bit:
+      case ok_v_ttycharset:
+         if((*val = n_iconv_normalize_name(*val)) == NULL)
+            ok = FAL0;
+         break;
       case ok_v_customhdr:{
          char const *vp;
          char *buf;
@@ -979,7 +986,7 @@ jefrom:
       case ok_v_hostname:
       case ok_v_smtp_hostname:
 #ifdef HAVE_IDNA
-         if(*val != '\0'){
+         if(**val != '\0'){
             struct n_string cnv;
 
             n_string_creat_auto(&cnv);
@@ -1003,6 +1010,26 @@ jefrom:
                ok = FAL0;
                break;
             }
+      }  break;
+      case ok_v_sendcharsets:{
+         struct n_string s, *sp = &s;
+         char *csv, *cp;
+
+         sp = n_string_creat_auto(sp);
+         csv = savestr(*val);
+
+         while((cp = n_strsep(&csv, ',', TRU1)) != NULL){
+            if((cp = n_iconv_normalize_name(cp)) == NULL){
+               ok = FAL0;
+               break;
+            }
+            if(sp->s_len > 0)
+               sp = n_string_push_c(sp, ',');
+            sp = n_string_push_cp(sp, cp);
+         }
+
+         *val = n_string_cp(sp);
+         /* n_string_drop_ownership(sp); */
       }  break;
       case ok_v_TMPDIR:
          if(!n_is_dir(*val, TRU1)){
@@ -2520,6 +2547,7 @@ c_localopts(void *vp){
    else if(is_asccaseprefix(argv[-1], "call-fixate"))
       alf = a_AMV_LF_CALL_FIXATE, alm = a_AMV_LF_CALL_MASK;
    else{
+jesynopsis:
       n_err(_("Synopsis: localopts: [<scope|call|call-fixate>] <boolean>\n"));
       goto jleave;
    }
@@ -2531,8 +2559,10 @@ c_localopts(void *vp){
       goto jleave;
    }
 
+   if((rv = n_boolify(*argv, UIZ_MAX, FAL0)) < FAL0)
+      goto jesynopsis;
    a_amv_lopts->as_loflags &= ~alm;
-   if(boolify(*argv, UIZ_MAX, FAL0) > 0)
+   if(rv > FAL0)
       a_amv_lopts->as_loflags |= alf;
    rv = 0;
 jleave:
@@ -3957,7 +3987,7 @@ c_vpospar(void *v){
 
          for(i = 0; i < appp->app_count; ++i){
             if(sp->s_len){
-               if(!n_string_can_swallow(sp, 2))
+               if(!n_string_can_book(sp, 2))
                   goto jeover;
                sp = n_string_push_c(sp, sep1);
                if(sep2 != '\0')
@@ -3965,7 +3995,7 @@ c_vpospar(void *v){
             }
             in.l = strlen(in.s = n_UNCONST(appp->app_dat[i + appp->app_idx]));
 
-            if(!n_string_can_swallow(sp, in.l)){
+            if(!n_string_can_book(sp, in.l)){
 jeover:
                n_err(_("`vpospar': overflow: string too long!\n"));
                n_pstate_err_no = n_ERR_OVERFLOW;

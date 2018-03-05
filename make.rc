@@ -58,7 +58,7 @@ VAL_SYSCONFDIR="${VAL_PREFIX}/etc"
 # The variable $DESTDIR is prepended to all the paths from above at
 # installation time; this feature can be used for, e.g., package
 # building: if $VAL_PREFIX is "/usr/local", but $DESTDIR is set to "here",
-# then S-nail will still think its $VAL_PREFIX is "/usr/local" whereis the
+# then S-nail will still think its $VAL_PREFIX is "/usr/local" whereas the
 # build system will instead use "here/usr/local".
 # NOTE: it cannot be set in here, but must be given on the command line
 # when invoking the "install" make(1) (directly or indirectly).
@@ -90,15 +90,15 @@ VAL_MTA=`\
 # This variable can be used to adjust this name as necessary.
 VAL_MTA_ARGV0=sendmail
 
-# Default *SHELL* (sh(1) path).
+# Default $SHELL (sh(1) path).
 # Sometimes we simply invoke a command directly via execlp(2) instead of
 # indirectly through *SHELL* -- in these cases execlp(2) may fallback to
-# it's own built-in sh(1) path
+# it's own built-in sh(1) path.
 VAL_SHELL=/bin/sh
 
 # Some more default fallback values, some of which are standardized
 # and (thus)/or documented in the manual (changes not reflected there!).
-# Note that default paths are often not (shell) quoted when displayed
+# Note that default paths are often not (shell) quoted when displayed.
 VAL_DEAD_BASENAME=dead.letter
 VAL_DEAD="~/${VAL_DEAD_BASENAME}"
 VAL_EDITOR=ed
@@ -110,25 +110,27 @@ VAL_PAGER=more
 VAL_TMPDIR=/tmp
 VAL_VISUAL=vi
 
-# Default locations of mime.types(5)
+# Default locations of mime.types(5).
 VAL_MIME_TYPES_USR=~/.mime.types
 VAL_MIME_TYPES_SYS=/etc/mime.types
 
 # The following tools may be provided a.k.a. overwritten,
 # `command -v NAME` is used to query the utility otherwise:
 #  MAKE=, STRIP=, awk=, basename=, cat=, chmod=, cp=, cmp=, cksum=,
-#     grep=, mkdir=, mv=, rm=, sed=, sort=, tee=, tr=
+#     grep=, mkdir=, mv=, rm=, sed=, sort=, tee=, tr=, uname=
 # Usually in administrator paths:
 #  chown= [$OPT_DOTLOCK]
-# Note that awk(1), rm(1) and tr(1) are needed before this file is read,
-# all other utilities will be checked afterwards only.  For
-# cross-compilation setting $MAKE and $STRIP may be necessary.  Due to
-# the evaluation order of the build system all those programs are
+# Note that awk(1), rm(1), tr(1) and uname(1) are needed before this
+# file is read, all other utilities will be checked afterwards only.
+# uname(1) is in fact needed before the initial OS setup and thus no OS
+# specific adjustments (e.g., $PATH) have been performed yet, but its
+# use can be circumvented by setting $OS (uname -s), $OSENV (uname
+# -sm) and $OSFULLSPEC (uname -a: this is not baked into the binary, it
+# is only used to recognize build environment changes).
+# $OS must be all-lowercase.
+# Due to the evaluation order of the build system all those programs are
 # usually needed, but by setting any of the variables to true(1), as in
 # chown=/usr/bin/true, availability of unneeded programs can be faked.
-# We require uname(1) -s, echo(1), printf(1) etc.
-# uname(1) can be circumvented by setting $OS (and $OSENV, $OSFULLSPEC).
-# $OS must be all-lowercase.
 
 ## FEATURE SET ##
 
@@ -137,9 +139,9 @@ VAL_MIME_TYPES_SYS=/etc/mime.types
 # Plan9, Musl based Linux variants and newer OpenBSD.  For such
 # environments we can avoid a lot of tests and may enable support for
 # features which would otherwise not be available.
-# Note that $OS is available as normalized all-lowercase upon evaluation
+# Note: $OS is available as normalized all-lowercase upon evaluation.
 OPT_ALWAYS_UNICODE_LOCALE=`\
-   if [ "${OS}" = openbsd ]; then \
+   if [ "${OS}" = openbsd ] || [ -f /lib/ld-musl-x86_64.so.1 ]; then \
       echo yes;\
    else \
       echo no;\
@@ -196,6 +198,12 @@ OPT_SOCKETS=yes
 # (http://www.libressl.org) libraries.
 OPT_SSL=yes
 
+# We can use the P(seudo) R(andom number) G(enerator) that ships with
+# the SSL library, instead of using the appropriate interface of the
+# operating system we are being build on or for.
+# This can be "require"d.
+OPT_SSL_RANDOM="${OPT_SSL}"
+
 # If $OPT_SSL: shall S-nail (try to) use mechanisms to support more
 # digest and cipher algorithms than the few that are documented?  For
 # S/MIME *smime-cipher* for example this will cause
@@ -216,7 +224,8 @@ OPT_SMTP=yes
 OPT_POP3=yes
 
 # If $OPT_SOCKETS: support for IMAP protocol?
-# Requires $WANT_ICONV.
+# Requires $OPT_ICONV unless $OPT_ALWAYS_UNICODE_LOCALE, in which case
+#  it only warns.
 # (Reading of mails directly on the server)  Can be "require"d.
 OPT_IMAP=yes
 
@@ -272,7 +281,7 @@ OPT_REGEX=yes
 OPT_MLE=yes
 # Add support for history management.
 OPT_HISTORY=yes
-# Add support for `(un)?bind'ing of key sequences
+# Add support for `(un)?bind'ing of key sequences.
 OPT_KEY_BINDINGS=yes
 
 # Use termcap(5) for terminal control; can be "require"d.
@@ -309,7 +318,7 @@ OPT_SPAM_SPAMC=no
 OPT_SPAM_SPAMD=no
 OPT_SPAM_FILTER=yes
 
-# We may include help strings for commands, increasing size a bit
+# We may include help strings for commands, increasing size a bit.
 OPT_DOCSTRINGS=yes
 
 # A simple line-based quoting mechanism can be made available via the
@@ -375,6 +384,9 @@ OPT_DEVEL=no
 
 # We use the crypto libraries' MD5 implementation if possible, unless..
 OPT_NOEXTMD5=no
+
+# For testing purposes external PRGs can be disallowed
+OPT_NOEXTRANDOM=no
 
 # With $OPT_AUTOCC we can make use of the ASan AddressSanitizer and ASan
 # MemorySanitizer of Google

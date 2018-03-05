@@ -676,7 +676,7 @@ mime_write_tohdr_a(struct str *in, FILE *f, size_t *colp,
    if((cp = routeaddr(lastcp = in->s)) != NULL && cp > lastcp) {
       xin.s = n_UNCONST(lastcp);
       xin.l = PTR2SIZE(cp - lastcp);
-      if ((sz = mime_write_tohdr(&xin, f, colp, msh)) < 0)
+      if ((sz = a_mime__convhdra(&xin, f, colp, msh)) < 0)
          goto jleave;
       xin.s[xin.l] = '<';
       lastcp = cp;

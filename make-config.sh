@@ -22,6 +22,7 @@ XOPTIONS="\
    ICONV='Character set conversion using iconv(3)' \
    SOCKETS='Network support' \
       SSL='SSL/TLS (OpenSSL / LibreSSL)' \
+         SSL_RANDOM='-' \
          SSL_ALL_ALGORITHMS='Support of all digest and cipher algorithms' \
       SMTP='Simple Mail Transfer Protocol client' \
       POP3='Post Office Protocol Version 3 client' \
@@ -152,8 +153,12 @@ option_setup() {
 
 # Inter-relationships XXX sort this!
 option_update() {
+   if feat_yes NOEXTRANDOM; then
+      OPT_SSL_RANDOM=0
+   fi
+
    if feat_no SSL; then
-      OPT_SSL_ALL_ALGORITHMS=0
+      OPT_SSL_RANDOM=0 OPT_SSL_ALL_ALGORITHMS=0
    fi
 
    if feat_no SMTP && feat_no POP3 && feat_no IMAP; then
@@ -172,7 +177,7 @@ option_update() {
          msg 'ERROR: need SOCKETS for required feature IMAP'
          config_exit 13
       fi
-      OPT_SSL=0 OPT_SSL_ALL_ALGORITHMS=0
+      OPT_SSL=0 OPT_SSL_RANDOM=0 OPT_SSL_ALL_ALGORITHMS=0
       OPT_SMTP=0 OPT_POP3=0 OPT_IMAP=0
       OPT_GSSAPI=0 OPT_NETRC=0 OPT_AGENT=0
    fi
@@ -182,12 +187,15 @@ option_update() {
 
    if feat_no ICONV; then
       if feat_yes IMAP; then
-         if feat_require IMAP; then
+         if feat_yes ALWAYS_UNICODE_LOCALE; then
+            msg 'WARN: no ICONV, keeping IMAP due to ALWAYS_UNICODE_LOCALE!'
+         elif feat_require IMAP; then
             msg 'ERROR: need ICONV for required feature IMAP'
             config_exit 13
+         else
+            msg 'ERROR: disabling IMAP due to missing ICONV'
+            OPT_IMAP=0
          fi
-         msg 'ERROR: disabling IMAP due to missing ICONV'
-         OPT_IMAP=0
       fi
 
       if feat_yes IDNA; then
@@ -249,7 +257,7 @@ _CFLAGS= _LDFLAGS=
 
 os_early_setup() {
    # We don't "have any utility": only path adjustments and such in here!
-   [ -n "${OS}" ] || OS=`uname -s`
+   [ -n "${OS}" ] || OS=`${uname} -s`
    export OS
 
    if [ ${OS} = SunOS ]; then
@@ -271,10 +279,11 @@ _os_early_setup_sunos() {
 
 os_setup() {
    # OSENV ends up in *build-osenv*
-   # OSFULLSPEC is used to recognize changes (i.e., machine type, updates etc.)
+   # OSFULLSPEC is used to recognize changes (i.e., machine type, updates
+   # etc.), it is not baked into the binary
    OS=`echo ${OS} | ${tr} '[A-Z]' '[a-z]'`
-   [ -n "${OSENV}" ] || OSENV=`uname -srm`
-   [ -n "${OSFULLSPEC}" ] || OSFULLSPEC=`uname -a`
+   [ -n "${OSENV}" ] || OSENV=`${uname} -sm`
+   [ -n "${OSFULLSPEC}" ] || OSFULLSPEC=`${uname} -a`
    msg 'Operating system is %s' ${OS}
 
    if [ ${OS} = darwin ]; then
@@ -1128,6 +1137,7 @@ squeeze_em() {
 
 # Very easy checks for the operating system in order to be able to adjust paths
 # or similar very basic things which we need to be able to go at all
+thecmd_testandset_fail uname uname
 os_early_setup
 
 # Check those tools right now that we need before including $rc
@@ -1783,46 +1793,7 @@ int main(void){
 
 ##
 
-# XXX Add POSIX check once standardized
-if link_check posix_random 'arc4random(3)' '#define HAVE_POSIX_RANDOM 0' << \!
-#include <stdlib.h>
-int main(void){
-   arc4random();
-   return 0;
-}
-!
-then
-   :
-elif link_check getrandom 'getrandom(2) (in sys/random.h)' \
-      '#define HAVE_GETRANDOM(B,S) getrandom(B, S, 0)
-      #define HAVE_GETRANDOM_HEADER <sys/random.h>' <<\!
-#include <sys/random.h>
-int main(void){
-   char buf[256];
-   getrandom(buf, sizeof buf, 0);
-   return 0;
-}
-!
-then
-   :
-elif link_check getrandom 'getrandom(2) (via syscall(2))' \
-      '#define HAVE_GETRANDOM(B,S) syscall(SYS_getrandom, B, S, 0)
-      #define HAVE_GETRANDOM_HEADER <sys/syscall.h>' <<\!
-#include <sys/syscall.h>
-int main(void){
-   char buf[256];
-   syscall(SYS_getrandom, buf, sizeof buf, 0);
-   return 0;
-}
-!
-then
-   :
-elif [ -n "${have_no_subsecond_time}" ]; then
-   msg 'ERROR: %s %s' 'without a native random' \
-      'one of clock_gettime(2) and gettimeofday(2) is required.'
-   config_exit 1
-fi
-
+# The random check has been moved to below SSL detection due to OPT_SSL_RANDOM
 
 link_check putc_unlocked 'putc_unlocked(3)' '#define HAVE_PUTC_UNLOCKED' <<\!
 #include <stdio.h>
@@ -2089,7 +2060,7 @@ int main(void){
       3) echo 'MAILX_ICONV_MODE=3;export MAILX_ICONV_MODE;' >> ${ev};;
       12) echo 'MAILX_ICONV_MODE=12;export MAILX_ICONV_MODE;' >> ${ev};;
       13) echo 'MAILX_ICONV_MODE=13;export MAILX_ICONV_MODE;' >> ${ev};;
-      *) msg 'WARN: cannot test iconv(3), do not know replacement';;
+      *) msg 'WARN: will restrict iconv(3) tests due to unknown replacement';;
       esac
    fi
 else
@@ -2573,7 +2544,13 @@ int main(void){
 }
 !
    fi # }}}
+fi
+if feat_yes SSL; then
+   feat_def SSL_RANDOM
+   feat_def SSL_ALL_ALGORITHMS
 else
+   feat_bail_required SSL_RANDOM
+   feat_bail_required SSL_ALL_ALGORITHMS
    echo '/* OPT_SSL=0 */' >> ${h}
 fi # }}} feat_yes SSL
 printf '#define VAL_SSL_FEATURES "#'"${VAL_SSL_FEATURES}"'"\n' >> ${h}
@@ -2584,6 +2561,51 @@ else
    OPT_SMIME=0
 fi
 feat_def SMIME
+
+# Native random check (had been delayed due to OPT_SSL_RAMDOM) {{{
+# XXX Add POSIX check once standardized
+if feat_yes NOEXTRANDOM; then
+   echo '#define HAVE_NOEXTRANDOM' >> ${h}
+elif feat_yes SSL_RANDOM; then
+   :
+elif link_check arc4random 'arc4random(3)' '#define HAVE_POSIX_RANDOM 0' << \!
+#include <stdlib.h>
+int main(void){
+   arc4random();
+   return 0;
+}
+!
+then
+   :
+elif link_check getrandom 'getrandom(2) (in sys/random.h)' \
+      '#define HAVE_GETRANDOM(B,S) getrandom(B, S, 0)
+      #define HAVE_GETRANDOM_HEADER <sys/random.h>' <<\!
+#include <sys/random.h>
+int main(void){
+   char buf[256];
+   getrandom(buf, sizeof buf, 0);
+   return 0;
+}
+!
+then
+   :
+elif link_check getrandom 'getrandom(2) (via syscall(2))' \
+      '#define HAVE_GETRANDOM(B,S) syscall(SYS_getrandom, B, S, 0)
+      #define HAVE_GETRANDOM_HEADER <sys/syscall.h>' <<\!
+#include <sys/syscall.h>
+int main(void){
+   char buf[256];
+   syscall(SYS_getrandom, buf, sizeof buf, 0);
+   return 0;
+}
+!
+then
+   :
+elif [ -n "${have_no_subsecond_time}" ]; then
+   msg 'ERROR: %s %s' 'without a native random' \
+      'one of clock_gettime(2) and gettimeofday(2) is required.'
+   config_exit 1
+fi # }}}
 
 feat_def SMTP
 feat_def POP3
@@ -2653,11 +2675,29 @@ feat_def NETRC
 feat_def AGENT
 
 if feat_yes IDNA; then
-   if link_check idna 'GNU Libidn' '#define HAVE_IDNA HAVE_IDNA_LIBIDNA' \
+   if link_check idna 'Libidn2' '#define HAVE_IDNA HAVE_IDNA_LIBIDN2' \
+         '-lidn2' << \!
+#include <idn2.h>
+int main(void){
+   char *idna_utf8, *idna_lc;
+
+   if(idn2_to_ascii_8z("does.this.work", &idna_utf8,
+         IDN2_NONTRANSITIONAL | IDN2_TRANSITIONAL) != IDN2_OK)
+      return 1;
+   if(idn2_to_unicode_8zlz(idna_utf8, &idna_lc, 0) != IDN2_OK)
+      return 1;
+   idn2_free(idna_lc);
+   idn2_free(idna_utf8);
+   return 0;
+}
+!
+   then
+      :
+   elif link_check idna 'GNU Libidn' '#define HAVE_IDNA HAVE_IDNA_LIBIDNA' \
          '-lidn' << \!
 #include <idna.h>
 #include <idn-free.h>
-#include <stringprep.h>
+#include <stringprep.h> /* XXX we actually use our own iconv instead */
 int main(void){
    char *utf8, *idna_ascii, *idna_utf8;
 
@@ -2704,8 +2744,9 @@ int main(void){
    fi
 
    if [ -n "${have_idna}" ]; then
-      echo '#define HAVE_IDNA_LIBIDNA 0' >> ${h}
-      echo '#define HAVE_IDNA_IDNKIT 1' >> ${h}
+      echo '#define HAVE_IDNA_LIBIDN2 0' >> ${h}
+      echo '#define HAVE_IDNA_LIBIDNA 1' >> ${h}
+      echo '#define HAVE_IDNA_IDNKIT 2' >> ${h}
    fi
 else
    echo '/* OPT_IDNA=0 */' >> ${h}

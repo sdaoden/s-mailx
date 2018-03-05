@@ -40,6 +40,7 @@ Erich Eckner              erich dot eckner at gmx dot de
 Paul Eggert               eggert at cs dot ucla dot edu
 Justin Ellingwood         JustinEllingwood at gmail dot com
 Robert Elz                kre at munnari dot OZ dot AU
+Rich Felker               dalias at libc dot org
 Dr. Werner Fink           werner at suse dot de
 Felix Fontein             felix at fontein dot de
 Mike Frysinger            vapier at gentoo dot org
@@ -71,6 +72,7 @@ Dagobert Michelsen        dam at opencsw dot org
 Mantas Mikulėnas          grawity at gmail dot com
 Todd C. Miller            Todd dot Miller at courtesan dot com
 Donald Mugnai             donaldmugnai at gmail dot com
+Matej Mužila              mmuzila at redhat dot com
 Martin Neitzel            neitzel at escape dot de
 Lyndon Nerenberg          lyndon at orthanc dot ca
 Marius Nestor             www.softpedia.com
@@ -91,6 +93,7 @@ Jörg Schilling            Joerg dot Schilling at fokus dot fraunhofer dot de
 Jens Schleusener          Jens dot Schleusener at t-online dot de
 Georg Schlisio            g dot schlisio at dukun dot de
 Martin Sebor              msebor at redhat dot com
+Slavko                    linux at slavino dot sk
 Nick Stoughton            nick at usenix dot org
 Andy Switala              andy dot switala at gmail dot com
 Rudolf Sykora             rudolf dot sykora at gmail dot com
@@ -101,6 +104,7 @@ Tim                       trondd at kagu-tsuchi dot com
 Gavin Troy                gavtroy at fastmail dot fm
 Paul Vojta                vojta at math dot berkeley dot edu
 wapiflapi                 wapiflapi at yahoo dot fr
+Simon McVittie            smcv at debian dot org
 Colin Watson              cjwatson at debian dot org
 William Yodlowsky         william at OpenBSD dot org
 Ypnose                    ypnx at mailoo dot org

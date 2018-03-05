@@ -30,9 +30,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"@ S-nail v14.9.7 / 2018-02-16
-.Dd February 16, 2018
-.ds VV \\%v14.9.7
+.\"@ S-nail v14.9.8 / 2018-03-05
+.Dd March 05, 2018
+.ds VV \\%v14.9.8
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -457,6 +457,7 @@
 .Mx -anchor-spass Va "header"
 .Mx -anchor-spass Va "headline"
 .Mx -anchor-spass Va "headline-bidi"
+.Mx -anchor-spass Va "headline-plain"
 .Mx -anchor-spass Va "history-file"
 .Mx -anchor-spass Va "history-gabby"
 .Mx -anchor-spass Va "history-gabby-persist"
@@ -4832,7 +4833,7 @@ Supports
 (see
 .Sx "Command modifiers" ) .
 The return status is tracked via
-.Va \&! .
+.Va \&? .
 .Mx
 .It Ic Decrypt
 \*(OP For unencrypted messages this command is identical to
@@ -5238,6 +5239,8 @@ as necessary a privilege-separated dotlock child process will be used
 to accommodate for necessary privilege adjustments in order to create
 the dotlock file in the same directory
 and with the same user and group identities as the file of interest.
+Possible dotlock creation errors can be catched by setting
+.Va dotlock-ignore-error .
 .Pp
 \*(UA by default uses tolerant POSIX rules when reading MBOX database
 files, but it will detect invalid message boundaries in this mode and
@@ -6989,7 +6992,11 @@ Shows the
 .Va version
 and
 .Va features
-of \*(UA.
+of \*(UA, as well as the build and running system environment.
+Supports
+.Cm vput
+(see
+.Sx "Command modifiers" ) .
 .Mx
 .It Ic vexpr
 \*(NQ Evaluate arguments according to a given operator.
@@ -7442,6 +7449,10 @@ once the end of the list is reached either new attachments may be
 entered or the session can be quit by committing an empty
 .Dq new
 attachment.
+In non-interactive mode or in batch mode
+.Pf ( Fl # ) ,
+the list of attachments is effectively not edited but instead recreated;
+again, an empty input ends list creation.
 .Pp
 For all modes, if a given filename solely consists of the number sign
 .Ql #
@@ -8966,13 +8977,17 @@ A plain percent sign.
 a space character but for the current message
 .Pf ( Dq dot ) ,
 for which it expands to
-.Ql > .
+.Ql >
+(dependent on
+.Va headline-plain ) .
 .It Ql %<
 .Dq Dotmark :
 a space character but for the current message
 .Pf ( Dq dot ) ,
 for which it expands to
-.Ql < .
+.Ql <
+(dependent on
+.Va headline-plain ) .
 .It Ql %$
 \*(OP The spam score of the message, as has been classified via the
 command
@@ -8998,7 +9013,8 @@ The indenting level in threaded mode.
 The address of the message sender.
 .It Ql %i
 The message thread tree structure.
-(Note that this format does not support a field width.)
+(Note that this format does not support a field width, and honours
+.Va headline-plain . )
 .It Ql %l
 The number of lines of the message, if available.
 .It Ql %m
@@ -9027,7 +9043,8 @@ if
 .Va bsdcompat
 is set.
 Also see
-.Va attrlist
+.Va attrlist ,
+.Va headline-plain
 and
 .Va headline-bidi .
 .Mx
@@ -9073,6 +9090,12 @@ and
 select Unicode 1.1 support (U+200E, LEFT-TO-RIGHT MARK); the latter
 again reserves room for two spaces in addition.
 .Mx
+.It Va headline-plain
+\*(BO On Unicode (UTF-8) aware terminals enhanced graphical symbols are
+used by default for certain entries of
+.Va headline .
+If this variable is set only basic US-ASCII symbols will be used.
+.Mx
 .It Va history-file
 \*(OP If a line editor is available then this can be set to
 name the (expandable) path of the location of a permanent
@@ -9116,7 +9139,9 @@ Used instead of the value obtained from
 and
 .Xr getaddrinfo 3
 as the hostname when expanding local addresses, e.g., in
-.Ql From: .
+.Ql From:
+(also see
+.Sx "On sending mail, and non-interactive mode" ) .
 If either of
 .Va from
 or this variable Is set the message and MIME part related unique ID fields
@@ -13407,5 +13432,15 @@ Please report bugs to the
 .Va contact-mail
 address, e.g., from within \*(uA:
 .Ql ? Ns \| Ic eval Ns \| Ic mail Ns \| $contact-mail .
+Including the output of the command
+.Ic version
+may be helpful, e.g.,
+.Bd -literal -offset indent
+? vput version xy; wysh set escape=!; eval mail $contact-mail
+Bug subject
+!I xy
+!.
+.Ed
+.Pp
 More information is available on the web:
 .Ql $ \*(uA -X 'echo Ns \| $ Ns Va contact-web Ns ' -Xx .

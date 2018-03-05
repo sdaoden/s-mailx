@@ -134,7 +134,6 @@ cc_all_configs() {
          NOTME["OPT_AUTOCC"] = 1
          NOTME["OPT_DEBUG"] = 1
          NOTME["OPT_DEVEL"] = 1
-         NOTME["OPT_NOEXTMD5"] = 1
          NOTME["OPT_ASAN_ADDRESS"] = 1
          NOTME["OPT_ASAN_MEMORY"] = 1
          NOTME["OPT_FORCED_STACKPROT"] = 1
@@ -321,6 +320,7 @@ t_behave() {
    t_behave_filetype
 
    t_behave_message_injections
+   t_behave_attachments
    t_behave_compose_hooks
    t_behave_C_opt_customhdr
 
@@ -332,6 +332,7 @@ t_behave() {
    t_behave_rfc2231
    t_behave_iconv_mbyte_base64
    t_behave_iconv_mainbody
+   t_behave_binary_mainbody
    t_behave_q_t_etc_opts
 
    t_behave_s_mime
@@ -3019,6 +3020,107 @@ t_behave_message_injections() {
    t_epilog
 }
 
+t_behave_attachments() {
+   t_prolog t_behave_attachments
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} <<-_EOT > ./.tsendmail.sh
+		#!${SHELL} -
+		(echo 'From Cannabis Sun Feb 18 02:02:46 2018' && ${cat} && echo
+			) >> "${MBOX}"
+	_EOT
+   chmod 0755 ./.tsendmail.sh
+
+   ${cat} <<-_EOT  > ./.tx
+	From steffen Sun Feb 18 02:48:40 2018
+	Date: Sun, 18 Feb 2018 02:48:40 +0100
+	To:
+	Subject: m1
+	User-Agent: s-nail v14.9.7
+	
+	
+	From steffen Sun Feb 18 02:48:42 2018
+	Date: Sun, 18 Feb 2018 02:48:42 +0100
+	To:
+	Subject: m2
+	User-Agent: s-nail v14.9.7
+	
+	
+	_EOT
+   echo att1 > ./.t1
+   printf 'att2-1\natt2-2\natt2-4\n' > ./'.t 2'
+   printf 'att3-1\natt3-2\natt3-4\n' > ./.t3
+   printf 'att4-1\natt4-2\natt4-4\n' > './.t 4'
+
+   printf '\
+!@  ./.t3              "./.t 4"             ""
+!p
+!@
+   ./.t3
+ "./.t 2"
+
+!p
+!.
+   ' | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh \
+      -a ./.t1 -a './.t 2' \
+      -s attachment-test \
+      ex@am.ple > ./.tall 2>&1
+   check behave:attachments-1 0 "${MBOX}" '4107062253 634'
+   check behave:attachments-2 - .tall '1928331872 720'
+
+   ${rm} -f "${MBOX}"
+   printf '\
+      mail ex@amp.ple
+!s This the subject is
+!@  ./.t3        "#2"      "./.t 4"          "#1"   ""
+!p
+!@
+   "./.t 4"
+ "#2"
+
+!p
+!.
+      mail ex@amp.ple
+!s Subject two
+!@  ./.t3        "#2"      "./.t 4"          "#1"   ""
+!p
+!@
+
+!p
+!.
+      mail ex@amp.ple
+!s Subject three
+!@  ./.t3     ""   "#2"    ""  "./.t 4"   ""       "#1"   ""
+!p
+!@
+ ./.t3
+
+!p
+!.
+      mail ex@amp.ple
+!s Subject Four
+!@  ./.t3     ""   "#2"    ""  "./.t 4"   ""       "#1"   ""
+!p
+!@
+ "#1"
+
+!p
+!.
+      mail ex@amp.ple
+!s Subject Five
+!@
+ "#2"
+
+!p
+!.
+   ' | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh -Rf ./.tx \
+         > ./.tall 2>&1
+   check behave:attachments-3 0 "${MBOX}" '798122412 2285'
+   check behave:attachments-4 - .tall '2526106274 1910'
+
+   t_epilog
+}
+
 t_behave_compose_hooks() { # TODO monster
    t_prolog t_behave_compose_hooks
    TRAP_EXIT_ADDONS="./.t*"
@@ -4344,6 +4446,30 @@ t_behave_xxxheads_rfc2047() {
          'SchnÃ¶des "FrÃ¼chtchen" <do@du> (HÃ¤!)'
    check behave:xxxheads_rfc2047-7 0 "${MBOX}" '800505986 368'
 
+   # RFC 2047 in an address field, and iconv involved
+   if have_feat iconv; then
+      ${rm} -f "${MBOX}"
+      ${cat} > ./.trebox <<_EOT
+From zaza@exam.ple  Fri Mar  2 21:31:56 2018
+Date: Fri, 2 Mar 2018 20:31:45 +0000
+From: z=?iso-8859-1?Q?=E1?=za <zaza@exam.ple>
+To: dude <dude@exam.ple>
+Subject: houston(...)
+Message-ID: <abra@1>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+
+_EOT
+      echo reply | ${MAILX} ${ARGS} ${ADDARG_UNI} \
+         -Sfullnames -Sreply-in-same-charset \
+         -Smta=./.tsendmail.sh -Rf ./.trebox
+      check behave:xxxheads_rfc2047-8 0 "${MBOX}" '2821484185 280'
+   else
+      echo 'behave:xxxheads_rfc2047-8: iconv unsupported, skipped'
+   fi
+
    t_epilog
 }
 
@@ -4406,7 +4532,7 @@ t_behave_iconv_mbyte_base64() {
    chmod 0755 ./.tsendmail.sh
 
    if (</dev/null iconv -f ascii -t iso-2022-jp) >/dev/null 2>&1; then
-      cat <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
+      ${cat} <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
             -Smta=./.tsendmail.sh \
             -Sescape=! -Smime-encoding=base64 2>./.terr
          set ttycharset=utf-8 sendcharsets=iso-2022-jp
@@ -4435,20 +4561,24 @@ t_behave_iconv_mbyte_base64() {
 $B%7%8%e%&%+%i2J!J%7%8%e%&%+%i$+!"3XL>(B Paridae$B!K$O!"D;N`%9%:%aL\$N2J$G$"$k!#%7%8%e%&%+%i!J;M==?}!K$HAm>N$5$l$k$,!"695A$K$O$3$N(B1$B<o$r%7%8%e%&%+%i$H8F$V!#(B
 !.
 		_EOT
-      check behave:iconv_mbyte_base64-1 0 "${MBOX}" '3428985079 1976'
+      # May not presume iconv output as long as roundtrip possible [489a7122]
+      ex0_test behave:iconv_mbyte_base64-1-estat
+      ${awk} 'BEGIN{h=1}/^$/{++h;next}{if(h % 2 == 1)print}' \
+         < "${MBOX}" > ./.tcksum
+      check behave:iconv_mbyte_base64-1 - ./.tcksum '2694609714 520'
       check behave:iconv_mbyte_base64-2 - ./.terr '4294967295 0'
 
-      printf 'eval f 1; write ./.twrite\n' |
-         ${MAILX} ${ARGS} ${ADDARG_UNI} -Rf "${MBOX}" >./.tlog 2>&1
+      printf 'eval f 1; eval write ./.twrite; eval type 1; eval type 2\n' |
+         LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} -Rf "${MBOX}" >./.tlog 2>&1
       check behave:iconv_mbyte_base64-3 0 ./.twrite '1259742080 686'
-      check behave:iconv_mbyte_base64-4 - ./.tlog '3956097665 119'
+      check behave:iconv_mbyte_base64-4 - ./.tlog '3214068822 2123'
    else
       echo 'behave:iconv_mbyte_base64: ISO-2022-JP unsupported, skipping 1-4'
    fi
 
    if (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
       rm -f "${MBOX}" ./.twrite
-      cat <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
+      ${cat} <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
             -Smta=./.tsendmail.sh \
             -Sescape=! -Smime-encoding=base64 2>./.terr
          set ttycharset=utf-8 sendcharsets=euc-jp
@@ -4477,13 +4607,16 @@ t_behave_iconv_mbyte_base64() {
 ¥·¥¸¥å¥¦¥«¥é²Ê¡Ê¥·¥¸¥å¥¦¥«¥é¤«¡¢³ØÌ¾ Paridae¡Ë¤Ï¡¢Ä»Îà¥¹¥º¥áÌÜ¤Î²Ê¤Ç¤¢¤ë¡£¥·¥¸¥å¥¦¥«¥é¡Ê»Í½½¿ý¡Ë¤ÈÁí¾Î¤µ¤ì¤ë¤¬¡¢¶¹µÁ¤Ë¤Ï¤³¤Î1¼ï¤ò¥·¥¸¥å¥¦¥«¥é¤È¸Æ¤Ö¡£
 !.
 		_EOT
-      check behave:iconv_mbyte_base64-5 0 "${MBOX}" '1686827547 2051'
+      ex0_test behave:iconv_mbyte_base64-5-estat
+      ${awk} 'BEGIN{h=1}/^$/{++h;next}{if(h % 2 == 1)print}' \
+         < "${MBOX}" > ./.tcksum
+      check behave:iconv_mbyte_base64-5 - ./.tcksum '2870183985 473'
       check behave:iconv_mbyte_base64-6 - ./.terr '4294967295 0'
 
-      printf 'eval f 1; write ./.twrite\n' |
-         ${MAILX} ${ARGS} ${ADDARG_UNI} -Rf "${MBOX}" >./.tlog 2>&1
+      printf 'eval f 1; eval write ./.twrite; eval type 1; eval type 2\n' |
+         LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} -Rf "${MBOX}" >./.tlog 2>&1
       check behave:iconv_mbyte_base64-7 0 ./.twrite '1259742080 686'
-      check behave:iconv_mbyte_base64-8 - ./.tlog '500059195 119'
+      check behave:iconv_mbyte_base64-8 - ./.tlog '2506063395 2075'
    else
       echo 'behave:iconv_mbyte_base64: EUC-JP unsupported, skipping 5-8'
    fi
@@ -4542,6 +4675,27 @@ t_behave_iconv_mainbody() {
    else
       echo 'behave:iconv_mainbody-5: unsupported, skipped'
    fi
+
+   t_epilog
+}
+
+t_behave_binary_mainbody() {
+   t_prolog t_behave_binary_mainbody
+   TRAP_EXIT_ADDONS="./.t*"
+
+   printf 'abra\0\nka\r\ndabra' |
+      ${MAILX} ${ARGS} ${ADDARG_UNI} -s 'binary with carriage-return!' \
+      "${MBOX}" 2>./.terr
+   check behave:binary_mainbody-1 0 "${MBOX}" '2430168141 243'
+   check behave:binary_mainbody-2 - ./.terr '4294967295 0'
+
+   printf 'p\necho\necho writing now\nwrite ./.twrite\n' |
+      ${MAILX} ${ARGS} -Rf \
+         -Spipe-application/octet-stream="@* ${cat} > ./.tcat" \
+         "${MBOX}" >./.tall 2>&1
+   check behave:binary_mainbody-3 0 ./.tall '1151843761 324'
+   check behave:binary_mainbody-4 - ./.tcat '3817108933 15'
+   check behave:binary_mainbody-5 - ./.twrite '3817108933 15'
 
    t_epilog
 }

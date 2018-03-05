@@ -116,9 +116,10 @@ jesyn:
 
    switch(*cp){
    default:
-      switch(boolify(cp, UIZ_MAX, -1)){
-      case 0: rv = FAL0; break;
-      case 1: rv = TRU1; break;
+      switch((rv = n_boolify(cp, UIZ_MAX, TRUM1))){
+      case FAL0:
+      case TRU1:
+         break;
       default:
          emsg = N_("Expected a boolean");
          goto jesyn;

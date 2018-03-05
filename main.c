@@ -273,7 +273,7 @@ a_main_usage(FILE *fp){
          ". -e only mail check, -H header summary; both: specification via -L\n"
          ". -S sets variables, -X executes commands, -# enters batch mode\n"
          ". Features: \"$ %s -Xversion -Xx\", WWW: %s\n"
-         ". Mail contact: \"$ %s %s\"\n"),
+         ". Bugs to/Mail contact: \"$ %s %s\"\n"),
          n_progname, ok_vlook(contact_web), n_progname, ok_vlook(contact_mail));
    NYD2_LEAVE;
 }

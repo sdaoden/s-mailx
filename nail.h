@@ -533,7 +533,7 @@ typedef char            wc_t; /* Yep: really 8-bit char */
 # define n_WC_C(X)      X
 #endif
 
-enum {FAL0, TRU1, TRUM1 = -1};
+enum {FAL0, TRU1, TRU2, TRUM1 = -1};
 typedef si8_t           bool_t;
 
 /* Add shorter aliases for "normal" integers TODO v15 -> n_XX_t */
@@ -1379,7 +1379,7 @@ enum n_program_option{
    /*  */
    n_PO_MEMDEBUG = 1<<24,     /* *memdebug* */
 
-   /* Some easy-access shortcuts */
+   /* Some easy-access shortcuts TODO n_PO_VERB+ should be mask(s) already! */
    n_PO_D_V = n_PO_DEBUG | n_PO_VERB,
    n_PO_D_VV = n_PO_DEBUG | n_PO_VERBVERB,
    n_PO_D_V_VV = n_PO_DEBUG | n_PO_VERB | n_PO_VERBVERB
@@ -1544,10 +1544,11 @@ ok_b_bsdannounce, /* {obsolete=1} */
    ok_v_build_osenv,                   /* {virt=VAL_BUILD_OSENV} */
 
    ok_v_COLUMNS,                       /* {notempty=1,posnum=1,env=1} */
-   ok_v_charset_7bit,            /* {lower=1,notempty=1,defval=CHARSET_7BIT} */
+   /* Charset lowercase conversion handled via vip= */
+   ok_v_charset_7bit,            /* {vip=1,notempty=1,defval=CHARSET_7BIT} */
    /* But unused without HAVE_ICONV, we use ok_vlook(CHARSET_8BIT_OKEY)! */
-   ok_v_charset_8bit,            /* {lower=1,notempty=1,defval=CHARSET_8BIT} */
-   ok_v_charset_unknown_8bit,          /* {lower=1} */
+   ok_v_charset_8bit,            /* {vip=1,notempty=1,defval=CHARSET_8BIT} */
+   ok_v_charset_unknown_8bit,          /* {vip=1} */
    ok_v_cmd,
    ok_b_colour_disable,
    ok_b_colour_pager,
@@ -1591,6 +1592,7 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_b_header,                        /* {i3val=TRU1} */
    ok_v_headline,
    ok_v_headline_bidi,
+   ok_b_headline_plain,
    ok_v_history_file,
    ok_b_history_gabby,
    ok_b_history_gabby_persist,
@@ -1722,7 +1724,8 @@ ok_b_SYSV3, /* {env=1,obsolete=1} */
    ok_b_save,                          /* {i3val=TRU1} */
    ok_v_screen,                        /* {notempty=1,posnum=1} */
    ok_b_searchheaders,
-   ok_v_sendcharsets,                  /* {lower=1} */
+   /* Charset lowercase conversion handled via vip= */
+   ok_v_sendcharsets,                  /* {vip=1} */
    ok_b_sendcharsets_else_ttycharset,
    ok_v_sender,                        /* {vip=1} */
 ok_v_sendmail, /* {obsolete=1} */
@@ -1802,7 +1805,8 @@ ok_v_ssl_protocol, /* {chain=1,obsolete=1} */
    ok_b_termcap_disable,
    ok_v_toplines,                      /* {notempty=1,num=1,defval="5"} */
    ok_b_topsqueeze,
-   ok_v_ttycharset,              /* {lower=1,notempty=1,defval=CHARSET_8BIT} */
+   /* Charset lowercase conversion handled via vip= */
+   ok_v_ttycharset,              /* {vip=1,notempty=1,defval=CHARSET_8BIT} */
    ok_b_typescript_mode,               /* {vip=1} */
 
    ok_v_USER,                          /* {rdonly=1,import=1} */

@@ -395,19 +395,18 @@ FL bool_t n_idna_to_ascii(struct n_string *out, char const *ibuf, size_t ilen);
 FL char *n_random_create_buf(char *dat, size_t len, ui32_t *reprocnt_or_null);
 FL char *n_random_create_cp(size_t len, ui32_t *reprocnt_or_null);
 
-/* Check whether the argument string is a true (1) or false (0) boolean, or an
- * invalid string, in which case -1 is returned; if emptyrv is not -1 then it,
- * treated as a boolean, is used as the return value shall inbuf be empty.
+/* Check whether the argument string is a TRU1 or FAL0 boolean, or an invalid
+ * string, in which case TRUM1 is returned.
+ * If the input buffer is empty emptyrv is used as the return: if it is GE
+ * FAL0 it will be made a binary boolean, otherwise TRU2 is returned.
  * inlen may be UIZ_MAX to force strlen() detection */
-FL si8_t       boolify(char const *inbuf, uiz_t inlen, si8_t emptyrv);
+FL bool_t n_boolify(char const *inbuf, uiz_t inlen, bool_t emptyrv);
 
-/* Dig a "quadoption" in inbuf (possibly going through getapproval() in
- * interactive mode).  Returns a boolean or -1 if inbuf content is invalid;
- * if emptyrv is not -1 then it,  treated as a boolean, is used as the return
- * value shall inbuf be empty.  If prompt is set it is printed first if intera.
- * inlen may be UIZ_MAX to force strlen() detection */
-FL si8_t       quadify(char const *inbuf, uiz_t inlen, char const *prompt,
-                  si8_t emptyrv);
+/* Dig a "quadoption" in inbuf, possibly going through getapproval() in
+ * interactive mode, in which case prompt is printed first if set.
+.  Just like n_boolify() otherwise */
+FL bool_t n_quadify(char const *inbuf, uiz_t inlen, char const *prompt,
+            bool_t emptyrv);
 
 /* Is the argument "all" (case-insensitive) or "*" */
 FL bool_t n_is_all_or_aster(char const *name);
@@ -1683,7 +1682,8 @@ FL int         c_unshortcut(void *v);
 
 FL char const * shortcut_expand(char const *str);
 
-/* `(un)?charsetalias', and try to expand a charset, return mapping or itself */
+/* `(un)?charsetalias', and try to expand a charset, return mapping or itself.
+ * The charset to expand must have gone through iconv_normalize_name() */
 FL int c_charsetalias(void *vp);
 FL int c_uncharsetalias(void *vp);
 
@@ -2268,16 +2268,12 @@ FL struct str *n_str_trim_ifs(struct str *self, bool_t dodefaults);
    ((S)->s_dat = NULL, (S)->s_len = (S)->s_auto = (S)->s_size = 0, (S))
 #define n_string_creat_auto(S) \
    ((S)->s_dat = NULL, (S)->s_len = (S)->s_size = 0, (S)->s_auto = TRU1, (S))
-#define n_string_gut(S) ((S)->s_size != 0 ? (void)n_string_clear(S) : (void)0)
+#define n_string_gut(S) \
+      ((S)->s_dat != NULL ? (void)n_string_clear(S) : (void)0)
 
 /* Truncate to size, which must be LE current length */
 #define n_string_trunc(S,L) \
    (assert(UICMP(z, L, <=, (S)->s_len)), (S)->s_len = (ui32_t)(L), (S))
-
-/* Check whether a buffer of Len bytes can be inserted into Self */
-#define n_string_can_swallow(S,L) \
-   (UICMP(z, SI32_MAX - n_ALIGN(1), >=, L) &&\
-    UICMP(z, SI32_MAX - n_ALIGN(1) - (L), >, (S)->s_len))
 
 /* Take/Release buffer ownership */
 #define n_string_take_ownership(SP,B,S,L) \
@@ -2297,9 +2293,16 @@ FL struct n_string *n_string_clear(struct n_string *self n_MEMORY_DEBUG_ARGS);
 # define n_string_clear(S)       ((S)->s_size != 0 ? (n_string_clear)(S) : (S))
 #endif
 
+/* Check whether a buffer of Len bytes can be inserted into S(elf) */
+#define n_string_get_can_book(L) ((uiz_t)SI32_MAX - n_ALIGN(1) > L)
+#define n_string_can_book(S,L) \
+   (n_string_get_can_book(L) &&\
+    (uiz_t)SI32_MAX - n_ALIGN(1) - (L) > (S)->s_len)
+
 /* Reserve room for noof additional bytes, but don't adjust length (yet) */
 FL struct n_string *n_string_reserve(struct n_string *self, size_t noof
                      n_MEMORY_DEBUG_ARGS);
+#define n_string_book n_string_reserve
 
 /* Resize to exactly nlen bytes; any new storage isn't initialized */
 FL struct n_string *n_string_resize(struct n_string *self, size_t nlen
@@ -2417,6 +2420,10 @@ FL size_t      n_utf32_to_utf8(ui32_t c, char *buf);
 
 /* Our iconv(3) wrappers */
 
+/* Returns a newly n_autorec_alloc()ated thing if there were adjustments.
+ * Return value is always smaller or of equal size.
+ * NULL will be returned if cset is an invalid character set name */
+FL char *n_iconv_normalize_name(char const *cset);
 #ifdef HAVE_ICONV
 FL iconv_t     n_iconv_open(char const *tocode, char const *fromcode);
 /* If *cd* == *iconvd*, assigns -1 to the latter */
@@ -2534,7 +2541,7 @@ FL void        uncollapse1(struct message *mp, int always);
 
 /* Return whether user says yes, on STDIN if interactive.
  * Uses noninteract_default, the return value for non-interactive use cases,
- * as a hint for boolify() and chooses the yes/no string to append to prompt
+ * as a hint for n_boolify() and chooses the yes/no string to append to prompt
  * accordingly.  If prompt is NULL "Continue" is used instead.
  * Handles+reraises SIGINT */
 FL bool_t getapproval(char const *prompt, bool_t noninteract_default);
@@ -2618,10 +2625,6 @@ FL void        makeprint(struct str const *in, struct str *out);
 FL size_t      delctrl(char *cp, size_t len);
 FL char *      prstr(char const *s);
 FL int         prout(char const *s, size_t sz, FILE *fp);
-
-/* Print out a Unicode character or a substitute for it, return 0 on error or
- * wcwidth() (or 1) on success */
-FL size_t      putuc(int u, int c, FILE *fp);
 
 /* Check whether bidirectional info maybe needed for blen bytes of bdat */
 FL bool_t      bidi_info_needed(char const *bdat, size_t blen);
@@ -2712,7 +2715,7 @@ FL void        hmac_md5(unsigned char *text, int text_len, unsigned char *key,
 
 #ifdef HAVE_XSSL
 /* Our wrapper for RAND_bytes(3) */
-# if n_RANDOM_USE_XSSL
+# ifdef HAVE_SSL_RANDOM
 FL void ssl_rand_bytes(void *buf, size_t blen);
 # endif
 

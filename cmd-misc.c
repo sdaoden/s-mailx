@@ -39,6 +39,8 @@
 # include "nail.h"
 #endif
 
+#include <sys/utsname.h>
+
 /* Expand the shell escape by expanding unescaped !'s into the last issued
  * command where possible */
 static char const *a_cmisc_bangexp(char const *cp);
@@ -593,44 +595,83 @@ jleave:
 
 FL int
 c_version(void *vp){
-   int longest, rv;
+   struct utsname ut;
+   struct n_string s, *sp = &s;
+   int rv;
    char *iop;
    char const *cp, **arr;
-   size_t i, i2;
+   size_t i, lnlen, j;
    NYD_ENTER;
-   n_UNUSED(vp);
 
-   fprintf(n_stdout,
-      _("%s %s, %s (%s)\nFeatures included (+) or not (-)\n"),
-      n_uagent, ok_vlook(version), ok_vlook(version_date),
-      ok_vlook(build_osenv));
+   sp = n_string_creat_auto(sp);
+   sp = n_string_book(sp, 1024);
 
-   /* *features* starts with dummy byte to avoid + -> *folder* expansions */
+   /* First line */
+   sp = n_string_push_cp(sp, n_uagent);
+   sp = n_string_push_c(sp, ' ');
+   sp = n_string_push_cp(sp, ok_vlook(version));
+   sp = n_string_push_c(sp, ',');
+   sp = n_string_push_c(sp, ' ');
+   sp = n_string_push_cp(sp, ok_vlook(version_date));
+   sp = n_string_push_c(sp, ' ');
+   sp = n_string_push_c(sp, '(');
+   sp = n_string_push_cp(sp, _("build on "));
+   sp = n_string_push_cp(sp, ok_vlook(build_osenv));
+   sp = n_string_push_c(sp, ')');
+   sp = n_string_push_cp(sp, _("\nFeatures included (+) or not (-)\n"));
+
+   /* Some lines with the features.
+    * *features* starts with dummy byte to avoid + -> *folder* expansions */
    i = strlen(cp = &ok_vlook(features)[1]) +1;
    iop = n_autorec_alloc(i);
    memcpy(iop, cp, i);
 
    arr = n_autorec_alloc(sizeof(cp) * VAL_FEATURES_CNT);
-   for(longest = 0, i = 0; (cp = n_strsep(&iop, ',', TRU1)) != NULL; ++i){
+   for(i = 0; (cp = n_strsep(&iop, ',', TRU1)) != NULL; ++i)
       arr[i] = cp;
-      i2 = strlen(cp);
-      longest = n_MAX(longest, (int)i2);
-   }
    qsort(arr, i, sizeof(cp), &a_cmisc_version_cmp);
 
-   /* We use aligned columns, so don't use n_SCRNWIDTH_FOR_LISTS */
-   for(++longest, i2 = 0; i-- > 0;){
+   for(lnlen = 0; i-- > 0;){
       cp = *(arr++);
-      fprintf(n_stdout, "%-*s ", longest, cp);
-      i2 += longest;
-      if(UICMP(z, ++i2 + longest, >=, n_scrnwidth) || i == 0){
-         i2 = 0;
-         putc('\n', n_stdout);
+      j = strlen(cp);
+
+      if((lnlen += j + 1) > 72){
+         sp = n_string_push_c(sp, '\n');
+         lnlen = j + 1;
+      }
+      sp = n_string_push_c(sp, ' ');
+      sp = n_string_push_buf(sp, cp, j);
+   }
+   sp = n_string_push_c(sp, '\n');
+
+   /* Trailing line with info of running machine */
+   uname(&ut);
+   sp = n_string_push_c(sp, '@');
+   sp = n_string_push_cp(sp, ut.sysname);
+   sp = n_string_push_c(sp, ' ');
+   sp = n_string_push_cp(sp, ut.release);
+   sp = n_string_push_c(sp, ' ');
+   sp = n_string_push_cp(sp, ut.version);
+   sp = n_string_push_c(sp, ' ');
+   sp = n_string_push_cp(sp, ut.machine);
+   sp = n_string_push_c(sp, '\n');
+
+   /* Done */
+   cp = n_string_cp(sp);
+
+   if(n_pstate & n_PS_ARGMOD_VPUT){
+      if(n_var_vset(*(char const**)vp, (uintptr_t)cp))
+         rv = 0;
+      else
+         rv = -1;
+   }else{
+      if(fputs(cp, n_stdout) != EOF)
+         rv = 0;
+      else{
+         clearerr(n_stdout);
+         rv = 1;
       }
    }
-
-   if((rv = ferror(n_stdout) != 0))
-      clearerr(n_stdout);
    NYD_LEAVE;
    return rv;
 }
