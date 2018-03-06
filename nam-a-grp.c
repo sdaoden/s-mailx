@@ -2439,7 +2439,7 @@ c_charsetalias(void *vp){
       }
    }else for(; *argv != NULL; argv += 2){
       /* Because one hardly ever redefines, anything is stored in one chunk */
-      char *cp, c;
+      char *cp;
       size_t dstl;
       char const *dst, *src;
 
