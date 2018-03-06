@@ -349,7 +349,7 @@ if yesno 'Prepare announcement?'; then
       # Ideally the anchors have been automatically expanded by
       # make-news-anchors.sh before.
       while(match(s,
-            /(^|\(|[[:space:]]+)("[^"]+"|\*[^\*]+\*|`[^'${APO}']+'${APO}'|[-~][-\/:_.[:alnum:]]+|\$[_[:alnum:]]+)#[0-9]+/))
+            /(^|\(|[[:space:]]+)("[^"]+"|\*[^\*]+\*|`[^'${APO}']+'${APO}'|[-~][-#\/:_.[:alnum:]]+|\$[_[:alnum:]]+)#[0-9]+/))
       {
          pre = (RSTART > 1) ? substr(s, 1, RSTART - 1) : ""
          mat = substr(s, RSTART, RLENGTH)
