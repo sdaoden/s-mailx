@@ -6,8 +6,8 @@ S - n a i l / S - m a i l x  N e w s
   will scroll to the manual's Point-Of-Interest, and pointing
   a web- browser to the "#ANCHOR" of the online manual works.
 
-v14.9.8 ("Marsh tit savours first spring sun") 2018-03-05
----------------------------------------------------------
+v14.9.9 ("Marsh tit savours first spring sun, II") 2018-03-06
+-------------------------------------------------------------
 
 A bugfix release.
 I hope with this the fallout of the Christmas 2016 "address the
@@ -15,13 +15,15 @@ Dr. Problem workshop" has been fully resolved and thus MIME for
 header address fields, even if iconv(3) is involved, been fully
 restored!  We have even more tests for this now.
 
+The release v14.9.8 was broken on big endian machines.
+I will remove the v14.9.8 balls from the server by the weekend.
 Sorry for the inconvenience!
 
 Credits, in order of commit appearance: Slavko, Matej Mužila,
 Rich Felker, Simon McVittie, Paride Legovini, Cág,
 Predrag Punosevac.
 
-We welcom Slavko, Matej Mužila, Rich Felker and Simon McVittie in
+We welcome Slavko, Matej Mužila, Rich Felker and Simon McVittie in
 THANKS.
 
 NOTES, ChangeLog (packager-affine)
@@ -54,7 +56,7 @@ NOTES, ChangeLog (packager-affine)
 ChangeLog
 ^^^^^^^^^
 
-- `~@'#303 list-edit behaviour in -##? batch mode was broken.
+- `~@'#303 list-edit behaviour in -##84 batch mode was broken.
 
 - Character set names will now undergo generic normalization,
   including stripping of iconv(3) //SUFFIXes.
@@ -85,6 +87,10 @@ ac67d755 FIX: again fallout of [0ede309c], not covered by [ffd29558] (Cág)..
 dd6adbb3 IMAP does not need ICONV if ALWAYS_UNICODE_LOCALE (Predrag Punosevac)
 c86a5ec6 `version': support vput and include uname(2) output (Simon McVittie)
 1b018a36 Add *headline-plain* to force ASCII graphics (Cág)
+...
+565219b9 cc-test.sh: ARGH! MBOX content statistics not portable!
+        (Gaetan Bisson)
+e1e62dd1 Fix n_iconv_str() [on big endian machines, the author]
 
 v14.9.7 ("Marsh tit patiently scraping bark") 2018-02-16
 --------------------------------------------------------

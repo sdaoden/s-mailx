@@ -11,7 +11,7 @@
 #@   the escaped newline is not.
 #@ - The number sign # is the comment-command and causes the (joined) line
 #@   (content) to be ignored.
-#@ S-nail v14.9.8 / 2018-03-05
+#@ S-nail v14.9.9 / 2018-03-06
 
 ## Variables
 

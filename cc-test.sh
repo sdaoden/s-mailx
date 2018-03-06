@@ -4511,7 +4511,7 @@ t_behave_rfc2231() {
    t_epilog
 }
 
-t_behave_iconv_mbyte_base64() {
+t_behave_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
    t_prolog t_behave_iconv_mbyte_base64
    TRAP_EXIT_ADDONS="./.t*"
 
@@ -4569,9 +4569,13 @@ t_behave_iconv_mbyte_base64() {
       check behave:iconv_mbyte_base64-2 - ./.terr '4294967295 0'
 
       printf 'eval f 1; eval write ./.twrite; eval type 1; eval type 2\n' |
-         LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} -Rf "${MBOX}" >./.tlog 2>&1
+         LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
+            -S headline="%>%a%m %-18f %-16d %i%-s" \
+            -Rf "${MBOX}" >./.tlog 2>&1
       check behave:iconv_mbyte_base64-3 0 ./.twrite '1259742080 686'
-      check behave:iconv_mbyte_base64-4 - ./.tlog '3214068822 2123'
+      #check behave:iconv_mbyte_base64-4 - ./.tlog '3214068822 2123'
+      ${sed} -e '/^\[-- M/d' < ./.tlog > ./.txlog
+      check behave:iconv_mbyte_base64-4 - ./.txlog '3659773472 2035'
    else
       echo 'behave:iconv_mbyte_base64: ISO-2022-JP unsupported, skipping 1-4'
    fi
@@ -4614,9 +4618,13 @@ t_behave_iconv_mbyte_base64() {
       check behave:iconv_mbyte_base64-6 - ./.terr '4294967295 0'
 
       printf 'eval f 1; eval write ./.twrite; eval type 1; eval type 2\n' |
-         LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} -Rf "${MBOX}" >./.tlog 2>&1
+         LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
+            -S headline="%>%a%m %-18f %-16d %i%-s" \
+            -Rf "${MBOX}" >./.tlog 2>&1
       check behave:iconv_mbyte_base64-7 0 ./.twrite '1259742080 686'
-      check behave:iconv_mbyte_base64-8 - ./.tlog '2506063395 2075'
+      #check behave:iconv_mbyte_base64-8 - ./.tlog '2506063395 2075'
+      ${sed} -e '/^\[-- M/d' < ./.tlog > ./.txlog
+      check behave:iconv_mbyte_base64-8 - ./.txlog '2528199891 1988'
    else
       echo 'behave:iconv_mbyte_base64: EUC-JP unsupported, skipping 5-8'
    fi
