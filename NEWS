@@ -56,7 +56,7 @@ NOTES, ChangeLog (packager-affine)
 ChangeLog
 ^^^^^^^^^
 
-- `~@'#303 list-edit behaviour in -##? batch mode was broken.
+- `~@'#303 list-edit behaviour in -##84 batch mode was broken.
 
 - Character set names will now undergo generic normalization,
   including stripping of iconv(3) //SUFFIXes.
