@@ -3052,16 +3052,16 @@ t_behave_attachments() {
    printf 'att3-1\natt3-2\natt3-4\n' > ./.t3
    printf 'att4-1\natt4-2\natt4-4\n' > './.t 4'
 
-   printf '\
-!@  ./.t3              "./.t 4"             ""
+   printf \
+'!@  ./.t3              "./.t 4"             ""
 !p
 !@
    ./.t3
  "./.t 2"
 
 !p
-!.
-   ' | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh \
+!.' \
+   | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh \
       -a ./.t1 -a './.t 2' \
       -s attachment-test \
       ex@am.ple > ./.tall 2>&1
@@ -3069,8 +3069,8 @@ t_behave_attachments() {
    check behave:attachments-2 - .tall '1928331872 720'
 
    ${rm} -f "${MBOX}"
-   printf '\
-      mail ex@amp.ple
+   printf \
+'mail ex@amp.ple
 !s This the subject is
 !@  ./.t3        "#2"      "./.t 4"          "#1"   ""
 !p
@@ -3112,8 +3112,8 @@ t_behave_attachments() {
  "#2"
 
 !p
-!.
-   ' | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh -Rf ./.tx \
+!.' \
+   | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh -Rf ./.tx \
          > ./.tall 2>&1
    check behave:attachments-3 0 "${MBOX}" '798122412 2285'
    check behave:attachments-4 - .tall '2526106274 1910'
