@@ -656,7 +656,7 @@ a_mime__convhdra(struct str *inp, FILE *fp, size_t *colp,
    rv = mime_write_tohdr(inp, fp, colp, msh);
 jleave:
    if(ciconv.s != NULL)
-      free(ciconv.s);
+      n_free(ciconv.s);
    NYD_LEAVE;
    return rv;
 }
@@ -1413,9 +1413,9 @@ jqpb64_enc:
 
 jleave:
    if (out.s != NULL)
-      free(out.s);
+      n_free(out.s);
    if (in.s != ptr)
-      free(in.s);
+      n_free(in.s);
    safe_signal(SIGPIPE, __mimemw_opipe);
    if (__mimemw_sig != 0)
       n_raise(__mimemw_sig);
