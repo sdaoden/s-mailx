@@ -181,6 +181,8 @@ yesno 'Push git(1) repo?' && git push
 if [ ${relbrname} != ${stblbrname} ] && yesno 'Create tarballs?'; then
    bigballs=y
    (
+   umask 0022
+
    # Repack with standard tar(1) to avoid new-style headers
    git archive --format=tar --prefix="${PROGRAM}-${REL}/" v${REL}.ar |
       ( cd "${TMPDIR}" && tar -x -f - )
