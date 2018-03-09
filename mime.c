@@ -650,6 +650,7 @@ a_mime__convhdra(struct str *inp, FILE *fp, size_t *colp,
          goto jleave;
       }
       *inp = ciconv;
+      ciconv.s = NULL;
    }
 
    rv = mime_write_tohdr(inp, fp, colp, msh);
