@@ -256,10 +256,12 @@ OPT_AGENT=yes
 # the possibility to use domain names in their native language, i.e., to
 # use non-US-ASCII content, as in, e.g., <www.räksmörgåsa.example>,
 # which the IDNA algorithm would convert to
-# <www.xn--rksmrgsa-0zap8p.example>.  :)  This either needs idnkit
-# (https://www.nic.ad.jp/ja/idn/idnkit/download/) or the GNU Libidn
-# library (https://www.gnu.org/software/libidn/).  It can be
-# "require"d.
+# <www.xn--rksmrgsa-0zap8p.example>.  :)
+# In the order of availability checks this option needs one of
+# . GNU Libidn library (https://www.gnu.org/software/libidn/),
+# . GNU Libidn2 library (same),
+# . idnkit (https://www.nic.ad.jp/ja/idn/idnkit/download/).
+# It can be "require"d.
 OPT_IDNA=yes
 
 # IMAP-style SEARCH expressions can be supported.  This addressing mode
