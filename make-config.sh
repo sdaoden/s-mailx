@@ -2675,25 +2675,7 @@ feat_def NETRC
 feat_def AGENT
 
 if feat_yes IDNA; then
-   if link_check idna 'Libidn2' '#define HAVE_IDNA HAVE_IDNA_LIBIDN2' \
-         '-lidn2' << \!
-#include <idn2.h>
-int main(void){
-   char *idna_utf8, *idna_lc;
-
-   if(idn2_to_ascii_8z("does.this.work", &idna_utf8,
-         IDN2_NONTRANSITIONAL | IDN2_TRANSITIONAL) != IDN2_OK)
-      return 1;
-   if(idn2_to_unicode_8zlz(idna_utf8, &idna_lc, 0) != IDN2_OK)
-      return 1;
-   idn2_free(idna_lc);
-   idn2_free(idna_utf8);
-   return 0;
-}
-!
-   then
-      :
-   elif link_check idna 'GNU Libidn' '#define HAVE_IDNA HAVE_IDNA_LIBIDNA' \
+   if link_check idna 'GNU Libidn' '#define HAVE_IDNA HAVE_IDNA_LIBIDNA' \
          '-lidn' << \!
 #include <idna.h>
 #include <idn-free.h>
@@ -2708,6 +2690,24 @@ int main(void){
    idn_free(idna_ascii);
    /* (Rather link check only here) */
    idna_utf8 = stringprep_convert(idna_ascii, "UTF-8", "de_DE");
+   return 0;
+}
+!
+   then
+      :
+   elif link_check idna 'Libidn2' '#define HAVE_IDNA HAVE_IDNA_LIBIDN2' \
+         '-lidn2' << \!
+#include <idn2.h>
+int main(void){
+   char *idna_utf8, *idna_lc;
+
+   if(idn2_to_ascii_8z("does.this.work", &idna_utf8,
+         IDN2_NONTRANSITIONAL | IDN2_TRANSITIONAL) != IDN2_OK)
+      return 1;
+   if(idn2_to_unicode_8zlz(idna_utf8, &idna_lc, 0) != IDN2_OK)
+      return 1;
+   idn2_free(idna_lc);
+   idn2_free(idna_utf8);
    return 0;
 }
 !
