@@ -50,6 +50,10 @@
  * TODO tick, and also we can use some buffer caches.
  */
 
+/* If defined (and HAVE_MEMORY_DEBUG), realloc acts like alloc+free, which can
+ * help very bogus double-free attempts */
+#define a_MEMORY_REALLOC_IS_ALLOC_PLUS_FREE /* TODO runtime opt <> C++ cache */
+
 /* Maximum allocation (directly) handled by A-R-Storage */
 #define a_MEMORY_ARS_MAX (n_MEMORY_AUTOREC_SIZE / 2 + n_MEMORY_AUTOREC_SIZE / 4)
 #define a_MEMORY_LOFI_MAX a_MEMORY_ARS_MAX
@@ -389,7 +393,9 @@ a_memory_ars_reset(struct a_memory_ars_ctx *macp){
 
    /* "alloca(3)" memory goes away, too.  XXX Must be last as long we jump */
 #ifdef HAVE_MEMORY_DEBUG
-   if(macp->mac_lofi_top != NULL && (n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG)))
+   if(macp->mac_lofi_top != NULL &&
+         ((n_psonce & n_PSO_REPRODUCIBLE) ||
+          (n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG))))
       n_alert("There still is LOFI memory upon ARS reset!");
 #endif
    while((m.alcp = macp->mac_lofi_top) != NULL)
@@ -607,9 +613,11 @@ FL void *
 
 FL void *
 (n_realloc)(void *vp, size_t s n_MEMORY_DEBUG_ARGS){
-   union a_memory_ptr p;
+# ifndef a_MEMORY_REALLOC_IS_ALLOC_PLUS_FREE
    ui32_t user_s;
+# endif
    bool_t isbad;
+   union a_memory_ptr p;
    NYD2_ENTER;
 
    if((p.p_vp = vp) == NULL){
@@ -627,6 +635,18 @@ jforce:
          mdbg_file, mdbg_line, p.p_c->mc_file, p.p_c->mc_line);
       goto jforce;
    }
+
+# ifdef a_MEMORY_REALLOC_IS_ALLOC_PLUS_FREE
+   /* C99 */{
+      char *xp;
+
+      xp = (n_alloc)(s, mdbg_file, mdbg_line);
+      memcpy(xp, vp, n_MIN(s, p.p_c->mc_user_size));
+      (n_free)(vp, mdbg_file, mdbg_line);
+      p.p_vp = xp;
+      goto jleave;
+   }
+# else
 
    if(p.p_hc == a_memory_heap_list)
       a_memory_heap_list = p.p_hc->mhc_next;
@@ -666,6 +686,7 @@ jforce:
    a_memory_heap_mall += user_s;
    a_memory_heap_mcur += user_s;
    a_memory_heap_mmax = n_MAX(a_memory_heap_mmax, a_memory_heap_mcur);
+# endif /* a_MEMORY_REALLOC_IS_ALLOC_PLUS_FREE */
 jleave:
    NYD2_LEAVE;
    return p.p_vp;
@@ -757,7 +778,8 @@ FL void
    --a_memory_heap_acur;
    a_memory_heap_mcur -= p.p_c->mc_user_size;
 
-   if(n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG)){
+   if((n_psonce & n_PSO_REPRODUCIBLE) ||
+         (n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG))){
       p.p_hc->mhc_next = a_memory_heap_free;
       a_memory_heap_free = p.p_hc;
    }else
@@ -1278,7 +1300,8 @@ c_memtrace(void *vp){
          p.p_c->mc_user_size, p.p_c->mc_file, p.p_c->mc_line);
    }
 
-   if(n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG)){
+   if((n_psonce & n_PSO_REPRODUCIBLE) ||
+         (n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG))){
       fprintf(fp, "Heap buffers lingering for n_free():\n");
       ++lines;
 
@@ -1378,7 +1401,8 @@ n__memory_check(char const *mdbg_file, int mdbg_line){
       }
    }
 
-   if(n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG)){
+   if((n_psonce & n_PSO_REPRODUCIBLE) ||
+         (n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG))){
       for(p.p_hc = a_memory_heap_free; p.p_hc != NULL;
             p.p_hc = p.p_hc->mhc_next){
          xp = p;
