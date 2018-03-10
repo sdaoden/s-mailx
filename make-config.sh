@@ -256,6 +256,9 @@ tmp2=./${tmp0}2$$
 _CFLAGS= _LDFLAGS=
 
 os_early_setup() {
+   [ -n "${OS}" ] && [ -n "${OSENV}" ] && [ -n "${OSFULLSPEC}" ] ||
+      thecmd_testandset_fail uname uname
+
    # We don't "have any utility": only path adjustments and such in here!
    [ -n "${OS}" ] || OS=`${uname} -s`
    export OS
@@ -760,8 +763,29 @@ feat_bail_required() {
       msg 'ERROR: feature OPT_%s is required but not available' "${1}"
       config_exit 13
    fi
+   feat_is_unsupported "${1}"
+}
+
+feat_is_disabled() {
+   [ ${#} -eq 1 ] && msg ' .  (disabled: OPT_%s)' "${1}"
+   echo "/* OPT_${1} -> HAVE_${1} */" >> ${h}
+}
+
+feat_is_unsupported() {
+   msg ' ! NOTICE: unsupported: OPT_%s' "${1}"
+   echo "/* OPT_${1} -> HAVE_${1} */" >> ${h}
    eval OPT_${1}=0
    option_update # XXX this is rather useless here (dependency chain..)
+}
+
+feat_def() {
+   if feat_yes ${1}; then
+      echo '#define HAVE_'${1}'' >> ${h}
+      return 0
+   else
+      feat_is_disabled "${@}"
+      return 1
+   fi
 }
 
 option_parse() {
@@ -914,6 +938,48 @@ option_evaluate() {
       eval "${i}=\"${j}\""
    done
    exec 0<&5 1>&6 5<&- 6<&-
+}
+
+val_allof() {
+   eval __expo__=\$${1}
+   ${awk} -v HEAP="${2}" -v USER="${__expo__}" '
+      BEGIN{
+         i = split(HEAP, ha)
+         if((j = split(USER, ua)) == 0)
+            exit
+         for(; j != 0; --j){
+            us = tolower(ua[j])
+            if(us == "all" || us == "any")
+               continue
+            ok = 0
+            for(ii = i; ii != 0; --ii)
+               if(tolower(ha[ii]) == us){
+                  ok = 1
+                  break
+               }
+            if(!ok)
+               exit 1
+         }
+      }
+   '
+   __rv__=${?}
+   [ ${__rv__} -ne 0 ] && return ${__rv__}
+
+    if ${awk} -v USER="${__expo__}" '
+            BEGIN{
+               if((j = split(USER, ua)) == 0)
+                  exit
+               for(; j != 0; --j){
+                  us = tolower(ua[j])
+                  if(us == "all" || us == "any")
+                     exit 0
+               }
+               exit 1
+            }
+         '; then
+      eval "${1}"=\"${2}\"
+   fi
+   return 0
 }
 
 path_check() {
@@ -1116,16 +1182,6 @@ xrun_check() {
    _link_mayrun 2 "${1}" "${2}" "${3}" "${4}" "${5}"
 }
 
-feat_def() {
-   if feat_yes ${1}; then
-      echo '#define HAVE_'${1}'' >> ${h}
-      return 0
-   else
-      echo '/* OPT_'${1}'=0 */' >> ${h}
-      return 1
-   fi
-}
-
 squeeze_em() {
    < "${1}" > "${2}" ${awk} \
    'BEGIN {ORS = " "} /^[^#]/ {print} {next} END {ORS = ""; print "\n"}'
@@ -1137,7 +1193,6 @@ squeeze_em() {
 
 # Very easy checks for the operating system in order to be able to adjust paths
 # or similar very basic things which we need to be able to go at all
-thecmd_testandset_fail uname uname
 os_early_setup
 
 # Check those tools right now that we need before including $rc
@@ -1406,17 +1461,17 @@ dump_test_program=0
 dump_test_program=1
 
 feat_def ALWAYS_UNICODE_LOCALE
-feat_def AMALGAMATION
+feat_def AMALGAMATION 0
 feat_def CROSS_BUILD
 feat_def DOCSTRINGS
 feat_def ERRORS
 
-feat_def ASAN_ADDRESS
-feat_def ASAN_MEMORY
-feat_def DEBUG
-feat_def DEVEL
-feat_def NYD2
-feat_def NOMEMDBG
+feat_def ASAN_ADDRESS 0
+feat_def ASAN_MEMORY 0
+feat_def DEBUG 0
+feat_def DEVEL 0
+feat_def NYD2 0
+feat_def NOMEMDBG 0
 
 if xrun_check inline 'inline functions' \
    '#define HAVE_INLINE
@@ -1837,7 +1892,9 @@ int main(void){
    fi
 fi
 
+##
 ## optional and selectable
+##
 
 if feat_yes DOTLOCK; then
    if run_check readlink 'readlink(2)' << \!
@@ -2065,7 +2122,7 @@ int main(void){
       esac
    fi
 else
-   echo '/* OPT_ICONV=0 */' >> ${h}
+   feat_is_disabled ICONV
 fi # feat_yes ICONV
 
 if feat_yes SOCKETS || feat_yes SPAM_SPAMD; then
@@ -2120,7 +2177,7 @@ int main(void){
          '#define HAVE_SOCKETS' '-lsocket -lnsl' ||
       feat_bail_required SOCKETS
 else
-   echo '/* OPT_SOCKETS=0 */' >> ${h}
+   feat_is_disabled SOCKETS
 fi # feat_yes SOCKETS
 
 if feat_yes SOCKETS; then
@@ -2545,14 +2602,15 @@ int main(void){
 }
 !
    fi # }}}
-fi
-if feat_yes SSL; then
-   feat_def SSL_RANDOM
-   feat_def SSL_ALL_ALGORITHMS
+
+   if feat_yes SSL; then
+      feat_def SSL_ALL_ALGORITHMS
+   else
+      feat_bail_required SSL_ALL_ALGORITHMS
+   fi
 else
-   feat_bail_required SSL_RANDOM
-   feat_bail_required SSL_ALL_ALGORITHMS
-   echo '/* OPT_SSL=0 */' >> ${h}
+   feat_is_disabled SSL
+   feat_is_disabled SSL_ALL_ALGORITHMS
 fi # }}} feat_yes SSL
 printf '#define VAL_SSL_FEATURES "#'"${VAL_SSL_FEATURES}"'"\n' >> ${h}
 
@@ -2669,7 +2727,7 @@ int main(void){
       feat_bail_required GSSAPI
    fi
 else
-   echo '/* OPT_GSSAPI=0 */' >> ${h}
+   feat_is_disabled GSSAPI
 fi # feat_yes GSSAPI
 
 feat_def NETRC
@@ -2750,7 +2808,7 @@ int main(void){
       echo '#define HAVE_IDNA_IDNKIT 2' >> ${h}
    fi
 else
-   echo '/* OPT_IDNA=0 */' >> ${h}
+   feat_is_disabled IDNA
 fi
 
 feat_def IMAP_SEARCH
@@ -2777,15 +2835,18 @@ int main(void){
       feat_bail_required REGEX
    fi
 else
-   echo '/* OPT_REGEX=0 */' >> ${h}
+   feat_is_disabled REGEX
 fi
 
-if feat_yes MLE && [ -n "${have_c90amend1}" ]; then
-   have_mle=1
-   echo '#define HAVE_MLE' >> ${h}
+if feat_yes MLE; then
+   if [ -n "${have_c90amend1}" ]; then
+      have_mle=1
+      echo '#define HAVE_MLE' >> ${h}
+   else
+      feat_bail_required MLE
+   fi
 else
-   feat_bail_required MLE
-   echo '/* OPT_MLE=0 */' >> ${h}
+   feat_is_disabled MLE
 fi
 
 # Generic have-a-line-editor switch for those who need it below
@@ -2793,16 +2854,24 @@ if [ -n "${have_mle}" ]; then
    have_cle=1
 fi
 
-if [ -n "${have_cle}" ] && feat_yes HISTORY; then
-   echo '#define HAVE_HISTORY' >> ${h}
+if feat_yes HISTORY; then
+   if [ -n "${have_cle}" ]; then
+      echo '#define HAVE_HISTORY' >> ${h}
+   else
+      feat_is_unsupported HISTORY
+   fi
 else
-   echo '/* OPT_HISTORY=0 */' >> ${h}
+   feat_is_disabled HISTORY
 fi
 
-if [ -n "${have_mle}" ] && feat_yes KEY_BINDINGS; then
-   echo '#define HAVE_KEY_BINDINGS' >> ${h}
+if feat_yes KEY_BINDINGS; then
+   if [ -n "${have_mle}" ]; then
+      echo '#define HAVE_KEY_BINDINGS' >> ${h}
+   else
+      feat_is_unsupported KEY_BINDINGS
+   fi
 else
-   echo '/* OPT_KEY_BINDINGS=0 */' >> ${h}
+   feat_is_disabled KEY_BINDINGS
 fi
 
 if feat_yes TERMCAP; then
@@ -2896,8 +2965,8 @@ _EOT
       fi
    fi
 else
-   echo '/* OPT_TERMCAP=0 */' >> ${h}
-   echo '/* OPT_TERMCAP_VIA_TERMINFO=0 */' >> ${h}
+   feat_is_disabled TERMCAP
+   feat_is_disabled TERMCAP_VIA_TERMINFO
 fi
 
 if feat_def SPAM_SPAMC; then
@@ -2906,11 +2975,14 @@ if feat_def SPAM_SPAMC; then
    fi
 fi
 
-if feat_yes SPAM_SPAMD && [ -n "${have_af_unix}" ]; then
-   echo '#define HAVE_SPAM_SPAMD' >> ${h}
+if feat_yes SPAM_SPAMD; then
+   if [ -n "${have_af_unix}" ]; then
+      echo '#define HAVE_SPAM_SPAMD' >> ${h}
+   else
+      feat_bail_required SPAM_SPAMD
+   fi
 else
-   feat_bail_required SPAM_SPAMD
-   echo '/* OPT_SPAM_SPAMD=0 */' >> ${h}
+   feat_is_disabled SPAM_SPAMD
 fi
 
 feat_def SPAM_FILTER
@@ -2921,12 +2993,14 @@ else
    echo '/* HAVE_SPAM */' >> ${h}
 fi
 
-if feat_yes QUOTE_FOLD &&\
-      [ -n "${have_c90amend1}" ] && [ -n "${have_wcwidth}" ]; then
-   echo '#define HAVE_QUOTE_FOLD' >> ${h}
+if feat_yes QUOTE_FOLD; then
+   if [ -n "${have_c90amend1}" ] && [ -n "${have_wcwidth}" ]; then
+      echo '#define HAVE_QUOTE_FOLD' >> ${h}
+   else
+      feat_bail_required QUOTE_FOLD
+   fi
 else
-   feat_bail_required QUOTE_FOLD
-   echo '/* OPT_QUOTE_FOLD=0 */' >> ${h}
+   feat_is_disabled QUOTE_FOLD
 fi
 
 feat_def FILTER_HTML_TAGSOUP
