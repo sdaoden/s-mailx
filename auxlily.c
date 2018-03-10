@@ -61,12 +61,12 @@
 #endif
 
 #ifdef HAVE_IDNA
-# if HAVE_IDNA == HAVE_IDNA_LIBIDN2
+# if HAVE_IDNA == n_IDNA_IMPL_LIBIDN2
 #  include <idn2.h>
-# elif HAVE_IDNA == HAVE_IDNA_LIBIDNA
+# elif HAVE_IDNA == n_IDNA_IMPL_LIBIDN
 #  include <idna.h>
 #  include <idn-free.h>
-# elif HAVE_IDNA == HAVE_IDNA_IDNKIT
+# elif HAVE_IDNA == n_IDNA_IMPL_IDNKIT
 #  include <idn/api.h>
 # endif
 #endif
@@ -1132,7 +1132,7 @@ n_idna_to_ascii(struct n_string *out, char const *ibuf, size_t ilen){
       goto jleave;
 # endif
 
-# if HAVE_IDNA == HAVE_IDNA_LIBIDN2
+# if HAVE_IDNA == n_IDNA_IMPL_LIBIDN2
    /* C99 */{
       char *idna_ascii;
       int f, rc;
@@ -1150,7 +1150,7 @@ jidn2_redo:
       }
    }
 
-# elif HAVE_IDNA == HAVE_IDNA_LIBIDNA
+# elif HAVE_IDNA == n_IDNA_IMPL_LIBIDN
    /* C99 */{
       char *idna_ascii;
 
@@ -1162,7 +1162,7 @@ jidn2_redo:
       }
    }
 
-# elif HAVE_IDNA == HAVE_IDNA_IDNKIT
+# elif HAVE_IDNA == n_IDNA_IMPL_IDNKIT
    ilen = strlen(idna_utf8);
 jredo:
    switch(idn_encodename((IDN_ENCODE_APP & ~IDN_LOCALCONV), idna_utf8,

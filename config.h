@@ -77,6 +77,11 @@
 # endif
 #endif
 
+/* Supported IDNA implementations */
+#define n_IDNA_IMPL_LIBIDN2 0
+#define n_IDNA_IMPL_LIBIDN 1
+#define n_IDNA_IMPL_IDNKIT 2
+
 /* Max readable line width TODO simply use BUFSIZ? */
 #if BUFSIZ + 0 > 2560
 # define LINESIZE BUFSIZ

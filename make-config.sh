@@ -2733,9 +2733,36 @@ fi # feat_yes GSSAPI
 feat_def NETRC
 feat_def AGENT
 
-if feat_yes IDNA; then
-   if link_check idna 'GNU Libidn' '#define HAVE_IDNA HAVE_IDNA_LIBIDNA' \
-         '-lidn' << \!
+if feat_yes IDNA; then # {{{
+   if val_allof VAL_IDNA "idnkit idn2 idn"; then
+      :
+   else
+      msg 'ERROR: VAL_IDNA with invalid entries: %s' "${VAL_IDNA}"
+      config_exit 1
+   fi
+
+   val_idna_idn2() {
+      link_check idna 'OPT_IDNA: GNU Libidn2' \
+         '#define HAVE_IDNA n_IDNA_IMPL_LIBIDN2' '-lidn2' << \!
+#include <idn2.h>
+int main(void){
+   char *idna_utf8, *idna_lc;
+
+   if(idn2_to_ascii_8z("does.this.work", &idna_utf8,
+         IDN2_NONTRANSITIONAL | IDN2_TRANSITIONAL) != IDN2_OK)
+      return 1;
+   if(idn2_to_unicode_8zlz(idna_utf8, &idna_lc, 0) != IDN2_OK)
+      return 1;
+   idn2_free(idna_lc);
+   idn2_free(idna_utf8);
+   return 0;
+}
+!
+   }
+
+   val_idna_idn() {
+      link_check idna 'OPT_IDNA: GNU Libidn' \
+         '#define HAVE_IDNA n_IDNA_IMPL_LIBIDN' '-lidn' << \!
 #include <idna.h>
 #include <idn-free.h>
 #include <stringprep.h> /* XXX we actually use our own iconv instead */
@@ -2752,28 +2779,11 @@ int main(void){
    return 0;
 }
 !
-   then
-      :
-   elif link_check idna 'Libidn2' '#define HAVE_IDNA HAVE_IDNA_LIBIDN2' \
-         '-lidn2' << \!
-#include <idn2.h>
-int main(void){
-   char *idna_utf8, *idna_lc;
+   }
 
-   if(idn2_to_ascii_8z("does.this.work", &idna_utf8,
-         IDN2_NONTRANSITIONAL | IDN2_TRANSITIONAL) != IDN2_OK)
-      return 1;
-   if(idn2_to_unicode_8zlz(idna_utf8, &idna_lc, 0) != IDN2_OK)
-      return 1;
-   idn2_free(idna_lc);
-   idn2_free(idna_utf8);
-   return 0;
-}
-!
-   then
-      :
-   elif link_check idna 'idnkit' '#define HAVE_IDNA HAVE_IDNA_IDNKIT' \
-         '-lidnkit' << \!
+   val_idna_idnkit() {
+      link_check idna 'OPT_IDNA: idnkit' \
+         '#define HAVE_IDNA n_IDNA_IMPL_IDNKIT' '-lidnkit' << \!
 #include <stdio.h>
 #include <idn/api.h>
 #include <idn/result.h>
@@ -2796,20 +2806,24 @@ int main(void){
    return 0;
 }
 !
-   then
-      :
-   else
-      feat_bail_required IDNA
-   fi
+   }
 
-   if [ -n "${have_idna}" ]; then
-      echo '#define HAVE_IDNA_LIBIDN2 0' >> ${h}
-      echo '#define HAVE_IDNA_LIBIDNA 1' >> ${h}
-      echo '#define HAVE_IDNA_IDNKIT 2' >> ${h}
-   fi
+   val_idna_bye() {
+      feat_bail_required IDNA
+   }
+
+   oifs=${IFS}
+   unset IFS
+   VAL_IDNA="${VAL_IDNA} bye"
+   set -- ${VAL_IDNA}
+   IFS=${oifs}
+   for randfun
+   do
+      eval val_idna_$randfun && break
+   done
 else
    feat_is_disabled IDNA
-fi
+fi # }}} IDNA
 
 feat_def IMAP_SEARCH
 
