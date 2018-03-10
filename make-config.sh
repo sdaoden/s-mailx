@@ -22,7 +22,6 @@ XOPTIONS="\
    ICONV='Character set conversion using iconv(3)' \
    SOCKETS='Network support' \
       SSL='SSL/TLS (OpenSSL / LibreSSL)' \
-         SSL_RANDOM='-' \
          SSL_ALL_ALGORITHMS='Support of all digest and cipher algorithms' \
       SMTP='Simple Mail Transfer Protocol client' \
       POP3='Post Office Protocol Version 3 client' \
@@ -153,12 +152,8 @@ option_setup() {
 
 # Inter-relationships XXX sort this!
 option_update() {
-   if feat_yes NOEXTRANDOM; then
-      OPT_SSL_RANDOM=0
-   fi
-
    if feat_no SSL; then
-      OPT_SSL_RANDOM=0 OPT_SSL_ALL_ALGORITHMS=0
+      OPT_SSL_ALL_ALGORITHMS=0
    fi
 
    if feat_no SMTP && feat_no POP3 && feat_no IMAP; then
@@ -177,7 +172,7 @@ option_update() {
          msg 'ERROR: need SOCKETS for required feature IMAP'
          config_exit 13
       fi
-      OPT_SSL=0 OPT_SSL_RANDOM=0 OPT_SSL_ALL_ALGORITHMS=0
+      OPT_SSL=0 OPT_SSL_ALL_ALGORITHMS=0
       OPT_SMTP=0 OPT_POP3=0 OPT_IMAP=0
       OPT_GSSAPI=0 OPT_NETRC=0 OPT_AGENT=0
    fi
@@ -1849,7 +1844,8 @@ int main(void){
 
 ##
 
-# The random check has been moved to below SSL detection due to OPT_SSL_RANDOM
+# The random check has been moved to below SSL detection due to multiple choice
+# selection for PRG sources
 
 link_check putc_unlocked 'putc_unlocked(3)' '#define HAVE_PUTC_UNLOCKED' <<\!
 #include <stdio.h>
@@ -2621,24 +2617,42 @@ else
 fi
 feat_def SMIME
 
-# Native random check (had been delayed due to OPT_SSL_RAMDOM) {{{
-# XXX Add POSIX check once standardized
-if feat_yes NOEXTRANDOM; then
-   echo '#define HAVE_NOEXTRANDOM' >> ${h}
-elif feat_yes SSL_RANDOM; then
+# VAL_RANDOM {{{
+if val_allof VAL_RANDOM \
+      "arc4 ssl libgetrandom sysgetrandom urandom builtin error"; then
    :
-elif link_check arc4random 'arc4random(3)' '#define HAVE_POSIX_RANDOM 0' << \!
+else
+   msg 'ERROR: VAL_RANDOM with invalid entries: %s' "${VAL_RANDOM}"
+   config_exit 1
+fi
+
+val_random_arc4() {
+   link_check arc4random 'VAL_RANDOM: arc4random(3)' \
+      '#define HAVE_RANDOM n_RANDOM_IMPL_ARC4' << \!
 #include <stdlib.h>
 int main(void){
    arc4random();
    return 0;
 }
 !
-then
-   :
-elif link_check getrandom 'getrandom(2) (in sys/random.h)' \
-      '#define HAVE_GETRANDOM(B,S) getrandom(B, S, 0)
-      #define HAVE_GETRANDOM_HEADER <sys/random.h>' <<\!
+}
+
+val_random_ssl() {
+   if feat_yes SSL; then
+      msg ' . VAL_RANDOM: ssl ... yes'
+      echo '#define HAVE_RANDOM n_RANDOM_IMPL_SSL' >> ${h}
+      return 0
+   else
+      msg ' . VAL_RANDOM: ssl ... no'
+      return 1
+   fi
+}
+
+val_random_libgetrandom() {
+   link_check getrandom 'VAL_RANDOM: getrandom(3) (in sys/random.h)' \
+      '#define HAVE_RANDOM n_RANDOM_IMPL_GETRANDOM
+      #define n_RANDOM_GETRANDOM_FUN(B,S) getrandom(B, S, 0)
+      #define n_RANDOM_GETRANDOM_H <sys/random.h>' <<\!
 #include <sys/random.h>
 int main(void){
    char buf[256];
@@ -2646,11 +2660,13 @@ int main(void){
    return 0;
 }
 !
-then
-   :
-elif link_check getrandom 'getrandom(2) (via syscall(2))' \
-      '#define HAVE_GETRANDOM(B,S) syscall(SYS_getrandom, B, S, 0)
-      #define HAVE_GETRANDOM_HEADER <sys/syscall.h>' <<\!
+}
+
+val_random_sysgetrandom() {
+   link_check getrandom 'VAL_RANDOM: getrandom(2) (via syscall(2))' \
+      '#define HAVE_RANDOM n_RANDOM_IMPL_GETRANDOM
+      #define n_RANDOM_GETRANDOM_FUN(B,S) syscall(SYS_getrandom, B, S, 0)
+      #define n_RANDOM_GETRANDOM_H <sys/syscall.h>' <<\!
 #include <sys/syscall.h>
 int main(void){
    char buf[256];
@@ -2658,13 +2674,50 @@ int main(void){
    return 0;
 }
 !
-then
-   :
-elif [ -n "${have_no_subsecond_time}" ]; then
-   msg 'ERROR: %s %s' 'without a native random' \
-      'one of clock_gettime(2) and gettimeofday(2) is required.'
-   config_exit 1
-fi # }}}
+}
+
+val_random_urandom() {
+   msg_nonl ' . VAL_RANDOM: /dev/urandom ... '
+   if feat_yes CROSS_BUILD; then
+      msg 'yes (unchecked)'
+      echo '#define HAVE_RANDOM n_RANDOM_IMPL_URANDOM' >> ${h}
+   elif [ -f /dev/urandom ]; then
+      msg yes
+      echo '#define HAVE_RANDOM n_RANDOM_IMPL_URANDOM' >> ${h}
+   else
+      msg no
+      return 1
+   fi
+   return 0
+}
+
+val_random_builtin() {
+   msg_nonl ' . VAL_RANDOM: builtin ... '
+   if [ -n "${have_no_subsecond_time}" ]; then
+      msg 'no\nERROR: %s %s' 'without a specialized PRG ' \
+         'one of clock_gettime(2) and gettimeofday(2) is required.'
+      config_exit 1
+   else
+      msg yes
+      echo '#define HAVE_RANDOM n_RANDOM_IMPL_BUILTIN' >> ${h}
+   fi
+}
+
+val_random_error() {
+   msg 'ERROR: VAL_RANDOM search reached "error" entry'
+   config_exit 42
+}
+
+oifs=${IFS}
+unset IFS
+VAL_RANDOM="${VAL_RANDOM} error"
+set -- ${VAL_RANDOM}
+IFS=${oifs}
+for randfun
+do
+   eval val_random_$randfun && break
+done
+# }}} VAL_RANDOM
 
 feat_def SMTP
 feat_def POP3

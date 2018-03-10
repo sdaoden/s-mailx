@@ -56,8 +56,8 @@
 # include <locale.h>
 #endif
 
-#if defined HAVE_GETRANDOM
-# include HAVE_GETRANDOM_HEADER
+#if HAVE_RANDOM == n_RANDOM_IMPL_GETRANDOM
+# include n_RANDOM_GETRANDOM_H
 #endif
 
 #ifdef HAVE_IDNA
@@ -71,7 +71,7 @@
 # endif
 #endif
 
-#if !defined HAVE_POSIX_RANDOM && !defined HAVE_SSL_RANDOM
+#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_SSL
 union rand_state{
    struct rand_arc4{
       ui8_t _dat[256];
@@ -164,7 +164,7 @@ n__ERR_NUMBER_TO_MAPOFF
 #undef a_X
 };
 
-#if !defined HAVE_POSIX_RANDOM && !defined HAVE_SSL_RANDOM
+#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_SSL
 static union rand_state *a_aux_rand;
 #endif
 
@@ -177,7 +177,7 @@ static size_t a_aux_err_linelen;
 
 /* Our ARC4 random generator with its completely unacademical pseudo
  * initialization (shall /dev/urandom fail) */
-#if !defined HAVE_POSIX_RANDOM && !defined HAVE_SSL_RANDOM
+#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_SSL
 static void a_aux_rand_init(void);
 n_INLINE ui8_t a_aux_rand_get8(void);
 static ui32_t a_aux_rand_weak(ui32_t seed);
@@ -186,7 +186,7 @@ static ui32_t a_aux_rand_weak(ui32_t seed);
 /* Find the descriptive mapping of an error number, or _ERR_INVAL */
 static struct a_aux_err_map const *a_aux_err_map_from_no(si32_t eno);
 
-#if !defined HAVE_POSIX_RANDOM && !defined HAVE_SSL_RANDOM
+#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_SSL
 static void
 a_aux_rand_init(void){
 # ifdef HAVE_CLOCK_GETTIME
@@ -200,7 +200,7 @@ a_aux_rand_init(void){
 
    a_aux_rand = n_alloc(sizeof *a_aux_rand);
 
-# ifdef HAVE_GETRANDOM
+# if HAVE_RANDOM == n_RANDOM_IMPL_GETRANDOM
    /* getrandom(2) guarantees 256 without n_ERR_INTR..
     * However, support sequential reading to avoid possible hangs that have
     * been reported on the ML (2017-08-22, s-nail/s-mailx freezes when
@@ -215,7 +215,7 @@ a_aux_rand_init(void){
       for(o = 0, i = sizeof a_aux_rand->a._dat;;){
          ssize_t gr;
 
-         gr = HAVE_GETRANDOM(&a_aux_rand->a._dat[o], i);
+         gr = n_RANDOM_GETRANDOM_FUN(&a_aux_rand->a._dat[o], i);
          if(gr == -1 && n_err_no == n_ERR_NOSYS)
             break;
          a_aux_rand->a._i = a_aux_rand->a._dat[a_aux_rand->a._dat[1] ^
@@ -235,7 +235,7 @@ a_aux_rand_init(void){
       }
    }
 
-# elif !defined HAVE_NOEXTRANDOM
+# elif HAVE_RANDOM == n_RANDOM_IMPL_URANDOM
    if((u.fd = open("/dev/urandom", O_RDONLY)) != -1){
       bool_t ok;
 
@@ -250,10 +250,13 @@ a_aux_rand_init(void){
       if(ok)
          goto jleave;
    }
+# elif HAVE_RANDOM != n_RANDOM_IMPL_BUILTIN
+#  error a_aux_rand_init(): the value of HAVE_RANDOM is not supported
 # endif
 
    /* As a fallback, a homebrew seed */
-   n_err(_("PseudoRandomNumberGenerator: generating homebrew seed\n"));
+   if(n_poption & n_PO_D_V)
+      n_err(_("P(seudo)R(andomNumber)G(enerator): creating homebrew seed\n"));
    for(seed = (uintptr_t)a_aux_rand & UI32_MAX, rnd = 21; rnd != 0; --rnd){
       for(u.i = n_NELEM(a_aux_rand->b32); u.i-- != 0;){
          ui32_t t, k;
@@ -313,7 +316,7 @@ a_aux_rand_weak(ui32_t seed){
       seed += SI32_MAX;
    return seed;
 }
-#endif /* !HAVE_POSIX_RANDOM && !HAVE_SSL_RANDOM */
+#endif /* HAVE_RANDOM != IMPL_ARC4 != IMPL_SSL */
 
 static struct a_aux_err_map const *
 a_aux_err_map_from_no(si32_t eno){
@@ -1204,21 +1207,23 @@ n_random_create_buf(char *dat, size_t len, ui32_t *reprocnt_or_null){
       if(n_poption & n_PO_D_V){
          char const *prngn;
 
-#if defined HAVE_POSIX_RANDOM
-         prngn = "POSIX/arc4random";
-#elif defined HAVE_SSL_RANDOM
+#if HAVE_RANDOM == n_RANDOM_IMPL_ARC4
+         prngn = "arc4random";
+#elif HAVE_RANDOM == n_RANDOM_IMPL_SSL
          prngn = "*SSL RAND_*";
-#elif defined HAVE_GETRANDOM
+#elif HAVE_RANDOM == n_RANDOM_IMPL_GETRANDOM
          prngn = "getrandom(2/3) + builtin ARC4";
-#elif !defined HAVE_NOEXTRANDOM
+#elif HAVE_RANDOM == n_RANDOM_IMPL_URANDOM
          prngn = "/dev/urandom + builtin ARC4";
-#else
+#elif HAVE_RANDOM == n_RANDOM_IMPL_BUILTIN
          prngn = "builtin ARC4";
+#else
+# error n_random_create_buf(): the value of HAVE_RANDOM is not supported
 #endif
          n_err(_("P(seudo)R(andomNumber)G(enerator): %s\n"), prngn);
       }
 
-#if !defined HAVE_POSIX_RANDOM && !defined HAVE_SSL_RANDOM
+#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_SSL
       a_aux_rand_init();
 #endif
    }
@@ -1242,9 +1247,9 @@ jinc1:
    indat = n_lofi_alloc(inlen +1);
 
    if(!(n_psonce & n_PSO_REPRODUCIBLE) || reprocnt_or_null == NULL){
-#ifdef HAVE_SSL_RANDOM
+#if HAVE_RANDOM == n_RANDOM_IMPL_SSL
       ssl_rand_bytes(indat, inlen);
-#elif !defined HAVE_POSIX_RANDOM
+#elif HAVE_RANDOM != n_RANDOM_IMPL_ARC4
       for(i = inlen; i-- > 0;)
          indat[i] = (char)a_aux_rand_get8();
 #else

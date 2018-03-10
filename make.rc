@@ -218,12 +218,6 @@ OPT_SOCKETS=yes
 # (http://www.libressl.org) libraries.
 OPT_SSL=yes
 
-# We can use the P(seudo) R(andom number) G(enerator) that ships with
-# the SSL library, instead of using the appropriate interface of the
-# operating system we are being build on or for.
-# This can be "require"d.
-OPT_SSL_RANDOM="${OPT_SSL}"
-
 # If $OPT_SSL: shall S-nail (try to) use mechanisms to support more
 # digest and cipher algorithms than the few that are documented?  For
 # S/MIME *smime-cipher* for example this will cause
@@ -290,6 +284,19 @@ VAL_IDNA="idnkit idn2 idn"
 # IMAP servers, or for servers unable to execute the SEARCH command, the
 # search is performed locally.
 OPT_IMAP_SEARCH=yes
+
+# Several different P(seudo) R(andom number) G(enerator) possibilities.
+# No need for somewhat strong random is necessary.
+# The following will be used as sole PRG implementations.
+# . arc4 - we search for arc4random(3).
+# . ssl - if OPT_SSL is available the PRG of the SSL library can be used.
+# The following will only be used to seed our builtin ARC4 PRG.
+# . libgetrandom - getrandom(3) via C library.
+# . sysgetrandom - getrandom(2) via SYSCALL.
+# . urandom - reading from /dev/urandom.
+# . builtin - a builtin ARC4 implementation with unscientific seeding.
+# . (error - bail out)
+VAL_RANDOM="arc4 ssl libgetrandom sysgetrandom urandom builtin"
 
 # Regular expression (re_format(7)) support for searches, conditional
 # expressions etc., we use the extended ones, then; can be "require"d.
@@ -407,9 +414,6 @@ OPT_DEVEL=no
 
 # We use the crypto libraries' MD5 implementation if possible, unless..
 OPT_NOEXTMD5=no
-
-# For testing purposes external PRGs can be disallowed
-OPT_NOEXTRANDOM=no
 
 # With $OPT_AUTOCC we can make use of the ASan AddressSanitizer and ASan
 # MemorySanitizer of Google
