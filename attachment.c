@@ -564,22 +564,22 @@ n_attachment_list_print(struct attachment const *aplist, FILE *fp){
             attno, n_shexp_quote_cp(ap->a_name, FAL0),
             n_shexp_quote_cp(ap->a_path, FAL0),
             (ap->a_content_type != NULL
-             ? ap->a_content_type : _("unclassified content")));
+             ? ap->a_content_type : A_("unclassified content")));
 
          if(ap->a_conv == AC_TMPFILE)
             /* I18N: input and output character set as given */
-            fprintf(fp, _(", incs=%s -> oucs=%s (readily converted)"),
+            fprintf(fp, A_(", incs=%s -> oucs=%s (readily converted)"),
                incs, oucs);
          else if(ap->a_conv == AC_FIX_INCS)
             /* I18N: input character set as given, no conversion to apply */
-            fprintf(fp, _(", incs=%s (no conversion)"), incs);
+            fprintf(fp, A_(", incs=%s (no conversion)"), incs);
          else if(ap->a_conv == AC_DEFAULT){
             if(incs != NULL)
                /* I18N: input character set as given, output iterates */
-               fprintf(fp, _(", incs=%s -> oucs=*sendcharsets*"), incs);
+               fprintf(fp, A_(", incs=%s -> oucs=*sendcharsets*"), incs);
             else if(ap->a_content_type == NULL ||
                   !ascncasecmp(ap->a_content_type, "text/", 5))
-               fprintf(fp, _(", default character set handling"));
+               fprintf(fp, A_(", default character set handling"));
          }
          fprintf(fp, "]\n");
       }

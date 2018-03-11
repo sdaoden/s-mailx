@@ -345,9 +345,17 @@ do{\
 #undef _
 #undef N_
 #undef V_
-#define _(S)            S
-#define N_(S)           S
-#define V_(S)           S
+#ifdef HAVE_UISTRINGS
+# define A_(S) S
+# define _(S) S
+# define N_(S) S
+# define V_(S) S
+#else
+# define A_(S) S
+# define _(S) n_empty
+# define N_(S) ""
+# define V_(S) n_empty
+#endif
 
 /*
  * Types TODO v15: n_XX_t
@@ -2556,7 +2564,9 @@ VL char const n_month_names[12 + 1][4];
 VL char const n_weekday_names[7 + 1][4];
 
 VL char const n_uagent[sizeof VAL_UAGENT];
+# ifdef HAVE_UISTRINGS
 VL char const n_error[sizeof n_ERROR];
+# endif
 VL char const n_path_devnull[sizeof n_PATH_DEVNULL];
 VL char const n_reproducible_name[sizeof "reproducible_build"];
 VL char const n_unirepl[sizeof n_UNIREPL];
@@ -2570,7 +2580,7 @@ VL char const n_star[2];   /* Asterisk * */
 VL char const n_at[2];     /* Commercial at @ */
 VL char const n_ns[2];     /* Number sign # */
 VL ui16_t const n_class_char[1 + 0x7F];
-#endif
+#endif /* HAVE_AMALGAMATION */
 
 VL FILE *n_stdin;
 VL FILE *n_stdout;

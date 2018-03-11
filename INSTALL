@@ -125,7 +125,8 @@ used instead of doing manual adjustments.
 
 - CONFIG=NULL, CONFIG=NULLI
   Anything that can be turned off is off.  MIME cannot.
-  The latter adds and "require"s iconv(3).
+  The latter adds and "require"s iconv(3) and adds the user interface
+  strings.
 
 - CONFIG=MINIMAL
   Possibly what people want who need nothing but a MIME-capable mailx(1)

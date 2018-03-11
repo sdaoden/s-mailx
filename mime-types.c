@@ -239,7 +239,7 @@ jecontent:
       else if (!__mt_load_file((j == 0 ? _MT_USR
                : (j == 1 ? _MT_SYS : _MT_FSPEC)), *srcs, &line, &linesize)) {
          if ((n_poption & n_PO_D_V) || j > 1)
-            n_err(_("*mimetypes-load-control*: cannot open or load %s\n"),
+            n_err(A_("*mimetypes-load-control*: cannot open or load %s\n"),
                n_shexp_quote_cp(*srcs, FAL0));
       }
    if (line != NULL)
@@ -362,8 +362,8 @@ _mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
          spacechar(subtyp[1])) {
 jeinval:
       if(cmdcalled || (orflags & _MT_FSPEC) || (n_poption & n_PO_D_V))
-         n_err(_("%s MIME type: %.*s\n"),
-            (cmdcalled ? _("Invalid") : _("mime.types(5): invalid")),
+         n_err(A_("%s MIME type: %.*s\n"),
+            (cmdcalled ? A_("Invalid") : A_("mime.types(5): invalid")),
             (int)tlen, typ);
       goto jleave;
    }
@@ -1405,7 +1405,7 @@ jleave:
    if((rv &= MIME_HDL_TYPE_MASK) == MIME_HDL_NULL){
       if(mhp->mh_msg.s == NULL)
          mhp->mh_msg.l = strlen(mhp->mh_msg.s = n_UNCONST(
-               _("[-- No MIME handler installed, or not applicable --]\n")));
+               A_("[-- No MIME handler installed, or not applicable --]\n")));
    }else if(rv == MIME_HDL_CMD && !(xrv & MIME_HDL_COPIOUSOUTPUT) &&
          action != SEND_TODISP_PARTS){
       mhp->mh_msg.l = strlen(mhp->mh_msg.s = n_UNCONST(

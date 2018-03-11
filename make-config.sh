@@ -43,6 +43,7 @@ XOPTIONS="\
    SPAM_SPAMD='-' \
    SPAM_FILTER='Freely configurable *spam-filter-..*s' \
    DOCSTRINGS='Command documentation help strings' \
+   UISTRINGS='User interface and error message strings' \
    QUOTE_FOLD='Extended *quote-fold*ing' \
    FILTER_HTML_TAGSOUP='Simple built-in HTML-to-text display filter' \
    COLOUR='Coloured message display' \
@@ -103,11 +104,13 @@ option_setup() {
          ;;
       [nN][uU][lL][lL][iI])
          OPT_ICONV=require
+         OPT_UISTRINGS=1
          ;;
       [mM][iI][nN][iI][mM][aA][lL])
          OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
          OPT_COLOUR=1
          OPT_DOCSTRINGS=1
+         OPT_UISTRINGS=1
          OPT_ERRORS=1
          OPT_IDNA=1
          OPT_MLE=1
@@ -123,6 +126,7 @@ option_setup() {
                OPT_AGENT=1
          OPT_COLOUR=1
          OPT_DOCSTRINGS=1
+         OPT_UISTRINGS=1
          OPT_ERRORS=1
          OPT_IDNA=1
          OPT_MLE=1
@@ -1459,6 +1463,7 @@ feat_def ALWAYS_UNICODE_LOCALE
 feat_def AMALGAMATION 0
 feat_def CROSS_BUILD
 feat_def DOCSTRINGS
+feat_def UISTRINGS
 feat_def ERRORS
 
 feat_def ASAN_ADDRESS 0

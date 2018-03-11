@@ -897,7 +897,7 @@ custom headers can be created (more specifically than with
 and
 .Va customhdr ) .
 .Ic ~?
-gives an overview of most other available command escapes.
+\*(OPally gives an overview of most other available command escapes.
 The command escape
 .Ic ~.
 will leave compose mode and send the message once it is completed.
@@ -1196,7 +1196,7 @@ the command
 .Ic list
 will give a listing of all available commands and
 .Ic help
-will give a summary of some common ones.
+will \*(OPally give a summary of some common ones.
 If the \*(OPal documentation strings are available (see
 .Va features )
 one can type
@@ -3859,7 +3859,7 @@ Show the current message number (the
 .
 .Mx
 .It Ic \&?
-Show a brief summary of commands.
+\*(OP Show a brief summary of commands.
 \*(OP Given an argument a synopsis for the command in question is
 shown instead; commands can be abbreviated in general and this command
 can be used to see the full expansion of an abbreviation including the
@@ -7453,7 +7453,7 @@ Its standard output is inserted into the message.
 .
 .Mx
 .It Ic ~?
-Write a summary of command escapes.
+\*(OP Write a summary of command escapes.
 .
 .Mx
 .It Ic ~@ Op Ar filename...
@@ -8279,6 +8279,7 @@ the requested state or condition, of which there are:
 The number, documentation, and name of the current
 .Xr errno 3 ,
 respectively, which is usually set after an error occurred.
+The documentation is an \*(OP, the name is used if not available.
 \*(ID This machinery is new and is usually reliable only if a command
 explicitly states that it manages the variable
 .Va \&! ,

@@ -130,7 +130,7 @@ save1(char *str, int domark, char const *cmd, struct n_ignore const *itp,
          goto jleave;
       }
       isflag = FAL0;
-      disp = _("[Piped]");
+      disp = A_("[Piped]");
       goto jsend;
    }
 
@@ -155,7 +155,7 @@ save1(char *str, int domark, char const *cmd, struct n_ignore const *itp,
    }
 #endif
 
-   disp = (fs & n_FOPEN_STATE_EXISTS) ? _("[Appended]") : _("[New file]");
+   disp = (fs & n_FOPEN_STATE_EXISTS) ? A_("[Appended]") : A_("[New file]");
 
    if((fs & (n_PROTO_MASK | n_FOPEN_STATE_EXISTS)) ==
          (n_PROTO_FILE | n_FOPEN_STATE_EXISTS)){
@@ -234,11 +234,11 @@ jferr:
 #ifdef HAVE_IMAP
       if((fs & n_PROTO_MASK) == n_PROTO_IMAP){
          if(disconnected(file))
-            disp = "[Queued]";
+            disp = A_("[Queued]");
          else if(imap_created_mailbox)
-            disp = "[New file]";
+            disp = A_("[New file]");
          else
-            disp = "[Appended]";
+            disp = A_("[Appended]");
       }
 #endif
       fprintf(n_stdout, "%s %s %" /*PRIu64 "/%"*/ PRIu64 " bytes\n",

@@ -314,6 +314,7 @@ jredo:
       }
    }else{
       /* Very ugly, but take care for compiler supported string lengths :( */
+#ifdef HAVE_UISTRINGS
       fputs(n_progname, n_stdout);
       fputs(_(
          " commands -- <msglist> denotes message specifications,\n"
@@ -336,7 +337,7 @@ jredo:
 "write <msglist> file   write message contents to file (prompts for parts)\n"
 "Reply <msglist>        reply to message senders only\n"
 "reply <msglist>        like `Reply', but address all recipients\n"
-"Lreply <msglist>       forced mailing-list `reply' (see `mlist')\n"),
+"Lreply <msglist>       forced mailing list `reply' (see `mlist')\n"),
          n_stdout);
 
       fputs(_(
@@ -349,6 +350,7 @@ jredo:
 "!shell command         shell escape\n"
 "list [<anything>]      all available commands [in search order]\n"),
          n_stdout);
+#endif /* HAVE_UISTRINGS */
 
       rv = (ferror(n_stdout) != 0);
    }

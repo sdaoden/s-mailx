@@ -435,6 +435,11 @@ t_behave_X_opt_input_command_stack() {
 t_behave_X_errexit() {
    t_prolog t_behave_X_errexit
 
+   if have_feat uistrings; then :; else
+      echo 'behave:x_errexit: unsupported, skipped'
+      return
+   fi
+
    ${cat} <<- '__EOT' > "${BODY}"
 	echo one
 	echos nono
@@ -2276,52 +2281,57 @@ t_behave_xcall() {
 
    ##
 
-   ${cat} <<- '__EOT' > "${BODY}"
-	define __w {
-		echon "$1 "
-		vput vexpr i + $1 1
-		if [ $i -le 111 ]
-			vput vexpr j '&' $i 7
-			if [ $j -eq 7 ]
-				echo .
-			end
-			\xcall __w $i $2
-		end
-		echo ! The end for $1
-		if [ $2 -eq 0 ]
-			nonexistingcommand
-			echo would be err with errexit
-			return
-		end
-		echo calling exit
-		exit
-	}
-	define work {
-		echo eins
-		call __w 0 0
-		echo zwei, ?=$? !=$!
-		localopts yes; set errexit
-		ignerr call __w 0 0
-		echo drei, ?=$? !=$^ERRNAME
-		call __w 0 $1
-		echo vier, ?=$? !=$^ERRNAME, this is an error
-	}
-	ignerr call work 0
-	echo outer 1, ?=$? !=$^ERRNAME
-	xxxign call work 0
-	echo outer 2, ?=$? !=$^ERRNAME, could be error if xxxign non-empty
-	call work 1
-	echo outer 3, ?=$? !=$^ERRNAME
-	echo this is definitely an error
-	__EOT
+   if have_feat uistrings; then
+      ${cat} <<- '__EOT' > "${BODY}"
+			define __w {
+				echon "$1 "
+				vput vexpr i + $1 1
+				if [ $i -le 111 ]
+					vput vexpr j '&' $i 7
+					if [ $j -eq 7 ]
+						echo .
+					end
+					\xcall __w $i $2
+				end
+				echo ! The end for $1
+				if [ $2 -eq 0 ]
+					nonexistingcommand
+					echo would be err with errexit
+					return
+				end
+				echo calling exit
+				exit
+			}
+			define work {
+				echo eins
+				call __w 0 0
+				echo zwei, ?=$? !=$!
+				localopts yes; set errexit
+				ignerr call __w 0 0
+				echo drei, ?=$? !=$^ERRNAME
+				call __w 0 $1
+				echo vier, ?=$? !=$^ERRNAME, this is an error
+			}
+			ignerr call work 0
+			echo outer 1, ?=$? !=$^ERRNAME
+			xxxign call work 0
+			echo outer 2, ?=$? !=$^ERRNAME, could be error if xxxign non-empty
+			call work 1
+			echo outer 3, ?=$? !=$^ERRNAME
+			echo this is definitely an error
+			__EOT
 
-   < "${BODY}" ${MAILX} ${ARGS} -X'commandalias xxxign ignerr' -Snomemdebug \
-      > "${MBOX}" 2>&1
-   check behave:xcall-2 0 "${MBOX}" '3900716531 4200'
+      < "${BODY}" ${MAILX} ${ARGS} -X'commandalias xxxign ignerr' \
+         -Snomemdebug > "${MBOX}" 2>&1
+      check behave:xcall-2 0 "${MBOX}" '3900716531 4200'
 
-   < "${BODY}" ${MAILX} ${ARGS} -X'commandalias xxxign " "' -Snomemdebug \
-      > "${MBOX}" 2>&1
-   check behave:xcall-3 1 "${MBOX}" '1006776201 2799'
+      < "${BODY}" ${MAILX} ${ARGS} -X'commandalias xxxign " "' \
+         -Snomemdebug > "${MBOX}" 2>&1
+      check behave:xcall-3 1 "${MBOX}" '1006776201 2799'
+   else
+      echo 'behave:xcall-2: unsupported, skipped'
+      echo 'behave:xcall-3: unsupported, skipped'
+   fi
 
    t_epilog
 }
@@ -4399,7 +4409,12 @@ t_behave_lreply_futh_rth_etc() {
 	call x 7
 	_EOT
 
-   check behave:lreply_futh_rth_etc-1 0 "${MBOX}" '940818845 29373'
+   ex0_test behave:lreply_futh_rth_etc-1-estat
+   if have_feat uistrings; then # xxx should not be so, skip??
+      check behave:lreply_futh_rth_etc-1 - "${MBOX}" '940818845 29373'
+   else
+      check behave:lreply_futh_rth_etc-1 - "${MBOX}" '3917430455 29259'
+   fi
 
    ##
 
@@ -4722,7 +4737,11 @@ t_behave_iconv_mainbody() {
       -s '–' over-the@rain.bow 2>./.terr
    exn0_test behave:iconv_mainbody-3
    check behave:iconv_mainbody-3 - "${MBOX}" '3634015017 251'
-   check behave:iconv_mainbody-4 - ./.terr '2579894983 148'
+   if have_feat uistrings; then
+      check behave:iconv_mainbody-4 - ./.terr '2579894983 148'
+   else
+      echo 'behave:iconv_mainbody-4: unsupported, skipped'
+   fi
 
    # The different iconv(3) implementations use different replacement sequence
    # types (character-wise, byte-wise, and the character(s) used differ)

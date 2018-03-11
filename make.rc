@@ -332,6 +332,13 @@ OPT_TERMCAP_VIA_TERMINFO=yes
 # will show them when asked to.
 OPT_ERRORS=yes
 
+# We may include `help' etc. strings for commands, increasing size a bit.
+OPT_DOCSTRINGS=yes
+
+# It is possible to strip out (almost) all user interface and error messages.
+# This might be interesting for automated use cases (only).
+OPT_UISTRINGS=yes
+
 # Interaction with a spam email filter is possible.
 # Refer to all commands and variables with a "spam" prefix, and
 # see the manual example section "Handling spam".
@@ -347,9 +354,6 @@ OPT_ERRORS=yes
 OPT_SPAM_SPAMC=no
 OPT_SPAM_SPAMD=no
 OPT_SPAM_FILTER=yes
-
-# We may include help strings for commands, increasing size a bit.
-OPT_DOCSTRINGS=yes
 
 # A simple line-based quoting mechanism can be made available via the
 # *quote-fold* mechanism.  This will be turned off automatically if the

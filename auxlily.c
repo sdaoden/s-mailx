@@ -94,7 +94,7 @@ struct a_aux_err_node{
 struct a_aux_err_map{
    ui32_t aem_hash;     /* Hash of name */
    ui32_t aem_nameoff;  /* Into a_aux_err_names[] */
-   ui32_t aem_docoff;   /* Into a_aux_err docs[] */
+   ui32_t aem_docoff;   /* Into a_aux_err docs[] (if HAVE_UISTRINGS) */
    si32_t aem_err_no;   /* The OS error value for this one */
 };
 
@@ -1865,7 +1865,11 @@ n_err_to_doc(si32_t eno){
    NYD2_ENTER;
 
    aemp = a_aux_err_map_from_no(eno);
+#ifdef HAVE_UISTRINGS
    rv = &a_aux_err_docs[aemp->aem_docoff];
+#else
+   rv = &a_aux_err_names[aemp->aem_nameoff];
+#endif
    NYD2_LEAVE;
    return rv;
 }

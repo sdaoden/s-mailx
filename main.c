@@ -57,7 +57,9 @@ VL char const n_month_names[12 + 1][4] = {
    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", ""
 };
 VL char const n_uagent[sizeof VAL_UAGENT] = VAL_UAGENT;
+#ifdef HAVE_UISTRINGS
 VL char const n_error[sizeof n_ERROR] = N_(n_ERROR);
+#endif
 VL char const n_path_devnull[sizeof n_PATH_DEVNULL] = n_PATH_DEVNULL;
 VL char const n_reproducible_name[sizeof "reproducible_build"] =
       "reproducible_build";

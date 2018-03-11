@@ -344,7 +344,7 @@ print_collf(FILE *cf, struct header *hp)
 
    hold_all_sigs();
 
-   fprintf(obuf, _("-------\nMessage contains:\n")); /* xxx SEARCH112 */
+   fprintf(obuf, A_("-------\nMessage contains:\n")); /* xxx SEARCH112 */
    puthead(TRU1, hp, obuf,
       (GIDENT | GTO | GSUBJECT | GCC | GBCC | GNL | GFILES | GCOMMA),
       SEND_TODISP, CONV_NONE, NULL, NULL);
@@ -357,7 +357,7 @@ print_collf(FILE *cf, struct header *hp)
       free(lbuf);
 
    if(hp->h_attach != NULL){
-      fputs(_("-------\nAttachments:\n"), obuf);
+      fputs(A_("-------\nAttachments:\n"), obuf);
       n_attachment_list_print(hp->h_attach, obuf);
    }
 
@@ -2145,6 +2145,7 @@ jearg:
          break;
       /* case '<': <> 'd' */
       case '?':
+#ifdef HAVE_UISTRINGS
          fputs(_(
 "COMMAND ESCAPES (to be placed after a newline) excerpt:\n"
 "~.            Commit and send message\n"
@@ -2175,6 +2176,7 @@ jearg:
 "~x            Abort composition, discard message (`~q': save in $DEAD)\n"
 "~| <command>  Pipe message through shell filter\n"
             ), n_stdout);
+#endif /* HAVE_UISTRINGS */
          if(cnt != 0)
             goto jearg;
          n_pstate_err_no = n_ERR_NONE;
