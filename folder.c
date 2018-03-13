@@ -735,7 +735,7 @@ initbox(char const *name)
    }
    Ftmp_release(&tempMesg);
    if(err)
-      n_exit(n_EXIT_ERR);
+      exit(n_EXIT_ERR);
 
    message_reset();
    mb.mb_active = MB_NONE;
