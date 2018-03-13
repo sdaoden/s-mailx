@@ -1805,6 +1805,7 @@ ok_v_ssl_protocol, /* {chain=1,obsolete=1} */
    ok_v_ssl_rand_file,
    ok_v_ssl_verify,                    /* {chain=1} */
    ok_v_stealthmua,
+   ok_v_system_mailrc,           /* {virt=VAL_SYSCONFDIR "/" VAL_SYSCONFRC} */
 
    ok_v_TERM,                          /* {env=1} */
    ok_v_TMPDIR,            /* {import=1,vip=1,notempty=1,defval=VAL_TMPDIR} */

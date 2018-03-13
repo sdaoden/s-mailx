@@ -1106,7 +1106,7 @@ jgetopt_done:
             n_OBSOLETE(_("Please use $MAILX_NO_SYSTEM_RC instead of "
                "$NAIL_NO_SYSTEM_RC"));
          if(!nload && !ok_blook(MAILX_NO_SYSTEM_RC) &&
-               !n_go_load(VAL_SYSCONFDIR "/" VAL_SYSCONFRC))
+               !n_go_load(ok_vlook(system_mailrc)))
             goto j_leave;
       }
 

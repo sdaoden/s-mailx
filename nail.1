@@ -40,11 +40,16 @@
 .ds UA \\%S-nail
 .ds uA \\%s-nail
 .ds UR \\%s-nail.rc
+.ds ur \\%~/.mailrc
+.ds VD \\%~/dead.letter
+.ds VM \\%~/mbox
+.ds VN \\%~/.netrc
+.ds VT \\%/tmp
+.ds vS /etc/mime.types
+.ds vU ~/.mime.types
 .\"--MKMAN-END--
 .\" --BEGINSTRIP--
 .\"
-.\" If not ~/.mailrc, it breaks POSIX compatibility.  And adjust main.c.
-.ds ur \\%~/.mailrc
 .ds OB [Obsolete]
 .ds OP [Option]
 .ds IN [v15-compat]
@@ -782,11 +787,11 @@ it is likely that some configuration settings have to be adjusted before
 using it is a smooth experience.
 (Rather complete configuration examples can be found in the section
 .Sx EXAMPLES . )
-The default global
+The example global
 .Pa \*(UR ,
 one of the
 .Sx "Resource files" ,
-bends those standard imposed settings of the
+that ships with \*(UA bends those standard imposed settings of the
 .Sx "INTERNAL VARIABLES"
 a bit towards more user friendliness and safety already.
 .
@@ -1779,7 +1784,7 @@ name: this lookup will only succeed if unambiguous (one possible matching
 entry for
 .Ql HOST ) .
 It is possible to load encrypted
-.Pa .netrc
+.Pa \*(VN
 files via
 .Va netrc-pipe .
 .Pp
@@ -5898,7 +5903,7 @@ Identical to
 \*(OP When used without arguments or if
 .Ar show
 has been given the content of the
-.Pa .netrc
+.Pa \*(VN
 cache is shown, loading it first as necessary.
 If the argument is
 .Ar load
@@ -9799,11 +9804,11 @@ Can be used to control which of
 are loaded: if the letter
 .Ql u
 is part of the option value, then the user's personal
-.Pa ~/.mime.types
+.Pa \*(vU
 file will be loaded (if it exists); likewise the letter
 .Ql s
 controls loading of the system wide
-.Pa /etc/mime.types ;
+.Pa \*(vS ;
 directives found in the user file take precedence, letter matching is
 case-insensitive.
 If this variable is not set \*(UA will try to load both files.
@@ -9998,7 +10003,7 @@ will treat its contents as that name.
 .Mx Va netrc-lookup
 .It Va netrc-lookup-USER@HOST , netrc-lookup-HOST , netrc-lookup
 \*(BO\*(IN\*(OP Used to control usage of the users
-.Pa .netrc
+.Pa \*(VN
 file for lookup of account credentials, as documented in the section
 .Sx "On URL syntax and credential lookup"
 and for the command
@@ -10012,16 +10017,16 @@ Also see
 .Mx
 .It Va netrc-pipe
 \*(IN\*(OP When
-.Pa .netrc
+.Pa \*(VN
 is loaded (see
 .Ic netrc
 and
 .Va netrc-lookup )
 then \*(UA will read the output of a shell pipe instead of the users
-.Pa .netrc
+.Pa \*(VN
 file if this variable is set (to the desired shell command).
 This can be used to, e.g., store
-.Pa .netrc
+.Pa \*(VN
 in encrypted form:
 .Ql ? set netrc-pipe='gpg -qd ~/.netrc.pgp' .
 .
@@ -11900,6 +11905,13 @@ and
 .Ql Content-ID:
 suppression does not occur.
 .
+.Mx
+.It Va system-mailrc
+\*(RO The compiled in path of the system wide initialization file
+one of the
+.Sx "Resource files" :
+.Pa \*(UR .
+.
 .
 .Mx
 .It Va termcap
@@ -12254,10 +12266,7 @@ The name of the (mailbox)
 to use for saving aborted messages if
 .Va save
 is set; this defaults to
-.Pa dead.letter
-in the user's
-.Ev HOME
-directory.
+.Pa \*(VD .
 If the variable
 .Va debug
 is set no output will be generated, otherwise the contents of the file
@@ -12364,6 +12373,8 @@ command line option should be used.
 .It Ev MAILX_NO_SYSTEM_RC
 If this variable is set then reading of
 .Pa \*(UR
+(a.k.a.\&
+.Va system-mailrc )
 at startup is inhibited, i.e., the same effect is achieved as if \*(UA
 had been started up with the option
 .Fl \&:
@@ -12383,7 +12394,7 @@ A logical subset of the special
 .Ic file )
 are supported.
 The default is
-.Pa ~/mbox .
+.Pa \*(VM .
 Traditionally this MBOX is used as the file to save messages from the
 .Mx -sx
 .Sx "primary system mailbox"
@@ -12394,7 +12405,7 @@ Also see
 .Mx
 .It Ev NETRC
 \*(IN\*(OP This variable overrides the default location of the user's
-.Pa ~/.netrc
+.Pa \*(VN
 file.
 .
 .Mx
@@ -12474,7 +12485,7 @@ and for terminal management in general to
 .It Ev TMPDIR
 Except for the root user this variable defines the directory for
 temporary files to be used instead of
-.Pa /tmp
+.Pa \*(VT
 (or the given compile-time constant) if set, existent, accessible as
 well as read- and writable.
 This variable is only used when it resides in the process environment,
@@ -12506,12 +12517,16 @@ command and
 .\" file list {{{
 .Bl -tag -width ".It Pa BaNg"
 .It Pa \*(ur
-File giving initial commands, one of the
+User-specific file giving initial commands, one of the
 .Sx "Resource files" .
+The actual value is read from
+.Va MAILRC .
 .
 .It Pa \*(UR
 System wide initialization file, one of the
 .Sx "Resource files" .
+The actual value is read from
+.Va system-mailrc .
 .
 .Mx
 .It Pa ~/.mailcap
@@ -12529,50 +12544,47 @@ This location is part of the RFC 1524 standard search path, which is
 a configuration option and can be overridden via
 .
 .Mx
-.It Pa ~/mbox
+.It Pa \*(VM
 The default value for
 .Ev MBOX .
-The actually used path is a configuration option.
 .
 .Mx
-.It Pa ~/.mime.types
+.It Pa \*(vU
 Personal MIME types, see
 .Sx "The mime.types files" .
-The actually used path is a configuration option.
 .
 .Mx
-.It Pa /etc/mime.types
+.It Pa \*(vS
 System wide MIME types, see
 .Sx "The mime.types files" .
-The actually used path is a configuration option.
 .
 .Mx
-.It Pa ~/.netrc
+.It Pa \*(VN
 \*(IN\*(OP The default location of the users
 .Pa .netrc
 file \(en the section
 .Sx "The .netrc file"
 documents the file format.
-The actually used path is a configuration option and can be overridden via
+The actually used path can be overridden via
 .Ev NETRC .
 .
 .Mx
 .It Pa /dev/null
 The data sink
 .Xr null 4 .
-The actually used path is a compile-time constant.
 .El
 .\" }}}
 .
 .\" .Ss "Resource files" {{{
 .Ss "Resource files"
 .
-Upon startup \*(UA reads in several resource files:
+Upon startup \*(UA reads in several resource files, in order:
 .
 .Bl -tag -width ".It Pa BaNg"
 .Mx
 .It Pa \*(UR
-System wide initialization file.
+System wide initialization file
+.Pf ( Va system-mailrc ) .
 Reading of this file can be suppressed, either by using the
 .Fl \&:
 (and according argument) or
@@ -13105,9 +13117,9 @@ Further reading:
 The
 .Pa .netrc
 file contains user credentials for machine accounts.
-The default location in the user's
-.Ev HOME
-directory may be overridden by the
+The default location
+.Pa \*(VN
+may be overridden by the
 .Ev NETRC
 environment variable.
 The file consists of space, tabulator or newline separated tokens.
@@ -13436,7 +13448,7 @@ appropriate permissions should be set on this file with
 If the \*(OPal
 .Va netrc-lookup
 is available user credentials can be stored in the central
-.Pa .netrc
+.Pa \*(VN
 file instead; e.g., here is a different version of the example account
 that sets up SMTP and POP3:
 .
@@ -13460,7 +13472,7 @@ account XandeX {
 .
 .Pp
 and, in the
-.Pa .netrc
+.Pa \*(VN
 file:
 .
 .Bd -literal -offset indent
@@ -14131,7 +14143,7 @@ Bug subject
 .Ed
 .
 .Pp
-More information is available on the web:
+Information on the web at
 .Ql $ \*(uA -X 'echo Ns \| $ Ns Va contact-web Ns ' -Xx .
 .
 .\" s-ts-mode
