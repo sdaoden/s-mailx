@@ -622,7 +622,7 @@ a_coll_forward(char const *ms, FILE *fp, int f)
       fprintf(n_stdout, " %d", *msgvec);
       fflush(n_stdout);
       if (sendmp(mp, fp, itp, tabst, action, NULL) < 0) {
-         n_perr(_("temporary mail file"), 0);
+         n_perr(_("forward: temporary mail file"), 0);
          rv = n_ERR_IO;
          break;
       }
@@ -1810,7 +1810,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 
    if ((_coll_fp = Ftmp(NULL, "collect", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
          NULL) {
-      n_perr(_("temporary mail file"), 0);
+      n_perr(_("collect: temporary mail file"), 0);
       goto jerr;
    }
 

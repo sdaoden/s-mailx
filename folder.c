@@ -713,6 +713,7 @@ jleave:
 FL void
 initbox(char const *name)
 {
+   bool_t err;
    char *tempMesg;
    NYD_ENTER;
 
@@ -723,16 +724,18 @@ initbox(char const *name)
     * TODO Well, not true no more except that in parens */
    _update_mailname((name != mailname) ? name : NULL);
 
-   if ((mb.mb_otf = Ftmp(&tempMesg, "tmpmbox", OF_WRONLY | OF_HOLDSIGS)) ==
-         NULL) {
-      n_perr(_("temporary mail message file"), 0);
-      exit(n_EXIT_ERR);
-   }
-   if ((mb.mb_itf = safe_fopen(tempMesg, "r", NULL)) == NULL) {
-      n_perr(_("temporary mail message file"), 0);
-      exit(n_EXIT_ERR);
+   err = FAL0;
+   if((mb.mb_otf = Ftmp(&tempMesg, "tmpmbox", OF_WRONLY | OF_HOLDSIGS)) ==
+         NULL){
+      n_perr(_("initbox: temporary mail message file, writer"), 0);
+      err = TRU1;
+   }else if((mb.mb_itf = safe_fopen(tempMesg, "r", NULL)) == NULL) {
+      n_perr(_("initbox: temporary mail message file, reader"), 0);
+      err = TRU1;
    }
    Ftmp_release(&tempMesg);
+   if(err)
+      n_exit(n_EXIT_ERR);
 
    message_reset();
    mb.mb_active = MB_NONE;
