@@ -2640,15 +2640,15 @@ jout:
          SEND_TODISP, CONV_NONE, NULL, NULL);
 
 jreasksend:
-      while((cp = n_go_input_cp(n_GO_INPUT_CTX_COMPOSE | n_GO_INPUT_NL_ESC,
-            _("Send this message [yes/no, empty: recompose]? "), NULL)
-               ) == NULL)
-         if(n_go_input_is_eof()){
-            cp = n_1;
-            break;
-         }
+      if(n_go_input(n_GO_INPUT_CTX_COMPOSE | n_GO_INPUT_NL_ESC,
+            _("Send this message [yes/no, empty: recompose]? "),
+            &linebuf, &linesize, NULL, NULL) < 0){
+         if(!n_go_input_is_eof())
+            goto jerr;
+         cp = n_1;
+      }
 
-      if((b = n_boolify(cp, UIZ_MAX, TRUM1)) < FAL0)
+      if((b = n_boolify(linebuf, UIZ_MAX, TRUM1)) < FAL0)
          goto jreasksend;
       if(b == TRU2)
          goto jcont;
