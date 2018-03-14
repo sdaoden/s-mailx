@@ -737,7 +737,6 @@ main(int argc, char *argv[]){
          ok_bset(debug);
          break;
       case 'E':
-         n_OBSOLETE(_("-E will be removed, please use \"-Sskipemptybody\""));
          ok_bset(skipemptybody);
          break;
       case 'e':

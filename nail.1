@@ -245,7 +245,7 @@ Shall
 .Ar file
 not be accessible but contain a
 .Ql =
-character, then anything before the
+character, then anything before the last
 .Ql =
 will be used as the filename, anything thereafter as a character set
 specification.
@@ -303,15 +303,15 @@ Create a custom header which persists for an entire session.
 A custom header consists of the field name followed by a colon
 .Ql \&:
 and the field content body, e.g.,
-.Ql -C """Blah: Neminem laede; imo omnes, quantum potes, juva""" Ns .
-Standard header field names cannot be overwritten by a custom header.
-A changeable way to create custom headers is available via the variable
+.Ql -C """Blah: Neminem laede; imo omnes, quantum potes, juva""" .
+Standard header field names cannot be overwritten by custom headers.
+Runtime adjustable custom headers are available via the variable
 .Va customhdr ,
 and in compose mode
 .Ic ~^ ,
 one of the
 .Sx "COMMAND ESCAPES" ,
-offers the most flexible and powerful possibility of managing headers.
+is the most flexible and powerful option to manage message headers.
 This option may be used multiple times.
 .
 .Mx
@@ -322,18 +322,18 @@ May be used multiple times.
 .
 .Mx
 .It Fl d
-.Ic set
-the internal variable
-.Va debug
-which enables debug messages and disables message delivery,
-among others; effectively turns almost any operation into a dry-run.
+Almost enable a sandbox mode with the internal variable
+.Va debug ;
+the same can be achieved via
+.Ql Fl S Va \&\&debug
+or
+.Ql Ic set Va \&\&debug .
 .
 .Mx
 .It Fl E
 .Ic set
 .Va skipemptybody
 and thus discard messages with an empty message part body.
-This command line option is \*(OB.
 .
 .Mx
 .It Fl e
