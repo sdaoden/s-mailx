@@ -775,8 +775,8 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
        * another stream will be opened for pure reading purposes (this is true
        * at the time of this writing.  A restrictive umask(2) settings may have
        * turned the path inaccessible, so ensure it may be read at least!
-       * TODO once ok_vlook() can return a real integer, look up *umask*! */
-      (void)fchmod(fd, S_IRUSR);
+       * TODO once ok_vlook() can return an integer, look up *umask* first! */
+      (void)fchmod(fd, S_IWUSR | S_IRUSR);
    }
 
    if (fn != NULL)
