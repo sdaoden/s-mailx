@@ -904,11 +904,15 @@ n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_null){
    /* TODO n_folder_mbox_prepare_append -> Mailbox->append() */
    struct stat stb;
    char buf[2];
-   bool_t needsep;
    int rv;
+   bool_t needsep;
    NYD2_ENTER;
 
-   if(fseek(fout, -2L, SEEK_END)){
+   if(!fseek(fout, -2L, SEEK_END)){
+      if(fread(buf, sizeof *buf, 2, fout) != 2)
+         goto jerrno;
+      needsep = (buf[0] != '\n' || buf[1] != '\n');
+   }else{
       rv = n_err_no;
 
       if(st_or_null == NULL){
@@ -923,28 +927,15 @@ n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_null){
          rv = n_ERR_NONE;
          goto jleave;
       }
+
       if(fseek(fout, -1L, SEEK_END))
          goto jerrno;
+      if(fread(buf, sizeof *buf, 1, fout) != 1)
+         goto jerrno;
+      needsep = (buf[0] != '\n');
    }
 
    rv = n_ERR_NONE;
-
-   needsep = FAL0;
-   switch(fread(buf, sizeof *buf, 2, fout)){
-   case 2:
-      if(buf[1] != '\n')
-         needsep = TRU1;
-      break;
-   case 1:
-      if(buf[0] != '\n')
-         needsep = TRU1;
-      break;
-   default:
-      if(ferror(fout))
-         goto jerrno;
-      break;
-   }
-
    if(fflush(fout) || (needsep && putc('\n', fout) == EOF))
 jerrno:
       rv = n_err_no;
