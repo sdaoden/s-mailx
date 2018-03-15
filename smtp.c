@@ -133,8 +133,14 @@ do if (!(n_poption & n_PO_DEBUG)) {\
 } while (0)
 #define _OUT(X) \
 do {\
-   if (n_poption & n_PO_D_VV)\
-      n_err(">>> %s", X);\
+   if (n_poption & n_PO_D_VV){\
+      /* TODO for now n_err() cannot normalize newlines in %s expansions */\
+      char *__x__ = savestr(X), *__y__ = &__x__[strlen(__x__)];\
+      while(__y__ > __x__ && (__y__[-1] == '\n' || __y__[-1] == '\r'))\
+         --__y__;\
+      *__y__ = '\0';\
+      n_err(">>> %s\n", __x__);\
+   }\
    if (!(n_poption & n_PO_DEBUG))\
       swrite(sp, X);\
 } while (0)
