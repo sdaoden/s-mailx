@@ -1576,6 +1576,7 @@ int main(void){
 then
    :
 else
+   # TODO support HAVE_FTRUNCATE *everywhere*, do not require this syscall!
    msg 'ERROR: we require the ftruncate(2) system call.'
    config_exit 1
 fi
