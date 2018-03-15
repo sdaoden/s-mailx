@@ -37,7 +37,6 @@
 # define n_CONFIG_H
 
 #define ACCOUNT_NULL "null"   /* Name of "null" account */
-#define APPEND                /* New mail goes to end of mailbox */
 #define DOTLOCK_TRIES 5       /* Number of open(2) calls for dotlock */
 #define FILE_LOCK_TRIES 10    /* Maximum tries before n_file_lock() fails */
 #define FILE_LOCK_MILLIS 200  /* If UIZ_MAX, fall back to that */

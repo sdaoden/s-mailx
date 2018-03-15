@@ -212,6 +212,11 @@ jsend:
    srelax_rele();
 
    fflush(obuf);
+
+   /* TODO Should be a VFS, then n_MBOX knows what to do upon .close()! */
+   if((fs & n_PROTO_MASK) == n_PROTO_FILE && convert == SEND_MBOX)
+      n_folder_mbox_prepare_append(obuf, NULL);
+
    if (ferror(obuf)) {
 jferr:
       n_perr(file, 0);

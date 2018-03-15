@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Termination processing.
+ *@ Termination processing. TODO MBOX -> VFS; error handling: catastrophe!
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -104,7 +104,7 @@ _alter(char const *name) /* TODO error handling */
 }
 
 static int
-writeback(FILE *res, FILE *obuf)
+writeback(FILE *res, FILE *obuf) /* TODO errors */
 {
    struct message *mp;
    int rv = -1, p, c;
@@ -113,11 +113,6 @@ writeback(FILE *res, FILE *obuf)
    if (fseek(obuf, 0L, SEEK_SET) == -1)
       goto jleave;
 
-#ifndef APPEND
-   if (res != NULL)
-      while ((c = getc(res)) != EOF)
-         putc(c, obuf);
-#endif
    srelax_hold();
    for (p = 0, mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
       if ((mp->m_flag & MPRESERVE) || !(mp->m_flag & MTOUCH)) {
@@ -130,11 +125,15 @@ writeback(FILE *res, FILE *obuf)
          srelax();
       }
    srelax_rele();
-#ifdef APPEND
-   if (res != NULL)
-      while ((c = getc(res)) != EOF)
-         putc(c, obuf);
-#endif
+
+   if(res != NULL){
+      bool_t lastnl;
+
+      for(lastnl = FAL0; (c = getc(res)) != EOF && putc(c, obuf) != EOF;)
+         lastnl = (c == '\n') ? (lastnl ? TRU2 : TRU1) : FAL0;
+      if(lastnl != TRU2)
+         putc('\n', obuf);
+   }
    ftrunc(obuf);
 
    if (ferror(obuf)) {
@@ -164,6 +163,7 @@ edstop(void) /* TODO oh my god */
    struct message *mp;
    FILE *obuf = NULL, *ibuf = NULL;
    struct stat statb;
+   enum n_fopen_state fs;
    bool_t rv;
    NYD_ENTER;
 
@@ -214,7 +214,7 @@ edstop(void) /* TODO oh my god */
    fprintf(n_stdout, _("%s "), n_shexp_quote_cp(displayname, FAL0));
    fflush(n_stdout);
 
-   if ((obuf = n_fopen_any(mailname, "r+", NULL)) == NULL) {
+   if ((obuf = n_fopen_any(mailname, "r+", &fs)) == NULL) {
       int e = n_err_no;
       n_perr(n_shexp_quote_cp(mailname, FAL0), e);
       goto jleave;
@@ -239,8 +239,12 @@ edstop(void) /* TODO oh my god */
 
    gotcha = (c == 0 && ibuf == NULL);
    if (ibuf != NULL) {
-      while ((c = getc(ibuf)) != EOF)
-         putc(c, obuf);
+      bool_t lastnl;
+
+      for(lastnl = FAL0; (c = getc(ibuf)) != EOF && putc(c, obuf) != EOF;)
+         lastnl = (c == '\n') ? (lastnl ? TRU2 : TRU1) : FAL0;
+      if(lastnl != TRU2 && (fs & n_PROTO_MASK) == n_PROTO_FILE)
+         putc('\n', obuf);
    }
    fflush(obuf);
    if (ferror(obuf)) {
@@ -373,23 +377,17 @@ jnewmail:
 
    rbuf = NULL;
    if (!fstat(fileno(fbuf), &minfo) && minfo.st_size > mailsize) {
+      bool_t lastnl;
+
       fprintf(n_stdout, _("New mail has arrived.\n"));
       rbuf = Ftmp(NULL, "quit", OF_RDWR | OF_UNLINK | OF_REGISTER);
       if (rbuf == NULL || fbuf == NULL)
          goto jnewmail;
-#ifdef APPEND
       fseek(fbuf, (long)mailsize, SEEK_SET);
-      while ((c = getc(fbuf)) != EOF)
-         putc(c, rbuf);
-#else
-      p = minfo.st_size - mailsize;
-      while (p-- > 0) {
-         c = getc(fbuf);
-         if (c == EOF)
-            goto jnewmail;
-         putc(c, rbuf);
-      }
-#endif
+      for(lastnl = FAL0; (c = getc(fbuf)) != EOF && putc(c, rbuf) != EOF;)
+         lastnl = (c == '\n') ? (lastnl ? TRU2 : TRU1) : FAL0;
+      if(lastnl != TRU2)
+         putc('\n', rbuf);
       fflush_rewind(rbuf);
    }
 
@@ -506,7 +504,7 @@ holdbits(void)
 }
 
 FL enum okay
-makembox(void) /* TODO oh my god */
+makembox(void) /* TODO oh my god (also error reporting) */
 {
    struct message *mp;
    char *mbox, *tempQuit;
@@ -518,7 +516,14 @@ makembox(void) /* TODO oh my god */
 
    mbox = _mboxname;
    mcount = 0;
-   if (!ok_blook(append)) {
+   if (ok_blook(append)) {
+      if ((obuf = n_fopen_any(mbox, "a+", &fs)) == NULL) {
+         n_perr(mbox, 0);
+         goto jleave;
+      }
+      if((fs & n_PROTO_MASK) == n_PROTO_FILE)
+         n_folder_mbox_prepare_append(obuf, NULL);
+   } else {
       if ((obuf = Ftmp(&tempQuit, "makembox",
             OF_WRONLY | OF_HOLDSIGS | OF_REGISTER)) == NULL) {
          n_perr(_("temporary mail quit file"), 0);
@@ -532,9 +537,14 @@ makembox(void) /* TODO oh my god */
          goto jleave;
       }
 
-      if ((abuf = n_fopen_any(mbox, "r", NULL)) != NULL) {
-         while ((c = getc(abuf)) != EOF)
-            putc(c, obuf);
+      if ((abuf = n_fopen_any(mbox, "r", &fs)) != NULL) {
+         bool_t lastnl;
+
+         for (lastnl = FAL0; (c = getc(abuf)) != EOF && putc(c, obuf) != EOF;)
+            lastnl = (c == '\n') ? (lastnl ? TRU2 : TRU1) : FAL0;
+         if(lastnl != TRU2 && (fs & n_PROTO_MASK) == n_PROTO_FILE)
+            putc('\n', obuf);
+
          Fclose(abuf);
       }
       if (ferror(obuf)) {
@@ -551,11 +561,6 @@ makembox(void) /* TODO oh my god */
       if ((obuf = n_fopen_any(mbox, "r+", &fs)) == NULL) {
          n_perr(mbox, 0);
          Fclose(ibuf);
-         goto jleave;
-      }
-   } else {
-      if ((obuf = n_fopen_any(mbox, "a", &fs)) == NULL) {
-         n_perr(mbox, 0);
          goto jleave;
       }
    }
@@ -591,14 +596,13 @@ jcopyerr:
    /* Copy the user's old mbox contents back to the end of the stuff we just
     * saved.  If we are appending, this is unnecessary */
    if (!ok_blook(append)) {
+      bool_t lastnl;
+
       rewind(ibuf);
-      c = getc(ibuf);
-      while (c != EOF) {
-         putc(c, obuf);
-         if (ferror(obuf))
-            break;
-         c = getc(ibuf);
-      }
+      for(lastnl = FAL0; (c = getc(ibuf)) != EOF && putc(c, obuf) != EOF;)
+         lastnl = (c == '\n') ? (lastnl ? TRU2 : TRU1) : FAL0;
+      if(lastnl != TRU2 && (fs & n_PROTO_MASK) == n_PROTO_FILE)
+         putc('\n', obuf);
       Fclose(ibuf);
       fflush(obuf);
    }
