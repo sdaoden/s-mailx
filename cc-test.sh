@@ -328,6 +328,7 @@ t_behave() {
    t_behave_mime_types_load_control
    t_behave_lreply_futh_rth_etc
 
+   t_behave_mime_if_not_ascii
    t_behave_xxxheads_rfc2047
    t_behave_rfc2231
    t_behave_iconv_mbyte_base64
@@ -4442,6 +4443,19 @@ t_behave_lreply_futh_rth_etc() {
    t_epilog
 }
 
+t_behave_mime_if_not_ascii() {
+   t_prolog t_behave_mime_if_not_ascii
+
+   </dev/null ${MAILX} ${ARGS} -s Subject "${MBOX}" >> "${MBOX}" 2>&1
+   check behave:mime_if_not_ascii-1 0 "${MBOX}" '2287855519 110'
+
+   </dev/null ${MAILX} ${ARGS} -Scharset-7bit=not-ascii -s Subject "${MBOX}" \
+      >> "${MBOX}" 2>&1
+   check behave:mime_if_not_ascii-2 0 "${MBOX}" '70754682 282'
+
+   t_epilog
+}
+
 t_behave_xxxheads_rfc2047() {
    t_prolog t_behave_xxxheads_rfc2047
    TRAP_EXIT_ADDONS="./.t*"
@@ -5011,10 +5025,6 @@ t_behave_s_mime() {
 }
 
 # t_content()
-# Some basic tests regarding correct sending of mails, via STDIN / -t / -q,
-# including basic MIME Content-Transfer-Encoding correctness (quoted-printable)
-# Note we unfortunately need to place some statements without proper
-# indentation because of continuation problems
 # xxx Note: t_content() was the first test (series) written.  Today many
 # xxx aspects are (better) covered by other tests above, some are not.
 # xxx At some future date and time, convert the last remains not covered
