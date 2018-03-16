@@ -2600,7 +2600,7 @@ t_behave_mbox() {
    check behave:mbox-13 - ./.tall '3146754194 33'
 
    # *mbox-rfc4155*, plus
-   ${cat} <<-_EOT > ./.tinv
+   ${cat} <<-_EOT > ./.tinv1
 		 
 		
 		From MAILER-DAEMON-1 Wed Oct  2 01:50:07 1996
@@ -2617,16 +2617,27 @@ t_behave_mbox() {
 		
 		From me to you, blindes Kalb!
 		_EOT
+   ${cp} ./.tinv1 ./.tinv2
 
    printf \
       'define mboxfix {
          \\localopts yes; \\wysh set mbox-rfc4155;\\wysh File "${1}";\\
             \\eval copy * "${2}"
       }
-      call mboxfix ./.tinv ./.tok' | ${MAILX} ${ARGS} > .tall 2>&1
-   ex0_test behave:mbox-12-estat
-   ${cat} ./.tinv ./.tok >> .tall
-   check behave:mbox-12 - ./.tall '739301109 616'
+      call mboxfix ./.tinv1 ./.tok' | ${MAILX} ${ARGS} > .tall 2>&1
+   ex0_test behave:mbox-14-estat
+   ${cat} ./.tinv1 ./.tok >> .tall
+   check behave:mbox-14 - ./.tall '739301109 616'
+
+   printf \
+      'wysh file ./.tinv1 # ^From not repaired, but missing trailing NL is
+      wysh File ./.tok # Just move away to nowhere
+      set mbox-rfc4155
+      wysh file ./.tinv2 # Fully repaired
+      File ./.tok' | ${MAILX} ${ARGS} > /dev/null 2>&1 # xxx errors, paths..
+   ex0_test behave:mbox-15-estat
+   check behave:mbox-15-1 - ./.tinv1 '3178048820 332'
+   check behave:mbox-15-2 - ./.tinv2 '4151504442 314'
 
    t_epilog
 }

@@ -246,6 +246,9 @@ edstop(void) /* TODO oh my god */
       if(lastnl != TRU2 && (fs & n_PROTO_MASK) == n_PROTO_FILE)
          putc('\n', obuf);
    }
+   /* May nonetheless be a broken MBOX TODO really: VFS, object KNOWS!! */
+   else if(!gotcha && (fs & n_PROTO_MASK) == n_PROTO_FILE)
+      n_folder_mbox_prepare_append(obuf, NULL);
    fflush(obuf);
    if (ferror(obuf)) {
       n_err(_("Failed to finalize %s\n"), n_shexp_quote_cp(mailname, FAL0));
