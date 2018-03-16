@@ -2424,6 +2424,10 @@ FL size_t      n_utf32_to_utf8(ui32_t c, char *buf);
  * Return value is always smaller or of equal size.
  * NULL will be returned if cset is an invalid character set name */
 FL char *n_iconv_normalize_name(char const *cset);
+
+/* Is it ASCII indeed? */
+FL bool_t n_iconv_name_is_ascii(char const *cset);
+
 #ifdef HAVE_ICONV
 FL iconv_t     n_iconv_open(char const *tocode, char const *fromcode);
 /* If *cd* == *iconvd*, assigns -1 to the latter */

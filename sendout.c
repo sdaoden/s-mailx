@@ -2266,7 +2266,7 @@ j_mft_add:
    if ((w & GMIME) && ((n_pstate & n_PS_HEADER_NEEDED_MIME) ||
          hp->h_attach != NULL ||
          ((n_poption & n_PO_Mm_FLAG) && n_poption_arg_Mm != NULL) ||
-         convert != CONV_7BIT || asccasecmp(charset, "US-ASCII"))) {
+         convert != CONV_7BIT || !n_iconv_name_is_ascii(charset))) {
       ++gotcha;
       if (fputs("MIME-Version: 1.0\n", fo) == EOF)
          goto jleave;
