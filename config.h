@@ -65,7 +65,11 @@
 # define CHARSET_8BIT "utf-8"
 # define CHARSET_8BIT_OKEY charset_8bit
 #else
-# define CHARSET_8BIT "iso-8859-1"
+# if defined HAVE_ALWAYS_UNICODE_LOCALE
+#  define CHARSET_8BIT "utf-8"
+# else
+#  define CHARSET_8BIT "iso-8859-1"
+# endif
 # define CHARSET_8BIT_OKEY ttycharset
 #endif
 

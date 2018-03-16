@@ -2025,7 +2025,8 @@ and the rest of this section does not apply;
 it may however still be necessary to explicitly set it if automatic
 detection fails, since in that case it defaults to
 .\" (Keep in SYNC: ./nail.1:"Character sets", ./config.h:CHARSET_*!)
-LATIN1 a.k.a. ISO-8859-1.
+LATIN1 a.k.a. ISO-8859-1 unless the operating system environment is
+known to always and exclusively support UTF-8 locales.
 .
 .Pp
 \*(OP When reading messages, their text is converted into
@@ -8619,8 +8620,9 @@ US-ASCII compatible.
 member of the variable
 .Va sendcharsets .
 This defaults to UTF-8 if character set conversion capabilities are
-available, and to ISO-8859-1 otherwise, in which case the only supported
-character set is
+available, and to ISO-8859-1 otherwise (unless the operating system
+environment is known to always and exclusively support UTF-8 locales),
+in which case the only supported character set is
 .Va ttycharset
 and this variable is effectively ignored.
 Refer to the section
