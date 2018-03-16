@@ -2142,6 +2142,7 @@ jearg:
             goto jerr;
          if(coap == NULL)
             escape = *ok_vlook(escape);
+         hist &= ~a_HIST_GABBY;
          break;
       /* case '<': <> 'd' */
       case '?':
