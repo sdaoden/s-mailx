@@ -4738,7 +4738,11 @@ t_behave_iconv_mainbody() {
    exn0_test behave:iconv_mainbody-3
    check behave:iconv_mainbody-3 - "${MBOX}" '3634015017 251'
    if have_feat uistrings; then
-      check behave:iconv_mainbody-4 - ./.terr '2579894983 148'
+      if have_feat docstrings; then # xxx should not be like that
+         check behave:iconv_mainbody-4 - ./.terr '2579894983 148'
+      else
+         check behave:iconv_mainbody-4 - ./.terr '271380835 121'
+      fi
    else
       echo 'behave:iconv_mainbody-4: unsupported, skipped'
    fi
