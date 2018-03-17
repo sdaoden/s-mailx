@@ -1168,7 +1168,16 @@ jidn2_redo:
 # elif HAVE_IDNA == n_IDNA_IMPL_IDNKIT
    ilen = strlen(idna_utf8);
 jredo:
-   switch(idn_encodename((IDN_ENCODE_APP & ~IDN_LOCALCONV), idna_utf8,
+   switch(idn_encodename(
+      /* LOCALCONV changed meaning in v2 and is no longer available for
+       * encoding.  This makes sense, bu */
+         (IDN_ENCODE_APP & ~(
+#  ifdef IDN_UNICODECONV
+            IDN_UNICODECONV /* v2 */
+#  else
+            IDN_LOCALCONV
+#  endif
+         )), idna_utf8,
          n_string_resize(n_string_trunc(out, 0), ilen)->s_dat, ilen)){
    case idn_buffer_overflow:
       ilen += HOST_NAME_MAX +1;

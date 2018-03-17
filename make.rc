@@ -272,9 +272,10 @@ OPT_AGENT=yes
 # which the IDNA algorithm would convert to
 # <www.xn--rksmrgsa-0zap8p.example>.  :)
 # Multiple implementations are supported:
-# . idn2 - GNU Libidn2 library (same),
-# . idn - GNU Libidn library (https://www.gnu.org/software/libidn/),
-# . idnkit - idnkit (https://www.nic.ad.jp/ja/idn/idnkit/download/).
+# . idnkit - idnkit, https://www.nic.ad.jp/ja/idn/idnkit/download,
+#     either of version 1 for IDNA 2003 or version 2 for IDNA 2008.
+# . idn2 - GNU Libidn2 for IDNA 2008, https://www.gnu.org/software/libidn/,
+# . idn - GNU Libidn for IDNA 2003, same,
 # OPT_IDNA can be "require"d.
 OPT_IDNA=yes
 VAL_IDNA="idnkit idn2 idn"
