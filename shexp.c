@@ -1,6 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Shell "word", file- and other name expansions, incl. file globbing.
  *@ TODO v15: peek signal states while opendir/readdir/etc.
+ *@ TODO "Magic solidus" used as path separator.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -313,12 +314,14 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
    char const *ccp, *myp;
    NYD2_ENTER;
 
-   /* We need some special treatment for the outermost level */
+   /* We need some special treatment for the outermost level.
+    * All along our way, normalize path separators */
    if(!(sgcp->sgc_flags & a_DEEP)){
       if(sgcp->sgc_patlen > 0 && sgcp->sgc_patdat[0] == '/'){
          myp = n_string_cp(n_string_push_c(sgcp->sgc_outer, '/'));
-         ++sgcp->sgc_patdat;
-         --sgcp->sgc_patlen;
+         do
+            ++sgcp->sgc_patdat;
+         while(--sgcp->sgc_patlen > 0 && sgcp->sgc_patdat[0] == '/');
       }else
          myp = "./";
    }else
@@ -335,10 +338,15 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
       sgcp->sgc_patlen = PTR2SIZE((nsgc.sgc_patdat = &ccp[1]) -
             &sgcp->sgc_patdat[0]);
       nsgc.sgc_patlen -= sgcp->sgc_patlen;
-      /* Trim solidus */
+
+      /* Trim solidus, everywhere */
       if(sgcp->sgc_patlen > 0){
          assert(sgcp->sgc_patdat[sgcp->sgc_patlen -1] == '/');
          ((char*)n_UNCONST(sgcp->sgc_patdat))[--sgcp->sgc_patlen] = '\0';
+      }
+      while(nsgc.sgc_patlen > 0 && nsgc.sgc_patdat[0] == '/'){
+         --nsgc.sgc_patlen;
+         ++nsgc.sgc_patdat;
       }
    }
 
