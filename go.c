@@ -427,12 +427,14 @@ jempty:
       ++expcnt;
       flags = (flags & ~(a_ALIAS_MASK | a_NOPREFIX)) | expcnt;
 
-      /* Avoid self-recursion; yes, the user could use \ no-expansion, but.. */
-      if(alias_name != NULL && !strcmp(word, alias_name)){
-         if(n_poption & n_PO_D_V)
-            n_err(_("Actively avoiding self-recursion of `commandalias': %s\n"),
-               word);
-      }else if((alias_name = n_commandalias_exists(word, &alias_exp)) != NULL){
+      /* Avoid self-recursion; since a commandalias can shadow a command of
+       * equal name allow one level of expansion to return an equal result:
+       * "commandalias q q;commandalias x q;x" should be "x->q->q->quit".
+       * P.S.: should also work for "help x" ... */
+      if(alias_name != NULL && !strcmp(word, alias_name))
+         flags |= a_NOALIAS;
+
+      if((alias_name = n_commandalias_exists(word, &alias_exp)) != NULL){
          size_t i;
 
          if(sp != NULL){

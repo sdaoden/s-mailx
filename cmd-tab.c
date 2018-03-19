@@ -271,10 +271,16 @@ a_ctab_c_help(void *vp){
    if((arg = *(char const**)vp) != NULL){
       struct n_cmd_desc const *cdp, *cdp_max;
       struct str const *alias_exp;
-      char const *alias_name;
+      char const *alias_name, *aepx;
 
-      /* Aliases take precedence */
-      if((alias_name = n_commandalias_exists(arg, &alias_exp)) != NULL){
+      /* Aliases take precedence.
+       * Avoid self-recursion; since a commandalias can shadow a command of
+       * equal name allow one level of expansion to return an equal result:
+       * "commandalias q q;commandalias x q;x" should be "x->q->q->quit" */
+      alias_name = NULL;
+      while((aepx = n_commandalias_exists(arg, &alias_exp)) != NULL &&
+            (alias_name == NULL || strcmp(alias_name, aepx))){
+         alias_name = aepx;
          fprintf(n_stdout, "%s -> ", arg);
          arg = alias_exp->s;
       }

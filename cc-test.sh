@@ -730,7 +730,7 @@ t_behave_commandalias() {
 	X
 	__EOT
 
-   check behave:commandalias 0 "${MBOX}" '3694143612 31'
+   check behave:commandalias 0 "${MBOX}" '1638809585 36'
 
    t_epilog
 }
