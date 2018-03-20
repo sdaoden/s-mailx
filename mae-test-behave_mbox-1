@@ -1,13 +1,6 @@
 From reproducible_build Wed Oct  2 01:50:07 1996
 Date: Wed, 02 Oct 1996 01:50:07 +0000
 To:
-Subject: Subject 0
-
-Hello 0!
-
-From reproducible_build Wed Oct  2 01:50:07 1996
-Date: Wed, 02 Oct 1996 01:50:07 +0000
-To:
 Subject: Subject 1
 
 Hello 1!
@@ -781,4 +774,11 @@ To:
 Subject: Subject 111
 
 Hello 111!
+
+From reproducible_build Wed Oct  2 01:50:07 1996
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To:
+Subject: Subject 112
+
+Hello 112!
 
