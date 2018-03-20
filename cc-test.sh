@@ -1,6 +1,7 @@
 #!/bin/sh -
-#@ Synopsis: ./cc-test.sh [--check-only s-mailx-binary]
+#@ Synopsis: ./cc-test.sh --check-only [s-mailx-binary]
 #@           ./cc-test.sh --mae-test s-mailx-binary [:TESTNAME:]
+#@           [./cc-test.sh # Note: performs hundreds of compilations!]
 #@ The latter generates output files.
 #@ TODO All ex0_test should say TESTNUMBER-estat instead of having own numbers
 #@ TODO _All_ the tests should happen in a temporary subdir.
@@ -9,19 +10,20 @@
 # Instead of figuring out the environment in here, require a configured build
 # system and include that!  Our makefile and configure ensure that this test
 # does not run in the configured, but the user environment nonetheless!
-if [ -f ./mk-config.ev ]; then
-   . ./mk-config.ev
-   if [ -z "${MAILX__CC_TEST_RUNNING}" ]; then
-      MAILX__CC_TEST_RUNNING=1
-      export MAILX__CC_TEST_RUNNING
-      exec "${SHELL}" "${0}" "${@}"
-   fi
-else
+if [ -f ./mk-config.ev ]; then :; else
    echo >&2 'S-nail/S-mailx is not configured.'
    echo >&2 'This test script requires the shell environment that only the'
    echo >&2 'configuration script can figure out, even if it will be used to'
    echo >&2 'test a different binary than the one that would be produced!'
-   exit 41
+   echo >&2 'Hit RETURN to run "make config CONFIG=null'
+   read l
+   make config CONFIG=null
+fi
+. ./mk-config.ev
+if [ -z "${MAILX__CC_TEST_RUNNING}" ]; then
+   MAILX__CC_TEST_RUNNING=1
+   export MAILX__CC_TEST_RUNNING
+   exec "${SHELL}" "${0}" "${@}"
 fi
 
 # We need *stealthmua* regardless of $SOURCE_DATE_EPOCH, the program name as
@@ -126,90 +128,6 @@ ESTAT=0
 TRAP_EXIT_ADDONS=
 trap "${rm} -rf \"${BODY}\" \"${MBOX}\" \"${ERR}\" \${TRAP_EXIT_ADDONS}" EXIT
 trap "exit 1" HUP INT TERM
-
-# cc_all_configs()
-# Test all configs TODO doesn't cover all *combinations*, stupid!
-cc_all_configs() {
-   < ${CONF} ${awk} '
-      BEGIN {
-         NOTME["OPT_AUTOCC"] = 1
-         NOTME["OPT_DEBUG"] = 1
-         NOTME["OPT_DEVEL"] = 1
-         NOTME["OPT_ASAN_ADDRESS"] = 1
-         NOTME["OPT_ASAN_MEMORY"] = 1
-         NOTME["OPT_FORCED_STACKPROT"] = 1
-         NOTME["OPT_NOMEMDBG"] = 1
-         NOTME["OPT_NYD2"] = 1
-         i = 0
-      }
-      /^[[:space:]]*OPT_/ {
-         sub(/^[[:space:]]*/, "")
-         # This bails for UnixWare 7.1.4 awk(1), but preceeding = with \
-         # does not seem to be a compliant escape for =
-         #sub(/=.*$/, "")
-         $1 = substr($1, 1, index($1, "=") - 1)
-         if (NOTME[$1])
-            next
-         data[i++] = $1
-      }
-      END {
-         # Doing this completely sequentially and not doing make distclean in
-         # between runs should effectively result in lesser compilations.
-         # It is completely dumb nonetheless... TODO
-         for (j = 1; j < i; ++j) {
-            for (k = 1; k < j; ++k)
-               printf data[k] "=1 "
-            for (k = j; k < i; ++k)
-               printf data[k] "=0 "
-            printf "OPT_AUTOCC=1\n"
-         }
-         for (j = 1; j < i; ++j) {
-            for (k = 1; k < j; ++k)
-               printf data[k] "=0 "
-            for (k = j; k < i; ++k)
-               printf data[k] "=1 "
-            printf "OPT_AUTOCC=1\n"
-         }
-         # With debug
-         for (j = 1; j < i; ++j) {
-            for (k = 1; k < j; ++k)
-               printf data[k] "=1 "
-            for (k = j; k < i; ++k)
-               printf data[k] "=0 "
-            printf "OPT_AUTOCC=1\n"
-            printf "OPT_DEBUG=1\n"
-         }
-         for (j = 1; j < i; ++j) {
-            for (k = 1; k < j; ++k)
-               printf data[k] "=0 "
-            for (k = j; k < i; ++k)
-               printf data[k] "=1 "
-            printf "OPT_AUTOCC=1\n"
-            printf "OPT_DEBUG=1\n"
-         }
-
-         printf "CONFIG=NULL OPT_AUTOCC=0\n"
-         printf "CONFIG=NULL OPT_AUTOCC=1\n"
-         printf "CONFIG=NULLI OPT_AUTOCC=0\n"
-         printf "CONFIG=NULLI OPT_AUTOCC=1\n"
-         printf "CONFIG=MINIMAL OPT_AUTOCC=0\n"
-         printf "CONFIG=MINIMAL OPT_AUTOCC=1\n"
-         printf "CONFIG=NETSEND OPT_AUTOCC=0\n"
-         printf "CONFIG=NETSEND OPT_AUTOCC=1\n"
-         printf "CONFIG=MAXIMAL OPT_AUTOCC=0\n"
-         printf "CONFIG=MAXIMAL OPT_AUTOCC=1\n"
-         printf "CONFIG=DEVEL OPT_AUTOCC=0\n"
-         printf "CONFIG=DEVEL OPT_AUTOCC=1\n"
-         printf "CONFIG=ODEVEL OPT_AUTOCC=0\n"
-         printf "CONFIG=ODEVEL OPT_AUTOCC=1\n"
-      }
-   ' | while read c; do
-      printf "\n\n##########\n$c\n"
-      printf "\n\n##########\n$c\n" >&2
-      sh -c "${MAKE} ${c} all test"
-   done
-   ${MAKE} distclean
-}
 
 have_feat() {
    ( "${RAWMAILX}" ${ARGS} -X'echo $features' -Xx |
@@ -5168,6 +5086,155 @@ t_all() {
    t_content
 }
 
+# cc_all_configs()
+# Test all configs TODO doesn't cover all *combinations*, stupid!
+cc_all_configs() {
+   < ${CONF} ${awk} '
+      BEGIN{
+         ALWAYS = "OPT_AUTOCC=1 OPT_AMALGAMATION=1"
+         NOTME["OPT_ALWAYS_UNICODE_LOCALE"] = 1
+         NOTME["OPT_CROSS_BUILD"] = 1
+         NOTME["OPT_AUTOCC"] = 1
+         NOTME["OPT_AMALGAMATION"] = 1
+         NOTME["OPT_DEBUG"] = 1
+         NOTME["OPT_DEVEL"] = 1
+         NOTME["OPT_ASAN_ADDRESS"] = 1
+         NOTME["OPT_ASAN_MEMORY"] = 1
+         NOTME["OPT_FORCED_STACKPROT"] = 1
+         NOTME["OPT_NOMEMDBG"] = 1
+         NOTME["OPT_NYD2"] = 1
+
+         #OPTVALS
+         OPTNO = 0
+
+         MULCHOICE["OPT_IDNA"] = "VAL_IDNA"
+            MULVALS["VAL_IDNA"] = 1
+
+         #VALKEYS[0] = "VAL_RANDOM"
+            VALVALS["VAL_RANDOM"] = 1
+         VALNO = 0
+      }
+      /^[[:space:]]*OPT_/{
+         sub(/^[[:space:]]*/, "")
+         # This bails for UnixWare 7.1.4 awk(1), but preceeding = with \
+         # does not seem to be a compliant escape for =
+         #sub(/=.*$/, "")
+         $1 = substr($1, 1, index($1, "=") - 1)
+         if(!NOTME[$1])
+            OPTVALS[OPTNO++] = $1
+         next
+      }
+      /^[[:space:]]*VAL_/{
+         sub(/^[[:space:]]*/, "")
+         val = substr($0, index($0, "=") + 1)
+         if(val ~ /^\"/){
+            val = substr(val, 2)
+            val = substr(val, 1, length(val) - 1)
+         }
+         $1 = substr($1, 1, index($1, "=") - 1)
+         if(MULVALS[$1])
+            MULVALS[$1] = val
+         else if(VALVALS[$1]){
+            VALKEYS[VALNO++] = $1
+            VALVALS[$1] = val
+         }
+         next
+      }
+      function onepass(addons){
+         a_onepass__worker(addons, "1", "0")
+         a_onepass__worker(addons, "0", "1")
+      }
+      function a_onepass__worker(addons, b0, b1){
+         # Doing this completely sequentially and not doing make distclean in
+         # between runs should effectively result in lesser compilations.
+         # It is completely dumb nonetheless... TODO
+         for(ono = 0; ono < OPTNO; ++ono){
+            myconf = mula = ""
+            for(i = 0; i < ono; ++i){
+               myconf = myconf " " OPTVALS[i] "=" b0 " "
+               if(b0 == "1"){
+                  j = MULCHOICE[OPTVALS[i]]
+                  if(j){
+                     if(i + 1 == ono)
+                        mula = j
+                     else
+                        myconf = myconf " " MULCHOICE[OPTVALS[i]] "=any "
+                  }
+               }
+            }
+            for(i = ono; i < OPTNO; ++i){
+               myconf = myconf " " OPTVALS[i] "=" b1 " "
+               if(b1 == "1"){
+                  j = MULCHOICE[OPTVALS[i]]
+                  if(j){
+                     if(i + 1 == OPTNO)
+                        mula = j;
+                     else
+                        myconf = myconf " " MULCHOICE[OPTVALS[i]] "=any "
+                  }
+               }
+            }
+
+            for(i in VALKEYS)
+               myconf = VALKEYS[i] "=any " myconf
+
+            myconf = myconf " " ALWAYS " " addons "\n"
+
+            if(mula == "")
+               printf myconf
+            else{
+               i = split(MULVALS[mula], ia)
+               j = "any"
+               while(i >= 1){
+                  j = ia[i--] " " j
+                  printf mula "=\"" j "\" " myconf
+               }
+            }
+         }
+      }
+      END{
+         # We cannot test NULL because of missing UI strings, which will end
+         # up with different checksums
+         print "CONFIG=NULLI OPT_AUTOCC=1"
+            for(i in VALKEYS){
+               j = split(VALVALS[VALKEYS[i]], ia)
+               k = "any"
+               while(j >= 1){
+                  k = ia[j--] " " k
+                  print VALKEYS[i] "=\"" k "\" CONFIG=NULLI OPT_AUTOCC=1"
+               }
+            }
+         print "CONFIG=MINIMAL OPT_AUTOCC=1"
+         print "CONFIG=NETSEND OPT_AUTOCC=1"
+         print "CONFIG=MAXIMAL OPT_AUTOCC=1"
+            for(i in VALKEYS){
+               j = split(VALVALS[VALKEYS[i]], ia)
+               k = "any"
+               while(j >= 1){
+                  k = ia[j--] " " k
+                  print VALKEYS[i] "=\"" k "\" CONFIG=MAXIMAL OPT_AUTOCC=1"
+               }
+            }
+         print "CONFIG=DEVEL OPT_AUTOCC=1"
+         print "CONFIG=ODEVEL OPT_AUTOCC=1"
+
+         onepass("OPT_DEBUG=1")
+         onepass("")
+      }
+   ' | while read c; do
+      [ -f mk-config.lst ] && ${cp} mk-config.lst .ccac.lst
+      printf "\n\n##########\n$c\n"
+      printf "\n\n##########\n$c\n" >&2
+      ${SHELL} -c "${MAKE} ${c} config"
+      if [ -f .ccac.lst ] && ${cmp} mk-config.lst .ccac.lst; then
+         printf 'Skipping after config, nothing changed\n'
+         printf 'Skipping after config, nothing changed\n' >&2
+         continue
+      fi
+      ${SHELL} -c "${MAKE} build test"
+   done
+   ${MAKE} distclean
+}
 
 [ -n "${ERR}" ]  && echo > ${ERR}
 if [ -z "${CHECK_ONLY}${MAE_TEST}" ]; then
