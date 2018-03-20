@@ -2558,67 +2558,69 @@ t_behave_mbox() {
    TRAP_EXIT_ADDONS="./.t*"
 
    (
-      i=0
-      while [ ${i} -lt 112 ]; do
+      i=1
+      while [ ${i} -lt 113 ]; do
          printf 'm file://%s\n~s Subject %s\nHello %s!\n~.\n' \
             "${MBOX}" "${i}" "${i}"
          i=`add ${i} 1`
       done
    ) | ${MAILX} ${ARGS} > .tall 2>&1
-   check behave:mbox-1 0 "${MBOX}" '1140119864 13780'
+   check behave:mbox-1 0 "${MBOX}" '1872102723 13784'
    check behave:mbox-1-outerr - ./.tall '4294967295 0' # empty file
 
    printf 'File "%s"\ncopy * "%s"\nFile "%s"\nfrom*' "${MBOX}" .tmbox1 .tmbox1 |
       ${MAILX} ${ARGS} -Sshowlast > .tall 2>&1
-   check behave:mbox-2 0 .tall '2739893312 9103'
+   check behave:mbox-2 0 .tall '3498373999 9103'
 
    printf 'File "%s"\ncopy * "file://%s"\nFile "file://%s"\nfrom*' \
       "${MBOX}" .tmbox2 .tmbox2 | ${MAILX} ${ARGS} -Sshowlast > .tall 2>&1
-   check behave:mbox-3 0 .tall '1702194178 9110'
+   check behave:mbox-3 0 .tall '381610797 9110'
 
-   # only the odd (even)
+   # copy only the odd (but the first), move the even
    (
       printf 'File "file://%s"\ncopy ' .tmbox2
-      i=0
-      while [ ${i} -lt 112 ]; do
-         j=`modulo ${i} 2`
-         [ ${j} -eq 1 ] && printf '%s ' "${i}"
-         i=`add ${i} 1`
+      i=1
+      while [ ${i} -lt 113 ]; do
+         printf '%s ' "${i}"
+         i=`add ${i} 2`
       done
       printf 'file://%s\nFile "file://%s"\nfrom*' .tmbox3 .tmbox3
    ) | ${MAILX} ${ARGS} -Sshowlast > .tall 2>&1
-   check behave:mbox-4 0 .tmbox3 '631132924 6890'
-   check behave:mbox-5 - .tall '2960975049 4573'
+   check behave:mbox-4 0 .tmbox3 '4145104131 6890'
+   check behave:mbox-5 - .tall '361127721 4573'
    # ...
    (
       printf 'file "file://%s"\nmove ' .tmbox2
-      i=0
-      while [ ${i} -lt 112 ]; do
-         j=`modulo ${i} 2`
-         [ ${j} -eq 0 ] && [ ${i} -ne 0 ] && printf '%s ' "${i}"
-         i=`add ${i} 1`
+      i=2
+      while [ ${i} -lt 113 ]; do
+         printf '%s ' "${i}"
+         i=`add ${i} 2`
       done
       printf 'file://%s\nFile "file://%s"\nfrom*\nFile "file://%s"\nfrom*' \
          .tmbox3 .tmbox3 .tmbox2
-   ) | ${MAILX} ${ARGS} -Sshowlast > .tall #2>&1
-   check behave:mbox-6 0 .tmbox3 '1387070539 13655'
-   ${sed} 2d < .tall > .tallx
-   check behave:mbox-7 - .tallx '2729940494 13645'
+   ) | ${MAILX} ${ARGS} -Sshowlast > .tall 2>>${ERR}
+   check behave:mbox-6 0 .tmbox3 '3249991493 13784'
+   if have_feat uistrings; then
+      ${sed} 2d < .tall > .tallx
+   else
+      ${cp} .tall .tallx
+   fi
+   check behave:mbox-7 - .tallx '1584413080 13645'
 
    # Invalid MBOXes (after [f4db93b3])
    echo > .tinvmbox
    printf 'copy 1 ./.tinvmbox' | ${MAILX} ${ARGS} -Rf "${MBOX}" > .tall 2>&1
-   check behave:mbox-8 0 .tinvmbox '999592329 122'
+   check behave:mbox-8 0 .tinvmbox '896415941 122'
    check behave:mbox-9 - ./.tall '3146754194 33'
 
    echo ' ' > .tinvmbox
    printf 'copy 1 ./.tinvmbox' | ${MAILX} ${ARGS} -Rf "${MBOX}" > .tall 2>&1
-   check behave:mbox-10 0 .tinvmbox '3790411604 124'
+   check behave:mbox-10 0 .tinvmbox '4011310616 124'
    check behave:mbox-11 - ./.tall '3146754194 33'
 
    { echo; echo; } > .tinvmbox # (not invalid)
    printf 'copy 1 ./.tinvmbox' | ${MAILX} ${ARGS} -Rf "${MBOX}" > .tall 2>&1
-   check behave:mbox-12 0 .tinvmbox '534457575 123'
+   check behave:mbox-12 0 .tinvmbox '287409579 123'
    check behave:mbox-13 - ./.tall '3146754194 33'
 
    # *mbox-rfc4155*, plus
