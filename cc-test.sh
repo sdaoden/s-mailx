@@ -32,6 +32,7 @@ ADDARG_UNI=-Sttycharset=UTF-8
 CONF=./make.rc
 BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
+ERR=./.cc-test.err # Covers only some which cannot be checksummed; not quoted!
 MAIL=/dev/null
 #UTF8_LOCALE= autodetected unless set
 
@@ -123,7 +124,7 @@ fi
 ESTAT=0
 
 TRAP_EXIT_ADDONS=
-trap "${rm} -rf \"${BODY}\" \"${MBOX}\" \${TRAP_EXIT_ADDONS}" EXIT
+trap "${rm} -rf \"${BODY}\" \"${MBOX}\" \"${ERR}\" \${TRAP_EXIT_ADDONS}" EXIT
 trap "exit 1" HUP INT TERM
 
 # cc_all_configs()
@@ -678,11 +679,11 @@ t_behave_wysh() {
       echo 'Skip behave:wysh_unicode, no UTF8_LOCALE'
    else
       < "${BODY}" DIET=CURD TIED= \
-      LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} 2>/dev/null > "${MBOX}"
+      LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} > "${MBOX}" 2>>${ERR}
       check behave:wysh_unicode 0 "${MBOX}" '475805847 317'
    fi
 
-   < "${BODY}" DIET=CURD TIED= ${MAILX} ${ARGS} > "${MBOX}" 2>/dev/null
+   < "${BODY}" DIET=CURD TIED= ${MAILX} ${ARGS} > "${MBOX}" 2>>${ERR}
    check behave:wysh_c 0 "${MBOX}" '1473887148 321'
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
@@ -1605,7 +1606,7 @@ t_behave_local() {
 t_behave_macro_param_shift() {
    t_prolog t_behave_macro_param_shift
 
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>/dev/null
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>>${ERR}
 	define t2 {
 	   echo in: t2
 	   echo t2.0 has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
@@ -1828,7 +1829,7 @@ t_behave_addrcodec() {
 t_behave_vexpr() {
    t_prolog t_behave_vexpr
 
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>/dev/null
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>>${ERR}
 	echo ' #0.0'
 	vput vexpr res = 9223372036854775807
 	echo $?/$^ERRNAME $res
@@ -2655,7 +2656,7 @@ t_behave_mbox() {
       wysh File ./.tok # Just move away to nowhere
       set mbox-rfc4155
       wysh file ./.tinv2 # Fully repaired
-      File ./.tok' | ${MAILX} ${ARGS} > /dev/null 2>&1 # xxx errors, paths..
+      File ./.tok' | ${MAILX} ${ARGS} >>${ERR} 2>&1
    ex0_test behave:mbox-15-estat
    check behave:mbox-15-1 - ./.tinv1 '3178048820 332'
    check behave:mbox-15-2 - ./.tinv2 '4151504442 314'
@@ -2814,7 +2815,7 @@ t_behave_e_H_L_opts() {
    echo ${?} >> "${MBOX}"
    ${MAILX} ${ARGS} -fL '@>@Bye.' ./.t.mbox >> "${MBOX}"
    echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -fL '@>@Good bye.' ./.t.mbox >> "${MBOX}" 2>/dev/null
+   ${MAILX} ${ARGS} -fL '@>@Good bye.' ./.t.mbox >> "${MBOX}" 2>>${ERR}
    echo ${?} >> "${MBOX}"
 
    check behave:e_H_L_opts - "${MBOX}" '1708955574 678'
@@ -4877,7 +4878,7 @@ t_behave_s_mime() {
 		challengePassword =
 	_EOT
    openssl req -x509 -nodes -days 3650 -config ./.t.conf \
-      -newkey rsa:1024 -keyout ./.tkey.pem -out ./.tcert.pem >/dev/null 2>&1
+      -newkey rsa:1024 -keyout ./.tkey.pem -out ./.tcert.pem >>${ERR} 2>&1
    ${cat} ./.tkey.pem ./.tcert.pem > ./.tpair.pem
 
    # Sign/verify
@@ -4910,7 +4911,7 @@ t_behave_s_mime() {
       -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -Serrexit -R \
-      -f ./.VERIFY >/dev/null 2>&1
+      -f ./.VERIFY >>${ERR} 2>&1
    if [ $? -eq 0 ]; then
       printf 'ok\n'
    else
@@ -4922,7 +4923,7 @@ t_behave_s_mime() {
 
    printf 'behave:s/mime:sign/verify:disproof-1 '
    if openssl smime -verify -CAfile ./.tcert.pem \
-         -in ./.VERIFY >/dev/null 2>&1; then
+         -in ./.VERIFY >>${ERR} 2>&1; then
       printf 'ok\n'
    else
       printf 'failed\n'
@@ -4966,7 +4967,7 @@ t_behave_s_mime() {
       -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -Serrexit -R \
-      -f ./.ENCRYPT >/dev/null 2>&1
+      -f ./.ENCRYPT >>${ERR} 2>&1
    if [ $? -eq 0 ]; then
       printf 'ok\n'
    else
@@ -4985,7 +4986,7 @@ t_behave_s_mime() {
 
    printf 'behave:s/mime:decrypt+verify:disproof-1: '
    if (openssl smime -decrypt -inkey ./.tkey.pem -in ./.ENCRYPT |
-         openssl smime -verify -CAfile ./.tcert.pem) >/dev/null 2>&1; then
+         openssl smime -verify -CAfile ./.tcert.pem) >>${ERR} 2>&1; then
       printf 'ok\n'
    else
       printf 'failed\n'
@@ -5019,12 +5020,12 @@ t_behave_s_mime() {
       -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Sfrom=test@localhost \
       -Serrexit -R \
-      -f ./.ENCRYPT >/dev/null 2>&1
+      -f ./.ENCRYPT >>${ERR} 2>&1
    check behave:s/mime:decrypt 0 "./.DECRYPT" '2624716890 422'
 
    printf 'behave:s/mime:decrypt:disproof-1: '
    if openssl smime -decrypt -inkey ./.tkey.pem \
-         -in ./.ENCRYPT >/dev/null 2>&1; then
+         -in ./.ENCRYPT >>${ERR} 2>&1; then
       printf 'ok\n'
    else
       printf 'failed\n'
@@ -5165,6 +5166,8 @@ t_all() {
    t_content
 }
 
+
+[ -n "${ERR}" ]  && echo > ${ERR}
 if [ -z "${CHECK_ONLY}${MAE_TEST}" ]; then
    cc_all_configs
 elif [ -z "${MAE_TEST}" ] || [ ${#} -eq 0 ]; then
