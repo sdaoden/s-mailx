@@ -230,14 +230,24 @@ check() {
       err "${tid}" 'unexpected exit status: '"${restat} != ${eestat}"
    csum="`${cksum} < ${f}`"
    if [ "${csum}" = "${s}" ]; then
+      maex=
       printf '%s: ok\n' "${tid}"
    else
+      maex=yes
       ESTAT=1
       printf '%s: error: checksum mismatch (got %s)\n' "${tid}" "${csum}"
    fi
+
    if [ -n "${MAE_TEST}" ]; then
-      x=`echo ${tid} | ${tr} "/:=" "__-"`
-      ${cp} -f "${f}" ./mae-test-"${x}"
+      x=mae-test-`echo ${tid} | ${tr} "/:=" "__-"`
+      ${cp} -f "${f}" ./"${x}"
+
+      if [ -n "${maex}" ] &&  [ -d .git ] &&
+            command -v diff >/dev/null 2>&1 &&
+            (git rev-parse --verify test-out) >/dev/null 2>&1 &&
+            git show test-out:"${x}" > ./"${x}".old 2>/dev/null; then
+         diff -ru ./"${x}".old ./"${x}" > "${x}".diff
+      fi
    fi
 }
 
