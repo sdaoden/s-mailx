@@ -4572,10 +4572,14 @@ t_behave_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
    t_prolog t_behave_iconv_mbyte_base64
    TRAP_EXIT_ADDONS="./.t*"
 
-   if [ -n "${UTF8_LOCALE}" ] && have_feat iconv &&
-         (</dev/null iconv -f ascii -t iso-2022-jp) >/dev/null 2>&1 ||
-         (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
-      :
+   if [ -n "${UTF8_LOCALE}" ] && have_feat iconv; then
+      if (</dev/null iconv -f ascii -t iso-2022-jp) >/dev/null 2>&1 ||
+            (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
+         :
+      else
+         echo 'behave:iconv_mbyte_base64: unsupported, skipped'
+         return
+      fi
    else
       echo 'behave:iconv_mbyte_base64: unsupported, skipped'
       return
