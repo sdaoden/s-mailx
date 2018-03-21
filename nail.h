@@ -1574,7 +1574,7 @@ ok_b_bsdannounce, /* {obsolete=1} */
    ok_b_dotlock_ignore_error,
 
    ok_v_EDITOR,                     /* {env=1,notempty=1,defval=VAL_EDITOR} */
-   ok_b_editalong,
+   ok_v_editalong,
    ok_b_editheaders,
    ok_b_emptystart,
 ok_v_encoding, /* {obsolete=1} */

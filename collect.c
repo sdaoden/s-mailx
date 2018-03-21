@@ -1917,7 +1917,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 
          if(!(n_poption & n_PO_Mm_FLAG) && !(n_pstate & n_PS_ROBOT)){
             /* Print what we have sofar also on the terminal (if useful) */
-            if (!ok_blook(editalong)) {
+            if((cp = ok_vlook(editalong)) == NULL){
                if (printheaders)
                   puthead(TRU1, hp, n_stdout, t,
                      SEND_TODISP, CONV_NONE, NULL, NULL);
@@ -1927,9 +1927,9 @@ collect(struct header *hp, int printheaders, struct message *mp,
                   putc(c, n_stdout);
                if (fseek(_coll_fp, 0, SEEK_END))
                   goto jerr;
-            } else {
+            }else{
                rewind(_coll_fp);
-               if(a_coll_edit('e', hp) != n_ERR_NONE)
+               if(a_coll_edit(((*cp == 'v') ? 'v' : 'e'), hp) != n_ERR_NONE)
                   goto jerr;
                /* Print msg mandated by the Mail Reference Manual */
 jcont:

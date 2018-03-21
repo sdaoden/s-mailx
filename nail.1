@@ -891,9 +891,15 @@ In this compose mode \*(UA treats lines beginning with the character
 special \(en these are so-called
 .Sx "COMMAND ESCAPES" ,
 which can be used to read in files, process shell commands, add and edit
-attachments and more; e.g., the command escape
+attachments and more; e.g.,
+.Ic ~v
+or
 .Ic ~e
-will start the text editor to revise the message in its current state,
+will start the
+.Ev VISUAL
+text
+.Ev EDITOR ,
+respectively, to revise the message in its current state,
 .Ic ~h
 allows editing of the most important message headers, with
 .Ic ~^
@@ -933,7 +939,7 @@ is set, therefore send errors will not be recognizable until then.
 ting (also via
 .Fl S )
 .Va editalong
-will automatically startup a text editor when compose mode is entered,
+will automatically startup an editor when compose mode is entered,
 .Va editheaders
 allows editing of headers additionally to plain body content,
 .Va askcc
@@ -4161,7 +4167,7 @@ Examples:
 ? bind default $'\ecA',:khome,w 'echo An editable binding@'
 ? bind default a,b,c rm -irf / @  # Another editable binding
 ? bind default :kf1 File %
-? bind compose :kf1 ~e
+? bind compose :kf1 ~v
 .Ed
 .
 .Pp
@@ -4817,13 +4823,15 @@ but does not write or store a trailing newline.
 .
 .Mx
 .It Ic edit
-(e) Point the text editor (as defined in
-.Ev EDITOR )
+(e) Point the text
+.Ev EDITOR
 at each message from the given list in turn.
 Modified contents are discarded unless the
 .Va writebackedited
 variable is set, and are not used unless the mailbox can be written to
 and the editor returns a successful exit status.
+.Ic visual
+can be used instead for a more display oriented editor.
 .
 .Mx
 .It Ic elif
@@ -7261,11 +7269,15 @@ to (re)create an argument stack from and to a single variable losslessly.
 .
 .Mx
 .It Ic visual
-(v) Takes a message list and invokes the display editor on each message.
+(v) Takes a message list and invokes the
+.Ev VISUAL
+display editor on each message.
 Modified contents are discarded unless the
 .Va writebackedited
 variable is set, and are not used unless the mailbox can be written to
 and the editor returns a successful exit status.
+.Ic edit
+can be used instead for a less display oriented editor.
 .
 .Mx
 .It Ic write
@@ -7849,9 +7861,11 @@ variable into the message.
 .
 .Mx
 .It Ic ~e
-Invoke the text editor on the message collected so far.
-After the editing session is finished,
-the user may continue appending text to the message.
+Invoke the text
+.Ev EDITOR
+on the message collected so far, then return to compose mode.
+.Ic ~v
+can be used for a more display oriented editor.
 .
 .Mx
 .It Ic ~F Ar messages
@@ -8011,12 +8025,11 @@ Read in the given / current message(s), excluding all headers.
 .
 .Mx
 .It Ic ~v
-Invoke an alternate editor (defined by the
+Invoke the
 .Ev VISUAL
-environment variable) on the message collected so far.
-Usually, the alternate editor will be a screen editor.
-After the editor is quit,
-the user may resume appending text to the end of the message.
+editor on the message collected so far, then return to compose mode.
+.Ic ~e
+can be used for a less display oriented editor.
 .
 .Mx
 .It Ic ~w Ar filename
@@ -8823,10 +8836,15 @@ fatal unless this variable is set.
 .
 .Mx
 .It Va editalong
-\*(BO If this variable is set then the editor is started automatically
-when a message is composed in interactive mode, as if the
+If this variable is set then the editor is started automatically when
+a message is composed in interactive mode.
+If the value starts with the letter
+.Ql v
+then this acts as if
+.Ic ~v ,
+otherwise as if
 .Ic ~e
-.Sx "COMMAND ESCAPES"
+.Pf (see\0 Sx "COMMAND ESCAPES" )
 had been specified.
 The
 .Va editheaders
@@ -12276,12 +12294,13 @@ will be replaced.
 .
 .Mx
 .It Ev EDITOR
-Pathname of the text editor to use in the
+Pathname of the text editor to use for the
 .Ic edit
 command and
 .Ic ~e
-.Sx "COMMAND ESCAPES" .
-A default editor is used if this value is not defined.
+.Pf (see\0 Sx "COMMAND ESCAPES" ) ;
+.Ev VISUAL
+is used for a more display oriented editor.
 .
 .Mx
 .It Ev HOME
@@ -12503,11 +12522,13 @@ be used, and is only corrected if already set.
 .
 .Mx
 .It Ev VISUAL
-Pathname of the text editor to use in the
+Pathname of the text editor to use for the
 .Ic visual
 command and
 .Ic ~v
-.Sx "COMMAND ESCAPES" .
+.Pf (see\0 Sx "COMMAND ESCAPES" ) ;
+.Ev EDITOR
+is used for a less display oriented editor.
 .El
 .
 .\" }}}

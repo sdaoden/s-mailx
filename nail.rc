@@ -63,10 +63,12 @@ set ask
 # the screen.  (Set crt=0 to always page; value treated as number of lines.)
 set crt
 
-# Startup into $EDITOR in compose mode ("automatic `~e'").
-#set editalong
+# When entering compose mode, directlry startup into $EDITOR, as via `~e'.
+# If the value is "v", startup into $VISUAL, as via `~v' instead.
+#set editalong=v
 
-# When spawning an editor in compose mode (*editalong*, ~e), edit headers.
+# When spawning an editor in compose mode (`~e', `~v', *editalong*), allow
+# editing of headers.
 set editheaders
 
 # Startup into interactive mode even if the (given) mailbox is empty.
@@ -193,6 +195,7 @@ retain from_ date from to cc subject message-id mail-followup-to reply-to
 #   bind base $'\e',$'\c?' mle-snarf-word-bwd
 #   bind base $'\e',f mle-go-word-fwd
 #   bind base $'\e',b mle-go-word-bwd
+#   bind compose :kf1 ~v
 #endif
 
 # Coloured prompt for the Mailx-Line-Editor (when in interactive mode).
