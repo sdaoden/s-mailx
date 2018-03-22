@@ -5178,16 +5178,16 @@ cc_all_configs() {
             for(i in VALKEYS)
                myconf = VALKEYS[i] "=any " myconf
 
-            myconf = myconf " " ALWAYS " " addons "\n"
+            myconf = myconf " " ALWAYS " " addons
 
             if(mula == "")
-               printf myconf
+               print myconf
             else{
                i = split(MULVALS[mula], ia)
                j = "any"
                while(i >= 1){
                   j = ia[i--] " " j
-                  printf mula "=\"" j "\" " myconf
+                  print mula "=\"" j "\" " myconf
                }
             }
          }
@@ -5222,17 +5222,18 @@ cc_all_configs() {
          onepass("")
       }
    ' | while read c; do
-      [ -f mk-config.lst ] && ${cp} mk-config.lst .ccac.lst
+      [ -f mk-config.h ] && ${cp} mk-config.h .ccac.h
       printf "\n\n##########\n$c\n"
       printf "\n\n##########\n$c\n" >&2
       ${SHELL} -c "${MAKE} ${c} config"
-      if [ -f .ccac.lst ] && ${cmp} mk-config.lst .ccac.lst; then
+      if [ -f .ccac.h ] && ${cmp} mk-config.h .ccac.h; then
          printf 'Skipping after config, nothing changed\n'
          printf 'Skipping after config, nothing changed\n' >&2
          continue
       fi
       ${SHELL} -c "${MAKE} build test"
    done
+   ${rm} -f .ccac.h
    ${MAKE} distclean
 }
 
