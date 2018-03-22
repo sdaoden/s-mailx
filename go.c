@@ -886,7 +886,7 @@ jrestart:
       assert(a_go_xcall == NULL);
       assert(!(gcp->gc_flags & a_GO_XCALL_LOOP_MASK));
       assert(gcp->gc_on_finalize == NULL);
-      assert(gcp->gc_data.gdc_colour == NULL);
+      n_COLOUR( assert(gcp->gc_data.gdc_colour == NULL); )
       goto jxleave;
    }else if(gcm & a_GO_CLEANUP_LOOPTICK){
       n_memory_reset();
