@@ -226,7 +226,6 @@ FL char *n_var_xoklook(enum okeys okey, struct url const *urlp,
 
 /* User variable access: `set', `local' and `unset' */
 FL int c_set(void *vp);
-FL int c_local(void *vp);
 FL int c_unset(void *vp);
 
 /* `varshow' */
