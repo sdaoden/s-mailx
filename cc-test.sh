@@ -116,7 +116,6 @@ if [ -n "${CHECK_ONLY}${MAE_TEST}" ] && [ -z "${UTF8_LOCALE}" ]; then
                   exit 0
                fi
             fi
-            m=${n}
          done
          echo ${m}
       }`
