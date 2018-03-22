@@ -3909,8 +3909,8 @@ __EOT__
                mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
          }
          wysh set on-compose-splice=t_ocs \
-            on-compose-splice-shell="read ver;printf \"t_ocs-shell\\n\
-               ~t shell@exam.ple\\n~:set t_ocs_sh\\n\"" \
+            on-compose-splice-shell="read ver;echo t_ocs-shell;\
+               echo \"~t shell@exam.ple\"; echo \"~:set t_ocs_sh\"" \
             on-compose-enter=t_oce on-compose-leave=t_ocl \
             on-compose-cleanup=t_occ
       ' > ./.tnotes 2>&1
