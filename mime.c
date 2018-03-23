@@ -184,6 +184,32 @@ _fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
       }
 
       rv = 0;
+
+      /* TODO Sigh, no problem if we have a filter that has a buffer (or
+       * TODO become fed with entire lines, whatever), but for now we need
+       * TODO to ensure we pass entire lines from in here to iconv(3), because
+       * TODO the Citrus iconv(3) will fail tests with stateful encodings
+       * TODO if we do not (only seen on FreeBSD) */
+#if 0 /* TODO actually not needed indeed, it was known iswprint() error! */
+      if(!(flags & _TD_EOF) && outrest != NULL){
+         size_t i, j;
+         char const *cp;
+
+         if((cp = memchr(in.s, '\n', j = in.l)) != NULL){
+            i = PTR2SIZE(cp - in.s);
+            j -= i;
+            while(j > 0 && *cp == '\n') /* XXX one iteration too much */
+               ++cp, --j, ++i;
+            if(j != 0)
+               n_str_assign_buf(outrest, cp, j);
+            in.l = i;
+         }else{
+            n_str_assign(outrest, &in);
+            goto jleave;
+         }
+      }
+#endif
+
       if((err = n_iconv_str(iconvd,
             (failiconv ? n_ICONV_NONE : n_ICONV_UNIDEFAULT),
             &out, &in, &in)) != 0){

@@ -373,7 +373,7 @@ _out(char const *buf, size_t len, FILE *fp, enum conversion convert, enum
          ?  TD_ISPR | TD_ICONV
          : (action == SEND_TOSRCH || action == SEND_TOPIPE ||
                action == SEND_TOFILE)
-            ? TD_ICONV : (action == SEND_SHOW ?  TD_ISPR : TD_NONE)),
+            ? TD_ICONV : (action == SEND_SHOW ? TD_ISPR : TD_NONE)),
          qf, outrest, inrest);
    if (n < 0)
       sz = n;
