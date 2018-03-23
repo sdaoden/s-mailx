@@ -350,15 +350,18 @@ jleave:
          serr = n_ERR_ROFS;
          break;
       case n_DLS_NOPERM:
-         if(n_poption & n_PO_D_V)
+         if((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_D_V))
             emsg = N_("  Can't create a dotlock file, "
                   "please check permissions\n"
                   "  (Or ignore by setting *dotlock-ignore-error* variable)\n");
          serr = n_ERR_ACCES;
          break;
       case n_DLS_NOEXEC:
-         if(n_poption & n_PO_D_V)
+         if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_DOTLOCK_PRIVSEP_NOTED)
+               ) == n_PSO_INTERACTIVE || (n_poption & n_PO_D_V)){
+            n_psonce |= n_PSO_DOTLOCK_PRIVSEP_NOTED;
             emsg = N_("  Can't find privilege-separated dotlock program\n");
+         }
          serr = n_ERR_NOENT;
          break;
       case n_DLS_PRIVFAILED:
