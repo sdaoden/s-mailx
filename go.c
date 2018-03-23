@@ -2178,7 +2178,10 @@ c_readctl(void *vp){
     * TODO management; we don't have this, therefore we need global
     * TODO n_readctl_overlay to be accessible via =NULL, and to make that
     * TODO work in turn we need an instance for default STDIN!  Sigh. */
-   static ui8_t a_buf[n_VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name)+1 +1];
+   static union{
+      ui64_t alignme;
+      ui8_t buf[n_VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name)+1 +1];
+   } a;
    static struct a_go_readctl_ctx *a_stdin;
 
    struct a_go_readctl_ctx *grcp;
@@ -2195,7 +2198,7 @@ c_readctl(void *vp){
    NYD_ENTER;
 
    if(a_stdin == NULL){
-      a_stdin = (struct a_go_readctl_ctx*)a_buf;
+      a_stdin = (struct a_go_readctl_ctx*)(void*)a.buf;
       a_stdin->grc_name[0] = '-';
       n_readctl_overlay = a_stdin;
    }
