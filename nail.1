@@ -233,6 +233,12 @@ tings, activating such an email account also switches to the accounts
 .Sx "primary system mailbox"
 (most likely the
 .Va inbox ) .
+If the operation fails the program will exit if it is used
+non-interactively, or if any of
+.Va errexit
+or
+.Va posix
+are set.
 .
 .Mx
 .It Fl a Ar file Ns Op Ar =input-charset Ns Op Ar #output-charset

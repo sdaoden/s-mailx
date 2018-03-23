@@ -1167,7 +1167,11 @@ je_expandargv:
 
       a[0] = Aarg;
       a[1] = NULL;
-      c_account(a);
+      if(c_account(a) && (!(n_psonce & n_PSO_INTERACTIVE) ||
+            ok_blook(errexit) || ok_blook(posix))){
+         n_exit_status = n_EXIT_USE | n_EXIT_SEND_ERROR;
+         goto jleave;
+      }
    }
 
    /*
