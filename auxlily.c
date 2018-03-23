@@ -1171,13 +1171,14 @@ jredo:
    switch(idn_encodename(
       /* LOCALCONV changed meaning in v2 and is no longer available for
        * encoding.  This makes sense, bu */
-         (IDN_ENCODE_APP & ~(
-#  ifdef IDN_UNICODECONV
-            IDN_UNICODECONV /* v2 */
+         (
+#  ifdef IDN_UNICODECONV /* v2 */
+         IDN_ENCODE_APP & ~IDN_UNICODECONV
 #  else
-            IDN_LOCALCONV
+         IDN_DELIMMAP | IDN_LOCALMAP | IDN_NAMEPREP | IDN_IDNCONV |
+         IDN_LENCHECK | IDN_ASCCHECK
 #  endif
-         )), idna_utf8,
+         ), idna_utf8,
          n_string_resize(n_string_trunc(out, 0), ilen)->s_dat, ilen)){
    case idn_buffer_overflow:
       ilen += HOST_NAME_MAX +1;
