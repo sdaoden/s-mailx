@@ -70,6 +70,15 @@ XOPTIONS_XTRA="\
    DEVEL='Computers do not blunder' \
 "
 
+# To avoid too many recompilations we use a two-stage "configuration changed"
+# detection, the first uses mk-config.lst, which only goes for actual user
+# config settings etc. the second uses mk-config.h, which thus includes the
+# things we have truly detected.  This does not work well for multiple choice
+# values of which only one will be really used, so those user wishes may not be
+# placed in the header, only the really detected one (but that has to!).
+# Used for grep(1), for portability assume fixed matching only.
+H_BLACKLIST='-e VAL_RANDOM -e VAL_IDNA'
+
 # The problem is that we don't have any tools we can use right now, so
 # encapsulate stuff in functions which get called in right order later on
 
@@ -233,8 +242,10 @@ mk=./mk-config.mk
 
 newlst=./mk-nconfig.lst
 newmk=./mk-nconfig.mk
+oldmk=./mk-oconfig.mk
 newev=./mk-nconfig.ev
 newh=./mk-nconfig.h
+oldh=./mk-oconfig.h
 tmp0=___tmp
 tmp=./${tmp0}1$$
 tmp2=./${tmp0}2$$
@@ -447,7 +458,6 @@ cc_flags() {
          CFLAGS="-DNDEBUG ${CFLAGS}"
       fi
    fi
-   msg ''
    export CFLAGS LDFLAGS
 }
 
@@ -929,6 +939,8 @@ option_evaluate() {
             msg 'ERROR: cannot parse <%s>' "${line}"
             config_exit 1
          fi
+      elif { echo ${i} | ${grep} ${H_BLACKLIST} >/dev/null 2>&1; }; then
+         :
       else
          printf "#define ${i} \"${j}\"\n" >> ${newh}
       fi
@@ -1073,7 +1085,7 @@ _check_preface() {
 
    echo '**********'
    msg_nonl ' . %s ... ' "${topic}"
-   echo "/* checked ${topic} */" >> ${h}
+   #echo "/* checked ${topic} */" >> ${h}
    ${rm} -f ${tmp} ${tmp}.o
    if [ "${dump_test_program}" = 1 ]; then
       echo '*** test program is'
@@ -1107,7 +1119,7 @@ without_check() {
       eval have_${variable}=yes
       return 0
    else
-      echo "/* ${define} */" >> ${h}
+      #echo "/* ${define} */" >> ${h}
       msg 'no (deduced)'
       eval unset have_${variable}
       return 1
@@ -1128,7 +1140,7 @@ compile_check() {
       eval have_${variable}=yes
       return 0
    else
-      echo "/* ${define} */" >> ${h}
+      #echo "/* ${define} */" >> ${h}
       msg 'no'
       eval unset have_${variable}
       return 1
@@ -1163,7 +1175,7 @@ _link_mayrun() {
       return 0
    else
       msg 'no'
-      echo "/* ${define} */" >> ${h}
+      #echo "/* ${define} */" >> ${h}
       eval unset have_${variable}
       return 1
    fi
@@ -1256,7 +1268,8 @@ option_update
 # (No functions since some shells loose non-exported variables in traps)
 trap "trap \"\" HUP INT TERM; exit 1" HUP INT TERM
 trap "trap \"\" HUP INT TERM EXIT;\
-   ${rm} -rf ${newlst} ${tmp0}.* ${tmp0}* ${newmk} ${newev} ${newh}" EXIT
+   ${rm} -rf ${newlst} ${tmp0}.* ${tmp0}* \
+      ${newmk} ${oldmk} ${newev} ${newh} ${oldh}" EXIT
 
 # Our configuration options may at this point still contain shell snippets,
 # we need to evaluate them in order to get them expanded, and we need those
@@ -1377,13 +1390,13 @@ done
 
 # Now finally check whether we already have a configuration and if so, whether
 # all those parameters are still the same.. or something has actually changed
+config_updated=
 if [ -f ${lst} ] && ${cmp} ${newlst} ${lst} >/dev/null 2>&1; then
    echo 'Configuration is up-to-date'
    exit 0
 elif [ -f ${lst} ]; then
+   config_updated=1
    echo 'Configuration has been updated..'
-   ( eval "${MAKE} -f ./mk-config.mk clean" )
-   echo
 else
    echo 'Shiny configuration..'
 fi
@@ -1396,7 +1409,9 @@ config_exit() {
 
 ${mv} -f ${newlst} ${lst}
 ${mv} -f ${newev} ${ev}
+[ -f ${h} ] && ${mv} -f ${h} ${oldh}
 ${mv} -f ${newh} ${h}
+[ -f ${mk} ] && ${mv} -f ${mk} ${oldmk}
 ${mv} -f ${newmk} ${mk}
 
 ## Compile and link checking
@@ -1409,9 +1424,10 @@ makefile=./${tmp0}.mk
 
 # (No function since some shells loose non-exported variables in traps)
 trap "trap \"\" HUP INT TERM;\
-   ${rm} -f ${lst} ${h} ${mk} ${lib} ${inc}; exit 1" HUP INT TERM
+   ${rm} -f ${lst} ${oldh} ${h} ${oldmk} ${mk} ${lib} ${inc}; exit 1" \
+      HUP INT TERM
 trap "trap \"\" HUP INT TERM EXIT;\
-   ${rm} -rf ${tmp0}.* ${tmp0}*" EXIT
+   ${rm} -rf ${oldh} ${oldmk} ${tmp0}.* ${tmp0}*" EXIT
 
 # Time to redefine helper 2
 msg() {
@@ -3092,13 +3108,19 @@ ${mv} ${tmp} ${lib}
 ${mv} ${h} ${tmp}
 printf '#ifndef n_MK_CONFIG_H\n# define n_MK_CONFIG_H 1\n' > ${h}
 ${cat} ${tmp} >> ${h}
-${rm} -f ${tmp}
 printf '\n' >> ${h}
+# We need these for correct "second stage configuration changed" detection */
+echo "/* `${cat} ${lib}` */" >> ${h}
+echo "/* `${cat} ${inc}` */" >> ${h}
+printf '\n' >> ${h}
+
+# Throw away all temporaries
+${rm} -rf ${tmp0}.* ${tmp0}*
 
 # Create the string that is used by *features* and `version'.
 # Take this nice opportunity and generate a visual listing of included and
 # non-included features for the person who runs the configuration
-msg '\nThe following features are included (+) or not (-):'
+echo 'The following features are included (+) or not (-):' > ${tmp}
 set -- ${OPTIONS_DETECT} ${OPTIONS} ${OPTIONS_XTRA}
 printf '/* The "feature string" */\n' >> ${h}
 # Because + is expanded by *folder* if first in "echo $features", put something
@@ -3112,7 +3134,7 @@ do
    feat_yes ${opt} && sign=+ || sign=-
    printf -- "${sep}${sign}${sopt}" >> ${h}
    sep=','
-   msg " %s %s: %s" ${sign} ${sopt} "${sdoc}"
+   printf ' %s %s: %s\n' ${sign} ${sopt} "${sdoc}" >> ${tmp}
 done
 # TODO instead of using sh+tr+awk+printf, use awk, drop option_doc_of, inc here
 #exec 5>&1 >>${h}
@@ -3123,7 +3145,6 @@ printf '"\n' >> ${h}
 # Create the real mk-config.mk
 # Note we cannout use explicit ./ filename prefix for source and object
 # pathnames because of a bug in bmake(1)
-${rm} -rf ${tmp0}.* ${tmp0}*
 srclist= objlist=
 if feat_no AMALGAMATION; then
    for i in `printf '%s\n' "${SRCDIR}"*.c | ${sort}`; do
@@ -3169,7 +3190,28 @@ ${cat} "${SRCDIR}"make-config.in >> ${mk}
 
 ## Finished!
 
-msg '\nSetup:'
+# We have completed the new configuration header.  Check whether *really*
+# Do the "second stage configuration changed" detection, exit if nothing to do
+if [ -f ${oldh} ]; then
+   if ${cmp} ${h} ${oldh} >/dev/null 2>&1; then
+      ${mv} -f ${oldh} ${h}
+      msg 'Effective configuration is up-to-date'
+      exit 0
+   fi
+   config_updated=1
+   ${rm} -f ${oldh}
+   msg 'Effective configuration has been updated..'
+fi
+
+if [ -n "${config_updated}" ]; then
+   msg 'Wiping away old objects and such'
+   ( eval "${MAKE} -f ${oldmk} clean" )
+fi
+
+msg ''
+while read l; do msg "${l}"; done < ${tmp}
+
+msg 'Setup:'
 msg ' . System-wide resource file: %s/%s' "${VAL_SYSCONFDIR}" "${VAL_SYSCONFRC}"
 msg ' . bindir: %s' "${VAL_BINDIR}"
 if feat_yes DOTLOCK; then
@@ -3178,8 +3220,8 @@ fi
 msg ' . mandir: %s' "${VAL_MANDIR}"
 msg ' . M(ail)T(ransfer)A(gent): %s (argv0: %s)' "${VAL_MTA}" "${VAL_MTA_ARGV0}"
 msg ' . $MAIL spool directory: %s' "${VAL_MAIL}"
-msg ''
 
+msg ''
 if [ -n "${have_fnmatch}" ] && [ -n "${have_fchdir}" ]; then
    exit 0
 fi
