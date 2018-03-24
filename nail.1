@@ -78,7 +78,7 @@
 .Pp
 .Nm \*(uA
 .Bk -words
-.Op Fl BdEFinv~#
+.Op Fl BDdEFinv~#
 .Op Fl \&: Ar spec
 .Op Fl A Ar account
 .Op : Ns Fl a Ar attachment Ns \&:
@@ -99,7 +99,7 @@
 .Pp
 .Nm \*(uA
 .Bk -words
-.Op Fl BdEeHiNnRv~#
+.Op Fl BDdEeHiNnRv~#
 .Op Fl \&: Ar spec
 .Op Fl A Ar account
 .Op : Ns Fl C Ar """custom:\0header""" Ns \&:
@@ -114,7 +114,7 @@
 .Ek
 .Nm \*(uA
 .Bk -words
-.Op Fl BdEeHiNnRv~#
+.Op Fl BDdEeHiNnRv~#
 .Op Fl \&: Ar spec
 .Op Fl A Ar account
 .Op : Ns Fl C Ar """custom:\0header""" Ns \&:
@@ -330,6 +330,12 @@ This option may be used multiple times.
 Send carbon copies to the given receiver, if so allowed by
 .Va expandaddr .
 May be used multiple times.
+.
+.Mx
+.It Fl D
+(\*(OP) Startup with
+.Va disconnected
+.Ic set .
 .
 .Mx
 .It Fl d

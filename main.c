@@ -246,7 +246,7 @@ a_main_usage(FILE *fp){
       n_progname, n_uagent, ok_vlook(version));
    fprintf(fp, _(
       "Send-only mode: send mail \"to-address\" receiver(s):\n"
-      "  %s [-BdEFinv~#] [-: spec] [-A account] [:-C \"custom: header\":]\n"
+      "  %s [-BDdEFinv~#] [-: spec] [-A account] [:-C \"custom: header\":]\n"
       "  %s [:-a attachment:] [:-b bcc-address:]\n"
       "  %s [:-c cc-address:] [-M type | -m file | -q file | -t]\n"
       "  %s [-r from-address] [:-S var[=value]:] [-s subject] [:-X cmd:]\n"
@@ -254,13 +254,13 @@ a_main_usage(FILE *fp){
       n_progname, buf, buf, buf, buf);
    fprintf(fp, _(
       "\"Receive\" mode, starting on -u user, primary *inbox* or [$MAIL]:\n"
-      "  %s [-BdEeHiNnRv~#] [-: spec] [-A account] [:-C \"custom: header\":]\n"
+     "  %s [-BDdEeHiNnRv~#] [-: spec] [-A account] [:-C \"custom: header\":]\n"
       "  %s [-L spec] [-r from-address] [:-S var[=value]:]\n"
       "  %s [-u user] [:-X cmd:] [-- :mta-option:]\n"),
       n_progname, buf, buf);
    fprintf(fp, _(
       "\"Receive\" mode, starting on -f (secondary $MBOX or [file]):\n"
-      "  %s [-BdEeHiNnRv~#] [-: spec] [-A account] [:-C \"custom: header\":]\n"
+     "  %s [-BDdEeHiNnRv~#] [-: spec] [-A account] [:-C \"custom: header\":]\n"
       "  %s -f [-L spec] [-r from-address] [:-S var[=value]:]\n"
       "  %s [:-X cmd:] [file] [-- :mta-option:]\n"),
       n_progname, buf, buf);
@@ -650,7 +650,7 @@ main(int argc, char *argv[]){
     * TODO Like so we can get rid of some stack locals etc. */
    /* Keep in SYNC: ./nail.1:"SYNOPSIS, main() */
    static char const optstr[] =
-         "A:a:Bb:C:c:dEeFfHhiL:M:m:NnO:q:Rr:S:s:tu:VvX:::~#.";
+         "A:a:Bb:C:c:DdEeFfHhiL:M:m:NnO:q:Rr:S:s:tu:VvX:::~#.";
    int i;
    char *cp;
    enum{
@@ -734,6 +734,11 @@ main(int argc, char *argv[]){
          /* Add (a) carbon copy recipient (list) */
          n_psonce |= n_PSO_SENDMODE;
          cc = cat(cc, lextract(a_main_oarg, GCC | GFULL));
+         break;
+      case 'D':
+#ifdef HAVE_IMAP
+         ok_bset(disconnected);
+#endif
          break;
       case 'd':
          ok_bset(debug);
