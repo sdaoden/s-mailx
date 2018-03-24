@@ -1,5 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ POP3 (RFCs 1939, 2595) client.
+ *@ TODO UIDL (as struct message.m_uid, *headline* %U), etc...
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.

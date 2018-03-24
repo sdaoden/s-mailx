@@ -545,7 +545,7 @@ jputcb:
             wleft = (n >= 0) ? wleft - n : 0;
             break;
 #else
-            c = '?';
+            c = '0';
             goto jputcb;
 #endif
       default:
