@@ -6,6 +6,161 @@ S - n a i l / S - m a i l x  N e w s
   will scroll to the manual's Point-Of-Interest, and pointing
   a web- browser to the "#ANCHOR" of the online manual works.
 
+v14.9.10 ("(40th Mail anniversary) Blue tit"), 2018-03-25
+---------------------------------------------------------
+
+On this day in 1978 Kurt Shoens placed the following comment in
+def.h (now it is in nail.h):
+
+  /*
+   * Mail -- a mail program
+   *
+   * Author: Kurt Shoens (UCB) March 25, 1978
+   */
+
+v14.9.10 is mostly a stability and bugfix release.
+It has seen a full test series including Coverity.com scans.
+It fixes bugs i have introduced (also a double free in IMAP cache
+that i introduced for v14.9.* series to address Coverity CID
+1376978..).
+
+In the end i am saying thanks to Gunnar Ritter for the IMAP
+module, and absolutely especially his really neat idea of an IMAP
+cache including offline work queue.  (IMAP will nonetheless
+temporarily go in v15, but these ideas will come back thereafter.)
+I have gray hairs now.
+
+Credits, in order of commit appearance: William Yodlowsky,
+Stuart Henderson, Jörg Schilling, Viktor SZÉPE, Rich Felker,
+Ralph Corderoy and Philipp Gesang.
+
+A special credit to Coverity.com again.  Because:
+    tcc is 618496 bytes, pcc is 851968+24576 bytes,
+    but gcc is 73355264 bytes and clang is even
+    147406848 bytes, i wonder why the latter two never
+    said a word that would have addressed the pretty
+    obvious CID 1387053!
+    [Use of initialized value, the author.]
+
+We welcome Stuart Henderson and Philipp Gesang in THANKS.
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- The balls are now build with umask 0022 not 0027.
+  (William Yodlowsky, Stuart Henderson)
+
+- One actual development of this version was the addition of
+  multiple choice VAL_ues, as documented in make.rc.
+  For now we have VAL_IDNA (for OPT_IDNA)
+    VAL_IDNA="idnkit idn2 idn"
+  and VAL_RANDOM (by itself)
+    VAL_RANDOM="arc4 ssl libgetrandom sysgetrandom urandom builtin"
+  (Stuart Henderson)
+
+  In brief:
+    The value is interpreted as a whitespace separated list of
+    strings, like "idn2 idn idnkit", case is ignored, order is
+    important.
+    The special strings "all" and "any" as well as the empty value
+    are wildcard matches; if any entry in the list is a wildcard
+    match, the rest of the list is ignored.
+
+    The special string "error" will abort configuration once its
+    list position is reached; this is only supported if
+    documented, and not with an accompanying OPT_ (which then
+    offers "require", as below).
+
+  Since this VAL_RANDOM approach is so much better i have dropped
+  OPT_SSL_RANDOM and OPT_NOEXTRANDOM that were recently
+  introduced again.  They were c..p.
+
+- Support for idnkit 2.3 has been added.
+  Support for idnkit 1 (especially as idnkitlite) has been fixed.
+
+- For the first time this codebase should be able to handle
+  invalid MBOX mailboxes (produced by, e.g., dma(1)) gracefully.
+  I hope i have found all places (sic) where code has to be fixed.
+  E.g., "? copy * INVALID-MBOX" now works.
+  (Smalltalk already knew objects which know what they are doing
+  are for the better...  This is v15, then.)
+
+- P.S.: the two FreeBSD test failures are noted in INSTALL.
+
+ChangeLog
+^^^^^^^^^
+
+- *asksend*#? will now really allow recomposing.
+
+- `help'#? now supports recursive `commandalias'#?es, and
+  command self-recursion detection now works differently, it has
+  been false for something like
+
+      commandalias x q; commandalias q echo au
+
+  since q became expanded to `quit'#? (alias expansion equals
+  new command word).  New behaviour: we allow equals once:
+
+    commandalias q q; commandalias x q; x
+  ->
+    x -> q -> q -> quit
+
+- *editalong*#? can have a value, say "set editalong=v" and it
+  will startup $VISUAL#? not $EDITOR#?.
+
+- Path separators are now normalized, thus all places, including
+  MLE tab-expansion ("On terminal control and line editor"#?),
+  can expand something like "///t*////t*".
+
+- -E#? flag will not be obsoleted.
+  -D#? flag has been reintroduced (sets *disconnected*#? right
+  away, was not reinstantiated with the rest of the IMAP support.)
+
+git(1) shortlog (edited)
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Steffen Nurpmeso (71):
+196eb82d make-release.inc: umask 0022 for balls (William Yodlowsky, Stuart
+        Henderson)
+4103ad5a THANKS: Stuart Henderson
+9ea3a4f1 make-config.sh: prefer libidn over libidn2 (Stuart Henderson)
+47c143fb FIX the FIX: fix real cause, [d2702236] did not!
+e759a5eb collect(): *asksend*: fix: reallow "recompose" branch..
+8f5af5a0 initbox(): fix: umask(0777) and exit(2) would leak a tmpfile (Jörg
+        Schilling)
+21a06a2b Un-obsolete -E flag: it is used (Viktor SZÉPE)
+f4db93b3 n_folder_mbox_prepare_append(): FIX invalid MBOXes (broken by
+        [90861930])..
+ac21a4d4 cc-test.sh: add test for [f4db93b3]; more MBOX mishandling,
+        everwhere..
+8d4e22d9 quit.c:edstop(): one more place (sic) where broken MBOX not handled
+5b845cc2 cc-test.sh: t_behave_iconv_mbyte_base64(): do not run without iconv
+03572b6a a_go_cleanup(): fix compilation with HAVE_DEVEL but not HAVE_COLOUR
+ffc3dda8 cache_setptr(): IMAP cache double free introduced with fix for CID
+        1376978!!
+cbebf2a8 Introduce multiple choice selection for options (Stuart Henderson)
+cb2b9fde Support multiple choice via VAL_IDNA (Stuart Henderson)
+0558e9ac (BWDIC!) Drop OPT_SSL_RANDOM,OPT_NOEXTRANDOM; add VAL_RANDOM
+057eaa62 Add OPT_UISTRINGS, by default enabled (Rich Felker)..
+659b205a (Nope,) Let *^ERRDOC* be EQ *^ERRNAME* unless HAVE_DOCSTRINGS (Rich
+        Felker)
+c7db9ca8 collect(), `~:': un"gabby" this command escape
+88297a2f CHARSET_8BIT: this is UTF-8 not LATIN1 if OPT_ALWAYS_UNICODE_LOCALE
+c02ac55f n_idna_to_ascii(): add support for idnkit 2.3
+66991328 n_idna_to_ascii(): fix support for idnkit1 linked as idnkitlite!
+195a62b4 a_shexp__glob(): normalize path separators, learn to expand
+        ///t*////t*
+6f20c631 Fix: `help': support recursive ghosts; go.c: fix self-recursion
+        detection..
+6257db03 *editalong*: valued; clarify `edit'/`visual', $EDITOR/$IVUSAL (Ralph
+        Corderoy)
+02ab1f05 Merge branch 'topic/test-fireworks'
+679d0973 If -A fails, exit if not interactive/*errexit*/*posix*
+55250154 *headline*: document %U (Philipp Gesang)
+ae3b4dfe THANKS: Philipp Gesang
+ab7aab0e Account for drafted 64-bit IMAP UIDs (Philipp Gesang)
+c5480b61 Readd support for -D (*disonnected* right away)
+
 v14.9.9 ("Marsh tit savours first spring sun, II") 2018-03-06
 -------------------------------------------------------------
 
