@@ -1957,12 +1957,11 @@ struct n_colour_pen;
 struct url {
    char const     *url_input;       /* Input as given (really) */
    ui32_t         url_flags;
-   ui8_t          url_cproto;       /* enum cproto as given */
-   ui8_t          url__pad1[1];
    ui16_t         url_portno;       /* atoi .url_port or default, host endian */
-   char const     *url_port;        /* Port (if given) or NULL */
-   char           url_proto[15];    /* Communication protocol as 'xy\0://\0' */
+   ui8_t          url_cproto;       /* enum cproto as given */
    ui8_t          url_proto_len;    /* Length of .url_proto (to first '\0') */
+   char           url_proto[16];    /* Communication protocol as 'xy\0://\0' */
+   char const     *url_port;        /* Port (if given) or NULL */
    struct str     url_user;         /* User, exactly as given / looked up */
    struct str     url_user_enc;     /* User, urlxenc()oded */
    struct str     url_pass;         /* Pass (urlxdec()oded) or NULL */
