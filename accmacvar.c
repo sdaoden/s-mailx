@@ -2066,7 +2066,7 @@ jdefault_path:
       a_amv_var_lookup(avcp, a_AMV_VLOOK_I3VAL_NONEW);
       if(n_UNLIKELY(!(n_psonce & n_PSO_STARTED_GETOPT)) &&
             (n_poption & n_PO_S_FLAG_TEMPORARY))
-         avp->av_flags |= a_AMV_VF_EXT_FROZEN;
+         avcp->avc_var->av_flags |= a_AMV_VF_EXT_FROZEN;
    }
 jleave:
    NYD2_LEAVE;
