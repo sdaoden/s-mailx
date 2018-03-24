@@ -81,7 +81,7 @@ EMPTY_FILE()
       if (imap_finish(mp) == STOP) {\
          ACTIONBAIL;\
       }\
-      if (n_poption & n_PO_VERBVERB)\
+      if (n_poption & n_PO_D_VV)\
          n_err(">>> %s", X);\
       mp->mb_active |= Y;\
       if (swrite(&mp->mb_sock, X) == STOP) {\
@@ -916,8 +916,8 @@ imap_answer(struct mailbox *mp, int errprnt)
    rv = STOP;
 jagain:
    if (sgetline(&imapbuf, &imapbufsize, NULL, &mp->mb_sock) > 0) {
-      if (n_poption & n_PO_VERBVERB)
-         fputs(imapbuf, stderr);
+      if (n_poption & n_PO_D_VV)
+         n_err(">>> SERVER: %s", imapbuf);
       imap_response_parse();
       if (response_type == RESPONSE_ILLEGAL)
          goto jagain;
