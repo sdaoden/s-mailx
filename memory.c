@@ -748,6 +748,8 @@ FL void
    if(p.p_hc->mhc_next != NULL)
       p.p_hc->mhc_next->mhc_prev = p.p_hc->mhc_prev;
 
+   p.p_c->mc_file = mdbg_file;
+   p.p_c->mc_line = (ui16_t)mdbg_line;
    p.p_c->mc_isfree = TRU1;
    /* Trash contents (also see [21c05f8]) */
    memset(vp, 0377, p.p_c->mc_user_size);

@@ -630,10 +630,13 @@ cache_setptr(enum fedit_mode fm, int transparent)
    mb.mb_type = MB_CACHE;
    mb.mb_perm = ((n_poption & n_PO_R_FLAG) || (fm & FEDIT_RDONLY)
          ) ? 0 : MB_DELE;
-   if (transparent && omessage != NULL)
-      transflags(omessage, omsgCount, 1);
-   if (omessage != NULL)
-      free(omessage);
+   if(omessage != NULL){
+      if(transparent)
+         /* This frees the message */
+         transflags(omessage, omsgCount, 1);
+      else
+         n_free(omessage);
+   }
    setdot(message);
    rv = OKAY;
 jleave:
