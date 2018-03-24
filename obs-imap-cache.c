@@ -49,9 +49,9 @@ EMPTY_FILE()
 
 static char *           encname(struct mailbox *mp, const char *name, int same,
                            const char *box);
-static char *           encuid(struct mailbox *mp, unsigned long uid);
+static char *           encuid(struct mailbox *mp, ui64_t uid);
 static FILE *           clean(struct mailbox *mp, struct cw *cw);
-static unsigned long *  builds(long *contentelem);
+static ui64_t *         builds(long *contentelem);
 static void             purge(struct mailbox *mp, struct message *m, long mc,
                            struct cw *cw, const char *name);
 static int              longlt(const void *a, const void *b);
@@ -130,12 +130,12 @@ jleave:
 }
 
 static char *
-encuid(struct mailbox *mp, unsigned long uid)
+encuid(struct mailbox *mp, ui64_t uid)
 {
-   char buf[30], *cp;
+   char buf[64], *cp;
    NYD2_ENTER;
 
-   snprintf(buf, sizeof buf, "%lu", uid);
+   snprintf(buf, sizeof buf, "%" PRIu64, uid);
    cp = encname(mp, buf, 1, NULL);
    NYD2_LEAVE;
    return cp;
@@ -479,12 +479,12 @@ jleave:
    return fp;
 }
 
-static unsigned long *
+static ui64_t *
 builds(long *contentelem)
 {
-   unsigned long n, *contents = NULL;
+   ui64_t n, *contents = NULL;
    long contentalloc = 0;
-   char *x;
+   char const *x;
    DIR *dirp;
    struct dirent *dp;
    NYD_ENTER;
@@ -496,11 +496,12 @@ builds(long *contentelem)
       if (dp->d_name[0] == '.' && (dp->d_name[1] == '\0' ||
             (dp->d_name[1] == '.' && dp->d_name[2] == '\0')))
          continue;
-      n = strtoul(dp->d_name, &x, 10);
+
+      n_idec_ui64_cp(&n, dp->d_name, 10, &x);/* TODO errors? */
       if (*x != '\0')
          continue;
       if (*contentelem >= contentalloc - 1)
-         contents = srealloc(contents,
+         contents = n_realloc(contents,
                (contentalloc += 200) * sizeof *contents);
       contents[(*contentelem)++] = n;
    }
@@ -518,7 +519,7 @@ static void
 purge(struct mailbox *mp, struct message *m, long mc, struct cw *cw,
    const char *name)
 {
-   unsigned long *contents;
+   ui64_t *contents;
    long i, j, contentelem;
    NYD_ENTER;
    n_UNUSED(mp);
@@ -588,7 +589,7 @@ cache_setptr(enum fedit_mode fm, int transparent)
    struct cw cw;
    int i, omsgCount = 0;
    char *name;
-   unsigned long *contents;
+   ui64_t *contents;
    long contentelem;
    struct message *omessage;
    enum okay rv = STOP;

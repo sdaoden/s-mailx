@@ -1519,7 +1519,7 @@ imap_flags(struct mailbox *mp, unsigned X, unsigned Y)
       }
 
       if ((cp = asccasestr(responded_other_text, "UID ")) != NULL)
-         m->m_uid = strtoul(&cp[4], NULL, 10);
+         n_idec_ui64_cp(&m->m_uid, &cp[4], 10, NULL);/* TODO errors? */
       getcache1(mp, m, NEED_UNSPEC, 1);
       m->m_flag &= ~MHIDDEN;
    }
@@ -2037,7 +2037,6 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
    FILE *queuefp;
    long volatile headlines;
    long n;
-   ul_i volatile u;
    enum okay ok;
    NYD_X;
 
@@ -2048,7 +2047,6 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
    number = (int)PTR2SIZE(m - message + 1);
    queuefp = NULL;
    headlines = 0;
-   u = 0;
    ok = STOP;
 
    if (getcache(mp, m, need) == OKAY)
@@ -2104,7 +2102,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
       safe_signal(SIGPIPE, imapcatch);
 
    if (m->m_uid)
-      snprintf(o, sizeof o, "%s UID FETCH %lu (%s)\r\n",
+      snprintf(o, sizeof o, "%s UID FETCH %" PRIu64 " (%s)\r\n",
          tag(1), m->m_uid, item);
    else {
       if (check_expunged() == STOP)
@@ -2113,6 +2111,8 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
    }
    IMAP_OUT(o, MB_COMD, goto out)
    for (;;) {
+      ui64_t uid;
+
       ok = imap_answer(mp, 1);
       if (ok == STOP)
          break;
@@ -2121,18 +2121,17 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
          continue;
       if ((loc = asccasestr(responded_other_text, resp)) == NULL)
          continue;
+      uid = 0;
       if (m->m_uid) {
          if ((cp = asccasestr(responded_other_text, "UID "))) {
-            u = atol(&cp[4]);
+            n_idec_ui64_cp(&uid, &cp[4], 10, NULL);/* TODO errors? */
             n = 0;
-         } else {
-            u = 0;
+         } else
             n = -1;
-         }
       } else
          n = responded_other_number;
       if ((cp = strrchr(responded_other_text, '{')) == NULL) {
-         if (m->m_uid ? m->m_uid != u : n != number)
+         if (m->m_uid ? m->m_uid != uid : n != number)
             continue;
          if ((cp = strchr(loc, '"')) != NULL) {
             cp = imap_unquotestr(cp);
@@ -2145,7 +2144,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
          goto out;
       }
       expected = atol(&cp[1]);
-      if (m->m_uid ? n == 0 && m->m_uid != u : n != number) {
+      if (m->m_uid ? n == 0 && m->m_uid != uid : n != number) {
          imap_fetchdata(mp, NULL, expected, need, NULL, 0, 0);
          continue;
       }
@@ -2159,8 +2158,8 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
          if (n_poption & n_PO_VERBVERB)
             fputs(imapbuf, stderr);
          if ((cp = asccasestr(imapbuf, "UID ")) != NULL) {
-            u = atol(&cp[4]);
-            if (u == m->m_uid) {
+            n_idec_ui64_cp(&uid, &cp[4], 10, NULL);/* TODO errors? */
+            if (uid == m->m_uid) {
                commitmsg(mp, m, &mt, mt.m_content_info);
                break;
             }
@@ -2235,13 +2234,14 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
    char const *cp;
    struct message mt;
    size_t expected;
-   int n = 0, u;
+   int n = 0;
    FILE *queuefp = NULL;
    enum okay ok;
    NYD_X;
 
    if (m[bot].m_uid)
-      snprintf(o, sizeof o, "%s UID FETCH %lu:%lu (RFC822.HEADER)\r\n",
+      snprintf(o, sizeof o,
+         "%s UID FETCH %" PRIu64 ":%" PRIu64 " (RFC822.HEADER)\r\n",
          tag(1), m[bot-1].m_uid, m[topp-1].m_uid);
    else {
       if (check_expunged() == STOP)
@@ -2267,9 +2267,11 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
       expected = atol(&cp[1]);
       if (m[bot-1].m_uid) {
          if ((cp = asccasestr(responded_other_text, "UID ")) != NULL) {
-            u = atoi(&cp[4]);
+            ui64_t uid;
+
+            n_idec_ui64_cp(&uid, &cp[4], 10, NULL);/* TODO errors? */
             for (n = bot; n <= topp; n++)
-               if ((unsigned long)u == m[n-1].m_uid)
+               if (uid == m[n-1].m_uid)
                   break;
             if (n > topp) {
                imap_fetchdata(mp, NULL, expected, NEED_HEADER, NULL, 0, 0);
@@ -2291,9 +2293,11 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
          if (n_poption & n_PO_VERBVERB)
             fputs(imapbuf, stderr);
          if ((cp = asccasestr(imapbuf, "UID ")) != NULL) {
-            u = atoi(&cp[4]);
+            ui64_t uid;
+
+            n_idec_ui64_cp(&uid, &cp[4], 10, NULL);/* TODO errors? */
             for (n = bot; n <= topp; n++)
-               if ((unsigned long)u == m[n-1].m_uid)
+               if (uid == m[n-1].m_uid)
                   break;
             if (n <= topp && !(m[n-1].m_content_info & CI_HAVE_HEADER))
                commitmsg(mp, &m[n-1], &mt, CI_HAVE_HEADER);
@@ -2602,7 +2606,7 @@ imap_store(struct mailbox *mp, struct message *m, int n, int c, const char *sp,
    if (mp->mb_type == MB_CACHE && (queuefp = cache_queue(mp)) == NULL)
       return STOP;
    if (m->m_uid)
-      snprintf(o, sizeof o, "%s UID STORE %lu %cFLAGS (%s)\r\n",
+      snprintf(o, sizeof o, "%s UID STORE %" PRIu64 " %cFLAGS (%s)\r\n",
          tag(1), m->m_uid, c, sp);
    else {
       if (check_expunged() == STOP)
@@ -3365,7 +3369,8 @@ imap_copy1(struct mailbox *mp, struct message *m, int n, const char *name)
       imap_store(mp, m, n, '-', "\\Draft", 0);
 again:
    if (m->m_uid)
-      snprintf(o, sizeof o, "%s UID COPY %lu %s\r\n", tag(1), m->m_uid, qname);
+      snprintf(o, sizeof o, "%s UID COPY %" PRIu64 " %s\r\n",
+         tag(1), m->m_uid, qname);
    else {
       if (check_expunged() == STOP)
          goto out;
@@ -3498,7 +3503,7 @@ imap_copyuid(struct mailbox *mp, struct message *m, const char *name)
    struct mailbox xmb;
    struct message xm;
    const char *cp;
-   unsigned long uidvalidity, olduid, newuid;
+   ui64_t uidvalidity, olduid, newuid;
    enum okay rv;
    NYD_ENTER;
 
@@ -3561,7 +3566,7 @@ imap_appenduid(struct mailbox *mp, FILE *fp, time_t t, long off1, long xsize,
    struct mailbox xmb;
    struct message xm;
    const char *cp;
-   unsigned long uidvalidity, uid;
+   ui64_t uidvalidity, uid;
    enum okay rv;
    NYD_ENTER;
 
@@ -3673,12 +3678,11 @@ static enum okay
 imap_search2(struct mailbox *mp, struct message *m, int cnt, const char *spec,
    int f)
 {
-   char *o, *xp, *cs, c;
-   size_t osize;
+   char *o, *cs, c;
+   size_t n;
    FILE *queuefp = NULL;
    int i;
-   unsigned long n;
-   const char *cp;
+   const char *cp, *xp;
    enum okay ok = STOP;
    NYD_X;
 
@@ -3699,13 +3703,13 @@ imap_search2(struct mailbox *mp, struct message *m, int cnt, const char *spec,
       }
 # endif
       cp = imap_quotestr(cp);
-      cs = salloc(n = strlen(cp) + 10);
+      cs = n_lofi_alloc(n = strlen(cp) + 10);
       snprintf(cs, n, "CHARSET %s ", cp);
    } else
-      cs = n_UNCONST("");
+      cs = n_UNCONST(n_empty);
 
-   o = ac_alloc(osize = strlen(spec) + 60);
-   snprintf(o, osize, "%s UID SEARCH %s%s\r\n", tag(1), cs, spec);
+   o = n_lofi_alloc(n = strlen(spec) + 60);
+   snprintf(o, n, "%s UID SEARCH %s%s\r\n", tag(1), cs, spec);
    IMAP_OUT(o, MB_COMD, goto out)
    while (mp->mb_active & MB_COMD) {
       ok = imap_answer(mp, 0);
@@ -3713,16 +3717,20 @@ imap_search2(struct mailbox *mp, struct message *m, int cnt, const char *spec,
             response_other == MAILBOX_DATA_SEARCH) {
          xp = responded_other_text;
          while (*xp && *xp != '\r') {
-            n = strtoul(xp, &xp, 10);
+            ui64_t uid;
+
+            n_idec_ui64_cp(&uid, xp, 10, &xp);/* TODO errors? */
             for (i = 0; i < cnt; i++)
-               if (m[i].m_uid == n && !(m[i].m_flag & MHIDDEN) &&
+               if (m[i].m_uid == uid && !(m[i].m_flag & MHIDDEN) &&
                      (f == MDELETED || !(m[i].m_flag & MDELETED)))
                   mark(i+1, f);
          }
       }
    }
 out:
-   ac_free(o);
+   n_lofi_free(o);
+   if(cs != n_empty)
+      n_lofi_free(cs);
    return ok;
 }
 

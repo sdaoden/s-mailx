@@ -2299,6 +2299,8 @@ struct mimepart {
    enum content_info m_content_info;
 #ifdef HAVE_SPAM
    ui32_t      m_spamscore;   /* Spam score as int, 24:8 bits */
+#else
+   ui8_t m__pad1[4];
 #endif
    int         m_block;       /* block number of this part */
    size_t      m_offset;      /* offset in block of part */
@@ -2330,6 +2332,8 @@ struct message {
    enum content_info m_content_info;
 #ifdef HAVE_SPAM
    ui32_t      m_spamscore;   /* Spam score as int, 24:8 bits */
+#else
+   ui8_t m__pad1[4];
 #endif
    int         m_block;       /* block number of this message */
    size_t      m_offset;      /* offset in block of message */
@@ -2339,19 +2343,19 @@ struct message {
    long        m_xlines;      /* Lines in the full message */
    time_t      m_time;        /* time the message was sent */
    time_t      m_date;        /* time in the 'Date' field */
+#ifdef HAVE_IMAP
+   ui64_t m_uid;              /* IMAP unique identifier */
+#endif
+   char const  *m_maildir_file; /* original maildir file of msg */
+   ui32_t      m_maildir_hash; /* hash of file name in maildir sub */
+   int         m_collapsed;   /* collapsed thread information */
    unsigned    m_idhash;      /* hash on Message-ID for threads */
+   unsigned    m_level;       /* thread level of message */
+   long        m_threadpos;   /* position in threaded display */
    struct message *m_child;   /* first child of this message */
    struct message *m_younger; /* younger brother of this message */
    struct message *m_elder;   /* elder brother of this message */
    struct message *m_parent;  /* parent of this message */
-   unsigned    m_level;       /* thread level of message */
-   long        m_threadpos;   /* position in threaded display */
-#ifdef HAVE_IMAP
-   unsigned long m_uid;       /* IMAP unique identifier */
-#endif
-   char const  *m_maildir_file;  /* original maildir file of msg */
-   ui32_t      m_maildir_hash;   /* hash of file name in maildir sub */
-   int         m_collapsed;      /* collapsed thread information */
 };
 
 /* Given a file address, determine the block number it represents */
