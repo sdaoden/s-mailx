@@ -465,6 +465,7 @@ _cc_flags_tcc() {
    __cflags=${_CFLAGS} __ldflags=${_LDFLAGS}
    _CFLAGS= _LDFLAGS=
 
+   cc_check -W
    cc_check -Wall
    cc_check -Wextra
    cc_check -pedantic
@@ -520,6 +521,7 @@ _cc_flags_generic() {
    #if feat_yes DEVEL && cc_check -Weverything; then
    #   :
    #else
+      cc_check -W
       cc_check -Wall
       cc_check -Wextra
       cc_check -Wbad-function-cast
