@@ -1961,9 +1961,8 @@ struct url {
    ui8_t          url__pad1[1];
    ui16_t         url_portno;       /* atoi .url_port or default, host endian */
    char const     *url_port;        /* Port (if given) or NULL */
-   char           url_proto[14];    /* Communication protocol as 'xy\0//' */
-   ui8_t          url_proto_len;    /* Length of .url_proto ('\0' index) */
-   ui8_t          url_proto_xlen;   /* .. if '\0' is replaced with ':' */
+   char           url_proto[15];    /* Communication protocol as 'xy\0://\0' */
+   ui8_t          url_proto_len;    /* Length of .url_proto (to first '\0') */
    struct str     url_user;         /* User, exactly as given / looked up */
    struct str     url_user_enc;     /* User, urlxenc()oded */
    struct str     url_pass;         /* Pass (urlxdec()oded) or NULL */

@@ -686,7 +686,8 @@ jnode_redo:
       }
 
       /* Nothing may follow the address, move it to the end */
-      if(!(tcurr->t_f & a_T_TADDR)){
+      assert(tcurr != NULL);
+      if(tcurr != NULL && !(tcurr->t_f & a_T_TADDR)){
          for(tp = thead; tp != NULL; tp = tp->t_next){
             if(tp->t_f & a_T_TADDR){
                if(tp->t_last != NULL)

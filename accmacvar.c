@@ -2227,7 +2227,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
             }
       }
 
-      if(avp != NULL && (avp->av_flags & a_AMV_VF_EXT_FROZEN)){
+      if(isset && (avp->av_flags & a_AMV_VF_EXT_FROZEN)){
          msgp = n_string_push_c(msgp, (i++ == 0 ? '#' : ','));
          msgp = n_string_push_cp(msgp, "(un)?set via -S");
       }

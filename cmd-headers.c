@@ -881,7 +881,7 @@ _headers(int msgspec) /* TODO rework v15 */
    if (k < 0)
       k = 0;
 
-   needdot = (msgspec == 0) ? TRU1 : (dot != &message[msgspec - 1]);
+   needdot = (msgspec <= 0) ? TRU1 : (dot != &message[msgspec - 1]);
    showlast = ok_blook(showlast);
 
    if (mb.mb_threaded == 0) {

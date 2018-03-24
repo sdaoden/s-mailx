@@ -858,10 +858,10 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
    /* Network protocol */
 #define a_PROTOX(X,Y,Z)  \
    urlp->url_portno = Y;\
-   memcpy(urlp->url_proto, X "://", sizeof(X "://"));\
+   /* .url_proto has two NULs ... */\
+   memcpy(urlp->url_proto, X "://\0", sizeof(X "://\0"));\
    urlp->url_proto[sizeof(X) -1] = '\0';\
    urlp->url_proto_len = sizeof(X) -1;\
-   urlp->url_proto_xlen = sizeof(X "://") -1;\
    do{ Z; }while(0)
 #define a__IF(X,Y,Z)  \
    if(!ascncasecmp(data, X "://", sizeof(X "://") -1)){\
@@ -1166,8 +1166,10 @@ jurlp_err:
 
    /* .url_p_u_h_p: .url_proto://.url_u_h_p */
    {  size_t i;
-      char *ud = salloc((i = urlp->url_proto_xlen + urlp->url_u_h_p.l) +1);
+      char *ud;
 
+      ud = n_autorec_alloc((i = urlp->url_proto_len + sizeof("://") -1 +
+            urlp->url_u_h_p.l) +1);
       urlp->url_proto[urlp->url_proto_len] = ':';
       memcpy(sstpcpy(ud, urlp->url_proto), urlp->url_u_h_p.s,
          urlp->url_u_h_p.l +1);
@@ -1178,9 +1180,10 @@ jurlp_err:
 
    /* .url_p_eu_h_p, .url_p_eu_h_p_p: .url_proto://.url_eu_h_p[/.url_path] */
    {  size_t i;
-      char *ud = salloc((i = urlp->url_proto_xlen + urlp->url_eu_h_p.l) +
-            1 + urlp->url_path.l +1);
+      char *ud;
 
+      ud = n_autorec_alloc((i = urlp->url_proto_len + sizeof("://") -1 +
+            urlp->url_eu_h_p.l) + 1 + urlp->url_path.l +1);
       urlp->url_proto[urlp->url_proto_len] = ':';
       memcpy(sstpcpy(ud, urlp->url_proto), urlp->url_eu_h_p.s,
          urlp->url_eu_h_p.l +1);

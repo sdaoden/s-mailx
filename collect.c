@@ -1788,6 +1788,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
    sigfp = NULL;
    linesize = 0;
    linebuf = NULL;
+   flags = a_NONE;
    eofcnt = 0;
    ifs_saved = coapm = NULL;
    coap = NULL;
