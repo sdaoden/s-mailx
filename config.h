@@ -77,6 +77,11 @@
 # endif
 #endif
 
+/* Supported IDNA implementations */
+#define n_IDNA_IMPL_LIBIDN2 0
+#define n_IDNA_IMPL_LIBIDN 1
+#define n_IDNA_IMPL_IDNKIT 2
+
 /* Max readable line width TODO simply use BUFSIZ? */
 #if BUFSIZ + 0 > 2560
 # define LINESIZE BUFSIZ
@@ -129,6 +134,13 @@
 
 /* How much spaces should a <tab> count when *quote-fold*ing? (power-of-two!) */
 #define n_QUOTE_TAB_SPACES 8
+
+/* Supported (external) PRG implementations */
+#define n_RANDOM_IMPL_BUILTIN 0
+#define n_RANDOM_IMPL_ARC4 1
+#define n_RANDOM_IMPL_SSL 2
+#define n_RANDOM_IMPL_GETRANDOM 3 /* (both, syscall + library) */
+#define n_RANDOM_IMPL_URANDOM 4
 
 /* For long iterative output, like `list', tabulator-completion, etc.,
  * determine the screen width that should be used */

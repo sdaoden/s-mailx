@@ -1,22 +1,41 @@
-#@ make.rc describes the set of used features and (default) values used etc.
-#@ You should have read INSTALL first.
-#@ Notes:
-#@ . Choosing a predefined CONFIG= disallows further option fine-tuning.
+#@ make.rc defined the set of features and values used.
+#@ Reading INSTALL first is beneficial.
+#@
+#@ - Choosing a predefined CONFIG= disallows further option fine-tuning.
 #@   (With some exceptions, e.g., OPT_DEBUG.)
-#@ . Features / options have an OPT_ prefix and need to be assigned
-#@   a boolean value, as in OPT_SSL=yes.  Booleans are 1/0, y/n,
-#@   true/false, yes/no and on/off (case doesn't matter).
+#@
+#@ - Values have a VAL_ prefix, and are assigned strings, for example
+#@       VAL_PREFIX="/usr/local"
+#@
+#@   Values which are only used during configuration, building, and / or
+#@   installation have no prefix, e.g., DESTDIR, VERBOSE, awk, sed;
+#@
+#@   Some values exist which offer "multiple choice", e.g., VAL_RANDOM
+#@   (without accompanying feature option) and VAL_IDNA (with OPT_IDNA).
+#@   This is used if different implementations exist, and can then be
+#@   used to choose the desired one(s).
+#@   The value is interpreted as a whitespace separated list of strings,
+#@   like "idn2 idn idnkit", case is ignored, order is important.
+#@   The special strings "all" and "any" as well as the empty value
+#@   are wildcard matches; if any entry in the list is a wildcard match,
+#@   the rest of the list is ignored.
+#@   The special string "error" will abort configuration once its list
+#@   position is reached; this is only supported if documented, and not
+#@   with an accompanying OPT_ (which then offers "require", as below).
+#@
+#@ - Features / options have an OPT_ prefix and usually need to be
+#@   assigned a boolean value, as in OPT_IDNA=yes.  Booleans are 1/0,
+#@   y/n, true/false, yes/no and on/off (case doesn't matter).
+#@
 #@   The value "require" is also a true boolean, but will in addition
 #@   cause configuration to fail if the requested condition cannot be
-#@   satisfied.  This value is only available for a subset of options.
-#@ . Values use VAL_ instead, and are assigned strings.
-#@   E.g., VAL_PREFIX=/usr/local.
-#@   Variables which are only used during configuration, building,
-#@   and / or installation have no prefix, e.g., DESTDIR, VERBOSE, awk.
-#@ . Specifying settings on the command line will take precedence over
+#@   satisfied.  This functionality is available where documented.
+#@
+#@ - Specifying settings on the command line will take precedence over
 #@   the variables in here (correctly triggering build updates as
 #@   necessary, too).
-#@ . This file is parsed by the shell: it is in sh(1), not in make(1)
+#@
+#@ - This file is parsed by the shell: it is in sh(1), not in make(1)
 #@   syntax.  Evaluation occurs *after* it has been read, so command
 #@   line overwrites take effect.  To use multiline values, escape the
 #@   newlines on all lines but the last with a reverse solidus (back-
@@ -24,7 +43,8 @@
 #@   To embed a shell variable unexpanded, use two: "XY=\\${HOME}".
 #@   The parsing is sequential top-to-bottom (nonetheless), so that
 #@   shell snippets in a value can refer only to stuff yet defined.
-#@ . You may NOT comment out anything in here -- if you want to disable
+#@
+#@ - You may NOT comment out anything in here -- if you want to disable
 #@   a feature, set it to a false boolean.
 
 ## IDENTITIES, PATHS AND PROGRAMS ##
@@ -198,12 +218,6 @@ OPT_SOCKETS=yes
 # (http://www.libressl.org) libraries.
 OPT_SSL=yes
 
-# We can use the P(seudo) R(andom number) G(enerator) that ships with
-# the SSL library, instead of using the appropriate interface of the
-# operating system we are being build on or for.
-# This can be "require"d.
-OPT_SSL_RANDOM="${OPT_SSL}"
-
 # If $OPT_SSL: shall S-nail (try to) use mechanisms to support more
 # digest and cipher algorithms than the few that are documented?  For
 # S/MIME *smime-cipher* for example this will cause
@@ -257,18 +271,32 @@ OPT_AGENT=yes
 # use non-US-ASCII content, as in, e.g., <www.räksmörgåsa.example>,
 # which the IDNA algorithm would convert to
 # <www.xn--rksmrgsa-0zap8p.example>.  :)
-# In the order of availability checks this option needs one of
-# . GNU Libidn library (https://www.gnu.org/software/libidn/),
-# . GNU Libidn2 library (same),
-# . idnkit (https://www.nic.ad.jp/ja/idn/idnkit/download/).
-# It can be "require"d.
+# Multiple implementations are supported:
+# . idn2 - GNU Libidn2 library (same),
+# . idn - GNU Libidn library (https://www.gnu.org/software/libidn/),
+# . idnkit - idnkit (https://www.nic.ad.jp/ja/idn/idnkit/download/).
+# OPT_IDNA can be "require"d.
 OPT_IDNA=yes
+VAL_IDNA="idnkit idn2 idn"
 
 # IMAP-style SEARCH expressions can be supported.  This addressing mode
 # is available with all types of folders; for folders not located on
 # IMAP servers, or for servers unable to execute the SEARCH command, the
 # search is performed locally.
 OPT_IMAP_SEARCH=yes
+
+# Several different P(seudo) R(andom number) G(enerator) possibilities.
+# No need for somewhat strong random is necessary.
+# The following will be used as sole PRG implementations.
+# . arc4 - we search for arc4random(3).
+# . ssl - if OPT_SSL is available the PRG of the SSL library can be used.
+# The following will only be used to seed our builtin ARC4 PRG.
+# . libgetrandom - getrandom(3) via C library.
+# . sysgetrandom - getrandom(2) via SYSCALL.
+# . urandom - reading from /dev/urandom.
+# . builtin - a builtin ARC4 implementation with unscientific seeding.
+# . (error - bail out)
+VAL_RANDOM="arc4 ssl libgetrandom sysgetrandom urandom builtin"
 
 # Regular expression (re_format(7)) support for searches, conditional
 # expressions etc., we use the extended ones, then; can be "require"d.
@@ -386,9 +414,6 @@ OPT_DEVEL=no
 
 # We use the crypto libraries' MD5 implementation if possible, unless..
 OPT_NOEXTMD5=no
-
-# For testing purposes external PRGs can be disallowed
-OPT_NOEXTRANDOM=no
 
 # With $OPT_AUTOCC we can make use of the ASan AddressSanitizer and ASan
 # MemorySanitizer of Google

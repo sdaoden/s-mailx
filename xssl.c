@@ -394,7 +394,7 @@ a_xssl_rand_init(void){
    (void)RAND_load_file(cp, a_XSSL_RAND_LOAD_FILE_MAXBYTES);
 
    /* And feed in some data, then write the updated file.
-    * While this rather feeds the PRNG with itself in the HAVE_SSL_RANDOM
+    * While this rather feeds the PRNG with itself in the n_RANDOM_IMPL_SSL
     * case, let us stir the buffer a little bit.
     * Estimate a low but likely still too high number of entropy bytes, use
     * 20%: base64 uses 3 input = 4 output bytes relation, and the base64
@@ -403,14 +403,14 @@ a_xssl_rand_init(void){
       RAND_add(n_random_create_buf(b64buf, sizeof(b64buf) -1, NULL),
          sizeof(b64buf) -1, a_XSSL_RAND_ENTROPY);
       if((x = (char*)((uintptr_t)x >> (1
-#ifdef HAVE_SSL_RANDOM
+#if HAVE_RANDOM == n_RANDOM_IMPL_SSL
          + 3
 #endif
             ))) == NULL){
          err = (RAND_status() == 0);
          break;
       }
-#ifndef HAVE_SSL_RANDOM
+#if HAVE_RANDOM != n_RANDOM_IMPL_SSL
       if(!(err = (RAND_status() == 0)))
          break;
 #endif
@@ -1688,7 +1688,7 @@ jleave:
    return rv;
 }
 
-#ifdef HAVE_SSL_RANDOM
+#if HAVE_RANDOM == n_RANDOM_IMPL_SSL
 FL void
 ssl_rand_bytes(void *buf, size_t blen){
    NYD_ENTER;
