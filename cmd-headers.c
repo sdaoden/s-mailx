@@ -541,11 +541,11 @@ jputcb:
                n = 9;
             if (UICMP(32, n_ABS(n), >, wleft))
                n = (n < 0) ? -wleft : wleft;
-            n = fprintf(f, "%*lu", n, mp->m_uid);
+            n = fprintf(f, "%*" PRIu64 , n, mp->m_uid);
             wleft = (n >= 0) ? wleft - n : 0;
             break;
 #else
-            c = '?';
+            c = '0';
             goto jputcb;
 #endif
       default:
@@ -881,7 +881,7 @@ _headers(int msgspec) /* TODO rework v15 */
    if (k < 0)
       k = 0;
 
-   needdot = (msgspec == 0) ? TRU1 : (dot != &message[msgspec - 1]);
+   needdot = (msgspec <= 0) ? TRU1 : (dot != &message[msgspec - 1]);
    showlast = ok_blook(showlast);
 
    if (mb.mb_threaded == 0) {

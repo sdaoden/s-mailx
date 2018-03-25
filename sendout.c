@@ -659,7 +659,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
 
    if ((nfo = Ftmp(&tempMail, "infix", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER))
          == NULL) {
-      n_perr(_("temporary mail file"), 0);
+      n_perr(_("infix: temporary mail file"), 0);
       goto jleave;
    }
    if ((nfi = Fopen(tempMail, "r")) == NULL) {
@@ -726,7 +726,7 @@ jiconv_err:
 
    fflush(nfo);
    if((err = ferror(nfo)))
-      n_perr(_("temporary mail file"), 0);
+      n_perr(_("infix: temporary mail file I/O"), 0);
 jerr:
    Fclose(nfo);
 
@@ -1650,7 +1650,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
    if (buf != NULL)
       free(buf);
    if (ferror(fo)) {
-      n_perr(_("temporary mail file"), 0);
+      n_perr(_("infix_resend: temporary mail file"), 0);
       goto jleave;
    }
    rv = 0;
@@ -2266,7 +2266,7 @@ j_mft_add:
    if ((w & GMIME) && ((n_pstate & n_PS_HEADER_NEEDED_MIME) ||
          hp->h_attach != NULL ||
          ((n_poption & n_PO_Mm_FLAG) && n_poption_arg_Mm != NULL) ||
-         convert != CONV_7BIT || asccasecmp(charset, "US-ASCII"))) {
+         convert != CONV_7BIT || !n_iconv_name_is_ascii(charset))) {
       ++gotcha;
       if (fputs("MIME-Version: 1.0\n", fo) == EOF)
          goto jleave;
@@ -2337,7 +2337,7 @@ resend_msg(struct message *mp, struct header *hp, bool_t add_resent)
    if((nfo = Ftmp(&tempMail, "resend", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER)
          ) == NULL) {
       _sendout_error = TRU1;
-      n_perr(_("temporary mail file"), 0);
+      n_perr(_("resend_msg: temporary mail file"), 0);
       n_pstate_err_no = n_ERR_IO;
       goto jleave;
    }

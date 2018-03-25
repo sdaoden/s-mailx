@@ -77,7 +77,8 @@ a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no){
    }
 #endif
    /* XXX Message info uses wire format for line count */
-   rv = (fprintf(obuf, _("%s[-- Message %2d -- %lu lines, %lu bytes --]:%s\n"),
+   rv = (fprintf(obuf,
+         A_("%s[-- Message %2d -- %lu lines, %lu bytes --]:%s\n"),
          cpre, msg_no, (ul_i)mp->m_lines, (ul_i)mp->m_size, csuf) > 0);
    NYD2_LEAVE;
    return rv;

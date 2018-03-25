@@ -125,7 +125,8 @@ used instead of doing manual adjustments.
 
 - CONFIG=NULL, CONFIG=NULLI
   Anything that can be turned off is off.  MIME cannot.
-  The latter adds and "require"s iconv(3).
+  The latter adds and "require"s iconv(3) and adds the user interface
+  strings.
 
 - CONFIG=MINIMAL
   Possibly what people want who need nothing but a MIME-capable mailx(1)
@@ -257,6 +258,12 @@ Development and/or regular tests:
 . ArchLinux <https://www.archlinux.org/> (weekly updated; x86-64).
 . CRUX Linux <https://www.crux.nu/> (3.3; x86-64).
 . FreeBSD <https://www.freebsd.org/> (11.1; x86).
+  - The tests behave:iconv_mbyte_base64-4 and
+    behave:iconv_mbyte_base64-8 will fail because the ISO C function
+    iswprint(3) will falsely claim that U+FF08 and U+FF09 (FULLWIDTH
+    LEFT and RIGHT PARENTHESIS, respectively) are not printable, causing
+    replacements.  This is a known bug, see
+      <https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=225692>
 . OpenBSD <https://www.openbsd.org/> (6.2; x86).
 
 Occasional tests:
@@ -282,7 +289,7 @@ Occasional tests:
       e.g., in conjunction with OPT_AUTOCC add this:
        EXTRA_CFLAGS='-D__builtin_stdarg_start=__builtin_va_start'
   - The OpenCSW build cluster consists of SunOS 5.9 - 5.11 machines
-    under SPARC and i386.  And it looked good on 2017-09-15.
-. Void Linux <https://www.voidlinux.eu/> (x86; not in 2017 FIXME)
+    under SPARC and i386.  And it looked perfect on 2018-03-24.
+. Void Linux <https://www.voidlinux.eu/> (x86)
 
 # s-ts-mode

@@ -1247,6 +1247,24 @@ jleave:
    return n_UNCONST(cset);
 }
 
+FL bool_t
+n_iconv_name_is_ascii(char const *cset){ /* TODO ctext/su */
+   bool_t rv;
+   NYD2_ENTER;
+
+   /* In MIME preference order */
+   rv = (!asccasecmp(cset, "US-ASCII") || !asccasecmp(cset, "ASCII") ||
+         !asccasecmp(cset, "ANSI_X3.4-1968") ||
+         !asccasecmp(cset, "iso-ir-6") ||
+         !asccasecmp(cset, "ANSI_X3.4-1986") ||
+         !asccasecmp(cset, "ISO_646.irv:1991") ||
+         !asccasecmp(cset, "ISO646-US") || !asccasecmp(cset, "us") ||
+         !asccasecmp(cset, "IBM367") || !asccasecmp(cset, "cp367") ||
+         !asccasecmp(cset, "csASCII"));
+   NYD2_LEAVE;
+   return rv;
+}
+
 #ifdef HAVE_ICONV
 FL iconv_t
 n_iconv_open(char const *tocode, char const *fromcode){

@@ -300,7 +300,8 @@ env_addon[i++] = str_concat_csvl(&s, "NAIL_CONTENT_EVIDENCE", "=", cp,/* v15 */
 
    /* message/external-body, access-type=url */
    env_addon[i++] = str_concat_csvl(&s, n_PIPEENV_EXTERNAL_BODY_URL, "=",
-         ((cp = mpp->m_external_body_url) != NULL ? cp : n_empty), NULL)->s;
+         ((mpp != NULL && (cp = mpp->m_external_body_url) != NULL
+            ) ? cp : n_empty), NULL)->s;
 
    /* MAILX_FILENAME_TEMPORARY? */
    if (tmpname != NULL) {
@@ -373,7 +374,7 @@ _out(char const *buf, size_t len, FILE *fp, enum conversion convert, enum
          ?  TD_ISPR | TD_ICONV
          : (action == SEND_TOSRCH || action == SEND_TOPIPE ||
                action == SEND_TOFILE)
-            ? TD_ICONV : (action == SEND_SHOW ?  TD_ISPR : TD_NONE)),
+            ? TD_ICONV : (action == SEND_SHOW ? TD_ISPR : TD_NONE)),
          qf, outrest, inrest);
    if (n < 0)
       sz = n;

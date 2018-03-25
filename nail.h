@@ -345,9 +345,17 @@ do{\
 #undef _
 #undef N_
 #undef V_
-#define _(S)            S
-#define N_(S)           S
-#define V_(S)           S
+#ifdef HAVE_UISTRINGS
+# define A_(S) S
+# define _(S) S
+# define N_(S) S
+# define V_(S) S
+#else
+# define A_(S) S
+# define _(S) n_empty
+# define N_(S) ""
+# define V_(S) n_empty
+#endif
 
 /*
  * Types TODO v15: n_XX_t
@@ -1482,6 +1490,7 @@ enum n_program_state_once{
    n_PSO_RANDOM_INIT = 1u<<19,
    n_PSO_TERMCAP_DISABLE = 1u<<20,
    n_PSO_TERMCAP_CA_MODE = 1u<<21,
+   n_PSO_DOTLOCK_PRIVSEP_NOTED = 1u<<22,
 
    /* TODO A subtile HACK which works in conjunction with n_OPT_t_FLAG so as
     * to allow to have multiple states regarding the related header setup */
@@ -1566,7 +1575,7 @@ ok_b_bsdannounce, /* {obsolete=1} */
    ok_b_dotlock_ignore_error,
 
    ok_v_EDITOR,                     /* {env=1,notempty=1,defval=VAL_EDITOR} */
-   ok_b_editalong,
+   ok_v_editalong,
    ok_b_editheaders,
    ok_b_emptystart,
 ok_v_encoding, /* {obsolete=1} */
@@ -1797,6 +1806,7 @@ ok_v_ssl_protocol, /* {chain=1,obsolete=1} */
    ok_v_ssl_rand_file,
    ok_v_ssl_verify,                    /* {chain=1} */
    ok_v_stealthmua,
+   ok_v_system_mailrc,           /* {virt=VAL_SYSCONFDIR "/" VAL_SYSCONFRC} */
 
    ok_v_TERM,                          /* {env=1} */
    ok_v_TMPDIR,            /* {import=1,vip=1,notempty=1,defval=VAL_TMPDIR} */
@@ -1947,13 +1957,11 @@ struct n_colour_pen;
 struct url {
    char const     *url_input;       /* Input as given (really) */
    ui32_t         url_flags;
-   ui8_t          url_cproto;       /* enum cproto as given */
-   ui8_t          url__pad1[1];
    ui16_t         url_portno;       /* atoi .url_port or default, host endian */
+   ui8_t          url_cproto;       /* enum cproto as given */
+   ui8_t          url_proto_len;    /* Length of .url_proto (to first '\0') */
+   char           url_proto[16];    /* Communication protocol as 'xy\0://\0' */
    char const     *url_port;        /* Port (if given) or NULL */
-   char           url_proto[14];    /* Communication protocol as 'xy\0//' */
-   ui8_t          url_proto_len;    /* Length of .url_proto ('\0' index) */
-   ui8_t          url_proto_xlen;   /* .. if '\0' is replaced with ':' */
    struct str     url_user;         /* User, exactly as given / looked up */
    struct str     url_user_enc;     /* User, urlxenc()oded */
    struct str     url_pass;         /* Pass (urlxdec()oded) or NULL */
@@ -2290,6 +2298,8 @@ struct mimepart {
    enum content_info m_content_info;
 #ifdef HAVE_SPAM
    ui32_t      m_spamscore;   /* Spam score as int, 24:8 bits */
+#else
+   ui8_t m__pad1[4];
 #endif
    int         m_block;       /* block number of this part */
    size_t      m_offset;      /* offset in block of part */
@@ -2321,6 +2331,8 @@ struct message {
    enum content_info m_content_info;
 #ifdef HAVE_SPAM
    ui32_t      m_spamscore;   /* Spam score as int, 24:8 bits */
+#else
+   ui8_t m__pad1[4];
 #endif
    int         m_block;       /* block number of this message */
    size_t      m_offset;      /* offset in block of message */
@@ -2330,19 +2342,19 @@ struct message {
    long        m_xlines;      /* Lines in the full message */
    time_t      m_time;        /* time the message was sent */
    time_t      m_date;        /* time in the 'Date' field */
+#ifdef HAVE_IMAP
+   ui64_t m_uid;              /* IMAP unique identifier */
+#endif
+   char const  *m_maildir_file; /* original maildir file of msg */
+   ui32_t      m_maildir_hash; /* hash of file name in maildir sub */
+   int         m_collapsed;   /* collapsed thread information */
    unsigned    m_idhash;      /* hash on Message-ID for threads */
+   unsigned    m_level;       /* thread level of message */
+   long        m_threadpos;   /* position in threaded display */
    struct message *m_child;   /* first child of this message */
    struct message *m_younger; /* younger brother of this message */
    struct message *m_elder;   /* elder brother of this message */
    struct message *m_parent;  /* parent of this message */
-   unsigned    m_level;       /* thread level of message */
-   long        m_threadpos;   /* position in threaded display */
-#ifdef HAVE_IMAP
-   unsigned long m_uid;       /* IMAP unique identifier */
-#endif
-   char const  *m_maildir_file;  /* original maildir file of msg */
-   ui32_t      m_maildir_hash;   /* hash of file name in maildir sub */
-   int         m_collapsed;      /* collapsed thread information */
 };
 
 /* Given a file address, determine the block number it represents */
@@ -2556,7 +2568,9 @@ VL char const n_month_names[12 + 1][4];
 VL char const n_weekday_names[7 + 1][4];
 
 VL char const n_uagent[sizeof VAL_UAGENT];
+# ifdef HAVE_UISTRINGS
 VL char const n_error[sizeof n_ERROR];
+# endif
 VL char const n_path_devnull[sizeof n_PATH_DEVNULL];
 VL char const n_reproducible_name[sizeof "reproducible_build"];
 VL char const n_unirepl[sizeof n_UNIREPL];
@@ -2570,7 +2584,7 @@ VL char const n_star[2];   /* Asterisk * */
 VL char const n_at[2];     /* Commercial at @ */
 VL char const n_ns[2];     /* Number sign # */
 VL ui16_t const n_class_char[1 + 0x7F];
-#endif
+#endif /* HAVE_AMALGAMATION */
 
 VL FILE *n_stdin;
 VL FILE *n_stdout;

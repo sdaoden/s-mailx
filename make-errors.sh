@@ -495,6 +495,7 @@ sub dump_map{
    }
    print F '};', "\n\n";
 
+   print F '#ifdef HAVE_DOCSTRINGS', "\n";
    print F '#undef a_X', "\n", '#define a_X(X)', "\n";
    print F 'static char const a_aux_err_docs[] = {', "\n";
    ($i, $alen) = (0, 0);
@@ -510,7 +511,7 @@ sub dump_map{
       ++$i;
       $alen += $l + 1
    }
-   print F '};', "\n", '#undef a_X', "\n\n";
+   print F '};', "\n", '#undef a_X', "\n#endif /* HAVE_DOCSTRINGS */\n\n";
 
    print F <<_EOT;
 #undef a_X

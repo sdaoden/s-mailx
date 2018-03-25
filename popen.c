@@ -770,6 +770,13 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
       e = n_err_no;
       unlink(cp_base);
       goto jfree;
+   }else if(fp != NULL){
+      /* We will succeed and keep the file around for further usage, likely
+       * another stream will be opened for pure reading purposes (this is true
+       * at the time of this writing.  A restrictive umask(2) settings may have
+       * turned the path inaccessible, so ensure it may be read at least!
+       * TODO once ok_vlook() can return an integer, look up *umask* first! */
+      (void)fchmod(fd, S_IWUSR | S_IRUSR);
    }
 
    if (fn != NULL)

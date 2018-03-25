@@ -226,7 +226,6 @@ FL char *n_var_xoklook(enum okeys okey, struct url const *urlp,
 
 /* User variable access: `set', `local' and `unset' */
 FL int c_set(void *vp);
-FL int c_local(void *vp);
 FL int c_unset(void *vp);
 
 /* `varshow' */
@@ -2424,6 +2423,10 @@ FL size_t      n_utf32_to_utf8(ui32_t c, char *buf);
  * Return value is always smaller or of equal size.
  * NULL will be returned if cset is an invalid character set name */
 FL char *n_iconv_normalize_name(char const *cset);
+
+/* Is it ASCII indeed? */
+FL bool_t n_iconv_name_is_ascii(char const *cset);
+
 #ifdef HAVE_ICONV
 FL iconv_t     n_iconv_open(char const *tocode, char const *fromcode);
 /* If *cd* == *iconvd*, assigns -1 to the latter */
@@ -2715,7 +2718,7 @@ FL void        hmac_md5(unsigned char *text, int text_len, unsigned char *key,
 
 #ifdef HAVE_XSSL
 /* Our wrapper for RAND_bytes(3) */
-# ifdef HAVE_SSL_RANDOM
+# if HAVE_RANDOM == n_RANDOM_IMPL_SSL
 FL void ssl_rand_bytes(void *buf, size_t blen);
 # endif
 

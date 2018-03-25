@@ -1,6 +1,7 @@
 #!/bin/sh -
-#@ Synopsis: ./cc-test.sh [--check-only s-mailx-binary]
+#@ Synopsis: ./cc-test.sh --check-only [s-mailx-binary]
 #@           ./cc-test.sh --mae-test s-mailx-binary [:TESTNAME:]
+#@           [./cc-test.sh # Note: performs hundreds of compilations!]
 #@ The latter generates output files.
 #@ TODO All ex0_test should say TESTNUMBER-estat instead of having own numbers
 #@ TODO _All_ the tests should happen in a temporary subdir.
@@ -9,19 +10,20 @@
 # Instead of figuring out the environment in here, require a configured build
 # system and include that!  Our makefile and configure ensure that this test
 # does not run in the configured, but the user environment nonetheless!
-if [ -f ./mk-config.ev ]; then
-   . ./mk-config.ev
-   if [ -z "${MAILX__CC_TEST_RUNNING}" ]; then
-      MAILX__CC_TEST_RUNNING=1
-      export MAILX__CC_TEST_RUNNING
-      exec "${SHELL}" "${0}" "${@}"
-   fi
-else
+if [ -f ./mk-config.ev ]; then :; else
    echo >&2 'S-nail/S-mailx is not configured.'
    echo >&2 'This test script requires the shell environment that only the'
    echo >&2 'configuration script can figure out, even if it will be used to'
    echo >&2 'test a different binary than the one that would be produced!'
-   exit 41
+   echo >&2 'Hit RETURN to run "make config CONFIG=null'
+   read l
+   make config CONFIG=null
+fi
+. ./mk-config.ev
+if [ -z "${MAILX__CC_TEST_RUNNING}" ]; then
+   MAILX__CC_TEST_RUNNING=1
+   export MAILX__CC_TEST_RUNNING
+   exec "${SHELL}" "${0}" "${@}"
 fi
 
 # We need *stealthmua* regardless of $SOURCE_DATE_EPOCH, the program name as
@@ -32,6 +34,7 @@ ADDARG_UNI=-Sttycharset=UTF-8
 CONF=./make.rc
 BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
+ERR=./.cc-test.err # Covers only some which cannot be checksummed; not quoted!
 MAIL=/dev/null
 #UTF8_LOCALE= autodetected unless set
 
@@ -113,7 +116,6 @@ if [ -n "${CHECK_ONLY}${MAE_TEST}" ] && [ -z "${UTF8_LOCALE}" ]; then
                   exit 0
                fi
             fi
-            m=${n}
          done
          echo ${m}
       }`
@@ -123,92 +125,8 @@ fi
 ESTAT=0
 
 TRAP_EXIT_ADDONS=
-trap "${rm} -rf \"${BODY}\" \"${MBOX}\" \${TRAP_EXIT_ADDONS}" EXIT
+trap "${rm} -rf \"${BODY}\" \"${MBOX}\" \"${ERR}\" \${TRAP_EXIT_ADDONS}" EXIT
 trap "exit 1" HUP INT TERM
-
-# cc_all_configs()
-# Test all configs TODO doesn't cover all *combinations*, stupid!
-cc_all_configs() {
-   < ${CONF} ${awk} '
-      BEGIN {
-         NOTME["OPT_AUTOCC"] = 1
-         NOTME["OPT_DEBUG"] = 1
-         NOTME["OPT_DEVEL"] = 1
-         NOTME["OPT_ASAN_ADDRESS"] = 1
-         NOTME["OPT_ASAN_MEMORY"] = 1
-         NOTME["OPT_FORCED_STACKPROT"] = 1
-         NOTME["OPT_NOMEMDBG"] = 1
-         NOTME["OPT_NYD2"] = 1
-         i = 0
-      }
-      /^[[:space:]]*OPT_/ {
-         sub(/^[[:space:]]*/, "")
-         # This bails for UnixWare 7.1.4 awk(1), but preceeding = with \
-         # does not seem to be a compliant escape for =
-         #sub(/=.*$/, "")
-         $1 = substr($1, 1, index($1, "=") - 1)
-         if (NOTME[$1])
-            next
-         data[i++] = $1
-      }
-      END {
-         # Doing this completely sequentially and not doing make distclean in
-         # between runs should effectively result in lesser compilations.
-         # It is completely dumb nonetheless... TODO
-         for (j = 1; j < i; ++j) {
-            for (k = 1; k < j; ++k)
-               printf data[k] "=1 "
-            for (k = j; k < i; ++k)
-               printf data[k] "=0 "
-            printf "OPT_AUTOCC=1\n"
-         }
-         for (j = 1; j < i; ++j) {
-            for (k = 1; k < j; ++k)
-               printf data[k] "=0 "
-            for (k = j; k < i; ++k)
-               printf data[k] "=1 "
-            printf "OPT_AUTOCC=1\n"
-         }
-         # With debug
-         for (j = 1; j < i; ++j) {
-            for (k = 1; k < j; ++k)
-               printf data[k] "=1 "
-            for (k = j; k < i; ++k)
-               printf data[k] "=0 "
-            printf "OPT_AUTOCC=1\n"
-            printf "OPT_DEBUG=1\n"
-         }
-         for (j = 1; j < i; ++j) {
-            for (k = 1; k < j; ++k)
-               printf data[k] "=0 "
-            for (k = j; k < i; ++k)
-               printf data[k] "=1 "
-            printf "OPT_AUTOCC=1\n"
-            printf "OPT_DEBUG=1\n"
-         }
-
-         printf "CONFIG=NULL OPT_AUTOCC=0\n"
-         printf "CONFIG=NULL OPT_AUTOCC=1\n"
-         printf "CONFIG=NULLI OPT_AUTOCC=0\n"
-         printf "CONFIG=NULLI OPT_AUTOCC=1\n"
-         printf "CONFIG=MINIMAL OPT_AUTOCC=0\n"
-         printf "CONFIG=MINIMAL OPT_AUTOCC=1\n"
-         printf "CONFIG=NETSEND OPT_AUTOCC=0\n"
-         printf "CONFIG=NETSEND OPT_AUTOCC=1\n"
-         printf "CONFIG=MAXIMAL OPT_AUTOCC=0\n"
-         printf "CONFIG=MAXIMAL OPT_AUTOCC=1\n"
-         printf "CONFIG=DEVEL OPT_AUTOCC=0\n"
-         printf "CONFIG=DEVEL OPT_AUTOCC=1\n"
-         printf "CONFIG=ODEVEL OPT_AUTOCC=0\n"
-         printf "CONFIG=ODEVEL OPT_AUTOCC=1\n"
-      }
-   ' | while read c; do
-      printf "\n\n##########\n$c\n"
-      printf "\n\n##########\n$c\n" >&2
-      sh -c "${MAKE} ${c} all test"
-   done
-   ${MAKE} distclean
-}
 
 have_feat() {
    ( "${RAWMAILX}" ${ARGS} -X'echo $features' -Xx |
@@ -230,14 +148,24 @@ check() {
       err "${tid}" 'unexpected exit status: '"${restat} != ${eestat}"
    csum="`${cksum} < ${f}`"
    if [ "${csum}" = "${s}" ]; then
+      maex=
       printf '%s: ok\n' "${tid}"
    else
+      maex=yes
       ESTAT=1
       printf '%s: error: checksum mismatch (got %s)\n' "${tid}" "${csum}"
    fi
+
    if [ -n "${MAE_TEST}" ]; then
-      x=`echo ${tid} | ${tr} "/:=" "__-"`
-      ${cp} -f "${f}" ./mae-test-"${x}"
+      x=mae-test-`echo ${tid} | ${tr} "/:=" "__-"`
+      ${cp} -f "${f}" ./"${x}"
+
+      if [ -n "${maex}" ] &&  [ -d .git ] &&
+            command -v diff >/dev/null 2>&1 &&
+            (git rev-parse --verify test-out) >/dev/null 2>&1 &&
+            git show test-out:"${x}" > ./"${x}".old 2>/dev/null; then
+         diff -ru ./"${x}".old ./"${x}" > "${x}".diff
+      fi
    fi
 }
 
@@ -328,6 +256,7 @@ t_behave() {
    t_behave_mime_types_load_control
    t_behave_lreply_futh_rth_etc
 
+   t_behave_mime_if_not_ascii
    t_behave_xxxheads_rfc2047
    t_behave_rfc2231
    t_behave_iconv_mbyte_base64
@@ -434,6 +363,11 @@ t_behave_X_opt_input_command_stack() {
 
 t_behave_X_errexit() {
    t_prolog t_behave_X_errexit
+
+   if have_feat uistrings; then :; else
+      echo 'behave:x_errexit: unsupported, skipped'
+      return
+   fi
 
    ${cat} <<- '__EOT' > "${BODY}"
 	echo one
@@ -662,11 +596,11 @@ t_behave_wysh() {
       echo 'Skip behave:wysh_unicode, no UTF8_LOCALE'
    else
       < "${BODY}" DIET=CURD TIED= \
-      LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} 2>/dev/null > "${MBOX}"
+      LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} > "${MBOX}" 2>>${ERR}
       check behave:wysh_unicode 0 "${MBOX}" '475805847 317'
    fi
 
-   < "${BODY}" DIET=CURD TIED= ${MAILX} ${ARGS} > "${MBOX}" 2>/dev/null
+   < "${BODY}" DIET=CURD TIED= ${MAILX} ${ARGS} > "${MBOX}" 2>>${ERR}
    check behave:wysh_c 0 "${MBOX}" '1473887148 321'
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
@@ -725,7 +659,7 @@ t_behave_commandalias() {
 	X
 	__EOT
 
-   check behave:commandalias 0 "${MBOX}" '3694143612 31'
+   check behave:commandalias 0 "${MBOX}" '1638809585 36'
 
    t_epilog
 }
@@ -1589,7 +1523,7 @@ t_behave_local() {
 t_behave_macro_param_shift() {
    t_prolog t_behave_macro_param_shift
 
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>/dev/null
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>>${ERR}
 	define t2 {
 	   echo in: t2
 	   echo t2.0 has $#/${#} parameters: "$1,${2},$3" (${*}) [$@]
@@ -1812,7 +1746,7 @@ t_behave_addrcodec() {
 t_behave_vexpr() {
    t_prolog t_behave_vexpr
 
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>/dev/null
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>>${ERR}
 	echo ' #0.0'
 	vput vexpr res = 9223372036854775807
 	echo $?/$^ERRNAME $res
@@ -2276,52 +2210,57 @@ t_behave_xcall() {
 
    ##
 
-   ${cat} <<- '__EOT' > "${BODY}"
-	define __w {
-		echon "$1 "
-		vput vexpr i + $1 1
-		if [ $i -le 111 ]
-			vput vexpr j '&' $i 7
-			if [ $j -eq 7 ]
-				echo .
-			end
-			\xcall __w $i $2
-		end
-		echo ! The end for $1
-		if [ $2 -eq 0 ]
-			nonexistingcommand
-			echo would be err with errexit
-			return
-		end
-		echo calling exit
-		exit
-	}
-	define work {
-		echo eins
-		call __w 0 0
-		echo zwei, ?=$? !=$!
-		localopts yes; set errexit
-		ignerr call __w 0 0
-		echo drei, ?=$? !=$^ERRNAME
-		call __w 0 $1
-		echo vier, ?=$? !=$^ERRNAME, this is an error
-	}
-	ignerr call work 0
-	echo outer 1, ?=$? !=$^ERRNAME
-	xxxign call work 0
-	echo outer 2, ?=$? !=$^ERRNAME, could be error if xxxign non-empty
-	call work 1
-	echo outer 3, ?=$? !=$^ERRNAME
-	echo this is definitely an error
-	__EOT
+   if have_feat uistrings; then
+      ${cat} <<- '__EOT' > "${BODY}"
+			define __w {
+				echon "$1 "
+				vput vexpr i + $1 1
+				if [ $i -le 111 ]
+					vput vexpr j '&' $i 7
+					if [ $j -eq 7 ]
+						echo .
+					end
+					\xcall __w $i $2
+				end
+				echo ! The end for $1
+				if [ $2 -eq 0 ]
+					nonexistingcommand
+					echo would be err with errexit
+					return
+				end
+				echo calling exit
+				exit
+			}
+			define work {
+				echo eins
+				call __w 0 0
+				echo zwei, ?=$? !=$!
+				localopts yes; set errexit
+				ignerr call __w 0 0
+				echo drei, ?=$? !=$^ERRNAME
+				call __w 0 $1
+				echo vier, ?=$? !=$^ERRNAME, this is an error
+			}
+			ignerr call work 0
+			echo outer 1, ?=$? !=$^ERRNAME
+			xxxign call work 0
+			echo outer 2, ?=$? !=$^ERRNAME, could be error if xxxign non-empty
+			call work 1
+			echo outer 3, ?=$? !=$^ERRNAME
+			echo this is definitely an error
+			__EOT
 
-   < "${BODY}" ${MAILX} ${ARGS} -X'commandalias xxxign ignerr' -Snomemdebug \
-      > "${MBOX}" 2>&1
-   check behave:xcall-2 0 "${MBOX}" '3900716531 4200'
+      < "${BODY}" ${MAILX} ${ARGS} -X'commandalias xxxign ignerr' \
+         -Snomemdebug > "${MBOX}" 2>&1
+      check behave:xcall-2 0 "${MBOX}" '3900716531 4200'
 
-   < "${BODY}" ${MAILX} ${ARGS} -X'commandalias xxxign " "' -Snomemdebug \
-      > "${MBOX}" 2>&1
-   check behave:xcall-3 1 "${MBOX}" '1006776201 2799'
+      < "${BODY}" ${MAILX} ${ARGS} -X'commandalias xxxign " "' \
+         -Snomemdebug > "${MBOX}" 2>&1
+      check behave:xcall-3 1 "${MBOX}" '1006776201 2799'
+   else
+      echo 'behave:xcall-2: unsupported, skipped'
+      echo 'behave:xcall-3: unsupported, skipped'
+   fi
 
    t_epilog
 }
@@ -2536,51 +2475,110 @@ t_behave_mbox() {
    TRAP_EXIT_ADDONS="./.t*"
 
    (
-      i=0
-      while [ ${i} -lt 112 ]; do
+      i=1
+      while [ ${i} -lt 113 ]; do
          printf 'm file://%s\n~s Subject %s\nHello %s!\n~.\n' \
             "${MBOX}" "${i}" "${i}"
          i=`add ${i} 1`
       done
-   ) | ${MAILX} ${ARGS}
-   check behave:mbox-1 0 "${MBOX}" '1140119864 13780'
+   ) | ${MAILX} ${ARGS} > .tall 2>&1
+   check behave:mbox-1 0 "${MBOX}" '1872102723 13784'
+   check behave:mbox-1-outerr - ./.tall '4294967295 0' # empty file
 
    printf 'File "%s"\ncopy * "%s"\nFile "%s"\nfrom*' "${MBOX}" .tmbox1 .tmbox1 |
-      ${MAILX} ${ARGS} -Sshowlast > .tlst
-   check behave:mbox-2 0 .tlst '2739893312 9103'
+      ${MAILX} ${ARGS} -Sshowlast > .tall 2>&1
+   check behave:mbox-2 0 .tall '3498373999 9103'
 
    printf 'File "%s"\ncopy * "file://%s"\nFile "file://%s"\nfrom*' \
-      "${MBOX}" .tmbox2 .tmbox2 | ${MAILX} ${ARGS} -Sshowlast > .tlst
-   check behave:mbox-3 0 .tlst '1702194178 9110'
+      "${MBOX}" .tmbox2 .tmbox2 | ${MAILX} ${ARGS} -Sshowlast > .tall 2>&1
+   check behave:mbox-3 0 .tall '381610797 9110'
 
-   # only the odd (even)
+   # copy only the odd (but the first), move the even
    (
       printf 'File "file://%s"\ncopy ' .tmbox2
-      i=0
-      while [ ${i} -lt 112 ]; do
-         j=`modulo ${i} 2`
-         [ ${j} -eq 1 ] && printf '%s ' "${i}"
-         i=`add ${i} 1`
+      i=1
+      while [ ${i} -lt 113 ]; do
+         printf '%s ' "${i}"
+         i=`add ${i} 2`
       done
       printf 'file://%s\nFile "file://%s"\nfrom*' .tmbox3 .tmbox3
-   ) | ${MAILX} ${ARGS} -Sshowlast > .tlst
-   check behave:mbox-4 0 .tmbox3 '631132924 6890'
-   check behave:mbox-5 - .tlst '2960975049 4573'
+   ) | ${MAILX} ${ARGS} -Sshowlast > .tall 2>&1
+   check behave:mbox-4 0 .tmbox3 '4145104131 6890'
+   check behave:mbox-5 - .tall '361127721 4573'
    # ...
    (
       printf 'file "file://%s"\nmove ' .tmbox2
-      i=0
-      while [ ${i} -lt 112 ]; do
-         j=`modulo ${i} 2`
-         [ ${j} -eq 0 ] && [ ${i} -ne 0 ] && printf '%s ' "${i}"
-         i=`add ${i} 1`
+      i=2
+      while [ ${i} -lt 113 ]; do
+         printf '%s ' "${i}"
+         i=`add ${i} 2`
       done
       printf 'file://%s\nFile "file://%s"\nfrom*\nFile "file://%s"\nfrom*' \
          .tmbox3 .tmbox3 .tmbox2
-   ) | ${MAILX} ${ARGS} -Sshowlast > .tlst
-   check behave:mbox-6 0 .tmbox3 '1387070539 13655'
-   ${sed} 2d < .tlst > .tlstx
-   check behave:mbox-7 - .tlstx '2729940494 13645'
+   ) | ${MAILX} ${ARGS} -Sshowlast > .tall 2>>${ERR}
+   check behave:mbox-6 0 .tmbox3 '3249991493 13784'
+   if have_feat uistrings; then
+      ${sed} 2d < .tall > .tallx
+   else
+      ${cp} .tall .tallx
+   fi
+   check behave:mbox-7 - .tallx '1584413080 13645'
+
+   # Invalid MBOXes (after [f4db93b3])
+   echo > .tinvmbox
+   printf 'copy 1 ./.tinvmbox' | ${MAILX} ${ARGS} -Rf "${MBOX}" > .tall 2>&1
+   check behave:mbox-8 0 .tinvmbox '896415941 122'
+   check behave:mbox-9 - ./.tall '3146754194 33'
+
+   echo ' ' > .tinvmbox
+   printf 'copy 1 ./.tinvmbox' | ${MAILX} ${ARGS} -Rf "${MBOX}" > .tall 2>&1
+   check behave:mbox-10 0 .tinvmbox '4011310616 124'
+   check behave:mbox-11 - ./.tall '3146754194 33'
+
+   { echo; echo; } > .tinvmbox # (not invalid)
+   printf 'copy 1 ./.tinvmbox' | ${MAILX} ${ARGS} -Rf "${MBOX}" > .tall 2>&1
+   check behave:mbox-12 0 .tinvmbox '287409579 123'
+   check behave:mbox-13 - ./.tall '3146754194 33'
+
+   # *mbox-rfc4155*, plus
+   ${cat} <<-_EOT > ./.tinv1
+		 
+		
+		From MAILER-DAEMON-1 Wed Oct  2 01:50:07 1996
+		Date: Wed, 02 Oct 1996 01:50:07 +0000
+		To:
+		Subject: Bad bad message 1
+		
+		From me to you, blinde Kuh!
+		
+		From MAILER-DAEMON-2 Wed Oct  2 01:50:07 1996
+		Date: Wed, 02 Oct 1996 01:50:07 +0000
+		To:
+		Subject: Bad bad message 2
+		
+		From me to you, blindes Kalb!
+		_EOT
+   ${cp} ./.tinv1 ./.tinv2
+
+   printf \
+      'define mboxfix {
+         \\localopts yes; \\wysh set mbox-rfc4155;\\wysh File "${1}";\\
+            \\eval copy * "${2}"
+      }
+      call mboxfix ./.tinv1 ./.tok' | ${MAILX} ${ARGS} > .tall 2>&1
+   ex0_test behave:mbox-14-estat
+   ${cat} ./.tinv1 ./.tok >> .tall
+   check behave:mbox-14 - ./.tall '739301109 616'
+
+   printf \
+      'wysh file ./.tinv1 # ^From not repaired, but missing trailing NL is
+      wysh File ./.tok # Just move away to nowhere
+      set mbox-rfc4155
+      wysh file ./.tinv2 # Fully repaired
+      File ./.tok' | ${MAILX} ${ARGS} >>${ERR} 2>&1
+   ex0_test behave:mbox-15-estat
+   check behave:mbox-15-1 - ./.tinv1 '3178048820 332'
+   check behave:mbox-15-2 - ./.tinv2 '4151504442 314'
 
    t_epilog
 }
@@ -2736,7 +2734,7 @@ t_behave_e_H_L_opts() {
    echo ${?} >> "${MBOX}"
    ${MAILX} ${ARGS} -fL '@>@Bye.' ./.t.mbox >> "${MBOX}"
    echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -fL '@>@Good bye.' ./.t.mbox >> "${MBOX}" 2>/dev/null
+   ${MAILX} ${ARGS} -fL '@>@Good bye.' ./.t.mbox >> "${MBOX}" 2>>${ERR}
    echo ${?} >> "${MBOX}"
 
    check behave:e_H_L_opts - "${MBOX}" '1708955574 678'
@@ -3052,16 +3050,16 @@ t_behave_attachments() {
    printf 'att3-1\natt3-2\natt3-4\n' > ./.t3
    printf 'att4-1\natt4-2\natt4-4\n' > './.t 4'
 
-   printf '\
-!@  ./.t3              "./.t 4"             ""
+   printf \
+'!@  ./.t3              "./.t 4"             ""
 !p
 !@
    ./.t3
  "./.t 2"
 
 !p
-!.
-   ' | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh \
+!.' \
+   | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh \
       -a ./.t1 -a './.t 2' \
       -s attachment-test \
       ex@am.ple > ./.tall 2>&1
@@ -3069,8 +3067,8 @@ t_behave_attachments() {
    check behave:attachments-2 - .tall '1928331872 720'
 
    ${rm} -f "${MBOX}"
-   printf '\
-      mail ex@amp.ple
+   printf \
+'mail ex@amp.ple
 !s This the subject is
 !@  ./.t3        "#2"      "./.t 4"          "#1"   ""
 !p
@@ -3112,8 +3110,8 @@ t_behave_attachments() {
  "#2"
 
 !p
-!.
-   ' | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh -Rf ./.tx \
+!.' \
+   | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh -Rf ./.tx \
          > ./.tall 2>&1
    check behave:attachments-3 0 "${MBOX}" '798122412 2285'
    check behave:attachments-4 - .tall '2526106274 1910'
@@ -3910,8 +3908,8 @@ __EOT__
                mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
          }
          wysh set on-compose-splice=t_ocs \
-            on-compose-splice-shell="read ver;printf \"t_ocs-shell\\n\
-               ~t shell@exam.ple\\n~:set t_ocs_sh\\n\"" \
+            on-compose-splice-shell="read ver;echo t_ocs-shell;\
+               echo \"~t shell@exam.ple\"; echo \"~:set t_ocs_sh\"" \
             on-compose-enter=t_oce on-compose-leave=t_ocl \
             on-compose-cleanup=t_occ
       ' > ./.tnotes 2>&1
@@ -4342,7 +4340,12 @@ t_behave_lreply_futh_rth_etc() {
 	call x 7
 	_EOT
 
-   check behave:lreply_futh_rth_etc-1 0 "${MBOX}" '940818845 29373'
+   ex0_test behave:lreply_futh_rth_etc-1-estat
+   if have_feat uistrings; then # xxx should not be so, skip??
+      check behave:lreply_futh_rth_etc-1 - "${MBOX}" '940818845 29373'
+   else
+      check behave:lreply_futh_rth_etc-1 - "${MBOX}" '3917430455 29259'
+   fi
 
    ##
 
@@ -4366,6 +4369,19 @@ t_behave_lreply_futh_rth_etc() {
       ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh -Sreply-to-honour \
          -Rf ./.tmbox > "${MBOX}" 2>&1
    check behave:lreply_futh_rth_etc-2 0 "${MBOX}" '1045866991 331'
+
+   t_epilog
+}
+
+t_behave_mime_if_not_ascii() {
+   t_prolog t_behave_mime_if_not_ascii
+
+   </dev/null ${MAILX} ${ARGS} -s Subject "${MBOX}" >> "${MBOX}" 2>&1
+   check behave:mime_if_not_ascii-1 0 "${MBOX}" '2287855519 110'
+
+   </dev/null ${MAILX} ${ARGS} -Scharset-7bit=not-ascii -s Subject "${MBOX}" \
+      >> "${MBOX}" 2>&1
+   check behave:mime_if_not_ascii-2 0 "${MBOX}" '70754682 282'
 
    t_epilog
 }
@@ -4515,10 +4531,14 @@ t_behave_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
    t_prolog t_behave_iconv_mbyte_base64
    TRAP_EXIT_ADDONS="./.t*"
 
-   if [ -n "${UTF8_LOCALE}" ] && have_feat iconv &&
-         (</dev/null iconv -f ascii -t iso-2022-jp) >/dev/null 2>&1 ||
-         (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
-      :
+   if [ -n "${UTF8_LOCALE}" ] && have_feat iconv; then
+      if (</dev/null iconv -f ascii -t iso-2022-jp) >/dev/null 2>&1 ||
+            (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
+         :
+      else
+         echo 'behave:iconv_mbyte_base64: unsupported, skipped'
+         return
+      fi
    else
       echo 'behave:iconv_mbyte_base64: unsupported, skipped'
       return
@@ -4661,7 +4681,15 @@ t_behave_iconv_mainbody() {
       -s '–' over-the@rain.bow 2>./.terr
    exn0_test behave:iconv_mainbody-3
    check behave:iconv_mainbody-3 - "${MBOX}" '3634015017 251'
-   check behave:iconv_mainbody-4 - ./.terr '2579894983 148'
+   if have_feat uistrings; then
+      if have_feat docstrings; then # xxx should not be like that
+         check behave:iconv_mainbody-4 - ./.terr '2579894983 148'
+      else
+         check behave:iconv_mainbody-4 - ./.terr '271380835 121'
+      fi
+   else
+      echo 'behave:iconv_mainbody-4: unsupported, skipped'
+   fi
 
    # The different iconv(3) implementations use different replacement sequence
    # types (character-wise, byte-wise, and the character(s) used differ)
@@ -4769,7 +4797,7 @@ t_behave_s_mime() {
 		challengePassword =
 	_EOT
    openssl req -x509 -nodes -days 3650 -config ./.t.conf \
-      -newkey rsa:1024 -keyout ./.tkey.pem -out ./.tcert.pem >/dev/null 2>&1
+      -newkey rsa:1024 -keyout ./.tkey.pem -out ./.tcert.pem >>${ERR} 2>&1
    ${cat} ./.tkey.pem ./.tcert.pem > ./.tpair.pem
 
    # Sign/verify
@@ -4802,7 +4830,7 @@ t_behave_s_mime() {
       -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -Serrexit -R \
-      -f ./.VERIFY >/dev/null 2>&1
+      -f ./.VERIFY >>${ERR} 2>&1
    if [ $? -eq 0 ]; then
       printf 'ok\n'
    else
@@ -4814,7 +4842,7 @@ t_behave_s_mime() {
 
    printf 'behave:s/mime:sign/verify:disproof-1 '
    if openssl smime -verify -CAfile ./.tcert.pem \
-         -in ./.VERIFY >/dev/null 2>&1; then
+         -in ./.VERIFY >>${ERR} 2>&1; then
       printf 'ok\n'
    else
       printf 'failed\n'
@@ -4858,7 +4886,7 @@ t_behave_s_mime() {
       -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -Serrexit -R \
-      -f ./.ENCRYPT >/dev/null 2>&1
+      -f ./.ENCRYPT >>${ERR} 2>&1
    if [ $? -eq 0 ]; then
       printf 'ok\n'
    else
@@ -4877,7 +4905,7 @@ t_behave_s_mime() {
 
    printf 'behave:s/mime:decrypt+verify:disproof-1: '
    if (openssl smime -decrypt -inkey ./.tkey.pem -in ./.ENCRYPT |
-         openssl smime -verify -CAfile ./.tcert.pem) >/dev/null 2>&1; then
+         openssl smime -verify -CAfile ./.tcert.pem) >>${ERR} 2>&1; then
       printf 'ok\n'
    else
       printf 'failed\n'
@@ -4911,12 +4939,12 @@ t_behave_s_mime() {
       -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Sfrom=test@localhost \
       -Serrexit -R \
-      -f ./.ENCRYPT >/dev/null 2>&1
+      -f ./.ENCRYPT >>${ERR} 2>&1
    check behave:s/mime:decrypt 0 "./.DECRYPT" '2624716890 422'
 
    printf 'behave:s/mime:decrypt:disproof-1: '
    if openssl smime -decrypt -inkey ./.tkey.pem \
-         -in ./.ENCRYPT >/dev/null 2>&1; then
+         -in ./.ENCRYPT >>${ERR} 2>&1; then
       printf 'ok\n'
    else
       printf 'failed\n'
@@ -4927,10 +4955,6 @@ t_behave_s_mime() {
 }
 
 # t_content()
-# Some basic tests regarding correct sending of mails, via STDIN / -t / -q,
-# including basic MIME Content-Transfer-Encoding correctness (quoted-printable)
-# Note we unfortunately need to place some statements without proper
-# indentation because of continuation problems
 # xxx Note: t_content() was the first test (series) written.  Today many
 # xxx aspects are (better) covered by other tests above, some are not.
 # xxx At some future date and time, convert the last remains not covered
@@ -5061,6 +5085,158 @@ t_all() {
    t_content
 }
 
+# cc_all_configs()
+# Test all configs TODO doesn't cover all *combinations*, stupid!
+cc_all_configs() {
+   < ${CONF} ${awk} '
+      BEGIN{
+         ALWAYS = "OPT_AUTOCC=1 OPT_AMALGAMATION=1"
+         NOTME["OPT_ALWAYS_UNICODE_LOCALE"] = 1
+         NOTME["OPT_CROSS_BUILD"] = 1
+         NOTME["OPT_AUTOCC"] = 1
+         NOTME["OPT_AMALGAMATION"] = 1
+         NOTME["OPT_DEBUG"] = 1
+         NOTME["OPT_DEVEL"] = 1
+         NOTME["OPT_ASAN_ADDRESS"] = 1
+         NOTME["OPT_ASAN_MEMORY"] = 1
+         NOTME["OPT_FORCED_STACKPROT"] = 1
+         NOTME["OPT_NOMEMDBG"] = 1
+         NOTME["OPT_NYD2"] = 1
+
+         #OPTVALS
+         OPTNO = 0
+
+         MULCHOICE["OPT_IDNA"] = "VAL_IDNA"
+            MULVALS["VAL_IDNA"] = 1
+
+         #VALKEYS[0] = "VAL_RANDOM"
+            VALVALS["VAL_RANDOM"] = 1
+         VALNO = 0
+      }
+      /^[[:space:]]*OPT_/{
+         sub(/^[[:space:]]*/, "")
+         # This bails for UnixWare 7.1.4 awk(1), but preceeding = with \
+         # does not seem to be a compliant escape for =
+         #sub(/=.*$/, "")
+         $1 = substr($1, 1, index($1, "=") - 1)
+         if(!NOTME[$1])
+            OPTVALS[OPTNO++] = $1
+         next
+      }
+      /^[[:space:]]*VAL_/{
+         sub(/^[[:space:]]*/, "")
+         val = substr($0, index($0, "=") + 1)
+         if(val ~ /^\"/){
+            val = substr(val, 2)
+            val = substr(val, 1, length(val) - 1)
+         }
+         $1 = substr($1, 1, index($1, "=") - 1)
+         if(MULVALS[$1])
+            MULVALS[$1] = val
+         else if(VALVALS[$1]){
+            VALKEYS[VALNO++] = $1
+            VALVALS[$1] = val
+         }
+         next
+      }
+      function onepass(addons){
+         a_onepass__worker(addons, "1", "0")
+         a_onepass__worker(addons, "0", "1")
+      }
+      function a_onepass__worker(addons, b0, b1){
+         # Doing this completely sequentially and not doing make distclean in
+         # between runs should effectively result in lesser compilations.
+         # It is completely dumb nonetheless... TODO
+         for(ono = 0; ono < OPTNO; ++ono){
+            myconf = mula = ""
+            for(i = 0; i < ono; ++i){
+               myconf = myconf " " OPTVALS[i] "=" b0 " "
+               if(b0 == "1"){
+                  j = MULCHOICE[OPTVALS[i]]
+                  if(j){
+                     if(i + 1 == ono)
+                        mula = j
+                     else
+                        myconf = myconf " " MULCHOICE[OPTVALS[i]] "=any "
+                  }
+               }
+            }
+            for(i = ono; i < OPTNO; ++i){
+               myconf = myconf " " OPTVALS[i] "=" b1 " "
+               if(b1 == "1"){
+                  j = MULCHOICE[OPTVALS[i]]
+                  if(j){
+                     if(i + 1 == OPTNO)
+                        mula = j;
+                     else
+                        myconf = myconf " " MULCHOICE[OPTVALS[i]] "=any "
+                  }
+               }
+            }
+
+            for(i in VALKEYS)
+               myconf = VALKEYS[i] "=any " myconf
+
+            myconf = myconf " " ALWAYS " " addons
+
+            if(mula == "")
+               print myconf
+            else{
+               i = split(MULVALS[mula], ia)
+               j = "any"
+               while(i >= 1){
+                  j = ia[i--] " " j
+                  print mula "=\"" j "\" " myconf
+               }
+            }
+         }
+      }
+      END{
+         # We cannot test NULL because of missing UI strings, which will end
+         # up with different checksums
+         print "CONFIG=NULLI OPT_AUTOCC=1"
+            for(i in VALKEYS){
+               j = split(VALVALS[VALKEYS[i]], ia)
+               k = "any"
+               while(j >= 1){
+                  k = ia[j--] " " k
+                  print VALKEYS[i] "=\"" k "\" CONFIG=NULLI OPT_AUTOCC=1"
+               }
+            }
+         print "CONFIG=MINIMAL OPT_AUTOCC=1"
+         print "CONFIG=NETSEND OPT_AUTOCC=1"
+         print "CONFIG=MAXIMAL OPT_AUTOCC=1"
+            for(i in VALKEYS){
+               j = split(VALVALS[VALKEYS[i]], ia)
+               k = "any"
+               while(j >= 1){
+                  k = ia[j--] " " k
+                  print VALKEYS[i] "=\"" k "\" CONFIG=MAXIMAL OPT_AUTOCC=1"
+               }
+            }
+         print "CONFIG=DEVEL OPT_AUTOCC=1"
+         print "CONFIG=ODEVEL OPT_AUTOCC=1"
+
+         onepass("OPT_DEBUG=1")
+         onepass("")
+      }
+   ' | while read c; do
+      [ -f mk-config.h ] && ${cp} mk-config.h .ccac.h
+      printf "\n\n##########\n$c\n"
+      printf "\n\n##########\n$c\n" >&2
+      ${SHELL} -c "${MAKE} ${c} config"
+      if [ -f .ccac.h ] && ${cmp} mk-config.h .ccac.h; then
+         printf 'Skipping after config, nothing changed\n'
+         printf 'Skipping after config, nothing changed\n' >&2
+         continue
+      fi
+      ${SHELL} -c "${MAKE} build test"
+   done
+   ${rm} -f .ccac.h
+   ${MAKE} distclean
+}
+
+[ -n "${ERR}" ]  && echo > ${ERR}
 if [ -z "${CHECK_ONLY}${MAE_TEST}" ]; then
    cc_all_configs
 elif [ -z "${MAE_TEST}" ] || [ ${#} -eq 0 ]; then

@@ -427,12 +427,14 @@ jempty:
       ++expcnt;
       flags = (flags & ~(a_ALIAS_MASK | a_NOPREFIX)) | expcnt;
 
-      /* Avoid self-recursion; yes, the user could use \ no-expansion, but.. */
-      if(alias_name != NULL && !strcmp(word, alias_name)){
-         if(n_poption & n_PO_D_V)
-            n_err(_("Actively avoiding self-recursion of `commandalias': %s\n"),
-               word);
-      }else if((alias_name = n_commandalias_exists(word, &alias_exp)) != NULL){
+      /* Avoid self-recursion; since a commandalias can shadow a command of
+       * equal name allow one level of expansion to return an equal result:
+       * "commandalias q q;commandalias x q;x" should be "x->q->q->quit".
+       * P.S.: should also work for "help x" ... */
+      if(alias_name != NULL && !strcmp(word, alias_name))
+         flags |= a_NOALIAS;
+
+      if((alias_name = n_commandalias_exists(word, &alias_exp)) != NULL){
          size_t i;
 
          if(sp != NULL){
@@ -886,7 +888,7 @@ jrestart:
       assert(a_go_xcall == NULL);
       assert(!(gcp->gc_flags & a_GO_XCALL_LOOP_MASK));
       assert(gcp->gc_on_finalize == NULL);
-      assert(gcp->gc_data.gdc_colour == NULL);
+      n_COLOUR( assert(gcp->gc_data.gdc_colour == NULL); )
       goto jxleave;
    }else if(gcm & a_GO_CLEANUP_LOOPTICK){
       n_memory_reset();
@@ -2176,7 +2178,10 @@ c_readctl(void *vp){
     * TODO management; we don't have this, therefore we need global
     * TODO n_readctl_overlay to be accessible via =NULL, and to make that
     * TODO work in turn we need an instance for default STDIN!  Sigh. */
-   static ui8_t a_buf[n_VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name)+1 +1];
+   static union{
+      ui64_t alignme;
+      ui8_t buf[n_VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name)+1 +1];
+   } a;
    static struct a_go_readctl_ctx *a_stdin;
 
    struct a_go_readctl_ctx *grcp;
@@ -2193,7 +2198,7 @@ c_readctl(void *vp){
    NYD_ENTER;
 
    if(a_stdin == NULL){
-      a_stdin = (struct a_go_readctl_ctx*)a_buf;
+      a_stdin = (struct a_go_readctl_ctx*)(void*)a.buf;
       a_stdin->grc_name[0] = '-';
       n_readctl_overlay = a_stdin;
    }

@@ -84,6 +84,7 @@ static char const a_aux_err_names[] = {
 'X','D','E','V','\0',
 };
 
+#ifdef HAVE_DOCSTRINGS
 #undef a_X
 #define a_X(X)
 static char const a_aux_err_docs[] = {
@@ -169,6 +170,7 @@ static char const a_aux_err_docs[] = {
 'C','r','o','s','s','-','d','e','v','i','c','e',' ','l','i','n','k','\0',
 };
 #undef a_X
+#endif /* HAVE_DOCSTRINGS */
 
 #undef a_X
 #ifndef __CREATE_ERRORS_SH

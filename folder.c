@@ -713,6 +713,7 @@ jleave:
 FL void
 initbox(char const *name)
 {
+   bool_t err;
    char *tempMesg;
    NYD_ENTER;
 
@@ -723,16 +724,18 @@ initbox(char const *name)
     * TODO Well, not true no more except that in parens */
    _update_mailname((name != mailname) ? name : NULL);
 
-   if ((mb.mb_otf = Ftmp(&tempMesg, "tmpmbox", OF_WRONLY | OF_HOLDSIGS)) ==
-         NULL) {
-      n_perr(_("temporary mail message file"), 0);
-      exit(n_EXIT_ERR);
-   }
-   if ((mb.mb_itf = safe_fopen(tempMesg, "r", NULL)) == NULL) {
-      n_perr(_("temporary mail message file"), 0);
-      exit(n_EXIT_ERR);
+   err = FAL0;
+   if((mb.mb_otf = Ftmp(&tempMesg, "tmpmbox", OF_WRONLY | OF_HOLDSIGS)) ==
+         NULL){
+      n_perr(_("initbox: temporary mail message file, writer"), 0);
+      err = TRU1;
+   }else if((mb.mb_itf = safe_fopen(tempMesg, "r", NULL)) == NULL) {
+      n_perr(_("initbox: temporary mail message file, reader"), 0);
+      err = TRU1;
    }
    Ftmp_release(&tempMesg);
+   if(err)
+      exit(n_EXIT_ERR);
 
    message_reset();
    mb.mb_active = MB_NONE;
@@ -901,11 +904,15 @@ n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_null){
    /* TODO n_folder_mbox_prepare_append -> Mailbox->append() */
    struct stat stb;
    char buf[2];
-   bool_t needsep;
    int rv;
+   bool_t needsep;
    NYD2_ENTER;
 
-   if(fseek(fout, -2L, SEEK_END)){
+   if(!fseek(fout, -2L, SEEK_END)){
+      if(fread(buf, sizeof *buf, 2, fout) != 2)
+         goto jerrno;
+      needsep = (buf[0] != '\n' || buf[1] != '\n');
+   }else{
       rv = n_err_no;
 
       if(st_or_null == NULL){
@@ -920,28 +927,15 @@ n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_null){
          rv = n_ERR_NONE;
          goto jleave;
       }
+
       if(fseek(fout, -1L, SEEK_END))
          goto jerrno;
+      if(fread(buf, sizeof *buf, 1, fout) != 1)
+         goto jerrno;
+      needsep = (buf[0] != '\n');
    }
 
    rv = n_ERR_NONE;
-
-   needsep = FAL0;
-   switch(fread(buf, sizeof *buf, 2, fout)){
-   case 2:
-      if(buf[1] != '\n')
-         needsep = TRU1;
-      break;
-   case 1:
-      if(buf[0] != '\n')
-         needsep = TRU1;
-      break;
-   default:
-      if(ferror(fout))
-         goto jerrno;
-      break;
-   }
-
    if(fflush(fout) || (needsep && putc('\n', fout) == EOF))
 jerrno:
       rv = n_err_no;

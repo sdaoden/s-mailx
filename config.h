@@ -37,7 +37,6 @@
 # define n_CONFIG_H
 
 #define ACCOUNT_NULL "null"   /* Name of "null" account */
-#define APPEND                /* New mail goes to end of mailbox */
 #define DOTLOCK_TRIES 5       /* Number of open(2) calls for dotlock */
 #define FILE_LOCK_TRIES 10    /* Maximum tries before n_file_lock() fails */
 #define FILE_LOCK_MILLIS 200  /* If UIZ_MAX, fall back to that */
@@ -66,7 +65,11 @@
 # define CHARSET_8BIT "utf-8"
 # define CHARSET_8BIT_OKEY charset_8bit
 #else
-# define CHARSET_8BIT "iso-8859-1"
+# if defined HAVE_ALWAYS_UNICODE_LOCALE
+#  define CHARSET_8BIT "utf-8"
+# else
+#  define CHARSET_8BIT "iso-8859-1"
+# endif
 # define CHARSET_8BIT_OKEY ttycharset
 #endif
 
@@ -77,6 +80,11 @@
 #  define HOST_NAME_MAX 255
 # endif
 #endif
+
+/* Supported IDNA implementations */
+#define n_IDNA_IMPL_LIBIDN2 0
+#define n_IDNA_IMPL_LIBIDN 1
+#define n_IDNA_IMPL_IDNKIT 2
 
 /* Max readable line width TODO simply use BUFSIZ? */
 #if BUFSIZ + 0 > 2560
@@ -130,6 +138,13 @@
 
 /* How much spaces should a <tab> count when *quote-fold*ing? (power-of-two!) */
 #define n_QUOTE_TAB_SPACES 8
+
+/* Supported (external) PRG implementations */
+#define n_RANDOM_IMPL_BUILTIN 0
+#define n_RANDOM_IMPL_ARC4 1
+#define n_RANDOM_IMPL_SSL 2
+#define n_RANDOM_IMPL_GETRANDOM 3 /* (both, syscall + library) */
+#define n_RANDOM_IMPL_URANDOM 4
 
 /* For long iterative output, like `list', tabulator-completion, etc.,
  * determine the screen width that should be used */

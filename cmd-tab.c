@@ -271,10 +271,16 @@ a_ctab_c_help(void *vp){
    if((arg = *(char const**)vp) != NULL){
       struct n_cmd_desc const *cdp, *cdp_max;
       struct str const *alias_exp;
-      char const *alias_name;
+      char const *alias_name, *aepx;
 
-      /* Aliases take precedence */
-      if((alias_name = n_commandalias_exists(arg, &alias_exp)) != NULL){
+      /* Aliases take precedence.
+       * Avoid self-recursion; since a commandalias can shadow a command of
+       * equal name allow one level of expansion to return an equal result:
+       * "commandalias q q;commandalias x q;x" should be "x->q->q->quit" */
+      alias_name = NULL;
+      while((aepx = n_commandalias_exists(arg, &alias_exp)) != NULL &&
+            (alias_name == NULL || strcmp(alias_name, aepx))){
+         alias_name = aepx;
          fprintf(n_stdout, "%s -> ", arg);
          arg = alias_exp->s;
       }
@@ -314,6 +320,7 @@ jredo:
       }
    }else{
       /* Very ugly, but take care for compiler supported string lengths :( */
+#ifdef HAVE_UISTRINGS
       fputs(n_progname, n_stdout);
       fputs(_(
          " commands -- <msglist> denotes message specifications,\n"
@@ -336,7 +343,7 @@ jredo:
 "write <msglist> file   write message contents to file (prompts for parts)\n"
 "Reply <msglist>        reply to message senders only\n"
 "reply <msglist>        like `Reply', but address all recipients\n"
-"Lreply <msglist>       forced mailing-list `reply' (see `mlist')\n"),
+"Lreply <msglist>       forced mailing list `reply' (see `mlist')\n"),
          n_stdout);
 
       fputs(_(
@@ -349,6 +356,7 @@ jredo:
 "!shell command         shell escape\n"
 "list [<anything>]      all available commands [in search order]\n"),
          n_stdout);
+#endif /* HAVE_UISTRINGS */
 
       rv = (ferror(n_stdout) != 0);
    }

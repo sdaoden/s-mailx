@@ -344,7 +344,7 @@ print_collf(FILE *cf, struct header *hp)
 
    hold_all_sigs();
 
-   fprintf(obuf, _("-------\nMessage contains:\n")); /* xxx SEARCH112 */
+   fprintf(obuf, A_("-------\nMessage contains:\n")); /* xxx SEARCH112 */
    puthead(TRU1, hp, obuf,
       (GIDENT | GTO | GSUBJECT | GCC | GBCC | GNL | GFILES | GCOMMA),
       SEND_TODISP, CONV_NONE, NULL, NULL);
@@ -357,7 +357,7 @@ print_collf(FILE *cf, struct header *hp)
       free(lbuf);
 
    if(hp->h_attach != NULL){
-      fputs(_("-------\nAttachments:\n"), obuf);
+      fputs(A_("-------\nAttachments:\n"), obuf);
       n_attachment_list_print(hp->h_attach, obuf);
    }
 
@@ -622,7 +622,7 @@ a_coll_forward(char const *ms, FILE *fp, int f)
       fprintf(n_stdout, " %d", *msgvec);
       fflush(n_stdout);
       if (sendmp(mp, fp, itp, tabst, action, NULL) < 0) {
-         n_perr(_("temporary mail file"), 0);
+         n_perr(_("forward: temporary mail file"), 0);
          rv = n_ERR_IO;
          break;
       }
@@ -1788,6 +1788,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
    sigfp = NULL;
    linesize = 0;
    linebuf = NULL;
+   flags = a_NONE;
    eofcnt = 0;
    ifs_saved = coapm = NULL;
    coap = NULL;
@@ -1810,7 +1811,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 
    if ((_coll_fp = Ftmp(NULL, "collect", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
          NULL) {
-      n_perr(_("temporary mail file"), 0);
+      n_perr(_("collect: temporary mail file"), 0);
       goto jerr;
    }
 
@@ -1917,7 +1918,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
 
          if(!(n_poption & n_PO_Mm_FLAG) && !(n_pstate & n_PS_ROBOT)){
             /* Print what we have sofar also on the terminal (if useful) */
-            if (!ok_blook(editalong)) {
+            if((cp = ok_vlook(editalong)) == NULL){
                if (printheaders)
                   puthead(TRU1, hp, n_stdout, t,
                      SEND_TODISP, CONV_NONE, NULL, NULL);
@@ -1927,9 +1928,9 @@ collect(struct header *hp, int printheaders, struct message *mp,
                   putc(c, n_stdout);
                if (fseek(_coll_fp, 0, SEEK_END))
                   goto jerr;
-            } else {
+            }else{
                rewind(_coll_fp);
-               if(a_coll_edit('e', hp) != n_ERR_NONE)
+               if(a_coll_edit(((*cp == 'v') ? 'v' : 'e'), hp) != n_ERR_NONE)
                   goto jerr;
                /* Print msg mandated by the Mail Reference Manual */
 jcont:
@@ -2142,9 +2143,11 @@ jearg:
             goto jerr;
          if(coap == NULL)
             escape = *ok_vlook(escape);
+         hist &= ~a_HIST_GABBY;
          break;
       /* case '<': <> 'd' */
       case '?':
+#ifdef HAVE_UISTRINGS
          fputs(_(
 "COMMAND ESCAPES (to be placed after a newline) excerpt:\n"
 "~.            Commit and send message\n"
@@ -2175,6 +2178,7 @@ jearg:
 "~x            Abort composition, discard message (`~q': save in $DEAD)\n"
 "~| <command>  Pipe message through shell filter\n"
             ), n_stdout);
+#endif /* HAVE_UISTRINGS */
          if(cnt != 0)
             goto jearg;
          n_pstate_err_no = n_ERR_NONE;
@@ -2640,15 +2644,15 @@ jout:
          SEND_TODISP, CONV_NONE, NULL, NULL);
 
 jreasksend:
-      while((cp = n_go_input_cp(n_GO_INPUT_CTX_COMPOSE | n_GO_INPUT_NL_ESC,
-            _("Send this message [yes/no, empty: recompose]? "), NULL)
-               ) == NULL)
-         if(n_go_input_is_eof()){
-            cp = n_1;
-            break;
-         }
+      if(n_go_input(n_GO_INPUT_CTX_COMPOSE | n_GO_INPUT_NL_ESC,
+            _("Send this message [yes/no, empty: recompose]? "),
+            &linebuf, &linesize, NULL, NULL) < 0){
+         if(!n_go_input_is_eof())
+            goto jerr;
+         cp = n_1;
+      }
 
-      if((b = n_boolify(cp, UIZ_MAX, TRUM1)) < FAL0)
+      if((b = n_boolify(linebuf, UIZ_MAX, TRUM1)) < FAL0)
          goto jreasksend;
       if(b == TRU2)
          goto jcont;

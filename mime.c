@@ -184,6 +184,32 @@ _fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
       }
 
       rv = 0;
+
+      /* TODO Sigh, no problem if we have a filter that has a buffer (or
+       * TODO become fed with entire lines, whatever), but for now we need
+       * TODO to ensure we pass entire lines from in here to iconv(3), because
+       * TODO the Citrus iconv(3) will fail tests with stateful encodings
+       * TODO if we do not (only seen on FreeBSD) */
+#if 0 /* TODO actually not needed indeed, it was known iswprint() error! */
+      if(!(flags & _TD_EOF) && outrest != NULL){
+         size_t i, j;
+         char const *cp;
+
+         if((cp = memchr(in.s, '\n', j = in.l)) != NULL){
+            i = PTR2SIZE(cp - in.s);
+            j -= i;
+            while(j > 0 && *cp == '\n') /* XXX one iteration too much */
+               ++cp, --j, ++i;
+            if(j != 0)
+               n_str_assign_buf(outrest, cp, j);
+            in.l = i;
+         }else{
+            n_str_assign(outrest, &in);
+            goto jleave;
+         }
+      }
+#endif
+
       if((err = n_iconv_str(iconvd,
             (failiconv ? n_ICONV_NONE : n_ICONV_UNIDEFAULT),
             &out, &in, &in)) != 0){
@@ -210,7 +236,7 @@ _fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
       flags &= ~_TD_BUFCOPY;
 
       if(buf != NULL)
-         free(buf);
+         n_free(buf);
       if(rv < 0)
          goto jleave;
    }else
@@ -267,9 +293,9 @@ _fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
 
 j__sig:
    if (out.s != in.s)
-      free(out.s);
+      n_free(out.s);
    if (in.s != input->s)
-      free(in.s);
+      n_free(in.s);
    safe_signal(SIGPIPE, __mimefwtd_opipe);
    if (__mimefwtd_sig != 0)
       n_raise(__mimefwtd_sig);
@@ -623,8 +649,8 @@ jenc_retry_same:
       ++col;
    }
 
-   if (cout.s != NULL)
-      free(cout.s);
+   if(cout.s != NULL)
+      n_free(cout.s);
 
    if(colp != NULL)
       *colp = col;
@@ -655,7 +681,7 @@ a_mime__convhdra(struct str *inp, FILE *fp, size_t *colp,
    rv = mime_write_tohdr(inp, fp, colp, msh);
 jleave:
    if(ciconv.s != NULL)
-      free(ciconv.s);
+      n_free(ciconv.s);
    NYD_LEAVE;
    return rv;
 }
@@ -678,7 +704,6 @@ mime_write_tohdr_a(struct str *in, FILE *f, size_t *colp,
       xin.l = PTR2SIZE(cp - lastcp);
       if ((sz = a_mime__convhdra(&xin, f, colp, msh)) < 0)
          goto jleave;
-      xin.s[xin.l] = '<';
       lastcp = cp;
    } else {
       cp = lastcp;
@@ -765,7 +790,7 @@ _append_conv(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
    in.l = len;
    mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
    _append_str(buf, sz, pos, out.s, out.l);
-   free(out.s);
+   n_free(out.s);
    NYD_LEAVE;
 }
 
@@ -1106,12 +1131,12 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
                n_iconv_reset(fhicd);
                out = n_str_add_buf(out, n_qm, 1); /* TODO unicode replacement */
             }
-            free(cin.s);
+            n_free(cin.s);
          } else
 #endif
             out = n_str_add(out, &cout);
          lastenc = lastoutl = out->l;
-         free(cout.s);
+         n_free(cout.s);
       } else
 jnotmime: {
          bool_t onlyws;
@@ -1138,7 +1163,7 @@ jnotmime: {
 
    if (flags & TD_ISPR) {
       makeprint(out, &cout);
-      free(out->s);
+      n_free(out->s);
       *out = cout;
    }
    if (flags & TD_DELCTRL)
@@ -1200,8 +1225,8 @@ mime_fromaddr(char const *name)
 
       x = res;
       res = savestrbuf(res, rescur);
-      if(rescur > 0)
-         free(x);
+      if(x != NULL)
+         n_free(x);
    }
 jleave:
    NYD_LEAVE;
@@ -1412,9 +1437,9 @@ jqpb64_enc:
 
 jleave:
    if (out.s != NULL)
-      free(out.s);
+      n_free(out.s);
    if (in.s != ptr)
-      free(in.s);
+      n_free(in.s);
    safe_signal(SIGPIPE, __mimemw_opipe);
    if (__mimemw_sig != 0)
       n_raise(__mimemw_sig);
