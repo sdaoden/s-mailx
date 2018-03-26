@@ -99,6 +99,8 @@ update_release_hook() {
       if command -v mdocmx.sh >/dev/null 2>&1; then
          mdocmx.sh < nail.1 > nail.1x
          mv -f nail.1x nail.1
+         # And generate the HTML manual, while here
+         < nail.1 MDOCMX_ENABLE=1 groff -Thtml -mdoc > /tmp/nail-manual.html
       fi
       git add nail.1
    fi
