@@ -957,8 +957,8 @@ val_allof() {
    eval __expo__=\$${1}
    ${awk} -v HEAP="${2}" -v USER="${__expo__}" '
       BEGIN{
-         i = split(HEAP, ha)
-         if((j = split(USER, ua)) == 0)
+         i = split(HEAP, ha, /[, ]/)
+         if((j = split(USER, ua, /[, ]/)) == 0)
             exit
          for(; j != 0; --j){
             us = tolower(ua[j])
@@ -980,7 +980,7 @@ val_allof() {
 
     if ${awk} -v USER="${__expo__}" '
             BEGIN{
-               if((j = split(USER, ua)) == 0)
+               if((j = split(USER, ua, /[, ]/)) == 0)
                   exit
                for(; j != 0; --j){
                   us = tolower(ua[j])
@@ -991,6 +991,9 @@ val_allof() {
             }
          '; then
       eval "${1}"=\"${2}\"
+   else
+      # Enfore lowercase also in otherwise unchanged user value..
+      eval "${1}"=\""`echo ${__expo__} | ${tr} '[A-Z]_' '[a-z]-'`"\"
    fi
    return 0
 }
@@ -2642,7 +2645,7 @@ feat_def SMIME
 
 # VAL_RANDOM {{{
 if val_allof VAL_RANDOM \
-      "arc4 ssl libgetrandom sysgetrandom urandom builtin error"; then
+      "arc4,ssl,libgetrandom,sysgetrandom,urandom,builtin,error"; then
    :
 else
    msg 'ERROR: VAL_RANDOM with invalid entries: %s' "${VAL_RANDOM}"
@@ -2732,8 +2735,8 @@ val_random_error() {
 }
 
 oifs=${IFS}
-unset IFS
-VAL_RANDOM="${VAL_RANDOM} error"
+IFS=", "
+VAL_RANDOM="${VAL_RANDOM},error"
 set -- ${VAL_RANDOM}
 IFS=${oifs}
 for randfun
@@ -2810,7 +2813,7 @@ feat_def NETRC
 feat_def AGENT
 
 if feat_yes IDNA; then # {{{
-   if val_allof VAL_IDNA "idnkit idn2 idn"; then
+   if val_allof VAL_IDNA "idnkit,idn2,idn"; then
       :
    else
       msg 'ERROR: VAL_IDNA with invalid entries: %s' "${VAL_IDNA}"
@@ -2889,8 +2892,8 @@ int main(void){
    }
 
    oifs=${IFS}
-   unset IFS
-   VAL_IDNA="${VAL_IDNA} bye"
+   IFS=", "
+   VAL_IDNA="${VAL_IDNA},bye"
    set -- ${VAL_IDNA}
    IFS=${oifs}
    for randfun

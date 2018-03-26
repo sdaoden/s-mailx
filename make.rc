@@ -1,4 +1,4 @@
-#@ make.rc defined the set of features and values used.
+#@ make.rc defines the set of features and values used.
 #@ Reading INSTALL first is beneficial.
 #@
 #@ - Choosing a predefined CONFIG= disallows further option fine-tuning.
@@ -14,11 +14,11 @@
 #@   (without accompanying feature option) and VAL_IDNA (with OPT_IDNA).
 #@   This is used if different implementations exist, and can then be
 #@   used to choose the desired one(s).
-#@   The value is interpreted as a whitespace separated list of strings,
-#@   like "idn2 idn idnkit", case is ignored, order is important.
+#@   The value must be a comma separated list of strings, for example
+#@   "idn2,idn,idnkit", the case is ignored, but the order is important.
 #@   The special strings "all" and "any" as well as the empty value
 #@   are wildcard matches; if any entry in the list is a wildcard match,
-#@   the rest of the list is ignored.
+#@   the entire list is ignored.
 #@   The special string "error" will abort configuration once its list
 #@   position is reached; this is only supported if documented, and not
 #@   with an accompanying OPT_ (which then offers "require", as below).
@@ -278,7 +278,7 @@ OPT_AGENT=yes
 # . idn - GNU Libidn for IDNA 2003, same,
 # OPT_IDNA can be "require"d.
 OPT_IDNA=yes
-VAL_IDNA="idnkit idn2 idn"
+VAL_IDNA="idnkit,idn2,idn"
 
 # IMAP-style SEARCH expressions can be supported.  This addressing mode
 # is available with all types of folders; for folders not located on
@@ -297,7 +297,7 @@ OPT_IMAP_SEARCH=yes
 # . urandom - reading from /dev/urandom.
 # . builtin - a builtin ARC4 implementation with unscientific seeding.
 # . (error - bail out)
-VAL_RANDOM="arc4 ssl libgetrandom sysgetrandom urandom builtin"
+VAL_RANDOM="arc4,ssl,libgetrandom,sysgetrandom,urandom,builtin"
 
 # Regular expression (re_format(7)) support for searches, conditional
 # expressions etc., we use the extended ones, then; can be "require"d.
