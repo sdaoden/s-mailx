@@ -2,7 +2,8 @@
 #@ /etc/s-nail.rc - configuration file for S-nail(1)
 #--MKRC-END--
 #@ The syntax of this file is interpreted as follows:
-#@ - Leading and trailing " \t\n" + *ifs* whitespace is removed.
+#@ - Leading and trailing space, tabulator, newline (" \t\n") and all members
+#@   *ifs-ws* are removed.
 #@ - Empty lines are ignored.
 #@ - Any other line is a command line.  Such lines can be spread over
 #@   multiple lines if the newline character is "escaped" by placing
@@ -63,7 +64,7 @@ set ask
 # the screen.  (Set crt=0 to always page; value treated as number of lines.)
 set crt
 
-# When entering compose mode, directlry startup into $EDITOR, as via `~e'.
+# When entering compose mode, directly startup into $EDITOR, as via `~e'.
 # If the value is "v", startup into $VISUAL, as via `~v' instead.
 #set editalong=v
 

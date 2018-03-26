@@ -7142,7 +7142,7 @@ via the exit status, but the result will linger at the minimum or
 maximum possible value, instead of overflowing (or trapping).
 This is true also for the argument parse step.
 For the bitwise shifts, the saturated maximum is 63.
-Any caught overflow will be reported via the error number
+Any catched overflow will be reported via the error number
 .Va \&!
 as
 .Va ^ERR Ns -OVERFLOW .
@@ -7444,7 +7444,7 @@ and the exit status
 If the variable
 .Va errexit
 is set they will, unless stated otherwise, error out message compose
-mode and cause a progam exit if an operation fails.
+mode and cause a program exit if an operation fails.
 It is however possible to place the character hyphen-minus
 .Ql -
 after (possible whitespace following) the escape character, which has an
