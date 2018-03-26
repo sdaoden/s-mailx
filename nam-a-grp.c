@@ -840,7 +840,7 @@ a_nag_group_print_all(enum a_nag_type nt, char const *varname){
             ++i;
    if(i == 0){
       if(varname == NULL)
-         fprintf(n_stdout, A_("# no %s registered\n"), tname);
+         fprintf(n_stdout, _("# no %s registered\n"), tname);
       goto jleave;
    }
    ++i;

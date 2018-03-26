@@ -363,7 +363,6 @@ t_behave_X_opt_input_command_stack() {
 
 t_behave_X_errexit() {
    t_prolog t_behave_X_errexit
-
    if have_feat uistrings; then :; else
       echo 'behave:x_errexit: unsupported, skipped'
       return
@@ -2877,8 +2876,13 @@ _EOT
    vput alternates rv
    echo $?/$^ERRNAME <$rv>
 	__EOT
+
    check behave:alternates-1 0 "${MBOX}" '142184864 515'
-   check behave:alternates-2 - .tall '1878598364 505'
+   if have_feat uistrings; then
+      check behave:alternates-2 - .tall '1878598364 505'
+   else
+      echo 'behave:alternates-2: unsupported, skipped'
+   fi
 
    t_epilog
 }
@@ -3064,7 +3068,11 @@ t_behave_attachments() {
       -s attachment-test \
       ex@am.ple > ./.tall 2>&1
    check behave:attachments-1 0 "${MBOX}" '4107062253 634'
-   check behave:attachments-2 - .tall '1928331872 720'
+   if have_feat uistrings; then
+      check behave:attachments-2 - .tall '1928331872 720'
+   else
+      echo 'behave:attachments-2: unsupported, skipped'
+   fi
 
    ${rm} -f "${MBOX}"
    printf \
@@ -3114,13 +3122,21 @@ t_behave_attachments() {
    | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh -Rf ./.tx \
          > ./.tall 2>&1
    check behave:attachments-3 0 "${MBOX}" '798122412 2285'
-   check behave:attachments-4 - .tall '2526106274 1910'
+   if have_feat uistrings; then
+      check behave:attachments-4 - .tall '2526106274 1910'
+   else
+      echo 'behave:attachments-4: unsupported, skipped'
+   fi
 
    t_epilog
 }
 
 t_behave_compose_hooks() { # TODO monster
    t_prolog t_behave_compose_hooks
+   if have_feat uistrings; then :; else
+      echo 'behave:compose_hooks: unsupported, skipped'
+      return
+   fi
    TRAP_EXIT_ADDONS="./.t*"
 
    (echo line one&&echo line two&&echo line three) > ./.treadctl
@@ -4149,6 +4165,10 @@ __EOT__
 
 t_behave_mime_types_load_control() {
    t_prolog t_behave_mime_types_load_control
+   if have_feat uistrings; then :; else
+      echo 'behave:mime_types_load_control: unsupported, skipped'
+      return
+   fi
    TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<-_EOT > ./.tmts1

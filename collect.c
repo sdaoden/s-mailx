@@ -344,7 +344,7 @@ print_collf(FILE *cf, struct header *hp)
 
    hold_all_sigs();
 
-   fprintf(obuf, A_("-------\nMessage contains:\n")); /* xxx SEARCH112 */
+   fprintf(obuf, _("-------\nMessage contains:\n")); /* xxx SEARCH112 */
    puthead(TRU1, hp, obuf,
       (GIDENT | GTO | GSUBJECT | GCC | GBCC | GNL | GFILES | GCOMMA),
       SEND_TODISP, CONV_NONE, NULL, NULL);
@@ -357,7 +357,7 @@ print_collf(FILE *cf, struct header *hp)
       free(lbuf);
 
    if(hp->h_attach != NULL){
-      fputs(A_("-------\nAttachments:\n"), obuf);
+      fputs(_("-------\nAttachments:\n"), obuf);
       n_attachment_list_print(hp->h_attach, obuf);
    }
 

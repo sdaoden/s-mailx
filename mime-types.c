@@ -239,7 +239,7 @@ jecontent:
       else if (!__mt_load_file((j == 0 ? _MT_USR
                : (j == 1 ? _MT_SYS : _MT_FSPEC)), *srcs, &line, &linesize)) {
          if ((n_poption & n_PO_D_V) || j > 1)
-            n_err(A_("*mimetypes-load-control*: cannot open or load %s\n"),
+            n_err(_("*mimetypes-load-control*: cannot open or load %s\n"),
                n_shexp_quote_cp(*srcs, FAL0));
       }
    if (line != NULL)
@@ -362,8 +362,8 @@ _mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
          spacechar(subtyp[1])) {
 jeinval:
       if(cmdcalled || (orflags & _MT_FSPEC) || (n_poption & n_PO_D_V))
-         n_err(A_("%s MIME type: %.*s\n"),
-            (cmdcalled ? A_("Invalid") : A_("mime.types(5): invalid")),
+         n_err(_("%s MIME type: %.*s\n"),
+            (cmdcalled ? _("Invalid") : _("mime.types(5): invalid")),
             (int)tlen, typ);
       goto jleave;
    }
