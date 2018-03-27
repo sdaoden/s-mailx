@@ -1223,6 +1223,10 @@ msg_nonl 'Setting up configuration options ... '
 option_setup
 msg 'done'
 
+# We need to know about that now, in order to provide utility overwrites etc.
+# Also make.rc may want $OS and such.
+os_setup
+
 # Include $rc, but only take from it what wasn't overwritten by the user from
 # within the command line or from a chosen fixed CONFIG=
 # Note we leave alone the values
@@ -1232,9 +1236,6 @@ trap "${rm} -f ${tmp}" EXIT
 msg_nonl 'Joining in %s ... ' ${rc}
 option_join_rc
 msg 'done'
-
-# We need to know about that now, in order to provide utility overwrites etc.
-os_setup
 
 msg 'Checking for remaining set of utilities'
 thecmd_testandset_fail grep grep
