@@ -791,6 +791,7 @@ feat_is_unsupported() {
 
 feat_def() {
    if feat_yes ${1}; then
+      msg ' . %s ... yes' "${1}"
       echo '#define HAVE_'${1}'' >> ${h}
       return 0
    else
