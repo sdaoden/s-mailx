@@ -1320,7 +1320,10 @@ for i in \
    eval j=\$${i}
    printf "${i} = ${j}\n" >> ${newmk}
    printf "${i}=${j}\n" >> ${newlst}
-   printf "${i}=\"${j}\";export ${i}; " >> ${newev}
+   # BSD make does not like this, and performs expansions
+   if [ ${i} != MAKEFLAGS ]; then
+      printf "${i}=\"${j}\";export ${i}; " >> ${newev}
+   fi
 done
 # Note that makefile reads and eval'uates one line of this file, whereas other
 # consumers source it via .(1)
