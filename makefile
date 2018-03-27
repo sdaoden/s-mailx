@@ -62,7 +62,6 @@ __prestop = if [ -f ./mk-config.mk ]; then :; else \
 		echo 'Use one of the targets: config, all, tangerine, citron';\
 		exit 1;\
 	fi
-_prestop = $(__prestop);\
-	< ./mk-config.ev read __ev__; eval $${__ev__}; unset __ev__
+_prestop = $(__prestop);. ./mk-config.ev
 
 # s-mk-mode
