@@ -690,9 +690,17 @@ a_xssl_conf(void *confp, char const *cmd, char const *value){
       value = n_shexp_quote_cp(value, FAL0);
       if(rv == 0)
          ssl_gen_err(_("SSL/TLS: config failure: %s = %s"), cmd, value);
-      else
-         n_err(_("SSL/TLS: please report this config error: %s = %s\n"),
-            cmd, value);
+      else{
+         char const *err;
+
+         switch(rv){
+         case -2: err = N_("SSL/TLS: config command not recognized"); break;
+         case -3: err = N_("SSL/TLS: missing required config argument"); break;
+         default: err = N_("SSL/TLS: unspecified config error"); break;
+         }
+         err = V_(err);
+         n_err(_("%s (%d): %s = %s\n"), err, rv, cmd, value);
+      }
       rv = 1;
    }
    NYD2_LEAVE;
