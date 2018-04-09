@@ -1963,7 +1963,7 @@ for more on variable chains):
 .
 .Bd -literal -offset indent
 wysh set ssl-config-pairs-lion@exam.ple='MinProtocol=TLSv1.1,\e
-    CipherList=TLSv1.2:!aNULL:!eNULL:\e
+    CipherString=TLSv1.2:!aNULL:!eNULL:\e
       ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:\e
       DHE-RSA-AES256-SHA:@STRENGTH'
 .Ed
@@ -11643,7 +11643,7 @@ slot of
 .Mx Va ssl-cipher-list
 .It Va ssl-cipher-list-USER@HOST , ssl-cipher-list-HOST , ssl-cipher-list
 \*(OB\*(OP Please use the
-.Cd CipherList
+.Cd CipherString
 slot of
 .Va ssl-config-pairs .
 .
@@ -11752,7 +11752,7 @@ if you use this you need to specify the private key via
 .Va ssl-key
 will not be used!
 .
-.It Cd CipherList
+.It Cd CipherString
 A list of ciphers for SSL/TLS connections, see
 .Xr ciphers 1 .
 By default no list of ciphers is set, resulting in a
@@ -13354,7 +13354,7 @@ wysh set smime-ca-file="${ssl-ca-file}" \e
 
 # This could be outsourced to a central configuration file via
 # ssl-config-file plus ssl-config-module if the used library allows.
-# CipherList: explicitly define the list of ciphers, which may
+# CipherString: explicitly define the list of ciphers, which may
 #   improve security, especially with protocols older than TLS v1.2.
 #   See ciphers(1).  Possibly best to only use ssl-cipher-list-HOST
 #   (or -USER@HOST), as necessary, again..
@@ -13366,12 +13366,12 @@ wysh set smime-ca-file="${ssl-ca-file}" \e
 #     MinProtocol=TLSv1.1
 if [ "$ssl-features" =% +ctx-set-maxmin-proto ]
   wysh set ssl-config-pairs='\e
-      CipherList=TLSv1.2:!aNULL:!eNULL:@STRENGTH,\e
+      CipherString=TLSv1.2:!aNULL:!eNULL:@STRENGTH,\e
       Curves=P-521:P-384:P-256,\e
       MinProtocol=TLSv1.1'
 else
   wysh set ssl-config-pairs='\e
-      CipherList=TLSv1.2:!aNULL:!eNULL:@STRENGTH,\e
+      CipherString=TLSv1.2:!aNULL:!eNULL:@STRENGTH,\e
       Curves=P-521:P-384:P-256,\e
       Protocol=-ALL\e,+TLSv1.1 \e, +TLSv1.2'
 endif
