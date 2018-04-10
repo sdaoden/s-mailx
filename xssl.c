@@ -761,7 +761,8 @@ a_xssl_conf(void *confp, char const *cmd, char const *value){
          emsg = N_("SSL/TLS: %s: cannot load from file %s\n");
          goto jerr;
       }
-   }else if(!asccasecmp(cmd, xcmd = "CipherList")){
+   }else if(!asccasecmp(cmd, xcmd = "CipherString") ||
+         !asccasecmp(cmd, xcmd = "CipherList")){
       if(SSL_CTX_set_cipher_list(ctxp, value) != 1){
          emsg = N_("SSL/TLS: %s: invalid: %s\n");
          goto jerr;
@@ -910,11 +911,11 @@ a_xssl_obsolete_conf_vars(void *confp, struct url const *urlp){
          goto jleave;
    }
 
-   /* CipherList via ssl-ciper-list */
+   /* CipherString via ssl-ciper-list */
    if((cp = xok_vlook(ssl_cipher_list, urlp, OXM_ALL)) != NULL){
       n_OBSOLETE(_("please use *ssl-config-pairs* instead of "
          "*ssl-cipher-list*"));
-      if(!a_xssl_conf(confp, "CipherList", cp))
+      if(!a_xssl_conf(confp, "CipherString", cp))
          goto jleave;
    }
 
