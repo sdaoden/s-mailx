@@ -811,7 +811,7 @@ constraints do not apply to the content of
 .
 \*(UA is a direct descendant of
 .Bx
-Mail, itself a successor of the Research
+Mail, itself a successor to the Research
 .Ux
 mail which
 .Dq was there from the start
@@ -928,7 +928,7 @@ $ LC_ALL=C \*(uA -d -:/ -Sv15-compat -Ssendwait -Sttycharset=utf8 \e
     -S mta=smtps://mylogin@exam.ple:465 -Ssmtp-auth=none \e
     -S from=scriptreply@exam.ple \e
     -a /etc/mail.rc \e
-    -. eric@exam.ple
+    -. eric@exam.ple < /tmp/letter.txt
 .Ed
 .
 .Pp
@@ -955,6 +955,7 @@ custom headers can be created, for example (more specifically than with
 .Fl C
 and
 .Va customhdr ) .
+\*(OPally
 .Ic ~?
 gives an overview of most other available command escapes.
 .
@@ -971,7 +972,7 @@ the latter of which will save the message in the file denoted by
 unless
 .Pf no Va save
 is set.
-Unless
+And unless
 .Va ignoreeof
 is set the effect of
 .Ic ~.
@@ -1460,6 +1461,9 @@ The command
 .Ic Lreply
 knows how to apply a special addressee massage, see
 .Sx "Mailing lists" .
+Dependent on the presence and value of
+.Va quote
+the message being replied to will be included in a quoted form.
 .Ic forward Ns
 ing a message will allow editing the new message: the original message
 will be contained in the message body, adjusted according to
@@ -1669,7 +1673,7 @@ variable
 use an also set
 .Ql Reply-To:
 for this purpose (if it provides a single address which resides on the
-  same domain as what is stated in
+same domain as what is stated in
 .Ql List-Post: )
 in order to accept a list administrator's wish that is supposed to have
 been manifested like that.
@@ -1697,7 +1701,8 @@ must be known.
 It is therefore not possible to send encrypted mail to people unless their
 key has been retrieved from either previous communication or public key
 directories.
-A message should always be signed before it is encrypted.
+Because signing is performed with private keys, and encryption with
+public keys, messages should always be signed before becoming encrypted.
 .
 .Pp
 A central concept to S/MIME is that of the certification authority (CA).
@@ -4220,7 +4225,8 @@ may be used:
 interferes with normal address parsing rules.
 .\" ALIASCOLON next sentence
 \*(ID Such high bit characters will likely cause warnings at the moment
-for the same reasons why colon is unsupported.
+for the same reasons why colon is unsupported; also, in the future
+locale dependent character set validity checks will be performed.
 .
 .Mx
 .Mx
@@ -4475,8 +4481,8 @@ may help shall keys and sequences be falsely recognized.
 .Mx
 .It Ic call
 \*(NQ Calls the given macro, which must have been created via
-.Ic define ,
-otherwise an
+.Ic define
+(see there for more), otherwise an
 .Va ^ERR Ns -NOENT
 error occurs.
 Calling macros recursively will at some time excess the stack size
@@ -4485,11 +4491,6 @@ is the last command of the current macro, consider to use the command
 .Ic xcall ,
 which will first release all resources of the current macro before
 replacing the current macro with the called one.
-Numeric and string operations can be performed via
-.Ic vexpr ,
-and
-.Ic eval
-may be helpful to recreate argument lists.
 .
 .
 .Mx
@@ -4832,7 +4833,7 @@ will discard all existing macros.
 Deletion of (a) macro(s) can be performed from within running (a)
 macro(s), including self-deletion.
 Without arguments the former command prints the current list of macros,
-including their content, otherwise it it defines a macro, replacing an
+including their content, otherwise it defines a macro, replacing an
 existing one of the same name as applicable.
 .
 .Pp
@@ -4880,6 +4881,8 @@ Positional parameters can be
 .Ic shift Ns
 ed, or become completely replaced, removed etc. via
 .Ic vpospar .
+A helpful command to perform many sorts of number and string evaluations is
+.Ic vexpr .
 .
 .Bd -literal -offset indent
 define name {
@@ -5058,7 +5061,9 @@ can be used instead for a more display oriented editor.
 .Mx
 .It Ic elif
 Part of the
-.Ic if Ns \0/\: Ic elif Ns \0/\: Ic else Ns \0/\: Ic endif
+.Ic if
+(see there for more),
+.Ic elif , else , endif
 conditional \(em if the condition of a preceding
 .Ic if
 was false, check the following condition and execute the following block
@@ -5067,7 +5072,9 @@ if it evaluates true.
 .Mx
 .It Ic else
 (el) Part of the
-.Ic if Ns \0/\: Ic elif Ns \0/\: Ic else Ns \0/\: Ic endif
+.Ic if
+(see there for more),
+.Ic elif , else , endif
 conditional \(em if none of the conditions of the preceding
 .Ic if
 and
@@ -5079,7 +5086,9 @@ block is executed.
 .Mx
 .It Ic endif
 (en) Marks the end of an
-.Ic if Ns \0/\: Ic elif Ns \0/\: Ic else Ns \0/\: Ic endif
+.Ic if
+(see there for more),
+.Ic elif , else , endif
 conditional execution block.
 .
 .
@@ -5627,16 +5636,16 @@ will display the following message, not the current one.
 .
 .Mx
 .It Ic if
-(i) Part of the nestable
-.Ic if Ns \0/\: Ic elif Ns \0/\: Ic else Ns \0/\: Ic endif
+(i) Part of the
+.Ic \&\&if , Ic elif , else , endif
 conditional execution construct \(em if the given condition is true then
 the encapsulated block is executed.
-The POSIX standards supports the (case-insensitive) conditions
+The POSIX standard only supports the (case-insensitive) conditions
 .Ql r Ns
 eceive
 and
 .Ql s Ns
-end, all remaining conditions are non-portable extensions.
+end, the remaining are non-portable extensions.
 \*(ID These commands do not yet use
 .Sx "Shell-style argument quoting"
 and therefore do not know about input tokens, so that syntax
@@ -7284,7 +7293,7 @@ It is possible to use any base in between 2 and 36, inclusive, with the
 notation, where the base is given as an unsigned decimal number, e.g.,
 .Ql 16#AFFE
 is a different way of specifying a hexadecimal number.
-Unsigned interpretation of a number can be enforced by prefixing a
+Unsigned interpretation of a number can be enforced by prefixing an
 .Ql u
 (case-insensitively), e.g.,
 .Ql u-110 ;
@@ -10156,7 +10165,7 @@ the full pathname of an executable (optionally prefixed with the protocol
 .Ql file:// ) ,
 or \*(OPally a SMTP a.k.a. SUBMISSION protocol URL, e.g., \*(IN
 .Pp
-.Dl smtps?://[user[:password]@]server[:port]
+.Dl submissions://[user[:password]@]server[:port]
 .Pp
 (\*(OU:
 .Ql [smtp://]server[:port] . )
@@ -12682,8 +12691,8 @@ causing automatic program environment updates (to be inherited by
 newly created child processes).
 .
 .Pp
-In order to transparently integrate other environment variables equally
-they need to be imported (linked) with the command
+In order to integrate other environment variables equally they need to
+be imported (linked) with the command
 .Ic environ .
 This command can also be used to set and unset non-integrated
 environment variables from scratch, sufficient system support provided.
@@ -12709,7 +12718,7 @@ processes and the MLE (see
 .Sx "On terminal control and line editor" )
 in interactive mode thereafter.
 Ignored in non-interactive mode, which always uses 80 columns, unless in
-.fl #
+.Fl \&#
 batch mode.
 .
 .Mx
@@ -13798,7 +13807,7 @@ set from='Your Name <address@exam.ple>'
 # It may be necessary to set hostname and/or smtp-hostname
 # if the "SERVER" of mta and "domain" of from do not match.
 # The `urlencode' command can be used to encode USER and PASS
-set mta=(smtps?|submission)://[USER[:PASS]@]SERVER[:PORT] \e
+set mta=(smtps?|submissions?)://[USER[:PASS]@]SERVER[:PORT] \e
   smtp-auth=login/plain... \e
   smtp-use-starttls
 
@@ -14221,7 +14230,7 @@ an example showing the shifted home key:
 ? x
 $ cat -v
 ^[[H
-? \*(uA -v -Stermcap='kHOM=\eE[H'
+$ \*(uA -v -Stermcap='kHOM=\eE[H'
 ? bind*
 # 1B 5B=[ 48=H
   bind base :kHOM z0
@@ -14563,7 +14572,7 @@ that was originally written by Kurt Shoens.
 .An "Christos Zoulas" ,
 .An "Gunnar Ritter" .
 \*(UA is developed by
-.An "Steffen Nurpmeso" Aq steffen@sdaoden.eu .
+.An "Steffen Nurpmeso" Aq s-mailx@lists.sdaoden.eu .
 .
 .
 .\" .Sh CAVEATS {{{
