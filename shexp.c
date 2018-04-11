@@ -376,7 +376,11 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
       }
    }
 
-   /* As necessary, quote bytes in the current pattern */
+   /* As necessary, quote bytes in the current pattern TODO This will not
+    * TODO truly work out in case the user would try to quote a character
+    * TODO class, for example: in "\[a-z]" the "\" would be doubled!  For that
+    * TODO to work out, we need the original user input or the shell-expression
+    * TODO parse tree, otherwise we do not know what is desired! */
    /* C99 */{
       char *ncp;
       size_t i;
@@ -1041,7 +1045,14 @@ jleave:
 FL enum n_shexp_state
 n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
       struct str *input, void const **cookie){
-   /* TODO shexp_parse_token: WCHAR */
+   /* TODO shexp_parse_token: WCHAR
+    * TODO This needs to be rewritten in order to support $(( )) and $( )
+    * TODO and ${xyYZ} and the possibly infinite recursion they bring along,
+    * TODO too.  We need a carrier struct, then, and can nicely split this
+    * TODO big big thing up in little pieces!
+    * TODO This means it should produce a tree of objects, so that callees
+    * TODO can recognize whether something happened inside single/double etc.
+    * TODO quotes; e.g., to requote "'[a-z]'" to, e.g., "\[a-z]", etc.! */
    ui32_t last_known_meta_trim_len;
    char c2, c, quotec, utf[8];
    enum n_shexp_state rv;
@@ -1193,7 +1204,7 @@ jrestart:
     * By sheer luck we only need to track this in non-quote-mode */
    last_known_meta_trim_len = UI32_MAX;
 
-   while(il > 0){
+   while(il > 0){ /* {{{ */
       --il, c = *ib++;
 
       /* If no quote-mode active.. */
@@ -1722,7 +1733,7 @@ j_var_look_buf:
          if(!(flags & n_SHEXP_PARSE_DRYRUN))
             store = n_string_push_c(store, c);
       }
-   }
+   } /* }}} */
 
    if(quotec != '\0' && !(flags & n_SHEXP_PARSE_QUOTE_AUTO_CLOSE)){
       if(flags & n_SHEXP_PARSE_LOG)

@@ -2278,11 +2278,15 @@ jredo:
    rele_all_sigs();
 
    if(exp.s == NULL || (exp.l = strlen(exp.s)) == 0){
+      if(wedid < FAL0)
+         goto jnope;
       /* No.  But maybe the users' desire was to complete only a part of the
        * shell token of interest!  TODO This can be improved, we would need to
        * TODO have shexp_parse to create a DOM structure of parsed snippets, so
        * TODO that we can tell for each snippet which quote is active and
-       * TODO whether we may cross its boundary and/or apply expansion for it */
+       * TODO whether we may cross its boundary and/or apply expansion for it!
+       * TODO Only like that we would be able to properly requote user input
+       * TODO like "'['a-z]<TAB>" to e.g. "\[a-z]" for glob purposes! */
       if(wedid == TRU1){
          size_t i, li;
 
@@ -2304,6 +2308,18 @@ jredo:
             goto jredo;
          }
       }
+
+      /* A different case is that the user input includes for example character
+       * classes: here fexpand() will go over glob, and that will not find any
+       * match, thus returning NULL; try to wildcard expand this pattern! */
+jaster_check:
+      if(sub.s[sub.l - 1] != '*'){
+         wedid = TRU1;
+         shoup = n_string_push_c(shoup, '*');
+         sub.s = n_string_cp(shoup);
+         sub.l = shoup->s_len;
+         goto jredo;
+      }
       goto jnope;
    }
 
@@ -2324,16 +2340,8 @@ jredo:
 
    /* If the expansion equals the original string, assume the user wants what
     * is usually known as tab completion, append `*' and restart */
-   if(!wedid && exp.l == sub.l && !memcmp(exp.s, sub.s, exp.l)){
-      if(sub.s[sub.l - 1] == '*')
-         goto jnope;
-
-      wedid = TRU1;
-      shoup = n_string_push_c(shoup, '*');
-      sub.s = n_string_cp(shoup);
-      sub.l = shoup->s_len;
-      goto jredo;
-   }
+   if(!wedid && exp.l == sub.l && !memcmp(exp.s, sub.s, exp.l))
+      goto jaster_check;
 
    if(exp.s[exp.l - 1] != '/'){
       if(!stat(exp.s, &sb) && S_ISDIR(sb.st_mode)){
