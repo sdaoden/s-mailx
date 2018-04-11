@@ -787,6 +787,7 @@ jdobuf:
 
    if ((in.l = inrest.l) > 0) {
       in.s = inrest.s;
+      inrest.s = NULL;
       did_inrest = TRU1;
       goto jdobuf;
    }
