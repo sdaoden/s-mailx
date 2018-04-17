@@ -2361,8 +2361,6 @@ jearg:
          /* Interpolate the named messages, if we are in receiving mail mode.
           * Does the standard list processing garbage.  If ~f is given, we
           * don't shift over */
-         if(cnt == 0)
-            goto jearg;
          if((n_pstate_err_no = a_coll_forward(cp, _coll_fp, c)) == n_ERR_NONE)
             n_pstate_ex_no = 0;
          else if(ferror(_coll_fp))
