@@ -475,6 +475,10 @@ readin(char const *name, struct message *m)
    }
    free(buf);
    if (!emptyline) {
+      /* TODO we need \n\n for mbox format.
+       * TODO That is to say we do it wrong here in order to get it right
+       * TODO when send.c stuff or with MBOX handling, even though THIS
+       * TODO line is solely a property of the MBOX database format! */
       putc('\n', mb.mb_otf);
       ++lines;
       ++size;

@@ -1961,8 +1961,11 @@ imap_fetchdata(struct mailbox *mp, struct message *m, size_t expected,
          break;
    }
    if (!emptyline) {
-      /* This is very ugly; but some IMAP daemons don't end a
-       * message with \r\n\r\n, and we need \n\n for mbox format */
+      /* TODO This is very ugly; but some IMAP daemons don't end a
+       * TODO message with \r\n\r\n, and we need \n\n for mbox format.
+       * TODO That is to say we do it wrong here in order to get it right
+       * TODO when send.c stuff or with MBOX handling, even though THIS
+       * TODO line is solely a property of the MBOX database format! */
       fputc('\n', mp->mb_otf);
       ++lines;
       ++size;

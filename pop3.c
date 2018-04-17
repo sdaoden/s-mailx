@@ -665,8 +665,11 @@ jretry:
       }
    }
    if (!emptyline) {
-      /* This is very ugly; but some POP3 daemons don't end a
-       * message with NETNL NETNL, and we need \n\n for mbox format */
+      /* TODO This is very ugly; but some POP3 daemons don't end a
+       * TODO message with NETNL NETNL, and we need \n\n for mbox format.
+       * TODO That is to say we do it wrong here in order to get it right
+       * TODO when send.c stuff or with MBOX handling, even though THIS
+       * TODO line is solely a property of the MBOX database format! */
       putc('\n', mp->mb_otf);
       ++lines;
       ++size;

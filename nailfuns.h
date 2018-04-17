@@ -855,9 +855,6 @@ FL int         readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
    readline_restart(A, B, C, D, __FILE__, __LINE__)
 #endif
 
-/* Set up the input pointers while copying the mail file into /tmp */
-FL void        setptr(FILE *ibuf, off_t offset);
-
 /* Determine the size of the file possessed by the passed buffer */
 FL off_t       fsize(FILE *iob);
 
