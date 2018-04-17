@@ -51,8 +51,6 @@ MEMTESTER=
 
 ##  -- (>8  --  8<)  --  ##
 
-( set -o noglob ) >/dev/null 2>&1 && noglob_shell=1 || unset noglob_shell
-
 msg() {
    fmt=${1}
    shift
@@ -72,8 +70,9 @@ export LC_ALL LANG TZ SOURCE_DATE_EPOCH
 unset POSIXLY_CORRECT LOGNAME USER
 
 usage() {
-   echo >&2 "Synopsis: ./cc-test.sh [--check-only s-mailx-binary]"
-   echo >&2 "Synopsis: ./cc-test.sh --mae-test s-mailx-binary [:TESTNAME:]"
+   echo >&2 'Synopsis: ./cc-test.sh --check-only s-mailx-binary'
+   echo >&2 'Synopsis: ./cc-test.sh --mae-test s-mailx-binary [:TESTNAME:]'
+   echo >&2 'Synopsis: ./cc-test.sh # (hundreds of compilation tests)'
    exit 1
 }
 
@@ -228,7 +227,7 @@ else
 fi
 
 # t_behave()
-# Basic (easily testable) behaviour tests
+# Basic behaviour tests
 t_behave() {
    t_behave_X_opt_input_command_stack
    t_behave_X_errexit
