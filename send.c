@@ -586,7 +586,8 @@ jhdrput:
             n_colour_reset();
       )
       if(dostat & 4)
-         putc('\n', obuf);
+         _out("\n", sizeof("\n") -1, obuf, convert, action, qf, stats,
+            NULL,NULL);
       /*see below hany = TRU1;*/
 
 jhdrtrunc:
