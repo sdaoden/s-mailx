@@ -917,7 +917,7 @@ n_autorec_relax_create(void){
       for(mabp = macp->mac_full; mabp != NULL; mabp = mabp->mab_last)
          mabp->mab_relax = mabp->mab_caster;
    }
-#ifdef HAVE_DEVEL
+#if 0 && defined HAVE_DEVEL
    else
       n_err("n_autorec_relax_create(): recursion >0\n");
 #endif
@@ -946,7 +946,7 @@ n_autorec_relax_gut(void){
       for(mabp = macp->mac_full; mabp != NULL; mabp = mabp->mab_last)
          mabp->mab_relax = NULL;
    }
-#ifdef HAVE_DEVEL
+#if 0 && defined HAVE_DEVEL
    else
       n_err("n_autorec_relax_unroll(): recursion >0\n");
 #endif

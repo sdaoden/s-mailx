@@ -7421,10 +7421,10 @@ ged message.
 .\" .Sh COMMAND ESCAPES {{{
 .Sh "COMMAND ESCAPES"
 .
-Here is a summary of the command escapes available in compose mode,
-which are used to perform special functions when composing messages.
+Command escapes are available in compose mode, and are used to perform
+special functions when composing messages.
 Command escapes are only recognized at the beginning of lines, and
-consist of a trigger (escape) and a command character.
+consist of a trigger (escape), and a command character.
 The actual escape character can be set via the internal variable
 .Va escape ,
 it defaults to the tilde
@@ -7441,13 +7441,13 @@ and the exit status
 .Va \&? .
 If the variable
 .Va errexit
-is set they will, unless stated otherwise, error out message compose
-mode and cause a program exit if an operation fails.
-It is however possible to place the character hyphen-minus
+is set they will, unless stated otherwise, error out message compose mode
+and cause a program exit if an operation fails;
+an effect equivalent to the command modifier
+.Cm ignerr
+can however be achieved by placing a hyphen-minus
 .Ql -
-after (possible whitespace following) the escape character, which has an
-effect equivalent to the command modifier
-.Cm ignerr .
+after (possible whitespace following) the escape character.
 If the \*(OPal key bindings are available it is possible to create
 .Ic bind Ns
 ings specifically for the compose mode.
@@ -7517,13 +7517,13 @@ Append or edit the list of attachments.
 Does not manage the error number
 .Va \&!
 and the exit status
-.Va \&? ,
+.Va \&?
 (please use
 .Ic ~^
 instead if this is a concern).
-A list of
+The append mode expects a list of
 .Ar filename
-arguments is expected as shell tokens (see
+arguments as shell tokens (see
 .Sx "Shell-style argument quoting" ;
 token-separating commas are ignored, too), to be
 interpreted as documented for the command line option
@@ -7539,7 +7539,7 @@ entered or the session can be quit by committing an empty
 .Dq new
 attachment.
 In non-interactive mode or in batch mode
-.Pf ( Fl # ) ,
+.Pf ( Fl # )
 the list of attachments is effectively not edited but instead recreated;
 again, an empty input ends list creation.
 .Pp
@@ -7960,24 +7960,14 @@ line feed are expanded in
 .Va posix
 mode; otherwise the expansion should occur at
 .Ic set
-time by using the command modifier
-.Va wysh .
+time (\*(ID by using the command modifier
+.Va wysh ) .
 .
 .Mx
 .It Ic ~i Ar variable
-Insert the value of the specified variable followed by a newline
-character into the message.
-The message remains unaltered if the variable is unset or empty.
-Any embedded character sequences
-.Ql \et
-horizontal tabulator and
-.Ql \en
-line feed are expanded in
-.Va posix
-mode; otherwise the expansion should occur at
-.Ic set
-time by using the command modifier
-.Va wysh .
+Like
+.Ic ~I ,
+but appends a newline character.
 .
 .Mx
 .It Ic ~M Ar messages

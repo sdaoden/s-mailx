@@ -272,6 +272,7 @@ t_behave() {
    t_behave_attachments
    t_behave_compose_hooks
    t_behave_C_opt_customhdr
+   t_behave_quote_a_cmd_escapes
 
    t_behave_mass_recipients
    t_behave_mime_types_load_control
@@ -4075,6 +4076,144 @@ t_behave_C_opt_customhdr() {
    ex0_test behave:C_opt_customhdr-2-estat
    ${cat} ./.tall >> "${MBOX}"
    check behave:C_opt_customhdr-2 0 "${MBOX}" '3546878678 752'
+
+   t_epilog
+}
+
+t_behave_quote_a_cmd_escapes() {
+   t_prolog t_behave_quote_a_cmd_escapes
+   TRAP_EXIT_ADDONS="./.t*"
+
+   t_xmta
+
+   echo 'included file' > ./.ttxt
+
+   ${cat} <<-_EOT > ./.tmbox
+	From neverneverland  Sun Jul 23 13:46:25 2017
+	Subject: Bugstop: five miles out 1
+	Reply-To: mister originator1 <mr1@originator>
+	From: mister originator1 <mr1@originator>
+	To: bugstop-commit@five.miles.out
+	Cc: is1@a.list
+	In-reply-to: <20170719111113.bkcMz%laber1@backe.eu>
+	Date: Wed, 19 Jul 2017 09:22:57 -0400
+	Message-Id: <20170719132257.766AF781267-1@originator>
+	Status: RO
+	
+	That's appalling, I.
+	
+	From neverneverland  Sun Jul 23 13:47:25 2017
+	Subject: Bugstop: five miles out 2
+	Reply-To: mister originator2 <mr2@originator>
+	From: mister originator2 <mr2@originator>
+	To: bugstop-commit@five.miles.out
+	Cc: is2@a.list
+	In-reply-to: <20170719111113.bkcMz%laber2@backe.eu>
+	Date: Wed, 19 Jul 2017 09:23:57 -0400
+	Message-Id: <20170719132257.766AF781267-2@originator>
+	Status: RO
+	
+	That's appalling, II.
+	
+	From neverneverland  Sun Jul 23 13:48:25 2017
+	Subject: Bugstop: five miles out 3
+	Reply-To: mister originator3 <mr3@originator>
+	From: mister originator3 <mr3@originator>
+	To: bugstop-commit@five.miles.out
+	Cc: is3@a.list
+	In-reply-to: <20170719111113.bkcMz%laber3@backe.eu>
+	Date: Wed, 19 Jul 2017 09:24:57 -0400
+	Message-Id: <20170719132257.766AF781267-3@originator>
+	Status: RO
+	
+	That's appalling, III.
+	
+	_EOT
+
+   printf '#
+      set indentprefix=" |"
+      set quote
+      reply 2
+!.
+      set quote=noheading
+      reply 2
+!.
+      headerpick type retain cc date from message-id reply-to subject to
+      set quote=headers
+      reply 2
+!.
+      set quote=allheaders
+      reply 2
+!.
+   ' | ${MAILX} ${ARGS} -Smta=./.tmta.sh -Rf \
+         -Sescape=! -Sindentprefix=' >' \
+         ./.tmbox >./.tall 2>&1
+   ex0_test behave:quote_a_cmd_escapes-1-estat
+   ${cat} ./.tall >> "${MBOX}"
+   check behave:quote_a_cmd_escapes-1 0 "${MBOX}" '3048941846 2023'
+
+   # ~@ is tested with other attachment stuff, ~^ is in compose_hooks
+   ${rm} "${MBOX}"
+   printf '#
+      set Sign=SignVar sign=signvar DEAD=./.ttxt
+      headerpick type retain Subject
+      reply 2
+!!1 Not escaped.  And shell test last, right before !..
+!:   echo 2 only echoed via colon
+!_  echo 3 only echoed via underscore
+!< ./.ttxt
+!<! echo 5 shell echo included
+!| echo 6 pipecmd-pre; cat; echo 6 pipecmd-post
+7 and 8 are ~A and ~a:
+!A
+!a
+!b 9 added ~b cc <ex1@am.ple>
+!c 10 added ~c c <ex2@am.ple>
+11 next ~d / $DEAD
+!d
+12: ~F
+!F
+13: ~F 1 3
+!F 1 3
+14: ~f (headerpick: subject)
+!f
+15: ~f 1
+!f 1
+16, 17: ~I Sign, ~i Sign
+!I Sign
+!i Sign
+18: ~M
+!M
+19: ~M 1
+!M 1
+20: ~m
+!m
+21: ~m 3
+!m 3
+22: ~R ./.ttxt
+!R ./.ttxt
+23: ~r ./.ttxt
+!r ./.ttxt
+24: ~s this new subject
+!s 24 did new ~s ubject
+!t 25 added ~t o <ex3@am.ple>
+26: ~U
+!U
+27: ~U 1
+!U 1
+and i ~w rite this out to ./.tmsg
+!w ./.tmsg
+!:wysh set x=$escape;set escape=~
+~!echo shell command output
+~:wysh set escape=$x
+!.
+   ' | ${MAILX} ${ARGS} -Smta=./.tmta.sh -Rf \
+         -Sescape=! -Sindentprefix=' |' \
+         ./.tmbox >./.tall 2>&1
+   ex0_test behave:quote_a_cmd_escapes-2-estat
+   ${cat} ./.tall >> "${MBOX}"
+   check behave:quote_a_cmd_escapes-2 0 "${MBOX}" '375879934 3604'
+   check behave:quote_a_cmd_escapes-3 - ./.tmsg '2112542907 2789'
 
    t_epilog
 }

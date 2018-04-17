@@ -342,15 +342,19 @@ do{\
 #endif
 
 /* Translation (init in main.c): may NOT set errno! */
+#undef UIS
+#undef A_
 #undef _
 #undef N_
 #undef V_
 #ifdef HAVE_UISTRINGS
+# define UIS(X) X
 # define A_(S) S
 # define _(S) S
 # define N_(S) S
 # define V_(S) S
 #else
+# define UIS(X)
 # define A_(S) S
 # define _(S) n_empty
 # define N_(S) ""

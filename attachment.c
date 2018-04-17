@@ -487,7 +487,7 @@ n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
    attno = 1;
 
    for(naplist = NULL;;){
-      snprintf(prefix, sizeof prefix, _("#%" PRIu32 " filename: "), attno);
+      snprintf(prefix, sizeof prefix, A_("#%" PRIu32 " filename: "), attno);
 
       if(aplist != NULL){
          /* TODO If we would create .a_path_user in append() after any
@@ -510,9 +510,11 @@ n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
                n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_LOG |
                n_SHEXP_PARSE_IGNORE_EMPTY),
                shoup, &shin, NULL);
+         UIS(
          if(!(shs & n_SHEXP_STATE_STOP))
             n_err(_("# May be given one argument a time only: %s\n"),
                n_shexp_quote_cp(s_save, FAL0));
+         )
          if((shs & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_STOP |
                   n_SHEXP_STATE_ERR_MASK)
                ) != (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_STOP))
