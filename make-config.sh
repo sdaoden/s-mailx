@@ -235,20 +235,20 @@ option_update() {
 }
 
 rc=./make.rc
-lst=./mk-config.lst
-ev=./mk-config.ev
-h=./mk-config.h h_name=mk-config.h
-mk=./mk-config.mk
+lst=.obj/mk-config.lst
+ev=.obj/mk-config.ev
+h=.obj/mk-config.h h_name=mk-config.h
+mk=.obj/mk-config.mk
 
-newlst=./mk-nconfig.lst
-newmk=./mk-nconfig.mk
-oldmk=./mk-oconfig.mk
-newev=./mk-nconfig.ev
-newh=./mk-nconfig.h
-oldh=./mk-oconfig.h
-tmp0=___tmp
-tmp=./${tmp0}1$$
-tmp2=./${tmp0}2$$
+newlst=.obj/mk-nconfig.lst
+newmk=.obj/mk-nconfig.mk
+oldmk=.obj/mk-oconfig.mk
+newev=.obj/mk-nconfig.ev
+newh=.obj/mk-nconfig.h
+oldh=.obj/mk-oconfig.h
+tmp0=.obj/___tmp
+tmp=${tmp0}1$$
+tmp2=${tmp0}2$$
 
 ##  --  >8  - << OPTIONS | OS/CC >> -  8<  --  ##
 
@@ -266,38 +266,34 @@ tmp2=./${tmp0}2$$
 _CFLAGS= _LDFLAGS=
 
 os_early_setup() {
+   # We don't "have any utility" (see make.rc)
    [ -n "${OS}" ] && [ -n "${OSENV}" ] && [ -n "${OSFULLSPEC}" ] ||
       thecmd_testandset_fail uname uname
 
-   # We don't "have any utility": only path adjustments and such in here!
    [ -n "${OS}" ] || OS=`${uname} -s`
    export OS
 
    if [ ${OS} = SunOS ]; then
-      msg 'SunOS / Solaris?  Applying some "early setup" rules ...'
-      _os_early_setup_sunos
+      # According to standards(5), this is what we need to do
+      if [ -d /usr/xpg4 ]; then :; else
+         msg 'ERROR: On SunOS / Solaris we need /usr/xpg4 environment!  Sorry.'
+         config_exit 1
+      fi
+      PATH="/usr/xpg4/bin:/usr/ccs/bin:/usr/bin:${PATH}"
+      [ -d /usr/xpg6 ] && PATH="/usr/xpg6/bin:${PATH}"
+      export PATH
    fi
-}
-
-_os_early_setup_sunos() {
-   # According to standards(5), this is what we need to do
-   if [ -d /usr/xpg4 ]; then :; else
-      msg 'ERROR: On SunOS / Solaris we need /usr/xpg4 environment!  Sorry.'
-      config_exit 1
-   fi
-   PATH="/usr/xpg4/bin:/usr/ccs/bin:/usr/bin:${PATH}"
-   [ -d /usr/xpg6 ] && PATH="/usr/xpg6/bin:${PATH}"
-   export PATH
 }
 
 os_setup() {
+   OS=`echo ${OS} | ${tr} '[A-Z]' '[a-z]'`
+   msg 'Operating system is %s' "${OS}"
+
    # OSENV ends up in *build-osenv*
    # OSFULLSPEC is used to recognize changes (i.e., machine type, updates
    # etc.), it is not baked into the binary
-   OS=`echo ${OS} | ${tr} '[A-Z]' '[a-z]'`
    [ -n "${OSENV}" ] || OSENV=`${uname} -sm`
    [ -n "${OSFULLSPEC}" ] || OSFULLSPEC=`${uname} -a`
-   msg 'Operating system is %s' ${OS}
 
    if [ ${OS} = darwin ]; then
       msg ' . have special Darwin environmental addons...'
@@ -1061,7 +1057,7 @@ ld_runtime_flags() {
 
 cc_check() {
    [ -n "${cc_check_silent}" ] || msg_nonl ' . CC %s .. ' "${1}"
-   if "${CC}" ${INCS} \
+   if ${CC} ${INCS} \
          ${_CFLAGS} ${1} ${EXTRA_CFLAGS} ${_LDFLAGS} ${EXTRA_LDFLAGS} \
          -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
       _CFLAGS="${_CFLAGS} ${1}"
@@ -1075,7 +1071,7 @@ cc_check() {
 ld_check() {
    # $1=option [$2=option argument] [$3=if set, shall NOT be added to _LDFLAGS]
    [ -n "${cc_check_silent}" ] || msg_nonl ' . LD %s .. ' "${1}"
-   if "${CC}" ${INCS} ${_CFLAGS} ${_LDFLAGS} ${1}${2} ${EXTRA_LDFLAGS} \
+   if ${CC} ${INCS} ${_CFLAGS} ${_LDFLAGS} ${1}${2} ${EXTRA_LDFLAGS} \
          -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
       [ -n "${3}" ] || _LDFLAGS="${_LDFLAGS} ${1}"
       [ -n "${cc_check_silent}" ] || msg 'yes'
@@ -1138,9 +1134,8 @@ compile_check() {
    _check_preface "${variable}" "${topic}" "${define}"
 
    if ${make} -f ${makefile} XINCS="${INCS}" \
-            CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" \
-            ./${tmp}.o &&
-         [ -f ./${tmp}.o ]; then
+            CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" ${tmp}.o &&
+            [ -f ${tmp}.o ]; then
       msg 'yes'
       echo "${define}" >> ${h}
       eval have_${variable}=yes
@@ -1166,10 +1161,8 @@ _link_mayrun() {
 
    if ${make} -f ${makefile} XINCS="${INCS} ${incs}" \
             CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" \
-            XLIBS="${LIBS} ${libs}" \
-            ./${tmp} &&
-         [ -f ./${tmp} ] &&
-         { [ ${run} -eq 0 ] || ./${tmp}; }; then
+            XLIBS="${LIBS} ${libs}" ${tmp} &&
+         [ -f ${tmp} ] && { [ ${run} -eq 0 ] || ${tmp}; }; then
       echo "*** adding INCS<${incs}> LIBS<${libs}>; executed: ${run}"
       msg 'yes'
       echo "${define}" >> ${h}
@@ -1207,6 +1200,11 @@ squeeze_em() {
 ##  --  >8  - <<SUPPORT FUNS | RUNNING>> -  8<  --  ##
 
 # First of all, create new configuration and check whether it changed
+
+if [ -d .obj ] || mkdir .obj; then :; else
+   msg 'ERROR: cannot create .obj build directory'
+   exit 1
+fi
 
 # Very easy checks for the operating system in order to be able to adjust paths
 # or similar very basic things which we need to be able to go at all
@@ -1251,6 +1249,8 @@ thecmd_testandset_fail cmp cmp
 # grep(1) above
 thecmd_testandset_fail mkdir mkdir
 thecmd_testandset_fail mv mv
+# pwd(1) is needed - either for make-emerge.sh, or for ourselves
+[ -n "${CWDDIR}" ] || thecmd_testandset_fail pwd pwd
 # rm(1) above
 thecmd_testandset_fail sed sed
 thecmd_testandset_fail sort sort
@@ -1268,6 +1268,11 @@ thecmd_testandset strip strip && HAVE_STRIP=1 || HAVE_STRIP=0
 # For ./cc-test.sh only
 thecmd_testandset_fail cksum cksum
 
+# Now that we have pwd(1), set our build paths unless make-emerge.sh has been
+# used; it would have created a makefile with the full paths, then
+[ -n "${CWDDIR}" ] || CWDDIR=`${pwd}`/
+[ -n "${SRCDIR}" ] || SRCDIR=${CWDDIR}
+
 # Update OPT_ options now, in order to get possible inter-dependencies right
 option_update
 
@@ -1284,6 +1289,7 @@ msg_nonl 'Evaluating all configuration items ... '
 option_evaluate
 msg 'done'
 
+#
 printf "#define VAL_UAGENT \"${VAL_SID}${VAL_MAILX}\"\n" >> ${newh}
 printf "VAL_UAGENT = ${VAL_SID}${VAL_MAILX}\n" >> ${newmk}
 
@@ -1299,8 +1305,8 @@ if [ -z "${VERBOSE}" ]; then
    printf -- "ECHO_BLOCK_BEGIN = @( \n" >> ${newmk}
    printf -- "ECHO_BLOCK_END = ) >/dev/null\n" >> ${newmk}
 fi
-printf 'test: all\n\t$(ECHO_TEST)%s %scc-test.sh --check-only ./%s\n' \
-   "${SHELL}" "${SRCDIR}" "${VAL_SID}${VAL_MAILX}" >> ${newmk}
+printf 'test: all\n\t$(ECHO_TEST)%s %scc-test.sh --check-only %s\n' \
+   "${SHELL}" "${SRCDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
 
 # Add the known utility and some other variables
 printf "#define VAL_PRIVSEP \"${VAL_SID}${VAL_MAILX}-privsep\"\n" >> ${newh}
@@ -1312,21 +1318,21 @@ else
 fi
 
 for i in \
-      SRCDIR \
+   CWDDIR SRCDIR \
       awk basename cat chmod chown cp cmp grep mkdir mv rm sed sort tee tr \
       MAKE MAKEFLAGS make SHELL strip \
       cksum; do
    eval j=\$${i}
-   printf "${i} = ${j}\n" >> ${newmk}
-   printf "${i}=${j}\n" >> ${newlst}
-   printf "${i}=\"${j}\";export ${i}; " >> ${newev}
+   printf -- "${i} = ${j}\n" >> ${newmk}
+   printf -- "${i}=${j}\n" >> ${newlst}
+   printf -- "${i}=\"${j}\";export ${i}; " >> ${newev}
 done
 # Note that makefile reads and eval'uates one line of this file, whereas other
 # consumers source it via .(1)
 printf "\n" >> ${newev}
 
 # Build a basic set of INCS and LIBS according to user environment.
-C_INCLUDE_PATH="${CWDDIR}:${SRCDIR}:${C_INCLUDE_PATH}"
+C_INCLUDE_PATH="${CWDDIR}:${CWDDIR}.obj:${SRCDIR}:${C_INCLUDE_PATH}"
 path_check C_INCLUDE_PATH -I _INCS
 INCS="${INCS} ${_INCS}"
 path_check LD_LIBRARY_PATH -L _LIBS
@@ -1360,7 +1366,7 @@ doit(char const *s){
 }
 !
 
-if "${CC}" ${INCS} ${CFLAGS} ${EXTRA_CFLAGS} ${LDFLAGS} ${EXTRA_LDFLAGS} \
+if ${CC} ${INCS} ${CFLAGS} ${EXTRA_CFLAGS} ${LDFLAGS} ${EXTRA_LDFLAGS} \
       -o ${tmp2} ${tmp}.c ${LIBS}; then
    :
 else
@@ -1389,8 +1395,8 @@ for i in \
       ; do
    eval j=\$${i}
    if [ -n "${j}" ]; then
-       printf -- "${i} = ${j}\n" >> ${newmk}
-       printf -- "${i}=${j}\n" >> ${newlst}
+      printf -- "${i} = ${j}\n" >> ${newmk}
+      printf -- "${i}=${j}\n" >> ${newlst}
    fi
 done
 
@@ -1422,11 +1428,11 @@ ${mv} -f ${newmk} ${mk}
 
 ## Compile and link checking
 
-tmp3=./${tmp0}3$$
-log=./mk-config.log
-lib=./mk-config.lib
-inc=./mk-config.inc
-makefile=./${tmp0}.mk
+tmp3=${tmp0}3$$
+log=.obj/mk-config.log
+lib=.obj/mk-config.lib
+inc=.obj/mk-config.inc
+makefile=${tmp0}.mk
 
 # (No function since some shells loose non-exported variables in traps)
 trap "trap \"\" HUP INT TERM;\
@@ -1457,7 +1463,7 @@ echo "${INCS}" > ${inc}
 ${cat} > ${makefile} << \!
 .SUFFIXES: .o .c .x .y
 .c.o:
-	$(CC) -I./ $(XINCS) $(CFLAGS) -c $(<)
+	$(CC) -I./ $(XINCS) $(CFLAGS) -o $(@) -c $(<)
 .c.x:
 	$(CC) -I./ $(XINCS) -E $(<) > $(@)
 .c:
@@ -2135,7 +2141,7 @@ int main(void){
       feat_bail_required ICONV
 
    if feat_no CROSS_BUILD; then
-      { ./${tmp}; } >/dev/null 2>&1
+      { ${tmp}; } >/dev/null 2>&1
       case ${?} in
       2) echo 'MAILX_ICONV_MODE=2;export MAILX_ICONV_MODE;' >> ${ev};;
       3) echo 'MAILX_ICONV_MODE=3;export MAILX_ICONV_MODE;' >> ${ev};;
@@ -3161,6 +3167,10 @@ ${mv} ${tmp} ${inc}
 squeeze_em ${lib} ${tmp}
 ${mv} ${tmp} ${lib}
 
+echo "LIBS = `${cat} ${lib}`" >> ${mk}
+echo "INCS = `${cat} ${inc}`" >> ${mk}
+echo >> ${mk}
+
 # mk-config.h
 ${mv} ${h} ${tmp}
 printf '#ifndef n_MK_CONFIG_H\n# define n_MK_CONFIG_H 1\n' > ${h}
@@ -3240,8 +3250,6 @@ printf 'OBJ_SRC = %s\nOBJ = %s\n' "${srclist}" "${objlist}" >> "${mk}"
 
 printf '#endif /* n_MK_CONFIG_H */\n' >> ${h}
 
-echo "LIBS = `${cat} ${lib}`" >> ${mk}
-echo "INCS = `${cat} ${inc}`" >> ${mk}
 echo >> ${mk}
 ${cat} "${SRCDIR}"make-config.in >> ${mk}
 
@@ -3261,8 +3269,8 @@ if [ -f ${oldh} ]; then
 fi
 
 if [ -n "${config_updated}" ]; then
-   msg 'Wiping away old objects and such'
-   ( eval "${MAKE} -f ${oldmk} clean" )
+   msg 'Wiping away old objects and such..'
+   ( cd .obj; oldmk=`${basename} ${oldmk}`; ${MAKE} -f ${oldmk} clean )
 fi
 
 msg ''

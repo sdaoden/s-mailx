@@ -10,7 +10,13 @@
 # Instead of figuring out the environment in here, require a configured build
 # system and include that!  Our makefile and configure ensure that this test
 # does not run in the configured, but the user environment nonetheless!
-if [ -f ./mk-config.ev ]; then :; else
+i=
+if [ -f ./mk-config.ev ]; then
+   :
+elif [ -f snailmail.jpg ] && [ -f .obj/mk-config.ev ]; then
+   cd .obj
+   i=../
+else
    echo >&2 'S-nail/S-mailx is not configured.'
    echo >&2 'This test script requires the shell environment that only the'
    echo >&2 'configuration script can figure out, even if it will be used to'
@@ -23,7 +29,7 @@ fi
 if [ -z "${MAILX__CC_TEST_RUNNING}" ]; then
    MAILX__CC_TEST_RUNNING=1
    export MAILX__CC_TEST_RUNNING
-   exec "${SHELL}" "${0}" "${@}"
+   exec "${SHELL}" "${i}${0}" "${@}"
 fi
 
 # We need *stealthmua* regardless of $SOURCE_DATE_EPOCH, the program name as
@@ -31,7 +37,7 @@ fi
 ARGS='-:/ -# -Sdotlock-ignore-error -Sexpandaddr=restrict'
    ARGS="${ARGS}"' -Smime-encoding=quoted-printable -Snosave -Sstealthmua'
 ADDARG_UNI=-Sttycharset=UTF-8
-CONF=./make.rc
+CONF=../make.rc
 BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
 ERR=./.cc-test.err # Covers only some which cannot be checksummed; not quoted!
@@ -165,7 +171,7 @@ check() {
       x=mae-test-`echo ${tid} | ${tr} "/:=" "__-"`
       ${cp} -f "${f}" ./"${x}"
 
-      if [ -n "${maex}" ] &&  [ -d .git ] &&
+      if [ -n "${maex}" ] && [ -d ../.git ] &&
             command -v diff >/dev/null 2>&1 &&
             (git rev-parse --verify test-out) >/dev/null 2>&1 &&
             git show test-out:"${x}" > ./"${x}".old 2>/dev/null; then
@@ -5254,16 +5260,16 @@ cc_all_configs() {
       [ -f mk-config.h ] && ${cp} mk-config.h .ccac.h
       printf "\n\n##########\n$c\n"
       printf "\n\n##########\n$c\n" >&2
-      ${SHELL} -c "${MAKE} ${c} config"
+      ${SHELL} -c "cd .. && ${MAKE} ${c} config"
       if [ -f .ccac.h ] && ${cmp} mk-config.h .ccac.h; then
          printf 'Skipping after config, nothing changed\n'
          printf 'Skipping after config, nothing changed\n' >&2
          continue
       fi
-      ${SHELL} -c "${MAKE} build test"
+      ${SHELL} -c "cd ../ && ${MAKE} build test"
    done
    ${rm} -f .ccac.h
-   ${MAKE} distclean
+   cd .. && ${MAKE} distclean
 }
 
 [ -n "${ERR}" ]  && echo > ${ERR}

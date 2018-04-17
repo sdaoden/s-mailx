@@ -137,7 +137,7 @@ VAL_MIME_TYPES_SYS=/etc/mime.types
 # The following tools may be provided a.k.a. overwritten,
 # `command -v NAME` is used to query the utility otherwise:
 #  MAKE=, STRIP=, awk=, basename=, cat=, chmod=, cp=, cmp=, cksum=,
-#     grep=, mkdir=, mv=, rm=, sed=, sort=, tee=, tr=, uname=
+#     grep=, mkdir=, mv=, pwd=, rm=, sed=, sort=, tee=, tr=, uname=
 # Usually in administrator paths:
 #  chown= [$OPT_DOTLOCK]
 # Note that awk(1), rm(1), tr(1) and uname(1) are needed before this

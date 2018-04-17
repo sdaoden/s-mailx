@@ -1,11 +1,1 @@
-mk-*
-gen-mime-types.h
-
-uman.1
-urc.rc
-
-s-nail
-s-nail-privsep
-
-*.o
-.cc-*
+.obj/
