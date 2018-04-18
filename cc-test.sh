@@ -152,6 +152,17 @@ t_epilog() {
    t_prolog
 }
 
+t_xmta() {
+   [ ${#} -ge 1 ] && __from=${1} ||
+      __from='Silybum Marianum Tue Apr 17 15:55:01 2018'
+   [ ${#} -eq 2 ] && __to=${2} || __to="${MBOX}"
+   ${cat} <<-_EOT > .tmta.sh
+		#!${SHELL} -
+		( echo 'From '"${__from}" && ${cat} && echo ) >> "${__to}"
+	_EOT
+   chmod 0755 .tmta.sh
+}
+
 check() {
    restat=${?} tid=${1} eestat=${2} f=${3} s=${4}
    [ "${eestat}" != - ] && [ "${restat}" != "${eestat}" ] &&
@@ -2704,22 +2715,18 @@ t_behave_record_a_resend() {
 
 t_behave_e_H_L_opts() {
    t_prolog t_behave_e_H_L_opts
-   TRAP_EXIT_ADDONS="./.tsendmail.sh ./.t.mbox"
+   TRAP_EXIT_ADDONS="./.tmta.sh ./.t.mbox"
+
+   t_xmta 'Alchemilla Wed Apr 07 17:03:33 2017' ./.t.mbox
 
    touch ./.t.mbox
    ${MAILX} ${ARGS} -ef ./.t.mbox
    echo ${?} > "${MBOX}"
 
-   ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${SHELL} -
-		(echo 'From Alchemilla Wed Apr 07 17:03:33 2017' && ${cat} && echo
-			) >> "./.t.mbox"
-	_EOT
-   chmod 0755 ./.tsendmail.sh
    printf 'm me@exam.ple\nLine 1.\nHello.\n~.\n' |
-   ${MAILX} ${ARGS} -Smta=./.tsendmail.sh
+   ${MAILX} ${ARGS} -Smta=./.tmta.sh
    printf 'm you@exam.ple\nLine 1.\nBye.\n~.\n' |
-   ${MAILX} ${ARGS} -Smta=./.tsendmail.sh
+   ${MAILX} ${ARGS} -Smta=./.tmta.sh
 
    ${MAILX} ${ARGS} -ef ./.t.mbox
    echo ${?} >> "${MBOX}"
@@ -2760,14 +2767,9 @@ t_behave_alternates() {
    t_prolog t_behave_alternates
    TRAP_EXIT_ADDONS="./.t*"
 
-   ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${SHELL} -
-		(echo 'From Valeriana Sat Jul 08 15:54:03 2017' && ${cat} && echo
-			) >> "${MBOX}"
-	_EOT
-   chmod 0755 ./.tsendmail.sh
+   t_xmta 'Valeriana Sat Jul 08 15:54:03 2017'
 
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Smta=./.tsendmail.sh > ./.tall 2>&1
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Smta=./.tmta.sh > ./.tall 2>&1
    echo --0
    alternates
    echo $?/$^ERRNAME
@@ -2906,14 +2908,9 @@ t_behave_alias() {
    t_prolog t_behave_alias
    TRAP_EXIT_ADDONS="./.t*"
 
-   ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${SHELL} -
-		(echo 'From Hippocastanum Mon Jun 19 15:07:07 2017' && ${cat} && echo
-			) >> "${MBOX}"
-	_EOT
-   chmod 0755 ./.tsendmail.sh
+   t_xmta 'Hippocastanum Mon Jun 19 15:07:07 2017'
 
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Smta=./.tsendmail.sh > ./.tall 2>&1
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Smta=./.tmta.sh > ./.tall 2>&1
    alias a1 ex1@a1.ple
    alias a1 ex2@a1.ple "EX3 <ex3@a1.ple>"
    alias a1 ex4@a1.ple
@@ -2948,19 +2945,13 @@ t_behave_filetype() {
    t_prolog t_behave_filetype
    TRAP_EXIT_ADDONS="./.t*"
 
-   ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${SHELL} -
-		(echo 'From Alchemilla Wed Apr 25 15:12:13 2017' && ${cat} && echo
-			) >> "${MBOX}"
-	_EOT
-   chmod 0755 ./.tsendmail.sh
+   t_xmta 'Alchemilla Wed Apr 25 15:12:13 2017'
 
    printf 'm m1@e.t\nL1\nHy1\n~.\nm m2@e.t\nL2\nHy2\n~@ %s\n~.\n' \
-      "${SRCDIR}snailmail.jpg" | ${MAILX} ${ARGS} -Smta=./.tsendmail.sh
+      "${SRCDIR}snailmail.jpg" | ${MAILX} ${ARGS} -Smta=./.tmta.sh
    check behave:filetype-1 0 "${MBOX}" '1594682963 13520'
 
    if (echo | gzip -c) >/dev/null 2>&1; then
-      ${rm} -f ./.t.mbox*
       {
          printf 'File "%s"\ncopy 1 ./.t.mbox.gz\ncopy 2 ./.t.mbox.gz' \
             "${MBOX}" | ${MAILX} ${ARGS} \
@@ -2976,7 +2967,7 @@ t_behave_filetype() {
    fi
 
    {
-      ${rm} -f ./.t.mbox*
+      ${rm} ./.t.mbox*
       printf 'File "%s"\ncopy 1 ./.t.mbox.gz
             copy 2 ./.t.mbox.gz
             copy 1 ./.t.mbox.gz
@@ -3001,16 +2992,11 @@ t_behave_message_injections() {
    t_prolog t_behave_message_injections
    TRAP_EXIT_ADDONS="./.t*"
 
-   ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${SHELL} -
-		(echo 'From Echinacea Tue Jun 20 15:54:02 2017' && ${cat} && echo
-			) > "${MBOX}"
-	_EOT
-   chmod 0755 ./.tsendmail.sh
+   t_xmta 'Echinacea Tue Jun 20 15:54:02 2017'
 
    echo mysig > ./.tmysig
 
-   echo some-body | ${MAILX} ${ARGS} -Smta=./.tsendmail.sh \
+   echo some-body | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
       -Smessage-inject-head=head-inject \
       -Smessage-inject-tail=tail-inject \
       -Ssignature=./.tmysig \
@@ -3018,6 +3004,7 @@ t_behave_message_injections() {
    check behave:message_injections-1 0 "${MBOX}" '2434746382 134'
    check behave:message_injections-2 - .tall '4294967295 0' # empty file
 
+   ${rm} "${MBOX}"
    ${cat} <<-_EOT > ./.template
 	From: me
 	To: ex1@am.ple
@@ -3026,7 +3013,7 @@ t_behave_message_injections() {
 
    Body, body, body me.
 	_EOT
-   < ./.template ${MAILX} ${ARGS} -t -Smta=./.tsendmail.sh \
+   < ./.template ${MAILX} ${ARGS} -t -Smta=./.tmta.sh \
       -Smessage-inject-head=head-inject \
       -Smessage-inject-tail=tail-inject \
       -Ssignature=./.tmysig \
@@ -3041,12 +3028,7 @@ t_behave_attachments() {
    t_prolog t_behave_attachments
    TRAP_EXIT_ADDONS="./.t*"
 
-   ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${SHELL} -
-		(echo 'From Cannabis Sun Feb 18 02:02:46 2018' && ${cat} && echo
-			) >> "${MBOX}"
-	_EOT
-   chmod 0755 ./.tsendmail.sh
+   t_xmta 'Cannabis Sun Feb 18 02:02:46 2018'
 
    ${cat} <<-_EOT  > ./.tx
 	From steffen Sun Feb 18 02:48:40 2018
@@ -3078,7 +3060,7 @@ t_behave_attachments() {
 
 !p
 !.' \
-   | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh \
+   | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tmta.sh \
       -a ./.t1 -a './.t 2' \
       -s attachment-test \
       ex@am.ple > ./.tall 2>&1
@@ -3089,7 +3071,7 @@ t_behave_attachments() {
       echo 'behave:attachments-2: unsupported, skipped'
    fi
 
-   ${rm} -f "${MBOX}"
+   ${rm} "${MBOX}"
    printf \
 'mail ex@amp.ple
 !s This the subject is
@@ -3134,7 +3116,7 @@ t_behave_attachments() {
 
 !p
 !.' \
-   | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh -Rf ./.tx \
+   | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tmta.sh -Rf ./.tx \
          > ./.tall 2>&1
    check behave:attachments-3 0 "${MBOX}" '798122412 2285'
    if have_feat uistrings; then
@@ -3154,15 +3136,10 @@ t_behave_compose_hooks() { # TODO monster
    fi
    TRAP_EXIT_ADDONS="./.t*"
 
+   t_xmta 'PrimulaVeris Wed Apr 10 22:59:00 2017'
+
    (echo line one&&echo line two&&echo line three) > ./.treadctl
    (echo echo four&&echo echo five&&echo echo six) > ./.tattach
-
-   ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${SHELL} -
-		(echo 'From PrimulaVeris Wed Apr 10 22:59:00 2017' && ${cat} && echo
-         ) >> "${MBOX}"
-	_EOT
-   chmod 0755 ./.tsendmail.sh
 
    ${cat} <<'__EOT__' > ./.trc
    define bail {
@@ -3716,18 +3693,17 @@ t_behave_compose_hooks() { # TODO monster
          on-compose-cleanup=t_occ
 __EOT__
 
-   ${rm} -f "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.\n' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
-      -X'source ./.trc' -Smta=./.tsendmail.sh \
+      -X'source ./.trc' -Smta=./.tmta.sh \
       >./.tall 2>&1
    ${cat} ./.tall >> "${MBOX}"
    check behave:compose_hooks-1 0 "${MBOX}" '522535560 10101'
 
-   ${rm} -f "${MBOX}"
+   ${rm} "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.\n' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
-      -St_remove=1 -X'source ./.trc' -Smta=./.tsendmail.sh \
+      -St_remove=1 -X'source ./.trc' -Smta=./.tmta.sh \
       >./.tall 2>&1
    ${cat} ./.tall >> "${MBOX}"
    check behave:compose_hooks-2 0 "${MBOX}" '3654000499 12535'
@@ -3736,7 +3712,7 @@ __EOT__
 
    # Some state machine stress, shell compose hook, localopts for hook, etc.
    # readctl in child. ~r as HERE document
-   ${rm} -f "${MBOX}"
+   ${rm} "${MBOX}"
    printf 'm ex@am.ple\nbody\n!.
       echon ${mailx-command}${mailx-subject}
       echon ${mailx-from}${mailx-sender}
@@ -3745,7 +3721,7 @@ __EOT__
       echon ${mailx-orig-from}${mailx-orig-to}${mailx-orig-gcc}${mailx-orig-bcc}
       var t_oce t_ocs t_ocs_sh t_ocl t_occ autocc
    ' | ${MAILX} ${ARGS} -Snomemdebug -Sescape=! \
-      -Smta=./.tsendmail.sh \
+      -Smta=./.tmta.sh \
       -X'
          define bail {
             echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
@@ -3951,10 +3927,10 @@ __EOT__
 
    # Reply, forward, resend, Resend
 
-   ${rm} -f "${MBOX}"
+   ${rm} "${MBOX}"
    printf 'set from=f1@z\nm t1@z\nb1\n!.\nset from=f2@z\nm t2@z\nb2\n!.\n' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! \
-      -Smta=./.tsendmail.sh
+      -Smta=./.tmta.sh
 
    printf '
       echo start: $? $! $^ERRNAME
@@ -3978,7 +3954,7 @@ this is content of forward 1
       echo Resend 1 2: $? $! $^ERRNAME;echo;echo
    ' "${MBOX}" |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! \
-      -Smta=./.tsendmail.sh \
+      -Smta=./.tmta.sh \
       -X'
          define bail {
             echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
@@ -4070,16 +4046,10 @@ t_behave_C_opt_customhdr() {
    t_prolog t_behave_C_opt_customhdr
    TRAP_EXIT_ADDONS="./.t*"
 
-   ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${SHELL} -
-		(echo 'From CimicifugaRacemosa Mon Dec 25 21:33:40 2017' &&
-            ${cat} && echo
-			) >> "${MBOX}"
-	_EOT
-   chmod 0755 ./.tsendmail.sh
+   t_xmta 'CimicifugaRacemosa Mon Dec 25 21:33:40 2017'
 
    echo bla |
-   ${MAILX} ${ARGS} -Smta=./.tsendmail.sh \
+   ${MAILX} ${ARGS} -Smta=./.tmta.sh \
       -C 'C-One  :  Custom One Body' \
       -C 'C-Two:CustomTwoBody' \
       -S customhdr='chdr1:  chdr1 body, chdr2:chdr2 body' \
@@ -4088,7 +4058,7 @@ t_behave_C_opt_customhdr() {
    ${cat} ./.tall >> "${MBOX}"
    check behave:C_opt_customhdr-1 0 "${MBOX}" '2400078426 195'
 
-   ${rm} -f "${MBOX}"
+   ${rm} "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.
       unset customhdr
       m this-goes2@nowhere\nbody2\n!.
@@ -4097,7 +4067,7 @@ t_behave_C_opt_customhdr() {
       set customhdr=%ccustom1 :  custom1\\,  body  ,  custom2: custom2  body%c
       m this-goes3@nowhere\nbody3\n!.
    ' "'" "'" "'" "'" |
-   ${MAILX} ${ARGS} -Smta=./.tsendmail.sh -Sescape=! \
+   ${MAILX} ${ARGS} -Smta=./.tmta.sh -Sescape=! \
       -C 'C-One  :  Custom One Body' \
       -C 'C-Two:CustomTwoBody' \
       -S customhdr='chdr1:  chdr1 body, chdr2:chdr2 body' \
@@ -4113,12 +4083,7 @@ t_behave_mass_recipients() {
    t_prolog t_behave_mass_recipients
    TRAP_EXIT_ADDONS="./.t*"
 
-   ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${SHELL} -
-		(echo 'From Eucalyptus Sat Jul 08 21:14:57 2017' && ${cat} && echo
-			) >> "${MBOX}"
-	_EOT
-   chmod 0755 ./.tsendmail.sh
+   t_xmta 'Eucalyptus Sat Jul 08 21:14:57 2017'
 
    ${cat} <<'__EOT__' > ./.trc
    define bail {
@@ -4160,16 +4125,16 @@ __EOT__
 
    printf 'm this-goes@nowhere\nbody\n!.\n' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
-      -X'source ./.trc' -Smta=./.tsendmail.sh -Smaximum=2001 \
+      -X'source ./.trc' -Smta=./.tmta.sh -Smaximum=2001 \
       >./.tall 2>&1
    ex0_test behave:mass_recipients-1-estat
    ${cat} ./.tall >> "${MBOX}"
    check behave:mass_recipients-1 - "${MBOX}" '2912243346 51526'
 
-   ${rm} -f "${MBOX}"
+   ${rm} "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.\n' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
-      -St_remove=1 -X'source ./.trc' -Smta=./.tsendmail.sh -Smaximum=2001 \
+      -St_remove=1 -X'source ./.trc' -Smta=./.tmta.sh -Smaximum=2001 \
       >./.tall 2>&1
    ex0_test behave:mass_recipients-2-estat
    ${cat} ./.tall >> "${MBOX}"
@@ -4236,12 +4201,7 @@ t_behave_lreply_futh_rth_etc() {
    t_prolog t_behave_lreply_futh_rth_etc
    TRAP_EXIT_ADDONS="./.t*"
 
-   ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${SHELL} -
-		(echo 'From HumulusLupulus Thu Jul 27 14:41:20 2017' && ${cat} && echo
-			) >> "${MBOX}"
-	_EOT
-   chmod 0755 ./.tsendmail.sh
+   t_xmta 'HumulusLupulus Thu Jul 27 14:41:20 2017'
 
    ${cat} <<-_EOT > ./.tmbox
 	From neverneverland  Sun Jul 23 13:46:25 2017
@@ -4304,7 +4264,7 @@ t_behave_lreply_futh_rth_etc() {
 
    #
 
-   ${cat} <<-'_EOT' | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh \
+   ${cat} <<-'_EOT' | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tmta.sh \
          -Rf ./.tmbox >> "${MBOX}" 2>&1
 	define r {
 	   wysh set m="This is text of \"reply ${1}."
@@ -4401,7 +4361,7 @@ t_behave_lreply_futh_rth_etc() {
 	_EOT
 
    printf 'reply 1\nthank you\n!.\n' |
-      ${MAILX} ${ARGS} -Sescape=! -Smta=./.tsendmail.sh -Sreply-to-honour \
+      ${MAILX} ${ARGS} -Sescape=! -Smta=./.tmta.sh -Sreply-to-honour \
          -Rf ./.tmbox > "${MBOX}" 2>&1
    check behave:lreply_futh_rth_etc-2 0 "${MBOX}" '1045866991 331'
 
@@ -4425,15 +4385,8 @@ t_behave_xxxheads_rfc2047() {
    t_prolog t_behave_xxxheads_rfc2047
    TRAP_EXIT_ADDONS="./.t*"
 
-   ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${SHELL} -
-		(echo 'From GentianaLutea Mon Dec 04 17:15:29 2017' && ${cat} &&
-         echo) >> "${MBOX}"
-	_EOT
-   chmod 0755 ./.tsendmail.sh
+   t_xmta 'GentianaLutea Mon Dec 04 17:15:29 2017'
 
-   #
-   ${rm} -f "${MBOX}"
    echo | ${MAILX} ${ARGS} ${ADDARG_UNI} \
       -s 'a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲' \
       "${MBOX}"
@@ -4441,13 +4394,13 @@ t_behave_xxxheads_rfc2047() {
 
    # Single word (overlong line split -- bad standard! Requires injection of
    # artificial data!!  But can be prevented by using RFC 2047 encoding)
-   ${rm} -f "${MBOX}"
+   ${rm} "${MBOX}"
    i=`${awk} 'BEGIN{for(i=0; i<92; ++i) printf "0123456789_"}'`
    echo | ${MAILX} ${ARGS} -s "${i}" "${MBOX}"
    check behave:xxxheads_rfc2047-2 0 "${MBOX}" '489922370 1718'
 
    # Combination of encoded words, space and tabs of varying sort
-   ${rm} -f "${MBOX}"
+   ${rm} "${MBOX}"
    echo | ${MAILX} ${ARGS} ${ADDARG_UNI} \
       -s "1Abrä Kaspas1 2Abra Katä	b_kaspas2  \
 3Abrä Kaspas3   4Abrä Kaspas4    5Abrä Kaspas5     \
@@ -4459,7 +4412,7 @@ t_behave_xxxheads_rfc2047() {
 
    # Overlong multibyte sequence that must be forcefully split
    # todo This works even before v15.0, but only by accident
-   ${rm} -f "${MBOX}"
+   ${rm} "${MBOX}"
    echo | ${MAILX} ${ARGS} ${ADDARG_UNI} \
       -s "✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
@@ -4468,7 +4421,7 @@ t_behave_xxxheads_rfc2047() {
    check behave:xxxheads_rfc2047-4 0 "${MBOX}" '3029301775 659'
 
    # Trailing WS
-   ${rm} -f "${MBOX}"
+   ${rm} "${MBOX}"
    echo | ${MAILX} ${ARGS} \
       -s "1-1 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-2 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
@@ -4480,7 +4433,7 @@ t_behave_xxxheads_rfc2047() {
    check behave:xxxheads_rfc2047-5 0 "${MBOX}" '4126167195 297'
 
    # Leading and trailing WS
-   ${rm} -f "${MBOX}"
+   ${rm} "${MBOX}"
    echo | ${MAILX} ${ARGS} \
       -s "	 	 2-1 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-2 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
@@ -4490,16 +4443,16 @@ t_behave_xxxheads_rfc2047() {
    check behave:xxxheads_rfc2047-6 0 "${MBOX}" '3600624479 236'
 
    # RFC 2047 in an address field!  (Missing test caused v14.9.6!)
-   ${rm} -f "${MBOX}"
+   ${rm} "${MBOX}"
    echo "Dat Früchtchen riecht häußlich" |
-      ${MAILX} ${ARGS} ${ADDARG_UNI} -Sfullnames -Smta=./.tsendmail.sh \
+      ${MAILX} ${ARGS} ${ADDARG_UNI} -Sfullnames -Smta=./.tmta.sh \
          -s Hühöttchen \
          'Schnödes "Früchtchen" <do@du> (Hä!)'
    check behave:xxxheads_rfc2047-7 0 "${MBOX}" '800505986 368'
 
    # RFC 2047 in an address field, and iconv involved
    if have_feat iconv; then
-      ${rm} -f "${MBOX}"
+      ${rm} "${MBOX}"
       ${cat} > ./.trebox <<_EOT
 From zaza@exam.ple  Fri Mar  2 21:31:56 2018
 Date: Fri, 2 Mar 2018 20:31:45 +0000
@@ -4515,7 +4468,7 @@ Content-Transfer-Encoding: 8bit
 _EOT
       echo reply | ${MAILX} ${ARGS} ${ADDARG_UNI} \
          -Sfullnames -Sreply-in-same-charset \
-         -Smta=./.tsendmail.sh -Rf ./.trebox
+         -Smta=./.tmta.sh -Rf ./.trebox
       check behave:xxxheads_rfc2047-8 0 "${MBOX}" '2821484185 280'
    else
       echo 'behave:xxxheads_rfc2047-8: iconv unsupported, skipped'
@@ -4579,16 +4532,11 @@ t_behave_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
       return
    fi
 
-   ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${SHELL} -
-		(echo 'From DroseriaRotundifolia Thu Aug 03 17:26:25 2017' && ${cat} &&
-         echo) >> "${MBOX}"
-	_EOT
-   chmod 0755 ./.tsendmail.sh
+   t_xmta 'DroseriaRotundifolia Thu Aug 03 17:26:25 2017'
 
    if (</dev/null iconv -f ascii -t iso-2022-jp) >/dev/null 2>&1; then
       ${cat} <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
-            -Smta=./.tsendmail.sh \
+            -Smta=./.tmta.sh \
             -Sescape=! -Smime-encoding=base64 2>./.terr
          set ttycharset=utf-8 sendcharsets=iso-2022-jp
          m t1@exam.ple
@@ -4638,7 +4586,7 @@ t_behave_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
    if (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
       rm -f "${MBOX}" ./.twrite
       ${cat} <<-'_EOT' | LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} \
-            -Smta=./.tsendmail.sh \
+            -Smta=./.tmta.sh \
             -Sescape=! -Smime-encoding=base64 2>./.terr
          set ttycharset=utf-8 sendcharsets=euc-jp
          m t1@exam.ple
@@ -4698,20 +4646,15 @@ t_behave_iconv_mainbody() {
       return
    fi
 
-   ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${SHELL} -
-		(echo 'From HamamelisVirginiana Fri Oct 20 16:23:21 2017' && ${cat} &&
-			echo) >> "${MBOX}"
-	_EOT
-   chmod 0755 ./.tsendmail.sh
+   t_xmta 'HamamelisVirginiana Fri Oct 20 16:23:21 2017'
 
-   printf '–' | ${MAILX} ${ARGS} ${ADDARG_UNI} -Smta=./.tsendmail.sh \
+   printf '–' | ${MAILX} ${ARGS} ${ADDARG_UNI} -Smta=./.tmta.sh \
       -S charset-7bit=us-ascii -S charset-8bit=utf-8 \
       -s '–' over-the@rain.bow 2>./.terr
    check behave:iconv_mainbody-1 0 "${MBOX}" '3634015017 251'
    check behave:iconv_mainbody-2 - ./.terr '4294967295 0'
 
-   printf '–' | ${MAILX} ${ARGS} ${ADDARG_UNI} -Smta=./.tsendmail.sh \
+   printf '–' | ${MAILX} ${ARGS} ${ADDARG_UNI} -Smta=./.tmta.sh \
       -S charset-7bit=us-ascii -S charset-8bit=us-ascii \
       -s '–' over-the@rain.bow 2>./.terr
    exn0_test behave:iconv_mainbody-3
@@ -4779,17 +4722,16 @@ t_behave_q_t_etc_opts() {
    # At the same time testing -q FILE, < FILE and -t FILE
    t__put_body > ./.tin
 
-   ${rm} -f "${MBOX}"
    < ./.tin ${MAILX} ${ARGS} ${ADDARG_UNI} \
       -a ./.tin -s "`t__put_subject`" "${MBOX}"
    check behave:q_t_etc_opts-1 0 "${MBOX}" '3570973309 6646'
 
-   ${rm} -f "${MBOX}"
+   ${rm} "${MBOX}"
    < /dev/null ${MAILX} ${ARGS} ${ADDARG_UNI} \
       -a ./.tin -s "`t__put_subject`" -q ./.tin "${MBOX}"
    check behave:q_t_etc_opts-2 0 "${MBOX}" '3570973309 6646'
 
-   ${rm} -f "${MBOX}"
+   ${rm} "${MBOX}"
    (  echo "To: ${MBOX}" && echo "Subject: `t__put_subject`" && echo &&
       ${cat} ./.tin
    ) | ${MAILX} ${ARGS} ${ADDARG_UNI} -Snodot -a ./.tin -t
@@ -4807,7 +4749,7 @@ t_behave_s_mime() {
    t_prolog t_behave_s_mime
    TRAP_EXIT_ADDONS="./.t.conf ./.tkey.pem ./.tcert.pem ./.tpair.pem"
    TRAP_EXIT_ADDONS="${TRAP_EXIT_ADDONS} ./.VERIFY ./.DECRYPT ./.ENCRYPT"
-   TRAP_EXIT_ADDONS="${TRAP_EXIT_ADDONS} ./.tsendmail.sh"
+   TRAP_EXIT_ADDONS="${TRAP_EXIT_ADDONS} ./.tmta.sh"
 
    printf 'behave:s/mime: .. generating test key and certificate ..\n'
    ${cat} <<-_EOT > ./.t.conf
@@ -4887,18 +4829,14 @@ t_behave_s_mime() {
    fi
 
    # (signing +) encryption / decryption
-   ${cat} <<-_EOT > ./.tsendmail.sh
-		#!${SHELL} -
-		(echo 'From Euphrasia Thu Apr 27 17:56:23 2017' && ${cat}) > ./.ENCRYPT
-	_EOT
-   chmod 0755 ./.tsendmail.sh
+   t_xmta 'Euphrasia Thu Apr 27 17:56:23 2017' ./.ENCRYPT
 
    printf 'behave:s/mime:encrypt+sign: '
    echo bla |
    ${MAILX} ${ARGS} \
       -Ssmime-force-encryption \
       -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
-      -Smta=./.tsendmail.sh \
+      -Smta=./.tmta.sh \
       -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -s 'S/MIME test' recei@ver.com
@@ -4917,7 +4855,7 @@ t_behave_s_mime() {
    ${MAILX} ${ARGS} \
       -Ssmime-force-encryption \
       -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
-      -Smta=./.tsendmail.sh \
+      -Smta=./.tmta.sh \
       -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Ssmime-sign -Sfrom=test@localhost \
       -Serrexit -R \
@@ -4948,10 +4886,11 @@ t_behave_s_mime() {
    fi
 
    printf "behave:s/mime:encrypt: "
+   ${rm} ./.ENCRYPT
    echo bla | ${MAILX} ${ARGS} \
       -Ssmime-force-encryption \
       -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
-      -Smta=./.tsendmail.sh \
+      -Smta=./.tmta.sh \
       -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Sfrom=test@localhost \
       -s 'S/MIME test' recei@ver.com
@@ -4966,11 +4905,11 @@ t_behave_s_mime() {
    ${sed} -e '/^$/,$d' < ./.ENCRYPT > "${MBOX}"
    check behave:s/mime:encrypt:checksum - "${MBOX}" '1937410597 327'
 
-   ${rm} -f ./.DECRYPT
+   ${rm} ./.DECRYPT
    printf 'decrypt ./.DECRYPT\nx\n' | ${MAILX} ${ARGS} \
       -Ssmime-force-encryption \
       -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
-      -Smta=./.tsendmail.sh \
+      -Smta=./.tmta.sh \
       -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
       -Sfrom=test@localhost \
       -Serrexit -R \
@@ -4998,19 +4937,18 @@ t_content() {
    t_prolog t_content
  
    # Test for [260e19d] (Juergen Daubert)
-   ${rm} -f "${MBOX}"
    echo body | ${MAILX} ${ARGS} "${MBOX}"
    check content:004 0 "${MBOX}" '2917662811 98'
 
    # "Test for" [d6f316a] (Gavin Troy)
-   ${rm} -f "${MBOX}"
+   ${rm} "${MBOX}"
    printf "m ${MBOX}\n~s subject1\nEmail body\n~.\nfi ${MBOX}\np\nx\n" |
    ${MAILX} ${ARGS} ${ADDARG_UNI} -Spipe-text/plain="@* ${cat}" > "${BODY}"
    check content:006 0 "${MBOX}" '2099098650 122'
    check content:006-1 - "${BODY}" '794542938 174'
 
    # "Test for" [c299c45] (Peter Hofmann) TODO shouldn't end up QP-encoded?
-   ${rm} -f "${MBOX}"
+   ${rm} "${MBOX}"
    ${awk} 'BEGIN{
       for(i = 0; i < 10000; ++i)
          printf "\xC3\xBC"
