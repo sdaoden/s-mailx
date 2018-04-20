@@ -6527,7 +6527,6 @@ is actively prevented (\*(ID shadowing of linked
 .Sx ENVIRONMENT
 variables and free-form versions of variable chains is not yet detected).
 Also see
-.Ic varedit ,
 .Ic varshow
 and the sections
 .Sx "INTERNAL VARIABLES"
@@ -6997,14 +6996,6 @@ is set to
 .Va ^ERR Ns -CANCELED ,
 and the unmodified input is used as the result; the error number may
 change again due to output or result storage errors.
-.
-.Mx
-.It Ic varedit
-\*(NQ Edit the values of or create the given variable(s) in the
-.Ev EDITOR .
-Boolean variables cannot be edited, and variables can also not be
-.Ic unset
-with this command.
 .
 .Mx
 .It Ic varshow
@@ -8110,10 +8101,6 @@ has the same effect as using
 and
 .Ql set nocrt
 do the same thing.
-Creation or editing of variables can be performed in the
-.Ev EDITOR
-with the command
-.Ic varedit .
 .Ic varshow
 will give more insight on the given variable(s), and
 .Ic set ,

@@ -3090,7 +3090,7 @@ c_varshow(void *v){
 }
 
 FL int
-c_varedit(void *v){
+c_varedit(void *v){ /* TODO v15 drop */
    struct a_amv_var_carrier avc;
    FILE *of, *nf;
    char *val, **argv;
