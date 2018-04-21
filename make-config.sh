@@ -2209,6 +2209,74 @@ else
    feat_is_disabled SOCKETS
 fi # feat_yes SOCKETS
 
+feat_yes SOCKETS &&
+   link_check sockopt '[gs]etsockopt(2)' '#define HAVE_SOCKOPT' << \!
+#include <sys/socket.h>
+#include <stdlib.h>
+# include <errno.h>
+int main(void){
+   socklen_t sol;
+   int sockfd = 3, soe;
+
+   sol = sizeof soe;
+   if(getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &soe, &sol) == -1 &&
+         errno == ENOSYS)
+      return 1;
+   if(setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, NULL, 0) == -1 &&
+         errno == ENOSYS)
+      return 1;
+   return 0;
+}
+!
+
+feat_yes SOCKETS &&
+   link_check nonblocksock 'non-blocking sockets' \
+      '#define HAVE_NONBLOCKSOCK' << \!
+#include <sys/types.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <unistd.h>
+# include <errno.h>
+int main(void){
+   fd_set fdset;
+   struct timeval tv;
+   struct sockaddr_in sin;
+   socklen_t sol;
+   int sofd, soe;
+
+   if((sofd = socket(AF_INET, SOCK_STREAM, 0)) == -1 && errno == ENOSYS)
+      return 1;
+   if(fcntl(sofd, F_SETFL, O_NONBLOCK) != 0)
+      return 1;
+
+   sin.sin_family = AF_INET;
+   sin.sin_addr.s_addr = inet_addr("127.0.0.1");
+   sin.sin_port = htons(80);
+   if(connect(sofd, &sin, sizeof sin) == -1 && errno == ENOSYS)
+      return 1;
+
+   FD_ZERO(&fdset);
+   FD_SET(sofd, &fdset);
+   tv.tv_sec = 10;
+   tv.tv_usec = 0;
+   if((soe = select(sofd + 1, NULL, &fdset, NULL, &tv)) == 1){
+      sol = sizeof soe;
+      getsockopt(sofd, SOL_SOCKET, SO_ERROR, &soe, &sol);
+      if(soe == 0)
+         return 0;
+   }else if(soe == -1 && errno == ENOSYS)
+      return 1;
+
+   close(sofd);
+   return 0;
+}
+!
+
 if feat_yes SOCKETS; then
    link_check getaddrinfo 'getaddrinfo(3)' \
       '#define HAVE_GETADDRINFO' << \!
@@ -2300,23 +2368,8 @@ int main(void){
       feat_bail_required SOCKETS
 fi
 
-feat_yes SOCKETS &&
-run_check setsockopt 'setsockopt(2)' '#define HAVE_SETSOCKOPT' << \!
-#include <sys/socket.h>
-#include <stdlib.h>
-# include <errno.h>
-int main(void){
-   int sockfd = 3;
-
-   if(setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, NULL, 0) == -1 &&
-         errno == ENOSYS)
-      return 1;
-   return 0;
-}
-!
-
-feat_yes SOCKETS && [ -n "${have_setsockopt}" ] &&
-link_check so_sndtimeo 'SO_SNDTIMEO' '#define HAVE_SO_SNDTIMEO' << \!
+feat_yes SOCKETS && [ -n "${have_sockopt}" ] &&
+   link_check so_xtimeo 'SO_{RCV,SND}TIMEO' '#define HAVE_SO_XTIMEO' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
 int main(void){
@@ -2331,8 +2384,8 @@ int main(void){
 }
 !
 
-feat_yes SOCKETS && [ -n "${have_setsockopt}" ] &&
-link_check so_linger 'SO_LINGER' '#define HAVE_SO_LINGER' << \!
+feat_yes SOCKETS && [ -n "${have_sockopt}" ] &&
+   link_check so_linger 'SO_LINGER' '#define HAVE_SO_LINGER' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
 int main(void){

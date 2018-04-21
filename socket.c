@@ -38,6 +38,18 @@
 
 EMPTY_FILE()
 #ifdef HAVE_SOCKETS
+# ifdef HAVE_NONBLOCKSOCK
+/*#  include <sys/types.h>*/
+#  include <sys/select.h>
+/*#  include <sys/time.h>*/
+#  include <arpa/inet.h>
+/*#  include <netinet/in.h>*/
+/*#  include <errno.h>*/
+/*#  include <fcntl.h>*/
+/*#  include <stdlib.h>*/
+/*#  include <unistd.h>*/
+# endif
+
 #include <sys/socket.h>
 
 #include <netdb.h>
@@ -58,6 +70,9 @@ EMPTY_FILE()
 
 /* */
 static bool_t a_socket_open(struct sock *sp, struct url *urlp);
+
+/* */
+static int a_socket_connect(int fd, struct sockaddr *soap, size_t soapl);
 
 /* Write to socket fd, restarting on EINTR, unless anything is written */
 static long a_socket_xwrite(int fd, char const *data, size_t sz);
@@ -81,7 +96,7 @@ __sopen_onsig(int sig) /* TODO someday, we won't need it no more */
 static bool_t
 a_socket_open(struct sock *sp, struct url *urlp) /* TODO sigstuff; refactor */
 {
-# ifdef HAVE_SO_SNDTIMEO
+# ifdef HAVE_SO_XTIMEO
    struct timeval tv;
 # endif
 # ifdef HAVE_SO_LINGER
@@ -106,11 +121,6 @@ a_socket_open(struct sock *sp, struct url *urlp) /* TODO sigstuff; refactor */
 
    n_UNINIT(errval, 0);
 
-   /* Connect timeouts after 30 seconds XXX configurable */
-# ifdef HAVE_SO_SNDTIMEO
-   tv.tv_sec = 30;
-   tv.tv_usec = 0;
-# endif
    serv = (urlp->url_port != NULL) ? urlp->url_port : urlp->url_proto;
 
    if (n_poption & n_PO_D_V)
@@ -186,16 +196,10 @@ jpseudo_jump:
       }
 
       sofd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-      if (sofd >= 0) {
-#  ifdef HAVE_SO_SNDTIMEO
-         (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
-#  endif
-         if (connect(sofd, res->ai_addr, res->ai_addrlen)) {
-            n_perr("connect(2) failed:", errval = n_err_no);
-            close(sofd);
-            sofd = -1;
-         }
-      }
+      if(sofd >= 0 &&
+            (errval = a_socket_connect(sofd, res->ai_addr, res->ai_addrlen)
+               ) != n_ERR_NONE)
+         sofd = -1;
    }
 
 jjumped:
@@ -266,14 +270,9 @@ jjumped:
    if (n_poption & n_PO_D_V)
       n_err(_("%sConnecting to %s:%d ... "),
          n_empty, inet_ntoa(**pptr), (int)urlp->url_portno);
-#  ifdef HAVE_SO_SNDTIMEO
-   (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
-#  endif
-   if (connect(sofd, (struct sockaddr*)&servaddr, sizeof servaddr)) {
-      n_perr("connect(2) failed:", errval = n_err_no);
-      close(sofd);
+   if((errval = a_socket_connect(sofd, (struct sockaddr*)&servaddr,
+         sizeof servaddr)) != n_ERR_NONE)
       sofd = -1;
-   }
 jjumped:
 # endif /* !HAVE_GETADDRINFO */
 
@@ -284,8 +283,8 @@ jjumped:
 
    if (sofd < 0) {
       if (errval != 0) {
+         n_perr(_("Could not connect"), errval);
          n_err_no = errval;
-         n_perr(_("Could not connect"), 0);
       }
       goto jleave;
    }
@@ -294,7 +293,7 @@ jjumped:
       n_err(_("connected.\n"));
 
    /* And the regular timeouts XXX configurable */
-# ifdef HAVE_SO_SNDTIMEO
+# ifdef HAVE_SO_XTIMEO
    tv.tv_sec = 42;
    tv.tv_usec = 0;
    (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
@@ -362,6 +361,74 @@ jleave:
    }
    NYD2_LEAVE;
    return (sofd >= 0);
+}
+
+static int
+a_socket_connect(int fd, struct sockaddr *soap, size_t soapl){
+   int rv;
+   NYD_ENTER;
+
+#ifdef HAVE_NONBLOCKSOCK
+   rv = fcntl(fd, F_GETFL, 0);
+   if(rv != -1 && !fcntl(fd, F_SETFL, rv | O_NONBLOCK)){
+      fd_set fdset;
+      struct timeval tv; /* XXX configurable */
+      socklen_t sol;
+      int i, soe;
+
+      if(connect(fd, soap, soapl) && (i = n_err_no) != n_ERR_INPROGRESS){
+         rv = i;
+         goto jerr_noerrno;
+      }
+
+      FD_ZERO(&fdset);
+      FD_SET(fd, &fdset);
+      if(n_poption & n_PO_D_V){
+         i = 21;
+         tv.tv_sec = 2;
+      }else{
+         i = 1;
+         tv.tv_sec = 42;
+      }
+      tv.tv_usec = 0;
+jrewait:
+      if((soe = select(fd + 1, NULL, &fdset, NULL, &tv)) == 1){
+         i = rv;
+         sol = sizeof rv;
+         getsockopt(fd, SOL_SOCKET, SO_ERROR, &rv, &sol);
+         fcntl(fd, F_SETFL, i);
+         if(n_poption & n_PO_D_V)
+            n_err(" ");
+      }else if(soe == 0){
+         if((n_poption & n_PO_D_V) && --i > 0){
+            n_err(".");
+            tv.tv_sec = 2;
+            tv.tv_usec = 0;
+            goto jrewait;
+         }
+         n_err(_(" timeout\n"));
+         close(fd);
+         rv = n_ERR_TIMEDOUT;
+      }else
+         goto jerr;
+   }else
+#endif /* HAVE_NONBLOCKSOCK */
+
+         if(!connect(fd, soap, soapl))
+      rv = n_ERR_NONE;
+   else{
+#ifdef HAVE_NONBLOCKSOCK
+jerr:
+#endif
+      rv = n_err_no;
+#ifdef HAVE_NONBLOCKSOCK
+jerr_noerrno:
+#endif
+      n_perr(_("connect(2) failed:"), rv);
+      close(fd);
+   }
+   NYD_LEAVE;
+   return rv;
 }
 
 static long
