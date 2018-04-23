@@ -1904,7 +1904,9 @@ a safely initiated and encrypted network connection.
 A central concept of SSL/TLS is that of certificates: as part of each
 network connection setup a (set of) certificates will be exchanged, and
 by using those the identity of the network peer can be cryptographically
-verified.
+verified; if possible the TLS/SNI (ServerNameIndication) extension will
+be enabled in order to allow servers fine-grained control over the
+certificates being used.
 SSL/TLS works by using a locally installed pool of trusted certificates,
 and verifying the connection peer succeeds if that provides
 a certificate which has been issued or is trusted by any certificate in
@@ -1919,7 +1921,7 @@ If this is desired,
 .Va ssl-ca-no-defaults
 should be set to avoid using the default certificate pool, and
 .Va ssl-ca-file
-and/or
+and/or (with special preparation)
 .Va ssl-ca-dir
 should be pointed to a trusted pool of certificates.
 A certificate cannot be more secure than the method its CA certificate
@@ -11068,10 +11070,9 @@ command line option
 .Mx
 .It Va smime-ca-dir , smime-ca-file
 \*(OP Specify the location of trusted CA certificates in PEM (Privacy
-Enhanced Mail) format as a directory and a file, respectively, for the
-purpose of verification of S/MIME signed messages.
-It is possible to set both, the file will be loaded immediately, the
-directory will be searched whenever no match has yet been found.
+Enhanced Mail) for the purpose of verification of S/MIME signed messages.
+.Va ssl-ca-dir
+documents the necessary preparation steps to use the former.
 The set of CA certificates which are built into the SSL/TLS library can
 be explicitly turned off by setting
 .Va smime-ca-no-defaults ,
@@ -11552,25 +11553,26 @@ Then the latter is used to parse the first output line of the
 hook, and, in case the evaluation is successful, the group that has been
 specified via the number is interpreted as a floating point scan score.
 .
-.Mx Va ssl-ca-dir
 .Mx Va ssl-ca-file
+.Mx Va ssl-ca-dir
 .It Va ssl-ca-dir-USER@HOST , ssl-ca-dir-HOST , ssl-ca-dir ,\
   ssl-ca-file-USER@HOST , ssl-ca-file-HOST , ssl-ca-file
-\*(OP Specify the location of trusted CA certificates in PEM (Privacy
-Enhanced Mail) format as a directory and a file, respectively, for the
-purpose of verification of SSL/TLS server certificates.
-It is possible to set both, the file will be loaded immediately, the
-directory will be searched whenever no match has yet been found.
-The set of CA certificates which are built into the SSL/TLS library can
-be explicitly turned off by setting
+\*(OP Directory and file, respectively, pools of trusted CA certificates
+in PEM (Privacy Enhanced Mail) format, for the purpose of verification
+of SSL/TLS server certificates.
+Concurrent use is possible, the file is loaded once needed first, the
+directory lookup is performed anew as a last resort whenever necessary.
+The CA certificate pool built into the SSL/TLS library can be disabled via
 .Va ssl-ca-no-defaults ,
-and further fine-tuning is possible via
-.Va ssl-ca-flags ;
-also see
+further fine-tuning is possible via
+.Va ssl-ca-flags .
+Note the directory search variant requires the certificate files to
+adhere special filename conventions, please see
 .Xr SSL_CTX_load_verify_locations 3
-for more information.
-\*(UA will try to use the TLS/SNI (ServerNameIndication) extension when
-establishing TLS connections to servers identified with hostnames.
+and
+.Xr verify 1
+(or
+.Xr c_rehash 1 ) .
 .
 .
 .Mx Va ssl-ca-flags
