@@ -1862,12 +1862,18 @@ c_verify(void *vp)
    if ((ca_file = ok_vlook(smime_ca_file)) != NULL)
       ca_file = fexpand(ca_file, FEXP_LOCAL | FEXP_NOPROTO);
 
-   if (ca_dir != NULL || ca_file != NULL) {
-      if (X509_STORE_load_locations(store, ca_file, ca_dir) != 1) {
-         ssl_gen_err(_("Error loading %s"),
-            (ca_file != NULL) ? ca_file : ca_dir);
-         goto jleave;
-      }
+   if((ca_dir != NULL || ca_file != NULL) &&
+         X509_STORE_load_locations(store, ca_file, ca_dir) != 1){
+      char const *m1, *m2, *m3;
+
+      if(ca_dir != NULL){
+         m1 = ca_dir;
+         m2 = (ca_file != NULL) ? _(" or ") : n_empty;
+      }else
+         m1 = m2 = n_empty;
+      m3 = (ca_file != NULL) ? ca_file : n_empty;
+      ssl_gen_err(_("Error loading %s%s%s\n"), m1, m2, m3);
+      goto jleave;
    }
 
    /* C99 */{
