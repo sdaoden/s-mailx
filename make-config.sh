@@ -561,8 +561,7 @@ _cc_flags_generic() {
 
    if feat_yes ASAN_ADDRESS; then
       _ccfg=${_CFLAGS}
-      if cc_check -fsanitize=address &&
-            ld_check -fsanitize=address; then
+      if cc_check -fsanitize=address && ld_check -fsanitize=address; then
          :
       else
          feat_bail_required ASAN_ADDRESS
@@ -572,13 +571,22 @@ _cc_flags_generic() {
 
    if feat_yes ASAN_MEMORY; then
       _ccfg=${_CFLAGS}
-      if cc_check -fsanitize=memory &&
-            ld_check -fsanitize=memory &&
+      if cc_check -fsanitize=memory && ld_check -fsanitize=memory &&
             cc_check -fsanitize-memory-track-origins=2 &&
             ld_check -fsanitize-memory-track-origins=2; then
          :
       else
          feat_bail_required ASAN_MEMORY
+         _CFLAGS=${_ccfg}
+      fi
+   fi
+
+   if feat_yes USAN; then
+      _ccfg=${_CFLAGS}
+      if cc_check -fsanitize=undefined && ld_check -fsanitize=undefined; then
+         :
+      else
+         feat_bail_required USAN
          _CFLAGS=${_ccfg}
       fi
    fi

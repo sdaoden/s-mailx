@@ -423,12 +423,14 @@ OPT_NOEXTMD5=no
 # With $OPT_AUTOCC we can make use of the ASan AddressSanitizer and ASan
 # MemorySanitizer of Google
 # (https://github.com/google/sanitizers/wiki/AddressSanitizer).
+# Also USAN (https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html).
 # These are definetely only useful for debugging.
 # Also, external libraries are often problematic (e.g., ncursesw), and
 # ASAN_MEMORY of the tried clang 4.0.0 (4.0.0-2 of ArchLinux) was faulty.
 # Can be "require"d.
 OPT_ASAN_ADDRESS=no
 OPT_ASAN_MEMORY=no
+OPT_USAN=no
 
 # With $OPT_AUTOCC we will use stack protector guards shall the
 # detected compiler support them; this goes in line with our own (heap)
