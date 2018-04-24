@@ -5,7 +5,7 @@ use utf8;
 # Public Domain
 
 # Acceptable "longest distance" from hash-modulo-index to key
-my $MAXDISTANCE_PENALTY = 5;
+my $MAXDISTANCE_PENALTY = 6;
 
 # Generate a more verbose output.  Not for shipout versions.
 my $VERB = 1;

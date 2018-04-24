@@ -1199,9 +1199,11 @@ a_amv_var_canonify(char const *vn){
    if(!upperchar(*vn)){
       char const *vp;
 
-      for(vp = vn; *vp != '\0' && *vp != '@'; ++vp)
-         ;
-      vn = (*vp == '@') ? i_strdup(vn) : vn;
+      for(vp = vn; *vp != '\0'; ++vp)
+         if(*vp == '@'){
+            vn = i_strdup(vn);
+            break;
+         }
    }
    NYD2_LEAVE;
    return vn;
