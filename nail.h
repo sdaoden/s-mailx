@@ -1804,7 +1804,7 @@ ok_v_ssl_curves, /* {chain=1,obsolete=1} */
    ok_v_ssl_features,                  /* {virt=VAL_SSL_FEATURES} */
 ok_v_ssl_key, /* {chain=1,obsolete=1} */
 ok_v_ssl_method, /* {chain=1,obsolete=1} */
-ok_b_ssl_no_default_ca,
+ok_b_ssl_no_default_ca, /* {obsolete=1} */
 ok_v_ssl_protocol, /* {chain=1,obsolete=1} */
    ok_v_ssl_rand_egd,
    ok_v_ssl_rand_file,
