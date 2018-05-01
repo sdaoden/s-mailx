@@ -403,7 +403,7 @@ _spamc_dtor(struct spam_vc *vcp)
 {
    NYD2_ENTER;
    if (vcp->vc_t.spamc.c_super.cf_result != NULL)
-      free(vcp->vc_t.spamc.c_super.cf_result);
+      n_free(vcp->vc_t.spamc.c_super.cf_result);
    NYD2_LEAVE;
 }
 #endif /* HAVE_SPAM_SPAMC */
@@ -902,7 +902,7 @@ _spamfilter_dtor(struct spam_vc *vcp)
    sfp = &vcp->vc_t.filter;
 
    if (sfp->f_super.cf_result != NULL)
-      free(sfp->f_super.cf_result);
+      n_free(sfp->f_super.cf_result);
 # ifdef HAVE_REGEX
    if (sfp->f_score_grpno > 0)
       regfree(&sfp->f_score_regex);
@@ -979,7 +979,7 @@ _spam_cf_interact(struct spam_vc *vcp)
 
    scfp = &vcp->vc_t.cf;
    if (scfp->cf_result != NULL) {
-      free(scfp->cf_result);
+      n_free(scfp->cf_result);
       scfp->cf_result = NULL;
    }
 

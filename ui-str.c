@@ -399,7 +399,7 @@ prstr(char const *s)
    in.l = strlen(s);
    makeprint(&in, &out);
    rp = savestrbuf(out.s, out.l);
-   free(out.s);
+   n_free(out.s);
    NYD_LEAVE;
    return rp;
 }
@@ -415,7 +415,7 @@ prout(char const *s, size_t sz, FILE *fp)
    in.l = sz;
    makeprint(&in, &out);
    n = fwrite(out.s, 1, out.l, fp);
-   free(out.s);
+   n_free(out.s);
    NYD_LEAVE;
    return n;
 }

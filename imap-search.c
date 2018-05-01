@@ -454,7 +454,7 @@ itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
             (ibuf = setinput(mp, m, NEED_HEADER)) != NULL) {
          if (readline_restart(ibuf, &line, &linesize, 0) > 0)
             m->m_time = unixtime(line);
-         free(line);
+         n_free(line);
       }
       break;
    case ITSENTBEFORE:
@@ -699,7 +699,7 @@ matchfield(struct message *m, char const *field, void const *what)
    in.l = strlen(in.s);
    mime_fromhdr(&in, &out, TD_ICONV);
    rv = substr(out.s, what);
-   free(out.s);
+   n_free(out.s);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -791,7 +791,7 @@ jdone:
    *rp = '\0';
    if (hadphrase)
       realnam = ip;
-   free(out.s);
+   n_free(out.s);
    localpart = savestr(np->n_name);
    if ((cp = strrchr(localpart, '@')) != NULL) {
       *cp = '\0';
@@ -840,7 +840,7 @@ imap_search(char const *spec, int f)
 
    if (strcmp(spec, "()")) {
       if (lastspec != NULL)
-         free(lastspec);
+         n_free(lastspec);
       i = strlen(spec);
       lastspec = sbufdup(spec, i);
    } else if (lastspec == NULL) {

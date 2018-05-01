@@ -268,7 +268,7 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
       }
       cp[l] = '\0';
 
-      free(sorta);
+      n_free(sorta);
       n_pstate |= n_PS_EXPAND_MULTIRESULT;
    }else{
       cp = n_UNCONST(N_("File pattern matches multiple results"));
@@ -280,7 +280,7 @@ jleave:
       struct n_strlist *tmp = slp;
 
       slp = slp->sl_next;
-      free(tmp);
+      n_free(tmp);
    }
    NYD_LEAVE;
    return cp;
@@ -1949,7 +1949,7 @@ c_shcodec(void *vp){
          nerrn = n_err_no;
          vp = NULL;
       }
-      free(out.s);
+      n_free(out.s);
    }
 
 jleave:

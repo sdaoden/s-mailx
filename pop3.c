@@ -696,7 +696,7 @@ jretry:
    rv = OKAY;
 jleave:
    if (line != NULL)
-      free(line);
+      n_free(line);
    if (saveint != SIG_IGN)
       safe_signal(SIGINT, saveint);
    if (savepipe != SIG_IGN)

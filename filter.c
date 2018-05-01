@@ -736,7 +736,7 @@ _hf_dump_hrefs(struct htmlflt *self)
          if (w < 0)
             self->hf_flags |= _HF_ERROR;
       }
-      free(hhp);
+      n_free(hhp);
    }
 
    self->hf_flags |= (putc('\n', self->hf_os) == EOF)
@@ -1682,13 +1682,13 @@ htmlflt_reset(struct htmlflt *self, FILE *f)
 
    while ((hfhp = self->hf_hrefs) != NULL) {
       self->hf_hrefs = hfhp->hfh_next;
-      free(hfhp);
+      n_free(hfhp);
    }
 
    if (self->hf_bdat != NULL)
-      free(self->hf_bdat);
+      n_free(self->hf_bdat);
    if (self->hf_line != NULL)
-      free(self->hf_line);
+      n_free(self->hf_line);
 
    memset(self, 0, sizeof *self);
 

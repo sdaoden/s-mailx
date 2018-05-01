@@ -162,9 +162,9 @@ a_attachment_iconv(struct attachment *ap, FILE *ifp){
    ap->a_tmpf = ofp;
 jleave:
    if(inl.s != NULL)
-      free(inl.s);
+      n_free(inl.s);
    if(oul.s != NULL)
-      free(oul.s);
+      n_free(oul.s);
    if(icp != (iconv_t)-1)
       n_iconv_close(icp);
    Fclose(ifp);

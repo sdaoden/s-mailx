@@ -165,7 +165,7 @@ jleave:
       if(strcmp(mnbuf, mailname))
          n_err(_("Mailbox changed: it is likely that existing "
             "rfc822 attachments became invalid!\n"));
-      free(mnbuf);
+      n_free(mnbuf);
    }
    NYD_LEAVE;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
@@ -272,7 +272,7 @@ jdelim_empty:
       rv = n_ERR_NOTOBACCO;
 jleave:
    if(linebuf != NULL)
-      free(linebuf);
+      n_free(linebuf);
    if(fbuf != NULL){
       if(fbuf != n_stdin)
          Fclose(fbuf);
@@ -354,7 +354,7 @@ print_collf(FILE *cf, struct header *hp)
    while(fgetline(&lbuf, &linesize, &cnt, &linelen, cf, 1))
       prout(lbuf, linelen, obuf);
    if(lbuf != NULL)
-      free(lbuf);
+      n_free(lbuf);
 
    if(hp->h_attach != NULL){
       fputs(_("-------\nAttachments:\n"), obuf);
@@ -2732,7 +2732,7 @@ jskiptails:
 
 jleave:
    if (linebuf != NULL)
-      free(linebuf);
+      n_free(linebuf);
    sigprocmask(SIG_BLOCK, &nset, NULL);
    n_pstate &= ~n_PS_COMPOSE_MODE;
    safe_signal(SIGINT, _coll_saveint);

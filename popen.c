@@ -292,17 +292,17 @@ unregister_file(FILE *fp, struct termios **tiosp, n_sighdl_t *osigint)
 
          *pp = p->link;
          if (p->save_cmd != NULL)
-            free(p->save_cmd);
+            n_free(p->save_cmd);
          if (p->realfile != NULL)
-            free(p->realfile);
+            n_free(p->realfile);
          if (p->flags & FP_TERMIOS) {
             if (tiosp != NULL) {
                *tiosp = p->fp_tios;
                *osigint = p->fp_osigint;
             } else
-               free(p->fp_tios);
+               n_free(p->fp_tios);
          }
-         free(p);
+         n_free(p);
          goto jleave;
       }
    DBGOR(n_panic, n_alert)(_("Invalid file pointer"));
@@ -443,7 +443,7 @@ a_popen_child_del(struct child *cp){
    for(;;){
       if(*cpp == cp){
          *cpp = cp->link;
-         free(cp);
+         n_free(cp);
          break;
       }
       if(*(cpp = &(*cpp)->link) == NULL){
@@ -782,7 +782,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
    if (fn != NULL)
       *fn = cp_base;
    else
-      free(cp_base);
+      n_free(cp_base);
 jleave:
    if (relesigs && (fp == NULL || !(oflags & OF_HOLDSIGS)))
       rele_all_sigs();
@@ -792,7 +792,7 @@ jleave:
    return fp;
 jfree:
    if ((cp = cp_base) != NULL)
-      free(cp);
+      n_free(cp);
    goto jleave;
 }
 
@@ -807,7 +807,7 @@ Ftmp_release(char **fn)
    if (cp != NULL) {
       unlink(cp);
       rele_all_sigs();
-      free(cp);
+      n_free(cp);
    }
    NYD_LEAVE;
 }
@@ -821,7 +821,7 @@ Ftmp_free(char **fn) /* TODO DROP: OF_REGISTER_FREEPATH! */
    cp = *fn;
    *fn = NULL;
    if (cp != NULL)
-      free(cp);
+      n_free(cp);
    NYD_LEAVE;
 }
 
@@ -867,7 +867,7 @@ Popen(char const *cmd, char const *mode, char const *sh,
          if ((*cpp)->pid == -1) {
             cp = *cpp;
             *cpp = cp->link;
-            free(cp);
+            n_free(cp);
          } else
             cpp = &(*cpp)->link;
       }
@@ -1003,7 +1003,7 @@ Pclose(FILE *ptr, bool_t dowait)
    }
 
    if(tiosp != NULL)
-      free(tiosp);
+      n_free(tiosp);
 jleave:
    NYD_LEAVE;
    return rv;

@@ -473,7 +473,7 @@ readin(char const *name, struct message *m)
       emptyline = (*buf == '\n');
       ++lines;
    }
-   free(buf);
+   n_free(buf);
    if (!emptyline) {
       /* TODO we need \n\n for mbox format.
        * TODO That is to say we do it wrong here in order to get it right
@@ -561,7 +561,7 @@ jbypass:
    fflush(n_stdout);
 jfree:
    for (m = message; PTRCMP(m, <, message + msgCount); ++m)
-      free(n_UNCONST(m->m_maildir_file));
+      n_free(n_UNCONST(m->m_maildir_file));
    NYD_LEAVE;
 }
 
@@ -876,7 +876,7 @@ subdir_remove(char const *name, char const *sub)
          continue;
       n = strlen(dp->d_name);
       if (UICMP(32, pathend + n +1, >, pathsize))
-         path = srealloc(path, pathsize = pathend + n + 30);
+         path = n_realloc(path, pathsize = pathend + n + 30);
       memcpy(path + pathend, dp->d_name, n +1);
       if (unlink(path) == -1) {
          n_perr(path, 0);
@@ -893,7 +893,7 @@ subdir_remove(char const *name, char const *sub)
    }
    rv = OKAY;
 jleave:
-   free(path);
+   n_free(path);
    NYD_LEAVE;
    return rv;
 }
@@ -1145,7 +1145,7 @@ maildir_append(char const *name, FILE *fp, long offset)
    assert(rv == OKAY);
 jfree:
    n_autorec_relax_gut();
-   free(buf);
+   n_free(buf);
 jleave:
    NYD_LEAVE;
    return rv;

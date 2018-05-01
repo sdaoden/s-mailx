@@ -1303,7 +1303,6 @@ FL void n_free(void *vp n_MEMORY_DEBUG_ARGS);
 # define n_realloc(P,S) (n_realloc)(P, S, __FILE__, __LINE__)
 # define n_calloc(N,S) (n_calloc)(N, S, __FILE__, __LINE__)
 # define n_free(P) (n_free)(P, __FILE__, __LINE__)
-# define free(P) (n_free)(P, __FILE__, __LINE__)
 #else
 # define n_free(P) free(P)
 #endif

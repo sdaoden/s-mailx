@@ -84,7 +84,7 @@ a_cmisc_bangexp(char const *cp){
    }
 
    if(last_bang.s != NULL)
-      free(last_bang.s);
+      n_free(last_bang.s);
    last_bang.s = n_string_cp(bang);
    last_bang.l = bang->s_len;
    bang = n_string_drop_ownership(bang);

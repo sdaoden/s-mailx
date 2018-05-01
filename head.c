@@ -967,7 +967,7 @@ a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem, char **colon)
    NYD2_ENTER;
 
    if (*linebuf == NULL)
-      *linebuf = srealloc(*linebuf, *linesize = 1);
+      *linebuf = n_realloc(*linebuf, *linesize = 1);
    **linebuf = '\0';
    for (;;) {
       if (--rem < 0) {
@@ -1025,7 +1025,7 @@ a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem, char **colon)
       *cp = '\0';
 
       if (line2 != NULL)
-         free(line2);
+         n_free(line2);
       break;
    }
    NYD2_LEAVE;
@@ -1473,7 +1473,7 @@ jebadhead:
       n_err(_("Restoring deleted header lines\n"));
 
    if (linebuf != NULL)
-      free(linebuf);
+      n_free(linebuf);
    NYD_LEAVE;
 }
 
@@ -1517,10 +1517,10 @@ hfield_mult(char const *field, struct message *mp, int mult)
 
 jleave:
    if (linebuf != NULL)
-      free(linebuf);
+      n_free(linebuf);
    if (mult && hfs.s != NULL) {
       colon = savestrbuf(hfs.s, hfs.l);
-      free(hfs.s);
+      n_free(hfs.s);
       hfs.s = colon;
    }
    NYD_LEAVE;
@@ -2066,7 +2066,7 @@ jbrk:
    mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
    ac_free(rname);
    rname = savestr(out.s);
-   free(out.s);
+   n_free(out.s);
 
    while (blankchar(*rname))
       ++rname;
@@ -2168,8 +2168,8 @@ jout:
       cp = savestr(namebuf);
 
    if (linebuf != NULL)
-      free(linebuf);
-   free(namebuf);
+      n_free(linebuf);
+   n_free(namebuf);
 jleave:
    NYD_LEAVE;
    return cp;
@@ -2758,7 +2758,7 @@ jnext_name:
          rv = substr(out.s, sep->ss_body);
 
       if(np == NULL)
-         free(out.s);
+         n_free(out.s);
       if(rv)
          break;
       if(np != NULL && (np = np->n_flink) != NULL){

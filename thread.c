@@ -269,7 +269,7 @@ _interlink(struct message *m, ui32_t cnt, int nmail)
    } else
       root = NULL;
 
-   free(ms);
+   n_free(ms);
    NYD2_LEAVE;
    return root;
 }
@@ -425,9 +425,9 @@ _makethreads(struct message *m, ui32_t cnt, int nmail)
 
    for (i = 0; i < mprime; ++i)
       if (mt[i].mi_id != NULL)
-         free(mt[i].mi_id);
+         n_free(mt[i].mi_id);
 
-   free(mt);
+   n_free(mt);
    mb.mb_threaded = 1;
 jleave:
    NYD2_LEAVE;
@@ -530,7 +530,7 @@ c_thread(void *vp)
 #endif
       _makethreads(message, msgCount, (vp == (void*)-1));
       if (mb.mb_sorted != NULL)
-         free(mb.mb_sorted);
+         n_free(mb.mb_sorted);
       mb.mb_sorted = sstrdup("thread");
    }
 
@@ -552,7 +552,7 @@ c_unthread(void *vp)
 
    mb.mb_threaded = 0;
    if (mb.mb_sorted != NULL)
-      free(mb.mb_sorted);
+      n_free(mb.mb_sorted);
    mb.mb_sorted = NULL;
 
    for (m = message; PTRCMP(m, <, message + msgCount); ++m)
@@ -698,7 +698,7 @@ c_sort(void *vp)
    }
 
    if (mb.mb_sorted != NULL)
-      free(mb.mb_sorted);
+      n_free(mb.mb_sorted);
    mb.mb_sorted = sstrdup(args[0]);
 
    method = methnames[i].me_method;
@@ -777,7 +777,7 @@ c_sort(void *vp)
                in.l = strlen(in.s);
                mime_fromhdr(&in, &out, TD_ICONV);
                ms[n].ms_u.ms_char = sstrdup(subject_re_trim(out.s));
-               free(out.s);
+               n_free(out.s);
                makelow(ms[n].ms_u.ms_char);
             } else
                ms[n].ms_u.ms_char = sstrdup(n_empty);
@@ -810,7 +810,7 @@ c_sort(void *vp)
    case SORT_TO:
    case SORT_SUBJECT:
       for (i = 0; i < n; ++i)
-         free(ms[i].ms_u.ms_char);
+         n_free(ms[i].ms_u.ms_char);
       /* FALLTHRU */
    default:
       break;

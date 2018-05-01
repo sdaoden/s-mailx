@@ -1694,12 +1694,12 @@ load_crls(X509_STORE *store, enum okeys fok, enum okeys dok)
          memcpy(fn + ds + 1, dp->d_name, es + 1);
          if (load_crl1(store, fn) != OKAY) {
             closedir(dirp);
-            free(fn);
+            n_free(fn);
             goto jleave;
          }
       }
       closedir(dirp);
-      free(fn);
+      n_free(fn);
 #else /* old OpenSSL */
       n_err(_("This OpenSSL version is too old to use CRLs\n"));
       goto jleave;

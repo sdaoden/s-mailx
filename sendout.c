@@ -1109,7 +1109,7 @@ jleave:
    if(Fclose(fo) != 0)
       rv = FAL0;
 j_leave:
-   free(buf);
+   n_free(buf);
    NYD_LEAVE;
    return rv;
 }
@@ -1434,7 +1434,7 @@ __mta_debug(struct sendbundle *sbp, char const *mta, char const **args)
       n_err(">>> %s\n", buf);
    }
    if (buf != NULL)
-      free(buf);
+      n_free(buf);
    NYD_LEAVE;
 }
 
@@ -1648,7 +1648,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
       fwrite(buf, sizeof *buf, c, fo);
    }
    if (buf != NULL)
-      free(buf);
+      n_free(buf);
    if (ferror(fo)) {
       n_perr(_("infix_resend: temporary mail file"), 0);
       goto jleave;
@@ -1702,7 +1702,7 @@ mail(struct name *to, struct name *cc, struct name *bcc, char const *subject,
    mail1(&head, 0, NULL, quotefile, recipient_record, 0);
 
    if (subject != NULL)
-      free(out.s);
+      n_free(out.s);
    NYD_LEAVE;
    return 0; /* TODO only for main.c, -> n_exit_status, BUT: ARGH! */
 }

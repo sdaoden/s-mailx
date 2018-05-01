@@ -676,11 +676,11 @@ n_termcap_destroy(void){
 
       while((tmp = a_termcap_g->tg_ext_ents) != NULL){
          a_termcap_g->tg_ext_ents = tmp->tee_next;
-         free(tmp);
+         n_free(tmp);
       }
    }
    n_string_gut(&a_termcap_g->tg_dat);
-   free(a_termcap_g);
+   n_free(a_termcap_g);
    a_termcap_g = NULL;
 #endif
    NYD_LEAVE;

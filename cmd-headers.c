@@ -80,7 +80,7 @@ _parse_from_(struct message *mp, char date[n_FROM_DATEBUF]) /* TODO line pool */
          (hlen = readline_restart(ibuf, &hline, &hsize, 0)) > 0)
       extract_date_from_from_(hline, hlen, date);
    if (hline != NULL)
-      free(hline);
+      n_free(hline);
    NYD_LEAVE;
 }
 
@@ -563,7 +563,7 @@ jputcb:
    putc('\n', f);
 
    if (subjline != NULL && subjline != (char*)-1)
-      free(subjline);
+      n_free(subjline);
    NYD2_LEAVE;
 }
 
@@ -602,10 +602,10 @@ a_cmd__subject(struct message *mp, bool_t threaded, size_t yetprinted)
          in.l = strlen(in.s = os);
          mime_fromhdr(&in, &oout, TD_ICONV | TD_ISPR);
          x = asccasecmp(ms, subject_re_trim(oout.s));
-         free(oout.s);
+         n_free(oout.s);
 
          if (!x) {
-            free(out.s);
+            n_free(out.s);
             rv = (char*)-1;
          }
          break;

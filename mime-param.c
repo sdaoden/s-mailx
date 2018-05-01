@@ -358,7 +358,7 @@ jleave:
 jerr:
    while ((np = head) != NULL) {
       head = np->rj_next;
-      free(np);
+      n_free(np);
    }
    if (n_poption & n_PO_D_V) {
       if (emsg == NULL)
@@ -425,7 +425,7 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
       f |= _ERRORS;
    }
 
-   for (sou.s = NULL, sou.l = 0, no = 0; (np = head) != NULL; free(np)) {
+   for (sou.s = NULL, sou.l = 0, no = 0; (np = head) != NULL; n_free(np)) {
       head = np->rj_next;
 
       if (np->rj_no != no++) {
@@ -476,7 +476,7 @@ jhex_putc:
          sin.s[sin.l] = '\0';
 
          n_str_add_buf(&sou, sin.s, sin.l);
-         free(sin.s);
+         n_free(sin.s);
       }
    }
 
@@ -502,7 +502,7 @@ jhex_putc:
             *emsg = N_("character set conversion failed on value");
          f |= _ERRORS;
       }
-      free(sou.s);
+      n_free(sou.s);
       sou = sin;
 
       n_iconv_close(fhicd);
@@ -510,7 +510,7 @@ jhex_putc:
 #endif
 
    memcpy(*result = salloc(sou.l +1), sou.s, sou.l +1);
-   free(sou.s);
+   n_free(sou.s);
    NYD2_LEAVE;
    return ((f & _ERRORS) != 0);
 }
@@ -836,7 +836,7 @@ mime_param_get(char const *param, char const *headerbody) /* TODO rewr. */
                ti.l = strlen(ti.s = rv);
                mime_fromhdr(&ti, &to, TD_ISPR | TD_ICONV | TD_DELCTRL);
                rv = savestrbuf(to.s, to.l);
-               free(to.s);
+               n_free(to.s);
             }
             goto jleave;
          default:

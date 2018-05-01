@@ -1471,7 +1471,7 @@ n_iconv_onetime_cp(enum n_iconv_flags icf,
    if(!n_iconv_str(icd, icf, &out, &in, NULL))
       rv = savestrbuf(out.s, out.l);
    if(out.s != NULL)
-      free(out.s);
+      n_free(out.s);
 
    iconv_close(icd);
 jleave:

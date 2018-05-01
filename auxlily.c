@@ -1862,7 +1862,7 @@ jclear:
    while((enp = a_aux_err_head) != NULL){
       a_aux_err_head = enp->ae_next;
       n_string_gut(&enp->ae_str);
-      free(enp);
+      n_free(enp);
    }
    goto jleave;
 }

@@ -263,7 +263,7 @@ jleave:
       while (nhead != NULL) {
          ntail = nhead;
          nhead = nhead->nrc_next;
-         free(ntail);
+         n_free(ntail);
       }
 j_leave:
    _nrc_list = nrc;
@@ -559,7 +559,7 @@ _agent_shell_lookup(struct url *urlp, char const *comm) /* TODO v15-compat */
    rv = TRU1;
 jleave:
    if (s.s != NULL)
-      free(s.s);
+      n_free(s.s);
    NYD2_LEAVE;
    return rv;
 }
@@ -686,7 +686,7 @@ c_urlcodec(void *vp){
          n_pstate_err_no = n_err_no;
          vp = NULL;
       }
-      free(out.s);
+      n_free(out.s);
    }
 
 jleave:
@@ -1600,7 +1600,7 @@ jclear:
       _nrc_list = NULL;
    while ((nrc = _nrc_list) != NULL) {
       _nrc_list = nrc->nrc_next;
-      free(nrc);
+      n_free(nrc);
    }
    goto jleave;
 }
@@ -1644,13 +1644,13 @@ cram_md5_string(struct str const *user, struct str const *pass,
    if(!b64_decode(&out, &in))
       goto jleave;
    if(out.l >= INT_MAX){
-      free(out.s);
+      n_free(out.s);
       out.s = NULL;
       goto jleave;
    }
 
    hmac_md5((uc_i*)out.s, out.l, (uc_i*)pass->s, pass->l, digest);
-   free(out.s);
+   n_free(out.s);
    cp = md5tohex(salloc(MD5TOHEX_SIZE +1), digest);
 
    in.l = user->l + MD5TOHEX_SIZE +1;

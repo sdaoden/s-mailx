@@ -1144,7 +1144,7 @@ a_message_match_dash(struct message *mp, char const *str){
    in.l = strlen(in.s = hbody);
    mime_fromhdr(&in, &out, TD_ICONV);
    rv = substr(out.s, hfield);
-   free(out.s);
+   n_free(out.s);
 jleave:
    NYD2_LEAVE;
    return rv;
@@ -1363,7 +1363,7 @@ FL void
 message_reset(void){
    NYD_ENTER;
    if(message != NULL){
-      free(message);
+      n_free(message);
       message = NULL;
    }
    msgCount = 0;

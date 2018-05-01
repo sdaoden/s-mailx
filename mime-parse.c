@@ -348,7 +348,7 @@ _mime_parse_multipart(struct message *zmp, struct mimepart *ip,
 
 jleave:
    if (line != NULL)
-      free(line);
+      n_free(line);
    NYD_LEAVE;
    return TRU1;
 }

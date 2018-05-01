@@ -243,7 +243,7 @@ jecontent:
                n_shexp_quote_cp(*srcs, FAL0));
       }
    if (line != NULL)
-      free(line);
+      n_free(line);
 jleave:
    _mt_is_init = TRU1;
    NYD_LEAVE;
@@ -795,13 +795,13 @@ jdobuf:
       goto jdobuf;
 jstopit:
    if (in.s != NULL)
-      free(in.s);
+      n_free(in.s);
    if (dec.s != NULL)
-      free(dec.s);
+      n_free(dec.s);
    if (outrest.s != NULL)
-      free(outrest.s);
+      n_free(outrest.s);
    if (inrest.s != NULL)
-      free(inrest.s);
+      n_free(inrest.s);
 
    fseek(mb.mb_itf, start_off, SEEK_SET);
 
@@ -1031,7 +1031,7 @@ c_unmimetype(void *v)
 jdelall:
          while ((mtnp = _mt_list) != NULL) {
             _mt_list = mtnp->mt_next;
-            free(mtnp);
+            n_free(mtnp);
          }
          continue;
       }
@@ -1062,7 +1062,7 @@ jdelall:
                _mt_list = nnp;
             else
                lnp->mt_next = nnp;
-            free(mtnp);
+            n_free(mtnp);
             mtnp = nnp;
             match = TRU1;
          } else

@@ -762,7 +762,7 @@ jsoftnl:
          outrest->l = s.s_len;
          n_string_drop_ownership(sp);
          if(cp != NULL)
-            free(cp);
+            n_free(cp);
       }
       break;
    }
@@ -958,9 +958,9 @@ b64_decode_header(struct str *out, struct str const *in){
          out = NULL;
 
       if(inr.s != NULL)
-         free(inr.s);
+         n_free(inr.s);
       if(outr.s != NULL)
-         free(outr.s);
+         n_free(outr.s);
    }
    NYD_LEAVE;
    return (out != NULL);
@@ -983,7 +983,7 @@ b64_decode_part(struct str *out, struct str const *in, struct str *outrest,
       if(len > 0)
          n_string_push_buf(&s, out->s, len);
       if(out->s != NULL)
-         free(out->s);
+         n_free(out->s);
    }
    out->s = NULL, out->l = 0;
    n_string_creat(&workbuf);

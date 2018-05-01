@@ -98,7 +98,7 @@ a_crese_reedit(char const *subj){
       memcpy(newsubj, "Re: ", sizeof("Re: ") -1);
       memcpy(&newsubj[sizeof("Re: ") -1], cp, i);
 
-      free(out.s);
+      n_free(out.s);
    }
    NYD2_LEAVE;
    return newsubj;
@@ -297,7 +297,7 @@ a_crese_make_ref_and_cs(struct message *mp, struct header *head) /* TODO ASAP */
    } else if (oldmsgid)
       memcpy(newref, oldmsgid, oldmsgidlen +1);
    n = extract(newref, GREF);
-   free(newref);
+   n_free(newref);
 
    /* Limit number of references TODO better on parser side */
    while (n->n_flink != NULL)
@@ -739,7 +739,7 @@ a_crese__fwdedit(char *subj){
       memcpy(&newsubj[5], out.s, out.l +1);
    }
 
-   free(out.s);
+   n_free(out.s);
 jleave:
    NYD2_LEAVE;
    return newsubj;

@@ -1231,12 +1231,12 @@ rec_dequeue(void)
          break;
       }
       if (rq != NULL)
-         free(rq);
+         n_free(rq);
       rq = rp;
       rp = rp->rec_next;
    }
    if (rq != NULL)
-      free(rq);
+      n_free(rq);
 
    record = recend = NULL;
    if (rv == OKAY && UICMP(z, exists, >, msgCount)) {
@@ -1249,7 +1249,7 @@ rec_dequeue(void)
    }
 
    if (rv == STOP) {
-      free(message);
+      n_free(message);
       message = omessage;
    }
 jleave:
@@ -1266,7 +1266,7 @@ rec_rmqueue(void)
    for (rp = record; rp != NULL;) {
       struct record *tmp = rp;
       rp = rp->rec_next;
-      free(tmp);
+      n_free(tmp);
    }
    record = recend = NULL;
    NYD_LEAVE;
@@ -1671,7 +1671,7 @@ _imap_getcred(struct mailbox *mbp, struct ccred *ccredp, struct url *urlp)
       if (var != NULL) {
          if (old != NULL) {
             n_var_vset(var, (uintptr_t)old);
-            free(old);
+            n_free(old);
          } else
             n_var_vclear(var);
       }
@@ -1726,7 +1726,7 @@ jduppass:
    }
 
    if (!same_imap_account && mb.mb_imap_pass != NULL) {
-      free(mb.mb_imap_pass);
+      n_free(mb.mb_imap_pass);
       mb.mb_imap_pass = NULL;
    }
    if (!_imap_getcred(&mb, &ccred, urlp)) {
@@ -1755,9 +1755,9 @@ jduppass:
    else
       n_pstate |= n_PS_EDIT;
    if (mb.mb_imap_account != NULL)
-      free(mb.mb_imap_account);
+      n_free(mb.mb_imap_account);
    if (mb.mb_imap_pass != NULL)
-      free(mb.mb_imap_pass);
+      n_free(mb.mb_imap_pass);
    mb.mb_imap_account = sstrdup(urlp->url_p_eu_h_p);
    /* TODO This is a hack to allow '@boxname'; in the end everything will be an
     * TODO object, and mailbox will naturally have an URL and credentials */
@@ -1779,7 +1779,7 @@ jduppass:
          mb.mb_otf = NULL;
       }
       if (mb.mb_imap_mailbox != NULL)
-         free(mb.mb_imap_mailbox);
+         n_free(mb.mb_imap_mailbox);
       assert(urlp->url_path.s != NULL);
       imap_delim_init(&mb, urlp);
       mb.mb_imap_mailbox = sstrdup(imap_path_normalize(&mb, urlp->url_path.s));
@@ -1988,7 +1988,7 @@ imap_fetchdata(struct mailbox *mp, struct message *m, size_t expected,
          break;
       }
    }
-   free(line);
+   n_free(line);
    NYD_LEAVE;
    return excess;
 }
@@ -2076,7 +2076,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
          if (fseek(mp->mb_itf, (long)mailx_positionof(m->m_block, m->m_offset),
                SEEK_SET) < 0 ||
                fread(hdr, 1, m->m_size, mp->mb_itf) != m->m_size) {
-            free(hdr);
+            n_free(hdr);
             break;
          }
          head = hdr;
@@ -2181,7 +2181,7 @@ out:
    if (ok == OKAY)
       putcache(mp, m);
    if (head != NULL)
-      free(head);
+      n_free(head);
    if (interrupts)
       n_go_onintr_for_imap();
    return ok;
@@ -2389,11 +2389,11 @@ imap_exit(struct mailbox *mp)
 
    rv = __imap_exit(mp);
 #if 0 /* TODO the option today: memory leak(s) and halfway reuse or nottin */
-   free(mp->mb_imap_pass);
-   free(mp->mb_imap_account);
-   free(mp->mb_imap_mailbox);
+   n_free(mp->mb_imap_pass);
+   n_free(mp->mb_imap_account);
+   n_free(mp->mb_imap_mailbox);
    if (mp->mb_cache_directory != NULL)
-      free(mp->mb_cache_directory);
+      n_free(mp->mb_cache_directory);
 #ifndef HAVE_DEBUG /* TODO ASSERT LEGACY */
    mp->mb_imap_account =
    mp->mb_imap_mailbox =
@@ -2737,7 +2737,7 @@ c_imapcodec(void *vp){
          n_pstate_err_no = n_err_no;
          vp = NULL;
       }
-      free(out.s);
+      n_free(out.s);
    }
 
 jleave:
@@ -2980,7 +2980,7 @@ jleave:
    if (queuefp != NULL)
       Fclose(queuefp);
    if (buf != NULL)
-      free(buf);
+      n_free(buf);
    NYD_LEAVE;
    return rv;
 }
@@ -3069,7 +3069,7 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp, long offset)
    }
    rv = OKAY;
 jleave:
-   free(buf);
+   n_free(buf);
    NYD_LEAVE;
    return rv;
 }
@@ -3549,13 +3549,13 @@ imap_copyuid(struct mailbox *mp, struct message *m, const char *name)
    putcache(&xmb, &xm);
 jleave:
    if (xmb.mb_cache_directory != NULL)
-      free(xmb.mb_cache_directory);
+      n_free(xmb.mb_cache_directory);
    if (xmb.mb_imap_mailbox != NULL)
-      free(xmb.mb_imap_mailbox);
+      n_free(xmb.mb_imap_mailbox);
    if (xmb.mb_imap_pass != NULL)
-      free(xmb.mb_imap_pass);
+      n_free(xmb.mb_imap_pass);
    if (xmb.mb_imap_account != NULL)
-      free(xmb.mb_imap_account);
+      n_free(xmb.mb_imap_account);
    NYD_LEAVE;
    return rv;
 }
@@ -3598,7 +3598,7 @@ imap_appenduid(struct mailbox *mp, FILE *fp, time_t t, long off1, long xsize,
    xm.m_content_info = CI_HAVE_HEADER | CI_HAVE_BODY;
    putcache(&xmb, &xm);
 
-   free(xmb.mb_imap_mailbox);
+   n_free(xmb.mb_imap_mailbox);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -3667,7 +3667,7 @@ imap_appenduid_cached(struct mailbox *mp, FILE *fp)
       imap_unquotestr(name));
    rv = OKAY;
 jstop:
-   free(buf);
+   n_free(buf);
    if (tp)
       Fclose(tp);
    NYD_LEAVE;
@@ -4027,7 +4027,7 @@ trycreate:
    ftruncate(fileno(fp), 0);
    if (gotcha)
       imap_close(mp);
-   free(buf);
+   n_free(buf);
    return rok;
 }
 
@@ -4235,7 +4235,7 @@ transflags(struct message *omessage, long omsgCount, int transparent)
    dot = newdot;
    setdot(newdot);
    prevdot = newprevdot;
-   free(omessage);
+   n_free(omessage);
    NYD_LEAVE;
 }
 

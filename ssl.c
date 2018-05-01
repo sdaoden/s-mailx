@@ -163,14 +163,14 @@ jetmp:
       fwrite(head->ml_buf, sizeof *head->ml_buf, head->ml_len, *bp);
       tail = head;
       head = head->ml_next;
-      free(tail);
+      n_free(tail);
    }
    putc('\n', *bp);
    while (fgetline(&buf, &bufsize, &cnt, &buflen, ip, 0) != NULL)
       fwrite(buf, sizeof *buf, buflen, *bp);
    fflush_rewind(*bp);
 
-   free(buf);
+   n_free(buf);
    rv = OKAY;
 jleave:
    NYD_LEAVE;
@@ -346,7 +346,7 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
 
    Fclose(hp);
    Fclose(bp);
-   free(buf);
+   n_free(buf);
 
    fflush(mb.mb_otf);
    if (ferror(mb.mb_otf)) {

@@ -512,7 +512,7 @@ a_colour__tag_identify(struct a_colour_map_id const *cmip, char const *ctag,
                   REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
             n_err(_("`colour': invalid regular expression: %s: %s\n"),
                n_shexp_quote_cp(ctag, FAL0), n_regex_err_to_doc(NULL, s));
-            free(*regexpp);
+            n_free(*regexpp);
             goto jetag;
          }
       }else
@@ -620,10 +620,10 @@ a_colour_map_unref(struct a_colour_map *self){
 #ifdef HAVE_REGEX
       if(self->cm_regex != NULL){
          regfree(self->cm_regex);
-         free(self->cm_regex);
+         n_free(self->cm_regex);
       }
 #endif
-      free(self);
+      n_free(self);
    }
    NYD2_LEAVE;
 }

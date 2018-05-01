@@ -585,7 +585,7 @@ c_endif(void *v){
       rv = 1;
    }else{
       n_go_data->gdc_ifcond = cinp->cin_outer;
-      free(cinp);
+      n_free(cinp);
       rv = 0;
    }
    NYD_LEAVE;
@@ -612,7 +612,7 @@ n_cnd_if_stack_del(struct n_go_data_ctx *gdcp){
 
    while((cinp = vp) != NULL){
       vp = cinp->cin_outer;
-      free(cinp);
+      n_free(cinp);
    }
    NYD2_LEAVE;
 }

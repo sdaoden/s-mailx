@@ -371,7 +371,7 @@ initcache(struct mailbox *mp)
    NYD_ENTER;
 
    if (mp->mb_cache_directory != NULL)
-      free(mp->mb_cache_directory);
+      n_free(mp->mb_cache_directory);
    mp->mb_cache_directory = NULL;
    if ((name = encname(mp, "", 1, NULL)) == NULL)
       goto jleave;
@@ -538,7 +538,7 @@ purge(struct mailbox *mp, struct message *m, long mc, struct cw *cw,
          else
             remve(contents[j++]);
       }
-      free(contents);
+      n_free(contents);
    }
    if (cwret(cw) == STOP) {
       n_err(_("Fatal: Cannot change back to current directory.\n"));
@@ -599,7 +599,7 @@ cache_setptr(enum fedit_mode fm, int transparent)
    omsgCount = msgCount;
 
    if (mb.mb_cache_directory != NULL) {
-      free(mb.mb_cache_directory);
+      n_free(mb.mb_cache_directory);
       mb.mb_cache_directory = NULL;
    }
    if ((name = encname(&mb, "", 1, NULL)) == NULL)
@@ -627,7 +627,7 @@ cache_setptr(enum fedit_mode fm, int transparent)
    srelax_rele();
 
    if (contents != NULL)
-      free(contents);
+      n_free(contents);
    mb.mb_type = MB_CACHE;
    mb.mb_perm = ((n_poption & n_PO_R_FLAG) || (fm & FEDIT_RDONLY)
          ) ? 0 : MB_DELE;
@@ -701,7 +701,7 @@ cache_remove(const char *name)
    path[pathend++] = '/';
    path[pathend] = '\0';
    if ((dirp = opendir(path)) == NULL) {
-      free(path);
+      n_free(path);
       goto jleave;
    }
    while ((dp = readdir(dirp)) != NULL) {
@@ -717,7 +717,7 @@ cache_remove(const char *name)
       if (unlink(path) < 0) {
          n_perr(path, 0);
          closedir(dirp);
-         free(path);
+         n_free(path);
          rv = STOP;
          goto jleave;
       }
@@ -725,7 +725,7 @@ cache_remove(const char *name)
    closedir(dirp);
    path[pathend] = '\0';
    rmdir(path);   /* no error on failure, might contain submailboxes */
-   free(path);
+   n_free(path);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -833,7 +833,7 @@ cache_dequeue(struct mailbox *mp)
       dequeue1(mp);
       {  char *x = mp->mb_imap_mailbox;
          mp->mb_imap_mailbox = oldbox;
-         free(x);
+         n_free(x);
       }
    }
    closedir(dirp);
