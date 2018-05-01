@@ -300,7 +300,7 @@ makeprint(struct str const *in, struct str *out) /* TODO <-> TTYCHARSET!! */
    NYD_ENTER;
 
    out->s =
-   outp = smalloc(DBG( msz = ) in->l*n_mb_cur_max + 2u*n_mb_cur_max +1);
+   outp = n_alloc(DBG( msz = ) in->l*n_mb_cur_max + 2u*n_mb_cur_max +1);
    inp = in->s;
    maxp = inp + in->l;
 

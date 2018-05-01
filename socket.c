@@ -511,7 +511,7 @@ swrite1(struct sock *sp, char const *data, int sz, int use_buffer)
 
       if (sp->s_wbuf == NULL) {
          sp->s_wbufsize = 4096;
-         sp->s_wbuf = smalloc(sp->s_wbufsize);
+         sp->s_wbuf = n_alloc(sp->s_wbufsize);
          sp->s_wbufpos = 0;
       }
       while (sp->s_wbufpos + sz > sp->s_wbufsize) {

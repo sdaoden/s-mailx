@@ -1193,7 +1193,7 @@ rec_dequeue(void)
       goto jleave;
 
    omessage = message;
-   message = smalloc((msgCount+1) * sizeof *message);
+   message = n_alloc((msgCount+1) * sizeof *message);
    if (msgCount)
       memcpy(message, omessage, msgCount * sizeof *message);
    memset(&message[msgCount], 0, sizeof *message);
@@ -2071,7 +2071,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
       item = "BODY.PEEK[]";
       resp = "BODY[]";
       if ((m->m_content_info & CI_HAVE_HEADER) && m->m_size) {
-         char *hdr = smalloc(m->m_size);
+         char *hdr = n_alloc(m->m_size);
          fflush(mp->mb_otf);
          if (fseek(mp->mb_itf, (long)mailx_positionof(m->m_block, m->m_offset),
                SEEK_SET) < 0 ||
@@ -2909,7 +2909,7 @@ imap_append1(struct mailbox *mp, const char *name, FILE *fp, off_t off1,
       rv = OKAY;
    }
 
-   buf = smalloc(bufsize = LINESIZE);
+   buf = n_alloc(bufsize = LINESIZE);
    buflen = 0;
 jagain:
    size = xsize;
@@ -2998,7 +2998,7 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp, long offset)
    enum okay rv;
    NYD_ENTER;
 
-   buf = smalloc(bufsize = LINESIZE);
+   buf = n_alloc(bufsize = LINESIZE);
    buflen = 0;
    cnt = fsize(fp);
    offs = offset /* BSD will move due to O_APPEND! ftell(fp) */;
@@ -3617,7 +3617,7 @@ imap_appenduid_cached(struct mailbox *mp, FILE *fp)
    enum okay rv = STOP;
    NYD_ENTER;
 
-   buf = smalloc(bufsize = LINESIZE);
+   buf = n_alloc(bufsize = LINESIZE);
    buflen = 0;
    cnt = fsize(fp);
    if (fgetline(&buf, &bufsize, &cnt, &buflen, fp, 0) == NULL)
@@ -3927,7 +3927,7 @@ imap_dequeue(struct mailbox *mp, FILE *fp)
    enum okay ok = OKAY, rok = OKAY;
    NYD_X;
 
-   buf = smalloc(bufsize = LINESIZE);
+   buf = n_alloc(bufsize = LINESIZE);
    buflen = 0;
    cnt = fsize(fp);
    while ((offs1 = ftell(fp)) >= 0 &&

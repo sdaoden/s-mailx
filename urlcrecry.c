@@ -218,7 +218,7 @@ jm_h:
 
       if (!seen_default && (*user != '\0' || *pass != '\0')) {
          size_t hl = strlen(host), ul = strlen(user), pl = strlen(pass);
-         struct nrc_node *nx = smalloc(n_VSTRUCT_SIZEOF(struct nrc_node,
+         struct nrc_node *nx = n_alloc(n_VSTRUCT_SIZEOF(struct nrc_node,
                nrc_dat) + hl +1 + ul +1 + pl +1);
 
          if (nhead != NULL)

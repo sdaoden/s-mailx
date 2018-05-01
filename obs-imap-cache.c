@@ -696,7 +696,7 @@ cache_remove(const char *name)
    if ((dir = encname(&mb, "", 0, imap_fileof(name))) == NULL)
       goto jleave;
    pathend = strlen(dir);
-   path = smalloc(pathsize = pathend + 30);
+   path = n_alloc(pathsize = pathend + 30);
    memcpy(path, dir, pathend);
    path[pathend++] = '/';
    path[pathend] = '\0';

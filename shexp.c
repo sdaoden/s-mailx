@@ -252,7 +252,7 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
          l += xslp->sl_len + 1;
       }
 
-      sorta = smalloc(sizeof(*sorta) * no);
+      sorta = n_alloc(sizeof(*sorta) * no);
       no = 0;
       for(xslp = slp; xslp != NULL; xslp = xslp->sl_next)
          sorta[no++] = xslp;

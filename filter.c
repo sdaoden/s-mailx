@@ -1320,7 +1320,7 @@ jimg_put:
       self = _hf_param(self, &param, "href");
       /* Ignore non-external links */
       if (param.s != NULL && *param.s != '#') {
-         struct htmlflt_href *hhp = smalloc(
+         struct htmlflt_href *hhp = n_alloc(
                n_VSTRUCT_SIZEOF(struct htmlflt_href, hfh_dat) + param.l +1);
 
          hhp->hfh_next = self->hf_hrefs;
@@ -1468,7 +1468,7 @@ _hf_add_data(struct htmlflt *self, char const *dat, size_t len)
    if ((cp = self->hf_curr) != NULL)
       cp_max = self->hf_bmax;
    else {
-      cp = self->hf_curr = self->hf_bdat = smalloc(LINESIZE);
+      cp = self->hf_curr = self->hf_bdat = n_alloc(LINESIZE);
       cp_max = self->hf_bmax = cp + LINESIZE -1; /* (Always room for NUL!) */
    }
    hot = (cp != self->hf_bdat);
@@ -1695,7 +1695,7 @@ htmlflt_reset(struct htmlflt *self, FILE *f)
    if (f != NULL) {
       ui32_t sw = n_MAX(_HF_MINLEN, (ui32_t)n_scrnwidth);
 
-      self->hf_line = smalloc((size_t)sw * n_mb_cur_max +1);
+      self->hf_line = n_alloc((size_t)sw * n_mb_cur_max +1);
       self->hf_lmax = sw;
 
       if (n_psonce & n_PSO_UNICODE) /* TODO not truly generic */

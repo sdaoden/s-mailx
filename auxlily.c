@@ -1673,7 +1673,7 @@ n_verr(char const *format, va_list ap){
       /* Link it into the `errors' message ring */
       if((enp = a_aux_err_tail) == NULL){
 jcreat:
-         enp = smalloc(sizeof *enp);
+         enp = n_alloc(sizeof *enp);
          enp->ae_next = NULL;
          n_string_creat(&enp->ae_str);
          if(a_aux_err_tail != NULL)

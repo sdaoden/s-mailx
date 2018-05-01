@@ -283,7 +283,7 @@ jeeqaaster:
 
          /* Create new node and insert it sorted; should be faster than
           * creating an unsorted list and sorting it after parsing */
-         np = smalloc(sizeof *np);
+         np = n_alloc(sizeof *np);
          np->rj_next = NULL;
          np->rj_no = (ui32_t)i;
          np->rj_is_enc = (c == '*');
@@ -449,7 +449,7 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
          n_str_add_buf(&sou, np->rj_dat + np->rj_val_off, i);
       else {
          /* Perform percent decoding */
-         sin.s = smalloc(i +1);
+         sin.s = n_alloc(i +1);
          sin.l = 0;
 
          for (cp = np->rj_dat + np->rj_val_off; i > 0;) {

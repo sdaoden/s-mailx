@@ -1057,7 +1057,7 @@ a_sendout__savemail(char const *name, FILE *fp, bool_t resend){
    char *buf;
    NYD_ENTER;
 
-   buf = smalloc(bufsize = LINESIZE);
+   buf = n_alloc(bufsize = LINESIZE);
    rv = FAL0;
 
    if((fo = n_fopen_any(name, "a+", &fs)) == NULL){

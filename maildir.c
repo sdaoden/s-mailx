@@ -459,7 +459,7 @@ readin(char const *name, struct message *m)
    cnt = fsize(fp);
    fseek(mb.mb_otf, 0L, SEEK_END);
    offset = ftell(mb.mb_otf);
-   buf = smalloc(bufsize = LINESIZE);
+   buf = n_alloc(bufsize = LINESIZE);
    buflen = 0;
    while (fgetline(&buf, &bufsize, &cnt, &buflen, fp, 1) != NULL) {
       /* Since we simply copy over data without doing any transfer
@@ -857,7 +857,7 @@ subdir_remove(char const *name, char const *sub)
 
    namelen = strlen(name);
    sublen = strlen(sub);
-   path = smalloc(pathsize = namelen + sublen + 30 +1);
+   path = n_alloc(pathsize = namelen + sublen + 30 +1);
    memcpy(path, name, namelen);
    path[namelen] = '/';
    memcpy(path + namelen + 1, sub, sublen);
@@ -1068,7 +1068,7 @@ maildir_append(char const *name, FILE *fp, long offset)
    if ((rv = mkmaildir(name)) != OKAY)
       goto jleave;
 
-   buf = smalloc(bufsize = LINESIZE); /* TODO line pool; signals */
+   buf = n_alloc(bufsize = LINESIZE); /* TODO line pool; signals */
    buflen = 0;
    cnt = fsize(fp);
    offs = offset /* BSD will move due to O_APPEND! ftell(fp) */;

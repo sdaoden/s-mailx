@@ -1680,7 +1680,7 @@ load_crls(X509_STORE *store, enum okeys fok, enum okeys dok)
       }
 
       ds = strlen(crl_dir);
-      fn = smalloc(fs = ds + 20);
+      fn = n_alloc(fs = ds + 20);
       memcpy(fn, crl_dir, ds);
       fn[ds] = '/';
       while ((dp = readdir(dirp)) != NULL) {

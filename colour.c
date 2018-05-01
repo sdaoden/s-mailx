@@ -284,7 +284,7 @@ a_colour_mux(char **argv){
       }
 
       tl = (ctag != NULL && !a_COLOUR_TAG_IS_SPECIAL(ctag)) ? strlen(ctag) : 0;
-      cmp = smalloc(n_VSTRUCT_SIZEOF(struct a_colour_map, cm_buf) +
+      cmp = n_alloc(n_VSTRUCT_SIZEOF(struct a_colour_map, cm_buf) +
             tl +1 + (ul = strlen(argv[1])) +1 + (cl = strlen(cp)) +1);
 
       /* .cm_buf stuff */
@@ -508,7 +508,7 @@ a_colour__tag_identify(struct a_colour_map_id const *cmip, char const *ctag,
          int s;
 
          if(regexpp != NULL &&
-               (s = regcomp(*regexpp = smalloc(sizeof(regex_t)), ctag,
+               (s = regcomp(*regexpp = n_alloc(sizeof(regex_t)), ctag,
                   REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
             n_err(_("`colour': invalid regular expression: %s: %s\n"),
                n_shexp_quote_cp(ctag, FAL0), n_regex_err_to_doc(NULL, s));

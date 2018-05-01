@@ -247,7 +247,7 @@ _interlink(struct message *m, ui32_t cnt, int nmail)
 
    autocollapse = (!nmail && !(n_pstate & n_PS_HOOK_NEWMAIL) &&
          ok_blook(autocollapse));
-   ms = smalloc(sizeof *ms * cnt);
+   ms = n_alloc(sizeof *ms * cnt);
 
    for (n = 0, i = 0; UICMP(32, i, <, cnt); ++i) {
       if (m[i].m_parent == NULL) {

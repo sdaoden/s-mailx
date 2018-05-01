@@ -168,7 +168,7 @@ _mt_init(void)
    /* Always load our built-ins */
    for (tail = NULL, i = 0; i < n_NELEM(_mt_bltin); ++i) {
       struct mtbltin const *mtbp = _mt_bltin + i;
-      struct mtnode *mtnp = smalloc(sizeof *mtnp);
+      struct mtnode *mtnp = n_alloc(sizeof *mtnp);
 
       if (tail != NULL)
          tail->mt_next = mtnp;
@@ -394,7 +394,7 @@ jeinval:
       goto jleave;
 
    /*  */
-   mtnp = smalloc(sizeof(*mtnp) + tlen + len +1);
+   mtnp = n_alloc(sizeof(*mtnp) + tlen + len +1);
    mtnp->mt_next = NULL;
    mtnp->mt_flags = orflags;
    mtnp->mt_mtlen = (ui32_t)tlen;

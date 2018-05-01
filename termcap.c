@@ -222,7 +222,7 @@ jeinvent:
             if((f & a_TERMCAP_F_TYPE_MASK) == n_TERMCAP_CAPTYPE_STRING){
                struct a_termcap_ext_ent *teep;
 
-               teep = smalloc(n_VSTRUCT_SIZEOF(struct a_termcap_ext_ent,
+               teep = n_alloc(n_VSTRUCT_SIZEOF(struct a_termcap_ext_ent,
                      tee_name) + kl +1);
                teep->tee_next = a_termcap_g->tg_ext_ents;
                a_termcap_g->tg_ext_ents = teep;
@@ -616,7 +616,7 @@ n_termcap_init(void){
 
    assert((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK));
 
-   a_termcap_g = smalloc(sizeof *a_termcap_g);
+   a_termcap_g = n_alloc(sizeof *a_termcap_g);
    a_termcap_g->tg_ext_ents = NULL;
    memset(&a_termcap_g->tg_ents[0], 0, sizeof(a_termcap_g->tg_ents));
    if((ccp = ok_vlook(termcap)) != NULL)
@@ -885,7 +885,7 @@ n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
          goto jleave;
 #ifdef HAVE_TERMCAP
       nlen = strlen(ndat) +1;
-      teep = smalloc(n_VSTRUCT_SIZEOF(struct a_termcap_ext_ent, tee_name) +
+      teep = n_alloc(n_VSTRUCT_SIZEOF(struct a_termcap_ext_ent, tee_name) +
             nlen);
       tep = &teep->tee_super;
       teep->tee_next = a_termcap_g->tg_ext_ents;

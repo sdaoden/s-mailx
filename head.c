@@ -2110,7 +2110,7 @@ name1(struct message *mp, int reptype)
    if (reptype == 0 && (cp = hfield1("sender", mp)) != NULL && *cp != '\0')
       goto jleave;
 
-   namebuf = smalloc(namesize = 1);
+   namebuf = n_alloc(namesize = 1);
    namebuf[0] = 0;
    if (mp->m_flag & MNOFROM)
       goto jout;

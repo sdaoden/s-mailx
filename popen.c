@@ -150,7 +150,7 @@ register_file(FILE *fp, int omode, int pid, int flags,
    assert(!(flags & FP_UNLINK) || realfile != NULL);
    assert(!(flags & FP_TERMIOS) || tiosp != NULL);
 
-   fpp = smalloc(sizeof *fpp);
+   fpp = n_alloc(sizeof *fpp);
    fpp->fp = fp;
    fpp->omode = omode;
    fpp->pid = pid;
@@ -711,7 +711,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
 
    /* Prepare the template string once, then iterate over the random range */
    cp_base =
-   cp = smalloc(strlen(tmpdir) + 1 + maxname +1);
+   cp = n_alloc(strlen(tmpdir) + 1 + maxname +1);
    cp = sstpcpy(cp, tmpdir);
    *cp++ = '/';
    {
@@ -905,7 +905,7 @@ Popen(char const *cmd, char const *mode, char const *sh,
    if ((n_psonce & n_PSO_INTERACTIVE) && (fd0 == n_CHILD_FD_PASS ||
          fd1 == n_CHILD_FD_PASS)) {
       osigint = n_signal(SIGINT, SIG_IGN);
-      tiosp = smalloc(sizeof *tiosp);
+      tiosp = n_alloc(sizeof *tiosp);
       tcgetattr(STDIN_FILENO, tiosp);
       n_TERMCAP_SUSPEND(TRU1);
    }

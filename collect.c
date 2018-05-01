@@ -2683,7 +2683,7 @@ jreasksend:
       }
 
       if(linebuf == NULL)
-         linebuf = smalloc(linesize = LINESIZE);
+         linebuf = n_alloc(linesize = LINESIZE);
       c = '\0';
       while((i = fread(linebuf, sizeof *linebuf, linesize, n_UNVOLATILE(sigfp)))
             > 0){

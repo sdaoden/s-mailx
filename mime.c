@@ -177,7 +177,7 @@ _fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
 
       if (outrest != NULL && outrest->l > 0) {
          in.l = outrest->l + input->l;
-         in.s = buf = smalloc(in.l +1);
+         in.s = buf = n_alloc(in.l +1);
          memcpy(in.s, outrest->s, outrest->l);
          memcpy(&in.s[outrest->l], input->s, input->l);
          outrest->l = 0;
@@ -261,7 +261,7 @@ _fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
       if (i != in.l) {
          if (i > 0) {
             n_str_assign_buf(outrest, cp, in.l - i);
-            cp = smalloc(i +1);
+            cp = n_alloc(i +1);
             memcpy(cp, in.s, in.l = i);
             (in.s = cp)[in.l = i] = '\0';
             flags &= ~_TD_BUFCOPY;
@@ -1015,7 +1015,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 
    out->l = 0;
    if (in->l == 0) {
-      *(out->s = smalloc(1)) = '\0';
+      *(out->s = n_alloc(1)) = '\0';
       goto jleave;
    }
    out->s = NULL;

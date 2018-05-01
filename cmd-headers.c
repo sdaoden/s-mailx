@@ -46,7 +46,7 @@ static void    _parse_from_(struct message *mp, char date[n_FROM_DATEBUF]);
 
 /* Print out the header of a specific message
  * a_cmd__hprf: handle *headline*
- * a_cmd__subject: -1 if Subject: yet seen, otherwise smalloc()d Subject:
+ * a_cmd__subject: -1 if Subject: yet seen, otherwise n_alloc()d Subject:
  * a_cmd__putindent: print out the indenting in threaded display
  * a_cmd__putuc: print out a Unicode character or a substitute for it, return
  *    0 on error or wcwidth() (or 1) on success */

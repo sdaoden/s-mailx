@@ -126,7 +126,7 @@ jetmp:
    }
 
    head = tail = NULL;
-   buf = smalloc(bufsize = LINESIZE);
+   buf = n_alloc(bufsize = LINESIZE);
    cnt = (xcount < 0) ? fsize(ip) : xcount;
 
    while (fgetline(&buf, &bufsize, &cnt, &buflen, ip, 0) != NULL &&
@@ -135,7 +135,7 @@ jetmp:
          if (keep)
             fputs("X-Encoded-", *hp);
          for (;;) {
-            struct myline *ml = smalloc(n_VSTRUCT_SIZEOF(struct myline, ml_buf
+            struct myline *ml = n_alloc(n_VSTRUCT_SIZEOF(struct myline, ml_buf
                   ) + buflen +1);
             if (tail != NULL)
                tail->ml_next = ml;

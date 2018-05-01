@@ -286,7 +286,7 @@ a_crese_make_ref_and_cs(struct message *mp, struct header *head) /* TODO ASAP */
       reflen += oldmsgidlen;
    }
 
-   newref = smalloc(reflen);
+   newref = n_alloc(reflen);
    if (oldref != NULL) {
       memcpy(newref, oldref, oldreflen +1);
       if (oldmsgid != NULL) {

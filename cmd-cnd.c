@@ -480,7 +480,7 @@ a_ccnd_if(void *v, bool_t iselif){
    NYD_ENTER;
 
    if(!iselif){
-      cinp = smalloc(sizeof *cinp);
+      cinp = n_alloc(sizeof *cinp);
       cinp->cin_outer = n_go_data->gdc_ifcond;
    }else{
       cinp = n_go_data->gdc_ifcond;

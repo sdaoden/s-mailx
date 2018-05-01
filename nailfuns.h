@@ -1306,7 +1306,6 @@ FL void n_free(void *vp n_MEMORY_DEBUG_ARGS);
 #else
 # define n_free(P) free(P)
 #endif
-#define smalloc(SZ) n_alloc(SZ)
 #define srealloc(P,SZ) n_realloc(P, SZ)
 #define scalloc(N,SZ) n_calloc(N, SZ)
 
