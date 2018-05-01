@@ -1306,7 +1306,6 @@ FL void n_free(void *vp n_MEMORY_DEBUG_ARGS);
 #else
 # define n_free(P) free(P)
 #endif
-#define srealloc(P,SZ) n_realloc(P, SZ)
 
 /* Fluctuating heap memory (supposed to exist for one command loop tick) */
 
@@ -1462,7 +1461,7 @@ FL struct str * qp_encode_buf(struct str *out, void const *vp, size_t vp_len,
                   enum qpflags flags);
 #endif
 
-/* The buffers of out and *rest* will be managed via srealloc().
+/* The buffers of out and *rest* will be managed via n_realloc().
  * If inrest_or_null is needed but NULL an error occurs, otherwise tolerant.
  * Return FAL0 on error; caller is responsible to free buffers */
 FL bool_t      qp_decode_header(struct str *out, struct str const *in);
@@ -1493,7 +1492,7 @@ FL struct str * b64_encode_cp(struct str *out, char const *cp,
  * TODO pre v15 callers should ensure that no endless loop is entered because
  * TODO the inrest cannot be converted and ends up as inrest over and over:
  * TODO give NULL to stop such loops.
- * The buffers of out and possibly *rest* will be managed via srealloc().
+ * The buffers of out and possibly *rest* will be managed via n_realloc().
  * Returns FAL0 on error; caller is responsible to free buffers.
  * XXX FAL0 is effectively not returned for _part*() variants,
  * XXX (instead replacement characters are produced for invalid data.
@@ -2224,17 +2223,17 @@ FL bool_t      is_ascncaseprefix(char const *as1, char const *as2, size_t sz);
 
 /* struct str related support funs TODO _cp->_cs! */
 
-/* *self->s* is srealloc()ed */
+/* *self->s* is n_realloc()ed */
 #define n_str_dup(S, T)          n_str_assign_buf((S), (T)->s, (T)->l)
 
-/* *self->s* is srealloc()ed; if buflen==UIZ_MAX strlen() is called unless buf
- * is NULL; buf may be NULL if buflen is 0 */
+/* *self->s* is n_realloc()ed; if buflen==UIZ_MAX strlen() is called unless
+ * buf is NULL; buf may be NULL if buflen is 0 */
 FL struct str * n_str_assign_buf(struct str *self,
                   char const *buf, uiz_t buflen n_MEMORY_DEBUG_ARGS);
 #define n_str_assign(S, T)       n_str_assign_buf(S, (T)->s, (T)->l)
 #define n_str_assign_cp(S, CP)   n_str_assign_buf(S, CP, UIZ_MAX)
 
-/* *self->s* is srealloc()ed, *self->l* incremented; if buflen==UIZ_MAX
+/* *self->s* is n_realloc()ed, *self->l* incremented; if buflen==UIZ_MAX
  * strlen() is called unless buf is NULL; buf may be NULL if buflen is 0 */
 FL struct str * n_str_add_buf(struct str *self, char const *buf, uiz_t buflen
                   n_MEMORY_DEBUG_ARGS);

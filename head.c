@@ -1013,7 +1013,7 @@ a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem, char **colon)
          if (PTRCMP(cp + c, >=, *linebuf + *linesize - 2)) {
             size_t diff = PTR2SIZE(cp - *linebuf),
                colondiff = PTR2SIZE(*colon - *linebuf);
-            *linebuf = srealloc(*linebuf, *linesize += c + 2);
+            *linebuf = n_realloc(*linebuf, *linesize += c + 2);
             cp = &(*linebuf)[diff];
             *colon = &(*linebuf)[colondiff];
          }
@@ -2121,7 +2121,7 @@ name1(struct message *mp, int reptype)
 
 jnewname:
    if (namesize <= linesize)
-      namebuf = srealloc(namebuf, namesize = linesize +1);
+      namebuf = n_realloc(namebuf, namesize = linesize +1);
    for (cp = linebuf; *cp != '\0' && *cp != ' '; ++cp)
       ;
    for (; blankchar(*cp); ++cp)
@@ -2138,7 +2138,7 @@ jnewname:
    if (strncmp(cp, "From", 4))
       goto jout;
    if (namesize <= linesize)
-      namebuf = srealloc(namebuf, namesize = linesize + 1);
+      namebuf = n_realloc(namebuf, namesize = linesize + 1);
 
    while ((cp = strchr(cp, 'r')) != NULL) {
       if (!strncmp(cp, "remote", 6)) {

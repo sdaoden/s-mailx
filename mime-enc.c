@@ -507,7 +507,7 @@ qp_encode(struct str *out, struct str const *in, enum qpflags flags){
          out = NULL;
          goto jerr;
       }
-      out->s = (flags & QP_SALLOC) ? salloc(lnlen) : srealloc(out->s, lnlen);
+      out->s = (flags & QP_SALLOC) ? salloc(lnlen) : n_realloc(out->s, lnlen);
    }
    qp = out->s;
    is = in->s;
@@ -810,7 +810,7 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags){
          out = NULL;
          goto jleave;
       }
-      out->s = (flags & B64_SALLOC) ? salloc(i) : srealloc(out->s, i);
+      out->s = (flags & B64_SALLOC) ? salloc(i) : n_realloc(out->s, i);
    }
    b64 = out->s;
 
@@ -929,9 +929,9 @@ b64_decode(struct str *out, struct str const *in){
 
    /* Ignore an empty input, as may happen for an empty final line */
    if(work.l == 0)
-      out->s = srealloc(out->s, 1);
+      out->s = n_realloc(out->s, 1);
    else if(work.l >= 4 && !(work.l & 3)){
-      out->s = srealloc(out->s, len +1);
+      out->s = n_realloc(out->s, len +1);
       if((ssize_t)(len = a_me_b64_decode(out, &work)) < 0)
          goto jerr;
    }else
@@ -1094,7 +1094,7 @@ jrepl:
          if(b64l > 0 && b64l != 4){
             if(inrest_or_null == NULL)
                goto jerr;
-            inrest_or_null->s = srealloc(inrest_or_null->s, b64l +1);
+            inrest_or_null->s = n_realloc(inrest_or_null->s, b64l +1);
             inrest_or_null->s[0] = ca;
             if(b64l > 1)
                inrest_or_null->s[1] = cb;

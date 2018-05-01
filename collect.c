@@ -1956,7 +1956,7 @@ jcont:
       /* No command escapes, interrupts not expected.  Simply copy STDIN */
       if(!(n_psonce & n_PSO_INTERACTIVE) &&
             !(n_poption & (n_PO_t_FLAG | n_PO_TILDE_FLAG))){
-         linebuf = srealloc(linebuf, linesize = LINESIZE);
+         linebuf = n_realloc(linebuf, linesize = LINESIZE);
          while ((i = fread(linebuf, sizeof *linebuf, linesize, n_stdin)) > 0) {
             if (i != fwrite(linebuf, sizeof *linebuf, i, _coll_fp))
                goto jerr;

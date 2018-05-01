@@ -710,7 +710,7 @@ cache_remove(const char *name)
          continue;
       n = strlen(dp->d_name) + 1;
       if (pathend + n > pathsize)
-         path = srealloc(path, pathsize = pathend + n + 30);
+         path = n_realloc(path, pathsize = pathend + n + 30);
       memcpy(path + pathend, dp->d_name, n);
       if (stat(path, &st) < 0 || (st.st_mode & S_IFMT) != S_IFREG)
          continue;

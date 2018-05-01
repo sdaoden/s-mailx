@@ -1690,7 +1690,7 @@ load_crls(X509_STORE *store, enum okeys fok, enum okeys dok)
          if (dp->d_name[0] == '.')
             continue;
          if (ds + (es = strlen(dp->d_name)) + 2 < fs)
-            fn = srealloc(fn, fs = ds + es + 20);
+            fn = n_realloc(fn, fs = ds + es + 20);
          memcpy(fn + ds + 1, dp->d_name, es + 1);
          if (load_crl1(store, fn) != OKAY) {
             closedir(dirp);

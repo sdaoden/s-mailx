@@ -610,7 +610,7 @@ mkname(struct n_timespec const *tsp, enum mflag f, char const *pref)
          n = size = 0;
          do {
             if (UICMP(32, n, <, size + 8))
-               node = srealloc(node, size += 20);
+               node = n_realloc(node, size += 20);
             switch (*cp) {
             case '/':
                node[n++] = '\\', node[n++] = '0',

@@ -734,7 +734,7 @@ jos_leave:
       }
 
       if (in.l + 1 >= lsz)
-         in.s = srealloc(in.s, lsz += LINESIZE);
+         in.s = n_realloc(in.s, lsz += LINESIZE);
       if (c != EOF)
          in.s[in.l++] = (char)c;
       if (!dobuf)

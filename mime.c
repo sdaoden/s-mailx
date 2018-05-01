@@ -219,7 +219,7 @@ _fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
          if(outrest != NULL && in.l > 0){
             /* Incomplete multibyte at EOF is special xxx _INVAL? */
             if (flags & _TD_EOF) {
-               out.s = srealloc(out.s, out.l + sizeof(n_unirepl));
+               out.s = n_realloc(out.s, out.l + sizeof(n_unirepl));
                if(n_psonce & n_PSO_UNICODE){
                   memcpy(&out.s[out.l], n_unirepl, sizeof(n_unirepl) -1);
                   out.l += sizeof(n_unirepl) -1;
@@ -774,7 +774,7 @@ static void
 _append_str(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
 {
    NYD_ENTER;
-   *buf = srealloc(*buf, *sz += len);
+   *buf = n_realloc(*buf, *sz += len);
    memcpy(&(*buf)[*pos], str, len);
    *pos += len;
    NYD_LEAVE;

@@ -845,7 +845,7 @@ imap_response_parse(void)
    NYD2_ENTER;
 
    if (parsebufsize < imapbufsize + 1)
-      parsebuf = srealloc(parsebuf, parsebufsize = imapbufsize);
+      parsebuf = n_realloc(parsebuf, parsebufsize = imapbufsize);
    memcpy(parsebuf, imapbuf, strlen(imapbuf) + 1);
    pp = parsebuf;
    switch (*ip) {
@@ -1240,7 +1240,7 @@ rec_dequeue(void)
 
    record = recend = NULL;
    if (rv == OKAY && UICMP(z, exists, >, msgCount)) {
-      message = srealloc(message, (exists + 1) * sizeof *message);
+      message = n_realloc(message, (exists + 1) * sizeof *message);
       memset(&message[msgCount], 0, (exists - msgCount + 1) * sizeof *message);
       for (i = msgCount; i < exists; ++i)
          imap_init(&mb, i);

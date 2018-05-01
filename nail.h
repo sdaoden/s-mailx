@@ -948,7 +948,7 @@ enum mime_enc {
 /* xxx QP came later, maybe rewrite all to use mime_enc_flags directly? */
 enum mime_enc_flags {
    MIMEEF_NONE,
-   MIMEEF_SALLOC     = 1<<0,  /* Use salloc(), not srealloc().. */
+   MIMEEF_SALLOC     = 1<<0,  /* Use salloc(), not n_realloc().. */
    /* ..result .s,.l point to user buffer of *_LINESIZE+[+[+]] bytes instead */
    MIMEEF_BUF        = 1<<1,
    MIMEEF_CRLF       = 1<<2,  /* (encode) Append "\r\n" to lines */

@@ -1591,7 +1591,7 @@ jdo_c:
                size_t i = PTR2SIZE(cp - self->hf_bdat),
                   m = PTR2SIZE(self->hf_bmax - self->hf_bdat) + LINESIZE;
 
-               cp = self->hf_bdat = srealloc(self->hf_bdat, m);
+               cp = self->hf_bdat = n_realloc(self->hf_bdat, m);
                self->hf_bmax = cp_max = &cp[m -1];
                self->hf_curr = (cp += i);
             }
