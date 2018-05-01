@@ -3177,7 +3177,7 @@ imap_list1(struct mailbox *mp, const char *base, struct list_item **list,
       if (response_status == RESPONSE_OTHER &&
             response_other == MAILBOX_DATA_LIST && imap_parse_list() == OKAY) {
          cp = imap_path_decode(imap_unquotestr(list_name), NULL);
-         lp = csalloc(1, sizeof *lp);
+         lp = n_autorec_calloc(1, sizeof *lp);
          lp->l_name = cp;
          for (bp = base; *bp != '\0' && *bp == *cp; ++bp)
             ++cp;

@@ -1347,7 +1347,6 @@ FL void *n_autorec_calloc_from_pool(void *vp, size_t nmemb, size_t size
 
 /* TODO obsolete c?salloc -> n_autorec_* */
 #define salloc(SZ) n_autorec_alloc_from_pool(NULL, SZ)
-#define csalloc(NM,SZ) n_autorec_calloc_from_pool(NULL, NM, SZ)
 
 /* Pseudo alloca (and also auto-reclaimed in _memory_reset()/_pool_pop()) */
 FL void *n_lofi_alloc(size_t size n_MEMORY_DEBUG_ARGS);

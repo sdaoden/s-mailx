@@ -302,7 +302,7 @@ jerr_fopen:
       }
    }
 
-   nap = a_attachment_setup_base(csalloc(1, sizeof *nap), file);
+   nap = a_attachment_setup_base(n_autorec_calloc(1, sizeof *nap), file);
    nap->a_path_user = file_user;
    if(msgno >= 0)
       nap = a_attachment_setup_msg(nap, file, msgno);
