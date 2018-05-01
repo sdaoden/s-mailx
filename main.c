@@ -118,7 +118,7 @@ VL ui16_t const n_class_char[1 + 0x7F] = {
 static char const *a_main_oarg;
 static int a_main_oind, /*_oerr,*/ a_main_oopt;
 
-/* Our own little getopt(3); note --help is special-treated as 'h' */
+/* A little getopt(3).  Note: --help/--version == -h/-v */
 static int a_main_getopt(int argc, char * const argv[], char const *optstring);
 
 /* */
@@ -207,12 +207,16 @@ a_main_getopt(int argc, char * const argv[], char const *optstring){
       goto jleave;
    }
 
-   /* Special support for --help, which is quite common */
-   if(a_main_oopt == '-' && !strcmp(curp, "-help") &&
-         &curp[-1] == argv[a_main_oind]){
+   /* Special support for --help and --version, which are quite common */
+   if(a_main_oopt == '-' && &curp[-1] == argv[a_main_oind]){
       ++a_main_oind;
       rv = 'h';
-      goto jleave;
+      if(!strcmp(curp, "-help"))
+         goto jleave;
+      rv = 'V';
+      if(!strcmp(curp, "-version"))
+         goto jleave;
+      --a_main_oind;
    }
 
    /* Definitive error */
