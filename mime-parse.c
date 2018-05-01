@@ -371,7 +371,7 @@ __mime_parse_new(struct mimepart *ip, struct mimepart **np, off_t offs,
       ++(*part);
       sz = (ip->m_partstring != NULL) ? strlen(ip->m_partstring) : 0;
       sz += 20;
-      (*np)->m_partstring = salloc(sz);
+      (*np)->m_partstring = n_autorec_alloc(sz);
       if (ip->m_partstring)
          snprintf((*np)->m_partstring, sz, "%s.%u", ip->m_partstring, *part);
       else

@@ -202,7 +202,7 @@ _pop3_lookup_apop_timestamp(char const *bp)
       goto jleave;
 
    tl = PTR2SIZE(++ep - cp);
-   rp = salloc(tl +1);
+   rp = n_autorec_alloc(tl +1);
    memcpy(rp, cp, tl);
    rp[tl] = '\0';
 jleave:

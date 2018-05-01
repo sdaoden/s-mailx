@@ -507,7 +507,8 @@ qp_encode(struct str *out, struct str const *in, enum qpflags flags){
          out = NULL;
          goto jerr;
       }
-      out->s = (flags & QP_SALLOC) ? salloc(lnlen) : n_realloc(out->s, lnlen);
+      out->s = (flags & QP_SALLOC) ? n_autorec_alloc(lnlen)
+            : n_realloc(out->s, lnlen);
    }
    qp = out->s;
    is = in->s;
@@ -810,7 +811,8 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags){
          out = NULL;
          goto jleave;
       }
-      out->s = (flags & B64_SALLOC) ? salloc(i) : n_realloc(out->s, i);
+      out->s = (flags & B64_SALLOC) ? n_autorec_alloc(i)
+            : n_realloc(out->s, i);
    }
    b64 = out->s;
 

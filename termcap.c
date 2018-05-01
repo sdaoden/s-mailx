@@ -178,7 +178,7 @@ a_termcap_init_var(struct str const *termvar){
 
    assert(termvar->s[termvar->l] == '\0');
    i = termvar->l +1;
-   cbp_base = salloc(i);
+   cbp_base = n_autorec_alloc(i);
    memcpy(cbp = cbp_base, termvar->s, i);
 
    for(; (ccp = n_strsep(&cbp, ',', TRU1)) != NULL;){

@@ -501,7 +501,7 @@ a_ccnd_if(void *v, bool_t iselif){
    /* For heaven's sake, support comments _today_ TODO wyshlist.. */
    for(argc = 0, argv = v; argv[argc] != NULL; ++argc)
       if(argv[argc][0] == '#'){
-         char const **nav = salloc(sizeof(char*) * (argc + 1));
+         char const **nav = n_autorec_alloc(sizeof(char*) * (argc + 1));
          size_t i;
 
          for(i = 0; i < argc; ++i)

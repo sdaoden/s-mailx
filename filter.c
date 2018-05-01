@@ -342,8 +342,8 @@ quoteflt_init(struct quoteflt *self, char const *prefix)
       self->qf_quote_chars = ok_vlook(quote_chars);
 
       /* Add pad for takeover copies, reverse solidus and newline */
-      self->qf_dat.s = salloc((qmax + 3) * n_mb_cur_max);
-      self->qf_currq.s = salloc((n_QUOTE_MAX + 1) * n_mb_cur_max);
+      self->qf_dat.s = n_autorec_alloc((qmax + 3) * n_mb_cur_max);
+      self->qf_currq.s = n_autorec_alloc((n_QUOTE_MAX + 1) * n_mb_cur_max);
    }
 #endif
    NYD_LEAVE;

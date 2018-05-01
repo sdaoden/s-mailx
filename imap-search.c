@@ -220,14 +220,14 @@ itparse(char const *spec, char const **xp, int sub)
 
       _it_tree = ittree;
       if (_it_tree == NULL) {
-         _it_tree = salloc(sizeof *_it_tree);
+         _it_tree = n_autorec_alloc(sizeof *_it_tree);
          *_it_tree = n;
       } else {
          z = _it_tree;
-         _it_tree = salloc(sizeof *_it_tree);
+         _it_tree = n_autorec_alloc(sizeof *_it_tree);
          _it_tree->n_token = ITAND;
          _it_tree->n_x = z;
-         _it_tree->n_y = salloc(sizeof *_it_tree->n_y);
+         _it_tree->n_y = n_autorec_alloc(sizeof *_it_tree->n_y);
          *_it_tree->n_y = n;
       }
       if (sub && level == 0)
@@ -409,7 +409,7 @@ itstring(void **tp, char const *spec, char const **xp) /* XXX lesser derefs */
          around(&(*xp)[spec - *xp]));
       goto jleave;
    }
-   ap = *tp = salloc(strlen(spec) +1);
+   ap = *tp = n_autorec_alloc(strlen(spec) +1);
    *xp = spec;
     do {
       if (inquote && **xp == '\\')
@@ -648,7 +648,7 @@ _imap_quotestr(char const *s)
    char *n, *np;
    NYD2_ENTER;
 
-   np = n = salloc(2 * strlen(s) + 3);
+   np = n = n_autorec_alloc(2 * strlen(s) + 3);
    *np++ = '"';
    while (*s) {
       if (*s == '"' || *s == '\\')
@@ -672,7 +672,7 @@ _imap_unquotestr(char const *s)
       goto jleave;
    }
 
-   np = n = salloc(strlen(s) + 1);
+   np = n = n_autorec_alloc(strlen(s) + 1);
    while (*++s) {
       if (*s == '\\')
          s++;

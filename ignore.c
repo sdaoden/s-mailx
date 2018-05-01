@@ -320,7 +320,7 @@ a_ignore__show(struct n_ignore const *ip, bool_t retain){
       goto jleave;
    }while(0);
 
-   ring = salloc((itp->it_count +1) * sizeof *ring);
+   ring = n_autorec_alloc((itp->it_count +1) * sizeof *ring);
    for(ap = ring, i = 0; i < n_NELEM(itp->it_ht); ++i)
       for(ifp = itp->it_ht[i]; ifp != NULL; ifp = ifp->if_next)
          *ap++ = ifp->if_field;

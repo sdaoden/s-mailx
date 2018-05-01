@@ -523,7 +523,7 @@ jredo:
             assert(lcap != NULL);
             i = lcap->ca_arg.ca_str.l;
             lcap->ca_arg.ca_str.l += 1 + ncap.ca_arg.ca_str.l;
-            cp = salloc(lcap->ca_arg.ca_str.l +1);
+            cp = n_autorec_alloc(lcap->ca_arg.ca_str.l +1);
             memcpy(cp, lcap->ca_arg.ca_str.s, i);
             lcap->ca_arg.ca_str.s = cp;
             cp[i++] = ' ';
@@ -531,7 +531,7 @@ jredo:
          }else{
             struct n_cmd_arg *cap;
 
-            cap = salloc(sizeof *cap);
+            cap = n_autorec_alloc(sizeof *cap);
             memcpy(cap, &ncap, sizeof ncap);
             if(lcap == NULL)
                cacp->cac_arg = cap;

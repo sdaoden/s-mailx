@@ -204,7 +204,7 @@ _pipe1(char *str, int doign)
       }
    }
 
-   msgvec = salloc((msgCount + 2) * sizeof *msgvec);
+   msgvec = n_autorec_alloc((msgCount + 2) * sizeof *msgvec);
 
    if (!needs_list) {
       *msgvec = first(0, MMNORM);

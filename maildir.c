@@ -649,7 +649,7 @@ mkname(struct n_timespec const *tsp, enum mflag f, char const *pref)
             ts.ts_sec, ts.ts_nsec, (long)n_pid, node);
    } else {
       size = (n = strlen(pref)) + 13;
-      cp = salloc(size);
+      cp = n_autorec_alloc(size);
       memcpy(cp, pref, n +1);
       for (i = n; i > 3; --i)
          if (cp[i - 1] == ',' && cp[i - 2] == '2' &&

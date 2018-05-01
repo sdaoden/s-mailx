@@ -1125,7 +1125,7 @@ jurlp_err:
       s = &urlp->url_u_h;
       i = urlp->url_user.l;
 
-      s->s = salloc(i + 1 + h.l +1);
+      s->s = n_autorec_alloc(i + 1 + h.l +1);
       if (i > 0) {
          memcpy(s->s, urlp->url_user.s, i);
          s->s[i++] = '@';
@@ -1139,7 +1139,7 @@ jurlp_err:
    {  struct str *s = &urlp->url_u_h_p;
       size_t i = urlp->url_user.l;
 
-      s->s = salloc(i + 1 + urlp->url_h_p.l +1);
+      s->s = n_autorec_alloc(i + 1 + urlp->url_h_p.l +1);
       if (i > 0) {
          memcpy(s->s, urlp->url_user.s, i);
          s->s[i++] = '@';
@@ -1153,7 +1153,7 @@ jurlp_err:
    {  struct str *s = &urlp->url_eu_h_p;
       size_t i = urlp->url_user_enc.l;
 
-      s->s = salloc(i + 1 + urlp->url_h_p.l +1);
+      s->s = n_autorec_alloc(i + 1 + urlp->url_h_p.l +1);
       if (i > 0) {
          memcpy(s->s, urlp->url_user_enc.s, i);
          s->s[i++] = '@';
@@ -1651,7 +1651,7 @@ cram_md5_string(struct str const *user, struct str const *pass,
 
    hmac_md5((uc_i*)out.s, out.l, (uc_i*)pass->s, pass->l, digest);
    n_free(out.s);
-   cp = md5tohex(salloc(MD5TOHEX_SIZE +1), digest);
+   cp = md5tohex(n_autorec_alloc(MD5TOHEX_SIZE +1), digest);
 
    in.l = user->l + MD5TOHEX_SIZE +1;
    in.s = n_lofi_alloc(user->l + 1 + MD5TOHEX_SIZE +1);

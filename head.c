@@ -1167,7 +1167,7 @@ jnodename:{
       hn = n_nodename(TRU1);
       ln = ok_vlook(LOGNAME);
       i = strlen(ln) + strlen(hn) + 1 +1;
-      rv = cp = salloc(i);
+      rv = cp = n_autorec_alloc(i);
       sstpcpy(sstpcpy(sstpcpy(cp, ln), n_at), hn);
    }
    goto jleave;
@@ -1417,8 +1417,9 @@ jebadhead:
          bl = (ui32_t)strlen(cp) +1;
 
          ++seenfields;
-         *hftail = hfp = salloc(n_VSTRUCT_SIZEOF(struct n_header_field, hf_dat
-               ) + nl +1 + bl);
+         *hftail =
+         hfp = n_autorec_alloc(n_VSTRUCT_SIZEOF(struct n_header_field,
+               hf_dat) + nl +1 + bl);
             hftail = &hfp->hf_next;
          hfp->hf_next = NULL;
          hfp->hf_nl = nl;

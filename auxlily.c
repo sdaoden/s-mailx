@@ -1949,7 +1949,7 @@ n_regex_err_to_doc(const regex_t *rep, int e){
    NYD2_ENTER;
 
    i = regerror(e, rep, NULL, 0) +1;
-   cp = salloc(i);
+   cp = n_autorec_alloc(i);
    regerror(e, rep, cp, i);
    NYD2_LEAVE;
    return cp;

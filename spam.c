@@ -227,7 +227,7 @@ _spam_action(enum spam_action sa, int *ip)
       maxsize = SPAM_MAXSIZE;
 
    /* Finally get an I/O buffer */
-   vc.vc_buffer = salloc(BUFFER_SIZE);
+   vc.vc_buffer = n_autorec_alloc(BUFFER_SIZE);
 
    skipped = cnt = 0;
    if (vc.vc_progress) {

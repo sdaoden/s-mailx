@@ -1596,7 +1596,7 @@ _smime_sign_digest(char const *name, char const **digname)
 
 jhave_name:
    i = strlen(cp);
-   {  char *x = salloc(i +1);
+   {  char *x = n_autorec_alloc(i +1);
       i_strcpy(x, cp, i +1);
       cp = x;
    }

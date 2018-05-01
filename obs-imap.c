@@ -271,7 +271,7 @@ imap_quotestr(char const *s)
    char *n, *np;
    NYD2_ENTER;
 
-   np = n = salloc(2 * strlen(s) + 3);
+   np = n = n_autorec_alloc(2 * strlen(s) + 3);
    *np++ = '"';
    while (*s) {
       if (*s == '"' || *s == '\\')
@@ -295,7 +295,7 @@ imap_unquotestr(char const *s)
       goto jleave;
    }
 
-   np = n = salloc(strlen(s) + 1);
+   np = n = n_autorec_alloc(strlen(s) + 1);
    while (*++s) {
       if (*s == '\\')
          s++;
@@ -370,7 +370,7 @@ imap_path_normalize(struct mailbox *mp, char const *cp){
 
       /* And we don't need to reevaluate what we have seen yet */
       i = PTR2SIZE(cpx - cp);
-      rv = rv_base = salloc(i + (j = strlen(cpx) +1));
+      rv = rv_base = n_autorec_alloc(i + (j = strlen(cpx) +1));
       if(i > 0)
          memcpy(rv, cp, i);
       memcpy(&rv[i], cpx, j);
@@ -447,9 +447,9 @@ imap_path_encode(char const *cp, bool_t *err_or_null){
 
    for(cp += l, l = 0; cp[l] != '\0'; ++l)
       ;
-   be16p_base = salloc((l << 1) +1); /* XXX use n_string, resize */
+   be16p_base = n_autorec_alloc((l << 1) +1); /* XXX use n_string, resize */
 
-   out.s = salloc(l_plain + (l << 2) +1); /* XXX use n_string, resize */
+   out.s = n_autorec_alloc(l_plain + (l << 2) +1); /* XXX use n_string.. */
    if(l_plain > 0)
       memcpy(out.s, &cp[-l_plain], out.l = l_plain);
    else
@@ -556,7 +556,7 @@ imap_path_decode(char const *path, bool_t *err_or_null){
    *err_or_null = FAL0;
 
    l = l_orig = strlen(path);
-   rv = rv_base = salloc(l << 1);
+   rv = rv_base = n_autorec_alloc(l << 1);
    memcpy(rv, path, l +1);
 
    /* xxx Don't check for invalid characters from malicious servers */
@@ -614,7 +614,7 @@ jeincpl:
          };
 
          if(mb64p_base == NULL)
-            mb64p_base = salloc(l);
+            mb64p_base = n_autorec_alloc(l);
 
          /* Decode the mUTF-7 to what is indeed UTF-16BE */
          for(mb64p = mb64p_base;;){
@@ -2817,7 +2817,7 @@ imap_putflags(int f)
    char *buf, *bp;
    NYD2_ENTER;
 
-   bp = buf = salloc(100);
+   bp = buf = n_autorec_alloc(100);
    if (f & (MREAD | MFLAGGED | MANSWERED | MDRAFTED)) {
       *bp++ = '(';
       if (f & MREAD) {
@@ -3216,7 +3216,7 @@ imap_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
    for (lp = list; lp; lp = lp->l_next)
       if (lp->l_delim != '/' && lp->l_delim != EOF && lp->l_level < depth &&
             !(lp->l_attr & LIST_NOINFERIORS)) {
-         cp = salloc((n = strlen(lp->l_name)) + 2);
+         cp = n_autorec_alloc((n = strlen(lp->l_name)) + 2);
          memcpy(cp, lp->l_name, n);
          cp[n] = lp->l_delim;
          cp[n+1] = '\0';
@@ -4050,7 +4050,7 @@ imap_strex(char const *cp, char const **xp)
    if (*cq != '"')
       goto jleave;
 
-   n = salloc(cq - cp + 2);
+   n = n_autorec_alloc(cq - cp + 2);
    memcpy(n, cp, cq - cp +1);
    n[cq - cp + 1] = '\0';
    if (xp != NULL)

@@ -1336,7 +1336,7 @@ __mta_prepare_args(struct name *to, struct header *hp)
    }
 
    i = 4 + n_smopts_cnt + vas_cnt + 4 + 1 + count(to) + 1;
-   args = salloc(i * sizeof(char*));
+   args = n_autorec_alloc(i * sizeof(char*));
 
    if((cp_v15compat = ok_vlook(sendmail_progname)) != NULL)
       n_OBSOLETE(_("please use *mta-argv0*, not *sendmail-progname*"));

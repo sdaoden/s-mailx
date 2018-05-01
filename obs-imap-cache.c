@@ -98,7 +98,8 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
 
    ename = urlxenc(name, TRU1);
    if (mp->mb_cache_directory && same && box == NULL) {
-      res = salloc(resz = strlen(mp->mb_cache_directory) + strlen(ename) + 2);
+      res = n_autorec_alloc(resz = strlen(mp->mb_cache_directory) +
+            strlen(ename) + 2);
       snprintf(res, resz, "%s%s%s", mp->mb_cache_directory,
          (*ename ? "/" : ""), ename);
    } else {
@@ -119,7 +120,7 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
       } else
          box = "INBOX";
 
-      res = salloc(resz = strlen(cachedir) + strlen(eaccount) +
+      res = n_autorec_alloc(resz = strlen(cachedir) + strlen(eaccount) +
             strlen(box) + strlen(ename) + 4);
       snprintf(res, resz, "%s/%s/%s%s%s", cachedir, eaccount, box,
             (*ename ? "/" : ""), ename);
@@ -441,7 +442,7 @@ clean(struct mailbox *mp, struct cw *cw)
          goto jleave;
       emailbox = urlxenc(emailbox, TRU1);
    }
-   buf = salloc(bufsz = strlen(cachedir) + strlen(eaccount) +
+   buf = n_autorec_alloc(bufsz = strlen(cachedir) + strlen(eaccount) +
          strlen(emailbox) + 40);
    if (!n_path_mkdir(cachedir))
       goto jleave;
@@ -660,7 +661,7 @@ cache_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
          (cachedir = fexpand(cachedir, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
       goto jleave;
    eaccount = urlxenc(mp->mb_imap_account, TRU1);
-   name = salloc(namesz = strlen(cachedir) + strlen(eaccount) + 2);
+   name = n_autorec_alloc(namesz = strlen(cachedir) + strlen(eaccount) + 2);
    snprintf(name, namesz, "%s/%s", cachedir, eaccount);
    if ((dirp = opendir(name)) == NULL)
       goto jleave;
@@ -818,7 +819,7 @@ cache_dequeue(struct mailbox *mp)
          (cachedir = fexpand(cachedir, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
       goto jleave;
    eaccount = urlxenc(mp->mb_imap_account, TRU1);
-   buf = salloc(bufsz = strlen(cachedir) + strlen(eaccount) + 2);
+   buf = n_autorec_alloc(bufsz = strlen(cachedir) + strlen(eaccount) + 2);
    snprintf(buf, bufsz, "%s/%s", cachedir, eaccount);
    if ((dirp = opendir(buf)) == NULL)
       goto jleave;

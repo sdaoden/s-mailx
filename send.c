@@ -136,7 +136,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
          (to.l = strlen(cp)) > 30 && is_asccaseprefix("application/", cp)) {
       size_t const al = sizeof("appl../") -1, fl = sizeof("application/") -1;
       size_t i = to.l - fl;
-      char *x = salloc(al + i +1);
+      char *x = n_autorec_alloc(al + i +1);
 
       memcpy(x, "appl../", al);
       memcpy(x + al, cp + fl, i +1);
@@ -812,7 +812,7 @@ jalter_redo:
                case MIME_SIGNED:
                case MIME_ENCRYPTED:
                case MIME_MULTI:
-                  mpsp = salloc(sizeof *mpsp);
+                  mpsp = n_autorec_alloc(sizeof *mpsp);
                   mpsp->outer = curr;
                   mpsp->mp = np->m_multipart;
                   curr->mp = np;
@@ -1348,7 +1348,8 @@ jgetname:
       if(n_anyof_cp("/" n_SHEXP_MAGIC_PATH_CHARS, f)){
          char c;
 
-         for(out.s = salloc((strlen(f) * 3) +1), out.l = 0; (c = *f++) != '\0';)
+         for(out.s = n_autorec_alloc((strlen(f) * 3) +1), out.l = 0;
+               (c = *f++) != '\0';)
             if(strchr("/" n_SHEXP_MAGIC_PATH_CHARS, c)){
                out.s[out.l++] = '%';
                n_c_to_hex_base16(&out.s[out.l], c);

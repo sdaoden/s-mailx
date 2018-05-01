@@ -71,7 +71,7 @@ save1(char *str, int domark, char const *cmd, struct n_ignore const *itp,
    shell = NULL;
    file = NULL;
 
-   msgvec = salloc((msgCount + 2) * sizeof *msgvec);
+   msgvec = n_autorec_alloc((msgCount + 2) * sizeof *msgvec);
    if (sender_record) {
       for (cp = str; *cp != '\0' && spacechar(*cp); ++cp)
          ;
@@ -112,7 +112,7 @@ save1(char *str, int domark, char const *cmd, struct n_ignore const *itp,
       *cq = '\0';
       if (ok_blook(outfolder)) {
          size_t sz = strlen(cp) +1;
-         file = salloc(sz + 1);
+         file = n_autorec_alloc(sz + 1);
          file[0] = '+';
          memcpy(file + 1, cp, sz);
       } else

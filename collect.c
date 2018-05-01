@@ -588,7 +588,7 @@ a_coll_forward(char const *ms, FILE *fp, int f)
    enum sendaction action;
    NYD_ENTER;
 
-   msgvec = salloc((size_t)(msgCount + 1) * sizeof *msgvec);
+   msgvec = n_autorec_alloc((size_t)(msgCount + 1) * sizeof *msgvec);
    if (getmsglist(ms, msgvec, 0) < 0) {
       rv = n_ERR_NOENT; /* XXX not really, should be handled there! */
       goto jleave;
@@ -849,8 +849,8 @@ jins:
 
          nl = strlen(cp = cmd[2]) +1;
          bl = strlen(cmd[3]) +1;
-         *hfpp = hfp = salloc(n_VSTRUCT_SIZEOF(struct n_header_field, hf_dat
-               ) + nl + bl);
+         *hfpp = hfp = n_autorec_alloc(n_VSTRUCT_SIZEOF(struct n_header_field,
+               hf_dat) + nl + bl);
          hfp->hf_next = NULL;
          hfp->hf_nl = nl - 1;
          hfp->hf_bl = bl - 1;

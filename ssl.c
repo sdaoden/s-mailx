@@ -296,7 +296,7 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
    off_t offset;
    NYD_ENTER;
 
-   x = salloc(sizeof *x);
+   x = n_autorec_alloc(sizeof *x);
    *x = *m;
    fflush(mb.mb_otf);
    fseek(mb.mb_otf, 0L, SEEK_END);
@@ -371,7 +371,7 @@ c_certsave(void *v)
    bool_t f;
    NYD_ENTER;
 
-   msgvec = salloc((msgCount + 2) * sizeof *msgvec);
+   msgvec = n_autorec_alloc((msgCount + 2) * sizeof *msgvec);
    val = 1;
 
    if ((file = laststring(str, &f, TRU1)) == NULL ||

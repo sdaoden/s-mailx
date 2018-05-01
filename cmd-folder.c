@@ -196,7 +196,7 @@ c_remove(void *v)
          size_t vl;
 
          vl = strlen(ename) + fmt_len +1;
-         vb = salloc(vl);
+         vb = n_autorec_alloc(vl);
          snprintf(vb, vl, fmt, ename);
          asw = getapproval(vb, TRU1);
          if (!asw)

@@ -469,7 +469,7 @@ _mt_by_filename(struct mtlookup *mtlp, char const *name, bool_t with_result)
             j = strlen(name);
          }
          i = mtnp->mt_mtlen;
-         mtlp->mtl_result = salloc(i + j +1);
+         mtlp->mtl_result = n_autorec_alloc(i + j +1);
          if (j > 0)
             memcpy(mtlp->mtl_result, name, j);
          memcpy(mtlp->mtl_result + j, mtnp->mt_line, i);
