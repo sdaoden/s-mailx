@@ -677,8 +677,8 @@ a_cmd__putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX magics */
    }
    indw += a_cmd__putuc(0x25B8, '>', fp);
 
-   ac_free(us);
-   ac_free(cs);
+   n_lofi_free(us);
+   n_lofi_free(cs);
 jleave:
    NYD2_LEAVE;
    return indw;

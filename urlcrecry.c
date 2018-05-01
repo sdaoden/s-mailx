@@ -984,7 +984,7 @@ jurlp_err:
          d = NULL;
       }
 
-      ac_free(ub);
+      n_lofi_free(ub);
       if(d == NULL)
          goto jleave;
    }
@@ -1379,7 +1379,7 @@ jpass:
       ccp->cc_pass.l = strlen(ccp->cc_pass.s = savestr(s));
 
 jleave:
-   ac_free(vbuf);
+   n_lofi_free(vbuf);
    if (ccp != NULL && (n_poption & n_PO_D_VV))
       n_err(_("Credentials: host %s, user %s, pass %s\n"),
          addr, (ccp->cc_user.s != NULL ? ccp->cc_user.s : n_empty),
@@ -1660,7 +1660,7 @@ cram_md5_string(struct str const *user, struct str const *pass,
    memcpy(&in.s[user->l + 1], cp, MD5TOHEX_SIZE);
    if(b64_encode(&out, &in, B64_SALLOC | B64_CRLF) == NULL)
       out.s = NULL;
-   ac_free(in.s);
+   n_lofi_free(in.s);
 jleave:
    NYD_LEAVE;
    return out.s;

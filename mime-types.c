@@ -517,7 +517,7 @@ _mt_by_mtname(struct mtlookup *mtlp, char const *mtname)
             memcpy(xmt + j, mtnp->mt_line, i);
             xmt[j += i] = '\0';
             i = asccasecmp(mtname, xmt);
-            ac_free(xmt);
+            n_lofi_free(xmt);
 
             if (!i) {
                /* Found it */
@@ -1054,7 +1054,7 @@ jdelall:
          memcpy(val + i, mtnp->mt_line, mtnp->mt_mtlen);
          val[i += mtnp->mt_mtlen] = '\0';
          i = asccasecmp(val, *argv);
-         ac_free(val);
+         n_lofi_free(val);
 
          if (!i) {
             struct mtnode *nnp = mtnp->mt_next;

@@ -1054,7 +1054,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
             if (fhicd != (iconv_t)-1)
                n_iconv_close(fhicd);
             fhicd = asccasecmp(cs, tcs) ? n_iconv_open(tcs, cs) : (iconv_t)-1;
-            ac_free(cs);
+            n_lofi_free(cs);
          }
 #endif
          switch (*p) {

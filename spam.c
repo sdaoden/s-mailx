@@ -700,7 +700,7 @@ jdone:
    rv = TRU1;
 jleave:
    if (headbuf != NULL)
-      ac_free(headbuf);
+      n_lofi_free(headbuf);
    if (dsfd >= 0)
       close(dsfd);
 

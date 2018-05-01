@@ -243,7 +243,7 @@ _pop3_auth_apop(struct mailbox *mp, struct sockconn const *scp, char const *ts)
 
    rv = OKAY;
 jleave:
-   ac_free(cp);
+   n_lofi_free(cp);
    NYD_LEAVE;
    return rv;
 }
@@ -274,7 +274,7 @@ _pop3_auth_plain(struct mailbox *mp, struct sockconn const *scp)
 
    rv = OKAY;
 jleave:
-   ac_free(cp);
+   n_lofi_free(cp);
    NYD_LEAVE;
    return rv;
 }

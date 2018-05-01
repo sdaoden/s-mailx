@@ -1132,7 +1132,7 @@ a_message_match_dash(struct message *mp, char const *str){
       memcpy(hfield, str, l);
       hfield[l] = '\0';
       hbody = hfieldX(hfield, mp);
-      ac_free(hfield);
+      n_lofi_free(hfield);
       hfield = n_UNCONST(str + l + 1);
    }else{
       hfield = n_UNCONST(str);

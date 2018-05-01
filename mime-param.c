@@ -414,7 +414,7 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
             *emsg = N_("necessary character set conversion missing");
             f |= _ERRORS;
          }
-         ac_free(cs);
+         n_lofi_free(cs);
       }
    }
 #endif

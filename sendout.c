@@ -1168,7 +1168,7 @@ _transfer(struct sendbundle *sbp)
          ++cnt;
          np = np->n_flink;
       }
-      ac_free(vs);
+      n_lofi_free(vs);
    }
 
    if (cnt > 0 && (ok_blook(smime_force_encryption) || !__mta_start(sbp)))

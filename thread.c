@@ -815,7 +815,7 @@ c_sort(void *vp)
    default:
       break;
    }
-   ac_free(ms);
+   n_lofi_free(ms);
 
    i = ((vp != NULL && vp != (void*)-1 && !(n_pstate & n_PS_HOOK_MASK) &&
       ok_blook(header)) ? print_header_group(msgvec) : 0);

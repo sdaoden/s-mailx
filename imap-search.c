@@ -805,7 +805,7 @@ jdone:
       /*sourceaddr ? _imap_quotestr(sourceaddr) :*/ "NIL",
       _imap_quotestr(localpart),
       domainpart ? _imap_quotestr(domainpart) : "NIL");
-   ac_free(ip);
+   n_lofi_free(ip);
    NYD_LEAVE;
    return ep;
 }

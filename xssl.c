@@ -1362,7 +1362,7 @@ _smime_cipher(char const *name)
    vn = n_lofi_alloc(i = strlen(name) + sizeof("smime-cipher-") -1 +1);
    snprintf(vn, (int)i, "smime-cipher-%s", name);
    cp = n_var_vlook(vn, FAL0);
-   ac_free(vn);
+   n_lofi_free(vn);
 
    if (cp == NULL && (cp = ok_vlook(smime_cipher)) == NULL) {
       cipher = a_XSSL_SMIME_DEFAULT_CIPHER();
@@ -1460,7 +1460,7 @@ jloop:
          vn = n_lofi_alloc(vs = strlen(np->n_name) + 30);
          snprintf(vn, vs, "smime-sign-cert-%s", np->n_name);
          cp = n_var_vlook(vn, FAL0);
-         ac_free(vn);
+         n_lofi_free(vn);
          if (cp != NULL) {
             if (match != NULL)
                *match = np->n_name;
@@ -1512,7 +1512,7 @@ _smime_sign_include_certs(char const *name)
          vn = n_lofi_alloc(vs = strlen(np->n_name) + 30);
          snprintf(vn, vs, "smime-sign-include-certs-%s", np->n_name);
          rv = n_var_vlook(vn, FAL0);
-         ac_free(vn);
+         n_lofi_free(vn);
          if (rv != NULL)
             goto jleave;
       }
@@ -1582,7 +1582,7 @@ _smime_sign_digest(char const *name, char const **digname)
          char *vn = n_lofi_alloc(vs = strlen(np->n_name) + 30);
          snprintf(vn, vs, "smime-sign-message-digest-%s", np->n_name);
          cp = n_var_vlook(vn, FAL0);
-         ac_free(vn);
+         n_lofi_free(vn);
          if (cp != NULL)
             goto jhave_name;
       }

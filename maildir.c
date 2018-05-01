@@ -783,7 +783,7 @@ mkmaildir(char const *name) /* TODO proper cleanup on error; use path[] loop */
             rv = trycreate(np);
          }
       }
-      ac_free(np);
+      n_lofi_free(np);
    }
    NYD_LEAVE;
    return rv;

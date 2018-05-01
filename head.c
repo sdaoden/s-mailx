@@ -2064,7 +2064,7 @@ jbrk:
    in.s = rname;
    in.l = rp - rname;
    mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
-   ac_free(rname);
+   n_lofi_free(rname);
    rname = savestr(out.s);
    n_free(out.s);
 

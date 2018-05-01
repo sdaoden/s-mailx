@@ -3844,7 +3844,7 @@ imap_remove1(struct mailbox *mp, const char *name)
       while (mp->mb_active & MB_COMD)
          ok = imap_answer(mp, 1);
 out:
-      ac_free(o);
+      n_lofi_free(o);
    }
    return ok;
 }
@@ -3911,7 +3911,7 @@ imap_rename1(struct mailbox *mp, const char *old, const char *new)
       while (mp->mb_active & MB_COMD)
          ok = imap_answer(mp, 1);
 out:
-      ac_free(o);
+      n_lofi_free(o);
    }
    return ok;
 }
