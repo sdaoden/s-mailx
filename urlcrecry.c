@@ -946,7 +946,7 @@ juser:
       char *ub;
 
       l = PTR2SIZE(cp - data);
-      ub = ac_alloc(l +1);
+      ub = n_lofi_alloc(l +1);
       d = data;
       urlp->url_flags |= n_URL_HAD_USER;
       data = &cp[1];
@@ -1257,7 +1257,7 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
 
    ccp->cc_cproto = cproto;
    addrlen = strlen(addr);
-   vbuf = ac_alloc(pxlen + addrlen + sizeof("-password-")-1 +1);
+   vbuf = n_lofi_alloc(pxlen + addrlen + sizeof("-password-")-1 +1);
    memcpy(vbuf, pxstr, pxlen);
 
    /* Authentication type */
@@ -1654,7 +1654,7 @@ cram_md5_string(struct str const *user, struct str const *pass,
    cp = md5tohex(salloc(MD5TOHEX_SIZE +1), digest);
 
    in.l = user->l + MD5TOHEX_SIZE +1;
-   in.s = ac_alloc(user->l + 1 + MD5TOHEX_SIZE +1);
+   in.s = n_lofi_alloc(user->l + 1 + MD5TOHEX_SIZE +1);
    memcpy(in.s, user->s, user->l);
    in.s[user->l] = ' ';
    memcpy(&in.s[user->l + 1], cp, MD5TOHEX_SIZE);

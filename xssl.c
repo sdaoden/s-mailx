@@ -1359,7 +1359,7 @@ _smime_cipher(char const *name)
    size_t i;
    NYD_ENTER;
 
-   vn = ac_alloc(i = strlen(name) + sizeof("smime-cipher-") -1 +1);
+   vn = n_lofi_alloc(i = strlen(name) + sizeof("smime-cipher-") -1 +1);
    snprintf(vn, (int)i, "smime-cipher-%s", name);
    cp = n_var_vlook(vn, FAL0);
    ac_free(vn);
@@ -1457,7 +1457,7 @@ jloop:
          /* This needs to be more intelligent since it will currently take the
           * first name for which a private key is available regardless of
           * whether it is the right one for the message */
-         vn = ac_alloc(vs = strlen(np->n_name) + 30);
+         vn = n_lofi_alloc(vs = strlen(np->n_name) + 30);
          snprintf(vn, vs, "smime-sign-cert-%s", np->n_name);
          cp = n_var_vlook(vn, FAL0);
          ac_free(vn);
@@ -1509,7 +1509,7 @@ _smime_sign_include_certs(char const *name)
          int vs;
          char *vn;
 
-         vn = ac_alloc(vs = strlen(np->n_name) + 30);
+         vn = n_lofi_alloc(vs = strlen(np->n_name) + 30);
          snprintf(vn, vs, "smime-sign-include-certs-%s", np->n_name);
          rv = n_var_vlook(vn, FAL0);
          ac_free(vn);
@@ -1579,7 +1579,7 @@ _smime_sign_digest(char const *name, char const **digname)
 
       for (np = lextract(name, GTO | GSKIN); np != NULL; np = np->n_flink) {
          int vs;
-         char *vn = ac_alloc(vs = strlen(np->n_name) + 30);
+         char *vn = n_lofi_alloc(vs = strlen(np->n_name) + 30);
          snprintf(vn, vs, "smime-sign-message-digest-%s", np->n_name);
          cp = n_var_vlook(vn, FAL0);
          ac_free(vn);

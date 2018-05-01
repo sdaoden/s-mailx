@@ -2040,7 +2040,7 @@ jbrk:
    /* Strip quotes. Note that quotes that appear within a MIME encoded word are
     * not stripped. The idea is to strip only syntactical relevant things (but
     * this is not necessarily the most sensible way in practice) */
-   rp = rname = ac_alloc(PTR2SIZE(cend - cstart +1));
+   rp = rname = n_lofi_alloc(PTR2SIZE(cend - cstart +1));
    quoted = 0;
    for (cp = cstart; cp < cend; ++cp) {
       if (*cp == '(' && !quoted) {

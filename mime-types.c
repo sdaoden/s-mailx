@@ -511,7 +511,7 @@ _mt_by_mtname(struct mtlookup *mtlp, char const *mtname)
          i = mtnp->mt_mtlen;
 
          if (i + j == mtlp->mtl_nlen) {
-            char *xmt = ac_alloc(i + j +1);
+            char *xmt = n_lofi_alloc(i + j +1);
             if (j > 0)
                memcpy(xmt, cp, j);
             memcpy(xmt + j, mtnp->mt_line, i);
@@ -1049,7 +1049,7 @@ jdelall:
             i = strlen(typ);
          }
 
-         val = ac_alloc(i + mtnp->mt_mtlen +1);
+         val = n_lofi_alloc(i + mtnp->mt_mtlen +1);
          memcpy(val, typ, i);
          memcpy(val + i, mtnp->mt_line, mtnp->mt_mtlen);
          val[i += mtnp->mt_mtlen] = '\0';

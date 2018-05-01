@@ -712,7 +712,7 @@ c_sort(void *vp)
    }
 
    showname = ok_blook(showname);
-   ms = ac_alloc(sizeof *ms * msgCount);
+   ms = n_lofi_alloc(sizeof *ms * msgCount);
 #ifdef HAVE_IMAP
    switch (method) {
    case SORT_SUBJECT:

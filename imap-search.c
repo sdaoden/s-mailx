@@ -742,7 +742,7 @@ mkenvelope(struct name *np)
    in.s = np->n_fullname;
    in.l = strlen(in.s);
    mime_fromhdr(&in, &out, TD_ICONV);
-   rp = ip = ac_alloc(strlen(out.s) + 1);
+   rp = ip = n_lofi_alloc(strlen(out.s) + 1);
    for (cp = out.s; *cp; cp++) {
       switch (*cp) {
       case '"':

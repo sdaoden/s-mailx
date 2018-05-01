@@ -1363,8 +1363,7 @@ FL void n_lofi_free(void *vp n_MEMORY_DEBUG_ARGS);
 FL void *n_lofi_snap_create(void);
 FL void n_lofi_snap_unroll(void *cookie);
 
-/* TODO obsolete ac_alloc / ac_free -> n_lofi_* */
-#define ac_alloc(SZ) n_lofi_alloc(SZ)
+/* TODO obsolete ac_free -> n_lofi_* */
 #define ac_free(P) n_lofi_free(P)
 
 /* */

@@ -1125,7 +1125,7 @@ _transfer(struct sendbundle *sbp)
    for (cnt = 0, np = sbp->sb_to; np != NULL;) {
       char const k[] = "smime-encrypt-", *cp;
       size_t nl = strlen(np->n_name);
-      char *vs = ac_alloc(sizeof(k)-1 + nl +1);
+      char *vs = n_lofi_alloc(sizeof(k)-1 + nl +1);
       memcpy(vs, k, sizeof(k) -1);
       memcpy(vs + sizeof(k) -1, np->n_name, nl +1);
 

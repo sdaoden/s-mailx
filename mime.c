@@ -1042,7 +1042,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 #ifdef HAVE_ICONV
          if (flags & TD_ICONV) {
             size_t i = PTR2SIZE(p - cbeg);
-            char *ltag, *cs = ac_alloc(i);
+            char *ltag, *cs = n_lofi_alloc(i);
 
             memcpy(cs, cbeg, --i);
             cs[i] = '\0';

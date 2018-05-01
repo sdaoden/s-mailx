@@ -404,7 +404,7 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
          f |= _ERRORS;
       } else if (ascncasecmp(tcs = ok_vlook(ttycharset),
             head->rj_dat, head->rj_cs_len)) {
-         char *cs = ac_alloc(head->rj_cs_len +1);
+         char *cs = n_lofi_alloc(head->rj_cs_len +1);
 
          memcpy(cs, head->rj_dat, head->rj_cs_len);
          cs[head->rj_cs_len] = '\0';

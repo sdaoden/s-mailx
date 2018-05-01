@@ -229,7 +229,7 @@ _pop3_auth_apop(struct mailbox *mp, struct sockconn const *scp, char const *ts)
    md5tohex(hex, digest);
 
    i = scp->sc_cred.cc_user.l;
-   cp = ac_alloc(5 + i + 1 + MD5TOHEX_SIZE + sizeof(NETNL)-1 +1);
+   cp = n_lofi_alloc(5 + i + 1 + MD5TOHEX_SIZE + sizeof(NETNL)-1 +1);
 
    memcpy(cp, "APOP ", 5);
    memcpy(cp + 5, scp->sc_cred.cc_user.s, i);
@@ -257,8 +257,8 @@ _pop3_auth_plain(struct mailbox *mp, struct sockconn const *scp)
    NYD_ENTER;
 
    /* The USER/PASS plain text version */
-   cp = ac_alloc(n_MAX(scp->sc_cred.cc_user.l, scp->sc_cred.cc_pass.l) + 5 +
-         sizeof(NETNL)-1 +1);
+   cp = n_lofi_alloc(n_MAX(scp->sc_cred.cc_user.l, scp->sc_cred.cc_pass.l) +
+         5 + sizeof(NETNL)-1 +1);
 
    memcpy(cp, "USER ", 5);
    memcpy(cp + 5, scp->sc_cred.cc_user.s, scp->sc_cred.cc_user.l);

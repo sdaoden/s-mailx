@@ -3838,7 +3838,7 @@ imap_remove1(struct mailbox *mp, const char *name)
    queuefp = NULL;
 
    if((qname = imap_path_quote(mp, name)) != NULL){
-      o = ac_alloc(os = strlen(qname) + 100);
+      o = n_lofi_alloc(os = strlen(qname) + 100);
       snprintf(o, os, "%s DELETE %s\r\n", tag(1), qname);
       IMAP_OUT(o, MB_COMD, goto out)
       while (mp->mb_active & MB_COMD)
@@ -3905,7 +3905,7 @@ imap_rename1(struct mailbox *mp, const char *old, const char *new)
 
    if((qoname = imap_path_quote(mp, old)) != NULL &&
          (qnname = imap_path_quote(mp, new)) != NULL){
-      o = ac_alloc(os = strlen(qoname) + strlen(qnname) + 100);
+      o = n_lofi_alloc(os = strlen(qoname) + strlen(qnname) + 100);
       snprintf(o, os, "%s RENAME %s %s\r\n", tag(1), qoname, qnname);
       IMAP_OUT(o, MB_COMD, goto out)
       while (mp->mb_active & MB_COMD)

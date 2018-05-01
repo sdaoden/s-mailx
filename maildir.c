@@ -773,7 +773,7 @@ mkmaildir(char const *name) /* TODO proper cleanup on error; use path[] loop */
    NYD_ENTER;
 
    if (trycreate(name) == OKAY) {
-      np = ac_alloc((sz = strlen(name)) + 4 +1);
+      np = n_lofi_alloc((sz = strlen(name)) + 4 +1);
       memcpy(np, name, sz);
       memcpy(np + sz, "/tmp", 4 +1);
       if (trycreate(np) == OKAY) {

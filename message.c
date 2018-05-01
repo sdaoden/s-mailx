@@ -1128,7 +1128,7 @@ a_message_match_dash(struct message *mp, char const *str){
       size_t l;
 
       l = PTR2SIZE(hfield - str);
-      hfield = ac_alloc(l +1);
+      hfield = n_lofi_alloc(l +1);
       memcpy(hfield, str, l);
       hfield[l] = '\0';
       hbody = hfieldX(hfield, mp);

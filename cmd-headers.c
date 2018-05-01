@@ -629,8 +629,8 @@ a_cmd__putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX magics */
       goto jleave;
    }
 
-   cs = ac_alloc(mp->m_level);
-   us = ac_alloc(mp->m_level * sizeof *us);
+   cs = n_lofi_alloc(mp->m_level);
+   us = n_lofi_alloc(mp->m_level * sizeof *us);
 
    i = mp->m_level - 1;
    if (mp->m_younger && UICMP(32, i + 1, ==, mp->m_younger->m_level)) {

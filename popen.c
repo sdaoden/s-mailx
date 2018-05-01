@@ -1186,7 +1186,7 @@ n_child_start(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
          for (ai = 0; env_addon_or_null[ai] != NULL; ++ai)
             ;
          ai_orig = ai;
-         env = ac_alloc(sizeof(*env) * (ei + ai +1));
+         env = n_lofi_alloc(sizeof(*env) * (ei + ai +1));
          memcpy(env, environ, sizeof(*env) * ei);
 
          /* Replace all those keys that yet exist */
