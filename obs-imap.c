@@ -1169,7 +1169,7 @@ rec_queue(enum rec_type rt, unsigned long cnt)
    struct record *rp;
    NYD_ENTER;
 
-   rp = scalloc(1, sizeof *rp);
+   rp = n_calloc(1, sizeof *rp);
    rp->rec_type = rt;
    rp->rec_count = cnt;
    if (record && recend) {
@@ -1608,7 +1608,7 @@ imap_setptr(struct mailbox *mp, int nmail, int transparent, int *prevcount)
    }
 
    if (dequeued != OKAY) {
-      message = scalloc(msgCount + 1, sizeof *message);
+      message = n_calloc(msgCount + 1, sizeof *message);
       for (i = 0; i < msgCount; i++)
          imap_init(mp, i);
       if (!nmail && mp->mb_type == MB_IMAP)

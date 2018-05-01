@@ -1307,7 +1307,6 @@ FL void n_free(void *vp n_MEMORY_DEBUG_ARGS);
 # define n_free(P) free(P)
 #endif
 #define srealloc(P,SZ) n_realloc(P, SZ)
-#define scalloc(N,SZ) n_calloc(N, SZ)
 
 /* Fluctuating heap memory (supposed to exist for one command loop tick) */
 

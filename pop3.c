@@ -506,7 +506,7 @@ pop3_setptr(struct mailbox *mp, struct sockconn const *scp)
    enum needspec ns;
    NYD_ENTER;
 
-   message = scalloc(msgCount + 1, sizeof *message);
+   message = n_calloc(msgCount + 1, sizeof *message);
    message[msgCount].m_size = 0;
    message[msgCount].m_lines = 0;
    dot = message; /* (Just do it: avoid crash -- shall i now do ointr(0).. */

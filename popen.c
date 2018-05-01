@@ -428,7 +428,7 @@ a_popen_child_find(int pid, bool_t create){
       ;
 
    if(cp == NULL && create)
-      (*cpp = cp = scalloc(1, sizeof *cp))->pid = pid;
+      (*cpp = cp = n_calloc(1, sizeof *cp))->pid = pid;
    NYD2_LEAVE;
    return cp;
 }

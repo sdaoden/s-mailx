@@ -611,7 +611,7 @@ cache_setptr(enum fedit_mode fm, int transparent)
       goto jleave;
    contents = builds(&contentelem);
    msgCount = contentelem;
-   message = scalloc(msgCount + 1, sizeof *message);
+   message = n_calloc(msgCount + 1, sizeof *message);
    if (cwret(&cw) == STOP) {
       n_err(_("Fatal: Cannot change back to current directory.\n"));
       abort();
