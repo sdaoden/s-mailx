@@ -4493,7 +4493,7 @@ c_bind(void *v){
                            cbuf[1] = c.c, cbufp = cbuf;
                         else
                            cbufp = n_empty;
-                        fprintf(fp, "%s%02X%s",
+                        fprintf(fp, "%s\\x%02X%s",
                            bsep, (ui32_t)(ui8_t)c.c, cbufp);
                         bsep = " ";
                      }
