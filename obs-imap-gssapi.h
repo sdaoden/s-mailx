@@ -98,7 +98,8 @@ _imap_gssapi_error1(const char *s, OM_uint32 code, int typ)
       maj_stat = gss_display_status(&min_stat, code, typ, GSS_C_NO_OID,
             &msg_ctx, &msg);
       if (maj_stat == GSS_S_COMPLETE) {
-         fprintf(stderr, "GSS error: %s / %s\n", s, (char*)msg.value);
+         fprintf(stderr, "GSS error: %s / %.*s\n",
+            s, (int)msg.length, (char*)msg.value);
          gss_release_buffer(&min_stat, &msg);
       } else {
          fprintf(stderr, "GSS error: %s / unknown\n", s);
@@ -172,13 +173,15 @@ _imap_gssapi(struct mailbox *mp, struct ccred *ccred)
       server = &cp[1];
    for (cp = server; *cp; cp++)
       *cp = lowerconv(*cp);
-   send_tok.value = salloc(send_tok.length = strlen(server) + 6);
+   send_tok.value = n_autorec_alloc(
+         (send_tok.length = strlen(server) -1 + 5) +1);
    snprintf(send_tok.value, send_tok.length, "imap@%s", server);
    maj_stat = gss_import_name(&min_stat, &send_tok, GSS_C_NT_HOSTBASED_SERVICE,
          &target_name);
    f |= a_F_TARGET_NAME;
    if (maj_stat != GSS_S_COMPLETE) {
-      _imap_gssapi_error(send_tok.value, maj_stat, min_stat);
+      _imap_gssapi_error(savestrbuf(send_tok.value, send_tok.length),
+         maj_stat, min_stat);
       goto jleave;
    }
 
@@ -303,7 +306,7 @@ jebase64:
    o[2] = o[3] = (char)0377;
    snprintf(&o[4], sizeof o - 4, "%s", ccred->cc_user.s);
    send_tok.value = o;
-   send_tok.length = strlen(&o[4]) + 5;
+   send_tok.length = strlen(&o[4]) -1 + 4;
    maj_stat = gss_wrap(&min_stat, gss_context, 0, GSS_C_QOP_DEFAULT, &send_tok,
          &conf_state, &recv_tok);
    f |= a_F_RECV_TOK;
