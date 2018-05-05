@@ -1676,8 +1676,8 @@ and used by \*(UA to encrypt further communication with these senders:
 .Ed
 .
 .Pp
-To sign outgoing messages in order to allow receivers to verify the
-origin of these messages a personal S/MIME certificate is required.
+To sign outgoing messages, in order to allow receivers to verify the
+origin of these messages, a personal S/MIME certificate is required.
 \*(UA supports password-protected personal certificates (and keys),
 for more on this, and its automatization, please see the section
 .Sx "On URL syntax and credential lookup" .
@@ -13573,29 +13573,45 @@ This configuration should now work just fine:
 .\" .Ss "S/MIME step by step" {{{
 .Ss "S/MIME step by step"
 .
-\*(OP The first thing you need for participating in S/MIME message
-exchange is your personal certificate, including a private key.
-The certificate contains public information, in particular your name and
-your email address(es), and the public key that is used by others to
-encrypt messages for you,
-and to verify signed messages they supposedly received from you.
-The certificate is included in each signed message you send.
-The private key must be kept secret.
-It is used to decrypt messages that were previously encrypted with your
+\*(OP The first thing that is needed for
+.Sx "Signed and encrypted messages with S/MIME"
+is a personal certificate, and a private key.
+The certificate contains public information, in particular a name and
+email address(es), and the public key that can be used by others to
+encrypt messages for the certificate holder (the owner of the private
+key), and to
+.Ic verify
+signed messages generated with that certificate('s private key).
+Whereas the certificate is included in each signed message, the private
+key must be kept secret.
+It is used to decrypt messages that were previously encrypted with the
 public key, and to sign messages.
 .
 .Pp
-For personal use it is recommended that you get a S/MIME certificate
-from one of the major CAs on the Internet using your WWW browser.
+For personal use it is recommended that get a S/MIME certificate from
+one of the major CAs on the Internet.
 Many CAs offer such certificates for free.
+Usually offered is a combined certificate and private key in PKCS#12
+format which \*(UA does not accept directly.
+To convert it to PEM format, the following shell command can be used;
+please read on for how to use these PEM files.
+.
+.Bd -literal -offset indent
+$ openssl pkcs12 -in cert.p12 -out certpem.pem -clcerts -nodes
+$ # Alternatively
+$ openssl pkcs12 -in cert.p12 -out cert.pem -clcerts -nokeys
+$ openssl pkcs12 -in cert.p12 -out key.pem -nocerts -nodes
+.Ed
+.
+.Pp
 There is also
 .Lk https://www.CAcert.org
 which issues client and server certificates to members of their
 community for free; their root certificate
 .Pf ( Lk https://\:www.cacert.org/\:certs/\:root.crt )
 is often not in the default set of trusted CA root certificates, though,
-which means you will have to download their root certificate separately
-and ensure it is part of our S/MIME certificate validation chain by
+which means their root certificate has to be downloaded separately,
+and needs to be part of the S/MIME certificate validation chain by
 including it in
 .Va smime-ca-dir
 or as a vivid member of the
@@ -13648,7 +13664,9 @@ In order to use your new S/MIME setup a combined private key/public key
 .Pp
 This is the file \*(UA will work with.
 If you have created your private key with a passphrase then \*(UA will
-ask you for it whenever a message is signed or decrypted.
+ask you for it whenever a message is signed or decrypted, unless this
+operation has been automatized as described in
+.Sx "Signed and encrypted messages with S/MIME" .
 Set the following variables to henceforth use S/MIME (setting
 .Va smime-ca-file
 is of interest for verification only):
