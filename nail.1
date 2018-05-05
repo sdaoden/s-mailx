@@ -1928,6 +1928,13 @@ and/or (with special preparation)
 should be pointed to a trusted pool of certificates.
 A certificate cannot be more secure than the method its CA certificate
 has been retrieved with.
+For inspection or other purposes, the certificate of a server (as seen
+when connecting to it) can be fetched like this:
+.
+.Bd -literal -offset indent
+$ </dev/null openssl s_client -showcerts -connect \e
+    the-server.example:pop3s 2>&1 | tee log.txt
+.Ed
 .
 .Pp
 It depends on the used protocol whether encrypted communication is
