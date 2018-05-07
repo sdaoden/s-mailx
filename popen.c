@@ -1350,7 +1350,10 @@ n_child_wait(int pid, int *wait_status_or_null){
          sigsuspend(&nset); /* TODO we should allow more than SIGCHLD!! */
       ws = cp->status;
 #else
-      waitpid(pid, &ws, 0);
+      if(!cp->done)
+         waitpid(pid, &ws, 0);
+      else
+         ws = cp->status;
 #endif
       a_popen_child_del(cp);
    }else
