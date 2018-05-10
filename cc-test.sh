@@ -113,10 +113,12 @@ if [ -n "${CHECK_ONLY}${MAE_TEST}" ] && [ -z "${UTF8_LOCALE}" ]; then
    if [ -z "${UTF8_LOCALE}" ] && (locale yesexpr) >/dev/null 2>&1; then
       UTF8_LOCALE=`locale -a | { m=
          while read n; do
-            if { echo ${n} | ${grep} -i 'utf-\{0,1\}8'; } >/dev/null 2>&1; then
+            if { echo ${n} |
+                  ${grep} -i -e utf8 -e utf-8; } >/dev/null 2>&1; then
                m=${n}
-               if { echo ${n} | ${grep} -e POSIX -e en_EN -e en_US; }; then
-                  exit 0
+               if { echo ${n} |
+                     ${grep} -e POSIX -e en_EN -e en_US; } >/dev/null 2>&1; then
+                  break
                fi
             fi
          done
