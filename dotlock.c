@@ -129,7 +129,7 @@ jenametool:
          if(UICMP(z, NAME_MAX - 1, <, i))
             goto jenametool;
 # ifdef HAVE_PATHCONF
-      }else if(pc - 1 >= (long)i)
+      }else if(pc - 1 >= i)
          break;
       else
          goto jenametool;

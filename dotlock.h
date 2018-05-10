@@ -58,7 +58,7 @@ a_dotlock_create(struct n_dotlock_info *dip){
 
    /* (Callee ensured this doesn't end up as plain "di_lock_name") */
    snprintf(lname, sizeof lname, "%s.%s.%s",
-      dip->di_lock_name, dip->di_hostname, dip->di_randstr);
+      dip->di_randstr, dip->di_lock_name, dip->di_hostname);
 
    sigfillset(&nset);
 
