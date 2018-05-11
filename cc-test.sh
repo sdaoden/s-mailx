@@ -82,53 +82,68 @@ if [ "${1}" = --check-only ]; then
    MAILX=${2}
    [ -x "${MAILX}" ] || usage
    shift 2
+   echo 'Mode: --check-only, binary: '"${MAILX}"
 elif [ "${1}" = --mae-test ]; then
    MAE_TEST=1
    MAILX=${2}
    [ -x "${MAILX}" ] || usage
    shift 2
+   echo 'Mode: --mae-test, binary: '"${MAILX}"
+else
+   echo 'Mode: full compile test, this will take a long time...'
 fi
 RAWMAILX=${MAILX}
 MAILX="${MEMTESTER}${MAILX}"
 export RAWMAILX MAILX
 
-if [ -n "${CHECK_ONLY}${MAE_TEST}" ] && [ -z "${UTF8_LOCALE}" ]; then
-   # Try ourselfs via nl_langinfo(CODESET) first (requires a new version)
-   if command -v "${RAWMAILX}" >/dev/null 2>&1 &&
-         ("${RAWMAILX}" -:/ -Xxit) >/dev/null 2>&1; then
-      i=`LC_ALL=C.utf8 "${RAWMAILX}" ${ARGS} -X '
-         \define cset_test {
-            \if [ "${ttycharset}" @i=% utf ]
-               \echo $LC_ALL
-               \xit 0
-            \end
-            \if [ "${#}" -gt 0 ]
-               \wysh set LC_ALL=${1}
-               \shift
-               \eval xcall cset_test "${@}"
-            \end
-            \xit 1
-         }
-         \call cset_test C.UTF-8 POSIX.utf8 POSIX.UTF-8 \
-            en_EN.utf8 en_EN.UTF-8 en_US.utf8 en_US.UTF-8
-      '`
-      [ $? -eq 0 ] && UTF8_LOCALE=$i
+if [ -n "${CHECK_ONLY}${MAE_TEST}" ]; then
+   if [ -z "${UTF8_LOCALE}" ]; then
+      # Try ourselfs via nl_langinfo(CODESET) first (requires a new version)
+      if command -v "${RAWMAILX}" >/dev/null 2>&1 &&
+            ("${RAWMAILX}" -:/ -Xxit) >/dev/null 2>&1; then
+         echo 'Trying to detect UTF-8 locale via '"${RAWMAILX}"
+         i=`LC_ALL=C.utf8 "${RAWMAILX}" ${ARGS} -X '
+            \define cset_test {
+               \if [ "${ttycharset}" @i=% utf ]
+                  \echo $LC_ALL
+                  \xit 0
+               \end
+               \if [ "${#}" -gt 0 ]
+                  \wysh set LC_ALL=${1}
+                  \shift
+                  \eval xcall cset_test "${@}"
+               \end
+               \xit 1
+            }
+            \call cset_test C.UTF-8 POSIX.utf8 POSIX.UTF-8 \
+               en_EN.utf8 en_EN.UTF-8 en_US.utf8 en_US.UTF-8
+         '`
+         [ $? -eq 0 ] && UTF8_LOCALE=$i
+      fi
+
+      if [ -z "${UTF8_LOCALE}" ] && (locale yesexpr) >/dev/null 2>&1; then
+         echo 'Trying to detect UTF-8 locale via locale -a'
+         UTF8_LOCALE=`locale -a | { m=
+            while read n; do
+               if { echo ${n} |
+                     ${grep} -i -e utf8 -e utf-8; } >/dev/null 2>&1; then
+                  m=${n}
+                  if { echo ${n} |
+                        ${grep} -e POSIX -e en_EN -e en_US; } \
+                        >/dev/null 2>&1; then
+                     break
+                  fi
+               fi
+            done
+            echo ${m}
+         }`
+      fi
    fi
 
-   if [ -z "${UTF8_LOCALE}" ] && (locale yesexpr) >/dev/null 2>&1; then
-      UTF8_LOCALE=`locale -a | { m=
-         while read n; do
-            if { echo ${n} |
-                  ${grep} -i -e utf8 -e utf-8; } >/dev/null 2>&1; then
-               m=${n}
-               if { echo ${n} |
-                     ${grep} -e POSIX -e en_EN -e en_US; } >/dev/null 2>&1; then
-                  break
-               fi
-            fi
-         done
-         echo ${m}
-      }`
+   if [ -n "${UTF8_LOCALE}" ]; then
+      echo 'Using Unicode locale '"${UTF8_LOCALE}"
+   else
+      echo 'No Unicode locale found, disabling Unicode tests'
    fi
 fi
 
@@ -5186,13 +5201,6 @@ t_all() {
 #      ARGS="${ARGS} -Smemdebug"
 #      export ARGS
 #   fi
-
-   if [ -n "${UTF8_LOCALE}" ]; then
-      printf 'Using Unicode locale %s\n' "${UTF8_LOCALE}"
-   else
-      printf 'No Unicode locale found, disabling Unicode tests\n'
-   fi
-
    t_behave
    t_content
 }
