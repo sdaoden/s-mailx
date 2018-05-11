@@ -255,6 +255,8 @@ tmp2=${tmp0}2$$
 # Note that potential duplicates in PATH, C_INCLUDE_PATH etc. will be cleaned
 # via path_check() later on once possible
 
+COMMLINE="${*}"
+
 # TODO cc_maxopt is brute simple, we should compile test program and dig real
 # compiler versions for known compilers, then be more specific
 [ -n "${cc_maxopt}" ] || cc_maxopt=100
@@ -267,7 +269,7 @@ _CFLAGS= _LDFLAGS=
 
 os_early_setup() {
    # We don't "have any utility" (see make.rc)
-   [ -n "${OS}" ] && [ -n "${OSENV}" ] && [ -n "${OSFULLSPEC}" ] ||
+   [ -n "${OS}" ] && [ -n "${OSFULLSPEC}" ] ||
       thecmd_testandset_fail uname uname
 
    [ -n "${OS}" ] || OS=`${uname} -s`
@@ -289,10 +291,8 @@ os_setup() {
    OS=`echo ${OS} | ${tr} '[A-Z]' '[a-z]'`
    msg 'Operating system is %s' "${OS}"
 
-   # OSENV ends up in *build-osenv*
    # OSFULLSPEC is used to recognize changes (i.e., machine type, updates
    # etc.), it is not baked into the binary
-   [ -n "${OSENV}" ] || OSENV=`${uname} -sm`
    [ -n "${OSFULLSPEC}" ] || OSFULLSPEC=`${uname} -a`
 
    if [ ${OS} = darwin ]; then
@@ -1389,9 +1389,10 @@ fi
 cc_flags
 
 for i in \
+      COMMLINE \
       INCS LIBS \
       ; do
-   eval j=\$${i}
+   eval j="\$${i}"
    printf -- "${i}=${j}\n" >> ${newlst}
 done
 for i in \
@@ -1484,7 +1485,6 @@ ${cat} > ${makefile} << \!
 echo >> ${h}
 [ -n "${OS_DEFINES}" ] && printf -- "${OS_DEFINES}" >> ${h}
 echo '#define VAL_BUILD_OS "'"${OS}"'"' >> ${h}
-echo '#define VAL_BUILD_OSENV "'"${OSENV}"'"' >> ${h}
 
 # Generate n_err_number OS mappings
 dump_test_program=0
@@ -3237,9 +3237,26 @@ ${mv} ${h} ${tmp}
 printf '#ifndef n_MK_CONFIG_H\n# define n_MK_CONFIG_H 1\n' > ${h}
 ${cat} ${tmp} >> ${h}
 printf '\n' >> ${h}
-# We need these for correct "second stage configuration changed" detection */
-echo "/* `${cat} ${lib}` */" >> ${h}
-echo "/* `${cat} ${inc}` */" >> ${h}
+# Also need these for correct "second stage configuration changed" detection */
+i=
+if (${CC} --version) >/dev/null 2>&1; then
+   i=`${CC} --version 2>&1 | ${awk} '
+      BEGIN{l=""}
+      {if(length($0)) {if(l) l = l "\\\\n"; l = l "@" $0}}
+      END{gsub(/"/, "", l); print "\\\\n" l}
+   '`
+elif (${CC} -v) >/dev/null 2>&1; then
+   i=`${CC} -v 2>&1 | ${awk} '
+      BEGIN{l=""}
+      {if(length($0)) {if(l) l = l "\\\\n"; l = l "@" $0}}
+      END{gsub(/"/, "", l); print "\\\\n" l}
+   '`
+fi
+printf '#define VAL_BUILD_CC "%s %s %s%s"\n' \
+   "${CC}" "${CFLAGS}" "" "${i}" >> ${h}
+printf '#define VAL_BUILD_LD "%s %s %s"\n' \
+   "${CC}" "${LDFLAGS}" "`${cat} ${lib}`" >> ${h}
+printf '#define VAL_BUILD_REST "%s"\n' "${COMMLINE}" >> ${h}
 printf '\n' >> ${h}
 
 # Throw away all temporaries

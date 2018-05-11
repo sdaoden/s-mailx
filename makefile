@@ -54,9 +54,10 @@ d-gettext:
 		-o messages.pot *.c *.h
 
 _prego = if CWDDIR="$(CWDDIR)" SRCDIR="$(SRCDIR)" \
-	SHELL="$(SHELL)" MAKE="$(MAKE)" CC="$(CC)" \
-	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" \
-	$(SHELL) "$(SRCDIR)"make-config.sh; then :; else exit 1; fi
+		SHELL="$(SHELL)" MAKE="$(MAKE)" CC="$(CC)" \
+		CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" \
+		$(SHELL) "$(SRCDIR)"make-config.sh "$(MAKEFLAGS)"; then :;\
+	else exit 1; fi
 __prestop = if [ -f .obj/mk-config.mk ]; then :; else \
 		echo 'Program not configured, nothing to do';\
 		echo 'Use one of the targets: config, all, tangerine, citron';\

@@ -1553,8 +1553,10 @@ ok_b_bsdannounce, /* {obsolete=1} */
    ok_b_bsdheadline,
    ok_b_bsdmsgs,
    ok_b_bsdorder,
+   ok_v_build_cc,                      /* {virt=VAL_BUILD_CC} */
+   ok_v_build_ld,                      /* {virt=VAL_BUILD_LD} */
    ok_v_build_os,                      /* {virt=VAL_BUILD_OS} */
-   ok_v_build_osenv,                   /* {virt=VAL_BUILD_OSENV} */
+   ok_v_build_rest,                    /* {virt=VAL_BUILD_REST} */
 
    ok_v_COLUMNS,                       /* {notempty=1,posnum=1,env=1} */
    /* Charset lowercase conversion handled via vip= */

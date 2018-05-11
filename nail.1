@@ -7027,7 +7027,9 @@ Shows the
 and
 .Va features
 of \*(UA, as well as the build and running system environment.
-Supports
+This command can produce a more
+.Va verbose
+output, and supports
 .Cm vput
 (see
 .Sx "Command modifiers" ) .
@@ -8635,14 +8637,16 @@ field in message headers and with the
 .
 .Mx
 .Mx
-.It Va build-os , build-osenv
-\*(RO The operating system \*(UA has been build for, usually taken from
+.Mx
+.Mx
+.It Va build-cc , build-ld , build-os , build-rest
+\*(RO The build environment, including the compiler, the linker, the
+operating system \*(UA has been build for, usually taken from
 .Xr uname 1
 via
-.Ql uname -s
-and
-.Ql uname -srm ,
-respectively, the former being lowercased.
+.Ql uname -s ,
+and then lowercased, as well as all the rest that may possibly be useful
+to include in a bug report, respectively.
 .
 .Mx
 .It Va charset-7bit
@@ -14215,12 +14219,15 @@ Please report bugs to the
 address, e.g., from within \*(uA:
 .\" v15-compat: drop eval as `mail' will expand variable?
 .Ql ? Ns \| Ic eval Ns \| Ic mail Ns \| $contact-mail .
-Including the output of the command
+Including the
+.Va verbose
+output of the command
 .Ic version
 may be helpful, e.g.,
 .
 .Bd -literal -offset indent
-? vput version xy; wysh set escape=!; eval mail $contact-mail
+? wysh set escape=! verbose; vput version xy; unset verbose;\e
+  eval mail $contact-mail
 Bug subject
 !I xy
 !.
