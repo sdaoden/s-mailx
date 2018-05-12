@@ -1640,6 +1640,8 @@ jforce_stdin:
          break;
 
       /* POSIX says:
+       * TODO This does not take care for current shell quote mode!
+       * TODO Thus "echo '\<NEWLINE HERE> bla' will never work
        *    An unquoted <backslash> at the end of a command line shall
        *    be discarded and the next line shall continue the command */
       if(!(gif & n_GO_INPUT_NL_ESC) || (*linebuf)[n - 1] != '\\')
