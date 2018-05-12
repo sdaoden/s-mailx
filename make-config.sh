@@ -598,6 +598,7 @@ _cc_flags_generic() {
       msg ' ! $LD_LIBRARY_PATH adjusted, not trying -Wl,-z,now'
    fi
    ld_check -Wl,-z,noexecstack
+   ld_check -Wl,--as-needed
    if ld_check -Wl,-rpath =./ no; then
       ld_need_R_flags=-Wl,-rpath=
       # Choose DT_RUNPATH (after $LD_LIBRARY_PATH) over DT_RPATH (before)
