@@ -311,6 +311,9 @@ env_addon[i++] = str_concat_csvl(&s,
          "NAIL_FILENAME_TEMPORARY", "=", tmpname, NULL)->s;/* v15 */
    }
 
+   /* TODO we should include header information, especially From:, so
+    * TODO that same-origin can be tested for e.g. external-body!!! */
+
    env_addon[i] = NULL;
    sh = ok_vlook(SHELL);
 
