@@ -60,7 +60,7 @@ _prego = if CWDDIR="$(CWDDIR)" SRCDIR="$(SRCDIR)" \
 __prestop = if [ -f ./mk-config.mk ]; then :; else \
 		echo 'Program not configured, nothing to do';\
 		echo 'Use one of the targets: config, all, tangerine, citron';\
-		exit 1;\
+		exit 0;\
 	fi
 _prestop = $(__prestop);. ./mk-config.ev
 
