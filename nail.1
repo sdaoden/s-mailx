@@ -5099,16 +5099,18 @@ compression tool and a combined compressed and encrypted format:
 .Ed
 .
 .Pp
-MBOX database files are generally locked during file operations in order
-to avoid inconsistencies due to concurrent modifications.
-\*(OPal Mailbox files which \*(UA treats as the system
+MBOX databases will always be protected via file-region locks
+.Pf ( Xr fcntl 2 )
+during file operations in order to avoid inconsistencies due to
+concurrent modifications.
+\*(OPal In addition mailbox files treated as the system
 .Va inbox
 .Pf ( Ev MAIL ) ,
 and
 .Mx -sx
 .Sx "primary system mailbox" Ns
-es in general will also be protected by so-called dotlock files, the
-traditional way of mail spool file locking: for any file
+es in general will also be protected by so-called dotlock files,
+the traditional way of mail spool file locking: for any file
 .Ql a
 a lock file
 .Ql a.lock
