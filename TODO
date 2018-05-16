@@ -456,7 +456,7 @@ Low-Level
     2>FILE' is not interactive, even though it accepts terminal input.)
   . Just like the RFC 3676 link above, it would be nice if it would be
     somehow possible to recognize links in a document; i don't know yet
-    how this could be achieved without loosing formatting information (i
+    how this could be achieved without losing formatting information (i
     mean, we could enable this and inject terminal colour sequences, but
     one should be able to say 'follow link x', starting an action
     handler, and the 'x' must come from somwhere - simply injecting

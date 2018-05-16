@@ -478,7 +478,7 @@ A few compatibility improvements (AlpineLinux, Solaris).
 And minor features.
 
 Apologies to Jörg Schilling, a git bug i think it was who caused
-joining of changesets, loosing a credit, and it had been pushed to
+joining of changesets, losing a credit, and it had been pushed to
 [master] before the problem was realized.
 
 Credits, in order of commit appearance: Jörg Schilling,
@@ -1135,7 +1135,7 @@ NOTES, ChangeLog (packager-affine)
 
     Sufficient support provided, one can now, e.g., type "p " and
     then collect the message numbers to type, scrolling forward
-    and backward via key-bindings, without loosing the line
+    and backward via key-bindings, without losing the line
     content, then commit the final line.
 
   + OPT_EDITLINE and OPT_READLINE support have been dropped.
