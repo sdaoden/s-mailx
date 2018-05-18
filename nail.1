@@ -5114,24 +5114,24 @@ MBOX databases will always be protected via file-region locks
 .Pf ( Xr fcntl 2 )
 during file operations in order to avoid inconsistencies due to
 concurrent modifications.
-\*(OPal In addition mailbox files treated as the system
+.Mx -ix "dotlock files"
+\*(OP In addition mailbox files treated as the system
 .Va inbox
 .Pf ( Ev MAIL ) ,
-and
+as well as
 .Mx -sx
 .Sx "primary system mailbox" Ns
 es in general will also be protected by so-called dotlock files,
 the traditional way of mail spool file locking: for any file
-.Ql a
+.Ql x
 a lock file
-.Ql a.lock
+.Ql x.lock
 will be created for the duration of the synchronization \(em
-as necessary a privilege-separated dotlock child process will be used
-to accommodate for necessary privilege adjustments in order to create
-the dotlock file in the same directory
-and with the same user and group identities as the file of interest.
-Possible dotlock creation errors can be catched by setting
-.Va dotlock-ignore-error .
+as necessary an external privileged dotlock helper will be used
+to create the dotlock file in the same directory and with the same user
+and group identities as the file of interest.
+.Va dotlock-disable
+can be used to turn off additional dotlock files, shall the need arise.
 .
 .Pp
 \*(UA by default uses tolerant POSIX rules when reading MBOX database
@@ -8858,20 +8858,19 @@ mode with a set
 .Va ignoreeof .
 .
 .Mx
-.It Va dotlock-ignore-error
-\*(BO\*(OP Synchronization of mailboxes which \*(UA treats as
+.It Va dotlock-disable
+\*(BO\*(OP Disable creation of
 .Mx -sx
-.Sx "primary system mailbox" Ns
-es (see, e.g., the notes on
-.Sx "Filename transformations" ,
-as well as the documentation of
-.Ic file )
-will be protected with so-called dotlock files\(emthe traditional mail
-spool file locking method\(emin addition to system file locking.
-Because \*(UA ships with a privilege-separated dotlock creation program
-that should always be able to create such a dotlock file there is no
-good reason to ignore dotlock file creation errors, and thus these are
-fatal unless this variable is set.
+.Sx "dotlock files"
+for MBOX databases.
+.
+.It Va dotlock-ignore-error
+\*(OB\*(BO\*(OP Ignore failures when creating
+.Mx -sx
+.Sx "dotlock files" .
+Please use
+.Va dotlock-disable
+instead.
 .
 .Mx
 .It Va editalong

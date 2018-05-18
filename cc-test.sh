@@ -34,7 +34,7 @@ fi
 
 # We need *stealthmua* regardless of $SOURCE_DATE_EPOCH, the program name as
 # such is a compile-time variable
-ARGS='-:/ -# -Sdotlock-ignore-error -Sexpandaddr=restrict'
+ARGS='-:/ -# -Sdotlock-disable -Sexpandaddr=restrict'
    ARGS="${ARGS}"' -Smime-encoding=quoted-printable -Snosave -Sstealthmua'
 ADDARG_UNI=-Sttycharset=UTF-8
 CONF=../make.rc

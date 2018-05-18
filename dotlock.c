@@ -40,7 +40,7 @@ a_dotlock_main(void){
    enum n_file_lock_type flt;
    NYD_ENTER;
 
-   /* Ignore SIGPIPE, we'll see n_ERR_PIPE and "fall through" */
+   /* Ignore SIGPIPE, we will see n_ERR_PIPE and "fall through" */
    safe_signal(SIGPIPE, SIG_IGN);
 
    /* Get the arguments "passed to us" */
@@ -65,9 +65,9 @@ jislink:
       di.di_file_name = fname;
    }
 
-   /* So we're here, but then again the file can be a symbolic link!
+   /* So we are here, but then again the file can be a symbolic link!
     * This is however only true if we do not have realpath(3) available since
-    * that'll have resolved the path already otherwise; nonetheless, let
+    * that will have resolved the path already otherwise; nonetheless, let
     * readlink(2) be a precondition for dotlocking and keep this code */
    if(lstat(cp = di.di_file_name, &stb) == -1)
       goto jmsg;
@@ -140,7 +140,7 @@ jenametool:
 
    /* We are in the directory of the mailbox for which we have to create
     * a dotlock file for.  Any symbolic links have been resolved.
-    * We don't know whether we have realpath(3) available,and manually
+    * We do not know whether we have realpath(3) available,and manually
     * resolving the path is due especially given that S-nail supports the
     * special "%:" syntax to warp any file into a "system mailbox"; there may
     * also be multiple system mailbox directories...
@@ -181,9 +181,9 @@ jenametool:
       /* But fall through and try it with normal privileges! */
    }
 
-   /* So let's try and call it ourselfs!  Note that we don't block signals just
+   /* So let's try and call it ourselfs!  Note we do not block signals just
     * like our privsep child does, the user will anyway be able to remove his
-    * file again, and if we're in -u/$USER mode then we are allowed to access
+    * file again, and if we are in -u/$USER mode then we are allowed to access
     * the user's box: shall we leave behind a stale dotlock then at least we
     * start a friendly human conversation.  Since we cannot handle SIGKILL and
     * SIGSTOP malicious things could happen whatever we do */
@@ -217,13 +217,8 @@ FL FILE *
 n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
       off_t off, off_t len, size_t pollmsecs){
 #undef _DOMSG
-#ifdef HAVE_DOTLOCK
-# define _DOMSG() \
-   n_err(_("Creating dotlock for %s "), n_shexp_quote_cp(fname, FAL0))
-#else
-# define _DOMSG() \
-   n_err(_("Trying to lock file %s "), n_shexp_quote_cp(fname, FAL0))
-#endif
+#define _DOMSG() \
+   n_err(_("Creating file lock for %s "), n_shexp_quote_cp(fname, FAL0))
 
 #ifdef HAVE_DOTLOCK
    int cpipe[2];
@@ -284,15 +279,20 @@ jleave:
    return rv;
 
 #else
+   if(ok_blook(dotlock_disable)){
+      rv = (FILE*)-1;
+      goto jleave;
+   }
+
    /* Create control-pipe for our dot file locker process, which will remove
     * the lock and terminate once the pipe is closed, for whatever reason */
    if(pipe_cloexec(cpipe) == -1){
       serr = n_err_no;
-      emsg = N_("  Can't create dotlock file control pipe\n");
+      emsg = N_("  Cannot create dotlock file control pipe\n");
       goto jemsg;
    }
 
-   /* And the locker process itself; it'll be a (rather cheap) thread only
+   /* And the locker process itself; it will be a (rather cheap) thread only
     * unless the lock has to be placed in the system spool and we have our
     * privilege-separated dotlock program available, in which case that will be
     * executed and do "it" */
@@ -315,7 +315,7 @@ jleave:
    close(cpipe[1]);
    if(rv == NULL){
       close(cpipe[0]);
-      emsg = N_("  Can't create file lock process\n");
+      emsg = N_("  Cannot create file lock process\n");
       goto jemsg;
    }
 
@@ -336,7 +336,7 @@ jleave:
          goto jleave;
       case n_DLS_CANT_CHDIR:
          if(n_poption & n_PO_D_V)
-            emsg = N_("  Can't change directory!  Please check permissions\n");
+            emsg = N_("  Cannot change directory, please check permissions\n");
          serr = n_ERR_ACCES;
          break;
       case n_DLS_NAMETOOLONG:
@@ -351,21 +351,21 @@ jleave:
          break;
       case n_DLS_NOPERM:
          if((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_D_V))
-            emsg = N_("  Can't create a dotlock file, "
+            emsg = N_("  Cannot create a dotlock file, "
                   "please check permissions\n"
-                  "  (Or ignore by setting *dotlock-ignore-error* variable)\n");
+                  "  (Or set *dotlock-disable*, then try again)\n");
          serr = n_ERR_ACCES;
          break;
       case n_DLS_NOEXEC:
          if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_DOTLOCK_PRIVSEP_NOTED)
                ) == n_PSO_INTERACTIVE || (n_poption & n_PO_D_V)){
             n_psonce |= n_PSO_DOTLOCK_PRIVSEP_NOTED;
-            emsg = N_("  Can't find privilege-separated dotlock program\n");
+            emsg = N_("  Cannot find privilege-separated dotlock program\n");
          }
          serr = n_ERR_NOENT;
          break;
       case n_DLS_PRIVFAILED:
-         emsg = N_("  Privilege-separated dotlock program can't change "
+         emsg = N_("  Privilege-separated dotlock program cannot change "
                "privileges\n");
          serr = n_ERR_PERM;
          break;
@@ -422,6 +422,8 @@ jleave:
             rv = (FILE*)-1;
          else if(serr != n_ERR_AGAIN && serr != n_ERR_EXIST &&
                ok_blook(dotlock_ignore_error)){
+            n_OBSOLETE(_("*dotlock-ignore-error*: please use "
+               "*dotlock-disable* instead"));
             if(n_poption & n_PO_D_V)
                n_err(_("  *dotlock-ignore-error* set: continuing\n"));
             rv = (FILE*)-1;

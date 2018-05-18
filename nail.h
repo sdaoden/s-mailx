@@ -1578,7 +1578,8 @@ ok_b_bsdannounce, /* {obsolete=1} */
    ok_b_debug,                         /* {vip=1} */
    ok_b_disposition_notification_send,
    ok_b_dot,
-   ok_b_dotlock_ignore_error,
+   ok_b_dotlock_disable,
+ok_b_dotlock_ignore_error, /* {obsolete=1} */
 
    ok_v_EDITOR,                     /* {env=1,notempty=1,defval=VAL_EDITOR} */
    ok_v_editalong,

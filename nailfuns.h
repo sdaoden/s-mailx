@@ -765,17 +765,20 @@ FL struct str const *n_colour_pen_to_str(struct n_colour_pen *self);
  * dotlock.c
  */
 
-/* Aquire a flt lock and create a dotlock file; upon success a registered
- * control-pipe FILE* is returned that keeps the link in between us and the
+/* Aquire a flt n_file_lock().
+ * Will try FILE_LOCK_TRIES times if pollmsecs > 0 (once otherwise).
+ * If pollmsecs is UIZ_MAX, FILE_LOCK_MILLIS is used.
+ * If *dotlock-disable* is set (FILE*)-1 is returned if flt could be aquired,
+ * NULL if not, with n_err_ being usable.
+ * Otherwise a dotlock file is created, and a registered control-pipe FILE* is
+ * returned upon success which keeps the link in between us and the
  * lock-holding fork(2)ed subprocess (which conditionally replaced itself via
  * execv(2) with the privilege-separated dotlock helper program): the lock file
  * will be removed once the control pipe is closed via Pclose().
- * Will try FILE_LOCK_TRIES times if pollmsecs > 0 (once otherwise).
- * If pollmsecs is UIZ_MAX, FILE_LOCK_MILLIS is used.
  * If *dotlock_ignore_error* is set (FILE*)-1 will be returned if at least the
  * normal file lock could be established, otherwise n_err_no is usable on err */
-FL FILE *      n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
-                  off_t off, off_t len, size_t pollmsecs);
+FL FILE *n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
+            off_t off, off_t len, size_t pollmsecs);
 
 /*
  * edit.c
