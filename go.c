@@ -1307,14 +1307,18 @@ n_go_main_loop(void){ /* FIXME */
 #endif
                }
             }else{
+#if defined HAVE_MAILDIR || defined HAVE_IMAP
                n = (cp != NULL && strcmp(cp, "nopoll"));
+#endif
 
+#ifdef HAVE_MAILDIR
                if(mb.mb_type == MB_MAILDIR){
                   if(n != 0)
                      goto Jnewmail;
                }
+#endif
 #ifdef HAVE_IMAP
-               else if(mb.mb_type == MB_IMAP){
+               if(mb.mb_type == MB_IMAP){
                   if(!n)
                      n = (cp != NULL && strcmp(cp, "noimap"));
 

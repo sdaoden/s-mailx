@@ -44,7 +44,12 @@
 # include "nail.h"
 #endif
 
-#include <dirent.h>
+#ifdef HAVE_MAILDIR
+# include <dirent.h>
+#endif
+
+EMPTY_FILE()
+#ifdef HAVE_MAILDIR
 
 /* a_maildir_tbl should be a hash-indexed array of trees! */
 static struct message **a_maildir_tbl, **a_maildir_tbl_top;
@@ -1170,5 +1175,6 @@ jleave:
    NYD_LEAVE;
    return rv;
 }
+#endif /* HAVE_MAILDIR */
 
 /* s-it-mode */

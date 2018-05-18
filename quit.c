@@ -322,9 +322,11 @@ quit(bool_t hold_sigs_on)
    switch (mb.mb_type) {
    case MB_FILE:
       break;
+#ifdef HAVE_MAILDIR
    case MB_MAILDIR:
       rv = maildir_quit(TRU1);
       goto jleave;
+#endif
 #ifdef HAVE_POP3
    case MB_POP3:
       rv = pop3_quit(TRU1);

@@ -2653,6 +2653,11 @@ t_mbox() {
 
 t_maildir() {
    t_prolog maildir
+   if have_feat maildir; then :; else
+      echo 'maildir: unsupported, skipped'
+      return
+   fi
+
    TRAP_EXIT_ADDONS="./.t*"
 
    (

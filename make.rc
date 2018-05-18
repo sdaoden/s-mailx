@@ -204,6 +204,9 @@ OPT_AMALGAMATION=no
 # This should usually be enabled; it can be "require"d.
 OPT_ICONV=yes
 
+# Whether support for Maildir E-mail directories shall be enabled.
+OPT_MAILDIR=yes
+
 # Major switch to toggle *all* network related protocols
 # (POP3,SMTP,IMAP) and related/dependent stuff (GSS-API,SSL);
 # can be "require"d.

@@ -1013,12 +1013,18 @@ mightrecord(FILE *fp, struct name *to, bool_t resend){
                   if(0){
                   /* FALLTHRU */
                case PROTO_MAILDIR:
+#ifdef HAVE_MAILDIR
                      ccp = "maildir://";
+#else
+                     n_err(_("*record*: *outfolder*: no Maildir directory "
+                        "support compiled in\n"));
+                     goto jbail;
+#endif
                   }
                   folder = n_folder_query();
 #ifdef HAVE_IMAP
                   if(which_protocol(folder, FAL0, FAL0, NULL) == PROTO_IMAP){
-                     n_err(_("(*record*): *outfolder* set, *folder* is IMAP "
+                     n_err(_("*record*: *outfolder* set, *folder* is IMAP "
                         "based: only one protocol per file is possible\n"));
                      goto jbail;
                   }

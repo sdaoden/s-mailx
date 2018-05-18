@@ -1258,13 +1258,15 @@ FL void        mark(int mesg, int f);
  * maildir.c
  */
 
-FL int         maildir_setfile(char const *name, enum fedit_mode fm);
+#ifdef HAVE_MAILDIR
+FL int maildir_setfile(char const *name, enum fedit_mode fm);
 
-FL bool_t      maildir_quit(bool_t hold_sigs_on);
+FL bool_t maildir_quit(bool_t hold_sigs_on);
 
-FL enum okay   maildir_append(char const *name, FILE *fp, long offset);
+FL enum okay maildir_append(char const *name, FILE *fp, long offset);
 
-FL enum okay   maildir_remove(char const *name);
+FL enum okay maildir_remove(char const *name);
+#endif /* HAVE_MAILDIR */
 
 /*
  * memory.c

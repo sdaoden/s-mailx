@@ -1735,8 +1735,8 @@ denote optional parts, optional either because there also exist other
 ways to define the information in question or because support of the
 part is protocol-specific, e.g.,
 .Ql /path
-is used by the local maildir and the IMAP protocol, but not by POP3;
-If any of
+is used by the \*(OPal Maildir directory and the IMAP protocol, but not
+by POP3; If any of
 .Ql USER
 and
 .Ql PASSWORD
@@ -5057,7 +5057,7 @@ will be applied to the
 argument, and
 .Ql protocol://
 prefixes are, i.e., URL syntax is understood, e.g.,
-.Ql maildir:///tmp/mdirbox :
+.Ql mbox:///tmp/mdirbox :
 if a protocol prefix is used the mailbox type is fixated and neither
 the auto-detection (read on) nor the
 .Va newfolders
@@ -5143,7 +5143,7 @@ if any is seen: in this case
 can be used to create a valid MBOX database from the invalid input.
 .
 .Pp
-If no protocol has been fixated, and
+\*(OP If no protocol has been fixated, and
 .Ar name
 refers to a directory with the subdirectories
 .Ql tmp ,
@@ -9571,7 +9571,7 @@ mode any empty file will be removed unless this variable is set.
 This may improve the interoperability with other mail user agents
 when using a common folder directory, and prevents malicious users
 from creating fake mailboxes in a world-writable spool directory.
-\*(ID Only local regular (MBOX) files are covered, Maildir or other
+\*(ID Only local regular (MBOX) files are covered, Maildir and other
 mailbox types will never be removed, even if empty.
 .
 .Mx
@@ -10099,7 +10099,7 @@ in encrypted form:
 .
 .Mx
 .It Va newfolders
-If this variable has the value
+\*(OP If this variable has the value
 .Ql maildir ,
 newly created local folders will be in Maildir instead of MBOX format.
 .
@@ -10111,6 +10111,7 @@ If this variable is set to the special value
 .Ql nopoll
 then a Maildir folder will not be rescanned completely, but only
 timestamp changes are detected.
+Maildir folders are \*(OPal.
 .
 .Mx
 .It Va outfolder

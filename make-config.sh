@@ -20,6 +20,7 @@ export SHELL
 # *features* string: most likely for obsolete features etc.
 XOPTIONS="\
    ICONV='Character set conversion using iconv(3)' \
+   MAILDIR='Maildir E-mail directories' \
    SOCKETS='Network support' \
       SSL='SSL/TLS (OpenSSL / LibreSSL)' \
          SSL_ALL_ALGORITHMS='Support of all digest and cipher algorithms' \
@@ -122,6 +123,7 @@ option_setup() {
          OPT_UISTRINGS=1
          OPT_ERRORS=1
          OPT_IDNA=1
+         OPT_MAILDIR=1
          OPT_MLE=1
             OPT_HISTORY=1 OPT_KEY_BINDINGS=1
          OPT_SPAM_FILTER=1
@@ -138,6 +140,7 @@ option_setup() {
          OPT_UISTRINGS=1
          OPT_ERRORS=1
          OPT_IDNA=1
+         OPT_MAILDIR=1
          OPT_MLE=1
             OPT_HISTORY=1 OPT_KEY_BINDINGS=1
          OPT_SPAM_FILTER=1
@@ -1502,6 +1505,7 @@ feat_def ALWAYS_UNICODE_LOCALE
 feat_def AMALGAMATION 0
 feat_def CROSS_BUILD
 feat_def DOCSTRINGS
+feat_def MAILDIR
 feat_def UISTRINGS
 feat_def ERRORS
 

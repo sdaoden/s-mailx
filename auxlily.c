@@ -491,9 +491,13 @@ which_protocol(char const *name, bool_t check_stat, bool_t try_hooks,
       if(!strncmp(name, "file", sizeof("file") -1) ||
             !strncmp(name, "mbox", sizeof("mbox") -1))
          rv = PROTO_FILE;
-      else if(!strncmp(name, "maildir", sizeof("maildir") -1))
+      else if(!strncmp(name, "maildir", sizeof("maildir") -1)){
+#ifdef HAVE_MAILDIR
          rv = PROTO_MAILDIR;
-      else if(!strncmp(name, "pop3", sizeof("pop3") -1)){
+#else
+         n_err(_("No Maildir directory support compiled in\n"));
+#endif
+      }else if(!strncmp(name, "pop3", sizeof("pop3") -1)){
 #ifdef HAVE_POP3
          rv = PROTO_POP3;
 #else
@@ -505,8 +509,7 @@ which_protocol(char const *name, bool_t check_stat, bool_t try_hooks,
 #else
          n_err(_("No POP3S support compiled in\n"));
 #endif
-      }
-      else if(!strncmp(name, "imap", sizeof("imap") -1)){
+      }else if(!strncmp(name, "imap", sizeof("imap") -1)){
 #ifdef HAVE_IMAP
          rv = PROTO_IMAP;
 #else
@@ -536,19 +539,32 @@ jfile:
       memcpy(np, name, sz + 1);
 
       if(!stat(name, &stb)){
-         if(S_ISDIR(stb.st_mode) &&
-               (memcpy(&np[sz], "/tmp", 5),
+         if(S_ISDIR(stb.st_mode)
+#ifdef HAVE_MAILDIR
+               && (memcpy(&np[sz], "/tmp", 5),
                   !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
                (memcpy(&np[sz], "/new", 5),
                   !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
                (memcpy(&np[sz], "/cur", 5),
-                  !stat(np, &stb) && S_ISDIR(stb.st_mode)))
+                  !stat(np, &stb) && S_ISDIR(stb.st_mode))
+#endif
+               ){
+#ifdef HAVE_MAILDIR
             rv = PROTO_MAILDIR;
+#else
+            rv = PROTO_UNKNOWN;
+#endif
+         }
       }else if(try_hooks && n_filetype_trial(&ft, name))
          orig_name = savecatsep(name, '.', ft.ft_ext_dat);
       else if((cp = ok_vlook(newfolders)) != NULL &&
-            !asccasecmp(cp, "maildir"))
+            !asccasecmp(cp, "maildir")){
+#ifdef HAVE_MAILDIR
          rv = PROTO_MAILDIR;
+#else
+         n_err(_("*newfolders*: no Maildir directory support compiled in\n"));
+#endif
+      }
 
       n_lofi_free(np);
    }

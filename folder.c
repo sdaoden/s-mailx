@@ -418,10 +418,12 @@ jlogname:
 #endif
       rv = 1;
       break;
+#ifdef HAVE_MAILDIR
    case PROTO_MAILDIR:
       shudclob = 1;
       rv = maildir_setfile(name, fm);
       goto jleave;
+#endif
 #ifdef HAVE_POP3
    case PROTO_POP3:
       shudclob = 1;

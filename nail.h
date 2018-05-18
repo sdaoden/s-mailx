@@ -2352,8 +2352,10 @@ struct message {
 #ifdef HAVE_IMAP
    ui64_t m_uid;              /* IMAP unique identifier */
 #endif
+#ifdef HAVE_MAILDIR
    char const  *m_maildir_file; /* original maildir file of msg */
    ui32_t      m_maildir_hash; /* hash of file name in maildir sub */
+#endif
    int         m_collapsed;   /* collapsed thread information */
    unsigned    m_idhash;      /* hash on Message-ID for threads */
    unsigned    m_level;       /* thread level of message */

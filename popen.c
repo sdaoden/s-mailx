@@ -197,10 +197,12 @@ _file_save(struct fp *fpp)
    }
 #endif
 
+#ifdef HAVE_MAILDIR
    if ((fpp->flags & FP_MASK) == FP_MAILDIR) {
       rv = maildir_append(fpp->realfile, fpp->fp, fpp->offset);
       goto jleave;
    }
+#endif
 
    outfd = open(fpp->realfile,
          ((fpp->omode | O_CREAT | (fpp->omode & O_APPEND ? 0 : O_TRUNC) |
@@ -584,12 +586,17 @@ n_fopen_any(char const *file, char const *oflags, /* TODO should take flags */
       goto jleave;
 #endif
    case n_PROTO_MAILDIR:
+#ifdef HAVE_MAILDIR
       if(fs_or_null != NULL && !access(file, F_OK))
          fs |= n_FOPEN_STATE_EXISTS;
       flags |= FP_MAILDIR;
       osflags = O_RDWR | O_APPEND | O_CREAT | n_O_NOXY_BITS;
       infd = -1;
       break;
+#else
+      n_err_no = n_ERR_OPNOTSUPP;
+      goto jleave;
+#endif
    case n_PROTO_FILE:{
       struct n_file_type ft;
 

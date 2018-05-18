@@ -226,8 +226,13 @@ c_remove(void *v)
          ec |= 1;
          break;
       case PROTO_MAILDIR:
-         if (maildir_remove(name) != OKAY)
+#ifdef HAVE_MAILDIR
+         if(maildir_remove(name) != OKAY)
             ec |= 1;
+#else
+         n_err(_("No Maildir directory support compiled in\n"));
+         ec |= 1;
+#endif
          break;
       case PROTO_IMAP:
 #ifdef HAVE_IMAP
@@ -304,10 +309,15 @@ c_rename(void *v)
       }
       break;
    case PROTO_MAILDIR:
-      if (rename(oldn, newn) == -1) {
+#ifdef HAVE_MAILDIR
+      if(rename(oldn, newn) == -1){
          n_perr(oldn, 0);
          ec |= 1;
       }
+#else
+      n_err(_("No Maildir directory support compiled in\n"));
+      ec |= 1;
+#endif
       break;
    case PROTO_POP3:
       n_err(_("Cannot rename POP3 mailboxes\n"));
