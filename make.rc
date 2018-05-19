@@ -4,11 +4,23 @@
 #@ - Choosing a predefined CONFIG= disallows further option fine-tuning.
 #@   (With some exceptions, e.g., OPT_DEBUG.)
 #@
+#@ - Specifying settings on the command line will take precedence over
+#@   the variables in here (correctly triggering build updates as
+#@   necessary, too).
+#@
+#@ - Features / options have an OPT_ prefix and usually need to be
+#@   assigned a boolean value, as in OPT_IDNA=yes.  Booleans are 1/0,
+#@   y/n, true/false, yes/no and on/off (case doesn't matter).
+#@
+#@   The value "require" is also a true boolean, but will in addition
+#@   cause configuration to fail if the requested condition cannot be
+#@   satisfied.  This functionality is available where documented.
+#@
 #@ - Values have a VAL_ prefix, and are assigned strings, for example
 #@       VAL_PREFIX="/usr/local"
 #@
 #@   Values which are only used during configuration, building, and / or
-#@   installation have no prefix, e.g., DESTDIR, VERBOSE, awk, sed;
+#@   installation have no prefix, e.g., DESTDIR, VERBOSE, awk, sed etc.
 #@
 #@   Some values exist which offer "multiple choice", e.g., VAL_RANDOM
 #@   (without accompanying feature option) and VAL_IDNA (with OPT_IDNA).
@@ -21,19 +33,7 @@
 #@   the entire list is ignored.
 #@   The special string "error" will abort configuration once its list
 #@   position is reached; this is only supported if documented, and not
-#@   with an accompanying OPT_ (which then offers "require", as below).
-#@
-#@ - Features / options have an OPT_ prefix and usually need to be
-#@   assigned a boolean value, as in OPT_IDNA=yes.  Booleans are 1/0,
-#@   y/n, true/false, yes/no and on/off (case doesn't matter).
-#@
-#@   The value "require" is also a true boolean, but will in addition
-#@   cause configuration to fail if the requested condition cannot be
-#@   satisfied.  This functionality is available where documented.
-#@
-#@ - Specifying settings on the command line will take precedence over
-#@   the variables in here (correctly triggering build updates as
-#@   necessary, too).
+#@   with an accompanying OPT_ (which then offers "require", as above).
 #@
 #@ - This file is parsed by the shell: it is in sh(1), not in make(1)
 #@   syntax.  Evaluation occurs *after* it has been read, so command
