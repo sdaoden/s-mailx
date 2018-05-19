@@ -1029,16 +1029,17 @@ FL int         extract_date_from_from_(char const *line, size_t linelen,
                   char datebuf[n_FROM_DATEBUF]);
 
 /* Extract some header fields (see e.g. -t documentation) from a message.
- * If n_poption&n_PO_t_FLAG *and* n_psonce&n_PSO_t_FLAG are both set a number
- * of additional header fields are understood and address joining is performed
- * as necessary, and the subject is treated with additional care, too.
- * If n_psonce&n_PSO_t_FLAG is set but n_PO_t_FLAG is no more, From: will not
- * be assigned no more.
+ * If extended_list_of is set a number of additional header fields are
+ * understood and address joining is performed as necessary, and the subject
+ * is treated with additional care, too;
+ * if it is set to TRUM1 then From: and Sender: will not be assigned no more,
+ * if it is TRU1 then to,cc,bcc present in hp will be used to prefill the new
+ * header.
  * This calls expandaddr() on some headers and sets checkaddr_err if that is
  * not NULL -- note it explicitly allows EAF_NAME because aliases are not
  * expanded when this is called! */
-FL void        extract_header(FILE *fp, struct header *hp,
-                  si8_t *checkaddr_err);
+FL void n_header_extract(FILE *fp, struct header *hp, bool_t extended_list_of,
+         si8_t *checkaddr_err);
 
 /* Return the desired header line from the passed message
  * pointer (or NULL if the desired header field is not available).
@@ -1894,7 +1895,7 @@ FL int         mkdate(FILE *fo, char const *field);
  * nosend_msg tells us not to dig to deep but to instead go for compose mode or
  * editing a message (yet we're stupid and cannot do it any better) - if it is
  * TRUM1 then we're really in compose mode and will produce some fields for
- * easier filling in */
+ * easier filling in (see run_editor() proto for this hack) */
 FL int         puthead(bool_t nosend_msg, struct header *hp, FILE *fo,
                   enum gfield w, enum sendaction action,
                   enum conversion convert, char const *contenttype,

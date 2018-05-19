@@ -595,7 +595,7 @@ enum expand_addr_flags {
     * TODO ever know, in particular not regarding "failinvaddr".
     * TODO The hacky solution is this bit -- which can ONLY be used for fields
     * TODO which will be subject to namelist_vaporise_head() later on!! --,
-    * TODO if it is set (by extract_header()) then checkaddr() will NOT strip
+    * TODO if it is set (by n_header_extract()) then checkaddr() will NOT strip
     * TODO invalid headers off IF it deals with a NULL senderror pointer */
    EAF_MAYKEEP    = 1<<3,
    /* Bits reused by enum expand_addr_check_mode! */
@@ -1488,17 +1488,14 @@ enum n_program_state_once{
    n_PSO_TTYOUT = 1u<<12, /* TODO should be TTYERR! */
 
    /* "Later" */
+   n_PSO_t_FLAG_DONE = 1u<<15,
    n_PSO_ATTACH_QUOTE_NOTED = 1u<<16,
    n_PSO_ERRORS_NOTED = 1u<<17,
    n_PSO_LINE_EDITOR_INIT = 1u<<18,
    n_PSO_RANDOM_INIT = 1u<<19,
    n_PSO_TERMCAP_DISABLE = 1u<<20,
    n_PSO_TERMCAP_CA_MODE = 1u<<21,
-   n_PSO_DOTLOCK_PRIVSEP_NOTED = 1u<<22,
-
-   /* TODO A subtile HACK which works in conjunction with n_OPT_t_FLAG so as
-    * to allow to have multiple states regarding the related header setup */
-   n_PSO_t_FLAG = 1u<<30
+   n_PSO_DOTLOCK_PRIVSEP_NOTED = 1u<<22
 };
 
 /* {{{ A large enum with all the boolean and value options a.k.a their keys.

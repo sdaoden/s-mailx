@@ -1282,10 +1282,9 @@ jerr:
 }
 
 FL void
-extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
+n_header_extract(FILE *fp, struct header *hp, bool_t extended_list_of,
+      si8_t *checkaddr_err)
 {
-   /* See the prototype declaration for the hairy relationship of
-    * n_poption&n_PO_t_FLAG and/or n_psonce&n_PSO_t_FLAG in here */
    struct n_header_field **hftail;
    struct header nh, *hq = &nh;
    char *linebuf = NULL /* TODO line pool */, *colon;
@@ -1296,7 +1295,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
    NYD_ENTER;
 
    memset(hq, 0, sizeof *hq);
-   if ((n_psonce & n_PSO_t_FLAG) && (n_poption & n_PO_t_FLAG)) {
+   if(extended_list_of > FAL0){
       hq->h_to = hp->h_to;
       hq->h_cc = hp->h_cc;
       hq->h_bcc = hp->h_bcc;
@@ -1326,7 +1325,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
          hq->h_bcc = cat(hq->h_bcc, checkaddrs(lextract(val, GBCC | GFULL),
                EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err));
       } else if ((val = thisfield(linebuf, "from")) != NULL) {
-         if (!(n_psonce & n_PSO_t_FLAG) || (n_poption & n_PO_t_FLAG)) {
+         if(extended_list_of > FAL0){
             ++seenfields;
             hq->h_from = cat(hq->h_from,
                   checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
@@ -1337,7 +1336,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
          hq->h_reply_to = cat(hq->h_reply_to,
                checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT, NULL));
       } else if ((val = thisfield(linebuf, "sender")) != NULL) {
-         if (!(n_psonce & n_PSO_t_FLAG) || (n_poption & n_PO_t_FLAG)) {
+         if(extended_list_of > FAL0){
             ++seenfields;
             hq->h_sender = cat(hq->h_sender, /* TODO cat? check! */
                   checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
@@ -1355,7 +1354,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
       /* The remaining are mostly hacked in and thus TODO -- at least in
        * TODO respect to their content checking */
       else if((val = thisfield(linebuf, "message-id")) != NULL){
-         if(n_psonce & n_PSO_t_FLAG){
+         if(extended_list_of){
             np = checkaddrs(lextract(val, GREF),
                   /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
                   NULL);
@@ -1366,7 +1365,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
          }else
             goto jebadhead;
       }else if((val = thisfield(linebuf, "in-reply-to")) != NULL){
-         if(n_psonce & n_PSO_t_FLAG){
+         if(extended_list_of){
             np = checkaddrs(lextract(val, GREF),
                   /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
                   NULL);
@@ -1375,7 +1374,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
          }else
             goto jebadhead;
       }else if((val = thisfield(linebuf, "references")) != NULL){
-         if(n_psonce & n_PSO_t_FLAG){
+         if(extended_list_of){
             ++seenfields;
             /* TODO Limit number of references TODO better on parser side */
             hq->h_ref = cat(hq->h_ref, checkaddrs(extract(val, GREF),
@@ -1386,7 +1385,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
       }
       /* and that is very hairy */
       else if((val = thisfield(linebuf, "mail-followup-to")) != NULL){
-         if(n_psonce & n_PSO_t_FLAG){
+         if(extended_list_of){
             ++seenfields;
             hq->h_mft = cat(hq->h_mft, checkaddrs(lextract(val, GEXTRA | GFULL),
                   /*EACM_STRICT | TODO '/' valid!! | EACM_NOLOG | */EACM_NONAME,
@@ -1450,13 +1449,13 @@ jebadhead:
       hp->h_from = hq->h_from;
       hp->h_reply_to = hq->h_reply_to;
       hp->h_sender = hq->h_sender;
-      if (hq->h_subject != NULL || !(n_psonce & n_PSO_t_FLAG) ||
-            !(n_poption & n_PO_t_FLAG))
+      if(hq->h_subject != NULL || extended_list_of <= FAL0)
          hp->h_subject = hq->h_subject;
       hp->h_user_headers = hq->h_user_headers;
 
-      if (n_psonce & n_PSO_t_FLAG) {
-         hp->h_ref = hq->h_ref;
+      if(extended_list_of){
+         if(extended_list_of > 0)
+            hp->h_ref = hq->h_ref;
          hp->h_message_id = hq->h_message_id;
          hp->h_in_reply_to = hq->h_in_reply_to;
          hp->h_mft = hq->h_mft;
@@ -1464,9 +1463,10 @@ jebadhead:
          /* And perform additional validity checks so that we don't bail later
           * on TODO this is good and the place where this should occur,
           * TODO unfortunately a lot of other places do again and blabla */
-         if (hp->h_from == NULL)
+         if(hp->h_from == NULL)
             hp->h_from = n_poption_arg_r;
-         else if (hp->h_from->n_flink != NULL && hp->h_sender == NULL)
+         else if(extended_list_of > 0 &&
+               hp->h_from->n_flink != NULL && hp->h_sender == NULL)
             hp->h_sender = lextract(ok_vlook(sender),
                   GEXTRA | GFULL | GFULLEXTRA);
       }
@@ -2518,7 +2518,7 @@ setup_from_and_sender(struct header *hp)
     * a behaviour that is compatible with what users would expect from e.g.
     * postfix(1) */
    if ((np = hp->h_from) != NULL ||
-         ((n_psonce & n_PSO_t_FLAG) && (np = n_poption_arg_r) != NULL)) {
+         ((n_poption & n_PO_t_FLAG) && (np = n_poption_arg_r) != NULL)) {
       ;
    } else if ((addr = myaddrs(hp)) != NULL)
       np = lextract(addr, GEXTRA | GFULL | GFULLEXTRA);

@@ -450,7 +450,7 @@ a_coll_makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err,
       goto jleave;
    }
 
-   extract_header(fp, hp, checkaddr_err);
+   n_header_extract(fp, hp, (do_delayed_due_t ? TRU1 : TRUM1), checkaddr_err);
    if (checkaddr_err != NULL && *checkaddr_err != 0)
       goto jleave;
 
@@ -1977,10 +1977,11 @@ jcont:
          enum n_go_input_flags gif;
          bool_t histadd;
 
+         /* TODO optimize: no need to evaluate that anew for each loop tick! */
          gif = n_GO_INPUT_CTX_COMPOSE;
          histadd = (sp != NULL);
          if((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_TILDE_FLAG)){
-            if(!(n_poption & n_PO_t_FLAG))
+            if(!(n_poption & n_PO_t_FLAG) || (n_psonce & n_PSO_t_FLAG_DONE))
                gif |= n_GO_INPUT_NL_ESC;
          }
          cnt = n_go_input(gif, n_empty, &linebuf, &linesize, NULL, &histadd);
@@ -1990,15 +1991,11 @@ jcont:
       if(cnt < 0){
          if(coap != NULL)
             break;
-         if(n_poption & n_PO_t_FLAG){
+         if((n_poption & n_PO_t_FLAG) && !(n_psonce & n_PSO_t_FLAG_DONE)){
             fflush_rewind(_coll_fp);
-            /* It is important to set n_PSO_t_FLAG before extract_header()
-             * *and* keep n_PO_t_FLAG for the first parse of the message!
-             * TODO This is a hack, we need a clean approach for this */
-            n_psonce |= n_PSO_t_FLAG;
+            n_psonce |= n_PSO_t_FLAG_DONE;
             if(!a_coll_makeheader(_coll_fp, hp, checkaddr_err, TRU1))
                goto jerr;
-            n_poption &= ~n_PO_t_FLAG;
             continue;
          }else if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT) &&
                ok_blook(ignoreeof) && ++eofcnt < 4){

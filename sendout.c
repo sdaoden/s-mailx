@@ -1381,7 +1381,7 @@ __mta_prepare_args(struct name *to, struct header *hp)
       if (hp != NULL && (np = hp->h_from) != NULL) {
          /* However, what wasn't resolved there was the case that the message
           * specified multiple From: addresses and a Sender: */
-         if ((n_psonce & n_PSO_t_FLAG) && hp->h_sender != NULL)
+         if((n_poption & n_PO_t_FLAG) && hp->h_sender != NULL)
             np = hp->h_sender;
 
          if (np->n_fullextra != NULL) {
