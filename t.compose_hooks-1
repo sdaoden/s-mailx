@@ -9,10 +9,10 @@ Cc: diet spliced <cC@exam.ple>, <cC2@exam.ple>, cC3@exam.ple,
 Bcc: diet spliced <bCc@exam.ple>, <bCc2@exam.ple>, bCc3@exam.ple
 Subject: <subject@exam.ple> <subject2@exam.ple> subject3@exam.ple
 Message-ID: <messAge-id@exam.ple>
-References: <rEfErEncEs@exam.ple> <rEfErEncEs2@exam.ple>
- <rEfErEncEs3@exam.ple>
 In-Reply-To: <in-Reply-to@exam.ple> <in-Reply-to2@exam.ple>
  <in-Reply-to3@exam.ple>
+References: <rEfErEncEs@exam.ple> <rEfErEncEs2@exam.ple>
+ <rEfErEncEs3@exam.ple>
 Reply-To: diet spliced <reply-To@exam.ple>, <reply-To2@exam.ple>,
  reply-To3@exam.ple
 Mail-Followup-To: this-goes@nowhere, diet spliced <To@exam.ple>,
