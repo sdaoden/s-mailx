@@ -2107,6 +2107,10 @@ jto_fmt:
       if((np = hp->h_in_reply_to) == NULL)
          hp->h_in_reply_to = np = n_header_setup_in_reply_to(hp);
       if(np != NULL){
+         if(nosend_msg == TRUM1 &&
+               fputs(_("# Removing or modifying In-Reply-To: "
+                  "breaks the old, and starts a new thread\n"), fo) == EOF)
+            goto jleave;
          if(fmt("In-Reply-To:", np, fo, 0))
             goto jleave;
          ++gotcha;

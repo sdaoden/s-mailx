@@ -155,7 +155,7 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
 
    if (hp != NULL) {
       assert(mp == NULL);
-      t = GTO | GSUBJECT | GCC | GBCC | GNL | GCOMMA;
+      t = GTO | GSUBJECT | GCC | GBCC | GREF_IRT | GNL | GCOMMA;
       if ((hp->h_from != NULL || myaddrs(hp) != NULL) ||
             (hp->h_sender != NULL || ok_vlook(sender) != NULL) ||
             (hp->h_reply_to != NULL || ok_vlook(reply_to) != NULL) ||

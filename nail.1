@@ -611,18 +611,24 @@ normalized to space (SP) characters.
 .Mx
 .It Fl t
 The message given (on standard input) is expected to contain, separated
-from the message body by an empty line, a message header with
+from the message body by an empty line, one or multiple message headers.
+Headers can span multiple consecutive lines if follow lines start with
+any amount of whitespace.
+A line starting with the number sign
+.Ql #
+in the first column is ignored.
+The message headers
 .Ql To: ,
 .Ql Cc: ,
 or
 .Ql Bcc:
-fields giving its recipients, which will be added to any recipients
-specified on the command line.
+fields give the message recipients, which will be added to any
+recipients specified on the command line.
 If a message subject is specified via
 .Ql Subject:
 then it will be used in favour of one given on the command line.
 .Pp
-Also understood are
+More optional headers are
 .Ql Reply-To:
 (possibly overriding
 .Va reply-to ) ,

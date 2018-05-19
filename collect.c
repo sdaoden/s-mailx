@@ -494,15 +494,26 @@ a_coll_edit(int c, struct header *hp) /* TODO error(return) weird */
    struct n_sigman sm;
    FILE *nf;
    sighandler_type volatile sigint;
-   bool_t saved;
+   struct name *saved_in_reply_to;
+   bool_t saved_filrec;
    si32_t volatile rv;
    NYD_ENTER;
 
    n_UNINIT(sigint, SIG_ERR);
    rv = n_ERR_NONE;
 
-   if(!(saved = ok_blook(add_file_recipients)))
+   if(!(saved_filrec = ok_blook(add_file_recipients)))
       ok_bset(add_file_recipients);
+
+   saved_in_reply_to = NULL;
+   if(hp != NULL){
+      struct name *np;
+
+      if((np = hp->h_in_reply_to) == NULL)
+         hp->h_in_reply_to = np = n_header_setup_in_reply_to(hp);
+      if(np != NULL)
+         saved_in_reply_to = ndup(np, np->n_type);
+   }
 
    n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
    case 0:
@@ -514,21 +525,26 @@ a_coll_edit(int c, struct header *hp) /* TODO error(return) weird */
    }
 
    nf = run_editor(_coll_fp, (off_t)-1, c, FAL0, hp, NULL, SEND_MBOX, sigint);
-   if (nf != NULL) {
-      if (hp) {
+   if(nf != NULL){
+      if(hp != NULL){
          if(!a_coll_makeheader(nf, hp, NULL, FAL0))
             rv = n_ERR_INVAL;
-      } else {
+         /* Break the thread if In-Reply-To: has been modified */
+         if(hp->h_in_reply_to == NULL || (saved_in_reply_to != NULL &&
+               asccasecmp(hp->h_in_reply_to->n_fullname,
+                  saved_in_reply_to->n_fullname)))
+               hp->h_ref = NULL;
+      }else{
          fseek(nf, 0L, SEEK_END);
          Fclose(_coll_fp);
          _coll_fp = nf;
       }
-   } else
+   }else
       rv = n_ERR_CHILD;
 
    n_sigman_cleanup_ping(&sm);
 jleave:
-   if(!saved)
+   if(!saved_filrec)
       ok_bclear(add_file_recipients);
    safe_signal(SIGINT, sigint);
    NYD_LEAVE;
@@ -2635,7 +2651,8 @@ jout:
       coap = NULL;
 
       fprintf(n_stdout, _("-------\nEnvelope contains:\n")); /* xxx SEARCH112 */
-      puthead(TRU1, hp, n_stdout, GIDENT | GSUBJECT | GTO | GCC | GBCC | GCOMMA,
+      puthead(TRU1, hp, n_stdout,
+         GIDENT | GREF_IRT  | GSUBJECT | GTO | GCC | GBCC | GCOMMA,
          SEND_TODISP, CONV_NONE, NULL, NULL);
 
 jreasksend:

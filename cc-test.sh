@@ -4544,10 +4544,36 @@ t_lreply_futh_rth_etc() {
 	The report's useful :-)
 	_EOT
 
-   printf 'reply 1\nthank you\n!.\n' |
+   # Let us test In-Reply-To: removal starts a new thread..
+   # This needs adjustment of *stealthmua*
+   argadd='-Sstealthmua=noagent -Shostname'
+
+   ${rm} "${MBOX}"
+   printf 'reply 1\nthread\n!.\n' |
       ${MAILX} ${ARGS} -Sescape=! -Smta=./.tmta.sh -Sreply-to-honour \
-         -Rf ./.tmbox > "${MBOX}" 2>&1
-   check 2 0 "${MBOX}" '2350047931 331'
+         ${argadd} -Rf ./.tmbox > .tall 2>&1
+   check 2 0 "${MBOX}" '3321764338 429'
+   check 3 - .tall '4294967295 0'
+
+   printf 'reply 1\nnew <- thread!\n!v\n!.\n' |
+      ${MAILX} ${ARGS} -Sescape=! -Smta=./.tmta.sh -Sreply-to-honour \
+         -Seditheaders -S VISUAL="${sed} -i'' -e '/^In-Reply-To:/d'" \
+         ${argadd} -Rf "${MBOX}" > .tall 2>&1
+   check 4 0 "${MBOX}" '1682552516 763'
+   check 5 - .tall '4294967295 0'
+
+   printf 'reply 2\nold <- new <- thread!\n!.\n' |
+      ${MAILX} ${ARGS} -Sescape=! -Smta=./.tmta.sh -Sreply-to-honour \
+         ${argadd} -Rf "${MBOX}" > .tall 2>&1
+   check 6 0 "${MBOX}" '2900984135 1219'
+   check 7 - .tall '4294967295 0'
+
+   printf 'reply 3\nnew <- old <- new <- thread!\n!v\n!.\n' |
+      ${MAILX} ${ARGS} -Sescape=! -Smta=./.tmta.sh -Sreply-to-honour \
+         -Seditheaders -S VISUAL="${sed} -i'' -e '/^In-Reply-To:/d'" \
+         ${argadd} -Rf "${MBOX}" > .tall 2>&1
+   check 8 0 "${MBOX}" '794031200 1567'
+   check 9 - .tall '4294967295 0'
 
    t_epilog
 }
@@ -4920,6 +4946,19 @@ t_q_t_etc_opts() {
       ${cat} ./.tin
    ) | ${MAILX} ${ARGS} ${ADDARG_UNI} -Snodot -a ./.tin -t
    check 3 0 "${MBOX}" '3570973309 6646'
+
+   # Check comments in the header
+   ${rm} "${MBOX}"
+   ${cat} <<-_EOT | ${MAILX} ${ARGS} -Snodot -t "${MBOX}"
+		# Ein Kommentar
+		From: du@da
+		# Noch ein Kommentar
+		Subject: hey you
+		# Nachgestelltes Kommentar
+		
+		BOOOM
+		_EOT
+   check 4 0 "${MBOX}" '3829967825 128'
 
    t_epilog
 }

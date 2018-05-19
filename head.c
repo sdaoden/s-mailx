@@ -111,7 +111,7 @@ static bool_t a_head_addrspec_check(struct n_addrguts *agp, bool_t skinned,
  * "colon" is set to point to the colon in the header.
  * Must deal with \ continuations & other such fraud */
 static long a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem,
-            char **colon);
+            char **colon, bool_t support_sh_comment);
 
 static int                 msgidnextc(char const **cp, int *status);
 
@@ -959,7 +959,8 @@ jleave:
 }
 
 static long
-a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem, char **colon)
+a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem, char **colon,
+   bool_t support_sh_comment)
 {
    char *line2 = NULL, *cp, *cp2;
    size_t line2size = 0;
@@ -978,6 +979,12 @@ a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem, char **colon)
          rem = -1;
          break;
       }
+      if(support_sh_comment && **linebuf == '#'){
+         /* A comment may be last before body, too, ensure empty last line */
+         **linebuf = '\0';
+         continue;
+      }
+
       for (cp = *linebuf; fieldnamechar(*cp); ++cp)
          ;
       if (cp > *linebuf)
@@ -1304,10 +1311,11 @@ n_header_extract(FILE *fp, struct header *hp, bool_t extended_list_of,
 
    for (lc = 0; readline_restart(fp, &linebuf, &linesize, 0) > 0; ++lc)
       ;
+   rewind(fp);
 
    /* TODO yippieia, cat(check(lextract)) :-) */
-   rewind(fp);
-   while ((lc = a_gethfield(fp, &linebuf, &linesize, lc, &colon)) >= 0) {
+   while ((lc = a_gethfield(fp, &linebuf, &linesize, lc, &colon,
+         extended_list_of)) >= 0) {
       struct name *np;
 
       /* We explicitly allow EAF_NAME for some addressees since aliases are not
@@ -1504,7 +1512,7 @@ hfield_mult(char const *field, struct message *mp, int mult)
          readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
       goto jleave;
    while (lc > 0) {
-      if ((lc = a_gethfield(ibuf, &linebuf, &linesize, lc, &colon)) < 0)
+      if ((lc = a_gethfield(ibuf, &linebuf, &linesize, lc, &colon, FAL0)) < 0)
          break;
       if ((hfield = thisfield(linebuf, field)) != NULL && *hfield != '\0') {
          if (mult)
@@ -2696,7 +2704,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
    while(lc > 0){
       struct name *np;
 
-      if((lc = a_gethfield(ibuf, linebuf, linesize, lc, &colon)) <= 0)
+      if((lc = a_gethfield(ibuf, linebuf, linesize, lc, &colon, FAL0)) <= 0)
          break;
 
       /* Is this a header we are interested in? */

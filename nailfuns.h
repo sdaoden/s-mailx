@@ -1034,7 +1034,7 @@ FL int         extract_date_from_from_(char const *line, size_t linelen,
  * is treated with additional care, too;
  * if it is set to TRUM1 then From: and Sender: will not be assigned no more,
  * if it is TRU1 then to,cc,bcc present in hp will be used to prefill the new
- * header.
+ * header; in any case a true boolean causes shell comments to be understood.
  * This calls expandaddr() on some headers and sets checkaddr_err if that is
  * not NULL -- note it explicitly allows EAF_NAME because aliases are not
  * expanded when this is called! */
