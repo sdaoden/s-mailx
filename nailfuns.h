@@ -1137,6 +1137,10 @@ FL struct name const * check_from_and_sender(struct name const *fromfield,
 FL char *      getsender(struct message *m);
 #endif
 
+/* This returns NULL if hp is NULL or when no information is available.
+ * hp remains unchanged (->h_in_reply_to is not set!)  */
+FL struct name *n_header_setup_in_reply_to(struct header *hp);
+
 /* Fill in / reedit the desired header fields */
 FL int         grab_headers(enum n_go_input_flags gif, struct header *hp,
                   enum gfield gflags, int subjfirst);

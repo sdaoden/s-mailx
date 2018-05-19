@@ -2583,6 +2583,21 @@ getsender(struct message *mp)
 }
 #endif
 
+FL struct name *
+n_header_setup_in_reply_to(struct header *hp){
+   struct name *np;
+   NYD_ENTER;
+
+   np = NULL;
+
+   if(hp != NULL)
+      if((np = hp->h_in_reply_to) == NULL && (np = hp->h_ref) != NULL)
+         while(np->n_flink != NULL)
+            np = np->n_flink;
+   NYD_LEAVE;
+   return np;
+}
+
 FL int
 grab_headers(enum n_go_input_flags gif, struct header *hp, enum gfield gflags,
       int subjfirst)

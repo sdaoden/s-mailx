@@ -3746,7 +3746,7 @@ __EOT__
       -X'source ./.trc' -Smta=./.tmta.sh \
       >./.tall 2>&1
    ${cat} ./.tall >> "${MBOX}"
-   check 1 0 "${MBOX}" '522535560 10101'
+   check 1 0 "${MBOX}" '2481823179 10101'
 
    ${rm} "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.\n' |
@@ -4195,7 +4195,7 @@ t_quote_a_cmd_escapes() {
          ./.tmbox >./.tall 2>&1
    check_ex0 1-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 1 0 "${MBOX}" '3048941846 2023'
+   check 1 0 "${MBOX}" '2181726970 2023'
 
    # ~@ is tested with other attachment stuff, ~^ is in compose_hooks
    ${rm} "${MBOX}"
@@ -4257,7 +4257,7 @@ and i ~w rite this out to ./.tmsg
          ./.tmbox >./.tall 2>&1
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 2 0 "${MBOX}" '375879934 3604'
+   check 2 0 "${MBOX}" '639836485 3604'
    check 3 - ./.tmsg '2112542907 2789'
 
    t_epilog
@@ -4520,10 +4520,10 @@ t_lreply_futh_rth_etc() {
 	_EOT
 
    check_ex0 1-estat
-   if have_feat uistrings; then # xxx should not be so, skip??
-      check 1 - "${MBOX}" '940818845 29373'
+   if have_feat uistrings; then
+      check 1 - "${MBOX}" '2950056640 29373'
    else
-      check 1 - "${MBOX}" '3917430455 29259'
+      echo 'lreply_futh_rth_etc-1: content test unsupported, skipped'
    fi
 
    ##
@@ -4547,7 +4547,7 @@ t_lreply_futh_rth_etc() {
    printf 'reply 1\nthank you\n!.\n' |
       ${MAILX} ${ARGS} -Sescape=! -Smta=./.tmta.sh -Sreply-to-honour \
          -Rf ./.tmbox > "${MBOX}" 2>&1
-   check 2 0 "${MBOX}" '1045866991 331'
+   check 2 0 "${MBOX}" '2350047931 331'
 
    t_epilog
 }
@@ -4653,7 +4653,7 @@ _EOT
       echo reply | ${MAILX} ${ARGS} ${ADDARG_UNI} \
          -Sfullnames -Sreply-in-same-charset \
          -Smta=./.tmta.sh -Rf ./.trebox
-      check 8 0 "${MBOX}" '2821484185 280'
+      check 8 0 "${MBOX}" '2914485741 280'
    else
       echo 'xxxheads_rfc2047-8: iconv unsupported, skipped'
    fi

@@ -2103,19 +2103,17 @@ jto_fmt:
       ++gotcha;
    }
 
-   if(w & GREF){
-      struct name *xnp;
-
-      if((xnp = np = hp->h_ref) != NULL){
-         if(fmt("References:", np, fo, 0))
+   if(w & (GREF | GREF_IRT)){
+      if((np = hp->h_in_reply_to) == NULL)
+         hp->h_in_reply_to = np = n_header_setup_in_reply_to(hp);
+      if(np != NULL){
+         if(fmt("In-Reply-To:", np, fo, 0))
             goto jleave;
          ++gotcha;
       }
-      if((np = hp->h_in_reply_to) != NULL || xnp != NULL){
-         if(np == NULL)
-            for(; xnp != NULL; xnp = xnp->n_flink)
-               np = xnp;
-         if(fmt("In-Reply-To:", np, fo, 0))
+
+      if((w & GREF) && (np = hp->h_ref) != NULL){
+         if(fmt("References:", np, fo, 0))
             goto jleave;
          ++gotcha;
       }
