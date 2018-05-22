@@ -2969,9 +2969,10 @@ else
 fi
 
 if feat_yes TERMCAP; then
+   ADDINC=
    __termcaplib() {
-      link_check termcap "termcap(5) (via ${4})" \
-         "#define HAVE_TERMCAP${3}" "${1}" << _EOT
+      link_check termcap "termcap(5) (via ${4}${ADDINC})" \
+         "#define HAVE_TERMCAP${3}" "${1}" "${ADDINC}" << _EOT
 #include <stdio.h>
 #include <stdlib.h>
 ${2}
@@ -2995,10 +2996,10 @@ _EOT
    }
 
    __terminfolib() {
-      link_check terminfo "terminfo(5) (via ${2})" \
+      link_check terminfo "terminfo(5) (via ${2}${ADDINC})" \
          '#define HAVE_TERMCAP
          #define HAVE_TERMCAP_CURSES
-         #define HAVE_TERMINFO' "${1}" << _EOT
+         #define HAVE_TERMINFO' "${1}" "${ADDINC} << _EOT
 #include <stdio.h>
 #include <curses.h>
 #include <term.h>
@@ -3022,24 +3023,52 @@ _EOT
    }
 
    if feat_yes TERMCAP_VIA_TERMINFO; then
-      __terminfolib -ltinfo -ltinfo ||
-         __terminfolib -lcurses -lcurses ||
-         __terminfolib -lcursesw -lcursesw ||
-         feat_bail_required TERMCAP_VIA_TERMINFO
+      ADDINC=
+      do_me() {
+         xbail=
+         __terminfolib -ltinfo -ltinfo ||
+            __terminfolib -lcurses -lcurses ||
+            __terminfolib -lcursesw -lcursesw ||
+         xbail=y
+      }
+      do_me
+      if [ -n "${xbail}" ] && [ -d /usr/include/ncurses ]; then
+         ADDINC=' -I/usr/include/ncurses'
+         do_me
+      fi
+      if [ -n "${xbail}" ] && [ -d /usr/local/include/ncurses ]; then
+         ADDINC=' -I/usr/local/include/ncurses'
+         do_me
+      fi
+      [ -n "${xbail}" ] && feat_bail_required TERMCAP_VIA_TERMINFO
    fi
 
    if [ -z "${have_terminfo}" ]; then
-      __termcaplib -ltermcap '' '' '-ltermcap' ||
-         __termcaplib -ltermcap '#include <curses.h>' '
-            #define HAVE_TERMCAP_CURSES' \
-            'curses.h / -ltermcap' ||
-         __termcaplib -lcurses '#include <curses.h>' '
-            #define HAVE_TERMCAP_CURSES' \
-            'curses.h / -lcurses' ||
-         __termcaplib -lcursesw '#include <curses.h>' '
-            #define HAVE_TERMCAP_CURSES' \
-            'curses.h / -lcursesw' ||
-         feat_bail_required TERMCAP
+      ADDINC=
+      do_me() {
+         xbail=
+         __termcaplib -ltermcap '' '' '-ltermcap' ||
+            __termcaplib -ltermcap '#include <curses.h>' '
+               #define HAVE_TERMCAP_CURSES' \
+               'curses.h / -ltermcap' ||
+            __termcaplib -lcurses '#include <curses.h>' '
+               #define HAVE_TERMCAP_CURSES' \
+               'curses.h / -lcurses' ||
+            __termcaplib -lcursesw '#include <curses.h>' '
+               #define HAVE_TERMCAP_CURSES' \
+               'curses.h / -lcursesw' ||
+            xbail=y
+      }
+      do_me
+      if [ -n "${xbail}" ] && [ -d /usr/include/ncurses ]; then
+         ADDINC=' -I/usr/include/ncurses'
+         do_me
+      fi
+      if [ -n "${xbail}" ] && [ -d /usr/local/include/ncurses ]; then
+         ADDINC=' -I/usr/local/include/ncurses'
+         do_me
+      fi
+      [ -n "${xbail}" ] && feat_bail_required TERMCAP
 
       if [ -n "${have_termcap}" ]; then
          run_check tgetent_null \
