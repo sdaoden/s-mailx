@@ -1056,7 +1056,7 @@ n_utf8_to_utf32(char const **bdat, size_t *blen){
    NYD2_ENTER;
 
    lx = l = *blen - 1;
-   x = *(cp = *bdat);
+   x = (ui8_t)*(cp = *bdat);
    cpx = ++cp;
 
    if(n_LIKELY(x <= 0x7Fu))
