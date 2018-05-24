@@ -2968,7 +2968,7 @@ else
    feat_is_disabled KEY_BINDINGS
 fi
 
-if feat_yes TERMCAP; then
+if feat_yes TERMCAP; then # {{{
    ADDINC=
    __termcaplib() {
       link_check termcap "termcap(5) (via ${4}${ADDINC})" \
@@ -2999,7 +2999,7 @@ _EOT
       link_check terminfo "terminfo(5) (via ${2}${ADDINC})" \
          '#define HAVE_TERMCAP
          #define HAVE_TERMCAP_CURSES
-         #define HAVE_TERMINFO' "${1}" "${ADDINC} << _EOT
+         #define HAVE_TERMINFO' "${1}" "${ADDINC}" << _EOT
 #include <stdio.h>
 #include <curses.h>
 #include <term.h>
@@ -3032,12 +3032,12 @@ _EOT
          xbail=y
       }
       do_me
-      if [ -n "${xbail}" ] && [ -d /usr/include/ncurses ]; then
-         ADDINC=' -I/usr/include/ncurses'
-         do_me
-      fi
       if [ -n "${xbail}" ] && [ -d /usr/local/include/ncurses ]; then
          ADDINC=' -I/usr/local/include/ncurses'
+         do_me
+      fi
+      if [ -n "${xbail}" ] && [ -d /usr/include/ncurses ]; then
+         ADDINC=' -I/usr/include/ncurses'
          do_me
       fi
       [ -n "${xbail}" ] && feat_bail_required TERMCAP_VIA_TERMINFO
@@ -3060,12 +3060,12 @@ _EOT
             xbail=y
       }
       do_me
-      if [ -n "${xbail}" ] && [ -d /usr/include/ncurses ]; then
-         ADDINC=' -I/usr/include/ncurses'
-         do_me
-      fi
       if [ -n "${xbail}" ] && [ -d /usr/local/include/ncurses ]; then
          ADDINC=' -I/usr/local/include/ncurses'
+         do_me
+      fi
+      if [ -n "${xbail}" ] && [ -d /usr/include/ncurses ]; then
+         ADDINC=' -I/usr/include/ncurses'
          do_me
       fi
       [ -n "${xbail}" ] && feat_bail_required TERMCAP
@@ -3087,7 +3087,8 @@ int main(void){
 _EOT
       fi
    fi
-else
+   unset ADDINC
+else # }}}
    feat_is_disabled TERMCAP
    feat_is_disabled TERMCAP_VIA_TERMINFO
 fi
