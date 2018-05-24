@@ -40,6 +40,18 @@
 # include "nail.h"
 #endif
 
+struct a_coll_fmt_ctx{ /* xxx This is temporary until v15 has objects */
+   char const *cfc_fmt;
+   FILE *cfc_fp;
+   struct message *cfc_mp;
+   char *cfc_cumul;
+   char *cfc_addr;
+   char *cfc_real;
+   char *cfc_full;
+   char *cfc_date;
+   char *cfc_msgid;     /* Or NULL */
+};
+
 struct a_coll_ocs_arg{
    sighandler_type coa_opipe;
    sighandler_type coa_oint;
@@ -80,6 +92,13 @@ static si32_t a_coll_write(char const *name, FILE *fp, int f);
 
 /* *message-inject-head* */
 static bool_t a_coll_message_inject_head(FILE *fp);
+
+/* With bells and whistles */
+static bool_t a_coll_quote_message(FILE *fp, struct message *mp, bool_t isfwd);
+
+/* *{forward,quote}-inject-{head,tail}*.
+ * fmt may be NULL or the empty string, in which case no output is produced */
+static bool_t a_coll__fmt_inj(struct a_coll_fmt_ctx const *cfcp);
 
 /* Parse off the message header from fp and store relevant fields in hp,
  * replace _coll_fp with a shiny new version without any header */
@@ -435,6 +454,149 @@ a_coll_message_inject_head(FILE *fp){
 }
 
 static bool_t
+a_coll_quote_message(FILE *fp, struct message *mp, bool_t isfwd){
+   struct a_coll_fmt_ctx cfc;
+   char const *cp;
+   struct n_ignore const *quoteitp;
+   enum sendaction action;
+   bool_t rv;
+   NYD_ENTER;
+
+   rv = FAL0;
+
+   if(isfwd || (cp = ok_vlook(quote)) != NULL){
+      quoteitp = n_IGNORE_ALL;
+      action = SEND_QUOTE;
+
+      if(isfwd){
+         char const *cp_v15compat;
+
+         if((cp_v15compat = ok_vlook(fwdheading)) != NULL)
+            n_OBSOLETE(_("please use *forward-inject-head* instead of "
+               "*fwdheading*"));
+         if((cp = ok_vlook(forward_inject_head)) == NULL &&
+               (cp = cp_v15compat) == NULL)
+            cp = n_FORWARD_INJECT_HEAD;
+         quoteitp = n_IGNORE_FWD;
+      }else{
+         if(!strcmp(cp, "noheading")){
+            cp = NULL;
+         }else if(!strcmp(cp, "headers")){
+            quoteitp = n_IGNORE_TYPE;
+            cp = NULL;
+         }else if(!strcmp(cp, "allheaders")){
+            quoteitp = NULL;
+            action = SEND_QUOTE_ALL;
+            cp = NULL;
+         }else if((cp = ok_vlook(quote_inject_head)) == NULL)
+            cp = n_QUOTE_INJECT_HEAD;
+      }
+      /* We we pass through our formatter? */
+      if((cfc.cfc_fmt = cp) != NULL){
+         /* TODO In v15 [-textual_-]sender_info() should only create a list
+          * TODO of matching header objects, and the formatter should simply
+          * TODO iterate over this list and call OBJ->to_ui_str(FLAGS) or so.
+          * TODO For now fully initialize this thing once (grrrr!!) */
+         cfc.cfc_fp = fp;
+         cfc.cfc_mp = mp;
+         n_header_textual_sender_info(cfc.cfc_mp = mp, &cfc.cfc_cumul,
+            &cfc.cfc_addr, &cfc.cfc_real, &cfc.cfc_full, NULL);
+         cfc.cfc_date = n_header_textual_date_info(mp, NULL);
+         /* C99 */{
+            struct name *np;
+
+            if((cp = hfield1("message-id", mp)) != NULL &&
+                  (np = lextract(cp, GREF)) != NULL)
+               cfc.cfc_msgid = np->n_name;
+            else
+               cp = (char*)-1;
+         }
+
+         if(!a_coll__fmt_inj(&cfc) || fflush(fp))
+            goto jleave;
+      }
+
+      if(sendmp(mp, fp, quoteitp, (isfwd ? NULL : ok_vlook(indentprefix)),
+            action, NULL) < 0)
+         goto jleave;
+
+      if(isfwd){
+         if((cp = ok_vlook(forward_inject_tail)) == NULL)
+             cp = n_FORWARD_INJECT_TAIL;
+      }else if(cp != NULL && (cp = ok_vlook(quote_inject_tail)) == NULL)
+          cp = n_QUOTE_INJECT_TAIL;
+      if((cfc.cfc_fmt = cp) != NULL && (!a_coll__fmt_inj(&cfc) || fflush(fp)))
+         goto jleave;
+   }
+
+   rv = TRU1;
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
+static bool_t
+a_coll__fmt_inj(struct a_coll_fmt_ctx const *cfcp){
+   struct quoteflt qf;
+   struct n_string s_b, *sp;
+   char c;
+   char const *fmt;
+   NYD_ENTER;
+
+   if((fmt = cfcp->cfc_fmt) == NULL || *fmt == '\0')
+      goto jleave;
+
+   sp = n_string_book(n_string_creat_auto(&s_b), 127);
+
+   while((c = *fmt++) != '\0'){
+      if(c != '%' || (c = *fmt++) == '%'){
+jwrite_char:
+         sp = n_string_push_c(sp, c);
+      }else switch(c){
+      case 'a':
+         sp = n_string_push_cp(sp, cfcp->cfc_addr);
+         break;
+      case 'd':
+         sp = n_string_push_cp(sp, cfcp->cfc_date);
+         break;
+      case 'f':
+         sp = n_string_push_cp(sp, cfcp->cfc_full);
+         break;
+      case 'i':
+         if(cfcp->cfc_msgid != NULL)
+            sp = n_string_push_cp(sp, cfcp->cfc_msgid);
+         break;
+      case 'n':
+         sp = n_string_push_cp(sp, cfcp->cfc_cumul);
+         break;
+      case 'r':
+         sp = n_string_push_cp(sp, cfcp->cfc_real);
+         break;
+      case '\0':
+         --fmt;
+         c = '%';
+         goto jwrite_char;
+      default:
+         n_err(_("*{forward,quote}-inject-{head,tail}*: "
+            "unknown format: %c (in: %s)\n"),
+            c, n_shexp_quote_cp(cfcp->cfc_fmt, FAL0));
+         goto jwrite_char;
+      }
+   }
+
+   quoteflt_init(&qf, NULL, FAL0);
+   quoteflt_reset(&qf, cfcp->cfc_fp);
+   if(quoteflt_push(&qf, sp->s_dat, sp->s_len) < 0 || quoteflt_flush(&qf) < 0)
+      cfcp = NULL;
+   quoteflt_destroy(&qf);
+
+   /*n_string_gut(sp);*/
+jleave:
+   NYD_LEAVE;
+   return (cfcp != NULL);
+}
+
+static bool_t
 a_coll_makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err,
    bool_t do_delayed_due_t)
 {
@@ -631,13 +793,20 @@ a_coll_forward(char const *ms, FILE *fp, int f)
 
    fprintf(n_stdout, _("Interpolating:"));
    srelax_hold();
-   for (; *msgvec != 0; ++msgvec) {
-      struct message *mp = message + *msgvec - 1;
+   for(; *msgvec != 0; ++msgvec){
+      struct message *mp;
 
+      mp = &message[*msgvec - 1];
       touch(mp);
+
       fprintf(n_stdout, " %d", *msgvec);
       fflush(n_stdout);
-      if (sendmp(mp, fp, itp, tabst, action, NULL) < 0) {
+      if(f == 'Q'){
+         if(!a_coll_quote_message(fp, mp, FAL0)){
+            rv = n_ERR_IO;
+            break;
+         }
+      }else if(sendmp(mp, fp, itp, tabst, action, NULL) < 0){
          n_perr(_("forward: temporary mail file"), 0);
          rv = n_ERR_IO;
          break;
@@ -1775,11 +1944,10 @@ n_temporary_compose_hook_varset(void *arg){ /* TODO v15: drop */
 }
 
 FL FILE *
-collect(struct header *hp, int printheaders, struct message *mp,
-   char const *quotefile, int doprefix, si8_t *checkaddr_err)
+n_collect(struct header *hp, int printheaders, struct message *mp,
+   char const *quotefile, bool_t is_fwding, si8_t *checkaddr_err)
 {
    struct n_string s, * volatile sp;
-   struct n_ignore const *quoteitp;
    struct a_coll_ocs_arg *coap;
    int c;
    int volatile t, eofcnt, getfields;
@@ -1795,7 +1963,6 @@ collect(struct header *hp, int printheaders, struct message *mp,
    char const *cp, *cp_base, * volatile coapm, * volatile ifs_saved;
    size_t i, linesize; /* TODO line pool */
    long cnt;
-   enum sendaction action;
    sigset_t oset, nset;
    FILE * volatile sigfp;
    NYD_ENTER;
@@ -1878,46 +2045,8 @@ collect(struct header *hp, int printheaders, struct message *mp,
             goto jerr;
 
          /* Quote an original message */
-         if (mp != NULL && (doprefix || (cp = ok_vlook(quote)) != NULL)) {
-            quoteitp = n_IGNORE_ALL;
-            action = SEND_QUOTE;
-            if (doprefix) {
-               char const *cp_v15compat;
-
-               quoteitp = n_IGNORE_FWD;
-
-               if((cp_v15compat = ok_vlook(fwdheading)) != NULL)
-                  n_OBSOLETE(_("please use *forward-inject-head*, "
-                     "not *fwdheading*"));
-               cp = ok_vlook(forward_inject_head);
-               if(cp == NULL && (cp = cp_v15compat) == NULL)
-                  cp = "-------- Original Message --------";
-               if (*cp != '\0' && fprintf(_coll_fp, "%s\n", cp) < 0)
-                  goto jerr;
-            } else if (!strcmp(cp, "noheading")) {
-               /*EMPTY*/;
-            } else if (!strcmp(cp, "headers")) {
-               quoteitp = n_IGNORE_TYPE;
-            } else if (!strcmp(cp, "allheaders")) {
-               quoteitp = NULL;
-               action = SEND_QUOTE_ALL;
-            } else {
-               cp = hfield1("from", mp);
-               if (cp != NULL && (cnt = (long)strlen(cp)) > 0) {
-                  if (xmime_write(cp, cnt, _coll_fp, CONV_FROMHDR, TD_NONE,
-                        NULL, NULL) < 0)
-                     goto jerr;
-                  if (fprintf(_coll_fp, _(" wrote:\n\n")) < 0)
-                     goto jerr;
-               }
-            }
-            if (fflush(_coll_fp))
-               goto jerr;
-            if (sendmp(mp, _coll_fp, quoteitp,
-                  (doprefix ? NULL : ok_vlook(indentprefix)),
-                  action, NULL) < 0)
-               goto jerr;
-         }
+         if(mp != NULL && !a_coll_quote_message(_coll_fp, mp, is_fwding))
+            goto jerr;
       }
 
       if (quotefile != NULL) {
@@ -2165,28 +2294,27 @@ jearg:
 "COMMAND ESCAPES (to be placed after a newline) excerpt:\n"
 "~.            Commit and send message\n"
 "~: <command>  Execute an internal command\n"
-"~< <file>     Insert <file> (\"~<! <command>\" inserts shell command)\n"
-"~@ [<files>]  Edit[/Add] attachments (file[=input-charset[#output-charset]])\n"
+"~< <file>     Insert <file> (\"~<! <command>\": insert shell command)\n"
+"~@ [<files>]  Edit [Add] attachments (file[=in-charset[#out-charset]])\n"
 "~c <users>    Add users to Cc: list (`~b': to Bcc:)\n"
-"~d            Read in $DEAD (dead.letter)\n"
-"~e            Edit message via $EDITOR\n"
+"~e, ~v        Edit message via $EDITOR / $VISUAL\n"
+            ), n_stdout);
+         fputs(_(
 "~F <msglist>  Read in with headers, do not *indentprefix* lines\n"
-            ), n_stdout);
-         fputs(_(
-"~f <msglist>  Like ~F, but honour `ignore' / `retain' configuration\n"
+"~f <msglist>  Like `~F', but honour `headerpick' configuration\n"
 "~H            Edit From:, Reply-To: and Sender:\n"
-"~h            Prompt for Subject:, To:, Cc: and \"blind\" Bcc:\n"
-"~i <variable> Insert a value and a newline\n"
-"~M <msglist>  Read in with headers, *indentprefix* (`~m': `retain' etc.)\n"
+"~h            Prompt for Subject:, To:, Cc: and Bcc:\n"
+"~i <variable> Insert a value and a newline (`~I': insert value)\n"
+"~M <msglist>  Read in with headers, *indentprefix* (`~m': use `headerpick')\n"
 "~p            Show current message compose buffer\n"
-"~r <file>     Insert <file> (`~R': likewise, but *indentprefix* lines)\n"
-"              <file> may also be <- [HERE-DELIMITER]>\n"
+"~Q <msglist>  Read in using normal *quote* algorithm\n"
             ), n_stdout);
          fputs(_(
+"~r <file>     Insert <file> (`~R': *indentprefix* lines)\n"
+"              <file> may also be <- [HERE-DELIMITER]>\n"
 "~s <subject>  Set Subject:\n"
 "~t <users>    Add users to To: list\n"
-"~u <msglist>  Read in message(s) without headers (`~U': indent lines)\n"
-"~v            Edit message via $VISUAL\n"
+"~u <msglist>  Read in without headers (`~U': *indentprefix* lines)\n"
 "~w <file>     Write message onto file\n"
 "~x            Abort composition, discard message (`~q': save in $DEAD)\n"
 "~| <command>  Pipe message through shell filter\n"
@@ -2369,6 +2497,7 @@ jearg:
       case 'f':
       case 'M':
       case 'm':
+      case 'Q':
       case 'U':
       case 'u':
          /* Interpolate the named messages, if we are in receiving mail mode.
@@ -2434,6 +2563,7 @@ jIi_putesc:
          n_pstate_err_no = n_ERR_NONE; /* XXX */
          n_pstate_ex_no = 0; /* XXX */
          break;
+      /* case 'Q': <> 'F' */
       case 'q':
       case 'x':
          /* Force a quit, act like an interrupt had happened */

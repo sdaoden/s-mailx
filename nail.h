@@ -586,7 +586,7 @@ enum expand_addr_flags {
    EAF_FAIL       = 1<<1,     /* "fail" */
    EAF_FAILINVADDR = 1<<2,    /* "failinvaddr" */
    /* TODO HACK!  In pre-v15 we have a control flow problem (it is a general
-    * TODO design problem): if collect() calls makeheader(), e.g., for -t or
+    * TODO design problem): if n_collect() calls makeheader(), e.g., for -t or
     * TODO because of ~e diting, then that will checkaddr() and that will
     * TODO remove invalid headers.  However, this code path does not know
     * TODO about keeping track of senderrors unless a pointer has been passed,
@@ -1597,6 +1597,7 @@ ok_v_encoding, /* {obsolete=1} */
    ok_v_followup_to_honour,
    ok_b_forward_as_attachment,
    ok_v_forward_inject_head,
+   ok_v_forward_inject_tail,
    ok_v_from,                          /* {vip=1} */
    ok_b_fullnames,
 ok_v_fwdheading, /* {obsolete=1} */
@@ -1719,6 +1720,8 @@ ok_v_NAIL_TAIL, /* {name=NAIL_TAIL,obsolete=1} */
    ok_b_quote_as_attachment,
    ok_v_quote_chars,                   /* {vip=1,notempty=1,defval=">|}:"} */
    ok_v_quote_fold,
+   ok_v_quote_inject_head,
+   ok_v_quote_inject_tail,
 
    ok_b_r_option_implicit,
    ok_b_recipients_in_cc,

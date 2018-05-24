@@ -786,7 +786,7 @@ sendmail_internal(void *v, int recipient_record)
    if((head.h_to = lextract(str, GTO |
          (ok_blook(fullnames) ? GFULL | GSKIN : GSKIN))) != NULL)
       head.h_mailx_raw_to = namelist_dup(head.h_to, head.h_to->n_type);
-   rv = mail1(&head, 0, NULL, NULL, recipient_record, 0);
+   rv = mail1(&head, 0, NULL, NULL, recipient_record, FAL0);
    NYD_LEAVE;
    return (rv != OKAY); /* reverse! */
 }
@@ -1705,7 +1705,7 @@ mail(struct name *to, struct name *cc, struct name *bcc, char const *subject,
 
    head.h_attach = attach;
 
-   mail1(&head, 0, NULL, quotefile, recipient_record, 0);
+   mail1(&head, 0, NULL, quotefile, recipient_record, FAL0);
 
    if (subject != NULL)
       n_free(out.s);
@@ -1737,7 +1737,7 @@ c_Sendmail(void *v)
 
 FL enum okay
 mail1(struct header *hp, int printheaders, struct message *quote,
-   char const *quotefile, int recipient_record, int doprefix)
+   char const *quotefile, int recipient_record, bool_t is_fwding)
 {
    struct n_sigman sm;
    struct sendbundle sb;
@@ -1764,7 +1764,8 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    time_current_update(&time_current, TRU1);
 
    /* Collect user's mail from standard input.  Get the result as mtf */
-   mtf = collect(hp, printheaders, quote, quotefile, doprefix, &_sendout_error);
+   mtf = n_collect(hp, printheaders, quote, quotefile, is_fwding,
+         &_sendout_error);
    if (mtf == NULL)
       goto jleave;
    /* TODO All custom headers should be joined here at latest
@@ -1802,9 +1803,9 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    }
 #endif
 
-   /* XXX Update time_current again; once collect() offers editing of more
+   /* XXX Update time_current again; once n_collect() offers editing of more
     * XXX headers, including Date:, this must only happen if Date: is the
-    * XXX same that it was before collect() (e.g., postponing etc.).
+    * XXX same that it was before n_collect() (e.g., postponing etc.).
     * XXX But *do* update otherwise because the mail seems to be backdated
     * XXX if the user edited some time, which looks odd and it happened
     * XXX to me that i got mis-dated response mails due to that... */

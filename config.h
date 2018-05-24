@@ -44,12 +44,16 @@
 #define ERRORS_MAX 1000       /* Maximum error ring entries TODO configable*/
 #define n_ESCAPE "~"          /* Default escape for sending (POSIX) */
 #define FTMP_OPEN_TRIES 10    /* Maximum number of Ftmp() open(2) tries */
+#define n_FORWARD_INJECT_HEAD "-------- Original Message --------\n" /* DOC! */
+#define n_FORWARD_INJECT_TAIL NULL /* DOC! */
 #define HSHSIZE 23            /* Hash prime TODO make dynamic, obsolete */
 #define n_IMAP_DELIM "/."     /* Directory separator ([0] == replacer, too) */
 #define n_MAILDIR_SEPARATOR ':' /* Flag separator character */
 #define n_MAXARGC 512         /* Maximum list of raw strings TODO dyn vector! */
 #define n_ALIAS_MAXEXP 25     /* Maximum expansion of aliases */
 #define n_PATH_DEVNULL "/dev/null"  /* Note: manual uses /dev/null as such */
+#define n_QUOTE_INJECT_HEAD "%f wrote:\n\n" /* DOC! */
+#define n_QUOTE_INJECT_TAIL NULL /* DOC! */
 #define REFERENCES_MAX 20     /* Maximum entries in References: */
 #define n_SIGSUSPEND_NOT_WAITPID 1 /* Not waitpid(2), but sigsuspend(2) */
 #define n_UNIREPL "\xEF\xBF\xBD" /* Unicode replacement 0xFFFD in UTF-8 */
@@ -84,7 +88,7 @@
 /* Supported IDNA implementations */
 #define n_IDNA_IMPL_LIBIDN2 0
 #define n_IDNA_IMPL_LIBIDN 1
-#define n_IDNA_IMPL_IDNKIT 2
+#define n_IDNA_IMPL_IDNKIT 2 /* 1 + 2 */
 
 /* Max readable line width TODO simply use BUFSIZ? */
 #if BUFSIZ + 0 > 2560

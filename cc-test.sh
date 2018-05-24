@@ -4200,9 +4200,16 @@ __EOT__
    # Reply, forward, resend, Resend
 
    ${rm} "${MBOX}"
-   printf 'set from=f1@z\nm t1@z\nb1\n!.\nset from=f2@z\nm t2@z\nb2\n!.\n' |
-   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! \
-      -Smta=./.tmta.sh
+   printf '#
+      set from="f1@z
+      m t1@z
+b1
+!.
+      set from="du <f2@z>" stealthmua=noagent
+      m t2@z
+b2
+!.
+      ' | ${MAILX} ${ARGS} -Smta=./.tmta.sh -Snomemdebug -Sescape=!
 
    printf '
       echo start: $? $! $^ERRNAME
@@ -4220,12 +4227,25 @@ this is content of Reply 1 2
 this is content of forward 1
 !.
       echo forward 1: $? $! $^ERRNAME;echo;echo
+      wysh set forward-inject-head=$'"'"'-- \\
+         forward (%%a)(%%d)(%%f)(%%i)(%%n)(%%r) --\\n'"'"'
+      wysh set forward-inject-tail=$'"'"'-- \\
+         end of forward (%%i) --\\n'"'"'
+      forward 2 fwdex@am.ple
+this is content of forward 2
+!.
+      echo forward 2: $? $! $^ERRNAME;echo;echo
+      set showname
+      forward 2 fwdex2@am.ple
+this is content of forward 2, 2nd, with showname set
+!.
+      echo forward 2, 2nd: $? $! $^ERRNAME;echo;echo
       resend 1 2 resendex@am.ple
       echo resend 1 2: $? $! $^ERRNAME;echo;echo
       Resend 1 2 Resendex@am.ple
       echo Resend 1 2: $? $! $^ERRNAME;echo;echo
    ' "${MBOX}" |
-   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! \
+   ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sfullnames \
       -Smta=./.tmta.sh \
       -X'
          define bail {
@@ -4308,7 +4328,7 @@ this is content of forward 1
       ' > ./.tnotes 2>&1
    check_ex0 4-estat
    ${cat} ./.tnotes >> "${MBOX}"
-   check 4 - "${MBOX}" '3038884027 7516'
+   check 4 - "${MBOX}" '2151712038 11184'
 
    t_epilog
 }
@@ -4460,6 +4480,22 @@ t_quote_a_cmd_escapes() {
 !m
 21: ~m 3
 !m 3
+28-32: ~Q; 28: ~Q
+!Q
+29: ~Q 1 3
+!Q 1 3
+set quote
+!:set quote
+30: ~Q
+!Q
+31: ~Q 1 3
+!Q 1 3
+set quote-inject-head quote-inject-tail indentprefix
+!:wysh set quote-inject-head=%%a quote-inject-tail=--%%r
+32: ~Q
+!Q
+unset quote stuff
+!:unset quote quote-inject-head quote-inject-tail
 22: ~R ./.ttxt
 !R ./.ttxt
 23: ~r ./.ttxt
@@ -4482,8 +4518,8 @@ and i ~w rite this out to ./.tmsg
          ./.tmbox >./.tall 2>&1
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 2 0 "${MBOX}" '639836485 3604'
-   check 3 - ./.tmsg '2112542907 2789'
+   check 2 0 "${MBOX}" '2613898218 4090'
+   check 3 - ./.tmsg '2771314896 3186'
 
    t_epilog
 }
@@ -4606,7 +4642,7 @@ t_mime_types_load_control() {
    t_epilog
 }
 
-t_lreply_futh_rth_etc() {
+t_lreply_futh_rth_etc() { # TODO *fullnames*!
    t_prolog lreply_futh_rth_etc
    TRAP_EXIT_ADDONS="./.t*"
 

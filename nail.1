@@ -5272,7 +5272,9 @@ and forwards the message to him.
 The text of the original message is included in the new one,
 with the value of the
 .Va forward-inject-head
-variable preceding it.
+variable preceding, and the value of
+.Va forward-inject-tail
+succeeding it.
 To filter the included header fields to the desired subset use the
 .Ql forward
 slot of the white- and blacklisting command
@@ -8019,6 +8021,11 @@ prefaced by the message header fields
 and followed by the attachment list, if any.
 .
 .Mx
+.It Ic ~Q
+Read in the given / current message(s) according to the algorithm of
+.Va quote .
+.
+.Mx
 .It Ic ~q
 Abort the message being sent,
 copying it to the file specified by the
@@ -9146,13 +9153,19 @@ With this setting enabled messages are sent as unmodified MIME
 attachments with all of their parts included.
 .
 .Mx
-.It Va forward-inject-head
-The string to put before the text of a message with the
+.Mx
+.It Va forward-inject-head , forward-inject-tail
+The strings to put before and after the text of a message with the
 .Ic forward
-command instead of the default
-.Dq -------- Original Message -------- .
-No heading is put if it is set to the empty string.
-This variable is ignored if the
+command, respectively.
+The former defaults to
+.Ql -------- Original Message --------\en .
+Special format directives in these strings will be expanded if possible,
+and if so configured the output will be folded according to
+.Va quote-fold ;
+for more please refer to
+.Va quote-inject-head .
+These variables are ignored if the
 .Va forward-as-attachment
 variable is set.
 .
@@ -9234,14 +9247,15 @@ can be used to set
 .Mx
 .It Va headline
 A format string to use for the summary of
-.Ic headers ,
-similar to the ones used for
-.Xr printf 3
-formats.
+.Ic headers .
 Format specifiers in the given string start with a percent sign
 .Ql %
 and may be followed by an optional decimal number indicating the field
 width \(em if that is negative, the field is to be left-aligned.
+Names and addresses are subject to modifications according to
+.Va showname
+and
+.Va showto .
 Valid format specifiers are:
 .
 .Pp
@@ -9275,14 +9289,16 @@ adjusted by setting
 .Va attrlist .
 .It Ql %d
 The date found in the
-.Ql From:
+.Ql Date:
 header of the message when
 .Va datefield
 is set (the default), otherwise the date when the message was received.
 Formatting can be controlled by assigning a
 .Xr strftime 3
 format string to
-.Va datefield .
+.Va datefield
+(and
+.Va datefield-markout-older ) .
 .It Ql %e
 The indenting level in
 .Ql thread Ns
@@ -10700,38 +10716,37 @@ The default is
 .
 .Mx
 .It Va quote
-If set, \*(UA starts a replying message with the original message
-prefixed by the value of the variable
-.Va indentprefix .
-Normally, a heading consisting of
-.Dq Fromheaderfield wrote:
-is put before the quotation.
-If the string
-.Ql noheading
-is assigned to the
-.Va \&\&quote
-variable, this heading is omitted.
-If the string
-.Ql headers
-is assigned, only the headers selected by the
+If set a
+.Ic reply
+message is started with the quoted original message,
+the lines of which are prefixed by the value of the variable
+.Va indentprefix ,
+taking into account
+.Va quote-chars
+and
+.Va quote-fold .
+If set to the empty value, the quoted message will be preceded and
+followed by the expansions of the values of
+.Va quote-inject-head
+and
+.Va quote-inject-tail ,
+respectively.
+None of the headers of the quoted message is included in the quote if
+the value equals
+.Ql noheading ,
+and only the headers selected by the
 .Ql type
 .Ic headerpick
-selection are put above the message body,
-thus
-.Va \&\&quote
-acts like an automatic
-.Pf ` Ic ~m Ns '
-.Sx "COMMAND ESCAPES"
-command, then.
-If the string
-.Ql allheaders
-is assigned, all headers are put above the message body and all MIME
-parts are included, making
-.Va \&\&quote
-act like an automatic
-.Pf ` Ic ~M Ns '
-command; also see
-.Va quote-as-attachment .
+selection are put above the message body for
+.Ql headers ,
+whereas all headers and all MIME parts are included for
+.Ql allheaders .
+Also see
+.Va quote-as-attachment
+and
+.Ic ~Q ,
+one of the
+.Sx "COMMAND ESCAPES" .
 .
 .Mx
 .It Va quote-as-attachment
@@ -10750,9 +10765,8 @@ which shall be treated as quotation leaders, the default being
 .Mx
 .It Va quote-fold
 \*(OP Can be set in addition to
-.Va indentprefix .
-Setting this turns on a more fancy quotation algorithm in that leading
-quotation characters
+.Va indentprefix ,
+and creates a more fancy quotation in that leading quotation characters
 .Pf ( Va quote-chars )
 are compressed and overlong lines are folded.
 .Va \&\&quote-fold
@@ -10760,12 +10774,62 @@ can be set to either one or two (space separated) numeric values,
 which are interpreted as the maximum (goal) and the minimum line length,
 respectively, in a spirit rather equal to the
 .Xr fmt 1
-program, but line-, not paragraph-based.
+program, but line- instead of paragraph-based.
 If not set explicitly the minimum will reflect the goal algorithmically.
 The goal cannot be smaller than the length of
 .Va indentprefix
-plus some additional pad.
-Necessary adjustments take place silently.
+plus some additional pad; necessary adjustments take place silently.
+.
+.
+.Mx
+.Mx
+.It Va quote-inject-head , quote-inject-tail
+The strings to put before and after the text of a
+.Va quote Ns
+d message, respectively.
+The former defaults to
+.Ql %f wrote:\en\en .
+Special format directives will be expanded if possible, and if so
+configured the output will be folded according to
+.Va quote-fold .
+Format specifiers in the given strings start with a percent sign
+.Ql %
+and expand values of the original message, unless noted otherwise.
+Note that names and addresses are not subject to the setting of
+.Va showto .
+Valid format specifiers are:
+.
+.Pp
+.Bl -tag -compact -width ".It Ql _%%_"
+.It Ql %%
+A plain percent sign.
+.It Ql %a
+The address(es) of the sender(s).
+.It Ql %d
+The date found in the
+.Ql Date:
+header of the message when
+.Va datefield
+is set (the default), otherwise the date when the message was received.
+Formatting can be controlled by assigning a
+.Xr strftime 3
+format string to
+.Va datefield
+(and
+.Va datefield-markout-older ) .
+.It Ql %f
+The full name(s) (name and address, as given) of the sender(s).
+.It Ql %i
+The
+.Ql Message-ID: .
+.It Ql %n
+The real name(s) of the sender(s) if there is one and
+.Va showname
+allows usage, the address(es) otherwise.
+.It Ql %r
+The senders real name(s) if there is one, the address(es) otherwise.
+.El
+.
 .
 .Mx
 .It Va r-option-implicit

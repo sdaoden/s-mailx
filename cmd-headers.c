@@ -41,10 +41,8 @@
 
 static int        _screen;
 
-/* ... And place the extracted date in `date' */
-static void    _parse_from_(struct message *mp, char date[n_FROM_DATEBUF]);
-
-/* Print out the header of a specific message
+/* Print out the header of a specific message.
+ * time_current must be up-to-date when this is called.
  * a_cmd__hprf: handle *headline*
  * a_cmd__subject: -1 if Subject: yet seen, otherwise n_alloc()d Subject:
  * a_cmd__putindent: print out the indenting in threaded display
@@ -67,23 +65,6 @@ static int a_cmd_scroll(char const *arg, bool_t onlynew);
 
 /* Shared `headers' implementation */
 static int     _headers(int msgspec);
-
-static void
-_parse_from_(struct message *mp, char date[n_FROM_DATEBUF]) /* TODO line pool */
-{
-   FILE *ibuf;
-   int hlen;
-   char *hline = NULL;
-   size_t hsize = 0;
-   NYD_ENTER;
-
-   if ((ibuf = setinput(&mb, mp, NEED_HEADER)) != NULL &&
-         (hlen = readline_restart(ibuf, &hline, &hsize, 0)) > 0)
-      extract_date_from_from_(hline, hlen, date);
-   if (hline != NULL)
-      n_free(hline);
-   NYD_LEAVE;
-}
 
 static void
 a_cmd_print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded,
@@ -133,18 +114,16 @@ static void
 a_cmd__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
    bool_t threaded, bool_t subject_thread_compress, char const *attrlist)
 {
-   char buf[16], datebuf[n_FROM_DATEBUF], cbuf[8], *cp, *subjline;
-   char const *datefmt, *date, *name, *fp n_COLOUR( COMMA *colo_tag );
+   char buf[16], cbuf[8], *cp, *subjline;
+   char const *date, *name, *fp, *color_tag;
    int i, n, s, wleft, subjlen;
    struct message *mp;
-   time_t datet;
    n_COLOUR( struct n_colour_pen *cpen_new COMMA *cpen_cur COMMA *cpen_bas; )
    enum {
       _NONE       = 0,
       _ISDOT      = 1<<0,
-      _ISADDR     = 1<<1,
-      _ISTO       = 1<<2,
-      _IFMT       = 1<<3,
+      _ISTO       = 1<<1,
+      _IFMT       = 1<<2,
       _LOOP_MASK  = (1<<4) - 1,
       _SFMT       = 1<<4,        /* It is 'S' */
       /* For the simple byte-based counts in wleft and n we sometimes need
@@ -157,85 +136,17 @@ a_cmd__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
 
    if ((mp = message + msgno - 1) == dot)
       flags = _ISDOT;
-   datet = mp->m_time;
-   date = NULL;
-   n_COLOUR( colo_tag = NULL; )
 
-   datefmt = ok_vlook(datefield);
-jredo:
-   if (datefmt != NULL) {
-      fp = hfield1("date", mp);/* TODO use m_date field! */
-      if (fp == NULL) {
-         datefmt = NULL;
-         goto jredo;
-      }
-      datet = rfctime(fp);
-      date = n_time_ctime(datet, NULL);
-      fp = ok_vlook(datefield_markout_older);
-      i = (*datefmt != '\0');
-      if (fp != NULL)
-         i |= (*fp != '\0') ? 2 | 4 : 2; /* XXX no magics */
+   color_tag = NULL;
+   date = n_header_textual_date_info(mp, &color_tag);
+   /* C99 */{
+      bool_t isto;
 
-      /* May we strftime(3)? */
-      if (i & (1 | 4)){
-         /* This localtime(3) should not fail since rfctime(3).. but .. */
-         struct tm *tmp;
-         time_t datet2;
-
-         /* TODO the datetime stuff is horror: mails should be parsed into
-          * TODO an object tree, and date: etc. have a datetime object, which
-          * TODO verifies upon parse time; then ALL occurrences of datetime are
-          * TODO valid all through the program; and: to_wire, to_user! */
-         datet2 = datet;
-jredo_localtime:
-         if((tmp = localtime(&datet2)) == NULL){
-            datet2 = 0;
-            goto jredo_localtime;
-         }
-         memcpy(&time_current.tc_local, tmp, sizeof(*tmp));
-      }
-
-      if ((i & 2) &&
-            (UICMP(64,datet, >, time_current.tc_time + n_DATE_SECSDAY) ||
-#define _6M ((n_DATE_DAYSYEAR / 2) * n_DATE_SECSDAY)
-            UICMP(64,datet + _6M, <, time_current.tc_time))) {
-#undef _6M
-         if ((datefmt = (i & 4) ? fp : NULL) == NULL) {
-            memset(datebuf, ' ', n_FROM_DATEBUF); /* xxx ur */
-            memcpy(datebuf + 4, date + 4, 7);
-            datebuf[4 + 7] = ' ';
-            memcpy(datebuf + 4 + 7 + 1, date + 20, 4);
-            datebuf[4 + 7 + 1 + 4] = '\0';
-            date = datebuf;
-         }
-         n_COLOUR( colo_tag = n_COLOUR_TAG_SUM_OLDER; )
-      } else if ((i & 1) == 0)
-         datefmt = NULL;
-   } else if (datet == (time_t)0 && !(mp->m_flag & MNOFROM)) {
-      /* TODO eliminate this path, query the FROM_ date in setptr(),
-       * TODO all other codepaths do so by themselves ALREADY ?????
-       * TODO assert(mp->m_time != 0);, then
-       * TODO ALSO changes behaviour of datefield_markout_older */
-      _parse_from_(mp, datebuf);
-      date = datebuf;
-   } else
-      date = n_time_ctime(datet, NULL);
-
-   flags |= _ISADDR;
-   /* TODO This is wrong since it is not lextract()ed! */
-   name = n_header_senderfield_of(mp);
-   if (name != NULL && ok_blook(showto) && n_is_myname(skin(name))) {
-      if ((cp = hfield1("to", mp)) != NULL) {
-         name = cp;
+      n_header_textual_sender_info(mp, &cp, NULL, NULL, NULL, &isto);
+      name = cp;
+      if(isto)
          flags |= _ISTO;
-      }
    }
-   if (name == NULL) {
-      name = n_empty;
-      flags &= ~_ISADDR;
-   }
-   if (flags & _ISADDR)
-      name = ok_blook(showname) ? realname(name) : prstr(skin(name));
 
    subjline = NULL;
 
@@ -284,8 +195,8 @@ jredo_localtime:
 #ifdef HAVE_COLOUR
    if(n_COLOUR_IS_ACTIVE()){
       if(flags & _ISDOT)
-         colo_tag = n_COLOUR_TAG_SUM_DOT;
-      cpen_bas = n_colour_pen_create(n_COLOUR_ID_SUM_HEADER, colo_tag);
+         color_tag = n_COLOUR_TAG_SUM_DOT;
+      cpen_bas = n_colour_pen_create(n_COLOUR_ID_SUM_HEADER, color_tag);
       n_colour_pen_put(cpen_new = cpen_cur = cpen_bas);
    }else
       cpen_new = cpen_bas = cpen_cur = NULL;
@@ -331,7 +242,7 @@ jredo_localtime:
             n_COLOUR(
                if(n_COLOUR_IS_ACTIVE())
                   cpen_new = n_colour_pen_create(n_COLOUR_ID_SUM_DOTMARK,
-                        colo_tag);
+                        color_tag);
             );
             if((n_psonce & n_PSO_UNICODE) && !ok_blook(headline_plain)){
                if (c == '>')
@@ -392,17 +303,6 @@ jputcb:
 #endif
          break;
       case 'd':
-         if (datefmt != NULL) {
-            i = strftime(datebuf, sizeof datebuf, datefmt,
-                  &time_current.tc_local);
-            if (i != 0)
-               date = datebuf;
-            else
-               n_err(_("Ignoring date format, it is either empty or "
-                  "excesses buffer size (%lu bytes)\n"),
-                  (ul_i)sizeof(datebuf));
-            datefmt = NULL;
-         }
          if (n == 0)
             n = 16;
          if (UICMP(32, n_ABS(n), >, wleft))
@@ -442,7 +342,8 @@ jputcb:
          if (threaded) {
 #ifdef HAVE_COLOUR
             if(n_COLOUR_IS_ACTIVE()){
-               cpen_new = n_colour_pen_create(n_COLOUR_ID_SUM_THREAD, colo_tag);
+               cpen_new = n_colour_pen_create(n_COLOUR_ID_SUM_THREAD,
+                     color_tag);
                if(cpen_new != cpen_cur)
                   n_colour_pen_put(cpen_cur = cpen_new);
             }

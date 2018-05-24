@@ -534,7 +534,7 @@ j_lt_redo:
       head.h_attach->a_content_description = _("Original message content");
    }
 
-   if(mail1(&head, 1, mp, NULL, !!(hf & HF_RECIPIENT_RECORD), 0) != OKAY){
+   if(mail1(&head, 1, mp, NULL, !!(hf & HF_RECIPIENT_RECORD), FAL0) != OKAY){
       msgvec = NULL;
       goto jleave;
    }
@@ -629,7 +629,7 @@ a_crese_Reply(int *msgvec, bool_t recipient_record){
       head.h_attach->a_content_description = _("Original message content");
    }
 
-   if(mail1(&head, 1, mp, NULL, recipient_record, 0) != OKAY){
+   if(mail1(&head, 1, mp, NULL, recipient_record, FAL0) != OKAY){
       msgvec = NULL;
       goto jleave;
    }
@@ -704,7 +704,7 @@ a_crese_fwd(char *str, int recipient_record){
    }
 
    rv = (mail1(&head, 1, (forward_as_attachment ? NULL : mp), NULL,
-         recipient_record, 1) != OKAY); /* reverse! */
+         recipient_record, TRU1) != OKAY); /* reverse! */
 jleave:
    NYD2_LEAVE;
    return rv;

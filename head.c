@@ -72,8 +72,15 @@ static struct cmatch_data const  _cmatch_data[] = {
 };
 #define a_HEAD_DATE_MINLEN 21
 
+/* Savage extract date field from From_ line.  linelen is convenience as line
+ * must be terminated (but it may end in a newline [sequence]).
+ * Return whether the From_ line was parsed successfully (-1 if the From_ line
+ * wasn't really RFC 4155 compliant) */
+static int a_head_extract_date_from_from_(char const *line, size_t linelen,
+            char datebuf[n_FROM_DATEBUF]);
+
 /* Skip over "word" as found in From_ line */
-static char const *        _from__skipword(char const *wp);
+static char const *a_head__from_skipword(char const *wp);
 
 /* Match the date string against the date template (tp), return if match.
  * See _cmatch_data[] for template character description */
@@ -90,6 +97,9 @@ static size_t a_head_gregorian_to_jdn(ui32_t y, ui32_t m, ui32_t d);
 static void a_head_jdn_to_gregorian(size_t jdn,
                ui32_t *yp, ui32_t *mp, ui32_t *dp);
 #endif
+
+/* ... And place the extracted date in `date' */
+static void a_head_parse_from_(struct message *mp, char date[n_FROM_DATEBUF]);
 
 /* Convert the domain part of a skinned address to IDNA.
  * If an error occurs before Unicode information is available, revert the IDNA
@@ -117,8 +127,81 @@ static int                 msgidnextc(char const **cp, int *status);
 
 static char const *        nexttoken(char const *cp);
 
+static int
+a_head_extract_date_from_from_(char const *line, size_t linelen,
+   char datebuf[n_FROM_DATEBUF])
+{
+   int rv;
+   char const *cp = line;
+   NYD_ENTER;
+
+   rv = 1;
+
+   /* "From " */
+   cp = a_head__from_skipword(cp);
+   if (cp == NULL)
+      goto jerr;
+   /* "addr-spec " */
+   cp = a_head__from_skipword(cp);
+   if (cp == NULL)
+      goto jerr;
+   if((cp[0] == 't' || cp[0] == 'T') && (cp[1] == 't' || cp[1] == 'T') &&
+         (cp[2] == 'y' || cp[2] == 'Y')){
+      cp = a_head__from_skipword(cp);
+      if (cp == NULL)
+         goto jerr;
+   }
+   /* It seems there are invalid MBOX archives in the wild, compare
+    * . http://bugs.debian.org/624111
+    * . [Mutt] #3868: mutt should error if the imported mailbox is invalid
+    * What they do is that they obfuscate the address to "name at host",
+    * and even "name at host dot dom dot dom.
+    * The [Aa][Tt] is also RFC 733, so be tolerant */
+   else if((cp[0] == 'a' || cp[0] == 'A') && (cp[1] == 't' || cp[1] == 'T') &&
+         cp[2] == ' '){
+      rv = -1;
+      cp += 3;
+jat_dot:
+      cp = a_head__from_skipword(cp);
+      if (cp == NULL)
+         goto jerr;
+      if((cp[0] == 'd' || cp[0] == 'D') && (cp[1] == 'o' || cp[1] == 'O') &&
+            (cp[2] == 't' || cp[2] == 'T') && cp[3] == ' '){
+         cp += 4;
+         goto jat_dot;
+      }
+   }
+
+   linelen -= PTR2SIZE(cp - line);
+   if (linelen < a_HEAD_DATE_MINLEN)
+      goto jerr;
+   if (cp[linelen - 1] == '\n') {
+      --linelen;
+      /* (Rather IMAP/POP3 only) */
+      if (cp[linelen - 1] == '\r')
+         --linelen;
+      if (linelen < a_HEAD_DATE_MINLEN)
+         goto jerr;
+   }
+   if (linelen >= n_FROM_DATEBUF)
+      goto jerr;
+
+jleave:
+   memcpy(datebuf, cp, linelen);
+   datebuf[linelen] = '\0';
+   NYD_LEAVE;
+   return rv;
+jerr:
+   cp = _("<Unknown date>");
+   linelen = strlen(cp);
+   if (linelen >= n_FROM_DATEBUF)
+      linelen = n_FROM_DATEBUF;
+   rv = 0;
+   goto jleave;
+}
+
 static char const *
-_from__skipword(char const *wp)
+a_head__from_skipword(char const *wp)
 {
    char c = 0;
    NYD2_ENTER;
@@ -282,6 +365,22 @@ a_head_jdn_to_gregorian(size_t jdn, ui32_t *yp, ui32_t *mp, ui32_t *dp){
    NYD2_LEAVE;
 }
 #endif /* 0 */
+
+static void
+a_head_parse_from_(struct message *mp, char date[n_FROM_DATEBUF]){
+   FILE *ibuf;
+   int hlen;
+   char *hline = NULL; /* TODO line pool */
+   size_t hsize = 0;
+   NYD2_ENTER;
+
+   if((ibuf = setinput(&mb, mp, NEED_HEADER)) != NULL &&
+         (hlen = readline_restart(ibuf, &hline, &hsize, 0)) > 0)
+      a_head_extract_date_from_from_(hline, hlen, date);
+   if(hline != NULL)
+      n_free(hline);
+   NYD2_LEAVE;
+}
 
 #ifdef HAVE_IDNA
 static struct n_addrguts *
@@ -1191,84 +1290,11 @@ is_head(char const *linebuf, size_t linelen, bool_t check_rfc4155)
    NYD2_ENTER;
 
    if ((rv = (linelen >= 5 && !memcmp(linebuf, "From ", 5))) && check_rfc4155 &&
-         (extract_date_from_from_(linebuf, linelen, date) <= 0 ||
+         (a_head_extract_date_from_from_(linebuf, linelen, date) <= 0 ||
           !_is_date(date)))
       rv = TRUM1;
    NYD2_LEAVE;
    return rv;
-}
-
-FL int
-extract_date_from_from_(char const *line, size_t linelen,
-   char datebuf[n_FROM_DATEBUF])
-{
-   int rv;
-   char const *cp = line;
-   NYD_ENTER;
-
-   rv = 1;
-
-   /* "From " */
-   cp = _from__skipword(cp);
-   if (cp == NULL)
-      goto jerr;
-   /* "addr-spec " */
-   cp = _from__skipword(cp);
-   if (cp == NULL)
-      goto jerr;
-   if((cp[0] == 't' || cp[0] == 'T') && (cp[1] == 't' || cp[1] == 'T') &&
-         (cp[2] == 'y' || cp[2] == 'Y')){
-      cp = _from__skipword(cp);
-      if (cp == NULL)
-         goto jerr;
-   }
-   /* It seems there are invalid MBOX archives in the wild, compare
-    * . http://bugs.debian.org/624111
-    * . [Mutt] #3868: mutt should error if the imported mailbox is invalid
-    * What they do is that they obfuscate the address to "name at host",
-    * and even "name at host dot dom dot dom.
-    * The [Aa][Tt] is also RFC 733, so be tolerant */
-   else if((cp[0] == 'a' || cp[0] == 'A') && (cp[1] == 't' || cp[1] == 'T') &&
-         cp[2] == ' '){
-      rv = -1;
-      cp += 3;
-jat_dot:
-      cp = _from__skipword(cp);
-      if (cp == NULL)
-         goto jerr;
-      if((cp[0] == 'd' || cp[0] == 'D') && (cp[1] == 'o' || cp[1] == 'O') &&
-            (cp[2] == 't' || cp[2] == 'T') && cp[3] == ' '){
-         cp += 4;
-         goto jat_dot;
-      }
-   }
-
-   linelen -= PTR2SIZE(cp - line);
-   if (linelen < a_HEAD_DATE_MINLEN)
-      goto jerr;
-   if (cp[linelen - 1] == '\n') {
-      --linelen;
-      /* (Rather IMAP/POP3 only) */
-      if (cp[linelen - 1] == '\r')
-         --linelen;
-      if (linelen < a_HEAD_DATE_MINLEN)
-         goto jerr;
-   }
-   if (linelen >= n_FROM_DATEBUF)
-      goto jerr;
-
-jleave:
-   memcpy(datebuf, cp, linelen);
-   datebuf[linelen] = '\0';
-   NYD_LEAVE;
-   return rv;
-jerr:
-   cp = _("<Unknown date>");
-   linelen = strlen(cp);
-   if (linelen >= n_FROM_DATEBUF)
-      linelen = n_FROM_DATEBUF;
-   rv = 0;
-   goto jleave;
 }
 
 FL void
@@ -2456,12 +2482,12 @@ jerr:
 FL void
 substdate(struct message *m)
 {
+   /* The Date: of faked From_ lines is traditionally the date the message was
+    * written to the mail file. Try to determine this using RFC message header
+    * fields, or fall back to current time */
    char const *cp;
    NYD_ENTER;
 
-   /* Determine the date to print in faked 'From ' lines. This is traditionally
-    * the date the message was written to the mail file. Try to determine this
-    * using RFC message header fields, or fall back to current time */
    m->m_time = 0;
    if ((cp = hfield1("received", m)) != NULL) {
       while ((cp = nexttoken(cp)) != NULL && *cp != ';') {
@@ -2479,6 +2505,194 @@ substdate(struct message *m)
    if (m->m_time == 0 || m->m_time > time_current.tc_time)
       m->m_time = time_current.tc_time;
    NYD_LEAVE;
+}
+
+FL char *
+n_header_textual_date_info(struct message *mp, char const **color_tag_or_null){
+   struct tm tmlocal;
+   char *rv;
+   char const *fmt, *cp;
+   time_t t;
+   NYD_ENTER;
+   n_UNUSED(color_tag_or_null);
+
+   t = mp->m_time;
+   fmt = ok_vlook(datefield);
+
+jredo:
+   if(fmt != NULL){
+      ui8_t i;
+
+      cp = hfield1("date", mp);/* TODO use m_date field! */
+      if(cp == NULL){
+         fmt = NULL;
+         goto jredo;
+      }
+
+      t = rfctime(cp);
+      rv = n_time_ctime(t, NULL);
+      cp = ok_vlook(datefield_markout_older);
+      i = (*fmt != '\0');
+      if(cp != NULL)
+         i |= (*cp != '\0') ? 2 | 4 : 2; /* XXX no magics */
+
+      /* May we strftime(3)? */
+      if(i & (1 | 4)){
+         /* This localtime(3) should not fail since rfctime(3).. but .. */
+         struct tm *tmp;
+         time_t t2;
+
+         /* TODO the datetime stuff is horror: mails should be parsed into
+          * TODO an object tree, and date: etc. have a datetime object, which
+          * TODO verifies upon parse time; then ALL occurrences of datetime are
+          * TODO valid all through the program; and: to_wire, to_user! */
+         t2 = t;
+jredo_localtime:
+         if((tmp = localtime(&t2)) == NULL){
+            t2 = 0;
+            goto jredo_localtime;
+         }
+         memcpy(&tmlocal, tmp, sizeof *tmp);
+      }
+
+      if((i & 2) &&
+            (UICMP(64, t, >, time_current.tc_time + n_DATE_SECSDAY) ||
+#define _6M ((n_DATE_DAYSYEAR / 2) * n_DATE_SECSDAY)
+            UICMP(64, t + _6M, <, time_current.tc_time))){
+#undef _6M
+         if((fmt = (i & 4) ? cp : NULL) == NULL){
+            char *x;
+            n_LCTA(n_FROM_DATEBUF >= 4 + 7 + 1 + 4, "buffer too small");
+
+            x = n_autorec_alloc(n_FROM_DATEBUF);
+            memset(x, ' ', 4 + 7 + 1 + 4);
+            memcpy(&x[4], &rv[4], 7);
+            x[4 + 7] = ' ';
+            memcpy(&x[4 + 7 + 1], &rv[20], 4);
+            x[4 + 7 + 1 + 4] = '\0';
+            rv = x;
+         }
+         n_COLOUR(
+            if(color_tag_or_null != NULL)
+               *color_tag_or_null = n_COLOUR_TAG_SUM_OLDER;
+         )
+      }else if((i & 1) == 0)
+         fmt = NULL;
+
+      if(fmt != NULL){
+         size_t j;
+
+         for(j = n_FROM_DATEBUF;; j <<= 1){
+            i = strftime(rv = n_autorec_alloc(j), j, fmt, &tmlocal);
+            if(i != 0)
+               break;
+            if(j > 128){
+               n_err(_("Ignoring this date format: %s\n"),
+                  n_shexp_quote_cp(fmt, FAL0));
+               n_strscpy(rv, n_time_ctime(t, NULL), j);
+            }
+         }
+      }
+   }else if(t == (time_t)0 && !(mp->m_flag & MNOFROM)){
+      /* TODO eliminate this path, query the FROM_ date in setptr(),
+       * TODO all other codepaths do so by themselves ALREADY ?????
+       * TODO assert(mp->m_time != 0);, then
+       * TODO ALSO changes behaviour of datefield_markout_older */
+      a_head_parse_from_(mp, rv = n_autorec_alloc(n_FROM_DATEBUF));
+   }else
+      rv = savestr(n_time_ctime(t, NULL));
+   NYD_LEAVE;
+   return rv;
+}
+
+FL struct name *
+n_header_textual_sender_info(struct message *mp, char **cumulation_or_null,
+      char **addr_or_null, char **name_real_or_null, char **name_full_or_null,
+      bool_t *is_to_or_null){
+   struct n_string s_b1, s_b2, *sp1, *sp2;
+   struct name *np, *np2;
+   bool_t isto, b;
+   char *cp;
+   NYD_ENTER;
+
+   cp = n_header_senderfield_of(mp);
+   isto = FAL0;
+
+   if((np = lextract(cp, GFULL | GSKIN)) != NULL){
+      if(is_to_or_null != NULL && ok_blook(showto) &&
+            np->n_flink == NULL && n_is_myname(np->n_name)){
+         if((cp = hfield1("to", mp)) != NULL &&
+               (np2 = lextract(cp, GFULL | GSKIN)) != NULL){
+            np = np2;
+            isto = TRU1;
+         }
+      }
+
+      if(((b = ok_blook(showname)) && cumulation_or_null != NULL) ||
+            name_real_or_null != NULL || name_full_or_null != NULL){
+         size_t i;
+
+         for(i = 0, np2 = np; np2 != NULL; np2 = np2->n_flink)
+            i += strlen(np2->n_fullname) +3;
+
+         sp1 = n_string_book(n_string_creat_auto(&s_b1), i);
+         sp2 = (name_full_or_null == NULL) ? NULL
+               : n_string_book(n_string_creat_auto(&s_b2), i);
+
+         for(np2 = np; np2 != NULL; np2 = np2->n_flink){
+            if(sp1->s_len > 0){
+               sp1 = n_string_push_c(sp1, ',');
+               sp1 = n_string_push_c(sp1, ' ');
+               if(sp2 != NULL){
+                  sp2 = n_string_push_c(sp2, ',');
+                  sp2 = n_string_push_c(sp2, ' ');
+               }
+            }
+
+            if((cp = realname(np2->n_fullname)) == NULL)
+               cp = np2->n_name;
+            sp1 = n_string_push_cp(sp1, cp);
+            if(sp2 != NULL)
+               sp2 = n_string_push_cp(sp2, np2->n_fullname);
+         }
+
+         n_string_cp(sp1);
+         if(b && cumulation_or_null != NULL)
+            *cumulation_or_null = sp1->s_dat;
+         if(name_real_or_null != NULL)
+            *name_real_or_null = sp1->s_dat;
+         if(name_full_or_null != NULL)
+            *name_full_or_null = n_string_cp(sp2);
+
+         /* n_string_gut(n_string_drop_ownership(sp2)); */
+         /* n_string_gut(n_string_drop_ownership(sp1)); */
+      }
+
+      if((b = (!b && cumulation_or_null != NULL)) || addr_or_null != NULL){
+         cp = detract(np, GCOMMA | GNAMEONLY);
+         if(b)
+            *cumulation_or_null = cp;
+         if(addr_or_null != NULL)
+            *addr_or_null = cp;
+      }
+   }else if(cumulation_or_null != NULL || addr_or_null != NULL ||
+         name_real_or_null != NULL || name_full_or_null != NULL){
+      cp = savestr(n_empty);
+
+      if(cumulation_or_null != NULL)
+         *cumulation_or_null = cp;
+      if(addr_or_null != NULL)
+         *addr_or_null = cp;
+      if(name_real_or_null != NULL)
+         *name_real_or_null = cp;
+      if(name_full_or_null != NULL)
+         *name_full_or_null = cp;
+   }
+
+   if(is_to_or_null != NULL)
+      *is_to_or_null = isto;
+   NYD_LEAVE;
+   return np;
 }
 
 FL void

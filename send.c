@@ -1215,7 +1215,8 @@ joutln:
     * TODO doesn't end in a newline, because of our input/output 1:1.
     * TODO This should be handled automatically by a display filter, then */
    if(rv >= 0 && !qf->qf_nl_last &&
-         (action == SEND_TODISP || action == SEND_TODISP_ALL))
+         (action == SEND_TODISP || action == SEND_TODISP_ALL ||
+          action == SEND_QUOTE || action == SEND_QUOTE_ALL))
       rv = quoteflt_push(qf, "\n", 1);
 
    quoteflt_flush(qf);

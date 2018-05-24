@@ -725,8 +725,8 @@ FL void n_temporary_compose_hook_varset(void *arg);
 
 /* If quotefile is (char*)-1, stdin will be used, caller has to verify that
  * we're not running in interactive mode */
-FL FILE *      collect(struct header *hp, int printheaders, struct message *mp,
-                  char const *quotefile, int doprefix, si8_t *checkaddr_err);
+FL FILE *n_collect(struct header *hp, int printheaders, struct message *mp,
+            char const *quotefile, bool_t is_fwding, si8_t *checkaddr_err);
 
 /*
  * colour.c
@@ -1027,13 +1027,6 @@ FL char const * myorigin(struct header *hp);
 FL bool_t      is_head(char const *linebuf, size_t linelen,
                   bool_t check_rfc4155);
 
-/* Savage extract date field from From_ line.  linelen is convenience as line
- * must be terminated (but it may end in a newline [sequence]).
- * Return whether the From_ line was parsed successfully (-1 if the From_ line
- * wasn't really RFC 4155 compliant) */
-FL int         extract_date_from_from_(char const *line, size_t linelen,
-                  char datebuf[n_FROM_DATEBUF]);
-
 /* Extract some header fields (see e.g. -t documentation) from a message.
  * If extended_list_of is set a number of additional header fields are
  * understood and address joining is performed as necessary, and the subject
@@ -1124,7 +1117,31 @@ FL time_t      rfctime(char const *date);
 FL time_t      combinetime(int year, int month, int day,
                   int hour, int minute, int second);
 
+/* Determine the date to print in faked 'From ' lines */
 FL void        substdate(struct message *m);
+
+/* Create ready-to-go environment taking into account *datefield* etc.,
+ * and return a result in auto-reclaimed storage.
+ * TODO hack *color_tag_or_null could be set to n_COLOUR_TAG_SUM_OLDER.
+ * time_current is used for comparison and must thus be up-to-date */
+FL char *n_header_textual_date_info(struct message *mp,
+            char const **color_tag_or_null);
+
+/* Create ready-to-go sender name of a message in *cumulation_or_null, the
+ * addresses only in *addr_or_null, the real names only in *name_real_or_null,
+ * and the full names in *name_full_or_null, taking acount for *showname*.
+ * If *is_to_or_null is set, *showto* and n_is_myname() are taken into account
+ * when choosing which names to use.
+ * The list as such is returned, or NULL if there is really none (empty strings
+ * will be stored, then).
+ * All results are in auto-reclaimed storage, but may point to the same string.
+ * TODO *is_to_or_null could be set to whether we actually used To:, or not.
+ * TODO n_header_textual_sender_info(): should only create a list of matching
+ * TODO name objects, which the user can iterate over and o->to_str().. */
+FL struct name *n_header_textual_sender_info(struct message *mp,
+                  char **cumulation_or_null, char **addr_or_null,
+                  char **name_real_or_null, char **name_full_or_null,
+                  bool_t *is_to_or_null);
 
 /* TODO Weird thing that tries to fill in From: and Sender: */
 FL void        setup_from_and_sender(struct header *hp);
@@ -1888,7 +1905,7 @@ FL int         c_Sendmail(void *v);
  * header.  (Internal interface) */
 FL enum okay   mail1(struct header *hp, int printheaders,
                   struct message *quote, char const *quotefile,
-                  int recipient_record, int doprefix);
+                  int recipient_record, bool_t is_fwding);
 
 /* Create a Date: header field.
  * We compare the localtime() and gmtime() results to get the timezone, because
