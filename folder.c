@@ -662,8 +662,8 @@ newmailinfo(int omsgCount)
 
    mdot = getmdot(1);
 
-   if (ok_blook(header))
-      print_headers(omsgCount + 1, msgCount, FAL0);
+   if(ok_blook(header))
+      print_headers(omsgCount + 1, msgCount, FAL0, FAL0);
    NYD_LEAVE;
    return mdot;
 }
@@ -706,7 +706,13 @@ print_header_summary(char const *Larg)
       }
    } else
       bot = 1, top = msgCount;
-   print_headers(bot, top, (Larg != NULL)); /* TODO should take iterator!! */
+
+   /* C99 */{
+      bool_t isLarg;
+
+      isLarg = (Larg != NULL);
+      print_headers(bot, top, isLarg, !isLarg); /* TODO should be iterator! */
+   }
 jleave:
    NYD_LEAVE;
 }

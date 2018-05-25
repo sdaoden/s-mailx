@@ -51,12 +51,13 @@ static void    _parse_from_(struct message *mp, char date[n_FROM_DATEBUF]);
  * a_cmd__putuc: print out a Unicode character or a substitute for it, return
  *    0 on error or wcwidth() (or 1) on success */
 static void a_cmd_print_head(size_t yetprinted, size_t msgno, FILE *f,
-                  bool_t threaded);
+                  bool_t threaded, bool_t subject_thread_compress);
 
 static void a_cmd__hprf(size_t yetprinted, char const *fmt, size_t msgno,
-               FILE *f, bool_t threaded, char const *attrlist);
+               FILE *f, bool_t threaded, bool_t subject_thread_compress,
+               char const *attrlist);
 static char *a_cmd__subject(struct message *mp, bool_t threaded,
-               size_t yetprinted);
+               bool_t subject_thread_compress, size_t yetprinted);
 static int a_cmd__putindent(FILE *fp, struct message *mp, int maxwidth);
 static size_t a_cmd__putuc(int u, int c, FILE *fp);
 static int a_cmd__dispc(struct message *mp, char const *a);
@@ -85,7 +86,8 @@ _parse_from_(struct message *mp, char date[n_FROM_DATEBUF]) /* TODO line pool */
 }
 
 static void
-a_cmd_print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded){
+a_cmd_print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded,
+      bool_t subject_thread_compress){
    enum {attrlen = 14};
    char attrlist[attrlen +1], *cp;
    char const *fmt;
@@ -122,13 +124,14 @@ jattrok:
             : "%>%a%m %-18f %-16d %4l/%-5o %i%-s");
    }
 
-   a_cmd__hprf(yetprinted, fmt, msgno, f, threaded, attrlist);
+   a_cmd__hprf(yetprinted, fmt, msgno, f, threaded, subject_thread_compress,
+      attrlist);
    NYD2_LEAVE;
 }
 
 static void
 a_cmd__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
-   bool_t threaded, char const *attrlist)
+   bool_t threaded, bool_t subject_thread_compress, char const *attrlist)
 {
    char buf[16], datebuf[n_FROM_DATEBUF], cbuf[8], *cp, *subjline;
    char const *datefmt, *date, *name, *fp n_COLOUR( COMMA *colo_tag );
@@ -504,7 +507,7 @@ jputcb:
             break;
          if (subjline == NULL)
             subjline = a_cmd__subject(mp, (threaded && (flags & _IFMT)),
-                  yetprinted);
+                  subject_thread_compress, yetprinted);
          if (subjline == (char*)-1) {
             n = fprintf(f, "%*s", n, n_empty);
             wleft = (n >= 0) ? wleft - n : 0;
@@ -568,7 +571,8 @@ jputcb:
 }
 
 static char *
-a_cmd__subject(struct message *mp, bool_t threaded, size_t yetprinted)
+a_cmd__subject(struct message *mp, bool_t threaded,
+   bool_t subject_thread_compress, size_t yetprinted)
 {
    struct str in, out;
    char *rv, *ms;
@@ -583,7 +587,7 @@ a_cmd__subject(struct message *mp, bool_t threaded, size_t yetprinted)
    mime_fromhdr(&in, &out, TD_ICONV | TD_ISPR);
    rv = ms = out.s;
 
-   if (!threaded || mp->m_level == 0)
+   if (!threaded || !subject_thread_compress || mp->m_level == 0)
       goto jleave;
 
    /* In a display thread - check whether this message uses the same
@@ -934,14 +938,13 @@ jdot_unsort:
             }
          }
          ++flag;
-         a_cmd_print_head(0, mesg, n_stdout, 0);
+         a_cmd_print_head(0, mesg, n_stdout, FAL0, FAL0);
          srelax();
       }
       if(needdot && ok_blook(showlast)) /* xxx will not show */
          setdot(lastmq);
       srelax_rele();
       n_COLOUR( n_colour_env_gut(); )
-
    } else { /* threaded */
       g = 0;
       mq = threadroot;
@@ -990,7 +993,7 @@ jdot_sort:
                }
             }
             a_cmd_print_head(flag, PTR2SIZE(mp - message + 1), n_stdout,
-               mb.mb_threaded);
+               mb.mb_threaded, TRU1);
             ++flag;
             srelax();
          }
@@ -1125,7 +1128,7 @@ c_from(void *vp)
    n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, obuf, obuf != n_stdout); )
    srelax_hold();
    for (n = 0, ip = msgvec; *ip != 0; ++ip) { /* TODO join into _print_head() */
-      a_cmd_print_head((size_t)n++, (size_t)*ip, obuf, mb.mb_threaded);
+      a_cmd_print_head((size_t)n++, (size_t)*ip, obuf, mb.mb_threaded, FAL0);
       srelax();
    }
    srelax_rele();
@@ -1139,7 +1142,8 @@ jleave:
 }
 
 FL void
-print_headers(size_t bottom, size_t topx, bool_t only_marked)
+print_headers(size_t bottom, size_t topx, bool_t only_marked,
+   bool_t subject_thread_compress)
 {
    size_t printed;
    NYD_ENTER;
@@ -1159,7 +1163,8 @@ print_headers(size_t bottom, size_t topx, bool_t only_marked)
             continue;
       } else if (!visible(mp))
          continue;
-      a_cmd_print_head(printed++, bottom, n_stdout, FAL0);
+      a_cmd_print_head(printed++, bottom, n_stdout, FAL0,
+         subject_thread_compress);
       srelax();
    }
    srelax_rele();
