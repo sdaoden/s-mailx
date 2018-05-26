@@ -3173,6 +3173,41 @@ t_attachments() {
       echo 'attachments-4: unsupported, skipped'
    fi
 
+   ${rm} "${MBOX}"
+   printf \
+'mail ex@amp.ple
+!s Subject One
+!@ "#."
+Body one.
+!p
+!.
+from 2
+mail ex@amp.ple
+!s Subject Two
+!@
+      "#."
+
+Body two.
+!p
+!.
+reply 1 2
+!@ "#."
+!p
+!.
+!@
+"#."
+
+!p
+!.' \
+   | ${MAILX} ${ARGS} -Sescape=! -Smta=./.tmta.sh -Rf ./.tx \
+         > ./.tall 2>&1
+   check 5 0 "${MBOX}" '2165311808 2276'
+   if have_feat uistrings; then
+      check 6 - .tall '3662598562 509'
+   else
+      echo 'attachments-6: unsupported, skipped'
+   fi
+
    t_epilog
 }
 

@@ -7562,8 +7562,12 @@ again, an empty input ends list creation.
 .Pp
 For all modes, if a given filename solely consists of the number sign
 .Ql #
-followed by a valid message number of the currently active mailbox, then
-the given message is attached as a
+followed by either a valid message number of the currently active
+mailbox, or by a period
+.Ql \&. ,
+referring to the current message of the active mailbox, the so-called
+.Dq dot ,
+then the given message is attached as a
 .Ql message/rfc822
 MIME message part.
 The number sign must be quoted to avoid misinterpretation with the shell
