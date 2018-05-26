@@ -1,0 +1,108 @@
+From Cannabis Sun Feb 18 02:02:46 2018
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: ex@amp.ple
+Subject: Subject One
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-="
+
+This is a multi-part message in MIME format.
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+
+Body one.
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=
+Content-Type: message/rfc822
+Content-Disposition: inline
+
+Date: Sun, 18 Feb 2018 02:48:40 +0100
+To:
+Subject: m1
+User-Agent: s-nail v14.9.7
+Status: R
+
+
+
+--=-=AQAAAgAAAAMAAAAEAAAABQAAAAYAAAAHAAAA=-=--
+
+From Cannabis Sun Feb 18 02:02:46 2018
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: ex@amp.ple
+Subject: Subject Two
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-="
+
+This is a multi-part message in MIME format.
+
+--=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+
+Body two.
+
+--=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=
+Content-Type: message/rfc822
+Content-Disposition: inline
+
+Date: Sun, 18 Feb 2018 02:48:42 +0100
+To:
+Subject: m2
+User-Agent: s-nail v14.9.7
+Status: R
+
+
+
+--=-=CAAACQAAAAoAAAALAAAADAAAAA0AAAAOAAAA=-=--
+
+From Cannabis Sun Feb 18 02:02:46 2018
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: steffen
+Subject: Re: m1
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="=-=DwAAEAAAABEAAAASAAAAEwAAABQAAAAVAAAA=-="
+
+This is a multi-part message in MIME format.
+
+--=-=DwAAEAAAABEAAAASAAAAEwAAABQAAAAVAAAA=-=
+Content-Type: message/rfc822
+Content-Disposition: inline
+
+Date: Sun, 18 Feb 2018 02:48:40 +0100
+To:
+Subject: m1
+User-Agent: s-nail v14.9.7
+Status: R
+
+
+
+--=-=DwAAEAAAABEAAAASAAAAEwAAABQAAAAVAAAA=-=--
+
+From Cannabis Sun Feb 18 02:02:46 2018
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+To: steffen
+Subject: Re: m2
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="=-=FgAAFwAAABgAAAAZAAAAGgAAABsAAAAcAAAA=-="
+
+This is a multi-part message in MIME format.
+
+--=-=FgAAFwAAABgAAAAZAAAAGgAAABsAAAAcAAAA=-=
+Content-Type: message/rfc822
+Content-Disposition: inline
+
+Date: Sun, 18 Feb 2018 02:48:42 +0100
+To:
+Subject: m2
+User-Agent: s-nail v14.9.7
+Status: R
+
+
+
+--=-=FgAAFwAAABgAAAAZAAAAGgAAABsAAAAcAAAA=-=--
+
