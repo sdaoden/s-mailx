@@ -1057,7 +1057,9 @@ n_nodename(bool_t mayoverride){
 #endif
    NYD2_ENTER;
 
-   if(mayoverride && (hn = ok_vlook(hostname)) != NULL && *hn != '\0'){
+   if(n_psonce & n_PSO_REPRODUCIBLE)
+      hn = n_UNCONST(n_reproducible_name);
+   else if(mayoverride && (hn = ok_vlook(hostname)) != NULL && *hn != '\0'){
       ;
    }else if((hn = sys_hostname) == NULL){
       bool_t lofi;
