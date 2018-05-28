@@ -1,0 +1,118 @@
+abcd
+0/NONE
+abcd
+0/NONE
+$'a\'b\'c\'d\''
+0/NONE
+abcd
+0/NONE
+'a"b"c"d"'
+0/NONE
+abcd
+0/NONE
+$'a$\'b\'c$\'d\''
+0/NONE
+abcd
+0/NONE
+$'\'abcd\''
+0/NONE
+abcd
+0/NONE
+'"abcd"'
+0/NONE
+abcd
+0/NONE
+$'$\'abcd\''
+0/NONE
+abcd
+0/NONE
+0/NONE abcd
+abcd
+0/NONE
+0/NONE abcd
+abcd
+0/NONE
+0/NONE $'a\'b\'c\'d\''
+a'b'c'd'
+0/NONE
+0/NONE abcd
+abcd
+0/NONE
+0/NONE 'a"b"c"d"'
+a"b"c"d"
+0/NONE
+0/NONE abcd
+abcd
+0/NONE
+0/NONE $'a$\'b\'c$\'d\''
+a$'b'c$'d'
+0/NONE
+0/NONE abcd
+abcd
+0/NONE
+0/NONE $'\'abcd\''
+'abcd'
+0/NONE
+0/NONE abcd
+abcd
+0/NONE
+0/NONE '"abcd"'
+"abcd"
+0/NONE
+0/NONE abcd
+abcd
+0/NONE
+0/NONE $'$\'abcd\''
+$'abcd'
+0/NONE
+0/NONE abcd
+abcd
+0/NONE
+0/NONE 'a b\ c d'
+a b\ c d
+0/NONE
+0/NONE ab cd
+0/NONE 'ab cd'
+ab cd
+0/NONE
+0/NONE ab cd
+0/NONE $'a \'b c\' d'
+a 'b c' d
+0/NONE
+0/NONE ab cd
+0/NONE 'a "b c" d'
+a "b c" d
+0/NONE
+0/NONE ab cd
+0/NONE $'a $\'b c\' d'
+a $'b c' d
+0/NONE
+0/NONE ab cd
+0/NONE $'\'a$`"\\\''
+'a$`"\'
+0/NONE
+0/NONE a$`"\
+0/NONE $'"a\\$\\`\'\\"\\\\"'
+"a\$\`'\"\\"
+0/NONE
+0/NONE a$`'"\
+0/NONE $'$\'a\\$`\\\'\\"\\\\\''
+$'a\$`\'\"\\'
+0/NONE
+0/NONE a$`'"\
+0/NONE $'$\'a\\$`\\\'"\\\\\''
+$'a\$`\'"\\'
+0/NONE
+0/NONE a$`'"\
+0/NONE 'a${diet}c'
+a${diet}c
+0/NONE
+0/NONE acurdc
+acurdc
+0/NONE
+0/NONE '"a${diet}c"'
+"a${diet}c"
+0/NONE
+0/NONE acurdc
+acurdc
+0/NONE
