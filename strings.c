@@ -1403,26 +1403,32 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
 
    for(;;){
       char *ob_base, *ob;
-      ui64_t xnol;
       size_t ol, nol;
 
       if((nol = ol = sp->s_len) < il)
          nol = il;
       assert(sizeof(sp->s_len) == sizeof(ui32_t));
-      xnol = (ui64_t)(nol << 1) - (nol >> 4);
-      if(!n_string_can_book(sp, xnol)){
-         xnol = ol + 64;
+      if(nol < 128)
+         nol += 32;
+      else{
+         ui64_t xnol;
+
+         xnol = (ui64_t)(nol << 1) - (nol >> 4);
          if(!n_string_can_book(sp, xnol)){
-            err = n_ERR_INVAL;
-            goto jleave;
+            xnol = ol + 64;
+            if(!n_string_can_book(sp, xnol)){
+               err = n_ERR_INVAL;
+               goto jleave;
+            }
          }
+         nol = (size_t)xnol;
       }
-      nol = (size_t)xnol;
       sp = n_string_resize(sp, nol);
 
       ob = ob_base = &sp->s_dat[ol];
       nol -= ol;
       err = n_iconv_buf(cd, icf, &ib, &il, &ob, &nol);
+
       sp = n_string_trunc(sp, ol + PTR2SIZE(ob - ob_base));
       if(err == 0 || err != n_ERR_2BIG)
          break;
