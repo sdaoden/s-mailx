@@ -285,8 +285,9 @@ t_all() {
    t_X_opt_input_command_stack
    t_X_errexit
    t_S_freeze
-   t_wysh
    t_input_inject_semicolon_seq
+   t_shcodec
+   t_wysh
    t_commandalias
    t_ifelse
    t_localopts
@@ -594,6 +595,217 @@ t_S_freeze() {
    t_epilog
 }
 
+t_input_inject_semicolon_seq() {
+   t_prolog input_inject_semicolon_seq
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
+	define mydeepmac {
+		echon '(mydeepmac)';
+	}
+	define mymac {
+		echon this_is_mymac;call mydeepmac;echon ';';
+	}
+	echon one';';call mymac;echon two";";call mymac;echo three$';';
+	define mymac {
+		echon this_is_mymac;call mydeepmac;echon ,TOO'!;';
+	}
+	echon one';';call mymac;echon two";";call mymac;echo three$';';
+	__EOT
+
+   check 1 0 "${MBOX}" '512117110 140'
+
+   t_epilog
+}
+
+t_shcodec() {
+   t_prolog shcodec
+
+   # XXX the first needs to be checked, it is quite dumb as such
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+	shcodec e abcd
+	echo $?/$^ERRNAME
+	shcodec d abcd
+	echo $?/$^ERRNAME
+	shcodec e a'b'c'd'
+	echo $?/$^ERRNAME
+	shcodec d a'b'c'd'
+	echo $?/$^ERRNAME
+	shcodec e a"b"c"d"
+	echo $?/$^ERRNAME
+	shcodec d a"b"c"d"
+	echo $?/$^ERRNAME
+	shcodec e a$'b'c$'d'
+	echo $?/$^ERRNAME
+	shcodec d a$'b'c$'d'
+	echo $?/$^ERRNAME
+	shcodec e 'abcd'
+	echo $?/$^ERRNAME
+	shcodec d 'abcd'
+	echo $?/$^ERRNAME
+	shcodec e "abcd"
+	echo $?/$^ERRNAME
+	shcodec d "abcd"
+	echo $?/$^ERRNAME
+	shcodec e $'abcd'
+	echo $?/$^ERRNAME
+	shcodec d $'abcd'
+	echo $?/$^ERRNAME
+	# same but with vput
+	vput shcodec res e abcd
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res d abcd
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res e a'b'c'd'
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res d a'b'c'd'
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res e a"b"c"d"
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res d a"b"c"d"
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res e a$'b'c$'d'
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res d a$'b'c$'d'
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res e 'abcd'
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res d 'abcd'
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res e "abcd"
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res d "abcd"
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res e $'abcd'
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res d $'abcd'
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	#
+	vput shcodec res e a b\ c d
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res d a b\ c d
+	echo $?/$^ERRNAME $res
+	vput shcodec res e ab cd
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res d 'ab cd'
+	echo $?/$^ERRNAME $res
+	vput shcodec res e a 'b c' d
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res d a 'b c' d
+	echo $?/$^ERRNAME $res
+	vput shcodec res e a "b c" d
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res d a "b c" d
+	echo $?/$^ERRNAME $res
+	vput shcodec res e a $'b c' d
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res d a $'b c' d
+	echo $?/$^ERRNAME $res
+	#
+	vput shcodec res e 'a$`"\'
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res d 'a$`"\'
+	echo $?/$^ERRNAME $res
+	vput shcodec res e "a\$\`'\"\\"
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res d "a\$\`'\"\\"
+	echo $?/$^ERRNAME $res
+	vput shcodec res e $'a\$`\'\"\\'
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res d $'a\$`\'\"\\'
+	echo $?/$^ERRNAME $res
+	vput shcodec res e $'a\$`\'"\\'
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res d $'a\$`\'"\\'
+	echo $?/$^ERRNAME $res
+	#
+	set diet=curd
+	vput shcodec res e a${diet}c
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	eval vput shcodec res e a${diet}c
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	vput shcodec res e "a${diet}c"
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	eval vput shcodec res e "a${diet}c"
+	echo $?/$^ERRNAME $res
+	eval shcodec d $res
+	echo $?/$^ERRNAME
+	__EOT
+   check 1 0 "${MBOX}" '3316745312 1241'
+
+   if [ -z "${UTF8_LOCALE}" ]; then
+      echo 'Skip shcodec-unicode, no UTF8_LOCALE TODO CANNOT'
+   else
+      ${cat} <<- '__EOT' | LC_ALL=${UTF8_LOCALE} \
+         ${MAILX} ${ARGS} > "${MBOX}" 2>>${ERR}
+		#
+		shcodec e täst
+		shcodec +e täst
+		shcodec d $'t\u00E4st'
+		shcodec e aՍc
+		shcodec +e aՍc
+		shcodec d $'a\u054Dc'
+		shcodec e a😃c
+		shcodec +e a😃c
+		shcodec d $'a\U0001F603c'
+		__EOT
+      check unicode 0 "${MBOX}" '4233409480 77'
+   fi
+
+   t_epilog
+}
+
 t_wysh() {
    t_prolog wysh
 
@@ -675,28 +887,6 @@ t_wysh() {
    varshow mager
 	__EOT
    check 3 0 "${MBOX}" '1289698238 69'
-
-   t_epilog
-}
-
-t_input_inject_semicolon_seq() {
-   t_prolog input_inject_semicolon_seq
-
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}"
-	define mydeepmac {
-		echon '(mydeepmac)';
-	}
-	define mymac {
-		echon this_is_mymac;call mydeepmac;echon ';';
-	}
-	echon one';';call mymac;echon two";";call mymac;echo three$';';
-	define mymac {
-		echon this_is_mymac;call mydeepmac;echon ,TOO'!;';
-	}
-	echon one';';call mymac;echon two";";call mymac;echo three$';';
-	__EOT
-
-   check 1 0 "${MBOX}" '512117110 140'
 
    t_epilog
 }
