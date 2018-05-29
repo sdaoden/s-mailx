@@ -301,11 +301,12 @@ quoteflt_dummy(void) /* TODO LEGACY (until filters are plugged when needed) */
 {
    static struct quoteflt qf_i;
 
+   qf_i.qf_bypass = TRU1;
    return &qf_i;
 }
 
 FL void
-quoteflt_init(struct quoteflt *self, char const *prefix)
+quoteflt_init(struct quoteflt *self, char const *prefix, bool_t bypass)
 {
 #ifdef HAVE_QUOTE_FOLD
    char const *xcp, *cp;
@@ -316,11 +317,12 @@ quoteflt_init(struct quoteflt *self, char const *prefix)
 
    if ((self->qf_pfix = prefix) != NULL)
       self->qf_pfix_len = (ui32_t)strlen(prefix);
+   self->qf_bypass = bypass;
 
    /* Check whether the user wants the more fancy quoting algorithm */
    /* TODO *quote-fold*: n_QUOTE_MAX may excess it! */
 #ifdef HAVE_QUOTE_FOLD
-   if (self->qf_pfix_len > 0 && (cp = ok_vlook(quote_fold)) != NULL) {
+   if (!bypass && (cp = ok_vlook(quote_fold)) != NULL) {
       ui32_t qmin, qmax;
 
       /* These magic values ensure we don't bail */
@@ -386,7 +388,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
 
    /* Bypass? TODO Finally, this filter simply should not be used, then
     * (TODO It supercedes prefix_write() or something) */
-   if (self->qf_pfix_len == 0) {
+   if (self->qf_bypass) {
       if (len != fwrite(dat, 1, len, self->qf_os))
          goto jerr;
       rv = len;
@@ -402,8 +404,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
       bool_t pxok = (self->qf_qfold_min != 0);
 
       for (;;) {
-         if (!pxok) {
-            ll = self->qf_pfix_len;
+         if (!pxok && (ll = self->qf_pfix_len) > 0) {
             if (ll != fwrite(self->qf_pfix, 1, ll, self->qf_os))
                goto jerr;
             rv += ll;

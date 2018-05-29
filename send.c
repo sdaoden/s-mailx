@@ -650,7 +650,7 @@ jheaders_skip:
       case SEND_QUOTE:
       case SEND_QUOTE_ALL:
          if (ok_blook(rfc822_body_from_)) {
-            if (qf->qf_pfix_len > 0) {
+            if (!qf->qf_bypass) {
                size_t i = fwrite(qf->qf_pfix, sizeof *qf->qf_pfix,
                      qf->qf_pfix_len, obuf);
                if (i == qf->qf_pfix_len && stats != NULL)
@@ -1161,11 +1161,11 @@ jmhp_default:
 jsend:
    {
    bool_t volatile eof;
-   ui32_t save_qf_pfix_len = qf->qf_pfix_len;
+   bool_t save_qf_bypass = qf->qf_bypass;
    ui64_t *save_stats = stats;
 
    if (pbuf != origobuf) {
-      qf->qf_pfix_len = 0; /* XXX legacy (remove filter instead) */
+      qf->qf_bypass = TRU1;/* XXX legacy (remove filter instead) */
       stats = NULL;
    }
    eof = FAL0;
@@ -1237,7 +1237,7 @@ joutln:
       n_free(inrest.s);
 
    if (pbuf != origobuf) {
-      qf->qf_pfix_len = save_qf_pfix_len;
+      qf->qf_bypass = save_qf_bypass;
       stats = save_stats;
    }
    }
@@ -1426,7 +1426,7 @@ statusput(const struct message *mp, FILE *obuf, struct quoteflt *qf,
    *cp = 0;
    if (statout[0]) {
       int i = fprintf(obuf, "%.*sStatus: %s\n", (int)qf->qf_pfix_len,
-            (qf->qf_pfix_len > 0 ? qf->qf_pfix : 0), statout);
+            (qf->qf_bypass ? NULL : qf->qf_pfix), statout);
       if (i > 0 && stats != NULL)
          *stats += i;
    }
@@ -1450,7 +1450,7 @@ xstatusput(const struct message *mp, FILE *obuf, struct quoteflt *qf,
    *xp = 0;
    if (xstatout[0]) {
       int i = fprintf(obuf, "%.*sX-Status: %s\n", (int)qf->qf_pfix_len,
-            (qf->qf_pfix_len > 0 ? qf->qf_pfix : 0), xstatout);
+            (qf->qf_bypass ? NULL : qf->qf_pfix), xstatout);
       if (i > 0 && stats != NULL)
          *stats += i;
    }
@@ -1506,7 +1506,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
    rv = -1;
    linedat = NULL;
    linesize = 0;
-   quoteflt_init(&qf, prefix);
+   quoteflt_init(&qf, prefix, (prefix == NULL));
 
    n_SIGMAN_ENTER_SWITCH(&linedat_protect, n_SIGMAN_ALL){
    case 0:
@@ -1552,10 +1552,10 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
       if (nozap)
          sz = fprintf(obuf, "%s%.*sFrom %s %s%s\n",
                cpre, (int)qf.qf_pfix_len,
-               (qf.qf_pfix_len != 0 ? qf.qf_pfix : n_empty), fakefrom(mp),
+               (qf.qf_bypass ? n_empty : qf.qf_pfix), fakefrom(mp),
                n_time_ctime(mp->m_time, NULL), csuf);
    } else if (nozap) {
-      if (qf.qf_pfix_len > 0) {
+      if (!qf.qf_bypass) {
          i = fwrite(qf.qf_pfix, sizeof *qf.qf_pfix, qf.qf_pfix_len, obuf);
          if (i != qf.qf_pfix_len)
             goto jleave;

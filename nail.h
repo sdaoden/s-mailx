@@ -2047,14 +2047,14 @@ struct quoteflt {
    char const  *qf_pfix;
    ui32_t      qf_pfix_len;   /* Length of prefix: 0: bypass */
    ui32_t      qf_qfold_min;  /* Simple way: wrote prefix? */
+   bool_t      qf_bypass;     /* Simply write to .qf_os TODO BYPASS, then! */
    /* TODO quoteflt.qf_nl_last is a hack that i have introduced so that we
     * TODO finally can gracefully place a newline last in the visual display.
     * TODO I.e., for cases where quoteflt shouldn't be used at all ;} */
    bool_t      qf_nl_last;    /* Last thing written/seen was NL */
 #ifndef HAVE_QUOTE_FOLD
-   ui8_t       __dummy[7];
+   ui8_t       __dummy[6];
 #else
-   ui8_t       __dummy[1];
    ui8_t       qf_state;      /* *quote-fold* state machine */
    bool_t      qf_brk_isws;   /* Breakpoint is at WS */
    ui32_t      qf_qfold_max;  /* Otherwise: line lengths */

@@ -1366,11 +1366,8 @@ jeb64:
          }
       }
 jqpb64_dec:
-      if ((sz = out.l) != 0) {
-         ui32_t opl = qf->qf_pfix_len;
+      if ((sz = out.l) != 0)
          sz = _fwrite_td(&out, FAL0, (dflags & ~_TD_BUFCOPY), outrest, qf);
-         qf->qf_pfix_len = opl;
-      }
       break;
    case CONV_TOB64:
       /* TODO hack which is necessary unless this is a filter based approach

@@ -811,7 +811,8 @@ FL FILE *      run_editor(FILE *fp, off_t size, int viored, int readonly,
 
 /* Quote filter */
 FL struct quoteflt * quoteflt_dummy(void); /* TODO LEGACY */
-FL void        quoteflt_init(struct quoteflt *self, char const *prefix);
+FL void        quoteflt_init(struct quoteflt *self, char const *prefix,
+                  bool_t bypass);
 FL void        quoteflt_destroy(struct quoteflt *self);
 FL void        quoteflt_reset(struct quoteflt *self, FILE *f);
 FL ssize_t     quoteflt_push(struct quoteflt *self, char const *dat,
