@@ -11716,6 +11716,10 @@ Options = Bugs
 .It Va ssl-config-pairs-USER@HOST , ssl-config-pairs-HOST , ssl-config-pairs
 \*(OP The value of this variable chain will be interpreted as
 a comma-separated list of directive/value pairs.
+Directives and values need to be separated by equals signs
+.Ql = ,
+any whitespace surrounding pair members is removed.
+Keys are (usually) case-insensitive.
 Different to when placing these pairs in a
 .Va ssl-config-module
 section of a
@@ -11724,24 +11728,18 @@ commas
 .Ql \&,
 need to be escaped with a reverse solidus
 .Ql \e
-when included in pairs.
-Just likewise directives and values need to be separated by equals signs
-.Ql = ,
-any whitespace surrounding pair members is removed.
-Keys are (usually) case-insensitive.
+when included in pairs; also different: if the equals sign
+.Ql =
+is preceded with an asterisk
+.Ql *
+.Sx "Filename transformations"
+will be performed on the value; it is an error if these fail.
 Unless proper support is announced by
 .Va ssl-features
 .Pf ( Ql +conf-ctx )
 only the keys below are supported, otherwise the pairs will be used
 directly as arguments to the function
 .Xr SSL_CONF_cmd 3 .
-Said equals sign
-.Ql =
-may be preceded with an asterisk
-.Ql *
-to indicate that
-.Sx "Filename transformations"
-shall be performed on the value; it is an error if these fail.
 .
 .Pp
 .Bl -tag -compact -width ".It Cd C_rtificate"
@@ -11768,6 +11766,18 @@ acceptable ciphers; possibly cramped by the used SSL/TLS library).
 Fallback support via
 .Xr SSL_CTX_set_cipher_list 3 .
 .
+.It Cd Ciphersuites
+A list of ciphers used for TLSv1.3 connections, see
+.Xr ciphers 1 .
+These will be joined onto the list of ciphers from
+.Cd CipherString .
+Available if
+.Va ssl-features
+announces
+.Ql +ctx-set-ciphersuites ,
+as necessary via
+.Xr SSL_CTX_set_ciphersuites 3 .
+.
 .It Cd Curves
 A list of supported elliptic curves, if applicable.
 By default no curves are set.
@@ -11777,20 +11787,20 @@ if available.
 .
 .It Cd MaxProtocol , MinProtocol
 The maximum and minimum supported SSL/TLS versions, respectively.
-Optional fallback support via
-.Xr SSL_CTX_set_max_proto_version 3
-and
-.Xr SSL_CTX_set_min_proto_version 3
-if
+Available if
 .Va ssl-features
 announces
 .Ql +ctx-set-maxmin-proto ,
-otherwise this directive results in an error.
-The fallback uses an internal parser which understands the strings
+as necessary via
+.Xr SSL_CTX_set_max_proto_version 3
+and
+.Xr SSL_CTX_set_min_proto_version 3 ;
+these fallbacks use an internal parser which understands the strings
 .Ql SSLv3 ,
 .Ql TLSv1 ,
 .Ql TLSv1.1 ,
 .Ql TLSv1.2 ,
+.Ql TLSv1.3 ,
 and the special value
 .Ql None ,
 which disables the given limit.
@@ -11837,6 +11847,7 @@ driven via an internal parser which understands the strings
 .Ql TLSv1 ,
 .Ql TLSv1.1 ,
 .Ql TLSv1.2 ,
+.Ql TLSv1.3 ,
 and the special value
 .Ql ALL .
 Multiple protocols may be given as a comma-separated list, any
@@ -13364,6 +13375,8 @@ wysh set smime-ca-file="${ssl-ca-file}" \e
 #   improve security, especially with protocols older than TLS v1.2.
 #   See ciphers(1).  Possibly best to only use ssl-cipher-list-HOST
 #   (or -USER@HOST), as necessary, again..
+#   Note that TLSv1.3 uses Ciphersuites= instead, which will join
+#   with CipherString (if protocols older than v1.3 are allowed)
 # Curves: especially with TLSv1.3 curves selection may be desired.
 # MinProtocol,MaxProtocol: do not use protocols older than TLS v1.2.
 #   Change this only when the remote server does not support it:
@@ -13379,7 +13392,7 @@ else
   wysh set ssl-config-pairs='\e
       CipherString=TLSv1.2:!aNULL:!eNULL:@STRENGTH,\e
       Curves=P-521:P-384:P-256,\e
-      Protocol=-ALL\e,+TLSv1.1 \e, +TLSv1.2'
+      Protocol=-ALL\e,+TLSv1.1 \e, +TLSv1.2\e, +TLSv1.3'
 endif
 
 # Essential setting: select allowed character sets

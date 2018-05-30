@@ -84,11 +84,15 @@ EMPTY_FILE()
 # ifndef SSL_OP_NO_TLSv1_2
 #  define SSL_OP_NO_TLSv1_2 0
 # endif
+# ifndef SSL_OP_NO_TLSv1_3
+#  define SSL_OP_NO_TLSv1_3 0
+# endif
   /* SSL_CONF_CTX and _OP_NO_SSL_MASK were both introduced with 1.0.2!?! */
 # ifndef SSL_OP_NO_SSL_MASK
 #  define SSL_OP_NO_SSL_MASK \
    (SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |\
-   SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_TLSv1_2)
+   SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_TLSv1_2 |\
+   SSL_OP_NO_TLSv1_3)
 # endif
 
 # ifndef SSL2_VERSION
@@ -105,6 +109,9 @@ EMPTY_FILE()
 # endif
 # ifndef TLS1_2_VERSION
 #  define TLS1_2_VERSION 0
+# endif
+# ifndef TLS1_3_VERSION
+#  define TLS1_3_VERSION 0
 # endif
 #endif
 
@@ -221,7 +228,8 @@ static struct ssl_method const   _ssl_methods[] = { /* TODO obsolete */
 #ifndef HAVE_XSSL_CONF_CTX
 static struct a_xssl_protocol const a_xssl_protocols[] = {
    {"ALL", SSL_OP_NO_SSL_MASK, 0, FAL0, TRU1, {0}},
-   {"TLSv1.2\0", SSL_OP_NO_TLSv1_2, TLS1_2_VERSION, TRU1, TRU1, {0}},
+   {"TLSv1.3\0", SSL_OP_NO_TLSv1_3, TLS1_3_VERSION, TRU1, TRU1, {0}},
+   {"TLSv1.2", SSL_OP_NO_TLSv1_2, TLS1_2_VERSION, TRU1, TRU1, {0}},
    {"TLSv1.1", SSL_OP_NO_TLSv1_1, TLS1_1_VERSION, TRU1, TRU1, {0}},
    {"TLSv1", SSL_OP_NO_TLSv1, TLS1_VERSION, TRU1, TRU1, {0}},
    {"SSLv3", SSL_OP_NO_SSLv3, SSL3_VERSION, TRU1, TRU1, {0}},
@@ -767,6 +775,17 @@ a_xssl_conf(void *confp, char const *cmd, char const *value){
          emsg = N_("SSL/TLS: %s: invalid: %s\n");
          goto jerr;
       }
+   }else if(!asccasecmp(cmd, xcmd = "Ciphersuites")){
+#ifdef HAVE_XSSL_SET_CIPHERSUITES
+      if(SSL_CTX_set_ciphersuites(ctxp, value) != 1){
+         emsg = N_("SSL/TLS: %s: invalid: %s\n");
+         goto jerr;
+      }
+#else
+      value = NULL;
+      emsg = N_("SSL/TLS: %s: directive not supported\n");
+      goto jxerr;
+#endif
    }else if(!asccasecmp(cmd, xcmd = "Curves")){
 #ifdef SSL_CTRL_SET_CURVES_LIST
       if(SSL_CTX_set1_curves_list(ctxp, value) != 1){

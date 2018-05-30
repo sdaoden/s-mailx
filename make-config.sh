@@ -2583,6 +2583,27 @@ int main(void){
          VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-ctx-set-maxmin-proto"
       fi
 
+      if [ -n "${ossl_v1_1}" ] && [ -n "${have_xssl_conf_ctx}" ]; then
+         without_check yes xssl_set_ciphersuites \
+            'TLSv1.3 SSL_CTX_set_ciphersuites(3ssl)' \
+            '#define HAVE_XSSL_SET_CIPHERSUITES'
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+ctx-set-ciphersuites"
+      elif link_check xssl_set_ciphersuites \
+         'TLSv1.3 SSL_CTX_set_ciphersuites(3ssl)' \
+         '#define HAVE_XSSL_SET_CIPHERSUITES' << \!
+#include <stdio.h> /* For C89 NULL */
+#include <openssl/ssl.h>
+int main(void){
+   SSL_CTX_set_ciphersuites(NULL, NULL);
+   return 0;
+}
+!
+      then
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+ctx-set-ciphersuites"
+      else
+         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-ctx-set-ciphersuites"
+      fi
+
       if link_check xssl_rand_egd 'TLS/SSL RAND_egd(3ssl)' \
             '#define HAVE_XSSL_RAND_EGD' << \!
 #include <openssl/rand.h>
