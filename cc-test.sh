@@ -5227,8 +5227,7 @@ t_s_mime() {
 
    # Sign/verify
    echo bla | ${MAILX} ${ARGS} \
-      -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
-      -Ssmime-sign -Sfrom=test@localhost \
+      -Ssmime-sign -Ssmime-sign-cert=./.tpair.pem -Sfrom=test@localhost \
       -s 'S/MIME test' ./.VERIFY
    check_ex0 1-estat
    ${awk} '
@@ -5241,15 +5240,11 @@ t_s_mime() {
    check 1 - "${MBOX}" '2900817158 648'
 
    printf 'verify\nx\n' |
-   ${MAILX} ${ARGS} \
-      -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
-      -Ssmime-sign -Sfrom=test@localhost \
-      -Serrexit -R \
-      -f ./.VERIFY >>${ERR} 2>&1
+   ${MAILX} ${ARGS} -Ssmime-ca-file=./.tcert.pem -Serrexit \
+      -R -f ./.VERIFY >>${ERR} 2>&1
    check_ex0 2
 
-   openssl smime -verify -CAfile ./.tcert.pem \
-         -in ./.VERIFY >>${ERR} 2>&1
+   openssl smime -verify -CAfile ./.tcert.pem -in ./.VERIFY >>${ERR} 2>&1
    check_ex0 3
 
    # (signing +) encryption / decryption
@@ -5257,11 +5252,9 @@ t_s_mime() {
 
    echo bla |
    ${MAILX} ${ARGS} \
-      -Ssmime-force-encryption \
-      -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
       -Smta=./.tmta.sh \
-      -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
-      -Ssmime-sign -Sfrom=test@localhost \
+      -Ssmime-force-encryption -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
+      -Ssmime-sign -Ssmime-sign-cert=./.tpair.pem -Sfrom=test@localhost \
       -s 'S/MIME test' recei@ver.com
    check_ex0 4-estat
    ${sed} -e '/^$/,$d' < ./.ENCRYPT > "${MBOX}"
@@ -5269,13 +5262,10 @@ t_s_mime() {
 
    printf 'decrypt ./.DECRYPT\nfi ./.DECRYPT\nverify\nx\n' |
    ${MAILX} ${ARGS} \
-      -Ssmime-force-encryption \
-      -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
       -Smta=./.tmta.sh \
-      -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
-      -Ssmime-sign -Sfrom=test@localhost \
-      -Serrexit -R \
-      -f ./.ENCRYPT >>${ERR} 2>&1
+      -Ssmime-ca-file=./.tcert.pem \
+      -Ssmime-sign-cert=./.tpair.pem \
+      -Serrexit -R -f ./.ENCRYPT >>${ERR} 2>&1
    check_ex0 5-estat
    ${awk} '
       BEGIN{ skip=0 }
@@ -5292,10 +5282,8 @@ t_s_mime() {
 
    ${rm} ./.ENCRYPT
    echo bla | ${MAILX} ${ARGS} \
-      -Ssmime-force-encryption \
-      -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
       -Smta=./.tmta.sh \
-      -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
+      -Ssmime-force-encryption -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
       -Sfrom=test@localhost \
       -s 'S/MIME test' recei@ver.com
    check_ex0 7-estat
@@ -5304,13 +5292,9 @@ t_s_mime() {
 
    ${rm} ./.DECRYPT
    printf 'decrypt ./.DECRYPT\nx\n' | ${MAILX} ${ARGS} \
-      -Ssmime-force-encryption \
-      -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
       -Smta=./.tmta.sh \
-      -Ssmime-ca-file=./.tcert.pem -Ssmime-sign-cert=./.tpair.pem \
-      -Sfrom=test@localhost \
-      -Serrexit -R \
-      -f ./.ENCRYPT >>${ERR} 2>&1
+      -Ssmime-sign-cert=./.tpair.pem \
+      -Serrexit -R -f ./.ENCRYPT >>${ERR} 2>&1
    check 8 0 "./.DECRYPT" '2624716890 422'
 
    openssl smime -decrypt -inkey ./.tkey.pem \
