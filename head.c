@@ -1965,6 +1965,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
       agp->ag_iaddr_aend = agp->ag_ilen;
       cp2[agp->ag_ilen++] = '>';
       cp2[agp->ag_ilen] = '\0';
+      agp->ag_input = cp2;
    }
    agp->ag_skinned = savestrbuf(nbuf, agp->ag_slen);
    n_lofi_free(nbuf);
