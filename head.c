@@ -115,9 +115,6 @@ static long a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem,
 
 static int                 msgidnextc(char const **cp, int *status);
 
-/* Count the occurances of c in str */
-static int                 charcount(char *str, int c);
-
 static char const *        nexttoken(char const *cp);
 
 static char const *
@@ -1091,20 +1088,6 @@ jleave:
    return c;
 }
 
-static int
-charcount(char *str, int c)
-{
-   char *cp;
-   int i;
-   NYD2_ENTER;
-
-   for (i = 0, cp = str; *cp; ++cp)
-      if (*cp == c)
-         ++i;
-   NYD2_LEAVE;
-   return i;
-}
-
 static char const *
 nexttoken(char const *cp)
 {
@@ -1560,26 +1543,6 @@ thisfield(char const *linebuf, char const *field)
 jleave:
    NYD2_LEAVE;
    return rv;
-}
-
-FL char *
-nameof(struct message *mp, int reptype)
-{
-   char *cp, *cp2;
-   NYD_ENTER;
-
-   cp = skin(name1(mp, reptype));
-   if (reptype != 0 || charcount(cp, '!') < 2)
-      goto jleave;
-   cp2 = strrchr(cp, '!');
-   --cp2;
-   while (cp2 > cp && *cp2 != '!')
-      --cp2;
-   if (*cp2 == '!')
-      cp = cp2 + 1;
-jleave:
-   NYD_LEAVE;
-   return cp;
 }
 
 FL char const *
@@ -2106,80 +2069,84 @@ jleave:
 }
 
 FL char *
-name1(struct message *mp, int reptype)
-{
-   char *namebuf, *cp, *cp2, *linebuf = NULL /* TODO line pool */;
-   size_t namesize, linesize = 0;
-   FILE *ibuf;
-   int f1st = 1;
+n_header_senderfield_of(struct message *mp){
+   char *cp;
    NYD_ENTER;
 
-   if ((cp = hfield1("from", mp)) != NULL && *cp != '\0')
-      goto jleave;
-   if (reptype == 0 && (cp = hfield1("sender", mp)) != NULL && *cp != '\0')
-      goto jleave;
+   if((cp = hfield1("from", mp)) != NULL && *cp != '\0')
+      ;
+   else if((cp = hfield1("sender", mp)) != NULL && *cp != '\0')
+      ;
+   else{
+      char *namebuf, *cp2, *linebuf = NULL /* TODO line pool */;
+      size_t namesize, linesize = 0;
+      FILE *ibuf;
+      int f1st = 1;
 
-   namebuf = n_alloc(namesize = 1);
-   namebuf[0] = 0;
-   if (mp->m_flag & MNOFROM)
-      goto jout;
-   if ((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
-      goto jout;
-   if (readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
-      goto jout;
+      /* And fallback only works for MBOX */
+      namebuf = n_alloc(namesize = 1);
+      namebuf[0] = 0;
+      if (mp->m_flag & MNOFROM)
+         goto jout;
+      if ((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
+         goto jout;
+      if (readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
+         goto jout;
 
 jnewname:
-   if (namesize <= linesize)
-      namebuf = n_realloc(namebuf, namesize = linesize +1);
-   for (cp = linebuf; *cp != '\0' && *cp != ' '; ++cp)
-      ;
-   for (; blankchar(*cp); ++cp)
-      ;
-   for (cp2 = namebuf + strlen(namebuf);
-        *cp && !blankchar(*cp) && PTRCMP(cp2, <, namebuf + namesize -1);)
-      *cp2++ = *cp++;
-   *cp2 = '\0';
+      if (namesize <= linesize)
+         namebuf = n_realloc(namebuf, namesize = linesize +1);
+      for (cp = linebuf; *cp != '\0' && *cp != ' '; ++cp)
+         ;
+      for (; blankchar(*cp); ++cp)
+         ;
+      for (cp2 = namebuf + strlen(namebuf);
+           *cp && !blankchar(*cp) && PTRCMP(cp2, <, namebuf + namesize -1);)
+         *cp2++ = *cp++;
+      *cp2 = '\0';
 
-   if (readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
-      goto jout;
-   if ((cp = strchr(linebuf, 'F')) == NULL)
-      goto jout;
-   if (strncmp(cp, "From", 4))
-      goto jout;
-   if (namesize <= linesize)
-      namebuf = n_realloc(namebuf, namesize = linesize + 1);
+      if (readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
+         goto jout;
+      if ((cp = strchr(linebuf, 'F')) == NULL)
+         goto jout;
+      if (strncmp(cp, "From", 4))
+         goto jout;
+      if (namesize <= linesize)
+         namebuf = n_realloc(namebuf, namesize = linesize + 1);
 
-   while ((cp = strchr(cp, 'r')) != NULL) {
-      if (!strncmp(cp, "remote", 6)) {
-         if ((cp = strchr(cp, 'f')) == NULL)
-            break;
-         if (strncmp(cp, "from", 4) != 0)
-            break;
-         if ((cp = strchr(cp, ' ')) == NULL)
-            break;
-         cp++;
-         if (f1st) {
-            strncpy(namebuf, cp, namesize);
-            f1st = 0;
-         } else {
-            cp2 = strrchr(namebuf, '!') + 1;
-            strncpy(cp2, cp, PTR2SIZE(namebuf + namesize - cp2));
+      /* UUCP from 976 (we do not support anyway!) */
+      while ((cp = strchr(cp, 'r')) != NULL) {
+         if (!strncmp(cp, "remote", 6)) {
+            if ((cp = strchr(cp, 'f')) == NULL)
+               break;
+            if (strncmp(cp, "from", 4) != 0)
+               break;
+            if ((cp = strchr(cp, ' ')) == NULL)
+               break;
+            cp++;
+            if (f1st) {
+               strncpy(namebuf, cp, namesize);
+               f1st = 0;
+            } else {
+               cp2 = strrchr(namebuf, '!') + 1;
+               strncpy(cp2, cp, PTR2SIZE(namebuf + namesize - cp2));
+            }
+            namebuf[namesize - 2] = '!';
+            namebuf[namesize - 1] = '\0';
+            goto jnewname;
          }
-         namebuf[namesize - 2] = '!';
-         namebuf[namesize - 1] = '\0';
-         goto jnewname;
+         cp++;
       }
-      cp++;
-   }
 jout:
-   if (*namebuf != '\0' || ((cp = hfield1("return-path", mp))) == NULL ||
-         *cp == '\0')
-      cp = savestr(namebuf);
+      if (*namebuf != '\0' || ((cp = hfield1("return-path", mp))) == NULL ||
+            *cp == '\0')
+         cp = savestr(namebuf);
 
-   if (linebuf != NULL)
-      n_free(linebuf);
-   n_free(namebuf);
-jleave:
+      if (linebuf != NULL)
+         n_free(linebuf);
+      n_free(namebuf);
+   }
+
    NYD_LEAVE;
    return cp;
 }

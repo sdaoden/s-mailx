@@ -102,10 +102,14 @@ save1(char *str, int domark, char const *cmd, struct n_ignore const *itp,
    }
 
    if (sender_record) {
-      if ((cp = nameof(message + *msgvec - 1, 0)) == NULL) {
-         fprintf(n_stdout, _("Cannot determine message sender to %s.\n"), cmd);
+      struct name *np;
+
+      if((cp = n_header_senderfield_of(message + *msgvec - 1)) == NULL ||
+            (np = lextract(cp, GTO | GSKIN)) == NULL){
+         n_err(_("Cannot determine message sender to %s.\n"), cmd);
          goto jleave;
       }
+      cp = np->n_name;
 
       for (cq = cp; *cq != '\0' && *cq != '@'; cq++)
          ;

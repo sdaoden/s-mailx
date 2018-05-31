@@ -1012,61 +1012,73 @@ static bool_t
 a_message_match_sender(struct message *mp, char const *str, bool_t allnet){
    char const *str_base, *np_base, *np;
    char sc, nc;
+   struct name *namep;
    bool_t rv;
    NYD2_ENTER;
 
+   rv = FAL0;
+
    /* Empty string doesn't match */
-   if(*(str_base = str) == '\0'){
-      rv = FAL0;
+   namep = lextract(n_header_senderfield_of(mp), GFULL | GSKIN);
+
+   if(namep == NULL || *(str_base = str) == '\0')
       goto jleave;
-   }
 
    /* *allnet* is POSIX and, since it explicitly mentions login and user names,
     * most likely case-sensitive.  XXX Still allow substr matching, though
     * XXX possibly the first letter should be case-insensitive, then? */
    if(allnet){
-      for(np_base = np = nameof(mp, 0);;){
-         if((sc = *str++) == '@')
-            sc = '\0';
-         if((nc = *np++) == '@' || nc == '\0' || sc == '\0')
-            break;
-         if(sc != nc){
-            np = ++np_base;
-            str = str_base;
+      for(; namep != NULL; str = str_base, namep = namep->n_flink){
+         for(np_base = np = namep->n_name;;){
+            if((sc = *str++) == '@')
+               sc = '\0';
+            if((nc = *np++) == '@' || nc == '\0' || sc == '\0'){
+               if((rv = (sc == '\0')))
+                  goto jleave;
+               break;
+            }
+            if(sc != nc){
+               np = ++np_base;
+               str = str_base;
+            }
          }
       }
-      rv = (sc == '\0');
    }else{
       /* TODO POSIX says ~"match any address as shown in header overview",
        * TODO but a normalized match would be more sane i guess.
        * TODO struct name should gain a comparison method, normalize realname
        * TODO content (in TODO) and thus match as likewise
        * TODO "Buddy (Today) <here>" and "(Now) Buddy <here>" */
-      char const *real_base;
-      bool_t again;
+      bool_t again_base, again;
 
-      real_base = name1(mp, 0);
-      again = ok_blook(showname);
+      again_base = ok_blook(showname);
+
+      for(; namep != NULL; str = str_base, namep = namep->n_flink){
+         again = again_base;
 jagain:
-      np_base = np = again ? realname(real_base) : skin(real_base);
-      str = str_base;
-      for(;;){
-         sc = *str++;
-         if((nc = *np++) == '\0' || sc == '\0')
-            break;
-         sc = upperconv(sc);
-         nc = upperconv(nc);
-         if(sc != nc){
-            np = ++np_base;
-            str = str_base;
+         np_base = np = again ? namep->n_fullname : namep->n_name;
+         str = str_base;
+         for(;;){
+            sc = *str++;
+            if((nc = *np++) == '\0' || sc == '\0'){
+               if((rv = (sc == '\0')))
+                  goto jleave;
+               break;
+            }
+            sc = upperconv(sc);
+            nc = upperconv(nc);
+            if(sc != nc){
+               np = ++np_base;
+               str = str_base;
+            }
          }
-      }
 
-      /* And really if i want to match 'on@' then i want it to match even if
-       * *showname* is set! */
-      if(!(rv = (sc == '\0')) && again){
-         again = FAL0;
-         goto jagain;
+         /* And really if i want to match 'on@' then i want it to match even if
+          * *showname* is set! */
+         if(again){
+            again = FAL0;
+            goto jagain;
+         }
       }
    }
 jleave:

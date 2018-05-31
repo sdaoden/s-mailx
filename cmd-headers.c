@@ -222,7 +222,8 @@ jredo_localtime:
       date = n_time_ctime(datet, NULL);
 
    flags |= _ISADDR;
-   name = name1(mp, 0);
+   /* TODO This is wrong since it is not lextract()ed! */
+   name = n_header_senderfield_of(mp);
    if (name != NULL && ok_blook(showto) && n_is_myname(skin(name))) {
       if ((cp = hfield1("to", mp)) != NULL) {
          name = cp;

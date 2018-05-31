@@ -1059,10 +1059,6 @@ FL char *      hfield_mult(char const *field, struct message *mp, int mult);
  * Return the field body, or 0 */
 FL char const * thisfield(char const *linebuf, char const *field);
 
-/* Get sender's name from this message.  If the message has a bunch of arpanet
- * stuff in it, we may have to skin the name before returning it */
-FL char *      nameof(struct message *mp, int reptype);
-
 /* Start of a "comment".  Ignore it */
 FL char const * skip_comment(char const *cp);
 
@@ -1103,11 +1099,9 @@ FL char const *n_addrspec_with_guts(struct n_addrguts *agp, char const *name,
 /* Fetch the real name from an internet mail address field */
 FL char *      realname(char const *name);
 
-/* Fetch the sender's name from the passed message.  reptype can be
- * 0 -- get sender's name for display purposes
- * 1 -- get sender's name for reply
- * 2 -- get sender's name for Reply */
-FL char *      name1(struct message *mp, int reptype);
+/* Get the list of senders (From: or Sender: or From_ line) from this message.
+ * The return value may be empty and needs lextract()ion */
+FL char *n_header_senderfield_of(struct message *mp);
 
 /* Trim away all leading Re: etc., return pointer to plain subject.
  * Note it doesn't perform any MIME decoding by itself */

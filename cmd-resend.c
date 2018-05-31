@@ -399,8 +399,7 @@ jwork_msg:
 
    /* Otherwise do the normal From: / To: / Cc: dance */
 
-   if((cp2 = hfield1("from", mp)) == NULL)
-      cp2 = nameof(mp, 1);
+   cp2 = n_header_senderfield_of(mp);
 
    /* Cc: */
    np = NULL;
@@ -600,13 +599,8 @@ a_crese_Reply(int *msgvec, bool_t recipient_record){
       touch(mp);
       setdot(mp);
 
-      if((np = a_crese_reply_to(mp)) == NULL){
-         char *cp;
-
-         if((cp = hfield1("from", mp)) == NULL)
-            cp = nameof(mp, 2);
-         np = lextract(cp, GTO | gf);
-      }
+      if((np = a_crese_reply_to(mp)) == NULL)
+         np = lextract(n_header_senderfield_of(mp), GTO | gf);
       head.h_to = cat(head.h_to, np);
    }
 
