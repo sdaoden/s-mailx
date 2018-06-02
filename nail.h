@@ -2061,11 +2061,13 @@ struct quoteflt {
    ui8_t       qf_state;      /* *quote-fold* state machine */
    bool_t      qf_brk_isws;   /* Breakpoint is at WS */
    ui32_t      qf_qfold_max;  /* Otherwise: line lengths */
+   ui32_t      qf_qfold_maxnws;
    ui32_t      qf_wscnt;      /* Whitespace count */
    char const *qf_quote_chars; /* *quote-chars* */
    ui32_t      qf_brkl;       /* Breakpoint */
    ui32_t      qf_brkw;       /* Visual width, breakpoint */
    ui32_t      qf_datw;       /* Current visual output line width */
+   ui8_t       __dummy2[4];
    struct str  qf_dat;        /* Current visual output line */
    struct str  qf_currq;      /* Current quote, compressed */
    mbstate_t   qf_mbps[2];

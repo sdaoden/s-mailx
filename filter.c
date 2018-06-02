@@ -83,17 +83,21 @@ jerr:
 static ssize_t
 _qf_add_data(struct quoteflt *self, wchar_t wc)
 {
+   int w, l;
    char *save_b;
    ui32_t save_l, save_w;
-   ssize_t rv = 0;
-   int w, l;
+   ssize_t rv;
    NYD_ENTER;
 
+   rv = 0;
    save_l = save_w = 0; /* silence cc */
    save_b = NULL;
+
    /* <newline> ends state */
-   if (wc == L'\n')
+   if (wc == L'\n') {
+      w = 0;
       goto jflush;
+   }
    if (wc == L'\r') /* TODO CR should be stripped in lower level!! */
       goto jleave;
 
@@ -113,11 +117,18 @@ _qf_add_data(struct quoteflt *self, wchar_t wc)
       goto jleave;
    }
 
+   /* To avoid that the last visual excesses *qfold-max*, which may happen for
+    * multi-column characters, use w as an indicator for this and move that
+    * thing to the next line */
    w = wcwidth(wc);
    if (w == -1) {
+      w = 0;
 jbad:
       ++self->qf_datw;
       self->qf_dat.s[self->qf_dat.l++] = '?';
+   } else if (self->qf_datw > self->qf_qfold_max - w) {
+      w = -1;
+      goto jneednl;
    } else {
       l = wctomb(self->qf_dat.s + self->qf_dat.l, wc);
       if (l < 0)
@@ -126,11 +137,10 @@ jbad:
       self->qf_dat.l += (size_t)l;
    }
 
-   /* TODO The last visual may excess (adjusted!) *qfold-max* if it's a wide;
-    * TODO place it on the next line, break before */
    if (self->qf_datw >= self->qf_qfold_max) {
       /* If we have seen a nice breakpoint during traversal, shuffle data
        * around a bit so as to restore the trailing part after flushing */
+jneednl:
       if (self->qf_brkl > 0) {
          save_w = self->qf_datw - self->qf_brkw;
          save_l = self->qf_dat.l - self->qf_brkl;
@@ -155,15 +165,25 @@ jflush:
       bool_t isws = (iswspace(wc) != 0);
 
       if (isws || !self->qf_brk_isws || self->qf_brkl == 0) {
-         self->qf_brkl = self->qf_dat.l;
-         self->qf_brkw = self->qf_datw;
-         self->qf_brk_isws = isws;
+         if((self->qf_brk_isws = isws) ||
+               self->qf_brkl < self->qf_qfold_maxnws){
+            self->qf_brkl = self->qf_dat.l;
+            self->qf_brkw = self->qf_datw;
+         }
       }
    }
 
+   /* Did we hold this back to avoid qf_fold_max excess?  Then do it now */
+   if(rv >= 0 && w == -1){
+      ssize_t j = _qf_add_data(self, wc);
+      if(j < 0)
+         rv = j;
+      else
+         rv += j;
+   }
    /* If state changed to prefix, perform full reset (note this implies that
     * quoteflt_flush() performs too much work..) */
-   if (wc == '\n') {
+   else if (wc == '\n') {
       self->qf_state = _QF_PREFIX;
       self->qf_wscnt = self->qf_datw = 0;
       self->qf_currq.l = 0;
@@ -323,24 +343,31 @@ quoteflt_init(struct quoteflt *self, char const *prefix, bool_t bypass)
    /* TODO *quote-fold*: n_QUOTE_MAX may excess it! */
 #ifdef HAVE_QUOTE_FOLD
    if (!bypass && (cp = ok_vlook(quote_fold)) != NULL) {
-      ui32_t qmin, qmax;
+      ui32_t qmax, qmaxnws, qmin;
 
       /* These magic values ensure we don't bail */
       n_idec_ui32_cp(&qmax, cp, 10, &xcp);
       if (qmax < self->qf_pfix_len + 6)
          qmax = self->qf_pfix_len + 6;
-      --qmax; /* The newline escape */
+      qmaxnws = --qmax; /* The newline escape */
       if (cp == xcp || *xcp == '\0')
          qmin = (qmax >> 1) + (qmax >> 2) + (qmax >> 5);
       else {
-         n_idec_ui32_cp(&qmin, &xcp[1], 10, NULL);
+         n_idec_ui32_cp(&qmin, &xcp[1], 10, &xcp);
          if (qmin < qmax >> 1)
             qmin = qmax >> 1;
          else if (qmin > qmax - 2)
             qmin = qmax - 2;
+
+         if (cp != xcp && *xcp != '\0') {
+            n_idec_ui32_cp(&qmaxnws, &xcp[1], 10, &xcp);
+            if (qmaxnws > qmax || qmaxnws < qmin)
+               qmaxnws = qmax;
+         }
       }
       self->qf_qfold_min = qmin;
       self->qf_qfold_max = qmax;
+      self->qf_qfold_maxnws = qmaxnws;
       self->qf_quote_chars = ok_vlook(quote_chars);
 
       /* Add pad for takeover copies, reverse solidus and newline */
