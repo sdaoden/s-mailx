@@ -822,3 +822,16 @@ Mail-Followup-To: bugstop@five.miles.out
 This is text of "Lreply 7.3".
 
 -----After Lreply 7.3: 0/NONE
+From HumulusLupulus Thu Jul 27 14:41:20 2017
+Date: Wed, 02 Oct 1996 01:50:07 +0000
+From: laber@backe.eu
+To: mister originator2 <mr2@originator>, bugstop@five.miles.out
+Cc: is@a.list
+Subject: Re: Bugstop: five miles out 1
+In-Reply-To: <20170719132257.766AF781267@originator>
+References: <20170719132257.766AF781267@originator>
+Mail-Followup-To: mister originator2 <mr2@originator>,
+ bugstop@five.miles.out, is@a.list, laber@backe.eu
+
+This message should have *fullnames* in the header.
+
