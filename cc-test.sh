@@ -4642,7 +4642,7 @@ t_mime_types_load_control() {
    t_epilog
 }
 
-t_lreply_futh_rth_etc() { # TODO *fullnames*!
+t_lreply_futh_rth_etc() {
    t_prolog lreply_futh_rth_etc
    TRAP_EXIT_ADDONS="./.t*"
 
@@ -4778,11 +4778,16 @@ t_lreply_futh_rth_etc() { # TODO *fullnames*!
 	call x 6
 	call tweak set recipients-in-cc
 	call x 7
+	# While here, test that *fullnames* works (also here)
+	set fullnames
+	reply 1
+	This message should have *fullnames* in the header.
+	!.
 	_EOT
 
    check_ex0 1-estat
    if have_feat uistrings; then
-      check 1 - "${MBOX}" '2950056640 29373'
+      check 1 - "${MBOX}" '1530821219 29859'
    else
       echo 'lreply_futh_rth_etc-1: content test unsupported, skipped'
    fi
