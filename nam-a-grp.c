@@ -1299,6 +1299,21 @@ jleave:
 }
 
 FL struct name *
+nalloc_fcc(char const *file){
+   struct name *nnp;
+   NYD_ENTER;
+
+   nnp = n_autorec_alloc(sizeof *nnp);
+   nnp->n_flink = nnp->n_blink = NULL;
+   nnp->n_type = GBCC | GBCC_IS_FCC; /* xxx Bcc: <- namelist_vaporise_head */
+   nnp->n_flags = NAME_NAME_SALLOC | NAME_SKINNED | NAME_ADDRSPEC_ISFILE;
+   nnp->n_fullname = nnp->n_name = savestr(file);
+   nnp->n_fullextra = NULL;
+   NYD_LEAVE;
+   return nnp;
+}
+
+FL struct name *
 ndup(struct name *np, enum gfield ntype)
 {
    struct name *nnp;
@@ -1531,8 +1546,8 @@ namelist_vaporise_head(struct header *hp, enum expand_addr_check_mode eacm,
    struct name *tolist, *np, **npp;
    NYD_ENTER;
 
-   tolist = cat(hp->h_to, cat(hp->h_cc, hp->h_bcc));
-   hp->h_to = hp->h_cc = hp->h_bcc = NULL;
+   tolist = cat(hp->h_to, cat(hp->h_cc, cat(hp->h_bcc, hp->h_fcc)));
+   hp->h_to = hp->h_cc = hp->h_bcc = hp->h_fcc = NULL;
 
    tolist = usermap(tolist, metoo);
    tolist = n_alternates_remove(tolist, TRU1);

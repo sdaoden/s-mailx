@@ -1169,7 +1169,7 @@ FL bool_t n_header_match(struct message *mp, struct search_expr const *sep);
 /* Verify whether len (UIZ_MAX=strlen) bytes of name form a standard or
  * otherwise known header name (that must not be used as a custom header).
  * Return the (standard) header name, or NULL */
-FL char const *n_header_is_standard(char const *name, size_t len);
+FL char const *n_header_is_known(char const *name, size_t len);
 
 /* Add a custom header to the given list, in auto-reclaimed or heap memory */
 FL bool_t n_header_add_custom(struct n_header_field **hflp, char const *dat,
@@ -1591,6 +1591,9 @@ FL enum mime_handler_flags n_mimetype_handler(struct mime_handler *mhp,
 /* Allocate a single element of a name list, initialize its name field to the
  * passed name and return it */
 FL struct name * nalloc(char const *str, enum gfield ntype);
+
+/* Alloc an Fcc: entry TODO temporary only i hope */
+FL struct name *nalloc_fcc(char const *file);
 
 /* Like nalloc(), but initialize from content of np */
 FL struct name * ndup(struct name *np, enum gfield ntype);

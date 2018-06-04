@@ -365,8 +365,8 @@ print_collf(FILE *cf, struct header *hp)
 
    fprintf(obuf, _("-------\nMessage contains:\n")); /* xxx SEARCH112 */
    puthead(TRU1, hp, obuf,
-      (GIDENT | GTO | GSUBJECT | GCC | GBCC | GNL | GFILES | GCOMMA),
-      SEND_TODISP, CONV_NONE, NULL, NULL);
+      (GIDENT | GTO | GSUBJECT | GCC | GBCC | GBCC_IS_FCC | GNL | GFILES |
+       GCOMMA), SEND_TODISP, CONV_NONE, NULL, NULL);
 
    lbuf = NULL;
    linesize = 0;
@@ -929,12 +929,20 @@ a_collect__plumb_header(char const *cp, struct header *hp,
          npp = &hp->h_from;
 jins:
          aerr = 0;
-         if((np = lextract(cmd[3], ntype)) == NULL)
-            goto j501cp;
+         /* todo As said above, this should be table driven etc., but.. */
+         if(ntype & GBCC_IS_FCC){
+            np = nalloc_fcc(cmd[3]);
+            if(is_addr_invalid(np, eacm))
+               goto jins_505;
+         }else{
+            if((np = lextract(cmd[3], ntype)) == NULL)
+               goto j501cp;
 
-         if((np = checkaddrs(np, eacm, &aerr), aerr != 0)){
-            fprintf(n_stdout, "505 %s\n", cp);
-            goto jleave;
+            if((np = checkaddrs(np, eacm, &aerr), aerr != 0)){
+jins_505:
+               fprintf(n_stdout, "505 %s\n", cp);
+               goto jleave;
+            }
          }
 
          /* Go to the end of the list, track whether it contains any
@@ -983,6 +991,12 @@ jins:
          eacm = EACM_NORMAL | EAF_NAME;
          goto jins;
       }
+      if(!asccasecmp(cmd[2], cp = "Fcc")){
+         npp = &hp->h_fcc;
+         ntype = GBCC | GBCC_IS_FCC;
+         eacm = EACM_NORMAL /* Not | EAF_FILE, depend on *expandaddr*! */;
+         goto jins;
+      }
       if(!asccasecmp(cmd[2], cp = "Reply-To")){
          npp = &hp->h_reply_to;
          eacm = EACM_NONAME;
@@ -1013,7 +1027,7 @@ jins:
          goto jins;
       }
 
-      if((cp = n_header_is_standard(cmd[2], UIZ_MAX)) != NULL){
+      if((cp = n_header_is_known(cmd[2], UIZ_MAX)) != NULL){
          fprintf(n_stdout, "505 %s\n", cp);
          goto jleave;
       }
@@ -1056,6 +1070,7 @@ jdefault:
          if(hp->h_to != NULL) fputs(" To", n_stdout);
          if(hp->h_cc != NULL) fputs(" Cc", n_stdout);
          if(hp->h_bcc != NULL) fputs(" Bcc", n_stdout);
+         if(hp->h_fcc != NULL) fputs(" Fcc", n_stdout);
          if(hp->h_reply_to != NULL) fputs(" Reply-To", n_stdout);
          if(hp->h_mft != NULL) fputs(" Mail-Followup-To", n_stdout);
          if(hp->h_message_id != NULL) fputs(" Message-ID", n_stdout);
@@ -1113,6 +1128,10 @@ jlist:
       }
       if(!asccasecmp(cmd[2], cp = "Bcc")){
          np = hp->h_bcc;
+         goto jlist;
+      }
+      if(!asccasecmp(cmd[2], cp = "Fcc")){
+         np = hp->h_fcc;
          goto jlist;
       }
       if(!asccasecmp(cmd[2], cp = "Reply-To")){
@@ -1226,6 +1245,10 @@ jrem:
          npp = &hp->h_bcc;
          goto jrem;
       }
+      if(!asccasecmp(cmd[2], cp = "Fcc")){
+         npp = &hp->h_fcc;
+         goto jrem;
+      }
       if(!asccasecmp(cmd[2], cp = "Reply-To")){
          npp = &hp->h_reply_to;
          goto jrem;
@@ -1247,7 +1270,7 @@ jrem:
          goto jrem;
       }
 
-      if((cp = n_header_is_standard(cmd[2], UIZ_MAX)) != NULL){
+      if((cp = n_header_is_known(cmd[2], UIZ_MAX)) != NULL){
          fprintf(n_stdout, "505 %s\n", cp);
          goto jleave;
       }
@@ -1335,6 +1358,10 @@ jremat:
          npp = &hp->h_bcc;
          goto jremat;
       }
+      if(!asccasecmp(cmd[2], cp = "Fcc")){
+         npp = &hp->h_fcc;
+         goto jremat;
+      }
       if(!asccasecmp(cmd[2], cp = "Reply-To")){
          npp = &hp->h_reply_to;
          goto jremat;
@@ -1356,7 +1383,7 @@ jremat:
          goto jremat;
       }
 
-      if((cp = n_header_is_standard(cmd[2], UIZ_MAX)) != NULL){
+      if((cp = n_header_is_known(cmd[2], UIZ_MAX)) != NULL){
          fprintf(n_stdout, "505 %s\n", cp);
          goto jleave;
       }
@@ -1430,6 +1457,10 @@ jshow:
       }
       if(!asccasecmp(cmd[2], cp = "Bcc")){
          np = hp->h_bcc;
+         goto jshow;
+      }
+      if(!asccasecmp(cmd[2], cp = "Fcc")){
+         np = hp->h_fcc;
          goto jshow;
       }
       if(!asccasecmp(cmd[2], cp = "Reply-To")){
@@ -2788,8 +2819,8 @@ jout:
 
       fprintf(n_stdout, _("-------\nEnvelope contains:\n")); /* xxx SEARCH112 */
       puthead(TRU1, hp, n_stdout,
-         GIDENT | GREF_IRT  | GSUBJECT | GTO | GCC | GBCC | GCOMMA,
-         SEND_TODISP, CONV_NONE, NULL, NULL);
+         GIDENT | GREF_IRT  | GSUBJECT | GTO | GCC | GBCC | GBCC_IS_FCC |
+         GCOMMA, SEND_TODISP, CONV_NONE, NULL, NULL);
 
 jreasksend:
       if(n_go_input(n_GO_INPUT_CTX_COMPOSE | n_GO_INPUT_NL_ESC,

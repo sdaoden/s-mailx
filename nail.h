@@ -2396,7 +2396,8 @@ enum gfield{ /* TODO -> enum m_grab_head, m_GH_xy */
    GSKIN = 1u<<15,      /* Skin names */
    GEXTRA = 1u<<16,     /* Extra fields (mostly like GIDENT XXX) */
    GFILES = 1u<<17,     /* Include filename and pipe addresses */
-   GFULLEXTRA = 1u<<18  /* Only with GFULL: GFULL less address */
+   GFULLEXTRA = 1u<<18, /* Only with GFULL: GFULL less address */
+   GBCC_IS_FCC = 1u<<19 /* This GBCC is (or was) indeed a Fcc: */
 };
 #define GMASK           (GTO | GSUBJECT | GCC | GBCC)
 
@@ -2426,6 +2427,7 @@ struct header {
    struct name *h_to;         /* Dynamic "To:" string */
    struct name *h_cc;         /* Carbon copies string */
    struct name *h_bcc;        /* Blind carbon copies */
+   struct name *h_fcc;        /* Fcc: file carbon copies to */
    struct name *h_ref;        /* References (possibly overridden) */
    struct attachment *h_attach; /* MIME attachments */
    struct name *h_reply_to;   /* overridden "Reply-To:" field */

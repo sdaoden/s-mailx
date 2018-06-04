@@ -1341,6 +1341,12 @@ n_header_extract(FILE *fp, struct header *hp, bool_t extended_list_of,
          ++seenfields;
          hq->h_bcc = cat(hq->h_bcc, checkaddrs(lextract(val, GBCC | GFULL),
                EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err));
+      } else if ((val = thisfield(linebuf, "fcc")) != NULL) {
+         if(extended_list_of){
+            ++seenfields;
+            hq->h_fcc = cat(hq->h_fcc, nalloc_fcc(val));
+         }else
+            goto jebadhead;
       } else if ((val = thisfield(linebuf, "from")) != NULL) {
          if(extended_list_of > FAL0){
             ++seenfields;
@@ -1471,6 +1477,7 @@ jebadhead:
       hp->h_user_headers = hq->h_user_headers;
 
       if(extended_list_of){
+         hp->h_fcc = hq->h_fcc;
          if(extended_list_of > 0)
             hp->h_ref = hq->h_ref;
          hp->h_message_id = hq->h_message_id;
@@ -2980,12 +2987,15 @@ jleave:
 }
 
 FL char const *
-n_header_is_standard(char const *name, size_t len){
+n_header_is_known(char const *name, size_t len){
    static char const * const names[] = {
       "Bcc", "Cc", "From",
       "In-Reply-To", "Mail-Followup-To",
       "Message-ID", "References", "Reply-To",
       "Sender", "Subject", "To",
+      /* More known, here and there */
+      "Fcc",
+      /* Mailx internal temporaries */
       "Mailx-Command",
       "Mailx-Orig-Bcc", "Mailx-Orig-Cc", "Mailx-Orig-From", "Mailx-Orig-To",
       "Mailx-Raw-Bcc", "Mailx-Raw-Cc", "Mailx-Raw-To",
@@ -3038,7 +3048,7 @@ jename:
       goto jename;
 
    /* Verify the custom header does not use standard/managed field name */
-   if(n_header_is_standard(dat, nl) != NULL){
+   if(n_header_is_known(dat, nl) != NULL){
       cp = N_("Custom headers cannot use standard header names: %s\n");
       goto jerr;
    }

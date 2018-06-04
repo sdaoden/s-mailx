@@ -617,13 +617,16 @@ any amount of whitespace.
 A line starting with the number sign
 .Ql #
 in the first column is ignored.
-The message headers
+Message recipients can be given via the message headers
 .Ql To: ,
 .Ql Cc: ,
-or
 .Ql Bcc:
-fields give the message recipients, which will be added to any
-recipients specified on the command line.
+or
+.Ql Fcc: ,
+they will be added to any recipients specified on the command line,
+and are likewise subject to
+.Va expandaddr
+validity checks.
 If a message subject is specified via
 .Ql Subject:
 then it will be used in favour of one given on the command line.
@@ -931,7 +934,9 @@ custom headers can be created, for example (more specifically than with
 and
 .Va customhdr ) .
 .Ic ~?
-\*(OPally gives an overview of most other available command escapes.
+gives an overview of most other available command escapes.
+.
+.Pp
 The command escape
 .Ic ~.
 will leave compose mode and send the message once it is completed.
@@ -971,9 +976,11 @@ is set, therefore send errors will not be recognizable until then.
 ting (also via
 .Fl S )
 .Va editalong
-will automatically startup an editor when compose mode is entered,
-.Va editheaders
-allows editing of headers additionally to plain body content,
+will automatically startup an editor when compose mode is entered, and
+editing of headers additionally to plain body content can be enabled via
+.Va editheaders :
+\*(ID some, but not all headers can be created, edited or deleted in an
+editor, then.
 .Va askcc
 and
 .Va askbcc
@@ -1052,26 +1059,26 @@ Any name that starts with a vertical bar
 character specifies a command pipe \(en the command string following the
 .Ql |
 is executed and the message is sent to its standard input;
-Likewise, any name that starts with the character solidus
+Likewise, any name that consists only of hyphen-minus
+.Ql -
+or starts with the character solidus
 .Ql /
 or the character sequence dot solidus
 .Ql ./
-is treated as a file, regardless of the remaining content;
-likewise a name that solely consists of a hyphen-minus
-.Ql - .
+is treated as a file, regardless of the remaining content.
 Any other name which contains a commercial at
 .Ql @
-character is treated as a network address;
+character is a network address;
 Any other name which starts with a plus sign
 .Ql +
-character specifies a mailbox name;
+character is a mailbox name;
 Any other name which contains a solidus
 .Ql /
 character but no exclamation mark
 .Ql \&!
 or percent sign
 .Ql %
-character before also specifies a mailbox name;
+character before is also a mailbox name;
 What remains is treated as a network address.
 .
 .Bd -literal -offset indent
@@ -1082,6 +1089,26 @@ $ echo safe | LC_ALL=C \e
       -Sexpandaddr=fail,-all,+addr,failinvaddr -s test \e
       -. bob@exam.ple
 .Ed
+.
+.Pp
+To create file-carbon-copies the special recipient header
+.Ql Fcc:
+may be used as often as desired.
+Its entire value (or body in standard terms) is interpreted as a
+.Ic file
+target, after having been subject to
+.Sx "Filename transformations" .
+Beside using the command escape
+.Ic ~^
+(to create a
+.Ql Fcc
+header) this is the only way to create a file-carbon-copy without
+introducing an ambiguity regarding the interpretation of the address,
+e.g., to use file names with leading vertical bars or commercial ats.
+Like all other recipients
+.Ql Fcc:
+is subject to the checks of
+.Va expandaddr .
 .
 .Pp
 It is possible to create personal distribution lists via the
@@ -9089,7 +9116,8 @@ otherwise the plus sign will remain unchanged when doing
 .Sx "Filename transformations" ;
 also see
 .Ic file
-for more on this topic.
+for more on this topic, and know about standard imposed implications of
+.Va outfolder .
 The value supports a subset of transformations itself, and if the
 non-empty value does not start with a solidus
 .Ql / ,
@@ -10166,7 +10194,8 @@ Maildir folders are \*(OPal.
 .
 .Mx
 .It Va outfolder
-\*(BO Causes the filename given in the
+\*(BO Unless specified as absolute pathnames, causes the filename given
+in the
 .Va record
 variable
 and the sender-based filenames for the
@@ -10175,8 +10204,7 @@ and
 .Ic Save
 commands to be interpreted relative to the directory given in the
 .Va folder
-variable rather than to the current directory,
-unless it is set to an absolute pathname.
+variable rather than relative to the current directory.
 .
 .Mx Va on-account-cleanup
 .It Va on-account-cleanup-ACCOUNT , Va on-account-cleanup

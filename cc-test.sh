@@ -328,6 +328,7 @@ t_all() {
    # Around state machine, after basics
    t_alternates
    t_quote_a_cmd_escapes
+   t_compose_edits
 
    # Heavy use of/rely on state machine (behaviour) and basics
    t_compose_hooks
@@ -4126,6 +4127,85 @@ and i ~w rite this out to ./.tmsg
    ${cat} ./.tall >> "${MBOX}"
    check 2 - "${MBOX}" '2613898218 4090'
    check 3 - ./.tmsg '2771314896 3186'
+
+   t_epilog
+}
+
+t_compose_edits() { # XXX very rudimentary
+   t_prolog compose_edits
+   TRAP_EXIT_ADDONS="./.t*"
+
+   ${cat} <<-_EOT > ./.ted.sh
+	#!${SHELL}
+	${cat} <<-__EOT > \${1}
+	Fcc: .tout1
+	To:
+	Fcc: .tout2
+	Subject: Fcc test 1
+	Fcc: .tout3
+
+	A body
+	__EOT
+	exit 0
+	_EOT
+   chmod 0755 .ted.sh
+
+   # > All these are in-a-row!
+
+   printf 'mail ./.tout\n~s This subject is\nThis body is\n~.' |
+      ${MAILX} ${ARGS} -Seditheaders >./.tall 2>&1
+   check 1 0 ./.tout '3993703854 127'
+   check 2 - ./.tall '4294967295 0'
+
+   ${mv} ./.tall ./.tout
+   printf 'mail ./.tout\n~s This subject is\nThis body is\n~e\n~.' |
+      ${MAILX} ${ARGS} -Seditheaders -SEDITOR=./.ted.sh >./.tall 2>&1
+   check 3 0 ./.tout1 '285981670 116'
+   check 4 - ./.tout2 '285981670 116'
+   check 5 - ./.tout3 '285981670 116'
+   check 6 - ./.tout '4294967295 0'
+   check 7 - ./.tall '4294967295 0'
+   ${rm} ./.tout1 ./.tout2 ./.tout3
+
+   # t_compose_hooks will test ~^ at edge
+   ${mv} ./.tout ./.tout1
+   ${mv} ./.tall ./.tout2
+   printf '#
+   mail ./.tout\n!s This subject is\nThis body is
+!^header list
+!^header list fcc
+!^header show fcc
+!^header remove to
+!^header insert fcc            ./.tout
+!^header insert fcc      .tout1
+!^header insert fcc   ./.tout2
+!^header list
+!^header show fcc
+!^header remove-at fcc 2
+!^header remove-at fcc 2
+!^header show fcc
+!^head remove fcc
+!^header show fcc
+!^header insert fcc ./.tout
+!^header show fcc
+!^header list
+!.
+      ' | ${MAILX} ${ARGS} -Sescape=! >./.tall 2>&1
+   check 8 0 ./.tout '3993703854 127'
+   check 9 - ./.tout1 '4294967295 0'
+   check 10 - ./.tout2 '4294967295 0'
+   check 11 - ./.tall '4280910245 300'
+
+   # < No longer in-a-row
+
+   ${cat} <<-_EOT | ${MAILX} ${ARGS} -t >./.tall 2>&1
+	Fcc: .ttout
+	Subject: Fcc via -t test
+
+	My body
+	_EOT
+   check 12 0 ./.ttout '1289478830 122'
+   check 13 - ./.tall '4294967295 0'
 
    t_epilog
 }

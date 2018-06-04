@@ -909,7 +909,7 @@ a_sendout_file_a_pipe(struct name *names, FILE *fo, bool_t *senderror){
          FILE *fout;
          char const *fname, *fnameq;
 
-         if((fname = fexpand(np->n_name, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
+         if((fname = fexpand(np->n_name, FEXP_NSHELL)) == NULL)
             goto jerror;
          fnameq = n_shexp_quote_cp(fname, FAL0);
 
@@ -1989,6 +1989,13 @@ do {\
       if (!a_sendout_put_addrline("Bcc:", hp->h_bcc, fo, saf))\
          goto jleave;\
       ++gotcha;\
+   }\
+   if((w & GBCC_IS_FCC) && nosend_msg){\
+      for(np = hp->h_fcc; np != NULL; np = np->n_flink){\
+         if(fprintf(fo, "Fcc: %s\n", np->n_name) < 0)\
+            goto jleave;\
+         ++gotcha;\
+      }\
    }\
 } while (0)
 
