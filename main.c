@@ -847,7 +847,9 @@ jeMmq:
       case 'r':
          /* Set From address. */
          n_poption |= n_PO_r_FLAG;
-         if(a_main_oarg[0] != '\0'){
+         if(a_main_oarg[0] == '\0')
+            break;
+         else{
             struct name *fa;
 
             fa = nalloc(a_main_oarg, GSKIN | GFULL | GFULLEXTRA);
@@ -862,11 +864,9 @@ jeMmq:
              * TODO Maybe disable setting of from?
              * TODO Warn user?  Update manual!! */
             a_main_oarg = savecat("from=", fa->n_fullname);
-            goto jsetvar;
          }
-         break;
+         /* FALLTHRU */
       case 'S':
-jsetvar: /* Set variable TODO optimize v15-compat case */
          {  struct str sin;
             struct n_string s, *sp;
             char const *a[2];
@@ -898,7 +898,7 @@ jsetvar: /* Set variable TODO optimize v15-compat case */
             n_poption |= n_PO_S_FLAG_TEMPORARY;
             n_pstate |= n_PS_ROBOT;
             b = (c_set(a) == 0);
-            n_pstate &= ~(n_PS_ROOT | n_PS_ROBOT);
+            n_pstate &= ~n_PS_ROBOT;
             n_poption &= ~n_PO_S_FLAG_TEMPORARY;
 
             if(sp != NULL)

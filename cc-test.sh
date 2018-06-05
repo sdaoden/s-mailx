@@ -320,6 +320,7 @@ t_all() {
    t_mass_recipients
    t_mime_types_load_control
    t_lreply_futh_rth_etc
+   t_from_sender_r_combis
 
    t_mime_if_not_ascii
    t_xxxheads_rfc2047
@@ -4840,6 +4841,31 @@ t_lreply_futh_rth_etc() {
          ${argadd} -Rf "${MBOX}" > .tall 2>&1
    check 8 0 "${MBOX}" '794031200 1567'
    check 9 - .tall '4294967295 0'
+
+   t_epilog
+}
+
+t_from_sender_r_combis() {
+   t_prolog from_sender_r_combis
+   TRAP_EXIT_ADDONS="./.t*"
+
+   t_xmta 'Saccharina japonica Wed Jun 06 00:05:25 2018'
+
+   </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s '-Sfrom + -r ++ test' \
+      -c a@b.example,b@b.example,c@c.example \
+      -S from=a@b.example,b@b.example,c@c.example \
+      -S sender=a@b.example \
+      -r a@b.example b@b.example ./.tout >./.tall 2>&1
+   check 1 0 "${MBOX}" '2256429470 202'
+   check 2 - .tout '2052716617 201'
+   check 3 - .tall '4294967295 0'
+
+   # TODO states
+   # TODO -r should be the Sender:, which should automatically propagate to
+   # TODO From: if possible and/or necessary.  It should be possible to
+   # TODO suppres -r stuff from From: and Sender:, but fallback to special -r
+   # TODO arg as appropriate.
+   # TODO For now we are a bit messy
 
    t_epilog
 }
