@@ -453,7 +453,11 @@ a_nag_elide_qsort(void const *s1, void const *s2){
 
    np1 = s1;
    np2 = s2;
-   rv = asccasecmp((*np1)->n_name, (*np2)->n_name);
+   if(!(rv = asccasecmp((*np1)->n_name, (*np2)->n_name))){
+      n_LCTAV(GTO < GCC && GCC < GBCC);
+      rv = ((*np1)->n_type & (GTO | GCC | GBCC)) -
+            ((*np2)->n_type & (GTO | GCC | GBCC));
+   }
    NYD2_LEAVE;
    return rv;
 }
