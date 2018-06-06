@@ -320,7 +320,6 @@ t_all() {
    t_mass_recipients
    t_mime_types_load_control
    t_lreply_futh_rth_etc
-   t_from_sender_r_combis
 
    t_mime_if_not_ascii
    t_xxxheads_rfc2047
@@ -3140,6 +3139,86 @@ _EOT
       echo 'alternates-2: unsupported, skipped'
    fi
 
+   # Automatic alternates, also from command line (freezing etc.)
+   ${rm} "${MBOX}"
+   ${cat} <<- __EOT > ./.tin
+	From trouble-report@desy  Wed Jun  6 20:19:28 2018
+	Date: Wed, 06 Jun 2018 19:58:02 +0200
+	From: a@b.org, b@b.org, c@c.org
+	Sender: a@b.org
+	To: b@b.org
+	Cc: a@b.org, c@c.org
+	Subject: test
+	Message-ID: <20180606175802.dw-cn%a@b.org>
+	
+	sultry
+	
+	__EOT
+
+   printf '#
+   reply
+!h
+b@b.org
+a@b.org  b@b.org c@c.org
+
+
+my body
+!.
+   ' | ${MAILX} ${ARGS} -Smta=./.tmta.sh -Sescape=! \
+         -S from=a@b.org,b@b.org,c@c.org -S sender=a@b.org \
+         -Rf ./.tin > ./.tall 2>&1
+   check 3 0 "${MBOX}" '287250471 256'
+   check 4 - .tall '4294967295 0'
+
+   # same, per command
+   printf '#
+   set from=a@b.org,b@b.org,c@c.org sender=a@b.org
+   reply
+!h
+b@b.org
+a@b.org  b@b.org c@c.org
+
+
+my body
+!.
+   ' | ${MAILX} ${ARGS} -Smta=./.tmta.sh -Sescape=! \
+         -Rf ./.tin > ./.tall 2>&1
+   check 5 0 "${MBOX}" '2618762028 512'
+   check 6 - .tall '4294967295 0'
+
+   # And more, with/out -r
+   # TODO -r should be the Sender:, which should automatically propagate to
+   # TODO From: if possible and/or necessary.  It should be possible to
+   # TODO suppres -r stuff from From: and Sender:, but fallback to special -r
+   # TODO arg as appropriate.
+   # TODO For now we are a bit messy
+
+   ${rm} "${MBOX}"
+   </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s '-Sfrom + -r ++ test' \
+      -c a@b.example,b@b.example,c@c.example \
+      -S from=a@b.example,b@b.example,c@c.example \
+      -S sender=a@b.example \
+      -r a@b.example b@b.example ./.tout >./.tall 2>&1
+   check 7 0 "${MBOX}" '3510981487 192'
+   check 8 - .tout '2052716617 201'
+   check 9 - .tall '4294967295 0'
+
+   </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s '-Sfrom + -r ++ test' \
+      -c a@b.example,b@b.example,c@c.example \
+      -S from=a@b.example,b@b.example,c@c.example \
+      -r a@b.example b@b.example ./.tout >./.tall 2>&1
+   check 10 0 "${MBOX}" '2282326606 364'
+   check 11 - .tout '3213404599 382'
+   check 12 - .tall '4294967295 0'
+
+   </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s '-Sfrom + -r ++ test' \
+      -c a@b.example,b@b.example,c@c.example \
+      -S from=a@b.example,b@b.example,c@c.example \
+      -S sender=a@b.example \
+      b@b.example >./.tall 2>&1
+   check 13 0 "${MBOX}" '1460017970 582'
+   check 14 - .tall '4294967295 0'
+
    t_epilog
 }
 
@@ -4841,39 +4920,6 @@ t_lreply_futh_rth_etc() {
          ${argadd} -Rf "${MBOX}" > .tall 2>&1
    check 8 0 "${MBOX}" '794031200 1567'
    check 9 - .tall '4294967295 0'
-
-   t_epilog
-}
-
-t_from_sender_r_combis() {
-   t_prolog from_sender_r_combis
-   TRAP_EXIT_ADDONS="./.t*"
-
-   t_xmta 'Saccharina japonica Wed Jun 06 00:05:25 2018'
-
-   </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s '-Sfrom + -r ++ test' \
-      -c a@b.example,b@b.example,c@c.example \
-      -S from=a@b.example,b@b.example,c@c.example \
-      -S sender=a@b.example \
-      -r a@b.example b@b.example ./.tout >./.tall 2>&1
-   check 1 0 "${MBOX}" '2256429470 202'
-   check 2 - .tout '2052716617 201'
-   check 3 - .tall '4294967295 0'
-
-   </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s '-Sfrom + -r ++ test' \
-      -c a@b.example,b@b.example,c@c.example \
-      -S from=a@b.example,b@b.example,c@c.example \
-      -S sender=a@b.example \
-      b@b.example >./.tall 2>&1
-   check 4 0 "${MBOX}" '3170041442 430'
-   check 5 - .tall '4294967295 0'
-
-   # TODO states
-   # TODO -r should be the Sender:, which should automatically propagate to
-   # TODO From: if possible and/or necessary.  It should be possible to
-   # TODO suppres -r stuff from From: and Sender:, but fallback to special -r
-   # TODO arg as appropriate.
-   # TODO For now we are a bit messy
 
    t_epilog
 }
