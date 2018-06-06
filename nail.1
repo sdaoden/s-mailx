@@ -1018,8 +1018,10 @@ Message recipients (as specified on the command line or defined in
 .Ql Cc:
 or
 .Ql Bcc: )
-may not only be email addressees but can also be names of mailboxes and
-even complete shell command pipe specifications.
+are subject to
+.Ic alternates
+filtering, and may not only be email addressees but can also be names of
+mailboxes and even complete shell command pipe specifications.
 If the variable
 .Va expandaddr
 is not set then only network addresses (see
@@ -4109,6 +4111,16 @@ for the same reasons why colon is unsupported.
 .It Ic alternates , unalternates
 \*(NQ (alt) Manage a list of alternate addresses or names of the active
 user, members of which will be removed from recipient lists (except one).
+There is a set of implicit alternates which is formed of the values of
+.Ev LOGNAME ,
+.Va from ,
+.Va sender
+and
+.Va reply-to .
+.Va from
+will not be used if
+.Va sender
+is set.
 The latter command removes the given list of alternates, the special name
 .Ql *
 will discard all existing alternate names.
@@ -4124,12 +4136,6 @@ Otherwise the given arguments (after being checked for validity) are
 appended to the list of alternate names; in
 .Va posix
 mode they replace that list instead.
-There is a set of implicit alternates which is formed of the values of
-.Ev LOGNAME ,
-.Va from ,
-.Va sender
-and
-.Va reply-to .
 .
 .Mx
 .Mx
@@ -9182,11 +9188,9 @@ According to that RFC setting the
 variable is required if
 .Va \&\&from
 contains more than one address.
-When
-.Ic reply Ns
-ing to messages these addresses are handled as if they were in the
-.Ic alternates
-list.
+Dependent on the context these addresses are handled as if they were in
+the list of
+.Ic alternates .
 .
 .Pp
 If a file-based MTA is used, then
@@ -9207,8 +9211,8 @@ a dialup machine) then either this variable or
 (\*(IN a SMTP-based
 .Va mta
 adds even more fine-tuning capabilities with
-.Va smtp-hostname ) ,
-have to be set; if so the message and MIME part related unique ID fields
+.Va smtp-hostname )
+have to be set: if so the message and MIME part related unique ID fields
 .Ql Message-ID:
 and
 .Ql Content-ID:
@@ -11051,11 +11055,10 @@ responsible for the actual transmission of the message.
 This field should normally not be used unless the
 .Va from
 field contains more than one address, on which case it is required.
-The
-.Va \&\&sender
-address is handled as if it were in the
-.Ic alternates
-list; also see
+Dependent on the context this address is handled as if it were in
+the list of
+.Ic alternates .
+Also see
 .Fl r ,
 .Va r-option-implicit .
 .

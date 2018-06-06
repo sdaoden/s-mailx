@@ -4860,6 +4860,14 @@ t_from_sender_r_combis() {
    check 2 - .tout '2052716617 201'
    check 3 - .tall '4294967295 0'
 
+   </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s '-Sfrom + -r ++ test' \
+      -c a@b.example,b@b.example,c@c.example \
+      -S from=a@b.example,b@b.example,c@c.example \
+      -S sender=a@b.example \
+      b@b.example >./.tall 2>&1
+   check 4 0 "${MBOX}" '3170041442 430'
+   check 5 - .tall '4294967295 0'
+
    # TODO states
    # TODO -r should be the Sender:, which should automatically propagate to
    # TODO From: if possible and/or necessary.  It should be possible to
