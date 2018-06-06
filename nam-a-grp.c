@@ -1739,11 +1739,13 @@ n_alternates_remove(struct name *np, bool_t keep_single){
 
    np = a_nag_namelist_mark_name(np, ok_vlook(LOGNAME));
 
-   for(xp = lextract(ok_vlook(from), GEXTRA | GSKIN); xp != NULL;
-         xp = xp->n_flink)
-      np = a_nag_namelist_mark_name(np, xp->n_name);
-
-   for(xp = extract(ok_vlook(sender), GEXTRA | GSKIN); xp != NULL;
+   if((xp = extract(ok_vlook(sender), GEXTRA | GSKIN)) != NULL){
+      /* TODO check_from_and_sender(): drop; *sender*: only one name!
+       * TODO At assignment time, as VIP var? */
+      do
+         np = a_nag_namelist_mark_name(np, xp->n_name);
+      while((xp = xp->n_flink) != NULL);
+   }else for(xp = lextract(ok_vlook(from), GEXTRA | GSKIN); xp != NULL;
          xp = xp->n_flink)
       np = a_nag_namelist_mark_name(np, xp->n_name);
 
