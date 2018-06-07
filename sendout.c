@@ -43,14 +43,14 @@
 #define SEND_LINESIZE \
    ((1024 / B64_ENCODE_INPUT_PER_LINE) * B64_ENCODE_INPUT_PER_LINE)
 
-enum fmt_flags{
-   FMT_INC_INVADDR = 1<<0, /* _Do_ include invalid addresses */
-   FMT_DOMIME = 1<<1,      /* Perform MIME conversion */
-   FMT_COMMA = GCOMMA,
-   FMT_FILES = GFILES,
-   _FMT_GMASK = FMT_COMMA | FMT_FILES
+enum a_sendout_addrline_flags{
+   a_SENDOUT_AL_INC_INVADDR = 1<<0, /* _Do_ include invalid addresses */
+   a_SENDOUT_AL_DOMIME = 1<<1,      /* Perform MIME conversion */
+   a_SENDOUT_AL_COMMA = GCOMMA,
+   a_SENDOUT_AL_FILES = GFILES,
+   _a_SENDOUT_AL_GMASK = a_SENDOUT_AL_COMMA | a_SENDOUT_AL_FILES
 };
-n_CTA(!(_FMT_GMASK & (FMT_INC_INVADDR | FMT_DOMIME)),
+n_CTA(!(_a_SENDOUT_AL_GMASK & (a_SENDOUT_AL_INC_INVADDR|a_SENDOUT_AL_DOMIME)),
    "Code-required condition not satisfied but actual bit carrier value");
 
 static char const *__sendout_ident; /* TODO temporary hack; rewrite puthead() */
@@ -61,10 +61,9 @@ static si8_t   _sendout_error;
 static struct name *a_sendout_fullnames_cleanup(struct name *np);
 
 /* */
-static enum okay     _putname(char const *line, enum gfield w,
-                        enum sendaction action, size_t *gotcha,
-                        char const *prefix, FILE *fo, struct name **xp,
-                        enum gfield addflags);
+static bool_t a_sendout_put_name(char const *line, enum gfield w,
+               enum sendaction action, char const *prefix,
+               FILE *fo, struct name **xp, enum gfield addflags);
 
 /* Place Content-Type:, Content-Transfer-Encoding:, Content-Disposition:
  * headers, respectively */
@@ -129,8 +128,8 @@ static void          __mta_debug(struct sendbundle *sbp, char const *mta,
 static char const *a_sendout_random_id(struct header *hp, bool_t msgid);
 
 /* Format the given header line to not exceed 72 characters */
-static int           fmt(char const *str, struct name *np, FILE *fo,
-                        enum fmt_flags ff);
+static bool_t a_sendout_put_addrline(char const *hname, struct name *np,
+               FILE *fo, enum a_sendout_addrline_flags saf);
 
 /* Rewrite a message for resending, adding the Resent-Headers */
 static int           infix_resend(FILE *fi, FILE *fo, struct message *mp,
@@ -150,25 +149,22 @@ a_sendout_fullnames_cleanup(struct name *np){
    return np;
 }
 
-static enum okay
-_putname(char const *line, enum gfield w, enum sendaction action,
-   size_t *gotcha, char const *prefix, FILE *fo, struct name **xp,
-   enum gfield addflags)
-{
+static bool_t
+a_sendout_put_name(char const *line, enum gfield w, enum sendaction action,
+   char const *prefix, FILE *fo, struct name **xp, enum gfield addflags){
+   bool_t rv;
    struct name *np;
-   enum okay rv = STOP;
    NYD_ENTER;
 
    np = lextract(line, GEXTRA | GFULL | addflags);
-   if (xp != NULL)
+   if(xp != NULL)
       *xp = np;
-   if (np == NULL)
-      ;
-   else if (fmt(prefix, np, fo, ((w & GCOMMA) |
-         ((action != SEND_TODISP) ? FMT_DOMIME : 0))))
-      rv = OKAY;
-   else if (gotcha != NULL)
-      ++(*gotcha);
+
+   if(np == NULL)
+      rv = FAL0;
+   else
+      rv = a_sendout_put_addrline(prefix, np, fo, ((w & GCOMMA) |
+            ((action != SEND_TODISP) ? a_SENDOUT_AL_DOMIME : 0)));
    NYD_LEAVE;
    return rv;
 }
@@ -766,7 +762,8 @@ _check_dispo_notif(struct name *mdn, struct header *hp, FILE *fo)
       goto jleave;
    }
 
-   if (fmt("Disposition-Notification-To:", nalloc(n_UNCONST(from), 0), fo, 0))
+   if (!a_sendout_put_addrline("Disposition-Notification-To:",
+         nalloc(n_UNCONST(from), 0), fo, 0))
       rv = FAL0;
 jleave:
    NYD_LEAVE;
@@ -1492,26 +1489,27 @@ jleave:
    return rv;
 }
 
-static int
-fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
+static bool_t
+a_sendout_put_addrline(char const *hname, struct name *np, FILE *fo,
+   enum a_sendout_addrline_flags saf)
 {
-   enum {
-      m_INIT   = 1<<0,
-      m_COMMA  = 1<<1,
-      m_NOPF   = 1<<2,
-      m_NONAME = 1<<3,
-      m_CSEEN  = 1<<4
-   } m = (ff & GCOMMA) ? m_COMMA : 0;
-   ssize_t col, len;
-   int rv = 1;
+   ssize_t hnlen, col, len;
+   enum{
+      m_ERROR = 1u<<0,
+      m_INIT = 1u<<1,
+      m_COMMA = 1u<<2,
+      m_NOPF = 1u<<3,
+      m_NONAME = 1u<<4,
+      m_CSEEN = 1u<<5
+   } m;
    NYD_ENTER;
 
-   col = strlen(str);
-   if (col) {
-      fwrite(str, sizeof *str, col, fo);
+   m = (saf & GCOMMA) ? m_ERROR | m_COMMA : m_ERROR;
+
+   if((col = hnlen = strlen(hname)) > 0){
 #undef _X
-#define _X(S)  (col == sizeof(S) -1 && !asccasecmp(str, S))
-      if (ff & GFILES) {
+#define _X(S)  (col == sizeof(S) -1 && !asccasecmp(hname, S))
+      if (saf & GFILES) {
          ;
       } else if (_X("reply-to:") || _X("mail-followup-to:") ||
             _X("references:") || _X("in-reply-to:") ||
@@ -1528,9 +1526,9 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
       if(np->n_type & GDEL)
          continue;
       if(is_addr_invalid(np,
-               ((ff & FMT_INC_INVADDR ? 0 : EACM_NOLOG) |
+               ((saf & a_SENDOUT_AL_INC_INVADDR ? 0 : EACM_NOLOG) |
                 (m & m_NONAME ? EACM_NONAME : EACM_NONE))) &&
-            !(ff & FMT_INC_INVADDR))
+            !(saf & a_SENDOUT_AL_INC_INVADDR))
          continue;
 
       /* File and pipe addresses only printed with set *add-file-recipients* */
@@ -1555,8 +1553,13 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
             goto jleave;
          col = 1;
          m &= ~m_CSEEN;
-      } else
-         putc(' ', fo);
+      } else {
+         if(!(m & m_INIT) && fwrite(hname, sizeof *hname, hnlen, fo
+               ) != sizeof *hname * hnlen)
+            goto jleave;
+         if(putc(' ', fo) == EOF)
+            goto jleave;
+      }
       m = (m & ~m_CSEEN) | m_INIT;
 
       /* C99 */{
@@ -1575,8 +1578,8 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
             len += 2;
          }
          len = xmime_write(hb, len, fo,
-               ((ff & FMT_DOMIME) ? CONV_TOHDR_A : CONV_NONE), TD_ICONV,
-               NULL, NULL);
+               ((saf & a_SENDOUT_AL_DOMIME) ? CONV_TOHDR_A : CONV_NONE),
+               TD_ICONV, NULL, NULL);
          if(np->n_type & GREF)
             n_lofi_free(hb);
       }
@@ -1585,11 +1588,11 @@ fmt(char const *str, struct name *np, FILE *fo, enum fmt_flags ff)
       col += len;
    }
 
-   if (putc('\n', fo) != EOF)
-      rv = 0;
+   if(!(m & m_INIT) || putc('\n', fo) != EOF)
+      m ^= m_ERROR;
 jleave:
    NYD_LEAVE;
-   return rv;
+   return ((m & m_ERROR) == 0);
 }
 
 static int
@@ -1610,17 +1613,17 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
       fputs("Resent-", fo);
       mkdate(fo, "Date");
       if ((cp = myaddrs(NULL)) != NULL) {
-         if (_putname(cp, GCOMMA, SEND_MBOX, NULL, "Resent-From:", fo,
+         if (!a_sendout_put_name(cp, GCOMMA, SEND_MBOX, "Resent-From:", fo,
                &fromfield, 0))
             goto jleave;
       }
       /* TODO RFC 5322: Resent-Sender SHOULD NOT be used if it's EQ -From: */
       if ((cp = ok_vlook(sender)) != NULL) {
-         if (_putname(cp, GCOMMA, SEND_MBOX, NULL, "Resent-Sender:", fo,
+         if (!a_sendout_put_name(cp, GCOMMA, SEND_MBOX, "Resent-Sender:", fo,
                &senderfield, 0))
             goto jleave;
       }
-      if (fmt("Resent-To:", to, fo, FMT_COMMA))
+      if (!a_sendout_put_addrline("Resent-To:", to, fo, a_SENDOUT_AL_COMMA))
          goto jleave;
       if (((cp = ok_vlook(stealthmua)) == NULL || !strcmp(cp, "noagent")) &&
             (cp = a_sendout_random_id(NULL, TRU1)) != NULL &&
@@ -1975,15 +1978,15 @@ puthead(bool_t nosend_msg, struct header *hp, FILE *fo, enum gfield w,
    enum sendaction action, enum conversion convert, char const *contenttype,
    char const *charset)
 {
-#define FMT_CC_AND_BCC()   \
+#define a_PUT_CC_BCC_FCC()   \
 do {\
    if ((w & GCC) && (hp->h_cc != NULL || nosend_msg == TRUM1)) {\
-      if (fmt("Cc:", hp->h_cc, fo, ff))\
+      if (!a_sendout_put_addrline("Cc:", hp->h_cc, fo, saf))\
          goto jleave;\
       ++gotcha;\
    }\
    if ((w & GBCC) && (hp->h_bcc != NULL || nosend_msg == TRUM1)) {\
-      if (fmt("Bcc:", hp->h_bcc, fo, ff))\
+      if (!a_sendout_put_addrline("Bcc:", hp->h_bcc, fo, saf))\
          goto jleave;\
       ++gotcha;\
    }\
@@ -1994,7 +1997,7 @@ do {\
    struct name *np, *fromasender = NULL;
    int stealthmua, rv = 1;
    bool_t nodisp;
-   enum fmt_flags ff;
+   enum a_sendout_addrline_flags saf;
    NYD_ENTER;
 
    if ((addr = ok_vlook(stealthmua)) != NULL)
@@ -2003,9 +2006,9 @@ do {\
       stealthmua = 0;
    gotcha = 0;
    nodisp = (action != SEND_TODISP);
-   ff = (w & (GCOMMA | GFILES)) | (nodisp ? FMT_DOMIME : 0);
+   saf = (w & (GCOMMA | GFILES)) | (nodisp ? a_SENDOUT_AL_DOMIME : 0);
    if(nosend_msg)
-      ff |= FMT_INC_INVADDR;
+      saf |= a_SENDOUT_AL_INC_INVADDR;
 
    if (w & GDATE)
       mkdate(fo, "Date"), ++gotcha;
@@ -2014,13 +2017,13 @@ do {\
          setup_from_and_sender(hp);
 
       if (hp->h_from != NULL) {
-         if (fmt("From:", hp->h_from, fo, ff))
+         if (!a_sendout_put_addrline("From:", hp->h_from, fo, saf))
             goto jleave;
          ++gotcha;
       }
 
       if (hp->h_sender != NULL) {
-         if (fmt("Sender:", hp->h_sender, fo, ff))
+         if (!a_sendout_put_addrline("Sender:", hp->h_sender, fo, saf))
             goto jleave;
          ++gotcha;
       }
@@ -2033,7 +2036,7 @@ do {\
 
 #if 1
    if ((w & GTO) && (hp->h_to != NULL || nosend_msg == TRUM1)) {
-      if (fmt("To:", hp->h_to, fo, ff))
+      if (!a_sendout_put_addrline("To:", hp->h_to, fo, saf))
          goto jleave;
       ++gotcha;
    }
@@ -2054,7 +2057,7 @@ do {\
          ++gotcha;
       } else if (nosend_msg == TRUM1) {
 jto_fmt:
-         if (fmt("To:", hp->h_to, fo, ff))
+         if (!a_sendout_put_addrline("To:", hp->h_to, fo, saf))
             goto jleave;
          ++gotcha;
       }
@@ -2062,7 +2065,7 @@ jto_fmt:
 #endif
 
    if (!ok_blook(bsdcompat) && !ok_blook(bsdorder))
-      FMT_CC_AND_BCC();
+      a_PUT_CC_BCC_FCC();
 
    if ((w & GSUBJECT) && (hp->h_subject != NULL || nosend_msg == TRUM1)) {
       if (fwrite("Subject: ", sizeof(char), 9, fo) != 9)
@@ -2095,7 +2098,7 @@ jto_fmt:
    }
 
    if (ok_blook(bsdcompat) || ok_blook(bsdorder))
-      FMT_CC_AND_BCC();
+      a_PUT_CC_BCC_FCC();
 
    if ((w & GMSGID) && stealthmua <= 0 &&
          (addr = a_sendout_random_id(hp, TRU1)) != NULL) {
@@ -2112,13 +2115,13 @@ jto_fmt:
                fputs(_("# Removing or modifying In-Reply-To: "
                   "breaks the old, and starts a new thread\n"), fo) == EOF)
             goto jleave;
-         if(fmt("In-Reply-To:", np, fo, 0))
+         if(!a_sendout_put_addrline("In-Reply-To:", np, fo, 0))
             goto jleave;
          ++gotcha;
       }
 
       if((w & GREF) && (np = hp->h_ref) != NULL){
-         if(fmt("References:", np, fo, 0))
+         if(!a_sendout_put_addrline("References:", np, fo, 0))
             goto jleave;
          ++gotcha;
       }
@@ -2143,7 +2146,7 @@ jto_fmt:
             (np = elide(
                checkaddrs(usermap(np, TRU1), EACM_STRICT | EACM_NOLOG,
                   NULL))) != NULL) {
-         if (fmt("Reply-To:", np, fo, ff))
+         if (!a_sendout_put_addrline("Reply-To:", np, fo, saf))
             goto jleave;
          ++gotcha;
       }
@@ -2226,7 +2229,7 @@ j_mft_add:
                   (np = fromasender) != NULL && np != (struct name*)0x1)
                *mftp = ndup(np, (np->n_type & ~GMASK) | GEXTRA | GFULL);
 
-            if(fmt("Mail-Followup-To:", mft, fo, ff))
+            if(!a_sendout_put_addrline("Mail-Followup-To:", mft, fo, saf))
                goto jleave;
             ++gotcha;
          }
@@ -2299,7 +2302,7 @@ j_mft_add:
 jleave:
    NYD_LEAVE;
    return rv;
-#undef FMT_CC_AND_BCC
+#undef a_PUT_CC_BCC_FCC
 }
 
 FL enum okay

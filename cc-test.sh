@@ -2740,16 +2740,16 @@ t_mbox() {
          i=`add ${i} 1`
       done
    ) | ${MAILX} ${ARGS} > .tall 2>&1
-   check 1 0 "${MBOX}" '1872102723 13784'
+   check 1 0 "${MBOX}" '1785801373 13336'
    check 1-outerr - ./.tall '4294967295 0' # empty file
 
    printf 'File "%s"\ncopy * "%s"\nFile "%s"\nfrom*' "${MBOX}" .tmbox1 .tmbox1 |
       ${MAILX} ${ARGS} -Sshowlast > .tall 2>&1
-   check 2 0 .tall '3498373999 9103'
+   check 2 0 .tall '3075634057 9103'
 
    printf 'File "%s"\ncopy * "file://%s"\nFile "file://%s"\nfrom*' \
       "${MBOX}" .tmbox2 .tmbox2 | ${MAILX} ${ARGS} -Sshowlast > .tall 2>&1
-   check 3 0 .tall '381610797 9110'
+   check 3 0 .tall '1902668747 9110'
 
    # copy only the odd (but the first), move the even
    (
@@ -2761,8 +2761,8 @@ t_mbox() {
       done
       printf 'file://%s\nFile "file://%s"\nfrom*' .tmbox3 .tmbox3
    ) | ${MAILX} ${ARGS} -Sshowlast > .tall 2>&1
-   check 4 0 .tmbox3 '4145104131 6890'
-   check 5 - .tall '361127721 4573'
+   check 4 0 .tmbox3 '2554734733 6666'
+   check 5 - .tall '3168324241 4573'
    # ...
    (
       printf 'file "file://%s"\nmove ' .tmbox2
@@ -2774,29 +2774,29 @@ t_mbox() {
       printf 'file://%s\nFile "file://%s"\nfrom*\nFile "file://%s"\nfrom*' \
          .tmbox3 .tmbox3 .tmbox2
    ) | ${MAILX} ${ARGS} -Sshowlast > .tall 2>>${ERR}
-   check 6 0 .tmbox3 '3249991493 13784'
+   check 6 0 .tmbox3 '1429216753 13336'
    if have_feat uistrings; then
       ${sed} 2d < .tall > .tallx
    else
       ${cp} .tall .tallx
    fi
-   check 7 - .tallx '1584413080 13645'
+   check 7 - .tallx '3604509039 13645'
 
    # Invalid MBOXes (after [f4db93b3])
    echo > .tinvmbox
    printf 'copy 1 ./.tinvmbox' | ${MAILX} ${ARGS} -Rf "${MBOX}" > .tall 2>&1
-   check 8 0 .tinvmbox '896415941 122'
-   check 9 - ./.tall '3146754194 33'
+   check 8 0 .tinvmbox '2848412822 118'
+   check 9 - ./.tall '461280182 33'
 
    echo ' ' > .tinvmbox
    printf 'copy 1 ./.tinvmbox' | ${MAILX} ${ARGS} -Rf "${MBOX}" > .tall 2>&1
-   check 10 0 .tinvmbox '4011310616 124'
-   check 11 - ./.tall '3146754194 33'
+   check 10 0 .tinvmbox '624770486 120'
+   check 11 - ./.tall '461280182 33'
 
    { echo; echo; } > .tinvmbox # (not invalid)
    printf 'copy 1 ./.tinvmbox' | ${MAILX} ${ARGS} -Rf "${MBOX}" > .tall 2>&1
-   check 12 0 .tinvmbox '287409579 123'
-   check 13 - ./.tall '3146754194 33'
+   check 12 0 .tinvmbox '1485640875 119'
+   check 13 - ./.tall '461280182 33'
 
    # *mbox-rfc4155*, plus
    ${cat} <<-_EOT > ./.tinv1
@@ -2858,7 +2858,7 @@ t_maildir() {
          i=`add ${i} 1`
       done
    ) | ${MAILX} ${ARGS}
-   check 1 0 "${MBOX}" '1140119864 13780'
+   check 1 0 "${MBOX}" '2366902811 13332'
 
    printf 'File "%s"
          copy * "%s"
@@ -2866,7 +2866,7 @@ t_maildir() {
          from*
       ' "${MBOX}" .tmdir1 .tmdir1 |
       ${MAILX} ${ARGS} -Snewfolders=maildir -Sshowlast > .tlst
-   check 2 0 .tlst '1797938753 9103'
+   check 2 0 .tlst '1713783045 9103'
 
    printf 'File "%s"
          copy * "maildir://%s"
@@ -2874,7 +2874,7 @@ t_maildir() {
          from*
       ' "${MBOX}" .tmdir2 .tmdir2 |
       ${MAILX} ${ARGS} -Sshowlast > .tlst
-   check 3 0 .tlst '1155631089 9113'
+   check 3 0 .tlst '1240307893 9113'
 
    printf 'File "maildir://%s"
          copy * "file://%s"
@@ -2882,8 +2882,8 @@ t_maildir() {
          from*
       ' .tmdir2 .tmbox1 .tmbox1 |
       ${MAILX} ${ARGS} -Sshowlast > .tlst
-   check 4 0 .tmbox1 '2646131190 13220'
-   check 5 - .tlst '3701297796 9110'
+   check 4 0 .tmbox1 '4096198846 12772'
+   check 5 - .tlst '817337448 9110'
 
    # only the odd (even)
    (
@@ -2900,8 +2900,8 @@ t_maildir() {
             from*
          ' .tmbox2 .tmbox2
    ) | ${MAILX} ${ARGS} -Sshowlast > .tlst
-   check 6 0 .tmbox2 '142890131 6610'
-   check 7 - .tlst '960096773 4573'
+   check 6 0 .tmbox2 '4228337024 6386'
+   check 7 - .tlst '884389294 4573'
    # ...
    (
       printf 'file "maildir://%s"
@@ -2919,9 +2919,9 @@ t_maildir() {
             from*
          ' .tmbox2 .tmbox2 .tmdir2
    ) | ${MAILX} ${ARGS} -Sshowlast > .tlst
-   check 8 0 .tmbox2 '3806905791 13100'
+   check 8 0 .tmbox2 '978751761 12656'
    ${sed} 2d < .tlst > .tlstx
-   check 9 - .tlstx '4216815295 13645'
+   check 9 - .tlstx '2391942957 13645'
 
    t_epilog
 }
@@ -2944,9 +2944,9 @@ t_record_a_resend() {
       ' ./.t.record "${MBOX}" "${MBOX}" "${MBOX}" |
       ${MAILX} ${ARGS}
 
-   check 1 0 "${MBOX}" '3057873538 256'
-   check 2 - .t.record '391356429 460'
-   check 3 - .t.resent '2685231691 648'
+   check 1 0 "${MBOX}" '2632690399 252'
+   check 2 - .t.record '3337485450 456'
+   check 3 - .t.resent '1560890069 640'
 
    t_epilog
 }
@@ -4712,12 +4712,12 @@ t_mime_types_load_control() {
          > ./.tout 2>&1
    check_ex0 1-estat
    ${cat} "${MBOX}" >> ./.tout
-   check 1 - ./.tout '1441260727 2449'
+   check 1 - ./.tout '2716124839 2441'
 
    echo type | ${MAILX} ${ARGS} -R \
       -Smimetypes-load-control=f=./.tmts1,f=./.tmts3 \
       -f "${MBOX}" >> ./.tout 2>&1
-   check 2 0 ./.tout '1441391438 3646'
+   check 2 0 ./.tout '2093030907 3634'
 
    t_epilog
 }
@@ -4928,11 +4928,11 @@ t_mime_if_not_ascii() {
    t_prolog mime_if_not_ascii
 
    </dev/null ${MAILX} ${ARGS} -s Subject "${MBOX}" >> "${MBOX}" 2>&1
-   check 1 0 "${MBOX}" '2287855519 110'
+   check 1 0 "${MBOX}" '3647956381 106'
 
    </dev/null ${MAILX} ${ARGS} -Scharset-7bit=not-ascii -s Subject "${MBOX}" \
       >> "${MBOX}" 2>&1
-   check 2 0 "${MBOX}" '70754682 282'
+   check 2 0 "${MBOX}" '3964303752 274'
 
    t_epilog
 }
@@ -4946,14 +4946,14 @@ t_xxxheads_rfc2047() {
    echo | ${MAILX} ${ARGS} ${ADDARG_UNI} \
       -s 'a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲a̲b̲c̲d̲e̲f̲h̲i̲k̲l̲m̲n̲o̲r̲s̲t̲u̲v̲w̲x̲z̲' \
       "${MBOX}"
-   check 1 0 "${MBOX}" '3370931614 375'
+   check 1 0 "${MBOX}" '3422562347 371'
 
    # Single word (overlong line split -- bad standard! Requires injection of
    # artificial data!!  But can be prevented by using RFC 2047 encoding)
    ${rm} "${MBOX}"
    i=`${awk} 'BEGIN{for(i=0; i<92; ++i) printf "0123456789_"}'`
    echo | ${MAILX} ${ARGS} -s "${i}" "${MBOX}"
-   check 2 0 "${MBOX}" '489922370 1718'
+   check 2 0 "${MBOX}" '3317256266 1714'
 
    # Combination of encoded words, space and tabs of varying sort
    ${rm} "${MBOX}"
@@ -4964,7 +4964,7 @@ t_xxxheads_rfc2047() {
 9Abra Kaspastäb4-3 	 	 	 10Abra Kaspas1 _ 11Abra Katäb1	\
 12Abra Kadabrä1 After	Tab	after	Täb	this	is	NUTS" \
       "${MBOX}"
-   check 3 0 "${MBOX}" '1676887734 591'
+   check 3 0 "${MBOX}" '786672837 587'
 
    # Overlong multibyte sequence that must be forcefully split
    # todo This works even before v15.0, but only by accident
@@ -4974,7 +4974,7 @@ t_xxxheads_rfc2047() {
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄\
 ✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄✄" \
       "${MBOX}"
-   check 4 0 "${MBOX}" '3029301775 659'
+   check 4 0 "${MBOX}" '2889557767 655'
 
    # Trailing WS
    ${rm} "${MBOX}"
@@ -4986,7 +4986,7 @@ t_xxxheads_rfc2047() {
 1-5 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-6 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
       "${MBOX}"
-   check 5 0 "${MBOX}" '4126167195 297'
+   check 5 0 "${MBOX}" '3135161683 293'
 
    # Leading and trailing WS
    ${rm} "${MBOX}"
@@ -4996,7 +4996,7 @@ t_xxxheads_rfc2047() {
 1-3 	 B2 	 B3 	 B4 	 B5 	 B6 	 B\
 1-4 	 B2 	 B3 	 B4 	 B5 	 B6 	 " \
       "${MBOX}"
-   check 6 0 "${MBOX}" '3600624479 236'
+   check 6 0 "${MBOX}" '3221845405 232'
 
    # RFC 2047 in an address field!  (Missing test caused v14.9.6!)
    ${rm} "${MBOX}"
@@ -5059,14 +5059,14 @@ t_rfc2231() {
       -a ./.ttt/hööööööööööööööööö_nöööööööööööööööööööööö_düüüüüüüüüüüüüüüüüüü_bäääääääääääääääääääääääh.txt \
       -a ./.ttt/✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆✆.txt \
       "${MBOX}"
-   check 1 0 "${MBOX}" '684985954 3092'
+   check 1 0 "${MBOX}" '3720896054 3088'
 
    # `resend' test, reusing $MBOX
    printf "Resend ./.t2\nx\n" | ${MAILX} ${ARGS} -Rf "${MBOX}"
-   check 2 0 ./.t2 '684985954 3092'
+   check 2 0 ./.t2 '3720896054 3088'
 
    printf "resend ./.t3\nx\n" | ${MAILX} ${ARGS} -Rf "${MBOX}"
-   check 3 0 ./.t3 '3130352658 3148'
+   check 3 0 ./.t3 '3979736592 3133'
 
    t_epilog
 }
@@ -5256,14 +5256,14 @@ t_binary_mainbody() {
    printf 'abra\0\nka\r\ndabra' |
       ${MAILX} ${ARGS} ${ADDARG_UNI} -s 'binary with carriage-return!' \
       "${MBOX}" 2>./.terr
-   check 1 0 "${MBOX}" '2430168141 243'
+   check 1 0 "${MBOX}" '1629827 239'
    check 2 - ./.terr '4294967295 0'
 
    printf 'p\necho\necho writing now\nwrite ./.twrite\n' |
       ${MAILX} ${ARGS} -Rf \
          -Spipe-application/octet-stream="@* ${cat} > ./.tcat" \
          "${MBOX}" >./.tall 2>&1
-   check 3 0 ./.tall '1151843761 324'
+   check 3 0 ./.tall '733582513 319'
    check 4 - ./.tcat '3817108933 15'
    check 5 - ./.twrite '3817108933 15'
 
@@ -5280,18 +5280,18 @@ t_q_t_etc_opts() {
 
    < ./.tin ${MAILX} ${ARGS} ${ADDARG_UNI} \
       -a ./.tin -s "`t__put_subject`" "${MBOX}"
-   check 1 0 "${MBOX}" '3570973309 6646'
+   check 1 0 "${MBOX}" '1088822685 6642'
 
    ${rm} "${MBOX}"
    < /dev/null ${MAILX} ${ARGS} ${ADDARG_UNI} \
       -a ./.tin -s "`t__put_subject`" -q ./.tin "${MBOX}"
-   check 2 0 "${MBOX}" '3570973309 6646'
+   check 2 0 "${MBOX}" '1088822685 6642'
 
    ${rm} "${MBOX}"
    (  echo "To: ${MBOX}" && echo "Subject: `t__put_subject`" && echo &&
       ${cat} ./.tin
    ) | ${MAILX} ${ARGS} ${ADDARG_UNI} -Snodot -a ./.tin -t
-   check 3 0 "${MBOX}" '3570973309 6646'
+   check 3 0 "${MBOX}" '1088822685 6642'
 
    # Check comments in the header
    ${rm} "${MBOX}"
@@ -5304,7 +5304,7 @@ t_q_t_etc_opts() {
 		
 		BOOOM
 		_EOT
-   check 4 0 "${MBOX}" '3829967825 128'
+   check 4 0 "${MBOX}" '4161555890 124'
 
    t_epilog
 }
@@ -5358,7 +5358,7 @@ t_s_mime() {
       { if(!skip) print }
    ' \
       < ./.VERIFY > "${MBOX}"
-   check 1 - "${MBOX}" '2900817158 648'
+   check 1 - "${MBOX}" '1311565262 644'
 
    printf 'verify\nx\n' |
    ${MAILX} ${ARGS} -Ssmime-ca-file=./.tcert.pem -Serrexit \
@@ -5434,14 +5434,14 @@ t_z() {
 
    # Test for [260e19d] (Juergen Daubert)
    echo body | ${MAILX} ${ARGS} "${MBOX}"
-   check 4 0 "${MBOX}" '2917662811 98'
+   check 4 0 "${MBOX}" '2948857341 94'
 
    # "Test for" [d6f316a] (Gavin Troy)
    ${rm} "${MBOX}"
    printf "m ${MBOX}\n~s subject1\nEmail body\n~.\nfi ${MBOX}\np\nx\n" |
    ${MAILX} ${ARGS} ${ADDARG_UNI} -Spipe-text/plain="@* ${cat}" > "${BODY}"
-   check 6 0 "${MBOX}" '2099098650 122'
-   check 6-1 - "${BODY}" '794542938 174'
+   check 6 0 "${MBOX}" '3942990636 118'
+   check 6-1 - "${BODY}" '3951695530 170'
 
    # "Test for" [c299c45] (Peter Hofmann) TODO shouldn't end up QP-encoded?
    ${rm} "${MBOX}"
@@ -5450,7 +5450,7 @@ t_z() {
          printf "\xC3\xBC"
          #printf "\xF0\x90\x87\x90"
       }' | ${MAILX} ${ARGS} ${ADDARG_UNI} -s TestSubject "${MBOX}"
-   check 7 0 "${MBOX}" '534262374 61816'
+   check 7 0 "${MBOX}" '1707496413 61812'
 
    t_epilog
 }
