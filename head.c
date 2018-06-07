@@ -1771,19 +1771,19 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
       rv = -rv;
 
    if (!(eaf & EAF_FILE) && (f & NAME_ADDRSPEC_ISFILE)) {
-      cs = _("%s%s: *expandaddr* doesn't allow file target\n");
+      cs = _("%s%s: *expandaddr* does not allow file target\n");
       if (eacm & EACM_NOLOG)
          goto jleave;
    } else if (!(eaf & EAF_PIPE) && (f & NAME_ADDRSPEC_ISPIPE)) {
-      cs = _("%s%s: *expandaddr* doesn't allow command pipe target\n");
+      cs = _("%s%s: *expandaddr* does not allow command pipe target\n");
       if (eacm & EACM_NOLOG)
          goto jleave;
    } else if (!(eaf & EAF_NAME) && (f & NAME_ADDRSPEC_ISNAME)) {
-      cs = _("%s%s: *expandaddr* doesn't allow user name target\n");
+      cs = _("%s%s: *expandaddr* does not allow user name target\n");
       if (eacm & EACM_NOLOG)
          goto jleave;
    } else if (!(eaf & EAF_ADDR) && (f & NAME_ADDRSPEC_ISADDR)) {
-      cs = _("%s%s: *expandaddr* doesn't allow mail address target\n");
+      cs = _("%s%s: *expandaddr* does not allow mail address target\n");
       if (eacm & EACM_NOLOG)
          goto jleave;
    } else {
