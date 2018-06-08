@@ -165,7 +165,7 @@ static struct a_nag_group *a_nag_filetype_heads[HSHSIZE];
 /* Same name, while taking care for *allnet*? */
 static bool_t a_nag_is_same_name(char const *n1, char const *n2);
 
-/* Mark all nodes with the given name */
+/* Mark all (!file, !pipe) nodes with the given name */
 static struct name *a_nag_namelist_mark_name(struct name *np, char const *name);
 
 /* Grab a single name (liberal name) */
@@ -273,7 +273,9 @@ a_nag_namelist_mark_name(struct name *np, char const *name){
    NYD2_ENTER;
 
    for(p = np; p != NULL; p = p->n_flink)
-      if(!(p->n_type & GDEL) && !(p->n_flags & (ui32_t)SI32_MIN) &&
+      if(!(p->n_type & GDEL) &&
+            !(p->n_flags & (((ui32_t)SI32_MIN) | NAME_ADDRSPEC_ISFILE |
+               NAME_ADDRSPEC_ISPIPE)) &&
             a_nag_is_same_name(p->n_name, name))
          p->n_flags |= (ui32_t)SI32_MIN;
    NYD2_LEAVE;
