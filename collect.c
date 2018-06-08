@@ -210,7 +210,7 @@ a_coll_include_file(char const *name, bool_t indent, bool_t writestat){
    /* The -M case is special */
    if(name == (char*)-1){
       fbuf = n_stdin;
-      name = "-";
+      name = n_hy;
    }else if(name[0] == '-' &&
          (name[1] == '\0' || blankspacechar(name[1]))){
       fbuf = n_stdin;
@@ -249,7 +249,7 @@ jdelim_empty:
             heredb = savestrbuf(heredb, heredl);
          }
       }
-      name = "-";
+      name = n_hy;
    }else if((fbuf = Fopen(name, "r")) == NULL){
       n_perr(name, rv = n_err_no);
       goto jleave;

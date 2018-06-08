@@ -75,7 +75,7 @@ static struct n_cmd_desc const a_ctab_ctable[] = {
 static struct n_cmd_desc const a_ctab_ctable_plus[] = {
    { n_ns, (int(*)(void*))-1, n_CMD_ARG_TYPE_STRING, 0, 0, NULL
       DS(N_("Comment command: ignore remaining (continuable) line")) },
-   { "-", (int(*)(void*))-1, n_CMD_ARG_TYPE_WYSH, 0, 0, NULL
+   { n_hy, (int(*)(void*))-1, n_CMD_ARG_TYPE_WYSH, 0, 0, NULL
       DS(N_("Print out the preceding message")) }
 };
 #undef DS
