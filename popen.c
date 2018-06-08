@@ -1220,14 +1220,15 @@ n_child_start(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
       }
 
       i = (int)getrawlist(TRU1, argv, n_NELEM(argv), cmd, strlen(cmd));
-
-      if ((argv[i++] = n_UNCONST(a0_or_null)) != NULL &&
-            (argv[i++] = n_UNCONST(a1_or_null)) != NULL &&
-            (argv[i++] = n_UNCONST(a2_or_null)) != NULL)
-         argv[i] = NULL;
-      n_child_prepare(mask_or_null, infd, outfd);
-      execvp(argv[0], argv);
-      perror(argv[0]);
+      if(i >= 0){
+         if ((argv[i++] = n_UNCONST(a0_or_null)) != NULL &&
+               (argv[i++] = n_UNCONST(a1_or_null)) != NULL &&
+               (argv[i++] = n_UNCONST(a2_or_null)) != NULL)
+            argv[i] = NULL;
+         n_child_prepare(mask_or_null, infd, outfd);
+         execvp(argv[0], argv);
+         perror(argv[0]);
+      }
       _exit(n_EXIT_ERR);
    }
    NYD_LEAVE;
