@@ -2459,6 +2459,7 @@ enum nameflags {
    NAME_ADDRSPEC_ISNAME = 1u<<5,    /* ..is an alias name */
    NAME_ADDRSPEC_ISADDR = 1u<<6,    /* ..is a mail network address.. */
    NAME_ADDRSPEC_WITHOUT_DOMAIN = 1u<<7, /* ..but without domain name */
+   NAME_ADDRSPEC_ISMASK = n_BITENUM_MASK(3,6),
 
    NAME_ADDRSPEC_ERR_EMPTY = 1u<<9, /* An empty string (or NULL) */
    NAME_ADDRSPEC_ERR_ATSEQ = 1u<<10, /* Weird @ sequence */

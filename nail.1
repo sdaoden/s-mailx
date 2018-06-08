@@ -7670,6 +7670,16 @@ plain address, e.g.,
 separated by a single ASCII SP space from the second which contains the
 unstripped address, even if that is identical to the first field, e.g.,
 .Ql (Lovely) Bob <bob@exam.ple> .
+Non-network addressees, however, place a single-letter indicating
+the address type in the first field (hyphen-minus
+.Ql -
+for files, vertical bar
+.Ql |
+for pipes, and number sign
+.Ql #
+for names: what is supposed to become expanded via
+.Ic alias Ns
+), and only the second field contains a value.
 All the input, including the empty line, must be consumed before further
 commands can be issued.
 .
@@ -7688,8 +7698,9 @@ Syntax error in parameters or arguments.
 .
 .It Ql 505
 Error: an argument fails verification.
-For example an invalid address has been specified, or an attempt was
-made to modify anything in \*(UA's own namespace.
+For example an invalid address has been specified (also see
+.Va expandaddr ) ,
+or an attempt was made to modify anything in \*(UA's own namespace.
 .
 .It Ql 506
 Error: an otherwise valid argument is rendered invalid due to context.

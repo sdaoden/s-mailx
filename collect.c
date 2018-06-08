@@ -1402,9 +1402,15 @@ jremat:
 jshow:
          if(np != NULL){
             fprintf(n_stdout, "211 %s\n", cp);
-            do if(!(np->n_type & GDEL))
-               fprintf(n_stdout, "%s %s\n", np->n_name, np->n_fullname);
-            while((np = np->n_flink) != NULL);
+            do if(!(np->n_type & GDEL)){
+               switch(np->n_flags & NAME_ADDRSPEC_ISMASK){
+               case NAME_ADDRSPEC_ISFILE: cp = n_hy; break;
+               case NAME_ADDRSPEC_ISPIPE: cp = "|"; break;
+               case NAME_ADDRSPEC_ISNAME: cp = n_ns; break;
+               default: cp = np->n_name; break;
+               }
+               fprintf(n_stdout, "%s %s\n", cp, np->n_fullname);
+            }while((np = np->n_flink) != NULL);
             putc('\n', n_stdout);
             goto jleave;
          }else
