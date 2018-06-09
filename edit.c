@@ -63,7 +63,7 @@ edit1(int *msgvec, int viored)
          char prompt[64];
 
          snprintf(prompt, sizeof prompt, _("Edit message %d"), msgvec[i]);
-         if(!getapproval(prompt, FAL0))
+         if(!getapproval(prompt, TRU1))
             continue;
       }
 
