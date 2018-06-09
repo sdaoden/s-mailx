@@ -53,7 +53,7 @@ enum a_sendout_addrline_flags{
 n_CTA(!(_a_SENDOUT_AL_GMASK & (a_SENDOUT_AL_INC_INVADDR|a_SENDOUT_AL_DOMIME)),
    "Code-required condition not satisfied but actual bit carrier value");
 
-static char const *__sendout_ident; /* TODO temporary hack; rewrite puthead() */
+static char const *__sendout_ident; /* TODO temporary; rewrite n_puthead() */
 static char *  _sendout_boundary;
 static si8_t   _sendout_error;
 
@@ -684,7 +684,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
          goto jiconv_err;
    }
 #endif
-   if(puthead(FAL0, hp, nfo,
+   if(!n_puthead(FAL0, hp, nfo,
          (GTO | GSUBJECT | GCC | GBCC | GNL | GCOMMA | GUA | GMIME | GMSGID |
          GIDENT | GREF | GDATE), SEND_MBOX, convert, contenttype, charset)){
       err = 1;
@@ -1371,7 +1371,7 @@ __mta_prepare_args(struct name *to, struct header *hp)
 
    /* -r option?  In conjunction with -t we act compatible to postfix(1) and
     * ignore it (it is -f / -F there) if the message specified From:/Sender:.
-    * The interdependency with -t has been resolved in puthead() */
+    * The interdependency with -t has been resolved in n_puthead() */
    if (!snda && ((n_poption & n_PO_r_FLAG) || ok_blook(r_option_implicit))) {
       struct name const *np;
 
@@ -1973,8 +1973,8 @@ mkdate(FILE *fo, char const *field)
    return rv;
 }
 
-FL int
-puthead(bool_t nosend_msg, struct header *hp, FILE *fo, enum gfield w,
+FL bool_t
+n_puthead(bool_t nosend_msg, struct header *hp, FILE *fo, enum gfield w,
    enum sendaction action, enum conversion convert, char const *contenttype,
    char const *charset)
 {
@@ -2002,10 +2002,13 @@ do {\
    char const *addr;
    size_t gotcha;
    struct name *np, *fromasender = NULL;
-   int stealthmua, rv = 1;
+   int stealthmua;
    bool_t nodisp;
    enum a_sendout_addrline_flags saf;
+   bool_t rv;
    NYD_ENTER;
+
+   rv = FAL0;
 
    if ((addr = ok_vlook(stealthmua)) != NULL)
       stealthmua = !strcmp(addr, "noagent") ? -1 : 1;
@@ -2305,7 +2308,7 @@ j_mft_add:
    if (gotcha && (w & GNL))
       if (putc('\n', fo) == EOF)
          goto jleave;
-   rv = 0;
+   rv = TRU1;
 jleave:
    NYD_LEAVE;
    return rv;

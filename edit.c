@@ -159,14 +159,8 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
 
    if (hp != NULL) {
       assert(mp == NULL);
-      t = GTO | GSUBJECT | GCC | GBCC | GBCC_IS_FCC | GREF_IRT | GNL | GCOMMA;
-      if ((hp->h_from != NULL || myaddrs(hp) != NULL) ||
-            (hp->h_sender != NULL || ok_vlook(sender) != NULL) ||
-            (hp->h_reply_to != NULL || ok_vlook(reply_to) != NULL) ||
-               ok_vlook(replyto) != NULL /* v15compat, OBSOLETE */ ||
-            hp->h_list_post != NULL || (hp->h_flags & HF_LIST_REPLY))
-         t |= GIDENT;
-      puthead(TRUM1, hp, nf_tmp, t, SEND_TODISP, CONV_NONE, NULL, NULL);
+      if(!n_header_put4compose(nf_tmp, hp))
+         goto jleave;
    }
 
    if(mp != NULL){

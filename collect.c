@@ -364,7 +364,7 @@ print_collf(FILE *cf, struct header *hp)
    hold_all_sigs();
 
    fprintf(obuf, _("-------\nMessage contains:\n")); /* xxx SEARCH112 */
-   puthead(TRU1, hp, obuf,
+   n_puthead(TRU1, hp, obuf,
       (GIDENT | GTO | GSUBJECT | GCC | GBCC | GBCC_IS_FCC | GNL | GFILES |
        GCOMMA), SEND_TODISP, CONV_NONE, NULL, NULL);
 
@@ -2102,9 +2102,9 @@ n_collect(struct header *hp, int printheaders, struct message *mp,
          if(!(n_poption & n_PO_Mm_FLAG) && !(n_pstate & n_PS_ROBOT)){
             /* Print what we have sofar also on the terminal (if useful) */
             if((cp = ok_vlook(editalong)) == NULL){
-               if (printheaders)
-                  puthead(TRU1, hp, n_stdout, t,
-                     SEND_TODISP, CONV_NONE, NULL, NULL);
+               if(printheaders)
+                  n_puthead(TRU1, hp, n_stdout, t, SEND_TODISP, CONV_NONE,
+                     NULL, NULL);
 
                rewind(_coll_fp);
                while ((c = getc(_coll_fp)) != EOF) /* XXX bytewise, yuck! */
@@ -2495,6 +2495,7 @@ jearg:
                break;
             }
          }
+         /* XXX race, and why not test everywhere, then? */
          if(n_is_dir(cp, FAL0)){
             n_err(_("%s: is a directory\n"), n_shexp_quote_cp(cp, FAL0));
             if(a_HARDERR())
@@ -2819,9 +2820,10 @@ jout:
       coap = NULL;
 
       fprintf(n_stdout, _("-------\nEnvelope contains:\n")); /* xxx SEARCH112 */
-      puthead(TRU1, hp, n_stdout,
-         GIDENT | GREF_IRT  | GSUBJECT | GTO | GCC | GBCC | GBCC_IS_FCC |
-         GCOMMA, SEND_TODISP, CONV_NONE, NULL, NULL);
+      if(!n_puthead(TRU1, hp, n_stdout,
+            GIDENT | GREF_IRT  | GSUBJECT | GTO | GCC | GBCC | GBCC_IS_FCC |
+            GCOMMA, SEND_TODISP, CONV_NONE, NULL, NULL))
+         goto jerr;
 
 jreasksend:
       if(n_go_input(n_GO_INPUT_CTX_COMPOSE | n_GO_INPUT_NL_ESC,

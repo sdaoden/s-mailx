@@ -1297,6 +1297,25 @@ is_head(char const *linebuf, size_t linelen, bool_t check_rfc4155)
    return rv;
 }
 
+FL bool_t
+n_header_put4compose(FILE *fp, struct header *hp){
+   bool_t rv;
+   int t;
+   NYD_ENTER;
+
+   t = GTO | GSUBJECT | GCC | GBCC | GBCC_IS_FCC | GREF_IRT | GNL | GCOMMA;
+   if((hp->h_from != NULL || myaddrs(hp) != NULL) ||
+         (hp->h_sender != NULL || ok_vlook(sender) != NULL) ||
+         (hp->h_reply_to != NULL || ok_vlook(reply_to) != NULL) ||
+            ok_vlook(replyto) != NULL /* v15compat, OBSOLETE */ ||
+         hp->h_list_post != NULL || (hp->h_flags & HF_LIST_REPLY))
+      t |= GIDENT;
+
+   rv = n_puthead(TRUM1, hp, fp, t, SEND_TODISP, CONV_NONE, NULL, NULL);
+   NYD_LEAVE;
+   return rv;
+}
+
 FL void
 n_header_extract(FILE *fp, struct header *hp, bool_t extended_list_of,
       si8_t *checkaddr_err)

@@ -799,7 +799,7 @@ FL int         c_visual(void *v);
  * negative) or on the message mp, and return a new file or NULL on error of if
  * the user didn't perform any edits.
  * For now we assert that mp==NULL if hp!=NULL, treating this as a special call
- * from within compose mode, and giving TRUM1 to puthead().
+ * from within compose mode, and giving TRUM1 to n_puthead().
  * Signals must be handled by the caller.  viored is 'e' for ed, 'v' for vi */
 FL FILE *      run_editor(FILE *fp, off_t size, int viored, int readonly,
                   struct header *hp, struct message *mp,
@@ -1026,6 +1026,9 @@ FL char const * myorigin(struct header *hp);
  * matches POSIX but is _not_ compatible to RFC 4155 */
 FL bool_t      is_head(char const *linebuf, size_t linelen,
                   bool_t check_rfc4155);
+
+/* Print hp "to user interface" fp for composing purposes xxx what a sigh */
+FL bool_t n_header_put4compose(FILE *fp, struct header *hp);
 
 /* Extract some header fields (see e.g. -t documentation) from a message.
  * If extended_list_of is set a number of additional header fields are
@@ -1921,7 +1924,7 @@ FL int         mkdate(FILE *fo, char const *field);
  * editing a message (yet we're stupid and cannot do it any better) - if it is
  * TRUM1 then we're really in compose mode and will produce some fields for
  * easier filling in (see run_editor() proto for this hack) */
-FL int         puthead(bool_t nosend_msg, struct header *hp, FILE *fo,
+FL bool_t n_puthead(bool_t nosend_msg, struct header *hp, FILE *fo,
                   enum gfield w, enum sendaction action,
                   enum conversion convert, char const *contenttype,
                   char const *charset);
