@@ -1762,10 +1762,10 @@ FL bool_t      pop3_quit(bool_t hold_sigs_on);
 /* For program startup in main.c: initialize process manager */
 FL void        n_child_manager_start(void);
 
-/* Notes: OF_CLOEXEC is implied in oflags, xflags may be NULL */
+/* xflags may be NULL.  Implied: cloexec */
 FL FILE *      safe_fopen(char const *file, char const *oflags, int *xflags);
 
-/* Notes: OF_CLOEXEC|OF_REGISTER are implied in oflags!
+/* oflags implied: cloexec,OF_REGISTER.
  * Exception is Fdopen() if nocloexec is TRU1, but otherwise even for it the fd
  * creator has to take appropriate steps in order to ensure this is true! */
 FL FILE *      Fopen(char const *file, char const *oflags);
@@ -1783,8 +1783,8 @@ FL FILE * n_fopen_any(char const *file, char const *oflags,
  * unless OF_SUFFIX is set, in which case namehint is an extension that MUST be
  * part of the resulting filename, otherwise Ftmp() will fail), store the
  * unique name in fn (unless OF_UNLINK is set in oflags), and return a stdio
- * FILE pointer with access oflags.  OF_CLOEXEC is implied in oflags.
- * One of OF_WRONLY and OF_RDWR must be set.  Mode of 0600 is implied */
+ * FILE pointer with access oflags.
+ * One of OF_WRONLY and OF_RDWR must be set.  Implied: 0600,cloexec */
 FL FILE *      Ftmp(char **fn, char const *namehint, enum oflags oflags);
 
 /* If OF_HOLDSIGS was set when calling Ftmp(), then hold_all_sigs() had been

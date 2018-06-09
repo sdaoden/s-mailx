@@ -1035,8 +1035,7 @@ enum oflags {
    OF_CREATE      = 1<<4,
    OF_TRUNC       = 1<<5,
    OF_EXCL        = 1<<6,
-   OF_CLOEXEC     = 1<<7,     /* TODO not used, always implied!  CHANGE!! */
-   OF_UNLINK      = 1<<8,     /* Only for Ftmp(): unlink(2) after creation */
+   OF_UNLINK      = 1<<7,     /* Only for Ftmp(): unlink(2) after creation */
    OF_HOLDSIGS    = 1<<9,     /* Mutual with OF_UNLINK - await Ftmp_free() */
    OF_REGISTER    = 1<<10,    /* Register file in our file table */
    OF_REGISTER_UNLINK = 1<<11, /* unlink(2) upon unreg.; _REGISTER asserted! */
