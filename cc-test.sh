@@ -5387,9 +5387,9 @@ t_lreply_futh_rth_etc() {
    check 2 0 "${MBOX}" '3321764338 429'
    check 3 - .tall '4294967295 0'
 
-   printf 'reply 1\nnew <- thread!\n!v\n!.\n' |
+   printf 'reply 1\nnew <- thread!\n!||%s -e "%s"\n!.\n' \
+         "${sed}" '/^In-Reply-To:/d' |
       ${MAILX} ${ARGS} -Sescape=! -Smta=./.tmta.sh -Sreply-to-honour \
-         -Seditheaders -S VISUAL="${sed} -i'' -e '/^In-Reply-To:/d'" \
          ${argadd} -Rf "${MBOX}" > .tall 2>&1
    check 4 0 "${MBOX}" '1682552516 763'
    check 5 - .tall '4294967295 0'
@@ -5400,9 +5400,9 @@ t_lreply_futh_rth_etc() {
    check 6 0 "${MBOX}" '2900984135 1219'
    check 7 - .tall '4294967295 0'
 
-   printf 'reply 3\nnew <- old <- new <- thread!\n!v\n!.\n' |
+   printf 'reply 3\nnew <- old <- new <- thread!\n!|| %s -e "%s"\n!.\n' \
+         "${sed}" '/^In-Reply-To:/d' |
       ${MAILX} ${ARGS} -Sescape=! -Smta=./.tmta.sh -Sreply-to-honour \
-         -Seditheaders -S VISUAL="${sed} -i'' -e '/^In-Reply-To:/d'" \
          ${argadd} -Rf "${MBOX}" > .tall 2>&1
    check 8 0 "${MBOX}" '794031200 1567'
    check 9 - .tall '4294967295 0'
