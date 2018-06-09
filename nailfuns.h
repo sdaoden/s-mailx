@@ -1782,8 +1782,9 @@ FL FILE * n_fopen_any(char const *file, char const *oflags,
 /* Create a temporary file in *TMPDIR*, use namehint for its name (prefix
  * unless OF_SUFFIX is set, in which case namehint is an extension that MUST be
  * part of the resulting filename, otherwise Ftmp() will fail), store the
- * unique name in fn (unless OF_UNLINK is set in oflags), and return a stdio
- * FILE pointer with access oflags.
+ * unique name in fn if set (and unless OF_UNLINK is set in oflags), creating
+ * n_alloc() storage or n_autorec_alloc() if OF_NAME_AUTOREC is set,
+ * and return a stdio FILE pointer with access oflags.
  * One of OF_WRONLY and OF_RDWR must be set.  Implied: 0600,cloexec */
 FL FILE *      Ftmp(char **fn, char const *namehint, enum oflags oflags);
 

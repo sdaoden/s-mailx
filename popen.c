@@ -718,7 +718,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
 
    /* Prepare the template string once, then iterate over the random range */
    cp_base =
-   cp = n_alloc(strlen(tmpdir) + 1 + maxname +1);
+   cp = n_lofi_alloc(strlen(tmpdir) + 1 + maxname +1);
    cp = sstpcpy(cp, tmpdir);
    *cp++ = '/';
    {
@@ -786,10 +786,13 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
       (void)fchmod(fd, S_IWUSR | S_IRUSR);
    }
 
-   if (fn != NULL)
-      *fn = cp_base;
-   else
-      n_free(cp_base);
+   if(fn != NULL){
+      i = strlen(cp_base) +1;
+      cp = (oflags & OF_FN_AUTOREC) ? n_autorec_alloc(i) : n_alloc(i);
+      memcpy(cp, cp_base, i);
+      *fn = cp;
+   }
+   n_lofi_free(cp_base);
 jleave:
    if (relesigs && (fp == NULL || !(oflags & OF_HOLDSIGS)))
       rele_all_sigs();
@@ -798,8 +801,8 @@ jleave:
    NYD_LEAVE;
    return fp;
 jfree:
-   if ((cp = cp_base) != NULL)
-      n_free(cp);
+   if((cp = cp_base) != NULL)
+      n_lofi_free(cp);
    goto jleave;
 }
 

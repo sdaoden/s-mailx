@@ -1028,18 +1028,19 @@ enum mlist_state {
 };
 
 enum oflags {
-   OF_RDONLY      = 1<<0,
-   OF_WRONLY      = 1<<1,
-   OF_RDWR        = 1<<2,
-   OF_APPEND      = 1<<3,
-   OF_CREATE      = 1<<4,
-   OF_TRUNC       = 1<<5,
-   OF_EXCL        = 1<<6,
-   OF_UNLINK      = 1<<7,     /* Only for Ftmp(): unlink(2) after creation */
-   OF_HOLDSIGS    = 1<<9,     /* Mutual with OF_UNLINK - await Ftmp_free() */
-   OF_REGISTER    = 1<<10,    /* Register file in our file table */
-   OF_REGISTER_UNLINK = 1<<11, /* unlink(2) upon unreg.; _REGISTER asserted! */
-   OF_SUFFIX      = 1<<12     /* Ftmp() name hint is mandatory! extension! */
+   OF_RDONLY = 1u<<0,
+   OF_WRONLY = 1u<<1,
+   OF_RDWR = 1u<<2,
+   OF_APPEND = 1u<<3,
+   OF_CREATE = 1u<<4,
+   OF_TRUNC = 1u<<5,
+   OF_EXCL = 1u<<6,
+   OF_UNLINK = 1u<<7,      /* Only for Ftmp(): unlink(2) after creation */
+   OF_HOLDSIGS = 1u<<8,    /* Ftmp(): await Ftmp_free(), mutual OF_UNLINK */
+   OF_FN_AUTOREC = 1u<<9,  /* Ftmp(): fn not on heap, mutual OF_UNLINK */
+   OF_REGISTER = 1u<<10,   /* Register file in our file table */
+   OF_REGISTER_UNLINK = 1u<<11, /* unlink(2) upon unreg.; _REGISTER asserted */
+   OF_SUFFIX = 1u<<12      /* Ftmp() name hint is mandatory! extension! */
 };
 
 enum okay {
