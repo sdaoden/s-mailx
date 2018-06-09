@@ -2390,7 +2390,7 @@ enum gfield{ /* TODO -> enum m_grab_head, m_GH_xy */
 
    GIDENT = 1u<<11,     /* From:, Reply-To:, MFT: (user headers) */
    GREF = 1u<<12,       /* References:, In-Reply-To:, (Message-ID:) */
-   GREF_IRT = 1u<<30,   /* XXX Hack; only In-Reply-To: -> run_editor() */
+   GREF_IRT = 1u<<30,   /* XXX Hack; only In-Reply-To: -> n_run_editor() */
    GDATE = 1u<<13,      /* Date: field */
    GFULL = 1u<<14,      /* Include full names, comments etc. */
    GSKIN = 1u<<15,      /* Skin names */

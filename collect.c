@@ -105,9 +105,10 @@ static bool_t a_coll__fmt_inj(struct a_coll_fmt_ctx const *cfcp);
 static bool_t a_coll_makeheader(FILE *fp, struct header *hp,
                si8_t *checkaddr_err, bool_t do_delayed_due_t);
 
-/* Edit the message being collected on fp.  On return, make the edit file the
- * new temp file.  Return errno */
-static si32_t a_coll_edit(int c, struct header *hp);
+/* Edit the message being collected on fp.
+ * If c=='|' pipecmd must be set and is passed through to n_run_editor().
+ * On successful return, make the edit file the new temp file; return errno */
+static si32_t a_coll_edit(int c, struct header *hp, char const *pipecmd);
 
 /* Pipe the message through the command.  Old message is on stdin of command,
  * new message collected from stdout.  Shell must return 0 to accept new msg */
@@ -651,7 +652,7 @@ jleave:
 }
 
 static si32_t
-a_coll_edit(int c, struct header *hp) /* TODO error(return) weird */
+a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
 {
    struct n_sigman sm;
    FILE *nf;
@@ -661,8 +662,8 @@ a_coll_edit(int c, struct header *hp) /* TODO error(return) weird */
    si32_t volatile rv;
    NYD_ENTER;
 
-   n_UNINIT(sigint, SIG_ERR);
    rv = n_ERR_NONE;
+   n_UNINIT(sigint, SIG_ERR);
    saved_filrec = ok_blook(add_file_recipients);
 
    n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
@@ -687,7 +688,9 @@ a_coll_edit(int c, struct header *hp) /* TODO error(return) weird */
          saved_in_reply_to = ndup(np, np->n_type);
    }
 
-   nf = run_editor(_coll_fp, (off_t)-1, c, FAL0, hp, NULL, SEND_MBOX, sigint);
+   rewind(_coll_fp);
+   nf = n_run_editor(_coll_fp, (off_t)-1, c, FAL0, hp, NULL, SEND_MBOX, sigint,
+         pipecmd);
    if(nf != NULL){
       if(hp != NULL){
          if(!a_coll_makeheader(nf, hp, NULL, FAL0))
@@ -728,12 +731,15 @@ a_coll_pipe(char const *cmd)
    sigint = safe_signal(SIGINT, SIG_IGN);
 
    if ((nf = Ftmp(NULL, "colpipe", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==NULL) {
+jperr:
       n_perr(_("temporary mail edit file"), rv = n_err_no);
       goto jout;
    }
 
    /* stdin = current message.  stdout = new message */
-   fflush(_coll_fp);
+   if(fflush(_coll_fp) == EOF)
+      goto jperr;
+   rewind(_coll_fp);
    if (n_child_run(ok_vlook(SHELL), 0, fileno(_coll_fp), fileno(nf), "-c",
          cmd, NULL, NULL, &ws) < 0 || WEXITSTATUS(ws) != 0) {
       Fclose(nf);
@@ -2112,8 +2118,8 @@ n_collect(struct header *hp, int printheaders, struct message *mp,
                if (fseek(_coll_fp, 0, SEEK_END))
                   goto jerr;
             }else{
-               rewind(_coll_fp);
-               if(a_coll_edit(((*cp == 'v') ? 'v' : 'e'), hp) != n_ERR_NONE)
+               if(a_coll_edit(((*cp == 'v') ? 'v' : 'e'), hp, NULL
+                     ) != n_ERR_NONE)
                   goto jerr;
                /* Print msg mandated by the Mail Reference Manual */
 jcont:
@@ -2355,7 +2361,7 @@ jearg:
 "~u <msglist>  Read in without headers (`~U': *indentprefix* lines)\n"
 "~w <file>     Write message onto file\n"
 "~x            Abort composition, discard message (`~q': save in $DEAD)\n"
-"~| <command>  Pipe message through shell filter\n"
+"~| <command>  Pipe message through shell filter (`~||': with headers)\n"
             ), n_stdout);
 #endif /* HAVE_UISTRINGS */
          if(cnt != 0)
@@ -2392,9 +2398,15 @@ jearg:
          /* Pipe message through command. Collect output as new message */
          if(cnt == 0)
             goto jearg;
-         rewind(_coll_fp);
+         /* Is this request to do a "stream equivalent" to 'e' and 'v'? */
+         if(*cp == '|'){
+            ++cp;
+            goto jev_go;
+         }
          if((n_pstate_err_no = a_coll_pipe(cp)) == n_ERR_NONE)
             n_pstate_ex_no = 0;
+         else if(ferror(_coll_fp))
+            goto jerr;
          else if(a_HARDERR())
             goto jerr;
          else
@@ -2521,8 +2533,9 @@ jearg:
          /* Edit the current message.  'e' -> use EDITOR, 'v' -> use VISUAL */
          if(cnt != 0 || coap != NULL)
             goto jearg;
-         rewind(_coll_fp);
-         if((n_pstate_err_no = a_coll_edit(c, ok_blook(editheaders) ? hp : NULL)
+jev_go:
+         if((n_pstate_err_no = a_coll_edit(c,
+                ((c == '|' || ok_blook(editheaders)) ? hp : NULL), cp)
                ) == n_ERR_NONE)
             n_pstate_ex_no = 0;
          else if(ferror(_coll_fp))

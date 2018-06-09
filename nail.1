@@ -7620,12 +7620,19 @@ comment character.
 .
 .Mx
 .It Ic ~| Ar command
-Pipe the message through the specified filter command.
+Pipe the message text through the specified filter command.
 If the command gives no output or terminates abnormally,
 retain the original text of the message.
 E.g., the command
 .Xr fmt 1
 is often used as a rejustifying filter.
+.Pp
+If the first character of the command is a vertical bar, then the entire
+message including header fields is subject to the filter command, e.g.,
+.Ql ~|| echo Fcc: /tmp/test; cat
+will prepend a file-carbon-copy message header.
+Also see
+.Ic ~e , ~v .
 .
 .
 .Mx
@@ -7980,7 +7987,9 @@ Invoke the text
 .Ev EDITOR
 on the message collected so far, then return to compose mode.
 .Ic ~v
-can be used for a more display oriented editor.
+can be used for a more display oriented editor, and
+.Ic ~| Ns |
+offers a pipe-based editing approach.
 .
 .Mx
 .It Ic ~F Ar messages
@@ -8139,7 +8148,9 @@ Invoke the
 .Ev VISUAL
 editor on the message collected so far, then return to compose mode.
 .Ic ~e
-can be used for a less display oriented editor.
+can be used for a less display oriented editor, and
+.Ic ~| Ns |
+offers a pipe-based editing approach.
 .
 .Mx
 .It Ic ~w Ar filename

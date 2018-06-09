@@ -3136,7 +3136,8 @@ c_varedit(void *v){ /* TODO v15 drop */
       }
 
       fflush_rewind(of);
-      nf = run_editor(of, (off_t)-1, 'e', FAL0, NULL, NULL, SEND_MBOX, sigint);
+      nf = n_run_editor(of, (off_t)-1, 'e', FAL0, NULL,NULL, SEND_MBOX, sigint,
+            NULL);
       Fclose(of);
 
       if(nf != NULL){

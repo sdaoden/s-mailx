@@ -797,13 +797,16 @@ FL int         c_visual(void *v);
 
 /* Run an editor on either size bytes of the file fp (or until EOF if size is
  * negative) or on the message mp, and return a new file or NULL on error of if
- * the user didn't perform any edits.
+ * the user didn't perform any edits (not possible in pipe mode).
  * For now we assert that mp==NULL if hp!=NULL, treating this as a special call
  * from within compose mode, and giving TRUM1 to n_puthead().
- * Signals must be handled by the caller.  viored is 'e' for ed, 'v' for vi */
-FL FILE *      run_editor(FILE *fp, off_t size, int viored, int readonly,
+ * Signals must be handled by the caller.
+ * viored is 'e' for $EDITOR, 'v' for $VISUAL, or '|' for n_child_run(), in
+ * which case pipecmd must have been given */
+FL FILE *n_run_editor(FILE *fp, off_t size, int viored, bool_t readonly,
                   struct header *hp, struct message *mp,
-                  enum sendaction action, sighandler_type oldint);
+                  enum sendaction action, sighandler_type oldint,
+                  char const *pipecmd);
 
 /*
  * filter.c
@@ -1923,7 +1926,7 @@ FL int         mkdate(FILE *fo, char const *field);
  * nosend_msg tells us not to dig to deep but to instead go for compose mode or
  * editing a message (yet we're stupid and cannot do it any better) - if it is
  * TRUM1 then we're really in compose mode and will produce some fields for
- * easier filling in (see run_editor() proto for this hack) */
+ * easier filling in (see n_run_editor() proto for this hack) */
 FL bool_t n_puthead(bool_t nosend_msg, struct header *hp, FILE *fo,
                   enum gfield w, enum sendaction action,
                   enum conversion convert, char const *contenttype,

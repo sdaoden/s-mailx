@@ -1086,8 +1086,14 @@ a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem, char **colon,
       if (cp > *linebuf)
          while (blankchar(*cp))
             ++cp;
-      if (*cp != ':' || cp == *linebuf)
+      if (cp == *linebuf)
          continue;
+      /* xxx Not a header line, logging only for -t / compose mode? */
+      if(*cp != ':' && support_sh_comment){
+         n_err(_("Not a header line, skipping: %s\n"),
+            n_shexp_quote_cp(*linebuf, FAL0));
+         continue;
+      }
 
       /* I guess we got a headline.  Handle wraparound */
       *colon = cp;
