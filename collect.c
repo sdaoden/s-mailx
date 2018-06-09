@@ -663,8 +663,18 @@ a_coll_edit(int c, struct header *hp) /* TODO error(return) weird */
 
    n_UNINIT(sigint, SIG_ERR);
    rv = n_ERR_NONE;
+   saved_filrec = ok_blook(add_file_recipients);
 
-   if(!(saved_filrec = ok_blook(add_file_recipients)))
+   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
+   case 0:
+      sigint = safe_signal(SIGINT, SIG_IGN);
+      break;
+   default:
+      rv = n_ERR_INTR;
+      goto jleave;
+   }
+
+   if(!saved_filrec)
       ok_bset(add_file_recipients);
 
    saved_in_reply_to = NULL;
@@ -675,15 +685,6 @@ a_coll_edit(int c, struct header *hp) /* TODO error(return) weird */
          hp->h_in_reply_to = np = n_header_setup_in_reply_to(hp);
       if(np != NULL)
          saved_in_reply_to = ndup(np, np->n_type);
-   }
-
-   n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
-   case 0:
-      sigint = safe_signal(SIGINT, SIG_IGN);
-      break;
-   default:
-      rv = n_ERR_INTR;
-      goto jleave;
    }
 
    nf = run_editor(_coll_fp, (off_t)-1, c, FAL0, hp, NULL, SEND_MBOX, sigint);

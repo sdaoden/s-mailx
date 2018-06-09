@@ -141,14 +141,18 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
 {
    struct stat statb;
    sigset_t cset;
-   FILE *nf = NULL;
+   FILE *nf_tmp, *nf;
    int t, ws;
    time_t modtime;
    off_t modsize;
    char *tempEdit;
    NYD_ENTER;
 
-   if ((nf = Ftmp(&tempEdit, "runed", OF_WRONLY | OF_REGISTER)) == NULL) {
+   nf = NULL;
+   tempEdit = NULL;
+
+   if ((nf_tmp = Ftmp(&tempEdit, "runed", OF_WRONLY | OF_REGISTER |
+         OF_REGISTER_UNLINK | OF_FN_AUTOREC)) == NULL) {
       n_perr(_("temporary mail edit file"), 0);
       goto jleave;
    }
@@ -162,26 +166,30 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
                ok_vlook(replyto) != NULL /* v15compat, OBSOLETE */ ||
             hp->h_list_post != NULL || (hp->h_flags & HF_LIST_REPLY))
          t |= GIDENT;
-      puthead(TRUM1, hp, nf, t, SEND_TODISP, CONV_NONE, NULL, NULL);
+      puthead(TRUM1, hp, nf_tmp, t, SEND_TODISP, CONV_NONE, NULL, NULL);
    }
 
-   if (mp != NULL) {
-      if (sendmp(mp, nf, NULL, NULL, action, NULL) < 0) {
+   if(mp != NULL){
+      assert(hp == NULL);
+      if(sendmp(mp, nf_tmp, NULL, NULL, action, NULL) < 0){
          n_err(_("Failed to prepare editable message\n"));
          goto jleave;
       }
-   } else {
-      if (size >= 0)
-         while (--size >= 0 && (t = getc(fp)) != EOF)
-            putc(t, nf);
-      else
-         while ((t = getc(fp)) != EOF)
-            putc(t, nf);
+   }else{
+      if(size >= 0){
+         while(--size >= 0 && (t = getc(fp)) != EOF)
+            if(putc(t, nf_tmp) == EOF)
+               break;
+      }else{
+         while((t = getc(fp)) != EOF)
+            if(putc(t, nf_tmp) == EOF)
+               break;
+      }
    }
+   fflush(nf_tmp);
 
-   fflush(nf);
-   if ((t = ferror(nf)) == 0) {
-      if (fstat(fileno(nf), &statb) == -1)
+   if ((t = ferror(fp)) == 0 && (t = ferror(nf_tmp)) == 0) {
+      if (fstat(fileno(nf_tmp), &statb) == -1)
          modtime = 0, modsize = 0;
       else
          modtime = statb.st_mtime, modsize = statb.st_size;
@@ -190,7 +198,7 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
          t = (fchmod(fileno(nf), S_IRUSR) != 0);
    }
 
-   if (Fclose(nf) < 0 || t != 0) {
+   if (t != 0) {
       n_perr(tempEdit, 0);
       t = 1;
    }
@@ -217,10 +225,13 @@ run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
    if ((modtime != statb.st_mtime || modsize != statb.st_size) &&
          (nf = Fopen(tempEdit, "r+")) == NULL)
       n_perr(tempEdit, 0);
+
 jleave:
-   if (tempEdit != NULL) { /* TODO i'd rather do more signal handling */
-      unlink(tempEdit);    /* TODO in here */
-      Ftmp_free(&tempEdit);
+   if(nf_tmp != NULL && Fclose(nf_tmp) < 0){
+      n_perr(tempEdit, 0);
+      if(nf != NULL)
+         Fclose(nf);
+      nf = NULL;
    }
    NYD_LEAVE;
    return nf;
