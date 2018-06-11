@@ -77,25 +77,25 @@ static bool_t        _sendout_header_list(FILE *fo, struct n_header_field *hfp,
                         bool_t nodisp);
 
 /* */
-static int a_sendout_body(FILE *fo, FILE *fi, enum conversion convert);
+static si32_t a_sendout_body(FILE *fo, FILE *fi, enum conversion convert);
 
 /* Write an attachment to the file buffer, converting to MIME */
-static int a_sendout_attach_file(struct header *hp, struct attachment *ap,
-            FILE *fo);
-static int a_sendout__attach_file(struct header *hp, struct attachment *ap,
-            FILE *fo);
+static si32_t a_sendout_attach_file(struct header *hp, struct attachment *ap,
+               FILE *fo);
+static si32_t a_sendout__attach_file(struct header *hp, struct attachment *ap,
+               FILE *fo);
 
 /* There are non-local receivers, collect credentials etc. */
 static bool_t        _sendbundle_setup_creds(struct sendbundle *sbpm,
                         bool_t signing_caps);
 
 /* Attach a message to the file buffer */
-static int a_sendout_attach_msg(struct header *hp, struct attachment *ap,
+static si32_t a_sendout_attach_msg(struct header *hp, struct attachment *ap,
                FILE *fo);
 
 /* Generate the body of a MIME multipart message */
-static int           make_multipart(struct header *hp, int convert, FILE *fi,
-                        FILE *fo, char const *contenttype, char const *charset);
+static si32_t make_multipart(struct header *hp, int convert, FILE *fi,
+               FILE *fo, char const *contenttype, char const *charset);
 
 /* Prepend a header in front of the collected stuff and return the new file */
 static FILE *        infix(struct header *hp, FILE *fi);
@@ -281,13 +281,13 @@ _sendout_header_list(FILE *fo, struct n_header_field *hfp, bool_t nodisp){
    return rv;
 }
 
-static int
+static si32_t
 a_sendout_body(FILE *fo, FILE *fi, enum conversion convert){
    struct str outrest, inrest;
    char *buf;
    size_t sz, bufsize, cnt;
    bool_t iseof;
-   int rv;
+   si32_t rv;
    NYD2_ENTER;
 
    rv = n_ERR_INVAL;
@@ -338,15 +338,17 @@ jleave:
    return rv;
 }
 
-static int
+static si32_t
 a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo)
 {
    /* TODO of course, the MIME classification needs to performed once
     * TODO only, not for each and every charset anew ... ;-// */
    char *charset_iter_orig[2];
    long offs;
-   int err = 0;
+   si32_t err;
    NYD_ENTER;
+
+   err = n_ERR_NONE;
 
    /* Is this already in target charset?  Simply copy over */
    if (ap->a_conv == AC_TMPFILE) {
@@ -377,7 +379,7 @@ a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo)
          break;
       }
       err = a_sendout__attach_file(hp, ap, fo);
-      if (err == 0 || (err != n_ERR_ILSEQ && err != n_ERR_INVAL))
+      if (err == n_ERR_NONE || (err != n_ERR_ILSEQ && err != n_ERR_INVAL))
          break;
       clearerr(fo);
       if (fseek(fo, offs, SEEK_SET) == -1) {
@@ -396,14 +398,17 @@ jleave:
    return err;
 }
 
-static int
+static si32_t
 a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo)
 {
-   int err = 0, do_iconv;
    FILE *fi;
    char const *charset;
    enum conversion convert;
+   int do_iconv;
+   si32_t err;
    NYD_ENTER;
+
+   err = n_ERR_NONE;
 
    /* Either charset-converted temporary file, or plain path */
    if (ap->a_conv == AC_TMPFILE) {
@@ -566,37 +571,51 @@ jleave:
    return rv;
 }
 
-static int
+static si32_t
 a_sendout_attach_msg(struct header *hp, struct attachment *ap, FILE *fo)
 {
    struct message *mp;
    char const *ccp;
-   int rv;
+   si32_t err;
    NYD_ENTER;
    n_UNUSED(hp);
 
-   fprintf(fo, "\n--%s\nContent-Type: message/rfc822\n"
-       "Content-Disposition: inline\n", _sendout_boundary);
-   if ((ccp = ap->a_content_description) != NULL)
-      fprintf(fo, "Content-Description: %s\n", ccp);/* TODO MIME! */
-   putc('\n', fo);
+   err = n_ERR_NONE;
+
+   if(fprintf(fo, "\n--%s\nContent-Type: message/rfc822\n"
+         "Content-Disposition: inline\n", _sendout_boundary) < 0)
+      goto jerr;
+   if((ccp = ap->a_content_description) != NULL &&
+         (fputs("Content-Description: ", fo) == EOF ||
+          xmime_write(ccp, strlen(ccp), fo, CONV_TOHDR, (TD_ISPR | TD_ICONV),
+            NULL, NULL) < 0 || putc('\n', fo) == EOF))
+      goto jerr;
+   if(putc('\n', fo) == EOF)
+      goto jerr;
 
    mp = message + ap->a_msgno - 1;
    touch(mp);
-   rv = (sendmp(mp, fo, 0, NULL, SEND_RFC822, NULL) < 0) ? -1 : 0;
+   if(sendmp(mp, fo, 0, NULL, SEND_RFC822, NULL) < 0)
+jerr:
+      if((err = n_err_no) == n_ERR_NONE)
+         err = n_ERR_IO;
    NYD_LEAVE;
-   return rv;
+   return err;
 }
 
-static int
+static si32_t
 make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
    char const *contenttype, char const *charset)
 {
    struct attachment *att;
-   int rv = -1;
+   si32_t err;
    NYD_ENTER;
 
-   fputs("This is a multi-part message in MIME format.\n", fo);
+   err = n_ERR_NONE;
+
+   if(fputs("This is a multi-part message in MIME format.\n", fo) == EOF)
+      goto jerr;
+
    if(fsize(fi) != 0){
       char const *cp;
 
@@ -604,35 +623,37 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
             a_sendout_put_ct(fo, contenttype, charset) < 0 ||
             a_sendout_put_cte(fo, convert) < 0 ||
             fprintf(fo, "Content-Disposition: inline\n") < 0)
-         goto jleave;
+         goto jerr;
       if (((cp = ok_vlook(stealthmua)) == NULL || !strcmp(cp, "noagent")) &&
             (cp = a_sendout_random_id(hp, FAL0)) != NULL &&
             fprintf(fo, "Content-ID: <%s>\n", cp) < 0)
-         goto jleave;
+         goto jerr;
       if(putc('\n', fo) == EOF)
-         goto jleave;
+         goto jerr;
 
-      if(a_sendout_body(fo, fi, convert) != 0)
+      if((err = a_sendout_body(fo, fi, convert)) != n_ERR_NONE)
          goto jleave;
 
       if(ferror(fi))
-         goto jleave;
+         goto jerr;
    }
 
    for (att = hp->h_attach; att != NULL; att = att->a_flink) {
       if (att->a_msgno) {
-         if (a_sendout_attach_msg(hp, att, fo) != 0)
+         if ((err = a_sendout_attach_msg(hp, att, fo)) != n_ERR_NONE)
             goto jleave;
-      } else if (a_sendout_attach_file(hp, att, fo) != 0)
+      } else if ((err = a_sendout_attach_file(hp, att, fo)) != n_ERR_NONE)
          goto jleave;
    }
 
    /* the final boundary with two attached dashes */
-   fprintf(fo, "\n--%s--\n", _sendout_boundary);
-   rv = 0;
+   if(fprintf(fo, "\n--%s--\n", _sendout_boundary) < 0)
+jerr:
+      if((err = n_err_no) == n_ERR_NONE)
+         err = n_ERR_IO;
 jleave:
    NYD_LEAVE;
-   return rv;
+   return err;
 }
 
 static FILE *
@@ -651,15 +672,15 @@ infix(struct header *hp, FILE *fi) /* TODO check */
    nfi = NULL;
    charset = NULL;
    do_iconv = 0;
-   n_UNINIT(err, 0);
+   err = n_ERR_NONE;
 
    if ((nfo = Ftmp(&tempMail, "infix", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER))
          == NULL) {
-      n_perr(_("infix: temporary mail file"), 0);
+      n_perr(_("infix: temporary mail file"), err = n_err_no);
       goto jleave;
    }
    if ((nfi = Fopen(tempMail, "r")) == NULL) {
-      n_perr(tempMail, 0);
+      n_perr(tempMail, err = n_err_no);
       Fclose(nfo);
    }
    Ftmp_release(&tempMail);
@@ -680,14 +701,15 @@ infix(struct header *hp, FILE *fi) /* TODO check */
          n_iconv_close(iconvd);
       if (asccasecmp(convhdr, tcs) != 0 &&
             (iconvd = n_iconv_open(convhdr, tcs)) == (iconv_t)-1 &&
-            (err = n_err_no) != 0)
+            (err = n_err_no) != n_ERR_NONE)
          goto jiconv_err;
    }
 #endif
    if(!n_puthead(FAL0, hp, nfo,
          (GTO | GSUBJECT | GCC | GBCC | GNL | GCOMMA | GUA | GMIME | GMSGID |
          GIDENT | GREF | GDATE), SEND_MBOX, convert, contenttype, charset)){
-      err = 1;
+      if((err = n_err_no) == n_ERR_NONE)
+         err = n_ERR_IO;
       goto jerr;
    }
 #ifdef HAVE_ICONV
@@ -699,34 +721,30 @@ infix(struct header *hp, FILE *fi) /* TODO check */
    if (do_iconv && charset != NULL) { /*TODO charset->n_mimetype_classify_file*/
       if (asccasecmp(charset, tcs) != 0 &&
             (iconvd = n_iconv_open(charset, tcs)) == (iconv_t)-1 &&
-            (err = n_err_no) != 0) {
+            (err = n_err_no) != n_ERR_NONE) {
 jiconv_err:
          if (err == n_ERR_INVAL)
             n_err(_("Cannot convert from %s to %s\n"), tcs, charset);
          else
-            n_perr("iconv_open", 0);
+            n_perr("iconv_open", err);
          goto jerr;
       }
    }
 #endif
 
    if(hp->h_attach != NULL){
-      if(make_multipart(hp, convert, fi, nfo, contenttype, charset) != 0){
-         err = 1;
+      if((err = make_multipart(hp, convert, fi, nfo, contenttype, charset)
+            ) != n_ERR_NONE)
          goto jerr;
-      }
-   }else if(a_sendout_body(nfo, fi, convert) != 0){
-      err = 1;
+   }else if((err = a_sendout_body(nfo, fi, convert)) != n_ERR_NONE)
       goto jerr;
-   }
 
-   fflush(nfo);
-   if((err = ferror(nfo)))
-      n_perr(_("infix: temporary mail file I/O"), 0);
+   if(fflush(nfo) == EOF)
+      err = n_err_no;
 jerr:
    Fclose(nfo);
 
-   if(!err){
+   if(err == n_ERR_NONE){
       fflush_rewind(nfi);
       Fclose(fi);
    }else{
@@ -738,6 +756,8 @@ jleave:
    if(iconvd != (iconv_t)-1)
       n_iconv_close(iconvd);
 #endif
+   if(nfi == NULL)
+      n_err_no = err;
    NYD_LEAVE;
    return nfi;
 }
