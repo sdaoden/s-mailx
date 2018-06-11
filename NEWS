@@ -4,7 +4,380 @@ S - n a i l / S - m a i l x  N e w s
   mdocmx(7) anchors are denoted by a number-sign #: typing
   "^A ANCHOR" while reading the man(1)ual in a capable less(1)
   will scroll to the manual's Point-Of-Interest, and pointing
-  a web- browser to the "#ANCHOR" of the online manual works.
+  a web browser to the "#ANCHOR" of the online manual works.
+
+v14.9.12 ("Blue tit's spiral marriage swoop"), 2019-03-07
+---------------------------------------------------------
+
+Not so much happened as i was busy with other things in the second
+half of 2018, and could not find a grip: at the source level some
+efforts to turn this to mailx have taken place, including early
+work on a code abstraction that will be shared with my (g)roff
+clone: it was tiring to come back to old ideas that i have already
+implemented multiple times and in different languages.  To mention
+it for the curious.
+
+So: this is a bugfix release, in fact it fixes a tremendous amount
+thereof, [master] was ahead by 62 commits from [v14.9.11] (not all
+bugs though, hrmhrm), but also with, well, a few new features, and
+of course, development to the last minute. ^_^
+
+Credits, in order of commit appearance: Jörg Schilling,
+Paride Legovini, Olav Mørkrid, Ralph Corderoy, Rich Felker,
+Predrag Punosevac, Russell Bell, Dirk-Wilhelm Peters,
+Jean-Marc Pigeon, Warren Toomey, Cág, Martin Neitzel,
+Dr. Werner Fink, Dr. Matthias St. Pierre, Kurt Roeckx, Mike Sharov,
+and Joan.
+
+Very special thanks go to Jean-Marc Pigeon of OSUKISS Linux, who
+provided me access to a VZGOT container on the most "beefy"
+machine i have ever had access to!  It is ever so astonishing to
+have work done in 90 seconds on this supercomputer which requires
+an hour or more here.  Thank you, Jean-Marc.
+
+And thanks to Kimura-san not only my web server became accessible
+via TLSv1.3 (out-of-line), but we also have landed on FreeBSD!
+Kimura-san is the one who installed a sympathic cron job that
+reminds me of cherry petals wafting in a warm spring breeze --
+in winter!
+
+We welcome Russell Bell, Jean-Marc Pigeon, Warren Toomey,
+Dr. Matthias St. Pierre, Kurt Roeckx, Mike Sharov and Joan in
+THANKS.
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Packagers could follow stable/* via git(1) and the "grappa" mode
+  of the release script (see README); perl(1) is required to be
+  totally en par with an official release.  (Paride Legovini)
+
+    $ git checkout stable/stable
+    $ sh mk/make-release.sh grappa mybranch
+    ...
+    Program version is [.], packager release addition shall be: xy
+    Is s-nail <v[.]-xy> correct? [y/n] y
+    Switched to branch 'mybranch'
+    $ git commit -S -n -m 'My release [.]-xy'
+
+- $MAKEJOBS vanished, just use -j or whatever your make(1) supports.
+  Luckily the tested make(1)s can be persuaded to dig each others
+  .WAIT / .WAIT: / .NOTPARALLEL: targets.. and do the right thing.
+
+- $OBJDIR support added, i use it for building / testing on tmpfs.
+  It works in conjunction with make-emerge.sh, too, thus
+  out-of-tree out-of-tree is possible (more or less; see INSTALL).
+    $ make tangerine OBJDIR=/tmp/x/y/z
+
+- Option VAL_PRIVSEP_USER has been renamed to VAL_PS_DOTLOCK_USER
+  (to reflect the new "deep tree" directory layout).
+
+- Option OPT_QUOTE_FOLD has been renamed to OPT_FILTER_QUOTE_FOLD
+  (to reflect later code changes upwards compatible).
+
+- New options OPT_CMD_VEXPR and OPT_CMD_CSOP, by default enabled.
+  To include the commands `vexpr'#? and the new `csop'#?,
+  which now provides the byte string functions of the former.
+  (Still available through `vexpr' until v15.)
+  (I hope to be able to later provide a `usop' or `unisop' or so.)
+
+- *v15-compat*#? can now have a value: if it is set, the
+  `wysh'#? command modifier which chooses shell quoting rules
+  for some commands is implicit.
+
+- We have some (more) backward incompatible changes, though it is
+  likely most users will not recognize the differences.
+
+  o *headline*#? format %T is obsolete, %L fits better.
+
+  o `csop'#? `hash' and `hash32' subcommands (formerly from
+    `vexpr'#?) use a slightly changed hash algorithm.
+    (Which results in an improved distribution for tested sets of
+    words in power-of-two spaced dictionary.)
+    These are affected by the change in the next item, too.
+
+  o Changed to use shell quoting rules for arguments:
+
+    + `mimetype'#? and `unmimetype'#?.
+      This is affected by the change in the next item, too.
+
+    + `shortcut'#? and `unshortcut'#?.
+
+    + `mlist'#? and `unmlist'#? as well as `mlsubscribe'#?
+      and `unmlsubscribe'#?.
+
+    + `alias'#?, too.
+
+  o Changed (with legacy compat) the "@[i]" modifier prefix to
+    a question-mark ?[case|..] suffix, as is known from URLs.
+    We head toward direction URL syntax, now here too.
+
+    + `if'#? and `elif'#?.
+      E.g., 'wysh if "abc" ==?case "ABC"' is true, as well as is
+      'wysh if 0xFFFFFFFFFFFFFFFF -eq?saturated 36#1Y2P0IJ32E8E7'.
+      "==?" and "-eq?" would have been sufficient, here.
+      (No unsigned mode (yet) for `if'#?.)
+
+      Yes, `if'#? and `elif'#? now support `wysh'#?, and
+      see already expanded arguments, then.  No more "triggers".
+      This finally makes it possible to write things like
+        ? wysh if X;A;wysh elif Y;B;else;C;end
+      Note 'else;C' not 'else C'.
+
+      New operators: '-n "$VAR"' and '-z "$VAR"' work like in the
+      shell, '-N varname' and '-Z varname' do not test the
+      expansion but the existence of variables instead.
+      Two argument forms require `wysh'#?.
+
+    + `mimetype'#? markers have changed likewise; this also
+      affects *pipe-TYPE/SUBTYPE*#? and *pipe-EXTENSION*#? (with
+      legacy compatibility and -v/-d obsoletion warnings)!
+
+        ? mimetype ?t text/x-awk  awk
+        ? wysh set pipe-application/pdf='?=&?\
+            trap "rm -f \"${MAILX_FILENAME_TEMPORARY}\"" EXIT;\
+            trap "trap \"\" INT QUIT TERM; exit 1" INT QUIT TERM;\
+            mupdf "${MAILX_FILENAME_TEMPORARY}"'
+
+    + `vexpr'#? (and `csop'#?) modifiers changed likewise.
+      The case-insensitive subcommands "ifind" and "iregex" have
+      been obsoleted, just use the ?[case] modifier to the regular
+      function instead.
+
+      P.S.: Thanks to Rich Felker the `regex' subcommands now
+      works as desired even with empty intermediatesubmatches.
+
+  o Changed address parse mode for command line arguments plus.
+    This modifies decade old tradition, but results in a more
+    predictable behaviour i think.  Most people will possibly even
+    be surprised to see the old behaviour:
+
+      $ </dev/null s-nail-old -dsubject ' du , de <p@p> , pp , du '
+      -> To: du, de <p@p>, pp
+    new:
+      $ </dev/null s-nail -dsubject ' du , de <p@p> , pp , du '
+      -> To: "du , de , pp , du " <p@p>
+
+    Of course anything but perfect, our address parser is very
+    complicated yet far from being acceptable.  (Dr. Werner Fink)
+    This affects:
+
+    + -b#?, -c#? and To: receivers, as above.
+      (We also have a new -T#? receiver multiplexer, which is
+      configurable in this regard, please see below for more.)
+
+    + The -r#? address.
+      This saw more changes: the content is no longer evaluated
+      via shell expression parser (when *v15-compat* is set)..
+      unless explicitly requested via the *expandaddr*#?
+      flag "shquote".
+
+    + *sender*#? variable.
+
+    + `addrcodec'#? command, likewise; old:
+        ? addrc e du , e <w@d> , d
+        du , e <w@d> , d
+        #?1!22/INVAL
+      new:
+        ? addrc e du , e <w@d> , d
+        "du , e , d" <w@d>
+        #?0!0/NONE
+
+    + `digmsg'#? and `~^'#? now use this parse mode fix for
+      headers which need a single receiver, which is backward
+      compatible but now safer since it can be fooled less easily
+      (to split into a list what should be a single address, as
+      shown above for `addrcodec'#?).
+
+      They now can also be forced to use that parse mode for To:,
+      Cc:, Bcc: with a new question mark modifier "?single", here
+      the word "single" is optional.
+
+       ~^ header insert To?single: exa, <m@ple>
+       ~^ header show to
+
+- By established rules and popular demand occurrances of '^From_'
+  (see *mbox-rfc4155*#?) will be MBOXO quoted (prefixed with
+  greater-than sign '>') instead of causing a non-destructive
+  encoding like 'quoted-printable' to be chosen, unless context
+  (e.g., message signing) requires otherwise.
+  Only with *mime-encoding*#?=8bit.
+
+- We now support long "Options"#? -- try --long-help.
+
+- Finally, it is possible to force sending out messages with the
+  new *mime-force-sendout*#? variable.  If this MUA has been
+  compiled with iconv(3) support it can happen that sending
+  otherwise valid text messages fails because of invalid bytes
+  sequences according to the locale; setting this new variable
+  will avoid this; use *mime-counter-evidence*#? to view such
+  messages nonetheless.  (Dr. Werner Fink)
+
+ChangeLog
+^^^^^^^^^
+
+- `mimeview'#? works again with binary formats.  (Russell Bell)
+
+- IMAP searches via IMAP without matches no longer report a single
+  match.  (Dirk-Wilhelm Peters)
+
+- New -Y#? aka --cmd= option to inject commands to be executed
+  when startup is completed (as opposed to the earlier -X#? aka
+  --startup-cmd=).
+  These commands appear as if the user had typed them in.
+
+- A new *on-history-addition*#? can be used to filter what
+  enters the `history'#?.
+
+- New "fcc" flag for *expandaddr*#?.  (Olav Mørkrid)
+
+  And "domaincheck" will cause target domain comparison against
+  entries in the new *expandaddr-domaincheck*#?.  (Olav Mørkrid)
+
+- New *mbox-fcc-and-pcc*#? will write out file and pipe addresses
+  as a plain RFC5322 message rather than an MBOX.  (Olav Mørkrid)
+
+- The `errors'#? queue existance and size is announced via
+  *^ERRQUEUE-EXISTS*#? and *^ERRQUEUE-COUNT*#?.
+  (Russell Bell, Martin Neitzel)
+
+- Our MBOX parser is now truly compliant to POSIX.
+  (Dr. Werner Fink)
+
+- We follow symbolic links again when writing files.
+  (Russell Bell)
+
+- *tls-rand-file*#? is in fact now necessarily an optional
+  *tls-feature*#?.  (Mike Sharov)
+
+- New command line option -T#? aka --target='FIELD: BODY'.
+  FIELD can be To:, Cc:, Bcc: or Fcc:.
+  The BODY is parsed as a list (just as if the given FIELD would
+  be part of a template message fed in via -t#?), but the
+  "?single" modifier suffix can be used to avoid this.
+  (Dr. Werner Fink)
+
+git(1) shortlog (edited)
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Steffen Nurpmeso (277):
+399fd251 nail.1: oops: document wysh EARLY (Jörg Schilling)!
+46d851c3 Clarify *posix*/wysh log message (Jörg Schilling)
+847d06f7 `signal': fix: make interruptible in macros; _really_ return INTR
+11d010e0 make-config.in: fix: remove ..-uninstall.sh in distclean: (Paride
+        Legovini)..
+72629b8f Several: fix spelling mistakes (Paride Legovini)
+01f6f96c a_coll_quote_message(): fix: stop mis-reuse of indicator (Olav
+        Mørkrid)..
+67e8dcc1 MLE:a_tty_readline(): allow terminal type-ahead in raw mode (Ralph
+        Corderoy)
+b6f480c7 c_vexpr(): i?regex: fix false optional atom match assignments (Rich
+        Felker)
+d81242a4 url_parse(): fix false preprocessor condition for !HAVE_TLS (Olav
+        Mørkrid)
+e4624808 Fix former: jump always needed since addition of `tls'! (Olav
+        Mørkrid)
+80984e8c make-release source: add "grappa" mode (Paride Legovini)
+c45d9b08 README: add docu for [80984e8c] (Paride Legovini)
+c32a821a url_parse(): tweak!?! an error message (Olav Mørkrid)
+23d68474 Tweak [34b66785] + document $COLUMNS and $LINES in batch mode (Jörg
+        Schilling)
+fa8ea474 Uninstall s-nail-uninstall.sh (Paride Legovini)
+c9693664 a_chead__hprf(): fix: do not overflow lines (for numerics) (Jörg
+        Schilling)
+99c0c09b Fix [fa8ea474] and -uninstall script with DESTDIR (Paride Legovini)
+414a8ec3 IMAP: fix dumb [dd6adbb3] ICONV/ALWAYS_UNICODE_LOCALE! (Predrag
+        Punosevac)
+102ddd7b make-errors.sh: Fix: add [E]LOOP! (Russell Bell)
+409182a3 THANKS: Russell Bell
+1a251320 a_header_cmatch(): fix long standing BSD Mail bug (Russell Bell)..
+187d0c36 `mimeview': fix binary formats (Russell Bell)..
+3f681781 FIX IMAP searches via IMAP without matches (Dirk-Wilhelm Peters)..
+cbb6297a MLE: FIX off-by-one (found on OSUKISS account: Jean-Marc Pigeon)..
+14d236e0 THANKS: Jean-Marc Pigeon
+e0edb15e MLE: FIX `bind' crash if expansion is empty..
+bd2932a5 a_tty_kht(): fix: do not expand "/a<TAB>" in 2nd try of "x/a<TAB>"
+e17a72a6 a_shexp__glob(): fix false concatenation one letter dirs (x/y/ ->
+        xy/)
+682b1eab Add "-Y cmd": add command to execute after startup completed
+96772eda Add *on-history-addition* hook
+9d43cb42 (BWDIC!) `mimetype', `unmimetype': only use shell quoting
+41393d6c nail.1: FAQ: add "Howto handle stale dotlock files"
+53d871a2 Add "fcc" flag for *expandaddr* (Olav Mørkrid)
+066e232b Compose-mode: In-Reply-To: -> "-": thread of one message (Warren
+        Toomey)
+c50d6882 THANKS: Warren Toomey
+a60d46e7 Add *mbox-fcc-and-pcc* (Olav Mørkrid)
+038591a8 *expandaddr*: add "domaincheck" (via *expandaddr-domaincheck*) (Olav
+        Mørkrid)
+6b6a302c a_socket_connect(): show progress if interactive (Cág)
+70a7b713 Add *socket-connect-timeout* (Cág)
+3d4527be Require -vv not -v for some verbose stuff
+79fee7e4 termcap care for auto_right_margin/eat_newline_glitch (Jörg
+        Schilling)..
+4ef2c81f CS hash: mix final hash as via Bret Mulvey
+e6fbc7df (BWDIC!) VAL_PRIVSEP_USER -> VAL_DOTLOCK_PS_USER (and helper, too)..
+bc1501e1 -V: more verbose version via new shared n_version() (Russell Bell)
+36f94d20 Add ^ERRQUEUE-{COUNT,EXISTS} (Russell Bell, Martin Neitzel)
+dc965574 a_folder_mbox_setptr(): improve/correct MBOX detection (Dr. Werner
+        Fink)..
+e8209a21 Auto-fix when MBOX had From_ errors on read (Dr. Werner Fink)..
+ce4bf2e2 Disable usage of O_NOFOLLOW again (Russell Bell)..
+73f01290 `vexpr': add file-stat, file-lstat subcommands
+8f81863d mx-test.sh: add test for [187d0c36] (Russell Bell)
+f65ea88f mx-test.sh: set $TMPDIR= to the test dir, too
+d904e20f src/mx/send.c:_pipefile(): longer random name on e.g. Solaris..
+c0911bd0 Add *mime-force-sendout* (Dr. Werner Fink)
+2991b36c RAND_DRBG_set_reseed_defaults() (Dr. M. St. Pierre, Kurt Roeckx)..
+3df346bf THANKS: Dr. Matthias St. Pierre
+9fbf612f THANKS: Kurt Roeckx
+06157945 PRNG: (hopefully) improve our homebrew seed
+5c2a013b *tls-rand-file*: optional *tls-feature* it is (Mike Sharov)..
+9e701b87 THANKS: Mike Sharov
+e25adacc nail.1: -M: mention MIME type classification (Joan)
+c0e3ce09 THANKS: Joan
+e26bb201 mx-test.sh:t_shcodec: test Unicode 3.0, not 6.0 character
+        (Dirk-Wilhelm Peters)
+a0c2e3dd a_dotlock_create(): tweak dotlock-ps (Jean-Marc Pigeon, Russell
+        Bell)..
+e9446024 n_nodename(): ensure hostname is not empty (Jean-Marc Pigeon)..
+901f1d63 (BWDIC!) Tweak addr parser a bit, add GNOT_A_LIST,GNULL_OK (Dr.
+        Werner Fink)..
+8274bc5c (BWDIC!) config/make stuff: unroll!  -> VAL_PS_DOTLOCK_USER!..
+56caf9cc (BWDIC!) *headline*: %T -> %L
+78d97b02 (BWDIC!) `shortcut': split out of groups, use su_cs_dict; -> sh arg.
+        quoting
+4f877ab3 (BWDIC!) `mlist',`mlsubscribe': detach, use su_cs_dict; -> sh arg.
+        quoting
+0fc59f2f (BWDIC!) Warp `alias' to su_cs_dict; -> sh arg. quoting
+69977fa3 Fix -: arg: was yet [:/], but should have been [/-]
+e7b50edf a_amv_var_lookup(): panic if default value cannot be set (Russell
+        Bell)..
+1d275b60 *sender*: use n_extract_single()
+0f52c7cd (BWDIC!) `digmsg': a_dmsg__header(): use n_extract_single() if
+        possible
+1305284a Reintroduce ^From_ MBOXO with *mime-encoding*=8b (too many!)..
+8fdbeb87 ([BWDIC!]) `mimetype' / MIME type markers: use ? trigger, not @
+0a0ef19f ([BWDIC!]) Add new OPT_CMD_VEXPR and OPT_CMD_CSOP, by default
+        enabled..
+433f0eb4 ([BWDIC!]) `if/elif': change modifier to ? suffix..
+81b2e119 Add "-T arget:address" a.k.a. --target= (Dr. Werner Fink)..
+c286d6ad (BWDIC!) OPT_QUOTE_FOLD->OPT_FILTER_QUOTE_FOLD; sort OPT_s
+873ac396 *v15-compat*: turn to value, extend meaning (imply `wysh')..
+f1721ef9 `bind': act like 'bind*' when used without arguments
+8f967543 (BWDIC!) nail.1: `csop': document hash algorithm change
+624fc223 `if', `elif': support wysh; add two argument -N, -n, -Z and -z
+138de50c `if', `elif': support ?[saturated] integer comparisons
+d8efd395 n_go_main_loop(): untangle SOURCING/ROBOT; no *newmail* checks during
+        injections!
+22f2eea7 a_shexp__glob(): support diving under EACCESS path (Dr. Werner
+        Fink)..
+3e81e69b a_shexp__glob(): optimize: if it cannot be a pattern, simply dive in
+2cdc3358 (BWDIC!) -b,-c,TO: no longer parse as lists!
+60a1b30e -r: do not parse argument with shexp
+973675b5 -r: support "shquote" *expandaddr* flag
+12043b7c Support ?[single] modifier for To:, Cc: and Bcc:
+0c2ab4bf `digmsg',`~^': support ?[single] modifier for To:, Cc: and Bcc:..
 
 v14.9.11 ("Tit family enjoying a bath"), 2018-08-08
 ---------------------------------------------------
