@@ -1803,7 +1803,8 @@ n_tls_open(struct url *urlp, struct sock *sp){
       goto jerr2;
    }
 
-   if(n_tls_verify_level != n_TLS_VERIFY_IGNORE){
+   if(urlp->url_cproto == CPROTO_CERTINFO ||
+         n_tls_verify_level != n_TLS_VERIFY_IGNORE){
       bool_t stay;
       X509 *peercert;
 
@@ -1817,7 +1818,7 @@ n_tls_open(struct url *urlp, struct sock *sp){
          stay = n_tls_verify_decide();
       }
 
-      if(n_poption & n_PO_D_V){
+      if(urlp->url_cproto == CPROTO_CERTINFO || (n_poption & n_PO_D_V)){
          char fpmdhexbuf[EVP_MAX_MD_SIZE * 3], *cp;
          unsigned char fpmdbuf[EVP_MAX_MD_SIZE], *ucp;
          unsigned int fpmdlen;
@@ -1840,7 +1841,9 @@ n_tls_open(struct url *urlp, struct sock *sp){
          }
          cp[-1] = '\0';
 
-         n_err(_("TLS %s fingerprint: %s\n"), cmdnamep, fpmdhexbuf);
+         if(n_poption & n_PO_D_V)
+            n_err(_("TLS %s fingerprint: %s\n"), cmdnamep, fpmdhexbuf);
+         sp->s_tls_finger = savestrbuf(fpmdhexbuf, PTR2SIZE(cp - fpmdhexbuf));
       }
 
 jerr_peer:

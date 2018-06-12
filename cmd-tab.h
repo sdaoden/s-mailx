@@ -642,6 +642,15 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
    { "unheaderpick", &c_unheaderpick, (M | TWYSH), 3, MAC, NULL
      DS(N_("Header deselection: <context> <type> <header-list>"))},
 
+   { "tls",
+#ifdef HAVE_TLS
+      &c_tls,
+#else
+      NULL,
+#endif
+      (G | V | EM | TWYSH), 1, MAC, NULL
+     DS(N_("TLS information and management: <command> [<:argument:>]")) },
+
    /* Codec commands */
 
    { "addrcodec", &c_addrcodec, (G | M | V | X | EM | TRAWDAT), 0, 0, NULL

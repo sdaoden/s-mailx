@@ -856,13 +856,14 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
    urlp->url_cproto = cproto;
 
    /* Network protocol */
-#define a_PROTOX(X,Y,Z)  \
+#define a_PROTOX(X,Y,Z) \
    urlp->url_portno = Y;\
-   /* .url_proto has two NULs ... */\
    memcpy(urlp->url_proto, X "://\0", sizeof(X "://\0"));\
    urlp->url_proto[sizeof(X) -1] = '\0';\
    urlp->url_proto_len = sizeof(X) -1;\
    do{ Z; }while(0)
+#define a_PRIVPROTOX(X,Y,Z) \
+   do{ a_PROTOX(X, Y, Z); }while(0)
 #define a__IF(X,Y,Z)  \
    if(!ascncasecmp(data, X "://", sizeof(X "://") -1)){\
       a_PROTOX(X, Y, Z);\
@@ -879,10 +880,33 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #endif
 
    switch(cproto){
+   case CPROTO_CERTINFO:
+      /* The special `tls' certificate info protocol
+       * We do allow all protos here, for later getaddrinfo() usage! */
+#ifdef HAVE_TLS
+      if((cp = strstr(data, "://")) == NULL)
+         a_PRIVPROTOX("https", 443, urlp->url_flags |= n_URL_TLS_REQUIRED);
+      else{
+         size_t i;
+
+         if((i = PTR2SIZE(&cp[sizeof("://") -1] - data)) + 2 >=
+               sizeof(urlp->url_proto))
+            goto jeproto;
+         memcpy(urlp->url_proto, data, i);
+         data += i;
+         i -= sizeof("://") -1;
+         urlp->url_proto[i] = '\0';\
+         urlp->url_proto_len = i;
+         urlp->url_flags |= n_URL_TLS_REQUIRED;
+      }
+      break;
+#else
+      goto jeproto;
+#endif
    case CPROTO_CCRED:
       /* The special S/MIME etc. credential lookup */
 #ifdef HAVE_TLS
-      a_PROTOX("ccred", 0, (void)0);
+      a_PRIVPROTOX("ccred", 0, (void)0);
       break;
 #else
       goto jeproto;
@@ -923,6 +947,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #endif
    }
 
+#undef a_PRIVPROTOX
 #undef a_PROTOX
 #undef a__IF
 #undef a_IF

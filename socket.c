@@ -339,7 +339,8 @@ jjumped:
 jsclose:
          sclose(sp);
          sofd = -1;
-      }
+      }else if(urlp->url_cproto == CPROTO_CERTINFO)
+         sclose(sp);
 
       hold_sigs();
       safe_signal(SIGINT, oint);

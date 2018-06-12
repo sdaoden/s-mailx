@@ -2086,6 +2086,7 @@ FL bool_t      smtp_mta(struct sendbundle *sbp);
  */
 
 #ifdef HAVE_SOCKETS
+/* Immediately closes the socket for CPROTO_CERTINFO */
 FL bool_t      sopen(struct sock *sp, struct url *urlp);
 FL int         sclose(struct sock *sp);
 FL enum okay   swrite(struct sock *sp, char const *data);
@@ -2558,7 +2559,10 @@ FL int         c_certsave(void *v);
 
 /* */
 FL bool_t n_tls_rfc2595_hostname_match(char const *host, char const *pattern);
-#endif
+
+/* `tls' */
+FL int c_tls(void *vp);
+#endif /* HAVE_TLS */
 
 /*
  * tty.c

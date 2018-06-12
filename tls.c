@@ -427,6 +427,75 @@ n_tls_rfc2595_hostname_match(char const *host, char const *pattern){
    NYD_LEAVE;
    return rv;
 }
+
+FL int
+c_tls(void *vp){
+   size_t i;
+   char const **argv, *varname, *varres, *cp;
+   NYD_ENTER;
+
+   argv = vp;
+   vp = NULL; /* -> return value (boolean) */
+   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
+   varres = n_empty;
+
+   if((cp = argv[0])[0] == '\0')
+      goto jesubcmd;
+   else if(is_asccaseprefix(cp, "fingerprint")){
+#ifndef HAVE_SOCKETS
+      n_err(_("`tls': fingerprint: no +sockets in *features*\n"));
+      n_pstate_err_no = n_ERR_OPNOTSUPP;
+      goto jleave;
+#else
+      struct sock so;
+      struct url url;
+
+      if(argv[1] == NULL || argv[2] != NULL)
+         goto jesynopsis;
+      if((i = strlen(*++argv)) >= UI32_MAX)
+         goto jeoverflow; /* TODO generic for ALL commands!! */
+      if(!url_parse(&url, CPROTO_CERTINFO, *argv))
+         goto jeinval;
+      if(!sopen(&so, &url)){ /* auto-closes for CPROTO_CERTINFO on success */
+         n_pstate_err_no = n_err_no;
+         goto jleave;
+      }
+      if(so.s_tls_finger == NULL)
+         goto jeinval;
+      varres = so.s_tls_finger;
+#endif /* HAVE_SOCKETS */
+   }else
+      goto jesubcmd;
+
+   n_pstate_err_no = n_ERR_NONE;
+   vp = (char*)-1;
+jleave:
+   if(varname == NULL){
+      if(fprintf(n_stdout, "%s\n", varres) < 0){
+         n_pstate_err_no = n_err_no;
+         vp = NULL;
+      }
+   }else if(!n_var_vset(varname, (uintptr_t)varres)){
+      n_pstate_err_no = n_ERR_NOTSUP;
+      vp = NULL;
+   }
+   NYD_LEAVE;
+   return (vp == NULL);
+
+jeoverflow:
+   n_err(_("`tls': string length or offset overflows datatype\n"));
+   n_pstate_err_no = n_ERR_OVERFLOW;
+   goto jleave;
+
+jesubcmd:
+   n_err(_("`tls': invalid subcommand: %s\n"),
+      n_shexp_quote_cp(*argv, FAL0));
+jesynopsis:
+   n_err(_("Synopsis: tls: <command> [<:argument:>]\n"));
+jeinval:
+   n_pstate_err_no = n_ERR_INVAL;
+   goto jleave;
+}
 #endif /* HAVE_TLS */
 
 /* s-it-mode */

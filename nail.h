@@ -729,6 +729,7 @@ enum conversion {
 };
 
 enum cproto {
+   CPROTO_CERTINFO,  /* Special dummy proto for TLS certificate info xxx */
    CPROTO_CCRED,     /* Special dummy credential proto (S/MIME etc.) */
    CPROTO_SOCKS,     /* Special dummy SOCKS5 proxy proto */
    CPROTO_SMTP,
@@ -2199,6 +2200,7 @@ struct sock { /* data associated with a socket */
 # ifdef HAVE_XTLS
    void *s_tls;         /* SSL object */
 # endif
+   char *s_tls_finger;  /* Set to autorec! store for CPROTO_CERTINFO */
 #endif
    char *s_wbuf;        /* for buffered writes */
    int s_wbufsize;      /* allocated size of s_buf */

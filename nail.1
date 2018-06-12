@@ -6844,6 +6844,39 @@ flag of the messages in question.
 .Ql commandalias
 as necessary).
 .
+.
+.Mx
+.It Ic tls
+\*(NQ TLS information and management command multiplexer to aid in
+.Sx "Encrypted network communication" .
+Commands support
+.Cm vput
+if so documented (see
+.Sx "Command modifiers" ) .
+The result that is shown in case of errors is always the empty string,
+errors can be identified via the error number
+.Va \&! .
+For example, string length overflows are catched and set
+.Va \&!
+to
+.Va ^ERR Ns -OVERFLOW .
+.Bd -literal -offset indent
+? vput tls result fingerprint pop3s://ex.am.ple
+? echo $?/$!/$^ERRNAME: $result
+.Ed
+.
+.Bl -hang -width ".It Cm random"
+.It Cm fingerprint
+Show the SHA-256 fingerprint of the certificate of the given HOST
+.Pf ( Ql server:port ,
+where the port defaults to the HTTPS port, 443).
+Only available if the term
+.Ql +sockets
+is included in
+.Va features .
+.El
+.
+.
 .Mx
 .It Ic Top
 Like
@@ -12133,7 +12166,7 @@ directly as arguments to the function
 .Xr SSL_CONF_cmd 3 .
 .
 .Pp
-.Bl -tag -compact -width ".It Cd C_rtificate"
+.Bl -tag -compact -width ".It Cd C_rtificate_"
 .It Cd Certificate
 Filename of a TLS client certificate (chain) required by some servers.
 Fallback support via
@@ -12274,7 +12307,9 @@ Optional features are preceded with a plus sign
 .Ql +
 when available, and with a hyphen-minus
 .Ql -
-otherwise:
+otherwise.
+.Pp
+Currently known features are
 .Ql modules-load-file
 .Pf ( Va tls-config-file ) ,
 .Ql conf-ctx
