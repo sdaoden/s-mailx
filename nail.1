@@ -1713,12 +1713,13 @@ and used by \*(UA to encrypt further communication with these senders:
 .Pp
 To sign outgoing messages, in order to allow receivers to verify the
 origin of these messages, a personal S/MIME certificate is required.
-\*(UA supports password-protected personal certificates (and keys),
-for more on this, and its automatization, please see the section
-.Sx "On URL syntax and credential lookup" .
+\*(UA supports password-protected personal certificates (and keys), see
+.Va smime-sign-cert .
 The section
+.Sx "On URL syntax and credential lookup"
+gives an overview of the possible sources of user credentials, and
 .Sx "S/MIME step by step"
-shows examplarily how such a private certificate can be obtained.
+shows examplarily how a private S/MIME certificate can be obtained.
 In general, if such a private key plus certificate
 .Dq pair
 is available, all that needs to be done is to set some variables:
