@@ -344,7 +344,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
    { "uncollapse", &c_uncollapse, (A | TMSGLST), 0, 0, NULL
      DS(N_("Uncollapse <msglist> if in threaded view")) },
    { "verify",
-#ifdef HAVE_XSSL
+#ifdef HAVE_XTLS
       &c_verify,
 #else
       NULL,
@@ -356,7 +356,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
    { "Decrypt", &c_Decrypt, (A | M | SC | TSTRING), 0, 0, NULL
      DS(N_("Like `decrypt', but derive filename from first sender")) },
    { "certsave",
-#ifdef HAVE_SSL
+#ifdef HAVE_TLS
       &c_certsave,
 #else
       NULL,

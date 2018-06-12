@@ -22,8 +22,8 @@ XOPTIONS="\
    ICONV='Character set conversion using iconv(3)' \
    MAILDIR='Maildir E-mail directories' \
    SOCKETS='Network support' \
-      SSL='SSL/TLS (OpenSSL / LibreSSL)' \
-         SSL_ALL_ALGORITHMS='Support of all digest and cipher algorithms' \
+      TLS='Transport Layer Security (OpenSSL / LibreSSL)' \
+         TLS_ALL_ALGORITHMS='Support of all digest and cipher algorithms' \
       SMTP='Simple Mail Transfer Protocol client' \
       POP3='Post Office Protocol Version 3 client' \
       IMAP='IMAP v4r1 client' \
@@ -131,7 +131,7 @@ option_setup() {
       [nN][eE][tT][sS][eE][nN][dD])
          OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
          OPT_SOCKETS=require
-            OPT_SSL=require
+            OPT_TLS=require
             OPT_SMTP=require
             OPT_GSSAPI=1 OPT_NETRC=1
                OPT_AGENT=1
@@ -168,8 +168,8 @@ option_setup() {
 
 # Inter-relationships XXX sort this!
 option_update() {
-   if feat_no SSL; then
-      OPT_SSL_ALL_ALGORITHMS=0
+   if feat_no TLS; then
+      OPT_TLS_ALL_ALGORITHMS=0
    fi
 
    if feat_no SMTP && feat_no POP3 && feat_no IMAP; then
@@ -188,7 +188,7 @@ option_update() {
          msg 'ERROR: need SOCKETS for required feature IMAP'
          config_exit 13
       fi
-      OPT_SSL=0 OPT_SSL_ALL_ALGORITHMS=0
+      OPT_TLS=0 OPT_TLS_ALL_ALGORITHMS=0
       OPT_SMTP=0 OPT_POP3=0 OPT_IMAP=0
       OPT_GSSAPI=0 OPT_NETRC=0 OPT_AGENT=0
    fi
@@ -1892,7 +1892,7 @@ int main(void){
 
 ##
 
-# The random check has been moved to below SSL detection due to multiple choice
+# The random check has been moved to below TLS detection due to multiple choice
 # selection for PRG sources
 
 link_check putc_unlocked 'putc_unlocked(3)' '#define HAVE_PUTC_UNLOCKED' <<\!
@@ -2414,16 +2414,16 @@ int main(void){
 }
 !
 
-VAL_SSL_FEATURES=
-if feat_yes SSL; then # {{{
+VAL_TLS_FEATURES=
+if feat_yes TLS; then # {{{
    # {{{ LibreSSL decided to define OPENSSL_VERSION_NUMBER with a useless value
    # instead of keeping it at the one that corresponds to the OpenSSL at fork
    # time: we need to test it first in order to get things right
-   if compile_check _xssl 'TLS/SSL (LibreSSL)' \
-      '#define HAVE_SSL
-      #define HAVE_XSSL
-      #define HAVE_XSSL_RESSL
-      #define HAVE_XSSL_OPENSSL 0' << \!
+   if compile_check _xtls 'TLS (LibreSSL)' \
+      '#define HAVE_TLS
+      #define HAVE_XTLS
+      #define HAVE_XTLS_RESSL
+      #define HAVE_XTLS_OPENSSL 0' << \!
 #include <openssl/opensslv.h>
 #ifdef LIBRESSL_VERSION_NUMBER
 #else
@@ -2432,12 +2432,12 @@ if feat_yes SSL; then # {{{
 !
    then
       ossl_v1_1=
-      VAL_SSL_FEATURES=libressl
+      VAL_TLS_FEATURES=libressl
    # TODO OPENSSL_IS_BORINGSSL, but never tried that one!
-   elif compile_check _xssl 'TLS/SSL (OpenSSL >= v1.1.0)' \
-      '#define HAVE_SSL
-      #define HAVE_XSSL
-      #define HAVE_XSSL_OPENSSL 0x10100' << \!
+   elif compile_check _xtls 'TLS (OpenSSL >= v1.1.0)' \
+      '#define HAVE_TLS
+      #define HAVE_XTLS
+      #define HAVE_XTLS_OPENSSL 0x10100' << \!
 #include <openssl/opensslv.h>
 #if OPENSSL_VERSION_NUMBER + 0 >= 0x10100000L
 #else
@@ -2446,11 +2446,11 @@ if feat_yes SSL; then # {{{
 !
    then
       ossl_v1_1=1
-      VAL_SSL_FEATURES=libssl-0x10100
-   elif compile_check _xssl 'TLS/SSL (OpenSSL)' \
-      '#define HAVE_SSL
-      #define HAVE_XSSL
-      #define HAVE_XSSL_OPENSSL 0x10000' << \!
+      VAL_TLS_FEATURES=libssl-0x10100
+   elif compile_check _xtls 'TLS (OpenSSL)' \
+      '#define HAVE_TLS
+      #define HAVE_XTLS
+      #define HAVE_XTLS_OPENSSL 0x10000' << \!
 #include <openssl/opensslv.h>
 #ifdef OPENSSL_VERSION_NUMBER
 #else
@@ -2459,18 +2459,18 @@ if feat_yes SSL; then # {{{
 !
    then
       ossl_v1_1=
-      VAL_SSL_FEATURES=libssl-0x10000
+      VAL_TLS_FEATURES=libssl-0x10000
    else
-      feat_bail_required SSL
+      feat_bail_required TLS
    fi # }}}
 
-   if feat_yes SSL; then # {{{
+   if feat_yes TLS; then # {{{
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xssl 'TLS/SSL new style TLS_client_method(3ssl)' \
-            '#define n_XSSL_CLIENT_METHOD TLS_client_method' \
+         without_check yes xtls 'TLS new style TLS_client_method(3ssl)' \
+            '#define n_XTLS_CLIENT_METHOD TLS_client_method' \
             '-lssl -lcrypto'
-      elif link_check xssl 'TLS/SSL new style TLS_client_method(3ssl)' \
-            '#define n_XSSL_CLIENT_METHOD TLS_client_method' \
+      elif link_check xtls 'TLS new style TLS_client_method(3ssl)' \
+            '#define n_XTLS_CLIENT_METHOD TLS_client_method' \
             '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -2490,8 +2490,8 @@ int main(void){
 !
       then
          :
-      elif link_check xssl 'TLS/SSL old style SSLv23_client_method(3ssl)' \
-            '#define n_XSSL_CLIENT_METHOD SSLv23_client_method' \
+      elif link_check xtls 'TLS old style SSLv23_client_method(3ssl)' \
+            '#define n_XTLS_CLIENT_METHOD SSLv23_client_method' \
             '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -2513,17 +2513,17 @@ int main(void){
       then
          :
       else
-         feat_bail_required SSL
+         feat_bail_required TLS
       fi
    fi # }}}
 
-   if feat_yes SSL; then # {{{
-      if feat_yes SSL_ALL_ALGORITHMS; then
+   if feat_yes TLS; then # {{{
+      if feat_yes TLS_ALL_ALGORITHMS; then
          if [ -n "${ossl_v1_1}" ]; then
-            without_check yes ssl_all_algo 'TLS/SSL all-algorithms support' \
-               '#define HAVE_SSL_ALL_ALGORITHMS'
-         elif link_check ssl_all_algo 'TLS/SSL all-algorithms support' \
-            '#define HAVE_SSL_ALL_ALGORITHMS' << \!
+            without_check yes tls_all_algo 'TLS all-algorithms support' \
+               '#define HAVE_TLS_ALL_ALGORITHMS'
+         elif link_check tls_all_algo 'TLS all-algorithms support' \
+            '#define HAVE_TLS_ALL_ALGORITHMS' << \!
 #include <openssl/evp.h>
 int main(void){
    OpenSSL_add_all_algorithms();
@@ -2535,19 +2535,19 @@ int main(void){
          then
             :
          else
-            feat_bail_required SSL_ALL_ALGORITHMS
+            feat_bail_required TLS_ALL_ALGORITHMS
          fi
       elif [ -n "${ossl_v1_1}" ]; then
-         without_check yes ssl_all_algo \
-            'TLS/SSL all-algorithms (always available in v1.1.0+)' \
-            '#define HAVE_SSL_ALL_ALGORITHMS'
+         without_check yes tls_all_algo \
+            'TLS all-algorithms (always available in v1.1.0+)' \
+            '#define HAVE_TLS_ALL_ALGORITHMS'
       fi
 
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xssl_stack_of 'TLS/SSL STACK_OF()' \
-            '#define HAVE_XSSL_STACK_OF'
-      elif compile_check xssl_stack_of 'TLS/SSL STACK_OF()' \
-            '#define HAVE_XSSL_STACK_OF' << \!
+         without_check yes xtls_stack_of 'TLS STACK_OF()' \
+            '#define HAVE_XTLS_STACK_OF'
+      elif compile_check xtls_stack_of 'TLS STACK_OF()' \
+            '#define HAVE_XTLS_STACK_OF' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -2566,12 +2566,12 @@ int main(void){
       fi
 
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xssl_conf 'TLS/SSL OpenSSL_modules_load_file(3ssl)' \
-            '#define HAVE_XSSL_CONFIG'
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+modules-load-file"
-      elif link_check xssl_conf \
-            'TLS/SSL OpenSSL_modules_load_file(3ssl) support' \
-            '#define HAVE_XSSL_CONFIG' << \!
+         without_check yes xtls_conf 'TLS OpenSSL_modules_load_file(3ssl)' \
+            '#define HAVE_XTLS_CONFIG'
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+modules-load-file"
+      elif link_check xtls_conf \
+            'TLS OpenSSL_modules_load_file(3ssl) support' \
+            '#define HAVE_XTLS_CONFIG' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/conf.h>
 int main(void){
@@ -2581,17 +2581,17 @@ int main(void){
 }
 !
       then
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+modules-load-file"
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+modules-load-file"
       else
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-modules-load-file"
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},-modules-load-file"
       fi
 
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xssl_conf_ctx 'TLS/SSL SSL_CONF_CTX support' \
-            '#define HAVE_XSSL_CONF_CTX'
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+conf-ctx"
-      elif link_check xssl_conf_ctx 'TLS/SSL SSL_CONF_CTX support' \
-         '#define HAVE_XSSL_CONF_CTX' << \!
+         without_check yes xtls_conf_ctx 'TLS SSL_CONF_CTX support' \
+            '#define HAVE_XTLS_CONF_CTX'
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+conf-ctx"
+      elif link_check xtls_conf_ctx 'TLS SSL_CONF_CTX support' \
+         '#define HAVE_XTLS_CONF_CTX' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 int main(void){
@@ -2610,18 +2610,18 @@ int main(void){
 }
 !
       then
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+conf-ctx"
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+conf-ctx"
       else
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-conf-ctx"
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},-conf-ctx"
       fi
 
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xssl_ctx_config 'TLS/SSL SSL_CTX_config(3ssl)' \
-            '#define HAVE_XSSL_CTX_CONFIG'
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+ctx-config"
-      elif [ -n "${have_xssl_conf}" ] && [ -n "${have_xssl_conf_ctx}" ] &&
-            link_check xssl_ctx_config 'TLS/SSL SSL_CTX_config(3ssl)' \
-               '#define HAVE_XSSL_CTX_CONFIG' << \!
+         without_check yes xtls_ctx_config 'TLS SSL_CTX_config(3ssl)' \
+            '#define HAVE_XTLS_CTX_CONFIG'
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-config"
+      elif [ -n "${have_xtls_conf}" ] && [ -n "${have_xtls_conf_ctx}" ] &&
+            link_check xtls_ctx_config 'TLS SSL_CTX_config(3ssl)' \
+               '#define HAVE_XTLS_CTX_CONFIG' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 int main(void){
@@ -2630,19 +2630,19 @@ int main(void){
 }
 !
       then
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+ctx-config"
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-config"
       else
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-ctx-config"
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},-ctx-config"
       fi
 
-      if [ -n "${ossl_v1_1}" ] && [ -n "${have_xssl_conf_ctx}" ]; then
-         without_check yes xssl_set_maxmin_proto \
-            'TLS/SSL SSL_CTX_set_min_proto_version(3ssl)' \
-            '#define HAVE_XSSL_SET_MIN_PROTO_VERSION'
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+ctx-set-maxmin-proto"
-      elif link_check xssl_set_maxmin_proto \
-         'TLS/SSL SSL_CTX_set_min_proto_version(3ssl)' \
-         '#define HAVE_XSSL_SET_MIN_PROTO_VERSION' << \!
+      if [ -n "${ossl_v1_1}" ] && [ -n "${have_xtls_conf_ctx}" ]; then
+         without_check yes xtls_set_maxmin_proto \
+            'TLS SSL_CTX_set_min_proto_version(3ssl)' \
+            '#define HAVE_XTLS_SET_MIN_PROTO_VERSION'
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-set-maxmin-proto"
+      elif link_check xtls_set_maxmin_proto \
+         'TLS SSL_CTX_set_min_proto_version(3ssl)' \
+         '#define HAVE_XTLS_SET_MIN_PROTO_VERSION' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 int main(void){
@@ -2652,19 +2652,19 @@ int main(void){
 }
 !
       then
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+ctx-set-maxmin-proto"
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-set-maxmin-proto"
       else
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-ctx-set-maxmin-proto"
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},-ctx-set-maxmin-proto"
       fi
 
-      if [ -n "${ossl_v1_1}" ] && [ -n "${have_xssl_conf_ctx}" ]; then
-         without_check yes xssl_set_ciphersuites \
+      if [ -n "${ossl_v1_1}" ] && [ -n "${have_xtls_conf_ctx}" ]; then
+         without_check yes xtls_set_ciphersuites \
             'TLSv1.3 SSL_CTX_set_ciphersuites(3ssl)' \
-            '#define HAVE_XSSL_SET_CIPHERSUITES'
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+ctx-set-ciphersuites"
-      elif link_check xssl_set_ciphersuites \
+            '#define HAVE_XTLS_SET_CIPHERSUITES'
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-set-ciphersuites"
+      elif link_check xtls_set_ciphersuites \
          'TLSv1.3 SSL_CTX_set_ciphersuites(3ssl)' \
-         '#define HAVE_XSSL_SET_CIPHERSUITES' << \!
+         '#define HAVE_XTLS_SET_CIPHERSUITES' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 int main(void){
@@ -2673,28 +2673,15 @@ int main(void){
 }
 !
       then
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+ctx-set-ciphersuites"
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-set-ciphersuites"
       else
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-ctx-set-ciphersuites"
-      fi
-
-      if link_check xssl_rand_egd 'TLS/SSL RAND_egd(3ssl)' \
-            '#define HAVE_XSSL_RAND_EGD' << \!
-#include <openssl/rand.h>
-int main(void){
-   return RAND_egd("some.where") > 0;
-}
-!
-      then
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+rand-egd"
-      else
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-rand-egd"
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},-ctx-set-ciphersuites"
       fi
    fi # feat_yes SSL }}}
 
-   if feat_yes SSL && feat_yes MD5 && feat_no NOEXTMD5; then # {{{
-      run_check ssl_md5 'MD5 digest in the used crypto library' \
-            '#define HAVE_XSSL_MD5' << \!
+   if feat_yes TLS && feat_yes MD5 && feat_no NOEXTMD5; then # {{{
+      run_check tls_md5 'MD5 digest in the used crypto library' \
+            '#define HAVE_XTLS_MD5' << \!
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/md5.h>
@@ -2721,18 +2708,18 @@ int main(void){
 !
    fi # }}}
 
-   if feat_yes SSL; then
-      feat_def SSL_ALL_ALGORITHMS
+   if feat_yes TLS; then
+      feat_def TLS_ALL_ALGORITHMS
    else
-      feat_bail_required SSL_ALL_ALGORITHMS
+      feat_bail_required TLS_ALL_ALGORITHMS
    fi
 else
-   feat_is_disabled SSL
-   feat_is_disabled SSL_ALL_ALGORITHMS
-fi # }}} feat_yes SSL
-printf '#define VAL_SSL_FEATURES "#'"${VAL_SSL_FEATURES}"'"\n' >> ${h}
+   feat_is_disabled TLS
+   feat_is_disabled TLS_ALL_ALGORITHMS
+fi # }}} feat_yes TLS
+printf '#define VAL_TLS_FEATURES "#'"${VAL_TLS_FEATURES}"'"\n' >> ${h}
 
-if [ "${have_xssl}" = yes ]; then
+if [ "${have_xtls}" = yes ]; then
    OPT_SMIME=1
 else
    OPT_SMIME=0
@@ -2741,7 +2728,7 @@ feat_def SMIME
 
 # VAL_RANDOM {{{
 if val_allof VAL_RANDOM \
-      "arc4,ssl,libgetrandom,sysgetrandom,urandom,builtin,error"; then
+      "arc4,tls,libgetrandom,sysgetrandom,urandom,builtin,error"; then
    :
 else
    msg 'ERROR: VAL_RANDOM with invalid entries: %s' "${VAL_RANDOM}"
@@ -2759,13 +2746,13 @@ int main(void){
 !
 }
 
-val_random_ssl() {
-   if feat_yes SSL; then
-      msg ' . VAL_RANDOM: ssl ... yes'
-      echo '#define HAVE_RANDOM n_RANDOM_IMPL_SSL' >> ${h}
+val_random_tls() {
+   if feat_yes TLS; then
+      msg ' . VAL_RANDOM: tls ... yes'
+      echo '#define HAVE_RANDOM n_RANDOM_IMPL_TLS' >> ${h}
       return 0
    else
-      msg ' . VAL_RANDOM: ssl ... no'
+      msg ' . VAL_RANDOM: tls ... no'
       return 1
    fi
 }

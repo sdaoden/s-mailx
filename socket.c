@@ -60,7 +60,7 @@ EMPTY_FILE()
 # include <arpa/inet.h>
 #endif
 
-#ifdef HAVE_XSSL
+#ifdef HAVE_XTLS
 # include <openssl/err.h>
 # include <openssl/rand.h>
 # include <openssl/ssl.h>
@@ -119,6 +119,7 @@ a_socket_open(struct sock *sp, struct url *urlp) /* TODO sigstuff; refactor */
    int volatile sofd = -1, errval;
    NYD2_ENTER;
 
+   memset(sp, 0, sizeof *sp);
    n_UNINIT(errval, 0);
 
    serv = (urlp->url_port != NULL) ? urlp->url_port : urlp->url_proto;
@@ -289,6 +290,7 @@ jjumped:
       goto jleave;
    }
 
+   sp->s_fd = sofd;
    if (n_poption & n_PO_D_V)
       n_err(_("connected.\n"));
 
@@ -305,11 +307,8 @@ jjumped:
    (void)setsockopt(sofd, SOL_SOCKET, SO_LINGER, &li, sizeof li);
 # endif
 
-   memset(sp, 0, sizeof *sp);
-   sp->s_fd = sofd;
-
    /* SSL/TLS upgrade? */
-# ifdef HAVE_SSL
+# ifdef HAVE_TLS
    hold_sigs();
 
 #  if defined HAVE_GETADDRINFO && defined SSL_CTRL_SET_TLSEXT_HOSTNAME /* TODO
@@ -336,7 +335,7 @@ jjumped:
       }
       rele_sigs();
 
-      if (ssl_open(urlp, sp) != OKAY) {
+      if(!n_tls_open(urlp, sp)){
 jsclose:
          sclose(sp);
          sofd = -1;
@@ -348,7 +347,7 @@ jsclose:
    }
 
    rele_sigs();
-# endif /* HAVE_SSL */
+# endif /* HAVE_TLS */
 
 jleave:
    /* May need to bounce the signal to the go.c trampoline (or wherever) */
@@ -471,15 +470,15 @@ sclose(struct sock *sp)
          (*sp->s_onclose)();
       if (sp->s_wbuf != NULL)
          n_free(sp->s_wbuf);
-# ifdef HAVE_XSSL
-      if (sp->s_use_ssl) {
-         void *s_ssl = sp->s_ssl;
+# ifdef HAVE_XTLS
+      if (sp->s_use_tls) {
+         void *s_tls = sp->s_tls;
 
-         sp->s_ssl = NULL;
-         sp->s_use_ssl = 0;
-         while (!SSL_shutdown(s_ssl)) /* XXX proper error handling;signals! */
+         sp->s_tls = NULL;
+         sp->s_use_tls = 0;
+         while (!SSL_shutdown(s_tls)) /* XXX proper error handling;signals! */
             ;
-         SSL_free(s_ssl);
+         SSL_free(s_tls);
       }
 # endif
       i = close(i);
@@ -548,12 +547,12 @@ swrite1(struct sock *sp, char const *data, int sz, int use_buffer)
       goto jleave;
    }
 
-# ifdef HAVE_XSSL
-   if (sp->s_use_ssl) {
+# ifdef HAVE_XTLS
+   if (sp->s_use_tls) {
 jssl_retry:
-      x = SSL_write(sp->s_ssl, data, sz);
+      x = SSL_write(sp->s_tls, data, sz);
       if (x < 0) {
-         switch (SSL_get_error(sp->s_ssl, x)) {
+         switch (SSL_get_error(sp->s_tls, x)) {
          case SSL_ERROR_WANT_READ:
          case SSL_ERROR_WANT_WRITE:
             goto jssl_retry;
@@ -569,8 +568,8 @@ jssl_retry:
 
       snprintf(o, sizeof o, "%s write error",
          (sp->s_desc ? sp->s_desc : "socket"));
-# ifdef HAVE_XSSL
-      if (sp->s_use_ssl)
+# ifdef HAVE_XTLS
+      if (sp->s_use_tls)
          ssl_gen_err("%s", o);
       else
 # endif
@@ -739,15 +738,15 @@ FL int
 
       if (sp->s_rbufptr == NULL ||
             PTRCMP(sp->s_rbufptr, >=, sp->s_rbuf + sp->s_rsz)) {
-# ifdef HAVE_XSSL
-         if (sp->s_use_ssl) {
+# ifdef HAVE_XTLS
+         if (sp->s_use_tls) {
 jssl_retry:
-            sp->s_rsz = SSL_read(sp->s_ssl, sp->s_rbuf, sizeof sp->s_rbuf);
+            sp->s_rsz = SSL_read(sp->s_tls, sp->s_rbuf, sizeof sp->s_rbuf);
             if (sp->s_rsz <= 0) {
                if (sp->s_rsz < 0) {
                   char o[512];
 
-                  switch(SSL_get_error(sp->s_ssl, sp->s_rsz)) {
+                  switch(SSL_get_error(sp->s_tls, sp->s_rsz)) {
                   case SSL_ERROR_WANT_READ:
                   case SSL_ERROR_WANT_WRITE:
                      goto jssl_retry;

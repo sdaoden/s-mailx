@@ -208,7 +208,7 @@ OPT_ICONV=yes
 OPT_MAILDIR=yes
 
 # Major switch to toggle *all* network related protocols
-# (POP3,SMTP,IMAP) and related/dependent stuff (GSS-API,SSL);
+# (POP3,SMTP,IMAP) and related/dependent stuff (GSS-API,TLS);
 # can be "require"d.
 OPT_SOCKETS=yes
 
@@ -218,18 +218,18 @@ OPT_SOCKETS=yes
 # verification, en- and decryption.
 # This needs the OpenSSL (https://www.openssl.org) or LibreSSL
 # (http://www.libressl.org) libraries.
-OPT_SSL=yes
+OPT_TLS=yes
 
-# If $OPT_SSL: shall S-nail (try to) use mechanisms to support more
+# If $OPT_TLS: shall S-nail (try to) use mechanisms to support more
 # digest and cipher algorithms than the few that are documented?  For
 # S/MIME *smime-cipher* for example this will cause
 # EVP_get_cipherbyname(3) to be tried shall the (S-nail-) built-in
 # knowledge not suffice to understand the user request.  Will create
 # a large statically linked binary; dynamically linked the costs only
 # arise once the extended lookup is actually needed (the first time).
-# Some SSL libraries will always support all algorithms.
+# Some TLS libraries will always support all algorithms.
 # This can be "require"d.
-OPT_SSL_ALL_ALGORITHMS=yes
+OPT_TLS_ALL_ALGORITHMS=yes
 
 # If $OPT_SOCKETS: support for SMTP protocol?
 # (Directly sending mails over the network)  Can be "require"d.
@@ -292,14 +292,14 @@ OPT_IMAP_SEARCH=yes
 # No need for somewhat strong random is necessary.
 # The following will be used as sole PRG implementations.
 # . arc4 - we search for arc4random(3).
-# . ssl - if OPT_SSL is available the PRG of the SSL library can be used.
+# . tls - if OPT_TLS is available the PRG of the TLS library can be used.
 # The following will only be used to seed our builtin ARC4 PRG.
 # . libgetrandom - getrandom(3) via C library.
 # . sysgetrandom - getrandom(2) via SYSCALL.
 # . urandom - reading from /dev/urandom.
 # . builtin - a builtin ARC4 implementation with unscientific seeding.
 # . (error - bail out)
-VAL_RANDOM="arc4,ssl,libgetrandom,sysgetrandom,urandom,builtin"
+VAL_RANDOM="arc4,tls,libgetrandom,sysgetrandom,urandom,builtin"
 
 # Regular expression (re_format(7)) support for searches, conditional
 # expressions etc., we use the extended ones, then; can be "require"d.

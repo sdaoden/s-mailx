@@ -71,7 +71,7 @@
 # endif
 #endif
 
-#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_SSL
+#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_TLS
 union rand_state{
    struct rand_arc4{
       ui8_t _dat[256];
@@ -164,7 +164,7 @@ n__ERR_NUMBER_TO_MAPOFF
 #undef a_X
 };
 
-#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_SSL
+#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_TLS
 static union rand_state *a_aux_rand;
 #endif
 
@@ -177,7 +177,7 @@ static size_t a_aux_err_linelen;
 
 /* Our ARC4 random generator with its completely unacademical pseudo
  * initialization (shall /dev/urandom fail) */
-#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_SSL
+#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_TLS
 static void a_aux_rand_init(void);
 n_INLINE ui8_t a_aux_rand_get8(void);
 static ui32_t a_aux_rand_weak(ui32_t seed);
@@ -186,7 +186,7 @@ static ui32_t a_aux_rand_weak(ui32_t seed);
 /* Find the descriptive mapping of an error number, or _ERR_INVAL */
 static struct a_aux_err_map const *a_aux_err_map_from_no(si32_t eno);
 
-#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_SSL
+#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_TLS
 static void
 a_aux_rand_init(void){
 # ifdef HAVE_CLOCK_GETTIME
@@ -316,7 +316,7 @@ a_aux_rand_weak(ui32_t seed){
       seed += SI32_MAX;
    return seed;
 }
-#endif /* HAVE_RANDOM != IMPL_ARC4 != IMPL_SSL */
+#endif /* HAVE_RANDOM != IMPL_ARC4 != IMPL_TLS */
 
 static struct a_aux_err_map const *
 a_aux_err_map_from_no(si32_t eno){
@@ -504,7 +504,7 @@ which_protocol(char const *name, bool_t check_stat, bool_t try_hooks,
          n_err(_("No POP3 support compiled in\n"));
 #endif
       }else if(!strncmp(name, "pop3s", sizeof("pop3s") -1)){
-#if defined HAVE_POP3 && defined HAVE_SSL
+#if defined HAVE_POP3 && defined HAVE_TLS
          rv = PROTO_POP3;
 #else
          n_err(_("No POP3S support compiled in\n"));
@@ -516,7 +516,7 @@ which_protocol(char const *name, bool_t check_stat, bool_t try_hooks,
          n_err(_("No IMAP support compiled in\n"));
 #endif
       }else if(!strncmp(name, "imaps", sizeof("imaps") -1)){
-#if defined HAVE_IMAP && defined HAVE_SSL
+#if defined HAVE_IMAP && defined HAVE_TLS
          rv = PROTO_IMAP;
 #else
          n_err(_("No IMAPS support compiled in\n"));
@@ -1237,8 +1237,8 @@ n_random_create_buf(char *dat, size_t len, ui32_t *reprocnt_or_null){
 
 #if HAVE_RANDOM == n_RANDOM_IMPL_ARC4
          prngn = "arc4random";
-#elif HAVE_RANDOM == n_RANDOM_IMPL_SSL
-         prngn = "*SSL RAND_*";
+#elif HAVE_RANDOM == n_RANDOM_IMPL_TLS
+         prngn = "*TLS RAND_*";
 #elif HAVE_RANDOM == n_RANDOM_IMPL_GETRANDOM
          prngn = "getrandom(2/3) + builtin ARC4";
 #elif HAVE_RANDOM == n_RANDOM_IMPL_URANDOM
@@ -1251,7 +1251,7 @@ n_random_create_buf(char *dat, size_t len, ui32_t *reprocnt_or_null){
          n_err(_("P(seudo)R(andomNumber)G(enerator): %s\n"), prngn);
       }
 
-#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_SSL
+#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_TLS
       a_aux_rand_init();
 #endif
    }
@@ -1275,8 +1275,8 @@ jinc1:
    indat = n_lofi_alloc(inlen +1);
 
    if(!(n_psonce & n_PSO_REPRODUCIBLE) || reprocnt_or_null == NULL){
-#if HAVE_RANDOM == n_RANDOM_IMPL_SSL
-      ssl_rand_bytes(indat, inlen);
+#if HAVE_RANDOM == n_RANDOM_IMPL_TLS
+      n_tls_rand_bytes(indat, inlen);
 #elif HAVE_RANDOM != n_RANDOM_IMPL_ARC4
       for(i = inlen; i-- > 0;)
          indat[i] = (char)a_aux_rand_get8();

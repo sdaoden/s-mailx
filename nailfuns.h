@@ -1156,7 +1156,7 @@ FL void        setup_from_and_sender(struct header *hp);
 FL struct name const * check_from_and_sender(struct name const *fromfield,
                         struct name const *senderfield);
 
-#ifdef HAVE_XSSL
+#ifdef HAVE_XTLS
 FL char *      getsender(struct message *m);
 #endif
 
@@ -2115,39 +2115,6 @@ FL int c_spam_spam(void *v);
 #endif
 
 /*
- * ssl.c
- */
-
-#ifdef HAVE_SSL
-/*  */
-FL void        ssl_set_verify_level(struct url const *urlp);
-
-/*  */
-FL enum okay   ssl_verify_decide(void);
-
-/*  */
-FL enum okay   smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount,
-                  int keep);
-
-/* */
-FL FILE *      smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp,
-                  char const *message_digest);
-
-/*  */
-FL FILE *      smime_encrypt_assemble(FILE *hp, FILE *yp);
-
-/*  */
-FL struct message * smime_decrypt_assemble(struct message *m, FILE *hp,
-                     FILE *bp);
-
-/*  */
-FL int         c_certsave(void *v);
-
-/*  */
-FL enum okay   rfc2595_hostname_match(char const *host, char const *pattern);
-#endif
-
-/*
  * strings.c
  */
 
@@ -2561,6 +2528,39 @@ FL int         c_uncollapse(void *v);
 FL void        uncollapse1(struct message *mp, int always);
 
 /*
+ * tls.c
+ */
+
+#ifdef HAVE_TLS
+/*  */
+FL void n_tls_set_verify_level(struct url const *urlp);
+
+/* */
+FL bool_t n_tls_verify_decide(void);
+
+/*  */
+FL enum okay   smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount,
+                  int keep);
+
+/* */
+FL FILE *      smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp,
+                  char const *message_digest);
+
+/*  */
+FL FILE *      smime_encrypt_assemble(FILE *hp, FILE *yp);
+
+/*  */
+FL struct message * smime_decrypt_assemble(struct message *m, FILE *hp,
+                     FILE *bp);
+
+/*  */
+FL int         c_certsave(void *v);
+
+/* */
+FL bool_t n_tls_rfc2595_hostname_match(char const *host, char const *pattern);
+#endif
+
+/*
  * tty.c
  */
 
@@ -2706,7 +2706,7 @@ FL int c_netrc(void *v);
 
 /* MD5 (RFC 1321) related facilities */
 #ifdef HAVE_MD5
-# ifdef HAVE_XSSL_MD5
+# ifdef HAVE_XTLS_MD5
 #  define md5_ctx	               MD5_CTX
 #  define md5_init	            MD5_Init
 #  define md5_update	            MD5_Update
@@ -2736,17 +2736,18 @@ FL void        hmac_md5(unsigned char *text, int text_len, unsigned char *key,
 #endif /* HAVE_MD5 */
 
 /*
- * xssl.c
+ * xtls.c
  */
 
-#ifdef HAVE_XSSL
+#ifdef HAVE_XTLS
 /* Our wrapper for RAND_bytes(3) */
-# if HAVE_RANDOM == n_RANDOM_IMPL_SSL
-FL void ssl_rand_bytes(void *buf, size_t blen);
+# if HAVE_RANDOM == n_RANDOM_IMPL_TLS
+FL void n_tls_rand_bytes(void *buf, size_t blen);
 # endif
 
-/*  */
-FL enum okay   ssl_open(struct url const *urlp, struct sock *sp);
+/* Will fill in a non-NULL *urlp->url_cert_fprint with auto-reclaimed
+ * buffer on success, otherwise urlp is constant */
+FL bool_t n_tls_open(struct url *urlp, struct sock *sp);
 
 /*  */
 FL void        ssl_gen_err(char const *fmt, ...);
@@ -2766,7 +2767,7 @@ FL struct message * smime_decrypt(struct message *m, char const *to,
 /*  */
 FL enum okay   smime_certsave(struct message *m, int n, FILE *op);
 
-#endif /* HAVE_XSSL */
+#endif /* HAVE_XTLS */
 
 /*
  * obs-imap.c

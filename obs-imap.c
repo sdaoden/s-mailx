@@ -193,7 +193,7 @@ static void       rec_queue(enum rec_type type, unsigned long cnt);
 static enum okay  rec_dequeue(void);
 static void       rec_rmqueue(void);
 static void       imapalarm(int s);
-static enum okay  imap_preauth(struct mailbox *mp, struct url const *urlp);
+static enum okay  imap_preauth(struct mailbox *mp, struct url *urlp);
 static enum okay  imap_capability(struct mailbox *mp);
 static enum okay  imap_auth(struct mailbox *mp, struct ccred *ccred);
 #ifdef HAVE_MD5
@@ -1306,27 +1306,27 @@ jleave:
 }
 
 static enum okay
-imap_preauth(struct mailbox *mp, struct url const *urlp)
+imap_preauth(struct mailbox *mp, struct url *urlp)
 {
    NYD_X;
 
    mp->mb_active |= MB_PREAUTH;
    imap_answer(mp, 1);
 
-#ifdef HAVE_SSL
-   if (!mp->mb_sock.s_use_ssl && xok_blook(imap_use_starttls, urlp, OXM_ALL)) {
+#ifdef HAVE_TLS
+   if (!mp->mb_sock.s_use_tls && xok_blook(imap_use_starttls, urlp, OXM_ALL)) {
       FILE *queuefp = NULL;
       char o[LINESIZE];
 
       snprintf(o, sizeof o, "%s STARTTLS\r\n", tag(1));
       IMAP_OUT(o, MB_COMD, return STOP)
       IMAP_ANSWER()
-      if (ssl_open(urlp, &mp->mb_sock) != OKAY)
+      if(!n_tls_open(urlp, &mp->mb_sock))
          return STOP;
    }
 #else
    if (xok_blook(imap_use_starttls, urlp, OXM_ALL)) {
-      n_err(_("No SSL support compiled in\n"));
+      n_err(_("No TLS support compiled in\n"));
       return STOP;
    }
 #endif

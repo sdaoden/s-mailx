@@ -146,7 +146,7 @@
 /* Supported (external) PRG implementations */
 #define n_RANDOM_IMPL_BUILTIN 0
 #define n_RANDOM_IMPL_ARC4 1
-#define n_RANDOM_IMPL_SSL 2
+#define n_RANDOM_IMPL_TLS 2
 #define n_RANDOM_IMPL_GETRANDOM 3 /* (both, syscall + library) */
 #define n_RANDOM_IMPL_URANDOM 4
 

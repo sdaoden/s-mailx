@@ -48,7 +48,7 @@ static bool_t  _mime_parse_part(struct message *zmp, struct mimepart *ip,
 static void    _mime_parse_rfc822(struct message *zmp, struct mimepart *ip,
                   enum mime_parse_flags mpf, int level);
 
-#ifdef HAVE_SSL
+#ifdef HAVE_TLS
 static void    _mime_parse_pkcs7(struct message *zmp, struct mimepart *ip,
                   enum mime_parse_flags mpf, int level);
 #endif
@@ -145,7 +145,7 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
       switch (ip->m_mimecontent) {
       case MIME_PKCS7:
          if (mpf & MIME_PARSE_DECRYPT) {
-#ifdef HAVE_SSL
+#ifdef HAVE_TLS
             _mime_parse_pkcs7(zmp, ip, mpf, level);
             if (ip->m_content_info & CI_ENCRYPTED_OK)
                ip->m_content_info |= CI_EXPANDED;
@@ -228,7 +228,7 @@ jleave:
    NYD_LEAVE;
 }
 
-#ifdef HAVE_SSL
+#ifdef HAVE_TLS
 static void
 _mime_parse_pkcs7(struct message *zmp, struct mimepart *ip,
    enum mime_parse_flags mpf, int level)
@@ -266,7 +266,7 @@ _mime_parse_pkcs7(struct message *zmp, struct mimepart *ip,
       ip->m_content_info |= CI_ENCRYPTED | CI_ENCRYPTED_BAD;
    NYD_LEAVE;
 }
-#endif /* HAVE_SSL */
+#endif /* HAVE_TLS */
 
 static bool_t
 _mime_parse_multipart(struct message *zmp, struct mimepart *ip,

@@ -124,17 +124,19 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
 #endif
 
    /* If not yet secured, can we upgrade to TLS? */
-#ifdef HAVE_SSL
+#ifdef HAVE_TLS
    if (!(scp->sc_url.url_flags & n_URL_TLS_REQUIRED) &&
          xok_blook(pop3_use_starttls, &scp->sc_url, oxm)) {
       POP3_OUT(rv, "STLS" NETNL, MB_COMD, goto jleave);
       POP3_ANSWER(rv, goto jleave);
-      if ((rv = ssl_open(&scp->sc_url, &scp->sc_sock)) != OKAY)
+      if(!n_tls_open(&scp->sc_url, &scp->sc_sock)){
+         rv = STOP;
          goto jleave;
+      }
    }
 #else
    if (xok_blook(pop3_use_starttls, &scp->sc_url, oxm)) {
-      n_err(_("No SSL support compiled in\n"));
+      n_err(_("No TLS support compiled in\n"));
       rv = STOP;
       goto jleave;
    }
@@ -146,8 +148,8 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
       if ((rv = _pop3_auth_apop(mp, scp, ts)) != OKAY) {
          char const *ccp;
 
-# ifdef HAVE_SSL
-         if (scp->sc_sock.s_use_ssl)
+# ifdef HAVE_TLS
+         if (scp->sc_sock.s_use_tls)
             ccp = _("over an encrypted connection");
          else
 # endif

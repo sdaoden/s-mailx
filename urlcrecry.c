@@ -870,7 +870,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
       goto juser;\
    }
 #define a_IF(X,Y) a__IF(X, Y, (void)0)
-#ifdef HAVE_SSL
+#ifdef HAVE_TLS
 # define a_IFS(X,Y) a__IF(X, Y, urlp->url_flags |= n_URL_TLS_REQUIRED)
 # define a_IFs(X,Y) a__IF(X, Y, urlp->url_flags |= n_URL_TLS_OPTIONAL)
 #else
@@ -881,7 +881,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
    switch(cproto){
    case CPROTO_CCRED:
       /* The special S/MIME etc. credential lookup */
-#ifdef HAVE_SSL
+#ifdef HAVE_TLS
       a_PROTOX("ccred", 0, (void)0);
       break;
 #else
@@ -930,7 +930,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #undef a_IFs
 
    if (strstr(data, "://") != NULL) {
-#if !defined a_ALLPROTO || !defined HAVE_SSL
+#if !defined a_ALLPROTO || !defined HAVE_TLS
 jeproto:
 #endif
       n_err(_("URL proto:// prefix invalid: %s\n"), urlp->url_input);

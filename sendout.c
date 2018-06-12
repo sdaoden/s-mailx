@@ -510,7 +510,7 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
 
    if (signing_caps) {
       if (from == NULL) {
-#ifdef HAVE_SSL
+#ifdef HAVE_SMIME
          n_err(_("No *from* address for signing specified\n"));
          goto jleave;
 #endif
@@ -564,7 +564,7 @@ jenofrom:
 
    rv = TRU1;
 #endif /* HAVE_SMTP */
-#if defined HAVE_SSL || defined HAVE_SMTP
+#if defined HAVE_SMIME || defined HAVE_SMTP
 jleave:
 #endif
    NYD_LEAVE;
@@ -1153,7 +1153,7 @@ _transfer(struct sendbundle *sbp)
       memcpy(vs + sizeof(k) -1, np->n_name, nl +1);
 
       if ((cp = n_var_vlook(vs, FAL0)) != NULL) {
-#ifdef HAVE_SSL
+#ifdef HAVE_SMIME
          FILE *ef;
 
          if ((ef = smime_encrypt(sbp->sb_input, cp, np->n_name)) != NULL) {
@@ -1170,12 +1170,12 @@ _transfer(struct sendbundle *sbp)
             Fclose(ef);
          } else {
 #else
-            n_err(_("No SSL support compiled in\n"));
+            n_err(_("No S/MIME support compiled in\n"));
             rv = FAL0;
 #endif
             n_err(_("Message not sent to: %s\n"), np->n_name);
             _sendout_error = TRU1;
-#ifdef HAVE_SSL
+#ifdef HAVE_SMIME
          }
 #endif
          rewind(sbp->sb_input);
@@ -1819,9 +1819,9 @@ mail1(struct header *hp, int printheaders, struct message *quote,
 
    if (dosign == TRUM1)
       dosign = ok_blook(smime_sign); /* TODO USER@HOST <-> *from* +++!!! */
-#ifndef HAVE_SSL
+#ifndef HAVE_SMIME
    if (dosign) {
-      n_err(_("No SSL support compiled in\n"));
+      n_err(_("No S/MIME support compiled in\n"));
       goto jleave;
    }
 #endif
@@ -1899,7 +1899,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    mtf = nmtf;
 
    /*  */
-#ifdef HAVE_SSL
+#ifdef HAVE_SMIME
    if (dosign) {
       if ((nmtf = smime_sign(mtf, sb.sb_signer.s)) == NULL)
          goto jfail_dead;

@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Generic SSL / S/MIME commands.
+ *@ Generic TLS / S/MIME commands.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -37,68 +37,68 @@
  * SUCH DAMAGE.
  */
 #undef n_FILE
-#define n_FILE ssl
+#define n_FILE tls
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
 
 EMPTY_FILE()
-#ifdef HAVE_SSL
-struct ssl_verify_levels {
-   char const              sv_name[8];
-   enum ssl_verify_level   sv_level;
+#ifdef HAVE_TLS
+struct a_tls_verify_levels{
+   char const tv_name[8];
+   enum n_tls_verify_level tv_level;
 };
 
 /* Supported SSL/TLS verification methods: update manual on change! */
-static struct ssl_verify_levels const  _ssl_verify_levels[] = {
-   {"strict", SSL_VERIFY_STRICT},
-   {"ask", SSL_VERIFY_ASK},
-   {"warn", SSL_VERIFY_WARN},
-   {"ignore", SSL_VERIFY_IGNORE}
+static struct a_tls_verify_levels const a_tls_verify_levels[] = {
+   {"strict", n_TLS_VERIFY_STRICT},
+   {"ask", n_TLS_VERIFY_ASK},
+   {"warn", n_TLS_VERIFY_WARN},
+   {"ignore", n_TLS_VERIFY_IGNORE}
 };
 
 FL void
-ssl_set_verify_level(struct url const *urlp)
-{
+n_tls_set_verify_level(struct url const *urlp){
    size_t i;
-   char *cp;
-   NYD_ENTER;
+   char const *cp;
+   NYD2_ENTER;
 
-   ssl_verify_level = SSL_VERIFY_ASK;
-   cp = xok_vlook(ssl_verify, urlp, OXM_ALL);
+   n_tls_verify_level = n_TLS_VERIFY_ASK;
 
-   if (cp != NULL) {
-      for (i = 0; i < n_NELEM(_ssl_verify_levels); ++i)
-         if (!asccasecmp(_ssl_verify_levels[i].sv_name, cp)) {
-            ssl_verify_level = _ssl_verify_levels[i].sv_level;
-            goto jleave;
+   if((cp = xok_vlook(tls_verify, urlp, OXM_ALL)) != NULL ||
+         (cp = xok_vlook(ssl_verify, urlp, OXM_ALL)) != NULL){
+      for(i = 0;;)
+         if(!asccasecmp(a_tls_verify_levels[i].tv_name, cp)){
+            n_tls_verify_level = a_tls_verify_levels[i].tv_level;
+            break;
+         }else if(++i >= n_NELEM(a_tls_verify_levels)){
+            n_err(_("Invalid value of *tls-verify*: %s\n"), cp);
+            break;
          }
-      n_err(_("Invalid value of *ssl-verify*: %s\n"), cp);
    }
-jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
-FL enum okay
-ssl_verify_decide(void)
-{
-   enum okay rv = STOP;
-   NYD_ENTER;
+FL bool_t
+n_tls_verify_decide(void){
+   bool_t rv;
+   NYD2_ENTER;
 
-   switch (ssl_verify_level) {
-   case SSL_VERIFY_STRICT:
-      rv = STOP;
+   switch(n_tls_verify_level){
+   default:
+   case n_TLS_VERIFY_STRICT:
+      rv = FAL0;
       break;
-   case SSL_VERIFY_ASK:
-      rv = getapproval(NULL, FAL0) ? OKAY : STOP;
+   case n_TLS_VERIFY_ASK:
+      rv = getapproval(NULL, FAL0);
       break;
-   case SSL_VERIFY_WARN:
-   case SSL_VERIFY_IGNORE:
-      rv = OKAY;
+   case n_TLS_VERIFY_WARN:
+   case n_TLS_VERIFY_IGNORE:
+      rv = TRU1;
       break;
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -118,7 +118,8 @@ smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
 
    if ((*hp = Ftmp(NULL, "smimeh", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
       goto jetmp;
-   if ((*bp = Ftmp(NULL, "smimeb", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==NULL) {
+   if ((*bp = Ftmp(NULL, "smimeb", OF_RDWR | OF_UNLINK | OF_REGISTER)
+         ) == NULL) {
       Fclose(*hp);
 jetmp:
       n_perr(_("tempfile"), 0);
@@ -185,7 +186,8 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp, char const *message_digest)
    FILE *op;
    NYD_ENTER;
 
-   if ((op = Ftmp(NULL, "smimea", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL) {
+   if ((op = Ftmp(NULL, "smimea", OF_RDWR | OF_UNLINK | OF_REGISTER)
+         ) == NULL) {
       n_perr(_("tempfile"), 0);
       goto jleave;
    }
@@ -244,7 +246,8 @@ smime_encrypt_assemble(FILE *hp, FILE *yp)
    int c, lastc = EOF;
    NYD_ENTER;
 
-   if ((op = Ftmp(NULL, "smimee", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL) {
+   if ((op = Ftmp(NULL, "smimee", OF_RDWR | OF_UNLINK | OF_REGISTER)
+         ) == NULL) {
       n_perr(_("tempfile"), 0);
       goto jleave;
    }
@@ -410,21 +413,20 @@ jleave:
    return val;
 }
 
-FL enum okay
-rfc2595_hostname_match(char const *host, char const *pattern)
-{
-   enum okay rv;
+FL bool_t
+n_tls_rfc2595_hostname_match(char const *host, char const *pattern){
+   bool_t rv;
    NYD_ENTER;
 
-   if (pattern[0] == '*' && pattern[1] == '.') {
+   if(pattern[0] == '*' && pattern[1] == '.'){
       ++pattern;
-      while (*host && *host != '.')
+      while(*host && *host != '.')
          ++host;
    }
-   rv = !asccasecmp(host, pattern) ? OKAY : STOP;
+   rv = (asccasecmp(host, pattern) == 0);
    NYD_LEAVE;
    return rv;
 }
-#endif /* HAVE_SSL */
+#endif /* HAVE_TLS */
 
 /* s-it-mode */

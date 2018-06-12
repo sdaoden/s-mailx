@@ -5461,7 +5461,7 @@ t_s_mime() {
       { if(!skip) print }
    ' \
       < ./.VERIFY > "${MBOX}"
-   check 1 - "${MBOX}" '1311565262 644'
+   check 1 - "${MBOX}" '335634014 644'
 
    printf 'verify\nx\n' |
    ${MAILX} ${ARGS} -Ssmime-ca-file=./.tcert.pem -Serrexit \
@@ -5498,7 +5498,7 @@ t_s_mime() {
       { if(!skip) print }
    ' \
       < ./.DECRYPT > "${MBOX}"
-   check 5 - "${MBOX}" '1720739247 931'
+   check 5 - "${MBOX}" '1019076159 931'
 
    (openssl smime -decrypt -inkey ./.tkey.pem -in ./.ENCRYPT |
          openssl smime -verify -CAfile ./.tcert.pem) >>${ERR} 2>&1

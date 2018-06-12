@@ -80,7 +80,7 @@
 # include <regex.h>
 #endif
 
-#ifdef HAVE_XSSL_MD5
+#ifdef HAVE_XTLS_MD5
 # include <openssl/md5.h>
 #endif
 
@@ -1194,20 +1194,20 @@ enum n_sigman_flags{
    n__SIGMAN_PING = 1<<17
 };
 
-#ifdef HAVE_SSL
-enum ssl_verify_level {
-   SSL_VERIFY_IGNORE,
-   SSL_VERIFY_WARN,
-   SSL_VERIFY_ASK,
-   SSL_VERIFY_STRICT
-};
-#endif
-
 enum n_str_trim_flags{
    n_STR_TRIM_FRONT = 1u<<0,
    n_STR_TRIM_END = 1u<<1,
    n_STR_TRIM_BOTH = n_STR_TRIM_FRONT | n_STR_TRIM_END
 };
+
+#ifdef HAVE_TLS
+enum n_tls_verify_level{
+   n_TLS_VERIFY_IGNORE,
+   n_TLS_VERIFY_WARN,
+   n_TLS_VERIFY_ASK,
+   n_TLS_VERIFY_STRICT
+};
+#endif
 
 enum tdflags {
    TD_NONE,                   /* no display conversion */
@@ -1792,26 +1792,26 @@ ok_v_spamd_user, /* {obsolete=1} */
    ok_v_spamfilter_rate,
    ok_v_spamfilter_rate_scanscore,
    ok_v_spamfilter_spam,
-   ok_v_ssl_ca_dir,                    /* {chain=1} */
-   ok_v_ssl_ca_file,                   /* {chain=1} */
-   ok_v_ssl_ca_flags,                  /* {chain=1} */
-   ok_b_ssl_ca_no_defaults,            /* {chain=1} */
+ok_v_ssl_ca_dir, /* {chain=1,obsolete=1} */
+ok_v_ssl_ca_file, /* {chain=1,obsolete=1} */
+ok_v_ssl_ca_flags, /* {chain=1,obsolete=1} */
+ok_b_ssl_ca_no_defaults, /* {chain=1,obsolete=1} */
 ok_v_ssl_cert, /* {chain=1,obsolete=1} */
 ok_v_ssl_cipher_list, /* {chain=1,obsolete=1} */
-   ok_v_ssl_config_file,
-   ok_v_ssl_config_module,             /* {chain=1} */
-   ok_v_ssl_config_pairs,              /* {chain=1} */
+ok_v_ssl_config_file, /* {obsolete=1} */
+ok_v_ssl_config_module, /* {chain=1,obsolete=1} */
+ok_v_ssl_config_pairs, /* {chain=1,obsolete=1} */
 ok_v_ssl_curves, /* {chain=1,obsolete=1} */
-   ok_v_ssl_crl_dir,
-   ok_v_ssl_crl_file,
-   ok_v_ssl_features,                  /* {virt=VAL_SSL_FEATURES} */
+ok_v_ssl_crl_dir, /* {obsolete=1} */
+ok_v_ssl_crl_file, /* {obsolete=1} */
+ok_v_ssl_features, /* {virt=VAL_TLS_FEATURES,obsolete=1} */
 ok_v_ssl_key, /* {chain=1,obsolete=1} */
 ok_v_ssl_method, /* {chain=1,obsolete=1} */
 ok_b_ssl_no_default_ca, /* {obsolete=1} */
 ok_v_ssl_protocol, /* {chain=1,obsolete=1} */
-   ok_v_ssl_rand_egd,
-   ok_v_ssl_rand_file,
-   ok_v_ssl_verify,                    /* {chain=1} */
+ok_v_ssl_rand_egd, /* {obsolete=1} */
+ok_v_ssl_rand_file, /* {obsolete=1}*/
+ok_v_ssl_verify, /* {chain=1,obsolete=1} */
    ok_v_stealthmua,
    ok_v_system_mailrc,           /* {virt=VAL_SYSCONFDIR "/" VAL_SYSCONFRC} */
 
@@ -1820,6 +1820,18 @@ ok_v_ssl_protocol, /* {chain=1,obsolete=1} */
    ok_v_termcap,
    ok_b_termcap_ca_mode,
    ok_b_termcap_disable,
+   ok_v_tls_ca_dir,                    /* {chain=1} */
+   ok_v_tls_ca_file,                   /* {chain=1} */
+   ok_v_tls_ca_flags,                  /* {chain=1} */
+   ok_b_tls_ca_no_defaults,            /* {chain=1} */
+   ok_v_tls_config_file,
+   ok_v_tls_config_module,             /* {chain=1} */
+   ok_v_tls_config_pairs,              /* {chain=1} */
+   ok_v_tls_crl_dir,
+   ok_v_tls_crl_file,
+   ok_v_tls_features,                  /* {virt=VAL_TLS_FEATURES} */
+   ok_v_tls_rand_file,
+   ok_v_tls_verify,                    /* {chain=1} */
    ok_v_toplines,                      /* {notempty=1,num=1,defval="5"} */
    ok_b_topsqueeze,
    /* Charset lowercase conversion handled via vip= */
@@ -2180,22 +2192,22 @@ struct time_current { /* TODO si64_t, etc. */
    char        tc_ctime[32];
 };
 
-struct sock {                 /* data associated with a socket */
-   int         s_fd;          /* file descriptor */
-#ifdef HAVE_SSL
-   int         s_use_ssl;     /* SSL is used */
-# ifdef HAVE_XSSL
-   void        *s_ssl;        /* SSL object */
+struct sock { /* data associated with a socket */
+   int s_fd;            /* file descriptor */
+#ifdef HAVE_TLS
+   int s_use_tls;       /* SSL is used */
+# ifdef HAVE_XTLS
+   void *s_tls;         /* SSL object */
 # endif
 #endif
-   char        *s_wbuf;       /* for buffered writes */
-   int         s_wbufsize;    /* allocated size of s_buf */
-   int         s_wbufpos;     /* position of first empty data byte */
-   char        *s_rbufptr;    /* read pointer to s_rbuf */
-   int         s_rsz;         /* size of last read in s_rbuf */
-   char const  *s_desc;       /* description of error messages */
-   void        (*s_onclose)(void);     /* execute on close */
-   char        s_rbuf[LINESIZE + 1];   /* for buffered reads */
+   char *s_wbuf;        /* for buffered writes */
+   int s_wbufsize;      /* allocated size of s_buf */
+   int s_wbufpos;       /* position of first empty data byte */
+   char *s_rbufptr;     /* read pointer to s_rbuf */
+   int s_rsz;           /* size of last read in s_rbuf */
+   char const *s_desc;  /* description of error messages */
+   void (*s_onclose)(void);   /* execute on close */
+   char s_rbuf[LINESIZE + 1]; /* for buffered reads */
 };
 
 struct sockconn {
@@ -2660,8 +2672,8 @@ VL struct n_header_field *n_customhdr_list; /* *customhdr* list */
 VL struct time_current  time_current;  /* time(3); send: mail1() XXXcarrier */
 VL struct termios_state termios_state; /* getpassword(); see commands().. */
 
-#ifdef HAVE_SSL
-VL enum ssl_verify_level   ssl_verify_level; /* SSL verification level */
+#ifdef HAVE_TLS
+VL enum n_tls_verify_level n_tls_verify_level; /* TODO local per-context! */
 #endif
 
 #ifdef HAVE_ICONV

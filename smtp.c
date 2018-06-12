@@ -164,8 +164,8 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp) /* TODO n_string etc. */
    /* Read greeting */
    _ANSWER(2, FAL0, FAL0);
 
-#ifdef HAVE_SSL
-   if (!sp->s_use_ssl && xok_blook(smtp_use_starttls, &sbp->sb_url, OXM_ALL)) {
+#ifdef HAVE_TLS
+   if (!sp->s_use_tls && xok_blook(smtp_use_starttls, &sbp->sb_url, OXM_ALL)) {
       snprintf(o, sizeof o, NETLINE("EHLO %s"), hostname);
       _OUT(o);
       _ANSWER(2, FAL0, FAL0);
@@ -173,12 +173,12 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp) /* TODO n_string etc. */
       _OUT(NETLINE("STARTTLS"));
       _ANSWER(2, FAL0, FAL0);
 
-      if (!(n_poption & n_PO_DEBUG) && ssl_open(&sbp->sb_url, sp) != OKAY)
+      if(!(n_poption & n_PO_DEBUG) && !n_tls_open(&sbp->sb_url, sp))
          goto jleave;
    }
 #else
    if (xok_blook(smtp_use_starttls, &sbp->sb_url, OXM_ALL)) {
-      n_err(_("No SSL support compiled in\n"));
+      n_err(_("No TLS support compiled in\n"));
       goto jleave;
    }
 #endif
@@ -352,8 +352,9 @@ smtp_mta(struct sendbundle *sbp)
    if (saveterm != SIG_IGN)
       safe_signal(SIGTERM, &_smtp_onterm);
 
-   memset(&so, 0, sizeof so);
-   if (!(n_poption & n_PO_DEBUG) && !sopen(&so, &sbp->sb_url))
+   if(n_poption & n_PO_DEBUG)
+      memset(&so, 0, sizeof so);
+   else if(!sopen(&so, &sbp->sb_url))
       goto jleave;
 
    so.s_desc = "SMTP";

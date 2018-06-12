@@ -1,6 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ RFC 1321 derived MD5 algorithm implementation.
- *@ This is included by nailfuns.h if 'HAVE_MD5 && !HAVE_XSSL_MD5',
+ *@ This is included by nailfuns.h if 'HAVE_MD5 && !HAVE_XTLS_MD5',
  *@ and contains MD5.H as well as MD5C.C from the RFC.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
