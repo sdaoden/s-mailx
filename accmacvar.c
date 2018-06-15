@@ -1201,7 +1201,12 @@ a_amv_var_canonify(char const *vn){
 
       for(vp = vn; *vp != '\0'; ++vp)
          if(*vp == '@'){
-            vn = i_strdup(vn);
+            char *cp, c;
+
+            cp = n_autorec_alloc(strlen(vn) +1);
+            for(vp = vn, vn = cp; (c = *vp++) != '\0';)
+               *cp++ = lowerconv(c);
+            *cp = '\0';
             break;
          }
    }

@@ -99,23 +99,6 @@ FL char *
  * Support routines, auto-reclaimed storage
  */
 
-FL char *
-(i_strdup)(char const *src n_MEMORY_DEBUG_ARGS)
-{
-   size_t sz;
-   char *dest;
-   NYD_ENTER;
-
-   sz = strlen(src) +1;
-   dest = (n_autorec_alloc_from_pool)(NULL, sz n_MEMORY_DEBUG_ARGSCALL);
-   if(sz > 1)
-      i_strcpy(dest, src, sz);
-   else
-      dest[sz] = '\0';
-   NYD_LEAVE;
-   return dest;
-}
-
 FL struct str *
 str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 {
@@ -279,22 +262,6 @@ n_strsep_esc(char **iolist, char sep, bool_t ignore_empty){
    }
    NYD2_LEAVE;
    return base;
-}
-
-FL void
-i_strcpy(char *dest, char const *src, size_t size)
-{
-   NYD2_ENTER;
-   if(size > 0){
-      for(;; ++dest, ++src)
-         if((*dest = lowerconv(*src)) == '\0'){
-            break;
-         }else if(--size == 0){
-            *dest = '\0';
-            break;
-         }
-   }
-   NYD2_LEAVE;
 }
 
 FL bool_t

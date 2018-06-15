@@ -2140,12 +2140,6 @@ FL char *      savecatsep(char const *cp1, char sep, char const *cp2
 /* strcat */
 #define savecat(S1,S2)           savecatsep(S1, '\0', S2)
 
-/* Create duplicate, lowercasing all characters along the way */
-FL char *      i_strdup(char const *src n_MEMORY_DEBUG_ARGS);
-#ifdef HAVE_MEMORY_DEBUG
-# define i_strdup(CP)            i_strdup(CP, __FILE__, __LINE__)
-#endif
-
 /*  */
 FL struct str * str_concat_csvl(struct str *self, ...);
 
@@ -2170,10 +2164,6 @@ FL bool_t n_anyof_buf(char const *template, char const *dat, size_t len);
  * Return NULL or an entry */
 FL char *n_strsep(char **iolist, char sep, bool_t ignore_empty);
 FL char *n_strsep_esc(char **iolist, char sep, bool_t ignore_empty);
-
-/* Copy a string, lowercasing it as we go; *size* is buffer size of *dest*;
- * *dest* will always be terminated unless *size* is 0 */
-FL void        i_strcpy(char *dest, char const *src, size_t size);
 
 /* Is *as1* a valid prefix of *as2*? */
 FL bool_t is_prefix(char const *as1, char const *as2);
