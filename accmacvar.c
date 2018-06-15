@@ -1787,7 +1787,7 @@ jeavmp:
 
       /* Obsoletion warning */
       if(n_UNLIKELY((avmp->avm_flags & a_AMV_VF_OBSOLETE) != 0))
-         n_OBSOLETE2(_("obsoleted variable"), avcp->avc_name);
+         n_OBSOLETE2(_("variable superseded or obsoleted"), avcp->avc_name);
    }
 
    /* Lookup possibly existing var.  For */
