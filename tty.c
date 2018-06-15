@@ -460,7 +460,7 @@ enum a_tty_bind_flags{
    a_TTY_BIND_NOCOMMIT = 1u<<11, /* Expansion shall be editable */
 # endif
 
-   /* MLE internal commands */
+   /* MLE internal commands XXX Can these be values not bits? */
    a_TTY_BIND_FUN_INTERNAL = 1u<<15,
    a_TTY__BIND_FUN_SHIFT = 16u,
    a_TTY__BIND_FUN_SHIFTMAX = 24u,
@@ -475,28 +475,29 @@ enum a_tty_bind_flags{
 # define a_X(N,I)\
    a_TTY_BIND_FUN_ ## N = a_TTY_BIND_FUN_EXPAND(I),
 
-   a_X(BELL,  0)
-   a_X(GO_BWD,  1) a_X(GO_FWD,  2)
-   a_X(GO_WORD_BWD,  3) a_X(GO_WORD_FWD,  4)
-   a_X(GO_HOME,  5) a_X(GO_END,  6)
-   a_X(DEL_BWD,  7) a_X(DEL_FWD,   8)
-   a_X(SNARF_WORD_BWD,  9) a_X(SNARF_WORD_FWD, 10)
-   a_X(SNARF_END, 11) a_X(SNARF_LINE, 12)
-   a_X(HIST_BWD, 13) a_X(HIST_FWD, 14)
-   a_X(HIST_SRCH_BWD, 15) a_X(HIST_SRCH_FWD, 16)
-   a_X(REPAINT, 17)
-   a_X(QUOTE_RNDTRIP, 18)
-   a_X(PROMPT_CHAR, 19)
-   a_X(COMPLETE, 20)
-   a_X(PASTE, 21)
+   a_X(BELL, 0)
+   a_X(GO_BWD, 1) a_X(GO_FWD, 2)
+   a_X(GO_WORD_BWD, 3) a_X(GO_WORD_FWD, 4)
+   a_X(GO_SCREEN_BWD, 5) a_X(GO_SCREEN_FWD, 6)
+   a_X(GO_HOME, 7) a_X(GO_END, 8)
+   a_X(DEL_BWD, 9) a_X(DEL_FWD, 10)
+   a_X(SNARF_WORD_BWD, 11) a_X(SNARF_WORD_FWD, 12)
+   a_X(SNARF_END, 13) a_X(SNARF_LINE, 14)
+   a_X(HIST_BWD, 15) a_X(HIST_FWD, 16)
+   a_X(HIST_SRCH_BWD, 17) a_X(HIST_SRCH_FWD, 18)
+   a_X(REPAINT, 19)
+   a_X(QUOTE_RNDTRIP, 20)
+   a_X(PROMPT_CHAR, 21)
+   a_X(COMPLETE, 22)
+   a_X(PASTE, 23)
 
-   a_X(CANCEL, 22)
-   a_X(RESET, 23)
-   a_X(FULLRESET, 24)
-   a_X(COMMIT, 25) /* Must be last one! */
+   a_X(CANCEL, 24)
+   a_X(RESET, 25)
+   a_X(FULLRESET, 26)
+   a_X(COMMIT, 27) /* Must be last one! */
 # undef a_X
 
-   a_TTY__BIND_LAST = 1<<25
+   a_TTY__BIND_LAST = 1<<27
 };
 # ifdef HAVE_KEY_BINDINGS
 n_CTA((ui32_t)a_TTY_BIND_RESOLVE >= (ui32_t)n__GO_INPUT_CTX_MAX1,
@@ -726,6 +727,7 @@ static char const a_tty_bind_fun_names[][24] = {
    a_X(BELL, "bell")
    a_X(GO_BWD, "go-bwd") a_X(GO_FWD, "go-fwd")
    a_X(GO_WORD_BWD, "go-word-bwd") a_X(GO_WORD_FWD, "go-word-fwd")
+   a_X(GO_SCREEN_BWD, "go-screen-bwd") a_X(GO_SCREEN_FWD, "go-screen-fwd")
    a_X(GO_HOME, "go-home") a_X(GO_END, "go-end")
    a_X(DEL_BWD, "del-bwd") a_X(DEL_FWD, "del-fwd")
    a_X(SNARF_WORD_BWD, "snarf-word-bwd") a_X(SNARF_WORD_FWD, "snarf-word-fwd")
@@ -805,6 +807,8 @@ static struct a_tty_bind_builtin_tuple const a_tty_bind_base_tuples[] = {
    a_X(key_eol, SNARF_END)
    a_X(key_home, GO_HOME) a_X(key_end, GO_END)
    a_X(key_left, GO_BWD) a_X(key_right, GO_FWD)
+   a_X(xkey_aleft, GO_WORD_BWD) a_X(xkey_aright, GO_WORD_FWD)
+   a_X(xkey_cleft, GO_SCREEN_BWD) a_X(xkey_cright, GO_SCREEN_FWD)
    a_X(key_sleft, GO_HOME) a_X(key_sright, GO_END)
    a_X(key_up, HIST_BWD) a_X(key_down, HIST_FWD)
 # endif /* HAVE_KEY_BINDINGS */
@@ -894,6 +898,7 @@ static void a_tty_kleft(struct a_tty_line *tlp);
 static void a_tty_kright(struct a_tty_line *tlp);
 static void a_tty_ksnarfw(struct a_tty_line *tlp, bool_t fwd);
 static void a_tty_kgow(struct a_tty_line *tlp, si32_t dir);
+static void a_tty_kgoscr(struct a_tty_line *tlp, si32_t dir);
 static bool_t a_tty_kother(struct a_tty_line *tlp, wchar_t wc);
 static ui32_t a_tty_kht(struct a_tty_line *tlp);
 
@@ -2097,6 +2102,39 @@ a_tty_kgow(struct a_tty_line *tlp, si32_t dir){
    NYD2_LEAVE;
 }
 
+static void
+a_tty_kgoscr(struct a_tty_line *tlp, si32_t dir){
+   ui32_t sw, i, cur, f, cnt;
+   NYD2_ENTER;
+
+   sw = (ui32_t)n_scrnwidth - 2;
+   if(sw > (i = tlp->tl_prompt_width))
+      sw -= i;
+   cur = tlp->tl_cursor;
+   f = a_TTY_VF_BELL;
+
+   if(dir > 0){
+      for(cnt = tlp->tl_count; cur < cnt && sw > 0; ++cur){
+         i = tlp->tl_line.cells[cur].tc_width;
+         i = n_MIN(sw, i);
+         sw -= i;
+      }
+   }else{
+       while(cur > 0 && sw > 0){
+         i = tlp->tl_line.cells[--cur].tc_width;
+         i = n_MIN(sw, i);
+         sw -= i;
+      }
+   }
+   if(cur != tlp->tl_cursor){
+      tlp->tl_cursor = cur;
+      f = a_TTY_VF_MOD_CURSOR;
+   }
+
+   tlp->tl_vi_flags |= f;
+   NYD2_LEAVE;
+}
+
 static bool_t
 a_tty_kother(struct a_tty_line *tlp, wchar_t wc){
    /* Append if at EOL, insert otherwise;
@@ -2743,6 +2781,12 @@ a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, size_t *len){
       break;
    case a_X(GO_WORD_FWD):
       a_tty_kgow(tlp, +1);
+      break;
+   case a_X(GO_SCREEN_BWD):
+      a_tty_kgoscr(tlp, -1);
+      break;
+   case a_X(GO_SCREEN_FWD):
+      a_tty_kgoscr(tlp, +1);
       break;
    case a_X(GO_HOME):
       a_tty_khome(tlp, TRU1);
