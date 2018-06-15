@@ -843,7 +843,8 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #if defined HAVE_SMTP && defined HAVE_POP3 && defined HAVE_IMAP
 # define a_ALLPROTO
 #endif
-#if defined HAVE_SMTP || defined HAVE_POP3 || defined HAVE_IMAP
+#if defined HAVE_SMTP || defined HAVE_POP3 || defined HAVE_IMAP || \
+      defined HAVE_TLS
 # define a_ANYPROTO
    char *cp, *x;
 #endif
@@ -904,7 +905,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
       goto jeproto;
 #endif
    case CPROTO_CCRED:
-      /* The special S/MIME etc. credential lookup */
+      /* The special S/MIME etc. credential lookup TODO TLS client cert! */
 #ifdef HAVE_TLS
       a_PRIVPROTOX("ccred", 0, (void)0);
       break;
@@ -955,7 +956,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #undef a_IFs
 
    if (strstr(data, "://") != NULL) {
-#if !defined a_ALLPROTO || !defined HAVE_TLS
+#if !defined a_ALLPROTO || defined HAVE_TLS
 jeproto:
 #endif
       n_err(_("URL proto:// prefix invalid: %s\n"), urlp->url_input);
@@ -1057,29 +1058,29 @@ jurlp_err:
                urlp->url_input);
             goto jleave;
          }
-#ifdef HAVE_IMAP
+# ifdef HAVE_IMAP
          if(trailsol){
             urlp->url_path.s = n_autorec_alloc(i + sizeof("/INBOX"));
             memcpy(urlp->url_path.s, x, i);
             memcpy(&urlp->url_path.s[i], "/INBOX", sizeof("/INBOX"));
             urlp->url_path.l = (i += sizeof("/INBOX") -1);
          }else
-#endif
+# endif
             urlp->url_path.l = i, urlp->url_path.s = x2;
       }
    }
-#ifdef HAVE_IMAP
+# ifdef HAVE_IMAP
    if(cproto == CPROTO_IMAP && urlp->url_path.s == NULL)
       urlp->url_path.s = savestrbuf("INBOX",
             urlp->url_path.l = sizeof("INBOX") -1);
-#endif
+# endif
 
    urlp->url_host.s = savestrbuf(data, urlp->url_host.l = PTR2SIZE(cp - data));
    {  size_t i;
       for (cp = urlp->url_host.s, i = urlp->url_host.l; i != 0; ++cp, --i)
          *cp = lowerconv(*cp);
    }
-#ifdef HAVE_IDNA
+# ifdef HAVE_IDNA
    if(!ok_blook(idna_disable)){
       struct n_string idna;
 
@@ -1091,7 +1092,7 @@ jurlp_err:
       urlp->url_host.s = n_string_cp(&idna);
       urlp->url_host.l = idna.s_len;
    }
-#endif /* HAVE_IDNA */
+# endif /* HAVE_IDNA */
 
    /* .url_h_p: HOST:PORT */
    {  size_t upl, i;

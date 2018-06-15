@@ -198,14 +198,14 @@ struct a_xtls_protocol{
 };
 #endif
 
-struct a_xtls_smime_cipher{
-   char const xsc_name[8];
-   EVP_CIPHER const *(*xsc_fun)(void);
+struct a_xtls_cipher{
+   char const xc_name[8];
+   EVP_CIPHER const *(*xc_fun)(void);
 };
 
-struct a_xtls_smime_digest{
-   char const xsd_name[8];
-   EVP_MD const *(*xsd_fun)(void);
+struct a_xtls_digest{
+   char const xd_name[8];
+   EVP_MD const *(*xd_fun)(void);
 };
 
 struct a_xtls_x509_v_flags{
@@ -239,7 +239,7 @@ static struct a_xtls_protocol const a_xtls_protocols[] = {
 #endif /* HAVE_XTLS_CONF_CTX */
 
 /* Supported S/MIME cipher algorithms */
-static struct a_xtls_smime_cipher const a_xtls_smime_ciphers[] = { /*Manual!*/
+static struct a_xtls_cipher const a_xtls_ciphers[] = { /*Manual!*/
 #ifndef OPENSSL_NO_AES
 # define a_XTLS_SMIME_DEFAULT_CIPHER EVP_aes_128_cbc /* According RFC 5751 */
    {"AES128", &EVP_aes_128_cbc},
@@ -261,7 +261,7 @@ static struct a_xtls_smime_cipher const a_xtls_smime_ciphers[] = { /*Manual!*/
 
 #ifndef OPENSSL_NO_AES
 /* TODO obsolete a_xtls_smime_ciphers_obs */
-static struct a_xtls_smime_cipher const a_xtls_smime_ciphers_obs[] = {
+static struct a_xtls_cipher const a_xtls_smime_ciphers_obs[] = {
    {"AES-128", &EVP_aes_128_cbc},
    {"AES-256", &EVP_aes_256_cbc},
    {"AES-192", &EVP_aes_192_cbc}
@@ -269,9 +269,11 @@ static struct a_xtls_smime_cipher const a_xtls_smime_ciphers_obs[] = {
 #endif
 
 /* Supported S/MIME message digest algorithms */
-static struct a_xtls_smime_digest const a_xtls_smime_digests[] = { /*Manual!*/
+static struct a_xtls_digest const a_xtls_digests[] = { /*Manual!*/
 #define a_XTLS_SMIME_DEFAULT_DIGEST EVP_sha1 /* According to RFC 5751 */
-#define a_XTLS_SMIME_DEFAULT_DIGEST_S  "SHA1"
+#define a_XTLS_SMIME_DEFAULT_DIGEST_S  "SHA1" /* Manual! */
+#define a_XTLS_FINGERPRINT_DEFAULT_DIGEST EVP_sha256 /* Manual! */
+#define a_XTLS_FINGERPRINT_DEFAULT_DIGEST_S "SHA256" /* Manual! */
    {"SHA1", &EVP_sha1},
    {"SHA256", &EVP_sha256},
    {"SHA512", &EVP_sha512},
@@ -314,6 +316,9 @@ static bool_t a_xtls_parse_asn1_time(ASN1_TIME const *atp,
                char *bdat, size_t blen);
 static int a_xtls_verify_cb(int success, X509_STORE_CTX *store);
 
+static bool_t a_xtls_digest_find(char const *name, EVP_MD const **mdp,
+               char const **normalized_name_or_null);
+
 /* *smime-ca-flags*, *tls-ca-flags* */
 static void a_xtls_ca_flags(X509_STORE *store, char const *flags);
 
@@ -339,7 +344,7 @@ static FILE *     smime_sign_cert(char const *xname, char const *xname2,
 static char const * _smime_sign_include_certs(char const *name);
 static bool_t     _smime_sign_include_chain_creat(n_XTLS_STACKOF(X509) **chain,
                      char const *cfiles, char const *addr);
-static EVP_MD const * _smime_sign_digest(char const *name,
+static EVP_MD const *a_xtls_smime_sign_digest(char const *name,
                         char const **digname);
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
 static enum okay  load_crl1(X509_STORE *store, char const *name);
@@ -596,6 +601,47 @@ a_xtls_verify_cb(int success, X509_STORE_CTX *store)
 jleave:
    NYD_LEAVE;
    return rv;
+}
+
+static bool_t
+a_xtls_digest_find(char const *name,
+      EVP_MD const **mdp, char const **normalized_name_or_null){
+   size_t i;
+   char *nn;
+   NYD2_ENTER;
+
+   /* C99 */{
+      char *cp, c;
+
+      i = strlen(name);
+      nn = cp = n_lofi_alloc(i +1);
+      while((c = *name++) != '\0')
+         *cp++ = upperconv(c);
+      *cp = '\0';
+
+      if(normalized_name_or_null != NULL)
+         *normalized_name_or_null = savestrbuf(nn, PTR2SIZE(cp - nn));
+   }
+
+   for(i = 0; i < n_NELEM(a_xtls_digests); ++i)
+      if(!strcmp(a_xtls_digests[i].xd_name, nn)){
+         *mdp = (*a_xtls_digests[i].xd_fun)();
+         goto jleave;
+      }
+
+   /* Not a built-in algorithm, but we may have dynamic support for more */
+#ifdef HAVE_TLS_ALL_ALGORITHMS
+   if((*mdp = EVP_get_digestbyname(nn)) != NULL)
+      goto jleave;
+#endif
+
+   n_err(_("Invalid message digest: %s\n"), n_shexp_quote_cp(nn, FAL0));
+   *mdp = NULL;
+jleave:
+   n_lofi_free(nn);
+
+   NYD2_LEAVE;
+   return (*mdp != NULL);
 }
 
 static void
@@ -1143,7 +1189,7 @@ a_xtls_load_verifications(SSL_CTX *ctxp, struct url const *urlp){
 
    a_xtls_state &= ~a_XTLS_S_VERIFY_ERROR;
    a_xtls_msgno = 0;
-/* TODO bla*/
+/* TODO bla only if !fingerprint set */
    SSL_CTX_set_verify(ctxp, SSL_VERIFY_PEER, &a_xtls_verify_cb);
    store = SSL_CTX_get_cert_store(ctxp);
    load_crls(store, ok_v_tls_crl_file, ok_v_tls_crl_dir);
@@ -1360,16 +1406,16 @@ _smime_cipher(char const *name)
    }
    cipher = NULL;
 
-   for (i = 0; i < n_NELEM(a_xtls_smime_ciphers); ++i)
-      if (!asccasecmp(a_xtls_smime_ciphers[i].xsc_name, cp)) {
-         cipher = (*a_xtls_smime_ciphers[i].xsc_fun)();
+   for(i = 0; i < n_NELEM(a_xtls_ciphers); ++i)
+      if(!asccasecmp(a_xtls_ciphers[i].xc_name, cp)){
+         cipher = (*a_xtls_ciphers[i].xc_fun)();
          goto jleave;
       }
 #ifndef OPENSSL_NO_AES
    for (i = 0; i < n_NELEM(a_xtls_smime_ciphers_obs); ++i) /* TODO obsolete */
-      if (!asccasecmp(a_xtls_smime_ciphers_obs[i].xsc_name, cp)) {
+      if (!asccasecmp(a_xtls_smime_ciphers_obs[i].xc_name, cp)) {
          n_OBSOLETE2(_("*smime-cipher* names with hyphens will vanish"), cp);
-         cipher = (*a_xtls_smime_ciphers_obs[i].xsc_fun)();
+         cipher = (*a_xtls_smime_ciphers_obs[i].xc_fun)();
          goto jleave;
       }
 #endif
@@ -1556,58 +1602,41 @@ jerr:
 }
 
 static EVP_MD const *
-_smime_sign_digest(char const *name, char const **digname)
-{
+a_xtls_smime_sign_digest(char const *name, char const **digname){
    EVP_MD const *digest;
    char const *cp;
-   size_t i;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    /* See comments in smime_sign_cert() for algorithm pitfalls */
-   if (name != NULL) {
+   if(name != NULL){
       struct name *np;
 
-      for (np = lextract(name, GTO | GSKIN); np != NULL; np = np->n_flink) {
+      for(np = lextract(name, GTO | GSKIN); np != NULL; np = np->n_flink){
          int vs;
-         char *vn = n_lofi_alloc(vs = strlen(np->n_name) + 30);
-         snprintf(vn, vs, "smime-sign-message-digest-%s", np->n_name);
-         cp = n_var_vlook(vn, FAL0);
+         char *vn;
+
+         vn = n_lofi_alloc(vs = strlen(np->n_name) + 30);
+         snprintf(vn, vs, "smime-sign-digest-%s", np->n_name);
+         if((cp = n_var_vlook(vn, FAL0)) == NULL){
+            snprintf(vn, vs, "smime-sign-message-digest-%s",np->n_name);/*v15*/
+            cp = n_var_vlook(vn, FAL0);
+         }
          n_lofi_free(vn);
-         if (cp != NULL)
+         if(cp != NULL)
             goto jhave_name;
       }
    }
 
-   if ((cp = ok_vlook(smime_sign_message_digest)) == NULL) {
-      digest = a_XTLS_SMIME_DEFAULT_DIGEST();
-      *digname = a_XTLS_SMIME_DEFAULT_DIGEST_S;
-      goto jleave;
-   }
-
+   if((cp = ok_vlook(smime_sign_digest)) != NULL ||
+         (cp = ok_vlook(smime_sign_message_digest)/* v15 */) != NULL)
 jhave_name:
-   i = strlen(cp);
-   {  char *x = n_autorec_alloc(i +1);
-      i_strcpy(x, cp, i +1);
-      cp = x;
-   }
-   *digname = cp;
-
-   for (i = 0; i < n_NELEM(a_xtls_smime_digests); ++i)
-      if (!asccasecmp(a_xtls_smime_digests[i].xsd_name, cp)) {
-         digest = (*a_xtls_smime_digests[i].xsd_fun)();
+      if(a_xtls_digest_find(cp, &digest, digname))
          goto jleave;
-      }
 
-   /* Not a built-in algorithm, but we may have dynamic support for more */
-#ifdef HAVE_TLS_ALL_ALGORITHMS
-   if((digest = EVP_get_digestbyname(cp)) != NULL)
-      goto jleave;
-#endif
-
-   n_err(_("Invalid message digest: %s\n"), cp);
-   digest = NULL;
+   digest = a_XTLS_SMIME_DEFAULT_DIGEST();
+   *digname = a_XTLS_SMIME_DEFAULT_DIGEST_S;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return digest;
 }
 
@@ -1744,12 +1773,25 @@ FL bool_t
 n_tls_open(struct url *urlp, struct sock *sp){
    void *confp;
    SSL_CTX *ctxp;
+   const EVP_MD *fprnt_mdp;
+   char const *fprnt_namep;
    NYD_ENTER;
 
    sp->s_tls = NULL;
+   fprnt_mdp = NULL;
+   fprnt_namep = NULL;
 
    a_xtls_init();
    n_tls_set_verify_level(urlp); /* TODO should come in via URL! */
+
+   if(urlp->url_cproto == CPROTO_CERTINFO || (n_poption & n_PO_D_V)){
+      if((fprnt_namep = xok_vlook(tls_fingerprint_digest, urlp,
+            OXM_ALL)) == NULL ||
+            !a_xtls_digest_find(fprnt_namep, &fprnt_mdp, &fprnt_namep)){
+         fprnt_mdp = a_XTLS_FINGERPRINT_DEFAULT_DIGEST();
+         fprnt_namep = a_XTLS_FINGERPRINT_DEFAULT_DIGEST_S;
+      }
+   }
 
    if((ctxp = SSL_CTX_new(n_XTLS_CLIENT_METHOD())) == NULL){
       ssl_gen_err(_("SSL_CTX_new() failed"));
@@ -1822,14 +1864,9 @@ n_tls_open(struct url *urlp, struct sock *sp){
          char fpmdhexbuf[EVP_MAX_MD_SIZE * 3], *cp;
          unsigned char fpmdbuf[EVP_MAX_MD_SIZE], *ucp;
          unsigned int fpmdlen;
-         char const *cmdnamep;
-         const EVP_MD *cmdp;
 
-         cmdp = EVP_sha256();
-         cmdnamep = OBJ_nid2sn(EVP_MD_type(cmdp));
-
-         if(!X509_digest(peercert, cmdp, fpmdbuf, &fpmdlen)){
-            ssl_gen_err(_("TLS %s fingerprint creation failed"), cmdnamep);
+         if(!X509_digest(peercert, fprnt_mdp, fpmdbuf, &fpmdlen)){
+            ssl_gen_err(_("TLS %s fingerprint creation failed"), fprnt_namep);
             goto jerr_peer;
          }
          assert(fpmdlen <= EVP_MAX_MD_SIZE);
@@ -1842,7 +1879,7 @@ n_tls_open(struct url *urlp, struct sock *sp){
          cp[-1] = '\0';
 
          if(n_poption & n_PO_D_V)
-            n_err(_("TLS %s fingerprint: %s\n"), cmdnamep, fpmdhexbuf);
+            n_err(_("TLS %s fingerprint: %s\n"), fprnt_namep, fpmdhexbuf);
          sp->s_tls_finger = savestrbuf(fpmdhexbuf, PTR2SIZE(cp - fpmdhexbuf));
       }
 
@@ -2002,7 +2039,7 @@ smime_sign(FILE *ip, char const *addr)
       goto jleave;
 
    name = NULL;
-   if ((md = _smime_sign_digest(addr, &name)) == NULL)
+   if ((md = a_xtls_smime_sign_digest(addr, &name)) == NULL)
       goto jleave;
 
    if ((sp = Ftmp(NULL, "smimesign", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==

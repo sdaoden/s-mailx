@@ -1726,7 +1726,7 @@ is available, all that needs to be done is to set some variables:
 .
 .Bd -literal -offset indent
 ? set smime-sign-cert=ME@exam.ple.paired \e
-    smime-sign-message-digest=SHA512 \e
+    smime-sign-digest=SHA512 \e
     smime-sign
 .Ed
 .
@@ -1743,7 +1743,7 @@ For S/MIME signing of interest are
 .Va smime-sign-cert ,
 .Va smime-sign-include-certs
 and
-.Va smime-sign-message-digest .
+.Va smime-sign-digest .
 Additional variables of interest for S/MIME en- and decryption:
 .Va smime-cipher
 and
@@ -1907,7 +1907,7 @@ S/MIME verification works relative to the values found in the
 header field(s), which means that the values of
 .Va smime-sign , smime-sign-cert , smime-sign-include-certs
 and
-.Va smime-sign-message-digest
+.Va smime-sign-digest
 will not be looked up using the
 .Ql USER
 and
@@ -6860,6 +6860,7 @@ For example, string length overflows are catched and set
 .Va \&!
 to
 .Va ^ERR Ns -OVERFLOW .
+Note this command of course honours the overall TLS configuration.
 .Bd -literal -offset indent
 ? vput tls result fingerprint pop3s://ex.am.ple
 ? echo $?/$!/$^ERRNAME: $result
@@ -6867,7 +6868,9 @@ to
 .
 .Bl -hang -width ".It Cm random"
 .It Cm fingerprint
-Show the SHA-256 fingerprint of the certificate of the given HOST
+Show the
+.Va tls-fingerprint-digest Ns
+ed fingerprint of the certificate of the given HOST
 .Pf ( Ql server:port ,
 where the port defaults to the HTTPS port, 443).
 Only available if the term
@@ -11341,7 +11344,7 @@ and people will be able to read the message as usual.
 Also see
 .Va smime-sign-cert , smime-sign-include-certs
 and
-.Va smime-sign-message-digest .
+.Va smime-sign-digest .
 .
 .Mx Va smime-sign-cert
 .It Va smime-sign-cert-USER@HOST , smime-sign-cert
@@ -11395,6 +11398,32 @@ and needed passwords would then be looked up via the pseudo hosts
 To include intermediate certificates, use
 .Va smime-sign-include-certs .
 .
+.Mx Va smime-sign-digest
+.It Va smime-sign-digest-USER@HOST , smime-sign-digest
+\*(OP Specifies the message digest to use when signing S/MIME messages.
+RFC 5751 mandates a default of
+.Ql SHA1 .
+Possible values are (case-insensitive and) in decreasing cipher strength:
+.Ql SHA512 ,
+.Ql SHA384 ,
+.Ql SHA256 ,
+.Ql SHA224
+and
+.Ql MD5 .
+.Pp
+The actually available message digest algorithms depend on the
+cryptographic library that \*(UA uses.
+\*(OP Support for more message digest algorithms may be available
+through dynamic loading via, e.g.,
+.Xr EVP_get_digestbyname 3
+(OpenSSL) if \*(UA has been compiled to support this.
+Remember that for this
+.Ql USER@HOST
+refers to the variable
+.Va from
+(or, if that contains multiple addresses,
+.Va sender ) .
+.
 .Mx Va smime-sign-include-certs
 .It Va smime-sign-include-certs-USER@HOST , smime-sign-include-certs
 \*(OP If used, this is supposed to a consist of a comma-separated list
@@ -11423,31 +11452,9 @@ shall they have been given one, therefore the lookup can be automated
 via the mechanisms described in
 .Sx "On URL syntax and credential lookup" .
 .
-.Mx Va smime-sign-message-digest
 .It Va smime-sign-message-digest-USER@HOST , smime-sign-message-digest
-\*(OP Specifies the message digest to use when signing S/MIME messages.
-RFC 5751 mandates a default of
-.Ql sha1 .
-Possible values are (case-insensitive and) in decreasing cipher strength:
-.Ql sha512 ,
-.Ql sha384 ,
-.Ql sha256 ,
-.Ql sha224
-and
-.Ql md5 .
-.Pp
-The actually available message digest algorithms depend on the
-cryptographic library that \*(UA uses.
-\*(OP Support for more message digest algorithms may be available
-through dynamic loading via, e.g.,
-.Xr EVP_get_digestbyname 3
-(OpenSSL) if \*(UA has been compiled to support this.
-Remember that for this
-.Ql USER@HOST
-refers to the variable
-.Va from
-(or, if that contains multiple addresses,
-.Va sender ) .
+\*(OB\*(OP Predecessor(s) of
+.Va smime-sign-digest .
 .
 .It Va smtp
 \*(OB\*(OP To use the built-in SMTP transport, specify a SMTP URL in
@@ -12319,6 +12326,14 @@ Currently known features are
 .Ql ctx-set-maxmin-proto
 .Pf ( Va tls-config-pairs ) .
 .
+.Mx Va tls-fingerprint-digest
+.It Va tls-fingerprint-digest-USER@HOST , tls-fingerprint-digest-HOST , \
+  tls-fingerprint-digest
+\*(OP The message digest to be used when creating TLS certificate
+fingerprints, the default (if available) being
+.Ql SHA256 .
+For the complete list of digest algorithms refer to
+.Va smime-sign-digest .
 .
 .Mx
 .It Va tls-rand-file
@@ -13882,7 +13897,7 @@ is of interest for verification only):
 .Bd -literal -offset indent
 ? set smime-ca-file=ALL-TRUSTED-ROOT-CERTS-HERE \e
     smime-sign-cert=ME@HERE.com.paired \e
-    smime-sign-message-digest=SHA256 \e
+    smime-sign-digest=SHA256 \e
     smime-sign
 .Ed
 .

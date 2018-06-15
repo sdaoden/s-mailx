@@ -1769,8 +1769,9 @@ ok_v_signature, /* {obsolete=1} */
 ok_b_smime_no_default_ca, /* {obsolete=1} */
    ok_b_smime_sign,
    ok_v_smime_sign_cert,               /* {chain=1} */
+   ok_v_smime_sign_digest,             /* {chain=1} */
    ok_v_smime_sign_include_certs,      /* {chain=1} */
-   ok_v_smime_sign_message_digest,     /* {chain=1} */
+ok_v_smime_sign_message_digest,     /* {chain=1,obsolete=1} */
 ok_v_smtp, /* {obsolete=1} */
    ok_v_smtp_auth,                     /* {chain=1} */
 ok_v_smtp_auth_password, /* {obsolete=1} */
@@ -1831,6 +1832,7 @@ ok_v_ssl_verify, /* {chain=1,obsolete=1} */
    ok_v_tls_crl_dir,
    ok_v_tls_crl_file,
    ok_v_tls_features,                  /* {virt=VAL_TLS_FEATURES} */
+   ok_v_tls_fingerprint_digest,        /* {chain=1} */
    ok_v_tls_rand_file,
    ok_v_tls_verify,                    /* {chain=1} */
    ok_v_toplines,                      /* {notempty=1,num=1,defval="5"} */
