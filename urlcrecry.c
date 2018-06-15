@@ -1069,19 +1069,18 @@ jurlp_err:
 #endif /* HAVE_IDNA */
 
    /* .url_h_p: HOST:PORT */
-   {  size_t i;
+   {  size_t upl, i;
       struct str *s = &urlp->url_h_p;
 
-      s->s = salloc(urlp->url_host.l + 1 + sizeof("65536")-1 +1);
+      upl = (urlp->url_port == NULL) ? 0 : 1u + strlen(urlp->url_port);
+      s->s = n_autorec_alloc(urlp->url_host.l + upl +1);
       memcpy(s->s, urlp->url_host.s, i = urlp->url_host.l);
-      if (urlp->url_port != NULL) {
-         size_t j = strlen(urlp->url_port);
+      if(upl > 0){
          s->s[i++] = ':';
-         memcpy(s->s + i, urlp->url_port, j);
-         i += j;
+         memcpy(&s->s[i], urlp->url_port, upl);
+         i += upl;
       }
-      s->s[i] = '\0';
-      s->l = i;
+      s->s[s->l = i] = '\0';
    }
 
    /* User, II
