@@ -1189,7 +1189,6 @@ a_xtls_load_verifications(SSL_CTX *ctxp, struct url const *urlp){
 
    a_xtls_state &= ~a_XTLS_S_VERIFY_ERROR;
    a_xtls_msgno = 0;
-/* TODO bla only if !fingerprint set */
    SSL_CTX_set_verify(ctxp, SSL_VERIFY_PEER, &a_xtls_verify_cb);
    store = SSL_CTX_get_cert_store(ctxp);
    load_crls(store, ok_v_tls_crl_file, ok_v_tls_crl_dir);
@@ -1774,17 +1773,22 @@ n_tls_open(struct url *urlp, struct sock *sp){
    void *confp;
    SSL_CTX *ctxp;
    const EVP_MD *fprnt_mdp;
-   char const *fprnt_namep;
+   char const *fprnt, *fprnt_namep;
    NYD_ENTER;
-
-   sp->s_tls = NULL;
-   fprnt_mdp = NULL;
-   fprnt_namep = NULL;
 
    a_xtls_init();
    n_tls_set_verify_level(urlp); /* TODO should come in via URL! */
 
-   if(urlp->url_cproto == CPROTO_CERTINFO || (n_poption & n_PO_D_V)){
+   sp->s_tls = NULL;
+   if(urlp->url_cproto != CPROTO_CERTINFO)
+      fprnt = xok_vlook(tls_fingerprint, urlp, OXM_ALL);
+   else
+      fprnt = NULL;
+   fprnt_namep = NULL;
+   fprnt_mdp = NULL;
+
+   if(fprnt != NULL || urlp->url_cproto == CPROTO_CERTINFO ||
+         (n_poption & n_PO_D_V)){
       if((fprnt_namep = xok_vlook(tls_fingerprint_digest, urlp,
             OXM_ALL)) == NULL ||
             !a_xtls_digest_find(fprnt_namep, &fprnt_mdp, &fprnt_namep)){
@@ -1810,7 +1814,8 @@ n_tls_open(struct url *urlp, struct sock *sp){
       goto jerr1;
    if(!a_xtls_config_pairs(confp, urlp))
       goto jerr1;
-   if(!a_xtls_load_verifications(ctxp, urlp))
+   if((fprnt == NULL || urlp->url_cproto == CPROTO_CERTINFO) &&
+         !a_xtls_load_verifications(ctxp, urlp))
       goto jerr1;
 
    /* Done with context setup, create our new per-connection structure */
@@ -1845,29 +1850,38 @@ n_tls_open(struct url *urlp, struct sock *sp){
       goto jerr2;
    }
 
-   if(urlp->url_cproto == CPROTO_CERTINFO ||
+   if(fprnt != NULL || urlp->url_cproto == CPROTO_CERTINFO ||
          n_tls_verify_level != n_TLS_VERIFY_IGNORE){
       bool_t stay;
       X509 *peercert;
 
       if((peercert = SSL_get_peer_certificate(sp->s_tls)) == NULL){
-         n_err(_("No TLS certificate from: %s\n"), urlp->url_h_p.s);
+         n_err(_("TLS: no certificate from peer: %s\n"), urlp->url_h_p.s);
          goto jerr2;
       }
 
-      if(!(stay = a_xtls_check_host(sp, peercert, urlp))){
-         n_err(_("Host certificate does not match: %s\n"), urlp->url_h_p.s);
-         stay = n_tls_verify_decide();
+      stay = FAL0;
+
+      if(fprnt == NULL){
+         if(!a_xtls_check_host(sp, peercert, urlp)){
+            n_err(_("TLS certificate does not match: %s\n"), urlp->url_h_p.s);
+            stay = n_tls_verify_decide();
+         }else{
+            if(n_poption & n_PO_D_V)
+               n_err(_("TLS certificate ok\n"));
+            stay = TRU1;
+         }
       }
 
-      if(urlp->url_cproto == CPROTO_CERTINFO || (n_poption & n_PO_D_V)){
+      if(fprnt != NULL || urlp->url_cproto == CPROTO_CERTINFO ||
+            (n_poption & n_PO_D_V)){
          char fpmdhexbuf[EVP_MAX_MD_SIZE * 3], *cp;
          unsigned char fpmdbuf[EVP_MAX_MD_SIZE], *ucp;
          unsigned int fpmdlen;
 
          if(!X509_digest(peercert, fprnt_mdp, fpmdbuf, &fpmdlen)){
             ssl_gen_err(_("TLS %s fingerprint creation failed"), fprnt_namep);
-            goto jerr_peer;
+            goto jpeer_leave;
          }
          assert(fpmdlen <= EVP_MAX_MD_SIZE);
 
@@ -1880,10 +1894,21 @@ n_tls_open(struct url *urlp, struct sock *sp){
 
          if(n_poption & n_PO_D_V)
             n_err(_("TLS %s fingerprint: %s\n"), fprnt_namep, fpmdhexbuf);
-         sp->s_tls_finger = savestrbuf(fpmdhexbuf, PTR2SIZE(cp - fpmdhexbuf));
+         if(fprnt != NULL){
+            if(!(stay = !strcmp(fprnt, fpmdhexbuf))){
+               n_err(_("TLS fingerprint does not match: %s\n"
+                     "  Expected: %s\n  Detected: %s\n"),
+                  urlp->url_h_p.s, fprnt, fpmdhexbuf);
+               stay = n_tls_verify_decide();
+            }else if(n_poption & n_PO_D_V)
+               n_err(_("TLS fingerprint ok\n"));
+            goto jpeer_leave;
+         }else if(urlp->url_cproto == CPROTO_CERTINFO)
+            sp->s_tls_finger = savestrbuf(fpmdhexbuf,
+                  PTR2SIZE(cp - fpmdhexbuf));
       }
 
-jerr_peer:
+jpeer_leave:
       X509_free(peercert);
       if(!stay)
          goto jerr2;

@@ -1832,6 +1832,7 @@ ok_v_ssl_verify, /* {chain=1,obsolete=1} */
    ok_v_tls_crl_dir,
    ok_v_tls_crl_file,
    ok_v_tls_features,                  /* {virt=VAL_TLS_FEATURES} */
+   ok_v_tls_fingerprint,               /* {chain=1} */
    ok_v_tls_fingerprint_digest,        /* {chain=1} */
    ok_v_tls_rand_file,
    ok_v_tls_verify,                    /* {chain=1} */
