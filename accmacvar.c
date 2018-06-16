@@ -2990,7 +2990,7 @@ n_var_xoklook(enum okeys okey, struct url const *urlp,
    memcpy(nbuf + nlen, us->s, us->l +1);
    avc.avc_name = a_amv_var_canonify(nbuf);
    avc.avc_hash = a_AMV_NAME2HASH(avc.avc_name);
-   if(a_amv_var_lookup(&avc, a_AMV_VLOOK_LOCAL))
+   if(a_amv_var_lookup(&avc, a_AMV_VLOOK_NONE))
       goto jvar;
 
    /* The second */
@@ -2999,7 +2999,7 @@ n_var_xoklook(enum okeys okey, struct url const *urlp,
       memcpy(nbuf + nlen, us->s, us->l +1);
       avc.avc_name = a_amv_var_canonify(nbuf);
       avc.avc_hash = a_AMV_NAME2HASH(avc.avc_name);
-      if(a_amv_var_lookup(&avc, a_AMV_VLOOK_LOCAL)){
+      if(a_amv_var_lookup(&avc, a_AMV_VLOOK_NONE)){
 jvar:
          rv = avc.avc_var->av_value;
          goto jleave;
