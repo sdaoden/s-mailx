@@ -421,7 +421,7 @@ a_coll_write(char const *name, FILE *fp, int f)
          goto jerr;
       }
    }
-   fprintf(n_stdout, _("%" PRId64 "/%" PRId64 "\n"), lc, cc);
+   fprintf(n_stdout, "%" PRId64 "/%" PRId64 "\n", lc, cc);
 
 jleave:
    if(of != NULL)
@@ -798,7 +798,7 @@ a_coll_forward(char const *ms, FILE *fp, int f)
       itp = upperchar(f) ? NULL : n_IGNORE_TYPE;
    action = (upperchar(f) && f != 'U') ? SEND_QUOTE_ALL : SEND_QUOTE;
 
-   fprintf(n_stdout, _("Interpolating:"));
+   fprintf(n_stdout, A_("Interpolating:"));
    srelax_hold();
    for(; *msgvec != 0; ++msgvec){
       struct message *mp;
