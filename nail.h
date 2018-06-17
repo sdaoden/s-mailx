@@ -1780,7 +1780,7 @@ ok_v_smtp_auth_password, /* {obsolete=1} */
 ok_v_smtp_auth_user, /* {obsolete=1} */
    ok_v_smtp_hostname,                 /* {vip=1} */
    ok_b_smtp_use_starttls,             /* {chain=1} */
-   ok_v_SOURCE_DATE_EPOCH,             /* {\} */
+   ok_v_SOURCE_DATE_EPOCH,             /* {\ } */
       /* {name=SOURCE_DATE_EPOCH,rdonly=1,import=1,notempty=1,posnum=1} */
    ok_v_socks_proxy,                   /* {chain=1,notempty=1} */
    ok_v_spam_interface,
@@ -1869,6 +1869,7 @@ ok_v_imap_keepalive,             /* {chain=1} */
 ok_v_imap_list_depth,
 ok_b_imap_use_starttls           /* {chain=1} */
 }; /* }}} */
+enum {n_OKEYS_MAX = ok_b_imap_use_starttls};
 
 /* Locale-independent character classes */
 enum {
