@@ -2984,19 +2984,20 @@ n_var_xoklook(enum okeys okey, struct url const *urlp,
    nlen = strlen(avc.avc_name);
    nbuf = n_lofi_alloc(nlen + 1 + us->l +1);
    memcpy(nbuf, avc.avc_name, nlen);
-   nbuf[nlen++] = '-';
 
    /* One of .url_u_h_p and .url_h_p we test in here */
-   memcpy(nbuf + nlen, us->s, us->l +1);
+   /*avc.avc_is_chain_variant = TRU1;*/
+   nbuf[nlen++] = '-';
+   memcpy(&nbuf[nlen], us->s, us->l +1);
    avc.avc_name = a_amv_var_canonify(nbuf);
    avc.avc_hash = a_AMV_NAME2HASH(avc.avc_name);
    if(a_amv_var_lookup(&avc, a_AMV_VLOOK_NONE))
       goto jvar;
 
    /* The second */
-   if(oxm & OXM_H_P){
+   if((oxm & (OXM_U_H_P | OXM_H_P)) == (OXM_U_H_P | OXM_H_P)){
       us = &urlp->url_h_p;
-      memcpy(nbuf + nlen, us->s, us->l +1);
+      memcpy(&nbuf[nlen], us->s, us->l +1);
       avc.avc_name = a_amv_var_canonify(nbuf);
       avc.avc_hash = a_AMV_NAME2HASH(avc.avc_name);
       if(a_amv_var_lookup(&avc, a_AMV_VLOOK_NONE)){
@@ -3007,6 +3008,7 @@ jvar:
    }
 
 jplain:
+   /*avc.avc_is_chain_variant = FAL0;*/
    rv = (oxm & OXM_PLAIN) ? n_var_oklook(okey) : NULL;
 jleave:
    if(nbuf != NULL)
