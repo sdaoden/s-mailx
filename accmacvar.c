@@ -1459,6 +1459,15 @@ jerr:
 jleave:
    avcp->avc_var = avp;
 j_leave:
+   if(!(avlf & a_AMV_VLOOK_I3VAL_NONEW) && (n_poption & n_PO_D_VV) &&
+         avp != (struct a_amv_var*)-1 && avcp->avc_okey != ok_v_log_prefix){
+      /* I18N: Variable "name" is set to "value" */
+      n_err(_("*%s* is %s\n"),
+         n_shexp_quote_cp(avcp->avc_name, FAL0),
+         (avp == NULL ? _("not set")
+            : ((avp->av_flags & a_AMV_VF_BOOL) ? _("boolean set")
+               : n_shexp_quote_cp(avp->av_value, FAL0))));
+   }
    NYD2_LEAVE;
    return (avp != NULL);
 
