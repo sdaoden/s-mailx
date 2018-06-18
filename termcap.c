@@ -267,7 +267,7 @@ jeinvent:
 #ifdef HAVE_KEY_BINDINGS
 jlearned:
 #endif
-      if(n_poption & n_PO_D_VV)
+      if(n_poption & n_PO_D_V)
          n_err(_("*termcap*: learned %.*s: %s\n"), (int)kl, ccp,
             (tep->te_flags & a_TERMCAP_F_DISABLED ? "<disabled>"
              : (f & a_TERMCAP_F_TYPE_MASK) == n_TERMCAP_CAPTYPE_BOOL ? "true"
@@ -390,15 +390,6 @@ a_termcap_init_altern(void){
       }
    }
 
-#ifdef HAVE_TERMCAP
-   /* cl == ho+cd */
-   tep = &a_termcap_g->tg_ents[n_TERMCAP_CMD_cl];
-   if(!a_OOK(tep)){
-      if(a_OK(n_TERMCAP_CMD_cd) && a_OK(n_TERMCAP_CMD_ho))
-         a_SET(tep, n_TERMCAP_CMD_cl, TRU1);
-   }
-#endif
-
 #ifdef HAVE_MLE
    /* ce == ch + [:SPACE:] (start column specified by argument) */
    tep = &a_termcap_g->tg_ents[n_TERMCAP_CMD_ce];
@@ -433,6 +424,15 @@ a_termcap_init_altern(void){
       tep->te_off = (ui16_t)a_termcap_g->tg_dat.s_len;
       n_string_push_buf(&a_termcap_g->tg_dat, "\033[C", sizeof("\033[C"));
    }
+
+# ifdef HAVE_TERMCAP
+   /* cl == ho+cd */
+   tep = &a_termcap_g->tg_ents[n_TERMCAP_CMD_cl];
+   if(!a_OOK(tep)){
+      if(a_OK(n_TERMCAP_CMD_cd) && a_OK(n_TERMCAP_CMD_ho))
+         a_SET(tep, n_TERMCAP_CMD_cl, TRU1);
+   }
+# endif
 #endif /* HAVE_MLE */
 
    NYD2_LEAVE;
@@ -649,7 +649,7 @@ n_termcap_init(void){
             a_termcap_ent_query_tcp(tep, &a_termcap_control[i]);
       }
    }
-#endif
+#endif /* HAVE_TERMCAP */
 
    a_termcap_init_altern();
 
@@ -798,14 +798,6 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
          rv = TRUM1;
          break;
 
-#ifdef HAVE_TERMCAP
-      case n_TERMCAP_CMD_cl: /* cl = ho + cd */
-         rv = n_termcap_cmdx(n_TERMCAP_CMD_ho);
-         if(rv > 0)
-            rv = n_termcap_cmdx(n_TERMCAP_CMD_cd | flags);
-         break;
-#endif
-
 #ifdef HAVE_MLE
       case n_TERMCAP_CMD_ce: /* ce == ch + [:SPACE:] */
          if(a1 > 0)
@@ -826,6 +818,13 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
             rv = n_termcap_cmd(n_TERMCAP_CMD_nd, a1, -1);
          }
          break;
+# ifdef HAVE_TERMCAP
+      case n_TERMCAP_CMD_cl: /* cl = ho + cd */
+         rv = n_termcap_cmdx(n_TERMCAP_CMD_ho);
+         if(rv > 0)
+            rv = n_termcap_cmdx(n_TERMCAP_CMD_cd | flags);
+         break;
+# endif
 #endif /* HAVE_MLE */
       }
 

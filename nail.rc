@@ -192,11 +192,12 @@ retain from_ date from to cc subject message-id mail-followup-to reply-to
 
 # More key bindings for the Mailx-Line-Editor (when in interactive mode).
 #if terminal && [ "$features" =@ +key-bindings ]
-#   bind base $'\e',d mle-snarf-word-fwd
-#   bind base $'\e',$'\c?' mle-snarf-word-bwd
-#   bind base $'\e',f mle-go-word-fwd
-#   bind base $'\e',b mle-go-word-bwd
-#   bind compose :kf1 ~v
+#   \bind base $'\e',d mle-snarf-word-fwd
+#   \bind base $'\e',$'\c?' mle-snarf-word-bwd
+#   \bind base $'\e',f mle-go-word-fwd
+#   \bind base $'\e',b mle-go-word-bwd
+#   \bind base $'\cL' mle-clear-screen
+#   \bind compose :kf1 ~v
 #endif
 
 # Coloured prompt for the Mailx-Line-Editor (when in interactive mode).

@@ -1253,10 +1253,6 @@ enum n_termcap_cmd{
 
    n_TERMCAP_CMD_ks, /* smkx/ks, STRING | keypad_xmit: -,- */
    n_TERMCAP_CMD_ke, /* rmkx/ke, STRING | keypad_local: -,- */
-
-   n_TERMCAP_CMD_cd, /* ed/cd, STRING | clr_eos: -,- */
-   n_TERMCAP_CMD_cl, /* clear/cl, STRING | clear_screen(+home): -,- */
-   n_TERMCAP_CMD_ho, /* home/ho, STRING | cursor_home: -,- */
 # endif
 
 # ifdef HAVE_MLE
@@ -1265,6 +1261,12 @@ enum n_termcap_cmd{
    n_TERMCAP_CMD_cr, /* cr/cr, STRING | @ carriage_return: -,- */
    n_TERMCAP_CMD_le, /* cub1/le, STRING, CNT | @ cursor_left: count,- */
    n_TERMCAP_CMD_nd, /* cuf1/nd, STRING, CNT | @ cursor_right: count,- */
+
+#  ifdef HAVE_TERMCAP
+   n_TERMCAP_CMD_cd, /* ed/cd, STRING | clr_eos: -,- */
+   n_TERMCAP_CMD_ho, /* home/ho, STRING | cursor_home: -,- */
+#  endif
+   n_TERMCAP_CMD_cl, /* clear/cl, STRING | clear_screen(+home): -,- */
 # endif
 
    n__TERMCAP_CMD_MAX1,

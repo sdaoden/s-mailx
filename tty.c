@@ -490,14 +490,15 @@ enum a_tty_bind_flags{
    a_X(PROMPT_CHAR, 21)
    a_X(COMPLETE, 22)
    a_X(PASTE, 23)
+   a_X(CLEAR_SCREEN, 24)
 
-   a_X(CANCEL, 24)
-   a_X(RESET, 25)
-   a_X(FULLRESET, 26)
-   a_X(COMMIT, 27) /* Must be last one! */
+   a_X(CANCEL, 25)
+   a_X(RESET, 26)
+   a_X(FULLRESET, 27)
+   a_X(COMMIT, 28) /* Must be last one! */
 # undef a_X
 
-   a_TTY__BIND_LAST = 1<<27
+   a_TTY__BIND_LAST = 1<<28
 };
 # ifdef HAVE_KEY_BINDINGS
 n_CTA((ui32_t)a_TTY_BIND_RESOLVE >= (ui32_t)n__GO_INPUT_CTX_MAX1,
@@ -739,6 +740,7 @@ static char const a_tty_bind_fun_names[][24] = {
    a_X(PROMPT_CHAR, "prompt-char")
    a_X(COMPLETE, "complete")
    a_X(PASTE, "paste")
+   a_X(CLEAR_SCREEN, "clear-screen")
 
    a_X(CANCEL, "cancel")
    a_X(RESET, "reset")
@@ -2880,6 +2882,10 @@ a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, size_t *len){
          tlp->tl_vi_flags |= a_TTY_VF_BELL;
       break;
 
+   case a_X(CLEAR_SCREEN):
+      tlp->tl_vi_flags |= (n_termcap_cmdx(n_TERMCAP_CMD_cl) == TRU1)
+            ? a_TTY_VF_MOD_DIRTY : a_TTY_VF_BELL;
+      break;
 
    case a_X(CANCEL):
       /* Normally this just causes a restart and thus resets the state
