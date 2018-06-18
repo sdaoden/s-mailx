@@ -856,6 +856,9 @@ static bool_t a_tty_hist_save(void);
 
 /* Initialize .tg_hist_size_max and return desired history file, or NULL */
 static char const *a_tty_hist__query_config(void);
+
+/* (Definetely) Add an entry TODO yet assumes hold_all_sigs() is held! */
+static void a_tty_hist_add(char const *s, enum n_go_input_flags gif);
 # endif
 
 /* Adjust an active raw mode to use / not use a timeout */
@@ -1050,8 +1053,6 @@ a_tty_hist_load(void){
       a_tty.tg_hist_size = 0;
    }
 
-   assert(!(n_pstate & n_PS_ROOT));
-   n_pstate |= n_PS_ROOT; /* Allow calling addhist() */
    lbuf = NULL;
    lsize = 0;
    cnt = (size_t)fsize(f);
@@ -1107,13 +1108,12 @@ a_tty_hist_load(void){
             }
          }
 
-         n_tty_addhist(cp, gif);
+         a_tty_hist_add(cp, gif);
       }
    }
 
    if(lbuf != NULL)
       n_free(lbuf);
-   n_pstate &= ~n_PS_ROOT;
 
    fclose(f);
 jrele:
@@ -1224,6 +1224,62 @@ a_tty_hist__query_config(void){
       rv = fexpand(rv, FEXP_LOCAL | FEXP_NSHELL);
    NYD2_LEAVE;
    return rv;
+}
+
+static void
+a_tty_hist_add(char const *s, enum n_go_input_flags gif){
+   ui32_t l;
+   struct a_tty_hist *thp, *othp, *ythp;
+   NYD2_ENTER;
+
+   l = (ui32_t)strlen(s); /* xxx simply do not store if >= SI32_MAX */
+
+   /* Eliminating duplicates is expensive, but simply inacceptable so
+    * during the load of a potentially large history file! */
+   if(n_psonce & n_PSO_LINE_EDITOR_INIT)
+      for(thp = a_tty.tg_hist; thp != NULL; thp = thp->th_older)
+         if(thp->th_len == l && !strcmp(thp->th_dat, s)){
+            thp->th_flags = (gif & a_TTY_HIST_CTX_MASK) |
+                  (gif & n_GO_INPUT_HIST_GABBY ? a_TTY_HIST_GABBY : 0);
+            othp = thp->th_older;
+            ythp = thp->th_younger;
+            if(othp != NULL)
+               othp->th_younger = ythp;
+            else
+               a_tty.tg_hist_tail = ythp;
+            if(ythp != NULL)
+               ythp->th_older = othp;
+            else
+               a_tty.tg_hist = othp;
+            goto jleave;
+         }
+
+   if(n_LIKELY(a_tty.tg_hist_size <= a_tty.tg_hist_size_max))
+      ++a_tty.tg_hist_size;
+   else{
+      --a_tty.tg_hist_size;
+      if((thp = a_tty.tg_hist_tail) != NULL){
+         if((a_tty.tg_hist_tail = thp->th_younger) == NULL)
+            a_tty.tg_hist = NULL;
+         else
+            a_tty.tg_hist_tail->th_older = NULL;
+         n_free(thp);
+      }
+   }
+
+   thp = n_alloc(n_VSTRUCT_SIZEOF(struct a_tty_hist, th_dat) + l +1);
+   thp->th_len = l;
+   thp->th_flags = (gif & a_TTY_HIST_CTX_MASK) |
+         (gif & n_GO_INPUT_HIST_GABBY ? a_TTY_HIST_GABBY : 0);
+   memcpy(thp->th_dat, s, l +1);
+jleave:
+   if((thp->th_older = a_tty.tg_hist) != NULL)
+      a_tty.tg_hist->th_younger = thp;
+   else
+      a_tty.tg_hist_tail = thp;
+   thp->th_younger = NULL;
+   a_tty.tg_hist = thp;
+   NYD2_LEAVE;
 }
 # endif /* HAVE_HISTORY */
 
@@ -4265,76 +4321,20 @@ FL int
 
 FL void
 n_tty_addhist(char const *s, enum n_go_input_flags gif){
-# ifdef HAVE_HISTORY
-   /* Super-Heavy-Metal: block all sigs, avoid leaks+ on jump */
-   ui32_t l;
-   struct a_tty_hist *thp, *othp, *ythp;
-# endif
    NYD_ENTER;
    n_UNUSED(s);
    n_UNUSED(gif);
 
 # ifdef HAVE_HISTORY
-   if(*s == '\0' ||
-         (!(n_psonce & n_PSO_LINE_EDITOR_INIT) && !(n_pstate & n_PS_ROOT)) ||
-         a_tty.tg_hist_size_max == 0 ||
-         ok_blook(line_editor_disable) ||
-         ((gif & n_GO_INPUT_HIST_GABBY) && !ok_blook(history_gabby)))
-      goto j_leave;
-
-   l = (ui32_t)strlen(s);
-
-   /* Eliminating duplicates is expensive, but simply inacceptable so
-    * during the load of a potentially large history file! */
-   if(n_psonce & n_PSO_LINE_EDITOR_INIT)
-      for(thp = a_tty.tg_hist; thp != NULL; thp = thp->th_older)
-         if(thp->th_len == l && !strcmp(thp->th_dat, s)){
-            hold_all_sigs(); /* TODO */
-            thp->th_flags = (gif & a_TTY_HIST_CTX_MASK) |
-                  (gif & n_GO_INPUT_HIST_GABBY ? a_TTY_HIST_GABBY : 0);
-            othp = thp->th_older;
-            ythp = thp->th_younger;
-            if(othp != NULL)
-               othp->th_younger = ythp;
-            else
-               a_tty.tg_hist_tail = ythp;
-            if(ythp != NULL)
-               ythp->th_older = othp;
-            else
-               a_tty.tg_hist = othp;
-            goto jleave;
-         }
-   hold_all_sigs();
-
-   ++a_tty.tg_hist_size;
-   if((n_psonce & n_PSO_LINE_EDITOR_INIT) &&
-         a_tty.tg_hist_size > a_tty.tg_hist_size_max){
-      --a_tty.tg_hist_size;
-      if((thp = a_tty.tg_hist_tail) != NULL){
-         if((a_tty.tg_hist_tail = thp->th_younger) == NULL)
-            a_tty.tg_hist = NULL;
-         else
-            a_tty.tg_hist_tail->th_older = NULL;
-         n_free(thp);
-      }
+   if(*s != '\0' && (n_psonce & n_PSO_LINE_EDITOR_INIT) &&
+         a_tty.tg_hist_size_max > 0 &&
+         (!(gif & n_GO_INPUT_HIST_GABBY) || ok_blook(history_gabby)) &&
+          !ok_blook(line_editor_disable)){
+      hold_all_sigs();
+      a_tty_hist_add(s, gif);
+      rele_all_sigs();
    }
-
-   thp = n_alloc(n_VSTRUCT_SIZEOF(struct a_tty_hist, th_dat) + l +1);
-   thp->th_len = l;
-   thp->th_flags = (gif & a_TTY_HIST_CTX_MASK) |
-         (gif & n_GO_INPUT_HIST_GABBY ? a_TTY_HIST_GABBY : 0);
-   memcpy(thp->th_dat, s, l +1);
-jleave:
-   if((thp->th_older = a_tty.tg_hist) != NULL)
-      a_tty.tg_hist->th_younger = thp;
-   else
-      a_tty.tg_hist_tail = thp;
-   thp->th_younger = NULL;
-   a_tty.tg_hist = thp;
-
-   rele_all_sigs();
-j_leave:
-# endif /* HAVE_HISTORY */
+# endif
    NYD_LEAVE;
 }
 

@@ -9567,8 +9567,9 @@ If set to the value 0 then no further history entries will be added,
 and loading and incorporation of the
 .Va history-file
 upon program startup can also be suppressed by doing this.
-Runtime changes will not be reflected, but will affect the number of
-entries saved to permanent storage.
+Runtime changes will not be reflected before the
+.Ic history
+is saved or loaded (again).
 .
 .Mx
 .It Va hold
