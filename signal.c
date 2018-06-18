@@ -119,7 +119,7 @@ _nyd_print(int fd, struct nyd_info *nip)
    union {int i; size_t z;} u;
 
    u.i = snprintf(buf, sizeof buf,
-         "%c [%2" PRIu32 "] %.25s (%.16s:%" PRIu32 ")\n",
+         "%c [%2" PRIu32 "] %.25s (%.40s:%" PRIu32 ")\n",
          "=><"[(nip->ni_chirp_line >> 29) & 0x3], nip->ni_level, nip->ni_fun,
          nip->ni_file, (nip->ni_chirp_line & 0x1FFFFFFFu));
    if (u.i > 0) {
