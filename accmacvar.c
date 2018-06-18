@@ -340,13 +340,6 @@ static bool_t a_amv_var_check_vips(enum a_amv_var_vip_mode avvm,
 /* _VF_NUM / _VF_POSNUM */
 static bool_t a_amv_var_check_num(char const *val, bool_t posnum);
 
-/* If a variable name begins with a lowercase-character and contains at
- * least one '@', it is converted to all-lowercase. This is necessary
- * for lookups of names based on email addresses.
- * Following the standard, only the part following the last '@' should
- * be lower-cased, but practice has established otherwise here */
-static char const *a_amv_var_canonify(char const *vn);
-
 /* Try to reverse lookup an option name to an enum okeys mapping.
  * Updates .avc_name and .avc_hash; .avc_map is NULL if none found */
 static bool_t a_amv_var_revlookup(struct a_amv_var_carrier *avcp,
@@ -1193,27 +1186,6 @@ a_amv_var_check_num(char const *val, bool_t posnum){
    return rv;
 }
 
-static char const *
-a_amv_var_canonify(char const *vn){
-   NYD2_ENTER;
-   if(!upperchar(*vn)){
-      char const *vp;
-
-      for(vp = vn; *vp != '\0'; ++vp)
-         if(*vp == '@'){
-            char *cp, c;
-
-            cp = n_autorec_alloc(strlen(vn) +1);
-            for(vp = vn, vn = cp; (c = *vp++) != '\0';)
-               *cp++ = lowerconv(c);
-            *cp = '\0';
-            break;
-         }
-   }
-   NYD2_LEAVE;
-   return vn;
-}
-
 static bool_t
 a_amv_var_revlookup(struct a_amv_var_carrier *avcp, char const *name){
    ui32_t hash, i, j;
@@ -1271,7 +1243,7 @@ jmultiplex:
    /* Normal reverse lookup, walk over the hashtable */
 jno_special_param:
    avcp->avc_special_cat = a_AMV_VSC_NONE;
-   avcp->avc_name = name = a_amv_var_canonify(name);
+   avcp->avc_name = name;
    avcp->avc_hash = hash = a_AMV_NAME2HASH(name);
 
    for(i = hash % a_AMV_VAR_REV_PRIME, j = 0; j <= a_AMV_VAR_REV_LONGEST; ++j){
@@ -3002,7 +2974,7 @@ n_var_xoklook(enum okeys okey, struct url const *urlp,
    /*avc.avc_is_chain_variant = TRU1;*/
    nbuf[nlen++] = '-';
    memcpy(&nbuf[nlen], us->s, us->l +1);
-   avc.avc_name = a_amv_var_canonify(nbuf);
+   avc.avc_name = nbuf;
    avc.avc_hash = a_AMV_NAME2HASH(avc.avc_name);
    if(a_amv_var_lookup(&avc, a_AMV_VLOOK_NONE))
       goto jvar;
@@ -3011,7 +2983,7 @@ n_var_xoklook(enum okeys okey, struct url const *urlp,
    if((oxm & (OXM_U_H_P | OXM_H_P)) == (OXM_U_H_P | OXM_H_P)){
       us = &urlp->url_h_p;
       memcpy(&nbuf[nlen], us->s, us->l +1);
-      avc.avc_name = a_amv_var_canonify(nbuf);
+      avc.avc_name = nbuf;
       avc.avc_hash = a_AMV_NAME2HASH(avc.avc_name);
       if(a_amv_var_lookup(&avc, a_AMV_VLOOK_NONE)){
 jvar:
