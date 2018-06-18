@@ -58,6 +58,9 @@ n_INLINE ssize_t      _out(char const *buf, size_t len, FILE *fp,
                         struct quoteflt *qf, ui64_t *stats, struct str *outrest,
                         struct str *inrest);
 
+/* Simply (!) print out a LF */
+static bool_t a_send_out_nl(FILE *fp, ui64_t *stats);
+
 /* SIGPIPE handler */
 static void          _send_onpipe(int signo);
 
@@ -388,6 +391,19 @@ _out(char const *buf, size_t len, FILE *fp, enum conversion convert, enum
    }
    NYD_LEAVE;
    return sz;
+}
+
+static bool_t
+a_send_out_nl(FILE *fp, ui64_t *stats){
+   struct quoteflt *qf;
+   bool_t rv;
+   NYD2_ENTER;
+
+   quoteflt_reset(qf = quoteflt_dummy(), fp);
+   rv = (_out("\n", 1, fp, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL) > 0);
+   quoteflt_flush(qf);
+   NYD2_LEAVE;
+   return rv;
 }
 
 static void
@@ -866,12 +882,8 @@ jalter_redo:
                   }
 jalter_plain:
                   quoteflt_flush(qf);
-                  if (action == SEND_QUOTE && hadpart) {
-                     struct quoteflt *dummy = quoteflt_dummy();
-                     _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, dummy, stats,
-                        NULL,NULL);
-                     quoteflt_flush(dummy);
-                  }
+                  if (action == SEND_QUOTE && hadpart)
+                     /* XXX (void)*/a_send_out_nl(obuf, stats);
                   hadpart = TRU1;
                   neednl = FAL0;
                   rv = sendpart(zmp, np, obuf, doitp, qf, action,
@@ -977,12 +989,8 @@ jmulti:
 
             quoteflt_flush(qf);
             if ((action == SEND_QUOTE || action == SEND_QUOTE_ALL) &&
-                  np->m_multipart == NULL && ip->m_parent != NULL) {
-               struct quoteflt *dummy = quoteflt_dummy();
-               _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, dummy, stats,
-                  NULL,NULL);
-               quoteflt_flush(dummy);
-            }
+                  np->m_multipart == NULL && ip->m_parent != NULL)
+               /*XXX (void)*/a_send_out_nl(obuf, stats);
             if (sendpart(zmp, np, obuf, doitp, qf, action, linedat, linesize,
                   stats, level+1) < 0)
                rv = -1;
