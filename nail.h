@@ -1846,7 +1846,7 @@ ok_v_ssl_verify, /* {chain=1,obsolete=1} */
 
    ok_v_USER,                          /* {rdonly=1,import=1} */
    ok_v_umask,                      /* {vip=1,nodel=1,posnum=1,i3val="0077"} */
-   ok_v_user,                       /* {chain=1} */
+   ok_v_user,                       /* {notempty=1,chain=1} */
 
    ok_v_VISUAL,                     /* {env=1,notempty=1,defval=VAL_VISUAL} */
    ok_b_v15_compat,
