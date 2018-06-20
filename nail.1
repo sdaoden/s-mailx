@@ -517,7 +517,7 @@ Whereas the source address that appears in the
 header of a message (or in the
 .Va sender
 header if the former contains multiple addresses) is honoured by the
-builtin SMTP transport, it is not used by a file-based
+built-in SMTP transport, it is not used by a file-based
 .Va mta
 (Mail-Transfer-Agent) for the RFC 5321 reverse-path used for relaying
 and delegating a message to its destination(s), for delivery errors
@@ -994,7 +994,7 @@ The envelope sender address is defined by
 .Va from ,
 explicitly defining an originating
 .Va hostname
-may be desirable, especially with the builtin SMTP Mail-Transfer-Agent
+may be desirable, especially with the built-in SMTP Mail-Transfer-Agent
 .Va mta .
 .Sx "Character sets"
 for outgoing message and MIME part content are configurable via
@@ -11437,29 +11437,41 @@ To include intermediate certificates, use
 .
 .Mx Va smime-sign-digest
 .It Va smime-sign-digest-USER@HOST , smime-sign-digest
-\*(OP Specifies the message digest to use when signing S/MIME messages.
-RFC 5751 mandates a default of
-.Ql SHA1 .
-Possible values are (case-insensitive and) in decreasing cipher strength:
-.Ql SHA512 ,
-.Ql SHA384 ,
-.Ql SHA256 ,
-.Ql SHA224
-and
-.Ql MD5 .
-.Pp
-The actually available message digest algorithms depend on the
-cryptographic library that \*(UA uses.
-\*(OP Support for more message digest algorithms may be available
-through dynamic loading via, e.g.,
-.Xr EVP_get_digestbyname 3
-(OpenSSL) if \*(UA has been compiled to support this.
-Remember that for this
+\*(OP Specifies the message digestto use when signing S/MIME messages.
+Please remember that for this use case
 .Ql USER@HOST
 refers to the variable
 .Va from
 (or, if that contains multiple addresses,
 .Va sender ) .
+The available algorithms depend on the used cryptographic library, but
+at least one usable builtin algorithm is ensured as a default.
+If possible the standard RFC 5751 will be violated by using
+.Ql SHA512
+instead of the mandated
+.Ql SHA1
+due to security concerns.
+.Pp
+\*(UA will try to add built-in support for the following message
+digests, names are case-insensitive:
+.Ql BLAKE2b512 ,
+.Ql BLAKE2s256 ,
+.Ql SHA3-512 ,
+.Ql SHA3-384 ,
+.Ql SHA3-256 ,
+.Ql SHA3-224 ,
+as well as the widely available
+.Ql SHA512 ,
+.Ql SHA384 ,
+.Ql SHA256 ,
+.Ql SHA224 ,
+and the proposed insecure
+.Ql SHA1
+and
+.Ql MD5 .
+More digests may \*(OPally be available through dynamic loading via,
+e.g., the OpenSSL function
+.Xr EVP_get_digestbyname 3 .
 .
 .Mx Va smime-sign-include-certs
 .It Va smime-sign-include-certs-USER@HOST , smime-sign-include-certs
@@ -12383,7 +12395,8 @@ This fingerprint can be calculated with, e.g.,
 .It Va tls-fingerprint-digest-USER@HOST , tls-fingerprint-digest-HOST , \
   tls-fingerprint-digest
 \*(OP The message digest to be used when creating TLS certificate
-fingerprints, the default (if available) being
+fingerprints, the defaults, if available, in test order, being
+.Ql BLAKE2s256 ,
 .Ql SHA256 .
 For the complete list of digest algorithms refer to
 .Va smime-sign-digest .
@@ -13950,7 +13963,7 @@ is of interest for verification only):
 .Bd -literal -offset indent
 ? set smime-ca-file=ALL-TRUSTED-ROOT-CERTS-HERE \e
     smime-sign-cert=ME@HERE.com.paired \e
-    smime-sign-digest=SHA256 \e
+    smime-sign-digest=SHA512 \e
     smime-sign
 .Ed
 .

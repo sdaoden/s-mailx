@@ -5452,6 +5452,7 @@ t_s_mime() {
    # Sign/verify
    echo bla | ${MAILX} ${ARGS} \
       -Ssmime-sign -Ssmime-sign-cert=./.tpair.pem -Sfrom=test@localhost \
+      -Ssmime-sign-digest=sha1 \
       -s 'S/MIME test' ./.VERIFY
    check_ex0 1-estat
    ${awk} '
@@ -5478,6 +5479,7 @@ t_s_mime() {
    ${MAILX} ${ARGS} \
       -Smta=./.tmta.sh \
       -Ssmime-force-encryption -Ssmime-encrypt-recei@ver.com=./.tpair.pem \
+      -Ssmime-sign-digest=sha1 \
       -Ssmime-sign -Ssmime-sign-cert=./.tpair.pem -Sfrom=test@localhost \
       -s 'S/MIME test' recei@ver.com
    check_ex0 4-estat

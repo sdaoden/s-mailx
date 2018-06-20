@@ -2518,31 +2518,6 @@ int main(void){
    fi # }}}
 
    if feat_yes TLS; then # {{{
-      if feat_yes TLS_ALL_ALGORITHMS; then
-         if [ -n "${ossl_v1_1}" ]; then
-            without_check yes tls_all_algo 'TLS all-algorithms support' \
-               '#define HAVE_TLS_ALL_ALGORITHMS'
-         elif link_check tls_all_algo 'TLS all-algorithms support' \
-            '#define HAVE_TLS_ALL_ALGORITHMS' << \!
-#include <openssl/evp.h>
-int main(void){
-   OpenSSL_add_all_algorithms();
-   EVP_get_cipherbyname("two cents i never exist");
-   EVP_cleanup();
-   return 0;
-}
-!
-         then
-            :
-         else
-            feat_bail_required TLS_ALL_ALGORITHMS
-         fi
-      elif [ -n "${ossl_v1_1}" ]; then
-         without_check yes tls_all_algo \
-            'TLS all-algorithms (always available in v1.1.0+)' \
-            '#define HAVE_TLS_ALL_ALGORITHMS'
-      fi
-
       if [ -n "${ossl_v1_1}" ]; then
          without_check yes xtls_stack_of 'TLS STACK_OF()' \
             '#define HAVE_XTLS_STACK_OF'
@@ -2679,9 +2654,57 @@ int main(void){
       fi
    fi # feat_yes SSL }}}
 
-   if feat_yes TLS && feat_yes MD5 && feat_no NOEXTMD5; then # {{{
-      run_check tls_md5 'MD5 digest in the used crypto library' \
-            '#define HAVE_XTLS_MD5' << \!
+   if feat_yes TLS; then # digest etc algorithms {{{
+      if feat_yes TLS_ALL_ALGORITHMS; then
+         if [ -n "${ossl_v1_1}" ]; then
+            without_check yes tls_all_algo 'TLS all-algorithms support' \
+               '#define HAVE_TLS_ALL_ALGORITHMS'
+         elif link_check tls_all_algo 'TLS all-algorithms support' \
+            '#define HAVE_TLS_ALL_ALGORITHMS' << \!
+#include <openssl/evp.h>
+int main(void){
+   OpenSSL_add_all_algorithms();
+   EVP_get_cipherbyname("two cents i never exist");
+   EVP_cleanup();
+   return 0;
+}
+!
+         then
+            :
+         else
+            feat_bail_required TLS_ALL_ALGORITHMS
+         fi
+      elif [ -n "${ossl_v1_1}" ]; then
+         without_check yes tls_all_algo \
+            'TLS all-algorithms (always available in v1.1.0+)' \
+            '#define HAVE_TLS_ALL_ALGORITHMS'
+      fi
+
+      # Blake
+      link_check tls_blake2 'TLS: BLAKE2 digests' \
+            '#define HAVE_XTLS_BLAKE2' << \!
+#include <openssl/evp.h>
+int main(void){
+   EVP_blake2b512();
+   EVP_blake2s256();
+   return 0;
+}
+!
+
+      # SHA-3
+      link_check tls_sha3 'TLS: SHA-3 digests' '#define HAVE_XTLS_SHA3' << \!
+#include <openssl/evp.h>
+int main(void){
+   EVP_sha3_512();
+   EVP_sha3_384();
+   EVP_sha3_256();
+   EVP_sha3_224();
+   return 0;
+}
+!
+
+      if feat_yes MD5 && feat_no NOEXTMD5; then
+         run_check tls_md5 'TLS: MD5 digest' '#define HAVE_XTLS_MD5' << \!
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/md5.h>
@@ -2706,6 +2729,7 @@ int main(void){
    return !!memcmp("6d7d0a3d949da2e96f2aa010f65d8326", hex, sizeof(hex));
 }
 !
+      fi
    fi # }}}
 
    if feat_yes TLS; then

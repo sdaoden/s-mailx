@@ -204,7 +204,7 @@ struct a_xtls_cipher{
 };
 
 struct a_xtls_digest{
-   char const xd_name[8];
+   char const xd_name[16];
    EVP_MD const *(*xd_fun)(void);
 };
 
@@ -268,21 +268,68 @@ static struct a_xtls_cipher const a_xtls_smime_ciphers_obs[] = {
 };
 #endif
 
-/* Supported S/MIME message digest algorithms */
+/* Supported S/MIME message digest algorithms.
+ * Update manual on default changes! */
 static struct a_xtls_digest const a_xtls_digests[] = { /*Manual!*/
-#define a_XTLS_SMIME_DEFAULT_DIGEST EVP_sha1 /* According to RFC 5751 */
-#define a_XTLS_SMIME_DEFAULT_DIGEST_S  "SHA1" /* Manual! */
-#define a_XTLS_FINGERPRINT_DEFAULT_DIGEST EVP_sha256 /* Manual! */
-#define a_XTLS_FINGERPRINT_DEFAULT_DIGEST_S "SHA256" /* Manual! */
-   {"SHA1", &EVP_sha1},
-   {"SHA256", &EVP_sha256},
-   {"SHA512", &EVP_sha512},
+#ifdef HAVE_XTLS_BLAKE2
+   {"BLAKE2b512\0", &EVP_blake2b512},
+   {"BLAKE2s256", &EVP_blake2s256},
+# ifndef a_XTLS_FINGERPRINT_DEFAULT_DIGEST
+#  define a_XTLS_FINGERPRINT_DEFAULT_DIGEST EVP_blake2s256
+#  define a_XTLS_FINGERPRINT_DEFAULT_DIGEST_S "BLAKE2s256"
+# endif
+#endif
+
+#ifdef HAVE_XTLS_SHA3
+   {"SHA3-512\0", &EVP_sha3_512},
+   {"SHA3-384", &EVP_sha3_384},
+   {"SHA3-256", &EVP_sha3_256},
+   {"SHA3-224", &EVP_sha3_224},
+#endif
+
+#ifndef OPENSSL_NO_SHA512
+   {"SHA512\0", &EVP_sha512},
    {"SHA384", &EVP_sha384},
+# ifndef a_XTLS_SMIME_DEFAULT_DIGEST
+#  define a_XTLS_SMIME_DEFAULT_DIGEST EVP_sha512
+#  define a_XTLS_SMIME_DEFAULT_DIGEST_S "SHA512"
+# endif
+#endif
+
+#ifndef OPENSSL_NO_SHA256
+   {"SHA256\0", &EVP_sha256},
    {"SHA224", &EVP_sha224},
+# ifndef a_XTLS_SMIME_DEFAULT_DIGEST
+#  define a_XTLS_SMIME_DEFAULT_DIGEST EVP_sha256
+#  define a_XTLS_SMIME_DEFAULT_DIGEST_S "SHA256"
+# endif
+# ifndef a_XTLS_FINGERPRINT_DEFAULT_DIGEST
+#  define a_XTLS_FINGERPRINT_DEFAULT_DIGEST EVP_sha256
+#  define a_XTLS_FINGERPRINT_DEFAULT_DIGEST_S "SHA256"
+# endif
+#endif
+
+#ifndef OPENSSL_NO_SHA
+   {"SHA1\0", &EVP_sha1},
+# ifndef a_XTLS_SMIME_DEFAULT_DIGEST
+#  define a_XTLS_SMIME_DEFAULT_DIGEST EVP_sha1
+#  define a_XTLS_SMIME_DEFAULT_DIGEST_S "SHA1"
+# endif
+# ifndef a_XTLS_FINGERPRINT_DEFAULT_DIGEST
+#  define a_XTLS_FINGERPRINT_DEFAULT_DIGEST EVP_sha1
+#  define a_XTLS_FINGERPRINT_DEFAULT_DIGEST_S "SHA1"
+# endif
+#endif
+
 #ifndef OPENSSL_NO_MD5
-   {"MD5", &EVP_md5},
+   {"MD5\0", &EVP_md5},
 #endif
 };
+
+#if !defined a_XTLS_SMIME_DEFAULT_DIGEST || \
+      !defined a_XTLS_FINGERPRINT_DEFAULT_DIGEST
+# error Not enough supported message digest algorithms available
+#endif
 
 /* X509_STORE_set_flags() for *{smime,ssl}-ca-flags* */
 static struct a_xtls_x509_v_flags const a_xtls_x509_v_flags[] = { /* Manual! */
