@@ -164,17 +164,25 @@ a_ctab_cmdinfo(struct n_cmd_desc const *cdp){
       rv = n_string_push_cp(rv, _(" | *!*"));
 
    if(cdp->cd_caflags & n_CMD_ARG_A)
-      rv = n_string_push_cp(rv, _(" | needs box"));
-   if(cdp->cd_caflags & n_CMD_ARG_I)
-      rv = n_string_push_cp(rv, _(" | ok: batch/interactive"));
-   if(cdp->cd_caflags & n_CMD_ARG_M)
-      rv = n_string_push_cp(rv, _(" | ok: send mode"));
-   if(cdp->cd_caflags & n_CMD_ARG_R)
-      rv = n_string_push_cp(rv, _(" | not ok: compose mode"));
-   if(cdp->cd_caflags & n_CMD_ARG_S)
-      rv = n_string_push_cp(rv, _(" | not ok: startup"));
-   if(cdp->cd_caflags & n_CMD_ARG_X)
-      rv = n_string_push_cp(rv, _(" | ok: subprocess"));
+      rv = n_string_push_cp(rv, _(" | needs-box"));
+
+   if(cdp->cd_caflags & (n_CMD_ARG_I | n_CMD_ARG_M | n_CMD_ARG_X)){
+      rv = n_string_push_cp(rv, _(" | ok:"));
+      if(cdp->cd_caflags & n_CMD_ARG_I)
+         rv = n_string_push_cp(rv, _(" batch/interactive"));
+      if(cdp->cd_caflags & n_CMD_ARG_M)
+         rv = n_string_push_cp(rv, _(" send-mode"));
+      if(cdp->cd_caflags & n_CMD_ARG_X)
+         rv = n_string_push_cp(rv, _(" subprocess"));
+   }
+
+   if(cdp->cd_caflags & (n_CMD_ARG_R | n_CMD_ARG_S)){
+      rv = n_string_push_cp(rv, _(" | not ok:"));
+      if(cdp->cd_caflags & n_CMD_ARG_R)
+         rv = n_string_push_cp(rv, _(" compose-mode"));
+      if(cdp->cd_caflags & n_CMD_ARG_S)
+         rv = n_string_push_cp(rv, _(" startup"));
+   }
 
    if(cdp->cd_caflags & n_CMD_ARG_G)
       rv = n_string_push_cp(rv, _(" | gabby"));

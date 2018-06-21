@@ -5735,24 +5735,31 @@ command supports the command modifier
 .It Ql "*!*"
 the error number is tracked in
 .Va \&! .
-.It Ql "needs box"
-commands needs an active mailbox, a
+.It Ql needs-box
+whether the command needs an active mailbox, a
 .Ic file .
-.It Ql "ok: batch/interactive"
-command may only be used in interactive or
-.Fl #
-batch mode.
-.It Ql "ok: send mode"
-command can be used in send mode.
-.It Ql "not ok: compose mode"
-command is not available when in compose mode.
-.It Ql "not ok: startup"
-command cannot be used during program startup, e.g., while loading
-.Sx "Resource files" .
-.It Ql "ok: subprocess"
-command is allowed to be used when running in a subprocess instance,
+.It Ql ok:
+indicators whether command is \&.\h'.3m'.\h'.3m'.
+.Bl -tag -compact -width ".It Ql SUBPROCESS"
+.It Ql batch/interactive
+usable in interactive or batch mode
+.Pf ( Fl # ) .
+.It Ql send-mode
+usable in send mode.
+.It Ql subprocess
+allowed to be used when running in a subprocess instance,
 e.g., from within a macro that is called via
 .Va on-compose-splice .
+.El
+.It Ql not ok:
+indicators whether command is not \&.\h'.3m'.\h'.3m'.
+.Bl -tag -compact -width ".It Ql COMPOSE_MODE"
+.It Ql compose-mode
+available in compose mode.
+.It Ql startup
+available during program startup, e.g., in
+.Sx "Resource files" .
+.El
 .It Ql "gabby"
 The command produces
 .Va history-gabby
