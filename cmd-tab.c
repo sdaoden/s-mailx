@@ -845,9 +845,6 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
             }
 
             if(shs & n_SHEXP_STATE_OUTPUT){
-               if(shs & n_SHEXP_STATE_CONTROL)
-                  n_pstate |= n_PS_WYSHLIST_SAW_CONTROL;
-
                res_dat[res_no++] = n_string_cp(&store);
                n_string_drop_ownership(&store);
             }

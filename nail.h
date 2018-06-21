@@ -1467,10 +1467,6 @@ do{\
    n_PS_ARGMOD_VPUT = 1u<<16,          /* "vput" modifier TODO struct CmdCtx */
    n_PS_MSGLIST_GABBY = 1u<<14,        /* getmsglist() saw something gabby */
    n_PS_MSGLIST_DIRECT = 1u<<15,       /* A msg was directly chosen by number */
-   /* TODO HACK: until v15 PS_MSGLIST_SAW_NO is an indication whether an entry
-    * TODO may be placed in the history or not (grep this, see commands()),
-    * TODO so avoid reusing this bit */
-   n_PS_WYSHLIST_SAW_CONTROL = 1u<<15, /* ..saw C0+ control characters */
 
    n_PS_EXPAND_MULTIRESULT = 1u<<17,   /* Last fexpand() with MULTIOK had .. */
    n_PS_ERRORS_PROMPT = 1u<<18,        /* New error to be reported in prompt */
