@@ -130,12 +130,18 @@ a_ctab_cmdinfo(struct n_cmd_desc const *cdp){
          if(flags & n_CMD_ARG_DESC_GREEDY)
             rv = n_string_push_c(rv, ':');
          switch(flags & n__CMD_ARG_DESC_TYPE_MASK){
-         case n_CMD_ARG_DESC_STRING:
-            rv = n_string_push_cp(rv, _("raw"));
-            break;
          default:
+         case n_CMD_ARG_DESC_STRING:
+            rv = n_string_push_cp(rv, _("string"));
+            break;
          case n_CMD_ARG_DESC_WYSH:
-            rv = n_string_push_cp(rv, _("eval"));
+            rv = n_string_push_cp(rv, _("shell-token"));
+            break;
+         case n_CMD_ARG_DESC_MSGLIST:
+            rv = n_string_push_cp(rv, _("shell-msglist"));
+            break;
+         case n_CMD_ARG_DESC_NDMSGLIST:
+            rv = n_string_push_cp(rv, _("shell-msglist (no default)"));
             break;
          }
          if(flags & n_CMD_ARG_DESC_GREEDY)
@@ -419,16 +425,28 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
       for(cadp = cacp->cac_desc, cad_idx = 0;
             cad_idx < cadp->cad_no; ++cad_idx){
          assert(cadp->cad_ent_flags[cad_idx][0] & n__CMD_ARG_DESC_TYPE_MASK);
+         /* TODO n_CMD_ARG_DESC_MSGLIST can only be last entry */
+         assert(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
+            cad_idx + 1 == cadp->cad_no);
+         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+               n_CMD_ARG_DESC_NDMSGLIST) || cad_idx + 1 == cadp->cad_no);
          assert(!opt_seen ||
             (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
          if(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION)
             opt_seen = TRU1;
          assert(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY) ||
             cad_idx + 1 == cadp->cad_no);
+         /* TODO n_CMD_ARG_DESC_MSGLIST can only be n_CMD_ARG_DESC_GREEDY */
+         assert(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
+            (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY));
+         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+               n_CMD_ARG_DESC_NDMSGLIST) ||
+            (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY));
       }
    }
 #endif
 
+   n_pstate_err_no = n_ERR_NONE;
    shin.s = n_UNCONST(cacp->cac_indat); /* "logical" only */
    shin.l = (cacp->cac_inlen == UIZ_MAX ? strlen(shin.s) : cacp->cac_inlen);
    shin_orig = shin;
@@ -450,6 +468,7 @@ jredo:
       addca = FAL0;
 
       switch(ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK){
+      default:
       case n_CMD_ARG_DESC_STRING:{ /* TODO \ escaping? additional type!? */
          char /*const*/ *cp = shin.s;
          size_t i = shin.l;
@@ -470,7 +489,6 @@ jredo:
          shin.l = i;
          addca = TRU1;
          }break;
-      default:
       case n_CMD_ARG_DESC_WYSH:{
          struct n_string shou, *shoup;
          enum n_shexp_state shs;
@@ -512,6 +530,40 @@ jredo:
          else
             addca = ((shs & n_SHEXP_STATE_OUTPUT) != NULL);
          }break;
+      case n_CMD_ARG_DESC_MSGLIST:
+      case n_CMD_ARG_DESC_NDMSGLIST:
+         /* TODO _MSGLIST yet at end and greedy only (fast hack).
+          * TODO And consumes too much memory */
+         assert(shin.s[shin.l] == '\0');
+         if(getmsglist(shin.s, (ncap.ca_arg.ca_msglist =
+                  n_autorec_calloc(msgCount +1, sizeof *ncap.ca_arg.ca_msglist)
+               ), MMNDEL) < 0){
+            n_pstate_err_no = n_ERR_INVAL; /* XXX should come from getmsglist*/
+            goto jerr;
+         }
+
+         if(ncap.ca_arg.ca_msglist[0] == 0 &&
+               (ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK) !=
+                  n_CMD_ARG_DESC_NDMSGLIST){
+            if((ncap.ca_arg.ca_msglist[0] = first(0, MMNORM)) == 0){
+               ui32_t e;
+
+               if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
+                     (n_poption & n_PO_D_V))
+                  n_err(_("No applicable messages\n"));
+
+               e = n_CMD_ARG_DESC_TO_ERRNO(ncap.ca_ent_flags[0]);
+               if(e == 0)
+                  e = n_ERR_NODATA;
+               n_pstate_err_no = e;
+               goto jerr;
+            }
+            ncap.ca_arg.ca_msglist[1] = 0;
+         }
+
+         shin.l = 0;
+         addca = TRUM1;
+         break;
       }
       ++parsed_args;
 
@@ -520,6 +572,8 @@ jredo:
             char *cp;
             size_t i;
 
+            assert((ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK
+               ) != n_CMD_ARG_DESC_MSGLIST);
             assert(lcap != NULL);
             i = lcap->ca_arg.ca_str.l;
             lcap->ca_arg.ca_str.l += 1 + ncap.ca_arg.ca_str.l;
@@ -565,20 +619,27 @@ jleave:
    NYD_LEAVE;
    return (lcap != NULL);
 
-jerr:{
-      size_t i;
+jerr:
+   if(n_pstate_err_no == n_ERR_NONE){
+      n_pstate_err_no = n_ERR_INVAL;
 
-      for(i = 0; (i < cadp->cad_no &&
-            !(cadp->cad_ent_flags[i][0] & n_CMD_ARG_DESC_OPTION)); ++i)
-         ;
+      if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
+            (n_poption & n_PO_D_V)){
+         size_t i;
 
-      n_err(_("`%s': parsing stopped after %" PRIuZ " arguments "
-            "(need %" PRIuZ "%s)\n"
-            "     Input: %.*s\n"
-            "   Stopped: %.*s\n"),
-         cadp->cad_name, parsed_args, i, (i == cadp->cad_no ? n_empty : "+"),
-         (int)shin_orig.l, shin_orig.s,
-         (int)shin.l, shin.s);
+         for(i = 0; (i < cadp->cad_no &&
+               !(cadp->cad_ent_flags[i][0] & n_CMD_ARG_DESC_OPTION)); ++i)
+            ;
+
+         n_err(_("`%s': parsing stopped after %" PRIuZ " arguments "
+               "(need %" PRIuZ "%s)\n"
+               "     Input: %.*s\n"
+               "   Stopped: %.*s\n"),
+            cadp->cad_name, parsed_args,
+               i, (i == cadp->cad_no ? n_empty : "+"),
+            (int)shin_orig.l, shin_orig.s,
+            (int)shin.l, shin.s);
+      }
    }
    lcap = NULL;
    goto jleave;

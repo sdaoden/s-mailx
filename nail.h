@@ -657,12 +657,17 @@ enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
    n_CMD_ARG_EM = 1u<<30   /* If error: n_pstate_err_no (4 $! aka. ok_v___em) */
 };
 
-enum n_cmd_arg_desc_flags{/* TODO incomplete, misses getmsglist() */
+enum n_cmd_arg_desc_flags{
    /* - A type */
    n_CMD_ARG_DESC_STRING = 1u<<0,   /* A !blankspacechar() string */
    n_CMD_ARG_DESC_WYSH = 1u<<1,     /* sh(1)ell-style quoted */
+   /* TODO n_CMD_ARG_DESC_MSGLIST can only be used last and is always greedy
+    * TODO (but MUST be _GREEDY too!) */
+   n_CMD_ARG_DESC_MSGLIST = 1u<<2,  /* Message specification(s) */
+   n_CMD_ARG_DESC_NDMSGLIST = 1u<<3,
 
-   n__CMD_ARG_DESC_TYPE_MASK = n_CMD_ARG_DESC_STRING | n_CMD_ARG_DESC_WYSH,
+   n__CMD_ARG_DESC_TYPE_MASK = n_CMD_ARG_DESC_STRING | n_CMD_ARG_DESC_WYSH |
+         n_CMD_ARG_DESC_MSGLIST | n_CMD_ARG_DESC_NDMSGLIST,
 
    /* - Optional flags */
    /* It is not an error if an optional argument is missing; once an argument
@@ -676,8 +681,17 @@ enum n_cmd_arg_desc_flags{/* TODO incomplete, misses getmsglist() */
    n_CMD_ARG_DESC_HONOUR_STOP = 1u<<19,
 
    n__CMD_ARG_DESC_FLAG_MASK = n_CMD_ARG_DESC_OPTION | n_CMD_ARG_DESC_GREEDY |
-         n_CMD_ARG_DESC_GREEDY_JOIN | n_CMD_ARG_DESC_HONOUR_STOP
+         n_CMD_ARG_DESC_GREEDY_JOIN | n_CMD_ARG_DESC_HONOUR_STOP,
+
+   /* We may include something for n_pstate_err_no */
+   n_CMD_ARG_DESC_ERRNO_SHIFT = 21u,
+   n_CMD_ARG_DESC_ERRNO_MASK = (1u<<10) - 1
 };
+#define n_CMD_ARG_DESC_ERRNO_TO_ORBITS(ENO) \
+   (((ui32_t)(ENO)) << n_CMD_ARG_DESC_ERRNO)
+#define n_CMD_ARG_DESC_TO_ERRNO(FLAGCARRIER) \
+   (((ui32_t)(FLAGCARRIER) >> n_CMD_ARG_DESC_ERRNO_SHIFT) &\
+      n_CMD_ARG_DESC_ERRNO_MASK)
 
 #ifdef HAVE_COLOUR
 /* We do have several contexts of colour IDs; since only one of them can be
@@ -1949,7 +1963,8 @@ struct n_cmd_arg{/* TODO incomplete, misses getmsglist() */
    ui32_t ca_arg_flags;    /* [Output: _WYSH: copy of parse result flags] */
    ui8_t ca__dummy[4];
    union{
-      struct str ca_str;      /* _STRING, _WYSH */
+      struct str ca_str;      /* _CMD_ARG_DESC_STRING, _CMD_ARG_DESC_WYSH */
+      int *ca_msglist;        /* _CMD_ARG_DESC_MSGLIST */
    } ca_arg;               /* Output: parsed result */
 };
 

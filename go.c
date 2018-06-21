@@ -610,7 +610,7 @@ jexec:
       }
       if(n_msgvec[0] == 0){
 jemsglist:
-         if(!(n_pstate & n_PS_HOOK_MASK))
+         if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
             fprintf(n_stdout, _("No applicable messages\n"));
          nerrn = n_ERR_NOMSG;
          flags |= a_NO_ERRNO;
