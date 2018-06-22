@@ -700,7 +700,7 @@ print_header_summary(char const *Larg)
          n_stderr = freopen(n_path_devnull, "w", stderr);
       }
       assert(n_msgvec != NULL);
-      i = (getmsglist(/*TODO make const */n_UNCONST(Larg), n_msgvec, 0) <= 0);
+      i = (n_getmsglist(n_shexp_quote_cp(Larg, FAL0), n_msgvec, 0) <= 0);
       if (n_poption & n_PO_EXISTONLY) {
          n_exit_status = (int)i;
          goto jleave;

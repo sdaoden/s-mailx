@@ -217,7 +217,7 @@ _pipe1(char *str, int doign)
          goto jleave;
       }
       msgvec[1] = 0;
-   } else if (getmsglist(str, msgvec, 0) < 0)
+   } else if (n_getmsglist(str, msgvec, 0) < 0)
       goto jleave;
    if (*msgvec == 0) {
       if (n_pstate & (n_PS_ROBOT | n_PS_HOOK_MASK)) {
@@ -680,7 +680,8 @@ c_pdot(void *vp)
 {
    NYD_ENTER;
    n_UNUSED(vp);
-   fprintf(n_stdout, "%d\n", (int)PTR2SIZE(dot - message + 1));
+   fprintf(n_stdout, "%d\n",
+      (msgCount == 0) ? 0 : (int)PTR2SIZE(dot - message + 1));
    NYD_LEAVE;
    return 0;
 }

@@ -774,7 +774,7 @@ a_coll_forward(char const *ms, FILE *fp, int f)
    NYD_ENTER;
 
    msgvec = n_autorec_alloc((size_t)(msgCount + 1) * sizeof *msgvec);
-   if (getmsglist(ms, msgvec, 0) < 0) {
+   if (n_getmsglist(ms, msgvec, 0) < 0) {
       rv = n_ERR_NOENT; /* XXX not really, should be handled there! */
       goto jleave;
    }

@@ -599,7 +599,7 @@ jexec:
       /* Message list defaulting to nearest forward legal message */
       if(n_msgvec == NULL)
          goto jemsglist;
-      if((c = getmsglist(line.s, n_msgvec, cdp->cd_msgflag)) < 0){
+      if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_msgflag)) < 0){
          nerrn = n_ERR_NOMSG;
          flags |= a_NO_ERRNO;
          break;
@@ -625,7 +625,7 @@ jemsglist:
       /* Message list with no defaults, but no error if none exist */
       if(n_msgvec == NULL)
          goto jemsglist;
-      if((c = getmsglist(line.s, n_msgvec, cdp->cd_msgflag)) < 0){
+      if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_msgflag)) < 0){
          nerrn = n_ERR_NOMSG;
          flags |= a_NO_ERRNO;
          break;
@@ -714,6 +714,8 @@ jemsglist:
       cac.cac_desc = cdp->cd_cadp;
       cac.cac_indat = line.s;
       cac.cac_inlen = line.l;
+      cac.cac_msgflag = cdp->cd_msgflag;
+      cac.cac_msgmask = cdp->cd_msgmask;
       if(!n_cmd_arg_parse(&cac)){
          flags |= a_NO_ERRNO;
          break;

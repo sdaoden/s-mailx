@@ -337,25 +337,25 @@ jredo:
 #ifdef HAVE_UISTRINGS
       fputs(n_progname, n_stdout);
       fputs(_(
-         " commands -- <msglist> denotes message specifications,\n"
-         "e.g., 1-5, :n or . (current, the \"dot\"), separated by spaces:\n"),
+         " commands -- <msglist> denotes message specification tokens,\n"
+         "e.g., 1-5, :n or . (current, the \"dot\"), separated by *ifs*:\n"),
          n_stdout);
       fputs(_(
 "\n"
 "type <msglist>         type (`print') messages (honour `headerpick' etc.)\n"
 "Type <msglist>         like `type' but always show all headers\n"
 "next                   goto and type next message\n"
-"from <msglist>         (search and) print header summary for the given list\n"
-"headers                header summary for messages surrounding \"dot\"\n"
+"headers                header summary ... for messages surrounding \"dot\"\n"
+"search <msglist>       ... for the given list (alias for `from')\n"
 "delete <msglist>       delete messages (can be `undelete'd)\n"),
          n_stdout);
 
       fputs(_(
 "\n"
 "save <msglist> folder  append messages to folder and mark as saved\n"
-"copy <msglist> folder  like `save', but don't mark them (`move' moves)\n"
+"copy <msglist> folder  like `save', but do not mark them (`move' moves)\n"
 "write <msglist> file   write message contents to file (prompts for parts)\n"
-"Reply <msglist>        reply to message senders only\n"
+"Reply <msglist>        reply to message sender(s) only\n"
 "reply <msglist>        like `Reply', but address all recipients\n"
 "Lreply <msglist>       forced mailing list `reply' (see `mlist')\n"),
          n_stdout);
@@ -543,9 +543,9 @@ jredo:
          /* TODO _MSGLIST yet at end and greedy only (fast hack).
           * TODO And consumes too much memory */
          assert(shin.s[shin.l] == '\0');
-         if(getmsglist(shin.s, (ncap.ca_arg.ca_msglist =
+         if(n_getmsglist(shin.s, (ncap.ca_arg.ca_msglist =
                   n_autorec_calloc(msgCount +1, sizeof *ncap.ca_arg.ca_msglist)
-               ), MMNDEL) < 0){
+               ), cacp->cac_msgflag) < 0){
             n_pstate_err_no = n_ERR_INVAL; /* XXX should come from getmsglist*/
             goto jerr;
          }

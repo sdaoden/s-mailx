@@ -1465,7 +1465,7 @@ do{\
    n_PS_ARGLIST_MASK = n_BITENUM_MASK(14, 16),
    n_PS_ARGMOD_LOCAL = 1u<<14,         /* "local" modifier TODO struct CmdCtx */
    n_PS_ARGMOD_VPUT = 1u<<16,          /* "vput" modifier TODO struct CmdCtx */
-   n_PS_MSGLIST_GABBY = 1u<<14,        /* getmsglist() saw something gabby */
+   n_PS_MSGLIST_GABBY = 1u<<14,        /* n_getmsglist() saw something gabby */
    n_PS_MSGLIST_DIRECT = 1u<<15,       /* A msg was directly chosen by number */
 
    n_PS_EXPAND_MULTIRESULT = 1u<<17,   /* Last fexpand() with MULTIOK had .. */
@@ -1946,12 +1946,14 @@ struct n_cmd_arg_ctx{
    struct n_cmd_arg_desc const *cac_desc; /* Input: description of command */
    char const *cac_indat;     /* Input that shall be parsed */
    size_t cac_inlen;          /* Input length (UIZ_MAX: do a strlen()) */
+   ui32_t cac_msgflag;        /* Input (option): required flags of messages */
+   ui32_t cac_msgmask;        /* Input (option): relevant flags of messages */
    size_t cac_no;             /* Output: number of parsed arguments */
    struct n_cmd_arg *cac_arg; /* Output: parsed arguments */
    char const *cac_vput;      /* "Output": vput prefix used: varname */
 };
 
-struct n_cmd_arg{/* TODO incomplete, misses getmsglist() */
+struct n_cmd_arg{
    struct n_cmd_arg *ca_next;
    char const *ca_indat;   /*[PRIV] Pointer into n_cmd_arg_ctx.cac_indat */
    size_t ca_inlen;        /*[PRIV] of .ca_indat of this arg (not terminated) */
@@ -1968,8 +1970,9 @@ struct n_cmd_desc{
    char const *cd_name;    /* Name of command */
    int (*cd_func)(void*);  /* Implementor of command */
    enum n_cmd_arg_flags cd_caflags;
-   si16_t cd_msgflag;      /* Required flags of msgs */
-   si16_t cd_msgmask;      /* Relevant flags of msgs */
+   ui32_t cd_msgflag;      /* Required flags of msgs */
+   ui32_t cd_msgmask;      /* Relevant flags of msgs */
+   /* XXX requires cmd-tab.h initializer changes ui8_t cd__pad[4];*/
    struct n_cmd_arg_desc const *cd_cadp;
 #ifdef HAVE_DOCSTRINGS
    char const *cd_doc;     /* One line doc for command */

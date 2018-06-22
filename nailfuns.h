@@ -1272,9 +1272,10 @@ FL struct message * setdot(struct message *mp);
  * the effect of not being sent back to the system mailbox on exit */
 FL void        touch(struct message *mp);
 
-/* Convert user string of message numbers and store the numbers into vector.
+/* Convert user message spec. to message numbers and store them in vector,
+ * which should be capable to hold msgCount+1 entries (n_msgvec asserts this).
  * Returns the count of messages picked up or -1 on error */
-FL int         getmsglist(char const *buf, int *vector, int flags);
+FL int n_getmsglist(char const *buf, int *vector, int flags);
 
 /* Find the first message whose flags&m==f and return its message number */
 FL int         first(int f, int m);
@@ -2172,7 +2173,7 @@ FL bool_t is_prefix(char const *as1, char const *as2);
 FL char *      string_quote(char const *v);
 
 /* Get (and isolate) the last, possibly quoted part of linebuf, set *needs_list
- * to indicate whether getmsglist() et al need to be called to collect
+ * to indicate whether n_getmsglist() et al need to be called to collect
  * additional args that remain in linebuf.  If strip is true possibly
  * surrounding quote characters are removed.  Return NULL on "error" */
 FL char *      laststring(char *linebuf, bool_t *needs_list, bool_t strip);
