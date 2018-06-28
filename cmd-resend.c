@@ -329,23 +329,9 @@ a_crese_list_reply(int *msgvec, enum header_flags hf){
    char const *cp, *cp2;
    enum gfield gf;
    struct name *rt, *mft, *np;
-   int *save_msgvec;
    NYD2_ENTER;
 
    n_pstate_err_no = n_ERR_NONE;
-
-   /* TODO Since we may recur and do stuff with message lists we need to save
-    * TODO away the argument vector as long as that isn't done by machinery */
-   /* C99 */{
-      size_t i;
-      for(i = 0; msgvec[i] != 0; ++i)
-         ;
-      ++i;
-      save_msgvec = n_lofi_alloc(sizeof(*save_msgvec) * i);
-      while(i-- > 0)
-         save_msgvec[i] = msgvec[i];
-      msgvec = save_msgvec;
-   }
 
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
 
@@ -555,7 +541,6 @@ jskip_to_next:
    }
 
 jleave:
-   n_lofi_free(save_msgvec);
    NYD2_LEAVE;
    return (msgvec == NULL);
 }

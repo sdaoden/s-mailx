@@ -287,8 +287,7 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
    }
    f = ok_blook(topsqueeze) ? a_SQUEEZE : a_NONE;
 
-   for(ip = msgvec = vp;
-         *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount); ++ip){
+   for(ip = msgvec = vp; *ip != 0; ++ip){
       struct message *mp;
 
       mp = &message[*ip - 1];
@@ -748,8 +747,7 @@ c_undelete(void *v)
    struct message *mp;
    NYD_ENTER;
 
-   for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
-         ++ip) {
+   for (ip = msgvec; *ip != 0; ++ip) {
       mp = &message[*ip - 1];
       touch(mp);
       setdot(mp);

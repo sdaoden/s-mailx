@@ -183,8 +183,7 @@ jsend:
 #endif
 
    srelax_hold();
-   for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
-         ++ip) {
+   for (ip = msgvec; *ip != 0; ++ip) {
       mp = &message[*ip - 1];
 #ifdef HAVE_IMAP
       if((fs & n_PROTO_MASK) == n_PROTO_IMAP &&
@@ -249,14 +248,12 @@ jferr:
          n_shexp_quote_cp(file, FAL0), disp,
          /*tstats[1], TODO v15: lines written */ tstats[0]);
    } else if (domark) {
-      for (ip = msgvec; *ip != 0 &&
-            UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount); ++ip) {
+      for (ip = msgvec; *ip != 0; ++ip) {
          mp = message + *ip - 1;
          mp->m_flag &= ~MSAVED;
       }
    } else if (domove) {
-      for (ip = msgvec; *ip != 0 &&
-            UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount); ++ip) {
+      for (ip = msgvec; *ip != 0; ++ip) {
          mp = message + *ip - 1;
          mp->m_flag &= ~(MSAVED | MDELETED);
       }

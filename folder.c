@@ -683,7 +683,7 @@ setmsize(int sz)
    NYD_ENTER;
    if (n_msgvec != NULL)
       n_free(n_msgvec);
-   n_msgvec = n_calloc(sz + 1, sizeof *n_msgvec);
+   n_msgvec = n_calloc(sz +1, sizeof *n_msgvec);
    NYD_LEAVE;
 }
 

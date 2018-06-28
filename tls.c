@@ -400,8 +400,7 @@ c_certsave(void *v)
       n_perr(file, 0);
       goto jleave;
    }
-   for (val = 0, ip = msgvec;
-         *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount); ++ip)
+   for (val = 0, ip = msgvec; *ip != 0; ++ip)
       if (smime_certsave(&message[*ip - 1], *ip, fp) != OKAY)
          val = 1;
    Fclose(fp);
