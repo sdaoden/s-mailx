@@ -247,7 +247,7 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    struct str line;
    struct n_string s, *sp;
    struct str const *alias_exp;
-   char _wordbuf[2], **arglist_base/*[n_MAXARGC]*/, **arglist, *cp, *word;
+   char _wordbuf[2], *argv_stack[3], **argv_base, **argvp, *vput, *cp, *word;
    char const *alias_name;
    struct n_cmd_desc const *cdp;
    si32_t nerrn, nexn;     /* TODO n_pstate_ex_no -> si64_t! */
@@ -276,10 +276,9 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    nerrn = n_ERR_NONE;
    nexn = n_EXIT_OK;
    cdp = NULL;
+   vput = NULL;
    alias_name = NULL;
    n_UNINIT(alias_exp, NULL);
-   arglist =
-   arglist_base = n_autorec_alloc(sizeof(*arglist_base) * n_MAXARGC);
    line = gecp->gec_line; /* TODO const-ify original (buffer)! */
    assert(line.s[line.l] == '\0');
 
@@ -326,7 +325,7 @@ jrestart:
       ++cp;
    c = (int)PTR2SIZE(cp - line.s);
    word = UICMP(z, c, <, sizeof _wordbuf) ? _wordbuf : n_autorec_alloc(c +1);
-   memcpy(word, arglist[0] = line.s, c);
+   memcpy(word, line.s, c);
    word[c] = '\0';
    line.l -= c;
    line.s = cp;
@@ -566,27 +565,26 @@ jexec:
          char const *emsg;
 
          emsg = line.s; /* xxx Cannot pass &char* as char const**, so no cp */
-         arglist[0] = n_shexp_parse_token_cp((n_SHEXP_PARSE_TRIM_SPACE |
+         vput = n_shexp_parse_token_cp((n_SHEXP_PARSE_TRIM_SPACE |
                n_SHEXP_PARSE_TRIM_IFSSPACE | n_SHEXP_PARSE_LOG |
                n_SHEXP_PARSE_META_SEMICOLON | n_SHEXP_PARSE_META_KEEP), &emsg);
          line.l -= PTR2SIZE(emsg - line.s);
          line.s = cp = n_UNCONST(emsg);
          if(cp == NULL)
             emsg = N_("could not parse input token");
-         else if(!n_shexp_is_valid_varname(arglist[0]))
+         else if(!n_shexp_is_valid_varname(vput))
             emsg = N_("not a valid variable name");
-         else if(!n_var_is_user_writable(arglist[0]))
+         else if(!n_var_is_user_writable(vput))
             emsg = N_("either not a user writable, or a boolean variable");
          else
             emsg = NULL;
          if(emsg != NULL){
             n_err("`%s': vput: %s: %s\n",
-                  cdp->cd_name, V_(emsg), n_shexp_quote_cp(arglist[0], FAL0));
+                  cdp->cd_name, V_(emsg), n_shexp_quote_cp(vput, FAL0));
             nerrn = n_ERR_NOTSUP;
             rv = -1;
             goto jleave;
          }
-         ++arglist;
          n_pstate |= n_PS_ARGMOD_VPUT; /* TODO YET useless since stripped later
          * TODO on in getrawlist() etc., i.e., the argument vector producers,
          * TODO therefore yet needs to be set again based on flags&a_VPUT! */
@@ -648,11 +646,14 @@ jemsglist:
 
    case n_CMD_ARG_TYPE_RAWDAT:
       /* Just the straight string, placed in argv[] */
-      *arglist++ = line.s;
-      *arglist = NULL;
+      argvp = argv_stack;
+      if(flags & a_VPUT)
+         *argvp++ = vput;
+      *argvp++ = line.s;
+      *argvp = NULL;
       if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
          n_err_no = 0;
-      rv = (*cdp->cd_func)(arglist_base);
+      rv = (*cdp->cd_func)(argv_stack);
       break;
 
    case n_CMD_ARG_TYPE_WYSH:
@@ -666,8 +667,11 @@ jemsglist:
             c = 0;
          }
       }
-      if((c = getrawlist((c != 0), arglist,
-            n_MAXARGC - PTR2SIZE(arglist - arglist_base), line.s, line.l)) < 0){
+      argvp = argv_base = n_autorec_alloc(sizeof(*argv_base) * n_MAXARGC);
+      if(flags & a_VPUT)
+         *argvp++ = vput;
+      if((c = getrawlist((c != 0), argvp,
+            (n_MAXARGC - ((flags & a_VPUT) != 0)), line.s, line.l)) < 0){
          n_err(_("Invalid argument list\n"));
          flags |= a_NO_ERRNO;
          break;
@@ -691,11 +695,11 @@ jemsglist:
       if(flags & a_LOCAL)
          n_pstate |= n_PS_ARGMOD_LOCAL;
       if(flags & a_VPUT)
-         n_pstate |= n_PS_ARGMOD_VPUT;
+         n_pstate |= n_PS_ARGMOD_VPUT; /* TODO due to getrawlist(), as above */
 
       if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
          n_err_no = 0;
-      rv = (*cdp->cd_func)(arglist_base);
+      rv = (*cdp->cd_func)(argv_base);
       if(a_go_xcall != NULL)
          goto jret0;
       break;
@@ -716,8 +720,8 @@ jemsglist:
       }
 
       if(flags & a_VPUT){
-         cac.cac_vput = *arglist_base;
-         n_pstate |= n_PS_ARGMOD_VPUT;
+         cac.cac_vput = vput;
+         /* Global "hack" not used: n_pstate |= n_PS_ARGMOD_VPUT; */
       }else
          cac.cac_vput = NULL;
 
