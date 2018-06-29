@@ -145,7 +145,8 @@ static void a_main_setscreensize(int is_sighdl);
 
 /* Ok, we are reading mail.  Decide whether we are editing a mailbox or reading
  * the system mailbox, and open up the right stuff */
-static int a_main_rcv_mode(char const *folder, char const *Larg);
+static int a_main_rcv_mode(bool_t had_A_arg, char const *folder,
+            char const *Larg);
 
 /* Interrupt printing of the headers */
 static void a_main_hdrstop(int signo);
@@ -565,13 +566,20 @@ jleave:
 static sigjmp_buf a_main__hdrjmp; /* XXX */
 
 static int
-a_main_rcv_mode(char const *folder, char const *Larg){
-   int i;
+a_main_rcv_mode(bool_t had_A_arg, char const *folder, char const *Larg){
    sighandler_type prevint;
+   int i;
    NYD_ENTER;
 
-   if(folder == NULL)
+   i = had_A_arg ? FEDIT_ACCOUNT : FEDIT_NONE;
+   if(n_poption & n_PO_QUICKRUN_MASK)
+      i |= FEDIT_RDONLY;
+
+   if(folder == NULL){
       folder = "%";
+      if(had_A_arg)
+         i |= FEDIT_SYSBOX;
+   }
 #ifdef HAVE_IMAP
    else if(*folder == '@'){
       /* This must be treated specially to make possible invocation like
@@ -584,7 +592,6 @@ a_main_rcv_mode(char const *folder, char const *Larg){
    }
 #endif
 
-   i = (n_poption & n_PO_QUICKRUN_MASK) ? FEDIT_RDONLY : FEDIT_NONE;
    i = setfile(folder, i);
    if(i < 0){
       n_exit_status = n_EXIT_ERR; /* error already reported */
@@ -1219,7 +1226,7 @@ je_expandargv:
    n_psonce |= n_PSO_STARTED;
 
    if(!(n_psonce & n_PSO_SENDMODE))
-      n_exit_status = a_main_rcv_mode(folder, Larg);
+      n_exit_status = a_main_rcv_mode((Aarg != NULL), folder, Larg);
    else{
       /* Now that full mailx(1)-style file expansion is possible handle the
        * attachments which we had delayed due to this.

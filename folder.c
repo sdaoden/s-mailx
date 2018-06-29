@@ -384,9 +384,15 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
             who = &cp[1];
          if(*who == '\0')
             goto jlogname;
-      }else
+      }else{
 jlogname:
-         who = ok_vlook(LOGNAME);
+         if(fm & FEDIT_ACCOUNT){
+            if((who = ok_vlook(account)) == NULL)
+               who = ACCOUNT_NULL;
+            who = savecatsep(_("account"), ' ', who);
+         }else
+            who = ok_vlook(LOGNAME);
+      }
 
       if ((name = fexpand(name, fexpm)) == NULL)
          goto jem1;
@@ -421,13 +427,13 @@ jlogname:
 #ifdef HAVE_MAILDIR
    case PROTO_MAILDIR:
       shudclob = 1;
-      rv = maildir_setfile(name, fm);
+      rv = maildir_setfile(who, name, fm);
       goto jleave;
 #endif
 #ifdef HAVE_POP3
    case PROTO_POP3:
       shudclob = 1;
-      rv = pop3_setfile(orig_name, fm);
+      rv = pop3_setfile(who, orig_name, fm);
       goto jleave;
 #endif
 #ifdef HAVE_IMAP
@@ -436,7 +442,7 @@ jlogname:
       if((fm & FEDIT_NEWMAIL) && mb.mb_type == MB_CACHE)
          rv = 1;
       else
-         rv = imap_setfile(orig_name, fm);
+         rv = imap_setfile(who, orig_name, fm);
       goto jleave;
 #endif
    default:
@@ -448,13 +454,15 @@ jlogname:
       int e = n_err_no;
 
       if ((fm & FEDIT_SYSBOX) && e == n_ERR_NOENT) {
-         if (strcmp(who, ok_vlook(LOGNAME)) && getpwnam(who) == NULL) {
+         if (!(fm & FEDIT_ACCOUNT) && strcmp(who, ok_vlook(LOGNAME)) &&
+               getpwnam(who) == NULL) {
             n_err(_("%s is not a user of this system\n"),
                n_shexp_quote_cp(who, FAL0));
             goto jem2;
          }
          if (!(n_poption & n_PO_QUICKRUN_MASK) && ok_blook(bsdcompat))
-            n_err(_("No mail for %s\n"), who);
+            n_err(_("No mail for %s at %s\n"),
+               who, n_shexp_quote_cp(name, FAL0));
       }
       if (fm & FEDIT_NEWMAIL)
          goto jleave;
@@ -614,7 +622,8 @@ jlogname:
       if(!(n_pstate & n_PS_EDIT) || (fm & FEDIT_NEWMAIL)){
          if(!(fm & FEDIT_NEWMAIL)){
             if (!ok_blook(emptystart))
-               n_err(_("No mail for %s\n"), who);
+               n_err(_("No mail for %s at %s\n"),
+                  who, n_shexp_quote_cp(name, FAL0));
          }
          goto jleave;
       }

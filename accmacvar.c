@@ -2607,17 +2607,19 @@ c_account(void *v){
    n_PS_ROOT_BLOCK((amp != NULL ? ok_vset(account, amp->am_name)
       : ok_vclear(account)));
 
+   /* Otherwise likely initial setfile() in a_main_rcv_mode() will pick up */
    if(n_psonce & n_PSO_STARTED){
       assert(!(n_pstate & n_PS_HOOK_MASK));
       nqf = savequitflags(); /* TODO obsolete (leave -> void -> new box!) */
       restorequitflags(oqf);
-      if((i = setfile("%", 0)) < 0)
+      i = setfile("%", FEDIT_SYSBOX | FEDIT_ACCOUNT);
+      restorequitflags(nqf);
+      if(i < 0)
          goto jleave;
       temporary_folder_hook_check(FAL0);
-      if(i > 0 && !ok_blook(emptystart))
+      if(i != 0 && !ok_blook(emptystart)) /* Avoid annoying "double message" */
          goto jleave;
       n_folder_announce(n_ANNOUNCE_CHANGE);
-      restorequitflags(nqf);
    }
    rv = 0;
 jleave:

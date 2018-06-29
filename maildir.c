@@ -904,7 +904,8 @@ jleave:
 }
 
 FL int
-maildir_setfile(char const * volatile name, enum fedit_mode fm)
+maildir_setfile(char const *who, char const * volatile name,
+   enum fedit_mode fm)
 {
    sighandler_type volatile saveint;
    struct cw cw;
@@ -997,7 +998,7 @@ jerr:
 
    if (!(fm & FEDIT_NEWMAIL) && (fm & FEDIT_SYSBOX) && msgCount == 0) {
       if (mb.mb_type == MB_MAILDIR /* XXX ?? */ && !ok_blook(emptystart))
-         n_err(_("No mail at %s\n"), n_shexp_quote_cp(name, FAL0));
+         n_err(_("No mail for %s at %s\n"), who, n_shexp_quote_cp(name, FAL0));
       i = 1;
       goto jleave;
    }

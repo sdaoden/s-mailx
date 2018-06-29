@@ -815,7 +815,7 @@ pop3_noop(void)
 }
 
 FL int
-pop3_setfile(char const *server, enum fedit_mode fm)
+pop3_setfile(char const *who, char const *server, enum fedit_mode fm)
 {
    struct sockconn sc;
    sighandler_type saveint, savepipe;
@@ -932,7 +932,7 @@ pop3_setfile(char const *server, enum fedit_mode fm)
 
    if (!(n_pstate & n_PS_EDIT) && msgCount == 0) {
       if (!ok_blook(emptystart))
-         n_err(_("No mail at %s\n"), server);
+         n_err(_("No mail for %s at %s\n"), who, sc.sc_url.url_p_eu_h_p);
       goto jleave;
    }
 

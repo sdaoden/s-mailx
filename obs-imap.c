@@ -209,8 +209,8 @@ static void       imap_setptr(struct mailbox *mp, int nmail, int transparent,
                      int *prevcount);
 static bool_t     _imap_getcred(struct mailbox *mbp, struct ccred *ccredp,
                      struct url *urlp);
-static int        _imap_setfile1(struct url *urlp, enum fedit_mode fm,
-                     int transparent);
+static int _imap_setfile1(char const *who, struct url *urlp,
+            enum fedit_mode fm, int transparent);
 static int        imap_fetchdata(struct mailbox *mp, struct message *m,
                      size_t expected, int need, const char *head,
                      size_t headsize, long headlines);
@@ -1627,7 +1627,8 @@ imap_setptr(struct mailbox *mp, int nmail, int transparent, int *prevcount)
 }
 
 FL int
-imap_setfile(const char *xserver, enum fedit_mode fm)
+imap_setfile(char const * volatile who, const char *xserver,
+   enum fedit_mode fm)
 {
    struct url url;
    int rv;
@@ -1642,7 +1643,7 @@ imap_setfile(const char *xserver, enum fedit_mode fm)
       n_err(_("New-style URL used without *v15-compat* being set!\n"));
 
    _imap_rdonly = ((fm & FEDIT_RDONLY) != 0);
-   rv = _imap_setfile1(&url, fm, 0);
+   rv = _imap_setfile1(who, &url, fm, 0);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -1682,8 +1683,8 @@ _imap_getcred(struct mailbox *mbp, struct ccred *ccredp, struct url *urlp)
 }
 
 static int
-_imap_setfile1(struct url *urlp, enum fedit_mode volatile fm,
-   int volatile transparent)
+_imap_setfile1(char const * volatile who, struct url *urlp,
+   enum fedit_mode volatile fm, int volatile transparent)
 {
    struct sock so;
    struct ccred ccred;
@@ -1884,8 +1885,15 @@ jdone:
 
    if (!(fm & FEDIT_NEWMAIL) && !(n_pstate & n_PS_EDIT) && msgCount == 0) {
       if ((mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE) &&
-            !ok_blook(emptystart))
-         n_err(_("No mail at %s\n"), urlp->url_p_eu_h_p_p);
+            !ok_blook(emptystart)){
+         char const *intro;
+
+         if(who == NULL)
+            intro = who = n_empty;
+         else
+            intro = _(" for ");
+         n_err(_("No mail%s%s at %s\n"), intro, who, urlp->url_p_eu_h_p_p);
+      }
       rv = 1;
       goto jleave;
    }
@@ -4102,7 +4110,7 @@ c_connect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
          fm |= FEDIT_RDONLY;
       if (!(n_pstate & n_PS_EDIT))
          fm |= FEDIT_SYSBOX;
-      _imap_setfile1(&url, fm, 1);
+      _imap_setfile1(NULL, &url, fm, 1);
       if (msgCount > omsgCount)
          newmailinfo(omsgCount);
    }
@@ -4141,7 +4149,7 @@ c_disconnect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
       if (!(n_pstate & n_PS_EDIT))
          fm |= FEDIT_SYSBOX;
       sclose(&mb.mb_sock);
-      _imap_setfile1(&url, fm, 1);
+      _imap_setfile1(NULL, &url, fm, 1);
    }
    rv = 0;
 jleave:

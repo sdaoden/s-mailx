@@ -765,10 +765,11 @@ enum n_exit_status{
 };
 
 enum fedit_mode {
-   FEDIT_NONE     = 0,
-   FEDIT_SYSBOX   = 1<<0,     /* %: prefix */
-   FEDIT_RDONLY   = 1<<1,     /* Readonly (per-box, n_OPT_R_FLAG is global) */
-   FEDIT_NEWMAIL  = 1<<2      /* `newmail' operation TODO OBSOLETE THIS! */
+   FEDIT_NONE = 0,
+   FEDIT_SYSBOX = 1u<<0,   /* %: prefix */
+   FEDIT_RDONLY = 1u<<1,   /* Readonly (per-box, n_OPT_R_FLAG is global) */
+   FEDIT_NEWMAIL = 1u<<2,  /* `newmail' operation TODO OBSOLETE THIS! */
+   FEDIT_ACCOUNT = 1u<<3   /* setfile() called by `account' */
 };
 
 enum fexp_mode {

@@ -1287,7 +1287,7 @@ FL void        mark(int mesg, int f);
  */
 
 #ifdef HAVE_MAILDIR
-FL int maildir_setfile(char const *name, enum fedit_mode fm);
+FL int maildir_setfile(char const *who, char const *name, enum fedit_mode fm);
 
 FL bool_t maildir_quit(bool_t hold_sigs_on);
 
@@ -1748,7 +1748,7 @@ FL void        cwrelse(struct cw *cw);
 FL enum okay   pop3_noop(void);
 
 /*  */
-FL int         pop3_setfile(char const *server, enum fedit_mode fm);
+FL int pop3_setfile(char const *who, char const *server, enum fedit_mode fm);
 
 /*  */
 FL enum okay   pop3_header(struct message *m);
@@ -2778,7 +2778,7 @@ FL char const * imap_fileof(char const *xcp);
 FL enum okay   imap_noop(void);
 FL enum okay   imap_select(struct mailbox *mp, off_t *size, int *count,
                   const char *mbx, enum fedit_mode fm);
-FL int         imap_setfile(const char *xserver, enum fedit_mode fm);
+FL int imap_setfile(char const *who, const char *xserver, enum fedit_mode fm);
 FL enum okay   imap_header(struct message *m);
 FL enum okay   imap_body(struct message *m);
 FL void        imap_getheaders(int bot, int top);
