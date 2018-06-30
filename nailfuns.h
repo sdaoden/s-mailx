@@ -517,13 +517,13 @@ FL int c_dotmove(void *v);
 /* Print out the headlines for each message in the passed message list */
 FL int c_from(void *v);
 
-/* Print all message in between and including bottom and topx if they are
- * visible and either only_marked is false or they are MMARKed.
+/* Print all messages in msgvec visible and either only_marked is false or they
+ * are MMARKed.
  * TODO If subject_thread_compress is true then a subject will not be printed
  * TODO if it equals the subject of the message "above"; as this only looks
  * TODO in the thread neighbour and NOT in the "visible" neighbour, the caller
  * TODO has to ensure the result will look sane; DROP + make it work (tm) */
-FL void print_headers(size_t bottom, size_t topx, bool_t only_marked,
+FL void print_headers(int const *msgvec, bool_t only_marked,
          bool_t subject_thread_compress);
 
 /*

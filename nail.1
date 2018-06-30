@@ -392,7 +392,7 @@ The optional
 .Ar file
 argument will undergo some special
 .Sx "Filename transformations"
-(also see
+(as via
 .Ic file ) .
 Note that
 .Ar file
@@ -409,9 +409,19 @@ that starts with a hyphen-minus, prefix with a relative path, as in
 .It Fl H
 Display a summary of
 .Ic headers
-and exit; a configurable summary view is available via the
-.Fl L
-option.
+for the given
+.Ic file
+(depending on
+.Fl u ,
+.Va inbox
+or
+.Ev MAIL ,
+or as specified via
+.Fl f ) .
+A configurable summary view is available via the option
+.Fl L .
+This mode does not honour
+.Va showlast .
 .
 .Mx
 .It Fl h
@@ -428,12 +438,19 @@ to ignore tty interrupt signals.
 Display a summary of
 .Ic headers
 of all messages that match the given
-.Ar spec ,
+.Ar spec
+in the
+.Ic file
+found by the same algorithm used by
+.Fl H ,
 then exit.
 See the section
 .Sx "Specifying messages"
 for the format of
 .Ar spec .
+This mode does not honour
+.Va showlast .
+.Pp
 If the
 .Fl e
 option has been given in addition no header summary is produced,
@@ -5135,7 +5152,9 @@ the user has made, open a new mailbox, update the internal variables
 .Va mailbox-resolved
 and
 .Va mailbox-display ,
-and optionally display a summary of
+execute an according
+.Va folder-hook ,
+if one is installed, and optionally display a summary of
 .Ic headers
 if the variable
 .Va header
@@ -5483,8 +5502,8 @@ will remove all headers.
 .It Ic headers
 (h) Show the current group of headers, the size of which depends on
 the variable
-.Va screen ,
-and the style of which can be adjusted with the variable
+.Va screen
+in interactive mode, and the format of which can be defined with
 .Va headline .
 If a message-specification is given the group of headers containing the
 first message therein is shown and the message at the top of the screen
@@ -8708,9 +8727,12 @@ answered.
 .It Ql T
 draft.
 .It Ql +
-start of a collapsed thread.
+\*(ID start of a (collapsed) thread in threaded mode (see
+.Va autosort ,
+.Ic thread ) ;
 .It Ql -
-an uncollapsed thread (TODO ignored for now).
+\*(ID an uncollapsed thread in threaded mode; only used in conjunction with
+.Fl L .
 .It Ql $
 classified as spam.
 .It Ql ~
@@ -12737,6 +12759,8 @@ unless
 .Va inbox
 is set.
 This is assumed to be an absolute pathname.
+If this environmental fallback is also not set, a built-in compile-time
+default is used.
 .
 .Mx
 .It Ev MAILCAPS
