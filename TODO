@@ -176,10 +176,16 @@ Low-Level
     An Extensible Message Format for Delivery Status Notifications
   RFC 3676 - Updates to the text/plain MIME type and extensions for flowed
     text (format=flowed).   (Martin Neitzel)
+  rfc4315.txt Internet Message Access Protocol (IMAP) - UIDPLUS extension
   RFC 4422, 4505 - Simple Authentication and Security layer (SASL)
             (Tarqi Kazan)
+  RFC 4551          IMAP Extension for Conditional STORE
   RFC 4880 - OpenPGP Message Format
   RFC 4954 - SMTP Authentication
+  rfc4959.txt IMAP Extension for Simple Authentication and Security
+    Layer (SASL) Initial Client Response
+  rfc4978.txt The IMAP COMPRESS Extension
+  rfc5161.txt The IMAP ENABLE Extension
   rfc5198.txt Unicode Format for Network Interchange
   RFC 5246 - Transport Layer Security (TLS)
   RFC 5321 - Simple Mail Transfer Protocol.
@@ -213,6 +219,7 @@ Low-Level
   rfc6857.txt Post-Delivery Message Downgrading for Internationalized
     Email Messages
   rfc6858.txt Simplified POP and IMAP Downgrading for Internationalized Email
+  RFC 7162                IMAP CONDSTORE & QRESYNC
   RFC 8058 Signaling One-Click Functionality for List Email Headers
 
   draft-ietf-uta-email-tls-certs-01.txt
@@ -562,7 +569,7 @@ Low-Level
     with timeouts etc. (for MBOX and Maildir it's not that bad, but for
     anything over the network, yet the mentioned may come in over NFS).
     Remove it until we have something better?
-  . The RFC 3798 *disposition-notification-send* mechanism is yet not
+  . The RFC 8098 *disposition-notification-send* mechanism is yet not
     truly conforming (and works with *from*).  Also, this is only the
     sender side, there should be support for creating the MDN response.
     (Maybe ternary option: off (default),
@@ -665,11 +672,6 @@ Low-Level
 
 . convert iconv so that it always "places the reset sequence" i.e.
  finalizes the string properly.  we don't do this at all right now!
-
-. wysh: support a -- terminator, also in getmsglist();
-	then: `pipe' etc.: add support for wysh prefix, which uses the new
-	syntax: like this we can obsolete the ridiculous lastring() hack of nail
-	in v15!  (Stanley Lieber, Gavin Troy)
 
 . -:, *mimetypes-load-control*, ?, should honour the given load order; as
   appropriate, add a "b" for built-in!
