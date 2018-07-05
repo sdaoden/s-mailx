@@ -863,7 +863,6 @@ jeMmq:
          break;
       case 'S':
 jsetvar: /* Set variable TODO optimize v15-compat case */
-         n_poption |= n_PO_S_FLAG_TEMPORARY;
          {  struct str sin;
             struct n_string s, *sp;
             char const *a[2];
@@ -892,6 +891,7 @@ jsetvar: /* Set variable TODO optimize v15-compat case */
             }
 
             a[1] = NULL;
+            n_poption |= n_PO_S_FLAG_TEMPORARY;
             n_pstate |= n_PS_ROBOT;
             b = (c_set(a) == 0);
             n_pstate &= ~(n_PS_ROOT | n_PS_ROBOT);
