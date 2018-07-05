@@ -582,9 +582,18 @@ enum authtype {
 
 enum expand_addr_flags {
    EAF_NONE       = 0,        /* -> EAF_NOFILE | EAF_NOPIPE */
-   EAF_RESTRICT   = 1<<0,     /* "restrict" (do unless interaktive / -[~#]) */
-   EAF_FAIL       = 1<<1,     /* "fail" */
-   EAF_FAILINVADDR = 1<<2,    /* "failinvaddr" */
+   EAF_RESTRICT   = 1u<<0,    /* "restrict" (do unless interaktive / -[~#]) */
+   EAF_FAIL       = 1u<<1,    /* "fail" */
+   EAF_FAILINVADDR = 1u<<2,   /* "failinvaddr" */
+   EAF_SHEXP_PARSE = 1u<<3,    /* shexp_parse() the address first is allowed */
+   /* Bits reused by enum expand_addr_check_mode! */
+   EAF_FILE       = 1u<<4,    /* +"file" targets */
+   EAF_PIPE       = 1u<<5,    /* +"pipe" command pipe targets */
+   EAF_NAME       = 1u<<6,    /* +"name"s (non-address) names / MTA aliases */
+   EAF_ADDR       = 1u<<7,    /* +"addr" network address (contain "@") */
+
+   EAF_TARGET_MASK  = EAF_FILE | EAF_PIPE | EAF_NAME | EAF_ADDR,
+   EAF_RESTRICT_TARGETS = EAF_NAME | EAF_ADDR /* (default set if not set) */
    /* TODO HACK!  In pre-v15 we have a control flow problem (it is a general
     * TODO design problem): if n_collect() calls makeheader(), e.g., for -t or
     * TODO because of ~e diting, then that will checkaddr() and that will
@@ -597,15 +606,7 @@ enum expand_addr_flags {
     * TODO which will be subject to namelist_vaporise_head() later on!! --,
     * TODO if it is set (by n_header_extract()) then checkaddr() will NOT strip
     * TODO invalid headers off IF it deals with a NULL senderror pointer */
-   EAF_MAYKEEP    = 1<<3,
-   /* Bits reused by enum expand_addr_check_mode! */
-   EAF_FILE       = 1<<4,     /* +"file" targets */
-   EAF_PIPE       = 1<<5,     /* +"pipe" command pipe targets */
-   EAF_NAME       = 1<<6,     /* +"name"s (non-address) names / MTA aliases */
-   EAF_ADDR       = 1<<7,     /* +"addr" network address (contain "@") */
-
-   EAF_TARGET_MASK  = EAF_FILE | EAF_PIPE | EAF_NAME | EAF_ADDR,
-   EAF_RESTRICT_TARGETS = EAF_NAME | EAF_ADDR /* (default set if not set) */
+   ,EAF_MAYKEEP    = 1u<<8
 };
 
 enum expand_addr_check_mode {
@@ -2418,7 +2419,8 @@ enum gfield{ /* TODO -> enum m_grab_head, m_GH_xy */
    GEXTRA = 1u<<16,     /* Extra fields (mostly like GIDENT XXX) */
    GFILES = 1u<<17,     /* Include filename and pipe addresses */
    GFULLEXTRA = 1u<<18, /* Only with GFULL: GFULL less address */
-   GBCC_IS_FCC = 1u<<19 /* This GBCC is (or was) indeed a Fcc: */
+   GBCC_IS_FCC = 1u<<19, /* This GBCC is (or was) indeed a Fcc: */
+   GSHEXP_PARSE_HACK = 1u<<20 /* lextract()+: *expandaddr*=shquote */
 };
 #define GMASK           (GTO | GSUBJECT | GCC | GBCC)
 

@@ -1425,11 +1425,37 @@ extract(char const *line, enum gfield ntype)
 FL struct name *
 lextract(char const *line, enum gfield ntype)
 {
+   char *cp;
    struct name *rv;
    NYD_ENTER;
 
+   if(!(ntype & GSHEXP_PARSE_HACK) || !(expandaddr_to_eaf() & EAF_SHEXP_PARSE))
+      cp = NULL;
+   else{
+      struct str sin;
+      struct n_string s_b, *sp;
+      enum n_shexp_state shs;
+
+      n_autorec_relax_create();
+      sp = n_string_creat_auto(&s_b);
+      sin.s = n_UNCONST(line); /* logical */
+      sin.l = UIZ_MAX;
+      shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
+            n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
+            n_SHEXP_PARSE_QUOTE_AUTO_DSQ), sp, &sin, NULL);
+      if(!(shs & n_SHEXP_STATE_ERR_MASK) && (shs & n_SHEXP_STATE_STOP)){
+         line = cp = n_lofi_alloc(sp->s_len +1);
+         memcpy(cp, n_string_cp(sp), sp->s_len +1);
+      }else
+         line = cp = NULL;
+      n_autorec_relax_gut();
+   }
+
    rv = ((line != NULL && strpbrk(line, ",\"\\(<|"))
          ? a_nag_extract1(line, ntype, ",", 1) : extract(line, ntype));
+
+   if(cp != NULL)
+      n_lofi_free(cp);
    NYD_LEAVE;
    return rv;
 }

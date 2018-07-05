@@ -1660,17 +1660,17 @@ jleave:
 }
 
 FL enum expand_addr_flags
-expandaddr_to_eaf(void)
-{
+expandaddr_to_eaf(void){
    struct eafdesc {
-      char const  *eafd_name;
-      bool_t      eafd_is_target;
-      ui8_t       eafd_andoff;
-      ui8_t       eafd_or;
+      char eafd_name[13];
+      bool_t eafd_is_target;
+      ui8_t eafd_andoff;
+      ui8_t eafd_or;
    } const eafa[] = {
       {"restrict", FAL0, EAF_TARGET_MASK, EAF_RESTRICT | EAF_RESTRICT_TARGETS},
       {"fail", FAL0, EAF_NONE, EAF_FAIL},
-      {"failinvaddr", FAL0, EAF_NONE, EAF_FAILINVADDR | EAF_ADDR},
+      {"failinvaddr\0", FAL0, EAF_NONE, EAF_FAILINVADDR | EAF_ADDR},
+      {"shquote", FAL0, EAF_NONE, EAF_SHEXP_PARSE},
       {"all", TRU1, EAF_NONE, EAF_TARGET_MASK},
          {"file", TRU1, EAF_NONE, EAF_FILE},
          {"pipe", TRU1, EAF_NONE, EAF_PIPE},
@@ -1683,36 +1683,41 @@ expandaddr_to_eaf(void)
    char const *cp;
    NYD2_ENTER;
 
-   if ((cp = ok_vlook(expandaddr)) == NULL)
+   if((cp = ok_vlook(expandaddr)) == NULL)
       rv = EAF_RESTRICT_TARGETS;
-   else if (*cp == '\0')
+   else if(*cp == '\0')
       rv = EAF_TARGET_MASK;
-   else {
+   else{
       rv = EAF_TARGET_MASK;
 
-      for (buf = savestr(cp); (cp = n_strsep(&buf, ',', TRU1)) != NULL;) {
+      for(buf = savestr(cp); (cp = n_strsep(&buf, ',', TRU1)) != NULL;){
          bool_t minus;
 
-         if ((minus = (*cp == '-')) || *cp == '+')
+         if((minus = (*cp == '-')) || (*cp == '+' ? (minus = TRUM1) : FAL0))
             ++cp;
-         for (eafp = eafa;; ++eafp) {
-            if (eafp == eafa + n_NELEM(eafa)) {
-               if (n_poption & n_PO_D_V)
+
+         for(eafp = eafa;; ++eafp) {
+            if(eafp == &eafa[n_NELEM(eafa)]){
+               if(n_poption & n_PO_D_V)
                   n_err(_("Unknown *expandaddr* value: %s\n"), cp);
                break;
-            } else if (!asccasecmp(cp, eafp->eafd_name)) {
-               if (!minus) {
+            }else if(!asccasecmp(cp, eafp->eafd_name)){
+               if(minus){
+                  if(eafp->eafd_is_target){
+                     if(minus != TRU1)
+                        goto jandor;
+                     else
+                        rv &= ~eafp->eafd_or;
+                  }else if(n_poption & n_PO_D_V)
+                     n_err(_("- or + prefix invalid for *expandaddr* value: "
+                        "%s\n"), --cp);
+               }else{
+jandor:
                   rv &= ~eafp->eafd_andoff;
                   rv |= eafp->eafd_or;
-               } else {
-                  if (eafp->eafd_is_target)
-                     rv &= ~eafp->eafd_or;
-                  else if (n_poption & n_PO_D_V)
-                     n_err(_("minus - prefix invalid for *expandaddr* value: "
-                        "%s\n"), --cp);
                }
                break;
-            } else if (!asccasecmp(cp, "noalias")) { /* TODO v15 OBSOLETE */
+            }else if(!asccasecmp(cp, "noalias")){ /* TODO v15 OBSOLETE */
                n_OBSOLETE(_("*expandaddr*: noalias is henceforth -name"));
                rv &= ~EAF_NAME;
                break;
