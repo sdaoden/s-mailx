@@ -1475,7 +1475,7 @@ imap_select(struct mailbox *mp, off_t *size, int *cnt, const char *mbx,
       ok = imap_answer(mp, 1);
       if (response_status != RESPONSE_OTHER &&
             (cp = asccasestr(responded_text, "[UIDVALIDITY ")) != NULL)
-         mp->mb_uidvalidity = atol(&cp[13]);
+         n_idec_ui64_cp(&mp->mb_uidvalidity, &cp[13], 10, NULL);/* TODO err? */
    }
    *cnt = (had_exists > 0) ? had_exists : 0;
    if (response_status != RESPONSE_OTHER &&

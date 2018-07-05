@@ -366,7 +366,7 @@ initcache(struct mailbox *mp)
 {
    char *name, *uvname;
    FILE *uvfp;
-   unsigned long uv;
+   ui64_t uv;
    struct cw cw;
    NYD_ENTER;
 
@@ -382,7 +382,7 @@ initcache(struct mailbox *mp)
       goto jleave;
    if ((uvfp = Fopen(uvname, "r+")) == NULL ||
          (n_file_lock(fileno(uvfp), FLT_READ, 0,0, 0), 0) ||
-         fscanf(uvfp, "%lu", &uv) != 1 || uv != mp->mb_uidvalidity) {
+         fscanf(uvfp, "%" PRIu64 , &uv) != 1 || uv != mp->mb_uidvalidity) {
       if ((uvfp = clean(mp, &cw)) == NULL)
          goto jout;
    } else {
@@ -390,7 +390,7 @@ initcache(struct mailbox *mp)
       rewind(uvfp);
    }
    n_file_lock(fileno(uvfp), FLT_WRITE, 0,0, 0);
-   fprintf(uvfp, "%lu\n", mp->mb_uidvalidity);
+   fprintf(uvfp, "%" PRIu64 "\n", mp->mb_uidvalidity);
    if (ferror(uvfp) || Fclose(uvfp) != 0) {
       unlink(uvname);
       mp->mb_uidvalidity = 0;
@@ -750,12 +750,12 @@ jleave:
    return rv;
 }
 
-FL unsigned long
+FL ui64_t
 cached_uidvalidity(struct mailbox *mp)
 {
    FILE *uvfp;
    char *uvname;
-   unsigned long uv;
+   ui64_t uv;
    NYD_ENTER;
 
    if ((uvname = encname(mp, "UIDVALIDITY", 1, NULL)) == NULL) {
@@ -764,7 +764,7 @@ cached_uidvalidity(struct mailbox *mp)
    }
    if ((uvfp = Fopen(uvname, "r")) == NULL ||
          (n_file_lock(fileno(uvfp), FLT_READ, 0,0, 0), 0) ||
-         fscanf(uvfp, "%lu", &uv) != 1)
+         fscanf(uvfp, "%" PRIu64, &uv) != 1)
       uv = 0;
    if (uvfp != NULL)
       Fclose(uvfp);
@@ -847,7 +847,7 @@ dequeue1(struct mailbox *mp)
 {
    FILE *fp = NULL, *uvfp = NULL;
    char *qname, *uvname;
-   unsigned long uv;
+   ui64_t uv;
    off_t is_size;
    int is_count;
    enum okay rv = OKAY;
@@ -863,7 +863,7 @@ dequeue1(struct mailbox *mp)
       if ((uvname = encname(mp, "UIDVALIDITY", 0, NULL)) == NULL ||
             (uvfp = Fopen(uvname, "r")) == NULL ||
             (n_file_lock(fileno(uvfp), FLT_READ, 0,0, 0), 0) ||
-            fscanf(uvfp, "%lu", &uv) != 1 || uv != mp->mb_uidvalidity) {
+            fscanf(uvfp, "%" PRIu64, &uv) != 1 || uv != mp->mb_uidvalidity) {
          n_err(_("Unique identifiers for \"%s\" are out of date. "
             "Cannot commit IMAP commands.\n"), mp->mb_imap_mailbox);
 jsave:

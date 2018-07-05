@@ -2814,7 +2814,7 @@ FL enum okay   cache_list(struct mailbox *mp, char const *base, int strip,
                   FILE *fp);
 FL enum okay   cache_remove(char const *name);
 FL enum okay   cache_rename(char const *old, char const *new);
-FL unsigned long cached_uidvalidity(struct mailbox *mp);
+FL ui64_t cached_uidvalidity(struct mailbox *mp);
 FL FILE *      cache_queue(struct mailbox *mp);
 FL enum okay   cache_dequeue(struct mailbox *mp);
 #endif /* HAVE_IMAP */

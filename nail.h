@@ -2225,7 +2225,7 @@ MB_CACHE,         /* IMAP cache */
       MB_NOFLAGS  = 000,
       MB_UIDPLUS  = 001 /* supports IMAP UIDPLUS */
    }           mb_flags;
-   unsigned long  mb_uidvalidity;   /* IMAP unique identifier validity */
+   ui64_t mb_uidvalidity;           /* IMAP unique identifier validity */
    char        *mb_imap_account;    /* name of current IMAP account */
    char        *mb_imap_pass;       /* xxx v15-compat URL workaround */
    char        *mb_imap_mailbox;    /* name of current IMAP mailbox */
