@@ -1924,7 +1924,7 @@ struct n_cmd_arg_desc{
 };
 /* ISO C(99) doesn't allow initialization of "flex array" */
 #define n_CMD_ARG_DESC_SUBCLASS_DEF(CMD,NO,VAR) \
-   struct n_cmd_arg_desc_ ## CMD {\
+   static struct n_cmd_arg_desc_ ## CMD {\
       char cad_name[12];\
       ui32_t cad_no;\
       ui32_t cad_ent_flags[NO][2];\
