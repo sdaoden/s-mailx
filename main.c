@@ -250,39 +250,52 @@ a_main_usage(FILE *fp){
 
    fprintf(fp, _("%s (%s %s): send and receive Internet mail\n"),
       n_progname, n_uagent, ok_vlook(version));
-   fprintf(fp, _(
-      "Send-only mode: send mail \"to-address\" receiver(s):\n"
-      "  %s [-BDdEFinv~#] [-: spec] [-A account] [:-C \"custom: header\":]\n"
-      "  %s [:-a attachment:] [:-b bcc-address:]\n"
-      "  %s [:-c cc-address:] [-M type | -m file | -q file | -t]\n"
-      "  %s [-r from-address] [:-S var[=value]:] [-s subject] [:-X cmd:]\n"
-      "  %s [-.] :to-address: [-- :mta-option:]\n"),
-      n_progname, buf, buf, buf, buf);
-   fprintf(fp, _(
-      "\"Receive\" mode, starting on -u user, primary *inbox* or [$MAIL]:\n"
-     "  %s [-BDdEeHiNnRv~#] [-: spec] [-A account] [:-C \"custom: header\":]\n"
-      "  %s [-L spec] [-r from-address] [:-S var[=value]:]\n"
-      "  %s [-u user] [:-X cmd:] [-- :mta-option:]\n"),
-      n_progname, buf, buf);
-   fprintf(fp, _(
-      "\"Receive\" mode, starting on -f (secondary $MBOX or [file]):\n"
-     "  %s [-BDdEeHiNnRv~#] [-: spec] [-A account] [:-C \"custom: header\":]\n"
-      "  %s -f [-L spec] [-r from-address] [:-S var[=value]:]\n"
-      "  %s [:-X cmd:] [file] [-- :mta-option:]\n"),
-      n_progname, buf, buf);
-
    if(fp != n_stderr)
       putc('\n', fp);
+
+   fprintf(fp, _(
+      "Send-only mode: send mail \"to-address\" receiver(s):\n"
+      "  %s [-DdEFinv~#] [-: spec] [-A account] [:-C \"custom: header\":]\n"
+      "  %s [:-a attachment:] [:-b bcc-address:] [:-c cc-address:]\n"
+      "  %s [-M type | -m file | -q file | -t] [-r from-address]\n"
+      "  %s [:-S var[=value]:] [-s subject] [:-X cmd:] [-.] :to-address:\n"),
+      n_progname, buf, buf, buf);
+   if(fp != n_stderr)
+      putc('\n', fp);
+
+   fprintf(fp, _(
+      "\"Receive\" mode, starting on [-u user], primary *inbox* or [$MAIL]:\n"
+      "  %s [-DdEeHiNnRv~#] [-: spec] [-A account] "
+         "[:-C \"custom: header\":]\n"
+      "  %s [-L spec] [-r from-address] [:-S var[=value]:] [-u user] "
+         "[:-X cmd:]\n"),
+      n_progname, buf);
+   if(fp != n_stderr)
+      putc('\n', fp);
+
+   fprintf(fp, _(
+      "\"Receive\" mode, starting on -f (secondary $MBOX or [file]):\n"
+      "  %s [-DdEeHiNnRv~#] [-: spec] [-A account] "
+         "[:-C \"custom: header\":] -f\n"
+      "  %s [-L spec] [-r from-address] [:-S var[=value]:] [:-X cmd:] "
+         "[file]\n"),
+      n_progname, buf);
+   if(fp != n_stderr)
+      putc('\n', fp);
+
    fprintf(fp, _(
          ". -d sandbox, -:/ no .rc files, -. end options and force send-mode\n"
          ". -a attachment[=input-charset[#output-charset]]\n"
          ". -b, -c, to-address, (-r): ex@am.ple or '(Lovely) Ex <am@p.le>'\n"
          ". -[Mmqt]: special input data (-t: template message on stdin)\n"
-         ". -e only mail check, -H header summary; both: specification via -L\n"
-         ". -S sets variables, -X executes commands, -# enters batch mode\n"
-         ". Features: \"$ %s -Xversion -Xx\", WWW: %s\n"
-         ". Bugs to/Mail contact: \"$ %s %s\"\n"),
-         n_progname, ok_vlook(contact_web), n_progname, ok_vlook(contact_mail));
+         ". -e only mail check, -H header summary; "
+            "both: message specification via -L\n"
+         ". -S (un)sets variable, -X executes command(s), "
+            "-# enters batch mode\n"
+         ". Features via \"$ %s -Xversion -Xx\"\n"
+         ". Bugs/Contact via "
+            "\"$ %s -Sexpandaddr=shquote '\\$contact-mail'\"\n"),
+         n_progname, n_progname);
    NYD2_LEAVE;
 }
 
