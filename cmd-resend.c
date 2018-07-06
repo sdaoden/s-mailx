@@ -653,7 +653,7 @@ a_crese_fwd(char *str, int recipient_record){
       *msgvec = first(0, MMNORM);
       if(*msgvec != 0)
          msgvec[1] = 0;
-   }else if(n_getmsglist(str, msgvec, 0) < 0)
+   }else if(n_getmsglist(str, msgvec, 0, NULL) < 0)
       goto jleave;
 
    if(*msgvec == 0){
@@ -751,7 +751,7 @@ a_crese_resend1(void *vp, bool_t add_resent){
       *msgvec = first(0, MMNORM);
       if(*msgvec != 0)
          msgvec[1] = 0;
-   }else if(n_getmsglist(str, msgvec, 0) < 0)
+   }else if(n_getmsglist(str, msgvec, 0, NULL) < 0)
       goto jleave;
 
    if(*msgvec == 0){

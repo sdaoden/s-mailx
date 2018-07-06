@@ -986,7 +986,7 @@ jerr:
       if (msgCount == 0) {
          fprintf(n_stdout, _("At EOF\n"));
          rv = 0;
-      } else if (n_getmsglist(n_UNCONST(/*TODO*/args), msgvec, 0) > 0) {
+      } else if (n_getmsglist(n_UNCONST(/*TODO*/args), msgvec, 0, NULL) > 0) {
          setdot(message + msgvec[0] - 1);
          msgvec[1] = 0;
          rv = c_headers(msgvec);

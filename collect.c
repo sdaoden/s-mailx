@@ -773,7 +773,7 @@ a_coll_forward(char const *ms, FILE *fp, int f)
    enum sendaction action;
    NYD_ENTER;
 
-   if ((rv = n_getmsglist(ms, n_msgvec, 0)) < 0) {
+   if ((rv = n_getmsglist(ms, n_msgvec, 0, NULL)) < 0) {
       rv = n_ERR_NOENT; /* XXX not really, should be handled there! */
       goto jleave;
    }

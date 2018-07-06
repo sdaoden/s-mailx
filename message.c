@@ -1484,7 +1484,8 @@ touch(struct message *mp){
 }
 
 FL int
-n_getmsglist(char const *buf, int *vector, int flags)
+n_getmsglist(char const *buf, int *vector, int flags,
+   struct n_cmd_arg **capp_or_null)
 {
    int *ip, mc;
    struct message *mp;
@@ -1493,14 +1494,16 @@ n_getmsglist(char const *buf, int *vector, int flags)
    n_pstate &= ~n_PS_ARGLIST_MASK;
    a_message_list_last_saw_d = a_message_list_saw_d;
    a_message_list_saw_d = FAL0;
-   *vector = 0;
 
-   if(msgCount == 0){
+   *vector = 0;
+   if(capp_or_null != NULL)
+      *capp_or_null = NULL;
+
+   n_pstate |= n_PS_MSGLIST_DIRECT;
+   if(*buf == '\0'){
       mc = 0;
       goto jleave;
    }
-
-   n_pstate |= n_PS_MSGLIST_DIRECT;
 
    /* TODO Parse the message spec into an ARGV (not here -> cmd_arg_parse?) */
    /* C99 */{
@@ -1523,9 +1526,44 @@ n_getmsglist(char const *buf, int *vector, int flags)
       }else if(cac.cac_no == 0){
          mc = 0;
          goto jleave;
-      }else if((mc = a_message_markall(buf, cac.cac_arg, flags)) < 0){
-         mc = -1;
-         goto jleave;
+      }else{
+         /* Is this indeed a (maybe optional) message list and a target? */
+         if(capp_or_null != NULL){
+            struct n_cmd_arg *cap, **lcapp;
+
+            if((cap = cac.cac_arg)->ca_next == NULL){
+               *capp_or_null = cap;
+               mc = 0;
+               goto jleave;
+            }
+            for(;;){
+               lcapp = &cap->ca_next;
+               if((cap = *lcapp)->ca_next == NULL)
+                  break;
+            }
+            *capp_or_null = cap;
+            *lcapp = NULL;
+
+            /* In the list-and-target mode we have to take special care, since
+             * some commands use special call conventions historically (use the
+             * MBOX, search for a message, whatever).
+             * Thus, to allow things like "certsave '' bla" or "save '' ''",
+             * watch out for two argument form with empty token first.
+             * This special case is documented at the prototype */
+            if(cac.cac_arg->ca_next == NULL &&
+                  cac.cac_arg->ca_arg.ca_str.s[0] == '\0'){
+               mc = 0;
+               goto jleave;
+            }
+         }
+
+         if(msgCount == 0){
+            mc = 0;
+            goto jleave;
+         }else if((mc = a_message_markall(buf, cac.cac_arg, flags)) < 0){
+            mc = -1;
+            goto jleave;
+         }
       }
    }
 

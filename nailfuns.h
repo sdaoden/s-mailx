@@ -1274,8 +1274,14 @@ FL void        touch(struct message *mp);
 
 /* Convert user message spec. to message numbers and store them in vector,
  * which should be capable to hold msgCount+1 entries (n_msgvec asserts this).
+ * flags is n_cmd_arg_ctx.cac_msgflag == n_cmd_desc.cd_msgflag == enum mflag.
+ * If capp_or_null is not NULL then the last (string) token is stored in here
+ * and not interpreted as a message specification; in addition, if only one
+ * argument remains and this is the empty string, 0 is returned (*vector=0;
+ * this is used to implement n_CMD_ARG_DESC_MSGLIST_AND_TARGET).
  * Returns the count of messages picked up or -1 on error */
-FL int n_getmsglist(char const *buf, int *vector, int flags);
+FL int n_getmsglist(char const *buf, int *vector, int flags,
+         struct n_cmd_arg **capp_or_null);
 
 /* Find the first message whose flags&m==f and return its message number */
 FL int         first(int f, int m);

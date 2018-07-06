@@ -90,7 +90,7 @@ save1(char *str, int domark, char const *cmd, struct n_ignore const *itp,
    if (!isflag) {
       *msgvec = first(0, MMNORM);
       msgvec[1] = 0;
-   } else if (n_getmsglist(str, msgvec, 0) < 0)
+   } else if (n_getmsglist(str, msgvec, 0, NULL) < 0)
       goto jleave;
    if (*msgvec == 0) {
       if (n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) {

@@ -94,15 +94,15 @@ a_ctab_cmdinfo(struct n_cmd_desc const *cdp){
    case n_CMD_ARG_TYPE_MSGLIST:
       cp = N_("message-list");
       break;
+   case n_CMD_ARG_TYPE_NDMLIST:
+      cp = N_("message-list (without default)");
+      break;
    case n_CMD_ARG_TYPE_STRING:
    case n_CMD_ARG_TYPE_RAWDAT:
       cp = N_("string data");
       break;
    case n_CMD_ARG_TYPE_RAWLIST:
       cp = N_("old-style quoting");
-      break;
-   case n_CMD_ARG_TYPE_NDMLIST:
-      cp = N_("message-list (no default)");
       break;
    case n_CMD_ARG_TYPE_WYRA:
       cp = N_("`wysh' for sh(1)ell-style quoting");
@@ -114,17 +114,18 @@ a_ctab_cmdinfo(struct n_cmd_desc const *cdp){
       break;
    default:
    case n_CMD_ARG_TYPE_ARG:{
-      ui32_t flags;
+      ui32_t flags, xflags;
       size_t i;
       struct n_cmd_arg_desc const *cadp;
 
       rv = n_string_push_cp(rv, _("argument tokens: "));
 
       for(cadp = cdp->cd_cadp, i = 0; i < cadp->cad_no; ++i){
+         xflags = flags = cadp->cad_ent_flags[i][0];
+jfakeent:
          if(i != 0)
             rv = n_string_push_c(rv, ',');
 
-         flags = cadp->cad_ent_flags[i][0];
          if(flags & n_CMD_ARG_DESC_OPTION)
             rv = n_string_push_c(rv, '[');
          if(flags & n_CMD_ARG_DESC_GREEDY)
@@ -135,19 +136,28 @@ a_ctab_cmdinfo(struct n_cmd_desc const *cdp){
             rv = n_string_push_cp(rv, _("string"));
             break;
          case n_CMD_ARG_DESC_WYSH:
-            rv = n_string_push_cp(rv, _("shell-token"));
+            rv = n_string_push_cp(rv, _("(shell-)token"));
             break;
          case n_CMD_ARG_DESC_MSGLIST:
-            rv = n_string_push_cp(rv, _("shell-msglist"));
+            rv = n_string_push_cp(rv, _("(shell-)msglist"));
             break;
          case n_CMD_ARG_DESC_NDMSGLIST:
-            rv = n_string_push_cp(rv, _("shell-msglist (no default)"));
+            rv = n_string_push_cp(rv, _("(shell-)msglist (no default)"));
             break;
+         case n_CMD_ARG_DESC_MSGLIST_AND_TARGET:
+            rv = n_string_push_cp(rv, _("(shell-)msglist"));
+            ++i;
+            xflags = n_CMD_ARG_DESC_WYSH;
          }
          if(flags & n_CMD_ARG_DESC_GREEDY)
             rv = n_string_push_c(rv, ':');
          if(flags & n_CMD_ARG_DESC_OPTION)
             rv = n_string_push_c(rv, ']');
+
+         if(xflags != flags){
+            flags = xflags;
+            goto jfakeent;
+         }
       }
       cp = NULL;
       }break;
@@ -416,7 +426,7 @@ n_cmd_default(void){
 
 FL bool_t
 n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
-   struct n_cmd_arg ncap, *lcap;
+   struct n_cmd_arg ncap, *lcap, *target_argp, **target_argpp;
    struct str shin_orig, shin;
    bool_t addca, greedyjoin;
    void const *cookie;
@@ -438,17 +448,23 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
             cad_idx + 1 == cadp->cad_no);
          assert(!(cadp->cad_ent_flags[cad_idx][0] &
                n_CMD_ARG_DESC_NDMSGLIST) || cad_idx + 1 == cadp->cad_no);
+         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+               n_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
+            cad_idx + 1 == cadp->cad_no);
          assert(!opt_seen ||
             (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
          if(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION)
             opt_seen = TRU1;
          assert(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY) ||
             cad_idx + 1 == cadp->cad_no);
-         /* TODO n_CMD_ARG_DESC_MSGLIST can only be n_CMD_ARG_DESC_GREEDY */
+         /* TODO n_CMD_ARG_DESC_MSGLIST+ can only be n_CMD_ARG_DESC_GREEDY */
          assert(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
             (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY));
          assert(!(cadp->cad_ent_flags[cad_idx][0] &
                n_CMD_ARG_DESC_NDMSGLIST) ||
+            (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY));
+         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+               n_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
             (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY));
       }
    }
@@ -473,6 +489,7 @@ jredo:
       /* >ca_inline once we know */
       memcpy(&ncap.ca_ent_flags[0], &cadp->cad_ent_flags[cad_idx][0],
          sizeof ncap.ca_ent_flags);
+      target_argpp = NULL;
       addca = FAL0;
 
       switch(ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK){
@@ -538,6 +555,9 @@ jredo:
          else
             addca = ((shs & n_SHEXP_STATE_OUTPUT) != NULL);
          }break;
+      case n_CMD_ARG_DESC_MSGLIST_AND_TARGET:
+         target_argpp = &target_argp;
+         /* FALLTHRU */
       case n_CMD_ARG_DESC_MSGLIST:
       case n_CMD_ARG_DESC_NDMSGLIST:
          /* TODO _MSGLIST yet at end and greedy only (fast hack).
@@ -545,28 +565,34 @@ jredo:
          assert(shin.s[shin.l] == '\0');
          if(n_getmsglist(shin.s, (ncap.ca_arg.ca_msglist =
                   n_autorec_calloc(msgCount +1, sizeof *ncap.ca_arg.ca_msglist)
-               ), cacp->cac_msgflag) < 0){
+               ), cacp->cac_msgflag, target_argpp) < 0){
             n_pstate_err_no = n_ERR_INVAL; /* XXX should come from getmsglist*/
             goto jerr;
          }
 
-         if(ncap.ca_arg.ca_msglist[0] == 0 &&
-               (ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK) !=
-                  n_CMD_ARG_DESC_NDMSGLIST){
-            if((ncap.ca_arg.ca_msglist[0] = first(0, MMNORM)) == 0){
-               ui32_t e;
+         if(ncap.ca_arg.ca_msglist[0] == 0){
+            ui32_t e;
 
-               if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
-                     (n_poption & n_PO_D_V))
-                  n_err(_("No applicable messages\n"));
+            switch(ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK){
+            case n_CMD_ARG_DESC_MSGLIST_AND_TARGET:
+            case n_CMD_ARG_DESC_MSGLIST:
+               if((ncap.ca_arg.ca_msglist[0] = first(cacp->cac_msgflag,
+                     cacp->cac_msgmask)) == 0){
+                  if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
+                        (n_poption & n_PO_D_V))
+                     n_err(_("No applicable messages\n"));
 
-               e = n_CMD_ARG_DESC_TO_ERRNO(ncap.ca_ent_flags[0]);
-               if(e == 0)
-                  e = n_ERR_NODATA;
-               n_pstate_err_no = e;
-               goto jerr;
+                  e = n_CMD_ARG_DESC_TO_ERRNO(ncap.ca_ent_flags[0]);
+                  if(e == 0)
+                     e = n_ERR_NODATA;
+                  n_pstate_err_no = e;
+                  goto jerr;
+               }
+               ncap.ca_arg.ca_msglist[1] = 0;
+               /* FALLTHRU */
+            default:
+               break;
             }
-            ncap.ca_arg.ca_msglist[1] = 0;
          }
 
          shin.l = 0;
@@ -583,6 +609,7 @@ jredo:
             assert((ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK
                ) != n_CMD_ARG_DESC_MSGLIST);
             assert(lcap != NULL);
+            assert(target_argpp == NULL);
             i = lcap->ca_arg.ca_str.l;
             lcap->ca_arg.ca_str.l += 1 + ncap.ca_arg.ca_str.l;
             cp = n_autorec_alloc(lcap->ca_arg.ca_str.l +1);
@@ -601,6 +628,14 @@ jredo:
                lcap->ca_next = cap;
             lcap = cap;
             ++cacp->cac_no;
+
+            if(target_argpp != NULL){
+               lcap->ca_next = cap = *target_argpp;
+               if(cap != NULL){
+                  lcap = cap;
+                  ++cacp->cac_no;
+               }
+            }
          }
 
          if(addca == TRUM1)

@@ -665,9 +665,11 @@ enum n_cmd_arg_desc_flags{
     * TODO (but MUST be _GREEDY too!) */
    n_CMD_ARG_DESC_MSGLIST = 1u<<2,  /* Message specification(s) */
    n_CMD_ARG_DESC_NDMSGLIST = 1u<<3,
+   n_CMD_ARG_DESC_MSGLIST_AND_TARGET = 1u<<4,
 
    n__CMD_ARG_DESC_TYPE_MASK = n_CMD_ARG_DESC_STRING | n_CMD_ARG_DESC_WYSH |
-         n_CMD_ARG_DESC_MSGLIST | n_CMD_ARG_DESC_NDMSGLIST,
+         n_CMD_ARG_DESC_MSGLIST | n_CMD_ARG_DESC_NDMSGLIST |
+         n_CMD_ARG_DESC_MSGLIST_AND_TARGET,
 
    /* - Optional flags */
    /* It is not an error if an optional argument is missing; once an argument

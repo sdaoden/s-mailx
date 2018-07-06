@@ -217,7 +217,7 @@ _pipe1(char *str, int doign)
          goto jleave;
       }
       msgvec[1] = 0;
-   } else if (n_getmsglist(str, msgvec, 0) < 0)
+   } else if (n_getmsglist(str, msgvec, 0, NULL) < 0)
       goto jleave;
    if (*msgvec == 0) {
       if (n_pstate & (n_PS_ROBOT | n_PS_HOOK_MASK)) {
