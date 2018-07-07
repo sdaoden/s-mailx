@@ -1022,11 +1022,19 @@ jislocal:
       dyn = TRU1;
    }
 
-   if(fexpm & FEXP_LOCAL){
-      switch (which_protocol(res, FAL0, FAL0, NULL)) {
+   if(fexpm & (FEXP_LOCAL | FEXP_LOCAL_FILE)){
+      switch (which_protocol(res, FAL0, FAL0, &cp)) {
+      case PROTO_MAILDIR:
+         if(!(fexpm & FEXP_LOCAL_FILE)){
+         /* FALLTHRU */
       case PROTO_FILE:
-      case PROTO_MAILDIR: /* Cannot happen since we don't stat(2), but.. */
-         break;
+            if(fexpm & FEXP_LOCAL_FILE){
+               res = cp;
+               dyn = FAL0;
+            }
+            break;
+         }
+         /* FALLTHRU */
       default:
          n_err(_("Not a local file or directory: %s\n"),
             n_shexp_quote_cp(name, FAL0));

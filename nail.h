@@ -774,16 +774,17 @@ enum fedit_mode {
 };
 
 enum fexp_mode {
-   FEXP_FULL,                 /* Full expansion */
-   FEXP_NOPROTO = 1<<0,       /* TODO no which_protocol() to decide expansion */
-   FEXP_SILENT = 1<<1,        /* Don't print but only return errors */
-   FEXP_MULTIOK = 1<<2,       /* Expansion to many entries is ok */
-   FEXP_LOCAL = 1<<3,         /* Result must be local file/maildir */
-   FEXP_NSHORTCUT = 1<<4,     /* Don't expand shortcuts */
-   FEXP_NSPECIAL = 1<<5,      /* No %,#,& specials */
-   FEXP_NFOLDER = 1<<6,       /* NSPECIAL and no + folder, too */
-   FEXP_NSHELL = 1<<7,        /* Don't do shell word exp. (but ~/, $VAR) */
-   FEXP_NVAR = 1<<8           /* ..not even $VAR expansion */
+   FEXP_FULL,              /* Full expansion */
+   FEXP_NOPROTO = 1u<<0,   /* TODO no which_protocol() to decide expansion */
+   FEXP_SILENT = 1u<<1,    /* Don't print but only return errors */
+   FEXP_MULTIOK = 1u<<2,   /* Expansion to many entries is ok */
+   FEXP_LOCAL = 1u<<3,     /* Result must be local file/maildir */
+   FEXP_LOCAL_FILE = 1u<<4, /* ..must be a local file: strips protocol://! */
+   FEXP_NSHORTCUT = 1u<<5, /* Don't expand shortcuts */
+   FEXP_NSPECIAL = 1u<<6,  /* No %,#,& specials */
+   FEXP_NFOLDER = 1u<<7,   /* NSPECIAL and no + folder, too */
+   FEXP_NSHELL = 1u<<8,    /* Don't do shell word exp. (but ~/, $VAR) */
+   FEXP_NVAR = 1u<<9       /* ..not even $VAR expansion */
 };
 
 enum n_file_lock_type{
