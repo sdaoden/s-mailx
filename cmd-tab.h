@@ -68,6 +68,16 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(call, 2, a_ctab_cad_call){
       n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_TRIM_IFSSPACE}
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
+#ifdef HAVE_TLS
+# define a_CTAB_CAD_CERTSAVE n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_certsave)
+n_CMD_ARG_DESC_SUBCLASS_DEF(certsave, 1, a_ctab_cad_certsave){
+   {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+#else
+# define a_CTAB_CAD_CERTSAVE NULL
+#endif
+
 n_CMD_ARG_DESC_SUBCLASS_DEF(readctl, 2, a_ctab_cad_readctl){
    {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_OPTION | n_CMD_ARG_DESC_HONOUR_STOP,
       n_SHEXP_PARSE_TRIM_IFSSPACE},
@@ -371,8 +381,8 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
 #else
       NULL,
 #endif
-      (A | TSTRING), 0, 0, NULL
-     DS(N_("Save S/MIME certificates of <msglist> to <file>")) },
+      (A | TARG), 0, MMNDEL, a_CTAB_CAD_CERTSAVE
+     DS(N_("Save S/MIME certificates of [<msglist>] to <file>")) },
    { "rename", &c_rename, (M | TWYRA), 0, 2, NULL
      DS(N_("Rename <existing-folder> to <new-folder>")) },
    { "remove", &c_remove, (M | TWYRA), 0, MAC, NULL

@@ -2551,8 +2551,8 @@ FL FILE *      smime_encrypt_assemble(FILE *hp, FILE *yp);
 FL struct message * smime_decrypt_assemble(struct message *m, FILE *hp,
                      FILE *bp);
 
-/*  */
-FL int         c_certsave(void *v);
+/* `certsave' */
+FL int c_certsave(void *vp);
 
 /* */
 FL bool_t n_tls_rfc2595_hostname_match(char const *host, char const *pattern);
