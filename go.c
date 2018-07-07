@@ -2108,7 +2108,7 @@ c_xcall(void *vp){
       gcp = gcp->gc_outer;
    if((gcp->gc_flags & (a_GO_MACRO | a_GO_MACRO_X_OPTION | a_GO_MACRO_CMD)
          ) != a_GO_MACRO){
-      if(n_poption & n_PO_D_V_VV)
+      if(n_poption & n_PO_D_V)
          n_err(_("`xcall': can only be used inside a macro, using `call'\n"));
       rv = c_call(vp);
       goto jleave;

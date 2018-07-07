@@ -1398,19 +1398,18 @@ enum n_program_option{
    n_PO_MEMDEBUG = 1<<24,     /* *memdebug* */
 
    /* Some easy-access shortcuts TODO n_PO_VERB+ should be mask(s) already! */
-   n_PO_D_V = n_PO_DEBUG | n_PO_VERB,
-   n_PO_D_VV = n_PO_DEBUG | n_PO_VERBVERB,
-   n_PO_D_V_VV = n_PO_DEBUG | n_PO_VERB | n_PO_VERBVERB
+   n_PO_D_V = n_PO_DEBUG | n_PO_VERB | n_PO_VERBVERB,
+   n_PO_D_VV = n_PO_DEBUG | n_PO_VERBVERB
 };
 
 #define n_OBSOLETE(X) \
 do{\
-   if(n_poption & n_PO_D_V_VV)\
+   if(n_poption & n_PO_D_V)\
       n_err("%s: %s\n", _("Obsoletion warning"), X);\
 }while(0)
 #define n_OBSOLETE2(X,Y) \
 do{\
-   if(n_poption & n_PO_D_V_VV)\
+   if(n_poption & n_PO_D_V)\
       n_err("%s: %s: %s\n", _("Obsoletion warning"), X, Y);\
 }while(0)
 
