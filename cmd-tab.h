@@ -45,6 +45,8 @@
 #ifndef n_CMD_TAB_H
 # define n_CMD_TAB_H
 
+#ifdef HAVE_KEY_BINDINGS
+# define a_CTAB_CAD_BIND n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_bind)
 n_CMD_ARG_DESC_SUBCLASS_DEF(bind, 3, a_ctab_cad_bind){
    {n_CMD_ARG_DESC_WYSH, n_SHEXP_PARSE_TRIM_IFSSPACE},
    {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_OPTION | n_CMD_ARG_DESC_HONOUR_STOP,
@@ -54,6 +56,9 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(bind, 3, a_ctab_cad_bind){
          n_CMD_ARG_DESC_HONOUR_STOP,
       n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_TRIM_IFSSPACE}
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+#else
+# define a_CTAB_CAD_BIND NULL
+#endif
 
 n_CMD_ARG_DESC_SUBCLASS_DEF(call, 2, a_ctab_cad_call){
    {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_HONOUR_STOP,
@@ -72,10 +77,15 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(readctl, 2, a_ctab_cad_readctl){
       n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_TRIM_IFSSPACE}
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
+#ifdef HAVE_KEY_BINDINGS
+# define a_CTAB_CAD_UNBIND n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_unbind)
 n_CMD_ARG_DESC_SUBCLASS_DEF(unbind, 2, a_ctab_cad_unbind){
    {n_CMD_ARG_DESC_WYSH, n_SHEXP_PARSE_TRIM_IFSSPACE},
    {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_HONOUR_STOP, n_SHEXP_PARSE_DRYRUN}
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+#else
+# define a_CTAB_CAD_UNBIND NULL
+#endif
 
 n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
    {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_HONOUR_STOP,
@@ -584,7 +594,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
 #else
       NULL,
 #endif
-      (M | TARG), 1, MAC, n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_bind)
+      (M | TARG), 1, MAC, a_CTAB_CAD_BIND
      DS(N_("For <context> (base), [<show>] or bind <key[:,key:]> [:<data>:]"))},
    { "unbind",
 #ifdef HAVE_KEY_BINDINGS
@@ -592,7 +602,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
 #else
       NULL,
 #endif
-      (M | TARG), 2, 2, n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_unbind)
+      (M | TARG), 2, 2, a_CTAB_CAD_UNBIND
      DS(N_("Un`bind' <context> <key[:,key:]> (* for all)")) },
 
    { "charsetalias", &c_charsetalias, (M | TWYSH), 0, MAC, NULL
