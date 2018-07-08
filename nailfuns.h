@@ -545,8 +545,8 @@ FL int c_show(void *v);
 FL int c_mimeview(void *vp);
 
 /* Pipe messages, honour/don't honour ignored fields, respectively */
-FL int c_pipe(void *v);
-FL int c_Pipe(void *v);
+FL int c_pipe(void *vp);
+FL int c_Pipe(void *vp);
 
 /* Print the first *toplines* of each desired message */
 FL int c_top(void *v);

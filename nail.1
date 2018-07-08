@@ -6177,12 +6177,9 @@ messages.
 .
 .Mx
 .It Ic pipe
-(pi) Takes a message list and a shell command
+(pi) Takes an optional message list and shell command (that defaults to
+.Va cmd ) ,
 and pipes the messages through the command.
-Without an argument the current message is piped through the command
-given by the
-.Va cmd
-variable.
 If the
 .Va page
 variable is set,

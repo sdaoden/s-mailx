@@ -108,6 +108,11 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(Move, 1, a_ctab_cad_Move){
       n_SHEXP_PARSE_TRIM_IFSSPACE}
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
+n_CMD_ARG_DESC_SUBCLASS_DEF(pipe, 1, a_ctab_cad_pipe){
+   {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
 n_CMD_ARG_DESC_SUBCLASS_DEF(readctl, 2, a_ctab_cad_readctl){
    {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_OPTION | n_CMD_ARG_DESC_HONOUR_STOP,
       n_SHEXP_PARSE_TRIM_IFSSPACE},
@@ -331,12 +336,15 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Alias of `forward'")) },
    { "edit", &c_editor, (G | A | I | S | TMSGLST), 0, MMNORM, NULL
      DS(N_("Edit <msglist>")) },
-   { "pipe", &c_pipe, (A | TSTRING), 0, MMNDEL, NULL
-     DS(N_("Pipe <msglist> to <command>, honouring `ignore' / `retain'")) },
-   { "|", &c_pipe, (A | TSTRING), 0, MMNDEL, NULL
-     DS(N_("Pipe <msglist> to <command>, honouring `ignore' / `retain'")) },
-   { "Pipe", &c_Pipe, (A | TSTRING), 0, MMNDEL, NULL
-     DS(N_("Like `pipe', but bypass `ignore' / `retain'")) },
+   { "pipe", &c_pipe, (A | TARG), 0, MMNDEL,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_pipe)
+     DS(N_("Pipe [<msglist>] to [<command>], honour `ignore' / `retain'")) },
+   { "|", &c_pipe, (A | TARG), 0, MMNDEL,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_pipe)
+     DS(N_("Pipe [<msglist>] to [<command>], honour `ignore' / `retain'")) },
+   { "Pipe", &c_Pipe, (A | TARG), 0, MMNDEL,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_pipe)
+     DS(N_("Like `pipe', but do not honour `ignore' / `retain'")) },
    { "size", &c_messize, (A | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Show size in bytes for <msglist>")) },
    { "hold", &c_preserve, (A | SC | W | TMSGLST), 0, MMNDEL, NULL
