@@ -697,24 +697,24 @@ FL int /* TODO v15*/ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
 
 /* Save a message in a file.  Mark the message as saved so we can discard when
  * the user quits */
-FL int c_save(void *v);
-FL int c_Save(void *v);
+FL int c_save(void *vp);
+FL int c_Save(void *vp);
 
 /* Copy a message to a file without affected its saved-ness */
-FL int c_copy(void *v);
-FL int c_Copy(void *v);
+FL int c_copy(void *vp);
+FL int c_Copy(void *vp);
 
 /* Move a message to a file */
-FL int c_move(void *v);
-FL int c_Move(void *v);
+FL int c_move(void *vp);
+FL int c_Move(void *vp);
 
 /* Decrypt and copy a message to a file.  Like plain `copy' at times */
-FL int c_decrypt(void *v);
-FL int c_Decrypt(void *v);
+FL int c_decrypt(void *vp);
+FL int c_Decrypt(void *vp);
 
 /* Write the indicated messages at the end of the passed file name, minus
  * header and trailing blank line.  This is the MIME save function */
-FL int c_write(void *v);
+FL int c_write(void *vp);
 
 /*
  * collect.c
