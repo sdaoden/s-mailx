@@ -593,6 +593,13 @@ jredo:
             default:
                break;
             }
+         }else if((ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE
+               ) && ncap.ca_arg.ca_msglist[1] != 0){
+            if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
+                  (n_poption & n_PO_D_V))
+               n_err(_("Cannot specify multiple messages at once\n"));
+            n_pstate_err_no = n_ERR_NOTSUP;
+            goto jerr;
          }
 
          shin.l = 0;

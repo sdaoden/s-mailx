@@ -69,7 +69,7 @@ static int a_crese_reply(int *msgvec, bool_t recipient_record);
 static int a_crese_Reply(int *msgvec, bool_t recipient_record);
 
 /* Forward a message to a new recipient, in the sense of RFC 2822 */
-static int a_crese_fwd(char *str, int recipient_record);
+static int a_crese_fwd(void *vp, bool_t recipient_record);
 
 /* Modify the subject we are replying to to begin with Fwd: */
 static char *a_crese__fwdedit(char *subj);
@@ -627,47 +627,34 @@ jleave:
 }
 
 static int
-a_crese_fwd(char *str, int recipient_record){
+a_crese_fwd(void *vp, bool_t recipient_record){
    struct header head;
    struct message *mp;
    enum gfield gf;
-   bool_t f, forward_as_attachment;
-   char *recipient;
-   int rv, *msgvec;
+   bool_t forward_as_attachment;
+   int *msgvec, rv;
+   struct n_cmd_arg *cap;
+   struct n_cmd_arg_ctx *cacp;
    NYD2_ENTER;
 
+   cacp = vp;
+   cap = cacp->cac_arg;
+   msgvec = cap->ca_arg.ca_msglist;
+   cap = cap->ca_next;
    rv = 1;
 
-   if((recipient = laststring(str, &f, TRU1)) == NULL){
-      n_err(_("No recipient specified.\n"));
+   if(cap->ca_arg.ca_str.s[0] == '\0'){
+      if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
+         n_err(_("No recipient specified.\n"));
       n_pstate_err_no = n_ERR_DESTADDRREQ;
       goto jleave;
    }
 
    forward_as_attachment = ok_blook(forward_as_attachment);
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
-   msgvec = n_autorec_alloc((msgCount + 2) * sizeof *msgvec);
-
-   n_pstate_err_no = n_ERR_NODATA;
-   if(!f){
-      *msgvec = first(0, MMNORM);
-      if(*msgvec != 0)
-         msgvec[1] = 0;
-   }else if(n_getmsglist(str, msgvec, 0, NULL) < 0)
-      goto jleave;
-
-   if(*msgvec == 0){
-      n_err(_("No applicable messages.\n"));
-      goto jleave;
-   }
-   if(msgvec[1] != 0){
-      n_err(_("Cannot forward multiple messages at once\n"));
-      n_pstate_err_no = n_ERR_NOTSUP;
-      goto jleave;
-   }
 
    memset(&head, 0, sizeof head);
-   head.h_to = lextract(recipient,
+   head.h_to = lextract(cap->ca_arg.ca_str.s,
          (GTO | (ok_blook(fullnames) ? GFULL : GSKIN)));
 
    mp = &message[*msgvec - 1];
@@ -898,7 +885,7 @@ c_forward(void *vp){
    int rv;
    NYD_ENTER;
 
-   rv = a_crese_fwd(vp, 0);
+   rv = a_crese_fwd(vp, FAL0);
    NYD_LEAVE;
    return rv;
 }
@@ -908,7 +895,7 @@ c_Forward(void *vp){
    int rv;
    NYD_ENTER;
 
-   rv = a_crese_fwd(vp, 1);
+   rv = a_crese_fwd(vp, TRU1);
    NYD_LEAVE;
    return rv;
 }

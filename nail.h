@@ -681,9 +681,12 @@ enum n_cmd_arg_desc_flags{
    n_CMD_ARG_DESC_GREEDY_JOIN = 1u<<18,
    /* Honour an overall "stop" request in one of the arguments (\c@ or #) */
    n_CMD_ARG_DESC_HONOUR_STOP = 1u<<19,
+   /* With any MSGLIST, only one message may be give or ERR_NOTSUP (default) */
+   n_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE = 1u<<20,
 
    n__CMD_ARG_DESC_FLAG_MASK = n_CMD_ARG_DESC_OPTION | n_CMD_ARG_DESC_GREEDY |
-         n_CMD_ARG_DESC_GREEDY_JOIN | n_CMD_ARG_DESC_HONOUR_STOP,
+         n_CMD_ARG_DESC_GREEDY_JOIN | n_CMD_ARG_DESC_HONOUR_STOP |
+         n_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE,
 
    /* We may include something for n_pstate_err_no */
    n_CMD_ARG_DESC_ERRNO_SHIFT = 21u,

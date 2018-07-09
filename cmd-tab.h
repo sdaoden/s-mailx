@@ -98,6 +98,18 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(Decrypt, 1, a_ctab_cad_Decrypt){
       n_SHEXP_PARSE_TRIM_IFSSPACE}
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
+n_CMD_ARG_DESC_SUBCLASS_DEF(forward, 1, a_ctab_cad_forward){
+   {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY |
+         n_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
+n_CMD_ARG_DESC_SUBCLASS_DEF(Forward, 1, a_ctab_cad_Forward){
+   {n_CMD_ARG_DESC_MSGLIST | n_CMD_ARG_DESC_GREEDY |
+         n_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
 n_CMD_ARG_DESC_SUBCLASS_DEF(move, 1, a_ctab_cad_move){
    {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY,
       n_SHEXP_PARSE_TRIM_IFSSPACE}
@@ -326,14 +338,12 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Resend <msglist> to <user>, add Resent-* header lines")) },
    { "redirect", &c_resend, (O | A | R | SC | EM | TSTRING), 0, MMNDEL, NULL
      DS(N_("Obsolete alternative for `resend'")) },
-   { "Forward", &c_Forward, (A | R | SC | EM | TSTRING), 0, MMNDEL, NULL
-     DS(N_("Like `forward', but derive filename from <address>")) },
-   { "Fwd", &c_Forward, (O | A | R | SC | EM | TSTRING), 0, MMNDEL, NULL
-     DS(N_("Alias of `Forward'")) },
-   { "forward", &c_forward, (A | R | SC | EM | TSTRING), 0, MMNDEL, NULL
+   { "forward", &c_forward, (A | R | SC | EM | TARG), 0, MMNDEL,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_forward)
      DS(N_("Forward <message> to <address>")) },
-   { "fwd", &c_forward, (O | A | R | SC | EM | TSTRING), 0, MMNDEL, NULL
-     DS(N_("Alias of `forward'")) },
+   { "Forward", &c_Forward, (A | R | SC | EM | TARG), 0, MMNDEL,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_Forward)
+     DS(N_("Like `forward', but derive filename from <address>")) },
    { "edit", &c_editor, (G | A | I | S | TMSGLST), 0, MMNORM, NULL
      DS(N_("Edit <msglist>")) },
    { "pipe", &c_pipe, (A | TARG), 0, MMNDEL,

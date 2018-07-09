@@ -647,11 +647,8 @@ FL int c_Followup(void *vp);
 /* ..and a mailing-list reply */
 FL int c_Lreply(void *vp);
 
-/* The 'forward' command */
+/* 'forward' / `Forward' */
 FL int c_forward(void *vp);
-
-/* Similar to forward, saving the message in a file named after the first
- * recipient */
 FL int c_Forward(void *vp);
 
 /* Resend a message list to a third person */
