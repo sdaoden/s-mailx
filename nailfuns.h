@@ -2174,12 +2174,6 @@ FL bool_t is_prefix(char const *as1, char const *as2);
 /* Reverse solidus quote (" and \) v'alue, and return autorec_alloc()ed */
 FL char *      string_quote(char const *v);
 
-/* Get (and isolate) the last, possibly quoted part of linebuf, set *needs_list
- * to indicate whether n_getmsglist() et al need to be called to collect
- * additional args that remain in linebuf.  If strip is true possibly
- * surrounding quote characters are removed.  Return NULL on "error" */
-FL char *      laststring(char *linebuf, bool_t *needs_list, bool_t strip);
-
 /* Convert a string to lowercase, in-place and with multibyte-aware */
 FL void        makelow(char *cp);
 
