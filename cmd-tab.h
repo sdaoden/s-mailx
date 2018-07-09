@@ -134,6 +134,16 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(readctl, 2, a_ctab_cad_readctl){
       n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_TRIM_IFSSPACE}
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
+n_CMD_ARG_DESC_SUBCLASS_DEF(resend, 1, a_ctab_cad_resend){
+   {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
+n_CMD_ARG_DESC_SUBCLASS_DEF(Resend, 1, a_ctab_cad_Resend){
+   {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
 n_CMD_ARG_DESC_SUBCLASS_DEF(save, 1, a_ctab_cad_save){
    {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY,
       n_SHEXP_PARSE_TRIM_IFSSPACE}
@@ -330,14 +340,12 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
    { "respondsender", &c_replysender, (A | I | R | SC | EM | TMSGLST),
          0, MMNDEL, NULL
      DS(N_("Reply to originator, exclusively")) },
-   { "Resend", &c_Resend, (A | R | SC | EM | TSTRING), 0, MMNDEL, NULL
-     DS(N_("Like `resend', but don't add Resent-* header lines")) },
-   { "Redirect", &c_Resend, (O | A | R | SC | EM | TSTRING), 0, MMNDEL, NULL
-     DS(N_("Obsolete alternative for `Resend'")) },
-   { "resend", &c_resend, (A | R | SC | EM | TSTRING), 0, MMNDEL, NULL
+   { "resend", &c_resend, (A | R | SC | EM | TARG), 0, MMNDEL,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_resend)
      DS(N_("Resend <msglist> to <user>, add Resent-* header lines")) },
-   { "redirect", &c_resend, (O | A | R | SC | EM | TSTRING), 0, MMNDEL, NULL
-     DS(N_("Obsolete alternative for `resend'")) },
+   { "Resend", &c_Resend, (A | R | SC | EM | TARG), 0, MMNDEL,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_Resend)
+     DS(N_("Like `resend', but do not add Resent-* header lines")) },
    { "forward", &c_forward, (A | R | SC | EM | TARG), 0, MMNDEL,
      n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_forward)
      DS(N_("Forward <message> to <address>")) },

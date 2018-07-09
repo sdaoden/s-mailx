@@ -651,10 +651,9 @@ FL int c_Lreply(void *vp);
 FL int c_forward(void *vp);
 FL int c_Forward(void *vp);
 
-/* Resend a message list to a third person */
+/* Resend a message list to a third person.
+ * The latter does not add the Resent-* header series */
 FL int c_resend(void *vp);
-
-/* Resend a message list to a third person without adding headers */
 FL int c_Resend(void *vp);
 
 /*

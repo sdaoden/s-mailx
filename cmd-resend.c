@@ -716,50 +716,34 @@ a_crese_resend1(void *vp, bool_t add_resent){
    struct header head;
    struct name *myto, *myrawto;
    enum gfield gf;
-   char *name, *str;
-   int *ip, *msgvec;
-   bool_t fail;
+   int *msgvec, rv, *ip;
+   struct n_cmd_arg *cap;
+   struct n_cmd_arg_ctx *cacp;
    NYD2_ENTER;
 
-   fail = TRU1;
+   cacp = vp;
+   cap = cacp->cac_arg;
+   msgvec = cap->ca_arg.ca_msglist;
+   cap = cap->ca_next;
+   rv = 1;
+   n_pstate_err_no = n_ERR_DESTADDRREQ;
 
-   str = vp;
-   msgvec = n_autorec_alloc((msgCount + 2) * sizeof *msgvec);
-   name = laststring(str, &fail, TRU1);
-   if(name == NULL){
-      n_err(_("No recipient specified.\n"));
-      n_pstate_err_no = n_ERR_DESTADDRREQ;
+   if(cap->ca_arg.ca_str.s[0] == '\0'){
+      if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
+         n_err(_("No recipient specified.\n"));
       goto jleave;
    }
 
-   n_pstate_err_no = n_ERR_NODATA;
-
-   if(!fail){
-      *msgvec = first(0, MMNORM);
-      if(*msgvec != 0)
-         msgvec[1] = 0;
-   }else if(n_getmsglist(str, msgvec, 0, NULL) < 0)
-      goto jleave;
-
-   if(*msgvec == 0){
-      n_err(_("No applicable messages.\n"));
-      goto jleave;
-   }
-
-   fail = TRU1;
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
 
-   myrawto = nalloc(name, GTO | gf);
+   myrawto = nalloc(cap->ca_arg.ca_str.s, GTO | gf);
    myto = usermap(namelist_dup(myrawto, myrawto->n_type), FAL0);
    myto = n_alternates_remove(myto, TRU1);
-   if(myto == NULL){
-      n_pstate_err_no = n_ERR_DESTADDRREQ;
+   if(myto == NULL)
       goto jleave;
-   }
 
    n_autorec_relax_create();
-   for(ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
-         ++ip){
+   for(ip = msgvec; *ip != 0; ++ip){
       struct message *mp;
 
       mp = &message[*ip - 1];
@@ -783,11 +767,11 @@ a_crese_resend1(void *vp, bool_t add_resent){
    }
    n_autorec_relax_gut();
 
-   fail = FAL0;
    n_pstate_err_no = n_ERR_NONE;
+   rv = 0;
 jleave:
    NYD2_LEAVE;
-   return (fail != FAL0);
+   return rv;
 }
 
 FL int
