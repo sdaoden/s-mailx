@@ -2323,15 +2323,15 @@ resend_msg(struct message *mp, struct header *hp, bool_t add_resent)
 
    /* If we fail we delay that a bit until we can write $DEAD! */
 
-   if((to = checkaddrs(to,
-         (EACM_NORMAL |
-          (!(expandaddr_to_eaf() & EAF_NAME) ? EACM_NONAME : EACM_NONE)),
-         &_sendout_error)) == NULL){
-      n_err(_("No recipients specified\n"));
-      n_pstate_err_no = n_ERR_DESTADDRREQ;
-   }else if(_sendout_error < 0){
+   to = checkaddrs(to, (EACM_NORMAL |
+         (!(expandaddr_to_eaf() & EAF_NAME) ? EACM_NONAME : EACM_NONE)),
+         &_sendout_error);
+   if(_sendout_error < 0){
       n_err(_("Some addressees were classified as \"hard error\"\n"));
       n_pstate_err_no = n_ERR_PERM;
+   }else if(to == NULL){
+      n_err(_("No recipients specified\n"));
+      n_pstate_err_no = n_ERR_DESTADDRREQ;
    }
 
    if((nfo = Ftmp(&tempMail, "resend", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER)
@@ -2353,6 +2353,10 @@ resend_msg(struct message *mp, struct header *hp, bool_t add_resent)
       n_pstate_err_no = n_ERR_IO;
       goto jerr_io;
    }
+
+   /* Honour delayed error */
+   if(_sendout_error != 0)
+      goto jfail_dead;
 
    /* C99 */{
       char const *cp;
