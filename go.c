@@ -750,8 +750,8 @@ jemsglist:
             flags |= a_NO_ERRNO;
          else if((nerrn = n_err_no) == 0)
             nerrn = n_ERR_INVAL;
-      }else
-         flags ^= a_NO_ERRNO;
+      }/*else
+         flags ^= a_NO_ERRNO;*/
    }else if(cdp->cd_caflags & n_CMD_ARG_EM)
       flags |= a_NO_ERRNO;
    else
