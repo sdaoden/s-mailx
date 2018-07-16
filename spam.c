@@ -865,14 +865,18 @@ _spamfilter_interact(struct spam_vc *vcp)
 
    if (sfp->f_score_grpno == 0)
       goto jleave;
+   if (sfp->f_super.cf_result == NULL) {
+      n_err(_("`%s': *spamfilter-rate-scanscore*: filter does not "
+         "produce output!\n"));
+      goto jleave;
+   }
 
-   assert(sfp->f_super.cf_result != NULL);
    remp = rem + sfp->f_score_grpno;
 
    if (regexec(&sfp->f_score_regex, sfp->f_super.cf_result, n_NELEM(rem), rem,
          0) == REG_NOMATCH || (remp->rm_so | remp->rm_eo) < 0) {
       n_err(_("`%s': *spamfilter-rate-scanscore* "
-         "doesn't match filter output!\n"),
+         "does not match filter output!\n"),
          _spam_cmds[vcp->vc_action]);
       sfp->f_score_grpno = 0;
       goto jleave;
