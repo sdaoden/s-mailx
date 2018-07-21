@@ -683,14 +683,14 @@ jmsglist_go:
          break;
       }
 
-      if(c < cdp->cd_minargs){
+      if(UICMP(32, c, <, cdp->cd_minargs)){
          n_err(_("`%s' requires at least %u arg(s)\n"),
             cdp->cd_name, (ui32_t)cdp->cd_minargs);
          flags |= a_NO_ERRNO;
          break;
       }
 #undef cd_minargs
-      if(c > cdp->cd_maxargs){
+      if(UICMP(32, c, >, cdp->cd_maxargs)){
          n_err(_("`%s' takes no more than %u arg(s)\n"),
             cdp->cd_name, (ui32_t)cdp->cd_maxargs);
          flags |= a_NO_ERRNO;
