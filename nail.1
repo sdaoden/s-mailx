@@ -6350,37 +6350,15 @@ Both folders must be of the same type.
 .
 .Mx
 .It Ic Reply
-(R) Replies to only the sender of each message of the given message
+(R) Identical to
+.Ic reply
+except that it replies to only the sender of each message of the given
 list, by using the first message as the template to quote, for the
 .Ql Subject:
-etc.
+etc.; setting
 .Va flipr
 will exchange this command with
 .Ic reply .
-Unless the internal variable
-.Va fullnames
-is set the recipient address will be stripped from comments, names etc.
-.Ql Reply-To:
-headers will be inspected if
-.Va reply-to-honour
-is set.
-.Pp
-This may generate the errors
-.Va ^ERR Ns -DESTADDRREQ
-if no receiver has been specified,
-.Va ^ERR Ns -PERM
-if some addressees where rejected by
-.Va expandaddr ,
-.Va ^ERR Ns -NODATA
-if no applicable messages have been given,
-.Va ^ERR Ns -IO
-if an I/O error occurs,
-.Va ^ERR Ns -NOTSUP
-if a necessary character set conversion fails, and
-.Va ^ERR Ns -INVAL
-for other errors.
-Occurance of some of the errors depend on the value of
-.Va expandaddr .
 .
 .Mx
 .It Ic reply
@@ -6397,13 +6375,13 @@ influence response behaviour.
 Unless the internal variable
 .Va fullnames
 is set recipient addresses will be stripped from comments, names etc.
-If
+.Va quote
+as well as
+.Va quote-as-attachment
+configure whether responded-to message shall be quoted etc.; setting
 .Va flipr
-is set the commands
-.Ic Reply
-and
-.Ic reply
-are exchanged.
+will exchange this command with
+.Ic Reply .
 The command
 .Ic Lreply
 offers special support for replying to mailing lists.

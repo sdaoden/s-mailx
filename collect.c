@@ -2930,6 +2930,17 @@ jskiptails:
       goto jerr;
    rewind(_coll_fp);
 
+   if(mp != NULL && ok_blook(quote_as_attachment)){
+      struct attachment *ap;
+
+      ap = n_autorec_calloc(1, sizeof *ap);
+      if((ap->a_flink = hp->h_attach) != NULL)
+         hp->h_attach->a_blink = ap;
+      hp->h_attach = ap;
+      ap->a_msgno = (int)PTR2SIZE(mp - message + 1);
+      ap->a_content_description = _("Original message content");
+   }
+
 jleave:
    if (linebuf != NULL)
       n_free(linebuf);

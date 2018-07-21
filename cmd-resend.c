@@ -514,12 +514,6 @@ j_lt_redo:
 
    a_crese_make_ref_and_cs(mp, &head);
 
-   if(ok_blook(quote_as_attachment)){
-      head.h_attach = n_autorec_calloc(1, sizeof *head.h_attach);
-      head.h_attach->a_msgno = *msgvec;
-      head.h_attach->a_content_description = _("Original message content");
-   }
-
    if(mail1(&head, 1, mp, NULL, !!(hf & HF_RECIPIENT_RECORD), FAL0) != OKAY){
       msgvec = NULL;
       goto jleave;
