@@ -514,7 +514,9 @@ j_lt_redo:
 
    a_crese_make_ref_and_cs(mp, &head);
 
-   if(mail1(&head, 1, mp, NULL, !!(hf & HF_RECIPIENT_RECORD), FAL0) != OKAY){
+   if(n_mail1((n_MAILSEND_HEADERS_PRINT |
+            (hf & HF_RECIPIENT_RECORD ? n_MAILSEND_RECORD_RECIPIENT : 0)),
+         &head, mp, NULL) != OKAY){
       msgvec = NULL;
       goto jleave;
    }
@@ -608,7 +610,8 @@ a_crese_Reply(int *msgvec, bool_t recipient_record){
       head.h_attach->a_content_description = _("Original message content");
    }
 
-   if(mail1(&head, 1, mp, NULL, recipient_record, FAL0) != OKAY){
+   if(n_mail1(((recipient_record ? n_MAILSEND_RECORD_RECIPIENT : 0) |
+            n_MAILSEND_HEADERS_PRINT), &head, mp, NULL) != OKAY){
       msgvec = NULL;
       goto jleave;
    }
@@ -669,8 +672,10 @@ a_crese_fwd(void *vp, bool_t recipient_record){
       head.h_attach->a_content_description = _("Forwarded message");
    }
 
-   rv = (mail1(&head, 1, (forward_as_attachment ? NULL : mp), NULL,
-         recipient_record, TRU1) != OKAY); /* reverse! */
+   rv = (n_mail1((n_MAILSEND_IS_FWD |
+            (recipient_record ? n_MAILSEND_RECORD_RECIPIENT : 0) |
+            n_MAILSEND_HEADERS_PRINT), &head,
+         (forward_as_attachment ? NULL : mp), NULL) != OKAY); /* reverse! */
 jleave:
    NYD2_LEAVE;
    return rv;
@@ -732,7 +737,8 @@ a_crese_resend1(void *vp, bool_t add_resent){
 
    myrawto = nalloc(cap->ca_arg.ca_str.s, GTO | gf);
    myto = usermap(namelist_dup(myrawto, myrawto->n_type), FAL0);
-   myto = n_alternates_remove(myto, TRU1);
+   if(!ok_blook(posix))
+      myto = n_alternates_remove(myto, TRU1);
    if(myto == NULL)
       goto jleave;
 

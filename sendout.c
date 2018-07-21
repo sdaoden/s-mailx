@@ -105,7 +105,7 @@ static bool_t        _check_dispo_notif(struct name *mdn, struct header *hp,
                         FILE *fo);
 
 /* Send mail to a bunch of user names.  The interface is through mail() */
-static int           sendmail_internal(void *v, int recipient_record);
+static int a_sendout_sendmail(void *v, enum n_mailsend_flags msf);
 
 /* Deal with file and pipe addressees */
 static struct name *a_sendout_file_a_pipe(struct name *names, FILE *fo,
@@ -791,7 +791,7 @@ jleave:
 }
 
 static int
-sendmail_internal(void *v, int recipient_record)
+a_sendout_sendmail(void *v, enum n_mailsend_flags msf)
 {
    struct header head;
    char *str = v;
@@ -803,7 +803,7 @@ sendmail_internal(void *v, int recipient_record)
    if((head.h_to = lextract(str, GTO |
          (ok_blook(fullnames) ? GFULL | GSKIN : GSKIN))) != NULL)
       head.h_mailx_raw_to = namelist_dup(head.h_to, head.h_to->n_type);
-   rv = mail1(&head, 0, NULL, NULL, recipient_record, FAL0);
+   rv = n_mail1(msf, &head, NULL, NULL);
    NYD_LEAVE;
    return (rv != OKAY); /* reverse! */
 }
@@ -1689,8 +1689,9 @@ jleave:
 }
 
 FL int
-mail(struct name *to, struct name *cc, struct name *bcc, char const *subject,
-   struct attachment *attach, char const *quotefile, int recipient_record)
+n_mail(enum n_mailsend_flags msf, struct name *to, struct name *cc,
+   struct name *bcc, char const *subject, struct attachment *attach,
+   char const *quotefile)
 {
    struct header head;
    struct str in, out;
@@ -1728,12 +1729,12 @@ mail(struct name *to, struct name *cc, struct name *bcc, char const *subject,
 
    head.h_attach = attach;
 
-   mail1(&head, 0, NULL, quotefile, recipient_record, FAL0);
+   /* TODO n_exit_status only!!?? */n_mail1(msf, &head, NULL, quotefile);
 
    if (subject != NULL)
       n_free(out.s);
    NYD_LEAVE;
-   return 0; /* TODO only for main.c, -> n_exit_status, BUT: ARGH! */
+   return 0;
 }
 
 FL int
@@ -1742,7 +1743,7 @@ c_sendmail(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = sendmail_internal(v, 0);
+   rv = a_sendout_sendmail(v, n_MAILSEND_NONE);
    NYD_LEAVE;
    return rv;
 }
@@ -1753,14 +1754,14 @@ c_Sendmail(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = sendmail_internal(v, 1);
+   rv = a_sendout_sendmail(v, n_MAILSEND_RECORD_RECIPIENT);
    NYD_LEAVE;
    return rv;
 }
 
 FL enum okay
-mail1(struct header *hp, int printheaders, struct message *quote,
-   char const *quotefile, int recipient_record, bool_t is_fwding)
+n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
+   char const *quotefile)
 {
    struct n_sigman sm;
    struct sendbundle sb;
@@ -1787,8 +1788,7 @@ mail1(struct header *hp, int printheaders, struct message *quote,
    time_current_update(&time_current, TRU1);
 
    /* Collect user's mail from standard input.  Get the result as mtf */
-   mtf = n_collect(hp, printheaders, quote, quotefile, is_fwding,
-         &_sendout_error);
+   mtf = n_collect(msf, hp, quote, quotefile, &_sendout_error);
    if (mtf == NULL)
       goto jleave;
    /* TODO All custom headers should be joined here at latest
@@ -1850,10 +1850,11 @@ mail1(struct header *hp, int printheaders, struct message *quote,
     * Martin Neitzel, but logic and usability of POSIX standards is not seldom
     * disputable anyway.  Go for user friendliness */
 
-   to = namelist_vaporise_head(hp,
-         (EACM_NORMAL |
-          (!(expandaddr_to_eaf() & EAF_NAME) ? EACM_NONAME : EACM_NONE)),
-         TRU1, &_sendout_error);
+   to = n_namelist_vaporise_head(((quote != NULL &&
+            (msf & n_MAILSEND_IS_FWD) == 0) || !ok_blook(posix)),
+         hp, (EACM_NORMAL |
+             (!(expandaddr_to_eaf() & EAF_NAME) ? EACM_NONAME : EACM_NONE)),
+         &_sendout_error);
 
    if(to == NULL){
       n_err(_("No recipients specified\n"));
@@ -1926,8 +1927,9 @@ mail1(struct header *hp, int printheaders, struct message *quote,
       to = elide(to); /* XXX only to drop GDELs due a_sendout_file_a_pipe()! */
       cnt = count(to);
 
-      if ((recipient_record || b || cnt > 0) &&
-            !mightrecord(mtf, (recipient_record ? to : NULL), FAL0))
+      if (((msf & n_MAILSEND_RECORD_RECIPIENT) || b || cnt > 0) &&
+            !mightrecord(mtf, (msf & n_MAILSEND_RECORD_RECIPIENT ? to : NULL),
+               FAL0))
          goto jleave;
       if (cnt > 0) {
          sb.sb_hp = hp;

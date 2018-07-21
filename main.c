@@ -1258,7 +1258,8 @@ je_expandargv:
 
       if(n_psonce & n_PSO_INTERACTIVE)
          n_tty_init();
-      mail(to, cc, bcc, subject, attach, qf, ((n_poption & n_PO_F_FLAG) != 0));
+      n_mail((n_poption & n_PO_F_FLAG ? n_MAILSEND_RECORD_RECIPIENT : 0),
+         to, cc, bcc, subject, attach, qf);
       if(n_psonce & n_PSO_INTERACTIVE)
          n_tty_destroy((n_psonce & n_PSO_XIT) != 0);
    }

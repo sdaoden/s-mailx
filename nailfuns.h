@@ -721,8 +721,8 @@ FL void n_temporary_compose_hook_varset(void *arg);
 
 /* If quotefile is (char*)-1, stdin will be used, caller has to verify that
  * we're not running in interactive mode */
-FL FILE *n_collect(struct header *hp, int printheaders, struct message *mp,
-            char const *quotefile, bool_t is_fwding, si8_t *checkaddr_err);
+FL FILE *n_collect(enum n_mailsend_flags msf, struct header *hp,
+            struct message *mp, char const *quotefile, si8_t *checkaddr_err);
 
 /*
  * colour.c
@@ -1645,11 +1645,12 @@ FL struct name * checkaddrs(struct name *np, enum expand_addr_check_mode eacm,
 
 /* Vaporise all duplicate addresses in hp (.h_(to|cc|bcc)) so that an address
  * that "first" occurs in To: is solely in there, ditto Cc:, after expanding
- * aliases etc.  eacm and set_on_error are passed to checkaddrs(), metoo is
- * passed to usermap().  After updating hp to the new state this returns
- * a flat list of all addressees, which may be NULL */
-FL struct name * namelist_vaporise_head(struct header *hp,
-                  enum expand_addr_check_mode eacm, bool_t metoo,
+ * aliases etc.  eacm and set_on_error are passed to checkaddrs().
+ * metoo is implied (for usermap()).
+ * After updating hp to the new state this returns a flat list of all
+ * addressees, which may be NULL */
+FL struct name *n_namelist_vaporise_head(bool_t strip_alternates,
+                  struct header *hp, enum expand_addr_check_mode eacm,
                   si8_t *set_on_error);
 
 /* Map all of the aliased users in the invoker's mailrc file and insert them
@@ -1907,19 +1908,18 @@ FL int         sendmp(struct message *mp, FILE *obuf,
 
 /* Interface between the argument list and the mail1 routine which does all the
  * dirty work */
-FL int         mail(struct name *to, struct name *cc, struct name *bcc,
-                  char const *subject, struct attachment *attach,
-                  char const *quotefile, int recipient_record);
+FL int n_mail(enum n_mailsend_flags msf, struct name *to, struct name *cc,
+         struct name *bcc, char const *subject, struct attachment *attach,
+         char const *quotefile);
 
 /* `mail' and `Mail' commands, respectively */
-FL int         c_sendmail(void *v);
-FL int         c_Sendmail(void *v);
+FL int c_sendmail(void *v);
+FL int c_Sendmail(void *v);
 
 /* Mail a message on standard input to the people indicated in the passed
  * header.  (Internal interface) */
-FL enum okay   mail1(struct header *hp, int printheaders,
-                  struct message *quote, char const *quotefile,
-                  int recipient_record, bool_t is_fwding);
+FL enum okay n_mail1(enum n_mailsend_flags flags, struct header *hp,
+               struct message *quote, char const *quotefile);
 
 /* Create a Date: header field.
  * We compare the localtime() and gmtime() results to get the timezone, because

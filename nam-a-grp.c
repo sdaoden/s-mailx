@@ -1565,8 +1565,8 @@ checkaddrs(struct name *np, enum expand_addr_check_mode eacm,
 }
 
 FL struct name *
-namelist_vaporise_head(struct header *hp, enum expand_addr_check_mode eacm,
-   bool_t metoo, si8_t *set_on_error)
+n_namelist_vaporise_head(bool_t strip_alternates, struct header *hp,
+   enum expand_addr_check_mode eacm, si8_t *set_on_error)
 {
    /* TODO namelist_vaporise_head() is incredibly expensive and redundant */
    struct name *tolist, *np, **npp;
@@ -1575,8 +1575,9 @@ namelist_vaporise_head(struct header *hp, enum expand_addr_check_mode eacm,
    tolist = cat(hp->h_to, cat(hp->h_cc, cat(hp->h_bcc, hp->h_fcc)));
    hp->h_to = hp->h_cc = hp->h_bcc = hp->h_fcc = NULL;
 
-   tolist = usermap(tolist, metoo);
-   tolist = n_alternates_remove(tolist, TRU1);
+   tolist = usermap(tolist, strip_alternates/*metoo*/);
+   if(strip_alternates)
+      tolist = n_alternates_remove(tolist, TRU1);
    tolist = elide(checkaddrs(tolist, eacm, set_on_error));
 
    for (np = tolist; np != NULL; np = np->n_flink) {

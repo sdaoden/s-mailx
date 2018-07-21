@@ -925,6 +925,17 @@ enum n_ienc_mode{
    n__IENC_MODE_MASK = (1u<<n__IENC_MODE_SHIFT) - 1
 };
 
+enum n_mailsend_flags{
+   n_MAILSEND_NONE,
+   n_MAILSEND_IS_FWD = 1u<<0,
+   n_MAILSEND_HEADERS_PRINT = 1u<<2,
+   n_MAILSEND_RECORD_RECIPIENT = 1u<<3,
+   n_MAILSEND_ALTERNATES_NOSTRIP = 1u<<4,
+
+   n_MAILSEND_ALL = n_MAILSEND_IS_FWD | n_MAILSEND_HEADERS_PRINT |
+         n_MAILSEND_RECORD_RECIPIENT | n_MAILSEND_ALTERNATES_NOSTRIP
+};
+
 enum mimecontent {
    MIME_UNKNOWN,     /* unknown content */
    MIME_SUBHDR,      /* inside a multipart subheader */

@@ -1991,8 +1991,8 @@ n_temporary_compose_hook_varset(void *arg){ /* TODO v15: drop */
 }
 
 FL FILE *
-n_collect(struct header *hp, int printheaders, struct message *mp,
-   char const *quotefile, bool_t is_fwding, si8_t *checkaddr_err)
+n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
+   char const *quotefile, si8_t *checkaddr_err)
 {
    struct n_string s, * volatile sp;
    struct a_coll_ocs_arg *coap;
@@ -2092,7 +2092,8 @@ n_collect(struct header *hp, int printheaders, struct message *mp,
             goto jerr;
 
          /* Quote an original message */
-         if(mp != NULL && !a_coll_quote_message(_coll_fp, mp, is_fwding))
+         if(mp != NULL && !a_coll_quote_message(_coll_fp, mp,
+               ((msf & n_MAILSEND_IS_FWD) != 0)))
             goto jerr;
       }
 
@@ -2111,7 +2112,7 @@ n_collect(struct header *hp, int printheaders, struct message *mp,
          if(!(n_poption & n_PO_Mm_FLAG) && !(n_pstate & n_PS_ROBOT)){
             /* Print what we have sofar also on the terminal (if useful) */
             if((cp = ok_vlook(editalong)) == NULL){
-               if(printheaders)
+               if(msf & n_MAILSEND_HEADERS_PRINT)
                   n_puthead(TRU1, hp, n_stdout, t, SEND_TODISP, CONV_NONE,
                      NULL, NULL);
 
