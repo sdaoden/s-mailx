@@ -121,6 +121,11 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(Move, 1, a_ctab_cad_Move){
       n_SHEXP_PARSE_TRIM_IFSSPACE}
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
+n_CMD_ARG_DESC_SUBCLASS_DEF(pdot, 1, a_ctab_cad_pdot){
+   {n_CMD_ARG_DESC_MSGLIST | n_CMD_ARG_DESC_GREEDY,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
 n_CMD_ARG_DESC_SUBCLASS_DEF(pipe, 1, a_ctab_cad_pipe){
    {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY,
       n_SHEXP_PARSE_TRIM_IFSSPACE}
@@ -563,8 +568,9 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
 
    /* New-style commands without un* counterpart */
 
-   { "=", &c_pdot, (A | TWYSH), 0, 0, NULL
-     DS(N_("Show current message number")) },
+   { "=", &c_pdot, (A | G | V | X | EM | TARG), 0, MMNDEL,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_pdot)
+     DS(N_("Show message number of [<msglist>] (or the \"dot\")")) },
 
    { "call", &c_call, (M | X | EM | TARG), 0, 0,
       n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_call)

@@ -558,8 +558,8 @@ FL int c_Top(void *v);
  * command with no arguments, print first message */
 FL int c_next(void *v);
 
-/* Print out the value of dot */
-FL int c_pdot(void *v);
+/* `=': print out the value(s) of <msglist> (or dot) */
+FL int c_pdot(void *vp);
 
 /* Print the size of each message */
 FL int c_messize(void *v);

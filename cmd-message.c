@@ -652,14 +652,55 @@ jleave:
 }
 
 FL int
-c_pdot(void *vp)
-{
+c_pdot(void *vp){
+   char cbuf[n_IENC_BUFFER_SIZE], sep1, sep2;
+   struct n_string s, *sp;
+   int *mlp;
+   struct n_cmd_arg_ctx *cacp;
    NYD_ENTER;
    n_UNUSED(vp);
-   fprintf(n_stdout, "%d\n",
-      (msgCount == 0) ? 0 : (int)PTR2SIZE(dot - message + 1));
+
+   n_pstate_err_no = n_ERR_NONE;
+   sp = n_string_creat_auto(&s);
+   sep1 = *ok_vlook(ifs);
+   sep2 = *ok_vlook(ifs_ws);
+   if(sep1 == sep2)
+      sep2 = '\0';
+   if(sep1 == '\0')
+      sep1 = ' ';
+
+   cacp = vp;
+
+   for(mlp = cacp->cac_arg->ca_arg.ca_msglist; *mlp != 0; ++mlp){
+      if(!n_string_can_book(sp, n_IENC_BUFFER_SIZE + 2u)){
+         n_err(_("`=': overflow: string too long!\n"));
+         n_pstate_err_no = n_ERR_OVERFLOW;
+         vp = NULL;
+         goto jleave;
+      }
+      if(sp->s_len > 0){
+         sp = n_string_push_c(sp, sep1);
+         if(sep2 != '\0')
+            sp = n_string_push_c(sp, sep2);
+      }
+      sp = n_string_push_cp(sp,
+            n_ienc_buf(cbuf, (ui32_t)*mlp, 10, n_IENC_MODE_NONE));
+   }
+
+   (void)n_string_cp(sp);
+   if(cacp->cac_vput == NULL){
+      if(fprintf(n_stdout, "%s\n", sp->s_dat) < 0){
+         n_pstate_err_no = n_err_no;
+         vp = NULL;
+      }
+   }else if(!n_var_vset(cacp->cac_vput, (uintptr_t)sp->s_dat)){
+      n_pstate_err_no = n_ERR_NOTSUP;
+      vp = NULL;
+   }
+jleave:
+   /* n_string_gut(sp); */
    NYD_LEAVE;
-   return 0;
+   return (vp == NULL);
 }
 
 FL int

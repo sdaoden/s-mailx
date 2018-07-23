@@ -913,7 +913,7 @@ enum n_idec_state{
 n_MCTA(n__IDEC_MODE_MASK <= (1u<<8) - 1, "Shared bit range overlaps")
 
 /* Buffer size needed by n_ienc_buf() including NUL and base prefixes */
-#define n_IENC_BUFFER_SIZE 80
+#define n_IENC_BUFFER_SIZE 80u
 
 enum n_ienc_mode{
    n_IENC_MODE_NONE,

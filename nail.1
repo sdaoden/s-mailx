@@ -4020,8 +4020,24 @@ a numeric argument n.
 .
 .Mx
 .It Ic =
-Show the current message number (the
-.Dq dot ) .
+Shows the message number of the current message (the
+.Dq dot )
+when used without arguments, that of the given list otherwise.
+Output numbers will be separated from each other with the first
+character of
+.Va ifs ,
+and followed by the first character of
+.Va if-ws ,
+if that is not empty and not identical to the first.
+If that results in no separation at all a
+.Cm space
+character is used.
+This command supports
+.Cm vput
+(see
+.Sx "Command modifiers" ) ,
+and manages the error number
+.Va \&! .
 .
 .Mx
 .It Ic \&?
