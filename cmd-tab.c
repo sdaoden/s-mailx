@@ -132,9 +132,6 @@ jfakeent:
             rv = n_string_push_c(rv, ':');
          switch(flags & n__CMD_ARG_DESC_TYPE_MASK){
          default:
-         case n_CMD_ARG_DESC_STRING:
-            rv = n_string_push_cp(rv, _("string"));
-            break;
          case n_CMD_ARG_DESC_WYSH:
             rv = n_string_push_cp(rv, _("(shell-)token"));
             break;
@@ -510,28 +507,6 @@ jredo:
 
       switch(ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK){
       default:
-      case n_CMD_ARG_DESC_STRING:{ /* TODO \ escaping? additional type!? */
-         char /*const*/ *cp = shin.s;
-         size_t i = shin.l;
-
-         if(cad_idx == 0 && i == 0) goto jmsglist_related; /* TODO */
-
-         while(i > 0 && blankspacechar(*cp))
-            ++cp, --i;
-
-         ncap.ca_arg.ca_str.s = cp;
-         while(i > 0 && !blankspacechar(*cp))
-            ++cp, --i;
-         ncap.ca_arg.ca_str.s = savestrbuf(ncap.ca_arg.ca_str.s,
-               ncap.ca_arg.ca_str.l = PTR2SIZE(cp - ncap.ca_arg.ca_str.s));
-
-         while(i > 0 && blankspacechar(*cp))
-            ++cp, --i;
-         ncap.ca_inlen = PTR2SIZE(cp - ncap.ca_indat);
-         shin.s = cp;
-         shin.l = i;
-         addca = TRU1;
-         }break;
       case n_CMD_ARG_DESC_WYSH:{
          struct n_string shou, *shoup;
          enum n_shexp_state shs;
@@ -678,8 +653,7 @@ jredo:
             (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_GREEDY)){
          if(!greedyjoin)
             greedyjoin = ((ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_GREEDY_JOIN) &&
-                     (ncap.ca_ent_flags[0] &
-                        (n_CMD_ARG_DESC_STRING | n_CMD_ARG_DESC_WYSH)))
+                     (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_WYSH))
                   ? TRU1 : TRUM1;
          goto jredo;
       }

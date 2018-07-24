@@ -659,16 +659,15 @@ enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
 
 enum n_cmd_arg_desc_flags{
    /* - A type */
-   n_CMD_ARG_DESC_STRING = 1u<<0,   /* A !blankspacechar() string */
-   n_CMD_ARG_DESC_WYSH = 1u<<1,     /* sh(1)ell-style quoted */
+   n_CMD_ARG_DESC_WYSH = 1u<<0,     /* sh(1)ell-style quoted */
    /* TODO All MSGLIST arguments can only be used last and are always greedy
     * TODO (but MUST be _GREEDY, and MUST NOT be _OPTION too!).
     * MSGLIST_AND_TARGET may create a NULL target */
-   n_CMD_ARG_DESC_MSGLIST = 1u<<2,  /* Message specification(s) */
-   n_CMD_ARG_DESC_NDMSGLIST = 1u<<3,
-   n_CMD_ARG_DESC_MSGLIST_AND_TARGET = 1u<<4,
+   n_CMD_ARG_DESC_MSGLIST = 1u<<1,  /* Message specification(s) */
+   n_CMD_ARG_DESC_NDMSGLIST = 1u<<2,
+   n_CMD_ARG_DESC_MSGLIST_AND_TARGET = 1u<<3,
 
-   n__CMD_ARG_DESC_TYPE_MASK = n_CMD_ARG_DESC_STRING | n_CMD_ARG_DESC_WYSH |
+   n__CMD_ARG_DESC_TYPE_MASK = n_CMD_ARG_DESC_WYSH |
          n_CMD_ARG_DESC_MSGLIST | n_CMD_ARG_DESC_NDMSGLIST |
          n_CMD_ARG_DESC_MSGLIST_AND_TARGET,
 
@@ -1967,8 +1966,8 @@ struct n_cmd_arg{
    ui32_t ca_arg_flags;    /* [Output: _WYSH: copy of parse result flags] */
    ui8_t ca__dummy[4];
    union{
-      struct str ca_str;      /* _CMD_ARG_DESC_STRING, _CMD_ARG_DESC_WYSH */
-      int *ca_msglist;        /* _CMD_ARG_DESC_MSGLIST */
+      struct str ca_str;      /* _CMD_ARG_DESC_WYSH */
+      int *ca_msglist;        /* _CMD_ARG_DESC_MSGLIST+ */
    } ca_arg;               /* Output: parsed result */
 };
 
