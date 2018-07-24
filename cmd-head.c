@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  */
 #undef n_FILE
-#define n_FILE cmd_headers
+#define n_FILE cmd_head
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
@@ -44,31 +44,31 @@ static int        _screen;
 
 /* Print out the header of a specific message.
  * time_current must be up-to-date when this is called.
- * a_cmd__hprf: handle *headline*
- * a_cmd__subject: -1 if Subject: yet seen, otherwise n_alloc()d Subject:
- * a_cmd__putindent: print out the indenting in threaded display
- * a_cmd__putuc: print out a Unicode character or a substitute for it, return
+ * a_chead__hprf: handle *headline*
+ * a_chead__subject: -1 if Subject: yet seen, otherwise n_alloc()d Subject:
+ * a_chead__putindent: print out the indenting in threaded display
+ * a_chead__putuc: print out a Unicode character or a substitute for it, return
  *    0 on error or wcwidth() (or 1) on success */
-static void a_cmd_print_head(size_t yetprinted, size_t msgno, FILE *f,
-                  bool_t threaded, bool_t subject_thread_compress);
+static void a_chead_print_head(size_t yetprinted, size_t msgno, FILE *f,
+               bool_t threaded, bool_t subject_thread_compress);
 
-static void a_cmd__hprf(size_t yetprinted, char const *fmt, size_t msgno,
+static void a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno,
                FILE *f, bool_t threaded, bool_t subject_thread_compress,
                char const *attrlist);
-static char *a_cmd__subject(struct message *mp, bool_t threaded,
+static char *a_chead__subject(struct message *mp, bool_t threaded,
                bool_t subject_thread_compress, size_t yetprinted);
-static int a_cmd__putindent(FILE *fp, struct message *mp, int maxwidth);
-static size_t a_cmd__putuc(int u, int c, FILE *fp);
-static int a_cmd__dispc(struct message *mp, char const *a);
+static int a_chead__putindent(FILE *fp, struct message *mp, int maxwidth);
+static size_t a_chead__putuc(int u, int c, FILE *fp);
+static int a_chead__dispc(struct message *mp, char const *a);
 
 /* Shared `z' implementation */
-static int a_cmd_scroll(char const *arg, bool_t onlynew);
+static int a_chead_scroll(char const *arg, bool_t onlynew);
 
 /* Shared `headers' implementation */
 static int     _headers(int msgspec);
 
 static void
-a_cmd_print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded,
+a_chead_print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded,
       bool_t subject_thread_compress){
    enum {attrlen = 14};
    char attrlist[attrlen +1], *cp;
@@ -106,13 +106,13 @@ jattrok:
             : "%>%a%m %-18f %-16d %4l/%-5o %i%-s");
    }
 
-   a_cmd__hprf(yetprinted, fmt, msgno, f, threaded, subject_thread_compress,
+   a_chead__hprf(yetprinted, fmt, msgno, f, threaded, subject_thread_compress,
       attrlist);
    NYD2_LEAVE;
 }
 
 static void
-a_cmd__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
+a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
    bool_t threaded, bool_t subject_thread_compress, char const *attrlist)
 {
    char buf[16], cbuf[8], *cp, *subjline;
@@ -275,7 +275,7 @@ a_cmd__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
          goto jputcb;
 #endif
       case 'a':
-         c = a_cmd__dispc(mp, attrlist);
+         c = a_chead__dispc(mp, attrlist);
 jputcb:
 #ifdef HAVE_COLOUR
          if(n_COLOUR_IS_ACTIVE()){
@@ -349,7 +349,7 @@ jputcb:
                   n_colour_pen_put(cpen_cur = cpen_new);
             }
 #endif
-            n = a_cmd__putindent(f, mp, n_MIN(wleft, (int)n_scrnwidth - 60));
+            n = a_chead__putindent(f, mp, n_MIN(wleft, (int)n_scrnwidth - 60));
             wleft = (n >= 0) ? wleft - n : 0;
 #ifdef HAVE_COLOUR
             if(n_COLOUR_IS_ACTIVE() && (cpen_new = cpen_bas) != cpen_cur)
@@ -409,7 +409,7 @@ jputcb:
          if (n == 0)
             break;
          if (subjline == NULL)
-            subjline = a_cmd__subject(mp, (threaded && (flags & _IFMT)),
+            subjline = a_chead__subject(mp, (threaded && (flags & _IFMT)),
                   subject_thread_compress, yetprinted);
          if (subjline == (char*)-1) {
             n = fprintf(f, "%*s", n, n_empty);
@@ -474,7 +474,7 @@ jputcb:
 }
 
 static char *
-a_cmd__subject(struct message *mp, bool_t threaded,
+a_chead__subject(struct message *mp, bool_t threaded,
    bool_t subject_thread_compress, size_t yetprinted)
 {
    struct str in, out;
@@ -524,7 +524,7 @@ jleave:
 }
 
 static int
-a_cmd__putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX magics */
+a_chead__putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX magics */
 {
    struct message *mq;
    int *us, indlvl, indw, i, important = MNEW | MFLAGGED;
@@ -578,11 +578,11 @@ a_cmd__putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX magics */
    for (indlvl = indw = 0; (ui8_t)indlvl < mp->m_level && indw < maxwidth;
          ++indlvl) {
       if (indw < maxwidth - 1)
-         indw += (int)a_cmd__putuc(us[indlvl], cs[indlvl] & 0xFF, fp);
+         indw += (int)a_chead__putuc(us[indlvl], cs[indlvl] & 0xFF, fp);
       else
-         indw += (int)a_cmd__putuc(0x21B8, '^', fp);
+         indw += (int)a_chead__putuc(0x21B8, '^', fp);
    }
-   indw += a_cmd__putuc(0x25B8, '>', fp);
+   indw += a_chead__putuc(0x25B8, '>', fp);
 
    n_lofi_free(us);
    n_lofi_free(cs);
@@ -592,7 +592,7 @@ jleave:
 }
 
 static size_t
-a_cmd__putuc(int u, int c, FILE *fp){
+a_chead__putuc(int u, int c, FILE *fp){
    size_t rv;
    NYD2_ENTER;
    n_UNUSED(u);
@@ -622,7 +622,7 @@ a_cmd__putuc(int u, int c, FILE *fp){
 }
 
 static int
-a_cmd__dispc(struct message *mp, char const *a)
+a_chead__dispc(struct message *mp, char const *a)
 {
    int i = ' ';
    NYD2_ENTER;
@@ -667,7 +667,7 @@ a_cmd__dispc(struct message *mp, char const *a)
 }
 
 static int
-a_cmd_scroll(char const *arg, bool_t onlynew){
+a_chead_scroll(char const *arg, bool_t onlynew){
    siz_t l;
    bool_t isabs;
    int msgspec, size, maxs;
@@ -848,7 +848,7 @@ jdot_unsort:
             }
          }
          ++flag;
-         a_cmd_print_head(0, mesg, n_stdout, FAL0, FAL0);
+         a_chead_print_head(0, mesg, n_stdout, FAL0, FAL0);
          srelax();
       }
       if(needdot && ok_blook(showlast)) /* xxx will not show */
@@ -904,7 +904,7 @@ jdot_sort:
                   setdot(mp);
                }
             }
-            a_cmd_print_head(flag, PTR2SIZE(mp - message + 1), n_stdout,
+            a_chead_print_head(flag, PTR2SIZE(mp - message + 1), n_stdout,
                mb.mb_threaded, TRU1);
             ++flag;
             srelax();
@@ -954,7 +954,7 @@ c_scroll(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = a_cmd_scroll(*(char const**)v, FAL0);
+   rv = a_chead_scroll(*(char const**)v, FAL0);
    NYD_LEAVE;
    return rv;
 }
@@ -965,7 +965,7 @@ c_Scroll(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = a_cmd_scroll(*(char const**)v, TRU1);
+   rv = a_chead_scroll(*(char const**)v, TRU1);
    NYD_LEAVE;
    return rv;
 }
@@ -1040,7 +1040,7 @@ c_from(void *vp)
    n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, obuf, obuf != n_stdout); )
    srelax_hold();
    for (n = 0, ip = msgvec; *ip != 0; ++ip) { /* TODO join into _print_head() */
-      a_cmd_print_head((size_t)n++, (size_t)*ip, obuf, mb.mb_threaded, FAL0);
+      a_chead_print_head((size_t)n++, (size_t)*ip, obuf, mb.mb_threaded, FAL0);
       srelax();
    }
    srelax_rele();
@@ -1071,7 +1071,7 @@ print_headers(int const *msgvec, bool_t only_marked,
             continue;
       } else if (!visible(mp))
          continue;
-      a_cmd_print_head(printed++, *msgvec, n_stdout, mb.mb_threaded,
+      a_chead_print_head(printed++, *msgvec, n_stdout, mb.mb_threaded,
          subject_thread_compress);
       srelax();
    }

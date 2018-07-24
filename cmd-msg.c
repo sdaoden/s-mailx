@@ -34,7 +34,7 @@
  * SUCH DAMAGE.
  */
 #undef n_FILE
-#define n_FILE cmd_message
+#define n_FILE cmd_msg
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"

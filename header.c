@@ -35,7 +35,7 @@
  * SUCH DAMAGE.
  */
 #undef n_FILE
-#define n_FILE head
+#define n_FILE header
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
@@ -71,17 +71,17 @@ static struct cmatch_data const  _cmatch_data[] = {
    { 28 - 2, __reuse }, { 28 - 1, __reuse }, { 28 - 0, __reuse },
    { 0, NULL }
 };
-#define a_HEAD_DATE_MINLEN 21
+#define a_HEADER_DATE_MINLEN 21
 
 /* Savage extract date field from From_ line.  linelen is convenience as line
  * must be terminated (but it may end in a newline [sequence]).
  * Return whether the From_ line was parsed successfully (-1 if the From_ line
  * wasn't really RFC 4155 compliant) */
-static int a_head_extract_date_from_from_(char const *line, size_t linelen,
+static int a_header_extract_date_from_from_(char const *line, size_t linelen,
             char datebuf[n_FROM_DATEBUF]);
 
 /* Skip over "word" as found in From_ line */
-static char const *a_head__from_skipword(char const *wp);
+static char const *a_header__from_skipword(char const *wp);
 
 /* Match the date string against the date template (tp), return if match.
  * See _cmatch_data[] for template character description */
@@ -93,20 +93,21 @@ static int                 _cmatch(size_t len, char const *date,
 static int                 _is_date(char const *date);
 
 /* JulianDayNumber converter(s) */
-static size_t a_head_gregorian_to_jdn(ui32_t y, ui32_t m, ui32_t d);
+static size_t a_header_gregorian_to_jdn(ui32_t y, ui32_t m, ui32_t d);
 #if 0
-static void a_head_jdn_to_gregorian(size_t jdn,
+static void a_header_jdn_to_gregorian(size_t jdn,
                ui32_t *yp, ui32_t *mp, ui32_t *dp);
 #endif
 
 /* ... And place the extracted date in `date' */
-static void a_head_parse_from_(struct message *mp, char date[n_FROM_DATEBUF]);
+static void a_header_parse_from_(struct message *mp,
+               char date[n_FROM_DATEBUF]);
 
 /* Convert the domain part of a skinned address to IDNA.
  * If an error occurs before Unicode information is available, revert the IDNA
  * error to a normal CHAR one so that the error message doesn't talk Unicode */
 #ifdef HAVE_IDNA
-static struct n_addrguts *a_head_idna_apply(struct n_addrguts *agp);
+static struct n_addrguts *a_header_idna_apply(struct n_addrguts *agp);
 #endif
 
 /* Classify and check a (possibly skinned) header body according to RFC
@@ -114,7 +115,7 @@ static struct n_addrguts *a_head_idna_apply(struct n_addrguts *agp);
  * also a file or a pipe command, so check that first, then.
  * Otherwise perform content checking and isolate the domain part (for IDNA).
  * issingle_hack has the same meaning as for n_addrspec_with_guts() */
-static bool_t a_head_addrspec_check(struct n_addrguts *agp, bool_t skinned,
+static bool_t a_header_addrspec_check(struct n_addrguts *agp, bool_t skinned,
                bool_t issingle_hack);
 
 /* Return the next header field found in the given message.
@@ -129,7 +130,7 @@ static int                 msgidnextc(char const **cp, int *status);
 static char const *        nexttoken(char const *cp);
 
 static int
-a_head_extract_date_from_from_(char const *line, size_t linelen,
+a_header_extract_date_from_from_(char const *line, size_t linelen,
    char datebuf[n_FROM_DATEBUF])
 {
    int rv;
@@ -139,16 +140,16 @@ a_head_extract_date_from_from_(char const *line, size_t linelen,
    rv = 1;
 
    /* "From " */
-   cp = a_head__from_skipword(cp);
+   cp = a_header__from_skipword(cp);
    if (cp == NULL)
       goto jerr;
    /* "addr-spec " */
-   cp = a_head__from_skipword(cp);
+   cp = a_header__from_skipword(cp);
    if (cp == NULL)
       goto jerr;
    if((cp[0] == 't' || cp[0] == 'T') && (cp[1] == 't' || cp[1] == 'T') &&
          (cp[2] == 'y' || cp[2] == 'Y')){
-      cp = a_head__from_skipword(cp);
+      cp = a_header__from_skipword(cp);
       if (cp == NULL)
          goto jerr;
    }
@@ -163,7 +164,7 @@ a_head_extract_date_from_from_(char const *line, size_t linelen,
       rv = -1;
       cp += 3;
 jat_dot:
-      cp = a_head__from_skipword(cp);
+      cp = a_header__from_skipword(cp);
       if (cp == NULL)
          goto jerr;
       if((cp[0] == 'd' || cp[0] == 'D') && (cp[1] == 'o' || cp[1] == 'O') &&
@@ -174,14 +175,14 @@ jat_dot:
    }
 
    linelen -= PTR2SIZE(cp - line);
-   if (linelen < a_HEAD_DATE_MINLEN)
+   if (linelen < a_HEADER_DATE_MINLEN)
       goto jerr;
    if (cp[linelen - 1] == '\n') {
       --linelen;
       /* (Rather IMAP/POP3 only) */
       if (cp[linelen - 1] == '\r')
          --linelen;
-      if (linelen < a_HEAD_DATE_MINLEN)
+      if (linelen < a_HEADER_DATE_MINLEN)
          goto jerr;
    }
    if (linelen >= n_FROM_DATEBUF)
@@ -202,7 +203,7 @@ jerr:
 }
 
 static char const *
-a_head__from_skipword(char const *wp)
+a_header__from_skipword(char const *wp)
 {
    char c = 0;
    NYD2_ENTER;
@@ -276,7 +277,7 @@ _is_date(char const *date)
    int rv = 0;
    NYD2_ENTER;
 
-   if ((dl = strlen(date)) >= a_HEAD_DATE_MINLEN)
+   if ((dl = strlen(date)) >= a_HEADER_DATE_MINLEN)
       for (cmdp = _cmatch_data; cmdp->tdata != NULL; ++cmdp)
          if (dl == cmdp->tlen && (rv = _cmatch(dl, date, cmdp->tdata)))
             break;
@@ -285,7 +286,7 @@ _is_date(char const *date)
 }
 
 static size_t
-a_head_gregorian_to_jdn(ui32_t y, ui32_t m, ui32_t d){
+a_header_gregorian_to_jdn(ui32_t y, ui32_t m, ui32_t d){
    /* Algorithm is taken from Communications of the ACM, Vol 6, No 8.
     * (via third hand, plus adjustments).
     * This algorithm is supposed to work for all dates in between 1582-10-15
@@ -328,7 +329,7 @@ a_head_gregorian_to_jdn(ui32_t y, ui32_t m, ui32_t d){
 
 #if 0
 static void
-a_head_jdn_to_gregorian(size_t jdn, ui32_t *yp, ui32_t *mp, ui32_t *dp){
+a_header_jdn_to_gregorian(size_t jdn, ui32_t *yp, ui32_t *mp, ui32_t *dp){
    /* Algorithm is taken from Communications of the ACM, Vol 6, No 8.
     * (via third hand, plus adjustments) */
    size_t y, x;
@@ -368,7 +369,7 @@ a_head_jdn_to_gregorian(size_t jdn, ui32_t *yp, ui32_t *mp, ui32_t *dp){
 #endif /* 0 */
 
 static void
-a_head_parse_from_(struct message *mp, char date[n_FROM_DATEBUF]){
+a_header_parse_from_(struct message *mp, char date[n_FROM_DATEBUF]){
    FILE *ibuf;
    int hlen;
    char *hline = NULL; /* TODO line pool */
@@ -377,7 +378,7 @@ a_head_parse_from_(struct message *mp, char date[n_FROM_DATEBUF]){
 
    if((ibuf = setinput(&mb, mp, NEED_HEADER)) != NULL &&
          (hlen = readline_restart(ibuf, &hline, &hsize, 0)) > 0)
-      a_head_extract_date_from_from_(hline, hlen, date);
+      a_header_extract_date_from_from_(hline, hlen, date);
    if(hline != NULL)
       n_free(hline);
    NYD2_LEAVE;
@@ -385,7 +386,7 @@ a_head_parse_from_(struct message *mp, char date[n_FROM_DATEBUF]){
 
 #ifdef HAVE_IDNA
 static struct n_addrguts *
-a_head_idna_apply(struct n_addrguts *agp){
+a_header_idna_apply(struct n_addrguts *agp){
    struct n_string idna_ascii;
    NYD_ENTER;
 
@@ -409,7 +410,7 @@ a_head_idna_apply(struct n_addrguts *agp){
 #endif /* HAVE_IDNA */
 
 static bool_t
-a_head_addrspec_check(struct n_addrguts *agp, bool_t skinned,
+a_header_addrspec_check(struct n_addrguts *agp, bool_t skinned,
       bool_t issingle_hack)
 {
    char *addr, *p;
@@ -1049,7 +1050,7 @@ jinsert_domain:
 jleave:
 #ifdef HAVE_IDNA
    if(!(agp->ag_n_flags & NAME_ADDRSPEC_INVALID) && (flags & a_IDNA_APPLY))
-      agp = a_head_idna_apply(agp);
+      agp = a_header_idna_apply(agp);
 #endif
    NYD_LEAVE;
    return !(agp->ag_n_flags & NAME_ADDRSPEC_INVALID);
@@ -1297,7 +1298,7 @@ is_head(char const *linebuf, size_t linelen, bool_t check_rfc4155)
    NYD2_ENTER;
 
    if ((rv = (linelen >= 5 && !memcmp(linebuf, "From ", 5))) && check_rfc4155 &&
-         (a_head_extract_date_from_from_(linebuf, linelen, date) <= 0 ||
+         (a_header_extract_date_from_from_(linebuf, linelen, date) <= 0 ||
           !_is_date(date)))
       rv = TRUM1;
    NYD2_LEAVE;
@@ -2007,7 +2008,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
    n_lofi_free(nbuf);
    agp->ag_n_flags = NAME_NAME_SALLOC | NAME_SKINNED;
 jcheck:
-   if(a_head_addrspec_check(agp, doskin, issingle_hack) <= FAL0)
+   if(a_header_addrspec_check(agp, doskin, issingle_hack) <= FAL0)
       name = NULL;
    else
       name = agp->ag_input;
@@ -2506,7 +2507,7 @@ combinetime(int year, int month, int day, int hour, int minute, int second){
    t += minute * n_DATE_SECSMIN;
    t += hour * n_DATE_SECSHOUR;
 
-   jdn = a_head_gregorian_to_jdn(year, month, day);
+   jdn = a_header_gregorian_to_jdn(year, month, day);
    jdn -= jdn_epoch;
    t += (time_t)jdn * n_DATE_SECSDAY;
 jleave:
@@ -2636,7 +2637,7 @@ jredo_localtime:
        * TODO all other codepaths do so by themselves ALREADY ?????
        * TODO assert(mp->m_time != 0);, then
        * TODO ALSO changes behaviour of datefield_markout_older */
-      a_head_parse_from_(mp, rv = n_autorec_alloc(n_FROM_DATEBUF));
+      a_header_parse_from_(mp, rv = n_autorec_alloc(n_FROM_DATEBUF));
    }else
       rv = savestr(n_time_ctime(t, NULL));
    NYD_LEAVE;
