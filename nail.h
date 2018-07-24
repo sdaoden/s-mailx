@@ -2051,6 +2051,18 @@ struct ccred {
    struct str     cc_pass;       /* Password (urlxdec()oded) or NULL */
 };
 
+struct n_dig_msg_ctx{
+   struct n_dig_msg_ctx *dmc_last;  /* Only if !.dmc_is_compose */
+   struct n_dig_msg_ctx *dmc_next;
+   struct message *dmc_mp; /* XXX Yet NULL if .dmc_is_compose */
+   bool_t dmc_is_compose;  /* Is compose mode */
+   bool_t dmc_is_rdonly;   /* Message modifications not allowed */
+   ui8_t dmc__pad[2];
+   int dmc_msgno;          /* XXX Only if !.dmc_is_compose */
+   FILE *dmc_fp;
+   struct header *dmc_hp;
+};
+
 #ifdef HAVE_DOTLOCK
 struct n_dotlock_info{
    char const *di_file_name;  /* Mailbox to lock */

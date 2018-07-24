@@ -764,6 +764,13 @@ FL struct str const *n_colour_pen_to_str(struct n_colour_pen *self);
 #endif /* HAVE_COLOUR */
 
 /*
+ * dig-msg.c
+ */
+
+/* Accessibility hook for the `~^' command; needs .dmc_fp and .dmc_hp */
+FL bool_t n_dig_msg_command(struct n_dig_msg_ctx *dmcp, char const *cmd);
+
+/*
  * dotlock.c
  */
 
@@ -1266,9 +1273,10 @@ FL void n_memory_pool_fixate(void);
 
 /* Lifetime management of a per-execution level arena (to be found in
  * n_go_data_ctx.gdc_mempool, lazy initialized).
- * _push() can be used by anyone to create a new stack layer in the current
- * per-execution level arena, which is layered upon the normal one (usually
- * provided by .gdc__mempool_buf, initialized as necessary).
+ * _push() can be used by anyone to create a new mempool stack layer (of
+ * minimum size n_MEMORY_POOL_TYPE_SIZEOF) in the current per-execution level
+ * arena, which is layered upon the normal one (which is usually provided
+ * by .gdc__mempool_buf, and initialized as necessary).
  * This can be pop()ped again: popping a stack will remove all stacks "above"
  * it, i.e., those which have been pushed thereafter.
  * If NULL is popped then this means that the current per-execution level is
