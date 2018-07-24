@@ -1275,6 +1275,7 @@ FL void        touch(struct message *mp);
  * and not interpreted as a message specification; in addition, if only one
  * argument remains and this is the empty string, 0 is returned (*vector=0;
  * this is used to implement n_CMD_ARG_DESC_MSGLIST_AND_TARGET).
+ * A NUL *buf input results in a 0 return, *vector=0, [*capp_or_null=NULL].
  * Returns the count of messages picked up or -1 on error */
 FL int n_getmsglist(char const *buf, int *vector, int flags,
          struct n_cmd_arg **capp_or_null);

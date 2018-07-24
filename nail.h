@@ -661,8 +661,9 @@ enum n_cmd_arg_desc_flags{
    /* - A type */
    n_CMD_ARG_DESC_STRING = 1u<<0,   /* A !blankspacechar() string */
    n_CMD_ARG_DESC_WYSH = 1u<<1,     /* sh(1)ell-style quoted */
-   /* TODO n_CMD_ARG_DESC_MSGLIST can only be used last and is always greedy
-    * TODO (but MUST be _GREEDY too!) */
+   /* TODO All MSGLIST arguments can only be used last and are always greedy
+    * TODO (but MUST be _GREEDY, and MUST NOT be _OPTION too!).
+    * MSGLIST_AND_TARGET may create a NULL target */
    n_CMD_ARG_DESC_MSGLIST = 1u<<2,  /* Message specification(s) */
    n_CMD_ARG_DESC_NDMSGLIST = 1u<<3,
    n_CMD_ARG_DESC_MSGLIST_AND_TARGET = 1u<<4,

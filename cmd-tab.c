@@ -426,7 +426,7 @@ n_cmd_default(void){
 
 FL bool_t
 n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
-   struct n_cmd_arg ncap, *lcap, *target_argp, **target_argpp;
+   struct n_cmd_arg ncap, *lcap, *target_argp, **target_argpp, *cap;
    struct str shin_orig, shin;
    bool_t addca, greedyjoin;
    void const *cookie;
@@ -443,7 +443,8 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
       for(cadp = cacp->cac_desc, cad_idx = 0;
             cad_idx < cadp->cad_no; ++cad_idx){
          assert(cadp->cad_ent_flags[cad_idx][0] & n__CMD_ARG_DESC_TYPE_MASK);
-         /* TODO n_CMD_ARG_DESC_MSGLIST can only be last entry */
+
+         /* TODO n_CMD_ARG_DESC_MSGLIST+ may only be used as the last entry */
          assert(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
             cad_idx + 1 == cadp->cad_no);
          assert(!(cadp->cad_ent_flags[cad_idx][0] &
@@ -451,13 +452,16 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
          assert(!(cadp->cad_ent_flags[cad_idx][0] &
                n_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
             cad_idx + 1 == cadp->cad_no);
+
          assert(!opt_seen ||
             (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
          if(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION)
             opt_seen = TRU1;
          assert(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY) ||
             cad_idx + 1 == cadp->cad_no);
-         /* TODO n_CMD_ARG_DESC_MSGLIST+ can only be n_CMD_ARG_DESC_GREEDY */
+
+         /* TODO n_CMD_ARG_DESC_MSGLIST+ can only be n_CMD_ARG_DESC_GREEDY.
+          * TODO And they may not be n_CMD_ARG_DESC_OPTION */
          assert(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
             (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY));
          assert(!(cadp->cad_ent_flags[cad_idx][0] &
@@ -466,6 +470,15 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
          assert(!(cadp->cad_ent_flags[cad_idx][0] &
                n_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
             (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY));
+
+         assert(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
+            !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
+         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+               n_CMD_ARG_DESC_NDMSGLIST) ||
+            !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
+         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+               n_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
+            !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
       }
    }
 #endif
@@ -481,8 +494,11 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
    parsed_args = 0;
    greedyjoin = FAL0;
 
-   for(cadp = cacp->cac_desc, cad_idx = 0; shin.l > 0 && cad_idx < cadp->cad_no;
-         ++cad_idx){
+   /* TODO We need to test >= 0 in order to deal with MSGLIST arguments, as
+    * TODO those use getmsglist() and that needs to deal with that situation.
+    * TODO In the future that should change; see jmsglist_related TODO below */
+   for(cadp = cacp->cac_desc, cad_idx = 0;
+         /*shin.l >= 0 &&*/ cad_idx < cadp->cad_no; ++cad_idx){
 jredo:
       memset(&ncap, 0, sizeof ncap);
       ncap.ca_indat = shin.s;
@@ -497,6 +513,8 @@ jredo:
       case n_CMD_ARG_DESC_STRING:{ /* TODO \ escaping? additional type!? */
          char /*const*/ *cp = shin.s;
          size_t i = shin.l;
+
+         if(cad_idx == 0 && i == 0) goto jmsglist_related; /* TODO */
 
          while(i > 0 && blankspacechar(*cp))
             ++cp, --i;
@@ -518,6 +536,8 @@ jredo:
          struct n_string shou, *shoup;
          enum n_shexp_state shs;
          ui32_t addflags;
+
+         if(cad_idx == 0 && shin.l == 0) goto jmsglist_related; /* TODO */
 
          if(cad_idx == cadp->cad_no - 1 ||
                (cadp->cad_ent_flags[cad_idx + 1][0] & n_CMD_ARG_DESC_OPTION))
@@ -589,6 +609,14 @@ jredo:
                   goto jerr;
                }
                ncap.ca_arg.ca_msglist[1] = 0;
+
+               /* TODO For the MSGLIST_AND_TARGET case an entirely empty input
+                * TODO results in no _TARGET argument: ensure it is there! */
+               if(target_argpp != NULL && (cap = *target_argpp) == NULL){
+                  cap = n_autorec_calloc(1, sizeof *cap);
+                  cap->ca_arg.ca_str.s = n_UNCONST(n_empty);
+                  *target_argpp = cap;
+               }
                /* FALLTHRU */
             default:
                break;
@@ -601,7 +629,6 @@ jredo:
             n_pstate_err_no = n_ERR_NOTSUP;
             goto jerr;
          }
-
          shin.l = 0;
          addca = TRUM1;
          break;
@@ -625,8 +652,6 @@ jredo:
             cp[i++] = ' ';
             memcpy(&cp[i], ncap.ca_arg.ca_str.s, ncap.ca_arg.ca_str.l +1);
          }else{
-            struct n_cmd_arg *cap;
-
             cap = n_autorec_alloc(sizeof *cap);
             memcpy(cap, &ncap, sizeof ncap);
             if(lcap == NULL)
@@ -660,6 +685,7 @@ jredo:
       }
    }
 
+jmsglist_related:
    if(cad_idx < cadp->cad_no &&
          !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION))
       goto jerr;

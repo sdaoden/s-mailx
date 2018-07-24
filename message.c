@@ -1492,20 +1492,22 @@ n_getmsglist(char const *buf, int *vector, int flags,
    NYD_ENTER;
 
    n_pstate &= ~n_PS_ARGLIST_MASK;
+   n_pstate |= n_PS_MSGLIST_DIRECT;
    a_message_list_last_saw_d = a_message_list_saw_d;
    a_message_list_saw_d = FAL0;
 
    *vector = 0;
    if(capp_or_null != NULL)
       *capp_or_null = NULL;
-
-   n_pstate |= n_PS_MSGLIST_DIRECT;
    if(*buf == '\0'){
       mc = 0;
       goto jleave;
    }
 
-   /* TODO Parse the message spec into an ARGV (not here -> cmd_arg_parse?) */
+   /* TODO Parse the message spec into an ARGV; this should not happen here,
+    * TODO but instead cmd_arg_parse() should feed in the list of parsed tokens
+    * TODO to getmsglist(); as of today there are multiple getmsglist() users
+    * TODO though, and they need to deal with that, then, too */
    /* C99 */{
       n_CMD_ARG_DESC_SUBCLASS_DEF(getmsglist, 1, pseudo_cad){
          {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_OPTION |
