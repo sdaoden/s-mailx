@@ -1510,7 +1510,7 @@ n_getmsglist(char const *buf, int *vector, int flags,
     * TODO though, and they need to deal with that, then, too */
    /* C99 */{
       n_CMD_ARG_DESC_SUBCLASS_DEF(getmsglist, 1, pseudo_cad){
-         {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_OPTION |
+         {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_OPTION |
                n_CMD_ARG_DESC_GREEDY | n_CMD_ARG_DESC_HONOUR_STOP,
             n_SHEXP_PARSE_TRIM_IFSSPACE | n_SHEXP_PARSE_IFS_VAR |
                n_SHEXP_PARSE_IGNORE_EMPTY}

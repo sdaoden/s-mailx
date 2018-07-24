@@ -132,7 +132,7 @@ jfakeent:
             rv = n_string_push_c(rv, ':');
          switch(flags & n__CMD_ARG_DESC_TYPE_MASK){
          default:
-         case n_CMD_ARG_DESC_WYSH:
+         case n_CMD_ARG_DESC_SHEXP:
             rv = n_string_push_cp(rv, _("(shell-)token"));
             break;
          case n_CMD_ARG_DESC_MSGLIST:
@@ -144,7 +144,7 @@ jfakeent:
          case n_CMD_ARG_DESC_MSGLIST_AND_TARGET:
             rv = n_string_push_cp(rv, _("(shell-)msglist"));
             ++i;
-            xflags = n_CMD_ARG_DESC_WYSH;
+            xflags = n_CMD_ARG_DESC_SHEXP;
          }
          if(flags & n_CMD_ARG_DESC_GREEDY)
             rv = n_string_push_c(rv, ':');
@@ -507,7 +507,7 @@ jredo:
 
       switch(ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK){
       default:
-      case n_CMD_ARG_DESC_WYSH:{
+      case n_CMD_ARG_DESC_SHEXP:{
          struct n_string shou, *shoup;
          enum n_shexp_state shs;
          ui32_t addflags;
@@ -653,7 +653,7 @@ jredo:
             (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_GREEDY)){
          if(!greedyjoin)
             greedyjoin = ((ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_GREEDY_JOIN) &&
-                     (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_WYSH))
+                     (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_SHEXP))
                   ? TRU1 : TRUM1;
          goto jredo;
       }
