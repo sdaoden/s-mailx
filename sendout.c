@@ -802,7 +802,7 @@ a_sendout_sendmail(void *v, enum n_mailsend_flags msf)
    head.h_mailx_command = "mail";
    if((head.h_to = lextract(str, GTO |
          (ok_blook(fullnames) ? GFULL | GSKIN : GSKIN))) != NULL)
-      head.h_mailx_raw_to = namelist_dup(head.h_to, head.h_to->n_type);
+      head.h_mailx_raw_to = n_namelist_dup(head.h_to, head.h_to->n_type);
    rv = n_mail1(msf, &head, NULL, NULL);
    NYD_LEAVE;
    return (rv != OKAY); /* reverse! */
@@ -1714,17 +1714,17 @@ n_mail(enum n_mailsend_flags msf, struct name *to, struct name *cc,
    if((head.h_to = to) != NULL){
       if(!fullnames)
          head.h_to = to = a_sendout_fullnames_cleanup(to);
-      head.h_mailx_raw_to = namelist_dup(to, to->n_type);
+      head.h_mailx_raw_to = n_namelist_dup(to, to->n_type);
    }
    if((head.h_cc = cc) != NULL){
       if(!fullnames)
          head.h_cc = cc = a_sendout_fullnames_cleanup(cc);
-      head.h_mailx_raw_cc = namelist_dup(cc, cc->n_type);
+      head.h_mailx_raw_cc = n_namelist_dup(cc, cc->n_type);
    }
    if((head.h_bcc = bcc) != NULL){
       if(!fullnames)
          head.h_bcc = bcc = a_sendout_fullnames_cleanup(bcc);
-      head.h_mailx_raw_bcc = namelist_dup(bcc, bcc->n_type);
+      head.h_mailx_raw_bcc = n_namelist_dup(bcc, bcc->n_type);
    }
 
    head.h_attach = attach;
@@ -2163,7 +2163,7 @@ jto_fmt:
       /* Reply-To:.  Be careful not to destroy a possible user input, duplicate
        * the list first.. TODO it is a terrible codebase.. */
       if((np = hp->h_reply_to) != NULL)
-         np = namelist_dup(np, np->n_type);
+         np = n_namelist_dup(np, np->n_type);
       else{
          char const *v15compat;
 
@@ -2207,8 +2207,8 @@ jto_fmt:
           * TODO rewrite, object based, lazy evaluated, on-the-fly marked.
           * TODO then this should be a really cheap thing in here... */
          np = elide(n_alternates_remove(cat(
-               namelist_dup(hp->h_to, GEXTRA | GFULL),
-               namelist_dup(hp->h_cc, GEXTRA | GFULL)), FAL0));
+               n_namelist_dup(hp->h_to, GEXTRA | GFULL),
+               n_namelist_dup(hp->h_cc, GEXTRA | GFULL)), FAL0));
          addr = hp->h_list_post;
 
          while((x = np) != NULL){

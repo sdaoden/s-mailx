@@ -1365,7 +1365,7 @@ jleave:
 }
 
 FL struct name *
-namelist_dup(struct name const *np, enum gfield ntype){
+n_namelist_dup(struct name const *np, enum gfield ntype){
    struct name *nlist, *xnp;
    NYD2_ENTER;
 

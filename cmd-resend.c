@@ -116,7 +116,8 @@ a_crese_reply_to(struct message *mp){
 
    if((cp = ok_vlook(reply_to_honour)) != NULL &&
          (cp2 = hfield1("reply-to", mp)) != NULL &&
-         (rt = checkaddrs(lextract(cp2, GTO | gf), EACM_STRICT, NULL)) != NULL){
+         (rt = checkaddrs(lextract(cp2, GTO | gf), EACM_STRICT, NULL)
+            ) != NULL){
       char *sp;
       size_t l;
       char const *tr;
@@ -154,7 +155,8 @@ a_crese_mail_followup_to(struct message *mp){
 
    if((cp = ok_vlook(followup_to_honour)) != NULL &&
          (cp2 = hfield1("mail-followup-to", mp)) != NULL &&
-         (mft = checkaddrs(lextract(cp2, GTO | gf), EACM_STRICT,NULL)) != NULL){
+         (mft = checkaddrs(lextract(cp2, GTO | gf), EACM_STRICT, NULL)
+            ) != NULL){
       char *sp;
       size_t l;
       char const *tr;
@@ -194,7 +196,7 @@ a_crese_polite_rt_mft_move(struct message *mp, struct header *hp,
       hp->h_cc = NULL;
 
    /* We may find that in the end To: is empty but Cc: is not, in which case we
-    * upgrade Cc: to To:, and jump back and redo the thing slightly different */
+    * upgrade Cc: to To: and jump back and redo the thing slightly different */
    once = FAL0;
 jredo:
    while(np != NULL){
@@ -260,7 +262,7 @@ jlink:
 }
 
 static void
-a_crese_make_ref_and_cs(struct message *mp, struct header *head) /* TODO ASAP */
+a_crese_make_ref_and_cs(struct message *mp, struct header *head) /* TODO ASAP*/
 {
    char const *ccp;
    char *oldref, *oldmsgid, *newref;
@@ -360,19 +362,19 @@ jwork_msg:
    if(rt != NULL || mft != NULL){
       np = cat(rt, mft);
       if(mft != NULL)
-         head.h_mft = namelist_dup(np, GTO | gf); /* xxx GTO: no "clone"! */
+         head.h_mft = n_namelist_dup(np, GTO | gf); /* xxx GTO: no "clone"! */
 
       /* Optionally do not propagate a receiver that originally was in
        * secondary Cc: to the primary To: list */
       if(ok_blook(recipients_in_cc)){
          a_crese_polite_rt_mft_move(mp, &head, np);
 
-         head.h_mailx_raw_cc = namelist_dup(head.h_cc, GCC | gf);
+         head.h_mailx_raw_cc = n_namelist_dup(head.h_cc, GCC | gf);
          head.h_cc = n_alternates_remove(head.h_cc, FAL0);
       }else
          head.h_to = np;
 
-      head.h_mailx_raw_to = namelist_dup(head.h_to, GTO | gf);
+      head.h_mailx_raw_to = n_namelist_dup(head.h_to, GTO | gf);
       head.h_to = n_alternates_remove(head.h_to, FAL0);
 #ifdef HAVE_DEVEL
       for(np = head.h_to; np != NULL; np = np->n_flink)
@@ -398,7 +400,7 @@ jwork_msg:
          np = cat(np, x);
    }
    if(np != NULL){
-      head.h_mailx_raw_cc = namelist_dup(np, GCC | gf);
+      head.h_mailx_raw_cc = n_namelist_dup(np, GCC | gf);
       head.h_cc = n_alternates_remove(np, FAL0);
    }
 
@@ -414,12 +416,12 @@ jwork_msg:
    }
    /* Delete my name from reply list, and with it, all my alternate names */
    if(np != NULL){
-      head.h_mailx_raw_to = namelist_dup(np, GTO | gf);
+      head.h_mailx_raw_to = n_namelist_dup(np, GTO | gf);
       np = n_alternates_remove(np, FAL0);
       /* The user may have send this to himself, don't ignore that */
       if(count(np) == 0){
          np = lextract(cp2, GTO | gf);
-         head.h_mailx_raw_to = namelist_dup(np, GTO | gf);
+         head.h_mailx_raw_to = n_namelist_dup(np, GTO | gf);
       }
    }
    head.h_to = np;
@@ -598,10 +600,10 @@ a_crese_Reply(int *msgvec, bool_t recipient_record){
    if(ok_blook(recipients_in_cc)){
       a_crese_polite_rt_mft_move(mp, &head, head.h_to);
 
-      head.h_mailx_raw_cc = namelist_dup(head.h_cc, GCC | gf);
+      head.h_mailx_raw_cc = n_namelist_dup(head.h_cc, GCC | gf);
       head.h_cc = n_alternates_remove(head.h_cc, FAL0);
    }
-   head.h_mailx_raw_to = namelist_dup(head.h_to, GTO | gf);
+   head.h_mailx_raw_to = n_namelist_dup(head.h_to, GTO | gf);
    head.h_to = n_alternates_remove(head.h_to, FAL0);
 
    if(ok_blook(quote_as_attachment)){
@@ -660,7 +662,7 @@ a_crese_fwd(void *vp, bool_t recipient_record){
    head.h_subject = hfield1("subject", mp);
    head.h_subject = a_crese__fwdedit(head.h_subject);
    head.h_mailx_command = "forward";
-   head.h_mailx_raw_to = namelist_dup(head.h_to, GTO | gf);
+   head.h_mailx_raw_to = n_namelist_dup(head.h_to, GTO | gf);
    head.h_mailx_orig_from = lextract(hfield1("from", mp), GIDENT | gf);
    head.h_mailx_orig_to = lextract(hfield1("to", mp), GTO | gf);
    head.h_mailx_orig_cc = lextract(hfield1("cc", mp), GCC | gf);
@@ -697,7 +699,7 @@ a_crese__fwdedit(char *subj){
    mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
 
    newsubj = n_autorec_alloc(out.l + 6);
-   if(!ascncasecmp(out.s, "Fwd: ", sizeof("Fwd: ") -1)) /* TODO EXTEND SUPP.. */
+   if(!ascncasecmp(out.s, "Fwd: ", sizeof("Fwd: ") -1)) /* TODO EXTEND SUPP. */
       memcpy(newsubj, out.s, out.l +1);
    else{
       memcpy(newsubj, "Fwd: ", 5); /* TODO ..a la subject_re_trim()! */
@@ -736,7 +738,7 @@ a_crese_resend1(void *vp, bool_t add_resent){
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
 
    myrawto = nalloc(cap->ca_arg.ca_str.s, GTO | gf);
-   myto = usermap(namelist_dup(myrawto, myrawto->n_type), FAL0);
+   myto = usermap(n_namelist_dup(myrawto, myrawto->n_type), FAL0);
    if(!ok_blook(posix))
       myto = n_alternates_remove(myto, TRU1);
    if(myto == NULL)

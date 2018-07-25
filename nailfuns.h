@@ -1612,7 +1612,7 @@ FL struct name * ndup(struct name *np, enum gfield ntype);
 FL struct name * cat(struct name *n1, struct name *n2);
 
 /* Duplicate np */
-FL struct name * namelist_dup(struct name const *np, enum gfield ntype);
+FL struct name *n_namelist_dup(struct name const *np, enum gfield ntype);
 
 /* Determine the number of undeleted elements in a name list and return it;
  * the latter also doesn't count file and pipe addressees in addition */
