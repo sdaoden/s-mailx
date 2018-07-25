@@ -291,8 +291,8 @@ os_early_setup() {
 }
 
 os_setup() {
-   OS=`echo ${OS} | ${tr} '[A-Z]' '[a-z]'`
    msg 'Operating system is %s' "${OS}"
+   OS=`echo ${OS} | ${tr} '[A-Z]' '[a-z]'`
 
    # OSFULLSPEC is used to recognize changes (i.e., machine type, updates
    # etc.), it is not baked into the binary
