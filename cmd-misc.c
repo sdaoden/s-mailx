@@ -130,9 +130,12 @@ a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
       si32_t e;
 
       e = n_ERR_NONE;
-      if(doerr)
-         n_err("%s", cp);
-      else if(fputs(cp, fp) == EOF)
+      if(doerr){
+         /* xxx Ensure *log-prefix* will be placed by n_err() for next msg */
+         if(donl)
+            cp = n_string_cp(n_string_trunc(sp, sp->s_len - 1));
+         n_err((donl ? "%s\n" : "%s"), cp);
+      }else if(fputs(cp, fp) == EOF)
          e = n_err_no;
       if((rv = (fflush(fp) == EOF)))
          e = n_err_no;
