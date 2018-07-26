@@ -4,6 +4,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause TODO ISC
  */
 /*
  * Copyright (c) 1980, 1993
@@ -2151,6 +2152,8 @@ n_alias_is_valid_name(char const *name){
       /* User names, plus things explicitly mentioned in Postfix aliases(5),
        * i.e., [[:alnum:]_#:@.-]+$?.
        * As extensions allow high-bit bytes, semicolon and period. */
+      /* TODO n_alias_is_valid_name(): locale dependent validity check,
+       * TODO with Unicode prefix valid UTF-8! */
       if(!alnumchar(c) && c != '_' && c != '-' &&
             c != '#' && c != ':' && c != '@' &&
             !((ui8_t)c & 0x80) && c != '!' && c != '.'){

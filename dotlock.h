@@ -8,6 +8,7 @@
  *@ byte longer than the dotlock file's name!
  *
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-2-Clause
  */
 /*
  * Copyright (c) 1996 Christos Zoulas.  All rights reserved.

@@ -3,6 +3,7 @@
  *@ TODO GSS-API should also be joined into "a VFS".
  *
  * Copyright (c) 2014 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-4-Clause
  */
 
 /* Derived from `imap_gssapi.h', which is:
