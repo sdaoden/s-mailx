@@ -1481,20 +1481,26 @@ FL int
 (n_go_input)(enum n_go_input_flags gif, char const *prompt, char **linebuf,
       size_t *linesize, char const *string, bool_t *histok_or_null
       n_MEMORY_DEBUG_ARGS){
-   /* TODO readline: linebuf pool!; n_go_input should return si64_t */
+   /* TODO readline: linebuf pool!; n_go_input should return si64_t.
+    * TODO This thing should be replaced by a(n) (stack of) event generator(s)
+    * TODO and consumed by OnLineCompletedEvent listeners */
    struct n_string xprompt;
    FILE *ifile;
-   bool_t doprompt, dotty;
    char const *iftype;
    struct a_go_input_inject *giip;
    int nold, n;
-   bool_t histok;
+   enum{
+      a_NONE,
+      a_HISTOK = 1u<<0,
+      a_USE_PROMPT = 1u<<1,
+      a_USE_MLE = 1u<<2
+   } f;
    NYD2_ENTER;
 
    if(!(gif & n_GO_INPUT_HOLDALLSIGS))
       hold_all_sigs();
 
-   histok = FAL0;
+   f = a_NONE;
 
    if(a_go_ctx->gc_flags & a_GO_FORCE_EOF){
       a_go_ctx->gc_flags |= a_GO_IS_EOF;
@@ -1553,7 +1559,8 @@ jinject:
          if(giip->gii_commit){
             if(*linebuf != NULL)
                n_free(*linebuf);
-            histok = !giip->gii_no_history;
+            if(!giip->gii_no_history)
+               f |= a_HISTOK;
             goto jinject; /* (above) */
          }else{
             string = savestrbuf(giip->gii_dat, giip->gii_len);
@@ -1566,21 +1573,24 @@ jforce_stdin:
    n_pstate &= ~n_PS_READLINE_NL;
    iftype = (!(n_psonce & n_PSO_STARTED) ? "LOAD"
           : (n_pstate & n_PS_SOURCING) ? "SOURCE" : "READ");
-   histok = (n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)) ==
-         (n_PSO_INTERACTIVE | n_PSO_STARTED) && !(n_pstate & n_PS_ROBOT);
-   doprompt = !(gif & n_GO_INPUT_FORCE_STDIN) && histok;
-   dotty = (doprompt && !ok_blook(line_editor_disable));
-   if(!doprompt)
+   if(!(n_pstate & n_PS_ROBOT) &&
+         (n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)) ==
+            (n_PSO_INTERACTIVE | n_PSO_STARTED))
+      f |= a_HISTOK;
+   if(!(f & a_HISTOK) || (gif & n_GO_INPUT_FORCE_STDIN))
       gif |= n_GO_INPUT_PROMPT_NONE;
    else{
-      if(!dotty)
-         n_string_creat_auto(&xprompt);
+      f |= a_USE_PROMPT;
+      if(!ok_blook(line_editor_disable))
+         f |= a_USE_MLE;
+      else
+         (void)n_string_creat_auto(&xprompt);
       if(prompt == NULL)
          gif |= n_GO_INPUT_PROMPT_EVAL;
    }
 
    /* Ensure stdout is flushed first anyway (partial lines, maybe?) */
-   if(!dotty && (gif & n_GO_INPUT_PROMPT_NONE))
+   if((gif & n_GO_INPUT_PROMPT_NONE) && !(f & a_USE_MLE))
       fflush(n_stdout);
 
    if(gif & n_GO_INPUT_FORCE_STDIN){
@@ -1597,7 +1607,7 @@ jforce_stdin:
    }
 
    for(nold = n = 0;;){
-      if(dotty){
+      if(f & a_USE_MLE){
          assert(ifile == n_stdin);
          if(string != NULL && (n = (int)strlen(string)) > 0){
             if(*linesize > 0)
@@ -1681,7 +1691,7 @@ jforce_stdin:
 
    if(n < 0)
       goto jleave;
-   if(dotty)
+   if(f & a_USE_MLE)
       n_pstate |= n_PS_READLINE_NL;
    (*linebuf)[*linesize = n] = '\0';
 
@@ -1698,7 +1708,7 @@ jleave:
    if(n < 0 && (a_go_ctx->gc_flags & a_GO_SPLICE))
       a_go_cleanup(a_GO_CLEANUP_TEARDOWN | a_GO_CLEANUP_HOLDALLSIGS);
 
-   if(histok_or_null != NULL && !histok)
+   if(histok_or_null != NULL && !(f & a_HISTOK))
       *histok_or_null = FAL0;
 
    if(!(gif & n_GO_INPUT_HOLDALLSIGS))
