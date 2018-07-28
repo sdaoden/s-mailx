@@ -2053,29 +2053,34 @@ FL void        _nyd_chirp(ui8_t act, char const *file, ui32_t line,
 FL void        _nyd_oncrash(int signo);
 
 # define HAVE_NYD
-# define NYD_ENTER               _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
-# define NYD_LEAVE               _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
+# define NYD_IN                  _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
+# define NYD_OU                  _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
 # define NYD                     _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
 # define NYD_X                   _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
 # ifdef HAVE_NYD2
-#  define NYD2_ENTER             _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
-#  define NYD2_LEAVE             _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
+#  define NYD2_IN                _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
+#  define NYD2_OU                _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
 #  define NYD2                   _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
 # endif
 #else
 # undef HAVE_NYD
 #endif
 #ifndef NYD
-# define NYD_ENTER               do {} while (0)
-# define NYD_LEAVE               do {} while (0)
+# define NYD_IN                  do {} while (0)
+# define NYD_OU                  do {} while (0)
 # define NYD                     do {} while (0)
 # define NYD_X                   do {} while (0) /* XXX LEGACY */
 #endif
 #ifndef NYD2
-# define NYD2_ENTER              do {} while (0)
-# define NYD2_LEAVE              do {} while (0)
+# define NYD2_IN                 do {} while (0)
+# define NYD2_OU                 do {} while (0)
 # define NYD2                    do {} while (0)
 #endif
+#define NYD_ENTER NYD_IN /* TODO obsolete _ENTER and _LEAVE */
+#define NYD_LEAVE NYD_OU
+#define NYD2_ENTER NYD2_IN
+#define NYD2_LEAVE NYD2_OU
+
 
 /*
  * smtp.c
