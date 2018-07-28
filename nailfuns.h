@@ -767,8 +767,15 @@ FL struct str const *n_colour_pen_to_str(struct n_colour_pen *self);
  * dig-msg.c
  */
 
-/* Accessibility hook for the `~^' command; needs .dmc_fp and .dmc_hp */
-FL bool_t n_dig_msg_command(struct n_dig_msg_ctx *dmcp, char const *cmd);
+/**/
+FL void n_dig_msg_on_mailbox_close(struct mailbox *mbox);
+
+/* Accessibility hook for the `~^' command; needs n_DIG_MSG_COMPOSE_CREATE() */
+FL bool_t n_dig_msg_circumflex(struct n_dig_msg_ctx *dmcp, FILE *fp,
+            char const *cmd);
+
+/* `digmsg' */
+FL int c_digmsg(void *vp);
 
 /*
  * dotlock.c
@@ -1038,17 +1045,11 @@ FL bool_t      is_head(char const *linebuf, size_t linelen,
 FL bool_t n_header_put4compose(FILE *fp, struct header *hp);
 
 /* Extract some header fields (see e.g. -t documentation) from a message.
- * If extended_list_of is set a number of additional header fields are
- * understood and address joining is performed as necessary, and the subject
- * is treated with additional care, too;
- * if it is set to TRUM1 then From: and Sender: will not be assigned no more,
- * if it is TRU1 then to,cc,bcc present in hp will be used to prefill the new
- * header; in any case a true boolean causes shell comments to be understood.
- * This calls expandaddr() on some headers and sets checkaddr_err if that is
- * not NULL -- note it explicitly allows EAF_NAME because aliases are not
+ * This calls expandaddr() on some headers and sets checkaddr_err_or_null if
+ * that is set -- note it explicitly allows EAF_NAME because aliases are not
  * expanded when this is called! */
-FL void n_header_extract(FILE *fp, struct header *hp, bool_t extended_list_of,
-         si8_t *checkaddr_err);
+FL void n_header_extract(enum n_header_extract_flags hef, FILE *fp,
+         struct header *hp, si8_t *checkaddr_err_or_null);
 
 /* Return the desired header line from the passed message
  * pointer (or NULL if the desired header field is not available).

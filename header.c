@@ -122,8 +122,8 @@ static bool_t a_header_addrspec_check(struct n_addrguts *agp, bool_t skinned,
  * Return >= 0 if something found, < 0 elsewise.
  * "colon" is set to point to the colon in the header.
  * Must deal with \ continuations & other such fraud */
-static long a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem,
-            char **colon, bool_t support_sh_comment);
+static long a_gethfield(enum n_header_extract_flags hef, FILE *f,
+               char **linebuf, size_t *linesize, long rem, char **colon);
 
 static int                 msgidnextc(char const **cp, int *status);
 
@@ -1057,8 +1057,8 @@ jleave:
 }
 
 static long
-a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem, char **colon,
-   bool_t support_sh_comment)
+a_gethfield(enum n_header_extract_flags hef, FILE *f,
+   char **linebuf, size_t *linesize, long rem, char **colon)
 {
    char *line2 = NULL, *cp, *cp2;
    size_t line2size = 0;
@@ -1077,7 +1077,7 @@ a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem, char **colon,
          rem = -1;
          break;
       }
-      if(support_sh_comment && **linebuf == '#'){
+      if((hef & n_HEADER_EXTRACT_IGNORE_SHELL_COMMENTS) && **linebuf == '#'){
          /* A comment may be last before body, too, ensure empty last line */
          **linebuf = '\0';
          continue;
@@ -1090,10 +1090,12 @@ a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem, char **colon,
             ++cp;
       if (cp == *linebuf)
          continue;
-      /* xxx Not a header line, logging only for -t / compose mode? */
-      if(*cp != ':' && support_sh_comment){
-         n_err(_("Not a header line, skipping: %s\n"),
-            n_shexp_quote_cp(*linebuf, FAL0));
+      /* XXX Not a header line, logging only for -t / compose mode? */
+      if(*cp != ':'){
+         if(!(hef & n_HEADER_EXTRACT_IGNORE_FROM_) ||
+               !is_head(*linebuf, c, FAL0))
+            n_err(_("Not a header line, skipping: %s\n"),
+               n_shexp_quote_cp(*linebuf, FAL0));
          continue;
       }
 
@@ -1325,8 +1327,8 @@ n_header_put4compose(FILE *fp, struct header *hp){
 }
 
 FL void
-n_header_extract(FILE *fp, struct header *hp, bool_t extended_list_of,
-      si8_t *checkaddr_err)
+n_header_extract(enum n_header_extract_flags hef, FILE *fp, struct header *hp,
+   si8_t *checkaddr_err_or_null)
 {
    struct n_header_field **hftail;
    struct header nh, *hq = &nh;
@@ -1334,24 +1336,26 @@ n_header_extract(FILE *fp, struct header *hp, bool_t extended_list_of,
    size_t linesize = 0, seenfields = 0;
    int c;
    long lc;
+   off_t firstoff;
    char const *val, *cp;
    NYD_ENTER;
 
    memset(hq, 0, sizeof *hq);
-   if(extended_list_of > FAL0){
+   if(hef & n_HEADER_EXTRACT_PREFILL_RECEIVERS){
       hq->h_to = hp->h_to;
       hq->h_cc = hp->h_cc;
       hq->h_bcc = hp->h_bcc;
    }
    hftail = &hq->h_user_headers;
 
+   firstoff = ftell(fp);
    for (lc = 0; readline_restart(fp, &linebuf, &linesize, 0) > 0; ++lc)
       ;
-   rewind(fp);
+   fseek(fp, firstoff, SEEK_SET);
+   clearerr(fp);
 
    /* TODO yippieia, cat(check(lextract)) :-) */
-   while ((lc = a_gethfield(fp, &linebuf, &linesize, lc, &colon,
-         extended_list_of)) >= 0) {
+   while ((lc = a_gethfield(hef, fp, &linebuf, &linesize, lc, &colon)) >= 0) {
       struct name *np;
 
       /* We explicitly allow EAF_NAME for some addressees since aliases are not
@@ -1359,23 +1363,23 @@ n_header_extract(FILE *fp, struct header *hp, bool_t extended_list_of,
       if ((val = thisfield(linebuf, "to")) != NULL) {
          ++seenfields;
          hq->h_to = cat(hq->h_to, checkaddrs(lextract(val, GTO | GFULL),
-               EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err));
+               EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err_or_null));
       } else if ((val = thisfield(linebuf, "cc")) != NULL) {
          ++seenfields;
          hq->h_cc = cat(hq->h_cc, checkaddrs(lextract(val, GCC | GFULL),
-               EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err));
+               EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err_or_null));
       } else if ((val = thisfield(linebuf, "bcc")) != NULL) {
          ++seenfields;
          hq->h_bcc = cat(hq->h_bcc, checkaddrs(lextract(val, GBCC | GFULL),
-               EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err));
+               EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err_or_null));
       } else if ((val = thisfield(linebuf, "fcc")) != NULL) {
-         if(extended_list_of){
+         if(hef & n_HEADER_EXTRACT__MODE_MASK){
             ++seenfields;
             hq->h_fcc = cat(hq->h_fcc, nalloc_fcc(val));
          }else
             goto jebadhead;
       } else if ((val = thisfield(linebuf, "from")) != NULL) {
-         if(extended_list_of > FAL0){
+         if(hef & n_HEADER_EXTRACT_FULL){
             ++seenfields;
             hq->h_from = cat(hq->h_from,
                   checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
@@ -1386,7 +1390,7 @@ n_header_extract(FILE *fp, struct header *hp, bool_t extended_list_of,
          hq->h_reply_to = cat(hq->h_reply_to,
                checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT, NULL));
       } else if ((val = thisfield(linebuf, "sender")) != NULL) {
-         if(extended_list_of > FAL0){
+         if(hef & n_HEADER_EXTRACT_FULL){
             ++seenfields;
             hq->h_sender = cat(hq->h_sender, /* TODO cat? check! */
                   checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
@@ -1404,7 +1408,7 @@ n_header_extract(FILE *fp, struct header *hp, bool_t extended_list_of,
       /* The remaining are mostly hacked in and thus TODO -- at least in
        * TODO respect to their content checking */
       else if((val = thisfield(linebuf, "message-id")) != NULL){
-         if(extended_list_of){
+         if(hef & n_HEADER_EXTRACT__MODE_MASK){
             np = checkaddrs(lextract(val, GREF),
                   /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
                   NULL);
@@ -1415,7 +1419,7 @@ n_header_extract(FILE *fp, struct header *hp, bool_t extended_list_of,
          }else
             goto jebadhead;
       }else if((val = thisfield(linebuf, "in-reply-to")) != NULL){
-         if(extended_list_of){
+         if(hef & n_HEADER_EXTRACT__MODE_MASK){
             np = checkaddrs(lextract(val, GREF),
                   /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
                   NULL);
@@ -1424,7 +1428,7 @@ n_header_extract(FILE *fp, struct header *hp, bool_t extended_list_of,
          }else
             goto jebadhead;
       }else if((val = thisfield(linebuf, "references")) != NULL){
-         if(extended_list_of){
+         if(hef & n_HEADER_EXTRACT__MODE_MASK){
             ++seenfields;
             /* TODO Limit number of references TODO better on parser side */
             hq->h_ref = cat(hq->h_ref, checkaddrs(extract(val, GREF),
@@ -1435,11 +1439,11 @@ n_header_extract(FILE *fp, struct header *hp, bool_t extended_list_of,
       }
       /* and that is very hairy */
       else if((val = thisfield(linebuf, "mail-followup-to")) != NULL){
-         if(extended_list_of){
+         if(hef & n_HEADER_EXTRACT__MODE_MASK){
             ++seenfields;
             hq->h_mft = cat(hq->h_mft, checkaddrs(lextract(val, GEXTRA | GFULL),
                   /*EACM_STRICT | TODO '/' valid!! | EACM_NOLOG | */EACM_NONAME,
-                  checkaddr_err));
+                  checkaddr_err_or_null));
          }else
             goto jebadhead;
       }
@@ -1492,20 +1496,22 @@ jebadhead:
       }
    }
 
-   if (seenfields > 0 && (checkaddr_err == NULL || *checkaddr_err == 0)) {
+   if (seenfields > 0 &&
+         (checkaddr_err_or_null == NULL || *checkaddr_err_or_null == 0)) {
       hp->h_to = hq->h_to;
       hp->h_cc = hq->h_cc;
       hp->h_bcc = hq->h_bcc;
       hp->h_from = hq->h_from;
       hp->h_reply_to = hq->h_reply_to;
       hp->h_sender = hq->h_sender;
-      if(hq->h_subject != NULL || extended_list_of <= FAL0)
+      if(hq->h_subject != NULL ||
+            (hef & n_HEADER_EXTRACT__MODE_MASK) != n_HEADER_EXTRACT_FULL)
          hp->h_subject = hq->h_subject;
       hp->h_user_headers = hq->h_user_headers;
 
-      if(extended_list_of){
+      if(hef & n_HEADER_EXTRACT__MODE_MASK){
          hp->h_fcc = hq->h_fcc;
-         if(extended_list_of > 0)
+         if(hef & n_HEADER_EXTRACT_FULL)
             hp->h_ref = hq->h_ref;
          hp->h_message_id = hq->h_message_id;
          hp->h_in_reply_to = hq->h_in_reply_to;
@@ -1516,7 +1522,7 @@ jebadhead:
           * TODO unfortunately a lot of other places do again and blabla */
          if(hp->h_from == NULL)
             hp->h_from = n_poption_arg_r;
-         else if(extended_list_of > 0 &&
+         else if((hef & n_HEADER_EXTRACT_FULL) &&
                hp->h_from->n_flink != NULL && hp->h_sender == NULL)
             hp->h_sender = lextract(ok_vlook(sender),
                   GEXTRA | GFULL | GFULLEXTRA);
@@ -1555,7 +1561,8 @@ hfield_mult(char const *field, struct message *mp, int mult)
          readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
       goto jleave;
    while (lc > 0) {
-      if ((lc = a_gethfield(ibuf, &linebuf, &linesize, lc, &colon, FAL0)) < 0)
+      if ((lc = a_gethfield(n_HEADER_EXTRACT_NONE, ibuf, &linebuf, &linesize,
+            lc, &colon)) < 0)
          break;
       if ((hfield = thisfield(linebuf, field)) != NULL && *hfield != '\0') {
          if (mult)
@@ -2924,7 +2931,8 @@ n_header_match(struct message *mp, struct search_expr const *sep){
    while(lc > 0){
       struct name *np;
 
-      if((lc = a_gethfield(ibuf, linebuf, linesize, lc, &colon, FAL0)) <= 0)
+      if((lc = a_gethfield(n_HEADER_EXTRACT_NONE, ibuf, linebuf, linesize,
+            lc, &colon)) <= 0)
          break;
 
       /* Is this a header we are interested in? */

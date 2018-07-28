@@ -606,7 +606,10 @@ a_coll_makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err,
       goto jleave;
    }
 
-   n_header_extract(fp, hp, (do_delayed_due_t ? TRU1 : TRUM1), checkaddr_err);
+   n_header_extract(((do_delayed_due_t
+            ? n_HEADER_EXTRACT_FULL | n_HEADER_EXTRACT_PREFILL_RECEIVERS
+            : n_HEADER_EXTRACT_EXTENDED) |
+         n_HEADER_EXTRACT_IGNORE_SHELL_COMMENTS), fp, hp, checkaddr_err);
    if (checkaddr_err != NULL && *checkaddr_err != 0)
       goto jleave;
 
@@ -896,7 +899,8 @@ a_coll_ocs__mac(void){
    setvbuf(n_stdout, NULL, _IOLBF, 0);
    n_psonce &= ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT);
    n_pstate |= n_PS_COMPOSE_FORKHOOK;
-   n_readctl_overlay = NULL; /* TODO we need OnForkEvent! See c_readctl() */
+   n_readctl_read_overlay = NULL; /* TODO need OnForkEvent! See c_readctl() */
+   n_digmsg_read_overlay = NULL; /* TODO need OnForkEvent! See c_digmsg() */
    if(n_poption & n_PO_D_VV){
       char buf[128];
 
@@ -1003,6 +1007,7 @@ FL FILE *
 n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    char const *quotefile, si8_t *checkaddr_err)
 {
+   struct n_dig_msg_ctx dmc;
    struct n_string s, * volatile sp;
    struct a_coll_ocs_arg *coap;
    int c;
@@ -1023,7 +1028,9 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    FILE * volatile sigfp;
    NYD_ENTER;
 
+   n_DIG_MSG_COMPOSE_CREATE(&dmc, hp);
    _coll_fp = NULL;
+
    sigfp = NULL;
    linesize = 0;
    linebuf = NULL;
@@ -1033,7 +1040,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    coap = NULL;
    sp = NULL;
 
-   /* Start catching signals from here, but we're still die on interrupts
+   /* Start catching signals from here, but we still die on interrupts
     * until we're in the main loop */
    sigfillset(&nset);
    sigprocmask(SIG_BLOCK, &nset, &oset);
@@ -1396,13 +1403,8 @@ jearg:
          n_pstate_err_no = n_ERR_NONE; /* XXX ~@ does NOT handle $!/$?! */
          n_pstate_ex_no = 0; /* XXX */
          }break;
-      case '^':{
-         struct n_dig_msg_ctx dmc;
-
-         memset(&dmc, 0, sizeof dmc);
-         dmc.dmc_fp = n_stdout;
-         dmc.dmc_hp = hp;
-         if(!n_dig_msg_command(&dmc, cp)){
+      case '^':
+         if(!n_dig_msg_circumflex(&dmc, n_stdout, cp)){
             if(ferror(_coll_fp))
                goto jerr;
             goto jearg;
@@ -1410,7 +1412,7 @@ jearg:
          n_pstate_err_no = n_ERR_NONE; /* XXX */
          n_pstate_ex_no = 0; /* XXX */
          hist &= ~a_HIST_GABBY;
-      }  break;
+         break;
       /* case '_': <> ':' */
       case '|':
          /* Pipe message through command. Collect output as new message */
@@ -1785,7 +1787,7 @@ jout:
             (n_psonce & ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT)),
             &a_coll_ocs__finalize, &coap);
          /* Hook version protocol for ~^: update manual upon change! */
-         fputs(n_DIG_MSG_PLUMBING_VERSION "\n", coap->coa_stdout);
+         fputs(n_DIG_MSG_PLUMBING_VERSION "\n", n_stdout/*coap->coa_stdout*/);
          goto jcont;
       }
 
@@ -1959,6 +1961,7 @@ jleave:
    if (linebuf != NULL)
       n_free(linebuf);
    sigprocmask(SIG_BLOCK, &nset, NULL);
+   n_DIG_MSG_COMPOSE_GUT(&dmc);
    n_pstate &= ~n_PS_COMPOSE_MODE;
    safe_signal(SIGINT, _coll_saveint);
    safe_signal(SIGHUP, _coll_savehup);
