@@ -1281,9 +1281,14 @@ FL void n_memory_pool_fixate(void);
  * it, i.e., those which have been pushed thereafter.
  * If NULL is popped then this means that the current per-execution level is
  * left and n_go_data_ctx.gdc_mempool is not NULL; an event loop tick also
- * causes all _push()ed stacks to be dropped (via n_memory_reset()) */
-FL void n_memory_pool_push(void *vp);
-FL void n_memory_pool_pop(void *vp);
+ * causes all _push()ed stacks to be dropped (via n_memory_reset()).
+ * Memory pools can be stored away, in order to re-push() them later again;
+ * for this these functions gained overall lifetime parameters: init needs to
+ * be true when calling push() for the first time on vp, and gut needs to be
+ * set when pop()ping vp the last time only */
+FL void n_memory_pool_push(void *vp, bool_t init);
+FL void n_memory_pool_pop(void *vp, bool_t gut);
+FL void *n_memory_pool_top(void);
 
 /* Generic heap memory */
 

@@ -950,7 +950,7 @@ jrestart:
 
    if(!(gcp->gc_flags & a_GO_MEMPOOL_INHERITED)){
       if(gcp->gc_data.gdc_mempool != NULL)
-         n_memory_pool_pop(NULL);
+         n_memory_pool_pop(NULL, TRU1);
    }else
       n_memory_reset();
 

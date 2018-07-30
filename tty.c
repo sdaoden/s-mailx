@@ -2285,8 +2285,8 @@ a_tty_kht(struct a_tty_line *tlp){
       set_savec = TRU1;
    orig = exp;
 
-   mempool_persist = n_go_data->gdc_mempool;
-   n_memory_pool_push(mempool = n_lofi_alloc(sizeof *mempool));
+   mempool_persist = n_memory_pool_top();
+   n_memory_pool_push(mempool = n_lofi_alloc(sizeof *mempool), TRU1);
 
    shoup = n_string_creat_auto(&shou);
    f = a_TTY_VF_NONE;
@@ -2474,7 +2474,7 @@ jset:
    tlp->tl_count = tlp->tl_cursor = 0;
    f |= a_TTY_VF_MOD_DIRTY;
 jleave:
-   n_memory_pool_pop(mempool);
+   n_memory_pool_pop(mempool, TRU1);
    n_lofi_free(mempool);
    tlp->tl_vi_flags |= f;
    NYD2_LEAVE;
