@@ -843,12 +843,6 @@ a_amv_lopts_add(struct a_amv_lostack *alp, char const *name,
       avp->av_value = &avp->av_name[nl];
       avp->av_flags = oavp->av_flags;
       memcpy(avp->av_value, oavp->av_value, vl);
-#ifdef HAVE_PUTENV
-      if(oavp->av_env != NULL)
-         avp->av_env = sstrdup(oavp->av_env);
-      assert(avp->av_env == NULL ||
-         (avp->av_flags & (a_AMV_VF_ENV | a_AMV_VF_EXT_LINKED)));
-#endif
    }
    memcpy(avp->av_name, name, nl);
 jleave:
