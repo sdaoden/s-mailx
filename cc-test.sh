@@ -204,7 +204,7 @@ check() {
    restat=${?} tid=${1} eestat=${2} f=${3} s=${4}
    [ "${eestat}" != - ] && [ "${restat}" != "${eestat}" ] &&
       err "${TESTNAME}-${tid}" 'unexpected status: '"${restat} != ${eestat}"
-   csum="`${cksum} < ${f}`"
+   csum="`${cksum} < ${f} | ${sed} -e 's/[ 	]\{1,\}/ /g'`"
    if [ "${csum}" = "${s}" ]; then
       maex=
       printf '%s-%s: ok\n' "${TEST_NAME}" "${tid}"

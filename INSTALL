@@ -273,10 +273,6 @@ Occasional tests:
 . Solaris <http://opencsw.org/>
   @ First of all: thanks to OpenCSW.org for offering SSH access to
     their Solaris build cluster!
-  * In order to be able to run the tests you will need a cksum(1) that
-    supports CRC-32 (POSIX).  We look into /opt/csw/gnu/cksum, but if
-    that cannot be found you have to adjust the $cksum variable (see
-    above) to something that works.
   * With OPT_AUTOCC: we try to use Sun cc(1) whenever we find it.
     If your gcc(1) installation is doing alright you have to turn
     OPT_AUTOCC off and use $CC, $CFLAGS and $LDFLAGS.

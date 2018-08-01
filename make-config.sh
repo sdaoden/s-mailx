@@ -355,15 +355,6 @@ _os_setup_sunos() {
    OS_DEFINES="${OS_DEFINES}#define __EXTENSIONS__\n"
    #OS_DEFINES="${OS_DEFINES}#define _POSIX_C_SOURCE 200112L\n"
 
-   [ -n "${cksum}" ] || cksum=/opt/csw/gnu/cksum
-   if [ -x "${cksum}" ]; then :; else
-      msg 'ERROR: Not an executable program: %s' "${cksum}"
-      msg 'ERROR:   We need a CRC-32 cksum(1), as specified in POSIX.'
-      msg 'ERROR:   However, we do so only for tests.'
-      msg 'ERROR:   If that is ok, set "cksum=/usr/bin/true", then rerun'
-      config_exit 1
-   fi
-
    if feat_yes AUTOCC; then
       if acmd_set CC cc; then
          feat_yes DEBUG && _CFLAGS="-v -Xa -g" || _CFLAGS="-Xa -O"
