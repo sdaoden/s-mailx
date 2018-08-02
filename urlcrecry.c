@@ -1077,7 +1077,7 @@ jurlp_err:
       memcpy(s->s, urlp->url_host.s, i = urlp->url_host.l);
       if(upl > 0){
          s->s[i++] = ':';
-         memcpy(&s->s[i], urlp->url_port, upl);
+         memcpy(&s->s[i], urlp->url_port, --upl);
          i += upl;
       }
       s->s[s->l = i] = '\0';
