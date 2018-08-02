@@ -343,6 +343,7 @@ t_all() {
 # Basics {{{
 t_X_opt_input_command_stack() {
    t_prolog X_opt_input_command_stack
+   TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<- '__EOT' > "${BODY}"
 	echo 1
@@ -432,13 +433,25 @@ t_X_opt_input_command_stack() {
 
    check 1 0 "${MBOX}" '1786542668 416'
 
+   # Test for [8412796a] (n_cmd_arg_parse(): FIX token error -> crash, e.g.
+   # "-RX 'bind;echo $?' -Xx".., 2018-08-02)
+   if have_feat key-bindings; then
+      ${MAILX} ${ARGS} -RX'bind;echo $?' -Xx > ./.tall 2>&1
+      ${MAILX} ${ARGS} -RX'bind ;echo $?' -Xx >> ./.tall 2>&1
+      ${MAILX} ${ARGS} -RX'bind	;echo $?' -Xx >> ./.tall 2>&1
+      ${MAILX} ${ARGS} -RX'bind      ;echo $?' -Xx >> ./.tall 2>&1
+      check cmdline 0 ./.tall '1867586969 8'
+   else
+      echo 'X_opt_input_command_stack-cmdline: unsupported, skipped'
+   fi
+
    t_epilog
 }
 
 t_X_errexit() {
    t_prolog X_errexit
    if have_feat uistrings; then :; else
-      echo 'x_errexit: unsupported, skipped'
+      echo 'X_errexit: unsupported, skipped'
       return
    fi
 
