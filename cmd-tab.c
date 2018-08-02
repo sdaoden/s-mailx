@@ -506,8 +506,11 @@ jredo:
             if(!(shs & n_SHEXP_STATE_OUTPUT))
                goto jleave;
             addca = TRUM1;
-         }else
-            addca = TRU1;
+         }else if(!(shs & n_SHEXP_STATE_OUTPUT) && cad_idx < cadp->cad_no &&
+               !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION))
+            goto jerr;
+         else
+            addca = ((shs & n_SHEXP_STATE_OUTPUT) != NULL);
          }break;
       }
       ++parsed_args;
