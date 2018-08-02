@@ -425,7 +425,7 @@ FL bool_t
 n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
    struct n_cmd_arg ncap, *lcap, *target_argp, **target_argpp, *cap;
    struct str shin_orig, shin;
-   bool_t addca, greedyjoin;
+   bool_t stoploop, greedyjoin;
    void const *cookie;
    size_t cad_idx, parsed_args;
    struct n_cmd_arg_desc const *cadp;
@@ -478,7 +478,7 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
             !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
       }
    }
-#endif
+#endif /* HAVE_DEBUG */
 
    n_pstate_err_no = n_ERR_NONE;
    shin.s = n_UNCONST(cacp->cac_indat); /* "logical" only */
@@ -503,7 +503,7 @@ jredo:
       memcpy(&ncap.ca_ent_flags[0], &cadp->cad_ent_flags[cad_idx][0],
          sizeof ncap.ca_ent_flags);
       target_argpp = NULL;
-      addca = FAL0;
+      stoploop = FAL0;
 
       switch(ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK){
       default:
@@ -512,7 +512,7 @@ jredo:
          enum n_shexp_state shs;
          ui32_t addflags;
 
-         if(cad_idx == 0 && shin.l == 0) goto jmsglist_related; /* TODO */
+         if(shin.l == 0) goto jmsglist_related; /* TODO */
 
          if(cad_idx == cadp->cad_no - 1 ||
                (cadp->cad_ent_flags[cad_idx + 1][0] & n_CMD_ARG_DESC_OPTION))
@@ -543,12 +543,9 @@ jredo:
                (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_HONOUR_STOP)){
             if(!(shs & n_SHEXP_STATE_OUTPUT))
                goto jleave;
-            addca = TRUM1;
-         }else if(!(shs & n_SHEXP_STATE_OUTPUT) && cad_idx < cadp->cad_no &&
-               !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION))
+            stoploop = TRU1;
+         }else if(!(shs & n_SHEXP_STATE_OUTPUT)) /* XXX Is this right? */
             goto jerr;
-         else
-            addca = ((shs & n_SHEXP_STATE_OUTPUT) != NULL);
          }break;
       case n_CMD_ARG_DESC_MSGLIST_AND_TARGET:
          target_argpp = &target_argp;
@@ -605,49 +602,47 @@ jredo:
             goto jerr;
          }
          shin.l = 0;
-         addca = TRUM1;
+         stoploop = TRU1; /* XXX Asserted to be last above! */
          break;
       }
       ++parsed_args;
 
-      if(addca){
-         if(greedyjoin == TRU1){ /* TODO speed this up! */
-            char *cp;
-            size_t i;
+      if(greedyjoin == TRU1){ /* TODO speed this up! */
+         char *cp;
+         size_t i;
 
-            assert((ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK
-               ) != n_CMD_ARG_DESC_MSGLIST);
-            assert(lcap != NULL);
-            assert(target_argpp == NULL);
-            i = lcap->ca_arg.ca_str.l;
-            lcap->ca_arg.ca_str.l += 1 + ncap.ca_arg.ca_str.l;
-            cp = n_autorec_alloc(lcap->ca_arg.ca_str.l +1);
-            memcpy(cp, lcap->ca_arg.ca_str.s, i);
-            lcap->ca_arg.ca_str.s = cp;
-            cp[i++] = ' ';
-            memcpy(&cp[i], ncap.ca_arg.ca_str.s, ncap.ca_arg.ca_str.l +1);
-         }else{
-            cap = n_autorec_alloc(sizeof *cap);
-            memcpy(cap, &ncap, sizeof ncap);
-            if(lcap == NULL)
-               cacp->cac_arg = cap;
-            else
-               lcap->ca_next = cap;
-            lcap = cap;
-            ++cacp->cac_no;
+         assert((ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK
+            ) != n_CMD_ARG_DESC_MSGLIST);
+         assert(lcap != NULL);
+         assert(target_argpp == NULL);
+         i = lcap->ca_arg.ca_str.l;
+         lcap->ca_arg.ca_str.l += 1 + ncap.ca_arg.ca_str.l;
+         cp = n_autorec_alloc(lcap->ca_arg.ca_str.l +1);
+         memcpy(cp, lcap->ca_arg.ca_str.s, i);
+         lcap->ca_arg.ca_str.s = cp;
+         cp[i++] = ' ';
+         memcpy(&cp[i], ncap.ca_arg.ca_str.s, ncap.ca_arg.ca_str.l +1);
+      }else{
+         cap = n_autorec_alloc(sizeof *cap);
+         memcpy(cap, &ncap, sizeof ncap);
+         if(lcap == NULL)
+            cacp->cac_arg = cap;
+         else
+            lcap->ca_next = cap;
+         lcap = cap;
+         ++cacp->cac_no;
 
-            if(target_argpp != NULL){
-               lcap->ca_next = cap = *target_argpp;
-               if(cap != NULL){
-                  lcap = cap;
-                  ++cacp->cac_no;
-               }
+         if(target_argpp != NULL){
+            lcap->ca_next = cap = *target_argpp;
+            if(cap != NULL){
+               lcap = cap;
+               ++cacp->cac_no;
             }
          }
-
-         if(addca == TRUM1)
-            goto jleave;
       }
+
+      if(stoploop)
+         goto jleave;
 
       if((shin.l > 0 || cookie != NULL) &&
             (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_GREEDY)){
