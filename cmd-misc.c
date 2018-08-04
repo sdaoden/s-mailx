@@ -561,7 +561,12 @@ c_readall(void * vp){ /* TODO 64-bit retval */
          if(sp->s_len == 0)
             goto jleave;
          break;
-      }else if(rv == 0){ /* xxx will not get*/
+      }
+
+      if(n_pstate & n_PS_READLINE_NL)
+         linebuf[rv++] = '\n'; /* Replace NUL with it */
+
+      if(n_UNLIKELY(rv == 0)){ /* xxx will not get*/
          if(n_go_input_is_eof()){
             if(sp->s_len == 0){
                rv = -1;
@@ -569,14 +574,12 @@ c_readall(void * vp){ /* TODO 64-bit retval */
             }
             break;
          }
-      }else if(UICMP(32, SI32_MAX - sp->s_len, <=, rv)){
+      }else if(n_LIKELY(UICMP(32, SI32_MAX - sp->s_len, >, rv)))
+         sp = n_string_push_buf(sp, linebuf, rv);
+      else{
          n_pstate_err_no = n_ERR_OVERFLOW;
          rv = -1;
          goto jleave;
-      }else{
-         sp = n_string_push_buf(sp, linebuf, rv);
-         if(n_pstate & n_PS_READLINE_NL)
-            sp = n_string_push_c(sp, '\n');
       }
    }
 

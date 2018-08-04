@@ -2468,8 +2468,13 @@ t_behave_read() {
    wysh set d;readall d;echo $?/$^ERRNAME / <$d>
    readctl remove .tin;echo $?/$^ERRNAME;\
       readctl remove .tin2;echo $?/$^ERRNAME
+   echo '### now with empty lines'
+   ! printf 'one line\n\ntwo line\n\n' > ./.temptynl
+   readctl create .temptynl;echo $?/$^ERRNAME
+   readall d; echo "$?/$^ERRNAME / <$d>"
+   readctl remove .temptynl;echo $?/$^ERRNAME
 	__EOT
-   check behave:readall 0 "${MBOX}" '860434889 333'
+   check readall 0 "${MBOX}" '4113506527 405'
 
    t_epilog
 }
