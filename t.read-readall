@@ -14,3 +14,11 @@
 -1/NONE / <>
 0/NONE
 0/NONE
+### now with empty lines
+0/NONE
+20/NONE / <one line
+
+two line
+
+>
+0/NONE
