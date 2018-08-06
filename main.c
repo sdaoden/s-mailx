@@ -733,7 +733,7 @@ main(int argc, char *argv[]){
          nap->aa_next = NULL;
          nap->aa_file = a_main_oarg;
          a_curr = nap;
-      }  break;
+         }break;
       case 'B':
          n_OBSOLETE(_("-B is obsolete, please use -# as necessary"));
          break;
@@ -756,7 +756,7 @@ main(int argc, char *argv[]){
             emsg = N_("Invalid custom header data with -C");
             goto jusage;
          }
-      }  break;
+         }break;
       case 'c':
          /* Add (a) carbon copy recipient (list) */
          n_psonce |= n_PSO_SENDMODE;

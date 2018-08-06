@@ -971,7 +971,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
          if(!ok)
             goto jerr;
          n_customhdr_list = hflp;
-      }  break;
+         }break;
       case ok_v_from:
       case ok_v_sender:{
          struct name *np;
@@ -986,7 +986,7 @@ jefrom:
          }else for(; np != NULL; np = np->n_flink)
             if(is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
                goto jefrom;
-      }  break;
+         }break;
       case ok_v_HOME:
          /* Note this gets called from main.c during initialization, and they
           * simply set this to pw_dir as a fallback: don't verify _that_ call.
@@ -1023,7 +1023,7 @@ jefrom:
                ok = FAL0;
                break;
             }
-      }  break;
+         }break;
       case ok_v_sendcharsets:{
          struct n_string s, *sp = &s;
          char *csv, *cp;
@@ -1043,7 +1043,7 @@ jefrom:
 
          *val = n_string_cp(sp);
          /* n_string_drop_ownership(sp); */
-      }  break;
+         }break;
       case ok_v_TMPDIR:
          if(!n_is_dir(*val, TRU1)){
             emsg = N_("$TMPDIR is not a directory or not accessible: %s\n");
@@ -1089,7 +1089,7 @@ jefrom:
                *x++ = c;
          *x = '\0';
          n_PS_ROOT_BLOCK(ok_vset(ifs_ws, x_b));
-      }  break;
+         }break;
 #ifdef HAVE_SETLOCALE
       case ok_v_LANG:
       case ok_v_LC_ALL:
@@ -1146,7 +1146,7 @@ jefrom:
             n_customhdr_list = hfp->hf_next;
             n_free(hfp);
          }
-      }  break;
+         }break;
       case ok_v_HOME:
          /* Invalidate any resolved folder then, too
           * FALLTHRU */
