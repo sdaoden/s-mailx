@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Account, macro and variable handling.
+ *@ Account, macro and variable handling; `vexpr' and `vpospar'.
  *@ HOWTO add a new non-dynamic boolean or value option:
  *@ - add an entry to nail.h:enum okeys
  *@ - run make-okey-map.pl (which is highly related..)
@@ -1614,7 +1614,7 @@ jnewval:
 
 static char const *
 a_amv_var_vsc_global(struct a_amv_var_carrier *avcp){
-   char itoabuf[32];
+   char iencbuf[n_IENC_BUFFER_SIZE];
    char const *rv;
    si32_t *ep;
    struct a_amv_var_map const *avmp;
@@ -1640,8 +1640,7 @@ a_amv_var_vsc_global(struct a_amv_var_carrier *avcp){
    case 0: rv = n_0; break;
    case 1: rv = n_1; break;
    default:
-      snprintf(itoabuf, sizeof itoabuf, "%d", *ep);
-      rv = itoabuf;
+      rv = n_ienc_buf(iencbuf, *ep, 10, n_IENC_MODE_SIGNED_TYPE);
       break;
    }
    n_PS_ROOT_BLOCK(n_var_okset(avcp->avc_okey, (uintptr_t)rv));
@@ -1656,7 +1655,7 @@ a_amv_var_vsc_global(struct a_amv_var_carrier *avcp){
 
 static char const *
 a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp){
-   char itoabuf[32];
+   char iencbuf[n_IENC_BUFFER_SIZE];
    si32_t e;
    size_t i;
    char const *rv;
@@ -1676,8 +1675,8 @@ jeno:
          case 0: rv = n_0; break;
          case 1: rv = n_1; break;
          default:
-            snprintf(itoabuf, sizeof itoabuf, "%d", e);
-            rv = savestr(itoabuf); /* XXX yet, cannot do numbers */
+            /* XXX Need to convert number to string yet */
+            rv = savestr(n_ienc_buf(iencbuf, e, 10, n_IENC_MODE_SIGNED_TYPE));
             break;
          }
          goto jleave;
@@ -1801,10 +1800,9 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
       }
       }break;
    case a_AMV_VST_NOSIGN:{
-      char *cp;
+      char iencbuf[n_IENC_BUFFER_SIZE];
 
-      rv = cp = n_autorec_alloc(sizeof("65535"));
-      snprintf(cp, sizeof("65535"), "%hu", argc);
+      rv = savestr(n_ienc_buf(iencbuf, argc, 10, n_IENC_MODE_NONE));
       }break;
    default:
       rv = n_empty;
