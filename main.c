@@ -1226,7 +1226,8 @@ je_expandargv:
             n_exit_status = n_EXIT_ERR;
             goto jleave;
          }
-      }else if((n_poption_arg_Mm = n_mimetype_classify_filename(qf)) == NULL){
+      }else if(/* XXX only to satisfy Coverity! */qf != NULL &&
+            (n_poption_arg_Mm = n_mimetype_classify_filename(qf)) == NULL){
          n_err(_("Could not `mimetype'-classify -m argument: %s\n"),
             n_shexp_quote_cp(qf, FAL0));
          n_exit_status = n_EXIT_ERR;
