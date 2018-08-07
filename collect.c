@@ -50,7 +50,7 @@ struct a_coll_fmt_ctx{ /* xxx This is temporary until v15 has objects */
    char *cfc_real;
    char *cfc_full;
    char *cfc_date;
-   char *cfc_msgid;     /* Or NULL */
+   char const *cfc_msgid;  /* Or NULL */
 };
 
 struct a_coll_ocs_arg{
@@ -501,10 +501,11 @@ a_coll_quote_message(FILE *fp, struct message *mp, bool_t isfwd){
 
             if((cp = hfield1("message-id", mp)) != NULL &&
                   (np = lextract(cp, GREF)) != NULL)
-               cfc.cfc_msgid = np->n_name;
+               cp = np->n_name;
             else
-               cp = (char*)-1;
+               cp = NULL;
          }
+         cfc.cfc_msgid = cp;
 
          if(!a_coll__fmt_inj(&cfc) || fflush(fp))
             goto jleave;
