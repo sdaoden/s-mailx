@@ -889,9 +889,8 @@ n_ienc_buf(char cbuf[n_IENC_BUFFER_SIZE], ui64_t value, ui8_t base,
     *   goto jleave;
     *}*/
 
-   rv = &cbuf[n_IENC_BUFFER_SIZE];
-   *--rv = '\0';
-   itoa =  (iem & n_IENC_MODE_LOWERCASE) ? a_aux_ienc_itoa_lower
+   *(rv = &cbuf[n_IENC_BUFFER_SIZE -1]) = '\0';
+   itoa = (iem & n_IENC_MODE_LOWERCASE) ? a_aux_ienc_itoa_lower
          : a_aux_ienc_itoa_upper;
 
    if((si64_t)value < 0){
