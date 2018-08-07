@@ -586,6 +586,22 @@ a_sendout_attach_msg(struct header *hp, struct attachment *ap, FILE *fo)
    if(fprintf(fo, "\n--%s\nContent-Type: message/rfc822\n"
          "Content-Disposition: inline\n", _sendout_boundary) < 0)
       goto jerr;
+
+   if((ccp = ok_vlook(stealthmua)) == NULL || !strcmp(ccp, "noagent")){
+      struct name *np;
+
+      /* TODO RFC 2046 specifies that the same Content-ID should be used
+       * TODO for identical data; this is too hard for use right now,
+       * TODO because if done right it should be checksum based!?! */
+      if((np = ap->a_content_id) != NULL)
+         ccp = np->n_name;
+      else
+         ccp = a_sendout_random_id(hp, FAL0);
+
+      if(ccp != NULL && fprintf(fo, "Content-ID: <%s>\n", ccp) < 0)
+         goto jerr;
+   }
+
    if((ccp = ap->a_content_description) != NULL &&
          (fputs("Content-Description: ", fo) == EOF ||
           xmime_write(ccp, strlen(ccp), fo, CONV_TOHDR, (TD_ISPR | TD_ICONV),
