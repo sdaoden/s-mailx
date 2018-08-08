@@ -295,7 +295,7 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
    int binary = 0;
    char *buf = NULL;
    size_t bufsize = 0, buflen, cnt;
-   long lines = 0, octets = 0;
+   long lns = 0, octets = 0;
    struct message *x;
    off_t offset;
    NYD_ENTER;
@@ -316,7 +316,7 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
             binary = 1;
       fwrite(buf, sizeof *buf, buflen, mb.mb_otf);
       octets += buflen;
-      ++lines;
+      ++lns;
    }
 
    {  struct time_current save = time_current;
@@ -324,11 +324,11 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
       octets += mkdate(mb.mb_otf, "X-Decoding-Date");
       time_current = save;
    }
-   ++lines;
+   ++lns;
 
    cnt = fsize(bp);
    while (fgetline(&buf, &bufsize, &cnt, &buflen, bp, 0) != NULL) {
-      lines++;
+      lns++;
       if (!binary && buf[buflen - 1] == '\n' && buf[buflen - 2] == '\r')
          buf[--buflen - 1] = '\n';
       fwrite(buf, sizeof *buf, buflen, mb.mb_otf);
@@ -343,7 +343,7 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
 
    while (!binary && lastnl < 2) {
       putc('\n', mb.mb_otf);
-      ++lines;
+      ++lns;
       ++octets;
       ++lastnl;
    }
@@ -358,7 +358,7 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
       x = NULL;
    }else{
       x->m_size = x->m_xsize = octets;
-      x->m_lines = x->m_xlines = lines;
+      x->m_lines = x->m_xlines = lns;
       x->m_block = mailx_blockof(offset);
       x->m_offset = mailx_offsetof(offset);
    }
