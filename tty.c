@@ -3354,7 +3354,7 @@ jbuiltin_redo:
                      }
                      assert(0);
                   }else{
-                     cbufp = tbbtp->tbbt_exp;
+                     cbufp = n_UNCONST(tbbtp->tbbt_exp);
                      goto jinject_input;
                   }
                }
