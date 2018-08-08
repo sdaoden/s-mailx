@@ -162,9 +162,9 @@ a_attachment_iconv(struct attachment *ap, FILE *ifp){
    ap->a_tmpf = ofp;
 jleave:
    if(inl.s != NULL)
-      free(inl.s);
+      n_free(inl.s);
    if(oul.s != NULL)
-      free(oul.s);
+      n_free(oul.s);
    if(icp != (iconv_t)-1)
       n_iconv_close(icp);
    Fclose(ifp);
@@ -302,7 +302,7 @@ jerr_fopen:
       }
    }
 
-   nap = a_attachment_setup_base(csalloc(1, sizeof *nap), file);
+   nap = a_attachment_setup_base(n_autorec_calloc(1, sizeof *nap), file);
    nap->a_path_user = file_user;
    if(msgno >= 0)
       nap = a_attachment_setup_msg(nap, file, msgno);

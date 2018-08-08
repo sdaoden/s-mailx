@@ -165,7 +165,7 @@ jleave:
       if(strcmp(mnbuf, mailname))
          n_err(_("Mailbox changed: it is likely that existing "
             "rfc822 attachments became invalid!\n"));
-      free(mnbuf);
+      n_free(mnbuf);
    }
    NYD_LEAVE;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
@@ -272,7 +272,7 @@ jdelim_empty:
       rv = n_ERR_NOTOBACCO;
 jleave:
    if(linebuf != NULL)
-      free(linebuf);
+      n_free(linebuf);
    if(fbuf != NULL){
       if(fbuf != n_stdin)
          Fclose(fbuf);
@@ -354,7 +354,7 @@ print_collf(FILE *cf, struct header *hp)
    while(fgetline(&lbuf, &linesize, &cnt, &linelen, cf, 1))
       prout(lbuf, linelen, obuf);
    if(lbuf != NULL)
-      free(lbuf);
+      n_free(lbuf);
 
    if(hp->h_attach != NULL){
       fputs(_("-------\nAttachments:\n"), obuf);
@@ -588,7 +588,7 @@ a_coll_forward(char const *ms, FILE *fp, int f)
    enum sendaction action;
    NYD_ENTER;
 
-   msgvec = salloc((size_t)(msgCount + 1) * sizeof *msgvec);
+   msgvec = n_autorec_alloc((size_t)(msgCount + 1) * sizeof *msgvec);
    if (getmsglist(ms, msgvec, 0) < 0) {
       rv = n_ERR_NOENT; /* XXX not really, should be handled there! */
       goto jleave;
@@ -849,8 +849,8 @@ jins:
 
          nl = strlen(cp = cmd[2]) +1;
          bl = strlen(cmd[3]) +1;
-         *hfpp = hfp = salloc(n_VSTRUCT_SIZEOF(struct n_header_field, hf_dat
-               ) + nl + bl);
+         *hfpp = hfp = n_autorec_alloc(n_VSTRUCT_SIZEOF(struct n_header_field,
+               hf_dat) + nl + bl);
          hfp->hf_next = NULL;
          hfp->hf_nl = nl - 1;
          hfp->hf_bl = bl - 1;
@@ -1956,7 +1956,7 @@ jcont:
       /* No command escapes, interrupts not expected.  Simply copy STDIN */
       if(!(n_psonce & n_PSO_INTERACTIVE) &&
             !(n_poption & (n_PO_t_FLAG | n_PO_TILDE_FLAG))){
-         linebuf = srealloc(linebuf, linesize = LINESIZE);
+         linebuf = n_realloc(linebuf, linesize = LINESIZE);
          while ((i = fread(linebuf, sizeof *linebuf, linesize, n_stdin)) > 0) {
             if (i != fwrite(linebuf, sizeof *linebuf, i, _coll_fp))
                goto jerr;
@@ -2683,7 +2683,7 @@ jreasksend:
       }
 
       if(linebuf == NULL)
-         linebuf = smalloc(linesize = LINESIZE);
+         linebuf = n_alloc(linesize = LINESIZE);
       c = '\0';
       while((i = fread(linebuf, sizeof *linebuf, linesize, n_UNVOLATILE(sigfp)))
             > 0){
@@ -2732,7 +2732,7 @@ jskiptails:
 
 jleave:
    if (linebuf != NULL)
-      free(linebuf);
+      n_free(linebuf);
    sigprocmask(SIG_BLOCK, &nset, NULL);
    n_pstate &= ~n_PS_COMPOSE_MODE;
    safe_signal(SIGINT, _coll_saveint);

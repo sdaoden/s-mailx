@@ -249,7 +249,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset) /* TODO Mailbox->setptr() */
             message_append(&self);
          message_append_null();
          if (linebuf != NULL)
-            free(linebuf);
+            n_free(linebuf);
          break;
       }
 
@@ -671,8 +671,8 @@ setmsize(int sz)
 {
    NYD_ENTER;
    if (n_msgvec != NULL)
-      free(n_msgvec);
-   n_msgvec = scalloc(sz + 1, sizeof *n_msgvec);
+      n_free(n_msgvec);
+   n_msgvec = n_calloc(sz + 1, sizeof *n_msgvec);
    NYD_LEAVE;
 }
 
@@ -756,7 +756,7 @@ getmdot(int nmail)
          c_thread(NULL);
       } else if ((cp = ok_vlook(autosort)) != NULL) {
          if (mb.mb_sorted != NULL)
-            free(mb.mb_sorted);
+            n_free(mb.mb_sorted);
          mb.mb_sorted = sstrdup(cp);
          c_sort(NULL);
       }
@@ -877,7 +877,7 @@ initbox(char const *name)
    mb.mb_flags = MB_NOFLAGS;
 #endif
    if (mb.mb_sorted != NULL) {
-      free(mb.mb_sorted);
+      n_free(mb.mb_sorted);
       mb.mb_sorted = NULL;
    }
    dot = prevdot = threadroot = NULL;

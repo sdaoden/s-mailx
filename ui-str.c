@@ -64,7 +64,8 @@ n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
    vicp->vic_chars_seen = vicp->vic_bytes_seen = vicp->vic_vi_width = 0;
    if(vif & n_VISUAL_INFO_WOUT_CREATE){
       if(vif & n_VISUAL_INFO_WOUT_SALLOC)
-         vicp->vic_woudat = salloc(sizeof(*vicp->vic_woudat) * (il +1));
+         vicp->vic_woudat =
+               n_autorec_alloc(sizeof(*vicp->vic_woudat) * (il +1));
       vicp->vic_woulen = 0;
    }
 #ifdef HAVE_C90AMEND1
@@ -198,7 +199,7 @@ colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
 jnobidi:
 #endif
 
-   np = nb = salloc(n_mb_cur_max * strlen(cp) +
+   np = nb = n_autorec_alloc(n_mb_cur_max * strlen(cp) +
          ((fill ? col : 0)
          n_NATCH_CHAR( + (isbidi ? bi.bi_start.l + bi.bi_end.l : 0) )
          +1));
@@ -300,7 +301,7 @@ makeprint(struct str const *in, struct str *out) /* TODO <-> TTYCHARSET!! */
    NYD_ENTER;
 
    out->s =
-   outp = smalloc(DBG( msz = ) in->l*n_mb_cur_max + 2u*n_mb_cur_max +1);
+   outp = n_alloc(DBG( msz = ) in->l*n_mb_cur_max + 2u*n_mb_cur_max +1);
    inp = in->s;
    maxp = inp + in->l;
 
@@ -399,7 +400,7 @@ prstr(char const *s)
    in.l = strlen(s);
    makeprint(&in, &out);
    rp = savestrbuf(out.s, out.l);
-   free(out.s);
+   n_free(out.s);
    NYD_LEAVE;
    return rp;
 }
@@ -415,7 +416,7 @@ prout(char const *s, size_t sz, FILE *fp)
    in.l = sz;
    makeprint(&in, &out);
    n = fwrite(out.s, 1, out.l, fp);
-   free(out.s);
+   n_free(out.s);
    NYD_LEAVE;
    return n;
 }

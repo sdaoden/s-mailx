@@ -46,7 +46,7 @@ static void    _parse_from_(struct message *mp, char date[n_FROM_DATEBUF]);
 
 /* Print out the header of a specific message
  * a_cmd__hprf: handle *headline*
- * a_cmd__subject: -1 if Subject: yet seen, otherwise smalloc()d Subject:
+ * a_cmd__subject: -1 if Subject: yet seen, otherwise n_alloc()d Subject:
  * a_cmd__putindent: print out the indenting in threaded display
  * a_cmd__putuc: print out a Unicode character or a substitute for it, return
  *    0 on error or wcwidth() (or 1) on success */
@@ -80,7 +80,7 @@ _parse_from_(struct message *mp, char date[n_FROM_DATEBUF]) /* TODO line pool */
          (hlen = readline_restart(ibuf, &hline, &hsize, 0)) > 0)
       extract_date_from_from_(hline, hlen, date);
    if (hline != NULL)
-      free(hline);
+      n_free(hline);
    NYD_LEAVE;
 }
 
@@ -563,7 +563,7 @@ jputcb:
    putc('\n', f);
 
    if (subjline != NULL && subjline != (char*)-1)
-      free(subjline);
+      n_free(subjline);
    NYD2_LEAVE;
 }
 
@@ -602,10 +602,10 @@ a_cmd__subject(struct message *mp, bool_t threaded, size_t yetprinted)
          in.l = strlen(in.s = os);
          mime_fromhdr(&in, &oout, TD_ICONV | TD_ISPR);
          x = asccasecmp(ms, subject_re_trim(oout.s));
-         free(oout.s);
+         n_free(oout.s);
 
          if (!x) {
-            free(out.s);
+            n_free(out.s);
             rv = (char*)-1;
          }
          break;
@@ -629,8 +629,8 @@ a_cmd__putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX magics */
       goto jleave;
    }
 
-   cs = ac_alloc(mp->m_level);
-   us = ac_alloc(mp->m_level * sizeof *us);
+   cs = n_lofi_alloc(mp->m_level);
+   us = n_lofi_alloc(mp->m_level * sizeof *us);
 
    i = mp->m_level - 1;
    if (mp->m_younger && UICMP(32, i + 1, ==, mp->m_younger->m_level)) {
@@ -677,8 +677,8 @@ a_cmd__putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX magics */
    }
    indw += a_cmd__putuc(0x25B8, '>', fp);
 
-   ac_free(us);
-   ac_free(cs);
+   n_lofi_free(us);
+   n_lofi_free(cs);
 jleave:
    NYD2_LEAVE;
    return indw;

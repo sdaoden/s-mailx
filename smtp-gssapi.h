@@ -208,7 +208,7 @@ _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
             &send_tok,
             &ret_flags,
             NULL);
-      free(out.s);
+      n_free(out.s);
       f |= a_F_SEND_TOK;
       if (maj_stat != GSS_S_COMPLETE && maj_stat != GSS_S_CONTINUE_NEEDED) {
          _smtp_gssapi_error("initializing context", maj_stat, min_stat);
@@ -235,7 +235,7 @@ _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
    if(!b64_decode(&out, &in)){
 jebase64:
       if(out.s != NULL)
-         free(out.s);
+         n_free(out.s);
       n_err(_("Invalid base64 encoding from GSSAPI server\n"));
       goto jleave;
    }
@@ -243,7 +243,7 @@ jebase64:
    recv_tok.length = out.l;
    maj_stat = gss_unwrap(&min_stat, gss_context, &recv_tok, &send_tok,
          &conf_state, NULL);
-   free(out.s);
+   n_free(out.s);
    gss_release_buffer(&min_stat, &send_tok);
    /*f &= ~a_F_SEND_TOK;*/
    if (maj_stat != GSS_S_COMPLETE) {

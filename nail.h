@@ -948,7 +948,7 @@ enum mime_enc {
 /* xxx QP came later, maybe rewrite all to use mime_enc_flags directly? */
 enum mime_enc_flags {
    MIMEEF_NONE,
-   MIMEEF_SALLOC     = 1<<0,  /* Use salloc(), not srealloc().. */
+   MIMEEF_SALLOC     = 1<<0,  /* Use n_autorec_alloc(), not n_realloc().. */
    /* ..result .s,.l point to user buffer of *_LINESIZE+[+[+]] bytes instead */
    MIMEEF_BUF        = 1<<1,
    MIMEEF_CRLF       = 1<<2,  /* (encode) Append "\r\n" to lines */
@@ -1363,7 +1363,7 @@ enum n_visual_info_flags{
 
    /* Rest only with HAVE_C90AMEND1, mutual with _ONE_CHAR */
    n_VISUAL_INFO_WOUT_CREATE = 1<<8,      /* Use/create .vic_woudat */
-   n_VISUAL_INFO_WOUT_SALLOC = 1<<9,      /* ..salloc() it first */
+   n_VISUAL_INFO_WOUT_SALLOC = 1<<9,      /* ..autorec_alloc() it first */
    /* Only visuals into .vic_woudat - implies _WIDTH_QUERY */
    n_VISUAL_INFO_WOUT_PRINTABLE = 1<<10,
    n__VISUAL_INFO_FLAGS = n_VISUAL_INFO_WOUT_CREATE |

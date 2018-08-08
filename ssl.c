@@ -126,7 +126,7 @@ jetmp:
    }
 
    head = tail = NULL;
-   buf = smalloc(bufsize = LINESIZE);
+   buf = n_alloc(bufsize = LINESIZE);
    cnt = (xcount < 0) ? fsize(ip) : xcount;
 
    while (fgetline(&buf, &bufsize, &cnt, &buflen, ip, 0) != NULL &&
@@ -135,7 +135,7 @@ jetmp:
          if (keep)
             fputs("X-Encoded-", *hp);
          for (;;) {
-            struct myline *ml = smalloc(n_VSTRUCT_SIZEOF(struct myline, ml_buf
+            struct myline *ml = n_alloc(n_VSTRUCT_SIZEOF(struct myline, ml_buf
                   ) + buflen +1);
             if (tail != NULL)
                tail->ml_next = ml;
@@ -163,14 +163,14 @@ jetmp:
       fwrite(head->ml_buf, sizeof *head->ml_buf, head->ml_len, *bp);
       tail = head;
       head = head->ml_next;
-      free(tail);
+      n_free(tail);
    }
    putc('\n', *bp);
    while (fgetline(&buf, &bufsize, &cnt, &buflen, ip, 0) != NULL)
       fwrite(buf, sizeof *buf, buflen, *bp);
    fflush_rewind(*bp);
 
-   free(buf);
+   n_free(buf);
    rv = OKAY;
 jleave:
    NYD_LEAVE;
@@ -296,7 +296,7 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
    off_t offset;
    NYD_ENTER;
 
-   x = salloc(sizeof *x);
+   x = n_autorec_alloc(sizeof *x);
    *x = *m;
    fflush(mb.mb_otf);
    fseek(mb.mb_otf, 0L, SEEK_END);
@@ -346,7 +346,7 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
 
    Fclose(hp);
    Fclose(bp);
-   free(buf);
+   n_free(buf);
 
    fflush(mb.mb_otf);
    if (ferror(mb.mb_otf)) {
@@ -371,7 +371,7 @@ c_certsave(void *v)
    bool_t f;
    NYD_ENTER;
 
-   msgvec = salloc((msgCount + 2) * sizeof *msgvec);
+   msgvec = n_autorec_alloc((msgCount + 2) * sizeof *msgvec);
    val = 1;
 
    if ((file = laststring(str, &f, TRU1)) == NULL ||

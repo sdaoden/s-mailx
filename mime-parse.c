@@ -207,7 +207,7 @@ _mime_parse_rfc822(struct message *zmp, struct mimepart *ip,
    }
    offs = ftell(ibuf);
 
-   np = csalloc(1, sizeof *np);
+   np = n_autorec_calloc(1, sizeof *np);
    np->m_flag = MNOFROM;
    np->m_content_info = CI_HAVE_HEADER | CI_HAVE_BODY;
    np->m_block = mailx_blockof(offs);
@@ -243,7 +243,7 @@ _mime_parse_pkcs7(struct message *zmp, struct mimepart *ip,
    cc = hfield1("cc", zmp);
 
    if ((xmp = smime_decrypt(&m, to, cc, 0)) != NULL) {
-      np = csalloc(1, sizeof *np);
+      np = n_autorec_calloc(1, sizeof *np);
       np->m_flag = xmp->m_flag;
       np->m_content_info = xmp->m_content_info | CI_ENCRYPTED | CI_ENCRYPTED_OK;
       np->m_block = xmp->m_block;
@@ -348,7 +348,7 @@ _mime_parse_multipart(struct message *zmp, struct mimepart *ip,
 
 jleave:
    if (line != NULL)
-      free(line);
+      n_free(line);
    NYD_LEAVE;
    return TRU1;
 }
@@ -361,7 +361,7 @@ __mime_parse_new(struct mimepart *ip, struct mimepart **np, off_t offs,
    size_t sz;
    NYD_ENTER;
 
-   *np = csalloc(1, sizeof **np);
+   *np = n_autorec_calloc(1, sizeof **np);
    (*np)->m_flag = MNOFROM;
    (*np)->m_content_info = CI_HAVE_HEADER | CI_HAVE_BODY;
    (*np)->m_block = mailx_blockof(offs);
@@ -371,7 +371,7 @@ __mime_parse_new(struct mimepart *ip, struct mimepart **np, off_t offs,
       ++(*part);
       sz = (ip->m_partstring != NULL) ? strlen(ip->m_partstring) : 0;
       sz += 20;
-      (*np)->m_partstring = salloc(sz);
+      (*np)->m_partstring = n_autorec_alloc(sz);
       if (ip->m_partstring)
          snprintf((*np)->m_partstring, sz, "%s.%u", ip->m_partstring, *part);
       else
@@ -408,7 +408,7 @@ mime_parse_msg(struct message *mp, enum mime_parse_flags mpf)
    struct mimepart *ip;
    NYD_ENTER;
 
-   ip = csalloc(1, sizeof *ip);
+   ip = n_autorec_calloc(1, sizeof *ip);
    ip->m_flag = mp->m_flag;
    ip->m_content_info = mp->m_content_info;
    ip->m_block = mp->m_block;

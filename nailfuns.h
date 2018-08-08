@@ -736,8 +736,8 @@ FL int c_uncolour(void *v);
  * Signals are blocked */
 FL void n_colour_stack_del(struct n_go_data_ctx *gdcp);
 
-/* We want coloured output (in this salloc() cycle), pager_used is used to
- * test whether *colour-pager* is to be inspected, if fp is given, the reset
+/* We want coloured output (in this autorec memory() cycle), pager_used is used
+ * to test whether *colour-pager* is to be inspected, if fp is given, the reset
  * sequence will be written as necessary by _stack_del()
  * env_gut() will reset() as necessary if fp is not NULL */
 FL void n_colour_env_create(enum n_colour_ctx cctx, FILE *fp,
@@ -1303,13 +1303,9 @@ FL void n_free(void *vp n_MEMORY_DEBUG_ARGS);
 # define n_realloc(P,S) (n_realloc)(P, S, __FILE__, __LINE__)
 # define n_calloc(N,S) (n_calloc)(N, S, __FILE__, __LINE__)
 # define n_free(P) (n_free)(P, __FILE__, __LINE__)
-# define free(P) (n_free)(P, __FILE__, __LINE__)
 #else
 # define n_free(P) free(P)
 #endif
-#define smalloc(SZ) n_alloc(SZ)
-#define srealloc(P,SZ) n_realloc(P, SZ)
-#define scalloc(N,SZ) n_calloc(N, SZ)
 
 /* Fluctuating heap memory (supposed to exist for one command loop tick) */
 
@@ -1349,10 +1345,6 @@ FL void *n_autorec_calloc_from_pool(void *vp, size_t nmemb, size_t size
 #define n_autorec_alloc(SZ) n_autorec_alloc_from_pool(NULL, SZ)
 #define n_autorec_calloc(NM,SZ) n_autorec_calloc_from_pool(NULL, NM, SZ)
 
-/* TODO obsolete c?salloc -> n_autorec_* */
-#define salloc(SZ) n_autorec_alloc_from_pool(NULL, SZ)
-#define csalloc(NM,SZ) n_autorec_calloc_from_pool(NULL, NM, SZ)
-
 /* Pseudo alloca (and also auto-reclaimed in _memory_reset()/_pool_pop()) */
 FL void *n_lofi_alloc(size_t size n_MEMORY_DEBUG_ARGS);
 FL void n_lofi_free(void *vp n_MEMORY_DEBUG_ARGS);
@@ -1366,10 +1358,6 @@ FL void n_lofi_free(void *vp n_MEMORY_DEBUG_ARGS);
  * allocations in one go */
 FL void *n_lofi_snap_create(void);
 FL void n_lofi_snap_unroll(void *cookie);
-
-/* TODO obsolete ac_alloc / ac_free -> n_lofi_* */
-#define ac_alloc(SZ) n_lofi_alloc(SZ)
-#define ac_free(P) n_lofi_free(P)
 
 /* */
 #ifdef HAVE_MEMORY_DEBUG
@@ -1465,7 +1453,7 @@ FL struct str * qp_encode_buf(struct str *out, void const *vp, size_t vp_len,
                   enum qpflags flags);
 #endif
 
-/* The buffers of out and *rest* will be managed via srealloc().
+/* The buffers of out and *rest* will be managed via n_realloc().
  * If inrest_or_null is needed but NULL an error occurs, otherwise tolerant.
  * Return FAL0 on error; caller is responsible to free buffers */
 FL bool_t      qp_decode_header(struct str *out, struct str const *in);
@@ -1496,7 +1484,7 @@ FL struct str * b64_encode_cp(struct str *out, char const *cp,
  * TODO pre v15 callers should ensure that no endless loop is entered because
  * TODO the inrest cannot be converted and ends up as inrest over and over:
  * TODO give NULL to stop such loops.
- * The buffers of out and possibly *rest* will be managed via srealloc().
+ * The buffers of out and possibly *rest* will be managed via n_realloc().
  * Returns FAL0 on error; caller is responsible to free buffers.
  * XXX FAL0 is effectively not returned for _part*() variants,
  * XXX (instead replacement characters are produced for invalid data.
@@ -1514,7 +1502,7 @@ FL bool_t      b64_decode_part(struct str *out, struct str const *in,
 /* Get a mime style parameter from a header body */
 FL char *      mime_param_get(char const *param, char const *headerbody);
 
-/* Format parameter name to have value, salloc() it or NULL (error) in result.
+/* Format parameter name to have value, autorec_alloc() it or NULL in result.
  * 0 on error, 1 or -1 on success: the latter if result contains \n newlines,
  * which it will if the created param requires more than MIME_LINELEN bytes;
  * there is never a trailing newline character */
@@ -1524,10 +1512,10 @@ FL si8_t       mime_param_create(struct str *result, char const *name,
                   char const *value);
 
 /* Get the boundary out of a Content-Type: multipart/xyz header field, return
- * salloc()ed copy of it; store strlen() in *len if set */
+ * autorec_alloc()ed copy of it; store strlen() in *len if set */
 FL char *      mime_param_boundary_get(char const *headerbody, size_t *len);
 
-/* Create a salloc()ed MIME boundary */
+/* Create a autorec_alloc()ed MIME boundary */
 FL char *      mime_param_boundary_create(void);
 
 /*
@@ -2185,7 +2173,7 @@ FL void        i_strcpy(char *dest, char const *src, size_t size);
 /* Is *as1* a valid prefix of *as2*? */
 FL bool_t is_prefix(char const *as1, char const *as2);
 
-/* Reverse solidus quote (" and \) v'alue, and return salloc()ed result */
+/* Reverse solidus quote (" and \) v'alue, and return autorec_alloc()ed */
 FL char *      string_quote(char const *v);
 
 /* Get (and isolate) the last, possibly quoted part of linebuf, set *needs_list
@@ -2227,17 +2215,17 @@ FL bool_t      is_ascncaseprefix(char const *as1, char const *as2, size_t sz);
 
 /* struct str related support funs TODO _cp->_cs! */
 
-/* *self->s* is srealloc()ed */
+/* *self->s* is n_realloc()ed */
 #define n_str_dup(S, T)          n_str_assign_buf((S), (T)->s, (T)->l)
 
-/* *self->s* is srealloc()ed; if buflen==UIZ_MAX strlen() is called unless buf
- * is NULL; buf may be NULL if buflen is 0 */
+/* *self->s* is n_realloc()ed; if buflen==UIZ_MAX strlen() is called unless
+ * buf is NULL; buf may be NULL if buflen is 0 */
 FL struct str * n_str_assign_buf(struct str *self,
                   char const *buf, uiz_t buflen n_MEMORY_DEBUG_ARGS);
 #define n_str_assign(S, T)       n_str_assign_buf(S, (T)->s, (T)->l)
 #define n_str_assign_cp(S, CP)   n_str_assign_buf(S, CP, UIZ_MAX)
 
-/* *self->s* is srealloc()ed, *self->l* incremented; if buflen==UIZ_MAX
+/* *self->s* is n_realloc()ed, *self->l* incremented; if buflen==UIZ_MAX
  * strlen() is called unless buf is NULL; buf may be NULL if buflen is 0 */
 FL struct str * n_str_add_buf(struct str *self, char const *buf, uiz_t buflen
                   n_MEMORY_DEBUG_ARGS);
@@ -2449,7 +2437,7 @@ FL int         n_iconv_str(iconv_t icp, enum n_iconv_flags icf,
                   struct str *in_rest_or_null);
 
 /* If tocode==NULL, uses *ttycharset*.  If fromcode==NULL, uses UTF-8.
- * Returns a salloc()ed buffer or NULL */
+ * Returns a autorec_alloc()ed buffer or NULL */
 FL char *      n_iconv_onetime_cp(enum n_iconv_flags icf,
                   char const *tocode, char const *fromcode, char const *input);
 #endif
@@ -2615,7 +2603,8 @@ FL bool_t      n_visual_info(struct n_visual_info_ctx *vicp,
  * safely placed in a buffer (field width) of maxlen bytes */
 FL size_t      field_detect_clip(size_t maxlen, char const *buf, size_t blen);
 
-/* Place cp in a salloc()ed buffer, column-aligned; for header display only */
+/* Place cp in a autorec_alloc()ed buffer, column-aligned.
+ * For header display only */
 FL char *      colalign(char const *cp, int col, int fill,
                   int *cols_decr_used_or_null);
 
@@ -2638,7 +2627,7 @@ FL void        bidi_info_create(struct bidi_info *bip);
  */
 
 /* URL en- and decoding according to (enough of) RFC 3986 (RFC 1738).
- * These return a newly salloc()ated result, or NULL on length excess */
+ * These return a newly autorec_alloc()ated result, or NULL on length excess */
 FL char *      urlxenc(char const *cp, bool_t ispath n_MEMORY_DEBUG_ARGS);
 FL char *      urlxdec(char const *cp n_MEMORY_DEBUG_ARGS);
 #ifdef HAVE_MEMORY_DEBUG

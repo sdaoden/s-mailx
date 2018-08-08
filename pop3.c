@@ -202,7 +202,7 @@ _pop3_lookup_apop_timestamp(char const *bp)
       goto jleave;
 
    tl = PTR2SIZE(++ep - cp);
-   rp = salloc(tl +1);
+   rp = n_autorec_alloc(tl +1);
    memcpy(rp, cp, tl);
    rp[tl] = '\0';
 jleave:
@@ -229,7 +229,7 @@ _pop3_auth_apop(struct mailbox *mp, struct sockconn const *scp, char const *ts)
    md5tohex(hex, digest);
 
    i = scp->sc_cred.cc_user.l;
-   cp = ac_alloc(5 + i + 1 + MD5TOHEX_SIZE + sizeof(NETNL)-1 +1);
+   cp = n_lofi_alloc(5 + i + 1 + MD5TOHEX_SIZE + sizeof(NETNL)-1 +1);
 
    memcpy(cp, "APOP ", 5);
    memcpy(cp + 5, scp->sc_cred.cc_user.s, i);
@@ -243,7 +243,7 @@ _pop3_auth_apop(struct mailbox *mp, struct sockconn const *scp, char const *ts)
 
    rv = OKAY;
 jleave:
-   ac_free(cp);
+   n_lofi_free(cp);
    NYD_LEAVE;
    return rv;
 }
@@ -257,8 +257,8 @@ _pop3_auth_plain(struct mailbox *mp, struct sockconn const *scp)
    NYD_ENTER;
 
    /* The USER/PASS plain text version */
-   cp = ac_alloc(n_MAX(scp->sc_cred.cc_user.l, scp->sc_cred.cc_pass.l) + 5 +
-         sizeof(NETNL)-1 +1);
+   cp = n_lofi_alloc(n_MAX(scp->sc_cred.cc_user.l, scp->sc_cred.cc_pass.l) +
+         5 + sizeof(NETNL)-1 +1);
 
    memcpy(cp, "USER ", 5);
    memcpy(cp + 5, scp->sc_cred.cc_user.s, scp->sc_cred.cc_user.l);
@@ -274,7 +274,7 @@ _pop3_auth_plain(struct mailbox *mp, struct sockconn const *scp)
 
    rv = OKAY;
 jleave:
-   ac_free(cp);
+   n_lofi_free(cp);
    NYD_LEAVE;
    return rv;
 }
@@ -506,7 +506,7 @@ pop3_setptr(struct mailbox *mp, struct sockconn const *scp)
    enum needspec ns;
    NYD_ENTER;
 
-   message = scalloc(msgCount + 1, sizeof *message);
+   message = n_calloc(msgCount + 1, sizeof *message);
    message[msgCount].m_size = 0;
    message[msgCount].m_lines = 0;
    dot = message; /* (Just do it: avoid crash -- shall i now do ointr(0).. */
@@ -696,7 +696,7 @@ jretry:
    rv = OKAY;
 jleave:
    if (line != NULL)
-      free(line);
+      n_free(line);
    if (saveint != SIG_IGN)
       safe_signal(SIGINT, saveint);
    if (savepipe != SIG_IGN)

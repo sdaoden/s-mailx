@@ -110,7 +110,7 @@ static char *a_shexp_findmail(char const *user, bool_t force);
 
 /* Expand ^~/? and ^~USER/? constructs.
  * Returns the completely resolved (maybe empty or identical to input)
- * salloc()ed string */
+ * n_autorec_alloc()ed string */
 static char *a_shexp_tilde(char const *s);
 
 /* Perform fnmatch(3).  May return NULL on error */
@@ -164,7 +164,7 @@ a_shexp_findmail(char const *user, bool_t force){
       ul = strlen(user) +1;
       i = sizeof(VAL_MAIL) -1 + 1 + ul;
 
-      rv = salloc(i);
+      rv = n_autorec_alloc(i);
       memcpy(rv, VAL_MAIL, (i = sizeof(VAL_MAIL) -1));
       rv[i] = '/';
       memcpy(&rv[++i], user, ul);
@@ -201,7 +201,7 @@ a_shexp_tilde(char const *s){
    }
 
    nl = strlen(np);
-   rv = salloc(nl + 1 + rl +1);
+   rv = n_autorec_alloc(nl + 1 + rl +1);
    memcpy(rv, np, nl);
    if(rl > 0){
       memcpy(rv + nl, rp, rl);
@@ -252,13 +252,13 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
          l += xslp->sl_len + 1;
       }
 
-      sorta = smalloc(sizeof(*sorta) * no);
+      sorta = n_alloc(sizeof(*sorta) * no);
       no = 0;
       for(xslp = slp; xslp != NULL; xslp = xslp->sl_next)
          sorta[no++] = xslp;
       qsort(sorta, no, sizeof *sorta, &a_shexp__globsort);
 
-      cp = salloc(++l);
+      cp = n_autorec_alloc(++l);
       l = 0;
       for(i = 0; i < no; ++i){
          xslp = sorta[i];
@@ -268,7 +268,7 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
       }
       cp[l] = '\0';
 
-      free(sorta);
+      n_free(sorta);
       n_pstate |= n_PS_EXPAND_MULTIRESULT;
    }else{
       cp = n_UNCONST(N_("File pattern matches multiple results"));
@@ -280,7 +280,7 @@ jleave:
       struct n_strlist *tmp = slp;
 
       slp = slp->sl_next;
-      free(tmp);
+      n_free(tmp);
    }
    NYD_LEAVE;
    return cp;
@@ -399,7 +399,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
          }
 
       if(need){
-         ncp = salloc(i +1);
+         ncp = n_autorec_alloc(i +1);
          for(i = 0, myp = sgcp->sgc_patdat; *myp != '\0'; ++myp)
             switch(*myp){
             case '\'': case '"': case '\\': case '$':
@@ -1949,7 +1949,7 @@ c_shcodec(void *vp){
          nerrn = n_err_no;
          vp = NULL;
       }
-      free(out.s);
+      n_free(out.s);
    }
 
 jleave:

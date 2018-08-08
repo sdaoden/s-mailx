@@ -326,7 +326,7 @@ jsend:
    rv = TRU1;
 jleave:
    if (slp->buf != NULL)
-      free(slp->buf);
+      n_free(slp->buf);
    NYD_LEAVE;
    return rv;
 }

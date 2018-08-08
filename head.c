@@ -967,7 +967,7 @@ a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem, char **colon)
    NYD2_ENTER;
 
    if (*linebuf == NULL)
-      *linebuf = srealloc(*linebuf, *linesize = 1);
+      *linebuf = n_realloc(*linebuf, *linesize = 1);
    **linebuf = '\0';
    for (;;) {
       if (--rem < 0) {
@@ -1013,7 +1013,7 @@ a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem, char **colon)
          if (PTRCMP(cp + c, >=, *linebuf + *linesize - 2)) {
             size_t diff = PTR2SIZE(cp - *linebuf),
                colondiff = PTR2SIZE(*colon - *linebuf);
-            *linebuf = srealloc(*linebuf, *linesize += c + 2);
+            *linebuf = n_realloc(*linebuf, *linesize += c + 2);
             cp = &(*linebuf)[diff];
             *colon = &(*linebuf)[colondiff];
          }
@@ -1025,7 +1025,7 @@ a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem, char **colon)
       *cp = '\0';
 
       if (line2 != NULL)
-         free(line2);
+         n_free(line2);
       break;
    }
    NYD2_LEAVE;
@@ -1167,7 +1167,7 @@ jnodename:{
       hn = n_nodename(TRU1);
       ln = ok_vlook(LOGNAME);
       i = strlen(ln) + strlen(hn) + 1 +1;
-      rv = cp = salloc(i);
+      rv = cp = n_autorec_alloc(i);
       sstpcpy(sstpcpy(sstpcpy(cp, ln), n_at), hn);
    }
    goto jleave;
@@ -1417,8 +1417,9 @@ jebadhead:
          bl = (ui32_t)strlen(cp) +1;
 
          ++seenfields;
-         *hftail = hfp = salloc(n_VSTRUCT_SIZEOF(struct n_header_field, hf_dat
-               ) + nl +1 + bl);
+         *hftail =
+         hfp = n_autorec_alloc(n_VSTRUCT_SIZEOF(struct n_header_field,
+               hf_dat) + nl +1 + bl);
             hftail = &hfp->hf_next;
          hfp->hf_next = NULL;
          hfp->hf_nl = nl;
@@ -1473,7 +1474,7 @@ jebadhead:
       n_err(_("Restoring deleted header lines\n"));
 
    if (linebuf != NULL)
-      free(linebuf);
+      n_free(linebuf);
    NYD_LEAVE;
 }
 
@@ -1517,10 +1518,10 @@ hfield_mult(char const *field, struct message *mp, int mult)
 
 jleave:
    if (linebuf != NULL)
-      free(linebuf);
+      n_free(linebuf);
    if (mult && hfs.s != NULL) {
       colon = savestrbuf(hfs.s, hfs.l);
-      free(hfs.s);
+      n_free(hfs.s);
       hfs.s = colon;
    }
    NYD_LEAVE;
@@ -2040,7 +2041,7 @@ jbrk:
    /* Strip quotes. Note that quotes that appear within a MIME encoded word are
     * not stripped. The idea is to strip only syntactical relevant things (but
     * this is not necessarily the most sensible way in practice) */
-   rp = rname = ac_alloc(PTR2SIZE(cend - cstart +1));
+   rp = rname = n_lofi_alloc(PTR2SIZE(cend - cstart +1));
    quoted = 0;
    for (cp = cstart; cp < cend; ++cp) {
       if (*cp == '(' && !quoted) {
@@ -2064,9 +2065,9 @@ jbrk:
    in.s = rname;
    in.l = rp - rname;
    mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
-   ac_free(rname);
+   n_lofi_free(rname);
    rname = savestr(out.s);
-   free(out.s);
+   n_free(out.s);
 
    while (blankchar(*rname))
       ++rname;
@@ -2110,7 +2111,7 @@ name1(struct message *mp, int reptype)
    if (reptype == 0 && (cp = hfield1("sender", mp)) != NULL && *cp != '\0')
       goto jleave;
 
-   namebuf = smalloc(namesize = 1);
+   namebuf = n_alloc(namesize = 1);
    namebuf[0] = 0;
    if (mp->m_flag & MNOFROM)
       goto jout;
@@ -2121,7 +2122,7 @@ name1(struct message *mp, int reptype)
 
 jnewname:
    if (namesize <= linesize)
-      namebuf = srealloc(namebuf, namesize = linesize +1);
+      namebuf = n_realloc(namebuf, namesize = linesize +1);
    for (cp = linebuf; *cp != '\0' && *cp != ' '; ++cp)
       ;
    for (; blankchar(*cp); ++cp)
@@ -2138,7 +2139,7 @@ jnewname:
    if (strncmp(cp, "From", 4))
       goto jout;
    if (namesize <= linesize)
-      namebuf = srealloc(namebuf, namesize = linesize + 1);
+      namebuf = n_realloc(namebuf, namesize = linesize + 1);
 
    while ((cp = strchr(cp, 'r')) != NULL) {
       if (!strncmp(cp, "remote", 6)) {
@@ -2168,8 +2169,8 @@ jout:
       cp = savestr(namebuf);
 
    if (linebuf != NULL)
-      free(linebuf);
-   free(namebuf);
+      n_free(linebuf);
+   n_free(namebuf);
 jleave:
    NYD_LEAVE;
    return cp;
@@ -2758,7 +2759,7 @@ jnext_name:
          rv = substr(out.s, sep->ss_body);
 
       if(np == NULL)
-         free(out.s);
+         n_free(out.s);
       if(rv)
          break;
       if(np != NULL && (np = np->n_flink) != NULL){

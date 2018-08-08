@@ -507,7 +507,8 @@ qp_encode(struct str *out, struct str const *in, enum qpflags flags){
          out = NULL;
          goto jerr;
       }
-      out->s = (flags & QP_SALLOC) ? salloc(lnlen) : srealloc(out->s, lnlen);
+      out->s = (flags & QP_SALLOC) ? n_autorec_alloc(lnlen)
+            : n_realloc(out->s, lnlen);
    }
    qp = out->s;
    is = in->s;
@@ -762,7 +763,7 @@ jsoftnl:
          outrest->l = s.s_len;
          n_string_drop_ownership(sp);
          if(cp != NULL)
-            free(cp);
+            n_free(cp);
       }
       break;
    }
@@ -810,7 +811,8 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags){
          out = NULL;
          goto jleave;
       }
-      out->s = (flags & B64_SALLOC) ? salloc(i) : srealloc(out->s, i);
+      out->s = (flags & B64_SALLOC) ? n_autorec_alloc(i)
+            : n_realloc(out->s, i);
    }
    b64 = out->s;
 
@@ -929,9 +931,9 @@ b64_decode(struct str *out, struct str const *in){
 
    /* Ignore an empty input, as may happen for an empty final line */
    if(work.l == 0)
-      out->s = srealloc(out->s, 1);
+      out->s = n_realloc(out->s, 1);
    else if(work.l >= 4 && !(work.l & 3)){
-      out->s = srealloc(out->s, len +1);
+      out->s = n_realloc(out->s, len +1);
       if((ssize_t)(len = a_me_b64_decode(out, &work)) < 0)
          goto jerr;
    }else
@@ -958,9 +960,9 @@ b64_decode_header(struct str *out, struct str const *in){
          out = NULL;
 
       if(inr.s != NULL)
-         free(inr.s);
+         n_free(inr.s);
       if(outr.s != NULL)
-         free(outr.s);
+         n_free(outr.s);
    }
    NYD_LEAVE;
    return (out != NULL);
@@ -983,7 +985,7 @@ b64_decode_part(struct str *out, struct str const *in, struct str *outrest,
       if(len > 0)
          n_string_push_buf(&s, out->s, len);
       if(out->s != NULL)
-         free(out->s);
+         n_free(out->s);
    }
    out->s = NULL, out->l = 0;
    n_string_creat(&workbuf);
@@ -1094,7 +1096,7 @@ jrepl:
          if(b64l > 0 && b64l != 4){
             if(inrest_or_null == NULL)
                goto jerr;
-            inrest_or_null->s = srealloc(inrest_or_null->s, b64l +1);
+            inrest_or_null->s = n_realloc(inrest_or_null->s, b64l +1);
             inrest_or_null->s[0] = ca;
             if(b64l > 1)
                inrest_or_null->s[1] = cb;

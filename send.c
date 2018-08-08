@@ -136,7 +136,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
          (to.l = strlen(cp)) > 30 && is_asccaseprefix("application/", cp)) {
       size_t const al = sizeof("appl../") -1, fl = sizeof("application/") -1;
       size_t i = to.l - fl;
-      char *x = salloc(al + i +1);
+      char *x = n_autorec_alloc(al + i +1);
 
       memcpy(x, "appl../", al);
       memcpy(x + al, cp + fl, i +1);
@@ -185,7 +185,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
       makeprint(&ti, &to);
       to.l = delctrl(to.s, to.l);
       _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
-      free(to.s);
+      n_free(to.s);
 
       _out(" --]", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
       if (csuf != NULL)
@@ -205,7 +205,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
       ti.l = strlen(ti.s = n_UNCONST(mpp->m_content_description));
       mime_fromhdr(&ti, &to, TD_ISPR | TD_ICONV);
       _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
-      free(to.s);
+      n_free(to.s);
 
       _out(" --]", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
       if (csuf != NULL)
@@ -226,7 +226,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
       makeprint(&ti, &to);
       to.l = delctrl(to.s, to.l);
       _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
-      free(to.s);
+      n_free(to.s);
 
       _out(" --]", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
       if (csuf != NULL)
@@ -812,7 +812,7 @@ jalter_redo:
                case MIME_SIGNED:
                case MIME_ENCRYPTED:
                case MIME_MULTI:
-                  mpsp = salloc(sizeof *mpsp);
+                  mpsp = n_autorec_alloc(sizeof *mpsp);
                   mpsp->outer = curr;
                   mpsp->mp = np->m_multipart;
                   curr->mp = np;
@@ -1178,9 +1178,9 @@ jsend:
       if (sigsetjmp(__sendp_actjmp, 1)) {
          n_pstate &= ~n_PS_BASE64_STRIP_CR;/* (but protected by outer sigman) */
          if (outrest.s != NULL)
-            free(outrest.s);
+            n_free(outrest.s);
          if (inrest.s != NULL)
-            free(inrest.s);
+            n_free(inrest.s);
 #ifdef HAVE_ICONV
          if (iconvd != (iconv_t)-1)
             n_iconv_close(iconvd);
@@ -1232,9 +1232,9 @@ joutln:
       safe_signal(SIGPIPE, __sendp_opipe);
 
    if (outrest.s != NULL)
-      free(outrest.s);
+      n_free(outrest.s);
    if (inrest.s != NULL)
-      free(inrest.s);
+      n_free(inrest.s);
 
    if (pbuf != origobuf) {
       qf->qf_pfix_len = save_qf_pfix_len;
@@ -1276,7 +1276,7 @@ newfile(struct mimepart *ip, bool_t volatile *ispipe)
       makeprint(&in, &out);
       out.l = delctrl(out.s, out.l);
       f = savestrbuf(out.s, out.l);
-      free(out.s);
+      n_free(out.s);
    }
 
    /* In interactive mode, let user perform all kind of expansions as desired,
@@ -1348,7 +1348,8 @@ jgetname:
       if(n_anyof_cp("/" n_SHEXP_MAGIC_PATH_CHARS, f)){
          char c;
 
-         for(out.s = salloc((strlen(f) * 3) +1), out.l = 0; (c = *f++) != '\0';)
+         for(out.s = n_autorec_alloc((strlen(f) * 3) +1), out.l = 0;
+               (c = *f++) != '\0';)
             if(strchr("/" n_SHEXP_MAGIC_PATH_CHARS, c)){
                out.s[out.l++] = '%';
                n_c_to_hex_base16(&out.s[out.l], c);
@@ -1403,7 +1404,7 @@ pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf, struct quoteflt *qf,
    if ((sz = quoteflt_flush(qf)) > 0)
       all_sz += sz;
    if (line)
-      free(line);
+      n_free(line);
 
    if (all_sz > 0 && outbuf == origobuf && stats != NULL)
       *stats += all_sz;
@@ -1613,7 +1614,7 @@ jleave:
    n_pstate &= ~n_PS_BASE64_STRIP_CR;
    quoteflt_destroy(&qf);
    if(linedat != NULL)
-      free(linedat);
+      n_free(linedat);
    NYD_LEAVE;
    n_sigman_leave(&linedat_protect, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;

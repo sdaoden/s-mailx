@@ -98,7 +98,8 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
 
    ename = urlxenc(name, TRU1);
    if (mp->mb_cache_directory && same && box == NULL) {
-      res = salloc(resz = strlen(mp->mb_cache_directory) + strlen(ename) + 2);
+      res = n_autorec_alloc(resz = strlen(mp->mb_cache_directory) +
+            strlen(ename) + 2);
       snprintf(res, resz, "%s%s%s", mp->mb_cache_directory,
          (*ename ? "/" : ""), ename);
    } else {
@@ -119,7 +120,7 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
       } else
          box = "INBOX";
 
-      res = salloc(resz = strlen(cachedir) + strlen(eaccount) +
+      res = n_autorec_alloc(resz = strlen(cachedir) + strlen(eaccount) +
             strlen(box) + strlen(ename) + 4);
       snprintf(res, resz, "%s/%s/%s%s%s", cachedir, eaccount, box,
             (*ename ? "/" : ""), ename);
@@ -371,7 +372,7 @@ initcache(struct mailbox *mp)
    NYD_ENTER;
 
    if (mp->mb_cache_directory != NULL)
-      free(mp->mb_cache_directory);
+      n_free(mp->mb_cache_directory);
    mp->mb_cache_directory = NULL;
    if ((name = encname(mp, "", 1, NULL)) == NULL)
       goto jleave;
@@ -441,7 +442,7 @@ clean(struct mailbox *mp, struct cw *cw)
          goto jleave;
       emailbox = urlxenc(emailbox, TRU1);
    }
-   buf = salloc(bufsz = strlen(cachedir) + strlen(eaccount) +
+   buf = n_autorec_alloc(bufsz = strlen(cachedir) + strlen(eaccount) +
          strlen(emailbox) + 40);
    if (!n_path_mkdir(cachedir))
       goto jleave;
@@ -538,7 +539,7 @@ purge(struct mailbox *mp, struct message *m, long mc, struct cw *cw,
          else
             remve(contents[j++]);
       }
-      free(contents);
+      n_free(contents);
    }
    if (cwret(cw) == STOP) {
       n_err(_("Fatal: Cannot change back to current directory.\n"));
@@ -599,7 +600,7 @@ cache_setptr(enum fedit_mode fm, int transparent)
    omsgCount = msgCount;
 
    if (mb.mb_cache_directory != NULL) {
-      free(mb.mb_cache_directory);
+      n_free(mb.mb_cache_directory);
       mb.mb_cache_directory = NULL;
    }
    if ((name = encname(&mb, "", 1, NULL)) == NULL)
@@ -611,7 +612,7 @@ cache_setptr(enum fedit_mode fm, int transparent)
       goto jleave;
    contents = builds(&contentelem);
    msgCount = contentelem;
-   message = scalloc(msgCount + 1, sizeof *message);
+   message = n_calloc(msgCount + 1, sizeof *message);
    if (cwret(&cw) == STOP) {
       n_err(_("Fatal: Cannot change back to current directory.\n"));
       abort();
@@ -627,7 +628,7 @@ cache_setptr(enum fedit_mode fm, int transparent)
    srelax_rele();
 
    if (contents != NULL)
-      free(contents);
+      n_free(contents);
    mb.mb_type = MB_CACHE;
    mb.mb_perm = ((n_poption & n_PO_R_FLAG) || (fm & FEDIT_RDONLY)
          ) ? 0 : MB_DELE;
@@ -660,7 +661,7 @@ cache_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
          (cachedir = fexpand(cachedir, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
       goto jleave;
    eaccount = urlxenc(mp->mb_imap_account, TRU1);
-   name = salloc(namesz = strlen(cachedir) + strlen(eaccount) + 2);
+   name = n_autorec_alloc(namesz = strlen(cachedir) + strlen(eaccount) + 2);
    snprintf(name, namesz, "%s/%s", cachedir, eaccount);
    if ((dirp = opendir(name)) == NULL)
       goto jleave;
@@ -696,12 +697,12 @@ cache_remove(const char *name)
    if ((dir = encname(&mb, "", 0, imap_fileof(name))) == NULL)
       goto jleave;
    pathend = strlen(dir);
-   path = smalloc(pathsize = pathend + 30);
+   path = n_alloc(pathsize = pathend + 30);
    memcpy(path, dir, pathend);
    path[pathend++] = '/';
    path[pathend] = '\0';
    if ((dirp = opendir(path)) == NULL) {
-      free(path);
+      n_free(path);
       goto jleave;
    }
    while ((dp = readdir(dirp)) != NULL) {
@@ -710,14 +711,14 @@ cache_remove(const char *name)
          continue;
       n = strlen(dp->d_name) + 1;
       if (pathend + n > pathsize)
-         path = srealloc(path, pathsize = pathend + n + 30);
+         path = n_realloc(path, pathsize = pathend + n + 30);
       memcpy(path + pathend, dp->d_name, n);
       if (stat(path, &st) < 0 || (st.st_mode & S_IFMT) != S_IFREG)
          continue;
       if (unlink(path) < 0) {
          n_perr(path, 0);
          closedir(dirp);
-         free(path);
+         n_free(path);
          rv = STOP;
          goto jleave;
       }
@@ -725,7 +726,7 @@ cache_remove(const char *name)
    closedir(dirp);
    path[pathend] = '\0';
    rmdir(path);   /* no error on failure, might contain submailboxes */
-   free(path);
+   n_free(path);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -818,7 +819,7 @@ cache_dequeue(struct mailbox *mp)
          (cachedir = fexpand(cachedir, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
       goto jleave;
    eaccount = urlxenc(mp->mb_imap_account, TRU1);
-   buf = salloc(bufsz = strlen(cachedir) + strlen(eaccount) + 2);
+   buf = n_autorec_alloc(bufsz = strlen(cachedir) + strlen(eaccount) + 2);
    snprintf(buf, bufsz, "%s/%s", cachedir, eaccount);
    if ((dirp = opendir(buf)) == NULL)
       goto jleave;
@@ -833,7 +834,7 @@ cache_dequeue(struct mailbox *mp)
       dequeue1(mp);
       {  char *x = mp->mb_imap_mailbox;
          mp->mb_imap_mailbox = oldbox;
-         free(x);
+         n_free(x);
       }
    }
    closedir(dirp);

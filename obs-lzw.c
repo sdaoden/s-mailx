@@ -330,16 +330,16 @@ zfree(void *cookie)
 	zs = cookie;
 	if (zmode == 'w') {		/* Put out the final code. */
 		if (output(zs, (code_int) ent) == -1) {
-			free(zs);
+			n_free(zs);
 			return (-1);
 		}
 		out_count++;
 		if (output(zs, (code_int) - 1) == -1) {
-			free(zs);
+			n_free(zs);
 			return (-1);
 		}
 	}
-	free(zs);
+	n_free(zs);
 	return (0);
 }
 
@@ -691,7 +691,7 @@ zalloc(FILE *fp)
 #define bits	BITS
 	struct s_zstate *zs;
 
-	zs = scalloc(1, sizeof *zs);
+	zs = n_calloc(1, sizeof *zs);
 	maxbits = bits ? bits : BITS;	/* User settable max # bits/code. */
 	maxmaxcode = 1L << maxbits;	/* Should NEVER generate this code. */
 	hsize = HSIZE;			/* For dynamic table sizing. */

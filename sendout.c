@@ -1057,7 +1057,7 @@ a_sendout__savemail(char const *name, FILE *fp, bool_t resend){
    char *buf;
    NYD_ENTER;
 
-   buf = smalloc(bufsize = LINESIZE);
+   buf = n_alloc(bufsize = LINESIZE);
    rv = FAL0;
 
    if((fo = n_fopen_any(name, "a+", &fs)) == NULL){
@@ -1109,7 +1109,7 @@ jleave:
    if(Fclose(fo) != 0)
       rv = FAL0;
 j_leave:
-   free(buf);
+   n_free(buf);
    NYD_LEAVE;
    return rv;
 }
@@ -1125,7 +1125,7 @@ _transfer(struct sendbundle *sbp)
    for (cnt = 0, np = sbp->sb_to; np != NULL;) {
       char const k[] = "smime-encrypt-", *cp;
       size_t nl = strlen(np->n_name);
-      char *vs = ac_alloc(sizeof(k)-1 + nl +1);
+      char *vs = n_lofi_alloc(sizeof(k)-1 + nl +1);
       memcpy(vs, k, sizeof(k) -1);
       memcpy(vs + sizeof(k) -1, np->n_name, nl +1);
 
@@ -1168,7 +1168,7 @@ _transfer(struct sendbundle *sbp)
          ++cnt;
          np = np->n_flink;
       }
-      ac_free(vs);
+      n_lofi_free(vs);
    }
 
    if (cnt > 0 && (ok_blook(smime_force_encryption) || !__mta_start(sbp)))
@@ -1336,7 +1336,7 @@ __mta_prepare_args(struct name *to, struct header *hp)
    }
 
    i = 4 + n_smopts_cnt + vas_cnt + 4 + 1 + count(to) + 1;
-   args = salloc(i * sizeof(char*));
+   args = n_autorec_alloc(i * sizeof(char*));
 
    if((cp_v15compat = ok_vlook(sendmail_progname)) != NULL)
       n_OBSOLETE(_("please use *mta-argv0*, not *sendmail-progname*"));
@@ -1434,7 +1434,7 @@ __mta_debug(struct sendbundle *sbp, char const *mta, char const **args)
       n_err(">>> %s\n", buf);
    }
    if (buf != NULL)
-      free(buf);
+      n_free(buf);
    NYD_LEAVE;
 }
 
@@ -1648,7 +1648,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
       fwrite(buf, sizeof *buf, c, fo);
    }
    if (buf != NULL)
-      free(buf);
+      n_free(buf);
    if (ferror(fo)) {
       n_perr(_("infix_resend: temporary mail file"), 0);
       goto jleave;
@@ -1702,7 +1702,7 @@ mail(struct name *to, struct name *cc, struct name *bcc, char const *subject,
    mail1(&head, 0, NULL, quotefile, recipient_record, 0);
 
    if (subject != NULL)
-      free(out.s);
+      n_free(out.s);
    NYD_LEAVE;
    return 0; /* TODO only for main.c, -> n_exit_status, BUT: ARGH! */
 }

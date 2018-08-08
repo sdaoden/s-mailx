@@ -178,7 +178,7 @@ a_termcap_init_var(struct str const *termvar){
 
    assert(termvar->s[termvar->l] == '\0');
    i = termvar->l +1;
-   cbp_base = salloc(i);
+   cbp_base = n_autorec_alloc(i);
    memcpy(cbp = cbp_base, termvar->s, i);
 
    for(; (ccp = n_strsep(&cbp, ',', TRU1)) != NULL;){
@@ -222,7 +222,7 @@ jeinvent:
             if((f & a_TERMCAP_F_TYPE_MASK) == n_TERMCAP_CAPTYPE_STRING){
                struct a_termcap_ext_ent *teep;
 
-               teep = smalloc(n_VSTRUCT_SIZEOF(struct a_termcap_ext_ent,
+               teep = n_alloc(n_VSTRUCT_SIZEOF(struct a_termcap_ext_ent,
                      tee_name) + kl +1);
                teep->tee_next = a_termcap_g->tg_ext_ents;
                a_termcap_g->tg_ext_ents = teep;
@@ -616,7 +616,7 @@ n_termcap_init(void){
 
    assert((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK));
 
-   a_termcap_g = smalloc(sizeof *a_termcap_g);
+   a_termcap_g = n_alloc(sizeof *a_termcap_g);
    a_termcap_g->tg_ext_ents = NULL;
    memset(&a_termcap_g->tg_ents[0], 0, sizeof(a_termcap_g->tg_ents));
    if((ccp = ok_vlook(termcap)) != NULL)
@@ -676,11 +676,11 @@ n_termcap_destroy(void){
 
       while((tmp = a_termcap_g->tg_ext_ents) != NULL){
          a_termcap_g->tg_ext_ents = tmp->tee_next;
-         free(tmp);
+         n_free(tmp);
       }
    }
    n_string_gut(&a_termcap_g->tg_dat);
-   free(a_termcap_g);
+   n_free(a_termcap_g);
    a_termcap_g = NULL;
 #endif
    NYD_LEAVE;
@@ -885,7 +885,7 @@ n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
          goto jleave;
 #ifdef HAVE_TERMCAP
       nlen = strlen(ndat) +1;
-      teep = smalloc(n_VSTRUCT_SIZEOF(struct a_termcap_ext_ent, tee_name) +
+      teep = n_alloc(n_VSTRUCT_SIZEOF(struct a_termcap_ext_ent, tee_name) +
             nlen);
       tep = &teep->tee_super;
       teep->tee_next = a_termcap_g->tg_ext_ents;

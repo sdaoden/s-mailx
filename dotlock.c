@@ -72,13 +72,13 @@ jislink:
    if(lstat(cp = di.di_file_name, &stb) == -1)
       goto jmsg;
    if(S_ISLNK(stb.st_mode)){
-      /* Use salloc() and hope we stay in built-in buffer.. */
+      /* Use n_autorec_alloc() and hope we stay in built-in buffer.. */
       char *x;
       size_t i;
       ssize_t sr;
 
       for(x = NULL, i = PATH_MAX;; i += PATH_MAX){
-         x = salloc(i +1);
+         x = n_autorec_alloc(i +1);
          sr = readlink(cp, x, i);
          if(sr <= 0){
             dls = n_DLS_FISHY | n_DLS_ABANDON;

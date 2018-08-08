@@ -342,8 +342,8 @@ quoteflt_init(struct quoteflt *self, char const *prefix)
       self->qf_quote_chars = ok_vlook(quote_chars);
 
       /* Add pad for takeover copies, reverse solidus and newline */
-      self->qf_dat.s = salloc((qmax + 3) * n_mb_cur_max);
-      self->qf_currq.s = salloc((n_QUOTE_MAX + 1) * n_mb_cur_max);
+      self->qf_dat.s = n_autorec_alloc((qmax + 3) * n_mb_cur_max);
+      self->qf_currq.s = n_autorec_alloc((n_QUOTE_MAX + 1) * n_mb_cur_max);
    }
 #endif
    NYD_LEAVE;
@@ -736,7 +736,7 @@ _hf_dump_hrefs(struct htmlflt *self)
          if (w < 0)
             self->hf_flags |= _HF_ERROR;
       }
-      free(hhp);
+      n_free(hhp);
    }
 
    self->hf_flags |= (putc('\n', self->hf_os) == EOF)
@@ -1320,7 +1320,7 @@ jimg_put:
       self = _hf_param(self, &param, "href");
       /* Ignore non-external links */
       if (param.s != NULL && *param.s != '#') {
-         struct htmlflt_href *hhp = smalloc(
+         struct htmlflt_href *hhp = n_alloc(
                n_VSTRUCT_SIZEOF(struct htmlflt_href, hfh_dat) + param.l +1);
 
          hhp->hfh_next = self->hf_hrefs;
@@ -1468,7 +1468,7 @@ _hf_add_data(struct htmlflt *self, char const *dat, size_t len)
    if ((cp = self->hf_curr) != NULL)
       cp_max = self->hf_bmax;
    else {
-      cp = self->hf_curr = self->hf_bdat = smalloc(LINESIZE);
+      cp = self->hf_curr = self->hf_bdat = n_alloc(LINESIZE);
       cp_max = self->hf_bmax = cp + LINESIZE -1; /* (Always room for NUL!) */
    }
    hot = (cp != self->hf_bdat);
@@ -1591,7 +1591,7 @@ jdo_c:
                size_t i = PTR2SIZE(cp - self->hf_bdat),
                   m = PTR2SIZE(self->hf_bmax - self->hf_bdat) + LINESIZE;
 
-               cp = self->hf_bdat = srealloc(self->hf_bdat, m);
+               cp = self->hf_bdat = n_realloc(self->hf_bdat, m);
                self->hf_bmax = cp_max = &cp[m -1];
                self->hf_curr = (cp += i);
             }
@@ -1682,20 +1682,20 @@ htmlflt_reset(struct htmlflt *self, FILE *f)
 
    while ((hfhp = self->hf_hrefs) != NULL) {
       self->hf_hrefs = hfhp->hfh_next;
-      free(hfhp);
+      n_free(hfhp);
    }
 
    if (self->hf_bdat != NULL)
-      free(self->hf_bdat);
+      n_free(self->hf_bdat);
    if (self->hf_line != NULL)
-      free(self->hf_line);
+      n_free(self->hf_line);
 
    memset(self, 0, sizeof *self);
 
    if (f != NULL) {
       ui32_t sw = n_MAX(_HF_MINLEN, (ui32_t)n_scrnwidth);
 
-      self->hf_line = smalloc((size_t)sw * n_mb_cur_max +1);
+      self->hf_line = n_alloc((size_t)sw * n_mb_cur_max +1);
       self->hf_lmax = sw;
 
       if (n_psonce & n_PSO_UNICODE) /* TODO not truly generic */

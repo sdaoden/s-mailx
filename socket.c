@@ -470,7 +470,7 @@ sclose(struct sock *sp)
       if (sp->s_onclose != NULL)
          (*sp->s_onclose)();
       if (sp->s_wbuf != NULL)
-         free(sp->s_wbuf);
+         n_free(sp->s_wbuf);
 # ifdef HAVE_XSSL
       if (sp->s_use_ssl) {
          void *s_ssl = sp->s_ssl;
@@ -511,7 +511,7 @@ swrite1(struct sock *sp, char const *data, int sz, int use_buffer)
 
       if (sp->s_wbuf == NULL) {
          sp->s_wbufsize = 4096;
-         sp->s_wbuf = smalloc(sp->s_wbufsize);
+         sp->s_wbuf = n_alloc(sp->s_wbufsize);
          sp->s_wbufpos = 0;
       }
       while (sp->s_wbufpos + sz > sp->s_wbufsize) {

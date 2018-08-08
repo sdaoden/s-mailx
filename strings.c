@@ -130,7 +130,7 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
    va_end(vl);
 
    self->l = l;
-   self->s = salloc(l +1);
+   self->s = n_autorec_alloc(l +1);
 
    va_start(vl, self);
    for (l = 0; (cs = va_arg(vl, char const*)) != NULL;) {
@@ -321,7 +321,7 @@ string_quote(char const *v) /* TODO too simpleminded (getrawlist(), +++ ..) */
    for (i = 0, cp = v; (c = *cp) != '\0'; ++i, ++cp)
       if (c == '"' || c == '\\')
          ++i;
-   rv = salloc(i +1);
+   rv = n_autorec_alloc(i +1);
 
    for (i = 0, cp = v; (c = *cp) != '\0'; rv[i++] = c, ++cp)
       if (c == '"' || c == '\\')
@@ -1471,7 +1471,7 @@ n_iconv_onetime_cp(enum n_iconv_flags icf,
    if(!n_iconv_str(icd, icf, &out, &in, NULL))
       rv = savestrbuf(out.s, out.l);
    if(out.s != NULL)
-      free(out.s);
+      n_free(out.s);
 
    iconv_close(icd);
 jleave:

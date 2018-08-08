@@ -218,7 +218,7 @@ jm_h:
 
       if (!seen_default && (*user != '\0' || *pass != '\0')) {
          size_t hl = strlen(host), ul = strlen(user), pl = strlen(pass);
-         struct nrc_node *nx = smalloc(n_VSTRUCT_SIZEOF(struct nrc_node,
+         struct nrc_node *nx = n_alloc(n_VSTRUCT_SIZEOF(struct nrc_node,
                nrc_dat) + hl +1 + ul +1 + pl +1);
 
          if (nhead != NULL)
@@ -263,7 +263,7 @@ jleave:
       while (nhead != NULL) {
          ntail = nhead;
          nhead = nhead->nrc_next;
-         free(ntail);
+         n_free(ntail);
       }
 j_leave:
    _nrc_list = nrc;
@@ -559,7 +559,7 @@ _agent_shell_lookup(struct url *urlp, char const *comm) /* TODO v15-compat */
    rv = TRU1;
 jleave:
    if (s.s != NULL)
-      free(s.s);
+      n_free(s.s);
    NYD2_LEAVE;
    return rv;
 }
@@ -686,7 +686,7 @@ c_urlcodec(void *vp){
          n_pstate_err_no = n_err_no;
          vp = NULL;
       }
-      free(out.s);
+      n_free(out.s);
    }
 
 jleave:
@@ -946,7 +946,7 @@ juser:
       char *ub;
 
       l = PTR2SIZE(cp - data);
-      ub = ac_alloc(l +1);
+      ub = n_lofi_alloc(l +1);
       d = data;
       urlp->url_flags |= n_URL_HAD_USER;
       data = &cp[1];
@@ -984,7 +984,7 @@ jurlp_err:
          d = NULL;
       }
 
-      ac_free(ub);
+      n_lofi_free(ub);
       if(d == NULL)
          goto jleave;
    }
@@ -1125,7 +1125,7 @@ jurlp_err:
       s = &urlp->url_u_h;
       i = urlp->url_user.l;
 
-      s->s = salloc(i + 1 + h.l +1);
+      s->s = n_autorec_alloc(i + 1 + h.l +1);
       if (i > 0) {
          memcpy(s->s, urlp->url_user.s, i);
          s->s[i++] = '@';
@@ -1139,7 +1139,7 @@ jurlp_err:
    {  struct str *s = &urlp->url_u_h_p;
       size_t i = urlp->url_user.l;
 
-      s->s = salloc(i + 1 + urlp->url_h_p.l +1);
+      s->s = n_autorec_alloc(i + 1 + urlp->url_h_p.l +1);
       if (i > 0) {
          memcpy(s->s, urlp->url_user.s, i);
          s->s[i++] = '@';
@@ -1153,7 +1153,7 @@ jurlp_err:
    {  struct str *s = &urlp->url_eu_h_p;
       size_t i = urlp->url_user_enc.l;
 
-      s->s = salloc(i + 1 + urlp->url_h_p.l +1);
+      s->s = n_autorec_alloc(i + 1 + urlp->url_h_p.l +1);
       if (i > 0) {
          memcpy(s->s, urlp->url_user_enc.s, i);
          s->s[i++] = '@';
@@ -1257,7 +1257,7 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
 
    ccp->cc_cproto = cproto;
    addrlen = strlen(addr);
-   vbuf = ac_alloc(pxlen + addrlen + sizeof("-password-")-1 +1);
+   vbuf = n_lofi_alloc(pxlen + addrlen + sizeof("-password-")-1 +1);
    memcpy(vbuf, pxstr, pxlen);
 
    /* Authentication type */
@@ -1379,7 +1379,7 @@ jpass:
       ccp->cc_pass.l = strlen(ccp->cc_pass.s = savestr(s));
 
 jleave:
-   ac_free(vbuf);
+   n_lofi_free(vbuf);
    if (ccp != NULL && (n_poption & n_PO_D_VV))
       n_err(_("Credentials: host %s, user %s, pass %s\n"),
          addr, (ccp->cc_user.s != NULL ? ccp->cc_user.s : n_empty),
@@ -1600,7 +1600,7 @@ jclear:
       _nrc_list = NULL;
    while ((nrc = _nrc_list) != NULL) {
       _nrc_list = nrc->nrc_next;
-      free(nrc);
+      n_free(nrc);
    }
    goto jleave;
 }
@@ -1644,23 +1644,23 @@ cram_md5_string(struct str const *user, struct str const *pass,
    if(!b64_decode(&out, &in))
       goto jleave;
    if(out.l >= INT_MAX){
-      free(out.s);
+      n_free(out.s);
       out.s = NULL;
       goto jleave;
    }
 
    hmac_md5((uc_i*)out.s, out.l, (uc_i*)pass->s, pass->l, digest);
-   free(out.s);
-   cp = md5tohex(salloc(MD5TOHEX_SIZE +1), digest);
+   n_free(out.s);
+   cp = md5tohex(n_autorec_alloc(MD5TOHEX_SIZE +1), digest);
 
    in.l = user->l + MD5TOHEX_SIZE +1;
-   in.s = ac_alloc(user->l + 1 + MD5TOHEX_SIZE +1);
+   in.s = n_lofi_alloc(user->l + 1 + MD5TOHEX_SIZE +1);
    memcpy(in.s, user->s, user->l);
    in.s[user->l] = ' ';
    memcpy(&in.s[user->l + 1], cp, MD5TOHEX_SIZE);
    if(b64_encode(&out, &in, B64_SALLOC | B64_CRLF) == NULL)
       out.s = NULL;
-   ac_free(in.s);
+   n_lofi_free(in.s);
 jleave:
    NYD_LEAVE;
    return out.s;

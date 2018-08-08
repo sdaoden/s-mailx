@@ -480,7 +480,7 @@ a_ccnd_if(void *v, bool_t iselif){
    NYD_ENTER;
 
    if(!iselif){
-      cinp = smalloc(sizeof *cinp);
+      cinp = n_alloc(sizeof *cinp);
       cinp->cin_outer = n_go_data->gdc_ifcond;
    }else{
       cinp = n_go_data->gdc_ifcond;
@@ -501,7 +501,7 @@ a_ccnd_if(void *v, bool_t iselif){
    /* For heaven's sake, support comments _today_ TODO wyshlist.. */
    for(argc = 0, argv = v; argv[argc] != NULL; ++argc)
       if(argv[argc][0] == '#'){
-         char const **nav = salloc(sizeof(char*) * (argc + 1));
+         char const **nav = n_autorec_alloc(sizeof(char*) * (argc + 1));
          size_t i;
 
          for(i = 0; i < argc; ++i)
@@ -585,7 +585,7 @@ c_endif(void *v){
       rv = 1;
    }else{
       n_go_data->gdc_ifcond = cinp->cin_outer;
-      free(cinp);
+      n_free(cinp);
       rv = 0;
    }
    NYD_LEAVE;
@@ -612,7 +612,7 @@ n_cnd_if_stack_del(struct n_go_data_ctx *gdcp){
 
    while((cinp = vp) != NULL){
       vp = cinp->cin_outer;
-      free(cinp);
+      n_free(cinp);
    }
    NYD2_LEAVE;
 }

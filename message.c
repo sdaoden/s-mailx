@@ -226,7 +226,7 @@ a_message_add_to_namelist(char ***namelist, size_t *nmlsize, /* TODO Vector */
    NYD2_ENTER;
 
    if((idx = PTR2SIZE(np - *namelist)) >= *nmlsize){
-      *namelist = srealloc(*namelist, (*nmlsize += 8) * sizeof *np);
+      *namelist = n_realloc(*namelist, (*nmlsize += 8) * sizeof *np);
       np = &(*namelist)[idx];
    }
    *np++ = string;
@@ -1128,11 +1128,11 @@ a_message_match_dash(struct message *mp, char const *str){
       size_t l;
 
       l = PTR2SIZE(hfield - str);
-      hfield = ac_alloc(l +1);
+      hfield = n_lofi_alloc(l +1);
       memcpy(hfield, str, l);
       hfield[l] = '\0';
       hbody = hfieldX(hfield, mp);
-      ac_free(hfield);
+      n_lofi_free(hfield);
       hfield = n_UNCONST(str + l + 1);
    }else{
       hfield = n_UNCONST(str);
@@ -1144,7 +1144,7 @@ a_message_match_dash(struct message *mp, char const *str){
    in.l = strlen(in.s = hbody);
    mime_fromhdr(&in, &out, TD_ICONV);
    rv = substr(out.s, hfield);
-   free(out.s);
+   n_free(out.s);
 jleave:
    NYD2_LEAVE;
    return rv;
@@ -1363,7 +1363,7 @@ FL void
 message_reset(void){
    NYD_ENTER;
    if(message != NULL){
-      free(message);
+      n_free(message);
       message = NULL;
    }
    msgCount = 0;
@@ -1379,7 +1379,7 @@ message_append(struct message *mp){
       a_message_mem_space = ((a_message_mem_space >= 128 &&
                a_message_mem_space <= 1000000)
             ? a_message_mem_space << 1 : a_message_mem_space + 64);
-      message = srealloc(message, a_message_mem_space * sizeof(*message));
+      message = n_realloc(message, a_message_mem_space * sizeof(*message));
    }
    if(msgCount > 0){
       if(mp != NULL)
