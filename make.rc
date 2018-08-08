@@ -146,7 +146,7 @@ VAL_MIME_TYPES_SYS=/etc/mime.types
 # specific adjustments (e.g., $PATH) have been performed yet, but its
 # use can be circumvented by setting $OS (uname -s) and $OSFULLSPEC
 # (uname -a: this is not baked into the binary, it is only used to
-# recognize build environment changes).  $OS must be all-lowercase.
+# recognize build environment changes).
 # Due to the evaluation order of the build system all those programs are
 # usually needed, but by setting any of the variables to true(1), as in
 # chown=/usr/bin/true, availability of unneeded programs can be faked.

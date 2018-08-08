@@ -277,6 +277,7 @@ os_early_setup() {
 
    [ -n "${OS}" ] || OS=`${uname} -s`
    export OS
+   msg 'Operating system is %s' "${OS}"
 
    if [ ${OS} = SunOS ]; then
       # According to standards(5), this is what we need to do
@@ -291,9 +292,6 @@ os_early_setup() {
 }
 
 os_setup() {
-   msg 'Operating system is %s' "${OS}"
-   OS=`echo ${OS} | ${tr} '[A-Z]' '[a-z]'`
-
    # OSFULLSPEC is used to recognize changes (i.e., machine type, updates
    # etc.), it is not baked into the binary
    [ -n "${OSFULLSPEC}" ] || OSFULLSPEC=`${uname} -a`
@@ -1218,6 +1216,10 @@ msg 'Checking for basic utility set'
 thecmd_testandset_fail awk awk
 thecmd_testandset_fail rm rm
 thecmd_testandset_fail tr tr
+
+# Lowercase this now in order to isolate all the remains from case matters
+OS=`echo ${OS} | ${tr} '[A-Z]' '[a-z]'`
+export OS
 
 # Initialize the option set
 msg_nonl 'Setting up configuration options ... '
