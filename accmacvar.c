@@ -140,6 +140,7 @@ enum a_amv_var_lookup_flags{
 enum a_amv_var_setclr_flags{
    a_AMV_VSETCLR_NONE = 0,
    a_AMV_VSETCLR_LOCAL = 1u<<0,     /* Use `local' variables only */
+   /* XXX Maybe something for only non-local? */
    a_AMV_VSETCLR_ENV = 1u<<1        /* `environ' or otherwise environ */
 };
 
@@ -1887,7 +1888,8 @@ jeavmp:
    rv = TRU1;
    a_amv_var_lookup(avcp, (a_AMV_VLOOK_I3VAL_NONEW |
          ((avscf & a_AMV_VSETCLR_LOCAL)
-          ? (a_AMV_VLOOK_LOCAL | a_AMV_VLOOK_LOCAL_ONLY) : 0)));
+          ? (a_AMV_VLOOK_LOCAL | a_AMV_VLOOK_LOCAL_ONLY)
+          : a_AMV_VLOOK_LOCAL)));
    avp = avcp->avc_var;
 
    /* A `local' setting is never covered by `localopts' nor frozen */
@@ -2058,7 +2060,8 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp,
 
    if(n_UNLIKELY(!a_amv_var_lookup(avcp,
          (((avscf & a_AMV_VSETCLR_LOCAL)
-            ? (a_AMV_VLOOK_LOCAL | a_AMV_VLOOK_LOCAL_ONLY) : 0) |
+            ? (a_AMV_VLOOK_LOCAL | a_AMV_VLOOK_LOCAL_ONLY)
+            : a_AMV_VLOOK_LOCAL) |
           a_AMV_VLOOK_I3VAL_NONEW | a_AMV_VLOOK_I3VAL_NONEW_REPORT)))){
       assert(avcp->avc_var == NULL);
       /* This may be a clearance request from the command line, via -S, and we
