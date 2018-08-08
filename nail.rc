@@ -2,7 +2,8 @@
 #@ /etc/s-nail.rc - configuration file for S-nail(1)
 #--MKRC-END--
 #@ The syntax of this file is interpreted as follows:
-#@ - Leading and trailing " \t\n" + *ifs* whitespace is removed.
+#@ - Leading and trailing space, tabulator, newline (" \t\n") and all members
+#@   *ifs-ws* are removed.
 #@ - Empty lines are ignored.
 #@ - Any other line is a command line.  Such lines can be spread over
 #@   multiple lines if the newline character is "escaped" by placing
@@ -11,7 +12,7 @@
 #@   the escaped newline is not.
 #@ - The number sign # is the comment-command and causes the (joined) line
 #@   (content) to be ignored.
-#@ S-nail v14.9.10 / 2018-03-25
+#@ S-nail v14.9.11 / 2018-08-08
 
 ## Variables
 
@@ -61,7 +62,7 @@ set ask
 # the screen.  (Set crt=0 to always page; value treated as number of lines.)
 set crt
 
-# When entering compose mode, directlry startup into $EDITOR, as via `~e'.
+# When entering compose mode, directly startup into $EDITOR, as via `~e'.
 # If the value is "v", startup into $VISUAL, as via `~v' instead.
 #set editalong=v
 
@@ -189,11 +190,12 @@ retain from_ date from to cc subject message-id mail-followup-to reply-to
 
 # More key bindings for the Mailx-Line-Editor (when in interactive mode).
 #if terminal && [ "$features" =@ +key-bindings ]
-#   bind base $'\e',d mle-snarf-word-fwd
-#   bind base $'\e',$'\c?' mle-snarf-word-bwd
-#   bind base $'\e',f mle-go-word-fwd
-#   bind base $'\e',b mle-go-word-bwd
-#   bind compose :kf1 ~v
+#   \bind base $'\e',d mle-snarf-word-fwd
+#   \bind base $'\e',$'\c?' mle-snarf-word-bwd
+#   \bind base $'\e',f mle-go-word-fwd
+#   \bind base $'\e',b mle-go-word-bwd
+#   \bind base $'\cL' mle-clear-screen
+#   \bind compose :kf1 ~v
 #endif
 
 # Coloured prompt for the Mailx-Line-Editor (when in interactive mode).

@@ -4,6 +4,7 @@
  *@   $NetBSD: ruserpass.c,v 1.33 2007/04/17 05:52:04 lukem Exp $
  *
  * Copyright (c) 2014 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -218,7 +219,7 @@ jm_h:
 
       if (!seen_default && (*user != '\0' || *pass != '\0')) {
          size_t hl = strlen(host), ul = strlen(user), pl = strlen(pass);
-         struct nrc_node *nx = smalloc(n_VSTRUCT_SIZEOF(struct nrc_node,
+         struct nrc_node *nx = n_alloc(n_VSTRUCT_SIZEOF(struct nrc_node,
                nrc_dat) + hl +1 + ul +1 + pl +1);
 
          if (nhead != NULL)
@@ -263,7 +264,7 @@ jleave:
       while (nhead != NULL) {
          ntail = nhead;
          nhead = nhead->nrc_next;
-         free(ntail);
+         n_free(ntail);
       }
 j_leave:
    _nrc_list = nrc;
@@ -559,7 +560,7 @@ _agent_shell_lookup(struct url *urlp, char const *comm) /* TODO v15-compat */
    rv = TRU1;
 jleave:
    if (s.s != NULL)
-      free(s.s);
+      n_free(s.s);
    NYD2_LEAVE;
    return rv;
 }
@@ -686,7 +687,7 @@ c_urlcodec(void *vp){
          n_pstate_err_no = n_err_no;
          vp = NULL;
       }
-      free(out.s);
+      n_free(out.s);
    }
 
 jleave:
@@ -843,7 +844,8 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #if defined HAVE_SMTP && defined HAVE_POP3 && defined HAVE_IMAP
 # define a_ALLPROTO
 #endif
-#if defined HAVE_SMTP || defined HAVE_POP3 || defined HAVE_IMAP
+#if defined HAVE_SMTP || defined HAVE_POP3 || defined HAVE_IMAP || \
+      defined HAVE_TLS
 # define a_ANYPROTO
    char *cp, *x;
 #endif
@@ -856,13 +858,14 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
    urlp->url_cproto = cproto;
 
    /* Network protocol */
-#define a_PROTOX(X,Y,Z)  \
+#define a_PROTOX(X,Y,Z) \
    urlp->url_portno = Y;\
-   /* .url_proto has two NULs ... */\
    memcpy(urlp->url_proto, X "://\0", sizeof(X "://\0"));\
    urlp->url_proto[sizeof(X) -1] = '\0';\
    urlp->url_proto_len = sizeof(X) -1;\
    do{ Z; }while(0)
+#define a_PRIVPROTOX(X,Y,Z) \
+   do{ a_PROTOX(X, Y, Z); }while(0)
 #define a__IF(X,Y,Z)  \
    if(!ascncasecmp(data, X "://", sizeof(X "://") -1)){\
       a_PROTOX(X, Y, Z);\
@@ -870,7 +873,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
       goto juser;\
    }
 #define a_IF(X,Y) a__IF(X, Y, (void)0)
-#ifdef HAVE_SSL
+#ifdef HAVE_TLS
 # define a_IFS(X,Y) a__IF(X, Y, urlp->url_flags |= n_URL_TLS_REQUIRED)
 # define a_IFs(X,Y) a__IF(X, Y, urlp->url_flags |= n_URL_TLS_OPTIONAL)
 #else
@@ -879,10 +882,33 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #endif
 
    switch(cproto){
+   case CPROTO_CERTINFO:
+      /* The special `tls' certificate info protocol
+       * We do allow all protos here, for later getaddrinfo() usage! */
+#ifdef HAVE_TLS
+      if((cp = strstr(data, "://")) == NULL)
+         a_PRIVPROTOX("https", 443, urlp->url_flags |= n_URL_TLS_REQUIRED);
+      else{
+         size_t i;
+
+         if((i = PTR2SIZE(&cp[sizeof("://") -1] - data)) + 2 >=
+               sizeof(urlp->url_proto))
+            goto jeproto;
+         memcpy(urlp->url_proto, data, i);
+         data += i;
+         i -= sizeof("://") -1;
+         urlp->url_proto[i] = '\0';\
+         urlp->url_proto_len = i;
+         urlp->url_flags |= n_URL_TLS_REQUIRED;
+      }
+      break;
+#else
+      goto jeproto;
+#endif
    case CPROTO_CCRED:
-      /* The special S/MIME etc. credential lookup */
-#ifdef HAVE_SSL
-      a_PROTOX("ccred", 0, (void)0);
+      /* The special S/MIME etc. credential lookup TODO TLS client cert! */
+#ifdef HAVE_TLS
+      a_PRIVPROTOX("ccred", 0, (void)0);
       break;
 #else
       goto jeproto;
@@ -923,6 +949,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #endif
    }
 
+#undef a_PRIVPROTOX
 #undef a_PROTOX
 #undef a__IF
 #undef a_IF
@@ -930,7 +957,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #undef a_IFs
 
    if (strstr(data, "://") != NULL) {
-#if !defined a_ALLPROTO || !defined HAVE_SSL
+#if !defined a_ALLPROTO || defined HAVE_TLS
 jeproto:
 #endif
       n_err(_("URL proto:// prefix invalid: %s\n"), urlp->url_input);
@@ -946,7 +973,7 @@ juser:
       char *ub;
 
       l = PTR2SIZE(cp - data);
-      ub = ac_alloc(l +1);
+      ub = n_lofi_alloc(l +1);
       d = data;
       urlp->url_flags |= n_URL_HAD_USER;
       data = &cp[1];
@@ -984,7 +1011,7 @@ jurlp_err:
          d = NULL;
       }
 
-      ac_free(ub);
+      n_lofi_free(ub);
       if(d == NULL)
          goto jleave;
    }
@@ -1000,7 +1027,7 @@ jurlp_err:
 
       if((n_idec_ui16_cp(&urlp->url_portno, urlp->url_port, 10, NULL
                ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED){
+            ) != n_IDEC_STATE_CONSUMED || urlp->url_portno == 0){
          n_err(_("URL with invalid port number: %s\n"), urlp->url_input);
          goto jleave;
       }
@@ -1032,29 +1059,29 @@ jurlp_err:
                urlp->url_input);
             goto jleave;
          }
-#ifdef HAVE_IMAP
+# ifdef HAVE_IMAP
          if(trailsol){
             urlp->url_path.s = n_autorec_alloc(i + sizeof("/INBOX"));
             memcpy(urlp->url_path.s, x, i);
             memcpy(&urlp->url_path.s[i], "/INBOX", sizeof("/INBOX"));
             urlp->url_path.l = (i += sizeof("/INBOX") -1);
          }else
-#endif
+# endif
             urlp->url_path.l = i, urlp->url_path.s = x2;
       }
    }
-#ifdef HAVE_IMAP
+# ifdef HAVE_IMAP
    if(cproto == CPROTO_IMAP && urlp->url_path.s == NULL)
       urlp->url_path.s = savestrbuf("INBOX",
             urlp->url_path.l = sizeof("INBOX") -1);
-#endif
+# endif
 
    urlp->url_host.s = savestrbuf(data, urlp->url_host.l = PTR2SIZE(cp - data));
    {  size_t i;
       for (cp = urlp->url_host.s, i = urlp->url_host.l; i != 0; ++cp, --i)
          *cp = lowerconv(*cp);
    }
-#ifdef HAVE_IDNA
+# ifdef HAVE_IDNA
    if(!ok_blook(idna_disable)){
       struct n_string idna;
 
@@ -1066,22 +1093,21 @@ jurlp_err:
       urlp->url_host.s = n_string_cp(&idna);
       urlp->url_host.l = idna.s_len;
    }
-#endif /* HAVE_IDNA */
+# endif /* HAVE_IDNA */
 
    /* .url_h_p: HOST:PORT */
-   {  size_t i;
+   {  size_t upl, i;
       struct str *s = &urlp->url_h_p;
 
-      s->s = salloc(urlp->url_host.l + 1 + sizeof("65536")-1 +1);
+      upl = (urlp->url_port == NULL) ? 0 : 1u + strlen(urlp->url_port);
+      s->s = n_autorec_alloc(urlp->url_host.l + upl +1);
       memcpy(s->s, urlp->url_host.s, i = urlp->url_host.l);
-      if (urlp->url_port != NULL) {
-         size_t j = strlen(urlp->url_port);
+      if(upl > 0){
          s->s[i++] = ':';
-         memcpy(s->s + i, urlp->url_port, j);
-         i += j;
+         memcpy(&s->s[i], urlp->url_port, --upl);
+         i += upl;
       }
-      s->s[i] = '\0';
-      s->l = i;
+      s->s[s->l = i] = '\0';
    }
 
    /* User, II
@@ -1126,7 +1152,7 @@ jurlp_err:
       s = &urlp->url_u_h;
       i = urlp->url_user.l;
 
-      s->s = salloc(i + 1 + h.l +1);
+      s->s = n_autorec_alloc(i + 1 + h.l +1);
       if (i > 0) {
          memcpy(s->s, urlp->url_user.s, i);
          s->s[i++] = '@';
@@ -1140,7 +1166,7 @@ jurlp_err:
    {  struct str *s = &urlp->url_u_h_p;
       size_t i = urlp->url_user.l;
 
-      s->s = salloc(i + 1 + urlp->url_h_p.l +1);
+      s->s = n_autorec_alloc(i + 1 + urlp->url_h_p.l +1);
       if (i > 0) {
          memcpy(s->s, urlp->url_user.s, i);
          s->s[i++] = '@';
@@ -1154,7 +1180,7 @@ jurlp_err:
    {  struct str *s = &urlp->url_eu_h_p;
       size_t i = urlp->url_user_enc.l;
 
-      s->s = salloc(i + 1 + urlp->url_h_p.l +1);
+      s->s = n_autorec_alloc(i + 1 + urlp->url_h_p.l +1);
       if (i > 0) {
          memcpy(s->s, urlp->url_user_enc.s, i);
          s->s[i++] = '@';
@@ -1258,7 +1284,7 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
 
    ccp->cc_cproto = cproto;
    addrlen = strlen(addr);
-   vbuf = ac_alloc(pxlen + addrlen + sizeof("-password-")-1 +1);
+   vbuf = n_lofi_alloc(pxlen + addrlen + sizeof("-password-")-1 +1);
    memcpy(vbuf, pxstr, pxlen);
 
    /* Authentication type */
@@ -1380,7 +1406,7 @@ jpass:
       ccp->cc_pass.l = strlen(ccp->cc_pass.s = savestr(s));
 
 jleave:
-   ac_free(vbuf);
+   n_lofi_free(vbuf);
    if (ccp != NULL && (n_poption & n_PO_D_VV))
       n_err(_("Credentials: host %s, user %s, pass %s\n"),
          addr, (ccp->cc_user.s != NULL ? ccp->cc_user.s : n_empty),
@@ -1601,7 +1627,7 @@ jclear:
       _nrc_list = NULL;
    while ((nrc = _nrc_list) != NULL) {
       _nrc_list = nrc->nrc_next;
-      free(nrc);
+      n_free(nrc);
    }
    goto jleave;
 }
@@ -1645,23 +1671,23 @@ cram_md5_string(struct str const *user, struct str const *pass,
    if(!b64_decode(&out, &in))
       goto jleave;
    if(out.l >= INT_MAX){
-      free(out.s);
+      n_free(out.s);
       out.s = NULL;
       goto jleave;
    }
 
    hmac_md5((uc_i*)out.s, out.l, (uc_i*)pass->s, pass->l, digest);
-   free(out.s);
-   cp = md5tohex(salloc(MD5TOHEX_SIZE +1), digest);
+   n_free(out.s);
+   cp = md5tohex(n_autorec_alloc(MD5TOHEX_SIZE +1), digest);
 
    in.l = user->l + MD5TOHEX_SIZE +1;
-   in.s = ac_alloc(user->l + 1 + MD5TOHEX_SIZE +1);
+   in.s = n_lofi_alloc(user->l + 1 + MD5TOHEX_SIZE +1);
    memcpy(in.s, user->s, user->l);
    in.s[user->l] = ' ';
    memcpy(&in.s[user->l + 1], cp, MD5TOHEX_SIZE);
    if(b64_encode(&out, &in, B64_SALLOC | B64_CRLF) == NULL)
       out.s = NULL;
-   ac_free(in.s);
+   n_lofi_free(in.s);
 jleave:
    NYD_LEAVE;
    return out.s;

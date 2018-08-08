@@ -1,8 +1,9 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Generic SSL / S/MIME commands.
+ *@ Generic TLS / S/MIME commands.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-4-Clause TODO ISC (is taken from book!)
  */
 /*
  * Copyright (c) 2002
@@ -37,68 +38,68 @@
  * SUCH DAMAGE.
  */
 #undef n_FILE
-#define n_FILE ssl
+#define n_FILE tls
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
 
 EMPTY_FILE()
-#ifdef HAVE_SSL
-struct ssl_verify_levels {
-   char const              sv_name[8];
-   enum ssl_verify_level   sv_level;
+#ifdef HAVE_TLS
+struct a_tls_verify_levels{
+   char const tv_name[8];
+   enum n_tls_verify_level tv_level;
 };
 
 /* Supported SSL/TLS verification methods: update manual on change! */
-static struct ssl_verify_levels const  _ssl_verify_levels[] = {
-   {"strict", SSL_VERIFY_STRICT},
-   {"ask", SSL_VERIFY_ASK},
-   {"warn", SSL_VERIFY_WARN},
-   {"ignore", SSL_VERIFY_IGNORE}
+static struct a_tls_verify_levels const a_tls_verify_levels[] = {
+   {"strict", n_TLS_VERIFY_STRICT},
+   {"ask", n_TLS_VERIFY_ASK},
+   {"warn", n_TLS_VERIFY_WARN},
+   {"ignore", n_TLS_VERIFY_IGNORE}
 };
 
 FL void
-ssl_set_verify_level(struct url const *urlp)
-{
+n_tls_set_verify_level(struct url const *urlp){
    size_t i;
-   char *cp;
-   NYD_ENTER;
+   char const *cp;
+   NYD2_ENTER;
 
-   ssl_verify_level = SSL_VERIFY_ASK;
-   cp = xok_vlook(ssl_verify, urlp, OXM_ALL);
+   n_tls_verify_level = n_TLS_VERIFY_ASK;
 
-   if (cp != NULL) {
-      for (i = 0; i < n_NELEM(_ssl_verify_levels); ++i)
-         if (!asccasecmp(_ssl_verify_levels[i].sv_name, cp)) {
-            ssl_verify_level = _ssl_verify_levels[i].sv_level;
-            goto jleave;
+   if((cp = xok_vlook(tls_verify, urlp, OXM_ALL)) != NULL ||
+         (cp = xok_vlook(ssl_verify, urlp, OXM_ALL)) != NULL){
+      for(i = 0;;)
+         if(!asccasecmp(a_tls_verify_levels[i].tv_name, cp)){
+            n_tls_verify_level = a_tls_verify_levels[i].tv_level;
+            break;
+         }else if(++i >= n_NELEM(a_tls_verify_levels)){
+            n_err(_("Invalid value of *tls-verify*: %s\n"), cp);
+            break;
          }
-      n_err(_("Invalid value of *ssl-verify*: %s\n"), cp);
    }
-jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 
-FL enum okay
-ssl_verify_decide(void)
-{
-   enum okay rv = STOP;
-   NYD_ENTER;
+FL bool_t
+n_tls_verify_decide(void){
+   bool_t rv;
+   NYD2_ENTER;
 
-   switch (ssl_verify_level) {
-   case SSL_VERIFY_STRICT:
-      rv = STOP;
+   switch(n_tls_verify_level){
+   default:
+   case n_TLS_VERIFY_STRICT:
+      rv = FAL0;
       break;
-   case SSL_VERIFY_ASK:
-      rv = getapproval(NULL, FAL0) ? OKAY : STOP;
+   case n_TLS_VERIFY_ASK:
+      rv = getapproval(NULL, FAL0);
       break;
-   case SSL_VERIFY_WARN:
-   case SSL_VERIFY_IGNORE:
-      rv = OKAY;
+   case n_TLS_VERIFY_WARN:
+   case n_TLS_VERIFY_IGNORE:
+      rv = TRU1;
       break;
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -118,7 +119,8 @@ smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
 
    if ((*hp = Ftmp(NULL, "smimeh", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
       goto jetmp;
-   if ((*bp = Ftmp(NULL, "smimeb", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==NULL) {
+   if ((*bp = Ftmp(NULL, "smimeb", OF_RDWR | OF_UNLINK | OF_REGISTER)
+         ) == NULL) {
       Fclose(*hp);
 jetmp:
       n_perr(_("tempfile"), 0);
@@ -126,7 +128,7 @@ jetmp:
    }
 
    head = tail = NULL;
-   buf = smalloc(bufsize = LINESIZE);
+   buf = n_alloc(bufsize = LINESIZE);
    cnt = (xcount < 0) ? fsize(ip) : xcount;
 
    while (fgetline(&buf, &bufsize, &cnt, &buflen, ip, 0) != NULL &&
@@ -135,7 +137,7 @@ jetmp:
          if (keep)
             fputs("X-Encoded-", *hp);
          for (;;) {
-            struct myline *ml = smalloc(n_VSTRUCT_SIZEOF(struct myline, ml_buf
+            struct myline *ml = n_alloc(n_VSTRUCT_SIZEOF(struct myline, ml_buf
                   ) + buflen +1);
             if (tail != NULL)
                tail->ml_next = ml;
@@ -163,14 +165,14 @@ jetmp:
       fwrite(head->ml_buf, sizeof *head->ml_buf, head->ml_len, *bp);
       tail = head;
       head = head->ml_next;
-      free(tail);
+      n_free(tail);
    }
    putc('\n', *bp);
    while (fgetline(&buf, &bufsize, &cnt, &buflen, ip, 0) != NULL)
       fwrite(buf, sizeof *buf, buflen, *bp);
    fflush_rewind(*bp);
 
-   free(buf);
+   n_free(buf);
    rv = OKAY;
 jleave:
    NYD_LEAVE;
@@ -185,7 +187,8 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp, char const *message_digest)
    FILE *op;
    NYD_ENTER;
 
-   if ((op = Ftmp(NULL, "smimea", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL) {
+   if ((op = Ftmp(NULL, "smimea", OF_RDWR | OF_UNLINK | OF_REGISTER)
+         ) == NULL) {
       n_perr(_("tempfile"), 0);
       goto jleave;
    }
@@ -244,7 +247,8 @@ smime_encrypt_assemble(FILE *hp, FILE *yp)
    int c, lastc = EOF;
    NYD_ENTER;
 
-   if ((op = Ftmp(NULL, "smimee", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL) {
+   if ((op = Ftmp(NULL, "smimee", OF_RDWR | OF_UNLINK | OF_REGISTER)
+         ) == NULL) {
       n_perr(_("tempfile"), 0);
       goto jleave;
    }
@@ -291,12 +295,12 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
    int binary = 0;
    char *buf = NULL;
    size_t bufsize = 0, buflen, cnt;
-   long lines = 0, octets = 0;
+   long lns = 0, octets = 0;
    struct message *x;
    off_t offset;
    NYD_ENTER;
 
-   x = salloc(sizeof *x);
+   x = n_autorec_alloc(sizeof *x);
    *x = *m;
    fflush(mb.mb_otf);
    fseek(mb.mb_otf, 0L, SEEK_END);
@@ -312,7 +316,7 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
             binary = 1;
       fwrite(buf, sizeof *buf, buflen, mb.mb_otf);
       octets += buflen;
-      ++lines;
+      ++lns;
    }
 
    {  struct time_current save = time_current;
@@ -320,11 +324,11 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
       octets += mkdate(mb.mb_otf, "X-Decoding-Date");
       time_current = save;
    }
-   ++lines;
+   ++lns;
 
    cnt = fsize(bp);
    while (fgetline(&buf, &bufsize, &cnt, &buflen, bp, 0) != NULL) {
-      lines++;
+      lns++;
       if (!binary && buf[buflen - 1] == '\n' && buf[buflen - 2] == '\r')
          buf[--buflen - 1] = '\n';
       fwrite(buf, sizeof *buf, buflen, mb.mb_otf);
@@ -339,14 +343,14 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
 
    while (!binary && lastnl < 2) {
       putc('\n', mb.mb_otf);
-      ++lines;
+      ++lns;
       ++octets;
       ++lastnl;
    }
 
    Fclose(hp);
    Fclose(bp);
-   free(buf);
+   n_free(buf);
 
    fflush(mb.mb_otf);
    if (ferror(mb.mb_otf)) {
@@ -354,7 +358,7 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
       x = NULL;
    }else{
       x->m_size = x->m_xsize = octets;
-      x->m_lines = x->m_xlines = lines;
+      x->m_lines = x->m_xlines = lns;
       x->m_block = mailx_blockof(offset);
       x->m_offset = mailx_offsetof(offset);
    }
@@ -363,68 +367,132 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
 }
 
 FL int
-c_certsave(void *v)
-{
-   int *ip, *msgvec, val;
-   char *file = NULL, *str = v;
+c_certsave(void *vp){
    FILE *fp;
-   bool_t f;
+   int *msgvec, *ip;
+   struct n_cmd_arg_ctx *cacp;
    NYD_ENTER;
 
-   msgvec = salloc((msgCount + 2) * sizeof *msgvec);
-   val = 1;
+   cacp = vp;
+   assert(cacp->cac_no == 2);
 
-   if ((file = laststring(str, &f, TRU1)) == NULL ||
-         (file = fexpand(file, FEXP_LOCAL | FEXP_NOPROTO)) == NULL) {
-      n_err(_("No file to save certificate given\n"));
-      goto jleave;
+   msgvec = cacp->cac_arg->ca_arg.ca_msglist;
+   /* C99 */{
+      char *file, *cp;
+
+      file = cacp->cac_arg->ca_next->ca_arg.ca_str.s;
+      if((cp = fexpand(file, FEXP_LOCAL_FILE | FEXP_NOPROTO)) == NULL ||
+            *cp == '\0'){
+         n_err(_("`certsave': file expansion failed: %s\n"),
+            n_shexp_quote_cp(file, FAL0));
+         vp = NULL;
+         goto jleave;
+      }
+      file = cp;
+
+      if((fp = Fopen(file, "a")) == NULL){
+         n_perr(file, 0);
+         vp = NULL;
+         goto jleave;
+      }
    }
 
-   if (!f) {
-      msgvec[1] = 0;
-      *msgvec = first(0, MMNORM);
-   } else if (getmsglist(str, msgvec, 0) < 0)
-      goto jleave;
-   if (*msgvec == 0) {
-      if (n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT))
-         val = 0;
-      else
-         n_err(_("No applicable messages\n"));
-      goto jleave;
-   }
+   for(ip = msgvec; *ip != 0; ++ip)
+      if(smime_certsave(&message[*ip - 1], *ip, fp) != OKAY)
+         vp = NULL;
 
-   if ((fp = Fopen(file, "a")) == NULL) {
-      n_perr(file, 0);
-      goto jleave;
-   }
-   for (val = 0, ip = msgvec;
-         *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount); ++ip)
-      if (smime_certsave(&message[*ip - 1], *ip, fp) != OKAY)
-         val = 1;
    Fclose(fp);
 
-   if (val == 0)
+   if(vp != NULL)
       fprintf(n_stdout, "Certificate(s) saved\n");
 jleave:
    NYD_LEAVE;
-   return val;
+   return (vp != NULL);
 }
 
-FL enum okay
-rfc2595_hostname_match(char const *host, char const *pattern)
-{
-   enum okay rv;
+FL bool_t
+n_tls_rfc2595_hostname_match(char const *host, char const *pattern){
+   bool_t rv;
    NYD_ENTER;
 
-   if (pattern[0] == '*' && pattern[1] == '.') {
+   if(pattern[0] == '*' && pattern[1] == '.'){
       ++pattern;
-      while (*host && *host != '.')
+      while(*host && *host != '.')
          ++host;
    }
-   rv = !asccasecmp(host, pattern) ? OKAY : STOP;
+   rv = (asccasecmp(host, pattern) == 0);
    NYD_LEAVE;
    return rv;
 }
-#endif /* HAVE_SSL */
+
+FL int
+c_tls(void *vp){
+   size_t i;
+   char const **argv, *varname, *varres, *cp;
+   NYD_ENTER;
+
+   argv = vp;
+   vp = NULL; /* -> return value (boolean) */
+   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
+   varres = n_empty;
+
+   if((cp = argv[0])[0] == '\0')
+      goto jesubcmd;
+   else if(is_asccaseprefix(cp, "fingerprint")){
+#ifndef HAVE_SOCKETS
+      n_err(_("`tls': fingerprint: no +sockets in *features*\n"));
+      n_pstate_err_no = n_ERR_OPNOTSUPP;
+      goto jleave;
+#else
+      struct sock so;
+      struct url url;
+
+      if(argv[1] == NULL || argv[2] != NULL)
+         goto jesynopsis;
+      if((i = strlen(*++argv)) >= UI32_MAX)
+         goto jeoverflow; /* TODO generic for ALL commands!! */
+      if(!url_parse(&url, CPROTO_CERTINFO, *argv))
+         goto jeinval;
+      if(!sopen(&so, &url)){ /* auto-closes for CPROTO_CERTINFO on success */
+         n_pstate_err_no = n_err_no;
+         goto jleave;
+      }
+      if(so.s_tls_finger == NULL)
+         goto jeinval;
+      varres = so.s_tls_finger;
+#endif /* HAVE_SOCKETS */
+   }else
+      goto jesubcmd;
+
+   n_pstate_err_no = n_ERR_NONE;
+   vp = (char*)-1;
+jleave:
+   if(varname == NULL){
+      if(fprintf(n_stdout, "%s\n", varres) < 0){
+         n_pstate_err_no = n_err_no;
+         vp = NULL;
+      }
+   }else if(!n_var_vset(varname, (uintptr_t)varres)){
+      n_pstate_err_no = n_ERR_NOTSUP;
+      vp = NULL;
+   }
+   NYD_LEAVE;
+   return (vp == NULL);
+
+jeoverflow:
+   n_err(_("`tls': string length or offset overflows datatype\n"));
+   n_pstate_err_no = n_ERR_OVERFLOW;
+   goto jleave;
+
+jesubcmd:
+   n_err(_("`tls': invalid subcommand: %s\n"),
+      n_shexp_quote_cp(*argv, FAL0));
+jesynopsis:
+   n_err(_("Synopsis: tls: <command> [<:argument:>]\n"));
+jeinval:
+   n_pstate_err_no = n_ERR_INVAL;
+   goto jleave;
+}
+#endif /* HAVE_TLS */
 
 /* s-it-mode */

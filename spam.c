@@ -2,6 +2,7 @@
  *@ Spam related facilities.
  *
  * Copyright (c) 2013 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -227,7 +228,7 @@ _spam_action(enum spam_action sa, int *ip)
       maxsize = SPAM_MAXSIZE;
 
    /* Finally get an I/O buffer */
-   vc.vc_buffer = salloc(BUFFER_SIZE);
+   vc.vc_buffer = n_autorec_alloc(BUFFER_SIZE);
 
    skipped = cnt = 0;
    if (vc.vc_progress) {
@@ -403,7 +404,7 @@ _spamc_dtor(struct spam_vc *vcp)
 {
    NYD2_ENTER;
    if (vcp->vc_t.spamc.c_super.cf_result != NULL)
-      free(vcp->vc_t.spamc.c_super.cf_result);
+      n_free(vcp->vc_t.spamc.c_super.cf_result);
    NYD2_LEAVE;
 }
 #endif /* HAVE_SPAM_SPAMC */
@@ -700,7 +701,7 @@ jdone:
    rv = TRU1;
 jleave:
    if (headbuf != NULL)
-      ac_free(headbuf);
+      n_lofi_free(headbuf);
    if (dsfd >= 0)
       close(dsfd);
 
@@ -865,14 +866,18 @@ _spamfilter_interact(struct spam_vc *vcp)
 
    if (sfp->f_score_grpno == 0)
       goto jleave;
+   if (sfp->f_super.cf_result == NULL) {
+      n_err(_("`%s': *spamfilter-rate-scanscore*: filter does not "
+         "produce output!\n"));
+      goto jleave;
+   }
 
-   assert(sfp->f_super.cf_result != NULL);
    remp = rem + sfp->f_score_grpno;
 
    if (regexec(&sfp->f_score_regex, sfp->f_super.cf_result, n_NELEM(rem), rem,
          0) == REG_NOMATCH || (remp->rm_so | remp->rm_eo) < 0) {
       n_err(_("`%s': *spamfilter-rate-scanscore* "
-         "doesn't match filter output!\n"),
+         "does not match filter output!\n"),
          _spam_cmds[vcp->vc_action]);
       sfp->f_score_grpno = 0;
       goto jleave;
@@ -898,7 +903,7 @@ _spamfilter_dtor(struct spam_vc *vcp)
    sfp = &vcp->vc_t.filter;
 
    if (sfp->f_super.cf_result != NULL)
-      free(sfp->f_super.cf_result);
+      n_free(sfp->f_super.cf_result);
 # ifdef HAVE_REGEX
    if (sfp->f_score_grpno > 0)
       regfree(&sfp->f_score_regex);
@@ -975,7 +980,7 @@ _spam_cf_interact(struct spam_vc *vcp)
 
    scfp = &vcp->vc_t.cf;
    if (scfp->cf_result != NULL) {
-      free(scfp->cf_result);
+      n_free(scfp->cf_result);
       scfp->cf_result = NULL;
    }
 

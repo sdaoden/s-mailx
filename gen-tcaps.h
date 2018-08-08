@@ -6,14 +6,14 @@ static char const a_termcap_namedat[] = {
 't','i', 's','m','c','u','p','\0',
 'k','s', 's','m','k','x','\0',
 'k','e', 'r','m','k','x','\0',
-'c','d', 'e','d','\0',
-'c','l', 'c','l','e','a','r','\0',
-'h','o', 'h','o','m','e','\0',
 'c','e', 'e','l','\0',
 'c','h', 'h','p','a','\0',
 'c','r', 'c','r','\0',
 'l','e', 'c','u','b','1','\0',
 'n','d', 'c','u','f','1','\0',
+'c','d', 'e','d','\0',
+'h','o', 'h','o','m','e','\0',
+'c','l', 'c','l','e','a','r','\0',
 'C','o', 'c','o','l','o','r','s','\0',
 #ifdef HAVE_KEY_BINDINGS
 'k','b', 'k','b','s','\0',
@@ -74,16 +74,18 @@ static struct a_termcap_control const a_termcap_control[] = {
 {n_TERMCAP_CAPTYPE_STRING, 8},
 {n_TERMCAP_CAPTYPE_STRING, 16},
 {n_TERMCAP_CAPTYPE_STRING, 23},
-{n_TERMCAP_CAPTYPE_STRING, 30},
-{n_TERMCAP_CAPTYPE_STRING, 35},
-{n_TERMCAP_CAPTYPE_STRING, 43},
 # endif
 # ifdef HAVE_MLE
-{n_TERMCAP_CAPTYPE_STRING, 50},
-{n_TERMCAP_CAPTYPE_STRING|a_TERMCAP_F_ARG_IDX1, 55},
-{n_TERMCAP_CAPTYPE_STRING, 61},
-{n_TERMCAP_CAPTYPE_STRING|a_TERMCAP_F_ARG_CNT, 66},
-{n_TERMCAP_CAPTYPE_STRING|a_TERMCAP_F_ARG_CNT, 73},
+{n_TERMCAP_CAPTYPE_STRING, 30},
+{n_TERMCAP_CAPTYPE_STRING|a_TERMCAP_F_ARG_IDX1, 35},
+{n_TERMCAP_CAPTYPE_STRING, 41},
+{n_TERMCAP_CAPTYPE_STRING|a_TERMCAP_F_ARG_CNT, 46},
+{n_TERMCAP_CAPTYPE_STRING|a_TERMCAP_F_ARG_CNT, 53},
+#  ifdef HAVE_TERMCAP
+{n_TERMCAP_CAPTYPE_STRING, 60},
+{n_TERMCAP_CAPTYPE_STRING, 65},
+#  endif
+{n_TERMCAP_CAPTYPE_STRING, 72},
 # endif
 # ifdef HAVE_COLOUR
 {n_TERMCAP_CAPTYPE_NUMERIC|a_TERMCAP_F_QUERY, 80},

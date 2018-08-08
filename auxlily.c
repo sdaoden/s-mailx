@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
  * Copyright (c) 1980, 1993
@@ -71,7 +72,7 @@
 # endif
 #endif
 
-#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_SSL
+#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_TLS
 union rand_state{
    struct rand_arc4{
       ui8_t _dat[256];
@@ -164,7 +165,7 @@ n__ERR_NUMBER_TO_MAPOFF
 #undef a_X
 };
 
-#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_SSL
+#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_TLS
 static union rand_state *a_aux_rand;
 #endif
 
@@ -177,7 +178,7 @@ static size_t a_aux_err_linelen;
 
 /* Our ARC4 random generator with its completely unacademical pseudo
  * initialization (shall /dev/urandom fail) */
-#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_SSL
+#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_TLS
 static void a_aux_rand_init(void);
 n_INLINE ui8_t a_aux_rand_get8(void);
 static ui32_t a_aux_rand_weak(ui32_t seed);
@@ -186,7 +187,7 @@ static ui32_t a_aux_rand_weak(ui32_t seed);
 /* Find the descriptive mapping of an error number, or _ERR_INVAL */
 static struct a_aux_err_map const *a_aux_err_map_from_no(si32_t eno);
 
-#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_SSL
+#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_TLS
 static void
 a_aux_rand_init(void){
 # ifdef HAVE_CLOCK_GETTIME
@@ -316,7 +317,7 @@ a_aux_rand_weak(ui32_t seed){
       seed += SI32_MAX;
    return seed;
 }
-#endif /* HAVE_RANDOM != IMPL_ARC4 != IMPL_SSL */
+#endif /* HAVE_RANDOM != IMPL_ARC4 != IMPL_TLS */
 
 static struct a_aux_err_map const *
 a_aux_err_map_from_no(si32_t eno){
@@ -491,29 +492,32 @@ which_protocol(char const *name, bool_t check_stat, bool_t try_hooks,
       if(!strncmp(name, "file", sizeof("file") -1) ||
             !strncmp(name, "mbox", sizeof("mbox") -1))
          rv = PROTO_FILE;
-      else if(!strncmp(name, "maildir", sizeof("maildir") -1))
+      else if(!strncmp(name, "maildir", sizeof("maildir") -1)){
+#ifdef HAVE_MAILDIR
          rv = PROTO_MAILDIR;
-      else if(!strncmp(name, "pop3", sizeof("pop3") -1)){
+#else
+         n_err(_("No Maildir directory support compiled in\n"));
+#endif
+      }else if(!strncmp(name, "pop3", sizeof("pop3") -1)){
 #ifdef HAVE_POP3
          rv = PROTO_POP3;
 #else
          n_err(_("No POP3 support compiled in\n"));
 #endif
       }else if(!strncmp(name, "pop3s", sizeof("pop3s") -1)){
-#if defined HAVE_POP3 && defined HAVE_SSL
+#if defined HAVE_POP3 && defined HAVE_TLS
          rv = PROTO_POP3;
 #else
          n_err(_("No POP3S support compiled in\n"));
 #endif
-      }
-      else if(!strncmp(name, "imap", sizeof("imap") -1)){
+      }else if(!strncmp(name, "imap", sizeof("imap") -1)){
 #ifdef HAVE_IMAP
          rv = PROTO_IMAP;
 #else
          n_err(_("No IMAP support compiled in\n"));
 #endif
       }else if(!strncmp(name, "imaps", sizeof("imaps") -1)){
-#if defined HAVE_IMAP && defined HAVE_SSL
+#if defined HAVE_IMAP && defined HAVE_TLS
          rv = PROTO_IMAP;
 #else
          n_err(_("No IMAPS support compiled in\n"));
@@ -536,19 +540,32 @@ jfile:
       memcpy(np, name, sz + 1);
 
       if(!stat(name, &stb)){
-         if(S_ISDIR(stb.st_mode) &&
-               (memcpy(&np[sz], "/tmp", 5),
+         if(S_ISDIR(stb.st_mode)
+#ifdef HAVE_MAILDIR
+               && (memcpy(&np[sz], "/tmp", 5),
                   !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
                (memcpy(&np[sz], "/new", 5),
                   !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
                (memcpy(&np[sz], "/cur", 5),
-                  !stat(np, &stb) && S_ISDIR(stb.st_mode)))
+                  !stat(np, &stb) && S_ISDIR(stb.st_mode))
+#endif
+               ){
+#ifdef HAVE_MAILDIR
             rv = PROTO_MAILDIR;
+#else
+            rv = PROTO_UNKNOWN;
+#endif
+         }
       }else if(try_hooks && n_filetype_trial(&ft, name))
          orig_name = savecatsep(name, '.', ft.ft_ext_dat);
       else if((cp = ok_vlook(newfolders)) != NULL &&
-            !asccasecmp(cp, "maildir"))
+            !asccasecmp(cp, "maildir")){
+#ifdef HAVE_MAILDIR
          rv = PROTO_MAILDIR;
+#else
+         n_err(_("*newfolders*: no Maildir directory support compiled in\n"));
+#endif
+      }
 
       n_lofi_free(np);
    }
@@ -872,9 +889,8 @@ n_ienc_buf(char cbuf[n_IENC_BUFFER_SIZE], ui64_t value, ui8_t base,
     *   goto jleave;
     *}*/
 
-   rv = &cbuf[n_IENC_BUFFER_SIZE];
-   *--rv = '\0';
-   itoa =  (iem & n_IENC_MODE_LOWERCASE) ? a_aux_ienc_itoa_lower
+   *(rv = &cbuf[n_IENC_BUFFER_SIZE -1]) = '\0';
+   itoa = (iem & n_IENC_MODE_LOWERCASE) ? a_aux_ienc_itoa_lower
          : a_aux_ienc_itoa_upper;
 
    if((si64_t)value < 0){
@@ -1041,7 +1057,9 @@ n_nodename(bool_t mayoverride){
 #endif
    NYD2_ENTER;
 
-   if(mayoverride && (hn = ok_vlook(hostname)) != NULL && *hn != '\0'){
+   if(n_psonce & n_PSO_REPRODUCIBLE)
+      hn = n_UNCONST(n_reproducible_name);
+   else if(mayoverride && (hn = ok_vlook(hostname)) != NULL && *hn != '\0'){
       ;
    }else if((hn = sys_hostname) == NULL){
       bool_t lofi;
@@ -1219,8 +1237,8 @@ n_random_create_buf(char *dat, size_t len, ui32_t *reprocnt_or_null){
 
 #if HAVE_RANDOM == n_RANDOM_IMPL_ARC4
          prngn = "arc4random";
-#elif HAVE_RANDOM == n_RANDOM_IMPL_SSL
-         prngn = "*SSL RAND_*";
+#elif HAVE_RANDOM == n_RANDOM_IMPL_TLS
+         prngn = "*TLS RAND_*";
 #elif HAVE_RANDOM == n_RANDOM_IMPL_GETRANDOM
          prngn = "getrandom(2/3) + builtin ARC4";
 #elif HAVE_RANDOM == n_RANDOM_IMPL_URANDOM
@@ -1233,7 +1251,7 @@ n_random_create_buf(char *dat, size_t len, ui32_t *reprocnt_or_null){
          n_err(_("P(seudo)R(andomNumber)G(enerator): %s\n"), prngn);
       }
 
-#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_SSL
+#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_TLS
       a_aux_rand_init();
 #endif
    }
@@ -1257,8 +1275,8 @@ jinc1:
    indat = n_lofi_alloc(inlen +1);
 
    if(!(n_psonce & n_PSO_REPRODUCIBLE) || reprocnt_or_null == NULL){
-#if HAVE_RANDOM == n_RANDOM_IMPL_SSL
-      ssl_rand_bytes(indat, inlen);
+#if HAVE_RANDOM == n_RANDOM_IMPL_TLS
+      n_tls_rand_bytes(indat, inlen);
 #elif HAVE_RANDOM != n_RANDOM_IMPL_ARC4
       for(i = inlen; i-- > 0;)
          indat[i] = (char)a_aux_rand_get8();
@@ -1673,7 +1691,7 @@ n_verr(char const *format, va_list ap){
       /* Link it into the `errors' message ring */
       if((enp = a_aux_err_tail) == NULL){
 jcreat:
-         enp = smalloc(sizeof *enp);
+         enp = n_alloc(sizeof *enp);
          enp->ae_next = NULL;
          n_string_creat(&enp->ae_str);
          if(a_aux_err_tail != NULL)
@@ -1862,7 +1880,7 @@ jclear:
    while((enp = a_aux_err_head) != NULL){
       a_aux_err_head = enp->ae_next;
       n_string_gut(&enp->ae_str);
-      free(enp);
+      n_free(enp);
    }
    goto jleave;
 }
@@ -1949,7 +1967,7 @@ n_regex_err_to_doc(const regex_t *rep, int e){
    NYD2_ENTER;
 
    i = regerror(e, rep, NULL, 0) +1;
-   cp = salloc(i);
+   cp = n_autorec_alloc(i);
    regerror(e, rep, cp, i);
    NYD2_LEAVE;
    return cp;

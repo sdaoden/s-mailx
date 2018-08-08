@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
  * Copyright (c) 1980, 1993
@@ -72,7 +73,10 @@ a_attachment_is_msg(char const *file){
       uiz_t ib;
 
       /* TODO Message numbers should be size_t, and 0 may be a valid one */
-      if((n_idec_uiz_cp(&ib, &file[1], 10, NULL
+      if(file[2] == '\0' && file[1] == '.'){
+         if(dot != NULL)
+            rv = (int)PTR2SIZE(dot - message + 1);
+      }else if((n_idec_uiz_cp(&ib, &file[1], 10, NULL
                ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
             ) != n_IDEC_STATE_CONSUMED || ib == 0 || UICMP(z, ib, >, msgCount))
          rv = -1;
@@ -162,9 +166,9 @@ a_attachment_iconv(struct attachment *ap, FILE *ifp){
    ap->a_tmpf = ofp;
 jleave:
    if(inl.s != NULL)
-      free(inl.s);
+      n_free(inl.s);
    if(oul.s != NULL)
-      free(oul.s);
+      n_free(oul.s);
    if(icp != (iconv_t)-1)
       n_iconv_close(icp);
    Fclose(ifp);
@@ -302,7 +306,7 @@ jerr_fopen:
       }
    }
 
-   nap = a_attachment_setup_base(csalloc(1, sizeof *nap), file);
+   nap = a_attachment_setup_base(n_autorec_calloc(1, sizeof *nap), file);
    nap->a_path_user = file_user;
    if(msgno >= 0)
       nap = a_attachment_setup_msg(nap, file, msgno);
@@ -487,7 +491,7 @@ n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
    attno = 1;
 
    for(naplist = NULL;;){
-      snprintf(prefix, sizeof prefix, _("#%" PRIu32 " filename: "), attno);
+      snprintf(prefix, sizeof prefix, A_("#%" PRIu32 " filename: "), attno);
 
       if(aplist != NULL){
          /* TODO If we would create .a_path_user in append() after any
@@ -510,9 +514,11 @@ n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
                n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_LOG |
                n_SHEXP_PARSE_IGNORE_EMPTY),
                shoup, &shin, NULL);
+         UIS(
          if(!(shs & n_SHEXP_STATE_STOP))
             n_err(_("# May be given one argument a time only: %s\n"),
                n_shexp_quote_cp(s_save, FAL0));
+         )
          if((shs & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_STOP |
                   n_SHEXP_STATE_ERR_MASK)
                ) != (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_STOP))
@@ -564,22 +570,22 @@ n_attachment_list_print(struct attachment const *aplist, FILE *fp){
             attno, n_shexp_quote_cp(ap->a_name, FAL0),
             n_shexp_quote_cp(ap->a_path, FAL0),
             (ap->a_content_type != NULL
-             ? ap->a_content_type : A_("unclassified content")));
+             ? ap->a_content_type : _("unclassified content")));
 
          if(ap->a_conv == AC_TMPFILE)
             /* I18N: input and output character set as given */
-            fprintf(fp, A_(", incs=%s -> oucs=%s (readily converted)"),
+            fprintf(fp, _(", incs=%s -> oucs=%s (readily converted)"),
                incs, oucs);
          else if(ap->a_conv == AC_FIX_INCS)
             /* I18N: input character set as given, no conversion to apply */
-            fprintf(fp, A_(", incs=%s (no conversion)"), incs);
+            fprintf(fp, _(", incs=%s (no conversion)"), incs);
          else if(ap->a_conv == AC_DEFAULT){
             if(incs != NULL)
                /* I18N: input character set as given, output iterates */
-               fprintf(fp, A_(", incs=%s -> oucs=*sendcharsets*"), incs);
+               fprintf(fp, _(", incs=%s -> oucs=*sendcharsets*"), incs);
             else if(ap->a_content_type == NULL ||
                   !ascncasecmp(ap->a_content_type, "text/", 5))
-               fprintf(fp, A_(", default character set handling"));
+               fprintf(fp, _(", default character set handling"));
          }
          fprintf(fp, "]\n");
       }

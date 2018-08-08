@@ -110,11 +110,12 @@ thecmd_testandset_fail dirname dirname
 thecmd_testandset_fail pwd pwd
 
 srcdir=`${dirname} ${0}`
-blddir=`${pwd}`
 if [ "${srcdir}" = . ]; then
    msg 'This is not out of tree?!'
    config_exit 1
 fi
+srcdir=`cd ${srcdir}; ${pwd}`/
+blddir=`${pwd}`/
 echo 'Initializing out-of-tree build.'
 echo 'Source directory: '"${srcdir}"
 echo 'Build directory : '"${blddir}"
@@ -122,8 +123,8 @@ srcdir="${srcdir}"/
 
 ${awk} -v srcdir="${srcdir}" -v blddir="${blddir}" '
    {
-      gsub(/^CWDDIR=\.\/$/, "CWDDIR=" blddir)
-      gsub(/^SRCDIR=\.\/$/, "SRCDIR=" srcdir)
+      gsub(/^CWDDIR=.*$/, "CWDDIR=" blddir)
+      gsub(/^SRCDIR=.*$/, "SRCDIR=" srcdir)
       print
    }
    ' < "${srcdir}"makefile > ./makefile

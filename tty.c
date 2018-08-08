@@ -5,6 +5,7 @@
  *@ one after the other below the other externals.
  *
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -460,7 +461,7 @@ enum a_tty_bind_flags{
    a_TTY_BIND_NOCOMMIT = 1u<<11, /* Expansion shall be editable */
 # endif
 
-   /* MLE internal commands */
+   /* MLE internal commands XXX Can these be values not bits? */
    a_TTY_BIND_FUN_INTERNAL = 1u<<15,
    a_TTY__BIND_FUN_SHIFT = 16u,
    a_TTY__BIND_FUN_SHIFTMAX = 24u,
@@ -475,28 +476,30 @@ enum a_tty_bind_flags{
 # define a_X(N,I)\
    a_TTY_BIND_FUN_ ## N = a_TTY_BIND_FUN_EXPAND(I),
 
-   a_X(BELL,  0)
-   a_X(GO_BWD,  1) a_X(GO_FWD,  2)
-   a_X(GO_WORD_BWD,  3) a_X(GO_WORD_FWD,  4)
-   a_X(GO_HOME,  5) a_X(GO_END,  6)
-   a_X(DEL_BWD,  7) a_X(DEL_FWD,   8)
-   a_X(SNARF_WORD_BWD,  9) a_X(SNARF_WORD_FWD, 10)
-   a_X(SNARF_END, 11) a_X(SNARF_LINE, 12)
-   a_X(HIST_BWD, 13) a_X(HIST_FWD, 14)
-   a_X(HIST_SRCH_BWD, 15) a_X(HIST_SRCH_FWD, 16)
-   a_X(REPAINT, 17)
-   a_X(QUOTE_RNDTRIP, 18)
-   a_X(PROMPT_CHAR, 19)
-   a_X(COMPLETE, 20)
-   a_X(PASTE, 21)
+   a_X(BELL, 0)
+   a_X(GO_BWD, 1) a_X(GO_FWD, 2)
+   a_X(GO_WORD_BWD, 3) a_X(GO_WORD_FWD, 4)
+   a_X(GO_SCREEN_BWD, 5) a_X(GO_SCREEN_FWD, 6)
+   a_X(GO_HOME, 7) a_X(GO_END, 8)
+   a_X(DEL_BWD, 9) a_X(DEL_FWD, 10)
+   a_X(SNARF_WORD_BWD, 11) a_X(SNARF_WORD_FWD, 12)
+   a_X(SNARF_END, 13) a_X(SNARF_LINE, 14)
+   a_X(HIST_BWD, 15) a_X(HIST_FWD, 16)
+   a_X(HIST_SRCH_BWD, 17) a_X(HIST_SRCH_FWD, 18)
+   a_X(REPAINT, 19)
+   a_X(QUOTE_RNDTRIP, 20)
+   a_X(PROMPT_CHAR, 21)
+   a_X(COMPLETE, 22)
+   a_X(PASTE, 23)
+   a_X(CLEAR_SCREEN, 24)
 
-   a_X(CANCEL, 22)
-   a_X(RESET, 23)
-   a_X(FULLRESET, 24)
-   a_X(COMMIT, 25) /* Must be last one! */
+   a_X(CANCEL, 25)
+   a_X(RESET, 26)
+   a_X(FULLRESET, 27)
+   a_X(COMMIT, 28) /* Must be last one! */
 # undef a_X
 
-   a_TTY__BIND_LAST = 1<<25
+   a_TTY__BIND_LAST = 1<<28
 };
 # ifdef HAVE_KEY_BINDINGS
 n_CTA((ui32_t)a_TTY_BIND_RESOLVE >= (ui32_t)n__GO_INPUT_CTX_MAX1,
@@ -726,6 +729,7 @@ static char const a_tty_bind_fun_names[][24] = {
    a_X(BELL, "bell")
    a_X(GO_BWD, "go-bwd") a_X(GO_FWD, "go-fwd")
    a_X(GO_WORD_BWD, "go-word-bwd") a_X(GO_WORD_FWD, "go-word-fwd")
+   a_X(GO_SCREEN_BWD, "go-screen-bwd") a_X(GO_SCREEN_FWD, "go-screen-fwd")
    a_X(GO_HOME, "go-home") a_X(GO_END, "go-end")
    a_X(DEL_BWD, "del-bwd") a_X(DEL_FWD, "del-fwd")
    a_X(SNARF_WORD_BWD, "snarf-word-bwd") a_X(SNARF_WORD_FWD, "snarf-word-fwd")
@@ -737,6 +741,7 @@ static char const a_tty_bind_fun_names[][24] = {
    a_X(PROMPT_CHAR, "prompt-char")
    a_X(COMPLETE, "complete")
    a_X(PASTE, "paste")
+   a_X(CLEAR_SCREEN, "clear-screen")
 
    a_X(CANCEL, "cancel")
    a_X(RESET, "reset")
@@ -805,6 +810,8 @@ static struct a_tty_bind_builtin_tuple const a_tty_bind_base_tuples[] = {
    a_X(key_eol, SNARF_END)
    a_X(key_home, GO_HOME) a_X(key_end, GO_END)
    a_X(key_left, GO_BWD) a_X(key_right, GO_FWD)
+   a_X(xkey_aleft, GO_WORD_BWD) a_X(xkey_aright, GO_WORD_FWD)
+   a_X(xkey_cleft, GO_SCREEN_BWD) a_X(xkey_cright, GO_SCREEN_FWD)
    a_X(key_sleft, GO_HOME) a_X(key_sright, GO_END)
    a_X(key_up, HIST_BWD) a_X(key_down, HIST_FWD)
 # endif /* HAVE_KEY_BINDINGS */
@@ -850,6 +857,9 @@ static bool_t a_tty_hist_save(void);
 
 /* Initialize .tg_hist_size_max and return desired history file, or NULL */
 static char const *a_tty_hist__query_config(void);
+
+/* (Definetely) Add an entry TODO yet assumes hold_all_sigs() is held! */
+static void a_tty_hist_add(char const *s, enum n_go_input_flags gif);
 # endif
 
 /* Adjust an active raw mode to use / not use a timeout */
@@ -894,6 +904,7 @@ static void a_tty_kleft(struct a_tty_line *tlp);
 static void a_tty_kright(struct a_tty_line *tlp);
 static void a_tty_ksnarfw(struct a_tty_line *tlp, bool_t fwd);
 static void a_tty_kgow(struct a_tty_line *tlp, si32_t dir);
+static void a_tty_kgoscr(struct a_tty_line *tlp, si32_t dir);
 static bool_t a_tty_kother(struct a_tty_line *tlp, wchar_t wc);
 static ui32_t a_tty_kht(struct a_tty_line *tlp);
 
@@ -1043,8 +1054,6 @@ a_tty_hist_load(void){
       a_tty.tg_hist_size = 0;
    }
 
-   assert(!(n_pstate & n_PS_ROOT));
-   n_pstate |= n_PS_ROOT; /* Allow calling addhist() */
    lbuf = NULL;
    lsize = 0;
    cnt = (size_t)fsize(f);
@@ -1100,13 +1109,12 @@ a_tty_hist_load(void){
             }
          }
 
-         n_tty_addhist(cp, gif);
+         a_tty_hist_add(cp, gif);
       }
    }
 
    if(lbuf != NULL)
       n_free(lbuf);
-   n_pstate &= ~n_PS_ROOT;
 
    fclose(f);
 jrele:
@@ -1217,6 +1225,62 @@ a_tty_hist__query_config(void){
       rv = fexpand(rv, FEXP_LOCAL | FEXP_NSHELL);
    NYD2_LEAVE;
    return rv;
+}
+
+static void
+a_tty_hist_add(char const *s, enum n_go_input_flags gif){
+   ui32_t l;
+   struct a_tty_hist *thp, *othp, *ythp;
+   NYD2_ENTER;
+
+   l = (ui32_t)strlen(s); /* xxx simply do not store if >= SI32_MAX */
+
+   /* Eliminating duplicates is expensive, but simply inacceptable so
+    * during the load of a potentially large history file! */
+   if(n_psonce & n_PSO_LINE_EDITOR_INIT)
+      for(thp = a_tty.tg_hist; thp != NULL; thp = thp->th_older)
+         if(thp->th_len == l && !strcmp(thp->th_dat, s)){
+            thp->th_flags = (gif & a_TTY_HIST_CTX_MASK) |
+                  (gif & n_GO_INPUT_HIST_GABBY ? a_TTY_HIST_GABBY : 0);
+            othp = thp->th_older;
+            ythp = thp->th_younger;
+            if(othp != NULL)
+               othp->th_younger = ythp;
+            else
+               a_tty.tg_hist_tail = ythp;
+            if(ythp != NULL)
+               ythp->th_older = othp;
+            else
+               a_tty.tg_hist = othp;
+            goto jleave;
+         }
+
+   if(n_LIKELY(a_tty.tg_hist_size <= a_tty.tg_hist_size_max))
+      ++a_tty.tg_hist_size;
+   else{
+      --a_tty.tg_hist_size;
+      if((thp = a_tty.tg_hist_tail) != NULL){
+         if((a_tty.tg_hist_tail = thp->th_younger) == NULL)
+            a_tty.tg_hist = NULL;
+         else
+            a_tty.tg_hist_tail->th_older = NULL;
+         n_free(thp);
+      }
+   }
+
+   thp = n_alloc(n_VSTRUCT_SIZEOF(struct a_tty_hist, th_dat) + l +1);
+   thp->th_len = l;
+   thp->th_flags = (gif & a_TTY_HIST_CTX_MASK) |
+         (gif & n_GO_INPUT_HIST_GABBY ? a_TTY_HIST_GABBY : 0);
+   memcpy(thp->th_dat, s, l +1);
+jleave:
+   if((thp->th_older = a_tty.tg_hist) != NULL)
+      a_tty.tg_hist->th_younger = thp;
+   else
+      a_tty.tg_hist_tail = thp;
+   thp->th_younger = NULL;
+   a_tty.tg_hist = thp;
+   NYD2_LEAVE;
 }
 # endif /* HAVE_HISTORY */
 
@@ -2097,6 +2161,39 @@ a_tty_kgow(struct a_tty_line *tlp, si32_t dir){
    NYD2_LEAVE;
 }
 
+static void
+a_tty_kgoscr(struct a_tty_line *tlp, si32_t dir){
+   ui32_t sw, i, cur, f, cnt;
+   NYD2_ENTER;
+
+   sw = (ui32_t)n_scrnwidth - 2;
+   if(sw > (i = tlp->tl_prompt_width))
+      sw -= i;
+   cur = tlp->tl_cursor;
+   f = a_TTY_VF_BELL;
+
+   if(dir > 0){
+      for(cnt = tlp->tl_count; cur < cnt && sw > 0; ++cur){
+         i = tlp->tl_line.cells[cur].tc_width;
+         i = n_MIN(sw, i);
+         sw -= i;
+      }
+   }else{
+       while(cur > 0 && sw > 0){
+         i = tlp->tl_line.cells[--cur].tc_width;
+         i = n_MIN(sw, i);
+         sw -= i;
+      }
+   }
+   if(cur != tlp->tl_cursor){
+      tlp->tl_cursor = cur;
+      f = a_TTY_VF_MOD_CURSOR;
+   }
+
+   tlp->tl_vi_flags |= f;
+   NYD2_LEAVE;
+}
+
 static bool_t
 a_tty_kother(struct a_tty_line *tlp, wchar_t wc){
    /* Append if at EOL, insert otherwise;
@@ -2188,8 +2285,8 @@ a_tty_kht(struct a_tty_line *tlp){
       set_savec = TRU1;
    orig = exp;
 
-   mempool_persist = n_go_data->gdc_mempool;
-   n_memory_pool_push(mempool = n_lofi_alloc(sizeof *mempool));
+   mempool_persist = n_memory_pool_top();
+   n_memory_pool_push(mempool = n_lofi_alloc(sizeof *mempool), TRU1);
 
    shoup = n_string_creat_auto(&shou);
    f = a_TTY_VF_NONE;
@@ -2278,11 +2375,15 @@ jredo:
    rele_all_sigs();
 
    if(exp.s == NULL || (exp.l = strlen(exp.s)) == 0){
+      if(wedid < FAL0)
+         goto jnope;
       /* No.  But maybe the users' desire was to complete only a part of the
        * shell token of interest!  TODO This can be improved, we would need to
        * TODO have shexp_parse to create a DOM structure of parsed snippets, so
        * TODO that we can tell for each snippet which quote is active and
-       * TODO whether we may cross its boundary and/or apply expansion for it */
+       * TODO whether we may cross its boundary and/or apply expansion for it!
+       * TODO Only like that we would be able to properly requote user input
+       * TODO like "'['a-z]<TAB>" to e.g. "\[a-z]" for glob purposes! */
       if(wedid == TRU1){
          size_t i, li;
 
@@ -2304,6 +2405,18 @@ jredo:
             goto jredo;
          }
       }
+
+      /* A different case is that the user input includes for example character
+       * classes: here fexpand() will go over glob, and that will not find any
+       * match, thus returning NULL; try to wildcard expand this pattern! */
+jaster_check:
+      if(sub.s[sub.l - 1] != '*'){
+         wedid = TRU1;
+         shoup = n_string_push_c(shoup, '*');
+         sub.s = n_string_cp(shoup);
+         sub.l = shoup->s_len;
+         goto jredo;
+      }
       goto jnope;
    }
 
@@ -2324,16 +2437,8 @@ jredo:
 
    /* If the expansion equals the original string, assume the user wants what
     * is usually known as tab completion, append `*' and restart */
-   if(!wedid && exp.l == sub.l && !memcmp(exp.s, sub.s, exp.l)){
-      if(sub.s[sub.l - 1] == '*')
-         goto jnope;
-
-      wedid = TRU1;
-      shoup = n_string_push_c(shoup, '*');
-      sub.s = n_string_cp(shoup);
-      sub.l = shoup->s_len;
-      goto jredo;
-   }
+   if(!wedid && exp.l == sub.l && !memcmp(exp.s, sub.s, exp.l))
+      goto jaster_check;
 
    if(exp.s[exp.l - 1] != '/'){
       if(!stat(exp.s, &sb) && S_ISDIR(sb.st_mode)){
@@ -2369,7 +2474,7 @@ jset:
    tlp->tl_count = tlp->tl_cursor = 0;
    f |= a_TTY_VF_MOD_DIRTY;
 jleave:
-   n_memory_pool_pop(mempool);
+   n_memory_pool_pop(mempool, TRU1);
    n_lofi_free(mempool);
    tlp->tl_vi_flags |= f;
    NYD2_LEAVE;
@@ -2736,6 +2841,12 @@ a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, size_t *len){
    case a_X(GO_WORD_FWD):
       a_tty_kgow(tlp, +1);
       break;
+   case a_X(GO_SCREEN_BWD):
+      a_tty_kgoscr(tlp, -1);
+      break;
+   case a_X(GO_SCREEN_FWD):
+      a_tty_kgoscr(tlp, +1);
+      break;
    case a_X(GO_HOME):
       a_tty_khome(tlp, TRU1);
       break;
@@ -2828,6 +2939,10 @@ a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, size_t *len){
          tlp->tl_vi_flags |= a_TTY_VF_BELL;
       break;
 
+   case a_X(CLEAR_SCREEN):
+      tlp->tl_vi_flags |= (n_termcap_cmdx(n_TERMCAP_CMD_cl) == TRU1)
+            ? a_TTY_VF_MOD_DIRTY : a_TTY_VF_BELL;
+      break;
 
    case a_X(CANCEL):
       /* Normally this just causes a restart and thus resets the state
@@ -3239,7 +3354,7 @@ jbuiltin_redo:
                      }
                      assert(0);
                   }else{
-                     cbufp = tbbtp->tbbt_exp;
+                     cbufp = n_UNCONST(tbbtp->tbbt_exp);
                      goto jinject_input;
                   }
                }
@@ -4207,76 +4322,20 @@ FL int
 
 FL void
 n_tty_addhist(char const *s, enum n_go_input_flags gif){
-# ifdef HAVE_HISTORY
-   /* Super-Heavy-Metal: block all sigs, avoid leaks+ on jump */
-   ui32_t l;
-   struct a_tty_hist *thp, *othp, *ythp;
-# endif
    NYD_ENTER;
    n_UNUSED(s);
    n_UNUSED(gif);
 
 # ifdef HAVE_HISTORY
-   if(*s == '\0' ||
-         (!(n_psonce & n_PSO_LINE_EDITOR_INIT) && !(n_pstate & n_PS_ROOT)) ||
-         a_tty.tg_hist_size_max == 0 ||
-         ok_blook(line_editor_disable) ||
-         ((gif & n_GO_INPUT_HIST_GABBY) && !ok_blook(history_gabby)))
-      goto j_leave;
-
-   l = (ui32_t)strlen(s);
-
-   /* Eliminating duplicates is expensive, but simply inacceptable so
-    * during the load of a potentially large history file! */
-   if(n_psonce & n_PSO_LINE_EDITOR_INIT)
-      for(thp = a_tty.tg_hist; thp != NULL; thp = thp->th_older)
-         if(thp->th_len == l && !strcmp(thp->th_dat, s)){
-            hold_all_sigs(); /* TODO */
-            thp->th_flags = (gif & a_TTY_HIST_CTX_MASK) |
-                  (gif & n_GO_INPUT_HIST_GABBY ? a_TTY_HIST_GABBY : 0);
-            othp = thp->th_older;
-            ythp = thp->th_younger;
-            if(othp != NULL)
-               othp->th_younger = ythp;
-            else
-               a_tty.tg_hist_tail = ythp;
-            if(ythp != NULL)
-               ythp->th_older = othp;
-            else
-               a_tty.tg_hist = othp;
-            goto jleave;
-         }
-   hold_all_sigs();
-
-   ++a_tty.tg_hist_size;
-   if((n_psonce & n_PSO_LINE_EDITOR_INIT) &&
-         a_tty.tg_hist_size > a_tty.tg_hist_size_max){
-      --a_tty.tg_hist_size;
-      if((thp = a_tty.tg_hist_tail) != NULL){
-         if((a_tty.tg_hist_tail = thp->th_younger) == NULL)
-            a_tty.tg_hist = NULL;
-         else
-            a_tty.tg_hist_tail->th_older = NULL;
-         n_free(thp);
-      }
+   if(*s != '\0' && (n_psonce & n_PSO_LINE_EDITOR_INIT) &&
+         a_tty.tg_hist_size_max > 0 &&
+         (!(gif & n_GO_INPUT_HIST_GABBY) || ok_blook(history_gabby)) &&
+          !ok_blook(line_editor_disable)){
+      hold_all_sigs();
+      a_tty_hist_add(s, gif);
+      rele_all_sigs();
    }
-
-   thp = n_alloc(n_VSTRUCT_SIZEOF(struct a_tty_hist, th_dat) + l +1);
-   thp->th_len = l;
-   thp->th_flags = (gif & a_TTY_HIST_CTX_MASK) |
-         (gif & n_GO_INPUT_HIST_GABBY ? a_TTY_HIST_GABBY : 0);
-   memcpy(thp->th_dat, s, l +1);
-jleave:
-   if((thp->th_older = a_tty.tg_hist) != NULL)
-      a_tty.tg_hist->th_younger = thp;
-   else
-      a_tty.tg_hist_tail = thp;
-   thp->th_younger = NULL;
-   a_tty.tg_hist = thp;
-
-   rele_all_sigs();
-j_leave:
-# endif /* HAVE_HISTORY */
+# endif
    NYD_LEAVE;
 }
 
@@ -4485,7 +4544,7 @@ c_bind(void *v){
                            cbuf[1] = c.c, cbufp = cbuf;
                         else
                            cbufp = n_empty;
-                        fprintf(fp, "%s%02X%s",
+                        fprintf(fp, "%s\\x%02X%s",
                            bsep, (ui32_t)(ui8_t)c.c, cbufp);
                         bsep = " ";
                      }

@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
  * Copyright (c) 1980, 1993
@@ -99,23 +100,6 @@ FL char *
  * Support routines, auto-reclaimed storage
  */
 
-FL char *
-(i_strdup)(char const *src n_MEMORY_DEBUG_ARGS)
-{
-   size_t sz;
-   char *dest;
-   NYD_ENTER;
-
-   sz = strlen(src) +1;
-   dest = (n_autorec_alloc_from_pool)(NULL, sz n_MEMORY_DEBUG_ARGSCALL);
-   if(sz > 1)
-      i_strcpy(dest, src, sz);
-   else
-      dest[sz] = '\0';
-   NYD_LEAVE;
-   return dest;
-}
-
 FL struct str *
 str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 {
@@ -130,7 +114,7 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
    va_end(vl);
 
    self->l = l;
-   self->s = salloc(l +1);
+   self->s = n_autorec_alloc(l +1);
 
    va_start(vl, self);
    for (l = 0; (cs = va_arg(vl, char const*)) != NULL;) {
@@ -281,22 +265,6 @@ n_strsep_esc(char **iolist, char sep, bool_t ignore_empty){
    return base;
 }
 
-FL void
-i_strcpy(char *dest, char const *src, size_t size)
-{
-   NYD2_ENTER;
-   if(size > 0){
-      for(;; ++dest, ++src)
-         if((*dest = lowerconv(*src)) == '\0'){
-            break;
-         }else if(--size == 0){
-            *dest = '\0';
-            break;
-         }
-   }
-   NYD2_LEAVE;
-}
-
 FL bool_t
 is_prefix(char const *as1, char const *as2) /* TODO arg order */
 {
@@ -321,7 +289,7 @@ string_quote(char const *v) /* TODO too simpleminded (getrawlist(), +++ ..) */
    for (i = 0, cp = v; (c = *cp) != '\0'; ++i, ++cp)
       if (c == '"' || c == '\\')
          ++i;
-   rv = salloc(i +1);
+   rv = n_autorec_alloc(i +1);
 
    for (i = 0, cp = v; (c = *cp) != '\0'; rv[i++] = c, ++cp)
       if (c == '"' || c == '\\')
@@ -329,84 +297,6 @@ string_quote(char const *v) /* TODO too simpleminded (getrawlist(), +++ ..) */
    rv[i] = '\0';
    NYD2_LEAVE;
    return rv;
-}
-
-FL char *
-laststring(char *linebuf, bool_t *needs_list, bool_t strip)
-{
-   char *cp, *p, quoted;
-   NYD_ENTER;
-
-   /* Anything to do at all? */
-   if (*(cp = linebuf) == '\0')
-      goto jnull;
-   cp += strlen(linebuf) -1;
-
-   /* Strip away trailing blanks */
-   while (spacechar(*cp) && cp > linebuf)
-      --cp;
-   cp[1] = '\0';
-   if (cp == linebuf)
-      goto jleave;
-
-   /* Now search for the BOS of the "last string" */
-   quoted = *cp;
-   if (quoted == '\'' || quoted == '"') {
-      if (strip)
-         *cp = '\0';
-   } else
-      quoted = ' ';
-
-   while (cp > linebuf) {
-      --cp;
-      if (quoted != ' ') {
-         if (*cp != quoted)
-            continue;
-      } else if (!spacechar(*cp))
-         continue;
-      if (cp == linebuf || cp[-1] != '\\') {
-         /* When in whitespace mode, WS prefix doesn't belong */
-         if (quoted == ' ')
-            ++cp;
-         break;
-      }
-      /* Expand the escaped quote character */
-      for (p = --cp; (p[0] = p[1]) != '\0'; ++p)
-         ;
-   }
-   if (strip && quoted != ' ' && *cp == quoted)
-      for (p = cp; (p[0] = p[1]) != '\0'; ++p)
-         ;
-
-   /* The "last string" has been skipped over, but still, try to step backwards
-    * until we are at BOS or see whitespace, so as to make possible things like
-    * "? copy +'x y.mbox'" or even "? copy +x\ y.mbox" */
-   while (cp > linebuf) {
-      --cp;
-      if (spacechar(*cp)) {
-         p = cp;
-         *cp++ = '\0';
-         /* We can furtherly release our callees if we now decide whether the
-          * remaining non-"last string" line content contains non-WS */
-         while (--p >= linebuf)
-            if (!spacechar(*p))
-               goto jleave;
-         linebuf = cp;
-         break;
-      }
-   }
-
-jleave:
-   if (cp != NULL && *cp == '\0')
-      goto jnull;
-   *needs_list = (cp != linebuf && *linebuf != '\0');
-j_leave:
-   NYD_LEAVE;
-   return cp;
-jnull:
-   *needs_list = FAL0;
-   cp = NULL;
-   goto j_leave;
 }
 
 FL void
@@ -1056,7 +946,7 @@ n_utf8_to_utf32(char const **bdat, size_t *blen){
    NYD2_ENTER;
 
    lx = l = *blen - 1;
-   x = *(cp = *bdat);
+   x = (ui8_t)*(cp = *bdat);
    cpx = ++cp;
 
    if(n_LIKELY(x <= 0x7Fu))
@@ -1403,26 +1293,32 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
 
    for(;;){
       char *ob_base, *ob;
-      ui64_t xnol;
       size_t ol, nol;
 
       if((nol = ol = sp->s_len) < il)
          nol = il;
       assert(sizeof(sp->s_len) == sizeof(ui32_t));
-      xnol = (ui64_t)(nol << 1) - (nol >> 4);
-      if(!n_string_can_book(sp, xnol)){
-         xnol = ol + 64;
+      if(nol < 128)
+         nol += 32;
+      else{
+         ui64_t xnol;
+
+         xnol = (ui64_t)(nol << 1) - (nol >> 4);
          if(!n_string_can_book(sp, xnol)){
-            err = n_ERR_INVAL;
-            goto jleave;
+            xnol = ol + 64;
+            if(!n_string_can_book(sp, xnol)){
+               err = n_ERR_INVAL;
+               goto jleave;
+            }
          }
+         nol = (size_t)xnol;
       }
-      nol = (size_t)xnol;
       sp = n_string_resize(sp, nol);
 
       ob = ob_base = &sp->s_dat[ol];
       nol -= ol;
       err = n_iconv_buf(cd, icf, &ib, &il, &ob, &nol);
+
       sp = n_string_trunc(sp, ol + PTR2SIZE(ob - ob_base));
       if(err == 0 || err != n_ERR_2BIG)
          break;
@@ -1465,7 +1361,7 @@ n_iconv_onetime_cp(enum n_iconv_flags icf,
    if(!n_iconv_str(icd, icf, &out, &in, NULL))
       rv = savestrbuf(out.s, out.l);
    if(out.s != NULL)
-      free(out.s);
+      n_free(out.s);
 
    iconv_close(icd);
 jleave:

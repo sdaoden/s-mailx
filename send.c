@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
  * Copyright (c) 1980, 1993
@@ -57,6 +58,9 @@ n_INLINE ssize_t      _out(char const *buf, size_t len, FILE *fp,
                         enum conversion convert, enum sendaction action,
                         struct quoteflt *qf, ui64_t *stats, struct str *outrest,
                         struct str *inrest);
+
+/* Simply (!) print out a LF */
+static bool_t a_send_out_nl(FILE *fp, ui64_t *stats);
 
 /* SIGPIPE handler */
 static void          _send_onpipe(int signo);
@@ -133,7 +137,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
          (to.l = strlen(cp)) > 30 && is_asccaseprefix("application/", cp)) {
       size_t const al = sizeof("appl../") -1, fl = sizeof("application/") -1;
       size_t i = to.l - fl;
-      char *x = salloc(al + i +1);
+      char *x = n_autorec_alloc(al + i +1);
 
       memcpy(x, "appl../", al);
       memcpy(x + al, cp + fl, i +1);
@@ -182,7 +186,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
       makeprint(&ti, &to);
       to.l = delctrl(to.s, to.l);
       _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
-      free(to.s);
+      n_free(to.s);
 
       _out(" --]", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
       if (csuf != NULL)
@@ -202,7 +206,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
       ti.l = strlen(ti.s = n_UNCONST(mpp->m_content_description));
       mime_fromhdr(&ti, &to, TD_ISPR | TD_ICONV);
       _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
-      free(to.s);
+      n_free(to.s);
 
       _out(" --]", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
       if (csuf != NULL)
@@ -223,7 +227,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
       makeprint(&ti, &to);
       to.l = delctrl(to.s, to.l);
       _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
-      free(to.s);
+      n_free(to.s);
 
       _out(" --]", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
       if (csuf != NULL)
@@ -311,6 +315,9 @@ env_addon[i++] = str_concat_csvl(&s,
          "NAIL_FILENAME_TEMPORARY", "=", tmpname, NULL)->s;/* v15 */
    }
 
+   /* TODO we should include header information, especially From:, so
+    * TODO that same-origin can be tested for e.g. external-body!!! */
+
    env_addon[i] = NULL;
    sh = ok_vlook(SHELL);
 
@@ -385,6 +392,19 @@ _out(char const *buf, size_t len, FILE *fp, enum conversion convert, enum
    }
    NYD_LEAVE;
    return sz;
+}
+
+static bool_t
+a_send_out_nl(FILE *fp, ui64_t *stats){
+   struct quoteflt *qf;
+   bool_t rv;
+   NYD2_ENTER;
+
+   quoteflt_reset(qf = quoteflt_dummy(), fp);
+   rv = (_out("\n", 1, fp, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL) > 0);
+   quoteflt_flush(qf);
+   NYD2_LEAVE;
+   return rv;
 }
 
 static void
@@ -586,7 +606,8 @@ jhdrput:
             n_colour_reset();
       )
       if(dostat & 4)
-         putc('\n', obuf);
+         _out("\n", sizeof("\n") -1, obuf, convert, action, qf, stats,
+            NULL,NULL);
       /*see below hany = TRU1;*/
 
 jhdrtrunc:
@@ -630,7 +651,7 @@ jheaders_skip:
       case SEND_QUOTE:
       case SEND_QUOTE_ALL:
          if (ok_blook(rfc822_body_from_)) {
-            if (qf->qf_pfix_len > 0) {
+            if (!qf->qf_bypass) {
                size_t i = fwrite(qf->qf_pfix, sizeof *qf->qf_pfix,
                      qf->qf_pfix_len, obuf);
                if (i == qf->qf_pfix_len && stats != NULL)
@@ -792,7 +813,7 @@ jalter_redo:
                case MIME_SIGNED:
                case MIME_ENCRYPTED:
                case MIME_MULTI:
-                  mpsp = salloc(sizeof *mpsp);
+                  mpsp = n_autorec_alloc(sizeof *mpsp);
                   mpsp->outer = curr;
                   mpsp->mp = np->m_multipart;
                   curr->mp = np;
@@ -862,12 +883,8 @@ jalter_redo:
                   }
 jalter_plain:
                   quoteflt_flush(qf);
-                  if (action == SEND_QUOTE && hadpart) {
-                     struct quoteflt *dummy = quoteflt_dummy();
-                     _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, dummy, stats,
-                        NULL,NULL);
-                     quoteflt_flush(dummy);
-                  }
+                  if (action == SEND_QUOTE && hadpart)
+                     /* XXX (void)*/a_send_out_nl(obuf, stats);
                   hadpart = TRU1;
                   neednl = FAL0;
                   rv = sendpart(zmp, np, obuf, doitp, qf, action,
@@ -973,12 +990,8 @@ jmulti:
 
             quoteflt_flush(qf);
             if ((action == SEND_QUOTE || action == SEND_QUOTE_ALL) &&
-                  np->m_multipart == NULL && ip->m_parent != NULL) {
-               struct quoteflt *dummy = quoteflt_dummy();
-               _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, dummy, stats,
-                  NULL,NULL);
-               quoteflt_flush(dummy);
-            }
+                  np->m_multipart == NULL && ip->m_parent != NULL)
+               /*XXX (void)*/a_send_out_nl(obuf, stats);
             if (sendpart(zmp, np, obuf, doitp, qf, action, linedat, linesize,
                   stats, level+1) < 0)
                rv = -1;
@@ -1149,11 +1162,11 @@ jmhp_default:
 jsend:
    {
    bool_t volatile eof;
-   ui32_t save_qf_pfix_len = qf->qf_pfix_len;
+   bool_t save_qf_bypass = qf->qf_bypass;
    ui64_t *save_stats = stats;
 
    if (pbuf != origobuf) {
-      qf->qf_pfix_len = 0; /* XXX legacy (remove filter instead) */
+      qf->qf_bypass = TRU1;/* XXX legacy (remove filter instead) */
       stats = NULL;
    }
    eof = FAL0;
@@ -1166,9 +1179,9 @@ jsend:
       if (sigsetjmp(__sendp_actjmp, 1)) {
          n_pstate &= ~n_PS_BASE64_STRIP_CR;/* (but protected by outer sigman) */
          if (outrest.s != NULL)
-            free(outrest.s);
+            n_free(outrest.s);
          if (inrest.s != NULL)
-            free(inrest.s);
+            n_free(inrest.s);
 #ifdef HAVE_ICONV
          if (iconvd != (iconv_t)-1)
             n_iconv_close(iconvd);
@@ -1203,7 +1216,8 @@ joutln:
     * TODO doesn't end in a newline, because of our input/output 1:1.
     * TODO This should be handled automatically by a display filter, then */
    if(rv >= 0 && !qf->qf_nl_last &&
-         (action == SEND_TODISP || action == SEND_TODISP_ALL))
+         (action == SEND_TODISP || action == SEND_TODISP_ALL ||
+          action == SEND_QUOTE || action == SEND_QUOTE_ALL))
       rv = quoteflt_push(qf, "\n", 1);
 
    quoteflt_flush(qf);
@@ -1220,12 +1234,12 @@ joutln:
       safe_signal(SIGPIPE, __sendp_opipe);
 
    if (outrest.s != NULL)
-      free(outrest.s);
+      n_free(outrest.s);
    if (inrest.s != NULL)
-      free(inrest.s);
+      n_free(inrest.s);
 
    if (pbuf != origobuf) {
-      qf->qf_pfix_len = save_qf_pfix_len;
+      qf->qf_bypass = save_qf_bypass;
       stats = save_stats;
    }
    }
@@ -1264,7 +1278,7 @@ newfile(struct mimepart *ip, bool_t volatile *ispipe)
       makeprint(&in, &out);
       out.l = delctrl(out.s, out.l);
       f = savestrbuf(out.s, out.l);
-      free(out.s);
+      n_free(out.s);
    }
 
    /* In interactive mode, let user perform all kind of expansions as desired,
@@ -1336,7 +1350,8 @@ jgetname:
       if(n_anyof_cp("/" n_SHEXP_MAGIC_PATH_CHARS, f)){
          char c;
 
-         for(out.s = salloc((strlen(f) * 3) +1), out.l = 0; (c = *f++) != '\0';)
+         for(out.s = n_autorec_alloc((strlen(f) * 3) +1), out.l = 0;
+               (c = *f++) != '\0';)
             if(strchr("/" n_SHEXP_MAGIC_PATH_CHARS, c)){
                out.s[out.l++] = '%';
                n_c_to_hex_base16(&out.s[out.l], c);
@@ -1391,7 +1406,7 @@ pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf, struct quoteflt *qf,
    if ((sz = quoteflt_flush(qf)) > 0)
       all_sz += sz;
    if (line)
-      free(line);
+      n_free(line);
 
    if (all_sz > 0 && outbuf == origobuf && stats != NULL)
       *stats += all_sz;
@@ -1413,7 +1428,7 @@ statusput(const struct message *mp, FILE *obuf, struct quoteflt *qf,
    *cp = 0;
    if (statout[0]) {
       int i = fprintf(obuf, "%.*sStatus: %s\n", (int)qf->qf_pfix_len,
-            (qf->qf_pfix_len > 0 ? qf->qf_pfix : 0), statout);
+            (qf->qf_bypass ? NULL : qf->qf_pfix), statout);
       if (i > 0 && stats != NULL)
          *stats += i;
    }
@@ -1437,7 +1452,7 @@ xstatusput(const struct message *mp, FILE *obuf, struct quoteflt *qf,
    *xp = 0;
    if (xstatout[0]) {
       int i = fprintf(obuf, "%.*sX-Status: %s\n", (int)qf->qf_pfix_len,
-            (qf->qf_pfix_len > 0 ? qf->qf_pfix : 0), xstatout);
+            (qf->qf_bypass ? NULL : qf->qf_pfix), xstatout);
       if (i > 0 && stats != NULL)
          *stats += i;
    }
@@ -1493,7 +1508,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
    rv = -1;
    linedat = NULL;
    linesize = 0;
-   quoteflt_init(&qf, prefix);
+   quoteflt_init(&qf, prefix, (prefix == NULL));
 
    n_SIGMAN_ENTER_SWITCH(&linedat_protect, n_SIGMAN_ALL){
    case 0:
@@ -1539,10 +1554,10 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
       if (nozap)
          sz = fprintf(obuf, "%s%.*sFrom %s %s%s\n",
                cpre, (int)qf.qf_pfix_len,
-               (qf.qf_pfix_len != 0 ? qf.qf_pfix : n_empty), fakefrom(mp),
+               (qf.qf_bypass ? n_empty : qf.qf_pfix), fakefrom(mp),
                n_time_ctime(mp->m_time, NULL), csuf);
    } else if (nozap) {
-      if (qf.qf_pfix_len > 0) {
+      if (!qf.qf_bypass) {
          i = fwrite(qf.qf_pfix, sizeof *qf.qf_pfix, qf.qf_pfix_len, obuf);
          if (i != qf.qf_pfix_len)
             goto jleave;
@@ -1601,7 +1616,7 @@ jleave:
    n_pstate &= ~n_PS_BASE64_STRIP_CR;
    quoteflt_destroy(&qf);
    if(linedat != NULL)
-      free(linedat);
+      n_free(linedat);
    NYD_LEAVE;
    n_sigman_leave(&linedat_protect, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;

@@ -4,6 +4,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause TODO ISC
  */
 /*
  * Copyright (c) 1980, 1993
@@ -165,7 +166,7 @@ static struct a_nag_group *a_nag_filetype_heads[HSHSIZE];
 /* Same name, while taking care for *allnet*? */
 static bool_t a_nag_is_same_name(char const *n1, char const *n2);
 
-/* Mark all nodes with the given name */
+/* Mark all (!file, !pipe) nodes with the given name */
 static struct name *a_nag_namelist_mark_name(struct name *np, char const *name);
 
 /* Grab a single name (liberal name) */
@@ -273,7 +274,9 @@ a_nag_namelist_mark_name(struct name *np, char const *name){
    NYD2_ENTER;
 
    for(p = np; p != NULL; p = p->n_flink)
-      if(!(p->n_type & GDEL) && !(p->n_flags & (ui32_t)SI32_MIN) &&
+      if(!(p->n_type & GDEL) &&
+            !(p->n_flags & (((ui32_t)SI32_MIN) | NAME_ADDRSPEC_ISFILE |
+               NAME_ADDRSPEC_ISPIPE)) &&
             a_nag_is_same_name(p->n_name, name))
          p->n_flags |= (ui32_t)SI32_MIN;
    NYD2_LEAVE;
@@ -453,7 +456,11 @@ a_nag_elide_qsort(void const *s1, void const *s2){
 
    np1 = s1;
    np2 = s2;
-   rv = asccasecmp((*np1)->n_name, (*np2)->n_name);
+   if(!(rv = asccasecmp((*np1)->n_name, (*np2)->n_name))){
+      n_LCTAV(GTO < GCC && GCC < GBCC);
+      rv = ((*np1)->n_type & (GTO | GCC | GBCC)) -
+            ((*np2)->n_type & (GTO | GCC | GBCC));
+   }
    NYD2_LEAVE;
    return rv;
 }
@@ -840,7 +847,7 @@ a_nag_group_print_all(enum a_nag_type nt, char const *varname){
             ++i;
    if(i == 0){
       if(varname == NULL)
-         fprintf(n_stdout, A_("# no %s registered\n"), tname);
+         fprintf(n_stdout, _("# no %s registered\n"), tname);
       goto jleave;
    }
    ++i;
@@ -1293,6 +1300,21 @@ jleave:
 }
 
 FL struct name *
+nalloc_fcc(char const *file){
+   struct name *nnp;
+   NYD_ENTER;
+
+   nnp = n_autorec_alloc(sizeof *nnp);
+   nnp->n_flink = nnp->n_blink = NULL;
+   nnp->n_type = GBCC | GBCC_IS_FCC; /* xxx Bcc: <- namelist_vaporise_head */
+   nnp->n_flags = NAME_NAME_SALLOC | NAME_SKINNED | NAME_ADDRSPEC_ISFILE;
+   nnp->n_fullname = nnp->n_name = savestr(file);
+   nnp->n_fullextra = NULL;
+   NYD_LEAVE;
+   return nnp;
+}
+
+FL struct name *
 ndup(struct name *np, enum gfield ntype)
 {
    struct name *nnp;
@@ -1344,7 +1366,7 @@ jleave:
 }
 
 FL struct name *
-namelist_dup(struct name const *np, enum gfield ntype){
+n_namelist_dup(struct name const *np, enum gfield ntype){
    struct name *nlist, *xnp;
    NYD2_ENTER;
 
@@ -1404,11 +1426,37 @@ extract(char const *line, enum gfield ntype)
 FL struct name *
 lextract(char const *line, enum gfield ntype)
 {
+   char *cp;
    struct name *rv;
    NYD_ENTER;
 
+   if(!(ntype & GSHEXP_PARSE_HACK) || !(expandaddr_to_eaf() & EAF_SHEXP_PARSE))
+      cp = NULL;
+   else{
+      struct str sin;
+      struct n_string s_b, *sp;
+      enum n_shexp_state shs;
+
+      n_autorec_relax_create();
+      sp = n_string_creat_auto(&s_b);
+      sin.s = n_UNCONST(line); /* logical */
+      sin.l = UIZ_MAX;
+      shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
+            n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
+            n_SHEXP_PARSE_QUOTE_AUTO_DSQ), sp, &sin, NULL);
+      if(!(shs & n_SHEXP_STATE_ERR_MASK) && (shs & n_SHEXP_STATE_STOP)){
+         line = cp = n_lofi_alloc(sp->s_len +1);
+         memcpy(cp, n_string_cp(sp), sp->s_len +1);
+      }else
+         line = cp = NULL;
+      n_autorec_relax_gut();
+   }
+
    rv = ((line != NULL && strpbrk(line, ",\"\\(<|"))
          ? a_nag_extract1(line, ntype, ",", 1) : extract(line, ntype));
+
+   if(cp != NULL)
+      n_lofi_free(cp);
    NYD_LEAVE;
    return rv;
 }
@@ -1518,18 +1566,19 @@ checkaddrs(struct name *np, enum expand_addr_check_mode eacm,
 }
 
 FL struct name *
-namelist_vaporise_head(struct header *hp, enum expand_addr_check_mode eacm,
-   bool_t metoo, si8_t *set_on_error)
+n_namelist_vaporise_head(bool_t strip_alternates, struct header *hp,
+   enum expand_addr_check_mode eacm, si8_t *set_on_error)
 {
    /* TODO namelist_vaporise_head() is incredibly expensive and redundant */
    struct name *tolist, *np, **npp;
    NYD_ENTER;
 
-   tolist = cat(hp->h_to, cat(hp->h_cc, hp->h_bcc));
-   hp->h_to = hp->h_cc = hp->h_bcc = NULL;
+   tolist = cat(hp->h_to, cat(hp->h_cc, cat(hp->h_bcc, hp->h_fcc)));
+   hp->h_to = hp->h_cc = hp->h_bcc = hp->h_fcc = NULL;
 
-   tolist = usermap(tolist, metoo);
-   tolist = n_alternates_remove(tolist, TRU1);
+   tolist = usermap(tolist, strip_alternates/*metoo*/);
+   if(strip_alternates)
+      tolist = n_alternates_remove(tolist, TRU1);
    tolist = elide(checkaddrs(tolist, eacm, set_on_error));
 
    for (np = tolist; np != NULL; np = np->n_flink) {
@@ -1739,11 +1788,13 @@ n_alternates_remove(struct name *np, bool_t keep_single){
 
    np = a_nag_namelist_mark_name(np, ok_vlook(LOGNAME));
 
-   for(xp = lextract(ok_vlook(from), GEXTRA | GSKIN); xp != NULL;
-         xp = xp->n_flink)
-      np = a_nag_namelist_mark_name(np, xp->n_name);
-
-   for(xp = extract(ok_vlook(sender), GEXTRA | GSKIN); xp != NULL;
+   if((xp = extract(ok_vlook(sender), GEXTRA | GSKIN)) != NULL){
+      /* TODO check_from_and_sender(): drop; *sender*: only one name!
+       * TODO At assignment time, as VIP var? */
+      do
+         np = a_nag_namelist_mark_name(np, xp->n_name);
+      while((xp = xp->n_flink) != NULL);
+   }else for(xp = lextract(ok_vlook(from), GEXTRA | GSKIN); xp != NULL;
          xp = xp->n_flink)
       np = a_nag_namelist_mark_name(np, xp->n_name);
 
@@ -2101,6 +2152,8 @@ n_alias_is_valid_name(char const *name){
       /* User names, plus things explicitly mentioned in Postfix aliases(5),
        * i.e., [[:alnum:]_#:@.-]+$?.
        * As extensions allow high-bit bytes, semicolon and period. */
+      /* TODO n_alias_is_valid_name(): locale dependent validity check,
+       * TODO with Unicode prefix valid UTF-8! */
       if(!alnumchar(c) && c != '_' && c != '-' &&
             c != '#' && c != ':' && c != '@' &&
             !((ui8_t)c & 0x80) && c != '!' && c != '.'){

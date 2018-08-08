@@ -4,6 +4,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
  * Copyright (c) 1980, 1993
@@ -39,6 +40,18 @@
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
+
+struct a_coll_fmt_ctx{ /* xxx This is temporary until v15 has objects */
+   char const *cfc_fmt;
+   FILE *cfc_fp;
+   struct message *cfc_mp;
+   char *cfc_cumul;
+   char *cfc_addr;
+   char *cfc_real;
+   char *cfc_full;
+   char *cfc_date;
+   char const *cfc_msgid;  /* Or NULL */
+};
 
 struct a_coll_ocs_arg{
    sighandler_type coa_opipe;
@@ -81,14 +94,23 @@ static si32_t a_coll_write(char const *name, FILE *fp, int f);
 /* *message-inject-head* */
 static bool_t a_coll_message_inject_head(FILE *fp);
 
+/* With bells and whistles */
+static bool_t a_coll_quote_message(FILE *fp, struct message *mp, bool_t isfwd);
+
+/* *{forward,quote}-inject-{head,tail}*.
+ * fmt may be NULL or the empty string, in which case no output is produced */
+static bool_t a_coll__fmt_inj(struct a_coll_fmt_ctx const *cfcp);
+
 /* Parse off the message header from fp and store relevant fields in hp,
- * replace _coll_fp with a shiny new version without any header */
+ * replace _coll_fp with a shiny new version without any header.
+ * Takes care for closing of fp and _coll_fp as necessary */
 static bool_t a_coll_makeheader(FILE *fp, struct header *hp,
                si8_t *checkaddr_err, bool_t do_delayed_due_t);
 
-/* Edit the message being collected on fp.  On return, make the edit file the
- * new temp file.  Return errno */
-static si32_t a_coll_edit(int c, struct header *hp);
+/* Edit the message being collected on fp.
+ * If c=='|' pipecmd must be set and is passed through to n_run_editor().
+ * On successful return, make the edit file the new temp file; return errno */
+static si32_t a_coll_edit(int c, struct header *hp, char const *pipecmd);
 
 /* Pipe the message through the command.  Old message is on stdin of command,
  * new message collected from stdout.  Shell must return 0 to accept new msg */
@@ -98,14 +120,6 @@ static si32_t a_coll_pipe(char const *cmd);
  * indent stuff.  The flag argument is one of the command escapes: [mMfFuU].
  * Return errno */
 static si32_t a_coll_forward(char const *ms, FILE *fp, int f);
-
-/* ~^ mode */
-static bool_t a_collect_plumbing(char const *ms, struct header *p);
-
-static bool_t a_collect__plumb_header(char const *cp, struct header *p,
-               char const *cmd[4]);
-static bool_t a_collect__plumb_attach(char const *cp, struct header *p,
-               char const *cmd[4]);
 
 /* On interrupt, come here to save the partial message in ~/dead.letter.
  * Then jump out of the collection loop */
@@ -165,7 +179,7 @@ jleave:
       if(strcmp(mnbuf, mailname))
          n_err(_("Mailbox changed: it is likely that existing "
             "rfc822 attachments became invalid!\n"));
-      free(mnbuf);
+      n_free(mnbuf);
    }
    NYD_LEAVE;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
@@ -191,7 +205,7 @@ a_coll_include_file(char const *name, bool_t indent, bool_t writestat){
    /* The -M case is special */
    if(name == (char*)-1){
       fbuf = n_stdin;
-      name = "-";
+      name = n_hy;
    }else if(name[0] == '-' &&
          (name[1] == '\0' || blankspacechar(name[1]))){
       fbuf = n_stdin;
@@ -230,7 +244,7 @@ jdelim_empty:
             heredb = savestrbuf(heredb, heredl);
          }
       }
-      name = "-";
+      name = n_hy;
    }else if((fbuf = Fopen(name, "r")) == NULL){
       n_perr(name, rv = n_err_no);
       goto jleave;
@@ -272,7 +286,7 @@ jdelim_empty:
       rv = n_ERR_NOTOBACCO;
 jleave:
    if(linebuf != NULL)
-      free(linebuf);
+      n_free(linebuf);
    if(fbuf != NULL){
       if(fbuf != n_stdin)
          Fclose(fbuf);
@@ -344,20 +358,20 @@ print_collf(FILE *cf, struct header *hp)
 
    hold_all_sigs();
 
-   fprintf(obuf, A_("-------\nMessage contains:\n")); /* xxx SEARCH112 */
-   puthead(TRU1, hp, obuf,
-      (GIDENT | GTO | GSUBJECT | GCC | GBCC | GNL | GFILES | GCOMMA),
-      SEND_TODISP, CONV_NONE, NULL, NULL);
+   fprintf(obuf, _("-------\nMessage contains:\n")); /* xxx SEARCH112 */
+   n_puthead(TRU1, hp, obuf,
+      (GIDENT | GTO | GSUBJECT | GCC | GBCC | GBCC_IS_FCC | GNL | GFILES |
+       GCOMMA), SEND_TODISP, CONV_NONE, NULL, NULL);
 
    lbuf = NULL;
    linesize = 0;
    while(fgetline(&lbuf, &linesize, &cnt, &linelen, cf, 1))
       prout(lbuf, linelen, obuf);
    if(lbuf != NULL)
-      free(lbuf);
+      n_free(lbuf);
 
    if(hp->h_attach != NULL){
-      fputs(A_("-------\nAttachments:\n"), obuf);
+      fputs(_("-------\nAttachments:\n"), obuf);
       n_attachment_list_print(hp->h_attach, obuf);
    }
 
@@ -401,7 +415,7 @@ a_coll_write(char const *name, FILE *fp, int f)
          goto jerr;
       }
    }
-   fprintf(n_stdout, _("%" PRId64 "/%" PRId64 "\n"), lc, cc);
+   fprintf(n_stdout, "%" PRId64 "/%" PRId64 "\n", lc, cc);
 
 jleave:
    if(of != NULL)
@@ -435,6 +449,150 @@ a_coll_message_inject_head(FILE *fp){
 }
 
 static bool_t
+a_coll_quote_message(FILE *fp, struct message *mp, bool_t isfwd){
+   struct a_coll_fmt_ctx cfc;
+   char const *cp;
+   struct n_ignore const *quoteitp;
+   enum sendaction action;
+   bool_t rv;
+   NYD_ENTER;
+
+   rv = FAL0;
+
+   if(isfwd || (cp = ok_vlook(quote)) != NULL){
+      quoteitp = n_IGNORE_ALL;
+      action = SEND_QUOTE;
+
+      if(isfwd){
+         char const *cp_v15compat;
+
+         if((cp_v15compat = ok_vlook(fwdheading)) != NULL)
+            n_OBSOLETE(_("please use *forward-inject-head* instead of "
+               "*fwdheading*"));
+         if((cp = ok_vlook(forward_inject_head)) == NULL &&
+               (cp = cp_v15compat) == NULL)
+            cp = n_FORWARD_INJECT_HEAD;
+         quoteitp = n_IGNORE_FWD;
+      }else{
+         if(!strcmp(cp, "noheading")){
+            cp = NULL;
+         }else if(!strcmp(cp, "headers")){
+            quoteitp = n_IGNORE_TYPE;
+            cp = NULL;
+         }else if(!strcmp(cp, "allheaders")){
+            quoteitp = NULL;
+            action = SEND_QUOTE_ALL;
+            cp = NULL;
+         }else if((cp = ok_vlook(quote_inject_head)) == NULL)
+            cp = n_QUOTE_INJECT_HEAD;
+      }
+      /* We we pass through our formatter? */
+      if((cfc.cfc_fmt = cp) != NULL){
+         /* TODO In v15 [-textual_-]sender_info() should only create a list
+          * TODO of matching header objects, and the formatter should simply
+          * TODO iterate over this list and call OBJ->to_ui_str(FLAGS) or so.
+          * TODO For now fully initialize this thing once (grrrr!!) */
+         cfc.cfc_fp = fp;
+         cfc.cfc_mp = mp;
+         n_header_textual_sender_info(cfc.cfc_mp = mp, &cfc.cfc_cumul,
+            &cfc.cfc_addr, &cfc.cfc_real, &cfc.cfc_full, NULL);
+         cfc.cfc_date = n_header_textual_date_info(mp, NULL);
+         /* C99 */{
+            struct name *np;
+
+            if((cp = hfield1("message-id", mp)) != NULL &&
+                  (np = lextract(cp, GREF)) != NULL)
+               cp = np->n_name;
+            else
+               cp = NULL;
+         }
+         cfc.cfc_msgid = cp;
+
+         if(!a_coll__fmt_inj(&cfc) || fflush(fp))
+            goto jleave;
+      }
+
+      if(sendmp(mp, fp, quoteitp, (isfwd ? NULL : ok_vlook(indentprefix)),
+            action, NULL) < 0)
+         goto jleave;
+
+      if(isfwd){
+         if((cp = ok_vlook(forward_inject_tail)) == NULL)
+             cp = n_FORWARD_INJECT_TAIL;
+      }else if(cp != NULL && (cp = ok_vlook(quote_inject_tail)) == NULL)
+          cp = n_QUOTE_INJECT_TAIL;
+      if((cfc.cfc_fmt = cp) != NULL && (!a_coll__fmt_inj(&cfc) || fflush(fp)))
+         goto jleave;
+   }
+
+   rv = TRU1;
+jleave:
+   NYD_LEAVE;
+   return rv;
+}
+
+static bool_t
+a_coll__fmt_inj(struct a_coll_fmt_ctx const *cfcp){
+   struct quoteflt qf;
+   struct n_string s_b, *sp;
+   char c;
+   char const *fmt;
+   NYD_ENTER;
+
+   if((fmt = cfcp->cfc_fmt) == NULL || *fmt == '\0')
+      goto jleave;
+
+   sp = n_string_book(n_string_creat_auto(&s_b), 127);
+
+   while((c = *fmt++) != '\0'){
+      if(c != '%' || (c = *fmt++) == '%'){
+jwrite_char:
+         sp = n_string_push_c(sp, c);
+      }else switch(c){
+      case 'a':
+         sp = n_string_push_cp(sp, cfcp->cfc_addr);
+         break;
+      case 'd':
+         sp = n_string_push_cp(sp, cfcp->cfc_date);
+         break;
+      case 'f':
+         sp = n_string_push_cp(sp, cfcp->cfc_full);
+         break;
+      case 'i':
+         if(cfcp->cfc_msgid != NULL)
+            sp = n_string_push_cp(sp, cfcp->cfc_msgid);
+         break;
+      case 'n':
+         sp = n_string_push_cp(sp, cfcp->cfc_cumul);
+         break;
+      case 'r':
+         sp = n_string_push_cp(sp, cfcp->cfc_real);
+         break;
+      case '\0':
+         --fmt;
+         c = '%';
+         goto jwrite_char;
+      default:
+         n_err(_("*{forward,quote}-inject-{head,tail}*: "
+            "unknown format: %c (in: %s)\n"),
+            c, n_shexp_quote_cp(cfcp->cfc_fmt, FAL0));
+         goto jwrite_char;
+      }
+   }
+
+   quoteflt_init(&qf, NULL, FAL0);
+   quoteflt_reset(&qf, cfcp->cfc_fp);
+   if(quoteflt_push(&qf, sp->s_dat, sp->s_len) < 0 || quoteflt_flush(&qf) < 0)
+      cfcp = NULL;
+   quoteflt_destroy(&qf);
+
+   /*n_string_gut(sp);*/
+jleave:
+   NYD_LEAVE;
+   return (cfcp != NULL);
+}
+
+static bool_t
 a_coll_makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err,
    bool_t do_delayed_due_t)
 {
@@ -450,7 +608,10 @@ a_coll_makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err,
       goto jleave;
    }
 
-   extract_header(fp, hp, checkaddr_err);
+   n_header_extract(((do_delayed_due_t
+            ? n_HEADER_EXTRACT_FULL | n_HEADER_EXTRACT_PREFILL_RECEIVERS
+            : n_HEADER_EXTRACT_EXTENDED) |
+         n_HEADER_EXTRACT_IGNORE_SHELL_COMMENTS), fp, hp, checkaddr_err);
    if (checkaddr_err != NULL && *checkaddr_err != 0)
       goto jleave;
 
@@ -489,20 +650,19 @@ jleave:
 }
 
 static si32_t
-a_coll_edit(int c, struct header *hp) /* TODO error(return) weird */
+a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
 {
    struct n_sigman sm;
    FILE *nf;
    sighandler_type volatile sigint;
-   bool_t saved;
+   struct name *saved_in_reply_to;
+   bool_t saved_filrec;
    si32_t volatile rv;
    NYD_ENTER;
 
-   n_UNINIT(sigint, SIG_ERR);
    rv = n_ERR_NONE;
-
-   if(!(saved = ok_blook(add_file_recipients)))
-      ok_bset(add_file_recipients);
+   n_UNINIT(sigint, SIG_ERR);
+   saved_filrec = ok_blook(add_file_recipients);
 
    n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
    case 0:
@@ -513,22 +673,43 @@ a_coll_edit(int c, struct header *hp) /* TODO error(return) weird */
       goto jleave;
    }
 
-   nf = run_editor(_coll_fp, (off_t)-1, c, FAL0, hp, NULL, SEND_MBOX, sigint);
-   if (nf != NULL) {
-      if (hp) {
+   if(!saved_filrec)
+      ok_bset(add_file_recipients);
+
+   saved_in_reply_to = NULL;
+   if(hp != NULL){
+      struct name *np;
+
+      if((np = hp->h_in_reply_to) == NULL)
+         hp->h_in_reply_to = np = n_header_setup_in_reply_to(hp);
+      if(np != NULL)
+         saved_in_reply_to = ndup(np, np->n_type);
+   }
+
+   rewind(_coll_fp);
+   nf = n_run_editor(_coll_fp, (off_t)-1, c, FAL0, hp, NULL, SEND_MBOX, sigint,
+         pipecmd);
+   if(nf != NULL){
+      if(hp != NULL){
+         /* Overtaking of nf->_coll_fp is done by a_coll_makeheader()! */
          if(!a_coll_makeheader(nf, hp, NULL, FAL0))
             rv = n_ERR_INVAL;
-      } else {
+         /* Break the thread if In-Reply-To: has been modified */
+         if(hp->h_in_reply_to == NULL || (saved_in_reply_to != NULL &&
+               asccasecmp(hp->h_in_reply_to->n_fullname,
+                  saved_in_reply_to->n_fullname)))
+               hp->h_ref = NULL;
+      }else{
          fseek(nf, 0L, SEEK_END);
          Fclose(_coll_fp);
          _coll_fp = nf;
       }
-   } else
+   }else
       rv = n_ERR_CHILD;
 
    n_sigman_cleanup_ping(&sm);
 jleave:
-   if(!saved)
+   if(!saved_filrec)
       ok_bclear(add_file_recipients);
    safe_signal(SIGINT, sigint);
    NYD_LEAVE;
@@ -549,12 +730,15 @@ a_coll_pipe(char const *cmd)
    sigint = safe_signal(SIGINT, SIG_IGN);
 
    if ((nf = Ftmp(NULL, "colpipe", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==NULL) {
+jperr:
       n_perr(_("temporary mail edit file"), rv = n_err_no);
       goto jout;
    }
 
    /* stdin = current message.  stdout = new message */
-   fflush(_coll_fp);
+   if(fflush(_coll_fp) == EOF)
+      goto jperr;
+   rewind(_coll_fp);
    if (n_child_run(ok_vlook(SHELL), 0, fileno(_coll_fp), fileno(nf), "-c",
          cmd, NULL, NULL, &ws) < 0 || WEXITSTATUS(ws) != 0) {
       Fclose(nf);
@@ -588,20 +772,23 @@ a_coll_forward(char const *ms, FILE *fp, int f)
    enum sendaction action;
    NYD_ENTER;
 
-   msgvec = salloc((size_t)(msgCount + 1) * sizeof *msgvec);
-   if (getmsglist(ms, msgvec, 0) < 0) {
+   if ((rv = n_getmsglist(ms, n_msgvec, 0, NULL)) < 0) {
       rv = n_ERR_NOENT; /* XXX not really, should be handled there! */
       goto jleave;
    }
-   if (*msgvec == 0) {
-      *msgvec = first(0, MMNORM);
-      if (*msgvec == 0) {
+   if (rv == 0) {
+      *n_msgvec = first(0, MMNORM);
+      if (*n_msgvec == 0) {
          n_err(_("No appropriate messages\n"));
          rv = n_ERR_NOENT;
          goto jleave;
       }
-      msgvec[1] = 0;
+      rv = 1;
    }
+   msgvec = n_autorec_calloc(rv +1, sizeof *msgvec);
+   while(rv-- > 0)
+      msgvec[rv] = n_msgvec[rv];
+   rv = 0;
 
    if (f == 'f' || f == 'F' || f == 'u')
       tabst = NULL;
@@ -613,15 +800,22 @@ a_coll_forward(char const *ms, FILE *fp, int f)
       itp = upperchar(f) ? NULL : n_IGNORE_TYPE;
    action = (upperchar(f) && f != 'U') ? SEND_QUOTE_ALL : SEND_QUOTE;
 
-   fprintf(n_stdout, _("Interpolating:"));
+   fprintf(n_stdout, A_("Interpolating:"));
    srelax_hold();
-   for (; *msgvec != 0; ++msgvec) {
-      struct message *mp = message + *msgvec - 1;
+   for(; *msgvec != 0; ++msgvec){
+      struct message *mp;
 
+      mp = &message[*msgvec - 1];
       touch(mp);
+
       fprintf(n_stdout, " %d", *msgvec);
       fflush(n_stdout);
-      if (sendmp(mp, fp, itp, tabst, action, NULL) < 0) {
+      if(f == 'Q'){
+         if(!a_coll_quote_message(fp, mp, FAL0)){
+            rv = n_ERR_IO;
+            break;
+         }
+      }else if(sendmp(mp, fp, itp, tabst, action, NULL) < 0){
          n_perr(_("forward: temporary mail file"), 0);
          rv = n_ERR_IO;
          break;
@@ -633,953 +827,6 @@ a_coll_forward(char const *ms, FILE *fp, int f)
 jleave:
    NYD_LEAVE;
    return rv;
-}
-
-static bool_t
-a_collect_plumbing(char const *ms, struct header *hp){
-   /* TODO _collect_plumbing: instead of fields the basic headers should
-    * TODO be in an array and have IDs, like in termcap etc., so then this
-    * TODO could be simplified as table-walks.  Also true for arg-checks! */
-   bool_t rv;
-   char const *cp, *cmd[4];
-   NYD2_ENTER;
-
-   /* Protcol version for *on-compose-splice** -- update manual on change! */
-#define a_COLL_PLUMBING_VERSION "0 0 1"
-   cp = ms;
-
-   /* C99 */{
-      size_t i;
-
-      for(i = 0; i < n_NELEM(cmd); ++i){ /* TODO trim+strlist_split(_ifs?)() */
-         while(blankchar(*cp))
-            ++cp;
-         if(*cp == '\0')
-            cmd[i] = NULL;
-         else{
-            if(i < n_NELEM(cmd) - 1)
-               for(cmd[i] = cp++; *cp != '\0' && !blankchar(*cp); ++cp)
-                  ;
-            else{
-               /* Last slot takes all the rest of the line, less trailing WS */
-               for(cmd[i] = cp++; *cp != '\0'; ++cp)
-                  ;
-               while(blankchar(cp[-1]))
-                  --cp;
-            }
-            cmd[i] = savestrbuf(cmd[i], PTR2SIZE(cp - cmd[i]));
-         }
-      }
-   }
-
-   if(n_UNLIKELY(cmd[0] == NULL))
-      goto jecmd;
-   if(is_asccaseprefix(cmd[0], "header"))
-      rv = a_collect__plumb_header(cp, hp, cmd);
-   else if(is_asccaseprefix(cmd[0], "attachment"))
-      rv = a_collect__plumb_attach(cp, hp, cmd);
-   else{
-jecmd:
-      fputs("500\n", n_stdout);
-      rv = FAL0;
-   }
-   fflush(n_stdout);
-
-   NYD2_LEAVE;
-   return rv;
-}
-
-static bool_t
-a_collect__plumb_header(char const *cp, struct header *hp,
-      char const *cmd[4]){
-   uiz_t i;
-   struct n_header_field *hfp;
-   struct name *np, **npp;
-   NYD2_ENTER;
-
-   if(cmd[1] == NULL)
-      goto jdefault;
-
-   if(is_asccaseprefix(cmd[1], "insert")){ /* TODO LOGIC BELONGS head.c
-       * TODO That is: Header::factory(string) -> object (blahblah).
-       * TODO I.e., as long as we don't have regular RFC compliant parsers
-       * TODO which differentiate in between structured and unstructured
-       * TODO header fields etc., a little workaround */
-      struct name *xnp;
-      si8_t aerr;
-      enum expand_addr_check_mode eacm;
-      enum gfield ntype;
-      bool_t mult_ok;
-
-      if(cmd[2] == NULL || cmd[3] == NULL)
-         goto jecmd;
-
-      /* Strip [\r\n] which would render a body invalid XXX all controls? */
-      /* C99 */{
-         char *xp, c;
-
-         cmd[3] = xp = savestr(cmd[3]);
-         for(; (c = *xp) != '\0'; ++xp)
-            if(c == '\n' || c == '\r')
-               *xp = ' ';
-      }
-
-      if(!asccasecmp(cmd[2], cp = "Subject")){
-         if(cmd[3][0] != '\0'){
-            if(hp->h_subject != NULL)
-               hp->h_subject = savecatsep(hp->h_subject, ' ', cmd[3]);
-            else
-               hp->h_subject = n_UNCONST(cmd[3]);
-            fprintf(n_stdout, "210 %s 1\n", cp);
-            goto jleave;
-         }else
-            goto j501cp;
-      }
-
-      mult_ok = TRU1;
-      ntype = GEXTRA | GFULL | GFULLEXTRA;
-      eacm = EACM_STRICT;
-
-      if(!asccasecmp(cmd[2], cp = "From")){
-         npp = &hp->h_from;
-jins:
-         aerr = 0;
-         if((np = lextract(cmd[3], ntype)) == NULL)
-            goto j501cp;
-
-         if((np = checkaddrs(np, eacm, &aerr), aerr != 0)){
-            fprintf(n_stdout, "505 %s\n", cp);
-            goto jleave;
-         }
-
-         /* Go to the end of the list, track whether it contains any
-          * non-deleted entries */
-         i = 0;
-         if((xnp = *npp) != NULL)
-            for(;; xnp = xnp->n_flink){
-               if(!(xnp->n_type & GDEL))
-                  ++i;
-               if(xnp->n_flink == NULL)
-                  break;
-            }
-
-         if(!mult_ok && (i != 0 || np->n_flink != NULL))
-            fprintf(n_stdout, "506 %s\n", cp);
-         else{
-            if(xnp == NULL)
-               *npp = np;
-            else
-               xnp->n_flink = np;
-            np->n_blink = xnp;
-            fprintf(n_stdout, "210 %s %" PRIuZ "\n", cp, ++i);
-         }
-         goto jleave;
-      }
-      if(!asccasecmp(cmd[2], cp = "Sender")){
-         mult_ok = FAL0;
-         npp = &hp->h_sender;
-         goto jins;
-      }
-      if(!asccasecmp(cmd[2], cp = "To")){
-         npp = &hp->h_to;
-         ntype = GTO | GFULL;
-         eacm = EACM_NORMAL | EAF_NAME;
-         goto jins;
-      }
-      if(!asccasecmp(cmd[2], cp = "Cc")){
-         npp = &hp->h_cc;
-         ntype = GCC | GFULL;
-         eacm = EACM_NORMAL | EAF_NAME;
-         goto jins;
-      }
-      if(!asccasecmp(cmd[2], cp = "Bcc")){
-         npp = &hp->h_bcc;
-         ntype = GBCC | GFULL;
-         eacm = EACM_NORMAL | EAF_NAME;
-         goto jins;
-      }
-      if(!asccasecmp(cmd[2], cp = "Reply-To")){
-         npp = &hp->h_reply_to;
-         eacm = EACM_NONAME;
-         goto jins;
-      }
-      if(!asccasecmp(cmd[2], cp = "Mail-Followup-To")){
-         npp = &hp->h_mft;
-         eacm = EACM_NONAME;
-         goto jins;
-      }
-      if(!asccasecmp(cmd[2], cp = "Message-ID")){
-         mult_ok = FAL0;
-         npp = &hp->h_message_id;
-         ntype = GREF;
-         eacm = EACM_NONAME;
-         goto jins;
-      }
-      if(!asccasecmp(cmd[2], cp = "References")){
-         npp = &hp->h_ref;
-         ntype = GREF;
-         eacm = EACM_NONAME;
-         goto jins;
-      }
-      if(!asccasecmp(cmd[2], cp = "In-Reply-To")){
-         npp = &hp->h_in_reply_to;
-         ntype = GREF;
-         eacm = EACM_NONAME;
-         goto jins;
-      }
-
-      if((cp = n_header_is_standard(cmd[2], UIZ_MAX)) != NULL){
-         fprintf(n_stdout, "505 %s\n", cp);
-         goto jleave;
-      }
-
-      /* Free-form header fields */
-      /* C99 */{
-         size_t nl, bl;
-         struct n_header_field **hfpp;
-
-         for(cp = cmd[2]; *cp != '\0'; ++cp)
-            if(!fieldnamechar(*cp)){
-               cp = cmd[2];
-               goto j501cp;
-            }
-
-         for(i = 0, hfpp = &hp->h_user_headers; *hfpp != NULL; ++i)
-            hfpp = &(*hfpp)->hf_next;
-
-         nl = strlen(cp = cmd[2]) +1;
-         bl = strlen(cmd[3]) +1;
-         *hfpp = hfp = salloc(n_VSTRUCT_SIZEOF(struct n_header_field, hf_dat
-               ) + nl + bl);
-         hfp->hf_next = NULL;
-         hfp->hf_nl = nl - 1;
-         hfp->hf_bl = bl - 1;
-         memcpy(&hfp->hf_dat[0], cp, nl);
-         memcpy(&hfp->hf_dat[nl], cmd[3], bl);
-         fprintf(n_stdout, "210 %s %" PRIuZ "\n", &hfp->hf_dat[0], ++i);
-      }
-      goto jleave;
-   }
-
-   if(is_asccaseprefix(cmd[1], "list")){
-jdefault:
-      if(cmd[2] == NULL){
-         fputs("210", n_stdout);
-         if(hp->h_subject != NULL) fputs(" Subject", n_stdout);
-         if(hp->h_from != NULL) fputs(" From", n_stdout);
-         if(hp->h_sender != NULL) fputs(" Sender", n_stdout);
-         if(hp->h_to != NULL) fputs(" To", n_stdout);
-         if(hp->h_cc != NULL) fputs(" Cc", n_stdout);
-         if(hp->h_bcc != NULL) fputs(" Bcc", n_stdout);
-         if(hp->h_reply_to != NULL) fputs(" Reply-To", n_stdout);
-         if(hp->h_mft != NULL) fputs(" Mail-Followup-To", n_stdout);
-         if(hp->h_message_id != NULL) fputs(" Message-ID", n_stdout);
-         if(hp->h_ref != NULL) fputs(" References", n_stdout);
-         if(hp->h_in_reply_to != NULL) fputs(" In-Reply-To", n_stdout);
-         if(hp->h_mailx_command != NULL) fputs(" Mailx-Command", n_stdout);
-         if(hp->h_mailx_raw_to != NULL) fputs(" Mailx-Raw-To", n_stdout);
-         if(hp->h_mailx_raw_cc != NULL) fputs(" Mailx-Raw-Cc", n_stdout);
-         if(hp->h_mailx_raw_bcc != NULL) fputs(" Mailx-Raw-Bcc", n_stdout);
-         if(hp->h_mailx_orig_from != NULL) fputs(" Mailx-Orig-From", n_stdout);
-         if(hp->h_mailx_orig_to != NULL) fputs(" Mailx-Orig-To", n_stdout);
-         if(hp->h_mailx_orig_cc != NULL) fputs(" Mailx-Orig-Cc", n_stdout);
-         if(hp->h_mailx_orig_bcc != NULL) fputs(" Mailx-Orig-Bcc", n_stdout);
-
-         /* Print only one instance of each free-form header */
-         for(hfp = hp->h_user_headers; hfp != NULL; hfp = hfp->hf_next){
-            struct n_header_field *hfpx;
-
-            for(hfpx = hp->h_user_headers;; hfpx = hfpx->hf_next)
-               if(hfpx == hfp){
-                  putc(' ', n_stdout);
-                  fputs(&hfp->hf_dat[0], n_stdout);
-                  break;
-               }else if(!asccasecmp(&hfpx->hf_dat[0], &hfp->hf_dat[0]))
-                  break;
-         }
-         putc('\n', n_stdout);
-         goto jleave;
-      }
-
-      if(cmd[3] != NULL)
-         goto jecmd;
-
-      if(!asccasecmp(cmd[2], cp = "Subject")){
-         np = (hp->h_subject != NULL) ? (struct name*)-1 : NULL;
-         goto jlist;
-      }
-      if(!asccasecmp(cmd[2], cp = "From")){
-         np = hp->h_from;
-jlist:
-         fprintf(n_stdout, "%s %s\n", (np == NULL ? "501" : "210"), cp);
-         goto jleave;
-      }
-      if(!asccasecmp(cmd[2], cp = "Sender")){
-         np = hp->h_sender;
-         goto jlist;
-      }
-      if(!asccasecmp(cmd[2], cp = "To")){
-         np = hp->h_to;
-         goto jlist;
-      }
-      if(!asccasecmp(cmd[2], cp = "Cc")){
-         np = hp->h_cc;
-         goto jlist;
-      }
-      if(!asccasecmp(cmd[2], cp = "Bcc")){
-         np = hp->h_bcc;
-         goto jlist;
-      }
-      if(!asccasecmp(cmd[2], cp = "Reply-To")){
-         np = hp->h_reply_to;
-         goto jlist;
-      }
-      if(!asccasecmp(cmd[2], cp = "Mail-Followup-To")){
-         np = hp->h_mft;
-         goto jlist;
-      }
-      if(!asccasecmp(cmd[2], cp = "Message-ID")){
-         np = hp->h_message_id;
-         goto jlist;
-      }
-      if(!asccasecmp(cmd[2], cp = "References")){
-         np = hp->h_ref;
-         goto jlist;
-      }
-      if(!asccasecmp(cmd[2], cp = "In-Reply-To")){
-         np = hp->h_in_reply_to;
-         goto jlist;
-      }
-
-      if(!asccasecmp(cmd[2], cp = "Mailx-Command")){
-         np = (hp->h_mailx_command != NULL) ? (struct name*)-1 : NULL;
-         goto jlist;
-      }
-      if(!asccasecmp(cmd[2], cp = "Mailx-Raw-To")){
-         np = hp->h_mailx_raw_to;
-         goto jlist;
-      }
-      if(!asccasecmp(cmd[2], cp = "Mailx-Raw-Cc")){
-         np = hp->h_mailx_raw_cc;
-         goto jlist;
-      }
-      if(!asccasecmp(cmd[2], cp = "Mailx-Raw-Bcc")){
-         np = hp->h_mailx_raw_bcc;
-         goto jlist;
-      }
-      if(!asccasecmp(cmd[2], cp = "Mailx-Orig-From")){
-         np = hp->h_mailx_orig_from;
-         goto jlist;
-      }
-      if(!asccasecmp(cmd[2], cp = "Mailx-Orig-To")){
-         np = hp->h_mailx_orig_to;
-         goto jlist;
-      }
-      if(!asccasecmp(cmd[2], cp = "Mailx-Orig-Cc")){
-         np = hp->h_mailx_orig_cc;
-         goto jlist;
-      }
-      if(!asccasecmp(cmd[2], cp = "Mailx-Orig-Bcc")){
-         np = hp->h_mailx_orig_bcc;
-         goto jlist;
-      }
-
-      /* Free-form header fields */
-      for(cp = cmd[2]; *cp != '\0'; ++cp)
-         if(!fieldnamechar(*cp)){
-            cp = cmd[2];
-            goto j501cp;
-         }
-      cp = cmd[2];
-      for(hfp = hp->h_user_headers;; hfp = hfp->hf_next){
-         if(hfp == NULL)
-            goto j501cp;
-         else if(!asccasecmp(cp, &hfp->hf_dat[0])){
-            fprintf(n_stdout, "210 %s\n", &hfp->hf_dat[0]);
-            break;
-         }
-      }
-      goto jleave;
-   }
-
-   if(is_asccaseprefix(cmd[1], "remove")){
-      if(cmd[2] == NULL || cmd[3] != NULL)
-         goto jecmd;
-
-      if(!asccasecmp(cmd[2], cp = "Subject")){
-         if(hp->h_subject != NULL){
-            hp->h_subject = NULL;
-            fprintf(n_stdout, "210 %s\n", cp);
-            goto jleave;
-         }else
-            goto j501cp;
-      }
-
-      if(!asccasecmp(cmd[2], cp = "From")){
-         npp = &hp->h_from;
-jrem:
-         if(*npp != NULL){
-            *npp = NULL;
-            fprintf(n_stdout, "210 %s\n", cp);
-            goto jleave;
-         }else
-            goto j501cp;
-      }
-      if(!asccasecmp(cmd[2], cp = "Sender")){
-         npp = &hp->h_sender;
-         goto jrem;
-      }
-      if(!asccasecmp(cmd[2], cp = "To")){
-         npp = &hp->h_to;
-         goto jrem;
-      }
-      if(!asccasecmp(cmd[2], cp = "Cc")){
-         npp = &hp->h_cc;
-         goto jrem;
-      }
-      if(!asccasecmp(cmd[2], cp = "Bcc")){
-         npp = &hp->h_bcc;
-         goto jrem;
-      }
-      if(!asccasecmp(cmd[2], cp = "Reply-To")){
-         npp = &hp->h_reply_to;
-         goto jrem;
-      }
-      if(!asccasecmp(cmd[2], cp = "Mail-Followup-To")){
-         npp = &hp->h_mft;
-         goto jrem;
-      }
-      if(!asccasecmp(cmd[2], cp = "Message-ID")){
-         npp = &hp->h_message_id;
-         goto jrem;
-      }
-      if(!asccasecmp(cmd[2], cp = "References")){
-         npp = &hp->h_ref;
-         goto jrem;
-      }
-      if(!asccasecmp(cmd[2], cp = "In-Reply-To")){
-         npp = &hp->h_in_reply_to;
-         goto jrem;
-      }
-
-      if((cp = n_header_is_standard(cmd[2], UIZ_MAX)) != NULL){
-         fprintf(n_stdout, "505 %s\n", cp);
-         goto jleave;
-      }
-
-      /* Free-form header fields (note j501cp may print non-normalized name) */
-      /* C99 */{
-         struct n_header_field **hfpp;
-         bool_t any;
-
-         for(cp = cmd[2]; *cp != '\0'; ++cp)
-            if(!fieldnamechar(*cp)){
-               cp = cmd[2];
-               goto j501cp;
-            }
-         cp = cmd[2];
-
-         for(any = FAL0, hfpp = &hp->h_user_headers; (hfp = *hfpp) != NULL;){
-            if(!asccasecmp(cp, &hfp->hf_dat[0])){
-               *hfpp = hfp->hf_next;
-               if(!any)
-                  fprintf(n_stdout, "210 %s\n", &hfp->hf_dat[0]);
-               any = TRU1;
-            }else
-               hfpp = &hfp->hf_next;
-         }
-         if(!any)
-            goto j501cp;
-      }
-      goto jleave;
-   }
-
-   if(is_asccaseprefix(cmd[1], "remove-at")){
-      if(cmd[2] == NULL || cmd[3] == NULL)
-         goto jecmd;
-
-      if((n_idec_uiz_cp(&i, cmd[3], 0, NULL
-               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED || i == 0){
-         fputs("505\n", n_stdout);
-         goto jleave;
-      }
-
-      if(!asccasecmp(cmd[2], cp = "Subject")){
-         if(hp->h_subject != NULL && i == 1){
-            hp->h_subject = NULL;
-            fprintf(n_stdout, "210 %s 1\n", cp);
-            goto jleave;
-         }else
-            goto j501cp;
-      }
-
-      if(!asccasecmp(cmd[2], cp = "From")){
-         npp = &hp->h_from;
-jremat:
-         if((np = *npp) == NULL)
-            goto j501cp;
-         while(--i != 0 && np != NULL)
-            np = np->n_flink;
-         if(np == NULL)
-            goto j501cp;
-
-         if(np->n_blink != NULL)
-            np->n_blink->n_flink = np->n_flink;
-         else
-            *npp = np->n_flink;
-         if(np->n_flink != NULL)
-            np->n_flink->n_blink = np->n_blink;
-
-         fprintf(n_stdout, "210 %s\n", cp);
-         goto jleave;
-      }
-      if(!asccasecmp(cmd[2], cp = "Sender")){
-         npp = &hp->h_sender;
-         goto jremat;
-      }
-      if(!asccasecmp(cmd[2], cp = "To")){
-         npp = &hp->h_to;
-         goto jremat;
-      }
-      if(!asccasecmp(cmd[2], cp = "Cc")){
-         npp = &hp->h_cc;
-         goto jremat;
-      }
-      if(!asccasecmp(cmd[2], cp = "Bcc")){
-         npp = &hp->h_bcc;
-         goto jremat;
-      }
-      if(!asccasecmp(cmd[2], cp = "Reply-To")){
-         npp = &hp->h_reply_to;
-         goto jremat;
-      }
-      if(!asccasecmp(cmd[2], cp = "Mail-Followup-To")){
-         npp = &hp->h_mft;
-         goto jremat;
-      }
-      if(!asccasecmp(cmd[2], cp = "Message-ID")){
-         npp = &hp->h_message_id;
-         goto jremat;
-      }
-      if(!asccasecmp(cmd[2], cp = "References")){
-         npp = &hp->h_ref;
-         goto jremat;
-      }
-      if(!asccasecmp(cmd[2], cp = "In-Reply-To")){
-         npp = &hp->h_in_reply_to;
-         goto jremat;
-      }
-
-      if((cp = n_header_is_standard(cmd[2], UIZ_MAX)) != NULL){
-         fprintf(n_stdout, "505 %s\n", cp);
-         goto jleave;
-      }
-
-      /* Free-form header fields */
-      /* C99 */{
-         struct n_header_field **hfpp;
-
-         for(cp = cmd[2]; *cp != '\0'; ++cp)
-            if(!fieldnamechar(*cp)){
-               cp = cmd[2];
-               goto j501cp;
-            }
-         cp = cmd[2];
-
-         for(hfpp = &hp->h_user_headers; (hfp = *hfpp) != NULL;){
-            if(--i == 0){
-               *hfpp = hfp->hf_next;
-               fprintf(n_stdout, "210 %s %" PRIuZ "\n", &hfp->hf_dat[0], i);
-               break;
-            }else
-               hfpp = &hfp->hf_next;
-         }
-         if(hfp == NULL)
-            goto j501cp;
-      }
-      goto jleave;
-   }
-
-   if(is_asccaseprefix(cmd[1], "show")){
-      if(cmd[2] == NULL || cmd[3] != NULL)
-         goto jecmd;
-
-      if(!asccasecmp(cmd[2], cp = "Subject")){
-         if(hp->h_subject == NULL)
-            goto j501cp;
-         fprintf(n_stdout, "212 %s\n%s\n\n", cp, hp->h_subject);
-         goto jleave;
-      }
-
-      if(!asccasecmp(cmd[2], cp = "From")){
-         np = hp->h_from;
-jshow:
-         if(np != NULL){
-            fprintf(n_stdout, "211 %s\n", cp);
-            do if(!(np->n_type & GDEL))
-               fprintf(n_stdout, "%s %s\n", np->n_name, np->n_fullname);
-            while((np = np->n_flink) != NULL);
-            putc('\n', n_stdout);
-            goto jleave;
-         }else
-            goto j501cp;
-      }
-      if(!asccasecmp(cmd[2], cp = "Sender")){
-         np = hp->h_sender;
-         goto jshow;
-      }
-      if(!asccasecmp(cmd[2], cp = "To")){
-         np = hp->h_to;
-         goto jshow;
-      }
-      if(!asccasecmp(cmd[2], cp = "Cc")){
-         np = hp->h_cc;
-         goto jshow;
-      }
-      if(!asccasecmp(cmd[2], cp = "Bcc")){
-         np = hp->h_bcc;
-         goto jshow;
-      }
-      if(!asccasecmp(cmd[2], cp = "Reply-To")){
-         np = hp->h_reply_to;
-         goto jshow;
-      }
-      if(!asccasecmp(cmd[2], cp = "Mail-Followup-To")){
-         np = hp->h_mft;
-         goto jshow;
-      }
-      if(!asccasecmp(cmd[2], cp = "Message-ID")){
-         np = hp->h_message_id;
-         goto jshow;
-      }
-      if(!asccasecmp(cmd[2], cp = "References")){
-         np = hp->h_ref;
-         goto jshow;
-      }
-      if(!asccasecmp(cmd[2], cp = "In-Reply-To")){
-         np = hp->h_in_reply_to;
-         goto jshow;
-      }
-
-      if(!asccasecmp(cmd[2], cp = "Mailx-Command")){
-         if(hp->h_mailx_command == NULL)
-            goto j501cp;
-         fprintf(n_stdout, "212 %s\n%s\n\n", cp, hp->h_mailx_command);
-         goto jleave;
-      }
-      if(!asccasecmp(cmd[2], cp = "Mailx-Raw-To")){
-         np = hp->h_mailx_raw_to;
-         goto jshow;
-      }
-      if(!asccasecmp(cmd[2], cp = "Mailx-Raw-Cc")){
-         np = hp->h_mailx_raw_cc;
-         goto jshow;
-      }
-      if(!asccasecmp(cmd[2], cp = "Mailx-Raw-Bcc")){
-         np = hp->h_mailx_raw_bcc;
-         goto jshow;
-      }
-      if(!asccasecmp(cmd[2], cp = "Mailx-Orig-From")){
-         np = hp->h_mailx_orig_from;
-         goto jshow;
-      }
-      if(!asccasecmp(cmd[2], cp = "Mailx-Orig-To")){
-         np = hp->h_mailx_orig_to;
-         goto jshow;
-      }
-      if(!asccasecmp(cmd[2], cp = "Mailx-Orig-Cc")){
-         np = hp->h_mailx_orig_cc;
-         goto jshow;
-      }
-      if(!asccasecmp(cmd[2], cp = "Mailx-Orig-Bcc")){
-         np = hp->h_mailx_orig_bcc;
-         goto jshow;
-      }
-
-      /* Free-form header fields */
-      /* C99 */{
-         bool_t any;
-
-         for(cp = cmd[2]; *cp != '\0'; ++cp)
-            if(!fieldnamechar(*cp)){
-               cp = cmd[2];
-               goto j501cp;
-            }
-         cp = cmd[2];
-
-         for(any = FAL0, hfp = hp->h_user_headers; hfp != NULL;
-               hfp = hfp->hf_next){
-            if(!asccasecmp(cp, &hfp->hf_dat[0])){
-               if(!any)
-                  fprintf(n_stdout, "212 %s\n", &hfp->hf_dat[0]);
-               any = TRU1;
-               fprintf(n_stdout, "%s\n", &hfp->hf_dat[hfp->hf_nl +1]);
-            }
-         }
-         if(any)
-            putc('\n', n_stdout);
-         else
-            goto j501cp;
-      }
-      goto jleave;
-   }
-
-jecmd:
-   fputs("500\n", n_stdout);
-   cp = NULL;
-jleave:
-   NYD2_LEAVE;
-   return (cp != NULL);
-
-j501cp:
-   fputs("501 ", n_stdout);
-   fputs(cp, n_stdout);
-   putc('\n', n_stdout);
-   goto jleave;
-}
-
-static bool_t
-a_collect__plumb_attach(char const *cp, struct header *hp,
-      char const *cmd[4]){
-   bool_t status;
-   struct attachment *ap;
-   NYD2_ENTER;
-
-   if(cmd[1] == NULL)
-      goto jdefault;
-
-   if(is_asccaseprefix(cmd[1], "attribute")){
-      if(cmd[2] == NULL || cmd[3] != NULL)
-         goto jecmd;
-
-      if((ap = n_attachment_find(hp->h_attach, cmd[2], NULL)) != NULL){
-jatt_att:
-         fprintf(n_stdout, "212 %s\n", cmd[2]);
-         if(ap->a_msgno > 0)
-            fprintf(n_stdout, "message-number %d\n\n", ap->a_msgno);
-         else{
-            fprintf(n_stdout,
-               "creation-name %s\nopen-path %s\nfilename %s\n",
-               ap->a_path_user, ap->a_path, ap->a_name);
-            if(ap->a_content_description != NULL)
-               fprintf(n_stdout, "content-description %s\n",
-                  ap->a_content_description);
-            if(ap->a_content_id != NULL)
-               fprintf(n_stdout, "content-id %s\n",
-                  ap->a_content_id->n_name);
-            if(ap->a_content_type != NULL)
-               fprintf(n_stdout, "content-type %s\n", ap->a_content_type);
-            if(ap->a_content_disposition != NULL)
-               fprintf(n_stdout, "content-disposition %s\n",
-                  ap->a_content_disposition);
-            putc('\n', n_stdout);
-         }
-      }else
-         fputs("501\n", n_stdout);
-      goto jleave;
-   }
-
-   if(is_asccaseprefix(cmd[1], "attribute-at")){
-      uiz_t i;
-
-      if(cmd[2] == NULL || cmd[3] != NULL)
-         goto jecmd;
-
-      if((n_idec_uiz_cp(&i, cmd[2], 0, NULL
-               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED || i == 0)
-         fputs("505\n", n_stdout);
-      else{
-         for(ap = hp->h_attach; ap != NULL && --i != 0; ap = ap->a_flink)
-            ;
-         if(ap != NULL)
-            goto jatt_att;
-         else
-            fputs("501\n", n_stdout);
-      }
-      goto jleave;
-   }
-
-   if(is_asccaseprefix(cmd[1], "attribute-set")){
-      if(cmd[2] == NULL || cmd[3] == NULL)
-         goto jecmd;
-
-      if((ap = n_attachment_find(hp->h_attach, cmd[2], NULL)) != NULL){
-jatt_attset:
-         if(ap->a_msgno > 0)
-            fputs("505\n", n_stdout);
-         else{
-            char c, *keyw;
-
-            cp = cmd[3];
-            while((c = *cp) != '\0' && !blankchar(c))
-               ++cp;
-            keyw = savestrbuf(cmd[3], PTR2SIZE(cp - cmd[3]));
-            if(c != '\0'){
-               for(; (c = *++cp) != '\0' && blankchar(c);)
-                  ;
-               if(c != '\0'){
-                  char *xp;
-
-                  /* Strip [\r\n] which would render a parameter invalid XXX
-                   * XXX all controls? */
-                  cp = xp = savestr(cp);
-                  for(; (c = *xp) != '\0'; ++xp)
-                     if(c == '\n' || c == '\r')
-                        *xp = ' ';
-                  c = *cp;
-               }
-            }
-
-            if(!asccasecmp(keyw, "filename"))
-               ap->a_name = (c == '\0') ? ap->a_path_bname : cp;
-            else if(!asccasecmp(keyw, "content-description"))
-               ap->a_content_description = (c == '\0') ? NULL : cp;
-            else if(!asccasecmp(keyw, "content-id")){
-               ap->a_content_id = NULL;
-
-               if(c != '\0'){
-                  struct name *np;
-
-                  np = checkaddrs(lextract(cp, GREF),
-                        /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG |
-                        EACM_NONAME, NULL);
-                  if(np != NULL && np->n_flink == NULL)
-                     ap->a_content_id = np;
-                  else
-                     cp = NULL;
-               }
-            }else if(!asccasecmp(keyw, "content-type"))
-               ap->a_content_type = (c == '\0') ? NULL : cp;
-            else if(!asccasecmp(keyw, "content-disposition"))
-               ap->a_content_disposition = (c == '\0') ? NULL : cp;
-            else
-               cp = NULL;
-
-            if(cp != NULL){
-               size_t i;
-
-               for(i = 0; ap != NULL; ++i, ap = ap->a_blink)
-                  ;
-               fprintf(n_stdout, "210 %" PRIuZ "\n", i);
-            }else
-               fputs("505\n", n_stdout);
-         }
-      }else
-         fputs("501\n", n_stdout);
-      goto jleave;
-   }
-
-   if(is_asccaseprefix(cmd[1], "attribute-set-at")){
-      uiz_t i;
-
-      if(cmd[2] == NULL || cmd[3] == NULL)
-         goto jecmd;
-
-      if((n_idec_uiz_cp(&i, cmd[2], 0, NULL
-               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED || i == 0)
-         fputs("505\n", n_stdout);
-      else{
-         for(ap = hp->h_attach; ap != NULL && --i != 0; ap = ap->a_flink)
-            ;
-         if(ap != NULL)
-            goto jatt_attset;
-         else
-            fputs("501\n", n_stdout);
-      }
-      goto jleave;
-   }
-
-   if(is_asccaseprefix(cmd[1], "insert")){
-      enum n_attach_error aerr;
-
-      if(cmd[2] == NULL || cmd[3] != NULL)
-         goto jecmd;
-
-      hp->h_attach = n_attachment_append(hp->h_attach, cmd[2], &aerr, &ap);
-      switch(aerr){
-      case n_ATTACH_ERR_FILE_OPEN: cp = "505\n"; goto jatt_ins;
-      case n_ATTACH_ERR_ICONV_FAILED: cp = "506\n"; goto jatt_ins;
-      case n_ATTACH_ERR_ICONV_NAVAIL:
-      case n_ATTACH_ERR_OTHER:
-      default:
-         cp = "501\n";
-jatt_ins:
-         fputs(cp, n_stdout);
-         break;
-      case n_ATTACH_ERR_NONE:{
-         size_t i;
-
-         for(i = 0; ap != NULL; ++i, ap = ap->a_blink)
-            ;
-         fprintf(n_stdout, "210 %" PRIuZ "\n", i);
-         }break;
-      }
-      goto jleave;
-   }
-
-   if(is_asccaseprefix(cmd[1], "list")){
-jdefault:
-      if(cmd[2] != NULL)
-         goto jecmd;
-
-      if((ap = hp->h_attach) != NULL){
-         fputs("212\n", n_stdout);
-         do
-            fprintf(n_stdout, "%s\n", ap->a_path_user);
-         while((ap = ap->a_flink) != NULL);
-         putc('\n', n_stdout);
-      }else
-         fputs("501\n", n_stdout);
-      goto jleave;
-   }
-
-   if(is_asccaseprefix(cmd[1], "remove")){
-      if(cmd[2] == NULL || cmd[3] != NULL)
-         goto jecmd;
-
-      if((ap = n_attachment_find(hp->h_attach, cmd[2], &status)) != NULL){
-         if(status == TRUM1)
-            fputs("506\n", n_stdout);
-         else{
-            hp->h_attach = n_attachment_remove(hp->h_attach, ap);
-            fprintf(n_stdout, "210 %s\n", cmd[2]);
-         }
-      }else
-         fputs("501\n", n_stdout);
-      goto jleave;
-   }
-
-   if(is_asccaseprefix(cmd[1], "remove-at")){
-      uiz_t i;
-
-      if(cmd[2] == NULL || cmd[3] != NULL)
-         goto jecmd;
-
-      if((n_idec_uiz_cp(&i, cmd[2], 0, NULL
-               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED || i == 0)
-         fputs("505\n", n_stdout);
-      else{
-         for(ap = hp->h_attach; ap != NULL && --i != 0; ap = ap->a_flink)
-            ;
-         if(ap != NULL){
-            hp->h_attach = n_attachment_remove(hp->h_attach, ap);
-            fprintf(n_stdout, "210 %s\n", cmd[2]);
-         }else
-            fputs("501\n", n_stdout);
-      }
-      goto jleave;
-   }
-
-jecmd:
-   fputs("500\n", n_stdout);
-   cp = NULL;
-jleave:
-   NYD2_LEAVE;
-   return (cp != NULL);
 }
 
 static void
@@ -1655,7 +902,8 @@ a_coll_ocs__mac(void){
    setvbuf(n_stdout, NULL, _IOLBF, 0);
    n_psonce &= ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT);
    n_pstate |= n_PS_COMPOSE_FORKHOOK;
-   n_readctl_overlay = NULL; /* TODO we need OnForkEvent! See c_readctl() */
+   n_readctl_read_overlay = NULL; /* TODO need OnForkEvent! See c_readctl() */
+   n_digmsg_read_overlay = NULL; /* TODO need OnForkEvent! See c_digmsg() */
    if(n_poption & n_PO_D_VV){
       char buf[128];
 
@@ -1759,11 +1007,11 @@ n_temporary_compose_hook_varset(void *arg){ /* TODO v15: drop */
 }
 
 FL FILE *
-collect(struct header *hp, int printheaders, struct message *mp,
-   char const *quotefile, int doprefix, si8_t *checkaddr_err)
+n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
+   char const *quotefile, si8_t *checkaddr_err)
 {
+   struct n_dig_msg_ctx dmc;
    struct n_string s, * volatile sp;
-   struct n_ignore const *quoteitp;
    struct a_coll_ocs_arg *coap;
    int c;
    int volatile t, eofcnt, getfields;
@@ -1779,12 +1027,13 @@ collect(struct header *hp, int printheaders, struct message *mp,
    char const *cp, *cp_base, * volatile coapm, * volatile ifs_saved;
    size_t i, linesize; /* TODO line pool */
    long cnt;
-   enum sendaction action;
    sigset_t oset, nset;
    FILE * volatile sigfp;
    NYD_ENTER;
 
+   n_DIG_MSG_COMPOSE_CREATE(&dmc, hp);
    _coll_fp = NULL;
+
    sigfp = NULL;
    linesize = 0;
    linebuf = NULL;
@@ -1794,7 +1043,7 @@ collect(struct header *hp, int printheaders, struct message *mp,
    coap = NULL;
    sp = NULL;
 
-   /* Start catching signals from here, but we're still die on interrupts
+   /* Start catching signals from here, but we still die on interrupts
     * until we're in the main loop */
    sigfillset(&nset);
    sigprocmask(SIG_BLOCK, &nset, &oset);
@@ -1862,46 +1111,9 @@ collect(struct header *hp, int printheaders, struct message *mp,
             goto jerr;
 
          /* Quote an original message */
-         if (mp != NULL && (doprefix || (cp = ok_vlook(quote)) != NULL)) {
-            quoteitp = n_IGNORE_ALL;
-            action = SEND_QUOTE;
-            if (doprefix) {
-               char const *cp_v15compat;
-
-               quoteitp = n_IGNORE_FWD;
-
-               if((cp_v15compat = ok_vlook(fwdheading)) != NULL)
-                  n_OBSOLETE(_("please use *forward-inject-head*, "
-                     "not *fwdheading*"));
-               cp = ok_vlook(forward_inject_head);
-               if(cp == NULL && (cp = cp_v15compat) == NULL)
-                  cp = "-------- Original Message --------";
-               if (*cp != '\0' && fprintf(_coll_fp, "%s\n", cp) < 0)
-                  goto jerr;
-            } else if (!strcmp(cp, "noheading")) {
-               /*EMPTY*/;
-            } else if (!strcmp(cp, "headers")) {
-               quoteitp = n_IGNORE_TYPE;
-            } else if (!strcmp(cp, "allheaders")) {
-               quoteitp = NULL;
-               action = SEND_QUOTE_ALL;
-            } else {
-               cp = hfield1("from", mp);
-               if (cp != NULL && (cnt = (long)strlen(cp)) > 0) {
-                  if (xmime_write(cp, cnt, _coll_fp, CONV_FROMHDR, TD_NONE,
-                        NULL, NULL) < 0)
-                     goto jerr;
-                  if (fprintf(_coll_fp, _(" wrote:\n\n")) < 0)
-                     goto jerr;
-               }
-            }
-            if (fflush(_coll_fp))
-               goto jerr;
-            if (sendmp(mp, _coll_fp, quoteitp,
-                  (doprefix ? NULL : ok_vlook(indentprefix)),
-                  action, NULL) < 0)
-               goto jerr;
-         }
+         if(mp != NULL && !a_coll_quote_message(_coll_fp, mp,
+               ((msf & n_MAILSEND_IS_FWD) != 0)))
+            goto jerr;
       }
 
       if (quotefile != NULL) {
@@ -1919,9 +1131,9 @@ collect(struct header *hp, int printheaders, struct message *mp,
          if(!(n_poption & n_PO_Mm_FLAG) && !(n_pstate & n_PS_ROBOT)){
             /* Print what we have sofar also on the terminal (if useful) */
             if((cp = ok_vlook(editalong)) == NULL){
-               if (printheaders)
-                  puthead(TRU1, hp, n_stdout, t,
-                     SEND_TODISP, CONV_NONE, NULL, NULL);
+               if(msf & n_MAILSEND_HEADERS_PRINT)
+                  n_puthead(TRU1, hp, n_stdout, t, SEND_TODISP, CONV_NONE,
+                     NULL, NULL);
 
                rewind(_coll_fp);
                while ((c = getc(_coll_fp)) != EOF) /* XXX bytewise, yuck! */
@@ -1929,8 +1141,8 @@ collect(struct header *hp, int printheaders, struct message *mp,
                if (fseek(_coll_fp, 0, SEEK_END))
                   goto jerr;
             }else{
-               rewind(_coll_fp);
-               if(a_coll_edit(((*cp == 'v') ? 'v' : 'e'), hp) != n_ERR_NONE)
+               if(a_coll_edit(((*cp == 'v') ? 'v' : 'e'), hp, NULL
+                     ) != n_ERR_NONE)
                   goto jerr;
                /* Print msg mandated by the Mail Reference Manual */
 jcont:
@@ -1956,7 +1168,7 @@ jcont:
       /* No command escapes, interrupts not expected.  Simply copy STDIN */
       if(!(n_psonce & n_PSO_INTERACTIVE) &&
             !(n_poption & (n_PO_t_FLAG | n_PO_TILDE_FLAG))){
-         linebuf = srealloc(linebuf, linesize = LINESIZE);
+         linebuf = n_realloc(linebuf, linesize = LINESIZE);
          while ((i = fread(linebuf, sizeof *linebuf, linesize, n_stdin)) > 0) {
             if (i != fwrite(linebuf, sizeof *linebuf, i, _coll_fp))
                goto jerr;
@@ -1977,10 +1189,11 @@ jcont:
          enum n_go_input_flags gif;
          bool_t histadd;
 
+         /* TODO optimize: no need to evaluate that anew for each loop tick! */
          gif = n_GO_INPUT_CTX_COMPOSE;
          histadd = (sp != NULL);
          if((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_TILDE_FLAG)){
-            if(!(n_poption & n_PO_t_FLAG))
+            if(!(n_poption & n_PO_t_FLAG) || (n_psonce & n_PSO_t_FLAG_DONE))
                gif |= n_GO_INPUT_NL_ESC;
          }
          cnt = n_go_input(gif, n_empty, &linebuf, &linesize, NULL, &histadd);
@@ -1990,15 +1203,11 @@ jcont:
       if(cnt < 0){
          if(coap != NULL)
             break;
-         if(n_poption & n_PO_t_FLAG){
+         if((n_poption & n_PO_t_FLAG) && !(n_psonce & n_PSO_t_FLAG_DONE)){
             fflush_rewind(_coll_fp);
-            /* It is important to set n_PSO_t_FLAG before extract_header()
-             * *and* keep n_PO_t_FLAG for the first parse of the message!
-             * TODO This is a hack, we need a clean approach for this */
-            n_psonce |= n_PSO_t_FLAG;
+            n_psonce |= n_PSO_t_FLAG_DONE;
             if(!a_coll_makeheader(_coll_fp, hp, checkaddr_err, TRU1))
                goto jerr;
-            n_poption &= ~n_PO_t_FLAG;
             continue;
          }else if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT) &&
                ok_blook(ignoreeof) && ++eofcnt < 4){
@@ -2152,31 +1361,30 @@ jearg:
 "COMMAND ESCAPES (to be placed after a newline) excerpt:\n"
 "~.            Commit and send message\n"
 "~: <command>  Execute an internal command\n"
-"~< <file>     Insert <file> (\"~<! <command>\" inserts shell command)\n"
-"~@ [<files>]  Edit[/Add] attachments (file[=input-charset[#output-charset]])\n"
+"~< <file>     Insert <file> (\"~<! <command>\": insert shell command)\n"
+"~@ [<files>]  Edit [Add] attachments (file[=in-charset[#out-charset]])\n"
 "~c <users>    Add users to Cc: list (`~b': to Bcc:)\n"
-"~d            Read in $DEAD (dead.letter)\n"
-"~e            Edit message via $EDITOR\n"
+"~e, ~v        Edit message via $EDITOR / $VISUAL\n"
+            ), n_stdout);
+         fputs(_(
 "~F <msglist>  Read in with headers, do not *indentprefix* lines\n"
-            ), n_stdout);
-         fputs(_(
-"~f <msglist>  Like ~F, but honour `ignore' / `retain' configuration\n"
+"~f <msglist>  Like `~F', but honour `headerpick' configuration\n"
 "~H            Edit From:, Reply-To: and Sender:\n"
-"~h            Prompt for Subject:, To:, Cc: and \"blind\" Bcc:\n"
-"~i <variable> Insert a value and a newline\n"
-"~M <msglist>  Read in with headers, *indentprefix* (`~m': `retain' etc.)\n"
+"~h            Prompt for Subject:, To:, Cc: and Bcc:\n"
+"~i <variable> Insert a value and a newline (`~I': insert value)\n"
+"~M <msglist>  Read in with headers, *indentprefix* (`~m': use `headerpick')\n"
 "~p            Show current message compose buffer\n"
-"~r <file>     Insert <file> (`~R': likewise, but *indentprefix* lines)\n"
-"              <file> may also be <- [HERE-DELIMITER]>\n"
+"~Q <msglist>  Read in using normal *quote* algorithm\n"
             ), n_stdout);
          fputs(_(
+"~r <file>     Insert <file> (`~R': *indentprefix* lines)\n"
+"              <file> may also be <- [HERE-DELIMITER]>\n"
 "~s <subject>  Set Subject:\n"
 "~t <users>    Add users to To: list\n"
-"~u <msglist>  Read in message(s) without headers (`~U': indent lines)\n"
-"~v            Edit message via $VISUAL\n"
+"~u <msglist>  Read in without headers (`~U': *indentprefix* lines)\n"
 "~w <file>     Write message onto file\n"
 "~x            Abort composition, discard message (`~q': save in $DEAD)\n"
-"~| <command>  Pipe message through shell filter\n"
+"~| <command>  Pipe message through shell filter (`~||': with headers)\n"
             ), n_stdout);
 #endif /* HAVE_UISTRINGS */
          if(cnt != 0)
@@ -2199,7 +1407,7 @@ jearg:
          n_pstate_ex_no = 0; /* XXX */
          }break;
       case '^':
-         if(!a_collect_plumbing(cp, hp)){
+         if(!n_dig_msg_circumflex(&dmc, n_stdout, cp)){
             if(ferror(_coll_fp))
                goto jerr;
             goto jearg;
@@ -2213,9 +1421,15 @@ jearg:
          /* Pipe message through command. Collect output as new message */
          if(cnt == 0)
             goto jearg;
-         rewind(_coll_fp);
+         /* Is this request to do a "stream equivalent" to 'e' and 'v'? */
+         if(*cp == '|'){
+            ++cp;
+            goto jev_go;
+         }
          if((n_pstate_err_no = a_coll_pipe(cp)) == n_ERR_NONE)
             n_pstate_ex_no = 0;
+         else if(ferror(_coll_fp))
+            goto jerr;
          else if(a_HARDERR())
             goto jerr;
          else
@@ -2316,6 +1530,7 @@ jearg:
                break;
             }
          }
+         /* XXX race, and why not test everywhere, then? */
          if(n_is_dir(cp, FAL0)){
             n_err(_("%s: is a directory\n"), n_shexp_quote_cp(cp, FAL0));
             if(a_HARDERR())
@@ -2341,8 +1556,9 @@ jearg:
          /* Edit the current message.  'e' -> use EDITOR, 'v' -> use VISUAL */
          if(cnt != 0 || coap != NULL)
             goto jearg;
-         rewind(_coll_fp);
-         if((n_pstate_err_no = a_coll_edit(c, ok_blook(editheaders) ? hp : NULL)
+jev_go:
+         if((n_pstate_err_no = a_coll_edit(c,
+                ((c == '|' || ok_blook(editheaders)) ? hp : NULL), cp)
                ) == n_ERR_NONE)
             n_pstate_ex_no = 0;
          else if(ferror(_coll_fp))
@@ -2356,13 +1572,12 @@ jearg:
       case 'f':
       case 'M':
       case 'm':
+      case 'Q':
       case 'U':
       case 'u':
          /* Interpolate the named messages, if we are in receiving mail mode.
           * Does the standard list processing garbage.  If ~f is given, we
           * don't shift over */
-         if(cnt == 0)
-            goto jearg;
          if((n_pstate_err_no = a_coll_forward(cp, _coll_fp, c)) == n_ERR_NONE)
             n_pstate_ex_no = 0;
          else if(ferror(_coll_fp))
@@ -2423,6 +1638,7 @@ jIi_putesc:
          n_pstate_err_no = n_ERR_NONE; /* XXX */
          n_pstate_ex_no = 0; /* XXX */
          break;
+      /* case 'Q': <> 'F' */
       case 'q':
       case 'x':
          /* Force a quit, act like an interrupt had happened */
@@ -2574,8 +1790,7 @@ jout:
             (n_psonce & ~(n_PSO_INTERACTIVE | n_PSO_TTYIN | n_PSO_TTYOUT)),
             &a_coll_ocs__finalize, &coap);
          /* Hook version protocol for ~^: update manual upon change! */
-         fputs(a_COLL_PLUMBING_VERSION "\n", coap->coa_stdout);
-#undef a_COLL_PLUMBING_VERSION
+         fputs(n_DIG_MSG_PLUMBING_VERSION "\n", n_stdout/*coap->coa_stdout*/);
          goto jcont;
       }
 
@@ -2640,8 +1855,10 @@ jout:
       coap = NULL;
 
       fprintf(n_stdout, _("-------\nEnvelope contains:\n")); /* xxx SEARCH112 */
-      puthead(TRU1, hp, n_stdout, GIDENT | GSUBJECT | GTO | GCC | GBCC | GCOMMA,
-         SEND_TODISP, CONV_NONE, NULL, NULL);
+      if(!n_puthead(TRU1, hp, n_stdout,
+            GIDENT | GREF_IRT  | GSUBJECT | GTO | GCC | GBCC | GBCC_IS_FCC |
+            GCOMMA, SEND_TODISP, CONV_NONE, NULL, NULL))
+         goto jerr;
 
 jreasksend:
       if(n_go_input(n_GO_INPUT_CTX_COMPOSE | n_GO_INPUT_NL_ESC,
@@ -2685,7 +1902,7 @@ jreasksend:
       }
 
       if(linebuf == NULL)
-         linebuf = smalloc(linesize = LINESIZE);
+         linebuf = n_alloc(linesize = LINESIZE);
       c = '\0';
       while((i = fread(linebuf, sizeof *linebuf, linesize, n_UNVOLATILE(sigfp)))
             > 0){
@@ -2732,10 +1949,22 @@ jskiptails:
       goto jerr;
    rewind(_coll_fp);
 
+   if(mp != NULL && ok_blook(quote_as_attachment)){
+      struct attachment *ap;
+
+      ap = n_autorec_calloc(1, sizeof *ap);
+      if((ap->a_flink = hp->h_attach) != NULL)
+         hp->h_attach->a_blink = ap;
+      hp->h_attach = ap;
+      ap->a_msgno = (int)PTR2SIZE(mp - message + 1);
+      ap->a_content_description = _("Original message content");
+   }
+
 jleave:
    if (linebuf != NULL)
-      free(linebuf);
+      n_free(linebuf);
    sigprocmask(SIG_BLOCK, &nset, NULL);
+   n_DIG_MSG_COMPOSE_GUT(&dmc);
    n_pstate &= ~n_PS_COMPOSE_MODE;
    safe_signal(SIGINT, _coll_saveint);
    safe_signal(SIGHUP, _coll_savehup);

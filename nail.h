@@ -4,6 +4,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause TODO ISC
  */
 /*
  * Copyright (c) 1980, 1993
@@ -80,7 +81,7 @@
 # include <regex.h>
 #endif
 
-#ifdef HAVE_XSSL_MD5
+#ifdef HAVE_XTLS_MD5
 # include <openssl/md5.h>
 #endif
 
@@ -342,15 +343,19 @@ do{\
 #endif
 
 /* Translation (init in main.c): may NOT set errno! */
+#undef UIS
+#undef A_
 #undef _
 #undef N_
 #undef V_
 #ifdef HAVE_UISTRINGS
+# define UIS(X) X
 # define A_(S) S
 # define _(S) S
 # define N_(S) S
 # define V_(S) S
 #else
+# define UIS(X)
 # define A_(S) S
 # define _(S) n_empty
 # define N_(S) ""
@@ -578,11 +583,20 @@ enum authtype {
 
 enum expand_addr_flags {
    EAF_NONE       = 0,        /* -> EAF_NOFILE | EAF_NOPIPE */
-   EAF_RESTRICT   = 1<<0,     /* "restrict" (do unless interaktive / -[~#]) */
-   EAF_FAIL       = 1<<1,     /* "fail" */
-   EAF_FAILINVADDR = 1<<2,    /* "failinvaddr" */
+   EAF_RESTRICT   = 1u<<0,    /* "restrict" (do unless interaktive / -[~#]) */
+   EAF_FAIL       = 1u<<1,    /* "fail" */
+   EAF_FAILINVADDR = 1u<<2,   /* "failinvaddr" */
+   EAF_SHEXP_PARSE = 1u<<3,    /* shexp_parse() the address first is allowed */
+   /* Bits reused by enum expand_addr_check_mode! */
+   EAF_FILE       = 1u<<4,    /* +"file" targets */
+   EAF_PIPE       = 1u<<5,    /* +"pipe" command pipe targets */
+   EAF_NAME       = 1u<<6,    /* +"name"s (non-address) names / MTA aliases */
+   EAF_ADDR       = 1u<<7,    /* +"addr" network address (contain "@") */
+
+   EAF_TARGET_MASK  = EAF_FILE | EAF_PIPE | EAF_NAME | EAF_ADDR,
+   EAF_RESTRICT_TARGETS = EAF_NAME | EAF_ADDR /* (default set if not set) */
    /* TODO HACK!  In pre-v15 we have a control flow problem (it is a general
-    * TODO design problem): if collect() calls makeheader(), e.g., for -t or
+    * TODO design problem): if n_collect() calls makeheader(), e.g., for -t or
     * TODO because of ~e diting, then that will checkaddr() and that will
     * TODO remove invalid headers.  However, this code path does not know
     * TODO about keeping track of senderrors unless a pointer has been passed,
@@ -591,17 +605,9 @@ enum expand_addr_flags {
     * TODO ever know, in particular not regarding "failinvaddr".
     * TODO The hacky solution is this bit -- which can ONLY be used for fields
     * TODO which will be subject to namelist_vaporise_head() later on!! --,
-    * TODO if it is set (by extract_header()) then checkaddr() will NOT strip
+    * TODO if it is set (by n_header_extract()) then checkaddr() will NOT strip
     * TODO invalid headers off IF it deals with a NULL senderror pointer */
-   EAF_MAYKEEP    = 1<<3,
-   /* Bits reused by enum expand_addr_check_mode! */
-   EAF_FILE       = 1<<4,     /* +"file" targets */
-   EAF_PIPE       = 1<<5,     /* +"pipe" command pipe targets */
-   EAF_NAME       = 1<<6,     /* +"name"s (non-address) names / MTA aliases */
-   EAF_ADDR       = 1<<7,     /* +"addr" network address (contain "@") */
-
-   EAF_TARGET_MASK  = EAF_FILE | EAF_PIPE | EAF_NAME | EAF_ADDR,
-   EAF_RESTRICT_TARGETS = EAF_NAME | EAF_ADDR /* (default set if not set) */
+   ,EAF_MAYKEEP    = 1u<<8
 };
 
 enum expand_addr_check_mode {
@@ -652,12 +658,19 @@ enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
    n_CMD_ARG_EM = 1u<<30   /* If error: n_pstate_err_no (4 $! aka. ok_v___em) */
 };
 
-enum n_cmd_arg_desc_flags{/* TODO incomplete, misses getmsglist() */
+enum n_cmd_arg_desc_flags{
    /* - A type */
-   n_CMD_ARG_DESC_STRING = 1u<<0,   /* A !blankspacechar() string */
-   n_CMD_ARG_DESC_WYSH = 1u<<1,     /* sh(1)ell-style quoted */
+   n_CMD_ARG_DESC_SHEXP = 1u<<0,    /* sh(1)ell-style token */
+   /* TODO All MSGLIST arguments can only be used last and are always greedy
+    * TODO (but MUST be _GREEDY, and MUST NOT be _OPTION too!).
+    * MSGLIST_AND_TARGET may create a NULL target */
+   n_CMD_ARG_DESC_MSGLIST = 1u<<1,  /* Message specification(s) */
+   n_CMD_ARG_DESC_NDMSGLIST = 1u<<2,
+   n_CMD_ARG_DESC_MSGLIST_AND_TARGET = 1u<<3,
 
-   n__CMD_ARG_DESC_TYPE_MASK = n_CMD_ARG_DESC_STRING | n_CMD_ARG_DESC_WYSH,
+   n__CMD_ARG_DESC_TYPE_MASK = n_CMD_ARG_DESC_SHEXP |
+         n_CMD_ARG_DESC_MSGLIST | n_CMD_ARG_DESC_NDMSGLIST |
+         n_CMD_ARG_DESC_MSGLIST_AND_TARGET,
 
    /* - Optional flags */
    /* It is not an error if an optional argument is missing; once an argument
@@ -669,10 +682,22 @@ enum n_cmd_arg_desc_flags{/* TODO incomplete, misses getmsglist() */
    n_CMD_ARG_DESC_GREEDY_JOIN = 1u<<18,
    /* Honour an overall "stop" request in one of the arguments (\c@ or #) */
    n_CMD_ARG_DESC_HONOUR_STOP = 1u<<19,
+   /* With any MSGLIST, only one message may be give or ERR_NOTSUP (default) */
+   n_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE = 1u<<20,
 
    n__CMD_ARG_DESC_FLAG_MASK = n_CMD_ARG_DESC_OPTION | n_CMD_ARG_DESC_GREEDY |
-         n_CMD_ARG_DESC_GREEDY_JOIN | n_CMD_ARG_DESC_HONOUR_STOP
+         n_CMD_ARG_DESC_GREEDY_JOIN | n_CMD_ARG_DESC_HONOUR_STOP |
+         n_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE,
+
+   /* We may include something for n_pstate_err_no */
+   n_CMD_ARG_DESC_ERRNO_SHIFT = 21u,
+   n_CMD_ARG_DESC_ERRNO_MASK = (1u<<10) - 1
 };
+#define n_CMD_ARG_DESC_ERRNO_TO_ORBITS(ENO) \
+   (((ui32_t)(ENO)) << n_CMD_ARG_DESC_ERRNO)
+#define n_CMD_ARG_DESC_TO_ERRNO(FLAGCARRIER) \
+   (((ui32_t)(FLAGCARRIER) >> n_CMD_ARG_DESC_ERRNO_SHIFT) &\
+      n_CMD_ARG_DESC_ERRNO_MASK)
 
 #ifdef HAVE_COLOUR
 /* We do have several contexts of colour IDs; since only one of them can be
@@ -725,11 +750,22 @@ enum conversion {
 };
 
 enum cproto {
+   CPROTO_CERTINFO,  /* Special dummy proto for TLS certificate info xxx */
    CPROTO_CCRED,     /* Special dummy credential proto (S/MIME etc.) */
    CPROTO_SOCKS,     /* Special dummy SOCKS5 proxy proto */
    CPROTO_SMTP,
    CPROTO_POP3
 ,CPROTO_IMAP
+};
+
+enum n_dig_msg_flags{
+   n_DIG_MSG_NONE,
+   n_DIG_MSG_COMPOSE = 1u<<0,          /* Compose mode object.. */
+   n_DIG_MSG_COMPOSE_DIGGED = 1u<<1,   /* ..with `digmsg' handle also! */
+   n_DIG_MSG_RDONLY = 1u<<2,           /* Message is read-only */
+   n_DIG_MSG_OWN_MEMPOOL = 1u<<3,      /* dmc_mempool==dmc_mempool_buf */
+   n_DIG_MSG_HAVE_FP = 1u<<4,          /* Open on a Ftmp() file */
+   n_DIG_MSG_FCLOSE = 1u<<5            /* (HAVE_FP:) needs fclose() */
 };
 
 enum n_dotlock_state{
@@ -760,23 +796,25 @@ enum n_exit_status{
 };
 
 enum fedit_mode {
-   FEDIT_NONE     = 0,
-   FEDIT_SYSBOX   = 1<<0,     /* %: prefix */
-   FEDIT_RDONLY   = 1<<1,     /* Readonly (per-box, n_OPT_R_FLAG is global) */
-   FEDIT_NEWMAIL  = 1<<2      /* `newmail' operation TODO OBSOLETE THIS! */
+   FEDIT_NONE = 0,
+   FEDIT_SYSBOX = 1u<<0,   /* %: prefix */
+   FEDIT_RDONLY = 1u<<1,   /* Readonly (per-box, n_OPT_R_FLAG is global) */
+   FEDIT_NEWMAIL = 1u<<2,  /* `newmail' operation TODO OBSOLETE THIS! */
+   FEDIT_ACCOUNT = 1u<<3   /* setfile() called by `account' */
 };
 
 enum fexp_mode {
-   FEXP_FULL,                 /* Full expansion */
-   FEXP_NOPROTO = 1<<0,       /* TODO no which_protocol() to decide expansion */
-   FEXP_SILENT = 1<<1,        /* Don't print but only return errors */
-   FEXP_MULTIOK = 1<<2,       /* Expansion to many entries is ok */
-   FEXP_LOCAL = 1<<3,         /* Result must be local file/maildir */
-   FEXP_NSHORTCUT = 1<<4,     /* Don't expand shortcuts */
-   FEXP_NSPECIAL = 1<<5,      /* No %,#,& specials */
-   FEXP_NFOLDER = 1<<6,       /* NSPECIAL and no + folder, too */
-   FEXP_NSHELL = 1<<7,        /* Don't do shell word exp. (but ~/, $VAR) */
-   FEXP_NVAR = 1<<8           /* ..not even $VAR expansion */
+   FEXP_FULL,              /* Full expansion */
+   FEXP_NOPROTO = 1u<<0,   /* TODO no which_protocol() to decide expansion */
+   FEXP_SILENT = 1u<<1,    /* Don't print but only return errors */
+   FEXP_MULTIOK = 1u<<2,   /* Expansion to many entries is ok */
+   FEXP_LOCAL = 1u<<3,     /* Result must be local file/maildir */
+   FEXP_LOCAL_FILE = 1u<<4, /* ..must be a local file: strips protocol://! */
+   FEXP_NSHORTCUT = 1u<<5, /* Don't expand shortcuts */
+   FEXP_NSPECIAL = 1u<<6,  /* No %,#,& specials */
+   FEXP_NFOLDER = 1u<<7,   /* NSPECIAL and no + folder, too */
+   FEXP_NSHELL = 1u<<8,    /* Don't do shell word exp. (but ~/, $VAR) */
+   FEXP_NVAR = 1u<<9       /* ..not even $VAR expansion */
 };
 
 enum n_file_lock_type{
@@ -820,6 +858,22 @@ enum n_go_input_inject_flags{
    n_GO_INPUT_INJECT_NONE = 0,
    n_GO_INPUT_INJECT_COMMIT = 1u<<0,   /* Auto-commit input */
    n_GO_INPUT_INJECT_HISTORY = 1u<<1   /* Allow history addition */
+};
+
+enum n_header_extract_flags{
+   n_HEADER_EXTRACT_NONE,
+   n_HEADER_EXTRACT_EXTENDED = 1u<<0,
+   n_HEADER_EXTRACT_FULL = 2u<<0,
+   n_HEADER_EXTRACT__MODE_MASK = n_HEADER_EXTRACT_EXTENDED |
+         n_HEADER_EXTRACT_FULL,
+
+   /* Prefill the receivers with the already existing content of the given
+    * struct header arguent */
+   n_HEADER_EXTRACT_PREFILL_RECEIVERS = 1u<<8,
+   /* Understand and ignore shell-style comments */
+   n_HEADER_EXTRACT_IGNORE_SHELL_COMMENTS = 1u<<9,
+   /* Ignore a MBOX From_ line _silently */
+   n_HEADER_EXTRACT_IGNORE_FROM_ = 1u<<10
 };
 
 enum n_iconv_flags{
@@ -885,7 +939,7 @@ enum n_idec_state{
 n_MCTA(n__IDEC_MODE_MASK <= (1u<<8) - 1, "Shared bit range overlaps")
 
 /* Buffer size needed by n_ienc_buf() including NUL and base prefixes */
-#define n_IENC_BUFFER_SIZE 80
+#define n_IENC_BUFFER_SIZE 80u
 
 enum n_ienc_mode{
    n_IENC_MODE_NONE,
@@ -896,6 +950,17 @@ enum n_ienc_mode{
    n_IENC_MODE_LOWERCASE = 1u<<5,   /* Use lowercase letters (not prefix) */
    n__IENC_MODE_SHIFT = 6u,
    n__IENC_MODE_MASK = (1u<<n__IENC_MODE_SHIFT) - 1
+};
+
+enum n_mailsend_flags{
+   n_MAILSEND_NONE,
+   n_MAILSEND_IS_FWD = 1u<<0,
+   n_MAILSEND_HEADERS_PRINT = 1u<<2,
+   n_MAILSEND_RECORD_RECIPIENT = 1u<<3,
+   n_MAILSEND_ALTERNATES_NOSTRIP = 1u<<4,
+
+   n_MAILSEND_ALL = n_MAILSEND_IS_FWD | n_MAILSEND_HEADERS_PRINT |
+         n_MAILSEND_RECORD_RECIPIENT | n_MAILSEND_ALTERNATES_NOSTRIP
 };
 
 enum mimecontent {
@@ -944,7 +1009,7 @@ enum mime_enc {
 /* xxx QP came later, maybe rewrite all to use mime_enc_flags directly? */
 enum mime_enc_flags {
    MIMEEF_NONE,
-   MIMEEF_SALLOC     = 1<<0,  /* Use salloc(), not srealloc().. */
+   MIMEEF_SALLOC     = 1<<0,  /* Use n_autorec_alloc(), not n_realloc().. */
    /* ..result .s,.l point to user buffer of *_LINESIZE+[+[+]] bytes instead */
    MIMEEF_BUF        = 1<<1,
    MIMEEF_CRLF       = 1<<2,  /* (encode) Append "\r\n" to lines */
@@ -1024,19 +1089,19 @@ enum mlist_state {
 };
 
 enum oflags {
-   OF_RDONLY      = 1<<0,
-   OF_WRONLY      = 1<<1,
-   OF_RDWR        = 1<<2,
-   OF_APPEND      = 1<<3,
-   OF_CREATE      = 1<<4,
-   OF_TRUNC       = 1<<5,
-   OF_EXCL        = 1<<6,
-   OF_CLOEXEC     = 1<<7,     /* TODO not used, always implied!  CHANGE!! */
-   OF_UNLINK      = 1<<8,     /* Only for Ftmp(): unlink(2) after creation */
-   OF_HOLDSIGS    = 1<<9,     /* Mutual with OF_UNLINK - await Ftmp_free() */
-   OF_REGISTER    = 1<<10,    /* Register file in our file table */
-   OF_REGISTER_UNLINK = 1<<11, /* unlink(2) upon unreg.; _REGISTER asserted! */
-   OF_SUFFIX      = 1<<12     /* Ftmp() name hint is mandatory! extension! */
+   OF_RDONLY = 1u<<0,
+   OF_WRONLY = 1u<<1,
+   OF_RDWR = 1u<<2,
+   OF_APPEND = 1u<<3,
+   OF_CREATE = 1u<<4,
+   OF_TRUNC = 1u<<5,
+   OF_EXCL = 1u<<6,
+   OF_UNLINK = 1u<<7,      /* Only for Ftmp(): unlink(2) after creation */
+   OF_HOLDSIGS = 1u<<8,    /* Ftmp(): await Ftmp_free(), mutual OF_UNLINK */
+   OF_FN_AUTOREC = 1u<<9,  /* Ftmp(): fn not on heap, mutual OF_UNLINK */
+   OF_REGISTER = 1u<<10,   /* Register file in our file table */
+   OF_REGISTER_UNLINK = 1u<<11, /* unlink(2) upon unreg.; _REGISTER asserted */
+   OF_SUFFIX = 1u<<12      /* Ftmp() name hint is mandatory! extension! */
 };
 
 enum okay {
@@ -1190,20 +1255,20 @@ enum n_sigman_flags{
    n__SIGMAN_PING = 1<<17
 };
 
-#ifdef HAVE_SSL
-enum ssl_verify_level {
-   SSL_VERIFY_IGNORE,
-   SSL_VERIFY_WARN,
-   SSL_VERIFY_ASK,
-   SSL_VERIFY_STRICT
-};
-#endif
-
 enum n_str_trim_flags{
    n_STR_TRIM_FRONT = 1u<<0,
    n_STR_TRIM_END = 1u<<1,
    n_STR_TRIM_BOTH = n_STR_TRIM_FRONT | n_STR_TRIM_END
 };
+
+#ifdef HAVE_TLS
+enum n_tls_verify_level{
+   n_TLS_VERIFY_IGNORE,
+   n_TLS_VERIFY_WARN,
+   n_TLS_VERIFY_ASK,
+   n_TLS_VERIFY_STRICT
+};
+#endif
 
 enum tdflags {
    TD_NONE,                   /* no display conversion */
@@ -1248,10 +1313,6 @@ enum n_termcap_cmd{
 
    n_TERMCAP_CMD_ks, /* smkx/ks, STRING | keypad_xmit: -,- */
    n_TERMCAP_CMD_ke, /* rmkx/ke, STRING | keypad_local: -,- */
-
-   n_TERMCAP_CMD_cd, /* ed/cd, STRING | clr_eos: -,- */
-   n_TERMCAP_CMD_cl, /* clear/cl, STRING | clear_screen(+home): -,- */
-   n_TERMCAP_CMD_ho, /* home/ho, STRING | cursor_home: -,- */
 # endif
 
 # ifdef HAVE_MLE
@@ -1260,6 +1321,12 @@ enum n_termcap_cmd{
    n_TERMCAP_CMD_cr, /* cr/cr, STRING | @ carriage_return: -,- */
    n_TERMCAP_CMD_le, /* cub1/le, STRING, CNT | @ cursor_left: count,- */
    n_TERMCAP_CMD_nd, /* cuf1/nd, STRING, CNT | @ cursor_right: count,- */
+
+#  ifdef HAVE_TERMCAP
+   n_TERMCAP_CMD_cd, /* ed/cd, STRING | clr_eos: -,- */
+   n_TERMCAP_CMD_ho, /* home/ho, STRING | cursor_home: -,- */
+#  endif
+   n_TERMCAP_CMD_cl, /* clear/cl, STRING | clear_screen(+home): -,- */
 # endif
 
    n__TERMCAP_CMD_MAX1,
@@ -1359,7 +1426,7 @@ enum n_visual_info_flags{
 
    /* Rest only with HAVE_C90AMEND1, mutual with _ONE_CHAR */
    n_VISUAL_INFO_WOUT_CREATE = 1<<8,      /* Use/create .vic_woudat */
-   n_VISUAL_INFO_WOUT_SALLOC = 1<<9,      /* ..salloc() it first */
+   n_VISUAL_INFO_WOUT_SALLOC = 1<<9,      /* ..autorec_alloc() it first */
    /* Only visuals into .vic_woudat - implies _WIDTH_QUERY */
    n_VISUAL_INFO_WOUT_PRINTABLE = 1<<10,
    n__VISUAL_INFO_FLAGS = n_VISUAL_INFO_WOUT_CREATE |
@@ -1388,19 +1455,18 @@ enum n_program_option{
    n_PO_MEMDEBUG = 1<<24,     /* *memdebug* */
 
    /* Some easy-access shortcuts TODO n_PO_VERB+ should be mask(s) already! */
-   n_PO_D_V = n_PO_DEBUG | n_PO_VERB,
-   n_PO_D_VV = n_PO_DEBUG | n_PO_VERBVERB,
-   n_PO_D_V_VV = n_PO_DEBUG | n_PO_VERB | n_PO_VERBVERB
+   n_PO_D_V = n_PO_DEBUG | n_PO_VERB | n_PO_VERBVERB,
+   n_PO_D_VV = n_PO_DEBUG | n_PO_VERBVERB
 };
 
 #define n_OBSOLETE(X) \
 do{\
-   if(n_poption & n_PO_D_V_VV)\
+   if(n_poption & n_PO_D_V)\
       n_err("%s: %s\n", _("Obsoletion warning"), X);\
 }while(0)
 #define n_OBSOLETE2(X,Y) \
 do{\
-   if(n_poption & n_PO_D_V_VV)\
+   if(n_poption & n_PO_D_V)\
       n_err("%s: %s: %s\n", _("Obsoletion warning"), X, Y);\
 }while(0)
 
@@ -1442,12 +1508,8 @@ do{\
    n_PS_ARGLIST_MASK = n_BITENUM_MASK(14, 16),
    n_PS_ARGMOD_LOCAL = 1u<<14,         /* "local" modifier TODO struct CmdCtx */
    n_PS_ARGMOD_VPUT = 1u<<16,          /* "vput" modifier TODO struct CmdCtx */
-   n_PS_MSGLIST_GABBY = 1u<<14,        /* getmsglist() saw something gabby */
+   n_PS_MSGLIST_GABBY = 1u<<14,        /* n_getmsglist() saw something gabby */
    n_PS_MSGLIST_DIRECT = 1u<<15,       /* A msg was directly chosen by number */
-   /* TODO HACK: until v15 PS_MSGLIST_SAW_NO is an indication whether an entry
-    * TODO may be placed in the history or not (grep this, see commands()),
-    * TODO so avoid reusing this bit */
-   n_PS_WYSHLIST_SAW_CONTROL = 1u<<15, /* ..saw C0+ control characters */
 
    n_PS_EXPAND_MULTIRESULT = 1u<<17,   /* Last fexpand() with MULTIOK had .. */
    n_PS_ERRORS_PROMPT = 1u<<18,        /* New error to be reported in prompt */
@@ -1484,17 +1546,14 @@ enum n_program_state_once{
    n_PSO_TTYOUT = 1u<<12, /* TODO should be TTYERR! */
 
    /* "Later" */
+   n_PSO_t_FLAG_DONE = 1u<<15,
    n_PSO_ATTACH_QUOTE_NOTED = 1u<<16,
    n_PSO_ERRORS_NOTED = 1u<<17,
    n_PSO_LINE_EDITOR_INIT = 1u<<18,
    n_PSO_RANDOM_INIT = 1u<<19,
    n_PSO_TERMCAP_DISABLE = 1u<<20,
    n_PSO_TERMCAP_CA_MODE = 1u<<21,
-   n_PSO_DOTLOCK_PRIVSEP_NOTED = 1u<<22,
-
-   /* TODO A subtile HACK which works in conjunction with n_OPT_t_FLAG so as
-    * to allow to have multiple states regarding the related header setup */
-   n_PSO_t_FLAG = 1u<<30
+   n_PSO_DOTLOCK_PRIVSEP_NOTED = 1u<<22
 };
 
 /* {{{ A large enum with all the boolean and value options a.k.a their keys.
@@ -1549,8 +1608,10 @@ ok_b_bsdannounce, /* {obsolete=1} */
    ok_b_bsdheadline,
    ok_b_bsdmsgs,
    ok_b_bsdorder,
+   ok_v_build_cc,                      /* {virt=VAL_BUILD_CC} */
+   ok_v_build_ld,                      /* {virt=VAL_BUILD_LD} */
    ok_v_build_os,                      /* {virt=VAL_BUILD_OS} */
-   ok_v_build_osenv,                   /* {virt=VAL_BUILD_OSENV} */
+   ok_v_build_rest,                    /* {virt=VAL_BUILD_REST} */
 
    ok_v_COLUMNS,                       /* {notempty=1,posnum=1,env=1} */
    /* Charset lowercase conversion handled via vip= */
@@ -1572,7 +1633,8 @@ ok_b_bsdannounce, /* {obsolete=1} */
    ok_b_debug,                         /* {vip=1} */
    ok_b_disposition_notification_send,
    ok_b_dot,
-   ok_b_dotlock_ignore_error,
+   ok_b_dotlock_disable,
+ok_b_dotlock_ignore_error, /* {obsolete=1} */
 
    ok_v_EDITOR,                     /* {env=1,notempty=1,defval=VAL_EDITOR} */
    ok_v_editalong,
@@ -1593,6 +1655,7 @@ ok_v_encoding, /* {obsolete=1} */
    ok_v_followup_to_honour,
    ok_b_forward_as_attachment,
    ok_v_forward_inject_head,
+   ok_v_forward_inject_tail,
    ok_v_from,                          /* {vip=1} */
    ok_b_fullnames,
 ok_v_fwdheading, /* {obsolete=1} */
@@ -1715,6 +1778,8 @@ ok_v_NAIL_TAIL, /* {name=NAIL_TAIL,obsolete=1} */
    ok_b_quote_as_attachment,
    ok_v_quote_chars,                   /* {vip=1,notempty=1,defval=">|}:"} */
    ok_v_quote_fold,
+   ok_v_quote_inject_head,
+   ok_v_quote_inject_tail,
 
    ok_b_r_option_implicit,
    ok_b_recipients_in_cc,
@@ -1761,15 +1826,16 @@ ok_v_signature, /* {obsolete=1} */
 ok_b_smime_no_default_ca, /* {obsolete=1} */
    ok_b_smime_sign,
    ok_v_smime_sign_cert,               /* {chain=1} */
+   ok_v_smime_sign_digest,             /* {chain=1} */
    ok_v_smime_sign_include_certs,      /* {chain=1} */
-   ok_v_smime_sign_message_digest,     /* {chain=1} */
+ok_v_smime_sign_message_digest,     /* {chain=1,obsolete=1} */
 ok_v_smtp, /* {obsolete=1} */
    ok_v_smtp_auth,                     /* {chain=1} */
 ok_v_smtp_auth_password, /* {obsolete=1} */
 ok_v_smtp_auth_user, /* {obsolete=1} */
    ok_v_smtp_hostname,                 /* {vip=1} */
    ok_b_smtp_use_starttls,             /* {chain=1} */
-   ok_v_SOURCE_DATE_EPOCH,             /* {\} */
+   ok_v_SOURCE_DATE_EPOCH,             /* {\ } */
       /* {name=SOURCE_DATE_EPOCH,rdonly=1,import=1,notempty=1,posnum=1} */
    ok_v_socks_proxy,                   /* {chain=1,notempty=1} */
    ok_v_spam_interface,
@@ -1785,26 +1851,26 @@ ok_v_spamd_user, /* {obsolete=1} */
    ok_v_spamfilter_rate,
    ok_v_spamfilter_rate_scanscore,
    ok_v_spamfilter_spam,
-   ok_v_ssl_ca_dir,                    /* {chain=1} */
-   ok_v_ssl_ca_file,                   /* {chain=1} */
-   ok_v_ssl_ca_flags,                  /* {chain=1} */
-   ok_b_ssl_ca_no_defaults,            /* {chain=1} */
+ok_v_ssl_ca_dir, /* {chain=1,obsolete=1} */
+ok_v_ssl_ca_file, /* {chain=1,obsolete=1} */
+ok_v_ssl_ca_flags, /* {chain=1,obsolete=1} */
+ok_b_ssl_ca_no_defaults, /* {chain=1,obsolete=1} */
 ok_v_ssl_cert, /* {chain=1,obsolete=1} */
 ok_v_ssl_cipher_list, /* {chain=1,obsolete=1} */
-   ok_v_ssl_config_file,
-   ok_v_ssl_config_module,             /* {chain=1} */
-   ok_v_ssl_config_pairs,              /* {chain=1} */
+ok_v_ssl_config_file, /* {obsolete=1} */
+ok_v_ssl_config_module, /* {chain=1,obsolete=1} */
+ok_v_ssl_config_pairs, /* {chain=1,obsolete=1} */
 ok_v_ssl_curves, /* {chain=1,obsolete=1} */
-   ok_v_ssl_crl_dir,
-   ok_v_ssl_crl_file,
-   ok_v_ssl_features,                  /* {virt=VAL_SSL_FEATURES} */
+ok_v_ssl_crl_dir, /* {obsolete=1} */
+ok_v_ssl_crl_file, /* {obsolete=1} */
+ok_v_ssl_features, /* {virt=VAL_TLS_FEATURES,obsolete=1} */
 ok_v_ssl_key, /* {chain=1,obsolete=1} */
 ok_v_ssl_method, /* {chain=1,obsolete=1} */
-ok_b_ssl_no_default_ca,
+ok_b_ssl_no_default_ca, /* {obsolete=1} */
 ok_v_ssl_protocol, /* {chain=1,obsolete=1} */
-   ok_v_ssl_rand_egd,
-   ok_v_ssl_rand_file,
-   ok_v_ssl_verify,                    /* {chain=1} */
+ok_v_ssl_rand_egd, /* {obsolete=1} */
+ok_v_ssl_rand_file, /* {obsolete=1}*/
+ok_v_ssl_verify, /* {chain=1,obsolete=1} */
    ok_v_stealthmua,
    ok_v_system_mailrc,           /* {virt=VAL_SYSCONFDIR "/" VAL_SYSCONFRC} */
 
@@ -1813,6 +1879,20 @@ ok_v_ssl_protocol, /* {chain=1,obsolete=1} */
    ok_v_termcap,
    ok_b_termcap_ca_mode,
    ok_b_termcap_disable,
+   ok_v_tls_ca_dir,                    /* {chain=1} */
+   ok_v_tls_ca_file,                   /* {chain=1} */
+   ok_v_tls_ca_flags,                  /* {chain=1} */
+   ok_b_tls_ca_no_defaults,            /* {chain=1} */
+   ok_v_tls_config_file,
+   ok_v_tls_config_module,             /* {chain=1} */
+   ok_v_tls_config_pairs,              /* {chain=1} */
+   ok_v_tls_crl_dir,
+   ok_v_tls_crl_file,
+   ok_v_tls_features,                  /* {virt=VAL_TLS_FEATURES} */
+   ok_v_tls_fingerprint,               /* {chain=1} */
+   ok_v_tls_fingerprint_digest,        /* {chain=1} */
+   ok_v_tls_rand_file,
+   ok_v_tls_verify,                    /* {chain=1} */
    ok_v_toplines,                      /* {notempty=1,num=1,defval="5"} */
    ok_b_topsqueeze,
    /* Charset lowercase conversion handled via vip= */
@@ -1821,7 +1901,7 @@ ok_v_ssl_protocol, /* {chain=1,obsolete=1} */
 
    ok_v_USER,                          /* {rdonly=1,import=1} */
    ok_v_umask,                      /* {vip=1,nodel=1,posnum=1,i3val="0077"} */
-   ok_v_user,                       /* {chain=1} */
+   ok_v_user,                       /* {notempty=1,chain=1} */
 
    ok_v_VISUAL,                     /* {env=1,notempty=1,defval=VAL_VISUAL} */
    ok_b_v15_compat,
@@ -1844,6 +1924,7 @@ ok_v_imap_keepalive,             /* {chain=1} */
 ok_v_imap_list_depth,
 ok_b_imap_use_starttls           /* {chain=1} */
 }; /* }}} */
+enum {n_OKEYS_MAX = ok_b_imap_use_starttls};
 
 /* Locale-independent character classes */
 enum {
@@ -1896,7 +1977,7 @@ struct n_cmd_arg_desc{
 };
 /* ISO C(99) doesn't allow initialization of "flex array" */
 #define n_CMD_ARG_DESC_SUBCLASS_DEF(CMD,NO,VAR) \
-   struct n_cmd_arg_desc_ ## CMD {\
+   static struct n_cmd_arg_desc_ ## CMD {\
       char cad_name[12];\
       ui32_t cad_no;\
       ui32_t cad_ent_flags[NO][2];\
@@ -1908,12 +1989,14 @@ struct n_cmd_arg_ctx{
    struct n_cmd_arg_desc const *cac_desc; /* Input: description of command */
    char const *cac_indat;     /* Input that shall be parsed */
    size_t cac_inlen;          /* Input length (UIZ_MAX: do a strlen()) */
+   ui32_t cac_msgflag;        /* Input (option): required flags of messages */
+   ui32_t cac_msgmask;        /* Input (option): relevant flags of messages */
    size_t cac_no;             /* Output: number of parsed arguments */
    struct n_cmd_arg *cac_arg; /* Output: parsed arguments */
    char const *cac_vput;      /* "Output": vput prefix used: varname */
 };
 
-struct n_cmd_arg{/* TODO incomplete, misses getmsglist() */
+struct n_cmd_arg{
    struct n_cmd_arg *ca_next;
    char const *ca_indat;   /*[PRIV] Pointer into n_cmd_arg_ctx.cac_indat */
    size_t ca_inlen;        /*[PRIV] of .ca_indat of this arg (not terminated) */
@@ -1921,7 +2004,8 @@ struct n_cmd_arg{/* TODO incomplete, misses getmsglist() */
    ui32_t ca_arg_flags;    /* [Output: _WYSH: copy of parse result flags] */
    ui8_t ca__dummy[4];
    union{
-      struct str ca_str;      /* _STRING, _WYSH */
+      struct str ca_str;      /* _CMD_ARG_DESC_SHEXP */
+      int *ca_msglist;        /* _CMD_ARG_DESC_MSGLIST+ */
    } ca_arg;               /* Output: parsed result */
 };
 
@@ -1929,8 +2013,9 @@ struct n_cmd_desc{
    char const *cd_name;    /* Name of command */
    int (*cd_func)(void*);  /* Implementor of command */
    enum n_cmd_arg_flags cd_caflags;
-   si16_t cd_msgflag;      /* Required flags of msgs */
-   si16_t cd_msgmask;      /* Relevant flags of msgs */
+   ui32_t cd_msgflag;      /* Required flags of msgs */
+   ui32_t cd_msgmask;      /* Relevant flags of msgs */
+   /* XXX requires cmd-tab.h initializer changes ui8_t cd__pad[4];*/
    struct n_cmd_arg_desc const *cd_cadp;
 #ifdef HAVE_DOCSTRINGS
    char const *cd_doc;     /* One line doc for command */
@@ -1992,6 +2077,32 @@ struct ccred {
    struct str     cc_pass;       /* Password (urlxdec()oded) or NULL */
 };
 
+struct n_dig_msg_ctx{
+   struct n_dig_msg_ctx *dmc_last;  /* Linked only if !n_DIG_MSG_COMPOSE */
+   struct n_dig_msg_ctx *dmc_next;
+   struct message *dmc_mp; /* XXX Yet NULL if n_DIG_MSG_COMPOSE */
+   enum n_dig_msg_flags dmc_flags;
+   ui32_t dmc_msgno;       /* XXX Only if !n_DIG_MSG_COMPOSE */
+   FILE *dmc_fp;
+   struct header *dmc_hp;
+   void *dmc_mempool;
+   char dmc_mempool_buf[n_MEMORY_POOL_TYPE_SIZEOF]; /* If !n_DIG_MSG_COMPOSE */
+};
+/* This is a bit hairy */
+#define n_DIG_MSG_COMPOSE_CREATE(DMCP,HP) \
+do{\
+   memset(n_dig_msg_compose_ctx = DMCP, 0, sizeof *(DMCP));\
+   (DMCP)->dmc_flags = n_DIG_MSG_COMPOSE;\
+   (DMCP)->dmc_hp = HP;\
+   (DMCP)->dmc_mempool = n_memory_pool_top();\
+}while(0)
+#define n_DIG_MSG_COMPOSE_GUT(DMCP) \
+do{\
+   assert(n_dig_msg_compose_ctx == DMCP);\
+   /* File cleaned up via close_all_files() */\
+   n_dig_msg_compose_ctx = NULL;\
+}while(0)
+
 #ifdef HAVE_DOTLOCK
 struct n_dotlock_info{
    char const *di_file_name;  /* Mailbox to lock */
@@ -2043,22 +2154,24 @@ struct quoteflt {
    char const  *qf_pfix;
    ui32_t      qf_pfix_len;   /* Length of prefix: 0: bypass */
    ui32_t      qf_qfold_min;  /* Simple way: wrote prefix? */
+   bool_t      qf_bypass;     /* Simply write to .qf_os TODO BYPASS, then! */
    /* TODO quoteflt.qf_nl_last is a hack that i have introduced so that we
     * TODO finally can gracefully place a newline last in the visual display.
     * TODO I.e., for cases where quoteflt shouldn't be used at all ;} */
    bool_t      qf_nl_last;    /* Last thing written/seen was NL */
 #ifndef HAVE_QUOTE_FOLD
-   ui8_t       __dummy[7];
+   ui8_t       __dummy[6];
 #else
-   ui8_t       __dummy[1];
    ui8_t       qf_state;      /* *quote-fold* state machine */
    bool_t      qf_brk_isws;   /* Breakpoint is at WS */
    ui32_t      qf_qfold_max;  /* Otherwise: line lengths */
+   ui32_t      qf_qfold_maxnws;
    ui32_t      qf_wscnt;      /* Whitespace count */
    char const *qf_quote_chars; /* *quote-chars* */
    ui32_t      qf_brkl;       /* Breakpoint */
    ui32_t      qf_brkw;       /* Visual width, breakpoint */
    ui32_t      qf_datw;       /* Current visual output line width */
+   ui8_t       __dummy2[4];
    struct str  qf_dat;        /* Current visual output line */
    struct str  qf_currq;      /* Current quote, compressed */
    mbstate_t   qf_mbps[2];
@@ -2171,22 +2284,23 @@ struct time_current { /* TODO si64_t, etc. */
    char        tc_ctime[32];
 };
 
-struct sock {                 /* data associated with a socket */
-   int         s_fd;          /* file descriptor */
-#ifdef HAVE_SSL
-   int         s_use_ssl;     /* SSL is used */
-# ifdef HAVE_XSSL
-   void        *s_ssl;        /* SSL object */
+struct sock { /* data associated with a socket */
+   int s_fd;            /* file descriptor */
+#ifdef HAVE_TLS
+   int s_use_tls;       /* SSL is used */
+# ifdef HAVE_XTLS
+   void *s_tls;         /* SSL object */
 # endif
+   char *s_tls_finger;  /* Set to autorec! store for CPROTO_CERTINFO */
 #endif
-   char        *s_wbuf;       /* for buffered writes */
-   int         s_wbufsize;    /* allocated size of s_buf */
-   int         s_wbufpos;     /* position of first empty data byte */
-   char        *s_rbufptr;    /* read pointer to s_rbuf */
-   int         s_rsz;         /* size of last read in s_rbuf */
-   char const  *s_desc;       /* description of error messages */
-   void        (*s_onclose)(void);     /* execute on close */
-   char        s_rbuf[LINESIZE + 1];   /* for buffered reads */
+   char *s_wbuf;        /* for buffered writes */
+   int s_wbufsize;      /* allocated size of s_buf */
+   int s_wbufpos;       /* position of first empty data byte */
+   char *s_rbufptr;     /* read pointer to s_rbuf */
+   int s_rsz;           /* size of last read in s_rbuf */
+   char const *s_desc;  /* description of error messages */
+   void (*s_onclose)(void);   /* execute on close */
+   char s_rbuf[LINESIZE + 1]; /* for buffered reads */
 };
 
 struct sockconn {
@@ -2225,13 +2339,16 @@ MB_CACHE,         /* IMAP cache */
       MB_NOFLAGS  = 000,
       MB_UIDPLUS  = 001 /* supports IMAP UIDPLUS */
    }           mb_flags;
-   unsigned long  mb_uidvalidity;   /* IMAP unique identifier validity */
+   ui64_t mb_uidvalidity;           /* IMAP unique identifier validity */
    char        *mb_imap_account;    /* name of current IMAP account */
    char        *mb_imap_pass;       /* xxx v15-compat URL workaround */
    char        *mb_imap_mailbox;    /* name of current IMAP mailbox */
    char        *mb_cache_directory; /* name of cache directory */
    char mb_imap_delim[8];     /* Directory separator(s), [0] += replacer */
 #endif
+   /* XXX mailbox.mb_accmsg is a hack in so far as the mailbox object should
+    * XXX have an on_close event to which that machinery should connect */
+   struct n_dig_msg_ctx *mb_digmsg; /* Open `digmsg' connections */
    struct sock mb_sock;       /* socket structure */
 };
 
@@ -2345,8 +2462,10 @@ struct message {
 #ifdef HAVE_IMAP
    ui64_t m_uid;              /* IMAP unique identifier */
 #endif
+#ifdef HAVE_MAILDIR
    char const  *m_maildir_file; /* original maildir file of msg */
    ui32_t      m_maildir_hash; /* hash of file name in maildir sub */
+#endif
    int         m_collapsed;   /* collapsed thread information */
    unsigned    m_idhash;      /* hash on Message-ID for threads */
    unsigned    m_level;       /* thread level of message */
@@ -2379,12 +2498,15 @@ enum gfield{ /* TODO -> enum m_grab_head, m_GH_xy */
 
    GIDENT = 1u<<11,     /* From:, Reply-To:, MFT: (user headers) */
    GREF = 1u<<12,       /* References:, In-Reply-To:, (Message-ID:) */
+   GREF_IRT = 1u<<30,   /* XXX Hack; only In-Reply-To: -> n_run_editor() */
    GDATE = 1u<<13,      /* Date: field */
    GFULL = 1u<<14,      /* Include full names, comments etc. */
    GSKIN = 1u<<15,      /* Skin names */
    GEXTRA = 1u<<16,     /* Extra fields (mostly like GIDENT XXX) */
    GFILES = 1u<<17,     /* Include filename and pipe addresses */
-   GFULLEXTRA = 1u<<18  /* Only with GFULL: GFULL less address */
+   GFULLEXTRA = 1u<<18, /* Only with GFULL: GFULL less address */
+   GBCC_IS_FCC = 1u<<19, /* This GBCC is (or was) indeed a Fcc: */
+   GSHEXP_PARSE_HACK = 1u<<20 /* lextract()+: *expandaddr*=shquote */
 };
 #define GMASK           (GTO | GSUBJECT | GCC | GBCC)
 
@@ -2414,6 +2536,7 @@ struct header {
    struct name *h_to;         /* Dynamic "To:" string */
    struct name *h_cc;         /* Carbon copies string */
    struct name *h_bcc;        /* Blind carbon copies */
+   struct name *h_fcc;        /* Fcc: file carbon copies to */
    struct name *h_ref;        /* References (possibly overridden) */
    struct attachment *h_attach; /* MIME attachments */
    struct name *h_reply_to;   /* overridden "Reply-To:" field */
@@ -2447,6 +2570,7 @@ enum nameflags {
    NAME_ADDRSPEC_ISNAME = 1u<<5,    /* ..is an alias name */
    NAME_ADDRSPEC_ISADDR = 1u<<6,    /* ..is a mail network address.. */
    NAME_ADDRSPEC_WITHOUT_DOMAIN = 1u<<7, /* ..but without domain name */
+   NAME_ADDRSPEC_ISMASK = n_BITENUM_MASK(3,6),
 
    NAME_ADDRSPEC_ERR_EMPTY = 1u<<9, /* An empty string (or NULL) */
    NAME_ADDRSPEC_ERR_ATSEQ = 1u<<10, /* Weird @ sequence */
@@ -2578,11 +2702,12 @@ VL char const n_empty[1];
 VL char const n_0[2];
 VL char const n_1[2];
 VL char const n_m1[3];     /* -1 */
-VL char const n_qm[2];     /* Question-mark ? */
 VL char const n_em[2];     /* Exclamation-mark ! */
-VL char const n_star[2];   /* Asterisk * */
-VL char const n_at[2];     /* Commercial at @ */
 VL char const n_ns[2];     /* Number sign # */
+VL char const n_star[2];   /* Asterisk * */
+VL char const n_hy[2];     /* Hyphen-Minus - */
+VL char const n_qm[2];     /* Question-mark ? */
+VL char const n_at[2];     /* Commercial at @ */
 VL ui16_t const n_class_char[1 + 0x7F];
 #endif /* HAVE_AMALGAMATION */
 
@@ -2590,7 +2715,11 @@ VL FILE *n_stdin;
 VL FILE *n_stdout;
 VL FILE *n_stderr;
 VL FILE *n_tty_fp;               /* Our terminal output TODO input channel */
-VL void *n_readctl_overlay;      /* `readctl' overlay (see c_readctl()) */
+/* XXX *_read_overlay and dig_msg_compose_ctx are hacks caused by missing
+ * XXX event driven nature of individual program parts */
+VL void *n_readctl_read_overlay; /* `readctl' XXX HACK */
+VL struct n_dig_msg_ctx *n_digmsg_read_overlay; /* `digmsg' XXX HACK */
+VL struct n_dig_msg_ctx *n_dig_msg_compose_ctx; /* Or NULL XXX HACK */
 
 VL ui32_t n_mb_cur_max;          /* Value of MB_CUR_MAX */
 VL ui32_t n_realscreenheight;    /* The real screen height */
@@ -2644,8 +2773,8 @@ VL struct n_header_field *n_customhdr_list; /* *customhdr* list */
 VL struct time_current  time_current;  /* time(3); send: mail1() XXXcarrier */
 VL struct termios_state termios_state; /* getpassword(); see commands().. */
 
-#ifdef HAVE_SSL
-VL enum ssl_verify_level   ssl_verify_level; /* SSL verification level */
+#ifdef HAVE_TLS
+VL enum n_tls_verify_level n_tls_verify_level; /* TODO local per-context! */
 #endif
 
 #ifdef HAVE_ICONV

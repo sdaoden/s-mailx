@@ -1,9 +1,13 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Program input of all sorts, input lexing, event loops, command evaluation.
- *@ TODO n_PS_ROBOT requires yet n_PS_SOURCING, which REALLY sucks.
+ *@ TODO - n_PS_ROBOT requires yet n_PS_SOURCING, which REALLY sucks.
+ *@ TODO - go_input(): with IO::Device we could have CStringListDevice, for
+ *@ TODO   example to handle injections, and also `readctl' channels!
+ *@ TODO   (Including sh(1)ell HERE strings and such.)
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause TODO ISC
  */
 /*
  * Copyright (c) 1980, 1993
@@ -163,7 +167,7 @@ struct a_go_ctx{
    char gc_name[n_VFIELD_SIZE(0)]; /* Name of file or macro */
 };
 
-struct a_go_readctl_ctx{ /* TODO localize n_readctl_overlay, use OnForkEvent! */
+struct a_go_readctl_ctx{ /* TODO localize readctl_read_overlay: OnForkEvent! */
    struct a_go_readctl_ctx *grc_last;
    struct a_go_readctl_ctx *grc_next;
    char const *grc_expand;          /* If filename based, expanded string */
@@ -247,7 +251,7 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    struct str line;
    struct n_string s, *sp;
    struct str const *alias_exp;
-   char _wordbuf[2], **arglist_base/*[n_MAXARGC]*/, **arglist, *cp, *word;
+   char _wordbuf[2], *argv_stack[3], **argv_base, **argvp, *vput, *cp, *word;
    char const *alias_name;
    struct n_cmd_desc const *cdp;
    si32_t nerrn, nexn;     /* TODO n_pstate_ex_no -> si64_t! */
@@ -276,10 +280,9 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    nerrn = n_ERR_NONE;
    nexn = n_EXIT_OK;
    cdp = NULL;
+   vput = NULL;
    alias_name = NULL;
    n_UNINIT(alias_exp, NULL);
-   arglist =
-   arglist_base = n_autorec_alloc(sizeof(*arglist_base) * n_MAXARGC);
    line = gecp->gec_line; /* TODO const-ify original (buffer)! */
    assert(line.s[line.l] == '\0');
 
@@ -326,7 +329,7 @@ jrestart:
       ++cp;
    c = (int)PTR2SIZE(cp - line.s);
    word = UICMP(z, c, <, sizeof _wordbuf) ? _wordbuf : n_autorec_alloc(c +1);
-   memcpy(word, arglist[0] = line.s, c);
+   memcpy(word, line.s, c);
    word[c] = '\0';
    line.l -= c;
    line.s = cp;
@@ -566,27 +569,26 @@ jexec:
          char const *emsg;
 
          emsg = line.s; /* xxx Cannot pass &char* as char const**, so no cp */
-         arglist[0] = n_shexp_parse_token_cp((n_SHEXP_PARSE_TRIM_SPACE |
+         vput = n_shexp_parse_token_cp((n_SHEXP_PARSE_TRIM_SPACE |
                n_SHEXP_PARSE_TRIM_IFSSPACE | n_SHEXP_PARSE_LOG |
                n_SHEXP_PARSE_META_SEMICOLON | n_SHEXP_PARSE_META_KEEP), &emsg);
          line.l -= PTR2SIZE(emsg - line.s);
          line.s = cp = n_UNCONST(emsg);
          if(cp == NULL)
             emsg = N_("could not parse input token");
-         else if(!n_shexp_is_valid_varname(arglist[0]))
+         else if(!n_shexp_is_valid_varname(vput))
             emsg = N_("not a valid variable name");
-         else if(!n_var_is_user_writable(arglist[0]))
+         else if(!n_var_is_user_writable(vput))
             emsg = N_("either not a user writable, or a boolean variable");
          else
             emsg = NULL;
          if(emsg != NULL){
             n_err("`%s': vput: %s: %s\n",
-                  cdp->cd_name, V_(emsg), n_shexp_quote_cp(arglist[0], FAL0));
+                  cdp->cd_name, V_(emsg), n_shexp_quote_cp(vput, FAL0));
             nerrn = n_ERR_NOTSUP;
             rv = -1;
             goto jleave;
          }
-         ++arglist;
          n_pstate |= n_PS_ARGMOD_VPUT; /* TODO YET useless since stripped later
          * TODO on in getrawlist() etc., i.e., the argument vector producers,
          * TODO therefore yet needs to be set again based on flags&a_VPUT! */
@@ -600,42 +602,48 @@ jexec:
    case n_CMD_ARG_TYPE_MSGLIST:
       /* Message list defaulting to nearest forward legal message */
       if(n_msgvec == NULL)
-         goto jemsglist;
-      if((c = getmsglist(line.s, n_msgvec, cdp->cd_msgflag)) < 0){
+         goto jmsglist_err;
+      if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_msgflag, NULL)) < 0){
          nerrn = n_ERR_NOMSG;
          flags |= a_NO_ERRNO;
          break;
       }
       if(c == 0){
          if((n_msgvec[0] = first(cdp->cd_msgflag, cdp->cd_msgmask)) != 0)
-            n_msgvec[1] = 0;
+            c = 1;
+         else{
+jmsglist_err:
+            if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
+                  (n_poption & n_PO_D_V))
+               fprintf(n_stdout, _("No applicable messages\n"));
+            nerrn = n_ERR_NOMSG;
+            flags |= a_NO_ERRNO;
+            break;
+         }
       }
-      if(n_msgvec[0] == 0){
-jemsglist:
-         if(!(n_pstate & n_PS_HOOK_MASK))
-            fprintf(n_stdout, _("No applicable messages\n"));
-         nerrn = n_ERR_NOMSG;
-         flags |= a_NO_ERRNO;
-         break;
+jmsglist_go:
+      /* C99 */{
+         int *mvp;
+
+         mvp = n_autorec_calloc(c +1, sizeof *mvp);
+         while(c-- > 0)
+            mvp[c] = n_msgvec[c];
+         if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /*XXX*/
+            n_err_no = 0;
+         rv = (*cdp->cd_func)(mvp);
       }
-      if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
-         n_err_no = 0;
-      rv = (*cdp->cd_func)(n_msgvec);
       break;
 
    case n_CMD_ARG_TYPE_NDMLIST:
       /* Message list with no defaults, but no error if none exist */
       if(n_msgvec == NULL)
-         goto jemsglist;
-      if((c = getmsglist(line.s, n_msgvec, cdp->cd_msgflag)) < 0){
+         goto jmsglist_err;
+      if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_msgflag, NULL)) < 0){
          nerrn = n_ERR_NOMSG;
          flags |= a_NO_ERRNO;
          break;
       }
-      if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
-         n_err_no = 0;
-      rv = (*cdp->cd_func)(n_msgvec);
-      break;
+      goto jmsglist_go;
 
    case n_CMD_ARG_TYPE_STRING:
       /* Just the straight string, old style, with leading blanks removed */
@@ -648,11 +656,14 @@ jemsglist:
 
    case n_CMD_ARG_TYPE_RAWDAT:
       /* Just the straight string, placed in argv[] */
-      *arglist++ = line.s;
-      *arglist = NULL;
+      argvp = argv_stack;
+      if(flags & a_VPUT)
+         *argvp++ = vput;
+      *argvp++ = line.s;
+      *argvp = NULL;
       if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
          n_err_no = 0;
-      rv = (*cdp->cd_func)(arglist_base);
+      rv = (*cdp->cd_func)(argv_stack);
       break;
 
    case n_CMD_ARG_TYPE_WYSH:
@@ -666,21 +677,24 @@ jemsglist:
             c = 0;
          }
       }
-      if((c = getrawlist((c != 0), arglist,
-            n_MAXARGC - PTR2SIZE(arglist - arglist_base), line.s, line.l)) < 0){
+      argvp = argv_base = n_autorec_alloc(sizeof(*argv_base) * n_MAXARGC);
+      if(flags & a_VPUT)
+         *argvp++ = vput;
+      if((c = getrawlist((c != 0), argvp,
+            (n_MAXARGC - ((flags & a_VPUT) != 0)), line.s, line.l)) < 0){
          n_err(_("Invalid argument list\n"));
          flags |= a_NO_ERRNO;
          break;
       }
 
-      if(c < cdp->cd_minargs){
+      if(UICMP(32, c, <, cdp->cd_minargs)){
          n_err(_("`%s' requires at least %u arg(s)\n"),
             cdp->cd_name, (ui32_t)cdp->cd_minargs);
          flags |= a_NO_ERRNO;
          break;
       }
 #undef cd_minargs
-      if(c > cdp->cd_maxargs){
+      if(UICMP(32, c, >, cdp->cd_maxargs)){
          n_err(_("`%s' takes no more than %u arg(s)\n"),
             cdp->cd_name, (ui32_t)cdp->cd_maxargs);
          flags |= a_NO_ERRNO;
@@ -691,11 +705,11 @@ jemsglist:
       if(flags & a_LOCAL)
          n_pstate |= n_PS_ARGMOD_LOCAL;
       if(flags & a_VPUT)
-         n_pstate |= n_PS_ARGMOD_VPUT;
+         n_pstate |= n_PS_ARGMOD_VPUT; /* TODO due to getrawlist(), as above */
 
       if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
          n_err_no = 0;
-      rv = (*cdp->cd_func)(arglist_base);
+      rv = (*cdp->cd_func)(argv_base);
       if(a_go_xcall != NULL)
          goto jret0;
       break;
@@ -710,14 +724,16 @@ jemsglist:
       cac.cac_desc = cdp->cd_cadp;
       cac.cac_indat = line.s;
       cac.cac_inlen = line.l;
+      cac.cac_msgflag = cdp->cd_msgflag;
+      cac.cac_msgmask = cdp->cd_msgmask;
       if(!n_cmd_arg_parse(&cac)){
          flags |= a_NO_ERRNO;
          break;
       }
 
       if(flags & a_VPUT){
-         cac.cac_vput = *arglist_base;
-         n_pstate |= n_PS_ARGMOD_VPUT;
+         cac.cac_vput = vput;
+         /* Global "hack" not used: n_pstate |= n_PS_ARGMOD_VPUT; */
       }else
          cac.cac_vput = NULL;
 
@@ -750,8 +766,8 @@ jemsglist:
             flags |= a_NO_ERRNO;
          else if((nerrn = n_err_no) == 0)
             nerrn = n_ERR_INVAL;
-      }else
-         flags ^= a_NO_ERRNO;
+      }/*else
+         flags ^= a_NO_ERRNO;*/
    }else if(cdp->cd_caflags & n_CMD_ARG_EM)
       flags |= a_NO_ERRNO;
    else
@@ -937,7 +953,7 @@ jrestart:
 
    if(!(gcp->gc_flags & a_GO_MEMPOOL_INHERITED)){
       if(gcp->gc_data.gdc_mempool != NULL)
-         n_memory_pool_pop(NULL);
+         n_memory_pool_pop(NULL, TRU1);
    }else
       n_memory_reset();
 
@@ -1307,14 +1323,18 @@ n_go_main_loop(void){ /* FIXME */
 #endif
                }
             }else{
+#if defined HAVE_MAILDIR || defined HAVE_IMAP
                n = (cp != NULL && strcmp(cp, "nopoll"));
+#endif
 
+#ifdef HAVE_MAILDIR
                if(mb.mb_type == MB_MAILDIR){
                   if(n != 0)
                      goto Jnewmail;
                }
+#endif
 #ifdef HAVE_IMAP
-               else if(mb.mb_type == MB_IMAP){
+               if(mb.mb_type == MB_IMAP){
                   if(!n)
                      n = (cp != NULL && strcmp(cp, "noimap"));
 
@@ -1464,20 +1484,27 @@ FL int
 (n_go_input)(enum n_go_input_flags gif, char const *prompt, char **linebuf,
       size_t *linesize, char const *string, bool_t *histok_or_null
       n_MEMORY_DEBUG_ARGS){
-   /* TODO readline: linebuf pool!; n_go_input should return si64_t */
+   /* TODO readline: linebuf pool!; n_go_input should return si64_t.
+    * TODO This thing should be replaced by a(n) (stack of) event generator(s)
+    * TODO and consumed by OnLineCompletedEvent listeners */
    struct n_string xprompt;
    FILE *ifile;
-   bool_t doprompt, dotty;
    char const *iftype;
    struct a_go_input_inject *giip;
    int nold, n;
-   bool_t histok;
+   enum{
+      a_NONE,
+      a_HISTOK = 1u<<0,
+      a_USE_PROMPT = 1u<<1,
+      a_USE_MLE = 1u<<2,
+      a_DIGMSG_OVERLAY = 1u<<16
+   } f;
    NYD2_ENTER;
 
    if(!(gif & n_GO_INPUT_HOLDALLSIGS))
       hold_all_sigs();
 
-   histok = FAL0;
+   f = a_NONE;
 
    if(a_go_ctx->gc_flags & a_GO_FORCE_EOF){
       a_go_ctx->gc_flags |= a_GO_IS_EOF;
@@ -1536,7 +1563,8 @@ jinject:
          if(giip->gii_commit){
             if(*linebuf != NULL)
                n_free(*linebuf);
-            histok = !giip->gii_no_history;
+            if(!giip->gii_no_history)
+               f |= a_HISTOK;
             goto jinject; /* (above) */
          }else{
             string = savestrbuf(giip->gii_dat, giip->gii_len);
@@ -1549,28 +1577,36 @@ jforce_stdin:
    n_pstate &= ~n_PS_READLINE_NL;
    iftype = (!(n_psonce & n_PSO_STARTED) ? "LOAD"
           : (n_pstate & n_PS_SOURCING) ? "SOURCE" : "READ");
-   histok = (n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)) ==
-         (n_PSO_INTERACTIVE | n_PSO_STARTED) && !(n_pstate & n_PS_ROBOT);
-   doprompt = !(gif & n_GO_INPUT_FORCE_STDIN) && histok;
-   dotty = (doprompt && !ok_blook(line_editor_disable));
-   if(!doprompt)
+   if(!(n_pstate & n_PS_ROBOT) &&
+         (n_psonce & (n_PSO_INTERACTIVE | n_PSO_STARTED)) ==
+            (n_PSO_INTERACTIVE | n_PSO_STARTED))
+      f |= a_HISTOK;
+   if(!(f & a_HISTOK) || (gif & n_GO_INPUT_FORCE_STDIN))
       gif |= n_GO_INPUT_PROMPT_NONE;
    else{
-      if(!dotty)
-         n_string_creat_auto(&xprompt);
+      f |= a_USE_PROMPT;
+      if(!ok_blook(line_editor_disable))
+         f |= a_USE_MLE;
+      else
+         (void)n_string_creat_auto(&xprompt);
       if(prompt == NULL)
          gif |= n_GO_INPUT_PROMPT_EVAL;
    }
 
    /* Ensure stdout is flushed first anyway (partial lines, maybe?) */
-   if(!dotty && (gif & n_GO_INPUT_PROMPT_NONE))
+   if((gif & n_GO_INPUT_PROMPT_NONE) && !(f & a_USE_MLE))
       fflush(n_stdout);
 
    if(gif & n_GO_INPUT_FORCE_STDIN){
       struct a_go_readctl_ctx *grcp;
+      struct n_dig_msg_ctx *dmcp;
 
-      grcp = n_readctl_overlay;
-      ifile = (grcp == NULL || grcp->grc_fp == NULL) ? n_stdin : grcp->grc_fp;
+      if((dmcp = n_digmsg_read_overlay) != NULL){
+         ifile = dmcp->dmc_fp;
+         f |= a_DIGMSG_OVERLAY;
+      }else if((grcp = n_readctl_read_overlay) == NULL ||
+            (ifile = grcp->grc_fp) == NULL)
+         ifile = n_stdin;
    }else
       ifile = a_go_ctx->gc_file;
    if(ifile == NULL){
@@ -1580,7 +1616,7 @@ jforce_stdin:
    }
 
    for(nold = n = 0;;){
-      if(dotty){
+      if(f & a_USE_MLE){
          assert(ifile == n_stdin);
          if(string != NULL && (n = (int)strlen(string)) > 0){
             if(*linesize > 0)
@@ -1640,6 +1676,8 @@ jforce_stdin:
          break;
 
       /* POSIX says:
+       * TODO This does not take care for current shell quote mode!
+       * TODO Thus "echo '\<NEWLINE HERE> bla' will never work
        *    An unquoted <backslash> at the end of a command line shall
        *    be discarded and the next line shall continue the command */
       if(!(gif & n_GO_INPUT_NL_ESC) || (*linebuf)[n - 1] != '\\')
@@ -1662,7 +1700,7 @@ jforce_stdin:
 
    if(n < 0)
       goto jleave;
-   if(dotty)
+   if(f & a_USE_MLE)
       n_pstate |= n_PS_READLINE_NL;
    (*linebuf)[*linesize = n] = '\0';
 
@@ -1675,11 +1713,15 @@ jleave:
 
    /* TODO We need to special case a_GO_SPLICE, since that is not managed by us
     * TODO but only established from the outside and we need to drop this
-    * TODO overlay context somehow */
-   if(n < 0 && (a_go_ctx->gc_flags & a_GO_SPLICE))
-      a_go_cleanup(a_GO_CLEANUP_TEARDOWN | a_GO_CLEANUP_HOLDALLSIGS);
+    * TODO overlay context somehow; ditto DIGMSG_OVERLAY */
+   if(n < 0){
+      if(f & a_DIGMSG_OVERLAY)
+         n_digmsg_read_overlay = NULL;
+      if(a_go_ctx->gc_flags & a_GO_SPLICE)
+         a_go_cleanup(a_GO_CLEANUP_TEARDOWN | a_GO_CLEANUP_HOLDALLSIGS);
+   }
 
-   if(histok_or_null != NULL && !histok)
+   if(histok_or_null != NULL && !(f & a_HISTOK))
       *histok_or_null = FAL0;
 
    if(!(gif & n_GO_INPUT_HOLDALLSIGS))
@@ -2098,7 +2140,7 @@ c_xcall(void *vp){
       gcp = gcp->gc_outer;
    if((gcp->gc_flags & (a_GO_MACRO | a_GO_MACRO_X_OPTION | a_GO_MACRO_CMD)
          ) != a_GO_MACRO){
-      if(n_poption & n_PO_D_V_VV)
+      if(n_poption & n_PO_D_V)
          n_err(_("`xcall': can only be used inside a macro, using `call'\n"));
       rv = c_call(vp);
       goto jleave;
@@ -2176,7 +2218,7 @@ FL int
 c_readctl(void *vp){
    /* TODO We would need OnForkEvent and then simply remove some internal
     * TODO management; we don't have this, therefore we need global
-    * TODO n_readctl_overlay to be accessible via =NULL, and to make that
+    * TODO n_readctl_read_overlay to be accessible via =NULL, and to make that
     * TODO work in turn we need an instance for default STDIN!  Sigh. */
    static union{
       ui64_t alignme;
@@ -2200,7 +2242,7 @@ c_readctl(void *vp){
    if(a_stdin == NULL){
       a_stdin = (struct a_go_readctl_ctx*)(void*)a.buf;
       a_stdin->grc_name[0] = '-';
-      n_readctl_overlay = a_stdin;
+      n_readctl_read_overlay = a_stdin;
    }
 
    n_pstate_err_no = n_ERR_NONE;
@@ -2232,16 +2274,16 @@ c_readctl(void *vp){
          n_err(_("`readctl': cannot create nor remove -\n"));
          goto jeinval;
       }
-      n_readctl_overlay = a_stdin;
+      n_readctl_read_overlay = a_stdin;
       goto jleave;
    }
 
    /* Try to find a yet existing instance */
-   if((grcp = n_readctl_overlay) != NULL){
+   if((grcp = n_readctl_read_overlay) != NULL){
       for(; grcp != NULL; grcp = grcp->grc_next)
          if(!strcmp(grcp->grc_name, cap->ca_arg.ca_str.s))
             goto jfound;
-      for(grcp = n_readctl_overlay; (grcp = grcp->grc_last) != NULL;)
+      for(grcp = n_readctl_read_overlay; (grcp = grcp->grc_last) != NULL;)
          if(!strcmp(grcp->grc_name, cap->ca_arg.ca_str.s))
             goto jfound;
    }
@@ -2253,10 +2295,10 @@ c_readctl(void *vp){
 
 jfound:
    if(f & a_SET)
-      n_readctl_overlay = grcp;
+      n_readctl_read_overlay = grcp;
    else if(f & a_REMOVE){
-      if(n_readctl_overlay == grcp)
-         n_readctl_overlay = a_stdin;
+      if(n_readctl_read_overlay == grcp)
+         n_readctl_read_overlay = a_stdin;
 
       if(grcp->grc_last != NULL)
          grcp->grc_last->grc_next = grcp->grc_next;
@@ -2316,9 +2358,9 @@ jfound:
          grcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name) +
                cap->ca_arg.ca_str.l +1 + elen +1);
          grcp->grc_last = NULL;
-         if((grcp->grc_next = n_readctl_overlay) != NULL)
+         if((grcp->grc_next = n_readctl_read_overlay) != NULL)
             grcp->grc_next->grc_last = grcp;
-         n_readctl_overlay = grcp;
+         n_readctl_read_overlay = grcp;
          grcp->grc_fp = fp;
          grcp->grc_fd = fd;
          memcpy(grcp->grc_name, cap->ca_arg.ca_str.s, cap->ca_arg.ca_str.l +1);
@@ -2347,7 +2389,7 @@ jeinval:
    goto jleave;
 
 jshow:
-   if((grcp = n_readctl_overlay) == NULL)
+   if((grcp = n_readctl_read_overlay) == NULL)
       fprintf(n_stdout, _("`readctl': no channels registered\n"));
    else{
       while(grcp->grc_last != NULL)
@@ -2356,7 +2398,7 @@ jshow:
       fprintf(n_stdout, _("`readctl': registered channels:\n"));
       for(; grcp != NULL; grcp = grcp->grc_next)
          fprintf(n_stdout, _("%c%s %s%s%s%s\n"),
-            (grcp == n_readctl_overlay ? '*' : ' '),
+            (grcp == n_readctl_read_overlay ? '*' : ' '),
             (grcp->grc_fd != -1 ? _("descriptor") : _("name")),
             n_shexp_quote_cp(grcp->grc_name, FAL0),
             (grcp->grc_expand != NULL ? " (" : n_empty),

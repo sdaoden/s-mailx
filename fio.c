@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
  * Copyright (c) 1980, 1993
@@ -254,134 +255,6 @@ jagain:
 jleave:
    NYD2_LEAVE;
    return rv;
-}
-
-FL void
-setptr(FILE *ibuf, off_t offset)
-{
-   struct message self;
-   char *cp, *linebuf = NULL;
-   char const *cp2;
-   int c, selfcnt = 0;
-   bool_t need_rfc4155, maybe, inhead, from_;
-   size_t linesize = 0, filesize, cnt;
-   NYD_ENTER;
-
-   memset(&self, 0, sizeof self);
-   self.m_flag = MUSED | MNEW | MNEWEST;
-   filesize = mailsize - offset;
-   offset = ftell(mb.mb_otf);
-   need_rfc4155 = ok_blook(mbox_rfc4155);
-   maybe = TRU1;
-   inhead = FAL0;
-
-   for (;;) {
-      if (fgetline(&linebuf, &linesize, &filesize, &cnt, ibuf, 0) == NULL) {
-         self.m_xsize = self.m_size;
-         self.m_xlines = self.m_lines;
-         self.m_content_info = CI_HAVE_HEADER | CI_HAVE_BODY;
-         if (selfcnt > 0)
-            message_append(&self);
-         message_append_null();
-         if (linebuf != NULL)
-            free(linebuf);
-         break;
-      }
-
-#ifdef notdef
-      if (linebuf[0] == '\0')
-         linebuf[0] = '.';
-#endif
-      /* XXX Convert CRLF to LF; this should be rethought in that
-       * XXX CRLF input should possibly end as CRLF output? */
-      if (cnt >= 2 && linebuf[cnt - 1] == '\n' && linebuf[cnt - 2] == '\r')
-         linebuf[--cnt - 1] = '\n';
-      fwrite(linebuf, sizeof *linebuf, cnt, mb.mb_otf);
-      if (ferror(mb.mb_otf)) {
-         n_perr(_("/tmp"), 0);
-         exit(n_EXIT_ERR);
-      }
-      if (linebuf[cnt - 1] == '\n')
-         linebuf[cnt - 1] = '\0';
-      /* TODO In v15 this should use a/the flat MIME parser in order to ignore
-       * TODO "From " when MIME boundaries are active -- whereas this opens
-       * TODO another can of worms, it very likely is better than messing up
-       * TODO MIME because of a "From " line! */
-      if (maybe && linebuf[0] == 'F' &&
-            (from_ = is_head(linebuf, cnt, TRU1)) &&
-            (from_ == TRU1 || !need_rfc4155)) {
-         /* TODO char date[n_FROM_DATEBUF];
-          * TODO extract_date_from_from_(linebuf, cnt, date);
-          * TODO self.m_time = 10000; */
-         if (from_ == TRUM1) {
-            if (n_poption & n_PO_D_V)
-               n_err(_("Invalid MBOX \"From_ line\": %.*s\n"),
-                  (int)cnt, linebuf);
-            else if (!(mb.mb_active & MB_FROM__WARNED))
-               n_err(_("MBOX mailbox contains non-conforming From_ line(s)!\n"
-                  "  Message boundaries may have been falsely detected!\n"
-                  "  Setting variable *mbox-rfc4155* and reopen should improve "
-                     "the result.\n"
-                  "  If so, make changes permanent: \"copy * SOME-FILE\".  "
-                     "Then unset *mbox-rfc4155*\n"));
-            mb.mb_active |= MB_FROM__WARNED;
-         }
-         self.m_xsize = self.m_size;
-         self.m_xlines = self.m_lines;
-         self.m_content_info = CI_HAVE_HEADER | CI_HAVE_BODY;
-         if (selfcnt++ > 0)
-            message_append(&self);
-         msgCount++;
-         self.m_flag = MUSED | MNEW | MNEWEST;
-         self.m_size = 0;
-         self.m_lines = 0;
-         self.m_block = mailx_blockof(offset);
-         self.m_offset = mailx_offsetof(offset);
-         inhead = TRU1;
-      } else if (linebuf[0] == 0) {
-         inhead = FAL0;
-      } else if (inhead) {
-         for (cp = linebuf, cp2 = "status";; ++cp) {
-            if ((c = *cp2++) == 0) {
-               while (c = *cp++, whitechar(c))
-                  ;
-               if (cp[-1] != ':')
-                  break;
-               while ((c = *cp++) != '\0')
-                  if (c == 'R')
-                     self.m_flag |= MREAD;
-                  else if (c == 'O')
-                     self.m_flag &= ~MNEW;
-               break;
-            }
-            if (*cp != c && *cp != upperconv(c))
-               break;
-         }
-         for (cp = linebuf, cp2 = "x-status";; ++cp) {
-            if ((c = *cp2++) == 0) {
-               while ((c = *cp++, whitechar(c)))
-                  ;
-               if (cp[-1] != ':')
-                  break;
-               while ((c = *cp++) != '\0')
-                  if (c == 'F')
-                     self.m_flag |= MFLAGGED;
-                  else if (c == 'A')
-                     self.m_flag |= MANSWERED;
-                  else if (c == 'T')
-                     self.m_flag |= MDRAFTED;
-               break;
-            }
-            if (*cp != c && *cp != upperconv(c))
-               break;
-         }
-      }
-      offset += cnt;
-      self.m_size += cnt;
-      ++self.m_lines;
-      maybe = (linebuf[0] == 0);
-   }
-   NYD_LEAVE;
 }
 
 FL off_t

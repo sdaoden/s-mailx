@@ -1,27 +1,12 @@
-#@ make.rc defined the set of features and values used.
+#@ make.rc defines the set of features and values used.
 #@ Reading INSTALL first is beneficial.
 #@
 #@ - Choosing a predefined CONFIG= disallows further option fine-tuning.
 #@   (With some exceptions, e.g., OPT_DEBUG.)
 #@
-#@ - Values have a VAL_ prefix, and are assigned strings, for example
-#@       VAL_PREFIX="/usr/local"
-#@
-#@   Values which are only used during configuration, building, and / or
-#@   installation have no prefix, e.g., DESTDIR, VERBOSE, awk, sed;
-#@
-#@   Some values exist which offer "multiple choice", e.g., VAL_RANDOM
-#@   (without accompanying feature option) and VAL_IDNA (with OPT_IDNA).
-#@   This is used if different implementations exist, and can then be
-#@   used to choose the desired one(s).
-#@   The value is interpreted as a whitespace separated list of strings,
-#@   like "idn2 idn idnkit", case is ignored, order is important.
-#@   The special strings "all" and "any" as well as the empty value
-#@   are wildcard matches; if any entry in the list is a wildcard match,
-#@   the rest of the list is ignored.
-#@   The special string "error" will abort configuration once its list
-#@   position is reached; this is only supported if documented, and not
-#@   with an accompanying OPT_ (which then offers "require", as below).
+#@ - Specifying settings on the command line will take precedence over
+#@   the variables in here (correctly triggering build updates as
+#@   necessary, too).
 #@
 #@ - Features / options have an OPT_ prefix and usually need to be
 #@   assigned a boolean value, as in OPT_IDNA=yes.  Booleans are 1/0,
@@ -31,9 +16,24 @@
 #@   cause configuration to fail if the requested condition cannot be
 #@   satisfied.  This functionality is available where documented.
 #@
-#@ - Specifying settings on the command line will take precedence over
-#@   the variables in here (correctly triggering build updates as
-#@   necessary, too).
+#@ - Values have a VAL_ prefix, and are assigned strings, for example
+#@       VAL_PREFIX="/usr/local"
+#@
+#@   Values which are only used during configuration, building, and / or
+#@   installation have no prefix, e.g., DESTDIR, VERBOSE, awk, sed etc.
+#@
+#@   Some values exist which offer "multiple choice", e.g., VAL_RANDOM
+#@   (without accompanying feature option) and VAL_IDNA (with OPT_IDNA).
+#@   This is used if different implementations exist, and can then be
+#@   used to choose the desired one(s).
+#@   The value must be a comma separated list of strings, for example
+#@   "idn2,idn,idnkit", the case is ignored, but the order is important.
+#@   The special strings "all" and "any" as well as the empty value
+#@   are wildcard matches; if any entry in the list is a wildcard match,
+#@   the entire list is ignored.
+#@   The special string "error" will abort configuration once its list
+#@   position is reached; this is only supported if documented, and not
+#@   with an accompanying OPT_ (which then offers "require", as above).
 #@
 #@ - This file is parsed by the shell: it is in sh(1), not in make(1)
 #@   syntax.  Evaluation occurs *after* it has been read, so command
@@ -137,17 +137,16 @@ VAL_MIME_TYPES_SYS=/etc/mime.types
 # The following tools may be provided a.k.a. overwritten,
 # `command -v NAME` is used to query the utility otherwise:
 #  MAKE=, STRIP=, awk=, basename=, cat=, chmod=, cp=, cmp=, cksum=,
-#     grep=, mkdir=, mv=, rm=, sed=, sort=, tee=, tr=, uname=
+#     grep=, mkdir=, mv=, pwd=, rm=, sed=, sort=, tee=, tr=, uname=
 # Usually in administrator paths:
 #  chown= [$OPT_DOTLOCK]
 # Note that awk(1), rm(1), tr(1) and uname(1) are needed before this
 # file is read, all other utilities will be checked afterwards only.
 # uname(1) is in fact needed before the initial OS setup and thus no OS
 # specific adjustments (e.g., $PATH) have been performed yet, but its
-# use can be circumvented by setting $OS (uname -s), $OSENV (uname
-# -sm) and $OSFULLSPEC (uname -a: this is not baked into the binary, it
-# is only used to recognize build environment changes).
-# $OS must be all-lowercase.
+# use can be circumvented by setting $OS (uname -s) and $OSFULLSPEC
+# (uname -a: this is not baked into the binary, it is only used to
+# recognize build environment changes).
 # Due to the evaluation order of the build system all those programs are
 # usually needed, but by setting any of the variables to true(1), as in
 # chown=/usr/bin/true, availability of unneeded programs can be faked.
@@ -205,8 +204,11 @@ OPT_AMALGAMATION=no
 # This should usually be enabled; it can be "require"d.
 OPT_ICONV=yes
 
+# Whether support for Maildir E-mail directories shall be enabled.
+OPT_MAILDIR=yes
+
 # Major switch to toggle *all* network related protocols
-# (POP3,SMTP,IMAP) and related/dependent stuff (GSS-API,SSL);
+# (POP3,SMTP,IMAP) and related/dependent stuff (GSS-API,TLS);
 # can be "require"d.
 OPT_SOCKETS=yes
 
@@ -216,18 +218,18 @@ OPT_SOCKETS=yes
 # verification, en- and decryption.
 # This needs the OpenSSL (https://www.openssl.org) or LibreSSL
 # (http://www.libressl.org) libraries.
-OPT_SSL=yes
+OPT_TLS=yes
 
-# If $OPT_SSL: shall S-nail (try to) use mechanisms to support more
+# If $OPT_TLS: shall S-nail (try to) use mechanisms to support more
 # digest and cipher algorithms than the few that are documented?  For
 # S/MIME *smime-cipher* for example this will cause
 # EVP_get_cipherbyname(3) to be tried shall the (S-nail-) built-in
 # knowledge not suffice to understand the user request.  Will create
 # a large statically linked binary; dynamically linked the costs only
 # arise once the extended lookup is actually needed (the first time).
-# Some SSL libraries will always support all algorithms.
+# Some TLS libraries will always support all algorithms.
 # This can be "require"d.
-OPT_SSL_ALL_ALGORITHMS=yes
+OPT_TLS_ALL_ALGORITHMS=yes
 
 # If $OPT_SOCKETS: support for SMTP protocol?
 # (Directly sending mails over the network)  Can be "require"d.
@@ -278,7 +280,7 @@ OPT_AGENT=yes
 # . idn - GNU Libidn for IDNA 2003, same,
 # OPT_IDNA can be "require"d.
 OPT_IDNA=yes
-VAL_IDNA="idnkit idn2 idn"
+VAL_IDNA="idnkit,idn2,idn"
 
 # IMAP-style SEARCH expressions can be supported.  This addressing mode
 # is available with all types of folders; for folders not located on
@@ -290,14 +292,14 @@ OPT_IMAP_SEARCH=yes
 # No need for somewhat strong random is necessary.
 # The following will be used as sole PRG implementations.
 # . arc4 - we search for arc4random(3).
-# . ssl - if OPT_SSL is available the PRG of the SSL library can be used.
+# . tls - if OPT_TLS is available the PRG of the TLS library can be used.
 # The following will only be used to seed our builtin ARC4 PRG.
 # . libgetrandom - getrandom(3) via C library.
 # . sysgetrandom - getrandom(2) via SYSCALL.
 # . urandom - reading from /dev/urandom.
 # . builtin - a builtin ARC4 implementation with unscientific seeding.
 # . (error - bail out)
-VAL_RANDOM="arc4 ssl libgetrandom sysgetrandom urandom builtin"
+VAL_RANDOM="arc4,tls,libgetrandom,sysgetrandom,urandom,builtin"
 
 # Regular expression (re_format(7)) support for searches, conditional
 # expressions etc., we use the extended ones, then; can be "require"d.
@@ -423,12 +425,14 @@ OPT_NOEXTMD5=no
 # With $OPT_AUTOCC we can make use of the ASan AddressSanitizer and ASan
 # MemorySanitizer of Google
 # (https://github.com/google/sanitizers/wiki/AddressSanitizer).
+# Also USAN (https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html).
 # These are definetely only useful for debugging.
 # Also, external libraries are often problematic (e.g., ncursesw), and
 # ASAN_MEMORY of the tried clang 4.0.0 (4.0.0-2 of ArchLinux) was faulty.
 # Can be "require"d.
 OPT_ASAN_ADDRESS=no
 OPT_ASAN_MEMORY=no
+OPT_USAN=no
 
 # With $OPT_AUTOCC we will use stack protector guards shall the
 # detected compiler support them; this goes in line with our own (heap)

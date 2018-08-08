@@ -7,6 +7,7 @@
  *@ TODO See cmd-tab.h for sort and speedup TODOs.
  *
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause TODO ISC
  */
 /* Command table and getrawlist() also:
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
@@ -75,7 +76,7 @@ static struct n_cmd_desc const a_ctab_ctable[] = {
 static struct n_cmd_desc const a_ctab_ctable_plus[] = {
    { n_ns, (int(*)(void*))-1, n_CMD_ARG_TYPE_STRING, 0, 0, NULL
       DS(N_("Comment command: ignore remaining (continuable) line")) },
-   { "-", (int(*)(void*))-1, n_CMD_ARG_TYPE_WYSH, 0, 0, NULL
+   { n_hy, (int(*)(void*))-1, n_CMD_ARG_TYPE_WYSH, 0, 0, NULL
       DS(N_("Print out the preceding message")) }
 };
 #undef DS
@@ -94,15 +95,15 @@ a_ctab_cmdinfo(struct n_cmd_desc const *cdp){
    case n_CMD_ARG_TYPE_MSGLIST:
       cp = N_("message-list");
       break;
+   case n_CMD_ARG_TYPE_NDMLIST:
+      cp = N_("message-list (without default)");
+      break;
    case n_CMD_ARG_TYPE_STRING:
    case n_CMD_ARG_TYPE_RAWDAT:
       cp = N_("string data");
       break;
    case n_CMD_ARG_TYPE_RAWLIST:
       cp = N_("old-style quoting");
-      break;
-   case n_CMD_ARG_TYPE_NDMLIST:
-      cp = N_("message-list (no default)");
       break;
    case n_CMD_ARG_TYPE_WYRA:
       cp = N_("`wysh' for sh(1)ell-style quoting");
@@ -114,34 +115,47 @@ a_ctab_cmdinfo(struct n_cmd_desc const *cdp){
       break;
    default:
    case n_CMD_ARG_TYPE_ARG:{
-      ui32_t flags;
+      ui32_t flags, xflags;
       size_t i;
       struct n_cmd_arg_desc const *cadp;
 
       rv = n_string_push_cp(rv, _("argument tokens: "));
 
       for(cadp = cdp->cd_cadp, i = 0; i < cadp->cad_no; ++i){
+         xflags = flags = cadp->cad_ent_flags[i][0];
+jfakeent:
          if(i != 0)
             rv = n_string_push_c(rv, ',');
 
-         flags = cadp->cad_ent_flags[i][0];
          if(flags & n_CMD_ARG_DESC_OPTION)
             rv = n_string_push_c(rv, '[');
          if(flags & n_CMD_ARG_DESC_GREEDY)
             rv = n_string_push_c(rv, ':');
          switch(flags & n__CMD_ARG_DESC_TYPE_MASK){
-         case n_CMD_ARG_DESC_STRING:
-            rv = n_string_push_cp(rv, _("raw"));
-            break;
          default:
-         case n_CMD_ARG_DESC_WYSH:
-            rv = n_string_push_cp(rv, _("eval"));
+         case n_CMD_ARG_DESC_SHEXP:
+            rv = n_string_push_cp(rv, _("(shell-)token"));
             break;
+         case n_CMD_ARG_DESC_MSGLIST:
+            rv = n_string_push_cp(rv, _("(shell-)msglist"));
+            break;
+         case n_CMD_ARG_DESC_NDMSGLIST:
+            rv = n_string_push_cp(rv, _("(shell-)msglist (no default)"));
+            break;
+         case n_CMD_ARG_DESC_MSGLIST_AND_TARGET:
+            rv = n_string_push_cp(rv, _("(shell-)msglist"));
+            ++i;
+            xflags = n_CMD_ARG_DESC_SHEXP;
          }
          if(flags & n_CMD_ARG_DESC_GREEDY)
             rv = n_string_push_c(rv, ':');
          if(flags & n_CMD_ARG_DESC_OPTION)
             rv = n_string_push_c(rv, ']');
+
+         if(xflags != flags){
+            flags = xflags;
+            goto jfakeent;
+         }
       }
       cp = NULL;
       }break;
@@ -158,17 +172,25 @@ a_ctab_cmdinfo(struct n_cmd_desc const *cdp){
       rv = n_string_push_cp(rv, _(" | *!*"));
 
    if(cdp->cd_caflags & n_CMD_ARG_A)
-      rv = n_string_push_cp(rv, _(" | needs box"));
-   if(cdp->cd_caflags & n_CMD_ARG_I)
-      rv = n_string_push_cp(rv, _(" | ok: batch/interactive"));
-   if(cdp->cd_caflags & n_CMD_ARG_M)
-      rv = n_string_push_cp(rv, _(" | ok: send mode"));
-   if(cdp->cd_caflags & n_CMD_ARG_R)
-      rv = n_string_push_cp(rv, _(" | not ok: compose mode"));
-   if(cdp->cd_caflags & n_CMD_ARG_S)
-      rv = n_string_push_cp(rv, _(" | not ok: startup"));
-   if(cdp->cd_caflags & n_CMD_ARG_X)
-      rv = n_string_push_cp(rv, _(" | ok: subprocess"));
+      rv = n_string_push_cp(rv, _(" | needs-box"));
+
+   if(cdp->cd_caflags & (n_CMD_ARG_I | n_CMD_ARG_M | n_CMD_ARG_X)){
+      rv = n_string_push_cp(rv, _(" | ok:"));
+      if(cdp->cd_caflags & n_CMD_ARG_I)
+         rv = n_string_push_cp(rv, _(" batch/interactive"));
+      if(cdp->cd_caflags & n_CMD_ARG_M)
+         rv = n_string_push_cp(rv, _(" send-mode"));
+      if(cdp->cd_caflags & n_CMD_ARG_X)
+         rv = n_string_push_cp(rv, _(" subprocess"));
+   }
+
+   if(cdp->cd_caflags & (n_CMD_ARG_R | n_CMD_ARG_S)){
+      rv = n_string_push_cp(rv, _(" | not ok:"));
+      if(cdp->cd_caflags & n_CMD_ARG_R)
+         rv = n_string_push_cp(rv, _(" compose-mode"));
+      if(cdp->cd_caflags & n_CMD_ARG_S)
+         rv = n_string_push_cp(rv, _(" startup"));
+   }
 
    if(cdp->cd_caflags & n_CMD_ARG_G)
       rv = n_string_push_cp(rv, _(" | gabby"));
@@ -323,25 +345,25 @@ jredo:
 #ifdef HAVE_UISTRINGS
       fputs(n_progname, n_stdout);
       fputs(_(
-         " commands -- <msglist> denotes message specifications,\n"
-         "e.g., 1-5, :n or . (current, the \"dot\"), separated by spaces:\n"),
+         " commands -- <msglist> denotes message specification tokens,\n"
+         "e.g., 1-5, :n or . (current, the \"dot\"), separated by *ifs*:\n"),
          n_stdout);
       fputs(_(
 "\n"
 "type <msglist>         type (`print') messages (honour `headerpick' etc.)\n"
 "Type <msglist>         like `type' but always show all headers\n"
 "next                   goto and type next message\n"
-"from <msglist>         (search and) print header summary for the given list\n"
-"headers                header summary for messages surrounding \"dot\"\n"
+"headers                header summary ... for messages surrounding \"dot\"\n"
+"search <msglist>       ... for the given list (alias for `from')\n"
 "delete <msglist>       delete messages (can be `undelete'd)\n"),
          n_stdout);
 
       fputs(_(
 "\n"
 "save <msglist> folder  append messages to folder and mark as saved\n"
-"copy <msglist> folder  like `save', but don't mark them (`move' moves)\n"
+"copy <msglist> folder  like `save', but do not mark them (`move' moves)\n"
 "write <msglist> file   write message contents to file (prompts for parts)\n"
-"Reply <msglist>        reply to message senders only\n"
+"Reply <msglist>        reply to message sender(s) only\n"
 "reply <msglist>        like `Reply', but address all recipients\n"
 "Lreply <msglist>       forced mailing list `reply' (see `mlist')\n"),
          n_stdout);
@@ -402,9 +424,9 @@ n_cmd_default(void){
 
 FL bool_t
 n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
-   struct n_cmd_arg ncap, *lcap;
+   struct n_cmd_arg ncap, *lcap, *target_argp, **target_argpp, *cap;
    struct str shin_orig, shin;
-   bool_t addca, greedyjoin;
+   bool_t stoploop, greedyjoin;
    void const *cookie;
    size_t cad_idx, parsed_args;
    struct n_cmd_arg_desc const *cadp;
@@ -419,16 +441,47 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
       for(cadp = cacp->cac_desc, cad_idx = 0;
             cad_idx < cadp->cad_no; ++cad_idx){
          assert(cadp->cad_ent_flags[cad_idx][0] & n__CMD_ARG_DESC_TYPE_MASK);
+
+         /* TODO n_CMD_ARG_DESC_MSGLIST+ may only be used as the last entry */
+         assert(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
+            cad_idx + 1 == cadp->cad_no);
+         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+               n_CMD_ARG_DESC_NDMSGLIST) || cad_idx + 1 == cadp->cad_no);
+         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+               n_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
+            cad_idx + 1 == cadp->cad_no);
+
          assert(!opt_seen ||
             (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
          if(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION)
             opt_seen = TRU1;
          assert(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY) ||
             cad_idx + 1 == cadp->cad_no);
+
+         /* TODO n_CMD_ARG_DESC_MSGLIST+ can only be n_CMD_ARG_DESC_GREEDY.
+          * TODO And they may not be n_CMD_ARG_DESC_OPTION */
+         assert(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
+            (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY));
+         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+               n_CMD_ARG_DESC_NDMSGLIST) ||
+            (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY));
+         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+               n_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
+            (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY));
+
+         assert(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
+            !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
+         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+               n_CMD_ARG_DESC_NDMSGLIST) ||
+            !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
+         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+               n_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
+            !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
       }
    }
-#endif
+#endif /* HAVE_DEBUG */
 
+   n_pstate_err_no = n_ERR_NONE;
    shin.s = n_UNCONST(cacp->cac_indat); /* "logical" only */
    shin.l = (cacp->cac_inlen == UIZ_MAX ? strlen(shin.s) : cacp->cac_inlen);
    shin_orig = shin;
@@ -439,42 +492,28 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
    parsed_args = 0;
    greedyjoin = FAL0;
 
-   for(cadp = cacp->cac_desc, cad_idx = 0; shin.l > 0 && cad_idx < cadp->cad_no;
-         ++cad_idx){
+   /* TODO We need to test >= 0 in order to deal with MSGLIST arguments, as
+    * TODO those use getmsglist() and that needs to deal with that situation.
+    * TODO In the future that should change; see jmsglist_related TODO below */
+   for(cadp = cacp->cac_desc, cad_idx = 0;
+         /*shin.l >= 0 &&*/ cad_idx < cadp->cad_no; ++cad_idx){
 jredo:
       memset(&ncap, 0, sizeof ncap);
       ncap.ca_indat = shin.s;
       /* >ca_inline once we know */
       memcpy(&ncap.ca_ent_flags[0], &cadp->cad_ent_flags[cad_idx][0],
          sizeof ncap.ca_ent_flags);
-      addca = FAL0;
+      target_argpp = NULL;
+      stoploop = FAL0;
 
       switch(ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK){
-      case n_CMD_ARG_DESC_STRING:{ /* TODO \ escaping? additional type!? */
-         char /*const*/ *cp = shin.s;
-         size_t i = shin.l;
-
-         while(i > 0 && blankspacechar(*cp))
-            ++cp, --i;
-
-         ncap.ca_arg.ca_str.s = cp;
-         while(i > 0 && !blankspacechar(*cp))
-            ++cp, --i;
-         ncap.ca_arg.ca_str.s = savestrbuf(ncap.ca_arg.ca_str.s,
-               ncap.ca_arg.ca_str.l = PTR2SIZE(cp - ncap.ca_arg.ca_str.s));
-
-         while(i > 0 && blankspacechar(*cp))
-            ++cp, --i;
-         ncap.ca_inlen = PTR2SIZE(cp - ncap.ca_indat);
-         shin.s = cp;
-         shin.l = i;
-         addca = TRU1;
-         }break;
       default:
-      case n_CMD_ARG_DESC_WYSH:{
+      case n_CMD_ARG_DESC_SHEXP:{
          struct n_string shou, *shoup;
          enum n_shexp_state shs;
          ui32_t addflags;
+
+         if(shin.l == 0) goto jmsglist_related; /* TODO */
 
          if(cad_idx == cadp->cad_no - 1 ||
                (cadp->cad_ent_flags[cad_idx + 1][0] & n_CMD_ARG_DESC_OPTION))
@@ -505,54 +544,118 @@ jredo:
                (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_HONOUR_STOP)){
             if(!(shs & n_SHEXP_STATE_OUTPUT))
                goto jleave;
-            addca = TRUM1;
-         }else
-            addca = TRU1;
+            stoploop = TRU1;
+         }else if(!(shs & n_SHEXP_STATE_OUTPUT)) /* XXX Is this right? */
+            goto jerr;
          }break;
+      case n_CMD_ARG_DESC_MSGLIST_AND_TARGET:
+         target_argpp = &target_argp;
+         /* FALLTHRU */
+      case n_CMD_ARG_DESC_MSGLIST:
+      case n_CMD_ARG_DESC_NDMSGLIST:
+         /* TODO _MSGLIST yet at end and greedy only (fast hack).
+          * TODO And consumes too much memory */
+         assert(shin.s[shin.l] == '\0');
+         if(n_getmsglist(shin.s, (ncap.ca_arg.ca_msglist =
+                  n_autorec_calloc(msgCount +1, sizeof *ncap.ca_arg.ca_msglist)
+               ), cacp->cac_msgflag, target_argpp) < 0){
+            n_pstate_err_no = n_ERR_INVAL; /* XXX should come from getmsglist*/
+            goto jerr;
+         }
+
+         if(ncap.ca_arg.ca_msglist[0] == 0){
+            ui32_t e;
+
+            switch(ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK){
+            case n_CMD_ARG_DESC_MSGLIST_AND_TARGET:
+            case n_CMD_ARG_DESC_MSGLIST:
+               if((ncap.ca_arg.ca_msglist[0] = first(cacp->cac_msgflag,
+                     cacp->cac_msgmask)) == 0){
+                  if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
+                        (n_poption & n_PO_D_V))
+                     n_err(_("No applicable messages\n"));
+
+                  e = n_CMD_ARG_DESC_TO_ERRNO(ncap.ca_ent_flags[0]);
+                  if(e == 0)
+                     e = n_ERR_NODATA;
+                  n_pstate_err_no = e;
+                  goto jerr;
+               }
+               ncap.ca_arg.ca_msglist[1] = 0;
+
+               /* TODO For the MSGLIST_AND_TARGET case an entirely empty input
+                * TODO results in no _TARGET argument: ensure it is there! */
+               if(target_argpp != NULL && (cap = *target_argpp) == NULL){
+                  cap = n_autorec_calloc(1, sizeof *cap);
+                  cap->ca_arg.ca_str.s = n_UNCONST(n_empty);
+                  *target_argpp = cap;
+               }
+               /* FALLTHRU */
+            default:
+               break;
+            }
+         }else if((ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE
+               ) && ncap.ca_arg.ca_msglist[1] != 0){
+            if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
+                  (n_poption & n_PO_D_V))
+               n_err(_("Cannot specify multiple messages at once\n"));
+            n_pstate_err_no = n_ERR_NOTSUP;
+            goto jerr;
+         }
+         shin.l = 0;
+         stoploop = TRU1; /* XXX Asserted to be last above! */
+         break;
       }
       ++parsed_args;
 
-      if(addca){
-         if(greedyjoin == TRU1){ /* TODO speed this up! */
-            char *cp;
-            size_t i;
+      if(greedyjoin == TRU1){ /* TODO speed this up! */
+         char *cp;
+         size_t i;
 
-            assert(lcap != NULL);
-            i = lcap->ca_arg.ca_str.l;
-            lcap->ca_arg.ca_str.l += 1 + ncap.ca_arg.ca_str.l;
-            cp = salloc(lcap->ca_arg.ca_str.l +1);
-            memcpy(cp, lcap->ca_arg.ca_str.s, i);
-            lcap->ca_arg.ca_str.s = cp;
-            cp[i++] = ' ';
-            memcpy(&cp[i], ncap.ca_arg.ca_str.s, ncap.ca_arg.ca_str.l +1);
-         }else{
-            struct n_cmd_arg *cap;
+         assert((ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK
+            ) != n_CMD_ARG_DESC_MSGLIST);
+         assert(lcap != NULL);
+         assert(target_argpp == NULL);
+         i = lcap->ca_arg.ca_str.l;
+         lcap->ca_arg.ca_str.l += 1 + ncap.ca_arg.ca_str.l;
+         cp = n_autorec_alloc(lcap->ca_arg.ca_str.l +1);
+         memcpy(cp, lcap->ca_arg.ca_str.s, i);
+         lcap->ca_arg.ca_str.s = cp;
+         cp[i++] = ' ';
+         memcpy(&cp[i], ncap.ca_arg.ca_str.s, ncap.ca_arg.ca_str.l +1);
+      }else{
+         cap = n_autorec_alloc(sizeof *cap);
+         memcpy(cap, &ncap, sizeof ncap);
+         if(lcap == NULL)
+            cacp->cac_arg = cap;
+         else
+            lcap->ca_next = cap;
+         lcap = cap;
+         ++cacp->cac_no;
 
-            cap = salloc(sizeof *cap);
-            memcpy(cap, &ncap, sizeof ncap);
-            if(lcap == NULL)
-               cacp->cac_arg = cap;
-            else
-               lcap->ca_next = cap;
-            lcap = cap;
-            ++cacp->cac_no;
+         if(target_argpp != NULL){
+            lcap->ca_next = cap = *target_argpp;
+            if(cap != NULL){
+               lcap = cap;
+               ++cacp->cac_no;
+            }
          }
-
-         if(addca == TRUM1)
-            goto jleave;
       }
+
+      if(stoploop)
+         goto jleave;
 
       if((shin.l > 0 || cookie != NULL) &&
             (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_GREEDY)){
          if(!greedyjoin)
             greedyjoin = ((ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_GREEDY_JOIN) &&
-                     (ncap.ca_ent_flags[0] &
-                        (n_CMD_ARG_DESC_STRING | n_CMD_ARG_DESC_WYSH)))
+                     (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_SHEXP))
                   ? TRU1 : TRUM1;
          goto jredo;
       }
    }
 
+jmsglist_related:
    if(cad_idx < cadp->cad_no &&
          !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION))
       goto jerr;
@@ -562,20 +665,27 @@ jleave:
    NYD_LEAVE;
    return (lcap != NULL);
 
-jerr:{
-      size_t i;
+jerr:
+   if(n_pstate_err_no == n_ERR_NONE){
+      n_pstate_err_no = n_ERR_INVAL;
 
-      for(i = 0; (i < cadp->cad_no &&
-            !(cadp->cad_ent_flags[i][0] & n_CMD_ARG_DESC_OPTION)); ++i)
-         ;
+      if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
+            (n_poption & n_PO_D_V)){
+         size_t i;
 
-      n_err(_("`%s': parsing stopped after %" PRIuZ " arguments "
-            "(need %" PRIuZ "%s)\n"
-            "     Input: %.*s\n"
-            "   Stopped: %.*s\n"),
-         cadp->cad_name, parsed_args, i, (i == cadp->cad_no ? n_empty : "+"),
-         (int)shin_orig.l, shin_orig.s,
-         (int)shin.l, shin.s);
+         for(i = 0; (i < cadp->cad_no &&
+               !(cadp->cad_ent_flags[i][0] & n_CMD_ARG_DESC_OPTION)); ++i)
+            ;
+
+         n_err(_("`%s': parsing stopped after %" PRIuZ " arguments "
+               "(need %" PRIuZ "%s)\n"
+               "     Input: %.*s\n"
+               "   Stopped: %.*s\n"),
+            cadp->cad_name, parsed_args,
+               i, (i == cadp->cad_no ? n_empty : "+"),
+            (int)shin_orig.l, shin_orig.s,
+            (int)shin.l, shin.s);
+      }
    }
    lcap = NULL;
    goto jleave;
@@ -773,9 +883,6 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
             }
 
             if(shs & n_SHEXP_STATE_OUTPUT){
-               if(shs & n_SHEXP_STATE_CONTROL)
-                  n_pstate |= n_PS_WYSHLIST_SAW_CONTROL;
-
                res_dat[res_no++] = n_string_cp(&store);
                n_string_drop_ownership(&store);
             }

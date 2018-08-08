@@ -4,6 +4,7 @@
  *@ TODO Add cache for "the youngest" two or three n_MEMORY_AUTOREC_SIZE arenas
  *
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -38,8 +39,8 @@
  *
  * AutoReclaimedStorage memory is the follow-up to the historical "stringdope"
  * allocator from 1979 (see [timeline:a7342d9]:src/Mail/strings.c), it is
- * a steadily growing pool (but _relax_hold()..[:_relax_unroll():]..relax_gut()
- * can be used to reduce pressure) until n_memory_reset() time.
+ * a steadily growing pool (but _autorec_relax_create() .. [:_relax_unroll():]
+ * ..autorec_relax_gut() will reduce pressure) until n_memory_reset() time.
  *
  * LastOutFirstIn memory is meant as an alloca(3) replacement but which requires
  * lofi_free()ing pointers (otherwise growing until n_memory_reset()).
@@ -236,6 +237,7 @@ union a_memory_ptr{
 
 struct a_memory_ars_ctx{
    struct a_memory_ars_ctx *mac_outer;
+   struct a_memory_ars_ctx *mac_outer_save;
    struct a_memory_ars_buffer *mac_top;   /* Alloc stack */
    struct a_memory_ars_buffer *mac_full;  /* Alloc stack, cpl. filled */
    size_t mac_recur;                      /* _relax_create() recursion */
@@ -462,21 +464,28 @@ n_memory_pool_fixate(void){
 }
 
 FL void
-n_memory_pool_push(void *vp){
+n_memory_pool_push(void *vp, bool_t init){
    struct a_memory_ars_ctx *macp;
    NYD_ENTER;
+
+   macp = vp;
+
+   if(init){
+      memset(macp, 0, sizeof *macp);
+   }
+   assert(macp->mac_outer_save == NULL);
 
    if(n_go_data->gdc_mempool == NULL)
       n_go_data->gdc_mempool = n_go_data->gdc__mempool_buf;
 
-   memset(macp = vp, 0, sizeof *macp);
+   macp->mac_outer_save = macp->mac_outer;
    macp->mac_outer = n_go_data->gdc_mempool;
    n_go_data->gdc_mempool = macp;
    NYD_LEAVE;
 }
 
 FL void
-n_memory_pool_pop(void *vp){
+n_memory_pool_pop(void *vp, bool_t gut){
    struct a_memory_ars_buffer *mabp;
    struct a_memory_ars_ctx *macp;
    NYD_ENTER;
@@ -484,40 +493,57 @@ n_memory_pool_pop(void *vp){
    n_memory_check();
 
    if((macp = vp) == NULL){
+      assert(gut);
       macp = n_go_data->gdc_mempool;
       assert(macp != NULL);
    }else{
       /* XXX May not be ARS top upon jump */
       while(n_go_data->gdc_mempool != macp){
+         assert(gut);
          DBG( n_err("ARS pop %p to reach freed context\n",
             n_go_data->gdc_mempool); )
-         n_memory_pool_pop(n_go_data->gdc_mempool);
+         n_memory_pool_pop(n_go_data->gdc_mempool, gut);
       }
    }
    n_go_data->gdc_mempool = macp->mac_outer;
+   macp->mac_outer = macp->mac_outer_save;
+   macp->mac_outer_save = NULL;
 
-   a_memory_ars_reset(macp);
-   assert(macp->mac_full == NULL);
-   assert(macp->mac_huge == NULL);
+   if(gut){
+      a_memory_ars_reset(macp);
+      assert(macp->mac_full == NULL);
+      assert(macp->mac_huge == NULL);
 
-   mabp = macp->mac_top;
-   macp->mac_top = NULL;
-   while(mabp != NULL){
-      vp = mabp;
-      mabp = mabp->mab_last;
-      n_free(vp);
-   }
+      mabp = macp->mac_top;
+      macp->mac_top = NULL;
+      while(mabp != NULL){
+         vp = mabp;
+         mabp = mabp->mab_last;
+         n_free(vp);
+      }
 
-   /* We (may) have kept one buffer for our pseudo alloca(3) */
-   if((vp = macp->mac_lofi) != NULL){
-      assert(macp->mac_lofi->mal_last == NULL);
-      macp->mac_lofi = NULL;
+      /* We (may) have kept one buffer for our pseudo alloca(3) */
+      if((vp = macp->mac_lofi) != NULL){
+         assert(macp->mac_lofi->mal_last == NULL);
+         macp->mac_lofi = NULL;
 #ifdef HAVE_MEMORY_DEBUG
-      --a_memory_lofi_bcur;
+         --a_memory_lofi_bcur;
 #endif
-      n_free(vp);
+         n_free(vp);
+      }
    }
    NYD_LEAVE;
+}
+
+FL void *
+n_memory_pool_top(void){
+   void *rv;
+   NYD2_IN;
+
+   if((rv = n_go_data->gdc_mempool) == NULL)
+      rv = n_go_data->gdc_mempool = n_go_data->gdc__mempool_buf;
+   NYD2_OU;
+   return rv;
 }
 
 #ifndef HAVE_MEMORY_DEBUG
@@ -917,7 +943,7 @@ n_autorec_relax_create(void){
       for(mabp = macp->mac_full; mabp != NULL; mabp = mabp->mab_last)
          mabp->mab_relax = mabp->mab_caster;
    }
-#ifdef HAVE_DEVEL
+#if 0 && defined HAVE_DEVEL
    else
       n_err("n_autorec_relax_create(): recursion >0\n");
 #endif
@@ -946,7 +972,7 @@ n_autorec_relax_gut(void){
       for(mabp = macp->mac_full; mabp != NULL; mabp = mabp->mab_last)
          mabp->mab_relax = NULL;
    }
-#ifdef HAVE_DEVEL
+#if 0 && defined HAVE_DEVEL
    else
       n_err("n_autorec_relax_unroll(): recursion >0\n");
 #endif

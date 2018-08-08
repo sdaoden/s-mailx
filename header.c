@@ -4,6 +4,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
  * Copyright (c) 1980, 1993
@@ -34,7 +35,7 @@
  * SUCH DAMAGE.
  */
 #undef n_FILE
-#define n_FILE head
+#define n_FILE header
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
@@ -70,10 +71,17 @@ static struct cmatch_data const  _cmatch_data[] = {
    { 28 - 2, __reuse }, { 28 - 1, __reuse }, { 28 - 0, __reuse },
    { 0, NULL }
 };
-#define a_HEAD_DATE_MINLEN 21
+#define a_HEADER_DATE_MINLEN 21
+
+/* Savage extract date field from From_ line.  linelen is convenience as line
+ * must be terminated (but it may end in a newline [sequence]).
+ * Return whether the From_ line was parsed successfully (-1 if the From_ line
+ * wasn't really RFC 4155 compliant) */
+static int a_header_extract_date_from_from_(char const *line, size_t linelen,
+            char datebuf[n_FROM_DATEBUF]);
 
 /* Skip over "word" as found in From_ line */
-static char const *        _from__skipword(char const *wp);
+static char const *a_header__from_skipword(char const *wp);
 
 /* Match the date string against the date template (tp), return if match.
  * See _cmatch_data[] for template character description */
@@ -85,17 +93,21 @@ static int                 _cmatch(size_t len, char const *date,
 static int                 _is_date(char const *date);
 
 /* JulianDayNumber converter(s) */
-static size_t a_head_gregorian_to_jdn(ui32_t y, ui32_t m, ui32_t d);
+static size_t a_header_gregorian_to_jdn(ui32_t y, ui32_t m, ui32_t d);
 #if 0
-static void a_head_jdn_to_gregorian(size_t jdn,
+static void a_header_jdn_to_gregorian(size_t jdn,
                ui32_t *yp, ui32_t *mp, ui32_t *dp);
 #endif
+
+/* ... And place the extracted date in `date' */
+static void a_header_parse_from_(struct message *mp,
+               char date[n_FROM_DATEBUF]);
 
 /* Convert the domain part of a skinned address to IDNA.
  * If an error occurs before Unicode information is available, revert the IDNA
  * error to a normal CHAR one so that the error message doesn't talk Unicode */
 #ifdef HAVE_IDNA
-static struct n_addrguts *a_head_idna_apply(struct n_addrguts *agp);
+static struct n_addrguts *a_header_idna_apply(struct n_addrguts *agp);
 #endif
 
 /* Classify and check a (possibly skinned) header body according to RFC
@@ -103,25 +115,95 @@ static struct n_addrguts *a_head_idna_apply(struct n_addrguts *agp);
  * also a file or a pipe command, so check that first, then.
  * Otherwise perform content checking and isolate the domain part (for IDNA).
  * issingle_hack has the same meaning as for n_addrspec_with_guts() */
-static bool_t a_head_addrspec_check(struct n_addrguts *agp, bool_t skinned,
+static bool_t a_header_addrspec_check(struct n_addrguts *agp, bool_t skinned,
                bool_t issingle_hack);
 
 /* Return the next header field found in the given message.
  * Return >= 0 if something found, < 0 elsewise.
  * "colon" is set to point to the colon in the header.
  * Must deal with \ continuations & other such fraud */
-static long a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem,
-            char **colon);
+static long a_gethfield(enum n_header_extract_flags hef, FILE *f,
+               char **linebuf, size_t *linesize, long rem, char **colon);
 
 static int                 msgidnextc(char const **cp, int *status);
 
-/* Count the occurances of c in str */
-static int                 charcount(char *str, int c);
-
 static char const *        nexttoken(char const *cp);
 
+static int
+a_header_extract_date_from_from_(char const *line, size_t linelen,
+   char datebuf[n_FROM_DATEBUF])
+{
+   int rv;
+   char const *cp = line;
+   NYD_ENTER;
+
+   rv = 1;
+
+   /* "From " */
+   cp = a_header__from_skipword(cp);
+   if (cp == NULL)
+      goto jerr;
+   /* "addr-spec " */
+   cp = a_header__from_skipword(cp);
+   if (cp == NULL)
+      goto jerr;
+   if((cp[0] == 't' || cp[0] == 'T') && (cp[1] == 't' || cp[1] == 'T') &&
+         (cp[2] == 'y' || cp[2] == 'Y')){
+      cp = a_header__from_skipword(cp);
+      if (cp == NULL)
+         goto jerr;
+   }
+   /* It seems there are invalid MBOX archives in the wild, compare
+    * . http://bugs.debian.org/624111
+    * . [Mutt] #3868: mutt should error if the imported mailbox is invalid
+    * What they do is that they obfuscate the address to "name at host",
+    * and even "name at host dot dom dot dom.
+    * The [Aa][Tt] is also RFC 733, so be tolerant */
+   else if((cp[0] == 'a' || cp[0] == 'A') && (cp[1] == 't' || cp[1] == 'T') &&
+         cp[2] == ' '){
+      rv = -1;
+      cp += 3;
+jat_dot:
+      cp = a_header__from_skipword(cp);
+      if (cp == NULL)
+         goto jerr;
+      if((cp[0] == 'd' || cp[0] == 'D') && (cp[1] == 'o' || cp[1] == 'O') &&
+            (cp[2] == 't' || cp[2] == 'T') && cp[3] == ' '){
+         cp += 4;
+         goto jat_dot;
+      }
+   }
+
+   linelen -= PTR2SIZE(cp - line);
+   if (linelen < a_HEADER_DATE_MINLEN)
+      goto jerr;
+   if (cp[linelen - 1] == '\n') {
+      --linelen;
+      /* (Rather IMAP/POP3 only) */
+      if (cp[linelen - 1] == '\r')
+         --linelen;
+      if (linelen < a_HEADER_DATE_MINLEN)
+         goto jerr;
+   }
+   if (linelen >= n_FROM_DATEBUF)
+      goto jerr;
+
+jleave:
+   memcpy(datebuf, cp, linelen);
+   datebuf[linelen] = '\0';
+   NYD_LEAVE;
+   return rv;
+jerr:
+   cp = _("<Unknown date>");
+   linelen = strlen(cp);
+   if (linelen >= n_FROM_DATEBUF)
+      linelen = n_FROM_DATEBUF;
+   rv = 0;
+   goto jleave;
+}
+
 static char const *
-_from__skipword(char const *wp)
+a_header__from_skipword(char const *wp)
 {
    char c = 0;
    NYD2_ENTER;
@@ -195,7 +277,7 @@ _is_date(char const *date)
    int rv = 0;
    NYD2_ENTER;
 
-   if ((dl = strlen(date)) >= a_HEAD_DATE_MINLEN)
+   if ((dl = strlen(date)) >= a_HEADER_DATE_MINLEN)
       for (cmdp = _cmatch_data; cmdp->tdata != NULL; ++cmdp)
          if (dl == cmdp->tlen && (rv = _cmatch(dl, date, cmdp->tdata)))
             break;
@@ -204,7 +286,7 @@ _is_date(char const *date)
 }
 
 static size_t
-a_head_gregorian_to_jdn(ui32_t y, ui32_t m, ui32_t d){
+a_header_gregorian_to_jdn(ui32_t y, ui32_t m, ui32_t d){
    /* Algorithm is taken from Communications of the ACM, Vol 6, No 8.
     * (via third hand, plus adjustments).
     * This algorithm is supposed to work for all dates in between 1582-10-15
@@ -247,7 +329,7 @@ a_head_gregorian_to_jdn(ui32_t y, ui32_t m, ui32_t d){
 
 #if 0
 static void
-a_head_jdn_to_gregorian(size_t jdn, ui32_t *yp, ui32_t *mp, ui32_t *dp){
+a_header_jdn_to_gregorian(size_t jdn, ui32_t *yp, ui32_t *mp, ui32_t *dp){
    /* Algorithm is taken from Communications of the ACM, Vol 6, No 8.
     * (via third hand, plus adjustments) */
    size_t y, x;
@@ -286,9 +368,25 @@ a_head_jdn_to_gregorian(size_t jdn, ui32_t *yp, ui32_t *mp, ui32_t *dp){
 }
 #endif /* 0 */
 
+static void
+a_header_parse_from_(struct message *mp, char date[n_FROM_DATEBUF]){
+   FILE *ibuf;
+   int hlen;
+   char *hline = NULL; /* TODO line pool */
+   size_t hsize = 0;
+   NYD2_ENTER;
+
+   if((ibuf = setinput(&mb, mp, NEED_HEADER)) != NULL &&
+         (hlen = readline_restart(ibuf, &hline, &hsize, 0)) > 0)
+      a_header_extract_date_from_from_(hline, hlen, date);
+   if(hline != NULL)
+      n_free(hline);
+   NYD2_LEAVE;
+}
+
 #ifdef HAVE_IDNA
 static struct n_addrguts *
-a_head_idna_apply(struct n_addrguts *agp){
+a_header_idna_apply(struct n_addrguts *agp){
    struct n_string idna_ascii;
    NYD_ENTER;
 
@@ -312,7 +410,7 @@ a_head_idna_apply(struct n_addrguts *agp){
 #endif /* HAVE_IDNA */
 
 static bool_t
-a_head_addrspec_check(struct n_addrguts *agp, bool_t skinned,
+a_header_addrspec_check(struct n_addrguts *agp, bool_t skinned,
       bool_t issingle_hack)
 {
    char *addr, *p;
@@ -952,14 +1050,15 @@ jinsert_domain:
 jleave:
 #ifdef HAVE_IDNA
    if(!(agp->ag_n_flags & NAME_ADDRSPEC_INVALID) && (flags & a_IDNA_APPLY))
-      agp = a_head_idna_apply(agp);
+      agp = a_header_idna_apply(agp);
 #endif
    NYD_LEAVE;
    return !(agp->ag_n_flags & NAME_ADDRSPEC_INVALID);
 }
 
 static long
-a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem, char **colon)
+a_gethfield(enum n_header_extract_flags hef, FILE *f,
+   char **linebuf, size_t *linesize, long rem, char **colon)
 {
    char *line2 = NULL, *cp, *cp2;
    size_t line2size = 0;
@@ -967,7 +1066,7 @@ a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem, char **colon)
    NYD2_ENTER;
 
    if (*linebuf == NULL)
-      *linebuf = srealloc(*linebuf, *linesize = 1);
+      *linebuf = n_realloc(*linebuf, *linesize = 1);
    **linebuf = '\0';
    for (;;) {
       if (--rem < 0) {
@@ -978,13 +1077,27 @@ a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem, char **colon)
          rem = -1;
          break;
       }
+      if((hef & n_HEADER_EXTRACT_IGNORE_SHELL_COMMENTS) && **linebuf == '#'){
+         /* A comment may be last before body, too, ensure empty last line */
+         **linebuf = '\0';
+         continue;
+      }
+
       for (cp = *linebuf; fieldnamechar(*cp); ++cp)
          ;
       if (cp > *linebuf)
          while (blankchar(*cp))
             ++cp;
-      if (*cp != ':' || cp == *linebuf)
+      if (cp == *linebuf)
          continue;
+      /* XXX Not a header line, logging only for -t / compose mode? */
+      if(*cp != ':'){
+         if(!(hef & n_HEADER_EXTRACT_IGNORE_FROM_) ||
+               !is_head(*linebuf, c, FAL0))
+            n_err(_("Not a header line, skipping: %s\n"),
+               n_shexp_quote_cp(*linebuf, FAL0));
+         continue;
+      }
 
       /* I guess we got a headline.  Handle wraparound */
       *colon = cp;
@@ -1013,7 +1126,7 @@ a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem, char **colon)
          if (PTRCMP(cp + c, >=, *linebuf + *linesize - 2)) {
             size_t diff = PTR2SIZE(cp - *linebuf),
                colondiff = PTR2SIZE(*colon - *linebuf);
-            *linebuf = srealloc(*linebuf, *linesize += c + 2);
+            *linebuf = n_realloc(*linebuf, *linesize += c + 2);
             cp = &(*linebuf)[diff];
             *colon = &(*linebuf)[colondiff];
          }
@@ -1025,7 +1138,7 @@ a_gethfield(FILE *f, char **linebuf, size_t *linesize, long rem, char **colon)
       *cp = '\0';
 
       if (line2 != NULL)
-         free(line2);
+         n_free(line2);
       break;
    }
    NYD2_LEAVE;
@@ -1082,20 +1195,6 @@ jdfl:
 jleave:
    NYD2_LEAVE;
    return c;
-}
-
-static int
-charcount(char *str, int c)
-{
-   char *cp;
-   int i;
-   NYD2_ENTER;
-
-   for (i = 0, cp = str; *cp; ++cp)
-      if (*cp == c)
-         ++i;
-   NYD2_LEAVE;
-   return i;
 }
 
 static char const *
@@ -1167,7 +1266,7 @@ jnodename:{
       hn = n_nodename(TRU1);
       ln = ok_vlook(LOGNAME);
       i = strlen(ln) + strlen(hn) + 1 +1;
-      rv = cp = salloc(i);
+      rv = cp = n_autorec_alloc(i);
       sstpcpy(sstpcpy(sstpcpy(cp, ln), n_at), hn);
    }
    goto jleave;
@@ -1201,114 +1300,70 @@ is_head(char const *linebuf, size_t linelen, bool_t check_rfc4155)
    NYD2_ENTER;
 
    if ((rv = (linelen >= 5 && !memcmp(linebuf, "From ", 5))) && check_rfc4155 &&
-         (extract_date_from_from_(linebuf, linelen, date) <= 0 ||
+         (a_header_extract_date_from_from_(linebuf, linelen, date) <= 0 ||
           !_is_date(date)))
       rv = TRUM1;
    NYD2_LEAVE;
    return rv;
 }
 
-FL int
-extract_date_from_from_(char const *line, size_t linelen,
-   char datebuf[n_FROM_DATEBUF])
-{
-   int rv;
-   char const *cp = line;
+FL bool_t
+n_header_put4compose(FILE *fp, struct header *hp){
+   bool_t rv;
+   int t;
    NYD_ENTER;
 
-   rv = 1;
+   t = GTO | GSUBJECT | GCC | GBCC | GBCC_IS_FCC | GREF_IRT | GNL | GCOMMA;
+   if((hp->h_from != NULL || myaddrs(hp) != NULL) ||
+         (hp->h_sender != NULL || ok_vlook(sender) != NULL) ||
+         (hp->h_reply_to != NULL || ok_vlook(reply_to) != NULL) ||
+            ok_vlook(replyto) != NULL /* v15compat, OBSOLETE */ ||
+         hp->h_list_post != NULL || (hp->h_flags & HF_LIST_REPLY))
+      t |= GIDENT;
 
-   /* "From " */
-   cp = _from__skipword(cp);
-   if (cp == NULL)
-      goto jerr;
-   /* "addr-spec " */
-   cp = _from__skipword(cp);
-   if (cp == NULL)
-      goto jerr;
-   if((cp[0] == 't' || cp[0] == 'T') && (cp[1] == 't' || cp[1] == 'T') &&
-         (cp[2] == 'y' || cp[2] == 'Y')){
-      cp = _from__skipword(cp);
-      if (cp == NULL)
-         goto jerr;
-   }
-   /* It seems there are invalid MBOX archives in the wild, compare
-    * . http://bugs.debian.org/624111
-    * . [Mutt] #3868: mutt should error if the imported mailbox is invalid
-    * What they do is that they obfuscate the address to "name at host",
-    * and even "name at host dot dom dot dom.
-    * The [Aa][Tt] is also RFC 733, so be tolerant */
-   else if((cp[0] == 'a' || cp[0] == 'A') && (cp[1] == 't' || cp[1] == 'T') &&
-         cp[2] == ' '){
-      rv = -1;
-      cp += 3;
-jat_dot:
-      cp = _from__skipword(cp);
-      if (cp == NULL)
-         goto jerr;
-      if((cp[0] == 'd' || cp[0] == 'D') && (cp[1] == 'o' || cp[1] == 'O') &&
-            (cp[2] == 't' || cp[2] == 'T') && cp[3] == ' '){
-         cp += 4;
-         goto jat_dot;
-      }
-   }
-
-   linelen -= PTR2SIZE(cp - line);
-   if (linelen < a_HEAD_DATE_MINLEN)
-      goto jerr;
-   if (cp[linelen - 1] == '\n') {
-      --linelen;
-      /* (Rather IMAP/POP3 only) */
-      if (cp[linelen - 1] == '\r')
-         --linelen;
-      if (linelen < a_HEAD_DATE_MINLEN)
-         goto jerr;
-   }
-   if (linelen >= n_FROM_DATEBUF)
-      goto jerr;
-
-jleave:
-   memcpy(datebuf, cp, linelen);
-   datebuf[linelen] = '\0';
+   rv = n_puthead(TRUM1, hp, fp, t, SEND_TODISP, CONV_NONE, NULL, NULL);
    NYD_LEAVE;
    return rv;
-jerr:
-   cp = _("<Unknown date>");
-   linelen = strlen(cp);
-   if (linelen >= n_FROM_DATEBUF)
-      linelen = n_FROM_DATEBUF;
-   rv = 0;
-   goto jleave;
 }
 
 FL void
-extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
+n_header_extract(enum n_header_extract_flags hef, FILE *fp, struct header *hp,
+   si8_t *checkaddr_err_or_null)
 {
-   /* See the prototype declaration for the hairy relationship of
-    * n_poption&n_PO_t_FLAG and/or n_psonce&n_PSO_t_FLAG in here */
    struct n_header_field **hftail;
    struct header nh, *hq = &nh;
    char *linebuf = NULL /* TODO line pool */, *colon;
    size_t linesize = 0, seenfields = 0;
    int c;
    long lc;
+   off_t firstoff;
    char const *val, *cp;
    NYD_ENTER;
 
    memset(hq, 0, sizeof *hq);
-   if ((n_psonce & n_PSO_t_FLAG) && (n_poption & n_PO_t_FLAG)) {
+   if(hef & n_HEADER_EXTRACT_PREFILL_RECEIVERS){
       hq->h_to = hp->h_to;
       hq->h_cc = hp->h_cc;
       hq->h_bcc = hp->h_bcc;
    }
    hftail = &hq->h_user_headers;
 
+   if((firstoff = ftell(fp)) == -1)
+      goto jeseek;
    for (lc = 0; readline_restart(fp, &linebuf, &linesize, 0) > 0; ++lc)
       ;
+   c = fseek(fp, firstoff, SEEK_SET);
+   clearerr(fp);
+   if(c != 0){
+jeseek:
+      if(checkaddr_err_or_null != NULL)
+         *checkaddr_err_or_null = -1;
+      n_err("I/O error while parsing headers, operation aborted\n");
+      goto jleave;
+   }
 
    /* TODO yippieia, cat(check(lextract)) :-) */
-   rewind(fp);
-   while ((lc = a_gethfield(fp, &linebuf, &linesize, lc, &colon)) >= 0) {
+   while ((lc = a_gethfield(hef, fp, &linebuf, &linesize, lc, &colon)) >= 0) {
       struct name *np;
 
       /* We explicitly allow EAF_NAME for some addressees since aliases are not
@@ -1316,17 +1371,23 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
       if ((val = thisfield(linebuf, "to")) != NULL) {
          ++seenfields;
          hq->h_to = cat(hq->h_to, checkaddrs(lextract(val, GTO | GFULL),
-               EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err));
+               EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err_or_null));
       } else if ((val = thisfield(linebuf, "cc")) != NULL) {
          ++seenfields;
          hq->h_cc = cat(hq->h_cc, checkaddrs(lextract(val, GCC | GFULL),
-               EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err));
+               EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err_or_null));
       } else if ((val = thisfield(linebuf, "bcc")) != NULL) {
          ++seenfields;
          hq->h_bcc = cat(hq->h_bcc, checkaddrs(lextract(val, GBCC | GFULL),
-               EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err));
+               EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err_or_null));
+      } else if ((val = thisfield(linebuf, "fcc")) != NULL) {
+         if(hef & n_HEADER_EXTRACT__MODE_MASK){
+            ++seenfields;
+            hq->h_fcc = cat(hq->h_fcc, nalloc_fcc(val));
+         }else
+            goto jebadhead;
       } else if ((val = thisfield(linebuf, "from")) != NULL) {
-         if (!(n_psonce & n_PSO_t_FLAG) || (n_poption & n_PO_t_FLAG)) {
+         if(hef & n_HEADER_EXTRACT_FULL){
             ++seenfields;
             hq->h_from = cat(hq->h_from,
                   checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
@@ -1337,7 +1398,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
          hq->h_reply_to = cat(hq->h_reply_to,
                checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT, NULL));
       } else if ((val = thisfield(linebuf, "sender")) != NULL) {
-         if (!(n_psonce & n_PSO_t_FLAG) || (n_poption & n_PO_t_FLAG)) {
+         if(hef & n_HEADER_EXTRACT_FULL){
             ++seenfields;
             hq->h_sender = cat(hq->h_sender, /* TODO cat? check! */
                   checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
@@ -1355,7 +1416,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
       /* The remaining are mostly hacked in and thus TODO -- at least in
        * TODO respect to their content checking */
       else if((val = thisfield(linebuf, "message-id")) != NULL){
-         if(n_psonce & n_PSO_t_FLAG){
+         if(hef & n_HEADER_EXTRACT__MODE_MASK){
             np = checkaddrs(lextract(val, GREF),
                   /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
                   NULL);
@@ -1366,7 +1427,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
          }else
             goto jebadhead;
       }else if((val = thisfield(linebuf, "in-reply-to")) != NULL){
-         if(n_psonce & n_PSO_t_FLAG){
+         if(hef & n_HEADER_EXTRACT__MODE_MASK){
             np = checkaddrs(lextract(val, GREF),
                   /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
                   NULL);
@@ -1375,7 +1436,7 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
          }else
             goto jebadhead;
       }else if((val = thisfield(linebuf, "references")) != NULL){
-         if(n_psonce & n_PSO_t_FLAG){
+         if(hef & n_HEADER_EXTRACT__MODE_MASK){
             ++seenfields;
             /* TODO Limit number of references TODO better on parser side */
             hq->h_ref = cat(hq->h_ref, checkaddrs(extract(val, GREF),
@@ -1386,11 +1447,11 @@ extract_header(FILE *fp, struct header *hp, si8_t *checkaddr_err)
       }
       /* and that is very hairy */
       else if((val = thisfield(linebuf, "mail-followup-to")) != NULL){
-         if(n_psonce & n_PSO_t_FLAG){
+         if(hef & n_HEADER_EXTRACT__MODE_MASK){
             ++seenfields;
             hq->h_mft = cat(hq->h_mft, checkaddrs(lextract(val, GEXTRA | GFULL),
                   /*EACM_STRICT | TODO '/' valid!! | EACM_NOLOG | */EACM_NONAME,
-                  checkaddr_err));
+                  checkaddr_err_or_null));
          }else
             goto jebadhead;
       }
@@ -1417,8 +1478,9 @@ jebadhead:
          bl = (ui32_t)strlen(cp) +1;
 
          ++seenfields;
-         *hftail = hfp = salloc(n_VSTRUCT_SIZEOF(struct n_header_field, hf_dat
-               ) + nl +1 + bl);
+         *hftail =
+         hfp = n_autorec_alloc(n_VSTRUCT_SIZEOF(struct n_header_field,
+               hf_dat) + nl +1 + bl);
             hftail = &hfp->hf_next;
          hfp->hf_next = NULL;
          hfp->hf_nl = nl;
@@ -1442,20 +1504,23 @@ jebadhead:
       }
    }
 
-   if (seenfields > 0 && (checkaddr_err == NULL || *checkaddr_err == 0)) {
+   if (seenfields > 0 &&
+         (checkaddr_err_or_null == NULL || *checkaddr_err_or_null == 0)) {
       hp->h_to = hq->h_to;
       hp->h_cc = hq->h_cc;
       hp->h_bcc = hq->h_bcc;
       hp->h_from = hq->h_from;
       hp->h_reply_to = hq->h_reply_to;
       hp->h_sender = hq->h_sender;
-      if (hq->h_subject != NULL || !(n_psonce & n_PSO_t_FLAG) ||
-            !(n_poption & n_PO_t_FLAG))
+      if(hq->h_subject != NULL ||
+            (hef & n_HEADER_EXTRACT__MODE_MASK) != n_HEADER_EXTRACT_FULL)
          hp->h_subject = hq->h_subject;
       hp->h_user_headers = hq->h_user_headers;
 
-      if (n_psonce & n_PSO_t_FLAG) {
-         hp->h_ref = hq->h_ref;
+      if(hef & n_HEADER_EXTRACT__MODE_MASK){
+         hp->h_fcc = hq->h_fcc;
+         if(hef & n_HEADER_EXTRACT_FULL)
+            hp->h_ref = hq->h_ref;
          hp->h_message_id = hq->h_message_id;
          hp->h_in_reply_to = hq->h_in_reply_to;
          hp->h_mft = hq->h_mft;
@@ -1463,17 +1528,19 @@ jebadhead:
          /* And perform additional validity checks so that we don't bail later
           * on TODO this is good and the place where this should occur,
           * TODO unfortunately a lot of other places do again and blabla */
-         if (hp->h_from == NULL)
+         if(hp->h_from == NULL)
             hp->h_from = n_poption_arg_r;
-         else if (hp->h_from->n_flink != NULL && hp->h_sender == NULL)
+         else if((hef & n_HEADER_EXTRACT_FULL) &&
+               hp->h_from->n_flink != NULL && hp->h_sender == NULL)
             hp->h_sender = lextract(ok_vlook(sender),
                   GEXTRA | GFULL | GFULLEXTRA);
       }
    } else
       n_err(_("Restoring deleted header lines\n"));
 
+jleave:
    if (linebuf != NULL)
-      free(linebuf);
+      n_free(linebuf);
    NYD_LEAVE;
 }
 
@@ -1503,7 +1570,8 @@ hfield_mult(char const *field, struct message *mp, int mult)
          readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
       goto jleave;
    while (lc > 0) {
-      if ((lc = a_gethfield(ibuf, &linebuf, &linesize, lc, &colon)) < 0)
+      if ((lc = a_gethfield(n_HEADER_EXTRACT_NONE, ibuf, &linebuf, &linesize,
+            lc, &colon)) < 0)
          break;
       if ((hfield = thisfield(linebuf, field)) != NULL && *hfield != '\0') {
          if (mult)
@@ -1517,10 +1585,10 @@ hfield_mult(char const *field, struct message *mp, int mult)
 
 jleave:
    if (linebuf != NULL)
-      free(linebuf);
+      n_free(linebuf);
    if (mult && hfs.s != NULL) {
       colon = savestrbuf(hfs.s, hfs.l);
-      free(hfs.s);
+      n_free(hfs.s);
       hfs.s = colon;
    }
    NYD_LEAVE;
@@ -1551,26 +1619,6 @@ thisfield(char const *linebuf, char const *field)
 jleave:
    NYD2_LEAVE;
    return rv;
-}
-
-FL char *
-nameof(struct message *mp, int reptype)
-{
-   char *cp, *cp2;
-   NYD_ENTER;
-
-   cp = skin(name1(mp, reptype));
-   if (reptype != 0 || charcount(cp, '!') < 2)
-      goto jleave;
-   cp2 = strrchr(cp, '!');
-   --cp2;
-   while (cp2 > cp && *cp2 != '!')
-      --cp2;
-   if (*cp2 == '!')
-      cp = cp2 + 1;
-jleave:
-   NYD_LEAVE;
-   return cp;
 }
 
 FL char const *
@@ -1630,17 +1678,17 @@ jleave:
 }
 
 FL enum expand_addr_flags
-expandaddr_to_eaf(void)
-{
+expandaddr_to_eaf(void){
    struct eafdesc {
-      char const  *eafd_name;
-      bool_t      eafd_is_target;
-      ui8_t       eafd_andoff;
-      ui8_t       eafd_or;
+      char eafd_name[13];
+      bool_t eafd_is_target;
+      ui8_t eafd_andoff;
+      ui8_t eafd_or;
    } const eafa[] = {
       {"restrict", FAL0, EAF_TARGET_MASK, EAF_RESTRICT | EAF_RESTRICT_TARGETS},
       {"fail", FAL0, EAF_NONE, EAF_FAIL},
-      {"failinvaddr", FAL0, EAF_NONE, EAF_FAILINVADDR | EAF_ADDR},
+      {"failinvaddr\0", FAL0, EAF_NONE, EAF_FAILINVADDR | EAF_ADDR},
+      {"shquote", FAL0, EAF_NONE, EAF_SHEXP_PARSE},
       {"all", TRU1, EAF_NONE, EAF_TARGET_MASK},
          {"file", TRU1, EAF_NONE, EAF_FILE},
          {"pipe", TRU1, EAF_NONE, EAF_PIPE},
@@ -1653,36 +1701,41 @@ expandaddr_to_eaf(void)
    char const *cp;
    NYD2_ENTER;
 
-   if ((cp = ok_vlook(expandaddr)) == NULL)
+   if((cp = ok_vlook(expandaddr)) == NULL)
       rv = EAF_RESTRICT_TARGETS;
-   else if (*cp == '\0')
+   else if(*cp == '\0')
       rv = EAF_TARGET_MASK;
-   else {
+   else{
       rv = EAF_TARGET_MASK;
 
-      for (buf = savestr(cp); (cp = n_strsep(&buf, ',', TRU1)) != NULL;) {
+      for(buf = savestr(cp); (cp = n_strsep(&buf, ',', TRU1)) != NULL;){
          bool_t minus;
 
-         if ((minus = (*cp == '-')) || *cp == '+')
+         if((minus = (*cp == '-')) || (*cp == '+' ? (minus = TRUM1) : FAL0))
             ++cp;
-         for (eafp = eafa;; ++eafp) {
-            if (eafp == eafa + n_NELEM(eafa)) {
-               if (n_poption & n_PO_D_V)
+
+         for(eafp = eafa;; ++eafp) {
+            if(eafp == &eafa[n_NELEM(eafa)]){
+               if(n_poption & n_PO_D_V)
                   n_err(_("Unknown *expandaddr* value: %s\n"), cp);
                break;
-            } else if (!asccasecmp(cp, eafp->eafd_name)) {
-               if (!minus) {
+            }else if(!asccasecmp(cp, eafp->eafd_name)){
+               if(minus){
+                  if(eafp->eafd_is_target){
+                     if(minus != TRU1)
+                        goto jandor;
+                     else
+                        rv &= ~eafp->eafd_or;
+                  }else if(n_poption & n_PO_D_V)
+                     n_err(_("- or + prefix invalid for *expandaddr* value: "
+                        "%s\n"), --cp);
+               }else{
+jandor:
                   rv &= ~eafp->eafd_andoff;
                   rv |= eafp->eafd_or;
-               } else {
-                  if (eafp->eafd_is_target)
-                     rv &= ~eafp->eafd_or;
-                  else if (n_poption & n_PO_D_V)
-                     n_err(_("minus - prefix invalid for *expandaddr* value: "
-                        "%s\n"), --cp);
                }
                break;
-            } else if (!asccasecmp(cp, "noalias")) { /* TODO v15 OBSOLETE */
+            }else if(!asccasecmp(cp, "noalias")){ /* TODO v15 OBSOLETE */
                n_OBSOLETE(_("*expandaddr*: noalias is henceforth -name"));
                rv &= ~EAF_NAME;
                break;
@@ -1773,19 +1826,19 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
       rv = -rv;
 
    if (!(eaf & EAF_FILE) && (f & NAME_ADDRSPEC_ISFILE)) {
-      cs = _("%s%s: *expandaddr* doesn't allow file target\n");
+      cs = _("%s%s: *expandaddr* does not allow file target\n");
       if (eacm & EACM_NOLOG)
          goto jleave;
    } else if (!(eaf & EAF_PIPE) && (f & NAME_ADDRSPEC_ISPIPE)) {
-      cs = _("%s%s: *expandaddr* doesn't allow command pipe target\n");
+      cs = _("%s%s: *expandaddr* does not allow command pipe target\n");
       if (eacm & EACM_NOLOG)
          goto jleave;
    } else if (!(eaf & EAF_NAME) && (f & NAME_ADDRSPEC_ISNAME)) {
-      cs = _("%s%s: *expandaddr* doesn't allow user name target\n");
+      cs = _("%s%s: *expandaddr* does not allow user name target\n");
       if (eacm & EACM_NOLOG)
          goto jleave;
    } else if (!(eaf & EAF_ADDR) && (f & NAME_ADDRSPEC_ISADDR)) {
-      cs = _("%s%s: *expandaddr* doesn't allow mail address target\n");
+      cs = _("%s%s: *expandaddr* does not allow mail address target\n");
       if (eacm & EACM_NOLOG)
          goto jleave;
    } else {
@@ -1965,12 +2018,13 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
       agp->ag_iaddr_aend = agp->ag_ilen;
       cp2[agp->ag_ilen++] = '>';
       cp2[agp->ag_ilen] = '\0';
+      agp->ag_input = cp2;
    }
    agp->ag_skinned = savestrbuf(nbuf, agp->ag_slen);
    n_lofi_free(nbuf);
    agp->ag_n_flags = NAME_NAME_SALLOC | NAME_SKINNED;
 jcheck:
-   if(a_head_addrspec_check(agp, doskin, issingle_hack) <= FAL0)
+   if(a_header_addrspec_check(agp, doskin, issingle_hack) <= FAL0)
       name = NULL;
    else
       name = agp->ag_input;
@@ -2039,7 +2093,7 @@ jbrk:
    /* Strip quotes. Note that quotes that appear within a MIME encoded word are
     * not stripped. The idea is to strip only syntactical relevant things (but
     * this is not necessarily the most sensible way in practice) */
-   rp = rname = ac_alloc(PTR2SIZE(cend - cstart +1));
+   rp = rname = n_lofi_alloc(PTR2SIZE(cend - cstart +1));
    quoted = 0;
    for (cp = cstart; cp < cend; ++cp) {
       if (*cp == '(' && !quoted) {
@@ -2063,9 +2117,9 @@ jbrk:
    in.s = rname;
    in.l = rp - rname;
    mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
-   ac_free(rname);
+   n_lofi_free(rname);
    rname = savestr(out.s);
-   free(out.s);
+   n_free(out.s);
 
    while (blankchar(*rname))
       ++rname;
@@ -2096,80 +2150,84 @@ jleave:
 }
 
 FL char *
-name1(struct message *mp, int reptype)
-{
-   char *namebuf, *cp, *cp2, *linebuf = NULL /* TODO line pool */;
-   size_t namesize, linesize = 0;
-   FILE *ibuf;
-   int f1st = 1;
+n_header_senderfield_of(struct message *mp){
+   char *cp;
    NYD_ENTER;
 
-   if ((cp = hfield1("from", mp)) != NULL && *cp != '\0')
-      goto jleave;
-   if (reptype == 0 && (cp = hfield1("sender", mp)) != NULL && *cp != '\0')
-      goto jleave;
+   if((cp = hfield1("from", mp)) != NULL && *cp != '\0')
+      ;
+   else if((cp = hfield1("sender", mp)) != NULL && *cp != '\0')
+      ;
+   else{
+      char *namebuf, *cp2, *linebuf = NULL /* TODO line pool */;
+      size_t namesize, linesize = 0;
+      FILE *ibuf;
+      int f1st = 1;
 
-   namebuf = smalloc(namesize = 1);
-   namebuf[0] = 0;
-   if (mp->m_flag & MNOFROM)
-      goto jout;
-   if ((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
-      goto jout;
-   if (readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
-      goto jout;
+      /* And fallback only works for MBOX */
+      namebuf = n_alloc(namesize = 1);
+      namebuf[0] = 0;
+      if (mp->m_flag & MNOFROM)
+         goto jout;
+      if ((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
+         goto jout;
+      if (readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
+         goto jout;
 
 jnewname:
-   if (namesize <= linesize)
-      namebuf = srealloc(namebuf, namesize = linesize +1);
-   for (cp = linebuf; *cp != '\0' && *cp != ' '; ++cp)
-      ;
-   for (; blankchar(*cp); ++cp)
-      ;
-   for (cp2 = namebuf + strlen(namebuf);
-        *cp && !blankchar(*cp) && PTRCMP(cp2, <, namebuf + namesize -1);)
-      *cp2++ = *cp++;
-   *cp2 = '\0';
+      if (namesize <= linesize)
+         namebuf = n_realloc(namebuf, namesize = linesize +1);
+      for (cp = linebuf; *cp != '\0' && *cp != ' '; ++cp)
+         ;
+      for (; blankchar(*cp); ++cp)
+         ;
+      for (cp2 = namebuf + strlen(namebuf);
+           *cp && !blankchar(*cp) && PTRCMP(cp2, <, namebuf + namesize -1);)
+         *cp2++ = *cp++;
+      *cp2 = '\0';
 
-   if (readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
-      goto jout;
-   if ((cp = strchr(linebuf, 'F')) == NULL)
-      goto jout;
-   if (strncmp(cp, "From", 4))
-      goto jout;
-   if (namesize <= linesize)
-      namebuf = srealloc(namebuf, namesize = linesize + 1);
+      if (readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
+         goto jout;
+      if ((cp = strchr(linebuf, 'F')) == NULL)
+         goto jout;
+      if (strncmp(cp, "From", 4))
+         goto jout;
+      if (namesize <= linesize)
+         namebuf = n_realloc(namebuf, namesize = linesize + 1);
 
-   while ((cp = strchr(cp, 'r')) != NULL) {
-      if (!strncmp(cp, "remote", 6)) {
-         if ((cp = strchr(cp, 'f')) == NULL)
-            break;
-         if (strncmp(cp, "from", 4) != 0)
-            break;
-         if ((cp = strchr(cp, ' ')) == NULL)
-            break;
-         cp++;
-         if (f1st) {
-            strncpy(namebuf, cp, namesize);
-            f1st = 0;
-         } else {
-            cp2 = strrchr(namebuf, '!') + 1;
-            strncpy(cp2, cp, PTR2SIZE(namebuf + namesize - cp2));
+      /* UUCP from 976 (we do not support anyway!) */
+      while ((cp = strchr(cp, 'r')) != NULL) {
+         if (!strncmp(cp, "remote", 6)) {
+            if ((cp = strchr(cp, 'f')) == NULL)
+               break;
+            if (strncmp(cp, "from", 4) != 0)
+               break;
+            if ((cp = strchr(cp, ' ')) == NULL)
+               break;
+            cp++;
+            if (f1st) {
+               strncpy(namebuf, cp, namesize);
+               f1st = 0;
+            } else {
+               cp2 = strrchr(namebuf, '!') + 1;
+               strncpy(cp2, cp, PTR2SIZE(namebuf + namesize - cp2));
+            }
+            namebuf[namesize - 2] = '!';
+            namebuf[namesize - 1] = '\0';
+            goto jnewname;
          }
-         namebuf[namesize - 2] = '!';
-         namebuf[namesize - 1] = '\0';
-         goto jnewname;
+         cp++;
       }
-      cp++;
-   }
 jout:
-   if (*namebuf != '\0' || ((cp = hfield1("return-path", mp))) == NULL ||
-         *cp == '\0')
-      cp = savestr(namebuf);
+      if (*namebuf != '\0' || ((cp = hfield1("return-path", mp))) == NULL ||
+            *cp == '\0')
+         cp = savestr(namebuf);
 
-   if (linebuf != NULL)
-      free(linebuf);
-   free(namebuf);
-jleave:
+      if (linebuf != NULL)
+         n_free(linebuf);
+      n_free(namebuf);
+   }
+
    NYD_LEAVE;
    return cp;
 }
@@ -2465,7 +2523,7 @@ combinetime(int year, int month, int day, int hour, int minute, int second){
    t += minute * n_DATE_SECSMIN;
    t += hour * n_DATE_SECSHOUR;
 
-   jdn = a_head_gregorian_to_jdn(year, month, day);
+   jdn = a_header_gregorian_to_jdn(year, month, day);
    jdn -= jdn_epoch;
    t += (time_t)jdn * n_DATE_SECSDAY;
 jleave:
@@ -2479,12 +2537,12 @@ jerr:
 FL void
 substdate(struct message *m)
 {
+   /* The Date: of faked From_ lines is traditionally the date the message was
+    * written to the mail file. Try to determine this using RFC message header
+    * fields, or fall back to current time */
    char const *cp;
    NYD_ENTER;
 
-   /* Determine the date to print in faked 'From ' lines. This is traditionally
-    * the date the message was written to the mail file. Try to determine this
-    * using RFC message header fields, or fall back to current time */
    m->m_time = 0;
    if ((cp = hfield1("received", m)) != NULL) {
       while ((cp = nexttoken(cp)) != NULL && *cp != ';') {
@@ -2504,6 +2562,194 @@ substdate(struct message *m)
    NYD_LEAVE;
 }
 
+FL char *
+n_header_textual_date_info(struct message *mp, char const **color_tag_or_null){
+   struct tm tmlocal;
+   char *rv;
+   char const *fmt, *cp;
+   time_t t;
+   NYD_ENTER;
+   n_UNUSED(color_tag_or_null);
+
+   t = mp->m_time;
+   fmt = ok_vlook(datefield);
+
+jredo:
+   if(fmt != NULL){
+      ui8_t i;
+
+      cp = hfield1("date", mp);/* TODO use m_date field! */
+      if(cp == NULL){
+         fmt = NULL;
+         goto jredo;
+      }
+
+      t = rfctime(cp);
+      rv = n_time_ctime(t, NULL);
+      cp = ok_vlook(datefield_markout_older);
+      i = (*fmt != '\0');
+      if(cp != NULL)
+         i |= (*cp != '\0') ? 2 | 4 : 2; /* XXX no magics */
+
+      /* May we strftime(3)? */
+      if(i & (1 | 4)){
+         /* This localtime(3) should not fail since rfctime(3).. but .. */
+         struct tm *tmp;
+         time_t t2;
+
+         /* TODO the datetime stuff is horror: mails should be parsed into
+          * TODO an object tree, and date: etc. have a datetime object, which
+          * TODO verifies upon parse time; then ALL occurrences of datetime are
+          * TODO valid all through the program; and: to_wire, to_user! */
+         t2 = t;
+jredo_localtime:
+         if((tmp = localtime(&t2)) == NULL){
+            t2 = 0;
+            goto jredo_localtime;
+         }
+         memcpy(&tmlocal, tmp, sizeof *tmp);
+      }
+
+      if((i & 2) &&
+            (UICMP(64, t, >, time_current.tc_time + n_DATE_SECSDAY) ||
+#define _6M ((n_DATE_DAYSYEAR / 2) * n_DATE_SECSDAY)
+            UICMP(64, t + _6M, <, time_current.tc_time))){
+#undef _6M
+         if((fmt = (i & 4) ? cp : NULL) == NULL){
+            char *x;
+            n_LCTA(n_FROM_DATEBUF >= 4 + 7 + 1 + 4, "buffer too small");
+
+            x = n_autorec_alloc(n_FROM_DATEBUF);
+            memset(x, ' ', 4 + 7 + 1 + 4);
+            memcpy(&x[4], &rv[4], 7);
+            x[4 + 7] = ' ';
+            memcpy(&x[4 + 7 + 1], &rv[20], 4);
+            x[4 + 7 + 1 + 4] = '\0';
+            rv = x;
+         }
+         n_COLOUR(
+            if(color_tag_or_null != NULL)
+               *color_tag_or_null = n_COLOUR_TAG_SUM_OLDER;
+         )
+      }else if((i & 1) == 0)
+         fmt = NULL;
+
+      if(fmt != NULL){
+         size_t j;
+
+         for(j = n_FROM_DATEBUF;; j <<= 1){
+            i = strftime(rv = n_autorec_alloc(j), j, fmt, &tmlocal);
+            if(i != 0)
+               break;
+            if(j > 128){
+               n_err(_("Ignoring this date format: %s\n"),
+                  n_shexp_quote_cp(fmt, FAL0));
+               n_strscpy(rv, n_time_ctime(t, NULL), j);
+            }
+         }
+      }
+   }else if(t == (time_t)0 && !(mp->m_flag & MNOFROM)){
+      /* TODO eliminate this path, query the FROM_ date in setptr(),
+       * TODO all other codepaths do so by themselves ALREADY ?????
+       * TODO assert(mp->m_time != 0);, then
+       * TODO ALSO changes behaviour of datefield_markout_older */
+      a_header_parse_from_(mp, rv = n_autorec_alloc(n_FROM_DATEBUF));
+   }else
+      rv = savestr(n_time_ctime(t, NULL));
+   NYD_LEAVE;
+   return rv;
+}
+
+FL struct name *
+n_header_textual_sender_info(struct message *mp, char **cumulation_or_null,
+      char **addr_or_null, char **name_real_or_null, char **name_full_or_null,
+      bool_t *is_to_or_null){
+   struct n_string s_b1, s_b2, *sp1, *sp2;
+   struct name *np, *np2;
+   bool_t isto, b;
+   char *cp;
+   NYD_ENTER;
+
+   cp = n_header_senderfield_of(mp);
+   isto = FAL0;
+
+   if((np = lextract(cp, GFULL | GSKIN)) != NULL){
+      if(is_to_or_null != NULL && ok_blook(showto) &&
+            np->n_flink == NULL && n_is_myname(np->n_name)){
+         if((cp = hfield1("to", mp)) != NULL &&
+               (np2 = lextract(cp, GFULL | GSKIN)) != NULL){
+            np = np2;
+            isto = TRU1;
+         }
+      }
+
+      if(((b = ok_blook(showname)) && cumulation_or_null != NULL) ||
+            name_real_or_null != NULL || name_full_or_null != NULL){
+         size_t i;
+
+         for(i = 0, np2 = np; np2 != NULL; np2 = np2->n_flink)
+            i += strlen(np2->n_fullname) +3;
+
+         sp1 = n_string_book(n_string_creat_auto(&s_b1), i);
+         sp2 = (name_full_or_null == NULL) ? NULL
+               : n_string_book(n_string_creat_auto(&s_b2), i);
+
+         for(np2 = np; np2 != NULL; np2 = np2->n_flink){
+            if(sp1->s_len > 0){
+               sp1 = n_string_push_c(sp1, ',');
+               sp1 = n_string_push_c(sp1, ' ');
+               if(sp2 != NULL){
+                  sp2 = n_string_push_c(sp2, ',');
+                  sp2 = n_string_push_c(sp2, ' ');
+               }
+            }
+
+            if((cp = realname(np2->n_fullname)) == NULL)
+               cp = np2->n_name;
+            sp1 = n_string_push_cp(sp1, cp);
+            if(sp2 != NULL)
+               sp2 = n_string_push_cp(sp2, np2->n_fullname);
+         }
+
+         n_string_cp(sp1);
+         if(b && cumulation_or_null != NULL)
+            *cumulation_or_null = sp1->s_dat;
+         if(name_real_or_null != NULL)
+            *name_real_or_null = sp1->s_dat;
+         if(name_full_or_null != NULL)
+            *name_full_or_null = n_string_cp(sp2);
+
+         /* n_string_gut(n_string_drop_ownership(sp2)); */
+         /* n_string_gut(n_string_drop_ownership(sp1)); */
+      }
+
+      if((b = (!b && cumulation_or_null != NULL)) || addr_or_null != NULL){
+         cp = detract(np, GCOMMA | GNAMEONLY);
+         if(b)
+            *cumulation_or_null = cp;
+         if(addr_or_null != NULL)
+            *addr_or_null = cp;
+      }
+   }else if(cumulation_or_null != NULL || addr_or_null != NULL ||
+         name_real_or_null != NULL || name_full_or_null != NULL){
+      cp = savestr(n_empty);
+
+      if(cumulation_or_null != NULL)
+         *cumulation_or_null = cp;
+      if(addr_or_null != NULL)
+         *addr_or_null = cp;
+      if(name_real_or_null != NULL)
+         *name_real_or_null = cp;
+      if(name_full_or_null != NULL)
+         *name_full_or_null = cp;
+   }
+
+   if(is_to_or_null != NULL)
+      *is_to_or_null = isto;
+   NYD_LEAVE;
+   return np;
+}
+
 FL void
 setup_from_and_sender(struct header *hp)
 {
@@ -2516,7 +2762,7 @@ setup_from_and_sender(struct header *hp)
     * a behaviour that is compatible with what users would expect from e.g.
     * postfix(1) */
    if ((np = hp->h_from) != NULL ||
-         ((n_psonce & n_PSO_t_FLAG) && (np = n_poption_arg_r) != NULL)) {
+         ((n_poption & n_PO_t_FLAG) && (np = n_poption_arg_r) != NULL)) {
       ;
    } else if ((addr = myaddrs(hp)) != NULL)
       np = lextract(addr, GEXTRA | GFULL | GFULLEXTRA);
@@ -2563,7 +2809,7 @@ jleave:
    return rv;
 }
 
-#ifdef HAVE_XSSL
+#ifdef HAVE_XTLS
 FL char *
 getsender(struct message *mp)
 {
@@ -2580,6 +2826,21 @@ getsender(struct message *mp)
    return cp;
 }
 #endif
+
+FL struct name *
+n_header_setup_in_reply_to(struct header *hp){
+   struct name *np;
+   NYD_ENTER;
+
+   np = NULL;
+
+   if(hp != NULL)
+      if((np = hp->h_in_reply_to) == NULL && (np = hp->h_ref) != NULL)
+         while(np->n_flink != NULL)
+            np = np->n_flink;
+   NYD_LEAVE;
+   return np;
+}
 
 FL int
 grab_headers(enum n_go_input_flags gif, struct header *hp, enum gfield gflags,
@@ -2679,7 +2940,8 @@ n_header_match(struct message *mp, struct search_expr const *sep){
    while(lc > 0){
       struct name *np;
 
-      if((lc = a_gethfield(ibuf, linebuf, linesize, lc, &colon)) <= 0)
+      if((lc = a_gethfield(n_HEADER_EXTRACT_NONE, ibuf, linebuf, linesize,
+            lc, &colon)) <= 0)
          break;
 
       /* Is this a header we are interested in? */
@@ -2757,7 +3019,7 @@ jnext_name:
          rv = substr(out.s, sep->ss_body);
 
       if(np == NULL)
-         free(out.s);
+         n_free(out.s);
       if(rv)
          break;
       if(np != NULL && (np = np->n_flink) != NULL){
@@ -2774,12 +3036,15 @@ jleave:
 }
 
 FL char const *
-n_header_is_standard(char const *name, size_t len){
+n_header_is_known(char const *name, size_t len){
    static char const * const names[] = {
       "Bcc", "Cc", "From",
       "In-Reply-To", "Mail-Followup-To",
       "Message-ID", "References", "Reply-To",
       "Sender", "Subject", "To",
+      /* More known, here and there */
+      "Fcc",
+      /* Mailx internal temporaries */
       "Mailx-Command",
       "Mailx-Orig-Bcc", "Mailx-Orig-Cc", "Mailx-Orig-From", "Mailx-Orig-To",
       "Mailx-Raw-Bcc", "Mailx-Raw-Cc", "Mailx-Raw-To",
@@ -2832,7 +3097,7 @@ jename:
       goto jename;
 
    /* Verify the custom header does not use standard/managed field name */
-   if(n_header_is_standard(dat, nl) != NULL){
+   if(n_header_is_known(dat, nl) != NULL){
       cp = N_("Custom headers cannot use standard header names: %s\n");
       goto jerr;
    }

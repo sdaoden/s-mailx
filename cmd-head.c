@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
  * Copyright (c) 1980, 1993
@@ -33,7 +34,7 @@
  * SUCH DAMAGE.
  */
 #undef n_FILE
-#define n_FILE cmd_headers
+#define n_FILE cmd_head
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
@@ -41,51 +42,34 @@
 
 static int        _screen;
 
-/* ... And place the extracted date in `date' */
-static void    _parse_from_(struct message *mp, char date[n_FROM_DATEBUF]);
-
-/* Print out the header of a specific message
- * a_cmd__hprf: handle *headline*
- * a_cmd__subject: -1 if Subject: yet seen, otherwise smalloc()d Subject:
- * a_cmd__putindent: print out the indenting in threaded display
- * a_cmd__putuc: print out a Unicode character or a substitute for it, return
+/* Print out the header of a specific message.
+ * time_current must be up-to-date when this is called.
+ * a_chead__hprf: handle *headline*
+ * a_chead__subject: -1 if Subject: yet seen, otherwise n_alloc()d Subject:
+ * a_chead__putindent: print out the indenting in threaded display
+ * a_chead__putuc: print out a Unicode character or a substitute for it, return
  *    0 on error or wcwidth() (or 1) on success */
-static void a_cmd_print_head(size_t yetprinted, size_t msgno, FILE *f,
-                  bool_t threaded);
+static void a_chead_print_head(size_t yetprinted, size_t msgno, FILE *f,
+               bool_t threaded, bool_t subject_thread_compress);
 
-static void a_cmd__hprf(size_t yetprinted, char const *fmt, size_t msgno,
-               FILE *f, bool_t threaded, char const *attrlist);
-static char *a_cmd__subject(struct message *mp, bool_t threaded,
-               size_t yetprinted);
-static int a_cmd__putindent(FILE *fp, struct message *mp, int maxwidth);
-static size_t a_cmd__putuc(int u, int c, FILE *fp);
-static int a_cmd__dispc(struct message *mp, char const *a);
+static void a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno,
+               FILE *f, bool_t threaded, bool_t subject_thread_compress,
+               char const *attrlist);
+static char *a_chead__subject(struct message *mp, bool_t threaded,
+               bool_t subject_thread_compress, size_t yetprinted);
+static int a_chead__putindent(FILE *fp, struct message *mp, int maxwidth);
+static size_t a_chead__putuc(int u, int c, FILE *fp);
+static int a_chead__dispc(struct message *mp, char const *a);
 
 /* Shared `z' implementation */
-static int a_cmd_scroll(char const *arg, bool_t onlynew);
+static int a_chead_scroll(char const *arg, bool_t onlynew);
 
 /* Shared `headers' implementation */
 static int     _headers(int msgspec);
 
 static void
-_parse_from_(struct message *mp, char date[n_FROM_DATEBUF]) /* TODO line pool */
-{
-   FILE *ibuf;
-   int hlen;
-   char *hline = NULL;
-   size_t hsize = 0;
-   NYD_ENTER;
-
-   if ((ibuf = setinput(&mb, mp, NEED_HEADER)) != NULL &&
-         (hlen = readline_restart(ibuf, &hline, &hsize, 0)) > 0)
-      extract_date_from_from_(hline, hlen, date);
-   if (hline != NULL)
-      free(hline);
-   NYD_LEAVE;
-}
-
-static void
-a_cmd_print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded){
+a_chead_print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded,
+      bool_t subject_thread_compress){
    enum {attrlen = 14};
    char attrlist[attrlen +1], *cp;
    char const *fmt;
@@ -122,26 +106,25 @@ jattrok:
             : "%>%a%m %-18f %-16d %4l/%-5o %i%-s");
    }
 
-   a_cmd__hprf(yetprinted, fmt, msgno, f, threaded, attrlist);
+   a_chead__hprf(yetprinted, fmt, msgno, f, threaded, subject_thread_compress,
+      attrlist);
    NYD2_LEAVE;
 }
 
 static void
-a_cmd__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
-   bool_t threaded, char const *attrlist)
+a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
+   bool_t threaded, bool_t subject_thread_compress, char const *attrlist)
 {
-   char buf[16], datebuf[n_FROM_DATEBUF], cbuf[8], *cp, *subjline;
-   char const *datefmt, *date, *name, *fp n_COLOUR( COMMA *colo_tag );
+   char buf[16], cbuf[8], *cp, *subjline;
+   char const *date, *name, *fp, *color_tag;
    int i, n, s, wleft, subjlen;
    struct message *mp;
-   time_t datet;
    n_COLOUR( struct n_colour_pen *cpen_new COMMA *cpen_cur COMMA *cpen_bas; )
    enum {
       _NONE       = 0,
       _ISDOT      = 1<<0,
-      _ISADDR     = 1<<1,
-      _ISTO       = 1<<2,
-      _IFMT       = 1<<3,
+      _ISTO       = 1<<1,
+      _IFMT       = 1<<2,
       _LOOP_MASK  = (1<<4) - 1,
       _SFMT       = 1<<4,        /* It is 'S' */
       /* For the simple byte-based counts in wleft and n we sometimes need
@@ -154,84 +137,17 @@ a_cmd__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
 
    if ((mp = message + msgno - 1) == dot)
       flags = _ISDOT;
-   datet = mp->m_time;
-   date = NULL;
-   n_COLOUR( colo_tag = NULL; )
 
-   datefmt = ok_vlook(datefield);
-jredo:
-   if (datefmt != NULL) {
-      fp = hfield1("date", mp);/* TODO use m_date field! */
-      if (fp == NULL) {
-         datefmt = NULL;
-         goto jredo;
-      }
-      datet = rfctime(fp);
-      date = n_time_ctime(datet, NULL);
-      fp = ok_vlook(datefield_markout_older);
-      i = (*datefmt != '\0');
-      if (fp != NULL)
-         i |= (*fp != '\0') ? 2 | 4 : 2; /* XXX no magics */
+   color_tag = NULL;
+   date = n_header_textual_date_info(mp, &color_tag);
+   /* C99 */{
+      bool_t isto;
 
-      /* May we strftime(3)? */
-      if (i & (1 | 4)){
-         /* This localtime(3) should not fail since rfctime(3).. but .. */
-         struct tm *tmp;
-         time_t datet2;
-
-         /* TODO the datetime stuff is horror: mails should be parsed into
-          * TODO an object tree, and date: etc. have a datetime object, which
-          * TODO verifies upon parse time; then ALL occurrences of datetime are
-          * TODO valid all through the program; and: to_wire, to_user! */
-         datet2 = datet;
-jredo_localtime:
-         if((tmp = localtime(&datet2)) == NULL){
-            datet2 = 0;
-            goto jredo_localtime;
-         }
-         memcpy(&time_current.tc_local, tmp, sizeof(*tmp));
-      }
-
-      if ((i & 2) &&
-            (UICMP(64,datet, >, time_current.tc_time + n_DATE_SECSDAY) ||
-#define _6M ((n_DATE_DAYSYEAR / 2) * n_DATE_SECSDAY)
-            UICMP(64,datet + _6M, <, time_current.tc_time))) {
-#undef _6M
-         if ((datefmt = (i & 4) ? fp : NULL) == NULL) {
-            memset(datebuf, ' ', n_FROM_DATEBUF); /* xxx ur */
-            memcpy(datebuf + 4, date + 4, 7);
-            datebuf[4 + 7] = ' ';
-            memcpy(datebuf + 4 + 7 + 1, date + 20, 4);
-            datebuf[4 + 7 + 1 + 4] = '\0';
-            date = datebuf;
-         }
-         n_COLOUR( colo_tag = n_COLOUR_TAG_SUM_OLDER; )
-      } else if ((i & 1) == 0)
-         datefmt = NULL;
-   } else if (datet == (time_t)0 && !(mp->m_flag & MNOFROM)) {
-      /* TODO eliminate this path, query the FROM_ date in setptr(),
-       * TODO all other codepaths do so by themselves ALREADY ?????
-       * TODO assert(mp->m_time != 0);, then
-       * TODO ALSO changes behaviour of datefield_markout_older */
-      _parse_from_(mp, datebuf);
-      date = datebuf;
-   } else
-      date = n_time_ctime(datet, NULL);
-
-   flags |= _ISADDR;
-   name = name1(mp, 0);
-   if (name != NULL && ok_blook(showto) && n_is_myname(skin(name))) {
-      if ((cp = hfield1("to", mp)) != NULL) {
-         name = cp;
+      n_header_textual_sender_info(mp, &cp, NULL, NULL, NULL, &isto);
+      name = cp;
+      if(isto)
          flags |= _ISTO;
-      }
    }
-   if (name == NULL) {
-      name = n_empty;
-      flags &= ~_ISADDR;
-   }
-   if (flags & _ISADDR)
-      name = ok_blook(showname) ? realname(name) : prstr(skin(name));
 
    subjline = NULL;
 
@@ -280,8 +196,8 @@ jredo_localtime:
 #ifdef HAVE_COLOUR
    if(n_COLOUR_IS_ACTIVE()){
       if(flags & _ISDOT)
-         colo_tag = n_COLOUR_TAG_SUM_DOT;
-      cpen_bas = n_colour_pen_create(n_COLOUR_ID_SUM_HEADER, colo_tag);
+         color_tag = n_COLOUR_TAG_SUM_DOT;
+      cpen_bas = n_colour_pen_create(n_COLOUR_ID_SUM_HEADER, color_tag);
       n_colour_pen_put(cpen_new = cpen_cur = cpen_bas);
    }else
       cpen_new = cpen_bas = cpen_cur = NULL;
@@ -327,7 +243,7 @@ jredo_localtime:
             n_COLOUR(
                if(n_COLOUR_IS_ACTIVE())
                   cpen_new = n_colour_pen_create(n_COLOUR_ID_SUM_DOTMARK,
-                        colo_tag);
+                        color_tag);
             );
             if((n_psonce & n_PSO_UNICODE) && !ok_blook(headline_plain)){
                if (c == '>')
@@ -359,7 +275,7 @@ jredo_localtime:
          goto jputcb;
 #endif
       case 'a':
-         c = a_cmd__dispc(mp, attrlist);
+         c = a_chead__dispc(mp, attrlist);
 jputcb:
 #ifdef HAVE_COLOUR
          if(n_COLOUR_IS_ACTIVE()){
@@ -388,17 +304,6 @@ jputcb:
 #endif
          break;
       case 'd':
-         if (datefmt != NULL) {
-            i = strftime(datebuf, sizeof datebuf, datefmt,
-                  &time_current.tc_local);
-            if (i != 0)
-               date = datebuf;
-            else
-               n_err(_("Ignoring date format, it is either empty or "
-                  "excesses buffer size (%lu bytes)\n"),
-                  (ul_i)sizeof(datebuf));
-            datefmt = NULL;
-         }
          if (n == 0)
             n = 16;
          if (UICMP(32, n_ABS(n), >, wleft))
@@ -438,12 +343,13 @@ jputcb:
          if (threaded) {
 #ifdef HAVE_COLOUR
             if(n_COLOUR_IS_ACTIVE()){
-               cpen_new = n_colour_pen_create(n_COLOUR_ID_SUM_THREAD, colo_tag);
+               cpen_new = n_colour_pen_create(n_COLOUR_ID_SUM_THREAD,
+                     color_tag);
                if(cpen_new != cpen_cur)
                   n_colour_pen_put(cpen_cur = cpen_new);
             }
 #endif
-            n = a_cmd__putindent(f, mp, n_MIN(wleft, (int)n_scrnwidth - 60));
+            n = a_chead__putindent(f, mp, n_MIN(wleft, (int)n_scrnwidth - 60));
             wleft = (n >= 0) ? wleft - n : 0;
 #ifdef HAVE_COLOUR
             if(n_COLOUR_IS_ACTIVE() && (cpen_new = cpen_bas) != cpen_cur)
@@ -503,8 +409,8 @@ jputcb:
          if (n == 0)
             break;
          if (subjline == NULL)
-            subjline = a_cmd__subject(mp, (threaded && (flags & _IFMT)),
-                  yetprinted);
+            subjline = a_chead__subject(mp, (threaded && (flags & _IFMT)),
+                  subject_thread_compress, yetprinted);
          if (subjline == (char*)-1) {
             n = fprintf(f, "%*s", n, n_empty);
             wleft = (n >= 0) ? wleft - n : 0;
@@ -563,12 +469,13 @@ jputcb:
    putc('\n', f);
 
    if (subjline != NULL && subjline != (char*)-1)
-      free(subjline);
+      n_free(subjline);
    NYD2_LEAVE;
 }
 
 static char *
-a_cmd__subject(struct message *mp, bool_t threaded, size_t yetprinted)
+a_chead__subject(struct message *mp, bool_t threaded,
+   bool_t subject_thread_compress, size_t yetprinted)
 {
    struct str in, out;
    char *rv, *ms;
@@ -583,7 +490,7 @@ a_cmd__subject(struct message *mp, bool_t threaded, size_t yetprinted)
    mime_fromhdr(&in, &out, TD_ICONV | TD_ISPR);
    rv = ms = out.s;
 
-   if (!threaded || mp->m_level == 0)
+   if (!threaded || !subject_thread_compress || mp->m_level == 0)
       goto jleave;
 
    /* In a display thread - check whether this message uses the same
@@ -602,10 +509,10 @@ a_cmd__subject(struct message *mp, bool_t threaded, size_t yetprinted)
          in.l = strlen(in.s = os);
          mime_fromhdr(&in, &oout, TD_ICONV | TD_ISPR);
          x = asccasecmp(ms, subject_re_trim(oout.s));
-         free(oout.s);
+         n_free(oout.s);
 
          if (!x) {
-            free(out.s);
+            n_free(out.s);
             rv = (char*)-1;
          }
          break;
@@ -617,7 +524,7 @@ jleave:
 }
 
 static int
-a_cmd__putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX magics */
+a_chead__putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX magics */
 {
    struct message *mq;
    int *us, indlvl, indw, i, important = MNEW | MFLAGGED;
@@ -629,8 +536,8 @@ a_cmd__putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX magics */
       goto jleave;
    }
 
-   cs = ac_alloc(mp->m_level);
-   us = ac_alloc(mp->m_level * sizeof *us);
+   cs = n_lofi_alloc(mp->m_level);
+   us = n_lofi_alloc(mp->m_level * sizeof *us);
 
    i = mp->m_level - 1;
    if (mp->m_younger && UICMP(32, i + 1, ==, mp->m_younger->m_level)) {
@@ -671,21 +578,21 @@ a_cmd__putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX magics */
    for (indlvl = indw = 0; (ui8_t)indlvl < mp->m_level && indw < maxwidth;
          ++indlvl) {
       if (indw < maxwidth - 1)
-         indw += (int)a_cmd__putuc(us[indlvl], cs[indlvl] & 0xFF, fp);
+         indw += (int)a_chead__putuc(us[indlvl], cs[indlvl] & 0xFF, fp);
       else
-         indw += (int)a_cmd__putuc(0x21B8, '^', fp);
+         indw += (int)a_chead__putuc(0x21B8, '^', fp);
    }
-   indw += a_cmd__putuc(0x25B8, '>', fp);
+   indw += a_chead__putuc(0x25B8, '>', fp);
 
-   ac_free(us);
-   ac_free(cs);
+   n_lofi_free(us);
+   n_lofi_free(cs);
 jleave:
    NYD2_LEAVE;
    return indw;
 }
 
 static size_t
-a_cmd__putuc(int u, int c, FILE *fp){
+a_chead__putuc(int u, int c, FILE *fp){
    size_t rv;
    NYD2_ENTER;
    n_UNUSED(u);
@@ -715,7 +622,7 @@ a_cmd__putuc(int u, int c, FILE *fp){
 }
 
 static int
-a_cmd__dispc(struct message *mp, char const *a)
+a_chead__dispc(struct message *mp, char const *a)
 {
    int i = ' ';
    NYD2_ENTER;
@@ -744,16 +651,23 @@ a_cmd__dispc(struct message *mp, char const *a)
       i = a[6];
    if (mp->m_flag & MFLAGGED)
       i = a[7];
-   if (mb.mb_threaded == 1 && mp->m_collapsed > 0)
-      i = a[11];
-   if (mb.mb_threaded == 1 && mp->m_collapsed < 0)
-      i = a[10];
+   if (mb.mb_threaded == 1) { /* TODO bad, and m_collapsed is weird */
+      /* TODO So this does not work because of weird thread handling and
+       * TODO intermixing view and controller except when run via -L from
+       * TODO command line; in general these flags should go and we need
+       * TODO specific *headline* formats which always work and indicate
+       * TODO whether a message is in a thread, the head of a subthread etc. */
+      if (mp->m_collapsed > 0)
+         i = a[11];
+      else if (mp->m_collapsed < 0)
+         i = a[10];
+   }
    NYD2_LEAVE;
    return i;
 }
 
 static int
-a_cmd_scroll(char const *arg, bool_t onlynew){
+a_chead_scroll(char const *arg, bool_t onlynew){
    siz_t l;
    bool_t isabs;
    int msgspec, size, maxs;
@@ -934,18 +848,18 @@ jdot_unsort:
             }
          }
          ++flag;
-         a_cmd_print_head(0, mesg, n_stdout, 0);
+         a_chead_print_head(0, mesg, n_stdout, FAL0, FAL0);
          srelax();
       }
       if(needdot && ok_blook(showlast)) /* xxx will not show */
          setdot(lastmq);
       srelax_rele();
       n_COLOUR( n_colour_env_gut(); )
-
    } else { /* threaded */
       g = 0;
       mq = threadroot;
-      for (mp = threadroot; mp; mp = next_in_thread(mp))
+      for (mp = threadroot; mp; mp = next_in_thread(mp)){
+         /* TODO thread handling needs rewrite, m_collapsed must go */
          if (visible(mp) &&
                (mp->m_collapsed <= 0 ||
                 PTRCMP(mp, ==, message + msgspec - 1))) {
@@ -962,6 +876,7 @@ jdot_unsort:
                break;
             g++;
          }
+      }
       if (lastmq && (msgspec == -2 ||
             (msgspec == -1 && PTRCMP(mp, ==, message + msgCount)))) {
          g = lastg;
@@ -989,8 +904,8 @@ jdot_sort:
                   setdot(mp);
                }
             }
-            a_cmd_print_head(flag, PTR2SIZE(mp - message + 1), n_stdout,
-               mb.mb_threaded);
+            a_chead_print_head(flag, PTR2SIZE(mp - message + 1), n_stdout,
+               mb.mb_threaded, TRU1);
             ++flag;
             srelax();
          }
@@ -1039,7 +954,7 @@ c_scroll(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = a_cmd_scroll(*(char const**)v, FAL0);
+   rv = a_chead_scroll(*(char const**)v, FAL0);
    NYD_LEAVE;
    return rv;
 }
@@ -1050,7 +965,7 @@ c_Scroll(void *v)
    int rv;
    NYD_ENTER;
 
-   rv = a_cmd_scroll(*(char const**)v, TRU1);
+   rv = a_chead_scroll(*(char const**)v, TRU1);
    NYD_LEAVE;
    return rv;
 }
@@ -1072,7 +987,7 @@ jerr:
       if (msgCount == 0) {
          fprintf(n_stdout, _("At EOF\n"));
          rv = 0;
-      } else if (getmsglist(n_UNCONST(/*TODO*/ args), msgvec, 0) > 0) {
+      } else if (n_getmsglist(n_UNCONST(/*TODO*/args), msgvec, 0, NULL) > 0) {
          setdot(message + msgvec[0] - 1);
          msgvec[1] = 0;
          rv = c_headers(msgvec);
@@ -1125,7 +1040,7 @@ c_from(void *vp)
    n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, obuf, obuf != n_stdout); )
    srelax_hold();
    for (n = 0, ip = msgvec; *ip != 0; ++ip) { /* TODO join into _print_head() */
-      a_cmd_print_head((size_t)n++, (size_t)*ip, obuf, mb.mb_threaded);
+      a_chead_print_head((size_t)n++, (size_t)*ip, obuf, mb.mb_threaded, FAL0);
       srelax();
    }
    srelax_rele();
@@ -1139,27 +1054,25 @@ jleave:
 }
 
 FL void
-print_headers(size_t bottom, size_t topx, bool_t only_marked)
+print_headers(int const *msgvec, bool_t only_marked,
+   bool_t subject_thread_compress)
 {
    size_t printed;
    NYD_ENTER;
 
-#ifdef HAVE_IMAP
-   if (mb.mb_type == MB_IMAP)
-      imap_getheaders(bottom, topx);
-#endif
    time_current_update(&time_current, FAL0);
 
    n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, n_stdout, FAL0); )
    srelax_hold();
-   for (printed = 0; bottom <= topx; ++bottom) {
-      struct message *mp = message + bottom - 1;
+   for(printed = 0; *msgvec != 0; ++msgvec) {
+      struct message *mp = message + *msgvec - 1;
       if (only_marked) {
          if (!(mp->m_flag & MMARK))
             continue;
       } else if (!visible(mp))
          continue;
-      a_cmd_print_head(printed++, bottom, n_stdout, FAL0);
+      a_chead_print_head(printed++, *msgvec, n_stdout, mb.mb_threaded,
+         subject_thread_compress);
       srelax();
    }
    srelax_rele();

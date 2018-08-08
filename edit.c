@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
  * Copyright (c) 1980, 1993
@@ -63,7 +64,7 @@ edit1(int *msgvec, int viored)
          char prompt[64];
 
          snprintf(prompt, sizeof prompt, _("Edit message %d"), msgvec[i]);
-         if(!getapproval(prompt, FAL0))
+         if(!getapproval(prompt, TRU1))
             continue;
       }
 
@@ -75,9 +76,9 @@ edit1(int *msgvec, int viored)
       sigint = safe_signal(SIGINT, SIG_IGN);
 
       --mp->m_size; /* Strip final NL.. TODO MAILVFS->MESSAGE->length() */
-      fp = run_editor(fp, -1/*mp->m_size TODO */, viored,
+      fp = n_run_editor(fp, -1/*mp->m_size TODO */, viored,
             ((mb.mb_perm & MB_EDIT) == 0 || !wb), NULL, mp,
-            (wb ? SEND_MBOX : SEND_TODISP_ALL), sigint);
+            (wb ? SEND_MBOX : SEND_TODISP_ALL), sigint, NULL);
       ++mp->m_size; /* And readd it TODO */
 
       if (fp != NULL) {
@@ -136,91 +137,119 @@ c_visual(void *v)
 }
 
 FL FILE *
-run_editor(FILE *fp, off_t size, int viored, int readonly, struct header *hp,
-   struct message *mp, enum sendaction action, sighandler_type oldint)
+n_run_editor(FILE *fp, off_t size, int viored, bool_t readonly,
+   struct header *hp, struct message *mp, enum sendaction action,
+   sighandler_type oldint, char const *pipecmd)
 {
    struct stat statb;
    sigset_t cset;
-   FILE *nf = NULL;
    int t, ws;
    time_t modtime;
    off_t modsize;
-   char *tempEdit;
+   char *tmp_name;
+   FILE *nf, *nf_pipetmp, *nf_tmp;
    NYD_ENTER;
 
-   if ((nf = Ftmp(&tempEdit, "runed", OF_WRONLY | OF_REGISTER)) == NULL) {
+   nf = nf_pipetmp = NULL;
+   tmp_name = NULL;
+   modtime = 0, modsize = 0;
+
+   if((nf_tmp = Ftmp(&tmp_name, "runed",
+         ((viored == '|' ? OF_RDWR : OF_WRONLY) | OF_REGISTER |
+          OF_REGISTER_UNLINK | OF_FN_AUTOREC))) == NULL){
+jetempo:
       n_perr(_("temporary mail edit file"), 0);
       goto jleave;
    }
 
-   if (hp != NULL) {
+   if(hp != NULL){
       assert(mp == NULL);
-      t = GTO | GSUBJECT | GCC | GBCC | GNL | GCOMMA;
-      if ((hp->h_from != NULL || myaddrs(hp) != NULL) ||
-            (hp->h_sender != NULL || ok_vlook(sender) != NULL) ||
-            (hp->h_reply_to != NULL || ok_vlook(reply_to) != NULL) ||
-               ok_vlook(replyto) != NULL /* v15compat, OBSOLETE */ ||
-            hp->h_list_post != NULL || (hp->h_flags & HF_LIST_REPLY))
-         t |= GIDENT;
-      puthead(TRUM1, hp, nf, t, SEND_TODISP, CONV_NONE, NULL, NULL);
+      if(!n_header_put4compose(nf_tmp, hp))
+         goto jleave;
    }
 
-   if (mp != NULL) {
-      if (sendmp(mp, nf, NULL, NULL, action, NULL) < 0) {
+   if(mp != NULL){
+      assert(hp == NULL);
+      if(sendmp(mp, nf_tmp, NULL, NULL, action, NULL) < 0){
          n_err(_("Failed to prepare editable message\n"));
          goto jleave;
       }
-   } else {
-      if (size >= 0)
-         while (--size >= 0 && (t = getc(fp)) != EOF)
-            putc(t, nf);
-      else
-         while ((t = getc(fp)) != EOF)
-            putc(t, nf);
+   }else{
+      if(size >= 0){
+         while(--size >= 0 && (t = getc(fp)) != EOF)
+            if(putc(t, nf_tmp) == EOF)
+               break;
+      }else{
+         while((t = getc(fp)) != EOF)
+            if(putc(t, nf_tmp) == EOF)
+               break;
+      }
    }
 
-   fflush(nf);
-   if ((t = ferror(nf)) == 0) {
-      if (fstat(fileno(nf), &statb) == -1)
-         modtime = 0, modsize = 0;
-      else
-         modtime = statb.st_mtime, modsize = statb.st_size;
+   fflush(nf_tmp);
 
-      if (readonly)
-         t = (fchmod(fileno(nf), S_IRUSR) != 0);
+   if((t = (fp != NULL && ferror(fp))) == 0 && (t = ferror(nf_tmp)) == 0){
+      if(viored != '|'){
+         if(!fstat(fileno(nf_tmp), &statb))
+            modtime = statb.st_mtime, modsize = statb.st_size;
+
+         if(readonly)
+            t = (fchmod(fileno(nf_tmp), S_IRUSR) != 0);
+      }
    }
 
-   if (Fclose(nf) < 0 || t != 0) {
-      n_perr(tempEdit, 0);
-      t = 1;
-   }
-   nf = NULL;
-   if (t != 0)
+   if(t != 0){
+      n_perr(tmp_name, 0);
       goto jleave;
+   }
 
-   sigemptyset(&cset);
-   if (n_child_run((viored == 'e' ? ok_vlook(EDITOR) : ok_vlook(VISUAL)),
+   if(viored == '|'){
+      assert(pipecmd != NULL);
+      tmp_name = NULL;
+      if((nf_pipetmp = Ftmp(&tmp_name, "runed", OF_WRONLY | OF_REGISTER |
+            OF_REGISTER_UNLINK | OF_FN_AUTOREC)) == NULL)
+         goto jetempo;
+      really_rewind(nf = nf_tmp);
+      nf_tmp = nf_pipetmp;
+      nf_pipetmp = nf;
+      nf = NULL;
+      if(n_child_run(ok_vlook(SHELL), 0, fileno(nf_pipetmp), fileno(nf_tmp),
+            "-c", pipecmd, NULL, NULL, &ws) < 0 || WEXITSTATUS(ws) != 0)
+         goto jleave;
+   }else{
+      sigemptyset(&cset);
+      if(n_child_run((viored == 'e' ? ok_vlook(EDITOR) : ok_vlook(VISUAL)),
             (oldint != SIG_IGN ? &cset : NULL),
-            n_CHILD_FD_PASS, n_CHILD_FD_PASS, tempEdit, NULL, NULL, NULL, &ws
-         ) < 0 || WEXITSTATUS(ws) != 0)
-      goto jleave;
+            n_CHILD_FD_PASS, n_CHILD_FD_PASS, tmp_name, NULL, NULL, NULL,
+            &ws) < 0 || WEXITSTATUS(ws) != 0)
+         goto jleave;
+   }
 
    /* If in read only mode or file unchanged, just remove the editor temporary
     * and return.  Otherwise switch to new file */
-   if (readonly)
-      goto jleave;
-   if (stat(tempEdit, &statb) == -1) {
-      n_perr(tempEdit, 0);
-      goto jleave;
+   if(viored != '|'){
+      if(readonly)
+         goto jleave;
+      if(stat(tmp_name, &statb) == -1){
+         n_perr(tmp_name, 0);
+         goto jleave;
+      }
+      if(modtime == statb.st_mtime && modsize == statb.st_size)
+         goto jleave;
    }
 
-   if ((modtime != statb.st_mtime || modsize != statb.st_size) &&
-         (nf = Fopen(tempEdit, "r+")) == NULL)
-      n_perr(tempEdit, 0);
+   if((nf = Fopen(tmp_name, "r+")) == NULL)
+      n_perr(tmp_name, 0);
+
 jleave:
-   if (tempEdit != NULL) { /* TODO i'd rather do more signal handling */
-      unlink(tempEdit);    /* TODO in here */
-      Ftmp_free(&tempEdit);
+   if(nf_pipetmp != NULL)
+      Fclose(nf_pipetmp);
+   if(nf_tmp != NULL && Fclose(nf_tmp) < 0){
+      if(tmp_name != NULL)
+         n_perr(tmp_name, 0);
+      if(nf != NULL)
+         Fclose(nf);
+      nf = NULL;
    }
    NYD_LEAVE;
    return nf;

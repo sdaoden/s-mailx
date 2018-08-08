@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
  * Copyright (c) 1980, 1993
@@ -50,6 +51,9 @@ n_INLINE size_t __narrow_suffix(char const *cp, size_t cpl, size_t maxl);
 
 /**/
 static void a_folder_info(void);
+
+/* Set up the input pointers while copying the mail file into /tmp */
+static void a_folder_mbox_setptr(FILE *ibuf, off_t offset);
 
 static bool_t
 _update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Object! */
@@ -216,6 +220,136 @@ jleave:
    NYD2_LEAVE;
 }
 
+static void
+a_folder_mbox_setptr(FILE *ibuf, off_t offset) /* TODO Mailbox->setptr() */
+{
+   struct message self;
+   char const *cp2;
+   char *linebuf, *cp;
+   int selfcnt, c;
+   bool_t need_rfc4155, maybe, inhead, from_;
+   size_t filesize, linesize, cnt;
+   NYD_ENTER;
+
+   memset(&self, 0, sizeof self);
+   self.m_flag = MUSED | MNEW | MNEWEST;
+   filesize = mailsize - offset;
+   offset = ftell(mb.mb_otf);
+   need_rfc4155 = ok_blook(mbox_rfc4155);
+   maybe = TRU1;
+   inhead = FAL0;
+   selfcnt = 0;
+   linebuf = NULL, linesize = 0; /* TODO string pool */
+
+   for (;;) {
+      if (fgetline(&linebuf, &linesize, &filesize, &cnt, ibuf, 0) == NULL) {
+         self.m_xsize = self.m_size;
+         self.m_xlines = self.m_lines;
+         self.m_content_info = CI_HAVE_HEADER | CI_HAVE_BODY;
+         if (selfcnt > 0)
+            message_append(&self);
+         message_append_null();
+         if (linebuf != NULL)
+            n_free(linebuf);
+         break;
+      }
+
+#ifdef notdef
+      if (linebuf[0] == '\0')
+         linebuf[0] = '.';
+#endif
+      /* XXX Convert CRLF to LF; this should be rethought in that
+       * XXX CRLF input should possibly end as CRLF output? */
+      if (cnt >= 2 && linebuf[cnt - 1] == '\n' && linebuf[cnt - 2] == '\r')
+         linebuf[--cnt - 1] = '\n';
+      fwrite(linebuf, sizeof *linebuf, cnt, mb.mb_otf);
+      if (ferror(mb.mb_otf)) {
+         n_perr(_("/tmp"), 0);
+         exit(n_EXIT_ERR);
+      }
+      if (linebuf[cnt - 1] == '\n')
+         linebuf[cnt - 1] = '\0';
+      /* TODO In v15 this should use a/the flat MIME parser in order to ignore
+       * TODO "From " when MIME boundaries are active -- whereas this opens
+       * TODO another can of worms, it very likely is better than messing up
+       * TODO MIME because of a "From " line! */
+      if (maybe && linebuf[0] == 'F' &&
+            (from_ = is_head(linebuf, cnt, TRU1)) &&
+            (from_ == TRU1 || !need_rfc4155)) {
+         /* TODO char date[n_FROM_DATEBUF];
+          * TODO extract_date_from_from_(linebuf, cnt, date);
+          * TODO self.m_time = 10000; */
+         if (from_ == TRUM1) {
+            if (n_poption & n_PO_D_V)
+               n_err(_("Invalid MBOX \"From_ line\": %.*s\n"),
+                  (int)cnt, linebuf);
+            else if (!(mb.mb_active & MB_FROM__WARNED))
+               n_err(_("MBOX mailbox contains non-conforming From_ line(s)!\n"
+                  "  Message boundaries may have been falsely detected!\n"
+                  "  Setting variable *mbox-rfc4155* and reopen should improve "
+                     "the result.\n"
+                  "  If so, make changes permanent: \"copy * SOME-FILE\".  "
+                     "Then unset *mbox-rfc4155*\n"));
+            mb.mb_active |= MB_FROM__WARNED;
+         }
+         self.m_xsize = self.m_size;
+         self.m_xlines = self.m_lines;
+         self.m_content_info = CI_HAVE_HEADER | CI_HAVE_BODY;
+         if (selfcnt++ > 0)
+            message_append(&self);
+         msgCount++;
+         self.m_flag = MUSED | MNEW | MNEWEST;
+         self.m_size = 0;
+         self.m_lines = 0;
+         self.m_block = mailx_blockof(offset);
+         self.m_offset = mailx_offsetof(offset);
+         inhead = TRU1;
+      } else if (linebuf[0] == 0) {
+         inhead = FAL0;
+      } else if (inhead) {
+         for (cp = linebuf, cp2 = "status";; ++cp) {
+            if ((c = *cp2++) == 0) {
+               while (c = *cp++, whitechar(c))
+                  ;
+               if (cp[-1] != ':')
+                  break;
+               while ((c = *cp++) != '\0')
+                  if (c == 'R')
+                     self.m_flag |= MREAD;
+                  else if (c == 'O')
+                     self.m_flag &= ~MNEW;
+               break;
+            }
+            if (*cp != c && *cp != upperconv(c))
+               break;
+         }
+         for (cp = linebuf, cp2 = "x-status";; ++cp) {
+            if ((c = *cp2++) == 0) {
+               while ((c = *cp++, whitechar(c)))
+                  ;
+               if (cp[-1] != ':')
+                  break;
+               while ((c = *cp++) != '\0')
+                  if (c == 'F')
+                     self.m_flag |= MFLAGGED;
+                  else if (c == 'A')
+                     self.m_flag |= MANSWERED;
+                  else if (c == 'T')
+                     self.m_flag |= MDRAFTED;
+               break;
+            }
+            if (*cp != c && *cp != upperconv(c))
+               break;
+         }
+      }
+      offset += cnt;
+      self.m_size += cnt;
+      ++self.m_lines;
+      maybe = (linebuf[0] == 0);
+   }
+   NYD_LEAVE;
+}
+
 FL int
 setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
 {
@@ -251,9 +385,15 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
             who = &cp[1];
          if(*who == '\0')
             goto jlogname;
-      }else
+      }else{
 jlogname:
-         who = ok_vlook(LOGNAME);
+         if(fm & FEDIT_ACCOUNT){
+            if((who = ok_vlook(account)) == NULL)
+               who = ACCOUNT_NULL;
+            who = savecatsep(_("account"), ' ', who);
+         }else
+            who = ok_vlook(LOGNAME);
+      }
 
       if ((name = fexpand(name, fexpm)) == NULL)
          goto jem1;
@@ -285,14 +425,16 @@ jlogname:
 #endif
       rv = 1;
       break;
+#ifdef HAVE_MAILDIR
    case PROTO_MAILDIR:
       shudclob = 1;
-      rv = maildir_setfile(name, fm);
+      rv = maildir_setfile(who, name, fm);
       goto jleave;
+#endif
 #ifdef HAVE_POP3
    case PROTO_POP3:
       shudclob = 1;
-      rv = pop3_setfile(orig_name, fm);
+      rv = pop3_setfile(who, orig_name, fm);
       goto jleave;
 #endif
 #ifdef HAVE_IMAP
@@ -301,7 +443,7 @@ jlogname:
       if((fm & FEDIT_NEWMAIL) && mb.mb_type == MB_CACHE)
          rv = 1;
       else
-         rv = imap_setfile(orig_name, fm);
+         rv = imap_setfile(who, orig_name, fm);
       goto jleave;
 #endif
    default:
@@ -313,18 +455,23 @@ jlogname:
       int e = n_err_no;
 
       if ((fm & FEDIT_SYSBOX) && e == n_ERR_NOENT) {
-         if (strcmp(who, ok_vlook(LOGNAME)) && getpwnam(who) == NULL) {
+         if (!(fm & FEDIT_ACCOUNT) && strcmp(who, ok_vlook(LOGNAME)) &&
+               getpwnam(who) == NULL) {
             n_err(_("%s is not a user of this system\n"),
                n_shexp_quote_cp(who, FAL0));
             goto jem2;
          }
          if (!(n_poption & n_PO_QUICKRUN_MASK) && ok_blook(bsdcompat))
-            n_err(_("No mail for %s\n"), who);
+            n_err(_("No mail for %s at %s\n"),
+               who, n_shexp_quote_cp(name, FAL0));
       }
       if (fm & FEDIT_NEWMAIL)
          goto jleave;
 
+      if(mb.mb_digmsg != NULL)
+         n_dig_msg_on_mailbox_close(&mb);
       mb.mb_type = MB_VOID;
+
       if (ok_blook(emptystart)) {
          if (!(n_poption & n_PO_QUICKRUN_MASK) && !ok_blook(bsdcompat))
             n_perr(name, e);
@@ -447,7 +594,7 @@ jlogname:
       rele_sigs();
       goto jleave;
    }
-   setptr(ibuf, offset);
+   a_folder_mbox_setptr(ibuf, offset);
    setmsize(msgCount);
    if ((fm & FEDIT_NEWMAIL) && mb.mb_sorted) {
       mb.mb_threaded = 0;
@@ -479,7 +626,8 @@ jlogname:
       if(!(n_pstate & n_PS_EDIT) || (fm & FEDIT_NEWMAIL)){
          if(!(fm & FEDIT_NEWMAIL)){
             if (!ok_blook(emptystart))
-               n_err(_("No mail for %s\n"), who);
+               n_err(_("No mail for %s at %s\n"),
+                  who, n_shexp_quote_cp(name, FAL0));
          }
          goto jleave;
       }
@@ -496,6 +644,8 @@ jleave:
    NYD_LEAVE;
    return rv;
 jem2:
+   if(mb.mb_digmsg != NULL)
+      n_dig_msg_on_mailbox_close(&mb);
    mb.mb_type = MB_VOID;
 jem1:
    n_err_no = n_ERR_NOTOBACCO;
@@ -527,8 +677,16 @@ newmailinfo(int omsgCount)
 
    mdot = getmdot(1);
 
-   if (ok_blook(header))
-      print_headers(omsgCount + 1, msgCount, FAL0);
+   if(ok_blook(header) && (i = omsgCount + 1) <= msgCount){
+#ifdef HAVE_IMAP
+      if(mb.mb_type == MB_IMAP)
+         imap_getheaders(i, msgCount); /* TODO not here */
+#endif
+      for(omsgCount = 0; i <= msgCount; ++omsgCount, ++i)
+         n_msgvec[omsgCount] = i;
+      n_msgvec[omsgCount] = 0;
+      print_headers(n_msgvec, FAL0, FAL0);
+   }
    NYD_LEAVE;
    return mdot;
 }
@@ -538,16 +696,23 @@ setmsize(int sz)
 {
    NYD_ENTER;
    if (n_msgvec != NULL)
-      free(n_msgvec);
-   n_msgvec = scalloc(sz + 1, sizeof *n_msgvec);
+      n_free(n_msgvec);
+   n_msgvec = n_calloc(sz +1, sizeof *n_msgvec);
    NYD_LEAVE;
 }
 
 FL void
 print_header_summary(char const *Larg)
 {
-   size_t bot, top, i, j;
+   size_t i;
    NYD_ENTER;
+
+   getmdot(0);
+#ifdef HAVE_IMAP
+      if(mb.mb_type == MB_IMAP)
+         imap_getheaders(0, msgCount); /* TODO not here */
+#endif
+   assert(n_msgvec != NULL);
 
    if (Larg != NULL) {
       /* Avoid any messages XXX add a make_mua_silent() and use it? */
@@ -555,24 +720,24 @@ print_header_summary(char const *Larg)
          n_stdout = freopen(n_path_devnull, "w", stdout);
          n_stderr = freopen(n_path_devnull, "w", stderr);
       }
-      assert(n_msgvec != NULL);
-      i = (getmsglist(/*TODO make const */n_UNCONST(Larg), n_msgvec, 0) <= 0);
-      if (n_poption & n_PO_EXISTONLY) {
+      i = (n_getmsglist(n_shexp_quote_cp(Larg, FAL0), n_msgvec, 0, NULL) <= 0);
+      if (n_poption & n_PO_EXISTONLY)
          n_exit_status = (int)i;
-         goto jleave;
+      else if(i == 0)
+         print_headers(n_msgvec, TRU1, FAL0); /* TODO should be iterator! */
+   } else {
+      i = 0;
+      if(!mb.mb_threaded){
+         for(; UICMP(z, i, <, msgCount); ++i)
+            n_msgvec[i] = i + 1;
+      }else{
+         struct message *mp;
+
+         for(mp = threadroot; mp; ++i, mp = next_in_thread(mp))
+            n_msgvec[i] = (int)PTR2SIZE(mp - message + 1);
       }
-      if (i)
-         goto jleave;
-      for (bot = msgCount, top = 0, i = 0; (j = n_msgvec[i]) != 0; ++i) {
-         if (bot > j)
-            bot = j;
-         if (top < j)
-            top = j;
-      }
-   } else
-      bot = 1, top = msgCount;
-   print_headers(bot, top, (Larg != NULL)); /* TODO should take iterator!! */
-jleave:
+      print_headers(n_msgvec, FAL0, TRU1); /* TODO should be iterator! */
+   }
    NYD_LEAVE;
 }
 
@@ -623,7 +788,7 @@ getmdot(int nmail)
          c_thread(NULL);
       } else if ((cp = ok_vlook(autosort)) != NULL) {
          if (mb.mb_sorted != NULL)
-            free(mb.mb_sorted);
+            n_free(mb.mb_sorted);
          mb.mb_sorted = sstrdup(cp);
          c_sort(NULL);
       }
@@ -744,7 +909,7 @@ initbox(char const *name)
    mb.mb_flags = MB_NOFLAGS;
 #endif
    if (mb.mb_sorted != NULL) {
-      free(mb.mb_sorted);
+      n_free(mb.mb_sorted);
       mb.mb_sorted = NULL;
    }
    dot = prevdot = threadroot = NULL;

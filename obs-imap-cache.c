@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * SPDX-License-Identifier: BSD-4-Clause
  */
 /*
  * Copyright (c) 2004
@@ -98,7 +99,8 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
 
    ename = urlxenc(name, TRU1);
    if (mp->mb_cache_directory && same && box == NULL) {
-      res = salloc(resz = strlen(mp->mb_cache_directory) + strlen(ename) + 2);
+      res = n_autorec_alloc(resz = strlen(mp->mb_cache_directory) +
+            strlen(ename) + 2);
       snprintf(res, resz, "%s%s%s", mp->mb_cache_directory,
          (*ename ? "/" : ""), ename);
    } else {
@@ -119,7 +121,7 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
       } else
          box = "INBOX";
 
-      res = salloc(resz = strlen(cachedir) + strlen(eaccount) +
+      res = n_autorec_alloc(resz = strlen(cachedir) + strlen(eaccount) +
             strlen(box) + strlen(ename) + 4);
       snprintf(res, resz, "%s/%s/%s%s%s", cachedir, eaccount, box,
             (*ename ? "/" : ""), ename);
@@ -366,12 +368,12 @@ initcache(struct mailbox *mp)
 {
    char *name, *uvname;
    FILE *uvfp;
-   unsigned long uv;
+   ui64_t uv;
    struct cw cw;
    NYD_ENTER;
 
    if (mp->mb_cache_directory != NULL)
-      free(mp->mb_cache_directory);
+      n_free(mp->mb_cache_directory);
    mp->mb_cache_directory = NULL;
    if ((name = encname(mp, "", 1, NULL)) == NULL)
       goto jleave;
@@ -382,7 +384,7 @@ initcache(struct mailbox *mp)
       goto jleave;
    if ((uvfp = Fopen(uvname, "r+")) == NULL ||
          (n_file_lock(fileno(uvfp), FLT_READ, 0,0, 0), 0) ||
-         fscanf(uvfp, "%lu", &uv) != 1 || uv != mp->mb_uidvalidity) {
+         fscanf(uvfp, "%" PRIu64 , &uv) != 1 || uv != mp->mb_uidvalidity) {
       if ((uvfp = clean(mp, &cw)) == NULL)
          goto jout;
    } else {
@@ -390,7 +392,7 @@ initcache(struct mailbox *mp)
       rewind(uvfp);
    }
    n_file_lock(fileno(uvfp), FLT_WRITE, 0,0, 0);
-   fprintf(uvfp, "%lu\n", mp->mb_uidvalidity);
+   fprintf(uvfp, "%" PRIu64 "\n", mp->mb_uidvalidity);
    if (ferror(uvfp) || Fclose(uvfp) != 0) {
       unlink(uvname);
       mp->mb_uidvalidity = 0;
@@ -441,7 +443,7 @@ clean(struct mailbox *mp, struct cw *cw)
          goto jleave;
       emailbox = urlxenc(emailbox, TRU1);
    }
-   buf = salloc(bufsz = strlen(cachedir) + strlen(eaccount) +
+   buf = n_autorec_alloc(bufsz = strlen(cachedir) + strlen(eaccount) +
          strlen(emailbox) + 40);
    if (!n_path_mkdir(cachedir))
       goto jleave;
@@ -538,7 +540,7 @@ purge(struct mailbox *mp, struct message *m, long mc, struct cw *cw,
          else
             remve(contents[j++]);
       }
-      free(contents);
+      n_free(contents);
    }
    if (cwret(cw) == STOP) {
       n_err(_("Fatal: Cannot change back to current directory.\n"));
@@ -599,7 +601,7 @@ cache_setptr(enum fedit_mode fm, int transparent)
    omsgCount = msgCount;
 
    if (mb.mb_cache_directory != NULL) {
-      free(mb.mb_cache_directory);
+      n_free(mb.mb_cache_directory);
       mb.mb_cache_directory = NULL;
    }
    if ((name = encname(&mb, "", 1, NULL)) == NULL)
@@ -611,7 +613,7 @@ cache_setptr(enum fedit_mode fm, int transparent)
       goto jleave;
    contents = builds(&contentelem);
    msgCount = contentelem;
-   message = scalloc(msgCount + 1, sizeof *message);
+   message = n_calloc(msgCount + 1, sizeof *message);
    if (cwret(&cw) == STOP) {
       n_err(_("Fatal: Cannot change back to current directory.\n"));
       abort();
@@ -627,7 +629,7 @@ cache_setptr(enum fedit_mode fm, int transparent)
    srelax_rele();
 
    if (contents != NULL)
-      free(contents);
+      n_free(contents);
    mb.mb_type = MB_CACHE;
    mb.mb_perm = ((n_poption & n_PO_R_FLAG) || (fm & FEDIT_RDONLY)
          ) ? 0 : MB_DELE;
@@ -660,7 +662,7 @@ cache_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
          (cachedir = fexpand(cachedir, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
       goto jleave;
    eaccount = urlxenc(mp->mb_imap_account, TRU1);
-   name = salloc(namesz = strlen(cachedir) + strlen(eaccount) + 2);
+   name = n_autorec_alloc(namesz = strlen(cachedir) + strlen(eaccount) + 2);
    snprintf(name, namesz, "%s/%s", cachedir, eaccount);
    if ((dirp = opendir(name)) == NULL)
       goto jleave;
@@ -696,12 +698,12 @@ cache_remove(const char *name)
    if ((dir = encname(&mb, "", 0, imap_fileof(name))) == NULL)
       goto jleave;
    pathend = strlen(dir);
-   path = smalloc(pathsize = pathend + 30);
+   path = n_alloc(pathsize = pathend + 30);
    memcpy(path, dir, pathend);
    path[pathend++] = '/';
    path[pathend] = '\0';
    if ((dirp = opendir(path)) == NULL) {
-      free(path);
+      n_free(path);
       goto jleave;
    }
    while ((dp = readdir(dirp)) != NULL) {
@@ -710,14 +712,14 @@ cache_remove(const char *name)
          continue;
       n = strlen(dp->d_name) + 1;
       if (pathend + n > pathsize)
-         path = srealloc(path, pathsize = pathend + n + 30);
+         path = n_realloc(path, pathsize = pathend + n + 30);
       memcpy(path + pathend, dp->d_name, n);
       if (stat(path, &st) < 0 || (st.st_mode & S_IFMT) != S_IFREG)
          continue;
       if (unlink(path) < 0) {
          n_perr(path, 0);
          closedir(dirp);
-         free(path);
+         n_free(path);
          rv = STOP;
          goto jleave;
       }
@@ -725,7 +727,7 @@ cache_remove(const char *name)
    closedir(dirp);
    path[pathend] = '\0';
    rmdir(path);   /* no error on failure, might contain submailboxes */
-   free(path);
+   n_free(path);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -750,12 +752,12 @@ jleave:
    return rv;
 }
 
-FL unsigned long
+FL ui64_t
 cached_uidvalidity(struct mailbox *mp)
 {
    FILE *uvfp;
    char *uvname;
-   unsigned long uv;
+   ui64_t uv;
    NYD_ENTER;
 
    if ((uvname = encname(mp, "UIDVALIDITY", 1, NULL)) == NULL) {
@@ -764,7 +766,7 @@ cached_uidvalidity(struct mailbox *mp)
    }
    if ((uvfp = Fopen(uvname, "r")) == NULL ||
          (n_file_lock(fileno(uvfp), FLT_READ, 0,0, 0), 0) ||
-         fscanf(uvfp, "%lu", &uv) != 1)
+         fscanf(uvfp, "%" PRIu64, &uv) != 1)
       uv = 0;
    if (uvfp != NULL)
       Fclose(uvfp);
@@ -818,7 +820,7 @@ cache_dequeue(struct mailbox *mp)
          (cachedir = fexpand(cachedir, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
       goto jleave;
    eaccount = urlxenc(mp->mb_imap_account, TRU1);
-   buf = salloc(bufsz = strlen(cachedir) + strlen(eaccount) + 2);
+   buf = n_autorec_alloc(bufsz = strlen(cachedir) + strlen(eaccount) + 2);
    snprintf(buf, bufsz, "%s/%s", cachedir, eaccount);
    if ((dirp = opendir(buf)) == NULL)
       goto jleave;
@@ -833,7 +835,7 @@ cache_dequeue(struct mailbox *mp)
       dequeue1(mp);
       {  char *x = mp->mb_imap_mailbox;
          mp->mb_imap_mailbox = oldbox;
-         free(x);
+         n_free(x);
       }
    }
    closedir(dirp);
@@ -847,7 +849,7 @@ dequeue1(struct mailbox *mp)
 {
    FILE *fp = NULL, *uvfp = NULL;
    char *qname, *uvname;
-   unsigned long uv;
+   ui64_t uv;
    off_t is_size;
    int is_count;
    enum okay rv = OKAY;
@@ -863,7 +865,7 @@ dequeue1(struct mailbox *mp)
       if ((uvname = encname(mp, "UIDVALIDITY", 0, NULL)) == NULL ||
             (uvfp = Fopen(uvname, "r")) == NULL ||
             (n_file_lock(fileno(uvfp), FLT_READ, 0,0, 0), 0) ||
-            fscanf(uvfp, "%lu", &uv) != 1 || uv != mp->mb_uidvalidity) {
+            fscanf(uvfp, "%" PRIu64, &uv) != 1 || uv != mp->mb_uidvalidity) {
          n_err(_("Unique identifiers for \"%s\" are out of date. "
             "Cannot commit IMAP commands.\n"), mp->mb_imap_mailbox);
 jsave:

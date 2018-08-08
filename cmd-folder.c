@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
  * Copyright (c) 1980, 1993
@@ -196,7 +197,7 @@ c_remove(void *v)
          size_t vl;
 
          vl = strlen(ename) + fmt_len +1;
-         vb = salloc(vl);
+         vb = n_autorec_alloc(vl);
          snprintf(vb, vl, fmt, ename);
          asw = getapproval(vb, TRU1);
          if (!asw)
@@ -226,8 +227,13 @@ c_remove(void *v)
          ec |= 1;
          break;
       case PROTO_MAILDIR:
-         if (maildir_remove(name) != OKAY)
+#ifdef HAVE_MAILDIR
+         if(maildir_remove(name) != OKAY)
             ec |= 1;
+#else
+         n_err(_("No Maildir directory support compiled in\n"));
+         ec |= 1;
+#endif
          break;
       case PROTO_IMAP:
 #ifdef HAVE_IMAP
@@ -304,10 +310,15 @@ c_rename(void *v)
       }
       break;
    case PROTO_MAILDIR:
-      if (rename(oldn, newn) == -1) {
+#ifdef HAVE_MAILDIR
+      if(rename(oldn, newn) == -1){
          n_perr(oldn, 0);
          ec |= 1;
       }
+#else
+      n_err(_("No Maildir directory support compiled in\n"));
+      ec |= 1;
+#endif
       break;
    case PROTO_POP3:
       n_err(_("Cannot rename POP3 mailboxes\n"));

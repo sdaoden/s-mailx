@@ -4,6 +4,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-4-Clause
  */
 /*
  * Copyright (c) 2004
@@ -44,7 +45,12 @@
 # include "nail.h"
 #endif
 
-#include <dirent.h>
+#ifdef HAVE_MAILDIR
+# include <dirent.h>
+#endif
+
+EMPTY_FILE()
+#ifdef HAVE_MAILDIR
 
 /* a_maildir_tbl should be a hash-indexed array of trees! */
 static struct message **a_maildir_tbl, **a_maildir_tbl_top;
@@ -459,7 +465,7 @@ readin(char const *name, struct message *m)
    cnt = fsize(fp);
    fseek(mb.mb_otf, 0L, SEEK_END);
    offset = ftell(mb.mb_otf);
-   buf = smalloc(bufsize = LINESIZE);
+   buf = n_alloc(bufsize = LINESIZE);
    buflen = 0;
    while (fgetline(&buf, &bufsize, &cnt, &buflen, fp, 1) != NULL) {
       /* Since we simply copy over data without doing any transfer
@@ -473,8 +479,12 @@ readin(char const *name, struct message *m)
       emptyline = (*buf == '\n');
       ++lines;
    }
-   free(buf);
+   n_free(buf);
    if (!emptyline) {
+      /* TODO we need \n\n for mbox format.
+       * TODO That is to say we do it wrong here in order to get it right
+       * TODO when send.c stuff or with MBOX handling, even though THIS
+       * TODO line is solely a property of the MBOX database format! */
       putc('\n', mb.mb_otf);
       ++lines;
       ++size;
@@ -557,7 +567,7 @@ jbypass:
    fflush(n_stdout);
 jfree:
    for (m = message; PTRCMP(m, <, message + msgCount); ++m)
-      free(n_UNCONST(m->m_maildir_file));
+      n_free(n_UNCONST(m->m_maildir_file));
    NYD_LEAVE;
 }
 
@@ -606,7 +616,7 @@ mkname(struct n_timespec const *tsp, enum mflag f, char const *pref)
          n = size = 0;
          do {
             if (UICMP(32, n, <, size + 8))
-               node = srealloc(node, size += 20);
+               node = n_realloc(node, size += 20);
             switch (*cp) {
             case '/':
                node[n++] = '\\', node[n++] = '0',
@@ -645,7 +655,7 @@ mkname(struct n_timespec const *tsp, enum mflag f, char const *pref)
             ts.ts_sec, ts.ts_nsec, (long)n_pid, node);
    } else {
       size = (n = strlen(pref)) + 13;
-      cp = salloc(size);
+      cp = n_autorec_alloc(size);
       memcpy(cp, pref, n +1);
       for (i = n; i > 3; --i)
          if (cp[i - 1] == ',' && cp[i - 2] == '2' &&
@@ -769,7 +779,7 @@ mkmaildir(char const *name) /* TODO proper cleanup on error; use path[] loop */
    NYD_ENTER;
 
    if (trycreate(name) == OKAY) {
-      np = ac_alloc((sz = strlen(name)) + 4 +1);
+      np = n_lofi_alloc((sz = strlen(name)) + 4 +1);
       memcpy(np, name, sz);
       memcpy(np + sz, "/tmp", 4 +1);
       if (trycreate(np) == OKAY) {
@@ -779,7 +789,7 @@ mkmaildir(char const *name) /* TODO proper cleanup on error; use path[] loop */
             rv = trycreate(np);
          }
       }
-      ac_free(np);
+      n_lofi_free(np);
    }
    NYD_LEAVE;
    return rv;
@@ -853,7 +863,7 @@ subdir_remove(char const *name, char const *sub)
 
    namelen = strlen(name);
    sublen = strlen(sub);
-   path = smalloc(pathsize = namelen + sublen + 30 +1);
+   path = n_alloc(pathsize = namelen + sublen + 30 +1);
    memcpy(path, name, namelen);
    path[namelen] = '/';
    memcpy(path + namelen + 1, sub, sublen);
@@ -872,7 +882,7 @@ subdir_remove(char const *name, char const *sub)
          continue;
       n = strlen(dp->d_name);
       if (UICMP(32, pathend + n +1, >, pathsize))
-         path = srealloc(path, pathsize = pathend + n + 30);
+         path = n_realloc(path, pathsize = pathend + n + 30);
       memcpy(path + pathend, dp->d_name, n +1);
       if (unlink(path) == -1) {
          n_perr(path, 0);
@@ -889,13 +899,14 @@ subdir_remove(char const *name, char const *sub)
    }
    rv = OKAY;
 jleave:
-   free(path);
+   n_free(path);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-maildir_setfile(char const * volatile name, enum fedit_mode fm)
+maildir_setfile(char const *who, char const * volatile name,
+   enum fedit_mode fm)
 {
    sighandler_type volatile saveint;
    struct cw cw;
@@ -988,7 +999,7 @@ jerr:
 
    if (!(fm & FEDIT_NEWMAIL) && (fm & FEDIT_SYSBOX) && msgCount == 0) {
       if (mb.mb_type == MB_MAILDIR /* XXX ?? */ && !ok_blook(emptystart))
-         n_err(_("No mail at %s\n"), n_shexp_quote_cp(name, FAL0));
+         n_err(_("No mail for %s at %s\n"), who, n_shexp_quote_cp(name, FAL0));
       i = 1;
       goto jleave;
    }
@@ -1064,7 +1075,7 @@ maildir_append(char const *name, FILE *fp, long offset)
    if ((rv = mkmaildir(name)) != OKAY)
       goto jleave;
 
-   buf = smalloc(bufsize = LINESIZE); /* TODO line pool; signals */
+   buf = n_alloc(bufsize = LINESIZE); /* TODO line pool; signals */
    buflen = 0;
    cnt = fsize(fp);
    offs = offset /* BSD will move due to O_APPEND! ftell(fp) */;
@@ -1141,7 +1152,7 @@ maildir_append(char const *name, FILE *fp, long offset)
    assert(rv == OKAY);
 jfree:
    n_autorec_relax_gut();
-   free(buf);
+   n_free(buf);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -1166,5 +1177,6 @@ jleave:
    NYD_LEAVE;
    return rv;
 }
+#endif /* HAVE_MAILDIR */
 
 /* s-it-mode */

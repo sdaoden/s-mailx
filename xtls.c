@@ -5,6 +5,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-4-Clause TODO ISC
  */
 /*
  * Copyright (c) 2002
@@ -39,14 +40,14 @@
  * SUCH DAMAGE.
  */
 #undef n_FILE
-#define n_FILE xssl
+#define n_FILE xtls
 
 #ifndef HAVE_AMALGAMATION
 # include "nail.h"
 #endif
 
 EMPTY_FILE()
-#ifdef HAVE_XSSL
+#ifdef HAVE_XTLS
 #include <sys/socket.h>
 
 #include <openssl/crypto.h>
@@ -59,7 +60,7 @@ EMPTY_FILE()
 #include <openssl/x509v3.h>
 #include <openssl/x509.h>
 
-#ifdef HAVE_XSSL_CONFIG
+#ifdef HAVE_XTLS_CONFIG
 # include <openssl/conf.h>
 #endif
 
@@ -68,7 +69,7 @@ EMPTY_FILE()
 #endif
 
 /* Compatibility shims which assume 0/-1 cannot really happen */
-#ifndef HAVE_XSSL_CONF_CTX
+#ifndef HAVE_XTLS_CONF_CTX
 # ifndef SSL_OP_NO_SSLv2
 #  define SSL_OP_NO_SSLv2 0
 # endif
@@ -84,11 +85,15 @@ EMPTY_FILE()
 # ifndef SSL_OP_NO_TLSv1_2
 #  define SSL_OP_NO_TLSv1_2 0
 # endif
+# ifndef SSL_OP_NO_TLSv1_3
+#  define SSL_OP_NO_TLSv1_3 0
+# endif
   /* SSL_CONF_CTX and _OP_NO_SSL_MASK were both introduced with 1.0.2!?! */
 # ifndef SSL_OP_NO_SSL_MASK
 #  define SSL_OP_NO_SSL_MASK \
    (SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |\
-   SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_TLSv1_2)
+   SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1 | SSL_OP_NO_TLSv1_2 |\
+   SSL_OP_NO_TLSv1_3)
 # endif
 
 # ifndef SSL2_VERSION
@@ -106,73 +111,76 @@ EMPTY_FILE()
 # ifndef TLS1_2_VERSION
 #  define TLS1_2_VERSION 0
 # endif
+# ifndef TLS1_3_VERSION
+#  define TLS1_3_VERSION 0
+# endif
 #endif
 
-#ifdef HAVE_XSSL_STACK_OF
-# define n_XSSL_STACKOF(X) STACK_OF(X)
+#ifdef HAVE_XTLS_STACK_OF
+# define n_XTLS_STACKOF(X) STACK_OF(X)
 #else
-# define n_XSSL_STACKOF(X) /*X*/STACK
+# define n_XTLS_STACKOF(X) /*X*/STACK
 #endif
 
 #if OPENSSL_VERSION_NUMBER + 0 >= 0x0090581fL
-# define a_XSSL_RAND_LOAD_FILE_MAXBYTES -1
+# define a_XTLS_RAND_LOAD_FILE_MAXBYTES -1
 #else
-# define a_XSSL_RAND_LOAD_FILE_MAXBYTES 1024
+# define a_XTLS_RAND_LOAD_FILE_MAXBYTES 1024
 #endif
 
 /* Compatibility sighs (that sigh is _really_ a cute one) */
-#if HAVE_XSSL_OPENSSL >= 0x10100
-# define a_xssl_X509_get_notBefore X509_get0_notBefore
-# define a_xssl_X509_get_notAfter X509_get0_notAfter
+#if HAVE_XTLS_OPENSSL >= 0x10100
+# define a_xtls_X509_get_notBefore X509_get0_notBefore
+# define a_xtls_X509_get_notAfter X509_get0_notAfter
 #else
-# define a_xssl_X509_get_notBefore X509_get_notBefore
-# define a_xssl_X509_get_notAfter X509_get_notAfter
+# define a_xtls_X509_get_notBefore X509_get_notBefore
+# define a_xtls_X509_get_notAfter X509_get_notAfter
 #endif
 
 /* X509_STORE_set_flags */
-#undef a_XSSL_X509_V_ANY
+#undef a_XTLS_X509_V_ANY
 #ifndef X509_V_FLAG_NO_ALT_CHAINS
 # define X509_V_FLAG_NO_ALT_CHAINS -1
 #else
-# undef a_XSSL_X509_V_ANY
-# define a_XSSL_X509_V_ANY
+# undef a_XTLS_X509_V_ANY
+# define a_XTLS_X509_V_ANY
 #endif
 #ifndef X509_V_FLAG_NO_CHECK_TIME
 # define X509_V_FLAG_NO_CHECK_TIME -1
 #else
-# undef a_XSSL_X509_V_ANY
-# define a_XSSL_X509_V_ANY
+# undef a_XTLS_X509_V_ANY
+# define a_XTLS_X509_V_ANY
 #endif
 #ifndef X509_V_FLAG_PARTIAL_CHAIN
 # define X509_V_FLAG_PARTIAL_CHAIN -1
 #else
-# undef a_XSSL_X509_V_ANY
-# define a_XSSL_X509_V_ANY
+# undef a_XTLS_X509_V_ANY
+# define a_XTLS_X509_V_ANY
 #endif
 #ifndef X509_V_FLAG_X509_STRICT
 # define X509_V_FLAG_X509_STRICT -1
 #else
-# undef a_XSSL_X509_V_ANY
-# define a_XSSL_X509_V_ANY
+# undef a_XTLS_X509_V_ANY
+# define a_XTLS_X509_V_ANY
 #endif
 #ifndef X509_V_FLAG_TRUSTED_FIRST
 # define X509_V_FLAG_TRUSTED_FIRST -1
 #else
-# undef a_XSSL_X509_V_ANY
-# define a_XSSL_X509_V_ANY
+# undef a_XTLS_X509_V_ANY
+# define a_XTLS_X509_V_ANY
 #endif
 
-enum a_xssl_state{
-   a_XSSL_S_INIT = 1u<<0,
-   a_XSSL_S_RAND_INIT = 1u<<1,
-   a_XSSL_S_CONF_LOAD = 1u<<2,
+enum a_xtls_state{
+   a_XTLS_S_INIT = 1u<<0,
+   a_XTLS_S_RAND_INIT = 1u<<1,
+   a_XTLS_S_CONF_LOAD = 1u<<2,
 
-#if HAVE_XSSL_OPENSSL < 0x10100
-   a_XSSL_S_EXIT_HDL = 1u<<8,
-   a_XSSL_S_ALGO_LOAD = 1u<<9,
+#if HAVE_XTLS_OPENSSL < 0x10100
+   a_XTLS_S_EXIT_HDL = 1u<<8,
+   a_XTLS_S_ALGO_LOAD = 1u<<9,
 #endif
 
-   a_XSSL_S_VERIFY_ERROR = 1u<<16
+   a_XTLS_S_VERIFY_ERROR = 1u<<16
 };
 
 struct ssl_method { /* TODO v15 obsolete */
@@ -180,34 +188,34 @@ struct ssl_method { /* TODO v15 obsolete */
    char const  sm_map[16];
 };
 
-#ifndef HAVE_XSSL_CONF_CTX
-struct a_xssl_protocol{
-   char const sp_name[8];
-   sl_i sp_op_no;             /* SSL_OP_NO_* bit */
-   ui16_t sp_version;         /* *_VERSION number */
-   bool_t sp_ok_minmaxproto;  /* Valid for {Min,Max}Protocol= */
-   bool_t sp_ok_proto;        /* Valid for Protocol= */
-   ui8_t sp__dummy[4];
+#ifndef HAVE_XTLS_CONF_CTX
+struct a_xtls_protocol{
+   char const xp_name[8];
+   sl_i xp_op_no;             /* SSL_OP_NO_* bit */
+   ui16_t xp_version;         /* *_VERSION number */
+   bool_t xp_ok_minmaxproto;  /* Valid for {Min,Max}Protocol= */
+   bool_t xp_ok_proto;        /* Valid for Protocol= */
+   ui8_t xp__dummy[4];
 };
 #endif
 
-struct a_xssl_smime_cipher{
-   char const sc_name[8];
-   EVP_CIPHER const *(*sc_fun)(void);
+struct a_xtls_cipher{
+   char const xc_name[8];
+   EVP_CIPHER const *(*xc_fun)(void);
 };
 
-struct a_xssl_smime_digest{
-   char const sd_name[8];
-   EVP_MD const *(*sd_fun)(void);
+struct a_xtls_digest{
+   char const xd_name[16];
+   EVP_MD const *(*xd_fun)(void);
 };
 
-struct a_xssl_x509_v_flags{
-   char const xvf_name[20];
-   si32_t xvf_flag;
+struct a_xtls_x509_v_flags{
+   char const xxvf_name[20];
+   si32_t xxvf_flag;
 };
 
 /* Supported SSL/TLS methods: update manual on change! */
-static struct ssl_method const   _ssl_methods[] = { /* TODO obsolete */
+static struct ssl_method const _ssl_methods[] = { /* TODO obsolete */
    {"auto",    "ALL,-SSLv2"},
    {"ssl3",    "-ALL,SSLv3"},
    {"tls1",    "-ALL,TLSv1"},
@@ -218,64 +226,114 @@ static struct ssl_method const   _ssl_methods[] = { /* TODO obsolete */
 /* Update manual on change!
  * Ensure array size by adding \0 to longest entry.
  * Strictly to be sorted new/up to old/down, [0]=ALL, [x-1]=None! */
-#ifndef HAVE_XSSL_CONF_CTX
-static struct a_xssl_protocol const a_xssl_protocols[] = {
+#ifndef HAVE_XTLS_CONF_CTX
+static struct a_xtls_protocol const a_xtls_protocols[] = {
    {"ALL", SSL_OP_NO_SSL_MASK, 0, FAL0, TRU1, {0}},
-   {"TLSv1.2\0", SSL_OP_NO_TLSv1_2, TLS1_2_VERSION, TRU1, TRU1, {0}},
+   {"TLSv1.3\0", SSL_OP_NO_TLSv1_3, TLS1_3_VERSION, TRU1, TRU1, {0}},
+   {"TLSv1.2", SSL_OP_NO_TLSv1_2, TLS1_2_VERSION, TRU1, TRU1, {0}},
    {"TLSv1.1", SSL_OP_NO_TLSv1_1, TLS1_1_VERSION, TRU1, TRU1, {0}},
    {"TLSv1", SSL_OP_NO_TLSv1, TLS1_VERSION, TRU1, TRU1, {0}},
    {"SSLv3", SSL_OP_NO_SSLv3, SSL3_VERSION, TRU1, TRU1, {0}},
    {"SSLv2", SSL_OP_NO_SSLv2, SSL2_VERSION, TRU1, TRU1, {0}},
    {"None", SSL_OP_NO_SSL_MASK, 0, TRU1, FAL0, {0}}
 };
-#endif /* HAVE_XSSL_CONF_CTX */
+#endif /* HAVE_XTLS_CONF_CTX */
 
 /* Supported S/MIME cipher algorithms */
-static struct a_xssl_smime_cipher const a_xssl_smime_ciphers[] = { /* Manual! */
+static struct a_xtls_cipher const a_xtls_ciphers[] = { /*Manual!*/
 #ifndef OPENSSL_NO_AES
-# define a_XSSL_SMIME_DEFAULT_CIPHER EVP_aes_128_cbc /* According to RFC 5751 */
-   {"aes128", &EVP_aes_128_cbc},
-   {"aes256", &EVP_aes_256_cbc},
-   {"aes192", &EVP_aes_192_cbc},
+# define a_XTLS_SMIME_DEFAULT_CIPHER EVP_aes_128_cbc /* According RFC 5751 */
+   {"AES128", &EVP_aes_128_cbc},
+   {"AES256", &EVP_aes_256_cbc},
+   {"AES192", &EVP_aes_192_cbc},
 #endif
 #ifndef OPENSSL_NO_DES
-# ifndef a_XSSL_SMIME_DEFAULT_CIPHER
-#  define a_XSSL_SMIME_DEFAULT_CIPHER EVP_des_ede3_cbc
+# ifndef a_XTLS_SMIME_DEFAULT_CIPHER
+#  define a_XTLS_SMIME_DEFAULT_CIPHER EVP_des_ede3_cbc
 # endif
-   {"des3", &EVP_des_ede3_cbc},
-   {"des", &EVP_des_cbc},
+   {"DES3", &EVP_des_ede3_cbc},
+   {"DES", &EVP_des_cbc},
 #endif
 };
-#ifndef a_XSSL_SMIME_DEFAULT_CIPHER
+#ifndef a_XTLS_SMIME_DEFAULT_CIPHER
 # error Your OpenSSL library does not include the necessary
 # error cipher algorithms that are required to support S/MIME
 #endif
 
 #ifndef OPENSSL_NO_AES
-/* TODO obsolete a_xssl_smime_ciphers_obs */
-static struct a_xssl_smime_cipher const a_xssl_smime_ciphers_obs[] = {
-   {"aes-128", &EVP_aes_128_cbc},
-   {"aes-256", &EVP_aes_256_cbc},
-   {"aes-192", &EVP_aes_192_cbc}
+/* TODO obsolete a_xtls_smime_ciphers_obs */
+static struct a_xtls_cipher const a_xtls_smime_ciphers_obs[] = {
+   {"AES-128", &EVP_aes_128_cbc},
+   {"AES-256", &EVP_aes_256_cbc},
+   {"AES-192", &EVP_aes_192_cbc}
 };
 #endif
 
-/* Supported S/MIME message digest algorithms */
-static struct a_xssl_smime_digest const a_xssl_smime_digests[] = { /* Manual! */
-#define a_XSSL_SMIME_DEFAULT_DIGEST EVP_sha1 /* According to RFC 5751 */
-#define a_XSSL_SMIME_DEFAULT_DIGEST_S  "sha1"
-   {"sha1", &EVP_sha1},
-   {"sha256", &EVP_sha256},
-   {"sha512", &EVP_sha512},
-   {"sha384", &EVP_sha384},
-   {"sha224", &EVP_sha224},
+/* Supported S/MIME message digest algorithms.
+ * Update manual on default changes! */
+static struct a_xtls_digest const a_xtls_digests[] = { /*Manual!*/
+#ifdef HAVE_XTLS_BLAKE2
+   {"BLAKE2b512\0", &EVP_blake2b512},
+   {"BLAKE2s256", &EVP_blake2s256},
+# ifndef a_XTLS_FINGERPRINT_DEFAULT_DIGEST
+#  define a_XTLS_FINGERPRINT_DEFAULT_DIGEST EVP_blake2s256
+#  define a_XTLS_FINGERPRINT_DEFAULT_DIGEST_S "BLAKE2s256"
+# endif
+#endif
+
+#ifdef HAVE_XTLS_SHA3
+   {"SHA3-512\0", &EVP_sha3_512},
+   {"SHA3-384", &EVP_sha3_384},
+   {"SHA3-256", &EVP_sha3_256},
+   {"SHA3-224", &EVP_sha3_224},
+#endif
+
+#ifndef OPENSSL_NO_SHA512
+   {"SHA512\0", &EVP_sha512},
+   {"SHA384", &EVP_sha384},
+# ifndef a_XTLS_SMIME_DEFAULT_DIGEST
+#  define a_XTLS_SMIME_DEFAULT_DIGEST EVP_sha512
+#  define a_XTLS_SMIME_DEFAULT_DIGEST_S "SHA512"
+# endif
+#endif
+
+#ifndef OPENSSL_NO_SHA256
+   {"SHA256\0", &EVP_sha256},
+   {"SHA224", &EVP_sha224},
+# ifndef a_XTLS_SMIME_DEFAULT_DIGEST
+#  define a_XTLS_SMIME_DEFAULT_DIGEST EVP_sha256
+#  define a_XTLS_SMIME_DEFAULT_DIGEST_S "SHA256"
+# endif
+# ifndef a_XTLS_FINGERPRINT_DEFAULT_DIGEST
+#  define a_XTLS_FINGERPRINT_DEFAULT_DIGEST EVP_sha256
+#  define a_XTLS_FINGERPRINT_DEFAULT_DIGEST_S "SHA256"
+# endif
+#endif
+
+#ifndef OPENSSL_NO_SHA
+   {"SHA1\0", &EVP_sha1},
+# ifndef a_XTLS_SMIME_DEFAULT_DIGEST
+#  define a_XTLS_SMIME_DEFAULT_DIGEST EVP_sha1
+#  define a_XTLS_SMIME_DEFAULT_DIGEST_S "SHA1"
+# endif
+# ifndef a_XTLS_FINGERPRINT_DEFAULT_DIGEST
+#  define a_XTLS_FINGERPRINT_DEFAULT_DIGEST EVP_sha1
+#  define a_XTLS_FINGERPRINT_DEFAULT_DIGEST_S "SHA1"
+# endif
+#endif
+
 #ifndef OPENSSL_NO_MD5
-   {"md5", &EVP_md5},
+   {"MD5\0", &EVP_md5},
 #endif
 };
+
+#if !defined a_XTLS_SMIME_DEFAULT_DIGEST || \
+      !defined a_XTLS_FINGERPRINT_DEFAULT_DIGEST
+# error Not enough supported message digest algorithms available
+#endif
 
 /* X509_STORE_set_flags() for *{smime,ssl}-ca-flags* */
-static struct a_xssl_x509_v_flags const a_xssl_x509_v_flags[] = { /* Manual! */
+static struct a_xtls_x509_v_flags const a_xtls_x509_v_flags[] = { /* Manual! */
    {"no-alt-chains", X509_V_FLAG_NO_ALT_CHAINS},
    {"no-check-time", X509_V_FLAG_NO_CHECK_TIME},
    {"partial-chain", X509_V_FLAG_PARTIAL_CHAIN},
@@ -283,54 +341,58 @@ static struct a_xssl_x509_v_flags const a_xssl_x509_v_flags[] = { /* Manual! */
    {"trusted-first", X509_V_FLAG_TRUSTED_FIRST},
 };
 
-static enum a_xssl_state a_xssl_state;
-static size_t a_xssl_msgno;
+static enum a_xtls_state a_xtls_state;
+static size_t a_xtls_msgno;
 
-static void a_xssl_rand_init(void);
-static void a_xssl_init(void);
+static void a_xtls_rand_init(void);
+static void a_xtls_init(void);
 
-#if HAVE_XSSL_OPENSSL < 0x10100
-# ifdef HAVE_SSL_ALL_ALGORITHMS
-static void a_xssl__load_algos(void);
-#  define a_xssl_load_algos a_xssl__load_algos
+#if HAVE_XTLS_OPENSSL < 0x10100
+# ifdef HAVE_TLS_ALL_ALGORITHMS
+static void a_xtls__load_algos(void);
+#  define a_xtls_load_algos a_xtls__load_algos
 # endif
-# if defined HAVE_XSSL_CONFIG || defined HAVE_SSL_ALL_ALGORITHMS
-static void a_xssl_atexit(void);
+# if defined HAVE_XTLS_CONFIG || defined HAVE_TLS_ALL_ALGORITHMS
+static void a_xtls_atexit(void);
 # endif
 #endif
-#ifndef a_xssl_load_algos
-# define a_xssl_load_algos() do{;}while(0)
+#ifndef a_xtls_load_algos
+# define a_xtls_load_algos() do{;}while(0)
 #endif
 
-static bool_t     _ssl_parse_asn1_time(ASN1_TIME const *atp,
-                     char *bdat, size_t blen);
-static int        _ssl_verify_cb(int success, X509_STORE_CTX *store);
+static bool_t a_xtls_parse_asn1_time(ASN1_TIME const *atp,
+               char *bdat, size_t blen);
+static int a_xtls_verify_cb(int success, X509_STORE_CTX *store);
 
-/* *smime-ca-flags*, *ssl-ca-flags* */
-static void a_xssl_ca_flags(X509_STORE *store, char const *flags);
+static bool_t a_xtls_digest_find(char const *name, EVP_MD const **mdp,
+               char const **normalized_name_or_null);
 
-/* SSL_CTX configuration */
-static void * a_xssl_conf_setup(SSL_CTX *ctxp, struct url const *urlp);
-static bool_t a_xssl_conf(void *confp, char const *cmd, char const *value);
-static bool_t a_xssl_conf_finish(void **confp, bool_t error);
+/* *smime-ca-flags*, *tls-ca-flags* */
+static void a_xtls_ca_flags(X509_STORE *store, char const *flags);
 
-static bool_t a_xssl_obsolete_conf_vars(void *confp, struct url const *urlp);
-static bool_t a_xssl_config_pairs(void *confp, struct url const *urlp);
-static bool_t a_xssl_load_verifications(SSL_CTX *ctxp, struct url const *urlp);
+/* SSL_CTX configuration; the latter always NULLs *confp */
+static void *a_xtls_conf_setup(SSL_CTX *ctxp, struct url const *urlp);
+static bool_t a_xtls_conf(void *confp, char const *cmd, char const *value);
+static bool_t a_xtls_conf_finish(void **confp, bool_t error);
 
-static enum okay  ssl_check_host(struct sock *sp, struct url const *urlp);
+static bool_t a_xtls_obsolete_conf_vars(void *confp, struct url const *urlp);
+static bool_t a_xtls_config_pairs(void *confp, struct url const *urlp);
+static bool_t a_xtls_load_verifications(SSL_CTX *ctxp, struct url const *urlp);
+
+static bool_t a_xtls_check_host(struct sock *sp, X509 *peercert,
+               struct url const *urlp);
 
 static int        smime_verify(struct message *m, int n,
-                     n_XSSL_STACKOF(X509) *chain, X509_STORE *store);
+                     n_XTLS_STACKOF(X509) *chain, X509_STORE *store);
 static EVP_CIPHER const * _smime_cipher(char const *name);
 static int        ssl_password_cb(char *buf, int size, int rwflag,
                      void *userdata);
 static FILE *     smime_sign_cert(char const *xname, char const *xname2,
                      bool_t dowarn, char const **match);
 static char const * _smime_sign_include_certs(char const *name);
-static bool_t     _smime_sign_include_chain_creat(n_XSSL_STACKOF(X509) **chain,
+static bool_t     _smime_sign_include_chain_creat(n_XTLS_STACKOF(X509) **chain,
                      char const *cfiles, char const *addr);
-static EVP_MD const * _smime_sign_digest(char const *name,
+static EVP_MD const *a_xtls_smime_sign_digest(char const *name,
                         char const **digname);
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
 static enum okay  load_crl1(X509_STORE *store, char const *name);
@@ -338,47 +400,31 @@ static enum okay  load_crl1(X509_STORE *store, char const *name);
 static enum okay  load_crls(X509_STORE *store, enum okeys fok, enum okeys dok);
 
 static void
-a_xssl_rand_init(void){
-#define a_XSSL_RAND_ENTROPY 32
-   char b64buf[a_XSSL_RAND_ENTROPY * 5 +1], *randfile;
+a_xtls_rand_init(void){
+#define a_XTLS_RAND_ENTROPY 32
+   char b64buf[a_XTLS_RAND_ENTROPY * 5 +1], *randfile;
    char const *cp, *x;
    bool_t err;
    NYD2_ENTER;
 
-   a_xssl_state |= a_XSSL_S_RAND_INIT;
+   a_xtls_state |= a_XTLS_S_RAND_INIT;
 
    err = TRU1;
    randfile = NULL;
 
-#ifdef HAVE_XSSL_CONFIG
-   if(!(a_xssl_state & a_XSSL_S_INIT))
-      a_xssl_init();
+#ifdef HAVE_XTLS_CONFIG
+   if(!(a_xtls_state & a_XTLS_S_INIT))
+      a_xtls_init();
 #endif
-
-   /* Shall use some external daemon? */
-   if((cp = ok_vlook(ssl_rand_egd)) != NULL){
-#ifdef HAVE_XSSL_RAND_EGD
-      if((x = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) != NULL &&
-            RAND_egd(cp = x) != -1){
-         err = FAL0;
-         goto jleave;
-      }
-      n_err(_("*ssl_rand_egd* daemon at %s not available\n"),
-         n_shexp_quote_cp(cp, FAL0));
-#else
-      if(n_poption & n_PO_D_VV)
-         n_err(_("*ssl_rand_egd* (%s): unsupported by SSL library\n"),
-            n_shexp_quote_cp(cp, FAL0));
-#endif
-   }
 
    /* Prefer possible user setting */
-   if((cp = ok_vlook(ssl_rand_file)) != NULL){
+   if((cp = ok_vlook(tls_rand_file)) != NULL ||
+         (cp = ok_vlook(ssl_rand_file)) != NULL){
       x = NULL;
       if(*cp != '\0'){
          if((x = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
-            n_err(_("*ssl-rand-file*: expansion of %s failed "
-                  "(using OpenSSL default)\n"),
+            n_err(_("*tls-rand-file*: expansion of %s failed "
+                  "(using default)\n"),
                n_shexp_quote_cp(cp, FAL0));
       }
       cp = x;
@@ -386,31 +432,31 @@ a_xssl_rand_init(void){
    if(cp == NULL){
       randfile = n_lofi_alloc(PATH_MAX);
       if((cp = RAND_file_name(randfile, PATH_MAX)) == NULL){
-         n_err(_("*ssl-rand-file*: no SSL entropy file, can't seed PRNG\n"));
+         n_err(_("*tls-rand-file*: no TLS entropy file, can't seed PRNG\n"));
          goto jleave;
       }
    }
 
-   (void)RAND_load_file(cp, a_XSSL_RAND_LOAD_FILE_MAXBYTES);
+   (void)RAND_load_file(cp, a_XTLS_RAND_LOAD_FILE_MAXBYTES);
 
    /* And feed in some data, then write the updated file.
-    * While this rather feeds the PRNG with itself in the n_RANDOM_IMPL_SSL
+    * While this rather feeds the PRNG with itself in the n_RANDOM_IMPL_TLS
     * case, let us stir the buffer a little bit.
     * Estimate a low but likely still too high number of entropy bytes, use
     * 20%: base64 uses 3 input = 4 output bytes relation, and the base64
     * alphabet is a 6 bit one */
    for(x = (char*)-1;;){
       RAND_add(n_random_create_buf(b64buf, sizeof(b64buf) -1, NULL),
-         sizeof(b64buf) -1, a_XSSL_RAND_ENTROPY);
+         sizeof(b64buf) -1, a_XTLS_RAND_ENTROPY);
       if((x = (char*)((uintptr_t)x >> (1
-#if HAVE_RANDOM == n_RANDOM_IMPL_SSL
+#if HAVE_RANDOM == n_RANDOM_IMPL_TLS
          + 3
 #endif
             ))) == NULL){
          err = (RAND_status() == 0);
          break;
       }
-#if HAVE_RANDOM != n_RANDOM_IMPL_SSL
+#if HAVE_RANDOM != n_RANDOM_IMPL_TLS
       if(!(err = (RAND_status() == 0)))
          break;
 #endif
@@ -423,42 +469,43 @@ jleave:
    if(randfile != NULL)
       n_lofi_free(randfile);
    if(err)
-      n_panic(_("Cannot seed the *SSL PseudoRandomNumberGenerator, "
+      n_panic(_("Cannot seed the *TLS PseudoRandomNumberGenerator, "
             "RAND_status() is 0!\n"
-         "  Please set *ssl-rand-file* to a file with sufficient entropy.\n"
+         "  Please set *tls-rand-file* to a file with sufficient entropy.\n"
          "  On a machine with entropy: "
             "\"$ dd if=/dev/urandom of=FILE bs=1024 count=1\"\n"));
    NYD2_LEAVE;
 }
 
 static void
-a_xssl_init(void){
-#ifdef HAVE_XSSL_CONFIG
+a_xtls_init(void){
+#ifdef HAVE_XTLS_CONFIG
    char const *cp;
 #endif
    NYD2_ENTER;
 
-   if(a_xssl_state & a_XSSL_S_INIT)
+   if(a_xtls_state & a_XTLS_S_INIT)
       goto jleave;
 
-#if HAVE_XSSL_OPENSSL >= 0x10100
+#if HAVE_XTLS_OPENSSL >= 0x10100
    OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS |
       OPENSSL_INIT_LOAD_CRYPTO_STRINGS
-# ifdef HAVE_SSL_ALL_ALGORITHMS
+# ifdef HAVE_TLS_ALL_ALGORITHMS
          | OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS
 # endif
       , NULL);
 #else
    SSL_load_error_strings();
    SSL_library_init();
-   a_xssl_load_algos();
+   a_xtls_load_algos();
 #endif
-   a_xssl_state |= a_XSSL_S_INIT;
+   a_xtls_state |= a_XTLS_S_INIT;
 
 
-   /* Load openssl.cnf or whatever was given in *ssl-config-file* */
-#ifdef HAVE_XSSL_CONFIG
-   if((cp = ok_vlook(ssl_config_file)) != NULL){
+   /* Load openssl.cnf or whatever was given in *tls-config-file* */
+#ifdef HAVE_XTLS_CONFIG
+   if((cp = ok_vlook(tls_config_file)) != NULL ||
+         (cp = ok_vlook(ssl_config_file)) != NULL){
       char const *msg;
       ul_i flags;
 
@@ -469,72 +516,72 @@ a_xssl_init(void){
       }else if((msg = cp, cp = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) != NULL)
          flags = 0;
       else{
-         n_err(_("*ssl-config-file*: file expansion failed: %s\n"),
+         n_err(_("*tls-config-file*: file expansion failed: %s\n"),
             n_shexp_quote_cp(msg, FAL0));
          goto jefile;
       }
 
       if(CONF_modules_load_file(cp, n_uagent, flags) == 1){
-         a_xssl_state |= a_XSSL_S_CONF_LOAD;
-# if HAVE_XSSL_OPENSSL < 0x10100
-         if(!(a_xssl_state & a_XSSL_S_EXIT_HDL)){
-            a_xssl_state |= a_XSSL_S_EXIT_HDL;
-            atexit(&a_xssl_atexit); /* TODO generic program-wide event mech. */
+         a_xtls_state |= a_XTLS_S_CONF_LOAD;
+# if HAVE_XTLS_OPENSSL < 0x10100
+         if(!(a_xtls_state & a_XTLS_S_EXIT_HDL)){
+            a_xtls_state |= a_XTLS_S_EXIT_HDL;
+            atexit(&a_xtls_atexit); /* TODO generic program-wide event mech. */
          }
 # endif
          if(n_poption & n_PO_D_V)
-            n_err(_("Loaded SSL/TLS configuration for %s from %s\n"), n_uagent,
+            n_err(_("Loaded TLS configuration for %s from %s\n"), n_uagent,
                n_shexp_quote_cp(msg, FAL0));
 jefile:;
       }else
-         ssl_gen_err(_("SSL/TLS CONF_modules_load_file() load error"));
+         ssl_gen_err(_("TLS CONF_modules_load_file() load error"));
    }
-#endif /* HAVE_XSSL_CONFIG */
+#endif /* HAVE_XTLS_CONFIG */
 
-   if(!(a_xssl_state & a_XSSL_S_RAND_INIT))
-      a_xssl_rand_init();
+   if(!(a_xtls_state & a_XTLS_S_RAND_INIT))
+      a_xtls_rand_init();
 jleave:
    NYD2_LEAVE;
 }
 
-#if HAVE_XSSL_OPENSSL < 0x10100
-# ifdef HAVE_SSL_ALL_ALGORITHMS
+#if HAVE_XTLS_OPENSSL < 0x10100
+# ifdef HAVE_TLS_ALL_ALGORITHMS
 static void
-a_xssl__load_algos(void){
+a_xtls__load_algos(void){
    NYD2_ENTER;
-   if(!(a_xssl_state & a_XSSL_S_ALGO_LOAD)){
-      a_xssl_state |= a_XSSL_S_ALGO_LOAD;
+   if(!(a_xtls_state & a_XTLS_S_ALGO_LOAD)){
+      a_xtls_state |= a_XTLS_S_ALGO_LOAD;
       OpenSSL_add_all_algorithms();
 
-      if(!(a_xssl_state & a_XSSL_S_EXIT_HDL)){
-         a_xssl_state |= a_XSSL_S_EXIT_HDL;
-         atexit(&a_xssl_atexit); /* TODO generic program-wide event mech. */
+      if(!(a_xtls_state & a_XTLS_S_EXIT_HDL)){
+         a_xtls_state |= a_XTLS_S_EXIT_HDL;
+         atexit(&a_xtls_atexit); /* TODO generic program-wide event mech. */
       }
    }
    NYD2_LEAVE;
 }
 # endif
 
-# if defined HAVE_XSSL_CONFIG || defined HAVE_SSL_ALL_ALGORITHMS
+# if defined HAVE_XTLS_CONFIG || defined HAVE_TLS_ALL_ALGORITHMS
 static void
-a_xssl_atexit(void){
+a_xtls_atexit(void){
    NYD2_ENTER;
-#  ifdef HAVE_XSSL_CONFIG
-   if(a_xssl_state & a_XSSL_S_CONF_LOAD)
+#  ifdef HAVE_XTLS_CONFIG
+   if(a_xtls_state & a_XTLS_S_CONF_LOAD)
       CONF_modules_free();
 #  endif
 
-#  ifdef HAVE_SSL_ALL_ALGORITHMS
-   if(a_xssl_state & a_XSSL_S_ALGO_LOAD)
+#  ifdef HAVE_TLS_ALL_ALGORITHMS
+   if(a_xtls_state & a_XTLS_S_ALGO_LOAD)
       EVP_cleanup();
 #  endif
    NYD2_LEAVE;
 }
 # endif
-#endif /* HAVE_XSSL_OPENSSL < 0x10100 */
+#endif /* HAVE_XTLS_OPENSSL < 0x10100 */
 
 static bool_t
-_ssl_parse_asn1_time(ASN1_TIME const *atp, char *bdat, size_t blen)
+a_xtls_parse_asn1_time(ASN1_TIME const *atp, char *bdat, size_t blen)
 {
    BIO *mbp;
    char *mcp;
@@ -557,7 +604,7 @@ _ssl_parse_asn1_time(ASN1_TIME const *atp, char *bdat, size_t blen)
 }
 
 static int
-_ssl_verify_cb(int success, X509_STORE_CTX *store)
+a_xtls_verify_cb(int success, X509_STORE_CTX *store)
 {
    char data[256];
    X509 *cert;
@@ -567,9 +614,9 @@ _ssl_verify_cb(int success, X509_STORE_CTX *store)
    if (success && !(n_poption & n_PO_D_V))
       goto jleave;
 
-   if (a_xssl_msgno != 0) {
-      n_err(_("Message %lu:\n"), (ul_i)a_xssl_msgno);
-      a_xssl_msgno = 0;
+   if (a_xtls_msgno != 0) {
+      n_err(_("Message %lu:\n"), (ul_i)a_xtls_msgno);
+      a_xtls_msgno = 0;
    }
    n_err(_(" Certificate depth %d %s\n"),
       X509_STORE_CTX_get_error_depth(store), (success ? n_empty : V_(n_error)));
@@ -578,10 +625,12 @@ _ssl_verify_cb(int success, X509_STORE_CTX *store)
       X509_NAME_oneline(X509_get_subject_name(cert), data, sizeof data);
       n_err(_("  subject = %s\n"), data);
 
-      _ssl_parse_asn1_time(a_xssl_X509_get_notBefore(cert), data, sizeof data);
+      a_xtls_parse_asn1_time(a_xtls_X509_get_notBefore(cert),
+         data, sizeof data);
       n_err(_("  notBefore = %s\n"), data);
 
-      _ssl_parse_asn1_time(a_xssl_X509_get_notAfter(cert), data, sizeof data);
+      a_xtls_parse_asn1_time(a_xtls_X509_get_notAfter(cert),
+         data, sizeof data);
       n_err(_("  notAfter = %s\n"), data);
 
       X509_NAME_oneline(X509_get_issuer_name(cert), data, sizeof data);
@@ -592,18 +641,59 @@ _ssl_verify_cb(int success, X509_STORE_CTX *store)
       int err = X509_STORE_CTX_get_error(store);
 
       n_err(_("  err %i: %s\n"), err, X509_verify_cert_error_string(err));
-      a_xssl_state |= a_XSSL_S_VERIFY_ERROR;
+      a_xtls_state |= a_XTLS_S_VERIFY_ERROR;
    }
 
-   if (!success && ssl_verify_decide() != OKAY)
-      rv = FAL0;
+   if(!success)
+      rv = n_tls_verify_decide();
 jleave:
    NYD_LEAVE;
    return rv;
 }
 
+static bool_t
+a_xtls_digest_find(char const *name,
+      EVP_MD const **mdp, char const **normalized_name_or_null){
+   size_t i;
+   char *nn;
+   NYD2_ENTER;
+
+   /* C99 */{
+      char *cp, c;
+
+      i = strlen(name);
+      nn = cp = n_lofi_alloc(i +1);
+      while((c = *name++) != '\0')
+         *cp++ = upperconv(c);
+      *cp = '\0';
+
+      if(normalized_name_or_null != NULL)
+         *normalized_name_or_null = savestrbuf(nn, PTR2SIZE(cp - nn));
+   }
+
+   for(i = 0; i < n_NELEM(a_xtls_digests); ++i)
+      if(!strcmp(a_xtls_digests[i].xd_name, nn)){
+         *mdp = (*a_xtls_digests[i].xd_fun)();
+         goto jleave;
+      }
+
+   /* Not a built-in algorithm, but we may have dynamic support for more */
+#ifdef HAVE_TLS_ALL_ALGORITHMS
+   if((*mdp = EVP_get_digestbyname(nn)) != NULL)
+      goto jleave;
+#endif
+
+   n_err(_("Invalid message digest: %s\n"), n_shexp_quote_cp(nn, FAL0));
+   *mdp = NULL;
+jleave:
+   n_lofi_free(nn);
+
+   NYD2_LEAVE;
+   return (*mdp != NULL);
+}
+
 static void
-a_xssl_ca_flags(X509_STORE *store, char const *flags){
+a_xtls_ca_flags(X509_STORE *store, char const *flags){
    NYD2_ENTER;
    if(flags != NULL){
       char *iolist, *cp;
@@ -611,49 +701,50 @@ a_xssl_ca_flags(X509_STORE *store, char const *flags){
       iolist = savestr(flags);
 jouter:
       while((cp = n_strsep(&iolist, ',', TRU1)) != NULL){
-         struct a_xssl_x509_v_flags const *xvfp;
+         struct a_xtls_x509_v_flags const *xvfp;
 
-         for(xvfp = &a_xssl_x509_v_flags[0];
-               xvfp < &a_xssl_x509_v_flags[n_NELEM(a_xssl_x509_v_flags)];
+         for(xvfp = &a_xtls_x509_v_flags[0];
+               xvfp < &a_xtls_x509_v_flags[n_NELEM(a_xtls_x509_v_flags)];
                ++xvfp)
-            if(!asccasecmp(cp, xvfp->xvf_name)){
-               if(xvfp->xvf_flag != -1){
-#ifdef a_XSSL_X509_V_ANY
-                  X509_STORE_set_flags(store, xvfp->xvf_flag);
+            if(!asccasecmp(cp, xvfp->xxvf_name)){
+               if(xvfp->xxvf_flag != -1){
+#ifdef a_XTLS_X509_V_ANY
+                  X509_STORE_set_flags(store, xvfp->xxvf_flag);
 #endif
                }else if(n_poption & n_PO_D_V)
-                  n_err(_("*{smime,ssl}-ca-flags*: "
+                  n_err(_("*{smime,tls}-ca-flags*: "
                      "directive not supported: %s\n"), cp);
                goto jouter;
             }
-         n_err(_("*{smime,ssl}-ca-flags*: invalid directive: %s\n"), cp);
+         n_err(_("*{smime,tls}-ca-flags*: invalid directive: %s\n"), cp);
       }
    }
    NYD2_LEAVE;
 }
 
-#ifdef HAVE_XSSL_CONF_CTX
+#ifdef HAVE_XTLS_CONF_CTX
 static void *
-a_xssl_conf_setup(SSL_CTX *ctxp, struct url const *urlp){
+a_xtls_conf_setup(SSL_CTX *ctxp, struct url const *urlp){
    char const *cp;
    SSL_CONF_CTX *sccp;
    NYD2_ENTER;
 
    sccp = NULL;
 
-   if((cp = xok_vlook(ssl_config_module, urlp, OXM_ALL)) != NULL){
-# ifdef HAVE_XSSL_CTX_CONFIG
-      if(!(a_xssl_state & a_XSSL_S_CONF_LOAD)){
-         n_err(_("*ssl-config-module*: no *ssl-config-file* loaded: %s\n"),
+   if((cp = xok_vlook(tls_config_module, urlp, OXM_ALL)) != NULL ||
+         (cp = xok_vlook(ssl_config_module, urlp, OXM_ALL)) != NULL){
+# ifdef HAVE_XTLS_CTX_CONFIG
+      if(!(a_xtls_state & a_XTLS_S_CONF_LOAD)){
+         n_err(_("*tls-config-module*: no *tls-config-file* loaded: %s\n"),
             n_shexp_quote_cp(cp, FAL0));
          goto jleave;
       }else if(!SSL_CTX_config(ctxp, cp)){
-         ssl_gen_err(_("*ssl-config-module*: load error for %s, section [%s]"),
+         ssl_gen_err(_("*tls-config-module*: load error for %s, section [%s]"),
                n_uagent, n_shexp_quote_cp(cp, FAL0));
          goto jleave;
       }
 # else
-      n_err(_("*ssl-config-module*: set but not supported: %s\n"),
+      n_err(_("*tls-config-module*: set but not supported: %s\n"),
          n_shexp_quote_cp(cp, FAL0));
       goto jleave;
 # endif
@@ -673,13 +764,13 @@ jleave:
 }
 
 static bool_t
-a_xssl_conf(void *confp, char const *cmd, char const *value){
+a_xtls_conf(void *confp, char const *cmd, char const *value){
    int rv;
    SSL_CONF_CTX *sccp;
    NYD2_ENTER;
 
    if(n_poption & n_PO_D_V)
-      n_err(_("SSL/TLS: applying config: %s = %s\n"),
+      n_err(_("TLS: applying config: %s = %s\n"),
             n_shexp_quote_cp(cmd, FAL0), n_shexp_quote_cp(value, FAL0));
 
    rv = SSL_CONF_cmd(sccp = confp, cmd, value);
@@ -689,10 +780,18 @@ a_xssl_conf(void *confp, char const *cmd, char const *value){
       cmd = n_shexp_quote_cp(cmd, FAL0);
       value = n_shexp_quote_cp(value, FAL0);
       if(rv == 0)
-         ssl_gen_err(_("SSL/TLS: config failure: %s = %s"), cmd, value);
-      else
-         n_err(_("SSL/TLS: please report this config error: %s = %s\n"),
-            cmd, value);
+         ssl_gen_err(_("TLS: config failure: %s = %s"), cmd, value);
+      else{
+         char const *err;
+
+         switch(rv){
+         case -2: err = N_("TLS: config command not recognized"); break;
+         case -3: err = N_("TLS: missing required config argument"); break;
+         default: err = N_("TLS: unspecified config error"); break;
+         }
+         err = V_(err);
+         n_err(_("%s (%d): %s = %s\n"), err, rv, cmd, value);
+      }
       rv = 1;
    }
    NYD2_LEAVE;
@@ -700,35 +799,35 @@ a_xssl_conf(void *confp, char const *cmd, char const *value){
 }
 
 static bool_t
-a_xssl_conf_finish(void **confp, bool_t error){
-   SSL_CONF_CTX **sccp;
+a_xtls_conf_finish(void **confp, bool_t error){
+   SSL_CONF_CTX *sccp;
    bool_t rv;
    NYD2_ENTER;
 
-   sccp = (SSL_CONF_CTX**)confp;
+   sccp = (SSL_CONF_CTX*)*confp;
+   *confp = NULL;
 
    if(!(rv = error))
-      rv = (SSL_CONF_CTX_finish(*sccp) != 0);
+      rv = (SSL_CONF_CTX_finish(sccp) != 0);
 
-   SSL_CONF_CTX_free(*sccp);
-
-   *sccp = NULL;
+   SSL_CONF_CTX_free(sccp);
    NYD2_LEAVE;
    return rv;
 }
 
-#else /* HAVE_XSSL_CONF_CTX */
-# ifdef HAVE_XSSL_CTX_CONFIG
+#else /* HAVE_XTLS_CONF_CTX */
+# ifdef HAVE_XTLS_CTX_CONFIG
 #  error SSL_CTX_config(3) support unexpected without SSL_CONF_CTX support
 # endif
 
 static void *
-a_xssl_conf_setup(SSL_CTX* ctxp, struct url const *urlp){
+a_xtls_conf_setup(SSL_CTX* ctxp, struct url const *urlp){
    char const *cp;
    NYD2_ENTER;
 
-   if((cp = xok_vlook(ssl_config_module, urlp, OXM_ALL)) != NULL){
-      n_err(_("*ssl-config-module*: set but not supported: %s\n"),
+   if((cp = xok_vlook(tls_config_module, urlp, OXM_ALL)) != NULL ||
+         (cp = xok_vlook(ssl_config_module, urlp, OXM_ALL)) != NULL){
+      n_err(_("*tls-config-module*: set but not supported: %s\n"),
          n_shexp_quote_cp(cp, FAL0));
       ctxp = NULL;
    }
@@ -737,69 +836,81 @@ a_xssl_conf_setup(SSL_CTX* ctxp, struct url const *urlp){
 }
 
 static bool_t
-a_xssl_conf(void *confp, char const *cmd, char const *value){
+a_xtls_conf(void *confp, char const *cmd, char const *value){
    char const *xcmd, *emsg;
    SSL_CTX *ctxp;
    NYD2_ENTER;
 
    if(n_poption & n_PO_D_V)
-      n_err(_("SSL/TLS: applying config: %s = %s\n"),
+      n_err(_("TLS: applying config: %s = %s\n"),
             n_shexp_quote_cp(cmd, FAL0), n_shexp_quote_cp(value, FAL0));
 
    ctxp = confp;
 
    if(!asccasecmp(cmd, xcmd = "Certificate")){
       if(SSL_CTX_use_certificate_chain_file(ctxp, value) != 1){
-         emsg = N_("SSL/TLS: %s: cannot load from file %s\n");
+         emsg = N_("TLS: %s: cannot load from file %s\n");
          goto jerr;
       }
-   }else if(!asccasecmp(cmd, xcmd = "CipherList")){
+   }else if(!asccasecmp(cmd, xcmd = "CipherString") ||
+         !asccasecmp(cmd, xcmd = "CipherList")/* grr, bad fault in past! */){
       if(SSL_CTX_set_cipher_list(ctxp, value) != 1){
-         emsg = N_("SSL/TLS: %s: invalid: %s\n");
+         emsg = N_("TLS: %s: invalid: %s\n");
          goto jerr;
       }
-   }else if(!asccasecmp(cmd, xcmd = "Curves")){
-#ifdef SSL_CTRL_SET_CURVES_LIST
-      if(SSL_CTX_set1_curves_list(ctxp, value) != 1){
-         emsg = N_("SSL/TLS: %s: invalid: %s\n");
+   }else if(!asccasecmp(cmd, xcmd = "Ciphersuites")){
+#ifdef HAVE_XTLS_SET_CIPHERSUITES
+      if(SSL_CTX_set_ciphersuites(ctxp, value) != 1){
+         emsg = N_("TLS: %s: invalid: %s\n");
          goto jerr;
       }
 #else
       value = NULL;
-      emsg = N_("SSL/TLS: %s: directive not supported\n");
+      emsg = N_("TLS: %s: directive not supported\n");
+      goto jxerr;
+#endif
+   }else if(!asccasecmp(cmd, xcmd = "Curves")){
+#ifdef SSL_CTRL_SET_CURVES_LIST
+      if(SSL_CTX_set1_curves_list(ctxp, n_UNCONST(value)) != 1){
+         emsg = N_("TLS: %s: invalid: %s\n");
+         goto jerr;
+      }
+#else
+      value = NULL;
+      emsg = N_("TLS: %s: directive not supported\n");
       goto jxerr;
 #endif
    }else if((emsg = NULL, !asccasecmp(cmd, xcmd = "MaxProtocol")) ||
          (emsg = (char*)-1, !asccasecmp(cmd, xcmd = "MinProtocol"))){
-#ifndef HAVE_XSSL_SET_MIN_PROTO_VERSION
+#ifndef HAVE_XTLS_SET_MIN_PROTO_VERSION
       value = NULL;
-      emsg = N_("SSL/TLS: %s: directive not supported\n");
+      emsg = N_("TLS: %s: directive not supported\n");
       goto jxerr;
 #else
-      struct a_xssl_protocol const *xpp;
+      struct a_xtls_protocol const *xpp;
       size_t i;
 
       for(i = 1 /* [0] == ALL */;;){
-         xpp = &a_xssl_protocols[i];
+         xpp = &a_xtls_protocols[i];
 
-         if(xpp->sp_ok_minmaxproto && !asccasecmp(value, xpp->sp_name))
+         if(xpp->xp_ok_minmaxproto && !asccasecmp(value, xpp->xp_name))
             break;
 
-         if(++i >= n_NELEM(a_xssl_protocols)){
-            emsg = N_("SSL/TLS: %s: unsupported element: %s\n");
+         if(++i >= n_NELEM(a_xtls_protocols)){
+            emsg = N_("TLS: %s: unsupported element: %s\n");
             goto jxerr;
          }
       }
 
-      if((emsg == NULL ? SSL_CTX_set_max_proto_version(ctxp, xpp->sp_version)
-            : SSL_CTX_set_min_proto_version(ctxp, xpp->sp_version)) != 1){
-         emsg = N_("SSL/TLS: %s: invalid protocol: %s\n");
+      if((emsg == NULL ? SSL_CTX_set_max_proto_version(ctxp, xpp->xp_version)
+            : SSL_CTX_set_min_proto_version(ctxp, xpp->xp_version)) != 1){
+         emsg = N_("TLS: %s: invalid protocol: %s\n");
          goto jerr;
       }
-#endif /* !HAVE_XSSL_SET_MIN_PROTO_VERSION */
+#endif /* !HAVE_XTLS_SET_MIN_PROTO_VERSION */
    }else if(!asccasecmp(cmd, xcmd = "Options")){
       if(asccasecmp(value, "Bugs")){
-         emsg = N_("SSL/TLS: %s: fallback only supports value \"Bugs\": %s\n");
+         emsg = N_("TLS: %s: fallback only supports value \"Bugs\": %s\n");
          goto jxerr;
       }
       SSL_CTX_set_options(ctxp, SSL_OP_ALL);
@@ -819,7 +930,7 @@ a_xssl_conf(void *confp, char const *cmd, char const *value){
             (cp = n_strsep(&iolist, ',', FAL0)) != NULL;){
          if(*cp == '\0'){
             value = NULL;
-            emsg = N_("SSL/TLS: %s: empty elements are not supported\n");
+            emsg = N_("TLS: %s: empty elements are not supported\n");
             goto jxerr;
          }
 
@@ -831,21 +942,21 @@ a_xssl_conf(void *confp, char const *cmd, char const *value){
          }
 
          for(i = 0;;){
-            struct a_xssl_protocol const *xpp;
+            struct a_xtls_protocol const *xpp;
 
-            xpp = &a_xssl_protocols[i];
+            xpp = &a_xtls_protocols[i];
 
-            if(xpp->sp_ok_proto && !asccasecmp(cp, xpp->sp_name)){
+            if(xpp->xp_ok_proto && !asccasecmp(cp, xpp->xp_name)){
                /* We need to inverse the meaning of the _NO_s */
                if(!addin)
-                  opts |= xpp->sp_op_no;
+                  opts |= xpp->xp_op_no;
                else
-                  opts &= ~xpp->sp_op_no;
+                  opts &= ~xpp->xp_op_no;
                break;
             }
 
-            if(++i >= n_NELEM(a_xssl_protocols)){
-               emsg = N_("SSL/TLS: %s: unsupported element: %s\n");
+            if(++i >= n_NELEM(a_xtls_protocols)){
+               emsg = N_("TLS: %s: unsupported element: %s\n");
                goto jxerr;
             }
          }
@@ -855,7 +966,7 @@ a_xssl_conf(void *confp, char const *cmd, char const *value){
       SSL_CTX_set_options(ctxp, opts);
    }else{
       xcmd = n_shexp_quote_cp(cmd, FAL0);
-      emsg = N_("SSL/TLS: unsupported directive: %s: value: %s\n");
+      emsg = N_("TLS: unsupported directive: %s: value: %s\n");
       goto jxerr;
    }
 
@@ -875,15 +986,16 @@ jxerr:
 }
 
 static bool_t
-a_xssl_conf_finish(void **confp, bool_t error){
+a_xtls_conf_finish(void **confp, bool_t error){
    n_UNUSED(confp);
    n_UNUSED(error);
+   *confp = NULL;
    return TRU1;
 }
-#endif /* !HAVE_XSSL_CONF_CTX */
+#endif /* !HAVE_XTLS_CONF_CTX */
 
 static bool_t
-a_xssl_obsolete_conf_vars(void *confp, struct url const *urlp){
+a_xtls_obsolete_conf_vars(void *confp, struct url const *urlp){
    char const *cp, *cp_base, *certchain;
    bool_t rv;
    NYD2_ENTER;
@@ -892,34 +1004,34 @@ a_xssl_obsolete_conf_vars(void *confp, struct url const *urlp){
 
    /* Certificate via ssl-cert */
    if((certchain = cp = xok_vlook(ssl_cert, urlp, OXM_ALL)) != NULL){
-      n_OBSOLETE(_("please use *ssl-config-pairs* instead of *ssl-cert*"));
+      n_OBSOLETE(_("please use *tls-config-pairs* instead of *ssl-cert*"));
       if((cp_base = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL){
          n_err(_("*ssl-cert* value expansion failed: %s\n"),
             n_shexp_quote_cp(cp, FAL0));
          goto jleave;
       }
-      if(!a_xssl_conf(confp, "Certificate", certchain = cp_base))
+      if(!a_xtls_conf(confp, "Certificate", certchain = cp_base))
          goto jleave;
    }
 
-   /* CipherList via ssl-ciper-list */
+   /* CipherString via ssl-ciper-list */
    if((cp = xok_vlook(ssl_cipher_list, urlp, OXM_ALL)) != NULL){
-      n_OBSOLETE(_("please use *ssl-config-pairs* instead of "
+      n_OBSOLETE(_("please use *tls-config-pairs* instead of "
          "*ssl-cipher-list*"));
-      if(!a_xssl_conf(confp, "CipherList", cp))
+      if(!a_xtls_conf(confp, "CipherString", cp))
          goto jleave;
    }
 
    /* Curves via ssl-curves */
    if((cp = xok_vlook(ssl_curves, urlp, OXM_ALL)) != NULL){
-      n_OBSOLETE(_("please use *ssl-config-pairs* instead of *ssl-curves*"));
-      if(!a_xssl_conf(confp, "Curves", cp))
+      n_OBSOLETE(_("please use *tls-config-pairs* instead of *ssl-curves*"));
+      if(!a_xtls_conf(confp, "Curves", cp))
          goto jleave;
    }
 
    /* PrivateKey via ssl-key */
    if((cp = xok_vlook(ssl_key, urlp, OXM_ALL)) != NULL){
-      n_OBSOLETE(_("please use *ssl-config-pairs* instead of *ssl-curves*"));
+      n_OBSOLETE(_("please use *tls-config-pairs* instead of *ssl-key*"));
       if((cp_base = fexpand(cp, FEXP_LOCAL | FEXP_NOPROTO)) == NULL){
          n_err(_("*ssl-key* value expansion failed: %s\n"),
             n_shexp_quote_cp(cp, FAL0));
@@ -933,33 +1045,33 @@ a_xssl_obsolete_conf_vars(void *confp, struct url const *urlp){
       }
    }
    if((cp != NULL || (cp = certchain) != NULL) &&
-         !a_xssl_conf(confp, "PrivateKey", cp))
+         !a_xtls_conf(confp, "PrivateKey", cp))
       goto jleave;
 
    /* Protocol via ssl-method or ssl-protocol */
    if((cp = xok_vlook(ssl_method, urlp, OXM_ALL)) != NULL){
       size_t i;
 
-      n_OBSOLETE(_("please use *ssl-config-pairs* instead of *ssl-method*"));
+      n_OBSOLETE(_("please use *tls-config-pairs* instead of *ssl-method*"));
       for(i = 0;;){
          if(!asccasecmp(_ssl_methods[i].sm_name, cp)){
             cp = _ssl_methods[i].sm_map;
             break;
          }
          if(++i == n_NELEM(_ssl_methods)){
-            n_err(_("Unsupported TLS/SSL method: %s\n"), cp);
+            n_err(_("Unsupported SSL method: %s\n"), cp);
             goto jleave;
          }
       }
    }
    if((cp_base = xok_vlook(ssl_protocol, urlp, OXM_ALL)) != NULL){
-      n_OBSOLETE(_("please use *ssl-config-pairs* instead of *ssl-protocol*"));
+      n_OBSOLETE(_("please use *tls-config-pairs* instead of *ssl-protocol*"));
       if(cp != NULL && (n_poption & n_PO_D_V))
          n_err(_("*ssl-protocol* overrides *ssl-method*! "
-            "And please use *ssl-config-pairs* instead!\n"));
+            "And please use *tls-config-pairs* instead!\n"));
       cp = cp_base;
    }
-   if(cp != NULL && !a_xssl_conf(confp, "Protocol", cp))
+   if(cp != NULL && !a_xtls_conf(confp, "Protocol", cp))
       goto jleave;
 
    rv = TRU1;
@@ -969,14 +1081,17 @@ jleave:
 }
 
 static bool_t
-a_xssl_config_pairs(void *confp, struct url const *urlp){
+a_xtls_config_pairs(void *confp, struct url const *urlp){
    /* Due to interdependencies some commands have to be delayed a bit */
    static char const cmdcert[] = "Certificate", cmdprivkey[] = "PrivateKey";
    char const *valcert, *valprivkey;
    char *pairs, *cp, *cmd, *val;
    NYD2_ENTER;
 
-   if((pairs = n_UNCONST(xok_vlook(ssl_config_pairs, urlp, OXM_ALL))) == NULL)
+   if((pairs = n_UNCONST(xok_vlook(tls_config_pairs, urlp, OXM_ALL))
+         ) == NULL &&
+         (pairs = n_UNCONST(xok_vlook(ssl_config_pairs, urlp, OXM_ALL))
+         ) == NULL)
       goto jleave;
    pairs = savestr(pairs);
 
@@ -997,7 +1112,7 @@ a_xssl_config_pairs(void *confp, struct url const *urlp){
 jenocmd:
          if(pairs == NULL)
             pairs = n_UNCONST(n_empty);
-         n_err(_("*ssl-config-pairs*: missing directive: %s; rest: %s\n"),
+         n_err(_("*tls-config-pairs*: missing directive: %s; rest: %s\n"),
             n_shexp_quote_cp(cp, FAL0), n_shexp_quote_cp(pairs, FAL0));
          goto jleave;
       }
@@ -1031,7 +1146,7 @@ jenocmd:
       if(cp == val){
          if(pairs == NULL)
             pairs = n_UNCONST(n_empty);
-         n_err(_("*ssl-config-pairs*: missing value: %s; rest: %s\n"),
+         n_err(_("*tls-config-pairs*: missing value: %s; rest: %s\n"),
             n_shexp_quote_cp(cmd, FAL0), n_shexp_quote_cp(pairs, FAL0));
          goto jleave;
       }
@@ -1041,7 +1156,7 @@ jenocmd:
          if((cp = fexpand(val, FEXP_LOCAL | FEXP_NOPROTO)) == NULL){
             if(pairs == NULL)
                pairs = n_UNCONST(n_empty);
-            n_err(_("*ssl-config-pairs*: value expansion failed: %s: %s; "
+            n_err(_("*tls-config-pairs*: value expansion failed: %s: %s; "
                   "rest: %s\n"),
                n_shexp_quote_cp(cmd, FAL0), n_shexp_quote_cp(val, FAL0),
                n_shexp_quote_cp(pairs, FAL0));
@@ -1055,16 +1170,16 @@ jenocmd:
          valcert = val;
       else if(f & a_PRIVKEY)
          valprivkey = val;
-      else if(!a_xssl_conf(confp, cmd, val)){
+      else if(!a_xtls_conf(confp, cmd, val)){
          pairs = n_UNCONST(n_empty);
          goto jleave;
       }
    }
 
    /* Work the delayed ones */
-   if((valcert != NULL && !a_xssl_conf(confp, cmdcert, valcert)) ||
+   if((valcert != NULL && !a_xtls_conf(confp, cmdcert, valcert)) ||
          ((valprivkey != NULL || (valprivkey = valcert) != NULL) &&
-          !a_xssl_conf(confp, cmdprivkey, valprivkey)))
+          !a_xtls_conf(confp, cmdprivkey, valprivkey)))
       pairs = n_UNCONST(n_empty);
 
 jleave:
@@ -1073,21 +1188,23 @@ jleave:
 }
 
 static bool_t
-a_xssl_load_verifications(SSL_CTX *ctxp, struct url const *urlp){
+a_xtls_load_verifications(SSL_CTX *ctxp, struct url const *urlp){
    char *ca_dir, *ca_file;
    X509_STORE *store;
    bool_t rv;
    NYD2_ENTER;
 
-   if(ssl_verify_level == SSL_VERIFY_IGNORE){
+   if(n_tls_verify_level == n_TLS_VERIFY_IGNORE){
       rv = TRU1;
       goto jleave;
    }
    rv = FAL0;
 
-   if((ca_dir = xok_vlook(ssl_ca_dir, urlp, OXM_ALL)) != NULL)
+   if((ca_dir = xok_vlook(tls_ca_dir, urlp, OXM_ALL)) != NULL ||
+         (ca_dir = xok_vlook(ssl_ca_dir, urlp, OXM_ALL)) != NULL)
       ca_dir = fexpand(ca_dir, FEXP_LOCAL | FEXP_NOPROTO);
-   if((ca_file = xok_vlook(ssl_ca_file, urlp, OXM_ALL)) != NULL)
+   if((ca_file = xok_vlook(tls_ca_file, urlp, OXM_ALL)) != NULL ||
+         (ca_file = xok_vlook(ssl_ca_file, urlp, OXM_ALL)) != NULL)
       ca_file = fexpand(ca_file, FEXP_LOCAL | FEXP_NOPROTO);
 
    if((ca_dir != NULL || ca_file != NULL) &&
@@ -1108,21 +1225,23 @@ a_xssl_load_verifications(SSL_CTX *ctxp, struct url const *urlp){
       bool_t xv15;
 
       if((xv15 = ok_blook(ssl_no_default_ca)))
-         n_OBSOLETE(_("please use *ssl-ca-no-defaults*, "
+         n_OBSOLETE(_("please use *tls-ca-no-defaults*, "
             "not *ssl-no-default-ca*"));
-      if(!xok_blook(ssl_ca_no_defaults, urlp, OXM_ALL) && !xv15 &&
+      if(!xok_blook(tls_ca_no_defaults, urlp, OXM_ALL) &&
+            !xok_blook(ssl_ca_no_defaults, urlp, OXM_ALL) && !xv15 &&
             SSL_CTX_set_default_verify_paths(ctxp) != 1) {
          ssl_gen_err(_("Error loading built-in default CA locations\n"));
          goto jleave;
       }
    }
 
-   a_xssl_state &= ~a_XSSL_S_VERIFY_ERROR;
-   a_xssl_msgno = 0;
-   SSL_CTX_set_verify(ctxp, SSL_VERIFY_PEER, &_ssl_verify_cb);
+   a_xtls_state &= ~a_XTLS_S_VERIFY_ERROR;
+   a_xtls_msgno = 0;
+   SSL_CTX_set_verify(ctxp, SSL_VERIFY_PEER, &a_xtls_verify_cb);
    store = SSL_CTX_get_cert_store(ctxp);
-   load_crls(store, ok_v_ssl_crl_file, ok_v_ssl_crl_dir);
-   a_xssl_ca_flags(store, xok_vlook(ssl_ca_flags, urlp, OXM_ALL));
+   load_crls(store, ok_v_tls_crl_file, ok_v_tls_crl_dir);
+   a_xtls_ca_flags(store, xok_vlook(tls_ca_flags, urlp, OXM_ALL));
+      a_xtls_ca_flags(store, xok_vlook(ssl_ca_flags, urlp, OXM_ALL));
 
    rv = TRU1;
 jleave:
@@ -1130,59 +1249,51 @@ jleave:
    return rv;
 }
 
-static enum okay
-ssl_check_host(struct sock *sp, struct url const *urlp)
-{
+static bool_t
+a_xtls_check_host(struct sock *sp, X509 *peercert, struct url const *urlp){
    char data[256];
-   X509 *cert;
-   n_XSSL_STACKOF(GENERAL_NAME) *gens;
+   n_XTLS_STACKOF(GENERAL_NAME) *gens;
    GENERAL_NAME *gen;
    X509_NAME *subj;
-   enum okay rv = STOP;
+   bool_t rv;
    NYD_ENTER;
+   n_UNUSED(sp);
 
-   if ((cert = SSL_get_peer_certificate(sp->s_ssl)) == NULL) {
-      n_err(_("No certificate from: %s\n"), urlp->url_h_p.s);
-      goto jleave;
-   }
+   rv = FAL0;
 
-   gens = X509_get_ext_d2i(cert, NID_subject_alt_name, NULL, NULL);
-   if (gens != NULL) {
+   if((gens = X509_get_ext_d2i(peercert, NID_subject_alt_name, NULL, NULL)
+         ) != NULL){
       int i;
 
-      for (i = 0; i < sk_GENERAL_NAME_num(gens); ++i) {
+      for(i = 0; i < sk_GENERAL_NAME_num(gens); ++i){
          gen = sk_GENERAL_NAME_value(gens, i);
-         if (gen->type == GEN_DNS) {
-            if (n_poption & n_PO_D_V)
+         if(gen->type == GEN_DNS){
+            if(n_poption & n_PO_D_V)
                n_err(_("Comparing subject_alt_name: need<%s> is<%s>\n"),
                   urlp->url_host.s, (char*)gen->d.ia5->data);
-            rv = rfc2595_hostname_match(urlp->url_host.s,
-                  (char*)gen->d.ia5->data);
-            if (rv == OKAY)
-               goto jdone;
+            if((rv = n_tls_rfc2595_hostname_match(urlp->url_host.s,
+                  (char*)gen->d.ia5->data)))
+               goto jleave;
          }
       }
    }
 
-   if ((subj = X509_get_subject_name(cert)) != NULL &&
-         X509_NAME_get_text_by_NID(subj, NID_commonName, data, sizeof data)
-            > 0) {
+   if((subj = X509_get_subject_name(peercert)) != NULL &&
+         X509_NAME_get_text_by_NID(subj, NID_commonName, data, sizeof data
+            ) > 0){
       data[sizeof data - 1] = '\0';
-      if (n_poption & n_PO_D_V)
+      if(n_poption & n_PO_D_V)
          n_err(_("Comparing commonName: need<%s> is<%s>\n"),
             urlp->url_host.s, data);
-      rv = rfc2595_hostname_match(urlp->url_host.s, data);
+      rv = n_tls_rfc2595_hostname_match(urlp->url_host.s, data);
    }
-
-jdone:
-   X509_free(cert);
 jleave:
    NYD_LEAVE;
    return rv;
 }
 
 static int
-smime_verify(struct message *m, int n, n_XSSL_STACKOF(X509) *chain,
+smime_verify(struct message *m, int n, n_XTLS_STACKOF(X509) *chain,
    X509_STORE *store)
 {
    char data[LINESIZE], *sender, *to, *cc, *cnttype;
@@ -1192,8 +1303,8 @@ smime_verify(struct message *m, int n, n_XSSL_STACKOF(X509) *chain,
    off_t size;
    BIO *fb, *pb;
    PKCS7 *pkcs7;
-   n_XSSL_STACKOF(X509) *certs;
-   n_XSSL_STACKOF(GENERAL_NAME) *gens;
+   n_XTLS_STACKOF(X509) *certs;
+   n_XTLS_STACKOF(GENERAL_NAME) *gens;
    X509 *cert;
    X509_NAME *subj;
    GENERAL_NAME *gen;
@@ -1204,8 +1315,8 @@ smime_verify(struct message *m, int n, n_XSSL_STACKOF(X509) *chain,
    fb = pb = NULL;
    pkcs7 = NULL;
    certs = NULL;
-   a_xssl_state &= ~a_XSSL_S_VERIFY_ERROR;
-   a_xssl_msgno = (size_t)n;
+   a_xtls_state &= ~a_XTLS_S_VERIFY_ERROR;
+   a_xtls_msgno = (size_t)n;
 
    for (;;) {
       sender = getsender(m);
@@ -1304,7 +1415,7 @@ smime_verify(struct message *m, int n, n_XSSL_STACKOF(X509) *chain,
    n_err(_("Message %d: certificate does not match <%s>\n"), n, sender);
    goto jleave;
 jfound:
-   rv = ((a_xssl_state & a_XSSL_S_VERIFY_ERROR) != 0);
+   rv = ((a_xtls_state & a_XTLS_S_VERIFY_ERROR) != 0);
    if (!rv)
       fprintf(n_stdout, _("Message %d was verified successfully\n"), n);
 jleave:
@@ -1331,33 +1442,33 @@ _smime_cipher(char const *name)
    size_t i;
    NYD_ENTER;
 
-   vn = ac_alloc(i = strlen(name) + sizeof("smime-cipher-") -1 +1);
+   vn = n_lofi_alloc(i = strlen(name) + sizeof("smime-cipher-") -1 +1);
    snprintf(vn, (int)i, "smime-cipher-%s", name);
    cp = n_var_vlook(vn, FAL0);
-   ac_free(vn);
+   n_lofi_free(vn);
 
    if (cp == NULL && (cp = ok_vlook(smime_cipher)) == NULL) {
-      cipher = a_XSSL_SMIME_DEFAULT_CIPHER();
+      cipher = a_XTLS_SMIME_DEFAULT_CIPHER();
       goto jleave;
    }
    cipher = NULL;
 
-   for (i = 0; i < n_NELEM(a_xssl_smime_ciphers); ++i)
-      if (!asccasecmp(a_xssl_smime_ciphers[i].sc_name, cp)) {
-         cipher = (*a_xssl_smime_ciphers[i].sc_fun)();
+   for(i = 0; i < n_NELEM(a_xtls_ciphers); ++i)
+      if(!asccasecmp(a_xtls_ciphers[i].xc_name, cp)){
+         cipher = (*a_xtls_ciphers[i].xc_fun)();
          goto jleave;
       }
 #ifndef OPENSSL_NO_AES
-   for (i = 0; i < n_NELEM(a_xssl_smime_ciphers_obs); ++i) /* TODO obsolete */
-      if (!asccasecmp(a_xssl_smime_ciphers_obs[i].sc_name, cp)) {
+   for (i = 0; i < n_NELEM(a_xtls_smime_ciphers_obs); ++i) /* TODO obsolete */
+      if (!asccasecmp(a_xtls_smime_ciphers_obs[i].xc_name, cp)) {
          n_OBSOLETE2(_("*smime-cipher* names with hyphens will vanish"), cp);
-         cipher = (*a_xssl_smime_ciphers_obs[i].sc_fun)();
+         cipher = (*a_xtls_smime_ciphers_obs[i].xc_fun)();
          goto jleave;
       }
 #endif
 
    /* Not a built-in algorithm, but we may have dynamic support for more */
-#ifdef HAVE_SSL_ALL_ALGORITHMS
+#ifdef HAVE_TLS_ALL_ALGORITHMS
    if((cipher = EVP_get_cipherbyname(cp)) != NULL)
       goto jleave;
 #endif
@@ -1429,10 +1540,10 @@ jloop:
          /* This needs to be more intelligent since it will currently take the
           * first name for which a private key is available regardless of
           * whether it is the right one for the message */
-         vn = ac_alloc(vs = strlen(np->n_name) + 30);
+         vn = n_lofi_alloc(vs = strlen(np->n_name) + 30);
          snprintf(vn, vs, "smime-sign-cert-%s", np->n_name);
          cp = n_var_vlook(vn, FAL0);
-         ac_free(vn);
+         n_lofi_free(vn);
          if (cp != NULL) {
             if (match != NULL)
                *match = np->n_name;
@@ -1481,10 +1592,10 @@ _smime_sign_include_certs(char const *name)
          int vs;
          char *vn;
 
-         vn = ac_alloc(vs = strlen(np->n_name) + 30);
+         vn = n_lofi_alloc(vs = strlen(np->n_name) + 30);
          snprintf(vn, vs, "smime-sign-include-certs-%s", np->n_name);
          rv = n_var_vlook(vn, FAL0);
-         ac_free(vn);
+         n_lofi_free(vn);
          if (rv != NULL)
             goto jleave;
       }
@@ -1496,7 +1607,7 @@ jleave:
 }
 
 static bool_t
-_smime_sign_include_chain_creat(n_XSSL_STACKOF(X509) **chain,
+_smime_sign_include_chain_creat(n_XTLS_STACKOF(X509) **chain,
    char const *cfiles, char const *addr)
 {
    X509 *tmp;
@@ -1538,58 +1649,41 @@ jerr:
 }
 
 static EVP_MD const *
-_smime_sign_digest(char const *name, char const **digname)
-{
+a_xtls_smime_sign_digest(char const *name, char const **digname){
    EVP_MD const *digest;
    char const *cp;
-   size_t i;
-   NYD_ENTER;
+   NYD2_ENTER;
 
    /* See comments in smime_sign_cert() for algorithm pitfalls */
-   if (name != NULL) {
+   if(name != NULL){
       struct name *np;
 
-      for (np = lextract(name, GTO | GSKIN); np != NULL; np = np->n_flink) {
+      for(np = lextract(name, GTO | GSKIN); np != NULL; np = np->n_flink){
          int vs;
-         char *vn = ac_alloc(vs = strlen(np->n_name) + 30);
-         snprintf(vn, vs, "smime-sign-message-digest-%s", np->n_name);
-         cp = n_var_vlook(vn, FAL0);
-         ac_free(vn);
-         if (cp != NULL)
+         char *vn;
+
+         vn = n_lofi_alloc(vs = strlen(np->n_name) + 30);
+         snprintf(vn, vs, "smime-sign-digest-%s", np->n_name);
+         if((cp = n_var_vlook(vn, FAL0)) == NULL){
+            snprintf(vn, vs, "smime-sign-message-digest-%s",np->n_name);/*v15*/
+            cp = n_var_vlook(vn, FAL0);
+         }
+         n_lofi_free(vn);
+         if(cp != NULL)
             goto jhave_name;
       }
    }
 
-   if ((cp = ok_vlook(smime_sign_message_digest)) == NULL) {
-      digest = a_XSSL_SMIME_DEFAULT_DIGEST();
-      *digname = a_XSSL_SMIME_DEFAULT_DIGEST_S;
-      goto jleave;
-   }
-
+   if((cp = ok_vlook(smime_sign_digest)) != NULL ||
+         (cp = ok_vlook(smime_sign_message_digest)/* v15 */) != NULL)
 jhave_name:
-   i = strlen(cp);
-   {  char *x = salloc(i +1);
-      i_strcpy(x, cp, i +1);
-      cp = x;
-   }
-   *digname = cp;
-
-   for (i = 0; i < n_NELEM(a_xssl_smime_digests); ++i)
-      if (!asccasecmp(a_xssl_smime_digests[i].sd_name, cp)) {
-         digest = (*a_xssl_smime_digests[i].sd_fun)();
+      if(a_xtls_digest_find(cp, &digest, digname))
          goto jleave;
-      }
 
-   /* Not a built-in algorithm, but we may have dynamic support for more */
-#ifdef HAVE_SSL_ALL_ALGORITHMS
-   if((digest = EVP_get_digestbyname(cp)) != NULL)
-      goto jleave;
-#endif
-
-   n_err(_("Invalid message digest: %s\n"), cp);
-   digest = NULL;
+   digest = a_XTLS_SMIME_DEFAULT_DIGEST();
+   *digname = a_XTLS_SMIME_DEFAULT_DIGEST_S;
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return digest;
 }
 
@@ -1608,7 +1702,8 @@ load_crl1(X509_STORE *store, char const *name)
       goto jleave;
    }
    if (X509_load_crl_file(lookup, name, X509_FILETYPE_PEM) != 1) {
-      ssl_gen_err(_("Error loading CRL from %s"), n_shexp_quote_cp(name, FAL0));
+      ssl_gen_err(_("Error loading CRL from %s"),
+         n_shexp_quote_cp(name, FAL0));
       goto jleave;
    }
    rv = OKAY;
@@ -1619,7 +1714,7 @@ jleave:
 #endif /* new OpenSSL */
 
 static enum okay
-load_crls(X509_STORE *store, enum okeys fok, enum okeys dok)
+load_crls(X509_STORE *store, enum okeys fok, enum okeys dok)/*TODO nevertried*/
 {
    char *crl_file, *crl_dir;
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
@@ -1628,14 +1723,20 @@ load_crls(X509_STORE *store, enum okeys fok, enum okeys dok)
    char *fn = NULL;
    int fs = 0, ds, es;
 #endif
-   enum okay rv = STOP;
+   bool_t any;
+   enum okay rv;
    NYD_ENTER;
 
+   rv = STOP;
+   any = FAL0;
+
+jredo_v15:
    if ((crl_file = n_var_oklook(fok)) != NULL) {
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
       if ((crl_file = fexpand(crl_file, FEXP_LOCAL | FEXP_NOPROTO)) == NULL ||
             load_crl1(store, crl_file) != OKAY)
          goto jleave;
+      any = TRU1;
 #else
       n_err(_("This OpenSSL version is too old to use CRLs\n"));
       goto jleave;
@@ -1652,7 +1753,7 @@ load_crls(X509_STORE *store, enum okeys fok, enum okeys dok)
       }
 
       ds = strlen(crl_dir);
-      fn = smalloc(fs = ds + 20);
+      fn = n_alloc(fs = ds + 20);
       memcpy(fn, crl_dir, ds);
       fn[ds] = '/';
       while ((dp = readdir(dirp)) != NULL) {
@@ -1662,23 +1763,30 @@ load_crls(X509_STORE *store, enum okeys fok, enum okeys dok)
          if (dp->d_name[0] == '.')
             continue;
          if (ds + (es = strlen(dp->d_name)) + 2 < fs)
-            fn = srealloc(fn, fs = ds + es + 20);
+            fn = n_realloc(fn, fs = ds + es + 20);
          memcpy(fn + ds + 1, dp->d_name, es + 1);
          if (load_crl1(store, fn) != OKAY) {
             closedir(dirp);
-            free(fn);
+            n_free(fn);
             goto jleave;
          }
+         any = TRU1;
       }
       closedir(dirp);
-      free(fn);
+      n_free(fn);
 #else /* old OpenSSL */
       n_err(_("This OpenSSL version is too old to use CRLs\n"));
       goto jleave;
 #endif
    }
+
+   if(fok == ok_v_tls_crl_file){
+      fok = ok_v_ssl_crl_file;
+      dok = ok_v_ssl_crl_dir;
+      goto jredo_v15;
+   }
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
-   if (crl_file || crl_dir)
+   if(any)
       X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK |
          X509_V_FLAG_CRL_CHECK_ALL);
 #endif
@@ -1688,13 +1796,13 @@ jleave:
    return rv;
 }
 
-#if HAVE_RANDOM == n_RANDOM_IMPL_SSL
+#if HAVE_RANDOM == n_RANDOM_IMPL_TLS
 FL void
-ssl_rand_bytes(void *buf, size_t blen){
-   NYD_ENTER;
+n_tls_rand_bytes(void *buf, size_t blen){
+   NYD2_ENTER;
 
-   if(!(a_xssl_state & a_XSSL_S_RAND_INIT))
-      a_xssl_rand_init();
+   if(!(a_xtls_state & a_XTLS_S_RAND_INIT))
+      a_xtls_rand_init();
 
    while(blen > 0){
       si32_t i;
@@ -1704,25 +1812,42 @@ ssl_rand_bytes(void *buf, size_t blen){
       RAND_bytes(buf, i);
       buf = (ui8_t*)buf + i;
    }
-   NYD_LEAVE;
+   NYD2_LEAVE;
 }
 #endif
 
-FL enum okay
-ssl_open(struct url const *urlp, struct sock *sp){
+FL bool_t
+n_tls_open(struct url *urlp, struct sock *sp){
    void *confp;
    SSL_CTX *ctxp;
-   enum okay rv;
+   const EVP_MD *fprnt_mdp;
+   char const *fprnt, *fprnt_namep;
    NYD_ENTER;
 
-   a_xssl_init();
+   a_xtls_init();
+   n_tls_set_verify_level(urlp); /* TODO should come in via URL! */
 
-   rv = STOP;
-   ssl_set_verify_level(urlp);
+   sp->s_tls = NULL;
+   if(urlp->url_cproto != CPROTO_CERTINFO)
+      fprnt = xok_vlook(tls_fingerprint, urlp, OXM_ALL);
+   else
+      fprnt = NULL;
+   fprnt_namep = NULL;
+   fprnt_mdp = NULL;
 
-   if((ctxp = SSL_CTX_new(n_XSSL_CLIENT_METHOD())) == NULL){
+   if(fprnt != NULL || urlp->url_cproto == CPROTO_CERTINFO ||
+         (n_poption & n_PO_D_V)){
+      if((fprnt_namep = xok_vlook(tls_fingerprint_digest, urlp,
+            OXM_ALL)) == NULL ||
+            !a_xtls_digest_find(fprnt_namep, &fprnt_mdp, &fprnt_namep)){
+         fprnt_mdp = a_XTLS_FINGERPRINT_DEFAULT_DIGEST();
+         fprnt_namep = a_XTLS_FINGERPRINT_DEFAULT_DIGEST_S;
+      }
+   }
+
+   if((ctxp = SSL_CTX_new(n_XTLS_CLIENT_METHOD())) == NULL){
       ssl_gen_err(_("SSL_CTX_new() failed"));
-      goto jleave;
+      goto j_leave;
    }
 
    /* Available with OpenSSL 0.9.6 or later */
@@ -1730,33 +1855,35 @@ ssl_open(struct url const *urlp, struct sock *sp){
    SSL_CTX_set_mode(ctxp, SSL_MODE_AUTO_RETRY);
 #endif
 
-   if((confp = a_xssl_conf_setup(ctxp, urlp)) == NULL)
-      goto jerr0;
+   if((confp = a_xtls_conf_setup(ctxp, urlp)) == NULL)
+      goto jleave;
 
-   if(!a_xssl_obsolete_conf_vars(confp, urlp))
+   if(!a_xtls_obsolete_conf_vars(confp, urlp))
       goto jerr1;
-   if(!a_xssl_config_pairs(confp, urlp))
+   if(!a_xtls_config_pairs(confp, urlp))
       goto jerr1;
-   if(!a_xssl_load_verifications(ctxp, urlp))
+   if((fprnt == NULL || urlp->url_cproto == CPROTO_CERTINFO) &&
+         !a_xtls_load_verifications(ctxp, urlp))
       goto jerr1;
 
    /* Done with context setup, create our new per-connection structure */
-   if(!a_xssl_conf_finish(&confp, FAL0))
-      goto jerr0;
+   if(!a_xtls_conf_finish(&confp, FAL0))
+      goto jleave;
+   assert(confp == NULL);
 
-   if ((sp->s_ssl = SSL_new(ctxp)) == NULL) {
+   if((sp->s_tls = SSL_new(ctxp)) == NULL){
       ssl_gen_err(_("SSL_new() failed"));
-      goto jerr0;
+      goto jleave;
    }
 
    /* Try establish SNI extension; even though this is a TLS extension the
-    * protocol isn't checked once the host name is set, and therefore i've
-    * refrained from changing so much code just to check out whether we are
-    * using SSLv3, which should become more and more rare */
+    * protocol isn't checked by OpenSSL once the host name is set, and
+    * therefore i refrained from changing so much code just to check out
+    * whether we are using SSLv3, which should become more and more rare */
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
    if((urlp->url_flags & n_URL_TLS_MASK) &&
          (urlp->url_flags & n_URL_HOST_IS_NAME)){
-      if(!SSL_set_tlsext_host_name(sp->s_ssl, urlp->url_host.s) &&
+      if(!SSL_set_tlsext_host_name(sp->s_tls, urlp->url_host.s) &&
             (n_poption & n_PO_D_V))
          n_err(_("Hostname cannot be used with ServerNameIndication "
                "TLS extension: %s\n"),
@@ -1764,37 +1891,91 @@ ssl_open(struct url const *urlp, struct sock *sp){
    }
 #endif
 
-   SSL_set_fd(sp->s_ssl, sp->s_fd);
+   SSL_set_fd(sp->s_tls, sp->s_fd);
 
-   if (SSL_connect(sp->s_ssl) < 0) {
-      ssl_gen_err(_("could not initiate SSL/TLS connection"));
+   if(SSL_connect(sp->s_tls) < 0){
+      ssl_gen_err(_("could not initiate TLS connection"));
       goto jerr2;
    }
 
-   if (ssl_verify_level != SSL_VERIFY_IGNORE) {
-      if (ssl_check_host(sp, urlp) != OKAY) {
-         n_err(_("Host certificate does not match: %s\n"), urlp->url_h_p.s);
-         if (ssl_verify_decide() != OKAY)
-            goto jerr2;
+   if(fprnt != NULL || urlp->url_cproto == CPROTO_CERTINFO ||
+         n_tls_verify_level != n_TLS_VERIFY_IGNORE){
+      bool_t stay;
+      X509 *peercert;
+
+      if((peercert = SSL_get_peer_certificate(sp->s_tls)) == NULL){
+         n_err(_("TLS: no certificate from peer: %s\n"), urlp->url_h_p.s);
+         goto jerr2;
       }
+
+      stay = FAL0;
+
+      if(fprnt == NULL){
+         if(!a_xtls_check_host(sp, peercert, urlp)){
+            n_err(_("TLS certificate does not match: %s\n"), urlp->url_h_p.s);
+            stay = n_tls_verify_decide();
+         }else{
+            if(n_poption & n_PO_D_V)
+               n_err(_("TLS certificate ok\n"));
+            stay = TRU1;
+         }
+      }
+
+      if(fprnt != NULL || urlp->url_cproto == CPROTO_CERTINFO ||
+            (n_poption & n_PO_D_V)){
+         char fpmdhexbuf[EVP_MAX_MD_SIZE * 3], *cp;
+         unsigned char fpmdbuf[EVP_MAX_MD_SIZE], *ucp;
+         unsigned int fpmdlen;
+
+         if(!X509_digest(peercert, fprnt_mdp, fpmdbuf, &fpmdlen)){
+            ssl_gen_err(_("TLS %s fingerprint creation failed"), fprnt_namep);
+            goto jpeer_leave;
+         }
+         assert(fpmdlen <= EVP_MAX_MD_SIZE);
+
+         for(cp = fpmdhexbuf, ucp = fpmdbuf; fpmdlen > 0; --fpmdlen){
+            n_c_to_hex_base16(cp, (char)*ucp++);
+            cp[2] = ':';
+            cp += 3;
+         }
+         cp[-1] = '\0';
+
+         if(n_poption & n_PO_D_V)
+            n_err(_("TLS %s fingerprint: %s\n"), fprnt_namep, fpmdhexbuf);
+         if(fprnt != NULL){
+            if(!(stay = !strcmp(fprnt, fpmdhexbuf))){
+               n_err(_("TLS fingerprint does not match: %s\n"
+                     "  Expected: %s\n  Detected: %s\n"),
+                  urlp->url_h_p.s, fprnt, fpmdhexbuf);
+               stay = n_tls_verify_decide();
+            }else if(n_poption & n_PO_D_V)
+               n_err(_("TLS fingerprint ok\n"));
+            goto jpeer_leave;
+         }else if(urlp->url_cproto == CPROTO_CERTINFO)
+            sp->s_tls_finger = savestrbuf(fpmdhexbuf,
+                  PTR2SIZE(cp - fpmdhexbuf));
+      }
+
+jpeer_leave:
+      X509_free(peercert);
+      if(!stay)
+         goto jerr2;
    }
 
-   /* We're fully setup: since we don't reuse the SSL_CTX (pooh) keep it local
-    * and free it right now -- it is reference counted by sp->s_ssl.. */
-   SSL_CTX_free(ctxp);
-   sp->s_use_ssl = 1;
-   rv = OKAY;
+   sp->s_use_tls = 1;
 jleave:
-   NYD_LEAVE;
-   return rv;
-jerr2:
-   SSL_free(sp->s_ssl);
-   sp->s_ssl = NULL;
-jerr1:
-   if (confp != NULL)
-      a_xssl_conf_finish(&confp, TRU1);
-jerr0:
+   /* We're fully setup: since we don't reuse the SSL_CTX (pooh) keep it local
+    * and free it right now -- it is reference counted by sp->s_tls.. */
    SSL_CTX_free(ctxp);
+j_leave:
+   NYD_LEAVE;
+   return (sp->s_tls != NULL);
+jerr2:
+   SSL_free(sp->s_tls);
+   sp->s_tls = NULL;
+jerr1:
+   if(confp != NULL)
+      a_xtls_conf_finish(&confp, TRU1);
    goto jleave;
 }
 
@@ -1820,26 +2001,32 @@ c_verify(void *vp)
    char *ca_dir, *ca_file;
    NYD_ENTER;
 
-   a_xssl_init();
+   a_xtls_init();
 
-   ssl_verify_level = SSL_VERIFY_STRICT;
+   n_tls_verify_level = n_TLS_VERIFY_STRICT;
    if ((store = X509_STORE_new()) == NULL) {
       ssl_gen_err(_("Error creating X509 store"));
       goto jleave;
    }
-   X509_STORE_set_verify_cb_func(store, &_ssl_verify_cb);
+   X509_STORE_set_verify_cb_func(store, &a_xtls_verify_cb);
 
    if ((ca_dir = ok_vlook(smime_ca_dir)) != NULL)
       ca_dir = fexpand(ca_dir, FEXP_LOCAL | FEXP_NOPROTO);
    if ((ca_file = ok_vlook(smime_ca_file)) != NULL)
       ca_file = fexpand(ca_file, FEXP_LOCAL | FEXP_NOPROTO);
 
-   if (ca_dir != NULL || ca_file != NULL) {
-      if (X509_STORE_load_locations(store, ca_file, ca_dir) != 1) {
-         ssl_gen_err(_("Error loading %s"),
-            (ca_file != NULL) ? ca_file : ca_dir);
-         goto jleave;
-      }
+   if((ca_dir != NULL || ca_file != NULL) &&
+         X509_STORE_load_locations(store, ca_file, ca_dir) != 1){
+      char const *m1, *m2, *m3;
+
+      if(ca_dir != NULL){
+         m1 = ca_dir;
+         m2 = (ca_file != NULL) ? _(" or ") : n_empty;
+      }else
+         m1 = m2 = n_empty;
+      m3 = (ca_file != NULL) ? ca_file : n_empty;
+      ssl_gen_err(_("Error loading %s%s%s\n"), m1, m2, m3);
+      goto jleave;
    }
 
    /* C99 */{
@@ -1858,7 +2045,7 @@ c_verify(void *vp)
    if (load_crls(store, ok_v_smime_crl_file, ok_v_smime_crl_dir) != OKAY)
       goto jleave;
 
-   a_xssl_ca_flags(store, ok_vlook(smime_ca_flags));
+   a_xtls_ca_flags(store, ok_vlook(smime_ca_flags));
 
    srelax_hold();
    for (ip = msgvec; *ip != 0; ++ip) {
@@ -1883,7 +2070,7 @@ smime_sign(FILE *ip, char const *addr)
 {
    FILE *rv, *sp, *fp, *bp, *hp;
    X509 *cert = NULL;
-   n_XSSL_STACKOF(X509) *chain = NULL;
+   n_XTLS_STACKOF(X509) *chain = NULL;
    EVP_PKEY *pkey = NULL;
    BIO *bb, *sb;
    PKCS7 *pkcs7;
@@ -1895,7 +2082,7 @@ smime_sign(FILE *ip, char const *addr)
    assert(addr != NULL);
    rv = sp = fp = bp = hp = NULL;
 
-   a_xssl_init();
+   a_xtls_init();
 
    if (addr == NULL) {
       n_err(_("No *from* address for signing specified\n"));
@@ -1925,7 +2112,7 @@ smime_sign(FILE *ip, char const *addr)
       goto jleave;
 
    name = NULL;
-   if ((md = _smime_sign_digest(addr, &name)) == NULL)
+   if ((md = a_xtls_smime_sign_digest(addr, &name)) == NULL)
       goto jleave;
 
    if ((sp = Ftmp(NULL, "smimesign", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
@@ -2012,7 +2199,7 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    X509 *cert;
    PKCS7 *pkcs7;
    BIO *bb, *yb;
-   n_XSSL_STACKOF(X509) *certs;
+   n_XTLS_STACKOF(X509) *certs;
    EVP_CIPHER const *cipher;
    char *certfile;
    bool_t bail;
@@ -2024,7 +2211,7 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    if ((certfile = fexpand(xcertfile, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
       goto jleave;
 
-   a_xssl_init();
+   a_xtls_init();
 
    if ((cipher = _smime_cipher(to)) == NULL)
       goto jleave;
@@ -2129,7 +2316,7 @@ smime_decrypt(struct message *m, char const *to, char const *cc,
    if((yp = setinput(&mb, m, NEED_BODY)) == NULL)
       goto jleave;
 
-   a_xssl_init();
+   a_xtls_init();
 
    if((op = smime_sign_cert(to, cc, 0, &myaddr)) != NULL){
       pkey = PEM_read_PrivateKey(op, NULL, &ssl_password_cb,
@@ -2150,7 +2337,7 @@ smime_decrypt(struct message *m, char const *to, char const *cc,
       op = NULL;
    }
 
-   if((op = Ftmp(NULL, "smimedec", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+   if((op = Ftmp(NULL, "smimed", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
       n_perr(_("tempfile"), 0);
       goto jleave;
    }
@@ -2229,14 +2416,14 @@ smime_certsave(struct message *m, int n, FILE *op)
    off_t size;
    BIO *fb, *pb;
    PKCS7 *pkcs7;
-   n_XSSL_STACKOF(X509) *certs, *chain = NULL;
+   n_XTLS_STACKOF(X509) *certs, *chain = NULL;
    X509 *cert;
    enum okay rv = STOP;
    NYD_ENTER;
 
    pkcs7 = NULL;
 
-   a_xssl_msgno = (size_t)n;
+   a_xtls_msgno = (size_t)n;
 jloop:
    to = hfield1("to", m);
    cc = hfield1("cc", m);
@@ -2312,6 +2499,6 @@ jleave:
    NYD_LEAVE;
    return rv;
 }
-#endif /* HAVE_XSSL */
+#endif /* HAVE_XTLS */
 
 /* s-it-mode */

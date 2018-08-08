@@ -4,6 +4,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause TODO ISC
  */
 /*
  * Copyright (c) 1980, 1993
@@ -68,11 +69,12 @@ VL char const n_empty[1] = "";
 VL char const n_0[2] = "0";
 VL char const n_1[2] = "1";
 VL char const n_m1[3] = "-1";
-VL char const n_qm[2] = "?";
 VL char const n_em[2] = "!";
-VL char const n_star[2] = "*";
-VL char const n_at[2] = "@";
 VL char const n_ns[2] = "#";
+VL char const n_star[2] = "*";
+VL char const n_hy[2] = "-";
+VL char const n_qm[2] = "?";
+VL char const n_at[2] = "@";
 VL ui16_t const n_class_char[1 + 0x7F] = {
 #define a_BC C_BLANK | C_CNTRL
 #define a_SC C_SPACE | C_CNTRL
@@ -118,7 +120,7 @@ VL ui16_t const n_class_char[1 + 0x7F] = {
 static char const *a_main_oarg;
 static int a_main_oind, /*_oerr,*/ a_main_oopt;
 
-/* Our own little getopt(3); note --help is special-treated as 'h' */
+/* A little getopt(3).  Note: --help/--version == -h/-v */
 static int a_main_getopt(int argc, char * const argv[], char const *optstring);
 
 /* */
@@ -144,7 +146,8 @@ static void a_main_setscreensize(int is_sighdl);
 
 /* Ok, we are reading mail.  Decide whether we are editing a mailbox or reading
  * the system mailbox, and open up the right stuff */
-static int a_main_rcv_mode(char const *folder, char const *Larg);
+static int a_main_rcv_mode(bool_t had_A_arg, char const *folder,
+            char const *Larg);
 
 /* Interrupt printing of the headers */
 static void a_main_hdrstop(int signo);
@@ -207,12 +210,16 @@ a_main_getopt(int argc, char * const argv[], char const *optstring){
       goto jleave;
    }
 
-   /* Special support for --help, which is quite common */
-   if(a_main_oopt == '-' && !strcmp(curp, "-help") &&
-         &curp[-1] == argv[a_main_oind]){
+   /* Special support for --help and --version, which are quite common */
+   if(a_main_oopt == '-' && &curp[-1] == argv[a_main_oind]){
       ++a_main_oind;
       rv = 'h';
-      goto jleave;
+      if(!strcmp(curp, "-help"))
+         goto jleave;
+      rv = 'V';
+      if(!strcmp(curp, "-version"))
+         goto jleave;
+      --a_main_oind;
    }
 
    /* Definitive error */
@@ -244,39 +251,52 @@ a_main_usage(FILE *fp){
 
    fprintf(fp, _("%s (%s %s): send and receive Internet mail\n"),
       n_progname, n_uagent, ok_vlook(version));
-   fprintf(fp, _(
-      "Send-only mode: send mail \"to-address\" receiver(s):\n"
-      "  %s [-BDdEFinv~#] [-: spec] [-A account] [:-C \"custom: header\":]\n"
-      "  %s [:-a attachment:] [:-b bcc-address:]\n"
-      "  %s [:-c cc-address:] [-M type | -m file | -q file | -t]\n"
-      "  %s [-r from-address] [:-S var[=value]:] [-s subject] [:-X cmd:]\n"
-      "  %s [-.] :to-address: [-- :mta-option:]\n"),
-      n_progname, buf, buf, buf, buf);
-   fprintf(fp, _(
-      "\"Receive\" mode, starting on -u user, primary *inbox* or [$MAIL]:\n"
-     "  %s [-BDdEeHiNnRv~#] [-: spec] [-A account] [:-C \"custom: header\":]\n"
-      "  %s [-L spec] [-r from-address] [:-S var[=value]:]\n"
-      "  %s [-u user] [:-X cmd:] [-- :mta-option:]\n"),
-      n_progname, buf, buf);
-   fprintf(fp, _(
-      "\"Receive\" mode, starting on -f (secondary $MBOX or [file]):\n"
-     "  %s [-BDdEeHiNnRv~#] [-: spec] [-A account] [:-C \"custom: header\":]\n"
-      "  %s -f [-L spec] [-r from-address] [:-S var[=value]:]\n"
-      "  %s [:-X cmd:] [file] [-- :mta-option:]\n"),
-      n_progname, buf, buf);
-
    if(fp != n_stderr)
       putc('\n', fp);
+
+   fprintf(fp, _(
+      "Send-only mode: send mail \"to-address\" receiver(s):\n"
+      "  %s [-DdEFinv~#] [-: spec] [-A account] [:-C \"custom: header\":]\n"
+      "  %s [:-a attachment:] [:-b bcc-address:] [:-c cc-address:]\n"
+      "  %s [-M type | -m file | -q file | -t] [-r from-address]\n"
+      "  %s [:-S var[=value]:] [-s subject] [:-X cmd:] [-.] :to-address:\n"),
+      n_progname, buf, buf, buf);
+   if(fp != n_stderr)
+      putc('\n', fp);
+
+   fprintf(fp, _(
+      "\"Receive\" mode, starting on [-u user], primary *inbox* or [$MAIL]:\n"
+      "  %s [-DdEeHiNnRv~#] [-: spec] [-A account] "
+         "[:-C \"custom: header\":]\n"
+      "  %s [-L spec] [-r from-address] [:-S var[=value]:] [-u user] "
+         "[:-X cmd:]\n"),
+      n_progname, buf);
+   if(fp != n_stderr)
+      putc('\n', fp);
+
+   fprintf(fp, _(
+      "\"Receive\" mode, starting on -f (secondary $MBOX or [file]):\n"
+      "  %s [-DdEeHiNnRv~#] [-: spec] [-A account] "
+         "[:-C \"custom: header\":] -f\n"
+      "  %s [-L spec] [-r from-address] [:-S var[=value]:] [:-X cmd:] "
+         "[file]\n"),
+      n_progname, buf);
+   if(fp != n_stderr)
+      putc('\n', fp);
+
    fprintf(fp, _(
          ". -d sandbox, -:/ no .rc files, -. end options and force send-mode\n"
          ". -a attachment[=input-charset[#output-charset]]\n"
          ". -b, -c, to-address, (-r): ex@am.ple or '(Lovely) Ex <am@p.le>'\n"
          ". -[Mmqt]: special input data (-t: template message on stdin)\n"
-         ". -e only mail check, -H header summary; both: specification via -L\n"
-         ". -S sets variables, -X executes commands, -# enters batch mode\n"
-         ". Features: \"$ %s -Xversion -Xx\", WWW: %s\n"
-         ". Bugs to/Mail contact: \"$ %s %s\"\n"),
-         n_progname, ok_vlook(contact_web), n_progname, ok_vlook(contact_mail));
+         ". -e only mail check, -H header summary; "
+            "both: message specification via -L\n"
+         ". -S (un)sets variable, -X executes command(s), "
+            "-# enters batch mode\n"
+         ". Features via \"$ %s -Xversion -Xx\"\n"
+         ". Bugs/Contact via "
+            "\"$ %s -Sexpandaddr=shquote '\\$contact-mail'\"\n"),
+         n_progname, n_progname);
    NYD2_LEAVE;
 }
 
@@ -560,13 +580,20 @@ jleave:
 static sigjmp_buf a_main__hdrjmp; /* XXX */
 
 static int
-a_main_rcv_mode(char const *folder, char const *Larg){
-   int i;
+a_main_rcv_mode(bool_t had_A_arg, char const *folder, char const *Larg){
    sighandler_type prevint;
+   int i;
    NYD_ENTER;
 
-   if(folder == NULL)
+   i = had_A_arg ? FEDIT_ACCOUNT : FEDIT_NONE;
+   if(n_poption & n_PO_QUICKRUN_MASK)
+      i |= FEDIT_RDONLY;
+
+   if(folder == NULL){
       folder = "%";
+      if(had_A_arg)
+         i |= FEDIT_SYSBOX;
+   }
 #ifdef HAVE_IMAP
    else if(*folder == '@'){
       /* This must be treated specially to make possible invocation like
@@ -579,12 +606,12 @@ a_main_rcv_mode(char const *folder, char const *Larg){
    }
 #endif
 
-   i = (n_poption & n_PO_QUICKRUN_MASK) ? FEDIT_RDONLY : FEDIT_NONE;
    i = setfile(folder, i);
    if(i < 0){
       n_exit_status = n_EXIT_ERR; /* error already reported */
       goto jquit;
    }
+   temporary_folder_hook_check(FAL0);
    if(n_poption & n_PO_QUICKRUN_MASK){
       n_exit_status = i;
       if(i == n_EXIT_OK && (!(n_poption & n_PO_EXISTONLY) ||
@@ -592,7 +619,6 @@ a_main_rcv_mode(char const *folder, char const *Larg){
          print_header_summary(Larg);
       goto jquit;
    }
-   temporary_folder_hook_check(FAL0);
 
    if(i > 0 && !ok_blook(emptystart)){
       n_exit_status = n_EXIT_ERR;
@@ -707,14 +733,15 @@ main(int argc, char *argv[]){
          nap->aa_next = NULL;
          nap->aa_file = a_main_oarg;
          a_curr = nap;
-      }  break;
+         }break;
       case 'B':
          n_OBSOLETE(_("-B is obsolete, please use -# as necessary"));
          break;
       case 'b':
          /* Add (a) blind carbon copy recipient (list) */
          n_psonce |= n_PSO_SENDMODE;
-         bcc = cat(bcc, lextract(a_main_oarg, GBCC | GFULL));
+         bcc = cat(bcc, lextract(a_main_oarg,
+               GBCC | GFULL | GSHEXP_PARSE_HACK));
          break;
       case 'C':{
          /* Create custom header (at list tail) */
@@ -729,11 +756,11 @@ main(int argc, char *argv[]){
             emsg = N_("Invalid custom header data with -C");
             goto jusage;
          }
-      }  break;
+         }break;
       case 'c':
          /* Add (a) carbon copy recipient (list) */
          n_psonce |= n_PSO_SENDMODE;
-         cc = cat(cc, lextract(a_main_oarg, GCC | GFULL));
+         cc = cat(cc, lextract(a_main_oarg, GCC | GFULL | GSHEXP_PARSE_HACK));
          break;
       case 'D':
 #ifdef HAVE_IMAP
@@ -843,7 +870,9 @@ jeMmq:
       case 'r':
          /* Set From address. */
          n_poption |= n_PO_r_FLAG;
-         if(a_main_oarg[0] != '\0'){
+         if(a_main_oarg[0] == '\0')
+            break;
+         else{
             struct name *fa;
 
             fa = nalloc(a_main_oarg, GSKIN | GFULL | GFULLEXTRA);
@@ -858,12 +887,9 @@ jeMmq:
              * TODO Maybe disable setting of from?
              * TODO Warn user?  Update manual!! */
             a_main_oarg = savecat("from=", fa->n_fullname);
-            goto jsetvar;
          }
-         break;
+         /* FALLTHRU */
       case 'S':
-         n_poption |= n_PO_S_FLAG_TEMPORARY;
-jsetvar: /* Set variable TODO optimize v15-compat case */
          {  struct str sin;
             struct n_string s, *sp;
             char const *a[2];
@@ -892,9 +918,10 @@ jsetvar: /* Set variable TODO optimize v15-compat case */
             }
 
             a[1] = NULL;
+            n_poption |= n_PO_S_FLAG_TEMPORARY;
             n_pstate |= n_PS_ROBOT;
             b = (c_set(a) == 0);
-            n_pstate &= ~(n_PS_ROOT | n_PS_ROBOT);
+            n_pstate &= ~n_PS_ROBOT;
             n_poption &= ~n_PO_S_FLAG_TEMPORARY;
 
             if(sp != NULL)
@@ -1016,7 +1043,7 @@ jgetopt_done:
    }else{
       n_psonce |= n_PSO_SENDMODE;
       for(;;){
-         to = cat(to, lextract(cp, GTO | GFULL));
+         to = cat(to, lextract(cp, GTO | GFULL | GSHEXP_PARSE_HACK));
          if((cp = argv[++i]) == NULL)
             break;
          if(cp[0] == '-' && cp[1] == '-' && cp[2] == '\0'){
@@ -1199,7 +1226,8 @@ je_expandargv:
             n_exit_status = n_EXIT_ERR;
             goto jleave;
          }
-      }else if((n_poption_arg_Mm = n_mimetype_classify_filename(qf)) == NULL){
+      }else if(/* XXX only to satisfy Coverity! */qf != NULL &&
+            (n_poption_arg_Mm = n_mimetype_classify_filename(qf)) == NULL){
          n_err(_("Could not `mimetype'-classify -m argument: %s\n"),
             n_shexp_quote_cp(qf, FAL0));
          n_exit_status = n_EXIT_ERR;
@@ -1214,7 +1242,7 @@ je_expandargv:
    n_psonce |= n_PSO_STARTED;
 
    if(!(n_psonce & n_PSO_SENDMODE))
-      n_exit_status = a_main_rcv_mode(folder, Larg);
+      n_exit_status = a_main_rcv_mode((Aarg != NULL), folder, Larg);
    else{
       /* Now that full mailx(1)-style file expansion is possible handle the
        * attachments which we had delayed due to this.
@@ -1232,7 +1260,8 @@ je_expandargv:
 
       if(n_psonce & n_PSO_INTERACTIVE)
          n_tty_init();
-      mail(to, cc, bcc, subject, attach, qf, ((n_poption & n_PO_F_FLAG) != 0));
+      n_mail((n_poption & n_PO_F_FLAG ? n_MAILSEND_RECORD_RECIPIENT : 0),
+         to, cc, bcc, subject, attach, qf);
       if(n_psonce & n_PSO_INTERACTIVE)
          n_tty_destroy((n_psonce & n_PSO_XIT) != 0);
    }
@@ -1246,7 +1275,7 @@ jleave:
 
 j_leave:
 #if defined HAVE_MEMORY_DEBUG || defined HAVE_NOMEMDBG
-   n_memory_pool_pop(NULL);
+   n_memory_pool_pop(NULL, TRU1);
 #endif
 #if defined HAVE_DEBUG || defined HAVE_DEVEL || defined HAVE_NOMEMDBG
    n_memory_reset();

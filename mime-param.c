@@ -2,6 +2,7 @@
  *@ MIME parameter handling.
  *
  * Copyright (c) 2016 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -71,7 +72,7 @@ static char const * _mime_param_skip(char const *hbp);
 /* Trim value, which points to after the "name[RFC 2231 stuff]=".
  * On successful return (1,-1; -1 is returned if the value was quoted via
  * double quotation marks) a set end_or_null points to after the value and any
- * possible separator and result->s is the salloc()d normalized value */
+ * possible separator and result->s is the autorec_alloc()d normalized value */
 static si8_t      _mime_param_value_trim(struct str *result, char const *start,
                      char const **end_or_null);
 
@@ -162,7 +163,7 @@ _mime_param_value_trim(struct str *result, char const *start,
       rv = TRU1;
    }
 
-   result->s = salloc(i +1);
+   result->s = n_autorec_alloc(i +1);
    if (rv > 0) {
       memcpy(result->s, start, result->l = i);
       result->s[i] = '\0';
@@ -283,7 +284,7 @@ jeeqaaster:
 
          /* Create new node and insert it sorted; should be faster than
           * creating an unsorted list and sorting it after parsing */
-         np = smalloc(sizeof *np);
+         np = n_alloc(sizeof *np);
          np->rj_next = NULL;
          np->rj_no = (ui32_t)i;
          np->rj_is_enc = (c == '*');
@@ -344,7 +345,7 @@ jeeqaaster:
    assert(head != NULL); /* (always true due to jumpin:, but..) */
 
    errors |= __rfc2231_join(head, &rv, &emsg);
-   if (errors && (n_poption & n_PO_D_V_VV)) {
+   if (errors && (n_poption & n_PO_D_V)) {
       /* TODO should set global flags so that at the end of an operation
        * TODO (for a message) a summary can be printed: faulty MIME, xy */
       if (emsg == NULL)
@@ -358,7 +359,7 @@ jleave:
 jerr:
    while ((np = head) != NULL) {
       head = np->rj_next;
-      free(np);
+      n_free(np);
    }
    if (n_poption & n_PO_D_V) {
       if (emsg == NULL)
@@ -404,7 +405,7 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
          f |= _ERRORS;
       } else if (ascncasecmp(tcs = ok_vlook(ttycharset),
             head->rj_dat, head->rj_cs_len)) {
-         char *cs = ac_alloc(head->rj_cs_len +1);
+         char *cs = n_lofi_alloc(head->rj_cs_len +1);
 
          memcpy(cs, head->rj_dat, head->rj_cs_len);
          cs[head->rj_cs_len] = '\0';
@@ -414,7 +415,7 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
             *emsg = N_("necessary character set conversion missing");
             f |= _ERRORS;
          }
-         ac_free(cs);
+         n_lofi_free(cs);
       }
    }
 #endif
@@ -425,7 +426,7 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
       f |= _ERRORS;
    }
 
-   for (sou.s = NULL, sou.l = 0, no = 0; (np = head) != NULL; free(np)) {
+   for (sou.s = NULL, sou.l = 0, no = 0; (np = head) != NULL; n_free(np)) {
       head = np->rj_next;
 
       if (np->rj_no != no++) {
@@ -449,7 +450,7 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
          n_str_add_buf(&sou, np->rj_dat + np->rj_val_off, i);
       else {
          /* Perform percent decoding */
-         sin.s = smalloc(i +1);
+         sin.s = n_alloc(i +1);
          sin.l = 0;
 
          for (cp = np->rj_dat + np->rj_val_off; i > 0;) {
@@ -476,7 +477,7 @@ jhex_putc:
          sin.s[sin.l] = '\0';
 
          n_str_add_buf(&sou, sin.s, sin.l);
-         free(sin.s);
+         n_free(sin.s);
       }
    }
 
@@ -502,15 +503,15 @@ jhex_putc:
             *emsg = N_("character set conversion failed on value");
          f |= _ERRORS;
       }
-      free(sou.s);
+      n_free(sou.s);
       sou = sin;
 
       n_iconv_close(fhicd);
    }
 #endif
 
-   memcpy(*result = salloc(sou.l +1), sou.s, sou.l +1);
-   free(sou.s);
+   memcpy(*result = n_autorec_alloc(sou.l +1), sou.s, sou.l +1);
+   n_free(sou.s);
    NYD2_LEAVE;
    return ((f & _ERRORS) != 0);
 }
@@ -655,7 +656,7 @@ jleave:
    /* Need to recurse, take care not to excess magical limit of 999 levels */
 jrecurse:
    if (self->mpb_level == 999) {
-      if (n_poption & n_PO_D_V_VV)
+      if (n_poption & n_PO_D_V)
          n_err(_("Message RFC 2231 parameters nested too deeply!\n"));
       goto jleave;
    }
@@ -713,7 +714,7 @@ __mime_param_join(struct mime_param_builder *head)
    result = head->mpb_result;
    if (head->mpb_next != NULL)
       f |= _ISCONT;
-   cp = result->s = salloc(i +1);
+   cp = result->s = n_autorec_alloc(i +1);
 
    for (ll = 0, np = head;;) {
       /* Name part */
@@ -836,7 +837,7 @@ mime_param_get(char const *param, char const *headerbody) /* TODO rewr. */
                ti.l = strlen(ti.s = rv);
                mime_fromhdr(&ti, &to, TD_ISPR | TD_ICONV | TD_DELCTRL);
                rv = savestrbuf(to.s, to.l);
-               free(to.s);
+               n_free(to.s);
             }
             goto jleave;
          default:
@@ -878,7 +879,7 @@ mime_param_create(struct str *result, char const *name, char const *value)
    if ((i = strlen(name = ok_vlook(ttycharset))) >= UI32_MAX)
       goto jleave;
    top.mpb_charset_len = (ui32_t)i;
-   top.mpb_charset = salloc(++i);
+   top.mpb_charset = n_autorec_alloc(++i);
    memcpy(n_UNCONST(top.mpb_charset), name, i);
    if(top.mpb_charset_len >= 4 && !memcmp(top.mpb_charset, "utf", 3) &&
          ((top.mpb_charset[3] == '-' && top.mpb_charset[4] == '8' &&
@@ -905,7 +906,7 @@ mime_param_boundary_get(char const *headerbody, size_t *len)
 
       if (len != NULL)
          *len = sz + 2;
-      q = salloc(sz + 2 +1);
+      q = n_autorec_alloc(sz + 2 +1);
       q[0] = q[1] = '-';
       memcpy(q + 2, p, sz);
       *(q + sz + 2) = '\0';
@@ -921,7 +922,7 @@ mime_param_boundary_create(void)
    char *bp;
    NYD_ENTER;
 
-   bp = salloc(36 + 6 +1);
+   bp = n_autorec_alloc(36 + 6 +1);
    bp[0] = bp[2] = bp[39] = bp[41] = '=';
    bp[1] = bp[40] = '-';
    memcpy(bp + 3, n_random_create_cp(36, &reprocnt), 36);

@@ -2,6 +2,7 @@
  *@ Filter objects.
  *
  * Copyright (c) 2013 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -83,17 +84,21 @@ jerr:
 static ssize_t
 _qf_add_data(struct quoteflt *self, wchar_t wc)
 {
+   int w, l;
    char *save_b;
    ui32_t save_l, save_w;
-   ssize_t rv = 0;
-   int w, l;
+   ssize_t rv;
    NYD_ENTER;
 
+   rv = 0;
    save_l = save_w = 0; /* silence cc */
    save_b = NULL;
+
    /* <newline> ends state */
-   if (wc == L'\n')
+   if (wc == L'\n') {
+      w = 0;
       goto jflush;
+   }
    if (wc == L'\r') /* TODO CR should be stripped in lower level!! */
       goto jleave;
 
@@ -113,11 +118,18 @@ _qf_add_data(struct quoteflt *self, wchar_t wc)
       goto jleave;
    }
 
+   /* To avoid that the last visual excesses *qfold-max*, which may happen for
+    * multi-column characters, use w as an indicator for this and move that
+    * thing to the next line */
    w = wcwidth(wc);
    if (w == -1) {
+      w = 0;
 jbad:
       ++self->qf_datw;
       self->qf_dat.s[self->qf_dat.l++] = '?';
+   } else if (self->qf_datw > self->qf_qfold_max - w) {
+      w = -1;
+      goto jneednl;
    } else {
       l = wctomb(self->qf_dat.s + self->qf_dat.l, wc);
       if (l < 0)
@@ -126,11 +138,10 @@ jbad:
       self->qf_dat.l += (size_t)l;
    }
 
-   /* TODO The last visual may excess (adjusted!) *qfold-max* if it's a wide;
-    * TODO place it on the next line, break before */
    if (self->qf_datw >= self->qf_qfold_max) {
       /* If we have seen a nice breakpoint during traversal, shuffle data
        * around a bit so as to restore the trailing part after flushing */
+jneednl:
       if (self->qf_brkl > 0) {
          save_w = self->qf_datw - self->qf_brkw;
          save_l = self->qf_dat.l - self->qf_brkl;
@@ -155,15 +166,25 @@ jflush:
       bool_t isws = (iswspace(wc) != 0);
 
       if (isws || !self->qf_brk_isws || self->qf_brkl == 0) {
-         self->qf_brkl = self->qf_dat.l;
-         self->qf_brkw = self->qf_datw;
-         self->qf_brk_isws = isws;
+         if((self->qf_brk_isws = isws) ||
+               self->qf_brkl < self->qf_qfold_maxnws){
+            self->qf_brkl = self->qf_dat.l;
+            self->qf_brkw = self->qf_datw;
+         }
       }
    }
 
+   /* Did we hold this back to avoid qf_fold_max excess?  Then do it now */
+   if(rv >= 0 && w == -1){
+      ssize_t j = _qf_add_data(self, wc);
+      if(j < 0)
+         rv = j;
+      else
+         rv += j;
+   }
    /* If state changed to prefix, perform full reset (note this implies that
     * quoteflt_flush() performs too much work..) */
-   if (wc == '\n') {
+   else if (wc == '\n') {
       self->qf_state = _QF_PREFIX;
       self->qf_wscnt = self->qf_datw = 0;
       self->qf_currq.l = 0;
@@ -301,11 +322,12 @@ quoteflt_dummy(void) /* TODO LEGACY (until filters are plugged when needed) */
 {
    static struct quoteflt qf_i;
 
+   qf_i.qf_bypass = TRU1;
    return &qf_i;
 }
 
 FL void
-quoteflt_init(struct quoteflt *self, char const *prefix)
+quoteflt_init(struct quoteflt *self, char const *prefix, bool_t bypass)
 {
 #ifdef HAVE_QUOTE_FOLD
    char const *xcp, *cp;
@@ -316,34 +338,42 @@ quoteflt_init(struct quoteflt *self, char const *prefix)
 
    if ((self->qf_pfix = prefix) != NULL)
       self->qf_pfix_len = (ui32_t)strlen(prefix);
+   self->qf_bypass = bypass;
 
    /* Check whether the user wants the more fancy quoting algorithm */
    /* TODO *quote-fold*: n_QUOTE_MAX may excess it! */
 #ifdef HAVE_QUOTE_FOLD
-   if (self->qf_pfix_len > 0 && (cp = ok_vlook(quote_fold)) != NULL) {
-      ui32_t qmin, qmax;
+   if (!bypass && (cp = ok_vlook(quote_fold)) != NULL) {
+      ui32_t qmax, qmaxnws, qmin;
 
       /* These magic values ensure we don't bail */
       n_idec_ui32_cp(&qmax, cp, 10, &xcp);
       if (qmax < self->qf_pfix_len + 6)
          qmax = self->qf_pfix_len + 6;
-      --qmax; /* The newline escape */
+      qmaxnws = --qmax; /* The newline escape */
       if (cp == xcp || *xcp == '\0')
          qmin = (qmax >> 1) + (qmax >> 2) + (qmax >> 5);
       else {
-         n_idec_ui32_cp(&qmin, &xcp[1], 10, NULL);
+         n_idec_ui32_cp(&qmin, &xcp[1], 10, &xcp);
          if (qmin < qmax >> 1)
             qmin = qmax >> 1;
          else if (qmin > qmax - 2)
             qmin = qmax - 2;
+
+         if (cp != xcp && *xcp != '\0') {
+            n_idec_ui32_cp(&qmaxnws, &xcp[1], 10, &xcp);
+            if (qmaxnws > qmax || qmaxnws < qmin)
+               qmaxnws = qmax;
+         }
       }
       self->qf_qfold_min = qmin;
       self->qf_qfold_max = qmax;
+      self->qf_qfold_maxnws = qmaxnws;
       self->qf_quote_chars = ok_vlook(quote_chars);
 
       /* Add pad for takeover copies, reverse solidus and newline */
-      self->qf_dat.s = salloc((qmax + 3) * n_mb_cur_max);
-      self->qf_currq.s = salloc((n_QUOTE_MAX + 1) * n_mb_cur_max);
+      self->qf_dat.s = n_autorec_alloc((qmax + 3) * n_mb_cur_max);
+      self->qf_currq.s = n_autorec_alloc((n_QUOTE_MAX + 1) * n_mb_cur_max);
    }
 #endif
    NYD_LEAVE;
@@ -386,7 +416,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
 
    /* Bypass? TODO Finally, this filter simply should not be used, then
     * (TODO It supercedes prefix_write() or something) */
-   if (self->qf_pfix_len == 0) {
+   if (self->qf_bypass) {
       if (len != fwrite(dat, 1, len, self->qf_os))
          goto jerr;
       rv = len;
@@ -402,8 +432,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
       bool_t pxok = (self->qf_qfold_min != 0);
 
       for (;;) {
-         if (!pxok) {
-            ll = self->qf_pfix_len;
+         if (!pxok && (ll = self->qf_pfix_len) > 0) {
             if (ll != fwrite(self->qf_pfix, 1, ll, self->qf_os))
                goto jerr;
             rv += ll;
@@ -736,7 +765,7 @@ _hf_dump_hrefs(struct htmlflt *self)
          if (w < 0)
             self->hf_flags |= _HF_ERROR;
       }
-      free(hhp);
+      n_free(hhp);
    }
 
    self->hf_flags |= (putc('\n', self->hf_os) == EOF)
@@ -1320,7 +1349,7 @@ jimg_put:
       self = _hf_param(self, &param, "href");
       /* Ignore non-external links */
       if (param.s != NULL && *param.s != '#') {
-         struct htmlflt_href *hhp = smalloc(
+         struct htmlflt_href *hhp = n_alloc(
                n_VSTRUCT_SIZEOF(struct htmlflt_href, hfh_dat) + param.l +1);
 
          hhp->hfh_next = self->hf_hrefs;
@@ -1468,7 +1497,7 @@ _hf_add_data(struct htmlflt *self, char const *dat, size_t len)
    if ((cp = self->hf_curr) != NULL)
       cp_max = self->hf_bmax;
    else {
-      cp = self->hf_curr = self->hf_bdat = smalloc(LINESIZE);
+      cp = self->hf_curr = self->hf_bdat = n_alloc(LINESIZE);
       cp_max = self->hf_bmax = cp + LINESIZE -1; /* (Always room for NUL!) */
    }
    hot = (cp != self->hf_bdat);
@@ -1591,8 +1620,8 @@ jdo_c:
                size_t i = PTR2SIZE(cp - self->hf_bdat),
                   m = PTR2SIZE(self->hf_bmax - self->hf_bdat) + LINESIZE;
 
-               cp = self->hf_bdat = srealloc(self->hf_bdat, m);
-               self->hf_bmax = cp + m -1;
+               cp = self->hf_bdat = n_realloc(self->hf_bdat, m);
+               self->hf_bmax = cp_max = &cp[m -1];
                self->hf_curr = (cp += i);
             }
             *cp++ = c;
@@ -1682,20 +1711,20 @@ htmlflt_reset(struct htmlflt *self, FILE *f)
 
    while ((hfhp = self->hf_hrefs) != NULL) {
       self->hf_hrefs = hfhp->hfh_next;
-      free(hfhp);
+      n_free(hfhp);
    }
 
    if (self->hf_bdat != NULL)
-      free(self->hf_bdat);
+      n_free(self->hf_bdat);
    if (self->hf_line != NULL)
-      free(self->hf_line);
+      n_free(self->hf_line);
 
    memset(self, 0, sizeof *self);
 
    if (f != NULL) {
       ui32_t sw = n_MAX(_HF_MINLEN, (ui32_t)n_scrnwidth);
 
-      self->hf_line = smalloc((size_t)sw * n_mb_cur_max +1);
+      self->hf_line = n_alloc((size_t)sw * n_mb_cur_max +1);
       self->hf_lmax = sw;
 
       if (n_psonce & n_PSO_UNICODE) /* TODO not truly generic */

@@ -8,6 +8,7 @@
  *@ byte longer than the dotlock file's name!
  *
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-2-Clause
  */
 /*
  * Copyright (c) 1996 Christos Zoulas.  All rights reserved.
@@ -58,7 +59,7 @@ a_dotlock_create(struct n_dotlock_info *dip){
 
    /* (Callee ensured this doesn't end up as plain "di_lock_name") */
    snprintf(lname, sizeof lname, "%s.%s.%s",
-      dip->di_lock_name, dip->di_hostname, dip->di_randstr);
+      dip->di_randstr, dip->di_lock_name, dip->di_hostname);
 
    sigfillset(&nset);
 

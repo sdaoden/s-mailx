@@ -5,6 +5,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-4-Clause
  */
 /*
  * Copyright (c) 2004
@@ -220,14 +221,14 @@ itparse(char const *spec, char const **xp, int sub)
 
       _it_tree = ittree;
       if (_it_tree == NULL) {
-         _it_tree = salloc(sizeof *_it_tree);
+         _it_tree = n_autorec_alloc(sizeof *_it_tree);
          *_it_tree = n;
       } else {
          z = _it_tree;
-         _it_tree = salloc(sizeof *_it_tree);
+         _it_tree = n_autorec_alloc(sizeof *_it_tree);
          _it_tree->n_token = ITAND;
          _it_tree->n_x = z;
-         _it_tree->n_y = salloc(sizeof *_it_tree->n_y);
+         _it_tree->n_y = n_autorec_alloc(sizeof *_it_tree->n_y);
          *_it_tree->n_y = n;
       }
       if (sub && level == 0)
@@ -409,7 +410,7 @@ itstring(void **tp, char const *spec, char const **xp) /* XXX lesser derefs */
          around(&(*xp)[spec - *xp]));
       goto jleave;
    }
-   ap = *tp = salloc(strlen(spec) +1);
+   ap = *tp = n_autorec_alloc(strlen(spec) +1);
    *xp = spec;
     do {
       if (inquote && **xp == '\\')
@@ -454,7 +455,7 @@ itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
             (ibuf = setinput(mp, m, NEED_HEADER)) != NULL) {
          if (readline_restart(ibuf, &line, &linesize, 0) > 0)
             m->m_time = unixtime(line);
-         free(line);
+         n_free(line);
       }
       break;
    case ITSENTBEFORE:
@@ -648,7 +649,7 @@ _imap_quotestr(char const *s)
    char *n, *np;
    NYD2_ENTER;
 
-   np = n = salloc(2 * strlen(s) + 3);
+   np = n = n_autorec_alloc(2 * strlen(s) + 3);
    *np++ = '"';
    while (*s) {
       if (*s == '"' || *s == '\\')
@@ -672,7 +673,7 @@ _imap_unquotestr(char const *s)
       goto jleave;
    }
 
-   np = n = salloc(strlen(s) + 1);
+   np = n = n_autorec_alloc(strlen(s) + 1);
    while (*++s) {
       if (*s == '\\')
          s++;
@@ -699,7 +700,7 @@ matchfield(struct message *m, char const *field, void const *what)
    in.l = strlen(in.s);
    mime_fromhdr(&in, &out, TD_ICONV);
    rv = substr(out.s, what);
-   free(out.s);
+   n_free(out.s);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -742,7 +743,7 @@ mkenvelope(struct name *np)
    in.s = np->n_fullname;
    in.l = strlen(in.s);
    mime_fromhdr(&in, &out, TD_ICONV);
-   rp = ip = ac_alloc(strlen(out.s) + 1);
+   rp = ip = n_lofi_alloc(strlen(out.s) + 1);
    for (cp = out.s; *cp; cp++) {
       switch (*cp) {
       case '"':
@@ -791,7 +792,7 @@ jdone:
    *rp = '\0';
    if (hadphrase)
       realnam = ip;
-   free(out.s);
+   n_free(out.s);
    localpart = savestr(np->n_name);
    if ((cp = strrchr(localpart, '@')) != NULL) {
       *cp = '\0';
@@ -805,7 +806,7 @@ jdone:
       /*sourceaddr ? _imap_quotestr(sourceaddr) :*/ "NIL",
       _imap_quotestr(localpart),
       domainpart ? _imap_quotestr(domainpart) : "NIL");
-   ac_free(ip);
+   n_lofi_free(ip);
    NYD_LEAVE;
    return ep;
 }
@@ -840,7 +841,7 @@ imap_search(char const *spec, int f)
 
    if (strcmp(spec, "()")) {
       if (lastspec != NULL)
-         free(lastspec);
+         n_free(lastspec);
       i = strlen(spec);
       lastspec = sbufdup(spec, i);
    } else if (lastspec == NULL) {

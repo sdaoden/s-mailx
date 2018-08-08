@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause TODO ISC
  */
 /*
  * Copyright (c) 1980, 1993
@@ -498,7 +499,7 @@ FL int c_rename(void *v);
 FL int c_folders(void *v);
 
 /*
- * cmd-headers.c
+ * cmd-head.c
  */
 
 /* `headers' (show header group, possibly after setting dot) */
@@ -517,12 +518,17 @@ FL int c_dotmove(void *v);
 /* Print out the headlines for each message in the passed message list */
 FL int c_from(void *v);
 
-/* Print all message in between and including bottom and topx if they are
- * visible and either only_marked is false or they are MMARKed */
-FL void print_headers(size_t bottom, size_t topx, bool_t only_marked);
+/* Print all messages in msgvec visible and either only_marked is false or they
+ * are MMARKed.
+ * TODO If subject_thread_compress is true then a subject will not be printed
+ * TODO if it equals the subject of the message "above"; as this only looks
+ * TODO in the thread neighbour and NOT in the "visible" neighbour, the caller
+ * TODO has to ensure the result will look sane; DROP + make it work (tm) */
+FL void print_headers(int const *msgvec, bool_t only_marked,
+         bool_t subject_thread_compress);
 
 /*
- * cmd-message.c
+ * cmd-msg.c
  */
 
 /* Paginate messages, honour/don't honour ignored fields, respectively */
@@ -540,8 +546,8 @@ FL int c_show(void *v);
 FL int c_mimeview(void *vp);
 
 /* Pipe messages, honour/don't honour ignored fields, respectively */
-FL int c_pipe(void *v);
-FL int c_Pipe(void *v);
+FL int c_pipe(void *vp);
+FL int c_Pipe(void *vp);
 
 /* Print the first *toplines* of each desired message */
 FL int c_top(void *v);
@@ -552,8 +558,8 @@ FL int c_Top(void *v);
  * command with no arguments, print first message */
 FL int c_next(void *v);
 
-/* Print out the value of dot */
-FL int c_pdot(void *v);
+/* `=': print out the value(s) of <msglist> (or dot) */
+FL int c_pdot(void *vp);
 
 /* Print the size of each message */
 FL int c_messize(void *v);
@@ -642,17 +648,13 @@ FL int c_Followup(void *vp);
 /* ..and a mailing-list reply */
 FL int c_Lreply(void *vp);
 
-/* The 'forward' command */
+/* 'forward' / `Forward' */
 FL int c_forward(void *vp);
-
-/* Similar to forward, saving the message in a file named after the first
- * recipient */
 FL int c_Forward(void *vp);
 
-/* Resend a message list to a third person */
+/* Resend a message list to a third person.
+ * The latter does not add the Resent-* header series */
 FL int c_resend(void *vp);
-
-/* Resend a message list to a third person without adding headers */
 FL int c_Resend(void *vp);
 
 /*
@@ -692,24 +694,24 @@ FL int /* TODO v15*/ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
 
 /* Save a message in a file.  Mark the message as saved so we can discard when
  * the user quits */
-FL int c_save(void *v);
-FL int c_Save(void *v);
+FL int c_save(void *vp);
+FL int c_Save(void *vp);
 
 /* Copy a message to a file without affected its saved-ness */
-FL int c_copy(void *v);
-FL int c_Copy(void *v);
+FL int c_copy(void *vp);
+FL int c_Copy(void *vp);
 
 /* Move a message to a file */
-FL int c_move(void *v);
-FL int c_Move(void *v);
+FL int c_move(void *vp);
+FL int c_Move(void *vp);
 
 /* Decrypt and copy a message to a file.  Like plain `copy' at times */
-FL int c_decrypt(void *v);
-FL int c_Decrypt(void *v);
+FL int c_decrypt(void *vp);
+FL int c_Decrypt(void *vp);
 
 /* Write the indicated messages at the end of the passed file name, minus
  * header and trailing blank line.  This is the MIME save function */
-FL int c_write(void *v);
+FL int c_write(void *vp);
 
 /*
  * collect.c
@@ -720,8 +722,8 @@ FL void n_temporary_compose_hook_varset(void *arg);
 
 /* If quotefile is (char*)-1, stdin will be used, caller has to verify that
  * we're not running in interactive mode */
-FL FILE *      collect(struct header *hp, int printheaders, struct message *mp,
-                  char const *quotefile, int doprefix, si8_t *checkaddr_err);
+FL FILE *n_collect(enum n_mailsend_flags msf, struct header *hp,
+            struct message *mp, char const *quotefile, si8_t *checkaddr_err);
 
 /*
  * colour.c
@@ -736,8 +738,8 @@ FL int c_uncolour(void *v);
  * Signals are blocked */
 FL void n_colour_stack_del(struct n_go_data_ctx *gdcp);
 
-/* We want coloured output (in this salloc() cycle), pager_used is used to
- * test whether *colour-pager* is to be inspected, if fp is given, the reset
+/* We want coloured output (in this autorec memory() cycle), pager_used is used
+ * to test whether *colour-pager* is to be inspected, if fp is given, the reset
  * sequence will be written as necessary by _stack_del()
  * env_gut() will reset() as necessary if fp is not NULL */
 FL void n_colour_env_create(enum n_colour_ctx cctx, FILE *fp,
@@ -762,20 +764,37 @@ FL struct str const *n_colour_pen_to_str(struct n_colour_pen *self);
 #endif /* HAVE_COLOUR */
 
 /*
+ * dig-msg.c
+ */
+
+/**/
+FL void n_dig_msg_on_mailbox_close(struct mailbox *mbox);
+
+/* Accessibility hook for the `~^' command; needs n_DIG_MSG_COMPOSE_CREATE() */
+FL bool_t n_dig_msg_circumflex(struct n_dig_msg_ctx *dmcp, FILE *fp,
+            char const *cmd);
+
+/* `digmsg' */
+FL int c_digmsg(void *vp);
+
+/*
  * dotlock.c
  */
 
-/* Aquire a flt lock and create a dotlock file; upon success a registered
- * control-pipe FILE* is returned that keeps the link in between us and the
+/* Aquire a flt n_file_lock().
+ * Will try FILE_LOCK_TRIES times if pollmsecs > 0 (once otherwise).
+ * If pollmsecs is UIZ_MAX, FILE_LOCK_MILLIS is used.
+ * If *dotlock-disable* is set (FILE*)-1 is returned if flt could be aquired,
+ * NULL if not, with n_err_ being usable.
+ * Otherwise a dotlock file is created, and a registered control-pipe FILE* is
+ * returned upon success which keeps the link in between us and the
  * lock-holding fork(2)ed subprocess (which conditionally replaced itself via
  * execv(2) with the privilege-separated dotlock helper program): the lock file
  * will be removed once the control pipe is closed via Pclose().
- * Will try FILE_LOCK_TRIES times if pollmsecs > 0 (once otherwise).
- * If pollmsecs is UIZ_MAX, FILE_LOCK_MILLIS is used.
  * If *dotlock_ignore_error* is set (FILE*)-1 will be returned if at least the
  * normal file lock could be established, otherwise n_err_no is usable on err */
-FL FILE *      n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
-                  off_t off, off_t len, size_t pollmsecs);
+FL FILE *n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
+            off_t off, off_t len, size_t pollmsecs);
 
 /*
  * edit.c
@@ -789,13 +808,16 @@ FL int         c_visual(void *v);
 
 /* Run an editor on either size bytes of the file fp (or until EOF if size is
  * negative) or on the message mp, and return a new file or NULL on error of if
- * the user didn't perform any edits.
+ * the user didn't perform any edits (not possible in pipe mode).
  * For now we assert that mp==NULL if hp!=NULL, treating this as a special call
- * from within compose mode, and giving TRUM1 to puthead().
- * Signals must be handled by the caller.  viored is 'e' for ed, 'v' for vi */
-FL FILE *      run_editor(FILE *fp, off_t size, int viored, int readonly,
+ * from within compose mode, and giving TRUM1 to n_puthead().
+ * Signals must be handled by the caller.
+ * viored is 'e' for $EDITOR, 'v' for $VISUAL, or '|' for n_child_run(), in
+ * which case pipecmd must have been given */
+FL FILE *n_run_editor(FILE *fp, off_t size, int viored, bool_t readonly,
                   struct header *hp, struct message *mp,
-                  enum sendaction action, sighandler_type oldint);
+                  enum sendaction action, sighandler_type oldint,
+                  char const *pipecmd);
 
 /*
  * filter.c
@@ -803,7 +825,8 @@ FL FILE *      run_editor(FILE *fp, off_t size, int viored, int readonly,
 
 /* Quote filter */
 FL struct quoteflt * quoteflt_dummy(void); /* TODO LEGACY */
-FL void        quoteflt_init(struct quoteflt *self, char const *prefix);
+FL void        quoteflt_init(struct quoteflt *self, char const *prefix,
+                  bool_t bypass);
 FL void        quoteflt_destroy(struct quoteflt *self);
 FL void        quoteflt_reset(struct quoteflt *self, FILE *f);
 FL ssize_t     quoteflt_push(struct quoteflt *self, char const *dat,
@@ -854,9 +877,6 @@ FL int         readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
 # define readline_restart(A,B,C,D) \
    readline_restart(A, B, C, D, __FILE__, __LINE__)
 #endif
-
-/* Set up the input pointers while copying the mail file into /tmp */
-FL void        setptr(FILE *ibuf, off_t offset);
 
 /* Determine the size of the file possessed by the passed buffer */
 FL off_t       fsize(FILE *iob);
@@ -1005,7 +1025,7 @@ FL int c_quit(void *vp);
 FL int c_readctl(void *vp);
 
 /*
- * head.c
+ * header.c
  */
 
 /* Return the user's From: address(es) */
@@ -1021,24 +1041,15 @@ FL char const * myorigin(struct header *hp);
 FL bool_t      is_head(char const *linebuf, size_t linelen,
                   bool_t check_rfc4155);
 
-/* Savage extract date field from From_ line.  linelen is convenience as line
- * must be terminated (but it may end in a newline [sequence]).
- * Return whether the From_ line was parsed successfully (-1 if the From_ line
- * wasn't really RFC 4155 compliant) */
-FL int         extract_date_from_from_(char const *line, size_t linelen,
-                  char datebuf[n_FROM_DATEBUF]);
+/* Print hp "to user interface" fp for composing purposes xxx what a sigh */
+FL bool_t n_header_put4compose(FILE *fp, struct header *hp);
 
 /* Extract some header fields (see e.g. -t documentation) from a message.
- * If n_poption&n_PO_t_FLAG *and* n_psonce&n_PSO_t_FLAG are both set a number
- * of additional header fields are understood and address joining is performed
- * as necessary, and the subject is treated with additional care, too.
- * If n_psonce&n_PSO_t_FLAG is set but n_PO_t_FLAG is no more, From: will not
- * be assigned no more.
- * This calls expandaddr() on some headers and sets checkaddr_err if that is
- * not NULL -- note it explicitly allows EAF_NAME because aliases are not
+ * This calls expandaddr() on some headers and sets checkaddr_err_or_null if
+ * that is set -- note it explicitly allows EAF_NAME because aliases are not
  * expanded when this is called! */
-FL void        extract_header(FILE *fp, struct header *hp,
-                  si8_t *checkaddr_err);
+FL void n_header_extract(enum n_header_extract_flags hef, FILE *fp,
+         struct header *hp, si8_t *checkaddr_err_or_null);
 
 /* Return the desired header line from the passed message
  * pointer (or NULL if the desired header field is not available).
@@ -1051,10 +1062,6 @@ FL char *      hfield_mult(char const *field, struct message *mp, int mult);
 /* Check whether the passed line is a header line of the desired breed.
  * Return the field body, or 0 */
 FL char const * thisfield(char const *linebuf, char const *field);
-
-/* Get sender's name from this message.  If the message has a bunch of arpanet
- * stuff in it, we may have to skin the name before returning it */
-FL char *      nameof(struct message *mp, int reptype);
 
 /* Start of a "comment".  Ignore it */
 FL char const * skip_comment(char const *cp);
@@ -1096,11 +1103,9 @@ FL char const *n_addrspec_with_guts(struct n_addrguts *agp, char const *name,
 /* Fetch the real name from an internet mail address field */
 FL char *      realname(char const *name);
 
-/* Fetch the sender's name from the passed message.  reptype can be
- * 0 -- get sender's name for display purposes
- * 1 -- get sender's name for reply
- * 2 -- get sender's name for Reply */
-FL char *      name1(struct message *mp, int reptype);
+/* Get the list of senders (From: or Sender: or From_ line) from this message.
+ * The return value may be empty and needs lextract()ion */
+FL char *n_header_senderfield_of(struct message *mp);
 
 /* Trim away all leading Re: etc., return pointer to plain subject.
  * Note it doesn't perform any MIME decoding by itself */
@@ -1123,7 +1128,31 @@ FL time_t      rfctime(char const *date);
 FL time_t      combinetime(int year, int month, int day,
                   int hour, int minute, int second);
 
+/* Determine the date to print in faked 'From ' lines */
 FL void        substdate(struct message *m);
+
+/* Create ready-to-go environment taking into account *datefield* etc.,
+ * and return a result in auto-reclaimed storage.
+ * TODO hack *color_tag_or_null could be set to n_COLOUR_TAG_SUM_OLDER.
+ * time_current is used for comparison and must thus be up-to-date */
+FL char *n_header_textual_date_info(struct message *mp,
+            char const **color_tag_or_null);
+
+/* Create ready-to-go sender name of a message in *cumulation_or_null, the
+ * addresses only in *addr_or_null, the real names only in *name_real_or_null,
+ * and the full names in *name_full_or_null, taking acount for *showname*.
+ * If *is_to_or_null is set, *showto* and n_is_myname() are taken into account
+ * when choosing which names to use.
+ * The list as such is returned, or NULL if there is really none (empty strings
+ * will be stored, then).
+ * All results are in auto-reclaimed storage, but may point to the same string.
+ * TODO *is_to_or_null could be set to whether we actually used To:, or not.
+ * TODO n_header_textual_sender_info(): should only create a list of matching
+ * TODO name objects, which the user can iterate over and o->to_str().. */
+FL struct name *n_header_textual_sender_info(struct message *mp,
+                  char **cumulation_or_null, char **addr_or_null,
+                  char **name_real_or_null, char **name_full_or_null,
+                  bool_t *is_to_or_null);
 
 /* TODO Weird thing that tries to fill in From: and Sender: */
 FL void        setup_from_and_sender(struct header *hp);
@@ -1132,9 +1161,13 @@ FL void        setup_from_and_sender(struct header *hp);
 FL struct name const * check_from_and_sender(struct name const *fromfield,
                         struct name const *senderfield);
 
-#ifdef HAVE_XSSL
+#ifdef HAVE_XTLS
 FL char *      getsender(struct message *m);
 #endif
+
+/* This returns NULL if hp is NULL or when no information is available.
+ * hp remains unchanged (->h_in_reply_to is not set!)  */
+FL struct name *n_header_setup_in_reply_to(struct header *hp);
 
 /* Fill in / reedit the desired header fields */
 FL int         grab_headers(enum n_go_input_flags gif, struct header *hp,
@@ -1147,7 +1180,7 @@ FL bool_t n_header_match(struct message *mp, struct search_expr const *sep);
 /* Verify whether len (UIZ_MAX=strlen) bytes of name form a standard or
  * otherwise known header name (that must not be used as a custom header).
  * Return the (standard) header name, or NULL */
-FL char const *n_header_is_standard(char const *name, size_t len);
+FL char const *n_header_is_known(char const *name, size_t len);
 
 /* Add a custom header to the given list, in auto-reclaimed or heap memory */
 FL bool_t n_header_add_custom(struct n_header_field **hflp, char const *dat,
@@ -1212,59 +1245,18 @@ FL ssize_t     imap_search(char const *spec, int f);
 #endif
 
 /*
- * message.c
- */
-
-/* Return a file buffer all ready to read up the passed message pointer */
-FL FILE *      setinput(struct mailbox *mp, struct message *m,
-                  enum needspec need);
-
-/*  */
-FL enum okay   get_body(struct message *mp);
-
-/* Reset (free) the global message array */
-FL void        message_reset(void);
-
-/* Append the passed message descriptor onto the message array; if mp is NULL,
- * NULLify the entry at &[msgCount-1] */
-FL void        message_append(struct message *mp);
-
-/* Append a NULL message */
-FL void        message_append_null(void);
-
-/* Check whether sep->ss_sexpr (or ->ss_sregex) matches mp.  If with_headers is
- * true then the headers will also be searched (as plain text) */
-FL bool_t      message_match(struct message *mp, struct search_expr const *sep,
-               bool_t with_headers);
-
-/*  */
-FL struct message * setdot(struct message *mp);
-
-/* Touch the named message by setting its MTOUCH flag.  Touched messages have
- * the effect of not being sent back to the system mailbox on exit */
-FL void        touch(struct message *mp);
-
-/* Convert user string of message numbers and store the numbers into vector.
- * Returns the count of messages picked up or -1 on error */
-FL int         getmsglist(char const *buf, int *vector, int flags);
-
-/* Find the first message whose flags&m==f and return its message number */
-FL int         first(int f, int m);
-
-/* Mark the named message by setting its mark bit */
-FL void        mark(int mesg, int f);
-
-/*
  * maildir.c
  */
 
-FL int         maildir_setfile(char const *name, enum fedit_mode fm);
+#ifdef HAVE_MAILDIR
+FL int maildir_setfile(char const *who, char const *name, enum fedit_mode fm);
 
-FL bool_t      maildir_quit(bool_t hold_sigs_on);
+FL bool_t maildir_quit(bool_t hold_sigs_on);
 
-FL enum okay   maildir_append(char const *name, FILE *fp, long offset);
+FL enum okay maildir_append(char const *name, FILE *fp, long offset);
 
-FL enum okay   maildir_remove(char const *name);
+FL enum okay maildir_remove(char const *name);
+#endif /* HAVE_MAILDIR */
 
 /*
  * memory.c
@@ -1282,16 +1274,22 @@ FL void n_memory_pool_fixate(void);
 
 /* Lifetime management of a per-execution level arena (to be found in
  * n_go_data_ctx.gdc_mempool, lazy initialized).
- * _push() can be used by anyone to create a new stack layer in the current
- * per-execution level arena, which is layered upon the normal one (usually
- * provided by .gdc__mempool_buf, initialized as necessary).
+ * _push() can be used by anyone to create a new mempool stack layer (of
+ * minimum size n_MEMORY_POOL_TYPE_SIZEOF) in the current per-execution level
+ * arena, which is layered upon the normal one (which is usually provided
+ * by .gdc__mempool_buf, and initialized as necessary).
  * This can be pop()ped again: popping a stack will remove all stacks "above"
  * it, i.e., those which have been pushed thereafter.
  * If NULL is popped then this means that the current per-execution level is
  * left and n_go_data_ctx.gdc_mempool is not NULL; an event loop tick also
- * causes all _push()ed stacks to be dropped (via n_memory_reset()) */
-FL void n_memory_pool_push(void *vp);
-FL void n_memory_pool_pop(void *vp);
+ * causes all _push()ed stacks to be dropped (via n_memory_reset()).
+ * Memory pools can be stored away, in order to re-push() them later again;
+ * for this these functions gained overall lifetime parameters: init needs to
+ * be true when calling push() for the first time on vp, and gut needs to be
+ * set when pop()ping vp the last time only */
+FL void n_memory_pool_push(void *vp, bool_t init);
+FL void n_memory_pool_pop(void *vp, bool_t gut);
+FL void *n_memory_pool_top(void);
 
 /* Generic heap memory */
 
@@ -1306,13 +1304,9 @@ FL void n_free(void *vp n_MEMORY_DEBUG_ARGS);
 # define n_realloc(P,S) (n_realloc)(P, S, __FILE__, __LINE__)
 # define n_calloc(N,S) (n_calloc)(N, S, __FILE__, __LINE__)
 # define n_free(P) (n_free)(P, __FILE__, __LINE__)
-# define free(P) (n_free)(P, __FILE__, __LINE__)
 #else
 # define n_free(P) free(P)
 #endif
-#define smalloc(SZ) n_alloc(SZ)
-#define srealloc(P,SZ) n_realloc(P, SZ)
-#define scalloc(N,SZ) n_calloc(N, SZ)
 
 /* Fluctuating heap memory (supposed to exist for one command loop tick) */
 
@@ -1352,10 +1346,6 @@ FL void *n_autorec_calloc_from_pool(void *vp, size_t nmemb, size_t size
 #define n_autorec_alloc(SZ) n_autorec_alloc_from_pool(NULL, SZ)
 #define n_autorec_calloc(NM,SZ) n_autorec_calloc_from_pool(NULL, NM, SZ)
 
-/* TODO obsolete c?salloc -> n_autorec_* */
-#define salloc(SZ) n_autorec_alloc_from_pool(NULL, SZ)
-#define csalloc(NM,SZ) n_autorec_calloc_from_pool(NULL, NM, SZ)
-
 /* Pseudo alloca (and also auto-reclaimed in _memory_reset()/_pool_pop()) */
 FL void *n_lofi_alloc(size_t size n_MEMORY_DEBUG_ARGS);
 FL void n_lofi_free(void *vp n_MEMORY_DEBUG_ARGS);
@@ -1370,10 +1360,6 @@ FL void n_lofi_free(void *vp n_MEMORY_DEBUG_ARGS);
 FL void *n_lofi_snap_create(void);
 FL void n_lofi_snap_unroll(void *cookie);
 
-/* TODO obsolete ac_alloc / ac_free -> n_lofi_* */
-#define ac_alloc(SZ) n_lofi_alloc(SZ)
-#define ac_free(P) n_lofi_free(P)
-
 /* */
 #ifdef HAVE_MEMORY_DEBUG
 FL int c_memtrace(void *v);
@@ -1384,6 +1370,57 @@ FL bool_t n__memory_check(char const *file, int line);
 #else
 # define n_memory_check() do{;}while(0)
 #endif
+
+/*
+ * message.c
+ */
+
+/* Return a file buffer all ready to read up the passed message pointer */
+FL FILE *      setinput(struct mailbox *mp, struct message *m,
+                  enum needspec need);
+
+/*  */
+FL enum okay   get_body(struct message *mp);
+
+/* Reset (free) the global message array */
+FL void        message_reset(void);
+
+/* Append the passed message descriptor onto the message array; if mp is NULL,
+ * NULLify the entry at &[msgCount-1] */
+FL void        message_append(struct message *mp);
+
+/* Append a NULL message */
+FL void        message_append_null(void);
+
+/* Check whether sep->ss_sexpr (or ->ss_sregex) matches mp.  If with_headers is
+ * true then the headers will also be searched (as plain text) */
+FL bool_t      message_match(struct message *mp, struct search_expr const *sep,
+               bool_t with_headers);
+
+/*  */
+FL struct message * setdot(struct message *mp);
+
+/* Touch the named message by setting its MTOUCH flag.  Touched messages have
+ * the effect of not being sent back to the system mailbox on exit */
+FL void        touch(struct message *mp);
+
+/* Convert user message spec. to message numbers and store them in vector,
+ * which should be capable to hold msgCount+1 entries (n_msgvec asserts this).
+ * flags is n_cmd_arg_ctx.cac_msgflag == n_cmd_desc.cd_msgflag == enum mflag.
+ * If capp_or_null is not NULL then the last (string) token is stored in here
+ * and not interpreted as a message specification; in addition, if only one
+ * argument remains and this is the empty string, 0 is returned (*vector=0;
+ * this is used to implement n_CMD_ARG_DESC_MSGLIST_AND_TARGET).
+ * A NUL *buf input results in a 0 return, *vector=0, [*capp_or_null=NULL].
+ * Returns the count of messages picked up or -1 on error */
+FL int n_getmsglist(char const *buf, int *vector, int flags,
+         struct n_cmd_arg **capp_or_null);
+
+/* Find the first message whose flags&m==f and return its message number */
+FL int         first(int f, int m);
+
+/* Mark the named message by setting its mark bit */
+FL void        mark(int mesg, int f);
 
 /*
  * mime.c
@@ -1468,7 +1505,7 @@ FL struct str * qp_encode_buf(struct str *out, void const *vp, size_t vp_len,
                   enum qpflags flags);
 #endif
 
-/* The buffers of out and *rest* will be managed via srealloc().
+/* The buffers of out and *rest* will be managed via n_realloc().
  * If inrest_or_null is needed but NULL an error occurs, otherwise tolerant.
  * Return FAL0 on error; caller is responsible to free buffers */
 FL bool_t      qp_decode_header(struct str *out, struct str const *in);
@@ -1499,7 +1536,7 @@ FL struct str * b64_encode_cp(struct str *out, char const *cp,
  * TODO pre v15 callers should ensure that no endless loop is entered because
  * TODO the inrest cannot be converted and ends up as inrest over and over:
  * TODO give NULL to stop such loops.
- * The buffers of out and possibly *rest* will be managed via srealloc().
+ * The buffers of out and possibly *rest* will be managed via n_realloc().
  * Returns FAL0 on error; caller is responsible to free buffers.
  * XXX FAL0 is effectively not returned for _part*() variants,
  * XXX (instead replacement characters are produced for invalid data.
@@ -1517,7 +1554,7 @@ FL bool_t      b64_decode_part(struct str *out, struct str const *in,
 /* Get a mime style parameter from a header body */
 FL char *      mime_param_get(char const *param, char const *headerbody);
 
-/* Format parameter name to have value, salloc() it or NULL (error) in result.
+/* Format parameter name to have value, autorec_alloc() it or NULL in result.
  * 0 on error, 1 or -1 on success: the latter if result contains \n newlines,
  * which it will if the created param requires more than MIME_LINELEN bytes;
  * there is never a trailing newline character */
@@ -1527,10 +1564,10 @@ FL si8_t       mime_param_create(struct str *result, char const *name,
                   char const *value);
 
 /* Get the boundary out of a Content-Type: multipart/xyz header field, return
- * salloc()ed copy of it; store strlen() in *len if set */
+ * autorec_alloc()ed copy of it; store strlen() in *len if set */
 FL char *      mime_param_boundary_get(char const *headerbody, size_t *len);
 
-/* Create a salloc()ed MIME boundary */
+/* Create a autorec_alloc()ed MIME boundary */
 FL char *      mime_param_boundary_create(void);
 
 /*
@@ -1580,6 +1617,9 @@ FL enum mime_handler_flags n_mimetype_handler(struct mime_handler *mhp,
  * passed name and return it */
 FL struct name * nalloc(char const *str, enum gfield ntype);
 
+/* Alloc an Fcc: entry TODO temporary only i hope */
+FL struct name *nalloc_fcc(char const *file);
+
 /* Like nalloc(), but initialize from content of np */
 FL struct name * ndup(struct name *np, enum gfield ntype);
 
@@ -1587,7 +1627,7 @@ FL struct name * ndup(struct name *np, enum gfield ntype);
 FL struct name * cat(struct name *n1, struct name *n2);
 
 /* Duplicate np */
-FL struct name * namelist_dup(struct name const *np, enum gfield ntype);
+FL struct name *n_namelist_dup(struct name const *np, enum gfield ntype);
 
 /* Determine the number of undeleted elements in a name list and return it;
  * the latter also doesn't count file and pipe addressees in addition */
@@ -1620,11 +1660,12 @@ FL struct name * checkaddrs(struct name *np, enum expand_addr_check_mode eacm,
 
 /* Vaporise all duplicate addresses in hp (.h_(to|cc|bcc)) so that an address
  * that "first" occurs in To: is solely in there, ditto Cc:, after expanding
- * aliases etc.  eacm and set_on_error are passed to checkaddrs(), metoo is
- * passed to usermap().  After updating hp to the new state this returns
- * a flat list of all addressees, which may be NULL */
-FL struct name * namelist_vaporise_head(struct header *hp,
-                  enum expand_addr_check_mode eacm, bool_t metoo,
+ * aliases etc.  eacm and set_on_error are passed to checkaddrs().
+ * metoo is implied (for usermap()).
+ * After updating hp to the new state this returns a flat list of all
+ * addressees, which may be NULL */
+FL struct name *n_namelist_vaporise_head(bool_t strip_alternates,
+                  struct header *hp, enum expand_addr_check_mode eacm,
                   si8_t *set_on_error);
 
 /* Map all of the aliased users in the invoker's mailrc file and insert them
@@ -1727,7 +1768,7 @@ FL void        cwrelse(struct cw *cw);
 FL enum okay   pop3_noop(void);
 
 /*  */
-FL int         pop3_setfile(char const *server, enum fedit_mode fm);
+FL int pop3_setfile(char const *who, char const *server, enum fedit_mode fm);
 
 /*  */
 FL enum okay   pop3_header(struct message *m);
@@ -1747,10 +1788,10 @@ FL bool_t      pop3_quit(bool_t hold_sigs_on);
 /* For program startup in main.c: initialize process manager */
 FL void        n_child_manager_start(void);
 
-/* Notes: OF_CLOEXEC is implied in oflags, xflags may be NULL */
+/* xflags may be NULL.  Implied: cloexec */
 FL FILE *      safe_fopen(char const *file, char const *oflags, int *xflags);
 
-/* Notes: OF_CLOEXEC|OF_REGISTER are implied in oflags!
+/* oflags implied: cloexec,OF_REGISTER.
  * Exception is Fdopen() if nocloexec is TRU1, but otherwise even for it the fd
  * creator has to take appropriate steps in order to ensure this is true! */
 FL FILE *      Fopen(char const *file, char const *oflags);
@@ -1767,9 +1808,10 @@ FL FILE * n_fopen_any(char const *file, char const *oflags,
 /* Create a temporary file in *TMPDIR*, use namehint for its name (prefix
  * unless OF_SUFFIX is set, in which case namehint is an extension that MUST be
  * part of the resulting filename, otherwise Ftmp() will fail), store the
- * unique name in fn (unless OF_UNLINK is set in oflags), and return a stdio
- * FILE pointer with access oflags.  OF_CLOEXEC is implied in oflags.
- * One of OF_WRONLY and OF_RDWR must be set.  Mode of 0600 is implied */
+ * unique name in fn if set (and unless OF_UNLINK is set in oflags), creating
+ * n_alloc() storage or n_autorec_alloc() if OF_NAME_AUTOREC is set,
+ * and return a stdio FILE pointer with access oflags.
+ * One of OF_WRONLY and OF_RDWR must be set.  Implied: 0600,cloexec */
 FL FILE *      Ftmp(char **fn, char const *namehint, enum oflags oflags);
 
 /* If OF_HOLDSIGS was set when calling Ftmp(), then hold_all_sigs() had been
@@ -1881,19 +1923,18 @@ FL int         sendmp(struct message *mp, FILE *obuf,
 
 /* Interface between the argument list and the mail1 routine which does all the
  * dirty work */
-FL int         mail(struct name *to, struct name *cc, struct name *bcc,
-                  char const *subject, struct attachment *attach,
-                  char const *quotefile, int recipient_record);
+FL int n_mail(enum n_mailsend_flags msf, struct name *to, struct name *cc,
+         struct name *bcc, char const *subject, struct attachment *attach,
+         char const *quotefile);
 
 /* `mail' and `Mail' commands, respectively */
-FL int         c_sendmail(void *v);
-FL int         c_Sendmail(void *v);
+FL int c_sendmail(void *v);
+FL int c_Sendmail(void *v);
 
 /* Mail a message on standard input to the people indicated in the passed
  * header.  (Internal interface) */
-FL enum okay   mail1(struct header *hp, int printheaders,
-                  struct message *quote, char const *quotefile,
-                  int recipient_record, int doprefix);
+FL enum okay n_mail1(enum n_mailsend_flags flags, struct header *hp,
+               struct message *quote, char const *quotefile);
 
 /* Create a Date: header field.
  * We compare the localtime() and gmtime() results to get the timezone, because
@@ -1904,8 +1945,8 @@ FL int         mkdate(FILE *fo, char const *field);
  * nosend_msg tells us not to dig to deep but to instead go for compose mode or
  * editing a message (yet we're stupid and cannot do it any better) - if it is
  * TRUM1 then we're really in compose mode and will produce some fields for
- * easier filling in */
-FL int         puthead(bool_t nosend_msg, struct header *hp, FILE *fo,
+ * easier filling in (see n_run_editor() proto for this hack) */
+FL bool_t n_puthead(bool_t nosend_msg, struct header *hp, FILE *fo,
                   enum gfield w, enum sendaction action,
                   enum conversion convert, char const *contenttype,
                   char const *charset);
@@ -2026,29 +2067,34 @@ FL void        _nyd_chirp(ui8_t act, char const *file, ui32_t line,
 FL void        _nyd_oncrash(int signo);
 
 # define HAVE_NYD
-# define NYD_ENTER               _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
-# define NYD_LEAVE               _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
+# define NYD_IN                  _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
+# define NYD_OU                  _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
 # define NYD                     _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
 # define NYD_X                   _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
 # ifdef HAVE_NYD2
-#  define NYD2_ENTER             _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
-#  define NYD2_LEAVE             _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
+#  define NYD2_IN                _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
+#  define NYD2_OU                _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
 #  define NYD2                   _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
 # endif
 #else
 # undef HAVE_NYD
 #endif
 #ifndef NYD
-# define NYD_ENTER               do {} while (0)
-# define NYD_LEAVE               do {} while (0)
+# define NYD_IN                  do {} while (0)
+# define NYD_OU                  do {} while (0)
 # define NYD                     do {} while (0)
 # define NYD_X                   do {} while (0) /* XXX LEGACY */
 #endif
 #ifndef NYD2
-# define NYD2_ENTER              do {} while (0)
-# define NYD2_LEAVE              do {} while (0)
+# define NYD2_IN                 do {} while (0)
+# define NYD2_OU                 do {} while (0)
 # define NYD2                    do {} while (0)
 #endif
+#define NYD_ENTER NYD_IN /* TODO obsolete _ENTER and _LEAVE */
+#define NYD_LEAVE NYD_OU
+#define NYD2_ENTER NYD2_IN
+#define NYD2_LEAVE NYD2_OU
+
 
 /*
  * smtp.c
@@ -2064,6 +2110,7 @@ FL bool_t      smtp_mta(struct sendbundle *sbp);
  */
 
 #ifdef HAVE_SOCKETS
+/* Immediately closes the socket for CPROTO_CERTINFO */
 FL bool_t      sopen(struct sock *sp, struct url *urlp);
 FL int         sclose(struct sock *sp);
 FL enum okay   swrite(struct sock *sp, char const *data);
@@ -2093,39 +2140,6 @@ FL int c_spam_spam(void *v);
 #endif
 
 /*
- * ssl.c
- */
-
-#ifdef HAVE_SSL
-/*  */
-FL void        ssl_set_verify_level(struct url const *urlp);
-
-/*  */
-FL enum okay   ssl_verify_decide(void);
-
-/*  */
-FL enum okay   smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount,
-                  int keep);
-
-/* */
-FL FILE *      smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp,
-                  char const *message_digest);
-
-/*  */
-FL FILE *      smime_encrypt_assemble(FILE *hp, FILE *yp);
-
-/*  */
-FL struct message * smime_decrypt_assemble(struct message *m, FILE *hp,
-                     FILE *bp);
-
-/*  */
-FL int         c_certsave(void *v);
-
-/*  */
-FL enum okay   rfc2595_hostname_match(char const *host, char const *pattern);
-#endif
-
-/*
  * strings.c
  */
 
@@ -2149,12 +2163,6 @@ FL char *      savecatsep(char const *cp1, char sep, char const *cp2
 
 /* strcat */
 #define savecat(S1,S2)           savecatsep(S1, '\0', S2)
-
-/* Create duplicate, lowercasing all characters along the way */
-FL char *      i_strdup(char const *src n_MEMORY_DEBUG_ARGS);
-#ifdef HAVE_MEMORY_DEBUG
-# define i_strdup(CP)            i_strdup(CP, __FILE__, __LINE__)
-#endif
 
 /*  */
 FL struct str * str_concat_csvl(struct str *self, ...);
@@ -2181,21 +2189,11 @@ FL bool_t n_anyof_buf(char const *template, char const *dat, size_t len);
 FL char *n_strsep(char **iolist, char sep, bool_t ignore_empty);
 FL char *n_strsep_esc(char **iolist, char sep, bool_t ignore_empty);
 
-/* Copy a string, lowercasing it as we go; *size* is buffer size of *dest*;
- * *dest* will always be terminated unless *size* is 0 */
-FL void        i_strcpy(char *dest, char const *src, size_t size);
-
 /* Is *as1* a valid prefix of *as2*? */
 FL bool_t is_prefix(char const *as1, char const *as2);
 
-/* Reverse solidus quote (" and \) v'alue, and return salloc()ed result */
+/* Reverse solidus quote (" and \) v'alue, and return autorec_alloc()ed */
 FL char *      string_quote(char const *v);
-
-/* Get (and isolate) the last, possibly quoted part of linebuf, set *needs_list
- * to indicate whether getmsglist() et al need to be called to collect
- * additional args that remain in linebuf.  If strip is true possibly
- * surrounding quote characters are removed.  Return NULL on "error" */
-FL char *      laststring(char *linebuf, bool_t *needs_list, bool_t strip);
 
 /* Convert a string to lowercase, in-place and with multibyte-aware */
 FL void        makelow(char *cp);
@@ -2230,17 +2228,17 @@ FL bool_t      is_ascncaseprefix(char const *as1, char const *as2, size_t sz);
 
 /* struct str related support funs TODO _cp->_cs! */
 
-/* *self->s* is srealloc()ed */
+/* *self->s* is n_realloc()ed */
 #define n_str_dup(S, T)          n_str_assign_buf((S), (T)->s, (T)->l)
 
-/* *self->s* is srealloc()ed; if buflen==UIZ_MAX strlen() is called unless buf
- * is NULL; buf may be NULL if buflen is 0 */
+/* *self->s* is n_realloc()ed; if buflen==UIZ_MAX strlen() is called unless
+ * buf is NULL; buf may be NULL if buflen is 0 */
 FL struct str * n_str_assign_buf(struct str *self,
                   char const *buf, uiz_t buflen n_MEMORY_DEBUG_ARGS);
 #define n_str_assign(S, T)       n_str_assign_buf(S, (T)->s, (T)->l)
 #define n_str_assign_cp(S, CP)   n_str_assign_buf(S, CP, UIZ_MAX)
 
-/* *self->s* is srealloc()ed, *self->l* incremented; if buflen==UIZ_MAX
+/* *self->s* is n_realloc()ed, *self->l* incremented; if buflen==UIZ_MAX
  * strlen() is called unless buf is NULL; buf may be NULL if buflen is 0 */
 FL struct str * n_str_add_buf(struct str *self, char const *buf, uiz_t buflen
                   n_MEMORY_DEBUG_ARGS);
@@ -2452,7 +2450,7 @@ FL int         n_iconv_str(iconv_t icp, enum n_iconv_flags icf,
                   struct str *in_rest_or_null);
 
 /* If tocode==NULL, uses *ttycharset*.  If fromcode==NULL, uses UTF-8.
- * Returns a salloc()ed buffer or NULL */
+ * Returns a autorec_alloc()ed buffer or NULL */
 FL char *      n_iconv_onetime_cp(enum n_iconv_flags icf,
                   char const *tocode, char const *fromcode, char const *input);
 #endif
@@ -2539,6 +2537,42 @@ FL int         c_uncollapse(void *v);
 FL void        uncollapse1(struct message *mp, int always);
 
 /*
+ * tls.c
+ */
+
+#ifdef HAVE_TLS
+/*  */
+FL void n_tls_set_verify_level(struct url const *urlp);
+
+/* */
+FL bool_t n_tls_verify_decide(void);
+
+/*  */
+FL enum okay   smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount,
+                  int keep);
+
+/* */
+FL FILE *      smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp,
+                  char const *message_digest);
+
+/*  */
+FL FILE *      smime_encrypt_assemble(FILE *hp, FILE *yp);
+
+/*  */
+FL struct message * smime_decrypt_assemble(struct message *m, FILE *hp,
+                     FILE *bp);
+
+/* `certsave' */
+FL int c_certsave(void *vp);
+
+/* */
+FL bool_t n_tls_rfc2595_hostname_match(char const *host, char const *pattern);
+
+/* `tls' */
+FL int c_tls(void *vp);
+#endif /* HAVE_TLS */
+
+/*
  * tty.c
  */
 
@@ -2618,7 +2652,8 @@ FL bool_t      n_visual_info(struct n_visual_info_ctx *vicp,
  * safely placed in a buffer (field width) of maxlen bytes */
 FL size_t      field_detect_clip(size_t maxlen, char const *buf, size_t blen);
 
-/* Place cp in a salloc()ed buffer, column-aligned; for header display only */
+/* Place cp in a autorec_alloc()ed buffer, column-aligned.
+ * For header display only */
 FL char *      colalign(char const *cp, int col, int fill,
                   int *cols_decr_used_or_null);
 
@@ -2641,7 +2676,7 @@ FL void        bidi_info_create(struct bidi_info *bip);
  */
 
 /* URL en- and decoding according to (enough of) RFC 3986 (RFC 1738).
- * These return a newly salloc()ated result, or NULL on length excess */
+ * These return a newly autorec_alloc()ated result, or NULL on length excess */
 FL char *      urlxenc(char const *cp, bool_t ispath n_MEMORY_DEBUG_ARGS);
 FL char *      urlxdec(char const *cp n_MEMORY_DEBUG_ARGS);
 #ifdef HAVE_MEMORY_DEBUG
@@ -2683,7 +2718,7 @@ FL int c_netrc(void *v);
 
 /* MD5 (RFC 1321) related facilities */
 #ifdef HAVE_MD5
-# ifdef HAVE_XSSL_MD5
+# ifdef HAVE_XTLS_MD5
 #  define md5_ctx	               MD5_CTX
 #  define md5_init	            MD5_Init
 #  define md5_update	            MD5_Update
@@ -2713,17 +2748,18 @@ FL void        hmac_md5(unsigned char *text, int text_len, unsigned char *key,
 #endif /* HAVE_MD5 */
 
 /*
- * xssl.c
+ * xtls.c
  */
 
-#ifdef HAVE_XSSL
+#ifdef HAVE_XTLS
 /* Our wrapper for RAND_bytes(3) */
-# if HAVE_RANDOM == n_RANDOM_IMPL_SSL
-FL void ssl_rand_bytes(void *buf, size_t blen);
+# if HAVE_RANDOM == n_RANDOM_IMPL_TLS
+FL void n_tls_rand_bytes(void *buf, size_t blen);
 # endif
 
-/*  */
-FL enum okay   ssl_open(struct url const *urlp, struct sock *sp);
+/* Will fill in a non-NULL *urlp->url_cert_fprint with auto-reclaimed
+ * buffer on success, otherwise urlp is constant */
+FL bool_t n_tls_open(struct url *urlp, struct sock *sp);
 
 /*  */
 FL void        ssl_gen_err(char const *fmt, ...);
@@ -2743,7 +2779,7 @@ FL struct message * smime_decrypt(struct message *m, char const *to,
 /*  */
 FL enum okay   smime_certsave(struct message *m, int n, FILE *op);
 
-#endif /* HAVE_XSSL */
+#endif /* HAVE_XTLS */
 
 /*
  * obs-imap.c
@@ -2760,7 +2796,7 @@ FL char const * imap_fileof(char const *xcp);
 FL enum okay   imap_noop(void);
 FL enum okay   imap_select(struct mailbox *mp, off_t *size, int *count,
                   const char *mbx, enum fedit_mode fm);
-FL int         imap_setfile(const char *xserver, enum fedit_mode fm);
+FL int imap_setfile(char const *who, const char *xserver, enum fedit_mode fm);
 FL enum okay   imap_header(struct message *m);
 FL enum okay   imap_body(struct message *m);
 FL void        imap_getheaders(int bot, int top);
@@ -2814,7 +2850,7 @@ FL enum okay   cache_list(struct mailbox *mp, char const *base, int strip,
                   FILE *fp);
 FL enum okay   cache_remove(char const *name);
 FL enum okay   cache_rename(char const *old, char const *new);
-FL unsigned long cached_uidvalidity(struct mailbox *mp);
+FL ui64_t cached_uidvalidity(struct mailbox *mp);
 FL FILE *      cache_queue(struct mailbox *mp);
 FL enum okay   cache_dequeue(struct mailbox *mp);
 #endif /* HAVE_IMAP */

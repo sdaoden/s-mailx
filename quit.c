@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
  * Copyright (c) 1980, 1993
@@ -288,7 +289,7 @@ jleave:
        * TODO For now we follow the latter unless we are interactive,
        * TODO in which case we ask the user whether the error is to be
        * TODO ignored or not.  More of this around here in this file! */
-      rv = getapproval(_("Continue, possibly loosing changes"), TRU1);
+      rv = getapproval(_("Continue, possibly losing changes"), TRU1);
    }
 j_leave:
    NYD_LEAVE;
@@ -310,6 +311,8 @@ quit(bool_t hold_sigs_on)
 
    rv = FAL0;
    fbuf = lckfp = rbuf = NULL;
+   if(mb.mb_digmsg != NULL)
+      n_dig_msg_on_mailbox_close(&mb);
    temporary_folder_hook_unroll();
 
    /* If we are read only, we can't do anything, so just return quickly */
@@ -322,9 +325,11 @@ quit(bool_t hold_sigs_on)
    switch (mb.mb_type) {
    case MB_FILE:
       break;
+#ifdef HAVE_MAILDIR
    case MB_MAILDIR:
       rv = maildir_quit(TRU1);
       goto jleave;
+#endif
 #ifdef HAVE_POP3
    case MB_POP3:
       rv = pop3_quit(TRU1);
@@ -374,7 +379,7 @@ jnewmail:
       n_perr(_("Unable to (dot) lock mailbox"), 0);
       Fclose(fbuf);
       fbuf = NULL;
-      rv = getapproval(_("Continue, possibly loosing changes"), TRU1);
+      rv = getapproval(_("Continue, possibly losing changes"), TRU1);
       goto jleave;
    }
 
@@ -418,14 +423,14 @@ jnewmail:
          if (writeback(rbuf, fbuf) >= 0)
             rv = TRU1;
          else
-            rv = getapproval(_("Continue, possibly loosing changes"), TRU1);
+            rv = getapproval(_("Continue, possibly losing changes"), TRU1);
          goto jleave;
       }
       goto jcream;
    }
 
    if (makembox() == STOP) {
-      rv = getapproval(_("Continue, possibly loosing changes"), TRU1);
+      rv = getapproval(_("Continue, possibly losing changes"), TRU1);
       goto jleave;
    }
 
@@ -433,7 +438,7 @@ jnewmail:
     * any were requested */
    if (p != 0) {
       if (writeback(rbuf, fbuf) < 0)
-         rv = getapproval(_("Continue, possibly loosing changes"), TRU1);
+         rv = getapproval(_("Continue, possibly losing changes"), TRU1);
       goto jleave;
    }
 

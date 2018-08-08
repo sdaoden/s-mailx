@@ -6,6 +6,7 @@
  *@ TODO (Note we yet use autorec memory, so with JUMPS this needs care!)
  *
  * Copyright (c) 2014 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -284,7 +285,7 @@ a_colour_mux(char **argv){
       }
 
       tl = (ctag != NULL && !a_COLOUR_TAG_IS_SPECIAL(ctag)) ? strlen(ctag) : 0;
-      cmp = smalloc(n_VSTRUCT_SIZEOF(struct a_colour_map, cm_buf) +
+      cmp = n_alloc(n_VSTRUCT_SIZEOF(struct a_colour_map, cm_buf) +
             tl +1 + (ul = strlen(argv[1])) +1 + (cl = strlen(cp)) +1);
 
       /* .cm_buf stuff */
@@ -508,11 +509,11 @@ a_colour__tag_identify(struct a_colour_map_id const *cmip, char const *ctag,
          int s;
 
          if(regexpp != NULL &&
-               (s = regcomp(*regexpp = smalloc(sizeof(regex_t)), ctag,
+               (s = regcomp(*regexpp = n_alloc(sizeof(regex_t)), ctag,
                   REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
             n_err(_("`colour': invalid regular expression: %s: %s\n"),
                n_shexp_quote_cp(ctag, FAL0), n_regex_err_to_doc(NULL, s));
-            free(*regexpp);
+            n_free(*regexpp);
             goto jetag;
          }
       }else
@@ -520,7 +521,7 @@ a_colour__tag_identify(struct a_colour_map_id const *cmip, char const *ctag,
       {
          /* Normalize to lowercase and strip any whitespace before use */
          i = strlen(ctag);
-         cp = salloc(i +1);
+         cp = n_autorec_alloc(i +1);
 
          for(i = 0; (c = *ctag++) != '\0';){
             bool_t isblspc = blankspacechar(c);
@@ -620,10 +621,10 @@ a_colour_map_unref(struct a_colour_map *self){
 #ifdef HAVE_REGEX
       if(self->cm_regex != NULL){
          regfree(self->cm_regex);
-         free(self->cm_regex);
+         n_free(self->cm_regex);
       }
 #endif
-      free(self);
+      n_free(self);
    }
    NYD2_LEAVE;
 }
@@ -648,11 +649,12 @@ a_colour_iso6429(enum a_colour_type ct, char **store, char const *spec){
    /* 0/1 indicate usage, thereafter possibly 256 color sequences */
    cfg[0] = cfg[1] = 0;
 
-   /* Since we use salloc(), reuse the n_strsep() buffer also for the return
-    * value, ensure we have enough room for that */
+   /* Since we use autorec_alloc(), reuse the n_strsep() buffer also for the
+    * return value, ensure we have enough room for that */
    /* C99 */{
       size_t i = strlen(spec) +1;
-      xspec = salloc(n_MAX(i, sizeof("\033[1;4;7;38;5;255;48;5;255m")));
+      xspec = n_autorec_alloc(n_MAX(i,
+            sizeof("\033[1;4;7;38;5;255;48;5;255m")));
       memcpy(xspec, spec, i);
       spec = xspec;
    }
@@ -727,7 +729,7 @@ jiter_colour:
          goto jbail;
    }
 
-   /* Restore our salloc() buffer, create return value */
+   /* Restore our autorec_alloc() buffer, create return value */
    xspec = n_UNCONST(spec);
    if(ftno > 0 || cfg[0] || cfg[1]){ /* TODO unite/share colour setters */
       xspec[0] = '\033';
@@ -837,7 +839,7 @@ n_colour_env_create(enum n_colour_ctx cctx, FILE *fp, bool_t pager_used){
       a_colour_init();
 
    /* TODO reset the outer level?  Iff ce_outfp==fp? */
-   cep = salloc(sizeof *cep);
+   cep = n_autorec_alloc(sizeof *cep);
    cep->ce_last = n_go_data->gdc_colour;
    cep->ce_enabled = FAL0;
    cep->ce_ctx = cctx;

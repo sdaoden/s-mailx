@@ -6,8 +6,8 @@
 	all config build install uninstall clean distclean test \
 	devel odevel
 
-CWDDIR=./
-SRCDIR=./
+CWDDIR=
+SRCDIR=
 
 ohno: build
 tangerine: config build test install
@@ -44,7 +44,9 @@ d-b:
 
 # The test should inherit the user runtime environment!
 test:
-	@$(__prestop); LC_ALL=C $(MAKE) -f mk-config.mk test
+	@$(__prestop); cd .obj && LC_ALL=C $(MAKE) -f mk-config.mk test
+citest:
+	@$(__prestop); cd .obj && LC_ALL=C $(MAKE) -f mk-config.mk citest
 
 d-gettext:
 	cd "$(SRCDIR)" &&\
@@ -54,15 +56,15 @@ d-gettext:
 		-o messages.pot *.c *.h
 
 _prego = if CWDDIR="$(CWDDIR)" SRCDIR="$(SRCDIR)" \
-	SHELL="$(SHELL)" MAKE="$(MAKE)" CC="$(CC)" \
-	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" \
-	$(SHELL) "$(SRCDIR)"make-config.sh; then :; else exit 1; fi
-__prestop = if [ -f ./mk-config.mk ]; then :; else \
+		SHELL="$(SHELL)" MAKE="$(MAKE)" CC="$(CC)" \
+		CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" \
+		$(SHELL) "$(SRCDIR)"make-config.sh "$(MAKEFLAGS)"; then :;\
+	else exit 1; fi
+__prestop = if [ -f .obj/mk-config.mk ]; then :; else \
 		echo 'Program not configured, nothing to do';\
 		echo 'Use one of the targets: config, all, tangerine, citron';\
-		exit 1;\
+		exit 0;\
 	fi
-_prestop = $(__prestop);\
-	< ./mk-config.ev read __ev__; eval $${__ev__}; unset __ev__
+_prestop = $(__prestop); cd .obj && . ./mk-config.ev
 
 # s-mk-mode

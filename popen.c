@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
  * Copyright (c) 1980, 1993
@@ -150,7 +151,7 @@ register_file(FILE *fp, int omode, int pid, int flags,
    assert(!(flags & FP_UNLINK) || realfile != NULL);
    assert(!(flags & FP_TERMIOS) || tiosp != NULL);
 
-   fpp = smalloc(sizeof *fpp);
+   fpp = n_alloc(sizeof *fpp);
    fpp->fp = fp;
    fpp->omode = omode;
    fpp->pid = pid;
@@ -197,10 +198,12 @@ _file_save(struct fp *fpp)
    }
 #endif
 
+#ifdef HAVE_MAILDIR
    if ((fpp->flags & FP_MASK) == FP_MAILDIR) {
       rv = maildir_append(fpp->realfile, fpp->fp, fpp->offset);
       goto jleave;
    }
+#endif
 
    outfd = open(fpp->realfile,
          ((fpp->omode | O_CREAT | (fpp->omode & O_APPEND ? 0 : O_TRUNC) |
@@ -292,17 +295,17 @@ unregister_file(FILE *fp, struct termios **tiosp, n_sighdl_t *osigint)
 
          *pp = p->link;
          if (p->save_cmd != NULL)
-            free(p->save_cmd);
+            n_free(p->save_cmd);
          if (p->realfile != NULL)
-            free(p->realfile);
+            n_free(p->realfile);
          if (p->flags & FP_TERMIOS) {
             if (tiosp != NULL) {
                *tiosp = p->fp_tios;
                *osigint = p->fp_osigint;
             } else
-               free(p->fp_tios);
+               n_free(p->fp_tios);
          }
-         free(p);
+         n_free(p);
          goto jleave;
       }
    DBGOR(n_panic, n_alert)(_("Invalid file pointer"));
@@ -428,7 +431,7 @@ a_popen_child_find(int pid, bool_t create){
       ;
 
    if(cp == NULL && create)
-      (*cpp = cp = scalloc(1, sizeof *cp))->pid = pid;
+      (*cpp = cp = n_calloc(1, sizeof *cp))->pid = pid;
    NYD2_LEAVE;
    return cp;
 }
@@ -443,7 +446,7 @@ a_popen_child_del(struct child *cp){
    for(;;){
       if(*cpp == cp){
          *cpp = cp->link;
-         free(cp);
+         n_free(cp);
          break;
       }
       if(*(cpp = &(*cpp)->link) == NULL){
@@ -584,12 +587,17 @@ n_fopen_any(char const *file, char const *oflags, /* TODO should take flags */
       goto jleave;
 #endif
    case n_PROTO_MAILDIR:
+#ifdef HAVE_MAILDIR
       if(fs_or_null != NULL && !access(file, F_OK))
          fs |= n_FOPEN_STATE_EXISTS;
       flags |= FP_MAILDIR;
       osflags = O_RDWR | O_APPEND | O_CREAT | n_O_NOXY_BITS;
       infd = -1;
       break;
+#else
+      n_err_no = n_ERR_OPNOTSUPP;
+      goto jleave;
+#endif
    case n_PROTO_FILE:{
       struct n_file_type ft;
 
@@ -711,7 +719,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
 
    /* Prepare the template string once, then iterate over the random range */
    cp_base =
-   cp = smalloc(strlen(tmpdir) + 1 + maxname +1);
+   cp = n_lofi_alloc(strlen(tmpdir) + 1 + maxname +1);
    cp = sstpcpy(cp, tmpdir);
    *cp++ = '/';
    {
@@ -779,10 +787,13 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
       (void)fchmod(fd, S_IWUSR | S_IRUSR);
    }
 
-   if (fn != NULL)
-      *fn = cp_base;
-   else
-      free(cp_base);
+   if(fn != NULL){
+      i = strlen(cp_base) +1;
+      cp = (oflags & OF_FN_AUTOREC) ? n_autorec_alloc(i) : n_alloc(i);
+      memcpy(cp, cp_base, i);
+      *fn = cp;
+   }
+   n_lofi_free(cp_base);
 jleave:
    if (relesigs && (fp == NULL || !(oflags & OF_HOLDSIGS)))
       rele_all_sigs();
@@ -791,8 +802,8 @@ jleave:
    NYD_LEAVE;
    return fp;
 jfree:
-   if ((cp = cp_base) != NULL)
-      free(cp);
+   if((cp = cp_base) != NULL)
+      n_lofi_free(cp);
    goto jleave;
 }
 
@@ -807,7 +818,7 @@ Ftmp_release(char **fn)
    if (cp != NULL) {
       unlink(cp);
       rele_all_sigs();
-      free(cp);
+      n_free(cp);
    }
    NYD_LEAVE;
 }
@@ -821,7 +832,7 @@ Ftmp_free(char **fn) /* TODO DROP: OF_REGISTER_FREEPATH! */
    cp = *fn;
    *fn = NULL;
    if (cp != NULL)
-      free(cp);
+      n_free(cp);
    NYD_LEAVE;
 }
 
@@ -867,7 +878,7 @@ Popen(char const *cmd, char const *mode, char const *sh,
          if ((*cpp)->pid == -1) {
             cp = *cpp;
             *cpp = cp->link;
-            free(cp);
+            n_free(cp);
          } else
             cpp = &(*cpp)->link;
       }
@@ -905,7 +916,7 @@ Popen(char const *cmd, char const *mode, char const *sh,
    if ((n_psonce & n_PSO_INTERACTIVE) && (fd0 == n_CHILD_FD_PASS ||
          fd1 == n_CHILD_FD_PASS)) {
       osigint = n_signal(SIGINT, SIG_IGN);
-      tiosp = smalloc(sizeof *tiosp);
+      tiosp = n_alloc(sizeof *tiosp);
       tcgetattr(STDIN_FILENO, tiosp);
       n_TERMCAP_SUSPEND(TRU1);
    }
@@ -1003,7 +1014,7 @@ Pclose(FILE *ptr, bool_t dowait)
    }
 
    if(tiosp != NULL)
-      free(tiosp);
+      n_free(tiosp);
 jleave:
    NYD_LEAVE;
    return rv;
@@ -1186,7 +1197,7 @@ n_child_start(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
          for (ai = 0; env_addon_or_null[ai] != NULL; ++ai)
             ;
          ai_orig = ai;
-         env = ac_alloc(sizeof(*env) * (ei + ai +1));
+         env = n_lofi_alloc(sizeof(*env) * (ei + ai +1));
          memcpy(env, environ, sizeof(*env) * ei);
 
          /* Replace all those keys that yet exist */
@@ -1220,14 +1231,15 @@ n_child_start(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
       }
 
       i = (int)getrawlist(TRU1, argv, n_NELEM(argv), cmd, strlen(cmd));
-
-      if ((argv[i++] = n_UNCONST(a0_or_null)) != NULL &&
-            (argv[i++] = n_UNCONST(a1_or_null)) != NULL &&
-            (argv[i++] = n_UNCONST(a2_or_null)) != NULL)
-         argv[i] = NULL;
-      n_child_prepare(mask_or_null, infd, outfd);
-      execvp(argv[0], argv);
-      perror(argv[0]);
+      if(i >= 0){
+         if ((argv[i++] = n_UNCONST(a0_or_null)) != NULL &&
+               (argv[i++] = n_UNCONST(a1_or_null)) != NULL &&
+               (argv[i++] = n_UNCONST(a2_or_null)) != NULL)
+            argv[i] = NULL;
+         n_child_prepare(mask_or_null, infd, outfd);
+         execvp(argv[0], argv);
+         perror(argv[0]);
+      }
       _exit(n_EXIT_ERR);
    }
    NYD_LEAVE;
@@ -1349,7 +1361,10 @@ n_child_wait(int pid, int *wait_status_or_null){
          sigsuspend(&nset); /* TODO we should allow more than SIGCHLD!! */
       ws = cp->status;
 #else
-      waitpid(pid, &ws, 0);
+      if(!cp->done)
+         waitpid(pid, &ws, 0);
+      else
+         ws = cp->status;
 #endif
       a_popen_child_del(cp);
    }else

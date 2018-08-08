@@ -1,8 +1,9 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Message threading.
+ *@ Message threading. TODO thread handling needs rewrite, m_collapsed must go
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-4-Clause
  */
 /*
  * Copyright (c) 2004
@@ -247,7 +248,7 @@ _interlink(struct message *m, ui32_t cnt, int nmail)
 
    autocollapse = (!nmail && !(n_pstate & n_PS_HOOK_NEWMAIL) &&
          ok_blook(autocollapse));
-   ms = smalloc(sizeof *ms * cnt);
+   ms = n_alloc(sizeof *ms * cnt);
 
    for (n = 0, i = 0; UICMP(32, i, <, cnt); ++i) {
       if (m[i].m_parent == NULL) {
@@ -269,7 +270,7 @@ _interlink(struct message *m, ui32_t cnt, int nmail)
    } else
       root = NULL;
 
-   free(ms);
+   n_free(ms);
    NYD2_LEAVE;
    return root;
 }
@@ -388,7 +389,7 @@ _makethreads(struct message *m, ui32_t cnt, int nmail)
    /* It is performance crucial to space this large enough in order to minimize
     * bucket sharing */
    mprime = n_prime_next((cnt < UI32_MAX >> 3) ? cnt << 2 : cnt);
-   mt = scalloc(mprime, sizeof *mt);
+   mt = n_calloc(mprime, sizeof *mt);
 
    srelax_hold();
 
@@ -425,9 +426,9 @@ _makethreads(struct message *m, ui32_t cnt, int nmail)
 
    for (i = 0; i < mprime; ++i)
       if (mt[i].mi_id != NULL)
-         free(mt[i].mi_id);
+         n_free(mt[i].mi_id);
 
-   free(mt);
+   n_free(mt);
    mb.mb_threaded = 1;
 jleave:
    NYD2_LEAVE;
@@ -530,7 +531,7 @@ c_thread(void *vp)
 #endif
       _makethreads(message, msgCount, (vp == (void*)-1));
       if (mb.mb_sorted != NULL)
-         free(mb.mb_sorted);
+         n_free(mb.mb_sorted);
       mb.mb_sorted = sstrdup("thread");
    }
 
@@ -552,7 +553,7 @@ c_unthread(void *vp)
 
    mb.mb_threaded = 0;
    if (mb.mb_sorted != NULL)
-      free(mb.mb_sorted);
+      n_free(mb.mb_sorted);
    mb.mb_sorted = NULL;
 
    for (m = message; PTRCMP(m, <, message + msgCount); ++m)
@@ -698,7 +699,7 @@ c_sort(void *vp)
    }
 
    if (mb.mb_sorted != NULL)
-      free(mb.mb_sorted);
+      n_free(mb.mb_sorted);
    mb.mb_sorted = sstrdup(args[0]);
 
    method = methnames[i].me_method;
@@ -712,7 +713,7 @@ c_sort(void *vp)
    }
 
    showname = ok_blook(showname);
-   ms = ac_alloc(sizeof *ms * msgCount);
+   ms = n_lofi_alloc(sizeof *ms * msgCount);
 #ifdef HAVE_IMAP
    switch (method) {
    case SORT_SUBJECT:
@@ -777,7 +778,7 @@ c_sort(void *vp)
                in.l = strlen(in.s);
                mime_fromhdr(&in, &out, TD_ICONV);
                ms[n].ms_u.ms_char = sstrdup(subject_re_trim(out.s));
-               free(out.s);
+               n_free(out.s);
                makelow(ms[n].ms_u.ms_char);
             } else
                ms[n].ms_u.ms_char = sstrdup(n_empty);
@@ -810,12 +811,12 @@ c_sort(void *vp)
    case SORT_TO:
    case SORT_SUBJECT:
       for (i = 0; i < n; ++i)
-         free(ms[i].ms_u.ms_char);
+         n_free(ms[i].ms_u.ms_char);
       /* FALLTHRU */
    default:
       break;
    }
-   ac_free(ms);
+   n_lofi_free(ms);
 
    i = ((vp != NULL && vp != (void*)-1 && !(n_pstate & n_PS_HOOK_MASK) &&
       ok_blook(header)) ? print_header_group(msgvec) : 0);

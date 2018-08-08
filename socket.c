@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
  * Redistribution and use in source and binary forms, with or without
@@ -38,6 +39,18 @@
 
 EMPTY_FILE()
 #ifdef HAVE_SOCKETS
+# ifdef HAVE_NONBLOCKSOCK
+/*#  include <sys/types.h>*/
+#  include <sys/select.h>
+/*#  include <sys/time.h>*/
+#  include <arpa/inet.h>
+/*#  include <netinet/in.h>*/
+/*#  include <errno.h>*/
+/*#  include <fcntl.h>*/
+/*#  include <stdlib.h>*/
+/*#  include <unistd.h>*/
+# endif
+
 #include <sys/socket.h>
 
 #include <netdb.h>
@@ -48,7 +61,7 @@ EMPTY_FILE()
 # include <arpa/inet.h>
 #endif
 
-#ifdef HAVE_XSSL
+#ifdef HAVE_XTLS
 # include <openssl/err.h>
 # include <openssl/rand.h>
 # include <openssl/ssl.h>
@@ -58,6 +71,9 @@ EMPTY_FILE()
 
 /* */
 static bool_t a_socket_open(struct sock *sp, struct url *urlp);
+
+/* */
+static int a_socket_connect(int fd, struct sockaddr *soap, size_t soapl);
 
 /* Write to socket fd, restarting on EINTR, unless anything is written */
 static long a_socket_xwrite(int fd, char const *data, size_t sz);
@@ -81,7 +97,7 @@ __sopen_onsig(int sig) /* TODO someday, we won't need it no more */
 static bool_t
 a_socket_open(struct sock *sp, struct url *urlp) /* TODO sigstuff; refactor */
 {
-# ifdef HAVE_SO_SNDTIMEO
+# ifdef HAVE_SO_XTIMEO
    struct timeval tv;
 # endif
 # ifdef HAVE_SO_LINGER
@@ -104,13 +120,9 @@ a_socket_open(struct sock *sp, struct url *urlp) /* TODO sigstuff; refactor */
    int volatile sofd = -1, errval;
    NYD2_ENTER;
 
+   memset(sp, 0, sizeof *sp);
    n_UNINIT(errval, 0);
 
-   /* Connect timeouts after 30 seconds XXX configurable */
-# ifdef HAVE_SO_SNDTIMEO
-   tv.tv_sec = 30;
-   tv.tv_usec = 0;
-# endif
    serv = (urlp->url_port != NULL) ? urlp->url_port : urlp->url_proto;
 
    if (n_poption & n_PO_D_V)
@@ -186,16 +198,10 @@ jpseudo_jump:
       }
 
       sofd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-      if (sofd >= 0) {
-#  ifdef HAVE_SO_SNDTIMEO
-         (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
-#  endif
-         if (connect(sofd, res->ai_addr, res->ai_addrlen)) {
-            n_perr("connect(2) failed:", errval = n_err_no);
-            close(sofd);
-            sofd = -1;
-         }
-      }
+      if(sofd >= 0 &&
+            (errval = a_socket_connect(sofd, res->ai_addr, res->ai_addrlen)
+               ) != n_ERR_NONE)
+         sofd = -1;
    }
 
 jjumped:
@@ -266,14 +272,9 @@ jjumped:
    if (n_poption & n_PO_D_V)
       n_err(_("%sConnecting to %s:%d ... "),
          n_empty, inet_ntoa(**pptr), (int)urlp->url_portno);
-#  ifdef HAVE_SO_SNDTIMEO
-   (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
-#  endif
-   if (connect(sofd, (struct sockaddr*)&servaddr, sizeof servaddr)) {
-      n_perr("connect(2) failed:", errval = n_err_no);
-      close(sofd);
+   if((errval = a_socket_connect(sofd, (struct sockaddr*)&servaddr,
+         sizeof servaddr)) != n_ERR_NONE)
       sofd = -1;
-   }
 jjumped:
 # endif /* !HAVE_GETADDRINFO */
 
@@ -284,17 +285,18 @@ jjumped:
 
    if (sofd < 0) {
       if (errval != 0) {
+         n_perr(_("Could not connect"), errval);
          n_err_no = errval;
-         n_perr(_("Could not connect"), 0);
       }
       goto jleave;
    }
 
+   sp->s_fd = sofd;
    if (n_poption & n_PO_D_V)
       n_err(_("connected.\n"));
 
    /* And the regular timeouts XXX configurable */
-# ifdef HAVE_SO_SNDTIMEO
+# ifdef HAVE_SO_XTIMEO
    tv.tv_sec = 42;
    tv.tv_usec = 0;
    (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
@@ -306,11 +308,8 @@ jjumped:
    (void)setsockopt(sofd, SOL_SOCKET, SO_LINGER, &li, sizeof li);
 # endif
 
-   memset(sp, 0, sizeof *sp);
-   sp->s_fd = sofd;
-
    /* SSL/TLS upgrade? */
-# ifdef HAVE_SSL
+# ifdef HAVE_TLS
    hold_sigs();
 
 #  if defined HAVE_GETADDRINFO && defined SSL_CTRL_SET_TLSEXT_HOSTNAME /* TODO
@@ -337,11 +336,12 @@ jjumped:
       }
       rele_sigs();
 
-      if (ssl_open(urlp, sp) != OKAY) {
+      if(!n_tls_open(urlp, sp)){
 jsclose:
          sclose(sp);
          sofd = -1;
-      }
+      }else if(urlp->url_cproto == CPROTO_CERTINFO)
+         sclose(sp);
 
       hold_sigs();
       safe_signal(SIGINT, oint);
@@ -349,7 +349,7 @@ jsclose:
    }
 
    rele_sigs();
-# endif /* HAVE_SSL */
+# endif /* HAVE_TLS */
 
 jleave:
    /* May need to bounce the signal to the go.c trampoline (or wherever) */
@@ -362,6 +362,74 @@ jleave:
    }
    NYD2_LEAVE;
    return (sofd >= 0);
+}
+
+static int
+a_socket_connect(int fd, struct sockaddr *soap, size_t soapl){
+   int rv;
+   NYD_ENTER;
+
+#ifdef HAVE_NONBLOCKSOCK
+   rv = fcntl(fd, F_GETFL, 0);
+   if(rv != -1 && !fcntl(fd, F_SETFL, rv | O_NONBLOCK)){
+      fd_set fdset;
+      struct timeval tv; /* XXX configurable */
+      socklen_t sol;
+      int i, soe;
+
+      if(connect(fd, soap, soapl) && (i = n_err_no) != n_ERR_INPROGRESS){
+         rv = i;
+         goto jerr_noerrno;
+      }
+
+      FD_ZERO(&fdset);
+      FD_SET(fd, &fdset);
+      if(n_poption & n_PO_D_V){
+         i = 21;
+         tv.tv_sec = 2;
+      }else{
+         i = 1;
+         tv.tv_sec = 42;
+      }
+      tv.tv_usec = 0;
+jrewait:
+      if((soe = select(fd + 1, NULL, &fdset, NULL, &tv)) == 1){
+         i = rv;
+         sol = sizeof rv;
+         getsockopt(fd, SOL_SOCKET, SO_ERROR, &rv, &sol);
+         fcntl(fd, F_SETFL, i);
+         if(n_poption & n_PO_D_V)
+            n_err(" ");
+      }else if(soe == 0){
+         if((n_poption & n_PO_D_V) && --i > 0){
+            n_err(".");
+            tv.tv_sec = 2;
+            tv.tv_usec = 0;
+            goto jrewait;
+         }
+         n_err(_(" timeout\n"));
+         close(fd);
+         rv = n_ERR_TIMEDOUT;
+      }else
+         goto jerr;
+   }else
+#endif /* HAVE_NONBLOCKSOCK */
+
+         if(!connect(fd, soap, soapl))
+      rv = n_ERR_NONE;
+   else{
+#ifdef HAVE_NONBLOCKSOCK
+jerr:
+#endif
+      rv = n_err_no;
+#ifdef HAVE_NONBLOCKSOCK
+jerr_noerrno:
+#endif
+      n_perr(_("connect(2) failed:"), rv);
+      close(fd);
+   }
+   NYD_LEAVE;
+   return rv;
 }
 
 static long
@@ -403,16 +471,16 @@ sclose(struct sock *sp)
       if (sp->s_onclose != NULL)
          (*sp->s_onclose)();
       if (sp->s_wbuf != NULL)
-         free(sp->s_wbuf);
-# ifdef HAVE_XSSL
-      if (sp->s_use_ssl) {
-         void *s_ssl = sp->s_ssl;
+         n_free(sp->s_wbuf);
+# ifdef HAVE_XTLS
+      if (sp->s_use_tls) {
+         void *s_tls = sp->s_tls;
 
-         sp->s_ssl = NULL;
-         sp->s_use_ssl = 0;
-         while (!SSL_shutdown(s_ssl)) /* XXX proper error handling;signals! */
+         sp->s_tls = NULL;
+         sp->s_use_tls = 0;
+         while (!SSL_shutdown(s_tls)) /* XXX proper error handling;signals! */
             ;
-         SSL_free(s_ssl);
+         SSL_free(s_tls);
       }
 # endif
       i = close(i);
@@ -444,7 +512,7 @@ swrite1(struct sock *sp, char const *data, int sz, int use_buffer)
 
       if (sp->s_wbuf == NULL) {
          sp->s_wbufsize = 4096;
-         sp->s_wbuf = smalloc(sp->s_wbufsize);
+         sp->s_wbuf = n_alloc(sp->s_wbufsize);
          sp->s_wbufpos = 0;
       }
       while (sp->s_wbufpos + sz > sp->s_wbufsize) {
@@ -481,12 +549,12 @@ swrite1(struct sock *sp, char const *data, int sz, int use_buffer)
       goto jleave;
    }
 
-# ifdef HAVE_XSSL
-   if (sp->s_use_ssl) {
+# ifdef HAVE_XTLS
+   if (sp->s_use_tls) {
 jssl_retry:
-      x = SSL_write(sp->s_ssl, data, sz);
+      x = SSL_write(sp->s_tls, data, sz);
       if (x < 0) {
-         switch (SSL_get_error(sp->s_ssl, x)) {
+         switch (SSL_get_error(sp->s_tls, x)) {
          case SSL_ERROR_WANT_READ:
          case SSL_ERROR_WANT_WRITE:
             goto jssl_retry;
@@ -502,8 +570,8 @@ jssl_retry:
 
       snprintf(o, sizeof o, "%s write error",
          (sp->s_desc ? sp->s_desc : "socket"));
-# ifdef HAVE_XSSL
-      if (sp->s_use_ssl)
+# ifdef HAVE_XTLS
+      if (sp->s_use_tls)
          ssl_gen_err("%s", o);
       else
 # endif
@@ -672,15 +740,15 @@ FL int
 
       if (sp->s_rbufptr == NULL ||
             PTRCMP(sp->s_rbufptr, >=, sp->s_rbuf + sp->s_rsz)) {
-# ifdef HAVE_XSSL
-         if (sp->s_use_ssl) {
+# ifdef HAVE_XTLS
+         if (sp->s_use_tls) {
 jssl_retry:
-            sp->s_rsz = SSL_read(sp->s_ssl, sp->s_rbuf, sizeof sp->s_rbuf);
+            sp->s_rsz = SSL_read(sp->s_tls, sp->s_rbuf, sizeof sp->s_rbuf);
             if (sp->s_rsz <= 0) {
                if (sp->s_rsz < 0) {
                   char o[512];
 
-                  switch(SSL_get_error(sp->s_ssl, sp->s_rsz)) {
+                  switch(SSL_get_error(sp->s_tls, sp->s_rsz)) {
                   case SSL_ERROR_WANT_READ:
                   case SSL_ERROR_WANT_WRITE:
                      goto jssl_retry;

@@ -3,6 +3,7 @@
  *@ "Keep in sync with" ./mime.types.
  *
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -168,7 +169,7 @@ _mt_init(void)
    /* Always load our built-ins */
    for (tail = NULL, i = 0; i < n_NELEM(_mt_bltin); ++i) {
       struct mtbltin const *mtbp = _mt_bltin + i;
-      struct mtnode *mtnp = smalloc(sizeof *mtnp);
+      struct mtnode *mtnp = n_alloc(sizeof *mtnp);
 
       if (tail != NULL)
          tail->mt_next = mtnp;
@@ -239,11 +240,11 @@ jecontent:
       else if (!__mt_load_file((j == 0 ? _MT_USR
                : (j == 1 ? _MT_SYS : _MT_FSPEC)), *srcs, &line, &linesize)) {
          if ((n_poption & n_PO_D_V) || j > 1)
-            n_err(A_("*mimetypes-load-control*: cannot open or load %s\n"),
+            n_err(_("*mimetypes-load-control*: cannot open or load %s\n"),
                n_shexp_quote_cp(*srcs, FAL0));
       }
    if (line != NULL)
-      free(line);
+      n_free(line);
 jleave:
    _mt_is_init = TRU1;
    NYD_LEAVE;
@@ -362,8 +363,8 @@ _mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
          spacechar(subtyp[1])) {
 jeinval:
       if(cmdcalled || (orflags & _MT_FSPEC) || (n_poption & n_PO_D_V))
-         n_err(A_("%s MIME type: %.*s\n"),
-            (cmdcalled ? A_("Invalid") : A_("mime.types(5): invalid")),
+         n_err(_("%s MIME type: %.*s\n"),
+            (cmdcalled ? _("Invalid") : _("mime.types(5): invalid")),
             (int)tlen, typ);
       goto jleave;
    }
@@ -394,7 +395,7 @@ jeinval:
       goto jleave;
 
    /*  */
-   mtnp = smalloc(sizeof(*mtnp) + tlen + len +1);
+   mtnp = n_alloc(sizeof(*mtnp) + tlen + len +1);
    mtnp->mt_next = NULL;
    mtnp->mt_flags = orflags;
    mtnp->mt_mtlen = (ui32_t)tlen;
@@ -469,7 +470,7 @@ _mt_by_filename(struct mtlookup *mtlp, char const *name, bool_t with_result)
             j = strlen(name);
          }
          i = mtnp->mt_mtlen;
-         mtlp->mtl_result = salloc(i + j +1);
+         mtlp->mtl_result = n_autorec_alloc(i + j +1);
          if (j > 0)
             memcpy(mtlp->mtl_result, name, j);
          memcpy(mtlp->mtl_result + j, mtnp->mt_line, i);
@@ -511,13 +512,13 @@ _mt_by_mtname(struct mtlookup *mtlp, char const *mtname)
          i = mtnp->mt_mtlen;
 
          if (i + j == mtlp->mtl_nlen) {
-            char *xmt = ac_alloc(i + j +1);
+            char *xmt = n_lofi_alloc(i + j +1);
             if (j > 0)
                memcpy(xmt, cp, j);
             memcpy(xmt + j, mtnp->mt_line, i);
             xmt[j += i] = '\0';
             i = asccasecmp(mtname, xmt);
-            ac_free(xmt);
+            n_lofi_free(xmt);
 
             if (!i) {
                /* Found it */
@@ -734,7 +735,7 @@ jos_leave:
       }
 
       if (in.l + 1 >= lsz)
-         in.s = srealloc(in.s, lsz += LINESIZE);
+         in.s = n_realloc(in.s, lsz += LINESIZE);
       if (c != EOF)
          in.s[in.l++] = (char)c;
       if (!dobuf)
@@ -787,6 +788,7 @@ jdobuf:
 
    if ((in.l = inrest.l) > 0) {
       in.s = inrest.s;
+      inrest.s = NULL;
       did_inrest = TRU1;
       goto jdobuf;
    }
@@ -794,13 +796,13 @@ jdobuf:
       goto jdobuf;
 jstopit:
    if (in.s != NULL)
-      free(in.s);
+      n_free(in.s);
    if (dec.s != NULL)
-      free(dec.s);
+      n_free(dec.s);
    if (outrest.s != NULL)
-      free(outrest.s);
+      n_free(outrest.s);
    if (inrest.s != NULL)
-      free(inrest.s);
+      n_free(inrest.s);
 
    fseek(mb.mb_itf, start_off, SEEK_SET);
 
@@ -1030,7 +1032,7 @@ c_unmimetype(void *v)
 jdelall:
          while ((mtnp = _mt_list) != NULL) {
             _mt_list = mtnp->mt_next;
-            free(mtnp);
+            n_free(mtnp);
          }
          continue;
       }
@@ -1048,12 +1050,12 @@ jdelall:
             i = strlen(typ);
          }
 
-         val = ac_alloc(i + mtnp->mt_mtlen +1);
+         val = n_lofi_alloc(i + mtnp->mt_mtlen +1);
          memcpy(val, typ, i);
          memcpy(val + i, mtnp->mt_line, mtnp->mt_mtlen);
          val[i += mtnp->mt_mtlen] = '\0';
          i = asccasecmp(val, *argv);
-         ac_free(val);
+         n_lofi_free(val);
 
          if (!i) {
             struct mtnode *nnp = mtnp->mt_next;
@@ -1061,7 +1063,7 @@ jdelall:
                _mt_list = nnp;
             else
                lnp->mt_next = nnp;
-            free(mtnp);
+            n_free(mtnp);
             mtnp = nnp;
             match = TRU1;
          } else

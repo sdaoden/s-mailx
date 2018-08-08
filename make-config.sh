@@ -20,9 +20,10 @@ export SHELL
 # *features* string: most likely for obsolete features etc.
 XOPTIONS="\
    ICONV='Character set conversion using iconv(3)' \
+   MAILDIR='Maildir E-mail directories' \
    SOCKETS='Network support' \
-      SSL='SSL/TLS (OpenSSL / LibreSSL)' \
-         SSL_ALL_ALGORITHMS='Support of all digest and cipher algorithms' \
+      TLS='Transport Layer Security (OpenSSL / LibreSSL)' \
+         TLS_ALL_ALGORITHMS='Support of all digest and cipher algorithms' \
       SMTP='Simple Mail Transfer Protocol client' \
       POP3='Post Office Protocol Version 3 client' \
       IMAP='IMAP v4r1 client' \
@@ -122,6 +123,7 @@ option_setup() {
          OPT_UISTRINGS=1
          OPT_ERRORS=1
          OPT_IDNA=1
+         OPT_MAILDIR=1
          OPT_MLE=1
             OPT_HISTORY=1 OPT_KEY_BINDINGS=1
          OPT_SPAM_FILTER=1
@@ -129,7 +131,7 @@ option_setup() {
       [nN][eE][tT][sS][eE][nN][dD])
          OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
          OPT_SOCKETS=require
-            OPT_SSL=require
+            OPT_TLS=require
             OPT_SMTP=require
             OPT_GSSAPI=1 OPT_NETRC=1
                OPT_AGENT=1
@@ -138,6 +140,7 @@ option_setup() {
          OPT_UISTRINGS=1
          OPT_ERRORS=1
          OPT_IDNA=1
+         OPT_MAILDIR=1
          OPT_MLE=1
             OPT_HISTORY=1 OPT_KEY_BINDINGS=1
          OPT_SPAM_FILTER=1
@@ -165,8 +168,8 @@ option_setup() {
 
 # Inter-relationships XXX sort this!
 option_update() {
-   if feat_no SSL; then
-      OPT_SSL_ALL_ALGORITHMS=0
+   if feat_no TLS; then
+      OPT_TLS_ALL_ALGORITHMS=0
    fi
 
    if feat_no SMTP && feat_no POP3 && feat_no IMAP; then
@@ -185,7 +188,7 @@ option_update() {
          msg 'ERROR: need SOCKETS for required feature IMAP'
          config_exit 13
       fi
-      OPT_SSL=0 OPT_SSL_ALL_ALGORITHMS=0
+      OPT_TLS=0 OPT_TLS_ALL_ALGORITHMS=0
       OPT_SMTP=0 OPT_POP3=0 OPT_IMAP=0
       OPT_GSSAPI=0 OPT_NETRC=0 OPT_AGENT=0
    fi
@@ -235,25 +238,27 @@ option_update() {
 }
 
 rc=./make.rc
-lst=./mk-config.lst
-ev=./mk-config.ev
-h=./mk-config.h h_name=mk-config.h
-mk=./mk-config.mk
+lst=.obj/mk-config.lst
+ev=.obj/mk-config.ev
+h=.obj/mk-config.h h_name=mk-config.h
+mk=.obj/mk-config.mk
 
-newlst=./mk-nconfig.lst
-newmk=./mk-nconfig.mk
-oldmk=./mk-oconfig.mk
-newev=./mk-nconfig.ev
-newh=./mk-nconfig.h
-oldh=./mk-oconfig.h
-tmp0=___tmp
-tmp=./${tmp0}1$$
-tmp2=./${tmp0}2$$
+newlst=.obj/mk-nconfig.lst
+newmk=.obj/mk-nconfig.mk
+oldmk=.obj/mk-oconfig.mk
+newev=.obj/mk-nconfig.ev
+newh=.obj/mk-nconfig.h
+oldh=.obj/mk-oconfig.h
+tmp0=.obj/___tmp
+tmp=${tmp0}1$$
+tmp2=${tmp0}2$$
 
 ##  --  >8  - << OPTIONS | OS/CC >> -  8<  --  ##
 
 # Note that potential duplicates in PATH, C_INCLUDE_PATH etc. will be cleaned
 # via path_check() later on once possible
+
+COMMLINE="${*}"
 
 # TODO cc_maxopt is brute simple, we should compile test program and dig real
 # compiler versions for known compilers, then be more specific
@@ -266,38 +271,30 @@ tmp2=./${tmp0}2$$
 _CFLAGS= _LDFLAGS=
 
 os_early_setup() {
-   [ -n "${OS}" ] && [ -n "${OSENV}" ] && [ -n "${OSFULLSPEC}" ] ||
+   # We don't "have any utility" (see make.rc)
+   [ -n "${OS}" ] && [ -n "${OSFULLSPEC}" ] ||
       thecmd_testandset_fail uname uname
 
-   # We don't "have any utility": only path adjustments and such in here!
    [ -n "${OS}" ] || OS=`${uname} -s`
    export OS
+   msg 'Operating system is %s' "${OS}"
 
    if [ ${OS} = SunOS ]; then
-      msg 'SunOS / Solaris?  Applying some "early setup" rules ...'
-      _os_early_setup_sunos
+      # According to standards(5), this is what we need to do
+      if [ -d /usr/xpg4 ]; then :; else
+         msg 'ERROR: On SunOS / Solaris we need /usr/xpg4 environment!  Sorry.'
+         config_exit 1
+      fi
+      PATH="/usr/xpg4/bin:/usr/ccs/bin:/usr/bin:${PATH}"
+      [ -d /usr/xpg6 ] && PATH="/usr/xpg6/bin:${PATH}"
+      export PATH
    fi
-}
-
-_os_early_setup_sunos() {
-   # According to standards(5), this is what we need to do
-   if [ -d /usr/xpg4 ]; then :; else
-      msg 'ERROR: On SunOS / Solaris we need /usr/xpg4 environment!  Sorry.'
-      config_exit 1
-   fi
-   PATH="/usr/xpg4/bin:/usr/ccs/bin:/usr/bin:${PATH}"
-   [ -d /usr/xpg6 ] && PATH="/usr/xpg6/bin:${PATH}"
-   export PATH
 }
 
 os_setup() {
-   # OSENV ends up in *build-osenv*
    # OSFULLSPEC is used to recognize changes (i.e., machine type, updates
    # etc.), it is not baked into the binary
-   OS=`echo ${OS} | ${tr} '[A-Z]' '[a-z]'`
-   [ -n "${OSENV}" ] || OSENV=`${uname} -sm`
    [ -n "${OSFULLSPEC}" ] || OSFULLSPEC=`${uname} -a`
-   msg 'Operating system is %s' ${OS}
 
    if [ ${OS} = darwin ]; then
       msg ' . have special Darwin environmental addons...'
@@ -355,15 +352,6 @@ _os_setup_sunos() {
 
    OS_DEFINES="${OS_DEFINES}#define __EXTENSIONS__\n"
    #OS_DEFINES="${OS_DEFINES}#define _POSIX_C_SOURCE 200112L\n"
-
-   [ -n "${cksum}" ] || cksum=/opt/csw/gnu/cksum
-   if [ -x "${cksum}" ]; then :; else
-      msg 'ERROR: Not an executable program: %s' "${cksum}"
-      msg 'ERROR:   We need a CRC-32 cksum(1), as specified in POSIX.'
-      msg 'ERROR:   However, we do so only for tests.'
-      msg 'ERROR:   If that is ok, set "cksum=/usr/bin/true", then rerun'
-      config_exit 1
-   fi
 
    if feat_yes AUTOCC; then
       if acmd_set CC cc; then
@@ -565,8 +553,7 @@ _cc_flags_generic() {
 
    if feat_yes ASAN_ADDRESS; then
       _ccfg=${_CFLAGS}
-      if cc_check -fsanitize=address &&
-            ld_check -fsanitize=address; then
+      if cc_check -fsanitize=address && ld_check -fsanitize=address; then
          :
       else
          feat_bail_required ASAN_ADDRESS
@@ -576,13 +563,22 @@ _cc_flags_generic() {
 
    if feat_yes ASAN_MEMORY; then
       _ccfg=${_CFLAGS}
-      if cc_check -fsanitize=memory &&
-            ld_check -fsanitize=memory &&
+      if cc_check -fsanitize=memory && ld_check -fsanitize=memory &&
             cc_check -fsanitize-memory-track-origins=2 &&
             ld_check -fsanitize-memory-track-origins=2; then
          :
       else
          feat_bail_required ASAN_MEMORY
+         _CFLAGS=${_ccfg}
+      fi
+   fi
+
+   if feat_yes USAN; then
+      _ccfg=${_CFLAGS}
+      if cc_check -fsanitize=undefined && ld_check -fsanitize=undefined; then
+         :
+      else
+         feat_bail_required USAN
          _CFLAGS=${_ccfg}
       fi
    fi
@@ -594,6 +590,7 @@ _cc_flags_generic() {
       msg ' ! $LD_LIBRARY_PATH adjusted, not trying -Wl,-z,now'
    fi
    ld_check -Wl,-z,noexecstack
+   ld_check -Wl,--as-needed
    if ld_check -Wl,-rpath =./ no; then
       ld_need_R_flags=-Wl,-rpath=
       # Choose DT_RUNPATH (after $LD_LIBRARY_PATH) over DT_RPATH (before)
@@ -791,6 +788,7 @@ feat_is_unsupported() {
 
 feat_def() {
    if feat_yes ${1}; then
+      msg ' . %s ... yes' "${1}"
       echo '#define HAVE_'${1}'' >> ${h}
       return 0
    else
@@ -957,8 +955,8 @@ val_allof() {
    eval __expo__=\$${1}
    ${awk} -v HEAP="${2}" -v USER="${__expo__}" '
       BEGIN{
-         i = split(HEAP, ha)
-         if((j = split(USER, ua)) == 0)
+         i = split(HEAP, ha, /[, ]/)
+         if((j = split(USER, ua, /[, ]/)) == 0)
             exit
          for(; j != 0; --j){
             us = tolower(ua[j])
@@ -980,7 +978,7 @@ val_allof() {
 
     if ${awk} -v USER="${__expo__}" '
             BEGIN{
-               if((j = split(USER, ua)) == 0)
+               if((j = split(USER, ua, /[, ]/)) == 0)
                   exit
                for(; j != 0; --j){
                   us = tolower(ua[j])
@@ -991,6 +989,9 @@ val_allof() {
             }
          '; then
       eval "${1}"=\"${2}\"
+   else
+      # Enfore lowercase also in otherwise unchanged user value..
+      eval "${1}"=\""`echo ${__expo__} | ${tr} '[A-Z]_' '[a-z]-'`"\"
    fi
    return 0
 }
@@ -1057,7 +1058,7 @@ ld_runtime_flags() {
 
 cc_check() {
    [ -n "${cc_check_silent}" ] || msg_nonl ' . CC %s .. ' "${1}"
-   if "${CC}" ${INCS} \
+   if ${CC} ${INCS} \
          ${_CFLAGS} ${1} ${EXTRA_CFLAGS} ${_LDFLAGS} ${EXTRA_LDFLAGS} \
          -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
       _CFLAGS="${_CFLAGS} ${1}"
@@ -1071,7 +1072,7 @@ cc_check() {
 ld_check() {
    # $1=option [$2=option argument] [$3=if set, shall NOT be added to _LDFLAGS]
    [ -n "${cc_check_silent}" ] || msg_nonl ' . LD %s .. ' "${1}"
-   if "${CC}" ${INCS} ${_CFLAGS} ${_LDFLAGS} ${1}${2} ${EXTRA_LDFLAGS} \
+   if ${CC} ${INCS} ${_CFLAGS} ${_LDFLAGS} ${1}${2} ${EXTRA_LDFLAGS} \
          -o ${tmp2} ${tmp}.c ${LIBS} >/dev/null 2>&1; then
       [ -n "${3}" ] || _LDFLAGS="${_LDFLAGS} ${1}"
       [ -n "${cc_check_silent}" ] || msg 'yes'
@@ -1134,9 +1135,8 @@ compile_check() {
    _check_preface "${variable}" "${topic}" "${define}"
 
    if ${make} -f ${makefile} XINCS="${INCS}" \
-            CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" \
-            ./${tmp}.o &&
-         [ -f ./${tmp}.o ]; then
+            CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" ${tmp}.o &&
+            [ -f ${tmp}.o ]; then
       msg 'yes'
       echo "${define}" >> ${h}
       eval have_${variable}=yes
@@ -1162,10 +1162,8 @@ _link_mayrun() {
 
    if ${make} -f ${makefile} XINCS="${INCS} ${incs}" \
             CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" \
-            XLIBS="${LIBS} ${libs}" \
-            ./${tmp} &&
-         [ -f ./${tmp} ] &&
-         { [ ${run} -eq 0 ] || ./${tmp}; }; then
+            XLIBS="${LIBS} ${libs}" ${tmp} &&
+         [ -f ${tmp} ] && { [ ${run} -eq 0 ] || ${tmp}; }; then
       echo "*** adding INCS<${incs}> LIBS<${libs}>; executed: ${run}"
       msg 'yes'
       echo "${define}" >> ${h}
@@ -1204,6 +1202,11 @@ squeeze_em() {
 
 # First of all, create new configuration and check whether it changed
 
+if [ -d .obj ] || mkdir .obj; then :; else
+   msg 'ERROR: cannot create .obj build directory'
+   exit 1
+fi
+
 # Very easy checks for the operating system in order to be able to adjust paths
 # or similar very basic things which we need to be able to go at all
 os_early_setup
@@ -1213,6 +1216,10 @@ msg 'Checking for basic utility set'
 thecmd_testandset_fail awk awk
 thecmd_testandset_fail rm rm
 thecmd_testandset_fail tr tr
+
+# Lowercase this now in order to isolate all the remains from case matters
+OS=`echo ${OS} | ${tr} '[A-Z]' '[a-z]'`
+export OS
 
 # Initialize the option set
 msg_nonl 'Setting up configuration options ... '
@@ -1247,6 +1254,8 @@ thecmd_testandset_fail cmp cmp
 # grep(1) above
 thecmd_testandset_fail mkdir mkdir
 thecmd_testandset_fail mv mv
+# pwd(1) is needed - either for make-emerge.sh, or for ourselves
+[ -n "${CWDDIR}" ] || thecmd_testandset_fail pwd pwd
 # rm(1) above
 thecmd_testandset_fail sed sed
 thecmd_testandset_fail sort sort
@@ -1264,6 +1273,11 @@ thecmd_testandset strip strip && HAVE_STRIP=1 || HAVE_STRIP=0
 # For ./cc-test.sh only
 thecmd_testandset_fail cksum cksum
 
+# Now that we have pwd(1), set our build paths unless make-emerge.sh has been
+# used; it would have created a makefile with the full paths, then
+[ -n "${CWDDIR}" ] || CWDDIR=`${pwd}`/
+[ -n "${SRCDIR}" ] || SRCDIR=${CWDDIR}
+
 # Update OPT_ options now, in order to get possible inter-dependencies right
 option_update
 
@@ -1280,6 +1294,7 @@ msg_nonl 'Evaluating all configuration items ... '
 option_evaluate
 msg 'done'
 
+#
 printf "#define VAL_UAGENT \"${VAL_SID}${VAL_MAILX}\"\n" >> ${newh}
 printf "VAL_UAGENT = ${VAL_SID}${VAL_MAILX}\n" >> ${newmk}
 
@@ -1295,8 +1310,10 @@ if [ -z "${VERBOSE}" ]; then
    printf -- "ECHO_BLOCK_BEGIN = @( \n" >> ${newmk}
    printf -- "ECHO_BLOCK_END = ) >/dev/null\n" >> ${newmk}
 fi
-printf 'test: all\n\t$(ECHO_TEST)%s %scc-test.sh --check-only ./%s\n' \
-   "${SHELL}" "${SRCDIR}" "${VAL_SID}${VAL_MAILX}" >> ${newmk}
+printf 'test: all\n\t$(ECHO_TEST)%s %scc-test.sh --check-only %s\n' \
+   "${SHELL}" "${SRCDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
+printf 'citest: all\n\t$(ECHO_TEST)%s %scc-test.sh --ci-test %s\n' \
+   "${SHELL}" "${SRCDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
 
 # Add the known utility and some other variables
 printf "#define VAL_PRIVSEP \"${VAL_SID}${VAL_MAILX}-privsep\"\n" >> ${newh}
@@ -1308,21 +1325,21 @@ else
 fi
 
 for i in \
-      SRCDIR \
+   CWDDIR SRCDIR \
       awk basename cat chmod chown cp cmp grep mkdir mv rm sed sort tee tr \
       MAKE MAKEFLAGS make SHELL strip \
       cksum; do
    eval j=\$${i}
-   printf "${i} = ${j}\n" >> ${newmk}
-   printf "${i}=${j}\n" >> ${newlst}
-   printf "${i}=\"${j}\";export ${i}; " >> ${newev}
+   printf -- "${i} = ${j}\n" >> ${newmk}
+   printf -- "${i}=${j}\n" >> ${newlst}
+   printf -- "${i}=\"${j}\";export ${i}; " >> ${newev}
 done
 # Note that makefile reads and eval'uates one line of this file, whereas other
 # consumers source it via .(1)
 printf "\n" >> ${newev}
 
 # Build a basic set of INCS and LIBS according to user environment.
-C_INCLUDE_PATH="${CWDDIR}:${SRCDIR}:${C_INCLUDE_PATH}"
+C_INCLUDE_PATH="${CWDDIR}:${CWDDIR}.obj:${SRCDIR}:${C_INCLUDE_PATH}"
 path_check C_INCLUDE_PATH -I _INCS
 INCS="${INCS} ${_INCS}"
 path_check LD_LIBRARY_PATH -L _LIBS
@@ -1356,7 +1373,7 @@ doit(char const *s){
 }
 !
 
-if "${CC}" ${INCS} ${CFLAGS} ${EXTRA_CFLAGS} ${LDFLAGS} ${EXTRA_LDFLAGS} \
+if ${CC} ${INCS} ${CFLAGS} ${EXTRA_CFLAGS} ${LDFLAGS} ${EXTRA_LDFLAGS} \
       -o ${tmp2} ${tmp}.c ${LIBS}; then
    :
 else
@@ -1371,9 +1388,10 @@ fi
 cc_flags
 
 for i in \
+      COMMLINE \
       INCS LIBS \
       ; do
-   eval j=\$${i}
+   eval j="\$${i}"
    printf -- "${i}=${j}\n" >> ${newlst}
 done
 for i in \
@@ -1385,8 +1403,8 @@ for i in \
       ; do
    eval j=\$${i}
    if [ -n "${j}" ]; then
-       printf -- "${i} = ${j}\n" >> ${newmk}
-       printf -- "${i}=${j}\n" >> ${newlst}
+      printf -- "${i} = ${j}\n" >> ${newmk}
+      printf -- "${i}=${j}\n" >> ${newlst}
    fi
 done
 
@@ -1418,11 +1436,11 @@ ${mv} -f ${newmk} ${mk}
 
 ## Compile and link checking
 
-tmp3=./${tmp0}3$$
-log=./mk-config.log
-lib=./mk-config.lib
-inc=./mk-config.inc
-makefile=./${tmp0}.mk
+tmp3=${tmp0}3$$
+log=.obj/mk-config.log
+lib=.obj/mk-config.lib
+inc=.obj/mk-config.inc
+makefile=${tmp0}.mk
 
 # (No function since some shells loose non-exported variables in traps)
 trap "trap \"\" HUP INT TERM;\
@@ -1453,7 +1471,7 @@ echo "${INCS}" > ${inc}
 ${cat} > ${makefile} << \!
 .SUFFIXES: .o .c .x .y
 .c.o:
-	$(CC) -I./ $(XINCS) $(CFLAGS) -c $(<)
+	$(CC) -I./ $(XINCS) $(CFLAGS) -o $(@) -c $(<)
 .c.x:
 	$(CC) -I./ $(XINCS) -E $(<) > $(@)
 .c:
@@ -1466,7 +1484,6 @@ ${cat} > ${makefile} << \!
 echo >> ${h}
 [ -n "${OS_DEFINES}" ] && printf -- "${OS_DEFINES}" >> ${h}
 echo '#define VAL_BUILD_OS "'"${OS}"'"' >> ${h}
-echo '#define VAL_BUILD_OSENV "'"${OSENV}"'"' >> ${h}
 
 # Generate n_err_number OS mappings
 dump_test_program=0
@@ -1481,6 +1498,7 @@ feat_def ALWAYS_UNICODE_LOCALE
 feat_def AMALGAMATION 0
 feat_def CROSS_BUILD
 feat_def DOCSTRINGS
+feat_def MAILDIR
 feat_def UISTRINGS
 feat_def ERRORS
 
@@ -1867,7 +1885,7 @@ int main(void){
 
 ##
 
-# The random check has been moved to below SSL detection due to multiple choice
+# The random check has been moved to below TLS detection due to multiple choice
 # selection for PRG sources
 
 link_check putc_unlocked 'putc_unlocked(3)' '#define HAVE_PUTC_UNLOCKED' <<\!
@@ -2131,7 +2149,7 @@ int main(void){
       feat_bail_required ICONV
 
    if feat_no CROSS_BUILD; then
-      { ./${tmp}; } >/dev/null 2>&1
+      { ${tmp}; } >/dev/null 2>&1
       case ${?} in
       2) echo 'MAILX_ICONV_MODE=2;export MAILX_ICONV_MODE;' >> ${ev};;
       3) echo 'MAILX_ICONV_MODE=3;export MAILX_ICONV_MODE;' >> ${ev};;
@@ -2198,6 +2216,74 @@ int main(void){
 else
    feat_is_disabled SOCKETS
 fi # feat_yes SOCKETS
+
+feat_yes SOCKETS &&
+   link_check sockopt '[gs]etsockopt(2)' '#define HAVE_SOCKOPT' << \!
+#include <sys/socket.h>
+#include <stdlib.h>
+# include <errno.h>
+int main(void){
+   socklen_t sol;
+   int sockfd = 3, soe;
+
+   sol = sizeof soe;
+   if(getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &soe, &sol) == -1 &&
+         errno == ENOSYS)
+      return 1;
+   if(setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, NULL, 0) == -1 &&
+         errno == ENOSYS)
+      return 1;
+   return 0;
+}
+!
+
+feat_yes SOCKETS &&
+   link_check nonblocksock 'non-blocking sockets' \
+      '#define HAVE_NONBLOCKSOCK' << \!
+#include <sys/types.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <unistd.h>
+# include <errno.h>
+int main(void){
+   fd_set fdset;
+   struct timeval tv;
+   struct sockaddr_in sin;
+   socklen_t sol;
+   int sofd, soe;
+
+   if((sofd = socket(AF_INET, SOCK_STREAM, 0)) == -1 && errno == ENOSYS)
+      return 1;
+   if(fcntl(sofd, F_SETFL, O_NONBLOCK) != 0)
+      return 1;
+
+   sin.sin_family = AF_INET;
+   sin.sin_addr.s_addr = inet_addr("127.0.0.1");
+   sin.sin_port = htons(80);
+   if(connect(sofd, &sin, sizeof sin) == -1 && errno == ENOSYS)
+      return 1;
+
+   FD_ZERO(&fdset);
+   FD_SET(sofd, &fdset);
+   tv.tv_sec = 10;
+   tv.tv_usec = 0;
+   if((soe = select(sofd + 1, NULL, &fdset, NULL, &tv)) == 1){
+      sol = sizeof soe;
+      getsockopt(sofd, SOL_SOCKET, SO_ERROR, &soe, &sol);
+      if(soe == 0)
+         return 0;
+   }else if(soe == -1 && errno == ENOSYS)
+      return 1;
+
+   close(sofd);
+   return 0;
+}
+!
 
 if feat_yes SOCKETS; then
    link_check getaddrinfo 'getaddrinfo(3)' \
@@ -2290,23 +2376,8 @@ int main(void){
       feat_bail_required SOCKETS
 fi
 
-feat_yes SOCKETS &&
-run_check setsockopt 'setsockopt(2)' '#define HAVE_SETSOCKOPT' << \!
-#include <sys/socket.h>
-#include <stdlib.h>
-# include <errno.h>
-int main(void){
-   int sockfd = 3;
-
-   if(setsockopt(sockfd, SOL_SOCKET, SO_KEEPALIVE, NULL, 0) == -1 &&
-         errno == ENOSYS)
-      return 1;
-   return 0;
-}
-!
-
-feat_yes SOCKETS && [ -n "${have_setsockopt}" ] &&
-link_check so_sndtimeo 'SO_SNDTIMEO' '#define HAVE_SO_SNDTIMEO' << \!
+feat_yes SOCKETS && [ -n "${have_sockopt}" ] &&
+   link_check so_xtimeo 'SO_{RCV,SND}TIMEO' '#define HAVE_SO_XTIMEO' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
 int main(void){
@@ -2321,8 +2392,8 @@ int main(void){
 }
 !
 
-feat_yes SOCKETS && [ -n "${have_setsockopt}" ] &&
-link_check so_linger 'SO_LINGER' '#define HAVE_SO_LINGER' << \!
+feat_yes SOCKETS && [ -n "${have_sockopt}" ] &&
+   link_check so_linger 'SO_LINGER' '#define HAVE_SO_LINGER' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
 int main(void){
@@ -2336,16 +2407,16 @@ int main(void){
 }
 !
 
-VAL_SSL_FEATURES=
-if feat_yes SSL; then # {{{
+VAL_TLS_FEATURES=
+if feat_yes TLS; then # {{{
    # {{{ LibreSSL decided to define OPENSSL_VERSION_NUMBER with a useless value
    # instead of keeping it at the one that corresponds to the OpenSSL at fork
    # time: we need to test it first in order to get things right
-   if compile_check _xssl 'TLS/SSL (LibreSSL)' \
-      '#define HAVE_SSL
-      #define HAVE_XSSL
-      #define HAVE_XSSL_RESSL
-      #define HAVE_XSSL_OPENSSL 0' << \!
+   if compile_check _xtls 'TLS (LibreSSL)' \
+      '#define HAVE_TLS
+      #define HAVE_XTLS
+      #define HAVE_XTLS_RESSL
+      #define HAVE_XTLS_OPENSSL 0' << \!
 #include <openssl/opensslv.h>
 #ifdef LIBRESSL_VERSION_NUMBER
 #else
@@ -2354,12 +2425,12 @@ if feat_yes SSL; then # {{{
 !
    then
       ossl_v1_1=
-      VAL_SSL_FEATURES=libressl
+      VAL_TLS_FEATURES=libressl
    # TODO OPENSSL_IS_BORINGSSL, but never tried that one!
-   elif compile_check _xssl 'TLS/SSL (OpenSSL >= v1.1.0)' \
-      '#define HAVE_SSL
-      #define HAVE_XSSL
-      #define HAVE_XSSL_OPENSSL 0x10100' << \!
+   elif compile_check _xtls 'TLS (OpenSSL >= v1.1.0)' \
+      '#define HAVE_TLS
+      #define HAVE_XTLS
+      #define HAVE_XTLS_OPENSSL 0x10100' << \!
 #include <openssl/opensslv.h>
 #if OPENSSL_VERSION_NUMBER + 0 >= 0x10100000L
 #else
@@ -2368,11 +2439,11 @@ if feat_yes SSL; then # {{{
 !
    then
       ossl_v1_1=1
-      VAL_SSL_FEATURES=libssl-0x10100
-   elif compile_check _xssl 'TLS/SSL (OpenSSL)' \
-      '#define HAVE_SSL
-      #define HAVE_XSSL
-      #define HAVE_XSSL_OPENSSL 0x10000' << \!
+      VAL_TLS_FEATURES=libssl-0x10100
+   elif compile_check _xtls 'TLS (OpenSSL)' \
+      '#define HAVE_TLS
+      #define HAVE_XTLS
+      #define HAVE_XTLS_OPENSSL 0x10000' << \!
 #include <openssl/opensslv.h>
 #ifdef OPENSSL_VERSION_NUMBER
 #else
@@ -2381,18 +2452,18 @@ if feat_yes SSL; then # {{{
 !
    then
       ossl_v1_1=
-      VAL_SSL_FEATURES=libssl-0x10000
+      VAL_TLS_FEATURES=libssl-0x10000
    else
-      feat_bail_required SSL
+      feat_bail_required TLS
    fi # }}}
 
-   if feat_yes SSL; then # {{{
+   if feat_yes TLS; then # {{{
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xssl 'TLS/SSL new style TLS_client_method(3ssl)' \
-            '#define n_XSSL_CLIENT_METHOD TLS_client_method' \
+         without_check yes xtls 'TLS new style TLS_client_method(3ssl)' \
+            '#define n_XTLS_CLIENT_METHOD TLS_client_method' \
             '-lssl -lcrypto'
-      elif link_check xssl 'TLS/SSL new style TLS_client_method(3ssl)' \
-            '#define n_XSSL_CLIENT_METHOD TLS_client_method' \
+      elif link_check xtls 'TLS new style TLS_client_method(3ssl)' \
+            '#define n_XTLS_CLIENT_METHOD TLS_client_method' \
             '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -2412,8 +2483,8 @@ int main(void){
 !
       then
          :
-      elif link_check xssl 'TLS/SSL old style SSLv23_client_method(3ssl)' \
-            '#define n_XSSL_CLIENT_METHOD SSLv23_client_method' \
+      elif link_check xtls 'TLS old style SSLv23_client_method(3ssl)' \
+            '#define n_XTLS_CLIENT_METHOD SSLv23_client_method' \
             '-lssl -lcrypto' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -2435,41 +2506,16 @@ int main(void){
       then
          :
       else
-         feat_bail_required SSL
+         feat_bail_required TLS
       fi
    fi # }}}
 
-   if feat_yes SSL; then # {{{
-      if feat_yes SSL_ALL_ALGORITHMS; then
-         if [ -n "${ossl_v1_1}" ]; then
-            without_check yes ssl_all_algo 'TLS/SSL all-algorithms support' \
-               '#define HAVE_SSL_ALL_ALGORITHMS'
-         elif link_check ssl_all_algo 'TLS/SSL all-algorithms support' \
-            '#define HAVE_SSL_ALL_ALGORITHMS' << \!
-#include <openssl/evp.h>
-int main(void){
-   OpenSSL_add_all_algorithms();
-   EVP_get_cipherbyname("two cents i never exist");
-   EVP_cleanup();
-   return 0;
-}
-!
-         then
-            :
-         else
-            feat_bail_required SSL_ALL_ALGORITHMS
-         fi
-      elif [ -n "${ossl_v1_1}" ]; then
-         without_check yes ssl_all_algo \
-            'TLS/SSL all-algorithms (always available in v1.1.0+)' \
-            '#define HAVE_SSL_ALL_ALGORITHMS'
-      fi
-
+   if feat_yes TLS; then # {{{
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xssl_stack_of 'TLS/SSL STACK_OF()' \
-            '#define HAVE_XSSL_STACK_OF'
-      elif compile_check xssl_stack_of 'TLS/SSL STACK_OF()' \
-            '#define HAVE_XSSL_STACK_OF' << \!
+         without_check yes xtls_stack_of 'TLS STACK_OF()' \
+            '#define HAVE_XTLS_STACK_OF'
+      elif compile_check xtls_stack_of 'TLS STACK_OF()' \
+            '#define HAVE_XTLS_STACK_OF' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -2488,12 +2534,12 @@ int main(void){
       fi
 
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xssl_conf 'TLS/SSL OpenSSL_modules_load_file(3ssl)' \
-            '#define HAVE_XSSL_CONFIG'
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+modules-load-file"
-      elif link_check xssl_conf \
-            'TLS/SSL OpenSSL_modules_load_file(3ssl) support' \
-            '#define HAVE_XSSL_CONFIG' << \!
+         without_check yes xtls_conf 'TLS OpenSSL_modules_load_file(3ssl)' \
+            '#define HAVE_XTLS_CONFIG'
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+modules-load-file"
+      elif link_check xtls_conf \
+            'TLS OpenSSL_modules_load_file(3ssl) support' \
+            '#define HAVE_XTLS_CONFIG' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/conf.h>
 int main(void){
@@ -2503,17 +2549,17 @@ int main(void){
 }
 !
       then
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+modules-load-file"
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+modules-load-file"
       else
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-modules-load-file"
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},-modules-load-file"
       fi
 
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xssl_conf_ctx 'TLS/SSL SSL_CONF_CTX support' \
-            '#define HAVE_XSSL_CONF_CTX'
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+conf-ctx"
-      elif link_check xssl_conf_ctx 'TLS/SSL SSL_CONF_CTX support' \
-         '#define HAVE_XSSL_CONF_CTX' << \!
+         without_check yes xtls_conf_ctx 'TLS SSL_CONF_CTX support' \
+            '#define HAVE_XTLS_CONF_CTX'
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+conf-ctx"
+      elif link_check xtls_conf_ctx 'TLS SSL_CONF_CTX support' \
+         '#define HAVE_XTLS_CONF_CTX' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 int main(void){
@@ -2532,18 +2578,18 @@ int main(void){
 }
 !
       then
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+conf-ctx"
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+conf-ctx"
       else
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-conf-ctx"
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},-conf-ctx"
       fi
 
       if [ -n "${ossl_v1_1}" ]; then
-         without_check yes xssl_ctx_config 'TLS/SSL SSL_CTX_config(3ssl)' \
-            '#define HAVE_XSSL_CTX_CONFIG'
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+ctx-config"
-      elif [ -n "${have_xssl_conf}" ] && [ -n "${have_xssl_conf_ctx}" ] &&
-            link_check xssl_ctx_config 'TLS/SSL SSL_CTX_config(3ssl)' \
-               '#define HAVE_XSSL_CTX_CONFIG' << \!
+         without_check yes xtls_ctx_config 'TLS SSL_CTX_config(3ssl)' \
+            '#define HAVE_XTLS_CTX_CONFIG'
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-config"
+      elif [ -n "${have_xtls_conf}" ] && [ -n "${have_xtls_conf_ctx}" ] &&
+            link_check xtls_ctx_config 'TLS SSL_CTX_config(3ssl)' \
+               '#define HAVE_XTLS_CTX_CONFIG' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 int main(void){
@@ -2552,19 +2598,19 @@ int main(void){
 }
 !
       then
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+ctx-config"
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-config"
       else
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-ctx-config"
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},-ctx-config"
       fi
 
-      if [ -n "${ossl_v1_1}" ] && [ -n "${have_xssl_conf_ctx}" ]; then
-         without_check yes xssl_set_maxmin_proto \
-            'TLS/SSL SSL_CTX_set_min_proto_version(3ssl)' \
-            '#define HAVE_XSSL_SET_MIN_PROTO_VERSION'
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+ctx-set-maxmin-proto"
-      elif link_check xssl_set_maxmin_proto \
-         'TLS/SSL SSL_CTX_set_min_proto_version(3ssl)' \
-         '#define HAVE_XSSL_SET_MIN_PROTO_VERSION' << \!
+      if [ -n "${ossl_v1_1}" ] && [ -n "${have_xtls_conf_ctx}" ]; then
+         without_check yes xtls_set_maxmin_proto \
+            'TLS SSL_CTX_set_min_proto_version(3ssl)' \
+            '#define HAVE_XTLS_SET_MIN_PROTO_VERSION'
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-set-maxmin-proto"
+      elif link_check xtls_set_maxmin_proto \
+         'TLS SSL_CTX_set_min_proto_version(3ssl)' \
+         '#define HAVE_XTLS_SET_MIN_PROTO_VERSION' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 int main(void){
@@ -2574,28 +2620,84 @@ int main(void){
 }
 !
       then
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+ctx-set-maxmin-proto"
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-set-maxmin-proto"
       else
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-ctx-set-maxmin-proto"
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},-ctx-set-maxmin-proto"
       fi
 
-      if link_check xssl_rand_egd 'TLS/SSL RAND_egd(3ssl)' \
-            '#define HAVE_XSSL_RAND_EGD' << \!
-#include <openssl/rand.h>
+      if [ -n "${ossl_v1_1}" ] && [ -n "${have_xtls_conf_ctx}" ]; then
+         without_check yes xtls_set_ciphersuites \
+            'TLSv1.3 SSL_CTX_set_ciphersuites(3ssl)' \
+            '#define HAVE_XTLS_SET_CIPHERSUITES'
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-set-ciphersuites"
+      elif link_check xtls_set_ciphersuites \
+         'TLSv1.3 SSL_CTX_set_ciphersuites(3ssl)' \
+         '#define HAVE_XTLS_SET_CIPHERSUITES' << \!
+#include <stdio.h> /* For C89 NULL */
+#include <openssl/ssl.h>
 int main(void){
-   return RAND_egd("some.where") > 0;
+   SSL_CTX_set_ciphersuites(NULL, NULL);
+   return 0;
 }
 !
       then
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},+rand-egd"
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-set-ciphersuites"
       else
-         VAL_SSL_FEATURES="${VAL_SSL_FEATURES},-rand-egd"
+         VAL_TLS_FEATURES="${VAL_TLS_FEATURES},-ctx-set-ciphersuites"
       fi
    fi # feat_yes SSL }}}
 
-   if feat_yes SSL && feat_yes MD5 && feat_no NOEXTMD5; then # {{{
-      run_check ssl_md5 'MD5 digest in the used crypto library' \
-            '#define HAVE_XSSL_MD5' << \!
+   if feat_yes TLS; then # digest etc algorithms {{{
+      if feat_yes TLS_ALL_ALGORITHMS; then
+         if [ -n "${ossl_v1_1}" ]; then
+            without_check yes tls_all_algo 'TLS all-algorithms support' \
+               '#define HAVE_TLS_ALL_ALGORITHMS'
+         elif link_check tls_all_algo 'TLS all-algorithms support' \
+            '#define HAVE_TLS_ALL_ALGORITHMS' << \!
+#include <openssl/evp.h>
+int main(void){
+   OpenSSL_add_all_algorithms();
+   EVP_get_cipherbyname("two cents i never exist");
+   EVP_cleanup();
+   return 0;
+}
+!
+         then
+            :
+         else
+            feat_bail_required TLS_ALL_ALGORITHMS
+         fi
+      elif [ -n "${ossl_v1_1}" ]; then
+         without_check yes tls_all_algo \
+            'TLS all-algorithms (always available in v1.1.0+)' \
+            '#define HAVE_TLS_ALL_ALGORITHMS'
+      fi
+
+      # Blake
+      link_check tls_blake2 'TLS: BLAKE2 digests' \
+            '#define HAVE_XTLS_BLAKE2' << \!
+#include <openssl/evp.h>
+int main(void){
+   EVP_blake2b512();
+   EVP_blake2s256();
+   return 0;
+}
+!
+
+      # SHA-3
+      link_check tls_sha3 'TLS: SHA-3 digests' '#define HAVE_XTLS_SHA3' << \!
+#include <openssl/evp.h>
+int main(void){
+   EVP_sha3_512();
+   EVP_sha3_384();
+   EVP_sha3_256();
+   EVP_sha3_224();
+   return 0;
+}
+!
+
+      if feat_yes MD5 && feat_no NOEXTMD5; then
+         run_check tls_md5 'TLS: MD5 digest' '#define HAVE_XTLS_MD5' << \!
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/md5.h>
@@ -2620,20 +2722,21 @@ int main(void){
    return !!memcmp("6d7d0a3d949da2e96f2aa010f65d8326", hex, sizeof(hex));
 }
 !
+      fi
    fi # }}}
 
-   if feat_yes SSL; then
-      feat_def SSL_ALL_ALGORITHMS
+   if feat_yes TLS; then
+      feat_def TLS_ALL_ALGORITHMS
    else
-      feat_bail_required SSL_ALL_ALGORITHMS
+      feat_bail_required TLS_ALL_ALGORITHMS
    fi
 else
-   feat_is_disabled SSL
-   feat_is_disabled SSL_ALL_ALGORITHMS
-fi # }}} feat_yes SSL
-printf '#define VAL_SSL_FEATURES "#'"${VAL_SSL_FEATURES}"'"\n' >> ${h}
+   feat_is_disabled TLS
+   feat_is_disabled TLS_ALL_ALGORITHMS
+fi # }}} feat_yes TLS
+printf '#define VAL_TLS_FEATURES "#'"${VAL_TLS_FEATURES}"'"\n' >> ${h}
 
-if [ "${have_xssl}" = yes ]; then
+if [ "${have_xtls}" = yes ]; then
    OPT_SMIME=1
 else
    OPT_SMIME=0
@@ -2642,7 +2745,7 @@ feat_def SMIME
 
 # VAL_RANDOM {{{
 if val_allof VAL_RANDOM \
-      "arc4 ssl libgetrandom sysgetrandom urandom builtin error"; then
+      "arc4,tls,libgetrandom,sysgetrandom,urandom,builtin,error"; then
    :
 else
    msg 'ERROR: VAL_RANDOM with invalid entries: %s' "${VAL_RANDOM}"
@@ -2660,13 +2763,13 @@ int main(void){
 !
 }
 
-val_random_ssl() {
-   if feat_yes SSL; then
-      msg ' . VAL_RANDOM: ssl ... yes'
-      echo '#define HAVE_RANDOM n_RANDOM_IMPL_SSL' >> ${h}
+val_random_tls() {
+   if feat_yes TLS; then
+      msg ' . VAL_RANDOM: tls ... yes'
+      echo '#define HAVE_RANDOM n_RANDOM_IMPL_TLS' >> ${h}
       return 0
    else
-      msg ' . VAL_RANDOM: ssl ... no'
+      msg ' . VAL_RANDOM: tls ... no'
       return 1
    fi
 }
@@ -2732,8 +2835,8 @@ val_random_error() {
 }
 
 oifs=${IFS}
-unset IFS
-VAL_RANDOM="${VAL_RANDOM} error"
+IFS=", "
+VAL_RANDOM="${VAL_RANDOM},error"
 set -- ${VAL_RANDOM}
 IFS=${oifs}
 for randfun
@@ -2810,7 +2913,7 @@ feat_def NETRC
 feat_def AGENT
 
 if feat_yes IDNA; then # {{{
-   if val_allof VAL_IDNA "idnkit idn2 idn"; then
+   if val_allof VAL_IDNA "idnkit,idn2,idn"; then
       :
    else
       msg 'ERROR: VAL_IDNA with invalid entries: %s' "${VAL_IDNA}"
@@ -2889,8 +2992,8 @@ int main(void){
    }
 
    oifs=${IFS}
-   unset IFS
-   VAL_IDNA="${VAL_IDNA} bye"
+   IFS=", "
+   VAL_IDNA="${VAL_IDNA},bye"
    set -- ${VAL_IDNA}
    IFS=${oifs}
    for randfun
@@ -2964,10 +3067,11 @@ else
    feat_is_disabled KEY_BINDINGS
 fi
 
-if feat_yes TERMCAP; then
+if feat_yes TERMCAP; then # {{{
+   ADDINC=
    __termcaplib() {
-      link_check termcap "termcap(5) (via ${4})" \
-         "#define HAVE_TERMCAP${3}" "${1}" << _EOT
+      link_check termcap "termcap(5) (via ${4}${ADDINC})" \
+         "#define HAVE_TERMCAP${3}" "${1}" "${ADDINC}" << _EOT
 #include <stdio.h>
 #include <stdlib.h>
 ${2}
@@ -2991,10 +3095,10 @@ _EOT
    }
 
    __terminfolib() {
-      link_check terminfo "terminfo(5) (via ${2})" \
+      link_check terminfo "terminfo(5) (via ${2}${ADDINC})" \
          '#define HAVE_TERMCAP
          #define HAVE_TERMCAP_CURSES
-         #define HAVE_TERMINFO' "${1}" << _EOT
+         #define HAVE_TERMINFO' "${1}" "${ADDINC}" << _EOT
 #include <stdio.h>
 #include <curses.h>
 #include <term.h>
@@ -3018,24 +3122,52 @@ _EOT
    }
 
    if feat_yes TERMCAP_VIA_TERMINFO; then
-      __terminfolib -ltinfo -ltinfo ||
-         __terminfolib -lcurses -lcurses ||
-         __terminfolib -lcursesw -lcursesw ||
-         feat_bail_required TERMCAP_VIA_TERMINFO
+      ADDINC=
+      do_me() {
+         xbail=
+         __terminfolib -ltinfo -ltinfo ||
+            __terminfolib -lcurses -lcurses ||
+            __terminfolib -lcursesw -lcursesw ||
+         xbail=y
+      }
+      do_me
+      if [ -n "${xbail}" ] && [ -d /usr/local/include/ncurses ]; then
+         ADDINC=' -I/usr/local/include/ncurses'
+         do_me
+      fi
+      if [ -n "${xbail}" ] && [ -d /usr/include/ncurses ]; then
+         ADDINC=' -I/usr/include/ncurses'
+         do_me
+      fi
+      [ -n "${xbail}" ] && feat_bail_required TERMCAP_VIA_TERMINFO
    fi
 
    if [ -z "${have_terminfo}" ]; then
-      __termcaplib -ltermcap '' '' '-ltermcap' ||
-         __termcaplib -ltermcap '#include <curses.h>' '
-            #define HAVE_TERMCAP_CURSES' \
-            'curses.h / -ltermcap' ||
-         __termcaplib -lcurses '#include <curses.h>' '
-            #define HAVE_TERMCAP_CURSES' \
-            'curses.h / -lcurses' ||
-         __termcaplib -lcursesw '#include <curses.h>' '
-            #define HAVE_TERMCAP_CURSES' \
-            'curses.h / -lcursesw' ||
-         feat_bail_required TERMCAP
+      ADDINC=
+      do_me() {
+         xbail=
+         __termcaplib -ltermcap '' '' '-ltermcap' ||
+            __termcaplib -ltermcap '#include <curses.h>' '
+               #define HAVE_TERMCAP_CURSES' \
+               'curses.h / -ltermcap' ||
+            __termcaplib -lcurses '#include <curses.h>' '
+               #define HAVE_TERMCAP_CURSES' \
+               'curses.h / -lcurses' ||
+            __termcaplib -lcursesw '#include <curses.h>' '
+               #define HAVE_TERMCAP_CURSES' \
+               'curses.h / -lcursesw' ||
+            xbail=y
+      }
+      do_me
+      if [ -n "${xbail}" ] && [ -d /usr/local/include/ncurses ]; then
+         ADDINC=' -I/usr/local/include/ncurses'
+         do_me
+      fi
+      if [ -n "${xbail}" ] && [ -d /usr/include/ncurses ]; then
+         ADDINC=' -I/usr/include/ncurses'
+         do_me
+      fi
+      [ -n "${xbail}" ] && feat_bail_required TERMCAP
 
       if [ -n "${have_termcap}" ]; then
          run_check tgetent_null \
@@ -3054,7 +3186,8 @@ int main(void){
 _EOT
       fi
    fi
-else
+   unset ADDINC
+else # }}}
    feat_is_disabled TERMCAP
    feat_is_disabled TERMCAP_VIA_TERMINFO
 fi
@@ -3106,14 +3239,35 @@ ${mv} ${tmp} ${inc}
 squeeze_em ${lib} ${tmp}
 ${mv} ${tmp} ${lib}
 
+echo "LIBS = `${cat} ${lib}`" >> ${mk}
+echo "INCS = `${cat} ${inc}`" >> ${mk}
+echo >> ${mk}
+
 # mk-config.h
 ${mv} ${h} ${tmp}
 printf '#ifndef n_MK_CONFIG_H\n# define n_MK_CONFIG_H 1\n' > ${h}
 ${cat} ${tmp} >> ${h}
 printf '\n' >> ${h}
-# We need these for correct "second stage configuration changed" detection */
-echo "/* `${cat} ${lib}` */" >> ${h}
-echo "/* `${cat} ${inc}` */" >> ${h}
+# Also need these for correct "second stage configuration changed" detection */
+i=
+if (${CC} --version) >/dev/null 2>&1; then
+   i=`${CC} --version 2>&1 | ${awk} '
+      BEGIN{l=""}
+      {if(length($0)) {if(l) l = l "\\\\n"; l = l "@" $0}}
+      END{gsub(/"/, "", l); print "\\\\n" l}
+   '`
+elif (${CC} -v) >/dev/null 2>&1; then
+   i=`${CC} -v 2>&1 | ${awk} '
+      BEGIN{l=""}
+      {if(length($0)) {if(l) l = l "\\\\n"; l = l "@" $0}}
+      END{gsub(/"/, "", l); print "\\\\n" l}
+   '`
+fi
+printf '#define VAL_BUILD_CC "%s %s %s%s"\n' \
+   "${CC}" "${CFLAGS}" "" "${i}" >> ${h}
+printf '#define VAL_BUILD_LD "%s %s %s"\n' \
+   "${CC}" "${LDFLAGS}" "`${cat} ${lib}`" >> ${h}
+printf '#define VAL_BUILD_REST "%s"\n' "${COMMLINE}" >> ${h}
 printf '\n' >> ${h}
 
 # Throw away all temporaries
@@ -3185,8 +3339,6 @@ printf 'OBJ_SRC = %s\nOBJ = %s\n' "${srclist}" "${objlist}" >> "${mk}"
 
 printf '#endif /* n_MK_CONFIG_H */\n' >> ${h}
 
-echo "LIBS = `${cat} ${lib}`" >> ${mk}
-echo "INCS = `${cat} ${inc}`" >> ${mk}
 echo >> ${mk}
 ${cat} "${SRCDIR}"make-config.in >> ${mk}
 
@@ -3206,8 +3358,8 @@ if [ -f ${oldh} ]; then
 fi
 
 if [ -n "${config_updated}" ]; then
-   msg 'Wiping away old objects and such'
-   ( eval "${MAKE} -f ${oldmk} clean" )
+   msg 'Wiping away old objects and such..'
+   ( cd .obj; oldmk=`${basename} ${oldmk}`; ${MAKE} -f ${oldmk} clean )
 fi
 
 msg ''

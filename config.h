@@ -2,41 +2,27 @@
  *@ Some constants etc. for which adjustments may be desired.
  *@ This is included after all the (system) headers.
  *
- * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
- */
-/*
- * Copyright (c) 1980, 1993
- *      The Regents of the University of California.  All rights reserved.
+ * SPDX-License-Identifier: ISC
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. Neither the name of the University nor the names of its contributors
- *    may be used to endorse or promote products derived from this software
- *    without specific prior written permission.
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
  *
- * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
- * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
- * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
- * SUCH DAMAGE.
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #ifndef n_CONFIG_H
 # define n_CONFIG_H
 
 #define ACCOUNT_NULL "null"   /* Name of "null" account */
+/* Protocol version for *on-compose-splice** -- update manual on change! */
+#define n_DIG_MSG_PLUMBING_VERSION "0 0 1"
 #define DOTLOCK_TRIES 5       /* Number of open(2) calls for dotlock */
 #define FILE_LOCK_TRIES 10    /* Maximum tries before n_file_lock() fails */
 #define FILE_LOCK_MILLIS 200  /* If UIZ_MAX, fall back to that */
@@ -44,12 +30,16 @@
 #define ERRORS_MAX 1000       /* Maximum error ring entries TODO configable*/
 #define n_ESCAPE "~"          /* Default escape for sending (POSIX) */
 #define FTMP_OPEN_TRIES 10    /* Maximum number of Ftmp() open(2) tries */
+#define n_FORWARD_INJECT_HEAD "-------- Original Message --------\n" /* DOC! */
+#define n_FORWARD_INJECT_TAIL NULL /* DOC! */
 #define HSHSIZE 23            /* Hash prime TODO make dynamic, obsolete */
 #define n_IMAP_DELIM "/."     /* Directory separator ([0] == replacer, too) */
 #define n_MAILDIR_SEPARATOR ':' /* Flag separator character */
 #define n_MAXARGC 512         /* Maximum list of raw strings TODO dyn vector! */
 #define n_ALIAS_MAXEXP 25     /* Maximum expansion of aliases */
 #define n_PATH_DEVNULL "/dev/null"  /* Note: manual uses /dev/null as such */
+#define n_QUOTE_INJECT_HEAD "%f wrote:\n\n" /* DOC! */
+#define n_QUOTE_INJECT_TAIL NULL /* DOC! */
 #define REFERENCES_MAX 20     /* Maximum entries in References: */
 #define n_SIGSUSPEND_NOT_WAITPID 1 /* Not waitpid(2), but sigsuspend(2) */
 #define n_UNIREPL "\xEF\xBF\xBD" /* Unicode replacement 0xFFFD in UTF-8 */
@@ -84,7 +74,7 @@
 /* Supported IDNA implementations */
 #define n_IDNA_IMPL_LIBIDN2 0
 #define n_IDNA_IMPL_LIBIDN 1
-#define n_IDNA_IMPL_IDNKIT 2
+#define n_IDNA_IMPL_IDNKIT 2 /* 1 + 2 */
 
 /* Max readable line width TODO simply use BUFSIZ? */
 #if BUFSIZ + 0 > 2560
@@ -98,7 +88,7 @@
  * storage is that value /2, which is n_CTA()ed to be > 1024 */
 #define n_MEMORY_AUTOREC_SIZE 0x2000u
 /* Ugly, but avoid dynamic allocation for the management structure! */
-#define n_MEMORY_POOL_TYPE_SIZEOF (7 * sizeof(void*))
+#define n_MEMORY_POOL_TYPE_SIZEOF (8 * sizeof(void*))
 
 /* Default *mime-encoding* as enum mime_enc */
 #define MIME_DEFAULT_ENCODING MIMEE_QP
@@ -142,7 +132,7 @@
 /* Supported (external) PRG implementations */
 #define n_RANDOM_IMPL_BUILTIN 0
 #define n_RANDOM_IMPL_ARC4 1
-#define n_RANDOM_IMPL_SSL 2
+#define n_RANDOM_IMPL_TLS 2
 #define n_RANDOM_IMPL_GETRANDOM 3 /* (both, syscall + library) */
 #define n_RANDOM_IMPL_URANDOM 4
 

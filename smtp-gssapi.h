@@ -3,6 +3,7 @@
  *@ TODO GSS-API should also be joined into "a VFS".
  *
  * Copyright (c) 2014 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-4-Clause
  */
 
 /* Derived from `imap_gssapi.h', which is:
@@ -97,7 +98,8 @@ _smtp_gssapi_error1(char const *s, OM_uint32 code, int typ)
       maj_stat = gss_display_status(&min_stat, code, typ, GSS_C_NO_OID,
             &msg_ctx, &msg);
       if (maj_stat == GSS_S_COMPLETE) {
-         n_err(_("GSS error: %s / %s\n"), s, (char*)msg.value);
+         n_err(_("GSS error: %s / %.*s\n"),
+            s, (int)msg.length, (char*)msg.value);
          gss_release_buffer(&min_stat, &msg);
       } else {
          n_err(_("GSS error: %s / unknown\n"), s);
@@ -141,7 +143,8 @@ _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
    if(INT_MAX - 1 - 4 <= sbp->sb_ccred.cc_user.l)
       goto jleave;
 
-   send_tok.value = salloc(send_tok.length = sbp->sb_url.url_host.l + 5 +1);
+   send_tok.value = n_autorec_alloc(
+         (send_tok.length = sbp->sb_url.url_host.l + 5) +1);
    memcpy(send_tok.value, "smtp@", 5);
    memcpy((char*)send_tok.value + 5, sbp->sb_url.url_host.s,
       sbp->sb_url.url_host.l +1);
@@ -149,7 +152,8 @@ _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
          &target_name);
    f |= a_F_TARGET_NAME;
    if (maj_stat != GSS_S_COMPLETE) {
-      _smtp_gssapi_error(send_tok.value, maj_stat, min_stat);
+      _smtp_gssapi_error(savestrbuf(send_tok.value, send_tok.length),
+         maj_stat, min_stat);
       goto jleave;
    }
 
@@ -205,7 +209,7 @@ _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
             &send_tok,
             &ret_flags,
             NULL);
-      free(out.s);
+      n_free(out.s);
       f |= a_F_SEND_TOK;
       if (maj_stat != GSS_S_COMPLETE && maj_stat != GSS_S_CONTINUE_NEEDED) {
          _smtp_gssapi_error("initializing context", maj_stat, min_stat);
@@ -232,7 +236,7 @@ _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
    if(!b64_decode(&out, &in)){
 jebase64:
       if(out.s != NULL)
-         free(out.s);
+         n_free(out.s);
       n_err(_("Invalid base64 encoding from GSSAPI server\n"));
       goto jleave;
    }
@@ -240,7 +244,7 @@ jebase64:
    recv_tok.length = out.l;
    maj_stat = gss_unwrap(&min_stat, gss_context, &recv_tok, &send_tok,
          &conf_state, NULL);
-   free(out.s);
+   n_free(out.s);
    gss_release_buffer(&min_stat, &send_tok);
    /*f &= ~a_F_SEND_TOK;*/
    if (maj_stat != GSS_S_COMPLETE) {
@@ -252,7 +256,7 @@ jebase64:
     *    mechanism).
     * Second to fourth octet: maximum message size in network byte order.
     * Fifth and following octets: user name string */
-   in.s = salloc(send_tok.length = 4 + sbp->sb_ccred.cc_user.l +1);
+   in.s = n_autorec_alloc((send_tok.length = 4 + sbp->sb_ccred.cc_user.l) +1);
    memcpy(in.s + 4, sbp->sb_ccred.cc_user.s, sbp->sb_ccred.cc_user.l +1);
    in.s[0] = 1;
    in.s[1] = 0;

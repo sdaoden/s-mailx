@@ -4,6 +4,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-4-Clause
  */
 /*
  * Copyright (c) 2002
@@ -124,17 +125,19 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
 #endif
 
    /* If not yet secured, can we upgrade to TLS? */
-#ifdef HAVE_SSL
+#ifdef HAVE_TLS
    if (!(scp->sc_url.url_flags & n_URL_TLS_REQUIRED) &&
          xok_blook(pop3_use_starttls, &scp->sc_url, oxm)) {
       POP3_OUT(rv, "STLS" NETNL, MB_COMD, goto jleave);
       POP3_ANSWER(rv, goto jleave);
-      if ((rv = ssl_open(&scp->sc_url, &scp->sc_sock)) != OKAY)
+      if(!n_tls_open(&scp->sc_url, &scp->sc_sock)){
+         rv = STOP;
          goto jleave;
+      }
    }
 #else
    if (xok_blook(pop3_use_starttls, &scp->sc_url, oxm)) {
-      n_err(_("No SSL support compiled in\n"));
+      n_err(_("No TLS support compiled in\n"));
       rv = STOP;
       goto jleave;
    }
@@ -146,8 +149,8 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
       if ((rv = _pop3_auth_apop(mp, scp, ts)) != OKAY) {
          char const *ccp;
 
-# ifdef HAVE_SSL
-         if (scp->sc_sock.s_use_ssl)
+# ifdef HAVE_TLS
+         if (scp->sc_sock.s_use_tls)
             ccp = _("over an encrypted connection");
          else
 # endif
@@ -202,7 +205,7 @@ _pop3_lookup_apop_timestamp(char const *bp)
       goto jleave;
 
    tl = PTR2SIZE(++ep - cp);
-   rp = salloc(tl +1);
+   rp = n_autorec_alloc(tl +1);
    memcpy(rp, cp, tl);
    rp[tl] = '\0';
 jleave:
@@ -229,7 +232,7 @@ _pop3_auth_apop(struct mailbox *mp, struct sockconn const *scp, char const *ts)
    md5tohex(hex, digest);
 
    i = scp->sc_cred.cc_user.l;
-   cp = ac_alloc(5 + i + 1 + MD5TOHEX_SIZE + sizeof(NETNL)-1 +1);
+   cp = n_lofi_alloc(5 + i + 1 + MD5TOHEX_SIZE + sizeof(NETNL)-1 +1);
 
    memcpy(cp, "APOP ", 5);
    memcpy(cp + 5, scp->sc_cred.cc_user.s, i);
@@ -243,7 +246,7 @@ _pop3_auth_apop(struct mailbox *mp, struct sockconn const *scp, char const *ts)
 
    rv = OKAY;
 jleave:
-   ac_free(cp);
+   n_lofi_free(cp);
    NYD_LEAVE;
    return rv;
 }
@@ -257,8 +260,8 @@ _pop3_auth_plain(struct mailbox *mp, struct sockconn const *scp)
    NYD_ENTER;
 
    /* The USER/PASS plain text version */
-   cp = ac_alloc(n_MAX(scp->sc_cred.cc_user.l, scp->sc_cred.cc_pass.l) + 5 +
-         sizeof(NETNL)-1 +1);
+   cp = n_lofi_alloc(n_MAX(scp->sc_cred.cc_user.l, scp->sc_cred.cc_pass.l) +
+         5 + sizeof(NETNL)-1 +1);
 
    memcpy(cp, "USER ", 5);
    memcpy(cp + 5, scp->sc_cred.cc_user.s, scp->sc_cred.cc_user.l);
@@ -274,7 +277,7 @@ _pop3_auth_plain(struct mailbox *mp, struct sockconn const *scp)
 
    rv = OKAY;
 jleave:
-   ac_free(cp);
+   n_lofi_free(cp);
    NYD_LEAVE;
    return rv;
 }
@@ -506,7 +509,7 @@ pop3_setptr(struct mailbox *mp, struct sockconn const *scp)
    enum needspec ns;
    NYD_ENTER;
 
-   message = scalloc(msgCount + 1, sizeof *message);
+   message = n_calloc(msgCount + 1, sizeof *message);
    message[msgCount].m_size = 0;
    message[msgCount].m_lines = 0;
    dot = message; /* (Just do it: avoid crash -- shall i now do ointr(0).. */
@@ -665,8 +668,11 @@ jretry:
       }
    }
    if (!emptyline) {
-      /* This is very ugly; but some POP3 daemons don't end a
-       * message with NETNL NETNL, and we need \n\n for mbox format */
+      /* TODO This is very ugly; but some POP3 daemons don't end a
+       * TODO message with NETNL NETNL, and we need \n\n for mbox format.
+       * TODO That is to say we do it wrong here in order to get it right
+       * TODO when send.c stuff or with MBOX handling, even though THIS
+       * TODO line is solely a property of the MBOX database format! */
       putc('\n', mp->mb_otf);
       ++lines;
       ++size;
@@ -693,7 +699,7 @@ jretry:
    rv = OKAY;
 jleave:
    if (line != NULL)
-      free(line);
+      n_free(line);
    if (saveint != SIG_IGN)
       safe_signal(SIGINT, saveint);
    if (savepipe != SIG_IGN)
@@ -810,7 +816,7 @@ pop3_noop(void)
 }
 
 FL int
-pop3_setfile(char const *server, enum fedit_mode fm)
+pop3_setfile(char const *who, char const *server, enum fedit_mode fm)
 {
    struct sockconn sc;
    sighandler_type saveint, savepipe;
@@ -927,7 +933,7 @@ pop3_setfile(char const *server, enum fedit_mode fm)
 
    if (!(n_pstate & n_PS_EDIT) && msgCount == 0) {
       if (!ok_blook(emptystart))
-         n_err(_("No mail at %s\n"), server);
+         n_err(_("No mail for %s at %s\n"), who, sc.sc_url.url_p_eu_h_p);
       goto jleave;
    }
 

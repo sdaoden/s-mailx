@@ -4,6 +4,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-4-Clause
  */
 /*
  * Copyright (c) 2000
@@ -177,7 +178,7 @@ _fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
 
       if (outrest != NULL && outrest->l > 0) {
          in.l = outrest->l + input->l;
-         in.s = buf = smalloc(in.l +1);
+         in.s = buf = n_alloc(in.l +1);
          memcpy(in.s, outrest->s, outrest->l);
          memcpy(&in.s[outrest->l], input->s, input->l);
          outrest->l = 0;
@@ -219,7 +220,7 @@ _fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
          if(outrest != NULL && in.l > 0){
             /* Incomplete multibyte at EOF is special xxx _INVAL? */
             if (flags & _TD_EOF) {
-               out.s = srealloc(out.s, out.l + sizeof(n_unirepl));
+               out.s = n_realloc(out.s, out.l + sizeof(n_unirepl));
                if(n_psonce & n_PSO_UNICODE){
                   memcpy(&out.s[out.l], n_unirepl, sizeof(n_unirepl) -1);
                   out.l += sizeof(n_unirepl) -1;
@@ -261,7 +262,7 @@ _fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
       if (i != in.l) {
          if (i > 0) {
             n_str_assign_buf(outrest, cp, in.l - i);
-            cp = smalloc(i +1);
+            cp = n_alloc(i +1);
             memcpy(cp, in.s, in.l = i);
             (in.s = cp)[in.l = i] = '\0';
             flags &= ~_TD_BUFCOPY;
@@ -774,7 +775,7 @@ static void
 _append_str(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
 {
    NYD_ENTER;
-   *buf = srealloc(*buf, *sz += len);
+   *buf = n_realloc(*buf, *sz += len);
    memcpy(&(*buf)[*pos], str, len);
    *pos += len;
    NYD_LEAVE;
@@ -833,7 +834,7 @@ charset_iter_reset(char const *a_charset_to_try_first) /* TODO elim. dups! */
       sarrl[0] = 0;
 #endif
 
-   _cs_iter_base = cp = salloc(len + 1 + 1 +1);
+   _cs_iter_base = cp = n_autorec_alloc(len + 1 + 1 +1);
 
 #ifdef HAVE_ICONV
    if ((len = sarrl[0]) != 0) {
@@ -1015,7 +1016,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 
    out->l = 0;
    if (in->l == 0) {
-      *(out->s = smalloc(1)) = '\0';
+      *(out->s = n_alloc(1)) = '\0';
       goto jleave;
    }
    out->s = NULL;
@@ -1042,7 +1043,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 #ifdef HAVE_ICONV
          if (flags & TD_ICONV) {
             size_t i = PTR2SIZE(p - cbeg);
-            char *ltag, *cs = ac_alloc(i);
+            char *ltag, *cs = n_lofi_alloc(i);
 
             memcpy(cs, cbeg, --i);
             cs[i] = '\0';
@@ -1054,7 +1055,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
             if (fhicd != (iconv_t)-1)
                n_iconv_close(fhicd);
             fhicd = asccasecmp(cs, tcs) ? n_iconv_open(tcs, cs) : (iconv_t)-1;
-            ac_free(cs);
+            n_lofi_free(cs);
          }
 #endif
          switch (*p) {
@@ -1366,11 +1367,8 @@ jeb64:
          }
       }
 jqpb64_dec:
-      if ((sz = out.l) != 0) {
-         ui32_t opl = qf->qf_pfix_len;
+      if ((sz = out.l) != 0)
          sz = _fwrite_td(&out, FAL0, (dflags & ~_TD_BUFCOPY), outrest, qf);
-         qf->qf_pfix_len = opl;
-      }
       break;
    case CONV_TOB64:
       /* TODO hack which is necessary unless this is a filter based approach

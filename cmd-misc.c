@@ -3,6 +3,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause
  */
 /*
  * Copyright (c) 1980, 1993
@@ -84,7 +85,7 @@ a_cmisc_bangexp(char const *cp){
    }
 
    if(last_bang.s != NULL)
-      free(last_bang.s);
+      n_free(last_bang.s);
    last_bang.s = n_string_cp(bang);
    last_bang.l = bang->s_len;
    bang = n_string_drop_ownership(bang);
@@ -130,9 +131,12 @@ a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
       si32_t e;
 
       e = n_ERR_NONE;
-      if(doerr)
-         n_err("%s", cp);
-      else if(fputs(cp, fp) == EOF)
+      if(doerr){
+         /* xxx Ensure *log-prefix* will be placed by n_err() for next msg */
+         if(donl)
+            cp = n_string_cp(n_string_trunc(sp, sp->s_len - 1));
+         n_err((donl ? "%s\n" : "%s"), cp);
+      }else if(fputs(cp, fp) == EOF)
          e = n_err_no;
       if((rv = (fflush(fp) == EOF)))
          e = n_err_no;
@@ -558,7 +562,12 @@ c_readall(void * vp){ /* TODO 64-bit retval */
          if(sp->s_len == 0)
             goto jleave;
          break;
-      }else if(rv == 0){ /* xxx will not get*/
+      }
+
+      if(n_pstate & n_PS_READLINE_NL)
+         linebuf[rv++] = '\n'; /* Replace NUL with it */
+
+      if(n_UNLIKELY(rv == 0)){ /* xxx will not get*/
          if(n_go_input_is_eof()){
             if(sp->s_len == 0){
                rv = -1;
@@ -566,14 +575,12 @@ c_readall(void * vp){ /* TODO 64-bit retval */
             }
             break;
          }
-      }else if(UICMP(32, SI32_MAX - sp->s_len, <=, rv)){
+      }else if(n_LIKELY(UICMP(32, SI32_MAX - sp->s_len, >, rv)))
+         sp = n_string_push_buf(sp, linebuf, rv);
+      else{
          n_pstate_err_no = n_ERR_OVERFLOW;
          rv = -1;
          goto jleave;
-      }else{
-         sp = n_string_push_buf(sp, linebuf, rv);
-         if(n_pstate & n_PS_READLINE_NL)
-            sp = n_string_push_c(sp, '\n');
       }
    }
 
@@ -606,7 +613,7 @@ c_version(void *vp){
    sp = n_string_creat_auto(sp);
    sp = n_string_book(sp, 1024);
 
-   /* First line */
+   /* First two lines */
    sp = n_string_push_cp(sp, n_uagent);
    sp = n_string_push_c(sp, ' ');
    sp = n_string_push_cp(sp, ok_vlook(version));
@@ -615,10 +622,10 @@ c_version(void *vp){
    sp = n_string_push_cp(sp, ok_vlook(version_date));
    sp = n_string_push_c(sp, ' ');
    sp = n_string_push_c(sp, '(');
-   sp = n_string_push_cp(sp, _("build on "));
-   sp = n_string_push_cp(sp, ok_vlook(build_osenv));
+   sp = n_string_push_cp(sp, _("build for "));
+   sp = n_string_push_cp(sp, ok_vlook(build_os));
    sp = n_string_push_c(sp, ')');
-   sp = n_string_push_cp(sp, _("\nFeatures included (+) or not (-)\n"));
+   sp = n_string_push_cp(sp, _("\nFeatures included (+) or not (-):\n"));
 
    /* Some lines with the features.
     * *features* starts with dummy byte to avoid + -> *folder* expansions */
@@ -644,17 +651,30 @@ c_version(void *vp){
    }
    sp = n_string_push_c(sp, '\n');
 
-   /* Trailing line with info of running machine */
-   uname(&ut);
-   sp = n_string_push_c(sp, '@');
-   sp = n_string_push_cp(sp, ut.sysname);
-   sp = n_string_push_c(sp, ' ');
-   sp = n_string_push_cp(sp, ut.release);
-   sp = n_string_push_c(sp, ' ');
-   sp = n_string_push_cp(sp, ut.version);
-   sp = n_string_push_c(sp, ' ');
-   sp = n_string_push_cp(sp, ut.machine);
-   sp = n_string_push_c(sp, '\n');
+   /* */
+   if(n_poption & n_PO_VERB){
+      sp = n_string_push_cp(sp, "Compile: ");
+      sp = n_string_push_cp(sp, ok_vlook(build_cc));
+      sp = n_string_push_cp(sp, "\nLink: ");
+      sp = n_string_push_cp(sp, ok_vlook(build_ld));
+      if(*(cp = ok_vlook(build_rest)) != '\0'){
+         sp = n_string_push_cp(sp, "\nRest: ");
+         sp = n_string_push_cp(sp, cp);
+      }
+      sp = n_string_push_c(sp, '\n');
+
+      /* A trailing line with info of the running machine */
+      uname(&ut);
+      sp = n_string_push_c(sp, '@');
+      sp = n_string_push_cp(sp, ut.sysname);
+      sp = n_string_push_c(sp, ' ');
+      sp = n_string_push_cp(sp, ut.release);
+      sp = n_string_push_c(sp, ' ');
+      sp = n_string_push_cp(sp, ut.version);
+      sp = n_string_push_c(sp, ' ');
+      sp = n_string_push_cp(sp, ut.machine);
+      sp = n_string_push_c(sp, '\n');
+   }
 
    /* Done */
    cp = n_string_cp(sp);

@@ -5,6 +5,7 @@
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: BSD-3-Clause TODO ISC
  */
 /*
  * Copyright (c) 1980, 1993
@@ -110,7 +111,7 @@ static char *a_shexp_findmail(char const *user, bool_t force);
 
 /* Expand ^~/? and ^~USER/? constructs.
  * Returns the completely resolved (maybe empty or identical to input)
- * salloc()ed string */
+ * n_autorec_alloc()ed string */
 static char *a_shexp_tilde(char const *s);
 
 /* Perform fnmatch(3).  May return NULL on error */
@@ -164,7 +165,7 @@ a_shexp_findmail(char const *user, bool_t force){
       ul = strlen(user) +1;
       i = sizeof(VAL_MAIL) -1 + 1 + ul;
 
-      rv = salloc(i);
+      rv = n_autorec_alloc(i);
       memcpy(rv, VAL_MAIL, (i = sizeof(VAL_MAIL) -1));
       rv[i] = '/';
       memcpy(&rv[++i], user, ul);
@@ -201,7 +202,7 @@ a_shexp_tilde(char const *s){
    }
 
    nl = strlen(np);
-   rv = salloc(nl + 1 + rl +1);
+   rv = n_autorec_alloc(nl + 1 + rl +1);
    memcpy(rv, np, nl);
    if(rl > 0){
       memcpy(rv + nl, rp, rl);
@@ -252,13 +253,13 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
          l += xslp->sl_len + 1;
       }
 
-      sorta = smalloc(sizeof(*sorta) * no);
+      sorta = n_alloc(sizeof(*sorta) * no);
       no = 0;
       for(xslp = slp; xslp != NULL; xslp = xslp->sl_next)
          sorta[no++] = xslp;
       qsort(sorta, no, sizeof *sorta, &a_shexp__globsort);
 
-      cp = salloc(++l);
+      cp = n_autorec_alloc(++l);
       l = 0;
       for(i = 0; i < no; ++i){
          xslp = sorta[i];
@@ -268,7 +269,7 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
       }
       cp[l] = '\0';
 
-      free(sorta);
+      n_free(sorta);
       n_pstate |= n_PS_EXPAND_MULTIRESULT;
    }else{
       cp = n_UNCONST(N_("File pattern matches multiple results"));
@@ -280,7 +281,7 @@ jleave:
       struct n_strlist *tmp = slp;
 
       slp = slp->sl_next;
-      free(tmp);
+      n_free(tmp);
    }
    NYD_LEAVE;
    return cp;
@@ -376,7 +377,11 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
       }
    }
 
-   /* As necessary, quote bytes in the current pattern */
+   /* As necessary, quote bytes in the current pattern TODO This will not
+    * TODO truly work out in case the user would try to quote a character
+    * TODO class, for example: in "\[a-z]" the "\" would be doubled!  For that
+    * TODO to work out, we need the original user input or the shell-expression
+    * TODO parse tree, otherwise we do not know what is desired! */
    /* C99 */{
       char *ncp;
       size_t i;
@@ -395,7 +400,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
          }
 
       if(need){
-         ncp = salloc(i +1);
+         ncp = n_autorec_alloc(i +1);
          for(i = 0, myp = sgcp->sgc_patdat; *myp != '\0'; ++myp)
             switch(*myp){
             case '\'': case '"': case '\\': case '$':
@@ -1018,11 +1023,19 @@ jislocal:
       dyn = TRU1;
    }
 
-   if(fexpm & FEXP_LOCAL){
-      switch (which_protocol(res, FAL0, FAL0, NULL)) {
+   if(fexpm & (FEXP_LOCAL | FEXP_LOCAL_FILE)){
+      switch (which_protocol(res, FAL0, FAL0, &cp)) {
+      case PROTO_MAILDIR:
+         if(!(fexpm & FEXP_LOCAL_FILE)){
+         /* FALLTHRU */
       case PROTO_FILE:
-      case PROTO_MAILDIR: /* Cannot happen since we don't stat(2), but.. */
-         break;
+            if(fexpm & FEXP_LOCAL_FILE){
+               res = cp;
+               dyn = FAL0;
+            }
+            break;
+         }
+         /* FALLTHRU */
       default:
          n_err(_("Not a local file or directory: %s\n"),
             n_shexp_quote_cp(name, FAL0));
@@ -1041,7 +1054,14 @@ jleave:
 FL enum n_shexp_state
 n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
       struct str *input, void const **cookie){
-   /* TODO shexp_parse_token: WCHAR */
+   /* TODO shexp_parse_token: WCHAR
+    * TODO This needs to be rewritten in order to support $(( )) and $( )
+    * TODO and ${xyYZ} and the possibly infinite recursion they bring along,
+    * TODO too.  We need a carrier struct, then, and can nicely split this
+    * TODO big big thing up in little pieces!
+    * TODO This means it should produce a tree of objects, so that callees
+    * TODO can recognize whether something happened inside single/double etc.
+    * TODO quotes; e.g., to requote "'[a-z]'" to, e.g., "\[a-z]", etc.! */
    ui32_t last_known_meta_trim_len;
    char c2, c, quotec, utf[8];
    enum n_shexp_state rv;
@@ -1193,7 +1213,7 @@ jrestart:
     * By sheer luck we only need to track this in non-quote-mode */
    last_known_meta_trim_len = UI32_MAX;
 
-   while(il > 0){
+   while(il > 0){ /* {{{ */
       --il, c = *ib++;
 
       /* If no quote-mode active.. */
@@ -1722,7 +1742,7 @@ j_var_look_buf:
          if(!(flags & n_SHEXP_PARSE_DRYRUN))
             store = n_string_push_c(store, c);
       }
-   }
+   } /* }}} */
 
    if(quotec != '\0' && !(flags & n_SHEXP_PARSE_QUOTE_AUTO_CLOSE)){
       if(flags & n_SHEXP_PARSE_LOG)
@@ -1938,7 +1958,7 @@ c_shcodec(void *vp){
          nerrn = n_err_no;
          vp = NULL;
       }
-      free(out.s);
+      n_free(out.s);
    }
 
 jleave:
