@@ -871,7 +871,7 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
 #endif
    }else if(!asccasecmp(cmd, xcmd = "Curves")){
 #ifdef SSL_CTRL_SET_CURVES_LIST
-      if(SSL_CTX_set1_curves_list(ctxp, value) != 1){
+      if(SSL_CTX_set1_curves_list(ctxp, n_UNCONST(value)) != 1){
          emsg = N_("TLS: %s: invalid: %s\n");
          goto jerr;
       }
