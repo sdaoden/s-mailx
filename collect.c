@@ -50,7 +50,7 @@ struct a_coll_fmt_ctx{ /* xxx This is temporary until v15 has objects */
    char *cfc_real;
    char *cfc_full;
    char *cfc_date;
-   char *cfc_msgid;     /* Or NULL */
+   char const *cfc_msgid;  /* Or NULL */
 };
 
 struct a_coll_ocs_arg{
@@ -102,7 +102,8 @@ static bool_t a_coll_quote_message(FILE *fp, struct message *mp, bool_t isfwd);
 static bool_t a_coll__fmt_inj(struct a_coll_fmt_ctx const *cfcp);
 
 /* Parse off the message header from fp and store relevant fields in hp,
- * replace _coll_fp with a shiny new version without any header */
+ * replace _coll_fp with a shiny new version without any header.
+ * Takes care for closing of fp and _coll_fp as necessary */
 static bool_t a_coll_makeheader(FILE *fp, struct header *hp,
                si8_t *checkaddr_err, bool_t do_delayed_due_t);
 
@@ -501,10 +502,11 @@ a_coll_quote_message(FILE *fp, struct message *mp, bool_t isfwd){
 
             if((cp = hfield1("message-id", mp)) != NULL &&
                   (np = lextract(cp, GREF)) != NULL)
-               cfc.cfc_msgid = np->n_name;
+               cp = np->n_name;
             else
-               cp = (char*)-1;
+               cp = NULL;
          }
+         cfc.cfc_msgid = cp;
 
          if(!a_coll__fmt_inj(&cfc) || fflush(fp))
             goto jleave;
@@ -689,6 +691,7 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
          pipecmd);
    if(nf != NULL){
       if(hp != NULL){
+         /* Overtaking of nf->_coll_fp is done by a_coll_makeheader()! */
          if(!a_coll_makeheader(nf, hp, NULL, FAL0))
             rv = n_ERR_INVAL;
          /* Break the thread if In-Reply-To: has been modified */

@@ -1348,11 +1348,19 @@ n_header_extract(enum n_header_extract_flags hef, FILE *fp, struct header *hp,
    }
    hftail = &hq->h_user_headers;
 
-   firstoff = ftell(fp);
+   if((firstoff = ftell(fp)) == -1)
+      goto jeseek;
    for (lc = 0; readline_restart(fp, &linebuf, &linesize, 0) > 0; ++lc)
       ;
-   fseek(fp, firstoff, SEEK_SET);
+   c = fseek(fp, firstoff, SEEK_SET);
    clearerr(fp);
+   if(c != 0){
+jeseek:
+      if(checkaddr_err_or_null != NULL)
+         *checkaddr_err_or_null = -1;
+      n_err("I/O error while parsing headers, operation aborted\n");
+      goto jleave;
+   }
 
    /* TODO yippieia, cat(check(lextract)) :-) */
    while ((lc = a_gethfield(hef, fp, &linebuf, &linesize, lc, &colon)) >= 0) {
@@ -1530,6 +1538,7 @@ jebadhead:
    } else
       n_err(_("Restoring deleted header lines\n"));
 
+jleave:
    if (linebuf != NULL)
       n_free(linebuf);
    NYD_LEAVE;
