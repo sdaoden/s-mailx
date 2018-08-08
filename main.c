@@ -610,6 +610,7 @@ a_main_rcv_mode(bool_t had_A_arg, char const *folder, char const *Larg){
       n_exit_status = n_EXIT_ERR; /* error already reported */
       goto jquit;
    }
+   temporary_folder_hook_check(FAL0);
    if(n_poption & n_PO_QUICKRUN_MASK){
       n_exit_status = i;
       if(i == n_EXIT_OK && (!(n_poption & n_PO_EXISTONLY) ||
@@ -617,7 +618,6 @@ a_main_rcv_mode(bool_t had_A_arg, char const *folder, char const *Larg){
          print_header_summary(Larg);
       goto jquit;
    }
-   temporary_folder_hook_check(FAL0);
 
    if(i > 0 && !ok_blook(emptystart)){
       n_exit_status = n_EXIT_ERR;

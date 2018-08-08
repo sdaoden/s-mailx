@@ -671,8 +671,16 @@ newmailinfo(int omsgCount)
 
    mdot = getmdot(1);
 
-   if(ok_blook(header))
-      print_headers(omsgCount + 1, msgCount, FAL0, FAL0);
+   if(ok_blook(header) && (i = omsgCount + 1) <= msgCount){
+#ifdef HAVE_IMAP
+      if(mb.mb_type == MB_IMAP)
+         imap_getheaders(i, msgCount); /* TODO not here */
+#endif
+      for(omsgCount = 0; i <= msgCount; ++omsgCount, ++i)
+         n_msgvec[omsgCount] = i;
+      n_msgvec[omsgCount] = 0;
+      print_headers(n_msgvec, FAL0, FAL0);
+   }
    NYD_LEAVE;
    return mdot;
 }
@@ -683,15 +691,22 @@ setmsize(int sz)
    NYD_ENTER;
    if (n_msgvec != NULL)
       n_free(n_msgvec);
-   n_msgvec = n_calloc(sz + 1, sizeof *n_msgvec);
+   n_msgvec = n_calloc(sz +1, sizeof *n_msgvec);
    NYD_LEAVE;
 }
 
 FL void
 print_header_summary(char const *Larg)
 {
-   size_t bot, top, i, j;
+   size_t i;
    NYD_ENTER;
+
+   getmdot(0);
+#ifdef HAVE_IMAP
+      if(mb.mb_type == MB_IMAP)
+         imap_getheaders(0, msgCount); /* TODO not here */
+#endif
+   assert(n_msgvec != NULL);
 
    if (Larg != NULL) {
       /* Avoid any messages XXX add a make_mua_silent() and use it? */
@@ -699,30 +714,24 @@ print_header_summary(char const *Larg)
          n_stdout = freopen(n_path_devnull, "w", stdout);
          n_stderr = freopen(n_path_devnull, "w", stderr);
       }
-      assert(n_msgvec != NULL);
-      i = (getmsglist(/*TODO make const */n_UNCONST(Larg), n_msgvec, 0) <= 0);
-      if (n_poption & n_PO_EXISTONLY) {
+      i = (n_getmsglist(n_shexp_quote_cp(Larg, FAL0), n_msgvec, 0, NULL) <= 0);
+      if (n_poption & n_PO_EXISTONLY)
          n_exit_status = (int)i;
-         goto jleave;
-      }
-      if (i)
-         goto jleave;
-      for (bot = msgCount, top = 0, i = 0; (j = n_msgvec[i]) != 0; ++i) {
-         if (bot > j)
-            bot = j;
-         if (top < j)
-            top = j;
-      }
-   } else
-      bot = 1, top = msgCount;
+      else if(i == 0)
+         print_headers(n_msgvec, TRU1, FAL0); /* TODO should be iterator! */
+   } else {
+      i = 0;
+      if(!mb.mb_threaded){
+         for(; UICMP(z, i, <, msgCount); ++i)
+            n_msgvec[i] = i + 1;
+      }else{
+         struct message *mp;
 
-   /* C99 */{
-      bool_t isLarg;
-
-      isLarg = (Larg != NULL);
-      print_headers(bot, top, isLarg, !isLarg); /* TODO should be iterator! */
+         for(mp = threadroot; mp; ++i, mp = next_in_thread(mp))
+            n_msgvec[i] = (int)PTR2SIZE(mp - message + 1);
+      }
+      print_headers(n_msgvec, FAL0, TRU1); /* TODO should be iterator! */
    }
-jleave:
    NYD_LEAVE;
 }
 

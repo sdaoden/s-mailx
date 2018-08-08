@@ -47,7 +47,7 @@ static int     _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
                   bool_t donotdecode, char *cmd, ui64_t *tstats);
 
 /* Pipe the requested messages */
-static int     _pipe1(char *str, int doign);
+static int a_cmsg_pipe1(void *vp, bool_t doign);
 
 /* `top' / `Top' */
 static int a_cmsg_top(void *vp, struct n_ignore const *itp);
@@ -188,54 +188,34 @@ jleave:
 }
 
 static int
-_pipe1(char *str, int doign)
-{
+a_cmsg_pipe1(void *vp, bool_t doign){
    ui64_t stats[1];
    char const *cmd, *cmdq;
-   int *msgvec, rv = 1;
-   bool_t needs_list;
-   NYD_ENTER;
+   int *msgvec, rv;
+   struct n_cmd_arg *cap;
+   struct n_cmd_arg_ctx *cacp;
+   NYD2_ENTER;
 
-   if ((cmd = laststring(str, &needs_list, TRU1)) == NULL) {
-      cmd = ok_vlook(cmd);
-      if (cmd == NULL || *cmd == '\0') {
-         n_err(_("Variable *cmd* not set\n"));
-         goto jleave;
-      }
-   }
+   cacp = vp;
+   cap = cacp->cac_arg;
+   msgvec = cap->ca_arg.ca_msglist;
+   cap = cap->ca_next;
+   rv = 1;
 
-   msgvec = n_autorec_alloc((msgCount + 2) * sizeof *msgvec);
-
-   if (!needs_list) {
-      *msgvec = first(0, MMNORM);
-      if (*msgvec == 0) {
-         if (n_pstate & (n_PS_ROBOT | n_PS_HOOK_MASK)) {
-            rv = 0;
-            goto jleave;
-         }
-         fputs(_("No messages to pipe.\n"), n_stdout);
-         goto jleave;
-      }
-      msgvec[1] = 0;
-   } else if (getmsglist(str, msgvec, 0) < 0)
-      goto jleave;
-   if (*msgvec == 0) {
-      if (n_pstate & (n_PS_ROBOT | n_PS_HOOK_MASK)) {
-         rv = 0;
-         goto jleave;
-      }
-      fprintf(n_stdout, "No applicable messages.\n");
+   if((cmd = cap->ca_arg.ca_str.s)[0] == '\0' &&
+         ((cmd = ok_vlook(cmd)) == NULL || *cmd == '\0')){
+      n_err(_("%s: variable *cmd* not set\n"), cacp->cac_desc->cad_name);
       goto jleave;
    }
 
    cmdq = n_shexp_quote_cp(cmd, FAL0);
    fprintf(n_stdout, _("Pipe to: %s\n"), cmdq);
    stats[0] = 0;
-   if ((rv = _type1(msgvec, doign, FAL0, TRU1, FAL0, n_UNCONST(cmd), stats)
+   if((rv = _type1(msgvec, doign, FAL0, TRU1, FAL0, n_UNCONST(cmd), stats)
          ) == 0)
       fprintf(n_stdout, "%s %" PRIu64 " bytes\n", cmdq, stats[0]);
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return rv;
 }
 
@@ -287,8 +267,7 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
    }
    f = ok_blook(topsqueeze) ? a_SQUEEZE : a_NONE;
 
-   for(ip = msgvec = vp;
-         *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount); ++ip){
+   for(ip = msgvec = vp; *ip != 0; ++ip){
       struct message *mp;
 
       mp = &message[*ip - 1];
@@ -544,25 +523,21 @@ jleave:
 }
 
 FL int
-c_pipe(void *v)
-{
-   char *str = v;
+c_pipe(void *vp){
    int rv;
    NYD_ENTER;
 
-   rv = _pipe1(str, 1);
+   rv = a_cmsg_pipe1(vp, TRU1);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_Pipe(void *v)
-{
-   char *str = v;
+c_Pipe(void *vp){
    int rv;
    NYD_ENTER;
 
-   rv = _pipe1(str, 0);
+   rv = a_cmsg_pipe1(vp, FAL0);
    NYD_LEAVE;
    return rv;
 }
@@ -680,7 +655,8 @@ c_pdot(void *vp)
 {
    NYD_ENTER;
    n_UNUSED(vp);
-   fprintf(n_stdout, "%d\n", (int)PTR2SIZE(dot - message + 1));
+   fprintf(n_stdout, "%d\n",
+      (msgCount == 0) ? 0 : (int)PTR2SIZE(dot - message + 1));
    NYD_LEAVE;
    return 0;
 }
@@ -747,8 +723,7 @@ c_undelete(void *v)
    struct message *mp;
    NYD_ENTER;
 
-   for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
-         ++ip) {
+   for (ip = msgvec; *ip != 0; ++ip) {
       mp = &message[*ip - 1];
       touch(mp);
       setdot(mp);

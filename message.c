@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Message, message array, getmsglist(), and related operations.
+ *@ Message, message array, n_getmsglist(), and related operations.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -92,6 +92,15 @@ struct a_message_lex{
    ui8_t ml_token;
 };
 
+struct a_message_speclex{
+   char *msl_str;             /* If parsed a string */
+   int msl_no;                /* If parsed a number TODO siz_t! */
+   char msl__smallstrbuf[4];
+   /* We directly adjust pointer in .ca_arg.ca_str.s, do not adjust .l */
+   struct n_cmd_arg *msl_cap;
+   char const *msl_input_orig;
+};
+
 static struct a_message_coltab const a_message_coltabs[] = {
    {'n', {0,}, a_MESSAGE_S_NEW, MNEW, MNEW},
    {'o', {0,}, a_MESSAGE_S_OLD, MNEW, 0},
@@ -131,21 +140,16 @@ static bool_t a_message_threadflag;
 /* :d on its way HACK TODO */
 static bool_t a_message_list_saw_d, a_message_list_last_saw_d;
 
-/* String from a_MESSAGE_T_STRING, scan() */
-static struct str a_message_lexstr;
-/* Number of a_MESSAGE_T_NUMBER from scan() */
-static int a_message_lexno;
-
 /* Lazy load message header fields */
 static enum okay a_message_get_header(struct message *mp);
 
 /* Append, taking care of resizes TODO vector */
-static char **a_message_add_to_namelist(char ***namelist, size_t *nmlsize,
+static char **a_message_add_to_nmadat(char ***nmadat, size_t *nmasize,
                char **np, char *string);
 
 /* Mark all messages that the user wanted from the command line in the message
  * structure.  Return 0 on success, -1 on error */
-static int a_message_markall(char const *buf, int f);
+static int a_message_markall(char const *orig, struct n_cmd_arg *cap, int f);
 
 /* Turn the character after a colon modifier into a bit value */
 static int a_message_evalcol(int col);
@@ -154,12 +158,8 @@ static int a_message_evalcol(int col);
  * MDELETED the message has to be undeleted */
 static bool_t a_message_check(int mno, int f);
 
-/* Scan out a single lexical item and return its token number, updating the
- * string pointer passed *sp.  Also, store the value of the number or string
- * scanned in a_message_lexno or a_message_lexstr as appropriate.
- * In any event, store the scanned "thing" in a_message_lexstr.
- * Returns the token as a negative number when we also saw & to mark a thread */
-static int a_message_scan(char const **sp);
+/* Scan out a single lexical item and return its token number, updating *mslp */
+static int a_message_scan(struct a_message_speclex *mslp);
 
 /* See if the passed name sent the passed message */
 static bool_t a_message_match_sender(struct message *mp, char const *str,
@@ -220,14 +220,20 @@ a_message_get_header(struct message *mp){
 }
 
 static char **
-a_message_add_to_namelist(char ***namelist, size_t *nmlsize, /* TODO Vector */
+a_message_add_to_nmadat(char ***nmadat, size_t *nmasize, /* TODO Vector */
       char **np, char *string){
-   size_t idx;
+   size_t idx, i;
    NYD2_ENTER;
 
-   if((idx = PTR2SIZE(np - *namelist)) >= *nmlsize){
-      *namelist = n_realloc(*namelist, (*nmlsize += 8) * sizeof *np);
-      np = &(*namelist)[idx];
+   if((idx = PTR2SIZE(np - *nmadat)) >= *nmasize){
+      char **narr;
+
+      i = *nmasize << 1;
+      *nmasize = i;
+      narr = n_autorec_alloc(i * sizeof *np);
+      memcpy(narr, *nmadat, i >>= 1);
+      *nmadat = narr;
+      np = &narr[idx];
    }
    *np++ = string;
    NYD2_LEAVE;
@@ -235,16 +241,17 @@ a_message_add_to_namelist(char ***namelist, size_t *nmlsize, /* TODO Vector */
 }
 
 static int
-a_message_markall(char const *buf, int f){
-   struct message *mp, *mx;
+a_message_markall(char const *orig, struct n_cmd_arg *cap, int f){
+   struct a_message_speclex msl;
    enum a_message_idfield idfield;
-   size_t j, nmlsize;
-   char const *id, *bufp;
-   char **np, **nq, **namelist, *cp;
+   size_t j, nmasize;
+   char const *id;
+   char **nmadat_lofi, **nmadat, **np, **nq, *cp;
+   struct message *mp, *mx;
    int i, valdot, beg, colmod, tok, colresult;
    enum{
       a_NONE = 0,
-      a_ALLNET = 1u<<0,    /* Must be TRU1 */
+      a_ALLNET = 1u<<0,    /* (CTA()d to be == TRU1 */
       a_ALLOC = 1u<<1,     /* Have allocated something */
       a_THREADED = 1u<<2,
       a_ERROR = 1u<<3,
@@ -276,21 +283,15 @@ a_message_markall(char const *buf, int f){
       mp->m_flag = mf;
    }
 
-   /* Strip all leading WS from user buffer */
-   while(blankspacechar(*buf))
-      ++buf;
-   /* If there is no input buffer, we are done! */
-   if(buf[0] == '\0'){
-      flags = a_NONE;
-      goto jleave;
-   }
+   memset(&msl, 0, sizeof msl);
+   msl.msl_cap = cap;
+   msl.msl_input_orig = orig;
 
+   np = nmadat =
+   nmadat_lofi = n_lofi_alloc((nmasize = 64) * sizeof *np); /* TODO vector */
    n_UNINIT(beg, 0);
    n_UNINIT(idfield, a_MESSAGE_ID_REFERENCES);
    a_message_threadflag = FAL0;
-   a_message_lexstr.s = n_lofi_alloc(a_message_lexstr.l = 2 * strlen(buf) +1);
-   np = namelist = n_alloc((nmlsize = 8) * sizeof *namelist); /* TODO vector */
-   bufp = buf;
    valdot = (int)PTR2SIZE(dot - message + 1);
    colmod = 0;
    id = NULL;
@@ -298,7 +299,7 @@ a_message_markall(char const *buf, int f){
          ((!(n_pstate & n_PS_HOOK_MASK) || (n_poption & n_PO_D_V))
             ? a_LOG : 0);
 
-   while((tok = a_message_scan(&bufp)) != a_MESSAGE_T_EOL){
+   while((tok = a_message_scan(&msl)) != a_MESSAGE_T_EOL){
       if((a_message_threadflag = (tok < 0)))
          tok &= INT_MAX;
 
@@ -306,21 +307,21 @@ a_message_markall(char const *buf, int f){
       case a_MESSAGE_T_NUMBER:
          n_pstate |= n_PS_MSGLIST_GABBY;
 jnumber:
-         if(!a_message_check(a_message_lexno, f))
+         if(!a_message_check(msl.msl_no, f))
             goto jerr;
 
          if(flags & a_RANGE){
             flags ^= a_RANGE;
 
             if(!(flags & a_THREADED)){
-               if(beg < a_message_lexno)
+               if(beg < msl.msl_no)
                   i = beg;
                else{
-                  i = a_message_lexno;
-                  a_message_lexno = beg;
+                  i = msl.msl_no;
+                  msl.msl_no = beg;
                }
 
-               for(; i <= a_message_lexno; ++i){
+               for(; i <= msl.msl_no; ++i){
                   mp = &message[i - 1];
                   if(!(mp->m_flag & MHIDDEN) &&
                          (f == MDELETED || !(mp->m_flag & MDELETED))){
@@ -337,11 +338,11 @@ jnumber:
                } tf;
                int i_base;
 
-               if(beg < a_message_lexno)
+               if(beg < msl.msl_no)
                   i = beg;
                else{
-                  i = a_message_lexno;
-                  a_message_lexno = beg;
+                  i = msl.msl_no;
+                  msl.msl_no = beg;
                }
 
                i_base = i;
@@ -360,7 +361,7 @@ jnumber__thr:
                   /* We may have reached the endpoint.  If we were still
                    * detecting the direction to search for it, restart.
                    * Otherwise finished */
-                  if(i == a_message_lexno){ /* XXX */
+                  if(i == msl.msl_no){ /* XXX */
                      if(!(tf & a_T_HOT)){
                         tf |= a_T_HOT;
                         i = i_base;
@@ -373,7 +374,7 @@ jnumber__thr:
                         : next_in_thread(mp);
                   if(mx == NULL){
                      /* We anyway have failed to reach the endpoint in this
-                      * direction;  if we already switched that, report error */
+                      * direction; if we already switched that, report error */
                      if(!(tf & a_T_DIR_PREV)){
                         tf |= a_T_DIR_PREV;
                         i = i_base;
@@ -389,12 +390,14 @@ jnumber__thr:
             beg = 0;
          }else{
             /* Could be an inclusive range? */
-            if(bufp[0] == '-'){
-               ++bufp;
-               beg = a_message_lexno;
+            if(msl.msl_cap != NULL &&
+                  msl.msl_cap->ca_arg.ca_str.s[0] == '-'){
+               if(*++msl.msl_cap->ca_arg.ca_str.s == '\0')
+                  msl.msl_cap = msl.msl_cap->ca_next;
+               beg = msl.msl_no;
                flags |= a_RANGE;
             }else{
-               mark(a_message_lexno, f);
+               mark(msl.msl_no, f);
                flags |= a_ANY;
             }
          }
@@ -415,7 +418,7 @@ jnumber__thr:
             }
          }while(message[i - 1].m_flag == MHIDDEN ||
             (message[i - 1].m_flag & MDELETED) != (unsigned)f);
-         a_message_lexno = i;
+         msl.msl_no = i;
          goto jnumber;
       case a_MESSAGE_T_MINUS:
          n_pstate &= ~n_PS_MSGLIST_DIRECT;
@@ -433,7 +436,7 @@ jnumber__thr:
             }
          }while(message[i - 1].m_flag == MHIDDEN ||
             (message[i - 1].m_flag & MDELETED) != (unsigned)f);
-         a_message_lexno = i;
+         msl.msl_no = i;
          goto jnumber;
       case a_MESSAGE_T_STRING:
          n_pstate &= ~n_PS_MSGLIST_DIRECT;
@@ -441,16 +444,15 @@ jnumber__thr:
             goto jebadrange;
 
          /* This may be a colon modifier */
-         if((cp = a_message_lexstr.s)[0] != ':')
-            np = a_message_add_to_namelist(&namelist, &nmlsize, np,
-                  savestr(a_message_lexstr.s));
+         if((cp = msl.msl_str)[0] != ':')
+            np = a_message_add_to_nmadat(&nmadat, &nmasize, np,
+                  savestr(msl.msl_str));
          else{
             while(*++cp != '\0'){
                colresult = a_message_evalcol(*cp);
                if(colresult == 0){
                   if(flags & a_LOG)
-                     n_err(_("Unknown colon modifier: %s\n"),
-                        a_message_lexstr.s);
+                     n_err(_("Unknown colon modifier: %s\n"), msl.msl_str);
                   goto jerr;
                }
                if(colresult == a_MESSAGE_S_DELETED){
@@ -471,7 +473,7 @@ jnumber__thr:
          /* C99 */{
             ssize_t ires;
 
-            if((ires = imap_search(a_message_lexstr.s, f)) >= 0){
+            if((ires = imap_search(msl.msl_str, f)) >= 0){
                if(ires > 0)
                   flags |= a_ANY;
                break;
@@ -479,8 +481,7 @@ jnumber__thr:
          }
 #else
          if(flags & a_LOG)
-            n_err(_("Optional selector is not available: %s\n"),
-               a_message_lexstr.s);
+            n_err(_("Optional selector not available: %s\n"), msl.msl_str);
 #endif
          goto jerr;
       case a_MESSAGE_T_DOLLAR:
@@ -488,10 +489,9 @@ jnumber__thr:
       case a_MESSAGE_T_SEMI:
          n_pstate |= n_PS_MSGLIST_GABBY;
          /* FALLTHRU */
-      case a_MESSAGE_T_DOT: /* Don't set _GABBY for dot, to _allow_ history.. */
+      case a_MESSAGE_T_DOT: /* Don't set _GABBY for dot to allow history.. */
          n_pstate &= ~n_PS_MSGLIST_DIRECT;
-         a_message_lexno = a_message_metamess(a_message_lexstr.s[0], f);
-         if(a_message_lexno == -1)
+         if((msl.msl_no = a_message_metamess(msl.msl_str[0], f)) == -1)
             goto jerr;
          goto jnumber;
       case a_MESSAGE_T_BACK:
@@ -565,10 +565,12 @@ jnumber__thr:
       }
 
       /* Explicitly disallow invalid ranges for future safety */
-      if(bufp[0] == '-' && !(flags & a_RANGE)){
+      if(msl.msl_cap != NULL && msl.msl_cap->ca_arg.ca_str.s[0] == '-' &&
+            !(flags & a_RANGE)){
          if(flags & a_LOG)
-            n_err(_("Ignoring invalid range before: %s\n"), bufp);
-         ++bufp;
+            n_err(_("Ignoring invalid range in: %s\n"), msl.msl_input_orig);
+         if(*++msl.msl_cap->ca_arg.ca_str.s == '\0')
+            msl.msl_cap = msl.msl_cap->ca_next;
       }
    }
    if(flags & a_RANGE){
@@ -576,7 +578,7 @@ jnumber__thr:
       goto jerrmsg;
    }
 
-   np = a_message_add_to_namelist(&namelist, &nmlsize, np, NULL);
+   np = a_message_add_to_nmadat(&nmadat, &nmasize, np, NULL);
    --np;
 
    /* * is special at this point, after we have parsed the entire line */
@@ -595,7 +597,7 @@ jnumber__thr:
    }
 
    /* If any names were given, add any messages which match */
-   if(np > namelist || id != NULL){
+   if(np > nmadat || id != NULL){
       struct search_expr *sep;
 
       sep = NULL;
@@ -604,12 +606,12 @@ jnumber__thr:
        * To simplify array, i.e., regex_t destruction, and optimize for the
        * common case we walk the entire array even in case of errors */
       /* XXX Like many other things around here: this should be outsourced */
-      if(np > namelist){
-         j = PTR2SIZE(np - namelist) * sizeof(*sep);
+      if(np > nmadat){
+         j = PTR2SIZE(np - nmadat) * sizeof(*sep);
          sep = n_lofi_alloc(j);
          memset(sep, 0, j);
 
-         for(j = 0, nq = namelist; *nq != NULL; ++j, ++nq){
+         for(j = 0, nq = nmadat; *nq != NULL; ++j, ++nq){
             char *xsave, *x, *y;
 
             sep[j].ss_body = x = xsave = *nq;
@@ -720,10 +722,10 @@ jat_where_default:
             continue;
 
          flags &= ~a_TMP;
-         if(np > namelist){
-            for(nq = namelist; *nq != NULL; ++nq){
+         if(np > nmadat){
+            for(nq = nmadat; *nq != NULL; ++nq){
                if(**nq == '@'){
-                  if(a_message_match_at(mp, &sep[PTR2SIZE(nq - namelist)])){
+                  if(a_message_match_at(mp, &sep[PTR2SIZE(nq - nmadat)])){
                      flags |= a_TMP;
                      break;
                   }
@@ -753,7 +755,7 @@ jat_where_default:
 jnamesearch_sepfree:
       if(sep != NULL){
 #ifdef HAVE_REGEX
-         for(j = PTR2SIZE(np - namelist); j-- != 0;){
+         for(j = PTR2SIZE(np - nmadat); j-- != 0;){
             if(sep[j].ss_fieldre != NULL)
                regfree(sep[j].ss_fieldre);
             if(sep[j].ss_bodyre != NULL)
@@ -812,10 +814,8 @@ jcolonmod_mark:
 
    assert(!(flags & a_ERROR));
 jleave:
-   if(flags & a_ALLOC){
-      n_free(namelist);
-      n_lofi_free(a_message_lexstr.s);
-   }
+   if(flags & a_ALLOC)
+      n_lofi_free(nmadat_lofi);
    NYD_LEAVE;
    return (flags & a_ERROR) ? -1 : 0;
 
@@ -868,53 +868,66 @@ a_message_check(int mno, int f){
 }
 
 static int
-a_message_scan(char const **sp)
-{
+a_message_scan(struct a_message_speclex *mslp){
    struct a_message_lex const *lp;
-   char *cp2;
-   char const *cp;
-   int rv, c, inquote, quotec;
+   char *cp, c;
+   int rv;
    NYD_ENTER;
 
    rv = a_MESSAGE_T_EOL;
 
-   cp = *sp;
-   cp2 = a_message_lexstr.s;
-   c = *cp++;
+   /* Empty cap's even for IGNORE_EMPTY (quoted empty tokens produce output) */
+   for(;; mslp->msl_cap = mslp->msl_cap->ca_next){
+      if(mslp->msl_cap == NULL)
+         goto jleave;
 
-   /* strip away leading white space */
-   while(blankchar(c))
-      c = *cp++;
-
-   /* If no characters remain, we are at end of line, so report that */
-   if(c == '\0'){
-      *sp = --cp;
-      goto jleave;
+      cp = mslp->msl_cap->ca_arg.ca_str.s;
+      if((c = *cp++) != '\0')
+         break;
    }
 
    /* Select members of a message thread */
    if(c == '&'){
-      if(*cp == '\0' || spacechar(*cp)){
-         a_message_lexstr.s[0] = '.';
-         a_message_lexstr.s[1] = '\0';
-         *sp = cp;
+      c = *cp;
+      if(c == '\0' || spacechar(c)){
+         mslp->msl_str = mslp->msl__smallstrbuf;
+         mslp->msl_str[0] = '.';
+         mslp->msl_str[1] = '\0';
+         if(c == '\0')
+            mslp->msl_cap = mslp->msl_cap->ca_next;
+         else{
+jshexp_err:
+            n_err(_("Message list: invalid syntax: %s (in %s)\n"),
+               n_shexp_quote_cp(cp, FAL0),
+               n_shexp_quote_cp(mslp->msl_input_orig, FAL0));
+            rv = a_MESSAGE_T_ERROR;
+            goto jleave;
+         }
          rv = a_MESSAGE_T_DOT | INT_MIN;
          goto jleave;
       }
       rv = INT_MIN;
-      c = *cp++;
+      ++cp;
    }
 
    /* If the leading character is a digit, scan the number and convert it
     * on the fly.  Return a_MESSAGE_T_NUMBER when done */
    if(digitchar(c)){
-      a_message_lexno = 0;
-      do{
-         a_message_lexno = (a_message_lexno * 10) + c - '0';
-         *cp2++ = c;
-      }while((c = *cp++, digitchar(c)));
-      *cp2 = '\0';
-      *sp = --cp;
+      mslp->msl_no = 0;
+      do
+         mslp->msl_no = (mslp->msl_no * 10) + c - '0'; /* XXX inline atoi */
+      while((c = *cp++, digitchar(c)));
+
+      if(c == '\0')
+         mslp->msl_cap = mslp->msl_cap->ca_next;
+      else{
+         --cp;
+         /* This could be a range */
+         if(c == '-')
+            mslp->msl_cap->ca_arg.ca_str.s = cp;
+         else
+            goto jshexp_err;
+      }
       rv |= a_MESSAGE_T_NUMBER;
       goto jleave;
    }
@@ -925,19 +938,27 @@ a_message_scan(char const **sp)
     * practice because a subject string (LIST) could never been matched
     * this way */
    if (c == '(') {
-      ui32_t level = 1;
-      inquote = 0;
-      *cp2++ = c;
+      bool_t inquote;
+      ui32_t level;
+      char *tocp;
+
+      (tocp = mslp->msl_str = mslp->msl_cap->ca_arg.ca_str.s)[0] = '(';
+      ++tocp;
+      level = 1;
+      inquote = FAL0;
       do {
-         if ((c = *cp++&0377) == '\0') {
+         if ((c = *cp++) == '\0') {
 jmtop:
             n_err(_("Missing )\n"));
+            n_err(_("P.S.: message specifications are now shell tokens, "
+               "making it necessary to enclose IMAP search expressions "
+               "in (single) quotes, e.g., '(from \"me\")'\n"));
             rv = a_MESSAGE_T_ERROR;
             goto jleave;
          }
          if (inquote && c == '\\') {
-            *cp2++ = c;
-            c = *cp++&0377;
+            *tocp++ = c;
+            c = *cp++;
             if (c == '\0')
                goto jmtop;
          } else if (c == '"')
@@ -952,57 +973,37 @@ jmtop:
             /* Replace unquoted whitespace by single space characters, to make
              * the string IMAP SEARCH conformant */
             c = ' ';
-            if (cp2[-1] == ' ')
-               --cp2;
+            if (tocp[-1] == ' ')
+               --tocp;
          }
-         *cp2++ = c;
+         *tocp++ = c;
       } while (c != ')' || level > 0);
-      *cp2 = '\0';
-      *sp = cp;
+      *tocp = '\0';
+      if(*cp != '\0')
+         goto jshexp_err;
+      mslp->msl_cap = mslp->msl_cap->ca_next;
       rv |= a_MESSAGE_T_OPEN;
       goto jleave;
    }
 
    /* Check for single character tokens; return such if found */
    for(lp = a_message_singles;
-         PTRCMP(lp, <, &a_message_singles[n_NELEM(a_message_singles)]); ++lp)
+         PTRCMP(lp, <, &a_message_singles[n_NELEM(a_message_singles)]); ++lp){
       if(c == lp->ml_char){
-         a_message_lexstr.s[0] = c;
-         a_message_lexstr.s[1] = '\0';
-         *sp = cp;
-         rv |= lp->ml_token;
+         mslp->msl_str = mslp->msl__smallstrbuf;
+         mslp->msl_str[0] = c;
+         mslp->msl_str[1] = '\0';
+         if(*cp != '\0')
+            goto jshexp_err;
+         mslp->msl_cap = mslp->msl_cap->ca_next;
+         rv = lp->ml_token;
          goto jleave;
       }
+   }
 
-   /* We've got a string!  Copy all the characters of the string into
-    * a_message_lexstr, until we see a null, space, or tab.  If the lead
-    * character is a " or ', save it and scan until you get another */
-   quotec = 0;
-   if (c == '\'' || c == '"') {
-      quotec = c;
-      c = *cp++;
-   }
-   while (c != '\0') {
-      if (quotec == 0 && c == '\\' && *cp != '\0')
-         c = *cp++;
-      if (c == quotec) {
-         ++cp;
-         break;
-      }
-      if (quotec == 0 && blankchar(c))
-         break;
-      if (PTRCMP(cp2 - a_message_lexstr.s, <, a_message_lexstr.l))
-         *cp2++ = c;
-      c = *cp++;
-   }
-   if (quotec && c == 0) {
-      n_err(_("Missing %c\n"), quotec);
-      rv = a_MESSAGE_T_ERROR;
-      goto jleave;
-   }
-   *sp = --cp;
-   *cp2 = '\0';
-   rv |= a_MESSAGE_T_STRING;
+   mslp->msl_cap = mslp->msl_cap->ca_next;
+   mslp->msl_str = --cp;
+   rv = a_MESSAGE_T_STRING;
 jleave:
    NYD_LEAVE;
    return rv;
@@ -1483,27 +1484,89 @@ touch(struct message *mp){
 }
 
 FL int
-getmsglist(char const *buf, int *vector, int flags)
+n_getmsglist(char const *buf, int *vector, int flags,
+   struct n_cmd_arg **capp_or_null)
 {
    int *ip, mc;
    struct message *mp;
    NYD_ENTER;
 
    n_pstate &= ~n_PS_ARGLIST_MASK;
+   n_pstate |= n_PS_MSGLIST_DIRECT;
    a_message_list_last_saw_d = a_message_list_saw_d;
    a_message_list_saw_d = FAL0;
 
-   if(msgCount == 0){
-      *vector = 0;
+   *vector = 0;
+   if(capp_or_null != NULL)
+      *capp_or_null = NULL;
+   if(*buf == '\0'){
       mc = 0;
       goto jleave;
    }
 
-   n_pstate |= n_PS_MSGLIST_DIRECT;
+   /* TODO Parse the message spec into an ARGV; this should not happen here,
+    * TODO but instead cmd_arg_parse() should feed in the list of parsed tokens
+    * TODO to getmsglist(); as of today there are multiple getmsglist() users
+    * TODO though, and they need to deal with that, then, too */
+   /* C99 */{
+      n_CMD_ARG_DESC_SUBCLASS_DEF(getmsglist, 1, pseudo_cad){
+         {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_OPTION |
+               n_CMD_ARG_DESC_GREEDY | n_CMD_ARG_DESC_HONOUR_STOP,
+            n_SHEXP_PARSE_TRIM_IFSSPACE | n_SHEXP_PARSE_IFS_VAR |
+               n_SHEXP_PARSE_IGNORE_EMPTY}
+      }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+      struct n_cmd_arg_ctx cac;
 
-   if(a_message_markall(buf, flags) < 0){
-      mc = -1;
-      goto jleave;
+      cac.cac_desc = n_CMD_ARG_DESC_SUBCLASS_CAST(&pseudo_cad);
+      cac.cac_indat = buf;
+      cac.cac_inlen = UIZ_MAX;
+      cac.cac_msgflag = flags;
+      cac.cac_msgmask = 0;
+      if(!n_cmd_arg_parse(&cac)){
+         mc = -1;
+         goto jleave;
+      }else if(cac.cac_no == 0){
+         mc = 0;
+         goto jleave;
+      }else{
+         /* Is this indeed a (maybe optional) message list and a target? */
+         if(capp_or_null != NULL){
+            struct n_cmd_arg *cap, **lcapp;
+
+            if((cap = cac.cac_arg)->ca_next == NULL){
+               *capp_or_null = cap;
+               mc = 0;
+               goto jleave;
+            }
+            for(;;){
+               lcapp = &cap->ca_next;
+               if((cap = *lcapp)->ca_next == NULL)
+                  break;
+            }
+            *capp_or_null = cap;
+            *lcapp = NULL;
+
+            /* In the list-and-target mode we have to take special care, since
+             * some commands use special call conventions historically (use the
+             * MBOX, search for a message, whatever).
+             * Thus, to allow things like "certsave '' bla" or "save '' ''",
+             * watch out for two argument form with empty token first.
+             * This special case is documented at the prototype */
+            if(cac.cac_arg->ca_next == NULL &&
+                  cac.cac_arg->ca_arg.ca_str.s[0] == '\0'){
+               mc = 0;
+               goto jleave;
+            }
+         }
+
+         if(msgCount == 0){
+            mc = 0;
+            goto jleave;
+         }else if((mc = a_message_markall(buf, cac.cac_arg, flags)) < 0){
+            mc = -1;
+            goto jleave;
+         }
+      }
    }
 
    ip = vector;

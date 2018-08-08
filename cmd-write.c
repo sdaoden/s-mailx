@@ -41,72 +41,40 @@
 
 /* Save/copy the indicated messages at the end of the passed file name.
  * If mark is true, mark the message "saved" */
-static int     save1(char *str, int domark, char const *cmd,
-                  struct n_ignore const *itp, int convert, int sender_record,
-                  int domove);
-
-/* Snarf the file from the end of the command line and return a pointer to it.
- * If there is no file attached, return the mbox file.  Put a null in front of
- * the file name so that the message list processing won't see it, unless the
- * file name is the only thing on the line, in which case, return 0 in the
- * reference flag variable */
-static char *  snarf(char *linebuf, bool_t *flag, bool_t usembox);
+static int a_cwrite_save1(void *vp, struct n_ignore const *itp,
+            int convert, bool_t domark, bool_t domove);
 
 static int
-save1(char *str, int domark, char const *cmd, struct n_ignore const *itp,
-   int convert, int sender_record, int domove)
+a_cwrite_save1(void *vp, struct n_ignore const *itp,
+   int convert, bool_t domark, bool_t domove)
 {
    ui64_t mstats[1], tstats[2];
    enum n_fopen_state fs;
-   int last, *msgvec, *ip;
    struct message *mp;
    char *file, *cp, *cq;
-   char const *disp, *shell;
    FILE *obuf;
-   bool_t success, isflag;
-   NYD_ENTER;
+   char const *shell, *disp;
+   bool_t success;
+   int last, *msgvec, *ip;
+   struct n_cmd_arg *cap;
+   struct n_cmd_arg_ctx *cacp;
+   NYD2_ENTER;
 
-   success = FAL0;
+   cacp = vp;
+   cap = cacp->cac_arg;
    last = 0;
+   msgvec = cap->ca_arg.ca_msglist;
+   success = FAL0;
    shell = NULL;
    file = NULL;
 
-   msgvec = n_autorec_alloc((msgCount + 2) * sizeof *msgvec);
-   if (sender_record) {
-      for (cp = str; *cp != '\0' && spacechar(*cp); ++cp)
-         ;
-      isflag = (*cp != '\0');
-   } else {
-      if ((file = snarf(str, &isflag, convert != SEND_TOFILE)) == NULL)
-         goto jleave;
-      while(spacechar(*file))
-         ++file;
-      if (*file == '|') {
-         ++file;
-         shell = ok_vlook(SHELL);
-      }
-   }
-
-   if (!isflag) {
-      *msgvec = first(0, MMNORM);
-      msgvec[1] = 0;
-   } else if (getmsglist(str, msgvec, 0) < 0)
-      goto jleave;
-   if (*msgvec == 0) {
-      if (n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) {
-         success = TRU1;
-         goto jleave;
-      }
-      fprintf(n_stdout, _("No messages to %s.\n"), cmd);
-      goto jleave;
-   }
-
-   if (sender_record) {
+   if(!(cap->ca_ent_flags[0] & n_CMD_ARG_DESC_MSGLIST_AND_TARGET)){
       struct name *np;
 
       if((cp = n_header_senderfield_of(message + *msgvec - 1)) == NULL ||
             (np = lextract(cp, GTO | GSKIN)) == NULL){
-         n_err(_("Cannot determine message sender to %s.\n"), cmd);
+         n_err(_("Cannot determine message sender to %s.\n"),
+            cacp->cac_desc->cad_name);
          goto jleave;
       }
       cp = np->n_name;
@@ -121,21 +89,28 @@ save1(char *str, int domark, char const *cmd, struct n_ignore const *itp,
          memcpy(file + 1, cp, sz);
       } else
          file = cp;
-   }
+   }else{
+      cap = cap->ca_next;
+      if((file = cap->ca_arg.ca_str.s)[0] == '\0')
+         file = fexpand("&", FEXP_NVAR);
 
-   /* Pipe target is special TODO hacked in later, normalize flow! */
-   if (shell != NULL) {
-      if ((obuf = Popen(file, "w", shell, NULL, 1)) == NULL) {
-         int esave;
+      while(spacechar(*file))
+         ++file;
+      if (*file == '|') {
+         ++file;
+         shell = ok_vlook(SHELL);
 
-         esave = n_err_no;
-         n_perr(file, esave);
-         n_err_no = esave;
-         goto jleave;
+         /* Pipe target is special TODO hacked in later, normalize flow! */
+         if((obuf = Popen(file, "w", shell, NULL, 1)) == NULL){
+            int esave;
+
+            n_perr(file, esave = n_err_no);
+            n_err_no = esave;
+            goto jleave;
+         }
+         disp = A_("[Piped]");
+         goto jsend;
       }
-      isflag = FAL0;
-      disp = A_("[Piped]");
-      goto jsend;
    }
 
    if ((file = fexpand(file, FEXP_FULL)) == NULL)
@@ -182,9 +157,8 @@ jsend:
    imap_created_mailbox = 0;
 #endif
 
-   srelax_hold();
-   for (ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
-         ++ip) {
+   n_autorec_relax_create();
+   for (ip = msgvec; *ip != 0; ++ip) {
       mp = &message[*ip - 1];
 #ifdef HAVE_IMAP
       if((fs & n_PROTO_MASK) == n_PROTO_IMAP &&
@@ -200,7 +174,7 @@ jsend:
          success = FAL0;
          goto jferr;
       }
-      srelax();
+      n_autorec_relax_unroll();
 
       touch(mp);
       if (domark)
@@ -213,7 +187,7 @@ jsend:
       tstats[0] += mstats[0];
       tstats[1] += mp->m_lines;/* TODO won't work, need target! v15!! */
    }
-   srelax_rele();
+   n_autorec_relax_gut();
 
    fflush(obuf);
 
@@ -249,14 +223,12 @@ jferr:
          n_shexp_quote_cp(file, FAL0), disp,
          /*tstats[1], TODO v15: lines written */ tstats[0]);
    } else if (domark) {
-      for (ip = msgvec; *ip != 0 &&
-            UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount); ++ip) {
+      for (ip = msgvec; *ip != 0; ++ip) {
          mp = message + *ip - 1;
          mp->m_flag &= ~MSAVED;
       }
    } else if (domove) {
-      for (ip = msgvec; *ip != 0 &&
-            UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount); ++ip) {
+      for (ip = msgvec; *ip != 0; ++ip) {
          mp = message + *ip - 1;
          mp->m_flag &= ~(MSAVED | MDELETED);
       }
@@ -268,133 +240,102 @@ jferr:
       setdot(message + (last != 0 ? last - 1 : 0));
    }
 jleave:
-   NYD_LEAVE;
+   NYD2_LEAVE;
    return (success == FAL0);
 }
 
-static char *
-snarf(char *linebuf, bool_t *flag, bool_t usembox)
-{
-   char *cp;
-   NYD_ENTER;
-
-   if ((cp = laststring(linebuf, flag, TRU1)) == NULL) {
-      if (usembox) {
-         *flag = FAL0;
-         cp = fexpand("&", FEXP_NVAR);
-      } else
-         n_err(_("No file specified\n"));
-   }
-   NYD_LEAVE;
-   return cp;
-}
-
 FL int
-c_save(void *v)
-{
-   char *str = v;
+c_save(void *vp){
    int rv;
    NYD_ENTER;
 
-   rv = save1(str, 1, "save", n_IGNORE_SAVE, SEND_MBOX, 0, 0);
+   rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, TRU1, FAL0);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_Save(void *v)
-{
-   char *str = v;
+c_Save(void *vp){
    int rv;
    NYD_ENTER;
 
-   rv = save1(str, 1, "save", n_IGNORE_SAVE, SEND_MBOX, 1, 0);
+   rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, TRU1, FAL0);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_copy(void *v)
-{
-   char *str = v;
+c_copy(void *vp){
    int rv;
    NYD_ENTER;
 
-   rv = save1(str, 0, "copy", n_IGNORE_SAVE, SEND_MBOX, 0, 0);
+   rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, FAL0, FAL0);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_Copy(void *v)
-{
-   char *str = v;
+c_Copy(void *vp){
    int rv;
    NYD_ENTER;
 
-   rv = save1(str, 0, "copy", n_IGNORE_SAVE, SEND_MBOX, 1, 0);
+   rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, FAL0, FAL0);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_move(void *v)
-{
-   char *str = v;
+c_move(void *vp){
    int rv;
    NYD_ENTER;
 
-   rv = save1(str, 0, "move", n_IGNORE_SAVE, SEND_MBOX, 0, 1);
+   rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, FAL0, TRU1);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_Move(void *v)
-{
-   char *str = v;
+c_Move(void *vp){
    int rv;
    NYD_ENTER;
 
-   rv = save1(str, 0, "move", n_IGNORE_SAVE, SEND_MBOX, 1, 1);
+   rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, FAL0, TRU1);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_decrypt(void *v)
-{
-   char *str = v;
+c_decrypt(void *vp){
    int rv;
    NYD_ENTER;
 
-   rv = save1(str, 0, "decrypt", n_IGNORE_SAVE, SEND_DECRYPT, 0, 0);
+   rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_DECRYPT, FAL0, FAL0);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_Decrypt(void *v)
-{
-   char *str = v;
+c_Decrypt(void *vp){
    int rv;
    NYD_ENTER;
 
-   rv = save1(str, 0, "decrypt", n_IGNORE_SAVE, SEND_DECRYPT, 1, 0);
+   rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_DECRYPT, FAL0, FAL0);
    NYD_LEAVE;
    return rv;
 }
 
 FL int
-c_write(void *v)
-{
-   char *str = v;
+c_write(void *vp){
    int rv;
+   struct n_cmd_arg *cap;
+   struct n_cmd_arg_ctx *cacp;
    NYD_ENTER;
 
-   if (str == NULL || *str == '\0')
-      str = savestr(n_path_devnull);
-   rv = save1(str, 0, "write", n_IGNORE_ALL, SEND_TOFILE, 0, 0);
+   if((cap = (cacp = vp)->cac_arg->ca_next)->ca_arg.ca_str.s[0] == '\0')
+      cap->ca_arg.ca_str.s = savestrbuf(n_path_devnull,
+            cap->ca_arg.ca_str.l = strlen(n_path_devnull));
+
+   rv = a_cwrite_save1(vp, n_IGNORE_ALL, SEND_TOFILE, FAL0, FAL0);
    NYD_LEAVE;
    return rv;
 }

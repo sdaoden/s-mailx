@@ -34,7 +34,7 @@ fi
 
 # We need *stealthmua* regardless of $SOURCE_DATE_EPOCH, the program name as
 # such is a compile-time variable
-ARGS='-:/ -# -Sdotlock-disable -Sexpandaddr=restrict'
+ARGS='-Sv15-compat -:/ -# -Sdotlock-disable -Sexpandaddr=restrict'
    ARGS="${ARGS}"' -Smime-encoding=quoted-printable -Snosave -Sstealthmua'
 ADDARG_UNI=-Sttycharset=UTF-8
 CONF=../make.rc
@@ -3409,37 +3409,69 @@ t_e_H_L_opts() {
    printf 'm you@exam.ple\nLine 1.\nBye.\n~.\n' |
    ${MAILX} ${ARGS} -Smta=./.tmta.sh
 
-   ${MAILX} ${ARGS} -ef ./.t.mbox
+   ${MAILX} ${ARGS} -ef ./.t.mbox 2>> "${MBOX}"
    echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -efL @t@me ./.t.mbox
+   ${MAILX} ${ARGS} -efL @t@me ./.t.mbox 2>> "${MBOX}"
    echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -efL @t@you ./.t.mbox
+   ${MAILX} ${ARGS} -efL @t@you ./.t.mbox 2>> "${MBOX}"
    echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -efL '@>@Line 1' ./.t.mbox
+   ${MAILX} ${ARGS} -efL '@>@Line 1' ./.t.mbox 2>> "${MBOX}"
    echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -efL '@>@Hello.' ./.t.mbox
+   ${MAILX} ${ARGS} -efL '@>@Hello.' ./.t.mbox 2>> "${MBOX}"
    echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -efL '@>@Bye.' ./.t.mbox
+   ${MAILX} ${ARGS} -efL '@>@Bye.' ./.t.mbox 2>> "${MBOX}"
    echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -efL '@>@Good bye.' ./.t.mbox
+   ${MAILX} ${ARGS} -efL '@>@Good bye.' ./.t.mbox 2>> "${MBOX}"
    echo ${?} >> "${MBOX}"
 
-   ${MAILX} ${ARGS} -fH ./.t.mbox >> "${MBOX}"
+   ${MAILX} ${ARGS} -fH ./.t.mbox >> "${MBOX}" 2>&1
    echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -fL @t@me ./.t.mbox >> "${MBOX}"
+   ${MAILX} ${ARGS} -fL @t@me ./.t.mbox >> "${MBOX}" 2>&1
    echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -fL @t@you ./.t.mbox >> "${MBOX}"
+   ${MAILX} ${ARGS} -fL @t@you ./.t.mbox >> "${MBOX}" 2>&1
    echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -fL '@>@Line 1' ./.t.mbox >> "${MBOX}"
+   ${MAILX} ${ARGS} -fL '@>@Line 1' ./.t.mbox >> "${MBOX}" 2>&1
    echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -fL '@>@Hello.' ./.t.mbox >> "${MBOX}"
+   ${MAILX} ${ARGS} -fL '@>@Hello.' ./.t.mbox >> "${MBOX}" 2>&1
    echo ${?} >> "${MBOX}"
-   ${MAILX} ${ARGS} -fL '@>@Bye.' ./.t.mbox >> "${MBOX}"
+   ${MAILX} ${ARGS} -fL '@>@Bye.' ./.t.mbox >> "${MBOX}" 2>&1
    echo ${?} >> "${MBOX}"
    ${MAILX} ${ARGS} -fL '@>@Good bye.' ./.t.mbox >> "${MBOX}" 2>>${ERR}
    echo ${?} >> "${MBOX}"
 
    check 1 - "${MBOX}" '1708955574 678'
+
+   ##
+
+   printf 'm me1@exam.ple\n~s subject cab\nLine 1.\n~.\n' |
+   ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+      -r '' -X 'wysh set from=pony1@$LOGNAME'
+   printf 'm me2@exam.ple\n~s subject bac\nLine 12.\n~.\n' |
+   ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+      -r '' -X 'wysh set from=pony2@$LOGNAME'
+   printf 'm me3@exam.ple\n~s subject abc\nLine 123.\n~.\n' |
+   ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+      -r '' -X 'wysh set from=pony3@$LOGNAME'
+
+   ${MAILX} ${ARGS} -S folder-hook=fh-test -X 'define fh-test {
+         echo fh-test size; set autosort=size showname showto
+      }' -fH ./.t.mbox > "${MBOX}" 2>&1
+   check 2-1 0 "${MBOX}" '512787278 418'
+
+   ${MAILX} ${ARGS} -S folder-hook=fh-test -X 'define fh-test {
+         echo fh-test subject; set autosort=subject showname showto
+      }' -fH ./.t.mbox > "${MBOX}" 2>&1
+   check 2-2 0 "${MBOX}" '3606067531 421'
+
+   ${MAILX} ${ARGS} -S folder-hook=fh-test -X 'define fh-test {
+         echo fh-test from; set autosort=from showto
+      }' -fH ./.t.mbox > "${MBOX}" 2>&1
+   check 2-3 0 "${MBOX}" '2506148572 418'
+
+   ${MAILX} ${ARGS} -S folder-hook=fh-test -X 'define fh-test {
+         echo fh-test to; set autosort=to showto
+      }' -fH ./.t.mbox > "${MBOX}" 2>&1
+   check 2-4 0 "${MBOX}" '1221542854 416'
 
    t_epilog
 }

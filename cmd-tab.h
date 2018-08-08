@@ -48,10 +48,10 @@
 #ifdef HAVE_KEY_BINDINGS
 # define a_CTAB_CAD_BIND n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_bind)
 n_CMD_ARG_DESC_SUBCLASS_DEF(bind, 3, a_ctab_cad_bind){
-   {n_CMD_ARG_DESC_WYSH, n_SHEXP_PARSE_TRIM_IFSSPACE},
-   {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_OPTION | n_CMD_ARG_DESC_HONOUR_STOP,
+   {n_CMD_ARG_DESC_SHEXP, n_SHEXP_PARSE_TRIM_IFSSPACE},
+   {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_OPTION | n_CMD_ARG_DESC_HONOUR_STOP,
       n_SHEXP_PARSE_DRYRUN},
-   {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_OPTION |
+   {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_OPTION |
          n_CMD_ARG_DESC_GREEDY | n_CMD_ARG_DESC_GREEDY_JOIN |
          n_CMD_ARG_DESC_HONOUR_STOP,
       n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_TRIM_IFSSPACE}
@@ -61,38 +61,120 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(bind, 3, a_ctab_cad_bind){
 #endif
 
 n_CMD_ARG_DESC_SUBCLASS_DEF(call, 2, a_ctab_cad_call){
-   {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_HONOUR_STOP,
+   {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_HONOUR_STOP,
       n_SHEXP_PARSE_TRIM_IFSSPACE},
-   {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_OPTION |
+   {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_OPTION |
          n_CMD_ARG_DESC_GREEDY | n_CMD_ARG_DESC_HONOUR_STOP,
       n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_TRIM_IFSSPACE}
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
+#ifdef HAVE_TLS
+# define a_CTAB_CAD_CERTSAVE n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_certsave)
+n_CMD_ARG_DESC_SUBCLASS_DEF(certsave, 1, a_ctab_cad_certsave){
+   {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+#else
+# define a_CTAB_CAD_CERTSAVE NULL
+#endif
+
+n_CMD_ARG_DESC_SUBCLASS_DEF(copy, 1, a_ctab_cad_copy){
+   {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
+n_CMD_ARG_DESC_SUBCLASS_DEF(Copy, 1, a_ctab_cad_Copy){
+   {n_CMD_ARG_DESC_MSGLIST | n_CMD_ARG_DESC_GREEDY,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
+n_CMD_ARG_DESC_SUBCLASS_DEF(decrypt, 1, a_ctab_cad_decrypt){
+   {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
+n_CMD_ARG_DESC_SUBCLASS_DEF(Decrypt, 1, a_ctab_cad_Decrypt){
+   {n_CMD_ARG_DESC_MSGLIST | n_CMD_ARG_DESC_GREEDY,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
+n_CMD_ARG_DESC_SUBCLASS_DEF(forward, 1, a_ctab_cad_forward){
+   {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY |
+         n_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
+n_CMD_ARG_DESC_SUBCLASS_DEF(Forward, 1, a_ctab_cad_Forward){
+   {n_CMD_ARG_DESC_MSGLIST | n_CMD_ARG_DESC_GREEDY |
+         n_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
+n_CMD_ARG_DESC_SUBCLASS_DEF(move, 1, a_ctab_cad_move){
+   {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
+n_CMD_ARG_DESC_SUBCLASS_DEF(Move, 1, a_ctab_cad_Move){
+   {n_CMD_ARG_DESC_MSGLIST | n_CMD_ARG_DESC_GREEDY,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
+n_CMD_ARG_DESC_SUBCLASS_DEF(pipe, 1, a_ctab_cad_pipe){
+   {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
 n_CMD_ARG_DESC_SUBCLASS_DEF(readctl, 2, a_ctab_cad_readctl){
-   {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_OPTION | n_CMD_ARG_DESC_HONOUR_STOP,
+   {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_OPTION | n_CMD_ARG_DESC_HONOUR_STOP,
       n_SHEXP_PARSE_TRIM_IFSSPACE},
-   {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_OPTION |
+   {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_OPTION |
          n_CMD_ARG_DESC_GREEDY | n_CMD_ARG_DESC_GREEDY_JOIN |
          n_CMD_ARG_DESC_HONOUR_STOP,
       n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_TRIM_IFSSPACE}
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
+n_CMD_ARG_DESC_SUBCLASS_DEF(resend, 1, a_ctab_cad_resend){
+   {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
+n_CMD_ARG_DESC_SUBCLASS_DEF(Resend, 1, a_ctab_cad_Resend){
+   {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
+n_CMD_ARG_DESC_SUBCLASS_DEF(save, 1, a_ctab_cad_save){
+   {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
+n_CMD_ARG_DESC_SUBCLASS_DEF(Save, 1, a_ctab_cad_Save){
+   {n_CMD_ARG_DESC_MSGLIST | n_CMD_ARG_DESC_GREEDY,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
 #ifdef HAVE_KEY_BINDINGS
 # define a_CTAB_CAD_UNBIND n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_unbind)
 n_CMD_ARG_DESC_SUBCLASS_DEF(unbind, 2, a_ctab_cad_unbind){
-   {n_CMD_ARG_DESC_WYSH, n_SHEXP_PARSE_TRIM_IFSSPACE},
-   {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_HONOUR_STOP, n_SHEXP_PARSE_DRYRUN}
+   {n_CMD_ARG_DESC_SHEXP, n_SHEXP_PARSE_TRIM_IFSSPACE},
+   {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_HONOUR_STOP, n_SHEXP_PARSE_DRYRUN}
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 #else
 # define a_CTAB_CAD_UNBIND NULL
 #endif
 
 n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
-   {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_HONOUR_STOP,
+   {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_HONOUR_STOP,
       n_SHEXP_PARSE_TRIM_IFSSPACE},
-   {n_CMD_ARG_DESC_WYSH | n_CMD_ARG_DESC_OPTION |
+   {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_OPTION |
          n_CMD_ARG_DESC_GREEDY | n_CMD_ARG_DESC_HONOUR_STOP,
       n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
+n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
+   {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
 #else /* ifndef n_CMD_TAB_H */
@@ -192,24 +274,29 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
      DS(N_("Mark <msglist> as not being read")) },
    { n_em, &c_shell, (M | SC | V | X | EM | TRAWDAT), 0, 0, NULL
      DS(N_("Execute <shell-command>")) },
-   { "copy", &c_copy, (A | M | TSTRING), 0, 0, NULL
-     DS(N_("Copy <msglist>, but don't mark them for deletion")) },
-   { "Copy", &c_Copy, (A | M | SC | TSTRING), 0, 0, NULL
+   { "copy", &c_copy, (A | M | TARG), 0, 0,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_copy)
+     DS(N_("Copy [<msglist>], but do not mark them for deletion")) },
+   { "Copy", &c_Copy, (A | M | SC | TARG), 0, 0,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_Copy)
      DS(N_("Like `copy', but derive filename from first sender")) },
    { "chdir", &c_chdir, (M | TWYRA), 0, 1, NULL
      DS(N_("Change CWD to the specified/the login directory")) },
    { "cd", &c_chdir, (M | X | TWYRA), 0, 1, NULL
      DS(N_("Change working directory to the specified/the login directory")) },
-   { "save", &c_save, (A | TSTRING), 0, 0, NULL
-     DS(N_("Append <msglist> to <file>")) },
-   { "Save", &c_Save, (A | SC | TSTRING), 0, 0, NULL
+   { "save", &c_save, (A | TARG), 0, 0,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_save)
+     DS(N_("Append [<msglist>] to <file>")) },
+   { "Save", &c_Save, (A | SC | TARG), 0, 0,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_Save)
      DS(N_("Like `save', but derive filename from first sender")) },
    { "set", &c_set, (G | L | M | X | TWYRA), 0, MAC, NULL
      DS(N_("Print all variables, or set (a) <variable>(s)")) },
    { "unalias", &c_unalias, (M | TWYRA), 1, MAC, NULL
      DS(N_("Un`alias' <name-list> (* for all)")) },
-   { "write", &c_write, (A | TSTRING), 0, 0, NULL
-     DS(N_("Write (append) to <file>")) },
+   { "write", &c_write, (A | TARG), 0, 0,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_write)
+     DS(N_("Write (append) [<msglist>] to [<file>]")) },
    { "from", &c_from, (A | TMSGLST), 0, MMNORM, NULL
      DS(N_("Type (matching) headers of <msglist> (a search specification)")) },
    { "search", &c_from, (A | TMSGLST), 0, MMNORM, NULL
@@ -253,30 +340,29 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
    { "respondsender", &c_replysender, (A | I | R | SC | EM | TMSGLST),
          0, MMNDEL, NULL
      DS(N_("Reply to originator, exclusively")) },
-   { "Resend", &c_Resend, (A | R | SC | EM | TSTRING), 0, MMNDEL, NULL
-     DS(N_("Like `resend', but don't add Resent-* header lines")) },
-   { "Redirect", &c_Resend, (O | A | R | SC | EM | TSTRING), 0, MMNDEL, NULL
-     DS(N_("Obsolete alternative for `Resend'")) },
-   { "resend", &c_resend, (A | R | SC | EM | TSTRING), 0, MMNDEL, NULL
+   { "resend", &c_resend, (A | R | SC | EM | TARG), 0, MMNDEL,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_resend)
      DS(N_("Resend <msglist> to <user>, add Resent-* header lines")) },
-   { "redirect", &c_resend, (O | A | R | SC | EM | TSTRING), 0, MMNDEL, NULL
-     DS(N_("Obsolete alternative for `resend'")) },
-   { "Forward", &c_Forward, (A | R | SC | EM | TSTRING), 0, MMNDEL, NULL
-     DS(N_("Like `forward', but derive filename from <address>")) },
-   { "Fwd", &c_Forward, (O | A | R | SC | EM | TSTRING), 0, MMNDEL, NULL
-     DS(N_("Alias of `Forward'")) },
-   { "forward", &c_forward, (A | R | SC | EM | TSTRING), 0, MMNDEL, NULL
+   { "Resend", &c_Resend, (A | R | SC | EM | TARG), 0, MMNDEL,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_Resend)
+     DS(N_("Like `resend', but do not add Resent-* header lines")) },
+   { "forward", &c_forward, (A | R | SC | EM | TARG), 0, MMNDEL,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_forward)
      DS(N_("Forward <message> to <address>")) },
-   { "fwd", &c_forward, (O | A | R | SC | EM | TSTRING), 0, MMNDEL, NULL
-     DS(N_("Alias of `forward'")) },
+   { "Forward", &c_Forward, (A | R | SC | EM | TARG), 0, MMNDEL,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_Forward)
+     DS(N_("Like `forward', but derive filename from <address>")) },
    { "edit", &c_editor, (G | A | I | S | TMSGLST), 0, MMNORM, NULL
      DS(N_("Edit <msglist>")) },
-   { "pipe", &c_pipe, (A | TSTRING), 0, MMNDEL, NULL
-     DS(N_("Pipe <msglist> to <command>, honouring `ignore' / `retain'")) },
-   { "|", &c_pipe, (A | TSTRING), 0, MMNDEL, NULL
-     DS(N_("Pipe <msglist> to <command>, honouring `ignore' / `retain'")) },
-   { "Pipe", &c_Pipe, (A | TSTRING), 0, MMNDEL, NULL
-     DS(N_("Like `pipe', but bypass `ignore' / `retain'")) },
+   { "pipe", &c_pipe, (A | TARG), 0, MMNDEL,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_pipe)
+     DS(N_("Pipe [<msglist>] to [<command>], honour `ignore' / `retain'")) },
+   { "|", &c_pipe, (A | TARG), 0, MMNDEL,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_pipe)
+     DS(N_("Pipe [<msglist>] to [<command>], honour `ignore' / `retain'")) },
+   { "Pipe", &c_Pipe, (A | TARG), 0, MMNDEL,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_pipe)
+     DS(N_("Like `pipe', but do not honour `ignore' / `retain'")) },
    { "size", &c_messize, (A | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Show size in bytes for <msglist>")) },
    { "hold", &c_preserve, (A | SC | W | TMSGLST), 0, MMNDEL, NULL
@@ -339,13 +425,17 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
      DS(N_("Mark <msglist> as draft")) },
    { "undraft", &c_undraft, (A | M | TMSGLST), 0, 0, NULL
      DS(N_("Un`draft' <msglist>")) },
-   { "move", &c_move, (A | M | TSTRING), 0, 0, NULL
+   { "move", &c_move, (A | M | TARG), 0, 0,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_move)
      DS(N_("Like `copy', but mark messages for deletion")) },
-   { "mv", &c_move, (A | M | TSTRING), 0, 0, NULL
-     DS(N_("Like `copy', but mark messages for deletion")) },
-   { "Move", &c_Move, (A | M | SC | TSTRING), 0, 0, NULL
+   { "Move", &c_Move, (A | M | SC | TARG), 0, 0,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_Move)
      DS(N_("Like `move', but derive filename from first sender")) },
-   { "Mv", &c_Move, (A | M | SC | TSTRING), 0, 0, NULL
+   { "mv", &c_move, (O | A | M | TARG), 0, 0,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_move)
+     DS(N_("Like `copy', but mark messages for deletion")) },
+   { "Mv", &c_Move, (O | A | M | SC | TARG), 0, 0,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_Move)
      DS(N_("Like `move', but derive filename from first sender")) },
    { "noop", &c_noop, (A | M | TWYSH), 0, 0, NULL
      DS(N_("NOOP command if current `file' is accessed via network")) },
@@ -361,9 +451,11 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
 #endif
       (A | TMSGLST), 0, 0, NULL
      DS(N_("Verify <msglist>")) },
-   { "decrypt", &c_decrypt, (A | M | TSTRING), 0, 0, NULL
+   { "decrypt", &c_decrypt, (A | M | TARG), 0, 0,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_decrypt)
      DS(N_("Like `copy', but decrypt first, if encrypted")) },
-   { "Decrypt", &c_Decrypt, (A | M | SC | TSTRING), 0, 0, NULL
+   { "Decrypt", &c_Decrypt, (A | M | SC | TARG), 0, 0,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_Decrypt)
      DS(N_("Like `decrypt', but derive filename from first sender")) },
    { "certsave",
 #ifdef HAVE_TLS
@@ -371,8 +463,8 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
 #else
       NULL,
 #endif
-      (A | TSTRING), 0, 0, NULL
-     DS(N_("Save S/MIME certificates of <msglist> to <file>")) },
+      (A | TARG), 0, MMNDEL, a_CTAB_CAD_CERTSAVE
+     DS(N_("Save S/MIME certificates of [<msglist>] to <file>")) },
    { "rename", &c_rename, (M | TWYRA), 0, 2, NULL
      DS(N_("Rename <existing-folder> to <new-folder>")) },
    { "remove", &c_remove, (M | TWYRA), 0, MAC, NULL

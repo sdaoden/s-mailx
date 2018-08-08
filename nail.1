@@ -392,7 +392,7 @@ The optional
 .Ar file
 argument will undergo some special
 .Sx "Filename transformations"
-(also see
+(as via
 .Ic file ) .
 Note that
 .Ar file
@@ -409,9 +409,19 @@ that starts with a hyphen-minus, prefix with a relative path, as in
 .It Fl H
 Display a summary of
 .Ic headers
-and exit; a configurable summary view is available via the
-.Fl L
-option.
+for the given
+.Ic file
+(depending on
+.Fl u ,
+.Va inbox
+or
+.Ev MAIL ,
+or as specified via
+.Fl f ) .
+A configurable summary view is available via the option
+.Fl L .
+This mode does not honour
+.Va showlast .
 .
 .Mx
 .It Fl h
@@ -428,12 +438,19 @@ to ignore tty interrupt signals.
 Display a summary of
 .Ic headers
 of all messages that match the given
-.Ar spec ,
+.Ar spec
+in the
+.Ic file
+found by the same algorithm used by
+.Fl H ,
 then exit.
 See the section
 .Sx "Specifying messages"
 for the format of
 .Ar spec .
+This mode does not honour
+.Va showlast .
+.Pp
 If the
 .Fl e
 option has been given in addition no header summary is produced,
@@ -2371,7 +2388,7 @@ Mark messages which need special attention.
 .\" .Ss "Specifying messages" {{{
 .Ss "Specifying messages"
 .
-Commands which take
+\*(NQ Commands which take
 .Sx "Message list arguments" ,
 such as
 .Ic from
@@ -2405,7 +2422,7 @@ The current message, the so-called
 .Dq dot .
 .
 .It Ar \&;
-The message that was previously the current message.
+The message that was previously the current message; needs to be quoted.
 .
 .It Ar \&,
 The parent message of the current message,
@@ -2449,6 +2466,7 @@ The last message; In
 ed or
 .Ql thread Ns
 ed mode, the last such message in the according order.
+Needs to be quoted.
 .
 .It Ar & Ns Ar x
 In
@@ -2470,10 +2488,11 @@ the thread beginning with the current message is selected.
 .
 .It Ar *
 All messages.
+.
 .It Ar `
 All messages that were included in the
 .Sx "Message list arguments"
-of the previous command.
+of the previous command; needs to be quoted.
 .
 .It Ar x-y
 An inclusive range of message numbers.
@@ -2597,7 +2616,7 @@ with a tilde
 .Ql ~ :
 .
 .Pp
-.Dl @~f@@a\e.safe\e.domain\e.match$
+.Dl '@~f,c@@a\e.safe\e.domain\e.match$'
 .
 .
 .It Ar :c
@@ -2658,6 +2677,12 @@ messages.
 .
 .Pp
 \*(OP IMAP-style SEARCH expressions may also be used.
+These consist of keywords and criterions, and because
+.Sx "Message list arguments"
+are split into tokens according to
+.Sx "Shell-style argument quoting"
+it is necessary to quote the entire IMAP search expression in order to
+ensure that it remains a single token.
 This addressing mode is available with all types of mailbox
 .Ic folder Ns
 s; \*(UA will perform the search locally as necessary.
@@ -2675,7 +2700,7 @@ this means that the search string is checked against both a list
 constructed as
 .
 .Bd -literal -offset indent
-(\*qname\*q \*qsource\*q \*qlocal-part\*q \*qdomain-part\*q)
+\&'(\*qname\*q \*qsource\*q \*qlocal-part\*q \*qdomain-part\*q)'
 .Ed
 .
 .Pp
@@ -3490,21 +3515,6 @@ rules over the traditional
 .El
 .\" }}}
 .
-.\" .Ss "Message list arguments" {{{
-.Ss "Message list arguments"
-.
-Some commands expect arguments that represent messages (actually
-their symbolic message numbers), as has been documented above under
-.Sx "Specifying messages"
-already.
-If no explicit message list has been specified, the next message
-forward that satisfies the commands requirements will be used,
-and if there are no messages forward of the current message,
-the search proceeds backwards;
-if there are no good messages at all to be found, an error message is
-shown and the command is aborted.
-.\" }}}
-.
 .\" .Ss "Old-style argument quoting" {{{
 .Ss "Old-style argument quoting"
 .
@@ -3553,10 +3563,9 @@ and the following character is treated literally as part of the argument.
 .\" .Ss "Shell-style argument quoting" {{{
 .Ss "Shell-style argument quoting"
 .
-Commands which do not expect message-list arguments use
 .Xr sh 1 Ns
 ell-style, and therefore POSIX standardized, argument parsing and
-quoting rules.
+quoting rules are used by most commands.
 \*(ID Most new commands only support these new rules and are flagged
 \*(NQ, some elder ones can use them with the command modifier
 .Cm wysh ;
@@ -3791,6 +3800,27 @@ Caveats:
 ? echo Quotes ${HOME} and tokens differ! # comment
 ? echo Don"'"t you worry$'\ex21' The sun shines on us. $'\eu263A'
 .Ed
+.\" }}}
+.
+.\" .Ss "Message list arguments" {{{
+.Ss "Message list arguments"
+.
+Many commands operate on message list specifications, as documented in
+.Sx "Specifying messages" .
+The argument input is first split into individual tokens via
+.Sx "Shell-style argument quoting" ,
+which are then interpreted as the mentioned specifications.
+If no explicit message list has been specified, many commands will
+search for and use the next message forward that satisfies the commands'
+requirements, and if there are no messages forward of the current
+message, the search proceeds backwards;
+if there are no good messages at all to be found, an error message is
+shown and the command is aborted.
+The
+.Va verbose
+output of the command
+.Ic list
+will indicate whether a command searches for a default message, or not.
 .\" }}}
 .
 .\" .Ss "Raw data arguments for codec commands" {{{
@@ -4461,7 +4491,7 @@ Synonym for
 .Mx
 .It Ic certsave
 \*(OP Only applicable to S/MIME signed messages.
-Takes a message list and a filename and saves the certificates
+Takes an optional message list and a filename and saves the certificates
 contained within the message signatures to the named file in both
 human-readable and PEM format.
 The certificates can later be used to send encrypted messages to the
@@ -5122,7 +5152,9 @@ the user has made, open a new mailbox, update the internal variables
 .Va mailbox-resolved
 and
 .Va mailbox-display ,
-and optionally display a summary of
+execute an according
+.Va folder-hook ,
+if one is installed, and optionally display a summary of
 .Ic headers
 if the variable
 .Va header
@@ -5470,8 +5502,8 @@ will remove all headers.
 .It Ic headers
 (h) Show the current group of headers, the size of which depends on
 the variable
-.Va screen ,
-and the style of which can be adjusted with the variable
+.Va screen
+in interactive mode, and the format of which can be defined with
 .Va headline .
 If a message-specification is given the group of headers containing the
 first message therein is shown and the message at the top of the screen
@@ -5735,24 +5767,31 @@ command supports the command modifier
 .It Ql "*!*"
 the error number is tracked in
 .Va \&! .
-.It Ql "needs box"
-commands needs an active mailbox, a
+.It Ql needs-box
+whether the command needs an active mailbox, a
 .Ic file .
-.It Ql "ok: batch/interactive"
-command may only be used in interactive or
-.Fl #
-batch mode.
-.It Ql "ok: send mode"
-command can be used in send mode.
-.It Ql "not ok: compose mode"
-command is not available when in compose mode.
-.It Ql "not ok: startup"
-command cannot be used during program startup, e.g., while loading
-.Sx "Resource files" .
-.It Ql "ok: subprocess"
-command is allowed to be used when running in a subprocess instance,
+.It Ql ok:
+indicators whether command is \&.\h'.3m'.\h'.3m'.
+.Bl -tag -compact -width ".It Ql SUBPROCESS"
+.It Ql batch/interactive
+usable in interactive or batch mode
+.Pf ( Fl # ) .
+.It Ql send-mode
+usable in send mode.
+.It Ql subprocess
+allowed to be used when running in a subprocess instance,
 e.g., from within a macro that is called via
 .Va on-compose-splice .
+.El
+.It Ql not ok:
+indicators whether command is not \&.\h'.3m'.\h'.3m'.
+.Bl -tag -compact -width ".It Ql COMPOSE_MODE"
+.It Ql compose-mode
+available in compose mode.
+.It Ql startup
+available during program startup, e.g., in
+.Sx "Resource files" .
+.El
 .It Ql "gabby"
 The command produces
 .Va history-gabby
@@ -6138,12 +6177,9 @@ messages.
 .
 .Mx
 .It Ic pipe
-(pi) Takes a message list and a shell command
+(pi) Takes an optional message list and shell command (that defaults to
+.Va cmd ) ,
 and pipes the messages through the command.
-Without an argument the current message is piped through the command
-given by the
-.Va cmd
-variable.
 If the
 .Va page
 variable is set,
@@ -6289,14 +6325,6 @@ $ LC_ALL=C printf 'echon "hey, "\enread a\enecho $a' |\e
   LC_ALL=C 6<<< 'you' \*(uA -R#X'readctl create 6'
 hey, you
 .Ed
-.
-.It Ic redirect
-\*(OB Same as
-.Ic resend .
-.
-.It Ic Redirect
-\*(OB Same as
-.Ic Resend .
 .
 .Mx
 .It Ic remove
@@ -8688,9 +8716,12 @@ answered.
 .It Ql T
 draft.
 .It Ql +
-start of a collapsed thread.
+\*(ID start of a (collapsed) thread in threaded mode (see
+.Va autosort ,
+.Ic thread ) ;
 .It Ql -
-an uncollapsed thread (TODO ignored for now).
+\*(ID an uncollapsed thread in threaded mode; only used in conjunction with
+.Fl L .
 .It Ql $
 classified as spam.
 .It Ql ~
@@ -12717,6 +12748,8 @@ unless
 .Va inbox
 is set.
 This is assumed to be an absolute pathname.
+If this environmental fallback is also not set, a built-in compile-time
+default is used.
 .
 .Mx
 .It Ev MAILCAPS

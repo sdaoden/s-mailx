@@ -366,51 +366,47 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
 }
 
 FL int
-c_certsave(void *v)
-{
-   int *ip, *msgvec, val;
-   char *file = NULL, *str = v;
+c_certsave(void *vp){
    FILE *fp;
-   bool_t f;
+   int *msgvec, *ip;
+   struct n_cmd_arg_ctx *cacp;
    NYD_ENTER;
 
-   msgvec = n_autorec_alloc((msgCount + 2) * sizeof *msgvec);
-   val = 1;
+   cacp = vp;
+   assert(cacp->cac_no == 2);
 
-   if ((file = laststring(str, &f, TRU1)) == NULL ||
-         (file = fexpand(file, FEXP_LOCAL | FEXP_NOPROTO)) == NULL) {
-      n_err(_("No file to save certificate given\n"));
-      goto jleave;
+   msgvec = cacp->cac_arg->ca_arg.ca_msglist;
+   /* C99 */{
+      char *file, *cp;
+
+      file = cacp->cac_arg->ca_next->ca_arg.ca_str.s;
+      if((cp = fexpand(file, FEXP_LOCAL_FILE | FEXP_NOPROTO)) == NULL ||
+            *cp == '\0'){
+         n_err(_("`certsave': file expansion failed: %s\n"),
+            n_shexp_quote_cp(file, FAL0));
+         vp = NULL;
+         goto jleave;
+      }
+      file = cp;
+
+      if((fp = Fopen(file, "a")) == NULL){
+         n_perr(file, 0);
+         vp = NULL;
+         goto jleave;
+      }
    }
 
-   if (!f) {
-      msgvec[1] = 0;
-      *msgvec = first(0, MMNORM);
-   } else if (getmsglist(str, msgvec, 0) < 0)
-      goto jleave;
-   if (*msgvec == 0) {
-      if (n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT))
-         val = 0;
-      else
-         n_err(_("No applicable messages\n"));
-      goto jleave;
-   }
+   for(ip = msgvec; *ip != 0; ++ip)
+      if(smime_certsave(&message[*ip - 1], *ip, fp) != OKAY)
+         vp = NULL;
 
-   if ((fp = Fopen(file, "a")) == NULL) {
-      n_perr(file, 0);
-      goto jleave;
-   }
-   for (val = 0, ip = msgvec;
-         *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount); ++ip)
-      if (smime_certsave(&message[*ip - 1], *ip, fp) != OKAY)
-         val = 1;
    Fclose(fp);
 
-   if (val == 0)
+   if(vp != NULL)
       fprintf(n_stdout, "Certificate(s) saved\n");
 jleave:
    NYD_LEAVE;
-   return val;
+   return (vp != NULL);
 }
 
 FL bool_t

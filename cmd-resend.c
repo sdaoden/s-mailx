@@ -69,7 +69,7 @@ static int a_crese_reply(int *msgvec, bool_t recipient_record);
 static int a_crese_Reply(int *msgvec, bool_t recipient_record);
 
 /* Forward a message to a new recipient, in the sense of RFC 2822 */
-static int a_crese_fwd(char *str, int recipient_record);
+static int a_crese_fwd(void *vp, bool_t recipient_record);
 
 /* Modify the subject we are replying to to begin with Fwd: */
 static char *a_crese__fwdedit(char *subj);
@@ -329,23 +329,9 @@ a_crese_list_reply(int *msgvec, enum header_flags hf){
    char const *cp, *cp2;
    enum gfield gf;
    struct name *rt, *mft, *np;
-   int *save_msgvec;
    NYD2_ENTER;
 
    n_pstate_err_no = n_ERR_NONE;
-
-   /* TODO Since we may recur and do stuff with message lists we need to save
-    * TODO away the argument vector as long as that isn't done by machinery */
-   /* C99 */{
-      size_t i;
-      for(i = 0; msgvec[i] != 0; ++i)
-         ;
-      ++i;
-      save_msgvec = n_lofi_alloc(sizeof(*save_msgvec) * i);
-      while(i-- > 0)
-         save_msgvec[i] = msgvec[i];
-      msgvec = save_msgvec;
-   }
 
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
 
@@ -555,7 +541,6 @@ jskip_to_next:
    }
 
 jleave:
-   n_lofi_free(save_msgvec);
    NYD2_LEAVE;
    return (msgvec == NULL);
 }
@@ -642,47 +627,34 @@ jleave:
 }
 
 static int
-a_crese_fwd(char *str, int recipient_record){
+a_crese_fwd(void *vp, bool_t recipient_record){
    struct header head;
    struct message *mp;
    enum gfield gf;
-   bool_t f, forward_as_attachment;
-   char *recipient;
-   int rv, *msgvec;
+   bool_t forward_as_attachment;
+   int *msgvec, rv;
+   struct n_cmd_arg *cap;
+   struct n_cmd_arg_ctx *cacp;
    NYD2_ENTER;
 
+   cacp = vp;
+   cap = cacp->cac_arg;
+   msgvec = cap->ca_arg.ca_msglist;
+   cap = cap->ca_next;
    rv = 1;
 
-   if((recipient = laststring(str, &f, TRU1)) == NULL){
-      n_err(_("No recipient specified.\n"));
+   if(cap->ca_arg.ca_str.s[0] == '\0'){
+      if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
+         n_err(_("No recipient specified.\n"));
       n_pstate_err_no = n_ERR_DESTADDRREQ;
       goto jleave;
    }
 
    forward_as_attachment = ok_blook(forward_as_attachment);
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
-   msgvec = n_autorec_alloc((msgCount + 2) * sizeof *msgvec);
-
-   n_pstate_err_no = n_ERR_NODATA;
-   if(!f){
-      *msgvec = first(0, MMNORM);
-      if(*msgvec != 0)
-         msgvec[1] = 0;
-   }else if(getmsglist(str, msgvec, 0) < 0)
-      goto jleave;
-
-   if(*msgvec == 0){
-      n_err(_("No applicable messages.\n"));
-      goto jleave;
-   }
-   if(msgvec[1] != 0){
-      n_err(_("Cannot forward multiple messages at once\n"));
-      n_pstate_err_no = n_ERR_NOTSUP;
-      goto jleave;
-   }
 
    memset(&head, 0, sizeof head);
-   head.h_to = lextract(recipient,
+   head.h_to = lextract(cap->ca_arg.ca_str.s,
          (GTO | (ok_blook(fullnames) ? GFULL : GSKIN)));
 
    mp = &message[*msgvec - 1];
@@ -744,50 +716,34 @@ a_crese_resend1(void *vp, bool_t add_resent){
    struct header head;
    struct name *myto, *myrawto;
    enum gfield gf;
-   char *name, *str;
-   int *ip, *msgvec;
-   bool_t fail;
+   int *msgvec, rv, *ip;
+   struct n_cmd_arg *cap;
+   struct n_cmd_arg_ctx *cacp;
    NYD2_ENTER;
 
-   fail = TRU1;
+   cacp = vp;
+   cap = cacp->cac_arg;
+   msgvec = cap->ca_arg.ca_msglist;
+   cap = cap->ca_next;
+   rv = 1;
+   n_pstate_err_no = n_ERR_DESTADDRREQ;
 
-   str = vp;
-   msgvec = n_autorec_alloc((msgCount + 2) * sizeof *msgvec);
-   name = laststring(str, &fail, TRU1);
-   if(name == NULL){
-      n_err(_("No recipient specified.\n"));
-      n_pstate_err_no = n_ERR_DESTADDRREQ;
+   if(cap->ca_arg.ca_str.s[0] == '\0'){
+      if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
+         n_err(_("No recipient specified.\n"));
       goto jleave;
    }
 
-   n_pstate_err_no = n_ERR_NODATA;
-
-   if(!fail){
-      *msgvec = first(0, MMNORM);
-      if(*msgvec != 0)
-         msgvec[1] = 0;
-   }else if(getmsglist(str, msgvec, 0) < 0)
-      goto jleave;
-
-   if(*msgvec == 0){
-      n_err(_("No applicable messages.\n"));
-      goto jleave;
-   }
-
-   fail = TRU1;
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
 
-   myrawto = nalloc(name, GTO | gf);
+   myrawto = nalloc(cap->ca_arg.ca_str.s, GTO | gf);
    myto = usermap(namelist_dup(myrawto, myrawto->n_type), FAL0);
    myto = n_alternates_remove(myto, TRU1);
-   if(myto == NULL){
-      n_pstate_err_no = n_ERR_DESTADDRREQ;
+   if(myto == NULL)
       goto jleave;
-   }
 
    n_autorec_relax_create();
-   for(ip = msgvec; *ip != 0 && UICMP(z, PTR2SIZE(ip - msgvec), <, msgCount);
-         ++ip){
+   for(ip = msgvec; *ip != 0; ++ip){
       struct message *mp;
 
       mp = &message[*ip - 1];
@@ -811,11 +767,11 @@ a_crese_resend1(void *vp, bool_t add_resent){
    }
    n_autorec_relax_gut();
 
-   fail = FAL0;
    n_pstate_err_no = n_ERR_NONE;
+   rv = 0;
 jleave:
    NYD2_LEAVE;
-   return (fail != FAL0);
+   return rv;
 }
 
 FL int
@@ -913,7 +869,7 @@ c_forward(void *vp){
    int rv;
    NYD_ENTER;
 
-   rv = a_crese_fwd(vp, 0);
+   rv = a_crese_fwd(vp, FAL0);
    NYD_LEAVE;
    return rv;
 }
@@ -923,7 +879,7 @@ c_Forward(void *vp){
    int rv;
    NYD_ENTER;
 
-   rv = a_crese_fwd(vp, 1);
+   rv = a_crese_fwd(vp, TRU1);
    NYD_LEAVE;
    return rv;
 }

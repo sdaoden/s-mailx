@@ -650,10 +650,17 @@ a_cmd__dispc(struct message *mp, char const *a)
       i = a[6];
    if (mp->m_flag & MFLAGGED)
       i = a[7];
-   if (mb.mb_threaded == 1 && mp->m_collapsed > 0)
-      i = a[11];
-   if (mb.mb_threaded == 1 && mp->m_collapsed < 0)
-      i = a[10];
+   if (mb.mb_threaded == 1) { /* TODO bad, and m_collapsed is weird */
+      /* TODO So this does not work because of weird thread handling and
+       * TODO intermixing view and controller except when run via -L from
+       * TODO command line; in general these flags should go and we need
+       * TODO specific *headline* formats which always work and indicate
+       * TODO whether a message is in a thread, the head of a subthread etc. */
+      if (mp->m_collapsed > 0)
+         i = a[11];
+      else if (mp->m_collapsed < 0)
+         i = a[10];
+   }
    NYD2_LEAVE;
    return i;
 }
@@ -850,7 +857,8 @@ jdot_unsort:
    } else { /* threaded */
       g = 0;
       mq = threadroot;
-      for (mp = threadroot; mp; mp = next_in_thread(mp))
+      for (mp = threadroot; mp; mp = next_in_thread(mp)){
+         /* TODO thread handling needs rewrite, m_collapsed must go */
          if (visible(mp) &&
                (mp->m_collapsed <= 0 ||
                 PTRCMP(mp, ==, message + msgspec - 1))) {
@@ -867,6 +875,7 @@ jdot_unsort:
                break;
             g++;
          }
+      }
       if (lastmq && (msgspec == -2 ||
             (msgspec == -1 && PTRCMP(mp, ==, message + msgCount)))) {
          g = lastg;
@@ -977,7 +986,7 @@ jerr:
       if (msgCount == 0) {
          fprintf(n_stdout, _("At EOF\n"));
          rv = 0;
-      } else if (getmsglist(n_UNCONST(/*TODO*/ args), msgvec, 0) > 0) {
+      } else if (n_getmsglist(n_UNCONST(/*TODO*/args), msgvec, 0, NULL) > 0) {
          setdot(message + msgvec[0] - 1);
          msgvec[1] = 0;
          rv = c_headers(msgvec);
@@ -1044,28 +1053,24 @@ jleave:
 }
 
 FL void
-print_headers(size_t bottom, size_t topx, bool_t only_marked,
+print_headers(int const *msgvec, bool_t only_marked,
    bool_t subject_thread_compress)
 {
    size_t printed;
    NYD_ENTER;
 
-#ifdef HAVE_IMAP
-   if (mb.mb_type == MB_IMAP)
-      imap_getheaders(bottom, topx);
-#endif
    time_current_update(&time_current, FAL0);
 
    n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, n_stdout, FAL0); )
    srelax_hold();
-   for (printed = 0; bottom <= topx; ++bottom) {
-      struct message *mp = message + bottom - 1;
+   for(printed = 0; *msgvec != 0; ++msgvec) {
+      struct message *mp = message + *msgvec - 1;
       if (only_marked) {
          if (!(mp->m_flag & MMARK))
             continue;
       } else if (!visible(mp))
          continue;
-      a_cmd_print_head(printed++, bottom, n_stdout, FAL0,
+      a_cmd_print_head(printed++, *msgvec, n_stdout, mb.mb_threaded,
          subject_thread_compress);
       srelax();
    }

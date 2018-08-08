@@ -517,13 +517,13 @@ FL int c_dotmove(void *v);
 /* Print out the headlines for each message in the passed message list */
 FL int c_from(void *v);
 
-/* Print all message in between and including bottom and topx if they are
- * visible and either only_marked is false or they are MMARKed.
+/* Print all messages in msgvec visible and either only_marked is false or they
+ * are MMARKed.
  * TODO If subject_thread_compress is true then a subject will not be printed
  * TODO if it equals the subject of the message "above"; as this only looks
  * TODO in the thread neighbour and NOT in the "visible" neighbour, the caller
  * TODO has to ensure the result will look sane; DROP + make it work (tm) */
-FL void print_headers(size_t bottom, size_t topx, bool_t only_marked,
+FL void print_headers(int const *msgvec, bool_t only_marked,
          bool_t subject_thread_compress);
 
 /*
@@ -545,8 +545,8 @@ FL int c_show(void *v);
 FL int c_mimeview(void *vp);
 
 /* Pipe messages, honour/don't honour ignored fields, respectively */
-FL int c_pipe(void *v);
-FL int c_Pipe(void *v);
+FL int c_pipe(void *vp);
+FL int c_Pipe(void *vp);
 
 /* Print the first *toplines* of each desired message */
 FL int c_top(void *v);
@@ -647,17 +647,13 @@ FL int c_Followup(void *vp);
 /* ..and a mailing-list reply */
 FL int c_Lreply(void *vp);
 
-/* The 'forward' command */
+/* 'forward' / `Forward' */
 FL int c_forward(void *vp);
-
-/* Similar to forward, saving the message in a file named after the first
- * recipient */
 FL int c_Forward(void *vp);
 
-/* Resend a message list to a third person */
+/* Resend a message list to a third person.
+ * The latter does not add the Resent-* header series */
 FL int c_resend(void *vp);
-
-/* Resend a message list to a third person without adding headers */
 FL int c_Resend(void *vp);
 
 /*
@@ -697,24 +693,24 @@ FL int /* TODO v15*/ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
 
 /* Save a message in a file.  Mark the message as saved so we can discard when
  * the user quits */
-FL int c_save(void *v);
-FL int c_Save(void *v);
+FL int c_save(void *vp);
+FL int c_Save(void *vp);
 
 /* Copy a message to a file without affected its saved-ness */
-FL int c_copy(void *v);
-FL int c_Copy(void *v);
+FL int c_copy(void *vp);
+FL int c_Copy(void *vp);
 
 /* Move a message to a file */
-FL int c_move(void *v);
-FL int c_Move(void *v);
+FL int c_move(void *vp);
+FL int c_Move(void *vp);
 
 /* Decrypt and copy a message to a file.  Like plain `copy' at times */
-FL int c_decrypt(void *v);
-FL int c_Decrypt(void *v);
+FL int c_decrypt(void *vp);
+FL int c_Decrypt(void *vp);
 
 /* Write the indicated messages at the end of the passed file name, minus
  * header and trailing blank line.  This is the MIME save function */
-FL int c_write(void *v);
+FL int c_write(void *vp);
 
 /*
  * collect.c
@@ -1272,9 +1268,17 @@ FL struct message * setdot(struct message *mp);
  * the effect of not being sent back to the system mailbox on exit */
 FL void        touch(struct message *mp);
 
-/* Convert user string of message numbers and store the numbers into vector.
+/* Convert user message spec. to message numbers and store them in vector,
+ * which should be capable to hold msgCount+1 entries (n_msgvec asserts this).
+ * flags is n_cmd_arg_ctx.cac_msgflag == n_cmd_desc.cd_msgflag == enum mflag.
+ * If capp_or_null is not NULL then the last (string) token is stored in here
+ * and not interpreted as a message specification; in addition, if only one
+ * argument remains and this is the empty string, 0 is returned (*vector=0;
+ * this is used to implement n_CMD_ARG_DESC_MSGLIST_AND_TARGET).
+ * A NUL *buf input results in a 0 return, *vector=0, [*capp_or_null=NULL].
  * Returns the count of messages picked up or -1 on error */
-FL int         getmsglist(char const *buf, int *vector, int flags);
+FL int n_getmsglist(char const *buf, int *vector, int flags,
+         struct n_cmd_arg **capp_or_null);
 
 /* Find the first message whose flags&m==f and return its message number */
 FL int         first(int f, int m);
@@ -2171,12 +2175,6 @@ FL bool_t is_prefix(char const *as1, char const *as2);
 /* Reverse solidus quote (" and \) v'alue, and return autorec_alloc()ed */
 FL char *      string_quote(char const *v);
 
-/* Get (and isolate) the last, possibly quoted part of linebuf, set *needs_list
- * to indicate whether getmsglist() et al need to be called to collect
- * additional args that remain in linebuf.  If strip is true possibly
- * surrounding quote characters are removed.  Return NULL on "error" */
-FL char *      laststring(char *linebuf, bool_t *needs_list, bool_t strip);
-
 /* Convert a string to lowercase, in-place and with multibyte-aware */
 FL void        makelow(char *cp);
 
@@ -2544,8 +2542,8 @@ FL FILE *      smime_encrypt_assemble(FILE *hp, FILE *yp);
 FL struct message * smime_decrypt_assemble(struct message *m, FILE *hp,
                      FILE *bp);
 
-/*  */
-FL int         c_certsave(void *v);
+/* `certsave' */
+FL int c_certsave(void *vp);
 
 /* */
 FL bool_t n_tls_rfc2595_hostname_match(char const *host, char const *pattern);

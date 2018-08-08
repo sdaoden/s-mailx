@@ -598,42 +598,48 @@ jexec:
    case n_CMD_ARG_TYPE_MSGLIST:
       /* Message list defaulting to nearest forward legal message */
       if(n_msgvec == NULL)
-         goto jemsglist;
-      if((c = getmsglist(line.s, n_msgvec, cdp->cd_msgflag)) < 0){
+         goto jmsglist_err;
+      if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_msgflag, NULL)) < 0){
          nerrn = n_ERR_NOMSG;
          flags |= a_NO_ERRNO;
          break;
       }
       if(c == 0){
          if((n_msgvec[0] = first(cdp->cd_msgflag, cdp->cd_msgmask)) != 0)
-            n_msgvec[1] = 0;
+            c = 1;
+         else{
+jmsglist_err:
+            if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
+                  (n_poption & n_PO_D_V))
+               fprintf(n_stdout, _("No applicable messages\n"));
+            nerrn = n_ERR_NOMSG;
+            flags |= a_NO_ERRNO;
+            break;
+         }
       }
-      if(n_msgvec[0] == 0){
-jemsglist:
-         if(!(n_pstate & n_PS_HOOK_MASK))
-            fprintf(n_stdout, _("No applicable messages\n"));
-         nerrn = n_ERR_NOMSG;
-         flags |= a_NO_ERRNO;
-         break;
+jmsglist_go:
+      /* C99 */{
+         int *mvp;
+
+         mvp = n_autorec_calloc(c +1, sizeof *mvp);
+         while(c-- > 0)
+            mvp[c] = n_msgvec[c];
+         if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /*XXX*/
+            n_err_no = 0;
+         rv = (*cdp->cd_func)(mvp);
       }
-      if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
-         n_err_no = 0;
-      rv = (*cdp->cd_func)(n_msgvec);
       break;
 
    case n_CMD_ARG_TYPE_NDMLIST:
       /* Message list with no defaults, but no error if none exist */
       if(n_msgvec == NULL)
-         goto jemsglist;
-      if((c = getmsglist(line.s, n_msgvec, cdp->cd_msgflag)) < 0){
+         goto jmsglist_err;
+      if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_msgflag, NULL)) < 0){
          nerrn = n_ERR_NOMSG;
          flags |= a_NO_ERRNO;
          break;
       }
-      if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
-         n_err_no = 0;
-      rv = (*cdp->cd_func)(n_msgvec);
-      break;
+      goto jmsglist_go;
 
    case n_CMD_ARG_TYPE_STRING:
       /* Just the straight string, old style, with leading blanks removed */
@@ -714,6 +720,8 @@ jemsglist:
       cac.cac_desc = cdp->cd_cadp;
       cac.cac_indat = line.s;
       cac.cac_inlen = line.l;
+      cac.cac_msgflag = cdp->cd_msgflag;
+      cac.cac_msgmask = cdp->cd_msgmask;
       if(!n_cmd_arg_parse(&cac)){
          flags |= a_NO_ERRNO;
          break;

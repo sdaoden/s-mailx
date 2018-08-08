@@ -773,20 +773,23 @@ a_coll_forward(char const *ms, FILE *fp, int f)
    enum sendaction action;
    NYD_ENTER;
 
-   msgvec = n_autorec_alloc((size_t)(msgCount + 1) * sizeof *msgvec);
-   if (getmsglist(ms, msgvec, 0) < 0) {
+   if ((rv = n_getmsglist(ms, n_msgvec, 0, NULL)) < 0) {
       rv = n_ERR_NOENT; /* XXX not really, should be handled there! */
       goto jleave;
    }
-   if (*msgvec == 0) {
-      *msgvec = first(0, MMNORM);
-      if (*msgvec == 0) {
+   if (rv == 0) {
+      *n_msgvec = first(0, MMNORM);
+      if (*n_msgvec == 0) {
          n_err(_("No appropriate messages\n"));
          rv = n_ERR_NOENT;
          goto jleave;
       }
-      msgvec[1] = 0;
+      rv = 1;
    }
+   msgvec = n_autorec_calloc(rv +1, sizeof *msgvec);
+   while(rv-- > 0)
+      msgvec[rv] = n_msgvec[rv];
+   rv = 0;
 
    if (f == 'f' || f == 'F' || f == 'u')
       tabst = NULL;

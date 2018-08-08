@@ -657,12 +657,19 @@ enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
    n_CMD_ARG_EM = 1u<<30   /* If error: n_pstate_err_no (4 $! aka. ok_v___em) */
 };
 
-enum n_cmd_arg_desc_flags{/* TODO incomplete, misses getmsglist() */
+enum n_cmd_arg_desc_flags{
    /* - A type */
-   n_CMD_ARG_DESC_STRING = 1u<<0,   /* A !blankspacechar() string */
-   n_CMD_ARG_DESC_WYSH = 1u<<1,     /* sh(1)ell-style quoted */
+   n_CMD_ARG_DESC_SHEXP = 1u<<0,    /* sh(1)ell-style token */
+   /* TODO All MSGLIST arguments can only be used last and are always greedy
+    * TODO (but MUST be _GREEDY, and MUST NOT be _OPTION too!).
+    * MSGLIST_AND_TARGET may create a NULL target */
+   n_CMD_ARG_DESC_MSGLIST = 1u<<1,  /* Message specification(s) */
+   n_CMD_ARG_DESC_NDMSGLIST = 1u<<2,
+   n_CMD_ARG_DESC_MSGLIST_AND_TARGET = 1u<<3,
 
-   n__CMD_ARG_DESC_TYPE_MASK = n_CMD_ARG_DESC_STRING | n_CMD_ARG_DESC_WYSH,
+   n__CMD_ARG_DESC_TYPE_MASK = n_CMD_ARG_DESC_SHEXP |
+         n_CMD_ARG_DESC_MSGLIST | n_CMD_ARG_DESC_NDMSGLIST |
+         n_CMD_ARG_DESC_MSGLIST_AND_TARGET,
 
    /* - Optional flags */
    /* It is not an error if an optional argument is missing; once an argument
@@ -674,10 +681,22 @@ enum n_cmd_arg_desc_flags{/* TODO incomplete, misses getmsglist() */
    n_CMD_ARG_DESC_GREEDY_JOIN = 1u<<18,
    /* Honour an overall "stop" request in one of the arguments (\c@ or #) */
    n_CMD_ARG_DESC_HONOUR_STOP = 1u<<19,
+   /* With any MSGLIST, only one message may be give or ERR_NOTSUP (default) */
+   n_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE = 1u<<20,
 
    n__CMD_ARG_DESC_FLAG_MASK = n_CMD_ARG_DESC_OPTION | n_CMD_ARG_DESC_GREEDY |
-         n_CMD_ARG_DESC_GREEDY_JOIN | n_CMD_ARG_DESC_HONOUR_STOP
+         n_CMD_ARG_DESC_GREEDY_JOIN | n_CMD_ARG_DESC_HONOUR_STOP |
+         n_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE,
+
+   /* We may include something for n_pstate_err_no */
+   n_CMD_ARG_DESC_ERRNO_SHIFT = 21u,
+   n_CMD_ARG_DESC_ERRNO_MASK = (1u<<10) - 1
 };
+#define n_CMD_ARG_DESC_ERRNO_TO_ORBITS(ENO) \
+   (((ui32_t)(ENO)) << n_CMD_ARG_DESC_ERRNO)
+#define n_CMD_ARG_DESC_TO_ERRNO(FLAGCARRIER) \
+   (((ui32_t)(FLAGCARRIER) >> n_CMD_ARG_DESC_ERRNO_SHIFT) &\
+      n_CMD_ARG_DESC_ERRNO_MASK)
 
 #ifdef HAVE_COLOUR
 /* We do have several contexts of colour IDs; since only one of them can be
@@ -1451,12 +1470,8 @@ do{\
    n_PS_ARGLIST_MASK = n_BITENUM_MASK(14, 16),
    n_PS_ARGMOD_LOCAL = 1u<<14,         /* "local" modifier TODO struct CmdCtx */
    n_PS_ARGMOD_VPUT = 1u<<16,          /* "vput" modifier TODO struct CmdCtx */
-   n_PS_MSGLIST_GABBY = 1u<<14,        /* getmsglist() saw something gabby */
+   n_PS_MSGLIST_GABBY = 1u<<14,        /* n_getmsglist() saw something gabby */
    n_PS_MSGLIST_DIRECT = 1u<<15,       /* A msg was directly chosen by number */
-   /* TODO HACK: until v15 PS_MSGLIST_SAW_NO is an indication whether an entry
-    * TODO may be placed in the history or not (grep this, see commands()),
-    * TODO so avoid reusing this bit */
-   n_PS_WYSHLIST_SAW_CONTROL = 1u<<15, /* ..saw C0+ control characters */
 
    n_PS_EXPAND_MULTIRESULT = 1u<<17,   /* Last fexpand() with MULTIOK had .. */
    n_PS_ERRORS_PROMPT = 1u<<18,        /* New error to be reported in prompt */
@@ -1936,12 +1951,14 @@ struct n_cmd_arg_ctx{
    struct n_cmd_arg_desc const *cac_desc; /* Input: description of command */
    char const *cac_indat;     /* Input that shall be parsed */
    size_t cac_inlen;          /* Input length (UIZ_MAX: do a strlen()) */
+   ui32_t cac_msgflag;        /* Input (option): required flags of messages */
+   ui32_t cac_msgmask;        /* Input (option): relevant flags of messages */
    size_t cac_no;             /* Output: number of parsed arguments */
    struct n_cmd_arg *cac_arg; /* Output: parsed arguments */
    char const *cac_vput;      /* "Output": vput prefix used: varname */
 };
 
-struct n_cmd_arg{/* TODO incomplete, misses getmsglist() */
+struct n_cmd_arg{
    struct n_cmd_arg *ca_next;
    char const *ca_indat;   /*[PRIV] Pointer into n_cmd_arg_ctx.cac_indat */
    size_t ca_inlen;        /*[PRIV] of .ca_indat of this arg (not terminated) */
@@ -1949,7 +1966,8 @@ struct n_cmd_arg{/* TODO incomplete, misses getmsglist() */
    ui32_t ca_arg_flags;    /* [Output: _WYSH: copy of parse result flags] */
    ui8_t ca__dummy[4];
    union{
-      struct str ca_str;      /* _STRING, _WYSH */
+      struct str ca_str;      /* _CMD_ARG_DESC_SHEXP */
+      int *ca_msglist;        /* _CMD_ARG_DESC_MSGLIST+ */
    } ca_arg;               /* Output: parsed result */
 };
 
@@ -1957,8 +1975,9 @@ struct n_cmd_desc{
    char const *cd_name;    /* Name of command */
    int (*cd_func)(void*);  /* Implementor of command */
    enum n_cmd_arg_flags cd_caflags;
-   si16_t cd_msgflag;      /* Required flags of msgs */
-   si16_t cd_msgmask;      /* Relevant flags of msgs */
+   ui32_t cd_msgflag;      /* Required flags of msgs */
+   ui32_t cd_msgmask;      /* Relevant flags of msgs */
+   /* XXX requires cmd-tab.h initializer changes ui8_t cd__pad[4];*/
    struct n_cmd_arg_desc const *cd_cadp;
 #ifdef HAVE_DOCSTRINGS
    char const *cd_doc;     /* One line doc for command */
