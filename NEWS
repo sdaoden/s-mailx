@@ -6,6 +6,290 @@ S - n a i l / S - m a i l x  N e w s
   will scroll to the manual's Point-Of-Interest, and pointing
   a web- browser to the "#ANCHOR" of the online manual works.
 
+v14.9.11 ("Tit family enjoying a bath"), 2018-08-08
+---------------------------------------------------
+
+A hot summer bugfix release, but it surely brings in some new
+features, like TLS fingerprinting and `digmsg' message access.
+
+An embarassing number of bugfixes have been seen, to fix IMAP UID
+handling on 32-bit hosts, UTF-8, `readall' with empty lines, rare
+endless iconv(3) loops, false qsort(3)ing of addressee lists,
+crashes due to false user shell quoting, acceptance of "0" port
+numbers, and more.  Most of these cases now have tests.
+
+Credits, in order of commit appearance: Paride Legovini,
+Andrew Gee, Olav Mørkrid, Kevin McCarthy, Michael Dressel,
+Jürgen Bruckner, Robert Elz, Rudolf Sykora, Doug McIlroy,
+Gavin Troy and Jörg Schilling.
+A special credit to Coverity.com again, it found a bug!
+(https://scan.coverity.com/projects/s-nail, project number 444.)
+
+We welcome Andrew Gee, Kevin McCarthy, Michael Dressel,
+Olav Mørkrid and Jürgen Bruckner in THANKS.
+
+NOTES, ChangeLog (packager-affine)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- I have discovered that GnuPG can --export-secret-subkey so that
+  the real/full private key is no longer needed to --sign, and the
+  excerpts of the private one can have a different password, too.
+  So i have created a new for-signing subkey: EEC8C2FF.
+
+  Unfortunately it is not possible to verify new signatures with
+  the old public key, an update is necessary.  For example via
+    https://ftp.sdaoden.eu/steffen.asc
+  or just update 1883A0DD via normal gpg(1).
+
+- Maildir support is now optional but default via OPT_MAILDIR.
+  (Paride Legovini)
+
+- I hope for the last time there has been a change to SSL
+  configuration: i have renamed all ssl* variables to tls*.
+  The old ssl* ones still exist until v15, though, yet obsoletion
+  warnings will be produced.
+  This is so because i expect that in a not too distant future
+  only the term TLS will be around.
+
+  Also the term CipherList was falsely used, it should have been
+  CipherString.
+
+- Most (if not all) commands which take a message list and a file
+  target now use shell-style quoting.  (Before that say `copy'#?
+  scanned backwards over "something possibly quoted", took that
+  off, then treated the rest as a message list.  Now shell tokens
+  are parsed starting at the front, the last is taken off, and
+  anything before that is the message list.)  (Gavin Troy.  2013.)
+
+- `~^#? header show' now optionally show the address type in
+  field 1.  This is backward-incompatible but _only_ applies to
+  non-network addresses.
+
+- We will find ncurses on DragonFly BSD.
+
+- On Solaris tests no longer need GNU cksum(1): the Solaris cksum
+  is different only for whitespace separators.  (Jörg Schilling)
+
+- Any generated files reside in .obj/, and the tests run in there,
+  too.  A "rm -f .obj" should suffice to clean anything up.  Fast.
+
+ChangeLog
+^^^^^^^^^
+
+- `~F'#?, `~f'#?, `~M'#?, `~m'#?, `~U'#? and `~u'#?
+  now default to the current message (the "dot").  (Andrew Gee)
+
+- *indentprefix*#? handling has had its pitfalls when quoting
+  messages.  (Andrew Gee)
+
+- -r#? will again set *from*#? even after -S#? has been used
+  to set *from*.  (Michael Dressel)
+
+- No longer process From: (*from*#?) content via alternates
+  when Sender: (*sender*#?) is set.  (Michael Dressel)
+
+- Because the priority class of headers was not taken into
+  account, it could happen that addressees in Cc: would remain but
+  the same in To: were removed.  (Michael Dressel)
+
+- IMAP accounts for RFC 4551 (and 7162) and supports 64-bit
+  UIDVALIDITY.
+
+- *spamfilter-rate-scanscore*#? could crash if specification
+  did not match program output.
+
+- Shims for TLSv1.3 support, e.g., for *tls-config-pairs*#?.
+
+- Obsoleted *dotlock-ignore-error*, added *dotlock-disable*#?.
+  (Paride Legovini)
+
+- In compose-mode, removing the In-Reply-To: header breaks an old,
+  and starts a new thread.  (Doug McIlroy)
+
+- Added new *forward-inject-tail*#?, *quote-inject-head*#?
+  and *quote-inject-tail* variables, and extended the meaning
+  of *quote*#?.
+
+  All of *{forward,quote}-inject-{head,tail}* now support
+  a compose-mode specific set of formats (see
+  *quote-inject-head*#?), for now a few only.
+  (This adds meaning onto the content of *forward-inject-head*#?
+  as introduced in v14.9.0.)
+
+  The generated output honours *quote-fold*#?, which now takes
+  an optional third argument in order to produce better output.
+
+  While here, introduce the new command escape `~Q'#? which
+  performs full *quote*#? cycles on the given message list.
+
+- Fcc: headers are now understood in -t#? templates or when
+  placed in compose mode (`~v'#?, *editalong*#? etc.).
+  Since each such header only takes one addressee, no quoting
+  issues apply, the entire header body is the value.
+
+- `~|'#? will pass the entire message including headers when
+  used as "~||", e.g., prepend a file-carbon-copy message header:
+
+    ~|| echo Fcc: /tmp/test; cat
+
+- New `tls'#? multiplexer command.  Yet primitive and only
+  supports a `fingerprint' subcommand.  Supports `vput'#?.
+
+  The new *tls-fingerprint*#? variable chain aids in adding
+  support for connection verification without an installed CA
+  certificate pool in conjunction with the new
+  *tls-fingerprint-digest*#? chain.
+
+  Consequently *smime-sign-message-digest* has been renamed to
+  *smime-sign-digest*#? (old version will cease in v15).
+  The latter now defaults to SHA512 if possible.
+
+- New MLE commands mle-go-screen-bwd and mle-go-screen-fwd to go
+  backward and forward one screenful.
+  And a new mle-clear-screen command.  (Todd C. Miller)
+
+- New *expandaddr*#? setting "shquote" will evaluate addresses
+  as if specified within $'' shell-quotes for -b#?, -c#?,
+  and all direct command line receivers.  This allows for, e.g.,
+
+    $ s-nail -Sexpandaddr=shquote '\$contact-mail'
+
+- *quote-as-attachment*#? no longer needs to be set before
+  compose mode is entered in order to become honoured.
+
+- Even for -H#? or -L#? *folder-hook*#?s will now be called.
+  Possible sorting is also applied.
+
+- `='#? now optionally supports message list arguments and the
+  `vput'#? modifier in order to store the result list.
+
+  The new `digmsg'#? multiplexer adds some message access, just
+  like `~^'#? does in compose mode.  In fact the set of commands
+  is shared, yet `digmsg' is only read-only and cannot access
+  attachments until v15, however.  For example,
+
+  ?0[steffen@essex nail.git]$ cat > /tmp/z.rc <<'_EOT'
+  define one {
+     if [ "${#}" -gt 0 ]
+        digmsg create $1 - # no `read'/`readall' overlay but stdout
+        #digmsg $1 header list
+        digmsg $1 header show subject
+        digmsg remove $1
+        shift
+        \eval xcall one "$@"
+     \end
+  }
+  define all {
+     local set all # localize this (localopts yes would do too)
+     vput = all *
+     echo all: $all
+     eval call one $all
+  }
+_EOT
+  ?0[steffen@essex nail.git]$ MAILRC=/tmp/z.rc \
+    .obj/s-nail -:u -Snoheader -Squiet -Rf /tmp/z
+  ? call all
+  all: 1 2 3
+  212 Subject
+  Re: [S-mailx] FYI: after USB stick loss i have rotated keys, plus
+
+  212 Subject
+  Re: Problem with page?
+
+  212 Subject
+  Re: s-nail Source ...
+
+  ? x
+
+git(1) shortlog (edited)
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+Steffen Nurpmeso (203):
+81e5960e nail.1, nail.rc: fix spelling (Paride Legovini)
+bde9329f FIX hasty [ab7aab0e] (Account for drafted 64-bit IMAP UIDs..)..
+5169d3ba collect(): ~[FfMmUu]: should default to the "dot" (Andrew Gee)
+068d202d THANKS: Andrew Gee
+662d9762 send.c:sendpart(): fix *indentprefix* handling for SEND_QUOTE (Andrew
+        Gee)
+ca61f59a Elder groff mdoc do not have str-Lb-libterminfo (Olav Mørkrid)
+a234b4ec GSSAPI: fix gss_buffer_desc usage (since EVER!) (Kevin McCarthy)..
+89fc94e7 THANKS: Kevin McCarthy
+4c67719c makefile: do not "exit 1" in __prestop, exit 0 instead (Paride
+        Legovini)
+2978064a nail.1: clarify MBOX locking strategy (Paride Legovini)
+0994c919 n_utf8_to_utf32(): FIX extending cast, broken in [5f951f7b] (on
+        2018-01-09!)
+92c49370 n_iconv_str(): FIX possible endless loop due to insufficient growth
+12216988 Fix: allow -r to set from after -Sfrom= (Michael Dressel)..
+8a5a123c THANKS: Michael Dressel
+c1737baf Do not process From: alternates if Sender: is set (Michael Dressel)..
+9e101e33 a_nag_elide_qsort(): FIX false sorting (Michael Dressel)..
+b6bc7c4e THANKS: Olav Mørkrid
+094689b0 quoteflt_dummy() usage: FIX usage without preceeding _reset() (Jürgen
+        Bruckner)
+79717b95 THANKS: Jürgen Bruckner
+bfca0fae IMAP: account for RFC 4551 (and 7162): support 64-bit UIDVALIDITY
+4ed7448b resend_msg(): FIX: actually honour delayed errors!
+9408d084 _spamfilter_interact(): FIX: *spamfilter-rate-scanscore* could cause
+        crashes..
+a94e7323 a_cmisc_echo(): for `echoerr', ensure *log-prefix* is placed
+8412796a n_cmd_arg_parse(): FIX token error -> crash, e.g. "-RX 'bind;echo $?'
+        -Xx"..
+b4c80a76 c_readall(): FIX handling of empty lines (with test)
+12969c7a Add shims to support TLSv1.3 via OpenSSL
+a6bd8490 Add notes on (yet) impossible fullfillment of user glob desires
+        (Robert Elz)
+bbc1b6b2 Now with `wysh set', obsolete `varedit'
+f4c83d11 Truly support timeout on connect(2)s (Olav Mørkrid)
+dbdf875c nail.1: *ssl-ca-dir* requires special preparation (Olav Mørkrid)
+7fde1386 cc-test.sh: add t_behave_quote_a_cmd_escapes() (Andrew Gee)
+7f32bdc4 make.rc,make-config.sh: add OPT_USAN (UndefinedBehaviorSanitizer)
+ea358268 ok_b_ssl_no_default_ca: forgot to make that obsolete! (Olav Mørkrid)
+2748ee6a a_main_getopt(): treat --version as -V
+bf3185a7 Drop $OSENV; instead stuff for *verbose* `version' (Paride Legovini)
+0f48cacd cc-test.sh: --check-only: keep files on err if in a repo (Paride
+        Legovini)
+165f6c10 Some: fix loosing->losing typo (Paride Legovini)
+d363bd86 nail.1: (re)add doc. on PKCS#12 Cert/Key bundles (Rudolf Sykora)
+4602b425 nail.1: (re)add s_client certificate fetch (Olav Mørkrid)
+f1b42535 Obsolete *dotlock-ignore-error*, add *dotlock-disable* (Paride
+        Legovini)
+083306aa Add OPT_MAILDIR, by default enabled (Paride Legovini)
+d4696774 In compose-mode, removing In-Reply-To: starts thread (Doug McIlroy)..
+7869c1c4 Support "#." message attachment <> the "dot"
+a0bce049 Add *forward-inject-tail*, *quote-inject-{head,tail}*, `~Q'..
+d7ec16ec *quote-fold*: add optional third argument to improve break algo
+e4a8ad28 make-release.txt: new signing OpenPGP subkey
+0065d878 Fix: allow -r to set from after -Sfrom=, II. (Michael Dressel)..
+6aa3e44a Do not process From: alternates if Sender: is set, II (Michael
+        Dressel)
+10cdea44 a_nag_elide_qsort(): FIX false sorting, II (Michael Dressel)[..]
+3e0fa398 Fix (BWDIC!) `~^ header show': optionally show address type in field
+        1..
+83f0ebaa Support Fcc: headers in -t'emplates and editor..
+8961182f `edit',`visual': do allow multiple edits in non-interactive mode
+5651b570 Add header editing for new `~||' (`~|' + |)
+3a68df5a a_sendout_attach_msg(): MIME for Content-Description:!
+3f85801e ([BWDIC!]) Big notational warp of SSL to TLS; drop rand EGD support
+bc2e369d Add `tls' command..
+059e5541 Add *tls-fingerprint-digest*;
+        *smime-sign-message-digest*->*smime-sign-digest*
+a0efe35a MLE: add mle-go-screen-bwd and mle-go-screen-fwd
+23c1adaa Add *tls-fingerprint* chain for CA-less connection verifications
+7369013a MLE: add mle-clear-screen command (Todd C. Miller)..
+c065b8c6 (BWDIC!) Add support for BLAKE2* and SHA3-* MDigests..
+c00022e6 -b,-c,to-addr: support "as-if $''" via *expandaddr*=shquote
+c1ae14f0 (BWDIC!) n_msglist(): warp to shell quoting rules!
+f0e3b59e (BWDIC!) For -H and -L: call folder hook, (sort)++
+aaf632a5 Drop laststring()! (Gavin Troy; in December 2013!)
+6301c5f2 *quote-as-attachment*: handle in compose-mode, very last..
+52dfe017 With *posix* honour `alternates' only for replies/aliases (Michael
+        Dressel)
+dee9c247 Solaris: native cksum(1) works with WS strip via sed(1) (Jörg
+        Schilling)!
+ab0313ff `=': support `vput' and an optional <msglist> argument
+e92385e3 Add `digmsg', a yet primitive "message info digger"
+
 v14.9.10 ("(40th Mail anniversary) Blue tit"), 2018-03-25
 ---------------------------------------------------------
 
@@ -116,50 +400,7 @@ ChangeLog
   -D#60 flag has been reintroduced (sets *disconnected*#622 right
   away, was not reinstantiated with the rest of the IMAP support.)
 
-git(1) shortlog (edited)
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-Steffen Nurpmeso (71):
-196eb82d make-release.inc: umask 0022 for balls (William Yodlowsky, Stuart
-        Henderson)
-4103ad5a THANKS: Stuart Henderson
-9ea3a4f1 make-config.sh: prefer libidn over libidn2 (Stuart Henderson)
-47c143fb FIX the FIX: fix real cause, [d2702236] did not!
-e759a5eb collect(): *asksend*: fix: reallow "recompose" branch..
-8f5af5a0 initbox(): fix: umask(0777) and exit(2) would leak a tmpfile (Jörg
-        Schilling)
-21a06a2b Un-obsolete -E flag: it is used (Viktor SZÉPE)
-f4db93b3 n_folder_mbox_prepare_append(): FIX invalid MBOXes (broken by
-        [90861930])..
-ac21a4d4 cc-test.sh: add test for [f4db93b3]; more MBOX mishandling,
-        everwhere..
-8d4e22d9 quit.c:edstop(): one more place (sic) where broken MBOX not handled
-5b845cc2 cc-test.sh: t_behave_iconv_mbyte_base64(): do not run without iconv
-03572b6a a_go_cleanup(): fix compilation with HAVE_DEVEL but not HAVE_COLOUR
-ffc3dda8 cache_setptr(): IMAP cache double free introduced with fix for CID
-        1376978!!
-cbebf2a8 Introduce multiple choice selection for options (Stuart Henderson)
-cb2b9fde Support multiple choice via VAL_IDNA (Stuart Henderson)
-0558e9ac (BWDIC!) Drop OPT_SSL_RANDOM,OPT_NOEXTRANDOM; add VAL_RANDOM
-057eaa62 Add OPT_UISTRINGS, by default enabled (Rich Felker)..
-659b205a (Nope,) Let *^ERRDOC* be EQ *^ERRNAME* unless HAVE_DOCSTRINGS (Rich
-        Felker)
-c7db9ca8 collect(), `~:': un"gabby" this command escape
-88297a2f CHARSET_8BIT: this is UTF-8 not LATIN1 if OPT_ALWAYS_UNICODE_LOCALE
-c02ac55f n_idna_to_ascii(): add support for idnkit 2.3
-66991328 n_idna_to_ascii(): fix support for idnkit1 linked as idnkitlite!
-195a62b4 a_shexp__glob(): normalize path separators, learn to expand
-        ///t*////t*
-6f20c631 Fix: `help': support recursive ghosts; go.c: fix self-recursion
-        detection..
-6257db03 *editalong*: valued; clarify `edit'/`visual', $EDITOR/$IVUSAL (Ralph
-        Corderoy)
-02ab1f05 Merge branch 'topic/test-fireworks'
-679d0973 If -A fails, exit if not interactive/*errexit*/*posix*
-55250154 *headline*: document %U (Philipp Gesang)
-ae3b4dfe THANKS: Philipp Gesang
-ab7aab0e Account for drafted 64-bit IMAP UIDs (Philipp Gesang)
-c5480b61 Readd support for -D (*disonnected* right away)
+git(1) shortlog: Steffen Nurpmeso (71)
 
 v14.9.9 ("Marsh tit savours first spring sun, II") 2018-03-06
 -------------------------------------------------------------
@@ -216,36 +457,7 @@ ChangeLog
 - Character set names will now undergo generic normalization,
   including stripping of iconv(3) //SUFFIXes.
 
-git(1) shortlog (edited)
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-Steffen Nurpmeso (33):
-e9fdc08a a_amv_var_check_vips(): fix comparison (Slavko)
-dd6e4084 THANKS: Slavko
-caa5de77 make-config.sh: tweak new iconv(3) replacement warning (Slavko)
-9e1c55f6 Fix ~@ list-edit behaviour in -# batch mode; add ~@ test
-69225c69 Fix: do not strip CRs when "displaying" through a *pipe-** handler
-        (Slavko)
-940d84f2 Add support for Libidn2 (Matej Mužila)..
-38f33e37 THANKS: Matej Mužila
-1d67806c Our iconv wrapper was completely broken!  Now fixed (Rich Felker)..
-a27d23ef cc-test.sh: fix t_behave_iconv_mbyte_base64 (Rich Felker)..
-70a18a40 THANKS: Rich Felker
-a46c4a0a Do not bake kernel version into binary (Simon McVittie, Paride
-        Legovini)..
-7f848761 THANKS: Simon McVittie
-19673cbd Make uname(1) hookable (Simon McVittie)
-1a488de9 Add OPT_SSL_RANDOM+, "fix" getrandom(2) (David Čepelík, Simon
-        McVittie)..
-8a9237c5 Fix n_boolify() with empty argument
-ac67d755 FIX: again fallout of [0ede309c], not covered by [ffd29558] (Cág)..
-dd6adbb3 IMAP does not need ICONV if ALWAYS_UNICODE_LOCALE (Predrag Punosevac)
-c86a5ec6 `version': support vput and include uname(2) output (Simon McVittie)
-1b018a36 Add *headline-plain* to force ASCII graphics (Cág)
-...
-565219b9 cc-test.sh: ARGH! MBOX content statistics not portable!
-        (Gaetan Bisson)
-e1e62dd1 Fix n_iconv_str() [on big endian machines, the author]
+git(1) shortlog: Steffen Nurpmeso (33)
 
 v14.9.7 ("Marsh tit patiently scraping bark") 2018-02-16
 --------------------------------------------------------
@@ -332,45 +544,7 @@ ChangeLog
   elements, which many web mailers, most notably gmail, use for
   citation.  (Peter J. Holzer)
 
-git(1) shortlog (edited)
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-Paride Legovini (1):
-d503bd82 Patch configure script to not override build variables..
-
-Steffen Nurpmeso (66):
-437a103d mail1(): tweak "failed encoding" error message (Alexander Harm)
-5f951f7b n_utf8_to_utf32(): FIX: implement compliant to Unicode 9.0, 3.9,
-        UTF-8
-6ac954a4 mime_fromhdr(): normalize \0 and \n in encoded-words (mailspoof)
-c59a20ff myaddrs(): Fix: do not return invalid *from* (Viktor SZÉPE)..
-efc59473 *expandargv*: hard error if unset (Viktor SZÉPE)..
-ef94b2d6 README: we are back at Gmane.org!
-a832ef40 Yay!  We have submissions:// at port 465 (too)! (RFC 8314)
-cac4decc config.h: resort; fallback for S_ISDIR() (Paul Eggert)
-1e43647b unixtime(): check mktime(3)+localtime(3) returns (Joseph Bisch)..
-068fe5d3 fakedate(): implement ourselfs (Joseph Bisch)..
-f430e3cc THANKS: Joseph Bisch
-94ec5975 nail.1: fix spelling errors (Paride Legovini)
-3311b6b9 THANKS: Paride Legovini
-74d64ec7 cmd-headers.c,cmd-tab.h: fix spelling errors (Paride Legovini)
-8477ea6f nail.1: yet another fix (Paride Legovini)
-efe354ea More ISO C time and date checks etc. (Joseph Bisch)
-f5409738 a_attachment_is_msg(): fix #NO message attachments (since
-        2017-01-22)!
-65ff0741 a_amv_var_check_num(): fix: variables need 32-bit not 64-bit limit!
-fd2daba5 n_attachment_list_edit(): FIX: unquote user input again (!!!)
-75917c30 ([BWDIC]) `history': support context-sensitive history (a bit)..
-ff8b2ba1 Add -C (create custom header), change *customhdr*
-2e67ac32 `vexpr': obsolete @ as suffix, it must henceforth be prefix..
-b882c9b9 `vexpr': numeric ops: support [UuSs] number prefixes
-2f356cd2 `vexpr': add `pbase' subcommand
-9e652437 HTML filter: support <blockquote> quotes (Peter J. Holzer)
-90e708e7 THANKS: Peter J. Holzer
-9c7ea9cb Try to avoid tracing and attaching to privsep program
-a4e21888 -S: as if within $'' if *v15-compat* (Alexander Harm)
-333ecee1 *from*, *sender*: verify upon `set' time (Viktor SZÉPE)
-ccaa7401 Optionally append *hostname* in "valid <user>" address (Viktor SZÉPE)
+git(1) shortlog: Paride Legovini (1), Steffen Nurpmeso (66)
 
 v14.9.6 ("Marsh tit abiding a snow storm"), 2017-12-05
 ------------------------------------------------------
@@ -436,39 +610,7 @@ ChangeLog
   not configurable nor do we have a way to easily access a message
   with more than that.  (Doug McIlroy)
 
-git(1) shortlog (edited)
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-Steffen Nurpmeso (44):
-9bdfeba2 Introduce *mta-no-receiver-arguments* to bypass OpenSMTPD behaviour..
-4ce4f80d mail1(): fix: unroll compose-mode `localopts' even on compose
-        failure!
-3dc1d4ee FIX debug assertion (Thomas Dickey)..
-b039b309 a_main_startup(): isatty() yay fdopen(,"w") nay (A. B., E. E., G.
-        B.)..
-e6ec2b06 THANKS: Andreas Baumann
-5e808dc1 THANKS: Erich Eckner
-7cc7fd0a Invent n_O_NOXY_BITS for more O_NO* etc. (Solar Designer)
-409c5df7 THANKS: Solar Designer
-62d5947a config.h: no, change [f64eb665], use MIMEE_QP again (Cág)
-43449982 THANKS: Cág
-cd212599 Do not honour $TMPDIR if run by root (Solar Designer)
-3e283d18 Fix semantics of $* to go for *ifs*
-6d437ab6 FIX i_strdup(), broken since [354fc47e] as of 2017-07-16..
-c20b6b7c nail.1: WHEN is a mlist a regex (Ivan Tham)
-bd72268c nail.1: FAQ: Can S-nail git-send-email? (Cág)
-ffd29558 FIX [0ede309c] as of 2016-12-26! (Ralph Corderoy)..
-fce7d5ca FIX: LC_ALL/LC_CTYPE/LANG: do not _force_ overwrite of *ttycharset*..
-16fb7bf7 `environ' unset: report errors (remove respective TODO)..
-8eb67f95 Add `local' command modifier: alter command to work on block-scope
-23327af7 n_idec*(), `vexpr': support BASE#number (2 <= x <= 36) notation
-78727768 "[@fields]@" spec.: support regex in fields, empty body: header
-        exists
-ca35643c Add *quote-chars* (simple)
-429a294d Improve *mime-counter-evidence* deep inspection (Doug McIlroy)..
-c0fcb67c Introduce *version-hexnum*
-090819a2 Fix [ab0cd3b8]..
-8c72989b cc-test.sh: fix test of [ffd29558]..
+git(1) shortlog: Steffen Nurpmeso (44)
 
 v14.9.5 ("Marsh tit engaged with a peanut"), 2017-10-21
 -------------------------------------------------------
@@ -518,26 +660,7 @@ ChangeLog
 - `echo'#168 family now supports `vput'#118 and *!*#333 error
   storage, offering some kind of printf(1) experience, almost.
 
-git(1) shortlog (edited)
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-Steffen Nurpmeso (35):
-d76fd200 Fully support putenv(3) fallback (Jörg Schilling)
-ab0cd3b8 FIX iconv for main body part (since EVER!) (Doug McIlroy,
-        Random832)..
-8d472b37 FIX sigsuspend(2) race condition (since EVER! Only seen on OpenBSD)..
-ca045d7d Add is_mlist_mp() and :Ll colon modifiers, and use "Ll" for
-        *headline*'s %T
-88a69abf Set termsize after SIGCONT; n_signal(): use sigfillset (Nick
-        Stoughton)..
-f169483d THANKS: Nick Stoughton
-2f1e46ee `echo' family: support `vput' and *!* error storage
-22ac50c7 make.rc, make-config.sh: add OPT_USE_PKGSYS (Jörg Schilling)
-09a8b2ef Even less shell globbing (Ivan Tham)
-b35ccc6d THANKS: Ivan Tham
-820d02b4 obs-imap.c: drop dopr(), pr(1) often not available
-2a05fcd9 main.c, make-config.sh: preparate for tcgetwinsize(3)
-9feaf8ae `addrcodec': add skinlist subcommand, skin+check whether mlist
+git(1) shortlog: Steffen Nurpmeso (35)
 
 v14.9.4 ("(5th anniversary) Marsh tit"), 2017-09-18
 ---------------------------------------------------
@@ -650,58 +773,7 @@ ChangeLog
 
 - New "The mime.types files"#35 type marker: @q ("quiet").
 
-git(1) shortlog (edited)
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-Steffen (Daode) Nurpmeso (90):
-9becdd01 Fix [32e5c7c2] (MLE: KHT: auto-append / for directories at once..)
-cc54681e $PAGER: always set (non-existent) $LESS=RXi (Paul Vojta)..
-49124f13 nail.1: use `~.' in "On sending mail.." (Daniel Lublin)
-7cd29917 THANKS: Daniel Lublin
-62f5957f nail.h: unconditionally include inttypes.h (Alexander Harm)..
-c121f519 THANKS: Alexander Harm
-f0aeef8d Adjust OpenCSW & pkgsrc paths, drop CONFIG=MEDIUM (Alexander Harm)..
-19fdc151 INSTALL: tweak INCS and LIBS (Alexander Harm)
-24199743 make-config.sh: integrate DYLD_LIBRARY_PATH in LD_.. (Alexander Harm)
-64026f7b make-config.in: also needs .PHONY for MacOS (Alexander Harm)
-52ddd687 make-config.sh: OPT_{NOMEMDBG,ASAN_*}: reduce cc_maxopt=1 (Alexander
-        Harm)..
-f3087a5c Fix **-honour* <-> *recipients-in-cc* for original To: ones
-2205dc27 Fix: ask for `write' targets of message/rfc822 attachments (again)
-5cd0f50d Restore historical behaviour of *askb?cc* (Norman Ramsey)
-80038311 Fix: do not generate charset=binary parameter (Norman Ramsey)..
-05427cea send.c:sendpart(): extend *mime-alternative-favour-rich* support
-        (SZÉPE Viktor)..
-226c1f26 FIX In-Reply-To: generation, broken since [c13e1205], 2017-06-04!
-135cbebe makefile: add missing reverse solidus (Norman Ramsey)
-8a4237d2 `alias': support high-bit bytes and semicolon (Norman Ramsey)
-22c48009 a_nag_group_lookup(): FIX used case-i?sensitive hash function!
-1bc65e1b a_amv_var_lookup(): error log on empty environment variable (Norman
-        Ramsey)
-179b39f3 sendout.c:mightrecord(): FIX: terminate starg list! (Norman Ramsey)
-c2635714 Add `readall' command
-999a9dbf `vexpr': substring: support negative offset / length
-58474b55 `vexpr': add trim, trim-front and trim-end subcommands
-7ab345ae Allow `!' in send mode?!
-08305026 Obsolete *signature* (quite some better and more generic ways now!)
-cd03ec01 Glue ~A,~a,~I,~i \t and \n expansion to *posix*; while here: resort
-c5a223d8 Introduce @q MIME type marker
-93a4e38a Rework (usage of) *SSL random handling (Rich Salz)..
-f2cc9b83 Work around possible Linux getrandom() bugs (David Čepelík)
-35879445 THANKS: David Čepelík
-dddff6ef Extend the meanings of *fullnames*..
-884983a3 Diversify n_PSO_STARTED_ states, gain more cmds via -X
-ba103b71 Reserve command modifier prefixes "local" and "u"
-4ff9c046 {make-{config,emerge},cc-test}.sh: no command -v (Norman, Ralph,
-        Stéphane)..
-2a2895f1 THANKS: Stéphane Chazelas
-24615d82 make-config.sh: accept CC=cc (Norman Ramsey)
-d6f18b52 Add more support surrounding OpenSSL config stuff++..
-94bafbc6 Temporarily freeze variables set via -S..
-bb0d0bf2 Port to SunOS 5.9 (Aharon Robbins)
-788faabe Support *pipe-message/external-body* access-type=url handlers (Ken
-        Hornstein)
-02407c15 FIX maildir "yet-exists" hashmap!..
+git(1) shortlog (edited): Steffen (Daode) Nurpmeso (90)
 
 v14.9.3 ("Crested tit nibbling sunflower seeds"), 2017-08-03
 ------------------------------------------------------------
@@ -790,22 +862,6 @@ ChangeLog
   without *reply-to-honour*#492 set.  We now have a test.
 
   Note *replyto* is obsoleted in favour of *reply-to*#491.
-
-git(1) shortlog (edited)
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-670aabb6 a_amv_var_check_vips(): FIX code to match comment (Felix Fontein)..
-3dcdaa83 THANKS: Felix Fontein
-3745e002 FIX [81d7f4d8] (IMAP: try (hard) to reinstantiate..) (Paul Vojta)
-33b2834f FIX [81d7f4d8] (IMAP: try (hard) to reinstantiate..) (Paul Vojta)..
-1cc0d3de Allow non-writable $HOME (Felix Fontain, Ralph Corderoy)
-32e5c7c2 MLE: KHT: auto-append / for directories at once (Christos Zoulas)
-e2bb54b7 THANKS: Christos Zoulas
-f593fc18 make-config.sh: do NOT skip fakeroot paths
-        (Gavin Troy, Gaetan Bisson)
-4fe971ea FIX [4047a432] possible bound excess in memset()!
-84efbcab FIX shexp parser regarding metachars (and poss. endless <TAB> loop)
-14fbce97 FIX: OH!  The codebase NEVER supported *mime-encoding*=base64!
 
 v14.9.0 ("Long-tailed tit"), 2017-07-16
 ---------------------------------------
@@ -1537,115 +1593,6 @@ ChangeLog
   now defaults to base64.
 
 - *allnet*#345 now works (broken since nail 10.00, 2002-09-29).
-
-git(1) shortlog (abbreviated)
-'''''''''''''''''''''''''''''
-
-f01291d extract_date_from_from_(): dig more invalid MBOXes (Antonio Radici)..
-df8768b Add *mime-counter-evidence* bit 4 (Aharon Robbins)..
-d3fe980 Ftmp(): drop "mode" argument (not wrong: Mike Frysinger)..
-86159db nail.1: we support searching, really (Predrag Punosevac)
-5b61a08 nail.1: talk about address lists (again) (Michael Convey)..
-0eeffc4 nail.1: try improve states / MBOX etc. relation (Michael Convey)
-43ea039 nail.1: what is an environment variable (Michael Convey)
-13e0804 nail.1: fix typo (Hariskar (archlinux Wiki))
-03d6af5 nail.1: more on sortability (Rudolf Sykora)..
-4da9043 Not "binary", but "boolean" variables! (Predrag Punosevac)..
-c85f56d Support :d specifier for at least `from' (Martin Neitzel)..
-b12e1ed Be more friendly when composing mails (Martin Neitzel)..
-b50eac0 nail.1: use display/show not type/print (Michael Convey)..
-6feafaf Add `search' alias for `from' (Predrag Punosevac)
-a4e2612 Support 256-colour terminals (Gavin Troy)
-8655aff Error framework: print UAGENT prefix (ident in pipes; Salvatore
-        Bonaccorso)
-e96baaa Introduce $LOGNAME, the POSIX equivalent of $USER (Todd C. Miller)
-76e6364 Add `customhdr' (Sergey Matveev)..
-ad58c91 Support *customhdr*, too (Sergey Matveev)..
-6322e0a Support _any_ user header via ~e (Sergey Matveev)..
-5d52578 Add -: command line option (Robert Elz)..
-53b5f07 README: use git(1) --single-branch (Mantas Mikulėnas)
-420131f Fix mispelling: can|to be send->sent (Respiranto (archlinux Wiki))
-d6902e1 Add *on-compose-{enter,leave}* hooks (Jens Schleusener, Rudolf
-        Sykora)..
-abf2e5d .netrc: support comments (Walter Alejandro Iglesias, Ralph Corderoy)..
-37e0c26 nail.1: .netrc comma separator was in original Berknet parser! (Ralph
-        Corderoy)
-40522c3 nail.1: use -v option to cat(1) if available (Thomas Dickey)
-d8f7cd7 (BWDIC!) Redefine -u / $LOGNAME / $USER (Afan)..
-e337e00 Support expansions in $MAIL!; more on `account's (Afan)..
-d596d74 Compare *newfolders* case-insensitively (Justin Ellingwood)..
-57744f9 Redefine *folder* / getfold->folder_query() / *HOME* (Justin
-        Ellingwood)..
-3c57c83 n_path_mkdir(): create recursively as necessary (Justin Ellingwood)
-0bbe981 nail.1: fix spelling errors as by igor(1) (Ingo Schwarze)
-f1a775b Add -M and -m options (Viktor Szépe, Ralph Corderoy)..
-1bd8e48 Add *umask*, and set actively (Walter Alejandro Iglesias)..
-6b1cd93 Now with *umask*, just drop fchmod(2)++ calls (Walter Alejandro
-        Iglesias)
-ba22166 Change make targets; add $MAILJOBS; don't track $DESTDIR (Gaetan
-        Bisson)..
-cd244b1 Add WANT_CROSS_BUILD make.rc option (Juan RP)..
-95141f6 Tweak VERBOSE handling (William Yodlowsky)..
-d74a18a mk-conf.sh:path_check(): skip any "fakeroot" path (Hilko Bengen)
-10990e4 Add n_O_NOFOLLOW, disallow symlinks for writable files (Matthew
-        Dillon)..
-df4954c Add $SOURCE_DATE_EPOCH (reproducible-builds.org; Colin Watson)
-dc92f2c savedeadletter()->sendout.c; tweak POSIX compliance (Ralph Corderoy)
-20f3cd2 nail.1: more explicit `set' references instead of saying 'Set' (Donald
-        Mugnai)..
-2d53b46 url_parse(): better take better care for path parts (Stephen Isard)..
-21f0eaa mk-conf.sh: find terminfo on Sun (Thomas Dickey)..
-e4ddaa8 Change n_iconv*() protos, add enum n_iconv_flags (Ralph Corderoy)..
-1587069 FIX [44cec1f] (Fix "address" message specifications (John Dodson))..
-e40e181 nail.1, nail.rc: set *sendwait* by default (Ralph Corderoy)
-7adcf99 `write'++: !interactive: urlxenc() attachment paths (Ralph Corderoy)..
-b14aae7 `write'++: !interactive:.. But now, really (Lyndon Nerenberg, David
-        Levine)..
-5270bf1 Simplify *folder* (implicit trail solidus) (Stephen Isard, Ralph
-        Corderoy)
-a638bcf Add *typescript-mode*, set it for -# (Ralph Corderoy, Martin
-        Neitzel)..
-053e19f Add *inbox* (Stephen Isard, and Jürgen Daubert)..
-20e3240 Add OPT_ALWAYS_UNICODE_LOCALE (Predrag Punosevac)..
-14b5a3a Make combinetime() overflow safe (Vincent Lefevre)..
-7a657d9c cc-test.sh: add S/MIME disproofs via smime(1) (Sven Neuhaus)..
-ae86c884 cmd1.c:__hprf(): compensate for add. bytes of UTF-8 seq.(s) (Martin
-        Neitzel)
-975e6869 (BWDIC!) Only rm sysboxes, unless *posix* (Walter A. Iglesias,
-        trondd)..
-81e33751 Throw away file_expand() (Ismael Bouya)..
-5ae556f8 Add *r-option-implicit* (Felipe Gasper, Martin Neitzel)..
-33709163 nail.1: some more words for *inbox*, and such sort (Stephen Isard)
-88c19049 mk-release.inc: place OpenPGP signatures last (learned from Paul
-        Eggert)
-0ede309c Rudely fix the RFC 5322 dot-atom, the "Dr. Problem" (Dr. Werner Fink)
-f797c27e FIX privsep.c, yes, vulnerability (wapiflapi)..
-f2699449 FIX privsep.c vulnerability, II (forgot hostname!) (wapiflapi)
-303d46cd FIX [3d7835fc] aka `~^' attachments, especially Content-ID: (Ralph
-        Corderoy)
-4ce4eb55 privsep.c: and just verify the box is also in CWD (wapiflapi)
-25d9e6e2 Generate Content-ID: as applic. (Ralph Corderoy, Ken Hornstein, David
-        Levine)
-6409c886 nail.1: clarify/FIX doc. of \cX (Noel Chiappa, Random832)..
-5a1c023c nail.1: furtherly clarify doc. of \cX (Doug McIlroy)..
-d33294c2 mk-release.inc: use %B for $DATE_MAN (Baptiste Daroussin)..
-eafa9411 (BWDIC!) Defaults for *datefield{-markout-older}* (Debian #855582;
-        r.ductor)..
-5ab93627 MLE: set FEXP_NOPROTO for mle-complete expansions (Ralph Corderoy)
-ada72661 ~<: add "- [HERE-delimiter]" for pasting etc. (Ralph Corderoy)
-d4d46c42 Add `charsetalias', and use it (Pietro Cerutti, mutt#3925)
-65e2b75f Redefine VIP handling of variables (Ralph Corderoy)..
-162cafb7 *mime-counter-evidence*, bit 4: allow "soft" controls (Jörg
-        Schilling)..
-90861930 Readd removed fflush()/fseek() in between read and write..
-  [That should credit Jörg Schilling indeed]
-aae47707 Tweak previous, and include O_CREAT in "a+" (Jörg Schilling)..
-3e4441f8 a_main_usage(): new synopsis (Doug McIlroy)
-8f61025b FIX icase hmaps (`charsetalias', `filetype', `mlist') (rain1)
-2e6a811d a_termcap_init_var(): numerics not necessarily decimal (Thomas
-        Dickey)..
-9d58267f config.h+: add n_PATH_DEVNULL, use it instead of hardcoding (Xin LI)
-8075cf00 Support *socks-proxy* (SOCKS5) (Gaetan Bisson)
 
 Appendix
 ^^^^^^^^
