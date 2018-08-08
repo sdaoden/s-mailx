@@ -499,7 +499,7 @@ FL int c_rename(void *v);
 FL int c_folders(void *v);
 
 /*
- * cmd-headers.c
+ * cmd-head.c
  */
 
 /* `headers' (show header group, possibly after setting dot) */
@@ -528,7 +528,7 @@ FL void print_headers(int const *msgvec, bool_t only_marked,
          bool_t subject_thread_compress);
 
 /*
- * cmd-message.c
+ * cmd-msg.c
  */
 
 /* Paginate messages, honour/don't honour ignored fields, respectively */
@@ -558,8 +558,8 @@ FL int c_Top(void *v);
  * command with no arguments, print first message */
 FL int c_next(void *v);
 
-/* Print out the value of dot */
-FL int c_pdot(void *v);
+/* `=': print out the value(s) of <msglist> (or dot) */
+FL int c_pdot(void *vp);
 
 /* Print the size of each message */
 FL int c_messize(void *v);
@@ -762,6 +762,20 @@ FL void n_colour_pen_put(struct n_colour_pen *self);
 
 FL struct str const *n_colour_pen_to_str(struct n_colour_pen *self);
 #endif /* HAVE_COLOUR */
+
+/*
+ * dig-msg.c
+ */
+
+/**/
+FL void n_dig_msg_on_mailbox_close(struct mailbox *mbox);
+
+/* Accessibility hook for the `~^' command; needs n_DIG_MSG_COMPOSE_CREATE() */
+FL bool_t n_dig_msg_circumflex(struct n_dig_msg_ctx *dmcp, FILE *fp,
+            char const *cmd);
+
+/* `digmsg' */
+FL int c_digmsg(void *vp);
 
 /*
  * dotlock.c
@@ -1011,7 +1025,7 @@ FL int c_quit(void *vp);
 FL int c_readctl(void *vp);
 
 /*
- * head.c
+ * header.c
  */
 
 /* Return the user's From: address(es) */
@@ -1031,17 +1045,11 @@ FL bool_t      is_head(char const *linebuf, size_t linelen,
 FL bool_t n_header_put4compose(FILE *fp, struct header *hp);
 
 /* Extract some header fields (see e.g. -t documentation) from a message.
- * If extended_list_of is set a number of additional header fields are
- * understood and address joining is performed as necessary, and the subject
- * is treated with additional care, too;
- * if it is set to TRUM1 then From: and Sender: will not be assigned no more,
- * if it is TRU1 then to,cc,bcc present in hp will be used to prefill the new
- * header; in any case a true boolean causes shell comments to be understood.
- * This calls expandaddr() on some headers and sets checkaddr_err if that is
- * not NULL -- note it explicitly allows EAF_NAME because aliases are not
+ * This calls expandaddr() on some headers and sets checkaddr_err_or_null if
+ * that is set -- note it explicitly allows EAF_NAME because aliases are not
  * expanded when this is called! */
-FL void n_header_extract(FILE *fp, struct header *hp, bool_t extended_list_of,
-         si8_t *checkaddr_err);
+FL void n_header_extract(enum n_header_extract_flags hef, FILE *fp,
+         struct header *hp, si8_t *checkaddr_err_or_null);
 
 /* Return the desired header line from the passed message
  * pointer (or NULL if the desired header field is not available).
@@ -1237,57 +1245,6 @@ FL ssize_t     imap_search(char const *spec, int f);
 #endif
 
 /*
- * message.c
- */
-
-/* Return a file buffer all ready to read up the passed message pointer */
-FL FILE *      setinput(struct mailbox *mp, struct message *m,
-                  enum needspec need);
-
-/*  */
-FL enum okay   get_body(struct message *mp);
-
-/* Reset (free) the global message array */
-FL void        message_reset(void);
-
-/* Append the passed message descriptor onto the message array; if mp is NULL,
- * NULLify the entry at &[msgCount-1] */
-FL void        message_append(struct message *mp);
-
-/* Append a NULL message */
-FL void        message_append_null(void);
-
-/* Check whether sep->ss_sexpr (or ->ss_sregex) matches mp.  If with_headers is
- * true then the headers will also be searched (as plain text) */
-FL bool_t      message_match(struct message *mp, struct search_expr const *sep,
-               bool_t with_headers);
-
-/*  */
-FL struct message * setdot(struct message *mp);
-
-/* Touch the named message by setting its MTOUCH flag.  Touched messages have
- * the effect of not being sent back to the system mailbox on exit */
-FL void        touch(struct message *mp);
-
-/* Convert user message spec. to message numbers and store them in vector,
- * which should be capable to hold msgCount+1 entries (n_msgvec asserts this).
- * flags is n_cmd_arg_ctx.cac_msgflag == n_cmd_desc.cd_msgflag == enum mflag.
- * If capp_or_null is not NULL then the last (string) token is stored in here
- * and not interpreted as a message specification; in addition, if only one
- * argument remains and this is the empty string, 0 is returned (*vector=0;
- * this is used to implement n_CMD_ARG_DESC_MSGLIST_AND_TARGET).
- * A NUL *buf input results in a 0 return, *vector=0, [*capp_or_null=NULL].
- * Returns the count of messages picked up or -1 on error */
-FL int n_getmsglist(char const *buf, int *vector, int flags,
-         struct n_cmd_arg **capp_or_null);
-
-/* Find the first message whose flags&m==f and return its message number */
-FL int         first(int f, int m);
-
-/* Mark the named message by setting its mark bit */
-FL void        mark(int mesg, int f);
-
-/*
  * maildir.c
  */
 
@@ -1317,16 +1274,22 @@ FL void n_memory_pool_fixate(void);
 
 /* Lifetime management of a per-execution level arena (to be found in
  * n_go_data_ctx.gdc_mempool, lazy initialized).
- * _push() can be used by anyone to create a new stack layer in the current
- * per-execution level arena, which is layered upon the normal one (usually
- * provided by .gdc__mempool_buf, initialized as necessary).
+ * _push() can be used by anyone to create a new mempool stack layer (of
+ * minimum size n_MEMORY_POOL_TYPE_SIZEOF) in the current per-execution level
+ * arena, which is layered upon the normal one (which is usually provided
+ * by .gdc__mempool_buf, and initialized as necessary).
  * This can be pop()ped again: popping a stack will remove all stacks "above"
  * it, i.e., those which have been pushed thereafter.
  * If NULL is popped then this means that the current per-execution level is
  * left and n_go_data_ctx.gdc_mempool is not NULL; an event loop tick also
- * causes all _push()ed stacks to be dropped (via n_memory_reset()) */
-FL void n_memory_pool_push(void *vp);
-FL void n_memory_pool_pop(void *vp);
+ * causes all _push()ed stacks to be dropped (via n_memory_reset()).
+ * Memory pools can be stored away, in order to re-push() them later again;
+ * for this these functions gained overall lifetime parameters: init needs to
+ * be true when calling push() for the first time on vp, and gut needs to be
+ * set when pop()ping vp the last time only */
+FL void n_memory_pool_push(void *vp, bool_t init);
+FL void n_memory_pool_pop(void *vp, bool_t gut);
+FL void *n_memory_pool_top(void);
 
 /* Generic heap memory */
 
@@ -1407,6 +1370,57 @@ FL bool_t n__memory_check(char const *file, int line);
 #else
 # define n_memory_check() do{;}while(0)
 #endif
+
+/*
+ * message.c
+ */
+
+/* Return a file buffer all ready to read up the passed message pointer */
+FL FILE *      setinput(struct mailbox *mp, struct message *m,
+                  enum needspec need);
+
+/*  */
+FL enum okay   get_body(struct message *mp);
+
+/* Reset (free) the global message array */
+FL void        message_reset(void);
+
+/* Append the passed message descriptor onto the message array; if mp is NULL,
+ * NULLify the entry at &[msgCount-1] */
+FL void        message_append(struct message *mp);
+
+/* Append a NULL message */
+FL void        message_append_null(void);
+
+/* Check whether sep->ss_sexpr (or ->ss_sregex) matches mp.  If with_headers is
+ * true then the headers will also be searched (as plain text) */
+FL bool_t      message_match(struct message *mp, struct search_expr const *sep,
+               bool_t with_headers);
+
+/*  */
+FL struct message * setdot(struct message *mp);
+
+/* Touch the named message by setting its MTOUCH flag.  Touched messages have
+ * the effect of not being sent back to the system mailbox on exit */
+FL void        touch(struct message *mp);
+
+/* Convert user message spec. to message numbers and store them in vector,
+ * which should be capable to hold msgCount+1 entries (n_msgvec asserts this).
+ * flags is n_cmd_arg_ctx.cac_msgflag == n_cmd_desc.cd_msgflag == enum mflag.
+ * If capp_or_null is not NULL then the last (string) token is stored in here
+ * and not interpreted as a message specification; in addition, if only one
+ * argument remains and this is the empty string, 0 is returned (*vector=0;
+ * this is used to implement n_CMD_ARG_DESC_MSGLIST_AND_TARGET).
+ * A NUL *buf input results in a 0 return, *vector=0, [*capp_or_null=NULL].
+ * Returns the count of messages picked up or -1 on error */
+FL int n_getmsglist(char const *buf, int *vector, int flags,
+         struct n_cmd_arg **capp_or_null);
+
+/* Find the first message whose flags&m==f and return its message number */
+FL int         first(int f, int m);
+
+/* Mark the named message by setting its mark bit */
+FL void        mark(int mesg, int f);
 
 /*
  * mime.c

@@ -1,6 +1,9 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Program input of all sorts, input lexing, event loops, command evaluation.
- *@ TODO n_PS_ROBOT requires yet n_PS_SOURCING, which REALLY sucks.
+ *@ TODO - n_PS_ROBOT requires yet n_PS_SOURCING, which REALLY sucks.
+ *@ TODO - go_input(): with IO::Device we could have CStringListDevice, for
+ *@ TODO   example to handle injections, and also `readctl' channels!
+ *@ TODO   (Including sh(1)ell HERE strings and such.)
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -164,7 +167,7 @@ struct a_go_ctx{
    char gc_name[n_VFIELD_SIZE(0)]; /* Name of file or macro */
 };
 
-struct a_go_readctl_ctx{ /* TODO localize n_readctl_overlay, use OnForkEvent! */
+struct a_go_readctl_ctx{ /* TODO localize readctl_read_overlay: OnForkEvent! */
    struct a_go_readctl_ctx *grc_last;
    struct a_go_readctl_ctx *grc_next;
    char const *grc_expand;          /* If filename based, expanded string */
@@ -950,7 +953,7 @@ jrestart:
 
    if(!(gcp->gc_flags & a_GO_MEMPOOL_INHERITED)){
       if(gcp->gc_data.gdc_mempool != NULL)
-         n_memory_pool_pop(NULL);
+         n_memory_pool_pop(NULL, TRU1);
    }else
       n_memory_reset();
 
@@ -1493,7 +1496,8 @@ FL int
       a_NONE,
       a_HISTOK = 1u<<0,
       a_USE_PROMPT = 1u<<1,
-      a_USE_MLE = 1u<<2
+      a_USE_MLE = 1u<<2,
+      a_DIGMSG_OVERLAY = 1u<<16
    } f;
    NYD2_ENTER;
 
@@ -1595,9 +1599,14 @@ jforce_stdin:
 
    if(gif & n_GO_INPUT_FORCE_STDIN){
       struct a_go_readctl_ctx *grcp;
+      struct n_dig_msg_ctx *dmcp;
 
-      grcp = n_readctl_overlay;
-      ifile = (grcp == NULL || grcp->grc_fp == NULL) ? n_stdin : grcp->grc_fp;
+      if((dmcp = n_digmsg_read_overlay) != NULL){
+         ifile = dmcp->dmc_fp;
+         f |= a_DIGMSG_OVERLAY;
+      }else if((grcp = n_readctl_read_overlay) == NULL ||
+            (ifile = grcp->grc_fp) == NULL)
+         ifile = n_stdin;
    }else
       ifile = a_go_ctx->gc_file;
    if(ifile == NULL){
@@ -1704,9 +1713,13 @@ jleave:
 
    /* TODO We need to special case a_GO_SPLICE, since that is not managed by us
     * TODO but only established from the outside and we need to drop this
-    * TODO overlay context somehow */
-   if(n < 0 && (a_go_ctx->gc_flags & a_GO_SPLICE))
-      a_go_cleanup(a_GO_CLEANUP_TEARDOWN | a_GO_CLEANUP_HOLDALLSIGS);
+    * TODO overlay context somehow; ditto DIGMSG_OVERLAY */
+   if(n < 0){
+      if(f & a_DIGMSG_OVERLAY)
+         n_digmsg_read_overlay = NULL;
+      if(a_go_ctx->gc_flags & a_GO_SPLICE)
+         a_go_cleanup(a_GO_CLEANUP_TEARDOWN | a_GO_CLEANUP_HOLDALLSIGS);
+   }
 
    if(histok_or_null != NULL && !(f & a_HISTOK))
       *histok_or_null = FAL0;
@@ -2205,7 +2218,7 @@ FL int
 c_readctl(void *vp){
    /* TODO We would need OnForkEvent and then simply remove some internal
     * TODO management; we don't have this, therefore we need global
-    * TODO n_readctl_overlay to be accessible via =NULL, and to make that
+    * TODO n_readctl_read_overlay to be accessible via =NULL, and to make that
     * TODO work in turn we need an instance for default STDIN!  Sigh. */
    static union{
       ui64_t alignme;
@@ -2229,7 +2242,7 @@ c_readctl(void *vp){
    if(a_stdin == NULL){
       a_stdin = (struct a_go_readctl_ctx*)(void*)a.buf;
       a_stdin->grc_name[0] = '-';
-      n_readctl_overlay = a_stdin;
+      n_readctl_read_overlay = a_stdin;
    }
 
    n_pstate_err_no = n_ERR_NONE;
@@ -2261,16 +2274,16 @@ c_readctl(void *vp){
          n_err(_("`readctl': cannot create nor remove -\n"));
          goto jeinval;
       }
-      n_readctl_overlay = a_stdin;
+      n_readctl_read_overlay = a_stdin;
       goto jleave;
    }
 
    /* Try to find a yet existing instance */
-   if((grcp = n_readctl_overlay) != NULL){
+   if((grcp = n_readctl_read_overlay) != NULL){
       for(; grcp != NULL; grcp = grcp->grc_next)
          if(!strcmp(grcp->grc_name, cap->ca_arg.ca_str.s))
             goto jfound;
-      for(grcp = n_readctl_overlay; (grcp = grcp->grc_last) != NULL;)
+      for(grcp = n_readctl_read_overlay; (grcp = grcp->grc_last) != NULL;)
          if(!strcmp(grcp->grc_name, cap->ca_arg.ca_str.s))
             goto jfound;
    }
@@ -2282,10 +2295,10 @@ c_readctl(void *vp){
 
 jfound:
    if(f & a_SET)
-      n_readctl_overlay = grcp;
+      n_readctl_read_overlay = grcp;
    else if(f & a_REMOVE){
-      if(n_readctl_overlay == grcp)
-         n_readctl_overlay = a_stdin;
+      if(n_readctl_read_overlay == grcp)
+         n_readctl_read_overlay = a_stdin;
 
       if(grcp->grc_last != NULL)
          grcp->grc_last->grc_next = grcp->grc_next;
@@ -2345,9 +2358,9 @@ jfound:
          grcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name) +
                cap->ca_arg.ca_str.l +1 + elen +1);
          grcp->grc_last = NULL;
-         if((grcp->grc_next = n_readctl_overlay) != NULL)
+         if((grcp->grc_next = n_readctl_read_overlay) != NULL)
             grcp->grc_next->grc_last = grcp;
-         n_readctl_overlay = grcp;
+         n_readctl_read_overlay = grcp;
          grcp->grc_fp = fp;
          grcp->grc_fd = fd;
          memcpy(grcp->grc_name, cap->ca_arg.ca_str.s, cap->ca_arg.ca_str.l +1);
@@ -2376,7 +2389,7 @@ jeinval:
    goto jleave;
 
 jshow:
-   if((grcp = n_readctl_overlay) == NULL)
+   if((grcp = n_readctl_read_overlay) == NULL)
       fprintf(n_stdout, _("`readctl': no channels registered\n"));
    else{
       while(grcp->grc_last != NULL)
@@ -2385,7 +2398,7 @@ jshow:
       fprintf(n_stdout, _("`readctl': registered channels:\n"));
       for(; grcp != NULL; grcp = grcp->grc_next)
          fprintf(n_stdout, _("%c%s %s%s%s%s\n"),
-            (grcp == n_readctl_overlay ? '*' : ' '),
+            (grcp == n_readctl_read_overlay ? '*' : ' '),
             (grcp->grc_fd != -1 ? _("descriptor") : _("name")),
             n_shexp_quote_cp(grcp->grc_name, FAL0),
             (grcp->grc_expand != NULL ? " (" : n_empty),

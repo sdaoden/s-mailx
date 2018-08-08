@@ -1274,7 +1274,7 @@ jleave:
 
 j_leave:
 #if defined HAVE_MEMORY_DEBUG || defined HAVE_NOMEMDBG
-   n_memory_pool_pop(NULL);
+   n_memory_pool_pop(NULL, TRU1);
 #endif
 #if defined HAVE_DEBUG || defined HAVE_DEVEL || defined HAVE_NOMEMDBG
    n_memory_reset();

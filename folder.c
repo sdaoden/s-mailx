@@ -468,7 +468,10 @@ jlogname:
       if (fm & FEDIT_NEWMAIL)
          goto jleave;
 
+      if(mb.mb_digmsg != NULL)
+         n_dig_msg_on_mailbox_close(&mb);
       mb.mb_type = MB_VOID;
+
       if (ok_blook(emptystart)) {
          if (!(n_poption & n_PO_QUICKRUN_MASK) && !ok_blook(bsdcompat))
             n_perr(name, e);
@@ -641,6 +644,8 @@ jleave:
    NYD_LEAVE;
    return rv;
 jem2:
+   if(mb.mb_digmsg != NULL)
+      n_dig_msg_on_mailbox_close(&mb);
    mb.mb_type = MB_VOID;
 jem1:
    n_err_no = n_ERR_NOTOBACCO;

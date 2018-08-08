@@ -329,6 +329,7 @@ t_all() {
    t_alternates
    t_quote_a_cmd_escapes
    t_compose_edits
+   t_digmsg
 
    # Heavy use of/rely on state machine (behaviour) and basics
    t_compose_hooks
@@ -4241,6 +4242,101 @@ t_compose_edits() { # XXX very rudimentary
 
    t_epilog
 }
+
+t_digmsg() { # XXX rudimentary
+   t_prolog digmsg
+   TRAP_EXIT_ADDONS="./.t*"
+
+   printf '#
+   mail ./.tout\n!s This subject is\nThis body is
+!:echo --one
+!:digmsg create - -
+!:digmsg - header list
+!:digmsg - header show subject
+!:digmsg - header show to
+!:digmsg - header remove to
+!:digmsg - header list
+!:digmsg - header show to
+!:digmsg remove -
+!:echo --two
+!:digmsg create -
+!:digmsg - header list;   readall x;   echon "<$x>";
+!:digmsg - header show subject;readall x;echon "<$x>";;
+!:digmsg remove -
+!:echo --three
+!:    # nothing here as is comment
+!^header insert fcc   ./.tbox
+!:echo --four
+!:digmsg create - -
+!:digmsg - header list
+!:digmsg - header show fcc
+!:echo --five
+!^head remove fcc
+!:echo --six
+!:digmsg - header list
+!:digmsg - header show fcc
+!:digmsg - header insert fcc ./.tfcc
+!:echo --seven
+!:digmsg remove -
+!:echo bye
+!.
+   echo --hello again
+   File ./.tfcc
+   echo --one
+   digmsg create 1 -
+   digmsg 1 header list
+   digmsg 1 header show subject
+   echo --two
+   ! : > ./.tempty
+   File ./.tempty
+   echo --three
+   digmsg 1 header list; echo $?/$^ERRNAME
+   digmsg create -; echo $?/$^ERRNAME
+   echo ==========
+   ! %s ./.tfcc > ./.tcat
+   ! %s "s/This subject is/There subject was/" < ./.tfcc >> ./.tcat
+   File ./.tcat
+   mail nowhere@exam.ple
+!:echo ===1
+!:digmsg create -; echo $?/$^ERRNAME;\\
+   digmsg create 1; echo $?/$^ERRNAME;\\
+   digmsg create 2; echo $?/$^ERRNAME
+!:echo ===2.1
+!:digmsg - h l;echo $?/$^ERRNAME;readall d;echo "$?/$^ERRNAME <$d>"
+!:echo =2.2
+!:digmsg 1 h l;echo $?/$^ERRNAME;readall d;echo "$?/$^ERRNAME <$d>"
+!:echo =2.3
+!^ h l
+!:echo =2.4
+!:digmsg 2 h l;echo $?/$^ERRNAME;readall d;echo "$?/$^ERRNAME <$d>"
+!:echo ===3.1
+!:digmsg - h s to;echo $?/$^ERRNAME;readall d;echo "$?/$^ERRNAME <$d>"
+!:echo =3.2
+!:digmsg 1 h s subject;echo $?/$^ERRNAME;readall d;echo "$?/$^ERRNAME <$d>"
+!:echo =3.3
+!^ h s to
+!:echo =3.4
+!:digmsg 2 h s subject;echo $?/$^ERRNAME;readall d;echo "$?/$^ERRNAME <$d>"
+!:echo ==4.1
+!:digmsg remove -; echo $?/$^ERRNAME;\\
+   digmsg remove 1; echo $?/$^ERRNAME;\\
+   digmsg remove 2; echo $?/$^ERRNAME;
+!x
+   echo --bye
+      ' "${cat}" "${sed}" | ${MAILX} ${ARGS} -Sescape=! >./.tall 2>&1
+   check_ex0 1-estat
+   if have_feat uistrings; then
+      check 1 - ./.tall '362777535 1087'
+   else
+      check 1 - ./.tall '4281367066 967'
+   fi
+   check 2 - ./.tfcc '3993703854 127'
+   check 3 - ./.tempty '4294967295 0'
+   check 4 - ./.tcat '2157992522 256'
+
+   t_epilog
+}
+
 # }}}
 
 # Heavy use of/rely on state machine (behaviour) and basics {{{

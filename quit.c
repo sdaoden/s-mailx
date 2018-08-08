@@ -311,6 +311,8 @@ quit(bool_t hold_sigs_on)
 
    rv = FAL0;
    fbuf = lckfp = rbuf = NULL;
+   if(mb.mb_digmsg != NULL)
+      n_dig_msg_on_mailbox_close(&mb);
    temporary_folder_hook_unroll();
 
    /* If we are read only, we can't do anything, so just return quickly */

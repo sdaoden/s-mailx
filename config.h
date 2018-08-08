@@ -21,6 +21,8 @@
 # define n_CONFIG_H
 
 #define ACCOUNT_NULL "null"   /* Name of "null" account */
+/* Protocol version for *on-compose-splice** -- update manual on change! */
+#define n_DIG_MSG_PLUMBING_VERSION "0 0 1"
 #define DOTLOCK_TRIES 5       /* Number of open(2) calls for dotlock */
 #define FILE_LOCK_TRIES 10    /* Maximum tries before n_file_lock() fails */
 #define FILE_LOCK_MILLIS 200  /* If UIZ_MAX, fall back to that */
@@ -86,7 +88,7 @@
  * storage is that value /2, which is n_CTA()ed to be > 1024 */
 #define n_MEMORY_AUTOREC_SIZE 0x2000u
 /* Ugly, but avoid dynamic allocation for the management structure! */
-#define n_MEMORY_POOL_TYPE_SIZEOF (7 * sizeof(void*))
+#define n_MEMORY_POOL_TYPE_SIZEOF (8 * sizeof(void*))
 
 /* Default *mime-encoding* as enum mime_enc */
 #define MIME_DEFAULT_ENCODING MIMEE_QP

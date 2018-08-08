@@ -49,13 +49,13 @@
 #ifdef HAVE_KEY_BINDINGS
 # define a_CTAB_CAD_BIND n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_bind)
 n_CMD_ARG_DESC_SUBCLASS_DEF(bind, 3, a_ctab_cad_bind){
-   {n_CMD_ARG_DESC_SHEXP, n_SHEXP_PARSE_TRIM_IFSSPACE},
+   {n_CMD_ARG_DESC_SHEXP, n_SHEXP_PARSE_TRIM_IFSSPACE}, /* context */
    {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_OPTION | n_CMD_ARG_DESC_HONOUR_STOP,
-      n_SHEXP_PARSE_DRYRUN},
+      n_SHEXP_PARSE_DRYRUN}, /* subcommand / key sequence */
    {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_OPTION |
          n_CMD_ARG_DESC_GREEDY | n_CMD_ARG_DESC_GREEDY_JOIN |
          n_CMD_ARG_DESC_HONOUR_STOP,
-      n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_TRIM_IFSSPACE}
+      n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_TRIM_IFSSPACE} /* expansion */
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 #else
 # define a_CTAB_CAD_BIND NULL
@@ -63,10 +63,10 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(bind, 3, a_ctab_cad_bind){
 
 n_CMD_ARG_DESC_SUBCLASS_DEF(call, 2, a_ctab_cad_call){
    {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_HONOUR_STOP,
-      n_SHEXP_PARSE_TRIM_IFSSPACE},
+      n_SHEXP_PARSE_TRIM_IFSSPACE}, /* macro name */
    {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_OPTION |
          n_CMD_ARG_DESC_GREEDY | n_CMD_ARG_DESC_HONOUR_STOP,
-      n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_TRIM_IFSSPACE}
+      n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_TRIM_IFSSPACE} /* args */
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
 #ifdef HAVE_TLS
@@ -99,6 +99,17 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(Decrypt, 1, a_ctab_cad_Decrypt){
       n_SHEXP_PARSE_TRIM_IFSSPACE}
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
+n_CMD_ARG_DESC_SUBCLASS_DEF(digmsg, 3, a_ctab_cad_digmsg){ /* XXX 2 OR 3 */
+   {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_HONOUR_STOP,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}, /* subcommand (/ msgno/-) */
+   {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_HONOUR_STOP,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}, /* msgno/- (/ first part of user cmd) */
+   {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_OPTION |
+         n_CMD_ARG_DESC_GREEDY | n_CMD_ARG_DESC_GREEDY_JOIN |
+         n_CMD_ARG_DESC_HONOUR_STOP,
+      n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_TRIM_IFSSPACE} /* args */
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
 n_CMD_ARG_DESC_SUBCLASS_DEF(forward, 1, a_ctab_cad_forward){
    {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY |
          n_CMD_ARG_DESC_MSGLIST_NEEDS_SINGLE,
@@ -121,6 +132,11 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(Move, 1, a_ctab_cad_Move){
       n_SHEXP_PARSE_TRIM_IFSSPACE}
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
+n_CMD_ARG_DESC_SUBCLASS_DEF(pdot, 1, a_ctab_cad_pdot){
+   {n_CMD_ARG_DESC_MSGLIST | n_CMD_ARG_DESC_GREEDY,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}
+}n_CMD_ARG_DESC_SUBCLASS_DEF_END;
+
 n_CMD_ARG_DESC_SUBCLASS_DEF(pipe, 1, a_ctab_cad_pipe){
    {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY,
       n_SHEXP_PARSE_TRIM_IFSSPACE}
@@ -128,11 +144,11 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(pipe, 1, a_ctab_cad_pipe){
 
 n_CMD_ARG_DESC_SUBCLASS_DEF(readctl, 2, a_ctab_cad_readctl){
    {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_OPTION | n_CMD_ARG_DESC_HONOUR_STOP,
-      n_SHEXP_PARSE_TRIM_IFSSPACE},
+      n_SHEXP_PARSE_TRIM_IFSSPACE}, /* subcommand */
    {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_OPTION |
          n_CMD_ARG_DESC_GREEDY | n_CMD_ARG_DESC_GREEDY_JOIN |
          n_CMD_ARG_DESC_HONOUR_STOP,
-      n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_TRIM_IFSSPACE}
+      n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_TRIM_IFSSPACE} /* var names */
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
 n_CMD_ARG_DESC_SUBCLASS_DEF(resend, 1, a_ctab_cad_resend){
@@ -158,7 +174,8 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(Save, 1, a_ctab_cad_Save){
 #ifdef HAVE_KEY_BINDINGS
 # define a_CTAB_CAD_UNBIND n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_unbind)
 n_CMD_ARG_DESC_SUBCLASS_DEF(unbind, 2, a_ctab_cad_unbind){
-   {n_CMD_ARG_DESC_SHEXP, n_SHEXP_PARSE_TRIM_IFSSPACE},
+   {n_CMD_ARG_DESC_SHEXP, n_SHEXP_PARSE_TRIM_IFSSPACE}, /* context */
+   /* key sequence or * */
    {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_HONOUR_STOP, n_SHEXP_PARSE_DRYRUN}
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 #else
@@ -167,10 +184,10 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(unbind, 2, a_ctab_cad_unbind){
 
 n_CMD_ARG_DESC_SUBCLASS_DEF(vpospar, 2, a_ctab_cad_vpospar){
    {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_HONOUR_STOP,
-      n_SHEXP_PARSE_TRIM_IFSSPACE},
+      n_SHEXP_PARSE_TRIM_IFSSPACE}, /* subcommand */
    {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_OPTION |
          n_CMD_ARG_DESC_GREEDY | n_CMD_ARG_DESC_HONOUR_STOP,
-      n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_TRIM_IFSSPACE}
+      n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_TRIM_IFSSPACE} /* args */
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
 n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
@@ -563,8 +580,9 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
 
    /* New-style commands without un* counterpart */
 
-   { "=", &c_pdot, (A | TWYSH), 0, 0, NULL
-     DS(N_("Show current message number")) },
+   { "=", &c_pdot, (A | G | V | X | EM | TARG), 0, MMNDEL,
+     n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_pdot)
+     DS(N_("Show message number of [<msglist>] (or the \"dot\")")) },
 
    { "call", &c_call, (M | X | EM | TARG), 0, 0,
       n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_call)
@@ -574,6 +592,11 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Call macro <name> like `call', but be silent if non-existent")) },
    { "cwd", &c_cwd, (M | V | X | TWYSH), 0, 0, NULL
      DS(N_("Print current working directory (CWD)")) },
+
+   { "digmsg", &c_digmsg, (G | M | X | EM | TARG), 0, 0,
+      n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_digmsg)
+     DS(N_("<create|remove> <-|msgno> | <-|msgno> <cmd>: "
+         "message dig object control"))},
 
    { "echo", &c_echo, (G | M | V | X | EM | TWYSH), 0, MAC, NULL
      DS(N_("Echo arguments, and a trailing newline, to standard output")) },
@@ -630,9 +653,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Read anything from standard input until EOF into <variable>")) },
    { "readctl", &c_readctl, (G | M | X | EM | TARG), 0, 0,
       n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_readctl)
-     DS(N_(
-     "[<show>], <create> <spec>, <set> <spec>, <remove> <spec> read channels")
-     )},
+     DS(N_("[<show>] or <create|set|remove> <spec> read channels"))},
    { "return", &c_return, (M | X | EM | TWYSH), 0, 2, NULL
      DS(N_("Return control [with <return value> [<exit status>]] from macro"))},
 

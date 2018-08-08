@@ -1405,6 +1405,9 @@ Note that historically the global
 .Pa \*(UR
 not only adjusts the list of displayed headers, but also sets
 .Va crt .
+(\*(ID A yet somewhat restricted) Reliable scriptable message
+inspection is available via
+.Ic digmsg .
 .
 .Pp
 Dependent upon the configuration a line editor (see the section
@@ -4020,8 +4023,24 @@ a numeric argument n.
 .
 .Mx
 .It Ic =
-Show the current message number (the
-.Dq dot ) .
+Shows the message number of the current message (the
+.Dq dot )
+when used without arguments, that of the given list otherwise.
+Output numbers will be separated from each other with the first
+character of
+.Va ifs ,
+and followed by the first character of
+.Va if-ws ,
+if that is not empty and not identical to the first.
+If that results in no separation at all a
+.Cm space
+character is used.
+This command supports
+.Cm vput
+(see
+.Sx "Command modifiers" ) ,
+and manages the error number
+.Va \&! .
 .
 .Mx
 .It Ic \&?
@@ -4186,18 +4205,19 @@ Alias names adhere to the Postfix MTA
 .Xr aliases 5
 rules and are thus restricted to alphabetic characters, digits, the
 underscore, hyphen-minus, the number sign, colon and commercial at,
-the last character can also be the dollar sign; the regular expression:
-.Ql [[:alnum:]_#:@-]+$? .
-.\" ALIASCOLON next sentence
-\*(ID Unfortunately the colon is currently not supported, as it
-interferes with normal address parsing rules.
+a dollar sign is allowed but in the first position;
 As extensions the exclamation mark
 .Ql \&! ,
 period
 .Ql \&.
 as well as
-.Dq any character that has the high bit set
-may be used.
+.Dq any haracter that has the high bit set
+may be used:
+.Ql [[:alnum:]_#:@-][[:alnum:]_#:@$;.-]* .
+.Pp
+.\" ALIASCOLON next sentence
+\*(ID Unfortunately the colon is currently not supported, as it
+interferes with normal address parsing rules.
 .\" ALIASCOLON next sentence
 \*(ID Such high bit characters will likely cause warnings at the moment
 for the same reasons why colon is unsupported.
@@ -4902,6 +4922,46 @@ or the last message restored, respectively, is automatically
 d; also see
 .Ic dp ,
 .Ic dt .
+.
+.
+.Mx
+.It Ic digmsg
+\*(NQ Digging (information out of) messages is possible through
+.Ic \&\&digmsg
+objects, which can be
+.Cm create Ns
+d for the given message number; in compose mode the hyphen-minus
+.Ql -
+will instead open the message that is being composed.
+If a hyphen-minus is given as the optional third argument then output
+will be generated on the standard output channel instead of being
+subject to consumation by the
+.Ic read
+or
+.Ic readall
+commands.
+.Pp
+The objects may be
+.Cm remove Ns
+d again by giving the same identifier used for creation;
+this step could be omitted: objects will be automatically closed
+when the active mailbox or the compose mode is left, respectively.
+In all other cases the second argument is an object identifier,
+and the third and all following arguments are interpreted as via
+.Ic ~^
+(see
+.Sx "COMMAND ESCAPES" ) :
+.Bd -literal -offset indent
+? vput = msgno; digmsg create $msgno
+? digmsg $msgno header list;   readall x;   echon $x
+210 Subject From To Message-ID References In-Reply-To Status
+? digmsg $msgno header show Status;readall x;echon $x
+212 Status
+RO
+
+? digmsg remove $msgno
+.Ed
+.
 .
 .Mx
 .It Ic discard
@@ -7720,7 +7780,9 @@ Also see
 .
 .Mx
 .It Ic ~^ Ar cmd Op Ar subcmd Op Ar arg3 Op Ar arg4
-Low-level command meant for scripted message access, i.e., for
+Low-level compose mode command which shares the semantic with
+.Ic digmsg
+and is meant for scripted message access, i.e., for
 .Va on-compose-splice
 and
 .Va on-compose-splice-shell .
@@ -7735,8 +7797,11 @@ and the exit status
 .Va \&? ,
 because errors are reported via the protocol
 (hard errors like I/O failures cannot be handled).
+.
+.Pp
 This command has read-only access to several virtual pseudo headers in
-the \*(UA private namespace, which may not exist (except for the first):
+the \*(UA private namespace which optionally (except for the
+non-optional first) exist in compose mode:
 .
 .
 .Pp
@@ -7769,7 +7834,9 @@ addressed by any of
 .Ic reply , forward , resend .
 .El
 .
+.
 .Pp
+Error status code lines may optionally contain additional context.
 The status codes are:
 .
 .
@@ -7817,7 +7884,8 @@ Syntax error in parameters or arguments.
 Error: an argument fails verification.
 For example an invalid address has been specified (also see
 .Va expandaddr ) ,
-or an attempt was made to modify anything in \*(UA's own namespace.
+or an attempt was made to modify anything in \*(UA's own namespace,
+or a modifying subcommand has been used on a read-only message.
 .
 .It Ql 506
 Error: an otherwise valid argument is rendered invalid due to context.
@@ -7835,7 +7903,10 @@ if required arguments are missing (false command usage).
 The following (case-insensitive) commands are supported:
 .
 .
-.Bl -hang -width ".It Cm header"
+.Bl -hang -width ".It Cm version"
+.It Cm version
+This command will print the protocol version via 210.
+.
 .It Cm header
 This command allows listing, inspection, and editing of message headers.
 Header name case is not normalized, and case-insensitive comparison

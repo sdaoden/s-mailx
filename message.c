@@ -42,45 +42,45 @@
 
 /* Token values returned by the scanner used for argument lists.
  * Also, sizes of scanner-related things */
-enum a_message_token{
-   a_MESSAGE_T_EOL,     /* End of the command line */
-   a_MESSAGE_T_NUMBER,  /* Message number */
-   a_MESSAGE_T_MINUS,   /* - */
-   a_MESSAGE_T_STRING,  /* A string (possibly containing -) */
-   a_MESSAGE_T_DOT,     /* . */
-   a_MESSAGE_T_UP,      /* ^ */
-   a_MESSAGE_T_DOLLAR,  /* $ */
-   a_MESSAGE_T_ASTER,   /* * */
-   a_MESSAGE_T_OPEN,    /* ( */
-   a_MESSAGE_T_CLOSE,   /* ) */
-   a_MESSAGE_T_PLUS,    /* + */
-   a_MESSAGE_T_COMMA,   /* , */
-   a_MESSAGE_T_SEMI,    /* ; */
-   a_MESSAGE_T_BACK,    /* ` */
-   a_MESSAGE_T_ERROR    /* Lexical error */
+enum a_msg_token{
+   a_MSG_T_EOL,      /* End of the command line */
+   a_MSG_T_NUMBER,   /* Message number */
+   a_MSG_T_MINUS,    /* - */
+   a_MSG_T_STRING,   /* A string (possibly containing -) */
+   a_MSG_T_DOT,      /* . */
+   a_MSG_T_UP,       /* ^ */
+   a_MSG_T_DOLLAR,   /* $ */
+   a_MSG_T_ASTER,    /* * */
+   a_MSG_T_OPEN,     /* ( */
+   a_MSG_T_CLOSE,    /* ) */
+   a_MSG_T_PLUS,     /* + */
+   a_MSG_T_COMMA,    /* , */
+   a_MSG_T_SEMI,     /* ; */
+   a_MSG_T_BACK,     /* ` */
+   a_MSG_T_ERROR     /* Lexical error */
 };
 
-enum a_message_idfield{
-   a_MESSAGE_ID_REFERENCES,
-   a_MESSAGE_ID_IN_REPLY_TO
+enum a_msg_idfield{
+   a_MSG_ID_REFERENCES,
+   a_MSG_ID_IN_REPLY_TO
 };
 
-enum a_message_state{
-   a_MESSAGE_S_NEW = 1u<<0,
-   a_MESSAGE_S_OLD = 1u<<1,
-   a_MESSAGE_S_UNREAD = 1u<<2,
-   a_MESSAGE_S_DELETED = 1u<<3,
-   a_MESSAGE_S_READ = 1u<<4,
-   a_MESSAGE_S_FLAG = 1u<<5,
-   a_MESSAGE_S_ANSWERED = 1u<<6,
-   a_MESSAGE_S_DRAFT = 1u<<7,
-   a_MESSAGE_S_SPAM = 1u<<8,
-   a_MESSAGE_S_SPAMUNSURE = 1u<<9,
-   a_MESSAGE_S_MLIST = 1u<<10,
-   a_MESSAGE_S_MLSUBSCRIBE = 1u<<11
+enum a_msg_state{
+   a_MSG_S_NEW = 1u<<0,
+   a_MSG_S_OLD = 1u<<1,
+   a_MSG_S_UNREAD = 1u<<2,
+   a_MSG_S_DELETED = 1u<<3,
+   a_MSG_S_READ = 1u<<4,
+   a_MSG_S_FLAG = 1u<<5,
+   a_MSG_S_ANSWERED = 1u<<6,
+   a_MSG_S_DRAFT = 1u<<7,
+   a_MSG_S_SPAM = 1u<<8,
+   a_MSG_S_SPAMUNSURE = 1u<<9,
+   a_MSG_S_MLIST = 1u<<10,
+   a_MSG_S_MLSUBSCRIBE = 1u<<11
 };
 
-struct a_message_coltab{
+struct a_msg_coltab{
    char mco_char; /* What to find past : */
    ui8_t mco__dummy[3];
    int mco_bit;   /* Associated modifier bit */
@@ -88,12 +88,12 @@ struct a_message_coltab{
    int mco_equal; /* ... must equal this */
 };
 
-struct a_message_lex{
+struct a_msg_lex{
    char ml_char;
    ui8_t ml_token;
 };
 
-struct a_message_speclex{
+struct a_msg_speclex{
    char *msl_str;             /* If parsed a string */
    int msl_no;                /* If parsed a number TODO siz_t! */
    char msl__smallstrbuf[4];
@@ -102,95 +102,95 @@ struct a_message_speclex{
    char const *msl_input_orig;
 };
 
-static struct a_message_coltab const a_message_coltabs[] = {
-   {'n', {0,}, a_MESSAGE_S_NEW, MNEW, MNEW},
-   {'o', {0,}, a_MESSAGE_S_OLD, MNEW, 0},
-   {'u', {0,}, a_MESSAGE_S_UNREAD, MREAD, 0},
-   {'d', {0,}, a_MESSAGE_S_DELETED, MDELETED, MDELETED},
-   {'r', {0,}, a_MESSAGE_S_READ, MREAD, MREAD},
-   {'f', {0,}, a_MESSAGE_S_FLAG, MFLAGGED, MFLAGGED},
-   {'a', {0,}, a_MESSAGE_S_ANSWERED, MANSWERED, MANSWERED},
-   {'t', {0,}, a_MESSAGE_S_DRAFT, MDRAFTED, MDRAFTED},
-   {'s', {0,}, a_MESSAGE_S_SPAM, MSPAM, MSPAM},
-   {'S', {0,}, a_MESSAGE_S_SPAMUNSURE, MSPAMUNSURE, MSPAMUNSURE},
+static struct a_msg_coltab const a_msg_coltabs[] = {
+   {'n', {0,}, a_MSG_S_NEW, MNEW, MNEW},
+   {'o', {0,}, a_MSG_S_OLD, MNEW, 0},
+   {'u', {0,}, a_MSG_S_UNREAD, MREAD, 0},
+   {'d', {0,}, a_MSG_S_DELETED, MDELETED, MDELETED},
+   {'r', {0,}, a_MSG_S_READ, MREAD, MREAD},
+   {'f', {0,}, a_MSG_S_FLAG, MFLAGGED, MFLAGGED},
+   {'a', {0,}, a_MSG_S_ANSWERED, MANSWERED, MANSWERED},
+   {'t', {0,}, a_MSG_S_DRAFT, MDRAFTED, MDRAFTED},
+   {'s', {0,}, a_MSG_S_SPAM, MSPAM, MSPAM},
+   {'S', {0,}, a_MSG_S_SPAMUNSURE, MSPAMUNSURE, MSPAMUNSURE},
    /* These have no per-message flags, but must be evaluated */
-   {'l', {0,}, a_MESSAGE_S_MLIST, 0, 0},
-   {'L', {0,}, a_MESSAGE_S_MLSUBSCRIBE, 0, 0},
+   {'l', {0,}, a_MSG_S_MLIST, 0, 0},
+   {'L', {0,}, a_MSG_S_MLSUBSCRIBE, 0, 0},
 };
 
-static struct a_message_lex const a_message_singles[] = {
-   {'$', a_MESSAGE_T_DOLLAR},
-   {'.', a_MESSAGE_T_DOT},
-   {'^', a_MESSAGE_T_UP},
-   {'*', a_MESSAGE_T_ASTER},
-   {'-', a_MESSAGE_T_MINUS},
-   {'+', a_MESSAGE_T_PLUS},
-   {'(', a_MESSAGE_T_OPEN},
-   {')', a_MESSAGE_T_CLOSE},
-   {',', a_MESSAGE_T_COMMA},
-   {';', a_MESSAGE_T_SEMI},
-   {'`', a_MESSAGE_T_BACK}
+static struct a_msg_lex const a_msg_singles[] = {
+   {'$', a_MSG_T_DOLLAR},
+   {'.', a_MSG_T_DOT},
+   {'^', a_MSG_T_UP},
+   {'*', a_MSG_T_ASTER},
+   {'-', a_MSG_T_MINUS},
+   {'+', a_MSG_T_PLUS},
+   {'(', a_MSG_T_OPEN},
+   {')', a_MSG_T_CLOSE},
+   {',', a_MSG_T_COMMA},
+   {';', a_MSG_T_SEMI},
+   {'`', a_MSG_T_BACK}
 };
 
 /* Slots in ::message */
-static size_t a_message_mem_space;
+static size_t a_msg_mem_space;
 
 /* Mark entire threads */
-static bool_t a_message_threadflag;
+static bool_t a_msg_threadflag;
 
 /* :d on its way HACK TODO */
-static bool_t a_message_list_saw_d, a_message_list_last_saw_d;
+static bool_t a_msg_list_saw_d, a_msg_list_last_saw_d;
 
 /* Lazy load message header fields */
-static enum okay a_message_get_header(struct message *mp);
+static enum okay a_msg_get_header(struct message *mp);
 
 /* Append, taking care of resizes TODO vector */
-static char **a_message_add_to_nmadat(char ***nmadat, size_t *nmasize,
+static char **a_msg_add_to_nmadat(char ***nmadat, size_t *nmasize,
                char **np, char *string);
 
 /* Mark all messages that the user wanted from the command line in the message
  * structure.  Return 0 on success, -1 on error */
-static int a_message_markall(char const *orig, struct n_cmd_arg *cap, int f);
+static int a_msg_markall(char const *orig, struct n_cmd_arg *cap, int f);
 
 /* Turn the character after a colon modifier into a bit value */
-static int a_message_evalcol(int col);
+static int a_msg_evalcol(int col);
 
 /* Check the passed message number for legality and proper flags.  Unless f is
  * MDELETED the message has to be undeleted */
-static bool_t a_message_check(int mno, int f);
+static bool_t a_msg_check(int mno, int f);
 
 /* Scan out a single lexical item and return its token number, updating *mslp */
-static int a_message_scan(struct a_message_speclex *mslp);
+static int a_msg_scan(struct a_msg_speclex *mslp);
 
 /* See if the passed name sent the passed message */
-static bool_t a_message_match_sender(struct message *mp, char const *str,
+static bool_t a_msg_match_sender(struct message *mp, char const *str,
                bool_t allnet);
 
 /* Check whether the given message-id or references match */
-static bool_t a_message_match_mid(struct message *mp, char const *id,
-               enum a_message_idfield idfield);
+static bool_t a_msg_match_mid(struct message *mp, char const *id,
+               enum a_msg_idfield idfield);
 
 /* See if the given string matches.
  * For the purpose of the scan, we ignore case differences.
  * This is the engine behind the "/" search */
-static bool_t a_message_match_dash(struct message *mp, char const *str);
+static bool_t a_msg_match_dash(struct message *mp, char const *str);
 
 /* See if the given search expression matches.
  * For the purpose of the scan, we ignore case differences.
  * This is the engine behind the "@[..@].." search */
-static bool_t a_message_match_at(struct message *mp, struct search_expr *sep);
+static bool_t a_msg_match_at(struct message *mp, struct search_expr *sep);
 
 /* Unmark the named message */
-static void a_message_unmark(int mesg);
+static void a_msg_unmark(int mesg);
 
 /* Return the message number corresponding to the passed meta character */
-static int a_message_metamess(int meta, int f);
+static int a_msg_metamess(int meta, int f);
 
 /* Helper for mark(): self valid, threading enabled */
-static void a_message__threadmark(struct message *self, int f);
+static void a_msg__threadmark(struct message *self, int f);
 
 static enum okay
-a_message_get_header(struct message *mp){
+a_msg_get_header(struct message *mp){
    enum okay rv;
    NYD2_ENTER;
    n_UNUSED(mp);
@@ -221,7 +221,7 @@ a_message_get_header(struct message *mp){
 }
 
 static char **
-a_message_add_to_nmadat(char ***nmadat, size_t *nmasize, /* TODO Vector */
+a_msg_add_to_nmadat(char ***nmadat, size_t *nmasize, /* TODO Vector */
       char **np, char *string){
    size_t idx, i;
    NYD2_ENTER;
@@ -242,9 +242,9 @@ a_message_add_to_nmadat(char ***nmadat, size_t *nmasize, /* TODO Vector */
 }
 
 static int
-a_message_markall(char const *orig, struct n_cmd_arg *cap, int f){
-   struct a_message_speclex msl;
-   enum a_message_idfield idfield;
+a_msg_markall(char const *orig, struct n_cmd_arg *cap, int f){
+   struct a_msg_speclex msl;
+   enum a_msg_idfield idfield;
    size_t j, nmasize;
    char const *id;
    char **nmadat_lofi, **nmadat, **np, **nq, *cp;
@@ -291,8 +291,8 @@ a_message_markall(char const *orig, struct n_cmd_arg *cap, int f){
    np = nmadat =
    nmadat_lofi = n_lofi_alloc((nmasize = 64) * sizeof *np); /* TODO vector */
    n_UNINIT(beg, 0);
-   n_UNINIT(idfield, a_MESSAGE_ID_REFERENCES);
-   a_message_threadflag = FAL0;
+   n_UNINIT(idfield, a_MSG_ID_REFERENCES);
+   a_msg_threadflag = FAL0;
    valdot = (int)PTR2SIZE(dot - message + 1);
    colmod = 0;
    id = NULL;
@@ -300,15 +300,15 @@ a_message_markall(char const *orig, struct n_cmd_arg *cap, int f){
          ((!(n_pstate & n_PS_HOOK_MASK) || (n_poption & n_PO_D_V))
             ? a_LOG : 0);
 
-   while((tok = a_message_scan(&msl)) != a_MESSAGE_T_EOL){
-      if((a_message_threadflag = (tok < 0)))
+   while((tok = a_msg_scan(&msl)) != a_MSG_T_EOL){
+      if((a_msg_threadflag = (tok < 0)))
          tok &= INT_MAX;
 
       switch(tok){
-      case a_MESSAGE_T_NUMBER:
+      case a_MSG_T_NUMBER:
          n_pstate |= n_PS_MSGLIST_GABBY;
 jnumber:
-         if(!a_message_check(msl.msl_no, f))
+         if(!a_msg_check(msl.msl_no, f))
             goto jerr;
 
          if(flags & a_RANGE){
@@ -403,7 +403,7 @@ jnumber__thr:
             }
          }
          break;
-      case a_MESSAGE_T_PLUS:
+      case a_MSG_T_PLUS:
          n_pstate &= ~n_PS_MSGLIST_DIRECT;
          n_pstate |= n_PS_MSGLIST_GABBY;
          i = valdot;
@@ -421,7 +421,7 @@ jnumber__thr:
             (message[i - 1].m_flag & MDELETED) != (unsigned)f);
          msl.msl_no = i;
          goto jnumber;
-      case a_MESSAGE_T_MINUS:
+      case a_MSG_T_MINUS:
          n_pstate &= ~n_PS_MSGLIST_DIRECT;
          n_pstate |= n_PS_MSGLIST_GABBY;
          i = valdot;
@@ -439,32 +439,32 @@ jnumber__thr:
             (message[i - 1].m_flag & MDELETED) != (unsigned)f);
          msl.msl_no = i;
          goto jnumber;
-      case a_MESSAGE_T_STRING:
+      case a_MSG_T_STRING:
          n_pstate &= ~n_PS_MSGLIST_DIRECT;
          if(flags & a_RANGE)
             goto jebadrange;
 
          /* This may be a colon modifier */
          if((cp = msl.msl_str)[0] != ':')
-            np = a_message_add_to_nmadat(&nmadat, &nmasize, np,
+            np = a_msg_add_to_nmadat(&nmadat, &nmasize, np,
                   savestr(msl.msl_str));
          else{
             while(*++cp != '\0'){
-               colresult = a_message_evalcol(*cp);
+               colresult = a_msg_evalcol(*cp);
                if(colresult == 0){
                   if(flags & a_LOG)
                      n_err(_("Unknown colon modifier: %s\n"), msl.msl_str);
                   goto jerr;
                }
-               if(colresult == a_MESSAGE_S_DELETED){
-                  a_message_list_saw_d = TRU1;
+               if(colresult == a_MSG_S_DELETED){
+                  a_msg_list_saw_d = TRU1;
                   f |= MDELETED;
                }
                colmod |= colresult;
             }
          }
          break;
-      case a_MESSAGE_T_OPEN:
+      case a_MSG_T_OPEN:
          n_pstate &= ~n_PS_MSGLIST_DIRECT;
          if(flags & a_RANGE)
             goto jebadrange;
@@ -485,17 +485,17 @@ jnumber__thr:
             n_err(_("Optional selector not available: %s\n"), msl.msl_str);
 #endif
          goto jerr;
-      case a_MESSAGE_T_DOLLAR:
-      case a_MESSAGE_T_UP:
-      case a_MESSAGE_T_SEMI:
+      case a_MSG_T_DOLLAR:
+      case a_MSG_T_UP:
+      case a_MSG_T_SEMI:
          n_pstate |= n_PS_MSGLIST_GABBY;
          /* FALLTHRU */
-      case a_MESSAGE_T_DOT: /* Don't set _GABBY for dot to allow history.. */
+      case a_MSG_T_DOT: /* Don't set _GABBY for dot to allow history.. */
          n_pstate &= ~n_PS_MSGLIST_DIRECT;
-         if((msl.msl_no = a_message_metamess(msl.msl_str[0], f)) == -1)
+         if((msl.msl_no = a_msg_metamess(msl.msl_str[0], f)) == -1)
             goto jerr;
          goto jnumber;
-      case a_MESSAGE_T_BACK:
+      case a_MSG_T_BACK:
          n_pstate &= ~n_PS_MSGLIST_DIRECT;
          if(flags & a_RANGE)
             goto jebadrange;
@@ -505,9 +505,9 @@ jnumber__thr:
             if((mp = &message[i])->m_flag & MHIDDEN)
                continue;
             if((mp->m_flag & MDELETED) != (unsigned)f){
-               if(!a_message_list_last_saw_d)
+               if(!a_msg_list_last_saw_d)
                   continue;
-               a_message_list_saw_d = TRU1;
+               a_msg_list_saw_d = TRU1;
             }
             if(mp->m_flag & MOLDMARK){
                mark(i + 1, f);
@@ -516,13 +516,13 @@ jnumber__thr:
             }
          }
          break;
-      case a_MESSAGE_T_ASTER:
+      case a_MSG_T_ASTER:
          n_pstate &= ~n_PS_MSGLIST_DIRECT;
          if(flags & a_RANGE)
             goto jebadrange;
          flags |= a_ASTER;
          break;
-      case a_MESSAGE_T_COMMA:
+      case a_MSG_T_COMMA:
          n_pstate &= ~n_PS_MSGLIST_DIRECT;
          n_pstate |= n_PS_MSGLIST_GABBY;
          if(flags & a_RANGE)
@@ -537,7 +537,7 @@ jnumber__thr:
 
          if(id == NULL){
             if((cp = hfield1("in-reply-to", dot)) != NULL)
-               idfield = a_MESSAGE_ID_IN_REPLY_TO;
+               idfield = a_MSG_ID_IN_REPLY_TO;
             else if((cp = hfield1("references", dot)) != NULL){
                struct name *enp;
 
@@ -545,7 +545,7 @@ jnumber__thr:
                   while(enp->n_flink != NULL)
                      enp = enp->n_flink;
                   cp = enp->n_name;
-                  idfield = a_MESSAGE_ID_REFERENCES;
+                  idfield = a_MSG_ID_REFERENCES;
                }else
                   cp = NULL;
             }
@@ -559,7 +559,7 @@ jnumber__thr:
          }else if(flags & a_LOG)
             n_err(_("Ignoring redundant specification of , selector\n"));
          break;
-      case a_MESSAGE_T_ERROR:
+      case a_MSG_T_ERROR:
          n_pstate &= ~n_PS_MSGLIST_DIRECT;
          n_pstate |= n_PS_MSGLIST_GABBY;
          goto jerr;
@@ -579,7 +579,7 @@ jnumber__thr:
       goto jerrmsg;
    }
 
-   np = a_message_add_to_nmadat(&nmadat, &nmasize, np, NULL);
+   np = a_msg_add_to_nmadat(&nmadat, &nmasize, np, NULL);
    --np;
 
    /* * is special at this point, after we have parsed the entire line */
@@ -587,7 +587,7 @@ jnumber__thr:
       for(i = 0; i < msgCount; ++i){
          if((mp = &message[i])->m_flag & MHIDDEN)
             continue;
-         if(!a_message_list_saw_d && (mp->m_flag & MDELETED) != (unsigned)f)
+         if(!a_msg_list_saw_d && (mp->m_flag & MDELETED) != (unsigned)f)
             continue;
          mark(i + 1, f);
          flags |= a_ANY;
@@ -719,30 +719,30 @@ jat_where_default:
       for(i = 0; i < msgCount; ++i){
          if((mp = &message[i])->m_flag & (MMARK | MHIDDEN))
             continue;
-         if(!a_message_list_saw_d && (mp->m_flag & MDELETED) != (unsigned)f)
+         if(!a_msg_list_saw_d && (mp->m_flag & MDELETED) != (unsigned)f)
             continue;
 
          flags &= ~a_TMP;
          if(np > nmadat){
             for(nq = nmadat; *nq != NULL; ++nq){
                if(**nq == '@'){
-                  if(a_message_match_at(mp, &sep[PTR2SIZE(nq - nmadat)])){
+                  if(a_msg_match_at(mp, &sep[PTR2SIZE(nq - nmadat)])){
                      flags |= a_TMP;
                      break;
                   }
                }else if(**nq == '/'){
-                  if(a_message_match_dash(mp, *nq)){
+                  if(a_msg_match_dash(mp, *nq)){
                      flags |= a_TMP;
                      break;
                   }
-               }else if(a_message_match_sender(mp, *nq, (flags & a_ALLNET))){
+               }else if(a_msg_match_sender(mp, *nq, (flags & a_ALLNET))){
                   flags |= a_TMP;
                   break;
                }
             }
          }
          if(!(flags & a_TMP) &&
-               id != NULL && a_message_match_mid(mp, id, idfield))
+               id != NULL && a_msg_match_mid(mp, id, idfield))
             flags |= a_TMP;
 
          if(flags & a_TMP){
@@ -773,24 +773,23 @@ jnamesearch_sepfree:
     * do satisfy the modifiers */
    if(colmod != 0){
       for(i = 0; i < msgCount; ++i){
-         struct a_message_coltab const *colp;
+         struct a_msg_coltab const *colp;
 
          if((mp = &message[i])->m_flag & (MMARK | MHIDDEN))
             continue;
-         if(!a_message_list_saw_d && (mp->m_flag & MDELETED) != (unsigned)f)
+         if(!a_msg_list_saw_d && (mp->m_flag & MDELETED) != (unsigned)f)
             continue;
 
-         for(colp = a_message_coltabs;
-               PTRCMP(colp, <, &a_message_coltabs[n_NELEM(a_message_coltabs)]);
-               ++colp)
+         for(colp = a_msg_coltabs;
+               PTRCMP(colp, <, &a_msg_coltabs[n_NELEM(a_msg_coltabs)]); ++colp)
             if(colp->mco_bit & colmod){
                /* Is this a colon modifier that requires evaluation? */
                if(colp->mco_mask == 0){
-                  if(colp->mco_bit & (a_MESSAGE_S_MLIST |
-                           a_MESSAGE_S_MLSUBSCRIBE)){
+                  if(colp->mco_bit & (a_MSG_S_MLIST |
+                           a_MSG_S_MLSUBSCRIBE)){
                      enum mlist_state what;
 
-                     what = (colp->mco_bit & a_MESSAGE_S_MLIST) ? MLIST_KNOWN
+                     what = (colp->mco_bit & a_MSG_S_MLIST) ? MLIST_KNOWN
                            : MLIST_SUBSCRIBED;
                      if(what == is_mlist_mp(mp, what))
                         goto jcolonmod_mark;
@@ -834,15 +833,14 @@ jerr:
 }
 
 static int
-a_message_evalcol(int col){
-   struct a_message_coltab const *colp;
+a_msg_evalcol(int col){
+   struct a_msg_coltab const *colp;
    int rv;
    NYD2_ENTER;
 
    rv = 0;
-   for(colp = a_message_coltabs;
-         PTRCMP(colp, <, &a_message_coltabs[n_NELEM(a_message_coltabs)]);
-         ++colp)
+   for(colp = a_msg_coltabs;
+         PTRCMP(colp, <, &a_msg_coltabs[n_NELEM(a_msg_coltabs)]); ++colp)
       if(colp->mco_char == col){
          rv = colp->mco_bit;
          break;
@@ -852,7 +850,7 @@ a_message_evalcol(int col){
 }
 
 static bool_t
-a_message_check(int mno, int f){
+a_msg_check(int mno, int f){
    struct message *mp;
    NYD2_ENTER;
 
@@ -869,13 +867,13 @@ a_message_check(int mno, int f){
 }
 
 static int
-a_message_scan(struct a_message_speclex *mslp){
-   struct a_message_lex const *lp;
+a_msg_scan(struct a_msg_speclex *mslp){
+   struct a_msg_lex const *lp;
    char *cp, c;
    int rv;
    NYD_ENTER;
 
-   rv = a_MESSAGE_T_EOL;
+   rv = a_MSG_T_EOL;
 
    /* Empty cap's even for IGNORE_EMPTY (quoted empty tokens produce output) */
    for(;; mslp->msl_cap = mslp->msl_cap->ca_next){
@@ -901,10 +899,10 @@ jshexp_err:
             n_err(_("Message list: invalid syntax: %s (in %s)\n"),
                n_shexp_quote_cp(cp, FAL0),
                n_shexp_quote_cp(mslp->msl_input_orig, FAL0));
-            rv = a_MESSAGE_T_ERROR;
+            rv = a_MSG_T_ERROR;
             goto jleave;
          }
-         rv = a_MESSAGE_T_DOT | INT_MIN;
+         rv = a_MSG_T_DOT | INT_MIN;
          goto jleave;
       }
       rv = INT_MIN;
@@ -912,7 +910,7 @@ jshexp_err:
    }
 
    /* If the leading character is a digit, scan the number and convert it
-    * on the fly.  Return a_MESSAGE_T_NUMBER when done */
+    * on the fly.  Return a_MSG_T_NUMBER when done */
    if(digitchar(c)){
       mslp->msl_no = 0;
       do
@@ -929,11 +927,11 @@ jshexp_err:
          else
             goto jshexp_err;
       }
-      rv |= a_MESSAGE_T_NUMBER;
+      rv |= a_MSG_T_NUMBER;
       goto jleave;
    }
 
-   /* An IMAP SEARCH list. Note that a_MESSAGE_T_OPEN has always been included
+   /* An IMAP SEARCH list. Note that a_MSG_T_OPEN has always been included
     * in singles[] in Mail and mailx. Thus although there is no formal
     * definition for (LIST) lists, they do not collide with historical
     * practice because a subject string (LIST) could never been matched
@@ -954,7 +952,7 @@ jmtop:
             n_err(_("P.S.: message specifications are now shell tokens, "
                "making it necessary to enclose IMAP search expressions "
                "in (single) quotes, e.g., '(from \"me\")'\n"));
-            rv = a_MESSAGE_T_ERROR;
+            rv = a_MSG_T_ERROR;
             goto jleave;
          }
          if (inquote && c == '\\') {
@@ -983,13 +981,13 @@ jmtop:
       if(*cp != '\0')
          goto jshexp_err;
       mslp->msl_cap = mslp->msl_cap->ca_next;
-      rv |= a_MESSAGE_T_OPEN;
+      rv |= a_MSG_T_OPEN;
       goto jleave;
    }
 
    /* Check for single character tokens; return such if found */
-   for(lp = a_message_singles;
-         PTRCMP(lp, <, &a_message_singles[n_NELEM(a_message_singles)]); ++lp){
+   for(lp = a_msg_singles;
+         PTRCMP(lp, <, &a_msg_singles[n_NELEM(a_msg_singles)]); ++lp){
       if(c == lp->ml_char){
          mslp->msl_str = mslp->msl__smallstrbuf;
          mslp->msl_str[0] = c;
@@ -1004,14 +1002,14 @@ jmtop:
 
    mslp->msl_cap = mslp->msl_cap->ca_next;
    mslp->msl_str = --cp;
-   rv = a_MESSAGE_T_STRING;
+   rv = a_MSG_T_STRING;
 jleave:
    NYD_LEAVE;
    return rv;
 }
 
 static bool_t
-a_message_match_sender(struct message *mp, char const *str, bool_t allnet){
+a_msg_match_sender(struct message *mp, char const *str, bool_t allnet){
    char const *str_base, *np_base, *np;
    char sc, nc;
    struct name *namep;
@@ -1089,8 +1087,8 @@ jleave:
 }
 
 static bool_t
-a_message_match_mid(struct message *mp, char const *id,
-      enum a_message_idfield idfield){
+a_msg_match_mid(struct message *mp, char const *id,
+      enum a_msg_idfield idfield){
    char const *cp;
    bool_t rv;
    NYD2_ENTER;
@@ -1099,11 +1097,11 @@ a_message_match_mid(struct message *mp, char const *id,
 
    if((cp = hfield1("message-id", mp)) != NULL){
       switch(idfield){
-      case a_MESSAGE_ID_REFERENCES:
+      case a_MSG_ID_REFERENCES:
          if(!msgidcmp(id, cp))
             rv = TRU1;
          break;
-      case a_MESSAGE_ID_IN_REPLY_TO:{
+      case a_MSG_ID_IN_REPLY_TO:{
          struct name *np;
 
          if((np = extract(id, GREF)) != NULL)
@@ -1122,7 +1120,7 @@ a_message_match_mid(struct message *mp, char const *id,
 }
 
 static bool_t
-a_message_match_dash(struct message *mp, char const *str){
+a_msg_match_dash(struct message *mp, char const *str){
    static char lastscan[128];
 
    struct str in, out;
@@ -1165,7 +1163,7 @@ jleave:
 }
 
 static bool_t
-a_message_match_at(struct message *mp, struct search_expr *sep){
+a_msg_match_at(struct message *mp, struct search_expr *sep){
    char const *field;
    bool_t rv;
    NYD2_ENTER;
@@ -1193,7 +1191,7 @@ jleave:
 }
 
 static void
-a_message_unmark(int mesg){
+a_msg_unmark(int mesg){
    size_t i;
    NYD2_ENTER;
 
@@ -1205,7 +1203,7 @@ a_message_unmark(int mesg){
 }
 
 static int
-a_message_metamess(int meta, int f)
+a_msg_metamess(int meta, int f)
 {
    int c, m;
    struct message *mp;
@@ -1288,10 +1286,10 @@ jem1:
 }
 
 static void
-a_message__threadmark(struct message *self, int f){
+a_msg__threadmark(struct message *self, int f){
    NYD2_ENTER;
    if(!(self->m_flag & MHIDDEN) &&
-         (f == MDELETED || !(self->m_flag & MDELETED) || a_message_list_saw_d))
+         (f == MDELETED || !(self->m_flag & MDELETED) || a_msg_list_saw_d))
       self->m_flag |= MMARK;
 
    if((self = self->m_child) != NULL){
@@ -1299,7 +1297,7 @@ a_message__threadmark(struct message *self, int f){
       while((self = self->m_younger) != NULL)
          if(self->m_child != NULL)
 jcall:
-            a_message__threadmark(self, f);
+            a_msg__threadmark(self, f);
          else
             self->m_flag |= MMARK;
    }
@@ -1317,7 +1315,7 @@ setinput(struct mailbox *mp, struct message *m, enum needspec need){
    switch(need){
    case NEED_HEADER:
       ok = (m->m_content_info & CI_HAVE_HEADER) ? OKAY
-            : a_message_get_header(m);
+            : a_msg_get_header(m);
       break;
    case NEED_BODY:
       ok = (m->m_content_info & CI_HAVE_BODY) ? OKAY : get_body(m);
@@ -1381,19 +1379,19 @@ message_reset(void){
       message = NULL;
    }
    msgCount = 0;
-   a_message_mem_space = 0;
+   a_msg_mem_space = 0;
    NYD_LEAVE;
 }
 
 FL void
 message_append(struct message *mp){
    NYD_ENTER;
-   if(UICMP(z, msgCount + 1, >=, a_message_mem_space)){
+   if(UICMP(z, msgCount + 1, >=, a_msg_mem_space)){
       /* XXX remove _mem_space magics (or use s_Vector) */
-      a_message_mem_space = ((a_message_mem_space >= 128 &&
-               a_message_mem_space <= 1000000)
-            ? a_message_mem_space << 1 : a_message_mem_space + 64);
-      message = n_realloc(message, a_message_mem_space * sizeof(*message));
+      a_msg_mem_space = ((a_msg_mem_space >= 128 &&
+               a_msg_mem_space <= 1000000)
+            ? a_msg_mem_space << 1 : a_msg_mem_space + 64);
+      message = n_realloc(message, a_msg_mem_space * sizeof(*message));
    }
    if(msgCount > 0){
       if(mp != NULL)
@@ -1494,8 +1492,8 @@ n_getmsglist(char const *buf, int *vector, int flags,
 
    n_pstate &= ~n_PS_ARGLIST_MASK;
    n_pstate |= n_PS_MSGLIST_DIRECT;
-   a_message_list_last_saw_d = a_message_list_saw_d;
-   a_message_list_saw_d = FAL0;
+   a_msg_list_last_saw_d = a_msg_list_saw_d;
+   a_msg_list_saw_d = FAL0;
 
    *vector = 0;
    if(capp_or_null != NULL)
@@ -1563,7 +1561,7 @@ n_getmsglist(char const *buf, int *vector, int flags,
          if(msgCount == 0){
             mc = 0;
             goto jleave;
-         }else if((mc = a_message_markall(buf, cac.cac_arg, flags)) < 0){
+         }else if((mc = a_msg_markall(buf, cac.cac_arg, flags)) < 0){
             mc = -1;
             goto jleave;
          }
@@ -1576,7 +1574,7 @@ n_getmsglist(char const *buf, int *vector, int flags,
       for(mp = message; mp < &message[msgCount]; ++mp)
          if(mp->m_flag & MMARK){
             if(!(mp->m_flag & MNEWEST))
-               a_message_unmark((int)PTR2SIZE(mp - message + 1));
+               a_msg_unmark((int)PTR2SIZE(mp - message + 1));
             else
                ++mc;
          }
@@ -1653,8 +1651,8 @@ mark(int mno, int f){
       n_panic(_("Bad message number to mark"));
    mp = &message[--i];
 
-   if(mb.mb_threaded == 1 && a_message_threadflag)
-      a_message__threadmark(mp, f);
+   if(mb.mb_threaded == 1 && a_msg_threadflag)
+      a_msg__threadmark(mp, f);
    else{
       assert(!(mp->m_flag & MHIDDEN));
       mp->m_flag |= MMARK;

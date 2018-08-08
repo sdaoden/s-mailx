@@ -758,6 +758,16 @@ enum cproto {
 ,CPROTO_IMAP
 };
 
+enum n_dig_msg_flags{
+   n_DIG_MSG_NONE,
+   n_DIG_MSG_COMPOSE = 1u<<0,          /* Compose mode object.. */
+   n_DIG_MSG_COMPOSE_DIGGED = 1u<<1,   /* ..with `digmsg' handle also! */
+   n_DIG_MSG_RDONLY = 1u<<2,           /* Message is read-only */
+   n_DIG_MSG_OWN_MEMPOOL = 1u<<3,      /* dmc_mempool==dmc_mempool_buf */
+   n_DIG_MSG_HAVE_FP = 1u<<4,          /* Open on a Ftmp() file */
+   n_DIG_MSG_FCLOSE = 1u<<5            /* (HAVE_FP:) needs fclose() */
+};
+
 enum n_dotlock_state{
    n_DLS_NONE,
    n_DLS_CANT_CHDIR,    /* Failed to chdir(2) into desired path */
@@ -850,6 +860,22 @@ enum n_go_input_inject_flags{
    n_GO_INPUT_INJECT_HISTORY = 1u<<1   /* Allow history addition */
 };
 
+enum n_header_extract_flags{
+   n_HEADER_EXTRACT_NONE,
+   n_HEADER_EXTRACT_EXTENDED = 1u<<0,
+   n_HEADER_EXTRACT_FULL = 2u<<0,
+   n_HEADER_EXTRACT__MODE_MASK = n_HEADER_EXTRACT_EXTENDED |
+         n_HEADER_EXTRACT_FULL,
+
+   /* Prefill the receivers with the already existing content of the given
+    * struct header arguent */
+   n_HEADER_EXTRACT_PREFILL_RECEIVERS = 1u<<8,
+   /* Understand and ignore shell-style comments */
+   n_HEADER_EXTRACT_IGNORE_SHELL_COMMENTS = 1u<<9,
+   /* Ignore a MBOX From_ line _silently */
+   n_HEADER_EXTRACT_IGNORE_FROM_ = 1u<<10
+};
+
 enum n_iconv_flags{
    n_ICONV_NONE = 0,
    n_ICONV_IGN_ILSEQ = 1<<0,     /* Ignore EILSEQ in input (replacement char) */
@@ -913,7 +939,7 @@ enum n_idec_state{
 n_MCTA(n__IDEC_MODE_MASK <= (1u<<8) - 1, "Shared bit range overlaps")
 
 /* Buffer size needed by n_ienc_buf() including NUL and base prefixes */
-#define n_IENC_BUFFER_SIZE 80
+#define n_IENC_BUFFER_SIZE 80u
 
 enum n_ienc_mode{
    n_IENC_MODE_NONE,
@@ -2051,6 +2077,32 @@ struct ccred {
    struct str     cc_pass;       /* Password (urlxdec()oded) or NULL */
 };
 
+struct n_dig_msg_ctx{
+   struct n_dig_msg_ctx *dmc_last;  /* Linked only if !n_DIG_MSG_COMPOSE */
+   struct n_dig_msg_ctx *dmc_next;
+   struct message *dmc_mp; /* XXX Yet NULL if n_DIG_MSG_COMPOSE */
+   enum n_dig_msg_flags dmc_flags;
+   ui32_t dmc_msgno;       /* XXX Only if !n_DIG_MSG_COMPOSE */
+   FILE *dmc_fp;
+   struct header *dmc_hp;
+   void *dmc_mempool;
+   char dmc_mempool_buf[n_MEMORY_POOL_TYPE_SIZEOF]; /* If !n_DIG_MSG_COMPOSE */
+};
+/* This is a bit hairy */
+#define n_DIG_MSG_COMPOSE_CREATE(DMCP,HP) \
+do{\
+   memset(n_dig_msg_compose_ctx = DMCP, 0, sizeof *(DMCP));\
+   (DMCP)->dmc_flags = n_DIG_MSG_COMPOSE;\
+   (DMCP)->dmc_hp = HP;\
+   (DMCP)->dmc_mempool = n_memory_pool_top();\
+}while(0)
+#define n_DIG_MSG_COMPOSE_GUT(DMCP) \
+do{\
+   assert(n_dig_msg_compose_ctx == DMCP);\
+   /* File cleaned up via close_all_files() */\
+   n_dig_msg_compose_ctx = NULL;\
+}while(0)
+
 #ifdef HAVE_DOTLOCK
 struct n_dotlock_info{
    char const *di_file_name;  /* Mailbox to lock */
@@ -2294,6 +2346,9 @@ MB_CACHE,         /* IMAP cache */
    char        *mb_cache_directory; /* name of cache directory */
    char mb_imap_delim[8];     /* Directory separator(s), [0] += replacer */
 #endif
+   /* XXX mailbox.mb_accmsg is a hack in so far as the mailbox object should
+    * XXX have an on_close event to which that machinery should connect */
+   struct n_dig_msg_ctx *mb_digmsg; /* Open `digmsg' connections */
    struct sock mb_sock;       /* socket structure */
 };
 
@@ -2660,7 +2715,11 @@ VL FILE *n_stdin;
 VL FILE *n_stdout;
 VL FILE *n_stderr;
 VL FILE *n_tty_fp;               /* Our terminal output TODO input channel */
-VL void *n_readctl_overlay;      /* `readctl' overlay (see c_readctl()) */
+/* XXX *_read_overlay and dig_msg_compose_ctx are hacks caused by missing
+ * XXX event driven nature of individual program parts */
+VL void *n_readctl_read_overlay; /* `readctl' XXX HACK */
+VL struct n_dig_msg_ctx *n_digmsg_read_overlay; /* `digmsg' XXX HACK */
+VL struct n_dig_msg_ctx *n_dig_msg_compose_ctx; /* Or NULL XXX HACK */
 
 VL ui32_t n_mb_cur_max;          /* Value of MB_CUR_MAX */
 VL ui32_t n_realscreenheight;    /* The real screen height */
