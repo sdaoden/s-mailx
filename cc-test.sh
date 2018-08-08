@@ -10,21 +10,24 @@
 # system and include that!  Our makefile and configure ensure that this test
 # does not run in the configured, but the user environment nonetheless!
 i=
-if [ -f ./mk-config.ev ]; then
-   :
-elif [ -f snailmail.jpg ] && [ -f .obj/mk-config.ev ]; then
-   cd .obj
-   i=../
-else
-   echo >&2 'S-nail/S-mailx is not configured.'
-   echo >&2 'This test script requires the shell environment that only the'
-   echo >&2 'configuration script can figure out, even if it will be used to'
-   echo >&2 'test a different binary than the one that would be produced!'
-   echo >&2 '(The necessary information will be in .obj/mk-config.ev.)'
-   echo >&2 'Hit RETURN to run "make config CONFIG=null'
-   read l
-   make config CONFIG=null
-fi
+while true; do
+   if [ -f ./mk-config.ev ]; then
+      break
+   elif [ -f snailmail.jpg ] && [ -f .obj/mk-config.ev ]; then
+      cd .obj
+      i=../
+      break
+   else
+      echo >&2 'S-nail/S-mailx is not configured.'
+      echo >&2 'This test script requires the shell environment that only the'
+      echo >&2 'configuration script can figure out, even if it will be used to'
+      echo >&2 'test a different binary than the one that would be produced!'
+      echo >&2 '(The necessary information will be in .obj/mk-config.ev.)'
+      echo >&2 'Hit RETURN to run "make config CONFIG=null'
+      read l
+      make config CONFIG=null
+   fi
+done
 . ./mk-config.ev
 if [ -z "${MAILX__CC_TEST_RUNNING}" ]; then
    MAILX__CC_TEST_RUNNING=1
