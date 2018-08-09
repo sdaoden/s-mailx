@@ -23,7 +23,7 @@ Andrew Gee, Olav Mørkrid, Kevin McCarthy, Michael Dressel,
 Jürgen Bruckner, Robert Elz, Rudolf Sykora, Doug McIlroy,
 Gavin Troy and Jörg Schilling.
 A special credit to Coverity.com again, it found a bug!
-(https://scan.coverity.com/projects/s-nail, project number 444.)
+(<https://scan.coverity.com/projects/s-nail>, project number 444.)
 
 We welcome Andrew Gee, Kevin McCarthy, Michael Dressel,
 Olav Mørkrid and Jürgen Bruckner in THANKS.
@@ -61,17 +61,17 @@ NOTES, ChangeLog (packager-affine)
   are parsed starting at the front, the last is taken off, and
   anything before that is the message list.)  (Gavin Troy.  2013.)
 
-- `~^#? header show' now optionally show the address type in
-  field 1.  This is backward-incompatible but _only_ applies to
-  non-network addresses.
+- `~^#'? "header show" now backward-incompatibly shows the address
+  type in field 1, but since this _only_ applies to non-network
+  addresses i made the change.
 
 - We will find ncurses on DragonFly BSD.
 
 - On Solaris tests no longer need GNU cksum(1): the Solaris cksum
   is different only for whitespace separators.  (Jörg Schilling)
 
-- Any generated files reside in .obj/, and the tests run in there,
-  too.  A "rm -f .obj" should suffice to clean anything up.  Fast.
+- All generated files reside in .obj/, and the tests run in there,
+  too.  A "rm -f .obj" should suffice to clean anything up.
 
 ChangeLog
 ^^^^^^^^^
@@ -85,7 +85,7 @@ ChangeLog
 - -r#76 will again set *from*#410 even after -S#77 has been used
   to set *from*.  (Michael Dressel)
 
-- No longer process From: (*from*#410) content via alternates
+- No longer process From: (*from*#410) content via `alternates'#?
   when Sender: (*sender*#510) is set.  (Michael Dressel)
 
 - Because the priority class of headers was not taken into
@@ -107,7 +107,7 @@ ChangeLog
   and starts a new thread.  (Doug McIlroy)
 
 - Added new *forward-inject-tail*#409, *quote-inject-head*#493
-  and *quote-inject-tail* variables, and extended the meaning
+  and *quote-inject-tail*#? variables, and extended the meaning
   of *quote*#489.
 
   All of *{forward,quote}-inject-{head,tail}* now support
@@ -165,8 +165,8 @@ ChangeLog
 
   The new `digmsg'#165 multiplexer adds some message access, just
   like `~^'#311 does in compose mode.  In fact the set of commands
-  is shared, yet `digmsg' is only read-only and cannot access
-  attachments until v15, however.  For example,
+  is shared, yet only in compose mode `digmsg' can change messages
+  or access attachments until v15, however.  For example,
 
   ?0[steffen@essex nail.git]$ cat > /tmp/z.rc <<'_EOT'
   define one {
@@ -180,10 +180,8 @@ ChangeLog
      \end
   }
   define all {
-     local set all # localize this (localopts yes would do too)
-     vput = all *
-     echo all: $all
-     eval call one $all
+     local set all # localize ("localopts yes" would do too)
+     vput = all *; echo all: $all; eval call one $all
   }
 _EOT
   ?0[steffen@essex nail.git]$ MAILRC=/tmp/z.rc \
