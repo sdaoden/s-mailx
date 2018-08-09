@@ -1565,7 +1565,7 @@ jerr:
 jleave:
    avcp->avc_var = avp;
 j_leave:
-   if(!(avlf & a_AMV_VLOOK_I3VAL_NONEW) && (n_poption & n_PO_D_VV) &&
+   if(!(avlf & a_AMV_VLOOK_I3VAL_NONEW) && (n_poption & n_PO_VERBVERB) &&
          avp != (struct a_amv_var*)-1 && avcp->avc_okey != ok_v_log_prefix){
       /* I18N: Variable "name" is set to "value" */
       n_err(_("*%s* is %s\n"),
