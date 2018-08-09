@@ -1167,13 +1167,29 @@ jcont:
       /* We're done with -M or -m TODO because: we are too stupid yet, above */
       if(n_poption & n_PO_Mm_FLAG)
          goto jout;
-      /* No command escapes, interrupts not expected.  Simply copy STDIN */
+      /* No command escapes, interrupts not expected? */
       if(!(n_psonce & n_PSO_INTERACTIVE) &&
             !(n_poption & (n_PO_t_FLAG | n_PO_TILDE_FLAG))){
-         linebuf = n_realloc(linebuf, linesize = LINESIZE);
-         while ((i = fread(linebuf, sizeof *linebuf, linesize, n_stdin)) > 0) {
-            if (i != fwrite(linebuf, sizeof *linebuf, i, _coll_fp))
+         /* Need to go over n_go_input() to handle injections */
+         for(;;){
+            cnt = n_go_input(n_GO_INPUT_CTX_COMPOSE, n_empty,
+                  &linebuf, &linesize, NULL, NULL);
+            if(cnt < 0){
+               if(!n_go_input_is_eof())
+                  goto jerr;
+               break;
+            }
+            i = (size_t)cnt;
+            if(i != fwrite(linebuf, sizeof *linebuf, i, _coll_fp))
                goto jerr;
+            /* TODO n_PS_READLINE_NL is a hack to ensure that _in_all_-
+             * TODO _code_paths_ a file without trailing NL isn't modified
+             * TODO to contain one; the "saw-newline" needs to be part of an
+             * TODO I/O input machinery object */
+            if(n_pstate & n_PS_READLINE_NL){
+               if(putc('\n', _coll_fp) == EOF)
+                  goto jerr;
+            }
          }
          goto jout;
       }
@@ -1202,7 +1218,7 @@ jcont:
          hist = histadd ? a_HIST_ADD | a_HIST_GABBY : a_HIST_NONE;
       }
 
-      if(cnt < 0){
+      if(cnt < 0){ /* TODO n_go_input_is_eof()!  Could be error!! */
          if(coap != NULL)
             break;
          if((n_poption & n_PO_t_FLAG) && !(n_psonce & n_PSO_t_FLAG_DONE)){

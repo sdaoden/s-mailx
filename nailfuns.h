@@ -946,9 +946,9 @@ FL void n_go_input_force_eof(void);
  * an input context enters EOF state (rather than error, as in ferror(3)) */
 FL bool_t n_go_input_is_eof(void);
 
-/* Force n_go_input() to read that buffer next -- for `history', and the MLE.
- * If commit is not true then we'll reenter the line editor with buf as default
- * line content.  Only to be used in interactive and non-robot mode! */
+/* Force n_go_input() to read that buffer next.
+ * If n_GO_INPUT_INJECT_COMMIT is not set the line editor is reentered with buf
+ * as the default/initial line content */
 FL void n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
             size_t len);
 
@@ -983,9 +983,10 @@ FL char *n_go_input_cp(enum n_go_input_flags gif, char const *prompt,
  * *Only* for main(), returns whether program shall continue */
 FL bool_t n_go_load(char const *name);
 
-/* "Load" all the -X command line definitions in order.
- * *Only* for main(), returns whether program shall continue */
-FL bool_t n_go_Xargs(char const **lines, size_t cnt);
+/* "Load" or go_inject() command line option "cmd" arguments in order.
+ * *Only* for main(), returns whether program shall continue unless injectit is
+ * set, in which case this function does not fail */
+FL bool_t n_go_XYargs(bool_t injectit, char const **lines, size_t cnt);
 
 /* Pushdown current input file and switch to a new one.  Set the global flag
  * n_PS_SOURCING so that others will realize that they are no longer reading

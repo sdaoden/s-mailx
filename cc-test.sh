@@ -286,7 +286,7 @@ fi
 
 t_all() {
    # Basics
-   t_X_opt_input_command_stack
+   t_X_Y_opt_input_go_stack
    t_X_errexit
    t_S_freeze
    t_input_inject_semicolon_seq
@@ -344,8 +344,8 @@ t_all() {
 }
 
 # Basics {{{
-t_X_opt_input_command_stack() {
-   t_prolog X_opt_input_command_stack
+t_X_Y_opt_input_go_stack() {
+   t_prolog X_Y_opt_input_go_stack
    TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<- '__EOT' > "${BODY}"
@@ -436,6 +436,68 @@ t_X_opt_input_command_stack() {
 
    check 1 0 "${MBOX}" '1786542668 416'
 
+   # The -Y option supports multiline arguments, and those can internally use
+   # reverse solidus newline escaping.
+   APO=\'
+   < "${BODY}" ${MAILX} ${ARGS} \
+      -X 'echo FIRST_X' \
+      -X 'echo SECOND_X' \
+      -Y 'e\' \
+      -Y ' c\' \
+      -Y '  h\' \
+      -Y '   o \' \
+      -Y 1 \
+      -Y'
+   define mac0 {
+      echo mac0-1 via2 $0
+   }
+   call mac0
+   echo 2
+   ' \
+      -Y'
+   source '${APO}'\
+      echo "define mac1 {";\
+      echo "  echo mac1-1 via2 \$0";\
+      echo "  call mac0";\
+      echo "  echo mac1-2";\
+      echo "  call mac2";\
+      echo "  echo mac1-3";\
+      echo "}";\
+      echo "echo 1-1";\
+      echo "define mac2 {";\
+      echo "  echo mac2-1 via2 \$0";\
+      echo "  call mac0";\
+      echo "  echo mac2-2";\
+      echo "}";\
+      echo "echo 1-2";\
+      echo "call mac1";\
+      echo "echo 1-3";\
+      echo "source \"\
+         echo echo 1-1-1 via2 \$0;\
+         echo call mac0;\
+         echo echo 1-1-2;\
+      | \"";\
+      echo "echo 1-4";\
+   |  '${APO}'
+   echo 3
+   ' \
+      -Y'
+   call mac2
+   echo 4
+   undefine *
+   ' \
+      -Y 'echo LAST_Y' > "${MBOX}"
+
+   check 2 0 "${MBOX}" '1845176711 440'
+
+   # Compose mode, too!
+   </dev/null ${MAILX} ${ARGS} \
+      -X 'echo X before compose mode' \
+      -Y '~s Subject via -Y' \
+      -Y 'Body via -Y, too' -. ./.tybox > "${MBOX}" 2>&1
+   check 3 0 ./.tybox '532493235 130'
+   check 4 - "${MBOX}" '467429373 22'
+
    # Test for [8412796a] (n_cmd_arg_parse(): FIX token error -> crash, e.g.
    # "-RX 'bind;echo $?' -Xx".., 2018-08-02)
    if have_feat key-bindings; then
@@ -445,7 +507,7 @@ t_X_opt_input_command_stack() {
       ${MAILX} ${ARGS} -RX'bind      ;echo $?' -Xx >> ./.tall 2>&1
       check cmdline 0 ./.tall '1867586969 8'
    else
-      echo 'X_opt_input_command_stack-cmdline: unsupported, skipped'
+      echo 'X_Y_opt_input_go_stack-cmdline: unsupported, skipped'
    fi
 
    t_epilog

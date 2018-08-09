@@ -92,6 +92,7 @@
 .Pf \&: Oc
 .Op Fl s Ar subject
 .Op : Ns Fl X Ar cmd Ns \&:
+.Op : Ns Fl Y Ar cmd Ns \&:
 .Op Fl \&.
 .Pf : Ar to-addr Ns \&:
 .Op Fl Fl \~ Ns : Ns Ar mta-option Ns \&:
@@ -110,6 +111,7 @@
 .Pf \&: Oc
 .Op Fl u Ar user
 .Op : Ns Fl X Ar cmd Ns \&:
+.Op : Ns Fl Y Ar cmd Ns \&:
 .Op Fl Fl \~ Ns : Ns Ar mta-option Ns \&:
 .Ek
 .Nm \*(uA
@@ -125,6 +127,7 @@
 .Fl S Ar var Ns Op Ns = Ns Ar value Ns
 .Pf \&: Oc
 .Op : Ns Fl X Ar cmd Ns \&:
+.Op : Ns Fl Y Ar cmd Ns \&:
 .Op Ar file
 .Op Fl Fl \~ Ns : Ns Ar mta-option Ns \&:
 .Ek
@@ -723,16 +726,21 @@ Using it twice increases the level of verbosity.
 .It Fl X Ar cmd
 Add the given (or multiple for a multiline argument)
 .Ar cmd
-to the list of commands to be executed,
-as a last step of program startup, before normal operation starts.
-This is the only possibility to execute commands in non-interactive mode
-when reading startup files has been disabled.
+to a list of commands to be executed before normal operation starts.
 The commands will be evaluated as a unit, just as via
 .Ic source .
 Correlates with
 .Fl #
 and
 .Va errexit .
+.
+.Mx
+.It Fl Y Ar cmd
+Add the given (or multiple for a multiline argument)
+.Ar cmd
+to a list of commands to be executed after normal operation has started.
+The commands will be evaluated successively in the given order, and as
+if given on the program's standard input.
 .
 .Mx
 .It Fl ~
@@ -8708,13 +8716,13 @@ lists to appear after the message has been edited.
 .
 .Mx
 .It Va askattach
-\*(BO If set, \*(UA asks for files to attach at the end of each message.
-An empty line finalizes the list.
+\*(BO If set, \*(UA asks an interactive user for files to attach at the
+end of each message; An empty line finalizes the list.
 .
 .Mx
 .It Va askcc
-\*(BO Causes the user to be prompted for carbon copy recipients
-(at the end of each message if
+\*(BO Causes the interactive user to be prompted for carbon copy
+recipients (at the end of each message if
 .Va askatend
 or
 .Va bsdcompat
@@ -8722,7 +8730,7 @@ are set).
 .
 .Mx
 .It Va askbcc
-\*(BO Causes the user to be prompted for blind carbon copy
+\*(BO Causes the interactive user to be prompted for blind carbon copy
 recipients (at the end of each message if
 .Va askatend
 or
@@ -8731,15 +8739,15 @@ are set).
 .
 .Mx
 .It Va asksend
-\*(BO Causes the user to be prompted for confirmation to send the
-message or reenter compose mode after having been shown an envelope
-summary.
+\*(BO Causes the interactive user to be prompted for confirmation to
+send the message or reenter compose mode after having been shown an
+envelope summary.
 This is by default enabled.
 .
 .Mx
 .It Va asksign
-\*(BO\*(OP Causes the user to be prompted if the message is to be
-signed at the end of each message.
+\*(BO\*(OP Causes the interactive user to be prompted if the message is
+to be signed at the end of each message.
 The
 .Va smime-sign
 variable is ignored when this variable is set.
@@ -8747,8 +8755,8 @@ variable is ignored when this variable is set.
 .Mx
 .It Va asksub
 .\" The alternative *ask* is not documented on purpose
-\*(BO Causes \*(UA to prompt for the subject upon entering compose mode
-unless a subject already exists.
+\*(BO Causes \*(UA to prompt the interactive user for the subject upon
+entering compose mode unless a subject already exists.
 .
 .Mx
 .It Va attrlist

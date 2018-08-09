@@ -147,7 +147,7 @@ static void a_main_setscreensize(int is_sighdl);
 /* Ok, we are reading mail.  Decide whether we are editing a mailbox or reading
  * the system mailbox, and open up the right stuff */
 static int a_main_rcv_mode(bool_t had_A_arg, char const *folder,
-            char const *Larg);
+            char const *Larg, char const **Yargs, size_t Yargs_cnt);
 
 /* Interrupt printing of the headers */
 static void a_main_hdrstop(int signo);
@@ -238,8 +238,8 @@ jleave:
 
 static void
 a_main_usage(FILE *fp){
-   /* Stay in 24 lines */
-   char buf[64];
+   /* Stay in 24 lines; On buf length change: verify visual output! */
+   char buf[7];
    size_t i;
    NYD2_ENTER;
 
@@ -259,7 +259,7 @@ a_main_usage(FILE *fp){
       "  %s [-DdEFinv~#] [-: spec] [-A account] [:-C \"custom: header\":]\n"
       "  %s [:-a attachment:] [:-b bcc-address:] [:-c cc-address:]\n"
       "  %s [-M type | -m file | -q file | -t] [-r from-address]\n"
-      "  %s [:-S var[=value]:] [-s subject] [:-X cmd:] [-.] :to-address:\n"),
+      "  %s [:-S var[=value]:] [-s subject] [:-X/Y cmd:] [-.] :to-address:\n"),
       n_progname, buf, buf, buf);
    if(fp != n_stderr)
       putc('\n', fp);
@@ -269,7 +269,7 @@ a_main_usage(FILE *fp){
       "  %s [-DdEeHiNnRv~#] [-: spec] [-A account] "
          "[:-C \"custom: header\":]\n"
       "  %s [-L spec] [-r from-address] [:-S var[=value]:] [-u user] "
-         "[:-X cmd:]\n"),
+         "[:-X/Y cmd:]\n"),
       n_progname, buf);
    if(fp != n_stderr)
       putc('\n', fp);
@@ -278,7 +278,7 @@ a_main_usage(FILE *fp){
       "\"Receive\" mode, starting on -f (secondary $MBOX or [file]):\n"
       "  %s [-DdEeHiNnRv~#] [-: spec] [-A account] "
          "[:-C \"custom: header\":] -f\n"
-      "  %s [-L spec] [-r from-address] [:-S var[=value]:] [:-X cmd:] "
+      "  %s [-L spec] [-r from-address] [:-S var[=value]:] [:-X/Y cmd:] "
          "[file]\n"),
       n_progname, buf);
    if(fp != n_stderr)
@@ -291,8 +291,8 @@ a_main_usage(FILE *fp){
          ". -[Mmqt]: special input data (-t: template message on stdin)\n"
          ". -e only mail check, -H header summary; "
             "both: message specification via -L\n"
-         ". -S (un)sets variable, -X executes command(s), "
-            "-# enters batch mode\n"
+         ". -S (un)sets variable, -X and -Y execute commands early/late, "
+            "-#: batch mode\n"
          ". Features via \"$ %s -Xversion -Xx\"\n"
          ". Bugs/Contact via "
             "\"$ %s -Sexpandaddr=shquote '\\$contact-mail'\"\n"),
@@ -584,10 +584,12 @@ jleave:
 static sigjmp_buf a_main__hdrjmp; /* XXX */
 
 static int
-a_main_rcv_mode(bool_t had_A_arg, char const *folder, char const *Larg){
+a_main_rcv_mode(bool_t had_A_arg, char const *folder, char const *Larg,
+      char const **Yargs, size_t Yargs_cnt){
+   /* XXX a_main_rcv_mode(): use argument carrier */
    sighandler_type prevint;
    int i;
-   NYD_ENTER;
+   NYD_IN;
 
    i = had_A_arg ? FEDIT_ACCOUNT : FEDIT_NONE;
    if(n_poption & n_PO_QUICKRUN_MASK)
@@ -644,7 +646,11 @@ a_main_rcv_mode(bool_t had_A_arg, char const *folder, char const *Larg){
    /* Enter the command loop */
    if(n_psonce & n_PSO_INTERACTIVE)
       n_tty_init();
-   n_go_main_loop();
+   /* "load()" more commands given on command line */
+   if(Yargs_cnt > 0 && !n_go_XYargs(TRU1, Yargs, Yargs_cnt))
+      n_exit_status = n_EXIT_ERR;
+   else
+      n_go_main_loop();
    if(n_psonce & n_PSO_INTERACTIVE)
       n_tty_destroy((n_psonce & n_PSO_XIT) != 0);
 
@@ -659,7 +665,7 @@ jquit:
       quit(FAL0);
    }
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return n_exit_status;
 }
 
@@ -677,10 +683,15 @@ int
 main(int argc, char *argv[]){
    /* TODO Once v15 control flow/carrier rewrite took place main() should
     * TODO be rewritten and option parsing++ should be outsourced.
-    * TODO Like so we can get rid of some stack locals etc. */
+    * TODO Like so we can get rid of some stack locals etc.
+    * TODO Furthermore: the locals should be in a carrier, and once there
+    * TODO is the memory pool+page cache, that should go in LOFI memory,
+    * TODO and there should be two pools: one which is fixated() and remains,
+    * TODO and one with throw away data (-X, -Y args, temporary allocs, e.g.,
+    * TODO redo -S like so, etc.) */
    /* Keep in SYNC: ./nail.1:"SYNOPSIS, main() */
    static char const optstr[] =
-         "A:a:Bb:C:c:DdEeFfHhiL:M:m:NnO:q:Rr:S:s:tu:VvX:::~#.";
+         "A:a:Bb:C:c:DdEeFfHhiL:M:m:NnO:q:Rr:S:s:tu:VvX:Y:::~#.";
    int i;
    char *cp;
    enum{
@@ -690,21 +701,21 @@ main(int argc, char *argv[]){
       a_RF_USER = 1<<2,
       a_RF_ALL = a_RF_SYSTEM | a_RF_USER
    } resfiles;
-   size_t Xargs_size, Xargs_cnt, smopts_size;
+   size_t Xargs_size, Xargs_cnt, Yargs_size, Yargs_cnt, smopts_size;
    char const *Aarg, *emsg, *folder, *Larg, *okey, *qf,
-      *subject, *uarg, **Xargs;
+      *subject, *uarg, **Xargs, **Yargs;
    struct attachment *attach;
    struct name *to, *cc, *bcc;
    struct a_arg *a_head, *a_curr;
-   NYD_ENTER;
+   NYD_IN;
 
    a_head = NULL;
    n_UNINIT(a_curr, NULL);
    to = cc = bcc = NULL;
    attach = NULL;
    Aarg = emsg = folder = Larg = okey = qf = subject = uarg = NULL;
-   Xargs = NULL;
-   Xargs_size = Xargs_cnt = smopts_size = 0;
+   Xargs = Yargs = NULL;
+   Xargs_size = Xargs_cnt = Yargs_size = Yargs_cnt = smopts_size = 0;
    resfiles = a_RF_ALL;
 
    /*
@@ -970,6 +981,12 @@ je_S:
             Xargs_size = a_main_grow_cpp(&Xargs, Xargs_size + 8, Xargs_cnt);
          Xargs[Xargs_cnt++] = a_main_oarg;
          break;
+      case 'Y':
+         /* Add to list of commands to exec after entering normal operation */
+         if(Yargs_cnt == Yargs_size)
+            Yargs_size = a_main_grow_cpp(&Yargs, Yargs_size + 8, Yargs_cnt);
+         Yargs[Yargs_cnt++] = a_main_oarg;
+         break;
       case ':':
          /* Control which resource files shall be loaded */
          if(!(resfiles & (a_RF_SET | a_RF_SYSTEM))){
@@ -1216,10 +1233,8 @@ je_expandargv:
    n_psonce |= n_PSO_STARTED_CONFIG;
 
    /* "load()" commands given on command line */
-   if(Xargs_cnt > 0){
-      if(!n_go_Xargs(Xargs, Xargs_cnt))
-         goto jleave;
-   }
+   if(Xargs_cnt > 0 && !n_go_XYargs(FAL0, Xargs, Xargs_cnt))
+      goto jleave;
 
    /* Final tests */
    if(n_poption & n_PO_Mm_FLAG){
@@ -1246,7 +1261,8 @@ je_expandargv:
    n_psonce |= n_PSO_STARTED;
 
    if(!(n_psonce & n_PSO_SENDMODE))
-      n_exit_status = a_main_rcv_mode((Aarg != NULL), folder, Larg);
+      n_exit_status = a_main_rcv_mode((Aarg != NULL), folder, Larg,
+            Yargs, Yargs_cnt);
    else{
       /* Now that full mailx(1)-style file expansion is possible handle the
        * attachments which we had delayed due to this.
@@ -1264,8 +1280,12 @@ je_expandargv:
 
       if(n_psonce & n_PSO_INTERACTIVE)
          n_tty_init();
-      n_mail((n_poption & n_PO_F_FLAG ? n_MAILSEND_RECORD_RECIPIENT : 0),
-         to, cc, bcc, subject, attach, qf);
+      /* "load()" more commands given on command line */
+      if(Yargs_cnt > 0 && !n_go_XYargs(TRU1, Yargs, Yargs_cnt))
+         n_exit_status = n_EXIT_ERR;
+      else
+         n_mail((n_poption & n_PO_F_FLAG ? n_MAILSEND_RECORD_RECIPIENT : 0),
+            to, cc, bcc, subject, attach, qf);
       if(n_psonce & n_PSO_INTERACTIVE)
          n_tty_destroy((n_psonce & n_PSO_XIT) != 0);
    }
@@ -1284,7 +1304,7 @@ j_leave:
 #if defined HAVE_DEBUG || defined HAVE_DEVEL || defined HAVE_NOMEMDBG
    n_memory_reset();
 #endif
-   NYD_LEAVE;
+   NYD_OU;
    return n_exit_status;
 }
 
