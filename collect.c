@@ -876,8 +876,9 @@ a_coll_putesc(char const *s, bool_t addnl, FILE *stream){
          if(!isposix){
             isposix = TRU1; /* TODO v15 OBSOLETE! */
             n_err(_("Compose mode warning: expanding \\t or \\n in variable "
-                  "without *posix*!"
-               "\n  Support remains only for ~A,~a,~I,~i in *posix* mode!\n"));
+                  "without *posix*!\n"
+               "  Support remains only for ~A,~a,~I,~i in *posix* mode!\n"
+               "  Please use \"wysh set X=y..\" instead\n"));
          }
          ++s;
          c1 = (c2 == 't') ? '\t' : '\n';
@@ -1621,7 +1622,8 @@ jIi_putesc:
          if(!a_coll_putesc(cp, (c != 'I'), _coll_fp))
             goto jerr;
          if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT) &&
-               !a_coll_putesc(cp, (c != 'I'), n_stdout))
+               !a_coll_putesc(cp, (c != 'I'), n_stdout) ||
+               fflush(n_stdout) == EOF)
             goto jerr;
          n_pstate_err_no = n_ERR_NONE; /* XXX */
          n_pstate_ex_no = 0; /* XXX */
@@ -1939,7 +1941,7 @@ jreasksend:
       if(!a_coll_putesc(cp, TRU1, _coll_fp))
          goto jerr;
       if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT) &&
-            !a_coll_putesc(cp, TRU1, n_stdout))
+            !a_coll_putesc(cp, TRU1, n_stdout) || fflush(n_stdout) == EOF)
          goto jerr;
    }
    }
