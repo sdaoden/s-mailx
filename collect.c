@@ -149,7 +149,7 @@ _execute_command(struct header *hp, char const *linebuf, size_t linesize){
    struct n_sigman sm;
    struct attachment *ap;
    char * volatile mnbuf;
-   NYD_ENTER;
+   NYD_IN;
 
    n_UNUSED(linesize);
    mnbuf = NULL;
@@ -181,7 +181,7 @@ jleave:
             "rfc822 attachments became invalid!\n"));
       n_free(mnbuf);
    }
-   NYD_LEAVE;
+   NYD_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
 }
 
@@ -193,7 +193,7 @@ a_coll_include_file(char const *name, bool_t indent, bool_t writestat){
    char *linebuf;
    si64_t lc, cc;
    si32_t rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = n_ERR_NONE;
    lc = cc = 0;
@@ -297,7 +297,7 @@ jleave:
    if(writestat)
       fprintf(n_stdout, "%s%s %" PRId64 "/%" PRId64 "\n",
          n_shexp_quote_cp(name, FAL0), (rv ? " " n_ERROR : n_empty), lc, cc);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -306,7 +306,7 @@ a_coll_insert_cmd(FILE *fp, char const *cmd){
    FILE *ibuf;
    si64_t lc, cc;
    si32_t rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = n_ERR_NONE;
    lc = cc = 0;
@@ -336,7 +336,7 @@ a_coll_insert_cmd(FILE *fp, char const *cmd){
 
    fprintf(n_stdout, "CMD%s %" PRId64 "/%" PRId64 "\n",
       (rv == n_ERR_NONE ? n_empty : " " n_ERROR), lc, cc);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -346,7 +346,7 @@ print_collf(FILE *cf, struct header *hp)
    char *lbuf;
    FILE *obuf;
    size_t cnt, linesize, linelen;
-   NYD_ENTER;
+   NYD_IN;
 
    fflush_rewind(cf);
    cnt = (size_t)fsize(cf);
@@ -381,7 +381,7 @@ print_collf(FILE *cf, struct header *hp)
 
    Fclose(obuf);
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 static si32_t
@@ -391,7 +391,7 @@ a_coll_write(char const *name, FILE *fp, int f)
    int c;
    si64_t lc, cc;
    si32_t rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = n_ERR_NONE;
 
@@ -421,7 +421,7 @@ jleave:
    if(of != NULL)
       Fclose(of);
    fflush(n_stdout);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 jerr:
    putc('-', n_stdout);
@@ -433,7 +433,7 @@ static bool_t
 a_coll_message_inject_head(FILE *fp){
    bool_t rv;
    char const *cp, *cp_obsolete;
-   NYD2_ENTER;
+   NYD2_IN;
 
    cp_obsolete = ok_vlook(NAIL_HEAD);
    if(cp_obsolete != NULL)
@@ -444,7 +444,7 @@ a_coll_message_inject_head(FILE *fp){
       rv = FAL0;
    else
       rv = TRU1;
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -455,7 +455,7 @@ a_coll_quote_message(FILE *fp, struct message *mp, bool_t isfwd){
    struct n_ignore const *quoteitp;
    enum sendaction action;
    bool_t rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = FAL0;
 
@@ -528,7 +528,7 @@ a_coll_quote_message(FILE *fp, struct message *mp, bool_t isfwd){
 
    rv = TRU1;
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -538,7 +538,7 @@ a_coll__fmt_inj(struct a_coll_fmt_ctx const *cfcp){
    struct n_string s_b, *sp;
    char c;
    char const *fmt;
-   NYD_ENTER;
+   NYD_IN;
 
    if((fmt = cfcp->cfc_fmt) == NULL || *fmt == '\0')
       goto jleave;
@@ -589,7 +589,7 @@ jwrite_char:
 
    /*n_string_gut(sp);*/
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return (cfcp != NULL);
 }
 
@@ -600,7 +600,7 @@ a_coll_makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err,
    FILE *nf;
    int c;
    bool_t rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = FAL0;
 
@@ -646,7 +646,7 @@ a_coll_makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err,
 jleave:
    if(nf != NULL)
       Fclose(nf);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -659,7 +659,7 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
    struct name *saved_in_reply_to;
    bool_t saved_filrec;
    si32_t volatile rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = n_ERR_NONE;
    n_UNINIT(sigint, SIG_ERR);
@@ -713,7 +713,7 @@ jleave:
    if(!saved_filrec)
       ok_bclear(add_file_recipients);
    safe_signal(SIGINT, sigint);
-   NYD_LEAVE;
+   NYD_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
 }
@@ -725,7 +725,7 @@ a_coll_pipe(char const *cmd)
    FILE *nf;
    sighandler_type sigint;
    si32_t rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = n_ERR_NONE;
    sigint = safe_signal(SIGINT, SIG_IGN);
@@ -760,7 +760,7 @@ jperr:
    _coll_fp = nf;
 jout:
    safe_signal(SIGINT, sigint);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -771,7 +771,7 @@ a_coll_forward(char const *ms, FILE *fp, int f)
    struct n_ignore const *itp;
    char const *tabst;
    enum sendaction action;
-   NYD_ENTER;
+   NYD_IN;
 
    if ((rv = n_getmsglist(ms, n_msgvec, 0, NULL)) < 0) {
       rv = n_ERR_NOENT; /* XXX not really, should be handled there! */
@@ -826,7 +826,7 @@ a_coll_forward(char const *ms, FILE *fp, int f)
    srelax_rele();
    fprintf(n_stdout, "\n");
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -868,7 +868,7 @@ static bool_t
 a_coll_putesc(char const *s, bool_t addnl, FILE *stream){
    char c1, c2;
    bool_t isposix;
-   NYD2_ENTER;
+   NYD2_IN;
 
    isposix = ok_blook(posix);
 
@@ -893,7 +893,7 @@ a_coll_putesc(char const *s, bool_t addnl, FILE *stream){
       goto jleave;
 
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return (c1 == '\0');
 }
 
@@ -923,7 +923,7 @@ a_coll_ocs__finalize(void *vp){
    sighandler_type opipe;
    sighandler_type oint;
    struct a_coll_ocs_arg **coapp, *coap;
-   NYD2_ENTER;
+   NYD2_IN;
 
    temporary_compose_mode_hook_call((char*)-1, NULL, NULL);
 
@@ -949,14 +949,14 @@ a_coll_ocs__finalize(void *vp){
    safe_signal(SIGPIPE, opipe);
    safe_signal(SIGINT, oint);
    rele_all_sigs();
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 FL void
 n_temporary_compose_hook_varset(void *arg){ /* TODO v15: drop */
    struct header *hp;
    char const *val;
-   NYD2_ENTER;
+   NYD2_IN;
 
    hp = arg;
 
@@ -1005,7 +1005,7 @@ n_temporary_compose_hook_varset(void *arg){ /* TODO v15: drop */
    if((val = detract(hp->h_mailx_orig_bcc, GNAMEONLY)) == NULL)
       val = n_empty;
    ok_vset(mailx_orig_bcc, val);
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 FL FILE *
@@ -1031,7 +1031,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    long cnt;
    sigset_t oset, nset;
    FILE * volatile sigfp;
-   NYD_ENTER;
+   NYD_IN;
 
    n_DIG_MSG_COMPOSE_CREATE(&dmc, hp);
    _coll_fp = NULL;
@@ -1993,7 +1993,7 @@ jleave:
    safe_signal(SIGINT, _coll_saveint);
    safe_signal(SIGHUP, _coll_savehup);
    sigprocmask(SIG_SETMASK, &oset, NULL);
-   NYD_LEAVE;
+   NYD_OU;
    return _coll_fp;
 
 jerr:

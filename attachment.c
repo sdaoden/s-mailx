@@ -65,7 +65,7 @@ static void a_attachment_yay(struct attachment const *ap);
 static int
 a_attachment_is_msg(char const *file){
    int rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = -1;
 
@@ -83,13 +83,13 @@ a_attachment_is_msg(char const *file){
       else
          rv = (int)ib;
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
 static struct attachment *
 a_attachment_setup_base(struct attachment *ap, char const *file){
-   NYD2_ENTER;
+   NYD2_IN;
    ap->a_input_charset = ap->a_charset = NULL;
    ap->a_path_user = ap->a_path = ap->a_path_bname = ap->a_name = file;
    if((file = strrchr(file, '/')) != NULL)
@@ -100,20 +100,20 @@ a_attachment_setup_base(struct attachment *ap, char const *file){
    ap->a_content_disposition = "attachment";
    ap->a_content_description = NULL;
    ap->a_content_id = NULL;
-   NYD2_LEAVE;
+   NYD2_OU;
    return ap;
 }
 
 static struct attachment *
 a_attachment_setup_msg(struct attachment *ap, char const *msgcp, int msgno){
-   NYD2_ENTER;
+   NYD2_IN;
    ap->a_path_user = ap->a_path = ap->a_path_bname = ap->a_name = msgcp;
    ap->a_msgno = msgno;
    ap->a_content_type =
    ap->a_content_description =
    ap->a_content_disposition = NULL;
    ap->a_content_id = NULL;
-   NYD2_LEAVE;
+   NYD2_OU;
    return ap;
 }
 
@@ -124,7 +124,7 @@ a_attachment_iconv(struct attachment *ap, FILE *ifp){
    size_t cnt, lbsize;
    iconv_t icp;
    FILE *ofp;
-   NYD_ENTER;
+   NYD_IN;
 
    hold_sigs(); /* TODO until we have signal manager (see TODO) */
 
@@ -174,7 +174,7 @@ jleave:
    Fclose(ifp);
 
    rele_sigs(); /* TODO until we have signal manager (see TODO) */
-   NYD_LEAVE;
+   NYD_OU;
    return (ofp != NULL);
 
 jeconv:
@@ -190,7 +190,7 @@ jerr:
 
 static void
 a_attachment_yay(struct attachment const *ap){
-   NYD2_ENTER;
+   NYD2_IN;
    if(ap->a_msgno > 0)
       fprintf(n_stdout, _("Added message/rfc822 attachment for message #%u\n"),
          ap->a_msgno);
@@ -198,7 +198,7 @@ a_attachment_yay(struct attachment const *ap){
       fprintf(n_stdout, _("Added attachment %s (%s)\n"),
          n_shexp_quote_cp(ap->a_name, FAL0),
          n_shexp_quote_cp(ap->a_path_user, FAL0));
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 FL struct attachment *
@@ -211,7 +211,7 @@ n_attachment_append(struct attachment *aplist, char const *file,
    char const *file_user, *incs, *oucs;
    struct attachment *nap, *ap;
    enum n_attach_error aerr;
-   NYD_ENTER;
+   NYD_IN;
 
 #ifdef HAVE_ICONV
    cnvfp = NULL;
@@ -343,7 +343,7 @@ jleave:
       *aerr_or_null = aerr;
    if(newap_or_null != NULL)
       *newap_or_null = nap;
-   NYD_LEAVE;
+   NYD_OU;
    return aplist;
 }
 
@@ -351,7 +351,7 @@ FL struct attachment *
 n_attachment_append_list(struct attachment *aplist, char const *names){
    struct str shin;
    struct n_string shou, *shoup;
-   NYD_ENTER;
+   NYD_IN;
 
    shoup = n_string_creat_auto(&shou);
 
@@ -378,14 +378,14 @@ n_attachment_append_list(struct attachment *aplist, char const *names){
          break;
    }
    n_string_gut(shoup);
-   NYD_LEAVE;
+   NYD_OU;
    return aplist;
 }
 
 FL struct attachment *
 n_attachment_remove(struct attachment *aplist, struct attachment *ap){
    struct attachment *bap, *fap;
-   NYD_ENTER;
+   NYD_IN;
 
 #ifdef HAVE_DEVEL
    for(bap = aplist; aplist != NULL && aplist != ap; aplist = aplist->a_flink)
@@ -408,7 +408,7 @@ n_attachment_remove(struct attachment *aplist, struct attachment *ap){
 
    if(ap->a_conv == AC_TMPFILE)
       Fclose(ap->a_tmpf);
-   NYD_LEAVE;
+   NYD_OU;
    return aplist;
 }
 
@@ -419,7 +419,7 @@ n_attachment_find(struct attachment *aplist, char const *name,
    char const *bname;
    bool_t status, sym;
    struct attachment *saved;
-   NYD_ENTER;
+   NYD_IN;
 
    saved = NULL;
    status = FAL0;
@@ -465,7 +465,7 @@ n_attachment_find(struct attachment *aplist, char const *name,
 jleave:
    if(stat_or_null != NULL)
       *stat_or_null = status;
-   NYD_LEAVE;
+   NYD_OU;
    return aplist;
 }
 
@@ -476,7 +476,7 @@ n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
    struct n_string shou, *shoup;
    struct attachment *naplist, *ap;
    ui32_t attno;
-   NYD_ENTER;
+   NYD_IN;
 
    if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_ATTACH_QUOTE_NOTED)
          ) == n_PSO_INTERACTIVE){
@@ -541,7 +541,7 @@ n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
       if(ap == NULL)
          break;
    }
-   NYD_LEAVE;
+   NYD_OU;
    return naplist;
 }
 
@@ -550,7 +550,7 @@ n_attachment_list_print(struct attachment const *aplist, FILE *fp){
    struct attachment const *ap;
    ui32_t attno;
    ssize_t rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = 0;
 
@@ -590,7 +590,7 @@ n_attachment_list_print(struct attachment const *aplist, FILE *fp){
          fprintf(fp, "]\n");
       }
    }
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 

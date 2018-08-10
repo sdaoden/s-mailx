@@ -95,7 +95,7 @@ static char const *
 _mime_param_skip(char const *hbp)
 {
    char co, cn;
-   NYD2_ENTER;
+   NYD2_IN;
 
    /* Skip over parameter name - note we may have skipped over an entire
     * parameter name and thus point to a "="; i haven't yet truly checked
@@ -127,7 +127,7 @@ _mime_param_skip(char const *hbp)
          ++hbp;
    }
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return hbp;
 }
 
@@ -139,7 +139,7 @@ _mime_param_value_trim(struct str *result, char const *start,
    char co, cn;
    size_t i;
    si8_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    while (whitechar(*start)) /* XXX? */
       ++start;
@@ -191,7 +191,7 @@ _mime_param_value_trim(struct str *result, char const *start,
       *end_or_null = e;
    }
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 jerr:
    rv = FAL0;
@@ -208,7 +208,7 @@ _rfc2231_param_parse(char const *param, size_t plen, char const *hbp)
    struct rfc2231_joiner *head = NULL, *np;
    bool_t errors = FAL0;
    size_t i;
-   NYD2_ENTER;
+   NYD2_IN;
 
    /* We were called by mime_param_get() after a param name match that
     * involved "*", so jump to the matching code */
@@ -353,7 +353,7 @@ jeeqaaster:
       n_err(_("Message had MIME errors: %s\n"), V_(emsg));
    }
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 
 jerr:
@@ -389,7 +389,7 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
 #ifdef HAVE_ICONV
    iconv_t fhicd;
 #endif
-   NYD2_ENTER;
+   NYD2_IN;
 
 #ifdef HAVE_ICONV
    n_UNINIT(fhicd, (iconv_t)-1);
@@ -512,7 +512,7 @@ jhex_putc:
 
    memcpy(*result = n_autorec_alloc(sou.l +1), sou.s, sou.l +1);
    n_free(sou.s);
-   NYD2_LEAVE;
+   NYD2_OU;
    return ((f & _ERRORS) != 0);
 }
 
@@ -536,7 +536,7 @@ _mime_param_create(struct mime_param_builder *self)
       _HADRAW  = 1<<1,
       _RAW     = 1<<2
    } f = _NONE;
-   NYD2_ENTER;
+   NYD2_IN;
    n_LCTA(sizeof(buf) >= MIME_LINELEN * 2, "Buffer to small for operation");
 
 jneed_enc:
@@ -650,7 +650,7 @@ jneed_enc:
    self->mpb_buf_len = PTR2SIZE(bp - buf);
    __mime_param_join(self);
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return;
 
    /* Need to recurse, take care not to excess magical limit of 999 levels */
@@ -690,7 +690,7 @@ __mime_param_join(struct mime_param_builder *head)
       _ISQUOTE = 1<<1,
       _ISCONT  = 1<<2
    } f = _NONE;
-   NYD2_ENTER;
+   NYD2_IN;
 
    /* Traverse the stack upwards to find out result length (worst case).
     * Reverse the list while doing so */
@@ -789,7 +789,7 @@ __mime_param_join(struct mime_param_builder *head)
    *cp = '\0';
    result->l = PTR2SIZE(cp - result->s);
    assert(result->l < len_max);
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 FL char *
@@ -799,7 +799,7 @@ mime_param_get(char const *param, char const *headerbody) /* TODO rewr. */
    char *rv = NULL;
    size_t plen;
    char const *p;
-   NYD_ENTER;
+   NYD_IN;
 
    plen = strlen(param);
    p = headerbody;
@@ -852,7 +852,7 @@ jskip1st:
    }
 
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -864,7 +864,7 @@ mime_param_create(struct str *result, char const *name, char const *value)
     * TODO I.e., this function should return a HeaderBodyParam */
    struct mime_param_builder top;
    size_t i;
-   NYD_ENTER;
+   NYD_IN;
 
    memset(result, 0, sizeof *result);
 
@@ -891,7 +891,7 @@ mime_param_create(struct str *result, char const *name, char const *value)
 
    _mime_param_create(&top);
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return top.mpb_rv;
 }
 
@@ -899,7 +899,7 @@ FL char *
 mime_param_boundary_get(char const *headerbody, size_t *len)
 {
    char *q = NULL, *p;
-   NYD_ENTER;
+   NYD_IN;
 
    if ((p = mime_param_get("boundary", headerbody)) != NULL) {
       size_t sz = strlen(p);
@@ -911,7 +911,7 @@ mime_param_boundary_get(char const *headerbody, size_t *len)
       memcpy(q + 2, p, sz);
       *(q + sz + 2) = '\0';
    }
-   NYD_LEAVE;
+   NYD_OU;
    return q;
 }
 
@@ -920,14 +920,14 @@ mime_param_boundary_create(void)
 {
    static ui32_t reprocnt;
    char *bp;
-   NYD_ENTER;
+   NYD_IN;
 
    bp = n_autorec_alloc(36 + 6 +1);
    bp[0] = bp[2] = bp[39] = bp[41] = '=';
    bp[1] = bp[40] = '-';
    memcpy(bp + 3, n_random_create_cp(36, &reprocnt), 36);
    bp[42] = '\0';
-   NYD_LEAVE;
+   NYD_OU;
    return bp;
 }
 

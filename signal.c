@@ -147,7 +147,7 @@ c_sleep(void *v){ /* XXX installs sighdl+ due to outer jumps and SA_RESTART! */
    bool_t ignint;
    uiz_t sec, msec;
    char **argv;
-   NYD_ENTER;
+   NYD_IN;
 
    argv = v;
 
@@ -198,7 +198,7 @@ c_sleep(void *v){ /* XXX installs sighdl+ due to outer jumps and SA_RESTART! */
    sigprocmask(SIG_SETMASK, &oset, NULL);
    sigaction(SIGINT, &oact, NULL);
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return (argv == NULL);
 jeover:
    n_err(_("`sleep': argument(s) overflow(s) datatype\n"));
@@ -225,7 +225,7 @@ c_sigstate(void *vp){ /* TODO remove again */
       {SIGCHLD, "SIGCHLD"}, {SIGPIPE, "SIGPIPE"}
    };
    char const *cp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if((cp = vp) != NULL && cp[0] != '\0'){
       if(!asccasecmp(&cp[1], "all")){
@@ -252,7 +252,7 @@ c_sigstate(void *vp){ /* TODO remove again */
          (shp == SIG_ERR ? "ERR" : (shp == SIG_DFL ? "DFL"
             : (shp == SIG_IGN ? "IGN" : "ptf?"))));
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return OKAY;
 }
 #endif /* HAVE_DEVEL */
@@ -260,11 +260,11 @@ c_sigstate(void *vp){ /* TODO remove again */
 FL void
 n_raise(int signo)
 {
-   NYD2_ENTER;
+   NYD2_IN;
    if(n_pid == 0)
       n_pid = getpid();
    kill(n_pid, signo);
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 FL sighandler_type
@@ -272,33 +272,33 @@ safe_signal(int signum, sighandler_type handler)
 {
    struct sigaction nact, oact;
    sighandler_type rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    nact.sa_handler = handler;
    sigfillset(&nact.sa_mask);
    nact.sa_flags = SA_RESTART;
    rv = (sigaction(signum, &nact, &oact) != 0) ? SIG_ERR : oact.sa_handler;
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
 FL n_sighdl_t
 n_signal(int signo, n_sighdl_t hdl){
    struct sigaction nact, oact;
-   NYD2_ENTER;
+   NYD2_IN;
 
    nact.sa_handler = hdl;
    sigfillset(&nact.sa_mask);
    nact.sa_flags = 0;
    hdl = (sigaction(signo, &nact, &oact) != 0) ? SIG_ERR : oact.sa_handler;
-   NYD2_LEAVE;
+   NYD2_OU;
    return hdl;
 }
 
 FL void
 hold_all_sigs(void)
 {
-   NYD2_ENTER;
+   NYD2_IN;
    if (_alls_depth++ == 0) {
       sigfillset(&_alls_nset);
       sigdelset(&_alls_nset, SIGABRT);
@@ -314,22 +314,22 @@ hold_all_sigs(void)
       sigdelset(&_alls_nset, SIGCHLD);
       sigprocmask(SIG_BLOCK, &_alls_nset, &_alls_oset);
    }
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 FL void
 rele_all_sigs(void)
 {
-   NYD2_ENTER;
+   NYD2_IN;
    if (--_alls_depth == 0)
       sigprocmask(SIG_SETMASK, &_alls_oset, (sigset_t*)NULL);
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 FL void
 hold_sigs(void)
 {
-   NYD2_ENTER;
+   NYD2_IN;
    if (_hold_sigdepth++ == 0) {
       sigemptyset(&_hold_nset);
       sigaddset(&_hold_nset, SIGHUP);
@@ -337,16 +337,16 @@ hold_sigs(void)
       sigaddset(&_hold_nset, SIGQUIT);
       sigprocmask(SIG_BLOCK, &_hold_nset, &_hold_oset);
    }
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 FL void
 rele_sigs(void)
 {
-   NYD2_ENTER;
+   NYD2_IN;
    if (--_hold_sigdepth == 0)
       sigprocmask(SIG_SETMASK, &_hold_oset, NULL);
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 /* TODO This is temporary gracyness */
@@ -363,7 +363,7 @@ FL int
 n__sigman_enter(struct n_sigman *self, int flags){
    /* TODO no error checking when installing sighdls */
    int rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if((int)flags >= 0){
       self->sm_flags = (enum n_sigman_flags)flags;
@@ -399,14 +399,14 @@ n__sigman_enter(struct n_sigman *self, int flags){
       ++_hold_sigdepth;
    }
    rele_sigs();
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
 FL void
 n_sigman_cleanup_ping(struct n_sigman *self){
    ui32_t f;
-   NYD2_ENTER;
+   NYD2_IN;
 
    hold_sigs();
 
@@ -424,7 +424,7 @@ n_sigman_cleanup_ping(struct n_sigman *self){
       safe_signal(SIGPIPE, SIG_IGN);
 
    rele_sigs();
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 FL void
@@ -432,7 +432,7 @@ n_sigman_leave(struct n_sigman *self,
       enum n_sigman_flags reraise_flags){
    ui32_t f;
    int sig;
-   NYD2_ENTER;
+   NYD2_IN;
 
    hold_sigs();
    n__sigman = self->sm_outer;
@@ -473,7 +473,7 @@ n_sigman_leave(struct n_sigman *self,
       break;
    }
 
-   NYD2_LEAVE;
+   NYD2_OU;
    if(sig != 0){
       sigset_t cset;
 
@@ -487,16 +487,16 @@ n_sigman_leave(struct n_sigman *self,
 FL int
 n_sigman_peek(void){
    int rv;
-   NYD2_ENTER;
+   NYD2_IN;
    rv = 0;
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
 FL void
 n_sigman_consume(void){
-   NYD2_ENTER;
-   NYD2_LEAVE;
+   NYD2_IN;
+   NYD2_OU;
 }
 
 #ifdef HAVE_NYD

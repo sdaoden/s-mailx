@@ -192,7 +192,7 @@ static void a_msg__threadmark(struct message *self, int f);
 static enum okay
 a_msg_get_header(struct message *mp){
    enum okay rv;
-   NYD2_ENTER;
+   NYD2_IN;
    n_UNUSED(mp);
 
    switch(mb.mb_type){
@@ -216,7 +216,7 @@ a_msg_get_header(struct message *mp){
       rv = STOP;
       break;
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -224,7 +224,7 @@ static char **
 a_msg_add_to_nmadat(char ***nmadat, size_t *nmasize, /* TODO Vector */
       char **np, char *string){
    size_t idx, i;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if((idx = PTR2SIZE(np - *nmadat)) >= *nmasize){
       char **narr;
@@ -237,7 +237,7 @@ a_msg_add_to_nmadat(char ***nmadat, size_t *nmasize, /* TODO Vector */
       np = &narr[idx];
    }
    *np++ = string;
-   NYD2_LEAVE;
+   NYD2_OU;
    return np;
 }
 
@@ -267,7 +267,7 @@ a_msg_markall(char const *orig, struct n_cmd_arg *cap, int f){
       a_LOG = 1u<<29,      /* Log errors */
       a_TMP = 1u<<30
    } flags;
-   NYD_ENTER;
+   NYD_IN;
    n_LCTA((ui32_t)a_ALLNET == (ui32_t)TRU1,
       "Constant is converted to bool_t via AND, thus");
 
@@ -816,7 +816,7 @@ jcolonmod_mark:
 jleave:
    if(flags & a_ALLOC)
       n_lofi_free(nmadat_lofi);
-   NYD_LEAVE;
+   NYD_OU;
    return (flags & a_ERROR) ? -1 : 0;
 
 jebadrange:
@@ -836,7 +836,7 @@ static int
 a_msg_evalcol(int col){
    struct a_msg_coltab const *colp;
    int rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = 0;
    for(colp = a_msg_coltabs;
@@ -845,14 +845,14 @@ a_msg_evalcol(int col){
          rv = colp->mco_bit;
          break;
       }
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
 static bool_t
 a_msg_check(int mno, int f){
    struct message *mp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if(mno < 1 || mno > msgCount){
       n_err(_("%d: Invalid message number\n"), mno);
@@ -862,7 +862,7 @@ a_msg_check(int mno, int f){
       n_err(_("%d: inappropriate message\n"), mno);
    else
       mno = 0;
-   NYD2_LEAVE;
+   NYD2_OU;
    return (mno == 0);
 }
 
@@ -871,7 +871,7 @@ a_msg_scan(struct a_msg_speclex *mslp){
    struct a_msg_lex const *lp;
    char *cp, c;
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = a_MSG_T_EOL;
 
@@ -1004,7 +1004,7 @@ jmtop:
    mslp->msl_str = --cp;
    rv = a_MSG_T_STRING;
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -1014,7 +1014,7 @@ a_msg_match_sender(struct message *mp, char const *str, bool_t allnet){
    char sc, nc;
    struct name *namep;
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = FAL0;
 
@@ -1082,7 +1082,7 @@ jagain:
       }
    }
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -1091,7 +1091,7 @@ a_msg_match_mid(struct message *mp, char const *id,
       enum a_msg_idfield idfield){
    char const *cp;
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = FAL0;
 
@@ -1115,7 +1115,7 @@ a_msg_match_mid(struct message *mp, char const *id,
       }
       }
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -1126,7 +1126,7 @@ a_msg_match_dash(struct message *mp, char const *str){
    struct str in, out;
    char *hfield, *hbody;
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = FAL0;
 
@@ -1158,7 +1158,7 @@ a_msg_match_dash(struct message *mp, char const *str){
    rv = substr(out.s, hfield);
    n_free(out.s);
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -1166,7 +1166,7 @@ static bool_t
 a_msg_match_at(struct message *mp, struct search_expr *sep){
    char const *field;
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    /* Namelist regex only matches headers.
     * And there are the special cases header/<, "body"/> and "text"/=, the
@@ -1186,20 +1186,20 @@ jmsg:
 
    rv = n_header_match(mp, sep);
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
 static void
 a_msg_unmark(int mesg){
    size_t i;
-   NYD2_ENTER;
+   NYD2_IN;
 
    i = (size_t)mesg;
    if(i < 1 || UICMP(z, i, >, msgCount))
       n_panic(_("Bad message number to unmark"));
    message[--i].m_flag &= ~MMARK;
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 static int
@@ -1207,7 +1207,7 @@ a_msg_metamess(int meta, int f)
 {
    int c, m;
    struct message *mp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    c = meta;
    switch (c) {
@@ -1278,7 +1278,7 @@ a_msg_metamess(int meta, int f)
       goto jem1;
    }
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return c;
 jem1:
    c = -1;
@@ -1287,7 +1287,7 @@ jem1:
 
 static void
 a_msg__threadmark(struct message *self, int f){
-   NYD2_ENTER;
+   NYD2_IN;
    if(!(self->m_flag & MHIDDEN) &&
          (f == MDELETED || !(self->m_flag & MDELETED) || a_msg_list_saw_d))
       self->m_flag |= MMARK;
@@ -1301,14 +1301,14 @@ jcall:
          else
             self->m_flag |= MMARK;
    }
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 FL FILE *
 setinput(struct mailbox *mp, struct message *m, enum needspec need){
    enum okay ok;
    FILE *rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = NULL;
 
@@ -1336,14 +1336,14 @@ setinput(struct mailbox *mp, struct message *m, enum needspec need){
    }
    rv = mp->mb_itf;
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
 FL enum okay
 get_body(struct message *mp){
    enum okay rv;
-   NYD_ENTER;
+   NYD_IN;
    n_UNUSED(mp);
 
    switch(mb.mb_type){
@@ -1367,25 +1367,25 @@ get_body(struct message *mp){
       rv = STOP;
       break;
    }
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
 FL void
 message_reset(void){
-   NYD_ENTER;
+   NYD_IN;
    if(message != NULL){
       n_free(message);
       message = NULL;
    }
    msgCount = 0;
    a_msg_mem_space = 0;
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 FL void
 message_append(struct message *mp){
-   NYD_ENTER;
+   NYD_IN;
    if(UICMP(z, msgCount + 1, >=, a_msg_mem_space)){
       /* XXX remove _mem_space magics (or use s_Vector) */
       a_msg_mem_space = ((a_msg_mem_space >= 128 &&
@@ -1399,18 +1399,18 @@ message_append(struct message *mp){
       else
          memset(&message[msgCount - 1], 0, sizeof *message);
    }
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 FL void
 message_append_null(void){
-   NYD_ENTER;
+   NYD_IN;
    if(msgCount == 0)
       message_append(NULL);
    setdot(message);
    message[msgCount].m_size = 0;
    message[msgCount].m_lines = 0;
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 FL bool_t
@@ -1420,7 +1420,7 @@ message_match(struct message *mp, struct search_expr const *sep,
    size_t *linesize, cnt;
    FILE *fp;
    bool_t rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = FAL0;
 
@@ -1456,30 +1456,30 @@ message_match(struct message *mp, struct search_expr const *sep,
 jleave:
    Fclose(fp);
 j_leave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
 FL struct message *
 setdot(struct message *mp){
-   NYD_ENTER;
+   NYD_IN;
    if(dot != mp){
       prevdot = dot;
       n_pstate &= ~n_PS_DID_PRINT_DOT;
    }
    dot = mp;
    uncollapse1(dot, 0);
-   NYD_LEAVE;
+   NYD_OU;
    return dot;
 }
 
 FL void
 touch(struct message *mp){
-   NYD_ENTER;
+   NYD_IN;
    mp->m_flag |= MTOUCH;
    if(!(mp->m_flag & MREAD))
       mp->m_flag |= MREAD | MSTATUS;
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 FL int
@@ -1488,7 +1488,7 @@ n_getmsglist(char const *buf, int *vector, int flags,
 {
    int *ip, mc;
    struct message *mp;
-   NYD_ENTER;
+   NYD_IN;
 
    n_pstate &= ~n_PS_ARGLIST_MASK;
    n_pstate |= n_PS_MSGLIST_DIRECT;
@@ -1598,7 +1598,7 @@ n_getmsglist(char const *buf, int *vector, int flags,
    if(mc != 1)
       n_pstate &= ~n_PS_MSGLIST_DIRECT;
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return mc;
 }
 
@@ -1607,7 +1607,7 @@ first(int f, int m)
 {
    struct message *mp;
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    if (msgCount == 0) {
       rv = 0;
@@ -1636,7 +1636,7 @@ first(int f, int m)
    }
    rv = 0;
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -1644,7 +1644,7 @@ FL void
 mark(int mno, int f){
    struct message *mp;
    int i;
-   NYD_ENTER;
+   NYD_IN;
 
    i = mno;
    if(i < 1 || i > msgCount)
@@ -1657,7 +1657,7 @@ mark(int mno, int f){
       assert(!(mp->m_flag & MHIDDEN));
       mp->m_flag |= MMARK;
    }
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 /* s-it-mode */

@@ -60,7 +60,7 @@ static bool_t
 a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no){
    bool_t rv;
    char const *cpre, *csuf;
-   NYD2_ENTER;
+   NYD2_IN;
 
    cpre = csuf = n_empty;
 #ifdef HAVE_COLOUR
@@ -81,7 +81,7 @@ a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no){
    rv = (fprintf(obuf,
          A_("%s[-- Message %2d -- %lu lines, %lu bytes --]:%s\n"),
          cpre, msg_no, (ul_i)mp->m_lines, (ul_i)mp->m_size, csuf) > 0);
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -97,7 +97,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
    bool_t volatile formfeed;
    FILE * volatile obuf;
    int volatile rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = 1;
    obuf = n_stdout;
@@ -184,7 +184,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 jleave:
    if (obuf != n_stdout)
       n_pager_close(obuf);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -195,7 +195,7 @@ a_cmsg_pipe1(void *vp, bool_t doign){
    int *msgvec, rv;
    struct n_cmd_arg *cap;
    struct n_cmd_arg_ctx *cacp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    cacp = vp;
    cap = cacp->cac_arg;
@@ -216,7 +216,7 @@ a_cmsg_pipe1(void *vp, bool_t doign){
          ) == 0)
       fprintf(n_stdout, "%s %" PRIu64 " bytes\n", cmdq, stats[0]);
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -228,7 +228,7 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
       a_EMPTY = 1u<<8, a_STOP = 1u<<9,  a_WORKMASK = 0xFF00u} f;
    size_t tmax, plines;
    FILE *iobuf, *pbuf;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if((iobuf = Ftmp(NULL, "topio", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
       n_perr(_("`top': I/O temporary file"), 0);
@@ -394,7 +394,7 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
 jleave1:
    Fclose(iobuf);
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return (vp != NULL);
 }
 
@@ -403,7 +403,7 @@ delm(int *msgvec)
 {
    struct message *mp;
    int rv = -1, *ip, last;
-   NYD_ENTER;
+   NYD_IN;
 
    last = 0;
    for (ip = msgvec; *ip != 0; ++ip) {
@@ -423,7 +423,7 @@ delm(int *msgvec)
          setdot(message);
       }
    }
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -431,10 +431,10 @@ FL int
 c_more(void *v)
 {
    int *msgvec = v, rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = _type1(msgvec, TRU1, TRU1, FAL0, FAL0, NULL, NULL);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -442,10 +442,10 @@ FL int
 c_More(void *v)
 {
    int *msgvec = v, rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = _type1(msgvec, FAL0, TRU1, FAL0, FAL0, NULL, NULL);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -453,10 +453,10 @@ FL int
 c_type(void *v)
 {
    int *msgvec = v, rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = _type1(msgvec, TRU1, FAL0, FAL0, FAL0, NULL, NULL);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -464,10 +464,10 @@ FL int
 c_Type(void *v)
 {
    int *msgvec = v, rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = _type1(msgvec, FAL0, FAL0, FAL0, FAL0, NULL, NULL);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -475,10 +475,10 @@ FL int
 c_show(void *v)
 {
    int *msgvec = v, rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = _type1(msgvec, FAL0, FAL0, FAL0, TRU1, NULL, NULL);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -486,7 +486,7 @@ FL int
 c_mimeview(void *vp){ /* TODO direct addressable parts, multiple such */
    struct message *mp;
    int rv, *msgvec;
-   NYD_ENTER;
+   NYD_IN;
 
    if((msgvec = vp)[1] != 0){
       n_err(_("`mimeview': can yet only take one message, sorry!\n"));/* TODO */
@@ -519,27 +519,27 @@ c_mimeview(void *vp){ /* TODO direct addressable parts, multiple such */
 
    rv = (n_pstate_err_no != n_ERR_NONE);
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_pipe(void *vp){
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = a_cmsg_pipe1(vp, TRU1);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_Pipe(void *vp){
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = a_cmsg_pipe1(vp, FAL0);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -547,7 +547,7 @@ FL int
 c_top(void *v){
    struct n_ignore *itp;
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    if(n_ignore_is_any(n_IGNORE_TOP))
       itp = n_IGNORE_TOP;
@@ -560,17 +560,17 @@ c_top(void *v){
    }
 
    rv = !a_cmsg_top(v, itp);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_Top(void *v){
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = !a_cmsg_top(v, n_IGNORE_TYPE);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -579,7 +579,7 @@ c_next(void *v)
 {
    int list[2], *ip, *ip2, mdot, *msgvec = v, rv = 1;
    struct message *mp;
-   NYD_ENTER;
+   NYD_IN;
 
    if (*msgvec != 0) {
       /* If some messages were supplied, find the first applicable one
@@ -647,7 +647,7 @@ jhitit:
    list[1] = 0;
    rv = c_type(list);
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -657,7 +657,7 @@ c_pdot(void *vp){
    struct n_string s, *sp;
    int *mlp;
    struct n_cmd_arg_ctx *cacp;
-   NYD_ENTER;
+   NYD_IN;
    n_UNUSED(vp);
 
    n_pstate_err_no = n_ERR_NONE;
@@ -699,7 +699,7 @@ c_pdot(void *vp){
    }
 jleave:
    /* n_string_gut(sp); */
-   NYD_LEAVE;
+   NYD_OU;
    return (vp == NULL);
 }
 
@@ -708,7 +708,7 @@ c_messize(void *v)
 {
    int *msgvec = v, *ip, mesg;
    struct message *mp;
-   NYD_ENTER;
+   NYD_IN;
 
    for (ip = msgvec; *ip != 0; ++ip) {
       mesg = *ip;
@@ -720,7 +720,7 @@ c_messize(void *v)
          putc(' ', n_stdout);
       fprintf(n_stdout, "/%lu\n", (ul_i)mp->m_xsize);
    }
-   NYD_LEAVE;
+   NYD_OU;
    return 0;
 }
 
@@ -728,10 +728,10 @@ FL int
 c_delete(void *v)
 {
    int *msgvec = v;
-   NYD_ENTER;
+   NYD_IN;
 
    delm(msgvec);
-   NYD_LEAVE;
+   NYD_OU;
    return 0;
 }
 
@@ -739,7 +739,7 @@ FL int
 c_deltype(void *v)
 {
    int list[2], rv = 0, *msgvec = v, lastdot;
-   NYD_ENTER;
+   NYD_IN;
 
    lastdot = (int)PTR2SIZE(dot - message + 1);
    if (delm(msgvec) >= 0) {
@@ -754,7 +754,7 @@ c_deltype(void *v)
    } else
       fprintf(n_stdout, _("No more messages\n"));
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -763,7 +763,7 @@ c_undelete(void *v)
 {
    int *msgvec = v, *ip;
    struct message *mp;
-   NYD_ENTER;
+   NYD_IN;
 
    for (ip = msgvec; *ip != 0; ++ip) {
       mp = &message[*ip - 1];
@@ -778,7 +778,7 @@ c_undelete(void *v)
          imap_undelete(mp, *ip);
 #endif
    }
-   NYD_LEAVE;
+   NYD_OU;
    return 0;
 }
 
@@ -786,7 +786,7 @@ FL int
 c_stouch(void *v)
 {
    int *msgvec = v, *ip;
-   NYD_ENTER;
+   NYD_IN;
 
    for (ip = msgvec; *ip != 0; ++ip) {
       setdot(message + *ip - 1);
@@ -794,7 +794,7 @@ c_stouch(void *v)
       dot->m_flag &= ~MPRESERVE;
       n_pstate |= n_PS_DID_PRINT_DOT;
    }
-   NYD_LEAVE;
+   NYD_OU;
    return 0;
 }
 
@@ -802,7 +802,7 @@ FL int
 c_mboxit(void *v)
 {
    int *msgvec = v, *ip;
-   NYD_ENTER;
+   NYD_IN;
 
    if (n_pstate & n_PS_EDIT) {
       n_err(_("`mbox' can only be used in a system mailbox\n")); /* TODO */
@@ -816,7 +816,7 @@ c_mboxit(void *v)
       n_pstate |= n_PS_DID_PRINT_DOT;
    }
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return 0;
 }
 
@@ -825,7 +825,7 @@ c_preserve(void *v)
 {
    int *msgvec = v, *ip, mesg, rv = 1;
    struct message *mp;
-   NYD_ENTER;
+   NYD_IN;
 
    if (n_pstate & n_PS_EDIT) {
       fprintf(n_stdout, _("Cannot `preserve' in a system mailbox\n"));
@@ -842,7 +842,7 @@ c_preserve(void *v)
    }
    rv = 0;
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -851,7 +851,7 @@ c_unread(void *v)
 {
    struct message *mp;
    int *msgvec = v, *ip;
-   NYD_ENTER;
+   NYD_IN;
 
    for (ip = msgvec; *ip != 0; ++ip) {
       mp = &message[*ip - 1];
@@ -864,7 +864,7 @@ c_unread(void *v)
 #endif
       n_pstate |= n_PS_DID_PRINT_DOT;
    }
-   NYD_LEAVE;
+   NYD_OU;
    return 0;
 }
 
@@ -872,14 +872,14 @@ FL int
 c_seen(void *v)
 {
    int *msgvec = v, *ip;
-   NYD_ENTER;
+   NYD_IN;
 
    for (ip = msgvec; *ip != 0; ++ip) {
       struct message *mp = message + *ip - 1;
       setdot(mp);
       touch(mp);
    }
-   NYD_LEAVE;
+   NYD_OU;
    return 0;
 }
 
@@ -888,7 +888,7 @@ c_flag(void *v)
 {
    struct message *m;
    int *msgvec = v, *ip;
-   NYD_ENTER;
+   NYD_IN;
 
    for (ip = msgvec; *ip != 0; ++ip) {
       m = message + *ip - 1;
@@ -896,7 +896,7 @@ c_flag(void *v)
       if (!(m->m_flag & (MFLAG | MFLAGGED)))
          m->m_flag |= MFLAG | MFLAGGED;
    }
-   NYD_LEAVE;
+   NYD_OU;
    return 0;
 }
 
@@ -905,7 +905,7 @@ c_unflag(void *v)
 {
    struct message *m;
    int *msgvec = v, *ip;
-   NYD_ENTER;
+   NYD_IN;
 
    for (ip = msgvec; *ip != 0; ++ip) {
       m = message + *ip - 1;
@@ -915,7 +915,7 @@ c_unflag(void *v)
          m->m_flag |= MUNFLAG;
       }
    }
-   NYD_LEAVE;
+   NYD_OU;
    return 0;
 }
 
@@ -924,7 +924,7 @@ c_answered(void *v)
 {
    struct message *m;
    int *msgvec = v, *ip;
-   NYD_ENTER;
+   NYD_IN;
 
    for (ip = msgvec; *ip != 0; ++ip) {
       m = message + *ip - 1;
@@ -932,7 +932,7 @@ c_answered(void *v)
       if (!(m->m_flag & (MANSWER | MANSWERED)))
          m->m_flag |= MANSWER | MANSWERED;
    }
-   NYD_LEAVE;
+   NYD_OU;
    return 0;
 }
 
@@ -941,7 +941,7 @@ c_unanswered(void *v)
 {
    struct message *m;
    int *msgvec = v, *ip;
-   NYD_ENTER;
+   NYD_IN;
 
    for (ip = msgvec; *ip != 0; ++ip) {
       m = message + *ip - 1;
@@ -951,7 +951,7 @@ c_unanswered(void *v)
          m->m_flag |= MUNANSWER;
       }
    }
-   NYD_LEAVE;
+   NYD_OU;
    return 0;
 }
 
@@ -960,7 +960,7 @@ c_draft(void *v)
 {
    struct message *m;
    int *msgvec = v, *ip;
-   NYD_ENTER;
+   NYD_IN;
 
    for (ip = msgvec; *ip != 0; ++ip) {
       m = message + *ip - 1;
@@ -968,7 +968,7 @@ c_draft(void *v)
       if (!(m->m_flag & (MDRAFT | MDRAFTED)))
          m->m_flag |= MDRAFT | MDRAFTED;
    }
-   NYD_LEAVE;
+   NYD_OU;
    return 0;
 }
 
@@ -977,7 +977,7 @@ c_undraft(void *v)
 {
    struct message *m;
    int *msgvec = v, *ip;
-   NYD_ENTER;
+   NYD_IN;
 
    for (ip = msgvec; *ip != 0; ++ip) {
       m = message + *ip - 1;
@@ -987,7 +987,7 @@ c_undraft(void *v)
          m->m_flag |= MUNDRAFT;
       }
    }
-   NYD_LEAVE;
+   NYD_OU;
    return 0;
 }
 

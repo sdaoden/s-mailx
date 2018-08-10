@@ -2091,11 +2091,6 @@ FL void        _nyd_oncrash(int signo);
 # define NYD2_OU                 do {} while (0)
 # define NYD2                    do {} while (0)
 #endif
-#define NYD_ENTER NYD_IN /* TODO obsolete _ENTER and _LEAVE */
-#define NYD_LEAVE NYD_OU
-#define NYD2_ENTER NYD2_IN
-#define NYD2_LEAVE NYD2_OU
-
 
 /*
  * smtp.c

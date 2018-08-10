@@ -47,14 +47,14 @@ FL char *
 {
    size_t size;
    char *news;
-   NYD_ENTER;
+   NYD_IN;
 
    size = strlen(str);
    news = (n_autorec_alloc_from_pool)(NULL, size +1 n_MEMORY_DEBUG_ARGSCALL);
    if(size > 0)
       memcpy(news, str, size);
    news[size] = '\0';
-   NYD_LEAVE;
+   NYD_OU;
    return news;
 }
 
@@ -62,14 +62,14 @@ FL char *
 (savestrbuf)(char const *sbuf, size_t sbuf_len n_MEMORY_DEBUG_ARGS)
 {
    char *news;
-   NYD_ENTER;
+   NYD_IN;
 
    news = (n_autorec_alloc_from_pool)(NULL, sbuf_len +1
          n_MEMORY_DEBUG_ARGSCALL);
    if(sbuf_len > 0)
       memcpy(news, sbuf, sbuf_len);
    news[sbuf_len] = 0;
-   NYD_LEAVE;
+   NYD_OU;
    return news;
 }
 
@@ -78,7 +78,7 @@ FL char *
 {
    size_t l1, l2;
    char *news;
-   NYD_ENTER;
+   NYD_IN;
 
    l1 = (s1 != NULL) ? strlen(s1) : 0;
    l2 = strlen(s2);
@@ -92,7 +92,7 @@ FL char *
    if(l2 > 0)
       memcpy(news + l1, s2, l2);
    news[l1 + l2] = '\0';
-   NYD_LEAVE;
+   NYD_OU;
    return news;
 }
 
@@ -106,7 +106,7 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
    va_list vl;
    size_t l;
    char const *cs;
-   NYD_ENTER;
+   NYD_IN;
 
    va_start(vl, self);
    for (l = 0; (cs = va_arg(vl, char const*)) != NULL;)
@@ -128,7 +128,7 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
    }
    self->s[l] = '\0';
    va_end(vl);
-   NYD_LEAVE;
+   NYD_OU;
    return self;
 }
 
@@ -138,7 +138,7 @@ FL struct str *
 {
    size_t sonl, l;
    char const * const *xcpa;
-   NYD_ENTER;
+   NYD_IN;
 
    sonl = (sep_o_null != NULL) ? strlen(sep_o_null) : 0;
 
@@ -162,7 +162,7 @@ FL struct str *
       }
    }
    self->s[l] = '\0';
-   NYD_LEAVE;
+   NYD_OU;
    return self;
 }
 
@@ -173,7 +173,7 @@ FL struct str *
 FL bool_t
 n_anyof_buf(char const *template, char const *dat, size_t len){
    char c;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if(len == UIZ_MAX){
       while((c = *template++) != '\0')
@@ -185,14 +185,14 @@ n_anyof_buf(char const *template, char const *dat, size_t len){
             break;
    }else
       c = '\0';
-   NYD2_LEAVE;
+   NYD2_OU;
    return (c != '\0');
 }
 
 FL char *
 n_strsep(char **iolist, char sep, bool_t ignore_empty){
    char *base, *cp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    for(base = *iolist; base != NULL; base = *iolist){
       while(*base != '\0' && blankspacechar(*base))
@@ -211,7 +211,7 @@ n_strsep(char **iolist, char sep, bool_t ignore_empty){
       if(*base != '\0' || !ignore_empty)
          break;
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return base;
 }
 
@@ -219,7 +219,7 @@ FL char *
 n_strsep_esc(char **iolist, char sep, bool_t ignore_empty){
    char *cp, c, *base;
    bool_t isesc, anyesc;
-   NYD2_ENTER;
+   NYD2_IN;
 
    for(base = *iolist; base != NULL; base = *iolist){
       while((c = *base) != '\0' && blankspacechar(c))
@@ -261,7 +261,7 @@ n_strsep_esc(char **iolist, char sep, bool_t ignore_empty){
       if(*base != '\0' || !ignore_empty)
          break;
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return base;
 }
 
@@ -269,12 +269,12 @@ FL bool_t
 is_prefix(char const *as1, char const *as2) /* TODO arg order */
 {
    char c;
-   NYD2_ENTER;
+   NYD2_IN;
 
    for (; (c = *as1) == *as2 && c != '\0'; ++as1, ++as2)
       if (*as2 == '\0')
          break;
-   NYD2_LEAVE;
+   NYD2_OU;
    return (c == '\0');
 }
 
@@ -284,7 +284,7 @@ string_quote(char const *v) /* TODO too simpleminded (getrawlist(), +++ ..) */
    char const *cp;
    size_t i;
    char c, *rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    for (i = 0, cp = v; (c = *cp) != '\0'; ++i, ++cp)
       if (c == '"' || c == '\\')
@@ -295,14 +295,14 @@ string_quote(char const *v) /* TODO too simpleminded (getrawlist(), +++ ..) */
       if (c == '"' || c == '\\')
          rv[i++] = '\\';
    rv[i] = '\0';
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
 FL void
 makelow(char *cp) /* TODO isn't that crap? --> */
 {
-      NYD_ENTER;
+      NYD_IN;
 #ifdef HAVE_C90AMEND1
    if (n_mb_cur_max > 1) {
       char *tp = cp;
@@ -328,14 +328,14 @@ makelow(char *cp) /* TODO isn't that crap? --> */
          *cp = tolower((uc_i)*cp);
       while (*cp++ != '\0');
    }
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 FL bool_t
 substr(char const *str, char const *sub)
 {
    char const *cp, *backup;
-   NYD_ENTER;
+   NYD_IN;
 
    cp = sub;
    backup = str;
@@ -379,17 +379,17 @@ Jsinglebyte:
          }
       }
    }
-   NYD_LEAVE;
+   NYD_OU;
    return (*cp == '\0');
 }
 
 FL char *
 sstpcpy(char *dst, char const *src)
 {
-   NYD2_ENTER;
+   NYD2_IN;
    while ((*dst = *src++) != '\0')
       ++dst;
-   NYD2_LEAVE;
+   NYD2_OU;
    return dst;
 }
 
@@ -397,10 +397,10 @@ FL char *
 (sstrdup)(char const *cp n_MEMORY_DEBUG_ARGS)
 {
    char *dp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    dp = (cp == NULL) ? NULL : (sbufdup)(cp, strlen(cp) n_MEMORY_DEBUG_ARGSCALL);
-   NYD2_LEAVE;
+   NYD2_OU;
    return dp;
 }
 
@@ -408,20 +408,20 @@ FL char *
 (sbufdup)(char const *cp, size_t len n_MEMORY_DEBUG_ARGS)
 {
    char *dp = NULL;
-   NYD2_ENTER;
+   NYD2_IN;
 
    dp = (n_alloc)(len +1 n_MEMORY_DEBUG_ARGSCALL);
    if (cp != NULL)
       memcpy(dp, cp, len);
    dp[len] = '\0';
-   NYD2_LEAVE;
+   NYD2_OU;
    return dp;
 }
 
 FL ssize_t
 n_strscpy(char *dst, char const *src, size_t dstsize){
    ssize_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if(n_LIKELY(dstsize > 0)){
       rv = 0;
@@ -438,7 +438,7 @@ n_strscpy(char *dst, char const *src, size_t dstsize){
 #endif
    rv = -1;
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -446,14 +446,14 @@ FL int
 asccasecmp(char const *s1, char const *s2)
 {
    int cmp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    for (;;) {
       char c1 = *s1++, c2 = *s2++;
       if ((cmp = lowerconv(c1) - lowerconv(c2)) != 0 || c1 == '\0')
          break;
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return cmp;
 }
 
@@ -461,7 +461,7 @@ FL int
 ascncasecmp(char const *s1, char const *s2, size_t sz)
 {
    int cmp = 0;
-   NYD2_ENTER;
+   NYD2_IN;
 
    while (sz-- > 0) {
       char c1 = *s1++, c2 = *s2++;
@@ -470,7 +470,7 @@ ascncasecmp(char const *s1, char const *s2, size_t sz)
       if (cmp != 0 || c1 == '\0')
          break;
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return cmp;
 }
 
@@ -478,7 +478,7 @@ FL char const *
 asccasestr(char const *s1, char const *s2)
 {
    char c2, c1;
-   NYD2_ENTER;
+   NYD2_IN;
 
    for (c2 = *s2++, c2 = lowerconv(c2);;) {
       if ((c1 = *s1++) == '\0') {
@@ -490,7 +490,7 @@ asccasestr(char const *s1, char const *s2)
          break;
       }
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return s1;
 }
 
@@ -498,7 +498,7 @@ FL bool_t
 is_asccaseprefix(char const *as1, char const *as2) /* TODO arg order */
 {
    char c1, c2;
-   NYD2_ENTER;
+   NYD2_IN;
 
    for(;; ++as1, ++as2){
       c1 = *as1;
@@ -511,7 +511,7 @@ is_asccaseprefix(char const *as1, char const *as2) /* TODO arg order */
       if(c2 == '\0')
          break;
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return (c1 == '\0');
 }
 
@@ -520,7 +520,7 @@ is_ascncaseprefix(char const *as1, char const *as2, size_t sz)
 {
    char c1, c2;
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    for(rv = TRU1; sz-- > 0; ++as1, ++as2){
       c1 = *as1;
@@ -533,7 +533,7 @@ is_ascncaseprefix(char const *as1, char const *as2, size_t sz)
       if(c2 == '\0')
          break;
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -541,7 +541,7 @@ is_ascncaseprefix(char const *as1, char const *as2, size_t sz)
 FL struct str *
 (n_str_assign_buf)(struct str *self, char const *buf, uiz_t buflen
       n_MEMORY_DEBUG_ARGS){
-   NYD_ENTER;
+   NYD_IN;
    if(buflen == UIZ_MAX)
       buflen = (buf == NULL) ? 0 : strlen(buf);
 
@@ -554,14 +554,14 @@ FL struct str *
       self->s[buflen] = '\0';
    }else
       self->l = 0;
-   NYD_LEAVE;
+   NYD_OU;
    return self;
 }
 
 FL struct str *
 (n_str_add_buf)(struct str *self, char const *buf, uiz_t buflen
       n_MEMORY_DEBUG_ARGS){
-   NYD_ENTER;
+   NYD_IN;
    if(buflen == UIZ_MAX)
       buflen = (buf == NULL) ? 0 : strlen(buf);
 
@@ -575,7 +575,7 @@ FL struct str *
       memcpy(self->s + osl, buf, buflen);
       self->s[nsl] = '\0';
    }
-   NYD_LEAVE;
+   NYD_OU;
    return self;
 }
 
@@ -583,7 +583,7 @@ FL struct str *
 n_str_trim(struct str *self, enum n_str_trim_flags stf){
    size_t l;
    char const *cp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    cp = self->s;
 
@@ -603,7 +603,7 @@ n_str_trim(struct str *self, enum n_str_trim_flags stf){
    }
    self->l = l;
 
-   NYD2_LEAVE;
+   NYD2_OU;
    return self;
 }
 
@@ -612,7 +612,7 @@ n_str_trim_ifs(struct str *self, bool_t dodefaults){
    char s, t, n, c;
    char const *ifs, *cp;
    size_t l, i;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if((l = self->l) == 0)
       goto jleave;
@@ -701,7 +701,7 @@ n_str_trim_ifs(struct str *self, bool_t dodefaults){
    }
    self->l = l;
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return self;
 }
 
@@ -711,7 +711,7 @@ jleave:
 
 FL struct n_string *
 (n_string_clear)(struct n_string *self n_MEMORY_DEBUG_ARGS){
-   NYD_ENTER;
+   NYD_IN;
 
    assert(self != NULL);
 
@@ -722,14 +722,14 @@ FL struct n_string *
       self->s_len = self->s_auto = self->s_size = 0;
       self->s_dat = NULL;
    }
-   NYD_LEAVE;
+   NYD_OU;
    return self;
 }
 
 FL struct n_string *
 (n_string_reserve)(struct n_string *self, size_t noof n_MEMORY_DEBUG_ARGS){
    ui32_t i, l, s;
-   NYD_ENTER;
+   NYD_IN;
    assert(self != NULL);
 
    s = self->s_size;
@@ -753,13 +753,13 @@ FL struct n_string *
          self->s_dat = ndat;
       }
    }
-   NYD_LEAVE;
+   NYD_OU;
    return self;
 }
 
 FL struct n_string *
 (n_string_resize)(struct n_string *self, size_t nlen n_MEMORY_DEBUG_ARGS){
-   NYD_ENTER;
+   NYD_IN;
    assert(self != NULL);
 
    if(UICMP(z, SI32_MAX, <=, nlen))
@@ -768,14 +768,14 @@ FL struct n_string *
    if(self->s_len < nlen)
       self = (n_string_reserve)(self, nlen n_MEMORY_DEBUG_ARGSCALL);
    self->s_len = (ui32_t)nlen;
-   NYD_LEAVE;
+   NYD_OU;
    return self;
 }
 
 FL struct n_string *
 (n_string_push_buf)(struct n_string *self, char const *buf, size_t buflen
       n_MEMORY_DEBUG_ARGS){
-   NYD_ENTER;
+   NYD_IN;
 
    assert(self != NULL);
    assert(buflen == 0 || buf != NULL);
@@ -790,27 +790,27 @@ FL struct n_string *
       memcpy(&self->s_dat[i = self->s_len], buf, buflen);
       self->s_len = (i += (ui32_t)buflen);
    }
-   NYD_LEAVE;
+   NYD_OU;
    return self;
 }
 
 FL struct n_string *
 (n_string_push_c)(struct n_string *self, char c n_MEMORY_DEBUG_ARGS){
-   NYD_ENTER;
+   NYD_IN;
 
    assert(self != NULL);
 
    if(self->s_len + 1 >= self->s_size)
       self = (n_string_reserve)(self, 1 n_MEMORY_DEBUG_ARGSCALL);
    self->s_dat[self->s_len++] = c;
-   NYD_LEAVE;
+   NYD_OU;
    return self;
 }
 
 FL struct n_string *
 (n_string_unshift_buf)(struct n_string *self, char const *buf, size_t buflen
       n_MEMORY_DEBUG_ARGS){
-   NYD_ENTER;
+   NYD_IN;
 
    assert(self != NULL);
    assert(buflen == 0 || buf != NULL);
@@ -825,13 +825,13 @@ FL struct n_string *
       memcpy(self->s_dat, buf, buflen);
       self->s_len += (ui32_t)buflen;
    }
-   NYD_LEAVE;
+   NYD_OU;
    return self;
 }
 
 FL struct n_string *
 (n_string_unshift_c)(struct n_string *self, char c n_MEMORY_DEBUG_ARGS){
-   NYD_ENTER;
+   NYD_IN;
 
    assert(self != NULL);
 
@@ -841,14 +841,14 @@ FL struct n_string *
       memmove(&self->s_dat[1], self->s_dat, self->s_len);
    self->s_dat[0] = c;
    ++self->s_len;
-   NYD_LEAVE;
+   NYD_OU;
    return self;
 }
 
 FL struct n_string *
 (n_string_insert_buf)(struct n_string *self, size_t idx,
       char const *buf, size_t buflen n_MEMORY_DEBUG_ARGS){
-   NYD_ENTER;
+   NYD_IN;
 
    assert(self != NULL);
    assert(buflen == 0 || buf != NULL);
@@ -865,14 +865,14 @@ FL struct n_string *
       memcpy(&self->s_dat[idx], buf, buflen);
       self->s_len += (ui32_t)buflen;
    }
-   NYD_LEAVE;
+   NYD_OU;
    return self;
 }
 
 FL struct n_string *
 (n_string_insert_c)(struct n_string *self, size_t idx,
       char c n_MEMORY_DEBUG_ARGS){
-   NYD_ENTER;
+   NYD_IN;
 
    assert(self != NULL);
    assert(idx <= self->s_len);
@@ -883,13 +883,13 @@ FL struct n_string *
       memmove(&self->s_dat[idx + 1], &self->s_dat[idx], self->s_len - idx);
    self->s_dat[idx] = c;
    ++self->s_len;
-   NYD_LEAVE;
+   NYD_OU;
    return self;
 }
 
 FL struct n_string *
 n_string_cut(struct n_string *self, size_t idx, size_t len){
-   NYD_ENTER;
+   NYD_IN;
 
    assert(self != NULL);
    assert(UIZ_MAX - idx > len);
@@ -899,14 +899,14 @@ n_string_cut(struct n_string *self, size_t idx, size_t len){
    if(len > 0)
       memmove(&self->s_dat[idx], &self->s_dat[idx + len],
          (self->s_len -= len) - idx);
-   NYD_LEAVE;
+   NYD_OU;
    return self;
 }
 
 FL char *
 (n_string_cp)(struct n_string *self n_MEMORY_DEBUG_ARGS){
    char *rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    assert(self != NULL);
 
@@ -914,14 +914,14 @@ FL char *
       self = (n_string_reserve)(self, 1 n_MEMORY_DEBUG_ARGSCALL);
 
    (rv = self->s_dat)[self->s_len] = '\0';
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
 FL char const *
 n_string_cp_const(struct n_string const *self){
    char const *rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    assert(self != NULL);
 
@@ -930,7 +930,7 @@ n_string_cp_const(struct n_string const *self){
       rv = self->s_dat;
    }else
       rv = n_empty;
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -943,7 +943,7 @@ n_utf8_to_utf32(char const **bdat, size_t *blen){
    ui32_t c, x, x1;
    char const *cp, *cpx;
    size_t l, lx;
-   NYD2_ENTER;
+   NYD2_IN;
 
    lx = l = *blen - 1;
    x = (ui8_t)*(cp = *bdat);
@@ -1033,7 +1033,7 @@ n_utf8_to_utf32(char const **bdat, size_t *blen){
 jleave:
    *bdat = cpx;
    *blen = lx;
-   NYD2_LEAVE;
+   NYD2_OU;
    return c;
 jenobuf:
 jerr:
@@ -1093,7 +1093,7 @@ j1:
 j0:
    buf[catp->enc_lval] = '\0';
    l = catp->enc_lval;
-   NYD2_LEAVE;
+   NYD2_OU;
    return l;
 }
 
@@ -1105,7 +1105,7 @@ FL char *
 n_iconv_normalize_name(char const *cset){
    char *cp, c, *tcp, tc;
    bool_t any;
-   NYD2_ENTER;
+   NYD2_IN;
 
    /* We need to strip //SUFFIXes off, we want to normalize to all lowercase,
     * and we perform some slight content testing, too */
@@ -1133,14 +1133,14 @@ n_iconv_normalize_name(char const *cset){
       cset = cp;
    }
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return n_UNCONST(cset);
 }
 
 FL bool_t
 n_iconv_name_is_ascii(char const *cset){ /* TODO ctext/su */
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    /* In MIME preference order */
    rv = (!asccasecmp(cset, "US-ASCII") || !asccasecmp(cset, "ASCII") ||
@@ -1151,7 +1151,7 @@ n_iconv_name_is_ascii(char const *cset){ /* TODO ctext/su */
          !asccasecmp(cset, "ISO646-US") || !asccasecmp(cset, "us") ||
          !asccasecmp(cset, "IBM367") || !asccasecmp(cset, "cp367") ||
          !asccasecmp(cset, "csASCII"));
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -1159,7 +1159,7 @@ n_iconv_name_is_ascii(char const *cset){ /* TODO ctext/su */
 FL iconv_t
 n_iconv_open(char const *tocode, char const *fromcode){
    iconv_t id;
-   NYD_ENTER;
+   NYD_IN;
 
    if((!asccasecmp(fromcode, "unknown-8bit") ||
             !asccasecmp(fromcode, "binary")) &&
@@ -1175,24 +1175,24 @@ n_iconv_open(char const *tocode, char const *fromcode){
     * names */
    if (id == (iconv_t)-1 && !asccasecmp(tocode, fromcode))
       n_err_no = n_ERR_NONE;
-   NYD_LEAVE;
+   NYD_OU;
    return id;
 }
 
 FL void
 n_iconv_close(iconv_t cd){
-   NYD_ENTER;
+   NYD_IN;
    iconv_close(cd);
    if(cd == iconvd)
       iconvd = (iconv_t)-1;
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 FL void
 n_iconv_reset(iconv_t cd){
-   NYD_ENTER;
+   NYD_IN;
    iconv(cd, NULL, NULL, NULL, NULL);
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 /* (2012-09-24: export and use it exclusively to isolate prototype problems
@@ -1219,7 +1219,7 @@ FL int
 n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
    char const **inb, size_t *inbleft, char **outb, size_t *outbleft){
    int err;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if((icf & n_ICONV_UNIREPL) && !(n_psonce & n_PSO_UNICODE))
       icf &= ~n_ICONV_UNIREPL;
@@ -1267,7 +1267,7 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
    err = 0;
 jleave:
    n_iconv_err_no = err;
-   NYD2_LEAVE;
+   NYD2_OU;
    return err;
 }
 # undef __INBCAST
@@ -1279,7 +1279,7 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
    char const *ib;
    int err;
    size_t il;
-   NYD2_ENTER;
+   NYD2_IN;
 
    il = in->l;
    if(!n_string_get_can_book(il) || !n_string_get_can_book(out->l)){
@@ -1335,7 +1335,7 @@ jleave:
    sp = n_string_drop_ownership(sp);
    /* n_string_gut(sp)*/
 j_leave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return err;
 }
 
@@ -1345,7 +1345,7 @@ n_iconv_onetime_cp(enum n_iconv_flags icf,
    struct str out, in;
    iconv_t icd;
    char *rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = NULL;
    if(tocode == NULL)
@@ -1365,7 +1365,7 @@ n_iconv_onetime_cp(enum n_iconv_flags icf,
 
    iconv_close(icd);
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 #endif /* HAVE_ICONV */

@@ -130,7 +130,7 @@ static char *
 a_shexp_findmail(char const *user, bool_t force){
    char *rv;
    char const *cp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if(!force){
       if((cp = ok_vlook(inbox)) != NULL && *cp != '\0'){
@@ -171,7 +171,7 @@ a_shexp_findmail(char const *user, bool_t force){
       memcpy(&rv[++i], user, ul);
    }
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -181,7 +181,7 @@ a_shexp_tilde(char const *s){
    size_t nl, rl;
    char const *rp, *np;
    char *rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if(*(rp = &s[1]) == '/' || *rp == '\0'){
       np = ok_vlook(HOME);
@@ -210,7 +210,7 @@ a_shexp_tilde(char const *s){
    }
    rv[nl] = '\0';
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -221,7 +221,7 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
    struct n_string outer;
    struct n_strlist *slp;
    char *cp;
-   NYD_ENTER;
+   NYD_IN;
 
    memset(&sgc, 0, sizeof sgc);
    sgc.sgc_patlen = strlen(name);
@@ -283,7 +283,7 @@ jleave:
       slp = slp->sl_next;
       n_free(tmp);
    }
-   NYD_LEAVE;
+   NYD_OU;
    return cp;
 
 jerr:
@@ -313,7 +313,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
    DIR *dp;
    size_t old_outerlen;
    char const *ccp, *myp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    /* We need some special treatment for the outermost level.
     * All along our way, normalize path separators */
@@ -484,7 +484,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
 jleave:
    if(dp != NULL)
       closedir(dp);
-   NYD2_LEAVE;
+   NYD2_OU;
    return (ccp == NULL);
 
 jerr:
@@ -507,12 +507,12 @@ static int
 a_shexp__globsort(void const *cvpa, void const *cvpb){
    int rv;
    struct n_strlist const * const *slpa, * const *slpb;
-   NYD2_ENTER;
+   NYD2_IN;
 
    slpa = cvpa;
    slpb = cvpb;
    rv = asccasecmp((*slpa)->sl_dat, (*slpb)->sl_dat);
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 #endif /* HAVE_FNMATCH */
@@ -540,7 +540,7 @@ a_shexp__quote(struct a_shexp_quote_ctx *sqcp, struct a_shexp_quote_lvl *sqlp){
    ui32_t flags;
    size_t il;
    char const *ib, *ib_base;
-   NYD2_ENTER;
+   NYD2_IN;
 
    ib_base = ib = sqlp->sql_dat.s;
    il = sqlp->sql_dat.l;
@@ -857,7 +857,7 @@ jpush:
 #ifdef a_SHEXP_QUOTE_RECURSE
 jleave:
 #endif
-   NYD2_LEAVE;
+   NYD2_OU;
    return;
 
 #ifdef a_SHEXP_QUOTE_RECURSE
@@ -882,7 +882,7 @@ fexpand(char const *name, enum fexp_mode fexpm) /* TODO in parts: -> URL::!! */
    struct str proto, s;
    char const *res, *cp;
    bool_t dyn, haveproto;
-   NYD_ENTER;
+   NYD_IN;
 
    n_pstate &= ~n_PS_EXPAND_MULTIRESULT;
    dyn = FAL0;
@@ -1047,7 +1047,7 @@ jislocal:
 jleave:
    if(res != NULL && !dyn)
       res = savestr(res);
-   NYD_LEAVE;
+   NYD_OU;
    return n_UNCONST(res);
 }
 
@@ -1085,7 +1085,7 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
       a_CONSUME = 1u<<10,  /* When done, "consume" remaining input */
       a_TMP = 1u<<30
    } state;
-   NYD2_ENTER;
+   NYD2_IN;
 
    assert((flags & n_SHEXP_PARSE_DRYRUN) || store != NULL);
    assert(input != NULL);
@@ -1795,7 +1795,7 @@ jleave:
 jleave_quick:
    assert((rv & n_SHEXP_STATE_OUTPUT) || !(rv & n_SHEXP_STATE_UNICODE));
    assert((rv & n_SHEXP_STATE_OUTPUT) || !(rv & n_SHEXP_STATE_CONTROL));
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -1805,7 +1805,7 @@ n_shexp_parse_token_cp(enum n_shexp_parse_flags flags, char const **cp){
    struct n_string sou, *soup;
    char *rv;
    enum n_shexp_state shs;
-   NYD2_ENTER;
+   NYD2_IN;
 
    assert(cp != NULL);
 
@@ -1822,7 +1822,7 @@ n_shexp_parse_token_cp(enum n_shexp_parse_flags flags, char const **cp){
 
    rv = n_string_cp(soup);
    /*n_string_gut(n_string_drop_ownership(soup));*/
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -1830,7 +1830,7 @@ FL struct n_string *
 n_shexp_quote(struct n_string *store, struct str const *input, bool_t rndtrip){
    struct a_shexp_quote_lvl sql;
    struct a_shexp_quote_ctx sqc;
-   NYD2_ENTER;
+   NYD2_IN;
 
    assert(store != NULL);
    assert(input != NULL);
@@ -1851,7 +1851,7 @@ n_shexp_quote(struct n_string *store, struct str const *input, bool_t rndtrip){
       sql.sql_flags = sqc.sqc_flags;
       a_shexp__quote(&sqc, &sql);
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return store;
 }
 
@@ -1860,7 +1860,7 @@ n_shexp_quote_cp(char const *cp, bool_t rndtrip){
    struct n_string store;
    struct str input;
    char *rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    assert(cp != NULL);
 
@@ -1869,7 +1869,7 @@ n_shexp_quote_cp(char const *cp, bool_t rndtrip){
    rv = n_string_cp(n_shexp_quote(n_string_creat_auto(&store), &input,
          rndtrip));
    n_string_gut(n_string_drop_ownership(&store));
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -1877,7 +1877,7 @@ FL bool_t
 n_shexp_is_valid_varname(char const *name){
    char lc, c;
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = FAL0;
 
@@ -1891,7 +1891,7 @@ n_shexp_is_valid_varname(char const *name){
 
    rv = TRU1;
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -1963,7 +1963,7 @@ c_shcodec(void *vp){
 
 jleave:
    n_pstate_err_no = nerrn;
-   NYD_LEAVE;
+   NYD_OU;
    return (vp != NULL ? 0 : 1);
 jesynopsis:
    n_err(_("Synopsis: shcodec: <[+]e[ncode]|d[ecode]> <rest-of-line>\n"));

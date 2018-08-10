@@ -65,7 +65,7 @@ static char *
 _mime_parse_ct_plain_from_ct(char const *cth)
 {
    char *rv_b, *rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv_b = savestr(cth);
 
@@ -76,7 +76,7 @@ _mime_parse_ct_plain_from_ct(char const *cth)
    while (rv > rv_b && blankchar(rv[-1]))
       --rv;
    *rv = '\0';
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv_b;
 }
 
@@ -86,7 +86,7 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
 {
    char *cp;
    bool_t rv = FAL0;
-   NYD_ENTER;
+   NYD_IN;
 
    ip->m_ct_type = hfield1("content-type", (struct message*)ip);
    if (ip->m_ct_type != NULL)
@@ -176,7 +176,7 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
 
    rv = TRU1;
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -190,7 +190,7 @@ _mime_parse_rfc822(struct message *zmp, struct mimepart *ip,
    off_t offs;
    struct mimepart *np;
    long lines;
-   NYD_ENTER;
+   NYD_IN;
 
    if ((ibuf = setinput(&mb, (struct message*)ip, NEED_BODY)) == NULL)
       goto jleave;
@@ -226,7 +226,7 @@ _mime_parse_rfc822(struct message *zmp, struct mimepart *ip,
 
    _mime_parse_part(zmp, np, mpf, level + 1);
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 #ifdef HAVE_TLS
@@ -237,7 +237,7 @@ _mime_parse_pkcs7(struct message *zmp, struct mimepart *ip,
    struct message m, *xmp;
    struct mimepart *np;
    char *to, *cc;
-   NYD_ENTER;
+   NYD_IN;
 
    memcpy(&m, ip, sizeof m);
    to = hfield1("to", zmp);
@@ -265,7 +265,7 @@ _mime_parse_pkcs7(struct message *zmp, struct mimepart *ip,
       }
    } else
       ip->m_content_info |= CI_ENCRYPTED | CI_ENCRYPTED_BAD;
-   NYD_LEAVE;
+   NYD_OU;
 }
 #endif /* HAVE_TLS */
 
@@ -280,7 +280,7 @@ _mime_parse_multipart(struct message *zmp, struct mimepart *ip,
    off_t offs;
    int part = 0;
    long lines = 0;
-   NYD_ENTER;
+   NYD_IN;
 
    if ((boundary = mime_param_boundary_get(ip->m_ct_type, &linelen)) == NULL)
       goto jleave;
@@ -350,7 +350,7 @@ _mime_parse_multipart(struct message *zmp, struct mimepart *ip,
 jleave:
    if (line != NULL)
       n_free(line);
-   NYD_LEAVE;
+   NYD_OU;
    return TRU1;
 }
 
@@ -360,7 +360,7 @@ __mime_parse_new(struct mimepart *ip, struct mimepart **np, off_t offs,
 {
    struct mimepart *pp;
    size_t sz;
-   NYD_ENTER;
+   NYD_IN;
 
    *np = n_autorec_calloc(1, sizeof **np);
    (*np)->m_flag = MNOFROM;
@@ -387,27 +387,27 @@ __mime_parse_new(struct mimepart *ip, struct mimepart **np, off_t offs,
       pp->m_nextpart = *np;
    } else
       ip->m_multipart = *np;
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 static void
 __mime_parse_end(struct mimepart **np, off_t xoffs, long lines)
 {
    off_t offs;
-   NYD_ENTER;
+   NYD_IN;
 
    offs = mailx_positionof((*np)->m_block, (*np)->m_offset);
    (*np)->m_size = (*np)->m_xsize = xoffs - offs;
    (*np)->m_lines = (*np)->m_xlines = lines;
    *np = NULL;
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 FL struct mimepart *
 mime_parse_msg(struct message *mp, enum mime_parse_flags mpf)
 {
    struct mimepart *ip;
-   NYD_ENTER;
+   NYD_IN;
 
    ip = n_autorec_calloc(1, sizeof *ip);
    ip->m_flag = mp->m_flag;
@@ -420,7 +420,7 @@ mime_parse_msg(struct message *mp, enum mime_parse_flags mpf)
    ip->m_xlines = mp->m_lines;
    if (!_mime_parse_part(mp, ip, mpf, 0))
       ip = NULL;
-   NYD_LEAVE;
+   NYD_OU;
    return ip;
 }
 

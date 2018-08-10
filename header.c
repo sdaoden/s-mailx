@@ -138,7 +138,7 @@ a_header_extract_date_from_from_(char const *line, size_t linelen,
 {
    int rv;
    char const *cp = line;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = 1;
 
@@ -194,7 +194,7 @@ jat_dot:
 jleave:
    memcpy(datebuf, cp, linelen);
    datebuf[linelen] = '\0';
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 jerr:
    cp = _("<Unknown date>");
@@ -209,7 +209,7 @@ static char const *
 a_header__from_skipword(char const *wp)
 {
    char c = 0;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if (wp != NULL) {
       while ((c = *wp++) != '\0' && !blankchar(c)) {
@@ -223,7 +223,7 @@ a_header__from_skipword(char const *wp)
       for (; blankchar(c); c = *wp++)
          ;
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return (c == 0 ? NULL : wp - 1);
 }
 
@@ -231,7 +231,7 @@ static bool_t
 a_header_cmatch(char const *tp, char const *date){
    bool_t rv;
    char tc, dc;
-   NYD2_ENTER;
+   NYD2_IN;
 
    for(;;){
       tc = *tp++;
@@ -275,7 +275,7 @@ a_header_cmatch(char const *tp, char const *date){
       }
    }
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -284,7 +284,7 @@ a_header_is_date(char const *date){
    struct a_header_cmatch_data const *hcmdp;
    size_t dl;
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = FAL0;
 
@@ -293,7 +293,7 @@ a_header_is_date(char const *date){
          if(dl >= hcmdp->hcmd_len_min && dl <= hcmdp->hcmd_len_x &&
                (rv = a_header_cmatch(hcmdp->hcmd_data, date)))
             break;
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -304,7 +304,7 @@ a_header_gregorian_to_jdn(ui32_t y, ui32_t m, ui32_t d){
     * This algorithm is supposed to work for all dates in between 1582-10-15
     * (0001-01-01 but that not Gregorian) and 65535-12-31 */
    size_t jdn;
-   NYD2_ENTER;
+   NYD2_IN;
 
 #if 0
    if(y == 0)
@@ -335,7 +335,7 @@ a_header_gregorian_to_jdn(ui32_t y, ui32_t m, ui32_t d){
    m += 2;
    m /= 5;
    jdn += m;
-   NYD2_LEAVE;
+   NYD2_OU;
    return jdn;
 }
 
@@ -345,7 +345,7 @@ a_header_jdn_to_gregorian(size_t jdn, ui32_t *yp, ui32_t *mp, ui32_t *dp){
    /* Algorithm is taken from Communications of the ACM, Vol 6, No 8.
     * (via third hand, plus adjustments) */
    size_t y, x;
-   NYD2_ENTER;
+   NYD2_IN;
 
    jdn -= 1721119;
    jdn <<= 2;
@@ -376,7 +376,7 @@ a_header_jdn_to_gregorian(size_t jdn, ui32_t *yp, ui32_t *mp, ui32_t *dp){
    *yp = (ui32_t)(y & 0xFFFF);
    *mp = (ui32_t)(x & 0xFF);
    *dp = (ui32_t)(jdn & 0xFF);
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 #endif /* 0 */
 
@@ -386,21 +386,21 @@ a_header_parse_from_(struct message *mp, char date[n_FROM_DATEBUF]){
    int hlen;
    char *hline = NULL; /* TODO line pool */
    size_t hsize = 0;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if((ibuf = setinput(&mb, mp, NEED_HEADER)) != NULL &&
          (hlen = readline_restart(ibuf, &hline, &hsize, 0)) > 0)
       a_header_extract_date_from_from_(hline, hlen, date);
    if(hline != NULL)
       n_free(hline);
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 #ifdef HAVE_IDNA
 static struct n_addrguts *
 a_header_idna_apply(struct n_addrguts *agp){
    struct n_string idna_ascii;
-   NYD_ENTER;
+   NYD_IN;
 
    n_string_creat_auto(&idna_ascii);
 
@@ -416,7 +416,7 @@ a_header_idna_apply(struct n_addrguts *agp){
       NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags,
          NAME_NAME_SALLOC | NAME_SKINNED | NAME_IDNA, 0);
    }
-   NYD_LEAVE;
+   NYD_OU;
    return agp;
 }
 #endif /* HAVE_IDNA */
@@ -439,7 +439,7 @@ a_header_addrspec_check(struct n_addrguts *agp, bool_t skinned,
       a_DOMAIN_V6 = 1u<<11,
       a_DOMAIN_MASK = a_IN_DOMAIN | a_DOMAIN_V6
    } flags;
-   NYD_ENTER;
+   NYD_IN;
 
    flags = a_NONE;
 #ifdef HAVE_IDNA
@@ -1064,7 +1064,7 @@ jleave:
    if(!(agp->ag_n_flags & NAME_ADDRSPEC_INVALID) && (flags & a_IDNA_APPLY))
       agp = a_header_idna_apply(agp);
 #endif
-   NYD_LEAVE;
+   NYD_OU;
    return !(agp->ag_n_flags & NAME_ADDRSPEC_INVALID);
 }
 
@@ -1075,7 +1075,7 @@ a_gethfield(enum n_header_extract_flags hef, FILE *f,
    char *line2 = NULL, *cp, *cp2;
    size_t line2size = 0;
    int c, isenc;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if (*linebuf == NULL)
       *linebuf = n_realloc(*linebuf, *linesize = 1);
@@ -1153,7 +1153,7 @@ a_gethfield(enum n_header_extract_flags hef, FILE *f,
          n_free(line2);
       break;
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return rem;
 }
 
@@ -1161,7 +1161,7 @@ static int
 msgidnextc(char const **cp, int *status)
 {
    int c;
-   NYD2_ENTER;
+   NYD2_IN;
 
    assert(cp != NULL);
    assert(*cp != NULL);
@@ -1205,14 +1205,14 @@ jdfl:
       }
    }
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return c;
 }
 
 static char const *
 nexttoken(char const *cp)
 {
-   NYD2_ENTER;
+   NYD2_IN;
    for (;;) {
       if (*cp == '\0') {
          cp = NULL;
@@ -1235,7 +1235,7 @@ nexttoken(char const *cp)
       else
          break;
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return cp;
 }
 
@@ -1244,7 +1244,7 @@ myaddrs(struct header *hp) /* TODO */
 {
    struct name *np;
    char const *rv, *mta;
-   NYD_ENTER;
+   NYD_IN;
 
    if (hp != NULL && (np = hp->h_from) != NULL) {
       if ((rv = np->n_fullname) != NULL)
@@ -1267,7 +1267,7 @@ myaddrs(struct header *hp) /* TODO */
          ((mta = n_servbyname(ok_vlook(mta), NULL)) != NULL && *mta != '\0'))
       goto jnodename;
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 
 jnodename:{
@@ -1289,7 +1289,7 @@ myorigin(struct header *hp) /* TODO */
 {
    char const *rv = NULL, *ccp;
    struct name *np;
-   NYD_ENTER;
+   NYD_IN;
 
    if((ccp = myaddrs(hp)) != NULL &&
          (np = lextract(ccp, GEXTRA | GFULL)) != NULL){
@@ -1300,7 +1300,7 @@ myorigin(struct header *hp) /* TODO */
          rv = ccp;
       /* TODO why not else rv = n_poption_arg_r; ?? */
    }
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -1309,13 +1309,13 @@ is_head(char const *linebuf, size_t linelen, bool_t check_rfc4155)
 {
    char date[n_FROM_DATEBUF];
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if ((rv = (linelen >= 5 && !memcmp(linebuf, "From ", 5))) && check_rfc4155 &&
          (a_header_extract_date_from_from_(linebuf, linelen, date) <= 0 ||
           !a_header_is_date(date)))
       rv = TRUM1;
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -1323,7 +1323,7 @@ FL bool_t
 n_header_put4compose(FILE *fp, struct header *hp){
    bool_t rv;
    int t;
-   NYD_ENTER;
+   NYD_IN;
 
    t = GTO | GSUBJECT | GCC | GBCC | GBCC_IS_FCC | GREF_IRT | GNL | GCOMMA;
    if((hp->h_from != NULL || myaddrs(hp) != NULL) ||
@@ -1334,7 +1334,7 @@ n_header_put4compose(FILE *fp, struct header *hp){
       t |= GIDENT;
 
    rv = n_puthead(TRUM1, hp, fp, t, SEND_TODISP, CONV_NONE, NULL, NULL);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -1350,7 +1350,7 @@ n_header_extract(enum n_header_extract_flags hef, FILE *fp, struct header *hp,
    long lc;
    off_t firstoff;
    char const *val, *cp;
-   NYD_ENTER;
+   NYD_IN;
 
    memset(hq, 0, sizeof *hq);
    if(hef & n_HEADER_EXTRACT_PREFILL_RECEIVERS){
@@ -1553,7 +1553,7 @@ jebadhead:
 jleave:
    if (linebuf != NULL)
       n_free(linebuf);
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 FL char *
@@ -1565,7 +1565,7 @@ hfield_mult(char const *field, struct message *mp, int mult)
    size_t linesize = 0; /* TODO line pool */
    char *linebuf = NULL, *colon;
    char const *hfield;
-   NYD_ENTER;
+   NYD_IN;
 
    /* There are (spam) messages which have header bytes which are many KB when
     * joined, so resize a single heap storage until we are done if we shall
@@ -1603,7 +1603,7 @@ jleave:
       n_free(hfs.s);
       hfs.s = colon;
    }
-   NYD_LEAVE;
+   NYD_OU;
    return hfs.s;
 }
 
@@ -1611,7 +1611,7 @@ FL char const *
 thisfield(char const *linebuf, char const *field)
 {
    char const *rv = NULL;
-   NYD2_ENTER;
+   NYD2_IN;
 
    while (lowerconv(*linebuf) == lowerconv(*field)) {
       ++linebuf;
@@ -1629,7 +1629,7 @@ thisfield(char const *linebuf, char const *field)
       ++linebuf;
    rv = linebuf;
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -1637,7 +1637,7 @@ FL char const *
 skip_comment(char const *cp)
 {
    size_t nesting;
-   NYD_ENTER;
+   NYD_IN;
 
    for (nesting = 1; nesting > 0 && *cp; ++cp) {
       switch (*cp) {
@@ -1653,7 +1653,7 @@ skip_comment(char const *cp)
          break;
       }
    }
-   NYD_LEAVE;
+   NYD_OU;
    return cp;
 }
 
@@ -1661,7 +1661,7 @@ FL char const *
 routeaddr(char const *name)
 {
    char const *np, *rp = NULL;
-   NYD_ENTER;
+   NYD_IN;
 
    for (np = name; *np; np++) {
       switch (*np) {
@@ -1685,7 +1685,7 @@ routeaddr(char const *name)
    }
    rp = NULL;
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rp;
 }
 
@@ -1711,7 +1711,7 @@ expandaddr_to_eaf(void){
    char *buf;
    enum expand_addr_flags rv;
    char const *cp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if((cp = ok_vlook(expandaddr)) == NULL)
       rv = EAF_RESTRICT_TARGETS;
@@ -1765,7 +1765,7 @@ jandor:
             n_err(_("*expandaddr* with fail, but no restrictions to apply\n"));
       }
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -1777,7 +1777,7 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
    int f;
    si8_t rv;
    enum expand_addr_flags eaf;
-   NYD_ENTER;
+   NYD_IN;
 
    eaf = expandaddr_to_eaf();
    f = np->n_flags;
@@ -1863,7 +1863,7 @@ j0print:
 jprint:
    n_err(cs, n_shexp_quote_cp(np->n_name, TRU1), cbuf);
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -1872,7 +1872,7 @@ skin(char const *name)
 {
    struct n_addrguts ag;
    char *rv;
-   NYD_ENTER;
+   NYD_IN;
 
    if(name != NULL){
       /*name =*/ n_addrspec_with_guts(&ag, name, TRU1, FAL0);
@@ -1881,7 +1881,7 @@ skin(char const *name)
          rv = savestrbuf(rv, ag.ag_slen);
    }else
       rv = NULL;
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -1899,7 +1899,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
       a_GOTSPACE = 1<<2,
       a_LASTSP = 1<<3
    } flags;
-   NYD_ENTER;
+   NYD_IN;
 
    memset(agp, 0, sizeof *agp);
 
@@ -2041,7 +2041,7 @@ jcheck:
    else
       name = agp->ag_input;
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return name;
 }
 
@@ -2052,7 +2052,7 @@ realname(char const *name)
    char *rname, *rp;
    struct str in, out;
    int quoted, good, nogood;
-   NYD_ENTER;
+   NYD_IN;
 
    if ((cp = n_UNCONST(name)) == NULL)
       goto jleave;
@@ -2157,14 +2157,14 @@ jbrk:
          ++good;
    cp = (good * 3 < nogood) ? prstr(skin(name)) : rname;
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return n_UNCONST(cp);
 }
 
 FL char *
 n_header_senderfield_of(struct message *mp){
    char *cp;
-   NYD_ENTER;
+   NYD_IN;
 
    if((cp = hfield1("from", mp)) != NULL && *cp != '\0')
       ;
@@ -2240,7 +2240,7 @@ jout:
       n_free(namebuf);
    }
 
-   NYD_LEAVE;
+   NYD_OU;
    return cp;
 }
 
@@ -2260,7 +2260,7 @@ subject_re_trim(char const *s){
    char *re_st, *re_st_x;
    char const *orig_s;
    size_t re_l;
-   NYD_ENTER;
+   NYD_IN;
 
    any = FAL0;
    orig_s = s;
@@ -2301,7 +2301,7 @@ jouter:
 
    if(re_st != NULL)
       n_lofi_free(re_st);
-   NYD_LEAVE;
+   NYD_OU;
    return any ? s : orig_s;
 }
 
@@ -2309,7 +2309,7 @@ FL int
 msgidcmp(char const *s1, char const *s2)
 {
    int q1 = 0, q2 = 0, c1, c2;
-   NYD_ENTER;
+   NYD_IN;
 
    while(*s1 == '<')
       ++s1;
@@ -2322,7 +2322,7 @@ msgidcmp(char const *s1, char const *s2)
       if (c1 != c2)
          break;
    } while (c1 && c2);
-   NYD_LEAVE;
+   NYD_OU;
    return c1 - c2;
 }
 
@@ -2330,7 +2330,7 @@ FL char const *
 fakefrom(struct message *mp)
 {
    char const *name;
-   NYD_ENTER;
+   NYD_IN;
 
    if (((name = skin(hfield1("return-path", mp))) == NULL || *name == '\0' ) &&
          ((name = skin(hfield1("from", mp))) == NULL || *name == '\0'))
@@ -2338,7 +2338,7 @@ fakefrom(struct message *mp)
        * RFC 4155 however requires a RFC 5322 (2822) conforming
        * "addr-spec", but we simply can't provide that */
       name = "MAILER-DAEMON";
-   NYD_LEAVE;
+   NYD_OU;
    return name;
 }
 
@@ -2350,7 +2350,7 @@ unixtime(char const *fromline)
    time_t t, t2;
    si32_t i, year, month, day, hour, minute, second, tzdiff;
    struct tm *tmptr;
-   NYD2_ENTER;
+   NYD2_IN;
 
    for (fp = fromline; *fp != '\0' && *fp != '\n'; ++fp)
       ;
@@ -2394,7 +2394,7 @@ unixtime(char const *fromline)
       tzdiff += 3600; /* TODO simply adding an hour for ISDST is .. buuh */
    t -= tzdiff;
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return t;
 jinvalid:
    t = n_time_epoch();
@@ -2408,7 +2408,7 @@ rfctime(char const *date) /* TODO n_idec_ return tests */
    char const *cp, *x;
    time_t t;
    si32_t i, year, month, day, hour, minute, second;
-   NYD2_ENTER;
+   NYD2_IN;
 
    cp = date;
 
@@ -2496,7 +2496,7 @@ rfctime(char const *date) /* TODO n_idec_ return tests */
        * TODO See RFC 5322, 4.3! */
    }
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return t;
 jinvalid:
    t = 0;
@@ -2510,7 +2510,7 @@ combinetime(int year, int month, int day, int hour, int minute, int second){
 
    size_t jdn;
    time_t t;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if(UICMP(32, second, >/*XXX leap=*/, n_DATE_SECSMIN) ||
          UICMP(32, minute, >=, n_DATE_MINSHOUR) ||
@@ -2539,7 +2539,7 @@ combinetime(int year, int month, int day, int hour, int minute, int second){
    jdn -= jdn_epoch;
    t += (time_t)jdn * n_DATE_SECSDAY;
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return t;
 jerr:
    t = (time_t)-1;
@@ -2553,7 +2553,7 @@ substdate(struct message *m)
     * written to the mail file. Try to determine this using RFC message header
     * fields, or fall back to current time */
    char const *cp;
-   NYD_ENTER;
+   NYD_IN;
 
    m->m_time = 0;
    if ((cp = hfield1("received", m)) != NULL) {
@@ -2571,7 +2571,7 @@ substdate(struct message *m)
    }
    if (m->m_time == 0 || m->m_time > time_current.tc_time)
       m->m_time = time_current.tc_time;
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 FL char *
@@ -2580,7 +2580,7 @@ n_header_textual_date_info(struct message *mp, char const **color_tag_or_null){
    char *rv;
    char const *fmt, *cp;
    time_t t;
-   NYD_ENTER;
+   NYD_IN;
    n_UNUSED(color_tag_or_null);
 
    t = mp->m_time;
@@ -2668,7 +2668,7 @@ jredo_localtime:
       a_header_parse_from_(mp, rv = n_autorec_alloc(n_FROM_DATEBUF));
    }else
       rv = savestr(n_time_ctime(t, NULL));
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -2680,7 +2680,7 @@ n_header_textual_sender_info(struct message *mp, char **cumulation_or_null,
    struct name *np, *np2;
    bool_t isto, b;
    char *cp;
-   NYD_ENTER;
+   NYD_IN;
 
    cp = n_header_senderfield_of(mp);
    isto = FAL0;
@@ -2758,7 +2758,7 @@ n_header_textual_sender_info(struct message *mp, char **cumulation_or_null,
 
    if(is_to_or_null != NULL)
       *is_to_or_null = isto;
-   NYD_LEAVE;
+   NYD_OU;
    return np;
 }
 
@@ -2767,7 +2767,7 @@ setup_from_and_sender(struct header *hp)
 {
    char const *addr;
    struct name *np;
-   NYD_ENTER;
+   NYD_IN;
 
    /* If -t parsed or composed From: then take it.  With -t we otherwise
     * want -r to be honoured in favour of *from* in order to have
@@ -2786,7 +2786,7 @@ setup_from_and_sender(struct header *hp)
       np = lextract(addr, GEXTRA | GFULL | GFULLEXTRA);
    hp->h_sender = np;
 
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 FL struct name const *
@@ -2794,7 +2794,7 @@ check_from_and_sender(struct name const *fromfield,
    struct name const *senderfield)
 {
    struct name const *rv = NULL;
-   NYD_ENTER;
+   NYD_IN;
 
    if (senderfield != NULL) {
       if (senderfield->n_flink != NULL) {
@@ -2817,7 +2817,7 @@ check_from_and_sender(struct name const *fromfield,
    if (rv == NULL)
       rv = (struct name*)0x1;
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -2827,14 +2827,14 @@ getsender(struct message *mp)
 {
    char *cp;
    struct name *np;
-   NYD_ENTER;
+   NYD_IN;
 
    if ((cp = hfield1("from", mp)) == NULL ||
          (np = lextract(cp, GEXTRA | GSKIN)) == NULL)
       cp = NULL;
    else
       cp = (np->n_flink != NULL) ? skin(hfield1("sender", mp)) : np->n_name;
-   NYD_LEAVE;
+   NYD_OU;
    return cp;
 }
 #endif
@@ -2842,7 +2842,7 @@ getsender(struct message *mp)
 FL struct name *
 n_header_setup_in_reply_to(struct header *hp){
    struct name *np;
-   NYD_ENTER;
+   NYD_IN;
 
    np = NULL;
 
@@ -2850,7 +2850,7 @@ n_header_setup_in_reply_to(struct header *hp){
       if((np = hp->h_in_reply_to) == NULL && (np = hp->h_ref) != NULL)
          while(np->n_flink != NULL)
             np = np->n_flink;
-   NYD_LEAVE;
+   NYD_OU;
    return np;
 }
 
@@ -2862,7 +2862,7 @@ grab_headers(enum n_go_input_flags gif, struct header *hp, enum gfield gflags,
     * TODO (now assumes check_from_and_sender() is called afterwards ++ */
    int errs;
    int volatile comma;
-   NYD_ENTER;
+   NYD_IN;
 
    errs = 0;
    comma = (ok_blook(bsdcompat) || ok_blook(bsdmsgs)) ? 0 : GCOMMA;
@@ -2901,7 +2901,7 @@ grab_headers(enum n_go_input_flags gif, struct header *hp, enum gfield gflags,
    if (!subjfirst && (gflags & GSUBJECT))
       hp->h_subject = n_go_input_cp(gif, "Subject: ", hp->h_subject);
 
-   NYD_LEAVE;
+   NYD_OU;
    return errs;
 }
 
@@ -2915,7 +2915,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
    char **linebuf, *colon;
    enum {a_NONE, a_ALL, a_ITER, a_RE} match;
    bool_t rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = FAL0;
    match = a_NONE;
@@ -3043,7 +3043,7 @@ jnext_name:
 jleave:
    if(match == a_ITER)
       n_lofi_free(fiter.s);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -3063,7 +3063,7 @@ n_header_is_known(char const *name, size_t len){
       NULL
    };
    char const * const *rv;
-   NYD_ENTER;
+   NYD_IN;
 
    if(len == UIZ_MAX)
       len = strlen(name);
@@ -3071,7 +3071,7 @@ n_header_is_known(char const *name, size_t len){
    for(rv = names; *rv != NULL; ++rv)
       if(!ascncasecmp(*rv, name, len))
          break;
-   NYD_LEAVE;
+   NYD_OU;
    return *rv;
 }
 
@@ -3082,7 +3082,7 @@ n_header_add_custom(struct n_header_field **hflp, char const *dat,
    ui32_t nl, bl;
    char const *cp;
    struct n_header_field *hfp;
-   NYD_ENTER;
+   NYD_IN;
 
    hfp = NULL;
 
@@ -3137,7 +3137,7 @@ jename:
       hfp->hf_dat[nl++] = '\0';
       memcpy(hfp->hf_dat + nl, cp, bl);
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return (hfp != NULL);
 
 jerr:

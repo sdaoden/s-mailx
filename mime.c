@@ -98,7 +98,7 @@ static bool_t
 _has_highbit(char const *s)
 {
    bool_t rv = TRU1;
-   NYD_ENTER;
+   NYD_IN;
 
    if (s) {
       do
@@ -108,7 +108,7 @@ _has_highbit(char const *s)
    }
    rv = FAL0;
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -116,7 +116,7 @@ static bool_t
 _name_highbit(struct name *np)
 {
    bool_t rv = TRU1;
-   NYD_ENTER;
+   NYD_IN;
 
    while (np) {
       if (_has_highbit(np->n_name) || _has_highbit(np->n_fullname))
@@ -125,7 +125,7 @@ _name_highbit(struct name *np)
    }
    rv = FAL0;
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 #endif /* HAVE_ICONV */
@@ -161,7 +161,7 @@ _fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
     * needs to be dup'ed away if we have to transform the content */
    struct str in, out;
    ssize_t rv;
-   NYD_ENTER;
+   NYD_IN;
    n_UNUSED(failiconv);
    n_UNUSED(outrest);
 
@@ -301,7 +301,7 @@ j__sig:
    if (__mimefwtd_sig != 0)
       n_raise(__mimefwtd_sig);
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -359,7 +359,7 @@ mime_write_tohdr(struct str *in, FILE *fo, size_t *colp,
    size_t col, i, j;
    ssize_t sz;
 
-   NYD_ENTER;
+   NYD_IN;
 
    cout.s = NULL, cout.l = 0;
    cset7 = ok_vlook(charset_7bit);
@@ -655,7 +655,7 @@ jenc_retry_same:
 
    if(colp != NULL)
       *colp = col;
-   NYD_LEAVE;
+   NYD_OU;
    return sz;
 }
 
@@ -665,7 +665,7 @@ a_mime__convhdra(struct str *inp, FILE *fp, size_t *colp,
       enum a_mime_structure_hack msh){
    struct str ciconv;
    ssize_t rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = 0;
    ciconv.s = NULL;
@@ -683,7 +683,7 @@ a_mime__convhdra(struct str *inp, FILE *fp, size_t *colp,
 jleave:
    if(ciconv.s != NULL)
       n_free(ciconv.s);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 #endif /* HAVE_ICONV */
@@ -696,7 +696,7 @@ mime_write_tohdr_a(struct str *in, FILE *f, size_t *colp,
    size_t i;
    char const *cp, *lastcp;
    ssize_t sz, x;
-   NYD_ENTER;
+   NYD_IN;
 
    in->s[in->l] = '\0';
 
@@ -764,7 +764,7 @@ mime_write_tohdr_a(struct str *in, FILE *f, size_t *colp,
       sz += i;
    }
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return sz;
 jerr:
    sz = -1;
@@ -774,25 +774,25 @@ jerr:
 static void
 _append_str(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
 {
-   NYD_ENTER;
+   NYD_IN;
    *buf = n_realloc(*buf, *sz += len);
    memcpy(&(*buf)[*pos], str, len);
    *pos += len;
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 static void
 _append_conv(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
 {
    struct str in, out;
-   NYD_ENTER;
+   NYD_IN;
 
    in.s = n_UNCONST(str);
    in.l = len;
    mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
    _append_str(buf, sz, pos, out.s, out.l);
    n_free(out.s);
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 FL bool_t
@@ -801,7 +801,7 @@ charset_iter_reset(char const *a_charset_to_try_first) /* TODO elim. dups! */
    char const *sarr[3];
    size_t sarrl[3], len;
    char *cp;
-   NYD_ENTER;
+   NYD_IN;
    n_UNUSED(a_charset_to_try_first);
 
 #ifdef HAVE_ICONV
@@ -853,7 +853,7 @@ charset_iter_reset(char const *a_charset_to_try_first) /* TODO elim. dups! */
    cp[len] = '\0';
 
    _CS_ITER_STEP();
-   NYD_LEAVE;
+   NYD_OU;
    return (_cs_iter != NULL);
 }
 
@@ -861,11 +861,11 @@ FL bool_t
 charset_iter_next(void)
 {
    bool_t rv;
-   NYD_ENTER;
+   NYD_IN;
 
    _CS_ITER_STEP();
    rv = (_cs_iter != NULL);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -873,10 +873,10 @@ FL bool_t
 charset_iter_is_valid(void)
 {
    bool_t rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = (_cs_iter != NULL);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -884,10 +884,10 @@ FL char const *
 charset_iter(void)
 {
    char const *rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = _cs_iter;
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -895,29 +895,29 @@ FL char const *
 charset_iter_or_fallback(void)
 {
    char const *rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = _CS_ITER_GET();
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
 FL void
 charset_iter_recurse(char *outer_storage[2]) /* TODO LEGACY FUN, REMOVE */
 {
-   NYD_ENTER;
+   NYD_IN;
    outer_storage[0] = _cs_iter_base;
    outer_storage[1] = _cs_iter;
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 FL void
 charset_iter_restore(char *outer_storage[2]) /* TODO LEGACY FUN, REMOVE */
 {
-   NYD_ENTER;
+   NYD_IN;
    _cs_iter_base = outer_storage[0];
    _cs_iter = outer_storage[1];
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 #ifdef HAVE_ICONV
@@ -926,7 +926,7 @@ need_hdrconv(struct header *hp) /* TODO once only, then iter */
 {
    struct n_header_field *hfp;
    char const *rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = NULL;
 
@@ -982,7 +982,7 @@ need_hdrconv(struct header *hp) /* TODO once only, then iter */
    if (_has_highbit(hp->h_subject))
 jneeds:
       rv = _CS_ITER_GET(); /* TODO MIME/send: iter active? iter! else */
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 #endif /* HAVE_ICONV */
@@ -1012,7 +1012,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
    char *cbeg;
    iconv_t fhicd = (iconv_t)-1;
 #endif
-   NYD_ENTER;
+   NYD_IN;
 
    out->l = 0;
    if (in->l == 0) {
@@ -1174,7 +1174,7 @@ jnotmime: {
       n_iconv_close(fhicd);
 #endif
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return;
 }
 
@@ -1184,7 +1184,7 @@ mime_fromaddr(char const *name)
    char const *cp, *lastcp;
    char *res = NULL;
    size_t ressz = 1, rescur = 0;
-   NYD_ENTER;
+   NYD_IN;
 
    if (name == NULL)
       goto jleave;
@@ -1230,7 +1230,7 @@ mime_fromaddr(char const *name)
          n_free(x);
    }
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return res;
 }
 
@@ -1241,12 +1241,12 @@ xmime_write(char const *ptr, size_t size, FILE *f, enum conversion convert,
 {
    ssize_t rv;
    struct quoteflt *qf;
-   NYD_ENTER;
+   NYD_IN;
 
    quoteflt_reset(qf = quoteflt_dummy(), f);
    rv = mime_write(ptr, size, f, convert, dflags, qf, outrest, inrest);
    quoteflt_flush(qf);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -1273,7 +1273,7 @@ mime_write(char const *ptr, size_t size, FILE *f,
     * TODO P.S.: furthermore all this encapsulated in filter objects instead */
    struct str in, out;
    ssize_t volatile sz;
-   NYD_ENTER;
+   NYD_IN;
 
    dflags |= _TD_BUFCOPY;
    in.s = n_UNCONST(ptr);
@@ -1441,7 +1441,7 @@ jleave:
    safe_signal(SIGPIPE, __mimemw_opipe);
    if (__mimemw_sig != 0)
       n_raise(__mimemw_sig);
-   NYD_LEAVE;
+   NYD_OU;
    return sz;
 }
 

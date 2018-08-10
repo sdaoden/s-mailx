@@ -60,7 +60,7 @@ static void
 a_ccnd_oif_error(struct a_ccnd_if_ctx const *cicp, char const *msg_or_null,
       char const *nearby_or_null){
    struct str s;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if(msg_or_null == NULL)
       msg_or_null = _("invalid expression syntax");
@@ -80,7 +80,7 @@ a_ccnd_oif_error(struct a_ccnd_if_ctx const *cicp, char const *msg_or_null,
          (*cicp->cic_argv != NULL ? " " : n_empty));
       n_err(_("   Stopped at: %s\n"), s.s);
    }
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 static si8_t
@@ -89,7 +89,7 @@ a_ccnd_oif_test(struct a_ccnd_if_ctx *cicp, bool_t noop){
    size_t argc;
    char c;
    si8_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = -1;
    emsg = NULL;
@@ -311,7 +311,7 @@ jesyn:
    if(noop && rv < 0)
       rv = TRU1;
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -332,7 +332,7 @@ a_ccnd_oif_group(struct a_ccnd_if_ctx *cicp, size_t level, bool_t noop){
       a_CANNOT_COND = a_NEED_LIST
    } state;
    si8_t rv, xrv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = -1;
    state = a_FIRST;
@@ -461,7 +461,7 @@ jneed_cond:
    }
 
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 jesyn:
    if(emsg == NULL)
@@ -478,7 +478,7 @@ a_ccnd_if(void *v, bool_t iselif){
    size_t argc;
    si8_t xrv, rv;
    struct a_ccnd_if_node *cinp;
-   NYD_ENTER;
+   NYD_IN;
 
    if(!iselif){
       cinp = n_alloc(sizeof *cinp);
@@ -523,17 +523,17 @@ a_ccnd_if(void *v, bool_t iselif){
       rv = 1;
    }
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_if(void *v){
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = a_ccnd_if(v, FAL0);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -541,7 +541,7 @@ FL int
 c_elif(void *v){
    struct a_ccnd_if_node *cinp;
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    if((cinp = n_go_data->gdc_ifcond) == NULL || cinp->cin_else){
       n_err(_("`elif' without a matching `if'\n"));
@@ -551,7 +551,7 @@ c_elif(void *v){
       rv = a_ccnd_if(v, TRU1);
    }else
       rv = 0;
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -559,7 +559,7 @@ FL int
 c_else(void *v){
    int rv;
    struct a_ccnd_if_node *cinp;
-   NYD_ENTER;
+   NYD_IN;
    n_UNUSED(v);
 
    if((cinp = n_go_data->gdc_ifcond) == NULL || cinp->cin_else){
@@ -570,7 +570,7 @@ c_else(void *v){
       cinp->cin_go = !cinp->cin_go;
       rv = 0;
    }
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -578,7 +578,7 @@ FL int
 c_endif(void *v){
    int rv;
    struct a_ccnd_if_node *cinp;
-   NYD_ENTER;
+   NYD_IN;
    n_UNUSED(v);
 
    if((cinp = n_go_data->gdc_ifcond) == NULL){
@@ -589,24 +589,24 @@ c_endif(void *v){
       n_free(cinp);
       rv = 0;
    }
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
 FL bool_t
 n_cnd_if_isskip(void){
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = a_CCND_IF_ISSKIP();
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
 FL void
 n_cnd_if_stack_del(struct n_go_data_ctx *gdcp){
    struct a_ccnd_if_node *vp, *cinp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    vp = gdcp->gdc_ifcond;
    gdcp->gdc_ifcond = NULL;
@@ -615,7 +615,7 @@ n_cnd_if_stack_del(struct n_go_data_ctx *gdcp){
       vp = cinp->cin_outer;
       n_free(cinp);
    }
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 /* s-it-mode */

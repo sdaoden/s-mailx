@@ -157,7 +157,7 @@ a_main_getopt(int argc, char * const argv[], char const *optstring){
    static char const *lastp;
    char const *curp;
    int rv/*, colon*/;
-   NYD2_ENTER;
+   NYD2_IN;
 
    a_main_oarg = NULL;
    rv = -1;
@@ -232,7 +232,7 @@ a_main_getopt(int argc, char * const argv[], char const *optstring){
    a_main_oarg = NULL;
    rv = '?';
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -241,7 +241,7 @@ a_main_usage(FILE *fp){
    /* Stay in 24 lines; On buf length change: verify visual output! */
    char buf[7];
    size_t i;
-   NYD2_ENTER;
+   NYD2_IN;
 
    i = strlen(n_progname);
    i = n_MIN(i, sizeof(buf) -1);
@@ -297,13 +297,13 @@ a_main_usage(FILE *fp){
          ". Bugs/Contact via "
             "\"$ %s -Sexpandaddr=shquote '\\$contact-mail'\"\n"),
          n_progname, n_progname);
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 static void
 a_main_startup(void){
    char *cp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    n_stdin = stdin;
    n_stdout = stdout;
@@ -375,21 +375,21 @@ a_main_startup(void){
    /* Ensure some variables get loaded and/or verified */
 
    (void)ok_blook(POSIXLY_CORRECT);
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 static size_t
 a_main_grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt){
    /* Just use auto-reclaimed storage, it will be preserved */
    char const **newcpp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    newcpp = n_autorec_alloc(sizeof(char*) * (newsize + 1));
 
    if(oldcnt > 0)
       memcpy(newcpp, *cpp, oldcnt * sizeof(char*));
    *cpp = newcpp;
-   NYD2_LEAVE;
+   NYD2_OU;
    return newsize;
 }
 
@@ -397,7 +397,7 @@ static void
 a_main_setup_vars(void){
    struct passwd *pwuid;
    char const *cp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    /* Detect, verify and fixate our invoking user (environment) */
    n_group_id = getgid();
@@ -479,7 +479,7 @@ a_main_setup_vars(void){
    }else
       /* $COLUMNS and $LINES defaults as documented in the manual */
       n_scrnheight = n_realscreenheight = 24, n_scrnwidth = 80;
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 static void
@@ -490,7 +490,7 @@ a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
 #elif defined TIOCGSIZE
    struct ttysize ts;
 #endif
-   NYD2_ENTER;
+   NYD2_IN;
    assert((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_BATCH_FLAG));
 
    n_scrnheight = n_realscreenheight = n_scrnwidth = 0;
@@ -578,7 +578,7 @@ a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
    /**/
    n_pstate |= n_PS_SIGWINCH_PEND;
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 static sigjmp_buf a_main__hdrjmp; /* XXX */

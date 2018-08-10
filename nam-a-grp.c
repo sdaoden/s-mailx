@@ -243,7 +243,7 @@ static bool_t
 a_nag_is_same_name(char const *n1, char const *n2){
    bool_t rv;
    char c1, c2, c1r, c2r;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if(ok_blook(allnet)){
       for(;; ++n1, ++n2){
@@ -264,14 +264,14 @@ a_nag_is_same_name(char const *n1, char const *n2){
       }
    }else
       rv = !asccasecmp(n1, n2);
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
 static struct name *
 a_nag_namelist_mark_name(struct name *np, char const *name){
    struct name *p;
-   NYD2_ENTER;
+   NYD2_IN;
 
    for(p = np; p != NULL; p = p->n_flink)
       if(!(p->n_type & GDEL) &&
@@ -279,7 +279,7 @@ a_nag_namelist_mark_name(struct name *np, char const *name){
                NAME_ADDRSPEC_ISPIPE)) &&
             a_nag_is_same_name(p->n_name, name))
          p->n_flags |= (ui32_t)SI32_MIN;
-   NYD2_LEAVE;
+   NYD2_OU;
    return np;
 }
 
@@ -289,7 +289,7 @@ a_nag_yankname(char const *ap, char *wbuf, char const *separators,
 {
    char const *cp;
    char *wp, c, inquote, lc, lastsp;
-   NYD_ENTER;
+   NYD_IN;
 
    *(wp = wbuf) = '\0';
 
@@ -352,7 +352,7 @@ jwpwc:
 
    *wp = '\0';
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return cp;
 }
 
@@ -363,7 +363,7 @@ a_nag_extract1(char const *line, enum gfield ntype, char const *separators,
    struct name *topp, *np, *t;
    char const *cp;
    char *nbuf;
-   NYD_ENTER;
+   NYD_IN;
 
    topp = NULL;
    if (line == NULL || *line == '\0')
@@ -383,7 +383,7 @@ a_nag_extract1(char const *line, enum gfield ntype, char const *separators,
    }
    n_free(nbuf);
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return topp;
 }
 
@@ -394,7 +394,7 @@ a_nag_gexpand(size_t level, struct name *nlist, struct a_nag_group *ngp,
    struct name *nlist_tail;
    char const *logname;
    struct a_nag_grp_names_head *ngnhp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if(UICMP(z, level++, >, n_ALIAS_MAXEXP)){
       n_err(_("Expanding alias to depth larger than %d\n"), n_ALIAS_MAXEXP);
@@ -444,7 +444,7 @@ jas_is:
       }
    }
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return nlist;
 }
 
@@ -452,7 +452,7 @@ static int
 a_nag_elide_qsort(void const *s1, void const *s2){
    struct name const * const *np1, * const *np2;
    int rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    np1 = s1;
    np2 = s2;
@@ -461,7 +461,7 @@ a_nag_elide_qsort(void const *s1, void const *s2){
       rv = ((*np1)->n_type & (GTO | GCC | GBCC)) -
             ((*np2)->n_type & (GTO | GCC | GBCC));
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -471,7 +471,7 @@ a_nag_group_lookup(enum a_nag_type nt, struct a_nag_group_lookup *nglp,
    char c1;
    struct a_nag_group *lngp, *ngp;
    bool_t icase;
-   NYD2_ENTER;
+   NYD2_IN;
 
    icase = FAL0;
 
@@ -531,7 +531,7 @@ a_nag_group_lookup(enum a_nag_type nt, struct a_nag_group_lookup *nglp,
 
    nglp->ngl_slot_last = lngp;
    nglp->ngl_group = ngp;
-   NYD2_LEAVE;
+   NYD2_OU;
    return ngp;
 }
 
@@ -539,10 +539,10 @@ static struct a_nag_group *
 a_nag_group_find(enum a_nag_type nt, char const *id){
    struct a_nag_group_lookup ngl;
    struct a_nag_group *ngp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    ngp = a_nag_group_lookup(nt, &ngl, id);
-   NYD2_LEAVE;
+   NYD2_OU;
    return ngp;
 }
 
@@ -550,7 +550,7 @@ static struct a_nag_group *
 a_nag_group_go_first(enum a_nag_type nt, struct a_nag_group_lookup *nglp){
    size_t i;
    struct a_nag_group **ngpa, *ngp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    switch((nt &= a_NAG_T_MASK)){
    case a_NAG_T_ALTERNATES:
@@ -589,14 +589,14 @@ a_nag_group_go_first(enum a_nag_type nt, struct a_nag_group_lookup *nglp){
    nglp->ngl_group = ngp = NULL;
 jleave:
    nglp->ngl_slot_last = NULL;
-   NYD2_LEAVE;
+   NYD2_OU;
    return ngp;
 }
 
 static struct a_nag_group *
 a_nag_group_go_next(struct a_nag_group_lookup *nglp){
    struct a_nag_group *ngp, **ngpa;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if((ngp = nglp->ngl_group->ng_next) != NULL)
       nglp->ngl_slot_last = nglp->ngl_group;
@@ -607,7 +607,7 @@ a_nag_group_go_next(struct a_nag_group_lookup *nglp){
             break;
    }
    nglp->ngl_group = ngp;
-   NYD2_LEAVE;
+   NYD2_OU;
    return ngp;
 }
 
@@ -616,7 +616,7 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
    struct a_nag_group_lookup ngl;
    struct a_nag_group *ngp;
    size_t l, i;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if((ngp = a_nag_group_lookup(nt, &ngl, id)) != NULL)
       goto jleave;
@@ -702,7 +702,7 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
    ngp->ng_next = *ngl.ngl_slot;
    *ngl.ngl_slot = ngp;
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return ngp;
 }
 
@@ -711,7 +711,7 @@ a_nag_group_del(enum a_nag_type nt, char const *id){
    struct a_nag_group_lookup ngl;
    struct a_nag_group *ngp;
    enum a_nag_type xnt;
-   NYD2_ENTER;
+   NYD2_IN;
 
    xnt = nt & a_NAG_T_MASK;
 
@@ -727,14 +727,14 @@ a_nag_group_del(enum a_nag_type nt, char const *id){
       else
          ngp = NULL;
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return (ngp != NULL);
 }
 
 static struct a_nag_group *
 a_nag__group_del(struct a_nag_group_lookup *nglp){
    struct a_nag_group *x, *ngp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    /* Overly complicated: link off this node, step ahead to next.. */
    x = nglp->ngl_group;
@@ -768,7 +768,7 @@ a_nag__group_del(struct a_nag_group_lookup *nglp){
 #endif
 
    n_free(x);
-   NYD2_LEAVE;
+   NYD2_OU;
    return ngp;
 }
 
@@ -776,7 +776,7 @@ static void
 a_nag__names_del(struct a_nag_group *ngp){
    struct a_nag_grp_names_head *ngnhp;
    struct a_nag_grp_names *ngnp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    a_NAG_GP_TO_SUBCLASS(ngnhp, ngp);
 
@@ -787,7 +787,7 @@ a_nag__names_del(struct a_nag_group *ngp){
       ngnp = ngnp->ngn_next;
       n_free(x);
    }
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 static bool_t
@@ -801,7 +801,7 @@ a_nag_group_print_all(enum a_nag_type nt, char const *varname){
    struct a_nag_group **ngpa;
    char const *tname;
    enum a_nag_type xnt;
-   NYD_ENTER;
+   NYD_IN;
 
    if(varname != NULL)
       n_string_creat_auto(&s);
@@ -927,17 +927,17 @@ jleave:
       else
          n_pstate_err_no = n_ERR_NOTSUP;
    }
-   NYD_LEAVE;
+   NYD_OU;
    return (varname == NULL);
 }
 
 static int
 a_nag__group_print_qsorter(void const *a, void const *b){
    int rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = strcmp(*(char**)n_UNCONST(a), *(char**)n_UNCONST(b));
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -946,7 +946,7 @@ a_nag_group_print(struct a_nag_group const *ngp, FILE *fo,
       struct n_string *vputsp){
    char const *cp;
    size_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = 1;
 
@@ -1033,7 +1033,7 @@ a_nag_group_print(struct a_nag_group const *ngp, FILE *fo,
          n_shexp_quote_cp(nftp->nft_save.s, TRU1));
       }break;
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -1042,7 +1042,7 @@ a_nag_mlmux(enum a_nag_type nt, char const **argv){
    struct a_nag_group *ngp;
    char const *ecp;
    int rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = 0;
    n_UNINIT(ecp, NULL);
@@ -1072,7 +1072,7 @@ jerr:
       }
    }while(*++argv != NULL);
 
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -1080,7 +1080,7 @@ static int
 a_nag_unmlmux(enum a_nag_type nt, char const **argv){
    struct a_nag_group *ngp;
    int rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = 0;
 
@@ -1123,7 +1123,7 @@ jaster_entry:
       n_err(_("No such mailing-list: %s\n"), n_shexp_quote_cp(*argv, FAL0));
       rv = 1;
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -1131,7 +1131,7 @@ jaster_entry:
 static void
 a_nag_mlmux_linkin(struct a_nag_group *ngp){
    struct a_nag_grp_regex **lpp, *ngrp, *lhp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if(ngp->ng_type & a_NAG_T_SUBSCRIBE){
       lpp = &a_nag_mlsub_regex;
@@ -1149,13 +1149,13 @@ a_nag_mlmux_linkin(struct a_nag_group *ngp){
    }else
       *lpp = ngrp->ngr_last = ngrp->ngr_next = ngrp;
    ngrp->ngr_hits = 0;
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 static void
 a_nag_mlmux_linkout(struct a_nag_group *ngp){
    struct a_nag_grp_regex *ngrp, **lpp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    a_NAG_GP_TO_SUBCLASS(ngrp, ngp);
 
@@ -1176,7 +1176,7 @@ a_nag_mlmux_linkout(struct a_nag_group *ngp){
       if(*lpp == ngrp)
          *lpp = ngrp->ngr_next;
    }
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 #endif /* HAVE_REGEX */
 
@@ -1186,7 +1186,7 @@ nalloc(char const *str, enum gfield ntype)
    struct n_addrguts ag;
    struct str in, out;
    struct name *np;
-   NYD_ENTER;
+   NYD_IN;
    assert(!(ntype & GFULLEXTRA) || (ntype & GFULL) != 0);
 
    str = n_addrspec_with_guts(&ag, str,
@@ -1295,14 +1295,14 @@ jskipfullextra:
 #endif
    }
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return np;
 }
 
 FL struct name *
 nalloc_fcc(char const *file){
    struct name *nnp;
-   NYD_ENTER;
+   NYD_IN;
 
    nnp = n_autorec_alloc(sizeof *nnp);
    nnp->n_flink = nnp->n_blink = NULL;
@@ -1310,7 +1310,7 @@ nalloc_fcc(char const *file){
    nnp->n_flags = NAME_NAME_SALLOC | NAME_SKINNED | NAME_ADDRSPEC_ISFILE;
    nnp->n_fullname = nnp->n_name = savestr(file);
    nnp->n_fullextra = NULL;
-   NYD_LEAVE;
+   NYD_OU;
    return nnp;
 }
 
@@ -1318,7 +1318,7 @@ FL struct name *
 ndup(struct name *np, enum gfield ntype)
 {
    struct name *nnp;
-   NYD_ENTER;
+   NYD_IN;
 
    if ((ntype & (GFULL | GSKIN)) && !(np->n_flags & NAME_SKINNED)) {
       nnp = nalloc(np->n_name, ntype);
@@ -1339,14 +1339,14 @@ ndup(struct name *np, enum gfield ntype)
             : savestr(np->n_fullextra);
    }
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return nnp;
 }
 
 FL struct name *
 cat(struct name *n1, struct name *n2){
    struct name *tail;
-   NYD2_ENTER;
+   NYD2_IN;
 
    tail = n2;
    if(n1 == NULL)
@@ -1361,14 +1361,14 @@ cat(struct name *n1, struct name *n2){
    n2->n_blink = tail;
    tail = n1;
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return tail;
 }
 
 FL struct name *
 n_namelist_dup(struct name const *np, enum gfield ntype){
    struct name *nlist, *xnp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    for(nlist = xnp = NULL; np != NULL; np = np->n_flink){
       struct name *x;
@@ -1382,7 +1382,7 @@ n_namelist_dup(struct name const *np, enum gfield ntype){
          xnp = x;
       }
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return nlist;
 }
 
@@ -1390,12 +1390,12 @@ FL ui32_t
 count(struct name const *np)
 {
    ui32_t c;
-   NYD_ENTER;
+   NYD_IN;
 
    for (c = 0; np != NULL; np = np->n_flink)
       if (!(np->n_type & GDEL))
          ++c;
-   NYD_LEAVE;
+   NYD_OU;
    return c;
 }
 
@@ -1403,12 +1403,12 @@ FL ui32_t
 count_nonlocal(struct name const *np)
 {
    ui32_t c;
-   NYD_ENTER;
+   NYD_IN;
 
    for (c = 0; np != NULL; np = np->n_flink)
       if (!(np->n_type & GDEL) && !(np->n_flags & NAME_ADDRSPEC_ISFILEORPIPE))
          ++c;
-   NYD_LEAVE;
+   NYD_OU;
    return c;
 }
 
@@ -1416,10 +1416,10 @@ FL struct name *
 extract(char const *line, enum gfield ntype)
 {
    struct name *rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = a_nag_extract1(line, ntype, " \t,", 0);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -1428,7 +1428,7 @@ lextract(char const *line, enum gfield ntype)
 {
    char *cp;
    struct name *rv;
-   NYD_ENTER;
+   NYD_IN;
 
    if(!(ntype & GSHEXP_PARSE_HACK) || !(expandaddr_to_eaf() & EAF_SHEXP_PARSE))
       cp = NULL;
@@ -1457,7 +1457,7 @@ lextract(char const *line, enum gfield ntype)
 
    if(cp != NULL)
       n_lofi_free(cp);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -1467,7 +1467,7 @@ detract(struct name *np, enum gfield ntype)
    char *topp, *cp;
    struct name *p;
    int flags, s;
-   NYD_ENTER;
+   NYD_IN;
 
    topp = NULL;
    if (np == NULL)
@@ -1502,7 +1502,7 @@ detract(struct name *np, enum gfield ntype)
    if ((flags & GCOMMA) && *--cp == ',')
       *cp = 0;
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return topp;
 }
 
@@ -1511,14 +1511,14 @@ grab_names(enum n_go_input_flags gif, char const *field, struct name *np,
       int comma, enum gfield gflags)
 {
    struct name *nq;
-   NYD_ENTER;
+   NYD_IN;
 
 jloop:
    np = lextract(n_go_input_cp(gif, field, detract(np, comma)), gflags);
    for (nq = np; nq != NULL; nq = nq->n_flink)
       if (is_addr_invalid(nq, EACM_NONE))
          goto jloop;
-   NYD_LEAVE;
+   NYD_OU;
    return np;
 }
 
@@ -1527,14 +1527,14 @@ name_is_same_domain(struct name const *n1, struct name const *n2)
 {
    char const *d1, *d2;
    bool_t rv;
-   NYD_ENTER;
+   NYD_IN;
 
    d1 = strrchr(n1->n_name, '@');
    d2 = strrchr(n2->n_name, '@');
 
    rv = (d1 != NULL && d2 != NULL) ? !asccasecmp(++d1, ++d2) : FAL0;
 
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -1543,7 +1543,7 @@ checkaddrs(struct name *np, enum expand_addr_check_mode eacm,
    si8_t *set_on_error)
 {
    struct name *n;
-   NYD_ENTER;
+   NYD_IN;
 
    for (n = np; n != NULL; n = n->n_flink) {
       si8_t rv;
@@ -1561,7 +1561,7 @@ checkaddrs(struct name *np, enum expand_addr_check_mode eacm,
             np = n->n_flink;
       }
    }
-   NYD_LEAVE;
+   NYD_OU;
    return np;
 }
 
@@ -1571,7 +1571,7 @@ n_namelist_vaporise_head(bool_t strip_alternates, struct header *hp,
 {
    /* TODO namelist_vaporise_head() is incredibly expensive and redundant */
    struct name *tolist, *np, **npp;
-   NYD_ENTER;
+   NYD_IN;
 
    tolist = cat(hp->h_to, cat(hp->h_cc, cat(hp->h_bcc, hp->h_fcc)));
    hp->h_to = hp->h_cc = hp->h_bcc = hp->h_fcc = NULL;
@@ -1590,7 +1590,7 @@ n_namelist_vaporise_head(bool_t strip_alternates, struct header *hp,
       }
       *npp = cat(*npp, ndup(np, np->n_type | GFULL));
    }
-   NYD_LEAVE;
+   NYD_OU;
    return tolist;
 }
 
@@ -1599,7 +1599,7 @@ usermap(struct name *names, bool_t force_metoo){
    struct a_nag_group *ngp;
    struct name *nlist, *nlist_tail, *np, *cp;
    int metoo;
-   NYD_ENTER;
+   NYD_IN;
 
    metoo = (force_metoo || ok_blook(metoo));
    nlist = nlist_tail = NULL;
@@ -1624,7 +1624,7 @@ usermap(struct name *names, bool_t force_metoo){
                nlist_tail = nlist_tail->n_flink;
       }
    }
-   NYD_LEAVE;
+   NYD_OU;
    return nlist;
 }
 
@@ -1633,7 +1633,7 @@ elide(struct name *names)
 {
    size_t i, j, k;
    struct name *nlist, *np, **nparr;
-   NYD_ENTER;
+   NYD_IN;
 
    nlist = NULL;
 
@@ -1696,7 +1696,7 @@ jiter:;
 
    n_lofi_free(nparr);
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return nlist;
 }
 
@@ -1705,7 +1705,7 @@ c_alternates(void *vp){
    struct a_nag_group *ngp;
    char const *varname, *ccp;
    char **argv;
-   NYD_ENTER;
+   NYD_IN;
 
    n_pstate_err_no = n_ERR_NONE;
 
@@ -1746,7 +1746,7 @@ c_alternates(void *vp){
          }
       }
    }
-   NYD_LEAVE;
+   NYD_OU;
    return (vp != NULL ? 0 : 1);
 }
 
@@ -1754,7 +1754,7 @@ FL int
 c_unalternates(void *vp){
    char **argv;
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = 0;
    argv = vp;
@@ -1763,7 +1763,7 @@ c_unalternates(void *vp){
       n_err(_("No such `alternates': %s\n"), n_shexp_quote_cp(*argv, FAL0));
       rv = 1;
    }while(*++argv != NULL);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -1774,7 +1774,7 @@ n_alternates_remove(struct name *np, bool_t keep_single){
    struct a_nag_group_lookup ngl;
    struct a_nag_group *ngp;
    struct name *xp, *newnp;
-   NYD_ENTER;
+   NYD_IN;
 
    /* Delete the temporary bit from all */
    for(xp = np; xp != NULL; xp = xp->n_flink)
@@ -1835,7 +1835,7 @@ n_alternates_remove(struct name *np, bool_t keep_single){
       xp->n_flink = NULL;
    np = newnp;
 
-   NYD_LEAVE;
+   NYD_OU;
    return np;
 }
 
@@ -1844,7 +1844,7 @@ n_is_myname(char const *name){
    struct a_nag_group_lookup ngl;
    struct a_nag_group *ngp;
    struct name *xp;
-   NYD_ENTER;
+   NYD_IN;
 
    if(a_nag_is_same_name(ok_vlook(LOGNAME), name))
       goto jleave;
@@ -1888,7 +1888,7 @@ n_is_myname(char const *name){
 
    name = NULL;
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return (name != NULL);
 }
 
@@ -1900,7 +1900,7 @@ c_addrcodec(void *vp){
    size_t alen;
    int mode;
    char const **argv, *varname, *act, *cp;
-   NYD_ENTER;
+   NYD_IN;
 
    sp = n_string_creat_auto(&s_b);
    argv = vp;
@@ -2018,7 +2018,7 @@ c_addrcodec(void *vp){
    }
 
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return (vp != NULL ? 0 : 1);
 jesynopsis:
    n_err(_("Synopsis: addrcodec: <[+[+[+]]]e[ncode]|d[ecode]|s[kin]> "
@@ -2033,7 +2033,7 @@ c_commandalias(void *vp){
    struct a_nag_group *ngp;
    char const **argv, *ccp;
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = 0;
    argv = vp;
@@ -2100,7 +2100,7 @@ c_commandalias(void *vp){
       }
    }
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -2108,7 +2108,7 @@ FL int
 c_uncommandalias(void *vp){
    char **argv;
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = 0;
    argv = vp;
@@ -2117,14 +2117,14 @@ c_uncommandalias(void *vp){
       n_err(_("No such `commandalias': %s\n"), n_shexp_quote_cp(*argv, FAL0));
       rv = 1;
    }while(*++argv != NULL);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
 FL char const *
 n_commandalias_exists(char const *name, struct str const **expansion_or_null){
    struct a_nag_group *ngp;
-   NYD_ENTER;
+   NYD_IN;
 
    if((ngp = a_nag_group_find(a_NAG_T_COMMANDALIAS, name)) != NULL){
       name = ngp->ng_id;
@@ -2137,7 +2137,7 @@ n_commandalias_exists(char const *name, struct str const **expansion_or_null){
       }
    }else
       name = NULL;
-   NYD_LEAVE;
+   NYD_OU;
    return name;
 }
 
@@ -2146,7 +2146,7 @@ n_alias_is_valid_name(char const *name){
    char c;
    char const *cp;
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    for(rv = TRU1, cp = name++; (c = *cp++) != '\0';)
       /* User names, plus things explicitly mentioned in Postfix aliases(5),
@@ -2162,7 +2162,7 @@ n_alias_is_valid_name(char const *name){
          rv = FAL0;
          break;
       }
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -2173,7 +2173,7 @@ c_alias(void *v)
    char **argv;
    struct a_nag_group *ngp;
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = 0;
    argv = v;
@@ -2220,7 +2220,7 @@ jerr:
          memcpy(ngnp->ngn_id, *argv, i);
       }
    }
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -2228,7 +2228,7 @@ FL int
 c_unalias(void *v){
    char **argv;
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = 0;
    argv = v;
@@ -2237,47 +2237,47 @@ c_unalias(void *v){
       n_err(_("No such alias: %s\n"), *argv);
       rv = 1;
    }while(*++argv != NULL);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_mlist(void *v){
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = a_nag_mlmux(a_NAG_T_MLIST, v);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_unmlist(void *v){
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = a_nag_unmlmux(a_NAG_T_MLIST, v);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_mlsubscribe(void *v){
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = a_nag_mlmux(a_NAG_T_MLIST | a_NAG_T_SUBSCRIBE, v);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_unmlsubscribe(void *v){
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = a_nag_unmlmux(a_NAG_T_MLIST | a_NAG_T_SUBSCRIBE, v);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -2289,7 +2289,7 @@ is_mlist(char const *name, bool_t subscribed_only){
    bool_t re2;
 #endif
    enum mlist_state rv;
-   NYD_ENTER;
+   NYD_IN;
 
    ngp = a_nag_group_find(a_NAG_T_MLIST, name);
    rv = (ngp != NULL) ? MLIST_KNOWN : MLIST_OTHER;
@@ -2347,7 +2347,7 @@ jregex_redo:
 #endif /* HAVE_REGEX */
 
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -2356,7 +2356,7 @@ is_mlist_mp(struct message *mp, enum mlist_state what){
    struct name *np;
    bool_t cc;
    enum mlist_state rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = MLIST_OTHER;
 
@@ -2391,7 +2391,7 @@ jredo:
       goto jredo;
    }
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -2400,7 +2400,7 @@ c_shortcut(void *vp){
    struct a_nag_group *ngp;
    char **argv;
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = 0;
    argv = vp;
@@ -2437,7 +2437,7 @@ c_shortcut(void *vp){
          memcpy(cp, argv[1], l);
       }
    }
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -2445,7 +2445,7 @@ FL int
 c_unshortcut(void *vp){
    char **argv;
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = 0;
    argv = vp;
@@ -2454,20 +2454,20 @@ c_unshortcut(void *vp){
       n_err(_("No such shortcut: %s\n"), *argv);
       rv = 1;
    }while(*++argv != NULL);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
 FL char const *
 shortcut_expand(char const *str){
    struct a_nag_group *ngp;
-   NYD_ENTER;
+   NYD_IN;
 
    if((ngp = a_nag_group_find(a_NAG_T_SHORTCUT, str)) != NULL)
       a_NAG_GP_TO_SUBCLASS(str, ngp);
    else
       str = NULL;
-   NYD_LEAVE;
+   NYD_OU;
    return str;
 }
 
@@ -2476,7 +2476,7 @@ c_charsetalias(void *vp){
    struct a_nag_group *ngp;
    char **argv;
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = 0;
    argv = vp;
@@ -2526,7 +2526,7 @@ c_charsetalias(void *vp){
          memcpy(cp, dst, dstl);
       }
    }
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -2534,7 +2534,7 @@ FL int
 c_uncharsetalias(void *vp){
    char **argv, *cp;
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = 0;
    argv = vp;
@@ -2547,7 +2547,7 @@ c_uncharsetalias(void *vp){
          rv = 1;
       }
    }while(*++argv != NULL);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -2556,7 +2556,7 @@ n_charsetalias_expand(char const *cp){
    struct a_nag_group *ngp;
    size_t i;
    char const *cp_orig;
-   NYD_ENTER;
+   NYD_IN;
 
    cp_orig = cp;
 
@@ -2568,7 +2568,7 @@ n_charsetalias_expand(char const *cp){
 
    if(cp != cp_orig)
       cp = savestr(cp);
-   NYD_LEAVE;
+   NYD_OU;
    return cp;
 }
 
@@ -2577,7 +2577,7 @@ c_filetype(void *vp){ /* TODO support automatic chains: .tar.gz -> .gz + .tar */
    struct a_nag_group *ngp;
    char **argv; /* TODO While there: let ! prefix mean: direct execlp(2) */
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = 0;
    argv = vp;
@@ -2638,7 +2638,7 @@ jenomem:
             nftp->nft_save.l = --lsc;
       }
    }
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -2646,7 +2646,7 @@ FL int
 c_unfiletype(void *vp){
    char **argv;
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = 0;
    argv = vp;
@@ -2655,7 +2655,7 @@ c_unfiletype(void *vp){
       n_err(_("No such `filetype': %s\n"), n_shexp_quote_cp(*argv, FAL0));
       rv = 1;
    }while(*++argv != NULL);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -2666,7 +2666,7 @@ n_filetype_trial(struct n_file_type *res_or_null, char const *file){
    struct n_string s, *sp;
    struct a_nag_group const *ngp;
    ui32_t l;
-   NYD2_ENTER;
+   NYD2_IN;
 
    sp = n_string_creat_auto(&s);
    sp = n_string_assign_cp(sp, file);
@@ -2732,14 +2732,14 @@ n_filetype_trial(struct n_file_type *res_or_null, char const *file){
    ngp = NULL;
 
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return (ngp != NULL);
 }
 
 FL bool_t
 n_filetype_exists(struct n_file_type *res_or_null, char const *file){
    char const *ext, *lext;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if((ext = strrchr(file, '/')) != NULL)
       file = ++ext;
@@ -2833,7 +2833,7 @@ n_filetype_exists(struct n_file_type *res_or_null, char const *file){
    lext = NULL;
 
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return (lext != NULL);
 }
 

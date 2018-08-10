@@ -93,7 +93,7 @@ _imap_gssapi_error1(const char *s, OM_uint32 code, int typ)
    OM_uint32 maj_stat, min_stat;
    gss_buffer_desc msg = GSS_C_EMPTY_BUFFER;
    OM_uint32 msg_ctx = 0;
-   NYD_ENTER;
+   NYD_IN;
 
    do {
       maj_stat = gss_display_status(&min_stat, code, typ, GSS_C_NO_OID,
@@ -107,16 +107,16 @@ _imap_gssapi_error1(const char *s, OM_uint32 code, int typ)
          break;
       }
    } while (msg_ctx);
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 static void
 _imap_gssapi_error(const char *s, OM_uint32 maj_stat, OM_uint32 min_stat)
 {
-   NYD_ENTER;
+   NYD_IN;
    _imap_gssapi_error1(s, maj_stat, GSS_C_GSS_CODE);
    _imap_gssapi_error1(s, min_stat, GSS_C_MECH_CODE);
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 static char *
@@ -124,7 +124,7 @@ _imap_gssapi_last_at_before_slash(char const *sp)
 {
    char const *cp;
    char c;
-   NYD_ENTER;
+   NYD_IN;
 
    for (cp = sp; (c = *cp) != '\0'; ++cp)
       if (c == '/')
@@ -133,7 +133,7 @@ _imap_gssapi_last_at_before_slash(char const *sp)
       ;
    if (*cp != '@')
       cp = NULL;
-   NYD_LEAVE;
+   NYD_OU;
    return n_UNCONST(cp);
 }
 

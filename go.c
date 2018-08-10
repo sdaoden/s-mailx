@@ -1114,7 +1114,7 @@ jleave:
 
 static bool_t
 a_go_load(struct a_go_ctx *gcp){
-   NYD2_ENTER;
+   NYD2_IN;
 
    assert(!(n_psonce & n_PSO_STARTED));
    assert(!(a_go_ctx->gc_flags & a_GO_TYPE_MASK));
@@ -1141,7 +1141,7 @@ a_go_load(struct a_go_ctx *gcp){
    rele_all_sigs();
 
    n_go_main_loop();
-   NYD2_LEAVE;
+   NYD2_OU;
    return (((n_psonce & n_PSO_EXIT_MASK) |
       (n_pstate & n_PS_ERR_EXIT_MASK)) == 0);
 }
@@ -1160,7 +1160,7 @@ a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
    enum {a_RETOK = TRU1, a_TICKED = 1<<1} volatile f;
    volatile int hadint; /* TODO get rid of shitty signal stuff (see signal.c) */
    sigset_t osigmask;
-   NYD2_ENTER;
+   NYD2_IN;
 
    memset(&gec, 0, sizeof gec);
    osigmask = gcp->gc_osigmask;
@@ -1216,7 +1216,7 @@ jjump: /* TODO Should be _CLEANUP_UNWIND not _TEARDOWN on signal if DOABLE! */
 
    if(soldhdl != SIG_IGN)
       safe_signal(SIGINT, soldhdl);
-   NYD2_LEAVE;
+   NYD2_OU;
    rele_all_sigs();
    if(hadint){
       sigprocmask(SIG_SETMASK, &osigmask, NULL);
@@ -1228,7 +1228,7 @@ jjump: /* TODO Should be _CLEANUP_UNWIND not _TEARDOWN on signal if DOABLE! */
 FL void
 n_go_init(void){
    struct a_go_ctx *gcp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    assert(n_stdin != NULL);
 
@@ -1241,7 +1241,7 @@ n_go_init(void){
    n_go_data = &gcp->gc_data;
 
    n_child_manager_start();
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 FL bool_t
@@ -1426,7 +1426,7 @@ n_go_main_loop(void){ /* FIXME */
 FL void
 n_go_input_clearerr(void){
    FILE *fp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    fp = NULL;
 
@@ -1438,23 +1438,23 @@ n_go_input_clearerr(void){
       a_go_ctx->gc_flags &= ~a_GO_IS_EOF;
       clearerr(fp);
    }
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 FL void
 n_go_input_force_eof(void){
-   NYD2_ENTER;
+   NYD2_IN;
    a_go_ctx->gc_flags |= a_GO_FORCE_EOF;
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 FL bool_t
 n_go_input_is_eof(void){
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = ((a_go_ctx->gc_flags & a_GO_IS_EOF) != 0);
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -1506,7 +1506,7 @@ FL int
       a_USE_MLE = 1u<<2,
       a_DIGMSG_OVERLAY = 1u<<16
    } f;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if(!(gif & n_GO_INPUT_HOLDALLSIGS))
       hold_all_sigs();
@@ -1733,7 +1733,7 @@ jleave:
 
    if(!(gif & n_GO_INPUT_HOLDALLSIGS))
       rele_all_sigs();
-   NYD2_LEAVE;
+   NYD2_OU;
    return n;
 }
 
@@ -1745,7 +1745,7 @@ n_go_input_cp(enum n_go_input_flags gif, char const *prompt,
    size_t linesize;
    char *linebuf, * volatile rv;
    int n;
-   NYD2_ENTER;
+   NYD2_IN;
 
    linesize = 0;
    linebuf = NULL;
@@ -1769,7 +1769,7 @@ n_go_input_cp(enum n_go_input_flags gif, char const *prompt,
 jleave:
    if(linebuf != NULL)
       n_free(linebuf);
-   NYD2_LEAVE;
+   NYD2_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
 }
@@ -2083,7 +2083,7 @@ FL bool_t
 n_go_may_yield_control(void){ /* TODO this is a terrible hack */
    struct a_go_ctx *gcp;
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = FAL0;
 
@@ -2110,7 +2110,7 @@ n_go_may_yield_control(void){ /* TODO this is a terrible hack */
 
    rv = TRU1;
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -2153,7 +2153,7 @@ FL int
 c_xcall(void *vp){
    int rv;
    struct a_go_ctx *gcp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    /* The context can only be a macro context, except that possibly a single
     * level of `eval' (TODO: yet) was used to double-expand our arguments */
@@ -2191,7 +2191,7 @@ c_xcall(void *vp){
    }
    rv = 0;
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 

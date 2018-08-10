@@ -63,7 +63,7 @@ FL void
 n_tls_set_verify_level(struct url const *urlp){
    size_t i;
    char const *cp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    n_tls_verify_level = n_TLS_VERIFY_ASK;
 
@@ -78,13 +78,13 @@ n_tls_set_verify_level(struct url const *urlp){
             break;
          }
    }
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 FL bool_t
 n_tls_verify_decide(void){
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    switch(n_tls_verify_level){
    default:
@@ -99,7 +99,7 @@ n_tls_verify_decide(void){
       rv = TRU1;
       break;
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -115,7 +115,7 @@ smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
    size_t bufsize, buflen, cnt;
    int c;
    enum okay rv = STOP;
-   NYD_ENTER;
+   NYD_IN;
 
    if ((*hp = Ftmp(NULL, "smimeh", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
       goto jetmp;
@@ -175,7 +175,7 @@ jetmp:
    n_free(buf);
    rv = OKAY;
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -185,7 +185,7 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp, char const *message_digest)
    char *boundary;
    int c, lastc = EOF;
    FILE *op;
-   NYD_ENTER;
+   NYD_IN;
 
    if ((op = Ftmp(NULL, "smimea", OF_RDWR | OF_UNLINK | OF_REGISTER)
          ) == NULL) {
@@ -236,7 +236,7 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp, char const *message_digest)
    }
    rewind(op);
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return op;
 }
 
@@ -245,7 +245,7 @@ smime_encrypt_assemble(FILE *hp, FILE *yp)
 {
    FILE *op;
    int c, lastc = EOF;
-   NYD_ENTER;
+   NYD_IN;
 
    if ((op = Ftmp(NULL, "smimee", OF_RDWR | OF_UNLINK | OF_REGISTER)
          ) == NULL) {
@@ -284,7 +284,7 @@ smime_encrypt_assemble(FILE *hp, FILE *yp)
    }
    rewind(op);
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return op;
 }
 
@@ -298,7 +298,7 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
    long lns = 0, octets = 0;
    struct message *x;
    off_t offset;
-   NYD_ENTER;
+   NYD_IN;
 
    x = n_autorec_alloc(sizeof *x);
    *x = *m;
@@ -362,7 +362,7 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
       x->m_block = mailx_blockof(offset);
       x->m_offset = mailx_offsetof(offset);
    }
-   NYD_LEAVE;
+   NYD_OU;
    return x;
 }
 
@@ -371,7 +371,7 @@ c_certsave(void *vp){
    FILE *fp;
    int *msgvec, *ip;
    struct n_cmd_arg_ctx *cacp;
-   NYD_ENTER;
+   NYD_IN;
 
    cacp = vp;
    assert(cacp->cac_no == 2);
@@ -406,14 +406,14 @@ c_certsave(void *vp){
    if(vp != NULL)
       fprintf(n_stdout, "Certificate(s) saved\n");
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return (vp != NULL);
 }
 
 FL bool_t
 n_tls_rfc2595_hostname_match(char const *host, char const *pattern){
    bool_t rv;
-   NYD_ENTER;
+   NYD_IN;
 
    if(pattern[0] == '*' && pattern[1] == '.'){
       ++pattern;
@@ -421,7 +421,7 @@ n_tls_rfc2595_hostname_match(char const *host, char const *pattern){
          ++host;
    }
    rv = (asccasecmp(host, pattern) == 0);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -429,7 +429,7 @@ FL int
 c_tls(void *vp){
    size_t i;
    char const **argv, *varname, *varres, *cp;
-   NYD_ENTER;
+   NYD_IN;
 
    argv = vp;
    vp = NULL; /* -> return value (boolean) */
@@ -476,7 +476,7 @@ jleave:
       n_pstate_err_no = n_ERR_NOTSUP;
       vp = NULL;
    }
-   NYD_LEAVE;
+   NYD_OU;
    return (vp == NULL);
 
 jeoverflow:

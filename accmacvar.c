@@ -418,7 +418,7 @@ a_amv_mac_lookup(char const *name, struct a_amv_mac *newamp,
    struct a_amv_mac *amp, **ampp;
    ui32_t h;
    enum a_amv_mac_flags save_amf;
-   NYD2_ENTER;
+   NYD2_IN;
 
    save_amf = amf;
    amf &= a_AMV_MF_TYPE_MASK;
@@ -455,7 +455,7 @@ a_amv_mac_lookup(char const *name, struct a_amv_mac *newamp,
       amp = NULL;
    }
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return amp;
 }
 
@@ -465,7 +465,7 @@ a_amv_mac_call(void *v, bool_t silent_nexist){
    int rv;
    char const *name;
    struct n_cmd_arg_ctx *cacp;
-   NYD_ENTER;
+   NYD_IN;
 
    cacp = v;
 
@@ -517,7 +517,7 @@ a_amv_mac_call(void *v, bool_t silent_nexist){
       rv = n_pstate_ex_no;
    }
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -528,7 +528,7 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
    char **args_base, **args;
    struct a_amv_mac *amp;
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    amp = amcap->amca_amp;
    assert(amp != NULL && amp != a_AMV_MACKY_MACK);
@@ -556,7 +556,7 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
    rv = n_go_macro((n_GO_INPUT_NONE |
             (amcap->amca_no_xcall ? n_GO_INPUT_NO_XCALL : 0)),
          amp->am_name, args_base, &a_amv_mac__finalize, losp);
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -565,7 +565,7 @@ a_amv_mac__finalize(void *vp){
    struct a_amv_mac *amp;
    struct a_amv_mac_call_args *amcap;
    struct a_amv_lostack *losp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    losp = vp;
    a_amv_lopts = losp->as_global_saved;
@@ -616,7 +616,7 @@ a_amv_mac__finalize(void *vp){
 
    n_lofi_free(losp);
    n_lofi_free(amcap);
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 static bool_t
@@ -625,7 +625,7 @@ a_amv_mac_show(enum a_amv_mac_flags amf){
    char const *typestr;
    FILE *fp;
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = FAL0;
 
@@ -668,7 +668,7 @@ a_amv_mac_show(enum a_amv_mac_flags amf){
    rv = (ferror(fp) == 0);
    Fclose(fp);
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -683,7 +683,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
    union {size_t s; int i; ui32_t ui; size_t l;} n;
    struct a_amv_mac *amp;
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    memset(&line, 0, sizeof line);
    rv = FAL0;
@@ -773,7 +773,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
 jleave:
    if(line.s != NULL)
       n_free(line.s);
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 
 jerr:
@@ -791,7 +791,7 @@ static bool_t
 a_amv_mac_undef(char const *name, enum a_amv_mac_flags amf){
    struct a_amv_mac *amp;
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = TRU1;
 
@@ -817,20 +817,20 @@ a_amv_mac_undef(char const *name, enum a_amv_mac_flags amf){
             }
          }
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
 static void
 a_amv_mac_free(struct a_amv_mac *amp){
    struct a_amv_mac_line **amlpp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    for(amlpp = amp->am_line_dat; *amlpp != NULL; ++amlpp)
       n_free(*amlpp);
    n_free(amp->am_line_dat);
    n_free(amp);
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 static void
@@ -838,7 +838,7 @@ a_amv_lopts_add(struct a_amv_lostack *alp, char const *name,
       struct a_amv_var *oavp){
    struct a_amv_var *avp;
    size_t nl, vl;
-   NYD2_ENTER;
+   NYD2_IN;
 
    /* Propagate unrolling up the stack, as necessary */
    assert(alp != NULL);
@@ -866,14 +866,14 @@ a_amv_lopts_add(struct a_amv_lostack *alp, char const *name,
    }
    memcpy(avp->av_name, name, nl);
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 static void
 a_amv_lopts_unroll(struct a_amv_var **avpp){
    struct a_amv_lostack *save_alp;
    struct a_amv_var *x, *avp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    avp = *avpp;
    *avpp = NULL;
@@ -887,14 +887,14 @@ a_amv_lopts_unroll(struct a_amv_var **avpp){
       n_free(x);
    }
    a_amv_lopts = save_alp;
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 static char *
 a_amv_var_copy(char const *str){
    char *news;
    size_t len;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if(*str == '\0')
       news = n_UNCONST(n_empty);
@@ -913,16 +913,16 @@ jheap:
       news = n_alloc(len);
       memcpy(news, str, len);
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return news;
 }
 
 static void
 a_amv_var_free(char *cp){
-   NYD2_ENTER;
+   NYD2_IN;
    if(cp[0] != '\0' && cp != n_0 && cp != n_1 && cp != n_m1)
       n_free(cp);
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 static bool_t
@@ -930,7 +930,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
       char const **val){
    char const *emsg;
    bool_t ok;
-   NYD2_ENTER;
+   NYD2_IN;
 
    ok = TRU1;
 
@@ -949,7 +949,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
          char const *vp;
          char *buf;
          struct n_header_field *hflp, **hflpp, *hfp;
-         NYD_ENTER;
+         NYD_IN;
 
          buf = savestr(*val);
          hflp = NULL;
@@ -1175,7 +1175,7 @@ jefrom:
    }
 
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return ok;
 jerr:
    n_err(V_(emsg), n_shexp_quote_cp(*val, FAL0));
@@ -1190,7 +1190,7 @@ a_amv_var_check_num(char const *val, bool_t posnum){
     * TODO castable to integer; i.e. no more strtoX() should be needed.
     * TODO I.e., the result of this function should instead be stored */
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = TRU1;
 
@@ -1209,7 +1209,7 @@ a_amv_var_check_num(char const *val, bool_t posnum){
       if(posnum && (ids & n_IDEC_STATE_SEEN_MINUS))
          rv = FAL0;
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -1219,7 +1219,7 @@ a_amv_var_revlookup(struct a_amv_var_carrier *avcp, char const *name,
    ui32_t hash, i, j;
    struct a_amv_var_map const *avmp;
    char c;
-   NYD2_ENTER;
+   NYD2_IN;
 
    memset(avcp, 0, sizeof *avcp); /* XXX overkill, just set chain */
 
@@ -1310,7 +1310,7 @@ jno_special_param:
 jleave:
    assert(avcp == NULL || avcp->avc_map != NULL ||
       avcp->avc_special_cat == a_AMV_VSC_NONE);
-   NYD2_LEAVE;
+   NYD2_OU;
    return (avcp != NULL);
 
    /* All these are mapped to *--special-param* */
@@ -1328,7 +1328,7 @@ static bool_t
 a_amv_var_revlookup_chain(struct a_amv_var_carrier *avcp, char const *name){
    uiz_t i;
    struct a_amv_var_chain_map_bsrch const *avcmbp, *avcmbp_x;
-   NYD_ENTER;
+   NYD_IN;
 
    if(strlen(name) <
          n_SIZEOF_FIELD(struct a_amv_var_chain_map_bsrch, avcmb_prefix)){
@@ -1390,7 +1390,7 @@ a_amv_var_revlookup_chain(struct a_amv_var_carrier *avcp, char const *name){
 
    avcp = NULL;
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return (avcp != NULL);
 }
 
@@ -1402,7 +1402,7 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp,
    ui32_t f;
    struct a_amv_var_map const *avmp;
    struct a_amv_var *avp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    assert(!(avlf & a_AMV_VLOOK_LOCAL_ONLY) || (avlf & a_AMV_VLOOK_LOCAL));
    assert(!(avlf & a_AMV_VLOOK_I3VAL_NONEW_REPORT) ||
@@ -1574,7 +1574,7 @@ j_leave:
             : ((avp->av_flags & a_AMV_VF_BOOL) ? _("boolean set")
                : n_shexp_quote_cp(avp->av_value, FAL0))));
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return (avp != NULL);
 
 jnewval:
@@ -1619,7 +1619,7 @@ a_amv_var_vsc_global(struct a_amv_var_carrier *avcp){
    char const *rv;
    si32_t *ep;
    struct a_amv_var_map const *avmp;
-   NYD2_ENTER;
+   NYD2_IN;
 
    /* Not function local, TODO but lazy evaluted for now */
    if(avcp->avc_special_prop == a_AMV_VST_QM){
@@ -1650,7 +1650,7 @@ a_amv_var_vsc_global(struct a_amv_var_carrier *avcp){
    avcp->avc_map = avmp;
    rv = a_amv_var_lookup(avcp, a_AMV_VLOOK_NONE)
          ? avcp->avc_var->av_value : NULL;
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -1660,7 +1660,7 @@ a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp){
    si32_t e;
    size_t i;
    char const *rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    i = strlen(rv = &avcp->avc_name[1]);
 
@@ -1707,7 +1707,7 @@ jeno:
 jerr:
    rv = NULL;
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -1716,7 +1716,7 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
    size_t i, j;
    ui16_t argc;
    char const *rv, **argv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = NULL;
 
@@ -1810,7 +1810,7 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
       break;
    }
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -1821,7 +1821,7 @@ a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
    char *oval;
    struct a_amv_var_map const *avmp;
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if(value == NULL){
       rv = a_amv_var_clear(avcp, avscf);
@@ -1999,7 +1999,7 @@ joval_and_go:
 
    a_amv_var_free(oval);
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -2009,7 +2009,7 @@ a_amv_var__putenv(struct a_amv_var_carrier *avcp, struct a_amv_var *avp){
    char *cp;
 #endif
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
 #ifdef HAVE_SETENV
    rv = (setenv(avcp->avc_name, avp->av_value, 1) == 0);
@@ -2027,7 +2027,7 @@ a_amv_var__putenv(struct a_amv_var_carrier *avcp, struct a_amv_var *avp){
    if(cp != NULL)
       n_free(cp);
 #endif
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -2038,7 +2038,7 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp,
    ui32_t f;
    struct a_amv_var_map const *avmp;
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = FAL0;
    f = 0;
@@ -2173,7 +2173,7 @@ jdefault_path:
          avcp->avc_var->av_flags |= a_AMV_VF_EXT_FROZEN;
    }
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -2182,7 +2182,7 @@ a_amv_var__clearenv(char const *name, struct a_amv_var *avp){
    extern char **environ;
    char **ecpp;
    bool_t rv;
-   NYD2_ENTER;
+   NYD2_IN;
    n_UNUSED(avp);
 
    rv = FAL0;
@@ -2220,7 +2220,7 @@ a_amv_var__clearenv(char const *name, struct a_amv_var *avp){
             }
       }
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -2231,7 +2231,7 @@ a_amv_var_show_all(void){
    size_t no, i;
    struct a_amv_var *avp;
    char const **vacp, **cap;
-   NYD2_ENTER;
+   NYD2_IN;
 
    if((fp = Ftmp(NULL, "setlist", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
       n_perr(_("`set' list: cannot create temporary file"), 0);
@@ -2270,16 +2270,16 @@ a_amv_var_show_all(void){
    page_or_print(fp, i);
    Fclose(fp);
 jleave:
-   NYD2_LEAVE;
+   NYD2_OU;
 }
 
 static int
 a_amv_var__show_cmp(void const *s1, void const *s2){
    int rv;
-   NYD2_ENTER;
+   NYD2_IN;
 
    rv = strcmp(*(char**)n_UNCONST(s1), *(char**)n_UNCONST(s2));
-   NYD2_LEAVE;
+   NYD2_OU;
    return rv;
 }
 
@@ -2293,7 +2293,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
    struct a_amv_var *avp;
    bool_t isset;
    size_t i;
-   NYD2_ENTER;
+   NYD2_IN;
 
    msgp = n_string_trunc(msgp, 0);
    i = 0;
@@ -2386,7 +2386,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
 jleave:
    msgp = n_string_push_c(msgp, '\n');
    fputs(n_string_cp(msgp), fp);
-   NYD2_ENTER;
+   NYD2_IN;
    return (i > 0 ? 2 : 1);
 }
 
@@ -2394,7 +2394,7 @@ static bool_t
 a_amv_var_c_set(char **ap, enum a_amv_var_setclr_flags avscf){
    char *cp, *cp2, *varbuf, c;
    size_t errs;
-   NYD2_ENTER;
+   NYD2_IN;
 
    errs = 0;
 jouter:
@@ -2440,7 +2440,7 @@ jouter:
             errs += !a_amv_var_set(&avc, cp, avscf);
       }
    }
-   NYD2_LEAVE;
+   NYD2_OU;
    return (errs == 0);
 }
 
@@ -2448,7 +2448,7 @@ FL int
 c_define(void *v){
    int rv;
    char **args;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = 1;
 
@@ -2465,7 +2465,7 @@ c_define(void *v){
 
    rv = (a_amv_mac_def(args[0], a_AMV_MF_NONE) == FAL0);
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -2473,34 +2473,34 @@ FL int
 c_undefine(void *v){
    int rv;
    char **args;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = 0;
    args = v;
    do
       rv |= !a_amv_mac_undef(*args, a_AMV_MF_NONE);
    while(*++args != NULL);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_call(void *vp){
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = a_amv_mac_call(vp, FAL0);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_call_if(void *vp){
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = a_amv_mac_call(vp, TRU1);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -2510,7 +2510,7 @@ c_account(void *v){
    struct a_amv_mac *amp;
    char **args;
    int rv, i, oqf, nqf;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = 1;
 
@@ -2625,7 +2625,7 @@ c_account(void *v){
    }
    rv = 0;
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -2633,14 +2633,14 @@ FL int
 c_unaccount(void *v){
    int rv;
    char **args;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = 0;
    args = v;
    do
       rv |= !a_amv_mac_undef(*args, a_AMV_MF_ACCOUNT);
    while(*++args != NULL);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -2649,7 +2649,7 @@ c_localopts(void *vp){
    enum a_amv_loflags alf, alm;
    char const **argv;
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = 1;
 
@@ -2684,7 +2684,7 @@ jesynopsis:
       a_amv_lopts->as_loflags |= alf;
    rv = 0;
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -2693,7 +2693,7 @@ c_shift(void *vp){ /* xxx move to bottom, not in macro part! */
    struct a_amv_pospar *appp;
    ui16_t i;
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = 1;
 
@@ -2738,14 +2738,14 @@ c_shift(void *vp){ /* xxx move to bottom, not in macro part! */
       rv = 0;
    }
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_return(void *vp){ /* TODO the exit status should be m_si64! */
    int rv;
-   NYD_ENTER;
+   NYD_IN;
 
    if(a_amv_lopts != NULL){
       char const **argv;
@@ -2786,7 +2786,7 @@ c_return(void *vp){ /* TODO the exit status should be m_si64! */
       n_pstate_err_no = n_ERR_OPNOTSUPP;
       rv = 1;
    }
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -2798,7 +2798,7 @@ temporary_folder_hook_check(bool_t nmail){ /* TODO temporary, v15: drop */
    char const *cp;
    char *var;
    bool_t rv;
-   NYD_ENTER;
+   NYD_IN;
 
    rv = TRU1;
    var = n_autorec_alloc(len = strlen(mailname) + sizeof("folder-hook-") -1 +1);
@@ -2852,13 +2852,13 @@ jmac:
    n_pstate &= ~n_PS_HOOK_MASK;
 
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
 FL void
 temporary_folder_hook_unroll(void){ /* XXX intermediate hack */
-   NYD_ENTER;
+   NYD_IN;
    if(a_amv_folder_hook_lopts != NULL){
       void *save = a_amv_lopts;
 
@@ -2867,7 +2867,7 @@ temporary_folder_hook_unroll(void){ /* XXX intermediate hack */
       assert(a_amv_folder_hook_lopts == NULL);
       a_amv_lopts = save;
    }
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 FL void
@@ -2878,7 +2878,7 @@ temporary_compose_mode_hook_call(char const *macname,
    static struct a_amv_lostack *cmh_losp;
    struct a_amv_mac_call_args *amcap;
    struct a_amv_mac *amp;
-   NYD_ENTER;
+   NYD_IN;
 
    amp = NULL;
 
@@ -2914,12 +2914,12 @@ temporary_compose_mode_hook_call(char const *macname,
          a_amv_lopts = cmh_losp;
       }
    }
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 FL void
 temporary_compose_mode_hook_unroll(void){ /* XXX intermediate hack */
-   NYD_ENTER;
+   NYD_IN;
    if(a_amv_compose_lopts != NULL){
       void *save = a_amv_lopts;
 
@@ -2928,7 +2928,7 @@ temporary_compose_mode_hook_unroll(void){ /* XXX intermediate hack */
       assert(a_amv_compose_lopts == NULL);
       a_amv_lopts = save;
    }
-   NYD_LEAVE;
+   NYD_OU;
 }
 
 FL bool_t
@@ -2936,14 +2936,14 @@ n_var_is_user_writable(char const *name){
    struct a_amv_var_carrier avc;
    struct a_amv_var_map const *avmp;
    bool_t rv;
-   NYD_ENTER;
+   NYD_IN;
 
    a_amv_var_revlookup(&avc, name, TRU1);
    if((avmp = avc.avc_map) == NULL)
       rv = TRU1;
    else
       rv = ((avmp->avm_flags & (a_AMV_VF_BOOL | a_AMV_VF_RDONLY)) == 0);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -2952,7 +2952,7 @@ n_var_oklook(enum okeys okey){
    struct a_amv_var_carrier avc;
    char *rv;
    struct a_amv_var_map const *avmp;
-   NYD_ENTER;
+   NYD_IN;
 
    memset(&avc, 0, sizeof avc);
    avc.avc_map = avmp = &a_amv_var_map[okey];
@@ -2964,7 +2964,7 @@ n_var_oklook(enum okeys okey){
       rv = avc.avc_var->av_value;
    else
       rv = NULL;
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -2973,7 +2973,7 @@ n_var_okset(enum okeys okey, uintptr_t val){
    struct a_amv_var_carrier avc;
    bool_t ok;
    struct a_amv_var_map const *avmp;
-   NYD_ENTER;
+   NYD_IN;
 
    memset(&avc, 0, sizeof avc);
    avc.avc_map = avmp = &a_amv_var_map[okey];
@@ -2983,7 +2983,7 @@ n_var_okset(enum okeys okey, uintptr_t val){
 
    ok = a_amv_var_set(&avc, (val == 0x1 ? n_empty : (char const*)val),
          a_AMV_VSETCLR_NONE);
-   NYD_LEAVE;
+   NYD_OU;
    return ok;
 }
 
@@ -2992,7 +2992,7 @@ n_var_okclear(enum okeys okey){
    struct a_amv_var_carrier avc;
    bool_t rv;
    struct a_amv_var_map const *avmp;
-   NYD_ENTER;
+   NYD_IN;
 
    memset(&avc, 0, sizeof avc);
    avc.avc_map = avmp = &a_amv_var_map[okey];
@@ -3001,7 +3001,7 @@ n_var_okclear(enum okeys okey){
    avc.avc_okey = okey;
 
    rv = a_amv_var_clear(&avc, a_AMV_VSETCLR_NONE);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
@@ -3009,7 +3009,7 @@ FL char const *
 n_var_vlook(char const *vokey, bool_t try_getenv){
    struct a_amv_var_carrier avc;
    char const *rv;
-   NYD_ENTER;
+   NYD_IN;
 
    a_amv_var_revlookup(&avc, vokey, FAL0);
 
@@ -3035,19 +3035,19 @@ n_var_vlook(char const *vokey, bool_t try_getenv){
       rv = a_amv_var_vsc_pospar(&avc);
       break;
    }
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 
 FL bool_t
 n_var_vexplode(void const **cookie){
    struct a_amv_pospar *appp;
-   NYD_ENTER;
+   NYD_IN;
 
    appp = (a_amv_lopts != NULL) ? &a_amv_lopts->as_amcap->amca_pospar
          : &a_amv_pospar;
    *cookie = (appp->app_count > 0) ? &appp->app_dat[appp->app_idx] : NULL;
-   NYD_LEAVE;
+   NYD_OU;
    return (*cookie != NULL);
 }
 
@@ -3055,13 +3055,13 @@ FL bool_t
 n_var_vset(char const *vokey, uintptr_t val){
    struct a_amv_var_carrier avc;
    bool_t ok;
-   NYD_ENTER;
+   NYD_IN;
 
    a_amv_var_revlookup(&avc, vokey, TRU1);
 
    ok = a_amv_var_set(&avc, (val == 0x1 ? n_empty : (char const*)val),
          a_AMV_VSETCLR_NONE);
-   NYD_LEAVE;
+   NYD_OU;
    return ok;
 }
 
@@ -3069,12 +3069,12 @@ FL bool_t
 n_var_vclear(char const *vokey){
    struct a_amv_var_carrier avc;
    bool_t ok;
-   NYD_ENTER;
+   NYD_IN;
 
    a_amv_var_revlookup(&avc, vokey, FAL0);
 
    ok = a_amv_var_clear(&avc, a_AMV_VSETCLR_NONE);
-   NYD_LEAVE;
+   NYD_OU;
    return ok;
 }
 
@@ -3086,7 +3086,7 @@ n_var_xoklook(enum okeys okey, struct url const *urlp,
    struct str const *us;
    size_t nlen;
    char *nbuf, *rv;
-   NYD_ENTER;
+   NYD_IN;
 
    assert(oxm & (OXM_PLAIN | OXM_H_P | OXM_U_H_P));
 
@@ -3134,7 +3134,7 @@ jplain:
 jleave:
    if(nbuf != NULL)
       n_lofi_free(nbuf);
-   NYD_LEAVE;
+   NYD_OU;
    return rv;
 }
 #endif /* HAVE_SOCKETS */
@@ -3143,7 +3143,7 @@ FL int
 c_set(void *vp){
    int err;
    char **ap;
-   NYD_ENTER;
+   NYD_IN;
 
    if(*(ap = vp) == NULL){
       a_amv_var_show_all();
@@ -3164,7 +3164,7 @@ c_set(void *vp){
       err = !a_amv_var_c_set(ap, avscf);
    }
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return err;
 }
 
@@ -3174,7 +3174,7 @@ c_unset(void *vp){
    char **ap;
    int err;
    enum a_amv_var_setclr_flags avscf;
-   NYD_ENTER;
+   NYD_IN;
 
    if(!(n_pstate & n_PS_ARGMOD_LOCAL))
       avscf = a_AMV_VSETCLR_NONE;
@@ -3193,14 +3193,14 @@ c_unset(void *vp){
       err |= !a_amv_var_clear(&avc, avscf);
    }
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return err;
 }
 
 FL int
 c_varshow(void *v){
    char **ap;
-   NYD_ENTER;
+   NYD_IN;
 
    if(*(ap = v) == NULL)
       v = NULL;
@@ -3212,7 +3212,7 @@ c_varshow(void *v){
          a_amv_var_show(*ap, n_stdout, msgp);
       n_string_gut(msgp);
    }
-   NYD_LEAVE;
+   NYD_OU;
    return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 }
 
@@ -3223,7 +3223,7 @@ c_varedit(void *v){ /* TODO v15 drop */
    char *val, **argv;
    int err;
    sighandler_type sigint;
-   NYD_ENTER;
+   NYD_IN;
 
    sigint = safe_signal(SIGINT, SIG_IGN);
 
@@ -3298,7 +3298,7 @@ c_varedit(void *v){ /* TODO v15 drop */
    }
 
    safe_signal(SIGINT, sigint);
-   NYD_LEAVE;
+   NYD_OU;
    return err;
 }
 
@@ -3308,7 +3308,7 @@ c_environ(void *v){
    int err;
    char **ap;
    bool_t islnk;
-   NYD_ENTER;
+   NYD_IN;
 
    if((islnk = is_asccaseprefix(*(ap = v), "link")) ||
          is_asccaseprefix(*ap, "unlink")){
@@ -3357,7 +3357,7 @@ c_environ(void *v){
       n_err(_("Synopsis: environ: <link|set|unset> <variable>...\n"));
       err = 1;
    }
-   NYD_LEAVE;
+   NYD_OU;
    return err;
 }
 
@@ -3380,7 +3380,7 @@ c_vexpr(void *v){ /* TODO POSIX expr(1) comp. exit status; overly complicat. */
       a_PBASE = 1u<<7,        /* Print additional number base */
       a_TMP = 1u<<30
    } f;
-   NYD_ENTER;
+   NYD_IN;
 
    f = a_ERR;
    argv = v;
@@ -3964,7 +3964,7 @@ jleave:
       n_pstate_err_no = n_ERR_NOTSUP;
       f |= a_ERR;
    }
-   NYD_LEAVE;
+   NYD_OU;
    return (f & a_ERR) ? 1 : 0;
 
 jerr:
@@ -4025,7 +4025,7 @@ c_vpospar(void *v){
    } f;
    char const *varres;
    struct n_cmd_arg_ctx *cacp;
-   NYD_ENTER;
+   NYD_IN;
 
    n_pstate_err_no = n_ERR_NONE;
    n_UNINIT(varres, n_empty);
@@ -4146,7 +4146,7 @@ jeover:
       }
    }
 jleave:
-   NYD_LEAVE;
+   NYD_OU;
    return (f & a_ERR) ? 1 : 0;
 }
 
