@@ -2,14 +2,13 @@
 #@ /etc/s-nail.rc - configuration file for S-nail(1)
 #--MKRC-END--
 #@ The syntax of this file is interpreted as follows:
-#@ - Leading and trailing space, tabulator, newline (" \t\n") and all members
-#@   *ifs-ws* are removed.
+#@ - Any leading and trailing whitespace (space, tabulator, newline: " \t\n"),
+#@   and all members of *ifs-ws* are removed.
 #@ - Empty lines are ignored.
-#@ - Any other line is a command line.  Such lines can be spread over
-#@   multiple lines if the newline character is "escaped" by placing
-#@   a reverse solidus character \ as the last character of the line; any
-#@   leading whitespace of follow lines is ignored, trailing whitespace before
-#@   the escaped newline is not.
+#@ - Any other line is a command line.  Such lines may spread over multiple
+#@   lines if a reverse solidus character \ is placed as the last character of
+#@   all lines except the final one; any leading whitespace of follow lines is
+#@   removed, but trailing whitespace before "escaped newlines" is not.
 #@ - The number sign # is the comment-command and causes the (joined) line
 #@   (content) to be ignored.
 #--MKREL-START--
@@ -29,15 +28,18 @@
 #
 # Notes:
 # - *hold, *keep*, *keepsave* and *sendwait* are deliberately set below.
-# - no*onehop* doesn't exist in this implementation.
+# - no*onehop* does not exist in this implementation.
 #   (To pass options through to the MTA, either add them after a "--"
 #   separator on the command line or set the *mta-arguments* variable.)
 # (Keep in SYNC: ./nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings"!)
-#
-# Adjust the standard-imposed default variable settings.
-# Some of the following variables are not portable and may thus have no effect
-# with other Mail(1) / mailx(1) programs.
-# Entries are marked [OPTION] if their availability is compile-time dependent.
+
+# Adjustments of standard imposed default- as well as other settings follow.
+# - Some of the latter are not portable and may thus have no effect with
+#   other  Mail(1) / mailx(1) / mail(1) programs.
+# - "wysh" is one of the "Command modifiers" and is not portable: before v15 it
+#   changesthe syntax of some old-style commands to sh(1)ell style quoting,
+#   also see "COMMANDS" -> "Shell-style argument quoting" in the manual.
+# - Availability of entries marked [OPTION] is a compile-time decision.
 
 # If threaded mode is activated, automatically collapse thread
 set autocollapse
@@ -59,12 +61,12 @@ set ask
 #  ? wysh set PAGER=less; environ unset LESS
 #  ? wysh set PAGER=lv; environ unset LV
 
-# Assume a CRT-like terminal and invoke a $PAGER if output doesn't fit on a
+# Assume a CRT-like terminal and invoke $PAGER if output does not fit on
 # the screen.  (Set crt=0 to always page; value treated as number of lines.)
 set crt
 
 # When entering compose mode, directly startup into $EDITOR, as via `~e'.
-# If the value is "v", startup into $VISUAL, as via `~v' instead.
+# If the value is "v", startup into $VISUAL instead, as via `~v'.
 #set editalong=v
 
 # When spawning an editor in compose mode (`~e', `~v', *editalong*), allow
@@ -87,7 +89,7 @@ set history-gabby history-gabby-persist
 # is likely to be irritating for most users today; also see *keepsave*.
 set hold
 
-# Quote the original message in replies by "> " as usual on the Internet.
+# Quote the original message in replies with "> " as usual on the Internet.
 # POSIX mandates tabulator ("wysh set indentprefix=$'\t'") as default.
 set indentprefix="> "
 
@@ -149,14 +151,15 @@ set showto
 
 ## Commands
 
-# Most commands are not portable to other Mail(1) / mailx(1) programs, which is
-# why most commands are commented out.  To remain portable, place anything
-# specific in its own file, then "set mailx-extra-rc=~/.my-file" in $MAILRC
-# (usually ~/.mailrc).
+# Most commands are not portable to other Mail(1) / mailx(1) / mail(1)
+# programs, which is why most commands are commented out.  To remain portable,
+# place anything specific in its own file, and then
+#   set mailx-extra-rc=~/.my-file"
+# in $MAILRC (usually ~/.mailrc).
 
 # Map ISO-8859-1 to LATIN1, and LATIN1 to CP1252.
 # (These mappings are not applied to character sets specified by other
-# variables, e.g., sendcharsets).
+# variables, e.g., *sendcharsets*).
 #charsetalias iso-8859-1 latin1  latin1 cp1252
 
 # Only include the selected header fields when printing messages
@@ -166,7 +169,7 @@ retain from_ date from to cc subject message-id mail-followup-to reply-to
 #   message-id mail-followup-to reply-to
 # ...when forwarding messages
 #headerpick forward retain subject date from to cc
-# ...and don't include these when saving message, etc.
+# ...and do not include these when saving message, etc.
 #if [ "$features" =@ +regex ]
 #  headerpick save ignore '^Original-.*$' '^X-.*$'
 #end
