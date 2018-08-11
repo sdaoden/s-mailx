@@ -46,8 +46,7 @@ set autocollapse
 #set autosort=thread
 
 # Append rather than prepend when writing to mbox automatically.
-# This has no effect unless *hold* is unset (it is set below), it is
-# a compile-time setting for other cases.
+# Has no effect unless *hold* is unset (it is set below).
 # This is a traditional entry and should usually be set.
 set append
 
