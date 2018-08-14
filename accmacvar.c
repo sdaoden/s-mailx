@@ -2931,6 +2931,54 @@ temporary_compose_mode_hook_unroll(void){ /* XXX intermediate hack */
    NYD_OU;
 }
 
+#ifdef HAVE_HISTORY
+FL bool_t
+temporary_addhist_hook(char const *ctx, bool_t gabby, char const *histent){
+   /* XXX temporary_addhist_hook(): intermediate hack */
+   struct a_amv_mac_call_args *amcap;
+   si32_t perrn, pexn;
+   struct a_amv_mac *amp;
+   char const *macname, *argv[4];
+   bool_t rv;
+   NYD_IN;
+
+   if((macname = ok_vlook(on_history_addition)) == NULL)
+      rv = TRUM1;
+   else if((amp = a_amv_mac_lookup(macname, NULL, a_AMV_MF_NONE)) == NULL){
+      n_err(_("Cannot call *on-history-addition*: macro does not exist: %s\n"),
+         macname);
+      rv = TRUM1;
+   }else{
+      perrn = n_pstate_err_no;
+      pexn = n_pstate_ex_no;
+
+      argv[0] = ctx;
+      argv[1] = gabby ? n_1 : n_0;
+      argv[2] = histent;
+      argv[3] = NULL;
+
+      amcap = n_lofi_alloc(sizeof *amcap);
+      memset(amcap, 0, sizeof *amcap);
+      amcap->amca_name = macname;
+      amcap->amca_amp = amp;
+      amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
+      amcap->amca_no_xcall = TRU1;
+      amcap->amca_pospar.app_count = 3;
+      amcap->amca_pospar.app_not_heap = TRU1;
+      amcap->amca_pospar.app_dat = argv;
+      if(!a_amv_mac_exec(amcap))
+         rv = TRUM1;
+      else
+         rv = (n_pstate_ex_no == 0);
+
+      n_pstate_err_no = perrn;
+      n_pstate_ex_no =  pexn;
+   }
+   NYD_OU;
+   return rv;
+}
+#endif /* HAVE_HISTORY */
+
 FL bool_t
 n_var_is_user_writable(char const *name){
    struct a_amv_var_carrier avc;

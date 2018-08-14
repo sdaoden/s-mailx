@@ -834,6 +834,9 @@ enum n_go_input_flags{
    n_GO_INPUT_CTX_DEFAULT = 1,         /* Default input */
    n_GO_INPUT_CTX_COMPOSE = 2,         /* Compose mode input */
    n__GO_INPUT_CTX_MASK = 3,
+   /* _MASK is not a valid index here, but the lower bits are not misused,
+    * therefore -- to save space! -- indexing is performed via "& _MASK".
+    * This is CTA()d!  For actual spacing of arrays we use _MAX1 instead */
    n__GO_INPUT_CTX_MAX1 = n_GO_INPUT_CTX_COMPOSE + 1,
 
    n_GO_INPUT_HOLDALLSIGS = 1u<<8,     /* hold_all_sigs() active TODO */
@@ -1754,6 +1757,7 @@ ok_v_NAIL_TAIL, /* {name=NAIL_TAIL,obsolete=1} */
    ok_v_on_compose_leave,              /* {notempty=1} */
    ok_v_on_compose_splice,             /* {notempty=1} */
    ok_v_on_compose_splice_shell,       /* {notempty=1} */
+   ok_v_on_history_addition,           /* {notempty=1} */
    ok_v_on_resend_cleanup,             /* {notempty=1} */
    ok_v_on_resend_enter,               /* {notempty=1} */
    ok_b_outfolder,

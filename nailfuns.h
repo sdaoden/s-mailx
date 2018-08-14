@@ -175,7 +175,7 @@ FL int c_localopts(void *vp);
 FL int c_shift(void *vp);
 FL int c_return(void *vp);
 
-/* TODO Check whether a *folder-hook* exists for the currently active mailbox */
+/* TODO Check whether a *folder-hook* exists for currently active mailbox */
 FL bool_t temporary_folder_hook_check(bool_t nmail);
 FL void temporary_folder_hook_unroll(void); /* XXX im. hack */
 
@@ -183,6 +183,12 @@ FL void temporary_folder_hook_unroll(void); /* XXX im. hack */
 FL void temporary_compose_mode_hook_call(char const *macname,
             void (*hook_pre)(void *), void *hook_arg);
 FL void temporary_compose_mode_hook_unroll(void);
+
+#ifdef HAVE_HISTORY
+/* TODO *on-history-addition* */
+FL bool_t temporary_addhist_hook(char const *ctx, bool_t gabby,
+            char const *histent);
+#endif
 
 /* Can name freely be used as a variable by users? */
 FL bool_t n_var_is_user_writable(char const *name);

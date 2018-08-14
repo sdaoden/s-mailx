@@ -2926,6 +2926,9 @@ internal variables
 .Va history-gabby-persist
 and
 .Va history-size .
+There also exists the macro hook
+.Va on-history-addition
+which can be used to apply fine control on what enters history.
 .
 .Pp
 The MLE supports a set of editing and control commands.
@@ -10584,6 +10587,21 @@ define ocsm {
 set on-compose-splice=ocsm
 .Ed
 .
+.
+.Mx
+.It Va on-history-addition
+This hook will be called if an entry is about to be added to the
+.Ic history
+of the MLE, as is documented in
+.Sx "On terminal control and line editor" .
+It will be called with three arguments (\*(ID),
+the first is the name of the input context (see
+.Ic bind ) ,
+the second whether the command relates to
+.Va history-gabby ,
+and the third being the complete command line to be added.
+The entry will not be added to history if the hook uses a non-0
+.Ic return .
 .
 .Mx
 .It Va on-resend-cleanup

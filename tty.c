@@ -564,11 +564,6 @@ struct a_tty_bind_ctx{
    ui32_t tbc_flags;
    char tbc__buf[n_VFIELD_SIZE(0)];
 };
-
-struct a_tty_bind_ctx_map{
-   enum n_go_input_flags tbcm_ctx;
-   char const tbcm_name[12];  /* Name of `bind' context */
-};
 # endif /* HAVE_KEY_BINDINGS */
 
 struct a_tty_bind_builtin_tuple{
@@ -657,6 +652,13 @@ struct a_tty_hist{
 n_CTA(UI8_MAX >= a_TTY_HIST__MAX, "Value exceeds datatype storage");
 # endif
 
+#if defined HAVE_KEY_BINDINGS || defined HAVE_HISTORY
+struct a_tty_input_ctx_map{
+   enum n_go_input_flags ticm_ctx;
+   char const ticm_name[12];  /* Name of `bind' context */
+};
+#endif
+
 struct a_tty_line{
    /* Caller pointers */
    char **tl_x_buf;
@@ -708,18 +710,20 @@ struct a_tty_line{
 # endif
 };
 
-# ifdef HAVE_KEY_BINDINGS
+# if defined HAVE_KEY_BINDINGS || defined HAVE_HISTORY
 /* C99: use [INDEX]={} */
 n_CTAV(n_GO_INPUT_CTX_BASE == 0);
 n_CTAV(n_GO_INPUT_CTX_DEFAULT == 1);
 n_CTAV(n_GO_INPUT_CTX_COMPOSE == 2);
-static struct a_tty_bind_ctx_map const
-      a_tty_bind_ctx_maps[n__GO_INPUT_CTX_MAX1] = {
-   {n_GO_INPUT_CTX_BASE, "base"},
-   {n_GO_INPUT_CTX_DEFAULT, "default"},
-   {n_GO_INPUT_CTX_COMPOSE, "compose"}
+static struct a_tty_input_ctx_map const
+      a_tty_input_ctx_maps[n__GO_INPUT_CTX_MAX1] = {
+   n_FIELD_INITI(n_GO_INPUT_CTX_BASE){n_GO_INPUT_CTX_BASE, "base"},
+   n_FIELD_INITI(n_GO_INPUT_CTX_DEFAULT){n_GO_INPUT_CTX_DEFAULT, "default"},
+   n_FIELD_INITI(n_GO_INPUT_CTX_COMPOSE){n_GO_INPUT_CTX_COMPOSE, "compose"}
 };
+#endif
 
+# ifdef HAVE_KEY_BINDINGS
 /* Special functions which our MLE provides internally.
  * Update the manual upon change! */
 static char const a_tty_bind_fun_names[][24] = {
@@ -3433,15 +3437,15 @@ jinject_input:{
 static enum n_go_input_flags
 a_tty_bind_ctx_find(char const *name){
    enum n_go_input_flags rv;
-   struct a_tty_bind_ctx_map const *tbcmp;
+   struct a_tty_input_ctx_map const *ticmp;
    NYD2_IN;
 
-   tbcmp = a_tty_bind_ctx_maps;
-   do if(!asccasecmp(tbcmp->tbcm_name, name)){
-      rv = tbcmp->tbcm_ctx;
+   ticmp = a_tty_input_ctx_maps;
+   do if(!asccasecmp(ticmp->ticm_name, name)){
+      rv = ticmp->ticm_ctx;
       goto jleave;
-   }while(PTRCMP(++tbcmp, <,
-      &a_tty_bind_ctx_maps[n_NELEM(a_tty_bind_ctx_maps)]));
+   }while(PTRCMP(++ticmp, <,
+      &a_tty_input_ctx_maps[n_NELEM(a_tty_input_ctx_maps)]));
 
    rv = (enum n_go_input_flags)-1;
 jleave:
@@ -4355,9 +4359,16 @@ n_tty_addhist(char const *s, enum n_go_input_flags gif){
          a_tty.tg_hist_size_max > 0 &&
          (!(gif & n_GO_INPUT_HIST_GABBY) || ok_blook(history_gabby)) &&
           !ok_blook(line_editor_disable)){
-      hold_all_sigs();
-      a_tty_hist_add(s, gif);
-      rele_all_sigs();
+      struct a_tty_input_ctx_map const *ticmp;
+
+      ticmp = &a_tty_input_ctx_maps[gif & a_TTY_HIST_CTX_MASK];
+
+      if(temporary_addhist_hook(ticmp->ticm_name,
+            ((gif & n_GO_INPUT_HIST_GABBY) != 0), s)){
+         hold_all_sigs();
+         a_tty_hist_add(s, gif);
+         rele_all_sigs();
+      }
    }
 # endif
    NYD_OU;
@@ -4590,7 +4601,7 @@ c_bind(void *v){
                 * I18N: using Unicode and that is not available in the locale,
                 * I18N: or a termcap(5)/terminfo(5) sequence won't work out */
                   ? _("# <Defunctional> ") : n_empty),
-               a_tty_bind_ctx_maps[gif].tbcm_name, tbcp->tbc_seq,
+               a_tty_input_ctx_maps[gif].ticm_name, tbcp->tbc_seq,
                n_shexp_quote_cp(tbcp->tbc_exp, TRU1),
                (tbcp->tbc_flags & a_TTY_BIND_NOCOMMIT ? n_at : n_empty),
                (!(n_poption & n_PO_D_VV) ? n_empty
@@ -4666,7 +4677,7 @@ jredo:
          v = NULL;
       else if(n_UNLIKELY((tbcp = tbpc.tbpc_tbcp) == NULL)){
          n_err(_("`unbind': no such `bind'ing: %s  %s\n"),
-            a_tty_bind_ctx_maps[gif].tbcm_name, c.cp);
+            a_tty_input_ctx_maps[gif].ticm_name, c.cp);
          v = NULL;
       }else
          a_tty_bind_del(&tbpc);
