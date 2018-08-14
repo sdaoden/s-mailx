@@ -461,6 +461,9 @@ mailx-subject<>
 mailx-to<this-goes@nowhere> mailx-cc<> mailx-bcc<>
 mailx-raw-to<this-goes@nowhere> mailx-raw-cc<> mailx-raw-bcc<>
 mailx-orig-from<> mailx-orig-to<> mailx-orig-cc<> mailx-orig-bcc<>
+0/0/NONE
+210 To Mailx-Command Mailx-Raw-To
+0/0/NONE
 on-compose-leave, mailx-command<mail>
 alternates alter1@exam.ple alter2@exam.ple alter3@exam.ple alter4@exam.ple
 mailx-from<> mailx-sender<>
@@ -468,6 +471,9 @@ mailx-subject<>
 mailx-to<> mailx-cc<> mailx-bcc<>
 mailx-raw-to<this-goes@nowhere> mailx-raw-cc<> mailx-raw-bcc<>
 mailx-orig-from<> mailx-orig-to<> mailx-orig-cc<> mailx-orig-bcc<>
+0/0/NONE
+210 Mailx-Command Mailx-Raw-To
+0/0/NONE
 on-compose-cleanup, mailx-command<mail>
 # no alternates registered
 mailx-from<> mailx-sender<>

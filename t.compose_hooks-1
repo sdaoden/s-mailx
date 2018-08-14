@@ -305,6 +305,9 @@ mailx-subject<>
 mailx-to<this-goes@nowhere> mailx-cc<> mailx-bcc<>
 mailx-raw-to<this-goes@nowhere> mailx-raw-cc<> mailx-raw-bcc<>
 mailx-orig-from<> mailx-orig-to<> mailx-orig-cc<> mailx-orig-bcc<>
+0/0/NONE
+210 To Mailx-Command Mailx-Raw-To
+0/0/NONE
 on-compose-leave, mailx-command<mail>
 alternates alter1@exam.ple alter2@exam.ple alter3@exam.ple alter4@exam.ple
 mailx-from<from@exam.ple from2@exam.ple from3@exam.ple> mailx-sender<sender@exam.ple>
@@ -312,6 +315,9 @@ mailx-subject<<subject@exam.ple> <subject2@exam.ple> subject3@exam.ple>
 mailx-to<this-goes@nowhere To@exam.ple To2@exam.ple To3@exam.ple> mailx-cc<cC@exam.ple cC2@exam.ple cC3@exam.ple> mailx-bcc<bCc@exam.ple bCc2@exam.ple bCc3@exam.ple>
 mailx-raw-to<this-goes@nowhere> mailx-raw-cc<> mailx-raw-bcc<>
 mailx-orig-from<> mailx-orig-to<> mailx-orig-cc<> mailx-orig-bcc<>
+0/0/NONE
+210 Subject From Sender To Cc Bcc Reply-To Mail-Followup-To Message-ID References In-Reply-To Mailx-Command Mailx-Raw-To freeForm1 freeform2
+0/0/NONE
 on-compose-cleanup, mailx-command<mail>
 # no alternates registered
 mailx-from<from@exam.ple from2@exam.ple from3@exam.ple> mailx-sender<sender@exam.ple>
