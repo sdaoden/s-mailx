@@ -4889,6 +4889,8 @@ t_compose_hooks() { # {{{ TODO monster
          mailx-raw-bcc<$mailx-raw-bcc>
       echo mailx-orig-from<$mailx-orig-from> mailx-orig-to<$mailx-orig-to> \
          mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
+      digmsg create - -;echo $?/$!/$^ERRNAME;\
+         digmsg - header list;digmsg remove -;echo $?/$!/$^ERRNAME
    }
    define t_ocl {
       echo on-compose-leave, mailx-command<$mailx-command>
@@ -4903,6 +4905,8 @@ t_compose_hooks() { # {{{ TODO monster
          mailx-raw-bcc<$mailx-raw-bcc>
       echo mailx-orig-from<$mailx-orig-from> mailx-orig-to<$mailx-orig-to> \
          mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
+      digmsg create - -;echo $?/$!/$^ERRNAME;\
+         digmsg - header list;digmsg remove -;echo $?/$!/$^ERRNAME
    }
    define t_occ {
       echo on-compose-cleanup, mailx-command<$mailx-command>
@@ -4915,6 +4919,8 @@ t_compose_hooks() { # {{{ TODO monster
          mailx-raw-bcc<$mailx-raw-bcc>
       echo mailx-orig-from<$mailx-orig-from> mailx-orig-to<$mailx-orig-to> \
          mailx-orig-cc<$mailx-orig-cc> mailx-orig-bcc<$mailx-orig-bcc>
+      # XXX error message variable digmsg create - -;echo $?/$!/$^ERRNAME;\
+         digmsg - header list;digmsg remove -;echo $?/$!/$^ERRNAME
    }
    wysh set on-compose-splice=t_ocs \
       on-compose-enter=t_oce on-compose-leave=t_ocl \
@@ -4926,7 +4932,7 @@ __EOT__
       -X'source ./.trc' -Smta=./.tmta.sh \
       >./.tall 2>&1
    ${cat} ./.tall >> "${MBOX}"
-   check 1 0 "${MBOX}" '2481823179 10101'
+   check 1 0 "${MBOX}" '337505021 10312'
 
    ${rm} "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.\n' |
@@ -4934,7 +4940,7 @@ __EOT__
       -St_remove=1 -X'source ./.trc' -Smta=./.tmta.sh \
       >./.tall 2>&1
    ${cat} ./.tall >> "${MBOX}"
-   check 2 0 "${MBOX}" '3654000499 12535'
+   check 2 0 "${MBOX}" '1328241067 12636'
 
    ##
 
