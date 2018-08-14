@@ -358,7 +358,7 @@ print_collf(FILE *cf, struct header *hp)
 
    hold_all_sigs();
 
-   fprintf(obuf, _("-------\nMessage contains:\n")); /* xxx SEARCH112 */
+   fprintf(obuf, _("-------\nMessage contains:\n")); /* XXX112 */
    n_puthead(TRU1, hp, obuf,
       (GIDENT | GTO | GSUBJECT | GCC | GBCC | GBCC_IS_FCC | GNL | GFILES |
        GCOMMA), SEND_TODISP, CONV_NONE, NULL, NULL);
@@ -1812,7 +1812,7 @@ jout:
       ifs_saved = NULL;
    }
 
-   /* Final chance to edit headers, if not already above */
+   /* Final chance to edit headers, if not already above; and *asksend* */
    if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)){
       if(ok_blook(bsdcompat) || ok_blook(askatend)){
          enum gfield gf;
@@ -1825,9 +1825,39 @@ jout:
          if(gf != 0)
             grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, gf, 1);
       }
+
       if(ok_blook(askattach))
          hp->h_attach = n_attachment_list_edit(hp->h_attach,
                n_GO_INPUT_CTX_COMPOSE);
+
+      if(ok_blook(asksend)){
+         bool_t b;
+
+         ifs_saved = coapm = NULL;
+         coap = NULL;
+
+         fprintf(n_stdout, _("-------\nEnvelope contains:\n")); /* XXX112 */
+         if(!n_puthead(TRU1, hp, n_stdout,
+               GIDENT | GREF_IRT  | GSUBJECT | GTO | GCC | GBCC | GBCC_IS_FCC |
+               GCOMMA, SEND_TODISP, CONV_NONE, NULL, NULL))
+            goto jerr;
+
+jreasksend:
+         if(n_go_input(n_GO_INPUT_CTX_COMPOSE | n_GO_INPUT_NL_ESC,
+               _("Send this message [yes/no, empty: recompose]? "),
+               &linebuf, &linesize, NULL, NULL) < 0){
+            if(!n_go_input_is_eof())
+               goto jerr;
+            cp = n_1;
+         }
+
+         if((b = n_boolify(linebuf, UIZ_MAX, TRUM1)) < FAL0)
+            goto jreasksend;
+         if(b == TRU2)
+            goto jcont;
+         if(!b)
+            goto jerr;
+      }
    }
 
    /* Execute compose-leave */
@@ -1848,36 +1878,6 @@ jout:
             EACM_NORMAL, checkaddr_err));
    if (*checkaddr_err != 0)
       goto jerr;
-
-   if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT) &&
-         ok_blook(asksend)){
-      bool_t b;
-
-      ifs_saved = coapm = NULL;
-      coap = NULL;
-
-      fprintf(n_stdout, _("-------\nEnvelope contains:\n")); /* xxx SEARCH112 */
-      if(!n_puthead(TRU1, hp, n_stdout,
-            GIDENT | GREF_IRT  | GSUBJECT | GTO | GCC | GBCC | GBCC_IS_FCC |
-            GCOMMA, SEND_TODISP, CONV_NONE, NULL, NULL))
-         goto jerr;
-
-jreasksend:
-      if(n_go_input(n_GO_INPUT_CTX_COMPOSE | n_GO_INPUT_NL_ESC,
-            _("Send this message [yes/no, empty: recompose]? "),
-            &linebuf, &linesize, NULL, NULL) < 0){
-         if(!n_go_input_is_eof())
-            goto jerr;
-         cp = n_1;
-      }
-
-      if((b = n_boolify(linebuf, UIZ_MAX, TRUM1)) < FAL0)
-         goto jreasksend;
-      if(b == TRU2)
-         goto jcont;
-      if(!b)
-         goto jerr;
-   }
 
    /* TODO Cannot do since it may require turning this into a multipart one */
    if(n_poption & n_PO_Mm_FLAG)
