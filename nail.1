@@ -334,7 +334,9 @@ and in compose mode
 .Ic ~^ ,
 one of the
 .Sx "COMMAND ESCAPES" ,
-is the most flexible and powerful option to manage message headers.
+as well as
+.Ic digmsg
+are the most flexible and powerful options to manage message headers.
 This option may be used multiple times.
 .
 .Mx
@@ -966,7 +968,8 @@ gives an overview of most other available command escapes.
 .Pp
 The command escape
 .Ic ~.
-will leave compose mode and send the message once it is completed.
+(see there) will call hooks, insert automatic injections and receivers,
+leave compose mode and send the message once it is completed.
 Aborting letter composition is possible with either of
 .Ic ~x
 or
@@ -1167,32 +1170,6 @@ filtering.
 .Ed
 .
 .Pp
-.Va on-compose-enter , on-compose-leave
-and
-.Va on-compose-cleanup
-hook variables may be set to
-.Ic define Ns
-d macros to automatically adjust some settings dependent
-on receiver, sender or subject contexts, and via the
-.Va on-compose-splice
-as well as
-.Va on-compose-splice-shell
-variables, the former also to be set to a
-.Ic define Ns
-d macro, increasingly powerful mechanisms to perform automated message
-adjustments, including signature creation, are available.
-(\*(ID These hooks work for commands which newly create messages, namely
-.Ic forward , mail , reply
-and variants;
-.Ic resend
-and
-.Ic Resend
-for now provide only the hooks
-.Va on-resend-enter
-and
-.Va on-resend-cleanup . )
-.
-.Pp
 For the purpose of arranging a complete environment of settings that can
 be switched to with a single command or command line option there are
 .Ic account Ns s .
@@ -1213,6 +1190,36 @@ See
 .Sx "On URL syntax and credential lookup"
 and
 .Sx "INTERNAL VARIABLES" .
+.
+.Pp
+The compose mode hooks
+.Va on-compose-enter , on-compose-splice , on-compose-leave
+and
+.Va on-compose-cleanup
+may be set to
+.Ic define Ns
+d macros and provide reliable and increasingly powerful mechanisms to
+perform automated message adjustments dependent on message context,
+for example addition of message signatures
+.Pf ( Va message-inject-head , message-inject-tail )
+or creation of additional receiver lists (also by setting
+.Va autocc , autobcc ) .
+To achieve that the command
+.Ic digmsg
+may be used in order to query and adjust status of message(s).
+The splice hook can also make use of
+.Sx "COMMAND ESCAPES" .
+(\*(ID The compose mode hooks work for
+.Ic forward , mail , reply
+and variants;
+.Ic resend
+and
+.Ic Resend
+only provide the hooks
+.Va on-resend-enter
+and
+.Va on-resend-cleanup ,
+which are pretty restricted due to the nature of the operation.)
 .
 .Pp
 To avoid environmental noise scripts should
@@ -6791,7 +6798,7 @@ message-list.
 .Mx
 .It Ic sleep
 \*(NQ Sleep for the specified number of seconds (and optionally
-milliseconds), by default interruptably.
+milliseconds), by default interruptable.
 If a third argument is given the sleep will be uninterruptible,
 otherwise the error number
 .Va \&!
@@ -7695,17 +7702,22 @@ The hooks
 .Va on-compose-splice-shell
 and
 .Va on-compose-splice ,
-in order, will be called when set, after which
+in order, will be called when set, after which, in interactive mode
 .Va askatend
-will be checked, a set
+(leading to
+.Va askcc , askbcc )
+and
+.Va askattach
+will be checked as well as
+.Va asksend ,
+after which a set
 .Va on-compose-leave
 hook will be called,
 .Va autocc
 and
 .Va autobcc
 will be joined in if set,
-.Va asksend
-will be honoured in interactive mode, finally a given
+finally a given
 .Va message-inject-tail
 will be incorporated, after which the compose mode is left.
 .
@@ -7794,11 +7806,7 @@ Also see
 .Mx
 .It Ic ~^ Ar cmd Op Ar subcmd Op Ar arg3 Op Ar arg4
 Low-level compose mode command which shares the semantic with
-.Ic digmsg
-and is meant for scripted message access, i.e., for
-.Va on-compose-splice
-and
-.Va on-compose-splice-shell .
+.Ic digmsg .
 The used protocol is likely subject to changes, and therefore the
 mentioned hooks receive the used protocol version as an initial line.
 In general the first field of a response line represents a status code
@@ -10419,8 +10427,10 @@ For compose mode hooks that may affect the message content please see
 .Va on-compose-enter , on-compose-leave , on-compose-splice .
 \*(ID This hook exists because
 .Ic alias , alternates , commandalias , shortcut ,
-to name a few, are not covered by
-.Ic localopts :
+to name a few, are neither covered by
+.Ic localopts
+nor by
+.Cm local :
 changes applied in compose mode will continue to be in effect thereafter.
 .
 .
@@ -10428,52 +10438,18 @@ changes applied in compose mode will continue to be in effect thereafter.
 .Mx
 .It Va on-compose-enter , on-compose-leave
 Macro hooks which will be called once compose mode is entered,
-and after composing has been finished, but before a set
-.Va message-inject-tail
-has been injected etc., respectively.
+and after composing has been finished, respectively;
+the exact order of the steps taken is documented for
+.Ic ~. ,
+one of the
+.Sx "COMMAND ESCAPES" .
+Context about the message being worked on can be queried via
+.Ic digmsg .
 .Ic localopts
 are enabled for these hooks, and changes on variables will be forgotten
 after the message has been sent.
 .Va on-compose-cleanup
 can be used to perform other necessary cleanup steps.
-.Pp
-The following (read-only) variables will be set temporarily during
-execution of the macros to represent respective message headers, to
-the empty string otherwise; most of them correspond to according virtual
-message headers that can be accessed via
-.Ic ~^ ,
-one of the
-.Sx "COMMAND ESCAPES"
-(also from within
-.Va on-compose-splice
-hooks):
-.
-.Pp
-.Bl -tag -compact -width ".It Va mailx_subject"
-.It Va mailx-command
-The command that generates the message.
-.It Va mailx-subject
-The subject.
-.It Va mailx-from
-.Va from .
-.It Va mailx-sender
-.Va sender .
-.It Va mailx-to , mailx-cc , mailx-bcc
-The list of receiver addresses as a space-separated list.
-.It Va mailx-raw-to , mailx-raw-cc , mailx-raw-bcc
-The list of receiver addresses before any mangling (due to, e.g.,
-.Ic alternates ,
-.Ic alias
-.Va recipients-in-cc )
-as a space-separated list.
-.It Va mailx-orig-from
-When replying, forwarding or resending, this will be set to the
-.Ql From:
-of the given message.
-.It Va mailx-orig-to , mailx-orig-cc , mailx-orig-bcc
-When replying, forwarding or resending, this will be set to the
-receivers of the given message.
-.El
 .
 .Pp
 Here is am example that injects a signature via
@@ -10512,9 +10488,7 @@ set on-compose-leave=t_ocl
 .It Va on-compose-splice , on-compose-splice-shell
 These hooks run once the normal compose mode is finished, but before the
 .Va on-compose-leave
-macro hook is called, the
-.Va message-inject-tail
-is injected etc.
+macro hook is called etc.
 Both hooks will be executed in a subprocess, with their input and output
 connected to \*(UA such that they can act as if they would be an
 interactive user.
@@ -10610,7 +10584,10 @@ but is only triggered by
 \*(ID Identical to
 .Va on-compose-enter ,
 but is only triggered by
-.Ic resend .
+.Ic resend ;
+currently there is no
+.Ic digmsg
+support, for example.
 .
 .Mx
 .It Va page

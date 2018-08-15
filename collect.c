@@ -1812,6 +1812,11 @@ jout:
       ifs_saved = NULL;
    }
 
+   /*
+    * Note: the order of the following steps is documented for `~.'.
+    * Adjust the manual on change!!
+    */
+
    /* Final chance to edit headers, if not already above; and *asksend* */
    if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)){
       if(ok_blook(bsdcompat) || ok_blook(askatend)){
