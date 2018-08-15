@@ -1622,8 +1622,8 @@ jIi_putesc:
          if(!a_coll_putesc(cp, (c != 'I'), _coll_fp))
             goto jerr;
          if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT) &&
-               !a_coll_putesc(cp, (c != 'I'), n_stdout) ||
-               fflush(n_stdout) == EOF)
+               (!a_coll_putesc(cp, (c != 'I'), n_stdout) ||
+                fflush(n_stdout) == EOF))
             goto jerr;
          n_pstate_err_no = n_ERR_NONE; /* XXX */
          n_pstate_ex_no = 0; /* XXX */
@@ -1941,7 +1941,7 @@ jreasksend:
       if(!a_coll_putesc(cp, TRU1, _coll_fp))
          goto jerr;
       if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT) &&
-            !a_coll_putesc(cp, TRU1, n_stdout) || fflush(n_stdout) == EOF)
+            (!a_coll_putesc(cp, TRU1, n_stdout) || fflush(n_stdout) == EOF))
          goto jerr;
    }
    }
