@@ -600,9 +600,6 @@ FL int c_undraft(void *v);
  * cmd-misc.c
  */
 
-/* `sleep' */
-FL int c_sleep(void *v);
-
 /* `!': process a shell escape by saving signals, ignoring signals and sh -c */
 FL int c_shell(void *v);
 
@@ -2011,6 +2008,9 @@ FL int c_shcodec(void *vp);
 /*
  * signal.c
  */
+
+/* `sleep' */
+FL int c_sleep(void *v);
 
 #ifdef HAVE_DEVEL
 FL int         c_sigstate(void *);

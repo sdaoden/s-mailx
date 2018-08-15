@@ -1,5 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Program input of all sorts, input lexing, event loops, command evaluation.
+ *@ TODO - hold_all_sigs() most often on, especially robot mode: TERRIBLE!
  *@ TODO - n_PS_ROBOT requires yet n_PS_SOURCING, which REALLY sucks.
  *@ TODO - go_input(): with IO::Device we could have CStringListDevice, for
  *@ TODO   example to handle injections, and also `readctl' channels!

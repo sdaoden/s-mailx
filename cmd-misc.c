@@ -189,51 +189,6 @@ a_cmisc_version_cmp(void const *s1, void const *s2){
 }
 
 FL int
-c_sleep(void *v){
-   uiz_t sec, msec;
-   char **argv;
-   NYD_ENTER;
-
-   argv = v;
-
-   if((n_idec_uiz_cp(&sec, argv[0], 0, NULL) &
-         (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-         ) != n_IDEC_STATE_CONSUMED)
-      goto jesyn;
-
-   if(argv[1] == NULL)
-      msec = 0;
-   else if((n_idec_uiz_cp(&msec, argv[1], 0, NULL) &
-         (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-         ) != n_IDEC_STATE_CONSUMED)
-      goto jesyn;
-
-   if(UIZ_MAX / n_DATE_MILLISSEC < sec)
-      goto jeover;
-   sec *= n_DATE_MILLISSEC;
-
-   if(UIZ_MAX - sec < msec)
-      goto jeover;
-   msec += sec;
-
-   n_pstate_err_no = (n_msleep(msec, (argv[2] == NULL)) > 0)
-         ? n_ERR_INTR : n_ERR_NONE;
-jleave:
-   NYD_LEAVE;
-   return (argv == NULL);
-jeover:
-   n_err(_("`sleep': argument(s) overflow(s) datatype\n"));
-   n_pstate_err_no = n_ERR_OVERFLOW;
-   argv = NULL;
-   goto jleave;
-jesyn:
-   n_err(_("Synopsis: sleep: <seconds> [<milliseconds>] [uninterruptible]\n"));
-   n_pstate_err_no = n_ERR_INVAL;
-   argv = NULL;
-   goto jleave;
-}
-
-FL int
 c_shell(void *v)
 {
    sigset_t mask;
