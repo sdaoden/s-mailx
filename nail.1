@@ -540,7 +540,7 @@ Also see
 .It Fl R , Fl Fl read-only
 Any mailbox
 .Ic folder
-a.k.a.\&
+aka\&
 .Ic file
 opened will be in read-only mode.
 .
@@ -758,7 +758,7 @@ The command
 .Ic version
 will also show the list of
 .Va features :
-.Ql $ \*(uA -Xversion -Xx .
+.Ql $ \*(uA -:/ -Xversion -Xx .
 .
 .Mx
 .It Fl v , Fl Fl verbose
@@ -931,7 +931,7 @@ and
 .Va keep
 to not remove empty system MBOX mailbox files (or all empty such files if
 .Va posix
-.Pf a.k.a.\0 Ev POSIXLY_CORRECT
+.Pf aka\0 Ev POSIXLY_CORRECT
 mode has been enabled) to avoid mangling of file permissions when files
 eventually get recreated.
 .Pp
@@ -1095,7 +1095,7 @@ whereas input data is assumed to be in
 .Va ttycharset .
 Message data will be passed over the wire in a
 .Va mime-encoding .
-MIME parts a.k.a. attachments need to be assigned a
+MIME parts aka attachments need to be assigned a
 .Ic mimetype ,
 usually taken out of
 .Sx "The mime.types files" .
@@ -1629,8 +1629,11 @@ of an alternative, better MIME type.
 .
 .Pp
 Whereas \*(UA \*(OPally supports a simple HTML-to-text filter for
-displaying HTML messages, it cannot handle MIME types other than plain
-text itself.
+displaying HTML messages (indicated by
+.Ql +filter-html-tagsoup
+in
+.Va features ) ,
+it cannot handle MIME types other than plain text itself.
 Instead programs need to become registered to deal with specific MIME
 types or file extensions.
 These programs may either prepare plain text versions of their input in
@@ -1857,6 +1860,10 @@ Additional variables of interest for S/MIME en- and decryption:
 .Va smime-cipher
 and
 .Va smime-encrypt-USER@HOST .
+S/MIME is available if
+.Ql +smime
+is included in
+.Va features .
 .
 .Pp
 \*(ID Note that neither S/MIME signing nor encryption applies to
@@ -2045,7 +2052,7 @@ contains complete example configurations.
 .\" .Ss "Encrypted network communication" {{{
 .Ss "Encrypted network communication"
 .
-SSL (Secure Sockets Layer) a.k.a. its successor TLS (Transport Layer
+\*(OP SSL (Secure Sockets Layer) aka its successor TLS (Transport Layer
 Security) are protocols which aid in securing communication by providing
 a safely initiated and encrypted network connection.
 A central concept of TLS is that of certificates: as part of each
@@ -2108,7 +2115,8 @@ For example, to use the
 .Ql STLS
 that POP3 offers (a member of) the variable (chain)
 .Va pop3-use-starttls
-needs to be set:
+needs to be set, with convenience via
+.Ic shortcut :
 .
 .Bd -literal -offset indent
 shortcut encpop1 pop3s://pop1.exam.ple
@@ -2162,6 +2170,12 @@ Variables of interest for TLS in general are
 .Va tls-rand-file
 as well as
 .Va tls-verify .
+Also see
+.Va tls-features .
+TLS is available if
+.Ql +tls
+is included in
+.Va features .
 .\" }}}
 .
 .\" .Ss "Character sets" {{{
@@ -2234,7 +2248,7 @@ and the rest of this section does not apply;
 it may however still be necessary to explicitly set it if automatic
 detection fails, since in that case it defaults to
 .\" (Keep in SYNC: ./nail.1:"Character sets", mx/config.h:CHARSET_*!)
-LATIN1 a.k.a. ISO-8859-1 unless the operating system environment is
+LATIN1 aka ISO-8859-1 unless the operating system environment is
 known to always and exclusively support UTF-8 locales.
 .
 .Pp
@@ -2289,7 +2303,7 @@ then the message will not be send and its text will optionally be
 .Va save Ns d
 in
 .Ev DEAD .
-If that is not acceptible, the variable
+If that is not acceptable, the variable
 .Va mime-force-sendout
 can be set in order to force sending of non-convertible text as
 .Ql application/octet-stream
@@ -2486,7 +2500,7 @@ Mark messages which need special attention.
 .Sx "Message list arguments" ,
 such as
 .Ic from
-a.k.a.\&
+aka\&
 .Ic search ,
 .Ic type
 and
@@ -3229,7 +3243,7 @@ ring the audible bell.
 .Ss "Coloured display"
 .
 \*(OP \*(UA can be configured to support a coloured display and font
-attributes by emitting ANSI a.k.a. ISO 6429 SGR (select graphic
+attributes by emitting ANSI aka ISO 6429 SGR (select graphic
 rendition) escape sequences.
 Usage of colours and font attributes solely depends upon the
 capability of the detected terminal type that is defined by the
@@ -3275,7 +3289,7 @@ sense to conditionalize the colour setup by encapsulating it with
 .Bd -literal -offset indent
 if terminal && [ "$features" =% +colour ]
   colour iso view-msginfo ft=bold,fg=green
-  colour iso view-header ft=bold,fg=red from,subject
+  colour iso view-header ft=bold,fg=red (from|subject) # regex
   colour iso view-header fg=red
 
   uncolour iso view-header from,subject
@@ -5131,7 +5145,7 @@ The objects may be
 d again by giving the same identifier used for creation;
 this step could be omitted: objects will be automatically closed
 when the active mailbox or the compose mode is left, respectively.
-In all other cases the second argument is an object identifier,
+In all other use cases the second argument is an object identifier,
 and the third and all following arguments are interpreted as via
 .Ic ~^
 (see
@@ -5955,8 +5969,8 @@ Available operators are
 (greater than).
 .
 .Pp
-String data operators compare the left and right hand side according to
-their textual content.
+String and regular expression data operators compare the left and right
+hand side according to their textual content.
 Unset variables are treated as the empty string.
 Via the question mark
 .Ql \&?
@@ -7458,10 +7472,10 @@ Shows the
 .Va version
 and
 .Va features
-of \*(UA, as well as the build and running system environment.
-This command can produce a more
+of \*(UA, optionally in a more
 .Va verbose
-output, and supports
+form which also includes the build and running system environment.
+This command supports
 .Cm vput
 (see
 .Sx "Command modifiers" ) .
@@ -7657,8 +7671,8 @@ the match offset a replacement operation is performed: the third
 argument is treated as if specified within dollar-single-quote (see
 .Sx "Shell-style argument quoting" ) ,
 and any occurrence of a positional parameter, e.g.,
-.Va 1 ,
-is replaced by the corresponding match group of the regular expression:
+.Va \&0 , 1
+etc. is replaced with the according match group of the regular expression:
 .Bd -literal -offset indent
 ? vput vexpr res regex bananarama \e
     (.*)NanA(.*) '\e${1}au\e$2'
@@ -9124,8 +9138,12 @@ operating system \*(UA has been build for, usually taken from
 .Xr uname 1
 via
 .Ql uname -s ,
-and then lowercased, as well as all the rest that may possibly be useful
-to include in a bug report, respectively.
+and then lowercased, as well as all the possibly interesting rest of the
+configuration and build environment.
+This information is also available in the
+.Va verbose
+output of the command
+.Ic version .
 .
 .Mx
 .It Va charset-7bit
@@ -10168,13 +10186,12 @@ be written, and existing file targets will be overwritten.
 .
 .Mx
 .It Va mbox-rfc4155
-\*(BO When opening MBOX mailbox databases \*(UA by default uses tolerant
-POSIX rules for detecting message boundaries (so-called
+\*(BO When opening MBOX mailbox databases, and in order to achieve
+compatibility with old software, the very tolerant POSIX standard rules
+for detecting message boundaries (so-called
 .Ql From_
-lines) due to compatibility reasons, instead of the stricter rules that
-have been standardized in RFC 4155.
-This behaviour can be switched to the stricter RFC 4155 rules by
-setting this variable.
+lines) are used instead of the stricter rules from the standard RFC 4155.
+This behaviour can be switched by setting this variable.
 .Pp
 This may temporarily be handy when \*(UA complains about invalid
 .Ql From_
@@ -10185,11 +10202,15 @@ If so, copying the entire mailbox to some other file, as in
 will perform proper, all-compatible
 .Ql From_
 quoting for all detected messages, resulting in a valid MBOX mailbox.
+(\*(ID The better and non-destructive approach is to reencode invalid
+messages, as if it would be created anew, instead of mangling the
+.Ql From_
+lines; this requires the structural code changes of the v15 rewrite.)
 Finally the variable can be unset again:
 .Bd -literal -offset indent
 define mboxfix {
   localopts yes; wysh set mbox-rfc4155;\e
-    wysh File "${1}"; eval copy * "${2}"
+    wysh File "${1}"; copy * "${2}"
 }
 call mboxfix /tmp/bad.mbox /tmp/good.mbox
 .Ed
@@ -10240,6 +10261,8 @@ are understood (use the
 prefix when
 .Ic set Ns
 ting the variable(s) instead).
+Also see
+.Va on-compose-leave .
 .
 .Mx
 .It Va metoo
@@ -10399,7 +10422,7 @@ a decoding step.
 .
 .Mx
 .It Va mime-force-sendout
-\*(BO\*(OP Whenever it is not acceptible to fail sending out messages
+\*(BO\*(OP Whenever it is not acceptable to fail sending out messages
 because of non-convertible character content this variable may be set.
 It will, as a last resort, classify the part content as
 .Ql application/octet-stream .
@@ -10444,7 +10467,7 @@ the MIME type cache).
 To choose an alternate Mail-Transfer-Agent, set this option to either
 the full pathname of an executable (optionally prefixed with the protocol
 .Ql file:// ) ,
-or \*(OPally a SMTP a.k.a. SUBMISSION protocol URL, e.g., \*(IN
+or \*(OPally a SMTP aka SUBMISSION protocol URL, e.g., \*(IN
 .Pp
 .Dl submissions://[user[:password]@]server[:port]
 .Pp
@@ -10505,7 +10528,7 @@ as well as possibly
 .Fl \&\&F .
 .
 .Pp
-\*(OPally \*(UA can send mail over SMTP a.k.a. SUBMISSION network
+\*(OPally \*(UA can send mail over SMTP aka SUBMISSION network
 connections to a single defined smart host by setting this variable to
 a SMTP or SUBMISSION URL (see
 .Sx "On URL syntax and credential lookup" ) .
@@ -10723,7 +10746,7 @@ after the message has been sent.
 can be used to perform other necessary cleanup steps.
 .
 .Pp
-Here is am example that injects a signature via
+Here is an example that injects a signature via
 .Va message-inject-tail ;
 instead using
 .Va on-compose-splice
@@ -11215,7 +11238,7 @@ characters of interest in a pair of reverse solidus escaped brackets:
 a slot for coloured prompts is also available with the \*(OPal command
 .Ic colour .
 Prompting may be prevented by setting this to the null string
-(a.k.a.\|
+(aka\|
 .Ql set noprompt ) .
 .
 .Mx
@@ -11549,14 +11572,20 @@ never comes into play as
 is implicitly assumed to be 8-bit and capable to represent all files the
 user may specify (as is the case when no character set conversion
 support is available in \*(UA and the only supported character set is
-.Va ttycharset :
+.Va ttycharset ,
+see
 .Sx "Character sets" ) .
 This might be a problem for scripts which use the suggested
 .Ql LC_ALL=C
 setting, since in this case the character set is US-ASCII by definition,
 so that it is better to also override
 .Va ttycharset ,
-then.
+then; and/or do something like the following in the resource file:
+.Bd -literal -offset indent
+if [ "$LC_ALL" == C ] || [ "$LC_CTYPE" == C ]
+  unset sendcharsets-else-ttycharset
+end
+.Ed
 .
 .Mx
 .It Va sender
@@ -11864,7 +11893,7 @@ perform a verification of the entire certificate chain, starting from
 a local root certificate, over the intermediate certificates, down to the
 .Va smime-sign-cert .
 Even though top level certificates may also be included in the chain,
-they won't be used for the verification on the receiver's side.
+they will not be used for the verification on the receiver's side.
 .Pp
 For the purpose of the mechanisms involved here,
 .Ql USER@HOST
@@ -12948,6 +12977,7 @@ is sufficient to disable verbosity as such.
 .Mx
 .Mx
 .Mx
+.Mx
 .It Va version , version-date , \
   version-hexnum , version-major , version-minor , version-update
 \*(RO \*(UA version information: the first variable is a string with
@@ -13165,7 +13195,7 @@ command line option should be used.
 .It Ev MAILX_NO_SYSTEM_RC
 If this variable is set then reading of
 .Pa \*(UR
-(a.k.a.\&
+(aka\&
 .Va system-mailrc )
 at startup is inhibited, i.e., the same effect is achieved as if \*(UA
 had been started up with the option
@@ -14085,7 +14115,7 @@ wysh set smime-ca-file="${tls-ca-file}" \e
 # MinProtocol,MaxProtocol: do not use protocols older than TLS v1.2.
 #   Change this only when the remote server does not support it:
 #   maybe use chain support via tls-config-pairs-HOST / -USER@HOST
-#   to define such explicit exceptions, then, e.g.
+#   to define such explicit exceptions, then, e.g.,
 #     MinProtocol=TLSv1.1
 if [ "$tls-features" =% +ctx-set-maxmin-proto ]
   wysh set tls-config-pairs='\e
@@ -14573,7 +14603,7 @@ Put (at least parts of) the following in your
 .
 .Bd -literal -offset indent
 [sendemail]
-smtpserver = /usr/bin/s-mailx
+smtpserver = /usr/bin/\*(uA
 smtpserveroption = -t
 #smtpserveroption = -Sexpandaddr
 smtpserveroption = -Athe-account-you-need
@@ -14588,6 +14618,14 @@ multiedit = false
 thread = true
 quiet = true
 annotate = true
+.Ed
+.
+.Pp
+Patches can also be send directly, for example:
+.
+.Bd -literal -offset indent
+$ git mail-patch HEAD^ |
+  \*(uA -Athe-account-you-need -t RECEIVER
 .Ed
 .\" }}}
 .

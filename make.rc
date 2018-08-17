@@ -10,7 +10,7 @@
 #@
 #@ - Features / options have an OPT_ prefix and usually need to be
 #@   assigned a boolean value, as in OPT_IDNA=yes.  Booleans are 1/0,
-#@   y/n, true/false, yes/no and on/off (case doesn't matter).
+#@   y/n, true/false, yes/no and on/off (case does not matter).
 #@
 #@   The value "require" is also a true boolean, but will in addition
 #@   cause configuration to fail if the requested condition cannot be
@@ -22,11 +22,11 @@
 #@   Values which are only used during configuration, building, and / or
 #@   installation have no prefix, e.g., DESTDIR, VERBOSE, awk, sed etc.
 #@
-#@   Some values exist which offer "multiple choice", e.g., VAL_RANDOM
+#@   Some values offer "multiple choice" values, e.g., VAL_RANDOM
 #@   (without accompanying feature option) and VAL_IDNA (with OPT_IDNA).
-#@   This is used if different implementations exist, and can then be
+#@   They address the case of different implementations, and can then be
 #@   used to choose the desired one(s).
-#@   The value must be a comma separated list of strings, for example
+#@   The value must be a comma-separated list of strings, for example
 #@   "idn2,idn,idnkit", the case is ignored, but the order is important.
 #@   The special strings "all" and "any" as well as the empty value
 #@   are wildcard matches; if any entry in the list is a wildcard match,
@@ -49,7 +49,8 @@
 
 ## IDENTITIES, PATHS AND PROGRAMS ##
 
-# Contact info (*contact-mail* and *contact-web*, respectively).
+# Contact info (end up as the INTERNAL VARIABLES *contact-mail* and
+# *contact-web*, respectively).
 VAL_CONTACT_MAIL=s-mailx@lists.sdaoden.eu
 VAL_CONTACT_WEB=https://www.sdaoden.eu/code.html
 
@@ -80,8 +81,8 @@ VAL_SYSCONFDIR="${VAL_PREFIX}/etc"
 # then S-nail will still think its $VAL_PREFIX is "/usr/local" whereas the
 # build system will instead use "here/usr/local".
 # NOTE: it cannot be set in here, but must be given on the command line
-# when invoking the "install" make(1) (directly or indirectly).
-# (That is, if you uncomment it, it'll be update-tracked...)
+# when invoking the "install" make(1) rule (directly or indirectly).
+# (That is, if you uncomment it, it will be update-tracked.)
 #DESTDIR=
 
 # Where the local mail system stores user $MAIL files.
@@ -110,8 +111,8 @@ VAL_MTA=`\
 VAL_MTA_ARGV0=sendmail
 
 # Default $SHELL (sh(1) path).
-# Sometimes we simply invoke a command directly via execlp(2) instead of
-# indirectly through *SHELL* -- in these cases execlp(2) may fallback to
+# Sometimes we simply invoke a command directly via execlp(3) instead of
+# indirectly through *SHELL* -- in these cases execlp(3) may fallback to
 # it's own built-in sh(1) path.
 VAL_SHELL=/bin/sh
 
@@ -142,7 +143,7 @@ VAL_WIDTH=80
 
 # The following tools may be provided a.k.a. overwritten,
 # `command -v NAME` is used to query the utility otherwise:
-#  MAKE=, STRIP=, awk=, basename=, cat=, chmod=, cp=, cmp=, cksum=, getconf=
+#  STRIP=, awk=, basename=, cat=, chmod=, cp=, cmp=, cksum=, getconf=
 #     grep=, ln=, mkdir=, mv=, pwd=, rm=, sed=, sort=, tee=, tr=, uname=
 # Usually in administrator paths:
 #  chown= [$OPT_DOTLOCK]
