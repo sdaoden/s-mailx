@@ -288,6 +288,7 @@ t_all() {
    # Basics
    t_X_Y_opt_input_go_stack
    t_X_errexit
+   t_Y_errexit
    t_S_freeze
    t_input_inject_semicolon_seq
    t_shcodec
@@ -579,6 +580,55 @@ t_X_errexit() {
    </dev/null MAILRC="${MBOX}" ${MAILX} ${ARGS} -:u -Sposix -Snomemdebug \
       > "${BODY}" 2>&1
    check 11 0 "${BODY}" '916157812 53'
+
+   t_epilog
+}
+
+t_Y_errexit() {
+   t_prolog Y_errexit
+   if have_feat uistrings; then :; else
+      echo 'Y_errexit: unsupported, skipped'
+      return
+   fi
+
+   ${cat} <<- '__EOT' > "${BODY}"
+	echo one
+	echos nono
+	echo two
+	__EOT
+
+   </dev/null ${MAILX} ${ARGS} -Snomemdebug \
+         -Y'echo one' -Y' echos nono ' -Y'echo two' \
+      > "${MBOX}" 2>&1
+   check 1 0 "${MBOX}" '916157812 53'
+
+   </dev/null ${MAILX} ${ARGS} -Y'source '"${BODY}" -Snomemdebug \
+      > "${MBOX}" 2>&1
+   check 2 0 "${MBOX}" '916157812 53'
+
+   ##
+
+   </dev/null ${MAILX} ${ARGS} -Serrexit -Snomemdebug \
+         -Y'echo one' -Y' echos nono ' -Y'echo two' \
+      > "${MBOX}" 2>&1
+   check 3 1 "${MBOX}" '2118430867 49'
+
+   </dev/null ${MAILX} ${ARGS} -Y'source '"${BODY}" -Serrexit -Snomemdebug \
+      > "${MBOX}" 2>&1
+   check 4 1 "${MBOX}" '2118430867 49'
+
+   ## Repeat 3-4 with ignerr set
+
+   ${sed} -e 's/^echos /ignerr echos /' < "${BODY}" > "${MBOX}"
+
+   </dev/null ${MAILX} ${ARGS} -Serrexit -Snomemdebug \
+         -Y'echo one' -Y'ignerr echos nono ' -Y'echo two' \
+      > "${BODY}" 2>&1
+   check 5 0 "${BODY}" '916157812 53'
+
+   </dev/null ${MAILX} ${ARGS} -Y'source '"${MBOX}" -Serrexit -Snomemdebug \
+      > "${BODY}" 2>&1
+   check 6 0 "${BODY}" '916157812 53'
 
    t_epilog
 }
