@@ -296,6 +296,7 @@ t_all() {
    t_ifelse
    t_localopts
    t_local
+   t_environ
    t_macro_param_shift
    t_addrcodec
    t_vexpr
@@ -1856,6 +1857,113 @@ t_local() {
 	__EOT
 
    check 1 0 "${MBOX}" '2411598140 641'
+
+   t_epilog
+}
+
+t_environ() {
+   t_prolog environ
+
+   ${cat} <<- '__EOT' | EK1=EV1 EK2=EV2 ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+	echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+	!echo "shell: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+	varshow EK1 EK2 EK3 EK4 NEK5
+
+	echo environ set EK3 EK4, set NEK5
+	environ set EK3=EV3 EK4=EV4
+	set NEK5=NEV5
+	echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+	!echo "shell: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+	varshow EK1 EK2 EK3 EK4 NEK5
+
+	echo removing NEK5 EK3
+	unset NEK5
+	environ unset EK3
+	echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+	!echo "shell: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+	varshow EK1 EK2 EK3 EK4 NEK5
+
+	echo changing EK1, EK4
+	set EK1=EV1_CHANGED EK4=EV4_CHANGED
+	echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+	!echo "shell: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+	varshow EK1 EK2 EK3 EK4 NEK5
+
+	echo linking EK4, rechanging EK1, EK4
+	environ link EK4
+	set EK1=EV1 EK4=EV4
+	echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+	!echo "shell: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+	varshow EK1 EK2 EK3 EK4 NEK5
+
+	echo unset all
+	unset EK1 EK2 EK4
+	echo "we: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+	!echo "shell: EK1<$EK1> EK2<$EK2> EK3<$EK3> EK4<$EK4> NEK5<$NEK5>"
+	varshow EK1 EK2 EK3 EK4 NEK5
+	__EOT
+
+   check 1 0 "${MBOX}" '1685686686 1342'
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+	define l4 {
+	   echo '-------> L4 (environ unlink EK1, own localopts)'
+	   localopts yes
+	   environ unlink EK1
+	   set LK1=LK1_L4 EK1=EK1_L4
+		echo "we: L4: LK1<$LK1> EK1<$EK1>"
+		!echo "shell: L4: LK1<$LK1> EK1<$EK1>"
+		varshow LK1 EK1
+	   echo '-------< L4'
+	}
+	define l3 {
+	   echo '-------> L3'
+	   set LK1=LK1_L3 EK1=EK1_L3
+		echo "we: L3-pre: LK1<$LK1> EK1<$EK1>"
+		!echo "shell: L3-pre: LK1<$LK1> EK1<$EK1>"
+		varshow LK1 EK1
+	   call l4
+		echo "we: L3-post: LK1<$LK1> EK1<$EK1>"
+		!echo "shell: L3-post: LK1<$LK1> EK1<$EK1>"
+		varshow LK1 EK1
+	   echo '-------< L3'
+	}
+	define l2 {
+	   echo '-------> L2'
+	   set LK1=LK1_L2 EK1=EK1_L2
+		echo "we: L2-pre: LK1<$LK1> EK1<$EK1>"
+		!echo "shell: L2-pre: LK1<$LK1> EK1<$EK1>"
+		varshow LK1 EK1
+	   call l3
+		echo "we: L2-post: LK1<$LK1> EK1<$EK1>"
+		!echo "shell: L2-post: LK1<$LK1> EK1<$EK1>"
+		varshow LK1 EK1
+	   echo '-------< L2'
+	}
+	define l1 {
+	   echo '-------> L1 (environ link EK1; localopts call-fixate)'
+	   localopts call-fixate yes
+	   set LK1=LK1_L1 EK1=EK1_L1
+	   environ link EK1
+		echo "we: L1-pre: LK1<$LK1> EK1<$EK1>"
+		!echo "shell: L1-pre: LK1<$LK1> EK1<$EK1>"
+		varshow LK1 EK1
+	   call l2
+		echo "we: L1-post: LK1<$LK1> EK1<$EK1>"
+		!echo "shell: L1-post: LK1<$LK1> EK1<$EK1>"
+		varshow LK1 EK1
+	   echo '-------< L1'
+	}
+	echo "we: outer-pre: LK1<$LK1> EK1<$EK1>"
+	!echo "shell: outer-pre: LK1<$LK1> EK1<$EK1>"
+	varshow LK1 EK1
+	call l1
+	echo "we: outer-post: LK1<$LK1> EK1<$EK1>"
+	!echo "shell: outer-post: LK1<$LK1> EK1<$EK1>"
+	varshow LK1 EK1
+	__EOT
+
+   check 2 0 "${MBOX}" '1903030743 1131'
 
    t_epilog
 }
