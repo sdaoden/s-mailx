@@ -1,0 +1,44 @@
+we: outer-pre: LK1<> EK1<>
+shell: outer-pre: LK1<> EK1<>
+#variable not set: LK1
+#variable not set: EK1
+-------> L1 (environ link EK1; localopts call-fixate)
+we: L1-pre: LK1<LK1_L1> EK1<EK1_L1>
+shell: L1-pre: LK1<> EK1<EK1_L1>
+set LK1=LK1_L1
+environ set EK1=EK1_L1
+-------> L2
+we: L2-pre: LK1<LK1_L2> EK1<EK1_L2>
+shell: L2-pre: LK1<> EK1<EK1_L2>
+set LK1=LK1_L2
+environ set EK1=EK1_L2
+-------> L3
+we: L3-pre: LK1<LK1_L3> EK1<EK1_L3>
+shell: L3-pre: LK1<> EK1<EK1_L3>
+set LK1=LK1_L3
+environ set EK1=EK1_L3
+-------> L4 (environ unlink EK1, own localopts)
+we: L4: LK1<LK1_L4> EK1<EK1_L4>
+shell: L4: LK1<> EK1<EK1_L3>
+set LK1=LK1_L4
+set EK1=EK1_L4
+-------< L4
+we: L3-post: LK1<LK1_L3> EK1<EK1_L3>
+shell: L3-post: LK1<> EK1<EK1_L3>
+set LK1=LK1_L3
+environ set EK1=EK1_L3
+-------< L3
+we: L2-post: LK1<LK1_L3> EK1<EK1_L3>
+shell: L2-post: LK1<> EK1<EK1_L3>
+set LK1=LK1_L3
+environ set EK1=EK1_L3
+-------< L2
+we: L1-post: LK1<LK1_L1> EK1<EK1_L1>
+shell: L1-post: LK1<> EK1<EK1_L1>
+set LK1=LK1_L1
+environ set EK1=EK1_L1
+-------< L1
+we: outer-post: LK1<LK1_L1> EK1<EK1_L1>
+shell: outer-post: LK1<> EK1<EK1_L1>
+set LK1=LK1_L1
+environ set EK1=EK1_L1
