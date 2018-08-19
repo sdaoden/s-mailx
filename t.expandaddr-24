@@ -1,0 +1,3 @@
+reproducible_build: '| ./.tcat >./.tpipe': *expandaddr* does not allow command pipe target
+reproducible_build: Some addressees were classified as "hard error"
+reproducible_build: ... message not sent
