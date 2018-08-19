@@ -321,6 +321,7 @@ t_all() {
 
    # Operational basics with easy tests
    t_alias
+   t_expandaddr # (after t_alias)
    t_filetype
    t_record_a_resend
    t_e_H_L_opts
@@ -3565,6 +3566,188 @@ _EOT
 
    # TODO t_alias: n_ALIAS_MAXEXP is compile-time constant,
    # TODO need to somehow provide its contents to the test, then test
+
+   t_epilog
+}
+
+t_expandaddr() {
+   t_prolog expandaddr
+   if have_feat uistrings; then :; else
+      echo 'expandaddr: unsupported, skipped'
+      return
+   fi
+   TRAP_EXIT_ADDONS="./.t*"
+
+   t_xmta 'GentianaCruciata Sun Aug 19 00:33:32 2017'
+   echo "${cat}" > ./.tcat
+   chmod 0755 ./.tcat
+
+   #
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+      -X'alias talias talias@exam.ple' \
+      './.tfile' '  |  ./.tcat > ./.tpipe' 'talias' 'taddr@exam.ple' \
+      > ./.tall 2>&1
+   check 1 4 "${MBOX}" '3340207712 136'
+   check 2 - .tall '4169590008 162'
+
+   #
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+      -Sexpandaddr \
+      -X'alias talias talias@exam.ple' \
+      './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
+      > ./.tall 2>&1
+   check 3 0 "${MBOX}" '1628837241 272'
+   check 4 - .tall '4294967295 0'
+   check 5 - .tfile '1216011460 138'
+   check 6 - .tpipe '1216011460 138'
+
+   #
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+      -Sexpandaddr=-all,+file,+pipe,+name,+addr \
+      -X'alias talias talias@exam.ple' \
+      './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
+      > ./.tall 2>&1
+   check 7 0 "${MBOX}" '1999682727 408'
+   check 8 - .tall '4294967295 0'
+   check 9 - .tfile '847567042 276'
+   check 10 - .tpipe '1216011460 138'
+
+   #
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+      -Sexpandaddr=-all,+file,-file,+pipe,+name,+addr \
+      -X'alias talias talias@exam.ple' \
+      './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
+      > ./.tall 2>&1
+   check 11 4 "${MBOX}" '3378406068 544'
+   check 12 - .tall '673208446 70'
+   check 13 - .tfile '847567042 276'
+   check 14 - .tpipe '1216011460 138'
+
+   printf '' > ./.tpipe
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+      -Sexpandaddr=fail,-all,+file,-file,+pipe,+name,+addr \
+      -X'alias talias talias@exam.ple' \
+      './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
+      > ./.tall 2>&1
+   check 15 4 "${MBOX}" '3378406068 544'
+   check 16 - .tall '3280630252 179'
+   check 17 - .tfile '847567042 276'
+   check 18 - .tpipe '4294967295 0'
+
+   #
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+      -Sexpandaddr=-all,+file,+pipe,-pipe,+name,+addr \
+      -X'alias talias talias@exam.ple' \
+      './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
+      > ./.tall 2>&1
+   check 19 4 "${MBOX}" '1783660516 680'
+   check 20 - .tall '4052857227 91'
+   check 21 - .tfile '3682360102 414'
+   check 22 - .tpipe '4294967295 0'
+
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+      -Sexpandaddr=fail,-all,+file,+pipe,-pipe,+name,+addr \
+      -X'alias talias talias@exam.ple' \
+      './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
+      > ./.tall 2>&1
+   check 23 4 "${MBOX}" '1783660516 680'
+   check 24 - .tall '2168069102 200'
+   check 25 - .tfile '3682360102 414'
+   check 26 - .tpipe '4294967295 0'
+
+   #
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+      -Sexpandaddr=-all,+file,+pipe,+name,-name,+addr \
+      -X'alias talias talias@exam.ple' \
+      './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
+      > ./.tall 2>&1
+   check 27 0 "${MBOX}" '1345230450 816'
+   check 28 - .tall '4294967295 0'
+   check 29 - .tfile '1010907786 552'
+   check 30 - .tpipe '1216011460 138'
+
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+      -Sexpandaddr=-all,+file,+pipe,+name,-name,+addr \
+      './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
+      > ./.tall 2>&1
+   check 31 4 "${MBOX}" '3012323063 935'
+   check 32 - .tall '3486613973 73'
+   check 33 - .tfile '452731060 673'
+   check 34 - .tpipe '1905076731 121'
+
+   printf '' > ./.tpipe
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+      -Sexpandaddr=fail,-all,+file,+pipe,+name,-name,+addr \
+      './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
+      > ./.tall 2>&1
+   check 35 4 "${MBOX}" '3012323063 935'
+   check 36 - .tall '3032065285 182'
+   check 37 - .tfile '452731060 673'
+   check 38 - .tpipe '4294967295 0'
+
+   #
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+      -Sexpandaddr=-all,+file,+pipe,+name,+addr,-addr \
+      -X'alias talias talias@exam.ple' \
+      './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
+      > ./.tall 2>&1
+   check 39 4 "${MBOX}" '3012323063 935'
+   check 40 - .tall '3863610168 169'
+   check 41 - .tfile '1975297706 775'
+   check 42 - .tpipe '130065764 102'
+
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+      -Sexpandaddr=-all,+file,+pipe,+name,+addr,-addr \
+      -Sadd-file-recipients \
+      -X'alias talias talias@exam.ple' \
+      './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
+      > ./.tall 2>&1
+   check 43 4 "${MBOX}" '3012323063 935'
+   check 44 - .tall '3863610168 169'
+   check 45 - .tfile '3291831864 911'
+   check 46 - .tpipe '4072000848 136'
+
+   printf '' > ./.tpipe
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+      -Sexpandaddr=fail,-all,+file,+pipe,+name,+addr,-addr \
+      -Sadd-file-recipients \
+      -X'alias talias talias@exam.ple' \
+      './.tfile' '  |  ./.tcat >./.tpipe' 'talias' 'taddr@exam.ple' \
+      > ./.tall 2>&1
+   check 47 4 "${MBOX}" '3012323063 935'
+   check 48 - .tall '851041772 278'
+   check 49 - .tfile '3291831864 911'
+   check 50 - .tpipe '4294967295 0'
+
+   #
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+      -Sexpandaddr=-all,+addr \
+      'taddr@exam.ple' 'this@@c.example' \
+      > ./.tall 2>&1
+   check 51 4 "${MBOX}" '2071294634 1054'
+   check 52 - .tall '2646392129 66'
+
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+      -Sexpandaddr=-all,failinvaddr \
+      'taddr@exam.ple' 'this@@c.example' \
+      > ./.tall 2>&1
+   check 53 4 "${MBOX}" '2071294634 1054'
+   check 54 - .tall '887391555 175'
+
+   #
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+      -Sthis=taddr@exam.ple -Sexpandaddr \
+      -c '\$this' -b '\$this' '\$this' \
+      > ./.tall 2>&1
+   check 55 4 "${MBOX}" '2071294634 1054'
+   check 56 - .tall '2482340035 247'
+
+   </dev/null ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -ssub \
+      -Sthis=taddr@exam.ple -Sexpandaddr=shquote \
+      -c '\$this' -b '\$this' '\$this' \
+      > ./.tall 2>&1
+   check 57 0 "${MBOX}" '900911911 1173'
+   check 58 - .tall '4294967295 0'
 
    t_epilog
 }
