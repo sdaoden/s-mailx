@@ -1139,18 +1139,18 @@ jleave:
 
 FL bool_t
 n_iconv_name_is_ascii(char const *cset){ /* TODO ctext/su */
+   /* In reversed MIME preference order */
+   static char const * const names[] = {"csASCII", "cp367", "IBM367", "us",
+         "ISO646-US", "ISO_646.irv:1991", "ANSI_X3.4-1986", "iso-ir-6",
+         "ANSI_X3.4-1968", "ASCII", "US-ASCII"};
    bool_t rv;
+   char const * const *npp;
    NYD2_IN;
 
-   /* In MIME preference order */
-   rv = (!asccasecmp(cset, "US-ASCII") || !asccasecmp(cset, "ASCII") ||
-         !asccasecmp(cset, "ANSI_X3.4-1968") ||
-         !asccasecmp(cset, "iso-ir-6") ||
-         !asccasecmp(cset, "ANSI_X3.4-1986") ||
-         !asccasecmp(cset, "ISO_646.irv:1991") ||
-         !asccasecmp(cset, "ISO646-US") || !asccasecmp(cset, "us") ||
-         !asccasecmp(cset, "IBM367") || !asccasecmp(cset, "cp367") ||
-         !asccasecmp(cset, "csASCII"));
+   npp = &names[n_NELEM(names)];
+   do if((rv = !asccasecmp(cset, *--npp)))
+      break;
+   while((rv = (npp != &names[0])));
    NYD2_OU;
    return rv;
 }
