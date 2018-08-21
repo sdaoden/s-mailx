@@ -432,7 +432,7 @@ a_main_setup_vars(void){
    /* Ensure some variables get loaded and/or verified.
     * While doing so, take special care for invocations as root */
 
-   /* This is not automatized just as $TMPDIR is for the initial setting, since
+   /* This is not automated just as $TMPDIR is for the initial setting, since
     * we have the pwuid at hand and can simply use it!  See accmacvar.c! */
    if(n_user_id == 0 || (cp = ok_vlook(HOME)) == NULL){
       cp = pwuid->pw_dir;

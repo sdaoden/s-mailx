@@ -330,7 +330,7 @@ mime_write_tohdr(struct str *in, FILE *fo, size_t *colp,
     * TODO   already iconv(3) encoded to the target character set!  We could
     * TODO   also solve it (very expensively!) if we would narrow down to an
     * TODO   encoded word and then iconv(3)+MIME encode in one go, in which
-    * TODO   case multibyte errors could be catched! */
+    * TODO   case multibyte errors could be caught! */
    enum {
       /* Maximum line length */
       a_MAXCOL_NENC = MIME_LINELEN,
