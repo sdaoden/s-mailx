@@ -334,9 +334,9 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("List mailboxes below the given or the global folder")) },
    { "headers", &c_headers, (A | M | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Type a page of headers (with the first of <msglist> if given)")) },
-   { "help", &a_ctab_c_help, (M | X | TWYSH), 0, 1, NULL
+   { "help", &a_ctab_c_help, (G | M | X | TWYSH), 0, 1, NULL
      DS(N_("Show help [[Option] for the given command]]")) },
-   { n_qm, &a_ctab_c_help, (M | X | TWYSH), 0, 1, NULL
+   { n_qm, &a_ctab_c_help, (G | M | X | TWYSH), 0, 1, NULL
      DS(N_("Show help [[Option] for the given command]]")) },
    { "Reply", &c_Reply, (A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Reply to originator, exclusively")) },
