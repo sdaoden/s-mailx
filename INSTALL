@@ -15,6 +15,8 @@ System specific notes can be found in the next section.
 All (optional) features are documented (and adjustable) in make.rc.
 Adjustments may also take place, and are usually done, from the command
 line, overriding those made in make.rc (if any).
+The set of builtin MIME types could be adjusted in ./mime.types.
+Experts could find it valuable to adjust C code in ./mx-config.h.
 
 Without any adjustments all non-experimental features will be enabled,
 except some which provide redundant functionality (e.g., OPT_SPAM_SPAMC
@@ -23,7 +25,6 @@ None of the features are "require"d by default, so that configuration
 will not fail shall any of them not be available or usable.
 The generated configuration is tracked: changes will be recognized
 and cause automatic cleanups and rebuilds as necessary.
-Experts could find it valuable to adjust some settings in config.h.
 
   $ make tangerine  # equals "$ make config build test install"
   $ make citron     # equals "$ make config build install"

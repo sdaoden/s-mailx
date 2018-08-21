@@ -6,8 +6,9 @@
 	all config build install uninstall clean distclean test \
 	devel odevel
 
+# These are targets of make-emerge.sh
 CWDDIR=
-SRCDIR=
+TOPDIR=
 
 ohno: build
 tangerine: config build test install
@@ -50,28 +51,33 @@ test:
 	@$(__prestop); cd .obj && LC_ALL=C $(MAKE) -f mk-config.mk test
 
 d-okeys:
-	perl make-okey-map.pl
+	perl mk/make-okey-map.pl
 d-okeys-nv:
-	perl make-okey-map.pl noverbose
+	perl mk/make-okey-map.pl noverbose
 d-tcaps:
-	perl make-tcap-map.pl
+	perl mk/make-tcap-map.pl
 d-tcaps-nv:
-	perl make-tcap-map.pl noverbose
+	perl mk/make-tcap-map.pl noverbose
 d-errors:
-	$(SHELL) make-errors.sh
+	sh mk/make-errors.sh
 d-errors-nv:
-	$(SHELL) make-errors.sh noverbose
+	sh mk/make-errors.sh noverbose
 d-gettext:
-	cd "$(SRCDIR)" &&\
+	(cd src/mx &&\
 	 LC_ALL=C xgettext --sort-by-file --strict --add-location \
 		--from-code=UTF-8 --keyword --keyword=_ --keyword=N_ \
 		--add-comments=I18N --foreign-user \
-		-o messages.pot *.c *.h
+		-o messages.pot *.c *.h) &&\
+	(cd src/mx &&\
+	 LC_ALL=C xgettext --sort-by-file --strict --add-location \
+		--from-code=UTF-8 --keyword --keyword=_ --keyword=N_ \
+		--add-comments=I18N --foreign-user \
+		-o messages.pot *.h)
 
-_prego = if CWDDIR="$(CWDDIR)" SRCDIR="$(SRCDIR)" \
+_prego = if CWDDIR="$(CWDDIR)" TOPDIR="$(TOPDIR)" \
 		SHELL="$(SHELL)" MAKE="$(MAKE)" CC="$(CC)" \
 		CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" \
-		$(SHELL) "$(SRCDIR)"make-config.sh "$(MAKEFLAGS)"; then :;\
+		$(SHELL) "$(TOPDIR)"mk/make-config.sh "$(MAKEFLAGS)"; then :;\
 	else exit 1; fi
 __prestop = if [ -f .obj/mk-config.mk ]; then :; else \
 		echo 'Program not configured, nothing to do';\

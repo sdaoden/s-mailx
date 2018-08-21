@@ -3903,7 +3903,7 @@ t_filetype() {
    t_xmta 'Alchemilla Wed Apr 25 15:12:13 2017'
 
    printf 'm m1@e.t\nL1\nHy1\n~.\nm m2@e.t\nL2\nHy2\n~@ %s\n~.\n' \
-      "${SRCDIR}snailmail.jpg" | ${MAILX} ${ARGS} -Smta=./.tmta.sh
+      "${TOPDIR}snailmail.jpg" | ${MAILX} ${ARGS} -Smta=./.tmta.sh
    check 1 0 "${MBOX}" '1594682963 13520'
 
    if (echo | gzip -c) >/dev/null 2>&1; then
