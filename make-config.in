@@ -216,7 +216,7 @@ install:
 		fi;\
 	};\
 	\
-	cd $(CWDDIR) || exit 11;\
+	cd "$(CWDDIR)" || exit 11;\
 	echo '#!/bin/sh -' > "$(VAL_UAGENT)-uninstall.sh";\
 	echo '#@ Uninstall script for $(VAL_UAGENT)' >> \
 		"$(VAL_UAGENT)-uninstall.sh";\
@@ -268,30 +268,30 @@ uninstall:
 
 clean:
 	$(ECHO_CMD)\
-	$(rm) -f $(OBJ) $(VAL_UAGENT) ./gen-mime-types.h ./uman.1 ./urc.rc;\
+	$(rm) -f $(OBJ) "$(VAL_UAGENT)" ./gen-mime-types.h ./uman.1 ./urc.rc;\
 	if [ -n "$(OPTIONAL_PRIVSEP)" ]; then \
-		$(rm) -f ./privsep.o ./$(VAL_PRIVSEP);\
-	fi;\
-	\
-	if [ -f "$(VAL_UAGENT)-uninstall.sh" ]; then \
-		$(rm) -f ./$(VAL_UAGENT)-uninstall.sh;\
+		$(rm) -f ./privsep.o ./"$(VAL_PRIVSEP)";\
 	fi
 
 distclean: clean
 	$(ECHO_CMD)\
-	cd .. && $(rm) -rf .obj
+	cd .. && $(rm) -rf .obj;\
+	\
+	if [ -f "$(CWDDIR)/$(VAL_UAGENT)-uninstall.sh" ]; then \
+		$(rm) -f "$(CWDDIR)/$(VAL_UAGENT)-uninstall.sh";\
+	fi
 
 # MUST work with "grep=grep sed=sed cmp=cmp mv=mv", otherwise need to change
 # make-release.inc
 _update-version:
 	@LC_ALL=C; export LC_ALL;\
 	if [ -z "$(VERSION)" ]; then \
-		eval VERSION="`(cd $(SRCDIR);\
+		eval VERSION="`(cd \"$(SRCDIR)\";\
 			[ -d .git ] && git describe --tags) 2>/dev/null`";\
 		if [ -n "$${VERSION}" ]; then \
 			VERSION="`echo $${VERSION} |\
 				$(sed) -e 's/^v\{0,1\}\(.*\)/\1/'`";\
-			[ "`(cd $(SRCDIR) && git status --porcelain) |\
+			[ "`(cd \"$(SRCDIR)\" && git status --porcelain) |\
 				$(awk) '\
 					BEGIN {n=0}\
 					/gen-version\.h/ {next}\
