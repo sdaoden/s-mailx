@@ -142,7 +142,7 @@ text/x-cgi                    cgi
 text/x-jsp                    jsp
 @ text/x-lex                  l
 # EXTENSION nim
-@ text/x-nimrod               nim
+@ text/x-nim                  nim
 # CHANGE (tika: text/plain)
 @ text/x-m4                   m4
 @ text/x-objcsrc              m
