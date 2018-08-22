@@ -507,9 +507,9 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Obsoleted by `unheaderpick'")) },
    { "unfwdretain", &c_unfwdretain, (O | M | TRAWLST), 0, MAC, NULL
      DS(N_("Obsoleted by `unheaderpick'")) },
-   { "mimetype", &c_mimetype, (M | TWYRA), 0, MAC, NULL
+   { "mimetype", &c_mimetype, (M | TWYSH), 0, MAC, NULL
      DS(N_("(Load and) show all known MIME types, or define some")) },
-   { "unmimetype", &c_unmimetype, (M | TWYRA), 1, MAC, NULL
+   { "unmimetype", &c_unmimetype, (M | TWYSH), 1, MAC, NULL
      DS(N_("Delete <type>s (reset, * for all; former reinitializes)")) },
 
    { "spamclear",

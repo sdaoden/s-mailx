@@ -981,7 +981,7 @@ c_mimetype(void *v){
          sp = n_string_push_c(sp, ' ');
          sp = n_string_push_cp(sp, &mtnp->mt_line[mtnp->mt_mtlen]);
 
-         fprintf(fp, "wysh mimetype %s%s\n", n_string_cp(sp),
+         fprintf(fp, "mimetype %s%s\n", n_string_cp(sp),
             ((n_poption & n_PO_D_V) == 0 ? n_empty
                : (mtnp->mt_flags & _MT_USR ? " # user"
                : (mtnp->mt_flags & _MT_SYS ? " # system"
