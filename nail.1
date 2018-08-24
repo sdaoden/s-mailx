@@ -5339,6 +5339,9 @@ to create the dotlock file in the same directory and with the same user
 and group identities as the file of interest.
 .Va dotlock-disable
 can be used to turn off additional dotlock files, shall the need arise.
+There is also a related entry in the
+.Sx FAQ :
+.Sx "Howto handle stale dotlock files" .
 .
 .Pp
 \*(UA by default uses tolerant POSIX rules when reading MBOX database
@@ -14281,6 +14284,31 @@ thread = true
 quiet = true
 annotate = true
 .Ed
+.\" }}}
+.
+.\" .Ss "Howto handle stale dotlock files" {{{
+.Ss "Howto handle stale dotlock files"
+.
+.Ic file
+sometimes fails to open MBOX mail databases because creation of
+.Mx -sx
+.Sx "dotlock files"
+is impossible due to existing but unowned lock files.
+\*(UA does not offer an option to deal with those files, because it is
+considered a site policy what counts as unowned, and what not.
+The site policy is usually defined by administrator(s), and expressed in
+the configuration of a locally installed MTA (for example Postfix
+.Ql stale_lock_time=500s ) .
+Therefore the suggestion:
+.
+.Bd -literal -offset indent
+$ </dev/null \*(uA -s 'MTA: be no frog, handle lock' $LOGNAME
+.Ed
+.
+.Pp
+By sending a mail to yourself the local MTA can use its normal queue
+mechanism to try the delivery multiple times, finally decide a lock file
+has become stale, and remove it.
 .\" }}}
 .
 .\" }}}
