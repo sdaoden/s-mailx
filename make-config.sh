@@ -1312,8 +1312,6 @@ if [ -z "${VERBOSE}" ]; then
 fi
 printf 'test: all\n\t$(ECHO_TEST)%s %scc-test.sh --check-only %s\n' \
    "${SHELL}" "${SRCDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
-printf 'citest: all\n\t$(ECHO_TEST)%s %scc-test.sh --ci-test %s\n' \
-   "${SHELL}" "${SRCDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
 
 # Add the known utility and some other variables
 printf "#define VAL_PRIVSEP \"${VAL_SID}${VAL_MAILX}-privsep\"\n" >> ${newh}

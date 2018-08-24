@@ -45,8 +45,6 @@ d-b:
 # The test should inherit the user runtime environment!
 test:
 	@$(__prestop); cd .obj && LC_ALL=C $(MAKE) -f mk-config.mk test
-citest:
-	@$(__prestop); cd .obj && LC_ALL=C $(MAKE) -f mk-config.mk citest
 
 d-gettext:
 	cd "$(SRCDIR)" &&\
