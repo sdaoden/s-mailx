@@ -277,9 +277,6 @@ Occasional tests:
 . Solaris <http://opencsw.org/>
   @ First of all: thanks to OpenCSW.org for offering SSH access to
     their Solaris build cluster!
-  * With OPT_AUTOCC: we try to use Sun cc(1) whenever we find it.
-    If your gcc(1) installation is doing alright you have to turn
-    OPT_AUTOCC off and use $CC, $CFLAGS and $LDFLAGS.
   * Some notes collected on earlier trials:
     + We may forcefully disable stack protectors on SunOS/gcc because of
       linking errors seen in earlier tests.
