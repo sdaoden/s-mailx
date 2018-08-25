@@ -17,8 +17,13 @@ only sane approach) SysV signal handling, without SA_RESTART.
 But some things are already pretty good, except for normal iterations
 and a review once we have a better signal handling, and can be taken
 with us.  For example termcap.c, most of tty.c, shexp.c, memory.c.
-It all has to be converted to use a m_ prefix and follow the coding
-style of the mentioned.  Note n_(UN)?LIKELY() usage is yet a bit weird,
+It all has to be converted to use a mx_ prefix and follow the coding
+style of the mentioned (mx_ is anything public / external, mx__ is
+public/e but not really, FILENAME/ABBREV_symbol are statics,
+FILENAME/ABBREV__symbol are helpers of a single other static (function
+group) (-> colour.c, lex_input.c: done)).
+
+Note n_(UN)?LIKELY() usage is yet a bit weird,
 we should not use it for entire conditions but instead repeat its use
 for each subcondition.
 
@@ -49,9 +54,6 @@ for each subcondition.
   I had 'set pipe-text/html="lynx -dump -force_html /dev/stdin"' but NetBSD
   does not have lynx(1), and i thought i've found a S-nail(1) bug.
 
-- It would be nice if it would be possible to define a format string for
-  *quote*, like 'set quote="format=some formats"'.
-
 - Line editing should gain possibility of context sensitive tab completion.
 
 - Maybe there should be an additional ZOMBIE directive that is served in
@@ -68,10 +70,6 @@ for each subcondition.
   *date-markout-older* ??
   Note that NetBSD's mail(1) has some other nice things.
   Note also that our code is quite unflexible.
-
--- NetBSD's mail(1) has nice *indentprefix* and *indentpostscript*
-   variables (though prefix and appendix or prefix and suffix, but..).
-   Note that our code is quite unflexible.
 
 - headerpick: add resend-retain/ignore!  (Ralph Corderoy, Norman Shapiro)
 	(Delivered-To thread on nmh.  Will be hard to do because of
@@ -90,40 +88,15 @@ Low-Level
   comments etc.  Rewrite the entire parsing mechanism to comply to RFC
   5322, and try to merge all those many subparsers around in the codebase,
   and accordingly.  So much duplicated work ...
-  Name parsing has been improved a bit for v13, but it's still broken.
+  Name parsing improved a bit for v13 and v14.9, but it's still broken.
   yankword(), *extract(), etc.: RFC 5322 says that comments in address
   fields SHOULD NOT be used (mutt(1) maps them to full name-addr forms if
   approbiate, even if that actually changes content!!?), and that full
-  name-addr SHOULD be used.  Our functions are yet quite silly (i.e.,
-  leading comments remain, as in "(bier2) <a2@b2.de>", unless the address
-  doesn't come in angle brackets, trailing go away, as in "<a6@b6.de>
-  (bier6)", that becomes "<a6@b6.de>").
-  Something silly like
-    (co$mm1) abc@däf.de (cö,mm,2)   ('c'o"m"m.3)
-  Should eventually become
-    co$mm1 cö,mm,2 'c'o"m"m.3 <abc@xn--df-via.de>
-  on the display, or, with IDNA decoding (and thus rather unlikely)
-    co$mm1 cö,mm,2 'c'o"m"m.3 <abc@däf.de>
-  It should NOT become this mutt(1)ism:
-    "co$mm1 cö,mm,2 'c'omm.3" <abc@däf.de>
-  Or?
+  name-addr SHOULD be used.
 
 - many uses of whitechar() should be spacechar(), and spacechar() should
   be blankspacechar(), and blankspacechar() should be dropped.  then
   drop onlywhitechar() again, too.  maybe reduce char_class bits then.
-
-- In v15.0, when we can address attachments of a message individually,
-  it would be nice to provide even more access, just like nmh(1) does
-  (Johan Commelin: Are s-nail and mh related?).
-
-- I never used anything but the *datefield* option, and it would really be
-  nice if the date strings would be parsed off into some 16 byte or what
-  storage when about to producing the summary, so that it would be directly
-  available and there would be no need to reread the mail.  Moreover, or
-  even more than that - the m_date field exists and should possibly simply
-  be init, at least in these cases.  (P.S.: this doesn't contradict the
-  statement somewhere else in this file that the structure should be
-  slacked; simply use multiple thereof or so)
 
 - After I/O layer rework we should optionally be able to read RSS
   (Atom?) feeds -- Expat should be available almost everywhere and
@@ -134,7 +107,7 @@ Low-Level
   they were mail messages; anyway i would like to save me from using too
   many tools -- three seems reasonable.
 
--- `sync'hronize commando -- robin@stjerndorff.org (Robin Stjerndorff):
+- `sync'hronize commando -- robin@stjerndorff.org (Robin Stjerndorff):
     Wondering how to update back to my Maildir, moving new read mails
     in ~/Maildir from new to cur, without exiting the application.
     Automation available?  [And simply re-`[Ff]i' involves a lot of
@@ -279,17 +252,6 @@ Low-Level
      before we reach that state (and again after
      on_interactive_mode_leave is processed).
 
-  X.x We should make the message accessible at least a bit on macro level.
-      I.e., so that message specification checks can be applied on the
-      macro level, as in
-        if `message match-spec '@~t@bank.com'`
-          set smime-sign customhdr='X-BlahBlahBlah:Banks are monsters'
-        endif
-      where `message' (or so) would refer to the currently active
-      message (in compose mode) or the "dot" (otherwise).
-      `message' would gain some keywords.  Something like that.
-      `~^' for compose mode is a starter, but we need such access from
-      the top level, too.
   8. The line buffer used in evaluate() that is passed through to
      commands (thus: in cmd_ctx, then) needs to become `const'.
      (I tried to do so in the past, but some commands write into it,
@@ -318,15 +280,10 @@ Low-Level
      character set selection or attachment filename input.
      Also in respect whether the interrupt is "propagated" or not.
      It's ugly, and documented accordingly.
- 30. Mail protocols and mail messages are accessed through a "VFS".
-     URL should then support file:// and maildir:// etc.  Update manual!
-
-     . It should be considered to drop many variables in favour of
+ 30. It should be considered to drop many variables in favour of
        ?SEARCH usage for keys, or key=value pairs, e.g.
         smtp://exam.ple?starttls=yes;smtp-hostname=;
        etc.   USER@HOST is neat, but that is possibly preferable?
-       We could then also extend *mta* and drop *smtp* as such, e.g.,
-       mta=smtp://dSDAS, mta=builtin://XZ, mta=bltin://XZ.
        Question: what is with smtp-hostname and such??
  31. Flag updates of individual messages must find their way through to
      the protocol.
@@ -506,9 +463,6 @@ Low-Level
     a setlocale_from_charset(), but which does not exist (except
     implicitly for UTF-8 locales).  But we need char classification!
     This task up to S-CText.
-  . pop3,mime_cte +++: \r,\n -> \015,\012, to avoid ANY problems..
-    Maybe our passed carrier should pass desired output newline (as
-    opposed to data-embedded newlines)
   . which_protocol(), *newmail* mechanism, displayname, mailname: all of
     this <rude>SHIT</rude> must vanish and be replaced by a URL, and
     a nice "VFS" mailbox object that carries all necessary state so that
@@ -615,10 +569,6 @@ Low-Level
     non self-contained encoded-words).
   . Group addresses, especially the undisclosed recipients but also
     "Bla": addresses; are missing.
-  . Cleanup:  mx_ is anything public / external,
-    mx__ is public/e but not really, FILENAME/ABBREV_symbol are statics,
-    FILENAME/ABBREV__symbol are helpers of a single other static
-    (function group) (-> colour.c, lex_input.c: done).
   . Per-folder (S/MIME) en- and decryption key (Tarqi Kazan): if a xy
     variable is set (that points to a key) add a transparent en- and
     decryption layer on top of any per-message operation (for boxes for
@@ -657,12 +607,12 @@ Low-Level
      stream may nonetheless contain control characters??
 --
 
-  . We can "steal" features from msmtp(1) that make sense: SOCKS support
-    (primitive) and /etc/aliases ($mta_alias_file).  At least postfix(1)
-    supports file and pipe addressees in the latter...  It also
-    supports include files via :include:/filename but which i think
-    should be supported in a second step.  Ditto caching (timestamp
-    check and a mechanism to support/disable caching.)
+  . We can "steal" features from msmtp(1) that make sense: /etc/aliases
+    ($mta_alias_file).  At least postfix(1) also supports file and pipe
+    addressees...  It also supports include files via :include:/filename
+    but which i think should be supported in a second step.  Ditto
+    caching (timestamp check and a mechanism to support/disable
+    caching.)
 
 --
 
@@ -685,9 +635,6 @@ Low-Level
 . `mbox' _can_ be made usable anywhere with yet another PS_MBOX global
   bypass!  ditto touch,save,Save
 
-. with *mime-alternative-favour-rich* it is possibly time to support GMAIL
-  style quotes, as well as class="quote" and such.
-
 . We should be much smarter regarding when we allow a PAGER
   etc. to be used, which is supposed to be a possibly useful thing in
      $ s-nail -Scrt=0 >LOG 2>&1
@@ -698,8 +645,5 @@ Low-Level
 
 . if -t is used and the file includes Mail-Followup-To:, then we should
   NOT add to it, OR we need to offer a way to get there!
-
-. stale dotlock files should be removed - postfix has
-  a stale_lock_time=500s variable to configure that
 
 # s-ts-mode
