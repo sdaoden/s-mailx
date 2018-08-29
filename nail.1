@@ -7805,10 +7805,8 @@ Also see
 .
 .Mx
 .It Ic ~^ Ar cmd Op Ar subcmd Op Ar arg3 Op Ar arg4
-Low-level compose mode command which shares the semantic with
+Low-level compose mode command which shares semantic with
 .Ic digmsg .
-The used protocol is likely subject to changes, and therefore the
-mentioned hooks receive the used protocol version as an initial line.
 In general the first field of a response line represents a status code
 which specifies whether a command was successful or not, whether result
 data is to be expected, and if, the format of the result data.
@@ -10494,8 +10492,9 @@ connected to \*(UA such that they can act as if they would be an
 interactive user.
 The difference in between them is that the latter is a
 .Ev SHELL
-command, whereas the former is a normal \*(UA macro, but which is
-restricted to a small set of commands (the
+command, whereas the former is a normal
+.Ic define Ns
+d macro, but which is restricted to a small set of commands (the
 .Va verbose
 output of, e.g.,
 .Ic list
