@@ -499,14 +499,15 @@ a_coll_quote_message(FILE *fp, struct message *mp, bool_t isfwd){
          cfc.cfc_date = n_header_textual_date_info(mp, NULL);
          /* C99 */{
             struct name *np;
+            char const *msgid;
 
-            if((cp = hfield1("message-id", mp)) != NULL &&
-                  (np = lextract(cp, GREF)) != NULL)
-               cp = np->n_name;
+            if((msgid = hfield1("message-id", mp)) != NULL &&
+                  (np = lextract(msgid, GREF)) != NULL)
+               msgid = np->n_name;
             else
-               cp = NULL;
+               msgid = NULL;
+            cfc.cfc_msgid = msgid;
          }
-         cfc.cfc_msgid = cp;
 
          if(!a_coll__fmt_inj(&cfc) || fflush(fp))
             goto jleave;
