@@ -1,5 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Program input of all sorts, input lexing, event loops, command evaluation.
+ *@ TODO - _PS_ERR_EXIT_* and _PSO_EXIT_* mixup is a mess: TERRIBLE!
  *@ TODO - hold_all_sigs() most often on, especially robot mode: TERRIBLE!
  *@ TODO - n_PS_ROBOT requires yet n_PS_SOURCING, which REALLY sucks.
  *@ TODO - go_input(): with IO::Device we could have CStringListDevice, for
@@ -273,7 +274,7 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    } flags;
    NYD_ENTER;
 
-   if(!(n_pstate & n_PS_ERR_EXIT_MASK))
+   if(!(n_psonce & n_PSO_EXIT_MASK) && !(n_pstate & n_PS_ERR_EXIT_MASK))
       n_exit_status = n_EXIT_OK;
 
    flags = a_NONE;
@@ -777,9 +778,9 @@ jleave:
    nexn = rv;
 
    if(flags & a_IGNERR){
-      n_pstate &= ~n_PS_ERR_EXIT_MASK;
-      if(!(n_pstate & n_PS_ERR_EXIT_MASK))
+      if(!(n_psonce & n_PSO_EXIT_MASK) && !(n_pstate & n_PS_ERR_EXIT_MASK))
          n_exit_status = n_EXIT_OK;
+      n_pstate &= ~n_PS_ERR_EXIT_MASK;
    }else if(rv != 0){
       bool_t bo;
 
