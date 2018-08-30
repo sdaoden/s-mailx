@@ -144,7 +144,6 @@ FL int
 c_sleep(void *v){ /* XXX installs sighdl+ due to outer jumps and SA_RESTART! */
    sigset_t nset, oset;
    struct sigaction nact, oact;
-   n_sighdl_t oint;
    bool_t ignint;
    uiz_t sec, msec;
    char **argv;
