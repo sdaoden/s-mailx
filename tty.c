@@ -4188,7 +4188,8 @@ n_tty_destroy(bool_t xit_fastpath){
 # endif
 
 # if defined HAVE_KEY_BINDINGS && defined HAVE_DEBUG
-   n_go_command(n_GO_INPUT_NONE, "unbind * *");
+   if(!xit_fastpath)
+      n_go_command(n_GO_INPUT_NONE, "unbind * *");
 # endif
 
 # ifdef HAVE_DEBUG
