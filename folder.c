@@ -575,9 +575,11 @@ jlogname:
 
    if (lckfp == NULL) {
       if (!(fm & FEDIT_NEWMAIL)) {
-         char const *emsg = (n_pstate & n_PS_EDIT)
+#ifdef HAVE_UISTRINGS
+         char const * const emsg = (n_pstate & n_PS_EDIT)
                ? N_("Unable to lock mailbox, aborting operation")
                : N_("Unable to (dot) lock mailbox, aborting operation");
+#endif
          n_perr(V_(emsg), 0);
       }
       rele_sigs();
