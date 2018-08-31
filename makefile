@@ -62,6 +62,9 @@ d-errors:
 	sh mk/make-errors.sh
 d-errors-nv:
 	sh mk/make-errors.sh noverbose
+
+d-dox:
+	doxygen mk/su-doxygen.rc
 d-gettext:
 	(cd src/mx &&\
 	 LC_ALL=C xgettext --sort-by-file --strict --add-location \

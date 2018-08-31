@@ -1,0 +1,77 @@
+#@ SU: doxygen(1) configuration
+
+PROJECT_NAME = S-nail
+PROJECT_NUMBER = 14.9.12
+PROJECT_BRIEF = "Send and receive Internet mail"
+INPUT = include/su
+EXCLUDE_PATTERNS = gen-*.*
+OUTPUT_DIRECTORY = .doc
+#OPTIMIZE_OUTPUT_FOR_C = YES
+HIDE_UNDOC_MEMBERS = YES
+SHOW_INCLUDE_FILES = NO
+MAX_INITIALIZER_LINES = 0
+MACRO_EXPANSION = YES
+#SKIP_FUNCTION_MACROS = NO
+# Grrr: cannot include code-in.h, need to defined ALL the stuff again??!
+# Define DOXYGEN_CXX to include C++ docu
+PREDEFINED = DOXYGEN DOXYGEN_CXX \
+	\
+	su_HAVE_DEBUG \
+	su_HAVE_DEVEL \
+	su_HAVE_MEM_BAG_AUTO \
+	su_HAVE_MEM_BAG_LOFI \
+	su_HAVE_MEM_CANARIES_DISABLE \
+	\
+	__STDC_VERSION__=999912L C_LANG \
+	C_DECL_BEGIN C_DECL_END NSPC_BEGIN NSPC_END \
+	EXPORT EXPORT_DATA SINLINE INLINE \
+	su_DBG_LOC_ARGS_DECL= su_DBG_LOC_ARGS_DECL_SOLE= \
+	CTA(X)= MCTA(X)= NSPC(X)= \
+	u8:=su_u8 s8:=su_s8 u16:=su_u16 s16:=su_s16 \
+	u32:=su_u32 s32:=su_s32 u64:=su_u64 s64:=su_s64 \
+	uz:=su_uz sz:=su_sz up:=su_up sp:=su_sp \
+	boole:=su_boole \
+
+#EXPAND_ONLY_PREDEF = YES
+#-> EXPAND_AS_DEFINED = C_DECL_BEGIN EXPORT EXPORT_DATA
+#RECURSIVE = YES
+INLINE_GROUPED_CLASSES = YES
+INLINE_SIMPLE_STRUCTS  = YES
+GROUP_NESTED_COMPOUNDS = YES
+REPEAT_BRIEF = YES
+SHORT_NAMES = YES
+#GENERATE_HTML = YES
+HTML_DYNAMIC_MENUS = NO
+HTML_DYNAMIC_SECTIONS = YES
+GENERATE_LATEX = NO
+#GENERATE_MAN = yes
+##
+#ALIASES += test{1}="\ref \1"
+#-> \test{ARG}
+#ALIASES += test{2}="\ref \1 \"\2\""
+#-> \test{ARG,some text} [this overloads \test!]
+#ALIASES += title{1}=
+ALIASES += SU="<span>\em SU</span>"
+ALIASES += SELF="<span>\em self</span>"
+ALIASES += THIS="<span>\em this</span>"
+ALIASES += NIL="\r{su_NIL}"
+ALIASES += FAL0="\r{su_FAL0}"
+ALIASES += TRU1="\r{su_TRU1}"
+ALIASES += TRUM1="\r{su_TRUM1}"
+ALIASES += a{1}="<span>\a \1</span>"
+ALIASES += c{1}="<span>\c \1</span>"
+ALIASES += ERR{1}="\r{su_err_number \c{su_ERR_\1}}"
+ALIASES += err{1}="\r{err \c{err::\1}}"
+ALIASES += fn{1}="\c{\1}"
+ALIASES += vr{1}="\c{\1}"
+ALIASES += ln{1}="<span>\link \1\endlink</span>"
+ALIASES += xln{1}="\c{\1}"
+ALIASES += li{1}="\li \pb{\1}"
+ALIASES += list{1}="<div>\1</div>"
+ALIASES += pb{1}="<div>\parblock \1\endparblock</div>"
+ALIASES += cb{1}="<div>\code \1\endcode</div>"
+ALIASES += r{1}="<span>\ref \1</span>"
+ALIASES += remarks{1}="\remarks <div>\parblock \1\endparblock</div>"
+ALIASES += head1{1}="\par \1^^"
+ALIASES += head2{1}="\par \1^^"
+

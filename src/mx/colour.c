@@ -20,8 +20,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef n_FILE
-#define n_FILE colour
+#undef su_FILE
+#define su_FILE colour
 
 #ifndef HAVE_AMALGAMATION
 # include "mx/nail.h"

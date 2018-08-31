@@ -33,8 +33,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#undef n_FILE
-#define n_FILE sendout
+#undef su_FILE
+#define su_FILE sendout
 
 #ifndef HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -2319,8 +2319,8 @@ j_mft_add:
 
    if ((w & GUA) && stealthmua == 0) {
       if (fprintf(fo, "User-Agent: %s %s\n", n_uagent,
-            (n_psonce & n_PSO_REPRODUCIBLE
-               ? n_reproducible_name : ok_vlook(version))) < 0)
+            (su_state_has(su_STATE_REPRODUCIBLE)
+               ? su_reproducible_build : ok_vlook(version))) < 0)
          goto jleave;
       ++gotcha;
    }

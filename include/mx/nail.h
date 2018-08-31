@@ -82,6 +82,8 @@
 /* Many things possibly of interest for adjustments have been outsourced */
 #include <mx/config.h>
 
+#include <su/code.h>
+
 /* Special FD requests for n_child_run(), n_child_start() */
 #define n_CHILD_FD_PASS -1
 #define n_CHILD_FD_NULL -2
@@ -110,174 +112,73 @@
 #define NETLINE(X)      X NETNL
 
 /*
- * OS, CC support, generic macros etc.
+ * OS, CC support, generic macros etc. TODO remove -> SU!
  */
 
-#define n_ISPOW2(X) ((((X) - 1) & (X)) == 0)
-#define n_MIN(A,B) ((A) < (B) ? (A) : (B))
-#define n_MAX(A,B) ((A) < (B) ? (B) : (A))
-#define n_CLIP(X,A,B) (((X) <= (A)) ? (A) : (((X) >= (B)) ? (B) : (X)))
-#define n_ABS(A) ((A) < 0 ? -(A) : (A))
+#define n_ABS su_ABS
+#define n_CLIP su_CLIP
+#define n_MAX su_MAX
+#define n_MIN su_MIN
+#define n_ISPOW2 su_IS_POW2
 
-/* OS: we're not a library, only set what needs special treatment somewhere */
-#define n_OS_DRAGONFLY 0
-#define n_OS_OPENBSD 0
-#define n_OS_SOLARIS 0
-#define n_OS_SUNOS 0
-
-#ifdef __DragonFly__
-# undef n_OS_DRAGONFLY
-# define n_OS_DRAGONFLY 1
-#elif defined __OpenBSD__
-# undef n_OS_OPENBSD
-# define n_OS_OPENBSD 1
-#elif defined __solaris__ || defined __sun
-# if defined __SVR4 || defined __svr4__
-#  undef n_OS_SOLARIS
-#  define n_OS_SOLARIS 1
-# else
-#  undef n_OS_SUNOS
-#  define n_OS_SUNOS 1
-# endif
-#endif
+#define n_OS_DRAGONFLY su_OS_DRAGONFLY
+#define n_OS_OPENBSD su_OS_OPENBSD
+#define n_OS_SOLARIS su_OS_SOLARIS
+#define n_OS_SUNOS su_OS_SUNOS
 
 /* CC */
-#define CC_CLANG           0
-#define PREREQ_CLANG(X,Y)  0
-#define CC_GCC             0
-#define PREREQ_GCC(X,Y)    0
-#define CC_TCC             0
-#define PREREQ_TCC(X,Y)    0
-
-#ifdef __clang__
-# undef CC_CLANG
-# undef PREREQ_CLANG
-# define CC_CLANG          1
-# define PREREQ_CLANG(X,Y) \
-   (__clang_major__ + 0 > (X) || \
-    (__clang_major__ + 0 == (X) && __clang_minor__ + 0 >= (Y)))
-# define __EXTEN           __extension__
-
-#elif defined __GNUC__
-# undef CC_GCC
-# undef PREREQ_GCC
-# define CC_GCC            1
-# define PREREQ_GCC(X,Y)   \
-   (__GNUC__ + 0 > (X) || (__GNUC__ + 0 == (X) && __GNUC_MINOR__ + 0 >= (Y)))
-# define __EXTEN           __extension__
-
-#elif defined __TINYC__
-# undef CC_TCC
-# define CC_TCC            1
-#endif
-
-#ifndef __EXTEN
-# define __EXTEN
-#endif
 
 /* Suppress some technical warnings via #pragma's unless developing.
  * XXX Wild guesses: clang(1) 1.7 and (OpenBSD) gcc(1) 4.2.1 don't work */
 #ifndef HAVE_DEVEL
-# if PREREQ_CLANG(3, 4)
+# if su_CC_VCHECK_CLANG(3, 4)
 #  pragma clang diagnostic ignored "-Wassign-enum"
 #  pragma clang diagnostic ignored "-Wdisabled-macro-expansion"
 #  pragma clang diagnostic ignored "-Wformat"
-#  pragma clang diagnostic ignored "-Wunused-result"
-# elif PREREQ_GCC(4, 7)
+# elif su_CC_VCHECK_GCC(4, 7)
 #  pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-#  pragma GCC diagnostic ignored "-Wunused-result"
 #  pragma GCC diagnostic ignored "-Wformat"
 # endif
 #endif
 
-/* For injection macros like DBG(), n_NATCH_CHAR() */
-#define COMMA           ,
+#define COMMA su_COMMA
+#define EMPTY_FILE su_EMPTY_FILE
 
-#define EMPTY_FILE()    typedef int n_CONCAT(avoid_empty_file__, n_FILE);
+#define PTR2SIZE su_P2UZ
+#define PTRCMP su_PCMP
+#define UICMP su_UCMP
 
-/* Pointer to size_t */
-#define PTR2SIZE(X)     ((size_t)(uintptr_t)(X))
+#define n_ALIGN su_Z_ALIGN
+#define n_ALIGN_SMALL su_Z_ALIGN_SMALL
 
-/* Pointer comparison (types from below) */
-#define PTRCMP(A,C,B)   ((uintptr_t)(A) C (uintptr_t)(B))
+#define n_NELEM su_NELEM
+#define n_SIZEOF_FIELD su_FIELD_SIZEOF
 
-/* Ditto, compare (maybe mixed-signed) integers cases to T bits, unsigned;
- * Note: doesn't sign-extend correctly, that's still up to the caller */
-#define UICMP(T,A,C,B)  ((ui ## T ## _t)(A) C (ui ## T ## _t)(B))
+#define n_UNUSED su_UNUSED
+#define n_UNCONST su_UNCONST
+#define n_UNVOLATILE su_UNVOLATILE
+#define n_UNALIGN su_UNALIGN
+#define n_UNXXX su_UNXXX
 
-/* Align something to a size/boundary that cannot cause just any problem */
-#define n_ALIGN(X) (((X) + 2*sizeof(void*)) & ~((2*sizeof(void*)) - 1))
-#define n_ALIGN_SMALL(X) \
-   (((X) + n_MAX(sizeof(size_t), sizeof(void*))) &\
-    ~(n_MAX(sizeof(size_t), sizeof(void*)) - 1))
+#define n_STRING su_STRING
+#define n_XSTRING su_XSTRING
+#define n_CONCAT su_CONCAT
 
-/* Members in constant array */
-#define n_NELEM(A) (sizeof(A) / sizeof((A)[0]))
+#define n_FIELD_INITN su_FIELD_INITN
+#define n_FIELD_INITI su_FIELD_INITI
 
-/* sizeof() for member fields */
-#define n_SIZEOF_FIELD(T,F) sizeof(((T *)NULL)->F)
+#define n_VFIELD_SIZE su_VFIELD_SIZE
+#define n_VSTRUCT_SIZEOF su_VSTRUCT_SIZEOF
 
-/* Casts-away (*NOT* cast-away) */
-#define n_UNUSED(X) ((void)(X))
-#define n_UNCONST(P) ((void*)(uintptr_t)(void const*)(P))
-#define n_UNVOLATILE(P) ((void*)(uintptr_t)(void volatile*)(P))
-/* To avoid warnings with modern compilers for "char*i; *(si32_t*)i=;" */
-#define n_UNALIGN(T,P) ((T)(uintptr_t)(P))
-#define n_UNXXX(T,C,P) ((T)(uintptr_t)(C)(P))
-
-/* __STDC_VERSION__ is ISO C99, so also use __STDC__, which should work */
-#if defined __STDC__ || defined __STDC_VERSION__ /*|| defined __cplusplus*/
-# define n_STRING(X) #X
-# define n_XSTRING(X) n_STRING(X)
-# define n_CONCAT(S1,S2) n__CONCAT_1(S1, S2)
-# define n__CONCAT_1(S1,S2) S1 ## S2
-#else
-# define n_STRING(X) "X"
-# define n_XSTRING STRING
-# define n_CONCAT(S1,S2) S1/* won't work out */S2
-#endif
-
-#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
-# define n_FIELD_INITN(N) n_CONCAT(., N) =
-# define n_FIELD_INITI(I) [I] =
-#else
-# define n_FIELD_INITN(N)
-# define n_FIELD_INITI(N)
-#endif
-
-#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
-# define n_VFIELD_SIZE(X)
-# define n_VSTRUCT_SIZEOF(T,F) sizeof(T)
-#else
-# define n_VFIELD_SIZE(X) \
-  ((X) == 0 ? sizeof(size_t) \
-   : ((ssize_t)(X) < 0 ? sizeof(size_t) - n_ABS(X) : (size_t)(X)))
-# define n_VSTRUCT_SIZEOF(T,F) (sizeof(T) - n_SIZEOF_FIELD(T, F))
-#endif
-
-#ifndef HAVE_INLINE
-# define n_INLINE static
+#ifndef n_INLINE
+# define n_INLINE su_INLINE
 #endif
 
 #undef __FUN__
-#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
-# define __FUN__        __func__
-#elif CC_CLANG || PREREQ_GCC(3, 4)
-# define __FUN__        __extension__ __FUNCTION__
-#else
-# define __FUN__        n_empty /* Something that is not a literal */
-#endif
+#define __FUN__ su_FUN
 
-#if defined __predict_true && defined __predict_false
-# define n_LIKELY(X) __predict_true(X)
-# define n_UNLIKELY(X) __predict_false(X)
-#elif CC_CLANG || PREREQ_GCC(2, 96)
-# define n_LIKELY(X) __builtin_expect(X, 1)
-# define n_UNLIKELY(X) __builtin_expect(X, 0)
-#else
-# define n_LIKELY(X) (X)
-# define n_UNLIKELY(X) (X)
-#endif
+#define n_LIKELY su_LIKELY
+#define n_UNLIKELY su_UNLIKELY
 
 #undef HAVE_NATCH_CHAR
 #if defined HAVE_SETLOCALE && defined HAVE_C90AMEND1 && defined HAVE_WCWIDTH
@@ -290,50 +191,23 @@
 /* Compile-Time-Assert
  * Problem is that some compilers warn on unused local typedefs, so add
  * a special local CTA to overcome this */
-#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 201112L
-# define n_CTA(T,M) _Static_assert(T, M)
-# define n_LCTA(T,M) _Static_assert(T, M)
-#else
-# define n_CTA(T,M)  n__CTA_1(T, n_FILE, __LINE__)
-# define n_LCTA(T,M) n__LCTA_1(T, n_FILE, __LINE__)
-#endif
-#define n_CTAV(T) n_CTA(T, "Unexpected value of constant")
-#define n_LCTAV(T) n_LCTA(T, "Unexpected value of constant")
+#define n_CTA su_CTA
+#define n_LCTA su_LCTA
+#define n_CTAV su_CTAV
+#define n_LCTAV su_LCTAV
+#define n_MCTA su_MCTA
 
-#ifdef n_MAIN_SOURCE
-# define n_MCTA(T,M) n_CTA(T, M);
-#else
-# define n_MCTA(T,M)
-#endif
-
-#define n__CTA_1(T,F,L)   n__CTA_2(T, F, L)
-#define n__CTA_2(T,F,L) \
-   typedef char ASSERTION_failed_in_file_## F ## _at_line_ ## L[(T) ? 1 : -1]
-#define n__LCTA_1(T,F,L)  n__LCTA_2(T, F, L)
-#define n__LCTA_2(T,F,L) \
-do{\
-   typedef char ASSERTION_failed_in_file_## F ## _at_line_ ## L[(T) ? 1 : -1];\
-   ASSERTION_failed_in_file_## F ## _at_line_ ## L __i_am_unused__;\
-   n_UNUSED(__i_am_unused__);\
-}while(0)
-
-#define n_UNINIT(N,V)     N = V
-
-/* Create a bit mask for the bit range LO..HI -- HI can't use highest bit! */
-#define n_BITENUM_MASK(LO,HI) (((1u << ((HI) + 1)) - 1) & ~((1u << (LO)) - 1))
+#define n_UNINIT su_UNINIT
+#define n_BITENUM_MASK su_BITENUM_MASK
 
 #undef DBG
 #undef NDBG
+#define DBG su_DBG
+#define NDBG su_NDBG
+#define DBGOR su_DBGOR
 #ifndef HAVE_DEBUG
 # undef assert
-# define assert(X)      n_UNUSED(0)
-# define DBG(X)
-# define NDBG(X)        X
-# define DBGOR(X,Y)     Y
-#else
-# define DBG(X)         X
-# define NDBG(X)
-# define DBGOR(X,Y)     X
+# define assert(X) su_UNUSED(0)
 #endif
 
 /* Translation (init in main.c): may NOT set errno! */
@@ -351,185 +225,41 @@ do{\
 #else
 # define UIS(X)
 # define A_(S) S
-# define _(S) n_empty
+# define _(S) su_empty
 # define N_(S) ""
-# define V_(S) n_empty
+# define V_(S) su_empty
 #endif
 
 /*
  * Types TODO v15: n_XX_t
  */
 
-#ifdef UINT8_MAX
-# define UI8_MAX        UINT8_MAX
-# define SI8_MIN        INT8_MIN
-# define SI8_MAX        INT8_MAX
-typedef uint8_t         ui8_t;
-typedef int8_t          si8_t;
-#elif UCHAR_MAX != 255
-# error UCHAR_MAX must be 255
-#else
-# define UI8_MAX        UCHAR_MAX
-# define SI8_MIN        CHAR_MIN
-# define SI8_MAX        CHAR_MAX
-typedef unsigned char   ui8_t;
-typedef signed char     si8_t;
-#endif
-
-#if !defined PRIu8 || !defined PRId8
-# undef PRIu8
-# undef PRId8
-# define PRIu8          "hhu"
-# define PRId8          "hhd"
-#endif
-
-#ifdef UINT16_MAX
-# define UI16_MAX       UINT16_MAX
-# define SI16_MIN       INT16_MIN
-# define SI16_MAX       INT16_MAX
-typedef uint16_t        ui16_t;
-typedef int16_t         si16_t;
-#elif USHRT_MAX != 0xFFFFu
-# error USHRT_MAX must be 0xFFFF
-#else
-# define UI16_MAX       USHRT_MAX
-# define SI16_MIN       SHRT_MIN
-# define SI16_MAX       SHRT_MAX
-typedef unsigned short  ui16_t;
-typedef signed short    si16_t;
-#endif
-
-#if !defined PRIu16 || !defined PRId16
-# undef PRIu16
-# undef PRId16
-# if UI16_MAX == UINT_MAX
-#  define PRIu16        "u"
-#  define PRId16        "d"
-# else
-#  define PRIu16        "hu"
-#  define PRId16        "hd"
-# endif
-#endif
-
-#ifdef UINT32_MAX
-# define UI32_MAX       UINT32_MAX
-# define SI32_MIN       INT32_MIN
-# define SI32_MAX       INT32_MAX
-typedef uint32_t        ui32_t;
-typedef int32_t         si32_t;
-#elif ULONG_MAX == 0xFFFFFFFFu
-# define UI32_MAX       ULONG_MAX
-# define SI32_MIN       LONG_MIN
-# define SI32_MAX       LONG_MAX
-typedef unsigned long int  ui32_t;
-typedef signed long int    si32_t;
-#elif UINT_MAX != 0xFFFFFFFFu
-# error UINT_MAX must be 0xFFFFFFFF
-#else
-# define UI32_MAX       UINT_MAX
-# define SI32_MIN       INT_MIN
-# define SI32_MAX       INT_MAX
-typedef unsigned int    ui32_t;
-typedef signed int      si32_t;
-#endif
-
-#if !defined PRIu32 || !defined PRId32
-# undef PRIu32
-# undef PRId32
-# if UI32_MAX == ULONG_MAX
-#  define PRIu32        "lu"
-#  define PRId32        "ld"
-# else
-#  define PRIu32        "u"
-#  define PRId32        "d"
-# endif
-#endif
-
-#ifdef UINT64_MAX
-# define UI64_MAX       UINT64_MAX
-# define SI64_MIN       INT64_MIN
-# define SI64_MAX       INT64_MAX
-typedef uint64_t        ui64_t;
-typedef int64_t         si64_t;
-#elif ULONG_MAX <= 0xFFFFFFFFu
-# if !defined ULLONG_MAX || (ULLONG_MAX >> 31) < 0xFFFFFFFFu
-#  error We need a 64 bit integer
-# else
-#  define UI64_MAX      ULLONG_MAX
-#  define SI64_MIN      LLONG_MIN
-#  define SI64_MAX      LLONG_MAX
-__EXTEN typedef unsigned long long  ui64_t;
-__EXTEN typedef signed long long    si64_t;
-# endif
-#else
-# define UI64_MAX       ULONG_MAX
-# define SI64_MIN       LONG_MIN
-# define SI64_MAX       LONG_MAX
-typedef unsigned long   ui64_t;
-typedef signed long     si64_t;
-#endif
-
-/* PRIo64 for `vexpr' */
-#if !defined PRIu64 || !defined PRId64 || !defined PRIX64 || !defined PRIo64
-# undef PRIu64
-# undef PRId64
-# undef PRIX64
-# undef PRIo64
-# if defined ULLONG_MAX && UI64_MAX == ULLONG_MAX
-#  define PRIu64        "llu"
-#  define PRId64        "lld"
-#  define PRIX64        "llX"
-#  define PRIo64        "llo"
-# else
-#  define PRIu64        "lu"
-#  define PRId64        "ld"
-#  define PRIX64        "lX"
-#  define PRIo64        "lo"
-# endif
-#endif
-
-/* (So that we can use UICMP() for size_t comparison, too) */
-typedef size_t          uiz_t;
-typedef ssize_t         siz_t;
-
-#undef PRIuZ
-#undef PRIdZ
-#if defined __STDC_VERSION__ && __STDC_VERSION__ + 0 >= 199901L
-# define PRIuZ          "zu"
-# define PRIdZ          "zd"
-# define UIZ_MAX        SIZE_MAX
-#elif defined SIZE_MAX
-  /* UnixWare has size_t as unsigned as required but uses a signed limit
-   * constant (which is thus false!) */
-# if SIZE_MAX == UI64_MAX || SIZE_MAX == SI64_MAX
-#  define PRIuZ         PRIu64
-#  define PRIdZ         PRId64
-n_MCTA(sizeof(size_t) == sizeof(ui64_t),
-   "Format string mismatch, compile with ISO C99 compiler (-std=c99)!")
-# elif SIZE_MAX == UI32_MAX || SIZE_MAX == SI32_MAX
-#  define PRIuZ         PRIu32
-#  define PRIdZ         PRId32
-n_MCTA(sizeof(size_t) == sizeof(ui32_t),
-   "Format string mismatch, compile with ISO C99 compiler (-std=c99)!")
-# else
-#  error SIZE_MAX is neither UI64_MAX nor UI32_MAX (please report this)
-# endif
-# define UIZ_MAX        SIZE_MAX
-#endif
-#ifndef PRIuZ
-# define PRIuZ          "lu"
-# define PRIdZ          "ld"
-n_MCTA(sizeof(size_t) == sizeof(unsigned long),
-   "Format string mismatch, compile with ISO C99 compiler (-std=c99)!")
-# define UIZ_MAX        ULONG_MAX
-#endif
+#define UI8_MAX su_U8_MAX
+#define SI8_MIN su_S8_MIN
+#define SI8_MAX su_S8_MAX
+typedef su_u8 ui8_t;
+typedef su_s8 si8_t;
+#define UI16_MAX su_U16_MAX
+#define SI16_MIN su_S16_MIN
+#define SI16_MAX su_S16_MAX
+typedef su_u16 ui16_t;
+typedef su_s16 si16_t;
+#define UI32_MAX su_U32_MAX
+#define SI32_MIN su_S32_MIN
+#define SI32_MAX su_S32_MAX
+typedef su_u32 ui32_t;
+typedef su_s32 si32_t;
+#define UI64_MAX su_U64_MAX
+#define SI64_MIN su_S64_MIN
+#define SI64_MAX su_S64_MAX
+typedef su_u64 ui64_t;
+typedef su_s64 si64_t;
+#define UIZ_MAX su_UZ_MAX
+typedef su_uz uiz_t;
+typedef su_sz siz_t;
 
 #ifndef UINTPTR_MAX
-# ifdef SIZE_MAX
-#  define uintptr_t     size_t
-# else
-#  define uintptr_t     unsigned long
-# endif
+# define uintptr_t su_up
 #endif
 
 #ifdef HAVE_C90AMEND1
@@ -540,19 +270,18 @@ typedef char            wc_t; /* Yep: really 8-bit char */
 # define n_WC_C(X)      X
 #endif
 
-enum {FAL0, TRU1, TRU2, TRUM1 = -1};
-typedef si8_t           bool_t;
+enum {FAL0=su_FAL0, TRU1=su_TRU1, TRU2, TRUM1=su_TRUM1};
+typedef su_boole bool_t;
 
 /* Add shorter aliases for "normal" integers TODO v15 -> n_XX_t */
-typedef unsigned long   ul_i;
-typedef unsigned int    ui_i;
-typedef unsigned short  us_i;
-typedef unsigned char   uc_i;
-
-typedef signed long     sl_i;
-typedef signed int      si_i;
-typedef signed short    ss_i;
-typedef signed char     sc_i;
+typedef su_ul ul_i;
+typedef su_ui ui_i;
+typedef su_us us_i;
+typedef su_uc uc_i;
+typedef su_sl sl_i;
+typedef su_si si_i;
+typedef su_ss ss_i;
+typedef su_sc sc_i;
 
 typedef void (          *sighandler_type)(int); /* TODO v15 obsolete */
 typedef void (          *n_sighdl_t)(int);
@@ -1540,11 +1269,10 @@ enum n_program_state_once{
    n_PSO_EXIT_MASK = n_PSO_XIT | n_PSO_QUIT,
 
    /* Pre _STARTED */
-   n_PSO_BIG_ENDIAN = 1u<<5,
+   /* 1u<<5, */
    n_PSO_UNICODE = 1u<<6,
    n_PSO_ENC_MBSTATE = 1u<<7,
 
-   n_PSO_REPRODUCIBLE = 1u<<8,
    n_PSO_SENDMODE = 1u<<9,
    n_PSO_INTERACTIVE = 1u<<10,
    n_PSO_TTYIN = 1u<<11,
@@ -2699,6 +2427,7 @@ struct cw {
 # define VL extern
 #endif
 
+#define n_empty su_empty
 #ifndef HAVE_AMALGAMATION
 VL char const n_month_names[12 + 1][4];
 VL char const n_weekday_names[7 + 1][4];
@@ -2708,9 +2437,7 @@ VL char const n_uagent[sizeof VAL_UAGENT];
 VL char const n_error[sizeof n_ERROR];
 # endif
 VL char const n_path_devnull[sizeof n_PATH_DEVNULL];
-VL char const n_reproducible_name[sizeof "reproducible_build"];
 VL char const n_unirepl[sizeof n_UNIREPL];
-VL char const n_empty[1];
 VL char const n_0[2];
 VL char const n_1[2];
 VL char const n_m1[3];     /* -1 */
@@ -2737,8 +2464,6 @@ VL ui32_t n_mb_cur_max;          /* Value of MB_CUR_MAX */
 VL ui32_t n_realscreenheight;    /* The real screen height */
 VL ui32_t n_scrnwidth;           /* Screen width/guess; also n_SCRNWIDTH_LIST */
 VL ui32_t n_scrnheight;          /* Screen height/guess (for header summary+) */
-
-VL char const *n_progname;       /* Our name */
 
 VL gid_t n_group_id;             /* getgid() and getuid() */
 VL uid_t n_user_id;

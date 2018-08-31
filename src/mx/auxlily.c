@@ -33,8 +33,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#undef n_FILE
-#define n_FILE auxlily
+#undef su_FILE
+#define su_FILE auxlily
 
 #ifndef HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -1057,8 +1057,8 @@ n_nodename(bool_t mayoverride){
 #endif
    NYD2_IN;
 
-   if(n_psonce & n_PSO_REPRODUCIBLE)
-      hn = n_UNCONST(n_reproducible_name);
+   if(su_state_has(su_STATE_REPRODUCIBLE))
+      hn = n_UNCONST(su_reproducible_build);
    else if(mayoverride && (hn = ok_vlook(hostname)) != NULL && *hn != '\0'){
       ;
    }else if((hn = sys_hostname) == NULL){
@@ -1274,7 +1274,7 @@ jinc1:
 
    indat = n_lofi_alloc(inlen +1);
 
-   if(!(n_psonce & n_PSO_REPRODUCIBLE) || reprocnt_or_null == NULL){
+   if(!su_state_has(su_STATE_REPRODUCIBLE) || reprocnt_or_null == NULL){
 #if HAVE_RANDOM == n_RANDOM_IMPL_TLS
       n_tls_rand_bytes(indat, inlen);
 #elif HAVE_RANDOM != n_RANDOM_IMPL_ARC4
@@ -1302,7 +1302,7 @@ jinc1:
          size_t j;
 
          r.i4 = ++*reprocnt_or_null;
-         if(n_psonce & n_PSO_BIG_ENDIAN){ /* TODO BSWAP */
+         if(su_BOM_IS_BIG()){ /* TODO BSWAP */
             char x;
 
             x = r.c[0];
@@ -1422,7 +1422,7 @@ n_time_now(bool_t force_update){ /* TODO event loop update IF cmd requests! */
    static struct n_timespec ts_now;
    NYD2_IN;
 
-   if(n_UNLIKELY((n_psonce & n_PSO_REPRODUCIBLE) != 0)){
+   if(n_UNLIKELY(su_state_has(su_STATE_REPRODUCIBLE))){
       /* Guaranteed 32-bit posnum TODO SOURCE_DATE_EPOCH should be 64-bit! */
       (void)n_idec_si64_cp(&ts_now.ts_sec, ok_vlook(SOURCE_DATE_EPOCH), 0,NULL);
       ts_now.ts_nsec = 0;

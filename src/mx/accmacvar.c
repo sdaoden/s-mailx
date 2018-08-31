@@ -46,8 +46,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#undef n_FILE
-#define n_FILE accmacvar
+#undef su_FILE
+#define su_FILE accmacvar
 
 #ifndef HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -1072,6 +1072,7 @@ jefrom:
          break;
       case ok_b_debug:
          n_poption |= n_PO_DEBUG;
+         su_log_set_level(su_LOG_DEBUG);
          break;
       case ok_v_HOME:
          /* Invalidate any resolved folder then, too
@@ -1128,6 +1129,8 @@ jefrom:
          break;
       case ok_b_verbose:
          n_poption |= (n_poption & n_PO_VERB) ? n_PO_VERBVERB : n_PO_VERB;
+         if(!(n_poption & n_PO_DEBUG))
+            su_log_set_level(su_LOG_INFO);
          break;
       }
    }else{
@@ -1139,6 +1142,7 @@ jefrom:
          break;
       case ok_b_debug:
          n_poption &= ~n_PO_DEBUG;
+         su_log_set_level((n_poption & n_PO_VERB) ? su_LOG_INFO : n_LOG_LEVEL);
          break;
       case ok_v_customhdr:{
          struct n_header_field *hfp;
@@ -1170,6 +1174,8 @@ jefrom:
          break;
       case ok_b_verbose:
          n_poption &= ~(n_PO_VERB | n_PO_VERBVERB);
+         if(!(n_poption & n_PO_DEBUG))
+            su_log_set_level(n_LOG_LEVEL);
          break;
       }
    }
@@ -1766,7 +1772,7 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
             if(argc >= avcp->avc_special_prop)
                rv = argv[avcp->avc_special_prop - 1];
          }else
-            rv = n_progname;
+            rv = su_program;
          goto jleave;
       }
    }

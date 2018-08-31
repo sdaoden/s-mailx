@@ -23,8 +23,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef n_FILE
-#define n_FILE dig_msg
+#undef su_FILE
+#define su_FILE dig_msg
 
 #ifndef HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -91,7 +91,7 @@ a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp, bool_t oexcl){
          ((TRU1/*TODO*/ || !(mb.mb_perm & MB_DELE))
             ? n_DIG_MSG_RDONLY : n_DIG_MSG_NONE);
    dmcp->dmc_msgno = msgno;
-   dmcp->dmc_hp = (struct header*)n_ALIGN(PTR2SIZE(&dmcp[1]));
+   dmcp->dmc_hp = (struct header*)PTR2SIZE(&dmcp[1]);
    dmcp->dmc_mempool = dmcp->dmc_mempool_buf;
    /* Rest done by caller */
    rv = n_ERR_NONE;

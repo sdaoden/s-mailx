@@ -134,7 +134,8 @@ update_release_hook() {
    fi
 
    ${git} rm -f .gitignore .mailmap TODO \
-      mk/make-release.* mk/make-news-anchors.sh mk/mdocmx.sh
+      mk/make-release.* mk/make-news-anchors.sh mk/mdocmx.sh \
+      `${git} grep -l ^su_USECASE_MX_DISABLED`
 }
 
 . .git/make-release.inc

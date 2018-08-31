@@ -33,8 +33,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#undef n_FILE
-#define n_FILE mime_parse
+#undef su_FILE
+#define su_FILE mime_parse
 
 #ifndef HAVE_AMALGAMATION
 # include "mx/nail.h"

@@ -39,8 +39,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#undef n_FILE
-#define n_FILE cmd_tab
+#undef su_FILE
+#define su_FILE cmd_tab
 
 #ifndef HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -344,7 +344,7 @@ jredo:
    }else{
       /* Very ugly, but take care for compiler supported string lengths :( */
 #ifdef HAVE_UISTRINGS
-      fputs(n_progname, n_stdout);
+      fputs(su_program, n_stdout);
       fputs(_(
          " commands -- <msglist> denotes message specification tokens,\n"
          "e.g., 1-5, :n or . (current, the \"dot\"), separated by *ifs*:\n"),

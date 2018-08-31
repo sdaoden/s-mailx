@@ -33,8 +33,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#undef n_FILE
-#define n_FILE send
+#undef su_FILE
+#define su_FILE send
 
 #ifndef HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -748,7 +748,7 @@ jheaders_skip:
                   _print_part_info(obuf, ip, doitp, level, qf, stats);
                   /* Because: interactive OR batch mode, so */
                   if(!getapproval(_("Run MIME handler for this part?"),
-                        ((n_psonce & n_PSO_REPRODUCIBLE) != 0)))
+                        su_state_has(su_STATE_REPRODUCIBLE)))
                      goto jleave;
                }
             }

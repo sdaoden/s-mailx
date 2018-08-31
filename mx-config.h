@@ -47,6 +47,11 @@
 
 /* * */
 
+/* Default log level */
+#define n_LOG_LEVEL su_DBGOR(su_LOG_WARN, su_LOG_CRIT)
+
+/* * */
+
 /* Fallback MIME charsets, if *charset-7bit* and *charset-8bit* are not set.
  * Note: must be lowercase!
  * (Keep in SYNC: ./nail.1:"Character sets", mx/config.h:CHARSET_*!) */

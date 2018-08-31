@@ -33,8 +33,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#undef n_FILE
-#define n_FILE attachment
+#undef su_FILE
+#define su_FILE attachment
 
 #ifndef HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -560,11 +560,11 @@ n_attachment_list_print(struct attachment const *aplist, FILE *fp){
       else{
          char const *incs, *oucs;
 
-         if(!(n_psonce & n_PSO_REPRODUCIBLE)){
+         if(!su_state_has(su_STATE_REPRODUCIBLE)){
             incs = ap->a_input_charset;
             oucs = ap->a_charset;
          }else
-            incs = oucs = n_reproducible_name;
+            incs = oucs = su_reproducible_build;
 
          fprintf(fp, "#%" PRIu32 ": %s [%s -- %s",
             attno, n_shexp_quote_cp(ap->a_name, FAL0),

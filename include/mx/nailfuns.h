@@ -397,7 +397,7 @@ FL bool_t n_idna_to_ascii(struct n_string *out, char const *ibuf, size_t ilen);
 
 /* Get a (pseudo) random string of *len* bytes, _not_ counting the NUL
  * terminator, the second returns an n_autorec_alloc()ed buffer.
- * If n_PSO_REPRODUCIBLE and reprocnt_or_null not NULL then we produce
+ * If su_STATE_REPRODUCIBLE and reprocnt_or_null not NULL then we produce
  * a reproducable string by using and managing that counter instead */
 FL char *n_random_create_buf(char *dat, size_t len, ui32_t *reprocnt_or_null);
 FL char *n_random_create_cp(size_t len, ui32_t *reprocnt_or_null);
@@ -437,9 +437,10 @@ FL char *n_time_ctime(si64_t secsepoch, struct tm const *localtime_or_nil);
 FL uiz_t n_msleep(uiz_t millis, bool_t ignint);
 
 /* Our error print series..  Note: these reverse scan format in order to know
- * whether a newline was included or not -- this affects the output! */
-FL void        n_err(char const *format, ...);
-FL void        n_verr(char const *format, va_list ap);
+ * whether a newline was included or not -- this affects the output!
+ * xxx Prototype changes to be reflected in src/su/core-code. (for now) */
+FL void n_err(char const *format, ...);
+FL void n_verr(char const *format, va_list ap);
 
 /* ..(for use in a signal handler; to be obsoleted..).. */
 FL void        n_err_sighdl(char const *format, ...);

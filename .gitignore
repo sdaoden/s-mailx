@@ -1,1 +1,4 @@
 .obj/
+.doc/
+gen-*.*
+include/mx/config.h

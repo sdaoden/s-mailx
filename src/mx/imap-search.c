@@ -39,8 +39,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#undef n_FILE
-#define n_FILE imap_search
+#undef su_FILE
+#define su_FILE imap_search
 
 #ifndef HAVE_AMALGAMATION
 # include "mx/nail.h"

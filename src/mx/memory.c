@@ -18,8 +18,8 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-#undef n_FILE
-#define n_FILE memory
+#undef su_FILE
+#define su_FILE memory
 
 #ifndef HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -396,7 +396,7 @@ a_memory_ars_reset(struct a_memory_ars_ctx *macp){
    /* "alloca(3)" memory goes away, too.  XXX Must be last as long we jump */
 #ifdef HAVE_MEMORY_DEBUG
    if(macp->mac_lofi_top != NULL &&
-         ((n_psonce & n_PSO_REPRODUCIBLE) ||
+         (su_state_has(su_STATE_REPRODUCIBLE) ||
           (n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG))))
       n_alert("There still is LOFI memory upon ARS reset!");
 #endif
@@ -804,7 +804,7 @@ FL void
    --a_memory_heap_acur;
    a_memory_heap_mcur -= p.p_c->mc_user_size;
 
-   if((n_psonce & n_PSO_REPRODUCIBLE) ||
+   if(su_state_has(su_STATE_REPRODUCIBLE) ||
          (n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG))){
       p.p_hc->mhc_next = a_memory_heap_free;
       a_memory_heap_free = p.p_hc;
@@ -1326,7 +1326,7 @@ c_memtrace(void *vp){
          p.p_c->mc_user_size, p.p_c->mc_file, p.p_c->mc_line);
    }
 
-   if((n_psonce & n_PSO_REPRODUCIBLE) ||
+   if(su_state_has(su_STATE_REPRODUCIBLE) ||
          (n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG))){
       fprintf(fp, "Heap buffers lingering for n_free():\n");
       ++lines;
@@ -1427,7 +1427,7 @@ n__memory_check(char const *mdbg_file, int mdbg_line){
       }
    }
 
-   if((n_psonce & n_PSO_REPRODUCIBLE) ||
+   if(su_state_has(su_STATE_REPRODUCIBLE) ||
          (n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG))){
       for(p.p_hc = a_memory_heap_free; p.p_hc != NULL;
             p.p_hc = p.p_hc->mhc_next){

@@ -38,8 +38,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#undef n_FILE
-#define n_FILE pop3
+#undef su_FILE
+#define su_FILE pop3
 
 #ifndef HAVE_AMALGAMATION
 # include "mx/nail.h"

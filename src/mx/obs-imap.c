@@ -37,8 +37,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#undef n_FILE
-#define n_FILE obs_imap
+#undef su_FILE
+#define su_FILE obs_imap
 
 #ifndef HAVE_AMALGAMATION
 # include "mx/nail.h"

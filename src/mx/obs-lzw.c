@@ -61,8 +61,8 @@
  *
  * Adopted for Heirloom mailx by Gunnar Ritter.
  */
-#undef n_FILE
-#define n_FILE obs_lzw
+#undef su_FILE
+#define su_FILE obs_lzw
 
 #ifndef HAVE_AMALGAMATION
 # include "mx/nail.h"

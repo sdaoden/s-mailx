@@ -34,8 +34,8 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#undef n_FILE
-#define n_FILE main
+#undef su_FILE
+#define su_FILE main
 #define n_MAIN_SOURCE
 
 #include "mx/nail.h"
@@ -62,10 +62,7 @@ VL char const n_uagent[sizeof VAL_UAGENT] = VAL_UAGENT;
 VL char const n_error[sizeof n_ERROR] = N_(n_ERROR);
 #endif
 VL char const n_path_devnull[sizeof n_PATH_DEVNULL] = n_PATH_DEVNULL;
-VL char const n_reproducible_name[sizeof "reproducible_build"] =
-      "reproducible_build";
 VL char const n_unirepl[sizeof n_UNIREPL] = n_UNIREPL;
-VL char const n_empty[1] = "";
 VL char const n_0[2] = "0";
 VL char const n_1[2] = "1";
 VL char const n_m1[3] = "-1";
@@ -244,14 +241,14 @@ a_main_usage(FILE *fp){
    size_t i;
    NYD2_IN;
 
-   i = strlen(n_progname);
+   i = strlen(su_program);
    i = n_MIN(i, sizeof(buf) -1);
    if(i > 0)
       memset(buf, ' ', i);
    buf[i] = '\0';
 
    fprintf(fp, _("%s (%s %s): send and receive Internet mail\n"),
-      n_progname, n_uagent, ok_vlook(version));
+      su_program, n_uagent, ok_vlook(version));
    if(fp != n_stderr)
       putc('\n', fp);
 
@@ -261,7 +258,7 @@ a_main_usage(FILE *fp){
       "  %s [:-a attachment:] [:-b bcc-address:] [:-c cc-address:]\n"
       "  %s [-M type | -m file | -q file | -t] [-r from-address]\n"
       "  %s [:-S var[=value]:] [-s subject] [:-X/Y cmd:] [-.] :to-address:\n"),
-      n_progname, buf, buf, buf);
+      su_program, buf, buf, buf);
    if(fp != n_stderr)
       putc('\n', fp);
 
@@ -271,7 +268,7 @@ a_main_usage(FILE *fp){
          "[:-C \"custom: header\":]\n"
       "  %s [-L spec] [-r from-address] [:-S var[=value]:] [-u user] "
          "[:-X/Y cmd:]\n"),
-      n_progname, buf);
+      su_program, buf);
    if(fp != n_stderr)
       putc('\n', fp);
 
@@ -281,7 +278,7 @@ a_main_usage(FILE *fp){
          "[:-C \"custom: header\":] -f\n"
       "  %s [-L spec] [-r from-address] [:-S var[=value]:] [:-X/Y cmd:] "
          "[file]\n"),
-      n_progname, buf);
+      su_program, buf);
    if(fp != n_stderr)
       putc('\n', fp);
 
@@ -297,7 +294,7 @@ a_main_usage(FILE *fp){
          ". Features via \"$ %s -Xversion -Xx\"\n"
          ". Bugs/Contact via "
             "\"$ %s -Sexpandaddr=shquote '\\$contact-mail'\"\n"),
-         n_progname, n_progname);
+         su_program, su_program);
    NYD2_OU;
 }
 
@@ -313,8 +310,10 @@ a_main_startup(void){
 
    a_main_oind = /*_oerr =*/ 1;
 
-   if((cp = strrchr(n_progname, '/')) != NULL)
-      n_progname = ++cp;
+   if((cp = strrchr(su_program, '/')) != NULL)
+      su_program = ++cp;
+   /* XXX Somewhen: su_state_set(su_STATE_ERR_NOMEM | su_STATE_ERR_OVERFLOW);*/
+   su_log_set_level(n_LOG_LEVEL); /* XXX _EMERG is 0.. */
 
 #ifdef HAVE_NYD
    safe_signal(SIGABRT, &_nyd_oncrash);
@@ -357,15 +356,6 @@ a_main_startup(void){
       n_tty_fp = n_stdout;
 
    /*  --  >8  --  8<  --  */
-
-   /* We need the endianess, runtime detected due to OPT_CROSS_BUILD */
-   /* C99 */{
-      union {ui16_t bom; ui8_t buf[2];} volatile u;
-
-      u.bom = 0xFEFFu;
-      if(u.buf[1] != 0xFEu)
-         n_psonce |= n_PSO_BIG_ENDIAN;
-   }
 
    n_locale_init();
 
@@ -451,13 +441,13 @@ a_main_setup_vars(void){
    /* Are we in a reproducible-builds.org environment?
     * That special mode bends some settings (again) */
    if(ok_vlook(SOURCE_DATE_EPOCH) != NULL){
-      n_psonce |= n_PSO_REPRODUCIBLE;
+      su_state_set(su_STATE_REPRODUCIBLE);
+      su_program = su_reproducible_build;
       n_pstate |= n_PS_ROOT;
-      n_progname = n_reproducible_name;
-      ok_vset(LOGNAME, n_reproducible_name);
+      ok_vset(LOGNAME, su_reproducible_build);
       /* Do not care about USER at all in this special mode! */
       n_pstate &= ~n_PS_ROOT;
-      cp = savecat(n_reproducible_name, ": ");
+      cp = savecat(su_reproducible_build, ": ");
       ok_vset(log_prefix, cp);
    }
    NYD2_OU;
@@ -485,7 +475,7 @@ a_main_setup_screen(void){
 
    NYD2_IN;
 
-   if(!(n_psonce & n_PSO_REPRODUCIBLE) &&
+   if(!su_state_has(su_STATE_REPRODUCIBLE) &&
          ((n_psonce & n_PSO_INTERACTIVE) ||
             ((n_psonce & (n_PSO_TTYIN | n_PSO_TTYOUT)) &&
             (n_poption & n_PO_BATCH_FLAG)))){
@@ -675,8 +665,8 @@ a_main_rcv_mode(bool_t had_A_arg, char const *folder, char const *Larg,
       if(!ok_blook(quiet))
          fprintf(n_stdout, _("%s version %s.  Type `?' for help\n"),
             n_uagent,
-            (n_psonce & n_PSO_REPRODUCIBLE
-               ? n_reproducible_name : ok_vlook(version)));
+            (su_state_has(su_STATE_REPRODUCIBLE)
+               ? su_reproducible_build : ok_vlook(version)));
       n_folder_announce(n_ANNOUNCE_MAIN_CALL | n_ANNOUNCE_CHANGE);
       safe_signal(SIGINT, prevint);
    }
@@ -760,7 +750,7 @@ main(int argc, char *argv[]){
     * Start our lengthy setup, finalize by setting n_PSO_STARTED
     */
 
-   n_progname = argv[0];
+   su_program = argv[0];
    a_main_startup();
 
    /* Command line parsing

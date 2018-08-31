@@ -3333,6 +3333,13 @@ if feat_no AMALGAMATION; then
       printf '%s: %s\n\t$(ECHO_CC)$(CC) $(CFLAGS) $(INCS) -c %s\n' \
          "${i}.o" "\$(SRCDIR)mx/${i}.c" "\$(SRCDIR)mx/${i}.c" >> ${mk}
    done
+   for i in `printf '%s\n' "${SRCDIR}"su/*.c | ${sort}`; do
+      i=`basename "${i}" .c`
+      objlist="${objlist} ${i}.o"
+      srclist="${srclist} \$(SRCDIR)su/${i}.c"
+      printf '%s: %s\n\t$(ECHO_CC)$(CC) $(CFLAGS) $(INCS) -c %s\n' \
+         "${i}.o" "\$(SRCDIR)su/${i}.c" "\$(SRCDIR)su/${i}.c" >> ${mk}
+   done
    printf '\nAMALGAM_TARGET =\nAMALGAM_DEP =\n' >> ${mk}
 else
    printf '%s:\n\t$(ECHO_CC)$(CC) $(CFLAGS) $(INCS) -c $(SRCDIR)mx/%s\n' \
@@ -3352,6 +3359,11 @@ else
       fi
       printf '$(SRCDIR)mx/%s ' "${i}" >> ${mk}
       printf '# include "%s%s"\n' "${SRCDIR}mx/" "${i}" >> ${h}
+   done
+   for i in `printf '%s\n' "${SRCDIR}"su/*.c | ${sort}`; do
+      i=`basename "${i}" .c`
+      printf '$(SRCDIR)su/%s ' "${i}" >> ${mk}
+      printf '# include "%s%s"\n' "${SRCDIR}su/" "${i}" >> ${h}
    done
    echo >> ${mk}
 fi
