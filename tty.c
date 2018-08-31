@@ -37,11 +37,12 @@ static sighandler_type a_tty_oint, a_tty_oquit, a_tty_oterm,
 #endif
 
 #ifdef a_TTY_SIGNALS
+/**/
 static void a_tty_sigs_up(void), a_tty_sigs_down(void);
-#endif
 
-/* Prototype here, implementation is specific to chosen editor */
+/* Is editor specific code */
 static void a_tty_signal(int sig);
+#endif
 
 #ifdef a_TTY_SIGNALS
 static void
@@ -4662,16 +4663,17 @@ jleave:
  * The really-nothing-at-all implementation
  */
 
+# ifdef a_TTY_SIGNALS
 static void
 a_tty_signal(int sig){
    /* Prototype at top */
-# ifdef HAVE_TERMCAP
+#  ifdef HAVE_TERMCAP
    sigset_t nset, oset;
-# endif
+#  endif
    NYD_X; /* Signal handler */
    n_UNUSED(sig);
 
-# ifdef HAVE_TERMCAP
+#  ifdef HAVE_TERMCAP
    n_TERMCAP_SUSPEND(TRU1);
    a_tty_sigs_down();
 
@@ -4684,8 +4686,9 @@ a_tty_signal(int sig){
 
    a_tty_sigs_up();
    n_TERMCAP_RESUME(TRU1);
-# endif /* HAVE_TERMCAP */
+#  endif /* HAVE_TERMCAP */
 }
+# endif /* a_TTY_SIGNALS */
 
 # if 0
 FL void
