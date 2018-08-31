@@ -1297,7 +1297,11 @@ n_go_main_loop(void){ /* FIXME */
             struct stat st;
 
             if(mb.mb_type == MB_FILE){
-               if(!stat(mailname, &st) && st.st_size > mailsize) Jnewmail:{
+               if(!stat(mailname, &st) && st.st_size > mailsize)
+#if defined HAVE_MAILDIR || defined HAVE_IMAP
+               Jnewmail:
+#endif
+               {
                   ui32_t odid;
                   size_t odot;
 
