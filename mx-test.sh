@@ -1,7 +1,7 @@
 #!/bin/sh -
-#@ Synopsis: ./cc-test.sh --check-only [s-mailx-binary]
-#@           ./cc-test.sh --mae-test s-mailx-binary [:TESTNAME:]
-#@           [./cc-test.sh # Note: performs hundreds of compilations!]
+#@ Synopsis: ./mx-test.sh --check-only [s-mailx-binary]
+#@           ./mx-test.sh --run-test s-mailx-binary [:TESTNAME:]
+#@           [./mx-test.sh # Note: performs hundreds of compilations!]
 #@ The latter generates output files.
 #@ TODO _All_ the tests should happen in a temporary subdir.
 # Public Domain
@@ -43,7 +43,7 @@ ADDARG_UNI=-Sttycharset=UTF-8
 CONF=../make.rc
 BODY=./.cc-body.txt
 MBOX=./.cc-test.mbox
-ERR=./.cc-test.err # Covers only some which cannot be checksummed; not quoted!
+ERR=./.cc-test.err # Covers some which cannot be checksummed; not quoted!
 MAIL=/dev/null
 #UTF8_LOCALE= autodetected unless set
 
@@ -74,14 +74,14 @@ unset POSIXLY_CORRECT LOGNAME USER
 
 usage() {
    ${cat} >&2 <<_EOT
-Synopsis: cc-test.sh --check-only s-mailx-binary
-Synopsis: cc-test.sh --mae-test s-mailx-binary [:TEST:]
-Synopsis: cc-test.sh
+Synopsis: mx-test.sh --check-only s-mailx-binary
+Synopsis: mx-test.sh --run-test s-mailx-binary [:TEST:]
+Synopsis: mx-test.sh
 
  --check-only EXE         run the test series, exit success or error;
                           if run in a git(1) checkout then failed tests
                           create test output data files
- --mae-test EXE [:TEST:]  run all or only the given TESTs, and create
+ --run-test EXE [:TEST:]  run all or only the given TESTs, and create
                           test output data files; if run in a git(1)
                           checkout with the [test-out] branch available,
                           it will also create file differences
@@ -92,19 +92,19 @@ _EOT
    exit 1
 }
 
-CHECK_ONLY= MAE_TEST= GIT_REPO= MAILX=
+CHECK_ONLY= RUN_TEST= GIT_REPO= MAILX=
 if [ "${1}" = --check-only ]; then
    [ ${#} -eq 2 ] || usage
    CHECK_ONLY=1 MAILX=${2}
    [ -x "${MAILX}" ] || usage
    echo 'Mode: --check-only, binary: '"${MAILX}"
    [ -d ../.git ] && [ -z "${MAILX__CC_TEST_NO_DATA_FILES}" ] && GIT_REPO=1
-elif [ "${1}" = --mae-test ]; then
+elif [ "${1}" = --run-test ]; then
    [ ${#} -ge 2 ] || usage
-   MAE_TEST=1 MAILX=${2}
+   RUN_TEST=1 MAILX=${2}
    [ -x "${MAILX}" ] || usage
    shift 2
-   echo 'Mode: --mae-test, binary: '"${MAILX}"
+   echo 'Mode: --run-test, binary: '"${MAILX}"
    [ -d ../.git ] && GIT_REPO=1
 else
    [ ${#} -eq 0 ] || usage
@@ -117,7 +117,7 @@ RAWMAILX=${MAILX}
 MAILX="${MEMTESTER}${MAILX}"
 export RAWMAILX MAILX
 
-if [ -n "${CHECK_ONLY}${MAE_TEST}" ]; then
+if [ -n "${CHECK_ONLY}${RUN_TEST}" ]; then
    if [ -z "${UTF8_LOCALE}" ]; then
       # Try ourselfs via nl_langinfo(CODESET) first (requires a new version)
       if command -v "${RAWMAILX}" >/dev/null 2>&1 &&
@@ -180,18 +180,6 @@ have_feat() {
       ${grep} +${1} ) >/dev/null 2>&1
 }
 
-t_prolog() {
-   ${rm} -rf "${BODY}" "${MBOX}" ${TRAP_EXIT_ADDONS}
-   TRAP_EXIT_ADDONS=
-   if [ ${#} -gt 0 ]; then
-      TEST_NAME=${1}
-      printf '[%s]\n' "${1}"
-   fi
-}
-t_epilog() {
-   t_prolog
-}
-
 t_xmta() {
    [ ${#} -ge 1 ] && __from=${1} ||
       __from='Silybum Marianum Tue Apr 17 15:55:01 2018'
@@ -203,28 +191,54 @@ t_xmta() {
    chmod 0755 .tmta.sh
 }
 
+t_prolog() {
+   ${rm} -rf "${BODY}" "${MBOX}" ${TRAP_EXIT_ADDONS}
+   TRAP_EXIT_ADDONS=
+   if [ ${#} -gt 0 ]; then
+      TEST_NAME=${1}
+      TEST_ANY=
+      printf '[%s]\n' "${1}"
+   fi
+}
+
+t_epilog() {
+   [ -n "${TEST_ANY}" ] && printf '\n'
+   t_prolog
+}
+
 check() {
    restat=${?} tid=${1} eestat=${2} f=${3} s=${4}
-   [ "${eestat}" != - ] && [ "${restat}" != "${eestat}" ] &&
-      err "${TESTNAME}-${tid}" 'unexpected status: '"${restat} != ${eestat}"
-   csum="`${cksum} < ${f} | ${sed} -e 's/[ 	]\{1,\}/ /g'`"
-   if [ "${csum}" = "${s}" ]; then
-      maex=
-      printf '%s-%s: ok\n' "${TEST_NAME}" "${tid}"
-   else
-      maex=yes
+
+   if [ "${eestat}" != - ] && [ "${restat}" != "${eestat}" ]; then
       ESTAT=1
-      printf '%s-%s: error: checksum mismatch (got %s)\n' \
-         "${TEST_NAME}" "${tid}" "${csum}"
+      [ -n "${TEST_ANY}" ] && __i__="\n" || __i__=
+      printf "${__i__}"'ERROR: %s: bad-status: %s != %s\n' \
+         "${tid}" "${restat}" "${eestat}"
+      TEST_ANY=
    fi
 
-   if [ -n "${CHECK_ONLY}${MAE_TEST}" ]; then
+   csum="`${cksum} < ${f} | ${sed} -e 's/[ 	]\{1,\}/ /g'`"
+   if [ "${csum}" = "${s}" ]; then
+      runx=
+      [ -n "${TEST_ANY}" ] && __i__=' ' || __i__=
+      printf "${__i__}"'%s%s:ok' "${tid}"
+      TEST_ANY=1
+   else
+      runx=yes
+      ESTAT=1
+      [ -n "${TEST_ANY}" ] && __i__="\n" || __i__=
+      printf "${__i__}"'ERROR: %s: checksum mismatch (got %s)\n' \
+         "${tid}" "${csum}"
+      TEST_ANY=
+   fi
+
+   if [ -n "${CHECK_ONLY}${RUN_TEST}" ]; then
       x="t.${TEST_NAME}-${tid}"
-      if [ -n "${MAE_TEST}" ] || [ -n "${maex}" -a -n "${GIT_REPO}" ]; then
+      if [ -n "${RUN_TEST}" ] || [ -n "${runx}" -a -n "${GIT_REPO}" ]; then
          ${cp} -f "${f}" ./"${x}"
       fi
 
-      if [ -n "${maex}" ] && [ -n "${GIT_REPO}" ] &&
+      if [ -n "${runx}" ] && [ -n "${GIT_REPO}" ] &&
             command -v diff >/dev/null 2>&1 &&
             (git rev-parse --verify test-out) >/dev/null 2>&1 &&
             git show test-out:"${x}" > ./"${x}".old 2>/dev/null; then
@@ -233,21 +247,20 @@ check() {
    fi
 }
 
-err() {
-   ESTAT=1
-   printf '%s: error: %s\n' ${1} "${2}"
-}
-
 check_ex0() {
    # $1=test name [$2=status]
    __qm__=${?}
    [ ${#} -gt 1 ] && __qm__=${2}
    if [ ${__qm__} -ne 0 ]; then
-      err "${TEST_NAME}-${1}" 'unexpected non-0 exit status'
-      return 0
+      ESTAT=1
+      [ -n "${TEST_ANY}" ] && __i__="\n" || __i__=
+      printf "${__i__}"'ERROR: %s: unexpected non-0 exist status: %s\n' \
+         "${1}" "${__qm__}"
+      TEST_ANY=
    else
-      printf '%s-%s: ok\n' "${TEST_NAME}" "${1}"
-      return 1
+      [ -n "${TEST_ANY}" ] && __i__=' ' || __i__=
+      printf "${__i__}"'%s%s:ok' "${1}"
+      TEST_ANY=1
    fi
 }
 
@@ -256,11 +269,15 @@ check_exn0() {
    __qm__=${?}
    [ ${#} -gt 1 ] && __qm__=${2}
    if [ ${__qm__} -eq 0 ]; then
-      err "${TEST_NAME}-${1}" 'unexpected 0 exit status'
-      return 1
+      ESTAT=1
+      [ -n "${TEST_ANY}" ] && __i__="\n" || __i__=
+      printf "${__i__}"'ERROR: %s: unexpected 0 exist status: %s\n' \
+         "${1}" "${__qm__}"
+      TEST_ANY=
    else
-      printf '%s-%s: ok\n' "${TEST_NAME}" "${1}"
-      return 0
+      [ -n "${TEST_ANY}" ] && __i__=' ' || __i__=
+      printf "${__i__}"'%s%s:ok' "${1}"
+      TEST_ANY=1
    fi
 }
 
@@ -6525,9 +6542,9 @@ cc_all_configs() {
 }
 
 [ -n "${ERR}" ]  && echo > ${ERR}
-if [ -z "${CHECK_ONLY}${MAE_TEST}" ]; then
+if [ -z "${CHECK_ONLY}${RUN_TEST}" ]; then
    cc_all_configs
-elif [ -z "${MAE_TEST}" ] || [ ${#} -eq 0 ]; then
+elif [ -z "${RUN_TEST}" ] || [ ${#} -eq 0 ]; then
 #   if have_feat devel; then
 #      ARGS="${ARGS} -Smemdebug"
 #      export ARGS
@@ -6541,7 +6558,8 @@ else
    done
 fi
 
-[ ${ESTAT} -eq 0 ] && echo Ok || echo >&2 'Errors occurred'
+[ ${ESTAT} -eq 0 ] && printf 'Exit status ok\n' ||
+   printf >&2 'Errors occurred\n'
 
 exit ${ESTAT}
 # s-sh-mode

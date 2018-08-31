@@ -1282,7 +1282,7 @@ make=${MAKE}
 export MAKE
 thecmd_testandset strip strip && HAVE_STRIP=1 || HAVE_STRIP=0
 
-# For ./cc-test.sh only
+# For ./mx-test.sh only
 thecmd_testandset_fail cksum cksum
 
 # Update OPT_ options now, in order to get possible inter-dependencies right
@@ -1334,7 +1334,7 @@ if [ -z "${VERBOSE}" ]; then
    printf -- "ECHO_BLOCK_BEGIN = @( \n" >> ${newmk}
    printf -- "ECHO_BLOCK_END = ) >/dev/null\n" >> ${newmk}
 fi
-printf 'test: all\n\t$(ECHO_TEST)%s %scc-test.sh --check-only %s\n' \
+printf 'test: all\n\t$(ECHO_TEST)%s %smx-test.sh --check-only %s\n' \
    "${SHELL}" "${TOPDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
 
 # Add the known utility and some other variables
