@@ -3151,6 +3151,12 @@ jinput_loop:
                   if(rv < 0)
                      goto jleave;
 
+                  /* As a special case, simulate EOF via EOT (which can happen
+                   * via type-ahead as when typing "yes\n^@" during sleep of
+                   *    $ sleep 5; mail -s byjove $LOGNAME */
+                  if(*cbufp == '\0' && (n_psonce & n_PSO_INTERACTIVE) &&
+                        !(n_pstate & n_PS_ROBOT))
+                     *cbuf = '\x04';
                   ++cbufp;
                }
 
