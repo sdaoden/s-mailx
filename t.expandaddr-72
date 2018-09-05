@@ -1,0 +1,4 @@
+reproducible_build: .tfile1: *expandaddr* does not allow file target
+reproducible_build: .tfile2: *expandaddr* does not allow file target
+reproducible_build: No recipients specified
+reproducible_build: ... message not sent
