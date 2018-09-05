@@ -6054,6 +6054,16 @@ t_lreply_futh_rth_etc() {
    check 8 0 "${MBOX}" '794031200 1567'
    check 9 - .tall '4294967295 0'
 
+   # And follow-up testing whether changing In-Reply-To: to - starts a new
+   # thread with only the message being replied-to.
+
+   printf 'reply 1\nthread with only one ref!\n!||%s -e "%s"\n!.\n' \
+         "${sed}" 's/^In-Reply-To:.*$/In-Reply-To:-/' |
+      ${MAILX} ${ARGS} -Sescape=! -Smta=./.tmta.sh -Sreply-to-honour \
+         ${argadd} -Rf "${MBOX}" > .tall 2>&1
+   check 10 0 "${MBOX}" '1266422860 2027'
+   check 11 - .tall '4294967295 0'
+
    t_epilog
 }
 # }}}

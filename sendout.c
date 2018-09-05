@@ -2162,7 +2162,9 @@ jto_fmt:
       if(np != NULL){
          if(nosend_msg == TRUM1 &&
                fputs(_("# Removing or modifying In-Reply-To: "
-                  "breaks the old, and starts a new thread\n"), fo) == EOF)
+                     "breaks the old, and starts a new thread.\n"
+                  "# Assigning hyphen-minus - creates a thread of only the "
+                     "replied-to message\n"), fo) == EOF)
             goto jleave;
          if(!a_sendout_put_addrline("In-Reply-To:", np, fo, 0))
             goto jleave;

@@ -698,8 +698,13 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
          /* Break the thread if In-Reply-To: has been modified */
          if(hp->h_in_reply_to == NULL || (saved_in_reply_to != NULL &&
                asccasecmp(hp->h_in_reply_to->n_fullname,
-                  saved_in_reply_to->n_fullname)))
+                  saved_in_reply_to->n_fullname))){
                hp->h_ref = NULL;
+               /* Create a thread of only the replied-to message if it is - */
+               if(hp->h_in_reply_to != NULL &&
+                     !strcmp(hp->h_in_reply_to->n_fullname, n_hy))
+                  hp->h_in_reply_to = hp->h_ref = saved_in_reply_to;
+         }
       }else{
          fseek(nf, 0L, SEEK_END);
          Fclose(_coll_fp);
