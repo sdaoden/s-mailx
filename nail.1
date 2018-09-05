@@ -9210,38 +9210,47 @@ The default value is the character tilde
 .Ql ~ .
 If set to the empty string, command escapes are disabled.
 .
+.
 .Mx
 .It Va expandaddr
 If unset then file and command pipeline address targets are not allowed,
 and any such address will be filtered out, giving a warning message.
 If set then all possible recipient address specifications will be
-accepted unless a possible value content is more specific (also see
-.Sx "On sending mail, and non-interactive mode" ) ;
-if desired so only in interactive mode, or when tilde commands were
-enabled explicitly via
+accepted, unless the optional value is more specific (also see
+.Sx "On sending mail, and non-interactive mode" ) .
+If the value contains
+.Ql restrict
+then behaviour equals the former unless in interactive mode, or when
+tilde commands were enabled explicitly via
 .Fl ~
 or
 .Fl # ,
-the (case-insensitive) value
+in which case it equals the latter, and thus allows all addressees.
 .Ql restrict
-can be used (this really acts like
-.Ql restrict,-all,+name,+addr ,
-so that care for ordering issues must be taken).
+really acts like
+.Ql restrict,\:-all,\:+name,\:+addr ,
+so care for ordering issues must be taken.
+.
 .Pp
-The value is actually interpreted as a comma-separated list.
-If that contains
-.Ql fail
-the existence of disallowed addressees is treated as a hard send error
-instead of only causing them to be filtered out.
-Address targets can be added and subtracted by prefixing with a plus sign
+Indeed the value is interpreted as a comma-separated list of
+case-insensitive strings.
+Presence of forbidden address types is treated as a hard send error
+instead of only causing them to be filtered out if the list contains
+.Ql fail .
+Address targets can be added and subtracted with a plus sign
 .Ql +
 or hyphen-minus
 .Ql -
 prefix: the value
 .Ql all
 addresses all possible address specifications,
+.Ql fcc
+whitelists targets specified via
+.Ql Fcc:
+headers regardless of other settings,
 .Ql file
-file targets,
+file targets (it includes
+.Ql fcc ) ,
 .Ql pipe
 command pipeline targets,
 .Ql name
@@ -9251,11 +9260,12 @@ network addresses;
 Targets are interpreted in the given order, so that
 .Ql restrict,\:fail,\:+file,\:-all,\:+addr
 will cause hard errors for any non-network address recipient address
-unless \*(UA is in interactive mode or has been started with the
+unless running interactively or having been started with the option
 .Fl ~
 or
-.Fl #
-command line option; in the latter case(s) any address may be used, then.
+.Fl # ;
+in the latter case(s) any address may be used, then.
+.
 .Pp
 Historically invalid network addressees were silently stripped off.
 To change this so that any encountered invalid email address causes
@@ -9265,13 +9275,14 @@ is an entry in the above list, which automatically enables network
 addressees; it really acts like
 .Ql failinvaddr,+addr ,
 so that care for ordering issues must be taken.
-\*(ID If the value
-.Ql shquote
-is present a few address providers (for example
+Finally some address providers (for example
 .Fl b , c
 and all recipients given on the command line) will be will evaluated as
 if specified within dollar-single-quotes (see
-.Sx "Shell-style argument quoting" ) .
+.Sx "Shell-style argument quoting" )
+if the value list contains the string
+.Ql shquote .
+.
 .
 .Mx
 .It Va expandargv

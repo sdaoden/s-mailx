@@ -1691,18 +1691,19 @@ jleave:
 
 FL enum expand_addr_flags
 expandaddr_to_eaf(void){
-   struct eafdesc {
-      char eafd_name[13];
+   struct eafdesc{
+      char eafd_name[15];
       bool_t eafd_is_target;
-      ui8_t eafd_andoff;
-      ui8_t eafd_or;
+      ui32_t eafd_andoff;
+      ui32_t eafd_or;
    } const eafa[] = {
       {"restrict", FAL0, EAF_TARGET_MASK, EAF_RESTRICT | EAF_RESTRICT_TARGETS},
       {"fail", FAL0, EAF_NONE, EAF_FAIL},
       {"failinvaddr\0", FAL0, EAF_NONE, EAF_FAILINVADDR | EAF_ADDR},
       {"shquote", FAL0, EAF_NONE, EAF_SHEXP_PARSE},
       {"all", TRU1, EAF_NONE, EAF_TARGET_MASK},
-         {"file", TRU1, EAF_NONE, EAF_FILE},
+         {"fcc", TRU1, EAF_NONE, EAF_FCC},
+         {"file", TRU1, EAF_NONE, EAF_FILE | EAF_FCC},
          {"pipe", TRU1, EAF_NONE, EAF_PIPE},
          {"name", TRU1, EAF_NONE, EAF_NAME},
          {"addr", TRU1, EAF_NONE, EAF_ADDR}
@@ -1760,7 +1761,7 @@ jandor:
          rv |= EAF_TARGET_MASK;
       else if(n_poption & n_PO_D_V){
          if(!(rv & EAF_TARGET_MASK))
-            n_err(_("*expandaddr* doesn't allow any addressees\n"));
+            n_err(_("*expandaddr* does not allow any addressees\n"));
          else if((rv & EAF_FAIL) && (rv & EAF_TARGET_MASK) == EAF_TARGET_MASK)
             n_err(_("*expandaddr* with fail, but no restrictions to apply\n"));
       }
@@ -1770,8 +1771,7 @@ jandor:
 }
 
 FL si8_t
-is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
-{
+is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm){
    char cbuf[sizeof "'\\U12340'"];
    char const *cs;
    int f;
@@ -1782,26 +1782,27 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
    eaf = expandaddr_to_eaf();
    f = np->n_flags;
 
-   if ((rv = ((f & NAME_ADDRSPEC_INVALID) != 0))) {
-      if (eaf & EAF_FAILINVADDR)
+   if((rv = ((f & NAME_ADDRSPEC_INVALID) != 0))){
+      if(eaf & EAF_FAILINVADDR)
          rv = -rv;
 
-      if ((eacm & EACM_NOLOG) || (f & NAME_ADDRSPEC_ERR_EMPTY)) {
-         ;
-      } else {
+      if(!(eacm & EACM_NOLOG) && !(f & NAME_ADDRSPEC_ERR_EMPTY)){
          ui32_t c;
-         char const *fmt = "'\\x%02X'";
-         bool_t ok8bit = TRU1;
+         bool_t ok8bit;
+         char const *fmt;
 
-         if (f & NAME_ADDRSPEC_ERR_IDNA) {
+         fmt = "'\\x%02X'";
+         ok8bit = TRU1;
+
+         if(f & NAME_ADDRSPEC_ERR_IDNA) {
             cs = _("Invalid domain name: %s, character %s\n");
             fmt = "'\\U%04X'";
             ok8bit = FAL0;
-         } else if (f & NAME_ADDRSPEC_ERR_ATSEQ)
+         }else if(f & NAME_ADDRSPEC_ERR_ATSEQ)
             cs = _("%s contains invalid %s sequence\n");
-         else if (f & NAME_ADDRSPEC_ERR_NAME) {
+         else if(f & NAME_ADDRSPEC_ERR_NAME)
             cs = _("%s is an invalid alias name\n");
-         } else
+         else
             cs = _("%s contains invalid byte %s\n");
 
          c = NAME_ADDRSPEC_ERR_GETWC(f);
@@ -1813,55 +1814,55 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm)
    }
 
    /* *expandaddr* stuff */
-   if (!(rv = ((eacm & EACM_MODE_MASK) != EACM_NONE)))
+   if(!(rv = ((eacm & EACM_MODE_MASK) != EACM_NONE)))
       goto jleave;
 
-   if ((eacm & EACM_STRICT) && (f & NAME_ADDRSPEC_ISFILEORPIPE)) {
-      if (eaf & EAF_FAIL)
+   /* This header does not allow such targets at all (XXX ->RFC 5322 parser) */
+   if((eacm & EACM_STRICT) && (f & NAME_ADDRSPEC_ISFILEORPIPE)){
+      if(eaf & EAF_FAIL)
          rv = -rv;
       cs = _("%s%s: file or pipe addressees not allowed here\n");
-      if (eacm & EACM_NOLOG)
-         goto jleave;
-      else
-         goto j0print;
+      goto j0print;
    }
 
    eaf |= (eacm & EAF_TARGET_MASK);
-   if (eacm & EACM_NONAME)
+   if(eacm & EACM_NONAME)
       eaf &= ~EAF_NAME;
-
-   if (eaf == EAF_NONE) {
-      rv = FAL0;
-      goto jleave;
-   }
-   if (eaf & EAF_FAIL)
+   if(eaf & EAF_FAIL)
       rv = -rv;
 
-   if (!(eaf & EAF_FILE) && (f & NAME_ADDRSPEC_ISFILE)) {
+   switch(f & NAME_ADDRSPEC_ISMASK){
+   case NAME_ADDRSPEC_ISFILE:
+      if((eaf & EAF_FILE) || ((eaf & EAF_FCC) && (np->n_type & GBCC_IS_FCC)))
+         goto jgood;
       cs = _("%s%s: *expandaddr* does not allow file target\n");
-      if (eacm & EACM_NOLOG)
-         goto jleave;
-   } else if (!(eaf & EAF_PIPE) && (f & NAME_ADDRSPEC_ISPIPE)) {
+      break;
+   case NAME_ADDRSPEC_ISPIPE:
+      if(eaf & EAF_PIPE)
+         goto jgood;
       cs = _("%s%s: *expandaddr* does not allow command pipe target\n");
-      if (eacm & EACM_NOLOG)
-         goto jleave;
-   } else if (!(eaf & EAF_NAME) && (f & NAME_ADDRSPEC_ISNAME)) {
+      break;
+   case NAME_ADDRSPEC_ISNAME:
+      if(eaf & EAF_NAME)
+         goto jgood;
       cs = _("%s%s: *expandaddr* does not allow user name target\n");
-      if (eacm & EACM_NOLOG)
-         goto jleave;
-   } else if (!(eaf & EAF_ADDR) && (f & NAME_ADDRSPEC_ISADDR)) {
+      break;
+   default:
+   case NAME_ADDRSPEC_ISADDR:
+      if(eaf & EAF_ADDR)
+         goto jgood;
       cs = _("%s%s: *expandaddr* does not allow mail address target\n");
-      if (eacm & EACM_NOLOG)
-         goto jleave;
-   } else {
-      rv = FAL0;
-      goto jleave;
+      break;
    }
 
 j0print:
    cbuf[0] = '\0';
+   if(!(eacm & EACM_NOLOG))
 jprint:
-   n_err(cs, n_shexp_quote_cp(np->n_name, TRU1), cbuf);
+      n_err(cs, n_shexp_quote_cp(np->n_name, TRU1), cbuf);
+   goto jleave;
+jgood:
+   rv = FAL0;
 jleave:
    NYD_OU;
    return rv;

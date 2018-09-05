@@ -3749,6 +3749,78 @@ t_expandaddr() {
    check 57 0 "${MBOX}" '900911911 1173'
    check 58 - .tall '4294967295 0'
 
+   #
+   printf '' > "${MBOX}"
+   ${cat} <<-_EOT |\
+      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -t -ssub \
+         -Sadd-file-recipients \
+         -Sexpandaddr=-all,+fcc \
+         > ./.tall 2>&1
+	Fcc: .tfile1
+	Fcc: .tfile2
+	_EOT
+   check 59 0 "${MBOX}" '4294967295 0'
+   check 60 - .tall '4294967295 0'
+   check 61 - .tfile1 '1067276522 124'
+   check 62 - .tfile2 '1067276522 124'
+
+   printf '' > "${MBOX}"
+   ${cat} <<-_EOT |\
+      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -t -ssub \
+         -Sadd-file-recipients \
+         -Sexpandaddr=-all,+file \
+         > ./.tall 2>&1
+	Fcc: .tfile1
+	Fcc: .tfile2
+	_EOT
+   check 63 0 "${MBOX}" '4294967295 0'
+   check 64 - .tall '4294967295 0'
+   check 65 - .tfile1 '2677253527 248'
+   check 66 - .tfile2 '2677253527 248'
+
+   printf '' > "${MBOX}"
+   ${cat} <<-_EOT |\
+      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -t -ssub \
+         -Sadd-file-recipients \
+         -Sexpandaddr=-all,+file,-fcc \
+         > ./.tall 2>&1
+	Fcc: .tfile1
+	Fcc: .tfile2
+	_EOT
+   check 67 0 "${MBOX}" '4294967295 0'
+   check 68 - .tall '4294967295 0'
+   check 69 - .tfile1 '3493511004 372'
+   check 70 - .tfile2 '3493511004 372'
+
+   printf '' > "${MBOX}"
+   ${cat} <<-_EOT |\
+      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -t -ssub \
+         -Sadd-file-recipients \
+         -Sexpandaddr=-all,+fcc,-file \
+         > ./.tall 2>&1
+	Fcc: .tfile1
+	Fcc: .tfile2
+	_EOT
+   check 71 4 "${MBOX}" '4294967295 0'
+   check 72 - .tall '203687556 223'
+   check 73 - .tfile1 '3493511004 372'
+   check 74 - .tfile2 '3493511004 372'
+
+   printf '' > "${MBOX}"
+   ${cat} <<-_EOT |\
+      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -t -ssub \
+         -Sadd-file-recipients \
+         -Sexpandaddr=-all,fail,+addr \
+         > ./.tall 2>&1
+	Fcc: .tfile1
+	Fcc: .tfile2
+	To: never@exam.ple
+	_EOT
+   check 75 4 "${MBOX}" '4294967295 0'
+   check 76 - .tall '4060426468 247'
+   check 77 - .tfile1 '3493511004 372'
+   check 78 - .tfile2 '3493511004 372'
+
    t_epilog
 }
 

@@ -582,18 +582,19 @@ enum authtype {
 };
 
 enum expand_addr_flags {
-   EAF_NONE       = 0,        /* -> EAF_NOFILE | EAF_NOPIPE */
-   EAF_RESTRICT   = 1u<<0,    /* "restrict" (do unless interaktive / -[~#]) */
-   EAF_FAIL       = 1u<<1,    /* "fail" */
-   EAF_FAILINVADDR = 1u<<2,   /* "failinvaddr" */
-   EAF_SHEXP_PARSE = 1u<<3,    /* shexp_parse() the address first is allowed */
+   EAF_NONE = 0,           /* -> EAF_NOFILE | EAF_NOPIPE */
+   EAF_RESTRICT = 1u<<0,   /* "restrict" (do unless interaktive / -[~#]) */
+   EAF_FAIL = 1u<<1,       /* "fail" */
+   EAF_FAILINVADDR = 1u<<2, /* "failinvaddr" */
+   EAF_SHEXP_PARSE = 1u<<3, /* shexp_parse() the address first is allowed */
    /* Bits reused by enum expand_addr_check_mode! */
-   EAF_FILE       = 1u<<4,    /* +"file" targets */
-   EAF_PIPE       = 1u<<5,    /* +"pipe" command pipe targets */
-   EAF_NAME       = 1u<<6,    /* +"name"s (non-address) names / MTA aliases */
-   EAF_ADDR       = 1u<<7,    /* +"addr" network address (contain "@") */
+   EAF_FCC = 1u<<4,        /* +"fcc" umbrella */
+   EAF_FILE = 1u<<5,       /* +"file" targets */
+   EAF_PIPE = 1u<<6,       /* +"pipe" command pipe targets */
+   EAF_NAME = 1u<<7,       /* +"name"s (non-address) names / MTA aliases */
+   EAF_ADDR = 1u<<8,       /* +"addr" network address (contain "@") */
 
-   EAF_TARGET_MASK  = EAF_FILE | EAF_PIPE | EAF_NAME | EAF_ADDR,
+   EAF_TARGET_MASK  = EAF_FCC | EAF_FILE | EAF_PIPE | EAF_NAME | EAF_ADDR,
    EAF_RESTRICT_TARGETS = EAF_NAME | EAF_ADDR /* (default set if not set) */
    /* TODO HACK!  In pre-v15 we have a control flow problem (it is a general
     * TODO design problem): if n_collect() calls makeheader(), e.g., for -t or
@@ -607,21 +608,21 @@ enum expand_addr_flags {
     * TODO which will be subject to namelist_vaporise_head() later on!! --,
     * TODO if it is set (by n_header_extract()) then checkaddr() will NOT strip
     * TODO invalid headers off IF it deals with a NULL senderror pointer */
-   ,EAF_MAYKEEP    = 1u<<8
+   ,EAF_MAYKEEP    = 1u<<15
 };
 
 enum expand_addr_check_mode {
-   EACM_NONE      = 0,        /* Don't care about *expandaddr* */
-   EACM_NORMAL    = 1<<0,     /* Use our normal *expandaddr* checking */
-   EACM_STRICT    = 1<<1,     /* Never allow any file or pipe addresse */
-   EACM_MODE_MASK = 0x3,      /* _NORMAL and _STRICT are mutual! */
+   EACM_NONE = 0u,         /* Don't care about *expandaddr* */
+   EACM_NORMAL = 1u<<0,    /* Use our normal *expandaddr* checking */
+   EACM_STRICT = 1u<<1,    /* Never allow any file or pipe addresse */
+   EACM_MODE_MASK = 0x3u,  /* _NORMAL and _STRICT are mutual! */
 
-   EACM_NOLOG     = 1<<2,     /* Don't log check errors */
+   EACM_NOLOG = 1u<<2,     /* Do not log check errors */
 
    /* Some special overwrites of EAF_TARGETs.
     * May NOT clash with EAF_* bits which may be ORd to these here! */
 
-   EACM_NONAME    = 1<<16
+   EACM_NONAME = 1u<<16
 };
 
 enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
