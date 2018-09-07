@@ -3854,20 +3854,25 @@ jesubstring_len:
          struct a_amv_lostack los;
          struct a_amv_mac_call_args amca;
          char const **reargv;
+         size_t cnt;
 
          memset(&amca, 0, sizeof amca);
          amca.amca_name = savestrbuf(&argv[1][rema[0].rm_so],
                rema[0].rm_eo - rema[0].rm_so);
          amca.amca_amp = a_AMV_MACKY_MACK;
-         for(i = 1; i < n_NELEM(rema) && rema[i].rm_so != -1; ++i)
-            ;
-         amca.amca_pospar.app_count = (ui32_t)i - 1;
+         for(cnt = i = 1; i < n_NELEM(rema); ++i)
+            if(rema[i].rm_so != -1)
+               cnt = i;
+         amca.amca_pospar.app_count = (ui32_t)cnt;
          amca.amca_pospar.app_not_heap = TRU1;
          amca.amca_pospar.app_dat =
-         reargv = n_autorec_alloc(sizeof(char*) * i);
-         for(i = 1; i < n_NELEM(rema) && rema[i].rm_so != -1; ++i)
-            *reargv++ = savestrbuf(&argv[1][rema[i].rm_so],
-                  rema[i].rm_eo - rema[i].rm_so);
+               reargv = n_autorec_alloc(sizeof(char*) * (cnt +1));
+         for(i = 1; i <= cnt; ++reargv, ++i)
+            if(rema[i].rm_so != -1)
+               *reargv = savestrbuf(&argv[1][rema[i].rm_so],
+                     rema[i].rm_eo - rema[i].rm_so);
+            else
+               *reargv = n_empty;
          *reargv = NULL;
 
          memset(&los, 0, sizeof los);

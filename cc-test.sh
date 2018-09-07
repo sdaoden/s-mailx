@@ -2362,9 +2362,19 @@ t_vexpr() {
 		vput vexpr res iregex 'bananarama' '(.+)rama' '\$1\$0'
 		echo $?/$^ERRNAME :$res:
 		echo ' #4'
+		vput vexpr res regex 'banana' '(club )?(.*)(nana)(.*)' \
+         '\$1\${2}\$4\${3}rama'
+		echo $?/$^ERRNAME :$res:
+		vput vexpr res regex 'Banana' '(club )?(.*)(nana)(.*)' \
+         '\$1\$2\${2}\$2\$4\${3}rama'
+		echo $?/$^ERRNAME :$res:
+		vput vexpr res regex 'Club banana' '(club )?(.*)(nana)(.*)' \
+         '\$1\${2}\$4\${3}rama'
+		echo $?/$^ERRNAME :$res:
+		echo ' #5'
 		__EOT
 
-      check regex 0 "${MBOX}" '3270360157 311'
+      check regex 0 "${MBOX}" '3949279959 384'
    else
       printf 'vexpr-regex: unsupported, skipped\n'
    fi
