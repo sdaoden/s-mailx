@@ -42,7 +42,7 @@
 #undef su_FILE
 #define su_FILE go
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -838,7 +838,7 @@ a_go_hangup(int s){
    exit(n_EXIT_ERR);
 }
 
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
 FL void n_go_onintr_for_imap(void){a_go_onintr(0);}
 #endif
 static void
@@ -1298,7 +1298,7 @@ n_go_main_loop(void){ /* FIXME */
 
             if(mb.mb_type == MB_FILE){
                if(!stat(mailname, &st) && st.st_size > mailsize)
-#if defined HAVE_MAILDIR || defined HAVE_IMAP
+#if defined mx_HAVE_MAILDIR || defined mx_HAVE_IMAP
                Jnewmail:
 #endif
                {
@@ -1319,27 +1319,27 @@ n_go_main_loop(void){ /* FIXME */
                      rv = FAL0;
                      break;
                   }
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
                   if(mb.mb_type != MB_IMAP){
 #endif
                      dot = &message[odot];
                      n_pstate |= odid;
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
                   }
 #endif
                }
             }else{
-#if defined HAVE_MAILDIR || defined HAVE_IMAP
+#if defined mx_HAVE_MAILDIR || defined mx_HAVE_IMAP
                n = (cp != NULL && strcmp(cp, "nopoll"));
 #endif
 
-#ifdef HAVE_MAILDIR
+#ifdef mx_HAVE_MAILDIR
                if(mb.mb_type == MB_MAILDIR){
                   if(n != 0)
                      goto Jnewmail;
                }
 #endif
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
                if(mb.mb_type == MB_IMAP){
                   if(!n)
                      n = (cp != NULL && strcmp(cp, "noimap"));

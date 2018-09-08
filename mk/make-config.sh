@@ -776,12 +776,12 @@ feat_bail_required() {
 
 feat_is_disabled() {
    [ ${#} -eq 1 ] && msg ' .  (disabled: OPT_%s)' "${1}"
-   echo "/* OPT_${1} -> HAVE_${1} */" >> ${h}
+   echo "/* OPT_${1} -> mx_HAVE_${1} */" >> ${h}
 }
 
 feat_is_unsupported() {
    msg ' ! NOTICE: unsupported: OPT_%s' "${1}"
-   echo "/* OPT_${1} -> HAVE_${1} */" >> ${h}
+   echo "/* OPT_${1} -> mx_HAVE_${1} */" >> ${h}
    eval OPT_${1}=0
    option_update # XXX this is rather useless here (dependency chain..)
 }
@@ -789,7 +789,7 @@ feat_is_unsupported() {
 feat_def() {
    if feat_yes ${1}; then
       msg ' . %s ... yes' "${1}"
-      echo '#define HAVE_'${1}'' >> ${h}
+      echo '#define mx_HAVE_'${1}'' >> ${h}
       return 0
    else
       feat_is_disabled "${@}"
@@ -1534,7 +1534,7 @@ feat_def NYD2 0
 feat_def NOMEMDBG 0
 
 if xrun_check inline 'inline functions' \
-   '#define HAVE_INLINE
+   '#define mx_HAVE_INLINE
    #define n_INLINE static inline' << \!
 static inline int ilf(int i){return ++i;}
 int main(void){return ilf(-1);}
@@ -1542,7 +1542,7 @@ int main(void){return ilf(-1);}
 then
    :
 elif xrun_check inline 'inline functions (via __inline)' \
-   '#define HAVE_INLINE
+   '#define mx_HAVE_INLINE
    #define n_INLINE static __inline' << \!
 static __inline int ilf(int i){return ++i;}
 int main(void){return ilf(-1);}
@@ -1556,7 +1556,7 @@ fi
 ## macros to be used by only the subprograms (potentially).
 
 if run_check clock_gettime 'clock_gettime(2)' \
-   '#define HAVE_CLOCK_GETTIME' << \!
+   '#define mx_HAVE_CLOCK_GETTIME' << \!
 #include <time.h>
 # include <errno.h>
 int main(void){
@@ -1570,7 +1570,7 @@ int main(void){
 then
    :
 elif run_check clock_gettime 'clock_gettime(2) (via -lrt)' \
-   '#define HAVE_CLOCK_GETTIME' '-lrt' << \!
+   '#define mx_HAVE_CLOCK_GETTIME' '-lrt' << \!
 #include <time.h>
 # include <errno.h>
 int main(void){
@@ -1584,7 +1584,7 @@ int main(void){
 then
    :
 elif run_check gettimeofday 'gettimeofday(2)' \
-   '#define HAVE_GETTIMEOFDAY' << \!
+   '#define mx_HAVE_GETTIMEOFDAY' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <sys/time.h>
 # include <errno.h>
@@ -1603,7 +1603,7 @@ else
 fi
 
 if run_check nanosleep 'nanosleep(2)' \
-   '#define HAVE_NANOSLEEP' << \!
+   '#define mx_HAVE_NANOSLEEP' << \!
 #include <time.h>
 # include <errno.h>
 int main(void){
@@ -1619,7 +1619,7 @@ int main(void){
 then
    :
 elif run_check nanosleep 'nanosleep(2) (via -lrt)' \
-   '#define HAVE_NANOSLEEP' '-lrt' << \!
+   '#define mx_HAVE_NANOSLEEP' '-lrt' << \!
 #include <time.h>
 # include <errno.h>
 int main(void){
@@ -1636,7 +1636,7 @@ then
    :
 # link_check is enough for this, that function is so old, trust the proto
 elif link_check sleep 'sleep(3)' \
-   '#define HAVE_SLEEP' << \!
+   '#define mx_HAVE_SLEEP' << \!
 #include <unistd.h>
 # include <errno.h>
 int main(void){
@@ -1681,7 +1681,7 @@ else
 fi
 
 if link_check ftruncate 'ftruncate(2)' \
-   '#define HAVE_FTRUNCATE' << \!
+   '#define mx_HAVE_FTRUNCATE' << \!
 #include <unistd.h>
 #include <sys/types.h>
 int main(void){
@@ -1691,7 +1691,7 @@ int main(void){
 then
    :
 else
-   # TODO support HAVE_FTRUNCATE *everywhere*, do not require this syscall!
+   # TODO support mx_HAVE_FTRUNCATE *everywhere*, do not require this syscall!
    msg 'ERROR: we require the ftruncate(2) system call.'
    config_exit 1
 fi
@@ -1746,7 +1746,7 @@ else
    config_exit 1
 fi
 
-if link_check setenv '(un)?setenv(3)' '#define HAVE_SETENV' << \!
+if link_check setenv '(un)?setenv(3)' '#define mx_HAVE_SETENV' << \!
 #include <stdlib.h>
 int main(void){
    setenv("s-mailx", "i want to see it cute!", 1);
@@ -1756,7 +1756,7 @@ int main(void){
 !
 then
    :
-elif link_check setenv 'putenv(3)' '#define HAVE_PUTENV' << \!
+elif link_check setenv 'putenv(3)' '#define mx_HAVE_PUTENV' << \!
 #include <stdlib.h>
 int main(void){
    putenv("s-mailx=i want to see it cute!");
@@ -1816,7 +1816,7 @@ fi
 if [ "${have_vsnprintf}" = yes ]; then
    __va_copy() {
       link_check va_copy "va_copy(3) (as ${2})" \
-         "#define HAVE_N_VA_COPY
+         "#define mx_HAVE_N_VA_COPY
 #define n_va_copy ${2}" <<_EOT
 #include <stdarg.h>
 #include <stdio.h>
@@ -1850,7 +1850,7 @@ _EOT
    __va_copy 0 va_copy || __va_copy 1 __va_copy
 fi
 
-run_check pathconf 'f?pathconf(2)' '#define HAVE_PATHCONF' << \!
+run_check pathconf 'f?pathconf(2)' '#define mx_HAVE_PATHCONF' << \!
 #include <unistd.h>
 #include <errno.h>
 int main(void){
@@ -1868,7 +1868,7 @@ int main(void){
 }
 !
 
-run_check pipe2 'pipe2(2)' '#define HAVE_PIPE2' << \!
+run_check pipe2 'pipe2(2)' '#define mx_HAVE_PIPE2' << \!
 #include <fcntl.h>
 #include <unistd.h>
 # include <errno.h>
@@ -1881,7 +1881,7 @@ int main(void){
 }
 !
 
-link_check tcgetwinsize 'tcgetwinsize(3)' '#define HAVE_TCGETWINSIZE' << \!
+link_check tcgetwinsize 'tcgetwinsize(3)' '#define mx_HAVE_TCGETWINSIZE' << \!
 #include <termios.h>
 int main(void){
    struct winsize ws;
@@ -1892,7 +1892,7 @@ int main(void){
 !
 
 # We use this only then for now (need NOW+1)
-run_check utimensat 'utimensat(2)' '#define HAVE_UTIMENSAT' << \!
+run_check utimensat 'utimensat(2)' '#define mx_HAVE_UTIMENSAT' << \!
 #include <fcntl.h> /* For AT_* */
 #include <sys/stat.h>
 # include <errno.h>
@@ -1912,7 +1912,7 @@ int main(void){
 # The random check has been moved to below TLS detection due to multiple choice
 # selection for PRG sources
 
-link_check putc_unlocked 'putc_unlocked(3)' '#define HAVE_PUTC_UNLOCKED' <<\!
+link_check putc_unlocked 'putc_unlocked(3)' '#define mx_HAVE_PUTC_UNLOCKED' <<\!
 #include <stdio.h>
 int main(void){
    putc_unlocked('@', stdout);
@@ -1920,7 +1920,7 @@ int main(void){
 }
 !
 
-link_check fchdir 'fchdir(3)' '#define HAVE_FCHDIR' << \!
+link_check fchdir 'fchdir(3)' '#define mx_HAVE_FCHDIR' << \!
 #include <unistd.h>
 int main(void){
    fchdir(0);
@@ -1928,7 +1928,7 @@ int main(void){
 }
 !
 
-if link_check realpath 'realpath(3)' '#define HAVE_REALPATH' << \!
+if link_check realpath 'realpath(3)' '#define mx_HAVE_REALPATH' << \!
 #include <stdlib.h>
 int main(void){
    char x_buf[4096], *x = realpath(".", x_buf);
@@ -1938,7 +1938,7 @@ int main(void){
 !
 then
    if run_check realpath_malloc 'realpath(3) takes NULL' \
-         '#define HAVE_REALPATH_NULL' << \!
+         '#define mx_HAVE_REALPATH_NULL' << \!
 #include <stdlib.h>
 int main(void){
    char *x = realpath(".", NULL);
@@ -1995,7 +1995,7 @@ fi
 
 if feat_yes DOTLOCK; then
    if run_check prctl_dumpable 'prctl(2) + PR_SET_DUMPABLE' \
-         '#define HAVE_PRCTL_DUMPABLE' << \!
+         '#define mx_HAVE_PRCTL_DUMPABLE' << \!
 #include <sys/prctl.h>
 # include <errno.h>
 int main(void){
@@ -2007,7 +2007,7 @@ int main(void){
    then
       :
    elif run_check prtrace_deny 'ptrace(2) + PT_DENY_ATTACH' \
-         '#define HAVE_PTRACE_DENY' << \!
+         '#define mx_HAVE_PTRACE_DENY' << \!
 #include <sys/ptrace.h>
 # include <errno.h>
 int main(void){
@@ -2019,7 +2019,7 @@ int main(void){
    then
       :
    elif run_check setpflags_protect 'setpflags(2) + __PROC_PROTECT' \
-         '#define HAVE_SETPFLAGS_PROTECT' << \!
+         '#define mx_HAVE_SETPFLAGS_PROTECT' << \!
 #include <priv.h>
 # include <errno.h>
 int main(void){
@@ -2047,7 +2047,7 @@ echo "BASE_INCS = `${cat} ${inc}`" >> ${mk}
 ## The remains are expected to be used only by the main MUA binary!
 
 OPT_LOCALES=0
-link_check setlocale 'setlocale(3)' '#define HAVE_SETLOCALE' << \!
+link_check setlocale 'setlocale(3)' '#define mx_HAVE_SETLOCALE' << \!
 #include <locale.h>
 int main(void){
    setlocale(LC_ALL, "");
@@ -2061,7 +2061,7 @@ OPT_WIDE_GLYPHS=0
 OPT_TERMINAL_CHARSET=0
 if [ -n "${have_setlocale}" ]; then
    link_check c90amend1 'ISO/IEC 9899:1990/Amendment 1:1995' \
-      '#define HAVE_C90AMEND1' << \!
+      '#define mx_HAVE_C90AMEND1' << \!
 #include <limits.h>
 #include <stdlib.h>
 #include <wchar.h>
@@ -2081,7 +2081,7 @@ int main(void){
    [ -n "${have_c90amend1}" ] && OPT_MULTIBYTE_CHARSETS=1
 
    if [ -n "${have_c90amend1}" ]; then
-      link_check wcwidth 'wcwidth(3)' '#define HAVE_WCWIDTH' << \!
+      link_check wcwidth 'wcwidth(3)' '#define mx_HAVE_WCWIDTH' << \!
 #include <wchar.h>
 int main(void){
    wcwidth(L'c');
@@ -2091,7 +2091,7 @@ int main(void){
       [ -n "${have_wcwidth}" ] && OPT_WIDE_GLYPHS=1
    fi
 
-   link_check nl_langinfo 'nl_langinfo(3)' '#define HAVE_NL_LANGINFO' << \!
+   link_check nl_langinfo 'nl_langinfo(3)' '#define mx_HAVE_NL_LANGINFO' << \!
 #include <langinfo.h>
 #include <stdlib.h>
 int main(void){
@@ -2102,14 +2102,14 @@ int main(void){
    [ -n "${have_nl_langinfo}" ] && OPT_TERMINAL_CHARSET=1
 fi # have_setlocale
 
-link_check fnmatch 'fnmatch(3)' '#define HAVE_FNMATCH' << \!
+link_check fnmatch 'fnmatch(3)' '#define mx_HAVE_FNMATCH' << \!
 #include <fnmatch.h>
 int main(void){
    return (fnmatch("*", ".", FNM_PATHNAME | FNM_PERIOD) == FNM_NOMATCH);
 }
 !
 
-link_check dirent_d_type 'struct dirent.d_type' '#define HAVE_DIRENT_TYPE' << \!
+link_check dirent_d_type 'struct dirent.d_type' '#define mx_HAVE_DIRENT_TYPE' << \!
 #include <dirent.h>
 int main(void){
    struct dirent de;
@@ -2167,9 +2167,9 @@ int main(void){
 }
 !
    < ${tmp2}.c link_check iconv 'iconv(3) functionality' \
-         '#define HAVE_ICONV' ||
+         '#define mx_HAVE_ICONV' ||
       < ${tmp2}.c link_check iconv 'iconv(3) functionality (via -liconv)' \
-         '#define HAVE_ICONV' '-liconv' ||
+         '#define mx_HAVE_ICONV' '-liconv' ||
       feat_bail_required ICONV
 
    if feat_no CROSS_BUILD; then
@@ -2206,11 +2206,11 @@ int main(void){
 !
 
    < ${tmp2}.c run_check af_unix 'AF_UNIX sockets' \
-         '#define HAVE_UNIX_SOCKETS' ||
+         '#define mx_HAVE_UNIX_SOCKETS' ||
       < ${tmp2}.c run_check af_unix 'AF_UNIX sockets (via -lnsl)' \
-         '#define HAVE_UNIX_SOCKETS' '-lnsl' ||
+         '#define mx_HAVE_UNIX_SOCKETS' '-lnsl' ||
       < ${tmp2}.c run_check af_unix 'AF_UNIX sockets (via -lsocket -lnsl)' \
-         '#define HAVE_UNIX_SOCKETS' '-lsocket -lnsl'
+         '#define mx_HAVE_UNIX_SOCKETS' '-lsocket -lnsl'
 fi
 
 if feat_yes SOCKETS; then
@@ -2231,18 +2231,18 @@ int main(void){
 !
 
    < ${tmp2}.c run_check sockets 'sockets' \
-         '#define HAVE_SOCKETS' ||
+         '#define mx_HAVE_SOCKETS' ||
       < ${tmp2}.c run_check sockets 'sockets (via -lnsl)' \
-         '#define HAVE_SOCKETS' '-lnsl' ||
+         '#define mx_HAVE_SOCKETS' '-lnsl' ||
       < ${tmp2}.c run_check sockets 'sockets (via -lsocket -lnsl)' \
-         '#define HAVE_SOCKETS' '-lsocket -lnsl' ||
+         '#define mx_HAVE_SOCKETS' '-lsocket -lnsl' ||
       feat_bail_required SOCKETS
 else
    feat_is_disabled SOCKETS
 fi # feat_yes SOCKETS
 
 feat_yes SOCKETS &&
-   link_check sockopt '[gs]etsockopt(2)' '#define HAVE_SOCKOPT' << \!
+   link_check sockopt '[gs]etsockopt(2)' '#define mx_HAVE_SOCKOPT' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
 # include <errno.h>
@@ -2263,7 +2263,7 @@ int main(void){
 
 feat_yes SOCKETS &&
    link_check nonblocksock 'non-blocking sockets' \
-      '#define HAVE_NONBLOCKSOCK' << \!
+      '#define mx_HAVE_NONBLOCKSOCK' << \!
 #include <sys/types.h>
 #include <sys/select.h>
 #include <sys/socket.h>
@@ -2311,7 +2311,7 @@ int main(void){
 
 if feat_yes SOCKETS; then
    link_check getaddrinfo 'getaddrinfo(3)' \
-      '#define HAVE_GETADDRINFO' << \!
+      '#define mx_HAVE_GETADDRINFO' << \!
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdio.h>
@@ -2335,7 +2335,7 @@ fi
 
 if feat_yes SOCKETS && [ -z "${have_getaddrinfo}" ]; then
    compile_check arpa_inet_h '<arpa/inet.h>' \
-      '#define HAVE_ARPA_INET_H' << \!
+      '#define mx_HAVE_ARPA_INET_H' << \!
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -2350,7 +2350,7 @@ if feat_yes SOCKETS && [ -z "${have_getaddrinfo}" ]; then
 #include <string.h>
 #include <netdb.h>
 #include <netinet/in.h>
-#ifdef HAVE_ARPA_INET_H
+#ifdef mx_HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif
 int main(void){
@@ -2401,7 +2401,7 @@ int main(void){
 fi
 
 feat_yes SOCKETS && [ -n "${have_sockopt}" ] &&
-   link_check so_xtimeo 'SO_{RCV,SND}TIMEO' '#define HAVE_SO_XTIMEO' << \!
+   link_check so_xtimeo 'SO_{RCV,SND}TIMEO' '#define mx_HAVE_SO_XTIMEO' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
 int main(void){
@@ -2417,7 +2417,7 @@ int main(void){
 !
 
 feat_yes SOCKETS && [ -n "${have_sockopt}" ] &&
-   link_check so_linger 'SO_LINGER' '#define HAVE_SO_LINGER' << \!
+   link_check so_linger 'SO_LINGER' '#define mx_HAVE_SO_LINGER' << \!
 #include <sys/socket.h>
 #include <stdlib.h>
 int main(void){
@@ -2437,10 +2437,10 @@ if feat_yes TLS; then # {{{
    # instead of keeping it at the one that corresponds to the OpenSSL at fork
    # time: we need to test it first in order to get things right
    if compile_check _xtls 'TLS (LibreSSL)' \
-      '#define HAVE_TLS
-      #define HAVE_XTLS
-      #define HAVE_XTLS_RESSL
-      #define HAVE_XTLS_OPENSSL 0' << \!
+      '#define mx_HAVE_TLS
+      #define mx_HAVE_XTLS
+      #define mx_HAVE_XTLS_RESSL
+      #define mx_HAVE_XTLS_OPENSSL 0' << \!
 #include <openssl/opensslv.h>
 #ifdef LIBRESSL_VERSION_NUMBER
 #else
@@ -2452,9 +2452,9 @@ if feat_yes TLS; then # {{{
       VAL_TLS_FEATURES=libressl
    # TODO OPENSSL_IS_BORINGSSL, but never tried that one!
    elif compile_check _xtls 'TLS (OpenSSL >= v1.1.0)' \
-      '#define HAVE_TLS
-      #define HAVE_XTLS
-      #define HAVE_XTLS_OPENSSL 0x10100' << \!
+      '#define mx_HAVE_TLS
+      #define mx_HAVE_XTLS
+      #define mx_HAVE_XTLS_OPENSSL 0x10100' << \!
 #include <openssl/opensslv.h>
 #if OPENSSL_VERSION_NUMBER + 0 >= 0x10100000L
 #else
@@ -2465,9 +2465,9 @@ if feat_yes TLS; then # {{{
       ossl_v1_1=1
       VAL_TLS_FEATURES=libssl-0x10100
    elif compile_check _xtls 'TLS (OpenSSL)' \
-      '#define HAVE_TLS
-      #define HAVE_XTLS
-      #define HAVE_XTLS_OPENSSL 0x10000' << \!
+      '#define mx_HAVE_TLS
+      #define mx_HAVE_XTLS
+      #define mx_HAVE_XTLS_OPENSSL 0x10000' << \!
 #include <openssl/opensslv.h>
 #ifdef OPENSSL_VERSION_NUMBER
 #else
@@ -2537,9 +2537,9 @@ int main(void){
    if feat_yes TLS; then # {{{
       if [ -n "${ossl_v1_1}" ]; then
          without_check yes xtls_stack_of 'TLS STACK_OF()' \
-            '#define HAVE_XTLS_STACK_OF'
+            '#define mx_HAVE_XTLS_STACK_OF'
       elif compile_check xtls_stack_of 'TLS STACK_OF()' \
-            '#define HAVE_XTLS_STACK_OF' << \!
+            '#define mx_HAVE_XTLS_STACK_OF' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -2559,11 +2559,11 @@ int main(void){
 
       if [ -n "${ossl_v1_1}" ]; then
          without_check yes xtls_conf 'TLS OpenSSL_modules_load_file(3ssl)' \
-            '#define HAVE_XTLS_CONFIG'
+            '#define mx_HAVE_XTLS_CONFIG'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+modules-load-file"
       elif link_check xtls_conf \
             'TLS OpenSSL_modules_load_file(3ssl) support' \
-            '#define HAVE_XTLS_CONFIG' << \!
+            '#define mx_HAVE_XTLS_CONFIG' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/conf.h>
 int main(void){
@@ -2580,10 +2580,10 @@ int main(void){
 
       if [ -n "${ossl_v1_1}" ]; then
          without_check yes xtls_conf_ctx 'TLS SSL_CONF_CTX support' \
-            '#define HAVE_XTLS_CONF_CTX'
+            '#define mx_HAVE_XTLS_CONF_CTX'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+conf-ctx"
       elif link_check xtls_conf_ctx 'TLS SSL_CONF_CTX support' \
-         '#define HAVE_XTLS_CONF_CTX' << \!
+         '#define mx_HAVE_XTLS_CONF_CTX' << \!
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 int main(void){
@@ -2609,11 +2609,11 @@ int main(void){
 
       if [ -n "${ossl_v1_1}" ]; then
          without_check yes xtls_ctx_config 'TLS SSL_CTX_config(3ssl)' \
-            '#define HAVE_XTLS_CTX_CONFIG'
+            '#define mx_HAVE_XTLS_CTX_CONFIG'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-config"
       elif [ -n "${have_xtls_conf}" ] && [ -n "${have_xtls_conf_ctx}" ] &&
             link_check xtls_ctx_config 'TLS SSL_CTX_config(3ssl)' \
-               '#define HAVE_XTLS_CTX_CONFIG' << \!
+               '#define mx_HAVE_XTLS_CTX_CONFIG' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 int main(void){
@@ -2630,11 +2630,11 @@ int main(void){
       if [ -n "${ossl_v1_1}" ] && [ -n "${have_xtls_conf_ctx}" ]; then
          without_check yes xtls_set_maxmin_proto \
             'TLS SSL_CTX_set_min_proto_version(3ssl)' \
-            '#define HAVE_XTLS_SET_MIN_PROTO_VERSION'
+            '#define mx_HAVE_XTLS_SET_MIN_PROTO_VERSION'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-set-maxmin-proto"
       elif link_check xtls_set_maxmin_proto \
          'TLS SSL_CTX_set_min_proto_version(3ssl)' \
-         '#define HAVE_XTLS_SET_MIN_PROTO_VERSION' << \!
+         '#define mx_HAVE_XTLS_SET_MIN_PROTO_VERSION' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 int main(void){
@@ -2652,11 +2652,11 @@ int main(void){
       if [ -n "${ossl_v1_1}" ] && [ -n "${have_xtls_conf_ctx}" ]; then
          without_check yes xtls_set_ciphersuites \
             'TLSv1.3 SSL_CTX_set_ciphersuites(3ssl)' \
-            '#define HAVE_XTLS_SET_CIPHERSUITES'
+            '#define mx_HAVE_XTLS_SET_CIPHERSUITES'
          VAL_TLS_FEATURES="${VAL_TLS_FEATURES},+ctx-set-ciphersuites"
       elif link_check xtls_set_ciphersuites \
          'TLSv1.3 SSL_CTX_set_ciphersuites(3ssl)' \
-         '#define HAVE_XTLS_SET_CIPHERSUITES' << \!
+         '#define mx_HAVE_XTLS_SET_CIPHERSUITES' << \!
 #include <stdio.h> /* For C89 NULL */
 #include <openssl/ssl.h>
 int main(void){
@@ -2675,9 +2675,9 @@ int main(void){
       if feat_yes TLS_ALL_ALGORITHMS; then
          if [ -n "${ossl_v1_1}" ]; then
             without_check yes tls_all_algo 'TLS_ALL_ALGORITHMS support' \
-               '#define HAVE_TLS_ALL_ALGORITHMS'
+               '#define mx_HAVE_TLS_ALL_ALGORITHMS'
          elif link_check tls_all_algo 'TLS all-algorithms support' \
-            '#define HAVE_TLS_ALL_ALGORITHMS' << \!
+            '#define mx_HAVE_TLS_ALL_ALGORITHMS' << \!
 #include <openssl/evp.h>
 int main(void){
    OpenSSL_add_all_algorithms();
@@ -2694,12 +2694,12 @@ int main(void){
       elif [ -n "${ossl_v1_1}" ]; then
          without_check yes tls_all_algo \
             'TLS all-algorithms (always available in v1.1.0+)' \
-            '#define HAVE_TLS_ALL_ALGORITHMS'
+            '#define mx_HAVE_TLS_ALL_ALGORITHMS'
       fi
 
       # Blake
       link_check tls_blake2 'TLS: BLAKE2 digests' \
-            '#define HAVE_XTLS_BLAKE2' << \!
+            '#define mx_HAVE_XTLS_BLAKE2' << \!
 #include <openssl/evp.h>
 int main(void){
    EVP_blake2b512();
@@ -2709,7 +2709,7 @@ int main(void){
 !
 
       # SHA-3
-      link_check tls_sha3 'TLS: SHA-3 digests' '#define HAVE_XTLS_SHA3' << \!
+      link_check tls_sha3 'TLS: SHA-3 digests' '#define mx_HAVE_XTLS_SHA3' << \!
 #include <openssl/evp.h>
 int main(void){
    EVP_sha3_512();
@@ -2721,7 +2721,7 @@ int main(void){
 !
 
       if feat_yes MD5 && feat_no NOEXTMD5; then
-         run_check tls_md5 'TLS: MD5 digest' '#define HAVE_XTLS_MD5' << \!
+         run_check tls_md5 'TLS: MD5 digest' '#define mx_HAVE_XTLS_MD5' << \!
 #include <stdlib.h>
 #include <string.h>
 #include <openssl/md5.h>
@@ -2774,7 +2774,7 @@ fi
 
 val_random_arc4() {
    link_check arc4random 'VAL_RANDOM: arc4random(3)' \
-      '#define HAVE_RANDOM n_RANDOM_IMPL_ARC4' << \!
+      '#define mx_HAVE_RANDOM n_RANDOM_IMPL_ARC4' << \!
 #include <stdlib.h>
 int main(void){
    arc4random();
@@ -2786,7 +2786,7 @@ int main(void){
 val_random_tls() {
    if feat_yes TLS; then
       msg ' . VAL_RANDOM: tls ... yes'
-      echo '#define HAVE_RANDOM n_RANDOM_IMPL_TLS' >> ${h}
+      echo '#define mx_HAVE_RANDOM n_RANDOM_IMPL_TLS' >> ${h}
       return 0
    else
       msg ' . VAL_RANDOM: tls ... no'
@@ -2796,7 +2796,7 @@ val_random_tls() {
 
 val_random_libgetrandom() {
    link_check getrandom 'VAL_RANDOM: getrandom(3) (in sys/random.h)' \
-      '#define HAVE_RANDOM n_RANDOM_IMPL_GETRANDOM
+      '#define mx_HAVE_RANDOM n_RANDOM_IMPL_GETRANDOM
       #define n_RANDOM_GETRANDOM_FUN(B,S) getrandom(B, S, 0)
       #define n_RANDOM_GETRANDOM_H <sys/random.h>' <<\!
 #include <sys/random.h>
@@ -2810,7 +2810,7 @@ int main(void){
 
 val_random_sysgetrandom() {
    link_check getrandom 'VAL_RANDOM: getrandom(2) (via syscall(2))' \
-      '#define HAVE_RANDOM n_RANDOM_IMPL_GETRANDOM
+      '#define mx_HAVE_RANDOM n_RANDOM_IMPL_GETRANDOM
       #define n_RANDOM_GETRANDOM_FUN(B,S) syscall(SYS_getrandom, B, S, 0)
       #define n_RANDOM_GETRANDOM_H <sys/syscall.h>' <<\!
 #include <sys/syscall.h>
@@ -2826,10 +2826,10 @@ val_random_urandom() {
    msg_nonl ' . VAL_RANDOM: /dev/urandom ... '
    if feat_yes CROSS_BUILD; then
       msg 'yes (unchecked)'
-      echo '#define HAVE_RANDOM n_RANDOM_IMPL_URANDOM' >> ${h}
+      echo '#define mx_HAVE_RANDOM n_RANDOM_IMPL_URANDOM' >> ${h}
    elif [ -f /dev/urandom ]; then
       msg yes
-      echo '#define HAVE_RANDOM n_RANDOM_IMPL_URANDOM' >> ${h}
+      echo '#define mx_HAVE_RANDOM n_RANDOM_IMPL_URANDOM' >> ${h}
    else
       msg no
       return 1
@@ -2845,7 +2845,7 @@ val_random_builtin() {
       config_exit 1
    else
       msg yes
-      echo '#define HAVE_RANDOM n_RANDOM_IMPL_BUILTIN' >> ${h}
+      echo '#define mx_HAVE_RANDOM n_RANDOM_IMPL_BUILTIN' >> ${h}
    fi
 }
 
@@ -2890,26 +2890,26 @@ int main(void){
       i='GSS-API in gssapi/gssapi.h, libgssapi'
    fi
    if < ${tmp2}.c link_check gss \
-         "${i}" '#define HAVE_GSSAPI' "${GSS_LIBS}" "${GSS_INCS}" ||\
+         "${i}" '#define mx_HAVE_GSSAPI' "${GSS_LIBS}" "${GSS_INCS}" ||\
       < ${tmp3}.c link_check gss \
          'GSS-API in gssapi.h, libgssapi' \
-         '#define HAVE_GSSAPI
+         '#define mx_HAVE_GSSAPI
          #define GSSAPI_REG_INCLUDE' \
          '-lgssapi' ||\
       < ${tmp2}.c link_check gss 'GSS-API in libgssapi_krb5' \
-         '#define HAVE_GSSAPI' \
+         '#define mx_HAVE_GSSAPI' \
          '-lgssapi_krb5' ||\
       < ${tmp3}.c link_check gss \
          'GSS-API in libgssapi, OpenBSD-style (pre 5.3)' \
-         '#define HAVE_GSSAPI
+         '#define mx_HAVE_GSSAPI
          #define GSS_REG_INCLUDE' \
          '-lgssapi -lkrb5 -lcrypto' \
          '-I/usr/include/kerberosV' ||\
       < ${tmp2}.c link_check gss 'GSS-API in libgss' \
-         '#define HAVE_GSSAPI' \
+         '#define mx_HAVE_GSSAPI' \
          '-lgss' ||\
       link_check gss 'GSS-API in libgssapi_krb5, old-style' \
-         '#define HAVE_GSSAPI
+         '#define mx_HAVE_GSSAPI
          #define GSSAPI_OLD_STYLE' \
          '-lgssapi_krb5' << \!
 #include <gssapi/gssapi.h>
@@ -2942,7 +2942,7 @@ if feat_yes IDNA; then # {{{
 
    val_idna_idn2() {
       link_check idna 'OPT_IDNA: GNU Libidn2' \
-         '#define HAVE_IDNA n_IDNA_IMPL_LIBIDN2' '-lidn2' << \!
+         '#define mx_HAVE_IDNA n_IDNA_IMPL_LIBIDN2' '-lidn2' << \!
 #include <idn2.h>
 int main(void){
    char *idna_utf8, *idna_lc;
@@ -2961,7 +2961,7 @@ int main(void){
 
    val_idna_idn() {
       link_check idna 'OPT_IDNA: GNU Libidn' \
-         '#define HAVE_IDNA n_IDNA_IMPL_LIBIDN' '-lidn' << \!
+         '#define mx_HAVE_IDNA n_IDNA_IMPL_LIBIDN' '-lidn' << \!
 #include <idna.h>
 #include <idn-free.h>
 #include <stringprep.h> /* XXX we actually use our own iconv instead */
@@ -2982,7 +2982,7 @@ int main(void){
 
    val_idna_idnkit() {
       link_check idna 'OPT_IDNA: idnkit' \
-         '#define HAVE_IDNA n_IDNA_IMPL_IDNKIT' '-lidnkit' << \!
+         '#define mx_HAVE_IDNA n_IDNA_IMPL_IDNKIT' '-lidnkit' << \!
 #include <stdio.h>
 #include <idn/api.h>
 #include <idn/result.h>
@@ -3027,7 +3027,7 @@ fi # }}} IDNA
 feat_def IMAP_SEARCH
 
 if feat_yes REGEX; then
-   if link_check regex 'regular expressions' '#define HAVE_REGEX' << \!
+   if link_check regex 'regular expressions' '#define mx_HAVE_REGEX' << \!
 #include <regex.h>
 #include <stdlib.h>
 int main(void){
@@ -3054,7 +3054,7 @@ fi
 if feat_yes MLE; then
    if [ -n "${have_c90amend1}" ]; then
       have_mle=1
-      echo '#define HAVE_MLE' >> ${h}
+      echo '#define mx_HAVE_MLE' >> ${h}
    else
       feat_bail_required MLE
    fi
@@ -3069,7 +3069,7 @@ fi
 
 if feat_yes HISTORY; then
    if [ -n "${have_cle}" ]; then
-      echo '#define HAVE_HISTORY' >> ${h}
+      echo '#define mx_HAVE_HISTORY' >> ${h}
    else
       feat_is_unsupported HISTORY
    fi
@@ -3079,7 +3079,7 @@ fi
 
 if feat_yes KEY_BINDINGS; then
    if [ -n "${have_mle}" ]; then
-      echo '#define HAVE_KEY_BINDINGS' >> ${h}
+      echo '#define mx_HAVE_KEY_BINDINGS' >> ${h}
    else
       feat_is_unsupported KEY_BINDINGS
    fi
@@ -3091,7 +3091,7 @@ if feat_yes TERMCAP; then # {{{
    ADDINC=
    __termcaplib() {
       link_check termcap "termcap(5) (via ${4}${ADDINC})" \
-         "#define HAVE_TERMCAP${3}" "${1}" "${ADDINC}" << _EOT
+         "#define mx_HAVE_TERMCAP${3}" "${1}" "${ADDINC}" << _EOT
 #include <stdio.h>
 #include <stdlib.h>
 ${2}
@@ -3116,9 +3116,9 @@ _EOT
 
    __terminfolib() {
       link_check terminfo "terminfo(5) (via ${2}${ADDINC})" \
-         '#define HAVE_TERMCAP
-         #define HAVE_TERMCAP_CURSES
-         #define HAVE_TERMINFO' "${1}" "${ADDINC}" << _EOT
+         '#define mx_HAVE_TERMCAP
+         #define mx_HAVE_TERMCAP_CURSES
+         #define mx_HAVE_TERMINFO' "${1}" "${ADDINC}" << _EOT
 #include <stdio.h>
 #include <curses.h>
 #include <term.h>
@@ -3168,13 +3168,13 @@ _EOT
          xbail=
          __termcaplib -ltermcap '' '' '-ltermcap' ||
             __termcaplib -ltermcap '#include <curses.h>' '
-               #define HAVE_TERMCAP_CURSES' \
+               #define mx_HAVE_TERMCAP_CURSES' \
                'curses.h / -ltermcap' ||
             __termcaplib -lcurses '#include <curses.h>' '
-               #define HAVE_TERMCAP_CURSES' \
+               #define mx_HAVE_TERMCAP_CURSES' \
                'curses.h / -lcurses' ||
             __termcaplib -lcursesw '#include <curses.h>' '
-               #define HAVE_TERMCAP_CURSES' \
+               #define mx_HAVE_TERMCAP_CURSES' \
                'curses.h / -lcursesw' ||
             xbail=y
       }
@@ -3192,10 +3192,10 @@ _EOT
       if [ -n "${have_termcap}" ]; then
          run_check tgetent_null \
             "tgetent(3) of termcap(5) takes NULL buffer" \
-            "#define HAVE_TGETENT_NULL_BUF" << _EOT
+            "#define mx_HAVE_TGETENT_NULL_BUF" << _EOT
 #include <stdio.h> /* For C89 NULL */
 #include <stdlib.h>
-#ifdef HAVE_TERMCAP_CURSES
+#ifdef mx_HAVE_TERMCAP_CURSES
 # include <curses.h>
 #endif
 #include <term.h>
@@ -3220,7 +3220,7 @@ fi
 
 if feat_yes SPAM_SPAMD; then
    if [ -n "${have_af_unix}" ]; then
-      echo '#define HAVE_SPAM_SPAMD' >> ${h}
+      echo '#define mx_HAVE_SPAM_SPAMD' >> ${h}
    else
       feat_bail_required SPAM_SPAMD
    fi
@@ -3231,14 +3231,14 @@ fi
 feat_def SPAM_FILTER
 
 if feat_yes SPAM_SPAMC || feat_yes SPAM_SPAMD || feat_yes SPAM_FILTER; then
-   echo '#define HAVE_SPAM' >> ${h}
+   echo '#define mx_HAVE_SPAM' >> ${h}
 else
-   echo '/* HAVE_SPAM */' >> ${h}
+   echo '/* mx_HAVE_SPAM */' >> ${h}
 fi
 
 if feat_yes QUOTE_FOLD; then
    if [ -n "${have_c90amend1}" ] && [ -n "${have_wcwidth}" ]; then
-      echo '#define HAVE_QUOTE_FOLD' >> ${h}
+      echo '#define mx_HAVE_QUOTE_FOLD' >> ${h}
    else
       feat_bail_required QUOTE_FOLD
    fi
@@ -3347,7 +3347,7 @@ else
    srclist=main.c objlist=main.o
    printf '\nAMALGAM_TARGET = main.o\nAMALGAM_DEP = ' >> ${mk}
 
-   printf '\n/* HAVE_AMALGAMATION: include sources */\n' >> ${h}
+   printf '\n/* mx_HAVE_AMALGAMATION: include sources */\n' >> ${h}
    printf '#elif mx_MK_CONFIG_H + 0 == 1\n' >> ${h}
    printf '# undef mx_MK_CONFIG_H\n' >> ${h}
    printf '# define mx_MK_CONFIG_H 2\n' >> ${h}

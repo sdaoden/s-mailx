@@ -40,7 +40,7 @@
 #undef su_FILE
 #define su_FILE thread
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -54,7 +54,7 @@ struct mitem {
 
 struct msort {
    union {
-#ifdef HAVE_SPAM
+#ifdef mx_HAVE_SPAM
       ui32_t   ms_ui;
 #endif
       long     ms_long;
@@ -107,7 +107,7 @@ static struct message * _interlink(struct message *m, ui32_t cnt, int nmail);
 static void             _finalize(struct message *mp);
 
 /* Several sort comparison PTFs */
-#ifdef HAVE_SPAM
+#ifdef mx_HAVE_SPAM
 static int              _mui32lt(void const *a, void const *b);
 #endif
 static int              _mlonglt(void const *a, void const *b);
@@ -288,7 +288,7 @@ _finalize(struct message *mp)
    NYD2_OU;
 }
 
-#ifdef HAVE_SPAM
+#ifdef mx_HAVE_SPAM
 static int
 _mui32lt(void const *a, void const *b)
 {
@@ -525,7 +525,7 @@ c_thread(void *vp)
    NYD_IN;
 
    if (mb.mb_threaded != 1 || vp == NULL || vp == (void*)-1) {
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
       if (mb.mb_type == MB_IMAP)
          imap_getheaders(1, msgCount);
 #endif
@@ -660,7 +660,7 @@ c_sort(void *vp)
       {"to", SORT_TO, &_mcharlt},
       {"subject", SORT_SUBJECT, &_mcharlt},
       {"size", SORT_SIZE, &_mlonglt},
-#ifdef HAVE_SPAM
+#ifdef mx_HAVE_SPAM
       {"spam", SORT_SPAM, &_mui32lt},
 #endif
       {"status", SORT_STATUS, &_mlonglt},
@@ -714,7 +714,7 @@ c_sort(void *vp)
 
    showname = ok_blook(showname);
    ms = n_lofi_alloc(sizeof *ms * msgCount);
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
    switch (method) {
    case SORT_SUBJECT:
    case SORT_DATE:
@@ -757,7 +757,7 @@ c_sort(void *vp)
          case SORT_SIZE:
             ms[n].ms_u.ms_long = mp->m_xsize;
             break;
-#ifdef HAVE_SPAM
+#ifdef mx_HAVE_SPAM
          case SORT_SPAM:
             ms[n].ms_u.ms_ui = mp->m_spamscore;
             break;

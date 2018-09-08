@@ -19,7 +19,7 @@
 #undef su_FILE
 #define su_FILE mime_param
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -386,12 +386,12 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
       _ERRORS     = 1<<3
    } f = _NONE;
    ui32_t no;
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    iconv_t fhicd;
 #endif
    NYD2_IN;
 
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    n_UNINIT(fhicd, (iconv_t)-1);
 
    if (head->rj_is_enc) {
@@ -494,7 +494,7 @@ jhex_putc:
     * that encoded-words-are-atomic, meaning that a single character-set
     * conversion run over the final, joined, partially percent-decoded value
     * should be sufficient */
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    if (f & _HAVE_ICONV) {
       sin.s = NULL;
       sin.l = 0;

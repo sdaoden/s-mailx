@@ -70,7 +70,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifdef HAVE_GSSAPI
+#ifdef mx_HAVE_GSSAPI
 #ifndef GSSAPI_REG_INCLUDE
 # include <gssapi/gssapi.h>
 # ifdef GSSAPI_OLD_STYLE
@@ -293,6 +293,6 @@ jleave:
 # ifdef m_DEFINED_GCC_C_NT_HOSTBASED_SERVICE
 #  undef GSS_C_NT_HOSTBASED_SERVICE
 # endif
-#endif /* HAVE_GSSAPI */
+#endif /* mx_HAVE_GSSAPI */
 
 /* s-it-mode */

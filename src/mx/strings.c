@@ -36,7 +36,7 @@
 #undef su_FILE
 #define su_FILE strings
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -303,7 +303,7 @@ FL void
 makelow(char *cp) /* TODO isn't that crap? --> */
 {
       NYD_IN;
-#ifdef HAVE_C90AMEND1
+#ifdef mx_HAVE_C90AMEND1
    if (n_mb_cur_max > 1) {
       char *tp = cp;
       wchar_t wc;
@@ -340,7 +340,7 @@ substr(char const *str, char const *sub)
    cp = sub;
    backup = str;
    while (*str != '\0' && *cp != '\0') {
-#ifdef HAVE_C90AMEND1
+#ifdef mx_HAVE_C90AMEND1
       if (n_mb_cur_max > 1) {
          wchar_t c, c2;
          int sz;
@@ -432,7 +432,7 @@ n_strscpy(char *dst, char const *src, size_t dstsize){
       }while(--dstsize > 0);
       dst[--rv] = '\0';
    }
-#ifdef HAVE_DEVEL
+#ifdef mx_HAVE_DEVEL
    else
       assert(dstsize > 0);
 #endif
@@ -1155,7 +1155,7 @@ n_iconv_name_is_ascii(char const *cset){ /* TODO ctext/su */
    return rv;
 }
 
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
 FL iconv_t
 n_iconv_open(char const *tocode, char const *fromcode){
    iconv_t id;
@@ -1368,6 +1368,6 @@ jleave:
    NYD2_OU;
    return rv;
 }
-#endif /* HAVE_ICONV */
+#endif /* mx_HAVE_ICONV */
 
 /* s-it-mode */

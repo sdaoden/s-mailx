@@ -43,7 +43,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#ifdef HAVE_GETTIMEOFDAY
+#ifdef mx_HAVE_GETTIMEOFDAY
 # include <sys/time.h>
 #endif
 
@@ -61,21 +61,21 @@
 #include <time.h>
 #include <unistd.h>
 
-#ifdef HAVE_C90AMEND1
+#ifdef mx_HAVE_C90AMEND1
 # include <wchar.h>
 # include <wctype.h>
 #endif
-#ifdef HAVE_DEBUG
+#ifdef mx_HAVE_DEBUG
 # include <assert.h>
 #endif
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
 # include <iconv.h>
 #endif
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
 # include <regex.h>
 #endif
 
-#ifdef HAVE_XTLS_MD5
+#ifdef mx_HAVE_XTLS_MD5
 # include <openssl/md5.h>
 #endif
 
@@ -89,7 +89,7 @@
 #define n_CHILD_FD_NULL -2
 
 /* Colour stuff */
-#ifdef HAVE_COLOUR
+#ifdef mx_HAVE_COLOUR
 # define n_COLOUR(X) X
 #else
 # define n_COLOUR(X)
@@ -130,7 +130,7 @@
 
 /* Suppress some technical warnings via #pragma's unless developing.
  * XXX Wild guesses: clang(1) 1.7 and (OpenBSD) gcc(1) 4.2.1 don't work */
-#ifndef HAVE_DEVEL
+#ifndef mx_HAVE_DEVEL
 # if su_CC_VCHECK_CLANG(3, 4)
 #  pragma clang diagnostic ignored "-Wassign-enum"
 #  pragma clang diagnostic ignored "-Wdisabled-macro-expansion"
@@ -180,9 +180,10 @@
 #define n_LIKELY su_LIKELY
 #define n_UNLIKELY su_UNLIKELY
 
-#undef HAVE_NATCH_CHAR
-#if defined HAVE_SETLOCALE && defined HAVE_C90AMEND1 && defined HAVE_WCWIDTH
-# define HAVE_NATCH_CHAR
+#undef mx_HAVE_NATCH_CHAR
+#if defined mx_HAVE_SETLOCALE && defined mx_HAVE_C90AMEND1 && \
+      defined mx_HAVE_WCWIDTH
+# define mx_HAVE_NATCH_CHAR
 # define n_NATCH_CHAR(X) X
 #else
 # define n_NATCH_CHAR(X)
@@ -205,7 +206,7 @@
 #define DBG su_DBG
 #define NDBG su_NDBG
 #define DBGOR su_DBGOR
-#ifndef HAVE_DEBUG
+#ifndef mx_HAVE_DEBUG
 # undef assert
 # define assert(X) su_UNUSED(0)
 #endif
@@ -216,7 +217,7 @@
 #undef _
 #undef N_
 #undef V_
-#ifdef HAVE_UISTRINGS
+#ifdef mx_HAVE_UISTRINGS
 # define UIS(X) X
 # define A_(S) S
 # define _(S) S
@@ -262,7 +263,7 @@ typedef su_sz siz_t;
 # define uintptr_t su_up
 #endif
 
-#ifdef HAVE_C90AMEND1
+#ifdef mx_HAVE_C90AMEND1
 typedef wchar_t         wc_t;
 # define n_WC_C(X)      L ## X
 #else
@@ -425,7 +426,7 @@ enum n_cmd_arg_desc_flags{
    (((ui32_t)(FLAGCARRIER) >> n_CMD_ARG_DESC_ERRNO_SHIFT) &\
       n_CMD_ARG_DESC_ERRNO_MASK)
 
-#ifdef HAVE_COLOUR
+#ifdef mx_HAVE_COLOUR
 /* We do have several contexts of colour IDs; since only one of them can be
  * active at any given time let's share the value range */
 enum n_colour_ctx{
@@ -459,7 +460,7 @@ enum n_colour_id{
  * let's use constants of pseudo pointers */
 # define n_COLOUR_TAG_SUM_DOT ((char*)-2)
 # define n_COLOUR_TAG_SUM_OLDER ((char*)-3)
-#endif /* HAVE_COLOUR */
+#endif /* mx_HAVE_COLOUR */
 
 enum conversion {
    CONV_NONE,        /* no conversion */
@@ -491,7 +492,7 @@ enum n_dig_msg_flags{
    n_DIG_MSG_RDONLY = 1u<<2,           /* Message is read-only */
    n_DIG_MSG_OWN_MEMPOOL = 1u<<3,      /* dmc_mempool==dmc_mempool_buf */
    n_DIG_MSG_HAVE_FP = 1u<<4,          /* Open on a Ftmp() file */
-   n_DIG_MSG_FCLOSE = 1u<<5            /* (HAVE_FP:) needs fclose() */
+   n_DIG_MSG_FCLOSE = 1u<<5            /* (mx_HAVE_FP:) needs fclose() */
 };
 
 enum n_dotlock_state{
@@ -991,7 +992,7 @@ enum n_str_trim_flags{
    n_STR_TRIM_BOTH = n_STR_TRIM_FRONT | n_STR_TRIM_END
 };
 
-#ifdef HAVE_TLS
+#ifdef mx_HAVE_TLS
 enum n_tls_verify_level{
    n_TLS_VERIFY_IGNORE,
    n_TLS_VERIFY_WARN,
@@ -1037,7 +1038,7 @@ enum n_termcap_captype{
  * simulated / faked by a built-in fallback implementation.
  * Availability of built-in fallback indicated by leading @ (at-sign) */
 enum n_termcap_cmd{
-# ifdef HAVE_TERMCAP
+# ifdef mx_HAVE_TERMCAP
    n_TERMCAP_CMD_te, /* rmcup/te, STRING | exit_ca_mode: -,- */
    n_TERMCAP_CMD_ti, /* smcup/ti, STRING | enter_ca_mode: -,- */
 
@@ -1045,14 +1046,14 @@ enum n_termcap_cmd{
    n_TERMCAP_CMD_ke, /* rmkx/ke, STRING | keypad_local: -,- */
 # endif
 
-# ifdef HAVE_MLE
+# ifdef mx_HAVE_MLE
    n_TERMCAP_CMD_ce, /* el/ce, STRING | @ clr_eol: [start-column],- */
    n_TERMCAP_CMD_ch, /* hpa/ch, STRING, IDX1 | column_address: column,- */
    n_TERMCAP_CMD_cr, /* cr/cr, STRING | @ carriage_return: -,- */
    n_TERMCAP_CMD_le, /* cub1/le, STRING, CNT | @ cursor_left: count,- */
    n_TERMCAP_CMD_nd, /* cuf1/nd, STRING, CNT | @ cursor_right: count,- */
 
-#  ifdef HAVE_TERMCAP
+#  ifdef mx_HAVE_TERMCAP
    n_TERMCAP_CMD_cd, /* ed/cd, STRING | clr_eos: -,- */
    n_TERMCAP_CMD_ho, /* home/ho, STRING | cursor_home: -,- */
 #  endif
@@ -1082,13 +1083,13 @@ enum n_termcap_query{
    n_TERMCAP_QUERY_sam,    /* sam/YE, BOOL | semi_auto_right_margin */
    n_TERMCAP_QUERY_xenl,   /* xenl/xn, BOOL | eat_newline_glitch */
 
-# ifdef HAVE_COLOUR
+# ifdef mx_HAVE_COLOUR
    n_TERMCAP_QUERY_colors, /* colors/Co, NUMERIC | max_colors */
 # endif
 
    /* --make-tcap-map--: only KEY_BINDINGS follow.  DON'T CHANGE THIS LINE! */
    /* Update the `bind' manual on change! */
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
    n_TERMCAP_QUERY_key_backspace, /* kbs/kb, STRING */
    n_TERMCAP_QUERY_key_dc,       /* kdch1/kD, STRING | delete-character */
       n_TERMCAP_QUERY_key_sdc,      /* kDC / *4, STRING | ..shifted */
@@ -1138,7 +1139,7 @@ enum n_termcap_query{
    n_TERMCAP_QUERY_kf17,         /* kf17/F7, STRING */
    n_TERMCAP_QUERY_kf18,         /* kf18/F8, STRING */
    n_TERMCAP_QUERY_kf19,         /* kf19/F9, STRING */
-# endif /* HAVE_KEY_BINDINGS */
+# endif /* mx_HAVE_KEY_BINDINGS */
 
    n__TERMCAP_QUERY_MAX1
 };
@@ -1158,7 +1159,7 @@ enum n_visual_info_flags{
    n_VISUAL_INFO_SKIP_ERRORS = 1<<1,      /* Treat via replacement, step byte */
    n_VISUAL_INFO_WIDTH_QUERY = 1<<2,      /* Detect visual character widths */
 
-   /* Rest only with HAVE_C90AMEND1, mutual with _ONE_CHAR */
+   /* Rest only with mx_HAVE_C90AMEND1, mutual with _ONE_CHAR */
    n_VISUAL_INFO_WOUT_CREATE = 1<<8,      /* Use/create .vic_woudat */
    n_VISUAL_INFO_WOUT_SALLOC = 1<<9,      /* ..autorec_alloc() it first */
    /* Only visuals into .vic_woudat - implies _WIDTH_QUERY */
@@ -1350,7 +1351,7 @@ ok_b_bsdannounce, /* {obsolete=1} */
    ok_v_COLUMNS,                       /* {notempty=1,posnum=1,env=1} */
    /* Charset lowercase conversion handled via vip= */
    ok_v_charset_7bit,            /* {vip=1,notempty=1,defval=CHARSET_7BIT} */
-   /* But unused without HAVE_ICONV, we use ok_vlook(CHARSET_8BIT_OKEY)! */
+   /* But unused without mx_HAVE_ICONV, we use ok_vlook(CHARSET_8BIT_OKEY)! */
    ok_v_charset_8bit,            /* {vip=1,notempty=1,defval=CHARSET_8BIT} */
    ok_v_charset_unknown_8bit,          /* {vip=1} */
    ok_v_cmd,
@@ -1757,7 +1758,7 @@ struct n_cmd_desc{
    ui32_t cd_msgmask;      /* Relevant flags of msgs */
    /* XXX requires cmd-tab.h initializer changes ui8_t cd__pad[4];*/
    struct n_cmd_arg_desc const *cd_cadp;
-#ifdef HAVE_DOCSTRINGS
+#ifdef mx_HAVE_DOCSTRINGS
    char const *cd_doc;     /* One line doc for command */
 #endif
 };
@@ -1765,7 +1766,7 @@ struct n_cmd_desc{
 #define cd_minargs cd_msgflag /* Minimum argcount for WYSH/WYRA/RAWLIST */
 #define cd_maxargs cd_msgmask /* Max argcount for WYSH/WYRA/RAWLIST */
 
-#ifdef HAVE_COLOUR
+#ifdef mx_HAVE_COLOUR
 struct n_colour_env{
    struct n_colour_env *ce_last;
    bool_t ce_enabled;   /* Colour enabled on this level */
@@ -1793,7 +1794,7 @@ struct url {
    /* TODO we don't know whether .url_host is a name or an address.  Us
     * TODO Net::IPAddress::fromString() to check that, then set
     * TODO n_URL_HOST_IS_NAME solely based on THAT!  Until then,
-    * TODO n_URL_HOST_IS_NAME ONLY set if n_URL_TLS_MASK and HAVE_GETADDRINFO */
+    * TODO n_URL_HOST_IS_NAME ONLY set if n_URL_TLS_MASK+mx_HAVE_GETADDRINFO */
    struct str     url_host;         /* Service hostname TODO we don't know */
    struct str     url_path;         /* Path suffix or NULL */
    /* TODO: url_get_component(url *, enum COMPONENT, str *store) */
@@ -1843,7 +1844,7 @@ do{\
    n_dig_msg_compose_ctx = NULL;\
 }while(0)
 
-#ifdef HAVE_DOTLOCK
+#ifdef mx_HAVE_DOTLOCK
 struct n_dotlock_info{
    char const *di_file_name;  /* Mailbox to lock */
    char const *di_lock_name;  /* .di_file_name + .lock */
@@ -1868,7 +1869,7 @@ struct n_go_data_ctx{
     * .gdc_mempool may be NE .gdc__mempool_buf */
    void *gdc_mempool;
    void *gdc_ifcond; /* Saved state of conditional stack */
-#ifdef HAVE_COLOUR
+#ifdef mx_HAVE_COLOUR
    struct n_colour_env *gdc_colour;
    bool_t gdc_colour_active;
    ui8_t gdc__colour_pad[7];
@@ -1899,7 +1900,7 @@ struct quoteflt {
     * TODO finally can gracefully place a newline last in the visual display.
     * TODO I.e., for cases where quoteflt shouldn't be used at all ;} */
    bool_t      qf_nl_last;    /* Last thing written/seen was NL */
-#ifndef HAVE_QUOTE_FOLD
+#ifndef mx_HAVE_QUOTE_FOLD
    ui8_t       __dummy[6];
 #else
    ui8_t       qf_state;      /* *quote-fold* state machine */
@@ -1918,7 +1919,7 @@ struct quoteflt {
 #endif
 };
 
-#ifdef HAVE_FILTER_HTML_TAGSOUP
+#ifdef mx_HAVE_FILTER_HTML_TAGSOUP
 struct htmlflt {
    FILE        *hf_os;        /* Output stream */
    ui32_t      hf_flags;
@@ -1945,7 +1946,7 @@ struct search_expr {
    ui8_t ss__pad[6];
    char const *ss_field;   /* Field spec. where to search (not always used) */
    char const *ss_body;    /* Field body search expression */
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
    regex_t *ss_fieldre;    /* Could be instead of .ss_field */
    regex_t *ss_bodyre;     /* Ditto, .ss_body */
    regex_t ss__fieldre_buf;
@@ -2011,7 +2012,7 @@ struct n_visual_info_ctx{
    wc_t vic_waccu;         /*O The last wchar_t/char processed (if any) */
    enum n_visual_info_flags vic_flags; /*O Copy of parse flags */
    /* TODO bidi */
-#ifdef HAVE_C90AMEND1
+#ifdef mx_HAVE_C90AMEND1
    mbstate_t *vic_mbstate; /*IO .vic_mbs_def used if NULL */
    mbstate_t vic_mbs_def;
 #endif
@@ -2026,9 +2027,9 @@ struct time_current { /* TODO si64_t, etc. */
 
 struct sock { /* data associated with a socket */
    int s_fd;            /* file descriptor */
-#ifdef HAVE_TLS
+#ifdef mx_HAVE_TLS
    int s_use_tls;       /* SSL is used */
-# ifdef HAVE_XTLS
+# ifdef mx_HAVE_XTLS
    void *s_tls;         /* SSL object */
 # endif
    char *s_tls_finger;  /* Set to autorec! store for CPROTO_CERTINFO */
@@ -2074,7 +2075,7 @@ MB_CACHE,         /* IMAP cache */
       MB_EDIT = 02   /* may edit messages in mailbox */
    }           mb_perm;
    int mb_threaded;           /* mailbox has been threaded */
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
    enum mbflags {
       MB_NOFLAGS  = 000,
       MB_UIDPLUS  = 001 /* supports IMAP UIDPLUS */
@@ -2153,7 +2154,7 @@ MUNLINKED = 1u<<15,     /* Unlinked from IMAP cache */
 struct mimepart {
    enum mflag  m_flag;
    enum content_info m_content_info;
-#ifdef HAVE_SPAM
+#ifdef mx_HAVE_SPAM
    ui32_t      m_spamscore;   /* Spam score as int, 24:8 bits */
 #else
    ui8_t m__pad1[4];
@@ -2186,7 +2187,7 @@ struct mimepart {
 struct message {
    enum mflag  m_flag;        /* flags */
    enum content_info m_content_info;
-#ifdef HAVE_SPAM
+#ifdef mx_HAVE_SPAM
    ui32_t      m_spamscore;   /* Spam score as int, 24:8 bits */
 #else
    ui8_t m__pad1[4];
@@ -2199,10 +2200,10 @@ struct message {
    long        m_xlines;      /* Lines in the full message */
    time_t      m_time;        /* time the message was sent */
    time_t      m_date;        /* time in the 'Date' field */
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
    ui64_t m_uid;              /* IMAP unique identifier */
 #endif
-#ifdef HAVE_MAILDIR
+#ifdef mx_HAVE_MAILDIR
    char const  *m_maildir_file; /* original maildir file of msg */
    ui32_t      m_maildir_hash; /* hash of file name in maildir sub */
 #endif
@@ -2403,7 +2404,7 @@ struct sendbundle {
 
 /* For saving the current directory and later returning */
 struct cw {
-#ifdef HAVE_FCHDIR
+#ifdef mx_HAVE_FCHDIR
    int         cw_fd;
 #else
    char        cw_wd[PATH_MAX];
@@ -2418,7 +2419,7 @@ struct cw {
 
 #undef VL
 #ifdef n_MAIN_SOURCE
-# ifndef HAVE_AMALGAMATION
+# ifndef mx_HAVE_AMALGAMATION
 #  define VL
 # else
 #  define VL static
@@ -2428,12 +2429,12 @@ struct cw {
 #endif
 
 #define n_empty su_empty
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 VL char const n_month_names[12 + 1][4];
 VL char const n_weekday_names[7 + 1][4];
 
 VL char const n_uagent[sizeof VAL_UAGENT];
-# ifdef HAVE_UISTRINGS
+# ifdef mx_HAVE_UISTRINGS
 VL char const n_error[sizeof n_ERROR];
 # endif
 VL char const n_path_devnull[sizeof n_PATH_DEVNULL];
@@ -2448,7 +2449,7 @@ VL char const n_hy[2];     /* Hyphen-Minus - */
 VL char const n_qm[2];     /* Question-mark ? */
 VL char const n_at[2];     /* Commercial at @ */
 VL ui16_t const n_class_char[1 + 0x7F];
-#endif /* HAVE_AMALGAMATION */
+#endif /* mx_HAVE_AMALGAMATION */
 
 VL FILE *n_stdin;
 VL FILE *n_stdout;
@@ -2501,7 +2502,7 @@ VL struct message *prevdot;            /* Previous current message */
 VL struct message *message;            /* The actual message structure */
 VL struct message *threadroot;         /* first threaded message */
 VL int            *n_msgvec;           /* Folder setmsize(), list.c res. store*/
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
 VL int            imap_created_mailbox; /* hack to get feedback from imap */
 #endif
 
@@ -2510,11 +2511,11 @@ VL struct n_header_field *n_customhdr_list; /* *customhdr* list */
 VL struct time_current  time_current;  /* time(3); send: mail1() XXXcarrier */
 VL struct termios_state termios_state; /* getpassword(); see commands().. */
 
-#ifdef HAVE_TLS
+#ifdef mx_HAVE_TLS
 VL enum n_tls_verify_level n_tls_verify_level; /* TODO local per-context! */
 #endif
 
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
 VL iconv_t     iconvd;
 #endif
 

@@ -36,7 +36,7 @@
 #undef su_FILE
 #define su_FILE cmd_misc
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -110,7 +110,7 @@ a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
    argv = vp;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
    sp = n_string_reserve(n_string_creat_auto(&s), 121/* XXX */);
-#ifdef HAVE_ERRORS
+#ifdef mx_HAVE_ERRORS
    doerr = (fp == n_stderr &&  (n_psonce & n_PSO_INTERACTIVE));
 #else
    doerr = FAL0;

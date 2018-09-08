@@ -40,12 +40,12 @@
 #undef su_FILE
 #define su_FILE obs_imap_cache
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
 EMPTY_FILE()
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
 # include <dirent.h>
 
 static char *           encname(struct mailbox *mp, const char *name, int same,
@@ -890,6 +890,6 @@ jleave:
    NYD_OU;
    return rv;
 }
-#endif /* HAVE_IMAP */
+#endif /* mx_HAVE_IMAP */
 
 /* s-it-mode */

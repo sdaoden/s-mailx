@@ -37,7 +37,7 @@
 #undef su_FILE
 #define su_FILE nam_a_grp
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -90,7 +90,7 @@ struct a_nag_grp_names{
    char ngn_id[n_VFIELD_SIZE(0)];
 };
 
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
 struct a_nag_grp_regex{
    struct a_nag_grp_regex *ngr_last;
    struct a_nag_grp_regex *ngr_next;
@@ -145,7 +145,7 @@ static struct a_nag_group *a_nag_mlist_heads[HSHSIZE];
  * become relinked as the new list head if its hit count is
  *    (>= ((xy_hits / _xy_size) >> 2))
  * Note that the hit counts only count currently linked in nodes.. */
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
 static struct a_nag_grp_regex *a_nag_mlist_regex;
 static struct a_nag_grp_regex *a_nag_mlsub_regex;
 static size_t a_nag_mlist_size;
@@ -227,7 +227,7 @@ static int a_nag_mlmux(enum a_nag_type nt, char const **argv);
 static int a_nag_unmlmux(enum a_nag_type nt, char const **argv);
 
 /* Relinkers for the sequential match lists */
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
 static void a_nag_mlmux_linkin(struct a_nag_group *ngp);
 static void a_nag_mlmux_linkout(struct a_nag_group *ngp);
 # define a_NAG_MLMUX_LINKIN(GP) \
@@ -640,7 +640,7 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
       addsz += sizeof(struct a_nag_grp_names_head);
       break;
    case a_NAG_T_MLIST:
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
       if(n_is_maybe_regex(id)){
          addsz = sizeof(struct a_nag_grp_regex);
          nt |= a_NAG_T_REGEX;
@@ -679,7 +679,7 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
       a_NAG_GP_TO_SUBCLASS(ngnhp, ngp);
       ngnhp->ngnh_head = NULL;
    }
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
    else if(nt & a_NAG_T_REGEX){
       int s;
       struct a_nag_grp_regex *ngrp;
@@ -697,7 +697,7 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
       ngrp->ngr_mygroup = ngp;
       a_nag_mlmux_linkin(ngp);
    }
-#endif /* HAVE_REGEX */
+#endif /* mx_HAVE_REGEX */
 
    ngp->ng_next = *ngl.ngl_slot;
    *ngl.ngl_slot = ngp;
@@ -756,7 +756,7 @@ a_nag__group_del(struct a_nag_group_lookup *nglp){
 
    if((x->ng_type & a_NAG_T_MASK) == a_NAG_T_ALIAS)
       a_nag__names_del(x);
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
    else if(x->ng_type & a_NAG_T_REGEX){
       struct a_nag_grp_regex *ngrp;
 
@@ -885,7 +885,7 @@ a_nag_group_print_all(enum a_nag_type nt, char const *varname){
    for(i = 0; ida[i] != NULL; ++i)
       lines += a_nag_group_print(a_nag_group_find(nt, ida[i]), fp, &s);
 
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
    if(varname == NULL && (nt & a_NAG_T_MASK) == a_NAG_T_MLIST){
       if(nt & a_NAG_T_SUBSCRIBE)
          i = (ui32_t)a_nag_mlsub_size, h = (ui32_t)a_nag_mlsub_hits;
@@ -991,7 +991,7 @@ a_nag_group_print(struct a_nag_group const *ngp, FILE *fo,
       }break;
    case a_NAG_T_MLIST:
       assert(fo != NULL); /* xxx no vput yet */
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
       if((ngp->ng_type & a_NAG_T_REGEX) && (n_poption & n_PO_D_V)){
          size_t i;
          struct a_nag_grp_regex *lp, *ngrp;
@@ -1127,7 +1127,7 @@ jaster_entry:
    return rv;
 }
 
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
 static void
 a_nag_mlmux_linkin(struct a_nag_group *ngp){
    struct a_nag_grp_regex **lpp, *ngrp, *lhp;
@@ -1178,7 +1178,7 @@ a_nag_mlmux_linkout(struct a_nag_group *ngp){
    }
    NYD2_OU;
 }
-#endif /* HAVE_REGEX */
+#endif /* mx_HAVE_REGEX */
 
 FL struct name *
 nalloc(char const *str, enum gfield ntype)
@@ -1216,7 +1216,7 @@ nalloc(char const *str, enum gfield ntype)
 
    if (ntype & GFULL) {
       if (ag.ag_ilen == ag.ag_slen
-#ifdef HAVE_IDNA
+#ifdef mx_HAVE_IDNA
             && !(ag.ag_n_flags & NAME_IDNA)
 #endif
       )
@@ -1263,12 +1263,12 @@ nalloc(char const *str, enum gfield ntype)
 jskipfullextra:
 
       /* n_fullname depends on IDNA conversion */
-#ifdef HAVE_IDNA
+#ifdef mx_HAVE_IDNA
       if (!(ag.ag_n_flags & NAME_IDNA)) {
 #endif
          in.s = n_UNCONST(str);
          in.l = ag.ag_ilen;
-#ifdef HAVE_IDNA
+#ifdef mx_HAVE_IDNA
       } else {
          /* The domain name was IDNA and has been converted.  We also have to
           * ensure that the domain name in .n_fullname is replaced with the
@@ -1289,7 +1289,7 @@ jskipfullextra:
       mime_fromhdr(&in, &out, /* TODO TD_ISPR |*/ TD_ICONV);
       np->n_fullname = savestr(out.s);
       n_free(out.s);
-#ifdef HAVE_IDNA
+#ifdef mx_HAVE_IDNA
       if (ag.ag_n_flags & NAME_IDNA)
          n_lofi_free(in.s);
 #endif
@@ -2284,7 +2284,7 @@ c_unmlsubscribe(void *v){
 FL enum mlist_state
 is_mlist(char const *name, bool_t subscribed_only){
    struct a_nag_group *ngp;
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
    struct a_nag_grp_regex **lpp, *ngrp;
    bool_t re2;
 #endif
@@ -2300,7 +2300,7 @@ is_mlist(char const *name, bool_t subscribed_only){
       else if(subscribed_only)
          rv = MLIST_OTHER;
       /* Of course, if that is a regular expression it doesn't mean a thing */
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
       if(ngp->ng_type & a_NAG_T_REGEX)
          rv = MLIST_OTHER;
       else
@@ -2309,7 +2309,7 @@ is_mlist(char const *name, bool_t subscribed_only){
    }
 
    /* Not in the hashmap (as something matchable), walk the lists */
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
    re2 = FAL0;
    lpp = &a_nag_mlsub_regex;
 
@@ -2344,7 +2344,7 @@ jregex_redo:
       goto jregex_redo;
    }
    assert(rv == MLIST_OTHER);
-#endif /* HAVE_REGEX */
+#endif /* mx_HAVE_REGEX */
 
 jleave:
    NYD_OU;

@@ -23,12 +23,12 @@
 #undef su_FILE
 #define su_FILE colour
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
 EMPTY_FILE()
-#ifdef HAVE_COLOUR
+#ifdef mx_HAVE_COLOUR
 
 /* Not needed publically, but extends a set from nail.h */
 #define n_COLOUR_TAG_ERR ((char*)-1)
@@ -74,7 +74,7 @@ struct a_colour_map /* : public n_colour_pen */{
    struct a_colour_map *cm_next;
    char const *cm_tag;           /* Colour tag or NULL for default (last) */
    struct a_colour_map_id const *cm_cmi;
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
    regex_t *cm_regex;
 #endif
    ui32_t cm_refcnt;             /* Beware of reference drops in recursions */
@@ -323,7 +323,7 @@ jlinkhead:
          *cmap = cmp;
       }
       cmp->cm_cmi = cmip;
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
       cmp->cm_regex = regexp;
 #endif
       cmp->cm_refcnt = 0;
@@ -499,7 +499,7 @@ a_colour__tag_identify(struct a_colour_map_id const *cmip, char const *ctag,
 
       /* Can this be a valid list of headers?  However, with regular expressions
        * simply use the input as such if it appears to be a regex */
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
       if(n_is_maybe_regex(ctag)){
          int s;
 
@@ -588,7 +588,7 @@ a_colour_map_find(enum n_colour_id cid, enum n_colour_ctx cctx,
          break;
       if(ctag == NULL || a_COLOUR_TAG_IS_SPECIAL(ctag))
          continue;
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
       if(cmp->cm_regex != NULL){
          if(regexec(cmp->cm_regex, ctag, 0,NULL, 0) != REG_NOMATCH)
             break;
@@ -613,7 +613,7 @@ static void
 a_colour_map_unref(struct a_colour_map *self){
    NYD2_IN;
    if(--self->cm_refcnt == 0){
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
       if(self->cm_regex != NULL){
          regfree(self->cm_regex);
          n_free(self->cm_regex);
@@ -1005,6 +1005,6 @@ n_colour_pen_to_str(struct n_colour_pen *self){
    NYD_OU;
    return rv;
 }
-#endif /* HAVE_COLOUR */
+#endif /* mx_HAVE_COLOUR */
 
 /* s-it-mode */

@@ -41,16 +41,16 @@
 #undef su_FILE
 #define su_FILE maildir
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
-#ifdef HAVE_MAILDIR
+#ifdef mx_HAVE_MAILDIR
 # include <dirent.h>
 #endif
 
 EMPTY_FILE()
-#ifdef HAVE_MAILDIR
+#ifdef mx_HAVE_MAILDIR
 
 /* a_maildir_tbl should be a hash-indexed array of trees! */
 static struct message **a_maildir_tbl, **a_maildir_tbl_top;
@@ -1177,6 +1177,6 @@ jleave:
    NYD_OU;
    return rv;
 }
-#endif /* HAVE_MAILDIR */
+#endif /* mx_HAVE_MAILDIR */
 
 /* s-it-mode */

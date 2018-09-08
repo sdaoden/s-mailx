@@ -19,14 +19,14 @@
 #undef su_FILE
 #define su_FILE spam
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
 EMPTY_FILE()
-#ifdef HAVE_SPAM
+#ifdef mx_HAVE_SPAM
 
-#ifdef HAVE_SPAM_SPAMD
+#ifdef mx_HAVE_SPAM_SPAMD
 # include <sys/socket.h>
 # include <sys/un.h>
 #endif
@@ -38,7 +38,7 @@ EMPTY_FILE()
 # error *spam-interface* BUFFER_SIZE constraints are not matched
 #endif
 
-#ifdef HAVE_SPAM_SPAMD
+#ifdef mx_HAVE_SPAM_SPAMD
 # define SPAMD_IDENT          "SPAMC/1.5"
 # ifndef SUN_LEN
 #  define SUN_LEN(SUP) \
@@ -46,7 +46,7 @@ EMPTY_FILE()
 # endif
 #endif
 
-#ifdef HAVE_SPAM_FILTER
+#ifdef mx_HAVE_SPAM_FILTER
   /* n_NELEM() of regmatch_t groups */
 # define SPAM_FILTER_MATCHES  32u
 #endif
@@ -58,7 +58,7 @@ enum spam_action {
    _SPAM_FORGET
 };
 
-#if defined HAVE_SPAM_SPAMC || defined HAVE_SPAM_FILTER
+#if defined mx_HAVE_SPAM_SPAMC || defined mx_HAVE_SPAM_FILTER
 struct spam_cf {
    char const        *cf_cmd;
    char              *cf_result; /* _SPAM_RATE: first response line */
@@ -79,14 +79,14 @@ struct spam_cf {
 };
 #endif
 
-#ifdef HAVE_SPAM_SPAMC
+#ifdef mx_HAVE_SPAM_SPAMC
 struct spam_spamc {
    struct spam_cf    c_super;
    char const        *c_cmd_arr[9];
 };
 #endif
 
-#ifdef HAVE_SPAM_SPAMD
+#ifdef mx_HAVE_SPAM_SPAMD
 struct spam_spamd {
    struct str        d_user;
    sighandler_type   d_otstp;
@@ -100,12 +100,12 @@ struct spam_spamd {
 };
 #endif
 
-#ifdef HAVE_SPAM_FILTER
+#ifdef mx_HAVE_SPAM_FILTER
 struct spam_filter {
    struct spam_cf    f_super;
    char const        *f_cmd_nospam; /* Working relative to current message.. */
    char const        *f_cmd_noham;
-# ifdef HAVE_REGEX
+# ifdef mx_HAVE_REGEX
    ui8_t             __pad[4];
    ui32_t            f_score_grpno; /* 0 for not set */
    regex_t           f_score_regex;
@@ -125,16 +125,16 @@ struct spam_vc {
    struct message    *vc_mp;        /* Current message */
    FILE              *vc_ifp;       /* Input stream on .vc_mp */
    union {
-#ifdef HAVE_SPAM_SPAMC
+#ifdef mx_HAVE_SPAM_SPAMC
       struct spam_spamc    spamc;
 #endif
-#ifdef HAVE_SPAM_SPAMD
+#ifdef mx_HAVE_SPAM_SPAMD
       struct spam_spamd    spamd;
 #endif
-#ifdef HAVE_SPAM_FILTER
+#ifdef mx_HAVE_SPAM_FILTER
       struct spam_filter   filter;
 #endif
-#if defined HAVE_SPAM_SPAMC || defined HAVE_SPAM_FILTER
+#if defined mx_HAVE_SPAM_SPAMC || defined mx_HAVE_SPAM_FILTER
    struct spam_cf          cf;
 #endif
    }                 vc_t;
@@ -150,34 +150,34 @@ static char const _spam_cmds[][16] = {
 static bool_t  _spam_action(enum spam_action sa, int *ip);
 
 /* *spam-interface*=spamc: initialize, communicate */
-#ifdef HAVE_SPAM_SPAMC
+#ifdef mx_HAVE_SPAM_SPAMC
 static bool_t  _spamc_setup(struct spam_vc *vcp);
 static bool_t  _spamc_interact(struct spam_vc *vcp);
 static void    _spamc_dtor(struct spam_vc *vcp);
 #endif
 
 /* *spam-interface*=spamd: initialize, communicate */
-#ifdef HAVE_SPAM_SPAMD
+#ifdef mx_HAVE_SPAM_SPAMD
 static bool_t  _spamd_setup(struct spam_vc *vcp);
 static bool_t  _spamd_interact(struct spam_vc *vcp);
 #endif
 
 /* *spam-interface*=filter: initialize, communicate */
-#ifdef HAVE_SPAM_FILTER
+#ifdef mx_HAVE_SPAM_FILTER
 static bool_t  _spamfilter_setup(struct spam_vc *vcp);
 static bool_t  _spamfilter_interact(struct spam_vc *vcp);
 static void    _spamfilter_dtor(struct spam_vc *vcp);
 #endif
 
 /* *spam-interface*=(spamc|filter): create child + communication */
-#if defined HAVE_SPAM_SPAMC || defined HAVE_SPAM_FILTER
+#if defined mx_HAVE_SPAM_SPAMC || defined mx_HAVE_SPAM_FILTER
 static void    _spam_cf_setup(struct spam_vc *vcp, bool_t useshell);
 static bool_t  _spam_cf_interact(struct spam_vc *vcp);
 #endif
 
 /* Convert a floating-point spam rate into message.m_spamscore */
-#if defined HAVE_SPAM_SPAMC || defined HAVE_SPAM_SPAMD ||\
-   (defined HAVE_SPAM_FILTER && defined HAVE_REGEX)
+#if defined mx_HAVE_SPAM_SPAMC || defined mx_HAVE_SPAM_SPAMD ||\
+   (defined mx_HAVE_SPAM_FILTER && defined mx_HAVE_REGEX)
 static void    _spam_rate2score(struct spam_vc *vcp, char *buf);
 #endif
 
@@ -200,18 +200,18 @@ _spam_action(enum spam_action sa, int *ip)
    if ((cp = ok_vlook(spam_interface)) == NULL) {
       n_err(_("`%s': no *spam-interface* set\n"), _spam_cmds[sa]);
       goto jleave;
-#ifdef HAVE_SPAM_SPAMC
+#ifdef mx_HAVE_SPAM_SPAMC
    } else if (!asccasecmp(cp, "spamc")) {
        if (!_spamc_setup(&vc))
          goto jleave;
 #endif
-#ifdef HAVE_SPAM_SPAMD
+#ifdef mx_HAVE_SPAM_SPAMD
    } else if (!asccasecmp(cp, "spamd")) { /* TODO v15: remove */
       n_OBSOLETE(_("*spam-interface*=spamd is obsolete, please use =spamc"));
       if (!_spamd_setup(&vc))
          goto jleave;
 #endif
-#ifdef HAVE_SPAM_FILTER
+#ifdef mx_HAVE_SPAM_FILTER
    } else if (!asccasecmp(cp, "filter")) {
       if (!_spamfilter_setup(&vc))
          goto jleave;
@@ -288,7 +288,7 @@ jleave:
    return !ok;
 }
 
-#ifdef HAVE_SPAM_SPAMC
+#ifdef mx_HAVE_SPAM_SPAMC
 static bool_t
 _spamc_setup(struct spam_vc *vcp)
 {
@@ -407,9 +407,9 @@ _spamc_dtor(struct spam_vc *vcp)
       n_free(vcp->vc_t.spamc.c_super.cf_result);
    NYD2_OU;
 }
-#endif /* HAVE_SPAM_SPAMC */
+#endif /* mx_HAVE_SPAM_SPAMC */
 
-#ifdef HAVE_SPAM_SPAMD
+#ifdef mx_HAVE_SPAM_SPAMD
 static bool_t
 _spamd_setup(struct spam_vc *vcp)
 {
@@ -609,7 +609,7 @@ jeso:
 jebogus:
       n_err(_("%s`%s': bogus spamd(1) I/O interaction (%lu)\n"),
          vcp->vc_esep, _spam_cmds[vcp->vc_action], (ul_i)i);
-# ifdef HAVE_DEVEL
+# ifdef mx_HAVE_DEVEL
       if (n_poption & n_PO_VERBVERB)
          n_err(">>> BUFFER: %s <<<\n", vcp->vc_buffer);
 # endif
@@ -724,9 +724,9 @@ jleave:
    }
    return rv;
 }
-#endif /* HAVE_SPAM_SPAMD */
+#endif /* mx_HAVE_SPAM_SPAMD */
 
-#ifdef HAVE_SPAM_FILTER
+#ifdef mx_HAVE_SPAM_FILTER
 static bool_t
 _spamfilter_setup(struct spam_vc *vcp)
 {
@@ -768,7 +768,7 @@ jecmd:
       break;
    }
 
-# ifdef HAVE_REGEX
+# ifdef mx_HAVE_REGEX
    if (vcp->vc_action == _SPAM_RATE &&
          (cp = ok_vlook(spamfilter_rate_scanscore)) != NULL) {
       int s;
@@ -812,7 +812,7 @@ jecmd:
          goto jleave;
       }
    }
-# endif /* HAVE_REGEX */
+# endif /* mx_HAVE_REGEX */
 
    _spam_cf_setup(vcp, TRU1);
 
@@ -827,7 +827,7 @@ jleave:
 static bool_t
 _spamfilter_interact(struct spam_vc *vcp)
 {
-# ifdef HAVE_REGEX
+# ifdef mx_HAVE_REGEX
    regmatch_t rem[SPAM_FILTER_MATCHES], *remp;
    struct spam_filter *sfp;
    char *cp;
@@ -861,7 +861,7 @@ _spamfilter_interact(struct spam_vc *vcp)
       goto jleave;
    }
 
-# ifdef HAVE_REGEX
+# ifdef mx_HAVE_REGEX
    sfp = &vcp->vc_t.filter;
 
    if (sfp->f_score_grpno == 0)
@@ -887,7 +887,7 @@ _spamfilter_interact(struct spam_vc *vcp)
    cp[remp->rm_eo] = '\0';
    cp += remp->rm_so;
    _spam_rate2score(vcp, cp);
-# endif /* HAVE_REGEX */
+# endif /* mx_HAVE_REGEX */
 
 jleave:
    NYD2_OU;
@@ -904,15 +904,15 @@ _spamfilter_dtor(struct spam_vc *vcp)
 
    if (sfp->f_super.cf_result != NULL)
       n_free(sfp->f_super.cf_result);
-# ifdef HAVE_REGEX
+# ifdef mx_HAVE_REGEX
    if (sfp->f_score_grpno > 0)
       regfree(&sfp->f_score_regex);
 # endif
    NYD2_OU;
 }
-#endif /* HAVE_SPAM_FILTER */
+#endif /* mx_HAVE_SPAM_FILTER */
 
-#if defined HAVE_SPAM_SPAMC || defined HAVE_SPAM_FILTER
+#if defined mx_HAVE_SPAM_SPAMC || defined mx_HAVE_SPAM_FILTER
 static void
 _spam_cf_setup(struct spam_vc *vcp, bool_t useshell)
 {
@@ -1127,10 +1127,10 @@ jtail:
    }
    return !(state & (_JUMPED | _ERRORS));
 }
-#endif /* HAVE_SPAM_SPAMC || HAVE_SPAM_FILTER */
+#endif /* mx_HAVE_SPAM_SPAMC || mx_HAVE_SPAM_FILTER */
 
-#if defined HAVE_SPAM_SPAMC || defined HAVE_SPAM_SPAMD ||\
-   (defined HAVE_SPAM_FILTER && defined HAVE_REGEX)
+#if defined mx_HAVE_SPAM_SPAMC || defined mx_HAVE_SPAM_SPAMD ||\
+   (defined mx_HAVE_SPAM_FILTER && defined mx_HAVE_REGEX)
 static void
 _spam_rate2score(struct spam_vc *vcp, char *buf){
    ui32_t m, s;
@@ -1181,7 +1181,7 @@ jscore_ok:
 jleave:
    NYD2_OU;
 }
-#endif /* _SPAM_SPAMC || _SPAM_SPAMD || (_SPAM_FILTER && HAVE_REGEX) */
+#endif /* _SPAM_SPAMC || _SPAM_SPAMD || (_SPAM_FILTER && mx_HAVE_REGEX) */
 
 FL int
 c_spam_clear(void *v)
@@ -1252,6 +1252,6 @@ c_spam_spam(void *v)
    NYD_OU;
    return rv;
 }
-#endif /* HAVE_SPAM */
+#endif /* mx_HAVE_SPAM */
 
 /* s-it-mode */

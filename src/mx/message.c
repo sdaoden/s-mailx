@@ -36,7 +36,7 @@
 #undef su_FILE
 #define su_FILE message
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -200,12 +200,12 @@ a_msg_get_header(struct message *mp){
    case MB_MAILDIR:
       rv = OKAY;
       break;
-#ifdef HAVE_POP3
+#ifdef mx_HAVE_POP3
    case MB_POP3:
       rv = pop3_header(mp);
       break;
 #endif
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
    case MB_IMAP:
    case MB_CACHE:
       rv = imap_header(mp);
@@ -261,7 +261,7 @@ a_msg_markall(char const *orig, struct n_cmd_arg *cap, int f){
       a_ASTER = 1u<<8,
       a_TOPEN = 1u<<9,     /* ( used (and didn't match) */
       a_TBACK = 1u<<10,    /* ` used (and didn't match) */
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
       a_HAVE_IMAP_HEADERS = 1u<<14,
 #endif
       a_LOG = 1u<<29,      /* Log errors */
@@ -470,7 +470,7 @@ jnumber__thr:
             goto jebadrange;
          flags |= a_TOPEN;
 
-#ifdef HAVE_IMAP_SEARCH
+#ifdef mx_HAVE_IMAP_SEARCH
          /* C99 */{
             ssize_t ires;
 
@@ -528,7 +528,7 @@ jnumber__thr:
          if(flags & a_RANGE)
             goto jebadrange;
 
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
          if(!(flags & a_HAVE_IMAP_HEADERS) && mb.mb_type == MB_IMAP){
             flags |= a_HAVE_IMAP_HEADERS;
             imap_getheaders(1, msgCount);
@@ -648,7 +648,7 @@ jat_where_default:
                cp = savestrbuf(xsave, PTR2SIZE(x - xsave));
 
                /* Namelist could be a regular expression, too */
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
                if(n_is_maybe_regex(cp)){
                   int s;
 
@@ -683,7 +683,7 @@ jat_where_default:
             x = &(x == NULL ? *nq : x)[1];
             if(*x == '\0'){
                sep[j].ss_field_exists = TRU1;
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
             }else if(n_is_maybe_regex(x)){
                int s;
 
@@ -707,7 +707,7 @@ jat_where_default:
       }
 
       /* Iterate the entire message array */
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
          if(!(flags & a_HAVE_IMAP_HEADERS) && mb.mb_type == MB_IMAP){
             flags |= a_HAVE_IMAP_HEADERS;
             imap_getheaders(1, msgCount);
@@ -755,7 +755,7 @@ jat_where_default:
 
 jnamesearch_sepfree:
       if(sep != NULL){
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
          for(j = PTR2SIZE(np - nmadat); j-- != 0;){
             if(sep[j].ss_fieldre != NULL)
                regfree(sep[j].ss_fieldre);
@@ -1351,12 +1351,12 @@ get_body(struct message *mp){
    case MB_MAILDIR:
       rv = OKAY;
       break;
-#ifdef HAVE_POP3
+#ifdef mx_HAVE_POP3
    case MB_POP3:
       rv = pop3_body(mp);
       break;
 #endif
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
    case MB_IMAP:
    case MB_CACHE:
       rv = imap_body(mp);
@@ -1441,7 +1441,7 @@ message_match(struct message *mp, struct search_expr const *sep,
             break;
 
    while(fgetline(line, linesize, &cnt, NULL, fp, 0)){
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
       if(sep->ss_bodyre != NULL){
          if(regexec(sep->ss_bodyre, *line, 0,NULL, 0) == REG_NOMATCH)
             continue;

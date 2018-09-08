@@ -40,12 +40,12 @@
 #undef su_FILE
 #define su_FILE tls
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
 EMPTY_FILE()
-#ifdef HAVE_TLS
+#ifdef mx_HAVE_TLS
 struct a_tls_verify_levels{
    char const tv_name[8];
    enum n_tls_verify_level tv_level;
@@ -439,7 +439,7 @@ c_tls(void *vp){
    if((cp = argv[0])[0] == '\0')
       goto jesubcmd;
    else if(is_asccaseprefix(cp, "fingerprint")){
-#ifndef HAVE_SOCKETS
+#ifndef mx_HAVE_SOCKETS
       n_err(_("`tls': fingerprint: no +sockets in *features*\n"));
       n_pstate_err_no = n_ERR_OPNOTSUPP;
       goto jleave;
@@ -460,7 +460,7 @@ c_tls(void *vp){
       if(so.s_tls_finger == NULL)
          goto jeinval;
       varres = so.s_tls_finger;
-#endif /* HAVE_SOCKETS */
+#endif /* mx_HAVE_SOCKETS */
    }else
       goto jesubcmd;
 
@@ -493,6 +493,6 @@ jeinval:
    n_pstate_err_no = n_ERR_INVAL;
    goto jleave;
 }
-#endif /* HAVE_TLS */
+#endif /* mx_HAVE_TLS */
 
 /* s-it-mode */

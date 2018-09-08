@@ -49,12 +49,12 @@
 #undef su_FILE
 #define su_FILE accmacvar
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
-#if !defined HAVE_SETENV && !defined HAVE_PUTENV
-# error Exactly one of HAVE_SETENV and HAVE_PUTENV
+#if !defined mx_HAVE_SETENV && !defined mx_HAVE_PUTENV
+# error Exactly one of mx_HAVE_SETENV and mx_HAVE_PUTENV
 #endif
 
 /* Positional parameter maximum (macro arguments, `vexpr' "splitifs") */
@@ -230,7 +230,7 @@ struct a_amv_lostack{
 struct a_amv_var{
    struct a_amv_var *av_link;
    char *av_value;
-#ifdef HAVE_PUTENV
+#ifdef mx_HAVE_PUTENV
    char *av_env;              /* Actively managed putenv(3) memory, or NULL */
 #endif
    ui32_t av_flags;           /* enum a_amv_var_flags inclusive extended bits */
@@ -999,7 +999,7 @@ jefrom:
          break;
       case ok_v_hostname:
       case ok_v_smtp_hostname:
-#ifdef HAVE_IDNA
+#ifdef mx_HAVE_IDNA
          if(**val != '\0'){
             struct n_string cnv;
 
@@ -1092,7 +1092,7 @@ jefrom:
          *x = '\0';
          n_PS_ROOT_BLOCK(ok_vset(ifs_ws, x_b));
          }break;
-#ifdef HAVE_SETLOCALE
+#ifdef mx_HAVE_SETLOCALE
       case ok_v_LANG:
       case ok_v_LC_ALL:
       case ok_v_LC_CTYPE:
@@ -1590,7 +1590,7 @@ jnewval:
     * that and redirect to a possible default value */
    if((f & a_AMV_VF_VIP) &&
          !a_amv_var_check_vips(a_AMV_VIP_SET_PRE, avcp->avc_okey, &cp)){
-#ifdef HAVE_SETENV
+#ifdef mx_HAVE_SETENV
       if(f & (a_AMV_VF_IMPORT | a_AMV_VF_ENV))
          unsetenv(avcp->avc_name);
 #endif
@@ -2011,13 +2011,13 @@ jleave:
 
 static bool_t
 a_amv_var__putenv(struct a_amv_var_carrier *avcp, struct a_amv_var *avp){
-#ifndef HAVE_SETENV
+#ifndef mx_HAVE_SETENV
    char *cp;
 #endif
    bool_t rv;
    NYD2_IN;
 
-#ifdef HAVE_SETENV
+#ifdef mx_HAVE_SETENV
    rv = (setenv(avcp->avc_name, avp->av_value, 1) == 0);
 #else
    cp = sstrdup(savecatsep(avcp->avc_name, '=', avp->av_value));
@@ -2194,7 +2194,7 @@ a_amv_var__clearenv(char const *name, struct a_amv_var *avp){
    rv = FAL0;
    ecpp = environ;
 
-#ifndef HAVE_SETENV
+#ifndef mx_HAVE_SETENV
    if(avp != NULL && avp->av_env != NULL){
       for(; *ecpp != NULL; ++ecpp)
          if(*ecpp == avp->av_env){
@@ -2214,7 +2214,7 @@ a_amv_var__clearenv(char const *name, struct a_amv_var *avp){
       if((l = strlen(name)) > 0){
          for(; *ecpp != NULL; ++ecpp)
             if(!strncmp(*ecpp, name, l) && (*ecpp)[l] == '='){
-#ifdef HAVE_SETENV
+#ifdef mx_HAVE_SETENV
                unsetenv(name);
 #else
                do
@@ -2937,7 +2937,7 @@ temporary_compose_mode_hook_unroll(void){ /* XXX intermediate hack */
    NYD_OU;
 }
 
-#ifdef HAVE_HISTORY
+#ifdef mx_HAVE_HISTORY
 FL bool_t
 temporary_addhist_hook(char const *ctx, bool_t gabby, char const *histent){
    /* XXX temporary_addhist_hook(): intermediate hack */
@@ -2983,7 +2983,7 @@ temporary_addhist_hook(char const *ctx, bool_t gabby, char const *histent){
    NYD_OU;
    return rv;
 }
-#endif /* HAVE_HISTORY */
+#endif /* mx_HAVE_HISTORY */
 
 FL bool_t
 n_var_is_user_writable(char const *name){
@@ -3132,7 +3132,7 @@ n_var_vclear(char const *vokey){
    return ok;
 }
 
-#ifdef HAVE_SOCKETS
+#ifdef mx_HAVE_SOCKETS
 FL char *
 n_var_xoklook(enum okeys okey, struct url const *urlp,
       enum okey_xlook_mode oxm){
@@ -3191,7 +3191,7 @@ jleave:
    NYD_OU;
    return rv;
 }
-#endif /* HAVE_SOCKETS */
+#endif /* mx_HAVE_SOCKETS */
 
 FL int
 c_set(void *vp){
@@ -3872,7 +3872,7 @@ jesubstring_len:
       varres = savestrbuf(sout.s, sout.l);
       n_free(sout.s);
    /* TODO `vexpr': (wide) string length, find, etc!! */
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
    }else if(is_asccaseprefix(cp, "regex")) Jregex:{
       regmatch_t rema[1 + n_VEXPR_REGEX_MAX];
       regex_t re;
@@ -3965,7 +3965,7 @@ jesubstring_len:
    }else if(is_asccaseprefix(argv[0], "iregex")){
       f |= a_ICASE;
       goto Jregex;
-#endif /* HAVE_REGEX */
+#endif /* mx_HAVE_REGEX */
    }else
       goto jesubcmd;
 

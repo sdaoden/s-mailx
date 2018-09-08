@@ -33,7 +33,7 @@
 #undef su_FILE
 #define su_FILE ui_str
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -41,7 +41,7 @@
 
 FL bool_t
 n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
-#ifdef HAVE_C90AMEND1
+#ifdef mx_HAVE_C90AMEND1
    mbstate_t *mbp;
 #endif
    size_t il;
@@ -69,14 +69,14 @@ n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
                n_autorec_alloc(sizeof(*vicp->vic_woudat) * (il +1));
       vicp->vic_woulen = 0;
    }
-#ifdef HAVE_C90AMEND1
+#ifdef mx_HAVE_C90AMEND1
    if((mbp = vicp->vic_mbstate) == NULL)
       mbp = &vicp->vic_mbs_def;
 #endif
 
    if(il > 0){
       do/* while(!(vif & n_VISUAL_INFO_ONE_CHAR) && il > 0) */{
-#ifdef HAVE_C90AMEND1
+#ifdef mx_HAVE_C90AMEND1
          size_t i = mbrtowc(&vicp->vic_waccu, ib, il, mbp);
 
          if(i == (size_t)-2){
@@ -104,7 +104,7 @@ n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
             int w;
             wchar_t wc = vicp->vic_waccu;
 
-# ifdef HAVE_WCWIDTH
+# ifdef mx_HAVE_WCWIDTH
             w = (wc == '\t' ? 1 : wcwidth(wc));
 # else
             if(wc == '\t' || iswprint(wc))
@@ -117,7 +117,7 @@ n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
             else if(vif & n_VISUAL_INFO_WOUT_PRINTABLE)
                continue;
          }
-#else /* HAVE_C90AMEND1 */
+#else /* mx_HAVE_C90AMEND1 */
          char c = *ib;
 
          if(c == '\0'){
@@ -155,7 +155,7 @@ field_detect_clip(size_t maxlen, char const *buf, size_t blen)/*TODO mbrtowc()*/
    size_t rv;
    NYD_IN;
 
-#ifdef HAVE_NATCH_CHAR
+#ifdef mx_HAVE_NATCH_CHAR
    maxlen = n_MIN(maxlen, blen);
    for (rv = 0; maxlen > 0;) {
       int ml = mblen(buf, maxlen);
@@ -185,7 +185,7 @@ colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
 
    /* Bidi only on request and when there is 8-bit data */
    isbidi = isuni = FAL0;
-#ifdef HAVE_NATCH_CHAR
+#ifdef mx_HAVE_NATCH_CHAR
    isuni = ((n_psonce & n_PSO_UNICODE) != 0);
    bidi_info_create(&bi);
    if (bi.bi_start.l == 0)
@@ -205,7 +205,7 @@ jnobidi:
          n_NATCH_CHAR( + (isbidi ? bi.bi_start.l + bi.bi_end.l : 0) )
          +1));
 
-#ifdef HAVE_NATCH_CHAR
+#ifdef mx_HAVE_NATCH_CHAR
    if (isbidi) {
       memcpy(np, bi.bi_start.s, bi.bi_start.l);
       np += bi.bi_start.l;
@@ -214,7 +214,7 @@ jnobidi:
 
    while (*cp != '\0') {
       istab = FAL0;
-#ifdef HAVE_C90AMEND1
+#ifdef mx_HAVE_C90AMEND1
       if (n_mb_cur_max > 1) {
          wchar_t  wc;
 
@@ -227,7 +227,7 @@ jnobidi:
             isrepl = FAL0;
             istab = TRU1;
          } else if (iswprint(wc)) {
-# ifndef HAVE_WCWIDTH
+# ifndef mx_HAVE_WCWIDTH
             n = 1 + (wc >= 0x1100u); /* TODO use S-CText isfullwidth() */
 # else
             if ((n = wcwidth(wc)) == -1)
@@ -274,7 +274,7 @@ jnobidi:
       col = 0;
    }
 
-#ifdef HAVE_NATCH_CHAR
+#ifdef mx_HAVE_NATCH_CHAR
    if (isbidi) {
       memcpy(np, bi.bi_end.s, bi.bi_end.l);
       np += bi.bi_end.l;
@@ -306,7 +306,7 @@ makeprint(struct str const *in, struct str *out) /* TODO <-> TTYCHARSET!! */
    inp = in->s;
    maxp = inp + in->l;
 
-#ifdef HAVE_NATCH_CHAR
+#ifdef mx_HAVE_NATCH_CHAR
    if (n_mb_cur_max > 1) {
       char mbb[MB_LEN_MAX + 1];
       wchar_t wc;
@@ -428,7 +428,7 @@ bidi_info_needed(char const *bdat, size_t blen)
    bool_t rv = FAL0;
    NYD_IN;
 
-#ifdef HAVE_NATCH_CHAR
+#ifdef mx_HAVE_NATCH_CHAR
    if (n_psonce & n_PSO_UNICODE)
       while (blen > 0) {
          /* TODO Checking for BIDI character: use S-CText fromutf8
@@ -450,7 +450,7 @@ bidi_info_needed(char const *bdat, size_t blen)
             break;
          }
       }
-#endif /* HAVE_NATCH_CHAR */
+#endif /* mx_HAVE_NATCH_CHAR */
    NYD_OU;
    return rv;
 }
@@ -469,7 +469,7 @@ bidi_info_create(struct bidi_info *bip)
    memset(bip, 0, sizeof *bip);
    bip->bi_start.s = bip->bi_end.s = n_UNCONST(n_empty);
 
-#ifdef HAVE_NATCH_CHAR
+#ifdef mx_HAVE_NATCH_CHAR
    if ((n_psonce & n_PSO_UNICODE) && (hb = ok_vlook(headline_bidi)) != NULL) {
       switch (*hb) {
       case '3':

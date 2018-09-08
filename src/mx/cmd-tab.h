@@ -46,7 +46,7 @@
 #ifndef n_CMD_TAB_H
 # define n_CMD_TAB_H
 
-#ifdef HAVE_KEY_BINDINGS
+#ifdef mx_HAVE_KEY_BINDINGS
 # define a_CTAB_CAD_BIND n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_bind)
 n_CMD_ARG_DESC_SUBCLASS_DEF(bind, 3, a_ctab_cad_bind){
    {n_CMD_ARG_DESC_SHEXP, n_SHEXP_PARSE_TRIM_IFSSPACE}, /* context */
@@ -69,7 +69,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(call, 2, a_ctab_cad_call){
       n_SHEXP_PARSE_IFS_VAR | n_SHEXP_PARSE_TRIM_IFSSPACE} /* args */
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
-#ifdef HAVE_TLS
+#ifdef mx_HAVE_TLS
 # define a_CTAB_CAD_CERTSAVE n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_certsave)
 n_CMD_ARG_DESC_SUBCLASS_DEF(certsave, 1, a_ctab_cad_certsave){
    {n_CMD_ARG_DESC_MSGLIST_AND_TARGET | n_CMD_ARG_DESC_GREEDY,
@@ -171,7 +171,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(Save, 1, a_ctab_cad_Save){
       n_SHEXP_PARSE_TRIM_IFSSPACE}
 }n_CMD_ARG_DESC_SUBCLASS_DEF_END;
 
-#ifdef HAVE_KEY_BINDINGS
+#ifdef mx_HAVE_KEY_BINDINGS
 # define a_CTAB_CAD_UNBIND n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_unbind)
 n_CMD_ARG_DESC_SUBCLASS_DEF(unbind, 2, a_ctab_cad_unbind){
    {n_CMD_ARG_DESC_SHEXP, n_SHEXP_PARSE_TRIM_IFSSPACE}, /* context */
@@ -197,7 +197,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
 
 #else /* ifndef n_CMD_TAB_H */
 
-#ifdef HAVE_DOCSTRINGS
+#ifdef mx_HAVE_DOCSTRINGS
 # define DS(S) , S
 #else
 # define DS(S)
@@ -462,7 +462,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
    { "uncollapse", &c_uncollapse, (A | TMSGLST), 0, 0, NULL
      DS(N_("Uncollapse <msglist> if in threaded view")) },
    { "verify",
-#ifdef HAVE_XTLS
+#ifdef mx_HAVE_XTLS
       &c_verify,
 #else
       NULL,
@@ -476,7 +476,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_Decrypt)
      DS(N_("Like `decrypt', but derive filename from first sender")) },
    { "certsave",
-#ifdef HAVE_TLS
+#ifdef mx_HAVE_TLS
       &c_certsave,
 #else
       NULL,
@@ -513,7 +513,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Delete <type>s (reset, * for all; former reinitializes)")) },
 
    { "spamclear",
-#ifdef HAVE_SPAM
+#ifdef mx_HAVE_SPAM
       &c_spam_clear,
 #else
       NULL,
@@ -521,7 +521,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
       (A | M | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Clear the spam flag for each message in <msglist>")) },
    { "spamset",
-#ifdef HAVE_SPAM
+#ifdef mx_HAVE_SPAM
       &c_spam_set,
 #else
       NULL,
@@ -529,7 +529,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
       (A | M | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Set the spam flag for each message in <msglist>")) },
    { "spamforget",
-#ifdef HAVE_SPAM
+#ifdef mx_HAVE_SPAM
       &c_spam_forget,
 #else
       NULL,
@@ -537,7 +537,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
       (A | M | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Force the spam detector to unlearn <msglist>")) },
    { "spamham",
-#ifdef HAVE_SPAM
+#ifdef mx_HAVE_SPAM
       &c_spam_ham,
 #else
       NULL,
@@ -545,7 +545,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
       (A | M | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Teach the spam detector that <msglist> is ham")) },
    { "spamrate",
-#ifdef HAVE_SPAM
+#ifdef mx_HAVE_SPAM
       &c_spam_rate,
 #else
       NULL,
@@ -553,7 +553,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
       (A | M | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Rate <msglist> via the spam detector")) },
    { "spamspam",
-#ifdef HAVE_SPAM
+#ifdef mx_HAVE_SPAM
       &c_spam_spam,
 #else
       NULL,
@@ -609,7 +609,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
    { "environ", &c_environ, (G | M | X | TWYSH), 2, MAC, NULL
      DS(N_("<link|set|unset> (an) environment <variable>(s)")) },
    { "errors",
-#ifdef HAVE_ERRORS
+#ifdef mx_HAVE_ERRORS
       &c_errors,
 #else
       NULL,
@@ -622,7 +622,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Immediately return [<status>] to the shell without saving")) },
 
    { "history",
-#ifdef HAVE_HISTORY
+#ifdef mx_HAVE_HISTORY
       &c_history,
 #else
       NULL,
@@ -636,7 +636,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Localize variable modifications? [<attribute>] <boolean>"))},
 
    { "netrc",
-#ifdef HAVE_NETRC
+#ifdef mx_HAVE_NETRC
       &c_netrc,
 #else
       NULL,
@@ -703,7 +703,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Delete all given <accounts> (* for all)")) },
 
    { "bind",
-#ifdef HAVE_KEY_BINDINGS
+#ifdef mx_HAVE_KEY_BINDINGS
       &c_bind,
 #else
       NULL,
@@ -711,7 +711,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
       (M | TARG), 1, MAC, a_CTAB_CAD_BIND
      DS(N_("For <context> (base), [<show>] or bind <key[:,key:]> [:<data>:]"))},
    { "unbind",
-#ifdef HAVE_KEY_BINDINGS
+#ifdef mx_HAVE_KEY_BINDINGS
       &c_unbind,
 #else
       NULL,
@@ -725,7 +725,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Delete <charset-mapping-list> (* for all)")) },
 
    { "colour",
-#ifdef HAVE_COLOUR
+#ifdef mx_HAVE_COLOUR
       &c_colour,
 #else
       NULL,
@@ -733,7 +733,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
       (M | TWYSH), 1, 4, NULL
      DS(N_("Show colour settings of <type> (1,8,256,all/*) or define one")) },
    { "uncolour",
-#ifdef HAVE_COLOUR
+#ifdef mx_HAVE_COLOUR
       &c_uncolour,
 #else
       NULL,
@@ -767,7 +767,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Header deselection: <context> <type> <header-list>"))},
 
    { "tls",
-#ifdef HAVE_TLS
+#ifdef mx_HAVE_TLS
       &c_tls,
 #else
       NULL,
@@ -790,18 +790,18 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
       { "urldecode", &c_urldecode, (O | G | M | X | TWYRA), 1, MAC, NULL
         DS(N_("Obsoleted by `urlcodec'")) }
 
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
    ,{ "memtrace", &c_memtrace, (I | M | TWYSH), 0, 0, NULL
      DS(N_("Trace current memory usage afap")) }
 #endif
-#ifdef HAVE_DEVEL
+#ifdef mx_HAVE_DEVEL
    ,{ "sigstate", &c_sigstate, (I | M | TWYSH), 0, 0, NULL
      DS(N_("Show signal handler states")) }
 #endif
 
    /* Obsolete stuff */
 
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
    ,{ "imap", &c_imap_imap, (A | TSTRING), 0, MAC, NULL
      DS(N_("Send command strings directly to the IMAP server")) },
    { "connect", &c_connect, (A | TSTRING), 0, 0, NULL

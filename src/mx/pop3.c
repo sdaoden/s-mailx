@@ -41,12 +41,12 @@
 #undef su_FILE
 #define su_FILE pop3
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
 EMPTY_FILE()
-#ifdef HAVE_POP3
+#ifdef mx_HAVE_POP3
 
 #define POP3_ANSWER(RV,ACTIONSTOP) \
 do if (((RV) = pop3_answer(mp)) == STOP) {\
@@ -77,12 +77,12 @@ static int volatile     _pop3_lock;
 static enum okay  _pop3_login(struct mailbox *mp, struct sockconn *scp);
 
 /* APOP: get greeting credential or NULL */
-#ifdef HAVE_MD5
+#ifdef mx_HAVE_MD5
 static char *     _pop3_lookup_apop_timestamp(char const *bp);
 #endif
 
 /* Several authentication methods */
-#ifdef HAVE_MD5
+#ifdef mx_HAVE_MD5
 static enum okay  _pop3_auth_apop(struct mailbox *mp,
                      struct sockconn const *scp, char const *ts);
 #endif
@@ -109,7 +109,7 @@ static enum okay  pop3_update(struct mailbox *mp);
 static enum okay
 _pop3_login(struct mailbox *mp, struct sockconn *scp)
 {
-#ifdef HAVE_MD5
+#ifdef mx_HAVE_MD5
    char *ts;
 #endif
    enum okey_xlook_mode oxm;
@@ -120,12 +120,12 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
 
    /* Get the greeting, check whether APOP is advertised */
    POP3_ANSWER(rv, goto jleave);
-#ifdef HAVE_MD5
+#ifdef mx_HAVE_MD5
    ts = _pop3_lookup_apop_timestamp(_pop3_buf);
 #endif
 
    /* If not yet secured, can we upgrade to TLS? */
-#ifdef HAVE_TLS
+#ifdef mx_HAVE_TLS
    if (!(scp->sc_url.url_flags & n_URL_TLS_REQUIRED) &&
          xok_blook(pop3_use_starttls, &scp->sc_url, oxm)) {
       POP3_OUT(rv, "STLS" NETNL, MB_COMD, goto jleave);
@@ -144,12 +144,12 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
 #endif
 
    /* Use the APOP single roundtrip? */
-#ifdef HAVE_MD5
+#ifdef mx_HAVE_MD5
    if (ts != NULL && !xok_blook(pop3_no_apop, &scp->sc_url, oxm)) {
       if ((rv = _pop3_auth_apop(mp, scp, ts)) != OKAY) {
          char const *ccp;
 
-# ifdef HAVE_TLS
+# ifdef mx_HAVE_TLS
          if (scp->sc_sock.s_use_tls)
             ccp = _("over an encrypted connection");
          else
@@ -169,7 +169,7 @@ jleave:
    return rv;
 }
 
-#ifdef HAVE_MD5
+#ifdef mx_HAVE_MD5
 static char *
 _pop3_lookup_apop_timestamp(char const *bp)
 {
@@ -214,7 +214,7 @@ jleave:
 }
 #endif
 
-#ifdef HAVE_MD5
+#ifdef mx_HAVE_MD5
 static enum okay
 _pop3_auth_apop(struct mailbox *mp, struct sockconn const *scp, char const *ts)
 {
@@ -250,7 +250,7 @@ jleave:
    NYD_OU;
    return rv;
 }
-#endif /* HAVE_MD5 */
+#endif /* mx_HAVE_MD5 */
 
 static enum okay
 _pop3_auth_plain(struct mailbox *mp, struct sockconn const *scp)
@@ -1012,6 +1012,6 @@ jleave:
    NYD_OU;
    return rv;
 }
-#endif /* HAVE_POP3 */
+#endif /* mx_HAVE_POP3 */
 
 /* s-it-mode */

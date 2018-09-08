@@ -56,11 +56,11 @@
  * Note: must be lowercase!
  * (Keep in SYNC: ./nail.1:"Character sets", mx/config.h:CHARSET_*!) */
 #define CHARSET_7BIT "us-ascii"
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
 # define CHARSET_8BIT "utf-8"
 # define CHARSET_8BIT_OKEY charset_8bit
 #else
-# ifdef HAVE_ALWAYS_UNICODE_LOCALE
+# ifdef mx_HAVE_ALWAYS_UNICODE_LOCALE
 #  define CHARSET_8BIT "utf-8"
 # else
 #  define CHARSET_8BIT "iso-8859-1"
@@ -131,7 +131,7 @@
  * follow lines when compressing leading quote characters */
 #define n_QUOTE_MAX 42u
 
-/* How much spaces should a <tab> count when *quote-fold*ing? (power-of-two!) */
+/* How much spaces a <tab> counts when *quote-fold*ing? (power-of-two!) */
 #define n_QUOTE_TAB_SPACES 8
 
 /* Supported (external) PRG implementations */
@@ -143,7 +143,8 @@
 
 /* For long iterative output, like `list', tabulator-completion, etc.,
  * determine the screen width that should be used */
-#define n_SCRNWIDTH_FOR_LISTS ((size_t)n_scrnwidth - ((size_t)n_scrnwidth >> 3))
+#define n_SCRNWIDTH_FOR_LISTS \
+   ((size_t)n_scrnwidth - ((size_t)n_scrnwidth >> 3))
 
 /* Smells fishy after, or asks for shell expansion, dependent on context */
 #define n_SHEXP_MAGIC_PATH_CHARS "|&;<>{}()[]*?$`'\"\\"
@@ -207,20 +208,21 @@
 /* * */
 
 /* Switch indicating necessity of terminal access interface (termcap.c) */
-#if defined HAVE_TERMCAP || defined HAVE_COLOUR || defined HAVE_MLE
+#if defined mx_HAVE_TERMCAP || defined mx_HAVE_COLOUR || defined mx_HAVE_MLE
 # define n_HAVE_TCAP
 #endif
 
 /* Whether we shall do our memory debug thing */
-#if (defined HAVE_DEBUG || defined HAVE_DEVEL) && !defined HAVE_NOMEMDBG
-# define HAVE_MEMORY_DEBUG
+#if (defined mx_HAVE_DEBUG || defined mx_HAVE_DEVEL) && \
+      !defined mx_HAVE_NOMEMDBG
+# define mx_HAVE_MEMORY_DEBUG
 #endif
 
 /* Number of Not-Yet-Dead calls that are remembered */
-#if defined HAVE_DEBUG || defined HAVE_DEVEL || defined HAVE_NYD2
-# ifdef HAVE_NYD2
+#if defined mx_HAVE_DEBUG || defined mx_HAVE_DEVEL || defined mx_HAVE_NYD2
+# ifdef mx_HAVE_NYD2
 #  define NYD_CALLS_MAX (25 * 84)
-# elif defined HAVE_DEVEL
+# elif defined mx_HAVE_DEVEL
 #  define NYD_CALLS_MAX (25 * 42)
 # else
 #  define NYD_CALLS_MAX (25 * 10)

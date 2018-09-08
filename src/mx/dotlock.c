@@ -19,27 +19,27 @@
 #undef su_FILE
 #define su_FILE dotlock
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
-#ifdef HAVE_DOTLOCK
+#ifdef mx_HAVE_DOTLOCK
 # include "mx/dotlock.h"
 #endif
 
 /* XXX Our Popen() main() takes void, temporary global data store */
-#ifdef HAVE_DOTLOCK
+#ifdef mx_HAVE_DOTLOCK
 static enum n_file_lock_type a_dotlock_flt;
 static int a_dotlock_fd;
 struct n_dotlock_info *a_dotlock_dip;
 #endif
 
 /* main() of fork(2)ed dot file locker */
-#ifdef HAVE_DOTLOCK
+#ifdef mx_HAVE_DOTLOCK
 static int a_dotlock_main(void);
 #endif
 
-#ifdef HAVE_DOTLOCK
+#ifdef mx_HAVE_DOTLOCK
 static int
 a_dotlock_main(void){
    /* Use PATH_MAX not NAME_MAX to catch those "we proclaim the minimum value"
@@ -119,7 +119,7 @@ jislink:
     * *requires* that it is possible to create a filename at least one byte
     * longer than di_lock_name! */
    do/* while(0) breaker */{
-# ifdef HAVE_PATHCONF
+# ifdef mx_HAVE_PATHCONF
       long pc;
 # endif
       int i;
@@ -132,7 +132,7 @@ jenametool:
       }
 
       /* fd is a file, not portable to use for _PC_NAME_MAX */
-# ifdef HAVE_PATHCONF
+# ifdef mx_HAVE_PATHCONF
       n_err_no = n_ERR_NONE;
       if((pc = pathconf(".", _PC_NAME_MAX)) == -1){
          /* n_err_no unchanged: no limit */
@@ -141,7 +141,7 @@ jenametool:
 # endif
          if(UICMP(z, NAME_MAX - 1, <, i))
             goto jenametool;
-# ifdef HAVE_PATHCONF
+# ifdef mx_HAVE_PATHCONF
       }else if(pc - 1 >= i)
          break;
       else
@@ -224,7 +224,7 @@ jmsg:
    NYD_OU;
    return n_EXIT_OK;
 }
-#endif /* HAVE_DOTLOCK */
+#endif /* mx_HAVE_DOTLOCK */
 
 FL FILE *
 n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
@@ -233,7 +233,7 @@ n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
 #define _DOMSG() \
    n_err(_("Creating file lock for %s "), n_shexp_quote_cp(fname, FAL0))
 
-#ifdef HAVE_DOTLOCK
+#ifdef mx_HAVE_DOTLOCK
    int cpipe[2];
    struct n_dotlock_info di;
    enum n_dotlock_state dls;
@@ -251,7 +251,7 @@ n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
    rv = NULL;
    didmsg = FAL0;
    n_UNINIT(serr, 0);
-#ifdef HAVE_DOTLOCK
+#ifdef mx_HAVE_DOTLOCK
    emsg = NULL;
 #endif
 
@@ -280,7 +280,7 @@ n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
       }
    flocked = TRU1;
 
-#ifndef HAVE_DOTLOCK
+#ifndef mx_HAVE_DOTLOCK
 jleave:
    if(didmsg == TRUM1)
       n_err("\n");
@@ -455,7 +455,7 @@ jemsg:
    didmsg = TRU1;
    n_err(V_(emsg));
    goto jleave;
-#endif /* HAVE_DOTLOCK */
+#endif /* mx_HAVE_DOTLOCK */
 #undef _DOMSG
 }
 

@@ -42,12 +42,12 @@
 #undef su_FILE
 #define su_FILE xtls
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
 EMPTY_FILE()
-#ifdef HAVE_XTLS
+#ifdef mx_HAVE_XTLS
 #include <sys/socket.h>
 
 #include <openssl/crypto.h>
@@ -60,7 +60,7 @@ EMPTY_FILE()
 #include <openssl/x509v3.h>
 #include <openssl/x509.h>
 
-#ifdef HAVE_XTLS_CONFIG
+#ifdef mx_HAVE_XTLS_CONFIG
 # include <openssl/conf.h>
 #endif
 
@@ -69,7 +69,7 @@ EMPTY_FILE()
 #endif
 
 /* Compatibility shims which assume 0/-1 cannot really happen */
-#ifndef HAVE_XTLS_CONF_CTX
+#ifndef mx_HAVE_XTLS_CONF_CTX
 # ifndef SSL_OP_NO_SSLv2
 #  define SSL_OP_NO_SSLv2 0
 # endif
@@ -116,7 +116,7 @@ EMPTY_FILE()
 # endif
 #endif
 
-#ifdef HAVE_XTLS_STACK_OF
+#ifdef mx_HAVE_XTLS_STACK_OF
 # define n_XTLS_STACKOF(X) STACK_OF(X)
 #else
 # define n_XTLS_STACKOF(X) /*X*/STACK
@@ -129,7 +129,7 @@ EMPTY_FILE()
 #endif
 
 /* Compatibility sighs (that sigh is _really_ a cute one) */
-#if HAVE_XTLS_OPENSSL >= 0x10100
+#if mx_HAVE_XTLS_OPENSSL >= 0x10100
 # define a_xtls_X509_get_notBefore X509_get0_notBefore
 # define a_xtls_X509_get_notAfter X509_get0_notAfter
 #else
@@ -175,7 +175,7 @@ enum a_xtls_state{
    a_XTLS_S_RAND_INIT = 1u<<1,
    a_XTLS_S_CONF_LOAD = 1u<<2,
 
-#if HAVE_XTLS_OPENSSL < 0x10100
+#if mx_HAVE_XTLS_OPENSSL < 0x10100
    a_XTLS_S_EXIT_HDL = 1u<<8,
    a_XTLS_S_ALGO_LOAD = 1u<<9,
 #endif
@@ -188,7 +188,7 @@ struct ssl_method { /* TODO v15 obsolete */
    char const  sm_map[16];
 };
 
-#ifndef HAVE_XTLS_CONF_CTX
+#ifndef mx_HAVE_XTLS_CONF_CTX
 struct a_xtls_protocol{
    char const xp_name[8];
    sl_i xp_op_no;             /* SSL_OP_NO_* bit */
@@ -226,7 +226,7 @@ static struct ssl_method const _ssl_methods[] = { /* TODO obsolete */
 /* Update manual on change!
  * Ensure array size by adding \0 to longest entry.
  * Strictly to be sorted new/up to old/down, [0]=ALL, [x-1]=None! */
-#ifndef HAVE_XTLS_CONF_CTX
+#ifndef mx_HAVE_XTLS_CONF_CTX
 static struct a_xtls_protocol const a_xtls_protocols[] = {
    {"ALL", SSL_OP_NO_SSL_MASK, 0, FAL0, TRU1, {0}},
    {"TLSv1.3\0", SSL_OP_NO_TLSv1_3, TLS1_3_VERSION, TRU1, TRU1, {0}},
@@ -237,7 +237,7 @@ static struct a_xtls_protocol const a_xtls_protocols[] = {
    {"SSLv2", SSL_OP_NO_SSLv2, SSL2_VERSION, TRU1, TRU1, {0}},
    {"None", SSL_OP_NO_SSL_MASK, 0, TRU1, FAL0, {0}}
 };
-#endif /* HAVE_XTLS_CONF_CTX */
+#endif /* mx_HAVE_XTLS_CONF_CTX */
 
 /* Supported S/MIME cipher algorithms */
 static struct a_xtls_cipher const a_xtls_ciphers[] = { /*Manual!*/
@@ -272,7 +272,7 @@ static struct a_xtls_cipher const a_xtls_smime_ciphers_obs[] = {
 /* Supported S/MIME message digest algorithms.
  * Update manual on default changes! */
 static struct a_xtls_digest const a_xtls_digests[] = { /*Manual!*/
-#ifdef HAVE_XTLS_BLAKE2
+#ifdef mx_HAVE_XTLS_BLAKE2
    {"BLAKE2b512\0", &EVP_blake2b512},
    {"BLAKE2s256", &EVP_blake2s256},
 # ifndef a_XTLS_FINGERPRINT_DEFAULT_DIGEST
@@ -281,7 +281,7 @@ static struct a_xtls_digest const a_xtls_digests[] = { /*Manual!*/
 # endif
 #endif
 
-#ifdef HAVE_XTLS_SHA3
+#ifdef mx_HAVE_XTLS_SHA3
    {"SHA3-512\0", &EVP_sha3_512},
    {"SHA3-384", &EVP_sha3_384},
    {"SHA3-256", &EVP_sha3_256},
@@ -347,12 +347,12 @@ static size_t a_xtls_msgno;
 static void a_xtls_rand_init(void);
 static void a_xtls_init(void);
 
-#if HAVE_XTLS_OPENSSL < 0x10100
-# ifdef HAVE_TLS_ALL_ALGORITHMS
+#if mx_HAVE_XTLS_OPENSSL < 0x10100
+# ifdef mx_HAVE_TLS_ALL_ALGORITHMS
 static void a_xtls__load_algos(void);
 #  define a_xtls_load_algos a_xtls__load_algos
 # endif
-# if defined HAVE_XTLS_CONFIG || defined HAVE_TLS_ALL_ALGORITHMS
+# if defined mx_HAVE_XTLS_CONFIG || defined mx_HAVE_TLS_ALL_ALGORITHMS
 static void a_xtls_atexit(void);
 # endif
 #endif
@@ -412,7 +412,7 @@ a_xtls_rand_init(void){
    err = TRU1;
    randfile = NULL;
 
-#ifdef HAVE_XTLS_CONFIG
+#ifdef mx_HAVE_XTLS_CONFIG
    if(!(a_xtls_state & a_XTLS_S_INIT))
       a_xtls_init();
 #endif
@@ -449,14 +449,14 @@ a_xtls_rand_init(void){
       RAND_add(n_random_create_buf(b64buf, sizeof(b64buf) -1, NULL),
          sizeof(b64buf) -1, a_XTLS_RAND_ENTROPY);
       if((x = (char*)((uintptr_t)x >> (1
-#if HAVE_RANDOM == n_RANDOM_IMPL_TLS
+#if mx_HAVE_RANDOM == n_RANDOM_IMPL_TLS
          + 3
 #endif
             ))) == NULL){
          err = (RAND_status() == 0);
          break;
       }
-#if HAVE_RANDOM != n_RANDOM_IMPL_TLS
+#if mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
       if(!(err = (RAND_status() == 0)))
          break;
 #endif
@@ -479,7 +479,7 @@ jleave:
 
 static void
 a_xtls_init(void){
-#ifdef HAVE_XTLS_CONFIG
+#ifdef mx_HAVE_XTLS_CONFIG
    char const *cp;
 #endif
    NYD2_IN;
@@ -487,10 +487,10 @@ a_xtls_init(void){
    if(a_xtls_state & a_XTLS_S_INIT)
       goto jleave;
 
-#if HAVE_XTLS_OPENSSL >= 0x10100
+#if mx_HAVE_XTLS_OPENSSL >= 0x10100
    OPENSSL_init_ssl(OPENSSL_INIT_LOAD_SSL_STRINGS |
       OPENSSL_INIT_LOAD_CRYPTO_STRINGS
-# ifdef HAVE_TLS_ALL_ALGORITHMS
+# ifdef mx_HAVE_TLS_ALL_ALGORITHMS
          | OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS
 # endif
       , NULL);
@@ -503,7 +503,7 @@ a_xtls_init(void){
 
 
    /* Load openssl.cnf or whatever was given in *tls-config-file* */
-#ifdef HAVE_XTLS_CONFIG
+#ifdef mx_HAVE_XTLS_CONFIG
    if((cp = ok_vlook(tls_config_file)) != NULL ||
          (cp = ok_vlook(ssl_config_file)) != NULL){
       char const *msg;
@@ -523,7 +523,7 @@ a_xtls_init(void){
 
       if(CONF_modules_load_file(cp, n_uagent, flags) == 1){
          a_xtls_state |= a_XTLS_S_CONF_LOAD;
-# if HAVE_XTLS_OPENSSL < 0x10100
+# if mx_HAVE_XTLS_OPENSSL < 0x10100
          if(!(a_xtls_state & a_XTLS_S_EXIT_HDL)){
             a_xtls_state |= a_XTLS_S_EXIT_HDL;
             atexit(&a_xtls_atexit); /* TODO generic program-wide event mech. */
@@ -536,7 +536,7 @@ jefile:;
       }else
          ssl_gen_err(_("TLS CONF_modules_load_file() load error"));
    }
-#endif /* HAVE_XTLS_CONFIG */
+#endif /* mx_HAVE_XTLS_CONFIG */
 
    if(!(a_xtls_state & a_XTLS_S_RAND_INIT))
       a_xtls_rand_init();
@@ -544,8 +544,8 @@ jleave:
    NYD2_OU;
 }
 
-#if HAVE_XTLS_OPENSSL < 0x10100
-# ifdef HAVE_TLS_ALL_ALGORITHMS
+#if mx_HAVE_XTLS_OPENSSL < 0x10100
+# ifdef mx_HAVE_TLS_ALL_ALGORITHMS
 static void
 a_xtls__load_algos(void){
    NYD2_IN;
@@ -562,23 +562,23 @@ a_xtls__load_algos(void){
 }
 # endif
 
-# if defined HAVE_XTLS_CONFIG || defined HAVE_TLS_ALL_ALGORITHMS
+# if defined mx_HAVE_XTLS_CONFIG || defined mx_HAVE_TLS_ALL_ALGORITHMS
 static void
 a_xtls_atexit(void){
    NYD2_IN;
-#  ifdef HAVE_XTLS_CONFIG
+#  ifdef mx_HAVE_XTLS_CONFIG
    if(a_xtls_state & a_XTLS_S_CONF_LOAD)
       CONF_modules_free();
 #  endif
 
-#  ifdef HAVE_TLS_ALL_ALGORITHMS
+#  ifdef mx_HAVE_TLS_ALL_ALGORITHMS
    if(a_xtls_state & a_XTLS_S_ALGO_LOAD)
       EVP_cleanup();
 #  endif
    NYD2_OU;
 }
 # endif
-#endif /* HAVE_XTLS_OPENSSL < 0x10100 */
+#endif /* mx_HAVE_XTLS_OPENSSL < 0x10100 */
 
 static bool_t
 a_xtls_parse_asn1_time(ASN1_TIME const *atp, char *bdat, size_t blen)
@@ -678,7 +678,7 @@ a_xtls_digest_find(char const *name,
       }
 
    /* Not a built-in algorithm, but we may have dynamic support for more */
-#ifdef HAVE_TLS_ALL_ALGORITHMS
+#ifdef mx_HAVE_TLS_ALL_ALGORITHMS
    if((*mdp = EVP_get_digestbyname(nn)) != NULL)
       goto jleave;
 #endif
@@ -722,7 +722,7 @@ jouter:
    NYD2_OU;
 }
 
-#ifdef HAVE_XTLS_CONF_CTX
+#ifdef mx_HAVE_XTLS_CONF_CTX
 static void *
 a_xtls_conf_setup(SSL_CTX *ctxp, struct url const *urlp){
    char const *cp;
@@ -733,7 +733,7 @@ a_xtls_conf_setup(SSL_CTX *ctxp, struct url const *urlp){
 
    if((cp = xok_vlook(tls_config_module, urlp, OXM_ALL)) != NULL ||
          (cp = xok_vlook(ssl_config_module, urlp, OXM_ALL)) != NULL){
-# ifdef HAVE_XTLS_CTX_CONFIG
+# ifdef mx_HAVE_XTLS_CTX_CONFIG
       if(!(a_xtls_state & a_XTLS_S_CONF_LOAD)){
          n_err(_("*tls-config-module*: no *tls-config-file* loaded: %s\n"),
             n_shexp_quote_cp(cp, FAL0));
@@ -815,8 +815,8 @@ a_xtls_conf_finish(void **confp, bool_t error){
    return rv;
 }
 
-#else /* HAVE_XTLS_CONF_CTX */
-# ifdef HAVE_XTLS_CTX_CONFIG
+#else /* mx_HAVE_XTLS_CONF_CTX */
+# ifdef mx_HAVE_XTLS_CTX_CONFIG
 #  error SSL_CTX_config(3) support unexpected without SSL_CONF_CTX support
 # endif
 
@@ -859,7 +859,7 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
          goto jerr;
       }
    }else if(!asccasecmp(cmd, xcmd = "Ciphersuites")){
-#ifdef HAVE_XTLS_SET_CIPHERSUITES
+#ifdef mx_HAVE_XTLS_SET_CIPHERSUITES
       if(SSL_CTX_set_ciphersuites(ctxp, value) != 1){
          emsg = N_("TLS: %s: invalid: %s\n");
          goto jerr;
@@ -882,7 +882,7 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
 #endif
    }else if((emsg = NULL, !asccasecmp(cmd, xcmd = "MaxProtocol")) ||
          (emsg = (char*)-1, !asccasecmp(cmd, xcmd = "MinProtocol"))){
-#ifndef HAVE_XTLS_SET_MIN_PROTO_VERSION
+#ifndef mx_HAVE_XTLS_SET_MIN_PROTO_VERSION
       value = NULL;
       emsg = N_("TLS: %s: directive not supported\n");
       goto jxerr;
@@ -907,7 +907,7 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
          emsg = N_("TLS: %s: invalid protocol: %s\n");
          goto jerr;
       }
-#endif /* !HAVE_XTLS_SET_MIN_PROTO_VERSION */
+#endif /* !mx_HAVE_XTLS_SET_MIN_PROTO_VERSION */
    }else if(!asccasecmp(cmd, xcmd = "Options")){
       if(asccasecmp(value, "Bugs")){
          emsg = N_("TLS: %s: fallback only supports value \"Bugs\": %s\n");
@@ -992,7 +992,7 @@ a_xtls_conf_finish(void **confp, bool_t error){
    *confp = NULL;
    return TRU1;
 }
-#endif /* !HAVE_XTLS_CONF_CTX */
+#endif /* !mx_HAVE_XTLS_CONF_CTX */
 
 static bool_t
 a_xtls_obsolete_conf_vars(void *confp, struct url const *urlp){
@@ -1468,7 +1468,7 @@ _smime_cipher(char const *name)
 #endif
 
    /* Not a built-in algorithm, but we may have dynamic support for more */
-#ifdef HAVE_TLS_ALL_ALGORITHMS
+#ifdef mx_HAVE_TLS_ALL_ALGORITHMS
    if((cipher = EVP_get_cipherbyname(cp)) != NULL)
       goto jleave;
 #endif
@@ -1796,7 +1796,7 @@ jleave:
    return rv;
 }
 
-#if HAVE_RANDOM == n_RANDOM_IMPL_TLS
+#if mx_HAVE_RANDOM == n_RANDOM_IMPL_TLS
 FL void
 n_tls_rand_bytes(void *buf, size_t blen){
    NYD2_IN;
@@ -2499,6 +2499,6 @@ jleave:
    NYD_OU;
    return rv;
 }
-#endif /* HAVE_XTLS */
+#endif /* mx_HAVE_XTLS */
 
 /* s-it-mode */

@@ -38,13 +38,13 @@
 #undef su_FILE
 #define su_FILE shexp
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
 #include <pwd.h>
 
-#ifdef HAVE_FNMATCH
+#ifdef mx_HAVE_FNMATCH
 # include <dirent.h>
 # include <fnmatch.h>
 #endif
@@ -78,7 +78,7 @@ enum a_shexp_quote_flags{
    a_SHEXP_QUOTE__FREESHIFT = 16u
 };
 
-#ifdef HAVE_FNMATCH
+#ifdef mx_HAVE_FNMATCH
 struct a_shexp_glob_ctx{
    char const *sgc_patdat;       /* Remaining pattern (at and below level) */
    size_t sgc_patlen;
@@ -116,7 +116,7 @@ static char *a_shexp_tilde(char const *s);
 
 /* Perform fnmatch(3).  May return NULL on error */
 static char *a_shexp_globname(char const *name, enum fexp_mode fexpm);
-#ifdef HAVE_FNMATCH
+#ifdef mx_HAVE_FNMATCH
 static bool_t a_shexp__glob(struct a_shexp_glob_ctx *sgcp,
                struct n_strlist **slpp);
 static int a_shexp__globsort(void const *cvpa, void const *cvpb);
@@ -138,10 +138,10 @@ a_shexp_findmail(char const *user, bool_t force){
          if((rv = fexpand(cp, FEXP_NSPECIAL | FEXP_NFOLDER | FEXP_NSHELL)
                ) != NULL)
             goto jleave;
-         n_err(_("*inbox* expansion failed, using $MAIL / built-in: %s\n"), cp);
+         n_err(_("*inbox* expansion failed, using $MAIL/built-in: %s\n"), cp);
       }
       /* Heirloom compatibility: an IMAP *folder* becomes "%" */
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
       else if(cp == NULL && !strcmp(user, ok_vlook(LOGNAME)) &&
             which_protocol(cp = n_folder_query(), FAL0, FAL0, NULL)
                == PROTO_IMAP){
@@ -216,7 +216,7 @@ jleave:
 
 static char *
 a_shexp_globname(char const *name, enum fexp_mode fexpm){
-#ifdef HAVE_FNMATCH
+#ifdef mx_HAVE_FNMATCH
    struct a_shexp_glob_ctx sgc;
    struct n_string outer;
    struct n_strlist *slp;
@@ -294,7 +294,7 @@ jerr:
    cp = NULL;
    goto jleave;
 
-#else /* HAVE_FNMATCH */
+#else /* mx_HAVE_FNMATCH */
    n_UNUSED(fexpm);
 
    if(!(fexpm & FEXP_SILENT))
@@ -303,7 +303,7 @@ jerr:
 #endif
 }
 
-#ifdef HAVE_FNMATCH
+#ifdef mx_HAVE_FNMATCH
 static bool_t
 a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
    enum{a_SILENT = 1<<0, a_DEEP=1<<1, a_SALLOC=1<<2};
@@ -429,7 +429,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
                dep->d_name);
 
             isdir = FAL0;
-#ifdef HAVE_DIRENT_TYPE
+#ifdef mx_HAVE_DIRENT_TYPE
             if(dep->d_type == DT_DIR)
                isdir = TRU1;
             else if(dep->d_type == DT_LNK || dep->d_type == DT_UNKNOWN)
@@ -444,7 +444,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
                   isdir = TRU1;
             }
 
-            /* TODO We recurse with current dir FD open, which could E[MN]FILE!
+            /* TODO Recurse with current dir FD open, which could E[MN]FILE!
              * TODO Instead save away a list of such n_string's for later */
             if(isdir && !a_shexp__glob(&nsgc, slpp)){
                ccp = (char*)1;
@@ -515,7 +515,7 @@ a_shexp__globsort(void const *cvpa, void const *cvpb){
    NYD2_OU;
    return rv;
 }
-#endif /* HAVE_FNMATCH */
+#endif /* mx_HAVE_FNMATCH */
 
 static void
 a_shexp__quote(struct a_shexp_quote_ctx *sqcp, struct a_shexp_quote_lvl *sqlp){
@@ -744,7 +744,7 @@ jstep:
             }
             goto jpush;
          }else if(blankspacechar(c) || c == '|' || c == '&' || c == ';' ||
-               /* Whereas we don't support those, quote them for the sh(1)ell */
+               /* Whereas we do not support those, quote them for sh(1)ell */
                c == '(' || c == ')' || c == '<' || c == '>' ||
                c == '"' || c == '$'){
             if(flags & (a_SHEXP_QUOTE_T_SINGLE | a_SHEXP_QUOTE_T_DOLLAR))
@@ -773,7 +773,7 @@ jpush:
          }else{
             /* Not an ASCII character, take care not to split up multibyte
              * sequences etc.  For the sake of compile testing, don't enwrap in
-             * HAVE_ALWAYS_UNICODE_LOCALE || HAVE_NATCH_CHAR */
+             * mx_HAVE_ALWAYS_UNICODE_LOCALE || mx_HAVE_NATCH_CHAR */
             if(n_psonce & n_PSO_UNICODE){
                ui32_t uc;
                char const *ib2;
@@ -812,7 +812,7 @@ jpush:
             il -= vic.vic_oulen;
             if(!(flags & a_SHEXP_QUOTE_ROUNDTRIP))
                u.store = n_string_push_buf(u.store, ib, il);
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
             else if((vic.vic_indat = n_iconv_onetime_cp(n_ICONV_NONE,
                   "utf-8", ok_vlook(ttycharset), savestrbuf(ib, il))) != NULL){
                ui32_t uc;
@@ -834,7 +834,7 @@ jpush:
             }
 #endif
             else
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
                  Jxseq:
 #endif
                         while(il-- > 0){
@@ -946,7 +946,7 @@ jnext:
       }
    }
 
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
    if(res[0] == '@' && which_protocol(mailname, FAL0, FAL0, NULL)
          == PROTO_IMAP){
       res = str_concat_csvl(&s, protbase(mailname), "/", &res[1], NULL)->s;
@@ -993,9 +993,10 @@ jnext:
          for(;;){
             enum n_shexp_state shs;
 
-            /* TODO shexp: take care to not include backtick eval once avail! */
+            /* TODO shexp: take care: not include backtick eval once avail! */
             shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG_D_V |
-                  n_SHEXP_PARSE_QUOTE_AUTO_FIXED | n_SHEXP_PARSE_QUOTE_AUTO_DQ |
+                  n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
+                  n_SHEXP_PARSE_QUOTE_AUTO_DQ |
                   n_SHEXP_PARSE_QUOTE_AUTO_CLOSE), shoup, &shin, NULL);
             if(shs & n_SHEXP_STATE_STOP)
                break;
@@ -1242,8 +1243,8 @@ jrestart:
                   goto J_var_expand;
             }
          }else if(c == '\\'){
-            /* Outside of quotes this just escapes any next character, but a sole
-             * <reverse solidus> at EOS is left unchanged */
+            /* Outside of quotes this just escapes any next character, but
+             * a sole <reverse solidus> at EOS is left unchanged */
              if(il > 0)
                --il, c = *ib++;
             state &= ~a_NTOKEN;
@@ -1255,7 +1256,7 @@ jrestart:
             /*last_known_meta_trim_len = UI32_MAX;*/
             goto jleave;
          }
-         /* Metacharacters which separate tokens must be turned on explicitly */
+         /* Metacharacters that separate tokens must be turned on explicitly */
          else if(c == '|' && (flags & n_SHEXP_PARSE_META_VERTBAR)){
             rv |= n_SHEXP_STATE_META_VERTBAR;
 
@@ -1279,7 +1280,8 @@ jrestart:
                n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, ib, il);
             rv |= n_SHEXP_STATE_META_SEMICOLON | n_SHEXP_STATE_STOP;
             state |= a_CONSUME;
-            if(!(flags & n_SHEXP_PARSE_DRYRUN) && (rv & n_SHEXP_STATE_OUTPUT) &&
+            if(!(flags & n_SHEXP_PARSE_DRYRUN) &&
+                  (rv & n_SHEXP_STATE_OUTPUT) &&
                   last_known_meta_trim_len != UI32_MAX)
                store = n_string_trunc(store, last_known_meta_trim_len);
 
@@ -1309,8 +1311,8 @@ jrestart:
                   ((flags & n_SHEXP_PARSE_IFS_VAR) &&
                      ((blnk & 2) || strchr(ifs, c) != NULL))){
                if(!(flags & n_SHEXP_PARSE_IFS_IS_COMMA)){
-                  /* The parsed sequence may be _the_ output, so ensure we don't
-                   * include the metacharacter, then. */
+                  /* The parsed sequence may be _the_ output, so ensure we do
+                   * not include the metacharacter, then. */
                   if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
                      ++il, --ib;
                   /*last_known_meta_trim_len = UI32_MAX;*/
@@ -1426,7 +1428,7 @@ jrestart:
                         rv |= n_SHEXP_STATE_ERR_NUMBER;
                         --il, ++ib;
                         if(flags & n_SHEXP_PARSE_LOG)
-                           n_err(_("\\0 argument exceeds a byte: %.*s: %.*s\n"),
+                           n_err(_("\\0 argument exceeds byte: %.*s: %.*s\n"),
                               (int)input->l, input->s,
                               (int)PTR2SIZE(ib - ib_save), ib_save);
                         /* Write unchanged */
@@ -1524,7 +1526,7 @@ jerr_ib_save:
                               store = n_string_push_buf(store, utf, j);
                            continue;
                         }
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
                         else{
                            char *icp;
 
@@ -1620,7 +1622,8 @@ j_dollar_ungetc:
                }
 
                /* Handle the scan error cases */
-               if((state & (a_DIGIT1 | a_NONDIGIT)) == (a_DIGIT1 | a_NONDIGIT)){
+               if((state & (a_DIGIT1 | a_NONDIGIT)) ==
+                     (a_DIGIT1 | a_NONDIGIT)){
                   if(state & a_BRACE){
                      if(il > 0 && *ib == '}')
                         --il, ++ib;
@@ -1730,7 +1733,7 @@ j_var_look_buf:
                   continue;
                }
             }
-         }else if(c == '`' && quotec == '"' && il > 0){ /* TODO shell command */
+         }else if(c == '`' && quotec == '"' && il > 0){ /* TODO sh command */
             continue;
          }
       }

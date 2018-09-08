@@ -42,12 +42,12 @@
 #undef su_FILE
 #define su_FILE smtp
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
 EMPTY_FILE()
-#ifdef HAVE_SMTP
+#ifdef mx_HAVE_SMTP
 #include <sys/socket.h>
 
 struct smtp_line {
@@ -68,7 +68,7 @@ static int     _smtp_read(struct sock *sp, struct smtp_line *slp, int val,
 /* Talk to a SMTP server */
 static bool_t  _smtp_talk(struct sock *sp, struct sendbundle *sbp);
 
-#ifdef HAVE_GSSAPI
+#ifdef mx_HAVE_GSSAPI
 static bool_t  _smtp_gssapi(struct sock *sp, struct sendbundle *sbp,
                   struct smtp_line *slp);
 #endif
@@ -165,7 +165,7 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp) /* TODO n_string etc. */
    /* Read greeting */
    _ANSWER(2, FAL0, FAL0);
 
-#ifdef HAVE_TLS
+#ifdef mx_HAVE_TLS
    if (!sp->s_use_tls && xok_blook(smtp_use_starttls, &sbp->sb_url, OXM_ALL)) {
       snprintf(o, sizeof o, NETLINE("EHLO %s"), hostname);
       _OUT(o);
@@ -246,7 +246,7 @@ jerr_cred:
       _OUT(b64.s);
       _ANSWER(2, FAL0, FAL0);
       break;
-#ifdef HAVE_MD5
+#ifdef mx_HAVE_MD5
    case AUTHTYPE_CRAM_MD5:{
       char *cp;
 
@@ -260,7 +260,7 @@ jerr_cred:
       _ANSWER(2, FAL0, FAL0);
       }break;
 #endif
-#ifdef HAVE_GSSAPI
+#ifdef mx_HAVE_GSSAPI
    case AUTHTYPE_GSSAPI:
       if (n_poption & n_PO_DEBUG)
          n_err(_(">>> We would perform GSS-API authentication now\n"));
@@ -332,7 +332,7 @@ jleave:
    return rv;
 }
 
-#ifdef HAVE_GSSAPI
+#ifdef mx_HAVE_GSSAPI
 # include "smtp-gssapi.h"
 #endif
 
@@ -368,6 +368,6 @@ jleave:
    NYD_OU;
    return rv;
 }
-#endif /* HAVE_SMTP */
+#endif /* mx_HAVE_SMTP */
 
 /* s-it-mode */

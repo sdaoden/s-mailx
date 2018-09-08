@@ -40,24 +40,24 @@
 #undef su_FILE
 #define su_FILE obs_imap
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
 # include <sys/socket.h>
 
 # include <netdb.h>
 
 # include <netinet/in.h>
 
-# ifdef HAVE_ARPA_INET_H
+# ifdef mx_HAVE_ARPA_INET_H
 #  include <arpa/inet.h>
 # endif
 #endif
 
 EMPTY_FILE()
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
 #define IMAP_ANSWER() \
 {\
    if (mp->mb_type != MB_CACHE) {\
@@ -197,11 +197,11 @@ static void       imapalarm(int s);
 static enum okay  imap_preauth(struct mailbox *mp, struct url *urlp);
 static enum okay  imap_capability(struct mailbox *mp);
 static enum okay  imap_auth(struct mailbox *mp, struct ccred *ccred);
-#ifdef HAVE_MD5
+#ifdef mx_HAVE_MD5
 static enum okay  imap_cram_md5(struct mailbox *mp, struct ccred *ccred);
 #endif
 static enum okay  imap_login(struct mailbox *mp, struct ccred *ccred);
-#ifdef HAVE_GSSAPI
+#ifdef mx_HAVE_GSSAPI
 static enum okay  _imap_gssapi(struct mailbox *mp, struct ccred *ccred);
 #endif
 static enum okay  imap_flags(struct mailbox *mp, unsigned X, unsigned Y);
@@ -256,7 +256,7 @@ static enum okay  imap_appenduid(struct mailbox *mp, FILE *fp, time_t t,
                      long off1, long xsize, long size, long lines, int flag,
                      const char *name);
 static enum okay  imap_appenduid_cached(struct mailbox *mp, FILE *fp);
-#ifdef HAVE_IMAP_SEARCH
+#ifdef mx_HAVE_IMAP_SEARCH
 static ssize_t    imap_search2(struct mailbox *mp, struct message *m, int cnt,
                      const char *spec, int f);
 #endif
@@ -422,8 +422,8 @@ imap_path_encode(char const *cp, bool_t *err_or_null){
     * local charset to UTF-8, then convert all characters which need to be
     * encoded (except plain "&") to UTF-16BE first, then that to mUTF-7.
     * We can skip the UTF-8 conversion occasionally, however */
-#if (defined HAVE_DEVEL || !defined HAVE_ALWAYS_UNICODE_LOCALE) &&\
-      defined HAVE_ICONV
+#if (defined mx_HAVE_DEVEL || !defined mx_HAVE_ALWAYS_UNICODE_LOCALE) &&\
+      defined mx_HAVE_ICONV
    if(!(n_psonce & n_PSO_UNICODE)){
       char const *x;
 
@@ -731,8 +731,8 @@ jeincpl:
    *rv = '\0';
 
    /* We can skip the UTF-8 conversion occasionally */
-#if (defined HAVE_DEVEL || !defined HAVE_ALWAYS_UNICODE_LOCALE) &&\
-      defined HAVE_ICONV
+#if (defined mx_HAVE_DEVEL || !defined mx_HAVE_ALWAYS_UNICODE_LOCALE) &&\
+      defined mx_HAVE_ICONV
    if(!(n_psonce & n_PSO_UNICODE)){
       emsg = N_("iconv(3) from UTF-8 to locale charset failed");
       if((rv = n_iconv_onetime_cp(n_ICONV_NONE, NULL, NULL, rv_base)) == NULL)
@@ -1314,7 +1314,7 @@ imap_preauth(struct mailbox *mp, struct url *urlp)
    mp->mb_active |= MB_PREAUTH;
    imap_answer(mp, 1);
 
-#ifdef HAVE_TLS
+#ifdef mx_HAVE_TLS
    if (!mp->mb_sock.s_use_tls && xok_blook(imap_use_starttls, urlp, OXM_ALL)) {
       FILE *queuefp = NULL;
       char o[LINESIZE];
@@ -1381,12 +1381,12 @@ imap_auth(struct mailbox *mp, struct ccred *ccred)
    case AUTHTYPE_LOGIN:
       rv = imap_login(mp, ccred);
       break;
-#ifdef HAVE_MD5
+#ifdef mx_HAVE_MD5
    case AUTHTYPE_CRAM_MD5:
       rv = imap_cram_md5(mp, ccred);
       break;
 #endif
-#ifdef HAVE_GSSAPI
+#ifdef mx_HAVE_GSSAPI
    case AUTHTYPE_GSSAPI:
       rv = _imap_gssapi(mp, ccred);
       break;
@@ -1400,7 +1400,7 @@ jleave:
    return rv;
 }
 
-#ifdef HAVE_MD5
+#ifdef mx_HAVE_MD5
 static enum okay
 imap_cram_md5(struct mailbox *mp, struct ccred *ccred)
 {
@@ -1425,7 +1425,7 @@ jleave:
    NYD_OU;
    return rv;
 }
-#endif /* HAVE_MD5 */
+#endif /* mx_HAVE_MD5 */
 
 static enum okay
 imap_login(struct mailbox *mp, struct ccred *ccred)
@@ -1445,7 +1445,7 @@ jleave:
    return rv;
 }
 
-#ifdef HAVE_GSSAPI
+#ifdef mx_HAVE_GSSAPI
 # include "mx/obs-imap-gssapi.h"
 #endif
 
@@ -2403,7 +2403,7 @@ imap_exit(struct mailbox *mp)
    n_free(mp->mb_imap_mailbox);
    if (mp->mb_cache_directory != NULL)
       n_free(mp->mb_cache_directory);
-#ifndef HAVE_DEBUG /* TODO ASSERT LEGACY */
+#ifndef mx_HAVE_DEBUG /* TODO ASSERT LEGACY */
    mp->mb_imap_account =
    mp->mb_imap_mailbox =
    mp->mb_cache_directory = "";
@@ -3683,7 +3683,7 @@ jstop:
    return rv;
 }
 
-#ifdef HAVE_IMAP_SEARCH
+#ifdef mx_HAVE_IMAP_SEARCH
 static ssize_t
 imap_search2(struct mailbox *mp, struct message *m, int cnt, const char *spec,
    int f)
@@ -3701,7 +3701,7 @@ imap_search2(struct mailbox *mp, struct message *m, int cnt, const char *spec,
       c |= *cp;
    if (c & 0200) {
       cp = ok_vlook(ttycharset);
-# ifdef HAVE_ICONV
+# ifdef mx_HAVE_ICONV
       if(asccasecmp(cp, "utf-8") && asccasecmp(cp, "utf8")){ /* XXX */
          char const *nspec;
 
@@ -3784,7 +3784,7 @@ jleave:
       n_go_onintr_for_imap();
    return rv;
 }
-#endif /* HAVE_IMAP_SEARCH */
+#endif /* mx_HAVE_IMAP_SEARCH */
 
 FL int
 imap_thisaccount(const char *cp)
@@ -4392,6 +4392,6 @@ FL char *
    NYD2_OU;
    return n;
 }
-#endif /* HAVE_IMAP */
+#endif /* mx_HAVE_IMAP */
 
 /* s-it-mode */

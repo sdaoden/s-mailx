@@ -19,7 +19,7 @@
 #undef su_FILE
 #define su_FILE cmd_cnd
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -103,7 +103,7 @@ a_ccnd_oif_test(struct a_ccnd_if_ctx *cicp, bool_t noop){
    }else if(cp[1] == '\0')
       goto jesyn;
    else if(argc > 3){
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
 jesyn_ntr:
 #endif
       if(0){
@@ -193,7 +193,7 @@ jesyn:
             goto jesyn;
       }else if(c == '=' || c == '!'){
          if(op[1] != '=' && op[1] != '%' && op[1] != '@'
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
                && op[1] != '~'
 #endif
          )
@@ -245,7 +245,7 @@ jesyn:
       if(rhv == NULL)
          rhv = n_UNCONST(n_empty);
 
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
       if(op[1] == '~'){
          regex_t re;
          int s;

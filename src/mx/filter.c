@@ -19,7 +19,7 @@
 #undef su_FILE
 #define su_FILE filter
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -32,7 +32,7 @@
  * TODO or a LF escaping \ follows on the line (simply reuse the latter).
  */
 
-#ifdef HAVE_QUOTE_FOLD
+#ifdef mx_HAVE_QUOTE_FOLD
 n_CTAV(n_QUOTE_MAX > 3);
 
 enum qf_state {
@@ -315,7 +315,7 @@ _qf_state_data(struct qf_vc *vc)
    NYD_OU;
    return rv;
 }
-#endif /* HAVE_QUOTE_FOLD */
+#endif /* mx_HAVE_QUOTE_FOLD */
 
 FL struct quoteflt *
 quoteflt_dummy(void) /* TODO LEGACY (until filters are plugged when needed) */
@@ -329,7 +329,7 @@ quoteflt_dummy(void) /* TODO LEGACY (until filters are plugged when needed) */
 FL void
 quoteflt_init(struct quoteflt *self, char const *prefix, bool_t bypass)
 {
-#ifdef HAVE_QUOTE_FOLD
+#ifdef mx_HAVE_QUOTE_FOLD
    char const *xcp, *cp;
 #endif
    NYD_IN;
@@ -342,7 +342,7 @@ quoteflt_init(struct quoteflt *self, char const *prefix, bool_t bypass)
 
    /* Check whether the user wants the more fancy quoting algorithm */
    /* TODO *quote-fold*: n_QUOTE_MAX may excess it! */
-#ifdef HAVE_QUOTE_FOLD
+#ifdef mx_HAVE_QUOTE_FOLD
    if (!bypass && (cp = ok_vlook(quote_fold)) != NULL) {
       ui32_t qmax, qmaxnws, qmin;
 
@@ -392,7 +392,7 @@ quoteflt_reset(struct quoteflt *self, FILE *f) /* xxx inline */
 {
    NYD_IN;
    self->qf_os = f;
-#ifdef HAVE_QUOTE_FOLD
+#ifdef mx_HAVE_QUOTE_FOLD
    self->qf_state = _QF_CLEAN;
    self->qf_dat.l =
    self->qf_currq.l = 0;
@@ -423,7 +423,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
    }
    /* Normal: place *indentprefix* at every BOL */
    else
-#ifdef HAVE_QUOTE_FOLD
+#ifdef mx_HAVE_QUOTE_FOLD
       if (self->qf_qfold_max == 0)
 #endif
    {
@@ -472,7 +472,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
     *   TODO can be found, because of compatibility reasons; however, being
     *   TODO a problem rather than a solution is not a good thing (tm))
     * - Lookout for a newline */
-#ifdef HAVE_QUOTE_FOLD
+#ifdef mx_HAVE_QUOTE_FOLD
    else {
       struct qf_vc vc;
       ssize_t i;
@@ -496,7 +496,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
          rv += i;
       }
    }
-#endif /* HAVE_QUOTE_FOLD */
+#endif /* mx_HAVE_QUOTE_FOLD */
 
 jleave:
    NYD_OU;
@@ -513,7 +513,7 @@ quoteflt_flush(struct quoteflt *self)
    NYD_IN;
    n_UNUSED(self);
 
-#ifdef HAVE_QUOTE_FOLD
+#ifdef mx_HAVE_QUOTE_FOLD
    if (self->qf_dat.l > 0) {
       rv = _qf_dump_prefix(self);
       if (rv >= 0) {
@@ -534,7 +534,7 @@ quoteflt_flush(struct quoteflt *self)
 }
 
 /*
- * HTML tagsoup filter TODO rewrite wchar_t based (require HAVE_C90AMEND1)
+ * HTML tagsoup filter TODO rewrite wchar_t based (require mx_HAVE_C90AMEND1)
  * TODO . Numeric &#NO; entities should also be treated by struct hf_ent
  * TODO . Yes, we COULD support CSS based quoting when we'd check type="quote"
  * TODO   (nonstandard) and watch out for style="gmail_quote" (or so, VERY
@@ -543,7 +543,7 @@ quoteflt_flush(struct quoteflt *self)
  * TODO   place sizeof(stack) ">"s first.  But aren't these HTML mails rude?
  * TODO Interlocking and non-well-formed data will break us down
  */
-#ifdef HAVE_FILTER_HTML_TAGSOUP
+#ifdef mx_HAVE_FILTER_HTML_TAGSOUP
 
 enum hf_limits {
    _HF_MINLEN  = 10,       /* Minimum line length (can't really be smaller) */
@@ -709,7 +709,7 @@ static struct hf_ent const       _hf_ents[] = {
 static struct htmlflt * _hf_dump_hrefs(struct htmlflt *self);
 static struct htmlflt * _hf_dump(struct htmlflt *self);
 static struct htmlflt * _hf_store(struct htmlflt *self, char c);
-# ifdef HAVE_NATCH_CHAR
+# ifdef mx_HAVE_NATCH_CHAR
 static struct htmlflt * __hf_sync_mbstuff(struct htmlflt *self);
 # endif
 
@@ -871,7 +871,7 @@ _hf_store(struct htmlflt *self, char c)
       self->hf_last_ws = l;
 
    i = l;
-# ifdef HAVE_NATCH_CHAR /* XXX This code is really ridiculous! */
+# ifdef mx_HAVE_NATCH_CHAR /* XXX This code is really ridiculous! */
    if (n_mb_cur_max > 1) { /* XXX should mbrtowc() and THEN store, at least */
       wchar_t wc;
       int w, x;
@@ -918,7 +918,7 @@ jput:
          if ((self->hf_len = (l -= i)) > 0) {
             self->hf_flags &= ~_HF_NL_MASK;
             memmove(self->hf_line, self->hf_line + i, l);
-# ifdef HAVE_NATCH_CHAR
+# ifdef mx_HAVE_NATCH_CHAR
             __hf_sync_mbstuff(self);
 # endif
          }
@@ -945,7 +945,7 @@ jleave:
    return self;
 }
 
-# ifdef HAVE_NATCH_CHAR
+# ifdef mx_HAVE_NATCH_CHAR
 static struct htmlflt *
 __hf_sync_mbstuff(struct htmlflt *self)
 {
@@ -990,7 +990,7 @@ jumpin:
    NYD2_OU;
    return self;
 }
-# endif /* HAVE_NATCH_CHAR */
+# endif /* mx_HAVE_NATCH_CHAR */
 
 static struct htmlflt *
 _hf_nl(struct htmlflt *self)
@@ -1759,6 +1759,6 @@ htmlflt_flush(struct htmlflt *self)
    NYD_OU;
    return rv;
 }
-#endif /* HAVE_FILTER_HTML_TAGSOUP */
+#endif /* mx_HAVE_FILTER_HTML_TAGSOUP */
 
 /* s-it-mode */

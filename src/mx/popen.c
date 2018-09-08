@@ -36,7 +36,7 @@
 #undef su_FILE
 #define su_FILE popen
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -190,14 +190,14 @@ _file_save(struct fp *fpp)
       goto jleave;
    }
 
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
    if ((fpp->flags & FP_MASK) == FP_IMAP) {
       rv = imap_append(fpp->realfile, fpp->fp, fpp->offset);
       goto jleave;
    }
 #endif
 
-#ifdef HAVE_MAILDIR
+#ifdef mx_HAVE_MAILDIR
    if ((fpp->flags & FP_MASK) == FP_MAILDIR) {
       rv = maildir_append(fpp->realfile, fpp->fp, fpp->offset);
       goto jleave;
@@ -575,7 +575,7 @@ n_fopen_any(char const *file, char const *oflags, /* TODO should take flags */
    default:
       goto jleave;
    case n_PROTO_IMAP:
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
       file = csave;
       flags |= FP_IMAP;
       osflags = O_RDWR | O_APPEND | O_CREAT | n_O_NOXY_BITS;
@@ -586,7 +586,7 @@ n_fopen_any(char const *file, char const *oflags, /* TODO should take flags */
       goto jleave;
 #endif
    case n_PROTO_MAILDIR:
-#ifdef HAVE_MAILDIR
+#ifdef mx_HAVE_MAILDIR
       if(fs_or_null != NULL && !access(file, F_OK))
          fs |= n_FOPEN_STATE_EXISTS;
       flags |= FP_MAILDIR;
@@ -700,7 +700,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
    e = 0;
    tmpdir = ok_vlook(TMPDIR);
    maxname = NAME_MAX;
-#ifdef HAVE_PATHCONF
+#ifdef mx_HAVE_PATHCONF
    {  long pc;
 
       if ((pc = pathconf(tmpdir, _PC_NAME_MAX)) != -1)
@@ -842,7 +842,7 @@ pipe_cloexec(int fd[2]){
 
    rv = FAL0;
 
-#ifdef HAVE_PIPE2
+#ifdef mx_HAVE_PIPE2
    if(pipe2(fd, O_CLOEXEC) != -1)
       rv = TRU1;
 #else

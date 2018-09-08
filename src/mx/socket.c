@@ -33,13 +33,13 @@
 #undef su_FILE
 #define su_FILE socket
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
 EMPTY_FILE()
-#ifdef HAVE_SOCKETS
-# ifdef HAVE_NONBLOCKSOCK
+#ifdef mx_HAVE_SOCKETS
+# ifdef mx_HAVE_NONBLOCKSOCK
 /*#  include <sys/types.h>*/
 #  include <sys/select.h>
 /*#  include <sys/time.h>*/
@@ -57,11 +57,11 @@ EMPTY_FILE()
 
 #include <netinet/in.h>
 
-#ifdef HAVE_ARPA_INET_H
+#ifdef mx_HAVE_ARPA_INET_H
 # include <arpa/inet.h>
 #endif
 
-#ifdef HAVE_XTLS
+#ifdef mx_HAVE_XTLS
 # include <openssl/err.h>
 # include <openssl/rand.h>
 # include <openssl/ssl.h>
@@ -97,13 +97,13 @@ __sopen_onsig(int sig) /* TODO someday, we won't need it no more */
 static bool_t
 a_socket_open(struct sock *sp, struct url *urlp) /* TODO sigstuff; refactor */
 {
-# ifdef HAVE_SO_XTIMEO
+# ifdef mx_HAVE_SO_XTIMEO
    struct timeval tv;
 # endif
-# ifdef HAVE_SO_LINGER
+# ifdef mx_HAVE_SO_LINGER
    struct linger li;
 # endif
-# ifdef HAVE_GETADDRINFO
+# ifdef mx_HAVE_GETADDRINFO
 #  ifndef NI_MAXHOST
 #   define NI_MAXHOST 1025
 #  endif
@@ -146,7 +146,7 @@ jpseudo_jump:
    }
    rele_sigs();
 
-# ifdef HAVE_GETADDRINFO
+# ifdef mx_HAVE_GETADDRINFO
    for (;;) {
       memset(&hints, 0, sizeof hints);
       hints.ai_socktype = SOCK_STREAM;
@@ -210,7 +210,7 @@ jjumped:
       res0 = NULL;
    }
 
-# else /* HAVE_GETADDRINFO */
+# else /* mx_HAVE_GETADDRINFO */
    if (serv == urlp->url_proto) {
       if ((ep = getservbyname(n_UNCONST(serv), "tcp")) != NULL)
          urlp->url_portno = ntohs(ep->s_port);
@@ -276,7 +276,7 @@ jjumped:
          sizeof servaddr)) != n_ERR_NONE)
       sofd = -1;
 jjumped:
-# endif /* !HAVE_GETADDRINFO */
+# endif /* !mx_HAVE_GETADDRINFO */
 
    hold_sigs();
    safe_signal(SIGINT, oint);
@@ -296,24 +296,24 @@ jjumped:
       n_err(_("connected.\n"));
 
    /* And the regular timeouts XXX configurable */
-# ifdef HAVE_SO_XTIMEO
+# ifdef mx_HAVE_SO_XTIMEO
    tv.tv_sec = 42;
    tv.tv_usec = 0;
    (void)setsockopt(sofd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
    (void)setsockopt(sofd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof tv);
 # endif
-# ifdef HAVE_SO_LINGER
+# ifdef mx_HAVE_SO_LINGER
    li.l_onoff = 1;
    li.l_linger = 42;
    (void)setsockopt(sofd, SOL_SOCKET, SO_LINGER, &li, sizeof li);
 # endif
 
    /* SSL/TLS upgrade? */
-# ifdef HAVE_TLS
+# ifdef mx_HAVE_TLS
    hold_sigs();
 
-#  if defined HAVE_GETADDRINFO && defined SSL_CTRL_SET_TLSEXT_HOSTNAME /* TODO
-      * TODO the SSL_ def check should NOT be here */
+#  if defined mx_HAVE_GETADDRINFO && defined SSL_CTRL_SET_TLSEXT_HOSTNAME
+      /* TODO the SSL_ def check should NOT be here */
    if(urlp->url_flags & n_URL_TLS_MASK){
       memset(&hints, 0, sizeof hints);
       hints.ai_family = AF_UNSPEC;
@@ -349,7 +349,7 @@ jsclose:
    }
 
    rele_sigs();
-# endif /* HAVE_TLS */
+# endif /* mx_HAVE_TLS */
 
 jleave:
    /* May need to bounce the signal to the go.c trampoline (or wherever) */
@@ -369,7 +369,7 @@ a_socket_connect(int fd, struct sockaddr *soap, size_t soapl){
    int rv;
    NYD_IN;
 
-#ifdef HAVE_NONBLOCKSOCK
+#ifdef mx_HAVE_NONBLOCKSOCK
    rv = fcntl(fd, F_GETFL, 0);
    if(rv != -1 && !fcntl(fd, F_SETFL, rv | O_NONBLOCK)){
       fd_set fdset;
@@ -425,16 +425,16 @@ jrewait:
       }else
          goto jerr;
    }else
-#endif /* HAVE_NONBLOCKSOCK */
+#endif /* mx_HAVE_NONBLOCKSOCK */
 
          if(!connect(fd, soap, soapl))
       rv = n_ERR_NONE;
    else{
-#ifdef HAVE_NONBLOCKSOCK
+#ifdef mx_HAVE_NONBLOCKSOCK
 jerr:
 #endif
       rv = n_err_no;
-#ifdef HAVE_NONBLOCKSOCK
+#ifdef mx_HAVE_NONBLOCKSOCK
 jerr_noerrno:
 #endif
       n_perr(_("connect(2) failed:"), rv);
@@ -484,7 +484,7 @@ sclose(struct sock *sp)
          (*sp->s_onclose)();
       if (sp->s_wbuf != NULL)
          n_free(sp->s_wbuf);
-# ifdef HAVE_XTLS
+# ifdef mx_HAVE_XTLS
       if (sp->s_use_tls) {
          void *s_tls = sp->s_tls;
 
@@ -561,7 +561,7 @@ swrite1(struct sock *sp, char const *data, int sz, int use_buffer)
       goto jleave;
    }
 
-# ifdef HAVE_XTLS
+# ifdef mx_HAVE_XTLS
    if (sp->s_use_tls) {
 jssl_retry:
       x = SSL_write(sp->s_tls, data, sz);
@@ -582,7 +582,7 @@ jssl_retry:
 
       snprintf(o, sizeof o, "%s write error",
          (sp->s_desc ? sp->s_desc : "socket"));
-# ifdef HAVE_XTLS
+# ifdef mx_HAVE_XTLS
       if (sp->s_use_tls)
          ssl_gen_err("%s", o);
       else
@@ -752,7 +752,7 @@ FL int
 
       if (sp->s_rbufptr == NULL ||
             PTRCMP(sp->s_rbufptr, >=, sp->s_rbuf + sp->s_rsz)) {
-# ifdef HAVE_XTLS
+# ifdef mx_HAVE_XTLS
          if (sp->s_use_tls) {
 jssl_retry:
             sp->s_rsz = SSL_read(sp->s_tls, sp->s_rbuf, sizeof sp->s_rbuf);
@@ -802,6 +802,6 @@ jleave:
    NYD2_OU;
    return rv;
 }
-#endif /* HAVE_SOCKETS */
+#endif /* mx_HAVE_SOCKETS */
 
 /* s-it-mode */

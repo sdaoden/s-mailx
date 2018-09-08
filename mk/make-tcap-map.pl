@@ -117,7 +117,7 @@ sub dump_data{
       }
 
       if($BIND_START > 0){
-         print F '#ifdef HAVE_KEY_BINDINGS', "\n" if(--$BIND_START == 0)
+         print F '#ifdef mx_HAVE_KEY_BINDINGS', "\n" if(--$BIND_START == 0)
       }
       my ($tcn, $tin) = (_exp(scalar $np->[3], 2), _exp(scalar $np->[4], 0));
       if($VERB){
@@ -126,7 +126,7 @@ sub dump_data{
          print F "${S}$tcn $tin'\\0',\n"
       }
    }
-   print F '#endif /* HAVE_KEY_BINDINGS */', "\n" if($BIND_START == 0);
+   print F '#endif /* mx_HAVE_KEY_BINDINGS */', "\n" if($BIND_START == 0);
    print F '};', "\n\n";
 
    print F 'static struct a_termcap_control const a_termcap_control[] = {',

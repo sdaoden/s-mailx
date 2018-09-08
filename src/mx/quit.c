@@ -36,7 +36,7 @@
 #undef su_FILE
 #define su_FILE quit
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -78,7 +78,7 @@ static bool_t edstop(void);
 static void
 _alter(char const *name) /* TODO error handling */
 {
-#ifdef HAVE_UTIMENSAT
+#ifdef mx_HAVE_UTIMENSAT
    struct timespec tsa[2];
 #else
    struct stat sb;
@@ -89,7 +89,7 @@ _alter(char const *name) /* TODO error handling */
 
    tsp = n_time_now(TRU1); /* TODO -> eventloop */
 
-#ifdef HAVE_UTIMENSAT
+#ifdef mx_HAVE_UTIMENSAT
    tsa[0].tv_sec = tsp->ts_sec + 1;
    tsa[0].tv_nsec = tsp->ts_nsec;
    tsa[1].tv_nsec = UTIME_OMIT;
@@ -258,7 +258,7 @@ edstop(void) /* TODO oh my god */
 
    if(gotcha){
       /* Non-system boxes are never removed except forced via POSIX mode */
-#ifdef HAVE_FTRUNCATE
+#ifdef mx_HAVE_FTRUNCATE
       ftruncate(fileno(obuf), 0);
 #else
       int fd;
@@ -325,17 +325,17 @@ quit(bool_t hold_sigs_on)
    switch (mb.mb_type) {
    case MB_FILE:
       break;
-#ifdef HAVE_MAILDIR
+#ifdef mx_HAVE_MAILDIR
    case MB_MAILDIR:
       rv = maildir_quit(TRU1);
       goto jleave;
 #endif
-#ifdef HAVE_POP3
+#ifdef mx_HAVE_POP3
    case MB_POP3:
       rv = pop3_quit(TRU1);
       goto jleave;
 #endif
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
    case MB_IMAP:
    case MB_CACHE:
       rv = imap_quit(TRU1);
@@ -453,7 +453,7 @@ jcream:
       _alter(mailname);
       rv = TRU1;
    } else {
-#ifdef HAVE_FTRUNCATE
+#ifdef mx_HAVE_FTRUNCATE
       ftruncate(fileno(fbuf), 0);
 #else
       int fd;
@@ -577,7 +577,7 @@ makembox(void) /* TODO oh my god (also error reporting) */
    for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp) {
       if (mp->m_flag & MBOX) {
          ++mcount;
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
          if((fs & n_PROTO_MASK) == n_PROTO_IMAP &&
                !n_ignore_is_any(n_IGNORE_SAVE) && imap_thisaccount(mbox)){
             if(imap_copy(mp, PTR2SIZE(mp - message + 1), mbox) == STOP)
@@ -585,7 +585,7 @@ makembox(void) /* TODO oh my god (also error reporting) */
          }else
 #endif
          if (sendmp(mp, obuf, n_IGNORE_SAVE, NULL, SEND_MBOX, NULL) < 0) {
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
 jcopyerr:
 #endif
             n_perr(mbox, 0);
@@ -621,7 +621,7 @@ jcopyerr:
       goto jleave;
    }
    if (Fclose(obuf) != 0) {
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
       if((fs & n_PROTO_MASK) != n_PROTO_IMAP)
 #endif
          n_perr(mbox, 0);

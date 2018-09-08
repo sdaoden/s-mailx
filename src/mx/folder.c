@@ -36,7 +36,7 @@
 #undef su_FILE
 #define su_FILE folder
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -45,7 +45,7 @@
 /* Update mailname (if name != NULL) and displayname, return whether displayname
  * was large enough to swallow mailname */
 static bool_t  _update_mailname(char const *name);
-#ifdef HAVE_C90AMEND1 /* TODO unite __narrow_suffix() into one fun! */
+#ifdef mx_HAVE_C90AMEND1 /* TODO unite __narrow_suffix() into one fun! */
 n_INLINE size_t __narrow_suffix(char const *cp, size_t cpl, size_t maxl);
 #endif
 
@@ -66,7 +66,7 @@ _update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Object! */
 
    /* Don't realpath(3) if it's only an update request */
    if(name != NULL){
-#ifdef HAVE_REALPATH
+#ifdef mx_HAVE_REALPATH
       char const *adjname;
       enum protocol p;
 
@@ -112,7 +112,7 @@ jdocopy:
       rv = TRU1;
    }else{
       /* Avoid disrupting multibyte sequences (if possible) */
-#ifndef HAVE_C90AMEND1
+#ifndef mx_HAVE_C90AMEND1
       j = sizeof(displayname) / 3 - 3;
       i -= sizeof(displayname) - (1/* + */ + 3) - j;
 #else
@@ -131,7 +131,7 @@ jdocopy:
    return rv;
 }
 
-#ifdef HAVE_C90AMEND1
+#ifdef mx_HAVE_C90AMEND1
 n_INLINE size_t
 __narrow_suffix(char const *cp, size_t cpl, size_t maxl)
 {
@@ -159,7 +159,7 @@ __narrow_suffix(char const *cp, size_t cpl, size_t maxl)
    NYD_OU;
    return ok;
 }
-#endif /* HAVE_C90AMEND1 */
+#endif /* mx_HAVE_C90AMEND1 */
 
 static void
 a_folder_info(void){
@@ -210,7 +210,7 @@ a_folder_info(void){
       fprintf(n_stdout, _(" %d hidden"), hidden);
    if (mb.mb_perm == 0)
       fprintf(n_stdout, _(" [Read-only]"));
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
    if (mb.mb_type == MB_CACHE)
       fprintf(n_stdout, _(" [Disconnected]"));
 #endif
@@ -406,9 +406,9 @@ jlogname:
    case PROTO_FILE:
       isdevnull = ((n_poption & n_PO_BATCH_FLAG) &&
             !strcmp(name, n_path_devnull));
-#ifdef HAVE_REALPATH
+#ifdef mx_HAVE_REALPATH
       do { /* TODO we need objects, goes away then */
-# ifdef HAVE_REALPATH_NULL
+# ifdef mx_HAVE_REALPATH_NULL
          char *cp;
 
          if ((cp = realpath(name, NULL)) != NULL) {
@@ -425,19 +425,19 @@ jlogname:
 #endif
       rv = 1;
       break;
-#ifdef HAVE_MAILDIR
+#ifdef mx_HAVE_MAILDIR
    case PROTO_MAILDIR:
       shudclob = 1;
       rv = maildir_setfile(who, name, fm);
       goto jleave;
 #endif
-#ifdef HAVE_POP3
+#ifdef mx_HAVE_POP3
    case PROTO_POP3:
       shudclob = 1;
       rv = pop3_setfile(who, orig_name, fm);
       goto jleave;
 #endif
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
    case PROTO_IMAP:
       shudclob = 1;
       if((fm & FEDIT_NEWMAIL) && mb.mb_type == MB_CACHE)
@@ -505,7 +505,7 @@ jlogname:
 
    hold_sigs();
 
-#ifdef HAVE_SOCKETS
+#ifdef mx_HAVE_SOCKETS
    if (!(fm & FEDIT_NEWMAIL) && mb.mb_sock.s_fd >= 0)
       sclose(&mb.mb_sock); /* TODO sorry? VMAILFS->close(), thank you */
 #endif
@@ -575,7 +575,7 @@ jlogname:
 
    if (lckfp == NULL) {
       if (!(fm & FEDIT_NEWMAIL)) {
-#ifdef HAVE_UISTRINGS
+#ifdef mx_HAVE_UISTRINGS
          char const * const emsg = (n_pstate & n_PS_EDIT)
                ? N_("Unable to lock mailbox, aborting operation")
                : N_("Unable to (dot) lock mailbox, aborting operation");
@@ -680,7 +680,7 @@ newmailinfo(int omsgCount)
    mdot = getmdot(1);
 
    if(ok_blook(header) && (i = omsgCount + 1) <= msgCount){
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
       if(mb.mb_type == MB_IMAP)
          imap_getheaders(i, msgCount); /* TODO not here */
 #endif
@@ -710,7 +710,7 @@ print_header_summary(char const *Larg)
    NYD_IN;
 
    getmdot(0);
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
       if(mb.mb_type == MB_IMAP)
          imap_getheaders(0, msgCount); /* TODO not here */
 #endif
@@ -907,7 +907,7 @@ initbox(char const *name)
    message_reset();
    mb.mb_active = MB_NONE;
    mb.mb_threaded = 0;
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
    mb.mb_flags = MB_NOFLAGS;
 #endif
    if (mb.mb_sorted != NULL) {
@@ -973,7 +973,7 @@ n_folder_query(void){
          err = TRU1;
          goto jset;
       case PROTO_IMAP:
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
          rv = cp;
          if(!strcmp(rv, protbase(rv)))
             rv = savecatsep(rv, '/', n_empty);
@@ -1016,16 +1016,16 @@ n_folder_query(void){
        * TODO we chdir away, but still checks the leading path portion against
        * TODO n_folder_query() to be able to abbreviate to the +FOLDER syntax if
        * TODO possible, we need to realpath(3) the folder, too */
-#ifndef HAVE_REALPATH
+#ifndef mx_HAVE_REALPATH
       rv = cp;
 #else
       assert(sp->s_len == 0 && sp->s_dat == NULL);
-# ifndef HAVE_REALPATH_NULL
+# ifndef mx_HAVE_REALPATH_NULL
       sp = n_string_reserve(sp, PATH_MAX +1);
 # endif
 
       if((sp->s_dat = realpath(cp, sp->s_dat)) != NULL){
-# ifdef HAVE_REALPATH_NULL
+# ifdef mx_HAVE_REALPATH_NULL
          n_string_cp(sp = n_string_assign_cp(sp, cp = sp->s_dat));
          (free)(cp);
 # endif
@@ -1039,7 +1039,7 @@ n_folder_query(void){
          rv = n_empty;
       }
       sp = n_string_drop_ownership(sp);
-#endif /* HAVE_REALPATH */
+#endif /* mx_HAVE_REALPATH */
 
       /* Always append a solidus to our result path upon success */
       if(!err){

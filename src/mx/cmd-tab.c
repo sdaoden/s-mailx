@@ -42,12 +42,12 @@
 #undef su_FILE
 #define su_FILE cmd_tab
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
 /* Create a multiline info string about all known additional infos for lcp */
-#ifdef HAVE_DOCSTRINGS
+#ifdef mx_HAVE_DOCSTRINGS
 static char const *a_ctab_cmdinfo(struct n_cmd_desc const *cdp);
 #endif
 
@@ -69,7 +69,7 @@ static struct n_cmd_desc const a_ctab_ctable[] = {
 /* And a list of things which are special to the lexer in go.c, so that we can
  * provide help and list them.
  * This cross-file relationship is a bit unfortunate.. */
-#ifdef HAVE_DOCSTRINGS
+#ifdef mx_HAVE_DOCSTRINGS
 # define DS(S) , S
 #else
 # define DS(S)
@@ -82,7 +82,7 @@ static struct n_cmd_desc const a_ctab_ctable_plus[] = {
 };
 #undef DS
 
-#ifdef HAVE_DOCSTRINGS
+#ifdef mx_HAVE_DOCSTRINGS
 static char const *
 a_ctab_cmdinfo(struct n_cmd_desc const *cdp){
    struct n_string rvb, *rv;
@@ -200,7 +200,7 @@ jfakeent:
    NYD2_OU;
    return cp;
 }
-#endif /* HAVE_DOCSTRINGS */
+#endif /* mx_HAVE_DOCSTRINGS */
 
 static int
 a_ctab_c_list(void *vp){
@@ -236,7 +236,7 @@ a_ctab_c_list(void *vp){
       else
          pre = suf = n_empty;
 
-#ifdef HAVE_DOCSTRINGS
+#ifdef mx_HAVE_DOCSTRINGS
       if(n_poption & n_PO_D_V){
          fprintf(fp, "%s%s%s\n", pre, cdp->cd_name, suf);
          ++l;
@@ -318,7 +318,7 @@ jredo:
          }else
             continue;
 
-#ifdef HAVE_DOCSTRINGS
+#ifdef mx_HAVE_DOCSTRINGS
          fprintf(n_stdout, ": %s", V_(cdp->cd_doc));
          if(n_poption & n_PO_D_V)
             fprintf(n_stdout, "\n  : %s", a_ctab_cmdinfo(cdp));
@@ -343,7 +343,7 @@ jredo:
       }
    }else{
       /* Very ugly, but take care for compiler supported string lengths :( */
-#ifdef HAVE_UISTRINGS
+#ifdef mx_HAVE_UISTRINGS
       fputs(su_program, n_stdout);
       fputs(_(
          " commands -- <msglist> denotes message specification tokens,\n"
@@ -379,7 +379,7 @@ jredo:
 "!shell command         shell escape\n"
 "list [<anything>]      all available commands [in search order]\n"),
          n_stdout);
-#endif /* HAVE_UISTRINGS */
+#endif /* mx_HAVE_UISTRINGS */
 
       rv = (ferror(n_stdout) != 0);
    }
@@ -435,7 +435,7 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
 
    assert(cacp->cac_inlen == 0 || cacp->cac_indat != NULL);
    assert(cacp->cac_desc->cad_no > 0);
-#ifdef HAVE_DEBUG
+#ifdef mx_HAVE_DEBUG
    /* C99 */{
       bool_t opt_seen = FAL0;
 
@@ -480,7 +480,7 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
             !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
       }
    }
-#endif /* HAVE_DEBUG */
+#endif /* mx_HAVE_DEBUG */
 
    n_pstate_err_no = n_ERR_NONE;
    shin.s = n_UNCONST(cacp->cac_indat); /* "logical" only */

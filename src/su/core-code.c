@@ -43,7 +43,7 @@
 #else
    /* TODO Eventually all the I/O is SU based, then these vanish!
     * TODO We need some _USECASE_ hook to store readily prepared lines then */
-# ifndef HAVE_AMALGAMATION
+# ifndef mx_HAVE_AMALGAMATION
 void n_err(char const *format, ...);
 void n_verr(char const *format, va_list ap);
 # endif

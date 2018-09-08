@@ -36,7 +36,7 @@
 #undef su_FILE
 #define su_FILE cmd_msg
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -63,7 +63,7 @@ a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no){
    NYD2_IN;
 
    cpre = csuf = n_empty;
-#ifdef HAVE_COLOUR
+#ifdef mx_HAVE_COLOUR
    if(n_COLOUR_IS_ACTIVE()){
       struct n_colour_pen *cpen;
 
@@ -773,7 +773,7 @@ c_undelete(void *v)
          mp->m_flag &= ~(MDELETED | MSAVED);
       else
          mp->m_flag &= ~MDELETED;
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
       if (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)
          imap_undelete(mp, *ip);
 #endif
@@ -858,7 +858,7 @@ c_unread(void *v)
       setdot(mp);
       dot->m_flag &= ~(MREAD | MTOUCH);
       dot->m_flag |= MSTATUS;
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
       if (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)
          imap_unread(mp, *ip); /* TODO return? */
 #endif

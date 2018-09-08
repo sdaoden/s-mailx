@@ -36,7 +36,7 @@
 #undef su_FILE
 #define su_FILE cmd_head
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -175,7 +175,7 @@ a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
          if (*fp == '\0')
             break;
       } else {
-#ifdef HAVE_WCWIDTH
+#ifdef mx_HAVE_WCWIDTH
          if (n_mb_cur_max > 1) {
             wchar_t  wc;
             if ((s = mbtowc(&wc, fp, n_mb_cur_max)) == -1)
@@ -193,7 +193,7 @@ a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
    }
 
    /* Walk *headline*, producing output TODO not (really) MB safe */
-#ifdef HAVE_COLOUR
+#ifdef mx_HAVE_COLOUR
    if(n_COLOUR_IS_ACTIVE()){
       if(flags & _ISDOT)
          color_tag = n_COLOUR_TAG_SUM_DOT;
@@ -260,7 +260,7 @@ a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
             c = ' ';
          goto jputcb;
       case '$':
-#ifdef HAVE_SPAM
+#ifdef mx_HAVE_SPAM
          if (n == 0)
             n = 5;
          if (UICMP(32, n_ABS(n), >, wleft))
@@ -279,7 +279,7 @@ a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
       case 'a':
          c = a_chead__dispc(mp, attrlist);
 jputcb:
-#ifdef HAVE_COLOUR
+#ifdef mx_HAVE_COLOUR
          if(n_COLOUR_IS_ACTIVE()){
             if(cpen_new == cpen_cur)
                cpen_new = cpen_bas;
@@ -300,7 +300,7 @@ jputcb:
          } else {
             wleft = 0; /* TODO I/O error.. ? break? */
          }
-#ifdef HAVE_COLOUR
+#ifdef mx_HAVE_COLOUR
          if(n_COLOUR_IS_ACTIVE() && (cpen_new = cpen_bas) != cpen_cur)
             n_colour_pen_put(cpen_cur = cpen_new);
 #endif
@@ -350,7 +350,7 @@ jputcb:
          break;
       case 'i':
          if (threaded) {
-#ifdef HAVE_COLOUR
+#ifdef mx_HAVE_COLOUR
             if(n_COLOUR_IS_ACTIVE()){
                cpen_new = n_colour_pen_create(n_COLOUR_ID_SUM_THREAD,
                      color_tag);
@@ -360,7 +360,7 @@ jputcb:
 #endif
             n = a_chead__putindent(f, mp, n_MIN(wleft, (int)n_scrnwidth - 60));
             wleft = (n >= 0) ? wleft - n : 0;
-#ifdef HAVE_COLOUR
+#ifdef mx_HAVE_COLOUR
             if(n_COLOUR_IS_ACTIVE() && (cpen_new = cpen_bas) != cpen_cur)
                n_colour_pen_put(cpen_cur = cpen_new);
 #endif
@@ -457,7 +457,7 @@ jputcb:
          }
          break;
       case 'U':
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
             if (n == 0)
                n = 9;
             if (UICMP(32, n_ABS(n), >, wleft))
@@ -614,7 +614,7 @@ a_chead__putuc(int u, int c, FILE *fp){
    NYD2_IN;
    n_UNUSED(u);
 
-#ifdef HAVE_NATCH_CHAR
+#ifdef mx_HAVE_NATCH_CHAR
    if((n_psonce & n_PSO_UNICODE) && (u & ~(wchar_t)0177) &&
          !ok_blook(headline_plain)){
       char mbb[MB_LEN_MAX];
@@ -842,7 +842,7 @@ _headers(int msgspec) /* TODO rework v15 */
       mp = mq;
 
       mesg = (int)PTR2SIZE(mp - message);
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
       if (mb.mb_type == MB_IMAP)
          imap_getheaders(mesg + 1, mesg + size);
 #endif

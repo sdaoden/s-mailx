@@ -64,12 +64,12 @@
 #undef su_FILE
 #define su_FILE obs_lzw
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
 EMPTY_FILE()
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
 /* Minimize differences to FreeBSDs usr.bin/compress/zopen.c */
 #undef u_int
 #define u_int		unsigned int
@@ -752,4 +752,4 @@ zalloc(FILE *fp)
 #undef roffset
 #undef size
 #undef gbuf
-#endif /* ndef HAVE_IMAP */
+#endif /* ndef mx_HAVE_IMAP */

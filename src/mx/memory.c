@@ -21,7 +21,7 @@
 #undef su_FILE
 #define su_FILE memory
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -29,7 +29,7 @@
  * We use per-execution context memory arenas, to be found in
  * n_go_data->gdc_mempool; if NULL, set to ->gdc__mempool_buf.
  * n_memory_reset() that happens on loop ticks reclaims their memory, and
- * performs debug checks also on the former #ifdef HAVE_MEMORY_DEBUG.
+ * performs debug checks also on the former #ifdef mx_HAVE_MEMORY_DEBUG.
  * The arena that is used already during program startup is special in that
  * _pool_fixate() will set "a lower bound" in order not to reclaim memory that
  * must be kept vivid during the lifetime of the program.
@@ -51,8 +51,8 @@
  * TODO tick, and also we can use some buffer caches.
  */
 
-/* If defined (and HAVE_MEMORY_DEBUG), realloc acts like alloc+free, which can
- * help very bogus double-free attempts */
+/* If defined (and mx_HAVE_MEMORY_DEBUG), realloc acts like alloc+free,
+ * which can help very bogus double-free attempts */
 #define a_MEMORY_REALLOC_IS_ALLOC_PLUS_FREE /* TODO runtime opt <> C++ cache */
 
 /* Maximum allocation (directly) handled by A-R-Storage */
@@ -68,7 +68,7 @@ n_CTA(n_ISPOW2(n_MEMORY_AUTOREC_SIZE),
 #define a_MEMORY_ARS_ROUNDUP(S) n_ALIGN_SMALL(S)
 #define a_MEMORY_LOFI_ROUNDUP(S) a_MEMORY_ARS_ROUNDUP(S)
 
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 n_CTA(sizeof(char) == sizeof(ui8_t), "But POSIX says a byte is 8 bit");
 
 # define a_MEMORY_HOPE_SIZE (2 * 8 * sizeof(char))
@@ -196,9 +196,9 @@ do{\
       n_alert("   ..canary last seen: %s, line %u",\
          __xc->mc_file, __xc->mc_line);\
 }while(0)
-#endif /* HAVE_MEMORY_DEBUG */
+#endif /* mx_HAVE_MEMORY_DEBUG */
 
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 struct a_memory_chunk{
    char const *mc_file;
    ui32_t mc_line;
@@ -215,10 +215,10 @@ struct a_memory_heap_chunk{
    struct a_memory_heap_chunk *mhc_prev;
    struct a_memory_heap_chunk *mhc_next;
 };
-#endif /* HAVE_MEMORY_DEBUG */
+#endif /* mx_HAVE_MEMORY_DEBUG */
 
 struct a_memory_ars_lofi_chunk{
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
    struct a_memory_chunk malc_super;
 #endif
    struct a_memory_ars_lofi_chunk *malc_last; /* Bit 1 set: it's a heap alloc */
@@ -228,7 +228,7 @@ union a_memory_ptr{
    void *p_vp;
    char *p_cp;
    ui8_t *p_ui8p;
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
    struct a_memory_chunk *p_c;
    struct a_memory_heap_chunk *p_hc;
 #endif
@@ -257,7 +257,7 @@ struct a_memory_ars_buffer{
 };
 n_CTA(sizeof(struct a_memory_ars_buffer) == n_MEMORY_AUTOREC_SIZE,
    "Resulting structure size is not the expected one");
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 n_CTA(a_MEMORY_ARS_MAX + a_MEMORY_HOPE_SIZE + sizeof(struct a_memory_chunk)
       < n_SIZEOF_FIELD(struct a_memory_ars_buffer, mab_buf),
    "Memory layout of auto-reclaimed storage does not work out that way");
@@ -279,7 +279,7 @@ struct a_memory_ars_lofi{
 };
 
 /* */
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 static size_t a_memory_heap_aall, a_memory_heap_acur, a_memory_heap_amax,
       a_memory_heap_mall, a_memory_heap_mcur, a_memory_heap_mmax;
 static struct a_memory_heap_chunk *a_memory_heap_list, *a_memory_heap_free;
@@ -306,7 +306,7 @@ a_memory_lofi_free(struct a_memory_ars_ctx *macp, void *vp){
    NYD2_IN;
 
    p.p_vp = vp;
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
    --a_memory_lofi_acur;
    a_memory_lofi_mcur -= p.p_c->mc_user_size;
 #endif
@@ -318,7 +318,7 @@ a_memory_lofi_free(struct a_memory_ars_ctx *macp, void *vp){
       macp->mac_lofi_top = (struct a_memory_ars_lofi_chunk*)
             ((uintptr_t)p.p_alc->malc_last & ~0x1);
       n_free(malp);
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
       --a_memory_lofi_bcur;
 #endif
    }else{
@@ -330,7 +330,7 @@ a_memory_lofi_free(struct a_memory_ars_ctx *macp, void *vp){
          if(malp->mal_last != NULL){
             macp->mac_lofi = malp->mal_last;
             n_free(malp);
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
             --a_memory_lofi_bcur;
 #endif
          }
@@ -371,14 +371,14 @@ a_memory_ars_reset(struct a_memory_ars_ctx *macp){
          else
             m2.abp->mab_last = m.abp;
          n_free(x);
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
          --a_memory_ars_bcur;
 #endif
       }else{
          m2.abp = x;
          x->mab_caster = x->mab_bot;
          x->mab_relax = NULL;
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
          memset(x->mab_caster, 0377,
             PTR2SIZE(&x->mab_buf[sizeof(x->mab_buf)] - x->mab_caster));
 #endif
@@ -388,13 +388,13 @@ a_memory_ars_reset(struct a_memory_ars_ctx *macp){
    while((m.ahp = macp->mac_huge) != NULL){
       macp->mac_huge = m.ahp->mah_last;
       n_free(m.ahp);
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
       --a_memory_ars_hcur;
 #endif
    }
 
    /* "alloca(3)" memory goes away, too.  XXX Must be last as long we jump */
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
    if(macp->mac_lofi_top != NULL &&
          (su_state_has(su_STATE_REPRODUCIBLE) ||
           (n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG))))
@@ -407,7 +407,7 @@ a_memory_ars_reset(struct a_memory_ars_ctx *macp){
 
 FL void
 n_memory_reset(void){
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
    union a_memory_ptr p;
    size_t c, s;
 #endif
@@ -428,7 +428,7 @@ n_memory_reset(void){
    }
 
    /* Now we are ready to deal with heap */
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
    c = s = 0;
 
    for(p.p_hc = a_memory_heap_free; p.p_hc != NULL;){
@@ -526,7 +526,7 @@ n_memory_pool_pop(void *vp, bool_t gut){
       if((vp = macp->mac_lofi) != NULL){
          assert(macp->mac_lofi->mal_last == NULL);
          macp->mac_lofi = NULL;
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
          --a_memory_lofi_bcur;
 #endif
          n_free(vp);
@@ -546,7 +546,7 @@ n_memory_pool_top(void){
    return rv;
 }
 
-#ifndef HAVE_MEMORY_DEBUG
+#ifndef mx_HAVE_MEMORY_DEBUG
 FL void *
 n_alloc(size_t s){
    void *rv;
@@ -597,7 +597,7 @@ FL void
    NYD2_OU;
 }
 
-#else /* !HAVE_MEMORY_DEBUG */
+#else /* !mx_HAVE_MEMORY_DEBUG */
 FL void *
 (n_alloc)(size_t s n_MEMORY_DEBUG_ARGS){
    union a_memory_ptr p;
@@ -813,11 +813,11 @@ FL void
 jleave:
    NYD2_OU;
 }
-#endif /* HAVE_MEMORY_DEBUG */
+#endif /* mx_HAVE_MEMORY_DEBUG */
 
 FL void *
 (n_autorec_alloc_from_pool)(void *vp, size_t size n_MEMORY_DEBUG_ARGS){
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
    ui32_t user_s;
 #endif
    union a_memory_ptr p;
@@ -831,19 +831,19 @@ FL void *
    if((macp = vp) == NULL && (macp = n_go_data->gdc_mempool) == NULL)
       macp = n_go_data->gdc_mempool = n_go_data->gdc__mempool_buf;
 
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
    user_s = (ui32_t)size;
 #endif
    if(size == 0)
       ++size;
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
    size += sizeof(struct a_memory_chunk) + a_MEMORY_HOPE_SIZE;
 #endif
    size = a_MEMORY_ARS_ROUNDUP(size);
 
    /* Huge allocations are special */
    if(n_UNLIKELY(size > a_MEMORY_ARS_MAX)){
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
       if(n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG))
          n_alert("n_autorec_alloc() of %" PRIuZ " bytes from %s, line %d",
             size, mdbg_file, mdbg_line);
@@ -880,14 +880,14 @@ FL void *
    macp->mac_top = m.abp;
    p.p_cp = m.abp->mab_bot;
 
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
    ++a_memory_ars_ball;
    ++a_memory_ars_bcur;
    a_memory_ars_bmax = n_MAX(a_memory_ars_bmax, a_memory_ars_bcur);
 #endif
 
 jleave:
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
    p.p_c->mc_file = mdbg_file;
    p.p_c->mc_line = (ui16_t)mdbg_line;
    p.p_c->mc_user_size = user_s;
@@ -906,7 +906,7 @@ jhuge:
    m.ahp->mah_last = macp->mac_huge;
    macp->mac_huge = m.ahp;
    p.p_cp = m.ahp->mah_buf;
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
    ++a_memory_ars_hall;
    ++a_memory_ars_hcur;
    a_memory_ars_hmax = n_MAX(a_memory_ars_hmax, a_memory_ars_hcur);
@@ -943,7 +943,7 @@ n_autorec_relax_create(void){
       for(mabp = macp->mac_full; mabp != NULL; mabp = mabp->mab_last)
          mabp->mab_relax = mabp->mab_caster;
    }
-#if 0 && defined HAVE_DEVEL
+#if 0 && defined mx_HAVE_DEVEL
    else
       n_err("n_autorec_relax_create(): recursion >0\n");
 #endif
@@ -972,7 +972,7 @@ n_autorec_relax_gut(void){
       for(mabp = macp->mac_full; mabp != NULL; mabp = mabp->mab_last)
          mabp->mab_relax = NULL;
    }
-#if 0 && defined HAVE_DEVEL
+#if 0 && defined mx_HAVE_DEVEL
    else
       n_err("n_autorec_relax_unroll(): recursion >0\n");
 #endif
@@ -1016,7 +1016,7 @@ n_autorec_relax_unroll(void){
       for(mabp = macp->mac_top; mabp != NULL; mabp = mabp->mab_last){
          mabp->mab_caster = (mabp->mab_relax != NULL)
                ? mabp->mab_relax : mabp->mab_bot;
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
          memset(mabp->mab_caster, 0377,
             PTR2SIZE(&mabp->mab_buf[sizeof(mabp->mab_buf)] - mabp->mab_caster));
 #endif
@@ -1027,7 +1027,7 @@ n_autorec_relax_unroll(void){
 
 FL void *
 (n_lofi_alloc)(size_t size n_MEMORY_DEBUG_ARGS){
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
    ui32_t user_s;
 #endif
    union a_memory_ptr p;
@@ -1039,20 +1039,20 @@ FL void *
    if((macp = n_go_data->gdc_mempool) == NULL)
       macp = n_go_data->gdc_mempool = n_go_data->gdc__mempool_buf;
 
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
    user_s = (ui32_t)size;
 #endif
    if(size == 0)
       ++size;
    size += sizeof(struct a_memory_ars_lofi_chunk);
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
    size += a_MEMORY_HOPE_SIZE;
 #endif
    size = a_MEMORY_LOFI_ROUNDUP(size);
 
    /* Huge allocations are special */
    if(n_UNLIKELY(isheap = (size > a_MEMORY_LOFI_MAX))){
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
       if(n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG))
          n_alert("n_lofi_alloc() of %" PRIuZ " bytes from %s, line %d",
             size, mdbg_file, mdbg_line);
@@ -1077,7 +1077,7 @@ FL void *
       macp->mac_lofi = malp;
       p.p_cp = malp->mal_buf;
 
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
       ++a_memory_lofi_ball;
       ++a_memory_lofi_bcur;
       a_memory_lofi_bmax = n_MAX(a_memory_lofi_bmax, a_memory_lofi_bcur);
@@ -1091,7 +1091,7 @@ jleave:
       p.p_alc->malc_last = (struct a_memory_ars_lofi_chunk*)
             ((uintptr_t)p.p_alc->malc_last | 0x1);
 
-#ifndef HAVE_MEMORY_DEBUG
+#ifndef mx_HAVE_MEMORY_DEBUG
    ++p.p_alc;
 #else
    p.p_c->mc_file = mdbg_file;
@@ -1115,7 +1115,7 @@ jleave:
 
 FL void
 (n_lofi_free)(void *vp n_MEMORY_DEBUG_ARGS){
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
    bool_t isbad;
 #endif
    union a_memory_ptr p;
@@ -1126,13 +1126,13 @@ FL void
       macp = n_go_data->gdc_mempool = n_go_data->gdc__mempool_buf;
 
    if((p.p_vp = vp) == NULL){
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
       n_err("n_lofi_free(NULL) from %s, line %d\n", mdbg_file, mdbg_line);
 #endif
       goto jleave;
    }
 
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
    a_MEMORY_HOPE_GET(p_alc, p, isbad);
    --p.p_alc;
 
@@ -1153,7 +1153,7 @@ FL void
    }
 
    ++p.p_alc;
-#endif /* HAVE_MEMORY_DEBUG */
+#endif /* mx_HAVE_MEMORY_DEBUG */
 
    a_memory_lofi_free(macp, --p.p_alc);
 jleave:
@@ -1185,7 +1185,7 @@ n_lofi_snap_unroll(void *cookie){ /* TODO optimise */
       p.p_alc = macp->mac_lofi_top;
       a_memory_lofi_free(macp, p.p_vp);
       ++p.p_alc;
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
       a_MEMORY_HOPE_INC(p.p_ui8p);
 #endif
       if(p.p_vp == cookie)
@@ -1194,7 +1194,7 @@ n_lofi_snap_unroll(void *cookie){ /* TODO optimise */
    NYD2_OU;
 }
 
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 FL int
 c_memtrace(void *vp){
    /* For a_MEMORY_HOPE_GET() */
@@ -1448,6 +1448,6 @@ n__memory_check(char const *mdbg_file, int mdbg_line){
    NYD2_OU;
    return anybad;
 }
-#endif /* HAVE_MEMORY_DEBUG */
+#endif /* mx_HAVE_MEMORY_DEBUG */
 
 /* s-it-mode */

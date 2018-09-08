@@ -36,7 +36,7 @@
 #undef su_FILE
 #define su_FILE cmd_folder
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -123,7 +123,7 @@ c_newmail(void *v)
 
    if (n_pstate & n_PS_HOOK_MASK)
       n_err(_("Cannot call `newmail' from within a hook\n"));
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
    else if(mb.mb_type == MB_IMAP && !imap_newmail(1))
       ;
 #endif
@@ -145,12 +145,12 @@ c_noop(void *v)
    n_UNUSED(v);
 
    switch (mb.mb_type) {
-#ifdef HAVE_POP3
+#ifdef mx_HAVE_POP3
    case MB_POP3:
       pop3_noop();
       break;
 #endif
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
    case MB_IMAP:
       imap_noop();
       break;
@@ -227,7 +227,7 @@ c_remove(void *v)
          ec |= 1;
          break;
       case PROTO_MAILDIR:
-#ifdef HAVE_MAILDIR
+#ifdef mx_HAVE_MAILDIR
          if(maildir_remove(name) != OKAY)
             ec |= 1;
 #else
@@ -236,7 +236,7 @@ c_remove(void *v)
 #endif
          break;
       case PROTO_IMAP:
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
          if(imap_remove(name) != OKAY)
             ec |= 1;
 #else
@@ -310,7 +310,7 @@ c_rename(void *v)
       }
       break;
    case PROTO_MAILDIR:
-#ifdef HAVE_MAILDIR
+#ifdef mx_HAVE_MAILDIR
       if(rename(oldn, newn) == -1){
          n_perr(oldn, 0);
          ec |= 1;
@@ -325,7 +325,7 @@ c_rename(void *v)
       ec |= 1;
       break;
    case PROTO_IMAP:
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
       if(imap_rename(oldn, newn) != OKAY)
          ec |= 1;
 #else
@@ -348,7 +348,7 @@ jleave:
 FL int
 c_folders(void *v){ /* TODO fexpand*/
    enum fexp_mode const fexp = FEXP_NSHELL
-#ifndef HAVE_IMAP
+#ifndef mx_HAVE_IMAP
          | FEXP_LOCAL
 #endif
       ;
@@ -366,7 +366,7 @@ c_folders(void *v){ /* TODO fexpand*/
    }else
       cp = n_folder_query();
 
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
    if(which_protocol(cp, FAL0, FAL0, NULL) == PROTO_IMAP)
       rv = imap_folders(cp, *argv == NULL);
    else

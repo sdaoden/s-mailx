@@ -36,7 +36,7 @@
 #undef su_FILE
 #define su_FILE signal
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -84,7 +84,7 @@
  * TODO   SA_RESTART setting, since that has to be done for every signal.)
  */
 
-#ifdef HAVE_NYD
+#ifdef mx_HAVE_NYD
 struct nyd_info {
    char const  *ni_file;
    char const  *ni_fun;
@@ -102,7 +102,7 @@ static size_t           _hold_sigdepth;
 static sigset_t         _hold_nset, _hold_oset;
 
 /* NYD, memory pool debug */
-#ifdef HAVE_NYD
+#ifdef mx_HAVE_NYD
 static ui32_t           _nyd_curr, _nyd_level;
 static struct nyd_info  _nyd_infos[NYD_CALLS_MAX];
 #endif
@@ -111,7 +111,7 @@ static struct nyd_info  _nyd_infos[NYD_CALLS_MAX];
 static void a_signal_dummyhdl(int sig);
 
 /* */
-#ifdef HAVE_NYD
+#ifdef mx_HAVE_NYD
 static void    _nyd_print(int fd, struct nyd_info *nip);
 #endif
 
@@ -120,7 +120,7 @@ a_signal_dummyhdl(int sig){
    n_UNUSED(sig);
 }
 
-#ifdef HAVE_NYD
+#ifdef mx_HAVE_NYD
 static void
 _nyd_print(int fd, struct nyd_info *nip)
 {
@@ -213,7 +213,7 @@ jesyn:
 }
 
 
-#ifdef HAVE_DEVEL
+#ifdef mx_HAVE_DEVEL
 FL int
 c_sigstate(void *vp){ /* TODO remove again */
    struct{
@@ -255,7 +255,7 @@ c_sigstate(void *vp){ /* TODO remove again */
    NYD2_OU;
    return OKAY;
 }
-#endif /* HAVE_DEVEL */
+#endif /* mx_HAVE_DEVEL */
 
 FL void
 n_raise(int signo)
@@ -499,7 +499,7 @@ n_sigman_consume(void){
    NYD2_OU;
 }
 
-#ifdef HAVE_NYD
+#ifdef mx_HAVE_NYD
 FL void
 _nyd_chirp(ui8_t act, char const *file, ui32_t line, char const *fun)
 {
@@ -591,6 +591,6 @@ _nyd_oncrash(int signo)
    for (;;)
       _exit(n_EXIT_ERR);
 }
-#endif /* HAVE_NYD */
+#endif /* mx_HAVE_NYD */
 
 /* s-it-mode */

@@ -353,7 +353,7 @@ sub dump_map{
    # The rest not to be injected for this generator script
    print F <<_EOT;
 #ifndef a__CREATE_OKEY_MAP_PL
-# ifdef HAVE_PUTENV
+# ifdef mx_HAVE_PUTENV
 #  define a_X(X) X
 # else
 #  define a_X(X)

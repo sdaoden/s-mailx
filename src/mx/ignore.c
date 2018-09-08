@@ -19,7 +19,7 @@
 #undef su_FILE
 #define su_FILE ignore
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -31,7 +31,7 @@ struct a_ignore_type{
       struct a_ignore_field *if_next;
       char if_field[n_VFIELD_SIZE(0)]; /* Header field */
    } *it_ht[3]; /* TODO make hashmap dynamic */
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
    struct a_ignore_re{
       struct a_ignore_re *ir_next;
       regex_t ir_regex;
@@ -63,7 +63,7 @@ static struct a_ignore_bltin_map const a_ignore_bltin_map[] = {
    {n_IGNORE_TYPE, "print\0"},
    {n_IGNORE_FWD, "fwd\0"}
 };
-#ifdef HAVE_DEVEL /* Avoid gcc warn cascade since n_ignore is defined locally */
+#ifdef mx_HAVE_DEVEL /* Avoid gcc warn cascade "n_ignore is defined locally" */
 n_CTAV(-n__IGNORE_TYPE - n__IGNORE_ADJUST == 0);
 n_CTAV(-n__IGNORE_SAVE - n__IGNORE_ADJUST == 1);
 n_CTAV(-n__IGNORE_FWD - n__IGNORE_ADJUST == 2);
@@ -138,7 +138,7 @@ static bool_t
 a_ignore_lookup(struct n_ignore const *self, bool_t retain,
       char const *dat, size_t len){
    bool_t rv;
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
    struct a_ignore_re *irp;
 #endif
    struct a_ignore_field *ifp;
@@ -156,7 +156,7 @@ a_ignore_lookup(struct n_ignore const *self, bool_t retain,
       for(ifp = self->i_retain.it_ht[hi]; ifp != NULL; ifp = ifp->if_next)
          if(!ascncasecmp(ifp->if_field, dat, len))
             goto jleave;
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
       if(dat[len - 1] != '\0')
          dat = savestrbuf(dat, len);
       for(irp = self->i_retain.it_re; irp != NULL; irp = irp->ir_next)
@@ -171,7 +171,7 @@ a_ignore_lookup(struct n_ignore const *self, bool_t retain,
       for(ifp = self->i_ignore.it_ht[hi]; ifp != NULL; ifp = ifp->if_next)
          if(!ascncasecmp(ifp->if_field, dat, len))
             goto jleave;
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
       if(dat[len - 1] != '\0')
          dat = savestrbuf(dat, len);
       for(irp = self->i_ignore.it_re; irp != NULL; irp = irp->ir_next)
@@ -190,7 +190,7 @@ jleave:
 
 static void
 a_ignore_del_allof(struct n_ignore *ip, bool_t retain){
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
    struct a_ignore_re *irp;
 #endif
    struct a_ignore_field *ifp;
@@ -212,7 +212,7 @@ a_ignore_del_allof(struct n_ignore *ip, bool_t retain){
          }
    }
 
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
    for(irp = itp->it_re; irp != NULL;){
       struct a_ignore_re *x;
 
@@ -279,7 +279,7 @@ a_ignore_addcmd_mux(struct n_ignore *ip, char const **list, bool_t retain){
 
 static void
 a_ignore__show(struct n_ignore const *ip, bool_t retain){
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
    struct a_ignore_re *irp;
 #endif
    struct a_ignore_field *ifp;
@@ -333,7 +333,7 @@ a_ignore__show(struct n_ignore const *ip, bool_t retain){
    }
 
    /* Regular expression in FIFO order */
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
    for(irp = itp->it_re; irp != NULL; irp = irp->ir_next){
       size_t len;
       char const *cp;
@@ -397,7 +397,7 @@ a_ignore__delone(struct n_ignore *ip, bool_t retain, char const *field){
 
    itp = retain ? &ip->i_retain : &ip->i_ignore;
 
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
    if(n_is_maybe_regex(field)){
       struct a_ignore_re **lirp, *irp;
 
@@ -415,7 +415,7 @@ a_ignore__delone(struct n_ignore *ip, bool_t retain, char const *field){
             goto jleave;
          }
    }else
-#endif /* HAVE_REGEX */
+#endif /* mx_HAVE_REGEX */
    {
       struct a_ignore_field **ifpp, *ifp;
       ui32_t hi;
@@ -687,7 +687,7 @@ n_ignore_is_any(struct n_ignore const *self){
 FL bool_t
 n_ignore_insert(struct n_ignore *self, bool_t retain,
       char const *dat, size_t len){
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
    struct a_ignore_re *irp;
    bool_t isre;
 #endif
@@ -717,7 +717,7 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
    }
 
    /* Check for regular expression or valid fieldname */
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
    if(!(isre = n_is_maybe_regex_buf(dat, len)))
 #endif
    {
@@ -745,7 +745,7 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
    }
 
    rv = TRU1;
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
    if(isre){
       struct a_ignore_re *x;
       int s;
@@ -774,7 +774,7 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
          itp->it_re = irp;
       itp->it_re_tail = irp;
    }else
-#endif /* HAVE_REGEX */
+#endif /* mx_HAVE_REGEX */
    {
       ui32_t hi;
       size_t i;

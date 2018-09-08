@@ -967,7 +967,7 @@ static struct a_amv_var_map const a_amv_var_map[] = {
 };
 
 #ifndef a__CREATE_OKEY_MAP_PL
-# ifdef HAVE_PUTENV
+# ifdef mx_HAVE_PUTENV
 #  define a_X(X) X
 # else
 #  define a_X(X)

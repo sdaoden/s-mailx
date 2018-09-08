@@ -36,7 +36,7 @@
 #undef su_FILE
 #define su_FILE cmd_write
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -127,7 +127,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
       goto jleave;
    }
 
-#if defined HAVE_POP3 && defined HAVE_IMAP
+#if defined mx_HAVE_POP3 && defined mx_HAVE_IMAP
    if(mb.mb_type == MB_POP3 && (fs & n_PROTO_MASK) == n_PROTO_IMAP){
       Fclose(obuf);
       n_err(_("Direct copy from POP3 to IMAP not supported before v15\n"));
@@ -154,14 +154,14 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
 jsend:
    success = TRU1;
    tstats[0] = tstats[1] = 0;
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
    imap_created_mailbox = 0;
 #endif
 
    n_autorec_relax_create();
    for (ip = msgvec; *ip != 0; ++ip) {
       mp = &message[*ip - 1];
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
       if((fs & n_PROTO_MASK) == n_PROTO_IMAP &&
             !n_ignore_is_any(n_IGNORE_SAVE) && imap_thisaccount(file)){
          if(imap_copy(mp, PTR2SIZE(mp - message + 1), file) == STOP){
@@ -210,7 +210,7 @@ jferr:
       success = FAL0;
 
    if (success) {
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
       if((fs & n_PROTO_MASK) == n_PROTO_IMAP){
          if(disconnected(file))
             disp = A_("[Queued]");

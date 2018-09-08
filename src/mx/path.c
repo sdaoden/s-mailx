@@ -36,7 +36,7 @@
 #undef su_FILE
 #define su_FILE path
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -109,7 +109,7 @@ n_path_rm(char const *name){
    return rv;
 }
 
-#ifdef HAVE_FCHDIR
+#ifdef mx_HAVE_FCHDIR
 FL enum okay
 cwget(struct cw *cw)
 {
@@ -148,7 +148,7 @@ cwrelse(struct cw *cw)
    NYD_OU;
 }
 
-#else /* !HAVE_FCHDIR */
+#else /* !mx_HAVE_FCHDIR */
 FL enum okay
 cwget(struct cw *cw)
 {
@@ -180,6 +180,6 @@ cwrelse(struct cw *cw)
    n_UNUSED(cw);
    NYD_OU;
 }
-#endif /* !HAVE_FCHDIR */
+#endif /* !mx_HAVE_FCHDIR */
 
 /* s-it-mode */

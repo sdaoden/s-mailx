@@ -42,14 +42,14 @@
 /* TODO s-it-mode: not really (docu, funnames, funargs, etc) */
 
 #undef FL
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # define FL                      extern
 #else
 # define FL                      static
 #endif
 
 /* Memory allocation routines from memory.c offer some debug support */
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 # define n_MEMORY_DEBUG_ARGS     , char const *mdbg_file, int mdbg_line
 # define n_MEMORY_DEBUG_ARGSCALL , mdbg_file, mdbg_line
 #else
@@ -97,7 +97,7 @@
 #define n_is_maybe_regex_buf(D,L) n_anyof_buf("^[]*+?|$", D, L)
 
 /* Single-threaded, use unlocked I/O */
-#ifdef HAVE_PUTC_UNLOCKED
+#ifdef mx_HAVE_PUTC_UNLOCKED
 # undef getc
 # define getc(c)        getc_unlocked(c)
 # undef putc
@@ -185,7 +185,7 @@ FL void temporary_compose_mode_hook_call(char const *macname,
             void (*hook_pre)(void *), void *hook_arg);
 FL void temporary_compose_mode_hook_unroll(void);
 
-#ifdef HAVE_HISTORY
+#ifdef mx_HAVE_HISTORY
 /* TODO *on-history-addition* */
 FL bool_t temporary_addhist_hook(char const *ctx, bool_t gabby,
             char const *histent);
@@ -223,7 +223,7 @@ FL bool_t n_var_vclear(char const *vokey);
 
 /* Special case to handle the typical [xy-USER@HOST,] xy-HOST and plain xy
  * variable chains; oxm is a bitmix which tells which combinations to test */
-#ifdef HAVE_SOCKETS
+#ifdef mx_HAVE_SOCKETS
 FL char *n_var_xoklook(enum okeys okey, struct url const *urlp,
             enum okey_xlook_mode oxm);
 # define xok_BLOOK(C,URL,M) (n_var_xoklook(C, URL, M) != NULL)
@@ -389,7 +389,7 @@ FL char const * n_getdeadletter(void);
 FL char *n_nodename(bool_t mayoverride);
 
 /* Convert from / to *ttycharset* */
-#ifdef HAVE_IDNA
+#ifdef mx_HAVE_IDNA
 FL bool_t n_idna_to_ascii(struct n_string *out, char const *ibuf, size_t ilen);
 /*TODO FL bool_t n_idna_from_ascii(struct n_string *out, char const *ibuf,
             size_t ilen);*/
@@ -433,7 +433,7 @@ FL char *n_time_ctime(si64_t secsepoch, struct tm const *localtime_or_nil);
 
 /* Returns 0 if fully slept, number of millis left if ignint is true and we
  * were interrupted.  Actual resolution may be second or less.
- * Note in case of HAVE_SLEEP this may be SIGALARM based. */
+ * Note in case of mx_HAVE_SLEEP this may be SIGALARM based. */
 FL uiz_t n_msleep(uiz_t millis, bool_t ignint);
 
 /* Our error print series..  Note: these reverse scan format in order to know
@@ -453,7 +453,7 @@ FL void        n_alert(char const *format, ...);
 FL void        n_panic(char const *format, ...);
 
 /* `errors' */
-#ifdef HAVE_ERRORS
+#ifdef mx_HAVE_ERRORS
 FL int c_errors(void *vp);
 #endif
 
@@ -463,7 +463,7 @@ FL char const *n_err_to_name(si32_t eno);
 FL si32_t n_err_from_name(char const *name);
 
 /* */
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
 FL char const *n_regex_err_to_doc(const regex_t *rep, int e);
 #endif
 
@@ -734,7 +734,7 @@ FL FILE *n_collect(enum n_mailsend_flags msf, struct header *hp,
  * colour.c
  */
 
-#ifdef HAVE_COLOUR
+#ifdef mx_HAVE_COLOUR
 /* `(un)?colour' */
 FL int c_colour(void *v);
 FL int c_uncolour(void *v);
@@ -766,7 +766,7 @@ FL struct n_colour_pen *n_colour_pen_create(enum n_colour_id cid,
 FL void n_colour_pen_put(struct n_colour_pen *self);
 
 FL struct str const *n_colour_pen_to_str(struct n_colour_pen *self);
-#endif /* HAVE_COLOUR */
+#endif /* mx_HAVE_COLOUR */
 
 /*
  * dig-msg.c
@@ -839,7 +839,7 @@ FL ssize_t     quoteflt_push(struct quoteflt *self, char const *dat,
 FL ssize_t     quoteflt_flush(struct quoteflt *self);
 
 /* (Primitive) HTML tagsoup filter */
-#ifdef HAVE_FILTER_HTML_TAGSOUP
+#ifdef mx_HAVE_FILTER_HTML_TAGSOUP
 /* TODO Because we don't support filter chains yet this filter will be run
  * TODO in a dedicated subprocess, driven via a special Popen() mode */
 FL int         htmlflt_process_main(void);
@@ -866,7 +866,7 @@ FL ssize_t     htmlflt_flush(struct htmlflt *self);
  * Manages the n_PS_READLINE_NL hack */
 FL char *      fgetline(char **line, size_t *linesize, size_t *count,
                   size_t *llen, FILE *fp, int appendnl n_MEMORY_DEBUG_ARGS);
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 # define fgetline(A,B,C,D,E,F)   \
    fgetline(A, B, C, D, E, F, __FILE__, __LINE__)
 #endif
@@ -878,7 +878,7 @@ FL char *      fgetline(char **line, size_t *linesize, size_t *count,
  * Manages the n_PS_READLINE_NL hack */
 FL int         readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
                   size_t n n_MEMORY_DEBUG_ARGS);
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 # define readline_restart(A,B,C,D) \
    readline_restart(A, B, C, D, __FILE__, __LINE__)
 #endif
@@ -975,7 +975,7 @@ FL void n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
 FL int n_go_input(enum n_go_input_flags gif, char const *prompt,
          char **linebuf, size_t *linesize, char const *string,
          bool_t *histok_or_null n_MEMORY_DEBUG_ARGS);
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 # define n_go_input(A,B,C,D,E,F) n_go_input(A,B,C,D,E,F,__FILE__,__LINE__)
 #endif
 
@@ -1128,7 +1128,7 @@ FL char const * fakefrom(struct message *mp);
 /* From username Fri Jan  2 20:13:51 2004
  *               |    |    |    |    |
  *               0    5   10   15   20 */
-#if defined HAVE_IMAP_SEARCH || defined HAVE_IMAP
+#if defined mx_HAVE_IMAP_SEARCH || defined mx_HAVE_IMAP
 FL time_t      unixtime(char const *from);
 #endif
 
@@ -1170,7 +1170,7 @@ FL void        setup_from_and_sender(struct header *hp);
 FL struct name const * check_from_and_sender(struct name const *fromfield,
                         struct name const *senderfield);
 
-#ifdef HAVE_XTLS
+#ifdef mx_HAVE_XTLS
 FL char *      getsender(struct message *m);
 #endif
 
@@ -1249,7 +1249,7 @@ FL bool_t n_ignore_lookup(struct n_ignore const *self, char const *dat,
  */
 
 /* Return -1 on invalid spec etc., the number of matches otherwise */
-#ifdef HAVE_IMAP_SEARCH
+#ifdef mx_HAVE_IMAP_SEARCH
 FL ssize_t     imap_search(char const *spec, int f);
 #endif
 
@@ -1257,7 +1257,7 @@ FL ssize_t     imap_search(char const *spec, int f);
  * maildir.c
  */
 
-#ifdef HAVE_MAILDIR
+#ifdef mx_HAVE_MAILDIR
 FL int maildir_setfile(char const *who, char const *name, enum fedit_mode fm);
 
 FL bool_t maildir_quit(bool_t hold_sigs_on);
@@ -1265,7 +1265,7 @@ FL bool_t maildir_quit(bool_t hold_sigs_on);
 FL enum okay maildir_append(char const *name, FILE *fp, long offset);
 
 FL enum okay maildir_remove(char const *name);
-#endif /* HAVE_MAILDIR */
+#endif /* mx_HAVE_MAILDIR */
 
 /*
  * memory.c
@@ -1308,7 +1308,7 @@ FL void *n_calloc(size_t nmemb, size_t size n_MEMORY_DEBUG_ARGS);
 FL void n_free(void *vp n_MEMORY_DEBUG_ARGS);
 
 /* TODO obsolete c{m,re,c}salloc -> n_* */
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 # define n_alloc(S) (n_alloc)(S, __FILE__, __LINE__)
 # define n_realloc(P,S) (n_realloc)(P, S, __FILE__, __LINE__)
 # define n_calloc(N,S) (n_calloc)(N, S, __FILE__, __LINE__)
@@ -1346,7 +1346,7 @@ FL void n_autorec_relax_unroll(void);
 FL void *n_autorec_alloc_from_pool(void *vp, size_t size n_MEMORY_DEBUG_ARGS);
 FL void *n_autorec_calloc_from_pool(void *vp, size_t nmemb, size_t size
             n_MEMORY_DEBUG_ARGS);
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 # define n_autorec_alloc_from_pool(VP,SZ) \
    (n_autorec_alloc_from_pool)(VP, SZ, __FILE__, __LINE__)
 # define n_autorec_calloc_from_pool(VP,NM,SZ) \
@@ -1359,7 +1359,7 @@ FL void *n_autorec_calloc_from_pool(void *vp, size_t nmemb, size_t size
 FL void *n_lofi_alloc(size_t size n_MEMORY_DEBUG_ARGS);
 FL void n_lofi_free(void *vp n_MEMORY_DEBUG_ARGS);
 
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 # define n_lofi_alloc(SZ) (n_lofi_alloc)(SZ, __FILE__, __LINE__)
 # define n_lofi_free(P) (n_lofi_free)(P, __FILE__, __LINE__)
 #endif
@@ -1370,7 +1370,7 @@ FL void *n_lofi_snap_create(void);
 FL void n_lofi_snap_unroll(void *cookie);
 
 /* */
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 FL int c_memtrace(void *v);
 
 /* For immediate debugging purposes, it is possible to check on request */
@@ -1438,21 +1438,21 @@ FL void        mark(int mesg, int f);
 /* *sendcharsets* .. *charset-8bit* iterator; *a_charset_to_try_first* may be
  * used to prepend a charset to this list (e.g., for *reply-in-same-charset*).
  * The returned boolean indicates charset_iter_is_valid().
- * Without HAVE_ICONV, this "iterates" over *ttycharset* only */
+ * Without mx_HAVE_ICONV, this "iterates" over *ttycharset* only */
 FL bool_t      charset_iter_reset(char const *a_charset_to_try_first);
 FL bool_t      charset_iter_next(void);
 FL bool_t      charset_iter_is_valid(void);
 FL char const * charset_iter(void);
 
 /* And this is (xxx temporary?) which returns the iterator if that is valid and
- * otherwise either *charset-8bit* or *ttycharset*, dep. on HAVE_ICONV */
+ * otherwise either *charset-8bit* or *ttycharset*, dep. on mx_HAVE_ICONV */
 FL char const * charset_iter_or_fallback(void);
 
 FL void        charset_iter_recurse(char *outer_storage[2]); /* TODO LEGACY */
 FL void        charset_iter_restore(char *outer_storage[2]); /* TODO LEGACY */
 
 /* Check whether our headers will need MIME conversion */
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
 FL char const * need_hdrconv(struct header *hp);
 #endif
 
@@ -1772,7 +1772,7 @@ FL void        cwrelse(struct cw *cw);
  * pop3.c
  */
 
-#ifdef HAVE_POP3
+#ifdef mx_HAVE_POP3
 /*  */
 FL enum okay   pop3_noop(void);
 
@@ -1787,7 +1787,7 @@ FL enum okay   pop3_body(struct message *m);
 
 /*  */
 FL bool_t      pop3_quit(bool_t hold_sigs_on);
-#endif /* HAVE_POP3 */
+#endif /* mx_HAVE_POP3 */
 
 /*
  * popen.c
@@ -2024,7 +2024,7 @@ FL int c_shcodec(void *vp);
 /* `sleep' */
 FL int c_sleep(void *v);
 
-#ifdef HAVE_DEVEL
+#ifdef mx_HAVE_DEVEL
 FL int         c_sigstate(void *);
 #endif
 
@@ -2073,23 +2073,23 @@ FL int         n_sigman_peek(void);
 FL void        n_sigman_consume(void);
 
 /* Not-Yet-Dead debug information (handler installation in main.c) */
-#if defined HAVE_DEBUG || defined HAVE_DEVEL
+#if defined mx_HAVE_DEBUG || defined mx_HAVE_DEVEL
 FL void        _nyd_chirp(ui8_t act, char const *file, ui32_t line,
                   char const *fun);
 FL void        _nyd_oncrash(int signo);
 
-# define HAVE_NYD
+# define mx_HAVE_NYD
 # define NYD_IN                  _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
 # define NYD_OU                  _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
 # define NYD                     _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
 # define NYD_X                   _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
-# ifdef HAVE_NYD2
+# ifdef mx_HAVE_NYD2
 #  define NYD2_IN                _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
 #  define NYD2_OU                _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
 #  define NYD2                   _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
 # endif
 #else
-# undef HAVE_NYD
+# undef mx_HAVE_NYD
 #endif
 #ifndef NYD
 # define NYD_IN                  do {} while (0)
@@ -2107,7 +2107,7 @@ FL void        _nyd_oncrash(int signo);
  * smtp.c
  */
 
-#ifdef HAVE_SMTP
+#ifdef mx_HAVE_SMTP
 /* Send a message via SMTP */
 FL bool_t      smtp_mta(struct sendbundle *sbp);
 #endif
@@ -2116,7 +2116,7 @@ FL bool_t      smtp_mta(struct sendbundle *sbp);
  * socket.c
  */
 
-#ifdef HAVE_SOCKETS
+#ifdef mx_HAVE_SOCKETS
 /* Immediately closes the socket for CPROTO_CERTINFO */
 FL bool_t      sopen(struct sock *sp, struct url *urlp);
 FL int         sclose(struct sock *sp);
@@ -2127,7 +2127,7 @@ FL enum okay   swrite1(struct sock *sp, char const *data, int sz,
 /*  */
 FL int         sgetline(char **line, size_t *linesize, size_t *linelen,
                   struct sock *sp n_MEMORY_DEBUG_ARGS);
-# ifdef HAVE_MEMORY_DEBUG
+# ifdef mx_HAVE_MEMORY_DEBUG
 #  define sgetline(A,B,C,D)      sgetline(A, B, C, D, __FILE__, __LINE__)
 # endif
 #endif
@@ -2136,7 +2136,7 @@ FL int         sgetline(char **line, size_t *linesize, size_t *linelen,
  * spam.c
  */
 
-#ifdef HAVE_SPAM
+#ifdef mx_HAVE_SPAM
 /* Direct mappings of the various spam* commands */
 FL int c_spam_clear(void *v);
 FL int c_spam_set(void *v);
@@ -2153,7 +2153,7 @@ FL int c_spam_spam(void *v);
 /* Return a pointer to a dynamic copy of the argument */
 FL char *      savestr(char const *str n_MEMORY_DEBUG_ARGS);
 FL char *      savestrbuf(char const *sbuf, size_t slen n_MEMORY_DEBUG_ARGS);
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 # define savestr(CP)             savestr(CP, __FILE__, __LINE__)
 # define savestrbuf(CBP,CBL)     savestrbuf(CBP, CBL, __FILE__, __LINE__)
 #endif
@@ -2161,7 +2161,7 @@ FL char *      savestrbuf(char const *sbuf, size_t slen n_MEMORY_DEBUG_ARGS);
 /* Concatenate cp2 onto cp1 (if not NULL), separated by sep (if not '\0') */
 FL char *      savecatsep(char const *cp1, char sep, char const *cp2
                   n_MEMORY_DEBUG_ARGS);
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 # define savecatsep(S1,SEP,S2)   savecatsep(S1, SEP, S2, __FILE__, __LINE__)
 #endif
 
@@ -2177,7 +2177,7 @@ FL struct str * str_concat_csvl(struct str *self, ...);
 /*  */
 FL struct str * str_concat_cpa(struct str *self, char const * const *cpa,
                   char const *sep_o_null n_MEMORY_DEBUG_ARGS);
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 # define str_concat_cpa(S,A,N)   str_concat_cpa(S, A, N, __FILE__, __LINE__)
 #endif
 
@@ -2212,7 +2212,7 @@ FL bool_t      substr(char const *str, char const *sub);
 FL char *      sstpcpy(char *dst, char const *src);
 FL char *      sstrdup(char const *cp n_MEMORY_DEBUG_ARGS);
 FL char *      sbufdup(char const *cp, size_t len n_MEMORY_DEBUG_ARGS);
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 # define sstrdup(CP)             sstrdup(CP, __FILE__, __LINE__)
 # define sbufdup(CP,L)           sbufdup(CP, L, __FILE__, __LINE__)
 #endif
@@ -2252,7 +2252,7 @@ FL struct str * n_str_add_buf(struct str *self, char const *buf, uiz_t buflen
 #define n_str_add(S, T)          n_str_add_buf(S, (T)->s, (T)->l)
 #define n_str_add_cp(S, CP)      n_str_add_buf(S, CP, UIZ_MAX)
 
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 # define n_str_assign_buf(S,B,BL) n_str_assign_buf(S, B, BL, __FILE__, __LINE__)
 # define n_str_add_buf(S,B,BL)   n_str_add_buf(S, B, BL, __FILE__, __LINE__)
 #endif
@@ -2290,7 +2290,7 @@ FL struct str *n_str_trim_ifs(struct str *self, bool_t dodefaults);
 /* Release all memory */
 FL struct n_string *n_string_clear(struct n_string *self n_MEMORY_DEBUG_ARGS);
 
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 # define n_string_clear(S) \
    ((S)->s_size != 0 ? (n_string_clear)(S, __FILE__, __LINE__) : (S))
 #else
@@ -2312,7 +2312,7 @@ FL struct n_string *n_string_reserve(struct n_string *self, size_t noof
 FL struct n_string *n_string_resize(struct n_string *self, size_t nlen
                      n_MEMORY_DEBUG_ARGS);
 
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 # define n_string_reserve(S,N)   (n_string_reserve)(S, N, __FILE__, __LINE__)
 # define n_string_resize(S,N)    (n_string_resize)(S, N, __FILE__, __LINE__)
 #endif
@@ -2331,7 +2331,7 @@ FL struct n_string *n_string_push_c(struct n_string *self, char c
 #define n_string_assign_buf(S,B,BL) \
    ((S)->s_len = 0, n_string_push_buf(S, B, BL))
 
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 # define n_string_push_buf(S,B,BL) \
    n_string_push_buf(S, B, BL, __FILE__, __LINE__)
 # define n_string_push_c(S,C)    n_string_push_c(S, C, __FILE__, __LINE__)
@@ -2347,7 +2347,7 @@ FL struct n_string *n_string_unshift_buf(struct n_string *self, char const *buf,
 FL struct n_string *n_string_unshift_c(struct n_string *self, char c
                      n_MEMORY_DEBUG_ARGS);
 
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 # define n_string_unshift_buf(S,B,BL) \
    n_string_unshift_buf(S,B,BL, __FILE__, __LINE__)
 # define n_string_unshift_c(S,C) n_string_unshift_c(S, C, __FILE__, __LINE__)
@@ -2363,7 +2363,7 @@ FL struct n_string *n_string_insert_buf(struct n_string *self, size_t idx,
 FL struct n_string *n_string_insert_c(struct n_string *self, size_t idx,
                      char c n_MEMORY_DEBUG_ARGS);
 
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 # define n_string_insert_buf(S,I,B,BL) \
    n_string_insert_buf(S, I, B, BL, __FILE__, __LINE__)
 # define n_string_insert_c(S,I,C) n_string_insert_c(S, I, C, __FILE__, __LINE__)
@@ -2377,11 +2377,11 @@ FL struct n_string *n_string_cut(struct n_string *self, size_t idx, size_t len);
 FL char *      n_string_cp(struct n_string *self n_MEMORY_DEBUG_ARGS);
 FL char const *n_string_cp_const(struct n_string const *self);
 
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 # define n_string_cp(S)          n_string_cp(S, __FILE__, __LINE__)
 #endif
 
-#ifdef HAVE_INLINE
+#ifdef mx_HAVE_INLINE
 n_INLINE struct n_string *
 (n_string_creat)(struct n_string *self){
    return n_string_creat(self);
@@ -2411,7 +2411,7 @@ n_INLINE struct n_string *
    return n_string_drop_ownership(self);
 }
 # undef n_string_drop_ownership
-#endif /* HAVE_INLINE */
+#endif /* mx_HAVE_INLINE */
 
 /* UTF-8 / UTF-32 stuff */
 
@@ -2432,7 +2432,7 @@ FL char *n_iconv_normalize_name(char const *cset);
 /* Is it ASCII indeed? */
 FL bool_t n_iconv_name_is_ascii(char const *cset);
 
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
 FL iconv_t     n_iconv_open(char const *tocode, char const *fromcode);
 /* If *cd* == *iconvd*, assigns -1 to the latter */
 FL void        n_iconv_close(iconv_t cd);
@@ -2460,11 +2460,11 @@ FL int         n_iconv_str(iconv_t icp, enum n_iconv_flags icf,
  * Returns a autorec_alloc()ed buffer or NULL */
 FL char *      n_iconv_onetime_cp(enum n_iconv_flags icf,
                   char const *tocode, char const *fromcode, char const *input);
-#endif /* HAVE_ICONV */
+#endif /* mx_HAVE_ICONV */
 
 /*
  * termcap.c
- * This is a little bit hairy since it provides some stuff even if HAVE_TERMCAP
+ * This is a little bit hairy since it provides stuff even if mx_HAVE_TERMCAP
  * is false due to encapsulation desire
  */
 
@@ -2479,7 +2479,7 @@ FL void        n_termcap_destroy(void);
  * TODO want a complete screen clearance after $PAGER returned after displaying
  * TODO a mail, because otherwise the screen would look differently for normal
  * TODO stdout display messages.  Etc. */
-# ifdef HAVE_TERMCAP
+# ifdef mx_HAVE_TERMCAP
 FL void        n_termcap_resume(bool_t complete);
 FL void        n_termcap_suspend(bool_t complete);
 
@@ -2506,7 +2506,7 @@ FL bool_t n_termcap_query(enum n_termcap_query query,
 
 /* Get a n_termcap_query for name or -1 if it is not known, and -2 if
  * type wasn't _NONE and the type doesn't match. */
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
 FL si32_t      n_termcap_query_for_name(char const *name,
                   enum n_termcap_captype type);
 FL char const *n_termcap_name_of_query(enum n_termcap_query query);
@@ -2548,7 +2548,7 @@ FL void        uncollapse1(struct message *mp, int always);
  * tls.c
  */
 
-#ifdef HAVE_TLS
+#ifdef mx_HAVE_TLS
 /*  */
 FL void n_tls_set_verify_level(struct url const *urlp);
 
@@ -2578,7 +2578,7 @@ FL bool_t n_tls_rfc2595_hostname_match(char const *host, char const *pattern);
 
 /* `tls' */
 FL int c_tls(void *vp);
-#endif /* HAVE_TLS */
+#endif /* mx_HAVE_TLS */
 
 /*
  * tty.c
@@ -2591,7 +2591,7 @@ FL int c_tls(void *vp);
  * Handles+reraises SIGINT */
 FL bool_t getapproval(char const *prompt, bool_t noninteract_default);
 
-#ifdef HAVE_SOCKETS
+#ifdef mx_HAVE_SOCKETS
 /* Get a password the expected way, return termios_state.ts_linebuf on
  * success or NULL on error */
 FL char *getuser(char const *query);
@@ -2610,7 +2610,7 @@ FL ui32_t n_tty_create_prompt(struct n_string *store, char const *xprompt,
             enum n_go_input_flags gif);
 
 /* Overall interactive terminal life cycle for command line editor library */
-#ifdef HAVE_MLE
+#ifdef mx_HAVE_MLE
 FL void n_tty_init(void);
 FL void n_tty_destroy(bool_t xit_fastpath);
 #else
@@ -2625,7 +2625,7 @@ FL void n_tty_destroy(bool_t xit_fastpath);
 FL int n_tty_readline(enum n_go_input_flags gif, char const *prompt,
          char **linebuf, size_t *linesize, size_t n, bool_t *histok_or_null
          n_MEMORY_DEBUG_ARGS);
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 # define n_tty_readline(A,B,C,D,E,F) \
    (n_tty_readline)(A,B,C,D,E,F,__FILE__,__LINE__)
 #endif
@@ -2636,12 +2636,12 @@ FL int n_tty_readline(enum n_go_input_flags gif, char const *prompt,
  * Empty strings are never stored */
 FL void n_tty_addhist(char const *s, enum n_go_input_flags gif);
 
-#ifdef HAVE_HISTORY
+#ifdef mx_HAVE_HISTORY
 FL int c_history(void *v);
 #endif
 
 /* `bind' and `unbind' */
-#ifdef HAVE_KEY_BINDINGS
+#ifdef mx_HAVE_KEY_BINDINGS
 FL int c_bind(void *v);
 FL int c_unbind(void *v);
 #endif
@@ -2675,7 +2675,7 @@ FL int         prout(char const *s, size_t sz, FILE *fp);
 /* Check whether bidirectional info maybe needed for blen bytes of bdat */
 FL bool_t      bidi_info_needed(char const *bdat, size_t blen);
 
-/* Create bidirectional text encapsulation information; without HAVE_NATCH_CHAR
+/* Create bidirectional text encapsulation info; without mx_HAVE_NATCH_CHAR
  * the strings are always empty */
 FL void        bidi_info_create(struct bidi_info *bip);
 
@@ -2687,7 +2687,7 @@ FL void        bidi_info_create(struct bidi_info *bip);
  * These return a newly autorec_alloc()ated result, or NULL on length excess */
 FL char *      urlxenc(char const *cp, bool_t ispath n_MEMORY_DEBUG_ARGS);
 FL char *      urlxdec(char const *cp n_MEMORY_DEBUG_ARGS);
-#ifdef HAVE_MEMORY_DEBUG
+#ifdef mx_HAVE_MEMORY_DEBUG
 # define urlxenc(CP,P)           urlxenc(CP, P, __FILE__, __LINE__)
 # define urlxdec(CP)             urlxdec(CP, __FILE__, __LINE__)
 #endif
@@ -2706,7 +2706,7 @@ FL char *      url_mailto_to_address(char const *mailtop);
  * For file:// this returns an empty string */
 FL char const *n_servbyname(char const *proto, ui16_t *irv_or_null);
 
-#ifdef HAVE_SOCKETS
+#ifdef mx_HAVE_SOCKETS
 /* Parse data, which must meet the criteria of the protocol cproto, and fill
  * in the URL structure urlp (URL rather according to RFC 3986) */
 FL bool_t      url_parse(struct url *urlp, enum cproto cproto,
@@ -2717,16 +2717,16 @@ FL bool_t      url_parse(struct url *urlp, enum cproto cproto,
 FL bool_t      ccred_lookup(struct ccred *ccp, struct url *urlp);
 FL bool_t      ccred_lookup_old(struct ccred *ccp, enum cproto cproto,
                   char const *addr);
-#endif /* HAVE_SOCKETS */
+#endif /* mx_HAVE_SOCKETS */
 
 /* `netrc' */
-#ifdef HAVE_NETRC
+#ifdef mx_HAVE_NETRC
 FL int c_netrc(void *v);
 #endif
 
 /* MD5 (RFC 1321) related facilities */
-#ifdef HAVE_MD5
-# ifdef HAVE_XTLS_MD5
+#ifdef mx_HAVE_MD5
+# ifdef mx_HAVE_XTLS_MD5
 #  define md5_ctx	               MD5_CTX
 #  define md5_init	            MD5_Init
 #  define md5_update	            MD5_Update
@@ -2753,15 +2753,15 @@ FL char *      cram_md5_string(struct str const *user, struct str const *pass,
  * caddr_t digest     : caller digest to be filled in */
 FL void        hmac_md5(unsigned char *text, int text_len, unsigned char *key,
                   int key_len, void *digest);
-#endif /* HAVE_MD5 */
+#endif /* mx_HAVE_MD5 */
 
 /*
  * xtls.c
  */
 
-#ifdef HAVE_XTLS
+#ifdef mx_HAVE_XTLS
 /* Our wrapper for RAND_bytes(3) */
-# if HAVE_RANDOM == n_RANDOM_IMPL_TLS
+# if mx_HAVE_RANDOM == n_RANDOM_IMPL_TLS
 FL void n_tls_rand_bytes(void *buf, size_t blen);
 # endif
 
@@ -2787,13 +2787,13 @@ FL struct message * smime_decrypt(struct message *m, char const *to,
 /*  */
 FL enum okay   smime_certsave(struct message *m, int n, FILE *op);
 
-#endif /* HAVE_XTLS */
+#endif /* mx_HAVE_XTLS */
 
 /*
  * obs-imap.c
  */
 
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
 FL void n_go_onintr_for_imap(void);
 
 /* The former returns the input again if no conversion is necessary */
@@ -2817,7 +2817,7 @@ FL int         imap_newmail(int nmail);
 FL enum okay   imap_append(const char *xserver, FILE *fp, long offset);
 FL int         imap_folders(const char *name, int strip);
 FL enum okay   imap_copy(struct message *m, int n, const char *name);
-# ifdef HAVE_IMAP_SEARCH
+# ifdef mx_HAVE_IMAP_SEARCH
 FL ssize_t     imap_search1(const char *spec, int f);
 # endif
 FL int         imap_thisaccount(const char *cp);
@@ -2835,16 +2835,16 @@ FL const char * imap_make_date_time(time_t t);
 
 /* Extract the protocol base and return a duplicate */
 FL char *      protbase(char const *cp n_MEMORY_DEBUG_ARGS);
-# ifdef HAVE_MEMORY_DEBUG
+# ifdef mx_HAVE_MEMORY_DEBUG
 #  define protbase(CP)           protbase(CP, __FILE__, __LINE__)
 # endif
-#endif /* HAVE_IMAP */
+#endif /* mx_HAVE_IMAP */
 
 /*
  * obs-imap-cache.c
  */
 
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
 FL enum okay   getcache1(struct mailbox *mp, struct message *m,
                   enum needspec need, int setflags);
 FL enum okay   getcache(struct mailbox *mp, struct message *m,
@@ -2861,19 +2861,19 @@ FL enum okay   cache_rename(char const *old, char const *new);
 FL ui64_t cached_uidvalidity(struct mailbox *mp);
 FL FILE *      cache_queue(struct mailbox *mp);
 FL enum okay   cache_dequeue(struct mailbox *mp);
-#endif /* HAVE_IMAP */
+#endif /* mx_HAVE_IMAP */
 
 /*
  * obs-lzw.c
  */
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
 FL int         zwrite(void *cookie, const char *wbp, int num);
 FL int         zfree(void *cookie);
 FL int         zread(void *cookie, char *rbp, int num);
 FL void *      zalloc(FILE *fp);
-#endif /* HAVE_IMAP */
+#endif /* mx_HAVE_IMAP */
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # undef FL
 # define FL
 #endif

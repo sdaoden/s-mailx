@@ -58,7 +58,7 @@ VL char const n_month_names[12 + 1][4] = {
    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", ""
 };
 VL char const n_uagent[sizeof VAL_UAGENT] = VAL_UAGENT;
-#ifdef HAVE_UISTRINGS
+#ifdef mx_HAVE_UISTRINGS
 VL char const n_error[sizeof n_ERROR] = N_(n_ERROR);
 #endif
 VL char const n_path_devnull[sizeof n_PATH_DEVNULL] = n_PATH_DEVNULL;
@@ -315,7 +315,7 @@ a_main_startup(void){
    /* XXX Somewhen: su_state_set(su_STATE_ERR_NOMEM | su_STATE_ERR_OVERFLOW);*/
    su_log_set_level(n_LOG_LEVEL); /* XXX _EMERG is 0.. */
 
-#ifdef HAVE_NYD
+#ifdef mx_HAVE_NYD
    safe_signal(SIGABRT, &_nyd_oncrash);
 # ifdef SIGBUS
    safe_signal(SIGBUS, &_nyd_oncrash);
@@ -337,7 +337,7 @@ a_main_startup(void){
     * TODO but v15 should use ONLY this, also for terminal input! */
    if(isatty(STDIN_FILENO)){
       n_psonce |= n_PSO_TTYIN;
-#if defined HAVE_MLE || defined HAVE_TERMCAP
+#if defined mx_HAVE_MLE || defined mx_HAVE_TERMCAP
       if((n_tty_fp = fdopen(fileno(n_stdin), "w")) != NULL)
          setvbuf(n_tty_fp, NULL, _IOLBF, 0);
 #endif
@@ -359,7 +359,7 @@ a_main_startup(void){
 
    n_locale_init();
 
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    iconvd = (iconv_t)-1;
 #endif
 
@@ -502,7 +502,7 @@ a_main_setup_screen(void){
 static void
 a_main__scrsz(int is_sighdl){
    struct termios tbuf;
-#if defined HAVE_TCGETWINSIZE || defined TIOCGWINSZ
+#if defined mx_HAVE_TCGETWINSIZE || defined TIOCGWINSZ
    struct winsize ws;
 #elif defined TIOCGSIZE
    struct ttysize ts;
@@ -538,7 +538,7 @@ a_main__scrsz(int is_sighdl){
       }
    }
 
-#ifdef HAVE_TCGETWINSIZE
+#ifdef mx_HAVE_TCGETWINSIZE
    if(tcgetwinsize(fileno(n_tty_fp), &ws) == -1)
       ws.ws_col = ws.ws_row = 0;
 #elif defined TIOCGWINSZ
@@ -550,7 +550,7 @@ a_main__scrsz(int is_sighdl){
 #endif
 
    if(n_scrnheight == 0){
-#if defined HAVE_TCGETWINSIZE || defined TIOCGWINSZ
+#if defined mx_HAVE_TCGETWINSIZE || defined TIOCGWINSZ
       if(ws.ws_row != 0)
          n_scrnheight = ws.ws_row;
 #elif defined TIOCGSIZE
@@ -571,9 +571,9 @@ a_main__scrsz(int is_sighdl){
             n_scrnheight = a_HEIGHT;
       }
 
-#if defined HAVE_TCGETWINSIZE || defined TIOCGWINSZ || defined TIOCGSIZE
+#if defined mx_HAVE_TCGETWINSIZE || defined TIOCGWINSZ || defined TIOCGSIZE
       if(0 ==
-# if defined HAVE_TCGETWINSIZE || defined TIOCGWINSZ
+# if defined mx_HAVE_TCGETWINSIZE || defined TIOCGWINSZ
             (n_realscreenheight = ws.ws_row)
 # else
             (n_realscreenheight = ts.ts_lines)
@@ -584,7 +584,7 @@ a_main__scrsz(int is_sighdl){
    }
 
    if(n_scrnwidth == 0 && 0 ==
-#if defined HAVE_TCGETWINSIZE || defined TIOCGWINSZ
+#if defined mx_HAVE_TCGETWINSIZE || defined TIOCGWINSZ
          (n_scrnwidth = ws.ws_col)
 #elif defined TIOCGSIZE
          (n_scrnwidth = ts.ts_cols)
@@ -628,7 +628,7 @@ a_main_rcv_mode(bool_t had_A_arg, char const *folder, char const *Larg,
       if(had_A_arg)
          i |= FEDIT_SYSBOX;
    }
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
    else if(*folder == '@'){
       /* This must be treated specially to make possible invocation like
        * -A imap -f @mailbox */
@@ -806,7 +806,7 @@ main(int argc, char *argv[]){
          cc = cat(cc, lextract(a_main_oarg, GCC | GFULL | GSHEXP_PARSE_HACK));
          break;
       case 'D':
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
          ok_bset(disconnected);
 #endif
          break;
@@ -1331,10 +1331,10 @@ jleave:
 #endif
 
 j_leave:
-#if defined HAVE_MEMORY_DEBUG || defined HAVE_NOMEMDBG
+#if defined mx_HAVE_MEMORY_DEBUG || defined mx_HAVE_NOMEMDBG
    n_memory_pool_pop(NULL, TRU1);
 #endif
-#if defined HAVE_DEBUG || defined HAVE_DEVEL || defined HAVE_NOMEMDBG
+#if defined mx_HAVE_DEBUG || defined mx_HAVE_DEVEL || defined mx_HAVE_NOMEMDBG
    n_memory_reset();
 #endif
    NYD_OU;
@@ -1342,7 +1342,7 @@ j_leave:
 }
 
 /* Source the others in that case! */
-#ifdef HAVE_AMALGAMATION
+#ifdef mx_HAVE_AMALGAMATION
 # include <mk-config.h>
 #endif
 

@@ -36,7 +36,7 @@
 #undef su_FILE
 #define su_FILE send
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -98,7 +98,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
    NYD2_IN;
 
    cpre = csuf = NULL;
-#ifdef HAVE_COLOUR
+#ifdef mx_HAVE_COLOUR
    if(n_COLOUR_IS_ACTIVE()){
       struct n_colour_pen *cpen;
 
@@ -1061,7 +1061,7 @@ jpipe_close:
 
    /* TODO Unless we have filters, ensure iconvd==-1 so that mime.c:fwrite_td()
     * TODO cannot mess things up misusing outrest as line buffer */
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    if (iconvd != (iconv_t)-1) {
       n_iconv_close(iconvd);
       iconvd = (iconv_t)-1;
@@ -1071,7 +1071,7 @@ jpipe_close:
    if (action == SEND_DECRYPT || action == SEND_MBOX ||
          action == SEND_RFC822 || action == SEND_SHOW)
       convert = CONV_NONE;
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    else if ((action == SEND_TODISP || action == SEND_TODISP_ALL ||
             action == SEND_TODISP_PARTS ||
             action == SEND_QUOTE || action == SEND_QUOTE_ALL ||
@@ -1188,7 +1188,7 @@ jsend:
             n_free(outrest.s);
          if (inrest.s != NULL)
             n_free(inrest.s);
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
          if (iconvd != (iconv_t)-1)
             n_iconv_close(iconvd);
 #endif
@@ -1258,7 +1258,7 @@ jend:
       if (rv >= 0 && qbuf != NULL && qbuf != obuf)
          pipecpy(qbuf, obuf, origobuf, qf, stats);
    }
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    if (iconvd != (iconv_t)-1)
       n_iconv_close(iconvd);
 #endif
@@ -1538,7 +1538,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
    bool_t nozap;
    char const *cpre = n_empty, *csuf = n_empty;
 
-#ifdef HAVE_COLOUR
+#ifdef mx_HAVE_COLOUR
    if(n_COLOUR_IS_ACTIVE()){
       struct n_colour_pen *cpen;
       struct str const *sp;
@@ -1569,7 +1569,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
             goto jleave;
          sz += i;
       }
-#ifdef HAVE_COLOUR
+#ifdef mx_HAVE_COLOUR
       if(*cpre != '\0'){
          fputs(cpre, obuf);
          cpre = (char const*)0x1;
@@ -1577,7 +1577,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
 #endif
 
       while (cnt > 0 && (c = getc(ibuf)) != EOF) {
-#ifdef HAVE_COLOUR
+#ifdef mx_HAVE_COLOUR
          if(c == '\n' && *csuf != '\0'){
             cpre = (char const*)0x1;
             fputs(csuf, obuf);
@@ -1590,7 +1590,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
             break;
       }
 
-#ifdef HAVE_COLOUR
+#ifdef mx_HAVE_COLOUR
       if(*csuf != '\0' && cpre != (char const*)0x1 && *cpre != '\0')
          fputs(csuf, obuf);
 #endif

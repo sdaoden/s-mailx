@@ -41,7 +41,7 @@
 #undef su_FILE
 #define su_FILE mime
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -53,7 +53,7 @@ enum a_mime_structure_hack{
 };
 
 static char                   *_cs_iter_base, *_cs_iter;
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
 # define _CS_ITER_GET() \
    ((_cs_iter != NULL) ? _cs_iter : ok_vlook(CHARSET_8BIT_OKEY))
 #else
@@ -62,7 +62,7 @@ static char                   *_cs_iter_base, *_cs_iter;
 #define _CS_ITER_STEP() _cs_iter = n_strsep(&_cs_iter_base, ',', TRU1)
 
 /* Is 7-bit enough? */
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
 static bool_t           _has_highbit(char const *s);
 static bool_t           _name_highbit(struct name *np);
 #endif
@@ -76,7 +76,7 @@ static ssize_t          _fwrite_td(struct str const *input,
 static ssize_t          mime_write_tohdr(struct str *in, FILE *fo,
                            size_t *colp, enum a_mime_structure_hack msh);
 
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
 static ssize_t a_mime__convhdra(struct str *inp, FILE *fp, size_t *colp,
                   enum a_mime_structure_hack msh);
 #else
@@ -93,7 +93,7 @@ static void             _append_str(char **buf, size_t *sz, size_t *pos,
 static void             _append_conv(char **buf, size_t *sz, size_t *pos,
                            char const *str, size_t len);
 
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
 static bool_t
 _has_highbit(char const *s)
 {
@@ -128,7 +128,7 @@ jleave:
    NYD_OU;
    return rv;
 }
-#endif /* HAVE_ICONV */
+#endif /* mx_HAVE_ICONV */
 
 static sigjmp_buf       __mimefwtd_actjmp; /* TODO someday.. */
 static int              __mimefwtd_sig; /* TODO someday.. */
@@ -169,7 +169,7 @@ _fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
    out.s = NULL;
    out.l = 0;
 
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    if ((flags & TD_ICONV) && iconvd != (iconv_t)-1) {
       int err;
       char *buf;
@@ -241,13 +241,13 @@ _fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
       if(rv < 0)
          goto jleave;
    }else
-#endif /* HAVE_ICONV */
+#endif /* mx_HAVE_ICONV */
    /* Else, if we will modify the data bytes and thus introduce the potential
     * of messing up multibyte sequences which become splitted over buffer
     * boundaries TODO and unless we don't have our filter chain which will
     * TODO make these hacks go by, buffer data until we see a NL */
          if((flags & (TD_ISPR | TD_DELCTRL)) && outrest != NULL &&
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
          iconvd == (iconv_t)-1 &&
 #endif
          (!(flags & _TD_EOF) || outrest->l > 0)
@@ -659,7 +659,7 @@ jenc_retry_same:
    return sz;
 }
 
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
 static ssize_t
 a_mime__convhdra(struct str *inp, FILE *fp, size_t *colp,
       enum a_mime_structure_hack msh){
@@ -686,7 +686,7 @@ jleave:
    NYD_OU;
    return rv;
 }
-#endif /* HAVE_ICONV */
+#endif /* mx_HAVE_ICONV */
 
 static ssize_t
 mime_write_tohdr_a(struct str *in, FILE *f, size_t *colp,
@@ -804,7 +804,7 @@ charset_iter_reset(char const *a_charset_to_try_first) /* TODO elim. dups! */
    NYD_IN;
    n_UNUSED(a_charset_to_try_first);
 
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    sarr[2] = ok_vlook(CHARSET_8BIT_OKEY);
 
    if(a_charset_to_try_first != NULL && strcmp(a_charset_to_try_first, sarr[2]))
@@ -823,7 +823,7 @@ charset_iter_reset(char const *a_charset_to_try_first) /* TODO elim. dups! */
 #endif
 
    sarrl[2] = len = strlen(sarr[2]);
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    if ((cp = n_UNCONST(sarr[1])) != NULL)
       len += (sarrl[1] = strlen(cp));
    else
@@ -836,7 +836,7 @@ charset_iter_reset(char const *a_charset_to_try_first) /* TODO elim. dups! */
 
    _cs_iter_base = cp = n_autorec_alloc(len + 1 + 1 +1);
 
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    if ((len = sarrl[0]) != 0) {
       memcpy(cp, sarr[0], len);
       cp[len] = ',';
@@ -920,7 +920,7 @@ charset_iter_restore(char *outer_storage[2]) /* TODO LEGACY FUN, REMOVE */
    NYD_OU;
 }
 
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
 FL char const *
 need_hdrconv(struct header *hp) /* TODO once only, then iter */
 {
@@ -985,7 +985,7 @@ jneeds:
    NYD_OU;
    return rv;
 }
-#endif /* HAVE_ICONV */
+#endif /* mx_HAVE_ICONV */
 
 FL void
 mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
@@ -1007,7 +1007,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
    struct str cin, cout;
    char *p, *op, *upper;
    ui32_t convert, lastenc, lastoutl;
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    char const *tcs;
    char *cbeg;
    iconv_t fhicd = (iconv_t)-1;
@@ -1021,7 +1021,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
    }
    out->s = NULL;
 
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    tcs = ok_vlook(ttycharset);
 #endif
    p = in->s;
@@ -1032,7 +1032,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
       op = p;
       if (*p == '=' && *(p + 1) == '?') {
          p += 2;
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
          cbeg = p;
 #endif
          while (p < upper && *p != '?')
@@ -1040,7 +1040,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
          if (p >= upper)
             goto jnotmime;
          ++p;
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
          if (flags & TD_ICONV) {
             size_t i = PTR2SIZE(p - cbeg);
             char *ltag, *cs = n_lofi_alloc(i);
@@ -1121,7 +1121,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
 
 
          out->l = lastenc;
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
          /* TODO Does not really work if we have assigned some ASCII or even
           * TODO translated strings because of errors! */
          if ((flags & TD_ICONV) && fhicd != (iconv_t)-1) {
@@ -1169,7 +1169,7 @@ jnotmime: {
    }
    if (flags & TD_DELCTRL)
       out->l = delctrl(out->s, out->l);
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    if (fhicd != (iconv_t)-1)
       n_iconv_close(fhicd);
 #endif
@@ -1292,7 +1292,7 @@ mime_write(char const *ptr, size_t size, FILE *f,
    /* TODO This crap requires linewise input, then.  We need a filter chain
     * TODO as in input->iconv->base64 where each filter can have its own
     * TODO buffer, with a filter->fflush() call to get rid of those! */
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    if ((dflags & TD_ICONV) && iconvd != (iconv_t)-1 &&
          (convert == CONV_TOQP || convert == CONV_8BIT ||
          convert == CONV_TOB64 || convert == CONV_TOHDR)) {

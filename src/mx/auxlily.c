@@ -36,43 +36,43 @@
 #undef su_FILE
 #define su_FILE auxlily
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
 #include <sys/utsname.h>
 
-#ifdef HAVE_SOCKETS
-# ifdef HAVE_GETADDRINFO
+#ifdef mx_HAVE_SOCKETS
+# ifdef mx_HAVE_GETADDRINFO
 #  include <sys/socket.h>
 # endif
 
 # include <netdb.h>
 #endif
 
-#ifdef HAVE_NL_LANGINFO
+#ifdef mx_HAVE_NL_LANGINFO
 # include <langinfo.h>
 #endif
-#ifdef HAVE_SETLOCALE
+#ifdef mx_HAVE_SETLOCALE
 # include <locale.h>
 #endif
 
-#if HAVE_RANDOM == n_RANDOM_IMPL_GETRANDOM
+#if mx_HAVE_RANDOM == n_RANDOM_IMPL_GETRANDOM
 # include n_RANDOM_GETRANDOM_H
 #endif
 
-#ifdef HAVE_IDNA
-# if HAVE_IDNA == n_IDNA_IMPL_LIBIDN2
+#ifdef mx_HAVE_IDNA
+# if mx_HAVE_IDNA == n_IDNA_IMPL_LIBIDN2
 #  include <idn2.h>
-# elif HAVE_IDNA == n_IDNA_IMPL_LIBIDN
+# elif mx_HAVE_IDNA == n_IDNA_IMPL_LIBIDN
 #  include <idna.h>
 #  include <idn-free.h>
-# elif HAVE_IDNA == n_IDNA_IMPL_IDNKIT
+# elif mx_HAVE_IDNA == n_IDNA_IMPL_IDNKIT
 #  include <idn/api.h>
 # endif
 #endif
 
-#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_TLS
+#if mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
 union rand_state{
    struct rand_arc4{
       ui8_t _dat[256];
@@ -85,7 +85,7 @@ union rand_state{
 };
 #endif
 
-#ifdef HAVE_ERRORS
+#ifdef mx_HAVE_ERRORS
 struct a_aux_err_node{
    struct a_aux_err_node *ae_next;
    struct n_string ae_str;
@@ -95,7 +95,7 @@ struct a_aux_err_node{
 struct a_aux_err_map{
    ui32_t aem_hash;     /* Hash of name */
    ui32_t aem_nameoff;  /* Into a_aux_err_names[] */
-   ui32_t aem_docoff;   /* Into a_aux_err docs[] (if HAVE_DOCSTRINGS) */
+   ui32_t aem_docoff;   /* Into a_aux_err docs[] (if mx_HAVE_DOCSTRINGS) */
    si32_t aem_err_no;   /* The OS error value for this one */
 };
 
@@ -165,12 +165,12 @@ n__ERR_NUMBER_TO_MAPOFF
 #undef a_X
 };
 
-#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_TLS
+#if mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
 static union rand_state *a_aux_rand;
 #endif
 
 /* Error ring, for `errors' */
-#ifdef HAVE_ERRORS
+#ifdef mx_HAVE_ERRORS
 static struct a_aux_err_node *a_aux_err_head, *a_aux_err_tail;
 static size_t a_aux_err_cnt, a_aux_err_cnt_noted;
 #endif
@@ -178,7 +178,7 @@ static size_t a_aux_err_linelen;
 
 /* Our ARC4 random generator with its completely unacademical pseudo
  * initialization (shall /dev/urandom fail) */
-#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_TLS
+#if mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
 static void a_aux_rand_init(void);
 n_INLINE ui8_t a_aux_rand_get8(void);
 static ui32_t a_aux_rand_weak(ui32_t seed);
@@ -187,10 +187,10 @@ static ui32_t a_aux_rand_weak(ui32_t seed);
 /* Find the descriptive mapping of an error number, or _ERR_INVAL */
 static struct a_aux_err_map const *a_aux_err_map_from_no(si32_t eno);
 
-#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_TLS
+#if mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
 static void
 a_aux_rand_init(void){
-# ifdef HAVE_CLOCK_GETTIME
+# ifdef mx_HAVE_CLOCK_GETTIME
    struct timespec ts;
 # else
    struct timeval ts;
@@ -201,11 +201,11 @@ a_aux_rand_init(void){
 
    a_aux_rand = n_alloc(sizeof *a_aux_rand);
 
-# if HAVE_RANDOM == n_RANDOM_IMPL_GETRANDOM
+# if mx_HAVE_RANDOM == n_RANDOM_IMPL_GETRANDOM
    /* getrandom(2) guarantees 256 without n_ERR_INTR..
     * However, support sequential reading to avoid possible hangs that have
     * been reported on the ML (2017-08-22, s-nail/s-mailx freezes when
-    * HAVE_GETRANDOM is #defined) */
+    * mx_HAVE_GETRANDOM is #defined) */
    n_LCTA(sizeof(a_aux_rand->a._dat) <= 256,
       "Buffer too large to be served without n_ERR_INTR error");
    n_LCTA(sizeof(a_aux_rand->a._dat) >= 256,
@@ -236,7 +236,7 @@ a_aux_rand_init(void){
       }
    }
 
-# elif HAVE_RANDOM == n_RANDOM_IMPL_URANDOM
+# elif mx_HAVE_RANDOM == n_RANDOM_IMPL_URANDOM
    if((u.fd = open("/dev/urandom", O_RDONLY)) != -1){
       bool_t ok;
 
@@ -251,8 +251,8 @@ a_aux_rand_init(void){
       if(ok)
          goto jleave;
    }
-# elif HAVE_RANDOM != n_RANDOM_IMPL_BUILTIN
-#  error a_aux_rand_init(): the value of HAVE_RANDOM is not supported
+# elif mx_HAVE_RANDOM != n_RANDOM_IMPL_BUILTIN
+#  error a_aux_rand_init(): the value of mx_HAVE_RANDOM is not supported
 # endif
 
    /* As a fallback, a homebrew seed */
@@ -262,7 +262,7 @@ a_aux_rand_init(void){
       for(u.i = n_NELEM(a_aux_rand->b32); u.i-- != 0;){
          ui32_t t, k;
 
-# ifdef HAVE_CLOCK_GETTIME
+# ifdef mx_HAVE_CLOCK_GETTIME
          clock_gettime(CLOCK_REALTIME, &ts);
          t = (ui32_t)ts.tv_nsec;
 # else
@@ -317,7 +317,7 @@ a_aux_rand_weak(ui32_t seed){
       seed += SI32_MAX;
    return seed;
 }
-#endif /* HAVE_RANDOM != IMPL_ARC4 != IMPL_TLS */
+#endif /* mx_HAVE_RANDOM != IMPL_ARC4 != IMPL_TLS */
 
 static struct a_aux_err_map const *
 a_aux_err_map_from_no(si32_t eno){
@@ -353,12 +353,12 @@ n_locale_init(void){
 
    n_psonce &= ~(n_PSO_UNICODE | n_PSO_ENC_MBSTATE);
 
-#ifndef HAVE_SETLOCALE
+#ifndef mx_HAVE_SETLOCALE
    n_mb_cur_max = 1;
 #else
    setlocale(LC_ALL, n_empty);
    n_mb_cur_max = MB_CUR_MAX;
-# ifdef HAVE_NL_LANGINFO
+# ifdef mx_HAVE_NL_LANGINFO
    /* C99 */{
       char const *cp;
 
@@ -366,11 +366,11 @@ n_locale_init(void){
          /* (Will log during startup if user set that via -S) */
          ok_vset(ttycharset, cp);
    }
-# endif /* HAVE_SETLOCALE */
+# endif /* mx_HAVE_SETLOCALE */
 
-# ifdef HAVE_C90AMEND1
+# ifdef mx_HAVE_C90AMEND1
    if(n_mb_cur_max > 1){
-#  ifdef HAVE_ALWAYS_UNICODE_LOCALE
+#  ifdef mx_HAVE_ALWAYS_UNICODE_LOCALE
       n_psonce |= n_PSO_UNICODE;
 #  else
       wchar_t wc;
@@ -384,7 +384,7 @@ n_locale_init(void){
 #  endif
    }
 # endif
-#endif /* HAVE_C90AMEND1 */
+#endif /* mx_HAVE_C90AMEND1 */
    NYD2_OU;
 }
 
@@ -493,31 +493,31 @@ which_protocol(char const *name, bool_t check_stat, bool_t try_hooks,
             !strncmp(name, "mbox", sizeof("mbox") -1))
          rv = PROTO_FILE;
       else if(!strncmp(name, "maildir", sizeof("maildir") -1)){
-#ifdef HAVE_MAILDIR
+#ifdef mx_HAVE_MAILDIR
          rv = PROTO_MAILDIR;
 #else
          n_err(_("No Maildir directory support compiled in\n"));
 #endif
       }else if(!strncmp(name, "pop3", sizeof("pop3") -1)){
-#ifdef HAVE_POP3
+#ifdef mx_HAVE_POP3
          rv = PROTO_POP3;
 #else
          n_err(_("No POP3 support compiled in\n"));
 #endif
       }else if(!strncmp(name, "pop3s", sizeof("pop3s") -1)){
-#if defined HAVE_POP3 && defined HAVE_TLS
+#if defined mx_HAVE_POP3 && defined mx_HAVE_TLS
          rv = PROTO_POP3;
 #else
          n_err(_("No POP3S support compiled in\n"));
 #endif
       }else if(!strncmp(name, "imap", sizeof("imap") -1)){
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
          rv = PROTO_IMAP;
 #else
          n_err(_("No IMAP support compiled in\n"));
 #endif
       }else if(!strncmp(name, "imaps", sizeof("imaps") -1)){
-#if defined HAVE_IMAP && defined HAVE_TLS
+#if defined mx_HAVE_IMAP && defined mx_HAVE_TLS
          rv = PROTO_IMAP;
 #else
          n_err(_("No IMAPS support compiled in\n"));
@@ -541,7 +541,7 @@ jfile:
 
       if(!stat(name, &stb)){
          if(S_ISDIR(stb.st_mode)
-#ifdef HAVE_MAILDIR
+#ifdef mx_HAVE_MAILDIR
                && (memcpy(&np[sz], "/tmp", 5),
                   !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
                (memcpy(&np[sz], "/new", 5),
@@ -550,7 +550,7 @@ jfile:
                   !stat(np, &stb) && S_ISDIR(stb.st_mode))
 #endif
                ){
-#ifdef HAVE_MAILDIR
+#ifdef mx_HAVE_MAILDIR
             rv = PROTO_MAILDIR;
 #else
             rv = PROTO_UNKNOWN;
@@ -560,7 +560,7 @@ jfile:
          orig_name = savecatsep(name, '.', ft.ft_ext_dat);
       else if((cp = ok_vlook(newfolders)) != NULL &&
             !asccasecmp(cp, "maildir")){
-#ifdef HAVE_MAILDIR
+#ifdef mx_HAVE_MAILDIR
          rv = PROTO_MAILDIR;
 #else
          n_err(_("*newfolders*: no Maildir directory support compiled in\n"));
@@ -1048,8 +1048,8 @@ n_nodename(bool_t mayoverride){
 
    struct utsname ut;
    char *hn;
-#ifdef HAVE_SOCKETS
-# ifdef HAVE_GETADDRINFO
+#ifdef mx_HAVE_SOCKETS
+# ifdef mx_HAVE_GETADDRINFO
    struct addrinfo hints, *res;
 # else
    struct hostent *hent;
@@ -1068,8 +1068,8 @@ n_nodename(bool_t mayoverride){
       uname(&ut);
       hn = ut.nodename;
 
-#ifdef HAVE_SOCKETS
-# ifdef HAVE_GETADDRINFO
+#ifdef mx_HAVE_SOCKETS
+# ifdef mx_HAVE_GETADDRINFO
       memset(&hints, 0, sizeof hints);
       hints.ai_family = AF_UNSPEC;
       hints.ai_flags = AI_CANONNAME;
@@ -1089,9 +1089,9 @@ n_nodename(bool_t mayoverride){
       if(hent != NULL)
          hn = hent->h_name;
 # endif
-#endif /* HAVE_SOCKETS */
+#endif /* mx_HAVE_SOCKETS */
 
-#ifdef HAVE_IDNA
+#ifdef mx_HAVE_IDNA
       /* C99 */{
          struct n_string cnv;
 
@@ -1120,7 +1120,7 @@ n_nodename(bool_t mayoverride){
    return hostname;
 }
 
-#ifdef HAVE_IDNA
+#ifdef mx_HAVE_IDNA
 FL bool_t
 n_idna_to_ascii(struct n_string *out, char const *ibuf, size_t ilen){
    char *idna_utf8;
@@ -1143,17 +1143,17 @@ n_idna_to_ascii(struct n_string *out, char const *ibuf, size_t ilen){
    }
    ilen = 0;
 
-# ifndef HAVE_ALWAYS_UNICODE_LOCALE
+# ifndef mx_HAVE_ALWAYS_UNICODE_LOCALE
    if(n_psonce & n_PSO_UNICODE)
 # endif
       idna_utf8 = n_UNCONST(ibuf);
-# ifndef HAVE_ALWAYS_UNICODE_LOCALE
+# ifndef mx_HAVE_ALWAYS_UNICODE_LOCALE
    else if((idna_utf8 = n_iconv_onetime_cp(n_ICONV_NONE, "utf-8",
          ok_vlook(ttycharset), ibuf)) == NULL)
       goto jleave;
 # endif
 
-# if HAVE_IDNA == n_IDNA_IMPL_LIBIDN2
+# if mx_HAVE_IDNA == n_IDNA_IMPL_LIBIDN2
    /* C99 */{
       char *idna_ascii;
       int f, rc;
@@ -1171,7 +1171,7 @@ jidn2_redo:
       }
    }
 
-# elif HAVE_IDNA == n_IDNA_IMPL_LIBIDN
+# elif mx_HAVE_IDNA == n_IDNA_IMPL_LIBIDN
    /* C99 */{
       char *idna_ascii;
 
@@ -1183,7 +1183,7 @@ jidn2_redo:
       }
    }
 
-# elif HAVE_IDNA == n_IDNA_IMPL_IDNKIT
+# elif mx_HAVE_IDNA == n_IDNA_IMPL_IDNKIT
    ilen = strlen(idna_utf8);
 jredo:
    switch(idn_encodename(
@@ -1211,7 +1211,7 @@ jredo:
    }
 
 # else
-#  error Unknown HAVE_IDNA
+#  error Unknown mx_HAVE_IDNA
 # endif
 jleave:
    if(lofi)
@@ -1220,7 +1220,7 @@ jleave:
    NYD_OU;
    return rv;
 }
-#endif /* HAVE_IDNA */
+#endif /* mx_HAVE_IDNA */
 
 FL char *
 n_random_create_buf(char *dat, size_t len, ui32_t *reprocnt_or_null){
@@ -1235,23 +1235,23 @@ n_random_create_buf(char *dat, size_t len, ui32_t *reprocnt_or_null){
       if(n_poption & n_PO_D_V){
          char const *prngn;
 
-#if HAVE_RANDOM == n_RANDOM_IMPL_ARC4
+#if mx_HAVE_RANDOM == n_RANDOM_IMPL_ARC4
          prngn = "arc4random";
-#elif HAVE_RANDOM == n_RANDOM_IMPL_TLS
+#elif mx_HAVE_RANDOM == n_RANDOM_IMPL_TLS
          prngn = "*TLS RAND_*";
-#elif HAVE_RANDOM == n_RANDOM_IMPL_GETRANDOM
+#elif mx_HAVE_RANDOM == n_RANDOM_IMPL_GETRANDOM
          prngn = "getrandom(2/3) + builtin ARC4";
-#elif HAVE_RANDOM == n_RANDOM_IMPL_URANDOM
+#elif mx_HAVE_RANDOM == n_RANDOM_IMPL_URANDOM
          prngn = "/dev/urandom + builtin ARC4";
-#elif HAVE_RANDOM == n_RANDOM_IMPL_BUILTIN
+#elif mx_HAVE_RANDOM == n_RANDOM_IMPL_BUILTIN
          prngn = "builtin ARC4";
 #else
-# error n_random_create_buf(): the value of HAVE_RANDOM is not supported
+# error n_random_create_buf(): the value of mx_HAVE_RANDOM is not supported
 #endif
          n_err(_("P(seudo)R(andomNumber)G(enerator): %s\n"), prngn);
       }
 
-#if HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && HAVE_RANDOM != n_RANDOM_IMPL_TLS
+#if mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
       a_aux_rand_init();
 #endif
    }
@@ -1275,9 +1275,9 @@ jinc1:
    indat = n_lofi_alloc(inlen +1);
 
    if(!su_state_has(su_STATE_REPRODUCIBLE) || reprocnt_or_null == NULL){
-#if HAVE_RANDOM == n_RANDOM_IMPL_TLS
+#if mx_HAVE_RANDOM == n_RANDOM_IMPL_TLS
       n_tls_rand_bytes(indat, inlen);
-#elif HAVE_RANDOM != n_RANDOM_IMPL_ARC4
+#elif mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4
       for(i = inlen; i-- > 0;)
          indat[i] = (char)a_aux_rand_get8();
 #else
@@ -1427,13 +1427,13 @@ n_time_now(bool_t force_update){ /* TODO event loop update IF cmd requests! */
       (void)n_idec_si64_cp(&ts_now.ts_sec, ok_vlook(SOURCE_DATE_EPOCH), 0,NULL);
       ts_now.ts_nsec = 0;
    }else if(force_update || ts_now.ts_sec == 0){
-#ifdef HAVE_CLOCK_GETTIME
+#ifdef mx_HAVE_CLOCK_GETTIME
       struct timespec ts;
 
       clock_gettime(CLOCK_REALTIME, &ts);
       ts_now.ts_sec = (si64_t)ts.tv_sec;
       ts_now.ts_nsec = (siz_t)ts.tv_nsec;
-#elif defined HAVE_GETTIMEOFDAY
+#elif defined mx_HAVE_GETTIMEOFDAY
       struct timeval tv;
 
       gettimeofday(&tv, NULL);
@@ -1547,7 +1547,7 @@ n_msleep(uiz_t millis, bool_t ignint){
    uiz_t rv;
    NYD2_IN;
 
-#ifdef HAVE_NANOSLEEP
+#ifdef mx_HAVE_NANOSLEEP
    /* C99 */{
       struct timespec ts, trem;
       int i;
@@ -1560,7 +1560,7 @@ n_msleep(uiz_t millis, bool_t ignint){
       rv = (i == 0) ? 0 : (trem.tv_sec * 1000) + (trem.tv_nsec / (1000 * 1000));
    }
 
-#elif defined HAVE_SLEEP
+#elif defined mx_HAVE_SLEEP
    if((millis /= 1000) == 0)
       millis = 1;
    while((rv = sleep((unsigned int)millis)) != 0 && ignint)
@@ -1579,7 +1579,7 @@ n_err(char const *format, ...){
    NYD2_IN;
 
    va_start(ap, format);
-#ifdef HAVE_ERRORS
+#ifdef mx_HAVE_ERRORS
    if(n_psonce & n_PSO_INTERACTIVE)
       n_verr(format, ap);
    else
@@ -1628,7 +1628,7 @@ n_err(char const *format, ...){
 
 FL void
 n_verr(char const *format, va_list ap){
-#ifdef HAVE_ERRORS
+#ifdef mx_HAVE_ERRORS
    struct a_aux_err_node *enp;
 #endif
    bool_t doname;
@@ -1645,7 +1645,7 @@ n_verr(char const *format, va_list ap){
 
    if(doname){
       a_aux_err_linelen = 0;
-#ifdef HAVE_ERRORS
+#ifdef mx_HAVE_ERRORS
       if(n_psonce & n_PSO_INTERACTIVE){
          if((enp = a_aux_err_tail) != NULL &&
                (enp->ae_str.s_len > 0 &&
@@ -1657,7 +1657,7 @@ n_verr(char const *format, va_list ap){
 
    if((len = strlen(format)) == 0)
       goto jleave;
-#ifdef HAVE_ERRORS
+#ifdef mx_HAVE_ERRORS
    n_pstate |= n_PS_ERRORS_PROMPT;
 #endif
 
@@ -1679,11 +1679,11 @@ n_verr(char const *format, va_list ap){
       }while(len > 0);
    }
 
-#ifdef HAVE_ERRORS
+#ifdef mx_HAVE_ERRORS
    if(!(n_psonce & n_PSO_INTERACTIVE))
 #endif
       vfprintf(n_stderr, format, ap);
-#ifdef HAVE_ERRORS
+#ifdef mx_HAVE_ERRORS
    else{
       int imax, i;
       n_LCTAV(ERRORS_MAX > 3);
@@ -1713,13 +1713,13 @@ jcreat:
          n_string_trunc(&enp->ae_str, 0);
       }
 
-# ifdef HAVE_N_VA_COPY
+# ifdef mx_HAVE_N_VA_COPY
       imax = 64;
 # else
       imax = n_MIN(LINESIZE, 1024);
 # endif
       for(i = imax;; imax = ++i /* xxx could wrap, maybe */){
-# ifdef HAVE_N_VA_COPY
+# ifdef mx_HAVE_N_VA_COPY
          va_list vac;
 
          n_va_copy(vac, ap);
@@ -1729,7 +1729,7 @@ jcreat:
 
          n_string_resize(&enp->ae_str, (len = enp->ae_str.s_len) + (size_t)i);
          i = vsnprintf(&enp->ae_str.s_dat[len], (size_t)i, format, vac);
-# ifdef HAVE_N_VA_COPY
+# ifdef mx_HAVE_N_VA_COPY
          va_end(vac);
 # else
 #  undef vac
@@ -1737,7 +1737,7 @@ jcreat:
          if(i <= 0)
             goto jleave;
          if(UICMP(z, i, >=, imax)){
-# ifdef HAVE_N_VA_COPY
+# ifdef mx_HAVE_N_VA_COPY
             /* XXX Check overflow for upcoming LEN+++i! */
             n_string_trunc(&enp->ae_str, len);
             continue;
@@ -1751,7 +1751,7 @@ jcreat:
 
       fwrite(&enp->ae_str.s_dat[len], 1, (size_t)i, n_stderr);
    }
-#endif /* HAVE_ERRORS */
+#endif /* mx_HAVE_ERRORS */
 
 jleave:
    fflush(n_stderr);
@@ -1824,7 +1824,7 @@ n_panic(char const *format, ...){
    abort(); /* Was exit(n_EXIT_ERR); for a while, but no */
 }
 
-#ifdef HAVE_ERRORS
+#ifdef mx_HAVE_ERRORS
 FL int
 c_errors(void *v){
    char **argv = v;
@@ -1884,7 +1884,7 @@ jclear:
    }
    goto jleave;
 }
-#endif /* HAVE_ERRORS */
+#endif /* mx_HAVE_ERRORS */
 
 FL char const *
 n_err_to_doc(si32_t eno){
@@ -1893,7 +1893,7 @@ n_err_to_doc(si32_t eno){
    NYD2_IN;
 
    aemp = a_aux_err_map_from_no(eno);
-#ifdef HAVE_DOCSTRINGS
+#ifdef mx_HAVE_DOCSTRINGS
    rv = &a_aux_err_docs[aemp->aem_docoff];
 #else
    rv = &a_aux_err_names[aemp->aem_nameoff];
@@ -1959,7 +1959,7 @@ jleave:
    return rv;
 }
 
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
 FL char const *
 n_regex_err_to_doc(const regex_t *rep, int e){
    char *cp;

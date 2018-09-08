@@ -36,7 +36,7 @@
 #undef su_FILE
 #define su_FILE cmd_resend
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -377,7 +377,7 @@ jwork_msg:
 
       head.h_mailx_raw_to = n_namelist_dup(head.h_to, GTO | gf);
       head.h_to = n_alternates_remove(head.h_to, FAL0);
-#ifdef HAVE_DEVEL
+#ifdef mx_HAVE_DEVEL
       for(np = head.h_to; np != NULL; np = np->n_flink)
          assert((np->n_type & GMASK) == GTO);
       for(np = head.h_cc; np != NULL; np = np->n_flink)

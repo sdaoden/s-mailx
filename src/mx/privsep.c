@@ -27,11 +27,11 @@
 
 #include "mx/nail.h"
 
-#if defined HAVE_PRCTL_DUMPABLE
+#if defined mx_HAVE_PRCTL_DUMPABLE
 # include <sys/prctl.h>
-#elif defined HAVE_PTRACE_DENY
+#elif defined mx_HAVE_PTRACE_DENY
 # include <sys/ptrace.h>
-#elif defined HAVE_SETPFLAGS_PROTECT
+#elif defined mx_HAVE_SETPFLAGS_PROTECT
 # include <priv.h>
 #endif
 
@@ -54,7 +54,7 @@ static uiz_t
 n_msleep(uiz_t millis, bool_t ignint){
    uiz_t rv;
 
-#ifdef HAVE_NANOSLEEP
+#ifdef mx_HAVE_NANOSLEEP
    /* C99 */{
       struct timespec ts, trem;
       int i;
@@ -67,7 +67,7 @@ n_msleep(uiz_t millis, bool_t ignint){
       rv = (i == 0) ? 0 : (trem.tv_sec * 1000) + (trem.tv_nsec / (1000 * 1000));
    }
 
-#elif defined HAVE_SLEEP
+#elif defined mx_HAVE_SLEEP
    if((millis /= 1000) == 0)
       millis = 1;
    while((rv = sleep((unsigned int)millis)) != 0 && ignint)
@@ -170,13 +170,13 @@ jeuse:
    dls = n_DLS_PRIVFAILED | n_DLS_ABANDON;
 
    /* We are SETUID and do not want to become traced or being attached to */
-#if defined HAVE_PRCTL_DUMPABLE
+#if defined mx_HAVE_PRCTL_DUMPABLE
    if(prctl(PR_SET_DUMPABLE, 0))
       goto jmsg;
-#elif defined HAVE_PTRACE_DENY
+#elif defined mx_HAVE_PTRACE_DENY
    if(ptrace(PT_DENY_ATTACH, 0, 0, 0) == -1)
       goto jmsg;
-#elif defined HAVE_SETPFLAGS_PROTECT
+#elif defined mx_HAVE_SETPFLAGS_PROTECT
    if(setpflags(__PROC_PROTECT, 1))
       goto jmsg;
 #endif

@@ -37,7 +37,7 @@
 #undef su_FILE
 #define su_FILE collect
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -1385,7 +1385,7 @@ jearg:
          break;
       /* case '<': <> 'd' */
       case '?':
-#ifdef HAVE_UISTRINGS
+#ifdef mx_HAVE_UISTRINGS
          fputs(_(
 "COMMAND ESCAPES (to be placed after a newline) excerpt:\n"
 "~.            Commit and send message\n"
@@ -1415,7 +1415,7 @@ jearg:
 "~x            Abort composition, discard message (`~q': save in $DEAD)\n"
 "~| <command>  Pipe message through shell filter (`~||': with headers)\n"
             ), n_stdout);
-#endif /* HAVE_UISTRINGS */
+#endif /* mx_HAVE_UISTRINGS */
          if(cnt != 0)
             goto jearg;
          n_pstate_err_no = n_ERR_NONE;

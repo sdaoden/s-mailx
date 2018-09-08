@@ -37,7 +37,7 @@
 #undef su_FILE
 #define su_FILE header
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -109,7 +109,7 @@ static void a_header_parse_from_(struct message *mp,
 /* Convert the domain part of a skinned address to IDNA.
  * If an error occurs before Unicode information is available, revert the IDNA
  * error to a normal CHAR one so that the error message doesn't talk Unicode */
-#ifdef HAVE_IDNA
+#ifdef mx_HAVE_IDNA
 static struct n_addrguts *a_header_idna_apply(struct n_addrguts *agp);
 #endif
 
@@ -396,7 +396,7 @@ a_header_parse_from_(struct message *mp, char date[n_FROM_DATEBUF]){
    NYD2_OU;
 }
 
-#ifdef HAVE_IDNA
+#ifdef mx_HAVE_IDNA
 static struct n_addrguts *
 a_header_idna_apply(struct n_addrguts *agp){
    struct n_string idna_ascii;
@@ -419,7 +419,7 @@ a_header_idna_apply(struct n_addrguts *agp){
    NYD_OU;
    return agp;
 }
-#endif /* HAVE_IDNA */
+#endif /* mx_HAVE_IDNA */
 
 static bool_t
 a_header_addrspec_check(struct n_addrguts *agp, bool_t skinned,
@@ -442,7 +442,7 @@ a_header_addrspec_check(struct n_addrguts *agp, bool_t skinned,
    NYD_IN;
 
    flags = a_NONE;
-#ifdef HAVE_IDNA
+#ifdef mx_HAVE_IDNA
    if(!ok_blook(idna_disable))
       flags = a_IDNA_ENABLE;
 #endif
@@ -497,7 +497,7 @@ jaddr_check:
       if (c.c == '"') {
          flags ^= a_IN_QUOTE;
       } else if (c.u < 040 || c.u >= 0177) { /* TODO no magics: !bodychar()? */
-#ifdef HAVE_IDNA
+#ifdef mx_HAVE_IDNA
          if ((flags & (a_IN_DOMAIN | a_IDNA_ENABLE)) ==
                (a_IN_DOMAIN | a_IDNA_ENABLE))
             flags |= a_IDNA_APPLY;
@@ -992,7 +992,7 @@ jput_quote_esc:
          if(c.c == '"')
             flags ^= a_IN_QUOTE;
          else if (c.u < 040 || c.u >= 0177) {
-#ifdef HAVE_IDNA
+#ifdef mx_HAVE_IDNA
                if(!(flags & a_IN_DOMAIN))
 #endif
                   break;
@@ -1060,7 +1060,7 @@ jinsert_domain:
    }
 
 jleave:
-#ifdef HAVE_IDNA
+#ifdef mx_HAVE_IDNA
    if(!(agp->ag_n_flags & NAME_ADDRSPEC_INVALID) && (flags & a_IDNA_APPLY))
       agp = a_header_idna_apply(agp);
 #endif
@@ -2378,7 +2378,7 @@ fakefrom(struct message *mp)
    return name;
 }
 
-#if defined HAVE_IMAP_SEARCH || defined HAVE_IMAP
+#if defined mx_HAVE_IMAP_SEARCH || defined mx_HAVE_IMAP
 FL time_t
 unixtime(char const *fromline)
 {
@@ -2436,7 +2436,7 @@ jinvalid:
    t = n_time_epoch();
    goto jleave;
 }
-#endif /* HAVE_IMAP_SEARCH || HAVE_IMAP */
+#endif /* mx_HAVE_IMAP_SEARCH || mx_HAVE_IMAP */
 
 FL time_t
 rfctime(char const *date) /* TODO n_idec_ return tests */
@@ -2857,7 +2857,7 @@ jleave:
    return rv;
 }
 
-#ifdef HAVE_XTLS
+#ifdef mx_HAVE_XTLS
 FL char *
 getsender(struct message *mp)
 {
@@ -2977,7 +2977,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
          fiter.s = n_lofi_alloc((fiter.l = strlen(field)) +1);
          match = a_ITER;
       }
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
    }else if(sep->ss_fieldre != NULL){
       match = a_RE;
 #endif
@@ -3018,7 +3018,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
          }
          if(field == NULL)
             continue;
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
       }else if(match == a_RE){
          char *cp;
          size_t i;
@@ -3059,7 +3059,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
       }
 
 jnext_name:
-#ifdef HAVE_REGEX
+#ifdef mx_HAVE_REGEX
       if(sep->ss_bodyre != NULL)
          rv = (regexec(sep->ss_bodyre, out.s, 0,NULL, 0) != REG_NOMATCH);
       else

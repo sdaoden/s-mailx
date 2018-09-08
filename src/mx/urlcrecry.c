@@ -21,11 +21,11 @@
 #undef su_FILE
 #define su_FILE urlcrecry
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
-#ifdef HAVE_NETRC
+#ifdef mx_HAVE_NETRC
   /* NetBSD usr.bin/ftp/ruserpass.c uses 100 bytes for that, we need four
    * concurrently (dummy, host, user, pass), so make it a KB */
 # define NRC_TOKEN_MAXLEN   (1024 / 4)
@@ -53,15 +53,15 @@ struct nrc_node {
 # define NRC_NODE_ERR   ((struct nrc_node*)-1)
 
 static struct nrc_node  *_nrc_list;
-#endif /* HAVE_NETRC */
+#endif /* mx_HAVE_NETRC */
 
 /* Find the last @ before a slash
  * TODO Casts off the const but this is ok here; obsolete function! */
-#ifdef HAVE_SOCKETS /* temporary (we'll have file://..) */
+#ifdef mx_HAVE_SOCKETS /* temporary (we'll have file://..) */
 static char *           _url_last_at_before_slash(char const *sp);
 #endif
 
-#ifdef HAVE_NETRC
+#ifdef mx_HAVE_NETRC
 /* Initialize .netrc cache */
 static void             _nrc_init(void);
 static enum nrc_token   __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN],
@@ -79,14 +79,14 @@ static bool_t           __nrc_find_user(struct url *urlp,
                            struct nrc_node const *nrc);
 static bool_t           __nrc_find_pass(struct url *urlp, bool_t user_match,
                            struct nrc_node const *nrc);
-#endif /* HAVE_NETRC */
+#endif /* mx_HAVE_NETRC */
 
 /* The password can also be gained through external agents TODO v15-compat */
-#ifdef HAVE_AGENT
+#ifdef mx_HAVE_AGENT
 static bool_t           _agent_shell_lookup(struct url *urlp, char const *comm);
 #endif
 
-#ifdef HAVE_SOCKETS
+#ifdef mx_HAVE_SOCKETS
 static char *
 _url_last_at_before_slash(char const *sp)
 {
@@ -106,7 +106,7 @@ _url_last_at_before_slash(char const *sp)
 }
 #endif
 
-#ifdef HAVE_NETRC
+#ifdef mx_HAVE_NETRC
 static void
 _nrc_init(void)
 {
@@ -505,9 +505,9 @@ __nrc_find_pass(struct url *urlp, bool_t user_match, struct nrc_node const *nrc)
    NYD2_OU;
    return (nrc != NULL);
 }
-#endif /* HAVE_NETRC */
+#endif /* mx_HAVE_NETRC */
 
-#ifdef HAVE_AGENT
+#ifdef mx_HAVE_AGENT
 static bool_t
 _agent_shell_lookup(struct url *urlp, char const *comm) /* TODO v15-compat */
 {
@@ -564,7 +564,7 @@ jleave:
    NYD2_OU;
    return rv;
 }
-#endif /* HAVE_AGENT */
+#endif /* mx_HAVE_AGENT */
 
 FL char *
 (urlxenc)(char const *cp, bool_t ispath n_MEMORY_DEBUG_ARGS)
@@ -837,15 +837,15 @@ n_servbyname(char const *proto, ui16_t *irv_or_null){
    return rv;
 }
 
-#ifdef HAVE_SOCKETS /* Note: not indented for that -- later: file:// etc.! */
+#ifdef mx_HAVE_SOCKETS /* Note: not indented for that -- later: file:// etc.! */
 FL bool_t
 url_parse(struct url *urlp, enum cproto cproto, char const *data)
 {
-#if defined HAVE_SMTP && defined HAVE_POP3 && defined HAVE_IMAP
+#if defined mx_HAVE_SMTP && defined mx_HAVE_POP3 && defined mx_HAVE_IMAP
 # define a_ALLPROTO
 #endif
-#if defined HAVE_SMTP || defined HAVE_POP3 || defined HAVE_IMAP || \
-      defined HAVE_TLS
+#if defined mx_HAVE_SMTP || defined mx_HAVE_POP3 || defined mx_HAVE_IMAP || \
+      defined mx_HAVE_TLS
 # define a_ANYPROTO
    char *cp, *x;
 #endif
@@ -873,7 +873,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
       goto juser;\
    }
 #define a_IF(X,Y) a__IF(X, Y, (void)0)
-#ifdef HAVE_TLS
+#ifdef mx_HAVE_TLS
 # define a_IFS(X,Y) a__IF(X, Y, urlp->url_flags |= n_URL_TLS_REQUIRED)
 # define a_IFs(X,Y) a__IF(X, Y, urlp->url_flags |= n_URL_TLS_OPTIONAL)
 #else
@@ -885,7 +885,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
    case CPROTO_CERTINFO:
       /* The special `tls' certificate info protocol
        * We do allow all protos here, for later getaddrinfo() usage! */
-#ifdef HAVE_TLS
+#ifdef mx_HAVE_TLS
       if((cp = strstr(data, "://")) == NULL)
          a_PRIVPROTOX("https", 443, urlp->url_flags |= n_URL_TLS_REQUIRED);
       else{
@@ -907,7 +907,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #endif
    case CPROTO_CCRED:
       /* The special S/MIME etc. credential lookup TODO TLS client cert! */
-#ifdef HAVE_TLS
+#ifdef mx_HAVE_TLS
       a_PRIVPROTOX("ccred", 0, (void)0);
       break;
 #else
@@ -919,7 +919,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
       a_PROTOX("socks", 1080, (void)0);
       break;
    case CPROTO_SMTP:
-#ifdef HAVE_SMTP
+#ifdef mx_HAVE_SMTP
       a_IFS("smtps", 465)
       a_IFs("smtp", 25)
       a_IFs("submission", 587)
@@ -930,7 +930,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
       goto jeproto;
 #endif
    case CPROTO_POP3:
-#ifdef HAVE_POP3
+#ifdef mx_HAVE_POP3
       a_IFS("pop3s", 995)
       a_IFs("pop3", 110)
       a_PROTOX("pop3", 110, urlp->url_flags |= n_URL_TLS_OPTIONAL);
@@ -938,7 +938,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #else
       goto jeproto;
 #endif
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
    case CPROTO_IMAP:
       a_IFS("imaps", 993)
       a_IFs("imap", 143)
@@ -1058,7 +1058,7 @@ jurlp_err:
                urlp->url_input);
             goto jleave;
          }
-# ifdef HAVE_IMAP
+# ifdef mx_HAVE_IMAP
          if(trailsol){
             urlp->url_path.s = n_autorec_alloc(i + sizeof("/INBOX"));
             memcpy(urlp->url_path.s, x, i);
@@ -1069,7 +1069,7 @@ jurlp_err:
             urlp->url_path.l = i, urlp->url_path.s = x2;
       }
    }
-# ifdef HAVE_IMAP
+# ifdef mx_HAVE_IMAP
    if(cproto == CPROTO_IMAP && urlp->url_path.s == NULL)
       urlp->url_path.s = savestrbuf("INBOX",
             urlp->url_path.l = sizeof("INBOX") -1);
@@ -1080,7 +1080,7 @@ jurlp_err:
       for (cp = urlp->url_host.s, i = urlp->url_host.l; i != 0; ++cp, --i)
          *cp = lowerconv(*cp);
    }
-# ifdef HAVE_IDNA
+# ifdef mx_HAVE_IDNA
    if(!ok_blook(idna_disable)){
       struct n_string idna;
 
@@ -1092,7 +1092,7 @@ jurlp_err:
       urlp->url_host.s = n_string_cp(&idna);
       urlp->url_host.l = idna.s_len;
    }
-# endif /* HAVE_IDNA */
+# endif /* mx_HAVE_IDNA */
 
    /* .url_h_p: HOST:PORT */
    {  size_t upl, i;
@@ -1115,7 +1115,7 @@ jurlp_err:
       if ((urlp->url_user.s = xok_vlook(user, urlp, OXM_PLAIN | OXM_H_P))
             == NULL) {
          /* No, check whether .netrc lookup is desired */
-# ifdef HAVE_NETRC
+# ifdef mx_HAVE_NETRC
          if (!ok_blook(v15_compat) ||
                !xok_blook(netrc_lookup, urlp, OXM_PLAIN | OXM_H_P) ||
                !_nrc_lookup(urlp, FAL0))
@@ -1270,7 +1270,7 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
       authmask = AUTHTYPE_PLAIN;
       authdef = "plain";
       break;
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
    case CPROTO_IMAP:
       pname = "IMAP";
       pxstr = "imap-auth";
@@ -1323,14 +1323,14 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
       ccp = NULL;
       goto jleave;
    }
-# ifndef HAVE_MD5
+# ifndef mx_HAVE_MD5
    if (ccp->cc_authtype == AUTHTYPE_CRAM_MD5) {
       n_err(_("No CRAM-MD5 support compiled in\n"));
       ccp = NULL;
       goto jleave;
    }
 # endif
-# ifndef HAVE_GSSAPI
+# ifndef mx_HAVE_GSSAPI
    if (ccp->cc_authtype == AUTHTYPE_GSSAPI) {
       n_err(_("No GSS-API support compiled in\n"));
       ccp = NULL;
@@ -1451,7 +1451,7 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
       authdef = "plain";
       pstr = "pop3";
       break;
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
    case CPROTO_IMAP:
       pstr = "imap";
       authokey = ok_v_imap_auth;
@@ -1494,14 +1494,14 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
       ccp = NULL;
       goto jleave;
    }
-# ifndef HAVE_MD5
+# ifndef mx_HAVE_MD5
    if (ccp->cc_authtype == AUTHTYPE_CRAM_MD5) {
       n_err(_("No CRAM-MD5 support compiled in\n"));
       ccp = NULL;
       goto jleave;
    }
 # endif
-# ifndef HAVE_GSSAPI
+# ifndef mx_HAVE_GSSAPI
    if (ccp->cc_authtype == AUTHTYPE_GSSAPI) {
       n_err(_("No GSS-API support compiled in\n"));
       ccp = NULL;
@@ -1516,7 +1516,7 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
 
    if ((s = xok_vlook(password, urlp, OXM_ALL)) != NULL)
       goto js2pass;
-# ifdef HAVE_AGENT /* TODO v15-compat obsolete */
+# ifdef mx_HAVE_AGENT /* TODO v15-compat obsolete */
    if ((s = xok_vlook(agent_shell_lookup, urlp, OXM_ALL)) != NULL) {
       n_OBSOLETE(_("*agent-shell-lookup* will vanish.  Please use encrypted "
          "~/.netrc (via *netrc-pipe*), or simply `source' an encrypted file"));
@@ -1529,7 +1529,7 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
       }
    }
 # endif
-# ifdef HAVE_NETRC
+# ifdef mx_HAVE_NETRC
    if (xok_blook(netrc_lookup, urlp, OXM_ALL) && _nrc_lookup(urlp, TRU1)) {
       ccp->cc_pass = urlp->url_pass;
       goto jleave;
@@ -1554,9 +1554,9 @@ jleave:
    NYD_OU;
    return (ccp != NULL);
 }
-#endif /* HAVE_SOCKETS */
+#endif /* mx_HAVE_SOCKETS */
 
-#ifdef HAVE_NETRC
+#ifdef mx_HAVE_NETRC
 FL int
 c_netrc(void *v)
 {
@@ -1630,9 +1630,9 @@ jclear:
    }
    goto jleave;
 }
-#endif /* HAVE_NETRC */
+#endif /* mx_HAVE_NETRC */
 
-#ifdef HAVE_MD5
+#ifdef mx_HAVE_MD5
 FL char *
 md5tohex(char hex[MD5TOHEX_SIZE], void const *vp)
 {
@@ -1763,6 +1763,6 @@ hmac_md5(unsigned char *text, int text_len, unsigned char *key, int key_len,
    md5_final(digest, &context);        /* finish up 2nd pass */
    NYD_OU;
 }
-#endif /* HAVE_MD5 */
+#endif /* mx_HAVE_MD5 */
 
 /* s-it-mode */

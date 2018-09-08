@@ -36,7 +36,7 @@
 #undef su_FILE
 #define su_FILE attachment
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -55,7 +55,7 @@ static struct attachment *a_attachment_setup_msg(struct attachment *ap,
                            char const *msgcp, int msgno);
 
 /* Try to create temporary charset converted version */
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
 static bool_t a_attachment_iconv(struct attachment *ap, FILE *ifp);
 #endif
 
@@ -117,7 +117,7 @@ a_attachment_setup_msg(struct attachment *ap, char const *msgcp, int msgno){
    return ap;
 }
 
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
 static bool_t
 a_attachment_iconv(struct attachment *ap, FILE *ifp){
    struct str oul = {NULL, 0}, inl = {NULL, 0};
@@ -186,7 +186,7 @@ jerr:
    ofp = NULL;
    goto jleave;
 }
-#endif /* HAVE_ICONV */
+#endif /* mx_HAVE_ICONV */
 
 static void
 a_attachment_yay(struct attachment const *ap){
@@ -204,7 +204,7 @@ a_attachment_yay(struct attachment const *ap){
 FL struct attachment *
 n_attachment_append(struct attachment *aplist, char const *file,
       enum n_attach_error *aerr_or_null, struct attachment **newap_or_null){
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    FILE *cnvfp;
 #endif
    int msgno;
@@ -213,7 +213,7 @@ n_attachment_append(struct attachment *aplist, char const *file,
    enum n_attach_error aerr;
    NYD_IN;
 
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    cnvfp = NULL;
 #endif
    aerr = n_ATTACH_ERR_NONE;
@@ -236,7 +236,7 @@ jrefexp:
          goto jleave;
       }
 
-#ifndef HAVE_ICONV
+#ifndef mx_HAVE_ICONV
       if(oucs != NULL && oucs != (char*)-1){
          n_err(_("No iconv support, cannot do %s\n"),
             n_shexp_quote_cp(file_user, FAL0));
@@ -246,7 +246,7 @@ jrefexp:
 #endif
 
       if((
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
             (oucs != NULL && oucs != (char*)-1)
                ? (cnvfp = Fopen(file, "r")) == NULL :
 #endif
@@ -313,7 +313,7 @@ jerr_fopen:
    else{
       nap->a_input_charset = (incs == NULL || incs == (char*)-1)
             ? savestr(ok_vlook(ttycharset)) : incs;
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
       if(cnvfp != NULL){
          nap->a_charset = oucs;
          if(!a_attachment_iconv(nap, cnvfp)){
@@ -387,7 +387,7 @@ n_attachment_remove(struct attachment *aplist, struct attachment *ap){
    struct attachment *bap, *fap;
    NYD_IN;
 
-#ifdef HAVE_DEVEL
+#ifdef mx_HAVE_DEVEL
    for(bap = aplist; aplist != NULL && aplist != ap; aplist = aplist->a_flink)
       ;
    assert(aplist != NULL);

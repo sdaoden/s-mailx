@@ -36,7 +36,7 @@
 #undef su_FILE
 #define su_FILE mime_parse
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -49,7 +49,7 @@ static bool_t  _mime_parse_part(struct message *zmp, struct mimepart *ip,
 static void    _mime_parse_rfc822(struct message *zmp, struct mimepart *ip,
                   enum mime_parse_flags mpf, int level);
 
-#ifdef HAVE_TLS
+#ifdef mx_HAVE_TLS
 static void    _mime_parse_pkcs7(struct message *zmp, struct mimepart *ip,
                   enum mime_parse_flags mpf, int level);
 #endif
@@ -146,7 +146,7 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
       switch (ip->m_mimecontent) {
       case MIME_PKCS7:
          if (mpf & MIME_PARSE_DECRYPT) {
-#ifdef HAVE_TLS
+#ifdef mx_HAVE_TLS
             _mime_parse_pkcs7(zmp, ip, mpf, level);
             if (ip->m_content_info & CI_ENCRYPTED_OK)
                ip->m_content_info |= CI_EXPANDED;
@@ -229,7 +229,7 @@ jleave:
    NYD_OU;
 }
 
-#ifdef HAVE_TLS
+#ifdef mx_HAVE_TLS
 static void
 _mime_parse_pkcs7(struct message *zmp, struct mimepart *ip,
    enum mime_parse_flags mpf, int level)
@@ -267,7 +267,7 @@ _mime_parse_pkcs7(struct message *zmp, struct mimepart *ip,
       ip->m_content_info |= CI_ENCRYPTED | CI_ENCRYPTED_BAD;
    NYD_OU;
 }
-#endif /* HAVE_TLS */
+#endif /* mx_HAVE_TLS */
 
 static bool_t
 _mime_parse_multipart(struct message *zmp, struct mimepart *ip,

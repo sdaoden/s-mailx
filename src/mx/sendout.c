@@ -36,7 +36,7 @@
 #undef su_FILE
 #define su_FILE sendout
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -298,7 +298,7 @@ a_sendout_body(FILE *fo, FILE *fi, enum conversion convert){
    outrest.l = inrest.l = 0;
 
    if(convert == CONV_TOQP
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
          || iconvd != (iconv_t)-1
 #endif
    ){
@@ -308,7 +308,7 @@ a_sendout_body(FILE *fo, FILE *fi, enum conversion convert){
 
    while(!iseof){
       if(convert == CONV_TOQP
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
             || iconvd != (iconv_t)-1
 #endif
       ){
@@ -467,7 +467,7 @@ jerr_header:
       }
    }
 
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    if (iconvd != (iconv_t)-1)
       n_iconv_close(iconvd);
    if (do_iconv) {
@@ -499,7 +499,7 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
 {
    bool_t v15, rv = FAL0;
    char *shost, *from;
-#ifdef HAVE_SMTP
+#ifdef mx_HAVE_SMTP
    char const *smtp;
 #endif
    NYD_IN;
@@ -511,7 +511,7 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
 
    if (signing_caps) {
       if (from == NULL) {
-#ifdef HAVE_SMIME
+#ifdef mx_HAVE_SMIME
          n_err(_("No *from* address for signing specified\n"));
          goto jleave;
 #endif
@@ -519,7 +519,7 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
          sbp->sb_signer.l = strlen(sbp->sb_signer.s = from);
    }
 
-#ifndef HAVE_SMTP
+#ifndef mx_HAVE_SMTP
    rv = TRU1;
 #else
    if ((smtp = ok_vlook(smtp)) == NULL) { /* TODO v15 url_creat(,ok_vlook(mta)*/
@@ -564,8 +564,8 @@ jenofrom:
    }
 
    rv = TRU1;
-#endif /* HAVE_SMTP */
-#if defined HAVE_SMIME || defined HAVE_SMTP
+#endif /* mx_HAVE_SMTP */
+#if defined mx_HAVE_SMIME || defined mx_HAVE_SMTP
 jleave:
 #endif
    NYD_OU;
@@ -681,7 +681,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
    int do_iconv, err;
    char const *contenttype, *charset;
    FILE *nfo, *nfi;
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    char const *tcs, *convhdr = NULL;
 #endif
    NYD_IN;
@@ -711,7 +711,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
       contenttype = n_poption_arg_Mm;
    convert = n_mimetype_classify_file(fi, &contenttype, &charset, &do_iconv);
 
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    tcs = ok_vlook(ttycharset);
    if ((convhdr = need_hdrconv(hp))) {
       if (iconvd != (iconv_t)-1) /* XXX  */
@@ -729,12 +729,12 @@ infix(struct header *hp, FILE *fi) /* TODO check */
          err = n_ERR_IO;
       goto jerr;
    }
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    if (iconvd != (iconv_t)-1)
       n_iconv_close(iconvd);
 #endif
 
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    if (do_iconv && charset != NULL) { /*TODO charset->n_mimetype_classify_file*/
       if (asccasecmp(charset, tcs) != 0 &&
             (iconvd = n_iconv_open(charset, tcs)) == (iconv_t)-1 &&
@@ -769,7 +769,7 @@ jerr:
       nfi = NULL;
    }
 jleave:
-#ifdef HAVE_ICONV
+#ifdef mx_HAVE_ICONV
    if(iconvd != (iconv_t)-1)
       n_iconv_close(iconvd);
 #endif
@@ -1053,7 +1053,7 @@ mightrecord(FILE *fp, struct name *to, bool_t resend){
                   if(0){
                   /* FALLTHRU */
                case PROTO_MAILDIR:
-#ifdef HAVE_MAILDIR
+#ifdef mx_HAVE_MAILDIR
                      ccp = "maildir://";
 #else
                      n_err(_("*record*: *outfolder*: no Maildir directory "
@@ -1062,7 +1062,7 @@ mightrecord(FILE *fp, struct name *to, bool_t resend){
 #endif
                   }
                   folder = n_folder_query();
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
                   if(which_protocol(folder, FAL0, FAL0, NULL) == PROTO_IMAP){
                      n_err(_("*record*: *outfolder* set, *folder* is IMAP "
                         "based: only one protocol per file is possible\n"));
@@ -1176,7 +1176,7 @@ _transfer(struct sendbundle *sbp)
       memcpy(vs + sizeof(k) -1, np->n_name, nl +1);
 
       if ((cp = n_var_vlook(vs, FAL0)) != NULL) {
-#ifdef HAVE_SMIME
+#ifdef mx_HAVE_SMIME
          FILE *ef;
 
          if ((ef = smime_encrypt(sbp->sb_input, cp, np->n_name)) != NULL) {
@@ -1198,7 +1198,7 @@ _transfer(struct sendbundle *sbp)
 #endif
             n_err(_("Message not sent to: %s\n"), np->n_name);
             _sendout_error = TRU1;
-#ifdef HAVE_SMIME
+#ifdef mx_HAVE_SMIME
          }
 #endif
          rewind(sbp->sb_input);
@@ -1279,7 +1279,7 @@ __mta_start(struct sendbundle *sbp)
       }
    } else {
       n_UNINIT(args, NULL);
-#ifndef HAVE_SMTP
+#ifndef mx_HAVE_SMTP
       n_err(_("No SMTP support compiled in\n"));
       goto jstop;
 #else
@@ -1322,7 +1322,7 @@ jstop:
       sigaddset(&nset, SIGTTIN);
       sigaddset(&nset, SIGTTOU);
       /* n_stdin = */freopen(n_path_devnull, "r", stdin);
-#ifdef HAVE_SMTP
+#ifdef mx_HAVE_SMTP
       if (rv) {
          n_child_prepare(&nset, 0, 1);
          if (smtp_mta(sbp))
@@ -1842,7 +1842,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
 
    if (dosign == TRUM1)
       dosign = ok_blook(smime_sign); /* TODO USER@HOST <-> *from* +++!!! */
-#ifndef HAVE_SMIME
+#ifndef mx_HAVE_SMIME
    if (dosign) {
       n_err(_("No S/MIME support compiled in\n"));
       goto jleave;
@@ -1923,7 +1923,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
    mtf = nmtf;
 
    /*  */
-#ifdef HAVE_SMIME
+#ifdef mx_HAVE_SMIME
    if (dosign) {
       if ((nmtf = smime_sign(mtf, sb.sb_signer.s)) == NULL)
          goto jfail_dead;

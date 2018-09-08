@@ -22,11 +22,11 @@
 #undef su_FILE
 #define su_FILE tty
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
-#if defined HAVE_MLE || defined HAVE_TERMCAP
+#if defined mx_HAVE_MLE || defined mx_HAVE_TERMCAP
 # define a_TTY_SIGNALS
 #endif
 
@@ -144,7 +144,7 @@ jleave:
    return rv;
 }
 
-#ifdef HAVE_SOCKETS
+#ifdef mx_HAVE_SOCKETS
 FL char *
 getuser(char const * volatile query) /* TODO v15-compat obsolete */
 {
@@ -164,7 +164,8 @@ getuser(char const * volatile query) /* TODO v15-compat obsolete */
    safe_signal(SIGHUP, &a_tty__acthdl);
 
    if (n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, query,
-         &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL,NULL) >= 0)
+         &termios_state.ts_linebuf, &termios_state.ts_linesize, NULL, NULL
+         ) >= 0)
       user = termios_state.ts_linebuf;
 
 jrestore:
@@ -227,7 +228,7 @@ jrestore:
 j_leave:
    return pass;
 }
-#endif /* HAVE_SOCKETS */
+#endif /* mx_HAVE_SOCKETS */
 
 FL ui32_t
 n_tty_create_prompt(struct n_string *store, char const *xprompt,
@@ -240,7 +241,7 @@ n_tty_create_prompt(struct n_string *store, char const *xprompt,
 
    /* Prompt creation indicates that prompt printing is directly ahead, so take
     * this opportunity of UI-in-a-known-state and advertise the error ring */
-#ifdef HAVE_ERRORS
+#ifdef mx_HAVE_ERRORS
    if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_ERRORS_NOTED)
          ) == n_PSO_INTERACTIVE && (n_pstate & n_PS_ERRORS_PROMPT)){
       n_psonce |= n_PSO_ERRORS_NOTED;
@@ -258,7 +259,7 @@ jredo:
       pwidth = 0;
       goto jleave;
    }
-#ifdef HAVE_ERRORS
+#ifdef mx_HAVE_ERRORS
    if(n_pstate & n_PS_ERRORS_PROMPT){
       n_pstate &= ~n_PS_ERRORS_PROMPT;
       store = n_string_push_cp(store, V_(n_error));
@@ -345,7 +346,7 @@ jeeval:
    }
 
    /* And there may be colour support, too */
-#ifdef HAVE_COLOUR
+#ifdef mx_HAVE_COLOUR
    if(n_COLOUR_IS_ACTIVE()){
       struct str const *psp, *rsp;
       struct n_colour_pen *ccp;
@@ -357,7 +358,7 @@ jeeval:
          /*store =*/ n_string_push_buf(store, rsp->s, rsp->l);
       }
    }
-#endif /* HAVE_COLOUR */
+#endif /* mx_HAVE_COLOUR */
 
 jleave:
    NYD2_OU;
@@ -381,7 +382,7 @@ jleave:
  * TODO   I.e., add an indirection layer.
  * TODO . No BIDI support.
  * TODO . `bind': we currently use only one lookup tree.
- * TODO   For absolute graceful behaviour (in conjunction with HAVE_TERMCAP) we
+ * TODO   For graceful behaviour (in conjunction with mx_HAVE_TERMCAP) we
  * TODO   need a lower level tree, which possibly combines bytes into "symbolic
  * TODO   wchar_t values", into "keys" that is, as applicable, and an upper
  * TODO   layer which only works on "keys" in order to possibly combine them
@@ -393,14 +394,14 @@ jleave:
  * TODO   bytes storage, but it can be a string_creat_auto in the line struct.
  * TODO   Until then we can run into ambiguities; in rare occasions.
  */
-#ifdef HAVE_MLE
+#ifdef mx_HAVE_MLE
 /* To avoid memory leaks etc. with the current codebase that simply longjmp(3)s
  * we're forced to use the very same buffer--the one that is passed through to
  * us from the outside--to store anything we need, i.e., a "struct cell[]", and
  * convert that on-the-fly back to the plain char* result once we're done.
  * To simplify our live, use savestr() buffers for all other needed memory */
 
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
    /* Default *bind-timeout* key-sequence continuation timeout, in tenths of
     * a second.  Must fit in 8-bit!  Update the manual upon change! */
 #  define a_TTY_BIND_TIMEOUT 2
@@ -422,9 +423,9 @@ n_CTAV(a_TTY_BIND_TIMEOUT_MAX <= UI8_MAX);
 n_CTAV(n_ISPOW2(a_TTY_BIND_CAPEXP_ROUNDUP));
 n_CTA(a_TTY_BIND_CAPEXP_ROUNDUP <= SI8_MAX / 2, "Variable must fit in 6-bit");
 n_CTA(a_TTY_BIND_CAPEXP_ROUNDUP >= 8, "Variable too small");
-# endif /* HAVE_KEY_BINDINGS */
+# endif /* mx_HAVE_KEY_BINDINGS */
 
-# ifdef HAVE_HISTORY
+# ifdef mx_HAVE_HISTORY
    /* The first line of the history file is used as a marker after >v14.9.6 */
 #  define a_TTY_HIST_MARKER "@s-mailx history v2"
 # endif
@@ -452,7 +453,7 @@ n_CTA(a_TTY_LINE_MAX <= SI32_MAX,
 /* The implementation of the MLE functions always exists, and is based upon
  * the a_TTY_BIND_FUN_* constants, so most of this enum is always necessary */
 enum a_tty_bind_flags{
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
    a_TTY_BIND_RESOLVE = 1u<<8,   /* Term cap. yet needs to be resolved */
    a_TTY_BIND_DEFUNCT = 1u<<9,   /* Unicode/term cap. used but not avail. */
    a_TTY__BIND_MASK = a_TTY_BIND_RESOLVE | a_TTY_BIND_DEFUNCT,
@@ -502,7 +503,7 @@ enum a_tty_bind_flags{
 
    a_TTY__BIND_LAST = 1<<28
 };
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
 n_CTA((ui32_t)a_TTY_BIND_RESOLVE >= (ui32_t)n__GO_INPUT_CTX_MAX1,
    "Bit carrier lower boundary must be raised to avoid value sharing");
 # endif
@@ -521,7 +522,7 @@ enum a_tty_fun_status{
    a_TTY_FUN_STATUS_END       /* End, return EOF */
 };
 
-# ifdef HAVE_HISTORY
+# ifdef mx_HAVE_HISTORY
 enum a_tty_hist_flags{
    a_TTY_HIST_CTX_DEFAULT = n_GO_INPUT_CTX_DEFAULT,
    a_TTY_HIST_CTX_COMPOSE = n_GO_INPUT_CTX_COMPOSE,
@@ -538,7 +539,7 @@ enum a_tty_visual_flags{
    a_TTY_VF_MOD_CURSOR = 1u<<0,  /* Cursor moved */
    a_TTY_VF_MOD_CONTENT = 1u<<1, /* Content modified */
    a_TTY_VF_MOD_DIRTY = 1u<<2,   /* Needs complete repaint */
-   a_TTY_VF_MOD_SINGLE = 1u<<3,  /* TODO Drop when indirection as above comes */
+   a_TTY_VF_MOD_SINGLE = 1u<<3,  /* TODO Drop if indirection as above comes */
    a_TTY_VF_REFRESH = a_TTY_VF_MOD_DIRTY | a_TTY_VF_MOD_CURSOR |
          a_TTY_VF_MOD_CONTENT | a_TTY_VF_MOD_SINGLE,
    a_TTY_VF_BELL = 1u<<8,        /* Ring the bell */
@@ -548,7 +549,7 @@ enum a_tty_visual_flags{
    a_TTY__VF_LAST = a_TTY_VF_SYNC
 };
 
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
 struct a_tty_bind_ctx{
    struct a_tty_bind_ctx *tbc_next;
    char *tbc_seq;       /* quence as given (poss. re-quoted), in .tb__buf */
@@ -564,7 +565,7 @@ struct a_tty_bind_ctx{
    ui32_t tbc_flags;
    char tbc__buf[n_VFIELD_SIZE(0)];
 };
-# endif /* HAVE_KEY_BINDINGS */
+# endif /* mx_HAVE_KEY_BINDINGS */
 
 struct a_tty_bind_builtin_tuple{
    bool_t tbbt_iskey;   /* Whether this is a control key; else termcap query */
@@ -575,7 +576,7 @@ struct a_tty_bind_builtin_tuple{
 n_CTA(n__TERMCAP_QUERY_MAX1 <= UI16_MAX,
    "Enumeration cannot be stored in datatype");
 
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
 struct a_tty_bind_parse_ctx{
    char const *tbpc_cmd;      /* Command which parses */
    char const *tbpc_in_seq;   /* In: key sequence */
@@ -601,7 +602,7 @@ struct a_tty_bind_tree{
    bool_t tbt_isseq_trail;             /* ..is trailing byte of it */
    ui8_t tbt__dummy[2];
 };
-# endif /* HAVE_KEY_BINDINGS */
+# endif /* mx_HAVE_KEY_BINDINGS */
 
 struct a_tty_cell{
    wchar_t tc_wc;
@@ -613,13 +614,13 @@ struct a_tty_cell{
 
 struct a_tty_global{
    struct a_tty_line *tg_line;   /* To be able to access it from signal hdl */
-# ifdef HAVE_HISTORY
+# ifdef mx_HAVE_HISTORY
    struct a_tty_hist *tg_hist;
    struct a_tty_hist *tg_hist_tail;
    size_t tg_hist_size;
    size_t tg_hist_size_max;
 # endif
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
    ui32_t tg_bind_cnt;           /* Overall number of bindings */
    bool_t tg_bind_isdirty;
    bool_t tg_bind_isbuild;
@@ -633,7 +634,7 @@ struct a_tty_global{
    struct termios tg_tios_old;
    struct termios tg_tios_new;
 };
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
 n_CTA(n__GO_INPUT_CTX_MAX1 == 3 && a_TTY_SHCUT_MAX == 4 &&
    n_SIZEOF_FIELD(struct a_tty_global, tg_bind__dummy) == 2,
    "Value results in array sizes that results in bad structure layout");
@@ -641,7 +642,7 @@ n_CTA(a_TTY_SHCUT_MAX > 1,
    "Users need at least one shortcut, plus NUL terminator");
 # endif
 
-# ifdef HAVE_HISTORY
+# ifdef mx_HAVE_HISTORY
 struct a_tty_hist{
    struct a_tty_hist *th_older;
    struct a_tty_hist *th_younger;
@@ -652,7 +653,7 @@ struct a_tty_hist{
 n_CTA(UI8_MAX >= a_TTY_HIST__MAX, "Value exceeds datatype storage");
 # endif
 
-#if defined HAVE_KEY_BINDINGS || defined HAVE_HISTORY
+#if defined mx_HAVE_KEY_BINDINGS || defined mx_HAVE_HISTORY
 struct a_tty_input_ctx_map{
    enum n_go_input_flags ticm_ctx;
    char const ticm_name[12];  /* Name of `bind' context */
@@ -664,13 +665,13 @@ struct a_tty_line{
    char **tl_x_buf;
    size_t *tl_x_bufsize;
    /* Input processing */
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
    wchar_t tl_bind_takeover;     /* Leftover byte to consume next */
    ui8_t tl_bind_timeout;        /* In-seq. inter-byte-timer, in 1/10th secs */
    ui8_t tl__bind_dummy[3];
    char (*tl_bind_shcut_cancel)[a_TTY_SHCUT_MAX]; /* Special _CANCEL control */
    char (*tl_bind_shcut_prompt_char)[a_TTY_SHCUT_MAX]; /* ..for _PROMPT_CHAR */
-   struct a_tty_bind_tree *(*tl_bind_tree_hmap)[HSHSIZE]; /* Bind lookup tree */
+   struct a_tty_bind_tree *(*tl_bind_tree_hmap)[HSHSIZE];/* Bind lookup tree */
    struct a_tty_bind_tree *tl_bind_tree;
 # endif
    /* Line data / content handling */
@@ -681,10 +682,10 @@ struct a_tty_line{
       struct a_tty_cell *cells;
    } tl_line;
    struct str tl_defc;           /* Current default content */
-   size_t tl_defc_cursor_byte;   /* Desired position of cursor after takeover */
+   size_t tl_defc_cursor_byte;   /* Desired cursor position after takeover */
    struct str tl_savec;          /* Saved default content */
    struct str tl_pastebuf;       /* Last snarfed data */
-# ifdef HAVE_HISTORY
+# ifdef mx_HAVE_HISTORY
    struct a_tty_hist *tl_hist;   /* History cursor */
 # endif
    ui32_t tl_count_max;          /* ..before buffer needs to grow */
@@ -700,17 +701,17 @@ struct a_tty_line{
    bool_t tl_quote_rndtrip;      /* For _kht() expansion */
    ui8_t tl__dummy2[3 + 4];
    ui32_t tl_goinflags;          /* enum n_go_input_flags */
-   ui32_t tl_prompt_length;      /* Preclassified (TODO needed as a_tty_cell) */
+   ui32_t tl_prompt_length;      /* Preclassified (TODO needed as tty_cell) */
    ui32_t tl_prompt_width;
    char const *tl_prompt;        /* Preformatted prompt (including colours) */
    /* .tl_pos_buf is a hack */
-# ifdef HAVE_COLOUR
+# ifdef mx_HAVE_COLOUR
    char *tl_pos_buf;             /* mle-position colour-on, [4], reset seq. */
    char *tl_pos;                 /* Address of the [4] */
 # endif
 };
 
-# if defined HAVE_KEY_BINDINGS || defined HAVE_HISTORY
+# if defined mx_HAVE_KEY_BINDINGS || defined mx_HAVE_HISTORY
 /* C99: use [INDEX]={} */
 n_CTAV(n_GO_INPUT_CTX_BASE == 0);
 n_CTAV(n_GO_INPUT_CTX_DEFAULT == 1);
@@ -723,7 +724,7 @@ static struct a_tty_input_ctx_map const
 };
 #endif
 
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
 /* Special functions which our MLE provides internally.
  * Update the manual upon change! */
 static char const a_tty_bind_fun_names[][24] = {
@@ -755,10 +756,10 @@ static char const a_tty_bind_fun_names[][24] = {
 
 #  undef a_X
 };
-# endif /* HAVE_KEY_BINDINGS */
+# endif /* mx_HAVE_KEY_BINDINGS */
 
 /* The default key bindings (unless disallowed).  Update manual upon change!
- * A logical subset of this table is also used if !HAVE_KEY_BINDINGS (more
+ * A logical subset of this table is also used if !mx_HAVE_KEY_BINDINGS (more
  * expensive than a switch() on control codes directly, but less redundant).
  * The table for the "base" context */
 static struct a_tty_bind_builtin_tuple const a_tty_bind_base_tuples[] = {
@@ -805,7 +806,7 @@ static struct a_tty_bind_builtin_tuple const a_tty_bind_base_tuples[] = {
 # define a_X(K,S) {TRU1, K, 0, {S}},
 
    /* The remains only if we have `bind' functionality available */
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
 #  undef a_X
 #  define a_X(Q,S) \
    {FAL0, '\0', n_TERMCAP_QUERY_ ## Q,\
@@ -819,7 +820,7 @@ static struct a_tty_bind_builtin_tuple const a_tty_bind_base_tuples[] = {
    a_X(xkey_cleft, GO_SCREEN_BWD) a_X(xkey_cright, GO_SCREEN_FWD)
    a_X(key_sleft, GO_HOME) a_X(key_sright, GO_END)
    a_X(key_up, HIST_BWD) a_X(key_down, HIST_FWD)
-# endif /* HAVE_KEY_BINDINGS */
+# endif /* mx_HAVE_KEY_BINDINGS */
 };
 
 /* The table for the "default" context */
@@ -838,7 +839,7 @@ static struct a_tty_bind_builtin_tuple const a_tty_bind_default_tuples[] = {
    a_X('^', "z0")
 
    /* The remains only if we have `bind' functionality available */
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
 #  undef a_X
 #  define a_X(Q,S) {FAL0, '\0', n_TERMCAP_QUERY_ ## Q, {S}},
 
@@ -846,7 +847,7 @@ static struct a_tty_bind_builtin_tuple const a_tty_bind_default_tuples[] = {
    a_X(xkey_sup, "z0") a_X(xkey_sdown, "z$")
    a_X(key_ppage, "z-") a_X(key_npage, "z+")
    a_X(xkey_cup, "dotmove-") a_X(xkey_cdown, "dotmove+")
-# endif /* HAVE_KEY_BINDINGS */
+# endif /* mx_HAVE_KEY_BINDINGS */
 };
 # undef a_X
 
@@ -855,7 +856,7 @@ static struct a_tty_global a_tty;
 /* Change from canonical to raw, non-canonical mode, and way back */
 static void a_tty_term_mode(bool_t raw);
 
-# ifdef HAVE_HISTORY
+# ifdef mx_HAVE_HISTORY
 /* Load and save the history file, respectively */
 static bool_t a_tty_hist_load(void);
 static bool_t a_tty_hist_save(void);
@@ -868,7 +869,7 @@ static void a_tty_hist_add(char const *s, enum n_go_input_flags gif);
 # endif
 
 /* Adjust an active raw mode to use / not use a timeout */
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
 static void a_tty_term_rawmode_timeout(struct a_tty_line *tlp, bool_t enable);
 # endif
 
@@ -903,7 +904,7 @@ static si32_t a_tty_wboundary(struct a_tty_line *tlp, si32_t dir);
 static void a_tty_khome(struct a_tty_line *tlp, bool_t dobell);
 static void a_tty_kend(struct a_tty_line *tlp);
 static void a_tty_kbs(struct a_tty_line *tlp);
-static void a_tty_ksnarf(struct a_tty_line *tlp, bool_t cplline, bool_t dobell);
+static void a_tty_ksnarf(struct a_tty_line *tlp, bool_t cplline,bool_t dobell);
 static si32_t a_tty_kdel(struct a_tty_line *tlp);
 static void a_tty_kleft(struct a_tty_line *tlp);
 static void a_tty_kright(struct a_tty_line *tlp);
@@ -913,7 +914,7 @@ static void a_tty_kgoscr(struct a_tty_line *tlp, si32_t dir);
 static bool_t a_tty_kother(struct a_tty_line *tlp, wchar_t wc);
 static ui32_t a_tty_kht(struct a_tty_line *tlp);
 
-# ifdef HAVE_HISTORY
+# ifdef mx_HAVE_HISTORY
 /* Return UI32_MAX on "exhaustion" */
 static ui32_t a_tty_khist(struct a_tty_line *tlp, bool_t fwd);
 static ui32_t a_tty_khist_search(struct a_tty_line *tlp, bool_t fwd);
@@ -930,7 +931,7 @@ static enum a_tty_fun_status a_tty_fun(struct a_tty_line *tlp,
 static ssize_t a_tty_readline(struct a_tty_line *tlp, size_t len,
                   bool_t *histok_or_null n_MEMORY_DEBUG_ARGS);
 
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
 /* Find context or -1 */
 static enum n_go_input_flags a_tty_bind_ctx_find(char const *name);
 
@@ -960,7 +961,7 @@ static struct a_tty_bind_tree *a_tty__bind_tree_add_wc(
                struct a_tty_bind_tree **treep, struct a_tty_bind_tree *parentp,
                wchar_t wc, bool_t isseq);
 static void a_tty__bind_tree_free(struct a_tty_bind_tree *tbtp);
-# endif /* HAVE_KEY_BINDINGS */
+# endif /* mx_HAVE_KEY_BINDINGS */
 
 static void
 a_tty_signal(int sig){
@@ -1017,7 +1018,7 @@ jleave:
    NYD2_OU;
 }
 
-# ifdef HAVE_HISTORY
+# ifdef mx_HAVE_HISTORY
 static bool_t
 a_tty_hist_load(void){
    ui8_t version;
@@ -1287,9 +1288,9 @@ jleave:
    a_tty.tg_hist = thp;
    NYD2_OU;
 }
-# endif /* HAVE_HISTORY */
+# endif /* mx_HAVE_HISTORY */
 
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
 static void
 a_tty_term_rawmode_timeout(struct a_tty_line *tlp, bool_t enable){
    NYD2_IN;
@@ -1307,7 +1308,7 @@ a_tty_term_rawmode_timeout(struct a_tty_line *tlp, bool_t enable){
    tcsetattr(STDIN_FILENO, TCSANOW, &a_tty.tg_tios_new);
    NYD2_OU;
 }
-# endif /* HAVE_KEY_BINDINGS */
+# endif /* mx_HAVE_KEY_BINDINGS */
 
 static ui8_t
 a_tty_wcwidth(wchar_t wc){
@@ -1320,7 +1321,7 @@ a_tty_wcwidth(wchar_t wc){
    else{
       int i;
 
-# ifdef HAVE_WCWIDTH
+# ifdef mx_HAVE_WCWIDTH
       rv = ((i = wcwidth(wc)) > 0) ? (ui8_t)i : 0;
 # else
       rv = iswprint(wc) ? 1 + (wc >= 0x1100u) : 0; /* TODO use S-CText */
@@ -1440,7 +1441,7 @@ a_tty_vinuni(struct a_tty_line *tlp){
       struct str const *cpre, *csuf;
 
       cpre = csuf = NULL;
-#ifdef HAVE_COLOUR
+#ifdef mx_HAVE_COLOUR
       if(n_COLOUR_IS_ACTIVE()){
          struct n_colour_pen *cpen;
 
@@ -1571,7 +1572,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
       vi_left, /*vi_right,*/ phy_nxtcur;
    struct a_tty_cell const *tccp, *tcp_left, *tcp_right, *tcxp;
    NYD2_IN;
-   n_LCTA(UICMP(64, a__LAST, <, UI32_MAX), "Flag bits excess storage datatype");
+   n_LCTA(UICMP(64, a__LAST, <, UI32_MAX), "Flag bits excess storage type");
 
    f = tlp->tl_vi_flags;
    tlp->tl_vi_flags = (f & ~(a_TTY_VF_REFRESH | a_PERSIST_MASK)) |
@@ -1605,7 +1606,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
    if(cnt < tlp->tl_lst_count)
       f |= a_TTY_VF_MOD_DIRTY;
 
-   /* TODO Without HAVE_TERMCAP, it would likely be much cheaper to simply
+   /* TODO Without mx_HAVE_TERMCAP, it would likely be much cheaper to simply
     * TODO always "cr + paint + ce + ch", since ce is simulated via spaces.. */
 
    /* Quickshot: if the line is empty, possibly print prompt and out */
@@ -1847,7 +1848,7 @@ jpaint:
    if((f & a_HAVE_POSITION) &&
          ((f & (a_LEFT_MIN | a_RIGHT_MAX)) != (a_LEFT_MIN | a_RIGHT_MAX) /*||
           ((f & a_HAVE_PROMPT) && !(f & a_SHOW_PROMPT))*/)){
-# ifdef HAVE_COLOUR
+# ifdef mx_HAVE_COLOUR
       char *posbuf = tlp->tl_pos_buf, *pos = tlp->tl_pos;
 # else
       char posbuf[5], *pos = posbuf;
@@ -1866,9 +1867,9 @@ jpaint:
          memcpy(pos, ".+$", 3);
       else{
          /* Theoretical line length limit a_TTY_LINE_MAX, choose next power of
-          * ten (10 ** 10) to represent 100 percent, since we don't have a macro
-          * that generates a constant, and i don't trust the standard "u type
-          * suffix automatically scales" calculate the large number */
+          * ten (10 ** 10) to represent 100 percent; we do not have a macro
+          * that generates a constant, and i do not trust the standard "u type
+          * suffix automatically scales": calculate the large number */
          static char const itoa[] = "0123456789";
 
          ui64_t const fact100 = (ui64_t)0x3B9ACA00u * 10u,
@@ -2443,7 +2444,7 @@ jaster_check:
    if(n_pstate & n_PS_EXPAND_MULTIRESULT)
       goto jmulti;
 
-   /* xxx That is not really true since the limit counts characters not bytes */
+   /* xxx That not really true since the limit counts characters not bytes */
    n_LCTA(a_TTY_LINE_MAX <= SI32_MAX, "a_TTY_LINE_MAX too large");
    if(exp.l >= a_TTY_LINE_MAX - 1 || a_TTY_LINE_MAX - 1 - exp.l < preexp.l){
       n_err(_("Tabulator expansion would extend beyond line size limit\n"));
@@ -2505,7 +2506,8 @@ jmulti:{
       size_t locolen, scrwid, lnlen, lncnt, prefixlen;
       FILE *fp;
 
-      if((fp = Ftmp(NULL, "tabex", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
+      if((fp = Ftmp(NULL, "tabex", OF_RDWR | OF_UNLINK | OF_REGISTER)
+            ) == NULL){
          n_perr(_("tmpfile"), 0);
          fp = n_tty_fp;
       }
@@ -2564,7 +2566,7 @@ jmulti:{
          vic.vic_inlen = sub.l;
          c2 = n_visual_info(&vic, n_VISUAL_INFO_ONE_CHAR) ? vic.vic_waccu
                : (ui8_t)*sub.s;
-#ifdef HAVE_C90AMEND1
+#ifdef mx_HAVE_C90AMEND1
          c2 = towlower(c2);
 #else
          c2 = lowerconv(c2);
@@ -2598,7 +2600,7 @@ jmulti:{
          /* Put on screen.  Indent follow lines of same sort slot.
           * Leave enough room for filename tagging */
          if((c1 = (c1 != c2))){
-#ifdef HAVE_C90AMEND1
+#ifdef mx_HAVE_C90AMEND1
             c1 = (iswalnum(c2) != 0);
 #else
             c1 = (alnumchar(c2) != 0);
@@ -2686,7 +2688,7 @@ jnope:
    goto jleave;
 }
 
-# ifdef HAVE_HISTORY
+# ifdef mx_HAVE_HISTORY
 static ui32_t
 a_tty__khist_shared(struct a_tty_line *tlp, struct a_tty_hist *thp){
    ui32_t f, rv;
@@ -2831,7 +2833,7 @@ jleave:
    NYD2_OU;
    return rv;
 }
-# endif /* HAVE_HISTORY */
+# endif /* mx_HAVE_HISTORY */
 
 static enum a_tty_fun_status
 a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, size_t *len){
@@ -2890,14 +2892,14 @@ a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, size_t *len){
       break;
 
    case a_X(HIST_FWD):{
-# ifdef HAVE_HISTORY
+# ifdef mx_HAVE_HISTORY
          bool_t isfwd = TRU1;
 
          if(0){
 # endif
       /* FALLTHRU */
    case a_X(HIST_BWD):
-# ifdef HAVE_HISTORY
+# ifdef mx_HAVE_HISTORY
             isfwd = FAL0;
          }
          if((*len = a_tty_khist(tlp, isfwd)) != UI32_MAX){
@@ -2911,14 +2913,14 @@ a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, size_t *len){
       break;
 
    case a_X(HIST_SRCH_FWD):{
-# ifdef HAVE_HISTORY
+# ifdef mx_HAVE_HISTORY
       bool_t isfwd = TRU1;
 
       if(0){
 # endif
       /* FALLTHRU */
    case a_X(HIST_SRCH_BWD):
-# ifdef HAVE_HISTORY
+# ifdef mx_HAVE_HISTORY
          isfwd = FAL0;
       }
       if((*len = a_tty_khist_search(tlp, isfwd)) != UI32_MAX){
@@ -2965,7 +2967,7 @@ a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, size_t *len){
        * machine  */
       if(tlp->tl_savec.l == 0 && tlp->tl_defc.l == 0){
       }
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
       tlp->tl_bind_takeover = '\0';
 # endif
       tlp->tl_vi_flags |= a_TTY_VF_BELL;
@@ -2974,7 +2976,7 @@ a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, size_t *len){
 
    case a_X(RESET):
       if(tlp->tl_count == 0 && tlp->tl_savec.l == 0 && tlp->tl_defc.l == 0){
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
          tlp->tl_bind_takeover = '\0';
 # endif
          tlp->tl_vi_flags |= a_TTY_VF_MOD_DIRTY | a_TTY_VF_BELL;
@@ -2987,12 +2989,12 @@ a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, size_t *len){
          tlp->tl_vi_flags |= a_TTY_VF_BELL;
       }
 jreset:
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
       tlp->tl_bind_takeover = '\0';
 # endif
       tlp->tl_vi_flags |= a_TTY_VF_MOD_DIRTY;
       tlp->tl_cursor = tlp->tl_count = 0;
-# ifdef HAVE_HISTORY
+# ifdef mx_HAVE_HISTORY
       tlp->tl_hist = NULL;
 # endif
       if((*len = tlp->tl_savec.l) != 0){
@@ -3036,7 +3038,7 @@ a_tty_readline(struct a_tty_line *tlp, size_t len, bool_t *histok_or_null
    NYD_IN;
 
    n_UNINIT(rv, 0);
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
    assert(tlp->tl_bind_takeover == '\0');
 # endif
 jrestart:
@@ -3075,7 +3077,7 @@ jinput_loop:
 
       /* Read in the next complete multibyte character */
       /* C99 */{
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
          struct a_tty_bind_tree *xtbtp;
          struct inseq{
             struct inseq *last;
@@ -3087,7 +3089,7 @@ jinput_loop:
 # endif
 
          for(flags &= a_READ_LOOP_MASK;;){
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
             if(!(flags & a_BUFMODE) && tlp->tl_bind_takeover != '\0'){
                wc = tlp->tl_bind_takeover;
                tlp->tl_bind_takeover = '\0';
@@ -3099,14 +3101,14 @@ jinput_loop:
                    * one-shot, enwrapped with key_event and key_sequence_event,
                    * all driven by an event_loop */
                   /* TODO v15 Until we have SysV signal handling all through we
-                   * TODO need to temporarily adjust our BSD signal handler with
-                   * TODO a SysV one, here */
+                   * TODO need to temporarily adjust our BSD signal handler
+                   * TODO with a SysV one, here */
                   n_sighdl_t otstp, ottin, ottou;
 
                   otstp = n_signal(SIGTSTP, &a_tty_signal);
                   ottin = n_signal(SIGTTIN, &a_tty_signal);
                   ottou = n_signal(SIGTTOU, &a_tty_signal);
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
                   flags &= ~a_TIMEOUT_MASK;
                   if(isp != NULL && (tbtp = isp->tbtp)->tbt_isseq &&
                         !tbtp->tbt_isseq_trail){
@@ -3126,7 +3128,7 @@ jinput_loop:
                         break;
                      }
 
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
                      /* Timeout expiration */
                      if(rv == 0){
                         assert(flags & a_TIMEOUT);
@@ -3134,7 +3136,7 @@ jinput_loop:
                         a_tty_term_rawmode_timeout(tlp, FAL0);
 
                         /* Something "atomic" broke.  Maybe the current one can
-                         * also be terminated already, by itself? xxx really? */
+                         * also be terminated already, itself? xxx really? */
                         if((tbtp = isp->tbtp)->tbt_bind != NULL){
                            tlp->tl_bind_takeover = wc;
                            goto jhave_bind;
@@ -3143,7 +3145,8 @@ jinput_loop:
                         /* Or, maybe there is a second path without a timeout;
                          * this should be covered by .tbt_isseq_trail, but then
                          * again a single-layer implementation cannot "know" */
-                        for(xtbtp = tbtp; (xtbtp = xtbtp->tbt_sibling) != NULL;)
+                        for(xtbtp = tbtp;
+                              (xtbtp = xtbtp->tbt_sibling) != NULL;)
                            if(xtbtp->tbt_char == tbtp->tbt_char){
                               assert(!xtbtp->tbt_isseq);
                               break;
@@ -3153,10 +3156,10 @@ jinput_loop:
                            continue;
                         goto jtake_over;
                      }
-# endif /* HAVE_KEY_BINDINGS */
+# endif /* mx_HAVE_KEY_BINDINGS */
                   }
 
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
                   if(flags & a_TIMEOUT)
                      a_tty_term_rawmode_timeout(tlp, FAL0);
 # endif
@@ -3198,7 +3201,7 @@ jinput_loop:
             }
 
             /* Normal read(2)ing is subject to detection of key-bindings */
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
             if(!(flags & a_BUFMODE)){
                /* Check for special bypass functions before we try to embed
                 * this character into the tree */
@@ -3287,7 +3290,8 @@ jinput_loop:
                      for(c = (char)wc, cp = &(*tlp->tl_bind_shcut_cancel)[0];
                            *cp != '\0'; ++cp)
                         if(c == *cp){
-                           tbf = a_TTY_BIND_FUN_INTERNAL |a_TTY_BIND_FUN_CANCEL;
+                           tbf = a_TTY_BIND_FUN_INTERNAL |
+                                 a_TTY_BIND_FUN_CANCEL;
                            goto jmle_fun;
                         }
                   }
@@ -3334,7 +3338,7 @@ jtake_over:
                /* And the current one too */
                goto jkother;
             }
-# endif /* HAVE_KEY_BINDINGS */
+# endif /* mx_HAVE_KEY_BINDINGS */
 
             if((flags & a_BUFMODE) && (len -= (size_t)rv) == 0){
                /* Buffer mode completed */
@@ -3345,7 +3349,7 @@ jtake_over:
             break;
          }
 
-# ifndef HAVE_KEY_BINDINGS
+# ifndef mx_HAVE_KEY_BINDINGS
          /* Don't interpret control bytes during buffer mode.
           * Otherwise, if it's a control byte check whether it is a MLE
           * function.  Remarks: initially a complete duplicate to be able to
@@ -3390,14 +3394,14 @@ jbuiltin_redo:
                goto jbuiltin_redo;
             }
          }
-#  endif /* !HAVE_KEY_BINDINGS */
+#  endif /* !mx_HAVE_KEY_BINDINGS */
 
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
 jkother:
 # endif
          if(a_tty_kother(tlp, wc)){
             /* Don't clear the history during buffer mode.. */
-# ifdef HAVE_HISTORY
+# ifdef mx_HAVE_HISTORY
             if(!(flags & a_BUFMODE) && cbuf == cbuf_base)
                tlp->tl_hist = NULL;
 # endif
@@ -3435,7 +3439,7 @@ jinject_input:{
    goto jleave;
 }
 
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
 static enum n_go_input_flags
 a_tty_bind_ctx_find(char const *name){
    enum n_go_input_flags rv;
@@ -3614,7 +3618,7 @@ jelen:
       /* A termcap(5)/terminfo(5) identifier? */
       if(ep->cnv_len > 1 && ep->cnv_dat[0] == ':'){
          i = --ep->cnv_len, ++ep->cnv_dat;
-#  if 0 /* ndef HAVE_TERMCAP xxx User can, via *termcap*! */
+#  if 0 /* ndef mx_HAVE_TERMCAP xxx User can, via *termcap*! */
          if(n_poption & n_PO_D_V)
             n_err(_("`%s': no termcap(5)/terminfo(5) support: %s: %s\n"),
                tbpcp->tbpc_cmd, ep->seq_dat, tbpcp->tbpc_in_seq);
@@ -3794,7 +3798,7 @@ jeempty:
                   (head->next == NULL ? a_TTY_BIND_MLE1CNTRL : 0);
             if((n_poption & n_PO_D_V) &&
                   (tbpcp->tbpc_flags & a_TTY_BIND_NOCOMMIT))
-               n_err(_("`%s': MLE commands can't be made editable via @: %s\n"),
+               n_err(_("%s: MLE commands cannot be made editable via @: %s\n"),
                   tbpcp->tbpc_cmd, exp);
             tbpcp->tbpc_flags &= ~a_TTY_BIND_NOCOMMIT;
             break;
@@ -3922,8 +3926,8 @@ a_tty_bind_tree_build(void){
       for(tbcp = a_tty.tg_bind[n_GO_INPUT_CTX_BASE]; tbcp != NULL;
             tbcp = tbcp->tbc_next)
          if(!(tbcp->tbc_flags & a_TTY_BIND_DEFUNCT))
-            a_tty__bind_tree_add(n_GO_INPUT_CTX_BASE, &a_tty.tg_bind_tree[i][0],
-               tbcp);
+            a_tty__bind_tree_add(n_GO_INPUT_CTX_BASE,
+               &a_tty.tg_bind_tree[i][0], tbcp);
 
       if(i != n_GO_INPUT_CTX_BASE)
          for(tbcp = a_tty.tg_bind[i]; tbcp != NULL; tbcp = tbcp->tbc_next)
@@ -4054,7 +4058,7 @@ a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep,
           * sibling, but continue searching for now.
           * Otherwise it is impossible that we'll find what we look for */
          if(isseq){
-#ifdef HAVE_DEBUG
+#ifdef mx_HAVE_DEBUG
             while((tbtp = tbtp->tbt_sibling) != NULL)
                assert(tbtp->tbt_char != wc);
 #endif
@@ -4083,7 +4087,7 @@ a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep,
                /* isseq MUST be linked before, so it is impossible that we'll
                 * find what we look for */
                if(isseq){
-#ifdef HAVE_DEBUG
+#ifdef mx_HAVE_DEBUG
                   while((tbtp = tbtp->tbt_sibling) != NULL)
                      assert(tbtp->tbt_char != wc);
 #endif
@@ -4127,7 +4131,7 @@ a_tty__bind_tree_free(struct a_tty_bind_tree *tbtp){
    }
    NYD2_OU;
 }
-# endif /* HAVE_KEY_BINDINGS */
+# endif /* mx_HAVE_KEY_BINDINGS */
 
 FL void
 n_tty_init(void){
@@ -4137,14 +4141,14 @@ n_tty_init(void){
       goto jleave;
 
    /* Load the history file */
-# ifdef HAVE_HISTORY
+# ifdef mx_HAVE_HISTORY
    a_tty_hist_load();
 # endif
 
    /* Force immediate resolve for anything which follows */
    n_psonce |= n_PSO_LINE_EDITOR_INIT;
 
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
    /* `bind's (and `unbind's) done from within resource files couldn't be
     * performed for real since our termcap driver wasn't yet loaded, and we
     * can't perform automatic init since the user may have disallowed so */
@@ -4197,7 +4201,7 @@ jbuiltin_redo:
          goto jbuiltin_redo;
       }
    }
-# endif /* HAVE_KEY_BINDINGS */
+# endif /* mx_HAVE_KEY_BINDINGS */
 
 jleave:
    NYD_OU;
@@ -4211,17 +4215,17 @@ n_tty_destroy(bool_t xit_fastpath){
       goto jleave;
 
    /* Write the history file */
-# ifdef HAVE_HISTORY
+# ifdef mx_HAVE_HISTORY
    if(!xit_fastpath)
       a_tty_hist_save();
 # endif
 
-# if defined HAVE_KEY_BINDINGS && defined HAVE_DEBUG
+# if defined mx_HAVE_KEY_BINDINGS && defined mx_HAVE_DEBUG
    if(!xit_fastpath)
       n_go_command(n_GO_INPUT_NONE, "unbind * *");
 # endif
 
-# ifdef HAVE_DEBUG
+# ifdef mx_HAVE_DEBUG
    memset(&a_tty, 0, sizeof a_tty);
 
    n_psonce &= ~n_PSO_LINE_EDITOR_INIT;
@@ -4236,7 +4240,7 @@ FL int
       n_MEMORY_DEBUG_ARGS){
    struct a_tty_line tl;
    struct n_string xprompt;
-# ifdef HAVE_COLOUR
+# ifdef mx_HAVE_COLOUR
    char *posbuf, *pos;
 # endif
    ssize_t nn;
@@ -4247,7 +4251,7 @@ FL int
       n_tty_init();
    assert(n_psonce & n_PSO_LINE_EDITOR_INIT);
 
-# ifdef HAVE_COLOUR
+# ifdef mx_HAVE_COLOUR
    n_colour_env_create(n_COLOUR_CTX_MLE, n_tty_fp, FAL0);
 
    /* .tl_pos_buf is a hack */
@@ -4278,12 +4282,12 @@ FL int
       posbuf = pos = n_autorec_alloc(4 +1);
       pos[4] = '\0';
    }
-# endif /* HAVE_COLOUR */
+# endif /* mx_HAVE_COLOUR */
 
    memset(&tl, 0, sizeof tl);
    tl.tl_goinflags = gif;
 
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
    /* C99 */{
       char const *cp;
 
@@ -4310,9 +4314,9 @@ FL int
          &a_tty.tg_bind_shcut_cancel[gif & n__GO_INPUT_CTX_MASK];
    tl.tl_bind_shcut_prompt_char =
          &a_tty.tg_bind_shcut_prompt_char[gif & n__GO_INPUT_CTX_MASK];
-# endif /* HAVE_KEY_BINDINGS */
+# endif /* mx_HAVE_KEY_BINDINGS */
 
-# ifdef HAVE_COLOUR
+# ifdef mx_HAVE_COLOUR
    tl.tl_pos_buf = posbuf;
    tl.tl_pos = pos;
 # endif
@@ -4356,7 +4360,7 @@ n_tty_addhist(char const *s, enum n_go_input_flags gif){
    n_UNUSED(s);
    n_UNUSED(gif);
 
-# ifdef HAVE_HISTORY
+# ifdef mx_HAVE_HISTORY
    if(*s != '\0' && (n_psonce & n_PSO_LINE_EDITOR_INIT) &&
          a_tty.tg_hist_size_max > 0 &&
          (!(gif & n_GO_INPUT_HIST_GABBY) || ok_blook(history_gabby)) &&
@@ -4376,7 +4380,7 @@ n_tty_addhist(char const *s, enum n_go_input_flags gif){
    NYD_OU;
 }
 
-# ifdef HAVE_HISTORY
+# ifdef mx_HAVE_HISTORY
 FL int
 c_history(void *v){
    siz_t entry;
@@ -4505,9 +4509,9 @@ jentry:{
    }
    goto jleave;
 }
-# endif /* HAVE_HISTORY */
+# endif /* mx_HAVE_HISTORY */
 
-# ifdef HAVE_KEY_BINDINGS
+# ifdef mx_HAVE_KEY_BINDINGS
 FL int
 c_bind(void *v){
    struct a_tty_bind_ctx *tbcp;
@@ -4691,9 +4695,9 @@ jleave:
    NYD_OU;
    return (v != NULL) ? n_EXIT_OK : n_EXIT_ERR;
 }
-# endif /* HAVE_KEY_BINDINGS */
+# endif /* mx_HAVE_KEY_BINDINGS */
 
-#else /* HAVE_MLE */
+#else /* mx_HAVE_MLE */
 /*
  * The really-nothing-at-all implementation
  */
@@ -4702,13 +4706,13 @@ jleave:
 static void
 a_tty_signal(int sig){
    /* Prototype at top */
-#  ifdef HAVE_TERMCAP
+#  ifdef mx_HAVE_TERMCAP
    sigset_t nset, oset;
 #  endif
    NYD_X; /* Signal handler */
    n_UNUSED(sig);
 
-#  ifdef HAVE_TERMCAP
+#  ifdef mx_HAVE_TERMCAP
    n_TERMCAP_SUSPEND(TRU1);
    a_tty_sigs_down();
 
@@ -4721,7 +4725,7 @@ a_tty_signal(int sig){
 
    a_tty_sigs_up();
    n_TERMCAP_RESUME(TRU1);
-#  endif /* HAVE_TERMCAP */
+#  endif /* mx_HAVE_TERMCAP */
 }
 # endif /* a_TTY_SIGNALS */
 
@@ -4756,13 +4760,13 @@ FL int
       }
    }
 
-# ifdef HAVE_TERMCAP
+# ifdef mx_HAVE_TERMCAP
    a_tty_sigs_up();
    n_TERMCAP_RESUME(FAL0);
 # endif
    rv = (readline_restart)(n_stdin, linebuf, linesize, n
          n_MEMORY_DEBUG_ARGSCALL);
-# ifdef HAVE_TERMCAP
+# ifdef mx_HAVE_TERMCAP
    n_TERMCAP_SUSPEND(FAL0);
    a_tty_sigs_down();
 # endif

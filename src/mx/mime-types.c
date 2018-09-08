@@ -20,7 +20,7 @@
 #undef su_FILE
 #define su_FILE mime_types
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
@@ -1373,12 +1373,12 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
 
    if (_mt_by_mtname(&mtl, cs) != NULL)
       switch (mtl.mtl_node->mt_flags & a_MT__TM_MARKMASK) {
-#ifndef HAVE_FILTER_HTML_TAGSOUP
+#ifndef mx_HAVE_FILTER_HTML_TAGSOUP
       case a_MT_TM_SOUP_H:
          break;
 #endif
       case a_MT_TM_SOUP_h:
-#ifdef HAVE_FILTER_HTML_TAGSOUP
+#ifdef mx_HAVE_FILTER_HTML_TAGSOUP
       case a_MT_TM_SOUP_H:
          mhp->mh_ptf = &htmlflt_process_main;
          mhp->mh_msg.l = strlen(mhp->mh_msg.s =

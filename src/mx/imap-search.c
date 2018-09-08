@@ -42,12 +42,12 @@
 #undef su_FILE
 #define su_FILE imap_search
 
-#ifndef HAVE_AMALGAMATION
+#ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
 EMPTY_FILE()
-#ifdef HAVE_IMAP_SEARCH
+#ifdef mx_HAVE_IMAP_SEARCH
 
 enum itoken {
    ITBAD, ITEOD, ITBOL, ITEOL, ITAND, ITSET, ITALL, ITANSWERED,
@@ -853,7 +853,7 @@ imap_search(char const *spec, int f)
    _it_begin = lastspec;
 
    _it_need_headers = FAL0;
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
    if ((rv = imap_search1(spec, f) == OKAY))
       goto jleave;
 #endif
@@ -867,7 +867,7 @@ imap_search(char const *spec, int f)
    if (_it_tree == NULL)
       goto jleave;
 
-#ifdef HAVE_IMAP
+#ifdef mx_HAVE_IMAP
    if (mb.mb_type == MB_IMAP && _it_need_headers)
       imap_getheaders(1, msgCount);
 #endif
@@ -889,6 +889,6 @@ jleave:
    NYD_OU;
    return rv;
 }
-#endif /* HAVE_IMAP_SEARCH */
+#endif /* mx_HAVE_IMAP_SEARCH */
 
 /* s-it-mode */
