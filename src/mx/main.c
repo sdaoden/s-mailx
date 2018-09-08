@@ -140,7 +140,7 @@ static void a_main_setup_vars(void);
  * If baud rate = 1200, use 14
  * If baud rate > 1200, use VAL_HEIGHT or ws_row
  * Width is either VAL_WIDTH or ws_col */
-static void a_main_setup_screen(void);
+su_SINLINE void a_main_setup_screen(void);
 static void a_main__scrsz(int is_sighdl);
 
 /* Ok, we are reading mail.  Decide whether we are editing a mailbox or reading
@@ -454,7 +454,7 @@ a_main_setup_vars(void){
    NYD2_OU;
 }
 
-static void
+su_SINLINE void
 a_main_setup_screen(void){
    /* Problem: VAL_ configuration values are strings, we need numbers */
    n_LCTAV(VAL_HEIGHT[0] != '\0' && (VAL_HEIGHT[1] == '\0' ||

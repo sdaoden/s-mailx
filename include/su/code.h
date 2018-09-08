@@ -1,6 +1,7 @@
 /*@ Code of the basic infrastructure (POD types, macros etc.) and functions.
  *@ And main documentation entry point, as below.
  *@ - Reacts upon su_HAVE_DEBUG, su_HAVE_DEVEL, and NDEBUG.
+ *@   The latter is a precondition for su_HAVE_INLINE.
  *@ - Some macros require su_FILE to be defined to a literal.
  *@ - Define su_MASTER to inject what is to be injected once; for example,
  *@   it enables su_M*CTA() compile time assertions.
@@ -415,8 +416,9 @@ do{\
 #endif
 
 /* inline keyword */
+#define su_HAVE_INLINE
 #if su_C_LANG
-# if su_CC_CLANG || su_CC_GCC || su_CC_PCC || su_CC_TINYC || defined DOXYGEN
+# if su_CC_CLANG || su_CC_GCC || su_CC_PCC || defined DOXYGEN
 #  if defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901L
 #   define su_INLINE inline         /*!< \_ */
 #   define su_SINLINE static inline /*!< \_ */
@@ -427,10 +429,14 @@ do{\
 # else
 #  define su_INLINE static /* TODO __attribute__((unused)) alikes? */
 #  define su_SINLINE static /* TODO __attribute__((unused)) alikes? */
+#  undef su_HAVE_INLINE
 # endif
 #else
 # define su_INLINE inline
 # define su_SINLINE static inline
+#endif
+#ifndef NDEBUG
+# undef su_HAVE_INLINE
 #endif
 
 #if defined __predict_true && defined __predict_false

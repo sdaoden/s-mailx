@@ -295,12 +295,12 @@ static size_t a_memory_lofi_ball, a_memory_lofi_bcur, a_memory_lofi_bmax,
 #endif
 
 /* */
-n_INLINE void a_memory_lofi_free(struct a_memory_ars_ctx *macp, void *vp);
+su_SINLINE void a_memory_lofi_free(struct a_memory_ars_ctx *macp, void *vp);
 
 /* Reset an ars_ctx */
 static void a_memory_ars_reset(struct a_memory_ars_ctx *macp);
 
-n_INLINE void
+su_SINLINE void
 a_memory_lofi_free(struct a_memory_ars_ctx *macp, void *vp){
    struct a_memory_ars_lofi *malp;
    union a_memory_ptr p;

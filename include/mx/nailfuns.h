@@ -2381,37 +2381,37 @@ FL char const *n_string_cp_const(struct n_string const *self);
 # define n_string_cp(S)          n_string_cp(S, __FILE__, __LINE__)
 #endif
 
-#ifdef mx_HAVE_INLINE
-n_INLINE struct n_string *
+#ifdef su_HAVE_INLINE
+su_INLINE struct n_string *
 (n_string_creat)(struct n_string *self){
    return n_string_creat(self);
 }
 # undef n_string_creat
 
-n_INLINE struct n_string *
+su_INLINE struct n_string *
 (n_string_creat_auto)(struct n_string *self){
    return n_string_creat_auto(self);
 }
 # undef n_string_creat_auto
 
-n_INLINE void
+su_INLINE void
 (n_string_gut)(struct n_string *self){
    n_string_gut(self);
 }
 # undef n_string_gut
 
-n_INLINE struct n_string *
+su_INLINE struct n_string *
 (n_string_trunc)(struct n_string *self, size_t l){
    return n_string_trunc(self, l);
 }
 # undef n_string_trunc
 
-n_INLINE struct n_string *
+su_INLINE struct n_string *
 (n_string_drop_ownership)(struct n_string *self){
    return n_string_drop_ownership(self);
 }
 # undef n_string_drop_ownership
-#endif /* mx_HAVE_INLINE */
+#endif /* su_HAVE_INLINE */
 
 /* UTF-8 / UTF-32 stuff */
 

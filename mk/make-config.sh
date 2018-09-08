@@ -1533,24 +1533,6 @@ feat_def DEVEL 0
 feat_def NYD2 0
 feat_def NOMEMDBG 0
 
-if xrun_check inline 'inline functions' \
-   '#define mx_HAVE_INLINE
-   #define n_INLINE static inline' << \!
-static inline int ilf(int i){return ++i;}
-int main(void){return ilf(-1);}
-!
-then
-   :
-elif xrun_check inline 'inline functions (via __inline)' \
-   '#define mx_HAVE_INLINE
-   #define n_INLINE static __inline' << \!
-static __inline int ilf(int i){return ++i;}
-int main(void){return ilf(-1);}
-!
-then
-   :
-fi
-
 ## Test for "basic" system-calls / functionality that is used by all parts
 ## of our program.  Once this is done fork away BASE_LIBS and other BASE_*
 ## macros to be used by only the subprograms (potentially).

@@ -141,7 +141,7 @@ static struct mtlookup * _mt_by_mtname(struct mtlookup *mtlp,
  * a 0 length buffer, finally check .mtca_mtc for result.
  * No further call is needed if _round() return includes _MT_C_SUGGEST_DONE,
  * as the resulting classification is unambiguous */
-n_INLINE struct mt_class_arg * _mt_classify_init(struct mt_class_arg *mtcap,
+su_SINLINE struct mt_class_arg * _mt_classify_init(struct mt_class_arg *mtcap,
                                  enum mime_type_class initval);
 static enum mime_type_class   _mt_classify_round(struct mt_class_arg *mtcap);
 
@@ -535,7 +535,7 @@ jleave:
    return mtlp;
 }
 
-n_INLINE struct mt_class_arg *
+su_SINLINE struct mt_class_arg *
 _mt_classify_init(struct mt_class_arg * mtcap, enum mime_type_class initval)
 {
    NYD2_IN;

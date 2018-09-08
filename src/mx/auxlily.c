@@ -181,7 +181,7 @@ static size_t a_aux_err_linelen;
  * initialization (shall /dev/urandom fail) */
 #if mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
 static void a_aux_rand_init(void);
-n_INLINE ui8_t a_aux_rand_get8(void);
+su_SINLINE ui8_t a_aux_rand_get8(void);
 static ui32_t a_aux_rand_weak(ui32_t seed);
 #endif
 
@@ -290,7 +290,7 @@ jleave:
    NYD2_OU;
 }
 
-n_INLINE ui8_t
+su_SINLINE ui8_t
 a_aux_rand_get8(void){
    ui8_t si, sj;
 

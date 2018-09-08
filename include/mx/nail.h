@@ -170,10 +170,6 @@
 #define n_VFIELD_SIZE su_VFIELD_SIZE
 #define n_VSTRUCT_SIZEOF su_VSTRUCT_SIZEOF
 
-#ifndef n_INLINE
-# define n_INLINE su_INLINE
-#endif
-
 #undef __FUN__
 #define __FUN__ su_FUN
 

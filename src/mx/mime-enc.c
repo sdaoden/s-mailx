@@ -125,7 +125,7 @@ enum a_me_ctes_off{
 
 /* Check whether *s must be quoted according to flags, else body rules;
  * sol indicates whether we are at the first character of a line/field */
-n_INLINE enum a_me_qact a_me_mustquote(char const *s, char const *e,
+su_SINLINE enum a_me_qact a_me_mustquote(char const *s, char const *e,
                            bool_t sol, enum mime_enc_flags flags);
 
 /* Trim WS and make work point to the decodable range of in.
@@ -138,7 +138,7 @@ static size_t a_me_b64_decode_prepare(struct str *work, struct str const *in);
  * Note: may enter endless loop if in->l < 4 and 0 return is not handled! */
 static ssize_t a_me_b64_decode(struct str *out, struct str *in);
 
-n_INLINE enum a_me_qact
+su_SINLINE enum a_me_qact
 a_me_mustquote(char const *s, char const *e, bool_t sol,
       enum mime_enc_flags flags){
    ui8_t const *qtab;

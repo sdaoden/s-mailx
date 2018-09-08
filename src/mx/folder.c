@@ -47,7 +47,7 @@
  * was large enough to swallow mailname */
 static bool_t  _update_mailname(char const *name);
 #ifdef mx_HAVE_C90AMEND1 /* TODO unite __narrow_suffix() into one fun! */
-n_INLINE size_t __narrow_suffix(char const *cp, size_t cpl, size_t maxl);
+su_SINLINE size_t __narrow_suffix(char const *cp, size_t cpl, size_t maxl);
 #endif
 
 /**/
@@ -133,7 +133,7 @@ jdocopy:
 }
 
 #ifdef mx_HAVE_C90AMEND1
-n_INLINE size_t
+su_SINLINE size_t
 __narrow_suffix(char const *cp, size_t cpl, size_t maxl)
 {
    int err;

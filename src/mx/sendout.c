@@ -71,7 +71,7 @@ static bool_t a_sendout_put_name(char const *line, enum gfield w,
  * headers, respectively */
 static int a_sendout_put_ct(FILE *fo, char const *contenttype,
                char const *charset);
-n_INLINE int a_sendout_put_cte(FILE *fo, enum conversion conv);
+su_SINLINE int a_sendout_put_cte(FILE *fo, enum conversion conv);
 static int a_sendout_put_cd(FILE *fo, char const *cd, char const *filename);
 
 /* Put all entries of the given header list */
@@ -213,7 +213,7 @@ jerr:
    goto jleave;
 }
 
-n_INLINE int
+su_SINLINE int
 a_sendout_put_cte(FILE *fo, enum conversion conv){
    int rv;
    NYD2_IN;
