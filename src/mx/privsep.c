@@ -23,7 +23,8 @@
  */
 #undef su_FILE
 #define su_FILE privsep
-#define n_PRIVSEP_SOURCE
+#define mx_SOURCE
+#define mx_SOURCE_PRIVSEP
 
 #include "mx/nail.h"
 

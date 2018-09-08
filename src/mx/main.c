@@ -36,7 +36,8 @@
  */
 #undef su_FILE
 #define su_FILE main
-#define n_MAIN_SOURCE
+#define mx_SOURCE
+#define mx_SOURCE_MASTER
 
 #include "mx/nail.h"
 

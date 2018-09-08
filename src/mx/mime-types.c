@@ -19,6 +19,7 @@
  */
 #undef su_FILE
 #define su_FILE mime_types
+#define mx_SOURCE
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -103,7 +104,7 @@ struct mt_class_arg {
 };
 
 static struct mtbltin const   _mt_bltin[] = {
-#include <gen-mime-types.h>
+#include "gen-mime-types.h"
 };
 
 static char const             _mt_typnames[][16] = {

@@ -25,6 +25,7 @@
  */
 #undef su_FILE
 #define su_FILE dig_msg
+#define mx_SOURCE
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"

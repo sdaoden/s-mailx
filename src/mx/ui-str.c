@@ -32,6 +32,7 @@
  */
 #undef su_FILE
 #define su_FILE ui_str
+#define mx_SOURCE
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"

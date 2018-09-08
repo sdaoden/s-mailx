@@ -36,6 +36,7 @@
  */
 #undef su_FILE
 #define su_FILE collect
+#define mx_SOURCE
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"

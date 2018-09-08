@@ -48,6 +48,7 @@
  */
 #undef su_FILE
 #define su_FILE accmacvar
+#define mx_SOURCE
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -290,8 +291,8 @@ struct a_amv_var_carrier{
 };
 
 /* Include constant make-okey-map.pl output, and the generated version data */
-#include <mx/gen-version.h>
-#include <mx/gen-okeys.h>
+#include "mx/gen-version.h"
+#include "mx/gen-okeys.h"
 
 /* As promised above, CTAs to protect our structures */
 n_CTA(a_AMV_VAR_NAME_KEY_MAXOFF <= UI16_MAX,

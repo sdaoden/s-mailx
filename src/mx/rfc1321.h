@@ -48,7 +48,7 @@ FL void	md5_init(md5_ctx *);
 FL void	md5_update(md5_ctx *, unsigned char *, unsigned int);
 FL void	md5_final(unsigned char[16], md5_ctx *);
 
-#ifdef n_MAIN_SOURCE
+#ifdef mx_SOURCE_MASTER
 /* MD5C.C - RSA Data Security, Inc., MD5 message-digest algorithm
  */
 /* Copyright (C) 1991-2, RSA Data Security, Inc. Created 1991. All
@@ -401,4 +401,4 @@ md5_final(
 # undef GG
 # undef HH
 # undef II
-#endif /* n_MAIN_SOURCE */
+#endif /* mx_SOURCE_MASTER */

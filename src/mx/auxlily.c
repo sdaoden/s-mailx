@@ -35,6 +35,7 @@
  */
 #undef su_FILE
 #define su_FILE auxlily
+#define mx_SOURCE
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
@@ -155,7 +156,7 @@ static char const a_aux_ienc_itoa_lower[36] =
       "0123456789abcdefghijklmnopqrstuvwxyz";
 
 /* Include the constant make-errors.sh output */
-#include <mx/gen-errors.h>
+#include "mx/gen-errors.h"
 
 /* And these things come from mk-config.h (config-time make-errors.sh output) */
 static n__ERR_NUMBER_TYPE const a_aux_err_no2mapoff[][2] = {

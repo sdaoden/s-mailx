@@ -2418,7 +2418,7 @@ struct cw {
  */
 
 #undef VL
-#ifdef n_MAIN_SOURCE
+#ifdef mx_SOURCE_MASTER
 # ifndef mx_HAVE_AMALGAMATION
 #  define VL
 # else
@@ -2526,7 +2526,7 @@ VL sighandler_type dflpipe;
  * Finally, let's include the function prototypes XXX embed
  */
 
-#ifndef n_PRIVSEP_SOURCE
+#ifndef mx_SOURCE_PRIVSEP
 # include "mx/nailfuns.h"
 #endif
 
