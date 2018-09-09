@@ -186,7 +186,7 @@ __EOT__
       #else
       i = --xavail;
       #endif
-      if(imin > i) imin = i; if(imax < i) imax = i;
+      if(imin > i) {imin = i;} if(imax < i) {imax = i;}
       np = malloc(sizeof *np);
       np->next = NULL; np->name = "n_ERR_${n}"; np->no = i;
       tail->next = np; tail = np;

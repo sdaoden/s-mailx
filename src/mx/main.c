@@ -1344,7 +1344,7 @@ j_leave:
 
 /* Source the others in that case! */
 #ifdef mx_HAVE_AMALGAMATION
-# include <mk-config.h>
+# include <mx/gen-config.h>
 #endif
 
 /* s-it-mode */

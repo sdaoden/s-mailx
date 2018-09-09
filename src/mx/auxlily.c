@@ -158,7 +158,7 @@ static char const a_aux_ienc_itoa_lower[36] =
 /* Include the constant make-errors.sh output */
 #include "mx/gen-errors.h"
 
-/* And these things come from mk-config.h (config-time make-errors.sh output) */
+/* And these come from gen-config.h (config-time make-errors.sh output) */
 static n__ERR_NUMBER_TYPE const a_aux_err_no2mapoff[][2] = {
 #undef a_X
 #define a_X(N,I) {N,I},

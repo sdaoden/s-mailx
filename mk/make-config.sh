@@ -617,6 +617,21 @@ _cc_flags_generic() {
    fi
    unset _ccfg
 
+   # Retpoline (xxx maybe later?)
+#   _ccfg=${_CFLAGS} _i=
+#   if cc_check -mfunction-return=thunk; then
+#      if cc_check -mindirect-branch=thunk; then
+#         _i=1
+#      fi
+#   elif cc_check -mretpoline; then
+#      _i=1
+#   fi
+#   if [ -n "${_i}" ]; then
+#      ld_check -Wl,-z,retpolineplt || _i=
+#   fi
+#   [ -n "${_i}" ] || _CFLAGS=${_ccfg}
+#   unset _ccfg
+
    _CFLAGS="${_CFLAGS} ${__cflags}" _LDFLAGS="${_LDFLAGS} ${__ldflags}"
    unset __cflags __ldflags
 }
@@ -905,7 +920,7 @@ option_join_rc() {
 
 option_evaluate() {
    # Expand the option values, which may contain shell snippets
-   ${rm} -f ${newlst} ${newmk} ${newh}
+   ${rm} -f ${newlst} ${newmk}
    exec 5<&0 6>&1 <${tmp} >${newlst}
    while read line; do
       z=
@@ -1098,32 +1113,30 @@ dump_test_program=1
 _check_preface() {
    variable=$1 topic=$2 define=$3
 
-   echo '**********'
+   echo '@@@'
    msg_nonl ' . %s ... ' "${topic}"
    #echo "/* checked ${topic} */" >> ${h}
    ${rm} -f ${tmp} ${tmp}.o
    if [ "${dump_test_program}" = 1 ]; then
-      echo '*** test program is'
       { echo '#include <'"${h_name}"'>'; cat; } | ${tee} ${tmp}.c
    else
       { echo '#include <'"${h_name}"'>'; cat; } > ${tmp}.c
    fi
-   #echo '*** the preprocessor generates'
+   #echo '@P'
    #${make} -f ${makefile} ${tmp}.x
    #${cat} ${tmp}.x
-   echo '*** tests results'
+   echo '@R'
 }
 
 without_check() {
    yesno=$1 variable=$2 topic=$3 define=$4 libs=$5 incs=$6
 
-   echo '**********'
+   echo '@@@'
    msg_nonl ' . %s ... ' "${topic}"
 
-   echo '*** enforced unchecked results are'
    if feat_val_yes ${yesno}; then
       if [ -n "${incs}" ] || [ -n "${libs}" ]; then
-         echo "*** adding INCS<${incs}> LIBS<${libs}>"
+         echo "@ INCS<${incs}> LIBS<${libs}>"
          LIBS="${LIBS} ${libs}"
          echo "${libs}" >> ${lib}
          INCS="${INCS} ${incs}"
@@ -1176,7 +1189,7 @@ _link_mayrun() {
             CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" \
             XLIBS="${LIBS} ${libs}" ${tmp} &&
          [ -f ${tmp} ] && { [ ${run} -eq 0 ] || ${tmp}; }; then
-      echo "*** adding INCS<${incs}> LIBS<${libs}>; executed: ${run}"
+      echo "@ INCS<${incs}> LIBS<${libs}>; executed: ${run}"
       msg 'yes'
       echo "${define}" >> ${h}
       LIBS="${LIBS} ${libs}"
@@ -1293,6 +1306,8 @@ trap "trap \"\" HUP INT TERM; exit 1" HUP INT TERM
 trap "trap \"\" HUP INT TERM EXIT;\
    ${rm} -rf ${newlst} ${tmp0}.* ${tmp0}* \
       ${newmk} ${oldmk} ${newev} ${newh} ${oldh}" EXIT
+
+printf '#ifdef mx_SOURCE\n' > ${newh}
 
 # Now that we have pwd(1) and options at least permit some more actions, set
 # our build paths unless make-emerge.sh has been used; it would have created
@@ -1453,7 +1468,7 @@ config_exit() {
 ${mv} -f ${newlst} ${lst}
 ${mv} -f ${newev} ${ev}
 [ -f ${h} ] && ${mv} -f ${h} ${oldh}
-${mv} -f ${newh} ${h}
+${mv} -f ${newh} ${h} # Note this has still #ifdef mx_SOURCE open
 [ -f ${mk} ] && ${mv} -f ${mk} ${oldmk}
 ${mv} -f ${newmk} ${mk}
 
@@ -1476,13 +1491,13 @@ trap "trap \"\" HUP INT TERM EXIT;\
 msg() {
    fmt=${1}
    shift
-   printf "*** ${fmt}\n" "${@}"
+   printf "@ ${fmt}\n" "${@}"
    printf -- "${fmt}\n" "${@}" >&5
 }
 msg_nonl() {
    fmt=${1}
    shift
-   printf "*** ${fmt}\n" "${@}"
+   printf "@ ${fmt}\n" "${@}"
    printf -- "${fmt}" "${@}" >&5
 }
 
@@ -1494,19 +1509,20 @@ echo "${INCS}" > ${inc}
 ${cat} > ${makefile} << \!
 .SUFFIXES: .o .c .x .y
 .c.o:
-	$(CC) -I./ $(XINCS) $(CFLAGS) -o $(@) -c $(<)
+	$(CC) -Dmx_SOURCE -I./ $(XINCS) $(CFLAGS) -o $(@) -c $(<)
 .c.x:
-	$(CC) -I./ $(XINCS) -E $(<) > $(@)
+	$(CC) -Dmx_SOURCE -I./ $(XINCS) -E $(<) > $(@)
 .c:
-	$(CC) -I./ $(XINCS) $(CFLAGS) $(LDFLAGS) -o $(@) $(<) $(XLIBS)
+	$(CC) -Dmx_SOURCE -I./ $(XINCS) $(CFLAGS) $(LDFLAGS) -o $(@) $(<) $(XLIBS)
 !
 
 ## Generics
 
-# May be multiline..
-echo >> ${h}
-[ -n "${OS_DEFINES}" ] && printf -- "${OS_DEFINES}" >> ${h}
 echo '#define VAL_BUILD_OS "'"${OS}"'"' >> ${h}
+
+[ -n "${OS_DEFINES}" ] && printf -- "${OS_DEFINES}" >> ${h}
+
+printf '#endif /* mx_SOURCE */\n\n' >> ${h} # Opened when it was $newh
 
 # Generate n_err_number OS mappings
 dump_test_program=0
@@ -3245,11 +3261,12 @@ echo "LIBS = `${cat} ${lib}`" >> ${mk}
 echo "INCS = `${cat} ${inc}`" >> ${mk}
 echo >> ${mk}
 
-# mk-config.h
+# mk-config.h (which becomes mx/gen-config.h)
 ${mv} ${h} ${tmp}
-printf '#ifndef mx_MK_CONFIG_H\n# define mx_MK_CONFIG_H 1\n' > ${h}
+printf '#ifndef mx_GEN_CONFIG_H\n# define mx_GEN_CONFIG_H 1\n' > ${h}
 ${cat} ${tmp} >> ${h}
-printf '\n' >> ${h}
+printf '\n#ifdef mx_SOURCE\n' >> ${h}
+
 # Also need these for correct "second stage configuration changed" detection */
 i=
 if (${CC} --version) >/dev/null 2>&1; then
@@ -3329,10 +3346,11 @@ else
    srclist=main.c objlist=main.o
    printf '\nAMALGAM_TARGET = main.o\nAMALGAM_DEP = ' >> ${mk}
 
-   printf '\n/* mx_HAVE_AMALGAMATION: include sources */\n' >> ${h}
-   printf '#elif mx_MK_CONFIG_H + 0 == 1\n' >> ${h}
-   printf '# undef mx_MK_CONFIG_H\n' >> ${h}
-   printf '# define mx_MK_CONFIG_H 2\n' >> ${h}
+   printf '\n#endif /* mx_SOURCE */\n' >> ${h}
+   printf '/* mx_HAVE_AMALGAMATION: include sources */\n' >> ${h}
+   printf '#elif mx_GEN_CONFIG_H + 0 == 1\n' >> ${h}
+   printf '# undef mx_GEN_CONFIG_H\n' >> ${h}
+   printf '# define mx_GEN_CONFIG_H 2\n#ifdef mx_SOURCE\n' >> ${h}
    for i in `printf '%s\n' "${SRCDIR}"mx/*.c | ${sort}`; do
       i=`basename "${i}"`
       if [ "${i}" = main.c ] ||
@@ -3343,7 +3361,7 @@ else
       printf '# include "%s%s"\n' "${SRCDIR}mx/" "${i}" >> ${h}
    done
    for i in `printf '%s\n' "${SRCDIR}"su/*.c | ${sort}`; do
-      i=`basename "${i}" .c`
+      i=`basename "${i}"`
       printf '$(SRCDIR)su/%s ' "${i}" >> ${mk}
       printf '# include "%s%s"\n' "${SRCDIR}su/" "${i}" >> ${h}
    done
@@ -3351,7 +3369,7 @@ else
 fi
 printf 'OBJ_SRC = %s\nOBJ = %s\n' "${srclist}" "${objlist}" >> "${mk}"
 
-printf '#endif /* mx_MK_CONFIG_H */\n' >> ${h}
+printf '#endif /* mx_SOURCE */\n#endif /* mx_GEN_CONFIG_H */\n' >> ${h}
 
 echo >> ${mk}
 ${cat} "${TOPDIR}"mk/make-config.in >> ${mk}
@@ -3376,8 +3394,10 @@ if [ -n "${config_updated}" ]; then
    ( cd .obj; oldmk=`${basename} ${oldmk}`; ${MAKE} -f ${oldmk} clean )
 fi
 
-# Ensure user edits in mx-config.h are incorporated
+# Ensure user edits in mx-config.h are incorporated, and that our generated
+# mk-config.h becomes the new public mx/gen-config.h.
 ${cp} -f "${CWDDIR}"mx-config.h "${CWDDIR}"include/mx/config.h
+${cp} -f ${h} "${CWDDIR}"include/mx/gen-config.h
 
 msg ''
 while read l; do msg "${l}"; done < ${tmp}

@@ -14,7 +14,7 @@ $(VAL_UAGENT): $(OBJ) uman.1 urc.rc
 	$(ECHO_LINK)$(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)
 	$(SIZE_CHECK)
 
-$(OBJ): mk-config.h $(CWDDIR)include/mx/config.h \
+$(OBJ): $(CWDDIR)include/mx/gen-config.h $(CWDDIR)include/mx/config.h \
 		$(INCDIR)mx/nail.h $(INCDIR)mx/nailfuns.h \
 		$(AMALGAM_DEP)
 $(AMALGAM_TARGET) auxlily.o: $(SRCDIR)mx/gen-errors.h
@@ -32,7 +32,8 @@ $(VAL_PRIVSEP): privsep.o
 	$(ECHO_LINK)$(CC) $(LDFLAGS) -o $(@) privsep.o $(BASE_LIBS)
 	$(SIZE_CHECK)
 
-privsep.o: $(SRCDIR)mx/privsep.c mk-config.h $(CWDDIR)include/mx/config.h \
+privsep.o: $(SRCDIR)mx/privsep.c \
+		$(CWDDIR)include/mx/gen-config.h $(CWDDIR)include/mx/config.h \
 		$(INCDIR)mx/nail.h $(SRCDIR)mx/dotlock.h
 	$(ECHO_CC)$(CC) $(CFLAGS) $(BASE_INCS) -c $(SRCDIR)mx/privsep.c
 
@@ -284,7 +285,8 @@ distclean: clean
 	$(ECHO_CMD)\
 	cd .. && $(rm) -rf .obj;\
 	if [ -f "$(CWDDIR)include/mx/config.h" ]; then \
-		$(rm) -f "$(CWDDIR)include/mx/config.h";\
+		$(rm) -f "$(CWDDIR)include/mx/config.h" \
+			"$(CWDDIR)include/mx/gen-config.h";\
 	fi;\
 	\
 	if [ -f "$(CWDDIR)$(VAL_UAGENT)-uninstall.sh" ]; then \

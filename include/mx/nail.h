@@ -37,7 +37,7 @@
 #ifndef n_NAIL_H
 # define n_NAIL_H
 
-#include <mk-config.h>
+#include <mx/gen-config.h>
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -506,7 +506,7 @@ enum n_dotlock_state{
    n_DLS_ABANDON = 1<<7 /* ORd to any but _NONE: give up, don't retry */
 };
 
-/* enum n_err_number from mk-config.h, which is in sync with
+/* enum n_err_number from gen-config.h, which is in sync with
  * n_err_to_doc(), n_err_to_name() and n_err_from_name() */
 
 enum n_exit_status{
