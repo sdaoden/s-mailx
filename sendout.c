@@ -2209,15 +2209,30 @@ jto_fmt:
       if((hp->h_flags & HF_LIST_REPLY) || hp->h_mft != NULL ||
             ok_blook(followup_to)){
          enum{
-            _ANYLIST = 1u<<(HF__NEXT_SHIFT + 0),
-            _HADMFT = 1u<<(HF__NEXT_SHIFT + 1)
+            a_HADMFT = 1u<<(HF__NEXT_SHIFT + 0),
+            a_WASINMFT = 1u<<(HF__NEXT_SHIFT + 1),
+            a_ANYLIST = 1u<<(HF__NEXT_SHIFT + 2),
+            a_OTHER = 1u<<(HF__NEXT_SHIFT + 3)
          };
          struct name *mft, **mftp, *x;
          ui32_t f;
 
-         f = hp->h_flags | (hp->h_mft != NULL ? _HADMFT : 0);
-         mft = NULL;
-         mftp = &mft;
+         f = hp->h_flags | (hp->h_mft != NULL ? a_HADMFT : 0);
+         if(f & a_HADMFT){
+            /* Detect whether we were part of the former MFT:.
+             * Throw away MFT: if we were the sole member (kidding) */
+            hp->h_mft = mft = elide(hp->h_mft);
+            mft = n_alternates_remove(n_namelist_dup(mft, GNONE), FAL0);
+            if(mft == NULL)
+               f ^= a_HADMFT;
+            else for(x = hp->h_mft; x != NULL;
+                  x = x->n_flink, mft = mft->n_flink){
+               if(mft == NULL){
+                  f |= a_WASINMFT;
+                  break;
+               }
+            }
+         }
 
          /* But for that, we have to remove all incarnations of ourselfs first.
           * TODO It is total crap that we have alternates_remove(), is_myname()
@@ -2229,12 +2244,15 @@ jto_fmt:
                n_namelist_dup(hp->h_to, GEXTRA | GFULL),
                n_namelist_dup(hp->h_cc, GEXTRA | GFULL)), FAL0));
          addr = hp->h_list_post;
+         mft = NULL;
+         mftp = &mft;
 
          while((x = np) != NULL){
             si8_t ml;
 
             np = np->n_flink;
 
+            /* Automatically make MLIST_KNOWN List-Post: address */
             /* XXX is_mlist_mp()?? */
             if((ml = is_mlist(x->n_name, FAL0)) == MLIST_OTHER &&
                   addr != NULL && !asccasecmp(addr, x->n_name))
@@ -2246,9 +2264,10 @@ jto_fmt:
                f |= HF_MFT_SENDER;
                /* FALLTHRU */
             case MLIST_SUBSCRIBED:
-               f |= _ANYLIST;
+               f |= a_ANYLIST;
                goto j_mft_add;
             case MLIST_OTHER:
+               f |= a_OTHER;
                if(!(f & HF_LIST_REPLY)){
 j_mft_add:
                   if(!is_addr_invalid(x,
@@ -2263,7 +2282,9 @@ j_mft_add:
                /* And if this is a reply that honoured a M-F-T: header then
                 * we'll also add all members of the original M-F-T: that are
                 * still addressed by us, regardless of other circumstances */
-               else if(f & _HADMFT){
+               /* TODO If the user edited this list, then we should include
+                * TODO whatever she did therewith, even if _LIST_REPLY! */
+               else if(f & a_HADMFT){
                   struct name *ox;
 
                   for(ox = hp->h_mft; ox != NULL; ox = ox->n_flink)
@@ -2274,9 +2295,9 @@ j_mft_add:
             }
          }
 
-         if((f & (_ANYLIST | _HADMFT)) && mft != NULL){
+         if((f & (a_ANYLIST | a_HADMFT)) && mft != NULL){
             if(((f & HF_MFT_SENDER) ||
-                     ((f & (_ANYLIST | _HADMFT)) == _HADMFT)) &&
+                     ((f & (a_ANYLIST | a_HADMFT)) == a_HADMFT)) &&
                   (np = fromasender) != NULL && np != (struct name*)0x1)
                *mftp = ndup(np, (np->n_type & ~GMASK) | GEXTRA | GFULL);
 

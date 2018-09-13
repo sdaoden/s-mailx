@@ -1535,7 +1535,11 @@ jebadhead:
             hp->h_ref = hq->h_ref;
          hp->h_message_id = hq->h_message_id;
          hp->h_in_reply_to = hq->h_in_reply_to;
-         hp->h_mft = hq->h_mft;
+         /* TODO For now the user cannot force "throwing away of M-F-T:" by
+          * TODO simply deleting the header; it is possible to adjust the
+          * TODO content, but is still mangled further on: very bad */
+         if(hq->h_mft != NULL)
+            hp->h_mft = hq->h_mft;
 
          /* And perform additional validity checks so that we don't bail later
           * on TODO this is good and the place where this should occur,
