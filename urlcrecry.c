@@ -957,7 +957,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #undef a_IFs
 
    if (strstr(data, "://") != NULL) {
-#if !defined a_ALLPROTO || defined HAVE_TLS
+#if !defined a_ALLPROTO || !defined HAVE_TLS
 jeproto:
 #endif
       n_err(_("URL proto:// prefix invalid: %s\n"), urlp->url_input);
