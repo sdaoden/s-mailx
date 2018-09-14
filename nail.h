@@ -847,10 +847,11 @@ enum n_go_input_flags{
    n_GO_INPUT_NO_XCALL = 1u<<9,
 
    n_GO_INPUT_FORCE_STDIN = 1u<<10,    /* Even in macro, use stdin (`read')! */
-   n_GO_INPUT_NL_ESC = 1u<<11,         /* Support "\\$" line continuation */
-   n_GO_INPUT_NL_FOLLOW = 1u<<12,      /* ..on such a follow line */
-   n_GO_INPUT_PROMPT_NONE = 1u<<13,    /* Don't print prompt */
-   n_GO_INPUT_PROMPT_EVAL = 1u<<14,    /* Instead, evaluate *prompt* */
+   n_GO_INPUT_DELAY_INJECTIONS = 1u<<11, /* Skip go_input_inject()ions */
+   n_GO_INPUT_NL_ESC = 1u<<12,         /* Support "\\$" line continuation */
+   n_GO_INPUT_NL_FOLLOW = 1u<<13,      /* ..on such a follow line */
+   n_GO_INPUT_PROMPT_NONE = 1u<<14,    /* Don't print prompt */
+   n_GO_INPUT_PROMPT_EVAL = 1u<<15,    /* Instead, evaluate *prompt* */
 
    n_GO_INPUT_HIST_ADD = 1u<<16,       /* Add the result to history list */
    n_GO_INPUT_HIST_GABBY = 1u<<17,     /* Consider history entry as gabby */

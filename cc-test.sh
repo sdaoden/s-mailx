@@ -501,6 +501,17 @@ t_X_Y_opt_input_go_stack() {
    check 3 0 ./.tybox '532493235 130'
    check 4 - "${MBOX}" '467429373 22'
 
+   ${cat} <<-_EOT | ${MAILX} ${ARGS} -t \
+      -X 'echo X before compose mode' \
+      -Y '~s Subject via -Y' \
+      -Y 'Body via -Y, too' -. ./.tybox > "${MBOX}" 2>&1
+	subject:diet
+
+	this body via -t.
+	_EOT
+   check 5 0 ./.tybox '1447611725 278'
+   check 6 - "${MBOX}" '467429373 22'
+
    # Test for [8412796a] (n_cmd_arg_parse(): FIX token error -> crash, e.g.
    # "-RX 'bind;echo $?' -Xx".., 2018-08-02)
    if have_feat key-bindings; then

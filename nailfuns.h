@@ -952,6 +952,9 @@ FL void n_go_input_force_eof(void);
  * an input context enters EOF state (rather than error, as in ferror(3)) */
 FL bool_t n_go_input_is_eof(void);
 
+/* Are there any go_input_inject()ions pending? */
+FL bool_t n_go_input_have_injections(void);
+
 /* Force n_go_input() to read that buffer next.
  * If n_GO_INPUT_INJECT_COMMIT is not set the line editor is reentered with buf
  * as the default/initial line content */

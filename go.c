@@ -1458,6 +1458,16 @@ n_go_input_is_eof(void){
    return rv;
 }
 
+FL bool_t
+n_go_input_have_injections(void){
+   bool_t rv;
+   NYD2_IN;
+
+   rv = (a_go_ctx->gc_inject != NULL);
+   NYD2_OU;
+   return rv;
+}
+
 FL void
 n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
       size_t len){
@@ -1523,13 +1533,14 @@ FL int
       goto jforce_stdin;
 
    /* Special case macro mode: never need to prompt, lines have always been
-    * unfolded already */
+    * unfolded already; TODO we need on_line_completed event and producers! */
    if(a_go_ctx->gc_flags & a_GO_MACRO){
       if(*linebuf != NULL)
          n_free(*linebuf);
 
       /* Injection in progress?  Don't care about the autocommit state here */
-      if((giip = a_go_ctx->gc_inject) != NULL){
+      if(!(gif & n_GO_INPUT_DELAY_INJECTIONS) &&
+            (giip = a_go_ctx->gc_inject) != NULL){
          a_go_ctx->gc_inject = giip->gii_next;
 
          /* Simply "reuse" allocation, copy string to front of it */
@@ -1558,7 +1569,9 @@ jinject:
       n = (int)*linesize;
       n_pstate |= n_PS_READLINE_NL;
       goto jhave_dat;
-   }else{
+   }
+
+   if(!(gif & n_GO_INPUT_DELAY_INJECTIONS)){
       /* Injection in progress? */
       struct a_go_input_inject **giipp;
 
@@ -1678,7 +1691,6 @@ jforce_stdin:
             }
          }
       }
-
       if(n <= 0)
          break;
 
@@ -1704,9 +1716,9 @@ jforce_stdin:
       (*linebuf)[nold = --n] = '\0';
       gif |= n_GO_INPUT_NL_FOLLOW;
    }
-
    if(n < 0)
       goto jleave;
+
    if(f & a_USE_MLE)
       n_pstate |= n_PS_READLINE_NL;
    (*linebuf)[*linesize = n] = '\0';

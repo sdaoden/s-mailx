@@ -1175,13 +1175,18 @@ jcont:
       /* No command escapes, interrupts not expected? */
       if(!(n_psonce & n_PSO_INTERACTIVE) &&
             !(n_poption & (n_PO_t_FLAG | n_PO_TILDE_FLAG))){
-         /* Need to go over n_go_input() to handle injections */
-         for(;;){
-            cnt = n_go_input(n_GO_INPUT_CTX_COMPOSE, n_empty,
-                  &linebuf, &linesize, NULL, NULL);
+         /* Need to go over n_go_input() to handle injections nonetheless */
+         enum n_go_input_flags gif;
+
+         for(gif = n_GO_INPUT_CTX_COMPOSE | n_GO_INPUT_DELAY_INJECTIONS;;){
+            cnt = n_go_input(gif, n_empty, &linebuf, &linesize, NULL, NULL);
             if(cnt < 0){
                if(!n_go_input_is_eof())
                   goto jerr;
+               if(n_go_input_have_injections()){
+                  gif &= ~n_GO_INPUT_DELAY_INJECTIONS;
+                  continue;
+               }
                break;
             }
             i = (size_t)cnt;
@@ -1215,10 +1220,11 @@ jcont:
          /* TODO optimize: no need to evaluate that anew for each loop tick! */
          gif = n_GO_INPUT_CTX_COMPOSE;
          histadd = (sp != NULL);
-         if((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_TILDE_FLAG)){
-            if(!(n_poption & n_PO_t_FLAG) || (n_psonce & n_PSO_t_FLAG_DONE))
+         if(!(n_poption & n_PO_t_FLAG) || (n_psonce & n_PSO_t_FLAG_DONE)){
+            if((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_TILDE_FLAG))
                gif |= n_GO_INPUT_NL_ESC;
-         }
+         }else
+            gif |= n_GO_INPUT_DELAY_INJECTIONS;
          cnt = n_go_input(gif, n_empty, &linebuf, &linesize, NULL, &histadd);
          hist = histadd ? a_HIST_ADD | a_HIST_GABBY : a_HIST_NONE;
       }
