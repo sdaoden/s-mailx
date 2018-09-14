@@ -283,6 +283,8 @@ distclean: clean
 
 # MUST work with "grep=grep sed=sed cmp=cmp mv=mv", otherwise need to change
 # make-release.inc
+_echo-version:
+	@LC_ALL=C; export LC_ALL; $(_version_from_header); echo "$${VERSION}"
 _update-version:
 	@LC_ALL=C; export LC_ALL;\
 	if [ -z "$(VERSION)" ]; then \

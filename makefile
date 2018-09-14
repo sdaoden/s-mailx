@@ -41,11 +41,26 @@ d-b:
 	@$(_prestop);\
 	LC_ALL=C $${MAKE} -f mk-config.mk _update-version &&\
 	LC_ALL=C $${MAKE} -f mk-config.mk $(MAKEJOBS) all
+d-v:
+	@$(_prestop);\
+	LC_ALL=C $${MAKE} -f mk-config.mk _update-version
 
 # The test should inherit the user runtime environment!
 test:
 	@$(__prestop); cd .obj && LC_ALL=C $(MAKE) -f mk-config.mk test
 
+d-okeys:
+	perl make-okey-map.pl
+d-okeys-nv:
+	perl make-okey-map.pl noverbose
+d-tcaps:
+	perl make-tcap-map.pl
+d-tcaps-nv:
+	perl make-tcap-map.pl noverbose
+d-errors:
+	$(SHELL) make-errors.sh
+d-errors-nv:
+	$(SHELL) make-errors.sh noverbose
 d-gettext:
 	cd "$(SRCDIR)" &&\
 	 LC_ALL=C xgettext --sort-by-file --strict --add-location \
