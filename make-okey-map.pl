@@ -295,6 +295,7 @@ sub dump_map{
          push @fa, 'a_AMV_VF_I3VAL'
       }
       if($e->{defval}){
+         die "Boolean with default value: $k" if $e->{bool};
          $defvals{$k} = $e;
          push @fa, 'a_AMV_VF_DEFVAL'
       }
