@@ -827,6 +827,7 @@ a_sendout_sendmail(void *v, enum n_mailsend_flags msf)
 
 static struct name *
 a_sendout_file_a_pipe(struct name *names, FILE *fo, bool_t *senderror){
+   bool_t mfap;
    ui32_t pipecnt, xcnt, i;
    char const *sh;
    struct name *np;
@@ -864,6 +865,8 @@ a_sendout_file_a_pipe(struct name *names, FILE *fo, bool_t *senderror){
       memset(fppa, 0, i);
       sh = ok_vlook(SHELL);
    }
+
+   mfap = ok_blook(mbox_fcc_and_pcc);
 
    for(np = names; np != NULL; np = np->n_flink){
       if(!(np->n_flags & NAME_ADDRSPEC_ISFILEORPIPE) || (np->n_type & GDEL))
@@ -905,14 +908,17 @@ a_sendout_file_a_pipe(struct name *names, FILE *fo, bool_t *senderror){
             goto jerror;
          }
 
-         fprintf(fp, "From %s %s", ok_vlook(LOGNAME), time_current.tc_ctime);
+         if(mfap)
+            fprintf(fp, "From %s %s",
+               ok_vlook(LOGNAME), time_current.tc_ctime);
          c = EOF;
          while(i = c, (c = getc(fo)) != EOF)
             putc(c, fp);
          rewind(fo);
          if((int)i != '\n')
             putc('\n', fp);
-         putc('\n', fp);
+         if(mfap)
+            putc('\n', fp);
          fflush(fp);
          if(ferror(fp)){
             n_perr(_("Finalizing write of temporary image"), 0);
@@ -956,7 +962,7 @@ a_sendout_file_a_pipe(struct name *names, FILE *fo, bool_t *senderror){
             int xerr;
             enum n_fopen_state fs;
 
-            if((fout = n_fopen_any(fname, "a+", &fs)) == NULL){
+            if((fout = n_fopen_any(fname, (mfap ? "a+" : "w"), &fs)) == NULL){
                xerr = n_err_no;
 jefile:
                n_err(_("Writing message to %s failed: %s\n"),
@@ -968,7 +974,7 @@ jefile:
                   (n_PROTO_FILE | n_FOPEN_STATE_EXISTS)){
                n_file_lock(fileno(fout), FLT_WRITE, 0,0, UIZ_MAX);
 
-               if((xerr = n_folder_mbox_prepare_append(fout, NULL)
+               if(mfap && (xerr = n_folder_mbox_prepare_append(fout, NULL)
                      ) != n_ERR_NONE)
                   goto jefile;
             }

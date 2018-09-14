@@ -1707,6 +1707,7 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_v_mailbox_display,               /* {nolopts=1,rdonly=1,nodel=1} */
    ok_v_mailx_extra_rc,
    ok_b_markanswered,
+   ok_b_mbox_fcc_and_pcc,              /* {i3val=1} */
    ok_b_mbox_rfc4155,
    ok_b_memdebug,                      /* {vip=1} */
    ok_b_message_id_disable,

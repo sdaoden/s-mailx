@@ -3107,6 +3107,28 @@ t_mbox() {
    check 15-1 - ./.tinv1 '3178048820 332'
    check 15-2 - ./.tinv2 '4151504442 314'
 
+   # *mbox-fcc-and-pcc*
+   ${cat} > ./.ttmpl <<-'_EOT'
+	Fcc: ./.tfcc1
+	Bcc: | cat >> ./.tpcc1
+	Fcc:        ./.tfcc2           
+	Subject: fcc and pcc, and *mbox-fcc-and-pcc*
+	
+	one line body
+	_EOT
+
+   < ./.ttmpl ${MAILX} ${ARGS} -t > "${MBOX}" 2>&1
+   check 16 0 "${MBOX}" '4294967295 0'
+   check 17 - ./.tfcc1 '2301294938 148'
+   check 18 - ./.tfcc2 '2301294938 148'
+   check 19 - ./.tpcc1 '2301294938 148'
+
+   < ./.ttmpl ${MAILX} ${ARGS} -t -Snombox-fcc-and-pcc > "${MBOX}" 2>&1
+   check 20 0 "${MBOX}" '4294967295 0'
+   check 21 - ./.tfcc1 '3629108107 98'
+   check 22 - ./.tfcc2 '3629108107 98'
+   check 23 - ./.tpcc1 '2373220256 246'
+
    t_epilog
 }
 

@@ -1155,6 +1155,8 @@ Like all other recipients
 .Ql Fcc:
 is subject to the checks of
 .Va expandaddr .
+Any local file and pipe command addressee honours the setting of
+.Va mbox-fcc-and-pcc .
 .
 .Pp
 It is possible to create personal distribution lists via the
@@ -9949,6 +9951,17 @@ it is marked as having been
 .Ic answered .
 See the section
 .Sx "Message states" .
+.
+.Mx
+.It Va mbox-fcc-and-pcc
+\*(BO By default all file and pipe message receivers (see
+.Va expandaddr )
+will be fed valid MBOX database entry message data (see
+.Ic file ,
+.Va mbox-rfc4155 ) ,
+and existing file targets will become extended in compliance to RFC 4155.
+If this variable is unset then a plain standalone RFC 5322 message will
+be written, and existing file targets will be overwritten.
 .
 .Mx
 .It Va mbox-rfc4155
