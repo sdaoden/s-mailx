@@ -69,8 +69,6 @@ ref_status() {
          break
       fi
    done
-brname=`${git} symbolic-ref --short HEAD`
-return # FIXME
    if [ -z "${brref}" ]; then
       echo >&2 'Not on the [master] or a [stable/*] branch'
       exit 1
@@ -476,7 +474,15 @@ else
    read REL
    VERSION="${VERSION}-${REL}"
    release_version
-   ${git} checkout -B ${grappa} HEAD
+
+   i=
+   if ${git} rev-parse --verify ${grappa} >/dev/null 2>/dev/null; then :; else
+      i=-B
+   fi
+   ${git} checkout ${i} ${grappa}
+   ${git} rm -f '*'
+   ${git} archive --format=tar ${headref} | ${tar} -x -f -
+   ${git} add .
 fi
 
 echo 'Updating files: calling update_stable_hook'
