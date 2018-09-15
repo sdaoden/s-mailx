@@ -118,6 +118,25 @@ Thank you!
     vMAJOR.MINOR.UPDATE, and then be used as the source for a new branch
     in release/.
 
+    Packagers who want to include all the bugfixes when they eventually
+    iterate their package can create local "packager releases" with the
+    "grappa" mode of the script mk/make-release.sh.  With it, they can
+    track the stable/ branch of desire, and have a [myrelease] branch
+    where the local releases are made.  In order to get the very same
+    file modifications that are made in the official [release/] they
+    need an installed perl(1).  For example:
+
+      $ git checkout stable/stable
+      $ git fetch
+      $ sh mk/make-release.sh grappa myrel # myrel created as necessary
+      Preparing a release on commit [.]
+      Grappa to be brought from stable/stable to myrel
+      Program version is [.], packager release addition shall be: 2
+      Is s-nail <v[.]-2> correct? [y/n] y
+      Switched to branch 'myrel'
+      ..
+      $ git commit -S -n -m 'My release [.]-2'
+
 - [stable/latest] and [stable/stable]
     "Symbolic links" to the latest and stable, respectively, stable
     branches.
