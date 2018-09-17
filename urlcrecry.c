@@ -958,7 +958,8 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 
    if (strstr(data, "://") != NULL) {
 jeproto:
-      n_err(_("URL proto:// prefix invalid: %s\n"), urlp->url_input);
+      n_err(_("URL proto:// invalid (protocol or TLS support missing?): %s\n"),
+         urlp->url_input);
       goto jleave;
    }
 #ifdef a_ANYPROTO
