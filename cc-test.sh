@@ -3854,6 +3854,45 @@ t_expandaddr() {
    check 77 - .tfile1 '3493511004 372'
    check 78 - .tfile2 '3493511004 372'
 
+   #
+   printf '' > "${MBOX}"
+   ${cat} <<-_EOT |\
+      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -t -ssub \
+         -Sexpandaddr=fail,domaincheck \
+         > ./.tall 2>&1
+	To: one@localhost
+	_EOT
+   check 79 0 "${MBOX}" '30149440 118'
+   check 80 - .tall '4294967295 0'
+
+   ${cat} <<-_EOT |\
+      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -t -ssub \
+         -Sexpandaddr=domaincheck \
+         > ./.tall 2>&1
+	To: one@localhost  ,    Hey two <two@exam.ple>, Trouble <three@tro.uble>
+	_EOT
+   check 81 4 "${MBOX}" '3259486172 236'
+   check 82 - .tall '1119895397 158'
+
+   ${cat} <<-_EOT |\
+      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -t -ssub \
+         -Sexpandaddr=fail,domaincheck \
+         > ./.tall 2>&1
+	To: one@localhost  ,    Hey two <two@exam.ple>, Trouble <three@tro.uble>
+	_EOT
+   check 83 4 "${MBOX}" '3259486172 236'
+   check 84 - .tall '1577313789 267'
+
+   ${cat} <<-_EOT |\
+      ${MAILX} ${ARGS} -Snoexpandaddr -Smta=./.tmta.sh -t -ssub \
+         -Sexpandaddr=fail,domaincheck \
+         -Sexpandaddr-domaincheck=exam.ple,tro.uble \
+         > ./.tall 2>&1
+	To: one@localhost  ,    Hey two <two@exam.ple>, Trouble <three@tro.uble>
+	_EOT
+   check 85 0 "${MBOX}" '10610402 404'
+   check 86 - .tall '4294967295 0'
+
    t_epilog
 }
 

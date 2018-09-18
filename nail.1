@@ -9272,14 +9272,23 @@ or
 in the latter case(s) any address may be used, then.
 .
 .Pp
-Historically invalid network addressees were silently stripped off.
-To change this so that any encountered invalid email address causes
-a hard error it must be ensured that
+Historically invalid network addressees were silently stripped off \(em
+shall they cause hard errors instead it must be ensured that
 .Ql failinvaddr
-is an entry in the above list, which automatically enables network
-addressees; it really acts like
-.Ql failinvaddr,+addr ,
-so that care for ordering issues must be taken.
+is an entry of the list (it really acts like
+.Ql failinvaddr,\:+addr ) .
+Likewise,
+.Ql domaincheck
+.Pf (actually\0\: Ql domaincheck,\:+addr )
+compares address domain names against a whitelist and strips off
+.Pf ( Ql fail
+for hard errors) addressees which fail this test; the domain name
+.Ql localhost
+and the non-empty value of
+.Va hostname
+(the real hostname otherwise) are always whitelisted,
+.Va expandaddr-domaincheck
+can be set to extend this list.
 Finally some address providers (for example
 .Fl b , c
 and all recipients given on the command line) will be will evaluated as
@@ -9288,6 +9297,17 @@ if specified within dollar-single-quotes (see
 if the value list contains the string
 .Ql shquote .
 .
+.
+.Mx
+.It Va expandaddr-domaincheck
+Can be set to a comma-separated list of domain names which should be
+whitelisted for the evaluation of the
+.Ql domaincheck
+mode of
+.Va expandaddr .
+IDNA encoding is not automatically performed,
+.Ic addrcodec
+can be used to prepare the domain (of an address).
 .
 .Mx
 .It Va expandargv
@@ -9734,11 +9754,11 @@ as the hostname when expanding local addresses, e.g., in
 .Ql From:
 (also see
 .Sx "On sending mail, and non-interactive mode" ,
-especially for expansion of network addresses that contain domain-less
-valid user names in angle brackets).
+e.g., for expansion of addresses that have a valid user-, but no domain
+name in angle brackets).
 If either of
 .Va from
-or this variable Is set the message and MIME part related unique ID fields
+or this variable is set the message and MIME part related unique ID fields
 .Ql Message-ID:
 and
 .Ql Content-ID:

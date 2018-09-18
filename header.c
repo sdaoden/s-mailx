@@ -1704,6 +1704,7 @@ expandaddr_to_eaf(void){
       {"restrict", FAL0, EAF_TARGET_MASK, EAF_RESTRICT | EAF_RESTRICT_TARGETS},
       {"fail", FAL0, EAF_NONE, EAF_FAIL},
       {"failinvaddr\0", FAL0, EAF_NONE, EAF_FAILINVADDR | EAF_ADDR},
+      {"domaincheck\0", FAL0, EAF_NONE, EAF_DOMAINCHECK | EAF_ADDR},
       {"shquote", FAL0, EAF_NONE, EAF_SHEXP_PARSE},
       {"all", TRU1, EAF_NONE, EAF_TARGET_MASK},
          {"fcc", TRU1, EAF_NONE, EAF_FCC},
@@ -1776,6 +1777,9 @@ jandor:
 
 FL si8_t
 is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm){
+   /* TODO This is called much too often!  Message->DOMTree->modify->..
+    * TODO I.e., [verify once before compose-mode], verify once after
+    * TODO compose-mode, store result in object */
    char cbuf[sizeof "'\\U12340'"];
    char const *cs;
    int f;
@@ -1853,9 +1857,36 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm){
       break;
    default:
    case NAME_ADDRSPEC_ISADDR:
-      if(eaf & EAF_ADDR)
+      if(!(eaf & EAF_ADDR)){
+         cs = _("%s%s: *expandaddr* does not allow mail address target\n");
+         break;
+      }
+      if(!(eacm & EACM_DOMAINCHECK) || !(eaf & EAF_DOMAINCHECK))
          goto jgood;
-      cs = _("%s%s: *expandaddr* does not allow mail address target\n");
+      else{
+         char const *doms;
+
+         assert(np->n_flags & NAME_SKINNED);
+         /* XXX We had this info before, and threw it away.. */
+         doms = strrchr(np->n_name, '@');
+         assert(doms != NULL);
+         ++doms;
+
+         if(!asccasecmp("localhost", doms))
+            goto jgood;
+         if(!asccasecmp(n_nodename(TRU1), doms))
+            goto jgood;
+
+         if((cs = ok_vlook(expandaddr_domaincheck)) != NULL){
+            char *cpb, *cp;
+
+            cpb = savestr(cs);
+            while((cp = n_strsep(&cpb, ',', TRU1)) != NULL)
+               if(!asccasecmp(cp, doms))
+                  goto jgood;
+         }
+      }
+      cs = _("%s%s: *expandaddr*: not \"domaincheck\" whitelisted\n");
       break;
    }
 

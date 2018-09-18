@@ -1875,7 +1875,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
 
    to = n_namelist_vaporise_head(((quote != NULL &&
             (msf & n_MAILSEND_IS_FWD) == 0) || !ok_blook(posix)),
-         hp, (EACM_NORMAL |
+         hp, (EACM_NORMAL | EACM_DOMAINCHECK |
              (!(expandaddr_to_eaf() & EAF_NAME) ? EACM_NONAME : EACM_NONE)),
          &_sendout_error);
 

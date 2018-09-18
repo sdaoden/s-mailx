@@ -586,13 +586,14 @@ enum expand_addr_flags {
    EAF_RESTRICT = 1u<<0,   /* "restrict" (do unless interaktive / -[~#]) */
    EAF_FAIL = 1u<<1,       /* "fail" */
    EAF_FAILINVADDR = 1u<<2, /* "failinvaddr" */
-   EAF_SHEXP_PARSE = 1u<<3, /* shexp_parse() the address first is allowed */
+   EAF_DOMAINCHECK = 1u<<3, /* "domaincheck" <-> *expandaddr-domaincheck* */
+   EAF_SHEXP_PARSE = 1u<<4, /* shexp_parse() the address first is allowed */
    /* Bits reused by enum expand_addr_check_mode! */
-   EAF_FCC = 1u<<4,        /* +"fcc" umbrella */
-   EAF_FILE = 1u<<5,       /* +"file" targets */
-   EAF_PIPE = 1u<<6,       /* +"pipe" command pipe targets */
-   EAF_NAME = 1u<<7,       /* +"name"s (non-address) names / MTA aliases */
-   EAF_ADDR = 1u<<8,       /* +"addr" network address (contain "@") */
+   EAF_FCC = 1u<<8,        /* +"fcc" umbrella */
+   EAF_FILE = 1u<<9,       /* +"file" targets */
+   EAF_PIPE = 1u<<10,      /* +"pipe" command pipe targets */
+   EAF_NAME = 1u<<11,      /* +"name"s (non-address) names / MTA aliases */
+   EAF_ADDR = 1u<<12,      /* +"addr" network address (contain "@") */
 
    EAF_TARGET_MASK  = EAF_FCC | EAF_FILE | EAF_PIPE | EAF_NAME | EAF_ADDR,
    EAF_RESTRICT_TARGETS = EAF_NAME | EAF_ADDR /* (default set if not set) */
@@ -622,7 +623,8 @@ enum expand_addr_check_mode {
    /* Some special overwrites of EAF_TARGETs.
     * May NOT clash with EAF_* bits which may be ORd to these here! */
 
-   EACM_NONAME = 1u<<16
+   EACM_NONAME = 1u<<16,
+   EACM_DOMAINCHECK = 1u<<17  /* Honour it! */
 };
 
 enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
@@ -1649,6 +1651,7 @@ ok_v_encoding, /* {obsolete=1} */
    ok_b_errexit,
    ok_v_escape,                        /* {defval=n_ESCAPE} */
    ok_v_expandaddr,
+   ok_v_expandaddr_domaincheck,        /* {notempty=1} */
    ok_v_expandargv,
 
    ok_v_features,                      /* {virt=VAL_FEATURES} */
