@@ -1,0 +1,4 @@
+reproducible_build: two@exam.ple: *expandaddr*: not "domaincheck" whitelisted
+reproducible_build: three@tro.uble: *expandaddr*: not "domaincheck" whitelisted
+reproducible_build: Some addressees were classified as "hard error"
+reproducible_build: ... message not sent

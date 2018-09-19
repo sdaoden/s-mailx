@@ -1,0 +1,2 @@
+reproducible_build: two@exam.ple: *expandaddr*: not "domaincheck" whitelisted
+reproducible_build: three@tro.uble: *expandaddr*: not "domaincheck" whitelisted
