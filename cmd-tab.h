@@ -833,10 +833,13 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
 #undef G
 #undef H
 #undef I
+#undef L
 #undef M
 #undef O
 #undef P
 #undef R
+#undef SC
+#undef S
 #undef T
 #undef V
 #undef W
