@@ -48,15 +48,6 @@
 # define FL                      static
 #endif
 
-/* Memory allocation routines from memory.c offer some debug support */
-#ifdef mx_HAVE_MEMORY_DEBUG
-# define n_MEMORY_DEBUG_ARGS     , char const *mdbg_file, int mdbg_line
-# define n_MEMORY_DEBUG_ARGSCALL , mdbg_file, mdbg_line
-#else
-# define n_MEMORY_DEBUG_ARGS
-# define n_MEMORY_DEBUG_ARGSCALL
-#endif
-
 /*
  * Macro-based generics
  */
@@ -865,10 +856,10 @@ FL ssize_t     htmlflt_flush(struct htmlflt *self);
  * appendnl - always terminate line with \n, append if necessary.
  * Manages the n_PS_READLINE_NL hack */
 FL char *      fgetline(char **line, size_t *linesize, size_t *count,
-                  size_t *llen, FILE *fp, int appendnl n_MEMORY_DEBUG_ARGS);
-#ifdef mx_HAVE_MEMORY_DEBUG
+                  size_t *llen, FILE *fp, int appendnl  su_DBG_LOC_ARGS_DECL);
+#ifdef su_HAVE_DBG_LOC_ARGS
 # define fgetline(A,B,C,D,E,F)   \
-   fgetline(A, B, C, D, E, F, __FILE__, __LINE__)
+   fgetline(A, B, C, D, E, F  su_DBG_LOC_ARGS_INJ)
 #endif
 
 /* Read up a line from the specified input into the linebuffer.
@@ -877,10 +868,10 @@ FL char *      fgetline(char **line, size_t *linesize, size_t *count,
  * treated as _the_ line if no more (successful) reads are possible.
  * Manages the n_PS_READLINE_NL hack */
 FL int         readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
-                  size_t n n_MEMORY_DEBUG_ARGS);
-#ifdef mx_HAVE_MEMORY_DEBUG
+                  size_t n  su_DBG_LOC_ARGS_DECL);
+#ifdef su_HAVE_DBG_LOC_ARGS
 # define readline_restart(A,B,C,D) \
-   readline_restart(A, B, C, D, __FILE__, __LINE__)
+   readline_restart(A, B, C, D  su_DBG_LOC_ARGS_INJ)
 #endif
 
 /* Determine the size of the file possessed by the passed buffer */
@@ -974,9 +965,9 @@ FL void n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
  * TODO We need an OnReadLineCompletedEvent and drop this function */
 FL int n_go_input(enum n_go_input_flags gif, char const *prompt,
          char **linebuf, size_t *linesize, char const *string,
-         bool_t *histok_or_null n_MEMORY_DEBUG_ARGS);
-#ifdef mx_HAVE_MEMORY_DEBUG
-# define n_go_input(A,B,C,D,E,F) n_go_input(A,B,C,D,E,F,__FILE__,__LINE__)
+         bool_t *histok_or_null  su_DBG_LOC_ARGS_DECL);
+#ifdef su_HAVE_DBG_LOC_ARGS
+# define n_go_input(A,B,C,D,E,F) n_go_input(A,B,C,D,E,F  su_DBG_LOC_ARGS_INJ)
 #endif
 
 /* Read a line of input, with editing if interactive and possible, return it
@@ -1268,117 +1259,39 @@ FL enum okay maildir_remove(char const *name);
 #endif /* mx_HAVE_MAILDIR */
 
 /*
- * memory.c
+ * (Former memory.c, now SU TODO get rid of compat macros)
  * Heap memory and automatically reclaimed storage, plus pseudo "alloca"
+ *
  */
 
-/* Called from the (main)loops upon tick and break-off time to perform debug
- * checking and memory cleanup, including stack-top of auto-reclaimed storage */
-FL void n_memory_reset(void);
-
-/* Fixate the current snapshot of our global auto-reclaimed storage instance,
- * so that further allocations become auto-reclaimed.
- * This is only called from main.c for the global arena */
-FL void n_memory_pool_fixate(void);
-
-/* Lifetime management of a per-execution level arena (to be found in
- * n_go_data_ctx.gdc_mempool, lazy initialized).
- * _push() can be used by anyone to create a new mempool stack layer (of
- * minimum size n_MEMORY_POOL_TYPE_SIZEOF) in the current per-execution level
- * arena, which is layered upon the normal one (which is usually provided
- * by .gdc__mempool_buf, and initialized as necessary).
- * This can be pop()ped again: popping a stack will remove all stacks "above"
- * it, i.e., those which have been pushed thereafter.
- * If NULL is popped then this means that the current per-execution level is
- * left and n_go_data_ctx.gdc_mempool is not NULL; an event loop tick also
- * causes all _push()ed stacks to be dropped (via n_memory_reset()).
- * Memory pools can be stored away, in order to re-push() them later again;
- * for this these functions gained overall lifetime parameters: init needs to
- * be true when calling push() for the first time on vp, and gut needs to be
- * set when pop()ping vp the last time only */
-FL void n_memory_pool_push(void *vp, bool_t init);
-FL void n_memory_pool_pop(void *vp, bool_t gut);
-FL void *n_memory_pool_top(void);
-
 /* Generic heap memory */
-
-FL void *n_alloc(size_t s n_MEMORY_DEBUG_ARGS);
-FL void *n_realloc(void *v, size_t s n_MEMORY_DEBUG_ARGS);
-FL void *n_calloc(size_t nmemb, size_t size n_MEMORY_DEBUG_ARGS);
-FL void n_free(void *vp n_MEMORY_DEBUG_ARGS);
-
-/* TODO obsolete c{m,re,c}salloc -> n_* */
-#ifdef mx_HAVE_MEMORY_DEBUG
-# define n_alloc(S) (n_alloc)(S, __FILE__, __LINE__)
-# define n_realloc(P,S) (n_realloc)(P, S, __FILE__, __LINE__)
-# define n_calloc(N,S) (n_calloc)(N, S, __FILE__, __LINE__)
-# define n_free(P) (n_free)(P, __FILE__, __LINE__)
-#else
-# define n_free(P) free(P)
-#endif
-
-/* Fluctuating heap memory (supposed to exist for one command loop tick) */
-
-#define n_flux_alloc(S) n_alloc(S)
-#define n_flux_realloc(P,S) n_realloc(P, S)
-#define n_flux_calloc(N,S) n_calloc(N, S)
-#define n_flux_free(P) n_free(P)
+#define n_alloc su_MEM_ALLOC
+#define n_realloc su_MEM_REALLOC
+#define n_calloc(NO,SZ) su_MEM_CALLOC_N(SZ, NO)
+#define n_free su_MEM_FREE
 
 /* Auto-reclaimed storage */
+#define n_autorec_relax_create() \
+      su_mem_bag_auto_relax_create(n_go_data->gdc_membag)
+#define n_autorec_relax_gut() \
+      su_mem_bag_auto_relax_gut(n_go_data->gdc_membag)
+#define n_autorec_relax_unroll() \
+      su_mem_bag_auto_relax_unroll(n_go_data->gdc_membag)
+/* (Even older obsolete names!) */
+#define srelax_hold n_autorec_relax_create
+#define srelax_rele n_autorec_relax_gut
+#define srelax n_autorec_relax_unroll
 
-/* Lower memory pressure on auto-reclaimed storage for code which has
- * a sinus-curve looking style of memory usage, i.e., peak followed by release,
- * like, e.g., doing a task on all messages of a box in order.
- * Such code should call _create(), successively call _unroll() after
- * a single message has been handled, and finally _gut() */
-FL void n_autorec_relax_create(void);
-FL void n_autorec_relax_gut(void);
-FL void n_autorec_relax_unroll(void);
+#define n_autorec_alloc su_MEM_BAG_SELF_AUTO_ALLOC
+#define n_autorec_calloc(NO,SZ) su_MEM_BAG_SELF_AUTO_CALLOC_N(SZ, NO)
 
-/* TODO obsolete srelax -> n_autorec_relax_* */
-#define srelax_hold() n_autorec_relax_create()
-#define srelax_rele() n_autorec_relax_gut()
-#define srelax() n_autorec_relax_unroll()
+/* Pseudo alloca (and also auto-reclaimed) */
+#define n_lofi_alloc su_MEM_BAG_SELF_LOFI_ALLOC
+#define n_lofi_free su_MEM_BAG_SELF_LOFI_FREE
 
-/* Allocate size more bytes of space and return the address of the first byte
- * to the caller.  An even number of bytes are always allocated so that the
- * space will always be on a word boundary */
-FL void *n_autorec_alloc_from_pool(void *vp, size_t size n_MEMORY_DEBUG_ARGS);
-FL void *n_autorec_calloc_from_pool(void *vp, size_t nmemb, size_t size
-            n_MEMORY_DEBUG_ARGS);
-#ifdef mx_HAVE_MEMORY_DEBUG
-# define n_autorec_alloc_from_pool(VP,SZ) \
-   (n_autorec_alloc_from_pool)(VP, SZ, __FILE__, __LINE__)
-# define n_autorec_calloc_from_pool(VP,NM,SZ) \
-   (n_autorec_calloc_from_pool)(VP, NM, SZ, __FILE__, __LINE__)
-#endif
-#define n_autorec_alloc(SZ) n_autorec_alloc_from_pool(NULL, SZ)
-#define n_autorec_calloc(NM,SZ) n_autorec_calloc_from_pool(NULL, NM, SZ)
-
-/* Pseudo alloca (and also auto-reclaimed in _memory_reset()/_pool_pop()) */
-FL void *n_lofi_alloc(size_t size n_MEMORY_DEBUG_ARGS);
-FL void n_lofi_free(void *vp n_MEMORY_DEBUG_ARGS);
-
-#ifdef mx_HAVE_MEMORY_DEBUG
-# define n_lofi_alloc(SZ) (n_lofi_alloc)(SZ, __FILE__, __LINE__)
-# define n_lofi_free(P) (n_lofi_free)(P, __FILE__, __LINE__)
-#endif
-
-/* The snapshot can be used in a local context, in order to free many
- * allocations in one go */
-FL void *n_lofi_snap_create(void);
-FL void n_lofi_snap_unroll(void *cookie);
-
-/* */
-#ifdef mx_HAVE_MEMORY_DEBUG
-FL int c_memtrace(void *v);
-
-/* For immediate debugging purposes, it is possible to check on request */
-FL bool_t n__memory_check(char const *file, int line);
-# define n_memory_check() n__memory_check(__FILE__, __LINE__)
-#else
-# define n_memory_check() do{;}while(0)
-#endif
+#define n_lofi_snap_create() su_mem_bag_lofi_snap_create(n_go_data->gdc_membag)
+#define n_lofi_snap_unroll(COOKIE) \
+   su_mem_bag_lofi_snap_unroll(n_go_data->gdc_membag, COOKIE)
 
 /*
  * message.c
@@ -2124,9 +2037,9 @@ FL enum okay   swrite1(struct sock *sp, char const *data, int sz,
 
 /*  */
 FL int         sgetline(char **line, size_t *linesize, size_t *linelen,
-                  struct sock *sp n_MEMORY_DEBUG_ARGS);
-# ifdef mx_HAVE_MEMORY_DEBUG
-#  define sgetline(A,B,C,D)      sgetline(A, B, C, D, __FILE__, __LINE__)
+                  struct sock *sp  su_DBG_LOC_ARGS_DECL);
+# ifdef su_HAVE_DBG_LOC_ARGS
+#  define sgetline(A,B,C,D) sgetline(A, B, C, D  su_DBG_LOC_ARGS_INJ)
 # endif
 #endif
 
@@ -2149,18 +2062,18 @@ FL int c_spam_spam(void *v);
  */
 
 /* Return a pointer to a dynamic copy of the argument */
-FL char *      savestr(char const *str n_MEMORY_DEBUG_ARGS);
-FL char *      savestrbuf(char const *sbuf, size_t slen n_MEMORY_DEBUG_ARGS);
-#ifdef mx_HAVE_MEMORY_DEBUG
-# define savestr(CP)             savestr(CP, __FILE__, __LINE__)
-# define savestrbuf(CBP,CBL)     savestrbuf(CBP, CBL, __FILE__, __LINE__)
+FL char *savestr(char const *str  su_DBG_LOC_ARGS_DECL);
+FL char *savestrbuf(char const *sbuf, size_t slen  su_DBG_LOC_ARGS_DECL);
+#ifdef su_HAVE_DBG_LOC_ARGS
+# define savestr(CP) savestr(CP  su_DBG_LOC_ARGS_INJ)
+# define savestrbuf(CBP,CBL) savestrbuf(CBP, CBL  su_DBG_LOC_ARGS_INJ)
 #endif
 
 /* Concatenate cp2 onto cp1 (if not NULL), separated by sep (if not '\0') */
-FL char *      savecatsep(char const *cp1, char sep, char const *cp2
-                  n_MEMORY_DEBUG_ARGS);
-#ifdef mx_HAVE_MEMORY_DEBUG
-# define savecatsep(S1,SEP,S2)   savecatsep(S1, SEP, S2, __FILE__, __LINE__)
+FL char *savecatsep(char const *cp1, char sep, char const *cp2
+   su_DBG_LOC_ARGS_DECL);
+#ifdef su_HAVE_DBG_LOC_ARGS
+# define savecatsep(S1,SEP,S2) savecatsep(S1, SEP, S2  su_DBG_LOC_ARGS_INJ)
 #endif
 
 /* Make copy of argument incorporating old one, if set, separated by space */
@@ -2173,10 +2086,10 @@ FL char *      savecatsep(char const *cp1, char sep, char const *cp2
 FL struct str * str_concat_csvl(struct str *self, ...);
 
 /*  */
-FL struct str * str_concat_cpa(struct str *self, char const * const *cpa,
-                  char const *sep_o_null n_MEMORY_DEBUG_ARGS);
-#ifdef mx_HAVE_MEMORY_DEBUG
-# define str_concat_cpa(S,A,N)   str_concat_cpa(S, A, N, __FILE__, __LINE__)
+FL struct str *str_concat_cpa(struct str *self, char const * const *cpa,
+   char const *sep_o_null  su_DBG_LOC_ARGS_DECL);
+#ifdef su_HAVE_DBG_LOC_ARGS
+# define str_concat_cpa(S,A,N) str_concat_cpa(S, A, N  su_DBG_LOC_ARGS_INJ)
 #endif
 
 /* Plain char* support, not auto-reclaimed (unless noted) */
@@ -2206,13 +2119,13 @@ FL void        makelow(char *cp);
 /* Is *sub* a substring of *str*, case-insensitive and multibyte-aware? */
 FL bool_t      substr(char const *str, char const *sub);
 
-/*  */
-FL char *      sstpcpy(char *dst, char const *src);
-FL char *      sstrdup(char const *cp n_MEMORY_DEBUG_ARGS);
-FL char *      sbufdup(char const *cp, size_t len n_MEMORY_DEBUG_ARGS);
-#ifdef mx_HAVE_MEMORY_DEBUG
-# define sstrdup(CP)             sstrdup(CP, __FILE__, __LINE__)
-# define sbufdup(CP,L)           sbufdup(CP, L, __FILE__, __LINE__)
+/**/
+FL char *sstpcpy(char *dst, char const *src);
+FL char *sstrdup(char const *cp  su_DBG_LOC_ARGS_DECL);
+FL char *sbufdup(char const *cp, size_t len  su_DBG_LOC_ARGS_DECL);
+#ifdef su_HAVE_DBG_LOC_ARGS
+# define sstrdup(CP) sstrdup(CP  su_DBG_LOC_ARGS_INJ)
+# define sbufdup(CP,L) sbufdup(CP, L  su_DBG_LOC_ARGS_INJ)
 #endif
 
 /* Copy at most dstsize bytes of src to dst and return string length.
@@ -2238,21 +2151,22 @@ FL bool_t      is_ascncaseprefix(char const *as1, char const *as2, size_t sz);
 
 /* *self->s* is n_realloc()ed; if buflen==UIZ_MAX strlen() is called unless
  * buf is NULL; buf may be NULL if buflen is 0 */
-FL struct str * n_str_assign_buf(struct str *self,
-                  char const *buf, uiz_t buflen n_MEMORY_DEBUG_ARGS);
+FL struct str *n_str_assign_buf(struct str *self, char const *buf, uiz_t buflen
+      su_DBG_LOC_ARGS_DECL);
 #define n_str_assign(S, T)       n_str_assign_buf(S, (T)->s, (T)->l)
 #define n_str_assign_cp(S, CP)   n_str_assign_buf(S, CP, UIZ_MAX)
 
 /* *self->s* is n_realloc()ed, *self->l* incremented; if buflen==UIZ_MAX
  * strlen() is called unless buf is NULL; buf may be NULL if buflen is 0 */
-FL struct str * n_str_add_buf(struct str *self, char const *buf, uiz_t buflen
-                  n_MEMORY_DEBUG_ARGS);
+FL struct str *n_str_add_buf(struct str *self, char const *buf, uiz_t buflen
+      su_DBG_LOC_ARGS_DECL);
 #define n_str_add(S, T)          n_str_add_buf(S, (T)->s, (T)->l)
 #define n_str_add_cp(S, CP)      n_str_add_buf(S, CP, UIZ_MAX)
 
-#ifdef mx_HAVE_MEMORY_DEBUG
-# define n_str_assign_buf(S,B,BL) n_str_assign_buf(S, B, BL, __FILE__, __LINE__)
-# define n_str_add_buf(S,B,BL)   n_str_add_buf(S, B, BL, __FILE__, __LINE__)
+#ifdef su_HAVE_DBG_LOC_ARGS
+# define n_str_assign_buf(S,B,BL) \
+   n_str_assign_buf(S, B, BL  su_DBG_LOC_ARGS_INJ)
+# define n_str_add_buf(S,B,BL) n_str_add_buf(S, B, BL  su_DBG_LOC_ARGS_INJ)
 #endif
 
 /* Remove leading and trailing spacechar()s and *ifs-ws*, respectively.
@@ -2286,13 +2200,12 @@ FL struct str *n_str_trim_ifs(struct str *self, bool_t dodefaults);
    ((SP)->s_dat = NULL, (SP)->s_len = (SP)->s_size = 0, (SP))
 
 /* Release all memory */
-FL struct n_string *n_string_clear(struct n_string *self n_MEMORY_DEBUG_ARGS);
-
-#ifdef mx_HAVE_MEMORY_DEBUG
+FL struct n_string *n_string_clear(struct n_string *self su_DBG_LOC_ARGS_DECL);
+#ifdef su_HAVE_DBG_LOC_ARGS
 # define n_string_clear(S) \
-   ((S)->s_size != 0 ? (n_string_clear)(S, __FILE__, __LINE__) : (S))
+   ((S)->s_size != 0 ? (n_string_clear)(S  su_DBG_LOC_ARGS_INJ) : (S))
 #else
-# define n_string_clear(S)       ((S)->s_size != 0 ? (n_string_clear)(S) : (S))
+# define n_string_clear(S) ((S)->s_size != 0 ? (n_string_clear)(S) : (S))
 #endif
 
 /* Check whether a buffer of Len bytes can be inserted into S(elf) */
@@ -2303,25 +2216,25 @@ FL struct n_string *n_string_clear(struct n_string *self n_MEMORY_DEBUG_ARGS);
 
 /* Reserve room for noof additional bytes, but don't adjust length (yet) */
 FL struct n_string *n_string_reserve(struct n_string *self, size_t noof
-                     n_MEMORY_DEBUG_ARGS);
+      su_DBG_LOC_ARGS_DECL);
 #define n_string_book n_string_reserve
 
 /* Resize to exactly nlen bytes; any new storage isn't initialized */
 FL struct n_string *n_string_resize(struct n_string *self, size_t nlen
-                     n_MEMORY_DEBUG_ARGS);
+      su_DBG_LOC_ARGS_DECL);
 
-#ifdef mx_HAVE_MEMORY_DEBUG
-# define n_string_reserve(S,N)   (n_string_reserve)(S, N, __FILE__, __LINE__)
-# define n_string_resize(S,N)    (n_string_resize)(S, N, __FILE__, __LINE__)
+#ifdef su_HAVE_DBG_LOC_ARGS
+# define n_string_reserve(S,N)   (n_string_reserve)(S, N  su_DBG_LOC_ARGS_INJ)
+# define n_string_resize(S,N)    (n_string_resize)(S, N  su_DBG_LOC_ARGS_INJ)
 #endif
 
 /* */
 FL struct n_string *n_string_push_buf(struct n_string *self, char const *buf,
-                     size_t buflen n_MEMORY_DEBUG_ARGS);
+      size_t buflen  su_DBG_LOC_ARGS_DECL);
 #define n_string_push(S, T)       n_string_push_buf(S, (T)->s_len, (T)->s_dat)
 #define n_string_push_cp(S,CP)    n_string_push_buf(S, CP, UIZ_MAX)
 FL struct n_string *n_string_push_c(struct n_string *self, char c
-                     n_MEMORY_DEBUG_ARGS);
+      su_DBG_LOC_ARGS_DECL);
 
 #define n_string_assign(S,T)     ((S)->s_len = 0, n_string_push(S, T))
 #define n_string_assign_c(S,C)   ((S)->s_len = 0, n_string_push_c(S, C))
@@ -2329,54 +2242,57 @@ FL struct n_string *n_string_push_c(struct n_string *self, char c
 #define n_string_assign_buf(S,B,BL) \
    ((S)->s_len = 0, n_string_push_buf(S, B, BL))
 
-#ifdef mx_HAVE_MEMORY_DEBUG
+#ifdef su_HAVE_DBG_LOC_ARGS
 # define n_string_push_buf(S,B,BL) \
-   n_string_push_buf(S, B, BL, __FILE__, __LINE__)
-# define n_string_push_c(S,C)    n_string_push_c(S, C, __FILE__, __LINE__)
+   (n_string_push_buf)(S, B, BL  su_DBG_LOC_ARGS_INJ)
+# define n_string_push_c(S,C) (n_string_push_c)(S, C  su_DBG_LOC_ARGS_INJ)
 #endif
 
 /* */
-FL struct n_string *n_string_unshift_buf(struct n_string *self, char const *buf,
-                     size_t buflen n_MEMORY_DEBUG_ARGS);
+FL struct n_string *n_string_unshift_buf(struct n_string *self,
+      char const *buf, size_t buflen  su_DBG_LOC_ARGS_DECL);
 #define n_string_unshift(S,T) \
    n_string_unshift_buf(S, (T)->s_len, (T)->s_dat)
 #define n_string_unshift_cp(S,CP) \
-      n_string_unshift_buf(S, CP, UIZ_MAX)
+   n_string_unshift_buf(S, CP, UIZ_MAX)
 FL struct n_string *n_string_unshift_c(struct n_string *self, char c
-                     n_MEMORY_DEBUG_ARGS);
+      su_DBG_LOC_ARGS_DECL);
 
-#ifdef mx_HAVE_MEMORY_DEBUG
+#ifdef su_HAVE_DBG_LOC_ARGS
 # define n_string_unshift_buf(S,B,BL) \
-   n_string_unshift_buf(S,B,BL, __FILE__, __LINE__)
-# define n_string_unshift_c(S,C) n_string_unshift_c(S, C, __FILE__, __LINE__)
+   (n_string_unshift_buf)(S, B, BL  su_DBG_LOC_ARGS_INJ)
+# define n_string_unshift_c(S,C) \
+   (n_string_unshift_c)(S, C  su_DBG_LOC_ARGS_INJ)
 #endif
 
 /* */
 FL struct n_string *n_string_insert_buf(struct n_string *self, size_t idx,
-                     char const *buf, size_t buflen n_MEMORY_DEBUG_ARGS);
+      char const *buf, size_t buflen  su_DBG_LOC_ARGS_DECL);
 #define n_string_insert(S,I,T) \
    n_string_insert_buf(S, I, (T)->s_len, (T)->s_dat)
 #define n_string_insert_cp(S,I,CP) \
-      n_string_insert_buf(S, I, CP, UIZ_MAX)
+   n_string_insert_buf(S, I, CP, UIZ_MAX)
 FL struct n_string *n_string_insert_c(struct n_string *self, size_t idx,
-                     char c n_MEMORY_DEBUG_ARGS);
+      char c  su_DBG_LOC_ARGS_DECL);
 
-#ifdef mx_HAVE_MEMORY_DEBUG
+#ifdef su_HAVE_DBG_LOC_ARGS
 # define n_string_insert_buf(S,I,B,BL) \
-   n_string_insert_buf(S, I, B, BL, __FILE__, __LINE__)
-# define n_string_insert_c(S,I,C) n_string_insert_c(S, I, C, __FILE__, __LINE__)
+   (n_string_insert_buf)(S, I, B, BL  su_DBG_LOC_ARGS_INJ)
+# define n_string_insert_c(S,I,C) \
+   (n_string_insert_c)(S, I, C  su_DBG_LOC_ARGS_INJ)
 #endif
 
 /* */
-FL struct n_string *n_string_cut(struct n_string *self, size_t idx, size_t len);
+FL struct n_string *n_string_cut(struct n_string *self, size_t idx,
+      size_t len);
 
 /* Ensure self has a - NUL terminated - buffer, and return that.
  * The latter may return the pointer to an internal empty RODATA instead */
-FL char *      n_string_cp(struct n_string *self n_MEMORY_DEBUG_ARGS);
+FL char *n_string_cp(struct n_string *self  su_DBG_LOC_ARGS_DECL);
 FL char const *n_string_cp_const(struct n_string const *self);
 
-#ifdef mx_HAVE_MEMORY_DEBUG
-# define n_string_cp(S)          n_string_cp(S, __FILE__, __LINE__)
+#ifdef su_HAVE_DBG_LOC_ARGS
+# define n_string_cp(S) (n_string_cp)(S  su_DBG_LOC_ARGS_INJ)
 #endif
 
 #ifdef su_HAVE_INLINE
@@ -2622,10 +2538,10 @@ FL void n_tty_destroy(bool_t xit_fastpath);
  * Only the _CTX_ bits in lif are used */
 FL int n_tty_readline(enum n_go_input_flags gif, char const *prompt,
          char **linebuf, size_t *linesize, size_t n, bool_t *histok_or_null
-         n_MEMORY_DEBUG_ARGS);
-#ifdef mx_HAVE_MEMORY_DEBUG
+         su_DBG_LOC_ARGS_DECL);
+#ifdef su_HAVE_DBG_LOC_ARGS
 # define n_tty_readline(A,B,C,D,E,F) \
-   (n_tty_readline)(A,B,C,D,E,F,__FILE__,__LINE__)
+   (n_tty_readline)(A, B, C, D, E, F  su_DBG_LOC_ARGS_INJ)
 #endif
 
 /* Add a line (most likely as returned by n_tty_readline()) to the history.
@@ -2683,11 +2599,11 @@ FL void        bidi_info_create(struct bidi_info *bip);
 
 /* URL en- and decoding according to (enough of) RFC 3986 (RFC 1738).
  * These return a newly autorec_alloc()ated result, or NULL on length excess */
-FL char *      urlxenc(char const *cp, bool_t ispath n_MEMORY_DEBUG_ARGS);
-FL char *      urlxdec(char const *cp n_MEMORY_DEBUG_ARGS);
-#ifdef mx_HAVE_MEMORY_DEBUG
-# define urlxenc(CP,P)           urlxenc(CP, P, __FILE__, __LINE__)
-# define urlxdec(CP)             urlxdec(CP, __FILE__, __LINE__)
+FL char *urlxenc(char const *cp, bool_t ispath  su_DBG_LOC_ARGS_DECL);
+FL char *urlxdec(char const *cp  su_DBG_LOC_ARGS_DECL);
+#ifdef su_HAVE_DBG_LOC_ARGS
+# define urlxenc(CP,P) urlxenc(CP, P  su_DBG_LOC_ARGS_INJ)
+# define urlxdec(CP) urlxdec(CP  su_DBG_LOC_ARGS_INJ)
 #endif
 
 /* `urlcodec' */
@@ -2832,9 +2748,9 @@ FL time_t      imap_read_date_time(const char *cp);
 FL const char * imap_make_date_time(time_t t);
 
 /* Extract the protocol base and return a duplicate */
-FL char *      protbase(char const *cp n_MEMORY_DEBUG_ARGS);
-# ifdef mx_HAVE_MEMORY_DEBUG
-#  define protbase(CP)           protbase(CP, __FILE__, __LINE__)
+FL char *protbase(char const *cp  su_DBG_LOC_ARGS_DECL);
+# ifdef su_HAVE_DBG_LOC_ARGS
+#  define protbase(CP) (protbase)(CP  su_DBG_LOC_ARGS_INJ)
 # endif
 #endif /* mx_HAVE_IMAP */
 

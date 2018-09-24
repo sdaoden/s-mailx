@@ -1265,6 +1265,7 @@ msg 'done'
 os_setup
 
 msg 'Checking for remaining set of utilities'
+thecmd_testandset_fail getconf getconf
 thecmd_testandset_fail grep grep
 
 # Before we step ahead with the other utilities perform a path cleanup first.
@@ -1363,7 +1364,8 @@ fi
 
 for i in \
    CWDDIR TOPDIR INCDIR SRCDIR \
-      awk basename cat chmod chown cp cmp grep mkdir mv rm sed sort tee tr \
+      awk basename cat chmod chown cp cmp grep getconf \
+         mkdir mv rm sed sort tee tr \
       MAKE MAKEFLAGS make SHELL strip \
       cksum; do
    eval j=\$${i}
@@ -1524,6 +1526,16 @@ echo '#define VAL_BUILD_OS "'"${OS}"'"' >> ${h}
 
 printf '#endif /* mx_SOURCE */\n\n' >> ${h} # Opened when it was $newh
 
+## SU
+
+i=`${getconf} PAGESIZE 2>/dev/null`
+[ $? -eq 0 ] || i=`${getconf} PAGE_SIZE 2>/dev/null`
+if [ $? -ne 0 ]; then
+   msg 'Cannot query PAGESIZE via getconf(1), assuming 4096'
+   i=0x1000
+fi
+printf '#define su_PAGE_SIZE %su\n' "${i}" >> ${h}
+
 # Generate n_err_number OS mappings
 dump_test_program=0
 (
@@ -1532,6 +1544,8 @@ dump_test_program=0
       ${SHELL} "${TOPDIR}"mk/make-errors.sh ${NV} config
 ) | xrun_check oserrno 'OS error mapping table generated' || config_exit 1
 dump_test_program=1
+
+## /SU
 
 feat_def ALWAYS_UNICODE_LOCALE
 feat_def AMALGAMATION 0

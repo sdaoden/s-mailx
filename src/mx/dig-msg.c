@@ -88,12 +88,12 @@ a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp, bool_t oexcl){
 
    *dmcpp = dmcp = n_calloc(1, n_ALIGN(sizeof *dmcp) + sizeof(struct header));
    dmcp->dmc_mp = &message[msgno - 1];
-   dmcp->dmc_flags = n_DIG_MSG_OWN_MEMPOOL |
+   dmcp->dmc_flags = n_DIG_MSG_OWN_MEMBAG |
          ((TRU1/*TODO*/ || !(mb.mb_perm & MB_DELE))
             ? n_DIG_MSG_RDONLY : n_DIG_MSG_NONE);
    dmcp->dmc_msgno = msgno;
    dmcp->dmc_hp = (struct header*)PTR2SIZE(&dmcp[1]);
-   dmcp->dmc_mempool = dmcp->dmc_mempool_buf;
+   dmcp->dmc_membag = su_mem_bag_create(&dmcp->dmc__membag_buf[0], 0);
    /* Rest done by caller */
    rv = n_ERR_NONE;
 jleave:
@@ -1154,10 +1154,8 @@ n_dig_msg_on_mailbox_close(struct mailbox *mbp){
       mbp->mb_digmsg = dmcp->dmc_next;
       if(dmcp->dmc_flags & n_DIG_MSG_FCLOSE)
          fclose(dmcp->dmc_fp);
-      if(dmcp->dmc_flags & n_DIG_MSG_OWN_MEMPOOL){
-         n_memory_pool_push(dmcp->dmc_mempool, FAL0);
-         n_memory_pool_pop(dmcp->dmc_mempool, TRU1);
-      }
+      if(dmcp->dmc_flags & n_DIG_MSG_OWN_MEMBAG)
+         su_mem_bag_gut(dmcp->dmc_membag);
       n_free(dmcp);
    }
    n_NYD_OU;
@@ -1232,12 +1230,12 @@ c_digmsg(void *vp){
             goto jeinval_quote;
          }
 
-         n_memory_pool_push(dmcp->dmc_mempool, TRU1);
+         su_mem_bag_push(n_go_data->gdc_membag, dmcp->dmc_membag);
          /* XXX n_header_extract error!! */
          n_header_extract((n_HEADER_EXTRACT_FULL |
                n_HEADER_EXTRACT_PREFILL_RECEIVERS |
                n_HEADER_EXTRACT_IGNORE_FROM_), fp, dmcp->dmc_hp, NULL);
-         n_memory_pool_pop(dmcp->dmc_mempool, FAL0);
+         su_mem_bag_pop(n_go_data->gdc_membag, dmcp->dmc_membag);
       }
 
       if(cacp->cac_no == 3)
@@ -1297,10 +1295,8 @@ c_digmsg(void *vp){
       if(dmcp->dmc_flags & n_DIG_MSG_FCLOSE)
          fclose(dmcp->dmc_fp);
 jeremove:
-      if(dmcp->dmc_flags & n_DIG_MSG_OWN_MEMPOOL){
-         n_memory_pool_push(dmcp->dmc_mempool, FAL0);
-         n_memory_pool_pop(dmcp->dmc_mempool, TRU1);
-      }
+      if(dmcp->dmc_flags & n_DIG_MSG_OWN_MEMBAG)
+         su_mem_bag_gut(dmcp->dmc_membag);
 
       if(dmcp->dmc_flags & n_DIG_MSG_COMPOSE)
          dmcp->dmc_flags = n_DIG_MSG_COMPOSE;
@@ -1324,7 +1320,7 @@ jeremove:
          ftruncate(fileno(dmcp->dmc_fp), 0);
       }
 
-      n_memory_pool_push(dmcp->dmc_mempool, FAL0);
+      su_mem_bag_push(n_go_data->gdc_membag, dmcp->dmc_membag);
       /* C99 */{
          struct str cmds_b, *cmdsp;
 
@@ -1341,7 +1337,7 @@ jeremove:
          if(!a_dmsg_cmd(dmcp->dmc_fp, dmcp, cmdsp->s, cmdsp->l, cp))
             vp = NULL;
       }
-      n_memory_pool_pop(dmcp->dmc_mempool, FAL0);
+      su_mem_bag_pop(n_go_data->gdc_membag, dmcp->dmc_membag);
 
       if(dmcp->dmc_flags & n_DIG_MSG_HAVE_FP){
          rewind(dmcp->dmc_fp);

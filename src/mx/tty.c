@@ -879,7 +879,7 @@ static ui8_t a_tty_wcwidth(wchar_t wc);
 
 /* Memory / cell / word generics */
 static void a_tty_check_grow(struct a_tty_line *tlp, ui32_t no
-               n_MEMORY_DEBUG_ARGS);
+               su_DBG_LOC_ARGS_DECL);
 static ssize_t a_tty_cell2dat(struct a_tty_line *tlp);
 static void a_tty_cell2save(struct a_tty_line *tlp);
 
@@ -930,7 +930,7 @@ static enum a_tty_fun_status a_tty_fun(struct a_tty_line *tlp,
 
 /* Readline core */
 static ssize_t a_tty_readline(struct a_tty_line *tlp, size_t len,
-                  bool_t *histok_or_null n_MEMORY_DEBUG_ARGS);
+                  bool_t *histok_or_null  su_DBG_LOC_ARGS_DECL);
 
 # ifdef mx_HAVE_KEY_BINDINGS
 /* Find context or -1 */
@@ -1333,7 +1333,7 @@ a_tty_wcwidth(wchar_t wc){
 }
 
 static void
-a_tty_check_grow(struct a_tty_line *tlp, ui32_t no n_MEMORY_DEBUG_ARGS){
+a_tty_check_grow(struct a_tty_line *tlp, ui32_t no  su_DBG_LOC_ARGS_DECL){
    ui32_t cmax;
    n_NYD2_IN;
 
@@ -1345,8 +1345,8 @@ a_tty_check_grow(struct a_tty_line *tlp, ui32_t no n_MEMORY_DEBUG_ARGS){
          hold_all_sigs(); /* XXX v15 drop */
          i <<= 1;
          tlp->tl_line.cbuf =
-         *tlp->tl_x_buf = (n_realloc)(*tlp->tl_x_buf, i
-               n_MEMORY_DEBUG_ARGSCALL);
+         *tlp->tl_x_buf = su_MEM_REALLOC_LOCOR(*tlp->tl_x_buf, i,
+               su_DBG_LOC_ARGS_ORUSE);
          rele_all_sigs(); /* XXX v15 drop */
       }
       tlp->tl_count_max = cmax;
@@ -2273,7 +2273,7 @@ jleave:
 
 static ui32_t
 a_tty_kht(struct a_tty_line *tlp){
-   ui8_t (*mempool)[n_MEMORY_POOL_TYPE_SIZEOF], *mempool_persist;
+   struct su_mem_bag *membag, *membag_persist, membag__buf[1];
    struct stat sb;
    struct str orig, bot, topp, sub, exp, preexp;
    struct n_string shou, *shoup;
@@ -2294,8 +2294,9 @@ a_tty_kht(struct a_tty_line *tlp){
       set_savec = TRU1;
    orig = exp;
 
-   mempool_persist = n_memory_pool_top();
-   n_memory_pool_push(mempool = n_lofi_alloc(sizeof *mempool), TRU1);
+   membag = su_mem_bag_create(&membag__buf[0], 0);
+   membag_persist = su_mem_bag_top(n_go_data->gdc_membag);
+   su_mem_bag_push(n_go_data->gdc_membag, membag);
 
    shoup = n_string_creat_auto(&shou);
    f = a_TTY_VF_NONE;
@@ -2473,7 +2474,9 @@ jset:
    tlp->tl_defc_cursor_byte = bot.l + preexp.l + exp.l -1;
 
    orig.l = bot.l + preexp.l + exp.l + topp.l;
-   orig.s = n_autorec_alloc_from_pool(mempool_persist, orig.l + 5 +1);
+   su_mem_bag_push(n_go_data->gdc_membag, membag_persist);
+   orig.s = su_MEM_BAG_SELF_AUTO_ALLOC(orig.l + 5 +1);
+   su_mem_bag_pop(n_go_data->gdc_membag, membag_persist);
    if((rv = (ui32_t)bot.l) > 0)
       memcpy(orig.s, bot.s, rv);
    if(preexp.l > 0){
@@ -2492,8 +2495,8 @@ jset:
    tlp->tl_count = tlp->tl_cursor = 0;
    f |= a_TTY_VF_MOD_DIRTY;
 jleave:
-   n_memory_pool_pop(mempool, TRU1);
-   n_lofi_free(mempool);
+   su_mem_bag_pop(n_go_data->gdc_membag, membag);
+   su_mem_bag_gut(membag);
    tlp->tl_vi_flags |= f;
    n_NYD2_OU;
    return rv;
@@ -3020,7 +3023,7 @@ jreset:
 
 static ssize_t
 a_tty_readline(struct a_tty_line *tlp, size_t len, bool_t *histok_or_null
-      n_MEMORY_DEBUG_ARGS){
+      su_DBG_LOC_ARGS_DECL){
    /* We want to save code, yet we may have to incorporate a lines'
     * default content and / or default input to switch back to after some
     * history movement; let "len > 0" mean "have to display some data
@@ -3054,7 +3057,7 @@ jinput_loop:
 
       /* Ensure we have valid pointers, and room for grow */
       a_tty_check_grow(tlp, ((flags & a_BUFMODE) ? (ui32_t)len : 1)
-         n_MEMORY_DEBUG_ARGSCALL);
+         su_DBG_LOC_ARGS_USE);
 
       /* Handle visual state flags, except in buffer mode */
       if(!(flags & a_BUFMODE) && (tlp->tl_vi_flags & a_TTY_VF_ALL_MASK))
@@ -3428,7 +3431,8 @@ jinject_input:{
    n_go_input_inject(n_GO_INPUT_INJECT_NONE, tlp->tl_line.cbuf, i);
    i = strlen(cbufp) +1;
    if(i >= *tlp->tl_x_bufsize){
-      *tlp->tl_x_buf = (n_realloc)(*tlp->tl_x_buf, i n_MEMORY_DEBUG_ARGSCALL);
+      *tlp->tl_x_buf = su_MEM_REALLOC_LOCOR(*tlp->tl_x_buf, i,
+               su_DBG_LOC_ARGS_ORUSE);
       *tlp->tl_x_bufsize = i;
    }
    memcpy(*tlp->tl_x_buf, cbufp, i);
@@ -4238,7 +4242,7 @@ jleave:
 FL int
 (n_tty_readline)(enum n_go_input_flags gif, char const *prompt,
       char **linebuf, size_t *linesize, size_t n, bool_t *histok_or_null
-      n_MEMORY_DEBUG_ARGS){
+      su_DBG_LOC_ARGS_DECL){
    struct a_tty_line tl;
    struct n_string xprompt;
 # ifdef mx_HAVE_COLOUR
@@ -4344,7 +4348,7 @@ FL int
    a_tty_sigs_up();
    n_TERMCAP_RESUME(FAL0);
    a_tty_term_mode(TRU1);
-   nn = a_tty_readline(&tl, n, histok_or_null n_MEMORY_DEBUG_ARGSCALL);
+   nn = a_tty_readline(&tl, n, histok_or_null  su_DBG_LOC_ARGS_USE);
    n_COLOUR( n_colour_env_gut(); )
    a_tty_term_mode(FAL0);
    n_TERMCAP_SUSPEND(FAL0);
@@ -4748,7 +4752,7 @@ n_tty_destroy(bool_t xit_fastpath){
 FL int
 (n_tty_readline)(enum n_go_input_flags gif, char const *prompt,
       char **linebuf, size_t *linesize, size_t n, bool_t *histok_or_null
-      n_MEMORY_DEBUG_ARGS){
+      su_DBG_LOC_ARGS_DECL){
    struct n_string xprompt;
    int rv;
    n_NYD_IN;
@@ -4765,8 +4769,7 @@ FL int
    a_tty_sigs_up();
    n_TERMCAP_RESUME(FAL0);
 # endif
-   rv = (readline_restart)(n_stdin, linebuf, linesize, n
-         n_MEMORY_DEBUG_ARGSCALL);
+   rv = (readline_restart)(n_stdin, linebuf, linesize, n  su_DBG_LOC_ARGS_USE);
 # ifdef mx_HAVE_TERMCAP
    n_TERMCAP_SUSPEND(FAL0);
    a_tty_sigs_down();

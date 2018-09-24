@@ -2,6 +2,8 @@
  *@ And main documentation entry point, as below.
  *@ - Reacts upon su_HAVE_DEBUG, su_HAVE_DEVEL, and NDEBUG.
  *@   The latter is a precondition for su_HAVE_INLINE.
+ *@   su_HAVE_DEVEL is meant as a possibility to enable test paths with
+ *@   debugging disabled.
  *@ - Some macros require su_FILE to be defined to a literal.
  *@ - Define su_MASTER to inject what is to be injected once; for example,
  *@   it enables su_M*CTA() compile time assertions.
@@ -83,11 +85,20 @@
     * If not, facilities exist in the global namespace. */
 # define su_HAVE_NSPC
 
-# define su_HAVE_DEBUG        /*!< \_ */
-# define su_HAVE_DEVEL        /*!< \_ */
+# define su_HAVE_DEBUG        /*!< Debug variant, including assertions etc. */
+   /*! Test paths available in non-debug code.
+    * Also, compiler pragmas which suppress some warnings are not set, etc.*/
+# define su_HAVE_DEVEL
 # define su_HAVE_MEM_BAG_AUTO /*!< \_ */
 # define su_HAVE_MEM_BAG_LOFI /*!< \_ */
-# define su_HAVE_MEM_CANARIES_DISABLE  /*!< \_ */
+   /*! Normally the debug library provides memory write boundary excess via
+    * canaries (see \r{MEM_CACHE_ALLOC} and \r{su_MEM_ALLOC_DEBUG}).
+    * Since this counteracts external memory checkers like \c{valgrind(1)} or
+    * the ASAN (address sanitizer) compiler extensions, the \SU checkers can be
+    * disabled explicitly. */
+# define su_HAVE_MEM_CANARIES_DISABLE
+
+# define su_PAGE_SIZE   /*!< \_ */
 #endif
 
 /*! @} *//* CONFIG }}} */

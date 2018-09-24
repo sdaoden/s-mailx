@@ -4367,13 +4367,13 @@ jredo:
 }
 
 FL char *
-(protbase)(char const *cp n_MEMORY_DEBUG_ARGS)
+(protbase)(char const *cp  su_DBG_LOC_ARGS_DECL)
 {
    char *n, *np;
    n_NYD2_IN;
 
-   np = n = (n_autorec_alloc_from_pool)(NULL, strlen(cp) +1
-         n_MEMORY_DEBUG_ARGSCALL);
+   np = n = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(strlen(cp) +1,
+         su_DBG_LOC_ARGS_ORUSE);
 
    /* Just ignore the `is-system-mailbox' prefix XXX */
    if (cp[0] == '%' && cp[1] == ':')

@@ -211,32 +211,110 @@
 
 /* MEMORY */
 
+#undef su_ALLOCATE
+#undef su_ALLOCATE_LOC
+#undef su_REALLOCATE
+#undef su_REALLOCATE_LOC
+
 #undef su_ALLOC
-#undef su_NALLOC
+#undef su_ALLOC_LOC
+#undef su_ALLOC_LOCOR
+#undef su_ALLOC_N
+#undef su_ALLOC_N_LOC
+#undef su_ALLOC_N_LOCOR
 #undef su_CALLOC
-#undef su_NCALLOC
+#undef su_CALLOC_LOC
+#undef su_CALLOC_LOCOR
+#undef su_CALLOC_N
+#undef su_CALLOC_N_LOC
+#undef su_CALLOC_N_LOCOR
 #undef su_REALLOC
-#undef su_NREALLOC
+#undef su_REALLOC_LOC
+#undef su_REALLOC_LOCOR
+#undef su_REALLOC_N
+#undef su_REALLOC_N_LOC
+#undef su_REALLOC_N_LOCOR
 #undef su_TALLOC
+#undef su_TALLOC_LOC
+#undef su_TALLOC_LOCOR
 #undef su_TCALLOC
+#undef su_TCALLOC_LOC
+#undef su_TCALLOC_LOCOR
 #undef su_TREALLOC
+#undef su_TREALLOC_LOC
+#undef su_TREALLOC_LOCOR
 #undef su_FREE
-#ifdef su_HAVE_MEM_AUTO
-# undef su_LOFI_ALLOC
-# undef su_LOFI_FREE
-# undef su_AUTO_ALLOC_POOL
-# undef su_AUTO_CALLOC_POOL
-# undef su_AUTO_ALLOC
-# undef su_AUTO_CALLOC
-#endif
+#undef su_FREE_LOC
+#undef su_FREE_LOCOR
+
 #if !su_C_LANG
 # undef su_NEW
+# undef su_NEW_LOC
+# undef su_NEW_LOCOR
 # undef su_CNEW
+# undef su_CNEW_LOC
+# undef su_CNEW_LOCOR
 # undef su_NEW_HEAP
+# undef su_NEW_HEAP_LOC
+# undef su_NEW_HEAP_LOCOR
 # undef su_DEL
+# undef su_DEL_LOC
+# undef su_DEL_LOCOR
 # undef su_DEL_HEAP
+# undef su_DEL_HEAP_LOC
+# undef su_DEL_HEAP_LOCOR
 # undef su_DEL_PRIVATE
+# undef su_DEL_PRIVATE_LOC
+# undef su_DEL_PRIVATE_LOCOR
 # undef su_DEL_HEAP_PRIVATE
-#endif
+# undef su_DEL_HEAP_PRIVATE_LOC
+# undef su_DEL_HEAP_PRIVATE_LOCOR
+#endif /* !C_LANG */
+
+#ifdef su_MEM_BAG_SELF
+# ifdef su_HAVE_MEM_BAG_AUTO
+#  undef su_AUTO_ALLOC
+#  undef su_AUTO_ALLOC_LOC
+#  undef su_AUTO_ALLOC_LOCOR
+#  undef su_AUTO_ALLOC_N
+#  undef su_AUTO_ALLOC_N_LOC
+#  undef su_AUTO_ALLOC_N_LOCOR
+#  undef su_AUTO_CALLOC
+#  undef su_AUTO_CALLOC_LOC
+#  undef su_AUTO_CALLOC_LOCOR
+#  undef su_AUTO_CALLOC_N
+#  undef su_AUTO_CALLOC_N_LOC
+#  undef su_AUTO_CALLOC_N_LOCOR
+#  undef su_AUTO_TALLOC
+#  undef su_AUTO_TALLOC_LOC
+#  undef su_AUTO_TALLOC_LOCOR
+#  undef su_AUTO_TCALLOC
+#  undef su_AUTO_TCALLOC_LOC
+#  undef su_AUTO_TCALLOC_LOCOR
+# endif /* su_HAVE_MEM_BAG_AUTO */
+# ifdef su_HAVE_MEM_BAG_LOFI
+#  undef su_LOFI_ALLOC
+#  undef su_LOFI_ALLOC_LOC
+#  undef su_LOFI_ALLOC_LOCOR
+#  undef su_LOFI_ALLOC_N
+#  undef su_LOFI_ALLOC_N_LOC
+#  undef su_LOFI_ALLOC_N_LOCOR
+#  undef su_LOFI_CALLOC
+#  undef su_LOFI_CALLOC_LOC
+#  undef su_LOFI_CALLOC_LOCOR
+#  undef su_LOFI_CALLOC_N
+#  undef su_LOFI_CALLOC_N_LOC
+#  undef su_LOFI_CALLOC_N_LOCOR
+#  undef su_LOFI_TALLOC
+#  undef su_LOFI_TALLOC_LOC
+#  undef su_LOFI_TALLOC_LOCOR
+#  undef su_LOFI_TCALLOC
+#  undef su_LOFI_TCALLOC_LOC
+#  undef su_LOFI_TCALLOC_LOCOR
+#  undef su_LOFI_FREE
+#  undef su_LOFI_FREE_LOC
+#  undef su_LOFI_FREE_LOCOR
+# endif /* su_HAVE_MEM_BAG_LOFI */
+#endif /* su_MEM_BAG_SELF */
 
 /* s-it-mode */

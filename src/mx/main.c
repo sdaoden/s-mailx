@@ -245,7 +245,7 @@ a_main_usage(FILE *fp){
    i = strlen(su_program);
    i = n_MIN(i, sizeof(buf) -1);
    if(i > 0)
-      memset(buf, ' ', i);
+      su_mem_set(buf, ' ', i);
    buf[i] = '\0';
 
    fprintf(fp, _("%s (%s %s): send and receive Internet mail\n"),
@@ -379,7 +379,7 @@ a_main_grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt){
    newcpp = n_autorec_alloc(sizeof(char*) * (newsize + 1));
 
    if(oldcnt > 0)
-      memcpy(newcpp, *cpp, oldcnt * sizeof(char*));
+      su_mem_copy(newcpp, *cpp, oldcnt * sizeof(char*));
    *cpp = newcpp;
    n_NYD2_OU;
    return newsize;
@@ -1176,7 +1176,7 @@ jgetopt_done:
    a_main_setup_screen();
 
    /* Create memory pool snapshot; Memory is auto-reclaimed from now on */
-   n_memory_pool_fixate();
+   su_mem_bag_fixate(n_go_data->gdc_membag);
 
    /* load() any resource files */
    if(resfiles & a_RF_ALL){
@@ -1332,11 +1332,9 @@ jleave:
 #endif
 
 j_leave:
-#if defined mx_HAVE_MEMORY_DEBUG || defined mx_HAVE_NOMEMDBG
-   n_memory_pool_pop(NULL, TRU1);
-#endif
-#if defined mx_HAVE_DEBUG || defined mx_HAVE_DEVEL || defined mx_HAVE_NOMEMDBG
-   n_memory_reset();
+#ifdef su_HAVE_DEBUG
+   su_mem_bag_gut(n_go_data->gdc_membag); /* Was init in go_init() */
+   su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0);
 #endif
    n_NYD_OU;
    return n_exit_status;

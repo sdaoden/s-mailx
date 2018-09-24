@@ -42,14 +42,22 @@
 
 /**/
 
-#define su_HAVE_MEM_BAG_AUTO
-#define su_HAVE_MEM_BAG_LOFI
-
 #ifdef mx_HAVE_DEBUG
 # define su_HAVE_DEBUG
 #endif
 #ifdef mx_HAVE_DEVEL
 # define su_HAVE_DEVEL
+#endif
+
+#define su_HAVE_MEM_BAG_AUTO
+#define su_HAVE_MEM_BAG_LOFI
+#ifdef mx_HAVE_NOMEMDBG
+# define su_HAVE_MEM_CANARIES_DISABLE
+#endif
+
+/* Hardware page size (xxx additional dynamic lookup support) */
+#ifndef su_PAGE_SIZE
+# error Need su_PAGE_SIZE configuration
 #endif
 
 #endif /* !su_CONFIG_H */

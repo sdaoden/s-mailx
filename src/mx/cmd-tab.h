@@ -790,14 +790,14 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
       { "urldecode", &c_urldecode, (O | G | M | X | TWYRA), 1, MAC, NULL
         DS(N_("Obsoleted by `urlcodec'")) }
 
-#ifdef mx_HAVE_MEMORY_DEBUG
-   ,{ "memtrace", &c_memtrace, (I | M | TWYSH), 0, 0, NULL
-     DS(N_("Trace current memory usage afap")) }
-#endif
 #ifdef mx_HAVE_DEVEL
+# ifdef su_MEM_ALLOC_DEBUG
+   ,{ "memtrace", &a_ctab_c_memtrace, (I | M | TWYSH), 0, 0, NULL
+     DS(N_("Trace current memory usage afap")) }
+# endif
    ,{ "sigstate", &c_sigstate, (I | M | TWYSH), 0, 0, NULL
      DS(N_("Show signal handler states")) }
-#endif
+#endif /* mx_HAVE_DEVEL */
 
    /* Obsolete stuff */
 

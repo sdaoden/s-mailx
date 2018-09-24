@@ -726,7 +726,7 @@ jleave:
 
 FL int
 (sgetline)(char **line, size_t *linesize, size_t *linelen, struct sock *sp
-   n_MEMORY_DEBUG_ARGS)
+   su_DBG_LOC_ARGS_DECL)
 {
    int rv;
    size_t lsize;
@@ -747,7 +747,8 @@ FL int
       if (lp_base == NULL || PTRCMP(lp, >, lp_base + lsize - 128)) {
          size_t diff = PTR2SIZE(lp - lp_base);
          *linesize = (lsize += 256); /* XXX magic */
-         *line = lp_base = (n_realloc)(lp_base, lsize n_MEMORY_DEBUG_ARGSCALL);
+         *line = lp_base = su_MEM_REALLOC_LOCOR(lp_base, lsize,
+               su_DBG_LOC_ARGS_ORUSE);
          lp = lp_base + diff;
       }
 

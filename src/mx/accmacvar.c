@@ -1074,6 +1074,8 @@ jefrom:
       case ok_b_debug:
          n_poption |= n_PO_DEBUG;
          su_log_set_level(su_LOG_DEBUG);
+# define a_DEBUG_MEMCONF su_MEM_CONF_DEBUG
+         DBG( su_mem_set_conf(a_DEBUG_MEMCONF, TRU1); )
          break;
       case ok_v_HOME:
          /* Invalidate any resolved folder then, too
@@ -1101,7 +1103,8 @@ jefrom:
          break;
 #endif
       case ok_b_memdebug:
-         n_poption |= n_PO_MEMDEBUG;
+         DBG( su_mem_set_conf(a_DEBUG_MEMCONF | su_MEM_CONF_LINGER_FREE |
+            su_MEM_CONF_ON_ERROR_EMERG, TRU1); )
          break;
       case ok_b_POSIXLY_CORRECT: /* <-> *posix* */
          if(!(n_pstate & n_PS_ROOT))
@@ -1144,6 +1147,8 @@ jefrom:
       case ok_b_debug:
          n_poption &= ~n_PO_DEBUG;
          su_log_set_level((n_poption & n_PO_VERB) ? su_LOG_INFO : n_LOG_LEVEL);
+         DBG( if(!ok_blook(memdebug))
+            su_mem_set_conf(a_DEBUG_MEMCONF, FAL0); )
          break;
       case ok_v_customhdr:{
          struct n_header_field *hfp;
@@ -1160,7 +1165,9 @@ jefrom:
          n_PS_ROOT_BLOCK(ok_vclear(folder_resolved));
          break;
       case ok_b_memdebug:
-         n_poption &= ~n_PO_MEMDEBUG;
+         DBG( su_mem_set_conf((ok_blook(debug) ? 0 : a_DEBUG_MEMCONF) |
+               su_MEM_CONF_LINGER_FREE | su_MEM_CONF_ON_ERROR_EMERG, FAL0); )
+#undef a_DEBUG_MEMCONF
          break;
       case ok_b_POSIXLY_CORRECT: /* <-> *posix* */
          if(!(n_pstate & n_PS_ROOT))

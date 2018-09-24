@@ -86,11 +86,12 @@ enum a_go_flags{
    a_GO_IS_EOF = 1u<<9,
 
    a_GO_SUPER_MACRO = 1u<<16, /* *Not* inheriting n_PS_SOURCING state */
-   /* This context has inherited the memory pool from its parent.
+   /* This context has inherited the memory bag from its parent.
     * In practice only used for resource file loading and -X args, which enter
     * a top level n_go_main_loop() and should (re)use the in practice already
-    * allocated memory pool of the global context */
-   a_GO_MEMPOOL_INHERITED = 1u<<17,
+    * allocated memory bag of the global context.
+    * The bag memory is reset after use. */
+   a_GO_MEMBAG_INHERITED = 1u<<17,
 
    /* This context has inherited the entire data context from its parent */
    a_GO_DATACTX_INHERITED = 1u<<18,
@@ -901,7 +902,8 @@ jrestart:
             close_all_files();
       }
 
-      n_memory_reset();
+      su_mem_bag_reset(gcp->gc_data.gdc_membag);
+      su_DBG( su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0); )
 
       n_pstate &= ~(n_PS_SOURCING | n_PS_ROBOT);
       assert(a_go_xcall == NULL);
@@ -910,7 +912,8 @@ jrestart:
       n_COLOUR( assert(gcp->gc_data.gdc_colour == NULL); )
       goto jxleave;
    }else if(gcm & a_GO_CLEANUP_LOOPTICK){
-      n_memory_reset();
+      su_mem_bag_reset(gcp->gc_data.gdc_membag);
+      su_DBG( su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0); )
       goto jxleave;
    }else if(gcp->gc_flags & a_GO_SPLICE){ /* TODO Temporary hack */
       n_stdin = gcp->gc_splice_stdin;
@@ -954,11 +957,10 @@ jrestart:
    else if(gcp->gc_flags & a_GO_FILE)
       Fclose(gcp->gc_file);
 
-   if(!(gcp->gc_flags & a_GO_MEMPOOL_INHERITED)){
-      if(gcp->gc_data.gdc_mempool != NULL)
-         n_memory_pool_pop(NULL, TRU1);
-   }else
-      n_memory_reset();
+   if(!(gcp->gc_flags & a_GO_MEMBAG_INHERITED))
+      su_mem_bag_gut(gcp->gc_data.gdc_membag);
+   else
+      su_mem_bag_reset(gcp->gc_data.gdc_membag);
 
 jstackpop:
    /* Update a_go_ctx and n_go_data, n_pstate ... */
@@ -1093,6 +1095,8 @@ jeopencheck:
    gcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
          (nlen = strlen(nbuf) +1));
    memset(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
+   gcp->gc_data.gdc_membag =
+         su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
 
    hold_all_sigs();
 
@@ -1120,8 +1124,8 @@ a_go_load(struct a_go_ctx *gcp){
    assert(!(n_psonce & n_PSO_STARTED));
    assert(!(a_go_ctx->gc_flags & a_GO_TYPE_MASK));
 
-   gcp->gc_flags |= a_GO_MEMPOOL_INHERITED;
-   gcp->gc_data.gdc_mempool = n_go_data->gdc_mempool;
+   gcp->gc_flags |= a_GO_MEMBAG_INHERITED;
+   gcp->gc_data.gdc_membag = n_go_data->gdc_membag;
 
    hold_all_sigs();
 
@@ -1182,8 +1186,10 @@ a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
    for(;; f |= a_TICKED){
       int n;
 
-      if(f & a_TICKED)
-         n_memory_reset();
+      if(f & a_TICKED){
+         su_mem_bag_reset(gcp->gc_data.gdc_membag);
+         su_DBG( su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0); )
+      }
 
       /* Read a line of commands and handle end of file specially */
       gec.gec_line.l = gec.gec_line_size;
@@ -1236,8 +1242,11 @@ n_go_init(void){
    gcp = (void*)a_go__mainctx_b.uf;
    DBGOR( memset(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name)),
       memset(&gcp->gc_data, 0, sizeof gcp->gc_data) );
+   gcp->gc_data.gdc_membag =
+         su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
    gcp->gc_file = n_stdin;
    memcpy(gcp->gc_name, a_GO_MAINCTX_NAME, sizeof(a_GO_MAINCTX_NAME));
+
    a_go_ctx = gcp;
    n_go_data = &gcp->gc_data;
 
@@ -1282,7 +1291,7 @@ n_go_main_loop(void){ /* FIXME */
          if ((cp = termios_state.ts_linebuf) != NULL) {
             termios_state.ts_linebuf = NULL;
             termios_state.ts_linesize = 0;
-            n_free(cp); /* TODO pool give-back */
+            n_free(cp); /* TODO bag give-back */
          }
          if (gec.gec_line.l > LINESIZE * 3) {
             n_free(gec.gec_line.s);
@@ -1501,7 +1510,7 @@ n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
 FL int
 (n_go_input)(enum n_go_input_flags gif, char const *prompt, char **linebuf,
       size_t *linesize, char const *string, bool_t *histok_or_null
-      n_MEMORY_DEBUG_ARGS){
+      su_DBG_LOC_ARGS_DECL){
    /* TODO readline: linebuf pool!; n_go_input should return si64_t.
     * TODO This thing should be replaced by a(n) (stack of) event generator(s)
     * TODO and consumed by OnLineCompletedEvent listeners */
@@ -1644,7 +1653,8 @@ jforce_stdin:
                *linesize += n +1;
             else
                *linesize = (size_t)n + LINESIZE +1;
-            *linebuf = (n_realloc)(*linebuf, *linesize n_MEMORY_DEBUG_ARGSCALL);
+            *linebuf = su_MEM_REALLOC_LOCOR(*linebuf, *linesize,
+                  su_DBG_LOC_ARGS_ORUSE);
            memcpy(*linebuf, string, (size_t)n +1);
          }
          string = NULL;
@@ -1652,7 +1662,7 @@ jforce_stdin:
          rele_all_sigs();
 
          n = (n_tty_readline)(gif, prompt, linebuf, linesize, n, histok_or_null
-               n_MEMORY_DEBUG_ARGSCALL);
+               su_DBG_LOC_ARGS_USE);
 
          hold_all_sigs();
 
@@ -1670,7 +1680,7 @@ jforce_stdin:
          }
 
          n = (readline_restart)(ifile, linebuf, linesize, n
-               n_MEMORY_DEBUG_ARGSCALL);
+               su_DBG_LOC_ARGS_USE);
 
          hold_all_sigs();
 
@@ -1963,6 +1973,8 @@ n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
    gcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
          (i = strlen(name) +1));
    memset(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
+   gcp->gc_data.gdc_membag =
+         su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
 
    hold_all_sigs();
 
@@ -2029,6 +2041,8 @@ n_go_command(enum n_go_input_flags gif, char const *cmd){
    gcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
          ial + 2*sizeof(char*));
    memset(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
+   gcp->gc_data.gdc_membag =
+         su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
 
    hold_all_sigs();
 

@@ -83,6 +83,8 @@
 #include <mx/config.h>
 
 #include <su/code.h>
+#include <su/mem.h> /* TODO should not be needed */
+#include <su/mem-bag.h> /* TODO should not be needed */
 
 /* Special FD requests for n_child_run(), n_child_start() */
 #define n_CHILD_FD_PASS -1
@@ -483,12 +485,12 @@ enum cproto {
 
 enum n_dig_msg_flags{
    n_DIG_MSG_NONE,
-   n_DIG_MSG_COMPOSE = 1u<<0,          /* Compose mode object.. */
-   n_DIG_MSG_COMPOSE_DIGGED = 1u<<1,   /* ..with `digmsg' handle also! */
-   n_DIG_MSG_RDONLY = 1u<<2,           /* Message is read-only */
-   n_DIG_MSG_OWN_MEMPOOL = 1u<<3,      /* dmc_mempool==dmc_mempool_buf */
-   n_DIG_MSG_HAVE_FP = 1u<<4,          /* Open on a Ftmp() file */
-   n_DIG_MSG_FCLOSE = 1u<<5            /* (mx_HAVE_FP:) needs fclose() */
+   n_DIG_MSG_COMPOSE = 1u<<0,       /* Compose mode object.. */
+   n_DIG_MSG_COMPOSE_DIGGED = 1u<<1, /* ..with `digmsg' handle also! */
+   n_DIG_MSG_RDONLY = 1u<<2,        /* Message is read-only */
+   n_DIG_MSG_OWN_MEMBAG = 1u<<3,    /* .gdm_membag==&.gdm__membag_buf[0] */
+   n_DIG_MSG_HAVE_FP = 1u<<4,       /* Open on a Ftmp() file */
+   n_DIG_MSG_FCLOSE = 1u<<5         /* (mx_HAVE_FP:) needs fclose() */
 };
 
 enum n_dotlock_state{
@@ -1182,9 +1184,6 @@ enum n_program_option{
    n_PO_TILDE_FLAG = 1u<<13,  /* -~ */
    n_PO_BATCH_FLAG = 1u<<14,  /* -# */
 
-   /*  */
-   n_PO_MEMDEBUG = 1<<24,     /* *memdebug* */
-
    /* Some easy-access shortcuts TODO n_PO_VERB+ should be mask(s) already! */
    n_PO_D_V = n_PO_DEBUG | n_PO_VERB | n_PO_VERBVERB,
    n_PO_D_VV = n_PO_DEBUG | n_PO_VERBVERB
@@ -1822,8 +1821,8 @@ struct n_dig_msg_ctx{
    ui32_t dmc_msgno;       /* XXX Only if !n_DIG_MSG_COMPOSE */
    FILE *dmc_fp;
    struct header *dmc_hp;
-   void *dmc_mempool;
-   char dmc_mempool_buf[n_MEMORY_POOL_TYPE_SIZEOF]; /* If !n_DIG_MSG_COMPOSE */
+   struct su_mem_bag *dmc_membag;
+   struct su_mem_bag dmc__membag_buf[1];
 };
 /* This is a bit hairy */
 #define n_DIG_MSG_COMPOSE_CREATE(DMCP,HP) \
@@ -1831,7 +1830,7 @@ do{\
    memset(n_dig_msg_compose_ctx = DMCP, 0, sizeof *(DMCP));\
    (DMCP)->dmc_flags = n_DIG_MSG_COMPOSE;\
    (DMCP)->dmc_hp = HP;\
-   (DMCP)->dmc_mempool = n_memory_pool_top();\
+   (DMCP)->dmc_membag = su_mem_bag_top(n_go_data->gdc_membag);\
 }while(0)
 #define n_DIG_MSG_COMPOSE_GUT(DMCP) \
 do{\
@@ -1861,10 +1860,8 @@ struct n_file_type{
 };
 
 struct n_go_data_ctx{
-   /* The memory pool may be inherited from outer context, so we
-    * .gdc_mempool may be NE .gdc__mempool_buf */
-   void *gdc_mempool;
-   void *gdc_ifcond; /* Saved state of conditional stack */
+   struct su_mem_bag *gdc_membag;
+   void *gdc_ifcond;                /* Saved state of conditional stack */
 #ifdef mx_HAVE_COLOUR
    struct n_colour_env *gdc_colour;
    bool_t gdc_colour_active;
@@ -1873,10 +1870,8 @@ struct n_go_data_ctx{
    (/*n_go_data->gc_data.gdc_colour != NULL &&*/\
     /*n_go_data->gc_data.gdc_colour->ce_enabled*/ n_go_data->gdc_colour_active)
 #endif
-   char gdc__mempool_buf[n_MEMORY_POOL_TYPE_SIZEOF];
+   struct su_mem_bag gdc__membag_buf[1];
 };
-n_MCTA(n_MEMORY_POOL_TYPE_SIZEOF % sizeof(void*) == 0,
-   "Inacceptible size of n_go_data_ctx.gdc_mempool")
 
 struct mime_handler {
    enum mime_handler_flags mh_flags;

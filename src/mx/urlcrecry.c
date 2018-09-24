@@ -568,7 +568,7 @@ jleave:
 #endif /* mx_HAVE_AGENT */
 
 FL char *
-(urlxenc)(char const *cp, bool_t ispath n_MEMORY_DEBUG_ARGS)
+(urlxenc)(char const *cp, bool_t ispath  su_DBG_LOC_ARGS_DECL)
 {
    char *n, *np, c1;
    n_NYD2_IN;
@@ -583,7 +583,7 @@ FL char *
       }
       i *= 3;
       ++i;
-      np = n = (n_autorec_alloc_from_pool)(NULL, i n_MEMORY_DEBUG_ARGSCALL);
+      np = n = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(i, su_DBG_LOC_ARGS_ORUSE);
    }
 
    for (; (c1 = *cp) != '\0'; ++cp) {
@@ -612,14 +612,14 @@ jleave:
 }
 
 FL char *
-(urlxdec)(char const *cp n_MEMORY_DEBUG_ARGS)
+(urlxdec)(char const *cp  su_DBG_LOC_ARGS_DECL)
 {
    char *n, *np;
    si32_t c;
    n_NYD2_IN;
 
-   np = n = (n_autorec_alloc_from_pool)(NULL, strlen(cp) +1
-         n_MEMORY_DEBUG_ARGSCALL);
+   np = n = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(strlen(cp) +1,
+         su_DBG_LOC_ARGS_ORUSE);
 
    while ((c = (uc_i)*cp++) != '\0') {
       if (c == '%' && cp[0] != '\0' && cp[1] != '\0') {

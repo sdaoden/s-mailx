@@ -27,7 +27,7 @@
 #define FILE_LOCK_TRIES 10    /* Maximum tries before n_file_lock() fails */
 #define FILE_LOCK_MILLIS 200  /* If UIZ_MAX, fall back to that */
 #define n_ERROR "ERROR"       /* Is-error?  Also as n_error[] */
-#define ERRORS_MAX 1000       /* Maximum error ring entries TODO configable*/
+#define ERRORS_MAX 5000       /* Error queue size (s32) TODO configurable */
 #define n_ESCAPE "~"          /* Default escape for sending (POSIX) */
 #define FTMP_OPEN_TRIES 10    /* Maximum number of Ftmp() open(2) tries */
 #define n_FORWARD_INJECT_HEAD "-------- Original Message --------\n" /* DOC! */
@@ -88,12 +88,6 @@
 # define LINESIZE 2560
 #endif
 #define BUFFER_SIZE (BUFSIZ >= (1u << 13) ? BUFSIZ : (1u << 14))
-
-/* Auto-reclaimed memory storage: size of the buffers.  Maximum auto-reclaimed
- * storage is that value /2, which is n_CTA()ed to be > 1024 */
-#define n_MEMORY_AUTOREC_SIZE 0x2000u
-/* Ugly, but avoid dynamic allocation for the management structure! */
-#define n_MEMORY_POOL_TYPE_SIZEOF (8 * sizeof(void*))
 
 /* Default *mime-encoding* as enum mime_enc */
 #define MIME_DEFAULT_ENCODING MIMEE_QP
@@ -210,12 +204,6 @@
 /* Switch indicating necessity of terminal access interface (termcap.c) */
 #if defined mx_HAVE_TERMCAP || defined mx_HAVE_COLOUR || defined mx_HAVE_MLE
 # define n_HAVE_TCAP
-#endif
-
-/* Whether we shall do our memory debug thing */
-#if (defined mx_HAVE_DEBUG || defined mx_HAVE_DEVEL) && \
-      !defined mx_HAVE_NOMEMDBG
-# define mx_HAVE_MEMORY_DEBUG
 #endif
 
 #endif /* mx_CONFIG_H */
