@@ -190,6 +190,10 @@ Low-Level
   rfc6858.txt Simplified POP and IMAP Downgrading for Internationalized Email
   RFC 7162                IMAP CONDSTORE & QRESYNC
   RFC 8058 Signaling One-Click Functionality for List Email Headers
+  RFC 8460 on SMTP TLS Reporting
+  RFC 8461 on SMTP MTA Strict Transport Security (MTA-STS)
+  RFC 8474 IMAP Extension for Object Identifiers
+  RFC 8484 on DNS Queries over HTTPS (DoH)
 
   draft-ietf-uta-email-tls-certs-01.txt
    SMTP security via opportunistic DANE TLS draft-ietf-dane-smtp-with-dane-15
