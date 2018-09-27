@@ -375,6 +375,7 @@ a_socket_connect(int fd, struct sockaddr *soap, size_t soapl){
       fd_set fdset;
       struct timeval tv; /* XXX configurable */
       socklen_t sol;
+      bool_t show_progress;
       int i, soe;
 
       if(connect(fd, soap, soapl) && (i = n_err_no) != n_ERR_INPROGRESS){
@@ -382,9 +383,12 @@ a_socket_connect(int fd, struct sockaddr *soap, size_t soapl){
          goto jerr_noerrno;
       }
 
+      show_progress = ((n_poption & n_PO_D_V) ||
+               ((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)));
+
       FD_ZERO(&fdset);
       FD_SET(fd, &fdset);
-      if(n_poption & n_PO_D_V){
+      if(show_progress){
          i = 21;
          tv.tv_sec = 2;
       }else{
@@ -398,10 +402,10 @@ jrewait:
          sol = sizeof rv;
          getsockopt(fd, SOL_SOCKET, SO_ERROR, &rv, &sol);
          fcntl(fd, F_SETFL, i);
-         if(n_poption & n_PO_D_V)
+         if(show_progress)
             n_err(" ");
       }else if(soe == 0){
-         if((n_poption & n_PO_D_V) && --i > 0){
+         if(show_progress && --i > 0){
             n_err(".");
             tv.tv_sec = 2;
             tv.tv_usec = 0;
