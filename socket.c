@@ -376,6 +376,7 @@ a_socket_connect(int fd, struct sockaddr *soap, size_t soapl){
       struct timeval tv; /* XXX configurable */
       socklen_t sol;
       bool_t show_progress;
+      uiz_t cnt;
       int i, soe;
 
       if(connect(fd, soap, soapl) && (i = n_err_no) != n_ERR_INPROGRESS){
@@ -388,15 +389,23 @@ a_socket_connect(int fd, struct sockaddr *soap, size_t soapl){
 
       FD_ZERO(&fdset);
       FD_SET(fd, &fdset);
-      if(show_progress){
-         i = 21;
-         tv.tv_sec = 2;
-      }else{
-         i = 1;
-         tv.tv_sec = 42;
+      /* C99 */{
+         char const *cp;
+
+         if((cp = ok_vlook(socket_connect_timeout)) == NULL ||
+               (n_idec_uiz_cp(&cnt, cp, 0, NULL), cnt < 2))
+            cnt = 42; /* XXX mx-config.h */
+
+         if(show_progress){
+            tv.tv_sec = 2;
+            cnt >>= 1;
+         }else{
+            tv.tv_sec = (long)cnt; /* XXX */
+            cnt = 1;
+         }
       }
-      tv.tv_usec = 0;
 jrewait:
+      tv.tv_usec = 0;
       if((soe = select(fd + 1, NULL, &fdset, NULL, &tv)) == 1){
          i = rv;
          sol = sizeof rv;
@@ -405,10 +414,9 @@ jrewait:
          if(show_progress)
             n_err(" ");
       }else if(soe == 0){
-         if(show_progress && --i > 0){
+         if(show_progress && --cnt > 0){
             n_err(".");
             tv.tv_sec = 2;
-            tv.tv_usec = 0;
             goto jrewait;
          }
          n_err(_(" timeout\n"));

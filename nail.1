@@ -5277,8 +5277,10 @@ mechanisms apply.
 \*(OPally URLs can also be used to access network resources, which may
 be accessed securely via
 .Sx "Encrypted network communication"
-if so supported, and it is possible to proxy all network traffic over
-a SOCKS5 server given via
+if so supported.
+Network communication socket timeouts are configurable, e.g.,
+.Va socket-connect-timeout .
+All generated network traffic may be proxied over the SOCKS5 server given in
 .Va socks-proxy .
 .
 .Pp
@@ -10319,7 +10321,9 @@ variable in order to use a specific combination of
 .Va hostname
 and
 .Va mta .
-\*(UA also supports forwarding of all network traffic over a specified
+Network communication socket timeouts are configurable, e.g.,
+.Va socket-connect-timeout .
+All generated network traffic may be proxied over the SOCKS5 server given in
 .Va socks-proxy .
 The following SMTP variants may be used:
 .
@@ -11790,6 +11794,12 @@ variable assignment is aborted when a necessary conversion fails.
 command to make an SMTP
 .Va mta
 session TLS encrypted, i.e., to enable transport layer security.
+.
+.Mx
+.It Va socket-connect-timeout
+\*(OP A positive number that defines the timeout to wait for
+establishing a socket connection before forcing
+.Va ^ERR Ns -TIMEDOUT .
 .
 .Mx Va socks-proxy
 .It Va socks-proxy-USER@HOST , socks-proxy-HOST , socks-proxy
