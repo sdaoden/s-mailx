@@ -126,8 +126,8 @@ Thank you!
     file modifications that are made in the official [release/] they
     need an installed perl(1).  For example:
 
-      $ git checkout stable/stable
       $ git fetch
+      $ git checkout stable/stable
       $ sh mk/make-release.sh grappa myrel # myrel created as necessary
       Preparing a release on commit [.]
       Grappa to be brought from stable/stable to myrel
