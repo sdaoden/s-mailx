@@ -163,7 +163,9 @@ uman.1: $(SRCDIR)nail.1
 
 urc.rc: $(SRCDIR)nail.rc
 	$(ECHO_GEN)\
-	LC_ALL=C _SYSCONFRC="$(VAL_SYSCONFRC)" _UAGENT="$(VAL_UAGENT)" \
+	LC_ALL=C \
+		_UAGENT="$(VAL_UAGENT)" \
+		_SYSCONFRC="$(VAL_SYSCONFDIR)/$(VAL_SYSCONFRC)" \
 		$(_version_from_header) \
 	< $(SRCDIR)nail.rc > $(@) $(awk) 'BEGIN {written = 0}\
 	/^#--MKRC-START--/, /^#--MKRC-END--/ {\
@@ -175,7 +177,7 @@ urc.rc: $(SRCDIR)nail.rc
 		cn = toupper(substr(ln, 1, 1)) substr(ln, 2);\
 		print "#@ ", ENVIRON["_SYSCONFRC"];\
 		print "#@ Configuration file for ", cn, " v",\
-			ENVIRON["VERSION"];\
+			ENVIRON["VERSION"], ".";\
 		OFS = " ";\
 		next\
 	}\
