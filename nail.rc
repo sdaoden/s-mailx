@@ -3,7 +3,7 @@
 #--MKRC-END--
 #@ The syntax of this file is interpreted as follows:
 #@ - Any leading and trailing whitespace (space, tabulator, newline: " \t\n"),
-#@   and all members of *ifs-ws* are removed.
+#@   and all members of (the internal variable) *ifs-ws* are removed.
 #@ - Empty lines are ignored.
 #@ - Any other line is a command line.  Such lines may spread over multiple
 #@   lines if a reverse solidus character \ is placed as the last character of
@@ -37,14 +37,14 @@
 # - Some of the latter are not portable and may thus have no effect with
 #   other  Mail(1) / mailx(1) / mail(1) programs.
 # - "wysh" is one of the "Command modifiers" and is not portable: before v15 it
-#   changesthe syntax of some old-style commands to sh(1)ell style quoting,
+#   changes the syntax of some old-style commands to sh(1)ell style quoting,
 #   also see "COMMANDS" -> "Shell-style argument quoting" in the manual.
 # - Availability of entries marked [OPTION] is a compile-time decision.
 
-# If threaded mode is activated, automatically collapse thread
+# If threaded mode is activated, automatically collapse thread.
 set autocollapse
 
-# Enter threaded mode automatically
+# Enter threaded mode automatically.
 #set autosort=thread
 
 # Append rather than prepend when writing to mbox automatically.
