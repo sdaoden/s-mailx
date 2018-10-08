@@ -694,7 +694,10 @@ static struct hf_ent const       _hf_ents[] = {
    _XSU("Auml", "Ae", 0x00C4),   _XSU("auml", "ae", 0x00E4),
    _XSU("Ouml", "Oe", 0x00D6),   _XSU("ouml", "oe", 0x00F6),
    _XSU("Uuml", "Ue", 0x00DC),   _XSU("uuml", "ue", 0x00FC),
-   _XSU("szlig", "ss", 0x00DF)
+   _XSU("szlig", "ss", 0x00DF),
+
+   /* No-ops in non-Unicode */
+   _XU("zwnj", '\0', 0x200C)
 
 # undef _X
 # undef _XU
@@ -1462,7 +1465,7 @@ jputuni:
                goto jputuni;
             } else if (hf & _HFE_HAVE_CSTR)
                self = _hf_puts(self, hfep->hfe_cstr);
-            else
+            else if (hfep->hfe_c != '\0')
                self = _hf_putc(self, hfep->hfe_c);
             goto jleave;
          }
