@@ -26,9 +26,9 @@ will not fail shall any of them not be available or usable.
 The generated configuration is tracked: changes will be recognized
 and cause automatic cleanups and rebuilds as necessary.
 
-  $ make tangerine  # equals "$ make config build test install"
-  $ make citron     # equals "$ make config build install"
-  $ make distclean  # *Completely* cleanup working directory
+  $ make -j2 tangerine  # equals "$ make config build test install"
+  $ make citron         # equals "$ make config build install"
+  $ make distclean      # *Completely* cleanup working directory
 
 With adjustments:
 
@@ -37,7 +37,7 @@ With adjustments:
 
 With utility program and feature adjustments:
 
-  $ make awk=/usr/bin/nawk OPT_SOCKETS=no DESTDIR=./zzz tangerine
+  $ make awk=/usr/bin/nawk VERBOSE=yes OPT_SOCKETS=no tangerine
 
 If OPT_DOTLOCK has been enabled then the minimal privilege-separated
 SETUID (to VAL_PRIVSEP_USER, default "root") helper program will be build
@@ -47,7 +47,7 @@ configuration / building and the installation tasks and give the last
 step higher privileges via super(1), sudo(1), su(1) or a similar
 mechanism, e.g.:
 
-  $ make VAL_PREFIX=/usr config && make MAKEJOBS='-j 4' &&
+  $ make VAL_PREFIX=/usr config && make -j4 &&
     super make DESTDIR=./xy install
 
 would create a "s-nail" binary and install a "s-nail" manual etc.  under
@@ -62,19 +62,11 @@ The following make(1) targets exist, the default being `build':
               or check and update configuration, build, test and install.
               The variable $DESTDIR will be honoured (see make.rc),
               but not be tracked in the configuration.
-              In order to parallelize the `build' step pass a $MAKEJOBS
-              variable, as shown below.
 - citron      Shorthand for "$ make config build install".
-              `build' parallelization via $MAKEJOBS, as shown below.
 - all         Shorthand for "$ make config build".
-              `build' parallelization via $MAKEJOBS, as shown below.
 
 - config      Only create or check and update the configuration.
 - build       Only build (using the existing configuration).
-              This can be parallelized, either by a corresponding make(1)
-              invocation when the target is run by itself, or by setting
-              the $MAKEJOBS variable otherwise, e.g., "MAKEJOBS='-j 4'".
-              $MAKEJOBS is not tracked in the configuration.
 - install     Only install using the built files of the existing
               configuration.
               The variable $DESTDIR will be honoured (see make.rc),

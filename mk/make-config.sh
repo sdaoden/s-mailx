@@ -1123,7 +1123,7 @@ _check_preface() {
       { echo '#include <'"${h_name}"'>'; cat; } > ${tmp}.c
    fi
    #echo '@P'
-   #${make} -f ${makefile} ${tmp}.x
+   #MAKEFLAGS= ${make} -f ${makefile} ${tmp}.x
    #${cat} ${tmp}.x
    echo '@R'
 }
@@ -1159,7 +1159,7 @@ compile_check() {
 
    _check_preface "${variable}" "${topic}" "${define}"
 
-   if ${make} -f ${makefile} XINCS="${INCS}" \
+   if MAKEFLAGS= ${make} -f ${makefile} XINCS="${INCS}" \
             CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" ${tmp}.o &&
             [ -f ${tmp}.o ]; then
       msg 'yes'
@@ -1185,7 +1185,7 @@ _link_mayrun() {
       fi
    fi
 
-   if ${make} -f ${makefile} XINCS="${INCS} ${incs}" \
+   if MAKEFLAGS= ${make} -f ${makefile} XINCS="${INCS} ${incs}" \
             CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" \
             XLIBS="${LIBS} ${libs}" ${tmp} &&
          [ -f ${tmp} ] && { [ ${run} -eq 0 ] || ${tmp}; }; then

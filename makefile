@@ -5,20 +5,22 @@
 .PHONY: ohno tangerine citron \
 	all config build install uninstall clean distclean test \
 	devel odevel
+.NOTPARALLEL:
+.WAIT: # Luckily BSD make supports specifying this as target, too
 
-# These are targets of make-emerge.sh
+# These two are targets of make-emerge.sh
 CWDDIR=
 TOPDIR=
 
 ohno: build
-tangerine: config build test install
-citron: config build install
-all: config build
+tangerine: config .WAIT build .WAIT test .WAIT install
+citron: config .WAIT build .WAIT install
+all: config .WAIT build
 
 config:
 	@$(_prego)
 build:
-	@$(_prestop); LC_ALL=C $${MAKE} -f mk-config.mk $(MAKEJOBS) all
+	@$(_prestop); LC_ALL=C $${MAKE} -f mk-config.mk all
 install packager-install: build
 	@$(_prestop);\
 	LC_ALL=C $${MAKE} -f mk-config.mk DESTDIR="$(DESTDIR)" install
@@ -33,15 +35,15 @@ distclean:
 devel:
 	@CONFIG=DEVEL; export CONFIG; $(_prego); $(_prestop);\
 	LC_ALL=C $${MAKE} -f mk-config.mk _update-version &&\
-	LC_ALL=C $${MAKE} -f mk-config.mk $(MAKEJOBS) all
+	LC_ALL=C $${MAKE} -f mk-config.mk all
 odevel:
 	@CONFIG=ODEVEL; export CONFIG; $(_prego); $(_prestop);\
 	LC_ALL=C $${MAKE} -f mk-config.mk _update-version &&\
-	LC_ALL=C $${MAKE} -f mk-config.mk $(MAKEJOBS) all
+	LC_ALL=C $${MAKE} -f mk-config.mk all
 d-b:
 	@$(_prestop);\
 	LC_ALL=C $${MAKE} -f mk-config.mk _update-version &&\
-	LC_ALL=C $${MAKE} -f mk-config.mk $(MAKEJOBS) all
+	LC_ALL=C $${MAKE} -f mk-config.mk all
 d-v:
 	@$(_prestop);\
 	LC_ALL=C $${MAKE} -f mk-config.mk _update-version
