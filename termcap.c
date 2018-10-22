@@ -268,13 +268,13 @@ jeinvent:
 #ifdef HAVE_KEY_BINDINGS
 jlearned:
 #endif
-      if(n_poption & n_PO_D_V)
+      if(n_poption & n_PO_D_VV)
          n_err(_("*termcap*: learned %.*s: %s\n"), (int)kl, ccp,
             (tep->te_flags & a_TERMCAP_F_DISABLED ? "<disabled>"
              : (f & a_TERMCAP_F_TYPE_MASK) == n_TERMCAP_CAPTYPE_BOOL ? "true"
                : v));
    }
-   DBG( if(n_poption & n_PO_D_V) n_err("*termcap* parsed: buffer used=%lu\n",
+   DBG( if(n_poption & n_PO_D_VV) n_err("*termcap* parsed: buffer used=%lu\n",
       (ul_i)a_termcap_g->tg_dat.s_len) );
 
    /* Catch some inter-dependencies the user may have triggered */

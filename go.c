@@ -1812,7 +1812,7 @@ n_go_load(char const *name){
    gcp->gc_flags = a_GO_FREE | a_GO_FILE;
    memcpy(gcp->gc_name, name, i);
 
-   if(n_poption & n_PO_D_V)
+   if(n_poption & n_PO_D_VV)
       n_err(_("Loading %s\n"), n_shexp_quote_cp(gcp->gc_name, FAL0));
    rv = a_go_load(gcp);
 jleave:
