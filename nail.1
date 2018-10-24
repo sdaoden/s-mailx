@@ -770,6 +770,11 @@ and
 .Va inbox
 (the latter three to
 .Pa /dev/null ) .
+Also, the values of
+.Ev COLUMNS
+and
+.Ev LINES
+are looked up, and acted upon.
 The following prepares an email message in a batched dry run:
 .Bd -literal -offset indent
 $ LC_ALL=C printf 'm bob\en~s ubject\enText\en~.\enx\en' |\e
@@ -12691,15 +12696,23 @@ $ COLUMNS=80 \*(uA -R
 .Bl -tag -width ".It Ev BaNg"
 .Mx
 .It Ev COLUMNS
-The user's preferred width in column positions for the terminal screen
-or window.
-Queried and used once on program startup, actively managed for child
-processes and the MLE (see
+The user's preferred width in column positions for the terminal screen.
+Queried and used once on program startup in interactive or batch
+.Pf ( Fl \&# )
+mode, actively managed for child processes and the MLE (see
 .Sx "On terminal control and line editor" )
 in interactive mode thereafter.
-Ignored in non-interactive mode, which always uses 80 columns, unless in
-.Fl \&#
-batch mode.
+Non-interactive mode always uses, and the fallback default is 80 columns.
+If in batch mode
+.Ev \&\&COLUMNS
+and
+.Ev LINES
+are both set but not both are usable (empty, not a number, or 0) at
+program startup, then the real terminal screen size will be (tried to
+be) determined once.
+(Normally the
+.Xr sh 1
+manages these variables, and unsets them for pipe specifications etc.)
 .
 .Mx
 .It Ev DEAD
@@ -12756,13 +12769,10 @@ which includes updating
 .
 .Mx
 .It Ev LINES
-The user's preferred number of lines on a page or the vertical screen
-or window size in lines.
-Queried and used once on program startup, actively managed for child
-processes in interactive mode thereafter.
-Ignored in non-interactive mode, which always uses 24 lines, unless in
-.fl #
-batch mode.
+The user's preferred number of lines for the terminal screen.
+The behaviour is as described for
+.Ev COLUMNS ,
+yet the non-interactive and fallback default is 24 (lines).
 .
 .Mx
 .It Ev LISTER

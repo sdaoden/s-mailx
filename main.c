@@ -477,6 +477,7 @@ a_main_setup_vars(void){
 #endif
       }
    }else
+      /* $COLUMNS and $LINES defaults as documented in the manual */
       n_scrnheight = n_realscreenheight = 24, n_scrnwidth = 80;
    NYD2_LEAVE;
 }
@@ -490,6 +491,7 @@ a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
    struct ttysize ts;
 #endif
    NYD2_ENTER;
+   assert((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_BATCH_FLAG));
 
    n_scrnheight = n_realscreenheight = n_scrnwidth = 0;
 
@@ -498,19 +500,21 @@ a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
     * only honour it upon first run; abuse *is_sighdl* as an indicator */
    if(!is_sighdl){
       char const *cp;
+      bool_t hadl, hadc;
 
-      if((cp = ok_vlook(LINES)) != NULL){
+      if((hadl = ((cp = ok_vlook(LINES)) != NULL))){
          n_idec_ui32_cp(&n_scrnheight, cp, 0, NULL);
          n_realscreenheight = n_scrnheight;
       }
-      if((cp = ok_vlook(COLUMNS)) != NULL)
+      if((hadc = ((cp = ok_vlook(COLUMNS)) != NULL)))
          n_idec_ui32_cp(&n_scrnwidth, cp, 0, NULL);
 
       if(n_scrnwidth != 0 && n_scrnheight != 0)
          goto jleave;
 
-      /* For batch mode without explicit request, stop now */
-      if(!(n_psonce & n_PSO_INTERACTIVE)){
+      /* In non-interactive mode, stop now, except for the documented case that
+       * both are set but not both have been usable */
+      if(!(n_psonce & n_PSO_INTERACTIVE) && (!hadl || !hadc)){
          n_scrnheight = n_realscreenheight = 24;
          n_scrnwidth = 80;
          goto jleave;
