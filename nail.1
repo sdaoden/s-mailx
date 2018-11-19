@@ -12124,35 +12124,12 @@ operation of the built-in line editor or \*(UA in general:
 .
 .Pp
 .Bl -tag -compact -width ".It Cd yay"
-.\" HAVE_COLOUR
-.It Cd colors Ns \0or Cd Co
-.Cd max_colors :
-numeric capability specifying the maximum number of colours.
-Note that \*(UA does not actually care about the terminal beside that,
-but always emits ANSI / ISO 6429 escape sequences.
-.
-.\" HAVE_TERMCAP
-.It Cd rmcup Ns \0or Cd te Ns \0/ Cd smcup Ns \0or Cd ti
-.Cd exit_ca_mode
-and
-.Cd enter_ca_mode ,
-respectively: exit and enter the alternative screen ca-mode,
-effectively turning \*(UA into a fullscreen application.
-This must be enabled explicitly by setting
-.Va termcap-ca-mode .
-.
-.It Cd smkx Ns \0or Cd ks Ns \0/ Cd rmkx Ns \0or Cd ke
-.Cd keypad_xmit
-and
-.Cd keypad_local ,
-respectively: enable and disable the keypad.
-This is always enabled if available, because it seems even keyboards
-without keypads generate other key codes for, e.g., cursor keys in that
-case, and only if enabled we see the codes that we are interested in.
-.
-.It Cd ed Ns \0or Cd cd
-.Cd clr_eos :
-clear the screen.
+.It Cd am
+.Cd auto_right_margin :
+boolean which indicates if the right margin needs special treatment; the
+.Cd xenl
+capability is related, for more see
+.Ev COLUMNS .
 .
 .It Cd clear Ns \0or Cd cl
 .Cd clear_screen :
@@ -12162,25 +12139,12 @@ clear the screen and home cursor.
 plus
 .Cd cd . )
 .
-.It Cd home Ns \0or Cd ho
-.Cd cursor_home :
-home cursor.
-.
-.\" HAVE_MLE
-.It Cd el Ns \0or Cd ce
-.Cd clr_eol :
-clear to the end of line.
-(Will be simulated via
-.Cd ch
-plus repetitions of space characters.)
-.
-.It Cd hpa Ns \0or Cd ch
-.Cd column_address :
-move the cursor (to the given column parameter) in the current row.
-(Will be simulated via
-.Cd cr
-plus
-.Cd nd . )
+.\" HAVE_COLOUR
+.It Cd colors Ns \0or Cd Co
+.Cd max_colors :
+numeric capability specifying the maximum number of colours.
+Note that \*(UA does not actually care about the terminal beside that,
+but always emits ANSI / ISO 6429 escape sequences.
 .
 .It Cd cr
 .Cd carriage_return :
@@ -12204,6 +12168,56 @@ Less often occur
 .Ql \eEC
 and
 .Ql \eEOC .
+.
+.It Cd ed Ns \0or Cd cd
+.Cd clr_eos :
+clear the screen.
+.
+.\" HAVE_MLE
+.It Cd el Ns \0or Cd ce
+.Cd clr_eol :
+clear to the end of line.
+(Will be simulated via
+.Cd ch
+plus repetitions of space characters.)
+.
+.It Cd home Ns \0or Cd ho
+.Cd cursor_home :
+home cursor.
+.
+.It Cd hpa Ns \0or Cd ch
+.Cd column_address :
+move the cursor (to the given column parameter) in the current row.
+(Will be simulated via
+.Cd cr
+plus
+.Cd nd . )
+.
+.\" HAVE_TERMCAP
+.It Cd rmcup Ns \0or Cd te Ns \0/ Cd smcup Ns \0or Cd ti
+.Cd exit_ca_mode
+and
+.Cd enter_ca_mode ,
+respectively: exit and enter the alternative screen ca-mode,
+effectively turning \*(UA into a fullscreen application.
+This must be enabled explicitly by setting
+.Va termcap-ca-mode .
+.
+.It Cd smkx Ns \0or Cd ks Ns \0/ Cd rmkx Ns \0or Cd ke
+.Cd keypad_xmit
+and
+.Cd keypad_local ,
+respectively: enable and disable the keypad.
+This is always enabled if available, because it seems even keyboards
+without keypads generate other key codes for, e.g., cursor keys in that
+case, and only if enabled we see the codes that we are interested in.
+.
+.It Cd xenl Ns \0or Cd xn
+.Cd eat_newline_glitch :
+boolean which indicates whether a newline written in the last column of an
+.Cd auto_right_margin
+indicating terminal is ignored.
+With it the full terminal width is available even on autowrap terminals.
 .El
 .
 .Pp
@@ -12791,7 +12805,8 @@ Queried and used once on program startup in interactive or batch
 mode, actively managed for child processes and the MLE (see
 .Sx "On terminal control and line editor" )
 in interactive mode thereafter.
-Non-interactive mode always uses, and the fallback default is 80 columns.
+Non-interactive mode always uses, and the fallback default is
+a compile-time constant, by default 80 columns.
 If in batch mode
 .Ev \&\&COLUMNS
 and
@@ -12802,6 +12817,12 @@ be) determined once.
 (Normally the
 .Xr sh 1
 manages these variables, and unsets them for pipe specifications etc.)
+Dependent on terminal control support the used width may be one less
+than this value for compatibility reasons, refer to the
+.Cd am / xenl
+capabilities of
+.Va termcap
+for more.
 .
 .Mx
 .It Ev DEAD
@@ -12861,7 +12882,8 @@ which includes updating
 The user's preferred number of lines for the terminal screen.
 The behaviour is as described for
 .Ev COLUMNS ,
-yet the non-interactive and fallback default is 24 (lines).
+yet the compile-time constant used in non-interactive mode and as
+a fallback defaults to 24 (lines).
 .
 .Mx
 .It Ev LISTER

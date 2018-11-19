@@ -2497,9 +2497,10 @@ FL ssize_t     n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2);
  * tvp->tv_data.tvd_string must contain the name of the query to look up; this
  * is used to lookup just about *any* (string) capability.
  * Returns TRU1 on success and TRUM1 for queries for which a built-in default
- * is returned; FAL0 is returned on non-availability */
-FL bool_t      n_termcap_query(enum n_termcap_query query,
-                  struct n_termcap_value *tvp);
+ * is returned; FAL0 is returned on non-availability; for boolean the return
+ * value equals the result as such (still tvp is mandatory argument) */
+FL bool_t n_termcap_query(enum n_termcap_query query,
+            struct n_termcap_value *tvp);
 
 /* Get a n_termcap_query for name or -1 if it is not known, and -2 if
  * type wasn't _NONE and the type doesn't match. */

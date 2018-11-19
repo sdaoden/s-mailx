@@ -140,9 +140,10 @@ static void a_main_setup_vars(void);
  * We use the following algorithm for the height:
  * If baud rate < 1200, use  9
  * If baud rate = 1200, use 14
- * If baud rate > 1200, use 24 or ws_row
- * Width is either 80 or ws_col */
-static void a_main_setscreensize(int is_sighdl);
+ * If baud rate > 1200, use VAL_HEIGHT or ws_row
+ * Width is either VAL_WIDTH or ws_col */
+static void a_main_setup_screen(void);
+static void a_main__scrsz(int is_sighdl);
 
 /* Ok, we are reading mail.  Decide whether we are editing a mailbox or reading
  * the system mailbox, and open up the right stuff */
@@ -238,7 +239,7 @@ jleave:
 
 static void
 a_main_usage(FILE *fp){
-   /* Stay in 24 lines; On buf length change: verify visual output! */
+   /* Stay in VAL_HEIGHT lines; On buf length change: verify visual output! */
    char buf[7];
    size_t i;
    NYD2_IN;
@@ -459,31 +460,57 @@ a_main_setup_vars(void){
       cp = savecat(n_reproducible_name, ": ");
       ok_vset(log_prefix, cp);
    }
+   NYD2_OU;
+}
 
-   if((n_psonce & n_PSO_INTERACTIVE) ||
-         ((n_psonce & (n_PSO_TTYIN | n_PSO_TTYOUT)) &&
-          (n_poption & n_PO_BATCH_FLAG))){
-      a_main_setscreensize(FAL0);
+static void
+a_main_setup_screen(void){
+   /* Problem: VAL_ configuration values are strings, we need numbers */
+   n_LCTAV(VAL_HEIGHT[0] != '\0' && (VAL_HEIGHT[1] == '\0' ||
+      VAL_HEIGHT[2] == '\0' || VAL_HEIGHT[3] == '\0'));
+#define a_HEIGHT \
+   (VAL_HEIGHT[1] == '\0' ? (VAL_HEIGHT[0] - '0') \
+   : (VAL_HEIGHT[2] == '\0' \
+      ? ((VAL_HEIGHT[0] - '0') * 10 + (VAL_HEIGHT[1] - '0')) \
+      : (((VAL_HEIGHT[0] - '0') * 10 + (VAL_HEIGHT[1] - '0')) * 10 + \
+         (VAL_HEIGHT[2] - '0'))))
+   n_LCTAV(VAL_WIDTH[0] != '\0' &&
+      (VAL_WIDTH[1] == '\0' || VAL_WIDTH[2] == '\0' || VAL_WIDTH[3] == '\0'));
+#define a_WIDTH \
+   (VAL_WIDTH[1] == '\0' ? (VAL_WIDTH[0] - '0') \
+   : (VAL_WIDTH[2] == '\0' \
+      ? ((VAL_WIDTH[0] - '0') * 10 + (VAL_WIDTH[1] - '0')) \
+      : (((VAL_WIDTH[0] - '0') * 10 + (VAL_WIDTH[1] - '0')) * 10 + \
+         (VAL_WIDTH[2] - '0'))))
+
+   NYD2_IN;
+
+   if(!(n_psonce & n_PSO_REPRODUCIBLE) &&
+         ((n_psonce & n_PSO_INTERACTIVE) ||
+            ((n_psonce & (n_PSO_TTYIN | n_PSO_TTYOUT)) &&
+            (n_poption & n_PO_BATCH_FLAG)))){
+      a_main__scrsz(FAL0);
       if(n_psonce & n_PSO_INTERACTIVE){
          /* XXX Yet WINCH after SIGWINCH/SIGCONT, but see POSIX TOSTOP flag */
 #ifdef SIGWINCH
 # ifndef TTY_WANTS_SIGWINCH
          if(safe_signal(SIGWINCH, SIG_IGN) != SIG_IGN)
 # endif
-            safe_signal(SIGWINCH, &a_main_setscreensize);
+            safe_signal(SIGWINCH, &a_main__scrsz);
 #endif
 #ifdef SIGCONT
-         safe_signal(SIGCONT, &a_main_setscreensize);
+         safe_signal(SIGCONT, &a_main__scrsz);
 #endif
       }
    }else
       /* $COLUMNS and $LINES defaults as documented in the manual */
-      n_scrnheight = n_realscreenheight = 24, n_scrnwidth = 80;
+      n_scrnheight = n_realscreenheight = a_HEIGHT,
+      n_scrnwidth = a_WIDTH;
    NYD2_OU;
 }
 
 static void
-a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
+a_main__scrsz(int is_sighdl){
    struct termios tbuf;
 #if defined HAVE_TCGETWINSIZE || defined TIOCGWINSZ
    struct winsize ws;
@@ -515,8 +542,8 @@ a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
       /* In non-interactive mode, stop now, except for the documented case that
        * both are set but not both have been usable */
       if(!(n_psonce & n_PSO_INTERACTIVE) && (!hadl || !hadc)){
-         n_scrnheight = n_realscreenheight = 24;
-         n_scrnwidth = 80;
+         n_scrnheight = n_realscreenheight = a_HEIGHT;
+         n_scrnwidth = a_WIDTH;
          goto jleave;
       }
    }
@@ -551,7 +578,7 @@ a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
          else if(ospeed == B1200)
             n_scrnheight = 14;
          else
-            n_scrnheight = 24;
+            n_scrnheight = a_HEIGHT;
       }
 
 #if defined HAVE_TCGETWINSIZE || defined TIOCGWINSZ || defined TIOCGSIZE
@@ -562,7 +589,7 @@ a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
             (n_realscreenheight = ts.ts_lines)
 # endif
       )
-         n_realscreenheight = 24;
+         n_realscreenheight = a_HEIGHT;
 #endif
    }
 
@@ -573,12 +600,23 @@ a_main_setscreensize(int is_sighdl){/* TODO globl policy; int wraps; minvals! */
          (n_scrnwidth = ts.ts_cols)
 #endif
    )
-      n_scrnwidth = 80;
+      n_scrnwidth = a_WIDTH;
 
    /**/
    n_pstate |= n_PS_SIGWINCH_PEND;
 jleave:
+   /* Note: for the first invocation this will always trigger.
+    * If we have termcap support then main() will undo this if FULLWIDTH is set
+    * after termcap is initialized.
+    * We had to evaluate screen size now since cmds may run pre-termcap ... */
+/*#ifdef mx_HAVE_TERMCAP*/
+   if(n_scrnwidth > 1 && !(n_psonce & n_PSO_TERMCAP_FULLWIDTH))
+      --n_scrnwidth;
+/*#endif*/
    NYD2_OU;
+
+#undef a_HEIGHT
+#undef a_WIDTH
 }
 
 static sigjmp_buf a_main__hdrjmp; /* XXX */
@@ -1144,6 +1182,7 @@ jgetopt_done:
    n_psonce |= n_PSO_STARTED_GETOPT;
 
    a_main_setup_vars();
+   a_main_setup_screen();
 
    /* Create memory pool snapshot; Memory is auto-reclaimed from now on */
    n_memory_pool_fixate();
@@ -1210,8 +1249,12 @@ je_expandargv:
     * setting has been restored, but get the termcap up and going before we
     * switch account or running commands */
 #ifdef n_HAVE_TCAP
-   if((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK))
+   if((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK)){
       n_termcap_init();
+      /* Undo the decrement from a_main__scrsz()s first invocation */
+      if(n_scrnwidth > 0 && (n_psonce & n_PSO_TERMCAP_FULLWIDTH))
+         ++n_scrnwidth;
+   }
 #endif
 
    /* Now we can set the account */

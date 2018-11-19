@@ -1355,6 +1355,10 @@ enum n_termcap_cmd{
  * We may use the free-form part after | for the "Variable String" and notes.
  * The "xkey | X:" keys are Dickey's xterm extensions, see (our) manual */
 enum n_termcap_query{
+   n_TERMCAP_QUERY_am,     /* am/am, BOOL | auto_right_margin */
+   n_TERMCAP_QUERY_sam,    /* sam/YE, BOOL | semi_auto_right_margin */
+   n_TERMCAP_QUERY_xenl,   /* xenl/xn, BOOL | eat_newline_glitch */
+
 # ifdef HAVE_COLOUR
    n_TERMCAP_QUERY_colors, /* colors/Co, NUMERIC | max_colors */
 # endif
@@ -1560,7 +1564,8 @@ enum n_program_state_once{
    n_PSO_RANDOM_INIT = 1u<<19,
    n_PSO_TERMCAP_DISABLE = 1u<<20,
    n_PSO_TERMCAP_CA_MODE = 1u<<21,
-   n_PSO_DOTLOCK_PRIVSEP_NOTED = 1u<<22
+   n_PSO_TERMCAP_FULLWIDTH = 1u<<22,   /* !am or am+xn (right margin wrap) */
+   n_PSO_DOTLOCK_PRIVSEP_NOTED = 1u<<23
 };
 
 /* {{{ A large enum with all the boolean and value options a.k.a their keys.

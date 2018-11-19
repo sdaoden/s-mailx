@@ -134,6 +134,13 @@ VAL_VISUAL=vi
 VAL_MIME_TYPES_USR=~/.mime.types
 VAL_MIME_TYPES_SYS=/etc/mime.types
 
+# Default screen width.  The width is reduced by 1 for compatibility
+# with some old terminals; if termcap/terminfo support is available then
+# we will use the full width if possible.
+# Values must be decimal numbers, SHOULD > 10, MUST < 1000.
+VAL_HEIGHT=24
+VAL_WIDTH=80
+
 # The following tools may be provided a.k.a. overwritten,
 # `command -v NAME` is used to query the utility otherwise:
 #  MAKE=, STRIP=, awk=, basename=, cat=, chmod=, cp=, cmp=, cksum=,

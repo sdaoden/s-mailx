@@ -444,10 +444,10 @@ n_CTA(a_TTY_LINE_MAX <= SI32_MAX,
 # define a_TTY_TAB_FEXP_FL \
    (FEXP_NOPROTO | FEXP_FULL | FEXP_SILENT | FEXP_MULTIOK)
 
-/* Columns to ripoff: outermost may not be touched, plus position indicator.
- * Must thus be at least 1, but should be >= 1+4 to dig the position indicator
- * that we place (if there is sufficient space) */
-# define a_TTY_WIDTH_RIPOFF 5
+/* Columns to ripoff: position indicator.
+ * Should be >= 4 to dig the position indicator that we place (if there is
+ * sufficient space) */
+# define a_TTY_WIDTH_RIPOFF 4
 
 /* The implementation of the MLE functions always exists, and is based upon
  * the a_TTY_BIND_FUN_* constants, so most of this enum is always necessary */
@@ -1669,10 +1669,10 @@ a_tty_vi__paint(struct a_tty_line *tlp){
       f |= a_SHOW_PROMPT;
    }
 
-   /* Then search for right boundary.  We always leave the rightmost column
-    * empty because some terminals [cw]ould wrap the line if we write into
-    * that.  XXX terminfo(5)/termcap(5) have the semi_auto_right_margin/sam/YE
-    * XXX capability to indicate this, but we don't look at that */
+   /* Then search for right boundary.  Dependent upon n_PSO_FULLWIDTH (termcap
+    * am/xn) We leave the rightmost column empty because some terminals
+    * [cw]ould wrap the line if we write into that, or not.
+    * TODO We do not deal with !n_TERMCAP_QUERY_sam */
    phy_wid = phy_wid_base - phy_base;
    tcp_right = tlp->tl_line.cells + cnt;
 
@@ -1696,7 +1696,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
 
       /* Since we did brute-force walk also for the left boundary we may end up
        * in a situation were anything effectively fits on the screen, including
-       * the prompt that is, but were we don't recognize this since we
+       * the prompt that is, but where we don't recognize this since we
        * restricted the search to fit in some visual viewpoint.  Therefore try
        * again to extend the left boundary to overcome that */
       if(!(f & a_LEFT_MIN)){
@@ -1845,8 +1845,8 @@ jpaint:
 
    /* Write something position marker alike if it does not fit on screen */
    if((f & a_HAVE_POSITION) &&
-         ((f & (a_LEFT_MIN | a_RIGHT_MAX)) != (a_LEFT_MIN | a_RIGHT_MAX) ||
-          ((f & a_HAVE_PROMPT) && !(f & a_SHOW_PROMPT)))){
+         ((f & (a_LEFT_MIN | a_RIGHT_MAX)) != (a_LEFT_MIN | a_RIGHT_MAX) /*||
+          ((f & a_HAVE_PROMPT) && !(f & a_SHOW_PROMPT))*/)){
 # ifdef HAVE_COLOUR
       char *posbuf = tlp->tl_pos_buf, *pos = tlp->tl_pos;
 # else
@@ -1860,7 +1860,7 @@ jpaint:
          goto jerr;
 
       *pos++ = '|';
-      if((f & a_LEFT_MIN) && (!(f & a_HAVE_PROMPT) || (f & a_SHOW_PROMPT)))
+      if(f & a_LEFT_MIN)
          memcpy(pos, "^.+", 3);
       else if(f & a_RIGHT_MAX)
          memcpy(pos, ".+$", 3);
@@ -1871,7 +1871,8 @@ jpaint:
           * suffix automatically scales" calculate the large number */
          static char const itoa[] = "0123456789";
 
-         ui64_t const fact100 = (ui64_t)0x3B9ACA00u * 10u, fact = fact100 / 100;
+         ui64_t const fact100 = (ui64_t)0x3B9ACA00u * 10u,
+               fact = fact100 / 100;
          ui32_t i = (ui32_t)(((fact100 / cnt) * tlp->tl_cursor) / fact);
          n_LCTA(a_TTY_LINE_MAX <= SI32_MAX, "a_TTY_LINE_MAX too large");
 
@@ -2171,7 +2172,8 @@ a_tty_kgoscr(struct a_tty_line *tlp, si32_t dir){
    ui32_t sw, i, cur, f, cnt;
    NYD2_IN;
 
-   sw = (ui32_t)n_scrnwidth - 2;
+   if((sw = (ui32_t)n_scrnwidth) > 2)
+      sw -= 2;
    if(sw > (i = tlp->tl_prompt_width))
       sw -= i;
    cur = tlp->tl_cursor;

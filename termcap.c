@@ -467,8 +467,9 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
       rv = FAL0;
    else switch((tep->te_flags = cflags) & a_TERMCAP_F_TYPE_MASK){
    case n_TERMCAP_CAPTYPE_BOOL:
-      tep->te_off = (tigetflag(cname) > 0);
-      rv = TRU1;
+      if(!(rv = (tigetflag(cname) > 0)))
+         tep->te_flags |= a_TERMCAP_F_NOENT;
+      tep->te_off = rv;
       break;
    case n_TERMCAP_CAPTYPE_NUMERIC:{
       int r = tigetnum(cname);
@@ -532,8 +533,9 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
       rv = FAL0;
    else switch((tep->te_flags = cflags) & a_TERMCAP_F_TYPE_MASK){
    case n_TERMCAP_CAPTYPE_BOOL:
-      tep->te_off = (tgetflag(cname) > 0);
-      rv = TRU1;
+      if(!(rv = (tgetflag(cname) > 0)))
+         tep->te_flags |= a_TERMCAP_F_NOENT;
+      tep->te_off = rv;
       break;
    case n_TERMCAP_CAPTYPE_NUMERIC:{
       int r = tgetnum(cname);
@@ -611,6 +613,7 @@ a_termcap_enum_for_name(char const *name, size_t nlen, si32_t min, si32_t max){
 
 FL void
 n_termcap_init(void){
+   struct n_termcap_value tv;
    struct str termvar;
    char const *ccp;
    NYD_IN;
@@ -659,6 +662,12 @@ n_termcap_init(void){
          ok_blook(termcap_ca_mode))
       n_psonce |= n_PSO_TERMCAP_CA_MODE;
 #endif
+
+   /* TODO We do not handle !n_TERMCAP_QUERY_sam in this software! */
+   if(!n_termcap_query(n_TERMCAP_QUERY_am, &tv) ||
+         n_termcap_query(n_TERMCAP_QUERY_xenl, &tv))
+      n_psonce |= n_PSO_TERMCAP_FULLWIDTH;
+
    n_TERMCAP_RESUME(TRU1);
    NYD_OU;
 }
@@ -844,6 +853,7 @@ jleave:
 FL bool_t
 n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
    /* Queries are lazy queried upon request */
+   /* XXX n_termcap_query(): boole handling suboptimal, tvp used on success */
    struct a_termcap_ent const *tep;
    bool_t rv;
    NYD2_IN;
@@ -862,7 +872,7 @@ n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
 #ifdef HAVE_TERMCAP
             && ((n_psonce & n_PSO_TERMCAP_DISABLE) ||
                !a_termcap_ent_query_tcp(n_UNCONST(tep),
-               &a_termcap_control[n__TERMCAP_CMD_MAX1 + query]))
+                  &a_termcap_control[n__TERMCAP_CMD_MAX1 + query]))
 #endif
       )
          goto jleave;
