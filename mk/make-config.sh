@@ -237,19 +237,21 @@ option_update() {
    fi
 }
 
-rc=./make.rc
-lst=.obj/mk-config.lst
-ev=.obj/mk-config.ev
-h=.obj/mk-config.h h_name=mk-config.h
-mk=.obj/mk-config.mk
+: ${OBJDIR:=.obj}
 
-newlst=.obj/mk-nconfig.lst
-newmk=.obj/mk-nconfig.mk
-oldmk=.obj/mk-oconfig.mk
-newev=.obj/mk-nconfig.ev
-newh=.obj/mk-nconfig.h
-oldh=.obj/mk-oconfig.h
-tmp0=.obj/___tmp
+rc=./make.rc
+lst="${OBJDIR}"/mk-config.lst
+ev="${OBJDIR}"/mk-config.ev
+h="${OBJDIR}"/mk-config.h h_name=mk-config.h
+mk="${OBJDIR}"/mk-config.mk
+
+newlst="${OBJDIR}"/mk-nconfig.lst
+newmk="${OBJDIR}"/mk-nconfig.mk
+oldmk="${OBJDIR}"/mk-oconfig.mk
+newev="${OBJDIR}"/mk-nconfig.ev
+newh="${OBJDIR}"/mk-nconfig.h
+oldh="${OBJDIR}"/mk-oconfig.h
+tmp0="${OBJDIR}"/___tmp
 tmp=${tmp0}1$$
 tmp2=${tmp0}2$$
 
@@ -912,10 +914,11 @@ option_join_rc() {
          }'`
       fi
       [ "${i}" = "DESTDIR" ] && continue
+      [ "${i}" = "OBJDIR" ] && continue
       echo "${i}=\"${j}\""
    done > ${tmp}
    # Reread the mixed version right now
-   . ./${tmp}
+   . ${tmp}
 }
 
 option_evaluate() {
@@ -1021,6 +1024,11 @@ oneslash() {
          print X
       }
    '
+}
+
+path_is_absolute() {
+   { echo "${*}" | ${grep} ^/; } >/dev/null 2>&1
+   return $?
 }
 
 path_check() {
@@ -1227,8 +1235,8 @@ squeeze_em() {
 
 # First of all, create new configuration and check whether it changed
 
-if [ -d .obj ] || mkdir .obj; then :; else
-   msg 'ERROR: cannot create .obj build directory'
+if [ -d "${OBJDIR}" ] || mkdir -p "${OBJDIR}"; then :; else
+   msg 'ERROR: cannot create '"${OBJDIR}"' build directory'
    exit 1
 fi
 
@@ -1363,7 +1371,7 @@ else
 fi
 
 for i in \
-   CWDDIR TOPDIR INCDIR SRCDIR \
+   CWDDIR TOPDIR OBJDIR INCDIR SRCDIR \
       awk basename cat chmod chown cp cmp grep getconf \
          mkdir mv rm sed sort tee tr \
       MAKE MAKEFLAGS make SHELL strip \
@@ -1379,7 +1387,13 @@ printf "\n" >> ${newev}
 
 # Build a basic set of INCS and LIBS according to user environment.
 C_INCLUDE_PATH="${INCDIR}:${SRCDIR}:${C_INCLUDE_PATH}"
-C_INCLUDE_PATH="${CWDDIR}include:${CWDDIR}.obj:${C_INCLUDE_PATH}"
+if path_is_absolute "${OBJDIR}"; then
+   C_INCLUDE_PATH="${OBJDIR}:${C_INCLUDE_PATH}"
+else
+   C_INCLUDE_PATH="${CWDDIR}${OBJDIR}:${C_INCLUDE_PATH}"
+fi
+C_INCLUDE_PATH="${CWDDIR}include:${C_INCLUDE_PATH}"
+
 path_check C_INCLUDE_PATH -I _INCS
 INCS="${INCS} ${_INCS}"
 path_check LD_LIBRARY_PATH -L _LIBS
@@ -1477,9 +1491,9 @@ ${mv} -f ${newmk} ${mk}
 ## Compile and link checking
 
 tmp3=${tmp0}3$$
-log=.obj/mk-config.log
-lib=.obj/mk-config.lib
-inc=.obj/mk-config.inc
+log="${OBJDIR}"/mk-config.log
+lib="${OBJDIR}"/mk-config.lib
+inc="${OBJDIR}"/mk-config.inc
 makefile=${tmp0}.mk
 
 # (No function since some shells loose non-exported variables in traps)
@@ -3408,7 +3422,7 @@ fi
 
 if [ -n "${config_updated}" ]; then
    msg 'Wiping away old objects and such..'
-   ( cd .obj; oldmk=`${basename} ${oldmk}`; ${MAKE} -f ${oldmk} clean )
+   ( cd "${OBJDIR}"; oldmk=`${basename} ${oldmk}`; ${MAKE} -f ${oldmk} clean )
 fi
 
 # Ensure user edits in mx-config.h are incorporated, and that our generated

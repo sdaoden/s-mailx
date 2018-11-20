@@ -8,9 +8,10 @@
 .NOTPARALLEL:
 .WAIT: # Luckily BSD make supports specifying this as target, too
 
-# These two are targets of make-emerge.sh
+# These are targets of make-emerge.sh
 CWDDIR=
 TOPDIR=
+OBJDIR=.obj
 
 ohno: build
 tangerine: config .WAIT build .WAIT test .WAIT install
@@ -50,7 +51,7 @@ d-v:
 
 # The test should inherit the user runtime environment!
 test:
-	@$(__prestop); cd .obj && LC_ALL=C $(MAKE) -f mk-config.mk test
+	@$(__prestop); cd "$(OBJDIR)" && LC_ALL=C $(MAKE) -f mk-config.mk test
 
 d-okeys:
 	perl mk/make-okey-map.pl
@@ -88,11 +89,11 @@ _prego = if CWDDIR="$(CWDDIR)" TOPDIR="$(TOPDIR)" \
 		CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" \
 		$(SHELL) "$(TOPDIR)"mk/make-config.sh "$(MAKEFLAGS)"; then :;\
 	else exit 1; fi
-__prestop = if [ -f .obj/mk-config.mk ]; then :; else \
+__prestop = if [ -f "$(OBJDIR)"/mk-config.mk ]; then :; else \
 		echo 'Program not configured, nothing to do';\
 		echo 'Use one of the targets: config, all, tangerine, citron';\
 		exit 0;\
 	fi
-_prestop = $(__prestop); cd .obj && . ./mk-config.ev
+_prestop = $(__prestop); cd "$(OBJDIR)" && . ./mk-config.ev
 
 # s-mk-mode

@@ -76,7 +76,7 @@ The following make(1) targets exist, the default being `build':
               (${VAL_SID}${VAL_MAILX}-uninstall.sh), but which will
               *not* be installed if $DESTDIR is set non-empty -- within
               $DESTDIR, that is.  Copy or move it manually from the S-nail
-              root directory ./ into $DESTDIR as necessary.
+              $OBJDIR into $DESTDIR as necessary in that case.
 
 - clean       Remove anything which can be rebuild.
 - distclean   Remove anything which can be rebuild or reconfigured.
@@ -150,8 +150,9 @@ Please see the section "Notes on building the latest release" below
 first, maybe it has an item for the failing platform, or even gives an
 answer on how to proceed nonetheless.
 
-The configuration process creates a directory ./.obj to store some files
-of interest (it is also here where the build and the tests take place):
+The configuration process creates a directory ./.obj (or $OBJDIR, if
+set) to store some files of interest (it is also here where the build
+and the tests take place):
 
 - mk-config.log  Any output generated during the configuration process.
 - mk-config.lst  Configuration (chosen option, programs, paths).
@@ -167,7 +168,7 @@ $C_INCLUDE_PATH, libraries could not be linked because of incomplete
 $LD_LIBRARY_PATH, etc.).
 
 If things went wrong so completely that even "$ make distclean" is not
-possible, simply removing .obj will help out: "$ rm -rf ./.obj".
+possible, simply removing .obj ($OBJDIR) will do: "$ rm -rf ./.obj".
 In any case it would be appreciated if you could report the problem,
 so that problems can be fixed!
 
@@ -199,8 +200,8 @@ echoes the actual test names in brackets), for example
 
   $ ./mx-test.sh --run-test ./s-nail localopts mbox
 
-would run the tests "localopts" and "mbox".  Test output files are of
-the form t.TESTNAME-XY and will be generated in the ./.obj directory.
+would run the tests "localopts" and "mbox".  Test output files look
+like t.TESTNAME-XY and reside  in the ./.obj ($OBJDIR) directory.
 (If the build and test is done in a repository checkout, and if the
 branch "test-out" exists, then in addition to the failing test output
 the expected as well as -- optionally -- the file difference of these
