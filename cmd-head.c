@@ -264,11 +264,13 @@ a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
          if (n == 0)
             n = 5;
          if (UICMP(32, n_ABS(n), >, wleft))
-            n = (n < 0) ? -wleft : wleft;
-         snprintf(buf, sizeof buf, "%u.%02u",
-            (mp->m_spamscore >> 8), (mp->m_spamscore & 0xFF));
-         n = fprintf(f, "%*s", n, buf);
-         wleft = (n >= 0) ? wleft - n : 0;
+            wleft = 0;
+         else{
+            snprintf(buf, sizeof buf, "%u.%02u",
+               (mp->m_spamscore >> 8), (mp->m_spamscore & 0xFF));
+            n = fprintf(f, "%*s", n, buf);
+            wleft = (n >= 0) ? wleft - n : 0;
+         }
          break;
 #else
          c = '?';
@@ -315,9 +317,11 @@ jputcb:
          if (n == 0)
             n = 2;
          if (UICMP(32, n_ABS(n), >, wleft))
-            n = (n < 0) ? -wleft : wleft;
-         n = fprintf(f, "%*u", n, (threaded == 1 ? mp->m_level : 0));
-         wleft = (n >= 0) ? wleft - n : 0;
+            wleft = 0;
+         else{
+            n = fprintf(f, "%*u", n, (threaded == 1 ? mp->m_level : 0));
+            wleft = (n >= 0) ? wleft - n : 0;
+         }
          break;
       case 'f':
          if (n == 0) {
@@ -330,8 +334,13 @@ jputcb:
             i = wleft;
             n = (n < 0) ? -wleft : wleft;
          }
-         if (flags & _ISTO) /* XXX tr()! */
+         if (flags & _ISTO) {/* XXX tr()! */
+            if(wleft <= 3){
+               wleft = 0;
+               break;
+            }
             i -= 3;
+         }
          n = fprintf(f, "%s%s", ((flags & _ISTO) ? "To " : n_empty),
                colalign(name, i, n, &wleft));
          if (n < 0)
@@ -361,8 +370,8 @@ jputcb:
          if (n == 0)
             n = 4;
          if (UICMP(32, n_ABS(n), >, wleft))
-            n = (n < 0) ? -wleft : wleft;
-         if (mp->m_xlines) {
+            wleft = 0;
+         else if (mp->m_xlines) {
             n = fprintf(f, "%*ld", n, mp->m_xlines);
             wleft = (n >= 0) ? wleft - n : 0;
          } else {
@@ -380,17 +389,21 @@ jputcb:
                   ++n;
          }
          if (UICMP(32, n_ABS(n), >, wleft))
-            n = (n < 0) ? -wleft : wleft;
-         n = fprintf(f, "%*lu", n, (ul_i)msgno);
-         wleft = (n >= 0) ? wleft - n : 0;
+            wleft = 0;
+         else{
+            n = fprintf(f, "%*lu", n, (ul_i)msgno);
+            wleft = (n >= 0) ? wleft - n : 0;
+         }
          break;
       case 'o':
          if (n == 0)
             n = -5;
          if (UICMP(32, n_ABS(n), >, wleft))
-            n = (n < 0) ? -wleft : wleft;
-         n = fprintf(f, "%*lu", n, (ul_i)mp->m_xsize);
-         wleft = (n >= 0) ? wleft - n : 0;
+            wleft = 0;
+         else{
+            n = fprintf(f, "%*lu", n, (ul_i)mp->m_xsize);
+            wleft = (n >= 0) ? wleft - n : 0;
+         }
          break;
       case 'S':
          flags |= _SFMT;
@@ -436,19 +449,23 @@ jputcb:
                   ++n;
          }
          if (UICMP(32, n_ABS(n), >, wleft))
-            n = (n < 0) ? -wleft : wleft;
-         n = fprintf(f, "%*lu",
-               n, (threaded ? (ul_i)mp->m_threadpos : (ul_i)msgno));
-         wleft = (n >= 0) ? wleft - n : 0;
+            wleft = 0;
+         else{
+            n = fprintf(f, "%*lu",
+                  n, (threaded ? (ul_i)mp->m_threadpos : (ul_i)msgno));
+            wleft = (n >= 0) ? wleft - n : 0;
+         }
          break;
       case 'U':
 #ifdef HAVE_IMAP
             if (n == 0)
                n = 9;
             if (UICMP(32, n_ABS(n), >, wleft))
-               n = (n < 0) ? -wleft : wleft;
-            n = fprintf(f, "%*" PRIu64 , n, mp->m_uid);
-            wleft = (n >= 0) ? wleft - n : 0;
+               wleft = 0;
+            else{
+               n = fprintf(f, "%*" PRIu64 , n, mp->m_uid);
+               wleft = (n >= 0) ? wleft - n : 0;
+            }
             break;
 #else
             c = '0';
