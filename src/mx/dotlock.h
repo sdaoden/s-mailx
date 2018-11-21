@@ -103,7 +103,7 @@ a_dotlock__create_excl(struct n_dotlock_info *dip, char const *lname){
 #endif
             S_IWUSR | S_IRUSR | S_IRGRP | S_IROTH);
       if(fd != -1){
-#ifdef mx_SOURCE_PRIVSEP
+#ifdef mx_SOURCE_DOTLOCK_PS
          if(dip->di_stb != NULL &&
                fchown(fd, dip->di_stb->st_uid, dip->di_stb->st_gid)){
             int x = su_err_no();

@@ -1,8 +1,8 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Privilege-separated dot file lock program (OPT_DOTLOCK=yes)
- *@ that is capable of calling setuid(2) and change its user identity
- *@ to the configured VAL_PRIVSEP_USER (usually "root"), in order to create
- *@ a dotlock file with the same UID/GID as the mailbox to be locked.
+ *@ that is capable of calling setuid(2), and change its user identity
+ *@ to the VAL_DOTLOCK_PS_USER (usually "root") in order to create a
+ *@ dotlock file with the same UID/GID as the mailbox to be locked.
  *@ It should be started when chdir(2)d to the lock file's directory,
  *@ with a symlink-resolved target and with SIGPIPE being ignored.
  *
@@ -22,12 +22,15 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #undef su_FILE
-#define su_FILE privsep
+#define su_FILE dotlock_ps
 #define mx_SOURCE
-#define mx_SOURCE_PRIVSEP
+#define mx_SOURCE_DOTLOCK_PS
+
+#define su_ASSERT_EXPAND_NOTHING
 
 #include "mx/nail.h"
 
+#include <errno.h>
 #include <string.h>
 
 #if defined mx_HAVE_PRCTL_DUMPABLE
@@ -41,7 +44,18 @@
 static void _ign_signal(int signum);
 static uiz_t n_msleep(uiz_t millis, bool_t ignint);
 
+#define su_err_no() errno
+#define su_err_set_no(X) (errno = X)
 #include "mx/dotlock.h"
+
+/* TODO Avoid linkage errors, instantiate what is needed;
+ * TODO SU needs to be available as a library to overcome this,
+ * TODO or a compiler capable of inlining can only be used */
+su_uz su__state;
+#ifdef su_MEM_ALLOC_DEBUG
+su_boole su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE) {return FAL0;}
+su_boole su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE) {return FAL0;}
+#endif
 
 static void
 _ign_signal(int signum){
@@ -91,7 +105,7 @@ main(int argc, char **argv){
 
    /* We're a dumb helper, ensure as much as we can noone else uses us */
    if(argc != 12 ||
-         strcmp(argv[ 0], VAL_PRIVSEP) ||
+         strcmp(argv[ 0], VAL_DOTLOCK_PS) ||
          (argv[1][0] != 'r' && argv[1][0] != 'w') ||
          strcmp(argv[ 1] + 1, "dotlock") ||
          strcmp(argv[ 2], "mailbox") ||
@@ -184,7 +198,7 @@ jeuse:
       goto jmsg;
 #endif
 
-   /* This privsep helper only gets executed when needed, it thus doesn't make
+   /* This helper is only executed when really needed, it thus doesn't make
     * sense to try to continue with initial privileges */
    if(setuid(geteuid()))
       goto jmsg;

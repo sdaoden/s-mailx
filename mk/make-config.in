@@ -8,7 +8,7 @@ _version_from_header = VERSION="`< $(CWDDIR)include/mx/gen-version.h $(sed) \
 		-e '/ n_VERSION /b X' -e d -e ':X' \
 		-e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`"
 
-all: $(VAL_UAGENT) $(OPTIONAL_PRIVSEP)
+all: $(VAL_UAGENT) $(OPTIONAL_DOTLOCK_PS)
 
 $(SU_OBJ): $(INCDIR)su/code.h $(INCDIR)su/config.h
 $(AMALGAM_TARGET) core-errors.o: $(SRCDIR)su/gen-errors.h
@@ -31,14 +31,14 @@ $(AMALGAM_TARGET) obs-imap.o pop3.o smtp.o urlcrecry.o: $(SRCDIR)mx/rfc1321.h
 $(AMALGAM_TARGET) smtp.o: $(SRCDIR)mx/smtp-gssapi.h
 $(AMALGAM_TARGET) termcap.o: $(SRCDIR)mx/gen-tcaps.h
 
-$(VAL_PRIVSEP): privsep.o
-	$(ECHO_LINK)$(CC) $(LDFLAGS) -o $(@) privsep.o $(BASE_LIBS)
+$(VAL_DOTLOCK_PS): dotlock-ps.o
+	$(ECHO_LINK)$(CC) $(LDFLAGS) -o $(@) dotlock-ps.o $(BASE_LIBS)
 	$(SIZE_CHECK)
 
-privsep.o: $(SRCDIR)mx/privsep.c \
+dotlock-ps.o: $(SRCDIR)mx/dotlock-ps.c \
 		$(CWDDIR)include/mx/gen-config.h $(CWDDIR)include/mx/config.h \
 		$(INCDIR)mx/nail.h $(SRCDIR)mx/dotlock.h
-	$(ECHO_CC)$(CC) $(CFLAGS) $(BASE_INCS) -c $(SRCDIR)mx/privsep.c
+	$(ECHO_CC)$(CC) $(CFLAGS) $(BASE_INCS) -c $(SRCDIR)mx/dotlock-ps.c
 
 gen-mime-types.h: $(TOPDIR)mime.types
 	$(ECHO_GEN)\
@@ -246,23 +246,24 @@ install:
 			"$(VAL_SYSCONFDIR)/$(VAL_SYSCONFRC)";\
 	fi;\
 	\
-	if [ -n "$(OPTIONAL_PRIVSEP)" ]; then \
+	if [ -n "$(OPTIONAL_DOTLOCK_PS)" ]; then \
 		__mkdir "$(VAL_LIBEXECDIR)";\
 		\
-		__stripfile "$(OBJDIR)"/"$(VAL_PRIVSEP)";\
+		__stripfile "$(OBJDIR)"/"$(VAL_DOTLOCK_PS)";\
 		m='o=rx' o=;\
 		if [ -n "$(_____PRIVSEP_GROUP)" ]; then \
 			m="g=rxs,$${m}" o=":$(VAL_PRIVSEP_GROUP)";\
 		else \
 			m="g=rx,$${m}";\
 		fi;\
-		if [ -n "$(VAL_PRIVSEP_USER)" ]; then \
-			m="u=rxs,$${m}" o="$(VAL_PRIVSEP_USER)$${o}";\
+		if [ -n "$(VAL_DOTLOCK_PS_USER)" ]; then \
+			m="u=rxs,$${m}" o="$(VAL_DOTLOCK_PS_USER)$${o}";\
 		else \
 			m="u=rx,$${m}";\
 		fi;\
-		__copychownfile "$${m}" "$${o}" "$(OBJDIR)"/"$(VAL_PRIVSEP)" \
-			"$(VAL_LIBEXECDIR)/$(VAL_PRIVSEP)";\
+		__copychownfile "$${m}" "$${o}" \
+			"$(OBJDIR)"/"$(VAL_DOTLOCK_PS)" \
+			"$(VAL_LIBEXECDIR)/$(VAL_DOTLOCK_PS)";\
 	fi;\
 	\
 	if [ -z "$(DESTDIR)" ]; then \
@@ -281,8 +282,8 @@ clean:
 	$(ECHO_CMD)\
 	$(rm) -f $(OBJ) "$(VAL_UAGENT)" ./gen-mime-types.h ./uman.1 ./urc.rc;\
 	\
-	if [ -n "$(OPTIONAL_PRIVSEP)" ]; then \
-		$(rm) -f ./privsep.o ./"$(VAL_PRIVSEP)";\
+	if [ -n "$(OPTIONAL_DOTLOCK_PS)" ]; then \
+		$(rm) -f ./dotlock-ps.o ./"$(VAL_DOTLOCK_PS)";\
 	fi
 
 distclean: clean

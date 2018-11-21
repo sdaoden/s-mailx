@@ -40,7 +40,7 @@ With utility program and feature adjustments:
   $ make awk=/usr/bin/nawk VERBOSE=yes OPT_SOCKETS=no tangerine
 
 If OPT_DOTLOCK has been enabled then the minimal privilege-separated
-SETUID (to VAL_PRIVSEP_USER, default "root") helper program will be build
+SETUID (to VAL_DOTLOCK_USER, default "root") helper program will be build
 and installed, and therefore the installation process needs to have the
 appropriate privileges.  In this case it may be useful to separate the
 configuration / building and the installation tasks and give the last

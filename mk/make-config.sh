@@ -1307,12 +1307,12 @@ printf 'test: all\n\t$(ECHO_TEST)%s %smx-test.sh --check-only %s\n' \
    "${SHELL}" "${TOPDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
 
 # Add the known utility and some other variables
-printf "#define VAL_PRIVSEP \"${VAL_SID}${VAL_MAILX}-privsep\"\n" >> ${newh}
-printf "VAL_PRIVSEP = \$(VAL_UAGENT)-privsep\n" >> ${newmk}
+printf "#define VAL_DOTLOCK_PS \"${VAL_SID}${VAL_MAILX}-dotlock\"\n" >> ${newh}
+printf "VAL_DOTLOCK_PS = \$(VAL_UAGENT)-dotlock\n" >> ${newmk}
 if feat_yes DOTLOCK; then
-   printf "OPTIONAL_PRIVSEP = \$(VAL_PRIVSEP)\n" >> ${newmk}
+   printf "OPTIONAL_DOTLOCK_PS = \$(VAL_DOTLOCK_PS)\n" >> ${newmk}
 else
-   printf "OPTIONAL_PRIVSEP =\n" >> ${newmk}
+   printf "OPTIONAL_DOTLOCK_PS =\n" >> ${newmk}
 fi
 
 for i in \
@@ -3297,7 +3297,7 @@ srclist= objlist= su_src= su_obj=
 if feat_no AMALGAMATION; then
    for i in `printf '%s\n' "${SRCDIR}"mx/*.c | ${sort}`; do
       i=`basename "${i}" .c`
-      if [ "${i}" = privsep ]; then
+      if [ "${i}" = dotlock-ps ]; then
          continue
       fi
       objlist="${objlist} ${i}.o"
@@ -3328,7 +3328,7 @@ else
    for i in `printf '%s\n' "${SRCDIR}"mx/*.c | ${sort}`; do
       i=`basename "${i}"`
       if [ "${i}" = main.c ] ||
-            [ "${i}" = privsep.c ]; then
+            [ "${i}" = dotlock-ps.c ]; then
          continue
       fi
       printf '$(SRCDIR)mx/%s ' "${i}" >> ${mk}

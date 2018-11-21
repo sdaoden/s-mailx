@@ -220,6 +220,7 @@ And then, assuming the last had been done:
 - CVE-2017-5899.
   Credits: wapiflapi.
   Fixed in: v14.8.16 (on day of disclosure)
+  P.S.: helper program renamed to -dotlock.
 
     > vulnerability in the setuid root helper binary
 

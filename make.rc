@@ -53,11 +53,11 @@
 VAL_CONTACT_MAIL=s-mailx@lists.sdaoden.eu
 VAL_CONTACT_WEB=https://www.sdaoden.eu/code.html
 
-# The user ID our small privilege-separated helper program will be
-# SETUID to, shall it be included ($OPT_DOTLOCK).
+# The user ID our small privilege-separated dotlock helper program will
+# be SETUID to, shall it be included ($OPT_DOTLOCK).
 # Installation will then require the chown(1) program (as below) and
 # sufficient privileges to perform a SETUID to this user ID.
-VAL_PRIVSEP_USER=root
+VAL_DOTLOCK_PS_USER=root
 
 # General prefix where S-nail should be installed.
 VAL_PREFIX=/usr/local
@@ -65,10 +65,9 @@ VAL_PREFIX=/usr/local
 # Fine tune individual locations, normally under $VAL_PREFIX.
 # . the place of the S-nail program.
 VAL_BINDIR="${VAL_PREFIX}/bin"
-# . the place of the privilege-separated helper program, the name
-#   of which is [$VAL_SID$VAL_MAILX]-privsep (see below for $VAL_SID &
-#   $VAL_MAILX).
-#   (Only with $OPT_DOTLOCK.)
+# . the place of privilege-separated helpers, names of which are
+#   ${VAL_SID}${VAL_MAILX}-foo ($VAL_SID and $VAL_MAILX are below).
+#   (Only with: $OPT_DOTLOCK.)
 VAL_LIBEXECDIR="${VAL_PREFIX}/libexec"
 # . of the manual.
 VAL_MANDIR="${VAL_PREFIX}/share/man"
@@ -395,7 +394,8 @@ OPT_COLOUR=yes
 # the dotlock file in such situations -- and only then, as a last
 # ressort.  With it dotlock files can be created for any mailbox for
 # which the invoking user has read (or read-write) permissions, and
-# under the UID and GID of the mailbox itself!  We call it -privsep.
+# under the UID and GID of the mailbox itself!  We call it -dotlock.
+# It will be SETUID to VAL_DOTLOCK_PS_USER, as above.
 # $OPT_DOTLOCK can be "require"d.
 OPT_DOTLOCK=yes
 
