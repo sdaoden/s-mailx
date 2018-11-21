@@ -194,18 +194,18 @@ install:
 	};\
 	__copyfile() {\
 		_mode=$${1} _src=$${2} _xdst=$${3} _dst="$(DESTDIR)$${3}";\
-		$(cp) -f "$${_src}" "$${_dst}";\
 		echo "rm -f \"\$${DESTDIR}$${_xdst}\"" >> \
 			"$(VAL_UAGENT)-uninstall.sh";\
+		$(cp) -f "$${_src}" "$${_dst}";\
 		$(chmod) $${_mode} "$${_dst}";\
 		\
 	};\
 	__copychownfile() {\
 		_mode=$${1} _ident=$${2} _src=$${3} \
 			_xdst=$${4} _dst="$(DESTDIR)$${4}";\
-		$(cp) -f "$${_src}" "$${_dst}";\
 		echo "rm -f \"\$${DESTDIR}$${_xdst}\"" >> \
 			"$(VAL_UAGENT)-uninstall.sh";\
+		$(cp) -f "$${_src}" "$${_dst}";\
 		$(chown) $${_ident} "$${_dst}" || true;\
 		$(chmod) $${_mode} "$${_dst}";\
 		\
@@ -259,12 +259,12 @@ install:
 			"$(VAL_LIBEXECDIR)/$(VAL_PRIVSEP)";\
 	fi;\
 	\
-	echo "rm -f \"\$${DESTDIR}$(VAL_BINDIR)/$(VAL_UAGENT)-uninstall.sh\"" \
-		>> "$(VAL_UAGENT)-uninstall.sh";\
-	\
 	if [ -z "$(DESTDIR)" ]; then \
 		__copyfile 0555 "$(VAL_UAGENT)-uninstall.sh" \
 			"$(VAL_BINDIR)/$(VAL_UAGENT)-uninstall.sh";\
+	else \
+	echo "rm -f \"\$${DESTDIR}$(VAL_BINDIR)/$(VAL_UAGENT)-uninstall.sh\"" \
+			>> "$(VAL_UAGENT)-uninstall.sh";\
 	fi;\
 	$(ECHO_BLOCK_END)
 
