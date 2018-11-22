@@ -422,8 +422,8 @@ imap_path_encode(char const *cp, bool_t *err_or_null){
     * local charset to UTF-8, then convert all characters which need to be
     * encoded (except plain "&") to UTF-16BE first, then that to mUTF-7.
     * We can skip the UTF-8 conversion occasionally, however */
-#if (defined HAVE_DEVEL && defined HAVE_ICONV) ||\
-      !defined HAVE_ALWAYS_UNICODE_LOCALE
+#if (defined HAVE_DEVEL || !defined HAVE_ALWAYS_UNICODE_LOCALE) &&\
+      defined HAVE_ICONV
    if(!(n_psonce & n_PSO_UNICODE)){
       char const *x;
 
@@ -731,8 +731,8 @@ jeincpl:
    *rv = '\0';
 
    /* We can skip the UTF-8 conversion occasionally */
-#if (defined HAVE_DEVEL && defined HAVE_ICONV) ||\
-      !defined HAVE_ALWAYS_UNICODE_LOCALE
+#if (defined HAVE_DEVEL || !defined HAVE_ALWAYS_UNICODE_LOCALE) &&\
+      defined HAVE_ICONV
    if(!(n_psonce & n_PSO_UNICODE)){
       emsg = N_("iconv(3) from UTF-8 to locale charset failed");
       if((rv = n_iconv_onetime_cp(n_ICONV_NONE, NULL, NULL, rv_base)) == NULL)

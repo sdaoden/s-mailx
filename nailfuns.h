@@ -2453,7 +2453,7 @@ FL int         n_iconv_str(iconv_t icp, enum n_iconv_flags icf,
  * Returns a autorec_alloc()ed buffer or NULL */
 FL char *      n_iconv_onetime_cp(enum n_iconv_flags icf,
                   char const *tocode, char const *fromcode, char const *input);
-#endif
+#endif /* HAVE_ICONV */
 
 /*
  * termcap.c
