@@ -31,9 +31,10 @@ Annotated Excerpts from the Programmer's Manual, 1971-1986":
     or whatever. Not until v7 did the interface change (Thompson). [.]
 
 1. Where?
-2. Repository layout
-3. Security record
-4. Authors
+2. Repository access
+3. Repository layout
+4. Security record
+5. Authors
 
 1. Where?
 ---------
@@ -77,7 +78,37 @@ Thank you!
 
   [+1] http://cdn.whatculture.com/wp-content/uploads/2009/06/snailmail.jpg
 
-2. Repository layout
+2. Repository access
+--------------------
+
+To create a full clone of the repository, with all the data and history:
+
+  $ git clone https://git.sdaoden.eu/scm/s-nail.git
+
+With a newer git(1), and only tracking the latest stable branch:
+
+  $ git clone --single-branch --branch=stable/latest \
+      https://git.sdaoden.eu/scm/s-nail.git
+
+Or, being selective, also with older git(1)s:
+
+  $ mkdir s-nail.git
+  $ cd s-nail.git
+  $ git init
+  $ git remote add origin -t 'release/*' -t stable/stable -t master \
+      https://git.sdaoden.eu/scm/s-nail.git
+  $ git fetch -v
+
+And then, assuming the last had been done:
+
+  $ # Show all releases
+  $ git log --no-walk --decorate --oneline --branches='release/*' --
+  $ # Check out the latest release, and verify the signature
+  $ git checkout release/latest
+  $ git log --oneline --show-signature --max-count=1 HEAD
+  $ make all && sudo make install
+
+3. Repository layout
 --------------------
 
 - [release/*]
@@ -184,44 +215,19 @@ Thank you!
 - [heirloom]
     A full git(1) cvsimport of the Heirloom mailx(1) cvs(1) repository.
 
-To create a full clone of the repository, with all the data and history:
-  $ git clone https://git.sdaoden.eu/scm/s-nail.git
-
-With a newer git(1), and only tracking the latest stable branch:
-  $ git clone --single-branch --branch=stable/latest \
-      https://git.sdaoden.eu/scm/s-nail.git
-
-Or, being selective, also with older git(1)s:
-  $ mkdir s-nail.git
-  $ cd s-nail.git
-  $ git init
-  $ git remote add origin -t 'release/*' -t stable/stable -t master \
-      https://git.sdaoden.eu/scm/s-nail.git
-  $ git fetch -v
-
-And then, assuming the last had been done:
-
-  $ # Show all releases
-  $ git log --no-walk --decorate --oneline --branches='release/*' --
-  $ # Check out the latest release, and verify the signature
-  $ git checkout release/latest
-  $ git log --oneline --show-signature --max-count=1 HEAD
-  $ make all && sudo make install
-
-3. Security record
+4. Security record
 ------------------
 
 - CVE-2004-2771, and CVE-2014-7844.
   http://seclists.org/oss-sec/2014/q4/1066.
   Fixed in: v14.7.9 (on day of announcement on oss-sec)
-
-  Affected all BSD Mail-based codebases.
+  Note: Affected all BSD Mail-based codebases.
 
 - CVE-2017-5899.
   Credits: wapiflapi.
   Fixed in: v14.8.16 (on day of disclosure)
   P.S.: helper program renamed to -dotlock.
-
+  Desc.:
     > vulnerability in the setuid root helper binary
 
     > The problem is that an O_EXCL file is created with a user controlled
@@ -229,7 +235,7 @@ And then, assuming the last had been done:
     > This means that using s-nail-privsep a normal user can create a file
     > anywhere on the filesystem, which is a security problem.
 
-4. Authors
+5. Authors
 ----------
 
 Unix mail seems to have been written mostly by Ken Thompson.
