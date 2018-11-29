@@ -457,27 +457,22 @@ jredo:
          if((cmp = a_colour_g.cg_maps[ct][i1][i2]) == NULL)
             continue;
 
-         while(cmp != NULL){
-            char const *tagcomm, *tag;
+         for(; cmp != NULL; cmp = cmp->cm_next){
+            char const *tag;
 
-            tagcomm = n_empty;
             if((tag = cmp->cm_tag) == NULL)
                tag = n_empty;
             else if(tag == n_COLOUR_TAG_SUM_DOT)
                tag = "dot";
             else if(tag == n_COLOUR_TAG_SUM_OLDER)
                tag = "older";
-#ifdef HAVE_REGEX
-            else if(cmp->cm_regex != NULL && (n_poption & n_PO_D_V))
-               tagcomm = "# regex";
-#endif
-            fprintf(n_stdout, "colour %s %-*s %s %s%s\n",
+
+            fprintf(n_stdout, "colour %s %-*s %s %s\n",
                a_colour_types[ct], a_COLOUR_MAP_SHOW_FIELDWIDTH,
                savecat(a_colour_ctx_prefixes[i1],
                   a_colour_map_ids[i1][i2].cmi_name),
                (char const*)cmp->cm_buf + cmp->cm_user_off,
-               n_shexp_quote_cp(tag, TRU1), tagcomm);
-            cmp = cmp->cm_next;
+               n_shexp_quote_cp(tag, TRU1));
          }
       }
 
