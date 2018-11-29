@@ -935,10 +935,13 @@ je_S:
          /* Open primary mailbox of the given user */
          uarg = savecat("%", avo.avo_current_arg);
          break;
-      case 'V':
-         fprintf(n_stdout, _("%s version %s\n"), n_uagent, ok_vlook(version));
+      case 'V':{
+         struct n_string s;
+
+         fputs(n_string_cp_const(n_version(
+            n_string_book(n_string_creat_auto(&s), 120))), n_stdout);
          n_exit_status = n_EXIT_OK;
-         goto j_leave;
+         }goto j_leave;
       case 'v':
          /* Be verbose */
          ok_bset(verbose);

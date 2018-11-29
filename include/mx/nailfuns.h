@@ -539,7 +539,9 @@ FL int c_read(void *vp);
 /* `readall' */
 FL int c_readall(void *vp);
 
-/* `version' */
+/* `version', and generic support for the shared initial version line, which
+ * appends to sp the UA name, version etc., and a \n LF */
+FL struct n_string *n_version(struct n_string *sp);
 FL int c_version(void *vp);
 
 /*

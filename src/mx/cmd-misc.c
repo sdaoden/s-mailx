@@ -558,6 +558,25 @@ jleave:
    return rv;
 }
 
+FL struct n_string *
+n_version(struct n_string *sp){
+   n_NYD_IN;
+   sp = n_string_push_cp(sp, n_uagent);
+   sp = n_string_push_c(sp, ' ');
+   sp = n_string_push_cp(sp, ok_vlook(version));
+   sp = n_string_push_c(sp, ',');
+   sp = n_string_push_c(sp, ' ');
+   sp = n_string_push_cp(sp, ok_vlook(version_date));
+   sp = n_string_push_c(sp, ' ');
+   sp = n_string_push_c(sp, '(');
+   sp = n_string_push_cp(sp, _("build for "));
+   sp = n_string_push_cp(sp, ok_vlook(build_os));
+   sp = n_string_push_c(sp, ')');
+   sp = n_string_push_c(sp, '\n');
+   n_NYD_OU;
+   return sp;
+}
+
 FL int
 c_version(void *vp){
    struct utsname ut;
@@ -572,18 +591,8 @@ c_version(void *vp){
    sp = n_string_book(sp, 1024);
 
    /* First two lines */
-   sp = n_string_push_cp(sp, n_uagent);
-   sp = n_string_push_c(sp, ' ');
-   sp = n_string_push_cp(sp, ok_vlook(version));
-   sp = n_string_push_c(sp, ',');
-   sp = n_string_push_c(sp, ' ');
-   sp = n_string_push_cp(sp, ok_vlook(version_date));
-   sp = n_string_push_c(sp, ' ');
-   sp = n_string_push_c(sp, '(');
-   sp = n_string_push_cp(sp, _("build for "));
-   sp = n_string_push_cp(sp, ok_vlook(build_os));
-   sp = n_string_push_c(sp, ')');
-   sp = n_string_push_cp(sp, _("\nFeatures included (+) or not (-):\n"));
+   sp = n_version(sp);
+   sp = n_string_push_cp(sp, _("Features included (+) or not (-):\n"));
 
    /* Some lines with the features.
     * *features* starts with dummy byte to avoid + -> *folder* expansions */
