@@ -116,6 +116,7 @@ set keep
 set keepsave
 
 # An informational prompt (and see "Gimmicks" below).
+# Of interest may also be \${^ERRQUEUE-EXISTS} and \${^ERRQUEUE-COUNT}.
 # Note the _real_ evaluation occurs once used (see *prompt* manual entry).
 #wysh set prompt='?\$?!\$!/\$^ERRNAME[\${account-name}#\${mailbox-display}]? '
 

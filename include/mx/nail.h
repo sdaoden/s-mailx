@@ -2333,6 +2333,9 @@ VL ui32_t n_pstate;              /* Bits of enum n_program_state */
 /* TODO "cmd_tab.h ARG_EM set"-storage (n_[01..]) as long as we don't have a
  * TODO struct CmdCtx where each command has its own ARGC/ARGV, errno and exit
  * TODO status and may-place-in-history bit, need to manage a global bypass.. */
+#ifdef mx_HAVE_ERRORS
+VL si32_t n_pstate_err_cnt;      /* What backs $^ERRQUEUE-xy */
+#endif
 VL si32_t n_pstate_err_no;       /* What backs $! su_ERR_* TODO ..HACK */
 VL si32_t n_pstate_ex_no;        /* What backs $? n_EX_* TODO ..HACK ->64-bit */
 

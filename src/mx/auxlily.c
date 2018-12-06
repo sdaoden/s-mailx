@@ -108,7 +108,6 @@ static union rand_state *a_aux_rand;
 /* Error ring, for `errors' */
 #ifdef mx_HAVE_ERRORS
 static struct a_aux_err_node *a_aux_err_head, *a_aux_err_tail;
-static size_t a_aux_err_cnt, a_aux_err_cnt_noted;
 #endif
 static size_t a_aux_err_linelen;
 
@@ -1272,11 +1271,11 @@ jcreat:
          else
             a_aux_err_head = enp;
          a_aux_err_tail = enp;
-         ++a_aux_err_cnt;
+         ++n_pstate_err_cnt;
       }else if(doname ||
             (enp->ae_str.s_len > 0 &&
              enp->ae_str.s_dat[enp->ae_str.s_len - 1] == '\n')){
-         if(a_aux_err_cnt < ERRORS_MAX)
+         if(n_pstate_err_cnt < ERRORS_MAX)
             goto jcreat;
 
          a_aux_err_head = (enp = a_aux_err_head)->ae_next;
@@ -1448,7 +1447,7 @@ jlist:{
 
 jclear:
    a_aux_err_tail = NULL;
-   a_aux_err_cnt = a_aux_err_cnt_noted = 0;
+   n_pstate_err_cnt = 0;
    a_aux_err_linelen = 0;
    while((enp = a_aux_err_head) != NULL){
       a_aux_err_head = enp->ae_next;

@@ -336,9 +336,9 @@ OPT_TERMCAP_VIA_TERMINFO=yes
 
 # Enable the `errors' command; S-nail is a console-based application and
 # thus errors may fly by pretty fast as other operations are in
-# progress; or $PAGERs are started and clear errors off the screen.  If
-# enabled errors are duplicated as they happen and the `errors' command
-# will show them when asked to.
+# progress; or $PAGERs are started and clear errors off the screen.
+# If enabled errors will be duplicated to an error queue as they happen
+# and the `errors' command will show them when asked to.
 OPT_ERRORS=yes
 
 # We may include `help' etc. strings for commands, increasing size a bit.

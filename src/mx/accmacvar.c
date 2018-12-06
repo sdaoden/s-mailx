@@ -1684,7 +1684,8 @@ a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp){
 
    i = su_cs_len(rv = &avcp->avc_name[1]);
 
-   /* ERR, ERRDOC, ERRNAME, plus *-NAME variants */
+   /* ERR, ERRDOC, ERRNAME, plus *-NAME variants.
+    * As well as ERRQUEUE-. */
    if(rv[0] == 'E' && i >= 3 && rv[1] == 'R' && rv[2] == 'R'){
       if(i == 3){
          e = n_pstate_err_no;
@@ -1720,6 +1721,26 @@ jeno:
             }
             rv = su_err_name(e);
             goto jleave;
+         }else if(i >= 14){
+            if(!su_mem_cmp(&rv[3], "QUEUE-COUNT", 11)){
+               if(rv[14] == '\0'){
+                  e = 0
+#ifdef mx_HAVE_ERRORS
+                        | n_pstate_err_cnt
+#endif
+                  ;
+                  goto jeno;
+               }
+            }else if(i >= 15 && !su_mem_cmp(&rv[3], "QUEUE-EXISTS", 12)){
+               if(rv[15] == '\0'){
+                  e = 0
+#ifdef mx_HAVE_ERRORS
+                        | (n_pstate_err_cnt != 0)
+#endif
+                  ;
+                  goto jeno;
+               }
+            }
          }
       }
    }

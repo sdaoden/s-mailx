@@ -5186,18 +5186,18 @@ respectively, the program environment.
 .It Ic errors
 \*(OP Since \*(UA uses the console as a user interface it can happen
 that messages scroll by too fast to become recognized.
-An error message ring queue is available which stores duplicates of any
-error message and notifies the user in interactive sessions whenever
-a new error has occurred.
+Therefore an error log queue is available which can be managed by
+.Ic errors :
+.Ar show
+or no argument will display and clear the queue,
+.Ar clear
+will only clear the queue.
 The queue is finite: if its maximum size is reached any new message
 replaces the eldest.
-The command
-.Ic errors
-can be used to manage this message queue: if given
-.Ar show
-or no argument the queue will be displayed and cleared,
-.Ar clear
-will only clear all messages from the queue.
+There are also the variables
+.Va ^ERRQUEUE-COUNT
+and
+.Va ^ERRQUEUE-EXISTS .
 .
 .Mx
 .It Ic eval
@@ -8642,6 +8642,17 @@ define work {
 }
 call work 0
 .Ed
+.
+.Mx
+.Mx
+.It Va ^ERRQUEUE-COUNT , ^ERRQUEUE-EXISTS
+The number of messages present in the \*(OPal log queue of
+.Ic errors ,
+and a boolean which indicates whether the queue is not empty,
+respectively; both are always 0 unless
+.Va features
+indicates
+.Ql +errors .
 .El
 .
 .
