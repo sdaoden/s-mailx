@@ -43,9 +43,10 @@
 
 #include <pwd.h>
 
-struct cmatch_data {
-   size_t      tlen;    /* Length of .tdata */
-   char const  *tdata;  /* Template date - see _cmatch_data[] */
+struct a_header_cmatch_data{
+   ui32_t hcmd_len_x;      /* Length of .tdata,.. */
+   ui32_t hcmd_len_min;    /* ..less all optional entries */
+   char const *hcmd_data;  /* Template date - see a_header_cmatch_data[] */
 };
 
 /* Template characters for cmatch_data.tdata:
@@ -53,25 +54,28 @@ struct cmatch_data {
  * 'a'   A lower case char
  * ' '   A space
  * '0'   A digit
- * 'O'   An optional digit or space
+ * 'O'   An optional digit or space; MUST be followed by '0space'!
  * ':'   A colon
  * '+'  Either a plus or a minus sign */
-static struct cmatch_data const  _cmatch_data[] = {
-   { 24, "Aaa Aaa O0 00:00:00 0000" },       /* BSD/ISO C90 ctime */
-   { 28, "Aaa Aaa O0 00:00:00 AAA 0000" },   /* BSD tmz */
-   { 21, "Aaa Aaa O0 00:00 0000" },          /* SysV ctime */
-   { 25, "Aaa Aaa O0 00:00 AAA 0000" },      /* SysV tmz */
+static struct a_header_cmatch_data const a_header_cmatch_data[] = {
+   {24, 23, "Aaa Aaa O0 00:00:00 0000"},     /* BSD/ISO C90 ctime */
+   {28, 27, "Aaa Aaa O0 00:00:00 AAA 0000"}, /* BSD tmz */
+   {21, 20, "Aaa Aaa O0 00:00 0000"},        /* SysV ctime */
+   {25, 24, "Aaa Aaa O0 00:00 AAA 0000"},    /* SysV tmz */
    /* RFC 822-alike From_ lines do not conform to RFC 4155, but seem to be used
     * in the wild (by UW-imap) */
-   { 30, "Aaa Aaa O0 00:00:00 0000 +0000" },
+   {30, 29, "Aaa Aaa O0 00:00:00 0000 +0000"},
    /* RFC 822 with zone spec; 1. military, 2. UT, 3. north america time
     * zone strings; note that 1. is strictly speaking not correct as some
     * letters are not used, and 2. is not because only "UT" is defined */
-#define __reuse      "Aaa Aaa O0 00:00:00 0000 AAA"
-   { 28 - 2, __reuse }, { 28 - 1, __reuse }, { 28 - 0, __reuse },
-   { 0, NULL }
+#define __reuse "Aaa Aaa O0 00:00:00 0000 AAA"
+   {28 - 2, 27 - 2, __reuse},
+   {28 - 1, 27 - 1, __reuse},
+   {28 - 0, 27 - 0, __reuse},
+   {0, 0, NULL}
 };
-#define a_HEADER_DATE_MINLEN 21
+#define a_HEADER_DATE_MINLEN 20
+n_CTAV(n_FROM_DATEBUF > sizeof("From_") -1 + 3 + 30 +1);
 
 /* Savage extract date field from From_ line.  linelen is convenience as line
  * must be terminated (but it may end in a newline [sequence]).
@@ -84,13 +88,12 @@ static int a_header_extract_date_from_from_(char const *line, size_t linelen,
 static char const *a_header__from_skipword(char const *wp);
 
 /* Match the date string against the date template (tp), return if match.
- * See _cmatch_data[] for template character description */
-static int                 _cmatch(size_t len, char const *date,
-                              char const *tp);
+ * See a_header_cmatch_data[] for template character description */
+static bool_t a_header_cmatch(char const *tp, char const *date);
 
 /* Check whether date is a valid 'From_' date.
  * (Rather ctime(3) generated dates, according to RFC 4155) */
-static int                 _is_date(char const *date);
+static bool_t a_header_is_date(char const *date);
 
 /* JulianDayNumber converter(s) */
 static size_t a_header_gregorian_to_jdn(ui32_t y, ui32_t m, ui32_t d);
@@ -101,7 +104,7 @@ static void a_header_jdn_to_gregorian(size_t jdn,
 
 /* ... And place the extracted date in `date' */
 static void a_header_parse_from_(struct message *mp,
-               char date[n_FROM_DATEBUF]);
+      char date[n_FROM_DATEBUF]);
 
 /* Convert the domain part of a skinned address to IDNA.
  * If an error occurs before Unicode information is available, revert the IDNA
@@ -224,62 +227,71 @@ a_header__from_skipword(char const *wp)
    return (c == 0 ? NULL : wp - 1);
 }
 
-static int
-_cmatch(size_t len, char const *date, char const *tp)
-{
-   int ret = 0;
+static bool_t
+a_header_cmatch(char const *tp, char const *date){
+   bool_t rv;
+   char tc, dc;
    NYD2_ENTER;
 
-   while (len--) {
-      char c = date[len];
-      switch (tp[len]) {
+   for(;;){
+      tc = *tp++;
+      dc = *date++;
+      if((rv = (tc == '\0' && dc == '\0')))
+         break; /* goto jleave; */
+
+      switch(tc){
       case 'a':
-         if (!lowerchar(c))
+         if(!lowerchar(dc))
             goto jleave;
          break;
       case 'A':
-         if (!upperchar(c))
+         if(!upperchar(dc))
             goto jleave;
          break;
       case ' ':
-         if (c != ' ')
+         if(dc != ' ')
             goto jleave;
          break;
       case '0':
-         if (!digitchar(c))
+         if(!digitchar(dc))
             goto jleave;
          break;
       case 'O':
-         if (c != ' ' && !digitchar(c))
-            goto jleave;
+         if(!digitchar(dc) && dc != ' ')
+               goto jleave;
+         tc = *tp++; /* is "0"! */
+         dc = *date;
+         if(digitchar(dc))
+            ++date;
          break;
       case ':':
-         if (c != ':')
+         if(dc != ':')
             goto jleave;
          break;
       case '+':
-         if (c != '+' && c != '-')
+         if(dc != '+' && dc != '-')
             goto jleave;
          break;
       }
    }
-   ret = 1;
 jleave:
    NYD2_LEAVE;
-   return ret;
+   return rv;
 }
 
-static int
-_is_date(char const *date)
-{
-   struct cmatch_data const *cmdp;
+static bool_t
+a_header_is_date(char const *date){
+   struct a_header_cmatch_data const *hcmdp;
    size_t dl;
-   int rv = 0;
+   bool_t rv;
    NYD2_ENTER;
 
-   if ((dl = strlen(date)) >= a_HEADER_DATE_MINLEN)
-      for (cmdp = _cmatch_data; cmdp->tdata != NULL; ++cmdp)
-         if (dl == cmdp->tlen && (rv = _cmatch(dl, date, cmdp->tdata)))
+   rv = FAL0;
+
+   if((dl = strlen(date)) >= a_HEADER_DATE_MINLEN)
+      for(hcmdp = a_header_cmatch_data; hcmdp->hcmd_data != NULL; ++hcmdp)
+         if(dl >= hcmdp->hcmd_len_min && dl <= hcmdp->hcmd_len_x &&
+               (rv = a_header_cmatch(hcmdp->hcmd_data, date)))
             break;
    NYD2_LEAVE;
    return rv;
@@ -1301,7 +1313,7 @@ is_head(char const *linebuf, size_t linelen, bool_t check_rfc4155)
 
    if ((rv = (linelen >= 5 && !memcmp(linebuf, "From ", 5))) && check_rfc4155 &&
          (a_header_extract_date_from_from_(linebuf, linelen, date) <= 0 ||
-          !_is_date(date)))
+          !a_header_is_date(date)))
       rv = TRUM1;
    NYD2_LEAVE;
    return rv;
