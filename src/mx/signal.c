@@ -85,15 +85,6 @@
  * TODO   SA_RESTART setting, since that has to be done for every signal.)
  */
 
-#ifdef mx_HAVE_NYD
-struct nyd_info {
-   char const  *ni_file;
-   char const  *ni_fun;
-   ui32_t      ni_chirp_line;
-   ui32_t      ni_level;
-};
-#endif
-
 /* {hold,rele}_all_sigs() */
 static size_t           _alls_depth;
 static sigset_t         _alls_nset, _alls_oset;
@@ -102,44 +93,13 @@ static sigset_t         _alls_nset, _alls_oset;
 static size_t           _hold_sigdepth;
 static sigset_t         _hold_nset, _hold_oset;
 
-/* NYD, memory pool debug */
-#ifdef mx_HAVE_NYD
-static ui32_t           _nyd_curr, _nyd_level;
-static struct nyd_info  _nyd_infos[NYD_CALLS_MAX];
-#endif
-
 /* */
 static void a_signal_dummyhdl(int sig);
-
-/* */
-#ifdef mx_HAVE_NYD
-static void    _nyd_print(int fd, struct nyd_info *nip);
-#endif
 
 static void
 a_signal_dummyhdl(int sig){
    n_UNUSED(sig);
 }
-
-#ifdef mx_HAVE_NYD
-static void
-_nyd_print(int fd, struct nyd_info *nip)
-{
-   char buf[80];
-   union {int i; size_t z;} u;
-
-   u.i = snprintf(buf, sizeof buf,
-         "%c [%2" PRIu32 "] %.25s (%.40s:%" PRIu32 ")\n",
-         "=><"[(nip->ni_chirp_line >> 29) & 0x3], nip->ni_level, nip->ni_fun,
-         nip->ni_file, (nip->ni_chirp_line & 0x1FFFFFFFu));
-   if (u.i > 0) {
-      u.z = u.i;
-      if (u.z > sizeof buf)
-         u.z = sizeof buf - 1; /* (Skip \0) */
-      write(fd, buf, u.z);
-   }
-}
-#endif
 
 FL int
 c_sleep(void *v){ /* XXX installs sighdl+ due to outer jumps and SA_RESTART! */
@@ -148,7 +108,7 @@ c_sleep(void *v){ /* XXX installs sighdl+ due to outer jumps and SA_RESTART! */
    bool_t ignint;
    uiz_t sec, msec;
    char **argv;
-   NYD_IN;
+   n_NYD_IN;
 
    argv = v;
 
@@ -199,7 +159,7 @@ c_sleep(void *v){ /* XXX installs sighdl+ due to outer jumps and SA_RESTART! */
    sigprocmask(SIG_SETMASK, &oset, NULL);
    sigaction(SIGINT, &oact, NULL);
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return (argv == NULL);
 jeover:
    n_err(_("`sleep': argument(s) overflow(s) datatype\n"));
@@ -213,7 +173,6 @@ jesyn:
    goto jleave;
 }
 
-
 #ifdef mx_HAVE_DEVEL
 FL int
 c_sigstate(void *vp){ /* TODO remove again */
@@ -226,7 +185,7 @@ c_sigstate(void *vp){ /* TODO remove again */
       {SIGCHLD, "SIGCHLD"}, {SIGPIPE, "SIGPIPE"}
    };
    char const *cp;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if((cp = vp) != NULL && cp[0] != '\0'){
       if(!asccasecmp(&cp[1], "all")){
@@ -253,7 +212,7 @@ c_sigstate(void *vp){ /* TODO remove again */
          (shp == SIG_ERR ? "ERR" : (shp == SIG_DFL ? "DFL"
             : (shp == SIG_IGN ? "IGN" : "ptf?"))));
    }
-   NYD2_OU;
+   n_NYD2_OU;
    return OKAY;
 }
 #endif /* mx_HAVE_DEVEL */
@@ -261,11 +220,11 @@ c_sigstate(void *vp){ /* TODO remove again */
 FL void
 n_raise(int signo)
 {
-   NYD2_IN;
+   n_NYD2_IN;
    if(n_pid == 0)
       n_pid = getpid();
    kill(n_pid, signo);
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 FL sighandler_type
@@ -273,33 +232,33 @@ safe_signal(int signum, sighandler_type handler)
 {
    struct sigaction nact, oact;
    sighandler_type rv;
-   NYD2_IN;
+   n_NYD2_IN;
 
    nact.sa_handler = handler;
    sigfillset(&nact.sa_mask);
    nact.sa_flags = SA_RESTART;
    rv = (sigaction(signum, &nact, &oact) != 0) ? SIG_ERR : oact.sa_handler;
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
 FL n_sighdl_t
 n_signal(int signo, n_sighdl_t hdl){
    struct sigaction nact, oact;
-   NYD2_IN;
+   n_NYD2_IN;
 
    nact.sa_handler = hdl;
    sigfillset(&nact.sa_mask);
    nact.sa_flags = 0;
    hdl = (sigaction(signo, &nact, &oact) != 0) ? SIG_ERR : oact.sa_handler;
-   NYD2_OU;
+   n_NYD2_OU;
    return hdl;
 }
 
 FL void
 hold_all_sigs(void)
 {
-   NYD2_IN;
+   n_NYD2_IN;
    if (_alls_depth++ == 0) {
       sigfillset(&_alls_nset);
       sigdelset(&_alls_nset, SIGABRT);
@@ -315,22 +274,22 @@ hold_all_sigs(void)
       sigdelset(&_alls_nset, SIGCHLD);
       sigprocmask(SIG_BLOCK, &_alls_nset, &_alls_oset);
    }
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 FL void
 rele_all_sigs(void)
 {
-   NYD2_IN;
+   n_NYD2_IN;
    if (--_alls_depth == 0)
       sigprocmask(SIG_SETMASK, &_alls_oset, (sigset_t*)NULL);
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 FL void
 hold_sigs(void)
 {
-   NYD2_IN;
+   n_NYD2_IN;
    if (_hold_sigdepth++ == 0) {
       sigemptyset(&_hold_nset);
       sigaddset(&_hold_nset, SIGHUP);
@@ -338,16 +297,16 @@ hold_sigs(void)
       sigaddset(&_hold_nset, SIGQUIT);
       sigprocmask(SIG_BLOCK, &_hold_nset, &_hold_oset);
    }
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 FL void
 rele_sigs(void)
 {
-   NYD2_IN;
+   n_NYD2_IN;
    if (--_hold_sigdepth == 0)
       sigprocmask(SIG_SETMASK, &_hold_oset, NULL);
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 /* TODO This is temporary gracyness */
@@ -355,7 +314,7 @@ static struct n_sigman *n__sigman;
 static void n__sigman_hdl(int signo);
 static void
 n__sigman_hdl(int signo){
-   NYD_X; /* Signal handler */
+   n_NYD_X; /* Signal handler */
    n__sigman->sm_signo = signo;
    siglongjmp(n__sigman->sm_jump, 1);
 }
@@ -364,7 +323,7 @@ FL int
 n__sigman_enter(struct n_sigman *self, int flags){
    /* TODO no error checking when installing sighdls */
    int rv;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if((int)flags >= 0){
       self->sm_flags = (enum n_sigman_flags)flags;
@@ -400,14 +359,14 @@ n__sigman_enter(struct n_sigman *self, int flags){
       ++_hold_sigdepth;
    }
    rele_sigs();
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
 FL void
 n_sigman_cleanup_ping(struct n_sigman *self){
    ui32_t f;
-   NYD2_IN;
+   n_NYD2_IN;
 
    hold_sigs();
 
@@ -425,7 +384,7 @@ n_sigman_cleanup_ping(struct n_sigman *self){
       safe_signal(SIGPIPE, SIG_IGN);
 
    rele_sigs();
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 FL void
@@ -433,7 +392,7 @@ n_sigman_leave(struct n_sigman *self,
       enum n_sigman_flags reraise_flags){
    ui32_t f;
    int sig;
-   NYD2_IN;
+   n_NYD2_IN;
 
    hold_sigs();
    n__sigman = self->sm_outer;
@@ -474,7 +433,7 @@ n_sigman_leave(struct n_sigman *self,
       break;
    }
 
-   NYD2_OU;
+   n_NYD2_OU;
    if(sig != 0){
       sigset_t cset;
 
@@ -488,33 +447,23 @@ n_sigman_leave(struct n_sigman *self,
 FL int
 n_sigman_peek(void){
    int rv;
-   NYD2_IN;
+   n_NYD2_IN;
    rv = 0;
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
 FL void
 n_sigman_consume(void){
-   NYD2_IN;
-   NYD2_OU;
+   n_NYD2_IN;
+   n_NYD2_OU;
 }
 
-#ifdef mx_HAVE_NYD
-FL void
-_nyd_chirp(ui8_t act, char const *file, ui32_t line, char const *fun)
-{
-   struct nyd_info *nip = _nyd_infos;
-
-   if (_nyd_curr != n_NELEM(_nyd_infos))
-      nip += _nyd_curr++;
-   else
-      _nyd_curr = 1;
-   nip->ni_file = file;
-   nip->ni_fun = fun;
-   nip->ni_chirp_line = ((ui32_t)(act & 0x3) << 29) | (line & 0x1FFFFFFFu);
-   nip->ni_level = ((act == 0) ? _nyd_level
-         : (act == 1) ? ++_nyd_level : _nyd_level--);
+#ifdef mx_HAVE_n_NYD
+static void a_signal_nyd__dump(su_up cookie, char const *buf, su_uz blen);
+static void
+a_signal_nyd__dump(su_up cookie, char const *buf, su_uz blen){
+   write((int)cookie, buf, blen);
 }
 
 FL void
@@ -523,7 +472,6 @@ _nyd_oncrash(int signo)
    char pathbuf[PATH_MAX], s2ibuf[32], *cp;
    struct sigaction xact;
    sigset_t xset;
-   struct nyd_info *nip;
    int fd;
    size_t i, fnl;
    char const *tmpdir;
@@ -555,7 +503,7 @@ _nyd_oncrash(int signo)
 
 # undef _X
 # define _X(X) (X), sizeof(X) -1
-   write(fd, _X("\n\nNYD: program dying due to signal "));
+   write(fd, _X("\n\nn_NYD: program dying due to signal "));
 
    cp = s2ibuf + sizeof(s2ibuf) -1;
    *cp = '\0';
@@ -568,16 +516,12 @@ _nyd_oncrash(int signo)
 
    write(fd, _X(":\n"));
 
-   if (_nyd_infos[n_NELEM(_nyd_infos) - 1].ni_file != NULL)
-      for (i = _nyd_curr, nip = _nyd_infos + i; i < n_NELEM(_nyd_infos); ++i)
-         _nyd_print(fd, nip++);
-   for (i = 0, nip = _nyd_infos; i < _nyd_curr; ++i)
-      _nyd_print(fd, nip++);
+   su_nyd_dump(&a_signal_nyd__dump, (su_uz)(su_u32)fd);
 
    write(fd, _X("----------\nCome up to the lab and see what's on the slab\n"));
 
    if (fd != STDERR_FILENO) {
-      write(STDERR_FILENO, _X("Crash NYD listing written to "));
+      write(STDERR_FILENO, _X("Crash n_NYD listing written to "));
       write(STDERR_FILENO, pathbuf, fnl);
       write(STDERR_FILENO, _X("\n"));
 # undef _X
@@ -592,6 +536,6 @@ _nyd_oncrash(int signo)
    for (;;)
       _exit(n_EXIT_ERR);
 }
-#endif /* mx_HAVE_NYD */
+#endif /* mx_HAVE_n_NYD */
 
 /* s-it-mode */

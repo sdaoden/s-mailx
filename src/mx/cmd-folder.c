@@ -49,7 +49,7 @@ _c_file(void *v, enum fedit_mode fm)
 {
    char **argv = v;
    int i;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if(*argv == NULL){
       n_folder_announce(n_ANNOUNCE_STATUS);
@@ -89,7 +89,7 @@ _c_file(void *v, enum fedit_mode fm)
       n_folder_announce(n_ANNOUNCE_CHANGE);
    i = 0;
 jleave:
-   NYD2_OU;
+   n_NYD2_OU;
    return i;
 }
 
@@ -97,10 +97,10 @@ FL int
 c_file(void *v)
 {
    int rv;
-   NYD_IN;
+   n_NYD_IN;
 
    rv = _c_file(v, FEDIT_NONE);
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -108,10 +108,10 @@ FL int
 c_File(void *v)
 {
    int rv;
-   NYD_IN;
+   n_NYD_IN;
 
    rv = _c_file(v, FEDIT_RDONLY);
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -119,7 +119,7 @@ FL int
 c_newmail(void *v)
 {
    int val = 1, mdot;
-   NYD_IN;
+   n_NYD_IN;
    n_UNUSED(v);
 
    if (n_pstate & n_PS_HOOK_MASK)
@@ -134,7 +134,7 @@ c_newmail(void *v)
       mdot = getmdot(1);
       setdot(message + mdot - 1);
    }
-   NYD_OU;
+   n_NYD_OU;
    return val;
 }
 
@@ -142,7 +142,7 @@ FL int
 c_noop(void *v)
 {
    int rv = 0;
-   NYD_IN;
+   n_NYD_IN;
    n_UNUSED(v);
 
    switch (mb.mb_type) {
@@ -159,7 +159,7 @@ c_noop(void *v)
    default:
       break;
    }
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -170,7 +170,7 @@ c_remove(void *v)
    size_t fmt_len;
    char **args, *name, *ename;
    int ec;
-   NYD_IN;
+   n_NYD_IN;
 
    if (*(args = v) == NULL) {
       n_err(_("Synopsis: remove: <mailbox>...\n"));
@@ -253,7 +253,7 @@ c_remove(void *v)
       }
    } while (*++args != NULL);
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return ec;
 }
 
@@ -263,7 +263,7 @@ c_rename(void *v)
    char **args = v, *oldn, *newn;
    enum protocol oldp;
    int ec;
-   NYD_IN;
+   n_NYD_IN;
 
    ec = 1;
 
@@ -342,7 +342,7 @@ c_rename(void *v)
       break;
    }
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return ec;
 }
 
@@ -357,7 +357,7 @@ c_folders(void *v){ /* TODO fexpand*/
    char const *cp;
    char **argv;
    int rv;
-   NYD_IN;
+   n_NYD_IN;
 
    rv = 1;
 
@@ -375,7 +375,7 @@ c_folders(void *v){ /* TODO fexpand*/
    rv = n_child_run(ok_vlook(LISTER), 0, n_CHILD_FD_PASS, n_CHILD_FD_PASS,
          cp, NULL, NULL, NULL, NULL);
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 

@@ -86,7 +86,7 @@ _alter(char const *name) /* TODO error handling */
    struct utimbuf utb;
 #endif
    struct n_timespec const *tsp;
-   NYD_IN;
+   n_NYD_IN;
 
    tsp = n_time_now(TRU1); /* TODO -> eventloop */
 
@@ -102,7 +102,7 @@ _alter(char const *name) /* TODO error handling */
       utime(name, &utb);
    }
 #endif
-   NYD_OU;
+   n_NYD_OU;
 }
 
 static int
@@ -110,7 +110,7 @@ writeback(FILE *res, FILE *obuf) /* TODO errors */
 {
    struct message *mp;
    int rv = -1, p, c;
-   NYD_IN;
+   n_NYD_IN;
 
    if (fseek(obuf, 0L, SEEK_SET) == -1)
       goto jleave;
@@ -154,7 +154,7 @@ jerror:
       fprintf(n_stdout, _("Held %d messages in %s\n"), p, displayname);
    rv = 0;
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -167,7 +167,7 @@ edstop(void) /* TODO oh my god */
    struct stat statb;
    enum n_fopen_state fs;
    bool_t rv;
-   NYD_IN;
+   n_NYD_IN;
 
    rv = TRU1;
 
@@ -293,7 +293,7 @@ jleave:
       rv = getapproval(_("Continue, possibly losing changes"), TRU1);
    }
 j_leave:
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -305,7 +305,7 @@ quit(bool_t hold_sigs_on)
    struct message *mp;
    struct stat minfo;
    bool_t rv;
-   NYD_IN;
+   n_NYD_IN;
 
    if(!hold_sigs_on)
       hold_sigs();
@@ -478,7 +478,7 @@ jleave:
 
    if(!hold_sigs_on)
       rele_sigs();
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -487,7 +487,7 @@ holdbits(void)
 {
    struct message *mp;
    int anystat, autohold, holdbit, nohold;
-   NYD_IN;
+   n_NYD_IN;
 
    anystat = 0;
    autohold = ok_blook(hold);
@@ -508,7 +508,7 @@ holdbits(void)
       if (!(mp->m_flag & nohold))
          mp->m_flag |= holdbit;
    }
-   NYD_OU;
+   n_NYD_OU;
    return anystat;
 }
 
@@ -521,7 +521,7 @@ makembox(void) /* TODO oh my god (also error reporting) */
    FILE *ibuf = NULL, *obuf, *abuf;
    enum n_fopen_state fs;
    enum okay rv = STOP;
-   NYD_IN;
+   n_NYD_IN;
 
    mbox = _mboxname;
    mcount = 0;
@@ -634,19 +634,19 @@ jcopyerr:
       fprintf(n_stdout, _("Saved %d messages in mbox\n"), mcount);
    rv = OKAY;
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
 FL void
 save_mbox_for_possible_quitstuff(void){ /* TODO try to get rid of that */
    char const *cp;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if((cp = fexpand("&", FEXP_NVAR)) == NULL)
       cp = n_empty;
    n_strscpy(_mboxname, cp, sizeof _mboxname);
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 FL int
@@ -654,12 +654,12 @@ savequitflags(void)
 {
    enum quitflags qf = 0;
    size_t i;
-   NYD_IN;
+   n_NYD_IN;
 
    for (i = 0; i < n_NELEM(_quitnames); ++i)
       if (n_var_oklook(_quitnames[i].okey) != NULL)
          qf |= _quitnames[i].flag;
-   NYD_OU;
+   n_NYD_OU;
    return qf;
 }
 
@@ -667,7 +667,7 @@ FL void
 restorequitflags(int qf)
 {
    size_t i;
-   NYD_IN;
+   n_NYD_IN;
 
    for (i = 0;  i < n_NELEM(_quitnames); ++i) {
       char *x = n_var_oklook(_quitnames[i].okey);
@@ -677,7 +677,7 @@ restorequitflags(int qf)
       } else if (x != NULL)
          n_var_okclear(_quitnames[i].okey);
    }
-   NYD_OU;
+   n_NYD_OU;
 }
 
 /* s-it-mode */

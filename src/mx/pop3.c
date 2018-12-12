@@ -115,7 +115,7 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
 #endif
    enum okey_xlook_mode oxm;
    enum okay rv;
-   NYD_IN;
+   n_NYD_IN;
 
    oxm = ok_blook(v15_compat) ? OXM_ALL : OXM_PLAIN | OXM_U_H_P;
 
@@ -166,7 +166,7 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
 
    rv = _pop3_auth_plain(mp, scp);
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -185,7 +185,7 @@ _pop3_lookup_apop_timestamp(char const *bp)
    size_t tl;
    char *rp = NULL;
    bool_t hadat = FAL0;
-   NYD_IN;
+   n_NYD_IN;
 
    if ((cp = strchr(bp, '<')) == NULL)
       goto jleave;
@@ -210,7 +210,7 @@ _pop3_lookup_apop_timestamp(char const *bp)
    memcpy(rp, cp, tl);
    rp[tl] = '\0';
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return rp;
 }
 #endif
@@ -224,7 +224,7 @@ _pop3_auth_apop(struct mailbox *mp, struct sockconn const *scp, char const *ts)
    md5_ctx ctx;
    size_t i;
    enum okay rv = STOP;
-   NYD_IN;
+   n_NYD_IN;
 
    md5_init(&ctx);
    md5_update(&ctx, (uc_i*)n_UNCONST(ts), strlen(ts));
@@ -248,7 +248,7 @@ _pop3_auth_apop(struct mailbox *mp, struct sockconn const *scp, char const *ts)
    rv = OKAY;
 jleave:
    n_lofi_free(cp);
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 #endif /* mx_HAVE_MD5 */
@@ -258,7 +258,7 @@ _pop3_auth_plain(struct mailbox *mp, struct sockconn const *scp)
 {
    char *cp;
    enum okay rv = STOP;
-   NYD_IN;
+   n_NYD_IN;
 
    /* The USER/PASS plain text version */
    cp = n_lofi_alloc(n_MAX(scp->sc_cred.cc_user.l, scp->sc_cred.cc_pass.l) +
@@ -279,19 +279,19 @@ _pop3_auth_plain(struct mailbox *mp, struct sockconn const *scp)
    rv = OKAY;
 jleave:
    n_lofi_free(cp);
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
 static void
 pop3_timer_off(void)
 {
-   NYD_IN;
+   n_NYD_IN;
    if (_pop3_keepalive > 0) {
       alarm(0);
       safe_signal(SIGALRM, _pop3_savealrm);
    }
-   NYD_OU;
+   n_NYD_OU;
 }
 
 static enum okay
@@ -300,7 +300,7 @@ pop3_answer(struct mailbox *mp)
    int sz;
    size_t blen;
    enum okay rv = STOP;
-   NYD_IN;
+   n_NYD_IN;
 
 jretry:
    if ((sz = sgetline(&_pop3_buf, &_pop3_bufsize, &blen, &mp->mb_sock)) > 0) {
@@ -341,24 +341,24 @@ jeof:
       rv = STOP;
       mp->mb_active = MB_NONE;
    }
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
 static enum okay
 pop3_finish(struct mailbox *mp)
 {
-   NYD_IN;
+   n_NYD_IN;
    while (mp->mb_sock.s_fd > 0 && mp->mb_active != MB_NONE)
       pop3_answer(mp);
-   NYD_OU;
+   n_NYD_OU;
    return OKAY;
 }
 
 static void
 pop3catch(int s)
 {
-   NYD_X; /* Signal handler */
+   n_NYD_X; /* Signal handler */
    switch (s) {
    case SIGINT:
       /*n_err_sighdl(_("Interrupt during POP3 operation\n"));*/
@@ -373,7 +373,7 @@ pop3catch(int s)
 static void
 _pop3_maincatch(int s)
 {
-   NYD_X; /* Signal handler */
+   n_NYD_X; /* Signal handler */
    n_UNUSED(s);
    if (interrupts == 0)
       n_err_sighdl(_("\n(Interrupt -- one more to abort operation)\n"));
@@ -387,12 +387,12 @@ static enum okay
 pop3_noop1(struct mailbox *mp)
 {
    enum okay rv;
-   NYD_IN;
+   n_NYD_IN;
 
    POP3_OUT(rv, "NOOP" NETNL, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -400,7 +400,7 @@ static void
 pop3alarm(int s)
 {
    sighandler_type volatile saveint, savepipe;
-   NYD_X; /* Signal handler */
+   n_NYD_X; /* Signal handler */
    n_UNUSED(s);
 
    if (_pop3_lock++ == 0) {
@@ -436,7 +436,7 @@ pop3_stat(struct mailbox *mp, off_t *size, int *cnt)
 {
    char const *cp;
    enum okay rv;
-   NYD_IN;
+   n_NYD_IN;
 
    POP3_OUT(rv, "STAT" NETNL, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
@@ -473,7 +473,7 @@ pop3_stat(struct mailbox *mp, off_t *size, int *cnt)
 jerr:
       n_err(_("Invalid POP3 STAT response: %s\n"), _pop3_buf);
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -482,7 +482,7 @@ pop3_list(struct mailbox *mp, int n, size_t *size)
 {
    char o[LINESIZE], *cp;
    enum okay rv;
-   NYD_IN;
+   n_NYD_IN;
 
    snprintf(o, sizeof o, "LIST %u" NETNL, n);
    POP3_OUT(rv, o, MB_COMD, goto jleave);
@@ -499,7 +499,7 @@ pop3_list(struct mailbox *mp, int n, size_t *size)
    if (*cp != '\0')
       n_idec_uiz_cp(size, cp, 10, NULL);
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -508,7 +508,7 @@ pop3_setptr(struct mailbox *mp, struct sockconn const *scp)
 {
    size_t i;
    enum needspec ns;
-   NYD_IN;
+   n_NYD_IN;
 
    message = n_calloc(msgCount + 1, sizeof *message);
    message[msgCount].m_size = 0;
@@ -555,7 +555,7 @@ pop3_setptr(struct mailbox *mp, struct sockconn const *scp)
 
    setdot(message);
 jleave:
-   NYD_OU;
+   n_NYD_OU;
 }
 
 static enum okay
@@ -568,7 +568,7 @@ pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
    int volatile emptyline;
    off_t offset;
    enum okay volatile rv;
-   NYD_IN;
+   n_NYD_IN;
 
    line = NULL; /* TODO line pool */
    saveint = savepipe = SIG_IGN;
@@ -706,7 +706,7 @@ jleave:
    if (savepipe != SIG_IGN)
       safe_signal(SIGPIPE, savepipe);
    --_pop3_lock;
-   NYD_OU;
+   n_NYD_OU;
    if (interrupts)
       n_raise(SIGINT);
    return rv;
@@ -716,12 +716,12 @@ static enum okay
 pop3_exit(struct mailbox *mp)
 {
    enum okay rv;
-   NYD_IN;
+   n_NYD_IN;
 
    POP3_OUT(rv, "QUIT" NETNL, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -730,13 +730,13 @@ pop3_delete(struct mailbox *mp, int n)
 {
    char o[LINESIZE];
    enum okay rv;
-   NYD_IN;
+   n_NYD_IN;
 
    snprintf(o, sizeof o, "DELE %u" NETNL, n);
    POP3_OUT(rv, o, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -745,7 +745,7 @@ pop3_update(struct mailbox *mp)
 {
    struct message *m;
    int dodel, c, gotcha, held;
-   NYD_IN;
+   n_NYD_IN;
 
    if (!(n_pstate & n_PS_EDIT)) {
       holdbits();
@@ -787,7 +787,7 @@ pop3_update(struct mailbox *mp)
       }
    }
    fflush(n_stdout);
-   NYD_OU;
+   n_NYD_OU;
    return OKAY;
 }
 
@@ -796,7 +796,7 @@ pop3_noop(void)
 {
    sighandler_type volatile saveint, savepipe;
    enum okay volatile rv = STOP;
-   NYD_IN;
+   n_NYD_IN;
 
    _pop3_lock = 1;
    hold_all_sigs();
@@ -812,7 +812,7 @@ pop3_noop(void)
    safe_signal(SIGINT, saveint);
    safe_signal(SIGPIPE, savepipe);
    _pop3_lock = 0;
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -823,7 +823,7 @@ pop3_setfile(char const *who, char const *server, enum fedit_mode fm)
    sighandler_type saveint, savepipe;
    char const *cp;
    int volatile rv;
-   NYD_IN;
+   n_NYD_IN;
 
    rv = 1;
    if (fm & FEDIT_NEWMAIL)
@@ -940,7 +940,7 @@ pop3_setfile(char const *who, char const *server, enum fedit_mode fm)
 
    rv = 0;
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -948,11 +948,11 @@ FL enum okay
 pop3_header(struct message *m)
 {
    enum okay rv;
-   NYD_IN;
+   n_NYD_IN;
 
    /* TODO no URL here, no OXM possible; (however it is used in setfile()..) */
    rv = pop3_get(&mb, m, (ok_blook(pop3_bulk_load) ? NEED_BODY : NEED_HEADER));
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -960,10 +960,10 @@ FL enum okay
 pop3_body(struct message *m)
 {
    enum okay rv;
-   NYD_IN;
+   n_NYD_IN;
 
    rv = pop3_get(&mb, m, NEED_BODY);
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -972,7 +972,7 @@ pop3_quit(bool_t hold_sigs_on)
 {
    sighandler_type volatile saveint, savepipe;
    bool_t rv;
-   NYD_IN;
+   n_NYD_IN;
 
    if(hold_sigs_on)
       rele_sigs();
@@ -1010,7 +1010,7 @@ pop3_quit(bool_t hold_sigs_on)
 jleave:
    if(hold_sigs_on)
       hold_sigs();
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 #endif /* mx_HAVE_POP3 */

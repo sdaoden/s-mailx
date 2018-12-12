@@ -159,24 +159,32 @@
 #if defined NDEBUG || (!defined su_HAVE_DEBUG && !defined su_HAVE_DEVEL)
    /**/
 #elif defined su_HAVE_DEVEL
-# define NYD_IN if(1){
-# define NYD_OU goto NYD_OU_LABEL;NYD_OU_LABEL:;}else{}
-# define NYD if(0){}else{}
+# define NYD_IN if(1){su_nyd_chirp(1, __FILE__, __LINE__, su_FUN);
+# define NYD_OU \
+   goto NYD_OU_LABEL;NYD_OU_LABEL:\
+   su_nyd_chirp(2, __FILE__, __LINE__, su_FUN);}else{}
+# define NYD if(0){}else{su_nyd_chirp(0, __FILE__, __LINE__, su_FUN);}
 # ifdef NYD2
 #  undef NYD2
-#  define NYD2_IN if(1){
-#  define NYD2_OU goto NYD_OU_LABEL;NYD_OU_LABEL:;}else{}
-#  define NYD2 if(0){}else{}
+#  define NYD2_IN if(1){su_nyd_chirp(1, __FILE__, __LINE__, su_FUN);
+#  define NYD2_OU \
+      goto NYD_OU_LABEL;NYD_OU_LABEL:\
+      su_nyd_chirp(2, __FILE__, __LINE__, su_FUN);}else{}
+#  define NYD2 if(0){}else{su_nyd_chirp(0, __FILE__, __LINE__, su_FUN);}
 # endif
 #else
-# define NYD_IN do{
-# define NYD_OU goto NYD_OU_LABEL;NYD_OU_LABEL:;}while(0)
-# define NYD do{}while(0)
+# define NYD_IN do{su_nyd_chirp(1, __FILE__, __LINE__, su_FUN);
+# define NYD_OU \
+      goto NYD_OU_LABEL;NYD_OU_LABEL:\
+      su_nyd_chirp(2, __FILE__, __LINE__, su_FUN);}while(0)
+# define NYD do{su_nyd_chirp(0, __FILE__, __LINE__, su_FUN);}while(0)
 # ifdef NYD2
 #  undef NYD2
-#  define NYD2_IN do{
-#  define NYD2_OU goto NYD_OU_LABEL;NYD_OU_LABEL:;}while(0)
-#  define NYD2 do{}while(0)
+#  define NYD2_IN do{su_nyd_chirp(1, __FILE__, __LINE__, su_FUN);
+#  define NYD2_OU \
+      goto NYD_OU_LABEL;NYD_OU_LABEL:\
+      su_nyd_chirp(2, __FILE__, __LINE__, su_FUN);}while(0)
+#  define NYD2 do{su_nyd_chirp(0, __FILE__, __LINE__, su_FUN);}while(0)
 # endif
 #endif
 /**/

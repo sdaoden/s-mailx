@@ -304,7 +304,7 @@ su_SINLINE void
 a_memory_lofi_free(struct a_memory_ars_ctx *macp, void *vp){
    struct a_memory_ars_lofi *malp;
    union a_memory_ptr p;
-   NYD2_IN;
+   n_NYD2_IN;
 
    p.p_vp = vp;
 #ifdef mx_HAVE_MEMORY_DEBUG
@@ -338,7 +338,7 @@ a_memory_lofi_free(struct a_memory_ars_ctx *macp, void *vp){
       }else
          malp->mal_caster = p.p_cp;
    }
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 static void
@@ -349,7 +349,7 @@ a_memory_ars_reset(struct a_memory_ars_ctx *macp){
       struct a_memory_ars_buffer *abp;
       struct a_memory_ars_huge *ahp;
    } m, m2;
-   NYD2_IN;
+   n_NYD2_IN;
 
    /* Simply move all buffers away from .mac_full */
    for(m.abp = macp->mac_full; m.abp != NULL; m.abp = m2.abp){
@@ -403,7 +403,7 @@ a_memory_ars_reset(struct a_memory_ars_ctx *macp){
 #endif
    while((m.alcp = macp->mac_lofi_top) != NULL)
       a_memory_lofi_free(macp, m.alcp);
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 FL void
@@ -413,7 +413,7 @@ n_memory_reset(void){
    size_t c, s;
 #endif
    struct a_memory_ars_ctx *macp;
-   NYD_IN;
+   n_NYD_IN;
 
    n_memory_check();
 
@@ -446,14 +446,14 @@ n_memory_reset(void){
    if((n_poption & (n_PO_DEBUG | n_PO_MEMDEBUG)) && c > 0)
       n_err("memreset: freed %" PRIuZ " chunks/%" PRIuZ " bytes\n", c, s);
 #endif
-   NYD_OU;
+   n_NYD_OU;
 }
 
 FL void
 n_memory_pool_fixate(void){
    struct a_memory_ars_buffer *mabp;
    struct a_memory_ars_ctx *macp;
-   NYD_IN;
+   n_NYD_IN;
 
    if((macp = n_go_data->gdc_mempool) != NULL){
       for(mabp = macp->mac_top; mabp != NULL; mabp = mabp->mab_last)
@@ -461,13 +461,13 @@ n_memory_pool_fixate(void){
       for(mabp = macp->mac_full; mabp != NULL; mabp = mabp->mab_last)
          mabp->mab_bot = mabp->mab_caster;
    }
-   NYD_OU;
+   n_NYD_OU;
 }
 
 FL void
 n_memory_pool_push(void *vp, bool_t init){
    struct a_memory_ars_ctx *macp;
-   NYD_IN;
+   n_NYD_IN;
 
    macp = vp;
 
@@ -482,14 +482,14 @@ n_memory_pool_push(void *vp, bool_t init){
    macp->mac_outer_save = macp->mac_outer;
    macp->mac_outer = n_go_data->gdc_mempool;
    n_go_data->gdc_mempool = macp;
-   NYD_OU;
+   n_NYD_OU;
 }
 
 FL void
 n_memory_pool_pop(void *vp, bool_t gut){
    struct a_memory_ars_buffer *mabp;
    struct a_memory_ars_ctx *macp;
-   NYD_IN;
+   n_NYD_IN;
 
    n_memory_check();
 
@@ -533,17 +533,17 @@ n_memory_pool_pop(void *vp, bool_t gut){
          n_free(vp);
       }
    }
-   NYD_OU;
+   n_NYD_OU;
 }
 
 FL void *
 n_memory_pool_top(void){
    void *rv;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if((rv = n_go_data->gdc_mempool) == NULL)
       rv = n_go_data->gdc_mempool = n_go_data->gdc__mempool_buf;
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
@@ -551,20 +551,20 @@ n_memory_pool_top(void){
 FL void *
 n_alloc(size_t s){
    void *rv;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if(s == 0)
       s = 1;
    if((rv = malloc(s)) == NULL)
       n_panic(_("no memory"));
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
 FL void *
 n_realloc(void *vp, size_t s){
    void *rv;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if(vp == NULL)
       rv = n_alloc(s);
@@ -574,28 +574,28 @@ n_realloc(void *vp, size_t s){
       if((rv = realloc(vp, s)) == NULL)
          n_panic(_("no memory"));
    }
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
 FL void *
 n_calloc(size_t nmemb, size_t size){
    void *rv;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if(size == 0)
       size = 1;
    if((rv = calloc(nmemb, size)) == NULL)
       n_panic(_("no memory"));
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
 FL void
 (n_free)(void *vp){
-   NYD2_IN;
+   n_NYD2_IN;
    (free)(vp);
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 #else /* !mx_HAVE_MEMORY_DEBUG */
@@ -603,7 +603,7 @@ FL void *
 (n_alloc)(size_t s n_MEMORY_DEBUG_ARGS){
    union a_memory_ptr p;
    ui32_t user_s;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if(s > UI32_MAX - sizeof(struct a_memory_heap_chunk) - a_MEMORY_HOPE_SIZE)
       n_panic("n_alloc(): allocation too large: %s, line %d",
@@ -634,7 +634,7 @@ FL void *
    a_memory_heap_mall += user_s;
    a_memory_heap_mcur += user_s;
    a_memory_heap_mmax = n_MAX(a_memory_heap_mmax, a_memory_heap_mcur);
-   NYD2_OU;
+   n_NYD2_OU;
    return p.p_vp;
 }
 
@@ -645,7 +645,7 @@ FL void *
 # endif
    bool_t isbad;
    union a_memory_ptr p;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if((p.p_vp = vp) == NULL){
 jforce:
@@ -715,7 +715,7 @@ jforce:
    a_memory_heap_mmax = n_MAX(a_memory_heap_mmax, a_memory_heap_mcur);
 # endif /* a_MEMORY_REALLOC_IS_ALLOC_PLUS_FREE */
 jleave:
-   NYD2_OU;
+   n_NYD2_OU;
    return p.p_vp;
 }
 
@@ -723,7 +723,7 @@ FL void *
 (n_calloc)(size_t nmemb, size_t size n_MEMORY_DEBUG_ARGS){
    union a_memory_ptr p;
    ui32_t user_s;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if(nmemb == 0)
       nmemb = 1;
@@ -763,7 +763,7 @@ FL void *
    a_memory_heap_mall += user_s;
    a_memory_heap_mcur += user_s;
    a_memory_heap_mmax = n_MAX(a_memory_heap_mmax, a_memory_heap_mcur);
-   NYD2_OU;
+   n_NYD2_OU;
    return p.p_vp;
 }
 
@@ -771,7 +771,7 @@ FL void
 (n_free)(void *vp n_MEMORY_DEBUG_ARGS){
    union a_memory_ptr p;
    bool_t isbad;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if((p.p_vp = vp) == NULL){
       n_err("n_free(NULL) from %s, line %d\n", mdbg_file, mdbg_line);
@@ -812,7 +812,7 @@ FL void
    }else
       (free)(p.p_vp);
 jleave:
-   NYD2_OU;
+   n_NYD2_OU;
 }
 #endif /* mx_HAVE_MEMORY_DEBUG */
 
@@ -827,7 +827,7 @@ FL void *
       struct a_memory_ars_huge *ahp;
    } m, m2;
    struct a_memory_ars_ctx *macp;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if((macp = vp) == NULL && (macp = n_go_data->gdc_mempool) == NULL)
       macp = n_go_data->gdc_mempool = n_go_data->gdc__mempool_buf;
@@ -899,7 +899,7 @@ jleave:
    ++a_memory_ars_aall;
    a_memory_ars_mall += user_s;
 #endif
-   NYD2_OU;
+   n_NYD2_OU;
    return p.p_vp;
 
 jhuge:
@@ -919,19 +919,19 @@ FL void *
 (n_autorec_calloc_from_pool)(void *vp, size_t nmemb, size_t size
       n_MEMORY_DEBUG_ARGS){
    void *rv;
-   NYD2_IN;
+   n_NYD2_IN;
 
    size *= nmemb; /* XXX overflow, but only used for struct inits */
    rv = (n_autorec_alloc_from_pool)(vp, size n_MEMORY_DEBUG_ARGSCALL);
    memset(rv, 0, size);
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
 FL void
 n_autorec_relax_create(void){
    struct a_memory_ars_ctx *macp;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if((macp = n_go_data->gdc_mempool) == NULL)
       macp = n_go_data->gdc_mempool = n_go_data->gdc__mempool_buf;
@@ -948,13 +948,13 @@ n_autorec_relax_create(void){
    else
       n_err("n_autorec_relax_create(): recursion >0\n");
 #endif
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 FL void
 n_autorec_relax_gut(void){
    struct a_memory_ars_ctx *macp;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if((macp = n_go_data->gdc_mempool) == NULL)
       macp = n_go_data->gdc_mempool = n_go_data->gdc__mempool_buf;
@@ -977,7 +977,7 @@ n_autorec_relax_gut(void){
    else
       n_err("n_autorec_relax_unroll(): recursion >0\n");
 #endif
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 FL void
@@ -987,7 +987,7 @@ n_autorec_relax_unroll(void){
     * an iteration over all messages of a mailbox, and it'd be quite
     * counterproductive to give the system allocator a chance to waste time */
    struct a_memory_ars_ctx *macp;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if((macp = n_go_data->gdc_mempool) == NULL)
       macp = n_go_data->gdc_mempool = n_go_data->gdc__mempool_buf;
@@ -1023,7 +1023,7 @@ n_autorec_relax_unroll(void){
 #endif
       }
    }
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 FL void *
@@ -1035,7 +1035,7 @@ FL void *
    struct a_memory_ars_lofi *malp;
    bool_t isheap;
    struct a_memory_ars_ctx *macp;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if((macp = n_go_data->gdc_mempool) == NULL)
       macp = n_go_data->gdc_mempool = n_go_data->gdc__mempool_buf;
@@ -1110,7 +1110,7 @@ jleave:
    a_memory_lofi_mcur += user_s;
    a_memory_lofi_mmax = n_MAX(a_memory_lofi_mmax, a_memory_lofi_mcur);
 #endif
-   NYD2_OU;
+   n_NYD2_OU;
    return p.p_vp;
 }
 
@@ -1121,7 +1121,7 @@ FL void
 #endif
    union a_memory_ptr p;
    struct a_memory_ars_ctx *macp;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if((macp = n_go_data->gdc_mempool) == NULL)
       macp = n_go_data->gdc_mempool = n_go_data->gdc__mempool_buf;
@@ -1158,16 +1158,16 @@ FL void
 
    a_memory_lofi_free(macp, --p.p_alc);
 jleave:
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 FL void *
 n_lofi_snap_create(void){ /* TODO avoid temporary alloc */
    void *rv;
-   NYD2_IN;
+   n_NYD2_IN;
 
    rv = n_lofi_alloc(1);
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
@@ -1175,7 +1175,7 @@ FL void
 n_lofi_snap_unroll(void *cookie){ /* TODO optimise */
    union a_memory_ptr p;
    struct a_memory_ars_ctx *macp;
-   NYD2_IN;
+   n_NYD2_IN;
 
    n_memory_check();
 
@@ -1192,7 +1192,7 @@ n_lofi_snap_unroll(void *cookie){ /* TODO optimise */
       if(p.p_vp == cookie)
          break;
    }
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 #ifdef mx_HAVE_MEMORY_DEBUG
@@ -1209,7 +1209,7 @@ c_memtrace(void *vp){
    union a_memory_ptr p, xp;
    size_t lines;
    FILE *fp;
-   NYD2_IN;
+   n_NYD2_IN;
 
    vp = (void*)0x1;
    if((fp = Ftmp(NULL, "memtr", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
@@ -1347,7 +1347,7 @@ c_memtrace(void *vp){
    Fclose(fp);
    vp = NULL;
 jleave:
-   NYD2_OU;
+   n_NYD2_OU;
    return (vp != NULL);
 }
 
@@ -1358,7 +1358,7 @@ n__memory_check(char const *mdbg_file, int mdbg_line){
    struct a_memory_ars_lofi_chunk *malcp;
    struct a_memory_ars_ctx *macp;
    bool_t anybad, isbad;
-   NYD2_IN;
+   n_NYD2_IN;
 
    anybad = FAL0;
 
@@ -1446,7 +1446,7 @@ n__memory_check(char const *mdbg_file, int mdbg_line){
 
    if(anybad && ok_blook(memdebug))
       n_panic("Memory errors encountered");
-   NYD2_OU;
+   n_NYD2_OU;
    return anybad;
 }
 #endif /* mx_HAVE_MEMORY_DEBUG */

@@ -57,6 +57,15 @@ void n_verr(char const *format, va_list ap);
          (su__state & su__STATE_LOG_MASK) ||\
       (su__state & su__STATE_D_V))
 
+#if defined su_HAVE_DEBUG || defined su_HAVE_DEVEL
+struct a_core_nyd_info{
+   char const *cni_file;
+   char const *cni_fun;
+   u32 cni_chirp_line;
+   u32 cni_level;
+};
+#endif
+
 static char const a_c_lvlnames[][8] = { /* TODO no level name stuff yet*/
    FIELD_INITI(su_LOG_EMERG) "emerg",
    FIELD_INITI(su_LOG_ALERT) "alert",
@@ -74,6 +83,12 @@ CTAV(su_LOG_DEBUG == 7);
 union su__bom_union const su__bom_little = {{'\xFF', '\xFE'}};
 union su__bom_union const su__bom_big = {{'\xFE', '\xFF'}};
 
+#if DVLOR(1, 0)
+static u32 a_core_nyd_curr, a_core_nyd_level;
+static boole a_core_nyd_skip;
+static struct a_core_nyd_info a_core_nyd_infos[su_NYD_ENTRIES];
+#endif
+
 uz su__state;
 
 char const su_empty[] = "";
@@ -82,6 +97,49 @@ char const su_reproducible_build[sizeof "reproducible_build"] =
 u16 const su_bom = su_BOM;
 
 char const *su_program;
+
+/* */
+#if DVLOR(1, 0)
+static void a_core_nyd_printone(void (*ptf)(up cookie, char const *buf,
+      uz blen), up cookie, struct a_core_nyd_info const *cnip);
+#endif
+
+#if DVLOR(1, 0)
+static void
+a_core_nyd_printone(void (*ptf)(up cookie, char const *buf, uz blen),
+      up cookie, struct a_core_nyd_info const *cnip){
+   char buf[80], c;
+   union {int i; uz z;} u;
+   char const *sep, *cp;
+
+   /* Ensure actual file name can be seen, unless multibyte comes into play */
+   sep = su_empty;
+   cp = cnip->cni_file;
+   for(u.z = 0; (c = cp[u.z]) != '\0'; ++u.z)
+      if(S(uc,c) & 0x80){
+         u.z = 0;
+         break;
+      }
+   if(u.z > 40){
+      cp += -(38 - u.z);
+      sep = "..";
+   }
+
+   u.i = snprintf(buf, sizeof(buf) - 1,
+         "%c [%2" PRIu32 "] %.25s (%s%.40s:%" PRIu32 ")\n",
+         "=><"[(cnip->cni_chirp_line >> 29) & 0x3], cnip->cni_level,
+         cnip->cni_fun, sep, cp, (cnip->cni_chirp_line & 0x1FFFFFFFu));
+   if(u.i > 0){
+      u.z = u.i;
+      if(u.z >= sizeof(buf) -1){
+         buf[sizeof(buf) - 2] = '\n';
+         buf[sizeof(buf) - 1] = '\0';
+         u.z = sizeof(buf) -1; /* (Skip \0) */
+      }
+      (*ptf)(cookie, buf, u.z);
+   }
+}
+#endif /* DVLOR(1, 0) */
 
 s32
 su_state_err(uz state, char const *msg_or_nil){
@@ -192,14 +250,14 @@ su_log_vwrite(enum su_log_level lvl, char const *fmt, void *vp){
 }
 
 void
-su_assert(char const *expr, char const *file, s32 line, char const *fun,
+su_assert(char const *expr, char const *file, u32 line, char const *fun,
       boole crash){
    char const *pre;
 
    pre = (su_program != NIL) ? su_program : su_empty;
    a_ELOG
       "%s: SU assert failed: %.60s\n"
-      "%s:   File %.60s, line %d\n"
+      "%s:   File %.60s, line %" PRIu32 "\n"
       "%s:   Function %.142s\n",
       pre, expr,
       pre, file, line,
@@ -208,6 +266,41 @@ su_assert(char const *expr, char const *file, s32 line, char const *fun,
    if(crash)
       abort();
 }
+
+#if DVLOR(1, 0)
+void
+su_nyd_chirp(u8 act, char const *file, u32 line, char const *fun){
+   if(!a_core_nyd_skip){
+      struct a_core_nyd_info *cnip;
+
+      cnip = &a_core_nyd_infos[0];
+
+      if(a_core_nyd_curr != su_NELEM(a_core_nyd_infos))
+         cnip += a_core_nyd_curr++;
+      else
+         a_core_nyd_curr = 1;
+      cnip->cni_file = file;
+      cnip->cni_fun = fun;
+      cnip->cni_chirp_line = (S(u32,act & 0x3) << 29) | (line & 0x1FFFFFFFu);
+      cnip->cni_level = ((act == 0) ? a_core_nyd_level /* TODO spinlock */
+            : (act == 1) ? ++a_core_nyd_level : a_core_nyd_level--);
+   }
+}
+
+void
+su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen), up cookie){
+   uz i;
+   struct a_core_nyd_info const *cnip;
+
+   a_core_nyd_skip = TRU1;
+   if(a_core_nyd_infos[su_NELEM(a_core_nyd_infos) - 1].cni_file != NULL)
+      for(i = a_core_nyd_curr, cnip = &a_core_nyd_infos[i];
+            i < su_NELEM(a_core_nyd_infos); ++i)
+         a_core_nyd_printone(ptf, cookie, cnip++);
+   for(i = 0, cnip = a_core_nyd_infos; i < a_core_nyd_curr; ++i)
+      a_core_nyd_printone(ptf, cookie, cnip++);
+}
+#endif /* DVLOR(1, 0) */
 
 #undef a_ELOG
 #undef a_EVLOG

@@ -171,7 +171,7 @@ a_termcap_init_var(struct str const *termvar){
    char *cbp_base, *cbp;
    size_t i;
    char const *ccp;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if(termvar->l >= UI16_MAX){
       n_err(_("*termcap*: length excesses internal limit, skipping\n"));
@@ -288,7 +288,7 @@ jlearned:
 #endif
 
 j_leave:
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 static bool_t
@@ -296,7 +296,7 @@ a_termcap__strexp(struct n_string *store, char const *ibuf){ /* XXX ASCII */
    char c;
    char const *oibuf;
    size_t olen;
-   NYD2_IN;
+   n_NYD2_IN;
 
    olen = store->s_len;
 
@@ -354,7 +354,7 @@ jpush:
    c = (store->s_len != olen) ? '\1' : '\0';
 jleave:
    n_string_push_c(store, '\0');
-   NYD2_OU;
+   n_NYD2_OU;
    return (c != '\0');
 jerr:
    store = n_string_trunc(store, olen);
@@ -377,7 +377,7 @@ a_termcap_init_altern(void){
       ((ALT) ? a_TERMCAP_F_ALTERN : 0)
 
    struct a_termcap_ent *tep;
-   NYD2_IN;
+   n_NYD2_IN;
    n_UNUSED(tep);
 
    /* For simplicity in the rest of this file null flags of disabled commands,
@@ -438,7 +438,7 @@ a_termcap_init_altern(void){
 # endif
 #endif /* mx_HAVE_MLE */
 
-   NYD2_OU;
+   n_NYD2_OU;
 #undef a_OK
 #undef a_OOK
 #undef a_SET
@@ -450,11 +450,11 @@ static bool_t
 a_termcap_load(char const *term){
    bool_t rv;
    int err;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if(!(rv = (setupterm(term, fileno(n_tty_fp), &err) == OK)))
       n_err(_("Unknown ${TERM}inal, using only *termcap*: %s\n"), term);
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
@@ -462,7 +462,7 @@ static bool_t
 a_termcap_ent_query(struct a_termcap_ent *tep,
       char const *cname, ui16_t cflags){
    bool_t rv;
-   NYD2_IN;
+   n_NYD2_IN;
    assert(!(n_psonce & n_PSO_TERMCAP_DISABLE));
 
    if(n_UNLIKELY(*cname == '\0'))
@@ -493,7 +493,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
          tep->te_flags |= a_TERMCAP_F_NOENT;
       }break;
    }
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
@@ -509,7 +509,7 @@ a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
 static bool_t
 a_termcap_load(char const *term){
    bool_t rv;
-   NYD2_IN;
+   n_NYD2_IN;
 
    /* ncurses may return -1 */
 # ifndef mx_HAVE_TGETENT_NULL_BUF
@@ -520,7 +520,7 @@ a_termcap_load(char const *term){
    if(!(rv = tgetent(a_BUF, term) > 0))
       n_err(_("Unknown ${TERM}inal, using only *termcap*: %s\n"), term);
 # undef a_BUF
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
@@ -528,7 +528,7 @@ static bool_t
 a_termcap_ent_query(struct a_termcap_ent *tep,
       char const *cname, ui16_t cflags){
    bool_t rv;
-   NYD2_IN;
+   n_NYD2_IN;
    assert(!(n_psonce & n_PSO_TERMCAP_DISABLE));
 
    if(n_UNLIKELY(*cname == '\0'))
@@ -565,7 +565,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
          tep->te_flags |= a_TERMCAP_F_NOENT;
       }break;
    }
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
@@ -589,7 +589,7 @@ a_termcap_enum_for_name(char const *name, size_t nlen, si32_t min, si32_t max){
    struct a_termcap_control const *tcp;
    char const *cnam;
    si32_t rv;
-   NYD2_IN;
+   n_NYD2_IN;
 
    /* Prefer terminfo(5) names */
    for(rv = max;;){
@@ -609,7 +609,7 @@ a_termcap_enum_for_name(char const *name, size_t nlen, si32_t min, si32_t max){
       if(nlen == 2 && cnam[0] == name[0] && cnam[1] == name[1])
          break;
    }
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
@@ -618,7 +618,7 @@ n_termcap_init(void){
    struct n_termcap_value tv;
    struct str termvar;
    char const *ccp;
-   NYD_IN;
+   n_NYD_IN;
 
    assert((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK));
 
@@ -671,12 +671,12 @@ n_termcap_init(void){
       n_psonce |= n_PSO_TERMCAP_FULLWIDTH;
 
    n_TERMCAP_RESUME(TRU1);
-   NYD_OU;
+   n_NYD_OU;
 }
 
 FL void
 n_termcap_destroy(void){
-   NYD_IN;
+   n_NYD_IN;
    assert((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK));
    assert(a_termcap_g != NULL);
 
@@ -695,32 +695,32 @@ n_termcap_destroy(void){
    n_free(a_termcap_g);
    a_termcap_g = NULL;
 #endif
-   NYD_OU;
+   n_NYD_OU;
 }
 
 #ifdef mx_HAVE_TERMCAP
 FL void
 n_termcap_resume(bool_t complete){
-   NYD_IN;
+   n_NYD_IN;
    if(a_termcap_g != NULL && !(n_psonce & n_PSO_TERMCAP_DISABLE)){
       if(complete && (n_psonce & n_PSO_TERMCAP_CA_MODE))
          n_termcap_cmdx(n_TERMCAP_CMD_ti);
       n_termcap_cmdx(n_TERMCAP_CMD_ks);
       fflush(n_tty_fp);
    }
-   NYD_OU;
+   n_NYD_OU;
 }
 
 FL void
 n_termcap_suspend(bool_t complete){
-   NYD_IN;
+   n_NYD_IN;
    if(a_termcap_g != NULL && !(n_psonce & n_PSO_TERMCAP_DISABLE)){
       n_termcap_cmdx(n_TERMCAP_CMD_ke);
       if(complete && (n_psonce & n_PSO_TERMCAP_CA_MODE))
          n_termcap_cmdx(n_TERMCAP_CMD_te);
       fflush(n_tty_fp);
    }
-   NYD_OU;
+   n_NYD_OU;
 }
 #endif /* mx_HAVE_TERMCAP */
 
@@ -730,7 +730,7 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
    struct a_termcap_ent const *tep;
    enum a_termcap_flags flags;
    ssize_t rv;
-   NYD2_IN;
+   n_NYD2_IN;
    n_UNUSED(a1);
    n_UNUSED(a2);
 
@@ -848,7 +848,7 @@ jflush:
    }
 
 jleave:
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
@@ -858,7 +858,7 @@ n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
    /* XXX n_termcap_query(): boole handling suboptimal, tvp used on success */
    struct a_termcap_ent const *tep;
    bool_t rv;
-   NYD2_IN;
+   n_NYD2_IN;
 
    assert(tvp != NULL);
 
@@ -929,7 +929,7 @@ jextok:;
       break;
    }
 jleave:
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
@@ -937,7 +937,7 @@ jleave:
 FL si32_t
 n_termcap_query_for_name(char const *name, enum n_termcap_captype type){
    si32_t rv;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if((rv = a_termcap_query_for_name(name, strlen(name))) >= 0){
       struct a_termcap_control const *tcp = &a_termcap_control[(ui32_t)rv];
@@ -948,18 +948,18 @@ n_termcap_query_for_name(char const *name, enum n_termcap_captype type){
       else
          rv -= n__TERMCAP_CMD_MAX1;
    }
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
 FL char const *
 n_termcap_name_of_query(enum n_termcap_query query){
    char const *rv;
-   NYD2_IN;
+   n_NYD2_IN;
 
    rv = &a_termcap_namedat[
          a_termcap_control[n__TERMCAP_CMD_MAX1 + query].tc_off + 2];
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 #endif /* mx_HAVE_KEY_BINDINGS */

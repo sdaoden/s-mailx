@@ -88,7 +88,7 @@ static char const *
 a_ctab_cmdinfo(struct n_cmd_desc const *cdp){
    struct n_string rvb, *rv;
    char const *cp;
-   NYD2_IN;
+   n_NYD2_IN;
 
    rv = n_string_creat_auto(&rvb);
    rv = n_string_reserve(rv, 80);
@@ -198,7 +198,7 @@ jfakeent:
       rv = n_string_push_cp(rv, _(" | gabby"));
 
    cp = n_string_cp(rv);
-   NYD2_OU;
+   n_NYD2_OU;
    return cp;
 }
 #endif /* mx_HAVE_DOCSTRINGS */
@@ -208,7 +208,7 @@ a_ctab_c_list(void *vp){
    FILE *fp;
    struct n_cmd_desc const **cdpa, *cdp, **cdpa_curr;
    size_t i, l, scrwid;
-   NYD_IN;
+   n_NYD_IN;
 
    i = n_NELEM(a_ctab_ctable) + n_NELEM(a_ctab_ctable_plus) +1;
    cdpa = n_autorec_alloc(sizeof(cdp) * i);
@@ -268,7 +268,7 @@ a_ctab_c_list(void *vp){
       page_or_print(fp, l);
       Fclose(fp);
    }
-   NYD_OU;
+   n_NYD_OU;
    return 0;
 }
 
@@ -276,12 +276,12 @@ static int
 a_ctab__pcmd_cmp(void const *s1, void const *s2){
    struct n_cmd_desc const * const *cdpa1, * const *cdpa2;
    int rv;
-   NYD2_IN;
+   n_NYD2_IN;
 
    cdpa1 = s1;
    cdpa2 = s2;
    rv = strcmp((*cdpa1)->cd_name, (*cdpa2)->cd_name);
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
@@ -289,7 +289,7 @@ static int
 a_ctab_c_help(void *vp){
    int rv;
    char const *arg;
-   NYD_IN;
+   n_NYD_IN;
 
    /* Help for a single command? */
    if((arg = *(char const**)vp) != NULL){
@@ -385,24 +385,24 @@ jredo:
       rv = (ferror(n_stdout) != 0);
    }
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
 FL char const *
 n_cmd_isolate(char const *cmd){
-   NYD2_IN;
+   n_NYD2_IN;
    while(*cmd != '\0' &&
          strchr("\\!~|? \t0123456789&%@$^.:/-+*'\",;(`", *cmd) == NULL)
       ++cmd;
-   NYD2_OU;
+   n_NYD2_OU;
    return n_UNCONST(cmd);
 }
 
 FL struct n_cmd_desc const *
 n_cmd_firstfit(char const *cmd){ /* TODO *hashtable*! linear list search!!! */
    struct n_cmd_desc const *cdp;
-   NYD2_IN;
+   n_NYD2_IN;
 
    for(cdp = a_ctab_ctable; cdp < &a_ctab_ctable[n_NELEM(a_ctab_ctable)]; ++cdp)
       if(*cmd == *cdp->cd_name && cdp->cd_func != NULL &&
@@ -410,17 +410,17 @@ n_cmd_firstfit(char const *cmd){ /* TODO *hashtable*! linear list search!!! */
          goto jleave;
    cdp = NULL;
 jleave:
-   NYD2_OU;
+   n_NYD2_OU;
    return cdp;
 }
 
 FL struct n_cmd_desc const *
 n_cmd_default(void){
    struct n_cmd_desc const *cdp;
-   NYD2_IN;
+   n_NYD2_IN;
 
    cdp = &a_ctab_ctable[0];
-   NYD2_OU;
+   n_NYD2_OU;
    return cdp;
 }
 
@@ -432,7 +432,7 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
    void const *cookie;
    size_t cad_idx, parsed_args;
    struct n_cmd_arg_desc const *cadp;
-   NYD_IN;
+   n_NYD_IN;
 
    assert(cacp->cac_inlen == 0 || cacp->cac_indat != NULL);
    assert(cacp->cac_desc->cad_no > 0);
@@ -664,7 +664,7 @@ jloop_break:
 
    lcap = (struct n_cmd_arg*)-1;
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return (lcap != NULL);
 
 jerr:
@@ -700,7 +700,7 @@ n_cmd_arg_save_to_heap(struct n_cmd_arg_ctx const *cacp){
    char *buf;
    struct n_cmd_arg const *cap;
    size_t len, i;
-   NYD2_IN;
+   n_NYD2_IN;
 
    /* For simplicity, save it all in once chunk, so that it can be thrown away
     * with a simple n_free() from whoever is concerned */
@@ -744,7 +744,7 @@ n_cmd_arg_save_to_heap(struct n_cmd_arg_ctx const *cacp){
       memcpy(buf, cacp->cac_vput, strlen(cacp->cac_vput) +1);
    }else
       ncacp->cac_vput = NULL;
-   NYD2_OU;
+   n_NYD2_OU;
    return ncacp;
 }
 
@@ -752,7 +752,7 @@ FL struct n_cmd_arg_ctx *
 n_cmd_arg_restore_from_heap(void *vp){
    struct n_cmd_arg *cap, *ncap;
    struct n_cmd_arg_ctx *cacp, *rv;
-   NYD2_IN;
+   n_NYD2_IN;
 
    rv = n_autorec_alloc(sizeof *rv);
    cacp = vp;
@@ -777,7 +777,7 @@ n_cmd_arg_restore_from_heap(void *vp){
 
    if(cacp->cac_vput != NULL)
       rv->cac_vput = savestr(cacp->cac_vput);
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
@@ -785,7 +785,7 @@ FL int
 getrawlist(bool_t wysh, char **res_dat, size_t res_size,
       char const *line, size_t linesize){
    int res_no;
-   NYD_IN;
+   n_NYD_IN;
 
    n_pstate &= ~n_PS_ARGLIST_MASK;
 
@@ -900,7 +900,7 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
    if(res_no >= 0)
       res_dat[(size_t)res_no] = NULL;
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return res_no;
 }
 

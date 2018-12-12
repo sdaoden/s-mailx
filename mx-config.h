@@ -218,16 +218,5 @@
 # define mx_HAVE_MEMORY_DEBUG
 #endif
 
-/* Number of Not-Yet-Dead calls that are remembered */
-#if defined mx_HAVE_DEBUG || defined mx_HAVE_DEVEL || defined mx_HAVE_NYD2
-# ifdef mx_HAVE_NYD2
-#  define NYD_CALLS_MAX (25 * 84)
-# elif defined mx_HAVE_DEVEL
-#  define NYD_CALLS_MAX (25 * 42)
-# else
-#  define NYD_CALLS_MAX (25 * 10)
-# endif
-#endif
-
 #endif /* mx_CONFIG_H */
 /* s-it-mode */

@@ -162,7 +162,7 @@ _mt_init(void)
    size_t linesize;
    ui32_t i, j;
    char const *srcs_arr[10], *ccp, **srcs;
-   NYD_IN;
+   n_NYD_IN;
 
    /*if (_mt_is_init)
     *  goto jleave;*/
@@ -248,7 +248,7 @@ jecontent:
       n_free(line);
 jleave:
    _mt_is_init = TRU1;
-   NYD_OU;
+   n_NYD_OU;
 }
 
 static bool_t
@@ -258,7 +258,7 @@ __mt_load_file(ui32_t orflags, char const *file, char **line, size_t *linesize)
    FILE *fp;
    struct mtnode *head, *tail, *mtnp;
    size_t len;
-   NYD_IN;
+   n_NYD_IN;
 
    if ((cp = fexpand(file, FEXP_LOCAL | FEXP_NOPROTO)) == NULL ||
          (fp = Fopen(cp, "r")) == NULL) {
@@ -281,7 +281,7 @@ __mt_load_file(ui32_t orflags, char const *file, char **line, size_t *linesize)
 
    Fclose(fp);
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return (cp != NULL);
 }
 
@@ -291,7 +291,7 @@ _mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
    struct mtnode *mtnp;
    char const *typ, *subtyp;
    size_t tlen, i;
-   NYD_IN;
+   n_NYD_IN;
 
    mtnp = NULL;
 
@@ -409,7 +409,7 @@ jeinval:
    }
 
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return mtnp;
 }
 
@@ -419,7 +419,7 @@ _mt_by_filename(struct mtlookup *mtlp, char const *name, bool_t with_result)
    struct mtnode *mtnp;
    size_t nlen, i, j;
    char const *ext, *cp;
-   NYD2_IN;
+   n_NYD2_IN;
 
    memset(mtlp, 0, sizeof *mtlp);
 
@@ -481,7 +481,7 @@ _mt_by_filename(struct mtlookup *mtlp, char const *name, bool_t with_result)
 jnull_leave:
    mtlp = NULL;
 jleave:
-   NYD2_OU;
+   n_NYD2_OU;
    return mtlp;
 }
 
@@ -491,7 +491,7 @@ _mt_by_mtname(struct mtlookup *mtlp, char const *mtname)
    struct mtnode *mtnp;
    size_t nlen, i, j;
    char const *cp;
-   NYD2_IN;
+   n_NYD2_IN;
 
    memset(mtlp, 0, sizeof *mtlp);
 
@@ -531,18 +531,18 @@ _mt_by_mtname(struct mtlookup *mtlp, char const *mtname)
 jnull_leave:
    mtlp = NULL;
 jleave:
-   NYD2_OU;
+   n_NYD2_OU;
    return mtlp;
 }
 
 su_SINLINE struct mt_class_arg *
 _mt_classify_init(struct mt_class_arg * mtcap, enum mime_type_class initval)
 {
-   NYD2_IN;
+   n_NYD2_IN;
    memset(mtcap, 0, sizeof *mtcap);
    /*mtcap->mtca_lastc =*/ mtcap->mtca_c = EOF;
    mtcap->mtca_mtc = initval | _MT_C__1STLINE;
-   NYD2_OU;
+   n_NYD2_OU;
    return mtcap;
 }
 
@@ -561,7 +561,7 @@ _mt_classify_round(struct mt_class_arg *mtcap) /* TODO dig UTF-8 for !text/!! */
    si64_t alllen;
    int c, lastc;
    enum mime_type_class mtc;
-   NYD2_IN;
+   n_NYD2_IN;
 
    buf = mtcap->mtca_buf;
    blen = mtcap->mtca_len;
@@ -668,7 +668,7 @@ _mt_classify_round(struct mt_class_arg *mtcap) /* TODO dig UTF-8 for !text/!! */
    mtcap->mtca_c = c;
    mtcap->mtca_mtc = mtc;
    mtcap->mtca_all_len = alllen;
-   NYD2_OU;
+   n_NYD2_OU;
    return mtc;
 #undef F_
 #undef F_SIZEOF
@@ -686,7 +686,7 @@ _mt_classify_os_part(ui32_t mce, struct mimepart *mpp, bool_t deep_inspect)
    FILE *ibuf;
    off_t start_off;
    enum mimecontent mc;
-   NYD2_IN;
+   n_NYD2_IN;
 
    assert(mpp->m_mime_enc != MIMEE_BIN);
 
@@ -822,7 +822,7 @@ jstopit:
          mpp->m_ct_type_usr_ovwr = "text/plain";
    }
 jleave:
-   NYD2_OU;
+   n_NYD2_OU;
    return mc;
 }
 
@@ -830,7 +830,7 @@ static enum mime_handler_flags
 a_mt_pipe_check(struct mime_handler *mhp){
    enum mime_handler_flags rv_orig, rv;
    char const *cp;
-   NYD2_IN;
+   n_NYD2_IN;
 
    rv_orig = rv = mhp->mh_flags;
 
@@ -922,7 +922,7 @@ jnextc:
    rv |= MIME_HDL_CMD;
 jleave:
    mhp->mh_flags = rv;
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 jerr:
    rv = rv_orig;
@@ -934,7 +934,7 @@ c_mimetype(void *v){
    struct n_string s, *sp;
    struct mtnode *mtnp;
    char **argv;
-   NYD_IN;
+   n_NYD_IN;
 
    if(!_mt_is_init)
       _mt_init();
@@ -1007,7 +1007,7 @@ c_mimetype(void *v){
          v = NULL;
    }
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 }
 
@@ -1017,7 +1017,7 @@ c_unmimetype(void *v)
    char **argv = v;
    struct mtnode *lnp, *mtnp;
    bool_t match;
-   NYD_IN;
+   n_NYD_IN;
 
    /* Need to load that first as necessary */
    if (!_mt_is_init)
@@ -1076,7 +1076,7 @@ jdelall:
          v = NULL;
       }
    }
-   NYD_OU;
+   n_NYD_OU;
    return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 }
 
@@ -1085,10 +1085,10 @@ n_mimetype_check_mtname(char const *name)
 {
    struct mtlookup mtl;
    bool_t rv;
-   NYD_IN;
+   n_NYD_IN;
 
    rv = (_mt_by_mtname(&mtl, name) != NULL);
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -1096,10 +1096,10 @@ FL char *
 n_mimetype_classify_filename(char const *name)
 {
    struct mtlookup mtl;
-   NYD_IN;
+   n_NYD_IN;
 
    _mt_by_filename(&mtl, name, TRU1);
-   NYD_OU;
+   n_NYD_OU;
    return mtl.mtl_result;
 }
 
@@ -1116,7 +1116,7 @@ n_mimetype_classify_file(FILE *fp, char const **contenttype,
    enum mime_enc menc;
    off_t fpsz;
    enum conversion c;
-   NYD_IN;
+   n_NYD_IN;
 
    assert(ftell(fp) == 0x0l);
 
@@ -1211,7 +1211,7 @@ jnorfc822:
       c = (menc == MIMEE_7B ? CONV_7BIT
             : (menc == MIMEE_8B ? CONV_8BIT
             : (menc == MIMEE_QP ? CONV_TOQP : CONV_TOB64)));
-   NYD_OU;
+   n_NYD_OU;
    return c;
 }
 
@@ -1223,7 +1223,7 @@ n_mimetype_classify_part(struct mimepart *mpp, bool_t for_user_context){
    char const *ct;
    union {char const *cp; ui32_t f;} mce;
    bool_t is_os;
-   NYD_IN;
+   n_NYD_IN;
 
    mc = MIME_UNKNOWN;
    if ((ct = mpp->m_ct_type_plain) == NULL) /* TODO may not */
@@ -1298,7 +1298,7 @@ n_mimetype_classify_part(struct mimepart *mpp, bool_t for_user_context){
          mc = MIME_PKCS7;
    }
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return mc;
 
 jos_content_check:
@@ -1319,7 +1319,7 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
    enum mime_handler_flags rv, xrv;
    char const *es, *cs, *ccp;
    size_t el, cl, l;
-   NYD_IN;
+   n_NYD_IN;
 
    memset(mhp, 0, sizeof *mhp);
    buf = NULL;
@@ -1418,7 +1418,7 @@ jleave:
    }
    mhp->mh_flags = xrv;
 
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 #undef __L
 #undef __S

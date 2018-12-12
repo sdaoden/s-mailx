@@ -165,19 +165,19 @@ static bool_t a_colour_iso6429(enum a_colour_type ct, char **store,
 
 static void
 a_colour_init(void){
-   NYD2_IN;
+   n_NYD2_IN;
    a_colour_g.cg_is_init = TRU1;
    memcpy(a_colour_g.cg_reset.cp_dat.s = a_colour_g.cg__reset_buf, "\033[0m",
       a_colour_g.cg_reset.cp_dat.l = sizeof("\033[0m") -1); /* (calloc) */
    a_colour_g.cg_type = a_COLOUR_T_UNKNOWN;
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 static enum a_colour_type
 a_colour_type_find(char const *name){
    struct a_colour_type_map const *ctmp;
    enum a_colour_type rv;
-   NYD2_IN;
+   n_NYD2_IN;
 
    ctmp = a_colour_type_maps;
    do if(!asccasecmp(ctmp->ctm_name, name)){
@@ -187,7 +187,7 @@ a_colour_type_find(char const *name){
 
    rv = (enum a_colour_type)-1;
 jleave:
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
@@ -199,7 +199,7 @@ a_colour_mux(char **argv){
    struct a_colour_map_id const *cmip;
    bool_t rv;
    enum a_colour_type ct;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if((ct = a_colour_type_find(*argv++)) == (enum a_colour_type)-1 &&
          (*argv != NULL || !n_is_all_or_aster(argv[-1]))){
@@ -332,7 +332,7 @@ jlinkhead:
    }
    rv = TRU1;
 jleave:
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
@@ -343,7 +343,7 @@ a_colour_unmux(char **argv){
    struct a_colour_map_id const *cmip;
    enum a_colour_type ct;
    bool_t aster, rv;
-   NYD2_IN;
+   n_NYD2_IN;
 
    rv = TRU1;
    aster = FAL0;
@@ -438,7 +438,7 @@ jleave:
    if(aster && ++ct != a_COLOUR_T_NONE)
       goto jredo;
 j_leave:
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
@@ -447,7 +447,7 @@ a_colour__show(enum a_colour_type ct){
    struct a_colour_map *cmp;
    size_t i1, i2;
    bool_t rv;
-   NYD2_IN;
+   n_NYD2_IN;
 
    /* Show all possible types? */
    if((rv = (ct == (enum a_colour_type)-1 ? TRU1 : FAL0)))
@@ -480,14 +480,14 @@ jredo:
    if(rv && ++ct != a_COLOUR_T_NONE)
       goto jredo;
    rv = TRU1;
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
 static char const *
 a_colour__tag_identify(struct a_colour_map_id const *cmip, char const *ctag,
       void **regexpp){
-   NYD2_IN;
+   n_NYD2_IN;
    n_UNUSED(regexpp);
 
    if((cmip->cmi_tt & a_COLOUR_TT_DOT) && !asccasecmp(ctag, "dot"))
@@ -535,7 +535,7 @@ a_colour__tag_identify(struct a_colour_map_id const *cmip, char const *ctag,
    }else
 jetag:
       ctag = n_COLOUR_TAG_ERR;
-   NYD2_OU;
+   n_NYD2_OU;
    return ctag;
 }
 
@@ -543,7 +543,7 @@ static struct a_colour_map_id const *
 a_colour_map_id_find(char const *cp){
    size_t i;
    struct a_colour_map_id const (*cmip)[n__COLOUR_IDS], *rv;
-   NYD2_IN;
+   n_NYD2_IN;
 
    rv = NULL;
 
@@ -569,7 +569,7 @@ a_colour_map_id_find(char const *cp){
          break;
    }
 jleave:
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
@@ -577,7 +577,7 @@ static struct a_colour_map *
 a_colour_map_find(enum n_colour_id cid, enum n_colour_ctx cctx,
       char const *ctag){
    struct a_colour_map *cmp;
-   NYD2_IN;
+   n_NYD2_IN;
 
    cmp = a_colour_g.cg_maps[a_colour_g.cg_type][cctx][cid];
    for(; cmp != NULL; cmp = cmp->cm_next){
@@ -606,13 +606,13 @@ a_colour_map_find(enum n_colour_id cid, enum n_colour_ctx cctx,
             break;
       }
    }
-   NYD2_OU;
+   n_NYD2_OU;
    return cmp;
 }
 
 static void
 a_colour_map_unref(struct a_colour_map *self){
-   NYD2_IN;
+   n_NYD2_IN;
    if(--self->cm_refcnt == 0){
 #ifdef mx_HAVE_REGEX
       if(self->cm_regex != NULL){
@@ -622,7 +622,7 @@ a_colour_map_unref(struct a_colour_map *self){
 #endif
       n_free(self);
    }
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 static bool_t
@@ -639,7 +639,7 @@ a_colour_iso6429(enum a_colour_type ct, char **store, char const *spec){
    char *xspec, *cp, fg[3], cfg[2 + 2*sizeof("255")];
    ui8_t ftno_base, ftno;
    bool_t rv;
-   NYD_IN;
+   n_NYD_IN;
 
    rv = FAL0;
    /* 0/1 indicate usage, thereafter possibly 256 color sequences */
@@ -774,34 +774,34 @@ jiter_colour:
    *store = n_UNCONST(spec);
    rv = TRU1;
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
 FL int
 c_colour(void *v){
    int rv;
-   NYD_IN;
+   n_NYD_IN;
 
    rv = !a_colour_mux(v);
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
 FL int
 c_uncolour(void *v){
    int rv;
-   NYD_IN;
+   n_NYD_IN;
 
    rv = !a_colour_unmux(v);
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
 FL void
 n_colour_stack_del(struct n_go_data_ctx *gdcp){
    struct n_colour_env *vp, *cep;
-   NYD_IN;
+   n_NYD_IN;
 
    vp = gdcp->gdc_colour;
    gdcp->gdc_colour = NULL;
@@ -820,13 +820,13 @@ n_colour_stack_del(struct n_go_data_ctx *gdcp){
          n_signal(SIGPIPE, hdl);
       }
    }
-   NYD_OU;
+   n_NYD_OU;
 }
 
 FL void
 n_colour_env_create(enum n_colour_ctx cctx, FILE *fp, bool_t pager_used){
    struct n_colour_env *cep;
-   NYD_IN;
+   n_NYD_IN;
 
    if(!(n_psonce & n_PSO_INTERACTIVE))
       goto jleave;
@@ -874,13 +874,13 @@ n_colour_env_create(enum n_colour_ctx cctx, FILE *fp, bool_t pager_used){
 
    n_go_data->gdc_colour_active = cep->ce_enabled = TRU1;
 jleave:
-   NYD_OU;
+   n_NYD_OU;
 }
 
 FL void
 n_colour_env_gut(void){
    struct n_colour_env *cep;
-   NYD_IN;
+   n_NYD_IN;
 
    if(!(n_psonce & n_PSO_INTERACTIVE))
       goto jleave;
@@ -900,12 +900,12 @@ n_colour_env_gut(void){
       n_signal(SIGPIPE, hdl);
    }
 jleave:
-   NYD_OU;
+   n_NYD_OU;
 }
 
 FL void
 n_colour_put(enum n_colour_id cid, char const *ctag){
-   NYD_IN;
+   n_NYD_IN;
    if(n_COLOUR_IS_ACTIVE()){
       struct n_colour_env *cep;
 
@@ -919,12 +919,12 @@ n_colour_put(enum n_colour_id cid, char const *ctag){
          fwrite(cep->ce_current->cm_pen.cp_dat.s,
             cep->ce_current->cm_pen.cp_dat.l, 1, cep->ce_outfp);
    }
-   NYD_OU;
+   n_NYD_OU;
 }
 
 FL void
 n_colour_reset(void){
-   NYD_IN;
+   n_NYD_IN;
    if(n_COLOUR_IS_ACTIVE()){
       struct n_colour_env *cep;
 
@@ -936,19 +936,19 @@ n_colour_reset(void){
             cep->ce_outfp);
       }
    }
-   NYD_OU;
+   n_NYD_OU;
 }
 
 FL struct str const *
 n_colour_reset_to_str(void){
    struct str *rv;
-   NYD_IN;
+   n_NYD_IN;
 
    if(n_COLOUR_IS_ACTIVE())
       rv = &a_colour_g.cg_reset.cp_dat;
    else
       rv = NULL;
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -956,7 +956,7 @@ FL struct n_colour_pen *
 n_colour_pen_create(enum n_colour_id cid, char const *ctag){
    struct a_colour_map *cmp;
    struct n_colour_pen *rv;
-   NYD_IN;
+   n_NYD_IN;
 
    if(n_COLOUR_IS_ACTIVE() &&
          (cmp = a_colour_map_find(cid, n_go_data->gdc_colour->ce_ctx, ctag)
@@ -967,13 +967,13 @@ n_colour_pen_create(enum n_colour_id cid, char const *ctag){
       rv = u.cpp;
    }else
       rv = NULL;
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
 FL void
 n_colour_pen_put(struct n_colour_pen *self){
-   NYD_IN;
+   n_NYD_IN;
    if(n_COLOUR_IS_ACTIVE()){
       union {void *vp; char *cp; struct a_colour_map *cmp;} u;
       struct n_colour_env *cep;
@@ -991,19 +991,19 @@ n_colour_pen_put(struct n_colour_pen *self){
          cep->ce_current = u.cmp;
       }
    }
-   NYD_OU;
+   n_NYD_OU;
 }
 
 FL struct str const *
 n_colour_pen_to_str(struct n_colour_pen *self){
    struct str *rv;
-   NYD_IN;
+   n_NYD_IN;
 
    if(n_COLOUR_IS_ACTIVE() && self != NULL)
       rv = &self->cp_dat;
    else
       rv = NULL;
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 #endif /* mx_HAVE_COLOUR */

@@ -77,7 +77,7 @@ static bool_t  _smtp_gssapi(struct sock *sp, struct sendbundle *sbp,
 static void
 _smtp_onterm(int signo)
 {
-   NYD_X; /* Signal handler */
+   n_NYD_X; /* Signal handler */
    n_UNUSED(signo);
    siglongjmp(_smtp_jmp, 1);
 }
@@ -88,7 +88,7 @@ _smtp_read(struct sock *sp, struct smtp_line *slp, int val,
 {
    int rv, len;
    char *cp;
-   NYD_IN;
+   n_NYD_IN;
 
    do {
       if ((len = sgetline(&slp->buf, &slp->bufsize, NULL, sp)) < 6) {
@@ -121,7 +121,7 @@ _smtp_read(struct sock *sp, struct smtp_line *slp, int val,
       cp[slp->datlen = (size_t)len] = '\0';
    }
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -157,7 +157,7 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp) /* TODO n_string etc. */
    struct name *n;
    size_t blen, cnt;
    bool_t inhdr = TRU1, inbcc = FAL0, rv = FAL0;
-   NYD_IN;
+   n_NYD_IN;
 
    hostname = n_nodename(TRU1);
    slp->buf = NULL;
@@ -329,7 +329,7 @@ jsend:
 jleave:
    if (slp->buf != NULL)
       n_free(slp->buf);
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -346,7 +346,7 @@ smtp_mta(struct sendbundle *sbp)
    struct sock so;
    sighandler_type volatile saveterm;
    bool_t volatile rv = FAL0;
-   NYD_IN;
+   n_NYD_IN;
 
    saveterm = safe_signal(SIGTERM, SIG_IGN);
    if (sigsetjmp(_smtp_jmp, 1))
@@ -366,7 +366,7 @@ smtp_mta(struct sendbundle *sbp)
       sclose(&so);
 jleave:
    safe_signal(SIGTERM, saveterm);
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 #endif /* mx_HAVE_SMTP */

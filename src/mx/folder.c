@@ -63,7 +63,7 @@ _update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Object! */
    char *mailp, *dispp;
    size_t i, j, foldlen;
    bool_t rv;
-   NYD_IN;
+   n_NYD_IN;
 
    /* Don't realpath(3) if it's only an update request */
    if(name != NULL){
@@ -128,7 +128,7 @@ jdocopy:
 
    n_PS_ROOT_BLOCK((ok_vset(mailbox_resolved, mailname),
       ok_vset(mailbox_display, displayname)));
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -138,7 +138,7 @@ __narrow_suffix(char const *cp, size_t cpl, size_t maxl)
 {
    int err;
    size_t i, ok;
-   NYD_IN;
+   n_NYD_IN;
 
    for (err = ok = i = 0; cpl > maxl || err;) {
       int ml = mblen(cp, cpl);
@@ -157,7 +157,7 @@ __narrow_suffix(char const *cp, size_t cpl, size_t maxl)
       i += ml;
       cpl -= ml;
    }
-   NYD_OU;
+   n_NYD_OU;
    return ok;
 }
 #endif /* mx_HAVE_C90AMEND1 */
@@ -166,7 +166,7 @@ static void
 a_folder_info(void){
    struct message *mp;
    int u, n, d, s, hidden, moved;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if(mb.mb_type == MB_VOID){
       fprintf(n_stdout, _("(Currently no active mailbox)"));
@@ -218,7 +218,7 @@ a_folder_info(void){
 
 jleave:
    putc('\n', n_stdout);
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 static void
@@ -230,7 +230,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset) /* TODO Mailbox->setptr() */
    int selfcnt, c;
    bool_t need_rfc4155, maybe, inhead, from_;
    size_t filesize, linesize, cnt;
-   NYD_IN;
+   n_NYD_IN;
 
    memset(&self, 0, sizeof self);
    self.m_flag = MUSED | MNEW | MNEWEST;
@@ -348,7 +348,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset) /* TODO Mailbox->setptr() */
       ++self.m_lines;
       maybe = (linebuf[0] == 0);
    }
-   NYD_OU;
+   n_NYD_OU;
 }
 
 FL int
@@ -363,7 +363,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    int rv, omsgCount = 0;
    FILE *ibuf = NULL, *lckfp = NULL;
    bool_t isdevnull = FAL0;
-   NYD_IN;
+   n_NYD_IN;
 
    n_pstate &= ~n_PS_SETFILE_OPENED;
 
@@ -644,7 +644,7 @@ jleave:
       if (lckfp != NULL && lckfp != (FILE*)-1)
          Pclose(lckfp, FAL0);
    }
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 jem2:
    if(mb.mb_digmsg != NULL)
@@ -660,7 +660,7 @@ FL int
 newmailinfo(int omsgCount)
 {
    int mdot, i;
-   NYD_IN;
+   n_NYD_IN;
 
    for (i = 0; i < omsgCount; ++i)
       message[i].m_flag &= ~MNEWEST;
@@ -690,25 +690,25 @@ newmailinfo(int omsgCount)
       n_msgvec[omsgCount] = 0;
       print_headers(n_msgvec, FAL0, FAL0);
    }
-   NYD_OU;
+   n_NYD_OU;
    return mdot;
 }
 
 FL void
 setmsize(int sz)
 {
-   NYD_IN;
+   n_NYD_IN;
    if (n_msgvec != NULL)
       n_free(n_msgvec);
    n_msgvec = n_calloc(sz +1, sizeof *n_msgvec);
-   NYD_OU;
+   n_NYD_OU;
 }
 
 FL void
 print_header_summary(char const *Larg)
 {
    size_t i;
-   NYD_IN;
+   n_NYD_IN;
 
    getmdot(0);
 #ifdef mx_HAVE_IMAP
@@ -741,13 +741,13 @@ print_header_summary(char const *Larg)
       }
       print_headers(n_msgvec, FAL0, TRU1); /* TODO should be iterator! */
    }
-   NYD_OU;
+   n_NYD_OU;
 }
 
 FL void
 n_folder_announce(enum n_announce_flags af){
    int vec[2], mdot;
-   NYD_IN;
+   n_NYD_IN;
 
    mdot = (mb.mb_type == MB_VOID) ? 1 : getmdot(0);
    dot = &message[mdot - 1];
@@ -773,7 +773,7 @@ n_folder_announce(enum n_announce_flags af){
 
    if(af & n__ANNOUNCE_ANY)
       fflush(n_stdout);
-   NYD_OU;
+   n_NYD_OU;
 }
 
 FL int
@@ -783,7 +783,7 @@ getmdot(int nmail)
    char *cp;
    int mdot;
    enum mflag avoid = MHIDDEN | MDELETED;
-   NYD_IN;
+   n_NYD_IN;
 
    if (!nmail) {
       if (ok_blook(autothread)) {
@@ -874,7 +874,7 @@ getmdot(int nmail)
             ? (int)PTR2SIZE(mp - message + 1) : 1;
    }
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return mdot;
 }
 
@@ -883,7 +883,7 @@ initbox(char const *name)
 {
    bool_t err;
    char *tempMesg;
-   NYD_IN;
+   n_NYD_IN;
 
    if (mb.mb_type != MB_VOID)
       n_strscpy(prevfile, mailname, PATH_MAX);
@@ -917,7 +917,7 @@ initbox(char const *name)
    }
    dot = prevdot = threadroot = NULL;
    n_pstate &= ~n_PS_DID_PRINT_DOT;
-   NYD_OU;
+   n_NYD_OU;
 }
 
 FL char const *
@@ -927,7 +927,7 @@ n_folder_query(void){
    char *cp;
    char const *rv, *adjcp;
    bool_t err;
-   NYD_IN;
+   n_NYD_IN;
 
    sp = n_string_creat_auto(sp);
 
@@ -1063,7 +1063,7 @@ jset:
       n_err(_("*folder* is not resolvable, using CWD\n"));
       assert(rv != NULL && *rv == '\0');
    }
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -1074,7 +1074,7 @@ n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_null){
    char buf[2];
    int rv;
    bool_t needsep;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if(!fseek(fout, -2L, SEEK_END)){
       if(fread(buf, sizeof *buf, 2, fout) != 2)
@@ -1108,7 +1108,7 @@ n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_null){
 jerrno:
       rv = n_err_no;
 jleave:
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 

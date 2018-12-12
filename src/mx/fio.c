@@ -57,14 +57,14 @@ static size_t
 _length_of_line(char const *line, size_t linesize)
 {
    size_t i;
-   NYD2_IN;
+   n_NYD2_IN;
 
    /* Last character is always '\0' and was added by fgets() */
    for (--linesize, i = 0; i < linesize; i++)
       if (line[i] == '\n')
          break;
    i = (i < linesize) ? i + 1 : linesize;
-   NYD2_OU;
+   n_NYD2_OU;
    return i;
 }
 
@@ -74,7 +74,7 @@ _fgetline_byone(char **line, size_t *linesize, size_t *llen, FILE *fp,
 {
    char *rv;
    int c;
-   NYD2_IN;
+   n_NYD2_IN;
 
    assert(*linesize == 0 || *line != NULL);
    n_pstate &= ~n_PS_READLINE_NL;
@@ -108,7 +108,7 @@ _fgetline_byone(char **line, size_t *linesize, size_t *llen, FILE *fp,
    if (llen)
       *llen = n;
 jleave:
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
@@ -117,7 +117,7 @@ a_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len)
 {
    struct flock flp;
    bool_t rv;
-   NYD2_IN;
+   n_NYD2_IN;
 
    memset(&flp, 0, sizeof flp);
 
@@ -138,7 +138,7 @@ a_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len)
          rv = TRUM1;
          break;
       }
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
@@ -148,7 +148,7 @@ FL char *
 {
    size_t i_llen, sz;
    char *rv;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if (cnt == NULL) {
       /* Without count, we can't determine where the chars returned by fgets()
@@ -191,7 +191,7 @@ FL char *
    if (llen)
       *llen = i_llen;
 jleave:
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
@@ -204,7 +204,7 @@ FL int
     * TODO intwrap */
    int rv = -1;
    long sz;
-   NYD2_IN;
+   n_NYD2_IN;
 
    clearerr(ibuf);
 
@@ -254,7 +254,7 @@ jagain:
       (*linebuf)[--n] = '\0';
    rv = (int)n;
 jleave:
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
@@ -263,10 +263,10 @@ fsize(FILE *iob)
 {
    struct stat sbuf;
    off_t rv;
-   NYD_IN;
+   n_NYD_IN;
 
    rv = (fstat(fileno(iob), &sbuf) == -1) ? 0 : sbuf.st_size;
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -276,7 +276,7 @@ n_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len,
 {
    size_t tries;
    bool_t didmsg, rv;
-   NYD_IN;
+   n_NYD_IN;
 
    if(pollmsecs == UIZ_MAX)
       pollmsecs = FILE_LOCK_MILLIS;
@@ -303,7 +303,7 @@ n_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len,
    }
    if(didmsg)
       n_err(" %s\n", (rv ? _("ok") : _("failure")));
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 

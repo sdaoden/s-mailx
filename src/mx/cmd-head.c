@@ -74,7 +74,7 @@ a_chead_print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded,
    enum {attrlen = 14};
    char attrlist[attrlen +1], *cp;
    char const *fmt;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if((cp = ok_vlook(attrlist)) != NULL){
       if(strlen(cp) == attrlen){
@@ -109,7 +109,7 @@ jattrok:
 
    a_chead__hprf(yetprinted, fmt, msgno, f, threaded, subject_thread_compress,
       attrlist);
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 static void
@@ -133,7 +133,7 @@ a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
       _PUTCB_UTF8_SHIFT = 5,
       _PUTCB_UTF8_MASK = 3<<5
    } flags = _NONE;
-   NYD2_IN;
+   n_NYD2_IN;
    n_UNUSED(buf);
 
    if ((mp = message + msgno - 1) == dot)
@@ -488,7 +488,7 @@ jputcb:
 
    if (subjline != NULL && subjline != (char*)-1)
       n_free(subjline);
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 static char *
@@ -497,7 +497,7 @@ a_chead__subject(struct message *mp, bool_t threaded,
 {
    struct str in, out;
    char *rv, *ms;
-   NYD2_IN;
+   n_NYD2_IN;
 
    rv = (char*)-1;
 
@@ -537,7 +537,7 @@ a_chead__subject(struct message *mp, bool_t threaded,
       }
    }
 jleave:
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
@@ -547,7 +547,7 @@ a_chead__putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX magics */
    struct message *mq;
    int *us, indlvl, indw, i, important = MNEW | MFLAGGED;
    char *cs;
-   NYD2_IN;
+   n_NYD2_IN;
 
    if (mp->m_level == 0 || maxwidth == 0) {
       indw = 0;
@@ -605,14 +605,14 @@ a_chead__putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX magics */
    n_lofi_free(us);
    n_lofi_free(cs);
 jleave:
-   NYD2_OU;
+   n_NYD2_OU;
    return indw;
 }
 
 static size_t
 a_chead__putuc(int u, int c, FILE *fp){
    size_t rv;
-   NYD2_IN;
+   n_NYD2_IN;
    n_UNUSED(u);
 
 #ifdef mx_HAVE_NATCH_CHAR
@@ -635,7 +635,7 @@ a_chead__putuc(int u, int c, FILE *fp){
    }else
 #endif
       rv = (putc(c, fp) != EOF);
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
@@ -643,7 +643,7 @@ static int
 a_chead__dispc(struct message *mp, char const *a)
 {
    int i = ' ';
-   NYD2_IN;
+   n_NYD2_IN;
 
    if ((mp->m_flag & (MREAD | MNEW)) == MREAD)
       i = a[3];
@@ -680,7 +680,7 @@ a_chead__dispc(struct message *mp, char const *a)
       else if (mp->m_collapsed < 0)
          i = a[10];
    }
-   NYD2_OU;
+   n_NYD2_OU;
    return i;
 }
 
@@ -689,7 +689,7 @@ a_chead_scroll(char const *arg, bool_t onlynew){
    siz_t l;
    bool_t isabs;
    int msgspec, size, maxs;
-   NYD2_IN;
+   n_NYD2_IN;
 
    /* TODO scroll problem: we do not know whether + and $ have already reached
     * TODO the last screen in threaded mode */
@@ -775,7 +775,7 @@ jerr:
 
    size = _headers(msgspec);
 jleave:
-   NYD2_OU;
+   n_NYD2_OU;
    return size;
 }
 
@@ -788,7 +788,7 @@ _headers(int msgspec) /* TODO rework v15 */
    int volatile lastg;
    ui32_t volatile flag;
    enum mflag fl;
-   NYD_IN;
+   n_NYD_IN;
 
    time_current_update(&time_current, FAL0);
 
@@ -939,7 +939,7 @@ jdot_sort:
       if (n_pstate & (n_PS_ROBOT | n_PS_HOOK_MASK))
          flag = !flag;
    }
-   NYD_OU;
+   n_NYD_OU;
    return !flag;
 }
 
@@ -947,10 +947,10 @@ FL int
 c_headers(void *v)
 {
    int rv;
-   NYD_IN;
+   n_NYD_IN;
 
    rv = print_header_group((int*)v);
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -958,11 +958,11 @@ FL int
 print_header_group(int *vector)
 {
    int rv;
-   NYD_IN;
+   n_NYD_IN;
 
    assert(vector != NULL && vector != (void*)-1);
    rv = _headers(vector[0]);
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -970,10 +970,10 @@ FL int
 c_scroll(void *v)
 {
    int rv;
-   NYD_IN;
+   n_NYD_IN;
 
    rv = a_chead_scroll(*(char const**)v, FAL0);
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -981,10 +981,10 @@ FL int
 c_Scroll(void *v)
 {
    int rv;
-   NYD_IN;
+   n_NYD_IN;
 
    rv = a_chead_scroll(*(char const**)v, TRU1);
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -993,7 +993,7 @@ c_dotmove(void *v)
 {
    char const *args;
    int msgvec[2], rv;
-   NYD_IN;
+   n_NYD_IN;
 
    if (*(args = v) == '\0' || args[1] != '\0') {
 jerr:
@@ -1015,7 +1015,7 @@ jerr:
    default:
       goto jerr;
    }
-   NYD_OU;
+   n_NYD_OU;
    return rv;
 }
 
@@ -1025,7 +1025,7 @@ c_from(void *vp)
    int *msgvec, *ip, n;
    char *cp;
    FILE * volatile obuf;
-   NYD_IN;
+   n_NYD_IN;
 
    if(*(msgvec = vp) == 0)
       goto jleave;
@@ -1067,7 +1067,7 @@ c_from(void *vp)
    if (obuf != n_stdout)
       n_pager_close(obuf);
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return 0;
 }
 
@@ -1076,7 +1076,7 @@ print_headers(int const *msgvec, bool_t only_marked,
    bool_t subject_thread_compress)
 {
    size_t printed;
-   NYD_IN;
+   n_NYD_IN;
 
    time_current_update(&time_current, FAL0);
 
@@ -1095,7 +1095,7 @@ print_headers(int const *msgvec, bool_t only_marked,
    }
    srelax_rele();
    n_COLOUR( n_colour_env_gut(); )
-   NYD_OU;
+   n_NYD_OU;
 }
 
 /* s-it-mode */

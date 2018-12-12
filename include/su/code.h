@@ -1455,10 +1455,15 @@ EXPORT void su_perr(char const *msg, s32 eno_or_0);
 #if !defined su_ASSERT_EXPAND_NOTHING || defined DOXYGEN
 /*! With a \FAL0 crash this only logs.
  * In order to get rid of linkage define \c{su_ASSERT_EXPAND_NOTHING}. */
-EXPORT void su_assert(char const *expr, char const *file, s32 line,
+EXPORT void su_assert(char const *expr, char const *file, u32 line,
       char const *fun, boole crash);
 #else
 # define su_assert(EXPR,FILE,LINE,FUN,CRASH)
+#endif
+
+#if defined su_HAVE_DEBUG || defined su_HAVE_DEVEL
+void su_nyd_chirp(u8 act, char const *file, u32 line, char const *fun);
+void su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen), up cookie);
 #endif
 
 C_DECL_END

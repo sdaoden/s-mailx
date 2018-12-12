@@ -2074,33 +2074,31 @@ FL void        n_sigman_consume(void);
 
 /* Not-Yet-Dead debug information (handler installation in main.c) */
 #if defined mx_HAVE_DEBUG || defined mx_HAVE_DEVEL
-FL void        _nyd_chirp(ui8_t act, char const *file, ui32_t line,
-                  char const *fun);
 FL void        _nyd_oncrash(int signo);
 
-# define mx_HAVE_NYD
-# define NYD_IN                  _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
-# define NYD_OU                  _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
-# define NYD                     _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
-# define NYD_X                   _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
-# ifdef mx_HAVE_NYD2
-#  define NYD2_IN                _nyd_chirp(1, __FILE__, __LINE__, __FUN__)
-#  define NYD2_OU                _nyd_chirp(2, __FILE__, __LINE__, __FUN__)
-#  define NYD2                   _nyd_chirp(0, __FILE__, __LINE__, __FUN__)
+# define mx_HAVE_n_NYD
+# define n_NYD_IN su_nyd_chirp(1, __FILE__, __LINE__, su_FUN)
+# define n_NYD_OU su_nyd_chirp(2, __FILE__, __LINE__, su_FUN)
+# define n_NYD su_nyd_chirp(0, __FILE__, __LINE__, su_FUN)
+# define n_NYD_X su_nyd_chirp(0, __FILE__, __LINE__, su_FUN)
+# ifdef mx_HAVE_n_NYD2
+#  define n_NYD2_IN su_nyd_chirp(1, __FILE__, __LINE__, su_FUN)
+#  define n_NYD2_OU su_nyd_chirp(2, __FILE__, __LINE__, su_FUN)
+#  define n_NYD2 su_nyd_chirp(0, __FILE__, __LINE__, su_FUN)
 # endif
 #else
-# undef mx_HAVE_NYD
+# undef mx_HAVE_n_NYD
 #endif
-#ifndef NYD
-# define NYD_IN                  do {} while (0)
-# define NYD_OU                  do {} while (0)
-# define NYD                     do {} while (0)
-# define NYD_X                   do {} while (0) /* XXX LEGACY */
+#ifndef n_NYD
+# define n_NYD_IN                  do {} while (0)
+# define n_NYD_OU                  do {} while (0)
+# define n_NYD                     do {} while (0)
+# define n_NYD_X                   do {} while (0) /* XXX LEGACY */
 #endif
-#ifndef NYD2
-# define NYD2_IN                 do {} while (0)
-# define NYD2_OU                 do {} while (0)
-# define NYD2                    do {} while (0)
+#ifndef n_NYD2
+# define n_NYD2_IN                 do {} while (0)
+# define n_NYD2_OU                 do {} while (0)
+# define n_NYD2                    do {} while (0)
 #endif
 
 /*

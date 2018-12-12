@@ -156,7 +156,7 @@ a_main_getopt(int argc, char * const argv[], char const *optstring){
    static char const *lastp;
    char const *curp;
    int rv/*, colon*/;
-   NYD2_IN;
+   n_NYD2_IN;
 
    a_main_oarg = NULL;
    rv = -1;
@@ -231,7 +231,7 @@ a_main_getopt(int argc, char * const argv[], char const *optstring){
    a_main_oarg = NULL;
    rv = '?';
 jleave:
-   NYD2_OU;
+   n_NYD2_OU;
    return rv;
 }
 
@@ -240,7 +240,7 @@ a_main_usage(FILE *fp){
    /* Stay in VAL_HEIGHT lines; On buf length change: verify visual output! */
    char buf[7];
    size_t i;
-   NYD2_IN;
+   n_NYD2_IN;
 
    i = strlen(su_program);
    i = n_MIN(i, sizeof(buf) -1);
@@ -296,13 +296,13 @@ a_main_usage(FILE *fp){
          ". Bugs/Contact via "
             "\"$ %s -Sexpandaddr=shquote '\\$contact-mail'\"\n"),
          su_program, su_program);
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 static void
 a_main_startup(void){
    char *cp;
-   NYD2_IN;
+   n_NYD2_IN;
 
    n_stdin = stdin;
    n_stdout = stdout;
@@ -316,7 +316,7 @@ a_main_startup(void){
    /* XXX Somewhen: su_state_set(su_STATE_ERR_NOMEM | su_STATE_ERR_OVERFLOW);*/
    su_log_set_level(n_LOG_LEVEL); /* XXX _EMERG is 0.. */
 
-#ifdef mx_HAVE_NYD
+#ifdef mx_HAVE_n_NYD
    safe_signal(SIGABRT, &_nyd_oncrash);
 # ifdef SIGBUS
    safe_signal(SIGBUS, &_nyd_oncrash);
@@ -367,21 +367,21 @@ a_main_startup(void){
    /* Ensure some variables get loaded and/or verified */
 
    (void)ok_blook(POSIXLY_CORRECT);
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 static size_t
 a_main_grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt){
    /* Just use auto-reclaimed storage, it will be preserved */
    char const **newcpp;
-   NYD2_IN;
+   n_NYD2_IN;
 
    newcpp = n_autorec_alloc(sizeof(char*) * (newsize + 1));
 
    if(oldcnt > 0)
       memcpy(newcpp, *cpp, oldcnt * sizeof(char*));
    *cpp = newcpp;
-   NYD2_OU;
+   n_NYD2_OU;
    return newsize;
 }
 
@@ -389,7 +389,7 @@ static void
 a_main_setup_vars(void){
    struct passwd *pwuid;
    char const *cp;
-   NYD2_IN;
+   n_NYD2_IN;
 
    /* Detect, verify and fixate our invoking user (environment) */
    n_group_id = getgid();
@@ -451,7 +451,7 @@ a_main_setup_vars(void){
       cp = savecat(su_reproducible_build, ": ");
       ok_vset(log_prefix, cp);
    }
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 su_SINLINE void
@@ -474,7 +474,7 @@ a_main_setup_screen(void){
       : (((VAL_WIDTH[0] - '0') * 10 + (VAL_WIDTH[1] - '0')) * 10 + \
          (VAL_WIDTH[2] - '0'))))
 
-   NYD2_IN;
+   n_NYD2_IN;
 
    if(!su_state_has(su_STATE_REPRODUCIBLE) &&
          ((n_psonce & n_PSO_INTERACTIVE) ||
@@ -497,7 +497,7 @@ a_main_setup_screen(void){
       /* $COLUMNS and $LINES defaults as documented in the manual */
       n_scrnheight = n_realscreenheight = a_HEIGHT,
       n_scrnwidth = a_WIDTH;
-   NYD2_OU;
+   n_NYD2_OU;
 }
 
 static void
@@ -508,7 +508,7 @@ a_main__scrsz(int is_sighdl){
 #elif defined TIOCGSIZE
    struct ttysize ts;
 #endif
-   NYD2_IN;
+   n_NYD2_IN;
    assert((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_BATCH_FLAG));
 
    n_scrnheight = n_realscreenheight = n_scrnwidth = 0;
@@ -604,7 +604,7 @@ jleave:
    if(n_scrnwidth > 1 && !(n_psonce & n_PSO_TERMCAP_FULLWIDTH))
       --n_scrnwidth;
 /*#endif*/
-   NYD2_OU;
+   n_NYD2_OU;
 
 #undef a_HEIGHT
 #undef a_WIDTH
@@ -618,7 +618,7 @@ a_main_rcv_mode(bool_t had_A_arg, char const *folder, char const *Larg,
    /* XXX a_main_rcv_mode(): use argument carrier */
    sighandler_type prevint;
    int i;
-   NYD_IN;
+   n_NYD_IN;
 
    i = had_A_arg ? FEDIT_ACCOUNT : FEDIT_NONE;
    if(n_poption & n_PO_QUICKRUN_MASK)
@@ -694,13 +694,13 @@ jquit:
       quit(FAL0);
    }
 jleave:
-   NYD_OU;
+   n_NYD_OU;
    return n_exit_status;
 }
 
 static void
 a_main_hdrstop(int signo){
-   NYD_X; /* Signal handler */
+   n_NYD_X; /* Signal handler */
    n_UNUSED(signo);
 
    fflush(n_stdout);
@@ -736,7 +736,7 @@ main(int argc, char *argv[]){
    struct attachment *attach;
    struct name *to, *cc, *bcc;
    struct a_arg *a_head, *a_curr;
-   NYD_IN;
+   n_NYD_IN;
 
    a_head = NULL;
    n_UNINIT(a_curr, NULL);
@@ -1338,7 +1338,7 @@ j_leave:
 #if defined mx_HAVE_DEBUG || defined mx_HAVE_DEVEL || defined mx_HAVE_NOMEMDBG
    n_memory_reset();
 #endif
-   NYD_OU;
+   n_NYD_OU;
    return n_exit_status;
 }
 

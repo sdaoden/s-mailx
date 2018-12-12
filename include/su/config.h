@@ -37,6 +37,9 @@
 # include <su/gen-config.h>
 #endif
 
+/* Number of Not-Yet-Dead calls that are remembered */
+#define su_NYD_ENTRIES (25 * 84)
+
 /**/
 
 #define su_HAVE_MEM_BAG_AUTO
