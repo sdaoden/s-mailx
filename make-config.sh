@@ -2648,7 +2648,7 @@ int main(void){
    if feat_yes TLS; then # digest etc algorithms {{{
       if feat_yes TLS_ALL_ALGORITHMS; then
          if [ -n "${ossl_v1_1}" ]; then
-            without_check yes tls_all_algo 'TLS all-algorithms support' \
+            without_check yes tls_all_algo 'TLS_ALL_ALGORITHMS support' \
                '#define HAVE_TLS_ALL_ALGORITHMS'
          elif link_check tls_all_algo 'TLS all-algorithms support' \
             '#define HAVE_TLS_ALL_ALGORITHMS' << \!
@@ -2721,13 +2721,9 @@ int main(void){
 }
 !
       fi
-   fi # }}}
-
-   if feat_yes TLS; then
-      feat_def TLS_ALL_ALGORITHMS
    else
-      feat_bail_required TLS_ALL_ALGORITHMS
-   fi
+      feat_bail_required TLS_ALL_ALGORITHMS # feat_is_disabled?
+   fi # }}}
 else
    feat_is_disabled TLS
    feat_is_disabled TLS_ALL_ALGORITHMS
