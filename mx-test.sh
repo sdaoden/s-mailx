@@ -49,6 +49,12 @@ ERR=./.cc-test.err # Covers some which cannot be checksummed; not quoted!
 MAIL=/dev/null
 #UTF8_LOCALE= autodetected unless set
 
+# When testing mass mail, maximum number of receivers. TODO note we do not
+# TODO gracefully handle ARG_MAX excess yet!
+# Those which use this have checksums for 2001 and 201.
+MASS_MAX=2001
+MASS_MAX=201
+
 # Note valgrind has problems with FDs in forked childs, which causes some tests
 # to fail (the FD is rewound and thus will be dumped twice)
 MEMTESTER=
@@ -5928,20 +5934,28 @@ __EOT__
 
    printf 'm this-goes@nowhere\nbody\n!.\n' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
-      -X'source ./.trc' -Smta=./.tmta.sh -Smaximum=2001 \
+      -X'source ./.trc' -Smta=./.tmta.sh -Smaximum=$MASS_MAX \
       >./.tall 2>&1
    check_ex0 1-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 1 - "${MBOX}" '2912243346 51526'
+   if [ $MASS_MAX -eq 2001 ]; then
+      check 1-2001 - "${MBOX}" '2912243346 51526'
+   elif [ $MASS_MAX -eq 201 ]; then
+      check 1-201 - "${MBOX}" '3517315544 4678'
+   fi
 
    ${rm} "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.\n' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
-      -St_remove=1 -X'source ./.trc' -Smta=./.tmta.sh -Smaximum=2001 \
+      -St_remove=1 -X'source ./.trc' -Smta=./.tmta.sh -Smaximum=$MASS_MAX \
       >./.tall 2>&1
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
-   check 2 - "${MBOX}" '4097804632 34394'
+   if [ $MASS_MAX -eq 2001 ]; then
+      check 2-2001 - "${MBOX}" '4097804632 34394'
+   elif [ $MASS_MAX -eq 201 ]; then
+      check 2-201 - "${MBOX}" '3994680040 3162'
+   fi
 
    t_epilog
 }
