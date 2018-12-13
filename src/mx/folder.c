@@ -226,13 +226,19 @@ jleave:
 }
 
 static void
-a_folder_mbox_setptr(FILE *ibuf, off_t offset) /* TODO Mailbox->setptr() */
-{
-   struct message self;
-   char const *cp2;
+a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
+   struct message self, commit;
    char *linebuf, *cp;
-   int selfcnt, c;
-   bool_t need_rfc4155, maybe, inhead, from_;
+   bool_t from_;
+   enum{
+      a_RFC4155 = 1u<<0,
+      a_HADONE = 1u<<1,
+      a_MAYBE = 1u<<2,
+      a_BAD_FROM_ = 1u<<3,
+      a_CREATE = 1u<<4,
+      a_INHEAD = 1u<<5,
+      a_COMMIT = 1u<<6
+   } f;
    size_t filesize, linesize, cnt;
    n_NYD_IN;
 
@@ -240,117 +246,191 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset) /* TODO Mailbox->setptr() */
    self.m_flag = MUSED | MNEW | MNEWEST;
    filesize = mailsize - offset;
    offset = ftell(mb.mb_otf);
-   need_rfc4155 = ok_blook(mbox_rfc4155);
-   maybe = TRU1;
-   inhead = FAL0;
-   selfcnt = 0;
+   f = a_MAYBE | (ok_blook(mbox_rfc4155) ? a_RFC4155 : 0);
+
    linebuf = NULL, linesize = 0; /* TODO string pool */
 
-   for (;;) {
-      if (fgetline(&linebuf, &linesize, &filesize, &cnt, ibuf, 0) == NULL) {
-         self.m_xsize = self.m_size;
-         self.m_xlines = self.m_lines;
-         self.m_content_info = CI_HAVE_HEADER | CI_HAVE_BODY;
-         if (selfcnt > 0)
-            message_append(&self);
+   for(;;){
+      /* Ensure space for terminating LF, so do append it */
+      if(n_UNLIKELY(fgetline(&linebuf, &linesize, &filesize, &cnt, ibuf, TRU1
+            ) == NULL)){
+         if(f & a_HADONE){
+            if(f & a_CREATE){
+               commit.m_size += self.m_size;
+               commit.m_lines += self.m_lines;
+            }else
+               commit = self;
+            commit.m_xsize = commit.m_size;
+            commit.m_xlines = commit.m_lines;
+            commit.m_content_info = CI_HAVE_HEADER | CI_HAVE_BODY;
+            message_append(&commit);
+         }
          message_append_null();
-         if (linebuf != NULL)
+         if(linebuf != NULL)
             n_free(linebuf);
          break;
       }
 
-#ifdef notdef
-      if (linebuf[0] == '\0')
-         linebuf[0] = '.';
-#endif
-      /* XXX Convert CRLF to LF; this should be rethought in that
-       * XXX CRLF input should possibly end as CRLF output? */
-      if (cnt >= 2 && linebuf[cnt - 1] == '\n' && linebuf[cnt - 2] == '\r')
-         linebuf[--cnt - 1] = '\n';
-      fwrite(linebuf, sizeof *linebuf, cnt, mb.mb_otf);
-      if (ferror(mb.mb_otf)) {
-         n_perr(_("/tmp"), 0);
-         exit(n_EXIT_ERR);
-      }
-      if (linebuf[cnt - 1] == '\n')
-         linebuf[cnt - 1] = '\0';
+      /* Normalize away line endings, we will place (readd) \n */
+      if(cnt >= 2 && linebuf[cnt - 2] == '\r')
+         linebuf[--cnt] = '\0';
+      linebuf[--cnt] = '\0';
+      /* We cannot use this assertion since it will trigger for example when
+       * the Linux kernel crashes and the log files (which may contain NULs)
+       * are sent out via email!  (It has been active for quite some time..) */
+      /*assert(linebuf[0] != '\0' || cnt == 0);*/
+
       /* TODO In v15 this should use a/the flat MIME parser in order to ignore
        * TODO "From " when MIME boundaries are active -- whereas this opens
        * TODO another can of worms, it very likely is better than messing up
-       * TODO MIME because of a "From " line! */
-      if (maybe && linebuf[0] == 'F' &&
+       * TODO MIME because of a "From " line!.
+       * TODO That is: Mailbox superclass, MBOX:Mailbox, virtual load() which
+       * TODO creates collection of MessageHull objects which are able to load
+       * TODO their content, and normalize content, correct structural errors */
+      if(n_UNLIKELY(cnt == 0)){
+         f |= a_MAYBE;
+         if(n_LIKELY(!(f & a_CREATE)))
+            f &= ~a_INHEAD;
+         else{
+            commit.m_size += self.m_size;
+            commit.m_lines += self.m_lines;
+            self = commit;
+            f &= ~(a_BAD_FROM_ | a_CREATE | a_INHEAD | a_COMMIT);
+         }
+         goto jputln;
+      }
+
+      if(n_UNLIKELY((f & a_MAYBE) && linebuf[0] == 'F') &&
             (from_ = is_head(linebuf, cnt, TRU1)) &&
-            (from_ == TRU1 || !need_rfc4155)) {
+            (from_ == TRU1 || !(f & a_RFC4155))){
          /* TODO char date[n_FROM_DATEBUF];
           * TODO extract_date_from_from_(linebuf, cnt, date);
           * TODO self.m_time = 10000; */
-         if (from_ == TRUM1) {
-            if (n_poption & n_PO_D_V)
-               n_err(_("Invalid MBOX \"From_ line\": %.*s\n"),
-                  (int)cnt, linebuf);
-            else if (!(mb.mb_active & MB_FROM__WARNED))
-               n_err(_("MBOX mailbox contains non-conforming From_ line(s)!\n"
-                  "  Message boundaries may have been falsely detected!\n"
-                  "  Setting variable *mbox-rfc4155* and reopen should improve "
-                     "the result.\n"
-                  "  If so, make changes permanent: \"copy * SOME-FILE\".  "
-                     "Then unset *mbox-rfc4155*\n"));
-            mb.mb_active |= MB_FROM__WARNED;
-         }
          self.m_xsize = self.m_size;
          self.m_xlines = self.m_lines;
          self.m_content_info = CI_HAVE_HEADER | CI_HAVE_BODY;
-         if (selfcnt++ > 0)
-            message_append(&self);
-         msgCount++;
-         self.m_flag = MUSED | MNEW | MNEWEST;
+         commit = self;
+         f |= a_CREATE | a_INHEAD;
+
+         f &= ~a_MAYBE;
+         if(from_ == TRUM1){
+            f |= a_BAD_FROM_;
+            /* TODO MBADFROM_ causes the From_ line to be replaced entirely
+             * TODO when the message is newly written via e.g. `copy'.
+             * TODO Instead this From_ should be an object which can fix
+             * TODO the parts which are missing or are faulty, such that
+             * TODO good info can be kept; this is possible after the main
+             * TODO message header has been fully parsed.  For now we are stuck
+             * TODO and fail for example in a_header_extract_date_from_from_()
+             * TODO (which should not exist as such btw) */
+            self.m_flag = MUSED | MNEW | MNEWEST | MBADFROM_;
+         }else{
+            f &= ~a_BAD_FROM_;
+            self.m_flag = MUSED | MNEW | MNEWEST;
+         }
          self.m_size = 0;
          self.m_lines = 0;
          self.m_block = mailx_blockof(offset);
          self.m_offset = mailx_offsetof(offset);
-         inhead = TRU1;
-      } else if (linebuf[0] == 0) {
-         inhead = FAL0;
-      } else if (inhead) {
-         for (cp = linebuf, cp2 = "status";; ++cp) {
-            if ((c = *cp2++) == 0) {
-               while (c = *cp++, su_cs_is_white(c))
-                  ;
-               if (cp[-1] != ':')
-                  break;
-               while ((c = *cp++) != '\0')
-                  if (c == 'R')
+         goto jputln;
+      }
+
+      f &= ~a_MAYBE;
+      if(n_LIKELY(!(f & a_INHEAD)))
+         goto jputln;
+
+      if(n_LIKELY((cp = memchr(linebuf, ':', cnt)) != NULL)){
+         char *cps, *cpe, c;
+
+         if(f & a_CREATE){
+            f |= a_COMMIT;
+
+            if(f & a_BAD_FROM_){
+               f &= ~a_BAD_FROM_;
+               if(!(mb.mb_active & MB_FROM__WARNED)){
+                  mb.mb_active |= MB_FROM__WARNED;
+                  /* TODO mbox-rfc4155 does NOT fix From_ line! */
+                  n_err(_("MBOX contains non-conforming From_ line(s)!\n"
+                     "  Message boundaries may have been misdetected!\n"
+                     "  Setting *mbox-rfc4155* and reopening _may_ "
+                        "improve the result.\n"
+                     "  If so, make changes permanent: "
+                        "\"copy * SOME-FILE\".  "
+                        "Then unset *mbox-rfc4155*\n"));
+               }
+            }
+         }
+
+         for(cps = linebuf; su_cs_is_blank(*cps); ++cps)
+            ;
+         for(cpe = cp; cpe > cps && (--cpe, su_cs_is_blank(*cpe));)
+            ;
+         switch(PTR2SIZE(cpe - cps)){
+         case 5:
+            if(!su_cs_cmp_case_n(cps, "status", 5))
+               for(;;){
+                  ++cp;
+                  if((c = *cp) == '\0')
+                     break;
+                  if(c == 'R')
                      self.m_flag |= MREAD;
-                  else if (c == 'O')
+                  else if(c == 'O')
                      self.m_flag &= ~MNEW;
-               break;
-            }
-            if (*cp != c && *cp != su_cs_to_upper(c))
-               break;
-         }
-         for (cp = linebuf, cp2 = "x-status";; ++cp) {
-            if ((c = *cp2++) == 0) {
-               while ((c = *cp++, su_cs_is_white(c)))
-                  ;
-               if (cp[-1] != ':')
-                  break;
-               while ((c = *cp++) != '\0')
-                  if (c == 'F')
+               }
+            break;
+         case 7:
+            if(!su_cs_cmp_case_n(cps, "x-status", 7))
+               for(;;){
+                  ++cp;
+                  if((c = *cp) == '\0')
+                     break;
+                  if(c == 'F')
                      self.m_flag |= MFLAGGED;
-                  else if (c == 'A')
+                  else if(c == 'A')
                      self.m_flag |= MANSWERED;
-                  else if (c == 'T')
+                  else if(c == 'T')
                      self.m_flag |= MDRAFTED;
-               break;
-            }
-            if (*cp != c && *cp != su_cs_to_upper(c))
-               break;
+               }
+            break;
          }
+      }else if(!su_cs_is_blank(linebuf[0])){
+         /* So either this is a false detection (nothing but From_ line
+          * yet), or no separating empty line in between header/body!
+          * In the latter case, add one! */
+         if(!(f & a_CREATE)){
+            if(putc('\n', mb.mb_otf) == EOF){
+               n_perr(_("/tmp"), 0);
+               exit(n_EXIT_ERR); /* TODO no! */
+            }
+            ++offset;
+            ++self.m_size;
+            ++self.m_lines;
+         }else{
+            commit.m_size += self.m_size;
+            commit.m_lines += self.m_lines;
+            self = commit;
+            f &= ~(a_BAD_FROM_ | a_CREATE | a_INHEAD | a_COMMIT);
+         }
+      }
+
+jputln:
+      if(f & a_COMMIT){
+         f &= ~(a_CREATE | a_COMMIT);
+         if(f & a_HADONE)
+            message_append(&commit);
+         f |= a_HADONE;
+         msgCount++;
+      }
+      linebuf[cnt++] = '\n';
+      assert(linebuf[cnt] == '\0');
+      fwrite(linebuf, sizeof *linebuf, cnt, mb.mb_otf);
+      if(ferror(mb.mb_otf)){
+         n_perr(_("/tmp"), 0);
+         exit(n_EXIT_ERR); /* TODO no! */
       }
       offset += cnt;
       self.m_size += cnt;
       ++self.m_lines;
-      maybe = (linebuf[0] == 0);
    }
    n_NYD_OU;
 }

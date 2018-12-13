@@ -1564,7 +1564,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
    nozap = (doitp != n_IGNORE_ALL && doitp != n_IGNORE_FWD &&
          action != SEND_RFC822 &&
          !n_ignore_is_ign(doitp, "from_", sizeof("from_") -1));
-   if (mp->m_flag & MNOFROM) {
+   if (mp->m_flag & (MNOFROM | MBADFROM_)) {
       if (nozap)
          sz = fprintf(obuf, "%s%.*sFrom %s %s%s\n",
                cpre, (int)qf.qf_pfix_len,
