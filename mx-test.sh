@@ -176,10 +176,11 @@ if [ -n "${CHECK_ONLY}${RUN_TEST}" ]; then
    fi
 fi
 
+COLOR_ERR_ON= COLOR_ERR_OFF=
 ESTAT=0
-
-TRAP_EXIT_ADDONS=
 TEST_NAME=
+TRAP_EXIT_ADDONS=
+
 trap "${rm} -rf \"${BODY}\" \"${MBOX}\" \"${ERR}\" \${TRAP_EXIT_ADDONS}" EXIT
 trap "exit 1" HUP INT TERM
 
@@ -220,8 +221,8 @@ check() {
    if [ "${eestat}" != - ] && [ "${restat}" != "${eestat}" ]; then
       ESTAT=1
       [ -n "${TEST_ANY}" ] && __i__="\n" || __i__=
-      printf "${__i__}"'ERROR: %s: bad-status: %s != %s\n' \
-         "${tid}" "${restat}" "${eestat}"
+      printf "${__i__}"'%sERROR:%s %s: bad-status: %s != %s\n' \
+         "${COLOR_ERR_ON}" "${COLOR_ERR_OFF}" "${tid}" "${restat}" "${eestat}"
       TEST_ANY=
    fi
 
@@ -235,8 +236,8 @@ check() {
       runx=yes
       ESTAT=1
       [ -n "${TEST_ANY}" ] && __i__="\n" || __i__=
-      printf "${__i__}"'ERROR: %s: checksum mismatch (got %s)\n' \
-         "${tid}" "${csum}"
+      printf "${__i__}"'%sERROR:%s %s: checksum mismatch (got %s)\n' \
+         "${COLOR_ERR_ON}" "${COLOR_ERR_OFF}" "${tid}" "${csum}"
       TEST_ANY=
    fi
 
@@ -262,8 +263,8 @@ check_ex0() {
    if [ ${__qm__} -ne 0 ]; then
       ESTAT=1
       [ -n "${TEST_ANY}" ] && __i__="\n" || __i__=
-      printf "${__i__}"'ERROR: %s: unexpected non-0 exist status: %s\n' \
-         "${1}" "${__qm__}"
+      printf "${__i__}"'%sERROR:%s %s: unexpected non-0 exist status: %s\n' \
+         "${COLOR_ERR_ON}" "${COLOR_ERR_OFF}" "${1}" "${__qm__}"
       TEST_ANY=
    else
       [ -n "${TEST_ANY}" ] && __i__=' ' || __i__=
@@ -279,13 +280,20 @@ check_exn0() {
    if [ ${__qm__} -eq 0 ]; then
       ESTAT=1
       [ -n "${TEST_ANY}" ] && __i__="\n" || __i__=
-      printf "${__i__}"'ERROR: %s: unexpected 0 exist status: %s\n' \
-         "${1}" "${__qm__}"
+      printf "${__i__}"'%sERROR:%s %s: unexpected 0 exist status: %s\n' \
+         "${COLOR_ERR_ON}" "${COLOR_ERR_OFF}" "${1}" "${__qm__}"
       TEST_ANY=
    else
       [ -n "${TEST_ANY}" ] && __i__=' ' || __i__=
       printf "${__i__}"'%s%s:ok' "${1}"
       TEST_ANY=1
+   fi
+}
+
+color_init() {
+   if (command -v tput && tput setaf 1 && tput sgr0) >/dev/null 2>&1; then
+      COLOR_ERR_ON=`tput setaf 1``tput bold`
+      COLOR_ERR_OFF=`tput sgr0`
    fi
 }
 
@@ -6565,9 +6573,11 @@ elif [ -z "${RUN_TEST}" ] || [ ${#} -eq 0 ]; then
 #      ARGS="${ARGS} -Smemdebug"
 #      export ARGS
 #   fi
+   color_init
    t_all
    t_z
 else
+   color_init
    while [ ${#} -gt 0 ]; do
       eval t_${1}
       shift
