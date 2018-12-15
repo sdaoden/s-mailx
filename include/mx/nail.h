@@ -509,7 +509,7 @@ enum n_dotlock_state{
 };
 
 /* enum n_err_number from gen-config.h, which is in sync with
- * n_err_to_doc(), n_err_to_name() and n_err_from_name() */
+ * su_err_doc(), su_err_name() and su_err_from_name() */
 
 enum n_exit_status{
    n_EXIT_OK = EXIT_SUCCESS,
@@ -2476,9 +2476,8 @@ VL ui32_t n_pstate;              /* Bits of enum n_program_state */
 /* TODO "cmd_tab.h ARG_EM set"-storage (n_[01..]) as long as we don't have a
  * TODO struct CmdCtx where each command has its own ARGC/ARGV, errno and exit
  * TODO status and may-place-in-history bit, need to manage a global bypass.. */
-VL si32_t n_pstate_err_no;       /* What backs $! n_ERR_* TODO ..HACK */
+VL si32_t n_pstate_err_no;       /* What backs $! su_ERR_* TODO ..HACK */
 VL si32_t n_pstate_ex_no;        /* What backs $? n_EX_* TODO ..HACK ->64-bit */
-#define n_err_no errno           /* Don't use errno directly, for later XXX */
 VL si32_t n_iconv_err_no;        /* TODO HACK: part of CTX to not get lost */
 
 /* XXX stylish sorting */

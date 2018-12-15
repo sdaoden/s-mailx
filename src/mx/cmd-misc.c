@@ -131,23 +131,23 @@ a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
    if(varname == NULL){
       si32_t e;
 
-      e = n_ERR_NONE;
+      e = su_ERR_NONE;
       if(doerr){
          /* xxx Ensure *log-prefix* will be placed by n_err() for next msg */
          if(donl)
             cp = n_string_cp(n_string_trunc(sp, sp->s_len - 1));
          n_err((donl ? "%s\n" : "%s"), cp);
       }else if(fputs(cp, fp) == EOF)
-         e = n_err_no;
+         e = su_err_no();
       if((rv = (fflush(fp) == EOF)))
-         e = n_err_no;
+         e = su_err_no();
       rv |= ferror(fp) ? 1 : 0;
       n_pstate_err_no = e;
    }else if(!n_var_vset(varname, (uintptr_t)cp)){
-      n_pstate_err_no = n_ERR_NOTSUP;
+      n_pstate_err_no = su_ERR_NOTSUP;
       rv = -1;
    }else{
-      n_pstate_err_no = n_ERR_NONE;
+      n_pstate_err_no = su_ERR_NONE;
       rv = (int)sp->s_len;
    }
    n_NYD2_OU;
@@ -198,7 +198,7 @@ c_shell(void *v)
    char const **argv, *varname, *varres, *cp;
    n_NYD_IN;
 
-   n_pstate_err_no = n_ERR_NONE;
+   n_pstate_err_no = su_ERR_NONE;
    argv = v;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
    varres = n_empty;
@@ -207,7 +207,7 @@ c_shell(void *v)
    if(varname != NULL &&
          (fp = Ftmp(NULL, "shell", OF_RDWR | OF_UNLINK | OF_REGISTER)
             ) == NULL){
-      n_pstate_err_no = n_ERR_CANCELED;
+      n_pstate_err_no = su_ERR_CANCELED;
       rv = -1;
    }else{
       cp = a_cmisc_bangexp(*argv);
@@ -216,7 +216,7 @@ c_shell(void *v)
       if(n_child_run(ok_vlook(SHELL), &mask,
             n_CHILD_FD_PASS, (fp != NULL ? fileno(fp) : n_CHILD_FD_PASS),
             "-c", cp, NULL, NULL, &rv) < 0){
-         n_pstate_err_no = n_err_no;
+         n_pstate_err_no = su_err_no();
          rv = -1;
       }else{
          rv = WEXITSTATUS(rv);
@@ -229,7 +229,7 @@ c_shell(void *v)
             fflush_rewind(fp);
             l = fsize(fp);
             if(UICMP(64, l, >=, UIZ_MAX -42)){
-               n_pstate_err_no = n_ERR_NOMEM;
+               n_pstate_err_no = su_ERR_NOMEM;
                varres = n_empty;
             }else{
                varres = x = n_autorec_alloc(l +1);
@@ -238,7 +238,7 @@ c_shell(void *v)
                   *x++ = c;
                *x++ = '\0';
                if(l != 0){
-                  n_pstate_err_no = n_err_no;
+                  n_pstate_err_no = su_err_no();
                   varres = n_empty; /* xxx hmmm */
                }
             }
@@ -251,7 +251,7 @@ c_shell(void *v)
 
    if(varname != NULL){
       if(!n_var_vset(varname, (uintptr_t)varres)){
-         n_pstate_err_no = n_ERR_NOTSUP;
+         n_pstate_err_no = su_ERR_NOTSUP;
          rv = -1;
       }
    }else if(rv >= 0 && (n_psonce & n_PSO_INTERACTIVE)){
@@ -271,12 +271,12 @@ c_dosh(void *v)
 
    if(n_child_run(ok_vlook(SHELL), 0, n_CHILD_FD_PASS, n_CHILD_FD_PASS, NULL,
          NULL, NULL, NULL, &rv) < 0){
-      n_pstate_err_no = n_err_no;
+      n_pstate_err_no = su_err_no();
       rv = -1;
    }else{
       putc('\n', n_stdout);
       /* Line buffered fflush(n_stdout); */
-      n_pstate_err_no = n_ERR_NONE;
+      n_pstate_err_no = su_ERR_NONE;
       rv = WEXITSTATUS(rv);
    }
    n_NYD_OU;
@@ -300,8 +300,8 @@ c_cwd(void *v){
       if(getcwd(sp->s_dat, sp->s_len) == NULL){
          int e;
 
-         e = n_err_no;
-         if(e == n_ERR_RANGE)
+         e = su_err_no();
+         if(e == su_ERR_RANGE)
             continue;
          n_perr(_("Failed to getcwd(3)"), e);
          v = NULL;
@@ -407,12 +407,12 @@ c_read(void * volatile vp){
    case 0:
       break;
    default:
-      n_pstate_err_no = n_ERR_INTR;
+      n_pstate_err_no = su_ERR_INTR;
       rv = -1;
       goto jleave;
    }
 
-   n_pstate_err_no = n_ERR_NONE;
+   n_pstate_err_no = su_ERR_NONE;
    rv = n_go_input(((n_pstate & n_PS_COMPOSE_MODE
             ? n_GO_INPUT_CTX_COMPOSE : n_GO_INPUT_CTX_DEFAULT) |
          n_GO_INPUT_FORCE_STDIN | n_GO_INPUT_NL_ESC |
@@ -420,7 +420,7 @@ c_read(void * volatile vp){
          NULL, &linebuf, &linesize, NULL, NULL);
    if(rv < 0){
       if(!n_go_input_is_eof())
-         n_pstate_err_no = n_ERR_BADF;
+         n_pstate_err_no = su_ERR_BADF;
       goto jleave;
    }else if(rv == 0){
       if(n_go_input_is_eof()){
@@ -452,7 +452,7 @@ jitall:
          }
 
          if(!a_cmisc_read_set(*argv, n_string_cp(sp))){
-            n_pstate_err_no = n_ERR_NOTSUP;
+            n_pstate_err_no = su_ERR_NOTSUP;
             rv = -1;
             break;
          }
@@ -462,7 +462,7 @@ jitall:
    /* Set the remains to the empty string */
    for(; *argv != NULL; ++argv)
       if(!a_cmisc_read_set(*argv, n_empty)){
-         n_pstate_err_no = n_ERR_NOTSUP;
+         n_pstate_err_no = su_ERR_NOTSUP;
          rv = -1;
          break;
       }
@@ -497,12 +497,12 @@ c_readall(void * vp){ /* TODO 64-bit retval */
    case 0:
       break;
    default:
-      n_pstate_err_no = n_ERR_INTR;
+      n_pstate_err_no = su_ERR_INTR;
       rv = -1;
       goto jleave;
    }
 
-   n_pstate_err_no = n_ERR_NONE;
+   n_pstate_err_no = su_ERR_NONE;
 
    for(;;){
       rv = n_go_input(((n_pstate & n_PS_COMPOSE_MODE
@@ -512,7 +512,7 @@ c_readall(void * vp){ /* TODO 64-bit retval */
             NULL, &linebuf, &linesize, NULL, NULL);
       if(rv < 0){
          if(!n_go_input_is_eof()){
-            n_pstate_err_no = n_ERR_BADF;
+            n_pstate_err_no = su_ERR_BADF;
             goto jleave;
          }
          if(sp->s_len == 0)
@@ -534,14 +534,14 @@ c_readall(void * vp){ /* TODO 64-bit retval */
       }else if(n_LIKELY(UICMP(32, SI32_MAX - sp->s_len, >, rv)))
          sp = n_string_push_buf(sp, linebuf, rv);
       else{
-         n_pstate_err_no = n_ERR_OVERFLOW;
+         n_pstate_err_no = su_ERR_OVERFLOW;
          rv = -1;
          goto jleave;
       }
    }
 
    if(!a_cmisc_read_set(argv[0], n_string_cp(sp))){
-      n_pstate_err_no = n_ERR_NOTSUP;
+      n_pstate_err_no = su_ERR_NOTSUP;
       rv = -1;
       goto jleave;
    }

@@ -208,15 +208,15 @@ c_remove(void *v)
       switch (which_protocol(name, TRU1, FAL0, NULL)) {
       case PROTO_FILE:
          if (unlink(name) == -1) {
-            int se = n_err_no;
+            int se = su_err_no();
 
-            if (se == n_ERR_ISDIR) {
+            if (se == su_ERR_ISDIR) {
                struct stat sb;
 
                if (!stat(name, &sb) && S_ISDIR(sb.st_mode)) {
                   if (!rmdir(name))
                      break;
-                  se = n_err_no;
+                  se = su_err_no();
                }
             }
             n_perr(name, se);
@@ -292,12 +292,12 @@ c_rename(void *v)
    switch (oldp) {
    case PROTO_FILE:
       if (link(oldn, newn) == -1) {
-         switch (n_err_no) {
-         case n_ERR_ACCES:
-         case n_ERR_EXIST:
-         case n_ERR_NAMETOOLONG:
-         case n_ERR_NOSPC:
-         case n_ERR_XDEV:
+         switch (su_err_no()) {
+         case su_ERR_ACCES:
+         case su_ERR_EXIST:
+         case su_ERR_NAMETOOLONG:
+         case su_ERR_NOSPC:
+         case su_ERR_XDEV:
             n_perr(newn, 0);
             break;
          default:

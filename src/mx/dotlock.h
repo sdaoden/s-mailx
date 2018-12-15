@@ -77,7 +77,7 @@ a_dotlock_create(struct n_dotlock_info *dip){
 
       xrv = n_DLS_PING;
       w = write(STDOUT_FILENO, &xrv, sizeof xrv);
-      if(w == -1 && n_err_no == n_ERR_PIPE){
+      if(w == -1 && su_err_no() == su_ERR_PIPE){
          rv = n_DLS_DUNNO | n_DLS_ABANDON;
          break;
       }
@@ -106,16 +106,16 @@ a_dotlock__create_excl(struct n_dotlock_info *dip, char const *lname){
 #ifdef mx_SOURCE_PRIVSEP
          if(dip->di_stb != NULL &&
                fchown(fd, dip->di_stb->st_uid, dip->di_stb->st_gid)){
-            int x = n_err_no;
+            int x = su_err_no();
             close(fd);
-            n_err_no = x;
+            su_err_set_no(x);
             goto jbados;
          }
 #endif
          close(fd);
          break;
-      }else if((e = n_err_no) != n_ERR_EXIST){
-         rv = (e == n_ERR_ROFS) ? n_DLS_ROFS | n_DLS_ABANDON : n_DLS_NOPERM;
+      }else if((e = su_err_no()) != su_ERR_EXIST){
+         rv = (e == su_ERR_ROFS) ? n_DLS_ROFS | n_DLS_ABANDON : n_DLS_NOPERM;
          goto jleave;
       }else if(tries >= DOTLOCK_TRIES){
          rv = n_DLS_EXIST;
@@ -141,7 +141,8 @@ a_dotlock__create_excl(struct n_dotlock_info *dip, char const *lname){
 jleave:
    return rv;
 jbados:
-   rv = (n_err_no == n_ERR_EXIST) ? n_DLS_EXIST : n_DLS_NOPERM | n_DLS_ABANDON;
+   rv = (su_err_no() == su_ERR_EXIST)
+         ? n_DLS_EXIST : n_DLS_NOPERM | n_DLS_ABANDON;
    unlink(lname);
    goto jleave;
 }

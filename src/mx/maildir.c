@@ -706,7 +706,7 @@ maildir_append1(struct n_timespec const *tsp, char const *name, FILE *fp,
       snprintf(tfn, n, "%s/tmp/%s", name, fn);
 
       /* Use "wx" for O_EXCL XXX stat(2) rather redundant; coverity:TOCTOU */
-      if ((!stat(tfn, &st) || n_err_no == n_ERR_NOENT) &&
+      if ((!stat(tfn, &st) || su_err_no() == su_ERR_NOENT) &&
             (op = Fopen(tfn, "wx")) != NULL)
          break;
 

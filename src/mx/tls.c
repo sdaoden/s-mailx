@@ -442,7 +442,7 @@ c_tls(void *vp){
    else if(is_asccaseprefix(cp, "fingerprint")){
 #ifndef mx_HAVE_SOCKETS
       n_err(_("`tls': fingerprint: no +sockets in *features*\n"));
-      n_pstate_err_no = n_ERR_OPNOTSUPP;
+      n_pstate_err_no = su_ERR_OPNOTSUPP;
       goto jleave;
 #else
       struct sock so;
@@ -455,7 +455,7 @@ c_tls(void *vp){
       if(!url_parse(&url, CPROTO_CERTINFO, *argv))
          goto jeinval;
       if(!sopen(&so, &url)){ /* auto-closes for CPROTO_CERTINFO on success */
-         n_pstate_err_no = n_err_no;
+         n_pstate_err_no = su_err_no();
          goto jleave;
       }
       if(so.s_tls_finger == NULL)
@@ -465,16 +465,16 @@ c_tls(void *vp){
    }else
       goto jesubcmd;
 
-   n_pstate_err_no = n_ERR_NONE;
+   n_pstate_err_no = su_ERR_NONE;
    vp = (char*)-1;
 jleave:
    if(varname == NULL){
       if(fprintf(n_stdout, "%s\n", varres) < 0){
-         n_pstate_err_no = n_err_no;
+         n_pstate_err_no = su_err_no();
          vp = NULL;
       }
    }else if(!n_var_vset(varname, (uintptr_t)varres)){
-      n_pstate_err_no = n_ERR_NOTSUP;
+      n_pstate_err_no = su_ERR_NOTSUP;
       vp = NULL;
    }
    n_NYD_OU;
@@ -482,7 +482,7 @@ jleave:
 
 jeoverflow:
    n_err(_("`tls': string length or offset overflows datatype\n"));
-   n_pstate_err_no = n_ERR_OVERFLOW;
+   n_pstate_err_no = su_ERR_OVERFLOW;
    goto jleave;
 
 jesubcmd:
@@ -491,7 +491,7 @@ jesubcmd:
 jesynopsis:
    n_err(_("Synopsis: tls: <command> [<:argument:>]\n"));
 jeinval:
-   n_pstate_err_no = n_ERR_INVAL;
+   n_pstate_err_no = su_ERR_INVAL;
    goto jleave;
 }
 #endif /* mx_HAVE_TLS */

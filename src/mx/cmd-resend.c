@@ -335,7 +335,7 @@ a_crese_list_reply(int *msgvec, enum header_flags hf){
    struct name *rt, *mft, *np;
    n_NYD2_IN;
 
-   n_pstate_err_no = n_ERR_NONE;
+   n_pstate_err_no = su_ERR_NONE;
 
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
 
@@ -501,7 +501,7 @@ j_lt_redo:
       if(head.h_to == NULL && head.h_cc == NULL){
          n_err(_("No recipients specified for `Lreply'\n"));
          if(msgvec[1] == 0){
-            n_pstate_err_no = n_ERR_DESTADDRREQ;
+            n_pstate_err_no = su_ERR_DESTADDRREQ;
             msgvec = NULL;
             goto jleave;
          }
@@ -647,7 +647,7 @@ a_crese_fwd(void *vp, bool_t recipient_record){
    if(cap->ca_arg.ca_str.s[0] == '\0'){
       if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
          n_err(_("No recipient specified.\n"));
-      n_pstate_err_no = n_ERR_DESTADDRREQ;
+      n_pstate_err_no = su_ERR_DESTADDRREQ;
       goto jleave;
    }
 
@@ -729,7 +729,7 @@ a_crese_resend1(void *vp, bool_t add_resent){
    msgvec = cap->ca_arg.ca_msglist;
    cap = cap->ca_next;
    rv = 1;
-   n_pstate_err_no = n_ERR_DESTADDRREQ;
+   n_pstate_err_no = su_ERR_DESTADDRREQ;
 
    if(cap->ca_arg.ca_str.s[0] == '\0'){
       if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) || (n_poption & n_PO_D_V))
@@ -771,7 +771,7 @@ a_crese_resend1(void *vp, bool_t add_resent){
    }
    n_autorec_relax_gut();
 
-   n_pstate_err_no = n_ERR_NONE;
+   n_pstate_err_no = su_ERR_NONE;
    rv = 0;
 jleave:
    n_NYD2_OU;

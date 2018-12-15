@@ -358,18 +358,18 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
    if((dp = opendir(myp)) == NULL){
       int err;
 
-      switch((err = n_err_no)){
-      case n_ERR_NOTDIR:
+      switch((err = su_err_no())){
+      case su_ERR_NOTDIR:
          ccp = N_("cannot access paths under non-directory");
          goto jerr;
-      case n_ERR_NOENT:
+      case su_ERR_NOENT:
          ccp = N_("path component of (sub)pattern non-existent");
          goto jerr;
-      case n_ERR_ACCES:
+      case su_ERR_ACCES:
          ccp = N_("file permission for file (sub)pattern denied");
          goto jerr;
-      case n_ERR_NFILE:
-      case n_ERR_MFILE:
+      case su_ERR_NFILE:
+      case su_ERR_MFILE:
          ccp = N_("file descriptor limit reached, cannot open directory");
          goto jerr;
       default:
@@ -1924,7 +1924,7 @@ c_shcodec(void *vp){
       ++cp;
 
    in.l = strlen(in.s = n_UNCONST(cp));
-   nerrn = n_ERR_NONE;
+   nerrn = su_ERR_NONE;
 
    if(is_ascncaseprefix(act, "encode", alen))
       soup = n_shexp_quote(soup, &in, !norndtrip);
@@ -1936,7 +1936,7 @@ c_shcodec(void *vp){
                n_SHEXP_PARSE_IGNORE_EMPTY), soup, &in, NULL);
          if(shs & n_SHEXP_STATE_ERR_MASK){
             soup = n_string_assign_cp(soup, cp);
-            nerrn = n_ERR_CANCELED;
+            nerrn = su_ERR_CANCELED;
             vp = NULL;
             break;
          }
@@ -1949,7 +1949,7 @@ c_shcodec(void *vp){
    if(varname != NULL){
       cp = n_string_cp(soup);
       if(!n_var_vset(varname, (uintptr_t)cp)){
-         nerrn = n_ERR_NOTSUP;
+         nerrn = su_ERR_NOTSUP;
          vp = NULL;
       }
    }else{
@@ -1959,7 +1959,7 @@ c_shcodec(void *vp){
       in.l = soup->s_len;
       makeprint(&in, &out);
       if(fprintf(n_stdout, "%s\n", out.s) < 0){
-         nerrn = n_err_no;
+         nerrn = su_err_no();
          vp = NULL;
       }
       n_free(out.s);
@@ -1971,7 +1971,7 @@ jleave:
    return (vp != NULL ? 0 : 1);
 jesynopsis:
    n_err(_("Synopsis: shcodec: <[+]e[ncode]|d[ecode]> <rest-of-line>\n"));
-   nerrn = n_ERR_INVAL;
+   nerrn = su_ERR_INVAL;
    vp = NULL;
    goto jleave;
 }

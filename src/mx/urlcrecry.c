@@ -659,7 +659,7 @@ c_urlcodec(void *vp){
    if(*cp != '\0')
       ++cp;
 
-   n_pstate_err_no = n_ERR_NONE;
+   n_pstate_err_no = su_ERR_NONE;
 
    if(is_ascncaseprefix(act, "encode", alen))
       varres = urlxenc(cp, ispath);
@@ -669,14 +669,14 @@ c_urlcodec(void *vp){
       goto jesynopsis;
 
    if(varres == NULL){
-      n_pstate_err_no = n_ERR_CANCELED;
+      n_pstate_err_no = su_ERR_CANCELED;
       varres = cp;
       vp = NULL;
    }
 
    if(varname != NULL){
       if(!n_var_vset(varname, (uintptr_t)varres)){
-         n_pstate_err_no = n_ERR_NOTSUP;
+         n_pstate_err_no = su_ERR_NOTSUP;
          cp = NULL;
       }
    }else{
@@ -685,7 +685,7 @@ c_urlcodec(void *vp){
       in.l = strlen(in.s = n_UNCONST(varres));
       makeprint(&in, &out);
       if(fprintf(n_stdout, "%s\n", out.s) < 0){
-         n_pstate_err_no = n_err_no;
+         n_pstate_err_no = su_err_no();
          vp = NULL;
       }
       n_free(out.s);
@@ -697,7 +697,7 @@ jleave:
 jesynopsis:
    n_err(_("Synopsis: urlcodec: "
       "<[path]e[ncode]|[path]d[ecode]> <rest-of-line>\n"));
-   n_pstate_err_no = n_ERR_INVAL;
+   n_pstate_err_no = su_ERR_INVAL;
    vp = NULL;
    goto jleave;
 }

@@ -436,7 +436,7 @@ FL void n_verr(char const *format, va_list ap);
 /* ..(for use in a signal handler; to be obsoleted..).. */
 FL void        n_err_sighdl(char const *format, ...);
 
-/* Our perror(3); if errval is 0 n_err_no is used; newline appended */
+/* Our perror(3); if errval is 0 su_err_no() is used; newline appended */
 FL void        n_perr(char const *msg, int errval);
 
 /* Announce a fatal error (and die); newline appended */
@@ -447,11 +447,6 @@ FL void        n_panic(char const *format, ...);
 #ifdef mx_HAVE_ERRORS
 FL int c_errors(void *vp);
 #endif
-
-/* strerror(3), and enum n_err_number <-> error name conversions */
-FL char const *n_err_to_doc(si32_t eno);
-FL char const *n_err_to_name(si32_t eno);
-FL si32_t n_err_from_name(char const *name);
 
 /* */
 #ifdef mx_HAVE_REGEX
@@ -788,7 +783,7 @@ FL int c_digmsg(void *vp);
  * execv(2) with the privilege-separated dotlock helper program): the lock file
  * will be removed once the control pipe is closed via Pclose().
  * If *dotlock_ignore_error* is set (FILE*)-1 will be returned if at least the
- * normal file lock could be established, otherwise n_err_no is usable on err */
+ * normal file lock could be established, otherwise su_err_no() is usable */
 FL FILE *n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
             off_t off, off_t len, size_t pollmsecs);
 
@@ -917,7 +912,7 @@ FL char const *n_folder_query(void);
 /* Prepare the seekable O_APPEND MBOX fout for appending of another message.
  * If st_or_null is not NULL it is assumed to point to an up-to-date status of
  * fout, otherwise an internal fstat(2) is performed as necessary.
- * Returns n_err_no of error */
+ * Returns su_err_no() of error */
 FL int n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_null);
 
 /*
@@ -2354,13 +2349,13 @@ FL void        n_iconv_close(iconv_t cd);
 /* Reset encoding state */
 FL void        n_iconv_reset(iconv_t cd);
 
-/* iconv(3), but return n_err_no or 0 upon success.
+/* iconv(3), but return su_err_no() or 0 upon success.
  * The err_no may be ERR_NOENT unless n_ICONV_IGN_NOREVERSE is set in icf.
  * iconv_str() auto-grows on ERR_2BIG errors; in and in_rest_or_null may be
  * the same object.
  * Note: ERR_INVAL (incomplete sequence at end of input) is NOT handled, so the
  * replacement character must be added manually if that happens at EOF!
- * TODO These must be contexts.  For now we duplicate n_err_no into
+ * TODO These must be contexts.  For now we duplicate su_err_no() into
  * TODO n_iconv_err_no in order to be able to access it when stuff happens
  * TODO "in between"! */
 FL int         n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,

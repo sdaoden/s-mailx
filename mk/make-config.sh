@@ -1536,12 +1536,12 @@ if [ $? -ne 0 ]; then
 fi
 printf '#define su_PAGE_SIZE %su\n' "${i}" >> ${h}
 
-# Generate n_err_number OS mappings
+# Generate SU <> OS error number mappings
 dump_test_program=0
 (
    feat_yes DEVEL && NV= || NV=noverbose
    SRCDIR="${SRCDIR}" TARGET="${h}" awk="${awk}" \
-      ${SHELL} "${TOPDIR}"mk/make-errors.sh ${NV} config
+      ${SHELL} "${TOPDIR}"mk/su-make-errors.sh ${NV} config
 ) | xrun_check oserrno 'OS error mapping table generated' || config_exit 1
 dump_test_program=1
 
@@ -3334,7 +3334,7 @@ printf '"\n' >> ${h}
 # Create the real mk-config.mk
 # Note we cannout use explicit ./ filename prefix for source and object
 # pathnames because of a bug in bmake(1)
-srclist= objlist=
+srclist= objlist= su_src= su_obj=
 if feat_no AMALGAMATION; then
    for i in `printf '%s\n' "${SRCDIR}"mx/*.c | ${sort}`; do
       i=`basename "${i}" .c`
@@ -3348,8 +3348,8 @@ if feat_no AMALGAMATION; then
    done
    for i in `printf '%s\n' "${SRCDIR}"su/*.c | ${sort}`; do
       i=`basename "${i}" .c`
-      objlist="${objlist} ${i}.o"
-      srclist="${srclist} \$(SRCDIR)su/${i}.c"
+      su_obj="${su_obj} ${i}.o"
+      su_src="${su_src} \$(SRCDIR)su/${i}.c"
       printf '%s: %s\n\t$(ECHO_CC)$(CC) $(CFLAGS) $(INCS) -c %s\n' \
          "${i}.o" "\$(SRCDIR)su/${i}.c" "\$(SRCDIR)su/${i}.c" >> ${mk}
    done
@@ -3358,6 +3358,7 @@ else
    printf '%s:\n\t$(ECHO_CC)$(CC) $(CFLAGS) $(INCS) -c $(SRCDIR)mx/%s\n' \
       "main.o" "main.c" >> ${mk}
    srclist=main.c objlist=main.o
+   su_src=main.c su_obj=main.o
    printf '\nAMALGAM_TARGET = main.o\nAMALGAM_DEP = ' >> ${mk}
 
    printf '\n#endif /* mx_SOURCE */\n' >> ${h}
@@ -3381,7 +3382,9 @@ else
    done
    echo >> ${mk}
 fi
-printf 'OBJ_SRC = %s\nOBJ = %s\n' "${srclist}" "${objlist}" >> "${mk}"
+printf 'OBJ_SRC = %s\nOBJ = %s\n' \
+   "${srclist} ${su_src}" "${objlist} ${su_obj}" >> "${mk}"
+printf 'SU_OBJ_SRC = %s\nSU_OBJ = %s\n' "${su_src}" "${su_obj}" >> "${mk}"
 
 printf '#endif /* mx_SOURCE */\n#endif /* mx_GEN_CONFIG_H */\n' >> ${h}
 

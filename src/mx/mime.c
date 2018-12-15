@@ -215,7 +215,7 @@ _fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
       if((err = n_iconv_str(iconvd,
             (failiconv ? n_ICONV_NONE : n_ICONV_UNIDEFAULT),
             &out, &in, &in)) != 0){
-         if(err != n_ERR_INVAL)
+         if(err != su_ERR_INVAL)
             n_iconv_reset(iconvd);
 
          if(outrest != NULL && in.l > 0){
@@ -1129,7 +1129,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
             cin.s = NULL, cin.l = 0; /* XXX string pool ! */
             convert = n_iconv_str(fhicd, n_ICONV_UNIDEFAULT, &cin, &cout, NULL);
             out = n_str_add(out, &cin);
-            if (convert) {/* n_ERR_INVAL at EOS */
+            if (convert) {/* su_ERR_INVAL at EOS */
                n_iconv_reset(fhicd);
                out = n_str_add_buf(out, n_qm, 1); /* TODO unicode replacement */
             }

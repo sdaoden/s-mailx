@@ -93,13 +93,6 @@ struct a_aux_err_node{
 };
 #endif
 
-struct a_aux_err_map{
-   ui32_t aem_hash;     /* Hash of name */
-   ui32_t aem_nameoff;  /* Into a_aux_err_names[] */
-   ui32_t aem_docoff;   /* Into a_aux_err docs[] (if mx_HAVE_DOCSTRINGS) */
-   si32_t aem_err_no;   /* The OS error value for this one */
-};
-
 /* IDEC: byte to integer value lookup table */
 static ui8_t const a_aux_idec_atoi[256] = {
    0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
@@ -155,17 +148,6 @@ static char const a_aux_ienc_itoa_upper[36] =
 static char const a_aux_ienc_itoa_lower[36] =
       "0123456789abcdefghijklmnopqrstuvwxyz";
 
-/* Include the constant make-errors.sh output */
-#include "mx/gen-errors.h"
-
-/* And these come from gen-config.h (config-time make-errors.sh output) */
-static n__ERR_NUMBER_TYPE const a_aux_err_no2mapoff[][2] = {
-#undef a_X
-#define a_X(N,I) {N,I},
-n__ERR_NUMBER_TO_MAPOFF
-#undef a_X
-};
-
 #if mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
 static union rand_state *a_aux_rand;
 #endif
@@ -185,9 +167,6 @@ su_SINLINE ui8_t a_aux_rand_get8(void);
 static ui32_t a_aux_rand_weak(ui32_t seed);
 #endif
 
-/* Find the descriptive mapping of an error number, or _ERR_INVAL */
-static struct a_aux_err_map const *a_aux_err_map_from_no(si32_t eno);
-
 #if mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
 static void
 a_aux_rand_init(void){
@@ -203,12 +182,12 @@ a_aux_rand_init(void){
    a_aux_rand = n_alloc(sizeof *a_aux_rand);
 
 # if mx_HAVE_RANDOM == n_RANDOM_IMPL_GETRANDOM
-   /* getrandom(2) guarantees 256 without n_ERR_INTR..
+   /* getrandom(2) guarantees 256 without su_ERR_INTR..
     * However, support sequential reading to avoid possible hangs that have
     * been reported on the ML (2017-08-22, s-nail/s-mailx freezes when
     * mx_HAVE_GETRANDOM is #defined) */
    n_LCTA(sizeof(a_aux_rand->a._dat) <= 256,
-      "Buffer too large to be served without n_ERR_INTR error");
+      "Buffer too large to be served without su_ERR_INTR error");
    n_LCTA(sizeof(a_aux_rand->a._dat) >= 256,
       "Buffer too small to serve used array indices");
    /* C99 */{
@@ -218,7 +197,7 @@ a_aux_rand_init(void){
          ssize_t gr;
 
          gr = n_RANDOM_GETRANDOM_FUN(&a_aux_rand->a._dat[o], i);
-         if(gr == -1 && n_err_no == n_ERR_NOSYS)
+         if(gr == -1 && su_err_no() == su_ERR_NOSYS)
             break;
          a_aux_rand->a._i = a_aux_rand->a._dat[a_aux_rand->a._dat[1] ^
                a_aux_rand->a._dat[84]];
@@ -319,34 +298,6 @@ a_aux_rand_weak(ui32_t seed){
    return seed;
 }
 #endif /* mx_HAVE_RANDOM != IMPL_ARC4 != IMPL_TLS */
-
-static struct a_aux_err_map const *
-a_aux_err_map_from_no(si32_t eno){
-   si32_t ecmp;
-   size_t asz;
-   n__ERR_NUMBER_TYPE const (*adat)[2], (*tmp)[2];
-   struct a_aux_err_map const *aemp;
-   n_NYD2_IN;
-
-   aemp = &a_aux_err_map[n__ERR_NUMBER_VOIDOFF];
-
-   if(UICMP(z, n_ABS(eno), <=, (n__ERR_NUMBER_TYPE)-1)){
-      for(adat = a_aux_err_no2mapoff, asz = n_NELEM(a_aux_err_no2mapoff);
-            asz != 0; asz >>= 1){
-         tmp = &adat[asz >> 1];
-         if((ecmp = (si32_t)((n__ERR_NUMBER_TYPE)eno - (*tmp)[0])) == 0){
-            aemp = &a_aux_err_map[(*tmp)[1]];
-            break;
-         }
-         if(ecmp > 0){
-            adat = &tmp[1];
-            --asz;
-         }
-      }
-   }
-   n_NYD2_OU;
-   return aemp;
-}
 
 FL void
 n_locale_init(void){
@@ -1782,10 +1733,10 @@ n_perr(char const *msg, int errval){
    }else
       fmt = "%s: %s\n";
 
-   e = (errval == 0) ? n_err_no : errval;
-   n_err(fmt, msg, n_err_to_doc(e));
+   e = (errval == 0) ? su_err_no() : errval;
+   n_err(fmt, msg, su_err_doc(e));
    if(errval == 0)
-      n_err_no = e;
+      su_err_set_no(e);
    n_NYD2_OU;
 }
 
@@ -1886,79 +1837,6 @@ jclear:
    goto jleave;
 }
 #endif /* mx_HAVE_ERRORS */
-
-FL char const *
-n_err_to_doc(si32_t eno){
-   char const *rv;
-   struct a_aux_err_map const *aemp;
-   n_NYD2_IN;
-
-   aemp = a_aux_err_map_from_no(eno);
-#ifdef mx_HAVE_DOCSTRINGS
-   rv = &a_aux_err_docs[aemp->aem_docoff];
-#else
-   rv = &a_aux_err_names[aemp->aem_nameoff];
-#endif
-   n_NYD2_OU;
-   return rv;
-}
-
-FL char const *
-n_err_to_name(si32_t eno){
-   char const *rv;
-   struct a_aux_err_map const *aemp;
-   n_NYD2_IN;
-
-   aemp = a_aux_err_map_from_no(eno);
-   rv = &a_aux_err_names[aemp->aem_nameoff];
-   n_NYD2_OU;
-   return rv;
-}
-
-FL si32_t
-n_err_from_name(char const *name){
-   struct a_aux_err_map const *aemp;
-   ui32_t hash, i, j, x;
-   si32_t rv;
-   n_NYD2_IN;
-
-   hash = n_torek_hash(name);
-
-   for(i = hash % a_AUX_ERR_REV_PRIME, j = 0; j <= a_AUX_ERR_REV_LONGEST; ++j){
-      if((x = a_aux_err_revmap[i]) == a_AUX_ERR_REV_ILL)
-         break;
-
-      aemp = &a_aux_err_map[x];
-      if(aemp->aem_hash == hash &&
-            !strcmp(&a_aux_err_names[aemp->aem_nameoff], name)){
-         rv = aemp->aem_err_no;
-         goto jleave;
-      }
-
-      if(++i == a_AUX_ERR_REV_PRIME){
-#ifdef a_AUX_ERR_REV_WRAPAROUND
-         i = 0;
-#else
-         break;
-#endif
-      }
-   }
-
-   /* Have not found it.  But wait, it could be that the user did, e.g.,
-    *    eval echo \$^ERR-$: \$^ERRDOC-$!: \$^ERRNAME-$! */
-   if((n_idec_si32_cp(&rv, name, 0, NULL) &
-         (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) == n_IDEC_STATE_CONSUMED){
-      aemp = a_aux_err_map_from_no(rv);
-      rv = aemp->aem_err_no;
-      goto jleave;
-   }
-
-   rv = a_aux_err_map[n__ERR_NUMBER_VOIDOFF].aem_err_no;
-jleave:
-   n_NYD2_OU;
-   return rv;
-}
 
 #ifdef mx_HAVE_REGEX
 FL char const *

@@ -1,9 +1,9 @@
 #!/bin/sh -
-#@ Create gen-errors.h.
+#@ Either create src/su/gen-errors.h, or, at compile time, the OS<>SU map.
 # Public Domain
 
-IN="${SRCDIR}"mx/gen-errors.h
-XOUT=src/mx/gen-errors.h
+IN="${SRCDIR}"su/gen-errors.h
+XOUT=src/su/gen-errors.h
 
 # We use `vexpr' for hashing
 MAILX='LC_ALL=C s-nail -#:/'
@@ -135,8 +135,9 @@ config() {
       echo >&2 'Invalid usage'
       exit 1
    }
-   # Note this may be ISO C89, so we cannot 
+   # Note this may be ISO C89, so we cannot
    cat <<__EOT__
+   #include <ctype.h>
    #include <errno.h>
    #include <limits.h>
    #include <stdio.h>
@@ -147,36 +148,35 @@ config() {
    #else
    # include <inttypes.h>
    #endif
+   #include <${IN}>
    #ifdef UINT32_MAX
-   typedef uint32_t ui32_t;
-   typedef int32_t si32_t;
+   typedef uint32_t u32;
+   typedef int32_t s32;
    #elif ULONG_MAX == 0xFFFFFFFFu
-   typedef unsigned long int ui32_t;
-   typedef signed long int si32_t;
+   typedef unsigned long int u32;
+   typedef signed long int s32;
    #else
-   typedef unsigned int ui32_t;
-   typedef signed int si32_t;
+   typedef unsigned int u32;
+   typedef signed int s32;
    #endif
-   struct a_in {struct a_in *next; char const *name; si32_t no; ui32_t uno;};
+   struct a_in {struct a_in *next; char const *name; s32 no; u32 uno;};
    static int a_sortin(void const *a, void const *b){
       return (*(struct a_in const* const *)a)->uno -
          (*(struct a_in const* const *)b)->uno;
    }
    int main(void){
-      char line[1024], *lp;
       struct a_in *head, *tail, *np, **nap;
-      ui32_t maxsub, umax;
-      si32_t xavail = 0, total = 1, imin = 0, imax = 0, voidoff = 0,
-         i, telloff, j;
-      FILE *ifp = fopen("${IN}", "r"), *ofp = fopen("${TARGET}", "a");
-      if(ifp == NULL || ofp == NULL){
-         fprintf(stderr, "ERROR: cannot open in- or output\n");
+      u32 maxsub, umax;
+      s32 xavail = 0, total = 1, imin = 0, imax = 0, voidoff = 0, i, j;
+      FILE *ofp = fopen("${TARGET}", "a");
+      if(ofp == NULL){
+         fprintf(stderr, "ERROR: cannot open output\n");
          return 1;
       }
 
       /* Create a list of all errors */
       head = tail = malloc(sizeof *head);
-      head->next = NULL; head->name = "n_ERR_NONE"; head->no = 0;
+      head->next = NULL; head->name = "su_ERR_NONE"; head->no = 0;
 __EOT__
    for n in `error_parse 0 0`; do
       cat <<__EOT__
@@ -188,22 +188,22 @@ __EOT__
       #endif
       if(imin > i) {imin = i;} if(imax < i) {imax = i;}
       np = malloc(sizeof *np);
-      np->next = NULL; np->name = "n_ERR_${n}"; np->no = i;
+      np->next = NULL; np->name = "su_ERR_${n}"; np->no = i;
       tail->next = np; tail = np;
 __EOT__
    done
    cat <<__EOT__
       /* The unsigned type used for storage */
 
-      fputs("#define n__ERR_NUMBER_TYPE ", ofp);
-      if((ui32_t)imax <= 0xFFu && (ui32_t)-imin <= 0xFFu){
-         fputs("ui8_t\n", ofp);
+      fputs("#define su__ERR_NUMBER_TYPE ", ofp);
+      if((u32)imax <= 0xFFu && (u32)-imin <= 0xFFu){
+         fputs("u8\n", ofp);
          maxsub = 0xFFu;
-      }else if(((ui32_t)imax <= 0xFFFFu && (ui32_t)-imin <= 0xFFFFu)){
-         fputs("ui16_t\n", ofp);
+      }else if(((u32)imax <= 0xFFFFu && (u32)-imin <= 0xFFFFu)){
+         fputs("u16\n", ofp);
          maxsub = 0xFFFFu;
       }else{
-         fputs("ui32_t\n", ofp);
+         fputs("u32\n", ofp);
          maxsub = 0xFFFFFFFFu;
       }
 
@@ -216,7 +216,7 @@ __EOT__
          if(np->uno > umax)
             umax = np->uno;
       }
-      if(umax <= (ui32_t)imax){
+      if(umax <= (u32)imax){
          fprintf(stderr, "ERROR: errno ranges overlap\n");
          return 1;
       }
@@ -230,57 +230,52 @@ __EOT__
          fprintf(stderr, "ERROR: implementation error i != total\n");
          return 1;
       }
-      qsort(nap, (ui32_t)i, sizeof *nap, &a_sortin);
+      qsort(nap, (u32)i, sizeof *nap, &a_sortin);
 
       /* The enumeration of numbers */
 
-      fputs("enum n_err_number{\\n", ofp);
+      fputs("#define su__ERR_NUMBER_ENUM_C \\\\\\n", ofp);
       for(i = 0; i < total; ++i)
-         fprintf(ofp, "   %s = %lu,\\n",
+         fprintf(ofp, "   %s = %lu,\\\\\\n",
             nap[i]->name, (unsigned long)nap[i]->uno);
-      fprintf(ofp, "   n__ERR_NUMBER = %ld\\n", (long)total);
-      fputs("};\\n", ofp);
+      fprintf(ofp, "   su__ERR_NUMBER = %ld\\n", (long)total);
+
+      fputs("#ifdef __cplusplus\n# define su__ERR_NUMBER_ENUM_CXX \\\\\\n",
+         ofp);
+      for(i = 0; i < total; ++i){
+         char b[64], *cbp = b;
+         char const *cp;
+         cp = &nap[i]->name[sizeof("su_") -1];
+         *cbp++ = 'e';
+         for(cp += sizeof("ERR_") -1; *cp != '\0'; ++cp)
+            *cbp++ = tolower(*cp);
+         *cbp = '\0';
+         fprintf(ofp, "   %s = %s,\\\\\\n", b, nap[i]->name);
+      }
+      fprintf(ofp,
+         "   e__number = su__ERR_NUMBER\\n#endif /* __cplusplus */\n");
 
       /* The binary search mapping table from OS error value to our internal
-       * a_aux_err_map[] error description table */
-
-      /* A real hack to have a fast NUMBER -> MAP mapping without compiling
-       * and running a second C program during config */
-      while((lp = fgets(line, sizeof line, ifp)) != NULL &&
-            strstr(lp, "a_aux_err_map[]") == NULL)
-         ;
-      if(feof(ifp) || ferror(ifp)){
-         fprintf(stderr, "ERROR: I/O error when reading \"ifp\"\n");
-         return 1;
-      }
-      telloff = (int)ftell(ifp);
-
-      fprintf(ofp, "#define n__ERR_NUMBER_TO_MAPOFF \\\\\\n");
+       * a_corerr_map[] error description table */
+      fprintf(ofp, "#define su__ERR_NUMBER_TO_MAPOFF \\\\\\n");
       for(xavail = 0, i = 0; i < total; ++i){
          if(i == 0 || nap[i]->no != nap[i - 1]->no){
-            if(fseek(ifp, telloff, SEEK_SET) == -1){
-               fprintf(stderr, "ERROR: I/O error when searching \"ifp\", I.\n");
-               return 1;
-            }
-            j = 0;
-            while((lp = fgets(line, sizeof line, ifp)) != NULL &&
-                  strstr(lp, nap[i]->name) == NULL)
-               ++j;
-            if(feof(ifp) || ferror(ifp)){
-               fprintf(stderr, "ERROR: I/O error when reading \"ifp\", II.\n");
-               return 1;
+            for(j = 0; a_names_alphasort[j] != NULL; ++j){
+               if(!strcmp(&nap[i]->name[sizeof("su_ERR_") -1],
+                     a_names_alphasort[j]))
+                  break;
             }
             fprintf(ofp, "\ta_X(%lu, %lu) %s%s%s\\\\\\n",
-               (unsigned long)nap[i]->uno, (long)(ui32_t)j,
+               (unsigned long)nap[i]->uno, (long)(u32)j,
                ((${VERB}) ? "/* " : ""), ((${VERB}) ? nap[i]->name : ""),
                   ((${VERB}) ? " */ " : ""));
-            if(!strcmp("n_ERR_NOTOBACCO", nap[i]->name))
+            if(!strcmp("su_ERR_NOTOBACCO", nap[i]->name))
                voidoff = j;
             ++xavail;
          }
       }
       fprintf(ofp, "\\t/* %ld unique members */\\n", (long)xavail);
-      fprintf(ofp, "#define n__ERR_NUMBER_VOIDOFF %ld\\n", (long)voidoff);
+      fprintf(ofp, "#define su__ERR_NUMBER_VOIDOFF %ld\\n", (long)voidoff);
       fclose(ofp);
 
       while((np = head) != NULL){
@@ -316,7 +311,7 @@ exit 1
 # Why can env(1) not be used for such easy things in #!?
 #!perl
 
-use diagnostics -verbose;
+#use diagnostics -verbose;
 use strict;
 use warnings;
 
@@ -334,9 +329,9 @@ sub main_fun{
 
    hash_em();
 
-   dump_map();
+   dump_map(); # Starts output file
 
-   reverser();
+   reverser(); # Ends output file
 
    cleanup(undef);
    exit 0
@@ -376,23 +371,24 @@ sub create_c_tool{
 # >>>>>>>>>>>>>>>>>>>
    print F <<'_EOT';
 #define __CREATE_ERRORS_SH
+#define su_SOURCE
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
-#define n_NELEM(A) (sizeof(A) / sizeof(A[0]))
+#define su_NELEM(A) (sizeof(A) / sizeof((A)[0]))
 
-#define ui32_t uint32_t
-#define si32_t int32_t
-#define ui16_t uint16_t
-#define ui8_t uint8_t
+#define u32 uint32_t
+#define s32 int32_t
+#define u16 uint16_t
+#define u8 uint8_t
 
-struct a_aux_err_map{
-   ui32_t aem_hash;     /* Hash of name */
-   ui32_t aem_nameoff;  /* Into a_aux_err_names[] */
-   ui32_t aem_docoff;   /* Into a_aux_err docs[] */
-   si32_t aem_errno;    /* The OS errno value for this one */
+struct a_corerr_map{
+   u32 cem_hash;     /* Hash of name */
+   u32 cem_nameoff;  /* Into a_corerr_names[] */
+   u32 cem_docoff;   /* Into a_corerr_docs[] */
+   s32 cem_errno;    /* OS errno value for this one */
 };
 
 _EOT
@@ -400,7 +396,7 @@ _EOT
    print F '#include "', $ENV{XOUT}, "\"\n\n";
 
    print F <<'_EOT';
-static ui8_t seen_wraparound;
+static u8 seen_wraparound;
 static size_t longest_distance;
 
 static size_t
@@ -415,35 +411,35 @@ jredo:
 
 static size_t *
 reversy(size_t size){
-   struct a_aux_err_map const *aemp = a_aux_err_map,
-      *aemaxp = aemp + n_NELEM(a_aux_err_map);
+   struct a_corerr_map const *cemp = a_corerr_map,
+      *cemaxp = cemp + su_NELEM(a_corerr_map);
    size_t ldist = 0, *arr;
 
    arr = malloc(sizeof *arr * size);
    for(size_t i = 0; i < size; ++i)
-      arr[i] = n_NELEM(a_aux_err_map);
+      arr[i] = su_NELEM(a_corerr_map);
 
    seen_wraparound = 0;
    longest_distance = 0;
 
-   while(aemp < aemaxp){
-      ui32_t hash = aemp->aem_hash, i = hash % size, l;
+   while(cemp < cemaxp){
+      u32 hash = cemp->cem_hash, i = hash % size, l;
 
-      for(l = 0; arr[i] != n_NELEM(a_aux_err_map); ++l)
+      for(l = 0; arr[i] != su_NELEM(a_corerr_map); ++l)
          if(++i == size){
             seen_wraparound = 1;
             i = 0;
          }
       if(l > longest_distance)
          longest_distance = l;
-      arr[i] = (size_t)(aemp++ - a_aux_err_map);
+      arr[i] = (size_t)(cemp++ - a_corerr_map);
    }
    return arr;
 }
 
 int
 main(int argc, char **argv){
-   size_t *arr, size = n_NELEM(a_aux_err_map);
+   size_t *arr, size = su_NELEM(a_corerr_map);
 
    fprintf(stderr, "Starting reversy, okeys=%zu\n", size);
    for(;;){
@@ -456,19 +452,20 @@ main(int argc, char **argv){
    }
 
    printf(
-      "#define a_AUX_ERR_REV_ILL %zuu\n"
-      "#define a_AUX_ERR_REV_PRIME %zuu\n"
-      "#define a_AUX_ERR_REV_LONGEST %zuu\n"
-      "#define a_AUX_ERR_REV_WRAPAROUND %d\n"
-      "static %s const a_aux_err_revmap[a_AUX_ERR_REV_PRIME] = {\n%s",
-      n_NELEM(a_aux_err_map), size, longest_distance, seen_wraparound,
-      argv[1], (argc > 2 ? "  " : ""));
+      "#ifdef su_SOURCE /* Lock-out compile-time-tools */\n"
+      "# define a_CORERR_REV_ILL %zuu\n"
+      "# define a_CORERR_REV_PRIME %zuu\n"
+      "# define a_CORERR_REV_LONGEST %zuu\n"
+      "# define a_CORERR_REV_WRAPAROUND %d\n"
+      "static %s const a_corerr_revmap[a_CORERR_REV_PRIME] = {\n%s",
+      su_NELEM(a_corerr_map), size, longest_distance, seen_wraparound,
+      argv[1], (argc > 2 ? "   " : ""));
    for(size_t i = 0; i < size; ++i)
       printf("%s%zuu", (i == 0 ? ""
-         : (i % 10 == 0 ? (argc > 2 ? ",\n  " : ",\n")
+         : (i % 10 == 0 ? (argc > 2 ? ",\n   " : ",\n")
             : (argc > 2 ? ", " : ","))),
          arr[i]);
-   printf("\n};\n");
+   printf("\n};\n#endif /* su_SOURCE */\n");
    return 0;
 }
 _EOT
@@ -490,12 +487,33 @@ sub hash_em{
 }
 
 sub dump_map{
+   my ($i, $alen);
+
    die "$ENV{XOUT}: open: $^E" unless open F, '>', $ENV{XOUT};
    print F '/*@ ', scalar basen($ENV{XOUT}), ', generated by ',
-      scalar basen($0), ".\n *@ See auxlily.c for more */\n\n";
+      scalar basen($0), ".\n *@ See core-errors.c for more */\n\n";
 
-   print F 'static char const a_aux_err_names[] = {', "\n";
-   my ($i, $alen) = (0, 0);
+   print F '#ifndef su_SOURCE /* For compile-time tools only */', "\n",
+      'static char const * const a_names_alphasort[] = {';
+   ($i, $alen) = (0, 0);
+   foreach my $e (@ENTS){
+      $i = 1 + 3 + length $e->{name};
+      if($alen == 0 || $alen + $i > 75){
+         print F "\n${S}";
+         $alen = length $S
+      }else{
+         print F ' ';
+         ++$i
+      }
+      $alen += $i;
+      print F "\"$e->{name}\","
+   }
+   print F " NULL\n};\n#endif /* !su_SOURCE */\n\n";
+
+   ($i, $alen) = (0, 0);
+   print F '#ifdef su_SOURCE', "\n",
+      'static char const a_corerr_names[] = {', "\n";
+   ($i, $alen) = (0, 0);
    foreach my $e (@ENTS){
       $e->{nameoff} = $alen;
       my $k = $e->{name};
@@ -509,9 +527,9 @@ sub dump_map{
    }
    print F '};', "\n\n";
 
-   print F '#ifdef mx_HAVE_DOCSTRINGS', "\n";
-   print F '#undef a_X', "\n", '#define a_X(X)', "\n";
-   print F 'static char const a_aux_err_docs[] = {', "\n";
+   print F '# ifdef su_HAVE_DOCSTRINGS', "\n";
+   print F '#  undef a_X', "\n", '#  define a_X(X)', "\n";
+   print F 'static char const a_corerr_docs[] = {', "\n";
    ($i, $alen) = (0, 0);
    foreach my $e (@ENTS){
       $e->{docoff} = $alen;
@@ -525,22 +543,24 @@ sub dump_map{
       ++$i;
       $alen += $l + 1
    }
-   print F '};', "\n", '#undef a_X', "\n#endif /* mx_HAVE_DOCSTRINGS */\n\n";
+   print F '};', "\n", '#  undef a_X',
+      "\n# endif /* su_HAVE_DOCSTRINGS */\n\n";
 
    print F <<_EOT;
-#undef a_X
-#ifndef __CREATE_ERRORS_SH
-# define a_X(X) X
-#else
-# define a_X(X) 0
-#endif
-static struct a_aux_err_map const a_aux_err_map[] = {
+# undef a_X
+# ifndef __CREATE_ERRORS_SH
+#  define a_X(X) X
+# else
+#  define a_X(X) 0
+# endif
+static struct a_corerr_map const a_corerr_map[] = {
 _EOT
    foreach my $e (@ENTS){
       print F "${S}{$e->{hash}u, $e->{nameoff}u, $e->{docoff}u, ",
-         "a_X(n_ERR_$e->{name})},\n"
+         "a_X(su_ERR_$e->{name})},\n"
    }
-   print F '};', "\n", '#undef a_X', "\n\n";
+   print F '};', "\n", '# undef a_X', "\n",
+      '#endif /* su_SOURCE */', "\n\n";
 
    die "$ENV{XOUT}: close: $^E" unless close F
 }
@@ -548,7 +568,7 @@ _EOT
 sub reverser{
    my $argv2 = $ENV{VERB} ? ' verb' : '';
    system("\$CC -I. -o $CTOOL_EXE $CTOOL");
-   my $t = (@ENTS < 0xFF ? 'ui8_t' : (@ENTS < 0xFFFF ? 'ui16_t' : 'ui32_t'));
+   my $t = (@ENTS < 0xFF ? 'u8' : (@ENTS < 0xFFFF ? 'u16' : 'u32'));
    `$CTOOL_EXE $t$argv2 >> $ENV{XOUT}`
 }
 

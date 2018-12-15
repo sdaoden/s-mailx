@@ -507,7 +507,7 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
    }
 #endif /* mx_HAVE_DEBUG */
 
-   n_pstate_err_no = n_ERR_NONE;
+   n_pstate_err_no = su_ERR_NONE;
    shin.s = n_UNCONST(cacp->cac_indat); /* "logical" only */
    shin.l = (cacp->cac_inlen == UIZ_MAX ? strlen(shin.s) : cacp->cac_inlen);
    shin_orig = shin;
@@ -585,7 +585,7 @@ jredo:
          if(n_getmsglist(shin.s, (ncap.ca_arg.ca_msglist =
                   n_autorec_calloc(msgCount +1, sizeof *ncap.ca_arg.ca_msglist)
                ), cacp->cac_msgflag, target_argpp) < 0){
-            n_pstate_err_no = n_ERR_INVAL; /* XXX should come from getmsglist*/
+            n_pstate_err_no = su_ERR_INVAL;/* XXX should come from getmsglist*/
             goto jerr;
          }
 
@@ -603,7 +603,7 @@ jredo:
 
                   e = n_CMD_ARG_DESC_TO_ERRNO(ncap.ca_ent_flags[0]);
                   if(e == 0)
-                     e = n_ERR_NODATA;
+                     e = su_ERR_NODATA;
                   n_pstate_err_no = e;
                   goto jerr;
                }
@@ -625,7 +625,7 @@ jredo:
             if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
                   (n_poption & n_PO_D_V))
                n_err(_("Cannot specify multiple messages at once\n"));
-            n_pstate_err_no = n_ERR_NOTSUP;
+            n_pstate_err_no = su_ERR_NOTSUP;
             goto jerr;
          }
          shin.l = 0;
@@ -692,8 +692,8 @@ jleave:
    return (lcap != NULL);
 
 jerr:
-   if(n_pstate_err_no == n_ERR_NONE){
-      n_pstate_err_no = n_ERR_INVAL;
+   if(n_pstate_err_no == su_ERR_NONE){
+      n_pstate_err_no = su_ERR_INVAL;
 
       if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
             (n_poption & n_PO_D_V)){

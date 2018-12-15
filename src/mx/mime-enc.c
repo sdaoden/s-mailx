@@ -223,7 +223,7 @@ a_me_b64_decode_prepare(struct str *work, struct str const *in){
    cp_len = n_str_trim(work, n_STR_TRIM_BOTH)->l;
 
    if(cp_len > 16){
-      /* n_ERR_OVERFLOW */
+      /* su_ERR_OVERFLOW */
       if(UIZ_MAX / 3 <= cp_len){
          cp_len = UIZ_MAX;
          goto jleave;
@@ -420,7 +420,7 @@ qp_encode_calc_size(size_t len){
     *    }' |
     *    s-nail -:/ -dSsendcharsets=utf8 -s testsub no@where */
 
-   /* Several n_ERR_OVERFLOW */
+   /* Several su_ERR_OVERFLOW */
    if(len >= UIZ_MAX / 3){
       len = UIZ_MAX;
       goto jleave;
@@ -595,7 +595,7 @@ qp_decode_header(struct str *out, struct str const *in){
    char const *is, *ie;
    n_NYD_IN;
 
-   /* n_ERR_OVERFLOW */
+   /* su_ERR_OVERFLOW */
    if(UIZ_MAX -1 - out->l <= in->l ||
          SI32_MAX <= out->l + in->l){ /* XXX wrong, we may replace */
       out->l = 0;
@@ -663,7 +663,7 @@ qp_decode_part(struct str *out, struct str const *in, struct str *outrest,
       outrest->l = 0;
    }
 
-   /* n_ERR_OVERFLOW */
+   /* su_ERR_OVERFLOW */
    if(UIZ_MAX -1 - out->l <= in->l ||
          SI32_MAX <= out->l + in->l) /* XXX wrong, we may replace */
       goto jerr;
@@ -983,7 +983,7 @@ b64_decode_part(struct str *out, struct str const *in, struct str *outrest,
       outrest->l = 0;
    }
 
-   /* n_ERR_OVERFLOW */
+   /* su_ERR_OVERFLOW */
    if(UIZ_MAX - len <= s.s_len ||
          SI32_MAX <= len + s.s_len) /* XXX wrong, we may replace */
       goto jerr;

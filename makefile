@@ -59,9 +59,9 @@ d-tcaps:
 d-tcaps-nv:
 	perl mk/make-tcap-map.pl noverbose
 d-errors:
-	sh mk/make-errors.sh
+	sh mk/su-make-errors.sh
 d-errors-nv:
-	sh mk/make-errors.sh noverbose
+	sh mk/su-make-errors.sh noverbose
 
 d-dox:
 	doxygen mk/su-doxygen.rc

@@ -59,11 +59,11 @@ a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp, bool_t oexcl){
       if((dmcp = n_dig_msg_compose_ctx) != NULL){
          *dmcpp = dmcp;
          if(dmcp->dmc_flags & n_DIG_MSG_COMPOSE_DIGGED)
-            rv = oexcl ? n_ERR_EXIST : n_ERR_NONE;
+            rv = oexcl ? su_ERR_EXIST : su_ERR_NONE;
          else
-            rv = oexcl ? n_ERR_NONE : n_ERR_NOENT;
+            rv = oexcl ? su_ERR_NONE : su_ERR_NOENT;
       }else
-         rv = n_ERR_INVAL;
+         rv = su_ERR_INVAL;
       goto jleave;
    }
 
@@ -71,18 +71,18 @@ a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp, bool_t oexcl){
             ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
          ) != n_IDEC_STATE_CONSUMED ||
          msgno == 0 || UICMP(z, msgno, >, msgCount)){
-      rv = n_ERR_INVAL;
+      rv = su_ERR_INVAL;
       goto jleave;
    }
 
    for(dmcp = mb.mb_digmsg; dmcp != NULL; dmcp = dmcp->dmc_next)
       if(dmcp->dmc_msgno == msgno){
          *dmcpp = dmcp;
-         rv = oexcl ? n_ERR_EXIST : n_ERR_NONE;
+         rv = oexcl ? su_ERR_EXIST : su_ERR_NONE;
          goto jleave;
       }
    if(!oexcl){
-      rv = n_ERR_NOENT;
+      rv = su_ERR_NOENT;
       goto jleave;
    }
 
@@ -95,7 +95,7 @@ a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp, bool_t oexcl){
    dmcp->dmc_hp = (struct header*)PTR2SIZE(&dmcp[1]);
    dmcp->dmc_membag = su_mem_bag_create(&dmcp->dmc__membag_buf[0], 0);
    /* Rest done by caller */
-   rv = n_ERR_NONE;
+   rv = su_ERR_NONE;
 jleave:
    n_NYD2_OU;
    return rv;
@@ -1188,7 +1188,7 @@ c_digmsg(void *vp){
    struct n_cmd_arg_ctx *cacp;
    n_NYD_IN;
 
-   n_pstate_err_no = n_ERR_NONE;
+   n_pstate_err_no = su_ERR_NONE;
    cacp = vp;
    cap = cacp->cac_arg;
 
@@ -1208,10 +1208,10 @@ c_digmsg(void *vp){
 
       /* First of all, our context object */
       switch(a_dmsg_find(cp = cap->ca_arg.ca_str.s, &dmcp, TRU1)){
-      case n_ERR_INVAL:
+      case su_ERR_INVAL:
          emsg = N_("`digmsg': create: message number invalid: %s\n");
          goto jeinval_quote;
-      case n_ERR_EXIST:
+      case su_ERR_EXIST:
          emsg = N_("`digmsg': create: message object already exists: %s\n");
          goto jeinval_quote;
       default:
@@ -1251,7 +1251,7 @@ c_digmsg(void *vp){
                (dmcp->dmc_flags & n_DIG_MSG_COMPOSE ? 0 : n_DIG_MSG_FCLOSE);
       else{
          n_err(_("`digmsg': create: cannot create temporary file: %s\n"),
-            n_err_to_doc(n_pstate_err_no = n_err_no));
+            su_err_doc(n_pstate_err_no = su_err_no()));
          vp = NULL;
          goto jeremove;
       }
@@ -1268,7 +1268,7 @@ c_digmsg(void *vp){
       cap = cap->ca_next;
 
       switch(a_dmsg_find(cp = cap->ca_arg.ca_str.s, &dmcp, FAL0)){
-      case n_ERR_INVAL:
+      case su_ERR_INVAL:
          emsg = N_("`digmsg': remove: message number invalid: %s\n");
          goto jeinval_quote;
       default:
@@ -1276,7 +1276,7 @@ c_digmsg(void *vp){
                (dmcp->dmc_flags & n_DIG_MSG_COMPOSE_DIGGED))
             break;
          /* FALLTHRU */
-      case n_ERR_NOENT:
+      case su_ERR_NOENT:
          emsg = N_("`digmsg': remove: no such message object: %s\n");
          goto jeinval_quote;
       }
@@ -1304,10 +1304,10 @@ jeremove:
          n_free(dmcp);
    }else{
       switch(a_dmsg_find(cp, &dmcp, FAL0)){
-      case n_ERR_INVAL:
+      case su_ERR_INVAL:
          emsg = N_("`digmsg': message number invalid: %s\n");
          goto jeinval_quote;
-      case n_ERR_NOENT:
+      case su_ERR_NOENT:
          emsg = N_("`digmsg': no such message object: %s\n");
          goto jeinval_quote;
       default:
@@ -1355,7 +1355,7 @@ jesynopsis:
 jeinval_quote:
    n_err(V_(emsg), n_shexp_quote_cp(cp, FAL0));
 jeinval:
-   n_pstate_err_no = n_ERR_INVAL;
+   n_pstate_err_no = su_ERR_INVAL;
    vp = NULL;
    goto jleave;
 }

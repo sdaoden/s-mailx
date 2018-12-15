@@ -75,7 +75,7 @@ _update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Object! */
 
       if(p == PROTO_FILE || p == PROTO_MAILDIR){
          name = adjname;
-         if (realpath(name, mailname) == NULL && n_err_no != n_ERR_NOENT) {
+         if (realpath(name, mailname) == NULL && su_err_no() != su_ERR_NOENT) {
             n_err(_("Can't canonicalize %s\n"), n_shexp_quote_cp(name, FAL0));
             goto jdocopy;
          }
@@ -453,9 +453,9 @@ jlogname:
    }
 
    if ((ibuf = n_fopen_any(savecat("file://", name), "r", NULL)) == NULL) {
-      int e = n_err_no;
+      int e = su_err_no();
 
-      if ((fm & FEDIT_SYSBOX) && e == n_ERR_NOENT) {
+      if ((fm & FEDIT_SYSBOX) && e == su_ERR_NOENT) {
          if (!(fm & FEDIT_ACCOUNT) && strcmp(who, ok_vlook(LOGNAME)) &&
                getpwnam(who) == NULL) {
             n_err(_("%s is not a user of this system\n"),
@@ -496,7 +496,7 @@ jlogname:
    } else {
       if (fm & FEDIT_NEWMAIL)
          goto jleave;
-      n_err_no = S_ISDIR(stb.st_mode) ? n_ERR_ISDIR : n_ERR_INVAL;
+      su_err_set_no(S_ISDIR(stb.st_mode) ? su_ERR_ISDIR : su_ERR_INVAL);
       n_perr(name, 0);
       goto jem1;
    }
@@ -620,7 +620,7 @@ jlogname:
 
    rv = (msgCount == 0);
    if(rv)
-      n_err_no = n_ERR_NODATA;
+      su_err_set_no(su_ERR_NODATA);
 
    if(n_poption & n_PO_EXISTONLY)
       goto jleave;
@@ -651,7 +651,7 @@ jem2:
       n_dig_msg_on_mailbox_close(&mb);
    mb.mb_type = MB_VOID;
 jem1:
-   n_err_no = n_ERR_NOTOBACCO;
+   su_err_set_no(su_ERR_NOTOBACCO);
    rv = -1;
    goto jleave;
 }
@@ -1031,7 +1031,7 @@ n_folder_query(void){
          (free)(cp);
 # endif
          rv = sp->s_dat;
-      }else if(n_err_no == n_ERR_NOENT)
+      }else if(su_err_no() == su_ERR_NOENT)
          rv = cp;
       else{
          n_err(_("Can't canonicalize *folder*: %s\n"),
@@ -1081,7 +1081,7 @@ n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_null){
          goto jerrno;
       needsep = (buf[0] != '\n' || buf[1] != '\n');
    }else{
-      rv = n_err_no;
+      rv = su_err_no();
 
       if(st_or_null == NULL){
          st_or_null = &stb;
@@ -1092,7 +1092,7 @@ n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_null){
       if(st_or_null->st_size >= 2)
          goto jleave;
       if(st_or_null->st_size == 0){
-         rv = n_ERR_NONE;
+         rv = su_ERR_NONE;
          goto jleave;
       }
 
@@ -1103,10 +1103,10 @@ n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_null){
       needsep = (buf[0] != '\n');
    }
 
-   rv = n_ERR_NONE;
+   rv = su_ERR_NONE;
    if(fflush(fout) || (needsep && putc('\n', fout) == EOF))
 jerrno:
-      rv = n_err_no;
+      rv = su_err_no();
 jleave:
    n_NYD2_OU;
    return rv;

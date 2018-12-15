@@ -159,7 +159,7 @@ _execute_command(struct header *hp, char const *linebuf, size_t linesize){
    case 0:
       break;
    default:
-      n_pstate_err_no = n_ERR_INTR;
+      n_pstate_err_no = su_ERR_INTR;
       n_pstate_ex_no = 1;
       goto jleave;
    }
@@ -196,7 +196,7 @@ a_coll_include_file(char const *name, bool_t indent, bool_t writestat){
    si32_t rv;
    n_NYD_IN;
 
-   rv = n_ERR_NONE;
+   rv = su_ERR_NONE;
    lc = cc = 0;
    linebuf = NULL; /* TODO line pool */
    linesize = 0;
@@ -213,7 +213,7 @@ a_coll_include_file(char const *name, bool_t indent, bool_t writestat){
       if(name[1] == '\0'){
          if(!(n_psonce & n_PSO_INTERACTIVE)){
             n_err(_("~< -: HERE-delimiter required in non-interactive mode\n"));
-            rv = n_ERR_INVAL;
+            rv = su_ERR_INVAL;
             goto jleave;
          }
       }else{
@@ -223,7 +223,7 @@ a_coll_include_file(char const *name, bool_t indent, bool_t writestat){
          if((heredl = strlen(heredb)) == 0){
 jdelim_empty:
             n_err(_("~< - HERE-delimiter: delimiter must not be empty\n"));
-            rv = n_ERR_INVAL;
+            rv = su_ERR_INVAL;
             goto jleave;
          }
 
@@ -232,12 +232,12 @@ jdelim_empty:
                ;
             if(*indb == '\0'){
                n_err(_("~< - HERE-delimiter: missing trailing quote\n"));
-               rv = n_ERR_INVAL;
+               rv = su_ERR_INVAL;
                goto jleave;
             }else if(indb[1] != '\0'){
                n_err(_("~< - HERE-delimiter: trailing characters after "
                   "quote\n"));
-               rv = n_ERR_INVAL;
+               rv = su_ERR_INVAL;
                goto jleave;
             }
             if((heredl = PTR2SIZE(indb - heredb)) == 0)
@@ -247,7 +247,7 @@ jdelim_empty:
       }
       name = n_hy;
    }else if((fbuf = Fopen(name, "r")) == NULL){
-      n_perr(name, rv = n_err_no);
+      n_perr(name, rv = su_err_no());
       goto jleave;
    }
 
@@ -265,26 +265,26 @@ jdelim_empty:
 
       if(indl > 0){
          if(fwrite(indb, sizeof *indb, indl, _coll_fp) != indl){
-            rv = n_err_no;
+            rv = su_err_no();
             goto jleave;
          }
          cc += indl;
       }
 
       if(fwrite(linebuf, sizeof *linebuf, linelen, _coll_fp) != linelen){
-         rv = n_err_no;
+         rv = su_err_no();
          goto jleave;
       }
       cc += linelen;
       ++lc;
    }
    if(fflush(_coll_fp)){
-      rv = n_err_no;
+      rv = su_err_no();
       goto jleave;
    }
 
    if(heredb != NULL)
-      rv = n_ERR_NOTOBACCO;
+      rv = su_ERR_NOTOBACCO;
 jleave:
    if(linebuf != NULL)
       n_free(linebuf);
@@ -309,7 +309,7 @@ a_coll_insert_cmd(FILE *fp, char const *cmd){
    si32_t rv;
    n_NYD_IN;
 
-   rv = n_ERR_NONE;
+   rv = su_ERR_NONE;
    lc = cc = 0;
 
    if((ibuf = Popen(cmd, "r", ok_vlook(SHELL), NULL, 0)) != NULL){
@@ -317,7 +317,7 @@ a_coll_insert_cmd(FILE *fp, char const *cmd){
 
       while((c = getc(ibuf)) != EOF){ /* XXX bytewise, yuck! */
          if(putc(c, fp) == EOF){
-            rv = n_err_no;
+            rv = su_err_no();
             break;
          }
          ++cc;
@@ -325,18 +325,18 @@ a_coll_insert_cmd(FILE *fp, char const *cmd){
             ++lc;
       }
       if(!feof(ibuf) || ferror(ibuf)){
-         if(rv == n_ERR_NONE)
-            rv = n_ERR_IO;
+         if(rv == su_ERR_NONE)
+            rv = su_ERR_IO;
       }
       if(!Pclose(ibuf, TRU1)){
-         if(rv == n_ERR_NONE)
-            rv = n_ERR_IO;
+         if(rv == su_ERR_NONE)
+            rv = su_ERR_IO;
       }
    }else
-      n_perr(cmd, rv = n_err_no);
+      n_perr(cmd, rv = su_err_no());
 
    fprintf(n_stdout, "CMD%s %" PRId64 "/%" PRId64 "\n",
-      (rv == n_ERR_NONE ? n_empty : " " n_ERROR), lc, cc);
+      (rv == su_ERR_NONE ? n_empty : " " n_ERROR), lc, cc);
    n_NYD_OU;
    return rv;
 }
@@ -394,7 +394,7 @@ a_coll_write(char const *name, FILE *fp, int f)
    si32_t rv;
    n_NYD_IN;
 
-   rv = n_ERR_NONE;
+   rv = su_ERR_NONE;
 
    if(f) {
       fprintf(n_stdout, "%s ", n_shexp_quote_cp(name, FAL0));
@@ -402,7 +402,7 @@ a_coll_write(char const *name, FILE *fp, int f)
    }
 
    if ((of = Fopen(name, "a")) == NULL) {
-      n_perr(name, rv = n_err_no);
+      n_perr(name, rv = su_err_no());
       goto jerr;
    }
 
@@ -412,7 +412,7 @@ a_coll_write(char const *name, FILE *fp, int f)
       if (c == '\n')
          ++lc;
       if (putc(c, of) == EOF) {
-         n_perr(name, rv = n_err_no);
+         n_perr(name, rv = su_err_no());
          goto jerr;
       }
    }
@@ -662,7 +662,7 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
    si32_t volatile rv;
    n_NYD_IN;
 
-   rv = n_ERR_NONE;
+   rv = su_ERR_NONE;
    n_UNINIT(sigint, SIG_ERR);
    saved_filrec = ok_blook(add_file_recipients);
 
@@ -671,7 +671,7 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
       sigint = safe_signal(SIGINT, SIG_IGN);
       break;
    default:
-      rv = n_ERR_INTR;
+      rv = su_ERR_INTR;
       goto jleave;
    }
 
@@ -695,7 +695,7 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
       if(hp != NULL){
          /* Overtaking of nf->_coll_fp is done by a_coll_makeheader()! */
          if(!a_coll_makeheader(nf, hp, NULL, FAL0))
-            rv = n_ERR_INVAL;
+            rv = su_ERR_INVAL;
          /* Break the thread if In-Reply-To: has been modified */
          if(hp->h_in_reply_to == NULL || (saved_in_reply_to != NULL &&
                asccasecmp(hp->h_in_reply_to->n_fullname,
@@ -712,7 +712,7 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
          _coll_fp = nf;
       }
    }else
-      rv = n_ERR_CHILD;
+      rv = su_ERR_CHILD;
 
    n_sigman_cleanup_ping(&sm);
 jleave:
@@ -733,12 +733,12 @@ a_coll_pipe(char const *cmd)
    si32_t rv;
    n_NYD_IN;
 
-   rv = n_ERR_NONE;
+   rv = su_ERR_NONE;
    sigint = safe_signal(SIGINT, SIG_IGN);
 
    if ((nf = Ftmp(NULL, "colpipe", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==NULL) {
 jperr:
-      n_perr(_("temporary mail edit file"), rv = n_err_no);
+      n_perr(_("temporary mail edit file"), rv = su_err_no());
       goto jout;
    }
 
@@ -749,14 +749,14 @@ jperr:
    if (n_child_run(ok_vlook(SHELL), 0, fileno(_coll_fp), fileno(nf), "-c",
          cmd, NULL, NULL, &ws) < 0 || WEXITSTATUS(ws) != 0) {
       Fclose(nf);
-      rv = n_ERR_CHILD;
+      rv = su_ERR_CHILD;
       goto jout;
    }
 
    if (fsize(nf) == 0) {
       n_err(_("No bytes from %s !?\n"), n_shexp_quote_cp(cmd, FAL0));
       Fclose(nf);
-      rv = n_ERR_NODATA;
+      rv = su_ERR_NODATA;
       goto jout;
    }
 
@@ -780,14 +780,14 @@ a_coll_forward(char const *ms, FILE *fp, int f)
    n_NYD_IN;
 
    if ((rv = n_getmsglist(ms, n_msgvec, 0, NULL)) < 0) {
-      rv = n_ERR_NOENT; /* XXX not really, should be handled there! */
+      rv = su_ERR_NOENT; /* XXX not really, should be handled there! */
       goto jleave;
    }
    if (rv == 0) {
       *n_msgvec = first(0, MMNORM);
       if (*n_msgvec == 0) {
          n_err(_("No appropriate messages\n"));
-         rv = n_ERR_NOENT;
+         rv = su_ERR_NOENT;
          goto jleave;
       }
       rv = 1;
@@ -819,12 +819,12 @@ a_coll_forward(char const *ms, FILE *fp, int f)
       fflush(n_stdout);
       if(f == 'Q'){
          if(!a_coll_quote_message(fp, mp, FAL0)){
-            rv = n_ERR_IO;
+            rv = su_ERR_IO;
             break;
          }
       }else if(sendmp(mp, fp, itp, tabst, action, NULL) < 0){
          n_perr(_("forward: temporary mail file"), 0);
-         rv = n_ERR_IO;
+         rv = su_ERR_IO;
          break;
       }
       srelax();
@@ -1126,7 +1126,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
 
       if (quotefile != NULL) {
          if((n_pstate_err_no = a_coll_include_file(quotefile, FAL0, FAL0)
-               ) != n_ERR_NONE)
+               ) != su_ERR_NONE)
             goto jerr;
       }
 
@@ -1150,7 +1150,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
                   goto jerr;
             }else{
                if(a_coll_edit(((*cp == 'v') ? 'v' : 'e'), hp, NULL
-                     ) != n_ERR_NONE)
+                     ) != su_ERR_NONE)
                   goto jerr;
                /* Print msg mandated by the Mail Reference Manual */
 jcont:
@@ -1347,7 +1347,7 @@ jearg:
                n_shexp_quote_cp(linebuf, FAL0));
          if(a_HARDERR())
             goto jerr;
-         n_pstate_err_no = n_ERR_INVAL;
+         n_pstate_err_no = su_ERR_INVAL;
          n_pstate_ex_no = 1;
          continue;
       case '!':
@@ -1419,7 +1419,7 @@ jearg:
 #endif /* mx_HAVE_UISTRINGS */
          if(cnt != 0)
             goto jearg;
-         n_pstate_err_no = n_ERR_NONE;
+         n_pstate_err_no = su_ERR_NONE;
          n_pstate_ex_no = 0;
          break;
       case '@':{
@@ -1433,7 +1433,7 @@ jearg:
          else
             hp->h_attach = n_attachment_list_edit(aplist,
                   n_GO_INPUT_CTX_COMPOSE);
-         n_pstate_err_no = n_ERR_NONE; /* XXX ~@ does NOT handle $!/$?! */
+         n_pstate_err_no = su_ERR_NONE; /* XXX ~@ does NOT handle $!/$?! */
          n_pstate_ex_no = 0; /* XXX */
          }break;
       case '^':
@@ -1442,7 +1442,7 @@ jearg:
                goto jerr;
             goto jearg;
          }
-         n_pstate_err_no = n_ERR_NONE; /* XXX */
+         n_pstate_err_no = su_ERR_NONE; /* XXX */
          n_pstate_ex_no = 0; /* XXX */
          hist &= ~a_HIST_GABBY;
          break;
@@ -1456,7 +1456,7 @@ jearg:
             ++cp;
             goto jev_go;
          }
-         if((n_pstate_err_no = a_coll_pipe(cp)) == n_ERR_NONE)
+         if((n_pstate_err_no = a_coll_pipe(cp)) == su_ERR_NONE)
             n_pstate_ex_no = 0;
          else if(ferror(_coll_fp))
             goto jerr;
@@ -1486,11 +1486,11 @@ jearg:
                   ) != NULL)
                hp->h_bcc = cat(hp->h_bcc, np);
             if(soe == 0){
-               n_pstate_err_no = n_ERR_NONE;
+               n_pstate_err_no = su_ERR_NONE;
                n_pstate_ex_no = 0;
             }else{
                n_pstate_ex_no = 1;
-               n_pstate_err_no = (soe < 0) ? n_ERR_PERM : n_ERR_INVAL;
+               n_pstate_err_no = (soe < 0) ? su_ERR_PERM : su_ERR_INVAL;
             }
          }
          hist &= ~a_HIST_GABBY;
@@ -1508,11 +1508,11 @@ jearg:
                   ) != NULL)
                hp->h_cc = cat(hp->h_cc, np);
             if(soe == 0){
-               n_pstate_err_no = n_ERR_NONE;
+               n_pstate_err_no = su_ERR_NONE;
                n_pstate_ex_no = 0;
             }else{
                n_pstate_ex_no = 1;
-               n_pstate_err_no = (soe < 0) ? n_ERR_PERM : n_ERR_INVAL;
+               n_pstate_err_no = (soe < 0) ? su_ERR_PERM : su_ERR_INVAL;
             }
          }
          hist &= ~a_HIST_GABBY;
@@ -1531,14 +1531,14 @@ jearg:
                n_err(_("Interpolate what file?\n"));
                if(a_HARDERR())
                   goto jerr;
-               n_pstate_err_no = n_ERR_NOENT;
+               n_pstate_err_no = su_ERR_NOENT;
                n_pstate_ex_no = 1;
                break;
             }
             if(*cp == '!' && c == '<'){
                /* TODO hist. normalization */
                if((n_pstate_err_no = a_coll_insert_cmd(_coll_fp, ++cp)
-                     ) != n_ERR_NONE){
+                     ) != su_ERR_NONE){
                   if(ferror(_coll_fp))
                      goto jerr;
                   if(a_HARDERR())
@@ -1555,7 +1555,7 @@ jearg:
                   ) == NULL){
                if(a_HARDERR())
                   goto jerr;
-               n_pstate_err_no = n_ERR_INVAL;
+               n_pstate_err_no = su_ERR_INVAL;
                n_pstate_ex_no = 1;
                break;
             }
@@ -1565,12 +1565,12 @@ jearg:
             n_err(_("%s: is a directory\n"), n_shexp_quote_cp(cp, FAL0));
             if(a_HARDERR())
                goto jerr;
-            n_pstate_err_no = n_ERR_ISDIR;
+            n_pstate_err_no = su_ERR_ISDIR;
             n_pstate_ex_no = 1;
             break;
          }
          if((n_pstate_err_no = a_coll_include_file(cp, (c == 'R'), TRU1)
-               ) != n_ERR_NONE){
+               ) != su_ERR_NONE){
             if(ferror(_coll_fp))
                goto jerr;
             if(a_HARDERR())
@@ -1578,7 +1578,7 @@ jearg:
             n_pstate_ex_no = 1;
             break;
          }
-         n_pstate_err_no = n_ERR_NONE; /* XXX */
+         n_pstate_err_no = su_ERR_NONE; /* XXX */
          n_pstate_ex_no = 0; /* XXX */
          break;
       case 'e':
@@ -1589,7 +1589,7 @@ jearg:
 jev_go:
          if((n_pstate_err_no = a_coll_edit(c,
                 ((c == '|' || ok_blook(editheaders)) ? hp : NULL), cp)
-               ) == n_ERR_NONE)
+               ) == su_ERR_NONE)
             n_pstate_ex_no = 0;
          else if(ferror(_coll_fp))
             goto jerr;
@@ -1608,7 +1608,7 @@ jev_go:
          /* Interpolate the named messages, if we are in receiving mail mode.
           * Does the standard list processing garbage.  If ~f is given, we
           * don't shift over */
-         if((n_pstate_err_no = a_coll_forward(cp, _coll_fp, c)) == n_ERR_NONE)
+         if((n_pstate_err_no = a_coll_forward(cp, _coll_fp, c)) == su_ERR_NONE)
             n_pstate_ex_no = 0;
          else if(ferror(_coll_fp))
             goto jerr;
@@ -1624,7 +1624,7 @@ jev_go:
          do
             grab_headers(n_GO_INPUT_CTX_COMPOSE, hp, GEXTRA, 0);
          while(check_from_and_sender(hp->h_from, hp->h_sender) == NULL);
-         n_pstate_err_no = n_ERR_NONE; /* XXX */
+         n_pstate_err_no = su_ERR_NONE; /* XXX */
          n_pstate_ex_no = 0; /* XXX */
          break;
       case 'h':
@@ -1636,7 +1636,7 @@ jev_go:
               (GTO | GSUBJECT | GCC | GBCC),
               (ok_blook(bsdcompat) && ok_blook(bsdorder)));
          while(hp->h_to == NULL);
-         n_pstate_err_no = n_ERR_NONE; /* XXX */
+         n_pstate_err_no = su_ERR_NONE; /* XXX */
          n_pstate_ex_no = 0; /* XXX */
          break;
       case 'I':
@@ -1654,7 +1654,7 @@ jIi_putesc:
                (!a_coll_putesc(cp, (c != 'I'), n_stdout) ||
                 fflush(n_stdout) == EOF))
             goto jerr;
-         n_pstate_err_no = n_ERR_NONE; /* XXX */
+         n_pstate_err_no = su_ERR_NONE; /* XXX */
          n_pstate_ex_no = 0; /* XXX */
          break;
       /* case 'M': <> 'F' */
@@ -1666,7 +1666,7 @@ jIi_putesc:
          print_collf(_coll_fp, hp); /* XXX pstate_err_no ++ */
          if(ferror(_coll_fp))
             goto jerr;
-         n_pstate_err_no = n_ERR_NONE; /* XXX */
+         n_pstate_err_no = su_ERR_NONE; /* XXX */
          n_pstate_ex_no = 0; /* XXX */
          break;
       /* case 'Q': <> 'F' */
@@ -1697,10 +1697,10 @@ jIi_putesc:
             for(xp = hp->h_subject; *xp != '\0'; ++xp)
                if(*xp == '\n' || *xp == '\r')
                   *xp = ' ';
-            n_pstate_err_no = n_ERR_INVAL;
+            n_pstate_err_no = su_ERR_INVAL;
             n_pstate_ex_no = 1;
          }else{
-            n_pstate_err_no = n_ERR_NONE;
+            n_pstate_err_no = su_ERR_NONE;
             n_pstate_ex_no = 0;
          }
          break;
@@ -1717,11 +1717,11 @@ jIi_putesc:
                   ) != NULL)
                hp->h_to = cat(hp->h_to, np);
             if(soe == 0){
-               n_pstate_err_no = n_ERR_NONE;
+               n_pstate_err_no = su_ERR_NONE;
                n_pstate_ex_no = 0;
             }else{
                n_pstate_ex_no = 1;
-               n_pstate_err_no = (soe < 0) ? n_ERR_PERM : n_ERR_INVAL;
+               n_pstate_err_no = (soe < 0) ? su_ERR_PERM : su_ERR_INVAL;
             }
          }
          hist &= ~a_HIST_GABBY;
@@ -1737,12 +1737,12 @@ jIi_putesc:
             n_err(_("Write what file!?\n"));
             if(a_HARDERR())
                goto jerr;
-            n_pstate_err_no = n_ERR_INVAL;
+            n_pstate_err_no = su_ERR_INVAL;
             n_pstate_ex_no = 1;
             break;
          }
          rewind(_coll_fp);
-         if((n_pstate_err_no = a_coll_write(cp, _coll_fp, 1)) == n_ERR_NONE)
+         if((n_pstate_err_no = a_coll_write(cp, _coll_fp, 1)) == su_ERR_NONE)
             n_pstate_ex_no = 0;
          else if(ferror(_coll_fp))
             goto jerr;
@@ -1825,7 +1825,7 @@ jout:
          goto jcont;
       }
 
-      c = n_err_no;
+      c = su_err_no();
       a_coll_ocs__finalize(coap);
       n_perr(_("Cannot invoke *on-compose-splice(-shell)?*"), c);
       goto jerr;
@@ -1933,7 +1933,7 @@ jreasksend:
 
       if((sigfp = Fopen(cp, "r")) == NULL){
          n_err(_("Can't open *signature* %s: %s\n"),
-            cpq, n_err_to_doc(n_err_no));
+            cpq, su_err_doc(su_err_no()));
          goto jerr;
       }
 
@@ -1949,14 +1949,14 @@ jreasksend:
 
       /* C99 */{
          FILE *x = n_UNVOLATILE(sigfp);
-         int e = n_err_no, ise = ferror(x);
+         int e = su_err_no(), ise = ferror(x);
 
          sigfp = NULL;
          Fclose(x);
 
          if(ise){
             n_err(_("Errors while reading *signature* %s: %s\n"),
-               cpq, n_err_to_doc(e));
+               cpq, su_err_doc(e));
             goto jerr;
          }
       }

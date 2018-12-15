@@ -281,7 +281,7 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
 
    flags = a_NONE;
    rv = 1;
-   nerrn = n_ERR_NONE;
+   nerrn = su_ERR_NONE;
    nexn = n_EXIT_OK;
    cdp = NULL;
    vput = NULL;
@@ -476,7 +476,7 @@ jempty:
       gecp->gec_hist_flags = a_GO_HIST_NONE;
       if(doskip)
          goto jret0;
-      nerrn = n_ERR_NOSYS;
+      nerrn = su_ERR_NOSYS;
       goto jleave;
    }
 
@@ -494,7 +494,7 @@ jexec:
       sp = NULL;
    }
 
-   nerrn = n_ERR_INVAL;
+   nerrn = su_ERR_INVAL;
 
    /* Process the arguments to the command, depending on the type it expects */
    if((cdp->cd_caflags & n_CMD_ARG_I) && !(n_psonce & n_PSO_INTERACTIVE) &&
@@ -589,7 +589,7 @@ jexec:
          if(emsg != NULL){
             n_err("`%s': vput: %s: %s\n",
                   cdp->cd_name, V_(emsg), n_shexp_quote_cp(vput, FAL0));
-            nerrn = n_ERR_NOTSUP;
+            nerrn = su_ERR_NOTSUP;
             rv = -1;
             goto jleave;
          }
@@ -608,7 +608,7 @@ jexec:
       if(n_msgvec == NULL)
          goto jmsglist_err;
       if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_msgflag, NULL)) < 0){
-         nerrn = n_ERR_NOMSG;
+         nerrn = su_ERR_NOMSG;
          flags |= a_NO_ERRNO;
          break;
       }
@@ -620,7 +620,7 @@ jmsglist_err:
             if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
                   (n_poption & n_PO_D_V))
                fprintf(n_stdout, _("No applicable messages\n"));
-            nerrn = n_ERR_NOMSG;
+            nerrn = su_ERR_NOMSG;
             flags |= a_NO_ERRNO;
             break;
          }
@@ -633,7 +633,7 @@ jmsglist_go:
          while(c-- > 0)
             mvp[c] = n_msgvec[c];
          if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /*XXX*/
-            n_err_no = 0;
+            su_err_set_no(su_ERR_NONE);
          rv = (*cdp->cd_func)(mvp);
       }
       break;
@@ -643,7 +643,7 @@ jmsglist_go:
       if(n_msgvec == NULL)
          goto jmsglist_err;
       if((c = n_getmsglist(line.s, n_msgvec, cdp->cd_msgflag, NULL)) < 0){
-         nerrn = n_ERR_NOMSG;
+         nerrn = su_ERR_NOMSG;
          flags |= a_NO_ERRNO;
          break;
       }
@@ -654,7 +654,7 @@ jmsglist_go:
       for(cp = line.s; spacechar(*cp);)
          ++cp;
       if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
-         n_err_no = 0;
+         su_err_set_no(su_ERR_NONE);
       rv = (*cdp->cd_func)(cp);
       break;
 
@@ -666,7 +666,7 @@ jmsglist_go:
       *argvp++ = line.s;
       *argvp = NULL;
       if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
-         n_err_no = 0;
+         su_err_set_no(su_ERR_NONE);
       rv = (*cdp->cd_func)(argv_stack);
       break;
 
@@ -712,7 +712,7 @@ jmsglist_go:
          n_pstate |= n_PS_ARGMOD_VPUT; /* TODO due to getrawlist(), as above */
 
       if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
-         n_err_no = 0;
+         su_err_set_no(su_ERR_NONE);
       rv = (*cdp->cd_func)(argv_base);
       if(a_go_xcall != NULL)
          goto jret0;
@@ -742,7 +742,7 @@ jmsglist_go:
          cac.cac_vput = NULL;
 
       if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
-         n_err_no = 0;
+         su_err_set_no(su_ERR_NONE);
       rv = (*cdp->cd_func)(&cac);
       if(a_go_xcall != NULL)
          goto jret0;
@@ -751,7 +751,7 @@ jmsglist_go:
    default:
       DBG( n_panic(_("Implementation error: unknown argument type: %d"),
          cdp->cd_caflags & n_CMD_ARG_TYPE_MASK); )
-      nerrn = n_ERR_NOTOBACCO;
+      nerrn = su_ERR_NOTOBACCO;
       nexn = 1;
       goto jret0;
    }
@@ -768,14 +768,14 @@ jmsglist_go:
       if(!(flags & a_NO_ERRNO)){
          if(cdp->cd_caflags & n_CMD_ARG_EM)
             flags |= a_NO_ERRNO;
-         else if((nerrn = n_err_no) == 0)
-            nerrn = n_ERR_INVAL;
+         else if((nerrn = su_err_no()) == 0)
+            nerrn = su_ERR_INVAL;
       }/*else
          flags ^= a_NO_ERRNO;*/
    }else if(cdp->cd_caflags & n_CMD_ARG_EM)
       flags |= a_NO_ERRNO;
    else
-      nerrn = n_ERR_NONE;
+      nerrn = su_ERR_NONE;
 jleave:
    nexn = rv;
 
@@ -952,7 +952,7 @@ jrestart:
       }
    }else if(gcp->gc_flags & a_GO_PIPE)
       /* XXX command manager should -TERM then -KILL instead of hoping
-       * XXX for exit of provider due to n_ERR_PIPE / SIGPIPE */
+       * XXX for exit of provider due to su_ERR_PIPE / SIGPIPE */
       Pclose(gcp->gc_file, TRU1);
    else if(gcp->gc_flags & a_GO_FILE)
       Fclose(gcp->gc_file);
@@ -2293,7 +2293,7 @@ c_readctl(void *vp){
       n_readctl_read_overlay = a_stdin;
    }
 
-   n_pstate_err_no = n_ERR_NONE;
+   n_pstate_err_no = su_ERR_NONE;
    cacp = vp;
    cap = cacp->cac_arg;
 
@@ -2362,7 +2362,7 @@ jfound:
       if(grcp != NULL){
          n_err(_("`readctl': channel already exists: %s\n"), /* TODO reopen */
             n_shexp_quote_cp(cap->ca_arg.ca_str.s, FAL0));
-         n_pstate_err_no = n_ERR_EXIST;
+         n_pstate_err_no = su_ERR_EXIST;
          f = a_ERR;
          goto jleave;
       }
@@ -2398,7 +2398,7 @@ jfound:
                   n_VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name) +2){
             n_err(_("`readctl': failed to create storage for %s\n"),
                cap->ca_arg.ca_str.s);
-            n_pstate_err_no = n_ERR_OVERFLOW;
+            n_pstate_err_no = su_ERR_OVERFLOW;
             f = a_ERR;
             goto jleave;
          }
@@ -2432,7 +2432,7 @@ jleave:
 jeinval_quote:
    n_err(V_(emsg), n_shexp_quote_cp(cap->ca_arg.ca_str.s, FAL0));
 jeinval:
-   n_pstate_err_no = n_ERR_INVAL;
+   n_pstate_err_no = su_ERR_INVAL;
    f = a_ERR;
    goto jleave;
 

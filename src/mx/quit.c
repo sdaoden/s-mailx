@@ -217,7 +217,7 @@ edstop(void) /* TODO oh my god */
    fflush(n_stdout);
 
    if ((obuf = n_fopen_any(mailname, "r+", &fs)) == NULL) {
-      int e = n_err_no;
+      int e = su_err_no();
       n_perr(n_shexp_quote_cp(mailname, FAL0), e);
       goto jleave;
    }
@@ -368,7 +368,7 @@ quit(bool_t hold_sigs_on)
     * a message */
    fbuf = n_fopen_any(mailname, "r+", NULL);
    if (fbuf == NULL) {
-      if (n_err_no != n_ERR_NOENT)
+      if (su_err_no() != su_ERR_NOENT)
 jnewmail:
          fprintf(n_stdout, _("Thou hast new mail.\n"));
       rv = TRU1;

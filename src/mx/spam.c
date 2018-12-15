@@ -266,7 +266,7 @@ _spam_action(enum spam_action sa, int *ip)
          if ((vc.vc_ifp = setinput(&mb, vc.vc_mp, NEED_BODY)) == NULL) {
             n_err(_("%s`%s': cannot load message %lu: %s\n"),
                vc.vc_esep, _spam_cmds[sa], (ul_i)vc.vc_mno,
-               n_err_to_doc(n_err_no));
+               su_err_doc(su_err_no()));
             ok = FAL0;
             break;
          }
@@ -488,14 +488,14 @@ _spamd_interact(struct spam_vc *vcp)
 
    if ((dsfd = socket(PF_UNIX, SOCK_STREAM, 0)) == -1) {
       n_err(_("%s`%s': can't create unix(4) socket: %s\n"),
-         vcp->vc_esep, _spam_cmds[vcp->vc_action], n_err_to_doc(n_err_no));
+         vcp->vc_esep, _spam_cmds[vcp->vc_action], su_err_doc(su_err_no()));
       goto jleave;
    }
 
    if (connect(dsfd, (struct sockaddr*)&ssdp->d_sun, SUN_LEN(&ssdp->d_sun)) ==
          -1) {
       n_err(_("%s`%s': can't connect to *spam-socket*: %s\n"),
-         vcp->vc_esep, _spam_cmds[vcp->vc_action], n_err_to_doc(n_err_no));
+         vcp->vc_esep, _spam_cmds[vcp->vc_action], su_err_doc(su_err_no()));
       close(dsfd);
       dsfd = -1;
       goto jleave;
@@ -582,7 +582,7 @@ _spamd_interact(struct spam_vc *vcp)
       if (i != (size_t)write(dsfd, vcp->vc_buffer, i)) {
 jeso:
          n_err(_("%s`%s': I/O on *spamd-socket* failed: %s\n"),
-            vcp->vc_esep, _spam_cmds[vcp->vc_action], n_err_to_doc(n_err_no));
+            vcp->vc_esep, _spam_cmds[vcp->vc_action], su_err_doc(su_err_no()));
          goto jleave;
       }
    }
@@ -1001,14 +1001,14 @@ _spam_cf_interact(struct spam_vc *vcp)
 
    if (!pipe_cloexec(p2c)) {
       n_err(_("%s`%s': cannot create parent communication pipe: %s\n"),
-         vcp->vc_esep, _spam_cmds[vcp->vc_action], n_err_to_doc(n_err_no));
+         vcp->vc_esep, _spam_cmds[vcp->vc_action], su_err_doc(su_err_no()));
       goto jtail;
    }
    state |= _P2C;
 
    if (!pipe_cloexec(c2p)) {
       n_err(_("%s`%s': cannot create child pipe: %s\n"),
-         vcp->vc_esep, _spam_cmds[vcp->vc_action], n_err_to_doc(n_err_no));
+         vcp->vc_esep, _spam_cmds[vcp->vc_action], su_err_doc(su_err_no()));
       goto jtail;
    }
    state |= _C2P;

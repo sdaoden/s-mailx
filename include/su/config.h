@@ -49,6 +49,10 @@
 # define su_HAVE_DEVEL
 #endif
 
+#ifdef mx_HAVE_DOCSTRINGS
+# define su_HAVE_DOCSTRINGS
+#endif
+
 #define su_HAVE_MEM_BAG_AUTO
 #define su_HAVE_MEM_BAG_LOFI
 #ifdef mx_HAVE_NOMEMDBG

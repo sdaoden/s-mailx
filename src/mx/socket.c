@@ -201,7 +201,7 @@ jpseudo_jump:
       sofd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
       if(sofd >= 0 &&
             (errval = a_socket_connect(sofd, res->ai_addr, res->ai_addrlen)
-               ) != n_ERR_NONE)
+               ) != su_ERR_NONE)
          sofd = -1;
    }
 
@@ -274,7 +274,7 @@ jjumped:
       n_err(_("%sConnecting to %s:%d ... "),
          n_empty, inet_ntoa(**pptr), (int)urlp->url_portno);
    if((errval = a_socket_connect(sofd, (struct sockaddr*)&servaddr,
-         sizeof servaddr)) != n_ERR_NONE)
+         sizeof servaddr)) != su_ERR_NONE)
       sofd = -1;
 jjumped:
 # endif /* !mx_HAVE_GETADDRINFO */
@@ -287,7 +287,7 @@ jjumped:
    if (sofd < 0) {
       if (errval != 0) {
          n_perr(_("Could not connect"), errval);
-         n_err_no = errval;
+         su_err_set_no(errval);
       }
       goto jleave;
    }
@@ -380,7 +380,7 @@ a_socket_connect(int fd, struct sockaddr *soap, size_t soapl){
       uiz_t cnt;
       int i, soe;
 
-      if(connect(fd, soap, soapl) && (i = n_err_no) != n_ERR_INPROGRESS){
+      if(connect(fd, soap, soapl) && (i = su_err_no()) != su_ERR_INPROGRESS){
          rv = i;
          goto jerr_noerrno;
       }
@@ -422,19 +422,19 @@ jrewait:
          }
          n_err(_(" timeout\n"));
          close(fd);
-         rv = n_ERR_TIMEDOUT;
+         rv = su_ERR_TIMEDOUT;
       }else
          goto jerr;
    }else
 #endif /* mx_HAVE_NONBLOCKSOCK */
 
          if(!connect(fd, soap, soapl))
-      rv = n_ERR_NONE;
+      rv = su_ERR_NONE;
    else{
 #ifdef mx_HAVE_NONBLOCKSOCK
 jerr:
 #endif
-      rv = n_err_no;
+      rv = su_err_no();
 #ifdef mx_HAVE_NONBLOCKSOCK
 jerr_noerrno:
 #endif
@@ -454,7 +454,7 @@ a_socket_xwrite(int fd, char const *data, size_t sz)
 
    do {
       if ((wo = write(fd, data + wt, sz - wt)) < 0) {
-         if (n_err_no == n_ERR_INTR)
+         if (su_err_no() == su_ERR_INTR)
             continue;
          else
             goto jleave;
@@ -782,7 +782,7 @@ jagain:
                if (sp->s_rsz < 0) {
                   char o[512];
 
-                  if (n_err_no == n_ERR_INTR)
+                  if (su_err_no() == su_ERR_INTR)
                      goto jagain;
                   snprintf(o, sizeof o, "%s",
                      (sp->s_desc ?  sp->s_desc : "socket"));

@@ -335,7 +335,7 @@ env_addon[i++] = str_concat_csvl(&s,
 jerror:
       if (rbuf == NULL)
          n_err(_("Cannot run MIME type handler: %s: %s\n"),
-            mhp->mh_msg, n_err_to_doc(n_err_no));
+            mhp->mh_msg, su_err_doc(su_err_no()));
       else {
          fflush(*qbuf);
          if (*qbuf != n_stdout)
@@ -1087,7 +1087,7 @@ jpipe_close:
       if (asccasecmp(tcs, ip->m_charset) &&
             asccasecmp(ok_vlook(charset_7bit), ip->m_charset)) {
          iconvd = n_iconv_open(tcs, ip->m_charset);
-         if (iconvd == (iconv_t)-1 && n_err_no == n_ERR_INVAL) {
+         if (iconvd == (iconv_t)-1 && su_err_no() == su_ERR_INVAL) {
             n_err(_("Cannot convert from %s to %s\n"), ip->m_charset, tcs);
             /*rv = 1; goto jleave;*/
          }
@@ -1372,9 +1372,9 @@ jgetname:
       while((fp = Fopen(f, "wx")) == NULL){
          int e;
 
-         if((e = n_err_no) != n_ERR_EXIST){
+         if((e = su_err_no()) != su_ERR_EXIST){
             n_err(_("Cannot open %s: %s\n"),
-               n_shexp_quote_cp(f, FAL0), n_err_to_doc(e));
+               n_shexp_quote_cp(f, FAL0), su_err_doc(e));
             break;
          }
 

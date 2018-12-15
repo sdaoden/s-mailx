@@ -926,7 +926,7 @@ jleave:
       if(n_var_vset(varname, (uintptr_t)tname))
          varname = NULL;
       else
-         n_pstate_err_no = n_ERR_NOTSUP;
+         n_pstate_err_no = su_ERR_NOTSUP;
    }
    n_NYD_OU;
    return (varname == NULL);
@@ -1708,7 +1708,7 @@ c_alternates(void *vp){
    char **argv;
    n_NYD_IN;
 
-   n_pstate_err_no = n_ERR_NONE;
+   n_pstate_err_no = su_ERR_NONE;
 
    argv = vp;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
@@ -1732,7 +1732,7 @@ c_alternates(void *vp){
                (np = checkaddrs(np, EACM_STRICT, NULL)) == NULL){
             n_err(_("Invalid `alternates' argument: %s\n"),
                n_shexp_quote_cp(ccp, FAL0));
-            n_pstate_err_no = n_ERR_INVAL;
+            n_pstate_err_no = su_ERR_INVAL;
             vp = NULL;
             continue;
          }
@@ -1742,7 +1742,7 @@ c_alternates(void *vp){
          if((ngp = a_nag_group_fetch(a_NAG_T_ALTERNATES, ccp, l)) == NULL){
             n_err(_("Failed to create storage for alternates: %s\n"),
                n_shexp_quote_cp(ccp, FAL0));
-            n_pstate_err_no = n_ERR_NOMEM;
+            n_pstate_err_no = su_ERR_NOMEM;
             vp = NULL;
          }
       }
@@ -1929,7 +1929,7 @@ c_addrcodec(void *vp){
          trims.l <<= 1;
    sp = n_string_reserve(sp, trims.l);
 
-   n_pstate_err_no = n_ERR_NONE;
+   n_pstate_err_no = su_ERR_NONE;
 
    if(is_ascncaseprefix(act, "encode", alen)){
       /* This function cannot be a simple nalloc() wrapper even later on, since
@@ -1947,7 +1947,7 @@ c_addrcodec(void *vp){
             (ag.ag_n_flags & (NAME_ADDRSPEC_ISADDR | NAME_ADDRSPEC_INVALID)
                ) != NAME_ADDRSPEC_ISADDR){
          cp = sp->s_dat;
-         n_pstate_err_no = n_ERR_INVAL;
+         n_pstate_err_no = su_ERR_INVAL;
          vp = NULL;
       }else{
          struct name *np;
@@ -1992,7 +1992,7 @@ c_addrcodec(void *vp){
          if(n_addrspec_with_guts(&ag, cp, TRU1, TRU1) == NULL ||
                (ag.ag_n_flags & (NAME_ADDRSPEC_ISADDR | NAME_ADDRSPEC_INVALID)
                   ) != NAME_ADDRSPEC_ISADDR){
-            n_pstate_err_no = n_ERR_INVAL;
+            n_pstate_err_no = su_ERR_INVAL;
             vp = NULL;
          }else{
             struct name *np;
@@ -2001,7 +2001,7 @@ c_addrcodec(void *vp){
             cp = np->n_name;
 
             if(mode == 1 && is_mlist(cp, FAL0) != MLIST_OTHER)
-               n_pstate_err_no = n_ERR_EXIST;
+               n_pstate_err_no = su_ERR_EXIST;
          }
       }else
          goto jesynopsis;
@@ -2010,11 +2010,11 @@ c_addrcodec(void *vp){
 
    if(varname == NULL){
       if(fprintf(n_stdout, "%s\n", cp) < 0){
-         n_pstate_err_no = n_err_no;
+         n_pstate_err_no = su_err_no();
          vp = NULL;
       }
    }else if(!n_var_vset(varname, (uintptr_t)cp)){
-      n_pstate_err_no = n_ERR_NOTSUP;
+      n_pstate_err_no = su_ERR_NOTSUP;
       vp = NULL;
    }
 
@@ -2024,7 +2024,7 @@ jleave:
 jesynopsis:
    n_err(_("Synopsis: addrcodec: <[+[+[+]]]e[ncode]|d[ecode]|s[kin]> "
       "<rest-of-line>\n"));
-   n_pstate_err_no = n_ERR_INVAL;
+   n_pstate_err_no = su_ERR_INVAL;
    vp = NULL;
    goto jleave;
 }

@@ -292,7 +292,7 @@ a_sendout_body(FILE *fo, FILE *fi, enum conversion convert){
    si32_t rv;
    n_NYD2_IN;
 
-   rv = n_ERR_INVAL;
+   rv = su_ERR_INVAL;
    iseof = FAL0;
    buf = n_alloc(bufsize = SEND_LINESIZE);
    outrest.s = inrest.s = NULL;
@@ -328,7 +328,7 @@ joutln:
       goto joutln;
    }
 
-   rv = ferror(fi) ? n_ERR_IO : n_ERR_NONE;
+   rv = ferror(fi) ? su_ERR_IO : su_ERR_NONE;
 jleave:
    if(outrest.s != NULL)
       n_free(outrest.s);
@@ -350,7 +350,7 @@ a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo)
    si32_t err;
    n_NYD_IN;
 
-   err = n_ERR_NONE;
+   err = su_ERR_NONE;
 
    /* Is this already in target charset?  Simply copy over */
    if (ap->a_conv == AC_TMPFILE) {
@@ -371,25 +371,25 @@ a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo)
 
    /* Otherwise we need to iterate over all possible output charsets */
    if ((offs = ftell(fo)) == -1) {
-      err = n_ERR_IO;
+      err = su_ERR_IO;
       goto jleave;
    }
    charset_iter_recurse(charset_iter_orig);
    for (charset_iter_reset(NULL);; charset_iter_next()) {
       if (!charset_iter_is_valid()) {
-         err = n_ERR_NOENT;
+         err = su_ERR_NOENT;
          break;
       }
       err = a_sendout__attach_file(hp, ap, fo);
-      if (err == n_ERR_NONE || (err != n_ERR_ILSEQ && err != n_ERR_INVAL))
+      if (err == su_ERR_NONE || (err != su_ERR_ILSEQ && err != su_ERR_INVAL))
          break;
       clearerr(fo);
       if (fseek(fo, offs, SEEK_SET) == -1) {
-         err = n_ERR_IO;
+         err = su_ERR_IO;
          break;
       }
       if (ap->a_conv != AC_DEFAULT) {
-         err = n_ERR_ILSEQ;
+         err = su_ERR_ILSEQ;
          break;
       }
       ap->a_charset = NULL;
@@ -410,16 +410,16 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo)
    si32_t err;
    n_NYD_IN;
 
-   err = n_ERR_NONE;
+   err = su_ERR_NONE;
 
    /* Either charset-converted temporary file, or plain path */
    if (ap->a_conv == AC_TMPFILE) {
       fi = ap->a_tmpf;
       assert(ftell(fi) == 0);
    } else if ((fi = Fopen(ap->a_path, "r")) == NULL) {
-      err = n_err_no;
+      err = su_err_no();
       n_err(_("%s: %s\n"), n_shexp_quote_cp(ap->a_path, FAL0),
-         n_err_to_doc(err));
+         su_err_doc(err));
       goto jleave;
    }
 
@@ -463,7 +463,7 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo)
 
       if (putc('\n', fo) == EOF) {
 jerr_header:
-         err = n_err_no;
+         err = su_err_no();
          goto jerr_fclose;
       }
    }
@@ -474,12 +474,12 @@ jerr_header:
    if (do_iconv) {
       if (asccasecmp(charset, ap->a_input_charset) &&
             (iconvd = n_iconv_open(charset, ap->a_input_charset)
-               ) == (iconv_t)-1 && (err = n_err_no) != 0) {
-         if (err == n_ERR_INVAL)
+               ) == (iconv_t)-1 && (err = su_err_no()) != 0) {
+         if (err == su_ERR_INVAL)
             n_err(_("Cannot convert from %s to %s\n"), ap->a_input_charset,
                charset);
          else
-            n_err(_("iconv_open: %s\n"), n_err_to_doc(err));
+            n_err(_("iconv_open: %s\n"), su_err_doc(err));
          goto jerr_fclose;
       }
    }
@@ -582,7 +582,7 @@ a_sendout_attach_msg(struct header *hp, struct attachment *ap, FILE *fo)
    n_NYD_IN;
    n_UNUSED(hp);
 
-   err = n_ERR_NONE;
+   err = su_ERR_NONE;
 
    if(fprintf(fo, "\n--%s\nContent-Type: message/rfc822\n"
          "Content-Disposition: inline\n", _sendout_boundary) < 0)
@@ -615,8 +615,8 @@ a_sendout_attach_msg(struct header *hp, struct attachment *ap, FILE *fo)
    touch(mp);
    if(sendmp(mp, fo, 0, NULL, SEND_RFC822, NULL) < 0)
 jerr:
-      if((err = n_err_no) == n_ERR_NONE)
-         err = n_ERR_IO;
+      if((err = su_err_no()) == su_ERR_NONE)
+         err = su_ERR_IO;
    n_NYD_OU;
    return err;
 }
@@ -629,7 +629,7 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
    si32_t err;
    n_NYD_IN;
 
-   err = n_ERR_NONE;
+   err = su_ERR_NONE;
 
    if(fputs("This is a multi-part message in MIME format.\n", fo) == EOF)
       goto jerr;
@@ -649,7 +649,7 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
       if(putc('\n', fo) == EOF)
          goto jerr;
 
-      if((err = a_sendout_body(fo, fi, convert)) != n_ERR_NONE)
+      if((err = a_sendout_body(fo, fi, convert)) != su_ERR_NONE)
          goto jleave;
 
       if(ferror(fi))
@@ -658,17 +658,17 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
 
    for (att = hp->h_attach; att != NULL; att = att->a_flink) {
       if (att->a_msgno) {
-         if ((err = a_sendout_attach_msg(hp, att, fo)) != n_ERR_NONE)
+         if ((err = a_sendout_attach_msg(hp, att, fo)) != su_ERR_NONE)
             goto jleave;
-      } else if ((err = a_sendout_attach_file(hp, att, fo)) != n_ERR_NONE)
+      } else if ((err = a_sendout_attach_file(hp, att, fo)) != su_ERR_NONE)
          goto jleave;
    }
 
    /* the final boundary with two attached dashes */
    if(fprintf(fo, "\n--%s--\n", _sendout_boundary) < 0)
 jerr:
-      if((err = n_err_no) == n_ERR_NONE)
-         err = n_ERR_IO;
+      if((err = su_err_no()) == su_ERR_NONE)
+         err = su_ERR_IO;
 jleave:
    n_NYD_OU;
    return err;
@@ -690,15 +690,15 @@ infix(struct header *hp, FILE *fi) /* TODO check */
    nfi = NULL;
    charset = NULL;
    do_iconv = 0;
-   err = n_ERR_NONE;
+   err = su_ERR_NONE;
 
    if ((nfo = Ftmp(&tempMail, "infix", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER))
          == NULL) {
-      n_perr(_("infix: temporary mail file"), err = n_err_no);
+      n_perr(_("infix: temporary mail file"), err = su_err_no());
       goto jleave;
    }
    if ((nfi = Fopen(tempMail, "r")) == NULL) {
-      n_perr(tempMail, err = n_err_no);
+      n_perr(tempMail, err = su_err_no());
       Fclose(nfo);
    }
    Ftmp_release(&tempMail);
@@ -719,15 +719,15 @@ infix(struct header *hp, FILE *fi) /* TODO check */
          n_iconv_close(iconvd);
       if (asccasecmp(convhdr, tcs) != 0 &&
             (iconvd = n_iconv_open(convhdr, tcs)) == (iconv_t)-1 &&
-            (err = n_err_no) != n_ERR_NONE)
+            (err = su_err_no()) != su_ERR_NONE)
          goto jiconv_err;
    }
 #endif
    if(!n_puthead(FAL0, hp, nfo,
          (GTO | GSUBJECT | GCC | GBCC | GNL | GCOMMA | GUA | GMIME | GMSGID |
          GIDENT | GREF | GDATE), SEND_MBOX, convert, contenttype, charset)){
-      if((err = n_err_no) == n_ERR_NONE)
-         err = n_ERR_IO;
+      if((err = su_err_no()) == su_ERR_NONE)
+         err = su_ERR_IO;
       goto jerr;
    }
 #ifdef mx_HAVE_ICONV
@@ -739,9 +739,9 @@ infix(struct header *hp, FILE *fi) /* TODO check */
    if (do_iconv && charset != NULL) { /*TODO charset->n_mimetype_classify_file*/
       if (asccasecmp(charset, tcs) != 0 &&
             (iconvd = n_iconv_open(charset, tcs)) == (iconv_t)-1 &&
-            (err = n_err_no) != n_ERR_NONE) {
+            (err = su_err_no()) != su_ERR_NONE) {
 jiconv_err:
-         if (err == n_ERR_INVAL)
+         if (err == su_ERR_INVAL)
             n_err(_("Cannot convert from %s to %s\n"), tcs, charset);
          else
             n_perr("iconv_open", err);
@@ -752,17 +752,17 @@ jiconv_err:
 
    if(hp->h_attach != NULL){
       if((err = make_multipart(hp, convert, fi, nfo, contenttype, charset)
-            ) != n_ERR_NONE)
+            ) != su_ERR_NONE)
          goto jerr;
-   }else if((err = a_sendout_body(nfo, fi, convert)) != n_ERR_NONE)
+   }else if((err = a_sendout_body(nfo, fi, convert)) != su_ERR_NONE)
       goto jerr;
 
    if(fflush(nfo) == EOF)
-      err = n_err_no;
+      err = su_err_no();
 jerr:
    Fclose(nfo);
 
-   if(err == n_ERR_NONE){
+   if(err == su_ERR_NONE){
       fflush_rewind(nfi);
       Fclose(fi);
    }else{
@@ -775,7 +775,7 @@ jleave:
       n_iconv_close(iconvd);
 #endif
    if(nfi == NULL)
-      n_err_no = err;
+      su_err_set_no(err);
    n_NYD_OU;
    return nfi;
 }
@@ -964,10 +964,10 @@ a_sendout_file_a_pipe(struct name *names, FILE *fo, bool_t *senderror){
             enum n_fopen_state fs;
 
             if((fout = n_fopen_any(fname, (mfap ? "a+" : "w"), &fs)) == NULL){
-               xerr = n_err_no;
+               xerr = su_err_no();
 jefile:
                n_err(_("Writing message to %s failed: %s\n"),
-                  fnameq, n_err_to_doc(xerr));
+                  fnameq, su_err_doc(xerr));
                goto jerror;
             }
 
@@ -976,7 +976,7 @@ jefile:
                n_file_lock(fileno(fout), FLT_WRITE, 0,0, UIZ_MAX);
 
                if(mfap && (xerr = n_folder_mbox_prepare_append(fout, NULL)
-                     ) != n_ERR_NONE)
+                     ) != su_ERR_NONE)
                   goto jefile;
             }
          }
@@ -1120,7 +1120,7 @@ a_sendout__savemail(char const *name, FILE *fp, bool_t resend){
        * TODO BETTER yet: should be returned in lock state already! */
       n_file_lock(fileno(fo), FLT_WRITE, 0,0, UIZ_MAX);
 
-      if((xerr = n_folder_mbox_prepare_append(fo, NULL)) != n_ERR_NONE){
+      if((xerr = n_folder_mbox_prepare_append(fo, NULL)) != su_ERR_NONE){
          n_perr(name, xerr);
          goto jleave;
       }
@@ -1336,8 +1336,8 @@ jstop:
 
          n_child_prepare(&nset, fileno(sbp->sb_input), -1);
          execv(mta, n_UNCONST(args));
-         e = n_err_no;
-         ecp = (e != n_ERR_NOENT) ? n_err_to_doc(e)
+         e = su_err_no();
+         ecp = (e != su_ERR_NOENT) ? su_err_doc(e)
                : _("executable not found (adjust *mta* variable)");
          n_err(_("Cannot start %s: %s\n"), n_shexp_quote_cp(mta, FAL0), ecp);
       }
@@ -1797,7 +1797,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
 
    _sendout_error = FAL0;
    __sendout_ident = NULL;
-   n_pstate_err_no = n_ERR_INVAL;
+   n_pstate_err_no = su_ERR_INVAL;
    rv = STOP;
    mtf = NULL;
 
@@ -1830,7 +1830,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
 
    if(fsize(mtf) == 0){
       if(n_poption & n_PO_E_FLAG){
-         n_pstate_err_no = n_ERR_NONE;
+         n_pstate_err_no = su_ERR_NONE;
          rv = OKAY;
          goto jleave;
       }
@@ -1882,12 +1882,12 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
 
    if(to == NULL){
       n_err(_("No recipients specified\n"));
-      n_pstate_err_no = n_ERR_DESTADDRREQ;
+      n_pstate_err_no = su_ERR_DESTADDRREQ;
       goto jfail_dead;
    }
    if(_sendout_error < 0){
       n_err(_("Some addressees were classified as \"hard error\"\n"));
-      n_pstate_err_no = n_ERR_PERM;
+      n_pstate_err_no = su_ERR_PERM;
       goto jfail_dead;
    }
 
@@ -1899,7 +1899,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
    if((dosign || count_nonlocal(to) > 0) &&
          !_sendbundle_setup_creds(&sb, (dosign > 0))){
       /* TODO saving $DEAD and recovering etc is not yet well defined */
-      n_pstate_err_no = n_ERR_INVAL;
+      n_pstate_err_no = su_ERR_INVAL;
       goto jfail_dead;
    }
 
@@ -1908,17 +1908,17 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
       int err;
 
       if (!charset_iter_is_valid())
-         err = n_ERR_NOENT;
+         err = su_ERR_NOENT;
       else if ((nmtf = infix(hp, mtf)) != NULL)
          break;
-      else if ((err = n_iconv_err_no) == n_ERR_ILSEQ || err == n_ERR_INVAL ||
-            err == n_ERR_NOENT) {
+      else if ((err = n_iconv_err_no) == su_ERR_ILSEQ || err == su_ERR_INVAL ||
+            err == su_ERR_NOENT) {
          rewind(mtf);
          continue;
       }
 
       n_perr(_("Cannot find a usable character set to encode message"), err);
-      n_pstate_err_no = n_ERR_NOTSUP;
+      n_pstate_err_no = su_ERR_NOTSUP;
       goto jfail_dead;
    }
    mtf = nmtf;
@@ -1981,7 +1981,7 @@ jleave:
    if (_sendout_error)
       n_exit_status |= n_EXIT_SEND_ERROR;
    if(rv == OKAY)
-      n_pstate_err_no = n_ERR_NONE;
+      n_pstate_err_no = su_ERR_NONE;
    n_NYD_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
@@ -2397,7 +2397,7 @@ resend_msg(struct message *mp, struct header *hp, bool_t add_resent)
 
    _sendout_error = FAL0;
    __sendout_ident = NULL;
-   n_pstate_err_no = n_ERR_INVAL;
+   n_pstate_err_no = su_ERR_INVAL;
    rv = STOP;
    to = hp->h_to;
    nfi = ibuf = NULL;
@@ -2419,29 +2419,29 @@ resend_msg(struct message *mp, struct header *hp, bool_t add_resent)
          &_sendout_error);
    if(_sendout_error < 0){
       n_err(_("Some addressees were classified as \"hard error\"\n"));
-      n_pstate_err_no = n_ERR_PERM;
+      n_pstate_err_no = su_ERR_PERM;
    }else if(to == NULL){
       n_err(_("No recipients specified\n"));
-      n_pstate_err_no = n_ERR_DESTADDRREQ;
+      n_pstate_err_no = su_ERR_DESTADDRREQ;
    }
 
    if((nfo = Ftmp(&tempMail, "resend", OF_WRONLY | OF_HOLDSIGS | OF_REGISTER)
          ) == NULL) {
       _sendout_error = TRU1;
       n_perr(_("resend_msg: temporary mail file"), 0);
-      n_pstate_err_no = n_ERR_IO;
+      n_pstate_err_no = su_ERR_IO;
       goto jleave;
    }
    if((nfi = Fopen(tempMail, "r")) == NULL){
       n_perr(tempMail, 0);
-      n_pstate_err_no = n_ERR_IO;
+      n_pstate_err_no = su_ERR_IO;
    }
    Ftmp_release(&tempMail);
    if(nfi == NULL)
       goto jerr_o;
 
    if((ibuf = setinput(&mb, mp, NEED_BODY)) == NULL){
-      n_pstate_err_no = n_ERR_IO;
+      n_pstate_err_no = su_ERR_IO;
       goto jerr_io;
    }
 
@@ -2465,7 +2465,7 @@ resend_msg(struct message *mp, struct header *hp, bool_t add_resent)
    if(!_sendout_error &&
          count_nonlocal(to) > 0 && !_sendbundle_setup_creds(&sb, FAL0)){
       /* ..wait until we can write DEAD */
-      n_pstate_err_no = n_ERR_INVAL;
+      n_pstate_err_no = su_ERR_INVAL;
       _sendout_error = -1;
    }
 
@@ -2530,7 +2530,7 @@ jleave:
    if (_sendout_error)
       n_exit_status |= n_EXIT_SEND_ERROR;
    if(rv == OKAY)
-      n_pstate_err_no = n_ERR_NONE;
+      n_pstate_err_no = su_ERR_NONE;
    n_NYD_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;

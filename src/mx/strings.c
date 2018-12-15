@@ -1174,7 +1174,7 @@ n_iconv_open(char const *tocode, char const *fromcode){
     * used to check the validity of the input even with identical encoding
     * names */
    if (id == (iconv_t)-1 && !asccasecmp(tocode, fromcode))
-      n_err_no = n_ERR_NONE;
+      su_err_set_no(su_ERR_NONE);
    n_NYD_OU;
    return id;
 }
@@ -1231,16 +1231,16 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
          break;
       if(sz != (size_t)-1){
          if(!(icf & n_ICONV_IGN_NOREVERSE)){
-            err = n_ERR_NOENT;
+            err = su_ERR_NOENT;
             goto jleave;
          }
          break;
       }
 
-      if((err = n_err_no) == n_ERR_2BIG)
+      if((err = su_err_no()) == su_ERR_2BIG)
          goto jleave;
 
-      if(!(icf & n_ICONV_IGN_ILSEQ) || err != n_ERR_ILSEQ)
+      if(!(icf & n_ICONV_IGN_ILSEQ) || err != su_ERR_ILSEQ)
          goto jleave;
       if(*inbleft > 0){
          ++(*inb);
@@ -1257,7 +1257,7 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
             --*outbleft;
             continue;
          }
-         err = n_ERR_2BIG;
+         err = su_ERR_2BIG;
          goto jleave;
       }else if(*outbleft > 0){
          **outb = '\0';
@@ -1283,7 +1283,7 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
 
    il = in->l;
    if(!n_string_get_can_book(il) || !n_string_get_can_book(out->l)){
-      err = n_ERR_INVAL;
+      err = su_ERR_INVAL;
       goto j_leave;
    }
    ib = in->s;
@@ -1307,7 +1307,7 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
          if(!n_string_can_book(sp, xnol)){
             xnol = ol + 64;
             if(!n_string_can_book(sp, xnol)){
-               err = n_ERR_INVAL;
+               err = su_ERR_INVAL;
                goto jleave;
             }
          }
@@ -1320,7 +1320,7 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
       err = n_iconv_buf(cd, icf, &ib, &il, &ob, &nol);
 
       sp = n_string_trunc(sp, ol + PTR2SIZE(ob - ob_base));
-      if(err == 0 || err != n_ERR_2BIG)
+      if(err == 0 || err != su_ERR_2BIG)
          break;
    }
 

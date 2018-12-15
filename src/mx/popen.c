@@ -132,7 +132,7 @@ a_popen_scan_mode(char const *mode, int *omode){
       }
 
    DBG( n_alert(_("Internal error: bad stdio open mode %s"), mode); )
-   n_err_no = n_ERR_INVAL;
+   su_err_set_no(su_ERR_INVAL);
    *omode = 0; /* (silence CC) */
    i = -1;
 jleave:
@@ -185,9 +185,9 @@ _file_save(struct fp *fpp)
 
    /* Ensure the I/O library doesn't optimize the fseek(3) away! */
    if(!n_real_seek(fpp->fp, fpp->offset, SEEK_SET)){
-      outfd = n_err_no;
+      outfd = su_err_no();
       n_err(_("Fatal: cannot restore file position and save %s: %s\n"),
-         n_shexp_quote_cp(fpp->realfile, FAL0), n_err_to_doc(outfd));
+         n_shexp_quote_cp(fpp->realfile, FAL0), su_err_doc(outfd));
       goto jleave;
    }
 
@@ -209,9 +209,9 @@ _file_save(struct fp *fpp)
          ((fpp->omode | O_CREAT | (fpp->omode & O_APPEND ? 0 : O_TRUNC) |
             n_O_NOXY_BITS) & ~O_EXCL), 0666);
    if (outfd == -1) {
-      outfd = n_err_no;
+      outfd = su_err_no();
       n_err(_("Fatal: cannot create %s: %s\n"),
-         n_shexp_quote_cp(fpp->realfile, FAL0), n_err_to_doc(outfd));
+         n_shexp_quote_cp(fpp->realfile, FAL0), su_err_doc(outfd));
       goto jleave;
    }
 
@@ -405,7 +405,7 @@ a_popen_sigchld(int signo){
    for (;;) {
       pid = waitpid(-1, &status, WNOHANG);
       if (pid <= 0) {
-         if (pid == -1 && n_err_no == n_ERR_INTR)
+         if (pid == -1 && su_err_no() == su_ERR_INTR)
             continue;
          break;
       }
@@ -583,7 +583,7 @@ n_fopen_any(char const *file, char const *oflags, /* TODO should take flags */
       infd = -1;
       break;
 #else
-      n_err_no = n_ERR_OPNOTSUPP;
+      su_err_set_no(su_ERR_OPNOTSUPP);
       goto jleave;
 #endif
    case n_PROTO_MAILDIR:
@@ -595,7 +595,7 @@ n_fopen_any(char const *file, char const *oflags, /* TODO should take flags */
       infd = -1;
       break;
 #else
-      n_err_no = n_ERR_OPNOTSUPP;
+      su_err_set_no(su_ERR_OPNOTSUPP);
       goto jleave;
 #endif
    case n_PROTO_FILE:{
@@ -616,7 +616,7 @@ n_fopen_any(char const *file, char const *oflags, /* TODO should take flags */
             if(n_poption & n_PO_D_V)
                n_err(_("Using `filetype' handler %s to load %s\n"),
                   n_shexp_quote_cp(cload, FAL0), n_shexp_quote_cp(file, FAL0));
-         }else if(!(osflags & O_CREAT) || n_err_no != n_ERR_NOENT)
+         }else if(!(osflags & O_CREAT) || su_err_no() != su_ERR_NOENT)
             goto jleave;
       }else{
          /*flags |= FP_RAW;*/
@@ -711,7 +711,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
 
    if ((oflags & OF_SUFFIX) && *namehint != '\0') {
       if ((xlen = strlen(namehint)) > maxname - _RANDCHARS) {
-         n_err_no = n_ERR_NAMETOOLONG;
+         su_err_set_no(su_ERR_NAMETOOLONG);
          goto jleave;
       }
    } else
@@ -756,7 +756,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
          break;
       }
       if(i >= FTMP_OPEN_TRIES){
-         e = n_err_no;
+         e = su_err_no();
          goto jfree;
       }
       rele_all_sigs();
@@ -775,7 +775,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
       fp = fdopen(fd, (oflags & OF_RDWR ? "w+" : "w"));
 
    if (fp == NULL || (oflags & OF_UNLINK)) {
-      e = n_err_no;
+      e = su_err_no();
       unlink(cp_base);
       goto jfree;
    }else if(fp != NULL){
@@ -798,7 +798,7 @@ jleave:
    if (relesigs && (fp == NULL || !(oflags & OF_HOLDSIGS)))
       rele_all_sigs();
    if (fp == NULL)
-      n_err_no = e;
+      su_err_set_no(e);
    n_NYD_OU;
    return fp;
 jfree:
@@ -1030,7 +1030,7 @@ n_psignal(FILE *fp, int sig){
 
       if((cp = a_popen_child_find(rv, FAL0)) != NULL){
          if((rv = kill(rv, sig)) != 0)
-            rv = n_err_no;
+            rv = su_err_no();
       }else
          rv = -1;
    }
@@ -1130,7 +1130,7 @@ n_child_run(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
 
    if((rv = n_child_start(cmd, mask_or_null, infd, outfd, a0_or_null,
          a1_or_null, a2_or_null, env_addon_or_null)) < 0){
-      e = n_err_no;
+      e = su_err_no();
       rv = -1;
    }else{
       int ws;
@@ -1141,7 +1141,7 @@ n_child_run(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
       else if(wait_status_or_null == NULL || !WIFEXITED(ws)){
          if(ok_blook(bsdcompat) || ok_blook(bsdmsgs))
             n_err(_("Fatal error in process\n"));
-         e = n_ERR_CHILD;
+         e = su_ERR_CHILD;
          rv = -1;
       }
       if(wait_status_or_null != NULL)
@@ -1161,7 +1161,7 @@ n_child_run(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
    }
 
    if(e != 0)
-      n_err_no = e;
+      su_err_set_no(e);
    n_NYD_OU;
    return rv;
 }
@@ -1175,9 +1175,9 @@ n_child_start(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
    n_NYD_IN;
 
    if ((rv = n_child_fork()) == -1) {
-      e = n_err_no;
+      e = su_err_no();
       n_perr(_("fork"), 0);
-      n_err_no = e;
+      su_err_set_no(e);
       rv = -1;
    } else if (rv == 0) {
       char *argv[128];

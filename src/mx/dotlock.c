@@ -54,7 +54,7 @@ a_dotlock_main(void){
    enum n_file_lock_type flt;
    n_NYD_IN;
 
-   /* Ignore SIGPIPE, we will see n_ERR_PIPE and "fall through" */
+   /* Ignore SIGPIPE, we will see su_ERR_PIPE and "fall through" */
    safe_signal(SIGPIPE, SIG_IGN);
 
    /* Get the arguments "passed to us" */
@@ -134,10 +134,10 @@ jenametool:
 
       /* fd is a file, not portable to use for _PC_NAME_MAX */
 # ifdef mx_HAVE_PATHCONF
-      n_err_no = n_ERR_NONE;
+      su_err_set_no(su_ERR_NONE);
       if((pc = pathconf(".", _PC_NAME_MAX)) == -1){
-         /* n_err_no unchanged: no limit */
-         if(n_err_no == 0)
+         /* su_err_no() unchanged: no limit */
+         if(su_err_no() == 0)
             break;
 # endif
          if(UICMP(z, NAME_MAX - 1, <, i))
@@ -169,7 +169,7 @@ jenametool:
        * really an error from our point of view since the mailbox will degrade
        * to a readonly one for which no dotlock is needed, then, and errors
        * may arise only due to actions which require box modifications */
-      if(n_err_no == n_ERR_ROFS){
+      if(su_err_no() == su_ERR_ROFS){
          dls = n_DLS_ROFS | n_DLS_ABANDON;
          goto jmsg;
       }
@@ -263,10 +263,10 @@ n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
 
    flocked = FAL0;
    for(u.tries = 0; !n_file_lock(fd, flt, off, len, 0);)
-      switch((serr = n_err_no)){
-      case n_ERR_ACCES:
-      case n_ERR_AGAIN:
-      case n_ERR_NOLCK:
+      switch((serr = su_err_no())){
+      case su_ERR_ACCES:
+      case su_ERR_AGAIN:
+      case su_ERR_NOLCK:
          if(pollmsecs > 0 && ++u.tries < FILE_LOCK_TRIES){
             if(!didmsg)
                _DOMSG();
@@ -288,7 +288,7 @@ jleave:
    if(flocked)
       rv = (FILE*)-1;
    else
-      n_err_no = serr;
+      su_err_set_no(serr);
    n_NYD_OU;
    return rv;
 
@@ -301,7 +301,7 @@ jleave:
    /* Create control-pipe for our dot file locker process, which will remove
     * the lock and terminate once the pipe is closed, for whatever reason */
    if(pipe_cloexec(cpipe) == -1){
-      serr = n_err_no;
+      serr = su_err_no();
       emsg = N_("  Cannot create dotlock file control pipe\n");
       goto jemsg;
    }
@@ -324,7 +324,7 @@ jleave:
 
    u.ptf = &a_dotlock_main;
    rv = Popen((char*)-1, "W", u.sh, NULL, cpipe[1]);
-   serr = n_err_no;
+   serr = su_err_no();
 
    close(cpipe[1]);
    if(rv == NULL){
@@ -337,10 +337,10 @@ jleave:
    for(;;){
       u.r = read(cpipe[0], &dls, sizeof dls);
       if(UICMP(z, u.r, !=, sizeof dls)){
-         serr = (u.r != -1) ? n_ERR_AGAIN : n_err_no;
+         serr = (u.r != -1) ? su_ERR_AGAIN : su_err_no();
          dls = n_DLS_DUNNO | n_DLS_ABANDON;
       }else
-         serr = n_ERR_NONE;
+         serr = su_ERR_NONE;
 
       if(dls == n_DLS_NONE || (dls & n_DLS_ABANDON))
          close(cpipe[0]);
@@ -351,24 +351,24 @@ jleave:
       case n_DLS_CANT_CHDIR:
          if(n_poption & n_PO_D_V)
             emsg = N_("  Cannot change directory, please check permissions\n");
-         serr = n_ERR_ACCES;
+         serr = su_ERR_ACCES;
          break;
       case n_DLS_NAMETOOLONG:
          emsg = N_("Resulting dotlock filename would be too long\n");
-         serr = n_ERR_ACCES;
+         serr = su_ERR_ACCES;
          break;
       case n_DLS_ROFS:
          assert(dls & n_DLS_ABANDON);
          if(n_poption & n_PO_D_V)
             emsg = N_("  Read-only filesystem, not creating lock file\n");
-         serr = n_ERR_ROFS;
+         serr = su_ERR_ROFS;
          break;
       case n_DLS_NOPERM:
          if((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_D_V))
             emsg = N_("  Cannot create a dotlock file, "
                   "please check permissions\n"
                   "  (Or set *dotlock-disable*, then try again)\n");
-         serr = n_ERR_ACCES;
+         serr = su_ERR_ACCES;
          break;
       case n_DLS_NOEXEC:
          if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_DOTLOCK_PRIVSEP_NOTED)
@@ -376,29 +376,29 @@ jleave:
             n_psonce |= n_PSO_DOTLOCK_PRIVSEP_NOTED;
             emsg = N_("  Cannot find privilege-separated dotlock program\n");
          }
-         serr = n_ERR_NOENT;
+         serr = su_ERR_NOENT;
          break;
       case n_DLS_PRIVFAILED:
          emsg = N_("  Privilege-separated dotlock program cannot change "
                "privileges\n");
-         serr = n_ERR_PERM;
+         serr = su_ERR_PERM;
          break;
       case n_DLS_EXIST:
          emsg = N_("  It seems there is a stale dotlock file?\n"
                "  Please remove the lock file manually, then retry\n");
-         serr = n_ERR_EXIST;
+         serr = su_ERR_EXIST;
          break;
       case n_DLS_FISHY:
          emsg = N_("  Fishy!  Is someone trying to \"steal\" foreign files?\n"
                "  Please check the mailbox file etc. manually, then retry\n");
-         serr = n_ERR_AGAIN; /* ? Hack to ignore *dotlock-ignore-error* xxx */
+         serr = su_ERR_AGAIN; /* ? Hack to ignore *dotlock-ignore-error* xxx */
          break;
       default:
       case n_DLS_DUNNO:
          emsg = N_("  Unspecified dotlock file control process error.\n"
                "  Like broken I/O pipe; this one is unlikely to happen\n");
-         if(serr != n_ERR_AGAIN)
-            serr = n_ERR_INVAL;
+         if(serr != su_ERR_AGAIN)
+            serr = su_ERR_INVAL;
          break;
       case n_DLS_PING:
          if(!didmsg)
@@ -432,9 +432,9 @@ jleave:
       n_err(". %s\n", (rv != NULL ? _("ok") : _("failed")));
    if(rv == NULL) {
       if(flocked){
-         if(serr == n_ERR_ROFS)
+         if(serr == su_ERR_ROFS)
             rv = (FILE*)-1;
-         else if(serr != n_ERR_AGAIN && serr != n_ERR_EXIST &&
+         else if(serr != su_ERR_AGAIN && serr != su_ERR_EXIST &&
                ok_blook(dotlock_ignore_error)){
             n_OBSOLETE(_("*dotlock-ignore-error*: please use "
                "*dotlock-disable* instead"));
@@ -445,7 +445,7 @@ jleave:
             goto jserr;
       }else
 jserr:
-         n_err_no = serr;
+         su_err_set_no(serr);
    }
    n_NYD_OU;
    return rv;

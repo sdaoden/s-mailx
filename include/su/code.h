@@ -1360,7 +1360,6 @@ enum su_state_flags{
 };
 MCTA((uz)su_LOG_DEBUG <= (uz)su__STATE_LOG_MASK, "Bit ranges may not overlap")
 
-#ifdef DOXYGEN
 /*! The \SU error number constants.
  * In order to achieve a 1:1 mapping of the \SU and the host value, e.g.,
  * of \ERR{INTR} and \c{EINTR}, the actual values will be detected at
@@ -1368,10 +1367,14 @@ MCTA((uz)su_LOG_DEBUG <= (uz)su__STATE_LOG_MASK, "Bit ranges may not overlap")
  * Non resolvable (native) mappings will map to \ERR{NOTOBACCO},
  * \SU mappings with no (native) mapping will have high unsigned numbers. */
 enum su_err_number{
+#ifdef DOXYGEN
    su_ERR_NONE,      /*!< No error. */
    su_ERR_NOTOBACCO  /*!< No such errno, fallback: no mapping exists. */
-};
+#else
+   su__ERR_NUMBER_ENUM_C
+# undef su__ERR_NUMBER_ENUM_C
 #endif
+};
 
 union su__bom_union{
    char bu_buf[2];
@@ -1432,7 +1435,8 @@ EXPORT s32 su_err_no(void);
 /*! \_ */
 EXPORT s32 su_err_set_no(s32 eno);
 
-/*! Return string(s) describing C error number eno */
+/*! Return string(s) describing C error number eno.
+ * This may return \r{su_empty}, dependent upon compile-time options. */
 EXPORT char const *su_err_doc(s32 eno);
 /*! \_ */
 EXPORT char const *su_err_name(s32 eno);
@@ -1503,6 +1507,17 @@ public:
 /*! \_ */
 class err{
 public:
+   /*! \r{su_err_number} */
+   enum err_number{
+#ifdef DOXYGEN
+      err_none,      /*!< No error. */
+      err_notobacco  /*!< No such errno, fallback: no mapping exists. */
+#else
+      su__CXX_ERR_NUMBER_ENUM
+# undef su__CXX_ERR_NUMBER_ENUM
+#endif
+   };
+
    /*! \r{su_err_no()} */
    static s32 no(void) {return su_err_no();}
    /*! \r{su_err_set_no()} */

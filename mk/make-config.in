@@ -10,6 +10,9 @@ _version_from_header = VERSION="`< $(CWDDIR)include/mx/gen-version.h $(sed) \
 
 all: $(VAL_UAGENT) $(OPTIONAL_PRIVSEP)
 
+$(SU_OBJ): $(INCDIR)su/code.h $(INCDIR)su/config.h
+$(AMALGAM_TARGET) core-errors.o: $(SRCDIR)su/gen-errors.h
+
 $(VAL_UAGENT): $(OBJ) uman.1 urc.rc
 	$(ECHO_LINK)$(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)
 	$(SIZE_CHECK)
@@ -17,7 +20,6 @@ $(VAL_UAGENT): $(OBJ) uman.1 urc.rc
 $(OBJ): $(CWDDIR)include/mx/gen-config.h $(CWDDIR)include/mx/config.h \
 		$(INCDIR)mx/nail.h $(INCDIR)mx/nailfuns.h \
 		$(AMALGAM_DEP)
-$(AMALGAM_TARGET) auxlily.o: $(SRCDIR)mx/gen-errors.h
 $(AMALGAM_TARGET) accmacvar.o: $(SRCDIR)mx/gen-okeys.h \
 		$(CWDDIR)include/mx/gen-version.h
 $(AMALGAM_TARGET) cmd-tab.o: $(SRCDIR)mx/cmd-tab.h

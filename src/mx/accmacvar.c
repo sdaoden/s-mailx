@@ -472,7 +472,7 @@ a_amv_mac_call(void *v, bool_t silent_nexist){
 
    if(cacp->cac_no == 0){
       n_err(_("Synopsis: call(_if)?: name [:<arguments>:]\n"));
-      n_pstate_err_no = n_ERR_INVAL;
+      n_pstate_err_no = su_ERR_INVAL;
       rv = 1;
       goto jleave;
    }
@@ -481,13 +481,13 @@ a_amv_mac_call(void *v, bool_t silent_nexist){
 
    if(n_UNLIKELY(cacp->cac_no > a_AMV_POSPAR_MAX)){
       n_err(_("Too many arguments to macro `call': %s\n"), name);
-      n_pstate_err_no = n_ERR_OVERFLOW;
+      n_pstate_err_no = su_ERR_OVERFLOW;
       rv = 1;
    }else if(n_UNLIKELY((amp = a_amv_mac_lookup(name, NULL, a_AMV_MF_NONE)
          ) == NULL)){
       if(!silent_nexist)
          n_err(_("Undefined macro called: %s\n"), n_shexp_quote_cp(name, FAL0));
-      n_pstate_err_no = n_ERR_NOENT;
+      n_pstate_err_no = su_ERR_NOENT;
       rv = 1;
    }else{
       char const **argv;
@@ -1684,7 +1684,7 @@ a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp){
          e = n_pstate_err_no;
          goto jeno;
       }else if(rv[3] == '-'){
-         e = n_err_from_name(&rv[4]);
+         e = su_err_from_name(&rv[4]);
 jeno:
          switch(e){
          case 0: rv = n_0; break;
@@ -1700,19 +1700,19 @@ jeno:
             rv += 6;
             switch(*rv){
             case '\0': e = n_pstate_err_no; break;
-            case '-': e = n_err_from_name(&rv[1]); break;
+            case '-': e = su_err_from_name(&rv[1]); break;
             default: goto jerr;
             }
-            rv = n_err_to_doc(e);
+            rv = su_err_doc(e);
             goto jleave;
          }else if(i >= 7 && !memcmp(&rv[3], "NAME", 4)){
             rv += 7;
             switch(*rv){
             case '\0': e = n_pstate_err_no; break;
-            case '-': e = n_err_from_name(&rv[1]); break;
+            case '-': e = su_err_from_name(&rv[1]); break;
             default: goto jerr;
             }
-            rv = n_err_to_name(e);
+            rv = su_err_name(e);
             goto jleave;
          }
       }
@@ -2765,7 +2765,7 @@ c_return(void *vp){ /* TODO the exit status should be m_si64! */
       char const **argv;
 
       n_go_input_force_eof();
-      n_pstate_err_no = n_ERR_NONE;
+      n_pstate_err_no = su_ERR_NONE;
       rv = 0;
 
       if((argv = vp)[0] != NULL){
@@ -2778,7 +2778,7 @@ c_return(void *vp){ /* TODO the exit status should be m_si64! */
          else{
             n_err(_("`return': return value argument is invalid: %s\n"),
                argv[0]);
-            n_pstate_err_no = n_ERR_INVAL;
+            n_pstate_err_no = su_ERR_INVAL;
             rv = 1;
          }
 
@@ -2790,14 +2790,14 @@ c_return(void *vp){ /* TODO the exit status should be m_si64! */
             else{
                n_err(_("`return': error number argument is invalid: %s\n"),
                   argv[1]);
-               n_pstate_err_no = n_ERR_INVAL;
+               n_pstate_err_no = su_ERR_INVAL;
                rv = 1;
             }
          }
       }
    }else{
       n_err(_("Can only use `return' in a macro\n"));
-      n_pstate_err_no = n_ERR_OPNOTSUPP;
+      n_pstate_err_no = su_ERR_OPNOTSUPP;
       rv = 1;
    }
    n_NYD_OU;
@@ -3898,7 +3898,7 @@ jesubstring_len:
          n_err(_("`vexpr': invalid regular expression: %s: %s\n"),
             n_shexp_quote_cp(argv[2], FAL0), n_regex_err_to_doc(NULL, reflrv));
          assert(f & a_ERR);
-         n_pstate_err_no = n_ERR_INVAL;
+         n_pstate_err_no = su_ERR_INVAL;
          goto jestr;
       }
       reflrv = regexec(&re, argv[1], n_NELEM(rema), rema, 0);
@@ -3977,7 +3977,7 @@ jesubstring_len:
    }else
       goto jesubcmd;
 
-   n_pstate_err_no = (f & a_SOFTOVERFLOW) ? n_ERR_OVERFLOW : n_ERR_NONE;
+   n_pstate_err_no = (f & a_SOFTOVERFLOW) ? su_ERR_OVERFLOW : su_ERR_NONE;
    f &= ~a_ERR;
 
    /* Generate the variable value content for numerics.
@@ -4015,15 +4015,15 @@ jleave:
                   binabuf, lhv, lhv, lhv) < 0 ||
                ((f & a_PBASE) && (assert(varres != NULL),
                 fprintf(n_stdout, "%s\n", varres) < 0))){
-            n_pstate_err_no = n_err_no;
+            n_pstate_err_no = su_err_no();
             f |= a_ERR;
          }
       }else if(varres != NULL && fprintf(n_stdout, "%s\n", varres) < 0){
-         n_pstate_err_no = n_err_no;
+         n_pstate_err_no = su_err_no();
          f |= a_ERR;
       }
    }else if(!n_var_vset(varname, (uintptr_t)varres)){
-      n_pstate_err_no = n_ERR_NOTSUP;
+      n_pstate_err_no = su_ERR_NOTSUP;
       f |= a_ERR;
    }
    n_NYD_OU;
@@ -4036,35 +4036,35 @@ jerr:
 jesubcmd:
    n_err(_("`vexpr': invalid subcommand: %s\n"),
       n_shexp_quote_cp(*argv, FAL0));
-   n_pstate_err_no = n_ERR_INVAL;
+   n_pstate_err_no = su_ERR_INVAL;
    goto jerr;
 jesynopsis:
    n_err(_("Synopsis: vexpr: <operator> <:argument:>\n"));
-   n_pstate_err_no = n_ERR_INVAL;
+   n_pstate_err_no = su_ERR_INVAL;
    goto jerr;
 
 jenum_range:
    n_err(_("`vexpr': numeric argument invalid or out of range: %s\n"),
       n_shexp_quote_cp(*argv, FAL0));
-   n_pstate_err_no = n_ERR_RANGE;
+   n_pstate_err_no = su_ERR_RANGE;
    goto jerr;
 jenum_overflow:
    n_err(_("`vexpr': expression overflows datatype: %" PRId64 " %c %" PRId64
       "\n"), lhv, op, rhv);
-   n_pstate_err_no = n_ERR_OVERFLOW;
+   n_pstate_err_no = su_ERR_OVERFLOW;
    goto jerr;
 
 jestr_numrange:
    n_err(_("`vexpr': numeric argument invalid or out of range: %s\n"),
       n_shexp_quote_cp(*argv, FAL0));
-   n_pstate_err_no = n_ERR_RANGE;
+   n_pstate_err_no = su_ERR_RANGE;
    goto jestr;
 jestr_overflow:
    n_err(_("`vexpr': string length or offset overflows datatype\n"));
-   n_pstate_err_no = n_ERR_OVERFLOW;
+   n_pstate_err_no = su_ERR_OVERFLOW;
    goto jestr;
 jestr_nodata:
-   n_pstate_err_no = n_ERR_NODATA;
+   n_pstate_err_no = su_ERR_NODATA;
    /* FALLTHRU */
 jestr:
    varres = n_empty;
@@ -4089,7 +4089,7 @@ c_vpospar(void *v){
    struct n_cmd_arg_ctx *cacp;
    n_NYD_IN;
 
-   n_pstate_err_no = n_ERR_NONE;
+   n_pstate_err_no = su_ERR_NONE;
    n_UNINIT(varres, n_empty);
    cacp = v;
    cap = cacp->cac_arg;
@@ -4103,7 +4103,7 @@ c_vpospar(void *v){
    else{
       n_err(_("`vpospar': invalid subcommand: %s\n"),
          n_shexp_quote_cp(cap->ca_arg.ca_str.s, FAL0));
-      n_pstate_err_no = n_ERR_INVAL;
+      n_pstate_err_no = su_ERR_INVAL;
       f = a_ERR;
       goto jleave;
    }
@@ -4111,7 +4111,7 @@ c_vpospar(void *v){
 
    if((f & (a_CLEAR | a_QUOTE)) && cap->ca_next != NULL){
       n_err(_("`vpospar': `%s': takes no argument\n"), cap->ca_arg.ca_str.s);
-      n_pstate_err_no = n_ERR_INVAL;
+      n_pstate_err_no = su_ERR_INVAL;
       f = a_ERR;
       goto jleave;
    }
@@ -4135,7 +4135,7 @@ c_vpospar(void *v){
       if(f & a_SET){
          if((i = cacp->cac_no) > a_AMV_POSPAR_MAX){
             n_err(_("`vpospar': overflow: %" PRIuZ " arguments!\n"), i);
-            n_pstate_err_no = n_ERR_OVERFLOW;
+            n_pstate_err_no = su_ERR_OVERFLOW;
             f = a_ERR;
             goto jleave;
          }
@@ -4187,7 +4187,7 @@ c_vpospar(void *v){
             if(!n_string_can_book(sp, in.l)){
 jeover:
                n_err(_("`vpospar': overflow: string too long!\n"));
-               n_pstate_err_no = n_ERR_OVERFLOW;
+               n_pstate_err_no = su_ERR_OVERFLOW;
                f = a_ERR;
                goto jleave;
             }
@@ -4199,11 +4199,11 @@ jeover:
 
       if(cacp->cac_vput == NULL){
          if(fprintf(n_stdout, "%s\n", varres) < 0){
-            n_pstate_err_no = n_err_no;
+            n_pstate_err_no = su_err_no();
             f |= a_ERR;
          }
       }else if(!n_var_vset(cacp->cac_vput, (uintptr_t)varres)){
-         n_pstate_err_no = n_ERR_NOTSUP;
+         n_pstate_err_no = su_ERR_NOTSUP;
          f |= a_ERR;
       }
    }

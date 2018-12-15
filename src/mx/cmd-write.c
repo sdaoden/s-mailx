@@ -106,8 +106,8 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
          if((obuf = Popen(file, "w", shell, NULL, 1)) == NULL){
             int esave;
 
-            n_perr(file, esave = n_err_no);
-            n_err_no = esave;
+            n_perr(file, esave = su_err_no());
+            su_err_set_no(esave);
             goto jleave;
          }
          disp = A_("[Piped]");
@@ -146,7 +146,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
        * TODO BETTER yet: should be returned in lock state already! */
       n_file_lock(fileno(obuf), FLT_WRITE, 0,0, UIZ_MAX);
 
-      if((xerr = n_folder_mbox_prepare_append(obuf, NULL)) != n_ERR_NONE){
+      if((xerr = n_folder_mbox_prepare_append(obuf, NULL)) != su_ERR_NONE){
          n_perr(file, xerr);
          goto jleave;
       }

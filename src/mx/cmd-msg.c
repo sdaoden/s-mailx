@@ -491,7 +491,7 @@ c_mimeview(void *vp){ /* TODO direct addressable parts, multiple such */
 
    if((msgvec = vp)[1] != 0){
       n_err(_("`mimeview': can yet only take one message, sorry!\n"));/* TODO */
-      n_pstate_err_no = n_ERR_NOTSUP;
+      n_pstate_err_no = su_ERR_NOTSUP;
       rv = 1;
       goto jleave;
    }
@@ -507,18 +507,18 @@ c_mimeview(void *vp){ /* TODO direct addressable parts, multiple such */
    )
 
    if(!a_cmsg_show_overview(n_stdout, mp, *msgvec))
-      n_pstate_err_no = n_ERR_IO;
+      n_pstate_err_no = su_ERR_IO;
    else if(sendmp(mp, n_stdout, n_IGNORE_TYPE, NULL, SEND_TODISP_PARTS,
          NULL) < 0)
-      n_pstate_err_no = n_ERR_IO;
+      n_pstate_err_no = su_ERR_IO;
    else
-      n_pstate_err_no = n_ERR_NONE;
+      n_pstate_err_no = su_ERR_NONE;
 
    n_COLOUR(
       n_colour_env_gut();
    )
 
-   rv = (n_pstate_err_no != n_ERR_NONE);
+   rv = (n_pstate_err_no != su_ERR_NONE);
 jleave:
    n_NYD_OU;
    return rv;
@@ -661,7 +661,7 @@ c_pdot(void *vp){
    n_NYD_IN;
    n_UNUSED(vp);
 
-   n_pstate_err_no = n_ERR_NONE;
+   n_pstate_err_no = su_ERR_NONE;
    sp = n_string_creat_auto(&s);
    sep1 = *ok_vlook(ifs);
    sep2 = *ok_vlook(ifs_ws);
@@ -675,7 +675,7 @@ c_pdot(void *vp){
    for(mlp = cacp->cac_arg->ca_arg.ca_msglist; *mlp != 0; ++mlp){
       if(!n_string_can_book(sp, n_IENC_BUFFER_SIZE + 2u)){
          n_err(_("`=': overflow: string too long!\n"));
-         n_pstate_err_no = n_ERR_OVERFLOW;
+         n_pstate_err_no = su_ERR_OVERFLOW;
          vp = NULL;
          goto jleave;
       }
@@ -691,11 +691,11 @@ c_pdot(void *vp){
    (void)n_string_cp(sp);
    if(cacp->cac_vput == NULL){
       if(fprintf(n_stdout, "%s\n", sp->s_dat) < 0){
-         n_pstate_err_no = n_err_no;
+         n_pstate_err_no = su_err_no();
          vp = NULL;
       }
    }else if(!n_var_vset(cacp->cac_vput, (uintptr_t)sp->s_dat)){
-      n_pstate_err_no = n_ERR_NOTSUP;
+      n_pstate_err_no = su_ERR_NOTSUP;
       vp = NULL;
    }
 jleave:

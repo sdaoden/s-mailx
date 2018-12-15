@@ -99,7 +99,7 @@ update_stable_hook() {
    if [ -n "${have_perl}" ]; then
       ${make} d-okeys && ${git} add src/mx/gen-okeys.h
       ${make} d-tcaps && ${git} add src/mx/gen-tcaps.h
-      ${make} d-errors && ${git} add src/mx/gen-errors.h
+      ${make} d-errors && ${git} add src/su/gen-errors.h
    fi
 }
 
@@ -130,7 +130,7 @@ update_release_hook() {
    if [ -n "${have_perl}" ]; then
       ${make} d-okeys-nv && ${git} add src/mx/gen-okeys.h
       ${make} d-tcaps-nv && ${git} add src/mx/gen-tcaps.h
-      ${make} d-errors-nv && ${git} add src/mx/gen-errors.h
+      ${make} d-errors-nv && ${git} add src/su/gen-errors.h
    fi
 
    ${git} rm -f .gitignore .mailmap TODO \

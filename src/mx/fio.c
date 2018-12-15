@@ -133,9 +133,9 @@ a_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len)
    flp.l_len = len;
 
    if (!(rv = (fcntl(fd, F_SETLK, &flp) != -1)))
-      switch (n_err_no) {
-      case n_ERR_BADF:
-      case n_ERR_INVAL:
+      switch (su_err_no()) {
+      case su_ERR_BADF:
+      case su_ERR_INVAL:
          rv = TRUM1;
          break;
       }
@@ -231,7 +231,7 @@ jagain:
                break;
             }
          } else {
-            if (sz < 0 && n_err_no == n_ERR_INTR)
+            if (sz < 0 && su_err_no() == su_ERR_INTR)
                goto jagain;
             /* TODO eh.  what is this?  that now supposed to be a line?!? */
             if (n > 0) {

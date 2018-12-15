@@ -71,10 +71,10 @@ jredo:
    if(!mkdir(name, 0777))
       rv = TRU1;
    else{
-      int e = n_err_no;
+      int e = su_err_no();
 
       /* Try it recursively */
-      if(e == n_ERR_NOENT){
+      if(e == su_ERR_NOENT){
          char const *vp;
 
          if((vp = strrchr(name, '/')) != NULL){ /* TODO magic dirsep */
@@ -87,7 +87,7 @@ jredo:
          }
       }
 
-      rv = ((e == n_ERR_EXIST || e == n_ERR_NOSYS) && !stat(name, &st) &&
+      rv = ((e == su_ERR_EXIST || e == su_ERR_NOSYS) && !stat(name, &st) &&
             S_ISDIR(st.st_mode));
    }
    n_NYD_OU;
