@@ -1407,7 +1407,7 @@ EXPORT_DATA u16 const su_bom;
 EXPORT_DATA char const su_empty[1];
 
 /*! The string \c{reproducible_build}, see \r{su_STATE_REPRODUCIBLE}. */
-EXPORT_DATA char const su_reproducible_build[sizeof "reproducible_build"];
+EXPORT_DATA char const su_reproducible_build[];
 
 /*! Set to the name of the program to create a common log message prefix. */
 EXPORT_DATA char const *su_program;

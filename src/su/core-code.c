@@ -28,29 +28,11 @@
 
 #include <errno.h> /* XXX Grrrr */
 #include <stdarg.h>
+#include <stdio.h> /* TODO Get rid */
 #include <stdlib.h>
-
-#ifndef su_USECASE_MX
-# include <stdio.h> /* TODO Get rid */
-#endif
 
 #include "su/code.h"
 #include "su/code-in.h"
-
-#ifndef su_USECASE_MX
-# define a_ELOG fprintf(stderr,
-# define a_EVLOG vfprintf(stderr,
-#else
-   /* TODO Eventually all the I/O is SU based, then these vanish!
-    * TODO We need some _USECASE_ hook to store readily prepared lines then */
-# ifndef mx_HAVE_AMALGAMATION
-void n_err(char const *format, ...);
-void n_verr(char const *format, va_list ap);
-# endif
-# define a_ELOG n_err(
-# define a_EVLOG n_verr(
-#endif
-#define a_E )
 
 #define a_PRIMARY_DOLOG(LVL) \
    ((S(u32,LVL) /*& su__STATE_LOG_MASK*/) <= \
@@ -92,17 +74,51 @@ static struct a_core_nyd_info a_core_nyd_infos[su_NYD_ENTRIES];
 uz su__state;
 
 char const su_empty[] = "";
-char const su_reproducible_build[sizeof "reproducible_build"] =
-      "reproducible_build";
+char const su_reproducible_build[] = "reproducible_build";
 u16 const su_bom = su_BOM;
 
 char const *su_program;
+
+/* TODO Eventually all the I/O is SU based, then this will vanish!
+ * TODO We need some _USECASE_ hook to store readily prepared lines then.
+ * TODO Also, our log does not yet prepend "su_progam: " to each output line,
+ * TODO because of all that (port FmtEncCtx, use rounds!!) */
+su_SINLINE void a_evlog(enum su_log_level lvl, char const *fmt, va_list ap);
 
 /* */
 #if DVLOR(1, 0)
 static void a_core_nyd_printone(void (*ptf)(up cookie, char const *buf,
       uz blen), up cookie, struct a_core_nyd_info const *cnip);
 #endif
+
+su_SINLINE void
+a_evlog(enum su_log_level lvl, char const *fmt, va_list ap){
+#ifdef su_USECASE_MX
+# ifndef mx_HAVE_AMALGAMATION
+   /*extern*/ void n_err(char const *fmt, ...);
+   /*extern*/ void n_verr(char const *fmt, va_list ap);
+# endif
+#endif
+
+#ifdef su_USECASE_MX
+   if(lvl != su_LOG_EMERG)
+      goto jnostd;
+#endif
+
+   if(su_program != NIL)
+      fprintf(stderr, "%s: ", su_program);
+   vfprintf(stderr, fmt, ap);
+
+#ifdef su_USECASE_MX
+   goto jnomx;
+jnostd:
+   n_verr(fmt, ap);
+jnomx:
+#endif
+
+   if(lvl == su_LOG_EMERG)
+      abort(); /* TODO configurable */
+}
 
 #if DVLOR(1, 0)
 static void
@@ -218,16 +234,9 @@ su_log_write(enum su_log_level lvl, char const *fmt, ...){
    NYD_IN;
 
    if(a_PRIMARY_DOLOG(lvl)){
-#ifndef su_USECASE_MX
-      if(su_program != NIL)
-         a_ELOG "%s: ", su_program a_E;
-#endif
       va_start(va, fmt);
-      a_EVLOG fmt, va a_E;
+      a_evlog(lvl, fmt, va);
       va_end(va);
-
-      if(lvl == su_LOG_EMERG)
-         abort(); /* TODO configurable */
    }
    NYD_OU;
 }
@@ -236,16 +245,8 @@ void
 su_log_vwrite(enum su_log_level lvl, char const *fmt, void *vp){
    NYD_IN;
 
-   if(a_PRIMARY_DOLOG(lvl)){
-#ifndef su_USECASE_MX
-      if(su_program != NIL)
-         a_ELOG "%s: ", su_program a_E;
-#endif
-      a_EVLOG fmt, *S(va_list*,vp) a_E;
-
-      if(lvl == su_LOG_EMERG)
-         abort(); /* TODO configurable */
-   }
+   if(a_PRIMARY_DOLOG(lvl))
+      a_evlog(lvl, fmt, *S(va_list*,vp));
    NYD_OU;
 }
 
@@ -254,17 +255,17 @@ su_assert(char const *expr, char const *file, u32 line, char const *fun,
       boole crash){
    char const *pre;
 
+   /* TODO su_assert(): plays with su_program prefix due to usecase mess,
+    * TODO and because (we do not have our own I/O) we do not embed the
+    * TODO su_program after each NEWLINE */
    pre = (su_program != NIL) ? su_program : su_empty;
-   a_ELOG
-      "%s: SU assert failed: %.60s\n"
+   su_log_write((crash ? su_LOG_EMERG : su_LOG_ALERT),
+      /*"%s: "*/"SU assert failed: %.60s\n"
       "%s:   File %.60s, line %" PRIu32 "\n"
       "%s:   Function %.142s\n",
-      pre, expr,
+      /*pre, */expr,
       pre, file, line,
-      pre, fun a_E;
-
-   if(crash)
-      abort();
+      pre, fun);
 }
 
 #if DVLOR(1, 0)
@@ -301,10 +302,6 @@ su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen), up cookie){
       a_core_nyd_printone(ptf, cookie, cnip++);
 }
 #endif /* DVLOR(1, 0) */
-
-#undef a_ELOG
-#undef a_EVLOG
-#undef a_E
 
 #include "su/code-ou.h"
 /* s-it-mode */
