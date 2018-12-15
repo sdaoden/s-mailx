@@ -720,6 +720,7 @@ __acmd() {
       [ -n "${varname}" ] && eval ${varname}="${pname}"
       return 0
    fi
+   [ -n "${varname}" ] && eval ${varname}=
 
    [ ${dofail} -eq 0 ] && return 1
    msg 'ERROR: no trace of utility '"${pname}"
