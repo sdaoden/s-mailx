@@ -425,12 +425,18 @@ do{\
 /* Suppress some technical warnings via #pragma's unless developing.
  * XXX Wild guesses: clang(1) 1.7 and (OpenBSD) gcc(1) 4.2.1 do not work */
 #ifndef su_HAVE_DEVEL
-# if su_CC_VCHECK_CLANG(3, 4)
+# if su_CC_VCHECK_GCC(4, 7) || su_CC_PCC || su_CC_TINYC
+/*#  pragma GCC diagnostic ignored "-Wformat"*/
+#  pragma GCC diagnostic ignored "-Wunused-result" /* su_UNUSED() */
+#  ifdef NDEBUG
+#   pragma GCC diagnostic ignored "-Wmaybe-uninitialized" /* su_UNINIT() */
+#  endif
+# elif su_CC_VCHECK_CLANG(3, 4)
 /*#  pragma clang diagnostic ignored "-Wformat"*/
 #  pragma clang diagnostic ignored "-Wunused-result"
-# elif su_CC_VCHECK_GCC(4, 7) || su_CC_PCC || su_CC_TINYC
-/*#  pragma GCC diagnostic ignored "-Wformat"*/
-#  pragma GCC diagnostic ignored "-Wunused-result"
+#  ifdef NDEBUG
+#   pragma clang diagnostic ignored "-Wmaybe-uninitialized"
+#  endif
 # endif
 #endif
 
