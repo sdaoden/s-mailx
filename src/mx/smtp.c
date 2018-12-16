@@ -47,9 +47,11 @@
 # include "mx/nail.h"
 #endif
 
-EMPTY_FILE()
+su_EMPTY_FILE()
 #ifdef mx_HAVE_SMTP
 #include <sys/socket.h>
+
+#include <su/cs.h>
 
 struct smtp_line {
    char     *dat;    /* Actual data */
@@ -111,9 +113,9 @@ _smtp_read(struct sock *sp, struct smtp_line *slp, int val,
    } while (slp->buf[3] == '-');
 
    if (want_dat) {
-      for (cp = slp->buf; digitchar(*cp); --len, ++cp)
+      for (cp = slp->buf; su_cs_is_digit(*cp); --len, ++cp)
          ;
-      for (; blankchar(*cp); --len, ++cp)
+      for (; su_cs_is_blank(*cp); --len, ++cp)
          ;
       slp->dat = cp;
       assert(len >= 2);
@@ -137,7 +139,7 @@ do if (!(n_poption & n_PO_DEBUG)) {\
 do {\
    if (n_poption & n_PO_D_VV){\
       /* TODO for now n_err() cannot normalize newlines in %s expansions */\
-      char *__x__ = savestr(X), *__y__ = &__x__[strlen(__x__)];\
+      char *__x__ = savestr(X), *__y__ = &__x__[su_cs_len(__x__)];\
       while(__y__ > __x__ && (__y__[-1] == '\n' || __y__[-1] == '\r'))\
          --__y__;\
       *__y__ = '\0';\
@@ -298,11 +300,11 @@ jsend:
       if (inhdr) {
          if (*slp->buf == '\n')
             inhdr = inbcc = FAL0;
-         else if (inbcc && blankchar(*slp->buf))
+         else if (inbcc && su_cs_is_blank(*slp->buf))
             continue;
          /* We know what we have generated first, so do not look for whitespace
           * before the ':' */
-         else if (!ascncasecmp(slp->buf, "bcc: ", 5)) {
+         else if (!su_cs_cmp_case_n(slp->buf, "bcc: ", 5)) {
             inbcc = TRU1;
             continue;
          } else

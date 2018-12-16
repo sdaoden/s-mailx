@@ -45,6 +45,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
+
 /* Open addressing is used for Message-IDs because the maximum number of
  * messages in the table is known in advance (== msgCount) */
 struct mitem {
@@ -139,7 +141,7 @@ _mhash(char const *cp, ui32_t mprime)
       if (*cp == '@')
          ++at;
       /* TODO torek hash */
-      h = ((h << 4) & 0xffffffff) + lowerconv(*cp);
+      h = ((h << 4) & 0xffffffff) + su_cs_to_lower(*cp);
       if ((g = h & 0xf0000000) != 0) {
          h = h ^ (g >> 24);
          h = h ^ g;
@@ -161,7 +163,7 @@ _mlook(char *id, struct mitem *mt, struct message *mdata, ui32_t mprime)
          goto jleave;
       /* Normalize, what hfield1() doesn't do (TODO should now GREF, too!!) */
       if (id[0] == '<') {
-         id[strlen(id) -1] = '\0';
+         id[su_cs_len(id) -1] = '\0';
          if (*id != '\0')
             ++id;
       }
@@ -191,7 +193,7 @@ _mlook(char *id, struct mitem *mt, struct message *mdata, ui32_t mprime)
    }
 
    if (mdata != NULL && mp->mi_id == NULL) {
-      mp->mi_id = sstrdup(id);
+      mp->mi_id = su_cs_dup(id);
       mp->mi_data = mdata;
       mdata->m_idhash = ~h;
    }
@@ -533,7 +535,7 @@ c_thread(void *vp)
       _makethreads(message, msgCount, (vp == (void*)-1));
       if (mb.mb_sorted != NULL)
          n_free(mb.mb_sorted);
-      mb.mb_sorted = sstrdup("thread");
+      mb.mb_sorted = su_cs_dup("thread");
    }
 
    if (vp != NULL && vp != (void*)-1 && !(n_pstate & n_PS_HOOK_MASK) &&
@@ -690,7 +692,7 @@ c_sort(void *vp)
 
    i = 0;
    for (;;) {
-      if (*args[0] != '\0' && is_prefix(args[0], methnames[i].me_name))
+      if (*args[0] != '\0' && su_cs_starts_with(methnames[i].me_name, args[0]))
          break;
       if (UICMP(z, ++i, >=, n_NELEM(methnames))) {
          n_err(_("Unknown sorting method: %s\n"), args[0]);
@@ -701,7 +703,7 @@ c_sort(void *vp)
 
    if (mb.mb_sorted != NULL)
       n_free(mb.mb_sorted);
-   mb.mb_sorted = sstrdup(args[0]);
+   mb.mb_sorted = su_cs_dup(args[0]);
 
    method = methnames[i].me_method;
    func = methnames[i].me_func;
@@ -765,24 +767,25 @@ c_sort(void *vp)
 #endif
          case SORT_FROM:
          case SORT_TO:
-            if ((cp = hfield1((method == SORT_FROM ?  "from" : "to"), mp)) !=
-                  NULL) {
-               ms[n].ms_u.ms_char = sstrdup(showname ? realname(cp) : skin(cp));
+            if ((cp = hfield1((method == SORT_FROM ?  "from" : "to"), mp)
+                  ) != NULL) {
+               ms[n].ms_u.ms_char = su_cs_dup(showname ? realname(cp)
+                     : skin(cp));
                makelow(ms[n].ms_u.ms_char);
             } else
-               ms[n].ms_u.ms_char = sstrdup(n_empty);
+               ms[n].ms_u.ms_char = su_cs_dup(n_empty);
             break;
          default:
          case SORT_SUBJECT:
             if ((cp = hfield1("subject", mp)) != NULL) {
                in.s = cp;
-               in.l = strlen(in.s);
+               in.l = su_cs_len(in.s);
                mime_fromhdr(&in, &out, TD_ICONV);
-               ms[n].ms_u.ms_char = sstrdup(subject_re_trim(out.s));
+               ms[n].ms_u.ms_char = su_cs_dup(subject_re_trim(out.s));
                n_free(out.s);
                makelow(ms[n].ms_u.ms_char);
             } else
-               ms[n].ms_u.ms_char = sstrdup(n_empty);
+               ms[n].ms_u.ms_char = su_cs_dup(n_empty);
             break;
          }
          ms[n++].ms_n = i;

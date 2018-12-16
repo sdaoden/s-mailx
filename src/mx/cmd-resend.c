@@ -41,6 +41,10 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
+
+#include "mx/iconv.h"
+
 /* Modify subject we reply to to begin with Re: if it does not already */
 static char *a_crese_reedit(char const *subj);
 
@@ -91,10 +95,10 @@ a_crese_reedit(char const *subj){
       size_t i;
       char const *cp;
 
-      in.l = strlen(in.s = n_UNCONST(subj));
+      in.l = su_cs_len(in.s = n_UNCONST(subj));
       mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
 
-      i = strlen(cp = subject_re_trim(out.s)) +1;
+      i = su_cs_len(cp = subject_re_trim(out.s)) +1;
       /* RFC mandates english "Re: " */
       newsubj = n_autorec_alloc(sizeof("Re: ") -1 + i);
       memcpy(newsubj, "Re: ", sizeof("Re: ") -1);
@@ -132,7 +136,7 @@ a_crese_reply_to(struct message *mp){
       }
 
       tr = _("Reply-To %s%s");
-      l = strlen(tr) + strlen(rt->n_name) + 3 +1;
+      l = su_cs_len(tr) + su_cs_len(rt->n_name) + 3 +1;
       sp = n_lofi_alloc(l);
 
       snprintf(sp, l, tr, rt->n_name, (rt->n_flink != NULL ? "..." : n_empty));
@@ -171,7 +175,7 @@ a_crese_mail_followup_to(struct message *mp){
       }
 
       tr = _("Followup-To %s%s");
-      l = strlen(tr) + strlen(mft->n_name) + 3 +1;
+      l = su_cs_len(tr) + su_cs_len(mft->n_name) + 3 +1;
       sp = n_lofi_alloc(l);
 
       snprintf(sp, l, tr, mft->n_name,
@@ -218,7 +222,7 @@ jredo:
 
       /* Try primary, then secondary */
       for(xp = hp->h_mailx_orig_to; xp != NULL; xp = xp->n_flink)
-         if(!asccasecmp(xp->n_name, nnp->n_name))
+         if(!su_cs_cmp_case(xp->n_name, nnp->n_name))
             goto jlink;
 
       if(once){
@@ -227,7 +231,7 @@ jredo:
       }
 
       for(xp = hp->h_mailx_orig_cc; xp != NULL; xp = xp->n_flink)
-         if(!asccasecmp(xp->n_name, nnp->n_name))
+         if(!su_cs_cmp_case(xp->n_name, nnp->n_name))
             goto jlink;
 
       /* If this receiver came in only via R-T: or M-F-T:, place her/him/it in
@@ -282,11 +286,11 @@ a_crese_make_ref_and_cs(struct message *mp, struct header *head) /* TODO ASAP*/
 
    reflen = 1;
    if (oldref) {
-      oldreflen = strlen(oldref);
+      oldreflen = su_cs_len(oldref);
       reflen += oldreflen + 2;
    }
    if (oldmsgid) {
-      oldmsgidlen = strlen(oldmsgid);
+      oldmsgidlen = su_cs_len(oldmsgid);
       reflen += oldmsgidlen;
    }
 
@@ -480,7 +484,7 @@ j_lt_redo:
          nhp = nhp->n_flink;
 
          /* XXX is_mlist_mp()?? */
-         if((cp != NULL && !asccasecmp(cp, np->n_name)) ||
+         if((cp != NULL && !su_cs_cmp_case(cp, np->n_name)) ||
                is_mlist(np->n_name, FAL0) != MLIST_OTHER){
             if((np->n_blink = tail) != NULL)
                tail->n_flink = np;
@@ -697,11 +701,11 @@ a_crese__fwdedit(char *subj){
       goto jleave;
 
    in.s = subj;
-   in.l = strlen(subj);
+   in.l = su_cs_len(subj);
    mime_fromhdr(&in, &out, TD_ISPR | TD_ICONV);
 
    newsubj = n_autorec_alloc(out.l + 6);
-   if(!ascncasecmp(out.s, "Fwd: ", sizeof("Fwd: ") -1)) /* TODO EXTEND SUPP. */
+   if(!su_cs_cmp_case_n(out.s, "Fwd: ", sizeof("Fwd: ") -1)) /* TODO EXTEND */
       memcpy(newsubj, out.s, out.l +1);
    else{
       memcpy(newsubj, "Fwd: ", 5); /* TODO ..a la subject_re_trim()! */

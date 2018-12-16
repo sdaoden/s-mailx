@@ -26,9 +26,13 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
+
 #ifdef mx_HAVE_SOCKETS
 # include <su/icodec.h>
 #endif
+
+#include "mx/ui-str.h"
 
 #ifdef mx_HAVE_NETRC
   /* NetBSD usr.bin/ftp/ruserpass.c uses 100 bytes for that, we need four
@@ -181,7 +185,7 @@ jm_h:
       else {
          char *cp;
          for (cp = host; *cp != '\0'; ++cp)
-            *cp = lowerconv(*cp);
+            *cp = su_cs_to_lower(*cp);
       }
 
       *user = *pass = '\0';
@@ -223,7 +227,8 @@ jm_h:
       }
 
       if (!seen_default && (*user != '\0' || *pass != '\0')) {
-         size_t hl = strlen(host), ul = strlen(user), pl = strlen(pass);
+         size_t hl = su_cs_len(host), ul = su_cs_len(user),
+            pl = su_cs_len(pass);
          struct nrc_node *nx = n_alloc(n_VSTRUCT_SIZEOF(struct nrc_node,
                nrc_dat) + hl +1 + ul +1 + pl +1);
 
@@ -293,7 +298,7 @@ __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN], bool_t *nl_last)
       if (feof(fi) || ferror(fi))
          goto jleave;
 
-      for (seen_nl = *nl_last; (c = getc(fi)) != EOF && whitechar(c);)
+      for (seen_nl = *nl_last; (c = getc(fi)) != EOF && su_cs_is_white(c);)
          seen_nl |= (c == '\n');
 
       if (c == EOF)
@@ -326,7 +331,7 @@ __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN], bool_t *nl_last)
       }
    } else {
       *cp++ = c;
-      while ((c = getc(fi)) != EOF && !whitechar(c)) {
+      while ((c = getc(fi)) != EOF && !su_cs_is_white(c)) {
          /* Rverse solidus  escaping the next character is (Net)BSD syntax */
          if (c == '\\' && (c = getc(fi)) == EOF)
                break;
@@ -342,17 +347,17 @@ __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN], bool_t *nl_last)
 
    if (*buffer == '\0')
       do {/*rv = NRC_NONE*/} while (0);
-   else if (!strcmp(buffer, "default"))
+   else if (!su_cs_cmp(buffer, "default"))
       rv = NRC_DEFAULT;
-   else if (!strcmp(buffer, "login"))
+   else if (!su_cs_cmp(buffer, "login"))
       rv = NRC_LOGIN;
-   else if (!strcmp(buffer, "password") || !strcmp(buffer, "passwd"))
+   else if (!su_cs_cmp(buffer, "password") || !su_cs_cmp(buffer, "passwd"))
       rv = NRC_PASSWORD;
-   else if (!strcmp(buffer, "account"))
+   else if (!su_cs_cmp(buffer, "account"))
       rv = NRC_ACCOUNT;
-   else if (!strcmp(buffer, "macdef"))
+   else if (!su_cs_cmp(buffer, "macdef"))
       rv = NRC_MACDEF;
-   else if (!strcmp(buffer, "machine"))
+   else if (!su_cs_cmp(buffer, "machine"))
       rv = NRC_MACHINE;
    else
       rv = NRC_INPUT;
@@ -580,7 +585,7 @@ FL char *
    /* C99 */{
       size_t i;
 
-      i = strlen(cp);
+      i = su_cs_len(cp);
       if(i >= UIZ_MAX / 3){
          n = NULL;
          goto jleave;
@@ -594,7 +599,7 @@ FL char *
       /* (RFC 1738) RFC 3986, 2.3 Unreserved Characters:
        *    ALPHA / DIGIT / "-" / "." / "_" / "~"
        * However add a special is[file]path mode for file-system friendliness */
-      if (alnumchar(c1) || c1 == '_')
+      if (su_cs_is_alnum(c1) || c1 == '_')
          *np++ = c1;
       else if (!ispath) {
          if (c1 != '-' && c1 != '.' && c1 != '~')
@@ -622,7 +627,7 @@ FL char *
    si32_t c;
    n_NYD2_IN;
 
-   np = n = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(strlen(cp) +1,
+   np = n = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(su_cs_len(cp) +1,
          su_DBG_LOC_ARGS_ORUSE);
 
    while ((c = (uc_i)*cp++) != '\0') {
@@ -651,10 +656,10 @@ c_urlcodec(void *vp){
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
 
    act = *argv;
-   for(cp = act; *cp != '\0' && !blankspacechar(*cp); ++cp)
+   for(cp = act; *cp != '\0' && !su_cs_is_space(*cp); ++cp)
       ;
    if((ispath = (*act == 'p'))){
-      if(!ascncasecmp(++act, "ath", 3))
+      if(!su_cs_cmp_case_n(++act, "ath", 3))
          act += 3;
    }
    if(act >= cp)
@@ -665,9 +670,9 @@ c_urlcodec(void *vp){
 
    n_pstate_err_no = su_ERR_NONE;
 
-   if(is_ascncaseprefix(act, "encode", alen))
+   if(su_cs_starts_with_case_n("encode", act, alen))
       varres = urlxenc(cp, ispath);
-   else if(is_ascncaseprefix(act, "decode", alen))
+   else if(su_cs_starts_with_case_n("decode", act, alen))
       varres = urlxdec(cp);
    else
       goto jesynopsis;
@@ -686,7 +691,7 @@ c_urlcodec(void *vp){
    }else{
       struct str in, out;
 
-      in.l = strlen(in.s = n_UNCONST(varres));
+      in.l = su_cs_len(in.s = n_UNCONST(varres));
       makeprint(&in, &out);
       if(fprintf(n_stdout, "%s\n", out.s) < 0){
          n_pstate_err_no = su_err_no();
@@ -721,7 +726,7 @@ c_urlencode(void *v) /* XXX IDNA?? */
          out = n_UNCONST(V_(n_error));
       fprintf(n_stdout,
          " in: <%s> (%" PRIuZ " bytes)\nout: <%s> (%" PRIuZ " bytes)\n",
-         in, strlen(in), out, strlen(out));
+         in, su_cs_len(in), out, su_cs_len(out));
    }
    n_NYD_OU;
    return 0;
@@ -742,7 +747,7 @@ c_urldecode(void *v) /* XXX IDNA?? */
          out = n_UNCONST(V_(n_error));
       fprintf(n_stdout,
          " in: <%s> (%" PRIuZ " bytes)\nout: <%s> (%" PRIuZ " bytes)\n",
-         in, strlen(in), out, strlen(out));
+         in, su_cs_len(in), out, su_cs_len(out));
    }
    n_NYD_OU;
    return 0;
@@ -755,7 +760,7 @@ url_mailto_to_address(char const *mailtop){ /* TODO hack! RFC 6068; factory? */
    char const *mailtop_orig;
    n_NYD_IN;
 
-   if(!is_prefix("mailto:", mailtop_orig = mailtop)){
+   if(!su_cs_starts_with(mailtop_orig = mailtop, "mailto:")){
       rv = NULL;
       goto jleave;
    }
@@ -764,12 +769,12 @@ url_mailto_to_address(char const *mailtop){ /* TODO hack! RFC 6068; factory? */
    /* TODO This is all intermediate, and for now just enough to understand
     * TODO a little bit of a little more advanced List-Post: headers. */
    /* Strip any hfield additions, keep only to addr-spec's */
-   if((rv = strchr(mailtop, '?')) != NULL)
+   if((rv = su_cs_find_c(mailtop, '?')) != NULL)
       rv = savestrbuf(mailtop, i = PTR2SIZE(rv - mailtop));
    else
-      rv = savestrbuf(mailtop, i = strlen(mailtop));
+      rv = savestrbuf(mailtop, i = su_cs_len(mailtop));
 
-   i = strlen(rv);
+   i = su_cs_len(rv);
 
    /* Simply perform percent-decoding if there is a percent % */
    if(memchr(rv, '%', i) != NULL){
@@ -832,7 +837,7 @@ n_servbyname(char const *proto, ui16_t *irv_or_null){
    l = PTR2SIZE(rv - proto);
 
    for(rv = NULL, i = 0; i < n_NELEM(tbl); ++i)
-      if(!ascncasecmp(tbl[i].name, proto, l)){
+      if(!su_cs_cmp_case_n(tbl[i].name, proto, l)){
          rv = tbl[i].port;
          if(irv_or_null != NULL)
             *irv_or_null = tbl[i].portno;
@@ -872,7 +877,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #define a_PRIVPROTOX(X,Y,Z) \
    do{ a_PROTOX(X, Y, Z); }while(0)
 #define a__IF(X,Y,Z)  \
-   if(!ascncasecmp(data, X "://", sizeof(X "://") -1)){\
+   if(!su_cs_cmp_case_n(data, X "://", sizeof(X "://") -1)){\
       a_PROTOX(X, Y, Z);\
       data += sizeof(X "://") -1;\
       goto juser;\
@@ -891,7 +896,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
       /* The special `tls' certificate info protocol
        * We do allow all protos here, for later getaddrinfo() usage! */
 #ifdef mx_HAVE_TLS
-      if((cp = strstr(data, "://")) == NULL)
+      if((cp = su_cs_find(data, "://")) == NULL)
          a_PRIVPROTOX("https", 443, urlp->url_flags |= n_URL_TLS_REQUIRED);
       else{
          size_t i;
@@ -961,7 +966,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #undef a_IFS
 #undef a_IFs
 
-   if (strstr(data, "://") != NULL) {
+   if (su_cs_find(data, "://") != NULL) {
 jeproto:
       n_err(_("URL proto:// invalid (protocol or TLS support missing?): %s\n"),
          urlp->url_input);
@@ -992,10 +997,10 @@ juser:
 
          if((urlp->url_pass.s = urlxdec(ub)) == NULL)
             goto jurlp_err;
-         urlp->url_pass.l = strlen(urlp->url_pass.s);
+         urlp->url_pass.l = su_cs_len(urlp->url_pass.s);
          if((urlpe = urlxenc(urlp->url_pass.s, FAL0)) == NULL)
             goto jurlp_err;
-         if(strcmp(ub, urlpe))
+         if(su_cs_cmp(ub, urlpe))
             goto jurlp_err;
          l = i;
       }
@@ -1004,10 +1009,10 @@ juser:
       ub[l] = '\0';
       if((urlp->url_user.s = urlxdec(ub)) == NULL)
          goto jurlp_err;
-      urlp->url_user.l = strlen(urlp->url_user.s);
+      urlp->url_user.l = su_cs_len(urlp->url_user.s);
       if((urlp->url_user_enc.s = urlxenc(urlp->url_user.s, FAL0)) == NULL)
          goto jurlp_err;
-      urlp->url_user_enc.l = strlen(urlp->url_user_enc.s);
+      urlp->url_user_enc.l = su_cs_len(urlp->url_user_enc.s);
 
       if(urlp->url_user_enc.l != l || memcmp(urlp->url_user_enc.s, ub, l)){
 jurlp_err:
@@ -1021,9 +1026,9 @@ jurlp_err:
    }
 
    /* Servername and port -- and possible path suffix */
-   if ((cp = strchr(data, ':')) != NULL) { /* TODO URL parse, use IPAddress! */
+   if ((cp = su_cs_find_c(data, ':')) != NULL) { /* TODO URL: use IPAddress! */
       urlp->url_port = x = savestr(x = &cp[1]);
-      if ((x = strchr(x, '/')) != NULL) {
+      if ((x = su_cs_find_c(x, '/')) != NULL) {
          *x = '\0';
          while(*++x == '/')
             ;
@@ -1036,12 +1041,12 @@ jurlp_err:
          goto jleave;
       }
    } else {
-      if ((x = strchr(data, '/')) != NULL) {
+      if ((x = su_cs_find_c(data, '/')) != NULL) {
          data = savestrbuf(data, PTR2SIZE(x - data));
          while(*++x == '/')
             ;
       }
-      cp = n_UNCONST(data + strlen(data));
+      cp = n_UNCONST(data + su_cs_len(data));
    }
 
    /* A (non-empty) path may only occur with IMAP */
@@ -1051,7 +1056,7 @@ jurlp_err:
       size_t i;
       bool_t trailsol;
 
-      for(trailsol = FAL0, x2 = savestrbuf(x, i = strlen(x)); i > 0;
+      for(trailsol = FAL0, x2 = savestrbuf(x, i = su_cs_len(x)); i > 0;
             trailsol = TRU1, --i)
          if(x2[i - 1] != '/')
             break;
@@ -1083,7 +1088,7 @@ jurlp_err:
    urlp->url_host.s = savestrbuf(data, urlp->url_host.l = PTR2SIZE(cp - data));
    {  size_t i;
       for (cp = urlp->url_host.s, i = urlp->url_host.l; i != 0; ++cp, --i)
-         *cp = lowerconv(*cp);
+         *cp = su_cs_to_lower(*cp);
    }
 # ifdef mx_HAVE_IDNA
    if(!ok_blook(idna_disable)){
@@ -1103,7 +1108,7 @@ jurlp_err:
    {  size_t upl, i;
       struct str *s = &urlp->url_h_p;
 
-      upl = (urlp->url_port == NULL) ? 0 : 1u + strlen(urlp->url_port);
+      upl = (urlp->url_port == NULL) ? 0 : 1u + su_cs_len(urlp->url_port);
       s->s = n_autorec_alloc(urlp->url_host.l + upl +1);
       memcpy(s->s, urlp->url_host.s, i = urlp->url_host.l);
       if(upl > 0){
@@ -1128,13 +1133,13 @@ jurlp_err:
             urlp->url_user.s = n_UNCONST(ok_vlook(LOGNAME));
       }
 
-      urlp->url_user.l = strlen(urlp->url_user.s);
+      urlp->url_user.l = su_cs_len(urlp->url_user.s);
       urlp->url_user.s = savestrbuf(urlp->url_user.s, urlp->url_user.l);
       if((urlp->url_user_enc.s = urlxenc(urlp->url_user.s, FAL0)) == NULL){
          n_err(_("Cannot URL encode %s\n"), urlp->url_user.s);
          goto jleave;
       }
-      urlp->url_user_enc.l = strlen(urlp->url_user_enc.s);
+      urlp->url_user_enc.l = su_cs_len(urlp->url_user_enc.s);
    }
 
    /* And then there are a lot of prebuild string combinations TODO do lazy */
@@ -1149,7 +1154,7 @@ jurlp_err:
             (cp = ok_vlook(smtp_hostname)) != NULL) {
          if (*cp == '\0')
             cp = n_nodename(TRU1);
-         h.s = savestrbuf(cp, h.l = strlen(cp));
+         h.s = savestrbuf(cp, h.l = su_cs_len(cp));
       } else
          h = urlp->url_host;
 
@@ -1201,7 +1206,7 @@ jurlp_err:
       ud = n_autorec_alloc((i = urlp->url_proto_len + sizeof("://") -1 +
             urlp->url_u_h_p.l) +1);
       urlp->url_proto[urlp->url_proto_len] = ':';
-      memcpy(sstpcpy(ud, urlp->url_proto), urlp->url_u_h_p.s,
+      memcpy(su_cs_pcopy(ud, urlp->url_proto), urlp->url_u_h_p.s,
          urlp->url_u_h_p.l +1);
       urlp->url_proto[urlp->url_proto_len] = '\0';
 
@@ -1215,7 +1220,7 @@ jurlp_err:
       ud = n_autorec_alloc((i = urlp->url_proto_len + sizeof("://") -1 +
             urlp->url_eu_h_p.l) + 1 + urlp->url_path.l +1);
       urlp->url_proto[urlp->url_proto_len] = ':';
-      memcpy(sstpcpy(ud, urlp->url_proto), urlp->url_eu_h_p.s,
+      memcpy(su_cs_pcopy(ud, urlp->url_proto), urlp->url_eu_h_p.s,
          urlp->url_eu_h_p.l +1);
       urlp->url_proto[urlp->url_proto_len] = '\0';
 
@@ -1287,7 +1292,7 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
    }
 
    ccp->cc_cproto = cproto;
-   addrlen = strlen(addr);
+   addrlen = su_cs_len(addr);
    vbuf = n_lofi_alloc(pxlen + addrlen + sizeof("-password-")-1 +1);
    memcpy(vbuf, pxstr, pxlen);
 
@@ -1300,23 +1305,23 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
          s = n_UNCONST(authdef);
    }
 
-   if (!asccasecmp(s, "none")) {
+   if (!su_cs_cmp_case(s, "none")) {
       ccp->cc_auth = "NONE";
       ccp->cc_authtype = AUTHTYPE_NONE;
       /*ware = NONE;*/
-   } else if (!asccasecmp(s, "plain")) {
+   } else if (!su_cs_cmp_case(s, "plain")) {
       ccp->cc_auth = "PLAIN";
       ccp->cc_authtype = AUTHTYPE_PLAIN;
       ware = REQ_PASS | REQ_USER;
-   } else if (!asccasecmp(s, "login")) {
+   } else if (!su_cs_cmp_case(s, "login")) {
       ccp->cc_auth = "LOGIN";
       ccp->cc_authtype = AUTHTYPE_LOGIN;
       ware = REQ_PASS | REQ_USER;
-   } else if (!asccasecmp(s, "cram-md5")) {
+   } else if (!su_cs_cmp_case(s, "cram-md5")) {
       ccp->cc_auth = "CRAM-MD5";
       ccp->cc_authtype = AUTHTYPE_CRAM_MD5;
       ware = REQ_PASS | REQ_USER;
-   } else if (!asccasecmp(s, "gssapi")) {
+   } else if (!su_cs_cmp_case(s, "gssapi")) {
       ccp->cc_auth = "GSS-API";
       ccp->cc_authtype = AUTHTYPE_GSSAPI;
       ware = REQ_USER;
@@ -1358,7 +1363,7 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
             ccp = NULL;
             goto jleave;
          }
-         ccp->cc_user.l = strlen(ccp->cc_user.s);
+         ccp->cc_user.l = su_cs_len(ccp->cc_user.s);
       } else if (ware & REQ_USER)
          goto jgetuser;
       goto jpass;
@@ -1380,7 +1385,7 @@ jgetuser:   /* TODO v15.0: today we simply bail, but we should call getuser().
          }
       }
    }
-   ccp->cc_user.l = strlen(ccp->cc_user.s = savestr(s));
+   ccp->cc_user.l = su_cs_len(ccp->cc_user.s = savestr(s));
 
    /* Password */
 jpass:
@@ -1407,7 +1412,7 @@ jpass:
       }
    }
    if (s != NULL)
-      ccp->cc_pass.l = strlen(ccp->cc_pass.s = savestr(s));
+      ccp->cc_pass.l = su_cs_len(ccp->cc_pass.s = savestr(s));
 
 jleave:
    n_lofi_free(vbuf);
@@ -1471,23 +1476,23 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
          (s = xok_VLOOK(authokey, urlp, OXM_ALL)) == NULL)
       s = n_UNCONST(authdef);
 
-   if (!asccasecmp(s, "none")) {
+   if (!su_cs_cmp_case(s, "none")) {
       ccp->cc_auth = "NONE";
       ccp->cc_authtype = AUTHTYPE_NONE;
       /*ware = NONE;*/
-   } else if (!asccasecmp(s, "plain")) {
+   } else if (!su_cs_cmp_case(s, "plain")) {
       ccp->cc_auth = "PLAIN";
       ccp->cc_authtype = AUTHTYPE_PLAIN;
       ware = REQ_PASS | REQ_USER;
-   } else if (!asccasecmp(s, "login")) {
+   } else if (!su_cs_cmp_case(s, "login")) {
       ccp->cc_auth = "LOGIN";
       ccp->cc_authtype = AUTHTYPE_LOGIN;
       ware = REQ_PASS | REQ_USER;
-   } else if (!asccasecmp(s, "cram-md5")) {
+   } else if (!su_cs_cmp_case(s, "cram-md5")) {
       ccp->cc_auth = "CRAM-MD5";
       ccp->cc_authtype = AUTHTYPE_CRAM_MD5;
       ware = REQ_PASS | REQ_USER;
-   } else if (!asccasecmp(s, "gssapi")) {
+   } else if (!su_cs_cmp_case(s, "gssapi")) {
       ccp->cc_auth = "GSS-API";
       ccp->cc_authtype = AUTHTYPE_GSSAPI;
       ware = REQ_USER;
@@ -1544,7 +1549,7 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
       if((s = getpassword(savecat(urlp->url_u_h.s, _(" requires a password: ")))
             ) != NULL)
 js2pass:
-         ccp->cc_pass.l = strlen(ccp->cc_pass.s = savestr(s));
+         ccp->cc_pass.l = su_cs_len(ccp->cc_pass.s = savestr(s));
       else {
          n_err(_("A password is necessary for %s authentication\n"), pstr);
          ccp = NULL;
@@ -1575,12 +1580,12 @@ c_netrc(void *v)
       goto jlist;
    if (argv[1] != NULL)
       goto jerr;
-   if (!asccasecmp(*argv, "show"))
+   if (!su_cs_cmp_case(*argv, "show"))
       goto jlist;
    load_only = TRU1;
-   if (!asccasecmp(*argv, "load"))
+   if (!su_cs_cmp_case(*argv, "load"))
       goto jlist;
-   if (!asccasecmp(*argv, "clear"))
+   if (!su_cs_cmp_case(*argv, "clear"))
       goto jclear;
 jerr:
    n_err(_("Synopsis: netrc: (<show> or) <clear> the .netrc cache\n"));
@@ -1671,7 +1676,7 @@ cram_md5_string(struct str const *user, struct str const *pass,
       goto jleave;
 
    in.s = n_UNCONST(b64);
-   in.l = strlen(in.s);
+   in.l = su_cs_len(in.s);
    if(!b64_decode(&out, &in))
       goto jleave;
    if(out.l >= INT_MAX){

@@ -42,6 +42,10 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
+
+#include "mx/iconv.h"
+
 enum a_nag_type{
    /* Main types */
    a_NAG_T_ALTERNATES = 1,
@@ -249,10 +253,10 @@ a_nag_is_same_name(char const *n1, char const *n2){
    if(ok_blook(allnet)){
       for(;; ++n1, ++n2){
          c1 = *n1;
-         c1 = lowerconv(c1);
+         c1 = su_cs_to_lower(c1);
          c1r = (c1 == '\0' || c1 == '@');
          c2 = *n2;
-         c2 = lowerconv(c2);
+         c2 = su_cs_to_lower(c2);
          c2r = (c2 == '\0' || c2 == '@');
 
          if(c1r || c2r){
@@ -264,7 +268,7 @@ a_nag_is_same_name(char const *n1, char const *n2){
          }
       }
    }else
-      rv = !asccasecmp(n1, n2);
+      rv = !su_cs_cmp_case(n1, n2);
    n_NYD2_OU;
    return rv;
 }
@@ -295,7 +299,7 @@ a_nag_yankname(char const *ap, char *wbuf, char const *separators,
    *(wp = wbuf) = '\0';
 
    /* Skip over intermediate list trash, as in ".org>  ,  <xy@zz.org>" */
-   for (c = *ap; blankchar(c) || c == ','; c = *++ap)
+   for (c = *ap; su_cs_is_blank(c) || c == ','; c = *++ap)
       ;
    if (c == '\0') {
       cp = NULL;
@@ -340,15 +344,15 @@ jwpwc:
          lastsp = 0;
          continue;
       }
-      if (strchr(separators, c) != NULL)
+      if (su_cs_find_c(separators, c) != NULL)
          break;
 
       lc = lastsp;
-      lastsp = blankchar(c);
+      lastsp = su_cs_is_blank(c);
       if (!lastsp || !lc)
          *wp++ = c;
    }
-   if (blankchar(lc))
+   if (su_cs_is_blank(lc))
       --wp;
 
    *wp = '\0';
@@ -372,7 +376,7 @@ a_nag_extract1(char const *line, enum gfield ntype, char const *separators,
 
    np = NULL;
    cp = line;
-   nbuf = n_alloc(strlen(line) +1);
+   nbuf = n_alloc(su_cs_len(line) +1);
    while ((cp = a_nag_yankname(cp, nbuf, separators, keepcomms)) != NULL) {
       t = nalloc(nbuf, ntype);
       if (topp == NULL)
@@ -411,7 +415,7 @@ a_nag_gexpand(size_t level, struct name *nlist, struct a_nag_group *ngp,
 
       cp = ngnp->ngn_id;
 
-      if(!strcmp(cp, ngp->ng_id))
+      if(!su_cs_cmp(cp, ngp->ng_id))
          goto jas_is;
 
       if((xngp = a_nag_group_find(a_NAG_T_ALIAS, cp)) != NULL){
@@ -457,7 +461,7 @@ a_nag_elide_qsort(void const *s1, void const *s2){
 
    np1 = s1;
    np2 = s2;
-   if(!(rv = asccasecmp((*np1)->n_name, (*np2)->n_name))){
+   if(!(rv = su_cs_cmp_case((*np1)->n_name, (*np2)->n_name))){
       n_LCTAV(GTO < GCC && GCC < GBCC);
       rv = ((*np1)->n_type & (GTO | GCC | GBCC)) -
             ((*np2)->n_type & (GTO | GCC | GBCC));
@@ -510,7 +514,7 @@ a_nag_group_lookup(enum a_nag_type nt, struct a_nag_group_lookup *nglp,
       }
 
       nglp->ngl_htable = ngpa;
-      h = icase ? n_torek_ihash(id) : n_torek_hash(id);
+      h = icase ? su_cs_hash_case(id) : su_cs_hash(id);
       ngp = *(nglp->ngl_slot = &ngpa[h % HSHSIZE]);
    }
 
@@ -518,15 +522,15 @@ a_nag_group_lookup(enum a_nag_type nt, struct a_nag_group_lookup *nglp,
    c1 = *id++;
 
    if(icase){
-      c1 = lowerconv(c1);
+      c1 = su_cs_to_lower(c1);
       for(; ngp != NULL; lngp = ngp, ngp = ngp->ng_next)
          if((ngp->ng_type & a_NAG_T_MASK) == nt && *ngp->ng_id == c1 &&
-               !asccasecmp(&ngp->ng_id[1], id))
+               !su_cs_cmp_case(&ngp->ng_id[1], id))
             break;
    }else{
       for(; ngp != NULL; lngp = ngp, ngp = ngp->ng_next)
          if((ngp->ng_type & a_NAG_T_MASK) == nt && *ngp->ng_id == c1 &&
-               !strcmp(&ngp->ng_id[1], id))
+               !su_cs_cmp(&ngp->ng_id[1], id))
             break;
    }
 
@@ -622,7 +626,7 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
    if((ngp = a_nag_group_lookup(nt, &ngl, id)) != NULL)
       goto jleave;
 
-   l = strlen(id) +1;
+   l = su_cs_len(id) +1;
    if(UIZ_MAX - n_ALIGN(l) <=
          n_ALIGN(n_VSTRUCT_SIZEOF(struct a_nag_group, ng_id)))
       goto jleave;
@@ -668,7 +672,7 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
       char *cp, c;
 
       for(cp = ngp->ng_id; (c = *cp) != '\0'; ++cp)
-         *cp = lowerconv(c);
+         *cp = su_cs_to_lower(c);
       }break;
    default:
       break;
@@ -937,7 +941,7 @@ a_nag__group_print_qsorter(void const *a, void const *b){
    int rv;
    n_NYD2_IN;
 
-   rv = strcmp(*(char**)n_UNCONST(a), *(char**)n_UNCONST(b));
+   rv = su_cs_cmp(*(char**)n_UNCONST(a), *(char**)n_UNCONST(b));
    n_NYD2_OU;
    return rv;
 }
@@ -1235,12 +1239,12 @@ nalloc(char const *str, enum gfield ntype)
             goto jskipfullextra;
          i = ag.ag_ilen - e;
          in.s = n_lofi_alloc(s + 1 + i +1);
-         while(s > 0 && blankchar(str[s - 1]))
+         while(s > 0 && su_cs_is_blank(str[s - 1]))
             --s;
          memcpy(in.s, str, s);
          if (i > 0) {
             in.s[s++] = ' ';
-            while (blankchar(str[e])) {
+            while (su_cs_is_blank(str[e])) {
                ++e;
                if (--i == 0)
                   break;
@@ -1252,9 +1256,9 @@ nalloc(char const *str, enum gfield ntype)
          in.s[in.l = s] = '\0';
          mime_fromhdr(&in, &out, /* TODO TD_ISPR |*/ TD_ICONV);
 
-         for (cp = out.s, i = out.l; i > 0 && spacechar(*cp); --i, ++cp)
+         for (cp = out.s, i = out.l; i > 0 && su_cs_is_space(*cp); --i, ++cp)
             ;
-         while (i > 0 && spacechar(cp[i - 1]))
+         while (i > 0 && su_cs_is_space(cp[i - 1]))
             --i;
          np->n_fullextra = savestrbuf(cp, i);
 
@@ -1481,7 +1485,7 @@ detract(struct name *np, enum gfield ntype)
    for (p = np; p != NULL; p = p->n_flink) {
       if (ntype && (p->n_type & GMASK) != ntype)
          continue;
-      s += strlen(flags & GNAMEONLY ? p->n_name : p->n_fullname) +1;
+      s += su_cs_len(flags & GNAMEONLY ? p->n_name : p->n_fullname) +1;
       if (flags & GCOMMA)
          ++s;
    }
@@ -1494,7 +1498,7 @@ detract(struct name *np, enum gfield ntype)
    for (p = np; p != NULL; p = p->n_flink) {
       if (ntype && (p->n_type & GMASK) != ntype)
          continue;
-      cp = sstpcpy(cp, (flags & GNAMEONLY ? p->n_name : p->n_fullname));
+      cp = su_cs_pcopy(cp, (flags & GNAMEONLY ? p->n_name : p->n_fullname));
       if ((flags & GCOMMA) && p->n_flink != NULL)
          *cp++ = ',';
       *cp++ = ' ';
@@ -1530,10 +1534,10 @@ name_is_same_domain(struct name const *n1, struct name const *n2)
    bool_t rv;
    n_NYD_IN;
 
-   d1 = strrchr(n1->n_name, '@');
-   d2 = strrchr(n2->n_name, '@');
+   d1 = su_cs_rfind_c(n1->n_name, '@');
+   d2 = su_cs_rfind_c(n2->n_name, '@');
 
-   rv = (d1 != NULL && d2 != NULL) ? !asccasecmp(++d1, ++d2) : FAL0;
+   rv = (d1 != NULL && d2 != NULL) ? !su_cs_cmp_case(++d1, ++d2) : FAL0;
 
    n_NYD_OU;
    return rv;
@@ -1666,7 +1670,7 @@ elide(struct name *names)
 
    /* Remove duplicates XXX speedup, or list_uniq()! */
    for(j = 0, --i; j < i;){
-      if(asccasecmp(nparr[j]->n_name, nparr[k = j + 1]->n_name))
+      if(su_cs_cmp_case(nparr[j]->n_name, nparr[k = j + 1]->n_name))
          ++j;
       else{
          for(; k < i; ++k)
@@ -1738,7 +1742,7 @@ c_alternates(void *vp){
          }
          ccp = np->n_name;
 
-         l = strlen(ccp) +1;
+         l = su_cs_len(ccp) +1;
          if((ngp = a_nag_group_fetch(a_NAG_T_ALTERNATES, ccp, l)) == NULL){
             n_err(_("Failed to create storage for alternates: %s\n"),
                n_shexp_quote_cp(ccp, FAL0));
@@ -1908,7 +1912,7 @@ c_addrcodec(void *vp){
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
 
    act = *argv;
-   for(cp = act; *cp != '\0' && !blankspacechar(*cp); ++cp)
+   for(cp = act; *cp != '\0' && !su_cs_is_space(*cp); ++cp)
       ;
    mode = 0;
    if(*act == '+')
@@ -1923,7 +1927,7 @@ c_addrcodec(void *vp){
    if(*cp != '\0')
       ++cp;
 
-   trims.l = strlen(trims.s = n_UNCONST(cp));
+   trims.l = su_cs_len(trims.s = n_UNCONST(cp));
    cp = savestrbuf(n_str_trim(&trims, n_STR_TRIM_BOTH)->s, trims.l);
    if(trims.l <= UIZ_MAX / 4)
          trims.l <<= 1;
@@ -1931,7 +1935,7 @@ c_addrcodec(void *vp){
 
    n_pstate_err_no = su_ERR_NONE;
 
-   if(is_ascncaseprefix(act, "encode", alen)){
+   if(su_cs_starts_with_case_n("encode", act, alen)){
       /* This function cannot be a simple nalloc() wrapper even later on, since
        * we may need to turn any ", () or \ into quoted-pairs */
       char c;
@@ -1956,7 +1960,7 @@ c_addrcodec(void *vp){
          cp = np->n_fullname;
       }
    }else if(mode == 0){
-      if(is_ascncaseprefix(act, "decode", alen)){
+      if(su_cs_starts_with_case_n("decode", act, alen)){
          char c;
 
          while((c = *cp++) != '\0'){
@@ -1986,8 +1990,8 @@ c_addrcodec(void *vp){
             }
          }
          cp = n_string_cp(sp);
-      }else if(is_ascncaseprefix(act, "skin", alen) ||
-            (mode = 1, is_ascncaseprefix(act, "skinlist", alen))){
+      }else if(su_cs_starts_with_case_n("skin", act, alen) ||
+            (mode = 1, su_cs_starts_with_case_n("skinlist", act, alen))){
          /* Let's just use the is-single-address hack for this one, too.. */
          if(n_addrspec_with_guts(&ag, cp, TRU1, TRU1) == NULL ||
                (ag.ag_n_flags & (NAME_ADDRSPEC_ISADDR | NAME_ADDRSPEC_INVALID)
@@ -2047,9 +2051,9 @@ c_commandalias(void *vp){
    /* Verify the name is a valid one, and not a command modifier.
     * NOTE: this list duplicates settings isolated somewhere else (go.c) */
    if(*ccp == '\0' || *n_cmd_isolate(ccp) != '\0' ||
-         !asccasecmp(ccp, "ignerr") || !asccasecmp(ccp, "local") ||
-         !asccasecmp(ccp, "wysh") || !asccasecmp(ccp, "vput") ||
-         !asccasecmp(ccp, "scope") || !asccasecmp(ccp, "u")){
+         !su_cs_cmp_case(ccp, "ignerr") || !su_cs_cmp_case(ccp, "local") ||
+         !su_cs_cmp_case(ccp, "wysh") || !su_cs_cmp_case(ccp, "vput") ||
+         !su_cs_cmp_case(ccp, "scope") || !su_cs_cmp_case(ccp, "u")){
       n_err(_("`commandalias': not a valid command name: %s\n"),
          n_shexp_quote_cp(ccp, FAL0));
       rv = 1;
@@ -2073,7 +2077,7 @@ c_commandalias(void *vp){
          a_nag_group_del(a_NAG_T_COMMANDALIAS, ccp);
 
       for(i = len = 0, ++argv; argv[i] != NULL; ++i)
-         len += strlen(argv[i]) + 1;
+         len += su_cs_len(argv[i]) + 1;
       if(len == 0)
          len = 1;
 
@@ -2091,7 +2095,7 @@ c_commandalias(void *vp){
          ncap->nca_expand.l = len - 1;
 
          for(len = 0; (ccp = *argv++) != NULL;)
-            if((i = strlen(ccp)) > 0){
+            if((i = su_cs_len(ccp)) > 0){
                if(len++ != 0)
                   *cp++ = ' ';
                memcpy(cp, ccp, i);
@@ -2155,7 +2159,7 @@ n_alias_is_valid_name(char const *name){
        * As extensions allow high-bit bytes, semicolon and period. */
       /* TODO n_alias_is_valid_name(): locale dependent validity check,
        * TODO with Unicode prefix valid UTF-8! */
-      if(!alnumchar(c) && c != '_' && c != '-' &&
+      if(!su_cs_is_alnum(c) && c != '_' && c != '-' &&
             c != '#' && c != ':' && c != '@' &&
             !((ui8_t)c & 0x80) && c != '!' && c != '.'){
          if(c == '$' && cp != name && *cp == '\0')
@@ -2210,7 +2214,7 @@ jerr:
       for(++argv; *argv != NULL; ++argv){
          size_t i;
 
-         i = strlen(*argv) +1;
+         i = su_cs_len(*argv) +1;
          ngnp = n_alloc(n_VSTRUCT_SIZEOF(struct a_nag_grp_names, ngn_id) + i);
          if(ngnp_tail != NULL)
             ngnp_tail->ngn_next = ngnp;
@@ -2428,7 +2432,7 @@ c_shortcut(void *vp){
       if(a_nag_group_find(a_NAG_T_SHORTCUT, *argv) != NULL)
          a_nag_group_del(a_NAG_T_SHORTCUT, *argv);
 
-      l = strlen(argv[1]) +1;
+      l = su_cs_len(argv[1]) +1;
       if((ngp = a_nag_group_fetch(a_NAG_T_SHORTCUT, *argv, l)) == NULL){
          n_err(_("Failed to create storage for shortcut: %s\n"),
             n_shexp_quote_cp(*argv, FAL0));
@@ -2517,7 +2521,7 @@ c_charsetalias(void *vp){
       if(src[0] != '*' || src[1] != '\0')
          a_nag_group_del(a_NAG_T_CHARSETALIAS, src);
 
-      dstl = strlen(dst) +1;
+      dstl = su_cs_len(dst) +1;
       if((ngp = a_nag_group_fetch(a_NAG_T_CHARSETALIAS, src, dstl)) == NULL){
          n_err(_("Failed to create storage for charsetalias: %s\n"),
             n_shexp_quote_cp(src, FAL0));
@@ -2613,10 +2617,10 @@ c_filetype(void *vp){ /* TODO support automatic chains: .tar.gz -> .gz + .tar */
       cp = savestr(ccp);
       ccp = cp;
       while((c = *cp) != '\0')
-         *cp++ = lowerconv(c);
+         *cp++ = su_cs_to_lower(c);
 
-      llc = strlen(argv[1]) +1;
-      lsc = strlen(argv[2]) +1;
+      llc = su_cs_len(argv[1]) +1;
+      lsc = su_cs_len(argv[2]) +1;
       if(UIZ_MAX - llc <= lsc)
          goto jenomem;
 
@@ -2742,10 +2746,11 @@ n_filetype_exists(struct n_file_type *res_or_null, char const *file){
    char const *ext, *lext;
    n_NYD2_IN;
 
-   if((ext = strrchr(file, '/')) != NULL)
+   if((ext = su_cs_rfind_c(file, '/')) != NULL)
       file = ++ext;
 
-   for(lext = NULL; (ext = strchr(file, '.')) != NULL; lext = file = ext){
+   for(lext = NULL; (ext = su_cs_find_c(file, '.')) != NULL;
+         lext = file = ext){
       struct a_nag_group const *ngp;
 
       if((ngp = a_nag_group_find(a_NAG_T_FILETYPE, ++ext)) != NULL){
@@ -2770,17 +2775,17 @@ n_filetype_exists(struct n_file_type *res_or_null, char const *file){
    if(lext == NULL)
       goto jleave;
 
-   if(!asccasecmp(lext, "xz")){
+   if(!su_cs_cmp_case(lext, "xz")){
       n_OBSOLETE(".xz support will vanish, please use the `filetype' command");
       if(res_or_null != NULL)
          *res_or_null = a_nag_OBSOLETE_xz;
       goto jleave;
-   }else if(!asccasecmp(lext, "gz")){
+   }else if(!su_cs_cmp_case(lext, "gz")){
       n_OBSOLETE(".gz support will vanish, please use the `filetype' command");
       if(res_or_null != NULL)
          *res_or_null = a_nag_OBSOLETE_gz;
       goto jleave;
-   }else if(!asccasecmp(lext, "bz2")){
+   }else if(!su_cs_cmp_case(lext, "bz2")){
       n_OBSOLETE(".bz2 support will vanish, please use the `filetype' command");
       if(res_or_null != NULL)
          *res_or_null = a_nag_OBSOLETE_bz2;
@@ -2794,7 +2799,7 @@ n_filetype_exists(struct n_file_type *res_or_null, char const *file){
 #define a_X1 "file-hook-load-"
 #undef a_X2
 #define a_X2 "file-hook-save-"
-      l = strlen(lext);
+      l = su_cs_len(lext);
       vbuf = n_lofi_alloc(l + n_MAX(sizeof(a_X1), sizeof(a_X2)));
 
       memcpy(vbuf, a_X1, sizeof(a_X1) -1);
@@ -2820,9 +2825,9 @@ n_filetype_exists(struct n_file_type *res_or_null, char const *file){
                res_or_null->ft_ext_dat = lext;
                res_or_null->ft_ext_len = l;
                res_or_null->ft_load_dat = cload;
-               res_or_null->ft_load_len = strlen(cload);
+               res_or_null->ft_load_len = su_cs_len(cload);
                res_or_null->ft_save_dat = csave;
-               res_or_null->ft_save_len = strlen(csave);
+               res_or_null->ft_save_len = su_cs_len(csave);
             }
             goto jleave;
          }else

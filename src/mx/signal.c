@@ -41,6 +41,7 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
 #include <su/icodec.h>
 
 /*
@@ -190,12 +191,12 @@ c_sigstate(void *vp){ /* TODO remove again */
    n_NYD2_IN;
 
    if((cp = vp) != NULL && cp[0] != '\0'){
-      if(!asccasecmp(&cp[1], "all")){
+      if(!su_cs_cmp_case(&cp[1], "all")){
          if(cp[0] == '+')
             hold_all_sigs();
          else
             rele_all_sigs();
-      }else if(!asccasecmp(&cp[1], "hold")){
+      }else if(!su_cs_cmp_case(&cp[1], "hold")){
          if(cp[0] == '+')
             hold_sigs();
          else
@@ -486,7 +487,7 @@ _nyd_oncrash(int signo)
    xact.sa_flags = 0;
    sigaction(signo, &xact, NULL);
 
-   i = strlen(tmpdir = ok_vlook(TMPDIR));
+   i = su_cs_len(tmpdir = ok_vlook(TMPDIR));
    fnl = sizeof(VAL_UAGENT) -1;
 
    if (i + 1 + fnl + 1 + sizeof(".dat") > sizeof(pathbuf)) {

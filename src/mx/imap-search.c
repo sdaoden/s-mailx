@@ -47,10 +47,11 @@
 # include "mx/nail.h"
 #endif
 
-#include <su/icodec.h>
-
-EMPTY_FILE()
+su_EMPTY_FILE()
 #ifdef mx_HAVE_IMAP_SEARCH
+
+#include <su/cs.h>
+#include <su/icodec.h>
 
 enum itoken {
    ITBAD, ITEOD, ITBOL, ITEOL, ITAND, ITSET, ITALL, ITANSWERED,
@@ -249,7 +250,7 @@ itscan(char const *spec, char const **xp)
    enum okay rv = OKAY;
    n_NYD_IN;
 
-   while (spacechar(*spec))
+   while (su_cs_is_space(*spec))
       ++spec;
    if (*spec == '(') {
       *xp = &spec[1];
@@ -261,26 +262,27 @@ itscan(char const *spec, char const **xp)
       _it_token = ITEOL;
       goto jleave;
    }
-   while (spacechar(*spec))
+   while (su_cs_is_space(*spec))
       ++spec;
    if (*spec == '\0') {
       _it_token = ITEOD;
       goto jleave;
    }
 
-#define __GO(C)   ((C) != '\0' && (C) != '(' && (C) != ')' && !spacechar(C))
+#define __GO(C) ((C) != '\0' && (C) != '(' && (C) != ')' && !su_cs_is_space(C))
    for (i = 0; _it_strings[i].s_string != NULL; ++i) {
-      n = strlen(_it_strings[i].s_string);
-      if (!ascncasecmp(spec, _it_strings[i].s_string, n) && !__GO(spec[n])) {
+      n = su_cs_len(_it_strings[i].s_string);
+      if (!su_cs_cmp_case_n(spec, _it_strings[i].s_string, n) &&
+            !__GO(spec[n])) {
          _it_token = _it_strings[i].s_token;
          spec += n;
-         while (spacechar(*spec))
+         while (su_cs_is_space(*spec))
             ++spec;
          rv = itsplit(spec, xp);
          goto jleave;
       }
    }
-   if (digitchar(*spec)) {
+   if (su_cs_is_digit(*spec)) {
       su_idec_uz_cp(&_it_number, spec, 10, xp);
       if (!__GO(**xp)) {
          _it_token = ITSET;
@@ -355,17 +357,17 @@ itsplit(char const *spec, char const **xp)
       /* <flag> */ /* TODO use table->flag map search instead */
       if ((rv = itstring(_it_args, spec, xp)) != OKAY)
          break;
-      if (!asccasecmp(_it_args[0], "\\Seen"))
+      if (!su_cs_cmp_case(_it_args[0], "\\Seen"))
          _it_number = MREAD;
-      else if (!asccasecmp(_it_args[0], "\\Deleted"))
+      else if (!su_cs_cmp_case(_it_args[0], "\\Deleted"))
          _it_number = MDELETED;
-      else if (!asccasecmp(_it_args[0], "\\Recent"))
+      else if (!su_cs_cmp_case(_it_args[0], "\\Recent"))
          _it_number = MNEW;
-      else if (!asccasecmp(_it_args[0], "\\Flagged"))
+      else if (!su_cs_cmp_case(_it_args[0], "\\Flagged"))
          _it_number = MFLAGGED;
-      else if (!asccasecmp(_it_args[0], "\\Answered"))
+      else if (!su_cs_cmp_case(_it_args[0], "\\Answered"))
          _it_number = MANSWERED;
-      else if (!asccasecmp(_it_args[0], "\\Draft"))
+      else if (!su_cs_cmp_case(_it_args[0], "\\Draft"))
          _it_number = MDRAFT;
       else
          _it_number = 0;
@@ -378,7 +380,7 @@ itsplit(char const *spec, char const **xp)
       else{
          su_idec_uz_cp(&_it_number, _it_args[0], 10, &cp);
       }
-      if (spacechar(*cp) || *cp == '\0')
+      if (su_cs_is_space(*cp) || *cp == '\0')
          break;
       n_err(_("Invalid size: >>> %s <<<\n"), around(*xp));
       rv = STOP;
@@ -406,21 +408,22 @@ itstring(void **tp, char const *spec, char const **xp) /* XXX lesser derefs */
    enum okay rv = STOP;
    n_NYD_IN;
 
-   while (spacechar(*spec))
+   while (su_cs_is_space(*spec))
       ++spec;
    if (*spec == '\0' || *spec == '(' || *spec == ')') {
       n_err(_("Missing string argument: >>> %s <<<\n"),
          around(&(*xp)[spec - *xp]));
       goto jleave;
    }
-   ap = *tp = n_autorec_alloc(strlen(spec) +1);
+   ap = *tp = n_autorec_alloc(su_cs_len(spec) +1);
    *xp = spec;
     do {
       if (inquote && **xp == '\\')
          *ap++ = *(*xp)++;
       else if (**xp == '"')
          inquote = !inquote;
-      else if (!inquote && (spacechar(**xp) || **xp == '(' || **xp == ')')) {
+      else if (!inquote &&
+            (su_cs_is_space(**xp) || **xp == '(' || **xp == ')')) {
          *ap++ = '\0';
          break;
       }
@@ -615,7 +618,7 @@ _imap_read_date(char const *cp)
       goto jerr;
 
    for (i = 0;;) {
-      if (!ascncasecmp(xp, n_month_names[i], 3))
+      if (!su_cs_cmp_case_n(xp, n_month_names[i], 3))
          break;
       if (n_month_names[++i][0] == '\0')
          goto jerr;
@@ -652,7 +655,7 @@ _imap_quotestr(char const *s)
    char *n, *np;
    n_NYD2_IN;
 
-   np = n = n_autorec_alloc(2 * strlen(s) + 3);
+   np = n = n_autorec_alloc(2 * su_cs_len(s) + 3);
    *np++ = '"';
    while (*s) {
       if (*s == '"' || *s == '\\')
@@ -676,7 +679,7 @@ _imap_unquotestr(char const *s)
       goto jleave;
    }
 
-   np = n = n_autorec_alloc(strlen(s) + 1);
+   np = n = n_autorec_alloc(su_cs_len(s) + 1);
    while (*++s) {
       if (*s == '\\')
          s++;
@@ -700,7 +703,7 @@ matchfield(struct message *m, char const *field, void const *what)
    if ((in.s = hfieldX(field, m)) == NULL)
       goto jleave;
 
-   in.l = strlen(in.s);
+   in.l = su_cs_len(in.s);
    mime_fromhdr(&in, &out, TD_ICONV);
    rv = substr(out.s, what);
    n_free(out.s);
@@ -744,9 +747,9 @@ mkenvelope(struct name *np)
    n_NYD_IN;
 
    in.s = np->n_fullname;
-   in.l = strlen(in.s);
+   in.l = su_cs_len(in.s);
    mime_fromhdr(&in, &out, TD_ICONV);
-   rp = ip = n_lofi_alloc(strlen(out.s) + 1);
+   rp = ip = n_lofi_alloc(su_cs_len(out.s) + 1);
    for (cp = out.s; *cp; cp++) {
       switch (*cp) {
       case '"':
@@ -759,7 +762,7 @@ mkenvelope(struct name *np)
          }
          break;
       case '<':
-         while (cp > out.s && blankchar(cp[-1]))
+         while (cp > out.s && su_cs_is_blank(cp[-1]))
             --cp;
          rp = ip;
          xp = out.s;
@@ -797,13 +800,13 @@ jdone:
       realnam = ip;
    n_free(out.s);
    localpart = savestr(np->n_name);
-   if ((cp = strrchr(localpart, '@')) != NULL) {
+   if ((cp = su_cs_rfind_c(localpart, '@')) != NULL) {
       *cp = '\0';
       domainpart = cp + 1;
    }else
       domainpart = NULL;
 
-   ep = n_autorec_alloc(epsize = strlen(np->n_fullname) * 2 + 40);
+   ep = n_autorec_alloc(epsize = su_cs_len(np->n_fullname) * 2 + 40);
    snprintf(ep, epsize, "(%s %s %s %s)",
       realnam ? _imap_quotestr(realnam) : "NIL",
       /*sourceaddr ? _imap_quotestr(sourceaddr) :*/ "NIL",
@@ -842,11 +845,11 @@ imap_search(char const *spec, int f)
    ssize_t rv;
    n_NYD_IN;
 
-   if (strcmp(spec, "()")) {
+   if (su_cs_cmp(spec, "()")) {
       if (lastspec != NULL)
          n_free(lastspec);
-      i = strlen(spec);
-      lastspec = sbufdup(spec, i);
+      i = su_cs_len(spec);
+      lastspec = su_cs_dup_cbuf(spec, i);
    } else if (lastspec == NULL) {
       n_err(_("No last SEARCH criteria available\n"));
       rv = -1;

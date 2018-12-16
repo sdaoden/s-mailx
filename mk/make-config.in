@@ -12,6 +12,7 @@ all: $(VAL_UAGENT) $(OPTIONAL_PRIVSEP)
 
 $(SU_OBJ): $(INCDIR)su/code.h $(INCDIR)su/config.h
 $(AMALGAM_TARGET) core-errors.o: $(SRCDIR)su/gen-errors.h
+$(AMALGAM_TARGET) cs-class.o: $(SRCDIR)su/gen-cs-class.h
 
 $(VAL_UAGENT): $(OBJ) uman.1 urc.rc
 	$(ECHO_LINK)$(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)

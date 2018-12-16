@@ -41,7 +41,10 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
 #include <su/icodec.h>
+
+#include "mx/iconv.h"
 
 /* We use calloc() for struct attachment */
 n_CTAV(AC_DEFAULT == 0);
@@ -96,7 +99,7 @@ a_attachment_setup_base(struct attachment *ap, char const *file){
    n_NYD2_IN;
    ap->a_input_charset = ap->a_charset = NULL;
    ap->a_path_user = ap->a_path = ap->a_path_bname = ap->a_name = file;
-   if((file = strrchr(file, '/')) != NULL)
+   if((file = su_cs_rfind_c(file, '/')) != NULL)
       ap->a_path_bname = ap->a_name = ++file;
    else
       file = ap->a_name;
@@ -259,14 +262,14 @@ jrefexp:
 
          /* It may not have worked because of a character-set specification,
           * so try to extract that and retry once */
-         if(incs == NULL && (cp = strrchr(file, '=')) != NULL){
+         if(incs == NULL && (cp = su_cs_rfind_c(file, '=')) != NULL){
             size_t i;
             char *nfp, c;
 
             nfp = savestrbuf(file, PTR2SIZE(cp - file));
 
             for(ncp = ++cp; (c = *cp) != '\0'; ++cp)
-               if(!alnumchar(c) && !punctchar(c))
+               if(!su_cs_is_alnum(c) && !su_cs_is_punct(c))
                   break;
                else if(c == '#'){
                   if(incs == NULL){
@@ -428,13 +431,13 @@ n_attachment_find(struct attachment *aplist, char const *name,
    saved = NULL;
    status = FAL0;
 
-   if((bname = strrchr(name, '/')) != NULL){
+   if((bname = su_cs_rfind_c(name, '/')) != NULL){
       for(++bname; aplist != NULL; aplist = aplist->a_flink)
-         if(!strcmp(name, aplist->a_path)){
+         if(!su_cs_cmp(name, aplist->a_path)){
             status = TRU1;
             /* Exact match with path components: done */
             goto jleave;
-         }else if(!strcmp(bname, aplist->a_path_bname)){
+         }else if(!su_cs_cmp(bname, aplist->a_path_bname)){
             if(!status){
                saved = aplist;
                status = TRU1;
@@ -443,12 +446,12 @@ n_attachment_find(struct attachment *aplist, char const *name,
          }
    }else if((msgno = a_attachment_is_msg(name)) < 0){
       for(sym = FAL0; aplist != NULL; aplist = aplist->a_flink){
-         if(!strcmp(name, aplist->a_name)){
+         if(!su_cs_cmp(name, aplist->a_name)){
             if(!status || !sym){
                saved = aplist;
                sym = TRU1;
             }
-         }else if(!strcmp(name, aplist->a_path_bname)){
+         }else if(!su_cs_cmp(name, aplist->a_path_bname)){
             if(!status)
                saved = aplist;
          }else
@@ -588,7 +591,7 @@ n_attachment_list_print(struct attachment const *aplist, FILE *fp){
                /* I18N: input character set as given, output iterates */
                fprintf(fp, _(", incs=%s -> oucs=*sendcharsets*"), incs);
             else if(ap->a_content_type == NULL ||
-                  !ascncasecmp(ap->a_content_type, "text/", 5))
+                  !su_cs_cmp_case_n(ap->a_content_type, "text/", 5))
                fprintf(fp, _(", default character set handling"));
          }
          fprintf(fp, "]\n");

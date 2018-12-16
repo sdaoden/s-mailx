@@ -45,8 +45,10 @@
 # include "mx/nail.h"
 #endif
 
-EMPTY_FILE()
+su_EMPTY_FILE()
 #ifdef mx_HAVE_TLS
+#include <su/cs.h>
+
 struct a_tls_verify_levels{
    char const tv_name[8];
    enum n_tls_verify_level tv_level;
@@ -71,7 +73,7 @@ n_tls_set_verify_level(struct url const *urlp){
    if((cp = xok_vlook(tls_verify, urlp, OXM_ALL)) != NULL ||
          (cp = xok_vlook(ssl_verify, urlp, OXM_ALL)) != NULL){
       for(i = 0;;)
-         if(!asccasecmp(a_tls_verify_levels[i].tv_name, cp)){
+         if(!su_cs_cmp_case(a_tls_verify_levels[i].tv_name, cp)){
             n_tls_verify_level = a_tls_verify_levels[i].tv_level;
             break;
          }else if(++i >= n_NELEM(a_tls_verify_levels)){
@@ -134,7 +136,7 @@ jetmp:
 
    while (fgetline(&buf, &bufsize, &cnt, &buflen, ip, 0) != NULL &&
          *buf != '\n') {
-      if (!ascncasecmp(buf, "content-", 8)) {
+      if (!su_cs_cmp_case_n(buf, "content-", 8)) {
          if (keep)
             fputs("X-Encoded-", *hp);
          for (;;) {
@@ -152,7 +154,7 @@ jetmp:
                fwrite(buf, sizeof *buf, buflen, *hp);
             c = getc(ip);
             ungetc(c, ip);
-            if (!blankchar(c))
+            if (!su_cs_is_blank(c))
                break;
             fgetline(&buf, &bufsize, &cnt, &buflen, ip, 0);
          }
@@ -313,7 +315,7 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
       if (buf[0] == '\n')
          break;
       if ((cp = thisfield(buf, "content-transfer-encoding")) != NULL)
-         if (!ascncasecmp(cp, "binary", 7))
+         if (!su_cs_cmp_case_n(cp, "binary", 7))
             binary = 1;
       fwrite(buf, sizeof *buf, buflen, mb.mb_otf);
       octets += buflen;
@@ -421,7 +423,7 @@ n_tls_rfc2595_hostname_match(char const *host, char const *pattern){
       while(*host && *host != '.')
          ++host;
    }
-   rv = (asccasecmp(host, pattern) == 0);
+   rv = (su_cs_cmp_case(host, pattern) == 0);
    n_NYD_OU;
    return rv;
 }
@@ -439,7 +441,7 @@ c_tls(void *vp){
 
    if((cp = argv[0])[0] == '\0')
       goto jesubcmd;
-   else if(is_asccaseprefix(cp, "fingerprint")){
+   else if(su_cs_starts_with_case("fingerprint", cp)){
 #ifndef mx_HAVE_SOCKETS
       n_err(_("`tls': fingerprint: no +sockets in *features*\n"));
       n_pstate_err_no = su_ERR_OPNOTSUPP;
@@ -450,7 +452,7 @@ c_tls(void *vp){
 
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
-      if((i = strlen(*++argv)) >= UI32_MAX)
+      if((i = su_cs_len(*++argv)) >= UI32_MAX)
          goto jeoverflow; /* TODO generic for ALL commands!! */
       if(!url_parse(&url, CPROTO_CERTINFO, *argv))
          goto jeinval;

@@ -42,6 +42,11 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
+
+#include "mx/filter-quote.h"
+#include "mx/ui-str.h"
+
 struct a_coll_fmt_ctx{ /* xxx This is temporary until v15 has objects */
    char const *cfc_fmt;
    FILE *cfc_fp;
@@ -167,7 +172,7 @@ _execute_command(struct header *hp, char const *linebuf, size_t linesize){
    /* If the above todo is worked, remove or outsource to attachment.c! */
    if(hp != NULL && (ap = hp->h_attach) != NULL) do
       if(ap->a_msgno){
-         mnbuf = sstrdup(mailname);
+         mnbuf = su_cs_dup(mailname);
          break;
       }
    while((ap = ap->a_flink) != NULL);
@@ -177,7 +182,7 @@ _execute_command(struct header *hp, char const *linebuf, size_t linesize){
    n_sigman_cleanup_ping(&sm);
 jleave:
    if(mnbuf != NULL){
-      if(strcmp(mnbuf, mailname))
+      if(su_cs_cmp(mnbuf, mailname))
          n_err(_("Mailbox changed: it is likely that existing "
             "rfc822 attachments became invalid!\n"));
       n_free(mnbuf);
@@ -208,7 +213,7 @@ a_coll_include_file(char const *name, bool_t indent, bool_t writestat){
       fbuf = n_stdin;
       name = n_hy;
    }else if(name[0] == '-' &&
-         (name[1] == '\0' || blankspacechar(name[1]))){
+         (name[1] == '\0' || su_cs_is_space(name[1]))){
       fbuf = n_stdin;
       if(name[1] == '\0'){
          if(!(n_psonce & n_PSO_INTERACTIVE)){
@@ -217,10 +222,10 @@ a_coll_include_file(char const *name, bool_t indent, bool_t writestat){
             goto jleave;
          }
       }else{
-         for(heredb = &name[2]; *heredb != '\0' && blankspacechar(*heredb);
+         for(heredb = &name[2]; *heredb != '\0' && su_cs_is_space(*heredb);
                ++heredb)
             ;
-         if((heredl = strlen(heredb)) == 0){
+         if((heredl = su_cs_len(heredb)) == 0){
 jdelim_empty:
             n_err(_("~< - HERE-delimiter: delimiter must not be empty\n"));
             rv = su_ERR_INVAL;
@@ -251,7 +256,7 @@ jdelim_empty:
       goto jleave;
    }
 
-   indl = indent ? strlen(indb = ok_vlook(indentprefix)) : 0;
+   indl = indent ? su_cs_len(indb = ok_vlook(indentprefix)) : 0;
 
    if(fbuf != n_stdin)
       cnt = fsize(fbuf);
@@ -475,12 +480,12 @@ a_coll_quote_message(FILE *fp, struct message *mp, bool_t isfwd){
             cp = n_FORWARD_INJECT_HEAD;
          quoteitp = n_IGNORE_FWD;
       }else{
-         if(!strcmp(cp, "noheading")){
+         if(!su_cs_cmp(cp, "noheading")){
             cp = NULL;
-         }else if(!strcmp(cp, "headers")){
+         }else if(!su_cs_cmp(cp, "headers")){
             quoteitp = n_IGNORE_TYPE;
             cp = NULL;
-         }else if(!strcmp(cp, "allheaders")){
+         }else if(!su_cs_cmp(cp, "allheaders")){
             quoteitp = NULL;
             action = SEND_QUOTE_ALL;
             cp = NULL;
@@ -698,12 +703,12 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
             rv = su_ERR_INVAL;
          /* Break the thread if In-Reply-To: has been modified */
          if(hp->h_in_reply_to == NULL || (saved_in_reply_to != NULL &&
-               asccasecmp(hp->h_in_reply_to->n_fullname,
+               su_cs_cmp_case(hp->h_in_reply_to->n_fullname,
                   saved_in_reply_to->n_fullname))){
                hp->h_ref = NULL;
                /* Create a thread of only the replied-to message if it is - */
                if(hp->h_in_reply_to != NULL &&
-                     !strcmp(hp->h_in_reply_to->n_fullname, n_hy))
+                     !su_cs_cmp(hp->h_in_reply_to->n_fullname, n_hy))
                   hp->h_in_reply_to = hp->h_ref = saved_in_reply_to;
          }
       }else{
@@ -804,8 +809,8 @@ a_coll_forward(char const *ms, FILE *fp, int f)
    if (f == 'u' || f == 'U')
       itp = n_IGNORE_ALL;
    else
-      itp = upperchar(f) ? NULL : n_IGNORE_TYPE;
-   action = (upperchar(f) && f != 'U') ? SEND_QUOTE_ALL : SEND_QUOTE;
+      itp = su_cs_is_upper(f) ? NULL : n_IGNORE_TYPE;
+   action = (su_cs_is_upper(f) && f != 'U') ? SEND_QUOTE_ALL : SEND_QUOTE;
 
    fprintf(n_stdout, A_("Interpolating:"));
    srelax_hold();
@@ -1284,7 +1289,7 @@ jputnl:
          goto jearg;
 
       /* Avoid history entry? */
-      while(spacechar(c)){
+      while(su_cs_is_space(c)){
          hist = a_HIST_NONE;
          c = *(cp_base = ++cp);
          if(--cnt == 0)
@@ -1334,7 +1339,7 @@ jputnl:
          if(1){
             char buf[sizeof(n_UNIREPL)];
 
-            if(asciichar(c))
+            if(su_cs_is_ascii(c))
                buf[0] = c, buf[1] = '\0';
             else if(n_psonce & n_PSO_UNICODE)
                memcpy(buf, n_unirepl, sizeof n_unirepl);
@@ -1690,7 +1695,7 @@ jIi_putesc:
          if(cnt == 0)
             goto jearg;
          /* Subject:; take care for Debian #419840 and strip any \r and \n */
-         if(n_anyof_cp("\n\r", hp->h_subject = savestr(cp))){
+         if(su_cs_first_of(hp->h_subject = savestr(cp), "\n\r") != su_UZ_MAX){
             char *xp;
 
             n_err(_("-s: normalizing away invalid ASCII NL / CR bytes\n"));
@@ -1796,7 +1801,7 @@ jout:
          cmd = cp;
       }
 
-      i = strlen(cp) +1;
+      i = su_cs_len(cp) +1;
       coap = n_lofi_alloc(n_VSTRUCT_SIZEOF(struct a_coll_ocs_arg, coa_cmd
             ) + i);
       coap->coa_pipe[0] = coap->coa_pipe[1] = -1;

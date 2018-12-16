@@ -94,10 +94,6 @@ Low-Level
   approbiate, even if that actually changes content!!?), and that full
   name-addr SHOULD be used.
 
-- many uses of whitechar() should be spacechar(), and spacechar() should
-  be blankspacechar(), and blankspacechar() should be dropped.  then
-  drop onlywhitechar() again, too.  maybe reduce char_class bits then.
-
 - After I/O layer rework we should optionally be able to read RSS
   (Atom?) feeds -- Expat should be available almost everywhere and
   should be able to parse that?

@@ -62,6 +62,10 @@ d-errors:
 	sh mk/su-make-errors.sh
 d-errors-nv:
 	sh mk/su-make-errors.sh noverbose
+d-cs-ctype:
+	sh mk/su-make-cs-ctype.sh
+d-cs-ctype-nv:
+	sh mk/su-make-cs-ctype.sh noverbose
 
 d-dox:
 	doxygen mk/su-doxygen.rc

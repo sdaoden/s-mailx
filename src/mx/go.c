@@ -47,7 +47,10 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
 #include <su/icodec.h>
+
+#include "mx/ui-str.h"
 
 enum a_go_flags{
    a_GO_NONE,
@@ -292,7 +295,7 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    line = gecp->gec_line; /* TODO const-ify original (buffer)! */
    assert(line.s[line.l] == '\0');
 
-   if(line.l > 0 && spacechar(line.s[0]))
+   if(line.l > 0 && su_cs_is_space(line.s[0]))
       gecp->gec_hist_flags = a_GO_HIST_NONE;
    else if(gecp->gec_hist_flags & a_GO_HIST_ADD)
       gecp->gec_hist_cmd = gecp->gec_hist_args = NULL;
@@ -347,17 +350,17 @@ jrestart:
    default:
       break;
    case sizeof("ignerr") -1:
-      if(!asccasecmp(word, "ignerr")){
+      if(!su_cs_cmp_case(word, "ignerr")){
          flags |= a_NOPREFIX | a_IGNERR;
          goto jrestart;
       }
       break;
    /*case sizeof("scope") -1:*/
    case sizeof("local") -1:
-      if(!asccasecmp(word, "local")){
+      if(!su_cs_cmp_case(word, "local")){
          flags |= a_NOPREFIX | a_LOCAL;
          goto jrestart;
-      }else if(!asccasecmp(word, "scope")){
+      }else if(!su_cs_cmp_case(word, "scope")){
          /* This will be an extended per-command `localopts' */
          n_err(_("Ignoring yet unused `scope' command modifier!"));
          flags |= a_NOPREFIX | a_SCOPE;
@@ -365,7 +368,7 @@ jrestart:
       }
       break;
    case sizeof("u") -1:
-      if(!asccasecmp(word, "u")){
+      if(!su_cs_cmp_case(word, "u")){
          n_err(_("Ignoring yet unused `u' command modifier!"));
          flags |= a_NOPREFIX | a_U;
          goto jrestart;
@@ -373,10 +376,10 @@ jrestart:
       break;
    /*case sizeof("vput") -1:*/
    case sizeof("wysh") -1:
-      if(!asccasecmp(word, "wysh")){
+      if(!su_cs_cmp_case(word, "wysh")){
          flags |= a_NOPREFIX | a_WYSH;
          goto jrestart;
-      }else if(!asccasecmp(word, "vput")){
+      }else if(!su_cs_cmp_case(word, "vput")){
          flags |= a_NOPREFIX | a_VPUT;
          goto jrestart;
       }
@@ -440,7 +443,7 @@ jempty:
        * equal name allow one level of expansion to return an equal result:
        * "commandalias q q;commandalias x q;x" should be "x->q->q->quit".
        * P.S.: should also work for "help x" ... */
-      if(alias_name != NULL && !strcmp(word, alias_name))
+      if(alias_name != NULL && !su_cs_cmp(word, alias_name))
          flags |= a_NOALIAS;
 
       if((alias_name = n_commandalias_exists(word, &alias_exp)) != NULL){
@@ -653,7 +656,7 @@ jmsglist_go:
 
    case n_CMD_ARG_TYPE_STRING:
       /* Just the straight string, old style, with leading blanks removed */
-      for(cp = line.s; spacechar(*cp);)
+      for(cp = line.s; su_cs_is_space(*cp);)
          ++cp;
       if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
          su_err_set_no(su_ERR_NONE);
@@ -1057,16 +1060,16 @@ a_go_file(char const *file, bool_t silent_open_error){
     * TODO WYRALIST this is no longer necessary true, and for that we
     * TODO don't set _PARSE_TRIM_SPACE because we cannot! -> cmd-tab.h!! */
 #if 0
-   ((ispipe = (!silent_open_error && (nlen = strlen(file)) > 0 &&
+   ((ispipe = (!silent_open_error && (nlen = su_cs_len(file)) > 0 &&
          file[--nlen] == '|')))
 #else
    ispipe = FAL0;
    if(!silent_open_error){
-      for(nlen = strlen(file); nlen > 0;){
+      for(nlen = su_cs_len(file); nlen > 0;){
          char c;
 
          c = file[--nlen];
-         if(!spacechar(c)){
+         if(!su_cs_is_space(c)){
             if(c == '|'){
                nbuf = savestrbuf(file, nlen);
                ispipe = TRU1;
@@ -1095,7 +1098,7 @@ jeopencheck:
    sigprocmask(SIG_BLOCK, NULL, &osigmask);
 
    gcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
-         (nlen = strlen(nbuf) +1));
+         (nlen = su_cs_len(nbuf) +1));
    memset(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
    gcp->gc_data.gdc_membag =
          su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
@@ -1342,7 +1345,7 @@ n_go_main_loop(void){ /* FIXME */
                }
             }else{
 #if defined mx_HAVE_MAILDIR || defined mx_HAVE_IMAP
-               n = (cp != NULL && strcmp(cp, "nopoll"));
+               n = (cp != NULL && su_cs_cmp(cp, "nopoll"));
 #endif
 
 #ifdef mx_HAVE_MAILDIR
@@ -1354,7 +1357,7 @@ n_go_main_loop(void){ /* FIXME */
 #ifdef mx_HAVE_IMAP
                if(mb.mb_type == MB_IMAP){
                   if(!n)
-                     n = (cp != NULL && strcmp(cp, "noimap"));
+                     n = (cp != NULL && su_cs_cmp(cp, "noimap"));
 
                   if(imap_newmail(n) > (cp == NULL))
                      goto Jnewmail;
@@ -1486,7 +1489,7 @@ n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
    n_NYD_IN;
 
    if(len == UIZ_MAX)
-      len = strlen(buf);
+      len = su_cs_len(buf);
 
    if(UIZ_MAX - n_VSTRUCT_SIZEOF(struct a_go_input_inject, gii_dat) -1 > len &&
          len > 0){
@@ -1570,9 +1573,9 @@ jinject:
          }
 
          ++a_go_ctx->gc_loff;
-         *linesize = strlen(*linebuf);
+         *linesize = su_cs_len(*linebuf);
          if(!(a_go_ctx->gc_flags & a_GO_MACRO_FREE_DATA))
-            *linebuf = sbufdup(*linebuf, *linesize);
+            *linebuf = su_cs_dup_cbuf(*linebuf, *linesize);
 
          iftype = (a_go_ctx->gc_flags & a_GO_MACRO_X_OPTION)
                ? "-X OPTION"
@@ -1650,7 +1653,7 @@ jforce_stdin:
    for(nold = n = 0;;){
       if(f & a_USE_MLE){
          assert(ifile == n_stdin);
-         if(string != NULL && (n = (int)strlen(string)) > 0){
+         if(string != NULL && (n = (int)su_cs_len(string)) > 0){
             if(*linesize > 0)
                *linesize += n +1;
             else
@@ -1695,7 +1698,7 @@ jforce_stdin:
 
             i = 0;
             cp = &(*linebuf)[nold];
-            while(spacechar(*cp) && n - i >= nold)
+            while(su_cs_is_space(*cp) && n - i >= nold)
                ++cp, ++i;
             if(i > 0){
                memmove(&(*linebuf)[nold], cp, n - nold - i);
@@ -1817,7 +1820,7 @@ n_go_load(char const *name){
       goto jleave;
    }
 
-   i = strlen(name) +1;
+   i = su_cs_len(name) +1;
    gcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) + i);
    memset(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
 
@@ -1872,7 +1875,7 @@ n_go_XYargs(bool_t injectit, char const **lines, size_t cnt){
       bool_t keep;
       size_t j;
 
-      if((j = strlen(srcp = *lines)) == 0){
+      if((j = su_cs_len(srcp = *lines)) == 0){
          ++lines, --cnt;
          continue;
       }
@@ -1900,7 +1903,7 @@ n_go_XYargs(bool_t injectit, char const **lines, size_t cnt){
 
       /* Strip any leading WS from follow lines, then */
       if(cp != NULL)
-         while(j > 0 && spacechar(*srcp))
+         while(j > 0 && su_cs_is_space(*srcp))
             ++srcp, --j;
 
       if(j > 0){
@@ -1973,7 +1976,7 @@ n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
    sigprocmask(SIG_BLOCK, NULL, &osigmask);
 
    gcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
-         (i = strlen(name) +1));
+         (i = su_cs_len(name) +1));
    memset(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
    gcp->gc_data.gdc_membag =
          su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
@@ -2038,7 +2041,7 @@ n_go_command(enum n_go_input_flags gif, char const *cmd){
 
    sigprocmask(SIG_BLOCK, NULL, &osigmask);
 
-   i = strlen(cmd) +1;
+   i = su_cs_len(cmd) +1;
    ial = n_ALIGN(i);
    gcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
          ial + 2*sizeof(char*));
@@ -2076,7 +2079,7 @@ n_go_splice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
    sigprocmask(SIG_BLOCK, NULL, &osigmask);
 
    gcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
-         (i = strlen(cmd) +1));
+         (i = su_cs_len(cmd) +1));
    memset(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
 
    hold_all_sigs();
@@ -2157,7 +2160,7 @@ c_eval(void *vp){
    argv = vp;
 
    for(j = i = 0; (cp = argv[i]) != NULL; ++i)
-      j += strlen(cp);
+      j += su_cs_len(cp);
 
    sp = n_string_creat_auto(&s_b);
    sp = n_string_reserve(sp, j);
@@ -2299,13 +2302,14 @@ c_readctl(void *vp){
    cacp = vp;
    cap = cacp->cac_arg;
 
-   if(cacp->cac_no == 0 || is_asccaseprefix(cap->ca_arg.ca_str.s, "show"))
+   if(cacp->cac_no == 0 ||
+         su_cs_starts_with_case("show", cap->ca_arg.ca_str.s))
       goto jshow;
-   else if(is_asccaseprefix(cap->ca_arg.ca_str.s, "set"))
+   else if(su_cs_starts_with_case("set", cap->ca_arg.ca_str.s))
       f = a_SET;
-   else if(is_asccaseprefix(cap->ca_arg.ca_str.s, "create"))
+   else if(su_cs_starts_with_case("create", cap->ca_arg.ca_str.s))
       f = a_CREATE;
-   else if(is_asccaseprefix(cap->ca_arg.ca_str.s, "remove"))
+   else if(su_cs_starts_with_case("remove", cap->ca_arg.ca_str.s))
       f = a_REMOVE;
    else{
       emsg = N_("`readctl': invalid subcommand: %s\n");
@@ -2331,10 +2335,10 @@ c_readctl(void *vp){
    /* Try to find a yet existing instance */
    if((grcp = n_readctl_read_overlay) != NULL){
       for(; grcp != NULL; grcp = grcp->grc_next)
-         if(!strcmp(grcp->grc_name, cap->ca_arg.ca_str.s))
+         if(!su_cs_cmp(grcp->grc_name, cap->ca_arg.ca_str.s))
             goto jfound;
       for(grcp = n_readctl_read_overlay; (grcp = grcp->grc_last) != NULL;)
-         if(!strcmp(grcp->grc_name, cap->ca_arg.ca_str.s))
+         if(!su_cs_cmp(grcp->grc_name, cap->ca_arg.ca_str.s))
             goto jfound;
    }
 
@@ -2378,7 +2382,7 @@ jfound:
             goto jeinval_quote;
          }
          fd = -1;
-         elen = strlen(emsg);
+         elen = su_cs_len(emsg);
          fp = safe_fopen(emsg, "r", NULL);
       }else if(fd == STDIN_FILENO || fd == STDOUT_FILENO ||
             fd == STDERR_FILENO){

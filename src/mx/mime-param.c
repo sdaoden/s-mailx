@@ -24,7 +24,10 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
 #include <su/icodec.h>
+
+#include "mx/iconv.h"
 
 struct rfc2231_joiner {
    struct rfc2231_joiner *rj_next;
@@ -43,7 +46,7 @@ struct mime_param_builder {
    ui32_t      mpb_level;        /* of recursion (<-> continuation number) */
    ui32_t      mpb_name_len;     /* of the parameter .mpb_name */
    ui32_t      mpb_value_len;    /* of remaining value */
-   ui32_t      mpb_charset_len;  /* of .mpb_charset (only in outermost level) */
+   ui32_t      mpb_charset_len;  /* of .mpb_charset (iff in outermost level) */
    ui32_t      mpb_buf_len;      /* Usable result of this level in .mpb_buf */
    bool_t      mpb_is_enc;       /* Level requires encoding */
    ui8_t       __dummy[1];
@@ -111,7 +114,7 @@ _mime_param_skip(char const *hbp)
    if (cn == ';')
       goto jleave;
 
-   while (whitechar((cn = *hbp))) /* XXX */
+   while (su_cs_is_white((cn = *hbp))) /* XXX */
       ++hbp;
    if (cn == '\0')
       goto jleave;
@@ -124,7 +127,7 @@ _mime_param_skip(char const *hbp)
          ++hbp;
    } else {
       for (;; cn = *++hbp)
-         if (cn == '\0' || cn == ';' || whitechar(cn))
+         if (cn == '\0' || cn == ';' || su_cs_is_white(cn))
             break;
       if (cn != '\0')
          ++hbp;
@@ -144,7 +147,7 @@ _mime_param_value_trim(struct str *result, char const *start,
    si8_t rv;
    n_NYD2_IN;
 
-   while (whitechar(*start)) /* XXX? */
+   while (su_cs_is_white(*start)) /* XXX? */
       ++start;
 
    if (*start == '"') {
@@ -160,7 +163,8 @@ _mime_param_value_trim(struct str *result, char const *start,
       i = PTR2SIZE(e++ - start);
       rv = -TRU1;
    } else {
-      for (e = start; (cn = *e) != '\0' && !whitechar(cn) && cn != ';'; ++e)
+      for (e = start; (cn = *e) != '\0' && !su_cs_is_white(cn) && cn != ';';
+            ++e)
          ;
       i = PTR2SIZE(e - start);
       rv = TRU1;
@@ -219,12 +223,12 @@ _rfc2231_param_parse(char const *param, size_t plen, char const *hbp)
    goto jumpin;
 
    for (; *hbp != '\0'; hbp_base = hbp) {
-      while (whitechar(*hbp))
+      while (su_cs_is_white(*hbp))
          ++hbp;
 
-      if (!ascncasecmp(hbp, param, plen)) {
+      if (!su_cs_cmp_case_n(hbp, param, plen)) {
          hbp += plen;
-         while (whitechar(*hbp))
+         while (su_cs_is_white(*hbp))
             ++hbp;
          if (*hbp++ != '*')
                goto jerr;
@@ -241,7 +245,7 @@ _rfc2231_param_parse(char const *param, size_t plen, char const *hbp)
           * Continuations may occur in any order */
          /* xxx RFC 2231 parsing ignores language tags */
 jumpin:
-         for (cp = hbp; digitchar(*cp); ++cp)
+         for (cp = hbp; su_cs_is_digit(*cp); ++cp)
             ;
          i = PTR2SIZE(cp - hbp);
          if (i != 0) {
@@ -406,7 +410,7 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
           * cannot convert characters, let aside that we don't use it at all */
          *emsg = N_("MIME RFC 2231 invalidity: missing character set\n");
          f |= _ERRORS;
-      } else if (ascncasecmp(tcs = ok_vlook(ttycharset),
+      } else if (su_cs_cmp_case_n(tcs = ok_vlook(ttycharset),
             head->rj_dat, head->rj_cs_len)) {
          char *cs = n_lofi_alloc(head->rj_cs_len +1);
 
@@ -570,7 +574,7 @@ jneed_enc:
 
       f |= _RAW;
       if (!(f & _ISENC)) {
-         if (u.uc > 0x7F || cntrlchar(u.c)) { /* XXX reject cntrlchar? */
+         if (u.uc > 0x7F || su_cs_is_cntrl(u.c)) { /* XXX reject _is_cntrl? */
             /* We need to percent encode this character, possibly changing
              * overall strategy, but anyway the one of this level, possibly
              * rendering invalid any output byte we yet have produced here.
@@ -804,20 +808,20 @@ mime_param_get(char const *param, char const *headerbody) /* TODO rewr. */
    char const *p;
    n_NYD_IN;
 
-   plen = strlen(param);
+   plen = su_cs_len(param);
    p = headerbody;
 
    /* At the beginning of headerbody there is no parameter=value pair xxx */
-   if (!whitechar(*p))
+   if (!su_cs_is_white(*p))
       goto jskip1st;
 
    for (;;) {
-      while (whitechar(*p))
+      while (su_cs_is_white(*p))
          ++p;
 
-      if (!ascncasecmp(p, param, plen)) {
+      if (!su_cs_cmp_case_n(p, param, plen)) {
          p += plen;
-         while (whitechar(*p)) /* XXX? */
+         while (su_cs_is_white(*p)) /* XXX? */
             ++p;
          switch (*p++) {
          case '*':
@@ -834,10 +838,11 @@ mime_param_get(char const *param, char const *headerbody) /* TODO rewr. */
              * will use RFC 2047 encoded words in  parameter values, too */
             /* TODO Automatically check whether the value seems to be RFC 2047
              * TODO encwd. -- instead use *rfc2047_parameters* like mutt(1)? */
-            if ((p = strstr(rv, "=?")) != NULL && strstr(p, "?=") != NULL) {
+            if ((p = su_cs_find(rv, "=?")) != NULL &&
+                  su_cs_find(p, "?=") != NULL) {
                struct str ti, to;
 
-               ti.l = strlen(ti.s = rv);
+               ti.l = su_cs_len(ti.s = rv);
                mime_fromhdr(&ti, &to, TD_ISPR | TD_ICONV | TD_DELCTRL);
                rv = savestrbuf(to.s, to.l);
                n_free(to.s);
@@ -873,13 +878,13 @@ mime_param_create(struct str *result, char const *name, char const *value)
 
    memset(&top, 0, sizeof top);
    top.mpb_result = result;
-   if ((i = strlen(top.mpb_name = name)) >= UI32_MAX)
+   if ((i = su_cs_len(top.mpb_name = name)) >= UI32_MAX)
       goto jleave;
    top.mpb_name_len = (ui32_t)i;
-   if ((i = strlen(top.mpb_value = value)) >= UI32_MAX)
+   if ((i = su_cs_len(top.mpb_value = value)) >= UI32_MAX)
       goto jleave;
    top.mpb_value_len = (ui32_t)i;
-   if ((i = strlen(name = ok_vlook(ttycharset))) >= UI32_MAX)
+   if ((i = su_cs_len(name = ok_vlook(ttycharset))) >= UI32_MAX)
       goto jleave;
    top.mpb_charset_len = (ui32_t)i;
    top.mpb_charset = n_autorec_alloc(++i);
@@ -905,7 +910,7 @@ mime_param_boundary_get(char const *headerbody, size_t *len)
    n_NYD_IN;
 
    if ((p = mime_param_get("boundary", headerbody)) != NULL) {
-      size_t sz = strlen(p);
+      size_t sz = su_cs_len(p);
 
       if (len != NULL)
          *len = sz + 2;

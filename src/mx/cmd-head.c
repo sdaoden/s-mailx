@@ -41,7 +41,10 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
 #include <su/icodec.h>
+
+#include "mx/ui-str.h"
 
 static int        _screen;
 
@@ -79,7 +82,7 @@ a_chead_print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded,
    n_NYD2_IN;
 
    if((cp = ok_vlook(attrlist)) != NULL){
-      if(strlen(cp) == attrlen){
+      if(su_cs_len(cp) == attrlen){
          memcpy(attrlist, cp, attrlen +1);
          goto jattrok;
       }
@@ -165,11 +168,11 @@ a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
             ++fp;
          else if (*fp == '+')
             ++fp;
-         if (digitchar(*fp)) {
+         if (su_cs_is_digit(*fp)) {
             n = 0;
             do
                n = 10*n + *fp - '0';
-            while (++fp, digitchar(*fp));
+            while (++fp, su_cs_is_digit(*fp));
             subjlen -= n;
          }
          if (*fp == 'i')
@@ -226,10 +229,10 @@ a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
          ++fp;
       } else if (c == '+')
          ++fp;
-      if (digitchar(*fp)) {
+      if (su_cs_is_digit(*fp)) {
          do
             n = 10*n + *fp - '0';
-         while (++fp, digitchar(*fp));
+         while (++fp, su_cs_is_digit(*fp));
       }
 
       if ((c = *fp & 0xFF) == '\0')
@@ -506,7 +509,7 @@ a_chead__subject(struct message *mp, bool_t threaded,
    if ((ms = hfield1("subject", mp)) == NULL)
       goto jleave;
 
-   in.l = strlen(in.s = ms);
+   in.l = su_cs_len(in.s = ms);
    mime_fromhdr(&in, &out, TD_ICONV | TD_ISPR);
    rv = ms = out.s;
 
@@ -526,9 +529,9 @@ a_chead__subject(struct message *mp, bool_t threaded,
          struct str oout;
          int x;
 
-         in.l = strlen(in.s = os);
+         in.l = su_cs_len(in.s = os);
          mime_fromhdr(&in, &oout, TD_ICONV | TD_ISPR);
-         x = asccasecmp(ms, subject_re_trim(oout.s));
+         x = su_cs_cmp_case(ms, subject_re_trim(oout.s));
          n_free(oout.s);
 
          if (!x) {

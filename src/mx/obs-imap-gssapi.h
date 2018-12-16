@@ -162,7 +162,7 @@ _imap_gssapi(struct mailbox *mp, struct ccred *ccred)
    ok = STOP;
    f = a_F_NONE;
 
-   {  size_t i = strlen(mp->mb_imap_account) +1;
+   {  size_t i = su_cs_len(mp->mb_imap_account) +1;
       server = n_autorec_alloc(i);
       memcpy(server, mp->mb_imap_account, i);
    }
@@ -173,9 +173,9 @@ _imap_gssapi(struct mailbox *mp, struct ccred *ccred)
    if ((cp = _imap_gssapi_last_at_before_slash(server)) != NULL)
       server = &cp[1];
    for (cp = server; *cp; cp++)
-      *cp = lowerconv(*cp);
+      *cp = su_cs_to_lower(*cp);
    send_tok.value = n_autorec_alloc(
-         (send_tok.length = strlen(server) -1 + 5) +1);
+         (send_tok.length = su_cs_len(server) -1 + 5) +1);
    snprintf(send_tok.value, send_tok.length, "imap@%s", server);
    maj_stat = gss_import_name(&min_stat, &send_tok, GSS_C_NT_HOSTBASED_SERVICE,
          &target_name);
@@ -228,7 +228,7 @@ _imap_gssapi(struct mailbox *mp, struct ccred *ccred)
          goto jleave;
       out.s = NULL;
       in.s = responded_text;
-      in.l = strlen(responded_text);
+      in.l = su_cs_len(responded_text);
       if(!b64_decode(&out, &in))
          goto jebase64;
       recv_tok.value = out.s;
@@ -277,7 +277,7 @@ _imap_gssapi(struct mailbox *mp, struct ccred *ccred)
       goto jleave;
    out.s = NULL;
    in.s = responded_text;
-   in.l = strlen(responded_text);
+   in.l = su_cs_len(responded_text);
    if(!b64_decode(&out, &in)){
 jebase64:
       if(out.s != NULL)
@@ -307,7 +307,7 @@ jebase64:
    o[2] = o[3] = (char)0377;
    snprintf(&o[4], sizeof o - 4, "%s", ccred->cc_user.s);
    send_tok.value = o;
-   send_tok.length = strlen(&o[4]) -1 + 4;
+   send_tok.length = su_cs_len(&o[4]) -1 + 4;
    maj_stat = gss_wrap(&min_stat, gss_context, 0, GSS_C_QOP_DEFAULT, &send_tok,
          &conf_state, &recv_tok);
    f |= a_F_RECV_TOK;

@@ -47,9 +47,10 @@
 
 su_EMPTY_FILE()
 #ifdef mx_HAVE_IMAP
-# include <su/icodec.h>
+#include <dirent.h>
 
-# include <dirent.h>
+#include <su/cs.h>
+#include <su/icodec.h>
 
 static char *           encname(struct mailbox *mp, const char *name, int same,
                            const char *box);
@@ -102,8 +103,8 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
 
    ename = urlxenc(name, TRU1);
    if (mp->mb_cache_directory && same && box == NULL) {
-      res = n_autorec_alloc(resz = strlen(mp->mb_cache_directory) +
-            strlen(ename) + 2);
+      res = n_autorec_alloc(resz = su_cs_len(mp->mb_cache_directory) +
+            su_cs_len(ename) + 2);
       snprintf(res, resz, "%s%s%s", mp->mb_cache_directory,
          (*ename ? "/" : ""), ename);
    } else {
@@ -114,7 +115,7 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
          goto jleave;
       eaccount = urlxenc(mp->mb_imap_account, TRU1);
 
-      if (box != NULL || asccasecmp(box = mp->mb_imap_mailbox, "INBOX")) {
+      if (box != NULL || su_cs_cmp_case(box = mp->mb_imap_mailbox, "INBOX")) {
          bool_t err;
 
          box = imap_path_encode(box, &err);
@@ -124,8 +125,8 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
       } else
          box = "INBOX";
 
-      res = n_autorec_alloc(resz = strlen(cachedir) + strlen(eaccount) +
-            strlen(box) + strlen(ename) + 4);
+      res = n_autorec_alloc(resz = su_cs_len(cachedir) + su_cs_len(eaccount) +
+            su_cs_len(box) + su_cs_len(ename) + 4);
       snprintf(res, resz, "%s/%s/%s%s%s", cachedir, eaccount, box,
             (*ename ? "/" : ""), ename);
    }
@@ -380,7 +381,7 @@ initcache(struct mailbox *mp)
    mp->mb_cache_directory = NULL;
    if ((name = encname(mp, "", 1, NULL)) == NULL)
       goto jleave;
-   mp->mb_cache_directory = sstrdup(name);
+   mp->mb_cache_directory = su_cs_dup(name);
    if ((uvname = encname(mp, "UIDVALIDITY", 1, NULL)) == NULL)
       goto jleave;
    if (cwget(&cw) == STOP)
@@ -438,7 +439,7 @@ clean(struct mailbox *mp, struct cw *cw)
          (cachedir = fexpand(cachedir, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
       goto jleave;
    eaccount = urlxenc(mp->mb_imap_account, TRU1);
-   if (asccasecmp(emailbox = mp->mb_imap_mailbox, "INBOX")) {
+   if (su_cs_cmp_case(emailbox = mp->mb_imap_mailbox, "INBOX")) {
       bool_t err;
 
       emailbox = imap_path_encode(emailbox, &err);
@@ -446,8 +447,8 @@ clean(struct mailbox *mp, struct cw *cw)
          goto jleave;
       emailbox = urlxenc(emailbox, TRU1);
    }
-   buf = n_autorec_alloc(bufsz = strlen(cachedir) + strlen(eaccount) +
-         strlen(emailbox) + 40);
+   buf = n_autorec_alloc(bufsz = su_cs_len(cachedir) + su_cs_len(eaccount) +
+         su_cs_len(emailbox) + 40);
    if (!n_path_mkdir(cachedir))
       goto jleave;
    snprintf(buf, bufsz, "%s/README", cachedir);
@@ -609,7 +610,7 @@ cache_setptr(enum fedit_mode fm, int transparent)
    }
    if ((name = encname(&mb, "", 1, NULL)) == NULL)
       goto jleave;
-   mb.mb_cache_directory = sstrdup(name);
+   mb.mb_cache_directory = su_cs_dup(name);
    if (cwget(&cw) == STOP)
       goto jleave;
    if (chdir(name) < 0)
@@ -665,7 +666,8 @@ cache_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
          (cachedir = fexpand(cachedir, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
       goto jleave;
    eaccount = urlxenc(mp->mb_imap_account, TRU1);
-   name = n_autorec_alloc(namesz = strlen(cachedir) + strlen(eaccount) + 2);
+   name = n_autorec_alloc(namesz = su_cs_len(cachedir) +
+         su_cs_len(eaccount) + 2);
    snprintf(name, namesz, "%s/%s", cachedir, eaccount);
    if ((dirp = opendir(name)) == NULL)
       goto jleave;
@@ -700,7 +702,7 @@ cache_remove(const char *name)
 
    if ((dir = encname(&mb, "", 0, imap_fileof(name))) == NULL)
       goto jleave;
-   pathend = strlen(dir);
+   pathend = su_cs_len(dir);
    path = n_alloc(pathsize = pathend + 30);
    memcpy(path, dir, pathend);
    path[pathend++] = '/';
@@ -713,7 +715,7 @@ cache_remove(const char *name)
       if (dp->d_name[0] == '.' && (dp->d_name[1] == '\0' ||
             (dp->d_name[1] == '.' && dp->d_name[2] == '\0')))
          continue;
-      n = strlen(dp->d_name) + 1;
+      n = su_cs_len(dp->d_name) + 1;
       if (pathend + n > pathsize)
          path = n_realloc(path, pathsize = pathend + n + 30);
       memcpy(path + pathend, dp->d_name, n);
@@ -823,7 +825,8 @@ cache_dequeue(struct mailbox *mp)
          (cachedir = fexpand(cachedir, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
       goto jleave;
    eaccount = urlxenc(mp->mb_imap_account, TRU1);
-   buf = n_autorec_alloc(bufsz = strlen(cachedir) + strlen(eaccount) + 2);
+   buf = n_autorec_alloc(bufsz = su_cs_len(cachedir) +
+         su_cs_len(eaccount) + 2);
    snprintf(buf, bufsz, "%s/%s", cachedir, eaccount);
    if ((dirp = opendir(buf)) == NULL)
       goto jleave;
@@ -833,7 +836,7 @@ cache_dequeue(struct mailbox *mp)
          continue;
       /* FIXME MUST BLOCK SIGNALS IN ORDER TO ENSURE PROPER RESTORE!
        * (but wuuuuh, what a shit!) */
-      mp->mb_imap_mailbox = sstrdup(
+      mp->mb_imap_mailbox = su_cs_dup(
             imap_path_decode(urlxdec(dp->d_name), NULL));
       dequeue1(mp);
       {  char *x = mp->mb_imap_mailbox;

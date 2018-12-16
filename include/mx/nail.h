@@ -61,15 +61,8 @@
 #include <time.h>
 #include <unistd.h>
 
-#ifdef mx_HAVE_C90AMEND1
-# include <wchar.h>
-# include <wctype.h>
-#endif
 #ifdef mx_HAVE_DEBUG
-# include <assert.h>
-#endif
-#ifdef mx_HAVE_ICONV
-# include <iconv.h>
+# include <assert.h> /* TODO SU */
 #endif
 #ifdef mx_HAVE_REGEX
 # include <regex.h>
@@ -261,14 +254,6 @@ typedef su_sz siz_t;
 # define uintptr_t su_up
 #endif
 
-#ifdef mx_HAVE_C90AMEND1
-typedef wchar_t         wc_t;
-# define n_WC_C(X)      L ## X
-#else
-typedef char            wc_t; /* Yep: really 8-bit char */
-# define n_WC_C(X)      X
-#endif
-
 enum {FAL0=su_FAL0, TRU1=su_TRU1, TRU2, TRUM1=su_TRUM1};
 typedef su_boole bool_t;
 
@@ -352,7 +337,7 @@ enum expand_addr_check_mode {
 enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
    * TODO i rather see the mechanism that is used in c_bind() extended and used
    * TODO anywhere, i.e. n_cmd_arg_parse().
-   * TODO Note that we may NOT support arguments with strlen()>=UI32_MAX (?) */
+   * TODO Note we may NOT support arguments with su_cs_len()>=UI32_MAX (?) */
    n_CMD_ARG_TYPE_MSGLIST = 0,   /* Message list type */
    n_CMD_ARG_TYPE_NDMLIST = 1,   /* Message list, no defaults */
    n_CMD_ARG_TYPE_RAWDAT = 2,    /* The plain string in an argv[] */
@@ -605,15 +590,6 @@ enum n_header_extract_flags{
    n_HEADER_EXTRACT_IGNORE_FROM_ = 1u<<10
 };
 
-enum n_iconv_flags{
-   n_ICONV_NONE = 0,
-   n_ICONV_IGN_ILSEQ = 1<<0,     /* Ignore EILSEQ in input (replacement char) */
-   n_ICONV_IGN_NOREVERSE = 1<<1, /* .. non-reversible conversions in output */
-   n_ICONV_UNIREPL = 1<<2,       /* Use Unicode replacement 0xFFFD = EF BF BD */
-   n_ICONV_DEFAULT = n_ICONV_IGN_ILSEQ | n_ICONV_IGN_NOREVERSE,
-   n_ICONV_UNIDEFAULT = n_ICONV_DEFAULT | n_ICONV_UNIREPL
-};
-
 /* Special ignore (where _TYPE is covered by POSIX `ignore' / `retain').
  * _ALL is very special in that it doesn't have a backing object.
  * Go over enum to avoid cascads of (different) CC warnings for used CTA()s */
@@ -849,7 +825,7 @@ enum n_shexp_parse_flags{
    n_SHEXP_PARSE_TRIM_IFSSPACE = 1u<<3, /* " */
    n_SHEXP_PARSE_LOG = 1u<<4,          /* Log errors */
    n_SHEXP_PARSE_LOG_D_V = 1u<<5,      /* Log errors if n_PO_D_V */
-   n_SHEXP_PARSE_IFS_VAR = 1u<<6,      /* IFS is *ifs*, not blankchar() */
+   n_SHEXP_PARSE_IFS_VAR = 1u<<6,      /* IFS is *ifs*, not su_cs_is_blank() */
    n_SHEXP_PARSE_IFS_ADD_COMMA = 1u<<7, /* Add comma , to normal "IFS" */
    n_SHEXP_PARSE_IFS_IS_COMMA = 1u<<8, /* Let comma , be the sole "IFS" */
    n_SHEXP_PARSE_IGNORE_EMPTY = 1u<<9, /* Ignore empty tokens, start over */
@@ -1676,7 +1652,7 @@ struct n_cmd_arg_desc{
 struct n_cmd_arg_ctx{
    struct n_cmd_arg_desc const *cac_desc; /* Input: description of command */
    char const *cac_indat;     /* Input that shall be parsed */
-   size_t cac_inlen;          /* Input length (UIZ_MAX: do a strlen()) */
+   size_t cac_inlen;          /* Input length (UIZ_MAX: do a su_cs_len()) */
    ui32_t cac_msgflag;        /* Input (option): required flags of messages */
    ui32_t cac_msgmask;        /* Input (option): relevant flags of messages */
    size_t cac_no;             /* Output: number of parsed arguments */
@@ -1833,55 +1809,6 @@ struct mime_handler {
    int         (*mh_ptf)(void);  /* PTF main() for MIME_HDL_PTF */
 };
 
-struct quoteflt {
-   FILE        *qf_os;        /* Output stream */
-   char const  *qf_pfix;
-   ui32_t      qf_pfix_len;   /* Length of prefix: 0: bypass */
-   ui32_t      qf_qfold_min;  /* Simple way: wrote prefix? */
-   bool_t      qf_bypass;     /* Simply write to .qf_os TODO BYPASS, then! */
-   /* TODO quoteflt.qf_nl_last is a hack that i have introduced so that we
-    * TODO finally can gracefully place a newline last in the visual display.
-    * TODO I.e., for cases where quoteflt shouldn't be used at all ;} */
-   bool_t      qf_nl_last;    /* Last thing written/seen was NL */
-#ifndef mx_HAVE_QUOTE_FOLD
-   ui8_t       __dummy[6];
-#else
-   ui8_t       qf_state;      /* *quote-fold* state machine */
-   bool_t      qf_brk_isws;   /* Breakpoint is at WS */
-   ui32_t      qf_qfold_max;  /* Otherwise: line lengths */
-   ui32_t      qf_qfold_maxnws;
-   ui32_t      qf_wscnt;      /* Whitespace count */
-   char const *qf_quote_chars; /* *quote-chars* */
-   ui32_t      qf_brkl;       /* Breakpoint */
-   ui32_t      qf_brkw;       /* Visual width, breakpoint */
-   ui32_t      qf_datw;       /* Current visual output line width */
-   ui8_t       __dummy2[4];
-   struct str  qf_dat;        /* Current visual output line */
-   struct str  qf_currq;      /* Current quote, compressed */
-   mbstate_t   qf_mbps[2];
-#endif
-};
-
-#ifdef mx_HAVE_FILTER_HTML_TAGSOUP
-struct htmlflt {
-   FILE        *hf_os;        /* Output stream */
-   ui32_t      hf_flags;
-   ui32_t      hf_lmax;       /* Maximum byte +1 in .hf_line/4 */
-   ui32_t      hf_len;        /* Current bytes in .hf_line */
-   ui32_t      hf_last_ws;    /* Last whitespace on line (fold purposes) */
-   ui32_t      hf_mboff;      /* Last offset for "mbtowc" */
-   ui32_t      hf_mbwidth;    /* We count characters not bytes if possible */
-   char        *hf_line;      /* Output line buffer - MUST be last field! */
-   si32_t      hf_href_dist;  /* Count of lines since last HREF flush */
-   ui32_t      hf_href_no;    /* HREF sequence number */
-   struct htmlflt_href *hf_hrefs;
-   struct htmlflt_tag const *hf_ign_tag; /* Tag that will end ignore mode */
-   char        *hf_curr;      /* Current cursor into .hf_bdat */
-   char        *hf_bmax;      /* Maximum byte in .hf_bdat +1 */
-   char        *hf_bdat;      /* (Temporary) Tag content data storage */
-};
-#endif
-
 struct search_expr {
    /* XXX Type of search should not be evaluated but be enum */
    bool_t ss_field_exists; /* Only check whether field spec. exists */
@@ -1941,25 +1868,6 @@ struct n_termcap_value{
    } tv_data;
 };
 #endif
-
-struct n_visual_info_ctx{
-   char const *vic_indat;  /*I Input data */
-   size_t vic_inlen;       /*I If UIZ_MAX, strlen(.vic_indat) */
-   char const *vic_oudat;  /*O remains */
-   size_t vic_oulen;
-   size_t vic_chars_seen;  /*O number of characters processed */
-   size_t vic_bytes_seen;  /*O number of bytes passed */
-   size_t vic_vi_width;    /*[O] visual width of the entire range */
-   wc_t *vic_woudat;       /*[O] if so requested */
-   size_t vic_woulen;      /*[O] entries in .vic_woudat, if used */
-   wc_t vic_waccu;         /*O The last wchar_t/char processed (if any) */
-   enum n_visual_info_flags vic_flags; /*O Copy of parse flags */
-   /* TODO bidi */
-#ifdef mx_HAVE_C90AMEND1
-   mbstate_t *vic_mbstate; /*IO .vic_mbs_def used if NULL */
-   mbstate_t vic_mbs_def;
-#endif
-};
 
 struct time_current { /* TODO si64_t, etc. */
    time_t      tc_time;
@@ -2294,11 +2202,11 @@ struct name{
 struct n_addrguts{
    /* Input string as given (maybe replaced with a fixed one!) */
    char const *ag_input;
-   size_t ag_ilen;            /* strlen() of input */
+   size_t ag_ilen;            /* su_cs_len() of input */
    size_t ag_iaddr_start;     /* Start of *addr-spec* in .ag_input */
    size_t ag_iaddr_aend;      /* ..and one past its end */
    char *ag_skinned;          /* Output (alloced if !=.ag_input) */
-   size_t ag_slen;            /* strlen() of .ag_skinned */
+   size_t ag_slen;            /* su_cs_len() of .ag_skinned */
    size_t ag_sdom_start;      /* Start of domain in .ag_skinned, */
    enum nameflags ag_n_flags; /* enum nameflags of .ag_skinned */
 };
@@ -2391,7 +2299,6 @@ VL char const n_star[2];   /* Asterisk * */
 VL char const n_hy[2];     /* Hyphen-Minus - */
 VL char const n_qm[2];     /* Question-mark ? */
 VL char const n_at[2];     /* Commercial at @ */
-VL ui16_t const n_class_char[1 + 0x7F];
 #endif /* mx_HAVE_AMALGAMATION */
 
 VL FILE *n_stdin;
@@ -2430,7 +2337,6 @@ VL ui32_t n_pstate;              /* Bits of enum n_program_state */
  * TODO status and may-place-in-history bit, need to manage a global bypass.. */
 VL si32_t n_pstate_err_no;       /* What backs $! su_ERR_* TODO ..HACK */
 VL si32_t n_pstate_ex_no;        /* What backs $? n_EX_* TODO ..HACK ->64-bit */
-VL si32_t n_iconv_err_no;        /* TODO HACK: part of CTX to not get lost */
 
 /* XXX stylish sorting */
 VL int            msgCount;            /* Count of messages read in */
@@ -2455,10 +2361,6 @@ VL struct termios_state termios_state; /* getpassword(); see commands().. */
 
 #ifdef mx_HAVE_TLS
 VL enum n_tls_verify_level n_tls_verify_level; /* TODO local per-context! */
-#endif
-
-#ifdef mx_HAVE_ICONV
-VL iconv_t     iconvd;
 #endif
 
 VL volatile int interrupts; /* TODO rid! */

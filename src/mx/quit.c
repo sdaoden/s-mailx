@@ -43,6 +43,8 @@
 
 #include <utime.h>
 
+#include <su/cs.h>
+
 enum quitflags {
    QUITFLAG_HOLD      = 1<<0,
    QUITFLAG_KEEP      = 1<<1,
@@ -645,7 +647,7 @@ save_mbox_for_possible_quitstuff(void){ /* TODO try to get rid of that */
 
    if((cp = fexpand("&", FEXP_NVAR)) == NULL)
       cp = n_empty;
-   n_strscpy(_mboxname, cp, sizeof _mboxname);
+   su_cs_pcopy_n(_mboxname, cp, sizeof _mboxname);
    n_NYD2_OU;
 }
 

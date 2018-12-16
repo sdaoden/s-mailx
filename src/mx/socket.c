@@ -38,11 +38,9 @@
 # include "mx/nail.h"
 #endif
 
-EMPTY_FILE()
+su_EMPTY_FILE()
 #ifdef mx_HAVE_SOCKETS
 # ifdef mx_HAVE_NONBLOCKSOCK
-#  include <su/icodec.h>
-
 /*#  include <sys/types.h>*/
 #  include <sys/select.h>
 /*#  include <sys/time.h>*/
@@ -52,17 +50,17 @@ EMPTY_FILE()
 /*#  include <fcntl.h>*/
 /*#  include <stdlib.h>*/
 /*#  include <unistd.h>*/
+
+#  include <su/icodec.h>
 # endif
 
 #include <sys/socket.h>
 
 #include <netdb.h>
-
-#include <netinet/in.h>
-
 #ifdef mx_HAVE_ARPA_INET_H
 # include <arpa/inet.h>
 #endif
+#include <netinet/in.h>
 
 #ifdef mx_HAVE_XTLS
 # include <openssl/err.h>
@@ -71,6 +69,8 @@ EMPTY_FILE()
 # include <openssl/x509v3.h>
 # include <openssl/x509.h>
 #endif
+
+#include <su/cs.h>
 
 /* */
 static bool_t a_socket_open(struct sock *sp, struct url *urlp);
@@ -510,7 +510,7 @@ swrite(struct sock *sp, char const *data)
    enum okay rv;
    n_NYD2_IN;
 
-   rv = swrite1(sp, data, strlen(data), 0);
+   rv = swrite1(sp, data, su_cs_len(data), 0);
    n_NYD2_OU;
    return rv;
 }

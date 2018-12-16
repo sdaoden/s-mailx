@@ -54,7 +54,11 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
 #include <su/icodec.h>
+
+#include "mx/iconv.h"
+#include "mx/ui-str.h"
 
 #if !defined mx_HAVE_SETENV && !defined mx_HAVE_PUTENV
 # error Exactly one of mx_HAVE_SETENV and mx_HAVE_PUTENV
@@ -69,7 +73,7 @@
 /* Note: changing the hash function must be reflected in `vexpr' "hash",
  * because that is used by the hashtable creator scripts! */
 #define a_AMV_PRIME HSHSIZE
-#define a_AMV_NAME2HASH(N) n_torek_hash(N)
+#define a_AMV_NAME2HASH(N) su_cs_hash(N)
 #define a_AMV_HASH2PRIME(H) ((H) % a_AMV_PRIME)
 
 enum a_amv_mac_flags{
@@ -431,7 +435,7 @@ a_amv_mac_lookup(char const *name, struct a_amv_mac *newamp,
 
    for(amp = *ampp; amp != NULL; ampp = &(*ampp)->am_next, amp = amp->am_next){
       if((amp->am_flags & a_AMV_MF_TYPE_MASK) == amf &&
-            !strcmp(amp->am_name, name)){
+            !su_cs_cmp(amp->am_name, name)){
          if(n_LIKELY((save_amf & a_AMV_MF_UNDEF) == 0))
             goto jleave;
 
@@ -539,7 +543,7 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
    /* XXX Unfortunately we yet need to dup the macro lines! :( */
    args_base = args = n_alloc(sizeof(*args) * (amp->am_line_cnt +1));
    for(amlp = amp->am_line_dat; *amlp != NULL; ++amlp)
-      *(args++) = sbufdup((*amlp)->aml_dat, (*amlp)->aml_len);
+      *(args++) = su_cs_dup_cbuf((*amlp)->aml_dat, (*amlp)->aml_len);
    *args = NULL;
 
    losp = n_lofi_alloc(sizeof *losp);
@@ -719,7 +723,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
             ++leaspc;
          else
             break;
-      for(; n.ui > 0 && spacechar(cp[n.ui - 1]); --n.ui)
+      for(; n.ui > 0 && su_cs_is_space(cp[n.ui - 1]); --n.ui)
          ;
       if(n.ui == 0)
          continue;
@@ -754,7 +758,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
    }
 
    /* Create the new macro */
-   n.s = strlen(name) +1;
+   n.s = su_cs_len(name) +1;
    amp = n_alloc(n_VSTRUCT_SIZEOF(struct a_amv_mac, am_name) + n.s);
    memset(amp, 0, n_VSTRUCT_SIZEOF(struct a_amv_mac, am_name));
    amp->am_maxlen = maxlen;
@@ -854,11 +858,11 @@ a_amv_lopts_add(struct a_amv_lostack *alp, char const *name,
 
    /* Check whether this variable is handled yet XXX Boost: ID check etc.!! */
    for(avp = alp->as_lopts; avp != NULL; avp = avp->av_link)
-      if(!strcmp(avp->av_name, name))
+      if(!su_cs_cmp(avp->av_name, name))
          goto jleave;
 
-   nl = strlen(name) +1;
-   vl = (oavp != NULL) ? strlen(oavp->av_value) +1 : 0;
+   nl = su_cs_len(name) +1;
+   vl = (oavp != NULL) ? su_cs_len(oavp->av_value) +1 : 0;
    avp = n_calloc(1, n_VSTRUCT_SIZEOF(struct a_amv_var, av_name) + nl + vl);
    avp->av_link = alp->as_lopts;
    alp->as_lopts = avp;
@@ -912,7 +916,7 @@ a_amv_var_copy(char const *str){
       news = n_UNCONST(n_m1);
    else{
 jheap:
-      len = strlen(str) +1;
+      len = su_cs_len(str) +1;
       news = n_alloc(len);
       memcpy(news, str, len);
    }
@@ -958,7 +962,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
          hflp = NULL;
          hflpp = &hflp;
 
-         while((vp = n_strsep_esc(&buf, ',', TRU1)) != NULL){
+         while((vp = su_cs_sep_escable_c(&buf, ',', TRU1)) != NULL){
             if(!n_header_add_custom(hflpp, vp, TRU1)){
                emsg = N_("Invalid *customhdr* entry: %s\n");
                ok = FAL0;
@@ -1023,7 +1027,7 @@ jefrom:
          char const *cp;
 
          for(cp = *val; (c = *cp++) != '\0';)
-            if(!asciichar(c) || blankspacechar(c)){
+            if(!su_cs_is_ascii(c) || su_cs_is_space(c)){
                ok = FAL0;
                break;
             }
@@ -1035,7 +1039,7 @@ jefrom:
          sp = n_string_creat_auto(sp);
          csv = savestr(*val);
 
-         while((cp = n_strsep(&csv, ',', TRU1)) != NULL){
+         while((cp = su_cs_sep_c(&csv, ',', TRU1)) != NULL){
             if((cp = n_iconv_normalize_name(cp)) == NULL){
                ok = FAL0;
                break;
@@ -1090,9 +1094,9 @@ jefrom:
          char const *cp;
 
          cp = *val;
-         x_b = x = n_autorec_alloc(strlen(cp) +1);
+         x_b = x = n_autorec_alloc(su_cs_len(cp) +1);
          while((c = *cp++) != '\0')
-            if(spacechar(c))
+            if(su_cs_is_space(c))
                *x++ = c;
          *x = '\0';
          n_PS_ROOT_BLOCK(ok_vset(ifs_ws, x_b));
@@ -1241,13 +1245,13 @@ a_amv_var_revlookup(struct a_amv_var_carrier *avcp, char const *name,
 
    /* It may be a special a.k.a. macro-local or one-letter parameter */
    c = name[0];
-   if(n_UNLIKELY(digitchar(c))){
+   if(n_UNLIKELY(su_cs_is_digit(c))){
       /* (Inline dec. atoi, ugh) */
       for(j = (ui8_t)c - '0', i = 1;; ++i){
          c = name[i];
          if(c == '\0')
             break;
-         if(!digitchar(c))
+         if(!su_cs_is_digit(c))
             goto jno_special_param;
          j = j * 10 + (ui8_t)c - '0';
       }
@@ -1301,7 +1305,7 @@ jno_special_param:
 
       avmp = &a_amv_var_map[x];
       if(avmp->avm_hash == hash &&
-            !strcmp(&a_amv_var_names[avmp->avm_keyoff], name)){
+            !su_cs_cmp(&a_amv_var_names[avmp->avm_keyoff], name)){
          avcp->avc_map = avmp;
          avcp->avc_okey = (enum okeys)x;
          goto jleave;
@@ -1346,7 +1350,7 @@ a_amv_var_revlookup_chain(struct a_amv_var_carrier *avcp, char const *name){
    struct a_amv_var_chain_map_bsrch const *avcmbp, *avcmbp_x;
    n_NYD_IN;
 
-   if(strlen(name) <
+   if(su_cs_len(name) <
          n_SIZEOF_FIELD(struct a_amv_var_chain_map_bsrch, avcmb_prefix)){
       avcp = NULL;
       goto jleave;
@@ -1437,7 +1441,7 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp,
 
             for(lavp = NULL, avp = *avpp; avp != NULL;
                   lavp = avp, avp = avp->av_link)
-               if(!strcmp(avp->av_name, avcp->avc_name)){
+               if(!su_cs_cmp(avp->av_name, avcp->avc_name)){
                   /* Relink as head, hope it "sorts on usage" over time.
                    * The code relies on this behaviour! */
                   if(lavp != NULL){
@@ -1457,7 +1461,7 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp,
       avpp = &a_amv_vars[avcp->avc_prime];
 
       for(lavp = NULL, avp = *avpp; avp != NULL; lavp = avp, avp = avp->av_link)
-         if(!strcmp(avp->av_name, avcp->avc_name)){
+         if(!su_cs_cmp(avp->av_name, avcp->avc_name)){
             /* Relink as head, hope it "sorts on usage" over time.
              * The code relies on this behaviour! */
             if(lavp != NULL){
@@ -1611,7 +1615,7 @@ jnewval:
       struct a_amv_var **avpp;
       size_t l;
 
-      l = strlen(avcp->avc_name) +1;
+      l = su_cs_len(avcp->avc_name) +1;
       avcp->avc_var =
       avp = n_calloc(1, n_VSTRUCT_SIZEOF(struct a_amv_var, av_name) + l);
       avp->av_link = *(avpp = &a_amv_vars[avcp->avc_prime]);
@@ -1678,7 +1682,7 @@ a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp){
    char const *rv;
    n_NYD2_IN;
 
-   i = strlen(rv = &avcp->avc_name[1]);
+   i = su_cs_len(rv = &avcp->avc_name[1]);
 
    /* ERR, ERRDOC, ERRNAME, plus *-NAME variants */
    if(rv[0] == 'E' && i >= 3 && rv[1] == 'R' && rv[2] == 'R'){
@@ -1797,7 +1801,7 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
          sep = ' ';
       }
       for(i = j = 0; i < argc; ++i)
-         j += strlen(argv[i]) + 1;
+         j += su_cs_len(argv[i]) + 1;
       if(j == 0)
          rv = n_empty;
       else{
@@ -1805,7 +1809,7 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
 
          rv = cp = n_autorec_alloc(j);
          for(i = j = 0; i < argc; ++i){
-            j = strlen(argv[i]);
+            j = su_cs_len(argv[i]);
             memcpy(cp, argv[i], j);
             cp += j;
             if(sep != '\0')
@@ -1891,7 +1895,7 @@ jeavmp:
          oval = savestr(value);
          value = oval;
          for(; (c = *oval) != '\0'; ++oval)
-            *oval = lowerconv(c);
+            *oval = su_cs_to_lower(c);
       }
 
       /* Obsoletion warning */
@@ -1962,7 +1966,7 @@ joval_and_go:
       }else
          avpp = &a_amv_vars[avcp->avc_prime];
 
-      l = strlen(avcp->avc_name) +1;
+      l = su_cs_len(avcp->avc_name) +1;
       avcp->avc_var = avp = n_calloc(1,
             n_VSTRUCT_SIZEOF(struct a_amv_var, av_name) + l);
       avp->av_link = *avpp;
@@ -2030,7 +2034,7 @@ a_amv_var__putenv(struct a_amv_var_carrier *avcp, struct a_amv_var *avp){
 #ifdef mx_HAVE_SETENV
    rv = (setenv(avcp->avc_name, avp->av_value, 1) == 0);
 #else
-   cp = sstrdup(savecatsep(avcp->avc_name, '=', avp->av_value));
+   cp = su_cs_dup(savecatsep(avcp->avc_name, '=', avp->av_value));
 
    if((rv = (putenv(cp) == 0))){
       char *ocp;
@@ -2091,7 +2095,7 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp,
             (n_poption & n_PO_S_FLAG_TEMPORARY)) Jfreeze:{
          size_t l;
 
-         l = strlen(avcp->avc_name) +1;
+         l = su_cs_len(avcp->avc_name) +1;
          avp = n_calloc(1, n_VSTRUCT_SIZEOF(struct a_amv_var, av_name) + l);
          avp->av_link = *(avpp = &a_amv_vars[avcp->avc_prime]);
          *avpp = avp;
@@ -2221,7 +2225,7 @@ a_amv_var__clearenv(char const *name, struct a_amv_var *avp){
    {
       size_t l;
 
-      if((l = strlen(name)) > 0){
+      if((l = su_cs_len(name)) > 0){
          for(; *ecpp != NULL; ++ecpp)
             if(!strncmp(*ecpp, name, l) && (*ecpp)[l] == '='){
 #ifdef mx_HAVE_SETENV
@@ -2294,7 +2298,7 @@ a_amv_var__show_cmp(void const *s1, void const *s2){
    int rv;
    n_NYD2_IN;
 
-   rv = strcmp(*(char**)n_UNCONST(s1), *(char**)n_UNCONST(s2));
+   rv = su_cs_cmp(*(char**)n_UNCONST(s1), *(char**)n_UNCONST(s2));
    n_NYD2_OU;
    return rv;
 }
@@ -2383,7 +2387,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
    n_UNINIT(quote, NULL);
    if(!(avp->av_flags & a_AMV_VF_BOOL)){
       quote = n_shexp_quote_cp(avp->av_value, TRU1);
-      if(strcmp(quote, avp->av_value))
+      if(su_cs_cmp(quote, avp->av_value))
          msgp = n_string_push_cp(msgp, "wysh ");
    }else if(n_poption & n_PO_D_V)
       msgp = n_string_push_cp(msgp, "wysh "); /* (for shell-style comment) */
@@ -2416,10 +2420,10 @@ a_amv_var_c_set(char **ap, enum a_amv_var_setclr_flags avscf){
 jouter:
    while((cp = *ap++) != NULL){
       /* Isolate key */
-      cp2 = varbuf = n_autorec_alloc(strlen(cp) +1);
+      cp2 = varbuf = n_autorec_alloc(su_cs_len(cp) +1);
 
       for(; (c = *cp) != '=' && c != '\0'; ++cp){
-         if(cntrlchar(c) || spacechar(c)){
+         if(su_cs_is_cntrl(c) || su_cs_is_space(c)){
             n_err(_("Variable name with control or space character ignored: "
                "%s\n"), ap[-1]);
             ++errs;
@@ -2540,7 +2544,7 @@ c_account(void *v){
          n_err(_("Synopsis: account: <name> {\n"));
          goto jleave;
       }
-      if(!asccasecmp(args[0], ACCOUNT_NULL)){
+      if(!su_cs_cmp_case(args[0], ACCOUNT_NULL)){
          n_err(_("`account': cannot use reserved name: %s\n"),
             ACCOUNT_NULL);
          goto jleave;
@@ -2557,7 +2561,7 @@ c_account(void *v){
    save_mbox_for_possible_quitstuff();
 
    amp = NULL;
-   if(asccasecmp(args[0], ACCOUNT_NULL) != 0 &&
+   if(su_cs_cmp_case(args[0], ACCOUNT_NULL) != 0 &&
          (amp = a_amv_mac_lookup(args[0], NULL, a_AMV_MF_ACCOUNT)) == NULL){
       n_err(_("`account': account does not exist: %s\n"), args[0]);
       goto jleave;
@@ -2674,11 +2678,11 @@ c_localopts(void *vp){
       goto jleave;
    }
 
-   if((argv = vp)[1] == NULL || is_asccaseprefix((++argv)[-1], "scope"))
+   if((argv = vp)[1] == NULL || su_cs_starts_with_case("scope", (++argv)[-1]))
       alf = alm = a_AMV_LF_SCOPE;
-   else if(is_asccaseprefix(argv[-1], "call"))
+   else if(su_cs_starts_with_case("call", argv[-1]))
       alf = a_AMV_LF_CALL, alm = a_AMV_LF_CALL_MASK;
-   else if(is_asccaseprefix(argv[-1], "call-fixate"))
+   else if(su_cs_starts_with_case("call-fixate", argv[-1]))
       alf = a_AMV_LF_CALL_FIXATE, alm = a_AMV_LF_CALL_MASK;
    else{
 jesynopsis:
@@ -2817,7 +2821,8 @@ temporary_folder_hook_check(bool_t nmail){ /* TODO temporary, v15: drop */
    n_NYD_IN;
 
    rv = TRU1;
-   var = n_autorec_alloc(len = strlen(mailname) + sizeof("folder-hook-") -1 +1);
+   var = n_autorec_alloc(len = su_cs_len(mailname) +
+         sizeof("folder-hook-") -1 +1);
 
    /* First try the fully resolved path */
    snprintf(var, len, "folder-hook-%s", mailname);
@@ -3167,7 +3172,7 @@ n_var_xoklook(enum okeys okey, struct url const *urlp,
    avc.avc_is_chain_variant = TRU1;
 
    us = (oxm & OXM_U_H_P) ? &urlp->url_u_h_p : &urlp->url_h_p;
-   nlen = strlen(avc.avc_name);
+   nlen = su_cs_len(avc.avc_name);
    nbuf = n_lofi_alloc(nlen + 1 + us->l +1);
    memcpy(nbuf, avc.avc_name, nlen);
 
@@ -3315,7 +3320,7 @@ c_varedit(void *v){ /* TODO v15 drop */
          err = 1;
          break;
       }else if(avc.avc_var != NULL && *(val = avc.avc_var->av_value) != '\0' &&
-            sizeof *val != fwrite(val, strlen(val), sizeof *val, of)){
+            sizeof *val != fwrite(val, su_cs_len(val), sizeof *val, of)){
          n_perr(_("`varedit' failed to write old value to temporary file"), 0);
          Fclose(of);
          err = 1;
@@ -3374,8 +3379,8 @@ c_environ(void *v){
    bool_t islnk;
    n_NYD_IN;
 
-   if((islnk = is_asccaseprefix(*(ap = v), "link")) ||
-         is_asccaseprefix(*ap, "unlink")){
+   if((islnk = su_cs_starts_with_case("link", *(ap = v))) ||
+         su_cs_starts_with_case("unlink", *ap)){
       for(err = 0; *++ap != NULL;){
          a_amv_var_revlookup(&avc, *ap, TRU1);
 
@@ -3408,9 +3413,9 @@ c_environ(void *v){
             }
          }
       }
-   }else if(is_asccaseprefix(*ap, "set"))
+   }else if(su_cs_starts_with_case("set", *ap))
       err = !a_amv_var_c_set(++ap, a_AMV_VSETCLR_ENV);
-   else if(is_asccaseprefix(*ap, "unset")){
+   else if(su_cs_starts_with_case("unset", *ap)){
       for(err = 0; *++ap != NULL;){
          a_amv_var_revlookup(&avc, *ap, FAL0);
 
@@ -3727,7 +3732,7 @@ jenum_plusminus:
          }
       }
       goto jnumop;
-   }else if(is_asccaseprefix(cp, "pbase")){
+   }else if(su_cs_starts_with_case("pbase", cp)){
       if(argv[1] == NULL || argv[2] == NULL || argv[3] != NULL)
          goto jesynopsis;
 
@@ -3741,51 +3746,51 @@ jenum_plusminus:
       argv[1] = argv[2];
       argv[2] = NULL;
       goto jnumop;
-   }else if(is_asccaseprefix(cp, "length")){
+   }else if(su_cs_starts_with_case("length", cp)){
       f |= a_ISNUM | a_ISDECIMAL;
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
 
-      i = strlen(*++argv);
+      i = su_cs_len(*++argv);
       if(UICMP(64, i, >, SI64_MAX))
          goto jestr_overflow;
       lhv = (si64_t)i;
-   }else if(is_asccaseprefix(cp, "hash")){
+   }else if(su_cs_starts_with_case("hash", cp)){
       f |= a_ISNUM | a_ISDECIMAL;
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
 
-      i = n_torek_hash(*++argv);
+      i = su_cs_hash(*++argv);
       lhv = (si64_t)i;
-   }else if(is_asccaseprefix(cp, "find")){
+   }else if(su_cs_starts_with_case("find", cp)){
       f |= a_ISNUM | a_ISDECIMAL;
       if(argv[1] == NULL || argv[2] == NULL || argv[3] != NULL)
          goto jesynopsis;
 
-      if((cp = strstr(argv[1], argv[2])) == NULL)
+      if((cp = su_cs_find(argv[1], argv[2])) == NULL)
          goto jestr_nodata;
       i = PTR2SIZE(cp - argv[1]);
       if(UICMP(64, i, >, SI64_MAX))
          goto jestr_overflow;
       lhv = (si64_t)i;
-   }else if(is_asccaseprefix(cp, "ifind")){
+   }else if(su_cs_starts_with_case("ifind", cp)){
       f |= a_ISNUM | a_ISDECIMAL;
       if(argv[1] == NULL || argv[2] == NULL || argv[3] != NULL)
          goto jesynopsis;
 
-      if((cp = asccasestr(argv[1], argv[2])) == NULL)
+      if((cp = su_cs_find_case(argv[1], argv[2])) == NULL)
          goto jestr_nodata;
       i = PTR2SIZE(cp - argv[1]);
       if(UICMP(64, i, >, SI64_MAX))
          goto jestr_overflow;
       lhv = (si64_t)i;
-   }else if(is_asccaseprefix(cp, "substring")){
+   }else if(su_cs_starts_with_case("substring", cp)){
       if(argv[1] == NULL || argv[2] == NULL)
          goto jesynopsis;
       if(argv[3] != NULL && argv[4] != NULL)
          goto jesynopsis;
 
-      i = strlen(varres = *++argv);
+      i = su_cs_len(varres = *++argv);
 
       if(*(cp = *++argv) == '\0')
          lhv = 0;
@@ -3832,28 +3837,28 @@ jesubstring_len:
             f |= a_SOFTOVERFLOW;
          }
       }
-   }else if(is_asccaseprefix(cp, "trim")) Jtrim: {
+   }else if(su_cs_starts_with_case("trim", cp)) Jtrim: {
       struct str trim;
       enum n_str_trim_flags stf;
 
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
 
-      if(is_asccaseprefix(cp, "trim-front"))
+      if(su_cs_starts_with_case("trim-front", cp))
          stf = n_STR_TRIM_FRONT;
-      else if(is_asccaseprefix(cp, "trim-end"))
+      else if(su_cs_starts_with_case("trim-end", cp))
          stf = n_STR_TRIM_END;
       else
          stf = n_STR_TRIM_BOTH;
 
-      trim.l = strlen(trim.s = n_UNCONST(argv[1]));
+      trim.l = su_cs_len(trim.s = n_UNCONST(argv[1]));
       (void)n_str_trim(&trim, stf);
       varres = savestrbuf(trim.s, trim.l);
-   }else if(is_asccaseprefix(cp, "trim-front"))
+   }else if(su_cs_starts_with_case("trim-front", cp))
       goto Jtrim;
-   else if(is_asccaseprefix(cp, "trim-end"))
+   else if(su_cs_starts_with_case("trim-end", cp))
       goto Jtrim;
-   else if(is_asccaseprefix(cp, "random")){
+   else if(su_cs_starts_with_case("random", cp)){
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
 
@@ -3864,26 +3869,26 @@ jesubstring_len:
       if(lhv == 0)
          lhv = NAME_MAX;
       varres = n_random_create_cp((size_t)lhv, NULL);
-   }else if(is_asccaseprefix(cp, "file-expand")){
+   }else if(su_cs_starts_with_case("file-expand", cp)){
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
 
       if((varres = fexpand(argv[1], FEXP_NVAR | FEXP_NOPROTO)) == NULL)
          goto jestr_nodata;
-   }else if(is_asccaseprefix(cp, "makeprint")){
+   }else if(su_cs_starts_with_case("makeprint", cp)){
       struct str sin, sout;
 
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
 
-      /* XXX using strlen for `vexpr makeprint' is wrong for UTF-16 */
-      sin.l = strlen(sin.s = n_UNCONST(argv[1]));
+      /* XXX using su_cs_len for `vexpr makeprint' is wrong for UTF-16 */
+      sin.l = su_cs_len(sin.s = n_UNCONST(argv[1]));
       makeprint(&sin, &sout);
       varres = savestrbuf(sout.s, sout.l);
       n_free(sout.s);
    /* TODO `vexpr': (wide) string length, find, etc!! */
 #ifdef mx_HAVE_REGEX
-   }else if(is_asccaseprefix(cp, "regex")) Jregex:{
+   }else if(su_cs_starts_with_case("regex", cp)) Jregex:{
       regmatch_t rema[1 + n_VEXPR_REGEX_MAX];
       regex_t re;
       int reflrv;
@@ -3972,7 +3977,7 @@ jesubstring_len:
             goto jestr_nodata;
          f &= ~(a_ISNUM | a_ISDECIMAL);
       }
-   }else if(is_asccaseprefix(argv[0], "iregex")){
+   }else if(su_cs_starts_with_case("iregex", argv[0])){
       f |= a_ICASE;
       goto Jregex;
 #endif /* mx_HAVE_REGEX */
@@ -4096,11 +4101,11 @@ c_vpospar(void *v){
    cacp = v;
    cap = cacp->cac_arg;
 
-   if(is_asccaseprefix(cap->ca_arg.ca_str.s, "set"))
+   if(su_cs_starts_with_case("set", cap->ca_arg.ca_str.s))
       f = a_SET;
-   else if(is_asccaseprefix(cap->ca_arg.ca_str.s, "clear"))
+   else if(su_cs_starts_with_case("clear", cap->ca_arg.ca_str.s))
       f = a_CLEAR;
-   else if(is_asccaseprefix(cap->ca_arg.ca_str.s, "quote"))
+   else if(su_cs_starts_with_case("quote", cap->ca_arg.ca_str.s))
       f = a_QUOTE;
    else{
       n_err(_("`vpospar': invalid subcommand: %s\n"),
@@ -4184,7 +4189,8 @@ c_vpospar(void *v){
                if(sep2 != '\0')
                   sp = n_string_push_c(sp, sep2);
             }
-            in.l = strlen(in.s = n_UNCONST(appp->app_dat[i + appp->app_idx]));
+            in.l = su_cs_len(in.s =
+                  n_UNCONST(appp->app_dat[i + appp->app_idx]));
 
             if(!n_string_can_book(sp, in.l)){
 jeover:

@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ UserInterface: string related operations.
+ *@ Visual strings, string classification/preparation for the user interface.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -38,7 +38,10 @@
 # include "mx/nail.h"
 #endif
 
-#include <ctype.h>
+#include <su/cs.h>
+#include <su/utf.h>
+
+#include "mx/ui-str.h"
 
 FL bool_t
 n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
@@ -57,7 +60,7 @@ n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
    rv = TRU1;
    ib = vicp->vic_indat;
    if((il = vicp->vic_inlen) == UIZ_MAX)
-      il = vicp->vic_inlen = strlen(ib);
+      il = vicp->vic_inlen = su_cs_len(ib);
 
    if((vif & (n_VISUAL_INFO_WIDTH_QUERY | n_VISUAL_INFO_WOUT_PRINTABLE)) ==
          n_VISUAL_INFO_WOUT_PRINTABLE)
@@ -130,7 +133,7 @@ n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
          ++vicp->vic_bytes_seen;
          vicp->vic_waccu = c;
          if(vif & n_VISUAL_INFO_WIDTH_QUERY)
-            vicp->vic_vi_width += (c == '\t' || isprint(c)); /* XXX */
+            vicp->vic_vi_width += (c == '\t' || su_cs_is_print(c)); /* XXX */
 
          ++ib;
          --il;
@@ -191,7 +194,7 @@ colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
    bidi_info_create(&bi);
    if (bi.bi_start.l == 0)
       goto jnobidi;
-   if (!(isbidi = bidi_info_needed(cp, strlen(cp))))
+   if (!(isbidi = bidi_info_needed(cp, su_cs_len(cp))))
       goto jnobidi;
 
    if ((size_t)col >= bi.bi_pad)
@@ -201,7 +204,7 @@ colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
 jnobidi:
 #endif
 
-   np = nb = n_autorec_alloc(n_mb_cur_max * strlen(cp) +
+   np = nb = n_autorec_alloc(n_mb_cur_max * su_cs_len(cp) +
          ((fill ? col : 0)
          n_NATCH_CHAR( + (isbidi ? bi.bi_start.l + bi.bi_end.l : 0) )
          +1));
@@ -242,7 +245,7 @@ jnobidi:
       {
          n = sz = 1;
          istab = (*cp == '\t');
-         isrepl = !(istab || isprint((uc_i)*cp));
+         isrepl = !(istab || su_cs_is_print((uc_i)*cp));
       }
 
       if (n > col)
@@ -257,7 +260,7 @@ jnobidi:
          } else
             *np++ = '?';
          cp += sz;
-      } else if (istab || (sz == 1 && spacechar(*cp))) {
+      } else if (istab || (sz == 1 && su_cs_is_space(*cp))) {
          *np++ = ' ';
          ++cp;
       } else
@@ -299,11 +302,11 @@ makeprint(struct str const *in, struct str *out) /* TODO <-> TTYCHARSET!! */
     * TODO some special treatment for UTF-8 (take it from S-CText too then) */
    char const *inp, *maxp;
    char *outp;
-   DBG( size_t msz; )
+   su_DBG( size_t msz; )
    n_NYD_IN;
 
    out->s =
-   outp = n_alloc(DBG( msz = ) in->l*n_mb_cur_max + 2u*n_mb_cur_max +1);
+   outp = n_alloc(su_DBG( msz = ) in->l*n_mb_cur_max + 2u*n_mb_cur_max +1);
    inp = in->s;
    maxp = inp + in->l;
 
@@ -367,7 +370,8 @@ makeprint(struct str const *in, struct str *out) /* TODO <-> TTYCHARSET!! */
       int c;
       while (inp < maxp) {
          c = *inp++ & 0377;
-         if (!isprint(c) && c != '\n' && c != '\r' && c != '\b' && c != '\t')
+         if (!su_cs_is_print(c) &&
+               c != '\n' && c != '\r' && c != '\b' && c != '\t')
             c = '?';
          *outp++ = c;
       }
@@ -384,7 +388,7 @@ delctrl(char *cp, size_t len)
    n_NYD_IN;
 
    for (x = y = 0; x < len; ++x)
-      if (!cntrlchar(cp[x]))
+      if (!su_cs_is_cntrl(cp[x]))
          cp[y++] = cp[x];
    cp[y] = '\0';
    n_NYD_OU;
@@ -399,7 +403,7 @@ prstr(char const *s)
    n_NYD_IN;
 
    in.s = n_UNCONST(s);
-   in.l = strlen(s);
+   in.l = su_cs_len(s);
    makeprint(&in, &out);
    rp = savestrbuf(out.s, out.l);
    n_free(out.s);
@@ -434,7 +438,7 @@ bidi_info_needed(char const *bdat, size_t blen)
       while (blen > 0) {
          /* TODO Checking for BIDI character: use S-CText fromutf8
           * TODO plus isrighttoleft (or whatever there will be)! */
-         ui32_t c = n_utf8_to_utf32(&bdat, &blen);
+         ui32_t c = su_utf_8_to_32(&bdat, &blen);
          if (c == UI32_MAX)
             break;
 

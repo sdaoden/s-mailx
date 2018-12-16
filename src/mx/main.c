@@ -41,11 +41,14 @@
 
 #include "mx/nail.h"
 
-#include <su/icodec.h>
-
 #include <sys/ioctl.h>
 
 #include <pwd.h>
+
+#include <su/cs.h>
+#include <su/icodec.h>
+
+#include "mx/iconv.h"
 
 struct a_arg{
    struct a_arg *aa_next;
@@ -75,46 +78,6 @@ VL char const n_star[2] = "*";
 VL char const n_hy[2] = "-";
 VL char const n_qm[2] = "?";
 VL char const n_at[2] = "@";
-VL ui16_t const n_class_char[1 + 0x7F] = {
-#define a_BC C_BLANK | C_CNTRL
-#define a_SC C_SPACE | C_CNTRL
-#define a_WC C_WHITE | C_CNTRL
-/* 000 nul  001 soh  002 stx  003 etx  004 eot  005 enq  006 ack  007 bel */
-   C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
-/* 010 bs   011 ht   012 nl   013 vt   014 np   015 cr   016 so   017 si */
-   C_CNTRL, a_BC,    a_WC,    a_SC,    a_SC,    a_SC,    C_CNTRL, C_CNTRL,
-/* 020 dle  021 dc1  022 dc2  023 dc3  024 dc4  025 nak  026 syn  027 etb */
-   C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
-/* 030 can  031 em   032 sub  033 esc  034 fs   035 gs   036 rs   037 us */
-   C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL, C_CNTRL,
-#undef a_WC
-#undef a_SC
-#undef a_BC
-/* 040 sp   041  !   042  "   043  #   044  $   045  %   046  &   047  ' */
-   C_BLANK, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT,
-/* 050  (   051  )   052  *   053  +   054  ,    055  -   056  .   057  / */
-   C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT,
-/* 060  0   061  1   062  2   063  3   064  4   065  5   066  6   067  7 */
-   C_OCTAL, C_OCTAL, C_OCTAL, C_OCTAL, C_OCTAL, C_OCTAL, C_OCTAL, C_OCTAL,
-/* 070  8   071  9   072  :   073  ;   074  <   075  =   076  >   077  ? */
-   C_DIGIT, C_DIGIT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT,
-/* 100  @   101  A   102  B   103  C   104  D   105  E   106  F   107  G */
-   C_PUNCT, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER,
-/* 110  H   111  I   112  J   113  K   114  L   115  M   116  N   117  O */
-   C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER,
-/* 120  P   121  Q   122  R   123  S   124  T   125  U   126  V   127  W */
-   C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER, C_UPPER,
-/* 130  X   131  Y   132  Z   133  [   134  \   135  ]   136  ^   137  _ */
-   C_UPPER, C_UPPER, C_UPPER, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT,
-/* 140  `   141  a   142  b   143  c   144  d   145  e   146  f   147  g */
-   C_PUNCT, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER,
-/* 150  h   151  i   152  j   153  k   154  l   155  m   156  n   157  o */
-   C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER,
-/* 160  p   161  q   162  r   163  s   164  t   165  u   166  v   167  w */
-   C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER, C_LOWER,
-/* 170  x   171  y   172  z   173  {   174  |   175  }   176  ~   177 del */
-   C_LOWER, C_LOWER, C_LOWER, C_PUNCT, C_PUNCT, C_PUNCT, C_PUNCT, C_CNTRL
-};
 
 /* Our own little getopt(3) */
 static char const *a_main_oarg;
@@ -215,10 +178,10 @@ a_main_getopt(int argc, char * const argv[], char const *optstring){
    if(a_main_oopt == '-' && &curp[-1] == argv[a_main_oind]){
       ++a_main_oind;
       rv = 'h';
-      if(!strcmp(curp, "-help"))
+      if(!su_cs_cmp(curp, "-help"))
          goto jleave;
       rv = 'V';
-      if(!strcmp(curp, "-version"))
+      if(!su_cs_cmp(curp, "-version"))
          goto jleave;
       --a_main_oind;
    }
@@ -244,7 +207,7 @@ a_main_usage(FILE *fp){
    size_t i;
    n_NYD2_IN;
 
-   i = strlen(su_program);
+   i = su_cs_len(su_program);
    i = n_MIN(i, sizeof(buf) -1);
    if(i > 0)
       su_mem_set(buf, ' ', i);
@@ -313,7 +276,7 @@ a_main_startup(void){
 
    a_main_oind = /*_oerr =*/ 1;
 
-   if((cp = strrchr(su_program, '/')) != NULL)
+   if((cp = su_cs_rfind_c(su_program, '/')) != NULL)
       su_program = ++cp;
    /* XXX Somewhen: su_state_set(su_STATE_ERR_NOMEM | su_STATE_ERR_OVERFLOW);*/
    su_log_set_level(n_LOG_LEVEL); /* XXX _EMERG is 0.. */
@@ -402,7 +365,7 @@ a_main_setup_vars(void){
       bool_t doenv;
 
       if(!(doenv = (ep = ok_vlook(LOGNAME)) == NULL) &&
-            (doenv = (strcmp(pwuid->pw_name, ep) != 0)))
+            (doenv = (su_cs_cmp(pwuid->pw_name, ep) != 0)))
          n_err(_("Warning: $LOGNAME (%s) not identical to user (%s)!\n"),
             ep, pwuid->pw_name);
       if(doenv){
@@ -412,7 +375,7 @@ a_main_setup_vars(void){
       }
 
       /* BSD compat */
-      if((ep = ok_vlook(USER)) != NULL && strcmp(pwuid->pw_name, ep)){
+      if((ep = ok_vlook(USER)) != NULL && su_cs_cmp(pwuid->pw_name, ep)){
          n_err(_("Warning: $USER (%s) not identical to user (%s)!\n"),
             ep, pwuid->pw_name);
          n_pstate |= n_PS_ROOT;
@@ -639,7 +602,7 @@ a_main_rcv_mode(bool_t had_A_arg, char const *folder, char const *Larg,
 
       cp = n_folder_query();
       if(which_protocol(cp, FAL0, FAL0, NULL) == PROTO_IMAP)
-         n_strscpy(mailname, cp, sizeof mailname);
+         su_cs_pcopy_n(mailname, cp, sizeof mailname);
    }
 #endif
 
@@ -853,7 +816,7 @@ main(int argc, char *argv[]){
          if(*Larg == '"' || *Larg == '\''){ /* TODO list.c:listspec_check() */
             size_t j;
 
-            j = strlen(++Larg);
+            j = su_cs_len(++Larg);
             if(j > 0){
                cp = savestrbuf(Larg, --j);
                Larg = cp;
@@ -981,7 +944,7 @@ je_S:
          break;
       case 's':
          /* Subject:; take care for Debian #419840 and strip any \r and \n */
-         if(n_anyof_cp("\n\r", subject = a_main_oarg)){
+         if(su_cs_first_of(subject = a_main_oarg, "\n\r") != su_UZ_MAX){
             n_err(_("-s: normalizing away invalid ASCII NL / CR bytes\n"));
             for(subject = cp = savestr(a_main_oarg); *cp != '\0'; ++cp)
                if(*cp == '\n' || *cp == '\r')
@@ -1215,8 +1178,8 @@ jgetopt_done:
    if((cp = ok_vlook(expandargv)) != NULL){
       bool_t isfail, isrestrict;
 
-      isfail = !asccasecmp(cp, "fail");
-      isrestrict = (!isfail && !asccasecmp(cp, "restrict"));
+      isfail = !su_cs_cmp_case(cp, "fail");
+      isrestrict = (!isfail && !su_cs_cmp_case(cp, "restrict"));
 
       if((n_poption & n_PO_D_V) && !isfail && !isrestrict && *cp != '\0')
          n_err(_("Unknown *expandargv* value: %s\n"), cp);
@@ -1287,7 +1250,7 @@ je_expandargv:
             n_shexp_quote_cp(qf, FAL0));
          n_exit_status = n_EXIT_ERR;
          goto jleave;
-      }else if(!asccasecmp(n_poption_arg_Mm, "text/plain")) /* TODO no: magic */
+      }else if(!su_cs_cmp_case(n_poption_arg_Mm, "text/plain")) /* TODO magic*/
          n_poption_arg_Mm = NULL;
    }
 

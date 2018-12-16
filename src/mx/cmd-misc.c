@@ -43,6 +43,8 @@
 
 #include <sys/utsname.h>
 
+#include <su/cs.h>
+
 /* Expand the shell escape by expanding unescaped !'s into the last issued
  * command where possible */
 static char const *a_cmisc_bangexp(char const *cp);
@@ -184,7 +186,7 @@ a_cmisc_version_cmp(void const *s1, void const *s2){
 
    cp1 = s1;
    cp2 = s2;
-   rv = strcmp(&(*cp1)[1], &(*cp2)[1]);
+   rv = su_cs_cmp(&(*cp1)[1], &(*cp2)[1]);
    n_NYD2_OU;
    return rv;
 }
@@ -312,7 +314,7 @@ c_cwd(void *v){
          if(!n_var_vset(varname, (uintptr_t)sp->s_dat))
             v = NULL;
       }else{
-         l = strlen(sp->s_dat);
+         l = su_cs_len(sp->s_dat);
          sp = n_string_trunc(sp, l);
          if(fwrite(sp->s_dat, 1, sp->s_len, n_stdout) == sp->s_len &&
                putc('\n', n_stdout) == EOF)
@@ -441,7 +443,7 @@ jitall:
             sp = n_string_assign_buf(sp, trim.s, trim.l);
             trim.l = 0;
          }else for(cp = trim.s, i = 1;; ++cp, ++i){
-            if(strchr(ifs, *cp) != NULL){
+            if(su_cs_find_c(ifs, *cp) != NULL){
                sp = n_string_assign_buf(sp, trim.s, i - 1);
                trim.s += i;
                trim.l -= i;
@@ -585,18 +587,18 @@ c_version(void *vp){
 
    /* Some lines with the features.
     * *features* starts with dummy byte to avoid + -> *folder* expansions */
-   i = strlen(cp = &ok_vlook(features)[1]) +1;
+   i = su_cs_len(cp = &ok_vlook(features)[1]) +1;
    iop = n_autorec_alloc(i);
    memcpy(iop, cp, i);
 
    arr = n_autorec_alloc(sizeof(cp) * VAL_FEATURES_CNT);
-   for(i = 0; (cp = n_strsep(&iop, ',', TRU1)) != NULL; ++i)
+   for(i = 0; (cp = su_cs_sep_c(&iop, ',', TRU1)) != NULL; ++i)
       arr[i] = cp;
    qsort(arr, i, sizeof(cp), &a_cmisc_version_cmp);
 
    for(lnlen = 0; i-- > 0;){
       cp = *(arr++);
-      j = strlen(cp);
+      j = su_cs_len(cp);
 
       if((lnlen += j + 1) > 72){
          sp = n_string_push_c(sp, '\n');

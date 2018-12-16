@@ -42,9 +42,12 @@
 # include "mx/nail.h"
 #endif
 
+#include <pwd.h>
+
+#include <su/cs.h>
 #include <su/icodec.h>
 
-#include <pwd.h>
+#include "mx/ui-str.h"
 
 struct a_header_cmatch_data{
    ui32_t hcmd_len_x;      /* Length of .tdata,.. */
@@ -201,7 +204,7 @@ jleave:
    return rv;
 jerr:
    cp = _("<Unknown date>");
-   linelen = strlen(cp);
+   linelen = su_cs_len(cp);
    if (linelen >= n_FROM_DATEBUF)
       linelen = n_FROM_DATEBUF;
    rv = 0;
@@ -215,7 +218,7 @@ a_header__from_skipword(char const *wp)
    n_NYD2_IN;
 
    if (wp != NULL) {
-      while ((c = *wp++) != '\0' && !blankchar(c)) {
+      while ((c = *wp++) != '\0' && !su_cs_is_blank(c)) {
          if (c == '"') {
             while ((c = *wp++) != '\0' && c != '"')
                ;
@@ -223,7 +226,7 @@ a_header__from_skipword(char const *wp)
                --wp;
          }
       }
-      for (; blankchar(c); c = *wp++)
+      for (; su_cs_is_blank(c); c = *wp++)
          ;
    }
    n_NYD2_OU;
@@ -244,11 +247,11 @@ a_header_cmatch(char const *tp, char const *date){
 
       switch(tc){
       case 'a':
-         if(!lowerchar(dc))
+         if(!su_cs_is_lower(dc))
             goto jleave;
          break;
       case 'A':
-         if(!upperchar(dc))
+         if(!su_cs_is_upper(dc))
             goto jleave;
          break;
       case ' ':
@@ -256,15 +259,15 @@ a_header_cmatch(char const *tp, char const *date){
             goto jleave;
          break;
       case '0':
-         if(!digitchar(dc))
+         if(!su_cs_is_digit(dc))
             goto jleave;
          break;
       case 'O':
-         if(!digitchar(dc) && dc != ' ')
+         if(!su_cs_is_digit(dc) && dc != ' ')
                goto jleave;
          tc = *tp++; /* is "0"! */
          dc = *date;
-         if(digitchar(dc))
+         if(su_cs_is_digit(dc))
             ++date;
          break;
       case ':':
@@ -291,7 +294,7 @@ a_header_is_date(char const *date){
 
    rv = FAL0;
 
-   if((dl = strlen(date)) >= a_HEADER_DATE_MINLEN)
+   if((dl = su_cs_len(date)) >= a_HEADER_DATE_MINLEN)
       for(hcmdp = a_header_cmatch_data; hcmdp->hcmd_data != NULL; ++hcmdp)
          if(dl >= hcmdp->hcmd_len_min && dl <= hcmdp->hcmd_len_x &&
                (rv = a_header_cmatch(hcmdp->hcmd_data, date)))
@@ -508,7 +511,7 @@ jaddr_check:
 #endif
             break;
       } else if ((flags & a_DOMAIN_MASK) == a_DOMAIN_MASK) {
-         if ((c.c == ']' && *p != '\0') || c.c == '\\' || whitechar(c.c))
+         if ((c.c == ']' && *p != '\0') || c.c == '\\' || su_cs_is_white(c.c))
             break;
       } else if ((flags & (a_IN_QUOTE | a_DOMAIN_MASK)) == a_IN_QUOTE) {
          /*EMPTY*/;
@@ -531,7 +534,7 @@ jaddr_check:
        * TODO Update manual on support (search the several ALIASCOLON)! */
       else if (c.c == '(' || c.c == ')' || c.c == '<' || c.c == '>' ||
             c.c == '[' || c.c == ']' || c.c == ':' || c.c == ';' ||
-            c.c == '\\' || c.c == ',' || blankchar(c.c))
+            c.c == '\\' || c.c == ',' || su_cs_is_blank(c.c))
          break;
       flags &= ~a_IN_AT;
    }
@@ -543,7 +546,7 @@ jaddr_check:
    /* If we do not think this is an address we may treat it as an alias name
     * if and only if the original input is identical to the skinned version */
    if(!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR) &&
-         !strcmp(agp->ag_skinned, agp->ag_input)){
+         !su_cs_cmp(agp->ag_skinned, agp->ag_input)){
       /* TODO This may be an UUCP address */
       agp->ag_n_flags |= NAME_ADDRSPEC_ISNAME;
       if(!n_alias_is_valid_name(agp->ag_input))
@@ -642,7 +645,7 @@ jnode_redo:
                   --tp->t_end;
                else{
                   /* No closing comment - strip trailing whitespace */
-                  while(blankchar(*--xp))
+                  while(su_cs_is_blank(*--xp))
                      if(--tp->t_end == tp->t_start)
                         break;
                }
@@ -673,7 +676,7 @@ jnode_redo:
             if(tp->t_end > tp->t_start){
                /* No closing quote - strip trailing whitespace */
                if(*xp != '"'){
-                  while(blankchar(*xp--))
+                  while(su_cs_is_blank(*xp--))
                      if(--tp->t_end == tp->t_start)
                         break;
                }
@@ -682,7 +685,7 @@ jnode_redo:
             break;
 
          default:
-            if(blankchar(c.c)){
+            if(su_cs_is_blank(c.c)){
                if(tp != NULL)
                   tp->t_end = PTR2SIZE(cp - cp1st);
                tp = NULL;
@@ -719,7 +722,7 @@ jnode_redo:
              * TODO "specials".
              * However, if the 8th bit is set, this will be RFC 2047 converted
              * and the entire sequence is skipped */
-            if(!(c.u & 0x80) && !alnumchar(c.c) &&
+            if(!(c.u & 0x80) && !su_cs_is_alnum(c.c) &&
                   c.c != '!' && c.c != '#' && c.c != '$' && c.c != '%' &&
                   c.c != '&' && c.c != '\'' && c.c != '*' && c.c != '+' &&
                   c.c != '-' && c.c != '/' && c.c != '=' && c.c != '?' &&
@@ -776,7 +779,7 @@ jnode_redo:
             cpmax = &agp->ag_input[agp->ag_iaddr_aend];
             while(cp < cpmax){
                c.c = *cp++;
-               if(!(c.u & 0x80) && !alnumchar(c.c) &&
+               if(!(c.u & 0x80) && !su_cs_is_alnum(c.c) &&
                      c.c != '!' && c.c != '#' && c.c != '$' && c.c != '%' &&
                      c.c != '&' && c.c != '\'' && c.c != '*' && c.c != '+' &&
                      c.c != '-' && c.c != '/' && c.c != '=' && c.c != '?' &&
@@ -1000,7 +1003,8 @@ jput_quote_esc:
 #endif
                   break;
          } else if ((flags & a_DOMAIN_MASK) == a_DOMAIN_MASK) {
-            if ((c.c == ']' && *p != '\0') || c.c == '\\' || whitechar(c.c))
+            if ((c.c == ']' && *p != '\0') || c.c == '\\' ||
+                  su_cs_is_white(c.c))
                break;
          } else if ((flags & (a_IN_QUOTE | a_DOMAIN_MASK)) == a_IN_QUOTE) {
             /*EMPTY*/;
@@ -1019,7 +1023,7 @@ jput_quote_esc:
             continue;
          } else if (c.c == '(' || c.c == ')' || c.c == '<' || c.c == '>' ||
                c.c == '[' || c.c == ']' || c.c == ':' || c.c == ';' ||
-               c.c == '\\' || c.c == ',' || blankchar(c.c))
+               c.c == '\\' || c.c == ',' || su_cs_is_blank(c.c))
             break;
          flags &= ~a_IN_AT;
       }
@@ -1031,7 +1035,8 @@ jput_quote_esc:
 jinsert_domain:
          if(cp > &agp->ag_input[0] && cp[-1] == '<' &&
                cpmax <= &agp->ag_input[agp->ag_ilen] && cpmax[0] == '>' &&
-               (!strcmp(addr, ok_vlook(LOGNAME)) || getpwnam(addr) != NULL)){
+               (!su_cs_cmp(addr, ok_vlook(LOGNAME)) ||
+                getpwnam(addr) != NULL)){
             /* XXX However, if hostname is set to the empty string this
              * XXX indicates that the used *mta* will perform the
              * XXX auto-expansion instead.  Not so with `addrcodec' though */
@@ -1040,7 +1045,7 @@ jinsert_domain:
                   (cp = ok_vlook(hostname)) != NULL && *cp == '\0')
                agp->ag_n_flags |= NAME_ADDRSPEC_WITHOUT_DOMAIN;
             else{
-               c.ui32 = strlen(cp = n_nodename(TRU1));
+               c.ui32 = su_cs_len(cp = n_nodename(TRU1));
                /* This is yet IDNA converted.. */
                ostp = n_string_creat_auto(&ost);
                ostp = n_string_assign_buf(ostp, agp->ag_input, agp->ag_ilen);
@@ -1101,7 +1106,7 @@ a_gethfield(enum n_header_extract_flags hef, FILE *f,
       for (cp = *linebuf; fieldnamechar(*cp); ++cp)
          ;
       if (cp > *linebuf)
-         while (blankchar(*cp))
+         while (su_cs_is_blank(*cp))
             ++cp;
       if (cp == *linebuf)
          continue;
@@ -1119,7 +1124,7 @@ a_gethfield(enum n_header_extract_flags hef, FILE *f,
       cp = *linebuf + c;
       for (;;) {
          isenc = 0;
-         while (PTRCMP(--cp, >=, *linebuf) && blankchar(*cp))
+         while (PTRCMP(--cp, >=, *linebuf) && su_cs_is_blank(*cp))
             ;
          cp++;
          if (rem <= 0)
@@ -1127,13 +1132,13 @@ a_gethfield(enum n_header_extract_flags hef, FILE *f,
          if (PTRCMP(cp - 8, >=, *linebuf) && cp[-1] == '=' && cp[-2] == '?')
             isenc |= 1;
          ungetc(c = getc(f), f);
-         if (!blankchar(c))
+         if (!su_cs_is_blank(c))
             break;
          c = readline_restart(f, &line2, &line2size, 0); /* TODO linepool! */
          if (c < 0)
             break;
          --rem;
-         for (cp2 = line2; blankchar(*cp2); ++cp2)
+         for (cp2 = line2; su_cs_is_blank(*cp2); ++cp2)
             ;
          c -= (int)PTR2SIZE(cp2 - line2);
          if (cp2[0] == '=' && cp2[1] == '?' && c > 8)
@@ -1203,7 +1208,7 @@ jeof:
       default:
 jdfl:
          c = *(*cp)++ & 0377;
-         c = (*status & 02) ? lowerconv(c) : c;
+         c = (*status & 02) ? su_cs_to_lower(c) : c;
          goto jleave;
       }
    }
@@ -1233,7 +1238,7 @@ nexttoken(char const *cp)
             --nesting;
             break;
          } while (nesting > 0 && *cp != '\0'); /* XXX error? */
-      } else if (blankchar(*cp) || *cp == ',')
+      } else if (su_cs_is_blank(*cp) || *cp == ',')
          ++cp;
       else
          break;
@@ -1280,9 +1285,9 @@ jnodename:{
 
       hn = n_nodename(TRU1);
       ln = ok_vlook(LOGNAME);
-      i = strlen(ln) + strlen(hn) + 1 +1;
+      i = su_cs_len(ln) + su_cs_len(hn) + 1 +1;
       rv = cp = n_autorec_alloc(i);
-      sstpcpy(sstpcpy(sstpcpy(cp, ln), n_at), hn);
+      su_cs_pcopy(su_cs_pcopy(su_cs_pcopy(cp, ln), n_at), hn);
    }
    goto jleave;
 }
@@ -1314,7 +1319,8 @@ is_head(char const *linebuf, size_t linelen, bool_t check_rfc4155)
    bool_t rv;
    n_NYD2_IN;
 
-   if ((rv = (linelen >= 5 && !memcmp(linebuf, "From ", 5))) && check_rfc4155 &&
+   if ((rv = (linelen >= 5 && !memcmp(linebuf, "From ", 5))) &&
+         check_rfc4155 &&
          (a_header_extract_date_from_from_(linebuf, linelen, date) <= 0 ||
           !a_header_is_date(date)))
       rv = TRUM1;
@@ -1423,7 +1429,7 @@ jeseek:
       } else if ((val = thisfield(linebuf, "subject")) != NULL ||
             (val = thisfield(linebuf, "subj")) != NULL) {
          ++seenfields;
-         for (cp = val; blankchar(*cp); ++cp)
+         for (cp = val; su_cs_is_blank(*cp); ++cp)
             ;
          hq->h_subject = (hq->h_subject != NULL)
                ? save2str(hq->h_subject, cp) : savestr(cp);
@@ -1464,8 +1470,9 @@ jeseek:
       else if((val = thisfield(linebuf, "mail-followup-to")) != NULL){
          if(hef & n_HEADER_EXTRACT__MODE_MASK){
             ++seenfields;
-            hq->h_mft = cat(hq->h_mft, checkaddrs(lextract(val, GEXTRA | GFULL),
-                  /*EACM_STRICT | TODO '/' valid!! | EACM_NOLOG | */EACM_NONAME,
+            hq->h_mft = cat(hq->h_mft, checkaddrs(lextract(val,
+                  GEXTRA | GFULL),
+                  /*EACM_STRICT | TODO '/' valid! | EACM_NOLOG | */EACM_NONAME,
                   checkaddr_err_or_null));
          }else
             goto jebadhead;
@@ -1481,16 +1488,16 @@ jeseek:
                break;
          nl = (ui32_t)PTR2SIZE(cp - nstart);
 
-         while(blankchar(*cp))
+         while(su_cs_is_blank(*cp))
             ++cp;
          if(*cp++ != ':'){
 jebadhead:
             n_err(_("Ignoring header field: %s\n"), linebuf);
             continue;
          }
-         while(blankchar(*cp))
+         while(su_cs_is_blank(*cp))
             ++cp;
-         bl = (ui32_t)strlen(cp) +1;
+         bl = (ui32_t)su_cs_len(cp) +1;
 
          ++seenfields;
          *hftail =
@@ -1594,7 +1601,7 @@ hfield_mult(char const *field, struct message *mp, int mult)
          break;
       if ((hfield = thisfield(linebuf, field)) != NULL && *hfield != '\0') {
          if (mult)
-            n_str_add_buf(&hfs, hfield, strlen(hfield));
+            n_str_add_buf(&hfs, hfield, su_cs_len(hfield));
          else {
             hfs.s = savestr(hfield);
             break;
@@ -1620,19 +1627,19 @@ thisfield(char const *linebuf, char const *field)
    char const *rv = NULL;
    n_NYD2_IN;
 
-   while (lowerconv(*linebuf) == lowerconv(*field)) {
+   while (su_cs_to_lower(*linebuf) == su_cs_to_lower(*field)) {
       ++linebuf;
       ++field;
    }
    if (*field != '\0')
       goto jleave;
 
-   while (blankchar(*linebuf))
+   while (su_cs_is_blank(*linebuf))
       ++linebuf;
    if (*linebuf++ != ':')
       goto jleave;
 
-   while (blankchar(*linebuf)) /* TODO header parser..  strip trailing WS?!? */
+   while(su_cs_is_blank(*linebuf)) /* TODO header parser.. strip trailing WS */
       ++linebuf;
    rv = linebuf;
 jleave:
@@ -1729,7 +1736,7 @@ expandaddr_to_eaf(void){
    else{
       rv = EAF_TARGET_MASK;
 
-      for(buf = savestr(cp); (cp = n_strsep(&buf, ',', TRU1)) != NULL;){
+      for(buf = savestr(cp); (cp = su_cs_sep_c(&buf, ',', TRU1)) != NULL;){
          bool_t minus;
 
          if((minus = (*cp == '-')) || (*cp == '+' ? (minus = TRUM1) : FAL0))
@@ -1740,7 +1747,7 @@ expandaddr_to_eaf(void){
                if(n_poption & n_PO_D_V)
                   n_err(_("Unknown *expandaddr* value: %s\n"), cp);
                break;
-            }else if(!asccasecmp(cp, eafp->eafd_name)){
+            }else if(!su_cs_cmp_case(cp, eafp->eafd_name)){
                if(minus){
                   if(eafp->eafd_is_target){
                      if(minus != TRU1)
@@ -1756,7 +1763,7 @@ jandor:
                   rv |= eafp->eafd_or;
                }
                break;
-            }else if(!asccasecmp(cp, "noalias")){ /* TODO v15 OBSOLETE */
+            }else if(!su_cs_cmp_case(cp, "noalias")){ /* TODO v15 OBSOLETE */
                n_OBSOLETE(_("*expandaddr*: noalias is henceforth -name"));
                rv &= ~EAF_NAME;
                break;
@@ -1828,7 +1835,7 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm){
    if(!(rv = ((eacm & EACM_MODE_MASK) != EACM_NONE)))
       goto jleave;
 
-   /* This header does not allow such targets at all (XXX ->RFC 5322 parser) */
+   /* This header does not allow such targets at all (XXX >RFC 5322 parser) */
    if((eacm & EACM_STRICT) && (f & NAME_ADDRSPEC_ISFILEORPIPE)){
       if(eaf & EAF_FAIL)
          rv = -rv;
@@ -1871,21 +1878,21 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm){
 
          assert(np->n_flags & NAME_SKINNED);
          /* XXX We had this info before, and threw it away.. */
-         doms = strrchr(np->n_name, '@');
+         doms = su_cs_rfind_c(np->n_name, '@');
          assert(doms != NULL);
          ++doms;
 
-         if(!asccasecmp("localhost", doms))
+         if(!su_cs_cmp_case("localhost", doms))
             goto jgood;
-         if(!asccasecmp(n_nodename(TRU1), doms))
+         if(!su_cs_cmp_case(n_nodename(TRU1), doms))
             goto jgood;
 
          if((cs = ok_vlook(expandaddr_domaincheck)) != NULL){
             char *cpb, *cp;
 
             cpb = savestr(cs);
-            while((cp = n_strsep(&cpb, ',', TRU1)) != NULL)
-               if(!asccasecmp(cp, doms))
+            while((cp = su_cs_sep_c(&cpb, ',', TRU1)) != NULL)
+               if(!su_cs_cmp_case(cp, doms))
                   goto jgood;
          }
       }
@@ -1942,7 +1949,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
 
    memset(agp, 0, sizeof *agp);
 
-   if((agp->ag_input = name) == NULL || (agp->ag_ilen = strlen(name)) == 0){
+   if((agp->ag_input = name) == NULL || (agp->ag_ilen = su_cs_len(name)) == 0){
       agp->ag_skinned = n_UNCONST(n_empty); /* ok: NAME_SALLOC is not set */
       agp->ag_slen = 0;
       NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_EMPTY, 0);
@@ -1996,9 +2003,9 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
             flags |= a_GOTSPACE;
             agp->ag_iaddr_aend = PTR2SIZE(cp - name);
          }
-         if (cp[0] == 'a' && cp[1] == 't' && blankchar(cp[2]))
+         if (cp[0] == 'a' && cp[1] == 't' && su_cs_is_blank(cp[2]))
             cp += 3, *cp2++ = '@';
-         else if (cp[0] == '@' && blankchar(cp[1]))
+         else if (cp[0] == '@' && su_cs_is_blank(cp[1]))
             cp += 2, *cp2++ = '@';
          else
             flags |= a_LASTSP;
@@ -2047,7 +2054,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
          if(c == ',' && !issingle_hack){
             if(!(flags & a_GOTLT)){
                *cp2++ = ' ';
-               for(; blankchar(*cp); ++cp)
+               for(; su_cs_is_blank(*cp); ++cp)
                   ;
                flags &= ~a_LASTSP;
                bufend = cp2;
@@ -2172,11 +2179,11 @@ jbrk:
    rname = savestr(out.s);
    n_free(out.s);
 
-   while (blankchar(*rname))
+   while (su_cs_is_blank(*rname))
       ++rname;
    for (rp = rname; *rp != '\0'; ++rp)
       ;
-   while (PTRCMP(--rp, >=, rname) && blankchar(*rp))
+   while (PTRCMP(--rp, >=, rname) && su_cs_is_blank(*rp))
       *rp = '\0';
    if (rp == rname) {
       cp = mime_fromaddr(name);
@@ -2190,7 +2197,7 @@ jbrk:
    good = 0;
    nogood = 0;
    for (rp = rname; *rp != '\0' && PTRCMP(rp, <, rname + 20); ++rp)
-      if (*rp == '?' || blankchar(*rp))
+      if (*rp == '?' || su_cs_is_blank(*rp))
          ++nogood;
       else
          ++good;
@@ -2230,16 +2237,17 @@ jnewname:
          namebuf = n_realloc(namebuf, namesize = linesize +1);
       for (cp = linebuf; *cp != '\0' && *cp != ' '; ++cp)
          ;
-      for (; blankchar(*cp); ++cp)
+      for (; su_cs_is_blank(*cp); ++cp)
          ;
-      for (cp2 = namebuf + strlen(namebuf);
-           *cp && !blankchar(*cp) && PTRCMP(cp2, <, namebuf + namesize -1);)
+      for (cp2 = namebuf + su_cs_len(namebuf);
+            *cp && !su_cs_is_blank(*cp) &&
+            PTRCMP(cp2, <, namebuf + namesize -1);)
          *cp2++ = *cp++;
       *cp2 = '\0';
 
       if (readline_restart(ibuf, &linebuf, &linesize, 0) < 0)
          goto jout;
-      if ((cp = strchr(linebuf, 'F')) == NULL)
+      if ((cp = su_cs_find_c(linebuf, 'F')) == NULL)
          goto jout;
       if (strncmp(cp, "From", 4))
          goto jout;
@@ -2247,20 +2255,20 @@ jnewname:
          namebuf = n_realloc(namebuf, namesize = linesize + 1);
 
       /* UUCP from 976 (we do not support anyway!) */
-      while ((cp = strchr(cp, 'r')) != NULL) {
+      while ((cp = su_cs_find_c(cp, 'r')) != NULL) {
          if (!strncmp(cp, "remote", 6)) {
-            if ((cp = strchr(cp, 'f')) == NULL)
+            if ((cp = su_cs_find_c(cp, 'f')) == NULL)
                break;
             if (strncmp(cp, "from", 4) != 0)
                break;
-            if ((cp = strchr(cp, ' ')) == NULL)
+            if ((cp = su_cs_find_c(cp, ' ')) == NULL)
                break;
             cp++;
             if (f1st) {
                strncpy(namebuf, cp, namesize);
                f1st = 0;
             } else {
-               cp2 = strrchr(namebuf, '!') + 1;
+               cp2 = su_cs_rfind_c(namebuf, '!') + 1;
                strncpy(cp2, cp, PTR2SIZE(namebuf + namesize - cp2));
             }
             namebuf[namesize - 2] = '!';
@@ -2307,18 +2315,18 @@ subject_re_trim(char const *s){
    n_UNINIT(re_l, 0);
 
    if((re_st_x = ok_vlook(reply_strings)) != NULL &&
-         (re_l = strlen(re_st_x)) > 0){
+         (re_l = su_cs_len(re_st_x)) > 0){
       re_st = n_lofi_alloc(++re_l * 2);
       memcpy(re_st, re_st_x, re_l);
    }
 
 jouter:
    while(*s != '\0'){
-      while(spacechar(*s))
+      while(su_cs_is_space(*s))
          ++s;
 
       for(pp = ignored; pp->len > 0; ++pp)
-         if(is_asccaseprefix(pp->dat, s)){
+         if(su_cs_starts_with_case(s, pp->dat)){
             s += pp->len;
             any = TRU1;
             goto jouter;
@@ -2328,9 +2336,9 @@ jouter:
          char *cp;
 
          memcpy(re_st_x = &re_st[re_l], re_st, re_l);
-         while((cp = n_strsep(&re_st_x, ',', TRU1)) != NULL)
-            if(is_asccaseprefix(cp, s)){
-               s += strlen(cp);
+         while((cp = su_cs_sep_c(&re_st_x, ',', TRU1)) != NULL)
+            if(su_cs_starts_with_case(s, cp)){
+               s += su_cs_len(cp);
                any = TRU1;
                goto jouter;
             }
@@ -2453,8 +2461,8 @@ rfctime(char const *date) /* TODO su_idec_ return tests */
 
    if ((cp = nexttoken(cp)) == NULL)
       goto jinvalid;
-   if (alphachar(cp[0]) && alphachar(cp[1]) && alphachar(cp[2]) &&
-         cp[3] == ',') {
+   if (su_cs_is_alpha(cp[0]) && su_cs_is_alpha(cp[1]) &&
+         su_cs_is_alpha(cp[2]) && cp[3] == ',') {
       if ((cp = nexttoken(&cp[4])) == NULL)
          goto jinvalid;
    }
@@ -2510,8 +2518,8 @@ rfctime(char const *date) /* TODO su_idec_ return tests */
          ++cp;
          break;
       }
-      if (digitchar(cp[0]) && digitchar(cp[1]) && digitchar(cp[2]) &&
-            digitchar(cp[3])) {
+      if (su_cs_is_digit(cp[0]) && su_cs_is_digit(cp[1]) &&
+            su_cs_is_digit(cp[2]) && su_cs_is_digit(cp[3])) {
          si64_t tadj;
 
          buf[2] = '\0';
@@ -2599,7 +2607,7 @@ substdate(struct message *m)
       while ((cp = nexttoken(cp)) != NULL && *cp != ';') {
          do
             ++cp;
-         while (alnumchar(*cp));
+         while (su_cs_is_alnum(*cp));
       }
       if (cp && *++cp)
          m->m_time = rfctime(cp);
@@ -2695,7 +2703,7 @@ jredo_localtime:
             if(j > 128){
                n_err(_("Ignoring this date format: %s\n"),
                   n_shexp_quote_cp(fmt, FAL0));
-               n_strscpy(rv, n_time_ctime(t, NULL), j);
+               su_cs_pcopy_n(rv, n_time_ctime(t, NULL), j);
             }
          }
       }
@@ -2739,7 +2747,7 @@ n_header_textual_sender_info(struct message *mp, char **cumulation_or_null,
          size_t i;
 
          for(i = 0, np2 = np; np2 != NULL; np2 = np2->n_flink)
-            i += strlen(np2->n_fullname) +3;
+            i += su_cs_len(np2->n_fullname) +3;
 
          sp1 = n_string_book(n_string_creat_auto(&s_b1), i);
          sp2 = (name_full_or_null == NULL) ? NULL
@@ -2974,10 +2982,11 @@ n_header_match(struct message *mp, struct search_expr const *sep){
 
    /* */
    if((field = sep->ss_field) != NULL){
-      if(!asccasecmp(field, "header") || (field[0] == '<' && field[1] == '\0'))
+      if(!su_cs_cmp_case(field, "header") ||
+            (field[0] == '<' && field[1] == '\0'))
          match = a_ALL;
       else{
-         fiter.s = n_lofi_alloc((fiter.l = strlen(field)) +1);
+         fiter.s = n_lofi_alloc((fiter.l = su_cs_len(field)) +1);
          match = a_ITER;
       }
 #ifdef mx_HAVE_REGEX
@@ -3000,14 +3009,14 @@ n_header_match(struct message *mp, struct search_expr const *sep){
          char *itercp;
 
          memcpy(itercp = fiter.s, sep->ss_field, fiter.l +1);
-         while((field = n_strsep(&itercp, ',', TRU1)) != NULL){
+         while((field = su_cs_sep_c(&itercp, ',', TRU1)) != NULL){
             /* It may be an abbreviation */
             char const x[][8] = {"from", "to", "cc", "bcc", "subject"};
             size_t i;
             char c1;
 
             if(field[0] != '\0' && field[1] == '\0'){
-               c1 = lowerconv(field[0]);
+               c1 = su_cs_to_lower(field[0]);
                for(i = 0; i < n_NELEM(x); ++i){
                   if(c1 == x[i][0]){
                      field = x[i];
@@ -3016,7 +3025,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
                }
             }
 
-            if(!ascncasecmp(field, *linebuf, PTR2SIZE(colon - *linebuf)))
+            if(!su_cs_cmp_case_n(field, *linebuf, PTR2SIZE(colon - *linebuf)))
                break;
          }
          if(field == NULL)
@@ -3044,7 +3053,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
       }
 
       /* Need to check the body */
-      while(blankchar(*++colon))
+      while(su_cs_is_blank(*++colon))
          ;
       in.s = colon;
 
@@ -3057,7 +3066,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
          out.s = np->n_name;
       }else{
          np = NULL;
-         in.l = strlen(in.s);
+         in.l = su_cs_len(in.s);
          mime_fromhdr(&in, &out, TD_ICONV);
       }
 
@@ -3105,10 +3114,10 @@ n_header_is_known(char const *name, size_t len){
    n_NYD_IN;
 
    if(len == UIZ_MAX)
-      len = strlen(name);
+      len = su_cs_len(name);
 
    for(rv = names; *rv != NULL; ++rv)
-      if(!ascncasecmp(*rv, name, len))
+      if(!su_cs_cmp_case_n(*rv, name, len))
          break;
    n_NYD_OU;
    return *rv;
@@ -3126,7 +3135,7 @@ n_header_add_custom(struct n_header_field **hflp, char const *dat,
    hfp = NULL;
 
    /* For (-C) convenience, allow leading WS */
-   while(blankchar(*dat))
+   while(su_cs_is_blank(*dat))
       ++dat;
 
    /* Isolate the header field from the body */
@@ -3136,7 +3145,7 @@ n_header_add_custom(struct n_header_field **hflp, char const *dat,
       if(*cp == '\0'){
          if(cp == dat)
             goto jename;
-      }else if(*cp != ':' && !blankchar(*cp)){
+      }else if(*cp != ':' && !su_cs_is_blank(*cp)){
 jename:
          cp = N_("Invalid custom header (not \"field: body\"): %s\n");
          goto jerr;
@@ -3154,15 +3163,15 @@ jename:
    }
 
    /* Skip on over to the body */
-   while(blankchar(*cp))
+   while(su_cs_is_blank(*cp))
       ++cp;
    if(*cp++ != ':')
       goto jename;
-   while(blankchar(*cp))
+   while(su_cs_is_blank(*cp))
       ++cp;
-   bl = (ui32_t)strlen(cp);
+   bl = (ui32_t)su_cs_len(cp);
    for(i = bl++; i-- != 0;)
-      if(cntrlchar(cp[i])){
+      if(su_cs_is_cntrl(cp[i])){
          cp = N_("Invalid custom header: contains control characters: %s\n");
          goto jerr;
       }

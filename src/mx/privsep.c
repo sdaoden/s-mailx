@@ -28,6 +28,8 @@
 
 #include "mx/nail.h"
 
+#include <string.h>
+
 #if defined mx_HAVE_PRCTL_DUMPABLE
 # include <sys/prctl.h>
 #elif defined mx_HAVE_PTRACE_DENY

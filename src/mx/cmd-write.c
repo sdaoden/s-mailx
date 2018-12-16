@@ -41,6 +41,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
+
 /* Save/copy the indicated messages at the end of the passed file name.
  * If mark is true, mark the message "saved" */
 static int a_cwrite_save1(void *vp, struct n_ignore const *itp,
@@ -85,7 +87,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
          ;
       *cq = '\0';
       if (ok_blook(outfolder)) {
-         size_t sz = strlen(cp) +1;
+         size_t sz = su_cs_len(cp) +1;
          file = n_autorec_alloc(sz + 1);
          file[0] = '+';
          memcpy(file + 1, cp, sz);
@@ -96,7 +98,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
       if((file = cap->ca_arg.ca_str.s)[0] == '\0')
          file = fexpand("&", FEXP_NVAR);
 
-      while(spacechar(*file))
+      while(su_cs_is_space(*file))
          ++file;
       if (*file == '|') {
          ++file;
@@ -121,7 +123,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
    /* TODO all this should be URL and Mailbox-"VFS" based, and then finally
     * TODO end up as Mailbox()->append().  Unless SEND_TOFILE, of course.
     * TODO However, URL parse because that file:// prefix check is a HACK! */
-   if(convert == SEND_TOFILE && !is_prefix("file://", file))
+   if(convert == SEND_TOFILE && !su_cs_starts_with(file, "file://"))
       file = savecat("file://", file);
    if((obuf = n_fopen_any(file, "a+", &fs)) == NULL){
       n_perr(file, 0);
@@ -335,7 +337,7 @@ c_write(void *vp){
 
    if((cap = (cacp = vp)->cac_arg->ca_next)->ca_arg.ca_str.s[0] == '\0')
       cap->ca_arg.ca_str.s = savestrbuf(n_path_devnull,
-            cap->ca_arg.ca_str.l = strlen(n_path_devnull));
+            cap->ca_arg.ca_str.l = su_cs_len(n_path_devnull));
 
    rv = a_cwrite_save1(vp, n_IGNORE_ALL, SEND_TOFILE, FAL0, FAL0);
    n_NYD_OU;

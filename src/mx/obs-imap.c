@@ -45,22 +45,23 @@
 # include "mx/nail.h"
 #endif
 
+su_EMPTY_FILE()
 #ifdef mx_HAVE_IMAP
-# include <su/icodec.h>
+#include <sys/socket.h>
 
-# include <sys/socket.h>
-
-# include <netdb.h>
-
-# include <netinet/in.h>
-
-# ifdef mx_HAVE_ARPA_INET_H
-#  include <arpa/inet.h>
-# endif
+#include <netdb.h>
+#ifdef mx_HAVE_ARPA_INET_H
+# include <arpa/inet.h>
 #endif
+#include <netinet/in.h>
 
-EMPTY_FILE()
-#ifdef mx_HAVE_IMAP
+#include <su/cs.h>
+#include <su/icodec.h>
+#include <su/utf.h>
+
+#include "mx/iconv.h"
+#include "mx/ui-str.h"
+
 #define IMAP_ANSWER() \
 {\
    if (mp->mb_type != MB_CACHE) {\
@@ -275,7 +276,7 @@ imap_quotestr(char const *s)
    char *n, *np;
    n_NYD2_IN;
 
-   np = n = n_autorec_alloc(2 * strlen(s) + 3);
+   np = n = n_autorec_alloc(2 * su_cs_len(s) + 3);
    *np++ = '"';
    while (*s) {
       if (*s == '"' || *s == '\\')
@@ -299,7 +300,7 @@ imap_unquotestr(char const *s)
       goto jleave;
    }
 
-   np = n = n_autorec_alloc(strlen(s) + 1);
+   np = n = n_autorec_alloc(su_cs_len(s) + 1);
    while (*++s) {
       if (*s == '\\')
          s++;
@@ -322,7 +323,7 @@ imap_delim_init(struct mailbox *mp, struct url const *urlp){
    mp->mb_imap_delim[0] = '\0';
 
    if((cp = xok_vlook(imap_delim, urlp, OXM_ALL)) != NULL){
-      i = strlen(cp);
+      i = su_cs_len(cp);
 
       if(i == 0){
          cp = n_IMAP_DELIM;
@@ -363,18 +364,18 @@ imap_path_normalize(struct mailbox *mp, char const *cp){
          if((c = *cpx) == '\0')
             goto jleave;
          else if(dc == '\0'){
-            if(strchr(n_IMAP_DELIM, c)){
+            if(su_cs_find_c(n_IMAP_DELIM, c)){
                dc = c;
                break;
             }
          }else if(c == dc)
             break;
-         else if(dc2 && strchr(dcp, c) != NULL)
+         else if(dc2 && su_cs_find_c(dcp, c) != NULL)
             break;
 
       /* And we don't need to reevaluate what we have seen yet */
       i = PTR2SIZE(cpx - cp);
-      rv = rv_base = n_autorec_alloc(i + (j = strlen(cpx) +1));
+      rv = rv_base = n_autorec_alloc(i + (j = su_cs_len(cpx) +1));
       if(i > 0)
          memcpy(rv, cp, i);
       memcpy(&rv[i], cpx, j);
@@ -384,7 +385,7 @@ imap_path_normalize(struct mailbox *mp, char const *cp){
 
    /* Squeeze adjacent delimiters, convert remain to dc */
    for(lc = '\0'; (c = *cp++) != '\0'; lc = c){
-      if(c == dc || (lc != '\0' && dc2 && strchr(dcp, c) != NULL))
+      if(c == dc || (lc != '\0' && dc2 && su_cs_find_c(dcp, c) != NULL))
          c = dc;
       if(c != dc || lc != dc)
          *rv++ = c;
@@ -479,7 +480,7 @@ imap_path_encode(char const *cp, bool_t *err_or_null){
          emsg = N_("Invalid UTF-8 sequence, cannot convert to UTF-32");
 
          for(be16p = be16p_base, --cp, ++l;;){
-            if((utf32 = n_utf8_to_utf32(&cp, &l)) == UI32_MAX)
+            if((utf32 = su_utf_8_to_32(&cp, &l)) == UI32_MAX)
                goto jerr;
 
             /* TODO S-CText: magic utf16 conversions */
@@ -559,7 +560,7 @@ imap_path_decode(char const *path, bool_t *err_or_null){
       err_or_null = &err_def;
    *err_or_null = FAL0;
 
-   l = l_orig = strlen(path);
+   l = l_orig = su_cs_len(path);
    rv = rv_base = n_autorec_alloc(l << 1);
    memcpy(rv, path, l +1);
 
@@ -726,7 +727,7 @@ jeincpl:
                i -= 4;
             }
 
-            utf32 = n_utf32_to_utf8(utf32, rv);
+            utf32 = su_utf_32_to_8(utf32, rv);
             rv += utf32;
          }
       }
@@ -773,38 +774,38 @@ imap_other_get(char *pp)
    char *xp;
    n_NYD2_IN;
 
-   if (ascncasecmp(pp, "FLAGS ", 6) == 0) {
+   if (su_cs_cmp_case_n(pp, "FLAGS ", 6) == 0) {
       pp += 6;
       response_other = MAILBOX_DATA_FLAGS;
-   } else if (ascncasecmp(pp, "LIST ", 5) == 0) {
+   } else if (su_cs_cmp_case_n(pp, "LIST ", 5) == 0) {
       pp += 5;
       response_other = MAILBOX_DATA_LIST;
-   } else if (ascncasecmp(pp, "LSUB ", 5) == 0) {
+   } else if (su_cs_cmp_case_n(pp, "LSUB ", 5) == 0) {
       pp += 5;
       response_other = MAILBOX_DATA_LSUB;
-   } else if (ascncasecmp(pp, "MAILBOX ", 8) == 0) {
+   } else if (su_cs_cmp_case_n(pp, "MAILBOX ", 8) == 0) {
       pp += 8;
       response_other = MAILBOX_DATA_MAILBOX;
-   } else if (ascncasecmp(pp, "SEARCH ", 7) == 0) {
+   } else if (su_cs_cmp_case_n(pp, "SEARCH ", 7) == 0) {
       pp += 7;
       response_other = MAILBOX_DATA_SEARCH;
-   } else if (ascncasecmp(pp, "STATUS ", 7) == 0) {
+   } else if (su_cs_cmp_case_n(pp, "STATUS ", 7) == 0) {
       pp += 7;
       response_other = MAILBOX_DATA_STATUS;
-   } else if (ascncasecmp(pp, "CAPABILITY ", 11) == 0) {
+   } else if (su_cs_cmp_case_n(pp, "CAPABILITY ", 11) == 0) {
       pp += 11;
       response_other = CAPABILITY_DATA;
    } else {
       responded_other_number = strtol(pp, &xp, 10);
       while (*xp == ' ')
          ++xp;
-      if (ascncasecmp(xp, "EXISTS\r\n", 8) == 0) {
+      if (su_cs_cmp_case_n(xp, "EXISTS\r\n", 8) == 0) {
          response_other = MAILBOX_DATA_EXISTS;
-      } else if (ascncasecmp(xp, "RECENT\r\n", 8) == 0) {
+      } else if (su_cs_cmp_case_n(xp, "RECENT\r\n", 8) == 0) {
          response_other = MAILBOX_DATA_RECENT;
-      } else if (ascncasecmp(xp, "EXPUNGE\r\n", 9) == 0) {
+      } else if (su_cs_cmp_case_n(xp, "EXPUNGE\r\n", 9) == 0) {
          response_other = MESSAGE_DATA_EXPUNGE;
-      } else if (ascncasecmp(xp, "FETCH ", 6) == 0) {
+      } else if (su_cs_cmp_case_n(xp, "FETCH ", 6) == 0) {
          pp = &xp[6];
          response_other = MESSAGE_DATA_FETCH;
       } else
@@ -818,19 +819,19 @@ static void
 imap_response_get(const char **cp)
 {
    n_NYD2_IN;
-   if (ascncasecmp(*cp, "OK ", 3) == 0) {
+   if (su_cs_cmp_case_n(*cp, "OK ", 3) == 0) {
       *cp += 3;
       response_status = RESPONSE_OK;
-   } else if (ascncasecmp(*cp, "NO ", 3) == 0) {
+   } else if (su_cs_cmp_case_n(*cp, "NO ", 3) == 0) {
       *cp += 3;
       response_status = RESPONSE_NO;
-   } else if (ascncasecmp(*cp, "BAD ", 4) == 0) {
+   } else if (su_cs_cmp_case_n(*cp, "BAD ", 4) == 0) {
       *cp += 4;
       response_status = RESPONSE_BAD;
-   } else if (ascncasecmp(*cp, "PREAUTH ", 8) == 0) {
+   } else if (su_cs_cmp_case_n(*cp, "PREAUTH ", 8) == 0) {
       *cp += 8;
       response_status = RESPONSE_PREAUTH;
-   } else if (ascncasecmp(*cp, "BYE ", 4) == 0) {
+   } else if (su_cs_cmp_case_n(*cp, "BYE ", 4) == 0) {
       *cp += 4;
       response_status = RESPONSE_BYE;
    } else
@@ -850,7 +851,7 @@ imap_response_parse(void)
 
    if (parsebufsize < imapbufsize + 1)
       parsebuf = n_realloc(parsebuf, parsebufsize = imapbufsize);
-   memcpy(parsebuf, imapbuf, strlen(imapbuf) + 1);
+   memcpy(parsebuf, imapbuf, su_cs_len(imapbuf) + 1);
    pp = parsebuf;
    switch (*ip) {
    case '+':
@@ -944,7 +945,7 @@ jagain:
       }
       complete = 0;
       if (response_type == RESPONSE_TAGGED) {
-         if (asccasecmp(responded_tag, tag(0)) == 0)
+         if (su_cs_cmp_case(responded_tag, tag(0)) == 0)
             complete |= 1;
          else
             goto jagain;
@@ -977,7 +978,7 @@ jstop:
          break;
       }
       if (response_status != RESPONSE_OTHER &&
-            ascncasecmp(responded_text, "[ALERT] ", 8) == 0)
+            su_cs_cmp_case_n(responded_text, "[ALERT] ", 8) == 0)
          n_err(_("IMAP alert: %s"), &responded_text[8]);
       if (complete == 3)
          mp->mb_active &= ~MB_COMD;
@@ -1002,16 +1003,16 @@ imap_parse_list(void)
    if (*cp == '(') {
       while (*cp && *cp != ')') {
          if (*cp == '\\') {
-            if (ascncasecmp(&cp[1], "Noinferiors ", 12) == 0) {
+            if (su_cs_cmp_case_n(&cp[1], "Noinferiors ", 12) == 0) {
                list_attributes |= LIST_NOINFERIORS;
                cp += 12;
-            } else if (ascncasecmp(&cp[1], "Noselect ", 9) == 0) {
+            } else if (su_cs_cmp_case_n(&cp[1], "Noselect ", 9) == 0) {
                list_attributes |= LIST_NOSELECT;
                cp += 9;
-            } else if (ascncasecmp(&cp[1], "Marked ", 7) == 0) {
+            } else if (su_cs_cmp_case_n(&cp[1], "Marked ", 7) == 0) {
                list_attributes |= LIST_MARKED;
                cp += 7;
-            } else if (ascncasecmp(&cp[1], "Unmarked ", 9) == 0) {
+            } else if (su_cs_cmp_case_n(&cp[1], "Unmarked ", 9) == 0) {
                list_attributes |= LIST_UNMARKED;
                cp += 9;
             }
@@ -1356,12 +1357,12 @@ imap_capability(struct mailbox *mp)
             response_other == CAPABILITY_DATA) {
          cp = responded_other_text;
          while (*cp) {
-            while (spacechar(*cp))
+            while (su_cs_is_space(*cp))
                ++cp;
-            if (strncmp(cp, "UIDPLUS", 7) == 0 && spacechar(cp[7]))
+            if (strncmp(cp, "UIDPLUS", 7) == 0 && su_cs_is_space(cp[7]))
                /* RFC 2359 */
                mp->mb_flags |= MB_UIDPLUS;
-            while (*cp && !spacechar(*cp))
+            while (*cp && !su_cs_is_space(*cp))
                ++cp;
          }
       }
@@ -1478,12 +1479,12 @@ imap_select(struct mailbox *mp, off_t *size, int *cnt, const char *mbx,
    while (mp->mb_active & MB_COMD) {
       ok = imap_answer(mp, 1);
       if (response_status != RESPONSE_OTHER &&
-            (cp = asccasestr(responded_text, "[UIDVALIDITY ")) != NULL)
+            (cp = su_cs_find_case(responded_text, "[UIDVALIDITY ")) != NULL)
          su_idec_u64_cp(&mp->mb_uidvalidity, &cp[13], 10, NULL);/* TODO err? */
    }
    *cnt = (had_exists > 0) ? had_exists : 0;
    if (response_status != RESPONSE_OTHER &&
-         ascncasecmp(responded_text, "[READ-ONLY] ", 12) == 0)
+         su_cs_cmp_case_n(responded_text, "[READ-ONLY] ", 12) == 0)
       mp->mb_perm = 0;
 jleave:
    return ok;
@@ -1513,7 +1514,7 @@ imap_flags(struct mailbox *mp, unsigned X, unsigned Y)
       } else
          continue;
 
-      if ((cp = asccasestr(responded_other_text, "FLAGS ")) != NULL) {
+      if ((cp = su_cs_find_case(responded_other_text, "FLAGS ")) != NULL) {
          cp += 5;
          while (*cp == ' ')
             cp++;
@@ -1521,7 +1522,7 @@ imap_flags(struct mailbox *mp, unsigned X, unsigned Y)
             imap_getflags(cp, &cp, &m->m_flag);
       }
 
-      if ((cp = asccasestr(responded_other_text, "UID ")) != NULL)
+      if ((cp = su_cs_find_case(responded_other_text, "UID ")) != NULL)
          su_idec_u64_cp(&m->m_uid, &cp[4], 10, NULL);/* TODO errors? */
       getcache1(mp, m, NEED_UNSPEC, 1);
       m->m_flag &= ~MHIDDEN;
@@ -1545,9 +1546,11 @@ imap_flags(struct mailbox *mp, unsigned X, unsigned Y)
             m = &message[n-1];
          } else
             continue;
-         if ((cp = asccasestr(responded_other_text, "RFC822.SIZE ")) != NULL)
+         if ((cp = su_cs_find_case(responded_other_text, "RFC822.SIZE ")
+               ) != NULL)
             m->m_xsize = strtol(&cp[12], NULL, 10);
-         if ((cp = asccasestr(responded_other_text, "INTERNALDATE ")) != NULL)
+         if ((cp = su_cs_find_case(responded_other_text, "INTERNALDATE ")
+               ) != NULL)
             m->m_time = imap_read_date_time(&cp[13]);
       }
    }
@@ -1669,7 +1672,7 @@ _imap_getcred(struct mailbox *mbp, struct ccred *ccredp, struct url *urlp)
       if ((var = mbp->mb_imap_pass) != NULL) {
          var = savecat("password-", xuhp);
          if ((old = n_UNCONST(n_var_vlook(var, FAL0))) != NULL)
-            old = sstrdup(old);
+            old = su_cs_dup(old);
          n_var_vset(var, (uintptr_t)mbp->mb_imap_pass);
       }
       rv = ccred_lookup_old(ccredp, CPROTO_IMAP, xuhp);
@@ -1715,18 +1718,19 @@ _imap_setfile1(char const * volatile who, struct url *urlp,
    if (mb.mb_imap_account != NULL &&
          (mb.mb_type == MB_IMAP || mb.mb_type == MB_CACHE)) {
       if (mb.mb_sock.s_fd > 0 && mb.mb_sock.s_rsz >= 0 &&
-            !strcmp(mb.mb_imap_account, urlp->url_p_eu_h_p) &&
+            !su_cs_cmp(mb.mb_imap_account, urlp->url_p_eu_h_p) &&
             disconnected(mb.mb_imap_account) == 0) {
          same_imap_account = 1;
          if (urlp->url_pass.s == NULL && mb.mb_imap_pass != NULL)
 /*
             goto jduppass;
       } else if ((transparent || mb.mb_type == MB_CACHE) &&
-            !strcmp(mb.mb_imap_account, urlp->url_p_eu_h_p) &&
+            !su_cs_cmp(mb.mb_imap_account, urlp->url_p_eu_h_p) &&
             urlp->url_pass.s == NULL && mb.mb_imap_pass != NULL)
 jduppass:
 */
-         urlp->url_pass.l = strlen(urlp->url_pass.s = savestr(mb.mb_imap_pass));
+         urlp->url_pass.l = su_cs_len(urlp->url_pass.s =
+               savestr(mb.mb_imap_pass));
       }
    }
 
@@ -1763,10 +1767,10 @@ jduppass:
       n_free(mb.mb_imap_account);
    if (mb.mb_imap_pass != NULL)
       n_free(mb.mb_imap_pass);
-   mb.mb_imap_account = sstrdup(urlp->url_p_eu_h_p);
+   mb.mb_imap_account = su_cs_dup(urlp->url_p_eu_h_p);
    /* TODO This is a hack to allow '@boxname'; in the end everything will be an
     * TODO object, and mailbox will naturally have an URL and credentials */
-   mb.mb_imap_pass = sbufdup(ccred.cc_pass.s, ccred.cc_pass.l);
+   mb.mb_imap_pass = su_cs_dup_cbuf(ccred.cc_pass.s, ccred.cc_pass.l);
 
    if (!same_imap_account) {
       if (mb.mb_sock.s_fd >= 0)
@@ -1787,7 +1791,8 @@ jduppass:
          n_free(mb.mb_imap_mailbox);
       assert(urlp->url_path.s != NULL);
       imap_delim_init(&mb, urlp);
-      mb.mb_imap_mailbox = sstrdup(imap_path_normalize(&mb, urlp->url_path.s));
+      mb.mb_imap_mailbox = su_cs_dup(imap_path_normalize(&mb,
+            urlp->url_path.s));
       initbox(savecatsep(urlp->url_p_eu_h_p,
          (mb.mb_imap_delim[0] != '\0' ? mb.mb_imap_delim[0] : n_IMAP_DELIM[0]),
          mb.mb_imap_mailbox));
@@ -2013,7 +2018,7 @@ imap_putstr(struct mailbox *mp, struct message *m, const char *str,
    size_t len;
    n_NYD_IN;
 
-   len = strlen(str);
+   len = su_cs_len(str);
    fseek(mp->mb_otf, 0L, SEEK_END);
    offset = ftell(mp->mb_otf);
    if (head)
@@ -2133,21 +2138,21 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
       if (response_status != RESPONSE_OTHER ||
             response_other != MESSAGE_DATA_FETCH)
          continue;
-      if ((loc = asccasestr(responded_other_text, resp)) == NULL)
+      if ((loc = su_cs_find_case(responded_other_text, resp)) == NULL)
          continue;
       uid = 0;
       if (m->m_uid) {
-         if ((cp = asccasestr(responded_other_text, "UID "))) {
+         if ((cp = su_cs_find_case(responded_other_text, "UID "))) {
             su_idec_u64_cp(&uid, &cp[4], 10, NULL);/* TODO errors? */
             n = 0;
          } else
             n = -1;
       } else
          n = responded_other_number;
-      if ((cp = strrchr(responded_other_text, '{')) == NULL) {
+      if ((cp = su_cs_rfind_c(responded_other_text, '{')) == NULL) {
          if (m->m_uid ? m->m_uid != uid : n != number)
             continue;
-         if ((cp = strchr(loc, '"')) != NULL) {
+         if ((cp = su_cs_find_c(loc, '"')) != NULL) {
             cp = imap_unquotestr(cp);
             imap_putstr(mp, m, cp, head, headsize, headlines);
          } else {
@@ -2171,7 +2176,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
       if (n == -1 && sgetline(&imapbuf, &imapbufsize, NULL, &mp->mb_sock) > 0) {
          if (n_poption & n_PO_VERBVERB)
             fputs(imapbuf, stderr);
-         if ((cp = asccasestr(imapbuf, "UID ")) != NULL) {
+         if ((cp = su_cs_find_case(imapbuf, "UID ")) != NULL) {
             su_idec_u64_cp(&uid, &cp[4], 10, NULL);/* TODO errors? */
             if (uid == m->m_uid) {
                commitmsg(mp, m, &mt, mt.m_content_info);
@@ -2272,15 +2277,15 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
          break;
       if (response_other != MESSAGE_DATA_FETCH)
          continue;
-      if (ok == STOP || (cp=strrchr(responded_other_text, '{')) == 0) {
+      if (ok == STOP || (cp=su_cs_rfind_c(responded_other_text, '{')) == 0) {
          srelax_rele();
          return STOP;
       }
-      if (asccasestr(responded_other_text, "RFC822.HEADER") == NULL)
+      if (su_cs_find_case(responded_other_text, "RFC822.HEADER") == NULL)
          continue;
       expected = atol(&cp[1]);
       if (m[bot-1].m_uid) {
-         if ((cp = asccasestr(responded_other_text, "UID ")) != NULL) {
+         if ((cp = su_cs_find_case(responded_other_text, "UID ")) != NULL) {
             ui64_t uid;
 
             su_idec_u64_cp(&uid, &cp[4], 10, NULL);/* TODO errors? */
@@ -2306,7 +2311,7 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
       if (n == -1 && sgetline(&imapbuf, &imapbufsize, NULL, &mp->mb_sock) > 0) {
          if (n_poption & n_PO_VERBVERB)
             fputs(imapbuf, stderr);
-         if ((cp = asccasestr(imapbuf, "UID ")) != NULL) {
+         if ((cp = su_cs_find_case(imapbuf, "UID ")) != NULL) {
             ui64_t uid;
 
             su_idec_u64_cp(&uid, &cp[4], 10, NULL);/* TODO errors? */
@@ -2711,7 +2716,7 @@ c_imapcodec(void *vp){
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
 
    act = *argv;
-   for(cp = act; *cp != '\0' && !blankspacechar(*cp); ++cp)
+   for(cp = act; *cp != '\0' && !su_cs_is_space(*cp); ++cp)
       ;
    if(act == cp)
       goto jesynopsis;
@@ -2722,9 +2727,9 @@ c_imapcodec(void *vp){
    n_pstate_err_no = su_ERR_NONE;
    varres = imap_path_normalize(NULL, cp);
 
-   if(is_ascncaseprefix(act, "encode", alen))
+   if(su_cs_starts_with_case_n("encode", act, alen))
       varres = imap_path_encode(varres, &err);
-   else if(is_ascncaseprefix(act, "decode", alen))
+   else if(su_cs_starts_with_case_n("decode", act, alen))
       varres = imap_path_decode(varres, &err);
    else
       goto jesynopsis;
@@ -2743,7 +2748,7 @@ c_imapcodec(void *vp){
    }else{
       struct str in, out;
 
-      in.l = strlen(in.s = n_UNCONST(varres));
+      in.l = su_cs_len(in.s = n_UNCONST(varres));
       makeprint(&in, &out);
       if(fprintf(n_stdout, "%s\n", out.s) < 0){
          n_pstate_err_no = su_err_no();
@@ -2870,17 +2875,17 @@ imap_getflags(const char *cp, char const **xp, enum mflag *f)
    n_NYD2_IN;
    while (*cp != ')') {
       if (*cp == '\\') {
-         if (ascncasecmp(cp, "\\Seen", 5) == 0)
+         if (su_cs_cmp_case_n(cp, "\\Seen", 5) == 0)
             *f |= MREAD;
-         else if (ascncasecmp(cp, "\\Recent", 7) == 0)
+         else if (su_cs_cmp_case_n(cp, "\\Recent", 7) == 0)
             *f |= MNEW;
-         else if (ascncasecmp(cp, "\\Deleted", 8) == 0)
+         else if (su_cs_cmp_case_n(cp, "\\Deleted", 8) == 0)
             *f |= MDELETED;
-         else if (ascncasecmp(cp, "\\Flagged", 8) == 0)
+         else if (su_cs_cmp_case_n(cp, "\\Flagged", 8) == 0)
             *f |= MFLAGGED;
-         else if (ascncasecmp(cp, "\\Answered", 9) == 0)
+         else if (su_cs_cmp_case_n(cp, "\\Answered", 9) == 0)
             *f |= MANSWERED;
-         else if (ascncasecmp(cp, "\\Draft", 6) == 0)
+         else if (su_cs_cmp_case_n(cp, "\\Draft", 6) == 0)
             *f |= MDRAFTED;
       }
       cp++;
@@ -2967,7 +2972,7 @@ jagain:
    while (mp->mb_active & MB_COMD) {
       rv = imap_answer(mp, 0);
       if (response_status == RESPONSE_NO /*&&
-            ascncasecmp(responded_text,
+            su_cs_cmp_case_n(responded_text,
                "[TRYCREATE] ", 12) == 0*/) {
 jtrycreate:
          if (twice) {
@@ -3045,9 +3050,9 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp, long offset)
          state &= ~_INHEAD;
          state |= _NLSEP;
       } else if (state & _INHEAD) {
-         if (ascncasecmp(buf, "status", 6) == 0) {
+         if (su_cs_cmp_case_n(buf, "status", 6) == 0) {
             lp = &buf[6];
-            while (whitechar(*lp))
+            while (su_cs_is_white(*lp))
                lp++;
             if (*lp == ':')
                while (*++lp != '\0')
@@ -3059,9 +3064,9 @@ imap_append0(struct mailbox *mp, const char *name, FILE *fp, long offset)
                      flag &= ~MNEW;
                      break;
                   }
-         } else if (ascncasecmp(buf, "x-status", 8) == 0) {
+         } else if (su_cs_cmp_case_n(buf, "x-status", 8) == 0) {
             lp = &buf[8];
-            while (whitechar(*lp))
+            while (su_cs_is_white(*lp))
                lp++;
             if (*lp == ':')
                while (*++lp != '\0')
@@ -3112,7 +3117,7 @@ imap_append(const char *xserver, FILE *fp, long offset)
       safe_signal(SIGPIPE, imapcatch);
 
    if ((mb.mb_type == MB_CACHE || mb.mb_sock.s_fd > 0) && mb.mb_imap_account &&
-         !strcmp(url.url_p_eu_h_p, mb.mb_imap_account)) {
+         !su_cs_cmp(url.url_p_eu_h_p, mb.mb_imap_account)) {
       rv = imap_append0(&mb, url.url_path.s, fp, offset);
    } else {
       struct mailbox mx;
@@ -3123,7 +3128,7 @@ imap_append(const char *xserver, FILE *fp, long offset)
          goto jleave;
 
       imap_delim_init(&mx, &url);
-      mx.mb_imap_mailbox = sstrdup(imap_path_normalize(&mx, url.url_path.s));
+      mx.mb_imap_mailbox = su_cs_dup(imap_path_normalize(&mx, url.url_path.s));
 
       if (disconnected(url.url_p_eu_h_p) == 0) {
          if (!sopen(&mx.mb_sock, &url))
@@ -3135,7 +3140,7 @@ imap_append(const char *xserver, FILE *fp, long offset)
           * TODO mx.mb_imap_mailbox = mbx->url.url_patth.s;
           * TODO though imap_mailbox is sfree()d and mbx
           * TODO is possibly even a constant
-          * TODO i changed this to sstrdup() sofar, as is used
+          * TODO i changed this to su_cs_dup() sofar, as is used
           * TODO somewhere else in this file for this! */
          if (imap_preauth(&mx, &url) != OKAY ||
                imap_auth(&mx, &ccred) != OKAY) {
@@ -3228,13 +3233,13 @@ imap_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
    for (lp = list; lp; lp = lp->l_next)
       if (lp->l_delim != '/' && lp->l_delim != EOF && lp->l_level < depth &&
             !(lp->l_attr & LIST_NOINFERIORS)) {
-         cp = n_autorec_alloc((n = strlen(lp->l_name)) + 2);
+         cp = n_autorec_alloc((n = su_cs_len(lp->l_name)) + 2);
          memcpy(cp, lp->l_name, n);
          cp[n] = lp->l_delim;
          cp[n+1] = '\0';
          if (imap_list1(mp, cp, &lx, &ly, lp->l_level) == OKAY && lx && ly) {
             lp->l_has_children = 1;
-            if (strcmp(cp, lx->l_name) == 0)
+            if (su_cs_cmp(cp, lx->l_name) == 0)
                lx = lx->l_next;
             if (lx) {
                lend->l_next = lx;
@@ -3272,7 +3277,7 @@ imap_folders(const char * volatile name, int strip)
 
    cp = protbase(name);
    sp = mb.mb_imap_account;
-   if (sp == NULL || strcmp(cp, sp)) {
+   if (sp == NULL || su_cs_cmp(cp, sp)) {
       n_err(
          _("Cannot perform `folders' but when on the very IMAP "
          "account; the current one is\n  `%s' -- "
@@ -3352,7 +3357,7 @@ imap_copy1(struct mailbox *mp, struct message *m, int n, const char *name)
    /* C99 */{
       size_t i;
 
-      i = strlen(name = imap_fileof(name));
+      i = su_cs_len(name = imap_fileof(name));
       if(i == 0 || (i > 0 && name[i - 1] == '/'))
          name = savecat(name, "INBOX");
       if((qname = imap_path_quote(mp, name)) == NULL)
@@ -3524,7 +3529,7 @@ imap_copyuid(struct mailbox *mp, struct message *m, const char *name)
 
    memset(&xmb, 0, sizeof xmb);
 
-   if ((cp = asccasestr(responded_text, "[COPYUID ")) == NULL ||
+   if ((cp = su_cs_find_case(responded_text, "[COPYUID ")) == NULL ||
          imap_copyuid_parse(&cp[9], &uidvalidity, &olduid, &newuid) == STOP)
       goto jleave;
 
@@ -3532,13 +3537,13 @@ imap_copyuid(struct mailbox *mp, struct message *m, const char *name)
 
    xmb = *mp;
    xmb.mb_cache_directory = NULL;
-   xmb.mb_imap_account = sstrdup(mp->mb_imap_account);
-   xmb.mb_imap_pass = sstrdup(mp->mb_imap_pass);
+   xmb.mb_imap_account = su_cs_dup(mp->mb_imap_account);
+   xmb.mb_imap_pass = su_cs_dup(mp->mb_imap_pass);
    memcpy(&xmb.mb_imap_delim[0], &mp->mb_imap_delim[0],
       sizeof(xmb.mb_imap_delim));
-   xmb.mb_imap_mailbox = sstrdup(imap_path_normalize(&xmb, name));
+   xmb.mb_imap_mailbox = su_cs_dup(imap_path_normalize(&xmb, name));
    if (mp->mb_cache_directory != NULL)
-      xmb.mb_cache_directory = sstrdup(mp->mb_cache_directory);
+      xmb.mb_cache_directory = su_cs_dup(mp->mb_cache_directory);
    xmb.mb_uidvalidity = uidvalidity;
    initcache(&xmb);
 
@@ -3585,7 +3590,7 @@ imap_appenduid(struct mailbox *mp, FILE *fp, time_t t, long off1, long xsize,
 
    rv = STOP;
 
-   if ((cp = asccasestr(responded_text, "[APPENDUID ")) == NULL ||
+   if ((cp = su_cs_find_case(responded_text, "[APPENDUID ")) == NULL ||
          imap_appenduid_parse(&cp[11], &uidvalidity, &uid) == STOP)
       goto jleave;
 
@@ -3594,7 +3599,7 @@ imap_appenduid(struct mailbox *mp, FILE *fp, time_t t, long off1, long xsize,
    xmb = *mp;
    xmb.mb_cache_directory = NULL;
    /* XXX mb_imap_delim reused */
-   xmb.mb_imap_mailbox = sstrdup(imap_path_normalize(&xmb, name));
+   xmb.mb_imap_mailbox = su_cs_dup(imap_path_normalize(&xmb, name));
    xmb.mb_uidvalidity = uidvalidity;
    xmb.mb_otf = xmb.mb_itf = fp;
    initcache(&xmb);
@@ -3640,7 +3645,7 @@ imap_appenduid_cached(struct mailbox *mp, FILE *fp)
    while (*bp == ' ')
       ++bp;
 
-   if ((cp = strrchr(bp, '{')) == NULL)
+   if ((cp = su_cs_rfind_c(bp, '{')) == NULL)
       goto jstop;
 
    xsize = atol(&cp[1]) + 2;
@@ -3705,7 +3710,7 @@ imap_search2(struct mailbox *mp, struct message *m, int cnt, const char *spec,
    if (c & 0200) {
       cp = ok_vlook(ttycharset);
 # ifdef mx_HAVE_ICONV
-      if(asccasecmp(cp, "utf-8") && asccasecmp(cp, "utf8")){ /* XXX */
+      if(su_cs_cmp_case(cp, "utf-8") && su_cs_cmp_case(cp, "utf8")){ /* XXX */
          char const *nspec;
 
          if((nspec = n_iconv_onetime_cp(n_ICONV_DEFAULT, "utf-8", cp, spec)
@@ -3716,12 +3721,12 @@ imap_search2(struct mailbox *mp, struct message *m, int cnt, const char *spec,
       }
 # endif
       cp = imap_quotestr(cp);
-      cs = n_lofi_alloc(n = strlen(cp) + 10);
+      cs = n_lofi_alloc(n = su_cs_len(cp) + 10);
       snprintf(cs, n, "CHARSET %s ", cp);
    } else
       cs = n_UNCONST(n_empty);
 
-   o = n_lofi_alloc(n = strlen(spec) + 60);
+   o = n_lofi_alloc(n = su_cs_len(spec) + 60);
    snprintf(o, n, "%s UID SEARCH %s%s\r\n", tag(1), cs, spec);
    IMAP_OUT(o, MB_COMD, goto out)
    /* C99 */{
@@ -3801,7 +3806,7 @@ imap_thisaccount(const char *cp)
          mb.mb_imap_account == NULL)
       rv = 0;
    else
-      rv = !strcmp(protbase(cp), mb.mb_imap_account);
+      rv = !su_cs_cmp(protbase(cp), mb.mb_imap_account);
    n_NYD_OU;
    return rv;
 }
@@ -3861,7 +3866,7 @@ imap_remove1(struct mailbox *mp, const char *name)
    queuefp = NULL;
 
    if((qname = imap_path_quote(mp, name)) != NULL){
-      o = n_lofi_alloc(os = strlen(qname) + 100);
+      o = n_lofi_alloc(os = su_cs_len(qname) + 100);
       snprintf(o, os, "%s DELETE %s\r\n", tag(1), qname);
       IMAP_OUT(o, MB_COMD, goto out)
       while (mp->mb_active & MB_COMD)
@@ -3928,7 +3933,7 @@ imap_rename1(struct mailbox *mp, const char *old, const char *new)
 
    if((qoname = imap_path_quote(mp, old)) != NULL &&
          (qnname = imap_path_quote(mp, new)) != NULL){
-      o = n_lofi_alloc(os = strlen(qoname) + strlen(qnname) + 100);
+      o = n_lofi_alloc(os = su_cs_len(qoname) + su_cs_len(qnname) + 100);
       snprintf(o, os, "%s RENAME %s %s\r\n", tag(1), qoname, qnname);
       IMAP_OUT(o, MB_COMD, goto out)
       while (mp->mb_active & MB_COMD)
@@ -3964,9 +3969,9 @@ imap_dequeue(struct mailbox *mp, FILE *fp)
          goto fail;
 again:
       snprintf(o, sizeof o, "%s %s", tag(1), bp);
-      if (ascncasecmp(bp, "UID COPY ", 9) == 0) {
+      if (su_cs_cmp_case_n(bp, "UID COPY ", 9) == 0) {
          cp = &bp[9];
-         while (digitchar(*cp))
+         while (su_cs_is_digit(*cp))
             cp++;
          if (*cp != ' ')
             goto fail;
@@ -3982,14 +3987,14 @@ again:
          if (response_status == RESPONSE_OK && mp->mb_flags & MB_UIDPLUS) {
             imap_copyuid(mp, NULL, imap_unquotestr(newname));
          }
-      } else if (ascncasecmp(bp, "UID STORE ", 10) == 0) {
+      } else if (su_cs_cmp_case_n(bp, "UID STORE ", 10) == 0) {
          IMAP_OUT(o, MB_COMD, continue)
          while (mp->mb_active & MB_COMD)
             ok = imap_answer(mp, 1);
          if (ok == OKAY)
             gotcha++;
-      } else if (ascncasecmp(bp, "APPEND ", 7) == 0) {
-         if ((cp = strrchr(bp, '{')) == NULL)
+      } else if (su_cs_cmp_case_n(bp, "APPEND ", 7) == 0) {
+         if ((cp = su_cs_rfind_c(bp, '{')) == NULL)
             goto fail;
          octets = atol(&cp[1]) + 2;
          if ((newname = imap_strex(&bp[7], NULL)) == NULL)
@@ -4273,11 +4278,11 @@ imap_read_date_time(const char *cp)
    /* "25-Jul-2004 15:33:44 +0200"
     * |    |    |    |    |    |
     * 0    5   10   15   20   25 */
-   if (cp[0] != '"' || strlen(cp) < 28 || cp[27] != '"')
+   if (cp[0] != '"' || su_cs_len(cp) < 28 || cp[27] != '"')
       goto jinvalid;
    day = strtol(&cp[1], NULL, 10);
    for (i = 0;;) {
-      if (ascncasecmp(&cp[4], n_month_names[i], 3) == 0)
+      if (su_cs_cmp_case_n(&cp[4], n_month_names[i], 3) == 0)
          break;
       if (n_month_names[++i][0] == '\0')
          goto jinvalid;
@@ -4374,7 +4379,7 @@ FL char *
    char *n, *np;
    n_NYD2_IN;
 
-   np = n = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(strlen(cp) +1,
+   np = n = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(su_cs_len(cp) +1,
          su_DBG_LOC_ARGS_ORUSE);
 
    /* Just ignore the `is-system-mailbox' prefix XXX */

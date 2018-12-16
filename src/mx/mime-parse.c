@@ -41,6 +41,10 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
+
+#include "mx/iconv.h"
+
 /* Fetch plain */
 static char *  _mime_parse_ct_plain_from_ct(char const *cth);
 
@@ -70,11 +74,11 @@ _mime_parse_ct_plain_from_ct(char const *cth)
 
    rv_b = savestr(cth);
 
-   if ((rv = strchr(rv_b, ';')) != NULL)
+   if ((rv = su_cs_find_c(rv_b, ';')) != NULL)
       *rv = '\0';
 
-   rv = rv_b + strlen(rv_b);
-   while (rv > rv_b && blankchar(rv[-1]))
+   rv = rv_b + su_cs_len(rv_b);
+   while (rv > rv_b && su_cs_is_blank(rv[-1]))
       --rv;
    *rv = '\0';
    n_NYD2_OU;
@@ -134,9 +138,9 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
    }
 
    assert(ip->m_external_body_url == NULL);
-   if(!asccasecmp(ip->m_ct_type_plain, "message/external-body") &&
+   if(!su_cs_cmp_case(ip->m_ct_type_plain, "message/external-body") &&
          (cp = mime_param_get("access-type", ip->m_ct_type)) != NULL &&
-         !asccasecmp(cp, "URL"))
+         !su_cs_cmp_case(cp, "URL"))
       ip->m_external_body_url = mime_param_get("url", ip->m_ct_type);
 
    if (mpf & MIME_PARSE_PARTS) {
@@ -371,7 +375,7 @@ __mime_parse_new(struct mimepart *ip, struct mimepart **np, off_t offs,
 
    if (part) {
       ++(*part);
-      sz = (ip->m_partstring != NULL) ? strlen(ip->m_partstring) : 0;
+      sz = (ip->m_partstring != NULL) ? su_cs_len(ip->m_partstring) : 0;
       sz += 20;
       (*np)->m_partstring = n_autorec_alloc(sz);
       if (ip->m_partstring)

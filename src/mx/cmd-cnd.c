@@ -24,6 +24,7 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
 #include <su/icodec.h>
 
 #define a_CCND_IF_ISSKIP() \
@@ -136,7 +137,7 @@ jesyn:
       rv = ((n_psonce & n_PSO_SENDMODE) != 0);
       break;
    case 'T': case 't':
-      if(!asccasecmp(cp, "true")) /* Beware! */
+      if(!su_cs_cmp_case(cp, "true")) /* Beware! */
          rv = TRU1;
       else
          rv = ((n_psonce & n_PSO_INTERACTIVE) != 0);
@@ -149,7 +150,7 @@ jesyn:
 
       /* Look up the value in question, we need it anyway */
       if(*++cp == '{'){
-         size_t i = strlen(cp);
+         size_t i = su_cs_len(cp);
 
          if(i > 0 && cp[i - 1] == '}')
             cp = savestrbuf(++cp, i -= 2);
@@ -226,7 +227,7 @@ jesyn:
          if(*++rhv == '\0')
             goto jesyn;
          else if(*rhv == '{'){
-            size_t i = strlen(rhv);
+            size_t i = su_cs_len(rhv);
 
             if(i > 0 && rhv[i - 1] == '}')
                rhv = savestrbuf(++rhv, i -= 2);
@@ -269,8 +270,8 @@ jesyn:
       else if(op[1] == '%' || op[1] == '@'){
          if(op[1] == '@')
             n_OBSOLETE("`if'++: \"=@\" and \"!@\" became \"=%\" and \"!%\"");
-         rv = ((flags & a_ICASE ? asccasestr(lhv, rhv) : strstr(lhv, rhv)
-               ) == NULL) ^ (c == '=');
+         rv = ((flags & a_ICASE ? su_cs_find_case(lhv, rhv)
+               : su_cs_find(lhv, rhv)) == NULL) ^ (c == '=');
       }else if(c == '-'){
          si64_t lhvi, rhvi;
 
@@ -299,7 +300,8 @@ jesyn:
       }else{
          si32_t scmp;
 
-         scmp = (flags & a_ICASE) ? asccasecmp(lhv, rhv) : strcmp(lhv, rhv);
+         scmp = (flags & a_ICASE) ? su_cs_cmp_case(lhv, rhv)
+               : su_cs_cmp(lhv, rhv);
          switch(c){
          default:
          case '=': rv = (scmp == 0); break;

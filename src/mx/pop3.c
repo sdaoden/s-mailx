@@ -46,10 +46,11 @@
 # include "mx/nail.h"
 #endif
 
-#include <su/icodec.h>
-
 su_EMPTY_FILE()
 #ifdef mx_HAVE_POP3
+
+#include <su/cs.h>
+#include <su/icodec.h>
 
 #define POP3_ANSWER(RV,ACTIONSTOP) \
 do if (((RV) = pop3_answer(mp)) == STOP) {\
@@ -189,12 +190,12 @@ _pop3_lookup_apop_timestamp(char const *bp)
    bool_t hadat = FAL0;
    n_NYD_IN;
 
-   if ((cp = strchr(bp, '<')) == NULL)
+   if ((cp = su_cs_find_c(bp, '<')) == NULL)
       goto jleave;
 
    /* xxx What about malformed APOP timestamp (<@>) here? */
    for (ep = cp; *ep != '\0'; ++ep) {
-      if (spacechar(*ep))
+      if (su_cs_is_space(*ep))
          goto jleave;
       else if (*ep == '@')
          hadat = TRU1;
@@ -229,7 +230,7 @@ _pop3_auth_apop(struct mailbox *mp, struct sockconn const *scp, char const *ts)
    n_NYD_IN;
 
    md5_init(&ctx);
-   md5_update(&ctx, (uc_i*)n_UNCONST(ts), strlen(ts));
+   md5_update(&ctx, (uc_i*)n_UNCONST(ts), su_cs_len(ts));
    md5_update(&ctx, (uc_i*)scp->sc_cred.cc_pass.s, scp->sc_cred.cc_pass.l);
    md5_final(digest, &ctx);
    md5tohex(hex, digest);
@@ -443,9 +444,9 @@ pop3_stat(struct mailbox *mp, off_t *size, int *cnt)
    POP3_OUT(rv, "STAT" NETNL, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 
-   for (cp = _pop3_buf; *cp != '\0' && !spacechar(*cp); ++cp)
+   for (cp = _pop3_buf; *cp != '\0' && !su_cs_is_space(*cp); ++cp)
       ;
-   while (*cp != '\0' && spacechar(*cp))
+   while (*cp != '\0' && su_cs_is_space(*cp))
       ++cp;
 
    rv = STOP;
@@ -458,9 +459,9 @@ pop3_stat(struct mailbox *mp, off_t *size, int *cnt)
          goto jerr;
       *cnt = (int)i;
 
-      while(*cp != '\0' && !spacechar(*cp))
+      while(*cp != '\0' && !su_cs_is_space(*cp))
          ++cp;
-      while(*cp != '\0' && spacechar(*cp))
+      while(*cp != '\0' && su_cs_is_space(*cp))
          ++cp;
 
       if(*cp == '\0')
@@ -490,13 +491,13 @@ pop3_list(struct mailbox *mp, int n, size_t *size)
    POP3_OUT(rv, o, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 
-   for (cp = _pop3_buf; *cp != '\0' && !spacechar(*cp); ++cp)
+   for (cp = _pop3_buf; *cp != '\0' && !su_cs_is_space(*cp); ++cp)
       ;
-   while (*cp != '\0' && spacechar(*cp))
+   while (*cp != '\0' && su_cs_is_space(*cp))
       ++cp;
-   while (*cp != '\0' && !spacechar(*cp))
+   while (*cp != '\0' && !su_cs_is_space(*cp))
       ++cp;
-   while (*cp != '\0' && spacechar(*cp))
+   while (*cp != '\0' && su_cs_is_space(*cp))
       ++cp;
    if (*cp != '\0')
       su_idec_uz_cp(size, cp, 10, NULL);

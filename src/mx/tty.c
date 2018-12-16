@@ -27,9 +27,16 @@
 # include "mx/nail.h"
 #endif
 
-#if defined mx_HAVE_MLE && defined mx_HAVE_KEY_BINDINGS
-# include <su/icodec.h>
+#if defined mx_HAVE_MLE
+# include <su/cs.h>
+# include <su/utf.h>
+
+# ifdef mx_HAVE_KEY_BINDINGS
+#  include <su/icodec.h>
+# endif
 #endif
+
+#include "mx/ui-str.h"
 
 #if defined mx_HAVE_MLE || defined mx_HAVE_TERMCAP
 # define a_TTY_SIGNALS
@@ -1073,7 +1080,7 @@ a_tty_hist_load(void){
    while(fgetline(&lbuf, &lsize, &cnt, &llen, f, FAL0) != NULL){
       cp = lbuf;
       /* Hand-edited history files may have this, probably */
-      while(llen > 0 && spacechar(cp[0])){
+      while(llen > 0 && su_cs_is_space(cp[0])){
          ++cp;
          --llen;
       }
@@ -1085,7 +1092,7 @@ a_tty_hist_load(void){
          continue;
 
       if(n_UNLIKELY(version == 0) &&
-            (version = strcmp(cp, a_TTY_HIST_MARKER) ? 1 : 2) != 1)
+            (version = su_cs_cmp(cp, a_TTY_HIST_MARKER) ? 1 : 2) != 1)
          continue;
 
       /* C99 */{
@@ -1244,13 +1251,13 @@ a_tty_hist_add(char const *s, enum n_go_input_flags gif){
    struct a_tty_hist *thp, *othp, *ythp;
    n_NYD2_IN;
 
-   l = (ui32_t)strlen(s); /* xxx simply do not store if >= SI32_MAX */
+   l = (ui32_t)su_cs_len(s); /* xxx simply do not store if >= SI32_MAX */
 
    /* Eliminating duplicates is expensive, but simply inacceptable so
     * during the load of a potentially large history file! */
    if(n_psonce & n_PSO_LINE_EDITOR_INIT)
       for(thp = a_tty.tg_hist; thp != NULL; thp = thp->th_older)
-         if(thp->th_len == l && !strcmp(thp->th_dat, s)){
+         if(thp->th_len == l && !su_cs_cmp(thp->th_dat, s)){
             thp->th_flags = (gif & a_TTY_HIST_CTX_MASK) |
                   (gif & n_GO_INPUT_HIST_GABBY ? a_TTY_HIST_GABBY : 0);
             othp = thp->th_older;
@@ -1470,7 +1477,7 @@ a_tty_vinuni(struct a_tty_line *tlp){
       }
       if(buf[i] == '\n')
          break;
-      if(!hexchar(buf[i])){
+      if(!su_cs_is_xdigit(buf[i])){
          char const emsg[] = "[0-9a-fA-F]";
 
          n_LCTA(sizeof emsg <= sizeof(buf), "Preallocated buffer too small");
@@ -1832,7 +1839,7 @@ jpaint:
                wc = 0x2421;
             else
                wc = 0x2426;
-            n_utf32_to_utf8(wc, wbuf);
+            su_utf_32_to_8(wc, wbuf);
          }else
             wbuf[0] = '?', wbuf[1] = '\0';
 
@@ -2388,7 +2395,7 @@ jredo:
    exp.s = fexpand(sub.s, a_TTY_TAB_FEXP_FL);
    rele_all_sigs();
 
-   if(exp.s == NULL || (exp.l = strlen(exp.s)) == 0){
+   if(exp.s == NULL || (exp.l = su_cs_len(exp.s)) == 0){
       if(wedid < FAL0)
          goto jnope;
       /* No.  But maybe the users' desire was to complete only a part of the
@@ -2417,7 +2424,7 @@ jredo:
             }
             /* Do stop once some "magic" characters are seen XXX magic set */
             else if(c == '<' || c == '>' || c == '=' || c == ':' ||
-                  spacechar(c))
+                  su_cs_is_space(c))
                break;
          }
          if(li == UIZ_MAX)
@@ -2474,7 +2481,7 @@ jaster_check:
    exp.s[exp.l] = '\0';
 
 jset:
-   exp.l = strlen(exp.s = n_shexp_quote_cp(exp.s, tlp->tl_quote_rndtrip));
+   exp.l = su_cs_len(exp.s = n_shexp_quote_cp(exp.s, tlp->tl_quote_rndtrip));
    tlp->tl_defc_cursor_byte = bot.l + preexp.l + exp.l -1;
 
    orig.l = bot.l + preexp.l + exp.l + topp.l;
@@ -2527,7 +2534,7 @@ jmulti:{
       do{
          size_t i;
 
-         i = strlen(&exp.s[++exp.l]);
+         i = su_cs_len(&exp.s[++exp.l]);
          locolen = n_MAX(locolen, i);
          exp.l += i;
       }while(exp.s[exp.l + 1] != '\0');
@@ -2547,7 +2554,7 @@ jmulti:{
 
          /* Next result */
          sub = exp;
-         sub.l = i = strlen(sub.s);
+         sub.l = i = su_cs_len(sub.s);
          assert(exp.l >= i);
          if((exp.l -= i) > 0)
             --exp.l;
@@ -2558,7 +2565,7 @@ jmulti:{
          if(isfirst){
             char const *cp;
 
-            if((cp = strrchr(fullpath, '/')) != NULL)
+            if((cp = su_cs_rfind_c(fullpath, '/')) != NULL)
                prefixlen = PTR2SIZE(++cp - fullpath);
             else
                prefixlen = 0;
@@ -2577,7 +2584,7 @@ jmulti:{
 #ifdef mx_HAVE_C90AMEND1
          c2 = towlower(c2);
 #else
-         c2 = lowerconv(c2);
+         c2 = su_cs_to_lower(c2);
 #endif
 
          /* Query longest common prefix along the way */
@@ -2611,7 +2618,7 @@ jmulti:{
 #ifdef mx_HAVE_C90AMEND1
             c1 = (iswalnum(c2) != 0);
 #else
-            c1 = (alnumchar(c2) != 0);
+            c1 = (su_cs_is_alnum(c2) != 0);
 #endif
          }
          if(isfirst || c1 ||
@@ -2830,7 +2837,7 @@ a_tty_khist_search(struct a_tty_line *tlp, bool_t fwd){
       if(xoff != 1 && (thp->th_flags & a_TTY_HIST_CTX_MASK) ==
             a_TTY_HIST_CTX_COMPOSE)
          continue;
-      if(is_prefix(&tlp->tl_savec.s[xoff], thp->th_dat))
+      if(su_cs_starts_with(thp->th_dat, &tlp->tl_savec.s[xoff]))
          break;
    }
 
@@ -3213,7 +3220,7 @@ jinput_loop:
             if(!(flags & a_BUFMODE)){
                /* Check for special bypass functions before we try to embed
                 * this character into the tree */
-               if(n_uasciichar(wc)){
+               if(su_cs_is_ascii(wc)){
                   char c;
                   char const *cp;
 
@@ -3229,7 +3236,7 @@ jinput_loop:
                      goto jinput_loop;
                   }
                }
-               if(n_uasciichar(wc))
+               if(su_cs_is_ascii(wc))
                   flags |= a_MAYBEFUN;
                else
                   flags &= ~a_MAYBEFUN;
@@ -3363,7 +3370,8 @@ jtake_over:
           * function.  Remarks: initially a complete duplicate to be able to
           * switch(), later converted to simply iterate over (an #ifdef'd
           * subset of) the MLE base_tuple table in order to have "a SPOF" */
-         if(cbuf == cbuf_base && n_uasciichar(wc) && cntrlchar((char)wc)){
+         if(cbuf == cbuf_base && su_cs_is_ascii(wc) &&
+               su_cs_is_cntrl((unsigned char)wc)){
             struct a_tty_bind_builtin_tuple const *tbbtp, *tbbtp_max;
             char c;
 
@@ -3433,7 +3441,7 @@ jinject_input:{
    hold_all_sigs(); /* XXX v15 drop */
    i = a_tty_cell2dat(tlp);
    n_go_input_inject(n_GO_INPUT_INJECT_NONE, tlp->tl_line.cbuf, i);
-   i = strlen(cbufp) +1;
+   i = su_cs_len(cbufp) +1;
    if(i >= *tlp->tl_x_bufsize){
       *tlp->tl_x_buf = su_MEM_REALLOC_LOCOR(*tlp->tl_x_buf, i,
                su_DBG_LOC_ARGS_ORUSE);
@@ -3456,7 +3464,7 @@ a_tty_bind_ctx_find(char const *name){
    n_NYD2_IN;
 
    ticmp = a_tty_input_ctx_maps;
-   do if(!asccasecmp(ticmp->ticm_name, name)){
+   do if(!su_cs_cmp_case(ticmp->ticm_name, name)){
       rv = ticmp->ticm_ctx;
       goto jleave;
    }while(PTRCMP(++ticmp, <,
@@ -3590,7 +3598,8 @@ a_tty_bind_parse(bool_t isbindcmd, struct a_tty_bind_parse_ctx *tbpcp){
       tail = ep;
       ep->next = NULL;
       if(!(shs & n_SHEXP_STATE_ERR_UNICODE)){
-         i = strlen(ep->seq_dat = n_shexp_quote_cp(n_string_cp(shoup), TRU1));
+         i = su_cs_len(ep->seq_dat =
+               n_shexp_quote_cp(n_string_cp(shoup), TRU1));
          if(i >= SI32_MAX - 1)
             goto jelen;
          ep->seq_len = (ui32_t)i;
@@ -3774,11 +3783,12 @@ jeempty:
 
       i = tbpcp->tbpc_exp.l;
       if(i > 0 && exp[i - 1] == '@'){
-         --i;
 #if 0 /* xxx no: allow trailing whitespace, as in 'echo du @' .. */
          while(--i > 0)
             if(!su_cs_is_space(exp[i - 1]))
                break;
+#else
+         --i;
 #endif
          if(i == 0)
             goto jeempty;
@@ -3801,7 +3811,7 @@ jeempty:
 
       /* It may map to an internal MLE command! */
       for(i = 0; i < n_NELEM(a_tty_bind_fun_names); ++i)
-         if(!asccasecmp(exp, a_tty_bind_fun_names[i])){
+         if(!su_cs_cmp_case(exp, a_tty_bind_fun_names[i])){
             tbpcp->tbpc_flags |= a_TTY_BIND_FUN_EXPAND(i) |
                   a_TTY_BIND_FUN_INTERNAL |
                   (head->next == NULL ? a_TTY_BIND_MLE1CNTRL : 0);
@@ -3875,7 +3885,7 @@ a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
       /* C99 */{
          size_t i;
 
-         i = strlen(tv.tv_data.tvd_string);
+         i = su_cs_len(tv.tv_data.tvd_string);
          if(/*i > SI32_MAX ||*/ i >= PTR2SIZE(next - cp)){
             if(n_poption & n_PO_D_V)
                n_err(_("`bind': capability expansion too long: %s: %s\n"),
@@ -3888,7 +3898,7 @@ a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
                   capname, tbcp->tbc_seq);
             tbcp->tbc_flags |= a_TTY_BIND_DEFUNCT;
             break;
-         }else if(isfirst && !cntrlchar(*tv.tv_data.tvd_string)){
+         }else if(isfirst && !su_cs_is_cntrl(*tv.tv_data.tvd_string)){
             if(n_poption & n_PO_D_V)
                n_err(_("`bind': capability expansion does not start with "
                   "control: %s: %s\n"), capname, tbcp->tbc_seq);
@@ -4198,7 +4208,7 @@ jbuiltin_redo:
          tbpc.tbpc_exp.s = n_UNCONST(tbbtp->tbbt_exp[0] == '\0'
                ? a_tty_bind_fun_names[(ui8_t)tbbtp->tbbt_exp[1]]
                : tbbtp->tbbt_exp);
-         tbpc.tbpc_exp.l = strlen(tbpc.tbpc_exp.s);
+         tbpc.tbpc_exp.l = su_cs_len(tbpc.tbpc_exp.s);
          tbpc.tbpc_flags = flags;
          /* ..but don't want to overwrite any user settings */
          a_tty_bind_create(&tbpc, FAL0);
@@ -4277,8 +4287,8 @@ FL int
          if((sp = n_colour_reset_to_str()) != NULL){
             size_t l1, l2;
 
-            l1 = strlen(ccol);
-            l2 = strlen(sp->s);
+            l1 = su_cs_len(ccol);
+            l2 = su_cs_len(sp->s);
             posbuf = n_autorec_alloc(l1 + 4 + l2 +1);
             memcpy(posbuf, ccol, l1);
             pos = &posbuf[l1];
@@ -4411,17 +4421,17 @@ c_history(void *v){
       goto jlist;
    if(argv[1] != NULL)
       goto jerr;
-   if(!asccasecmp(*argv, "show"))
+   if(!su_cs_cmp_case(*argv, "show"))
       goto jlist;
-   if(!asccasecmp(*argv, "clear"))
+   if(!su_cs_cmp_case(*argv, "clear"))
       goto jclear;
 
-   if(!asccasecmp(*argv, "load")){
+   if(!su_cs_cmp_case(*argv, "load")){
       if(!a_tty_hist_load())
          v = NULL;
       goto jleave;
    }
-   if(!asccasecmp(*argv, "save")){
+   if(!su_cs_cmp_case(*argv, "save")){
       if(!a_tty_hist_save())
          v = NULL;
       goto jleave;
@@ -4536,7 +4546,7 @@ c_bind(void *v){
    if(cacp->cac_no == 1)
       show = TRU1;
    else
-      show = !asccasecmp(cacp->cac_arg->ca_next->ca_arg.ca_str.s, "show");
+      show = !su_cs_cmp_case(cacp->cac_arg->ca_next->ca_arg.ca_str.s, "show");
    aster = FAL0;
 
    if((gif = a_tty_bind_ctx_find(c.cp)) == (enum n_go_input_flags)-1){
@@ -4590,7 +4600,7 @@ c_bind(void *v){
                               u.cp = (char const*)
                                     &n_UNALIGN(si32_t const*,cnvdat)[2];
                            (c.c = *u.cp) != '\0'; ++u.cp){
-                        if(asciichar(c.c) && !cntrlchar(c.c))
+                        if(su_cs_is_ascii(c.c) && !su_cs_is_cntrl(c.c))
                            cbuf[1] = c.c, cbufp = cbuf;
                         else
                            cbufp = n_empty;

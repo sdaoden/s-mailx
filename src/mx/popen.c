@@ -41,6 +41,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
+
 #define READ               0
 #define WRITE              1
 
@@ -125,13 +127,13 @@ a_popen_scan_mode(char const *mode, int *omode){
    n_NYD2_IN;
 
    for(i = 0; UICMP(z, i, <, n_NELEM(maps)); ++i)
-      if(!strcmp(maps[i].mode, mode)){
+      if(!su_cs_cmp(maps[i].mode, mode)){
          *omode = maps[i].omode;
          i = 0;
          goto jleave;
       }
 
-   DBG( n_alert(_("Internal error: bad stdio open mode %s"), mode); )
+   su_DBG( n_alert(_("Internal error: bad stdio open mode %s"), mode); )
    su_err_set_no(su_ERR_INVAL);
    *omode = 0; /* (silence CC) */
    i = -1;
@@ -157,8 +159,8 @@ register_file(FILE *fp, int omode, int pid, int flags,
    fpp->pid = pid;
    fpp->link = fp_head;
    fpp->flags = flags;
-   fpp->realfile = (realfile != NULL) ? sstrdup(realfile) : NULL;
-   fpp->save_cmd = (save_cmd != NULL) ? sstrdup(save_cmd) : NULL;
+   fpp->realfile = (realfile != NULL) ? su_cs_dup(realfile) : NULL;
+   fpp->save_cmd = (save_cmd != NULL) ? su_cs_dup(save_cmd) : NULL;
    fpp->fp_tios = tiosp;
    fpp->fp_osigint = osigint;
    fpp->offset = offset;
@@ -308,7 +310,7 @@ unregister_file(FILE *fp, struct termios **tiosp, n_sighdl_t *osigint)
          n_free(p);
          goto jleave;
       }
-   DBGOR(n_panic, n_alert)(_("Invalid file pointer"));
+   su_DBGOR(n_panic, n_alert)(_("Invalid file pointer"));
    rv = STOP;
 jleave:
    n_NYD_OU;
@@ -450,7 +452,7 @@ a_popen_child_del(struct child *cp){
          break;
       }
       if(*(cpp = &(*cpp)->link) == NULL){
-         DBG( n_err("! a_popen_child_del(): implementation error\n"); )
+         su_DBG( n_err("! a_popen_child_del(): implementation error\n"); )
          break;
       }
    }
@@ -710,7 +712,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
 #endif
 
    if ((oflags & OF_SUFFIX) && *namehint != '\0') {
-      if ((xlen = strlen(namehint)) > maxname - _RANDCHARS) {
+      if ((xlen = su_cs_len(namehint)) > maxname - _RANDCHARS) {
          su_err_set_no(su_ERR_NAMETOOLONG);
          goto jleave;
       }
@@ -719,14 +721,14 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
 
    /* Prepare the template string once, then iterate over the random range */
    cp_base =
-   cp = n_lofi_alloc(strlen(tmpdir) + 1 + maxname +1);
-   cp = sstpcpy(cp, tmpdir);
+   cp = n_lofi_alloc(su_cs_len(tmpdir) + 1 + maxname +1);
+   cp = su_cs_pcopy(cp, tmpdir);
    *cp++ = '/';
    {
-      char *x = sstpcpy(cp, VAL_UAGENT);
+      char *x = su_cs_pcopy(cp, VAL_UAGENT);
       *x++ = '-';
       if (!(oflags & OF_SUFFIX))
-         x = sstpcpy(x, namehint);
+         x = su_cs_pcopy(x, namehint);
 
       i = PTR2SIZE(x - cp);
       if (i > maxname - xlen - _RANDCHARS) {
@@ -788,7 +790,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
    }
 
    if(fn != NULL){
-      i = strlen(cp_base) +1;
+      i = su_cs_len(cp_base) +1;
       cp = (oflags & OF_FN_AUTOREC) ? n_autorec_alloc(i) : n_alloc(i);
       memcpy(cp, cp_base, i);
       *fn = cp;
@@ -1206,12 +1208,12 @@ n_child_start(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
             size_t kl;
 
             ee = env_addon_or_null[ai];
-            kvs = strchr(ee, '=');
+            kvs = su_cs_find_c(ee, '=');
             assert(kvs != NULL);
             kl = PTR2SIZE(kvs - ee);
             assert(kl > 0);
             for (ei = ei_orig; ei-- > 0;) {
-               char const *ekvs = strchr(env[ei], '=');
+               char const *ekvs = su_cs_find_c(env[ei], '=');
                if (ekvs != NULL && kl == PTR2SIZE(ekvs - env[ei]) &&
                      !memcmp(ee, env[ei], kl)) {
                   env[ei] = n_UNCONST(ee);
@@ -1230,7 +1232,7 @@ n_child_start(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
          environ = env;
       }
 
-      i = (int)getrawlist(TRU1, argv, n_NELEM(argv), cmd, strlen(cmd));
+      i = (int)getrawlist(TRU1, argv, n_NELEM(argv), cmd, su_cs_len(cmd));
       if(i >= 0){
          if ((argv[i++] = n_UNCONST(a0_or_null)) != NULL &&
                (argv[i++] = n_UNCONST(a1_or_null)) != NULL &&

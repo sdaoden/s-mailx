@@ -1,7 +1,14 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Filter objects.
+ *@ HTML tagsoup filter TODO rewrite wchar_t based (require mx_HAVE_C90AMEND1)
+ *@ TODO . Numeric &#NO; entities should also be treated by struct hf_ent
+ *@ TODO . Yes, we COULD support CSS based quoting when we'd check type="quote"
+ *@ TODO   (nonstandard) and watch out for style="gmail_quote" (or so, VERY
+ *@ TODO   nonstandard) and tracking a stack of such elements (to be popped
+ *@ TODO   once the closing element is seen).  Then, after writing a newline,
+ *@ TODO   place sizeof(stack) ">"s first.  But aren't these HTML mails rude?
+ *@ TODO Interlocking and non-well-formed data will break us down
  *
- * Copyright (c) 2013 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2015 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
@@ -17,540 +24,29 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #undef su_FILE
-#define su_FILE filter
+#define su_FILE filter_html
 #define mx_SOURCE
 
 #ifndef mx_HAVE_AMALGAMATION
 # include "mx/nail.h"
 #endif
 
-#include <su/icodec.h>
-
-/*
- * Quotation filter
- */
-
-/*
- * TODO quotation filter: anticipate in future data: don't break if only WS
- * TODO or a LF escaping \ follows on the line (simply reuse the latter).
- */
-
-#ifdef mx_HAVE_QUOTE_FOLD
-n_CTAV(n_QUOTE_MAX > 3);
-
-enum qf_state {
-   _QF_CLEAN,
-   _QF_PREFIX,
-   _QF_DATA
-};
-
-struct qf_vc {
-   struct quoteflt   *self;
-   char const        *buf;
-   size_t            len;
-};
-
-/* Print out prefix and current quote */
-static ssize_t _qf_dump_prefix(struct quoteflt *self);
-
-/* Add one data character */
-static ssize_t _qf_add_data(struct quoteflt *self, wchar_t wc);
-
-/* State machine handlers */
-static ssize_t _qf_state_prefix(struct qf_vc *vc);
-static ssize_t _qf_state_data(struct qf_vc *vc);
-
-static ssize_t
-_qf_dump_prefix(struct quoteflt *self)
-{
-   ssize_t rv;
-   size_t i;
-   n_NYD_IN;
-
-   if ((i = self->qf_pfix_len) > 0 && i != fwrite(self->qf_pfix, 1, i,
-         self->qf_os))
-      goto jerr;
-   rv = i;
-
-   if ((i = self->qf_currq.l) > 0 && i != fwrite(self->qf_currq.s, 1, i,
-         self->qf_os))
-      goto jerr;
-   rv += i;
-jleave:
-   n_NYD_OU;
-   return rv;
-jerr:
-   rv = -1;
-   goto jleave;
-}
-
-static ssize_t
-_qf_add_data(struct quoteflt *self, wchar_t wc)
-{
-   int w, l;
-   char *save_b;
-   ui32_t save_l, save_w;
-   ssize_t rv;
-   n_NYD_IN;
-
-   rv = 0;
-   save_l = save_w = 0; /* silence cc */
-   save_b = NULL;
-
-   /* <newline> ends state */
-   if (wc == L'\n') {
-      w = 0;
-      goto jflush;
-   }
-   if (wc == L'\r') /* TODO CR should be stripped in lower level!! */
-      goto jleave;
-
-   /* Unroll <tab> to spaces */
-   if (wc == L'\t') {
-      save_l = self->qf_datw;
-      save_w = (save_l + n_QUOTE_TAB_SPACES) & ~(n_QUOTE_TAB_SPACES - 1);
-      save_w -= save_l;
-      while (save_w-- > 0) {
-         ssize_t j = _qf_add_data(self, L' ');
-         if (j < 0) {
-            rv = j;
-            break;
-         }
-         rv += j;
-      }
-      goto jleave;
-   }
-
-   /* To avoid that the last visual excesses *qfold-max*, which may happen for
-    * multi-column characters, use w as an indicator for this and move that
-    * thing to the next line */
-   w = wcwidth(wc);
-   if (w == -1) {
-      w = 0;
-jbad:
-      ++self->qf_datw;
-      self->qf_dat.s[self->qf_dat.l++] = '?';
-   } else if (self->qf_datw > self->qf_qfold_max - w) {
-      w = -1;
-      goto jneednl;
-   } else {
-      l = wctomb(self->qf_dat.s + self->qf_dat.l, wc);
-      if (l < 0)
-         goto jbad;
-      self->qf_datw += (ui32_t)w;
-      self->qf_dat.l += (size_t)l;
-   }
-
-   if (self->qf_datw >= self->qf_qfold_max) {
-      /* If we have seen a nice breakpoint during traversal, shuffle data
-       * around a bit so as to restore the trailing part after flushing */
-jneednl:
-      if (self->qf_brkl > 0) {
-         save_w = self->qf_datw - self->qf_brkw;
-         save_l = self->qf_dat.l - self->qf_brkl;
-         save_b = self->qf_dat.s + self->qf_brkl + 2;
-         memmove(save_b, save_b - 2, save_l);
-         self->qf_dat.l = self->qf_brkl;
-      }
-
-      self->qf_dat.s[self->qf_dat.l++] = '\\';
-jflush:
-      self->qf_dat.s[self->qf_dat.l++] = '\n';
-      rv = quoteflt_flush(self);
-
-      /* Restore takeovers, if any */
-      if (save_b != NULL) {
-         self->qf_brk_isws = FAL0;
-         self->qf_datw += save_w;
-         self->qf_dat.l = save_l;
-         memmove(self->qf_dat.s, save_b, save_l);
-      }
-   } else if (self->qf_datw >= self->qf_qfold_min && !self->qf_brk_isws) {
-      bool_t isws = (iswspace(wc) != 0);
-
-      if (isws || !self->qf_brk_isws || self->qf_brkl == 0) {
-         if((self->qf_brk_isws = isws) ||
-               self->qf_brkl < self->qf_qfold_maxnws){
-            self->qf_brkl = self->qf_dat.l;
-            self->qf_brkw = self->qf_datw;
-         }
-      }
-   }
-
-   /* Did we hold this back to avoid qf_fold_max excess?  Then do it now */
-   if(rv >= 0 && w == -1){
-      ssize_t j = _qf_add_data(self, wc);
-      if(j < 0)
-         rv = j;
-      else
-         rv += j;
-   }
-   /* If state changed to prefix, perform full reset (note this implies that
-    * quoteflt_flush() performs too much work..) */
-   else if (wc == '\n') {
-      self->qf_state = _QF_PREFIX;
-      self->qf_wscnt = self->qf_datw = 0;
-      self->qf_currq.l = 0;
-   }
-jleave:
-   n_NYD_OU;
-   return rv;
-}
-
-static ssize_t
-_qf_state_prefix(struct qf_vc *vc)
-{
-   struct quoteflt *self;
-   ssize_t rv;
-   char const *buf;
-   size_t len, i;
-   wchar_t wc;
-   n_NYD_IN;
-
-   self = vc->self;
-   rv = 0;
-
-   for (buf = vc->buf, len = vc->len; len > 0;) {
-      /* xxx NULL BYTE! */
-      i = mbrtowc(&wc, buf, len, self->qf_mbps);
-      if (i == (size_t)-1) {
-         /* On hard error, don't modify mbstate_t and step one byte */
-         self->qf_mbps[0] = self->qf_mbps[1];
-         ++buf;
-         --len;
-         self->qf_wscnt = 0;
-         continue;
-      }
-      self->qf_mbps[1] = self->qf_mbps[0];
-      if (i == (size_t)-2) {
-         /* Redundant shift sequence, out of buffer */
-         len = 0;
-         break;
-      }
-      buf += i;
-      len -= i;
-
-      if (wc == L'\n')
-         goto jfin;
-      if (iswspace(wc)) {
-         ++self->qf_wscnt;
-         continue;
-      }
-      if (i == 1 && n_uasciichar(wc) &&
-            strchr(self->qf_quote_chars, (char)wc) != NULL){
-         self->qf_wscnt = 0;
-         if (self->qf_currq.l >= n_QUOTE_MAX - 3) {
-            self->qf_currq.s[n_QUOTE_MAX - 3] = '.';
-            self->qf_currq.s[n_QUOTE_MAX - 2] = '.';
-            self->qf_currq.s[n_QUOTE_MAX - 1] = '.';
-            self->qf_currq.l = n_QUOTE_MAX;
-         } else
-            self->qf_currq.s[self->qf_currq.l++] = buf[-1];
-         continue;
-      }
-
-      /* The quote is parsed and compressed; dump it */
-jfin:
-      self->qf_state = _QF_DATA;
-      /* Overtake WS to the current quote in order to preserve it for eventual
-       * necessary follow lines, too */
-      /* TODO we de-facto "normalize" to ASCII SP here which MESSES tabs!! */
-      while (self->qf_wscnt-- > 0 && self->qf_currq.l < n_QUOTE_MAX)
-         self->qf_currq.s[self->qf_currq.l++] = ' ';
-      self->qf_datw = self->qf_pfix_len + self->qf_currq.l;
-      self->qf_wscnt = 0;
-      rv = _qf_add_data(self, wc);
-      break;
-   }
-
-   vc->buf = buf;
-   vc->len = len;
-   n_NYD_OU;
-   return rv;
-}
-
-static ssize_t
-_qf_state_data(struct qf_vc *vc)
-{
-   struct quoteflt *self;
-   ssize_t rv;
-   char const *buf;
-   size_t len, i;
-   wchar_t wc;
-   n_NYD_IN;
-
-   self = vc->self;
-   rv = 0;
-
-   for (buf = vc->buf, len = vc->len; len > 0;) {
-      /* xxx NULL BYTE! */
-      i = mbrtowc(&wc, buf, len, self->qf_mbps);
-      if (i == (size_t)-1) {
-         /* On hard error, don't modify mbstate_t and step one byte */
-         self->qf_mbps[0] = self->qf_mbps[1];
-         ++buf;
-         --len;
-         continue;
-      }
-      self->qf_mbps[1] = self->qf_mbps[0];
-      if (i == (size_t)-2) {
-         /* Redundant shift sequence, out of buffer */
-         len = 0;
-         break;
-      }
-      buf += i;
-      len -= i;
-
-      {  ssize_t j = _qf_add_data(self, wc);
-         if (j < 0) {
-            rv = j;
-            break;
-         }
-         rv += j;
-      }
-
-      if (self->qf_state != _QF_DATA)
-         break;
-   }
-
-   vc->buf = buf;
-   vc->len = len;
-   n_NYD_OU;
-   return rv;
-}
-#endif /* mx_HAVE_QUOTE_FOLD */
-
-FL struct quoteflt *
-quoteflt_dummy(void) /* TODO LEGACY (until filters are plugged when needed) */
-{
-   static struct quoteflt qf_i;
-
-   qf_i.qf_bypass = TRU1;
-   return &qf_i;
-}
-
-FL void
-quoteflt_init(struct quoteflt *self, char const *prefix, bool_t bypass)
-{
-#ifdef mx_HAVE_QUOTE_FOLD
-   char const *xcp, *cp;
-#endif
-   n_NYD_IN;
-
-   memset(self, 0, sizeof *self);
-
-   if ((self->qf_pfix = prefix) != NULL)
-      self->qf_pfix_len = (ui32_t)strlen(prefix);
-   self->qf_bypass = bypass;
-
-   /* Check whether the user wants the more fancy quoting algorithm */
-   /* TODO *quote-fold*: n_QUOTE_MAX may excess it! */
-#ifdef mx_HAVE_QUOTE_FOLD
-   if (!bypass && (cp = ok_vlook(quote_fold)) != NULL) {
-      ui32_t qmax, qmaxnws, qmin;
-
-      /* These magic values ensure we don't bail */
-      su_idec_u32_cp(&qmax, cp, 10, &xcp);
-      if (qmax < self->qf_pfix_len + 6)
-         qmax = self->qf_pfix_len + 6;
-      qmaxnws = --qmax; /* The newline escape */
-      if (cp == xcp || *xcp == '\0')
-         qmin = (qmax >> 1) + (qmax >> 2) + (qmax >> 5);
-      else {
-         su_idec_u32_cp(&qmin, &xcp[1], 10, &xcp);
-         if (qmin < qmax >> 1)
-            qmin = qmax >> 1;
-         else if (qmin > qmax - 2)
-            qmin = qmax - 2;
-
-         if (cp != xcp && *xcp != '\0') {
-            su_idec_u32_cp(&qmaxnws, &xcp[1], 10, &xcp);
-            if (qmaxnws > qmax || qmaxnws < qmin)
-               qmaxnws = qmax;
-         }
-      }
-      self->qf_qfold_min = qmin;
-      self->qf_qfold_max = qmax;
-      self->qf_qfold_maxnws = qmaxnws;
-      self->qf_quote_chars = ok_vlook(quote_chars);
-
-      /* Add pad for takeover copies, reverse solidus and newline */
-      self->qf_dat.s = n_autorec_alloc((qmax + 3) * n_mb_cur_max);
-      self->qf_currq.s = n_autorec_alloc((n_QUOTE_MAX + 1) * n_mb_cur_max);
-   }
-#endif
-   n_NYD_OU;
-}
-
-FL void
-quoteflt_destroy(struct quoteflt *self) /* xxx inline */
-{
-   n_NYD_IN;
-   n_UNUSED(self);
-   n_NYD_OU;
-}
-
-FL void
-quoteflt_reset(struct quoteflt *self, FILE *f) /* xxx inline */
-{
-   n_NYD_IN;
-   self->qf_os = f;
-#ifdef mx_HAVE_QUOTE_FOLD
-   self->qf_state = _QF_CLEAN;
-   self->qf_dat.l =
-   self->qf_currq.l = 0;
-   memset(self->qf_mbps, 0, sizeof self->qf_mbps);
-#endif
-   n_NYD_OU;
-}
-
-FL ssize_t
-quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
-{
-   /* (xxx Ideally the actual push() [and flush()] would be functions on their
-    * xxx own, via indirect vtbl call ..) */
-   ssize_t rv = 0;
-   n_NYD_IN;
-
-   self->qf_nl_last = (len > 0 && dat[len - 1] == '\n'); /* TODO HACK */
-
-   if (len == 0)
-      goto jleave;
-
-   /* Bypass? TODO Finally, this filter simply should not be used, then
-    * (TODO It supercedes prefix_write() or something) */
-   if (self->qf_bypass) {
-      if (len != fwrite(dat, 1, len, self->qf_os))
-         goto jerr;
-      rv = len;
-   }
-   /* Normal: place *indentprefix* at every BOL */
-   else
-#ifdef mx_HAVE_QUOTE_FOLD
-      if (self->qf_qfold_max == 0)
-#endif
-   {
-      void *vp;
-      size_t ll;
-      bool_t pxok = (self->qf_qfold_min != 0);
-
-      for (;;) {
-         if (!pxok && (ll = self->qf_pfix_len) > 0) {
-            if (ll != fwrite(self->qf_pfix, 1, ll, self->qf_os))
-               goto jerr;
-            rv += ll;
-            pxok = TRU1;
-         }
-
-         /* xxx Strictly speaking this is invalid, because only `/' and `.' are
-          * xxx mandated by POSIX.1-2008 as "invariant across all locales
-          * xxx supported"; though there is no charset known which uses this
-          * xxx control char as part of a multibyte character; note that S-nail
-          * XXX (and the Mail codebase as such) do not support EBCDIC */
-         if ((vp = memchr(dat, '\n', len)) == NULL)
-            ll = len;
-         else {
-            pxok = FAL0;
-            ll = PTR2SIZE((char*)vp - dat) + 1;
-         }
-
-         if (ll != fwrite(dat, sizeof *dat, ll, self->qf_os))
-            goto jerr;
-         rv += ll;
-         if ((len -= ll) == 0)
-            break;
-         dat += ll;
-      }
-
-      self->qf_qfold_min = pxok;
-   }
-   /* Overly complicated, though still only line-per-line: *quote-fold*.
-    * - If .qf_currq.l is 0, then we are in a clean state.  Reset .qf_mbps;
-    *   TODO note this means we assume that lines start with reset escape seq,
-    *   TODO but i don't think this is any worse than what we currently do;
-    *   TODO in 15.0, with the value carrier, we should carry conversion states
-    *   TODO all along, only resetting on error (or at words for header =???=);
-    *   TODO this still is weird for error handling, but we need to act more
-    *   TODO stream-alike (though in practice i don't think cross-line states
-    *   TODO can be found, because of compatibility reasons; however, being
-    *   TODO a problem rather than a solution is not a good thing (tm))
-    * - Lookout for a newline */
-#ifdef mx_HAVE_QUOTE_FOLD
-   else {
-      struct qf_vc vc;
-      ssize_t i;
-
-      vc.self = self;
-      vc.buf = dat;
-      vc.len = len;
-      while (vc.len > 0) {
-         switch (self->qf_state) {
-         case _QF_CLEAN:
-         case _QF_PREFIX:
-            i = _qf_state_prefix(&vc);
-            break;
-         default: /* silence cc (`i' unused) */
-         case _QF_DATA:
-            i = _qf_state_data(&vc);
-            break;
-         }
-         if (i < 0)
-            goto jerr;
-         rv += i;
-      }
-   }
-#endif /* mx_HAVE_QUOTE_FOLD */
-
-jleave:
-   n_NYD_OU;
-   return rv;
-jerr:
-   rv = -1;
-   goto jleave;
-}
-
-FL ssize_t
-quoteflt_flush(struct quoteflt *self)
-{
-   ssize_t rv = 0;
-   n_NYD_IN;
-   n_UNUSED(self);
-
-#ifdef mx_HAVE_QUOTE_FOLD
-   if (self->qf_dat.l > 0) {
-      rv = _qf_dump_prefix(self);
-      if (rv >= 0) {
-         size_t i = self->qf_dat.l;
-         if (i == fwrite(self->qf_dat.s, 1, i, self->qf_os))
-            rv += i;
-         else
-            rv = -1;
-         self->qf_dat.l = 0;
-         self->qf_brk_isws = FAL0;
-         self->qf_wscnt = self->qf_brkl = self->qf_brkw = 0;
-         self->qf_datw = self->qf_pfix_len + self->qf_currq.l;
-      }
-   }
-#endif
-   n_NYD_OU;
-   return rv;
-}
-
-/*
- * HTML tagsoup filter TODO rewrite wchar_t based (require mx_HAVE_C90AMEND1)
- * TODO . Numeric &#NO; entities should also be treated by struct hf_ent
- * TODO . Yes, we COULD support CSS based quoting when we'd check type="quote"
- * TODO   (nonstandard) and watch out for style="gmail_quote" (or so, VERY
- * TODO   nonstandard) and tracking a stack of such elements (to be popped
- * TODO   once the closing element is seen).  Then, after writing a newline,
- * TODO   place sizeof(stack) ">"s first.  But aren't these HTML mails rude?
- * TODO Interlocking and non-well-formed data will break us down
- */
+su_EMPTY_FILE()
 #ifdef mx_HAVE_FILTER_HTML_TAGSOUP
+#ifdef mx_HAVE_C90AMEND1
+# include <wctype.h>
+# include <wchar.h>
+#endif
+
+#include <su/cs.h>
+#include <su/icodec.h>
+#include <su/utf.h>
+
+#include "mx/filter-html.h"
 
 enum hf_limits {
-   _HF_MINLEN  = 10,       /* Minimum line length (can't really be smaller) */
-   _HF_BRKSUB  = 8         /* Start considering line break MAX - BRKSUB */
+   _HF_MINLEN  = 10,    /* Minimum line length (can't really be smaller) */
+   _HF_BRKSUB  = 8      /* Start considering line break MAX - BRKSUB */
 };
 
 enum hf_flags {
@@ -836,7 +332,7 @@ _hf_store(struct htmlflt *self, char c)
       char const *ip;
 
       ip = ok_vlook(indentprefix);
-      len = strlen(ip);
+      len = su_cs_len(ip);
       if(len == 0 || len >= _HF_MINLEN){
          ip = "   |"; /* XXX something from *quote-chars* */
          len = sizeof("   |") -1;
@@ -859,7 +355,7 @@ _hf_store(struct htmlflt *self, char c)
 
    self->hf_line[l] = (c == '\t' ? ' ' : c);
    self->hf_len = ++l;
-   if (blankspacechar(c)) {
+   if (su_cs_is_space(c)) {
       if (c == '\t') {
          i = 8 - ((l - 1) & 7); /* xxx magic tab width of 8 */
          if (i > 0) {
@@ -931,7 +427,7 @@ jput:
       /* Any 7-bit characters? */
       f = self->hf_flags;
       for (i = l; i-- >= lim;)
-         if (asciichar((c = self->hf_line[i]))) {
+         if (su_cs_is_ascii((c = self->hf_line[i]))) {
             self->hf_last_ws = ++i;
             goto jput;
          } else if ((f & _HF_UTF8) && ((ui8_t)c & 0xC0) != 0x80) {
@@ -1107,19 +603,19 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
    for(;;){
       if((c = *cp++) == '\0' || c == '>')
          goto jleave;
-      if(whitechar(c))
+      if(su_cs_is_blank(c) || c == '\n')
          break;
    }
 
    /* Search for the parameter, take care of other quoting along the way */
    x = *param++;
-   x = upperconv(x);
-   i = strlen(param);
+   x = su_cs_to_upper(x);
+   i = su_cs_len(param);
 
    for(hot = TRU1;;){
       if((c = *cp++) == '\0' || c == '>')
          goto jleave;
-      if(whitechar(c)){
+      if(su_cs_is_white(c)){
          hot = TRU1;
          continue;
       }
@@ -1129,13 +625,13 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
          hot = FAL0;
 
          /* Is it the desired one? */
-         if((c = upperconv(c)) == x && !ascncasecmp(param, cp, i)){
+         if((c = su_cs_to_upper(c)) == x && !su_cs_cmp_case_n(param, cp, i)){
             char const *cp2 = cp + i;
 
             if((quote = *cp2++) != '='){
                if(quote == '\0' || quote == '>')
                   goto jleave;
-               while(whitechar(quote))
+               while(su_cs_is_white(quote))
                   quote = *cp2++;
             }
             if(quote == '='){
@@ -1156,7 +652,7 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
          for(quote = c; (c = *cp++) != '\0' && c != quote;)
             ;
       }else
-         while(c != '\0' && !whitechar(c) && c != '>')
+         while(c != '\0' && !su_cs_is_white(c) && c != '>')
             c = *++cp;
       if(c == '\0')
          goto jleave;
@@ -1166,7 +662,7 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
    for(;;){
       if((c = *cp++) == '\0' || c == '>')
          goto jleave;
-      if(!whitechar(c))
+      if(!su_cs_is_white(c))
          break;
    }
 
@@ -1179,8 +675,8 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
       /* XXX ... and we simply ignore a missing trailing " :> */
    }else{
       store->s = n_UNCONST(cp - 1);
-      if(!whitechar(c))
-         while((c = *cp) != '\0' && !whitechar(c) && c != '>')
+      if(!su_cs_is_white(c))
+         while((c = *cp) != '\0' && !su_cs_is_white(c) && c != '>')
             ++cp;
    }
    i = PTR2SIZE(cp - store->s);
@@ -1188,10 +684,10 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
    /* Terrible tagsoup out there, e.g., groups.google.com produces href=""
     * parameter values prefixed and suffixed by newlines!  Therefore trim the
     * value content TODO join into the parse step above! */
-   for (cp = store->s; i > 0 && spacechar(*cp); ++cp, --i)
+   for (cp = store->s; i > 0 && su_cs_is_space(*cp); ++cp, --i)
       ;
    store->s = n_UNCONST(cp);
-   for (cp += i - 1; i > 0 && spacechar(*cp); --cp, --i)
+   for (cp += i - 1; i > 0 && su_cs_is_space(*cp); --cp, --i)
       ;
    if ((store->l = i) == 0)
       store->s = NULL;
@@ -1254,22 +750,22 @@ jput_as_is:
       goto jleave;
    }
 
-   for (++s, i = 0; (c = s[i]) != '\0' && c != '>' && !whitechar(c); ++i)
+   for (++s, i = 0; (c = s[i]) != '\0' && c != '>' && !su_cs_is_white(c); ++i)
       /* Special massage for things like <br/>: after the slash only whitespace
        * may separate us from the closing right angle! */
       if (c == '/') {
          size_t j = i + 1;
 
-         while ((c = s[j]) != '\0' && c != '>' && whitechar(c))
+         while ((c = s[j]) != '\0' && c != '>' && su_cs_is_white(c))
             ++j;
          if (c == '>')
             break;
       }
 
    for (hftp = _hf_tags;;) {
-      if (i == hftp->hft_len && !ascncasecmp(s, hftp->hft_tag, i)) {
+      if (i == hftp->hft_len && !su_cs_cmp_case_n(s, hftp->hft_tag, i)) {
          c = s[hftp->hft_len];
-         if (c == '>' || c == '/' || whitechar(c))
+         if (c == '>' || c == '/' || su_cs_is_white(c))
             break;
       }
       if (n_UNLIKELY(PTRCMP(++hftp, >=, _hf_tags + n_NELEM(_hf_tags)))){
@@ -1281,8 +777,10 @@ jput_as_is:
             --i;
          }
 
-         if(i != sizeof("blockquote") -1 || ascncasecmp(s, "blockquote", i) ||
-               ((c = s[sizeof("blockquote") -1]) != '>' && !whitechar(c))){
+         if(i != sizeof("blockquote") -1 ||
+               su_cs_cmp_case_n(s, "blockquote", i) ||
+               ((c = s[sizeof("blockquote") -1]) != '>' &&
+               !su_cs_is_white(c))){
             s -= isct;
             i += isct;
             goto jnotknown;
@@ -1412,8 +910,8 @@ jnotknown:
    }
 
    /* Also skip over : in order to suppress v:roundrect, w:anchorlock.. */
-   while ((c = *s++) != '\0' && c != '>' && !whitechar(c) && c != ':')
-      if (!asciichar(c) || punctchar(c)) {
+   while ((c = *s++) != '\0' && c != '>' && !su_cs_is_white(c) && c != ':')
+      if (!su_cs_is_ascii(c) || su_cs_is_punct(c)) {
          self = _hf_puts(self, self->hf_bdat);
          break;
       }
@@ -1450,7 +948,7 @@ _hf_check_ent(struct htmlflt *self, char const *s, size_t l)
             self = _hf_putc(self, (char)i);
          else if (self->hf_flags & _HF_UTF8) {
 jputuni:
-            l = n_utf32_to_utf8((ui32_t)i, nobuf);
+            l = su_utf_32_to_8((ui32_t)i, nobuf);
             self = _hf_putbuf(self, nobuf, l);
          } else
             goto jeent;
@@ -1535,7 +1033,7 @@ jcp_reset:
             if (hot) {
                if ((i = PTR2SIZE(cp - self->hf_bdat)) > 1 &&
                      --i == hftp->hft_len &&
-                     !ascncasecmp(self->hf_bdat + 1, hftp->hft_tag, i))
+                     !su_cs_cmp_case_n(self->hf_bdat + 1, hftp->hft_tag, i))
                   self->hf_flags = (f &= ~(_HF_IGN | _HF_NOPUT));
                hot = FAL0;
                goto jcp_reset;
@@ -1602,7 +1100,7 @@ jcp_reset:
 jdo_c:
          /* If not currently parsing a tag and bypassing normal output.. */
          if (!(f & _HF_NOPUT)) {
-            if (cntrlchar(c))
+            if (su_cs_is_cntrl(c))
                break;
             if (c == '&') {
                cp = self->hf_bdat;
@@ -1762,6 +1260,6 @@ htmlflt_flush(struct htmlflt *self)
    n_NYD_OU;
    return rv;
 }
-#endif /* mx_HAVE_FILTER_HTML_TAGSOUP */
 
+#endif /* mx_HAVE_FILTER_HTML_TAGSOUP */
 /* s-it-mode */

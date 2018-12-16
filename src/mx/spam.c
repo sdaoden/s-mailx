@@ -24,15 +24,15 @@
 # include "mx/nail.h"
 #endif
 
-EMPTY_FILE()
+su_EMPTY_FILE()
 #ifdef mx_HAVE_SPAM
-
-#include <su/icodec.h>
-
 #ifdef mx_HAVE_SPAM_SPAMD
 # include <sys/socket.h>
 # include <sys/un.h>
 #endif
+
+#include <su/cs.h>
+#include <su/icodec.h>
 
 /* This is chosen rather arbitrarily.
  * It must be able to swallow the first line of a rate response,
@@ -45,7 +45,7 @@ EMPTY_FILE()
 # define SPAMD_IDENT          "SPAMC/1.5"
 # ifndef SUN_LEN
 #  define SUN_LEN(SUP) \
-        (sizeof(*(SUP)) - sizeof((SUP)->sun_path) + strlen((SUP)->sun_path))
+        (sizeof(*(SUP)) - sizeof((SUP)->sun_path) + su_cs_len((SUP)->sun_path))
 # endif
 #endif
 
@@ -204,18 +204,18 @@ _spam_action(enum spam_action sa, int *ip)
       n_err(_("`%s': no *spam-interface* set\n"), _spam_cmds[sa]);
       goto jleave;
 #ifdef mx_HAVE_SPAM_SPAMC
-   } else if (!asccasecmp(cp, "spamc")) {
+   } else if (!su_cs_cmp_case(cp, "spamc")) {
        if (!_spamc_setup(&vc))
          goto jleave;
 #endif
 #ifdef mx_HAVE_SPAM_SPAMD
-   } else if (!asccasecmp(cp, "spamd")) { /* TODO v15: remove */
+   } else if (!su_cs_cmp_case(cp, "spamd")) { /* TODO v15: remove */
       n_OBSOLETE(_("*spam-interface*=spamd is obsolete, please use =spamc"));
       if (!_spamd_setup(&vc))
          goto jleave;
 #endif
 #ifdef mx_HAVE_SPAM_FILTER
-   } else if (!asccasecmp(cp, "filter")) {
+   } else if (!su_cs_cmp_case(cp, "filter")) {
       if (!_spamfilter_setup(&vc))
          goto jleave;
 #endif
@@ -393,7 +393,8 @@ _spamc_interact(struct spam_vc *vcp)
          goto jleave;
       }
 
-      if ((cp = strchr(buf = vcp->vc_t.spamc.c_super.cf_result, '/')) != NULL)
+      if ((cp = su_cs_find_c(buf = vcp->vc_t.spamc.c_super.cf_result, '/')
+            ) != NULL)
          buf[PTR2SIZE(cp - buf)] = '\0';
       _spam_rate2score(vcp, buf);
    }
@@ -427,7 +428,7 @@ _spamd_setup(struct spam_vc *vcp)
    if ((cp = ok_vlook(spamd_user)) != NULL) {
       if (*cp == '\0')
          cp = ok_vlook(LOGNAME);
-      ssdp->d_user.l = strlen(ssdp->d_user.s = n_UNCONST(cp));
+      ssdp->d_user.l = su_cs_len(ssdp->d_user.s = n_UNCONST(cp));
    }
 
    if ((cp = ok_vlook(spamd_socket)) == NULL) {
@@ -435,7 +436,7 @@ _spamd_setup(struct spam_vc *vcp)
          _spam_cmds[vcp->vc_action]);
       goto jleave;
    }
-   if ((l = strlen(cp) +1) >= sizeof(ssdp->d_sun.sun_path)) {
+   if ((l = su_cs_len(cp) +1) >= sizeof(ssdp->d_sun.sun_path)) {
       n_err(_("`%s': *spamd-socket* too long: %s\n"),
          _spam_cmds[vcp->vc_action], n_shexp_quote_cp(cp, FAL0));
       goto jleave;
@@ -622,7 +623,7 @@ jebogus:
    /* From the response, read those lines that interest us */
    for (lp = vcp->vc_buffer; size > 0; ++i) {
       cp = lp;
-      lp = strchr(lp, NETNL[0]);
+      lp = su_cs_find_c(lp, NETNL[0]);
       if (lp == NULL)
          goto jebogus;
       lp[0] = '\0';
@@ -635,7 +636,7 @@ jebogus:
          if (!strncmp(cp, "SPAMD/1.1 0 EX_OK", sizeof("SPAMD/1.1 0 EX_OK") -1))
             continue;
          if (vcp->vc_action != _SPAM_RATE ||
-               strstr(cp, "Service Unavailable") == NULL)
+               su_cs_find(cp, "Service Unavailable") == NULL)
             goto jebogus;
          else {
             /* Unfortunately a missing --allow-tell drops connection.. */
@@ -660,13 +661,13 @@ jebogus:
             } else
                goto jebogus;
 
-            while (blankspacechar(*cp))
+            while (su_cs_is_space(*cp))
                ++cp;
 
             if (*cp++ != ';')
                goto jebogus;
             else {
-               char *xcp = strchr(cp, '/');
+               char *xcp = su_cs_find_c(cp, '/');
                if (xcp != NULL) {
                   size = PTR2SIZE(xcp - cp);
                   cp[size] = '\0';
@@ -777,7 +778,7 @@ jecmd:
       int s;
       char const *bp;
 
-      var = strchr(cp, ';');
+      var = su_cs_find_c(cp, ';');
       if (var == NULL) {
          n_err(_("`%s': *spamfilter-rate-scanscore*: missing semicolon;: %s\n"),
             _spam_cmds[vcp->vc_action], cp);
@@ -1084,14 +1085,14 @@ jtail:
          ssize_t i = read(c2p[0], vcp->vc_buffer, BUFFER_SIZE - 1);
          if (i > 0) {
             vcp->vc_buffer[i] = '\0';
-            if ((cp = strchr(vcp->vc_buffer, NETNL[0])) == NULL &&
-                  (cp = strchr(vcp->vc_buffer, NETNL[1])) == NULL) {
+            if ((cp = su_cs_find_c(vcp->vc_buffer, NETNL[0])) == NULL &&
+                  (cp = su_cs_find_c(vcp->vc_buffer, NETNL[1])) == NULL) {
                n_err(_("%s`%s': program generates too much output: %s\n"),
                   vcp->vc_esep, _spam_cmds[vcp->vc_action],
                   n_shexp_quote_cp(scfp->cf_cmd, FAL0));
                state |= _ERRORS;
             } else {
-               scfp->cf_result = sbufdup(vcp->vc_buffer,
+               scfp->cf_result = su_cs_dup_cbuf(vcp->vc_buffer,
                      PTR2SIZE(cp - vcp->vc_buffer));
 /* FIXME consume child output until EOF??? */
             }

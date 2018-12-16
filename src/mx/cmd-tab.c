@@ -47,6 +47,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
+
 /* Create a multiline info string about all known additional infos for lcp */
 #ifdef mx_HAVE_DOCSTRINGS
 static char const *a_ctab_cmdinfo(struct n_cmd_desc const *cdp);
@@ -254,7 +256,7 @@ a_ctab_c_list(void *vp){
            {
          size_t j;
 
-         j = strlen(cdp->cd_name);
+         j = su_cs_len(cdp->cd_name);
          if(*pre != '\0')
             j += 2;
 
@@ -284,7 +286,7 @@ a_ctab__pcmd_cmp(void const *s1, void const *s2){
 
    cdpa1 = s1;
    cdpa2 = s2;
-   rv = strcmp((*cdpa1)->cd_name, (*cdpa2)->cd_name);
+   rv = su_cs_cmp((*cdpa1)->cd_name, (*cdpa2)->cd_name);
    n_NYD2_OU;
    return rv;
 }
@@ -307,7 +309,7 @@ a_ctab_c_help(void *vp){
        * "commandalias q q;commandalias x q;x" should be "x->q->q->quit" */
       alias_name = NULL;
       while((aepx = n_commandalias_exists(arg, &alias_exp)) != NULL &&
-            (alias_name == NULL || strcmp(alias_name, aepx))){
+            (alias_name == NULL || su_cs_cmp(alias_name, aepx))){
          alias_name = aepx;
          fprintf(n_stdout, "%s -> ", arg);
          arg = alias_exp->s;
@@ -316,9 +318,9 @@ a_ctab_c_help(void *vp){
       cdp_max = &(cdp = a_ctab_ctable)[n_NELEM(a_ctab_ctable)];
 jredo:
       for(; cdp < cdp_max; ++cdp){
-         if(is_prefix(arg, cdp->cd_name)){
+         if(su_cs_starts_with(cdp->cd_name, arg)){
             fputs(arg, n_stdout);
-            if(strcmp(arg, cdp->cd_name))
+            if(su_cs_cmp(arg, cdp->cd_name))
                fprintf(n_stdout, " (%s)", cdp->cd_name);
          }else
             continue;
@@ -417,7 +419,7 @@ FL char const *
 n_cmd_isolate(char const *cmd){
    n_NYD2_IN;
    while(*cmd != '\0' &&
-         strchr("\\!~|? \t0123456789&%@$^.:/-+*'\",;(`", *cmd) == NULL)
+         su_cs_find_c("\\!~|? \t0123456789&%@$^.:/-+*'\",;(`", *cmd) == NULL)
       ++cmd;
    n_NYD2_OU;
    return n_UNCONST(cmd);
@@ -430,7 +432,7 @@ n_cmd_firstfit(char const *cmd){ /* TODO *hashtable*! linear list search!!! */
 
    for(cdp = a_ctab_ctable; cdp < &a_ctab_ctable[n_NELEM(a_ctab_ctable)]; ++cdp)
       if(*cmd == *cdp->cd_name && cdp->cd_func != NULL &&
-            is_prefix(cmd, cdp->cd_name))
+            su_cs_starts_with(cdp->cd_name, cmd))
          goto jleave;
    cdp = NULL;
 jleave:
@@ -509,7 +511,7 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
 
    n_pstate_err_no = su_ERR_NONE;
    shin.s = n_UNCONST(cacp->cac_indat); /* "logical" only */
-   shin.l = (cacp->cac_inlen == UIZ_MAX ? strlen(shin.s) : cacp->cac_inlen);
+   shin.l = (cacp->cac_inlen == UIZ_MAX ? su_cs_len(shin.s) : cacp->cac_inlen);
    shin_orig = shin;
    cacp->cac_no = 0;
    cacp->cac_arg = lcap = NULL;
@@ -735,7 +737,7 @@ n_cmd_arg_save_to_heap(struct n_cmd_arg_ctx const *cacp){
       len += sizeof(*cap) + i;
    }
    if(cacp->cac_vput != NULL)
-      len += strlen(cacp->cac_vput) +1;
+      len += su_cs_len(cacp->cac_vput) +1;
 
    ncacp = n_alloc(len);
    *ncacp = *cacp;
@@ -745,7 +747,7 @@ n_cmd_arg_save_to_heap(struct n_cmd_arg_ctx const *cacp){
       void *vp;
 
       vp = buf;
-      DBG( memset(vp, 0, sizeof *ncap); )
+      su_DBG( memset(vp, 0, sizeof *ncap); )
 
       if(ncap == NULL)
          ncacp->cac_arg = vp;
@@ -765,7 +767,7 @@ n_cmd_arg_save_to_heap(struct n_cmd_arg_ctx const *cacp){
 
    if(cacp->cac_vput != NULL){
       ncacp->cac_vput = buf;
-      memcpy(buf, cacp->cac_vput, strlen(cacp->cac_vput) +1);
+      memcpy(buf, cacp->cac_vput, su_cs_len(cacp->cac_vput) +1);
    }else
       ncacp->cac_vput = NULL;
    n_NYD2_OU;
@@ -784,7 +786,7 @@ n_cmd_arg_restore_from_heap(void *vp){
 
    for(ncap = NULL, cap = cacp->cac_arg; cap != NULL; cap = cap->ca_next){
       vp = n_autorec_alloc(sizeof(*ncap) + cap->ca_arg.ca_str.l +1);
-      DBG( memset(vp, 0, sizeof *ncap); )
+      su_DBG( memset(vp, 0, sizeof *ncap); )
 
       if(ncap == NULL)
          rv->cac_arg = vp;
@@ -829,7 +831,7 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
       linebuf = n_lofi_alloc(linesize);
 
       for(;;){
-         for(; blankchar(*line); ++line)
+         for(; su_cs_is_blank(*line); ++line)
             ;
          if(*line == '\0')
             break;
@@ -863,7 +865,7 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
                   c = c2;
                else
                   --line;
-            }else if(blankchar(c))
+            }else if(su_cs_is_blank(c))
                break;
             *cp2++ = c;
          }

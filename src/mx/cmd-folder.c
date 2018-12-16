@@ -41,6 +41,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
+
 /* c_file, c_File */
 static int        _c_file(void *v, enum fedit_mode fm);
 
@@ -181,13 +183,13 @@ c_remove(void *v)
    ec = 0;
 
    fmt = _("Remove %s");
-   fmt_len = strlen(fmt);
+   fmt_len = su_cs_len(fmt);
    do {
       if ((name = fexpand(*args, FEXP_FULL)) == NULL)
          continue;
       ename = n_shexp_quote_cp(name, FAL0);
 
-      if (!strcmp(name, mailname)) {
+      if (!su_cs_cmp(name, mailname)) {
          n_err(_("Cannot remove current mailbox %s\n"), ename);
          ec |= 1;
          continue;
@@ -197,7 +199,7 @@ c_remove(void *v)
          char *vb;
          size_t vl;
 
-         vl = strlen(ename) + fmt_len +1;
+         vl = su_cs_len(ename) + fmt_len +1;
          vb = n_autorec_alloc(vl);
          snprintf(vb, vl, fmt, ename);
          asw = getapproval(vb, TRU1);
@@ -281,7 +283,7 @@ c_rename(void *v)
       n_err(_("Can only rename folders of same type\n"));
       goto jleave;
    }
-   if (!strcmp(oldn, mailname) || !strcmp(newn, mailname)) {
+   if (!su_cs_cmp(oldn, mailname) || !su_cs_cmp(newn, mailname)) {
       n_err(_("Cannot rename current mailbox %s\n"),
          n_shexp_quote_cp(oldn, FAL0));
       goto jleave;

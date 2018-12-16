@@ -25,6 +25,8 @@
 #endif
 
 #ifdef mx_HAVE_DOTLOCK
+# include <su/cs.h>
+
 # include "mx/dotlock.h"
 #endif
 
@@ -67,7 +69,7 @@ a_dotlock_main(void){
 jislink:
    dls = n_DLS_CANT_CHDIR | n_DLS_ABANDON;
 
-   if((cp = strrchr(di.di_file_name, '/')) != NULL){
+   if((cp = su_cs_rfind_c(di.di_file_name, '/')) != NULL){
       char const *fname = cp + 1;
 
       while(PTRCMP(cp - 1, >, di.di_file_name) && cp[-1] == '/')

@@ -41,6 +41,7 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
 #include <su/icodec.h>
 
 /* Prepare and print "[Message: xy]:" intro */
@@ -341,17 +342,17 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
                if(!(f & a_SQUEEZE))
                   c = '\1';
                else if(s.s_len > 8 &&
-                     (xcp = strstr(cp, "[-- ")) != NULL &&
-                      strstr(&xcp[1], " --]") != NULL)
+                     (xcp = su_cs_find(cp, "[-- ")) != NULL &&
+                      su_cs_find(&xcp[1], " --]") != NULL)
                   c = '\0';
                else{
                   char const *qcp;
 
                   for(qcp = ok_vlook(quote_chars); (c = *cp) != '\0'; ++cp){
-                     if(!asciichar(c))
+                     if(!su_cs_is_ascii(c))
                         break;
-                     if(!blankspacechar(c)){
-                        if(strchr(qcp, c) == NULL)
+                     if(!su_cs_is_space(c)){
+                        if(su_cs_find_c(qcp, c) == NULL)
                            break;
                         c = '\0';
                         break;

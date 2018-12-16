@@ -100,6 +100,7 @@ update_stable_hook() {
       ${make} d-okeys && ${git} add src/mx/gen-okeys.h
       ${make} d-tcaps && ${git} add src/mx/gen-tcaps.h
       ${make} d-errors && ${git} add src/su/gen-errors.h
+      ${make} d-cs-ctype && ${git} add src/su/gen-cs-ctype.h
    fi
 }
 
@@ -131,6 +132,7 @@ update_release_hook() {
       ${make} d-okeys-nv && ${git} add src/mx/gen-okeys.h
       ${make} d-tcaps-nv && ${git} add src/mx/gen-tcaps.h
       ${make} d-errors-nv && ${git} add src/su/gen-errors.h
+      ${make} d-cs-ctype-nv && ${git} add src/su/gen-cs-ctype.h
    fi
 
    ${git} rm -f .gitignore .mailmap TODO \

@@ -24,6 +24,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
+
 struct a_ignore_type{
    ui32_t it_count;     /* Entries in .it_ht (and .it_re) */
    bool_t it_all;       /* _All_ fields ought to be _type_ (ignore/retain) */
@@ -147,15 +149,15 @@ a_ignore_lookup(struct n_ignore const *self, bool_t retain,
    n_NYD2_IN;
 
    if(len == UIZ_MAX)
-      len = strlen(dat);
-   hi = n_torek_ihashn(dat, len) % n_NELEM(self->i_retain.it_ht);
+      len = su_cs_len(dat);
+   hi = su_cs_hash_case_cbuf(dat, len) % n_NELEM(self->i_retain.it_ht);
 
    /* Again: doesn't handle .it_all conditions! */
    /* (Inner functions would be nice, again) */
    if(retain && self->i_retain.it_count > 0){
       rv = TRU1;
       for(ifp = self->i_retain.it_ht[hi]; ifp != NULL; ifp = ifp->if_next)
-         if(!ascncasecmp(ifp->if_field, dat, len))
+         if(!su_cs_cmp_case_n(ifp->if_field, dat, len))
             goto jleave;
 #ifdef mx_HAVE_REGEX
       if(dat[len - 1] != '\0')
@@ -170,7 +172,7 @@ a_ignore_lookup(struct n_ignore const *self, bool_t retain,
    }else if((retain == TRUM1 || !retain) && self->i_ignore.it_count > 0){
       rv = TRUM1;
       for(ifp = self->i_ignore.it_ht[hi]; ifp != NULL; ifp = ifp->if_next)
-         if(!ascncasecmp(ifp->if_field, dat, len))
+         if(!su_cs_cmp_case_n(ifp->if_field, dat, len))
             goto jleave;
 #ifdef mx_HAVE_REGEX
       if(dat[len - 1] != '\0')
@@ -235,7 +237,7 @@ a_ignore_resolve_bltin(char const *cp){
    n_NYD2_IN;
 
    for(ibmp = &a_ignore_bltin_map[0];;)
-      if(!asccasecmp(cp, ibmp->ibm_name))
+      if(!su_cs_cmp_case(cp, ibmp->ibm_name))
          break;
       else if(++ibmp == &a_ignore_bltin_map[n_NELEM(a_ignore_bltin_map)]){
          ibmp = NULL;
@@ -323,7 +325,7 @@ a_ignore__show(struct n_ignore const *ip, bool_t retain){
       /* These fields are all ASCII, no visual width needed */
       size_t len;
 
-      len = strlen(*ap) + 1;
+      len = su_cs_len(*ap) + 1;
       if(UICMP(z, len, >=, sw - i)){
          fputs(" \\\n ", n_stdout);
          i = 1;
@@ -340,7 +342,7 @@ a_ignore__show(struct n_ignore const *ip, bool_t retain){
       char const *cp;
 
       cp = n_shexp_quote_cp(irp->ir_input, FAL0);
-      len = strlen(cp) + 1;
+      len = su_cs_len(cp) + 1;
       if(UICMP(z, len, >=, sw - i)){
          fputs(" \\\n ", n_stdout);
          i = 1;
@@ -361,7 +363,7 @@ static int
 a_ignore__cmp(void const *l, void const *r){
    int rv;
 
-   rv = asccasecmp(*(char const * const *)l, *(char const * const *)r);
+   rv = su_cs_cmp_case(*(char const * const *)l, *(char const * const *)r);
    return rv;
 }
 
@@ -404,7 +406,7 @@ a_ignore__delone(struct n_ignore *ip, bool_t retain, char const *field){
 
       for(irp = *(lirp = &itp->it_re); irp != NULL;
             lirp = &irp->ir_next, irp = irp->ir_next)
-         if(!strcmp(field, irp->ir_input)){
+         if(!su_cs_cmp(field, irp->ir_input)){
             *lirp = irp->ir_next;
             if(irp == itp->it_re_tail)
                itp->it_re_tail = irp->ir_next;
@@ -421,11 +423,11 @@ a_ignore__delone(struct n_ignore *ip, bool_t retain, char const *field){
       struct a_ignore_field **ifpp, *ifp;
       ui32_t hi;
 
-      hi = n_torek_ihashn(field, UIZ_MAX) % n_NELEM(itp->it_ht);
+      hi = su_cs_hash_case_cbuf(field, UIZ_MAX) % n_NELEM(itp->it_ht);
 
       for(ifp = *(ifpp = &itp->it_ht[hi]); ifp != NULL;
             ifpp = &ifp->if_next, ifp = ifp->if_next)
-         if(!asccasecmp(ifp->if_field, field)){
+         if(!su_cs_cmp_case(ifp->if_field, field)){
             *ifpp = ifp->if_next;
             if(!ip->i_auto)
                n_free(ifp);
@@ -476,9 +478,9 @@ c_headerpick(void *vp){
       goto jleave;
    }
 
-   if(is_asccaseprefix(*argv, "retain"))
+   if(su_cs_starts_with_case("retain", *argv))
       retain = TRU1;
-   else if(is_asccaseprefix(*argv, "ignore"))
+   else if(su_cs_starts_with_case("ignore", *argv))
       retain = FAL0;
    else{
       n_err(_("`headerpick': invalid type (retain, ignore): %s\n"), *argv);
@@ -515,9 +517,9 @@ c_unheaderpick(void *vp){
    }
    ++argv;
 
-   if(is_asccaseprefix(*argv, "retain"))
+   if(su_cs_starts_with_case("retain", *argv))
       retain = TRU1;
-   else if(is_asccaseprefix(*argv, "ignore"))
+   else if(su_cs_starts_with_case("ignore", *argv))
       retain = FAL0;
    else{
       n_err(_("`unheaderpick': invalid type (retain, ignore): %s\n"), *argv);
@@ -702,7 +704,7 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
    self = a_ignore_resolve_self(self, TRU1);
 
    if(len == UIZ_MAX)
-      len = strlen(dat);
+      len = su_cs_len(dat);
 
    /* Request to ignore or retain _anything_?  That is special-treated */
    if(len == 1 && dat[0] == '*'){
@@ -784,7 +786,7 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
       ifp = self->i_auto ? n_autorec_alloc(i) : n_alloc(i);
       memcpy(ifp->if_field, dat, len);
       ifp->if_field[len] = '\0';
-      hi = n_torek_ihashn(dat, len) % n_NELEM(itp->it_ht);
+      hi = su_cs_hash_case_cbuf(dat, len) % n_NELEM(itp->it_ht);
       ifp->if_next = itp->it_ht[hi];
       itp->it_ht[hi] = ifp;
    }

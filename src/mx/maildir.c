@@ -46,14 +46,13 @@
 # include "mx/nail.h"
 #endif
 
-#ifdef mx_HAVE_MAILDIR
-# include <su/icodec.h>
-
-# include <dirent.h>
-#endif
-
 su_EMPTY_FILE()
 #ifdef mx_HAVE_MAILDIR
+
+#include <dirent.h>
+
+#include <su/cs.h>
+#include <su/icodec.h>
 
 /* a_maildir_tbl should be a hash-indexed array of trees! */
 static struct message **a_maildir_tbl, **a_maildir_tbl_top;
@@ -236,7 +235,7 @@ a_maildir_cmp(void const *xa, void const *xb){
    if((rv = *a.cp) == 'M')
       ;
    /* Known compat? */
-   else if(digitchar(rv)){
+   else if(su_cs_is_digit(rv)){
       cpa_pid = a.cp++;
       while((rv = *a.cp) != '\0' && rv != '_')
          ++a.cp;
@@ -261,7 +260,7 @@ a_maildir_cmp(void const *xa, void const *xb){
    b.cp = ++cpb;
    if((rv = *b.cp) == 'M')
       ;
-   else if(digitchar(rv)){
+   else if(su_cs_is_digit(rv)){
       cpb_pid = b.cp++;
       while((rv = *b.cp) != '\0' && rv != '_')
          ++b.cp;
@@ -384,7 +383,7 @@ _maildir_append(char const *name, char const *sub, char const *fn)
    n_UNUSED(name);
 
    if (fn != NULL && sub != NULL) {
-      if (!strcmp(sub, "new"))
+      if (!su_cs_cmp(sub, "new"))
          f |= MNEW;
 
       /* C99 */{
@@ -394,7 +393,7 @@ _maildir_append(char const *name, char const *sub, char const *fn)
          t = (time_t)tib;
       }
 
-      if ((cp = strrchr(xp, ',')) != NULL && PTRCMP(cp, >, xp + 2) &&
+      if ((cp = su_cs_rfind_c(xp, ',')) != NULL && PTRCMP(cp, >, xp + 2) &&
             cp[-1] == '2' && cp[-2] == n_MAILDIR_SEPARATOR) {
          while (*++cp != '\0') {
             switch (*cp) {
@@ -431,8 +430,8 @@ _maildir_append(char const *name, char const *sub, char const *fn)
       char *tmp;
       size_t sz, i;
 
-      i = strlen(fn) +1;
-      sz = strlen(sub);
+      i = su_cs_len(fn) +1;
+      sz = su_cs_len(sub);
       m->m_maildir_file = tmp = n_alloc(sz + 1 + i);
       memcpy(tmp, sub, sz);
       tmp[sz++] = '/';
@@ -440,7 +439,7 @@ _maildir_append(char const *name, char const *sub, char const *fn)
    }
    m->m_time = t;
    m->m_flag = f;
-   m->m_maildir_hash = n_torek_hash(fn);
+   m->m_maildir_hash = su_cs_hash(fn);
 jleave:
    n_NYD_OU;
    return;
@@ -582,7 +581,7 @@ _maildir_move(struct n_timespec const *tsp, struct message *m)
 
    fn = mkname(tsp, m->m_flag, m->m_maildir_file + 4);
    newfn = savecat("cur/", fn);
-   if (!strcmp(m->m_maildir_file, newfn))
+   if (!su_cs_cmp(m->m_maildir_file, newfn))
       goto jleave;
    if (link(m->m_maildir_file, newfn) == -1) {
       n_err(_("Cannot link %s to %s: message %lu not touched\n"),
@@ -652,12 +651,12 @@ mkname(struct n_timespec const *tsp, enum mflag f, char const *pref)
       }
 
       /* Create a name according to Courier spec */
-      size = 60 + strlen(node);
+      size = 60 + su_cs_len(node);
       cp = n_autorec_alloc(size);
       n = snprintf(cp, size, "%" PRId64 ".M%" PRIdZ "P%ld.%s:2,",
             ts.ts_sec, ts.ts_nsec, (long)n_pid, node);
    } else {
-      size = (n = strlen(pref)) + 13;
+      size = (n = su_cs_len(pref)) + 13;
       cp = n_autorec_alloc(size);
       memcpy(cp, pref, n +1);
       for (i = n; i > 3; --i)
@@ -699,11 +698,11 @@ maildir_append1(struct n_timespec const *tsp, char const *name, FILE *fp,
    enum okay rv = STOP;
    n_NYD_IN;
 
-   nlen = strlen(name);
+   nlen = su_cs_len(name);
 
    /* Create a unique temporary file */
    for (nfn = (char*)0xA /* XXX no magic */;; n_msleep(500, FAL0)) {
-      flen = strlen(fn = mkname(tsp, flag, NULL));
+      flen = su_cs_len(fn = mkname(tsp, flag, NULL));
       tfn = n_autorec_alloc(n = nlen + flen + 6);
       snprintf(tfn, n, "%s/tmp/%s", name, fn);
 
@@ -782,7 +781,7 @@ mkmaildir(char const *name) /* TODO proper cleanup on error; use path[] loop */
    n_NYD_IN;
 
    if (trycreate(name) == OKAY) {
-      np = n_lofi_alloc((sz = strlen(name)) + 4 +1);
+      np = n_lofi_alloc((sz = su_cs_len(name)) + 4 +1);
       memcpy(np, name, sz);
       memcpy(np + sz, "/tmp", 4 +1);
       if (trycreate(np) == OKAY) {
@@ -808,7 +807,7 @@ mdlook(char const *name, struct message *data)
    if(data != NULL)
       i = data->m_maildir_hash;
    else
-      i = n_torek_hash(name);
+      i = su_cs_hash(name);
    h = i;
    mpp = &a_maildir_tbl[i %= a_maildir_tbl_prime];
 
@@ -820,7 +819,8 @@ mdlook(char const *name, struct message *data)
                a_maildir_tbl_maxdist = i;
          }
          break;
-      }else if(mp->m_maildir_hash == h && !strcmp(&mp->m_maildir_file[4], name))
+      }else if(mp->m_maildir_hash == h &&
+            !su_cs_cmp(&mp->m_maildir_file[4], name))
          break;
 
       if(n_UNLIKELY(mpp++ == a_maildir_tbl_top))
@@ -864,8 +864,8 @@ subdir_remove(char const *name, char const *sub)
    enum okay rv = STOP;
    n_NYD_IN;
 
-   namelen = strlen(name);
-   sublen = strlen(sub);
+   namelen = su_cs_len(name);
+   sublen = su_cs_len(sub);
    path = n_alloc(pathsize = namelen + sublen + 30 +1);
    memcpy(path, name, namelen);
    path[namelen] = '/';
@@ -883,7 +883,7 @@ subdir_remove(char const *name, char const *sub)
          continue;
       if (dp->d_name[0] == '.')
          continue;
-      n = strlen(dp->d_name);
+      n = su_cs_len(dp->d_name);
       if (UICMP(32, pathend + n +1, >, pathsize))
          path = n_realloc(path, pathsize = pathend + n + 30);
       memcpy(path + pathend, dp->d_name, n +1);
@@ -1117,9 +1117,9 @@ maildir_append(char const *name, FILE *fp, long offset)
          state &= ~_INHEAD;
          state |= _NLSEP;
       } else if (state & _INHEAD) {
-         if (!ascncasecmp(buf, "status", 6)) {
+         if (!su_cs_cmp_case_n(buf, "status", 6)) {
             lp = buf + 6;
-            while (whitechar(*lp))
+            while (su_cs_is_white(*lp))
                ++lp;
             if (*lp == ':')
                while (*++lp != '\0')
@@ -1131,9 +1131,9 @@ maildir_append(char const *name, FILE *fp, long offset)
                      flag &= ~MNEW;
                      break;
                   }
-         } else if (!ascncasecmp(buf, "x-status", 8)) {
+         } else if (!su_cs_cmp_case_n(buf, "x-status", 8)) {
             lp = buf + 8;
-            while (whitechar(*lp))
+            while (su_cs_is_white(*lp))
                ++lp;
             if (*lp == ':') {
                while (*++lp != '\0')

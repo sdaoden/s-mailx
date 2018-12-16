@@ -46,6 +46,12 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
+
+#include "mx/filter-quote.h" /* TODO nonsense (should be filter chain!) */
+#include "mx/iconv.h"
+#include "mx/ui-str.h"
+
 /* Don't ask, but it keeps body and soul together */
 enum a_mime_structure_hack{
    a_MIME_SH_NONE,
@@ -60,7 +66,7 @@ static char                   *_cs_iter_base, *_cs_iter;
 #else
 # define _CS_ITER_GET() ((_cs_iter != NULL) ? _cs_iter : ok_vlook(ttycharset))
 #endif
-#define _CS_ITER_STEP() _cs_iter = n_strsep(&_cs_iter_base, ',', TRU1)
+#define _CS_ITER_STEP() _cs_iter = su_cs_sep_c(&_cs_iter_base, ',', TRU1)
 
 /* Is 7-bit enough? */
 #ifdef mx_HAVE_ICONV
@@ -364,9 +370,9 @@ mime_write_tohdr(struct str *in, FILE *fo, size_t *colp,
 
    cout.s = NULL, cout.l = 0;
    cset7 = ok_vlook(charset_7bit);
-   cset7_len = (ui32_t)strlen(cset7);
+   cset7_len = (ui32_t)su_cs_len(cset7);
    cset8 = _CS_ITER_GET(); /* TODO MIME/send layer: iter active? iter! else */
-   cset8_len = (ui32_t)strlen(cset8);
+   cset8_len = (ui32_t)su_cs_len(cset8);
 
    flags = _FIRST;
    if(msh != a_MIME_SH_NONE)
@@ -379,7 +385,7 @@ mime_write_tohdr(struct str *in, FILE *fo, size_t *colp,
     * TODO any stateful encoding at all... (the standard says each encoded
     * TODO word must include all necessary reset sequences..., i.e., each
     * TODO encoded word must be a self-contained iconv(3) life cycle) */
-   if (!asccasecmp(cset8, "iso-2022-jp") || mime_enc_target() == MIMEE_B64)
+   if (!su_cs_cmp_case(cset8, "iso-2022-jp") || mime_enc_target() == MIMEE_B64)
       flags |= _NO_QP;
 
    wbot = in->s;
@@ -400,7 +406,7 @@ mime_write_tohdr(struct str *in, FILE *fo, size_t *colp,
    } else for (; wbot < upper; flags &= ~_FIRST, wbot = wend) {
       flags &= _RND_MASK;
       wcur = wbot;
-      while (wcur < upper && whitechar(*wcur)) {
+      while (wcur < upper && su_cs_is_white(*wcur)) {
          flags |= _SPACE;
          ++wcur;
       }
@@ -427,7 +433,7 @@ mime_write_tohdr(struct str *in, FILE *fo, size_t *colp,
       /* Skip over a word to next non-whitespace, keep track along the way
        * whether our 7-bit charset suffices to represent the data */
       for (wend = wcur; wend < upper; ++wend) {
-         if (whitechar(*wend))
+         if (su_cs_is_white(*wend))
             break;
          if ((uc_i)*wend & 0x80)
             flags |= _8BIT;
@@ -449,7 +455,7 @@ j_beejump:
          if ((flags & _NO_QP) || j >= i >> 1)/*(i >> 2) + (i >> 3))*/
             flags |= _ENC_B64;
       }
-      DBG( if (flags & _8BIT) assert(flags & _ENCODE); )
+      su_DBG( if (flags & _8BIT) assert(flags & _ENCODE); )
 
       if (!(flags & _ENCODE)) {
          /* Encoded word produced, but no linear whitespace for necessary RFC
@@ -497,7 +503,7 @@ jnoenc_retry:
          /* Doesn't fit, try to break the line first; */
          if (col > 1) {
             putc('\n', fo);
-            if (whitechar(*wbot)) {
+            if (su_cs_is_white(*wbot)) {
                putc((uc_i)*wbot, fo);
                ++wbot;
             } else
@@ -611,7 +617,7 @@ jenc_retry_same:
                goto jenc_retry_same;
             } else {
                putc((uc_i)*wcur, fo);
-               if (whitechar(*(wcur = wbot)))
+               if (su_cs_is_white(*(wcur = wbot)))
                   ++wbot;
                else {
                   flags &= ~_SPACE;
@@ -808,7 +814,8 @@ charset_iter_reset(char const *a_charset_to_try_first) /* TODO elim. dups! */
 #ifdef mx_HAVE_ICONV
    sarr[2] = ok_vlook(CHARSET_8BIT_OKEY);
 
-   if(a_charset_to_try_first != NULL && strcmp(a_charset_to_try_first, sarr[2]))
+   if(a_charset_to_try_first != NULL &&
+         su_cs_cmp(a_charset_to_try_first, sarr[2]))
       sarr[0] = a_charset_to_try_first;
    else
       sarr[0] = NULL;
@@ -816,21 +823,21 @@ charset_iter_reset(char const *a_charset_to_try_first) /* TODO elim. dups! */
    if((sarr[1] = ok_vlook(sendcharsets)) == NULL &&
          ok_blook(sendcharsets_else_ttycharset)){
       cp = n_UNCONST(ok_vlook(ttycharset));
-      if(strcmp(cp, sarr[2]) && (sarr[0] == NULL || strcmp(cp, sarr[0])))
+      if(su_cs_cmp(cp, sarr[2]) && (sarr[0] == NULL || su_cs_cmp(cp, sarr[0])))
          sarr[1] = cp;
    }
 #else
    sarr[2] = ok_vlook(ttycharset);
 #endif
 
-   sarrl[2] = len = strlen(sarr[2]);
+   sarrl[2] = len = su_cs_len(sarr[2]);
 #ifdef mx_HAVE_ICONV
    if ((cp = n_UNCONST(sarr[1])) != NULL)
-      len += (sarrl[1] = strlen(cp));
+      len += (sarrl[1] = su_cs_len(cp));
    else
       sarrl[1] = 0;
    if ((cp = n_UNCONST(sarr[0])) != NULL)
-      len += (sarrl[0] = strlen(cp));
+      len += (sarrl[0] = su_cs_len(cp));
    else
       sarrl[0] = 0;
 #endif
@@ -1050,12 +1057,13 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
             cs[i] = '\0';
             /* RFC 2231 extends the RFC 2047 character set definition in
              * encoded words by language tags - silently strip those off */
-            if ((ltag = strchr(cs, '*')) != NULL)
+            if ((ltag = su_cs_find_c(cs, '*')) != NULL)
                *ltag = '\0';
 
             if (fhicd != (iconv_t)-1)
                n_iconv_close(fhicd);
-            fhicd = asccasecmp(cs, tcs) ? n_iconv_open(tcs, cs) : (iconv_t)-1;
+            fhicd = su_cs_cmp_case(cs, tcs)
+                  ? n_iconv_open(tcs, cs) : (iconv_t)-1;
             n_lofi_free(cs);
          }
 #endif
@@ -1111,7 +1119,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
             if(any){
                /* I18N: must be non-empty, last must be closing bracket/xy */
                xcp = _("[Content normalized: ]");
-               i = strlen(xcp);
+               i = su_cs_len(xcp);
                j = cout.l;
                n_str_add_buf(&cout, xcp, i);
                memmove(&cout.s[i - 1], cout.s, j);
@@ -1150,7 +1158,7 @@ jnotmime: {
                break;
             if (op[0] == '=' && (PTRCMP(op + 1, ==, upper) || op[1] == '?'))
                break;
-            if (onlyws && !blankchar(*op))
+            if (onlyws && !su_cs_is_blank(*op))
                onlyws = FAL0;
          }
 

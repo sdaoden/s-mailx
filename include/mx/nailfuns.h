@@ -35,6 +35,8 @@
  * SUCH DAMAGE.
  */
 
+struct quoteflt;
+
 /*
  * TODO Convert optional utility+ functions to n_*(); ditto
  * TODO else use generic module-specific prefixes: str_(), am[em]_, sm[em]_, ..
@@ -52,40 +54,15 @@
  * Macro-based generics
  */
 
-/* ASCII char classification */
-#define n__ischarof(C, FLAGS)  \
-   (asciichar(C) && (n_class_char[(ui8_t)(C)] & (FLAGS)) != 0)
-
-#define n_uasciichar(U) ((size_t)(U) <= 0x7F)
-#define asciichar(c) ((uc_i)(c) <= 0x7F)
-#define alnumchar(c) n__ischarof(c, C_DIGIT | C_OCTAL | C_UPPER | C_LOWER)
-#define alphachar(c) n__ischarof(c, C_UPPER | C_LOWER)
-#define blankchar(c) n__ischarof(c, C_BLANK)
-#define blankspacechar(c) n__ischarof(c, C_BLANK | C_SPACE)
-#define cntrlchar(c) n__ischarof(c, C_CNTRL)
-#define digitchar(c) n__ischarof(c, C_DIGIT | C_OCTAL)
-#define lowerchar(c) n__ischarof(c, C_LOWER)
-#define punctchar(c) n__ischarof(c, C_PUNCT)
-#define spacechar(c) n__ischarof(c, C_BLANK | C_SPACE | C_WHITE)
-#define upperchar(c) n__ischarof(c, C_UPPER)
-#define whitechar(c) n__ischarof(c, C_BLANK | C_WHITE)
-#define octalchar(c) n__ischarof(c, C_OCTAL)
-#define hexchar(c) /* TODO extend bits, add C_HEX */\
-   (n__ischarof(c, C_DIGIT | C_OCTAL) || ((c) >= 'A' && (c) <= 'F') ||\
-    ((c) >= 'a' && (c) <= 'f'))
-
-#define upperconv(c) \
-   (lowerchar(c) ? (char)((uc_i)(c) - 'a' + 'A') : (char)(c))
-#define lowerconv(c) \
-   (upperchar(c) ? (char)((uc_i)(c) - 'A' + 'a') : (char)(c))
 /* RFC 822, 3.2. */
 #define fieldnamechar(c) \
-   (asciichar(c) && (c) > 040 && (c) != 0177 && (c) != ':')
+   (su_cs_is_ascii(c) && (c) > 040 && (c) != 0177 && (c) != ':')
 
 /* Could the string contain a regular expression?
  * NOTE: on change: manual contains several occurrences of this string! */
-#define n_is_maybe_regex(S) n_is_maybe_regex_buf(S, UIZ_MAX)
-#define n_is_maybe_regex_buf(D,L) n_anyof_buf("^[]*+?|$", D, L)
+#define n_is_maybe_regex(S) n_is_maybe_regex_buf(S, su_UZ_MAX)
+#define n_is_maybe_regex_buf(D,L) \
+      (su_cs_first_of_cbuf_cbuf(D, L, "^[]*+?|$", su_UZ_MAX) != su_UZ_MAX)
 
 /* Single-threaded, use unlocked I/O */
 #ifdef mx_HAVE_PUTC_UNLOCKED
@@ -316,13 +293,6 @@ FL enum protocol  which_protocol(char const *name, bool_t check_stat,
 FL char *      n_c_to_hex_base16(char store[3], char c);
 FL si32_t      n_c_from_hex_base16(char const hex[2]);
 
-/* Hash the passed string -- uses Chris Torek's hash algorithm.
- * i*() hashes case-insensitively (ASCII), and *n() uses maximally len bytes;
- * if len is UIZ_MAX, we go .), since we anyway stop for NUL */
-FL ui32_t n_torek_hash(char const *name);
-FL ui32_t n_torek_ihashn(char const *dat, size_t len);
-#define n_torek_ihash(CP) n_torek_ihashn(CP, UIZ_MAX)
-
 /* Find a prime greater than n */
 FL ui32_t n_prime_next(ui32_t n);
 
@@ -350,7 +320,7 @@ FL char *n_random_create_cp(size_t len, ui32_t *reprocnt_or_null);
  * string, in which case TRUM1 is returned.
  * If the input buffer is empty emptyrv is used as the return: if it is GE
  * FAL0 it will be made a binary boolean, otherwise TRU2 is returned.
- * inlen may be UIZ_MAX to force strlen() detection */
+ * inlen may be UIZ_MAX to force su_cs_len() detection */
 FL bool_t n_boolify(char const *inbuf, uiz_t inlen, bool_t emptyrv);
 
 /* Dig a "quadoption" in inbuf, possibly going through getapproval() in
@@ -764,33 +734,6 @@ FL FILE *n_run_editor(FILE *fp, off_t size, int viored, bool_t readonly,
                   char const *pipecmd);
 
 /*
- * filter.c
- */
-
-/* Quote filter */
-FL struct quoteflt * quoteflt_dummy(void); /* TODO LEGACY */
-FL void        quoteflt_init(struct quoteflt *self, char const *prefix,
-                  bool_t bypass);
-FL void        quoteflt_destroy(struct quoteflt *self);
-FL void        quoteflt_reset(struct quoteflt *self, FILE *f);
-FL ssize_t     quoteflt_push(struct quoteflt *self, char const *dat,
-                  size_t len);
-FL ssize_t     quoteflt_flush(struct quoteflt *self);
-
-/* (Primitive) HTML tagsoup filter */
-#ifdef mx_HAVE_FILTER_HTML_TAGSOUP
-/* TODO Because we don't support filter chains yet this filter will be run
- * TODO in a dedicated subprocess, driven via a special Popen() mode */
-FL int         htmlflt_process_main(void);
-
-FL void        htmlflt_init(struct htmlflt *self);
-FL void        htmlflt_destroy(struct htmlflt *self);
-FL void        htmlflt_reset(struct htmlflt *self, FILE *f);
-FL ssize_t     htmlflt_push(struct htmlflt *self, char const *dat, size_t len);
-FL ssize_t     htmlflt_flush(struct htmlflt *self);
-#endif
-
-/*
  * fio.c
  */
 
@@ -1125,7 +1068,7 @@ FL int         grab_headers(enum n_go_input_flags gif, struct header *hp,
  * If sep->s_where (or >s_where_wregex) is set, restrict to given headers */
 FL bool_t n_header_match(struct message *mp, struct search_expr const *sep);
 
-/* Verify whether len (UIZ_MAX=strlen) bytes of name form a standard or
+/* Verify whether len (UIZ_MAX=su_cs_len) bytes of name form a standard or
  * otherwise known header name (that must not be used as a custom header).
  * Return the (standard) header name, or NULL */
 FL char const *n_header_is_known(char const *name, size_t len);
@@ -1434,7 +1377,7 @@ FL si8_t       mime_param_create(struct str *result, char const *name,
                   char const *value);
 
 /* Get the boundary out of a Content-Type: multipart/xyz header field, return
- * autorec_alloc()ed copy of it; store strlen() in *len if set */
+ * autorec_alloc()ed copy of it; store su_cs_len() in *len if set */
 FL char *      mime_param_boundary_get(char const *headerbody, size_t *len);
 
 /* Create a autorec_alloc()ed MIME boundary */
@@ -1847,7 +1790,7 @@ FL char *fexpand(char const *name, enum fexp_mode fexpm);
 
 /* Parse the next shell token from input (->s and ->l are adjusted to the
  * remains, data is constant beside that; ->s may be NULL if ->l is 0, if ->l
- * EQ UIZ_MAX strlen(->s) is used) and append the resulting output to store.
+ * EQ UIZ_MAX su_cs_len(->s) is used) and append the resulting output to store.
  * If cookie is not NULL and we're in double-quotes then ${@} will be exploded
  * just as known from the sh(1)ell in that case */
 FL enum n_shexp_state n_shexp_parse_token(enum n_shexp_parse_flags flags,
@@ -1860,7 +1803,7 @@ FL char *n_shexp_parse_token_cp(enum n_shexp_parse_flags flags,
             char const **cp);
 
 /* Quote input in a way that can, in theory, be fed into parse_token() again.
- * ->s may be NULL if ->l is 0, if ->l EQ UIZ_MAX strlen(->s) is used.
+ * ->s may be NULL if ->l is 0, if ->l EQ UIZ_MAX su_cs_len(->s) is used.
  * If rndtrip is true we try to make the resulting string "portable" (by
  * converting Unicode to \u etc.), otherwise we produce something to be
  * consumed "now", i.e., to display for the user.
@@ -2042,22 +1985,6 @@ FL struct str *str_concat_cpa(struct str *self, char const * const *cpa,
 
 /* Plain char* support, not auto-reclaimed (unless noted) */
 
-/* Are any of the characters in template contained in dat? */
-FL bool_t n_anyof_buf(char const *template, char const *dat, size_t len);
-#define n_anyof_cp(S1,S2) n_anyof_buf(S1, S2, UIZ_MAX)
-
-/* Treat *iolist as a sep separated list of strings; find and return the
- * next entry, trimming surrounding whitespace, and point *iolist to the next
- * entry or to NULL if no more entries are contained.  If ignore_empty is
- * set empty entries are started over.
- * strsep_esc() is identical but allows reverse solidus escaping of sep, too.
- * Return NULL or an entry */
-FL char *n_strsep(char **iolist, char sep, bool_t ignore_empty);
-FL char *n_strsep_esc(char **iolist, char sep, bool_t ignore_empty);
-
-/* Is *as1* a valid prefix of *as2*? */
-FL bool_t is_prefix(char const *as1, char const *as2);
-
 /* Reverse solidus quote (" and \) v'alue, and return autorec_alloc()ed */
 FL char *      string_quote(char const *v);
 
@@ -2067,37 +1994,12 @@ FL void        makelow(char *cp);
 /* Is *sub* a substring of *str*, case-insensitive and multibyte-aware? */
 FL bool_t      substr(char const *str, char const *sub);
 
-/**/
-FL char *sstpcpy(char *dst, char const *src);
-FL char *sstrdup(char const *cp  su_DBG_LOC_ARGS_DECL);
-FL char *sbufdup(char const *cp, size_t len  su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
-# define sstrdup(CP) sstrdup(CP  su_DBG_LOC_ARGS_INJ)
-# define sbufdup(CP,L) sbufdup(CP, L  su_DBG_LOC_ARGS_INJ)
-#endif
-
-/* Copy at most dstsize bytes of src to dst and return string length.
- * Returns -E2BIG if dst is not large enough; dst will always be terminated
- * unless dstsize was 0 on entry */
-FL ssize_t     n_strscpy(char *dst, char const *src, size_t dstsize);
-
-/* Case-independent ASCII comparisons */
-FL int         asccasecmp(char const *s1, char const *s2);
-FL int         ascncasecmp(char const *s1, char const *s2, size_t sz);
-
-/* Case-independent ASCII string find s2 in s1, return it or NULL */
-FL char const *asccasestr(char const *s1, char const *s2);
-
-/* Case-independent ASCII check whether as1 is the initial substring of as2 */
-FL bool_t      is_asccaseprefix(char const *as1, char const *as2);
-FL bool_t      is_ascncaseprefix(char const *as1, char const *as2, size_t sz);
-
 /* struct str related support funs TODO _cp->_cs! */
 
 /* *self->s* is n_realloc()ed */
 #define n_str_dup(S, T)          n_str_assign_buf((S), (T)->s, (T)->l)
 
-/* *self->s* is n_realloc()ed; if buflen==UIZ_MAX strlen() is called unless
+/* *self->s* is n_realloc()ed; if buflen==UIZ_MAX su_cs_len() is called unless
  * buf is NULL; buf may be NULL if buflen is 0 */
 FL struct str *n_str_assign_buf(struct str *self, char const *buf, uiz_t buflen
       su_DBG_LOC_ARGS_DECL);
@@ -2105,7 +2007,7 @@ FL struct str *n_str_assign_buf(struct str *self, char const *buf, uiz_t buflen
 #define n_str_assign_cp(S, CP)   n_str_assign_buf(S, CP, UIZ_MAX)
 
 /* *self->s* is n_realloc()ed, *self->l* incremented; if buflen==UIZ_MAX
- * strlen() is called unless buf is NULL; buf may be NULL if buflen is 0 */
+ * su_cs_len() is called unless buf is NULL; buf may be NULL if buflen is 0 */
 FL struct str *n_str_add_buf(struct str *self, char const *buf, uiz_t buflen
       su_DBG_LOC_ARGS_DECL);
 #define n_str_add(S, T)          n_str_add_buf(S, (T)->s, (T)->l)
@@ -2117,7 +2019,7 @@ FL struct str *n_str_add_buf(struct str *self, char const *buf, uiz_t buflen
 # define n_str_add_buf(S,B,BL) n_str_add_buf(S, B, BL  su_DBG_LOC_ARGS_INJ)
 #endif
 
-/* Remove leading and trailing spacechar()s and *ifs-ws*, respectively.
+/* Remove leading and trailing su_cs_is_space()s and *ifs-ws*, respectively.
  * The ->s and ->l of the string will be adjusted, but no NUL termination will
  * be applied to a possibly adjusted buffer!
  * If dofaults is set, " \t\n" is always trimmed (in addition) */
@@ -2274,55 +2176,6 @@ su_INLINE struct n_string *
 }
 # undef n_string_drop_ownership
 #endif /* su_HAVE_INLINE */
-
-/* UTF-8 / UTF-32 stuff */
-
-/* ..and update arguments to point after range; returns UI32_MAX on error, in
- * which case the arguments will have been stepped one byte */
-FL ui32_t      n_utf8_to_utf32(char const **bdat, size_t *blen);
-
-/* buf must be large enough also for NUL, it's new length will be returned */
-FL size_t      n_utf32_to_utf8(ui32_t c, char *buf);
-
-/* Our iconv(3) wrappers */
-
-/* Returns a newly n_autorec_alloc()ated thing if there were adjustments.
- * Return value is always smaller or of equal size.
- * NULL will be returned if cset is an invalid character set name */
-FL char *n_iconv_normalize_name(char const *cset);
-
-/* Is it ASCII indeed? */
-FL bool_t n_iconv_name_is_ascii(char const *cset);
-
-#ifdef mx_HAVE_ICONV
-FL iconv_t     n_iconv_open(char const *tocode, char const *fromcode);
-/* If *cd* == *iconvd*, assigns -1 to the latter */
-FL void        n_iconv_close(iconv_t cd);
-
-/* Reset encoding state */
-FL void        n_iconv_reset(iconv_t cd);
-
-/* iconv(3), but return su_err_no() or 0 upon success.
- * The err_no may be ERR_NOENT unless n_ICONV_IGN_NOREVERSE is set in icf.
- * iconv_str() auto-grows on ERR_2BIG errors; in and in_rest_or_null may be
- * the same object.
- * Note: ERR_INVAL (incomplete sequence at end of input) is NOT handled, so the
- * replacement character must be added manually if that happens at EOF!
- * TODO These must be contexts.  For now we duplicate su_err_no() into
- * TODO n_iconv_err_no in order to be able to access it when stuff happens
- * TODO "in between"! */
-FL int         n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
-                  char const **inb, size_t *inbleft,
-                  char **outb, size_t *outbleft);
-FL int         n_iconv_str(iconv_t icp, enum n_iconv_flags icf,
-                  struct str *out, struct str const *in,
-                  struct str *in_rest_or_null);
-
-/* If tocode==NULL, uses *ttycharset*.  If fromcode==NULL, uses UTF-8.
- * Returns a autorec_alloc()ed buffer or NULL */
-FL char *      n_iconv_onetime_cp(enum n_iconv_flags icf,
-                  char const *tocode, char const *fromcode, char const *input);
-#endif /* mx_HAVE_ICONV */
 
 /*
  * termcap.c
@@ -2507,39 +2360,6 @@ FL int c_history(void *v);
 FL int c_bind(void *v);
 FL int c_unbind(void *v);
 #endif
-
-/*
- * ui-str.c
- */
-
-/* Parse (onechar of) a given buffer, and generate infos along the way.
- * If _WOUT_CREATE is set in vif, .vic_woudat will be NUL terminated!
- * vicp must be zeroed before first use */
-FL bool_t      n_visual_info(struct n_visual_info_ctx *vicp,
-                  enum n_visual_info_flags vif);
-
-/* Check (multibyte-safe) how many bytes of buf (which is blen byts) can be
- * safely placed in a buffer (field width) of maxlen bytes */
-FL size_t      field_detect_clip(size_t maxlen, char const *buf, size_t blen);
-
-/* Place cp in a autorec_alloc()ed buffer, column-aligned.
- * For header display only */
-FL char *      colalign(char const *cp, int col, int fill,
-                  int *cols_decr_used_or_null);
-
-/* Convert a string to a displayable one;
- * prstr() returns the result savestr()d, prout() writes it */
-FL void        makeprint(struct str const *in, struct str *out);
-FL size_t      delctrl(char *cp, size_t len);
-FL char *      prstr(char const *s);
-FL int         prout(char const *s, size_t sz, FILE *fp);
-
-/* Check whether bidirectional info maybe needed for blen bytes of bdat */
-FL bool_t      bidi_info_needed(char const *bdat, size_t blen);
-
-/* Create bidirectional text encapsulation info; without mx_HAVE_NATCH_CHAR
- * the strings are always empty */
-FL void        bidi_info_create(struct bidi_info *bip);
 
 /*
  * urlcrecry.c

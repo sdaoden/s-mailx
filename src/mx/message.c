@@ -41,6 +41,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
+
 /* Token values returned by the scanner used for argument lists.
  * Also, sizes of scanner-related things */
 enum a_msg_token{
@@ -670,7 +672,7 @@ jat_where_default:
                   struct str sio;
 
                   /* Because of the special cases we need to trim explicitly
-                   * here, they are not covered by n_strsep() */
+                   * here, they are not covered by su_cs_sep_c() */
                   sio.s = cp;
                   sio.l = PTR2SIZE(x - xsave);
                   if(*(cp = n_str_trim(&sio, n_STR_TRIM_BOTH)->s) == '\0')
@@ -889,7 +891,7 @@ a_msg_scan(struct a_msg_speclex *mslp){
    /* Select members of a message thread */
    if(c == '&'){
       c = *cp;
-      if(c == '\0' || spacechar(c)){
+      if(c == '\0' || su_cs_is_space(c)){
          mslp->msl_str = mslp->msl__smallstrbuf;
          mslp->msl_str[0] = '.';
          mslp->msl_str[1] = '\0';
@@ -912,11 +914,11 @@ jshexp_err:
 
    /* If the leading character is a digit, scan the number and convert it
     * on the fly.  Return a_MSG_T_NUMBER when done */
-   if(digitchar(c)){
+   if(su_cs_is_digit(c)){
       mslp->msl_no = 0;
       do
          mslp->msl_no = (mslp->msl_no * 10) + c - '0'; /* XXX inline atoi */
-      while((c = *cp++, digitchar(c)));
+      while((c = *cp++, su_cs_is_digit(c)));
 
       if(c == '\0')
          mslp->msl_cap = mslp->msl_cap->ca_next;
@@ -969,7 +971,7 @@ jmtop:
             ++level;
          else if (c == ')')
             --level;
-         else if (spacechar(c)) {
+         else if (su_cs_is_space(c)) {
             /* Replace unquoted whitespace by single space characters, to make
              * the string IMAP SEARCH conformant */
             c = ' ';
@@ -1066,8 +1068,8 @@ jagain:
                   goto jleave;
                break;
             }
-            sc = upperconv(sc);
-            nc = upperconv(nc);
+            sc = su_cs_to_upper(sc);
+            nc = su_cs_to_upper(nc);
             if(sc != nc){
                np = ++np_base;
                str = str_base;
@@ -1134,10 +1136,10 @@ a_msg_match_dash(struct message *mp, char const *str){
    if(*++str == '\0')
       str = lastscan;
    else
-      n_strscpy(lastscan, str, sizeof lastscan); /* XXX use new n_str object! */
+      su_cs_pcopy_n(lastscan, str, sizeof lastscan); /* XXX use n_str! */
 
    /* Now look, ignoring case, for the word in the string */
-   if(ok_blook(searchheaders) && (hfield = strchr(str, ':'))){
+   if(ok_blook(searchheaders) && (hfield = su_cs_find_c(str, ':'))){
       size_t l;
 
       l = PTR2SIZE(hfield - str);
@@ -1154,7 +1156,7 @@ a_msg_match_dash(struct message *mp, char const *str){
    if(hbody == NULL)
       goto jleave;
 
-   in.l = strlen(in.s = hbody);
+   in.l = su_cs_len(in.s = hbody);
    mime_fromhdr(&in, &out, TD_ICONV);
    rv = substr(out.s, hfield);
    n_free(out.s);
@@ -1173,12 +1175,13 @@ a_msg_match_at(struct message *mp, struct search_expr *sep){
     * And there are the special cases header/<, "body"/> and "text"/=, the
     * latter two of which need to be handled in here */
    if((field = sep->ss_field) != NULL){
-      if(!asccasecmp(field, "body") || (field[1] == '\0' && field[0] == '>')){
+      if(!su_cs_cmp_case(field, "body") ||
+            (field[1] == '\0' && field[0] == '>')){
          rv = FAL0;
 jmsg:
          rv = message_match(mp, sep, rv);
          goto jleave;
-      }else if(!asccasecmp(field, "text") ||
+      }else if(!su_cs_cmp_case(field, "text") ||
             (field[1] == '\0' && field[0] == '=')){
          rv = TRU1;
          goto jmsg;

@@ -31,6 +31,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
+
 enum a_me_qact{
    a_ME_N = 0,
    a_ME_Q = 1,       /* Must quote */
@@ -307,14 +309,14 @@ mime_enc_target(void){
 
    if((cp = ok_vlook(mime_encoding)) == NULL && (cp = v15) == NULL)
       rv = MIME_DEFAULT_ENCODING;
-   else if(!asccasecmp(cp, &a_me_ctes[a_ME_CTES_S8B_OFF]) ||
-         !asccasecmp(cp, &a_me_ctes[a_ME_CTES_8B_OFF]))
+   else if(!su_cs_cmp_case(cp, &a_me_ctes[a_ME_CTES_S8B_OFF]) ||
+         !su_cs_cmp_case(cp, &a_me_ctes[a_ME_CTES_8B_OFF]))
       rv = MIMEE_8B;
-   else if(!asccasecmp(cp, &a_me_ctes[a_ME_CTES_SB64_OFF]) ||
-         !asccasecmp(cp, &a_me_ctes[a_ME_CTES_B64_OFF]))
+   else if(!su_cs_cmp_case(cp, &a_me_ctes[a_ME_CTES_SB64_OFF]) ||
+         !su_cs_cmp_case(cp, &a_me_ctes[a_ME_CTES_B64_OFF]))
       rv = MIMEE_B64;
-   else if(!asccasecmp(cp, &a_me_ctes[a_ME_CTES_SQP_OFF]) ||
-         !asccasecmp(cp, &a_me_ctes[a_ME_CTES_QP_OFF]))
+   else if(!su_cs_cmp_case(cp, &a_me_ctes[a_ME_CTES_SQP_OFF]) ||
+         !su_cs_cmp_case(cp, &a_me_ctes[a_ME_CTES_QP_OFF]))
       rv = MIMEE_QP;
    else{
       n_err(_("Warning: invalid *mime-encoding*, using Base64: %s\n"), cp);
@@ -351,12 +353,12 @@ mime_enc_from_ctehead(char const *hbody){
          for(u.s = ++hbody; *u.s != '\0' && *u.s != '"'; ++u.s)
             ;
       else
-         for(u.s = hbody; *u.s != '\0' && !whitechar(*u.s); ++u.s)
+         for(u.s = hbody; *u.s != '\0' && !su_cs_is_white(*u.s); ++u.s)
             ;
       u.l = PTR2SIZE(u.s - hbody);
 
       for(cte = cte_base;;)
-         if(cte->len == u.l && !asccasecmp(&a_me_ctes[cte->off], hbody)){
+         if(cte->len == u.l && !su_cs_cmp_case(&a_me_ctes[cte->off], hbody)){
             rv = cte->enc;
             break;
          }else if((++cte)->enc == MIMEE_NONE){
@@ -457,7 +459,7 @@ qp_encode_cp(struct str *out, char const *cp, enum qpflags flags){
    n_NYD_IN;
 
    in.s = n_UNCONST(cp);
-   in.l = strlen(cp);
+   in.l = su_cs_len(cp);
    out = qp_encode(out, &in, flags);
    n_NYD_OU;
    return out;
@@ -687,7 +689,7 @@ jpushc:
        *   trailing white space on a line must be deleted, as it will
        *   necessarily have been added by intermediate transport
        *   agents */
-      for(; is <= ie && blankchar(*is); ++is)
+      for(; is <= ie && su_cs_is_blank(*is); ++is)
          ;
       if(is >= ie){
          /* Soft line break? */
@@ -896,7 +898,7 @@ b64_encode_cp(struct str *out, char const *cp, enum b64flags flags){
    n_NYD_IN;
 
    in.s = n_UNCONST(cp);
-   in.l = strlen(cp);
+   in.l = su_cs_len(cp);
    out = b64_encode(out, &in, flags);
    n_NYD_OU;
    return out;

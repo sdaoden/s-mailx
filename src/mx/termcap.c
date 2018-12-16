@@ -34,8 +34,6 @@
 su_EMPTY_FILE()
 #ifdef n_HAVE_TCAP
 
-#include <su/icodec.h>
-
 /* If available, curses.h must be included before term.h! */
 #ifdef mx_HAVE_TERMCAP
 # ifdef mx_HAVE_TERMCAP_CURSES
@@ -43,6 +41,9 @@ su_EMPTY_FILE()
 # endif
 # include <term.h>
 #endif
+
+#include <su/cs.h>
+#include <su/icodec.h>
 
 /*
  * xxx We are not really compatible with very old and strange terminals since
@@ -186,7 +187,7 @@ a_termcap_init_var(struct str const *termvar){
    cbp_base = n_autorec_alloc(i);
    memcpy(cbp = cbp_base, termvar->s, i);
 
-   for(; (ccp = n_strsep(&cbp, ',', TRU1)) != NULL;){
+   for(; (ccp = su_cs_sep_c(&cbp, ',', TRU1)) != NULL;){
       struct a_termcap_ent *tep;
       size_t kl;
       char const *v;
@@ -315,11 +316,11 @@ a_termcap__strexp(struct n_string *store, char const *ibuf){ /* XXX ASCII */
             goto jpush;
          }
 
-         if(octalchar(c)){
+         if(su_cs_is_digit(c) && c <= '7'){
             char c2, c3;
 
-            if((c2 = ibuf[2]) == '\0' || !octalchar(c2) ||
-                  (c3 = ibuf[3]) == '\0' || !octalchar(c3)){
+            if((c2 = ibuf[2]) == '\0' || !su_cs_is_digit(c2) || c2 > '7' ||
+                  (c3 = ibuf[3]) == '\0' || !su_cs_is_digit(c3) || c3 > '7'){
                n_err(_("*termcap*: invalid octal sequence: %s\n"), oibuf);
                goto jerr;
             }
@@ -342,7 +343,7 @@ jebsseq:
             n_err(_("*termcap*: incomplete ^CNTRL sequence: %s\n"), oibuf);
             goto jerr;
          }
-         c = upperconv(c) ^ 0x40;
+         c = su_cs_to_upper(c) ^ 0x40;
          if((ui8_t)c > 0x1F && c != 0x7F){ /* ASCII C0: 0..1F, 7F */
             n_err(_("*termcap*: invalid ^CNTRL sequence: %s\n"), oibuf);
             goto jerr;
@@ -492,7 +493,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
       cp = tigetstr(cname);
       if((rv = (cp != NULL && cp != (char*)-1))){
          tep->te_off = (ui16_t)a_termcap_g->tg_dat.s_len;
-         n_string_push_buf(&a_termcap_g->tg_dat, cp, strlen(cp) +1);
+         n_string_push_buf(&a_termcap_g->tg_dat, cp, su_cs_len(cp) +1);
       }else
          tep->te_flags |= a_TERMCAP_F_NOENT;
       }break;
@@ -563,7 +564,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
 
       if((rv = ((cp = tgetstr(cname, a_BUF)) != NULL))){
          tep->te_off = (ui16_t)a_termcap_g->tg_dat.s_len;
-         n_string_push_buf(&a_termcap_g->tg_dat, cp, strlen(cp) +1);
+         n_string_push_buf(&a_termcap_g->tg_dat, cp, su_cs_len(cp) +1);
 # undef a_BUF
       }else
          tep->te_flags |= a_TERMCAP_F_NOENT;
@@ -607,7 +608,7 @@ a_termcap_enum_for_name(char const *name, size_t nlen, si32_t min, si32_t max){
       if(cnam[2] != '\0'){
          char const *xcp = cnam + 2;
 
-         if(nlen == strlen(xcp) && !memcmp(xcp, name, nlen))
+         if(nlen == su_cs_len(xcp) && !memcmp(xcp, name, nlen))
             break;
       }
       if(nlen == 2 && cnam[0] == name[0] && cnam[1] == name[1])
@@ -630,7 +631,7 @@ n_termcap_init(void){
    a_termcap_g->tg_ext_ents = NULL;
    memset(&a_termcap_g->tg_ents[0], 0, sizeof(a_termcap_g->tg_ents));
    if((ccp = ok_vlook(termcap)) != NULL)
-      termvar.l = strlen(termvar.s = n_UNCONST(ccp));
+      termvar.l = su_cs_len(termvar.s = n_UNCONST(ccp));
    else
       /*termvar.s = NULL,*/ termvar.l = 0;
    n_string_reserve(n_string_creat(&a_termcap_g->tg_dat),
@@ -890,7 +891,7 @@ n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
       char const *ndat = tvp->tv_data.tvd_string;
 
       for(teep = a_termcap_g->tg_ext_ents; teep != NULL; teep = teep->tee_next)
-         if(!strcmp(teep->tee_name, ndat)){
+         if(!su_cs_cmp(teep->tee_name, ndat)){
             tep = &teep->tee_super;
             goto jextok;
          }
@@ -900,7 +901,7 @@ n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
 #endif
          goto jleave;
 #ifdef mx_HAVE_TERMCAP
-      nlen = strlen(ndat) +1;
+      nlen = su_cs_len(ndat) +1;
       teep = n_alloc(n_VSTRUCT_SIZEOF(struct a_termcap_ext_ent, tee_name) +
             nlen);
       tep = &teep->tee_super;
@@ -943,7 +944,7 @@ n_termcap_query_for_name(char const *name, enum n_termcap_captype type){
    si32_t rv;
    n_NYD2_IN;
 
-   if((rv = a_termcap_query_for_name(name, strlen(name))) >= 0){
+   if((rv = a_termcap_query_for_name(name, su_cs_len(name))) >= 0){
       struct a_termcap_control const *tcp = &a_termcap_control[(ui32_t)rv];
 
       if(type != n_TERMCAP_CAPTYPE_NONE &&

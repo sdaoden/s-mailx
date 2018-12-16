@@ -41,6 +41,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
+
 FL bool_t
 n_is_dir(char const *name, bool_t check_access){
    struct stat sbuf;
@@ -77,7 +79,7 @@ jredo:
       if(e == su_ERR_NOENT){
          char const *vp;
 
-         if((vp = strrchr(name, '/')) != NULL){ /* TODO magic dirsep */
+         if((vp = su_cs_rfind_c(name, '/')) != NULL){ /* TODO magic dirsep */
             while(vp > name && vp[-1] == '/')
                --vp;
             vp = savestrbuf(name, PTR2SIZE(vp - name));

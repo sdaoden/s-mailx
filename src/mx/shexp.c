@@ -50,6 +50,12 @@
 # include <fnmatch.h>
 #endif
 
+#include <su/cs.h>
+#include <su/utf.h>
+
+#include "mx/iconv.h"
+#include "mx/ui-str.h"
+
 /* POSIX says
  *   Environment variable names used by the utilities in the Shell and
  *   Utilities volume of POSIX.1-2008 consist solely of uppercase
@@ -61,8 +67,8 @@
  * We support some special parameter names for one-letter(++) variable names;
  * these have counterparts in the code that manages internal variables,
  * and some more special treatment below! */
-#define a_SHEXP_ISVARC(C) (alnumchar(C) || (C) == '_' || (C) == '-')
-#define a_SHEXP_ISVARC_BAD1ST(C) (digitchar(C)) /* (Actually assumed below!) */
+#define a_SHEXP_ISVARC(C) (su_cs_is_alnum(C) || (C) == '_' || (C) == '-')
+#define a_SHEXP_ISVARC_BAD1ST(C) (su_cs_is_digit(C)) /* (Assumed below!) */
 #define a_SHEXP_ISVARC_BADNST(C) ((C) == '-')
 
 enum a_shexp_quote_flags{
@@ -143,7 +149,7 @@ a_shexp_findmail(char const *user, bool_t force){
       }
       /* Heirloom compatibility: an IMAP *folder* becomes "%" */
 #ifdef mx_HAVE_IMAP
-      else if(cp == NULL && !strcmp(user, ok_vlook(LOGNAME)) &&
+      else if(cp == NULL && !su_cs_cmp(user, ok_vlook(LOGNAME)) &&
             which_protocol(cp = n_folder_query(), FAL0, FAL0, NULL)
                == PROTO_IMAP){
          /* TODO Compat handling of *folder* with IMAP! */
@@ -163,7 +169,7 @@ a_shexp_findmail(char const *user, bool_t force){
    /* C99 */{
       size_t ul, i;
 
-      ul = strlen(user) +1;
+      ul = su_cs_len(user) +1;
       i = sizeof(VAL_MAIL) -1 + 1 + ul;
 
       rv = n_autorec_alloc(i);
@@ -186,12 +192,12 @@ a_shexp_tilde(char const *s){
 
    if(*(rp = &s[1]) == '/' || *rp == '\0'){
       np = ok_vlook(HOME);
-      rl = strlen(rp);
+      rl = su_cs_len(rp);
    }else{
-      if((rp = strchr(np = rp, '/')) != NULL){
+      if((rp = su_cs_find_c(np = rp, '/')) != NULL){
          nl = PTR2SIZE(rp - np);
          np = savestrbuf(np, nl);
-         rl = strlen(rp);
+         rl = su_cs_len(rp);
       }else
          rl = 0;
 
@@ -202,7 +208,7 @@ a_shexp_tilde(char const *s){
       np = pwp->pw_dir;
    }
 
-   nl = strlen(np);
+   nl = su_cs_len(np);
    rv = n_autorec_alloc(nl + 1 + rl +1);
    memcpy(rv, np, nl);
    if(rl > 0){
@@ -225,7 +231,7 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
    n_NYD_IN;
 
    memset(&sgc, 0, sizeof sgc);
-   sgc.sgc_patlen = strlen(name);
+   sgc.sgc_patlen = su_cs_len(name);
    sgc.sgc_patdat = savestrbuf(name, sgc.sgc_patlen);
    sgc.sgc_outer = n_string_reserve(n_string_creat(&outer), sgc.sgc_patlen);
    sgc.sgc_flags = ((fexpm & FEXP_SILENT) != 0);
@@ -457,7 +463,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
             struct n_strlist *slp;
             size_t i, j;
 
-            i = strlen(dep->d_name);
+            i = su_cs_len(dep->d_name);
             j = (old_outerlen > 0) ? old_outerlen + 1 + i : i;
             slp = n_STRLIST_ALLOC(j);
             *slpp = slp;
@@ -512,7 +518,7 @@ a_shexp__globsort(void const *cvpa, void const *cvpb){
 
    slpa = cvpa;
    slpb = cvpb;
-   rv = asccasecmp((*slpa)->sl_dat, (*slpb)->sl_dat);
+   rv = su_cs_cmp_case((*slpa)->sl_dat, (*slpb)->sl_dat);
    n_NYD2_OU;
    return rv;
 }
@@ -554,7 +560,7 @@ a_shexp__quote(struct a_shexp_quote_ctx *sqcp, struct a_shexp_quote_lvl *sqlp){
       char c;
 
       c = *ib;
-      if(cntrlchar(c)){
+      if(su_cs_is_cntrl(c)){
          if(flags & a_SHEXP_QUOTE_T_DOLLAR)
             goto jstep;
          if(c == '\t' && (flags & (a_SHEXP_QUOTE_T_REVSOL |
@@ -565,7 +571,7 @@ a_shexp__quote(struct a_shexp_quote_ctx *sqcp, struct a_shexp_quote_lvl *sqlp){
 #endif
          flags = (flags & ~a_SHEXP_QUOTE_T_MASK) | a_SHEXP_QUOTE_T_DOLLAR;
          goto jrecurse;
-      }else if(blankspacechar(c) || c == '|' || c == '&' || c == ';' ||
+      }else if(su_cs_is_space(c) || c == '|' || c == '&' || c == ';' ||
             /* Whereas we don't support those, quote them for the sh(1)ell */
             c == '(' || c == ')' || c == '<' || c == '>' ||
             c == '"' || c == '$'){
@@ -592,7 +598,7 @@ a_shexp__quote(struct a_shexp_quote_ctx *sqcp, struct a_shexp_quote_lvl *sqlp){
 #endif
          flags = (flags & ~a_SHEXP_QUOTE_T_MASK) | a_SHEXP_QUOTE_T_SINGLE;
          goto jrecurse;
-      }else if(!asciichar(c)){
+      }else if(!su_cs_is_ascii(c)){
          /* Need to keep together multibytes */
 #ifdef a_SHEXP_QUOTE_RECURSE
          memset(&vic, 0, sizeof vic);
@@ -716,7 +722,7 @@ jstep:
 
          c = *ib;
 
-         if(cntrlchar(c)){
+         if(su_cs_is_cntrl(c)){
             assert(c == '\t' || (flags & a_SHEXP_QUOTE_T_DOLLAR));
             assert((flags & (a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_SINGLE |
                a_SHEXP_QUOTE_T_DOUBLE | a_SHEXP_QUOTE_T_DOLLAR)));
@@ -744,7 +750,7 @@ jstep:
                c ^= 0x40;
             }
             goto jpush;
-         }else if(blankspacechar(c) || c == '|' || c == '&' || c == ';' ||
+         }else if(su_cs_is_space(c) || c == '|' || c == '&' || c == ';' ||
                /* Whereas we do not support those, quote them for sh(1)ell */
                c == '(' || c == ')' || c == '<' || c == '>' ||
                c == '"' || c == '$'){
@@ -766,7 +772,7 @@ jstep:
                a_SHEXP_QUOTE_T_DOLLAR));
             u.store = n_string_push_c(u.store, '\\');
             goto jpush;
-         }else if(asciichar(c)){
+         }else if(su_cs_is_ascii(c)){
             /* Shorthand: we can simply push that thing out */
 jpush:
             u.store = n_string_push_c(u.store, c);
@@ -782,7 +788,7 @@ jpush:
 
                ib2 = ib;
                il2 = il;
-               if((uc = n_utf8_to_utf32(&ib2, &il2)) != UI32_MAX){
+               if((uc = su_utf_8_to_32(&ib2, &il2)) != UI32_MAX){
                   char itoa[32];
                   char const *cp;
 
@@ -820,8 +826,8 @@ jpush:
                char const *ib2;
                size_t il2, il3;
 
-               il2 = strlen(ib2 = vic.vic_indat);
-               if((uc = n_utf8_to_utf32(&ib2, &il2)) != UI32_MAX){
+               il2 = su_cs_len(ib2 = vic.vic_indat);
+               if((uc = su_utf_8_to_32(&ib2, &il2)) != UI32_MAX){
                   char itoa[32];
 
                   il2 = PTR2SIZE(&ib2[0] - &vic.vic_indat[0]);
@@ -899,7 +905,7 @@ jprotonext:
    n_UNINIT(proto.s, NULL), n_UNINIT(proto.l, 0);
    haveproto = FAL0;
    for(cp = res; *cp && *cp != ':'; ++cp)
-      if(!alnumchar(*cp))
+      if(!su_cs_is_alnum(*cp))
          goto jnoproto;
    if(cp[0] == ':' && cp[1] == '/' && cp[2] == '/'){
       haveproto = TRU1;
@@ -964,8 +970,8 @@ jnext:
 
    /* Do some meta expansions */
    if((fexpm & (FEXP_NSHELL | FEXP_NVAR)) != FEXP_NVAR &&
-         ((fexpm & FEXP_NSHELL) ? (strchr(res, '$') != NULL)
-          : n_anyof_cp("{}[]*?$", res))){
+         ((fexpm & FEXP_NSHELL) ? (su_cs_find_c(res, '$') != NULL)
+          : (su_cs_first_of(res, "{}[]*?$") != su_UZ_MAX))){
       bool_t doexp;
 
       if(fexpm & FEXP_NOPROTO)
@@ -1117,7 +1123,7 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
    state = a_NONE;
    ib = input->s;
    if((il = input->l) == UIZ_MAX)
-      input->l = il = strlen(ib);
+      input->l = il = su_cs_len(ib);
    n_UNINIT(c, '\0');
 
    if(cookie != NULL && *cookie != NULL){
@@ -1147,7 +1153,7 @@ jrestart_empty:
          *cookie = n_UNCONST(xcookie);
 
       for(cp = &n_string_cp(store)[i]; (c = *cp++) != '\0';)
-         if(cntrlchar(c)){
+         if(su_cs_is_cntrl(c)){
             rv |= n_SHEXP_STATE_CONTROL;
             break;
          }
@@ -1160,7 +1166,7 @@ jrestart_empty:
 jrestart:
       if(flags & n_SHEXP_PARSE_TRIM_SPACE){
          for(; il > 0; ++ib, --il){
-            if(!blankspacechar(*ib))
+            if(!su_cs_is_space(*ib))
                break;
             rv |= n_SHEXP_STATE_WS_LEAD;
          }
@@ -1168,7 +1174,7 @@ jrestart:
 
       if(flags & n_SHEXP_PARSE_TRIM_IFSSPACE){
          for(; il > 0; ++ib, --il){
-            if(strchr(ifs_ws, *ib) == NULL)
+            if(su_cs_find_c(ifs_ws, *ib) == NULL)
                break;
             rv |= n_SHEXP_STATE_WS_LEAD;
          }
@@ -1303,14 +1309,14 @@ jrestart:
          }else{
             ui8_t blnk;
 
-            blnk = blankchar(c) ? 1 : 0;
+            blnk = su_cs_is_blank(c) ? 1 : 0;
             blnk |= ((flags & (n_SHEXP_PARSE_IFS_VAR |
                      n_SHEXP_PARSE_TRIM_IFSSPACE)) &&
-                  strchr(ifs_ws, c) != NULL) ? 2 : 0;
+                  su_cs_find_c(ifs_ws, c) != NULL) ? 2 : 0;
 
             if((!(flags & n_SHEXP_PARSE_IFS_VAR) && (blnk & 1)) ||
                   ((flags & n_SHEXP_PARSE_IFS_VAR) &&
-                     ((blnk & 2) || strchr(ifs, c) != NULL))){
+                     ((blnk & 2) || su_cs_find_c(ifs, c) != NULL))){
                if(!(flags & n_SHEXP_PARSE_IFS_IS_COMMA)){
                   /* The parsed sequence may be _the_ output, so ensure we do
                    * not include the metacharacter, then. */
@@ -1392,7 +1398,7 @@ jrestart:
                   if(state & a_SKIPMASK)
                      continue;
                   /* ASCII C0: 0..1F, 7F <- @.._ (+ a-z -> A-Z), ? */
-                  c = upperconv(c2) ^ 0x40;
+                  c = su_cs_to_upper(c2) ^ 0x40;
                   if((ui8_t)c > 0x1F && c != 0x7F){
                      if(flags & n_SHEXP_PARSE_LOG)
                         n_err(_("Invalid \\c notation: %.*s: %.*s\n"),
@@ -1480,7 +1486,7 @@ jerr_ib_save:
                      i = n_MIN(il, i);
                      for(no = j = 0; i-- > 0; --il, ++ib, ++j){
                         c = *ib;
-                        if(hexchar(c)){
+                        if(su_cs_is_xdigit(c)){
                            no <<= 4;
                            no += hexatoi[(ui8_t)((c) - ((c) <= '9' ? 48
                                  : ((c) <= 'F' ? 55 : 87)))];
@@ -1499,7 +1505,7 @@ jerr_ib_save:
                      }
 
                      /* Unicode massage */
-                     if((c2 != 'U' && c2 != 'u') || n_uasciichar(no)){
+                     if((c2 != 'U' && c2 != 'u') || su_cs_is_ascii(no)){
                         if((c = (char)no) == '\0')
                            state |= a_SKIPQ;
                      }else if(no == 0)
@@ -1519,7 +1525,7 @@ jerr_ib_save:
                            goto Jerr_uni_norm;
                         }
 
-                        j = n_utf32_to_utf8(no, utf);
+                        j = su_utf_32_to_8(no, utf);
 
                         if(n_psonce & n_PSO_UNICODE){
                            rv |= n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_UNICODE;
@@ -1726,7 +1732,7 @@ j_var_look_buf:
                      rv |= n_SHEXP_STATE_OUTPUT;
                      store = n_string_push_cp(store, cp);
                      for(; (c = *cp) != '\0'; ++cp)
-                        if(cntrlchar(c)){
+                        if(su_cs_is_cntrl(c)){
                            rv |= n_SHEXP_STATE_CONTROL;
                            break;
                         }
@@ -1741,7 +1747,7 @@ j_var_look_buf:
 
       if(!(state & a_SKIPMASK)){
          rv |= n_SHEXP_STATE_OUTPUT;
-         if(cntrlchar(c))
+         if(su_cs_is_cntrl(c))
             rv |= n_SHEXP_STATE_CONTROL;
          if(!(flags & n_SHEXP_PARSE_DRYRUN))
             store = n_string_push_c(store, c);
@@ -1767,7 +1773,7 @@ jleave:
    }else{
       if(flags & n_SHEXP_PARSE_TRIM_SPACE){
          for(; il > 0; ++ib, --il){
-            if(!blankspacechar(*ib))
+            if(!su_cs_is_space(*ib))
                break;
             rv |= n_SHEXP_STATE_WS_TRAIL;
          }
@@ -1775,7 +1781,7 @@ jleave:
 
       if(flags & n_SHEXP_PARSE_TRIM_IFSSPACE){
          for(; il > 0; ++ib, --il){
-            if(strchr(ifs_ws, *ib) == NULL)
+            if(su_cs_find_c(ifs_ws, *ib) == NULL)
                break;
             rv |= n_SHEXP_STATE_WS_TRAIL;
          }
@@ -1844,7 +1850,7 @@ n_shexp_quote(struct n_string *store, struct str const *input, bool_t rndtrip){
    sqc.sqc_store = store;
    sqc.sqc_input.s = input->s;
    if((sqc.sqc_input.l = input->l) == UIZ_MAX)
-      sqc.sqc_input.l = strlen(input->s);
+      sqc.sqc_input.l = su_cs_len(input->s);
    sqc.sqc_flags = rndtrip ? a_SHEXP_QUOTE_ROUNDTRIP : a_SHEXP_QUOTE_NONE;
 
    if(sqc.sqc_input.l == 0)
@@ -1913,7 +1919,7 @@ c_shcodec(void *vp){
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
 
    act = *argv;
-   for(cp = act; *cp != '\0' && !blankspacechar(*cp); ++cp)
+   for(cp = act; *cp != '\0' && !su_cs_is_space(*cp); ++cp)
       ;
    if((norndtrip = (*act == '+')))
       ++act;
@@ -1923,12 +1929,12 @@ c_shcodec(void *vp){
    if(*cp != '\0')
       ++cp;
 
-   in.l = strlen(in.s = n_UNCONST(cp));
+   in.l = su_cs_len(in.s = n_UNCONST(cp));
    nerrn = su_ERR_NONE;
 
-   if(is_ascncaseprefix(act, "encode", alen))
+   if(su_cs_starts_with_case_n("encode", act, alen))
       soup = n_shexp_quote(soup, &in, !norndtrip);
-   else if(!norndtrip && is_ascncaseprefix(act, "decode", alen)){
+   else if(!norndtrip && su_cs_starts_with_case_n("decode", act, alen)){
       for(;;){
          enum n_shexp_state shs;
 

@@ -47,7 +47,7 @@
 # include "mx/nail.h"
 #endif
 
-EMPTY_FILE()
+su_EMPTY_FILE()
 #ifdef mx_HAVE_XTLS
 #include <sys/socket.h>
 
@@ -68,6 +68,8 @@ EMPTY_FILE()
 #if defined X509_V_FLAG_CRL_CHECK && defined X509_V_FLAG_CRL_CHECK_ALL
 # include <dirent.h>
 #endif
+
+#include <su/cs.h>
 
 /* Compatibility shims which assume 0/-1 cannot really happen */
 #ifndef mx_HAVE_XTLS_CONF_CTX
@@ -662,10 +664,10 @@ a_xtls_digest_find(char const *name,
    /* C99 */{
       char *cp, c;
 
-      i = strlen(name);
+      i = su_cs_len(name);
       nn = cp = n_lofi_alloc(i +1);
       while((c = *name++) != '\0')
-         *cp++ = upperconv(c);
+         *cp++ = su_cs_to_upper(c);
       *cp = '\0';
 
       if(normalized_name_or_null != NULL)
@@ -673,7 +675,7 @@ a_xtls_digest_find(char const *name,
    }
 
    for(i = 0; i < n_NELEM(a_xtls_digests); ++i)
-      if(!strcmp(a_xtls_digests[i].xd_name, nn)){
+      if(!su_cs_cmp(a_xtls_digests[i].xd_name, nn)){
          *mdp = (*a_xtls_digests[i].xd_fun)();
          goto jleave;
       }
@@ -701,13 +703,13 @@ a_xtls_ca_flags(X509_STORE *store, char const *flags){
 
       iolist = savestr(flags);
 jouter:
-      while((cp = n_strsep(&iolist, ',', TRU1)) != NULL){
+      while((cp = su_cs_sep_c(&iolist, ',', TRU1)) != NULL){
          struct a_xtls_x509_v_flags const *xvfp;
 
          for(xvfp = &a_xtls_x509_v_flags[0];
                xvfp < &a_xtls_x509_v_flags[n_NELEM(a_xtls_x509_v_flags)];
                ++xvfp)
-            if(!asccasecmp(cp, xvfp->xxvf_name)){
+            if(!su_cs_cmp_case(cp, xvfp->xxvf_name)){
                if(xvfp->xxvf_flag != -1){
 #ifdef a_XTLS_X509_V_ANY
                   X509_STORE_set_flags(store, xvfp->xxvf_flag);
@@ -848,18 +850,18 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
 
    ctxp = confp;
 
-   if(!asccasecmp(cmd, xcmd = "Certificate")){
+   if(!su_cs_cmp_case(cmd, xcmd = "Certificate")){
       if(SSL_CTX_use_certificate_chain_file(ctxp, value) != 1){
          emsg = N_("TLS: %s: cannot load from file %s\n");
          goto jerr;
       }
-   }else if(!asccasecmp(cmd, xcmd = "CipherString") ||
-         !asccasecmp(cmd, xcmd = "CipherList")/* grr, bad fault in past! */){
+   }else if(!su_cs_cmp_case(cmd, xcmd = "CipherString") ||
+         !su_cs_cmp_case(cmd, xcmd = "CipherList")/* XXX bad bug in past! */){
       if(SSL_CTX_set_cipher_list(ctxp, value) != 1){
          emsg = N_("TLS: %s: invalid: %s\n");
          goto jerr;
       }
-   }else if(!asccasecmp(cmd, xcmd = "Ciphersuites")){
+   }else if(!su_cs_cmp_case(cmd, xcmd = "Ciphersuites")){
 #ifdef mx_HAVE_XTLS_SET_CIPHERSUITES
       if(SSL_CTX_set_ciphersuites(ctxp, value) != 1){
          emsg = N_("TLS: %s: invalid: %s\n");
@@ -870,7 +872,7 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
       emsg = N_("TLS: %s: directive not supported\n");
       goto jxerr;
 #endif
-   }else if(!asccasecmp(cmd, xcmd = "Curves")){
+   }else if(!su_cs_cmp_case(cmd, xcmd = "Curves")){
 #ifdef SSL_CTRL_SET_CURVES_LIST
       if(SSL_CTX_set1_curves_list(ctxp, n_UNCONST(value)) != 1){
          emsg = N_("TLS: %s: invalid: %s\n");
@@ -881,8 +883,8 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
       emsg = N_("TLS: %s: directive not supported\n");
       goto jxerr;
 #endif
-   }else if((emsg = NULL, !asccasecmp(cmd, xcmd = "MaxProtocol")) ||
-         (emsg = (char*)-1, !asccasecmp(cmd, xcmd = "MinProtocol"))){
+   }else if((emsg = NULL, !su_cs_cmp_case(cmd, xcmd = "MaxProtocol")) ||
+         (emsg = (char*)-1, !su_cs_cmp_case(cmd, xcmd = "MinProtocol"))){
 #ifndef mx_HAVE_XTLS_SET_MIN_PROTO_VERSION
       value = NULL;
       emsg = N_("TLS: %s: directive not supported\n");
@@ -894,7 +896,7 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
       for(i = 1 /* [0] == ALL */;;){
          xpp = &a_xtls_protocols[i];
 
-         if(xpp->xp_ok_minmaxproto && !asccasecmp(value, xpp->xp_name))
+         if(xpp->xp_ok_minmaxproto && !su_cs_cmp_case(value, xpp->xp_name))
             break;
 
          if(++i >= n_NELEM(a_xtls_protocols)){
@@ -909,18 +911,18 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
          goto jerr;
       }
 #endif /* !mx_HAVE_XTLS_SET_MIN_PROTO_VERSION */
-   }else if(!asccasecmp(cmd, xcmd = "Options")){
-      if(asccasecmp(value, "Bugs")){
+   }else if(!su_cs_cmp_case(cmd, xcmd = "Options")){
+      if(su_cs_cmp_case(value, "Bugs")){
          emsg = N_("TLS: %s: fallback only supports value \"Bugs\": %s\n");
          goto jxerr;
       }
       SSL_CTX_set_options(ctxp, SSL_OP_ALL);
-   }else if(!asccasecmp(cmd, xcmd = "PrivateKey")){
+   }else if(!su_cs_cmp_case(cmd, xcmd = "PrivateKey")){
       if(SSL_CTX_use_PrivateKey_file(ctxp, value, SSL_FILETYPE_PEM) != 1){
          emsg = N_("%s: cannot load from file %s\n");
          goto jerr;
       }
-   }else if(!asccasecmp(cmd, xcmd = "Protocol")){
+   }else if(!su_cs_cmp_case(cmd, xcmd = "Protocol")){
       char *iolist, *cp, addin;
       size_t i;
       sl_i opts;
@@ -928,7 +930,7 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
       opts = 0;
 
       for(iolist = cp = savestr(value);
-            (cp = n_strsep(&iolist, ',', FAL0)) != NULL;){
+            (cp = su_cs_sep_c(&iolist, ',', FAL0)) != NULL;){
          if(*cp == '\0'){
             value = NULL;
             emsg = N_("TLS: %s: empty elements are not supported\n");
@@ -947,7 +949,7 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
 
             xpp = &a_xtls_protocols[i];
 
-            if(xpp->xp_ok_proto && !asccasecmp(cp, xpp->xp_name)){
+            if(xpp->xp_ok_proto && !su_cs_cmp_case(cp, xpp->xp_name)){
                /* We need to inverse the meaning of the _NO_s */
                if(!addin)
                   opts |= xpp->xp_op_no;
@@ -1055,7 +1057,7 @@ a_xtls_obsolete_conf_vars(void *confp, struct url const *urlp){
 
       n_OBSOLETE(_("please use *tls-config-pairs* instead of *ssl-method*"));
       for(i = 0;;){
-         if(!asccasecmp(_ssl_methods[i].sm_name, cp)){
+         if(!su_cs_cmp_case(_ssl_methods[i].sm_name, cp)){
             cp = _ssl_methods[i].sm_map;
             break;
          }
@@ -1098,7 +1100,7 @@ a_xtls_config_pairs(void *confp, struct url const *urlp){
 
    valcert = valprivkey = NULL;
 
-   while((cp = n_strsep_esc(&pairs, ',', FAL0)) != NULL){
+   while((cp = su_cs_sep_escable_c(&pairs, ',', FAL0)) != NULL){
       char c;
       enum{
          a_NONE,
@@ -1109,7 +1111,7 @@ a_xtls_config_pairs(void *confp, struct url const *urlp){
       } f;
 
       /* Directive, space trimmed */
-      if((cmd = strchr(cp, '=')) == NULL){
+      if((cmd = su_cs_find_c(cp, '=')) == NULL){
 jenocmd:
          if(pairs == NULL)
             pairs = n_UNCONST(n_empty);
@@ -1124,7 +1126,7 @@ jenocmd:
          f = a_EXPAND;
       }else
          f = a_NONE;
-      while(cmd > cp && (c = cmd[-1], blankspacechar(c)))
+      while(cmd > cp && (c = cmd[-1], su_cs_is_space(c)))
          --cmd;
       if(cmd == cp)
          goto jenocmd;
@@ -1132,16 +1134,16 @@ jenocmd:
       cmd = cp;
 
       /* Command with special treatment? */
-      if(!asccasecmp(cmd, cmdcert))
+      if(!su_cs_cmp_case(cmd, cmdcert))
          f |= a_CERT;
-      else if(!asccasecmp(cmd, cmdprivkey))
+      else if(!su_cs_cmp_case(cmd, cmdprivkey))
          f |= a_PRIVKEY;
 
       /* Value, space trimmed */
-      while((c = *val) != '\0' && blankspacechar(c))
+      while((c = *val) != '\0' && su_cs_is_space(c))
          ++val;
-      cp = &val[strlen(val)];
-      while(cp > val && (c = cp[-1], blankspacechar(c)))
+      cp = &val[su_cs_len(val)];
+      while(cp > val && (c = cp[-1], su_cs_is_space(c)))
          --cp;
       *cp = '\0';
       if(cp == val){
@@ -1329,9 +1331,9 @@ smime_verify(struct message *m, int n, n_XTLS_STACKOF(X509) *chain,
 #undef _Y
 #define _X     (sizeof("application/") -1)
 #define _Y(X)  X, sizeof(X) -1
-      if (cnttype && is_asccaseprefix("application/", cnttype) &&
-            (!ascncasecmp(cnttype + _X, _Y("pkcs7-mime")) ||
-             !ascncasecmp(cnttype + _X, _Y("x-pkcs7-mime")))) {
+      if (cnttype && su_cs_starts_with_case(cnttype, "application/") &&
+            (!su_cs_cmp_case_n(cnttype + _X, _Y("pkcs7-mime")) ||
+             !su_cs_cmp_case_n(cnttype + _X, _Y("x-pkcs7-mime")))) {
 #undef _Y
 #undef _X
          if ((x = smime_decrypt(m, to, cc, 1)) == NULL)
@@ -1396,7 +1398,7 @@ smime_verify(struct message *m, int n, n_XTLS_STACKOF(X509) *chain,
                if (n_poption & n_PO_D_V)
                   n_err(_("Comparing subject_alt_name: need<%s> is<%s>)\n"),
                      sender, (char*)gen->d.ia5->data);
-               if (!asccasecmp((char*)gen->d.ia5->data, sender))
+               if (!su_cs_cmp_case((char*)gen->d.ia5->data, sender))
                   goto jfound;
             }
          }
@@ -1409,7 +1411,7 @@ smime_verify(struct message *m, int n, n_XTLS_STACKOF(X509) *chain,
          if (n_poption & n_PO_D_V)
             n_err(_("Comparing emailAddress: need<%s> is<%s>\n"),
                sender, data);
-         if (!asccasecmp(data, sender))
+         if (!su_cs_cmp_case(data, sender))
             goto jfound;
       }
    }
@@ -1443,7 +1445,7 @@ _smime_cipher(char const *name)
    size_t i;
    n_NYD_IN;
 
-   vn = n_lofi_alloc(i = strlen(name) + sizeof("smime-cipher-") -1 +1);
+   vn = n_lofi_alloc(i = su_cs_len(name) + sizeof("smime-cipher-") -1 +1);
    snprintf(vn, (int)i, "smime-cipher-%s", name);
    cp = n_var_vlook(vn, FAL0);
    n_lofi_free(vn);
@@ -1455,13 +1457,13 @@ _smime_cipher(char const *name)
    cipher = NULL;
 
    for(i = 0; i < n_NELEM(a_xtls_ciphers); ++i)
-      if(!asccasecmp(a_xtls_ciphers[i].xc_name, cp)){
+      if(!su_cs_cmp_case(a_xtls_ciphers[i].xc_name, cp)){
          cipher = (*a_xtls_ciphers[i].xc_fun)();
          goto jleave;
       }
 #ifndef OPENSSL_NO_AES
    for (i = 0; i < n_NELEM(a_xtls_smime_ciphers_obs); ++i) /* TODO obsolete */
-      if (!asccasecmp(a_xtls_smime_ciphers_obs[i].xc_name, cp)) {
+      if (!su_cs_cmp_case(a_xtls_smime_ciphers_obs[i].xc_name, cp)) {
          n_OBSOLETE2(_("*smime-cipher* names with hyphens will vanish"), cp);
          cipher = (*a_xtls_smime_ciphers_obs[i].xc_fun)();
          goto jleave;
@@ -1496,10 +1498,10 @@ ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
 
       if(url_parse(&url, CPROTO_CCRED, userdata)){
          if(ccred_lookup(&cred, &url)){
-            ssize_t slen;
+            char *end;
 
-            if((slen = n_strscpy(buf, cred.cc_pass.s, size)) >= 0){
-               size = (int)slen;
+            if((end = su_cs_pcopy_n(buf, cred.cc_pass.s, size)) != NULL){
+               size = (int)PTR2SIZE(end - buf);
                goto jleave;
             }
          }
@@ -1510,7 +1512,7 @@ ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
 
    /* Old-style */
    if ((pass = getpassword("PEM pass phrase:")) != NULL) {
-      len = strlen(pass);
+      len = su_cs_len(pass);
       if (UICMP(z, len, >=, size))
          len = size -1;
       memcpy(buf, pass, len);
@@ -1541,7 +1543,7 @@ jloop:
          /* This needs to be more intelligent since it will currently take the
           * first name for which a private key is available regardless of
           * whether it is the right one for the message */
-         vn = n_lofi_alloc(vs = strlen(np->n_name) + 30);
+         vn = n_lofi_alloc(vs = su_cs_len(np->n_name) + 30);
          snprintf(vn, vs, "smime-sign-cert-%s", np->n_name);
          cp = n_var_vlook(vn, FAL0);
          n_lofi_free(vn);
@@ -1593,7 +1595,7 @@ _smime_sign_include_certs(char const *name)
          int vs;
          char *vn;
 
-         vn = n_lofi_alloc(vs = strlen(np->n_name) + 30);
+         vn = n_lofi_alloc(vs = su_cs_len(np->n_name) + 30);
          snprintf(vn, vs, "smime-sign-include-certs-%s", np->n_name);
          rv = n_var_vlook(vn, FAL0);
          n_lofi_free(vn);
@@ -1619,7 +1621,7 @@ _smime_sign_include_chain_creat(n_XTLS_STACKOF(X509) **chain,
    *chain = sk_X509_new_null();
 
    for (nfield = savestr(cfiles);
-         (cfield = n_strsep(&nfield, ',', TRU1)) != NULL;) {
+         (cfield = su_cs_sep_c(&nfield, ',', TRU1)) != NULL;) {
       if ((x = fexpand(cfield, FEXP_LOCAL | FEXP_NOPROTO)) == NULL ||
             (fp = Fopen(cfield = x, "r")) == NULL) {
          n_perr(cfiles, 0);
@@ -1663,7 +1665,7 @@ a_xtls_smime_sign_digest(char const *name, char const **digname){
          int vs;
          char *vn;
 
-         vn = n_lofi_alloc(vs = strlen(np->n_name) + 30);
+         vn = n_lofi_alloc(vs = su_cs_len(np->n_name) + 30);
          snprintf(vn, vs, "smime-sign-digest-%s", np->n_name);
          if((cp = n_var_vlook(vn, FAL0)) == NULL){
             snprintf(vn, vs, "smime-sign-message-digest-%s",np->n_name);/*v15*/
@@ -1753,7 +1755,7 @@ jredo_v15:
          goto jleave;
       }
 
-      ds = strlen(crl_dir);
+      ds = su_cs_len(crl_dir);
       fn = n_alloc(fs = ds + 20);
       memcpy(fn, crl_dir, ds);
       fn[ds] = '/';
@@ -1763,7 +1765,7 @@ jredo_v15:
             continue;
          if (dp->d_name[0] == '.')
             continue;
-         if (ds + (es = strlen(dp->d_name)) + 2 < fs)
+         if (ds + (es = su_cs_len(dp->d_name)) + 2 < fs)
             fn = n_realloc(fn, fs = ds + es + 20);
          memcpy(fn + ds + 1, dp->d_name, es + 1);
          if (load_crl1(store, fn) != OKAY) {
@@ -1944,7 +1946,7 @@ n_tls_open(struct url *urlp, struct sock *sp){
          if(n_poption & n_PO_D_V)
             n_err(_("TLS %s fingerprint: %s\n"), fprnt_namep, fpmdhexbuf);
          if(fprnt != NULL){
-            if(!(stay = !strcmp(fprnt, fpmdhexbuf))){
+            if(!(stay = !su_cs_cmp(fprnt, fpmdhexbuf))){
                n_err(_("TLS fingerprint does not match: %s\n"
                      "  Expected: %s\n  Detected: %s\n"),
                   urlp->url_h_p.s, fprnt, fpmdhexbuf);
@@ -2437,9 +2439,9 @@ jloop:
 #undef _Y
 #define _X     (sizeof("application/") -1)
 #define _Y(X)  X, sizeof(X) -1
-   if (cnttype && is_asccaseprefix("application/", cnttype) &&
-         (!ascncasecmp(cnttype + _X, _Y("pkcs7-mime")) ||
-          !ascncasecmp(cnttype + _X, _Y("x-pkcs7-mime")))) {
+   if (cnttype && su_cs_starts_with_case(cnttype, "application/") &&
+         (!su_cs_cmp_case_n(cnttype + _X, _Y("pkcs7-mime")) ||
+          !su_cs_cmp_case_n(cnttype + _X, _Y("x-pkcs7-mime")))) {
 #undef _Y
 #undef _X
       if ((x = smime_decrypt(m, to, cc, 1)) == NULL)

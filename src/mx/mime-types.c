@@ -25,7 +25,10 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
 #include <su/icodec.h>
+
+#include "mx/filter-html.h" /* TODO that this does not belong: clear */
 
 enum mime_type {
    _MT_APPLICATION,
@@ -194,10 +197,10 @@ _mt_init(void)
    srcs = srcs_arr + 2;
    srcs[-1] = srcs[-2] = NULL;
 
-   if (strchr(ccp, '=') != NULL) {
+   if (su_cs_find_c(ccp, '=') != NULL) {
       line = savestr(ccp);
 
-      while ((ccp = n_strsep(&line, ',', TRU1)) != NULL) {
+      while ((ccp = su_cs_sep_c(&line, ',', TRU1)) != NULL) {
          switch ((c = *ccp)) {
          case 'S': case 's':
             srcs_arr[1] = VAL_MIME_TYPES_SYS;
@@ -346,7 +349,7 @@ _mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
          goto jeinval;
    }
 
-   while (len > 0 && !blankchar(*line))
+   while (len > 0 && !su_cs_is_blank(*line))
       ++line, --len;
    /* Ignore empty lines and even incomplete specifications (only MIME type)
     * because this is quite common in mime.types(5) files */
@@ -354,7 +357,7 @@ _mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
       if (cmdcalled || (orflags & _MT_FSPEC)) {
          if(len == 0){
             line = _("(no value)");
-            len = strlen(line);
+            len = su_cs_len(line);
          }
          n_err(_("Empty MIME type or no extensions given: %.*s\n"),
             (int)len, line);
@@ -363,7 +366,7 @@ _mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
    }
 
    if ((subtyp = memchr(typ, '/', tlen)) == NULL || subtyp[1] == '\0' ||
-         spacechar(subtyp[1])) {
+         su_cs_is_space(subtyp[1])) {
 jeinval:
       if(cmdcalled || (orflags & _MT_FSPEC) || (n_poption & n_PO_D_V))
          n_err(_("%s MIME type: %.*s\n"),
@@ -376,7 +379,7 @@ jeinval:
    /* Map to mime_type */
    tlen = PTR2SIZE(subtyp - typ);
    for (i = __MT_TMIN;;) {
-      if (!ascncasecmp(_mt_typnames[i], typ, tlen)) {
+      if (!su_cs_cmp_case_n(_mt_typnames[i], typ, tlen)) {
          orflags |= i;
          tlen = PTR2SIZE(line - subtyp);
          typ = subtyp;
@@ -392,7 +395,7 @@ jeinval:
    /* Strip leading whitespace from the list of extensions;
     * trailing WS has already been trimmed away above.
     * Be silent on slots which define a mimetype without any value */
-   while (len > 0 && blankchar(*line))
+   while (len > 0 && su_cs_is_blank(*line))
       ++line, --len;
    if (len == 0)
       goto jleave;
@@ -425,7 +428,7 @@ _mt_by_filename(struct mtlookup *mtlp, char const *name, bool_t with_result)
 
    memset(mtlp, 0, sizeof *mtlp);
 
-   if ((nlen = strlen(name)) == 0) /* TODO name should be a URI */
+   if ((nlen = su_cs_len(name)) == 0) /* TODO name should be a URI */
       goto jnull_leave;
    /* We need a period TODO we should support names like README etc. */
    for (i = nlen; name[--i] != '.';)
@@ -446,17 +449,17 @@ _mt_by_filename(struct mtlookup *mtlp, char const *name, bool_t with_result)
    for (mtnp = _mt_list; mtnp != NULL; mtnp = mtnp->mt_next)
       for (ext = mtnp->mt_line + mtnp->mt_mtlen;; ext = cp) {
          cp = ext;
-         while (whitechar(*cp))
+         while (su_cs_is_white(*cp))
             ++cp;
          ext = cp;
-         while (!whitechar(*cp) && *cp != '\0')
+         while (!su_cs_is_white(*cp) && *cp != '\0')
             ++cp;
 
          if ((i = PTR2SIZE(cp - ext)) == 0)
             break;
          /* Don't allow neither of ".txt" or "txt" to match "txt" */
          else if (i + 1 >= nlen || name[(j = nlen - i) - 1] != '.' ||
-               ascncasecmp(name + j, ext, i))
+               su_cs_cmp_case_n(name + j, ext, i))
             continue;
 
          /* Found it */
@@ -470,7 +473,7 @@ _mt_by_filename(struct mtlookup *mtlp, char const *name, bool_t with_result)
             j = 0;
          } else {
             name = _mt_typnames[mtnp->mt_flags & __MT_TMASK];
-            j = strlen(name);
+            j = su_cs_len(name);
          }
          i = mtnp->mt_mtlen;
          mtlp->mtl_result = n_autorec_alloc(i + j +1);
@@ -497,7 +500,7 @@ _mt_by_mtname(struct mtlookup *mtlp, char const *mtname)
 
    memset(mtlp, 0, sizeof *mtlp);
 
-   if ((mtlp->mtl_nlen = nlen = strlen(mtlp->mtl_name = mtname)) == 0)
+   if ((mtlp->mtl_nlen = nlen = su_cs_len(mtlp->mtl_name = mtname)) == 0)
       goto jnull_leave;
 
    if (!_mt_is_init)
@@ -510,7 +513,7 @@ _mt_by_mtname(struct mtlookup *mtlp, char const *mtname)
             j = 0;
          } else {
             cp = _mt_typnames[mtnp->mt_flags & __MT_TMASK];
-            j = strlen(cp);
+            j = su_cs_len(cp);
          }
          i = mtnp->mt_mtlen;
 
@@ -520,7 +523,7 @@ _mt_by_mtname(struct mtlookup *mtlp, char const *mtname)
                memcpy(xmt, cp, j);
             memcpy(xmt + j, mtnp->mt_line, i);
             xmt[j += i] = '\0';
-            i = asccasecmp(mtname, xmt);
+            i = su_cs_cmp_case(mtname, xmt);
             n_lofi_free(xmt);
 
             if (!i) {
@@ -1026,7 +1029,7 @@ c_unmimetype(void *v)
       _mt_init();
 
    for (; *argv != NULL; ++argv) {
-      if (!asccasecmp(*argv, "reset")) {
+      if (!su_cs_cmp_case(*argv, "reset")) {
          _mt_is_init = FAL0;
          goto jdelall;
       }
@@ -1050,14 +1053,14 @@ jdelall:
             i = 0;
          } else {
             typ = _mt_typnames[mtnp->mt_flags & __MT_TMASK];
-            i = strlen(typ);
+            i = su_cs_len(typ);
          }
 
          val = n_lofi_alloc(i + mtnp->mt_mtlen +1);
          memcpy(val, typ, i);
          memcpy(val + i, mtnp->mt_line, mtnp->mt_mtlen);
          val[i += mtnp->mt_mtlen] = '\0';
-         i = asccasecmp(val, *argv);
+         i = su_cs_cmp_case(val, *argv);
          n_lofi_free(val);
 
          if (!i) {
@@ -1127,11 +1130,11 @@ n_mimetype_classify_file(FILE *fp, char const **contenttype,
    if (*contenttype == NULL) {
       mtc = _MT_C_NCTT;
       rfc822 = FAL0;
-   } else if (!ascncasecmp(*contenttype, "text/", 5)) {
+   } else if (!su_cs_cmp_case_n(*contenttype, "text/", 5)) {
       mtc = ok_blook(mime_allow_text_controls)
          ? _MT_C_ISTXT | _MT_C_ISTXTCOK : _MT_C_ISTXT;
       rfc822 = FAL0;
-   } else if (!asccasecmp(*contenttype, "message/rfc822")) {
+   } else if (!su_cs_cmp_case(*contenttype, "message/rfc822")) {
       mtc = _MT_C_ISTXT;
       rfc822 = TRU1;
    } else {
@@ -1239,13 +1242,13 @@ n_mimetype_classify_part(struct mimepart *mpp, bool_t for_user_context){
          is_os = FAL0;
       }else{
          mce.f |= MIMECE_SET;
-         is_os = !asccasecmp(ct, "application/octet-stream");
+         is_os = !su_cs_cmp_case(ct, "application/octet-stream");
 
          if(mpp->m_filename != NULL && (is_os || (mce.f & MIMECE_ALL_OVWR))){
             if(_mt_by_filename(&mtl, mpp->m_filename, TRU1) == NULL){
                if(is_os)
                   goto jos_content_check;
-            }else if(is_os || asccasecmp(ct, mtl.mtl_result)){
+            }else if(is_os || su_cs_cmp_case(ct, mtl.mtl_result)){
                if(mce.f & MIMECE_ALL_OVWR)
                   mpp->m_ct_type_plain = ct = mtl.mtl_result;
                if(mce.f & (MIMECE_BIN_OVWR | MIMECE_ALL_OVWR))
@@ -1256,23 +1259,23 @@ n_mimetype_classify_part(struct mimepart *mpp, bool_t for_user_context){
    }else
       is_os = FAL0;
 
-   if(*ct == '\0' || strchr(ct, '/') == NULL) /* For compat with non-MIME */
+   if(*ct == '\0' || su_cs_find_c(ct, '/') == NULL) /* Compat with non-MIME */
       mc = MIME_TEXT;
-   else if(is_asccaseprefix("text/", ct)){
+   else if(su_cs_starts_with_case(ct, "text/")){
       ct += sizeof("text/") -1;
-      if(!asccasecmp(ct, "plain"))
+      if(!su_cs_cmp_case(ct, "plain"))
          mc = MIME_TEXT_PLAIN;
-      else if(!asccasecmp(ct, "html"))
+      else if(!su_cs_cmp_case(ct, "html"))
          mc = MIME_TEXT_HTML;
       else
          mc = MIME_TEXT;
-   }else if(is_asccaseprefix("message/", ct)){
+   }else if(su_cs_starts_with_case(ct, "message/")){
       ct += sizeof("message/") -1;
-      if(!asccasecmp(ct, "rfc822"))
+      if(!su_cs_cmp_case(ct, "rfc822"))
          mc = MIME_822;
       else
          mc = MIME_MESSAGE;
-   }else if(is_asccaseprefix("multipart/", ct)){
+   }else if(su_cs_starts_with_case(ct, "multipart/")){
       struct multi_types{
          char mt_name[12];
          enum mimecontent mt_mc;
@@ -1285,18 +1288,19 @@ n_mimetype_classify_part(struct mimepart *mpp, bool_t for_user_context){
       }, *mtap;
 
       for(ct += sizeof("multipart/") -1, mtap = mta;;)
-         if(!asccasecmp(ct, mtap->mt_name)){
+         if(!su_cs_cmp_case(ct, mtap->mt_name)){
             mc = mtap->mt_mc;
             break;
          }else if(++mtap == mta + n_NELEM(mta)){
             mc = MIME_MULTI;
             break;
          }
-   }else if(is_asccaseprefix("application/", ct)){
+   }else if(su_cs_starts_with_case(ct, "application/")){
       if(is_os)
          goto jos_content_check;
       ct += sizeof("application/") -1;
-      if(!asccasecmp(ct, "pkcs7-mime") || !asccasecmp(ct, "x-pkcs7-mime"))
+      if(!su_cs_cmp_case(ct, "pkcs7-mime") ||
+            !su_cs_cmp_case(ct, "x-pkcs7-mime"))
          mc = MIME_PKCS7;
    }
 jleave:
@@ -1333,10 +1337,11 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
          action != SEND_TODISP_PARTS)
       goto jleave;
 
-   el = ((es = mpp->m_filename) != NULL && (es = strrchr(es, '.')) != NULL &&
-         *++es != '\0') ? strlen(es) : 0;
+   el = ((es = mpp->m_filename) != NULL &&
+         (es = su_cs_rfind_c(es, '.')) != NULL &&
+         *++es != '\0') ? su_cs_len(es) : 0;
    cl = ((cs = mpp->m_ct_type_usr_ovwr) != NULL ||
-         (cs = mpp->m_ct_type_plain) != NULL) ? strlen(cs) : 0;
+         (cs = mpp->m_ct_type_plain) != NULL) ? su_cs_len(cs) : 0;
    if ((l = n_MAX(el, cl)) == 0) {
       /* TODO this should be done during parse time! */
       goto jleave;
@@ -1353,7 +1358,7 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
    if (el > 0) {
       memcpy(buf + __L, es, el +1);
       for (cp = buf + __L; *cp != '\0'; ++cp)
-         *cp = lowerconv(*cp);
+         *cp = su_cs_to_lower(*cp);
 
       if ((mhp->mh_shell_cmd = ccp = n_var_vlook(buf, FAL0)) != NULL) {
          rv = a_mt_pipe_check(mhp);
@@ -1367,7 +1372,7 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
 
    memcpy(buf + __L, cs, cl +1);
    for (cp = buf + __L; *cp != '\0'; ++cp)
-      *cp = lowerconv(*cp);
+      *cp = su_cs_to_lower(*cp);
 
    if ((mhp->mh_shell_cmd = n_var_vlook(buf, FAL0)) != NULL) {
       rv = a_mt_pipe_check(mhp);
@@ -1384,14 +1389,14 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
 #ifdef mx_HAVE_FILTER_HTML_TAGSOUP
       case a_MT_TM_SOUP_H:
          mhp->mh_ptf = &htmlflt_process_main;
-         mhp->mh_msg.l = strlen(mhp->mh_msg.s =
+         mhp->mh_msg.l = su_cs_len(mhp->mh_msg.s =
                n_UNCONST(_("Built-in HTML tagsoup filter")));
          rv ^= MIME_HDL_NULL | MIME_HDL_PTF;
          goto jleave;
 #endif
          /* FALLTHRU */
       case a_MT_TM_PLAIN:
-         mhp->mh_msg.l = strlen(mhp->mh_msg.s = n_UNCONST(_("Plain text")));
+         mhp->mh_msg.l = su_cs_len(mhp->mh_msg.s = n_UNCONST(_("Plain text")));
          rv ^= MIME_HDL_NULL | MIME_HDL_TEXT;
          goto jleave;
       case a_MT_TM_QUIET:
@@ -1409,11 +1414,11 @@ jleave:
    xrv = rv;
    if((rv &= MIME_HDL_TYPE_MASK) == MIME_HDL_NULL){
       if(mhp->mh_msg.s == NULL)
-         mhp->mh_msg.l = strlen(mhp->mh_msg.s = n_UNCONST(
+         mhp->mh_msg.l = su_cs_len(mhp->mh_msg.s = n_UNCONST(
                A_("[-- No MIME handler installed, or not applicable --]\n")));
    }else if(rv == MIME_HDL_CMD && !(xrv & MIME_HDL_COPIOUSOUTPUT) &&
          action != SEND_TODISP_PARTS){
-      mhp->mh_msg.l = strlen(mhp->mh_msg.s = n_UNCONST(
+      mhp->mh_msg.l = su_cs_len(mhp->mh_msg.s = n_UNCONST(
             _("[-- Use the command `mimeview' to display this --]\n")));
       xrv &= ~MIME_HDL_TYPE_MASK;
       xrv |= (rv = MIME_HDL_MSG);

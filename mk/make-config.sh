@@ -2749,11 +2749,11 @@ int main(void){
    MD5_Update(&ctx, dat, sizeof(dat) - 1);
    MD5_Final(dig, &ctx);
 
-#define hexchar(n) ((n) > 9 ? (n) - 10 + 'a' : (n) + '0')
+#define su_cs_is_xdigit(n) ((n) > 9 ? (n) - 10 + 'a' : (n) + '0')
    for(i = 0; i < sizeof(hex) / 2; i++){
       j = i << 1;
-      hex[j] = hexchar((dig[i] & 0xf0) >> 4);
-      hex[++j] = hexchar(dig[i] & 0x0f);
+      hex[j] = su_cs_is_xdigit((dig[i] & 0xf0) >> 4);
+      hex[++j] = su_cs_is_xdigit(dig[i] & 0x0f);
    }
    return !!memcmp("6d7d0a3d949da2e96f2aa010f65d8326", hex, sizeof(hex));
 }

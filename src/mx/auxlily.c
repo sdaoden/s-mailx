@@ -41,6 +41,7 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
 #include <su/icodec.h>
 
 #include <sys/utsname.h>
@@ -73,6 +74,8 @@
 # elif mx_HAVE_IDNA == n_IDNA_IMPL_IDNKIT
 #  include <idn/api.h>
 # endif
+
+# include "mx/iconv.h"
 #endif
 
 #if mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
@@ -317,10 +320,10 @@ n_pager_get(char const **env_addon){
       *env_addon = NULL;
       /* Update the manual upon any changes:
        *    *colour-pager*, $PAGER */
-      if(strstr(rv, "less") != NULL){
+      if(su_cs_find(rv, "less") != NULL){
          if(getenv("LESS") == NULL)
             *env_addon = "LESS=RXi";
-      }else if(strstr(rv, "lv") != NULL){
+      }else if(su_cs_find(rv, "lv") != NULL){
          if(getenv("LV") == NULL)
             *env_addon = "LV=-c";
       }
@@ -384,7 +387,7 @@ which_protocol(char const *name, bool_t check_stat, bool_t try_hooks,
    orig_name = name;
 
    for (cp = name; *cp && *cp != ':'; cp++)
-      if (!alnumchar(*cp))
+      if (!su_cs_is_alnum(*cp))
          goto jfile;
 
    if(cp[0] == ':' && cp[1] == '/' && cp[2] == '/'){
@@ -435,7 +438,7 @@ jfile:
       char *np;
       size_t sz;
 
-      np = n_lofi_alloc((sz = strlen(name)) + 4 +1);
+      np = n_lofi_alloc((sz = su_cs_len(name)) + 4 +1);
       memcpy(np, name, sz + 1);
 
       if(!stat(name, &stb)){
@@ -458,7 +461,7 @@ jfile:
       }else if(try_hooks && n_filetype_trial(&ft, name))
          orig_name = savecatsep(name, '.', ft.ft_ext_dat);
       else if((cp = ok_vlook(newfolders)) != NULL &&
-            !asccasecmp(cp, "maildir")){
+            !su_cs_cmp_case(cp, "maildir")){
 #ifdef mx_HAVE_MAILDIR
          rv = PROTO_MAILDIR;
 #else
@@ -536,7 +539,7 @@ n_icalc_buf(si64_t *resp, char const *cbuf, uiz_t clen, enum n_icalc_mode icm,
    n_NYD_IN;
 
    if(clen == UIZ_MAX)
-      clen = strlen(cbuf);
+      clen = su_cs_len(cbuf);
 
    icm &= n__ICALC_MODE_MASK;
    rv = n_ICALC_STATE_NONE | icm;
@@ -585,38 +588,6 @@ j_maxval:
 #endif
 
 FL ui32_t
-n_torek_hash(char const *name){
-   /* Chris Torek's hash */
-   char c;
-   ui32_t h;
-   n_NYD2_IN;
-
-   for(h = 0; (c = *name++) != '\0';)
-      h = (h * 33) + c;
-   n_NYD2_OU;
-   return h;
-}
-
-FL ui32_t
-n_torek_ihashn(char const *dat, size_t len){
-   /* See n_torek_hash() */
-   char c;
-   ui32_t h;
-   n_NYD2_IN;
-
-   if(len == UIZ_MAX)
-      for(h = 0; (c = *dat++) != '\0';)
-         h = (h * 33) + lowerconv(c);
-   else
-      for(h = 0; len > 0; --len){
-         c = *dat++;
-         h = (h * 33) + lowerconv(c);
-      }
-   n_NYD2_OU;
-   return h;
-}
-
-FL ui32_t
 n_prime_next(ui32_t n){
    static ui32_t const primes[] = {
       5, 11, 23, 47, 97, 157, 283,
@@ -651,7 +622,7 @@ n_getdeadletter(void){
    bla = FAL0;
 jredo:
    cp = fexpand(ok_vlook(DEAD), FEXP_LOCAL | FEXP_NSHELL);
-   if(cp == NULL || strlen(cp) >= PATH_MAX){
+   if(cp == NULL || su_cs_len(cp) >= PATH_MAX){
       if(!bla){
          n_err(_("Failed to expand *DEAD*, setting default (%s): %s\n"),
             VAL_DEAD, n_shexp_quote_cp((cp == NULL ? n_empty : cp), FAL0));
@@ -702,7 +673,7 @@ n_nodename(bool_t mayoverride){
          if(res->ai_canonname != NULL){
             size_t l;
 
-            l = strlen(res->ai_canonname) +1;
+            l = su_cs_len(res->ai_canonname) +1;
             hn = n_lofi_alloc(l);
             lofi = TRU1;
             memcpy(hn, res->ai_canonname, l);
@@ -730,7 +701,7 @@ n_nodename(bool_t mayoverride){
          /*n_string_gut(&cnv);*/
       }
 #else
-      sys_hostname = sstrdup(hn);
+      sys_hostname = su_cs_dup(hn);
 #endif
 
       if(lofi)
@@ -740,7 +711,7 @@ n_nodename(bool_t mayoverride){
 
    if(hostname != NULL && hostname != sys_hostname)
       n_free(hostname);
-   hostname = sstrdup(hn);
+   hostname = su_cs_dup(hn);
    n_NYD2_OU;
    return hostname;
 }
@@ -753,7 +724,7 @@ n_idna_to_ascii(struct n_string *out, char const *ibuf, size_t ilen){
    n_NYD_IN;
 
    if(ilen == UIZ_MAX)
-      ilen = strlen(ibuf);
+      ilen = su_cs_len(ibuf);
 
    lofi = FAL0;
 
@@ -809,7 +780,7 @@ jidn2_redo:
    }
 
 # elif mx_HAVE_IDNA == n_IDNA_IMPL_IDNKIT
-   ilen = strlen(idna_utf8);
+   ilen = su_cs_len(idna_utf8);
 jredo:
    switch(idn_encodename(
       /* LOCALCONV changed meaning in v2 and is no longer available for
@@ -828,7 +799,7 @@ jredo:
       goto jredo;
    case idn_success:
       rv = TRU1;
-      ilen = strlen(out->s_dat);
+      ilen = su_cs_len(out->s_dat);
       break;
    default:
       ilen = 0;
@@ -981,21 +952,21 @@ n_boolify(char const *inbuf, uiz_t inlen, bool_t emptyrv){
    assert(inlen == 0 || inbuf != NULL);
 
    if(inlen == UIZ_MAX)
-      inlen = strlen(inbuf);
+      inlen = su_cs_len(inbuf);
 
    if(inlen == 0)
       rv = (emptyrv >= FAL0) ? (emptyrv == FAL0 ? FAL0 : TRU1) : TRU2;
    else{
       if((inlen == 1 && (*inbuf == '1' || *inbuf == 'y' || *inbuf == 'Y')) ||
-            !ascncasecmp(inbuf, "true", inlen) ||
-            !ascncasecmp(inbuf, "yes", inlen) ||
-            !ascncasecmp(inbuf, "on", inlen))
+            !su_cs_cmp_case_n(inbuf, "true", inlen) ||
+            !su_cs_cmp_case_n(inbuf, "yes", inlen) ||
+            !su_cs_cmp_case_n(inbuf, "on", inlen))
          rv = TRU1;
       else if((inlen == 1 &&
                (*inbuf == '0' || *inbuf == 'n' || *inbuf == 'N')) ||
-            !ascncasecmp(inbuf, "false", inlen) ||
-            !ascncasecmp(inbuf, "no", inlen) ||
-            !ascncasecmp(inbuf, "off", inlen))
+            !su_cs_cmp_case_n(inbuf, "false", inlen) ||
+            !su_cs_cmp_case_n(inbuf, "no", inlen) ||
+            !su_cs_cmp_case_n(inbuf, "off", inlen))
          rv = FAL0;
       else{
          ui64_t ib;
@@ -1018,12 +989,12 @@ n_quadify(char const *inbuf, uiz_t inlen, char const *prompt, bool_t emptyrv){
    assert(inlen == 0 || inbuf != NULL);
 
    if(inlen == UIZ_MAX)
-      inlen = strlen(inbuf);
+      inlen = su_cs_len(inbuf);
 
    if(inlen == 0)
       rv = (emptyrv >= FAL0) ? (emptyrv == FAL0 ? FAL0 : TRU1) : TRU2;
    else if((rv = n_boolify(inbuf, inlen, emptyrv)) < FAL0 &&
-         !ascncasecmp(inbuf, "ask-", 4) &&
+         !su_cs_cmp_case_n(inbuf, "ask-", 4) &&
          (rv = n_boolify(&inbuf[4], inlen - 4, emptyrv)) >= FAL0 &&
          (n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT))
       rv = getapproval(prompt, rv);
@@ -1036,7 +1007,7 @@ n_is_all_or_aster(char const *name){
    bool_t rv;
    n_NYD2_IN;
 
-   rv = ((name[0] == '*' && name[1] == '\0') || !asccasecmp(name, "all"));
+   rv = ((name[0] == '*' && name[1] == '\0') || !su_cs_cmp_case(name, "all"));
    n_NYD2_OU;
    return rv;
 }
@@ -1099,7 +1070,7 @@ jredo:
          goto jredo;
       }
       memcpy(&tc->tc_local, tmp, sizeof tc->tc_local);
-      cp = sstpcpy(tc->tc_ctime, n_time_ctime((si64_t)tc->tc_time, tmp));
+      cp = su_cs_pcopy(tc->tc_ctime, n_time_ctime((si64_t)tc->tc_time, tmp));
       *cp++ = '\n';
       *cp = '\0';
       assert(PTR2SIZE(++cp - tc->tc_ctime) < sizeof(tc->tc_ctime));
@@ -1224,7 +1195,7 @@ n_err(char const *format, ...){
       if(doname)
          a_aux_err_linelen = 0;
 
-      if((len = strlen(format)) > 0){
+      if((len = su_cs_len(format)) > 0){
          if(doname || a_aux_err_linelen == 0){
             char const *cp;
 
@@ -1280,7 +1251,7 @@ n_verr(char const *format, va_list ap){
 #endif
    }
 
-   if((len = strlen(format)) == 0)
+   if((len = su_cs_len(format)) == 0)
       goto jleave;
 #ifdef mx_HAVE_ERRORS
    n_pstate |= n_PS_ERRORS_PROMPT;
@@ -1367,7 +1338,7 @@ jcreat:
             n_string_trunc(&enp->ae_str, len);
             continue;
 # else
-            i = (int)strlen(&enp->ae_str.s_dat[len]);
+            i = (int)su_cs_len(&enp->ae_str.s_dat[len]);
 # endif
          }
          break;
@@ -1460,9 +1431,9 @@ c_errors(void *v){
       goto jlist;
    if(argv[1] != NULL)
       goto jerr;
-   if(!asccasecmp(*argv, "show"))
+   if(!su_cs_cmp_case(*argv, "show"))
       goto jlist;
-   if(!asccasecmp(*argv, "clear"))
+   if(!su_cs_cmp_case(*argv, "clear"))
       goto jclear;
 jerr:
    fprintf(n_stderr,

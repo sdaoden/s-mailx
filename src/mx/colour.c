@@ -28,10 +28,11 @@
 # include "mx/nail.h"
 #endif
 
-#include <su/icodec.h>
-
-EMPTY_FILE()
+su_EMPTY_FILE()
 #ifdef mx_HAVE_COLOUR
+
+#include <su/cs.h>
+#include <su/icodec.h>
 
 /* Not needed publically, but extends a set from nail.h */
 #define n_COLOUR_TAG_ERR ((char*)-1)
@@ -182,10 +183,11 @@ a_colour_type_find(char const *name){
    n_NYD2_IN;
 
    ctmp = a_colour_type_maps;
-   do if(!asccasecmp(ctmp->ctm_name, name)){
+   do if(!su_cs_cmp_case(ctmp->ctm_name, name)){
       rv = ctmp->ctm_type;
       goto jleave;
-   }while(PTRCMP(++ctmp, !=, a_colour_type_maps + n_NELEM(a_colour_type_maps)));
+   }while(PTRCMP(++ctmp, !=,
+      a_colour_type_maps + n_NELEM(a_colour_type_maps)));
 
    rv = (enum a_colour_type)-1;
 jleave:
@@ -265,7 +267,7 @@ a_colour_mux(char **argv){
       if(xctag == ctag ||
             (ctag != NULL && !a_COLOUR_TAG_IS_SPECIAL(ctag) &&
              xctag != NULL && !a_COLOUR_TAG_IS_SPECIAL(xctag) &&
-             !strcmp(xctag, ctag))){
+             !su_cs_cmp(xctag, ctag))){
          if(lcmp == NULL)
             *cmap = cmp->cm_next;
          else
@@ -287,9 +289,10 @@ a_colour_mux(char **argv){
          goto jleave;
       }
 
-      tl = (ctag != NULL && !a_COLOUR_TAG_IS_SPECIAL(ctag)) ? strlen(ctag) : 0;
+      tl = (ctag != NULL && !a_COLOUR_TAG_IS_SPECIAL(ctag))
+            ? su_cs_len(ctag) : 0;
       cmp = n_alloc(n_VSTRUCT_SIZEOF(struct a_colour_map, cm_buf) +
-            tl +1 + (ul = strlen(argv[1])) +1 + (cl = strlen(cp)) +1);
+            tl +1 + (ul = su_cs_len(argv[1])) +1 + (cl = su_cs_len(cp)) +1);
 
       /* .cm_buf stuff */
       cmp->cm_pen.cp_dat.s = bp = cmp->cm_buf;
@@ -385,7 +388,7 @@ jredo:
       if((cmip = a_colour_map_id_find(mapname)) == NULL){
          rv = FAL0;
 jemap:
-         /* I18N: colour command, mapping and precondition (option in quotes) */
+         /* I18N: colour cmd, mapping and precondition (option in quotes) */
          n_err(_("`uncolour': non-existing mapping: %s%s%s\n"),
             n_shexp_quote_cp(mapname, FAL0), (ctag == NULL ? n_empty : " "),
             (ctag == NULL ? n_empty : n_shexp_quote_cp(ctag, FAL0)));
@@ -423,7 +426,7 @@ jemap:
             break;
          if(ctag != NULL && !a_COLOUR_TAG_IS_SPECIAL(ctag) &&
                xctag != NULL && !a_COLOUR_TAG_IS_SPECIAL(xctag) &&
-               !strcmp(xctag, ctag))
+               !su_cs_cmp(xctag, ctag))
             break;
          lcmp = cmp;
          cmp = cmp->cm_next;
@@ -492,9 +495,10 @@ a_colour__tag_identify(struct a_colour_map_id const *cmip, char const *ctag,
    n_NYD2_IN;
    n_UNUSED(regexpp);
 
-   if((cmip->cmi_tt & a_COLOUR_TT_DOT) && !asccasecmp(ctag, "dot"))
+   if((cmip->cmi_tt & a_COLOUR_TT_DOT) && !su_cs_cmp_case(ctag, "dot"))
       ctag = n_COLOUR_TAG_SUM_DOT;
-   else if((cmip->cmi_tt & a_COLOUR_TT_OLDER) && !asccasecmp(ctag, "older"))
+   else if((cmip->cmi_tt & a_COLOUR_TT_OLDER) &&
+         !su_cs_cmp_case(ctag, "older"))
       ctag = n_COLOUR_TAG_SUM_OLDER;
    else if(cmip->cmi_tt & a_COLOUR_TT_HEADERS){
       char *cp, c;
@@ -518,18 +522,18 @@ a_colour__tag_identify(struct a_colour_map_id const *cmip, char const *ctag,
 #endif
       {
          /* Normalize to lowercase and strip any whitespace before use */
-         i = strlen(ctag);
+         i = su_cs_len(ctag);
          cp = n_autorec_alloc(i +1);
 
          for(i = 0; (c = *ctag++) != '\0';){
-            bool_t isblspc = blankspacechar(c);
+            bool_t isblspc = su_cs_is_space(c);
 
-            if(!isblspc && !alnumchar(c) && c != '-' && c != ',')
+            if(!isblspc && !su_cs_is_alnum(c) && c != '-' && c != ',')
                goto jetag;
             /* Since we compare header names as they come from the message this
-             * lowercasing is however redundant: we need to asccasecmp() them */
+             * lowercasing is however redundant: we need to casecmp() them */
             if(!isblspc)
-               cp[i++] = lowerconv(c);
+               cp[i++] = su_cs_to_lower(c);
          }
          cp[i] = '\0';
          ctag = cp;
@@ -553,8 +557,8 @@ a_colour_map_id_find(char const *cp){
       if(i == n__COLOUR_IDS)
          goto jleave;
       else{
-         size_t j = strlen(a_colour_ctx_prefixes[i]);
-         if(!ascncasecmp(cp, a_colour_ctx_prefixes[i], j)){
+         size_t j = su_cs_len(a_colour_ctx_prefixes[i]);
+         if(!su_cs_cmp_case_n(cp, a_colour_ctx_prefixes[i], j)){
             cp += j;
             break;
          }
@@ -567,7 +571,7 @@ a_colour_map_id_find(char const *cp){
          rv = NULL;
          break;
       }
-      if(!asccasecmp(cp, rv->cmi_name))
+      if(!su_cs_cmp_case(cp, rv->cmi_name))
          break;
    }
 jleave:
@@ -600,8 +604,8 @@ a_colour_map_find(enum n_colour_id cid, enum n_colour_ctx cctx,
       if(cmp->cm_cmi->cmi_tt & a_COLOUR_TT_HEADERS){
          char *hlist = savestr(xtag), *cp;
 
-         while((cp = n_strsep(&hlist, ',', TRU1)) != NULL){
-            if(!asccasecmp(cp, ctag))
+         while((cp = su_cs_sep_c(&hlist, ',', TRU1)) != NULL){
+            if(!su_cs_cmp_case(cp, ctag))
                break;
          }
          if(cp != NULL)
@@ -647,10 +651,10 @@ a_colour_iso6429(enum a_colour_type ct, char **store, char const *spec){
    /* 0/1 indicate usage, thereafter possibly 256 color sequences */
    cfg[0] = cfg[1] = 0;
 
-   /* Since we use autorec_alloc(), reuse the n_strsep() buffer also for the
+   /* Since we use autorec_alloc(), reuse the su_cs_sep_c() buffer also for the
     * return value, ensure we have enough room for that */
    /* C99 */{
-      size_t i = strlen(spec) +1;
+      size_t i = su_cs_len(spec) +1;
       xspec = n_autorec_alloc(n_MAX(i,
             sizeof("\033[1;4;7;38;5;255;48;5;255m")));
       memcpy(xspec, spec, i);
@@ -659,8 +663,8 @@ a_colour_iso6429(enum a_colour_type ct, char **store, char const *spec){
 
    /* Iterate over the colour spec */
    ftno = 0;
-   while((cp = n_strsep(&xspec, ',', TRU1)) != NULL){
-      char *y, *x = strchr(cp, '=');
+   while((cp = su_cs_sep_c(&xspec, ',', TRU1)) != NULL){
+      char *y, *x = su_cs_find_c(cp, '=');
       if(x == NULL){
 jbail:
          *store = n_UNCONST(_("invalid attribute list"));
@@ -668,8 +672,8 @@ jbail:
       }
       *x++ = '\0';
 
-      if(!asccasecmp(cp, "ft")){
-         if(!asccasecmp(x, "inverse")){
+      if(!su_cs_cmp_case(cp, "ft")){
+         if(!su_cs_cmp_case(x, "inverse")){
             n_OBSOLETE(_("please use reverse for ft= fonts, not inverse"));
             x = n_UNCONST("reverse");
          }
@@ -677,7 +681,7 @@ jbail:
             if(idp == fta + n_NELEM(fta)){
                *store = n_UNCONST(_("invalid font attribute"));
                goto jleave;
-            }else if(!asccasecmp(x, idp->id_name)){
+            }else if(!su_cs_cmp_case(x, idp->id_name)){
                if(ftno < n_NELEM(fg))
                   fg[ftno++] = idp->id_modc;
                else{
@@ -686,10 +690,10 @@ jbail:
                }
                break;
             }
-      }else if(!asccasecmp(cp, "fg")){
+      }else if(!su_cs_cmp_case(cp, "fg")){
          y = cfg + 0;
          goto jiter_colour;
-      }else if(!asccasecmp(cp, "bg")){
+      }else if(!su_cs_cmp_case(cp, "bg")){
          y = cfg + 1;
 jiter_colour:
          if(ct == a_COLOUR_T_1){
@@ -697,7 +701,7 @@ jiter_colour:
             goto jleave;
          }
          /* Maybe 256 color spec */
-         if(digitchar(x[0])){
+         if(su_cs_is_digit(x[0])){
             ui8_t xv;
 
             if(ct == a_COLOUR_T_8){
@@ -718,7 +722,7 @@ jiter_colour:
             if(idp == ca + n_NELEM(ca)){
                *store = n_UNCONST(_("invalid colour attribute"));
                goto jleave;
-            }else if(!asccasecmp(x, idp->id_name)){
+            }else if(!su_cs_cmp_case(x, idp->id_name)){
                y[0] = 1;
                y[2] = idp->id_modc;
                break;

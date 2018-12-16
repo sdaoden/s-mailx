@@ -43,6 +43,10 @@
 
 #include <pwd.h>
 
+#include <su/cs.h>
+
+#include "mx/ui-str.h"
+
 /* Update mailname (if name != NULL) and displayname, return whether displayname
  * was large enough to swallow mailname */
 static bool_t  _update_mailname(char const *name);
@@ -82,7 +86,7 @@ _update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Object! */
       }else
 jdocopy:
 #endif
-         n_strscpy(mailname, name, sizeof(mailname));
+         su_cs_pcopy_n(mailname, name, sizeof(mailname));
    }
 
    mailp = mailname;
@@ -90,14 +94,14 @@ jdocopy:
 
    /* Don't display an absolute path but "+FOLDER" if under *folder* */
    if(*(foldp = n_folder_query()) != '\0'){
-      foldlen = strlen(foldp);
+      foldlen = su_cs_len(foldp);
       if(strncmp(foldp, mailp, foldlen))
          foldlen = 0;
    }else
       foldlen = 0;
 
    /* We want to see the name of the folder .. on the screen */
-   i = strlen(mailp);
+   i = su_cs_len(mailp);
    if(i < sizeof(displayname) - 3 -1){
       if(foldlen > 0){
          *dispp++ = '+';
@@ -310,7 +314,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset) /* TODO Mailbox->setptr() */
       } else if (inhead) {
          for (cp = linebuf, cp2 = "status";; ++cp) {
             if ((c = *cp2++) == 0) {
-               while (c = *cp++, whitechar(c))
+               while (c = *cp++, su_cs_is_white(c))
                   ;
                if (cp[-1] != ':')
                   break;
@@ -321,12 +325,12 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset) /* TODO Mailbox->setptr() */
                      self.m_flag &= ~MNEW;
                break;
             }
-            if (*cp != c && *cp != upperconv(c))
+            if (*cp != c && *cp != su_cs_to_upper(c))
                break;
          }
          for (cp = linebuf, cp2 = "x-status";; ++cp) {
             if ((c = *cp2++) == 0) {
-               while ((c = *cp++, whitechar(c)))
+               while ((c = *cp++, su_cs_is_white(c)))
                   ;
                if (cp[-1] != ':')
                   break;
@@ -339,7 +343,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset) /* TODO Mailbox->setptr() */
                      self.m_flag |= MDRAFTED;
                break;
             }
-            if (*cp != c && *cp != upperconv(c))
+            if (*cp != c && *cp != su_cs_to_upper(c))
                break;
          }
       }
@@ -382,7 +386,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
          fm |= FEDIT_SYSBOX; /* TODO fexpand() needs to tell is-valid-user! */
          if(*(who = &name[1]) == ':')
             ++who;
-         if((cp = strrchr(who, '/')) != NULL)
+         if((cp = su_cs_rfind_c(who, '/')) != NULL)
             who = &cp[1];
          if(*who == '\0')
             goto jlogname;
@@ -406,7 +410,7 @@ jlogname:
    switch (which_protocol(orig_name = name, TRU1, TRU1, &name)) {
    case PROTO_FILE:
       isdevnull = ((n_poption & n_PO_BATCH_FLAG) &&
-            !strcmp(name, n_path_devnull));
+            !su_cs_cmp(name, n_path_devnull));
 #ifdef mx_HAVE_REALPATH
       do { /* TODO we need objects, goes away then */
 # ifdef mx_HAVE_REALPATH_NULL
@@ -456,7 +460,7 @@ jlogname:
       int e = su_err_no();
 
       if ((fm & FEDIT_SYSBOX) && e == su_ERR_NOENT) {
-         if (!(fm & FEDIT_ACCOUNT) && strcmp(who, ok_vlook(LOGNAME)) &&
+         if (!(fm & FEDIT_ACCOUNT) && su_cs_cmp(who, ok_vlook(LOGNAME)) &&
                getpwnam(who) == NULL) {
             n_err(_("%s is not a user of this system\n"),
                n_shexp_quote_cp(who, FAL0));
@@ -517,7 +521,7 @@ jlogname:
    /* TODO In addition: in case of compressed/hook boxes we lock a temporary! */
    /* TODO We may uselessly open twice but quit() doesn't say whether we were
     * TODO modified so we can't tell: Mailbox::is_modified() :-(( */
-   if (/*shudclob && !(fm & FEDIT_NEWMAIL) &&*/ !strcmp(name, mailname)) {
+   if (/*shudclob && !(fm & FEDIT_NEWMAIL) &&*/ !su_cs_cmp(name, mailname)) {
       name = mailname;
       Fclose(ibuf);
 
@@ -792,7 +796,7 @@ getmdot(int nmail)
       } else if ((cp = ok_vlook(autosort)) != NULL) {
          if (mb.mb_sorted != NULL)
             n_free(mb.mb_sorted);
-         mb.mb_sorted = sstrdup(cp);
+         mb.mb_sorted = su_cs_dup(cp);
          c_sort(NULL);
       }
    }
@@ -886,7 +890,7 @@ initbox(char const *name)
    n_NYD_IN;
 
    if (mb.mb_type != MB_VOID)
-      n_strscpy(prevfile, mailname, PATH_MAX);
+      su_cs_pcopy_n(prevfile, mailname, PATH_MAX);
 
    /* TODO name always NE mailname (but goes away for objects anyway)
     * TODO Well, not true no more except that in parens */
@@ -958,7 +962,7 @@ n_folder_query(void){
       else{
          size_t i;
 
-         for(i = strlen(cp);;){
+         for(i = su_cs_len(cp);;){
             if(--i == 0)
                goto jset;
             if(cp[i] != '/'){
@@ -976,7 +980,7 @@ n_folder_query(void){
       case PROTO_IMAP:
 #ifdef mx_HAVE_IMAP
          rv = cp;
-         if(!strcmp(rv, protbase(rv)))
+         if(!su_cs_cmp(rv, protbase(rv)))
             rv = savecatsep(rv, '/', n_empty);
 #else
          n_err(_("*folder*: IMAP support not compiled in\n"));
@@ -994,8 +998,8 @@ n_folder_query(void){
          char const *home;
 
          home = ok_vlook(HOME);
-         l1 = strlen(home);
-         l2 = strlen(cp);
+         l1 = su_cs_len(home);
+         l2 = su_cs_len(cp);
 
          sp = n_string_reserve(sp, l1 + 1 + l2 +1);
          if(cp != adjcp){
@@ -1046,7 +1050,7 @@ n_folder_query(void){
       if(!err){
          size_t i;
 
-         if(rv[(i = strlen(rv)) - 1] != '/'){
+         if(rv[(i = su_cs_len(rv)) - 1] != '/'){
             sp = n_string_reserve(sp, i + 1 +1);
             sp = n_string_push_buf(sp, rv, i);
             sp = n_string_push_c(sp, '/');

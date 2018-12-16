@@ -41,6 +41,10 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
+
+#include "mx/iconv.h"
+
 #undef SEND_LINESIZE
 #define SEND_LINESIZE \
    ((1024 / B64_ENCODE_INPUT_PER_LINE) * B64_ENCODE_INPUT_PER_LINE)
@@ -186,7 +190,7 @@ a_sendout_put_ct(FILE *fo, char const *contenttype, char const *charset){
       goto jerr;
    ++rv;
 
-   if(strlen(contenttype) + sizeof("Content-Type: ;")-1 > 50){
+   if(su_cs_len(contenttype) + sizeof("Content-Type: ;")-1 > 50){
       if(putc('\n', fo) == EOF)
          goto jerr;
       ++rv;
@@ -356,7 +360,7 @@ a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo)
    if (ap->a_conv == AC_TMPFILE) {
       err = a_sendout__attach_file(hp, ap, fo);
       Fclose(ap->a_tmpf);
-      DBG( ap->a_tmpf = NULL; )
+      su_DBG( ap->a_tmpf = NULL; )
       goto jleave;
    }
 
@@ -440,7 +444,7 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo)
             a_sendout_put_cd(fo, ap->a_content_disposition, ap->a_name) < 0)
          goto jerr_header;
 
-      if((cp = ok_vlook(stealthmua)) == NULL || !strcmp(cp, "noagent")){
+      if((cp = ok_vlook(stealthmua)) == NULL || !su_cs_cmp(cp, "noagent")){
          struct name *np;
 
          /* TODO RFC 2046 specifies that the same Content-ID should be used
@@ -457,8 +461,8 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo)
 
       if ((cp = ap->a_content_description) != NULL &&
             (fputs("Content-Description: ", fo) == EOF ||
-             xmime_write(cp, strlen(cp), fo, CONV_TOHDR, (TD_ISPR | TD_ICONV),
-               NULL, NULL) < 0 || putc('\n', fo) == EOF))
+             xmime_write(cp, su_cs_len(cp), fo, CONV_TOHDR,
+               (TD_ISPR | TD_ICONV), NULL, NULL) < 0 || putc('\n', fo) == EOF))
          goto jerr_header;
 
       if (putc('\n', fo) == EOF) {
@@ -472,7 +476,7 @@ jerr_header:
    if (iconvd != (iconv_t)-1)
       n_iconv_close(iconvd);
    if (do_iconv) {
-      if (asccasecmp(charset, ap->a_input_charset) &&
+      if (su_cs_cmp_case(charset, ap->a_input_charset) &&
             (iconvd = n_iconv_open(charset, ap->a_input_charset)
                ) == (iconv_t)-1 && (err = su_err_no()) != 0) {
          if (err == su_ERR_INVAL)
@@ -517,7 +521,7 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
          goto jleave;
 #endif
       } else
-         sbp->sb_signer.l = strlen(sbp->sb_signer.s = from);
+         sbp->sb_signer.l = su_cs_len(sbp->sb_signer.s = from);
    }
 
 #ifndef mx_HAVE_SMTP
@@ -541,7 +545,7 @@ _sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
       if (shost == NULL) {
          if (from == NULL)
             goto jenofrom;
-         sbp->sb_url.url_u_h.l = strlen(sbp->sb_url.url_u_h.s = from);
+         sbp->sb_url.url_u_h.l = su_cs_len(sbp->sb_url.url_u_h.s = from);
       } else
          __sendout_ident = sbp->sb_url.url_u_h.s;
       if (!ccred_lookup(&sbp->sb_ccred, &sbp->sb_url))
@@ -561,7 +565,7 @@ jenofrom:
       }
       if (!ccred_lookup_old(&sbp->sb_ccred, CPROTO_SMTP, from))
          goto jleave;
-      sbp->sb_url.url_u_h.l = strlen(sbp->sb_url.url_u_h.s = from);
+      sbp->sb_url.url_u_h.l = su_cs_len(sbp->sb_url.url_u_h.s = from);
    }
 
    rv = TRU1;
@@ -588,7 +592,7 @@ a_sendout_attach_msg(struct header *hp, struct attachment *ap, FILE *fo)
          "Content-Disposition: inline\n", _sendout_boundary) < 0)
       goto jerr;
 
-   if((ccp = ok_vlook(stealthmua)) == NULL || !strcmp(ccp, "noagent")){
+   if((ccp = ok_vlook(stealthmua)) == NULL || !su_cs_cmp(ccp, "noagent")){
       struct name *np;
 
       /* TODO RFC 2046 specifies that the same Content-ID should be used
@@ -605,8 +609,8 @@ a_sendout_attach_msg(struct header *hp, struct attachment *ap, FILE *fo)
 
    if((ccp = ap->a_content_description) != NULL &&
          (fputs("Content-Description: ", fo) == EOF ||
-          xmime_write(ccp, strlen(ccp), fo, CONV_TOHDR, (TD_ISPR | TD_ICONV),
-            NULL, NULL) < 0 || putc('\n', fo) == EOF))
+          xmime_write(ccp, su_cs_len(ccp), fo, CONV_TOHDR,
+            (TD_ISPR | TD_ICONV), NULL, NULL) < 0 || putc('\n', fo) == EOF))
       goto jerr;
    if(putc('\n', fo) == EOF)
       goto jerr;
@@ -642,7 +646,7 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
             a_sendout_put_cte(fo, convert) < 0 ||
             fprintf(fo, "Content-Disposition: inline\n") < 0)
          goto jerr;
-      if (((cp = ok_vlook(stealthmua)) == NULL || !strcmp(cp, "noagent")) &&
+      if (((cp = ok_vlook(stealthmua)) == NULL || !su_cs_cmp(cp, "noagent")) &&
             (cp = a_sendout_random_id(hp, FAL0)) != NULL &&
             fprintf(fo, "Content-ID: <%s>\n", cp) < 0)
          goto jerr;
@@ -717,7 +721,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
    if ((convhdr = need_hdrconv(hp))) {
       if (iconvd != (iconv_t)-1) /* XXX  */
          n_iconv_close(iconvd);
-      if (asccasecmp(convhdr, tcs) != 0 &&
+      if (su_cs_cmp_case(convhdr, tcs) != 0 &&
             (iconvd = n_iconv_open(convhdr, tcs)) == (iconv_t)-1 &&
             (err = su_err_no()) != su_ERR_NONE)
          goto jiconv_err;
@@ -737,7 +741,7 @@ infix(struct header *hp, FILE *fi) /* TODO check */
 
 #ifdef mx_HAVE_ICONV
    if (do_iconv && charset != NULL) { /*TODO charset->n_mimetype_classify_file*/
-      if (asccasecmp(charset, tcs) != 0 &&
+      if (su_cs_cmp_case(charset, tcs) != 0 &&
             (iconvd = n_iconv_open(charset, tcs)) == (iconv_t)-1 &&
             (err = su_err_no()) != su_ERR_NONE) {
 jiconv_err:
@@ -1137,7 +1141,7 @@ a_sendout__savemail(char const *name, FILE *fp, bool_t resend){
       if(resend){
          if(emptyline && is_head(buf, buflen, FAL0))
             putc('>', fo);
-      }DBG(else assert(!is_head(buf, buflen, FAL0)); )
+      }su_DBG(else assert(!is_head(buf, buflen, FAL0)); )
 
       emptyline = (buflen > 0 && *buf == '\n');
       fwrite(buf, sizeof *buf, buflen, fo);
@@ -1247,7 +1251,7 @@ __mta_start(struct sendbundle *sbp)
       mta = ok_vlook(mta); /* TODO v15: what solely remains in here */
       if((proto = ok_vlook(sendmail)) != NULL)
          n_OBSOLETE(_("please use *mta* instead of *sendmail*"));
-      if(proto != NULL && !strcmp(mta, VAL_MTA))
+      if(proto != NULL && !su_cs_cmp(mta, VAL_MTA))
          mta = proto;
 
       /* TODO for now this is pretty hacky: in v15 we should simply create
@@ -1377,7 +1381,7 @@ __mta_prepare_args(struct name *to, struct header *hp)
    } else {
       /* Don't assume anything on the content but do allocate exactly j slots;
        * like this getrawlist will never overflow (and return -1) */
-      j = strlen(cp);
+      j = su_cs_len(cp);
       vas = n_lofi_alloc(sizeof(*vas) * j);
       vas_cnt = (size_t)getrawlist(TRU1, vas, j, cp, j);
    }
@@ -1388,7 +1392,7 @@ __mta_prepare_args(struct name *to, struct header *hp)
    if((cp_v15compat = ok_vlook(sendmail_progname)) != NULL)
       n_OBSOLETE(_("please use *mta-argv0*, not *sendmail-progname*"));
    cp = ok_vlook(mta_argv0);
-   if(cp_v15compat != NULL && !strcmp(cp, VAL_MTA_ARGV0))
+   if(cp_v15compat != NULL && !su_cs_cmp(cp, VAL_MTA_ARGV0))
       cp = cp_v15compat;
    args[0] = cp/* TODO v15 only : = ok_vlook(mta_argv0) */;
 
@@ -1515,13 +1519,14 @@ a_sendout_random_id(struct header *hp, bool_t msgid)
       rl = 8;
       goto jgen;
    }
-   if(hp != NULL && (h = skin(myorigin(hp))) != NULL && strchr(h, '@') != NULL)
+   if(hp != NULL && (h = skin(myorigin(hp))) != NULL &&
+         su_cs_find_c(h, '@') != NULL)
       goto jgen;
    goto jleave;
 
 jgen:
    tmp = &time_current.tc_gm;
-   i = sizeof("%04d%02d%02d%02d%02d%02d.%s%c%s") -1 + rl + strlen(h);
+   i = sizeof("%04d%02d%02d%02d%02d%02d.%s%c%s") -1 + rl + su_cs_len(h);
    rv = n_autorec_alloc(i +1);
    snprintf(rv, i, "%04d%02d%02d%02d%02d%02d.%s%c%s",
       tmp->tm_year + 1900, tmp->tm_mon + 1, tmp->tm_mday,
@@ -1550,9 +1555,9 @@ a_sendout_put_addrline(char const *hname, struct name *np, FILE *fo,
 
    m = (saf & GCOMMA) ? m_ERROR | m_COMMA : m_ERROR;
 
-   if((col = hnlen = strlen(hname)) > 0){
+   if((col = hnlen = su_cs_len(hname)) > 0){
 #undef _X
-#define _X(S)  (col == sizeof(S) -1 && !asccasecmp(hname, S))
+#define _X(S)  (col == sizeof(S) -1 && !su_cs_cmp_case(hname, S))
       if (saf & GFILES) {
          ;
       } else if (_X("reply-to:") || _X("mail-followup-to:") ||
@@ -1586,7 +1591,7 @@ a_sendout_put_addrline(char const *hname, struct name *np, FILE *fo,
          ++col;
       }
 
-      len = strlen(np->n_fullname);
+      len = su_cs_len(np->n_fullname);
       if (np->n_type & GREF)
          len += 2;
       ++col; /* The separating space */
@@ -1612,7 +1617,7 @@ a_sendout_put_addrline(char const *hname, struct name *np, FILE *fo,
          /* GREF needs to be placed in angle brackets, but which are missing */
          hb = np->n_fullname;
          if(np->n_type & GREF){
-            assert(UICMP(z, len, ==, strlen(np->n_fullname) + 2));
+            assert(UICMP(z, len, ==, su_cs_len(np->n_fullname) + 2));
             hb = n_lofi_alloc(len +1);
             len -= 2;
             hb[0] = '<';
@@ -1669,7 +1674,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
       }
       if (!a_sendout_put_addrline("Resent-To:", to, fo, a_SENDOUT_AL_COMMA))
          goto jleave;
-      if (((cp = ok_vlook(stealthmua)) == NULL || !strcmp(cp, "noagent")) &&
+      if (((cp = ok_vlook(stealthmua)) == NULL || !su_cs_cmp(cp, "noagent")) &&
             (cp = a_sendout_random_id(NULL, TRU1)) != NULL &&
             fprintf(fo, "Resent-Message-ID: <%s>\n", cp) < 0)
          goto jleave;
@@ -1684,8 +1689,8 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
    while (cnt > 0) {
       if (fgetline(&buf, &bufsize, &cnt, &c, fi, 0) == NULL)
          break;
-      if (ascncasecmp("status:", buf, 7) &&
-            ascncasecmp("disposition-notification-to:", buf, 28) &&
+      if (su_cs_cmp_case_n("status:", buf, 7) &&
+            su_cs_cmp_case_n("disposition-notification-to:", buf, 28) &&
             !is_head(buf, c, FAL0))
          fwrite(buf, sizeof *buf, c, fo);
       if (cnt > 0 && *buf == '\n')
@@ -1727,7 +1732,7 @@ n_mail(enum n_mailsend_flags msf, struct name *to, struct name *cc,
    /* The given subject may be in RFC1522 format. */
    if (subject != NULL) {
       in.s = n_UNCONST(subject);
-      in.l = strlen(subject);
+      in.l = su_cs_len(subject);
       mime_fromhdr(&in, &out, /* TODO ??? TD_ISPR |*/ TD_ICONV);
       head.h_subject = out.s;
    }
@@ -1911,11 +1916,13 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
          err = su_ERR_NOENT;
       else if ((nmtf = infix(hp, mtf)) != NULL)
          break;
+#ifdef mx_HAVE_ICONV
       else if ((err = n_iconv_err_no) == su_ERR_ILSEQ || err == su_ERR_INVAL ||
             err == su_ERR_NOENT) {
          rewind(mtf);
          continue;
       }
+#endif
 
       n_perr(_("Cannot find a usable character set to encode message"), err);
       n_pstate_err_no = su_ERR_NOTSUP;
@@ -2057,7 +2064,7 @@ do {\
    rv = FAL0;
 
    if ((addr = ok_vlook(stealthmua)) != NULL)
-      stealthmua = !strcmp(addr, "noagent") ? -1 : 1;
+      stealthmua = !su_cs_cmp(addr, "noagent") ? -1 : 1;
    else
       stealthmua = 0;
    gotcha = 0;
@@ -2130,7 +2137,7 @@ jto_fmt:
          size_t sublen;
          char const *sub;
 
-         sublen = strlen(sub = subject_re_trim(hp->h_subject));
+         sublen = su_cs_len(sub = subject_re_trim(hp->h_subject));
 
          /* Trimmed something, (re-)add Re: */
          if (sub != hp->h_subject) {
@@ -2262,7 +2269,7 @@ jto_fmt:
             /* Automatically make MLIST_KNOWN List-Post: address */
             /* XXX is_mlist_mp()?? */
             if((ml = is_mlist(x->n_name, FAL0)) == MLIST_OTHER &&
-                  addr != NULL && !asccasecmp(addr, x->n_name))
+                  addr != NULL && !su_cs_cmp_case(addr, x->n_name))
                ml = MLIST_KNOWN;
 
             /* Any non-subscribed list?  Add ourselves */
@@ -2295,7 +2302,7 @@ j_mft_add:
                   struct name *ox;
 
                   for(ox = hp->h_mft; ox != NULL; ox = ox->n_flink)
-                     if(!asccasecmp(ox->n_name, x->n_name))
+                     if(!su_cs_cmp_case(ox->n_name, x->n_name))
                         goto j_mft_add;
                }
                break;

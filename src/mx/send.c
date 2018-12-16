@@ -41,6 +41,12 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/cs.h>
+
+#include "mx/filter-quote.h" /* TODO but only for creating chain! */
+#include "mx/iconv.h"
+#include "mx/ui-str.h"
+
 static sigjmp_buf _send_pipejmp;
 
 /* Going for user display, print Part: info string */
@@ -119,7 +125,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
    if (cpre != NULL)
       _out(cpre->s, cpre->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
    _out("[-- #", 5, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
-   _out(cp, strlen(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+   _out(cp, su_cs_len(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
 
    to.l = snprintf(buf, sizeof buf, " %" PRIuZ "/%" PRIuZ " ",
          (uiz_t)mpp->m_lines, (uiz_t)mpp->m_size);
@@ -133,8 +139,8 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
    }else if((want_ct = n_ignore_is_ign(doitp,
          "content-type", sizeof("content-type") -1)))
       cp = mpp->m_ct_type_plain;
-   if (want_ct &&
-         (to.l = strlen(cp)) > 30 && is_asccaseprefix("application/", cp)) {
+   if (want_ct && (to.l = su_cs_len(cp)) > 30 &&
+            su_cs_starts_with_case(cp, "application/")) {
       size_t const al = sizeof("appl../") -1, fl = sizeof("application/") -1;
       size_t i = to.l - fl;
       char *x = n_autorec_alloc(al + i +1);
@@ -150,14 +156,15 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
    }
 
    if(mpp->m_multipart == NULL/* TODO */ && (cp = mpp->m_ct_enc) != NULL &&
-         (!asccasecmp(cp, "7bit") ||
+         (!su_cs_cmp_case(cp, "7bit") ||
           n_ignore_is_ign(doitp, "content-transfer-encoding",
             sizeof("content-transfer-encoding") -1))){
       if(needsep)
          _out(", ", 2, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
-      if (to.l > 25 && !asccasecmp(cp, "quoted-printable"))
+      if (to.l > 25 && !su_cs_cmp_case(cp, "quoted-printable"))
          cp = "qu.-pr.";
-      _out(cp, strlen(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+      _out(cp, su_cs_len(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats,
+         NULL,NULL);
       needsep = TRU1;
    }
 
@@ -165,7 +172,8 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
          (cp = mpp->m_charset) != NULL) {
       if(needsep)
          _out(", ", 2, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
-      _out(cp, strlen(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
+      _out(cp, su_cs_len(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats,
+         NULL,NULL);
    }
 
    needsep = !needsep;
@@ -182,7 +190,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
             NULL, NULL);
       _out("[-- ", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
 
-      ti.l = strlen(ti.s = n_UNCONST(_("Defective MIME structure")));
+      ti.l = su_cs_len(ti.s = n_UNCONST(_("Defective MIME structure")));
       makeprint(&ti, &to);
       to.l = delctrl(to.s, to.l);
       _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
@@ -203,7 +211,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
             NULL, NULL);
       _out("[-- ", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
 
-      ti.l = strlen(ti.s = n_UNCONST(mpp->m_content_description));
+      ti.l = su_cs_len(ti.s = n_UNCONST(mpp->m_content_description));
       mime_fromhdr(&ti, &to, TD_ISPR | TD_ICONV);
       _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
       n_free(to.s);
@@ -223,7 +231,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
             NULL, NULL);
       _out("[-- ", 4, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
 
-      ti.l = strlen(ti.s = mpp->m_filename);
+      ti.l = su_cs_len(ti.s = mpp->m_filename);
       makeprint(&ti, &to);
       to.l = delctrl(to.s, to.l);
       _out(to.s, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
@@ -526,7 +534,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
 
       /* Are we in a header? */
       if(hlp->s_len > 0){
-         if(!blankchar(*cp)){
+         if(!su_cs_is_blank(*cp)){
             fseek(ibuf, -(off_t)(lcnt - cnt), SEEK_CUR);
             cnt = lcnt;
             goto jhdrput;
@@ -534,10 +542,10 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
          goto jhdrpush;
       }else{
          /* Pick up the header field if we have one */
-         while((c = *cp) != ':' && !spacechar(c) && c != '\0')
+         while((c = *cp) != ':' && !su_cs_is_space(c) && c != '\0')
             ++cp;
          for(;;){
-            if(!spacechar(c) || c == '\0')
+            if(!su_cs_is_space(c) || c == '\0')
                break;
             c = *++cp;
          }
@@ -567,7 +575,7 @@ jhdrpush:
                char c8;
 
                c8 = *cp;
-               if(!(isblank = blankchar(c8)) || !lblank){
+               if(!(isblank = su_cs_is_blank(c8)) || !lblank){
                   if((lblank = isblank))
                      c8 = ' ';
                   hlp = n_string_push_c(hlp, c8);
@@ -585,11 +593,11 @@ jhdrput:
 
          i = PTR2SIZE(cp - hlp->s_dat);
          if((doitp != NULL && n_ignore_is_ign(doitp, hlp->s_dat, i)) ||
-               !asccasecmp(hlp->s_dat, "status") ||
-               !asccasecmp(hlp->s_dat, "x-status") ||
+               !su_cs_cmp_case(hlp->s_dat, "status") ||
+               !su_cs_cmp_case(hlp->s_dat, "x-status") ||
                (action == SEND_MBOX &&
-                  (!asccasecmp(hlp->s_dat, "content-length") ||
-                   !asccasecmp(hlp->s_dat, "lines")) &&
+                  (!su_cs_cmp_case(hlp->s_dat, "content-length") ||
+                   !su_cs_cmp_case(hlp->s_dat, "lines")) &&
                 !ok_blook(keep_content_length)))
             goto jhdrtrunc;
       }
@@ -932,7 +940,7 @@ jmulti:
              ip->m_multipart->m_nextpart == NULL) {
             char const *x = _("[Missing multipart boundary - use `show' "
                   "to display the raw message]\n");
-            _out(x, strlen(x), obuf, CONV_NONE, SEND_MBOX, qf, stats,
+            _out(x, su_cs_len(x), obuf, CONV_NONE, SEND_MBOX, qf, stats,
                NULL,NULL);
          }
 
@@ -1084,8 +1092,8 @@ jpipe_close:
       char const *tcs;
 
       tcs = ok_vlook(ttycharset);
-      if (asccasecmp(tcs, ip->m_charset) &&
-            asccasecmp(ok_vlook(charset_7bit), ip->m_charset)) {
+      if (su_cs_cmp_case(tcs, ip->m_charset) &&
+            su_cs_cmp_case(ok_vlook(charset_7bit), ip->m_charset)) {
          iconvd = n_iconv_open(tcs, ip->m_charset);
          if (iconvd == (iconv_t)-1 && su_err_no() == su_ERR_INVAL) {
             n_err(_("Cannot convert from %s to %s\n"), ip->m_charset, tcs);
@@ -1280,7 +1288,7 @@ newfile(struct mimepart *ip, bool_t volatile *ispipe)
 
    if (f != NULL && f != (char*)-1) {
       in.s = f;
-      in.l = strlen(f);
+      in.l = su_cs_len(f);
       makeprint(&in, &out);
       out.l = delctrl(out.s, out.l);
       f = savestrbuf(out.s, out.l);
@@ -1353,12 +1361,12 @@ jgetname:
       /* Be very picky in non-interactive mode: actively disallow pipes,
        * prevent directory separators, and any filename member that would
        * become expanded by the shell if the name would be echo(1)ed */
-      if(n_anyof_cp("/" n_SHEXP_MAGIC_PATH_CHARS, f)){
+      if(su_cs_first_of(f, "/" n_SHEXP_MAGIC_PATH_CHARS) != su_UZ_MAX){
          char c;
 
-         for(out.s = n_autorec_alloc((strlen(f) * 3) +1), out.l = 0;
+         for(out.s = n_autorec_alloc((su_cs_len(f) * 3) +1), out.l = 0;
                (c = *f++) != '\0';)
-            if(strchr("/" n_SHEXP_MAGIC_PATH_CHARS, c)){
+            if(su_cs_find_c("/" n_SHEXP_MAGIC_PATH_CHARS, c)){
                out.s[out.l++] = '%';
                n_c_to_hex_base16(&out.s[out.l], c);
                out.l += 2;
