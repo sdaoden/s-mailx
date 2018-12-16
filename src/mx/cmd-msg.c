@@ -41,6 +41,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/icodec.h>
+
 /* Prepare and print "[Message: xy]:" intro */
 static bool_t a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no);
 
@@ -131,7 +133,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 
       /* >= not <: we return to the prompt */
       if(dopage || nlines >= (*cp != '\0'
-               ? (n_idec_uiz_cp(&lib, cp, 0, NULL), lib)
+               ? (su_idec_uz_cp(&lib, cp, 0, NULL), lib)
                : (uiz_t)n_realscreenheight)){
          if((obuf = n_pager_open()) == NULL)
             obuf = n_stdout;
@@ -254,9 +256,9 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
    /* C99 */{
       siz_t l;
 
-      if((n_idec_siz_cp(&l, ok_vlook(toplines), 0, NULL
-               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED)
+      if((su_idec_sz_cp(&l, ok_vlook(toplines), 0, NULL
+               ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+            ) != su_IDEC_STATE_CONSUMED)
          l = 0;
       if(l <= 0){
          tmax = n_screensize();
@@ -654,7 +656,7 @@ jleave:
 
 FL int
 c_pdot(void *vp){
-   char cbuf[n_IENC_BUFFER_SIZE], sep1, sep2;
+   char cbuf[su_IENC_BUFFER_SIZE], sep1, sep2;
    struct n_string s, *sp;
    int *mlp;
    struct n_cmd_arg_ctx *cacp;
@@ -673,7 +675,7 @@ c_pdot(void *vp){
    cacp = vp;
 
    for(mlp = cacp->cac_arg->ca_arg.ca_msglist; *mlp != 0; ++mlp){
-      if(!n_string_can_book(sp, n_IENC_BUFFER_SIZE + 2u)){
+      if(!n_string_can_book(sp, su_IENC_BUFFER_SIZE + 2u)){
          n_err(_("`=': overflow: string too long!\n"));
          n_pstate_err_no = su_ERR_OVERFLOW;
          vp = NULL;
@@ -685,7 +687,7 @@ c_pdot(void *vp){
             sp = n_string_push_c(sp, sep2);
       }
       sp = n_string_push_cp(sp,
-            n_ienc_buf(cbuf, (ui32_t)*mlp, 10, n_IENC_MODE_NONE));
+            su_ienc(cbuf, (ui32_t)*mlp, 10, su_IENC_MODE_NONE));
    }
 
    (void)n_string_cp(sp);

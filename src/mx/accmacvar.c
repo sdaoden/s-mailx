@@ -54,6 +54,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/icodec.h>
+
 #if !defined mx_HAVE_SETENV && !defined mx_HAVE_PUTENV
 # error Exactly one of mx_HAVE_SETENV and mx_HAVE_PUTENV
 #endif
@@ -1056,7 +1058,7 @@ jefrom:
          if(**val != '\0'){
             ui64_t uib;
 
-            n_idec_ui64_cp(&uib, *val, 0, NULL);
+            su_idec_u64_cp(&uib, *val, 0, NULL);
             if(uib & ~0777u){ /* (is valid _VF_POSNUM) */
                emsg = N_("Invalid *umask* setting: %s\n");
                goto jerr;
@@ -1075,7 +1077,7 @@ jefrom:
          n_poption |= n_PO_DEBUG;
          su_log_set_level(su_LOG_DEBUG);
 # define a_DEBUG_MEMCONF su_MEM_CONF_DEBUG
-         DBG( su_mem_set_conf(a_DEBUG_MEMCONF, TRU1); )
+         su_DBG( su_mem_set_conf(a_DEBUG_MEMCONF, TRU1); )
          break;
       case ok_v_HOME:
          /* Invalidate any resolved folder then, too
@@ -1103,7 +1105,7 @@ jefrom:
          break;
 #endif
       case ok_b_memdebug:
-         DBG( su_mem_set_conf(a_DEBUG_MEMCONF | su_MEM_CONF_LINGER_FREE |
+         su_DBG( su_mem_set_conf(a_DEBUG_MEMCONF | su_MEM_CONF_LINGER_FREE |
             su_MEM_CONF_ON_ERROR_EMERG, TRU1); )
          break;
       case ok_b_POSIXLY_CORRECT: /* <-> *posix* */
@@ -1127,7 +1129,7 @@ jefrom:
          if(**val != '\0'){
             ui64_t uib;
 
-            n_idec_ui64_cp(&uib, *val, 0, NULL);
+            su_idec_u64_cp(&uib, *val, 0, NULL);
             umask((mode_t)uib);
          }
          break;
@@ -1147,7 +1149,7 @@ jefrom:
       case ok_b_debug:
          n_poption &= ~n_PO_DEBUG;
          su_log_set_level((n_poption & n_PO_VERB) ? su_LOG_INFO : n_LOG_LEVEL);
-         DBG( if(!ok_blook(memdebug))
+         su_DBG( if(!ok_blook(memdebug))
             su_mem_set_conf(a_DEBUG_MEMCONF, FAL0); )
          break;
       case ok_v_customhdr:{
@@ -1165,7 +1167,7 @@ jefrom:
          n_PS_ROOT_BLOCK(ok_vclear(folder_resolved));
          break;
       case ok_b_memdebug:
-         DBG( su_mem_set_conf((ok_blook(debug) ? 0 : a_DEBUG_MEMCONF) |
+         su_DBG( su_mem_set_conf((ok_blook(debug) ? 0 : a_DEBUG_MEMCONF) |
                su_MEM_CONF_LINGER_FREE | su_MEM_CONF_ON_ERROR_EMERG, FAL0); )
 #undef a_DEBUG_MEMCONF
          break;
@@ -1210,17 +1212,17 @@ a_amv_var_check_num(char const *val, bool_t posnum){
 
    if(*val != '\0'){ /* Would be _VF_NOTEMPTY if not allowed */
       ui64_t uib;
-      enum n_idec_state ids;
+      enum su_idec_state ids;
 
-      ids = n_idec_cp(&uib, val, 0,
-            (n_IDEC_MODE_LIMIT_32BIT |
-             (posnum ?  n_IDEC_MODE_SIGNED_TYPE : n_IDEC_MODE_NONE)), NULL);
-      if((ids & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED)
+      ids = su_idec_cp(&uib, val, 0,
+            (su_IDEC_MODE_LIMIT_32BIT |
+             (posnum ?  su_IDEC_MODE_SIGNED_TYPE : su_IDEC_MODE_NONE)), NULL);
+      if((ids & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+            ) != su_IDEC_STATE_CONSUMED)
          rv = FAL0;
       /* TODO Unless we store integers we need to look and forbid, because
        * TODO callee may not be able to swallow, e.g., "-1" */
-      if(posnum && (ids & n_IDEC_STATE_SEEN_MINUS))
+      if(posnum && (ids & su_IDEC_STATE_SEEN_MINUS))
          rv = FAL0;
    }
    n_NYD2_OU;
@@ -1629,7 +1631,7 @@ jnewval:
 
 static char const *
 a_amv_var_vsc_global(struct a_amv_var_carrier *avcp){
-   char iencbuf[n_IENC_BUFFER_SIZE];
+   char iencbuf[su_IENC_BUFFER_SIZE];
    char const *rv;
    si32_t *ep;
    struct a_amv_var_map const *avmp;
@@ -1655,7 +1657,7 @@ a_amv_var_vsc_global(struct a_amv_var_carrier *avcp){
    case 0: rv = n_0; break;
    case 1: rv = n_1; break;
    default:
-      rv = n_ienc_buf(iencbuf, *ep, 10, n_IENC_MODE_SIGNED_TYPE);
+      rv = su_ienc(iencbuf, *ep, 10, su_IENC_MODE_SIGNED_TYPE);
       break;
    }
    n_PS_ROOT_BLOCK(n_var_okset(avcp->avc_okey, (uintptr_t)rv));
@@ -1670,7 +1672,7 @@ a_amv_var_vsc_global(struct a_amv_var_carrier *avcp){
 
 static char const *
 a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp){
-   char iencbuf[n_IENC_BUFFER_SIZE];
+   char iencbuf[su_IENC_BUFFER_SIZE];
    si32_t e;
    size_t i;
    char const *rv;
@@ -1691,7 +1693,7 @@ jeno:
          case 1: rv = n_1; break;
          default:
             /* XXX Need to convert number to string yet */
-            rv = savestr(n_ienc_buf(iencbuf, e, 10, n_IENC_MODE_SIGNED_TYPE));
+            rv = savestr(su_ienc(iencbuf, e, 10, su_IENC_MODE_SIGNED_TYPE));
             break;
          }
          goto jleave;
@@ -1815,9 +1817,9 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
       }
       }break;
    case a_AMV_VST_NOSIGN:{
-      char iencbuf[n_IENC_BUFFER_SIZE];
+      char iencbuf[su_IENC_BUFFER_SIZE];
 
-      rv = savestr(n_ienc_buf(iencbuf, argc, 10, n_IENC_MODE_NONE));
+      rv = savestr(su_ienc(iencbuf, argc, 10, su_IENC_MODE_NONE));
       }break;
    default:
       rv = n_empty;
@@ -2716,9 +2718,9 @@ c_shift(void *vp){ /* xxx move to bottom, not in macro part! */
    else{
       si16_t sib;
 
-      if((n_idec_si16_cp(&sib, vp, 10, NULL
-               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED || sib < 0){
+      if((su_idec_s16_cp(&sib, vp, 10, NULL
+               ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+            ) != su_IDEC_STATE_CONSUMED || sib < 0){
          n_err(_("`shift': invalid argument: %s\n"), vp);
          goto jleave;
       }
@@ -2771,9 +2773,9 @@ c_return(void *vp){ /* TODO the exit status should be m_si64! */
       if((argv = vp)[0] != NULL){
          si32_t i;
 
-         if((n_idec_si32_cp(&i, argv[0], 10, NULL
-                  ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-               ) == n_IDEC_STATE_CONSUMED && i >= 0)
+         if((su_idec_s32_cp(&i, argv[0], 10, NULL
+                  ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+               ) == su_IDEC_STATE_CONSUMED && i >= 0)
             rv = (int)i;
          else{
             n_err(_("`return': return value argument is invalid: %s\n"),
@@ -2783,9 +2785,9 @@ c_return(void *vp){ /* TODO the exit status should be m_si64! */
          }
 
          if(argv[1] != NULL){
-            if((n_idec_si32_cp(&i, argv[1], 10, NULL
-                     ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-                  ) == n_IDEC_STATE_CONSUMED && i >= 0)
+            if((su_idec_s32_cp(&i, argv[1], 10, NULL
+                     ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+                  ) == su_IDEC_STATE_CONSUMED && i >= 0)
                n_pstate_err_no = i;
             else{
                n_err(_("`return': error number argument is invalid: %s\n"),
@@ -3425,10 +3427,10 @@ c_environ(void *v){
 
 FL int
 c_vexpr(void *v){ /* TODO POSIX expr(1) comp. exit status; overly complicat. */
-   char pbase, op, iencbuf[2+1/* BASE# prefix*/ + n_IENC_BUFFER_SIZE + 1];
+   char pbase, op, iencbuf[2+1/* BASE# prefix*/ + su_IENC_BUFFER_SIZE + 1];
    size_t i;
-   enum n_idec_state ids;
-   enum n_idec_mode idm;
+   enum su_idec_state ids;
+   enum su_idec_mode idm;
    si64_t lhv, rhv;
    char const **argv, *varname, *varres, *cp;
    enum{
@@ -3467,15 +3469,15 @@ jnumop:
             lhv = 0;
          else{
             idm = ((*cp == 'u' || *cp == 'U')
-                  ? (++cp, n_IDEC_MODE_NONE)
+                  ? (++cp, su_IDEC_MODE_NONE)
                   : ((*cp == 's' || *cp == 'S')
-                     ? (++cp, n_IDEC_MODE_SIGNED_TYPE)
-                     : n_IDEC_MODE_SIGNED_TYPE |
-                        n_IDEC_MODE_POW2BASE_UNSIGNED));
-            if(((ids = n_idec_cp(&lhv, cp, 0, idm, NULL)
-                     ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-                  ) != n_IDEC_STATE_CONSUMED){
-               if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
+                     ? (++cp, su_IDEC_MODE_SIGNED_TYPE)
+                     : su_IDEC_MODE_SIGNED_TYPE |
+                        su_IDEC_MODE_POW2BASE_UNSIGNED));
+            if(((ids = su_idec_cp(&lhv, cp, 0, idm, NULL)
+                     ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+                  ) != su_IDEC_STATE_CONSUMED){
+               if(!(ids & su_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
                   goto jenum_range;
                f |= a_SOFTOVERFLOW;
                break;
@@ -3504,15 +3506,15 @@ jnumop:
                lhv = 0;
             else{
                idm = ((*cp == 'u' || *cp == 'U')
-                     ? (++cp, n_IDEC_MODE_NONE)
+                     ? (++cp, su_IDEC_MODE_NONE)
                      : ((*cp == 's' || *cp == 'S')
-                        ? (++cp, n_IDEC_MODE_SIGNED_TYPE)
-                        : n_IDEC_MODE_SIGNED_TYPE |
-                           n_IDEC_MODE_POW2BASE_UNSIGNED));
-               if(((ids = n_idec_cp(&lhv, cp, 0, idm, NULL)
-                        ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-                     ) != n_IDEC_STATE_CONSUMED){
-                  if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
+                        ? (++cp, su_IDEC_MODE_SIGNED_TYPE)
+                        : su_IDEC_MODE_SIGNED_TYPE |
+                           su_IDEC_MODE_POW2BASE_UNSIGNED));
+               if(((ids = su_idec_cp(&lhv, cp, 0, idm, NULL)
+                        ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+                     ) != su_IDEC_STATE_CONSUMED){
+                  if(!(ids & su_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
                      goto jenum_range;
                   f |= a_SOFTOVERFLOW;
                   break;
@@ -3523,15 +3525,15 @@ jnumop:
                rhv = 0;
             else{
                idm = ((*cp == 'u' || *cp == 'U')
-                     ? (++cp, n_IDEC_MODE_NONE)
+                     ? (++cp, su_IDEC_MODE_NONE)
                      : ((*cp == 's' || *cp == 'S')
-                        ? (++cp, n_IDEC_MODE_SIGNED_TYPE)
-                        : n_IDEC_MODE_SIGNED_TYPE |
-                           n_IDEC_MODE_POW2BASE_UNSIGNED));
-               if(((ids = n_idec_cp(&rhv, cp, 0, idm, NULL)
-                        ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-                     ) != n_IDEC_STATE_CONSUMED){
-                  if(!(ids & n_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
+                        ? (++cp, su_IDEC_MODE_SIGNED_TYPE)
+                        : su_IDEC_MODE_SIGNED_TYPE |
+                           su_IDEC_MODE_POW2BASE_UNSIGNED));
+               if(((ids = su_idec_cp(&rhv, cp, 0, idm, NULL)
+                        ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+                     ) != su_IDEC_STATE_CONSUMED){
+                  if(!(ids & su_IDEC_STATE_EOVERFLOW) || !(f & a_SATURATED))
                      goto jenum_range;
                   f |= a_SOFTOVERFLOW;
                   lhv = rhv;
@@ -3729,9 +3731,9 @@ jenum_plusminus:
       if(argv[1] == NULL || argv[2] == NULL || argv[3] != NULL)
          goto jesynopsis;
 
-      if(((ids = n_idec_si8_cp(&pbase, argv[1], 0, NULL)
-               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED || pbase < 2 || pbase > 36)
+      if(((ids = su_idec_s8_cp(&pbase, argv[1], 0, NULL)
+               ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+            ) != su_IDEC_STATE_CONSUMED || pbase < 2 || pbase > 36)
          goto jenum_range;
 
       f |= a_PBASE;
@@ -3787,9 +3789,9 @@ jenum_plusminus:
 
       if(*(cp = *++argv) == '\0')
          lhv = 0;
-      else if((n_idec_si64_cp(&lhv, cp, 0, NULL
-               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED)
+      else if((su_idec_s64_cp(&lhv, cp, 0, NULL
+               ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+            ) != su_IDEC_STATE_CONSUMED)
          goto jestr_numrange;
       if(lhv < 0){
          if(UICMP(64, i, <, -lhv))
@@ -3810,9 +3812,9 @@ jesubstring_off:
       if(argv[1] != NULL){
          if(*(cp = *++argv) == '\0')
             lhv = 0;
-         else if((n_idec_si64_cp(&lhv, cp, 0, NULL
-                  ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-               ) != n_IDEC_STATE_CONSUMED)
+         else if((su_idec_s64_cp(&lhv, cp, 0, NULL
+                  ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+               ) != su_IDEC_STATE_CONSUMED)
             goto jestr_numrange;
          if(lhv < 0){
             if(UICMP(64, i, <, -lhv))
@@ -3855,9 +3857,9 @@ jesubstring_len:
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
 
-      if((n_idec_si64_cp(&lhv, argv[1], 0, NULL
-               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED || lhv < 0 || lhv > PATH_MAX)
+      if((su_idec_s64_cp(&lhv, argv[1], 0, NULL
+               ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+            ) != su_IDEC_STATE_CONSUMED || lhv < 0 || lhv > PATH_MAX)
          goto jestr_numrange;
       if(lhv == 0)
          lhv = NAME_MAX;
@@ -3984,8 +3986,8 @@ jesubstring_len:
     * Anticipate in our handling below!  (Don't do needless work) */
 jleave:
    if((f & a_ISNUM) && ((f & (a_ISDECIMAL | a_PBASE)) || varname != NULL)){
-      cp = n_ienc_buf(iencbuf, lhv, (f & a_PBASE ? pbase : 10),
-            n_IENC_MODE_SIGNED_TYPE);
+      cp = su_ienc(iencbuf, lhv, (f & a_PBASE ? pbase : 10),
+            su_IENC_MODE_SIGNED_TYPE);
       if(cp != NULL)
          varres = cp;
       else{

@@ -28,6 +28,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/icodec.h>
+
 EMPTY_FILE()
 #ifdef mx_HAVE_COLOUR
 
@@ -703,9 +705,9 @@ jiter_colour:
                goto jleave;
             }
 
-            if((n_idec_ui8_cp(&xv, x, 10, NULL
-                     ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-                  ) != n_IDEC_STATE_CONSUMED){
+            if((su_idec_u8_cp(&xv, x, 10, NULL
+                     ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+                  ) != su_IDEC_STATE_CONSUMED){
                *store = n_UNCONST(_("invalid 256-colour specification"));
                goto jleave;
             }

@@ -47,10 +47,12 @@
 #endif
 
 #ifdef mx_HAVE_MAILDIR
+# include <su/icodec.h>
+
 # include <dirent.h>
 #endif
 
-EMPTY_FILE()
+su_EMPTY_FILE()
 #ifdef mx_HAVE_MAILDIR
 
 /* a_maildir_tbl should be a hash-indexed array of trees! */
@@ -209,12 +211,12 @@ a_maildir_cmp(void const *xa, void const *xb){
    b.cp = &b.mp->m_maildir_file[4];
 
    /* Interpret time stored in name, and use it for comparison */
-   if(((n_idec_si64_cp(&at, a.cp, 10, &cpa)
-            ) & n_IDEC_STATE_EMASK) != n_IDEC_STATE_EBASE || *cpa != '.' ||
+   if(((su_idec_s64_cp(&at, a.cp, 10, &cpa)
+            ) & su_IDEC_STATE_EMASK) != su_IDEC_STATE_EBASE || *cpa != '.' ||
          a.cp == cpa)
       goto jm1; /* Fishy */
-   if(((n_idec_si64_cp(&bt, b.cp, 10, &cpb)
-            ) & n_IDEC_STATE_EMASK) != n_IDEC_STATE_EBASE || *cpb != '.' ||
+   if(((su_idec_s64_cp(&bt, b.cp, 10, &cpb)
+            ) & su_IDEC_STATE_EMASK) != su_IDEC_STATE_EBASE || *cpb != '.' ||
          b.cp == cpb)
       goto j1; /* Fishy */
 
@@ -250,8 +252,8 @@ a_maildir_cmp(void const *xa, void const *xb){
          goto jm1; /* Fishy */
    }
    ++a.cp;
-   if(((n_idec_si64_cp(&at, a.cp, 10, &cpa)
-            ) & n_IDEC_STATE_EMASK) != n_IDEC_STATE_EBASE)
+   if(((su_idec_s64_cp(&at, a.cp, 10, &cpa)
+            ) & su_IDEC_STATE_EMASK) != su_IDEC_STATE_EBASE)
       goto jm1; /* Fishy */
 
    /* B: as above */
@@ -272,8 +274,8 @@ a_maildir_cmp(void const *xa, void const *xb){
          goto jm1;
    }
    ++b.cp;
-   if(((n_idec_si64_cp(&bt, b.cp, 10, &cpb)
-            ) & n_IDEC_STATE_EMASK) != n_IDEC_STATE_EBASE)
+   if(((su_idec_s64_cp(&bt, b.cp, 10, &cpb)
+            ) & su_IDEC_STATE_EMASK) != su_IDEC_STATE_EBASE)
       goto j1;
 
    if((at -= bt) != 0)
@@ -288,8 +290,8 @@ a_maildir_cmp(void const *xa, void const *xb){
       if(*a.cp++ != 'P')
          goto jm1; /* Fishy */
    }
-   if(((n_idec_si64_cp(&at, a.cp, 10, &cpa)
-            ) & n_IDEC_STATE_EMASK) != n_IDEC_STATE_EBASE)
+   if(((su_idec_s64_cp(&at, a.cp, 10, &cpa)
+            ) & su_IDEC_STATE_EMASK) != su_IDEC_STATE_EBASE)
       goto jm1; /* Fishy */
 
    if(cpb_pid != NULL){
@@ -300,8 +302,8 @@ a_maildir_cmp(void const *xa, void const *xb){
       if(*b.cp++ != 'P')
          goto j1; /* Fishy */
    }
-   if(((n_idec_si64_cp(&bt, b.cp, 10, &cpb)
-            ) & n_IDEC_STATE_EMASK) != n_IDEC_STATE_EBASE)
+   if(((su_idec_s64_cp(&bt, b.cp, 10, &cpb)
+            ) & su_IDEC_STATE_EMASK) != su_IDEC_STATE_EBASE)
       goto jm1; /* Fishy */
 
    if((at -= bt) != 0)
@@ -388,7 +390,7 @@ _maildir_append(char const *name, char const *sub, char const *fn)
       /* C99 */{
          si64_t tib;
 
-         (void)/*TODO*/n_idec_si64_cp(&tib, fn, 10, &xp);
+         (void)/*TODO*/su_idec_s64_cp(&tib, fn, 10, &xp);
          t = (time_t)tib;
       }
 

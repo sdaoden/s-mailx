@@ -41,6 +41,8 @@
 EMPTY_FILE()
 #ifdef mx_HAVE_SOCKETS
 # ifdef mx_HAVE_NONBLOCKSOCK
+#  include <su/icodec.h>
+
 /*#  include <sys/types.h>*/
 #  include <sys/select.h>
 /*#  include <sys/time.h>*/
@@ -394,7 +396,7 @@ a_socket_connect(int fd, struct sockaddr *soap, size_t soapl){
          char const *cp;
 
          if((cp = ok_vlook(socket_connect_timeout)) == NULL ||
-               (n_idec_uiz_cp(&cnt, cp, 0, NULL), cnt < 2))
+               (su_idec_uz_cp(&cnt, cp, 0, NULL), cnt < 2))
             cnt = 42; /* XXX mx-config.h */
 
          if(show_progress){

@@ -31,8 +31,11 @@
 # include "mx/nail.h"
 #endif
 
-EMPTY_FILE()
+su_EMPTY_FILE()
 #ifdef n_HAVE_TCAP
+
+#include <su/icodec.h>
+
 /* If available, curses.h must be included before term.h! */
 #ifdef mx_HAVE_TERMCAP
 # ifdef mx_HAVE_TERMCAP_CURSES
@@ -260,9 +263,9 @@ jeinvent:
       else if(*v == '\0')
          tep->te_flags |= a_TERMCAP_F_DISABLED;
       else if((f & a_TERMCAP_F_TYPE_MASK) == n_TERMCAP_CAPTYPE_NUMERIC){
-         if((n_idec_ui16_cp(&tep->te_off, v, 0, NULL
-                  ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-               ) != n_IDEC_STATE_CONSUMED)
+         if((su_idec_u16_cp(&tep->te_off, v, 0, NULL
+                  ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+               ) != su_IDEC_STATE_CONSUMED)
             goto jeinvent;
       }else if(!a_termcap__strexp(&a_termcap_g->tg_dat, v))
          tep->te_flags |= a_TERMCAP_F_DISABLED;
@@ -275,8 +278,9 @@ jlearned:
              : (f & a_TERMCAP_F_TYPE_MASK) == n_TERMCAP_CAPTYPE_BOOL ? "true"
                : v));
    }
-   DBG( if(n_poption & n_PO_D_VV) n_err("*termcap* parsed: buffer used=%lu\n",
-      (ul_i)a_termcap_g->tg_dat.s_len) );
+   su_DBG( if(n_poption & n_PO_D_VV)
+      n_err("*termcap* parsed: buffer used=%lu\n",
+         (ul_i)a_termcap_g->tg_dat.s_len) );
 
    /* Catch some inter-dependencies the user may have triggered */
 #ifdef mx_HAVE_TERMCAP

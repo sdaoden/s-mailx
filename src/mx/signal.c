@@ -41,6 +41,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/icodec.h>
+
 /*
  * TODO At the beginning of November 2015 -- for v14.9 -- i've tried for one
  * TODO and a half week to convert this codebase to SysV style signal handling,
@@ -112,17 +114,17 @@ c_sleep(void *v){ /* XXX installs sighdl+ due to outer jumps and SA_RESTART! */
 
    argv = v;
 
-   if((n_idec_uiz_cp(&sec, argv[0], 0, NULL) &
-         (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-         ) != n_IDEC_STATE_CONSUMED)
+   if((su_idec_uz_cp(&sec, argv[0], 0, NULL) &
+         (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+         ) != su_IDEC_STATE_CONSUMED)
       goto jesyn;
 
    if(argv[1] == NULL){
       msec = 0;
       ignint = FAL0;
-   }else if((n_idec_uiz_cp(&msec, argv[1], 0, NULL) &
-         (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-         ) != n_IDEC_STATE_CONSUMED)
+   }else if((su_idec_uz_cp(&msec, argv[1], 0, NULL) &
+         (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+         ) != su_IDEC_STATE_CONSUMED)
       goto jesyn;
    else
       ignint = (argv[2] != NULL);

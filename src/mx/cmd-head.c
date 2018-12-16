@@ -41,6 +41,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/icodec.h>
+
 static int        _screen;
 
 /* Print out the header of a specific message.
@@ -730,9 +732,9 @@ a_chead_scroll(char const *arg, bool_t onlynew){
    case '6': case '7': case '8': case '9': case '0':
             isabs = TRU1;
          }
-         if((n_idec_siz_cp(&l, arg, 0, NULL
-                  ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-               ) != n_IDEC_STATE_CONSUMED)
+         if((su_idec_sz_cp(&l, arg, 0, NULL
+                  ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+               ) != su_IDEC_STATE_CONSUMED)
             goto jerr;
          if(l > maxs - (isabs ? 0 : _screen))
             goto jerrfwd;
@@ -750,9 +752,9 @@ jerrfwd:
       if(arg[1] == '\0')
          --_screen;
       else{
-         if((n_idec_siz_cp(&l, ++arg, 0, NULL
-                  ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-               ) != n_IDEC_STATE_CONSUMED)
+         if((su_idec_sz_cp(&l, ++arg, 0, NULL
+                  ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+               ) != su_IDEC_STATE_CONSUMED)
             goto jerr;
          if(l > _screen)
             goto jerrbwd;
@@ -1044,7 +1046,7 @@ c_from(void *vp)
          if(*cp == '\0')
             ib = n_screensize();
          else
-            n_idec_uiz_cp(&ib, cp, 0, NULL);
+            su_idec_uz_cp(&ib, cp, 0, NULL);
          if (UICMP(z, n, >, ib) && (obuf = n_pager_open()) == NULL)
             obuf = n_stdout;
       }

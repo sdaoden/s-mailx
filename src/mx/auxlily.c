@@ -41,6 +41,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/icodec.h>
+
 #include <sys/utsname.h>
 
 #ifdef mx_HAVE_SOCKETS
@@ -92,61 +94,6 @@ struct a_aux_err_node{
    struct n_string ae_str;
 };
 #endif
-
-/* IDEC: byte to integer value lookup table */
-static ui8_t const a_aux_idec_atoi[256] = {
-   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x00,0x01,
-   0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0xFF,0xFF,
-   0xFF,0xFF,0xFF,0xFF,0xFF,0x0A,0x0B,0x0C,0x0D,0x0E,
-   0x0F,0x10,0x11,0x12,0x13,0x14,0x15,0x16,0x17,0x18,
-   0x19,0x1A,0x1B,0x1C,0x1D,0x1E,0x1F,0x20,0x21,0x22,
-   0x23,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x0A,0x0B,0x0C,
-   0x0D,0x0E,0x0F,0x10,0x11,0x12,0x13,0x14,0x15,0x16,
-   0x17,0x18,0x19,0x1A,0x1B,0x1C,0x1D,0x1E,0x1F,0x20,
-   0x21,0x22,0x23,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,
-   0xFF,0xFF,0xFF,0xFF,0xFF,0xFF
-};
-
-/* IDEC: avoid divisions for cutlimit calculation (indexed by base-2) */
-#define a_X(X) (UI64_MAX / (X))
-static ui64_t const a_aux_idec_cutlimit[35] = {
-   a_X( 2), a_X( 3), a_X( 4), a_X( 5), a_X( 6), a_X( 7), a_X( 8),
-   a_X( 9), a_X(10), a_X(11), a_X(12), a_X(13), a_X(14), a_X(15),
-   a_X(16), a_X(17), a_X(18), a_X(19), a_X(20), a_X(21), a_X(22),
-   a_X(23), a_X(24), a_X(25), a_X(26), a_X(27), a_X(28), a_X(29),
-   a_X(30), a_X(31), a_X(32), a_X(33), a_X(34), a_X(35), a_X(36)
-};
-#undef a_X
-
-/* IENC: is power-of-two table, and if, shift (indexed by base-2) */
-static ui8_t const a_aux_ienc_shifts[35] = {
-         1, 0, 2, 0, 0, 0, 3, 0,   /*  2 ..  9 */
-   0, 0, 0, 0, 0, 0, 4, 0, 0, 0,   /* 10 .. 19 */
-   0, 0, 0, 0, 0, 0, 0, 0, 0, 0,   /* 20 .. 29 */
-   0, 0, 5, 0, 0, 0, 0             /* 30 .. 36 */
-};
-
-/* IENC: integer to byte lookup tables */
-static char const a_aux_ienc_itoa_upper[36] =
-      "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-static char const a_aux_ienc_itoa_lower[36] =
-      "0123456789abcdefghijklmnopqrstuvwxyz";
 
 #if mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
 static union rand_state *a_aux_rand;
@@ -347,7 +294,7 @@ n_screensize(void){
    n_NYD2_IN;
 
    if((cp = ok_vlook(screen)) != NULL){
-      n_idec_uiz_cp(&rv, cp, 0, NULL);
+      su_idec_uz_cp(&rv, cp, 0, NULL);
       if(rv == 0)
          rv = n_scrnheight;
    }else
@@ -397,7 +344,7 @@ page_or_print(FILE *fp, size_t lines)
       if(*cp == '\0')
          rows = (size_t)n_scrnheight;
       else
-         n_idec_uiz_cp(&rows, cp, 0, NULL);
+         su_idec_uz_cp(&rows, cp, 0, NULL);
 
       if (rows > 0 && lines == 0) {
          while ((c = getc(fp)) != EOF)
@@ -574,342 +521,68 @@ jerr:
    goto jleave;
 }
 
-FL enum n_idec_state
-n_idec_buf(void *resp, char const *cbuf, uiz_t clen, ui8_t base,
-      enum n_idec_mode idm, char const **endptr_or_null){
-   ui8_t currc;
-   ui64_t res, cut;
-   enum n_idec_state rv;
+#if 0
+FL enum n_icalc_state
+n_icalc_buf(si64_t *resp, char const *cbuf, uiz_t clen, enum n_icalc_mode icm,
+      char const **endptr_or_null){
+   si64_t res;
+   struct a_group{
+      struct a_group *outer;
+      char unary;
+      ui8_t pad[7];
+   } *tail;
+   void *lofi_snap;
+   enum su_idec_state rv;
    n_NYD_IN;
 
-   idm &= n__IDEC_MODE_MASK;
-   rv = n_IDEC_STATE_NONE | idm;
+   if(clen == UIZ_MAX)
+      clen = strlen(cbuf);
+
+   icm &= n__ICALC_MODE_MASK;
+   rv = n_ICALC_STATE_NONE | icm;
+   lofi_snap = NULL;
+   tail = NULL;
    res = 0;
 
-   if(clen == UIZ_MAX){
-      if(*cbuf == '\0')
-         goto jeinval;
-   }else if(clen == 0)
-      goto jeinval;
+   while(clen > 0){
+      char c, unary;
 
-   assert(base != 1 && base <= 36);
-   /*if(base == 1 || base > 36)
-    *   goto jeinval;*/
-
-   /* Leading WS */
-   while(spacechar(*cbuf))
-      if(*++cbuf == '\0' || --clen == 0)
-         goto jeinval;
-
-   /* Check sign */
-   switch(*cbuf){
-   case '-':
-      rv |= n_IDEC_STATE_SEEN_MINUS;
-      /* FALLTHROUGH */
-   case '+':
-      if(*++cbuf == '\0' || --clen == 0)
-         goto jeinval;
-      break;
-   }
-
-   /* Base detection/skip */
-   if(*cbuf != '0'){
-      if(base == 0){
-         base = 10;
-
-         /* Support BASE#number prefix, where BASE is decimal 2-36 */
-         if(clen > 2){
-            char c1, c2, c3;
-
-            if(((c1 = cbuf[0]) >= '0' && c1 <= '9') &&
-                  (((c2 = cbuf[1]) == '#') ||
-                   (c2 >= '0' && c2 <= '9' && clen > 3 && cbuf[2] == '#'))){
-               base = a_aux_idec_atoi[(ui8_t)c1];
-               if(c2 == '#')
-                  c3 = cbuf[2];
-               else{
-                  c3 = cbuf[3];
-                  base *= 10; /* xxx Inline atoi decimal base */
-                  base += a_aux_idec_atoi[(ui8_t)c2];
-               }
-
-               /* We do not interpret this as BASE#number at all if either we
-                * did not get a valid base or if the first char is not valid
-                * according to base, to comply to the latest interpretion of
-                * "prefix", see comment for standard prefixes below */
-               if(base < 2 || base > 36 || a_aux_idec_atoi[(ui8_t)c3] >= base)
-                  base = 10;
-               else if(c2 == '#')
-                  clen -= 2, cbuf += 2;
-               else
-                  clen -= 3, cbuf += 3;
-            }
-         }
+      if((c = *cbuf) == '-' || c == '+' || c == '~'){
+         unary = c;
       }
 
-      /* Character must be valid for base */
-      currc = a_aux_idec_atoi[(ui8_t)*cbuf];
-      if(currc >= base)
-         goto jeinval;
-   }else{
-      /* 0 always valid as is, fallback base 10 */
-      if(*++cbuf == '\0' || --clen == 0)
-         goto jleave;
+      if(*cbuf == '('){
+         if(lofi_snap == NULL)
+            lofi_snap = n_lofi_snap_create();
 
-      /* Base "detection" */
-      if(base == 0 || base == 2 || base == 16){
-         switch(*cbuf){
-         case 'x':
-         case 'X':
-            if((base & 2) == 0){
-               base = 0x10;
-               goto jprefix_skip;
-            }
-            break;
-         case 'b':
-         case 'B':
-            if((base & 16) == 0){
-               base = 2; /* 0b10 */
-               /* Char after prefix must be valid.  However, after some error
-                * in the tor software all libraries (which had to) turned to
-                * an interpretation of the C standard which says that the
-                * prefix may optionally precede an otherwise valid sequence,
-                * which means that "0x" is not a STATE_INVAL error but gives
-                * a "0" result with a "STATE_BASE" error and a rest of "x" */
-jprefix_skip:
-#if 1
-               if(clen > 1 && a_aux_idec_atoi[(ui8_t)cbuf[1]] < base)
-                  --clen, ++cbuf;
-#else
-               if(*++cbuf == '\0' || --clen == 0)
-                  goto jeinval;
 
-               /* Character must be valid for base, invalid otherwise */
-               currc = a_aux_idec_atoi[(ui8_t)*cbuf];
-               if(currc >= base)
-                  goto jeinval;
-#endif
-            }
-            break;
-         default:
-            if(base == 0)
-               base = 010;
-            break;
-         }
       }
 
-      /* Character must be valid for base, _EBASE otherwise */
-      currc = a_aux_idec_atoi[(ui8_t)*cbuf];
-      if(currc >= base)
-         goto jebase;
    }
 
-   for(cut = a_aux_idec_cutlimit[base - 2];;){
-      if(res >= cut){
-         if(res == cut){
-            res *= base;
-            if(res > UI64_MAX - currc)
-               goto jeover;
-            res += currc;
-         }else
-            goto jeover;
-      }else{
-         res *= base;
-         res += currc;
-      }
-
-      if(*++cbuf == '\0' || --clen == 0)
-         break;
-
-      currc = a_aux_idec_atoi[(ui8_t)*cbuf];
-      if(currc >= base)
-         goto jebase;
-   }
 
 jleave:
-   do{
-      ui64_t uimask;
-
-      switch(rv & n__IDEC_MODE_LIMIT_MASK){
-      case n_IDEC_MODE_LIMIT_8BIT: uimask = UI8_MAX; break;
-      case n_IDEC_MODE_LIMIT_16BIT: uimask = UI16_MAX; break;
-      case n_IDEC_MODE_LIMIT_32BIT: uimask = UI32_MAX; break;
-      default: uimask = UI64_MAX; break;
-      }
-      if((rv & n_IDEC_MODE_SIGNED_TYPE) &&
-            (!(rv & n_IDEC_MODE_POW2BASE_UNSIGNED) || !n_ISPOW2(base)))
-         uimask >>= 1;
-
-      if(res & ~uimask){
-         /* XXX never entered unless _SIGNED_TYPE! */
-         if((rv & (n_IDEC_MODE_SIGNED_TYPE | n_IDEC_STATE_SEEN_MINUS)
-               ) == (n_IDEC_MODE_SIGNED_TYPE | n_IDEC_STATE_SEEN_MINUS)){
-            if(res > uimask + 1){
-               res = uimask << 1;
-               res &= ~uimask;
-            }else{
-               res = -res;
-               break;
-            }
-         }else
-            res = uimask;
-         if(!(rv & n_IDEC_MODE_LIMIT_NOERROR))
-            rv |= n_IDEC_STATE_EOVERFLOW;
-      }else if(rv & n_IDEC_STATE_SEEN_MINUS)
-         res = -res;
-   }while(0);
-
-   switch(rv & n__IDEC_MODE_LIMIT_MASK){
-   case n_IDEC_MODE_LIMIT_8BIT:
-      if(rv & n_IDEC_MODE_SIGNED_TYPE)
-         *(si8_t*)resp = (si8_t)res;
-      else
-         *(ui8_t*)resp = (ui8_t)res;
-      break;
-   case n_IDEC_MODE_LIMIT_16BIT:
-      if(rv & n_IDEC_MODE_SIGNED_TYPE)
-         *(si16_t*)resp = (si16_t)res;
-      else
-         *(ui16_t*)resp = (ui16_t)res;
-      break;
-   case n_IDEC_MODE_LIMIT_32BIT:
-      if(rv & n_IDEC_MODE_SIGNED_TYPE)
-         *(si32_t*)resp = (si32_t)res;
-      else
-         *(ui32_t*)resp = (ui32_t)res;
-      break;
-   default:
-      if(rv & n_IDEC_MODE_SIGNED_TYPE)
-         *(si64_t*)resp = (si64_t)res;
-      else
-         *(ui64_t*)resp = (ui64_t)res;
-      break;
-   }
-
+   if(lofi_snap != NULL)
+      n_lofi_snap_unroll(lofi_snap);
+   *resp = res;
    if(endptr_or_null != NULL)
       *endptr_or_null = cbuf;
-   if(*cbuf == '\0' || clen == 0)
-      rv |= n_IDEC_STATE_CONSUMED;
+   if(clen == 0)
+      rv |= n_ICALC_STATE_CONSUMED;
    n_NYD_OU;
    return rv;
 
 jeinval:
-   rv |= n_IDEC_STATE_EINVAL;
+   rv |= su_IDEC_STATE_EINVAL;
    goto j_maxval;
-jebase:
-   /* Not a base error for terminator and whitespace! */
-   if(*cbuf != '\0' && !spacechar(*cbuf))
-      rv |= n_IDEC_STATE_EBASE;
-   goto jleave;
-
 jeover:
-   /* Overflow error: consume input until bad character or length out */
-   for(;;){
-      if(*++cbuf == '\0' || --clen == 0)
-         break;
-      currc = a_aux_idec_atoi[(ui8_t)*cbuf];
-      if(currc >= base)
-         break;
-   }
-
-   rv |= n_IDEC_STATE_EOVERFLOW;
+   rv |= su_IDEC_STATE_EOVERFLOW;
 j_maxval:
-   if(rv & n_IDEC_MODE_SIGNED_TYPE)
-      res = (rv & n_IDEC_STATE_SEEN_MINUS) ? (ui64_t)SI64_MIN
-            : (ui64_t)SI64_MAX;
-   else
-      res = UI64_MAX;
-   rv &= ~n_IDEC_STATE_SEEN_MINUS;
+   res = (rv & su_IDEC_STATE_SEEN_MINUS) ? SI64_MIN : SI64_MAX;
+   rv &= ~su_IDEC_STATE_SEEN_MINUS;
    goto jleave;
 }
-
-FL char *
-n_ienc_buf(char cbuf[n_IENC_BUFFER_SIZE], ui64_t value, ui8_t base,
-      enum n_ienc_mode iem){
-   enum{a_ISNEG = 1u<<n__IENC_MODE_SHIFT};
-
-   ui8_t shiftmodu;
-   char const *itoa;
-   char *rv;
-   n_NYD_IN;
-
-   iem &= n__IENC_MODE_MASK;
-
-   assert(base != 1 && base <= 36);
-   /*if(base == 1 || base > 36){
-    *   rv = NULL;
-    *   goto jleave;
-    *}*/
-
-   *(rv = &cbuf[n_IENC_BUFFER_SIZE -1]) = '\0';
-   itoa = (iem & n_IENC_MODE_LOWERCASE) ? a_aux_ienc_itoa_lower
-         : a_aux_ienc_itoa_upper;
-
-   if((si64_t)value < 0){
-      iem |= a_ISNEG;
-      if(iem & n_IENC_MODE_SIGNED_TYPE){
-         /* self->is_negative = TRU1; */
-         value = -value;
-      }
-   }
-
-   if((shiftmodu = a_aux_ienc_shifts[base - 2]) != 0){
-      --base; /* convert to mask */
-      do{
-         *--rv = itoa[value & base];
-         value >>= shiftmodu;
-      }while(value != 0);
-
-      if(!(iem & n_IENC_MODE_NO_PREFIX)){
-         /* self->before_prefix = cp; */
-         if(shiftmodu == 4)
-            *--rv = 'x';
-         else if(shiftmodu == 1)
-            *--rv = 'b';
-         else if(shiftmodu != 3){
-            ++base; /* Reconvert from mask */
-            goto jnumber_sign_prefix;
-         }
-         *--rv = '0';
-      }
-   }else{
-      do{
-         shiftmodu = value % base;
-         value /= base;
-         *--rv = itoa[shiftmodu];
-      }while(value != 0);
-
-      if(!(iem & n_IENC_MODE_NO_PREFIX) && base != 10){
-jnumber_sign_prefix:
-         value = base;
-         base = 10;
-         *--rv = '#';
-         do{
-            shiftmodu = value % base;
-            value /= base;
-            *--rv = itoa[shiftmodu];
-         }while(value != 0);
-      }
-
-      if(iem & n_IENC_MODE_SIGNED_TYPE){
-         char c;
-
-         if(iem & a_ISNEG)
-            c = '-';
-         else if(iem & n_IENC_MODE_SIGNED_PLUS)
-            c = '+';
-         else if(iem & n_IENC_MODE_SIGNED_SPACE)
-            c = ' ';
-         else
-            c = '\0';
-
-         if(c != '\0')
-            *--rv = c;
-      }
-   }
-   n_NYD_OU;
-   return rv;
-}
+#endif
 
 FL ui32_t
 n_torek_hash(char const *name){
@@ -1327,9 +1000,8 @@ n_boolify(char const *inbuf, uiz_t inlen, bool_t emptyrv){
       else{
          ui64_t ib;
 
-         if((n_idec_buf(&ib, inbuf, inlen, 0, 0, NULL
-                  ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-               ) != n_IDEC_STATE_CONSUMED)
+         if((su_idec(&ib, inbuf, inlen, 0, 0, NULL) & (su_IDEC_STATE_EMASK |
+               su_IDEC_STATE_CONSUMED)) != su_IDEC_STATE_CONSUMED)
             rv = TRUM1;
          else
             rv = (ib != 0);
@@ -1376,7 +1048,8 @@ n_time_now(bool_t force_update){ /* TODO event loop update IF cmd requests! */
 
    if(n_UNLIKELY(su_state_has(su_STATE_REPRODUCIBLE))){
       /* Guaranteed 32-bit posnum TODO SOURCE_DATE_EPOCH should be 64-bit! */
-      (void)n_idec_si64_cp(&ts_now.ts_sec, ok_vlook(SOURCE_DATE_EPOCH), 0,NULL);
+      (void)su_idec_s64_cp(&ts_now.ts_sec, ok_vlook(SOURCE_DATE_EPOCH),
+         0,NULL);
       ts_now.ts_nsec = 0;
    }else if(force_update || ts_now.ts_sec == 0){
 #ifdef mx_HAVE_CLOCK_GETTIME

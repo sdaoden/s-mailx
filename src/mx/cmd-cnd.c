@@ -24,6 +24,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/icodec.h>
+
 #define a_CCND_IF_ISSKIP() \
    (n_go_data->gdc_ifcond != NULL &&\
       (((struct a_ccnd_if_node*)n_go_data->gdc_ifcond)->cin_noop ||\
@@ -276,11 +278,11 @@ jesyn:
             lhv = n_0;
          if(*rhv == '\0')
             rhv = n_0;
-         if((n_idec_si64_cp(&lhvi, lhv, 0, NULL
-                  ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-               ) != n_IDEC_STATE_CONSUMED || (n_idec_si64_cp(&rhvi, rhv, 0, NULL
-                  ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-               ) != n_IDEC_STATE_CONSUMED){
+         if((su_idec_s64_cp(&lhvi, lhv, 0, NULL
+                  ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+               ) != su_IDEC_STATE_CONSUMED || (su_idec_s64_cp(&rhvi, rhv,
+                  0, NULL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+               ) != su_IDEC_STATE_CONSUMED){
             emsg = N_("integer expression expected");
             goto jesyn;
          }

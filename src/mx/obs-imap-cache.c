@@ -45,8 +45,10 @@
 # include "mx/nail.h"
 #endif
 
-EMPTY_FILE()
+su_EMPTY_FILE()
 #ifdef mx_HAVE_IMAP
+# include <su/icodec.h>
+
 # include <dirent.h>
 
 static char *           encname(struct mailbox *mp, const char *name, int same,
@@ -500,7 +502,7 @@ builds(long *contentelem)
             (dp->d_name[1] == '.' && dp->d_name[2] == '\0')))
          continue;
 
-      n_idec_ui64_cp(&n, dp->d_name, 10, &x);/* TODO errors? */
+      su_idec_u64_cp(&n, dp->d_name, 10, &x);/* TODO errors? */
       if (*x != '\0')
          continue;
       if (*contentelem >= contentalloc - 1)

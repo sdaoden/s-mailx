@@ -27,6 +27,10 @@
 # include "mx/nail.h"
 #endif
 
+#if defined mx_HAVE_MLE && defined mx_HAVE_KEY_BINDINGS
+# include <su/icodec.h>
+#endif
+
 #if defined mx_HAVE_MLE || defined mx_HAVE_TERMCAP
 # define a_TTY_SIGNALS
 #endif
@@ -1222,7 +1226,7 @@ a_tty_hist__query_config(void){
    if(rv == NULL)
       a_tty.tg_hist_size_max = UIZ_MAX;
    else
-      (void)n_idec_uiz_cp(&a_tty.tg_hist_size_max, rv, 10, NULL);
+      (void)su_idec_uz_cp(&a_tty.tg_hist_size_max, rv, 10, NULL);
 
    if((cp = ok_vlook(NAIL_HISTFILE)) != NULL)
       n_OBSOLETE(_("please use *history-file* instead of *NAIL_HISTFILE*"));
@@ -1481,9 +1485,9 @@ a_tty_vinuni(struct a_tty_line *tlp){
    }
    buf[i] = '\0';
 
-   if((n_idec_uiz_cp(&i, buf, 16, NULL
-            ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-         ) != n_IDEC_STATE_CONSUMED || i > 0x10FFFF/* XXX magic; CText */){
+   if((su_idec_uz_cp(&i, buf, 16, NULL
+            ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+         ) != su_IDEC_STATE_CONSUMED || i > 0x10FFFF/* XXX magic; CText */){
 jerr:
       n_err(_("\nInvalid input: %s\n"), buf);
       goto jleave;
@@ -1569,7 +1573,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
    };
 
    ui32_t f, w, phy_wid_base, phy_wid, phy_base, phy_cur, cnt,
-      DBG(lstcur COMMA) cur,
+      su_DBG(lstcur COMMA) cur,
       vi_left, /*vi_right,*/ phy_nxtcur;
    struct a_tty_cell const *tccp, *tcp_left, *tcp_right, *tcxp;
    n_NYD2_IN;
@@ -1601,7 +1605,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
    phy_base = 0;
    phy_cur = tlp->tl_phy_cursor;
    cnt = tlp->tl_count;
-   DBG( lstcur = tlp->tl_lst_cursor; )
+   su_DBG( lstcur = tlp->tl_lst_cursor; )
 
    /* XXX Assume dirty screen if shrunk */
    if(cnt < tlp->tl_lst_count)
@@ -4299,7 +4303,7 @@ FL int
       if((cp = ok_vlook(bind_timeout)) != NULL){
          ui64_t uib;
 
-         n_idec_ui64_cp(&uib, cp, 0, NULL);
+         su_idec_u64_cp(&uib, cp, 0, NULL);
 
          if(uib > 0 &&
                /* Convert to tenths of a second, unfortunately */
@@ -4423,9 +4427,9 @@ c_history(void *v){
       goto jleave;
    }
 
-   if((n_idec_siz_cp(&entry, *argv, 10, NULL
-            ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-         ) == n_IDEC_STATE_CONSUMED)
+   if((su_idec_sz_cp(&entry, *argv, 10, NULL
+            ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+         ) == su_IDEC_STATE_CONSUMED)
       goto jentry;
 jerr:
    n_err(_("Synopsis: history: %s\n"),

@@ -41,6 +41,8 @@
 
 #include "mx/nail.h"
 
+#include <su/icodec.h>
+
 #include <sys/ioctl.h>
 
 #include <pwd.h>
@@ -521,11 +523,11 @@ a_main__scrsz(int is_sighdl){
       bool_t hadl, hadc;
 
       if((hadl = ((cp = ok_vlook(LINES)) != NULL))){
-         n_idec_ui32_cp(&n_scrnheight, cp, 0, NULL);
+         su_idec_u32_cp(&n_scrnheight, cp, 0, NULL);
          n_realscreenheight = n_scrnheight;
       }
       if((hadc = ((cp = ok_vlook(COLUMNS)) != NULL)))
-         n_idec_ui32_cp(&n_scrnwidth, cp, 0, NULL);
+         su_idec_u32_cp(&n_scrnwidth, cp, 0, NULL);
 
       if(n_scrnwidth != 0 && n_scrnheight != 0)
          goto jleave;
@@ -1109,7 +1111,7 @@ jgetopt_done:
    while(argv[i] != NULL)
       ++i;
    if(n_smopts_cnt + i > smopts_size)
-      DBG(smopts_size =)
+      su_DBG(smopts_size =)
       a_main_grow_cpp(&n_smopts, n_smopts_cnt + i + 1, n_smopts_cnt);
 
    /* Check for inconsistent arguments, fix some temporaries */

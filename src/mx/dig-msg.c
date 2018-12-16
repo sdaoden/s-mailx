@@ -31,6 +31,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/icodec.h>
+
 /* Try to convert cp into an unsigned number that corresponds to an existing
  * message number (or ERR_INVAL), search for an existing object (ERR_EXIST if
  * oexcl and exists; ERR_NOENT if not oexcl and does not exist).
@@ -67,9 +69,9 @@ a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp, bool_t oexcl){
       goto jleave;
    }
 
-   if((n_idec_ui32_cp(&msgno, cp, 0, NULL
-            ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-         ) != n_IDEC_STATE_CONSUMED ||
+   if((su_idec_u32_cp(&msgno, cp, 0, NULL
+            ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+         ) != su_IDEC_STATE_CONSUMED ||
          msgno == 0 || UICMP(z, msgno, >, msgCount)){
       rv = su_ERR_INVAL;
       goto jleave;
@@ -606,9 +608,9 @@ jrem:
       if(dmcp->dmc_flags & n_DIG_MSG_RDONLY)
          goto j505r;
 
-      if((n_idec_uiz_cp(&i, cmda[2], 0, NULL
-               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED || i == 0){
+      if((su_idec_uz_cp(&i, cmda[2], 0, NULL
+               ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+            ) != su_IDEC_STATE_CONSUMED || i == 0){
          if(fprintf(fp, "505 invalid position: %s\n", cmda[2]) < 0)
             cp = NULL;
          goto jleave;
@@ -925,9 +927,9 @@ jatt_att:
       if(cmda[1] == NULL || cmda[2] != NULL)
          goto jecmd;
 
-      if((n_idec_uiz_cp(&i, cmda[1], 0, NULL
-               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED || i == 0){
+      if((su_idec_uz_cp(&i, cmda[1], 0, NULL
+               ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+            ) != su_IDEC_STATE_CONSUMED || i == 0){
          if(fprintf(fp, "505 invalid position: %s\n", cmda[1]) < 0)
             cp = NULL;
       }else{
@@ -1024,9 +1026,9 @@ jatt_attset:
       if(dmcp->dmc_flags & n_DIG_MSG_RDONLY)
          goto j505r;
 
-      if((n_idec_uiz_cp(&i, cmda[1], 0, NULL
-               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED || i == 0){
+      if((su_idec_uz_cp(&i, cmda[1], 0, NULL
+               ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+            ) != su_IDEC_STATE_CONSUMED || i == 0){
          if(fprintf(fp, "505 invalid position: %s\n", cmda[1]) < 0)
             cp = NULL;
       }else{
@@ -1112,9 +1114,9 @@ jdefault:
       if(dmcp->dmc_flags & n_DIG_MSG_RDONLY)
          goto j505r;
 
-      if((n_idec_uiz_cp(&i, cmda[1], 0, NULL
-               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED || i == 0){
+      if((su_idec_uz_cp(&i, cmda[1], 0, NULL
+               ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+            ) != su_IDEC_STATE_CONSUMED || i == 0){
          if(fprintf(fp, "505 invalid position: %s\n", cmda[1]) < 0)
             cp = NULL;
       }else{

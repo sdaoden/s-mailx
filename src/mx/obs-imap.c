@@ -46,6 +46,8 @@
 #endif
 
 #ifdef mx_HAVE_IMAP
+# include <su/icodec.h>
+
 # include <sys/socket.h>
 
 # include <netdb.h>
@@ -456,7 +458,7 @@ imap_path_encode(char const *cp, bool_t *err_or_null){
       memcpy(out.s, &cp[-l_plain], out.l = l_plain);
    else
       out.l = 0;
-   DBG( l_plain += (l << 2); )
+   su_DBG( l_plain += (l << 2); )
 
    while(l > 0){
       c = *cp++;
@@ -1477,7 +1479,7 @@ imap_select(struct mailbox *mp, off_t *size, int *cnt, const char *mbx,
       ok = imap_answer(mp, 1);
       if (response_status != RESPONSE_OTHER &&
             (cp = asccasestr(responded_text, "[UIDVALIDITY ")) != NULL)
-         n_idec_ui64_cp(&mp->mb_uidvalidity, &cp[13], 10, NULL);/* TODO err? */
+         su_idec_u64_cp(&mp->mb_uidvalidity, &cp[13], 10, NULL);/* TODO err? */
    }
    *cnt = (had_exists > 0) ? had_exists : 0;
    if (response_status != RESPONSE_OTHER &&
@@ -1520,7 +1522,7 @@ imap_flags(struct mailbox *mp, unsigned X, unsigned Y)
       }
 
       if ((cp = asccasestr(responded_other_text, "UID ")) != NULL)
-         n_idec_ui64_cp(&m->m_uid, &cp[4], 10, NULL);/* TODO errors? */
+         su_idec_u64_cp(&m->m_uid, &cp[4], 10, NULL);/* TODO errors? */
       getcache1(mp, m, NEED_UNSPEC, 1);
       m->m_flag &= ~MHIDDEN;
    }
@@ -2136,7 +2138,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
       uid = 0;
       if (m->m_uid) {
          if ((cp = asccasestr(responded_other_text, "UID "))) {
-            n_idec_ui64_cp(&uid, &cp[4], 10, NULL);/* TODO errors? */
+            su_idec_u64_cp(&uid, &cp[4], 10, NULL);/* TODO errors? */
             n = 0;
          } else
             n = -1;
@@ -2170,7 +2172,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
          if (n_poption & n_PO_VERBVERB)
             fputs(imapbuf, stderr);
          if ((cp = asccasestr(imapbuf, "UID ")) != NULL) {
-            n_idec_ui64_cp(&uid, &cp[4], 10, NULL);/* TODO errors? */
+            su_idec_u64_cp(&uid, &cp[4], 10, NULL);/* TODO errors? */
             if (uid == m->m_uid) {
                commitmsg(mp, m, &mt, mt.m_content_info);
                break;
@@ -2281,7 +2283,7 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
          if ((cp = asccasestr(responded_other_text, "UID ")) != NULL) {
             ui64_t uid;
 
-            n_idec_ui64_cp(&uid, &cp[4], 10, NULL);/* TODO errors? */
+            su_idec_u64_cp(&uid, &cp[4], 10, NULL);/* TODO errors? */
             for (n = bot; n <= topp; n++)
                if (uid == m[n-1].m_uid)
                   break;
@@ -2307,7 +2309,7 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
          if ((cp = asccasestr(imapbuf, "UID ")) != NULL) {
             ui64_t uid;
 
-            n_idec_ui64_cp(&uid, &cp[4], 10, NULL);/* TODO errors? */
+            su_idec_u64_cp(&uid, &cp[4], 10, NULL);/* TODO errors? */
             for (n = bot; n <= topp; n++)
                if (uid == m[n-1].m_uid)
                   break;
@@ -3484,9 +3486,9 @@ imap_copyuid_parse(const char *cp, ui64_t *uidvalidity, ui64_t *olduid,
    enum okay rv;
    n_NYD_IN;
 
-   n_idec_ui64_cp(uidvalidity, cp, 10, &xp); /* TODO errors */
-   n_idec_ui64_cp(olduid, xp, 10, &yp); /* TODO errors */
-   n_idec_ui64_cp(newuid, yp, 10, &zp); /* TODO errors */
+   su_idec_u64_cp(uidvalidity, cp, 10, &xp); /* TODO errors */
+   su_idec_u64_cp(olduid, xp, 10, &yp); /* TODO errors */
+   su_idec_u64_cp(newuid, yp, 10, &zp); /* TODO errors */
    rv = (*uidvalidity && *olduid && *newuid && xp > cp && *xp == ' ' &&
       yp > xp && *yp == ' ' && zp > yp && *zp == ']');
    n_NYD_OU;
@@ -3500,8 +3502,8 @@ imap_appenduid_parse(const char *cp, ui64_t *uidvalidity, ui64_t *uid)
    enum okay rv;
    n_NYD_IN;
 
-   n_idec_ui64_cp(uidvalidity, cp, 10, &xp); /* TODO errors */
-   n_idec_ui64_cp(uid, xp, 10, &yp); /* TODO errors */
+   su_idec_u64_cp(uidvalidity, cp, 10, &xp); /* TODO errors */
+   su_idec_u64_cp(uid, xp, 10, &yp); /* TODO errors */
    rv = (*uidvalidity && *uid && xp > cp && *xp == ' ' && yp > xp &&
       *yp == ']');
    n_NYD_OU;
@@ -3736,7 +3738,7 @@ imap_search2(struct mailbox *mp, struct message *m, int cnt, const char *spec,
             while (*xp && *xp != '\r') {
                ui64_t uid;
 
-               n_idec_ui64_cp(&uid, xp, 10, &xp);/* TODO errors? */
+               su_idec_u64_cp(&uid, xp, 10, &xp);/* TODO errors? */
                for (i = 0; i < cnt; i++)
                   if (m[i].m_uid == uid && !(m[i].m_flag & MHIDDEN) &&
                         (f == MDELETED || !(m[i].m_flag & MDELETED))){

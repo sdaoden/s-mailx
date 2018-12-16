@@ -26,6 +26,10 @@
 # include "mx/nail.h"
 #endif
 
+#ifdef mx_HAVE_SOCKETS
+# include <su/icodec.h>
+#endif
+
 #ifdef mx_HAVE_NETRC
   /* NetBSD usr.bin/ftp/ruserpass.c uses 100 bytes for that, we need four
    * concurrently (dummy, host, user, pass), so make it a KB */
@@ -1025,9 +1029,9 @@ jurlp_err:
             ;
       }
 
-      if((n_idec_ui16_cp(&urlp->url_portno, urlp->url_port, 10, NULL
-               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED || urlp->url_portno == 0){
+      if((su_idec_u16_cp(&urlp->url_portno, urlp->url_port, 10, NULL
+               ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+            ) != su_IDEC_STATE_CONSUMED || urlp->url_portno == 0){
          n_err(_("URL with invalid port number: %s\n"), urlp->url_input);
          goto jleave;
       }

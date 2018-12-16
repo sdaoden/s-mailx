@@ -27,6 +27,8 @@
 EMPTY_FILE()
 #ifdef mx_HAVE_SPAM
 
+#include <su/icodec.h>
+
 #ifdef mx_HAVE_SPAM_SPAMD
 # include <sys/socket.h>
 # include <sys/un.h>
@@ -225,7 +227,7 @@ _spam_action(enum spam_action sa, int *ip)
 
    /* *spam-maxsize* we do handle ourselfs instead */
    if ((cp = ok_vlook(spam_maxsize)) == NULL ||
-         (n_idec_ui32_cp(&maxsize, cp, 0, NULL), maxsize) == 0)
+         (su_idec_u32_cp(&maxsize, cp, 0, NULL), maxsize) == 0)
       maxsize = SPAM_MAXSIZE;
 
    /* Finally get an I/O buffer */
@@ -783,10 +785,10 @@ jecmd:
       }
       bp = &var[1];
 
-      if((n_idec_buf(&sfp->f_score_grpno, cp, PTR2SIZE(var - cp), 0,
-                  n_IDEC_MODE_LIMIT_32BIT, NULL
-               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED){
+      if((su_idec(&sfp->f_score_grpno, cp, PTR2SIZE(var - cp), 0,
+                  su_IDEC_MODE_LIMIT_32BIT, NULL
+               ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+            ) != su_IDEC_STATE_CONSUMED){
          n_err(_("`%s': *spamfilter-rate-scanscore*: bad group: %s\n"),
             _spam_cmds[vcp->vc_action], cp);
          goto jleave;
@@ -1135,21 +1137,21 @@ jtail:
 static void
 _spam_rate2score(struct spam_vc *vcp, char *buf){
    ui32_t m, s;
-   enum n_idec_state ids;
+   enum su_idec_state ids;
    n_NYD2_IN;
 
    /* C99 */{ /* Overcome ISO C / compiler weirdness */
       char const *cp;
 
       cp = buf;
-      ids = n_idec_ui32_cp(&m, buf, 10, &cp);
-      if((ids & n_IDEC_STATE_EMASK) & ~n_IDEC_STATE_EBASE)
+      ids = su_idec_u32_cp(&m, buf, 10, &cp);
+      if((ids & su_IDEC_STATE_EMASK) & ~su_IDEC_STATE_EBASE)
          goto jleave;
       buf = n_UNCONST(cp);
    }
 
    s = 0;
-   if(!(ids & n_IDEC_STATE_CONSUMED)){
+   if(!(ids & su_IDEC_STATE_CONSUMED)){
       /* Floating-point rounding for non-mathematicians */
       char c1, c2, c3;
 
@@ -1171,9 +1173,9 @@ _spam_rate2score(struct spam_vc *vcp, char *buf){
          }
       }
 
-      ids = n_idec_ui32_cp(&s, buf, 10, NULL);
-      if((ids & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED)
+      ids = su_idec_u32_cp(&s, buf, 10, NULL);
+      if((ids & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+            ) != su_IDEC_STATE_CONSUMED)
          goto jleave;
    }
 

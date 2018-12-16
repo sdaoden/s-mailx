@@ -46,7 +46,9 @@
 # include "mx/nail.h"
 #endif
 
-EMPTY_FILE()
+#include <su/icodec.h>
+
+su_EMPTY_FILE()
 #ifdef mx_HAVE_POP3
 
 #define POP3_ANSWER(RV,ACTIONSTOP) \
@@ -450,7 +452,7 @@ pop3_stat(struct mailbox *mp, off_t *size, int *cnt)
    if (*cp != '\0') {
       size_t i;
 
-      if(n_idec_uiz_cp(&i, cp, 10, &cp) & n_IDEC_STATE_EMASK)
+      if(su_idec_uz_cp(&i, cp, 10, &cp) & su_IDEC_STATE_EMASK)
          goto jerr;
       if(i > INT_MAX)
          goto jerr;
@@ -463,7 +465,7 @@ pop3_stat(struct mailbox *mp, off_t *size, int *cnt)
 
       if(*cp == '\0')
          goto jerr;
-      if(n_idec_uiz_cp(&i, cp, 10, NULL) & n_IDEC_STATE_EMASK)
+      if(su_idec_uz_cp(&i, cp, 10, NULL) & su_IDEC_STATE_EMASK)
          goto jerr;
       *size = (off_t)i;
       rv = OKAY;
@@ -497,7 +499,7 @@ pop3_list(struct mailbox *mp, int n, size_t *size)
    while (*cp != '\0' && spacechar(*cp))
       ++cp;
    if (*cp != '\0')
-      n_idec_uiz_cp(size, cp, 10, NULL);
+      su_idec_uz_cp(size, cp, 10, NULL);
 jleave:
    n_NYD_OU;
    return rv;
@@ -892,7 +894,7 @@ pop3_setfile(char const *who, char const *server, enum fedit_mode fm)
       safe_signal(SIGPIPE, pop3catch);
 
    if ((cp = xok_vlook(pop3_keepalive, &sc.sc_url, OXM_ALL)) != NULL) {
-      n_idec_si32_cp(&_pop3_keepalive, cp, 10, NULL);
+      su_idec_s32_cp(&_pop3_keepalive, cp, 10, NULL);
       if (_pop3_keepalive > 0) {
          _pop3_savealrm = safe_signal(SIGALRM, pop3alarm);
          alarm(_pop3_keepalive);

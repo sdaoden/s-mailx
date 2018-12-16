@@ -633,54 +633,6 @@ enum{
    n__IGNORE_MAX = 6 - n__IGNORE_ADJUST
 };
 
-enum n_idec_mode{
-   n_IDEC_MODE_NONE,
-   n_IDEC_MODE_SIGNED_TYPE = 1u<<0, /* To choose limits, error constants etc. */
-   /* If a power-of-two is used explicitly, or if base 0 is used and a known
-    * standard prefix is seen, enforce interpretation as unsigned.  This only
-    * makes a difference in conjunction with n_IDEC_MODE_SIGNED_TYPE */
-   n_IDEC_MODE_POW2BASE_UNSIGNED = 1u<<1,
-#if 0
-   n_IDEC_MODE_SIGN_FORCE_SIGNED_TYPE = 1u<<2,
-#endif
-   n_IDEC_MODE_LIMIT_8BIT = 1u<<3,  /* Saturate if result exceeds 8-bit */
-   n_IDEC_MODE_LIMIT_16BIT = 2u<<3,
-   n_IDEC_MODE_LIMIT_32BIT = 3u<<3,
-   n__IDEC_MODE_LIMIT_MASK = 3u<<3,
-   n_IDEC_MODE_LIMIT_NOERROR = 1u<<5, /* Not an error if limit is excessed! */
-   /* These bits are duplicated in the _state result bits! */
-   n__IDEC_MODE_MASK = (1u<<6) - 1
-};
-
-enum n_idec_state{
-   n_IDEC_STATE_NONE,
-   /* Malformed input, no usable result has been stored */
-   n_IDEC_STATE_EINVAL = 1u<<8,
-   /* Bad character according to base, but we have seen some good before,
-    * otherwise _EINVAL would have been used */
-   n_IDEC_STATE_EBASE = 2u<<8,
-   n_IDEC_STATE_EOVERFLOW = 3u<<8,  /* Result too large */
-   n_IDEC_STATE_EMASK = 3u<<8,      /* Any errors, that is */
-   n_IDEC_STATE_SEEN_MINUS = 1u<<16, /* Seen - in input? */
-   n_IDEC_STATE_CONSUMED = 1u<<17,  /* All the input buffer was consumed */
-   n__IDEC_PRIVATE_SHIFT1 = 24u
-};
-n_MCTA(n__IDEC_MODE_MASK <= (1u<<8) - 1, "Shared bit range overlaps")
-
-/* Buffer size needed by n_ienc_buf() including NUL and base prefixes */
-#define n_IENC_BUFFER_SIZE 80u
-
-enum n_ienc_mode{
-   n_IENC_MODE_NONE,
-   n_IENC_MODE_SIGNED_TYPE = 1u<<1, /* Signedness correction etc. necessary */
-   n_IENC_MODE_SIGNED_PLUS = 1u<<2, /* Positive nubers shall have + prefix */
-   n_IENC_MODE_SIGNED_SPACE = 1u<<3, /* Ditto, ASCII SPACE (lesser priority) */
-   n_IENC_MODE_NO_PREFIX = 1u<<4,   /* No base prefixes shall be written */
-   n_IENC_MODE_LOWERCASE = 1u<<5,   /* Use lowercase letters (not prefix) */
-   n__IENC_MODE_SHIFT = 6u,
-   n__IENC_MODE_MASK = (1u<<n__IENC_MODE_SHIFT) - 1
-};
-
 enum n_mailsend_flags{
    n_MAILSEND_NONE,
    n_MAILSEND_IS_FWD = 1u<<0,

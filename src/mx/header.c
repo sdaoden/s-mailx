@@ -42,6 +42,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/icodec.h>
+
 #include <pwd.h>
 
 struct a_header_cmatch_data{
@@ -2405,19 +2407,19 @@ unixtime(char const *fromline)
    month = i + 1;
    if (fp[7] != ' ')
       goto jinvalid;
-   n_idec_si32_cp(&day, &fp[8], 10, &xp);
+   su_idec_s32_cp(&day, &fp[8], 10, &xp);
    if (*xp != ' ' || xp != fp + 10)
       goto jinvalid;
-   n_idec_si32_cp(&hour, &fp[11], 10, &xp);
+   su_idec_s32_cp(&hour, &fp[11], 10, &xp);
    if (*xp != ':' || xp != fp + 13)
       goto jinvalid;
-   n_idec_si32_cp(&minute, &fp[14], 10, &xp);
+   su_idec_s32_cp(&minute, &fp[14], 10, &xp);
    if (*xp != ':' || xp != fp + 16)
       goto jinvalid;
-   n_idec_si32_cp(&second, &fp[17], 10, &xp);
+   su_idec_s32_cp(&second, &fp[17], 10, &xp);
    if (*xp != ' ' || xp != fp + 19)
       goto jinvalid;
-   n_idec_si32_cp(&year, &fp[20], 10, &xp);
+   su_idec_s32_cp(&year, &fp[20], 10, &xp);
    if (xp != fp + 24)
       goto jinvalid;
    if ((t = combinetime(year, month, day, hour, minute, second)) == (time_t)-1)
@@ -2440,7 +2442,7 @@ jinvalid:
 #endif /* mx_HAVE_IMAP_SEARCH || mx_HAVE_IMAP */
 
 FL time_t
-rfctime(char const *date) /* TODO n_idec_ return tests */
+rfctime(char const *date) /* TODO su_idec_ return tests */
 {
    char const *cp, *x;
    time_t t;
@@ -2456,7 +2458,7 @@ rfctime(char const *date) /* TODO n_idec_ return tests */
       if ((cp = nexttoken(&cp[4])) == NULL)
          goto jinvalid;
    }
-   n_idec_si32_cp(&day, cp, 10, &x);
+   su_idec_s32_cp(&day, cp, 10, &x);
    if ((cp = nexttoken(x)) == NULL)
       goto jinvalid;
    for (i = 0;;) {
@@ -2475,7 +2477,7 @@ rfctime(char const *date) /* TODO n_idec_ return tests */
     *  ending up with a value between 2000 and 2049.  If a two digit year
     *  is encountered with a value between 50 and 99, or any three digit
     *  year is encountered, the year is interpreted by adding 1900 */
-   n_idec_si32_cp(&year, cp, 10, &x);
+   su_idec_s32_cp(&year, cp, 10, &x);
    i = (int)PTR2SIZE(x - cp);
    if (i == 2 && year >= 0 && year <= 49)
       year += 2000;
@@ -2483,14 +2485,14 @@ rfctime(char const *date) /* TODO n_idec_ return tests */
       year += 1900;
    if ((cp = nexttoken(x)) == NULL)
       goto jinvalid;
-   n_idec_si32_cp(&hour, cp, 10, &x);
+   su_idec_s32_cp(&hour, cp, 10, &x);
    if (*x != ':')
       goto jinvalid;
    cp = &x[1];
-   n_idec_si32_cp(&minute, cp, 10, &x);
+   su_idec_s32_cp(&minute, cp, 10, &x);
    if (*x == ':') {
       cp = &x[1];
-      n_idec_si32_cp(&second, cp, 10, &x);
+      su_idec_s32_cp(&second, cp, 10, &x);
    } else
       second = 0;
 
@@ -2515,11 +2517,11 @@ rfctime(char const *date) /* TODO n_idec_ return tests */
          buf[2] = '\0';
          buf[0] = cp[0];
          buf[1] = cp[1];
-         n_idec_si32_cp(&i, buf, 10, NULL);
+         su_idec_s32_cp(&i, buf, 10, NULL);
          tadj = (si64_t)i * 3600; /* XXX */
          buf[0] = cp[2];
          buf[1] = cp[3];
-         n_idec_si32_cp(&i, buf, 10, NULL);
+         su_idec_s32_cp(&i, buf, 10, NULL);
          tadj += (si64_t)i * 60; /* XXX */
          if (sign < 0)
             tadj = -tadj;

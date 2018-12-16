@@ -47,6 +47,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/icodec.h>
+
 EMPTY_FILE()
 #ifdef mx_HAVE_IMAP_SEARCH
 
@@ -279,7 +281,7 @@ itscan(char const *spec, char const **xp)
       }
    }
    if (digitchar(*spec)) {
-      n_idec_uiz_cp(&_it_number, spec, 10, xp);
+      su_idec_uz_cp(&_it_number, spec, 10, xp);
       if (!__GO(**xp)) {
          _it_token = ITSET;
          goto jleave;
@@ -374,7 +376,7 @@ itsplit(char const *spec, char const **xp)
       if ((rv = itstring(_it_args, spec, xp)) != OKAY)
          break;
       else{
-         n_idec_uiz_cp(&_it_number, _it_args[0], 10, &cp);
+         su_idec_uz_cp(&_it_number, _it_args[0], 10, &cp);
       }
       if (spacechar(*cp) || *cp == '\0')
          break;
@@ -608,7 +610,7 @@ _imap_read_date(char const *cp)
 
    if (*cp == '"')
       ++cp;
-   n_idec_si32_cp(&day, cp, 10, &xp);
+   su_idec_s32_cp(&day, cp, 10, &xp);
    if (day <= 0 || day > 31 || *xp++ != '-')
       goto jerr;
 
@@ -621,7 +623,7 @@ _imap_read_date(char const *cp)
    month = i + 1;
    if (xp[3] != '-')
       goto jerr;
-   n_idec_si32_cp(&year, &xp[4], 10, &yp);
+   su_idec_s32_cp(&year, &xp[4], 10, &yp);
    if (year < 1970 || year > 2037 || PTRCMP(yp, !=, xp + 8))
       goto jerr;
    if (yp[0] != '\0' && (yp[1] != '"' || yp[2] != '\0'))

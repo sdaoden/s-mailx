@@ -47,6 +47,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/icodec.h>
+
 enum a_go_flags{
    a_GO_NONE,
    a_GO_FREE = 1u<<0,         /* Structure was allocated, n_free() it */
@@ -749,7 +751,7 @@ jmsglist_go:
       }break;
 
    default:
-      DBG( n_panic(_("Implementation error: unknown argument type: %d"),
+      su_DBG( n_panic(_("Implementation error: unknown argument type: %d"),
          cdp->cd_caflags & n_CMD_ARG_TYPE_MASK); )
       nerrn = su_ERR_NOTOBACCO;
       nexn = 1;
@@ -1240,7 +1242,7 @@ n_go_init(void){
    assert(n_stdin != NULL);
 
    gcp = (void*)a_go__mainctx_b.uf;
-   DBGOR( memset(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name)),
+   su_DBGOR( memset(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name)),
       memset(&gcp->gc_data, 0, sizeof gcp->gc_data) );
    gcp->gc_data.gdc_membag =
          su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
@@ -2227,9 +2229,9 @@ c_exit(void *vp){
    char const **argv;
    n_NYD_IN;
 
-   if(*(argv = vp) != NULL && (n_idec_si32_cp(&n_exit_status, *argv, 0, NULL) &
-            (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-         ) != n_IDEC_STATE_CONSUMED)
+   if(*(argv = vp) != NULL && (su_idec_s32_cp(&n_exit_status, *argv, 0, NULL) &
+            (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+         ) != su_IDEC_STATE_CONSUMED)
       n_exit_status |= n_EXIT_ERR;
 
    if(n_pstate & n_PS_COMPOSE_FORKHOOK){ /* TODO sic */
@@ -2247,9 +2249,9 @@ c_quit(void *vp){
    char const **argv;
    n_NYD_IN;
 
-   if(*(argv = vp) != NULL && (n_idec_si32_cp(&n_exit_status, *argv, 0, NULL) &
-            (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-         ) != n_IDEC_STATE_CONSUMED)
+   if(*(argv = vp) != NULL && (su_idec_s32_cp(&n_exit_status, *argv, 0, NULL) &
+            (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+         ) != su_IDEC_STATE_CONSUMED)
       n_exit_status |= n_EXIT_ERR;
 
    if(n_pstate & n_PS_COMPOSE_FORKHOOK){ /* TODO sic */
@@ -2367,9 +2369,9 @@ jfound:
          goto jleave;
       }
 
-      if((n_idec_si32_cp(&fd, cap->ca_arg.ca_str.s, 0, NULL
-               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED){
+      if((su_idec_s32_cp(&fd, cap->ca_arg.ca_str.s, 0, NULL
+               ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+            ) != su_IDEC_STATE_CONSUMED){
          if((emsg = fexpand(cap->ca_arg.ca_str.s, FEXP_LOCAL | FEXP_NVAR)
                ) == NULL){
             emsg = N_("`readctl': cannot expand filename %s\n");

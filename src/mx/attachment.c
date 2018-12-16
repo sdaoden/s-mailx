@@ -41,6 +41,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/icodec.h>
+
 /* We use calloc() for struct attachment */
 n_CTAV(AC_DEFAULT == 0);
 
@@ -77,9 +79,10 @@ a_attachment_is_msg(char const *file){
       if(file[2] == '\0' && file[1] == '.'){
          if(dot != NULL)
             rv = (int)PTR2SIZE(dot - message + 1);
-      }else if((n_idec_uiz_cp(&ib, &file[1], 10, NULL
-               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED || ib == 0 || UICMP(z, ib, >, msgCount))
+      }else if((su_idec_uz_cp(&ib, &file[1], 10, NULL
+               ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+            ) != su_IDEC_STATE_CONSUMED || ib == 0 ||
+            UICMP(z, ib, >, msgCount))
          rv = -1;
       else
          rv = (int)ib;

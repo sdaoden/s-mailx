@@ -24,6 +24,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/icodec.h>
+
 struct rfc2231_joiner {
    struct rfc2231_joiner *rj_next;
    ui32_t      rj_no;            /* Continuation number */
@@ -252,9 +254,9 @@ jumpin:
             }
             memcpy(nobuf, hbp, i);
             nobuf[i] = '\0';
-            if((n_idec_uiz_cp(&i, nobuf, 10, NULL
-                     ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-                  ) != n_IDEC_STATE_CONSUMED || i >= 999){
+            if((su_idec_uz_cp(&i, nobuf, 10, NULL
+                     ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+                  ) != su_IDEC_STATE_CONSUMED || i >= 999){
                emsg = N_("invalid continuation sequence number");
                goto jerr;
             }
@@ -557,7 +559,7 @@ jneed_enc:
       bp_xmax -= self->mpb_charset_len;
    }
    if (PTRCMP(bp_max, <=, buf + sizeof("Hunky Dory"))) {
-      DBG( n_alert("_mime_param_create(): Hunky Dory!"); )
+      su_DBG( n_alert("_mime_param_create(): Hunky Dory!"); )
       bp_max = buf + (MIME_LINELEN >> 1); /* And then it is SHOULD, anyway */
    }
    assert(PTRCMP(bp_max + (4 * 3), <=, bp_xmax)); /* UTF-8 extra pad, below */
@@ -682,7 +684,7 @@ __mime_param_join(struct mime_param_builder *head)
 {
    char nobuf[16];
    struct mime_param_builder *np;
-   size_t i, ll;  DBG( size_t len_max; )
+   size_t i, ll;  su_DBG( size_t len_max; )
    struct str *result;
    char *cp;
    enum {
@@ -709,7 +711,7 @@ __mime_param_join(struct mime_param_builder *head)
    }
    if (f & _ISENC)
       i += head->mpb_charset_len; /* sizeof("''") -1 covered by \"\" above */
-   DBG( len_max = i; )
+   su_DBG( len_max = i; )
    head->mpb_rv = TRU1;
 
    result = head->mpb_result;

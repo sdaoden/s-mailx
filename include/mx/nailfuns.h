@@ -316,53 +316,6 @@ FL enum protocol  which_protocol(char const *name, bool_t check_stat,
 FL char *      n_c_to_hex_base16(char store[3], char c);
 FL si32_t      n_c_from_hex_base16(char const hex[2]);
 
-/* Decode clen (or strlen() if UIZ_MAX) bytes of cbuf into an integer
- * according to idm, store a/the result in *resp (in _EINVAL case an overflow
- * constant is assigned, for signed types it depends on parse state w. MIN/MAX),
- * which must point to storage of the correct type, and return the result state.
- * If endptr_or_null is set it will be set to the byte where parsing stopped */
-FL enum n_idec_state n_idec_buf(void *resp, char const *cbuf, uiz_t clen,
-                        ui8_t base, enum n_idec_mode idm,
-                        char const **endptr_or_null);
-#define n_idec_cp(RP,CBP,B,M,CLP) n_idec_buf(RP, CBP, UIZ_MAX, B, M, CLP)
-
-#define n_idec_ui8_cp(RP,CBP,B,CLP) \
-   n_idec_buf(RP, CBP, UIZ_MAX, B, (n_IDEC_MODE_LIMIT_8BIT), CLP)
-#define n_idec_si8_cp(RP,CBP,B,CLP) \
-   n_idec_buf(RP, CBP, UIZ_MAX, B,\
-      (n_IDEC_MODE_SIGNED_TYPE | n_IDEC_MODE_LIMIT_8BIT), CLP)
-#define n_idec_ui16_cp(RP,CBP,B,CLP) \
-   n_idec_buf(RP, CBP, UIZ_MAX, B, (n_IDEC_MODE_LIMIT_16BIT), CLP)
-#define n_idec_si16_cp(RP,CBP,B,CLP) \
-   n_idec_buf(RP, CBP, UIZ_MAX, B,\
-      (n_IDEC_MODE_SIGNED_TYPE | n_IDEC_MODE_LIMIT_16BIT), CLP)
-#define n_idec_ui32_cp(RP,CBP,B,CLP) \
-   n_idec_buf(RP, CBP, UIZ_MAX, B, (n_IDEC_MODE_LIMIT_32BIT), CLP)
-#define n_idec_si32_cp(RP,CBP,B,CLP) \
-   n_idec_buf(RP, CBP, UIZ_MAX, B,\
-      (n_IDEC_MODE_SIGNED_TYPE | n_IDEC_MODE_LIMIT_32BIT), CLP)
-#define n_idec_ui64_cp(RP,CBP,B,CLP) \
-   n_idec_buf(RP, CBP, UIZ_MAX, B, 0, CLP)
-#define n_idec_si64_cp(RP,CBP,B,CLP) \
-   n_idec_buf(RP, CBP, UIZ_MAX, B, (n_IDEC_MODE_SIGNED_TYPE), CLP)
-#if UIZ_MAX == UI32_MAX
-# define n_idec_uiz_cp(RP,CBP,B,CLP) \
-   n_idec_buf(RP, CBP, UIZ_MAX, B, (n_IDEC_MODE_LIMIT_32BIT), CLP)
-# define n_idec_siz_cp(RP,CBP,B,CLP) \
-   n_idec_buf(RP, CBP, UIZ_MAX, B,\
-      (n_IDEC_MODE_SIGNED_TYPE | n_IDEC_MODE_LIMIT_32BIT), CLP)
-#else
-# define n_idec_uiz_cp(RP,CBP,B,CLP) \
-   n_idec_buf(RP, CBP, UIZ_MAX, B, 0, CLP)
-# define n_idec_siz_cp(RP,CBP,B,CLP) \
-   n_idec_buf(RP, CBP, UIZ_MAX, B, (n_IDEC_MODE_SIGNED_TYPE), CLP)
-#endif
-
-/* Encode an integer value according to base (2-36) and mode iem, return
- * pointer to starting byte or NULL on error */
-FL char *n_ienc_buf(char cbuf[n_IENC_BUFFER_SIZE], ui64_t value, ui8_t base,
-            enum n_ienc_mode iem);
-
 /* Hash the passed string -- uses Chris Torek's hash algorithm.
  * i*() hashes case-insensitively (ASCII), and *n() uses maximally len bytes;
  * if len is UIZ_MAX, we go .), since we anyway stop for NUL */

@@ -24,6 +24,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/icodec.h>
+
 /*
  * Quotation filter
  */
@@ -348,21 +350,21 @@ quoteflt_init(struct quoteflt *self, char const *prefix, bool_t bypass)
       ui32_t qmax, qmaxnws, qmin;
 
       /* These magic values ensure we don't bail */
-      n_idec_ui32_cp(&qmax, cp, 10, &xcp);
+      su_idec_u32_cp(&qmax, cp, 10, &xcp);
       if (qmax < self->qf_pfix_len + 6)
          qmax = self->qf_pfix_len + 6;
       qmaxnws = --qmax; /* The newline escape */
       if (cp == xcp || *xcp == '\0')
          qmin = (qmax >> 1) + (qmax >> 2) + (qmax >> 5);
       else {
-         n_idec_ui32_cp(&qmin, &xcp[1], 10, &xcp);
+         su_idec_u32_cp(&qmin, &xcp[1], 10, &xcp);
          if (qmin < qmax >> 1)
             qmin = qmax >> 1;
          else if (qmin > qmax - 2)
             qmin = qmax - 2;
 
          if (cp != xcp && *xcp != '\0') {
-            n_idec_ui32_cp(&qmaxnws, &xcp[1], 10, &xcp);
+            su_idec_u32_cp(&qmaxnws, &xcp[1], 10, &xcp);
             if (qmaxnws > qmax || qmaxnws < qmin)
                qmaxnws = qmax;
          }
@@ -1246,7 +1248,7 @@ _hf_check_tag(struct htmlflt *self, char const *s)
    /* Extra check only */
    assert(s != NULL);
    if (*s != '<') {
-      DBG( n_alert("HTML tagsoup filter _hf_check_tag() called on soup!"); )
+      su_DBG( n_alert("HTML tagsoup filter _hf_check_tag() called on soup!"); )
 jput_as_is:
       self = _hf_puts(self, self->hf_bdat);
       goto jleave;
@@ -1443,7 +1445,7 @@ _hf_check_ent(struct htmlflt *self, char const *s, size_t l)
       if ((i != 16 || (++s, --l) > 0) && l < sizeof(nobuf)) {
          memcpy(nobuf, s, l);
          nobuf[l] = '\0';
-         n_idec_uiz_cp(&i, nobuf, i, NULL);
+         su_idec_uz_cp(&i, nobuf, i, NULL);
          if (i <= 0x7F)
             self = _hf_putc(self, (char)i);
          else if (self->hf_flags & _HF_UTF8) {

@@ -25,6 +25,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/icodec.h>
+
 enum mime_type {
    _MT_APPLICATION,
    _MT_AUDIO,
@@ -1230,9 +1232,9 @@ n_mimetype_classify_part(struct mimepart *mpp, bool_t for_user_context){
       ct = n_empty;
 
    if((mce.cp = ok_vlook(mime_counter_evidence)) != NULL && *mce.cp != '\0'){
-      if((n_idec_ui32_cp(&mce.f, mce.cp, 0, NULL
-               ) & (n_IDEC_STATE_EMASK | n_IDEC_STATE_CONSUMED)
-            ) != n_IDEC_STATE_CONSUMED){
+      if((su_idec_u32_cp(&mce.f, mce.cp, 0, NULL
+               ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+            ) != su_IDEC_STATE_CONSUMED){
          n_err(_("Invalid *mime-counter-evidence* value content\n"));
          is_os = FAL0;
       }else{
