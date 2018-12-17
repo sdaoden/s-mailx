@@ -1907,7 +1907,7 @@ struct mailbox {
       MB_MULT     = 002,      /* multiline reply expected */
       MB_PREAUTH  = 004,      /* not in authenticated state */
       MB_BYE      = 010,      /* may accept a BYE state */
-      MB_FROM__WARNED = 1<<4  /* MBOX with invalid from seen & logged */
+      MB_BAD_FROM_ = 1<<4     /* MBOX with invalid From_ seen & logged */
    }           mb_active;
    FILE        *mb_itf;       /* temp file with messages, read open */
    FILE        *mb_otf;       /* same, write open */

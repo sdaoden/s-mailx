@@ -232,9 +232,9 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
    bool_t from_;
    enum{
       a_RFC4155 = 1u<<0,
-      a_HADONE = 1u<<1,
-      a_MAYBE = 1u<<2,
-      a_BAD_FROM_ = 1u<<3,
+      a_HAD_BAD_FROM_ = 1u<<1,
+      a_HADONE = 1u<<2,
+      a_MAYBE = 1u<<3,
       a_CREATE = 1u<<4,
       a_INHEAD = 1u<<5,
       a_COMMIT = 1u<<6
@@ -266,6 +266,21 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
             message_append(&commit);
          }
          message_append_null();
+
+         if(f & a_HAD_BAD_FROM_){
+            if(!(mb.mb_active & MB_BAD_FROM_)){
+               mb.mb_active |= MB_BAD_FROM_;
+               /* TODO mbox-rfc4155 does NOT fix From_ line! */
+               n_err(_("MBOX contains non-conforming From_ line(s)!\n"
+                  "  Message boundaries may have been misdetected!\n"
+                  "  Setting *mbox-rfc4155* and reopening _may_ "
+                     "improve the result.\n"
+                  "  Recreating the mailbox will perform MBOXO quoting: "
+                     "\"copy * SOME-FILE\".  "
+                     "(Then unset *mbox-rfc4155* again.)\n"));
+            }
+         }
+
          if(linebuf != NULL)
             n_free(linebuf);
          break;
@@ -295,7 +310,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
             commit.m_size += self.m_size;
             commit.m_lines += self.m_lines;
             self = commit;
-            f &= ~(a_BAD_FROM_ | a_CREATE | a_INHEAD | a_COMMIT);
+            f &= ~(a_CREATE | a_INHEAD | a_COMMIT);
          }
          goto jputln;
       }
@@ -314,7 +329,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
 
          f &= ~a_MAYBE;
          if(from_ == TRUM1){
-            f |= a_BAD_FROM_;
+            f |= a_HAD_BAD_FROM_;
             /* TODO MBADFROM_ causes the From_ line to be replaced entirely
              * TODO when the message is newly written via e.g. `copy'.
              * TODO Instead this From_ should be an object which can fix
@@ -324,10 +339,8 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
              * TODO and fail for example in a_header_extract_date_from_from_()
              * TODO (which should not exist as such btw) */
             self.m_flag = MUSED | MNEW | MNEWEST | MBADFROM_;
-         }else{
-            f &= ~a_BAD_FROM_;
+         }else
             self.m_flag = MUSED | MNEW | MNEWEST;
-         }
          self.m_size = 0;
          self.m_lines = 0;
          self.m_block = mailx_blockof(offset);
@@ -339,27 +352,11 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
       if(n_LIKELY(!(f & a_INHEAD)))
          goto jputln;
 
-      if(n_LIKELY((cp = memchr(linebuf, ':', cnt)) != NULL)){
+      if(n_LIKELY((cp = su_mem_find(linebuf, ':', cnt)) != NULL)){
          char *cps, *cpe, c;
 
-         if(f & a_CREATE){
+         if(f & a_CREATE)
             f |= a_COMMIT;
-
-            if(f & a_BAD_FROM_){
-               f &= ~a_BAD_FROM_;
-               if(!(mb.mb_active & MB_FROM__WARNED)){
-                  mb.mb_active |= MB_FROM__WARNED;
-                  /* TODO mbox-rfc4155 does NOT fix From_ line! */
-                  n_err(_("MBOX contains non-conforming From_ line(s)!\n"
-                     "  Message boundaries may have been misdetected!\n"
-                     "  Setting *mbox-rfc4155* and reopening _may_ "
-                        "improve the result.\n"
-                     "  If so, make changes permanent: "
-                        "\"copy * SOME-FILE\".  "
-                        "Then unset *mbox-rfc4155*\n"));
-               }
-            }
-         }
 
          for(cps = linebuf; su_cs_is_blank(*cps); ++cps)
             ;
@@ -409,7 +406,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
             commit.m_size += self.m_size;
             commit.m_lines += self.m_lines;
             self = commit;
-            f &= ~(a_BAD_FROM_ | a_CREATE | a_INHEAD | a_COMMIT);
+            f &= ~(a_CREATE | a_INHEAD | a_COMMIT);
          }
       }
 

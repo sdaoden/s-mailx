@@ -3137,7 +3137,9 @@ t_mbox() {
       wysh file ./.tinv2 # Fully repaired
       File ./.tok' | ${MAILX} ${ARGS} >>${ERR} 2>&1
    check_ex0 15-estat
-   check 15-1 - ./.tinv1 '2649311078 312'
+   # Equal since [Auto-fix when MBOX had From_ errors on read (Dr. Werner
+   # Fink).]
+   check 15-1 - ./.tinv1 '4151504442 314'
    check 15-2 - ./.tinv2 '4151504442 314'
 
    # *mbox-fcc-and-pcc*

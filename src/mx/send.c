@@ -372,7 +372,8 @@ _out(char const *buf, size_t len, FILE *fp, enum conversion convert, enum
 
       if((action == SEND_MBOX || action == SEND_DECRYPT) &&
             (from_ = is_head(buf, len, TRU1))){
-         if(from_ != TRUM1 || ok_blook(mbox_rfc4155)){
+         if(from_ != TRUM1 || (mb.mb_active & MB_BAD_FROM_) ||
+               ok_blook(mbox_rfc4155)){
             putc('>', fp);
             ++sz;
          }
