@@ -1230,6 +1230,7 @@ thecmd_testandset_fail chmod chmod
 thecmd_testandset_fail cp cp
 thecmd_testandset_fail cmp cmp
 # grep(1) above
+thecmd_testandset ln ln # only for tests
 thecmd_testandset_fail mkdir mkdir
 thecmd_testandset_fail mv mv
 # pwd(1) is needed - either for make-emerge.sh, or for ourselves
@@ -1318,7 +1319,7 @@ fi
 for i in \
    CWDDIR TOPDIR OBJDIR INCDIR SRCDIR \
       awk basename cat chmod chown cp cmp grep getconf \
-         mkdir mv rm sed sort tee tr \
+         ln mkdir mv rm sed sort tee tr \
       MAKE MAKEFLAGS make SHELL strip \
       cksum; do
    eval j=\$${i}

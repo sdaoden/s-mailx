@@ -374,6 +374,7 @@ t_all() {
    t_compose_hooks
    t_mass_recipients
    t_lreply_futh_rth_etc
+   t_pipe_handlers
 
    # Rest
    t_s_mime
@@ -6181,6 +6182,95 @@ t_lreply_futh_rth_etc() {
 
    t_epilog
 }
+
+t_pipe_handlers() {
+   t_prolog pipe_handlers
+   TRAP_EXIT_ADDONS="./.t*"
+
+   # "Test for" [d6f316a] (Gavin Troy)
+   printf "m ${MBOX}\n~s subject1\nEmail body\n~.\nfi ${MBOX}\np\nx\n" |
+   ${MAILX} ${ARGS} ${ADDARG_UNI} -Spipe-text/plain="@* ${cat}" > "${BODY}"
+   check 1 0 "${MBOX}" '3942990636 118'
+   check 2 - "${BODY}" '3951695530 170'
+
+   ${rm} "${MBOX}"
+   printf "m %s\n~s subject2\n~@%s\nBody2\n~.\nFi %s\nmimeview\nx\n" \
+         "${MBOX}" "${TOPDIR}snailmail.jpg" "${MBOX}" |
+      ${MAILX} ${ARGS} ${ADDARG_UNI} \
+         -S 'pipe-image/jpeg=@=&@'\
+'trap \"'"${rm}"' -f '\ '\\"${MAILX_FILENAME_TEMPORARY}\\"\" EXIT;'\
+'trap \"trap \\\"\\\" INT QUIT TERM; exit 1\" INT QUIT TERM;'\
+'echo C=$MAILX_CONTENT;'\
+'echo C-E=$MAILX_CONTENT_EVIDENCE;'\
+'echo E-B-U=$MAILX_EXTERNAL_BODY_URL;'\
+'echo F=$MAILX_FILENAME;'\
+'echo F-G=not testable MAILX_FILENAME_GENERATED;'\
+'echo F-T=not testable MAILX_FILENAME_TEMPORARY;'\
+''"${cksum}"' < \"${MAILX_FILENAME_TEMPORARY}\" |'\
+''"${sed}"' -e "s/[ 	]\{1,\}/ /g"' \
+            > "${BODY}" 2>&1
+   check 3 0 "${MBOX}" '1933681911 13435'
+   check 4 - "${BODY}" '4256558715 620'
+
+   # Keep $MBOX..
+   if [ -z "${ln}" ]; then
+      echo 'pipe_handlers 5: ln(1) not found, skipping'
+   else
+      # Let us fill in tmpfile, test auto-deletion
+      printf 'Fi %s\nmimeview\nvput vexpr v file-stat .t.one-link\n'\
+'eval wysh set $v;echo should be $st_nlink link\nx\n' "${MBOX}" |
+         ${MAILX} ${ARGS} ${ADDARG_UNI} \
+            -S 'pipe-image/jpeg=@=++@'\
+'echo C=$MAILX_CONTENT;'\
+'echo C-E=$MAILX_CONTENT_EVIDENCE;'\
+'echo E-B-U=$MAILX_EXTERNAL_BODY_URL;'\
+'echo F=$MAILX_FILENAME;'\
+'echo F-G=not testable MAILX_FILENAME_GENERATED;'\
+'echo F-T=not testable MAILX_FILENAME_TEMPORARY;'\
+"${ln}"' -f $MAILX_FILENAME_TEMPORARY .t.one-link;'\
+''"${cksum}"' < \"${MAILX_FILENAME_TEMPORARY}\" |'\
+''"${sed}"' -e "s/[ 	]\{1,\}/ /g"' \
+               > "${BODY}" 2>&1
+      check 5 0 "${BODY}" '79260249 637'
+
+      # Fill in ourselfs, test auto-deletion
+      printf 'Fi %s\nmimeview\nvput vexpr v file-stat .t.one-link\n'\
+'eval wysh set $v;echo should be $st_nlink link\nx\n' "${MBOX}" |
+         ${MAILX} ${ARGS} ${ADDARG_UNI} \
+            -S 'pipe-image/jpeg=@++@'\
+"${cat}"' > $MAILX_FILENAME_TEMPORARY;'\
+'echo C=$MAILX_CONTENT;'\
+'echo C-E=$MAILX_CONTENT_EVIDENCE;'\
+'echo E-B-U=$MAILX_EXTERNAL_BODY_URL;'\
+'echo F=$MAILX_FILENAME;'\
+'echo F-G=not testable MAILX_FILENAME_GENERATED;'\
+'echo F-T=not testable MAILX_FILENAME_TEMPORARY;'\
+''"${cksum}"' < \"${MAILX_FILENAME_TEMPORARY}\" |'\
+''"${sed}"' -e "s/[ 	]\{1,\}/ /g"' \
+               > "${BODY}" 2>&1
+      check 6 0 "${BODY}" '79260249 637'
+
+      # And the same, via copiousoutput (fake)
+      printf 'Fi %s\np\nvput vexpr v file-stat .t.one-link\n'\
+'eval wysh set $v;echo should be $st_nlink link\nx\n' "${MBOX}" |
+         ${MAILX} ${ARGS} ${ADDARG_UNI} \
+            -S 'pipe-image/jpeg=@*++@'\
+"${cat}"' > $MAILX_FILENAME_TEMPORARY;'\
+'echo C=$MAILX_CONTENT;'\
+'echo C-E=$MAILX_CONTENT_EVIDENCE;'\
+'echo E-B-U=$MAILX_EXTERNAL_BODY_URL;'\
+'echo F=$MAILX_FILENAME;'\
+'echo F-G=not testable MAILX_FILENAME_GENERATED;'\
+'echo F-T=not testable MAILX_FILENAME_TEMPORARY;'\
+"${ln}"' -f $MAILX_FILENAME_TEMPORARY .t.one-link;'\
+''"${cksum}"' < \"${MAILX_FILENAME_TEMPORARY}\" |'\
+''"${sed}"' -e "s/[ 	]\{1,\}/ /g"' \
+               > "${BODY}" 2>&1
+      check 7 0 "${BODY}" '686281717 676'
+   fi
+
+   t_epilog
+}
 # }}}
 
 # Rest {{{
@@ -6313,13 +6403,6 @@ t_z() {
    # Test for [260e19d] (Juergen Daubert)
    echo body | ${MAILX} ${ARGS} "${MBOX}"
    check 4 0 "${MBOX}" '2948857341 94'
-
-   # "Test for" [d6f316a] (Gavin Troy)
-   ${rm} "${MBOX}"
-   printf "m ${MBOX}\n~s subject1\nEmail body\n~.\nfi ${MBOX}\np\nx\n" |
-   ${MAILX} ${ARGS} ${ADDARG_UNI} -Spipe-text/plain="@* ${cat}" > "${BODY}"
-   check 6 0 "${MBOX}" '3942990636 118'
-   check 6-1 - "${BODY}" '3951695530 170'
 
    # "Test for" [c299c45] (Peter Hofmann) TODO shouldn't end up QP-encoded?
    ${rm} "${MBOX}"

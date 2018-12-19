@@ -250,6 +250,7 @@ static FILE *
 _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
    char const *tmpname, int term_infd)
 {
+   static ui32_t reprocnt;
    struct str s;
    char const *env_addon[9 +8/*v15*/], *cp, *sh;
    size_t i;
@@ -291,7 +292,7 @@ env_addon[i++] = str_concat_csvl(&s, "NAIL_FILENAME", "=", cp, NULL)->s;/*v15*/
     * TODO a file wherever he wants!  *Do* create a zero-size temporary file
     * TODO and give *that* path as MAILX_FILENAME_TEMPORARY, clean it up once
     * TODO the pipe returns?  Like this we *can* verify path/name issues! */
-   cp = n_random_create_cp(n_MIN(NAME_MAX / 4, 16), NULL);
+   cp = n_random_create_cp(n_MIN(NAME_MAX / 4, 16), &reprocnt);
    env_addon[i++] = str_concat_csvl(&s, n_PIPEENV_FILENAME_GENERATED, "=", cp,
          NULL)->s;
 env_addon[i++] = str_concat_csvl(&s, "NAIL_FILENAME_GENERATED", "=", cp,/*v15*/
