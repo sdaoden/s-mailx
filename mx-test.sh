@@ -48,6 +48,7 @@ MBOX=./.cc-test.mbox
 ERR=./.cc-test.err # Covers some which cannot be checksummed; not quoted!
 MAIL=/dev/null
 #UTF8_LOCALE= autodetected unless set
+TMPDIR=`pwd`
 
 # When testing mass mail, maximum number of receivers. TODO note we do not
 # TODO gracefully handle ARG_MAX excess yet!
@@ -70,7 +71,8 @@ msg() {
 
 ##  --  >8  --  8<  --  ##
 
-export ARGS ADDARG_UNI CONF BODY MBOX MAIL  MAKE awk cat cksum rm sed grep
+export ARGS ADDARG_UNI CONF BODY MBOX MAIL TMPDIR  \
+   MAKE awk cat cksum rm sed grep
 
 LC_ALL=C LANG=C
 TZ=UTC
