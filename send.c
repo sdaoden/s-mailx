@@ -746,7 +746,8 @@ jheaders_skip:
                   goto jleave;
                else{
                   _print_part_info(obuf, ip, doitp, level, qf, stats);
-                  if(!getapproval(_("Run MIME handler for this part?"), FAL0))
+                  /* Because: interactive OR batch mode, so */
+                  if(!getapproval(_("Run MIME handler for this part?"), TRU1))
                      goto jleave;
                }
             }
@@ -1095,9 +1096,13 @@ jpipe_close:
 
    switch (mh.mh_flags & MIME_HDL_TYPE_MASK) {
    case MIME_HDL_CMD:
-      if(!(mh.mh_flags & MIME_HDL_COPIOUSOUTPUT) &&
-            action != SEND_TODISP_PARTS)
-         goto jmhp_default;
+      if(!(mh.mh_flags & MIME_HDL_COPIOUSOUTPUT)){
+         if(action != SEND_TODISP_PARTS)
+            goto jmhp_default;
+         /* Ach, what a hack!  We need filters.. v15! */
+         if(convert != CONV_FROMB64_T)
+            action = SEND_TOPIPE;
+      }
       /* FALLTHRU */
    case MIME_HDL_PTF:
       tmpname = NULL;
