@@ -3899,6 +3899,70 @@ jesubstring_len:
 
       if((varres = fexpand(argv[1], FEXP_NVAR | FEXP_NOPROTO)) == NULL)
          goto jestr_nodata;
+   }else if((lhv = 0, su_cs_starts_with_case("file-stat", cp)) ||
+         (++lhv, su_cs_starts_with_case("file-lstat", cp))){
+      struct stat s;
+      struct n_string s_b, *sp;
+      char c;
+
+      if(argv[1] == NULL || argv[2] != NULL)
+         goto jesynopsis;
+
+      if((varres = fexpand(argv[1], FEXP_NVAR | FEXP_NOPROTO)) == NULL)
+         goto jestr_nodata;
+      if((*((lhv == 0) ? &stat : &lstat))(varres, &s) != 0)
+         goto jestr_nodata;
+
+      sp = n_string_book(n_string_creat_auto(&s_b), 128);
+      sp = n_string_push_cp(sp, "st_file=");
+      sp = n_string_push_cp(sp, n_shexp_quote_cp(varres, FAL0));
+      sp = n_string_push_c(sp, ' ');
+
+      sp = n_string_push_cp(sp, "st_type=");
+      if(S_ISDIR(s.st_mode)) c = '/';
+      else if(S_ISLNK(s.st_mode)) c = '@';
+#ifdef S_ISFIFO
+      else if(S_ISFIFO(s.st_mode)) c = '|';
+#endif
+#ifdef S_ISSOCK
+      else if(S_ISSOCK(s.st_mode)) c = '=';
+#endif
+#ifdef S_ISCHR
+      else if(S_ISCHR(s.st_mode)) c = '%';
+#endif
+#ifdef S_ISBLK
+      else if(S_ISBLK(s.st_mode)) c = '#';
+#endif
+      else c = '.';
+      sp = n_string_push_c(sp, c);
+      sp = n_string_push_c(sp, ' ');
+
+      sp = n_string_push_cp(sp, "st_nlink=");
+      snprintf(iencbuf, sizeof iencbuf, "%ld", (long)s.st_nlink);
+      sp = n_string_push_cp(sp, iencbuf);
+      sp = n_string_push_c(sp, ' ');
+
+      sp = n_string_push_cp(sp, "st_size=");
+      snprintf(iencbuf, sizeof iencbuf, "%lu", (unsigned long)s.st_size);
+      sp = n_string_push_cp(sp, iencbuf);
+      sp = n_string_push_c(sp, ' ');
+
+      sp = n_string_push_cp(sp, "st_mode=");
+      snprintf(iencbuf, sizeof iencbuf, "%ld", (long)s.st_mode);
+      sp = n_string_push_cp(sp, iencbuf);
+      sp = n_string_push_c(sp, ' ');
+
+      sp = n_string_push_cp(sp, "st_uid=");
+      snprintf(iencbuf, sizeof iencbuf, "%ld", (long)s.st_uid);
+      sp = n_string_push_cp(sp, iencbuf);
+      sp = n_string_push_c(sp, ' ');
+
+      sp = n_string_push_cp(sp, "st_gid=");
+      snprintf(iencbuf, sizeof iencbuf, "%ld", (long)s.st_gid);
+      sp = n_string_push_cp(sp, iencbuf);
+      sp = n_string_push_c(sp, ' ');
+
+      varres = n_string_cp(sp);
    }else if(su_cs_starts_with_case("makeprint", cp)){
       struct str sin, sout;
 

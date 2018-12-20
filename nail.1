@@ -7413,6 +7413,16 @@ settings and character sets.
 Performs the usual
 .Sx "Filename transformations"
 on its argument.
+.It Cm file-stat , file-lstat
+Perform the usual
+.Sx "Filename transformations"
+on the argument, then call
+.Xr stat 2
+and
+.Xr lstat 2 ,
+respectively, in order to echo some stat fields such that
+.Ql vput vexpr v file-stat FILE; eval wysh set $v
+creates accessible variables.
 .It Cm random
 Generates a random string of the given length, or of
 .Dv \&\&PATH_MAX
