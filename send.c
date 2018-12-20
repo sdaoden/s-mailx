@@ -747,7 +747,8 @@ jheaders_skip:
                else{
                   _print_part_info(obuf, ip, doitp, level, qf, stats);
                   /* Because: interactive OR batch mode, so */
-                  if(!getapproval(_("Run MIME handler for this part?"), TRU1))
+                  if(!getapproval(_("Run MIME handler for this part?"),
+                        ((n_psonce & n_PSO_REPRODUCIBLE) != 0)))
                      goto jleave;
                }
             }
