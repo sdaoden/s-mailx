@@ -293,9 +293,6 @@ FL enum protocol  which_protocol(char const *name, bool_t check_stat,
 FL char *      n_c_to_hex_base16(char store[3], char c);
 FL si32_t      n_c_from_hex_base16(char const hex[2]);
 
-/* Find a prime greater than n */
-FL ui32_t n_prime_next(ui32_t n);
-
 /* Return the name of the dead.letter file */
 FL char const * n_getdeadletter(void);
 

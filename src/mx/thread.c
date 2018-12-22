@@ -46,6 +46,7 @@
 #endif
 
 #include <su/cs.h>
+#include <su/prime.h>
 
 /* Open addressing is used for Message-IDs because the maximum number of
  * messages in the table is known in advance (== msgCount) */
@@ -391,7 +392,7 @@ _makethreads(struct message *m, ui32_t cnt, int nmail)
 
    /* It is performance crucial to space this large enough in order to minimize
     * bucket sharing */
-   mprime = n_prime_next((cnt < UI32_MAX >> 3) ? cnt << 2 : cnt);
+   mprime = su_prime_lookup_next((cnt < UI32_MAX >> 3) ? cnt << 2 : cnt);
    mt = n_calloc(mprime, sizeof *mt);
 
    srelax_hold();

@@ -53,6 +53,7 @@ su_EMPTY_FILE()
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/prime.h>
 
 /* a_maildir_tbl should be a hash-indexed array of trees! */
 static struct message **a_maildir_tbl, **a_maildir_tbl_top;
@@ -844,7 +845,7 @@ mktable(void)
    i = a_maildir_tbl_prime = msgCount;
    i <<= 1;
    do
-      a_maildir_tbl_prime = n_prime_next(a_maildir_tbl_prime);
+      a_maildir_tbl_prime = su_prime_lookup_next(a_maildir_tbl_prime);
    while(a_maildir_tbl_prime < i);
    a_maildir_tbl = n_calloc(a_maildir_tbl_prime, sizeof *a_maildir_tbl);
    a_maildir_tbl_top = &a_maildir_tbl[a_maildir_tbl_prime - 1];

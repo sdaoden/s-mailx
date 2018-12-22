@@ -43,6 +43,9 @@
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#if mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
+# include <su/prime.h>
+#endif
 
 #include <sys/utsname.h>
 
@@ -209,7 +212,7 @@ a_aux_rand_init(void){
          a_aux_rand->b32[k] ^= a_aux_rand->b32[u.i];
          seed ^= a_aux_rand_weak(a_aux_rand->b32[k]);
          if((rnd & 3) == 3)
-            seed ^= n_prime_next(seed);
+            seed ^= su_prime_lookup_next(seed);
       }
    }
 
@@ -586,32 +589,6 @@ j_maxval:
    goto jleave;
 }
 #endif
-
-FL ui32_t
-n_prime_next(ui32_t n){
-   static ui32_t const primes[] = {
-      5, 11, 23, 47, 97, 157, 283,
-      509, 1021, 2039, 4093, 8191, 16381, 32749, 65521,
-      131071, 262139, 524287, 1048573, 2097143, 4194301,
-      8388593, 16777213, 33554393, 67108859, 134217689,
-      268435399, 536870909, 1073741789, 2147483647
-   };
-   ui32_t i, mprime;
-   n_NYD2_IN;
-
-   i = (n < primes[n_NELEM(primes) / 4] ? 0
-         : (n < primes[n_NELEM(primes) / 2] ? n_NELEM(primes) / 4
-         : n_NELEM(primes) / 2));
-
-   do if((mprime = primes[i]) > n)
-      break;
-   while(++i < n_NELEM(primes));
-
-   if(i == n_NELEM(primes) && mprime < n)
-      mprime = n;
-   n_NYD2_OU;
-   return mprime;
-}
 
 FL char const *
 n_getdeadletter(void){
