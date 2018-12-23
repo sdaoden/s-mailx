@@ -1515,7 +1515,7 @@ ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
       len = su_cs_len(pass);
       if (UICMP(z, len, >=, size))
          len = size -1;
-      memcpy(buf, pass, len);
+      su_mem_copy(buf, pass, len);
       buf[len] = '\0';
       size = (int)len;
    } else
@@ -1757,7 +1757,7 @@ jredo_v15:
 
       ds = su_cs_len(crl_dir);
       fn = n_alloc(fs = ds + 20);
-      memcpy(fn, crl_dir, ds);
+      su_mem_copy(fn, crl_dir, ds);
       fn[ds] = '/';
       while ((dp = readdir(dirp)) != NULL) {
          if (dp->d_name[0] == '.' && (dp->d_name[1] == '\0' ||
@@ -1767,7 +1767,7 @@ jredo_v15:
             continue;
          if (ds + (es = su_cs_len(dp->d_name)) + 2 < fs)
             fn = n_realloc(fn, fs = ds + es + 20);
-         memcpy(fn + ds + 1, dp->d_name, es + 1);
+         su_mem_copy(fn + ds + 1, dp->d_name, es + 1);
          if (load_crl1(store, fn) != OKAY) {
             closedir(dirp);
             n_free(fn);

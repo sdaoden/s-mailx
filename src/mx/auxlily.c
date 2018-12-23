@@ -442,16 +442,16 @@ jfile:
       size_t sz;
 
       np = n_lofi_alloc((sz = su_cs_len(name)) + 4 +1);
-      memcpy(np, name, sz + 1);
+      su_mem_copy(np, name, sz + 1);
 
       if(!stat(name, &stb)){
          if(S_ISDIR(stb.st_mode)
 #ifdef mx_HAVE_MAILDIR
-               && (memcpy(&np[sz], "/tmp", 5),
+               && (su_mem_copy(&np[sz], "/tmp", 5),
                   !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
-               (memcpy(&np[sz], "/new", 5),
+               (su_mem_copy(&np[sz], "/new", 5),
                   !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
-               (memcpy(&np[sz], "/cur", 5),
+               (su_mem_copy(&np[sz], "/cur", 5),
                   !stat(np, &stb) && S_ISDIR(stb.st_mode))
 #endif
                ){
@@ -643,7 +643,7 @@ n_nodename(bool_t mayoverride){
 
 #ifdef mx_HAVE_SOCKETS
 # ifdef mx_HAVE_GETADDRINFO
-      memset(&hints, 0, sizeof hints);
+      su_mem_set(&hints, 0, sizeof hints);
       hints.ai_family = AF_UNSPEC;
       hints.ai_flags = AI_CANONNAME;
       if(getaddrinfo(hn, NULL, &hints, &res) == 0){
@@ -653,7 +653,7 @@ n_nodename(bool_t mayoverride){
             l = su_cs_len(res->ai_canonname) +1;
             hn = n_lofi_alloc(l);
             lofi = TRU1;
-            memcpy(hn, res->ai_canonname, l);
+            su_mem_copy(hn, res->ai_canonname, l);
          }
          freeaddrinfo(res);
       }
@@ -710,7 +710,7 @@ n_idna_to_ascii(struct n_string *out, char const *ibuf, size_t ilen){
    if(ibuf[ilen] != '\0'){
       lofi = TRU1;
       idna_utf8 = n_lofi_alloc(ilen +1);
-      memcpy(idna_utf8, ibuf, ilen);
+      su_mem_copy(idna_utf8, ibuf, ilen);
       idna_utf8[ilen] = '\0';
       ibuf = idna_utf8;
    }
@@ -900,7 +900,7 @@ jinc1:
    b64.s = oudat;
    b64_encode_buf(&b64, indat, inlen, B64_BUF | B64_RFC4648URL | B64_NOPAD);
    assert(b64.l >= len);
-   memcpy(dat, b64.s, len);
+   su_mem_copy(dat, b64.s, len);
    dat[len] = '\0';
    if(oudat != dat)
       n_lofi_free(oudat);
@@ -1041,12 +1041,12 @@ jredo:
          t = 0;
          goto jredo;
       }
-      memcpy(&tc->tc_gm, tmp, sizeof tc->tc_gm);
+      su_mem_copy(&tc->tc_gm, tmp, sizeof tc->tc_gm);
       if((tmp = localtime(&t)) == NULL){
          t = 0;
          goto jredo;
       }
-      memcpy(&tc->tc_local, tmp, sizeof tc->tc_local);
+      su_mem_copy(&tc->tc_local, tmp, sizeof tc->tc_local);
       cp = su_cs_pcopy(tc->tc_ctime, n_time_ctime((si64_t)tc->tc_time, tmp));
       *cp++ = '\n';
       *cp = '\0';

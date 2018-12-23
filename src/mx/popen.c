@@ -737,7 +737,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
       }
 
       if ((oflags & OF_SUFFIX) && xlen > 0)
-         memcpy(x + _RANDCHARS, namehint, xlen);
+         su_mem_copy(x + _RANDCHARS, namehint, xlen);
 
       x[xlen + _RANDCHARS] = '\0';
       cp = x;
@@ -749,7 +749,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
       osoflags |= O_APPEND;
 
    for(relesigs = TRU1, i = 0;; ++i){
-      memcpy(cp, n_random_create_cp(_RANDCHARS, NULL), _RANDCHARS);
+      su_mem_copy(cp, n_random_create_cp(_RANDCHARS, NULL), _RANDCHARS);
 
       hold_all_sigs();
 
@@ -792,7 +792,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
    if(fn != NULL){
       i = su_cs_len(cp_base) +1;
       cp = (oflags & OF_FN_AUTOREC) ? n_autorec_alloc(i) : n_alloc(i);
-      memcpy(cp, cp_base, i);
+      su_mem_copy(cp, cp_base, i);
       *fn = cp;
    }
    n_lofi_free(cp_base);
@@ -1200,7 +1200,7 @@ n_child_start(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
             ;
          ai_orig = ai;
          env = n_lofi_alloc(sizeof(*env) * (ei + ai +1));
-         memcpy(env, environ, sizeof(*env) * ei);
+         su_mem_copy(env, environ, sizeof(*env) * ei);
 
          /* Replace all those keys that yet exist */
          while (ai-- > 0) {
@@ -1215,7 +1215,7 @@ n_child_start(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
             for (ei = ei_orig; ei-- > 0;) {
                char const *ekvs = su_cs_find_c(env[ei], '=');
                if (ekvs != NULL && kl == PTR2SIZE(ekvs - env[ei]) &&
-                     !memcmp(ee, env[ei], kl)) {
+                     !su_mem_cmp(ee, env[ei], kl)) {
                   env[ei] = n_UNCONST(ee);
                   env_addon_or_null[ai] = NULL;
                   break;

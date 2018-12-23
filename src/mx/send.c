@@ -145,8 +145,8 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
       size_t i = to.l - fl;
       char *x = n_autorec_alloc(al + i +1);
 
-      memcpy(x, "appl../", al);
-      memcpy(x + al, cp + fl, i +1);
+      su_mem_copy(x, "appl../", al);
+      su_mem_copy(x + al, cp + fl, i +1);
       cp = x;
       to.l = al + i;
    }
@@ -587,7 +587,7 @@ jhdrpush:
 
 jhdrput:
       /* If it is an ignored header, skip it */
-      *(cp = memchr(hlp->s_dat, ':', hlp->s_len)) = '\0';
+      *(cp = su_mem_find(hlp->s_dat, ':', hlp->s_len)) = '\0';
       /* C99 */{
          size_t i;
 
@@ -647,7 +647,7 @@ jhdrtrunc:
    }
 
 jheaders_skip:
-   memset(&mh, 0, sizeof mh);
+   su_mem_set(&mh, 0, sizeof mh);
 
    switch (ip->m_mimecontent) {
    case MIME_822:

@@ -301,7 +301,7 @@ _mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
    mtnp = NULL;
 
    /* Drop anything after a comment first TODO v15: only when read from file */
-   if ((typ = memchr(line, '#', len)) != NULL)
+   if ((typ = su_mem_find(line, '#', len)) != NULL)
       len = PTR2SIZE(typ - line);
 
    /* Then trim any trailing whitespace from line (including NL/CR) */
@@ -365,7 +365,7 @@ _mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
       goto jleave;
    }
 
-   if ((subtyp = memchr(typ, '/', tlen)) == NULL || subtyp[1] == '\0' ||
+   if ((subtyp = su_mem_find(typ, '/', tlen)) == NULL || subtyp[1] == '\0' ||
          su_cs_is_space(subtyp[1])) {
 jeinval:
       if(cmdcalled || (orflags & _MT_FSPEC) || (n_poption & n_PO_D_V))
@@ -407,8 +407,8 @@ jeinval:
    mtnp->mt_mtlen = (ui32_t)tlen;
    {  char *l = (char*)(mtnp + 1);
       mtnp->mt_line = l;
-      memcpy(l, typ, tlen);
-      memcpy(l + tlen, line, len);
+      su_mem_copy(l, typ, tlen);
+      su_mem_copy(l + tlen, line, len);
       tlen += len;
       l[tlen] = '\0';
    }
@@ -426,7 +426,7 @@ _mt_by_filename(struct mtlookup *mtlp, char const *name, bool_t with_result)
    char const *ext, *cp;
    n_NYD2_IN;
 
-   memset(mtlp, 0, sizeof *mtlp);
+   su_mem_set(mtlp, 0, sizeof *mtlp);
 
    if ((nlen = su_cs_len(name)) == 0) /* TODO name should be a URI */
       goto jnull_leave;
@@ -478,8 +478,8 @@ _mt_by_filename(struct mtlookup *mtlp, char const *name, bool_t with_result)
          i = mtnp->mt_mtlen;
          mtlp->mtl_result = n_autorec_alloc(i + j +1);
          if (j > 0)
-            memcpy(mtlp->mtl_result, name, j);
-         memcpy(mtlp->mtl_result + j, mtnp->mt_line, i);
+            su_mem_copy(mtlp->mtl_result, name, j);
+         su_mem_copy(mtlp->mtl_result + j, mtnp->mt_line, i);
          mtlp->mtl_result[j += i] = '\0';
          goto jleave;
       }
@@ -498,7 +498,7 @@ _mt_by_mtname(struct mtlookup *mtlp, char const *mtname)
    char const *cp;
    n_NYD2_IN;
 
-   memset(mtlp, 0, sizeof *mtlp);
+   su_mem_set(mtlp, 0, sizeof *mtlp);
 
    if ((mtlp->mtl_nlen = nlen = su_cs_len(mtlp->mtl_name = mtname)) == 0)
       goto jnull_leave;
@@ -520,8 +520,8 @@ _mt_by_mtname(struct mtlookup *mtlp, char const *mtname)
          if (i + j == mtlp->mtl_nlen) {
             char *xmt = n_lofi_alloc(i + j +1);
             if (j > 0)
-               memcpy(xmt, cp, j);
-            memcpy(xmt + j, mtnp->mt_line, i);
+               su_mem_copy(xmt, cp, j);
+            su_mem_copy(xmt + j, mtnp->mt_line, i);
             xmt[j += i] = '\0';
             i = su_cs_cmp_case(mtname, xmt);
             n_lofi_free(xmt);
@@ -544,7 +544,7 @@ su_SINLINE struct mt_class_arg *
 _mt_classify_init(struct mt_class_arg * mtcap, enum mime_type_class initval)
 {
    n_NYD2_IN;
-   memset(mtcap, 0, sizeof *mtcap);
+   su_mem_set(mtcap, 0, sizeof *mtcap);
    /*mtcap->mtca_lastc =*/ mtcap->mtca_c = EOF;
    mtcap->mtca_mtc = initval | _MT_C__1STLINE;
    n_NYD2_OU;
@@ -658,7 +658,7 @@ _mt_classify_round(struct mt_class_arg *mtcap) /* TODO dig UTF-8 for !text/!! */
          *f_p++ = (char)c;
          if (UICMP(z, curlnlen, ==, F_SIZEOF - 1) &&
                PTR2SIZE(f_p - f_buf) == F_SIZEOF &&
-               !memcmp(f_buf, F_, F_SIZEOF)){
+               !su_mem_cmp(f_buf, F_, F_SIZEOF)){
             mtc |= _MT_C_FROM_;
             if (mtc & _MT_C__1STLINE)
                mtc |= _MT_C_FROM_1STLINE;
@@ -1057,8 +1057,8 @@ jdelall:
          }
 
          val = n_lofi_alloc(i + mtnp->mt_mtlen +1);
-         memcpy(val, typ, i);
-         memcpy(val + i, mtnp->mt_line, mtnp->mt_mtlen);
+         su_mem_copy(val, typ, i);
+         su_mem_copy(val + i, mtnp->mt_line, mtnp->mt_mtlen);
          val[i += mtnp->mt_mtlen] = '\0';
          i = su_cs_cmp_case(val, *argv);
          n_lofi_free(val);
@@ -1327,7 +1327,7 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
    size_t el, cl, l;
    n_NYD_IN;
 
-   memset(mhp, 0, sizeof *mhp);
+   su_mem_set(mhp, 0, sizeof *mhp);
    buf = NULL;
 
    rv = MIME_HDL_NULL;
@@ -1351,12 +1351,12 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
    mhp->mh_flags = rv;
 
    buf = n_lofi_alloc(__L + l +1);
-   memcpy(buf, __S, __L);
+   su_mem_copy(buf, __S, __L);
 
    /* File-extension handlers take precedence.
     * Yes, we really "fail" here for file extensions which clash MIME types */
    if (el > 0) {
-      memcpy(buf + __L, es, el +1);
+      su_mem_copy(buf + __L, es, el +1);
       for (cp = buf + __L; *cp != '\0'; ++cp)
          *cp = su_cs_to_lower(*cp);
 
@@ -1370,7 +1370,7 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
    if (cl == 0)
       goto jleave;
 
-   memcpy(buf + __L, cs, cl +1);
+   su_mem_copy(buf + __L, cs, cl +1);
    for (cp = buf + __L; *cp != '\0'; ++cp)
       *cp = su_cs_to_lower(*cp);
 

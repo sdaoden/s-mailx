@@ -153,7 +153,7 @@ jneednl:
          save_w = self->qf_datw - self->qf_brkw;
          save_l = self->qf_dat.l - self->qf_brkl;
          save_b = self->qf_dat.s + self->qf_brkl + 2;
-         memmove(save_b, save_b - 2, save_l);
+         su_mem_move(save_b, save_b - 2, save_l);
          self->qf_dat.l = self->qf_brkl;
       }
 
@@ -167,7 +167,7 @@ jflush:
          self->qf_brk_isws = FAL0;
          self->qf_datw += save_w;
          self->qf_dat.l = save_l;
-         memmove(self->qf_dat.s, save_b, save_l);
+         su_mem_move(self->qf_dat.s, save_b, save_l);
       }
    } else if (self->qf_datw >= self->qf_qfold_min && !self->qf_brk_isws) {
       bool_t isws = (iswspace(wc) != 0);
@@ -341,7 +341,7 @@ quoteflt_init(struct quoteflt *self, char const *prefix, bool_t bypass)
 #endif
    n_NYD_IN;
 
-   memset(self, 0, sizeof *self);
+   su_mem_set(self, 0, sizeof *self);
 
    if ((self->qf_pfix = prefix) != NULL)
       self->qf_pfix_len = (ui32_t)su_cs_len(prefix);
@@ -403,7 +403,7 @@ quoteflt_reset(struct quoteflt *self, FILE *f) /* xxx inline */
    self->qf_state = _QF_CLEAN;
    self->qf_dat.l =
    self->qf_currq.l = 0;
-   memset(self->qf_mbps, 0, sizeof self->qf_mbps);
+   su_mem_set(self->qf_mbps, 0, sizeof self->qf_mbps);
 #endif
    n_NYD_OU;
 }
@@ -451,7 +451,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
           * xxx supported"; though there is no charset known which uses this
           * xxx control char as part of a multibyte character; note that S-nail
           * XXX (and the Mail codebase as such) do not support EBCDIC */
-         if ((vp = memchr(dat, '\n', len)) == NULL)
+         if ((vp = su_mem_find(dat, '\n', len)) == NULL)
             ll = len;
          else {
             pxok = FAL0;

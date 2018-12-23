@@ -479,7 +479,7 @@ zread(void *cookie, char *rbp, int num)
 	/* Check the magic number */
 	if (fread(header,
 	    sizeof(char), sizeof(header), fp) != sizeof(header) ||
-	    memcmp(header, magic_header, sizeof(magic_header)) != 0) {
+	    su_mem_cmp(header, magic_header, sizeof(magic_header)) != 0) {
 		return (-1);
 	}
 	maxbits = header[2];	/* Set -b from file. */
@@ -663,7 +663,7 @@ cl_hash(struct s_zstate *zs, count_int cl_hsize)	/* Reset code table. */
 	m1 = -1;
 	htab_p = htab + cl_hsize;
 	i = cl_hsize - 16;
-	do {			/* Might use Sys V memset(3) here. */
+	do {			/* Might use Sys V su_mem_set(3) here. */
 		*(htab_p - 16) = m1;
 		*(htab_p - 15) = m1;
 		*(htab_p - 14) = m1;

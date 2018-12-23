@@ -434,9 +434,9 @@ _maildir_append(char const *name, char const *sub, char const *fn)
       i = su_cs_len(fn) +1;
       sz = su_cs_len(sub);
       m->m_maildir_file = tmp = n_alloc(sz + 1 + i);
-      memcpy(tmp, sub, sz);
+      su_mem_copy(tmp, sub, sz);
       tmp[sz++] = '/';
-      memcpy(&tmp[sz], fn, i);
+      su_mem_copy(&tmp[sz], fn, i);
    }
    m->m_time = t;
    m->m_flag = f;
@@ -659,7 +659,7 @@ mkname(struct n_timespec const *tsp, enum mflag f, char const *pref)
    } else {
       size = (n = su_cs_len(pref)) + 13;
       cp = n_autorec_alloc(size);
-      memcpy(cp, pref, n +1);
+      su_mem_copy(cp, pref, n +1);
       for (i = n; i > 3; --i)
          if (cp[i - 1] == ',' && cp[i - 2] == '2' &&
                cp[i - 3] == n_MAILDIR_SEPARATOR) {
@@ -667,7 +667,7 @@ mkname(struct n_timespec const *tsp, enum mflag f, char const *pref)
             break;
          }
       if (i <= 3) {
-         memcpy(cp + n, ":2,", 3 +1);
+         su_mem_copy(cp + n, ":2,", 3 +1);
          n += 3;
       }
    }
@@ -783,12 +783,12 @@ mkmaildir(char const *name) /* TODO proper cleanup on error; use path[] loop */
 
    if (trycreate(name) == OKAY) {
       np = n_lofi_alloc((sz = su_cs_len(name)) + 4 +1);
-      memcpy(np, name, sz);
-      memcpy(np + sz, "/tmp", 4 +1);
+      su_mem_copy(np, name, sz);
+      su_mem_copy(np + sz, "/tmp", 4 +1);
       if (trycreate(np) == OKAY) {
-         memcpy(np + sz, "/new", 4 +1);
+         su_mem_copy(np + sz, "/new", 4 +1);
          if (trycreate(np) == OKAY) {
-            memcpy(np + sz, "/cur", 4 +1);
+            su_mem_copy(np + sz, "/cur", 4 +1);
             rv = trycreate(np);
          }
       }
@@ -868,9 +868,9 @@ subdir_remove(char const *name, char const *sub)
    namelen = su_cs_len(name);
    sublen = su_cs_len(sub);
    path = n_alloc(pathsize = namelen + sublen + 30 +1);
-   memcpy(path, name, namelen);
+   su_mem_copy(path, name, namelen);
    path[namelen] = '/';
-   memcpy(path + namelen + 1, sub, sublen);
+   su_mem_copy(path + namelen + 1, sub, sublen);
    path[namelen + sublen + 1] = '/';
    path[pathend = namelen + sublen + 2] = '\0';
 
@@ -887,7 +887,7 @@ subdir_remove(char const *name, char const *sub)
       n = su_cs_len(dp->d_name);
       if (UICMP(32, pathend + n +1, >, pathsize))
          path = n_realloc(path, pathsize = pathend + n + 30);
-      memcpy(path + pathend, dp->d_name, n +1);
+      su_mem_copy(path + pathend, dp->d_name, n +1);
       if (unlink(path) == -1) {
          n_perr(path, 0);
          closedir(dirp);

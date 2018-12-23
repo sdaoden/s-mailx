@@ -125,7 +125,7 @@ a_ignore_resolve_self(struct n_ignore *xself, bool_t docreate){
       if((self = a_ignore_bltin[suip]) == NULL && docreate){
          if(xself == n_IGNORE_TYPE){
             self = &a_ignore_type;
-            /* LIB: memset(self, 0, sizeof *self);*/
+            /* LIB: su_mem_set(self, 0, sizeof *self);*/
          }else
             self = n_ignore_new(FAL0);
          self->i_bltin = TRU1;
@@ -227,7 +227,7 @@ a_ignore_del_allof(struct n_ignore *ip, bool_t retain){
    }
 #endif
 
-   memset(itp, 0, sizeof *itp);
+   su_mem_set(itp, 0, sizeof *itp);
    n_NYD2_OU;
 }
 
@@ -756,7 +756,7 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
 
       i = n_VSTRUCT_SIZEOF(struct a_ignore_re, ir_input) + ++len;
       irp = self->i_auto ? n_autorec_alloc(i) : n_alloc(i);
-      memcpy(irp->ir_input, dat, --len);
+      su_mem_copy(irp->ir_input, dat, --len);
       irp->ir_input[len] = '\0';
 
       if((s = regcomp(&irp->ir_regex, irp->ir_input,
@@ -784,7 +784,7 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
 
       i = n_VSTRUCT_SIZEOF(struct a_ignore_field, if_field) + len + 1;
       ifp = self->i_auto ? n_autorec_alloc(i) : n_alloc(i);
-      memcpy(ifp->if_field, dat, len);
+      su_mem_copy(ifp->if_field, dat, len);
       ifp->if_field[len] = '\0';
       hi = su_cs_hash_case_cbuf(dat, len) % n_NELEM(itp->it_ht);
       ifp->if_next = itp->it_ht[hi];

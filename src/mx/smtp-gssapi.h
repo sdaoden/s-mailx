@@ -145,8 +145,8 @@ _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
 
    send_tok.value = n_autorec_alloc(
          (send_tok.length = sbp->sb_url.url_host.l + 5) +1);
-   memcpy(send_tok.value, "smtp@", 5);
-   memcpy((char*)send_tok.value + 5, sbp->sb_url.url_host.s,
+   su_mem_copy(send_tok.value, "smtp@", 5);
+   su_mem_copy((char*)send_tok.value + 5, sbp->sb_url.url_host.s,
       sbp->sb_url.url_host.l +1);
    maj_stat = gss_import_name(&min_stat, &send_tok, GSS_C_NT_HOSTBASED_SERVICE,
          &target_name);
@@ -257,7 +257,7 @@ jebase64:
     * Second to fourth octet: maximum message size in network byte order.
     * Fifth and following octets: user name string */
    in.s = n_autorec_alloc((send_tok.length = 4 + sbp->sb_ccred.cc_user.l) +1);
-   memcpy(in.s + 4, sbp->sb_ccred.cc_user.s, sbp->sb_ccred.cc_user.l +1);
+   su_mem_copy(in.s + 4, sbp->sb_ccred.cc_user.s, sbp->sb_ccred.cc_user.l +1);
    in.s[0] = 1;
    in.s[1] = 0;
    in.s[2] = in.s[3] = (char)0xFF;

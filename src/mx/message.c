@@ -235,7 +235,7 @@ a_msg_add_to_nmadat(char ***nmadat, size_t *nmasize, /* TODO Vector */
       i = *nmasize << 1;
       *nmasize = i;
       narr = n_autorec_alloc(i * sizeof *np);
-      memcpy(narr, *nmadat, i >>= 1);
+      su_mem_copy(narr, *nmadat, i >>= 1);
       *nmadat = narr;
       np = &narr[idx];
    }
@@ -287,7 +287,7 @@ a_msg_markall(char const *orig, struct n_cmd_arg *cap, int f){
       mp->m_flag = mf;
    }
 
-   memset(&msl, 0, sizeof msl);
+   su_mem_set(&msl, 0, sizeof msl);
    msl.msl_cap = cap;
    msl.msl_input_orig = orig;
 
@@ -613,7 +613,7 @@ jnumber__thr:
       if(np > nmadat){
          j = PTR2SIZE(np - nmadat) * sizeof(*sep);
          sep = n_lofi_alloc(j);
-         memset(sep, 0, j);
+         su_mem_set(sep, 0, j);
 
          for(j = 0, nq = nmadat; *nq != NULL; ++j, ++nq){
             char *xsave, *x, *y;
@@ -1144,7 +1144,7 @@ a_msg_match_dash(struct message *mp, char const *str){
 
       l = PTR2SIZE(hfield - str);
       hfield = n_lofi_alloc(l +1);
-      memcpy(hfield, str, l);
+      su_mem_copy(hfield, str, l);
       hfield[l] = '\0';
       hbody = hfieldX(hfield, mp);
       n_lofi_free(hfield);
@@ -1401,7 +1401,7 @@ message_append(struct message *mp){
       if(mp != NULL)
          message[msgCount - 1] = *mp;
       else
-         memset(&message[msgCount - 1], 0, sizeof *message);
+         su_mem_set(&message[msgCount - 1], 0, sizeof *message);
    }
    n_NYD_OU;
 }

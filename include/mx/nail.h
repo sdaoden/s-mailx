@@ -1755,7 +1755,7 @@ struct n_dig_msg_ctx{
 /* This is a bit hairy */
 #define n_DIG_MSG_COMPOSE_CREATE(DMCP,HP) \
 do{\
-   memset(n_dig_msg_compose_ctx = DMCP, 0, sizeof *(DMCP));\
+   su_mem_set(n_dig_msg_compose_ctx = DMCP, 0, sizeof *(DMCP));\
    (DMCP)->dmc_flags = n_DIG_MSG_COMPOSE;\
    (DMCP)->dmc_hp = HP;\
    (DMCP)->dmc_membag = su_mem_bag_top(n_go_data->gdc_membag);\

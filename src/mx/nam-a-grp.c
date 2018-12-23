@@ -660,7 +660,7 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
       goto jleave;
 
    ngp = n_alloc(i + addsz);
-   memcpy(ngp->ng_id, id, l);
+   su_mem_copy(ngp->ng_id, id, l);
    ngp->ng_subclass_off = (ui32_t)i;
    ngp->ng_id_len_sub = (ui16_t)(i - --l);
    ngp->ng_type = nt;
@@ -1207,7 +1207,7 @@ nalloc(char const *str, enum gfield ntype)
    if (!(ag.ag_n_flags & NAME_NAME_SALLOC)) {
       ag.ag_n_flags |= NAME_NAME_SALLOC;
       np = n_autorec_alloc(sizeof(*np) + ag.ag_slen +1);
-      memcpy(np + 1, ag.ag_skinned, ag.ag_slen +1);
+      su_mem_copy(np + 1, ag.ag_skinned, ag.ag_slen +1);
       ag.ag_skinned = (char*)(np + 1);
    } else
       np = n_autorec_alloc(sizeof *np);
@@ -1241,7 +1241,7 @@ nalloc(char const *str, enum gfield ntype)
          in.s = n_lofi_alloc(s + 1 + i +1);
          while(s > 0 && su_cs_is_blank(str[s - 1]))
             --s;
-         memcpy(in.s, str, s);
+         su_mem_copy(in.s, str, s);
          if (i > 0) {
             in.s[s++] = ' ';
             while (su_cs_is_blank(str[e])) {
@@ -1250,7 +1250,7 @@ nalloc(char const *str, enum gfield ntype)
                   break;
             }
             if (i > 0)
-               memcpy(&in.s[s], &str[e], i);
+               su_mem_copy(&in.s[s], &str[e], i);
          }
          s += i;
          in.s[in.l = s] = '\0';
@@ -1282,10 +1282,10 @@ jskipfullextra:
          size_t l = ag.ag_iaddr_start,
             lsuff = ag.ag_ilen - ag.ag_iaddr_aend;
          in.s = n_lofi_alloc(l + ag.ag_slen + lsuff +1);
-         memcpy(in.s, str, l);
-         memcpy(in.s + l, ag.ag_skinned, ag.ag_slen);
+         su_mem_copy(in.s, str, l);
+         su_mem_copy(in.s + l, ag.ag_skinned, ag.ag_slen);
          l += ag.ag_slen;
-         memcpy(in.s + l, str + ag.ag_iaddr_aend, lsuff);
+         su_mem_copy(in.s + l, str + ag.ag_iaddr_aend, lsuff);
          l += lsuff;
          in.s[l] = '\0';
          in.l = l;
@@ -1451,7 +1451,7 @@ lextract(char const *line, enum gfield ntype)
             n_SHEXP_PARSE_QUOTE_AUTO_DSQ), sp, &sin, NULL);
       if(!(shs & n_SHEXP_STATE_ERR_MASK) && (shs & n_SHEXP_STATE_STOP)){
          line = cp = n_lofi_alloc(sp->s_len +1);
-         memcpy(cp, n_string_cp(sp), sp->s_len +1);
+         su_mem_copy(cp, n_string_cp(sp), sp->s_len +1);
       }else
          line = cp = NULL;
       n_autorec_relax_gut();
@@ -2098,7 +2098,7 @@ c_commandalias(void *vp){
             if((i = su_cs_len(ccp)) > 0){
                if(len++ != 0)
                   *cp++ = ' ';
-               memcpy(cp, ccp, i);
+               su_mem_copy(cp, ccp, i);
                cp += i;
             }
          *cp = '\0';
@@ -2222,7 +2222,7 @@ jerr:
             ngnhp->ngnh_head = ngnp;
          ngnp_tail = ngnp;
          ngnp->ngn_next = NULL;
-         memcpy(ngnp->ngn_id, *argv, i);
+         su_mem_copy(ngnp->ngn_id, *argv, i);
       }
    }
    n_NYD_OU;
@@ -2439,7 +2439,7 @@ c_shortcut(void *vp){
          rv = 1;
       }else{
          a_NAG_GP_TO_SUBCLASS(cp, ngp);
-         memcpy(cp, argv[1], l);
+         su_mem_copy(cp, argv[1], l);
       }
    }
    n_NYD_OU;
@@ -2528,7 +2528,7 @@ c_charsetalias(void *vp){
          rv = 1;
       }else{
          a_NAG_GP_TO_SUBCLASS(cp, ngp);
-         memcpy(cp, dst, dstl);
+         su_mem_copy(cp, dst, dstl);
       }
    }
    n_NYD_OU;
@@ -2635,10 +2635,10 @@ jenomem:
          a_NAG_GP_TO_SUBCLASS(nftp, ngp);
          a_NAG_GP_TO_SUBCLASS(cp, ngp);
          cp += sizeof *nftp;
-         memcpy(nftp->nft_load.s = cp, argv[1], llc);
+         su_mem_copy(nftp->nft_load.s = cp, argv[1], llc);
             cp += llc;
             nftp->nft_load.l = --llc;
-         memcpy(nftp->nft_save.s = cp, argv[2], lsc);
+         su_mem_copy(nftp->nft_save.s = cp, argv[2], lsc);
             /*cp += lsc;*/
             nftp->nft_save.l = --lsc;
       }
@@ -2802,13 +2802,13 @@ n_filetype_exists(struct n_file_type *res_or_null, char const *file){
       l = su_cs_len(lext);
       vbuf = n_lofi_alloc(l + n_MAX(sizeof(a_X1), sizeof(a_X2)));
 
-      memcpy(vbuf, a_X1, sizeof(a_X1) -1);
-      memcpy(&vbuf[sizeof(a_X1) -1], lext, l);
+      su_mem_copy(vbuf, a_X1, sizeof(a_X1) -1);
+      su_mem_copy(&vbuf[sizeof(a_X1) -1], lext, l);
       vbuf[sizeof(a_X1) -1 + l] = '\0';
       cload = n_var_vlook(vbuf, FAL0);
 
-      memcpy(vbuf, a_X2, sizeof(a_X2) -1);
-      memcpy(&vbuf[sizeof(a_X2) -1], lext, l);
+      su_mem_copy(vbuf, a_X2, sizeof(a_X2) -1);
+      su_mem_copy(&vbuf[sizeof(a_X2) -1], lext, l);
       vbuf[sizeof(a_X2) -1 + l] = '\0';
       csave = n_var_vlook(vbuf, FAL0);
 

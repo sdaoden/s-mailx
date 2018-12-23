@@ -123,7 +123,7 @@ a_socket_open(struct sock *sp, struct url *urlp) /* TODO sigstuff; refactor */
    int volatile sofd = -1, errval;
    n_NYD2_IN;
 
-   memset(sp, 0, sizeof *sp);
+   su_mem_set(sp, 0, sizeof *sp);
    n_UNINIT(errval, 0);
 
    serv = (urlp->url_port != NULL) ? urlp->url_port : urlp->url_proto;
@@ -151,7 +151,7 @@ jpseudo_jump:
 
 # ifdef mx_HAVE_GETADDRINFO
    for (;;) {
-      memset(&hints, 0, sizeof hints);
+      su_mem_set(&hints, 0, sizeof hints);
       hints.ai_socktype = SOCK_STREAM;
       __sopen_sig = -1;
       errval = getaddrinfo(urlp->url_host.s, serv, &hints, &res0);
@@ -195,7 +195,7 @@ jpseudo_jump:
       if (n_poption & n_PO_D_V) {
          if (getnameinfo(res->ai_addr, res->ai_addrlen, hbuf, sizeof hbuf,
                NULL, 0, NI_NUMERICHOST))
-            memcpy(hbuf, "unknown host", sizeof("unknown host"));
+            su_mem_copy(hbuf, "unknown host", sizeof("unknown host"));
          n_err(_("%sConnecting to %s:%s ... "),
                (res == res0 ? n_empty : "\n"), hbuf, serv);
       }
@@ -268,10 +268,10 @@ jjumped:
       goto jjumped;
    }
 
-   memset(&servaddr, 0, sizeof servaddr);
+   su_mem_set(&servaddr, 0, sizeof servaddr);
    servaddr.sin_family = AF_INET;
    servaddr.sin_port = htons(urlp->url_portno);
-   memcpy(&servaddr.sin_addr, *pptr, sizeof(struct in_addr));
+   su_mem_copy(&servaddr.sin_addr, *pptr, sizeof(struct in_addr));
    if (n_poption & n_PO_D_V)
       n_err(_("%sConnecting to %s:%d ... "),
          n_empty, inet_ntoa(**pptr), (int)urlp->url_portno);
@@ -318,7 +318,7 @@ jjumped:
 #  if defined mx_HAVE_GETADDRINFO && defined SSL_CTRL_SET_TLSEXT_HOSTNAME
       /* TODO the SSL_ def check should NOT be here */
    if(urlp->url_flags & n_URL_TLS_MASK){
-      memset(&hints, 0, sizeof hints);
+      su_mem_set(&hints, 0, sizeof hints);
       hints.ai_family = AF_UNSPEC;
       hints.ai_flags = AI_NUMERICHOST;
       res0 = NULL;
@@ -534,7 +534,7 @@ swrite1(struct sock *sp, char const *data, int sz, int use_buffer)
          di = sp->s_wbufsize - sp->s_wbufpos;
          sz -= di;
          if (sp->s_wbufpos > 0) {
-            memcpy(sp->s_wbuf + sp->s_wbufpos, data, di);
+            su_mem_copy(sp->s_wbuf + sp->s_wbufpos, data, di);
             rv = swrite1(sp, sp->s_wbuf, sp->s_wbufsize, -1);
          } else
             rv = swrite1(sp, data, sp->s_wbufsize, -1);
@@ -548,7 +548,7 @@ swrite1(struct sock *sp, char const *data, int sz, int use_buffer)
          if (rv != OKAY)
             goto jleave;
       } else if (sz) {
-         memcpy(sp->s_wbuf+ sp->s_wbufpos, data, sz);
+         su_mem_copy(sp->s_wbuf+ sp->s_wbufpos, data, sz);
          sp->s_wbufpos += sz;
       }
       rv = OKAY;
@@ -669,12 +669,12 @@ jesocksreplymsg:
       pbuf[2] = 0x00; /* RESERVED */
       pbuf[3] = 0x03; /* ATYP: domain name */
       pbuf[4] = (ui8_t)urlp->url_host.l;
-      memcpy(&pbuf[i = 5], urlp->url_host.s, urlp->url_host.l);
+      su_mem_copy(&pbuf[i = 5], urlp->url_host.s, urlp->url_host.l);
       /* C99 */{
          ui16_t x;
 
          x = htons(urlp->url_portno);
-         memcpy(&pbuf[i += urlp->url_host.l], (ui8_t*)&x, sizeof x);
+         su_mem_copy(&pbuf[i += urlp->url_host.l], (ui8_t*)&x, sizeof x);
          i += sizeof x;
       }
       if(write(sp->s_fd, pbuf, i) != (ssize_t)i)

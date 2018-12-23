@@ -148,7 +148,8 @@ static unsigned char PADDING[64] = {
 	(a) = ((a) + (b)) & UINT4B_MAX; \
 }
 
-static void * (* volatile _volatile_memset)(void*, int, size_t) = &(memset);
+static void * (* volatile _volatile_su_mem_set)(void*, int, size_t
+	) = &(su_mem_set);
 
 static void Encode(unsigned char *outp, md5_type *inp, unsigned int len);
 static void Decode(md5_type *outp, unsigned char *inp, unsigned int len);
@@ -276,7 +277,7 @@ MD5Transform(md5_type state[4], unsigned char block[64])
 	/*
 	 * Zeroize sensitive information.
 	 */
-	(*_volatile_memset)(x, 0, sizeof x);
+	(*_volatile_su_mem_set)(x, 0, sizeof x);
 }
 
 /*
@@ -327,7 +328,7 @@ md5_update(
 	 * Transform as many times as possible.
 	 */
 	if (inputLen >= partLen) {
-		memcpy(&context->buffer[idx], input, partLen);
+		su_mem_copy(&context->buffer[idx], input, partLen);
 		MD5Transform(context->state, context->buffer);
 
 		for (i = partLen; i + 63 < inputLen; i += 64)
@@ -338,7 +339,7 @@ md5_update(
 		i = 0;
 
 	/* Buffer remaining input */
-	memcpy(&context->buffer[idx], &input[i], inputLen-i);
+	su_mem_copy(&context->buffer[idx], &input[i], inputLen-i);
 }
 
 /*
@@ -372,7 +373,7 @@ md5_final(
 	/*
 	 * Zeroize sensitive information.
 	 */
-	(*_volatile_memset)(context, 0, sizeof *context);
+	(*_volatile_su_mem_set)(context, 0, sizeof *context);
 }
 
 # undef UINT4B_MAX

@@ -347,8 +347,8 @@ jins_505:
          hfp->hf_next = NULL;
          hfp->hf_nl = nl - 1;
          hfp->hf_bl = bl - 1;
-         memcpy(&hfp->hf_dat[0], cp, nl);
-         memcpy(&hfp->hf_dat[nl], cmda[2], bl);
+         su_mem_copy(&hfp->hf_dat[0], cp, nl);
+         su_mem_copy(&hfp->hf_dat[nl], cmda[2], bl);
          if(fprintf(fp, "210 %s %" PRIuZ "\n",
                &hfp->hf_dat[0], ++i) < 0)
             cp = NULL;

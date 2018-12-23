@@ -241,9 +241,9 @@ jm_h:
          nx->nrc_mlen = hl;
          nx->nrc_ulen = ul;
          nx->nrc_plen = pl;
-         memcpy(nx->nrc_dat, host, ++hl);
-         memcpy(nx->nrc_dat + hl, user, ++ul);
-         memcpy(nx->nrc_dat + hl + ul, pass, ++pl);
+         su_mem_copy(nx->nrc_dat, host, ++hl);
+         su_mem_copy(nx->nrc_dat + hl, user, ++ul);
+         su_mem_copy(nx->nrc_dat + hl + ul, pass, ++pl);
       }
       if (t == NRC_MACHINE)
          goto jm_h;
@@ -436,7 +436,8 @@ __nrc_host_match(struct nrc_node const *nrc, struct url const *urlp)
 
    /* Find a matching machine -- entries are all lowercase normalized */
    if (nrc->nrc_mlen == urlp->url_host.l) {
-      if (n_LIKELY(!memcmp(nrc->nrc_dat, urlp->url_host.s, urlp->url_host.l)))
+      if (n_LIKELY(!su_mem_cmp(nrc->nrc_dat,
+            urlp->url_host.s, urlp->url_host.l)))
          rv = 1;
       goto jleave;
    }
@@ -460,7 +461,7 @@ __nrc_host_match(struct nrc_node const *nrc, struct url const *urlp)
          break;
    }
 
-   if (l2 == l1 && !memcmp(d1, d2, l1))
+   if (l2 == l1 && !su_mem_cmp(d1, d2, l1))
       /* This matches, but we won't use it directly but watch out for an
        * exact match first! */
       rv = -1;
@@ -495,7 +496,7 @@ __nrc_find_pass(struct url *urlp, bool_t user_match, struct nrc_node const *nrc)
 
    for (; nrc != NULL; nrc = nrc->nrc_result) {
       bool_t um = (nrc->nrc_ulen == urlp->url_user.l &&
-            !memcmp(nrc->nrc_dat + nrc->nrc_mlen +1, urlp->url_user.s,
+            !su_mem_cmp(nrc->nrc_dat + nrc->nrc_mlen +1, urlp->url_user.s,
                urlp->url_user.l));
 
       if (user_match) {
@@ -777,7 +778,7 @@ url_mailto_to_address(char const *mailtop){ /* TODO hack! RFC 6068; factory? */
    i = su_cs_len(rv);
 
    /* Simply perform percent-decoding if there is a percent % */
-   if(memchr(rv, '%', i) != NULL){
+   if(su_mem_find(rv, '%', i) != NULL){
       char *rv_base;
       bool_t err;
 
@@ -863,14 +864,14 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
    n_NYD_IN;
    n_UNUSED(data);
 
-   memset(urlp, 0, sizeof *urlp);
+   su_mem_set(urlp, 0, sizeof *urlp);
    urlp->url_input = data;
    urlp->url_cproto = cproto;
 
    /* Network protocol */
 #define a_PROTOX(X,Y,Z) \
    urlp->url_portno = Y;\
-   memcpy(urlp->url_proto, X "://\0", sizeof(X "://\0"));\
+   su_mem_copy(urlp->url_proto, X "://\0", sizeof(X "://\0"));\
    urlp->url_proto[sizeof(X) -1] = '\0';\
    urlp->url_proto_len = sizeof(X) -1;\
    do{ Z; }while(0)
@@ -904,7 +905,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
          if((i = PTR2SIZE(&cp[sizeof("://") -1] - data)) + 2 >=
                sizeof(urlp->url_proto))
             goto jeproto;
-         memcpy(urlp->url_proto, data, i);
+         su_mem_copy(urlp->url_proto, data, i);
          data += i;
          i -= sizeof("://") -1;
          urlp->url_proto[i] = '\0';\
@@ -988,11 +989,11 @@ juser:
       data = &cp[1];
 
       /* And also have a password? */
-      if((cp = memchr(d, ':', l)) != NULL){
+      if((cp = su_mem_find(d, ':', l)) != NULL){
          size_t i = PTR2SIZE(cp - d);
 
          l -= i + 1;
-         memcpy(ub, cp + 1, l);
+         su_mem_copy(ub, cp + 1, l);
          ub[l] = '\0';
 
          if((urlp->url_pass.s = urlxdec(ub)) == NULL)
@@ -1005,7 +1006,7 @@ juser:
          l = i;
       }
 
-      memcpy(ub, d, l);
+      su_mem_copy(ub, d, l);
       ub[l] = '\0';
       if((urlp->url_user.s = urlxdec(ub)) == NULL)
          goto jurlp_err;
@@ -1014,7 +1015,7 @@ juser:
          goto jurlp_err;
       urlp->url_user_enc.l = su_cs_len(urlp->url_user_enc.s);
 
-      if(urlp->url_user_enc.l != l || memcmp(urlp->url_user_enc.s, ub, l)){
+      if(urlp->url_user_enc.l != l || su_mem_cmp(urlp->url_user_enc.s, ub, l)){
 jurlp_err:
          n_err(_("String is not properly URL percent encoded: %s\n"), ub);
          d = NULL;
@@ -1071,8 +1072,8 @@ jurlp_err:
 # ifdef mx_HAVE_IMAP
          if(trailsol){
             urlp->url_path.s = n_autorec_alloc(i + sizeof("/INBOX"));
-            memcpy(urlp->url_path.s, x, i);
-            memcpy(&urlp->url_path.s[i], "/INBOX", sizeof("/INBOX"));
+            su_mem_copy(urlp->url_path.s, x, i);
+            su_mem_copy(&urlp->url_path.s[i], "/INBOX", sizeof("/INBOX"));
             urlp->url_path.l = (i += sizeof("/INBOX") -1);
          }else
 # endif
@@ -1110,10 +1111,10 @@ jurlp_err:
 
       upl = (urlp->url_port == NULL) ? 0 : 1u + su_cs_len(urlp->url_port);
       s->s = n_autorec_alloc(urlp->url_host.l + upl +1);
-      memcpy(s->s, urlp->url_host.s, i = urlp->url_host.l);
+      su_mem_copy(s->s, urlp->url_host.s, i = urlp->url_host.l);
       if(upl > 0){
          s->s[i++] = ':';
-         memcpy(&s->s[i], urlp->url_port, --upl);
+         su_mem_copy(&s->s[i], urlp->url_port, --upl);
          i += upl;
       }
       s->s[s->l = i] = '\0';
@@ -1163,10 +1164,10 @@ jurlp_err:
 
       s->s = n_autorec_alloc(i + 1 + h.l +1);
       if (i > 0) {
-         memcpy(s->s, urlp->url_user.s, i);
+         su_mem_copy(s->s, urlp->url_user.s, i);
          s->s[i++] = '@';
       }
-      memcpy(s->s + i, h.s, h.l +1);
+      su_mem_copy(s->s + i, h.s, h.l +1);
       i += h.l;
       s->l = i;
    }
@@ -1177,10 +1178,10 @@ jurlp_err:
 
       s->s = n_autorec_alloc(i + 1 + urlp->url_h_p.l +1);
       if (i > 0) {
-         memcpy(s->s, urlp->url_user.s, i);
+         su_mem_copy(s->s, urlp->url_user.s, i);
          s->s[i++] = '@';
       }
-      memcpy(s->s + i, urlp->url_h_p.s, urlp->url_h_p.l +1);
+      su_mem_copy(s->s + i, urlp->url_h_p.s, urlp->url_h_p.l +1);
       i += urlp->url_h_p.l;
       s->l = i;
    }
@@ -1191,10 +1192,10 @@ jurlp_err:
 
       s->s = n_autorec_alloc(i + 1 + urlp->url_h_p.l +1);
       if (i > 0) {
-         memcpy(s->s, urlp->url_user_enc.s, i);
+         su_mem_copy(s->s, urlp->url_user_enc.s, i);
          s->s[i++] = '@';
       }
-      memcpy(s->s + i, urlp->url_h_p.s, urlp->url_h_p.l +1);
+      su_mem_copy(s->s + i, urlp->url_h_p.s, urlp->url_h_p.l +1);
       i += urlp->url_h_p.l;
       s->l = i;
    }
@@ -1206,7 +1207,7 @@ jurlp_err:
       ud = n_autorec_alloc((i = urlp->url_proto_len + sizeof("://") -1 +
             urlp->url_u_h_p.l) +1);
       urlp->url_proto[urlp->url_proto_len] = ':';
-      memcpy(su_cs_pcopy(ud, urlp->url_proto), urlp->url_u_h_p.s,
+      su_mem_copy(su_cs_pcopy(ud, urlp->url_proto), urlp->url_u_h_p.s,
          urlp->url_u_h_p.l +1);
       urlp->url_proto[urlp->url_proto_len] = '\0';
 
@@ -1220,7 +1221,7 @@ jurlp_err:
       ud = n_autorec_alloc((i = urlp->url_proto_len + sizeof("://") -1 +
             urlp->url_eu_h_p.l) + 1 + urlp->url_path.l +1);
       urlp->url_proto[urlp->url_proto_len] = ':';
-      memcpy(su_cs_pcopy(ud, urlp->url_proto), urlp->url_eu_h_p.s,
+      su_mem_copy(su_cs_pcopy(ud, urlp->url_proto), urlp->url_eu_h_p.s,
          urlp->url_eu_h_p.l +1);
       urlp->url_proto[urlp->url_proto_len] = '\0';
 
@@ -1231,7 +1232,7 @@ jurlp_err:
          urlp->url_p_eu_h_p_p = ud;
          ud += i;
          *ud++ = '/';
-         memcpy(ud, urlp->url_path.s, urlp->url_path.l +1);
+         su_mem_copy(ud, urlp->url_path.s, urlp->url_path.l +1);
       }
    }
 
@@ -1260,7 +1261,7 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
       "  Please read the manual section "
          "\"On URL syntax and credential lookup\""));
 
-   memset(ccp, 0, sizeof *ccp);
+   su_mem_set(ccp, 0, sizeof *ccp);
 
    switch (cproto) {
    default:
@@ -1294,11 +1295,11 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
    ccp->cc_cproto = cproto;
    addrlen = su_cs_len(addr);
    vbuf = n_lofi_alloc(pxlen + addrlen + sizeof("-password-")-1 +1);
-   memcpy(vbuf, pxstr, pxlen);
+   su_mem_copy(vbuf, pxstr, pxlen);
 
    /* Authentication type */
    vbuf[pxlen] = '-';
-   memcpy(vbuf + pxlen + 1, addr, addrlen +1);
+   su_mem_copy(vbuf + pxlen + 1, addr, addrlen +1);
    if ((s = n_var_vlook(vbuf, FAL0)) == NULL) {
       vbuf[pxlen] = '\0';
       if ((s = n_var_vlook(vbuf, FAL0)) == NULL)
@@ -1369,9 +1370,9 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
       goto jpass;
    }
 
-   memcpy(vbuf + pxlen, "-user-", i = sizeof("-user-") -1);
+   su_mem_copy(vbuf + pxlen, "-user-", i = sizeof("-user-") -1);
    i += pxlen;
-   memcpy(vbuf + i, addr, addrlen +1);
+   su_mem_copy(vbuf + i, addr, addrlen +1);
    if ((s = n_var_vlook(vbuf, FAL0)) == NULL) {
       vbuf[--i] = '\0';
       if ((s = n_var_vlook(vbuf, FAL0)) == NULL && (ware & REQ_USER)) {
@@ -1393,12 +1394,12 @@ jpass:
       goto jleave;
 
    if (!addr_is_nuser) {
-      memcpy(vbuf, "password-", i = sizeof("password-") -1);
+      su_mem_copy(vbuf, "password-", i = sizeof("password-") -1);
    } else {
-      memcpy(vbuf + pxlen, "-password-", i = sizeof("-password-") -1);
+      su_mem_copy(vbuf + pxlen, "-password-", i = sizeof("-password-") -1);
       i += pxlen;
    }
-   memcpy(vbuf + i, addr, addrlen +1);
+   su_mem_copy(vbuf + i, addr, addrlen +1);
    if ((s = n_var_vlook(vbuf, FAL0)) == NULL) {
       vbuf[--i] = '\0';
       if ((!addr_is_nuser || (s = n_var_vlook(vbuf, FAL0)) == NULL) &&
@@ -1435,7 +1436,7 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
       ware;
    n_NYD_IN;
 
-   memset(ccp, 0, sizeof *ccp);
+   su_mem_set(ccp, 0, sizeof *ccp);
    ccp->cc_user = urlp->url_user;
 
    ware = NONE;
@@ -1691,9 +1692,9 @@ cram_md5_string(struct str const *user, struct str const *pass,
 
    in.l = user->l + MD5TOHEX_SIZE +1;
    in.s = n_lofi_alloc(user->l + 1 + MD5TOHEX_SIZE +1);
-   memcpy(in.s, user->s, user->l);
+   su_mem_copy(in.s, user->s, user->l);
    in.s[user->l] = ' ';
-   memcpy(&in.s[user->l + 1], cp, MD5TOHEX_SIZE);
+   su_mem_copy(&in.s[user->l + 1], cp, MD5TOHEX_SIZE);
    if(b64_encode(&out, &in, B64_SALLOC | B64_CRLF) == NULL)
       out.s = NULL;
    n_lofi_free(in.s);
@@ -1749,10 +1750,10 @@ hmac_md5(unsigned char *text, int text_len, unsigned char *key, int key_len,
     * and text is the data being protected */
 
    /* start out by storing key in pads */
-   memset(k_ipad, 0, sizeof k_ipad);
-   memset(k_opad, 0, sizeof k_opad);
-   memcpy(k_ipad, key, key_len);
-   memcpy(k_opad, key, key_len);
+   su_mem_set(k_ipad, 0, sizeof k_ipad);
+   su_mem_set(k_opad, 0, sizeof k_opad);
+   su_mem_copy(k_ipad, key, key_len);
+   su_mem_copy(k_opad, key, key_len);
 
    /* XOR key with ipad and opad values */
    for (i=0; i<64; i++) {

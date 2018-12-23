@@ -172,7 +172,7 @@ _mime_param_value_trim(struct str *result, char const *start,
 
    result->s = n_autorec_alloc(i +1);
    if (rv > 0) {
-      memcpy(result->s, start, result->l = i);
+      su_mem_copy(result->s, start, result->l = i);
       result->s[i] = '\0';
    } else {
       size_t j;
@@ -256,7 +256,7 @@ jumpin:
                emsg = N_("expected = or * after leading digits");
                goto jerr;
             }
-            memcpy(nobuf, hbp, i);
+            su_mem_copy(nobuf, hbp, i);
             nobuf[i] = '\0';
             if((su_idec_uz_cp(&i, nobuf, 10, NULL
                      ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
@@ -319,7 +319,7 @@ jeeqaaster:
                   : N_("faulty value - missing closing quotation mark \"?");
             goto jerr;
          case -1:
-            /* XXX if (np->is_enc && memchr(np->dat, '\'', i) != NULL) {
+            /* XXX if (np->is_enc && su_mem_find(np->dat, '\'', i) != NULL) {
              * XXX    emsg = N_("character set info not allowed here");
              * XXX    goto jerr;
              * XXX } */np->rj_is_enc = FAL0; /* Silently ignore */
@@ -335,10 +335,11 @@ jeeqaaster:
          }
 
          /* Watch out for character set and language info */
-         if (np->rj_is_enc && (eptr = memchr(xval.s, '\'', xval.l)) != NULL) {
+         if (np->rj_is_enc &&
+               (eptr = su_mem_find(xval.s, '\'', xval.l)) != NULL) {
             np->rj_cs_len = PTR2SIZE(eptr - xval.s);
-            if ((eptr = memchr(eptr + 1, '\'', xval.l - np->rj_cs_len - 1))
-                  == NULL) {
+            if ((eptr = su_mem_find(eptr + 1, '\'', xval.l - np->rj_cs_len - 1)
+                  ) == NULL) {
                emsg = N_("faulty RFC 2231 parameter extension");
                goto jerr;
             }
@@ -414,7 +415,7 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
             head->rj_dat, head->rj_cs_len)) {
          char *cs = n_lofi_alloc(head->rj_cs_len +1);
 
-         memcpy(cs, head->rj_dat, head->rj_cs_len);
+         su_mem_copy(cs, head->rj_dat, head->rj_cs_len);
          cs[head->rj_cs_len] = '\0';
          if ((fhicd = n_iconv_open(tcs, cs)) != (iconv_t)-1)
             f |= _HAVE_ICONV;
@@ -517,7 +518,7 @@ jhex_putc:
    }
 #endif
 
-   memcpy(*result = n_autorec_alloc(sou.l +1), sou.s, sou.l +1);
+   su_mem_copy(*result = n_autorec_alloc(sou.l +1), sou.s, sou.l +1);
    n_free(sou.s);
    n_NYD2_OU;
    return ((f & _ERRORS) != 0);
@@ -671,7 +672,7 @@ jrecurse:
    self->mpb_is_enc = ((f & _ISENC) != 0);
    self->mpb_buf_len = PTR2SIZE(bp - buf);
 
-   memset(&next, 0, sizeof next);
+   su_mem_set(&next, 0, sizeof next);
    next.mpb_next = self;
    next.mpb_level = self->mpb_level + 1;
    next.mpb_name_len = self->mpb_name_len;
@@ -725,7 +726,7 @@ __mime_param_join(struct mime_param_builder *head)
 
    for (ll = 0, np = head;;) {
       /* Name part */
-      memcpy(cp, np->mpb_name, i = np->mpb_name_len);
+      su_mem_copy(cp, np->mpb_name, i = np->mpb_name_len);
       cp += i;
       ll += i;
 
@@ -755,7 +756,7 @@ __mime_param_join(struct mime_param_builder *head)
       /* Value part */
       if (f & _ISENC) {
          f &= ~_ISENC;
-         memcpy(cp, np->mpb_charset, i = np->mpb_charset_len);
+         su_mem_copy(cp, np->mpb_charset, i = np->mpb_charset_len);
          cp += i;
          cp[0] = '\'';
          cp[1] = '\'';
@@ -767,7 +768,7 @@ __mime_param_join(struct mime_param_builder *head)
          ++ll;
       }
 
-      memcpy(cp, np->mpb_buf, i = np->mpb_buf_len);
+      su_mem_copy(cp, np->mpb_buf, i = np->mpb_buf_len);
       cp += i;
       ll += i;
 
@@ -874,9 +875,9 @@ mime_param_create(struct str *result, char const *name, char const *value)
    size_t i;
    n_NYD_IN;
 
-   memset(result, 0, sizeof *result);
+   su_mem_set(result, 0, sizeof *result);
 
-   memset(&top, 0, sizeof top);
+   su_mem_set(&top, 0, sizeof top);
    top.mpb_result = result;
    if ((i = su_cs_len(top.mpb_name = name)) >= UI32_MAX)
       goto jleave;
@@ -888,8 +889,8 @@ mime_param_create(struct str *result, char const *name, char const *value)
       goto jleave;
    top.mpb_charset_len = (ui32_t)i;
    top.mpb_charset = n_autorec_alloc(++i);
-   memcpy(n_UNCONST(top.mpb_charset), name, i);
-   if(top.mpb_charset_len >= 4 && !memcmp(top.mpb_charset, "utf", 3) &&
+   su_mem_copy(n_UNCONST(top.mpb_charset), name, i);
+   if(top.mpb_charset_len >= 4 && !su_mem_cmp(top.mpb_charset, "utf", 3) &&
          ((top.mpb_charset[3] == '-' && top.mpb_charset[4] == '8' &&
           top.mpb_charset_len == 5) || (top.mpb_charset[3] == '8' &&
           top.mpb_charset_len == 4)))
@@ -916,7 +917,7 @@ mime_param_boundary_get(char const *headerbody, size_t *len)
          *len = sz + 2;
       q = n_autorec_alloc(sz + 2 +1);
       q[0] = q[1] = '-';
-      memcpy(q + 2, p, sz);
+      su_mem_copy(q + 2, p, sz);
       *(q + sz + 2) = '\0';
    }
    n_NYD_OU;
@@ -933,7 +934,7 @@ mime_param_boundary_create(void)
    bp = n_autorec_alloc(36 + 6 +1);
    bp[0] = bp[2] = bp[39] = bp[41] = '=';
    bp[1] = bp[40] = '-';
-   memcpy(bp + 3, n_random_create_cp(36, &reprocnt), 36);
+   su_mem_copy(bp + 3, n_random_create_cp(36, &reprocnt), 36);
    bp[42] = '\0';
    n_NYD_OU;
    return bp;

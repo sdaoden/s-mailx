@@ -106,14 +106,14 @@ jdocopy:
       if(foldlen > 0){
          *dispp++ = '+';
          *dispp++ = '[';
-         memcpy(dispp, mailp, foldlen);
+         su_mem_copy(dispp, mailp, foldlen);
          dispp += foldlen;
          mailp += foldlen;
          *dispp++ = ']';
-         memcpy(dispp, mailp, i -= foldlen);
+         su_mem_copy(dispp, mailp, i -= foldlen);
          dispp[i] = '\0';
       }else
-         memcpy(dispp, mailp, i +1);
+         su_mem_copy(dispp, mailp, i +1);
       rv = TRU1;
    }else{
       /* Avoid disrupting multibyte sequences (if possible) */
@@ -236,7 +236,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset) /* TODO Mailbox->setptr() */
    size_t filesize, linesize, cnt;
    n_NYD_IN;
 
-   memset(&self, 0, sizeof self);
+   su_mem_set(&self, 0, sizeof self);
    self.m_flag = MUSED | MNEW | MNEWEST;
    filesize = mailsize - offset;
    offset = ftell(mb.mb_otf);

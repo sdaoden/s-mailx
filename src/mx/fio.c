@@ -120,7 +120,7 @@ a_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len)
    bool_t rv;
    n_NYD2_IN;
 
-   memset(&flp, 0, sizeof flp);
+   su_mem_set(&flp, 0, sizeof flp);
 
    switch (flt) {
    default:

@@ -198,7 +198,7 @@ jat_dot:
       goto jerr;
 
 jleave:
-   memcpy(datebuf, cp, linelen);
+   su_mem_copy(datebuf, cp, linelen);
    datebuf[linelen] = '\0';
    n_NYD_OU;
    return rv;
@@ -473,7 +473,7 @@ a_header_addrspec_check(struct n_addrguts *agp, bool_t skinned,
    if (addr[0] == '/' || (addr[0] == '.' && addr[1] == '/') ||
          (addr[0] == '-' && addr[1] == '\0'))
       goto jisfile;
-   if (memchr(addr, '@', agp->ag_slen) == NULL) {
+   if (su_mem_find(addr, '@', agp->ag_slen) == NULL) {
       if (*addr == '+')
          goto jisfile;
       for (p = addr; (c.c = *p); ++p) {
@@ -1152,7 +1152,7 @@ a_gethfield(enum n_header_extract_flags hef, FILE *f,
          }
          if (isenc != 3)
             *cp++ = ' ';
-         memcpy(cp, cp2, c);
+         su_mem_copy(cp, cp2, c);
          cp += c;
       }
       *cp = '\0';
@@ -1319,7 +1319,7 @@ is_head(char const *linebuf, size_t linelen, bool_t check_rfc4155)
    bool_t rv;
    n_NYD2_IN;
 
-   if ((rv = (linelen >= 5 && !memcmp(linebuf, "From ", 5))) &&
+   if ((rv = (linelen >= 5 && !su_mem_cmp(linebuf, "From ", 5))) &&
          check_rfc4155 &&
          (a_header_extract_date_from_from_(linebuf, linelen, date) <= 0 ||
           !a_header_is_date(date)))
@@ -1361,7 +1361,7 @@ n_header_extract(enum n_header_extract_flags hef, FILE *fp, struct header *hp,
    char const *val, *cp;
    n_NYD_IN;
 
-   memset(hq, 0, sizeof *hq);
+   su_mem_set(hq, 0, sizeof *hq);
    if(hef & n_HEADER_EXTRACT_PREFILL_RECEIVERS){
       hq->h_to = hp->h_to;
       hq->h_cc = hp->h_cc;
@@ -1507,9 +1507,9 @@ jebadhead:
          hfp->hf_next = NULL;
          hfp->hf_nl = nl;
          hfp->hf_bl = bl - 1;
-         memcpy(hfp->hf_dat, nstart, nl);
+         su_mem_copy(hfp->hf_dat, nstart, nl);
             hfp->hf_dat[nl++] = '\0';
-            memcpy(hfp->hf_dat + nl, cp, bl);
+            su_mem_copy(hfp->hf_dat + nl, cp, bl);
       }
    }
 
@@ -1585,7 +1585,7 @@ hfield_mult(char const *field, struct message *mp, int mult)
     * joined, so resize a single heap storage until we are done if we shall
     * collect a field that may have multiple bodies; only otherwise use the
     * string dope directly */
-   memset(&hfs, 0, sizeof hfs);
+   su_mem_set(&hfs, 0, sizeof hfs);
 
    if ((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
       goto jleave;
@@ -1947,7 +1947,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
    } flags;
    n_NYD_IN;
 
-   memset(agp, 0, sizeof *agp);
+   su_mem_set(agp, 0, sizeof *agp);
 
    if((agp->ag_input = name) == NULL || (agp->ag_ilen = su_cs_len(name)) == 0){
       agp->ag_skinned = n_UNCONST(n_empty); /* ok: NAME_SALLOC is not set */
@@ -2072,7 +2072,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
    /* Misses > */
    else if (agp->ag_iaddr_aend < agp->ag_iaddr_start) {
       cp2 = n_autorec_alloc(agp->ag_ilen + 1 +1);
-      memcpy(cp2, agp->ag_input, agp->ag_ilen);
+      su_mem_copy(cp2, agp->ag_input, agp->ag_ilen);
       agp->ag_iaddr_aend = agp->ag_ilen;
       cp2[agp->ag_ilen++] = '>';
       cp2[agp->ag_ilen] = '\0';
@@ -2317,7 +2317,7 @@ subject_re_trim(char const *s){
    if((re_st_x = ok_vlook(reply_strings)) != NULL &&
          (re_l = su_cs_len(re_st_x)) > 0){
       re_st = n_lofi_alloc(++re_l * 2);
-      memcpy(re_st, re_st_x, re_l);
+      su_mem_copy(re_st, re_st_x, re_l);
    }
 
 jouter:
@@ -2335,7 +2335,7 @@ jouter:
       if(re_st != NULL){
          char *cp;
 
-         memcpy(re_st_x = &re_st[re_l], re_st, re_l);
+         su_mem_copy(re_st_x = &re_st[re_l], re_st, re_l);
          while((cp = su_cs_sep_c(&re_st_x, ',', TRU1)) != NULL)
             if(su_cs_starts_with_case(s, cp)){
                s += su_cs_len(cp);
@@ -2666,7 +2666,7 @@ jredo_localtime:
             t2 = 0;
             goto jredo_localtime;
          }
-         memcpy(&tmlocal, tmp, sizeof *tmp);
+         su_mem_copy(&tmlocal, tmp, sizeof *tmp);
       }
 
       if((i & 2) &&
@@ -2679,10 +2679,10 @@ jredo_localtime:
             n_LCTA(n_FROM_DATEBUF >= 4 + 7 + 1 + 4, "buffer too small");
 
             x = n_autorec_alloc(n_FROM_DATEBUF);
-            memset(x, ' ', 4 + 7 + 1 + 4);
-            memcpy(&x[4], &rv[4], 7);
+            su_mem_set(x, ' ', 4 + 7 + 1 + 4);
+            su_mem_copy(&x[4], &rv[4], 7);
             x[4 + 7] = ' ';
-            memcpy(&x[4 + 7 + 1], &rv[20], 4);
+            su_mem_copy(&x[4 + 7 + 1], &rv[20], 4);
             x[4 + 7 + 1 + 4] = '\0';
             rv = x;
          }
@@ -3008,7 +3008,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
       if(match == a_ITER){
          char *itercp;
 
-         memcpy(itercp = fiter.s, sep->ss_field, fiter.l +1);
+         su_mem_copy(itercp = fiter.s, sep->ss_field, fiter.l +1);
          while((field = su_cs_sep_c(&itercp, ',', TRU1)) != NULL){
             /* It may be an abbreviation */
             char const x[][8] = {"from", "to", "cc", "bcc", "subject"};
@@ -3037,7 +3037,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
 
          i = PTR2SIZE(colon - *linebuf);
          cp = n_lofi_alloc(i +1);
-         memcpy(cp, *linebuf, i);
+         su_mem_copy(cp, *linebuf, i);
          cp[i] = '\0';
          i = (regexec(sep->ss_fieldre, cp, 0,NULL, 0) != REG_NOMATCH);
          n_lofi_free(cp);
@@ -3181,9 +3181,9 @@ jename:
    hfp->hf_next = NULL;
    hfp->hf_nl = nl;
    hfp->hf_bl = bl - 1;
-   memcpy(hfp->hf_dat, dat, nl);
+   su_mem_copy(hfp->hf_dat, dat, nl);
       hfp->hf_dat[nl++] = '\0';
-      memcpy(hfp->hf_dat + nl, cp, bl);
+      su_mem_copy(hfp->hf_dat + nl, cp, bl);
 jleave:
    n_NYD_OU;
    return (hfp != NULL);

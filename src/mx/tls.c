@@ -149,7 +149,7 @@ jetmp:
             tail = ml;
             ml->ml_next = NULL;
             ml->ml_len = buflen;
-            memcpy(ml->ml_buf, buf, buflen +1);
+            su_mem_copy(ml->ml_buf, buf, buflen +1);
             if (keep)
                fwrite(buf, sizeof *buf, buflen, *hp);
             c = getc(ip);

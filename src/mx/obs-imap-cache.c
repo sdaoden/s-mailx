@@ -704,7 +704,7 @@ cache_remove(const char *name)
       goto jleave;
    pathend = su_cs_len(dir);
    path = n_alloc(pathsize = pathend + 30);
-   memcpy(path, dir, pathend);
+   su_mem_copy(path, dir, pathend);
    path[pathend++] = '/';
    path[pathend] = '\0';
    if ((dirp = opendir(path)) == NULL) {
@@ -718,7 +718,7 @@ cache_remove(const char *name)
       n = su_cs_len(dp->d_name) + 1;
       if (pathend + n > pathsize)
          path = n_realloc(path, pathsize = pathend + n + 30);
-      memcpy(path + pathend, dp->d_name, n);
+      su_mem_copy(path + pathend, dp->d_name, n);
       if (stat(path, &st) < 0 || (st.st_mode & S_IFMT) != S_IFREG)
          continue;
       if (unlink(path) < 0) {

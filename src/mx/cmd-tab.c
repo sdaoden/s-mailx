@@ -526,10 +526,10 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
    for(cadp = cacp->cac_desc, cad_idx = 0;
          /*shin.l >= 0 &&*/ cad_idx < cadp->cad_no; ++cad_idx){
 jredo:
-      memset(&ncap, 0, sizeof ncap);
+      su_mem_set(&ncap, 0, sizeof ncap);
       ncap.ca_indat = shin.s;
       /* >ca_inline once we know */
-      memcpy(&ncap.ca_ent_flags[0], &cadp->cad_ent_flags[cad_idx][0],
+      su_mem_copy(&ncap.ca_ent_flags[0], &cadp->cad_ent_flags[cad_idx][0],
          sizeof ncap.ca_ent_flags);
       target_argpp = NULL;
       stoploop = FAL0;
@@ -647,13 +647,13 @@ jredo:
          i = lcap->ca_arg.ca_str.l;
          lcap->ca_arg.ca_str.l += 1 + ncap.ca_arg.ca_str.l;
          cp = n_autorec_alloc(lcap->ca_arg.ca_str.l +1);
-         memcpy(cp, lcap->ca_arg.ca_str.s, i);
+         su_mem_copy(cp, lcap->ca_arg.ca_str.s, i);
          lcap->ca_arg.ca_str.s = cp;
          cp[i++] = ' ';
-         memcpy(&cp[i], ncap.ca_arg.ca_str.s, ncap.ca_arg.ca_str.l +1);
+         su_mem_copy(&cp[i], ncap.ca_arg.ca_str.s, ncap.ca_arg.ca_str.l +1);
       }else{
          cap = n_autorec_alloc(sizeof *cap);
-         memcpy(cap, &ncap, sizeof ncap);
+         su_mem_copy(cap, &ncap, sizeof ncap);
          if(lcap == NULL)
             cacp->cac_arg = cap;
          else
@@ -747,7 +747,7 @@ n_cmd_arg_save_to_heap(struct n_cmd_arg_ctx const *cacp){
       void *vp;
 
       vp = buf;
-      su_DBG( memset(vp, 0, sizeof *ncap); )
+      su_DBG( su_mem_set(vp, 0, sizeof *ncap); )
 
       if(ncap == NULL)
          ncacp->cac_arg = vp;
@@ -758,8 +758,9 @@ n_cmd_arg_save_to_heap(struct n_cmd_arg_ctx const *cacp){
       ncap->ca_ent_flags[0] = cap->ca_ent_flags[0];
       ncap->ca_ent_flags[1] = cap->ca_ent_flags[1];
       ncap->ca_arg_flags = cap->ca_arg_flags;
-      memcpy(ncap->ca_arg.ca_str.s = (char*)&ncap[1], cap->ca_arg.ca_str.s,
-            (ncap->ca_arg.ca_str.l = i = cap->ca_arg.ca_str.l) +1);
+      su_mem_copy(ncap->ca_arg.ca_str.s = (char*)&ncap[1],
+         cap->ca_arg.ca_str.s,
+         (ncap->ca_arg.ca_str.l = i = cap->ca_arg.ca_str.l) +1);
 
       i = n_ALIGN(i);
       buf += sizeof(*ncap) + i;
@@ -767,7 +768,7 @@ n_cmd_arg_save_to_heap(struct n_cmd_arg_ctx const *cacp){
 
    if(cacp->cac_vput != NULL){
       ncacp->cac_vput = buf;
-      memcpy(buf, cacp->cac_vput, su_cs_len(cacp->cac_vput) +1);
+      su_mem_copy(buf, cacp->cac_vput, su_cs_len(cacp->cac_vput) +1);
    }else
       ncacp->cac_vput = NULL;
    n_NYD2_OU;
@@ -786,7 +787,7 @@ n_cmd_arg_restore_from_heap(void *vp){
 
    for(ncap = NULL, cap = cacp->cac_arg; cap != NULL; cap = cap->ca_next){
       vp = n_autorec_alloc(sizeof(*ncap) + cap->ca_arg.ca_str.l +1);
-      su_DBG( memset(vp, 0, sizeof *ncap); )
+      su_DBG( su_mem_set(vp, 0, sizeof *ncap); )
 
       if(ncap == NULL)
          rv->cac_arg = vp;
@@ -797,8 +798,9 @@ n_cmd_arg_restore_from_heap(void *vp){
       ncap->ca_ent_flags[0] = cap->ca_ent_flags[0];
       ncap->ca_ent_flags[1] = cap->ca_ent_flags[1];
       ncap->ca_arg_flags = cap->ca_arg_flags;
-      memcpy(ncap->ca_arg.ca_str.s = (char*)&ncap[1], cap->ca_arg.ca_str.s,
-            (ncap->ca_arg.ca_str.l = cap->ca_arg.ca_str.l) +1);
+      su_mem_copy(ncap->ca_arg.ca_str.s = (char*)&ncap[1],
+         cap->ca_arg.ca_str.s,
+         (ncap->ca_arg.ca_str.l = cap->ca_arg.ca_str.l) +1);
    }
 
    if(cacp->cac_vput != NULL)

@@ -144,7 +144,7 @@ c_sleep(void *v){ /* XXX installs sighdl+ due to outer jumps and SA_RESTART! */
     * - TODO for now hold_all_sigs() most often on in robot mode,
     *   TODO therefore we also need sigprocmask(), to block anything
     *   TODO except SIGINT, and to unblock SIGINT, thus! */
-   memset(&nact, 0, sizeof nact);
+   su_mem_set(&nact, 0, sizeof nact);
    nact.sa_handler = &a_signal_dummyhdl;
    sigemptyset(&nact.sa_mask);
    sigaddset(&nact.sa_mask, SIGINT);
@@ -494,11 +494,11 @@ _nyd_oncrash(int signo)
       (cp = pathbuf)[0] = '.';
       i = 1;
    } else
-      memcpy(cp = pathbuf, tmpdir, i);
+      su_mem_copy(cp = pathbuf, tmpdir, i);
    cp[i++] = '/'; /* xxx pathsep */
-   memcpy(cp += i, VAL_UAGENT, fnl);
+   su_mem_copy(cp += i, VAL_UAGENT, fnl);
    i += fnl;
-   memcpy(cp += fnl, ".dat", sizeof(".dat"));
+   su_mem_copy(cp += fnl, ".dat", sizeof(".dat"));
    fnl = i + sizeof(".dat") -1;
 
    if ((fd = open(pathbuf, O_WRONLY | O_CREAT | O_EXCL, 0666)) == -1)

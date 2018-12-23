@@ -357,7 +357,7 @@ smtp_mta(struct sendbundle *sbp)
       safe_signal(SIGTERM, &_smtp_onterm);
 
    if(n_poption & n_PO_DEBUG)
-      memset(&so, 0, sizeof so);
+      su_mem_set(&so, 0, sizeof so);
    else if(!sopen(&so, &sbp->sb_url))
       goto jleave;
 

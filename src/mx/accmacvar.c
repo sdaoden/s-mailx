@@ -508,7 +508,7 @@ a_amv_mac_call(void *v, bool_t silent_nexist){
          argv[argc] = cacp->cac_arg->ca_arg.ca_str.s;
       argv[argc] = NULL;
 
-      memset(amcap, 0, sizeof *amcap);
+      su_mem_set(amcap, 0, sizeof *amcap);
       amcap->amca_name = name;
       amcap->amca_amp = amp;
       if(a_amv_lopts != NULL)
@@ -692,7 +692,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
    bool_t rv;
    n_NYD2_IN;
 
-   memset(&line, 0, sizeof line);
+   su_mem_set(&line, 0, sizeof line);
    rv = FAL0;
    amp = NULL;
 
@@ -749,7 +749,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
                aml_dat) + n.ui);
          amlp->aml_len = n.ui -1;
          amlp->aml_prespc = leaspc;
-         memcpy(amlp->aml_dat, cp, n.ui);
+         su_mem_copy(amlp->aml_dat, cp, n.ui);
       }else{
          n_err(_("Too much content in %s definition: %s\n"),
             (amf & a_AMV_MF_ACCOUNT ? "account" : "macro"), name);
@@ -760,11 +760,11 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
    /* Create the new macro */
    n.s = su_cs_len(name) +1;
    amp = n_alloc(n_VSTRUCT_SIZEOF(struct a_amv_mac, am_name) + n.s);
-   memset(amp, 0, n_VSTRUCT_SIZEOF(struct a_amv_mac, am_name));
+   su_mem_set(amp, 0, n_VSTRUCT_SIZEOF(struct a_amv_mac, am_name));
    amp->am_maxlen = maxlen;
    amp->am_line_cnt = line_cnt;
    amp->am_flags = amf;
-   memcpy(amp->am_name, name, n.s);
+   su_mem_copy(amp->am_name, name, n.s);
    /* C99 */{
       struct a_amv_mac_line **amlpp;
 
@@ -869,9 +869,9 @@ a_amv_lopts_add(struct a_amv_lostack *alp, char const *name,
    if(vl != 0){
       avp->av_value = &avp->av_name[nl];
       avp->av_flags = oavp->av_flags;
-      memcpy(avp->av_value, oavp->av_value, vl);
+      su_mem_copy(avp->av_value, oavp->av_value, vl);
    }
-   memcpy(avp->av_name, name, nl);
+   su_mem_copy(avp->av_name, name, nl);
 jleave:
    n_NYD2_OU;
 }
@@ -918,7 +918,7 @@ a_amv_var_copy(char const *str){
 jheap:
       len = su_cs_len(str) +1;
       news = n_alloc(len);
-      memcpy(news, str, len);
+      su_mem_copy(news, str, len);
    }
    n_NYD2_OU;
    return news;
@@ -1241,7 +1241,7 @@ a_amv_var_revlookup(struct a_amv_var_carrier *avcp, char const *name,
    char c;
    n_NYD2_IN;
 
-   memset(avcp, 0, sizeof *avcp); /* XXX overkill, just set chain */
+   su_mem_set(avcp, 0, sizeof *avcp); /* XXX overkill, just set chain */
 
    /* It may be a special a.k.a. macro-local or one-letter parameter */
    c = name[0];
@@ -1361,7 +1361,7 @@ a_amv_var_revlookup_chain(struct a_amv_var_carrier *avcp, char const *name){
    do{
       int cres;
       avcmbp_x = &avcmbp[i >> 1];
-      cres = memcmp(name, avcmbp_x->avcmb_prefix,
+      cres = su_mem_cmp(name, avcmbp_x->avcmb_prefix,
             n_SIZEOF_FIELD(struct a_amv_var_chain_map_bsrch, avcmb_prefix));
       if(cres != 0){
          /* Go right instead? */
@@ -1623,7 +1623,7 @@ jnewval:
       assert(!avcp->avc_is_chain_variant);
       avp->av_flags = f;
       avp->av_value = a_amv_var_copy(cp);
-      memcpy(avp->av_name, avcp->avc_name, l);
+      su_mem_copy(avp->av_name, avcp->avc_name, l);
 
       if(f & a_AMV_VF_ENV)
          a_amv_var__putenv(avcp, avp);
@@ -1702,7 +1702,7 @@ jeno:
          }
          goto jleave;
       }else if(i >= 6){
-         if(!memcmp(&rv[3], "DOC", 3)){
+         if(!su_mem_cmp(&rv[3], "DOC", 3)){
             rv += 6;
             switch(*rv){
             case '\0': e = n_pstate_err_no; break;
@@ -1711,7 +1711,7 @@ jeno:
             }
             rv = su_err_doc(e);
             goto jleave;
-         }else if(i >= 7 && !memcmp(&rv[3], "NAME", 4)){
+         }else if(i >= 7 && !su_mem_cmp(&rv[3], "NAME", 4)){
             rv += 7;
             switch(*rv){
             case '\0': e = n_pstate_err_no; break;
@@ -1810,7 +1810,7 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
          rv = cp = n_autorec_alloc(j);
          for(i = j = 0; i < argc; ++i){
             j = su_cs_len(argv[i]);
-            memcpy(cp, argv[i], j);
+            su_mem_copy(cp, argv[i], j);
             cp += j;
             if(sep != '\0')
                *cp++ = sep;
@@ -1975,7 +1975,7 @@ joval_and_go:
                ? a_AMV_VF_NOLOPTS | a_AMV_VF_EXT_LOCAL
                : ((avmp != NULL) ? avmp->avm_flags : 0)) |
             (avcp->avc_is_chain_variant ? a_AMV_VF_EXT_CHAIN : a_AMV_VF_NONE));
-      memcpy(avp->av_name, avcp->avc_name, l);
+      su_mem_copy(avp->av_name, avcp->avc_name, l);
       oval = n_UNCONST(n_empty);
    }
 
@@ -2102,7 +2102,7 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp,
          avp->av_value = n_UNCONST(n_empty); /* Sth. covered by _var_free()! */
          assert(f == (avmp != NULL ? avmp->avm_flags : 0));
          avp->av_flags = f | a_AMV_VF_EXT_FROZEN | a_AMV_VF_EXT_FROZEN_UNSET;
-         memcpy(avp->av_name, avcp->avc_name, l);
+         su_mem_copy(avp->av_name, avcp->avc_name, l);
 
          if((avscf & a_AMV_VSETCLR_ENV) || (f & a_AMV_VF_ENV))
             a_amv_var__clearenv(avcp->avc_name, NULL);
@@ -2582,7 +2582,7 @@ c_account(void *v){
 
          if((amphook = a_amv_mac_lookup(cp, NULL, a_AMV_MF_NONE)) != NULL){
             amcap = n_lofi_alloc(sizeof *amcap);
-            memset(amcap, 0, sizeof *amcap);
+            su_mem_set(amcap, 0, sizeof *amcap);
             amcap->amca_name = cp;
             amcap->amca_amp = amphook;
             amcap->amca_unroller = &a_amv_acc_curr->am_lopts;
@@ -2612,7 +2612,7 @@ c_account(void *v){
    if(amp != NULL){
       assert(amp->am_lopts == NULL);
       amcap = n_lofi_alloc(sizeof *amcap);
-      memset(amcap, 0, sizeof *amcap);
+      su_mem_set(amcap, 0, sizeof *amcap);
       amcap->amca_name = amp->am_name;
       amcap->amca_amp = amp;
       amcap->amca_unroller = &amp->am_lopts;
@@ -2855,7 +2855,7 @@ jmac:
    }
 
    amcap = n_lofi_alloc(sizeof *amcap);
-   memset(amcap, 0, sizeof *amcap);
+   su_mem_set(amcap, 0, sizeof *amcap);
    amcap->amca_name = cp;
    amcap->amca_amp = amp;
    n_pstate &= ~n_PS_HOOK_MASK;
@@ -2912,7 +2912,7 @@ temporary_compose_mode_hook_call(char const *macname,
          macname);
    else{
       amcap = n_lofi_alloc(sizeof *amcap);
-      memset(amcap, 0, sizeof *amcap);
+      su_mem_set(amcap, 0, sizeof *amcap);
       amcap->amca_name = (macname != NULL) ? macname
             : "*on-compose-splice(-shell)?*";
       amcap->amca_amp = amp;
@@ -2928,7 +2928,7 @@ temporary_compose_mode_hook_call(char const *macname,
          a_amv_mac_exec(amcap);
       else{
          cmh_losp = n_lofi_alloc(sizeof *cmh_losp);
-         memset(cmh_losp, 0, sizeof *cmh_losp);
+         su_mem_set(cmh_losp, 0, sizeof *cmh_losp);
          cmh_losp->as_global_saved = a_amv_lopts;
          cmh_losp->as_lopts = *(cmh_losp->as_amcap = amcap)->amca_unroller;
          cmh_losp->as_loflags = a_AMV_LF_SCOPE_FIXATE;
@@ -2979,7 +2979,7 @@ temporary_addhist_hook(char const *ctx, bool_t gabby, char const *histent){
       argv[3] = NULL;
 
       amcap = n_lofi_alloc(sizeof *amcap);
-      memset(amcap, 0, sizeof *amcap);
+      su_mem_set(amcap, 0, sizeof *amcap);
       amcap->amca_name = macname;
       amcap->amca_amp = amp;
       amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
@@ -3023,7 +3023,7 @@ n_var_oklook(enum okeys okey){
    struct a_amv_var_map const *avmp;
    n_NYD_IN;
 
-   memset(&avc, 0, sizeof avc);
+   su_mem_set(&avc, 0, sizeof avc);
    avc.avc_map = avmp = &a_amv_var_map[okey];
    avc.avc_name = &a_amv_var_names[avmp->avm_keyoff];
    avc.avc_hash = avmp->avm_hash;
@@ -3044,7 +3044,7 @@ n_var_okset(enum okeys okey, uintptr_t val){
    struct a_amv_var_map const *avmp;
    n_NYD_IN;
 
-   memset(&avc, 0, sizeof avc);
+   su_mem_set(&avc, 0, sizeof avc);
    avc.avc_map = avmp = &a_amv_var_map[okey];
    avc.avc_name = &a_amv_var_names[avmp->avm_keyoff];
    avc.avc_hash = avmp->avm_hash;
@@ -3063,7 +3063,7 @@ n_var_okclear(enum okeys okey){
    struct a_amv_var_map const *avmp;
    n_NYD_IN;
 
-   memset(&avc, 0, sizeof avc);
+   su_mem_set(&avc, 0, sizeof avc);
    avc.avc_map = avmp = &a_amv_var_map[okey];
    avc.avc_name = &a_amv_var_names[avmp->avm_keyoff];
    avc.avc_hash = avmp->avm_hash;
@@ -3165,7 +3165,7 @@ n_var_xoklook(enum okeys okey, struct url const *urlp,
       goto jplain;
    }
 
-   memset(&avc, 0, sizeof avc);
+   su_mem_set(&avc, 0, sizeof avc);
    avc.avc_name = &a_amv_var_names[(avc.avc_map = &a_amv_var_map[okey]
          )->avm_keyoff];
    avc.avc_okey = okey;
@@ -3174,11 +3174,11 @@ n_var_xoklook(enum okeys okey, struct url const *urlp,
    us = (oxm & OXM_U_H_P) ? &urlp->url_u_h_p : &urlp->url_h_p;
    nlen = su_cs_len(avc.avc_name);
    nbuf = n_lofi_alloc(nlen + 1 + us->l +1);
-   memcpy(nbuf, avc.avc_name, nlen);
+   su_mem_copy(nbuf, avc.avc_name, nlen);
 
    /* One of .url_u_h_p and .url_h_p we test in here */
    nbuf[nlen++] = '-';
-   memcpy(&nbuf[nlen], us->s, us->l +1);
+   su_mem_copy(&nbuf[nlen], us->s, us->l +1);
    avc.avc_name = nbuf;
    avc.avc_hash = a_AMV_NAME2HASH(avc.avc_name);
    if(a_amv_var_lookup(&avc, a_AMV_VLOOK_NONE))
@@ -3187,7 +3187,7 @@ n_var_xoklook(enum okeys okey, struct url const *urlp,
    /* The second */
    if((oxm & (OXM_U_H_P | OXM_H_P)) == (OXM_U_H_P | OXM_H_P)){
       us = &urlp->url_h_p;
-      memcpy(&nbuf[nlen], us->s, us->l +1);
+      su_mem_copy(&nbuf[nlen], us->s, us->l +1);
       avc.avc_name = nbuf;
       avc.avc_hash = a_AMV_NAME2HASH(avc.avc_name);
       if(a_amv_var_lookup(&avc, a_AMV_VLOOK_NONE)){
@@ -3925,7 +3925,7 @@ jesubstring_len:
          char const **reargv;
          size_t cnt;
 
-         memset(&amca, 0, sizeof amca);
+         su_mem_set(&amca, 0, sizeof amca);
          amca.amca_name = savestrbuf(&argv[1][rema[0].rm_so],
                rema[0].rm_eo - rema[0].rm_so);
          amca.amca_amp = a_AMV_MACKY_MACK;
@@ -3944,7 +3944,7 @@ jesubstring_len:
                *reargv = n_empty;
          *reargv = NULL;
 
-         memset(&los, 0, sizeof los);
+         su_mem_set(&los, 0, sizeof los);
          hold_all_sigs(); /* TODO DISLIKE! */
          los.as_global_saved = a_amv_lopts;
          los.as_amcap = &amca;
@@ -4137,7 +4137,7 @@ c_vpospar(void *v){
             n_free(n_UNCONST(appp->app_dat[i]));
          n_free(appp->app_dat);
       }
-      memset(appp, 0, sizeof *appp);
+      su_mem_set(appp, 0, sizeof *appp);
 
       if(f & a_SET){
          if((i = cacp->cac_no) > a_AMV_POSPAR_MAX){
@@ -4147,7 +4147,7 @@ c_vpospar(void *v){
             goto jleave;
          }
 
-         memset(appp, 0, sizeof *appp);
+         su_mem_set(appp, 0, sizeof *appp);
          if(i > 0){
             appp->app_maxcount = appp->app_count = (ui16_t)i;
             /* XXX Optimize: store it all in one chunk! */
@@ -4157,7 +4157,7 @@ c_vpospar(void *v){
 
             for(i = 0; cap != NULL; ++i, cap = cap->ca_next){
                appp->app_dat[i] = n_alloc(cap->ca_arg.ca_str.l +1);
-               memcpy(n_UNCONST(appp->app_dat[i]), cap->ca_arg.ca_str.s,
+               su_mem_copy(n_UNCONST(appp->app_dat[i]), cap->ca_arg.ca_str.s,
                   cap->ca_arg.ca_str.l +1);
             }
 

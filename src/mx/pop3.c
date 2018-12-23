@@ -210,7 +210,7 @@ _pop3_lookup_apop_timestamp(char const *bp)
 
    tl = PTR2SIZE(++ep - cp);
    rp = n_autorec_alloc(tl +1);
-   memcpy(rp, cp, tl);
+   su_mem_copy(rp, cp, tl);
    rp[tl] = '\0';
 jleave:
    n_NYD_OU;
@@ -238,13 +238,13 @@ _pop3_auth_apop(struct mailbox *mp, struct sockconn const *scp, char const *ts)
    i = scp->sc_cred.cc_user.l;
    cp = n_lofi_alloc(5 + i + 1 + MD5TOHEX_SIZE + sizeof(NETNL)-1 +1);
 
-   memcpy(cp, "APOP ", 5);
-   memcpy(cp + 5, scp->sc_cred.cc_user.s, i);
+   su_mem_copy(cp, "APOP ", 5);
+   su_mem_copy(cp + 5, scp->sc_cred.cc_user.s, i);
    i += 5;
    cp[i++] = ' ';
-   memcpy(cp + i, hex, MD5TOHEX_SIZE);
+   su_mem_copy(cp + i, hex, MD5TOHEX_SIZE);
    i += MD5TOHEX_SIZE;
-   memcpy(cp + i, NETNL, sizeof(NETNL));
+   su_mem_copy(cp + i, NETNL, sizeof(NETNL));
    POP3_OUT(rv, cp, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 
@@ -267,15 +267,15 @@ _pop3_auth_plain(struct mailbox *mp, struct sockconn const *scp)
    cp = n_lofi_alloc(n_MAX(scp->sc_cred.cc_user.l, scp->sc_cred.cc_pass.l) +
          5 + sizeof(NETNL)-1 +1);
 
-   memcpy(cp, "USER ", 5);
-   memcpy(cp + 5, scp->sc_cred.cc_user.s, scp->sc_cred.cc_user.l);
-   memcpy(cp + 5 + scp->sc_cred.cc_user.l, NETNL, sizeof(NETNL));
+   su_mem_copy(cp, "USER ", 5);
+   su_mem_copy(cp + 5, scp->sc_cred.cc_user.s, scp->sc_cred.cc_user.l);
+   su_mem_copy(cp + 5 + scp->sc_cred.cc_user.l, NETNL, sizeof(NETNL));
    POP3_OUT(rv, cp, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 
-   memcpy(cp, "PASS ", 5);
-   memcpy(cp + 5, scp->sc_cred.cc_pass.s, scp->sc_cred.cc_pass.l);
-   memcpy(cp + 5 + scp->sc_cred.cc_pass.l, NETNL, sizeof(NETNL));
+   su_mem_copy(cp, "PASS ", 5);
+   su_mem_copy(cp + 5, scp->sc_cred.cc_pass.s, scp->sc_cred.cc_pass.l);
+   su_mem_copy(cp + 5 + scp->sc_cred.cc_pass.l, NETNL, sizeof(NETNL));
    POP3_OUT(rv, cp, MB_COMD, goto jleave);
    POP3_ANSWER(rv, goto jleave);
 

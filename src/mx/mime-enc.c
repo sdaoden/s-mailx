@@ -940,8 +940,8 @@ b64_decode_header(struct str *out, struct str const *in){
    n_NYD_IN;
 
    if(!b64_decode(out, in)){
-      memset(&outr, 0, sizeof outr);
-      memset(&inr, 0, sizeof inr);
+      su_mem_set(&outr, 0, sizeof outr);
+      su_mem_set(&inr, 0, sizeof inr);
 
       if(!b64_decode_part(out, in, &outr, &inr) || outr.l > 0 || inr.l > 0)
          out = NULL;

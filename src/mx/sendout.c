@@ -820,7 +820,7 @@ a_sendout_sendmail(void *v, enum n_mailsend_flags msf)
    int rv;
    n_NYD_IN;
 
-   memset(&head, 0, sizeof head);
+   su_mem_set(&head, 0, sizeof head);
    head.h_mailx_command = "mail";
    if((head.h_to = lextract(str, GTO |
          (ok_blook(fullnames) ? GFULL | GSKIN : GSKIN))) != NULL)
@@ -867,7 +867,7 @@ a_sendout_file_a_pipe(struct name *names, FILE *fo, bool_t *senderror){
    }else{
       i = sizeof(FILE*) * pipecnt;
       fppa = n_lofi_alloc(i);
-      memset(fppa, 0, i);
+      su_mem_set(fppa, 0, i);
       sh = ok_vlook(SHELL);
    }
 
@@ -1623,7 +1623,7 @@ a_sendout_put_addrline(char const *hname, struct name *np, FILE *fo,
             hb[0] = '<';
             hb[len + 1] = '>';
             hb[len + 2] = '\0';
-            memcpy(&hb[1], np->n_fullname, len);
+            su_mem_copy(&hb[1], np->n_fullname, len);
             len += 2;
          }
          len = xmime_write(hb, len, fo,
@@ -1727,7 +1727,7 @@ n_mail(enum n_mailsend_flags msf, struct name *to, struct name *cc,
    bool_t fullnames;
    n_NYD_IN;
 
-   memset(&head, 0, sizeof head);
+   su_mem_set(&head, 0, sizeof head);
 
    /* The given subject may be in RFC1522 format. */
    if (subject != NULL) {
@@ -1897,7 +1897,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
    }
 
    /* */
-   memset(&sb, 0, sizeof sb);
+   su_mem_set(&sb, 0, sizeof sb);
    sb.sb_hp = hp;
    sb.sb_to = to;
    sb.sb_input = mtf;
@@ -2007,7 +2007,7 @@ mkdate(FILE *fo, char const *field)
    int tzdiff, tzdiff_hour, tzdiff_min, rv;
    n_NYD_IN;
 
-   memcpy(&tmpgm, &time_current.tc_gm, sizeof tmpgm);
+   su_mem_copy(&tmpgm, &time_current.tc_gm, sizeof tmpgm);
    tzdiff = time_current.tc_time - mktime(&tmpgm);
    tzdiff_hour = (int)(tzdiff / 60);
    tzdiff_min = tzdiff_hour % 60;
@@ -2466,7 +2466,7 @@ resend_msg(struct message *mp, struct header *hp, bool_t add_resent)
       }
    }
 
-   memset(&sb, 0, sizeof sb);
+   su_mem_set(&sb, 0, sizeof sb);
    sb.sb_to = to;
    sb.sb_input = nfi;
    if(!_sendout_error &&
@@ -2620,7 +2620,7 @@ savedeadletter(FILE *fp, bool_t fflush_rewind_first){
             flags |= a_INIT | a_BODY;
       }
       if(flags & a_BODY){
-         if(line.s_len >= 5 && !memcmp(line.s_dat, "From ", 5))
+         if(line.s_len >= 5 && !su_mem_cmp(line.s_dat, "From ", 5))
             n_string_unshift_c(&line, '>');
       }
       if(line.s_len == 0)

@@ -83,7 +83,7 @@ a_chead_print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded,
 
    if((cp = ok_vlook(attrlist)) != NULL){
       if(su_cs_len(cp) == attrlen){
-         memcpy(attrlist, cp, attrlen +1);
+         su_mem_copy(attrlist, cp, attrlen +1);
          goto jattrok;
       }
       n_err(_("*attrlist* is not of the correct length, using built-in\n"));
@@ -92,17 +92,17 @@ a_chead_print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded,
    if(ok_blook(bsdcompat) || ok_blook(bsdflags)){
       char const bsdattr[attrlen +1] = "NU  *HMFAT+-$~";
 
-      memcpy(attrlist, bsdattr, sizeof bsdattr);
+      su_mem_copy(attrlist, bsdattr, sizeof bsdattr);
    }else if(ok_blook(SYSV3)){
       char const bsdattr[attrlen +1] = "NU  *HMFAT+-$~";
 
-      memcpy(attrlist, bsdattr, sizeof bsdattr);
+      su_mem_copy(attrlist, bsdattr, sizeof bsdattr);
       n_OBSOLETE(_("*SYSV3*: please use *bsdcompat* or *bsdflags*, "
          "or set *attrlist*"));
    }else{
       char const pattr[attrlen +1]   = "NUROSPMFAT+-$~";
 
-      memcpy(attrlist, pattr, sizeof pattr);
+      su_mem_copy(attrlist, pattr, sizeof pattr);
    }
 
 jattrok:

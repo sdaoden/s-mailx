@@ -263,7 +263,7 @@ jdelim_empty:
    while(fgetline(&linebuf, &linesize, (fbuf == n_stdin ? NULL : &cnt),
          &linelen, fbuf, 0) != NULL){
       if(heredl > 0 && heredl == linelen - 1 &&
-            !memcmp(heredb, linebuf, heredl)){
+            !su_mem_cmp(heredb, linebuf, heredl)){
          heredb = NULL;
          break;
       }
@@ -1342,7 +1342,7 @@ jputnl:
             if(su_cs_is_ascii(c))
                buf[0] = c, buf[1] = '\0';
             else if(n_psonce & n_PSO_UNICODE)
-               memcpy(buf, n_unirepl, sizeof n_unirepl);
+               su_mem_copy(buf, n_unirepl, sizeof n_unirepl);
             else
                buf[0] = '?', buf[1] = '\0';
             n_err(_("Unknown command escape: `%c%s'\n"), escape, buf);
@@ -1807,7 +1807,7 @@ jout:
       coap->coa_pipe[0] = coap->coa_pipe[1] = -1;
       coap->coa_stdin = coap->coa_stdout = NULL;
       coap->coa_senderr = checkaddr_err;
-      memcpy(coap->coa_cmd, cp, i);
+      su_mem_copy(coap->coa_cmd, cp, i);
 
       hold_all_sigs();
       coap->coa_opipe = safe_signal(SIGPIPE, SIG_IGN);

@@ -589,7 +589,7 @@ c_version(void *vp){
     * *features* starts with dummy byte to avoid + -> *folder* expansions */
    i = su_cs_len(cp = &ok_vlook(features)[1]) +1;
    iop = n_autorec_alloc(i);
-   memcpy(iop, cp, i);
+   su_mem_copy(iop, cp, i);
 
    arr = n_autorec_alloc(sizeof(cp) * VAL_FEATURES_CNT);
    for(i = 0; (cp = su_cs_sep_c(&iop, ',', TRU1)) != NULL; ++i)

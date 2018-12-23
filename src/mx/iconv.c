@@ -191,7 +191,7 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
          --(*inbleft);
          if(icf & n_ICONV_UNIREPL){
             if(*outbleft >= sizeof(n_unirepl) -1){
-               memcpy(*outb, n_unirepl, sizeof(n_unirepl) -1);
+               su_mem_copy(*outb, n_unirepl, sizeof(n_unirepl) -1);
                *outb += sizeof(n_unirepl) -1;
                *outbleft -= sizeof(n_unirepl) -1;
                continue;

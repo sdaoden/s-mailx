@@ -91,7 +91,7 @@ n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
                rv = FAL0;
                break;
             }
-            memset(mbp, 0, sizeof *mbp);
+            su_mem_set(mbp, 0, sizeof *mbp);
             vicp->vic_waccu = (n_psonce & n_PSO_UNICODE) ? 0xFFFD : '?';
             i = 1;
          }else if(i == 0){
@@ -211,7 +211,7 @@ jnobidi:
 
 #ifdef mx_HAVE_NATCH_CHAR
    if (isbidi) {
-      memcpy(np, bi.bi_start.s, bi.bi_start.l);
+      su_mem_copy(np, bi.bi_start.s, bi.bi_start.l);
       np += bi.bi_start.l;
    }
 #endif
@@ -255,7 +255,7 @@ jnobidi:
       if (isrepl) {
          if (isuni) {
             /* Contained in n_mb_cur_max, then */
-            memcpy(np, n_unirepl, sizeof(n_unirepl) -1);
+            su_mem_copy(np, n_unirepl, sizeof(n_unirepl) -1);
             np += sizeof(n_unirepl) -1;
          } else
             *np++ = '?';
@@ -270,17 +270,17 @@ jnobidi:
 
    if (fill && col != 0) {
       if (fill > 0) {
-         memmove(nb + col, nb, PTR2SIZE(np - nb));
-         memset(nb, ' ', col);
+         su_mem_move(nb + col, nb, PTR2SIZE(np - nb));
+         su_mem_set(nb, ' ', col);
       } else
-         memset(np, ' ', col);
+         su_mem_set(np, ' ', col);
       np += col;
       col = 0;
    }
 
 #ifdef mx_HAVE_NATCH_CHAR
    if (isbidi) {
-      memcpy(np, bi.bi_end.s, bi.bi_end.l);
+      su_mem_copy(np, bi.bi_end.s, bi.bi_end.l);
       np += bi.bi_end.l;
    }
 #endif
@@ -471,7 +471,7 @@ bidi_info_create(struct bidi_info *bip)
    n_NATCH_CHAR( char const *hb; )
    n_NYD_IN;
 
-   memset(bip, 0, sizeof *bip);
+   su_mem_set(bip, 0, sizeof *bip);
    bip->bi_start.s = bip->bi_end.s = n_UNCONST(n_empty);
 
 #ifdef mx_HAVE_NATCH_CHAR

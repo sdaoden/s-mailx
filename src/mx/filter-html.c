@@ -416,7 +416,7 @@ jput:
          self = _hf_dump(self);
          if ((self->hf_len = (l -= i)) > 0) {
             self->hf_flags &= ~_HF_NL_MASK;
-            memmove(self->hf_line, self->hf_line + i, l);
+            su_mem_move(self->hf_line, self->hf_line + i, l);
 # ifdef mx_HAVE_NATCH_CHAR
             __hf_sync_mbstuff(self);
 # endif
@@ -841,7 +841,7 @@ jput_as_is:
          param.s = n_UNCONST("IMG");
          param.l = 3;
          goto jimg_put;
-      } /* else */ if (memchr(param.s, '&', param.l) != NULL)
+      } /* else */ if (su_mem_find(param.s, '&', param.l) != NULL)
          self = _hf_expand_all_ents(self, &param);
       else
 jimg_put:
@@ -859,7 +859,7 @@ jimg_put:
          hhp->hfh_next = self->hf_hrefs;
          hhp->hfh_no = ++self->hf_href_no;
          hhp->hfh_len = (ui32_t)param.l;
-         memcpy(hhp->hfh_dat, param.s, param.l);
+         su_mem_copy(hhp->hfh_dat, param.s, param.l);
 
          snprintf(nobuf, sizeof nobuf, "[%u]", hhp->hfh_no);
          self->hf_flags = (f |= _HF_HREF);
@@ -941,7 +941,7 @@ _hf_check_ent(struct htmlflt *self, char const *s, size_t l)
       i = (*++s == 'x' ? 16 : 10);
 
       if ((i != 16 || (++s, --l) > 0) && l < sizeof(nobuf)) {
-         memcpy(nobuf, s, l);
+         su_mem_copy(nobuf, s, l);
          nobuf[l] = '\0';
          su_idec_uz_cp(&i, nobuf, i, NULL);
          if (i <= 0x7F)
@@ -1054,7 +1054,7 @@ jcp_reset:
             /* Special case "<!--" buffer content to deal with really weird
              * things that can be done with "<!--[if gte mso 9]>" syntax */
             if (PTR2SIZE(cp - self->hf_bdat) != 4 ||
-                  memcmp(self->hf_bdat, "<!--", 4)) {
+                  su_mem_cmp(self->hf_bdat, "<!--", 4)) {
                self->hf_flags = f;
                *cp = '\0';
                self = _hf_puts(self, self->hf_bdat);
@@ -1195,7 +1195,7 @@ htmlflt_init(struct htmlflt *self)
 {
    n_NYD_IN;
    /* (Rather redundant though) */
-   memset(self, 0, sizeof *self);
+   su_mem_set(self, 0, sizeof *self);
    n_NYD_OU;
 }
 
@@ -1223,7 +1223,7 @@ htmlflt_reset(struct htmlflt *self, FILE *f)
    if (self->hf_line != NULL)
       n_free(self->hf_line);
 
-   memset(self, 0, sizeof *self);
+   su_mem_set(self, 0, sizeof *self);
 
    if (f != NULL) {
       ui32_t sw = n_MAX(_HF_MINLEN, (ui32_t)n_scrnwidth);

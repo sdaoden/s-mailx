@@ -101,8 +101,8 @@ a_crese_reedit(char const *subj){
       i = su_cs_len(cp = subject_re_trim(out.s)) +1;
       /* RFC mandates english "Re: " */
       newsubj = n_autorec_alloc(sizeof("Re: ") -1 + i);
-      memcpy(newsubj, "Re: ", sizeof("Re: ") -1);
-      memcpy(&newsubj[sizeof("Re: ") -1], cp, i);
+      su_mem_copy(newsubj, "Re: ", sizeof("Re: ") -1);
+      su_mem_copy(&newsubj[sizeof("Re: ") -1], cp, i);
 
       n_free(out.s);
    }
@@ -296,14 +296,14 @@ a_crese_make_ref_and_cs(struct message *mp, struct header *head) /* TODO ASAP*/
 
    newref = n_alloc(reflen);
    if (oldref != NULL) {
-      memcpy(newref, oldref, oldreflen +1);
+      su_mem_copy(newref, oldref, oldreflen +1);
       if (oldmsgid != NULL) {
          newref[oldreflen++] = ',';
          newref[oldreflen++] = ' ';
-         memcpy(newref + oldreflen, oldmsgid, oldmsgidlen +1);
+         su_mem_copy(newref + oldreflen, oldmsgid, oldmsgidlen +1);
       }
    } else if (oldmsgid)
-      memcpy(newref, oldmsgid, oldmsgidlen +1);
+      su_mem_copy(newref, oldmsgid, oldmsgidlen +1);
    n = extract(newref, GREF);
    n_free(newref);
 
@@ -349,7 +349,7 @@ jwork_msg:
    touch(mp);
    setdot(mp);
 
-   memset(&head, 0, sizeof head);
+   su_mem_set(&head, 0, sizeof head);
    head.h_flags = hf;
    head.h_subject = a_crese_reedit(hfield1("subject", mp));
    head.h_mailx_command = (hf & HF_LIST_REPLY) ? "Lreply" : "reply";
@@ -578,7 +578,7 @@ a_crese_Reply(int *msgvec, bool_t recipient_record){
    enum gfield gf;
    n_NYD2_IN;
 
-   memset(&head, 0, sizeof head);
+   su_mem_set(&head, 0, sizeof head);
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
 
    for(ap = msgvec; *ap != 0; ++ap){
@@ -658,7 +658,7 @@ a_crese_fwd(void *vp, bool_t recipient_record){
    forward_as_attachment = ok_blook(forward_as_attachment);
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
 
-   memset(&head, 0, sizeof head);
+   su_mem_set(&head, 0, sizeof head);
    head.h_to = lextract(cap->ca_arg.ca_str.s,
          (GTO | (ok_blook(fullnames) ? GFULL : GSKIN)));
 
@@ -706,10 +706,10 @@ a_crese__fwdedit(char *subj){
 
    newsubj = n_autorec_alloc(out.l + 6);
    if(!su_cs_cmp_case_n(out.s, "Fwd: ", sizeof("Fwd: ") -1)) /* TODO EXTEND */
-      memcpy(newsubj, out.s, out.l +1);
+      su_mem_copy(newsubj, out.s, out.l +1);
    else{
-      memcpy(newsubj, "Fwd: ", 5); /* TODO ..a la subject_re_trim()! */
-      memcpy(&newsubj[5], out.s, out.l +1);
+      su_mem_copy(newsubj, "Fwd: ", 5); /* TODO ..a la subject_re_trim()! */
+      su_mem_copy(&newsubj[5], out.s, out.l +1);
    }
 
    n_free(out.s);
@@ -758,7 +758,7 @@ a_crese_resend1(void *vp, bool_t add_resent){
       touch(mp);
       setdot(mp);
 
-      memset(&head, 0, sizeof head);
+      su_mem_set(&head, 0, sizeof head);
       head.h_to = myto;
       head.h_mailx_command = "resend";
       head.h_mailx_raw_to = myrawto;

@@ -164,7 +164,7 @@ _imap_gssapi(struct mailbox *mp, struct ccred *ccred)
 
    {  size_t i = su_cs_len(mp->mb_imap_account) +1;
       server = n_autorec_alloc(i);
-      memcpy(server, mp->mb_imap_account, i);
+      su_mem_copy(server, mp->mb_imap_account, i);
    }
    if (!strncmp(server, "imap://", 7))
       server += 7;

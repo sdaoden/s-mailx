@@ -333,7 +333,7 @@ imap_delim_init(struct mailbox *mp, struct url const *urlp){
 
       if(i < n_NELEM(mp->mb_imap_delim))
 jcopy:
-         memcpy(&mb.mb_imap_delim[0], cp, i +1);
+         su_mem_copy(&mb.mb_imap_delim[0], cp, i +1);
       else
          n_err(_("*imap-delim* for %s is too long: %s\n"),
             urlp->url_input, cp);
@@ -377,8 +377,8 @@ imap_path_normalize(struct mailbox *mp, char const *cp){
       i = PTR2SIZE(cpx - cp);
       rv = rv_base = n_autorec_alloc(i + (j = su_cs_len(cpx) +1));
       if(i > 0)
-         memcpy(rv, cp, i);
-      memcpy(&rv[i], cpx, j);
+         su_mem_copy(rv, cp, i);
+      su_mem_copy(&rv[i], cpx, j);
       rv += i;
       cp = cpx;
    }
@@ -456,7 +456,7 @@ imap_path_encode(char const *cp, bool_t *err_or_null){
 
    out.s = n_autorec_alloc(l_plain + (l << 2) +1); /* XXX use n_string.. */
    if(l_plain > 0)
-      memcpy(out.s, &cp[-l_plain], out.l = l_plain);
+      su_mem_copy(out.s, &cp[-l_plain], out.l = l_plain);
    else
       out.l = 0;
    su_DBG( l_plain += (l << 2); )
@@ -562,10 +562,10 @@ imap_path_decode(char const *path, bool_t *err_or_null){
 
    l = l_orig = su_cs_len(path);
    rv = rv_base = n_autorec_alloc(l << 1);
-   memcpy(rv, path, l +1);
+   su_mem_copy(rv, path, l +1);
 
    /* xxx Don't check for invalid characters from malicious servers */
-   if(l == 0 || (cp = memchr(path, '&', l)) == NULL)
+   if(l == 0 || (cp = su_mem_find(path, '&', l)) == NULL)
       goto jleave;
 
    *err_or_null = TRU1;
@@ -751,7 +751,7 @@ jleave:
    return rv;
 jerr:
    n_err(_("Cannot decode IMAP path %s\n  %s\n"), path, V_(emsg));
-   memcpy(rv = rv_base, path, ++l_orig);
+   su_mem_copy(rv = rv_base, path, ++l_orig);
    goto jleave;
 }
 
@@ -851,7 +851,7 @@ imap_response_parse(void)
 
    if (parsebufsize < imapbufsize + 1)
       parsebuf = n_realloc(parsebuf, parsebufsize = imapbufsize);
-   memcpy(parsebuf, imapbuf, su_cs_len(imapbuf) + 1);
+   su_mem_copy(parsebuf, imapbuf, su_cs_len(imapbuf) + 1);
    pp = parsebuf;
    switch (*ip) {
    case '+':
@@ -1200,8 +1200,8 @@ rec_dequeue(void)
    omessage = message;
    message = n_alloc((msgCount+1) * sizeof *message);
    if (msgCount)
-      memcpy(message, omessage, msgCount * sizeof *message);
-   memset(&message[msgCount], 0, sizeof *message);
+      su_mem_copy(message, omessage, msgCount * sizeof *message);
+   su_mem_set(&message[msgCount], 0, sizeof *message);
 
    rp = record, rq = NULL;
    rv = OKAY;
@@ -1223,7 +1223,7 @@ rec_dequeue(void)
          if (exists > 0)
             exists--;
          delcache(&mb, &message[rp->rec_count-1]);
-         memmove(&message[rp->rec_count-1], &message[rp->rec_count],
+         su_mem_move(&message[rp->rec_count-1], &message[rp->rec_count],
             ((msgCount - rp->rec_count + 1) * sizeof *message));
          --msgCount;
          /* If the message was part of a collapsed thread,
@@ -1246,7 +1246,8 @@ rec_dequeue(void)
    record = recend = NULL;
    if (rv == OKAY && UICMP(z, exists, >, msgCount)) {
       message = n_realloc(message, (exists + 1) * sizeof *message);
-      memset(&message[msgCount], 0, (exists - msgCount + 1) * sizeof *message);
+      su_mem_set(&message[msgCount], 0,
+         (exists - msgCount + 1) * sizeof *message);
       for (i = msgCount; i < exists; ++i)
          imap_init(&mb, i);
       imap_flags(&mb, msgCount+1, exists);
@@ -1743,7 +1744,7 @@ jduppass:
       goto jleave;
    }
 
-   memset(&so, 0, sizeof so);
+   su_mem_set(&so, 0, sizeof so);
    so.s_fd = -1;
    if (!same_imap_account) {
       if (!disconnected(urlp->url_p_eu_h_p) && !sopen(&so, urlp)) {
@@ -3122,7 +3123,7 @@ imap_append(const char *xserver, FILE *fp, long offset)
    } else {
       struct mailbox mx;
 
-      memset(&mx, 0, sizeof mx);
+      su_mem_set(&mx, 0, sizeof mx);
 
       if (!_imap_getcred(&mx, &ccred, &url))
          goto jleave;
@@ -3234,7 +3235,7 @@ imap_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
       if (lp->l_delim != '/' && lp->l_delim != EOF && lp->l_level < depth &&
             !(lp->l_attr & LIST_NOINFERIORS)) {
          cp = n_autorec_alloc((n = su_cs_len(lp->l_name)) + 2);
-         memcpy(cp, lp->l_name, n);
+         su_mem_copy(cp, lp->l_name, n);
          cp[n] = lp->l_delim;
          cp[n+1] = '\0';
          if (imap_list1(mp, cp, &lx, &ly, lp->l_level) == OKAY && lx && ly) {
@@ -3527,7 +3528,7 @@ imap_copyuid(struct mailbox *mp, struct message *m, const char *name)
 
    rv = STOP;
 
-   memset(&xmb, 0, sizeof xmb);
+   su_mem_set(&xmb, 0, sizeof xmb);
 
    if ((cp = su_cs_find_case(responded_text, "[COPYUID ")) == NULL ||
          imap_copyuid_parse(&cp[9], &uidvalidity, &olduid, &newuid) == STOP)
@@ -3539,7 +3540,7 @@ imap_copyuid(struct mailbox *mp, struct message *m, const char *name)
    xmb.mb_cache_directory = NULL;
    xmb.mb_imap_account = su_cs_dup(mp->mb_imap_account);
    xmb.mb_imap_pass = su_cs_dup(mp->mb_imap_pass);
-   memcpy(&xmb.mb_imap_delim[0], &mp->mb_imap_delim[0],
+   su_mem_copy(&xmb.mb_imap_delim[0], &mp->mb_imap_delim[0],
       sizeof(xmb.mb_imap_delim));
    xmb.mb_imap_mailbox = su_cs_dup(imap_path_normalize(&xmb, name));
    if (mp->mb_cache_directory != NULL)
@@ -3548,7 +3549,7 @@ imap_copyuid(struct mailbox *mp, struct message *m, const char *name)
    initcache(&xmb);
 
    if (m == NULL) {
-      memset(&xm, 0, sizeof xm);
+      su_mem_set(&xm, 0, sizeof xm);
       xm.m_uid = olduid;
       if ((rv = getcache1(mp, &xm, NEED_UNSPEC, 3)) != OKAY)
          goto jleave;
@@ -3603,7 +3604,7 @@ imap_appenduid(struct mailbox *mp, FILE *fp, time_t t, long off1, long xsize,
    xmb.mb_uidvalidity = uidvalidity;
    xmb.mb_otf = xmb.mb_itf = fp;
    initcache(&xmb);
-   memset(&xm, 0, sizeof xm);
+   su_mem_set(&xm, 0, sizeof xm);
    xm.m_flag = (flag & MREAD) | MNEW;
    xm.m_time = t;
    xm.m_block = mailx_blockof(off1);
@@ -4079,7 +4080,7 @@ imap_strex(char const *cp, char const **xp)
       goto jleave;
 
    n = n_autorec_alloc(cq - cp + 2);
-   memcpy(n, cp, cq - cp +1);
+   su_mem_copy(n, cp, cq - cp +1);
    n[cq - cp + 1] = '\0';
    if (xp != NULL)
       *xp = cq + 1;

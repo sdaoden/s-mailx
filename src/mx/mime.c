@@ -186,8 +186,8 @@ _fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
       if (outrest != NULL && outrest->l > 0) {
          in.l = outrest->l + input->l;
          in.s = buf = n_alloc(in.l +1);
-         memcpy(in.s, outrest->s, outrest->l);
-         memcpy(&in.s[outrest->l], input->s, input->l);
+         su_mem_copy(in.s, outrest->s, outrest->l);
+         su_mem_copy(&in.s[outrest->l], input->s, input->l);
          outrest->l = 0;
       }
 
@@ -203,7 +203,7 @@ _fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
          size_t i, j;
          char const *cp;
 
-         if((cp = memchr(in.s, '\n', j = in.l)) != NULL){
+         if((cp = su_mem_find(in.s, '\n', j = in.l)) != NULL){
             i = PTR2SIZE(cp - in.s);
             j -= i;
             while(j > 0 && *cp == '\n') /* XXX one iteration too much */
@@ -229,7 +229,7 @@ _fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
             if (flags & _TD_EOF) {
                out.s = n_realloc(out.s, out.l + sizeof(n_unirepl));
                if(n_psonce & n_PSO_UNICODE){
-                  memcpy(&out.s[out.l], n_unirepl, sizeof(n_unirepl) -1);
+                  su_mem_copy(&out.s[out.l], n_unirepl, sizeof(n_unirepl) -1);
                   out.l += sizeof(n_unirepl) -1;
                }else
                   out.s[out.l++] = '?';
@@ -270,7 +270,7 @@ _fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
          if (i > 0) {
             n_str_assign_buf(outrest, cp, in.l - i);
             cp = n_alloc(i +1);
-            memcpy(cp, in.s, in.l = i);
+            su_mem_copy(cp, in.s, in.l = i);
             (in.s = cp)[in.l = i] = '\0';
             flags &= ~_TD_BUFCOPY;
          } else {
@@ -783,7 +783,7 @@ _append_str(char **buf, size_t *sz, size_t *pos, char const *str, size_t len)
 {
    n_NYD_IN;
    *buf = n_realloc(*buf, *sz += len);
-   memcpy(&(*buf)[*pos], str, len);
+   su_mem_copy(&(*buf)[*pos], str, len);
    *pos += len;
    n_NYD_OU;
 }
@@ -846,18 +846,18 @@ charset_iter_reset(char const *a_charset_to_try_first) /* TODO elim. dups! */
 
 #ifdef mx_HAVE_ICONV
    if ((len = sarrl[0]) != 0) {
-      memcpy(cp, sarr[0], len);
+      su_mem_copy(cp, sarr[0], len);
       cp[len] = ',';
       cp += ++len;
    }
    if ((len = sarrl[1]) != 0) {
-      memcpy(cp, sarr[1], len);
+      su_mem_copy(cp, sarr[1], len);
       cp[len] = ',';
       cp += ++len;
    }
 #endif
    len = sarrl[2];
-   memcpy(cp, sarr[2], len);
+   su_mem_copy(cp, sarr[2], len);
    cp[len] = '\0';
 
    _CS_ITER_STEP();
@@ -1053,7 +1053,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
             size_t i = PTR2SIZE(p - cbeg);
             char *ltag, *cs = n_lofi_alloc(i);
 
-            memcpy(cs, cbeg, --i);
+            su_mem_copy(cs, cbeg, --i);
             cs[i] = '\0';
             /* RFC 2231 extends the RFC 2047 character set definition in
              * encoded words by language tags - silently strip those off */
@@ -1122,8 +1122,8 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
                i = su_cs_len(xcp);
                j = cout.l;
                n_str_add_buf(&cout, xcp, i);
-               memmove(&cout.s[i - 1], cout.s, j);
-               memcpy(&cout.s[0], xcp, i - 1);
+               su_mem_move(&cout.s[i - 1], cout.s, j);
+               su_mem_copy(&cout.s[0], xcp, i - 1);
                cout.s[cout.l - 1] = xcp[i - 1];
             }
          }
@@ -1326,9 +1326,9 @@ jinrest:
          inrest->l = 0;
       }else{
          out.s = n_alloc(in.l + inrest->l + 1);
-         memcpy(out.s, inrest->s, inrest->l);
+         su_mem_copy(out.s, inrest->s, inrest->l);
          if(in.l > 0)
-            memcpy(&out.s[inrest->l], in.s, in.l);
+            su_mem_copy(&out.s[inrest->l], in.s, in.l);
          if(in.s != ptr)
             n_free(in.s);
          (in.s = out.s)[in.l += inrest->l] = '\0';
@@ -1397,12 +1397,12 @@ jqpb64_dec:
             if(i != 0){
                assert(inrest->l == 0);
                inrest->s = n_realloc(inrest->s, i +1);
-               memcpy(inrest->s, &in.s[in.l], i);
+               su_mem_copy(inrest->s, &in.s[in.l], i);
                inrest->s[inrest->l = i] = '\0';
             }
          }else if(in.l < B64_ENCODE_INPUT_PER_LINE){
             inrest->s = n_realloc(inrest->s, in.l +1);
-            memcpy(inrest->s, in.s, in.l);
+            su_mem_copy(inrest->s, in.s, in.l);
             inrest->s[inrest->l = in.l] = '\0';
             in.l = 0;
             sz = 0;

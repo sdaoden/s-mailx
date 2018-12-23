@@ -173,9 +173,9 @@ a_shexp_findmail(char const *user, bool_t force){
       i = sizeof(VAL_MAIL) -1 + 1 + ul;
 
       rv = n_autorec_alloc(i);
-      memcpy(rv, VAL_MAIL, (i = sizeof(VAL_MAIL) -1));
+      su_mem_copy(rv, VAL_MAIL, (i = sizeof(VAL_MAIL) -1));
       rv[i] = '/';
-      memcpy(&rv[++i], user, ul);
+      su_mem_copy(&rv[++i], user, ul);
    }
 jleave:
    n_NYD2_OU;
@@ -210,9 +210,9 @@ a_shexp_tilde(char const *s){
 
    nl = su_cs_len(np);
    rv = n_autorec_alloc(nl + 1 + rl +1);
-   memcpy(rv, np, nl);
+   su_mem_copy(rv, np, nl);
    if(rl > 0){
-      memcpy(rv + nl, rp, rl);
+      su_mem_copy(rv + nl, rp, rl);
       nl += rl;
    }
    rv[nl] = '\0';
@@ -230,7 +230,7 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
    char *cp;
    n_NYD_IN;
 
-   memset(&sgc, 0, sizeof sgc);
+   su_mem_set(&sgc, 0, sizeof sgc);
    sgc.sgc_patlen = su_cs_len(name);
    sgc.sgc_patdat = savestrbuf(name, sgc.sgc_patlen);
    sgc.sgc_outer = n_string_reserve(n_string_creat(&outer), sgc.sgc_patlen);
@@ -270,7 +270,7 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
       l = 0;
       for(i = 0; i < no; ++i){
          xslp = sorta[i];
-         memcpy(&cp[l], xslp->sl_dat, xslp->sl_len);
+         su_mem_copy(&cp[l], xslp->sl_dat, xslp->sl_len);
          l += xslp->sl_len;
          cp[l++] = '\0';
       }
@@ -338,7 +338,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
 
    /* Separate current directory/pattern level from any possible remaining
     * pattern in order to be able to use it for fnmatch(3) */
-   if((ccp = memchr(sgcp->sgc_patdat, '/', sgcp->sgc_patlen)) == NULL)
+   if((ccp = su_mem_find(sgcp->sgc_patdat, '/', sgcp->sgc_patlen)) == NULL)
       nsgc.sgc_patlen = 0;
    else{
       nsgc = *sgcp;
@@ -470,11 +470,11 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
             slpp = &slp->sl_next;
             slp->sl_next = NULL;
             if((j = old_outerlen) > 0){
-               memcpy(&slp->sl_dat[0], sgcp->sgc_outer->s_dat, j);
+               su_mem_copy(&slp->sl_dat[0], sgcp->sgc_outer->s_dat, j);
                if(slp->sl_dat[j -1] != '/')
                   slp->sl_dat[j++] = '/';
             }
-            memcpy(&slp->sl_dat[j], dep->d_name, i);
+            su_mem_copy(&slp->sl_dat[j], dep->d_name, i);
             slp->sl_dat[j += i] = '\0';
             slp->sl_len = j;
          }
@@ -601,7 +601,7 @@ a_shexp__quote(struct a_shexp_quote_ctx *sqcp, struct a_shexp_quote_lvl *sqlp){
       }else if(!su_cs_is_ascii(c)){
          /* Need to keep together multibytes */
 #ifdef a_SHEXP_QUOTE_RECURSE
-         memset(&vic, 0, sizeof vic);
+         su_mem_set(&vic, 0, sizeof vic);
          vic.vic_indat = ib;
          vic.vic_inlen = il;
          n_visual_info(&vic,
@@ -809,7 +809,7 @@ jpush:
                }
             }
 
-            memset(&vic, 0, sizeof vic);
+            su_mem_set(&vic, 0, sizeof vic);
             vic.vic_indat = ib;
             vic.vic_inlen = il;
             n_visual_info(&vic,
@@ -1846,7 +1846,7 @@ n_shexp_quote(struct n_string *store, struct str const *input, bool_t rndtrip){
    assert(input != NULL);
    assert(input->l == 0 || input->s != NULL);
 
-   memset(&sqc, 0, sizeof sqc);
+   su_mem_set(&sqc, 0, sizeof sqc);
    sqc.sqc_store = store;
    sqc.sqc_input.s = input->s;
    if((sqc.sqc_input.l = input->l) == UIZ_MAX)
@@ -1856,7 +1856,7 @@ n_shexp_quote(struct n_string *store, struct str const *input, bool_t rndtrip){
    if(sqc.sqc_input.l == 0)
       store = n_string_push_buf(store, "''", sizeof("''") -1);
    else{
-      memset(&sql, 0, sizeof sql);
+      su_mem_set(&sql, 0, sizeof sql);
       sql.sql_dat = sqc.sqc_input;
       sql.sql_flags = sqc.sqc_flags;
       a_shexp__quote(&sqc, &sql);

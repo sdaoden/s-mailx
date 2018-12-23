@@ -212,7 +212,7 @@ getpassword(char const *query)/* TODO v15: use _only_ n_tty_fp! */
     * FIXME foreground pgrp, and can fail with EINTR!! also affects
     * FIXME termios_state_reset() */
    tcgetattr(STDIN_FILENO, &termios_state.ts_tios);
-   memcpy(&tios, &termios_state.ts_tios, sizeof tios);
+   su_mem_copy(&tios, &termios_state.ts_tios, sizeof tios);
    termios_state.ts_needs_reset = TRU1;
    tios.c_iflag &= ~(ISTRIP);
    tios.c_lflag &= ~(ECHO | ECHOE | ECHOK | ECHONL);
@@ -321,7 +321,7 @@ jeeval:
 #endif
 
    /* We need the visual width.. */
-   memset(&vic, 0, sizeof vic);
+   su_mem_set(&vic, 0, sizeof vic);
    vic.vic_indat = n_string_cp(store);
    vic.vic_inlen = store->s_len;
    for(pwidth = 0; vic.vic_inlen > 0;){
@@ -1017,7 +1017,7 @@ a_tty_term_mode(bool_t raw){
    tcgetattr(STDIN_FILENO, tiosp); /* TODO v15: use _only_ n_tty_fp! */
    tiosp->c_lflag |= ECHO | ICANON;
 
-   memcpy(&a_tty.tg_tios_new, tiosp, sizeof *tiosp);
+   su_mem_copy(&a_tty.tg_tios_new, tiosp, sizeof *tiosp);
    tiosp = &a_tty.tg_tios_new;
    tiosp->c_cc[VMIN] = 1;
    tiosp->c_cc[VTIME] = 0;
@@ -1290,7 +1290,7 @@ a_tty_hist_add(char const *s, enum n_go_input_flags gif){
    thp->th_len = l;
    thp->th_flags = (gif & a_TTY_HIST_CTX_MASK) |
          (gif & n_GO_INPUT_HIST_GABBY ? a_TTY_HIST_GABBY : 0);
-   memcpy(thp->th_dat, s, l +1);
+   su_mem_copy(thp->th_dat, s, l +1);
 jleave:
    if((thp->th_older = a_tty.tg_hist) != NULL)
       a_tty.tg_hist->th_younger = thp;
@@ -1378,7 +1378,7 @@ a_tty_cell2dat(struct a_tty_line *tlp){
 
       tcap = tlp->tl_line.cells;
       do{
-         memcpy(tlp->tl_line.cbuf + len, tcap->tc_cbuf, tcap->tc_count);
+         su_mem_copy(tlp->tl_line.cbuf + len, tcap->tc_cbuf, tcap->tc_count);
          len += tcap->tc_count;
       }while(++tcap, --i > 0);
    }
@@ -1408,7 +1408,7 @@ a_tty_cell2save(struct a_tty_line *tlp){
 
    for(tcap = tlp->tl_line.cells, len = 0, i = tlp->tl_count; i > 0;
          ++tcap, --i){
-      memcpy(tlp->tl_savec.s + len, tcap->tc_cbuf, tcap->tc_count);
+      su_mem_copy(tlp->tl_savec.s + len, tcap->tc_cbuf, tcap->tc_count);
       len += tcap->tc_count;
    }
    tlp->tl_savec.s[len] = '\0';
@@ -1431,7 +1431,7 @@ a_tty_copy2paste(struct a_tty_line *tlp, struct a_tty_cell *tcpmin,
    tlp->tl_pastebuf.s = cp = n_autorec_alloc((tlp->tl_pastebuf.l = l) +1);
 
    for(tcp = tcpmin; tcp < tcpmax; cp += l, ++tcp)
-      memcpy(cp, tcp->tc_cbuf, l = tcp->tc_count);
+      su_mem_copy(cp, tcp->tc_cbuf, l = tcp->tc_count);
    *cp = '\0';
    n_NYD2_OU;
 }
@@ -1481,7 +1481,7 @@ a_tty_vinuni(struct a_tty_line *tlp){
          char const emsg[] = "[0-9a-fA-F]";
 
          n_LCTA(sizeof emsg <= sizeof(buf), "Preallocated buffer too small");
-         memcpy(buf, emsg, sizeof emsg);
+         su_mem_copy(buf, emsg, sizeof emsg);
          goto jerr;
       }
 
@@ -1874,9 +1874,9 @@ jpaint:
 
       *pos++ = '|';
       if(f & a_LEFT_MIN)
-         memcpy(pos, "^.+", 3);
+         su_mem_copy(pos, "^.+", 3);
       else if(f & a_RIGHT_MAX)
-         memcpy(pos, ".+$", 3);
+         su_mem_copy(pos, ".+$", 3);
       else{
          /* Theoretical line length limit a_TTY_LINE_MAX, choose next power of
           * ten (10 ** 10) to represent 100 percent; we do not have a macro
@@ -2028,7 +2028,7 @@ a_tty_kbs(struct a_tty_line *tlp){
          struct a_tty_cell *tcap;
 
          tcap = tlp->tl_line.cells + cur;
-         memmove(tcap, &tcap[1], cnt *= sizeof(*tcap));
+         su_mem_move(tcap, &tcap[1], cnt *= sizeof(*tcap));
       }
       f = a_TTY_VF_MOD_CURSOR | a_TTY_VF_MOD_CONTENT;
    }else
@@ -2082,7 +2082,7 @@ a_tty_kdel(struct a_tty_line *tlp){
          struct a_tty_cell *tcap;
 
          tcap = &tlp->tl_line.cells[cur];
-         memmove(tcap, &tcap[1], (ui32_t)i * sizeof(*tcap));
+         su_mem_move(tcap, &tcap[1], (ui32_t)i * sizeof(*tcap));
       }
       f = a_TTY_VF_MOD_CONTENT;
    }else if(cnt == 0 && !ok_blook(ignoreeof)){
@@ -2152,7 +2152,7 @@ a_tty_ksnarfw(struct a_tty_line *tlp, bool_t fwd){
 
    if((tlp->tl_count = cnt) != (tlp->tl_cursor = cur)){
       cnt -= cur;
-      memmove(&tcap[0], &tcap[i], cnt * sizeof(*tcap)); /* FIXME*/
+      su_mem_move(&tcap[0], &tcap[i], cnt * sizeof(*tcap)); /* FIXME*/
    }
 
    f = a_TTY_VF_MOD_CURSOR | a_TTY_VF_MOD_CONTENT;
@@ -2234,7 +2234,7 @@ a_tty_kother(struct a_tty_line *tlp, wchar_t wc){
    }
 
    /* First init a cell and see whether we'll really handle this wc */
-   memset(&ps, 0, sizeof ps);
+   su_mem_set(&ps, 0, sizeof ps);
    /* C99 */{
       size_t l;
 
@@ -2266,11 +2266,11 @@ jemb:
    cnt = tlp->tl_count++ - cur;
    tcap = &tlp->tl_line.cells[cur];
    if(cnt >= 1){
-      memmove(&tcap[1], tcap, cnt * sizeof(*tcap));
+      su_mem_move(&tcap[1], tcap, cnt * sizeof(*tcap));
       f = a_TTY_VF_MOD_CONTENT;
    }else
       f = a_TTY_VF_MOD_SINGLE;
-   memcpy(tcap, &tc, sizeof *tcap);
+   su_mem_copy(tcap, &tc, sizeof *tcap);
 
    f |= a_TTY_VF_MOD_CURSOR;
    rv = TRU1;
@@ -2467,7 +2467,7 @@ jaster_check:
 
    /* If the expansion equals the original string, assume the user wants what
     * is usually known as tab completion, append `*' and restart */
-   if(!wedid && exp.l == sub.l && !memcmp(exp.s, sub.s, exp.l))
+   if(!wedid && exp.l == sub.l && !su_mem_cmp(exp.s, sub.s, exp.l))
       goto jaster_check;
 
    if(exp.s[exp.l - 1] != '/'){
@@ -2489,15 +2489,15 @@ jset:
    orig.s = su_MEM_BAG_SELF_AUTO_ALLOC(orig.l + 5 +1);
    su_mem_bag_pop(n_go_data->gdc_membag, membag_persist);
    if((rv = (ui32_t)bot.l) > 0)
-      memcpy(orig.s, bot.s, rv);
+      su_mem_copy(orig.s, bot.s, rv);
    if(preexp.l > 0){
-      memcpy(&orig.s[rv], preexp.s, preexp.l);
+      su_mem_copy(&orig.s[rv], preexp.s, preexp.l);
       rv += preexp.l;
    }
-   memcpy(&orig.s[rv], exp.s, exp.l);
+   su_mem_copy(&orig.s[rv], exp.s, exp.l);
    rv += exp.l;
    if(topp.l > 0){
-      memcpy(&orig.s[rv], topp.s, topp.l);
+      su_mem_copy(&orig.s[rv], topp.s, topp.l);
       rv += topp.l;
    }
    orig.s[rv] = '\0';
@@ -2576,7 +2576,7 @@ jmulti:{
          }
 
          /* We want case-insensitive sort-order */
-         memset(&vic, 0, sizeof vic);
+         su_mem_set(&vic, 0, sizeof vic);
          vic.vic_indat = sub.s;
          vic.vic_inlen = sub.l;
          c2 = n_visual_info(&vic, n_VISUAL_INFO_ONE_CHAR) ? vic.vic_waccu
@@ -2605,7 +2605,7 @@ jmulti:{
          input = sub;
          shoup = n_shexp_quote(n_string_trunc(shoup, 0), &input,
                tlp->tl_quote_rndtrip);
-         memset(&vic, 0, sizeof vic);
+         su_mem_set(&vic, 0, sizeof vic);
          vic.vic_indat = shoup->s_dat;
          vic.vic_inlen = shoup->s_len;
          if(!n_visual_info(&vic,
@@ -2727,7 +2727,7 @@ a_tty__khist_shared(struct a_tty_line *tlp, struct a_tty_hist *thp){
          if(!(thp->th_flags & a_TTY_HIST_CTX_COMPOSE))
             *cp++ = ':';
       }
-      memcpy(cp, thp->th_dat, thp->th_len +1);
+      su_mem_copy(cp, thp->th_dat, thp->th_len +1);
       rv = tlp->tl_defc.l = i;
 
       f = (tlp->tl_count > 0) ? a_TTY_VF_MOD_DIRTY : a_TTY_VF_NONE;
@@ -3057,7 +3057,7 @@ a_tty_readline(struct a_tty_line *tlp, size_t len, bool_t *histok_or_null
    assert(tlp->tl_bind_takeover == '\0');
 # endif
 jrestart:
-   memset(ps, 0, sizeof ps);
+   su_mem_set(ps, 0, sizeof ps);
    flags = a_NONE;
    tlp->tl_vi_flags |= a_TTY_VF_REFRESH | a_TTY_VF_SYNC;
 
@@ -3333,7 +3333,7 @@ jmle_fun:
                         struct a_tty_bind_ctx *tbcp;
 
                         tbcp = tbtp->tbt_bind;
-                        memcpy(tlp->tl_defc.s = n_autorec_alloc(
+                        su_mem_copy(tlp->tl_defc.s = n_autorec_alloc(
                               (tlp->tl_defc.l = len = tbcp->tbc_exp_len) +1),
                            tbcp->tbc_exp, tbcp->tbc_exp_len +1);
                         goto jrestart;
@@ -3447,7 +3447,7 @@ jinject_input:{
                su_DBG_LOC_ARGS_ORUSE);
       *tlp->tl_x_bufsize = i;
    }
-   memcpy(*tlp->tl_x_buf, cbufp, i);
+   su_mem_copy(*tlp->tl_x_buf, cbufp, i);
    rele_all_sigs(); /* XXX v15 drop */
    if(histok_or_null != NULL)
       *histok_or_null = FAL0;
@@ -3513,13 +3513,13 @@ a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, bool_t replace){
          tbcp->tbc_next = a_tty.tg_bind[gif];
          a_tty.tg_bind[gif] = tbcp;
       }
-      memcpy(tbcp->tbc_seq = &tbcp->tbc__buf[0],
+      su_mem_copy(tbcp->tbc_seq = &tbcp->tbc__buf[0],
          tbpcp->tbpc_seq, i = (tbcp->tbc_seq_len = tbpcp->tbpc_seq_len) +1);
-      memcpy(tbcp->tbc_exp = &tbcp->tbc__buf[i],
+      su_mem_copy(tbcp->tbc_exp = &tbcp->tbc__buf[i],
          tbpcp->tbpc_exp.s, j = (tbcp->tbc_exp_len = tbpcp->tbpc_exp.l) +1);
       i += j;
       i = (i + tbpcp->tbpc_cnv_align_mask) & ~tbpcp->tbpc_cnv_align_mask;
-      memcpy(tbcp->tbc_cnv = &tbcp->tbc__buf[i],
+      su_mem_copy(tbcp->tbc_cnv = &tbcp->tbc__buf[i],
          tbpcp->tbpc_cnv, (tbcp->tbc_cnv_len = tbpcp->tbpc_cnv_len));
       tbcp->tbc_flags = tbpcp->tbpc_flags;
    }
@@ -3612,7 +3612,7 @@ a_tty_bind_parse(bool_t isbindcmd, struct a_tty_bind_parse_ctx *tbpcp){
          ep->seq_dat = savestrbuf(shin_save.s, i);
       }
 
-      memset(&vic, 0, sizeof vic);
+      su_mem_set(&vic, 0, sizeof vic);
       vic.vic_inlen = shoup->s_len;
       vic.vic_indat = shoup->s_dat;
       if(!n_visual_info(&vic,
@@ -3731,7 +3731,7 @@ jeempty:
       }
 
       for(tail = head; tail != NULL; tail = tail->next){
-         memcpy(cp, tail->seq_dat, tail->seq_len);
+         su_mem_copy(cp, tail->seq_dat, tail->seq_len);
          cp += tail->seq_len;
          *cp++ = ',';
 
@@ -3749,7 +3749,7 @@ jeempty:
                cnv += sizeof(si32_t);
             }
             i = tail->cnv_len * sizeof(wc_t);
-            memcpy(cnv, tail->cnv_dat, i);
+            su_mem_copy(cnv, tail->cnv_dat, i);
             cnv += i;
             *n_UNALIGN(wc_t*,cnv) = '\0';
 
@@ -3766,7 +3766,8 @@ jeempty:
 
          for(ltbcp = NULL, tbcp = a_tty.tg_bind[gif]; tbcp != NULL;
                ltbcp = tbcp, tbcp = tbcp->tbc_next)
-            if(tbcp->tbc_seq_len == sl && !memcmp(tbcp->tbc_seq, cpbase, sl)){
+            if(tbcp->tbc_seq_len == sl &&
+                  !su_mem_cmp(tbcp->tbc_seq, cpbase, sl)){
                tbpcp->tbpc_tbcp = tbcp;
                break;
             }
@@ -3906,7 +3907,7 @@ a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
             break;
          }
          n_UNALIGN(si32_t*,cp)[-1] = (si32_t)i;
-         memcpy(cp, tv.tv_data.tvd_string, i);
+         su_mem_copy(cp, tv.tv_data.tvd_string, i);
          cp[i] = '\0';
       }
    }
@@ -3963,15 +3964,15 @@ a_tty_bind_tree_teardown(void){
    size_t i, j;
    n_NYD2_IN;
 
-   memset(&a_tty.tg_bind_shcut_cancel[0], 0,
+   su_mem_set(&a_tty.tg_bind_shcut_cancel[0], 0,
       sizeof(a_tty.tg_bind_shcut_cancel));
-   memset(&a_tty.tg_bind_shcut_prompt_char[0], 0,
+   su_mem_set(&a_tty.tg_bind_shcut_prompt_char[0], 0,
       sizeof(a_tty.tg_bind_shcut_prompt_char));
 
    for(i = 0; i < n__GO_INPUT_CTX_MAX1; ++i)
       for(j = 0; j < HSHSIZE; ++j)
          a_tty__bind_tree_free(a_tty.tg_bind_tree[i][j]);
-   memset(&a_tty.tg_bind_tree[0], 0, sizeof(a_tty.tg_bind_tree));
+   su_mem_set(&a_tty.tg_bind_tree[0], 0, sizeof(a_tty.tg_bind_tree));
 
    a_tty.tg_bind_isdirty = a_tty.tg_bind_isbuild = FAL0;
    n_NYD2_OU;
@@ -4086,7 +4087,7 @@ a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep,
       }
 
       tbtp = n_alloc(sizeof *tbtp);
-      memset(tbtp, 0, sizeof *tbtp);
+      su_mem_set(tbtp, 0, sizeof *tbtp);
       tbtp->tbt_char = wc;
       tbtp->tbt_isseq = isseq;
 
@@ -4123,7 +4124,7 @@ a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep,
       }
 
       xtbtp = n_alloc(sizeof *xtbtp);
-      memset(xtbtp, 0, sizeof *xtbtp);
+      su_mem_set(xtbtp, 0, sizeof *xtbtp);
       xtbtp->tbt_parent = parentp;
       xtbtp->tbt_char = wc;
       xtbtp->tbt_isseq = isseq;
@@ -4197,7 +4198,7 @@ n_tty_init(void){
       flags = n_GO_INPUT_CTX_BASE;
 jbuiltin_redo:
       for(; tbbtp < tbbtp_max; ++tbbtp){
-         memset(&tbpc, 0, sizeof tbpc);
+         su_mem_set(&tbpc, 0, sizeof tbpc);
          tbpc.tbpc_cmd = "bind";
          if(tbbtp->tbbt_iskey){
             buf[4] = tbbtp->tbbt_ckey;
@@ -4245,7 +4246,7 @@ n_tty_destroy(bool_t xit_fastpath){
 # endif
 
 # ifdef mx_HAVE_DEBUG
-   memset(&a_tty, 0, sizeof a_tty);
+   su_mem_set(&a_tty, 0, sizeof a_tty);
 
    n_psonce &= ~n_PSO_LINE_EDITOR_INIT;
 # endif
@@ -4290,9 +4291,9 @@ FL int
             l1 = su_cs_len(ccol);
             l2 = su_cs_len(sp->s);
             posbuf = n_autorec_alloc(l1 + 4 + l2 +1);
-            memcpy(posbuf, ccol, l1);
+            su_mem_copy(posbuf, ccol, l1);
             pos = &posbuf[l1];
-            memcpy(&pos[4], sp->s, ++l2);
+            su_mem_copy(&pos[4], sp->s, ++l2);
          }
       }
    }
@@ -4303,7 +4304,7 @@ FL int
    }
 # endif /* mx_HAVE_COLOUR */
 
-   memset(&tl, 0, sizeof tl);
+   su_mem_set(&tl, 0, sizeof tl);
    tl.tl_goinflags = gif;
 
 # ifdef mx_HAVE_KEY_BINDINGS
@@ -4644,7 +4645,7 @@ c_bind(void *v){
       struct a_tty_bind_parse_ctx tbpc;
       struct n_cmd_arg *cap;
 
-      memset(&tbpc, 0, sizeof tbpc);
+      su_mem_set(&tbpc, 0, sizeof tbpc);
       tbpc.tbpc_cmd = cacp->cac_desc->cad_name;
       tbpc.tbpc_in_seq = (cap = cacp->cac_arg->ca_next)->ca_arg.ca_str.s;
       if((cap = cap->ca_next) != NULL){
@@ -4687,13 +4688,13 @@ c_unbind(void *v){
 jredo:
    if(n_is_all_or_aster(c.cp)){
       while((tbcp = a_tty.tg_bind[gif]) != NULL){
-         memset(&tbpc, 0, sizeof tbpc);
+         su_mem_set(&tbpc, 0, sizeof tbpc);
          tbpc.tbpc_tbcp = tbcp;
          tbpc.tbpc_flags = gif;
          a_tty_bind_del(&tbpc);
       }
    }else{
-      memset(&tbpc, 0, sizeof tbpc);
+      su_mem_set(&tbpc, 0, sizeof tbpc);
       tbpc.tbpc_cmd = cacp->cac_desc->cad_name;
       tbpc.tbpc_in_seq = c.cp;
       tbpc.tbpc_flags = gif;

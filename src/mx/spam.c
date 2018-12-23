@@ -193,7 +193,7 @@ _spam_action(enum spam_action sa, int *ip)
    bool_t ok = FAL0;
    n_NYD_IN;
 
-   memset(&vc, 0, sizeof vc);
+   su_mem_set(&vc, 0, sizeof vc);
    vc.vc_action = sa;
    vc.vc_verbose = ((n_poption & n_PO_VERB) != 0);
    vc.vc_progress = (!vc.vc_verbose && ((n_psonce & n_PSO_INTERACTIVE) != 0));
@@ -442,7 +442,7 @@ _spamd_setup(struct spam_vc *vcp)
       goto jleave;
    }
    ssdp->d_sun.sun_family = AF_UNIX;
-   memcpy(ssdp->d_sun.sun_path, cp, l);
+   su_mem_copy(ssdp->d_sun.sun_path, cp, l);
 
    vcp->vc_act = &_spamd_interact;
    rv = TRU1;
@@ -507,7 +507,9 @@ _spamd_interact(struct spam_vc *vcp)
    /* The command header, finalized with an empty line.
     * This needs to be written in a single write(2)! */
 # undef _X
-# define _X(X) do {memcpy(lp, X, sizeof(X) -1); lp += sizeof(X) -1;} while (0)
+# define _X(X) do{\
+    su_mem_copy(lp, X, sizeof(X) -1); lp += sizeof(X) -1;\
+}while(0)
 
    i = ((cp = ssdp->d_user.s) != NULL) ? ssdp->d_user.l : 0;
    size = sizeof(NETLINE("A_VERY_LONG_COMMAND " SPAMD_IDENT)) +
@@ -535,7 +537,7 @@ _spamd_interact(struct spam_vc *vcp)
 
    if (cp != NULL) {
       _X("User: ");
-      memcpy(lp, cp, i);
+      su_mem_copy(lp, cp, i);
       lp += i;
       _X(NETNL);
    }

@@ -338,7 +338,7 @@ jrestart:
       ++cp;
    c = (int)PTR2SIZE(cp - line.s);
    word = UICMP(z, c, <, sizeof _wordbuf) ? _wordbuf : n_autorec_alloc(c +1);
-   memcpy(word, line.s, c);
+   su_mem_copy(word, line.s, c);
    word[c] = '\0';
    line.l -= c;
    line.s = cp;
@@ -460,10 +460,10 @@ jempty:
          i = alias_exp->l;
          cp = line.s;
          line.s = n_autorec_alloc(i + 1 + line.l +1);
-         memcpy(line.s, alias_exp->s, i);
+         su_mem_copy(line.s, alias_exp->s, i);
          if(line.l > 0){
             line.s[i++] = ' ';
-            memcpy(&line.s[i], cp, line.l);
+            su_mem_copy(&line.s[i], cp, line.l);
          }
          line.s[i += line.l] = '\0';
          line.l = i;
@@ -1099,7 +1099,7 @@ jeopencheck:
 
    gcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
          (nlen = su_cs_len(nbuf) +1));
-   memset(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
+   su_mem_set(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
    gcp->gc_data.gdc_membag =
          su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
 
@@ -1110,7 +1110,7 @@ jeopencheck:
    gcp->gc_file = fip;
    gcp->gc_flags = (ispipe ? a_GO_FREE | a_GO_PIPE : a_GO_FREE | a_GO_FILE) |
          (a_go_ctx->gc_flags & a_GO_SUPER_MACRO ? a_GO_SUPER_MACRO : 0);
-   memcpy(gcp->gc_name, nbuf, nlen);
+   su_mem_copy(gcp->gc_name, nbuf, nlen);
 
    a_go_ctx = gcp;
    n_go_data = &gcp->gc_data;
@@ -1172,7 +1172,7 @@ a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
    sigset_t osigmask;
    n_NYD2_IN;
 
-   memset(&gec, 0, sizeof gec);
+   su_mem_set(&gec, 0, sizeof gec);
    osigmask = gcp->gc_osigmask;
    hadint = FAL0;
    f = a_RETOK;
@@ -1245,12 +1245,12 @@ n_go_init(void){
    assert(n_stdin != NULL);
 
    gcp = (void*)a_go__mainctx_b.uf;
-   su_DBGOR( memset(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name)),
-      memset(&gcp->gc_data, 0, sizeof gcp->gc_data) );
+   su_DBGOR( su_mem_set(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name)),
+      su_mem_set(&gcp->gc_data, 0, sizeof gcp->gc_data) );
    gcp->gc_data.gdc_membag =
          su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
    gcp->gc_file = n_stdin;
-   memcpy(gcp->gc_name, a_GO_MAINCTX_NAME, sizeof(a_GO_MAINCTX_NAME));
+   su_mem_copy(gcp->gc_name, a_GO_MAINCTX_NAME, sizeof(a_GO_MAINCTX_NAME));
 
    a_go_ctx = gcp;
    n_go_data = &gcp->gc_data;
@@ -1277,7 +1277,7 @@ n_go_main_loop(void){ /* FIXME */
    a_go_oldpipe = safe_signal(SIGPIPE, SIG_IGN);
    safe_signal(SIGPIPE, a_go_oldpipe);
 
-   memset(&gec, 0, sizeof gec);
+   su_mem_set(&gec, 0, sizeof gec);
 
    (void)sigsetjmp(a_go_srbuf, 1); /* FIXME get rid */
    hold_all_sigs();
@@ -1503,7 +1503,7 @@ n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
       giip->gii_next = *giipp;
       giip->gii_commit = ((giif & n_GO_INPUT_INJECT_COMMIT) != 0);
       giip->gii_no_history = ((giif & n_GO_INPUT_INJECT_HISTORY) == 0);
-      memcpy(&giip->gii_dat[0], buf, len);
+      su_mem_copy(&giip->gii_dat[0], buf, len);
       giip->gii_dat[giip->gii_len = len] = '\0';
       *giipp = giip;
 
@@ -1562,7 +1562,7 @@ FL int
 jinject:
          *linesize = giip->gii_len;
          *linebuf = (char*)giip;
-         memmove(*linebuf, giip->gii_dat, giip->gii_len +1);
+         su_mem_move(*linebuf, giip->gii_dat, giip->gii_len +1);
          iftype = "INJECTION";
       }else{
          if((*linebuf = a_go_ctx->gc_lines[a_go_ctx->gc_loff]) == NULL){
@@ -1660,7 +1660,7 @@ jforce_stdin:
                *linesize = (size_t)n + LINESIZE +1;
             *linebuf = su_MEM_REALLOC_LOCOR(*linebuf, *linesize,
                   su_DBG_LOC_ARGS_ORUSE);
-           memcpy(*linebuf, string, (size_t)n +1);
+           su_mem_copy(*linebuf, string, (size_t)n +1);
          }
          string = NULL;
 
@@ -1701,7 +1701,7 @@ jforce_stdin:
             while(su_cs_is_space(*cp) && n - i >= nold)
                ++cp, ++i;
             if(i > 0){
-               memmove(&(*linebuf)[nold], cp, n - nold - i);
+               su_mem_move(&(*linebuf)[nold], cp, n - nold - i);
                n -= i;
                (*linebuf)[n] = '\0';
             }
@@ -1822,11 +1822,11 @@ n_go_load(char const *name){
 
    i = su_cs_len(name) +1;
    gcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) + i);
-   memset(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
+   su_mem_set(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
 
    gcp->gc_file = fip;
    gcp->gc_flags = a_GO_FREE | a_GO_FILE;
-   memcpy(gcp->gc_name, name, i);
+   su_mem_copy(gcp->gc_name, name, i);
 
    if(n_poption & n_PO_D_VV)
       n_err(_("Loading %s\n"), n_shexp_quote_cp(gcp->gc_name, FAL0));
@@ -1852,12 +1852,12 @@ n_go_XYargs(bool_t injectit, char const **lines, size_t cnt){
    n_NYD_IN;
 
    gcp = (void*)b.uf;
-   memset(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
+   su_mem_set(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
 
    if(!injectit){
       gcp->gc_flags = a_GO_MACRO | a_GO_MACRO_X_OPTION |
             a_GO_SUPER_MACRO | a_GO_MACRO_FREE_DATA;
-      memcpy(gcp->gc_name, name, sizeof name);
+      su_mem_copy(gcp->gc_name, name, sizeof name);
    }
 
    /* The problem being that we want to support reverse solidus newline
@@ -1881,7 +1881,7 @@ n_go_XYargs(bool_t injectit, char const **lines, size_t cnt){
       }
 
       /* Separate one line from a possible multiline input string */
-      if((xsrcp = memchr(srcp, '\n', j)) != NULL){
+      if((xsrcp = su_mem_find(srcp, '\n', j)) != NULL){
          *lines = &xsrcp[1];
          j = PTR2SIZE(xsrcp - srcp);
       }else
@@ -1913,7 +1913,7 @@ n_go_XYargs(bool_t injectit, char const **lines, size_t cnt){
                   imax);
          }
          gcp->gc_lines[i] = cp = n_realloc(cp, len + j +1);
-         memcpy(&cp[len], srcp, j);
+         su_mem_copy(&cp[len], srcp, j);
          cp[len += j] = '\0';
 
          if(!keep)
@@ -1977,7 +1977,7 @@ n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
 
    gcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
          (i = su_cs_len(name) +1));
-   memset(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
+   su_mem_set(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
    gcp->gc_data.gdc_membag =
          su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
 
@@ -1992,7 +1992,7 @@ n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
    gcp->gc_lines = lines;
    gcp->gc_on_finalize = on_finalize;
    gcp->gc_finalize_arg = finalize_arg;
-   memcpy(gcp->gc_name, name, i);
+   su_mem_copy(gcp->gc_name, name, i);
 
    a_go_ctx = gcp;
    n_go_data = &gcp->gc_data;
@@ -2045,7 +2045,7 @@ n_go_command(enum n_go_input_flags gif, char const *cmd){
    ial = n_ALIGN(i);
    gcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
          ial + 2*sizeof(char*));
-   memset(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
+   su_mem_set(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
    gcp->gc_data.gdc_membag =
          su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
 
@@ -2057,7 +2057,7 @@ n_go_command(enum n_go_input_flags gif, char const *cmd){
          ((!(a_go_ctx->gc_flags & a_GO_TYPE_MASK) ||
             (a_go_ctx->gc_flags & a_GO_SUPER_MACRO)) ? a_GO_SUPER_MACRO : 0);
    gcp->gc_lines = (void*)&gcp->gc_name[ial];
-   memcpy(gcp->gc_lines[0] = &gcp->gc_name[0], cmd, i);
+   su_mem_copy(gcp->gc_lines[0] = &gcp->gc_name[0], cmd, i);
    gcp->gc_lines[1] = NULL;
 
    a_go_ctx = gcp;
@@ -2080,7 +2080,7 @@ n_go_splice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
 
    gcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
          (i = su_cs_len(cmd) +1));
-   memset(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
+   su_mem_set(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
 
    hold_all_sigs();
 
@@ -2093,7 +2093,7 @@ n_go_splice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
    gcp->gc_splice_stdin = n_stdin;
    gcp->gc_splice_stdout = n_stdout;
    gcp->gc_splice_psonce = n_psonce;
-   memcpy(gcp->gc_name, cmd, i);
+   su_mem_copy(gcp->gc_name, cmd, i);
 
    n_stdin = new_stdin;
    n_stdout = new_stdout;
@@ -2171,7 +2171,7 @@ c_eval(void *vp){
       sp = n_string_push_cp(sp, cp);
    }
 
-   memset(&gec, 0, sizeof gec);
+   su_mem_set(&gec, 0, sizeof gec);
    gec.gec_line.s = n_string_cp(sp);
    gec.gec_line.l = sp->s_len;
    if(n_poption & n_PO_D_VV)
@@ -2417,14 +2417,15 @@ jfound:
          n_readctl_read_overlay = grcp;
          grcp->grc_fp = fp;
          grcp->grc_fd = fd;
-         memcpy(grcp->grc_name, cap->ca_arg.ca_str.s, cap->ca_arg.ca_str.l +1);
+         su_mem_copy(grcp->grc_name, cap->ca_arg.ca_str.s,
+            cap->ca_arg.ca_str.l +1);
          if(elen == 0)
             grcp->grc_expand = NULL;
          else{
             char *cp;
 
             grcp->grc_expand = cp = &grcp->grc_name[cap->ca_arg.ca_str.l +1];
-            memcpy(cp, emsg, ++elen);
+            su_mem_copy(cp, emsg, ++elen);
          }
       }else{
          emsg = N_("`readctl': failed to create file for %s\n");

@@ -90,7 +90,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
          size_t sz = su_cs_len(cp) +1;
          file = n_autorec_alloc(sz + 1);
          file[0] = '+';
-         memcpy(file + 1, cp, sz);
+         su_mem_copy(file + 1, cp, sz);
       } else
          file = cp;
    }else{

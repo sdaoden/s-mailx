@@ -244,7 +244,7 @@ _mime_parse_pkcs7(struct message *zmp, struct mimepart *ip,
    char *to, *cc;
    n_NYD_IN;
 
-   memcpy(&m, ip, sizeof m);
+   su_mem_copy(&m, ip, sizeof m);
    to = hfield1("to", zmp);
    cc = hfield1("cc", zmp);
 

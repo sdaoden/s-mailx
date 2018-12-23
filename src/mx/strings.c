@@ -57,7 +57,7 @@ FL char *
    size = su_cs_len(str);
    news = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(size +1,  su_DBG_LOC_ARGS_ORUSE);
    if(size > 0)
-      memcpy(news, str, size);
+      su_mem_copy(news, str, size);
    news[size] = '\0';
    n_NYD_OU;
    return news;
@@ -71,7 +71,7 @@ FL char *
 
    news = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(sbuf_len +1, su_DBG_LOC_ARGS_ORUSE);
    if(sbuf_len > 0)
-      memcpy(news, sbuf, sbuf_len);
+      su_mem_copy(news, sbuf, sbuf_len);
    news[sbuf_len] = 0;
    n_NYD_OU;
    return news;
@@ -89,12 +89,12 @@ FL char *
    news = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(l1 + (sep != '\0') + l2 +1,
          su_DBG_LOC_ARGS_ORUSE);
    if (l1 > 0) {
-      memcpy(news + 0, s1, l1);
+      su_mem_copy(news + 0, s1, l1);
       if (sep != '\0')
          news[l1++] = sep;
    }
    if(l2 > 0)
-      memcpy(news + l1, s2, l2);
+      su_mem_copy(news + l1, s2, l2);
    news[l1 + l2] = '\0';
    n_NYD_OU;
    return news;
@@ -126,7 +126,7 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 
       i = su_cs_len(cs);
       if(i > 0){
-         memcpy(self->s + l, cs, i);
+         su_mem_copy(self->s + l, cs, i);
          l += i;
       }
    }
@@ -157,11 +157,11 @@ FL struct str *
 
       i = su_cs_len(*xcpa);
       if(i > 0){
-         memcpy(self->s + l, *xcpa, i);
+         su_mem_copy(self->s + l, *xcpa, i);
          l += i;
       }
       if (sonl > 0) {
-         memcpy(self->s + l, sep_o_null, sonl);
+         su_mem_copy(self->s + l, sep_o_null, sonl);
          l += sonl;
       }
    }
@@ -291,7 +291,7 @@ FL struct str *
    if(n_LIKELY(buflen > 0)){
       self->s = su_MEM_REALLOC_LOCOR(self->s, (self->l = buflen) +1,
             su_DBG_LOC_ARGS_ORUSE);
-      memcpy(self->s, buf, buflen);
+      su_mem_copy(self->s, buf, buflen);
       self->s[buflen] = '\0';
    }else
       self->l = 0;
@@ -313,7 +313,7 @@ FL struct str *
 
       self->s = su_MEM_REALLOC_LOCOR(self->s, (self->l = nsl) +1,
             su_DBG_LOC_ARGS_ORUSE);
-      memcpy(self->s + osl, buf, buflen);
+      su_mem_copy(self->s + osl, buf, buflen);
       self->s[nsl] = '\0';
    }
    n_NYD_OU;
@@ -490,7 +490,7 @@ FL struct n_string *
 
          ndat = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(i, su_DBG_LOC_ARGS_ORUSE);
          if(l > 0)
-            memcpy(ndat, self->s_dat, l);
+            su_mem_copy(ndat, self->s_dat, l);
          self->s_dat = ndat;
       }
    }
@@ -528,7 +528,7 @@ FL struct n_string *
       ui32_t i;
 
       self = (n_string_reserve)(self, buflen  su_DBG_LOC_ARGS_USE);
-      memcpy(&self->s_dat[i = self->s_len], buf, buflen);
+      su_mem_copy(&self->s_dat[i = self->s_len], buf, buflen);
       self->s_len = (i += (ui32_t)buflen);
    }
    n_NYD_OU;
@@ -562,8 +562,8 @@ FL struct n_string *
    if(buflen > 0){
       self = (n_string_reserve)(self, buflen  su_DBG_LOC_ARGS_USE);
       if(self->s_len > 0)
-         memmove(&self->s_dat[buflen], self->s_dat, self->s_len);
-      memcpy(self->s_dat, buf, buflen);
+         su_mem_move(&self->s_dat[buflen], self->s_dat, self->s_len);
+      su_mem_copy(self->s_dat, buf, buflen);
       self->s_len += (ui32_t)buflen;
    }
    n_NYD_OU;
@@ -579,7 +579,7 @@ FL struct n_string *
    if(self->s_len + 1 >= self->s_size)
       self = (n_string_reserve)(self, 1  su_DBG_LOC_ARGS_USE);
    if(self->s_len > 0)
-      memmove(&self->s_dat[1], self->s_dat, self->s_len);
+      su_mem_move(&self->s_dat[1], self->s_dat, self->s_len);
    self->s_dat[0] = c;
    ++self->s_len;
    n_NYD_OU;
@@ -601,9 +601,9 @@ FL struct n_string *
    if(buflen > 0){
       self = (n_string_reserve)(self, buflen  su_DBG_LOC_ARGS_USE);
       if(self->s_len > 0)
-         memmove(&self->s_dat[idx + buflen], &self->s_dat[idx],
+         su_mem_move(&self->s_dat[idx + buflen], &self->s_dat[idx],
             self->s_len - idx);
-      memcpy(&self->s_dat[idx], buf, buflen);
+      su_mem_copy(&self->s_dat[idx], buf, buflen);
       self->s_len += (ui32_t)buflen;
    }
    n_NYD_OU;
@@ -621,7 +621,7 @@ FL struct n_string *
    if(self->s_len + 1 >= self->s_size)
       self = (n_string_reserve)(self, 1  su_DBG_LOC_ARGS_USE);
    if(self->s_len > 0)
-      memmove(&self->s_dat[idx + 1], &self->s_dat[idx], self->s_len - idx);
+      su_mem_move(&self->s_dat[idx + 1], &self->s_dat[idx], self->s_len - idx);
    self->s_dat[idx] = c;
    ++self->s_len;
    n_NYD_OU;
@@ -638,7 +638,7 @@ n_string_cut(struct n_string *self, size_t idx, size_t len){
    assert(idx + len <= self->s_len);
 
    if(len > 0)
-      memmove(&self->s_dat[idx], &self->s_dat[idx + len],
+      su_mem_move(&self->s_dat[idx], &self->s_dat[idx + len],
          (self->s_len -= len) - idx);
    n_NYD_OU;
    return self;

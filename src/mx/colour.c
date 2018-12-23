@@ -170,7 +170,8 @@ static void
 a_colour_init(void){
    n_NYD2_IN;
    a_colour_g.cg_is_init = TRU1;
-   memcpy(a_colour_g.cg_reset.cp_dat.s = a_colour_g.cg__reset_buf, "\033[0m",
+   su_mem_copy(a_colour_g.cg_reset.cp_dat.s = a_colour_g.cg__reset_buf,
+      "\033[0m",
       a_colour_g.cg_reset.cp_dat.l = sizeof("\033[0m") -1); /* (calloc) */
    a_colour_g.cg_type = a_COLOUR_T_UNKNOWN;
    n_NYD2_OU;
@@ -297,16 +298,16 @@ a_colour_mux(char **argv){
       /* .cm_buf stuff */
       cmp->cm_pen.cp_dat.s = bp = cmp->cm_buf;
       cmp->cm_pen.cp_dat.l = cl;
-      memcpy(bp, cp, ++cl);
+      su_mem_copy(bp, cp, ++cl);
       bp += cl;
 
       cmp->cm_user_off = (ui32_t)PTR2SIZE(bp - cmp->cm_buf);
-      memcpy(bp, argv[1], ++ul);
+      su_mem_copy(bp, argv[1], ++ul);
       bp += ul;
 
       if(tl > 0){
          cmp->cm_tag = bp;
-         memcpy(bp, ctag, ++tl);
+         su_mem_copy(bp, ctag, ++tl);
          /*bp += tl;*/
       }else
          cmp->cm_tag = ctag;
@@ -657,7 +658,7 @@ a_colour_iso6429(enum a_colour_type ct, char **store, char const *spec){
       size_t i = su_cs_len(spec) +1;
       xspec = n_autorec_alloc(n_MAX(i,
             sizeof("\033[1;4;7;38;5;255;48;5;255m")));
-      memcpy(xspec, spec, i);
+      su_mem_copy(xspec, spec, i);
       spec = xspec;
    }
 
@@ -716,7 +717,7 @@ jiter_colour:
                goto jleave;
             }
             y[0] = 5;
-            memcpy((y == &cfg[0] ? y + 2 : y + 1 + sizeof("255")), x,
+            su_mem_copy((y == &cfg[0] ? y + 2 : y + 1 + sizeof("255")), x,
                (x[1] == '\0' ? 2 : (x[2] == '\0' ? 3 : 4)));
          }else for(idp = ca;; ++idp)
             if(idp == ca + n_NELEM(ca)){
@@ -752,7 +753,7 @@ jiter_colour:
             xspec[1] = cfg[2];
             xspec += 2;
          }else{
-            memcpy(xspec + 1, "8;5;", 4);
+            su_mem_copy(xspec + 1, "8;5;", 4);
             xspec += 5;
             for(ftno = 2; cfg[ftno] != '\0'; ++ftno)
                *xspec++ = cfg[ftno];
@@ -767,7 +768,7 @@ jiter_colour:
             xspec[1] = cfg[3];
             xspec += 2;
          }else{
-            memcpy(xspec + 1, "8;5;", 4);
+            su_mem_copy(xspec + 1, "8;5;", 4);
             xspec += 5;
             for(ftno = 2 + sizeof("255"); cfg[ftno] != '\0'; ++ftno)
                *xspec++ = cfg[ftno];
