@@ -45,6 +45,7 @@
 
 #include <pwd.h>
 
+#include <su/avopt.h>
 #include <su/cs.h>
 #include <su/icodec.h>
 
@@ -78,13 +79,6 @@ VL char const n_hy[2] = "-";
 VL char const n_qm[2] = "?";
 VL char const n_at[2] = "@";
 
-/* Our own little getopt(3) */
-static char const *a_main_oarg;
-static int a_main_oind, /*_oerr,*/ a_main_oopt;
-
-/* A little getopt(3).  Note: --help/--version == -h/-v */
-static int a_main_getopt(int argc, char * const argv[], char const *optstring);
-
 /* */
 static void a_main_usage(FILE *fp);
 
@@ -114,90 +108,6 @@ static int a_main_rcv_mode(bool_t had_A_arg, char const *folder,
 
 /* Interrupt printing of the headers */
 static void a_main_hdrstop(int signo);
-
-static int
-a_main_getopt(int argc, char * const argv[], char const *optstring){
-   static char const *lastp;
-   char const *curp;
-   int rv/*, colon*/;
-   n_NYD2_IN;
-
-   a_main_oarg = NULL;
-   rv = -1;
-
-   /*if((colon = (optstring[0] == ':')))
-      ++optstring;*/
-
-   if(lastp != NULL){
-      curp = lastp;
-      lastp = NULL;
-   }else{
-      if(a_main_oind >= argc || argv[a_main_oind] == NULL ||
-            argv[a_main_oind][0] != '-' || argv[a_main_oind][1] == '\0')
-         goto jleave;
-      if(argv[a_main_oind][1] == '-' && argv[a_main_oind][2] == '\0'){
-         /* We need this in for MTA arg detection (easier) ++a_main_oind;*/
-         goto jleave;
-      }
-      curp = &argv[a_main_oind][1];
-   }
-
-   for(a_main_oopt = curp[0]; optstring[0] != '\0';){
-      if(optstring[0] != a_main_oopt){
-         optstring += 1 + (optstring[1] == ':');
-         continue;
-      }
-
-      if(optstring[1] == ':'){
-         if(curp[1] != '\0'){
-            a_main_oarg = n_UNCONST(curp + 1);
-            ++a_main_oind;
-         }else{
-            if((a_main_oind += 2) > argc){
-               /*if(!colon *//*&& _oerr*//*)*/{
-                  n_err(_("%s: option requires an argument -- %c\n"),
-                     argv[0], (char)a_main_oopt);
-               }
-               rv = (/*colon ? ':' :*/ '?');
-               goto jleave;
-            }
-            a_main_oarg = argv[a_main_oind - 1];
-         }
-      }else{
-         if(curp[1] != '\0')
-            lastp = curp + 1;
-         else
-            ++a_main_oind;
-      }
-      rv = a_main_oopt;
-      goto jleave;
-   }
-
-   /* Special support for --help and --version, which are quite common */
-   if(a_main_oopt == '-' && &curp[-1] == argv[a_main_oind]){
-      ++a_main_oind;
-      rv = 'h';
-      if(!su_cs_cmp(curp, "-help"))
-         goto jleave;
-      rv = 'V';
-      if(!su_cs_cmp(curp, "-version"))
-         goto jleave;
-      --a_main_oind;
-   }
-
-   /* Definitive error */
-   /*if(!colon *//*&& opterr*//*)*/
-      n_err(_("%s: invalid option -- %c\n"), argv[0], a_main_oopt);
-   if(curp[1] != '\0')
-      lastp = curp + 1;
-   else
-      ++a_main_oind;
-   a_main_oarg = NULL;
-   rv = '?';
-jleave:
-   n_NYD2_OU;
-   return rv;
-}
 
 static void
 a_main_usage(FILE *fp){
@@ -272,8 +182,6 @@ a_main_startup(void){
    n_stdout = stdout;
    n_stderr = stderr;
    dflpipe = SIG_DFL;
-
-   a_main_oind = /*_oerr =*/ 1;
 
    if((cp = su_cs_rfind_c(su_program, '/')) != NULL)
       su_program = ++cp;
@@ -683,10 +591,41 @@ main(int argc, char *argv[]){
     * TODO and one with throw away data (-X, -Y args, temporary allocs, e.g.,
     * TODO redo -S like so, etc.) */
    /* Keep in SYNC: ./nail.1:"SYNOPSIS, main() */
-   static char const optstr[] =
-         "A:a:Bb:C:c:DdEeFfHhiL:M:m:NnO:q:Rr:S:s:tu:VvX:Y:::~#.";
+   static char const a_sopts[] =
+         "::A:a:Bb:C:c:DdEeFfHhiL:M:m:NnO:q:Rr:S:s:tu:VvX:Y:~#.";
+   static char const * const a_lopts[] = {
+      "resource-files:;:",
+      "account:;A", "attach:;a",
+      "bcc:;b",
+      "custom-header:;C", "cc:;c",
+      "disconnected;D", "debug;d",
+      "discard-empty-messages;E", "check-and-exit;e",
+      "file;f",
+      "header-summary;H", "help;h",
+      "header-search:;L",
+      "no-header-summary;N",
+      "quote-file:;q",
+      "read-only;R", "from-address:;r",
+      "set:;S", "subject:;s",
+      "template;t",
+      "inbox-of:;u",
+      "version;V", "verbose;v",
+      "startup-command:;X",
+      "command:;Y",
+      "enable-command-escapes;~",
+      "batch-mode;#",
+      "end-options;.",
+      NULL
+   };
+   struct su_avopt avo;
    int i;
    char *cp;
+   size_t Xargs_size, Xargs_cnt, Yargs_size, Yargs_cnt, smopts_size;
+   char const *Aarg, *emsg, *folder, *Larg, *okey, *qf,
+      *subject, *uarg, **Xargs, **Yargs;
+   struct attachment *attach;
+   struct name *to, *cc, *bcc;
+   struct a_arg *a_head, *a_curr;
    enum{
       a_RF_NONE = 0,
       a_RF_SET = 1<<0,
@@ -694,12 +633,6 @@ main(int argc, char *argv[]){
       a_RF_USER = 1<<2,
       a_RF_ALL = a_RF_SYSTEM | a_RF_USER
    } resfiles;
-   size_t Xargs_size, Xargs_cnt, Yargs_size, Yargs_cnt, smopts_size;
-   char const *Aarg, *emsg, *folder, *Larg, *okey, *qf,
-      *subject, *uarg, **Xargs, **Yargs;
-   struct attachment *attach;
-   struct name *to, *cc, *bcc;
-   struct a_arg *a_head, *a_curr;
    n_NYD_IN;
 
    a_head = NULL;
@@ -718,15 +651,14 @@ main(int argc, char *argv[]){
    su_program = argv[0];
    a_main_startup();
 
-   /* Command line parsing
-    * -S variable settings need to be done twice, since the user surely wants
-    * the setting to take effect immediately, but also doesn't want it to be
-    * overwritten from within resource files */
-   while((i = a_main_getopt(argc, argv, optstr)) >= 0){
+   /* Command line parsing */
+   su_avopt_setup(&avo, --argc, su_C(char const*const*,++argv),
+      a_sopts, a_lopts);
+   while((i = su_avopt_parse(&avo)) != su_AVOPT_STATE_DONE){
       switch(i){
       case 'A':
          /* Execute an account command later on */
-         Aarg = a_main_oarg;
+         Aarg = avo.avo_current_arg;
          break;
       case 'a':{
          /* Add an attachment */
@@ -739,7 +671,7 @@ main(int argc, char *argv[]){
          else
             a_curr->aa_next = nap;
          nap->aa_next = NULL;
-         nap->aa_file = a_main_oarg;
+         nap->aa_file = avo.avo_current_arg;
          a_curr = nap;
          }break;
       case 'B':
@@ -748,7 +680,7 @@ main(int argc, char *argv[]){
       case 'b':
          /* Add (a) blind carbon copy recipient (list) */
          n_psonce |= n_PSO_SENDMODE;
-         bcc = cat(bcc, lextract(a_main_oarg,
+         bcc = cat(bcc, lextract(avo.avo_current_arg,
                GBCC | GFULL | GSHEXP_PARSE_HACK));
          break;
       case 'C':{
@@ -760,7 +692,7 @@ main(int argc, char *argv[]){
                *hflpp = (*hflpp)->hf_next;
             hflpp = &(*hflpp)->hf_next;
          }
-         if(!n_header_add_custom(hflpp, a_main_oarg, FAL0)){
+         if(!n_header_add_custom(hflpp, avo.avo_current_arg, FAL0)){
             emsg = N_("Invalid custom header data with -C");
             goto jusage;
          }
@@ -768,7 +700,8 @@ main(int argc, char *argv[]){
       case 'c':
          /* Add (a) carbon copy recipient (list) */
          n_psonce |= n_PSO_SENDMODE;
-         cc = cat(cc, lextract(a_main_oarg, GCC | GFULL | GSHEXP_PARSE_HACK));
+         cc = cat(cc, lextract(avo.avo_current_arg,
+               GCC | GFULL | GSHEXP_PARSE_HACK));
          break;
       case 'D':
 #ifdef mx_HAVE_IMAP
@@ -810,7 +743,7 @@ main(int argc, char *argv[]){
       case 'L':
          /* Display summary of headers which match given spec, exit.
           * In conjunction with -e, only test the given spec for existence */
-         Larg = a_main_oarg;
+         Larg = avo.avo_current_arg;
          n_poption |= n_PO_HEADERLIST;
          if(*Larg == '"' || *Larg == '\''){ /* TODO list.c:listspec_check() */
             size_t j;
@@ -826,7 +759,7 @@ main(int argc, char *argv[]){
          /* Flag message body (standard input) with given MIME type */
          if(qf != NULL && (!(n_poption & n_PO_Mm_FLAG) || qf != (char*)-1))
             goto jeMmq;
-         n_poption_arg_Mm = a_main_oarg;
+         n_poption_arg_Mm = avo.avo_current_arg;
          qf = (char*)-1;
          if(0){
             /* FALLTHRU*/
@@ -834,7 +767,7 @@ main(int argc, char *argv[]){
             /* Flag the given file with MIME type and use as message body */
             if(qf != NULL && (!(n_poption & n_PO_Mm_FLAG) || qf == (char*)-1))
                goto jeMmq;
-            qf = a_main_oarg;
+            qf = avo.avo_current_arg;
          }
          n_poption |= n_PO_Mm_FLAG;
          n_psonce |= n_PSO_SENDMODE;
@@ -856,7 +789,7 @@ main(int argc, char *argv[]){
          if(n_smopts_cnt == smopts_size)
             smopts_size = a_main_grow_cpp(&n_smopts, smopts_size + 8,
                   n_smopts_cnt);
-         n_smopts[n_smopts_cnt++] = a_main_oarg;
+         n_smopts[n_smopts_cnt++] = avo.avo_current_arg;
          break;
       case 'q':
          /* "Quote" file: use as message body (-t without headers etc.) */
@@ -867,9 +800,9 @@ jeMmq:
             goto jusage;
          }
          n_psonce |= n_PSO_SENDMODE;
-         /* Allow for now, we have to special check validity of -q- later on! */
-         qf = (a_main_oarg[0] == '-' && a_main_oarg[1] == '\0')
-               ? (char*)-1 : a_main_oarg;
+         /* Allow, we have to special check validity of -q- later on! */
+         qf = (avo.avo_current_arg[0] == '-' && avo.avo_current_arg[1] == '\0')
+               ? (char*)-1 : avo.avo_current_arg;
          break;
       case 'R':
          /* Open folders read-only */
@@ -878,12 +811,12 @@ jeMmq:
       case 'r':
          /* Set From address. */
          n_poption |= n_PO_r_FLAG;
-         if(a_main_oarg[0] == '\0')
+         if(avo.avo_current_arg[0] == '\0')
             break;
          else{
             struct name *fa;
 
-            fa = nalloc(a_main_oarg, GSKIN | GFULL | GFULLEXTRA);
+            fa = nalloc(avo.avo_current_arg, GSKIN | GFULL | GFULLEXTRA);
             if(is_addr_invalid(fa, EACM_STRICT | EACM_NOLOG)){
                emsg = N_("Invalid address argument with -r");
                goto jusage;
@@ -894,7 +827,7 @@ jeMmq:
              * TODO an interactive session!
              * TODO Maybe disable setting of from?
              * TODO Warn user?  Update manual!! */
-            a_main_oarg = savecat("from=", fa->n_fullname);
+            avo.avo_current_arg = savecat("from=", fa->n_fullname);
          }
          /* FALLTHRU */
       case 'S':
@@ -904,14 +837,14 @@ jeMmq:
             bool_t b;
 
             if(!ok_blook(v15_compat)){
-               okey = a[0] = a_main_oarg;
+               okey = a[0] = avo.avo_current_arg;
                sp = NULL;
             }else{
                enum n_shexp_state shs;
 
                n_autorec_relax_create();
                sp = n_string_creat_auto(&s);
-               sin.s = n_UNCONST(a_main_oarg);
+               sin.s = n_UNCONST(avo.avo_current_arg);
                sin.l = UIZ_MAX;
                shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
                      n_SHEXP_PARSE_IGNORE_EMPTY |
@@ -943,9 +876,10 @@ je_S:
          break;
       case 's':
          /* Subject:; take care for Debian #419840 and strip any \r and \n */
-         if(su_cs_first_of(subject = a_main_oarg, "\n\r") != su_UZ_MAX){
+         if(su_cs_first_of(subject = avo.avo_current_arg, "\n\r"
+               ) != su_UZ_MAX){
             n_err(_("-s: normalizing away invalid ASCII NL / CR bytes\n"));
-            for(subject = cp = savestr(a_main_oarg); *cp != '\0'; ++cp)
+            for(subject = cp = savestr(avo.avo_current_arg); *cp != '\0'; ++cp)
                if(*cp == '\n' || *cp == '\r')
                   *cp = ' ';
          }
@@ -958,7 +892,7 @@ je_S:
          break;
       case 'u':
          /* Open primary mailbox of the given user */
-         uarg = savecat("%", a_main_oarg);
+         uarg = savecat("%", avo.avo_current_arg);
          break;
       case 'V':
          fprintf(n_stdout, _("%s version %s\n"), n_uagent, ok_vlook(version));
@@ -972,13 +906,13 @@ je_S:
          /* Add to list of commands to exec before entering normal operation */
          if(Xargs_cnt == Xargs_size)
             Xargs_size = a_main_grow_cpp(&Xargs, Xargs_size + 8, Xargs_cnt);
-         Xargs[Xargs_cnt++] = a_main_oarg;
+         Xargs[Xargs_cnt++] = avo.avo_current_arg;
          break;
       case 'Y':
          /* Add to list of commands to exec after entering normal operation */
          if(Yargs_cnt == Yargs_size)
             Yargs_size = a_main_grow_cpp(&Yargs, Yargs_size + 8, Yargs_cnt);
-         Yargs[Yargs_cnt++] = a_main_oarg;
+         Yargs[Yargs_cnt++] = avo.avo_current_arg;
          break;
       case ':':
          /* Control which resource files shall be loaded */
@@ -987,7 +921,7 @@ je_S:
             goto jusage;
          }
          resfiles = a_RF_SET;
-         while((i = *a_main_oarg++) != '\0')
+         while((i = *avo.avo_current_arg++) != '\0')
             switch(i){
             case 'S': case 's': resfiles |= a_RF_SYSTEM; break;
             case 'U': case 'u': resfiles |= a_RF_USER; break;
@@ -1024,10 +958,19 @@ je_S:
          /* Enforce send mode */
          n_psonce |= n_PSO_SENDMODE;
          goto jgetopt_done;
-      case '?':
+      case su_AVOPT_STATE_ERR_ARG:
+         emsg = su_avopt_fmt_err_arg;
+         if(0){
+            /* FALLTHRU */
+      case su_AVOPT_STATE_ERR_OPT:
+            emsg = su_avopt_fmt_err_opt;
+         }
+         n_err(emsg, avo.avo_current_err_opt);
+         if(0){
 jusage:
-         if(emsg != NULL)
-            n_err("%s\n", V_(emsg));
+            if(emsg != NULL)
+               n_err("%s\n", V_(emsg));
+         }
          a_main_usage(n_stderr);
          n_exit_status = n_EXIT_USE;
          goto j_leave;
@@ -1040,7 +983,9 @@ jgetopt_done:
     * however, -f may take off an argument, too, and before that.
     * Since MTA arguments after "--" require *expandargv*, delay parsing off
     * those options until after the resource files are loaded... */
-   if((cp = argv[i = a_main_oind]) == NULL)
+   argc = avo.avo_argc;
+   argv = su_C(char**,avo.avo_argv);
+   if((cp = argv[i = 0]) == NULL)
       ;
    else if(cp[0] == '-' && cp[1] == '-' && cp[2] == '\0')
       ++i;
@@ -1066,7 +1011,7 @@ jgetopt_done:
          }
       }
    }
-   a_main_oind = i;
+   argc = i;
 
    /* ...BUT, since we use n_autorec_alloc() for the MTA n_smopts storage we
     * need to allocate the space for them before we fixate that storage! */
@@ -1173,7 +1118,7 @@ jgetopt_done:
    (void)ok_vlook(umask);
 
    /* Additional options to pass-through to MTA, and allowed to do so? */
-   i = a_main_oind;
+   i = argc;
    if((cp = ok_vlook(expandargv)) != NULL){
       bool_t isfail, isrestrict;
 
