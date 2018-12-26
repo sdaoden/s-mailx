@@ -255,8 +255,9 @@ jnobidi:
       if (isrepl) {
          if (isuni) {
             /* Contained in n_mb_cur_max, then */
-            su_mem_copy(np, n_unirepl, sizeof(n_unirepl) -1);
-            np += sizeof(n_unirepl) -1;
+            su_mem_copy(np, su_utf_replacement_8,
+               sizeof(su_utf_replacement_8) -1);
+            np += sizeof(su_utf_replacement_8) -1;
          } else
             *np++ = '?';
          cp += sz;

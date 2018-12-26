@@ -42,6 +42,7 @@
 #endif
 
 #include <su/cs.h>
+#include <su/utf.h>
 
 #include "mx/iconv.h"
 
@@ -190,10 +191,11 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
          ++(*inb);
          --(*inbleft);
          if(icf & n_ICONV_UNIREPL){
-            if(*outbleft >= sizeof(n_unirepl) -1){
-               su_mem_copy(*outb, n_unirepl, sizeof(n_unirepl) -1);
-               *outb += sizeof(n_unirepl) -1;
-               *outbleft -= sizeof(n_unirepl) -1;
+            if(*outbleft >= sizeof(su_utf_replacement_8) -1){
+               su_mem_copy(*outb, su_utf_replacement_8,
+                  sizeof(su_utf_replacement_8) -1);
+               *outb += sizeof(su_utf_replacement_8) -1;
+               *outbleft -= sizeof(su_utf_replacement_8) -1;
                continue;
             }
          }else if(*outbleft > 0){

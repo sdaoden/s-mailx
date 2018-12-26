@@ -2289,7 +2289,6 @@ VL char const n_uagent[sizeof VAL_UAGENT];
 VL char const n_error[sizeof n_ERROR];
 # endif
 VL char const n_path_devnull[sizeof n_PATH_DEVNULL];
-VL char const n_unirepl[sizeof n_UNIREPL];
 VL char const n_0[2];
 VL char const n_1[2];
 VL char const n_m1[3];     /* -1 */

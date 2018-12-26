@@ -37,6 +37,12 @@ C_DECL_BEGIN
  * @{
  */
 
+/*! The Unicode replacement character \c{0xFFFD} as an UTF-8 literal. */
+#define su_UTF_REPLACEMENT_8 "\xEF\xBF\xBD"
+
+/*! Compiled in version of \r{su_UTF_REPLACEMENT_8}. */
+EXPORT_DATA char const su_utf_replacement_8[sizeof su_UTF_REPLACEMENT_8];
+
 /*! Convert, and update arguments to point after range.
  * Returns \r{su_U32_MAX} on error, in which case the arguments will have been
  * stepped one byte. */
@@ -55,6 +61,9 @@ NSPC_BEGIN(su)
 /*! C++ variant of \r{UTF} (\r{su/utf.h}) */
 class utf{
 public:
+   /*! \r{su_UTF_REPLACEMENT_8} */
+   static char const replacement_8[] = su_UTF_REPLACEMENT_8;
+
    /*! \r{su_utf_8_to_32()} */
    static u32 convert_8_to_32(char const **bdat, uz *blen){
       return su_utf_8_to_32(bdat, blen);

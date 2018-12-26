@@ -629,7 +629,8 @@ qp_decode_header(struct str *out, struct str const *in){
             goto jpushc;
 /* TODO jehead:
  * TODO      if(n_psonce & n_PSO_UNICODE)
- *              n_string_push_buf(&s, n_unirepl, sizeof(n_unirepl) -1);
+ *              n_string_push_buf(&s, su_utf_replacement_8,
+ *                 sizeof(su_utf_replacement_8) -1);
  * TODO       else{
  * TODO          c = '?';
  * TODO          goto jpushc;
@@ -712,7 +713,8 @@ jpushc:
          goto jpushc;
 /* TODO jebody:
  * TODO   if(n_psonce & n_PSO_UNICODE)
- *           n_string_push_buf(&s, n_unirepl, sizeof(n_unirepl) -1);
+ *           n_string_push_buf(&s, su_utf_replacement_8,
+ *              sizeof(su_utf_replacement_8) -1);
  * TODO    else{
  * TODO       c = '?';
  * TODO       goto jpushc;
@@ -1046,7 +1048,8 @@ jrepl:
             /* TODO This would be wrong since iconv(3) may be applied first! */
 #if 0
             if(n_psonce & n_PSO_UNICODE)
-               n_string_push_buf(&s, n_unirepl, sizeof(n_unirepl) -1);
+               n_string_push_buf(&s, su_utf_replacement_8,
+                  sizeof(su_utf_replacement_8) -1);
             else
                n_string_push_c(&s, '?');
 #endif
@@ -1055,8 +1058,9 @@ jrepl:
             /* This is not only invalid but bogus.  Skip it over! */
             /* TODO This would be wrong since iconv(3) may be applied first! */
 #if 0
-            n_string_push_buf(&s, n_UNIREPL n_UNIREPL n_UNIREPL n_UNIREPL,
-               (sizeof(n_UNIREPL) -1) * 4);
+            n_string_push_buf(&s, su_UTF_REPLACEMENT_8 su_UTF_REPLACEMENT_8
+               su_UTF_REPLACEMENT_8 su_UTF_REPLACEMENT_8,
+               (sizeof(su_UTF_REPLACEMENT_8) -1) * 4);
 #endif
             b64l = 0;
          }else{

@@ -25,6 +25,9 @@
 #include "su/utf.h"
 #include "su/code-in.h"
 
+char const su_utf_replacement_8[sizeof su_UTF_REPLACEMENT_8] =
+      su_UTF_REPLACEMENT_8;
+
 u32
 su_utf_8_to_32(char const **bdat, uz *blen){
    u32 c, x, x1;
