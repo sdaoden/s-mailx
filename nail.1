@@ -7382,7 +7382,9 @@ Another numeric operation is
 which takes a number base in between 2 and 36, inclusive, and will act
 on the second number given just the same as what equals sign
 .Ql =
-does, but the number result will be formatted in the base given.
+does, but the number result will be formatted in the base given, as
+a signed 64-bit number unless unsigned interpretation of the input
+number had been forced (with an u prefix).
 .
 .Pp
 All numeric operators can be prefixed with a commercial at

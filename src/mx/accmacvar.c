@@ -3453,6 +3453,7 @@ c_environ(void *v){
 
 FL int
 c_vexpr(void *v){ /* TODO POSIX expr(1) comp. exit status; overly complicat. */
+   /* TODO This should be splitted in several subfunctions: too large! */
    char pbase, op, iencbuf[2+1/* BASE# prefix*/ + su_IENC_BUFFER_SIZE + 1];
    size_t i;
    enum su_idec_state ids;
@@ -3468,6 +3469,7 @@ c_vexpr(void *v){ /* TODO POSIX expr(1) comp. exit status; overly complicat. */
       a_ICASE = 1u<<5,
       a_UNSIGNED_OP = 1u<<6,  /* Unsigned right shift (share bit ok) */
       a_PBASE = 1u<<7,        /* Print additional number base */
+      a_USER_SAYS_UNSIGNED = 1u<<8, /* For a_PBASE: we saw an u prefix */
       a_TMP = 1u<<30
    } f;
    n_NYD_IN;
@@ -3495,7 +3497,7 @@ jnumop:
             lhv = 0;
          else{
             idm = ((*cp == 'u' || *cp == 'U')
-                  ? (++cp, su_IDEC_MODE_NONE)
+                  ? (f |= a_USER_SAYS_UNSIGNED, ++cp, su_IDEC_MODE_NONE)
                   : ((*cp == 's' || *cp == 'S')
                      ? (++cp, su_IDEC_MODE_SIGNED_TYPE)
                      : su_IDEC_MODE_SIGNED_TYPE |
@@ -3532,7 +3534,7 @@ jnumop:
                lhv = 0;
             else{
                idm = ((*cp == 'u' || *cp == 'U')
-                     ? (++cp, su_IDEC_MODE_NONE)
+                     ? (f |= a_USER_SAYS_UNSIGNED, ++cp, su_IDEC_MODE_NONE)
                      : ((*cp == 's' || *cp == 'S')
                         ? (++cp, su_IDEC_MODE_SIGNED_TYPE)
                         : su_IDEC_MODE_SIGNED_TYPE |
@@ -4086,7 +4088,9 @@ jesubstring_len:
 jleave:
    if((f & a_ISNUM) && ((f & (a_ISDECIMAL | a_PBASE)) || varname != NULL)){
       cp = su_ienc(iencbuf, lhv, (f & a_PBASE ? pbase : 10),
-            su_IENC_MODE_SIGNED_TYPE);
+            (((f & (a_PBASE | a_USER_SAYS_UNSIGNED)) ==
+                  (a_PBASE | a_USER_SAYS_UNSIGNED))
+               ? su_IENC_MODE_NONE : su_IENC_MODE_SIGNED_TYPE));
       if(cp != NULL)
          varres = cp;
       else{
