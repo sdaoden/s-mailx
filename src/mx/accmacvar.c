@@ -3732,8 +3732,13 @@ jenum_plusminus:
       f |= a_SATURATED;
       op = *++cp;
       if(*++cp != '\0'){
-         if(op != *cp)
+         if(op != *cp){
+            if(op == 'p'){
+               if(su_cs_starts_with_case("base", cp))
+                  goto jpbase;
+            }
             goto jesubcmd;
+         }
          switch(op){
          case '<':
             if(*++cp != '\0')
@@ -3754,6 +3759,7 @@ jenum_plusminus:
       }
       goto jnumop;
    }else if(su_cs_starts_with_case("pbase", cp)){
+jpbase:
       if(argv[1] == NULL || argv[2] == NULL || argv[3] != NULL)
          goto jesynopsis;
 
