@@ -37,40 +37,85 @@ C_DECL_BEGIN
  * @{
  */
 
-/*! The Unicode replacement character \c{0xFFFD} as an UTF-8 literal. */
-#define su_UTF_REPLACEMENT_8 "\xEF\xBF\xBD"
+/*!
+ * \defgroup UTF8 UTF-8
+ * \ingroup UTF
+ * \brief UTF-8 (\r{su/utf.h})
+ * @{
+ */
 
-/*! Compiled in version of \r{su_UTF_REPLACEMENT_8}. */
-EXPORT_DATA char const su_utf_replacement_8[sizeof su_UTF_REPLACEMENT_8];
+enum{
+   /*! Maximum buffer size of an UTF-8 sequence including terminating NUL. */
+   su_UTF8_BUFFER_SIZE = 5u
+};
+
+/*! The Unicode replacement character \c{0xFFFD} as an UTF-8 literal. */
+#define su_UTF8_REPLACER "\xEF\xBF\xBD"
+
+/*! Compiled in version of \r{su_UTF8_REPLACER}. */
+EXPORT_DATA char const su_utf8_replacer[sizeof su_UTF8_REPLACER];
 
 /*! Convert, and update arguments to point after range.
  * Returns \r{su_U32_MAX} on error, in which case the arguments will have been
  * stepped one byte. */
-EXPORT u32 su_utf_8_to_32(char const **bdat, uz *blen);
+EXPORT u32 su_utf8_to_32(char const **bdat, uz *blen);
+
+/*! @} */
+/*!
+ * \defgroup UTF32 UTF-32
+ * \ingroup UTF
+ * \brief UTF-32 (\r{su/utf.h})
+ * @{
+ */
+
+/*! The Unicode replacement character \c{0xFFFD} as an UTF-32 codepoint. */
+#define su_UTF32_REPLACER 0xFFFDu
 
 /*! Convert an UTF-32 character to an UTF-8 sequence.
- * \a{bp} must be large enough also for the terminating NUL, it's length will
- * be returned. */
-EXPORT uz su_utf_32_to_8(u32 c, char *bp);
+ * \a{bp} must be large enough also for the terminating NUL (see
+ * \r{su_UTF8_BUFFER_SIZE}), its length will * be returned. */
+EXPORT uz su_utf32_to_8(u32 c, char *bp);
 
+/*! @} */
 /*! @} */
 C_DECL_END
 #if !C_LANG || defined DOXYGEN_CXX
 NSPC_BEGIN(su)
 
-/*! C++ variant of \r{UTF} (\r{su/utf.h}) */
-class utf{
+class utf8;
+class utf32;
+
+/*!
+ * \ingroup UTF8
+ * C++ variant of \r{UTF8} (\r{su/utf.h})
+ */
+class EXPORT utf8{
 public:
-   /*! \r{su_UTF_REPLACEMENT_8} */
-   static char const replacement_8[] = su_UTF_REPLACEMENT_8;
+   enum{
+      /*! \r{su_UTF8_BUFFER_SIZE} */
+      buffer_size = su_UTF8_BUFFER_SIZE
+   };
 
-   /*! \r{su_utf_8_to_32()} */
-   static u32 convert_8_to_32(char const **bdat, uz *blen){
-      return su_utf_8_to_32(bdat, blen);
+   /*! \r{su_UTF8_REPLACER} */
+   static char const replacer[sizeof su_UTF8_REPLACER];
+
+   /*! \r{su_utf8_to_32()} */
+   static u32 convert_to_32(char const **bdat, uz *blen){
+      return su_utf8_to_32(bdat, blen);
    }
+};
 
-   /*! \r{su_utf_32_to_8()} */
-   static uz convert_32_to_8(u32 c, char *bp) {return su_utf_32_to_8(c, bp);}
+/*!
+ * \ingroup UTF32
+ * C++ variant of \r{UTF32} (\r{su/utf.h})
+ */
+class utf32{
+public:
+   /*! \r{su_UTF32_REPLACER} */
+   static u32 const replacer = su_UTF32_REPLACER;
+
+   /*! \r{su_utf32_to_8()} */
+   static uz convert_to_8(u32 c, char *bp) {return su_utf32_to_8(c, bp);}
 };
 
 NSPC_END(su)

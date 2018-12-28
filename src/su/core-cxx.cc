@@ -25,6 +25,7 @@ su_USECASE_MX_DISABLED
 #include <stdarg.h>
 
 #include "su/cs.h"
+#include "su/utf.h"
 
 #include "su/code-in.h"
 
@@ -54,6 +55,10 @@ type_toolbox<char*> const * const cs::type_toolbox_case =
       R(NSPC(su)type_toolbox<char*> const*,&su_cs_toolbox_case);
 type_toolbox<char const*> const * const cs::const_type_toolbox_case =
       R(NSPC(su)type_toolbox<char const*> const*,&su_cs_toolbox_case);
+
+// utf.h
+
+char const utf8::replacer[sizeof su_UTF8_REPLACER] = su_UTF8_REPLACER;
 
 #include "su/code-ou.h"
 /* s-it-mode */

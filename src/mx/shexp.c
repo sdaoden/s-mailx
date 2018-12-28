@@ -788,7 +788,7 @@ jpush:
 
                ib2 = ib;
                il2 = il;
-               if((uc = su_utf_8_to_32(&ib2, &il2)) != UI32_MAX){
+               if((uc = su_utf8_to_32(&ib2, &il2)) != UI32_MAX){
                   char itoa[32];
                   char const *cp;
 
@@ -827,7 +827,7 @@ jpush:
                size_t il2, il3;
 
                il2 = su_cs_len(ib2 = vic.vic_indat);
-               if((uc = su_utf_8_to_32(&ib2, &il2)) != UI32_MAX){
+               if((uc = su_utf8_to_32(&ib2, &il2)) != UI32_MAX){
                   char itoa[32];
 
                   il2 = PTR2SIZE(&ib2[0] - &vic.vic_indat[0]);
@@ -1525,7 +1525,7 @@ jerr_ib_save:
                            goto Jerr_uni_norm;
                         }
 
-                        j = su_utf_32_to_8(no, utf);
+                        j = su_utf32_to_8(no, utf);
 
                         if(n_psonce & n_PSO_UNICODE){
                            rv |= n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_UNICODE;

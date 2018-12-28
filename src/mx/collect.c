@@ -1338,13 +1338,13 @@ jputnl:
       switch(c){
       default:
          if(1){
-            char buf[sizeof(su_UTF_REPLACEMENT_8)];
+            char buf[sizeof(su_UTF8_REPLACER)];
 
             if(su_cs_is_ascii(c))
                buf[0] = c, buf[1] = '\0';
             else if(n_psonce & n_PSO_UNICODE)
-               su_mem_copy(buf, su_utf_replacement_8,
-                  sizeof su_utf_replacement_8);
+               su_mem_copy(buf, su_utf8_replacer,
+                  sizeof su_utf8_replacer);
             else
                buf[0] = '?', buf[1] = '\0';
             n_err(_("Unknown command escape: `%c%s'\n"), escape, buf);

@@ -255,9 +255,9 @@ jnobidi:
       if (isrepl) {
          if (isuni) {
             /* Contained in n_mb_cur_max, then */
-            su_mem_copy(np, su_utf_replacement_8,
-               sizeof(su_utf_replacement_8) -1);
-            np += sizeof(su_utf_replacement_8) -1;
+            su_mem_copy(np, su_utf8_replacer,
+               sizeof(su_utf8_replacer) -1);
+            np += sizeof(su_utf8_replacer) -1;
          } else
             *np++ = '?';
          cp += sz;
@@ -439,7 +439,7 @@ bidi_info_needed(char const *bdat, size_t blen)
       while (blen > 0) {
          /* TODO Checking for BIDI character: use S-CText fromutf8
           * TODO plus isrighttoleft (or whatever there will be)! */
-         ui32_t c = su_utf_8_to_32(&bdat, &blen);
+         ui32_t c = su_utf8_to_32(&bdat, &blen);
          if (c == UI32_MAX)
             break;
 

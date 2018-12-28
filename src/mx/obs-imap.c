@@ -480,7 +480,7 @@ imap_path_encode(char const *cp, bool_t *err_or_null){
          emsg = N_("Invalid UTF-8 sequence, cannot convert to UTF-32");
 
          for(be16p = be16p_base, --cp, ++l;;){
-            if((utf32 = su_utf_8_to_32(&cp, &l)) == UI32_MAX)
+            if((utf32 = su_utf8_to_32(&cp, &l)) == UI32_MAX)
                goto jerr;
 
             /* TODO S-CText: magic utf16 conversions */
@@ -727,7 +727,7 @@ jeincpl:
                i -= 4;
             }
 
-            utf32 = su_utf_32_to_8(utf32, rv);
+            utf32 = su_utf32_to_8(utf32, rv);
             rv += utf32;
          }
       }

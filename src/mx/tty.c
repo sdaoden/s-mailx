@@ -1839,7 +1839,7 @@ jpaint:
                wc = 0x2421;
             else
                wc = 0x2426;
-            su_utf_32_to_8(wc, wbuf);
+            su_utf32_to_8(wc, wbuf);
          }else
             wbuf[0] = '?', wbuf[1] = '\0';
 

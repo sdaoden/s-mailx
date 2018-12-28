@@ -948,7 +948,7 @@ _hf_check_ent(struct htmlflt *self, char const *s, size_t l)
             self = _hf_putc(self, (char)i);
          else if (self->hf_flags & _HF_UTF8) {
 jputuni:
-            l = su_utf_32_to_8((ui32_t)i, nobuf);
+            l = su_utf32_to_8((ui32_t)i, nobuf);
             self = _hf_putbuf(self, nobuf, l);
          } else
             goto jeent;

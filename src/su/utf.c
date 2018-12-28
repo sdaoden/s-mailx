@@ -25,11 +25,10 @@
 #include "su/utf.h"
 #include "su/code-in.h"
 
-char const su_utf_replacement_8[sizeof su_UTF_REPLACEMENT_8] =
-      su_UTF_REPLACEMENT_8;
+char const su_utf8_replacer[sizeof su_UTF8_REPLACER] = su_UTF8_REPLACER;
 
 u32
-su_utf_8_to_32(char const **bdat, uz *blen){
+su_utf8_to_32(char const **bdat, uz *blen){
    u32 c, x, x1;
    char const *cp, *cpx;
    uz l, lx;
@@ -132,7 +131,7 @@ jerr:
 }
 
 uz
-su_utf_32_to_8(u32 c, char *bp){
+su_utf32_to_8(u32 c, char *bp){
    struct{
       u32 lower_bound;
       u32 upper_bound;

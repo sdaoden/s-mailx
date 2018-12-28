@@ -228,11 +228,11 @@ _fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
          if(outrest != NULL && in.l > 0){
             /* Incomplete multibyte at EOF is special xxx _INVAL? */
             if (flags & _TD_EOF) {
-               out.s = n_realloc(out.s, out.l + sizeof(su_utf_replacement_8));
+               out.s = n_realloc(out.s, out.l + sizeof(su_utf8_replacer));
                if(n_psonce & n_PSO_UNICODE){
-                  su_mem_copy(&out.s[out.l], su_utf_replacement_8,
-                     sizeof(su_utf_replacement_8) -1);
-                  out.l += sizeof(su_utf_replacement_8) -1;
+                  su_mem_copy(&out.s[out.l], su_utf8_replacer,
+                     sizeof(su_utf8_replacer) -1);
+                  out.l += sizeof(su_utf8_replacer) -1;
                }else
                   out.s[out.l++] = '?';
             } else
