@@ -22,7 +22,7 @@
 # define su_A_T_T_H
 #endif
 
-#ifdef DOXYGEN_CXX
+#ifdef CXX_DOXYGEN
 /*!
  * \file
  * \ingroup COLL
@@ -38,13 +38,13 @@
 
 #include <su/code.h>
 su_USECASE_MX_DISABLED
-#if !su_C_LANG || defined DOXYGEN_CXX
+#if !su_C_LANG || defined CXX_DOXYGEN
 
 #ifndef su_A_T_T_DECL_ONLY
 # include <su/mem.h>
 #endif
 
-#define su_HEADER
+#define su_CXX_HEADER
 #include <su/code-in.h>
 NSPC_BEGIN(su)
 
@@ -58,7 +58,7 @@ template<class T> class auto_type_toolbox;
  * \brief Automatic \r{type_toolbox<T>} toolboxes (\r{su/a-t-t.h})
  *
  * Supposed that a (newly created) C++ type provides a basic set of
- * functionality, it is possible to create a toolbox instance simply:
+ * functionality, easy creation of a toolbox instance becomes possible:
  *
  * \cb{
  * auto_type_toolbox<TYPE> const att;
@@ -85,8 +85,7 @@ public:
    /*! \_ */
    typedef NSPC(su)type_traits<T> type_traits;
 
-   /*!
-    * Accessing this field should be avoided because there may be
+   /*! Accessing this field should be avoided because there may be
     * specializations which do not offer it -- \r{get_instance()} is inline. */
    static type_toolbox<T> const instance;
 
@@ -155,6 +154,6 @@ PUB STA type_toolbox<T> const auto_type_toolbox<T>::instance =
 
 NSPC_END(su)
 #include <su/code-ou.h>
-#endif /* !su_C_LANG || defined DOXYGEN_CXX */
+#endif /* !su_C_LANG || defined CXX_DOXYGEN */
 #endif /* su_A_T_T_H */
 /* s-it-mode */

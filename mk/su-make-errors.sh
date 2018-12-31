@@ -240,7 +240,7 @@ __EOT__
             nap[i]->name, (unsigned long)nap[i]->uno);
       fprintf(ofp, "   su__ERR_NUMBER = %ld\\n", (long)total);
 
-      fputs("#ifdef __cplusplus\n# define su__ERR_NUMBER_ENUM_CXX \\\\\\n",
+      fputs("#ifdef __cplusplus\n# define su__CXX_ERR_NUMBER_ENUM \\\\\\n",
          ofp);
       for(i = 0; i < total; ++i){
          char b[64], *cbp = b;

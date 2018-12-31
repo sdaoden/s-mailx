@@ -218,7 +218,10 @@ EXTERN uz su_bits_array_find_first_set_after(uz const *xap, uz xaplen,
 
 /*! @} */
 C_DECL_END
-#if !C_LANG || defined DOXYGEN_CXX
+#include <su/code-ou.h>
+#if !su_C_LANG || defined CXX_DOXYGEN
+# define su_CXX_HEADER
+# include <su/code-in.h>
 NSPC_BEGIN(su)
 
 class bits;
@@ -318,7 +321,7 @@ public:
 };
 
 NSPC_END(su)
-#endif /* !C_LANG || DOXYGEN_CXX */
 #include <su/code-ou.h>
+#endif /* !C_LANG || CXX_DOXYGEN */
 #endif /* su_BITS_H */
 /* s-it-mode */

@@ -280,7 +280,10 @@ EXPORT char *su_ienc(char cbuf[su_IENC_BUFFER_SIZE], u64 value, u8 base,
 /*! @} */
 /*! @} */
 C_DECL_END
-#if !C_LANG || defined DOXYGEN_CXX
+#include <su/code-ou.h>
+#if !su_C_LANG || defined CXX_DOXYGEN
+# define su_CXX_HEADER
+# include <su/code-in.h>
 NSPC_BEGIN(su)
 
 class idec;
@@ -493,7 +496,7 @@ public:
 };
 
 NSPC_END(su)
-#endif /* !C_LANG || DOXYGEN_CXX */
 #include <su/code-ou.h>
+#endif /* !C_LANG || CXX_DOXYGEN */
 #endif /* su_ICODEC_H */
 /* s-it-mode */

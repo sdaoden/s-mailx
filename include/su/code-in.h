@@ -36,15 +36,17 @@
 #define NSPC_USE su_NSPC_USE
 #define NSPC su_NSPC
 
-#define CLASS_NO_COPY su_CLASS_NO_COPY
+#if defined su_CXX_HEADER || (defined su_SOURCE && !su_C_LANG)
+# define CLASS_NO_COPY su_CLASS_NO_COPY
 
-#define PUB su_PUB
-#define PRO su_PRO
-#define PRI su_PRI
-#define STA su_STA
-#define VIR su_VIR
-#define OVR su_OVR
-#define OVRX su_OVRX
+# define PUB su_PUB
+# define PRO su_PRO
+# define PRI su_PRI
+# define STA su_STA
+# define VIR su_VIR
+# define OVR su_OVR
+# define OVRX su_OVRX
+#endif
 
 #define S su_S
 #define R su_R
@@ -54,7 +56,7 @@
 
 #define SHADOW su_SHADOW
 
-#ifdef su_HEADER
+#if defined su_HEADER || defined su_CXX_HEADER
 # ifdef su_SOURCE
 #  define EXPORT su_EXPORT
 #  define EXPORT_DATA su_EXPORT_DATA
@@ -228,7 +230,7 @@
 #define VSTRUCT_SIZEOF su_VSTRUCT_SIZEOF
 
 /* POD TYPE SUPPORT (only if !C++) */
-#if su_C_LANG
+#if defined su_HEADER || (defined su_SOURCE && su_C_LANG)
 # define ul su_ul
 # define ui su_ui
 # define us su_us
@@ -261,7 +263,7 @@
 # define TRU1 su_TRU1
 # define TRUM1 su_TRUM1
 # define boole su_boole
-#endif /* su_C_LANG */
+#endif /* defined su_HEADER || (defined su_SOURCE && su_C_LANG) */
 
 #define U8_MAX su_U8_MAX
 #define S8_MIN su_S8_MIN

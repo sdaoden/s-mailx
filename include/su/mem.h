@@ -356,7 +356,10 @@ INLINE boole su_mem_trace(void){ /* XXX ochannel, thrptr*/
 
 /*! @} */
 C_DECL_END
-#if !C_LANG || defined DOXYGEN_CXX
+#include <su/code-ou.h>
+#if !su_C_LANG || defined CXX_DOXYGEN
+# define su_CXX_HEADER
+# include <su/code-in.h>
 NSPC_BEGIN(su)
 
 class mem;
@@ -581,7 +584,7 @@ inline void *operator new(size_t sz, void *vp, NSPC(su)mem::johnny const *j){
 }
 
 NSPC_END(su)
-#endif /* !C_LANG || DOXYGEN_CXX */
 #include <su/code-ou.h>
+#endif /* !C_LANG || CXX_DOXYGEN */
 #endif /* !su_MEM_H */
 /* s-it-mode */

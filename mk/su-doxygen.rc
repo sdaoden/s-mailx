@@ -13,8 +13,8 @@ MAX_INITIALIZER_LINES = 0
 MACRO_EXPANSION = YES
 #SKIP_FUNCTION_MACROS = NO
 # Grrr: cannot include code-in.h, need to defined ALL the stuff again??!
-# Define DOXYGEN_CXX to include C++ docu
-PREDEFINED = DOXYGEN DOXYGEN_CXX \
+# Define CXX_DOXYGEN to include C++ docu
+PREDEFINED = DOXYGEN CXX_DOXYGEN \
 	\
 	su_HAVE_DEBUG \
 	su_HAVE_DEVEL \
@@ -51,6 +51,8 @@ GENERATE_LATEX = NO
 #ALIASES += test{2}="\ref \1 \"\2\""
 #-> \test{ARG,some text} [this overloads \test!]
 #ALIASES += title{1}=
+# NOTE: we need the HTML tags since doxygen will merge "\r{BLA}." to
+# "\ref BLA.", i.e., we need to somehow inject a separator!
 ALIASES += SU="<span>\em SU</span>"
 ALIASES += SELF="<span>\em self</span>"
 ALIASES += THIS="<span>\em this</span>"

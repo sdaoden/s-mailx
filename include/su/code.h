@@ -102,6 +102,7 @@
 #endif
 
 /*! @} *//* CONFIG }}} */
+
 /*!
  * \defgroup CORE Basic infrastructure
  * \brief Macros, POD types, and basic interfaces (\r{su/code.h})
@@ -197,17 +198,16 @@
 # define su_C_LANG 0
 # define su_C_DECL_BEGIN extern "C" {
 # define su_C_DECL_END }
-# define su_HAVE_NSPC 0
-# if su_HAVE_NSPC
+# ifdef su_HAVE_NSPC
 #  define su_NSPC_BEGIN(X) namespace X {
 #  define su_NSPC_END(X) }
 #  define su_NSPC_USE(X) using namespace X;
-#  define su_NSPC(X) X ## ::
+#  define su_NSPC(X) X::
 # else
 #  define su_NSPC_BEGIN(X) /**/
 #  define su_NSPC_END(X) /**/
 #  define su_NSPC_USE(X) /**/
-#  define su_NSPC(X) /**/ ::
+#  define su_NSPC(X) /**/::
 # endif
 
    /* Disable copy-construction and assigment of class */
@@ -530,41 +530,41 @@ do{\
 # define su_ASSERT(X) su_ASSERT_LOC(X, __FILE__, __LINE__)
 # define su_ASSERT_LOC(X,FNAME,LNNO) \
 do if(!(X))\
-   su_assert(su_STRING(X), FNAME, LNNO, su_FUN, TRU1);\
+   su_assert(su_STRING(X), FNAME, LNNO, su_FUN, su_TRU1);\
 while(0)
 
 # define su_ASSERT_EXEC(X,S) su_ASSERT_EXEC_LOC(X, S, __FILE__, __LINE__)
 # define su_ASSERT_EXEC_LOC(X,S,FNAME,LNNO) \
 do if(!(X)){\
-   su_assert(su_STRING(X), FNAME, LNNO, su_FUN, FAL0);\
+   su_assert(su_STRING(X), FNAME, LNNO, su_FUN, su_FAL0);\
    S;\
 }while(0)
 
 # define su_ASSERT_JUMP(X,L) su_ASSERT_JUMP_LOC(X, L, __FILE__, __LINE__)
 # define su_ASSERT_JUMP_LOC(X,L,FNAME,LNNO) \
 do if(!(X)){\
-   su_assert(su_STRING(X), FNAME, LNNO, su_FUN, FAL0);\
+   su_assert(su_STRING(X), FNAME, LNNO, su_FUN, su_FAL0);\
    goto L;\
 }while(0)
 
 # define su_ASSERT_RET(X,Y) su_ASSERT_RET_LOC(X, Y, __FILE__, __LINE__)
 # define su_ASSERT_RET_LOC(X,Y,FNAME,LNNO) \
 do if(!(X)){\
-   su_assert(su_STRING(X), FNAME, LNNO, su_FUN, FAL0);\
+   su_assert(su_STRING(X), FNAME, LNNO, su_FUN, su_FAL0);\
    return Y;\
 }while(0)
 
 # define su_ASSERT_RET_VOID(X) su_ASSERT_RET_VOID_LOC(X, __FILE__, __LINE__)
 # define su_ASSERT_RET_VOID_LOC(X,FNAME,LNNO) \
 do if(!(X)){\
-   su_assert(su_STRING(X), FNAME, LNNO, su_FUN, FAL0);\
+   su_assert(su_STRING(X), FNAME, LNNO, su_FUN, su_FAL0);\
    return;\
 }while(0)
 
 # define su_ASSERT_NYD_RET(X,Y) su_ASSERT_NYD_RET_LOC(X, Y, __FILE__, __LINE__)
 # define su_ASSERT_NYD_RET_LOC(X,Y,FNAME,LNNO) \
 do if(!(X)){\
-   su_assert(su_STRING(X), FNAME, LNNO, su_FUN, FAL0);\
+   su_assert(su_STRING(X), FNAME, LNNO, su_FUN, su_FAL0);\
    Y; goto su_NYD_OU_LABEL;\
 }while(0)
 
@@ -572,7 +572,7 @@ do if(!(X)){\
    su_ASSERT_NYD_RET_VOID_LOC(X, __FILE__, __LINE__)
 # define su_ASSERT_NYD_RET_VOID_LOC(X,FNAME,LNNO) \
 do if(!(X)){\
-   su_assert(su_STRING(X), FNAME, LNNO, su_FUN, FAL0);\
+   su_assert(su_STRING(X), FNAME, LNNO, su_FUN, su_FAL0);\
    goto su_NYD_OU_LABEL;\
 }while(0)
 #endif /* defined NDEBUG || !defined su_HAVE_DEBUG */
@@ -745,10 +745,10 @@ do{\
 
 #define su_HEADER
 #include <su/code-in.h>
+C_DECL_BEGIN
 
 /* POD TYPE SUPPORT TODO maybe configure-time, from a su/config.h?! {{{ */
 /* TODO Note: the PRI* series will go away once we have FormatCtx! */
-C_DECL_BEGIN
 
 /* First some shorter aliases for "normal" integers */
 typedef unsigned long su_ul;  /*!< \_ */
@@ -974,85 +974,8 @@ typedef su_sl su_sp;
 enum {su_FAL0 /*!< \_ */, su_TRU1 /*!< \_ */, su_TRUM1 = -1 /*!< \_ */};
 typedef su_s8 su_boole; /*!< The \SU boolean type (see \FAL0 etc.). */
 
-C_DECL_END
-#if !C_LANG || defined DOXYGEN_CXX
-NSPC_BEGIN(su)
-
-// All instanceless static encapsulators.
-class min;
-class max;
-
-// Define in-namespace wrappers for C types.  code-in/ou do not define short
-// names for POD when used from within C++
-typedef su_ul ul; /*!< \_ */
-typedef su_ui ui; /*!< \_ */
-typedef su_us us; /*!< \_ */
-typedef su_uc uc; /*!< \_ */
-
-typedef su_sl sl; /*!< \_ */
-typedef su_si si; /*!< \_ */
-typedef su_ss ss; /*!< \_ */
-typedef su_sc sc; /*!< \_ */
-
-typedef su_u8 u8;    /*!< \_ */
-typedef su_s8 s8;    /*!< \_ */
-typedef su_u16 u16;  /*!< \_ */
-typedef su_s16 s16;  /*!< \_ */
-typedef su_u32 u32;  /*!< \_ */
-typedef su_s32 s32;  /*!< \_ */
-typedef su_u64 u64;  /*!< \_ */
-typedef su_s64 s64;  /*!< \_ */
-
-typedef su_uz uz; /*!< \_ */
-typedef su_sz sz; /*!< \_ */
-
-typedef su_up up; /*!< \_ */
-typedef su_sp sp; /*!< \_ */
-
-/*! Values for \r{su_boole}. */
-enum {
-   FAL0 = su_FAL0,   /*!< \_ */
-   TRU1 = su_TRU1,   /*!< \_ */
-   TRUM1 = su_TRUM1  /*!< All bits set. */
-};
-typedef su_boole boole; /*!< \_ */
-
-/* Place the mentioned alignment CTAs */
-MCTA(IS_POW2(sizeof(uz)), "Must be power of two")
-MCTA(IS_POW2(su__ZAL_S), "Must be power of two")
-MCTA(IS_POW2(su__ZAL_L), "Must be power of two")
-
-/*! \_ */
-class min{
-public:
-   static NSPC(su)s8 const s8 = su_S8_MIN;      /*!< \r{su_S8_MIN} */
-   static NSPC(su)s16 const s16 = su_S16_MIN;   /*!< \r{su_S16_MIN} */
-   static NSPC(su)s32 const s32 = su_S32_MIN;   /*!< \r{su_S32_MIN} */
-   static NSPC(su)s64 const s64 = su_S64_MIN;   /*!< \r{su_S64_MIN} */
-   static NSPC(su)sz const sz = su_SZ_MIN;      /*!< \r{su_SZ_MIN} */
-};
-
-/*! \_ */
-class max{
-public:
-   static NSPC(su)s8 const s8 = su_S8_MAX;      /*!< \r{su_S8_MAX} */
-   static NSPC(su)s16 const s16 = su_S16_MAX;   /*!< \r{su_S16_MAX} */
-   static NSPC(su)s32 const s32 = su_S32_MAX;   /*!< \r{su_S32_MAX} */
-   static NSPC(su)s64 const s64 = su_S64_MAX;   /*!< \r{su_S64_MAX} */
-   static NSPC(su)sz const sz = su_SZ_MAX;      /*!< \r{su_SZ_MAX} */
-
-   static NSPC(su)u8 const u8 = su_U8_MAX;      /*!< \r{su_U8_MAX} */
-   static NSPC(su)u16 const u16 = su_U16_MAX;   /*!< \r{su_U16_MAX} */
-   static NSPC(su)u32 const u32 = su_U32_MAX;   /*!< \r{su_U32_MAX} */
-   static NSPC(su)u64 const u64 = su_U64_MAX;   /*!< \r{su_U64_MAX} */
-   static NSPC(su)uz const uz = su_UZ_MAX;      /*!< \r{su_UZ_MAX} */
-};
-
-NSPC_END(su)
-#endif /* !C_LANG */
 /* POD TYPE SUPPORT }}} */
 /* BASIC TYPE TRAITS {{{ */
-C_DECL_BEGIN
 
 struct su_toolbox;
 /* plus PTF typedefs */
@@ -1090,9 +1013,275 @@ struct su_toolbox{
    su_FIELD_INITN(tb_hash) (su_hash_fun)HASH\
 }
 
+/* BASIC TYPE TRAITS }}} */
+/* BASIC C INTERFACE (SYMBOLS) {{{ */
+
+/*! Byte order mark macro; there is \r{su_bom} plus endianess support below.
+ * We optionally may have \c{su_CC_BOM{,_BIG,_LITTLE}} support, too! */
+#define su_BOM 0xFEFFu
+
+/*! Log priorities, for simplicity of use without _LEVEL or _LVL prefix */
+enum su_log_level{
+   su_LOG_EMERG,  /*!< System is unusable (abort()s the program) */
+   su_LOG_ALERT,  /*!< Action must be taken immediately */
+   su_LOG_CRIT,   /*!< Critical conditions */
+   su_LOG_ERR,    /*!< Error conditions */
+   su_LOG_WARN,   /*!< Warning conditions */
+   su_LOG_NOTICE, /*!< Normal but significant condition */
+   su_LOG_INFO,   /*!< Informational */
+   su_LOG_DEBUG   /*!< Debug-level message */
+};
+
+/*! \_ */
+enum su_state_flags{
+   /* enum su_log_level is first "member" */
+   su__STATE_LOG_MASK = 0xFFu,
+
+   su_STATE_DEBUG = 1u<<8,    /*!< \_ */
+   su_STATE_VERBOSE = 1u<<9,  /*!< \_ */
+   su__STATE_D_V = su_STATE_DEBUG | su_STATE_VERBOSE,
+
+   /*! Reproducible behaviour switch.
+    * See \r{su_reproducible_build},
+    * and \xln{https://reproducible-builds.org}. */
+   su_STATE_REPRODUCIBLE = 1u<<10,
+
+   /*! By default out-of-memory situations, or container and string etc.
+    * insertions etc. which cause count/offset datatype overflow result in
+    * \r{su_LOG_EMERG}s, and thus program abortion.
+    *
+    * This default can be changed by setting the corresponding su_state*()
+    * bit, \c{su_STATE_ERR_NOMEM} and \r{su_STATE_ERR_OVERFLOW}, respectively,
+    * in which case the functions will return corresponding error codes, then,
+    * and the log will happen with a \r{su_LOG_ALERT} level instead.
+    *
+    * \r{su_STATE_ERR_PASS} may be used only as an argument to
+    * \r{su_state_err()}, when \r{su_LOG_EMERG} is to be avoided at all cost
+    * (only \r{su_LOG_DEBUG} logs happen then).
+    * Likewise, \r{su_STATE_ERR_NOPASS}, to be used when \r{su_state_err()}
+    * must not return.
+    * Ditto, \r{su_STATE_ERR_NOERRNO}, to be used when \r{su_err_no()} shall
+    * not be set. */
+   su_STATE_ERR_NOMEM = 1u<<26,
+   su_STATE_ERR_OVERFLOW = 1u<<27,  /*!< \r{su_STATE_ERR_NOMEM}. */
+   /*! \_ */
+   su_STATE_ERR_TYPE_MASK = su_STATE_ERR_NOMEM | su_STATE_ERR_OVERFLOW,
+
+   su_STATE_ERR_PASS = 1u<<28,      /*!< \r{su_STATE_ERR_NOMEM}. */
+   su_STATE_ERR_NOPASS = 1u<<29,    /*!< \r{su_STATE_ERR_NOMEM}. */
+   su_STATE_ERR_NOERRNO = 1u<<30,   /*!< \r{su_STATE_ERR_NOMEM}. */
+   su__STATE_ERR_MASK = su_STATE_ERR_TYPE_MASK |
+         su_STATE_ERR_PASS | su_STATE_ERR_NOPASS | su_STATE_ERR_NOERRNO,
+
+   su__STATE_USER_MASK = ~(su__STATE_LOG_MASK |
+         su_STATE_ERR_PASS | su_STATE_ERR_NOPASS | su_STATE_ERR_NOERRNO)
+};
+MCTA((uz)su_LOG_DEBUG <= (uz)su__STATE_LOG_MASK, "Bit ranges may not overlap")
+
+/*! The \SU error number constants.
+ * In order to achieve a 1:1 mapping of the \SU and the host value, e.g.,
+ * of \ERR{INTR} and \c{EINTR}, the actual values will be detected at
+ * compilation time.
+ * Non resolvable (native) mappings will map to \ERR{NOTOBACCO},
+ * \SU mappings with no (native) mapping will have high unsigned numbers. */
+enum su_err_number{
+#ifdef DOXYGEN
+   su_ERR_NONE,      /*!< No error. */
+   su_ERR_NOTOBACCO  /*!< No such errno, fallback: no mapping exists. */
+#else
+   su__ERR_NUMBER_ENUM_C
+# undef su__ERR_NUMBER_ENUM_C
+#endif
+};
+
+union su__bom_union{
+   char bu_buf[2];
+   u16 bu_val;
+};
+
+/* Known endianess bom versions, see su_bom_little, su_bom_big */
+EXPORT_DATA union su__bom_union const su__bom_little;
+EXPORT_DATA union su__bom_union const su__bom_big;
+
+/* (Not yet) Internal enum su_state_flags bit carrier */
+EXPORT_DATA uz su__state;
+
+/*! The byte order mark \r{su_BOM} in host, little and big byte order.
+ * The latter two are macros which access constant union data.
+ * We also define two helpers \r{su_BOM_IS_BIG()} and \r{su_BOM_IS_LITTLE()},
+ * which will expand to preprocessor statements if possible. */
+EXPORT_DATA u16 const su_bom;
+/*! \_ */
+#define su_bom_little su__bom_little.bu_val
+/*! \_ */
+#define su_bom_big su__bom_big.bu_val
+
+#if defined su_CC_BOM || defined DOXYGEN
+# define su_BOM_IS_BIG() (su_CC_BOM == su_CC_BOM_BIG)       /*!< \r{su_bom}. */
+# define su_BOM_IS_LITTLE() (su_CC_BOM == su_CC_BOM_LITTLE) /*!< \r{su_bom}. */
+#else
+# define su_BOM_IS_BIG() (su_bom == su_bom_big)
+# define su_BOM_IS_LITTLE() (su_bom == su_bom_little)
+#endif
+
+/*! The empty string. */
+EXPORT_DATA char const su_empty[1];
+
+/*! The string \c{reproducible_build}, see \r{su_STATE_REPRODUCIBLE}. */
+EXPORT_DATA char const su_reproducible_build[];
+
+/*! Set to the name of the program to create a common log message prefix. */
+EXPORT_DATA char const *su_program;
+
+/*! Interaction with the SU library \r{su_state_flags} machine.
+ * The last to be called once one of the \c{STATE_ERR*} conditions occurred,
+ * it returns (if it returns) the corresponding \r{su_err_number} */
+SINLINE boole su_state_has(uz flags){
+   return ((su__state & (flags & su__STATE_USER_MASK)) != 0);
+}
+/*! \_ */
+SINLINE void su_state_set(uz flags) {su__state |= flags & su__STATE_USER_MASK;}
+/*! \_ */
+SINLINE void su_state_clear(uz flags){
+   su__state &= ~(flags & su__STATE_USER_MASK);
+}
+/*! Notify an error to the \SU state machine; see \r{su_STATE_ERR_NOMEM}. */
+EXPORT s32 su_state_err(uz state, char const *msg_or_nil);
+
+/*! \_ */
+EXPORT s32 su_err_no(void);
+/*! \_ */
+EXPORT s32 su_err_set_no(s32 eno);
+
+/*! Return string(s) describing C error number eno.
+ * This may return \r{su_empty}, dependent upon compile-time options. */
+EXPORT char const *su_err_doc(s32 eno);
+/*! \_ */
+EXPORT char const *su_err_name(s32 eno);
+
+/*! Try to map an error name to an error number.
+ * Returns the fallback error as a negative value if none found */
+EXPORT s32 su_err_from_name(char const *name);
+
+/*! \_ */
+EXPORT s32 su_err_no_via_errno(void);
+
+/*! \_ */
+SINLINE enum su_log_level su_log_get_level(void){
+   return S(enum su_log_level,su__state & su__STATE_LOG_MASK);
+}
+/*! \_ */
+SINLINE void su_log_set_level(enum su_log_level nlvl){
+   su__state = (su__state & su__STATE_USER_MASK) |
+         (S(uz,nlvl) & su__STATE_LOG_MASK);
+}
+
+/*! Log functions of various sort.
+ * Regardless of the level these also log if \c{STATE_DEBUG|STATE_VERBOSE}. */
+EXPORT void su_log_write(enum su_log_level lvl, char const *fmt, ...);
+/*! See \r{su_log_write()}.  The vp is a &va_list. */
+EXPORT void su_log_vwrite(enum su_log_level lvl, char const *fmt, void *vp);
+
+/*! Like perror(3). */
+EXPORT void su_perr(char const *msg, s32 eno_or_0);
+
+#if !defined su_ASSERT_EXPAND_NOTHING || defined DOXYGEN
+/*! With a \FAL0 crash this only logs.
+ * In order to get rid of linkage define \c{su_ASSERT_EXPAND_NOTHING}. */
+EXPORT void su_assert(char const *expr, char const *file, u32 line,
+      char const *fun, boole crash);
+#else
+# define su_assert(EXPR,FILE,LINE,FUN,CRASH)
+#endif
+
+#if defined su_HAVE_DEBUG || defined su_HAVE_DEVEL
+void su_nyd_chirp(u8 act, char const *file, u32 line, char const *fun);
+void su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen), up cookie);
+#endif
+
+/* BASIC C INTERFACE (SYMBOLS) }}} */
+
 C_DECL_END
-#if !C_LANG || defined DOXYGEN_CXX
+#include <su/code-ou.h>
+#if !su_C_LANG || defined CXX_DOXYGEN
+# define su_CXX_HEADER
+# include <su/code-in.h>
 NSPC_BEGIN(su)
+
+/* POD TYPE SUPPORT {{{ */
+
+// All instanceless static encapsulators.
+class min;
+class max;
+
+// Define in-namespace wrappers for C types.  code-in/ou do not define short
+// names for POD when used from within C++
+typedef su_ul ul; /*!< \_ */
+typedef su_ui ui; /*!< \_ */
+typedef su_us us; /*!< \_ */
+typedef su_uc uc; /*!< \_ */
+
+typedef su_sl sl; /*!< \_ */
+typedef su_si si; /*!< \_ */
+typedef su_ss ss; /*!< \_ */
+typedef su_sc sc; /*!< \_ */
+
+typedef su_u8 u8;    /*!< \_ */
+typedef su_s8 s8;    /*!< \_ */
+typedef su_u16 u16;  /*!< \_ */
+typedef su_s16 s16;  /*!< \_ */
+typedef su_u32 u32;  /*!< \_ */
+typedef su_s32 s32;  /*!< \_ */
+typedef su_u64 u64;  /*!< \_ */
+typedef su_s64 s64;  /*!< \_ */
+
+typedef su_uz uz; /*!< \_ */
+typedef su_sz sz; /*!< \_ */
+
+typedef su_up up; /*!< \_ */
+typedef su_sp sp; /*!< \_ */
+
+/*! Values for \r{su_boole}. */
+enum{
+   FAL0 = su_FAL0,   /*!< \_ */
+   TRU1 = su_TRU1,   /*!< \_ */
+   TRUM1 = su_TRUM1  /*!< All bits set. */
+};
+typedef su_boole boole; /*!< \_ */
+
+/* Place the mentioned alignment CTAs */
+MCTA(IS_POW2(sizeof(uz)), "Must be power of two")
+MCTA(IS_POW2(su__ZAL_S), "Must be power of two")
+MCTA(IS_POW2(su__ZAL_L), "Must be power of two")
+
+/*! \_ */
+class min{
+public:
+   static NSPC(su)s8 const s8 = su_S8_MIN;      /*!< \r{su_S8_MIN} */
+   static NSPC(su)s16 const s16 = su_S16_MIN;   /*!< \r{su_S16_MIN} */
+   static NSPC(su)s32 const s32 = su_S32_MIN;   /*!< \r{su_S32_MIN} */
+   static NSPC(su)s64 const s64 = su_S64_MIN;   /*!< \r{su_S64_MIN} */
+   static NSPC(su)sz const sz = su_SZ_MIN;      /*!< \r{su_SZ_MIN} */
+};
+
+/*! \_ */
+class max{
+public:
+   static NSPC(su)s8 const s8 = su_S8_MAX;      /*!< \r{su_S8_MAX} */
+   static NSPC(su)s16 const s16 = su_S16_MAX;   /*!< \r{su_S16_MAX} */
+   static NSPC(su)s32 const s32 = su_S32_MAX;   /*!< \r{su_S32_MAX} */
+   static NSPC(su)s64 const s64 = su_S64_MAX;   /*!< \r{su_S64_MAX} */
+   static NSPC(su)sz const sz = su_SZ_MAX;      /*!< \r{su_SZ_MAX} */
+
+   static NSPC(su)u8 const u8 = su_U8_MAX;      /*!< \r{su_U8_MAX} */
+   static NSPC(su)u16 const u16 = su_U16_MAX;   /*!< \r{su_U16_MAX} */
+   static NSPC(su)u32 const u32 = su_U32_MAX;   /*!< \r{su_U32_MAX} */
+   static NSPC(su)u64 const u64 = su_U64_MAX;   /*!< \r{su_U64_MAX} */
+   static NSPC(su)uz const uz = su_UZ_MAX;      /*!< \r{su_UZ_MAX} */
+};
+
+/* POD TYPE SUPPORT }}} */
+/* BASIC TYPE TRAITS {{{ */
 
 template<class T> class type_traits;
 template<class T> struct type_toolbox;
@@ -1292,198 +1481,8 @@ template<class T>
 inline T const &get_min(T const &a, T const &b) {return su_MIN(a, b);}
 template<class T> inline int is_pow2(T const &a) {return su_IS_POW2(a);}
 
-NSPC_END(su)
-#endif /* !C_LANG */
 /* BASIC TYPE TRAITS }}} */
-/* BASIC C/C++ INTERFACE (SYMBOLS) {{{ */
-C_DECL_BEGIN
-
-/*! Byte order mark macro; there is \r{su_bom} plus endianess support below.
- * We optionally may have \c{su_CC_BOM{,_BIG,_LITTLE}} support, too! */
-#define su_BOM 0xFEFFu
-
-/*! Log priorities, for simplicity of use without _LEVEL or _LVL prefix */
-enum su_log_level{
-   su_LOG_EMERG,  /*!< System is unusable (abort()s the program) */
-   su_LOG_ALERT,  /*!< Action must be taken immediately */
-   su_LOG_CRIT,   /*!< Critical conditions */
-   su_LOG_ERR,    /*!< Error conditions */
-   su_LOG_WARN,   /*!< Warning conditions */
-   su_LOG_NOTICE, /*!< Normal but significant condition */
-   su_LOG_INFO,   /*!< Informational */
-   su_LOG_DEBUG   /*!< Debug-level message */
-};
-
-/*! \_ */
-enum su_state_flags{
-   /* enum su_log_level is first "member" */
-   su__STATE_LOG_MASK = 0xFFu,
-
-   su_STATE_DEBUG = 1u<<8,    /*!< \_ */
-   su_STATE_VERBOSE = 1u<<9,  /*!< \_ */
-   su__STATE_D_V = su_STATE_DEBUG | su_STATE_VERBOSE,
-
-   /*! Reproducible behaviour switch.
-    * See \r{su_reproducible_build},
-    * and \xln{https://reproducible-builds.org}. */
-   su_STATE_REPRODUCIBLE = 1u<<10,
-
-   /*! By default out-of-memory situations, or container and string etc.
-    * insertions etc. which cause count/offset datatype overflow result in
-    * \r{su_LOG_EMERG}s, and thus program abortion.
-    *
-    * This default can be changed by setting the corresponding su_state*()
-    * bit, \c{su_STATE_ERR_NOMEM} and \r{su_STATE_ERR_OVERFLOW}, respectively,
-    * in which case the functions will return corresponding error codes, then,
-    * and the log will happen with a \r{su_LOG_ALERT} level instead.
-    *
-    * \r{su_STATE_ERR_PASS} may be used only as an argument to
-    * \r{su_state_err()}, when \r{su_LOG_EMERG} is to be avoided at all cost
-    * (only \r{su_LOG_DEBUG} logs happen then).
-    * Likewise, \r{su_STATE_ERR_NOPASS}, to be used when \r{su_state_err()}
-    * must not return.
-    * Ditto, \r{su_STATE_ERR_NOERRNO}, to be used when \r{su_err_no()} shall
-    * not be set. */
-   su_STATE_ERR_NOMEM = 1u<<26,
-   su_STATE_ERR_OVERFLOW = 1u<<27,  /*!< \r{su_STATE_ERR_NOMEM}. */
-   /*! \_ */
-   su_STATE_ERR_TYPE_MASK = su_STATE_ERR_NOMEM | su_STATE_ERR_OVERFLOW,
-
-   su_STATE_ERR_PASS = 1u<<28,      /*!< \r{su_STATE_ERR_NOMEM}. */
-   su_STATE_ERR_NOPASS = 1u<<29,    /*!< \r{su_STATE_ERR_NOMEM}. */
-   su_STATE_ERR_NOERRNO = 1u<<30,   /*!< \r{su_STATE_ERR_NOMEM}. */
-   su__STATE_ERR_MASK = su_STATE_ERR_TYPE_MASK |
-         su_STATE_ERR_PASS | su_STATE_ERR_NOPASS | su_STATE_ERR_NOERRNO,
-
-   su__STATE_USER_MASK = ~(su__STATE_LOG_MASK |
-         su_STATE_ERR_PASS | su_STATE_ERR_NOPASS | su_STATE_ERR_NOERRNO)
-};
-MCTA((uz)su_LOG_DEBUG <= (uz)su__STATE_LOG_MASK, "Bit ranges may not overlap")
-
-/*! The \SU error number constants.
- * In order to achieve a 1:1 mapping of the \SU and the host value, e.g.,
- * of \ERR{INTR} and \c{EINTR}, the actual values will be detected at
- * compilation time.
- * Non resolvable (native) mappings will map to \ERR{NOTOBACCO},
- * \SU mappings with no (native) mapping will have high unsigned numbers. */
-enum su_err_number{
-#ifdef DOXYGEN
-   su_ERR_NONE,      /*!< No error. */
-   su_ERR_NOTOBACCO  /*!< No such errno, fallback: no mapping exists. */
-#else
-   su__ERR_NUMBER_ENUM_C
-# undef su__ERR_NUMBER_ENUM_C
-#endif
-};
-
-union su__bom_union{
-   char bu_buf[2];
-   u16 bu_val;
-};
-
-/* Known endianess bom versions, see su_bom_little, su_bom_big */
-EXPORT_DATA union su__bom_union const su__bom_little;
-EXPORT_DATA union su__bom_union const su__bom_big;
-
-/* (Not yet) Internal enum su_state_flags bit carrier */
-EXPORT_DATA uz su__state;
-
-/*! The byte order mark \r{su_BOM} in host, little and big byte order.
- * The latter two are macros which access constant union data.
- * We also define two helpers \r{su_BOM_IS_BIG()} and \r{su_BOM_IS_LITTLE()},
- * which will expand to preprocessor statements if possible. */
-EXPORT_DATA u16 const su_bom;
-/*! \_ */
-#define su_bom_little su__bom_little.bu_val
-/*! \_ */
-#define su_bom_big su__bom_big.bu_val
-
-#if defined su_CC_BOM || defined DOXYGEN
-# define su_BOM_IS_BIG() (su_CC_BOM == su_CC_BOM_BIG)       /*!< \r{su_bom}. */
-# define su_BOM_IS_LITTLE() (su_CC_BOM == su_CC_BOM_LITTLE) /*!< \r{su_bom}. */
-#else
-# define su_BOM_IS_BIG() (su_bom == su_bom_big)
-# define su_BOM_IS_LITTLE() (su_bom == su_bom_little)
-#endif
-
-/*! The empty string. */
-EXPORT_DATA char const su_empty[1];
-
-/*! The string \c{reproducible_build}, see \r{su_STATE_REPRODUCIBLE}. */
-EXPORT_DATA char const su_reproducible_build[];
-
-/*! Set to the name of the program to create a common log message prefix. */
-EXPORT_DATA char const *su_program;
-
-/*! Interaction with the SU library \r{su_state_flags} machine.
- * The last to be called once one of the \c{STATE_ERR*} conditions occurred,
- * it returns (if it returns) the corresponding \r{su_err_number} */
-SINLINE boole su_state_has(uz flags){
-   return ((su__state & (flags & su__STATE_USER_MASK)) != 0);
-}
-/*! \_ */
-SINLINE void su_state_set(uz flags) {su__state |= flags & su__STATE_USER_MASK;}
-/*! \_ */
-SINLINE void su_state_clear(uz flags){
-   su__state &= ~(flags & su__STATE_USER_MASK);
-}
-/*! Notify an error to the \SU state machine; see \r{su_STATE_ERR_NOMEM}. */
-EXPORT s32 su_state_err(uz state, char const *msg_or_nil);
-
-/*! \_ */
-EXPORT s32 su_err_no(void);
-/*! \_ */
-EXPORT s32 su_err_set_no(s32 eno);
-
-/*! Return string(s) describing C error number eno.
- * This may return \r{su_empty}, dependent upon compile-time options. */
-EXPORT char const *su_err_doc(s32 eno);
-/*! \_ */
-EXPORT char const *su_err_name(s32 eno);
-
-/*! Try to map an error name to an error number.
- * Returns the fallback error as a negative value if none found */
-EXPORT s32 su_err_from_name(char const *name);
-
-/*! \_ */
-EXPORT s32 su_err_no_via_errno(void);
-
-/*! \_ */
-SINLINE enum su_log_level su_log_get_level(void){
-   return S(enum su_log_level,su__state & su__STATE_LOG_MASK);
-}
-/*! \_ */
-SINLINE void su_log_set_level(enum su_log_level nlvl){
-   su__state = (su__state & su__STATE_USER_MASK) |
-         (S(uz,nlvl) & su__STATE_LOG_MASK);
-}
-
-/*! Log functions of various sort.
- * Regardless of the level these also log if \c{STATE_DEBUG|STATE_VERBOSE}. */
-EXPORT void su_log_write(enum su_log_level lvl, char const *fmt, ...);
-/*! See \r{su_log_write()}.  The vp is a &va_list. */
-EXPORT void su_log_vwrite(enum su_log_level lvl, char const *fmt, void *vp);
-
-/*! Like perror(3). */
-EXPORT void su_perr(char const *msg, s32 eno_or_0);
-
-#if !defined su_ASSERT_EXPAND_NOTHING || defined DOXYGEN
-/*! With a \FAL0 crash this only logs.
- * In order to get rid of linkage define \c{su_ASSERT_EXPAND_NOTHING}. */
-EXPORT void su_assert(char const *expr, char const *file, u32 line,
-      char const *fun, boole crash);
-#else
-# define su_assert(EXPR,FILE,LINE,FUN,CRASH)
-#endif
-
-#if defined su_HAVE_DEBUG || defined su_HAVE_DEVEL
-void su_nyd_chirp(u8 act, char const *file, u32 line, char const *fun);
-void su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen), up cookie);
-#endif
-
-C_DECL_END
-#if !C_LANG || defined DOXYGEN_CXX
-NSPC_BEGIN(su)
+/* BASIC C++ INTERFACE (SYMBOLS) {{{ */
 
 // FIXME C++ does not yet expose the public C EXPORT_DATA symbols
 
@@ -1601,9 +1600,11 @@ public:
    }
 };
 
+/* BASIC C++ INTERFACE (SYMBOLS) }}} */
+
 NSPC_END(su)
-#endif /* !C_LANG */
-/* BASIC C/C++ INTERFACE (SYMBOLS) }}} */
+#include <su/code-ou.h>
+#endif /* !C_LANG || CXX_DOXYGEN */
 
 /* MORE DOXYGEN TOP GROUPS {{{ */
 /*!
@@ -1648,7 +1649,6 @@ NSPC_END(su)
  */
 /* MORE DOXYGEN TOP GROUPS }}} */
 
-#include <su/code-ou.h>
 /*! @} */
 #endif /* !su_CODE_H */
 /* s-it-mode */

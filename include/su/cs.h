@@ -26,11 +26,6 @@
 
 #include <su/code.h>
 
-#if !su_C_LANG
-# define su_A_T_T_DECL_ONLY
-# include <su/a-t-t.h>
-#endif
-
 #define su_HEADER
 #include <su/code-in.h>
 C_DECL_BEGIN
@@ -244,7 +239,13 @@ SINLINE s32 su_cs_to_upper(s32 x){
 
 /*! @} */
 C_DECL_END
-#if !C_LANG || defined DOXYGEN_CXX
+#include <su/code-ou.h>
+#if !su_C_LANG || defined CXX_DOXYGEN
+# define su_A_T_T_DECL_ONLY
+# include <su/a-t-t.h>
+
+# define su_CXX_HEADER
+# include <su/code-in.h>
 NSPC_BEGIN(su)
 
 class cs;
@@ -435,7 +436,7 @@ public:
 };
 
 NSPC_END(su)
-#endif /* !C_LANG || DOXYGEN_CXX */
 #include <su/code-ou.h>
+#endif /* !C_LANG || CXX_DOXYGEN */
 #endif /* su_CS_H */
 /* s-it-mode */

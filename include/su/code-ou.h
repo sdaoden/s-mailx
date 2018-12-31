@@ -20,10 +20,6 @@
 #endif
 #undef su_CODE_IN_H
 
-#undef su_HEADER
-#undef mx_HEADER
-#undef rf_HEADER
-
 /* LANG */
 
 #undef C_LANG
@@ -34,15 +30,17 @@
 #undef NSPC_USE
 #undef NSPC
 
-#undef CLASS_NO_COPY
+#if defined su_CXX_HEADER || (defined su_SOURCE && !su_C_LANG)
+# undef CLASS_NO_COPY
 
-#undef PUB
-#undef PRO
-#undef PRI
-#undef STA
-#undef VIR
-#undef OVR
-#undef OVRX
+# undef PUB
+# undef PRO
+# undef PRI
+# undef STA
+# undef VIR
+# undef OVR
+# undef OVRX
+#endif
 
 #undef S
 #undef R
@@ -151,7 +149,7 @@
 
 /* POD TYPE SUPPORT (only if !C++) */
 
-#if su_C_LANG
+#if defined su_HEADER || (defined su_SOURCE && su_C_LANG)
 # undef ul
 # undef ui
 # undef us
@@ -184,7 +182,7 @@
 # undef TRU1
 # undef TRUM1
 # undef boole
-#endif /* su_C_LANG */
+#endif /* defined su_HEADER || (defined su_SOURCE && su_C_LANG) */
 
 #undef U8_MAX
 #undef S8_MIN
@@ -316,5 +314,10 @@
 #  undef su_LOFI_FREE_LOCOR
 # endif /* su_HAVE_MEM_BAG_LOFI */
 #endif /* su_MEM_BAG_SELF */
+
+#undef su_HEADER
+#undef su_CXX_HEADER
+#undef mx_HEADER
+#undef rf_HEADER
 
 /* s-it-mode */

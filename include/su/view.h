@@ -19,7 +19,7 @@
 #ifndef su_VIEW_H
 # define su_VIEW_H
 
-#ifdef DOXYGEN_CXX
+#ifdef CXX_DOXYGEN
 /*!
  * \file
  * \ingroup VIEW
@@ -31,9 +31,9 @@
 
 #include <su/code.h>
 su_USECASE_MX_DISABLED
-#if !su_C_LANG || defined DOXYGEN_CXX
+#if !su_C_LANG || defined CXX_DOXYGEN
 
-#define su_HEADER
+#define su_CXX_HEADER
 #include <su/code-in.h>
 NSPC_BEGIN(su)
 
@@ -789,6 +789,6 @@ su__VIEW_IMPL_END
 
 NSPC_END(su)
 #include <su/code-ou.h>
-#endif /* !su_C_LANG || defined DOXYGEN_CXX */
+#endif /* !su_C_LANG || defined CXX_DOXYGEN */
 #endif /* su_VIEW_H */
 /* s-it-mode */

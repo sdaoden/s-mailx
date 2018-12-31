@@ -22,6 +22,8 @@
 #ifndef su_CONFIG_H
 #define su_CONFIG_H
 
+/*#define su_HAVE_NSPC*/
+
 /* For now thought of _MX, _ROFF; _SU: standalone library */
 #ifndef su_USECASE_SU
 # define su_USECASE_MX

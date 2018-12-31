@@ -16,7 +16,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #undef su_FILE
-#define su_FILE su_core_cxx
+#define su_FILE su_cxx_core
 #define su_SOURCE
 
 #include "su/code.h"
@@ -28,7 +28,6 @@ su_USECASE_MX_DISABLED
 #include "su/utf.h"
 
 #include "su/code-in.h"
-
 NSPC_USE(su)
 
 // code.h

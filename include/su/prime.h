@@ -61,7 +61,10 @@ EXPORT u32 su_prime_lookup_next(u32 no);
 
 /*! @} */
 C_DECL_END
-#if !C_LANG || defined DOXYGEN_CXX
+#include <su/code-ou.h>
+#if !su_C_LANG || defined CXX_DOXYGEN
+# define su_CXX_HEADER
+# include <su/code-in.h>
 NSPC_BEGIN(su)
 
 class prime;
@@ -101,7 +104,7 @@ public:
 };
 
 NSPC_END(su)
-#endif /* !C_LANG || DOXYGEN_CXX */
 #include <su/code-ou.h>
+#endif /* !C_LANG || CXX_DOXYGEN */
 #endif /* su_PRIME_H */
 /* s-it-mode */

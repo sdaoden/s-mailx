@@ -29,7 +29,11 @@
 #include <su/code.h>
 
 #if defined su_HAVE_MEM_BAG_AUTO || defined su_HAVE_MEM_BAG_LOFI
-   /*! Defined if just any memory allocation type is supported. */
+   /*!
+    * \ingroup MEM_BAG
+    * Defined if memory bags are available.
+    * They are if just any memory allocation type is supported.
+    */
 # define su_HAVE_MEM_BAG
 #endif
 #ifdef su_HAVE_MEM_BAG
@@ -423,7 +427,10 @@ EXPORT struct su_mem_bag *su_mem_bag_lofi_free(struct su_mem_bag *self,
 
 /*! @} */
 C_DECL_END
-#if !C_LANG || defined DOXYGEN_CXX
+#include <su/code-ou.h>
+#if !su_C_LANG || defined CXX_DOXYGEN
+# define su_CXX_HEADER
+# include <su/code-in.h>
 NSPC_BEGIN(su)
 
 class mem_bag;
@@ -511,8 +518,8 @@ public:
 };
 
 NSPC_END(su)
-#endif /* !C_LANG || DOXYGEN_CXX */
 #include <su/code-ou.h>
+#endif /* !C_LANG || CXX_DOXYGEN */
 #endif /* su_HAVE_MEM_BAG */
 #endif /* !su_MEM_BAG_H */
 /* s-it-mode */
