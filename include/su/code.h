@@ -89,6 +89,7 @@
    /*! Test paths available in non-debug code.
     * Also, compiler pragmas which suppress some warnings are not set, etc.*/
 # define su_HAVE_DEVEL
+# define su_HAVE_DOCSTRINGS   /*!< Some more helpful strings. */
 # define su_HAVE_MEM_BAG_AUTO /*!< \_ */
 # define su_HAVE_MEM_BAG_LOFI /*!< \_ */
    /*! Normally the debug library provides memory write boundary excess via
@@ -431,10 +432,14 @@ do{\
 #if su_C_LANG
 # if su_CC_CLANG || su_CC_GCC || su_CC_PCC || defined DOXYGEN
 #  if defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901L
-#   define su_INLINE inline         /*!< \_ */
+#   ifndef NDEBUG
+#    define su_INLINE static inline  /*!< \_ */
+#   else
+#    define su_INLINE inline
+#   endif
 #   define su_SINLINE static inline /*!< \_ */
 #  else
-#   define su_INLINE __inline
+#   define su_INLINE static __inline
 #   define su_SINLINE static __inline
 #  endif
 # else
@@ -1136,13 +1141,13 @@ EXPORT_DATA char const *su_program;
 /*! Interaction with the SU library \r{su_state_flags} machine.
  * The last to be called once one of the \c{STATE_ERR*} conditions occurred,
  * it returns (if it returns) the corresponding \r{su_err_number} */
-SINLINE boole su_state_has(uz flags){
+INLINE boole su_state_has(uz flags){
    return ((su__state & (flags & su__STATE_USER_MASK)) != 0);
 }
 /*! \_ */
-SINLINE void su_state_set(uz flags) {su__state |= flags & su__STATE_USER_MASK;}
+INLINE void su_state_set(uz flags) {su__state |= flags & su__STATE_USER_MASK;}
 /*! \_ */
-SINLINE void su_state_clear(uz flags){
+INLINE void su_state_clear(uz flags){
    su__state &= ~(flags & su__STATE_USER_MASK);
 }
 /*! Notify an error to the \SU state machine; see \r{su_STATE_ERR_NOMEM}. */
@@ -1154,7 +1159,8 @@ EXPORT s32 su_err_no(void);
 EXPORT s32 su_err_set_no(s32 eno);
 
 /*! Return string(s) describing C error number eno.
- * This may return \r{su_empty}, dependent upon compile-time options. */
+ * This is effectively identical to \r{su_err_name()} if the compile-time
+ * option \r{su_HAVE_DOCSTRINGS} is missing. */
 EXPORT char const *su_err_doc(s32 eno);
 /*! \_ */
 EXPORT char const *su_err_name(s32 eno);
@@ -1167,11 +1173,11 @@ EXPORT s32 su_err_from_name(char const *name);
 EXPORT s32 su_err_no_via_errno(void);
 
 /*! \_ */
-SINLINE enum su_log_level su_log_get_level(void){
+INLINE enum su_log_level su_log_get_level(void){
    return S(enum su_log_level,su__state & su__STATE_LOG_MASK);
 }
 /*! \_ */
-SINLINE void su_log_set_level(enum su_log_level nlvl){
+INLINE void su_log_set_level(enum su_log_level nlvl){
    su__state = (su__state & su__STATE_USER_MASK) |
          (S(uz,nlvl) & su__STATE_LOG_MASK);
 }

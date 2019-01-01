@@ -83,7 +83,7 @@ su_utf8_to_32(char const **bdat, uz *blen){
          x1 = x;
          c = (x &= 0x07u);
 
-         /* Second byte constraints */
+         /* Third byte constraints */
          x = S(u8,*cp++);
          switch(x1){
          case 0xF0u:
@@ -146,7 +146,7 @@ su_utf32_to_8(u32 c, char *bp){
       {0x00000000, 0x00000000, 0x00, 0, 0x00,      0x00,   0, 0, {0,}},
       {0x00000000, 0x0000007F, 0x00, 1, 0x80,      0x7F, 1-1, 1, {0,}},
       {0x00000080, 0x000007FF, 0xC0, 2, 0xE0, 0xFF-0xE0, 2-1, 2, {0,}},
-      /* We assume surrogates are U+D800 - U+DFFF, _cat index 3 */
+      /* We assume surrogates are U+D800 - U+DFFF, a_cat index 3 */
       /* xxx _from_utf32() simply assumes magic code points for surrogates!
        * xxx (However, should we ever get yet another surrogate range we
        * xxx need to deal with that all over the place anyway? */
@@ -156,19 +156,19 @@ su_utf32_to_8(u32 c, char *bp){
    NYD_IN;
 
    catp = &a_cat[0];
-   if(c <= a_cat[0].upper_bound) {catp += 0; goto j0;}
-   if(c <= a_cat[1].upper_bound) {catp += 1; goto j1;}
-   if(c <= a_cat[2].upper_bound) {catp += 2; goto j2;}
-   if(c <= a_cat[3].upper_bound){
+   if(LIKELY(c <= a_cat[0].upper_bound)) {catp += 0; goto j0;}
+   if(LIKELY(c <= a_cat[1].upper_bound)) {catp += 1; goto j1;}
+   if(LIKELY(c <= a_cat[2].upper_bound)) {catp += 2; goto j2;}
+   if(LIKELY(c <= a_cat[3].upper_bound)){
       /* Surrogates may not be converted (Compatibility rule C10) */
-      if(c >= 0xD800u && c <= 0xDFFFu)
+      if(UNLIKELY(c >= 0xD800u && c <= 0xDFFFu))
          goto jerr;
       catp += 3;
       goto j3;
    }
-   if(c <= a_cat[4].upper_bound) {catp += 4; goto j4;}
+   if(LIKELY(c <= a_cat[4].upper_bound)) {catp += 4; goto j4;}
 jerr:
-   c = 0xFFFDu; /* Unicode replacement character */
+   c = su_UTF32_REPLACER;
    catp += 3;
    goto j3;
 j4:

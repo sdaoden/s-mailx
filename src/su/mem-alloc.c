@@ -184,7 +184,7 @@ struct a_mema_chunk{
 # define a_MEMA_MARK_TO_STORE(X) \
    ((S(u32,X) >> su__MEM_ALLOC_MARK_SHIFT) & su__MEM_ALLOC_MARK_MASK)
 # define a_MEMA_STORE_TO_MARK(MACP) \
-   S(enum su_mem_alloc_flags,(MACP)->mac_mark << su__MEM_ALLOC_MARK_SHIFT)
+   ((MACP)->mac_mark << su__MEM_ALLOC_MARK_SHIFT)
 
 /* The heap memory mem_free() may become delayed to detect double frees */
 struct a_mema_heap_chunk{
@@ -379,8 +379,7 @@ su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE){
 #endif /* su_MEM_ALLOC_DEBUG */
 
 void *
-su_mem_allocate(uz size, uz no, enum su_mem_alloc_flags maf
-      su_DBG_LOC_ARGS_DECL){
+su_mem_allocate(uz size, uz no, u32 maf  su_DBG_LOC_ARGS_DECL){
 #ifdef su_MEM_ALLOC_DEBUG
    u32 mark;
    union a_mema_ptr p;
@@ -463,8 +462,7 @@ su_mem_allocate(uz size, uz no, enum su_mem_alloc_flags maf
 }
 
 void *
-su_mem_reallocate(void *ovp, uz size, uz no, enum su_mem_alloc_flags maf
-      su_DBG_LOC_ARGS_DECL){
+su_mem_reallocate(void *ovp, uz size, uz no, u32 maf  su_DBG_LOC_ARGS_DECL){
 #ifdef su_MEM_ALLOC_DEBUG
    u32 mark;
    union a_mema_ptr p;
@@ -647,7 +645,7 @@ su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL){
 }
 
 void
-su_mem_set_conf(enum su_mem_conf_option mco, uz val){
+su_mem_set_conf(u32 mco, uz val){
    uz rmco;
    NYD_IN;
 

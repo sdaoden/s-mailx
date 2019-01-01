@@ -21,19 +21,20 @@
 #include "su/code-in.h"
 
 /**/
-su_SINLINE void *a_memt_find(void const *vp, s32 what, uz len);
-su_SINLINE void *a_memt_rfind(void const *vp, s32 what, uz len);
-su_SINLINE sz a_memt_cmp(void const *vpa, void const *vpb, uz len);
-su_SINLINE void *a_memt_copy(void *vp, void const *src, uz len);
-su_SINLINE void *a_memt_move(void *vp, void const *src, uz len);
-su_SINLINE void *a_memt_set(void *vp, s32 what, uz len);
+SINLINE void *a_memt_find(void const *vp, s32 what, uz len);
+SINLINE void *a_memt_rfind(void const *vp, s32 what, uz len);
+SINLINE sz a_memt_cmp(void const *vpa, void const *vpb, uz len);
+SINLINE void *a_memt_copy(void *vp, void const *src, uz len);
+SINLINE void *a_memt_move(void *vp, void const *src, uz len);
+SINLINE void *a_memt_set(void *vp, s32 what, uz len);
 
-su_SINLINE void *
+SINLINE void *
 a_memt_find(void const *vp, s32 what, uz len){
-   return memchr(vp, what, len);
+   /* Need to cast away const for g++ 8.2.0 (OSUKISS Linux) */
+   return memchr(C(void*,vp), what, len);
 }
 
-su_SINLINE void *
+SINLINE void *
 a_memt_rfind(void const *vp, s32 what, uz len){
    u8 *rv;
 
@@ -49,24 +50,24 @@ a_memt_rfind(void const *vp, s32 what, uz len){
    return rv;
 }
 
-su_SINLINE sz
+SINLINE sz
 a_memt_cmp(void const *vpa, void const *vpb, uz len){
    return memcmp(vpa, vpb, len);
 }
 
-su_SINLINE void *
+SINLINE void *
 a_memt_copy(void *vp, void const *src, uz len){
    memcpy(vp, src, len);
    return vp;
 }
 
-su_SINLINE void *
+SINLINE void *
 a_memt_move(void *vp, void const *src, uz len){
    memmove(vp, src, len);
    return vp;
 }
 
-su_SINLINE void *
+SINLINE void *
 a_memt_set(void *vp, s32 what, uz len){
    memset(vp, what, len);
    return vp;

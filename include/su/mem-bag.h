@@ -167,7 +167,7 @@ EXPORT struct su_mem_bag *su_mem_bag_pop(struct su_mem_bag *self,
 
 /*! Get the bag that currently serves on the stack top.
  * Returns \SELF if there is no stack. */
-SINLINE struct su_mem_bag *
+INLINE struct su_mem_bag *
 su_mem_bag_top(struct su_mem_bag *self){
    ASSERT_RET(self != NIL, NIL);
    ASSERT_RET(self->mb_outer == NIL, su_mem_bag_top(self->mb_outer));
@@ -197,12 +197,13 @@ EXPORT struct su_mem_bag *su_mem_bag_auto_relax_gut(struct su_mem_bag *self);
 EXPORT struct su_mem_bag *su_mem_bag_auto_relax_unroll(
       struct su_mem_bag *self);
 
-/*! This is rather internal, but due to \a{mbaf} maybe handy sometimes.
+/*! This is rather internal, but due to the \r{su_mem_bag_alloc_flags}
+ * \a{mbaf} maybe handy sometimes.
  * Normally to be used through the macro interface.
  * Attempts to allocate \r{su_S32_MAX} or more bytes result in overflow errors,
  * see \r{su_MEM_BAG_ALLOC_OVERFLOW_OK} and \r{su_MEM_BAG_ALLOC_NOMEM_OK}. */
 EXPORT void *su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
-      enum su_mem_bag_alloc_flags mbaf  su_DBG_LOC_ARGS_DECL);
+      u32 mbaf  su_DBG_LOC_ARGS_DECL);
 
 /*! \_ */
 # define su_MEM_BAG_AUTO_ALLOCATE(BAGP,SZ,NO,F) \
@@ -307,12 +308,13 @@ EXPORT void *su_mem_bag_lofi_snap_create(struct su_mem_bag *self);
 EXPORT struct su_mem_bag *su_mem_bag_lofi_snap_unroll(struct su_mem_bag *self,
       void *cookie);
 
-/*! This is rather internal, but due to \a{mbaf} maybe handy sometimes.
+/*! This is rather internal, but due to the \r{su_mem_bag_alloc_flags}
+ * \a{mbaf} maybe handy sometimes.
  * Normally to be used through the macro interface.
  * Attempts to allocate \r{su_S32_MAX} or more bytes result in overflow errors,
  * see \r{su_MEM_BAG_ALLOC_OVERFLOW_OK} and \r{su_MEM_BAG_ALLOC_NOMEM_OK}. */
 EXPORT void *su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no,
-      enum su_mem_bag_alloc_flags mbaf  su_DBG_LOC_ARGS_DECL);
+      u32 mbaf  su_DBG_LOC_ARGS_DECL);
 
 /*! Free \a{ovp}; \r{su_HAVE_DEBUG} will log if it is not stack top. */
 EXPORT struct su_mem_bag *su_mem_bag_lofi_free(struct su_mem_bag *self,
@@ -489,9 +491,8 @@ public:
    }
 
    /*! \r{su_mem_bag_auto_allocate()} */
-   void *auto_allocate(uz size, uz no=1, alloc_flags af=alloc_none){
-      return su_mem_bag_auto_allocate(this, size, no,
-         S(enum su_mem_bag_alloc_flags,af), su_DBG_LOC_ARGS_INJ);
+   void *auto_allocate(uz size, uz no=1, u32 af=alloc_none){
+      return su_mem_bag_auto_allocate(this, size, no, af, su_DBG_LOC_ARGS_INJ);
    }
 #endif /* su_HAVE_MEM_BAG_AUTO */
 
@@ -505,9 +506,8 @@ public:
    }
 
    /*! \r{su_mem_bag_lofi_allocate()} */
-   void *lofi_allocate(uz size, uz no=1, alloc_flags af=alloc_none){
-      return su_mem_bag_lofi_allocate(this, size, no,
-         S(enum su_mem_bag_alloc_flags,af), su_DBG_LOC_ARGS_INJ);
+   void *lofi_allocate(uz size, uz no=1, u32 af=alloc_none){
+      return su_mem_bag_lofi_allocate(this, size, no, af, su_DBG_LOC_ARGS_INJ);
    }
 
    /*! \r{su_mem_bag_lofi_free()} */

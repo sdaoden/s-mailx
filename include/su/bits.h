@@ -66,31 +66,31 @@ C_DECL_BEGIN
 #define su_BITS_TOPMASK(BITS) (su_UZ_MAX >> (su_BITS_ROUNDUP(BITS) - (BITS)))
 
 /*! \_ */
-SINLINE boole su_bits_test(uz x, uz bit){
+INLINE boole su_bits_test(uz x, uz bit){
    ASSERT_RET(bit < UZ_BITS, FAL0);
    return ((x & (1lu << bit)) != 0);
 }
 
 /*! \_ */
-SINLINE uz su_bits_set(uz x, uz bit){
+INLINE uz su_bits_set(uz x, uz bit){
    ASSERT_RET(bit < UZ_BITS, x);
    return (x | (1lu << bit));
 }
 
 /*! \_ */
-SINLINE uz su_bits_flip(uz x, uz bit){
+INLINE uz su_bits_flip(uz x, uz bit){
    ASSERT_RET(bit < UZ_BITS, x);
    return (x ^ (1lu << bit));
 }
 
 /*! \_ */
-SINLINE uz su_bits_clear(uz x, uz bit){
+INLINE uz su_bits_clear(uz x, uz bit){
    ASSERT_RET(bit < UZ_BITS, x);
    return (x & ~(1lu << bit));
 }
 
 /*! \_ */
-SINLINE boole su_bits_test_and_set(uz *xp, uz bit){
+INLINE boole su_bits_test_and_set(uz *xp, uz bit){
    boole rv;
    ASSERT_RET(xp != NIL, FAL0);
    ASSERT_RET(bit < UZ_BITS, FAL0);
@@ -101,7 +101,7 @@ SINLINE boole su_bits_test_and_set(uz *xp, uz bit){
 }
 
 /*! \_ */
-SINLINE boole su_bits_test_and_flip(uz *xp, uz bit){
+INLINE boole su_bits_test_and_flip(uz *xp, uz bit){
    boole rv;
    ASSERT_RET(xp != NIL, FAL0);
    ASSERT_RET(bit < UZ_BITS, FAL0);
@@ -112,7 +112,7 @@ SINLINE boole su_bits_test_and_flip(uz *xp, uz bit){
 }
 
 /*! \_ */
-SINLINE boole su_bits_test_and_clear(uz *xp, uz bit){
+INLINE boole su_bits_test_and_clear(uz *xp, uz bit){
    boole rv;
    ASSERT_RET(xp != NIL, FAL0);
    ASSERT_RET(bit < UZ_BITS, FAL0);
@@ -123,7 +123,7 @@ SINLINE boole su_bits_test_and_clear(uz *xp, uz bit){
 }
 
 /*! \r{su_UZ_MAX} if none found. */
-SINLINE uz su_bits_find_first_set(uz x){
+INLINE uz su_bits_find_first_set(uz x){
    uz i = 0;
    if(x != 0)
       do if(x & 1)
@@ -133,7 +133,7 @@ SINLINE uz su_bits_find_first_set(uz x){
 }
 
 /*! \r{su_UZ_MAX} if none found. */
-SINLINE uz su_bits_find_last_set(uz x){
+INLINE uz su_bits_find_last_set(uz x){
    if(x != 0){
       uz i = UZ_BITS - 1;
 
@@ -145,60 +145,60 @@ SINLINE uz su_bits_find_last_set(uz x){
 }
 
 /*! \_ */
-SINLINE uz su_bits_rotate_left(uz x, uz bits){
+INLINE uz su_bits_rotate_left(uz x, uz bits){
    ASSERT_RET(bits < UZ_BITS, x);
    return ((x << bits) | (x >> (UZ_BITS - bits)));
 }
 
 /*! \_ */
-SINLINE uz su_bits_rotate_right(uz x, uz bits){
+INLINE uz su_bits_rotate_right(uz x, uz bits){
    ASSERT_RET(bits < UZ_BITS, x);
    return ((x >> bits) | (x << (UZ_BITS - bits)));
 }
 
 /*! \_ */
-SINLINE boole su_bits_array_test(uz const *xap, uz bit){
+INLINE boole su_bits_array_test(uz const *xap, uz bit){
    ASSERT_RET(xap != NIL, FAL0);
    return su_bits_test(xap[su_BITS_WHICH_OFF(bit)], su_BITS_WHICH_BIT(bit));
 }
 
 /*! \_ */
-SINLINE void su_bits_array_set(uz *xap, uz bit){
+INLINE void su_bits_array_set(uz *xap, uz bit){
    ASSERT_RET_VOID(xap != NIL);
    xap += su_BITS_WHICH_OFF(bit);
    *xap = su_bits_set(*xap, su_BITS_WHICH_BIT(bit));
 }
 
 /*! \_ */
-SINLINE void su_bits_array_flip(uz *xap, uz bit){
+INLINE void su_bits_array_flip(uz *xap, uz bit){
    ASSERT_RET_VOID(xap != NIL);
    xap += su_BITS_WHICH_OFF(bit);
    *xap = su_bits_flip(*xap, su_BITS_WHICH_BIT(bit));
 }
 
 /*! \_ */
-SINLINE void su_bits_array_clear(uz *xap, uz bit){
+INLINE void su_bits_array_clear(uz *xap, uz bit){
    ASSERT_RET_VOID(xap != NIL);
    xap += su_BITS_WHICH_OFF(bit);
    *xap = su_bits_clear(*xap, su_BITS_WHICH_BIT(bit));
 }
 
 /*! \_ */
-SINLINE boole su_bits_array_test_and_set(uz *xap, uz bit){
+INLINE boole su_bits_array_test_and_set(uz *xap, uz bit){
    ASSERT_RET(xap != NIL, FAL0);
    xap += su_BITS_WHICH_OFF(bit);
    return su_bits_test_and_set(xap, su_BITS_WHICH_BIT(bit));
 }
 
 /*! \_ */
-SINLINE boole su_bits_array_test_and_flip(uz *xap, uz bit){
+INLINE boole su_bits_array_test_and_flip(uz *xap, uz bit){
    ASSERT_RET(xap != NIL, FAL0);
    xap += su_BITS_WHICH_OFF(bit);
    return su_bits_test_and_flip(xap, su_BITS_WHICH_BIT(bit));
 }
 
 /*! \_ */
-SINLINE boole su_bits_array_test_and_clear(uz *xap, uz bit){
+INLINE boole su_bits_array_test_and_clear(uz *xap, uz bit){
    ASSERT_RET(xap != NIL, FAL0);
    xap += su_BITS_WHICH_OFF(bit);
    return su_bits_test_and_clear(xap, su_BITS_WHICH_BIT(bit));

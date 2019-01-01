@@ -70,44 +70,44 @@ EXPORT_DATA struct su_toolbox const su_cs_toolbox;
 EXPORT_DATA struct su_toolbox const su_cs_toolbox_case;
 
 /*! This actually tests for 7-bit cleanliness. */
-SINLINE boole su_cs_is_ascii(s32 x) {return (S(u32,x) <= S8_MAX);}
+INLINE boole su_cs_is_ascii(s32 x) {return (S(u32,x) <= S8_MAX);}
 
 #undef a_X
 #define a_X(X,F) \
    return (su_cs_is_ascii(X) &&\
       (su__cs_ctype[S(u32,X)] & su_CONCAT(su_CS_CTYPE_,F)) != 0)
 
-/*! \_ */
-SINLINE boole su_cs_is_alnum(s32 x) {a_X(x, ALNUM);}
-/*! \_ */
-SINLINE boole su_cs_is_alpha(s32 x) {a_X(x, ALPHA);}
-/*! \_ */
-SINLINE boole su_cs_is_blank(s32 x) {a_X(x, BLANK);}
-/*! \_ */
-SINLINE boole su_cs_is_cntrl(s32 x) {a_X(x, CNTRL);}
-/*! \_ */
-SINLINE boole su_cs_is_digit(s32 x) {a_X(x, DIGIT);}
-/*! \_ */
-SINLINE boole su_cs_is_graph(s32 x) {a_X(x, GRAPH);}
-/*! \_ */
-SINLINE boole su_cs_is_lower(s32 x) {a_X(x, LOWER);}
-/*! \_ */
-SINLINE boole su_cs_is_print(s32 x) {a_X(x, PRINT);}
-/*! \_ */
-SINLINE boole su_cs_is_punct(s32 x) {a_X(x, PUNCT);}
-/*! \_ */
-SINLINE boole su_cs_is_space(s32 x) {a_X(x, SPACE);}
-/*! \_ */
-SINLINE boole su_cs_is_upper(s32 x) {a_X(x, UPPER);}
-/*! \_ */
-SINLINE boole su_cs_is_white(s32 x) {a_X(x, WHITE);}
-/*! \_ */
-SINLINE boole su_cs_is_xdigit(s32 x) {a_X(x, XDIGIT);}
+/*! \r{su_CS_CTYPE_ALNUM}. */
+INLINE boole su_cs_is_alnum(s32 x) {a_X(x, ALNUM);}
+/*! \r{su_CS_CTYPE_ALPHA}. */
+INLINE boole su_cs_is_alpha(s32 x) {a_X(x, ALPHA);}
+/*! \r{su_CS_CTYPE_BLANK}. */
+INLINE boole su_cs_is_blank(s32 x) {a_X(x, BLANK);}
+/*! \r{su_CS_CTYPE_CNTRL}. */
+INLINE boole su_cs_is_cntrl(s32 x) {a_X(x, CNTRL);}
+/*! \r{su_CS_CTYPE_DIGIT}. */
+INLINE boole su_cs_is_digit(s32 x) {a_X(x, DIGIT);}
+/*! \r{su_CS_CTYPE_GRAPH}. */
+INLINE boole su_cs_is_graph(s32 x) {a_X(x, GRAPH);}
+/*! \r{su_CS_CTYPE_LOWER}. */
+INLINE boole su_cs_is_lower(s32 x) {a_X(x, LOWER);}
+/*! \r{su_CS_CTYPE_PRINT}. */
+INLINE boole su_cs_is_print(s32 x) {a_X(x, PRINT);}
+/*! \r{su_CS_CTYPE_PUNCT}. */
+INLINE boole su_cs_is_punct(s32 x) {a_X(x, PUNCT);}
+/*! \r{su_CS_CTYPE_SPACE}. */
+INLINE boole su_cs_is_space(s32 x) {a_X(x, SPACE);}
+/*! \r{su_CS_CTYPE_UPPER}. */
+INLINE boole su_cs_is_upper(s32 x) {a_X(x, UPPER);}
+/*! \r{su_CS_CTYPE_WHITE}. */
+INLINE boole su_cs_is_white(s32 x) {a_X(x, WHITE);}
+/*! \r{su_CS_CTYPE_XDIGIT}. */
+INLINE boole su_cs_is_xdigit(s32 x) {a_X(x, XDIGIT);}
 
 #undef a_X
 
-/*! Test \a{x} for any of the type bits given in \a{csct}. */
-SINLINE boole su_cs_is_ctype(s32 x, enum su_cs_ctype csct){
+/*! Test \a{x} for any of the \r{su_cs_ctype} bits given in \a{csct}. */
+INLINE boole su_cs_is_ctype(s32 x, u32 csct){
    return (su_cs_is_ascii(x) && (su__cs_ctype[x] & csct) != 0);
 }
 
@@ -151,7 +151,7 @@ EXPORT uz su_cs_first_of_cbuf_cbuf(char const *cp, uz cplen,
       char const *x, uz xlen);
 
 /*! \_ */
-SINLINE uz su_cs_first_of(char const *cp, char const *x){
+INLINE uz su_cs_first_of(char const *cp, char const *x){
    ASSERT_RET(cp != NIL, UZ_MAX);
    ASSERT_RET(x != NIL, UZ_MAX);
    return su_cs_first_of_cbuf_cbuf(cp, UZ_MAX, x, UZ_MAX);
@@ -164,7 +164,7 @@ SINLINE uz su_cs_first_of(char const *cp, char const *x){
 EXPORT uz su_cs_hash_cbuf(char const *buf, uz len);
 
 /*! \r{su_cs_hash_cbuf()}. */
-SINLINE uz su_cs_hash(char const *cp){
+INLINE uz su_cs_hash(char const *cp){
    ASSERT_RET(cp != NIL, 0);
    return su_cs_hash_cbuf(cp, UZ_MAX);
 }
@@ -177,7 +177,7 @@ SINLINE uz su_cs_hash(char const *cp){
 EXPORT uz su_cs_hash_case_cbuf(char const *buf, uz len);
 
 /*! \r{su_cs_hash_case_cbuf()}. */
-SINLINE uz su_cs_hash_case(char const *cp){
+INLINE uz su_cs_hash_case(char const *cp){
    ASSERT_RET(cp != NIL, 0);
    return su_cs_hash_case_cbuf(cp, UZ_MAX);
 }
@@ -228,12 +228,12 @@ EXPORT boole su_cs_starts_with_case_n(char const *cp, char const *x, uz n);
 /*! Map to lowercase equivalent, or return unchanged.
  * For convenience values beyond \c{char} are supported (e.g., \c{EOF}), they
  * are returned unchanged. */
-SINLINE s32 su_cs_to_lower(s32 x){
+INLINE s32 su_cs_to_lower(s32 x){
    return (S(u32,x) <= S8_MAX ? su__cs_tolower[x] : x);
 }
 
 /*! Uppercasing variant of \r{su_cs_to_lower()}. */
-SINLINE s32 su_cs_to_upper(s32 x){
+INLINE s32 su_cs_to_upper(s32 x){
    return (S(u32,x) <= S8_MAX ? su__cs_toupper[x] : x);
 }
 
@@ -330,9 +330,7 @@ public:
    static boole is_xdigit(s32 x) {return su_cs_is_xdigit(x);}
 
    /*! \r{su_cs_is_ctype()} */
-   static boole is_ctype(s32 x, u32 ct){
-      return su_cs_is_ctype(x, S(enum su_cs_ctype,ct));
-   }
+   static boole is_ctype(s32 x, u32 ct) {return su_cs_is_ctype(x, ct);}
 
    /*! \r{su_cs_cmp()} */
    static sz cmp(char const *cp1, char const *cp2){
@@ -415,7 +413,10 @@ public:
    static s32 to_upper(s32 c) {return su_cs_to_upper(c);}
 };
 
-/*! \r{auto_type_toolbox} specialization (also \r{cs::toolbox}; \r{su/cs.h}) */
+/*!
+ * \ingroup CS
+ * \r{auto_type_toolbox} specialization (also \r{cs::toolbox}; \r{su/cs.h})
+ */
 template<>
 class auto_type_toolbox<char*>{
 public:
@@ -425,7 +426,10 @@ public:
    }
 };
 
-/*! \r{auto_type_toolbox} specialization (also \r{cs::toolbox}; \r{su/cs.h}) */
+/*!
+ * \ingroup CS
+ * \r{auto_type_toolbox} specialization (also \r{cs::toolbox}; \r{su/cs.h})
+ */
 template<>
 class auto_type_toolbox<char const*>{
 public:

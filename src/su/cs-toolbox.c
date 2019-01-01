@@ -36,32 +36,54 @@ static void a_cstoolbox_free(void *t);
 
 /**/
 static void *a_cstoolbox_assign(void *self, void const *t);
+static uz a_cstoolbox_hash(void *self);
+static uz a_cstoolbox_hash_case(void *self);
 
 #if DVLOR(1, 0)
 static void
 a_cstoolbox_free(void *t){
-   NYD_IN;
+   NYD2_IN;
    su_FREE(t);
-   NYD_OU;
+   NYD2_OU;
 }
 #endif
 
 static void *
 a_cstoolbox_assign(void *self, void const *t){
-   NYD_IN;
+   NYD2_IN;
    su_FREE(self);
    self = su_cs_dup(t);
-   NYD_OU;
+   NYD2_OU;
    return self;
+}
+
+static uz
+a_cstoolbox_hash(void *self){
+   uz rv;
+   NYD2_IN;
+
+   rv = su_cs_hash(self);
+   NYD2_OU;
+   return rv;
+}
+
+static uz
+a_cstoolbox_hash_case(void *self){
+   uz rv;
+   NYD2_IN;
+
+   rv = su_cs_hash_case(self);
+   NYD2_OU;
+   return rv;
 }
 
 struct su_toolbox const su_cs_toolbox = su_TOOLBOX_I9R(
    &su_cs_dup, &a_cstoolbox_free, &a_cstoolbox_assign,
-   &su_cs_cmp, &su_cs_hash);
+   &su_cs_cmp, &a_cstoolbox_hash);
 
 struct su_toolbox const su_cs_toolbox_case = su_TOOLBOX_I9R(
    &su_cs_dup, &a_cstoolbox_free, &a_cstoolbox_assign,
-   &su_cs_cmp_case, &su_cs_hash_case);
+   &su_cs_cmp_case, &a_cstoolbox_hash_case);
 
 #include "su/code-ou.h"
 /* s-it-mode */

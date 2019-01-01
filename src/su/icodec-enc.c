@@ -35,7 +35,7 @@ static u8 const a_icoe_shifts[35] = {
    0, 0, 5, 0, 0, 0, 0             /* 30 .. 36 */
 };
 
-/* xxx itoa byte maps not locale aware.. */
+/* XXX itoa byte maps not locale aware.. */
 static char const a_icoe_upper[36] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 static char const a_icoe_lower[36] = "0123456789abcdefghijklmnopqrstuvwxyz";
 

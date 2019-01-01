@@ -77,7 +77,7 @@ struct su_avopt;
  * @{
  */
 
-/*! The values of these constants are ASCII control characters. */
+/*! \remarks{The values of these constants are ASCII control characters.} */
 enum su_avopt_state{
    su_AVOPT_STATE_DONE = '\0',      /*!< \_ */
    su_AVOPT_STATE_LONG = '\001',    /*!< \_ */
@@ -85,13 +85,14 @@ enum su_avopt_state{
    su_AVOPT_STATE_ERR_OPT = '\003'  /*!< \_ */
 };
 
-/*! Most fields make sense only after \r{su_avopt_parse()} has been called. */
+/*! \remarks{Most fields make sense only after \r{su_avopt_parse()} has been
+ * called (at least once).} */
 struct su_avopt{
    char const *avo_current_arg;  /*!< Current argument or \NIL. */
    s8 avo_current_opt;           /*!< Or a \r{su_avopt_state} constant. */
    u8 avo_flags;
    /*! Only useful if \r{su_AVOPT_STATE_LONG} has been returned (and can be
-    * found in \r{su_avopt::avo_current_arg}). */
+    * found in \r{su_avopt::avo_current_opt}). */
    u16 avo_current_long_idx;
    u32 avo_argc;                 /*!< Remaining count. */
    char const * const *avo_argv; /*!< Remaining entries. */

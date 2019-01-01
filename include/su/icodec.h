@@ -98,7 +98,7 @@ EXPORT u32 su_idec(void *resp, char const *cbuf, uz clen, u8 base,
       u32 idec_mode, char const **endptr_or_nil);
 
 /*! \_ */
-SINLINE u32 su_idec_cp(void *resp, char const *cp, u8 base, u32 idec_mode,
+INLINE u32 su_idec_cp(void *resp, char const *cp, u8 base, u32 idec_mode,
       char const **endptr_or_nil){
    uz len = UZ_MAX;
    ASSERT_EXEC(cp != NIL, len = 0);

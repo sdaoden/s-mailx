@@ -157,14 +157,14 @@ EXPORT boole su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE);
 EXPORT boole su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE);
 #endif
 
-/*! Rather internal, but due to \a{maf} maybe handy sometimes.
+/*! Rather internal, but due to the \r{su_mem_alloc_flags} \a{maf} maybe
+ * handy sometimes.
  * Normally to be used through the macros below */
-EXPORT void *su_mem_allocate(uz size, uz no, enum su_mem_alloc_flags maf
-      su_DBG_LOC_ARGS_DECL);
+EXPORT void *su_mem_allocate(uz size, uz no, u32 maf  su_DBG_LOC_ARGS_DECL);
 
 /*! \_ */
-EXPORT void *su_mem_reallocate(void *ovp, uz size, uz no,
-      enum su_mem_alloc_flags maf  su_DBG_LOC_ARGS_DECL);
+EXPORT void *su_mem_reallocate(void *ovp, uz size, uz no, u32 maf
+      su_DBG_LOC_ARGS_DECL);
 
 /*! \_ */
 EXPORT void su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL);
@@ -317,15 +317,16 @@ EXPORT void su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL);
 /* XXX get_usable_size_ptr(), get_memory_usage()  */
 
 /*! Most options are actually boolean flags: multiple thereof can be set or
- * cleared with one operation, the (then) \r{su_boole} \a{val} is used for all
- * of them.
+ * cleared with one operation by ORing together the according
+ * \r{su_mem_conf_option}s in \a{mco} , the (then) \r{su_boole} \a{val} will be
+ * used for all of them.
  * \list{\li{
  * \c{LINGER_FREE}: unsetting causes \c{LINGER_FREE_RELEASE} to take place.
  * }\li{
  * \c{LINGER_FREE_RELEASE} completely ignores \a{val}.
  * Using this flag will perform a \r{su_mem_check()} first.
  * }} */
-EXPORT void su_mem_set_conf(enum su_mem_conf_option mco, uz val);
+EXPORT void su_mem_set_conf(u32 mco, uz val);
 
 /*! Check all existing allocations for bound violations etc.
  * Return \TRU1 on errors, \TRUM1 on fatal errors.
@@ -445,7 +446,7 @@ public:
       alloc_min = su_MEM_ALLOC_MIN /*!< \r{su_MEM_ALLOC_MIN} */
    };
 
-   /*! \_ */
+   /*! \r{su_mem_conf_option} */
    enum conf_option{
       conf_debug = su_MEM_CONF_DEBUG, /*!< \r{su_MEM_CONF_DEBUG} */
       /*! \r{su_MEM_CONF_ON_ERROR_EMERG} */
@@ -554,9 +555,7 @@ public:
    }
 
    /*! \r{su_mem_conf_option()} */
-   static void set_conf(conf_option co, uz val){
-      su_mem_set_conf(S(enum su_mem_conf_option,co), val);
-   }
+   static void set_conf(u32 co, uz val) {su_mem_set_conf(co, val);}
 
    /*! \r{su_mem_check()} */
    static void check(void) {su_mem_check();}

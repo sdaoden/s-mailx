@@ -515,8 +515,8 @@ su_mem_bag_auto_relax_unroll(struct su_mem_bag *self){
 }
 
 void *
-su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
-      enum su_mem_bag_alloc_flags mbaf  su_DBG_LOC_ARGS_DECL){
+su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no, u32 mbaf
+      su_DBG_LOC_ARGS_DECL){
    void *rv;
    NYD_IN;
    ASSERT(self);
@@ -566,9 +566,8 @@ su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no,
          /* Ran out of usable pools.  Allocate one, and make it the serving
           * head (top) if possible */
          mbabp = su_MEM_ALLOCATE_LOC(self->mb_bsz + a_MEMBAG_BSZ_BASE, 1,
-               (S(enum su_mem_alloc_flags,mbaf &
-                  (su_MEM_BAG_ALLOC_OVERFLOW_OK | su_MEM_BAG_ALLOC_NOMEM_OK)) |
-                  su_MEM_ALLOC_MARK_AUTO),
+               ((mbaf & (su_MEM_BAG_ALLOC_OVERFLOW_OK |
+                     su_MEM_BAG_ALLOC_NOMEM_OK)) | su_MEM_ALLOC_MARK_AUTO),
                su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
          if(mbabp == NIL)
             goto jleave;
@@ -589,9 +588,8 @@ jhave_pool:;
 #if a_MEMBAG_HULL
          cp = S(char*,rv);
          rv = su_MEM_ALLOCATE_LOC(size, 1,
-               (S(enum su_mem_alloc_flags,mbaf &
-                  (su_MEM_BAG_ALLOC_OVERFLOW_OK | su_MEM_BAG_ALLOC_NOMEM_OK)) |
-               su_MEM_ALLOC_MARK_AUTO),
+               ((mbaf & (su_MEM_BAG_ALLOC_OVERFLOW_OK |
+                  su_MEM_BAG_ALLOC_NOMEM_OK)) | su_MEM_ALLOC_MARK_AUTO),
                su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
          if(rv != NIL)
             *R(void**,cp) = rv;
@@ -609,9 +607,8 @@ jhave_pool:;
 
          mbahp = su_MEM_ALLOCATE_LOC(VSTRUCT_SIZEOF(
                   struct su__mem_bag_auto_huge,mbah_buf) + chunksz, 1,
-               (S(enum su_mem_alloc_flags,mbaf &
-                  (su_MEM_BAG_ALLOC_OVERFLOW_OK | su_MEM_BAG_ALLOC_NOMEM_OK)) |
-               su_MEM_ALLOC_MARK_AUTO_HUGE),
+               ((mbaf & (su_MEM_BAG_ALLOC_OVERFLOW_OK |
+                  su_MEM_BAG_ALLOC_NOMEM_OK)) | su_MEM_ALLOC_MARK_AUTO_HUGE),
                su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
          if(UNLIKELY(mbahp == NIL))
             goto jleave;
@@ -619,9 +616,8 @@ jhave_pool:;
          rv = mbahp->mbah_buf;
 #else
          rv = su_MEM_ALLOCATE_LOC(size, 1,
-               (S(enum su_mem_alloc_flags,mbaf &
-                  (su_MEM_BAG_ALLOC_OVERFLOW_OK | su_MEM_BAG_ALLOC_NOMEM_OK)) |
-               su_MEM_ALLOC_MARK_AUTO_HUGE),
+               ((mbaf & (su_MEM_BAG_ALLOC_OVERFLOW_OK |
+                  su_MEM_BAG_ALLOC_NOMEM_OK)) | su_MEM_ALLOC_MARK_AUTO_HUGE),
                su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
          if(rv != NIL)
             *R(void**,mbahp->mbah_buf) = rv;
@@ -691,8 +687,8 @@ su_mem_bag_lofi_snap_unroll(struct su_mem_bag *self, void *cookie){
 }
 
 void *
-su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no,
-      enum su_mem_bag_alloc_flags mbaf  su_DBG_LOC_ARGS_DECL){
+su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no, u32 mbaf
+      su_DBG_LOC_ARGS_DECL){
    void *rv;
    NYD_IN;
    ASSERT(self);
@@ -742,9 +738,8 @@ su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no,
 
       /* Need a pool */
       mblpp = su_MEM_ALLOCATE_LOC(self->mb_bsz + a_MEMBAG_BSZ_BASE, 1,
-            (S(enum su_mem_alloc_flags,mbaf &
-                  (su_MEM_BAG_ALLOC_OVERFLOW_OK | su_MEM_BAG_ALLOC_NOMEM_OK)) |
-               su_MEM_ALLOC_MARK_LOFI),
+            ((mbaf & (su_MEM_BAG_ALLOC_OVERFLOW_OK |
+                  su_MEM_BAG_ALLOC_NOMEM_OK)) | su_MEM_ALLOC_MARK_LOFI),
             su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
       if(mblpp == NIL)
          goto jleave;
@@ -763,9 +758,8 @@ jhave_pool:
       else{
          cp = rv;
          rv = su_MEM_ALLOCATE_LOC(size, 1,
-               (S(enum su_mem_alloc_flags,mbaf &
-                  (su_MEM_BAG_ALLOC_OVERFLOW_OK | su_MEM_BAG_ALLOC_NOMEM_OK)) |
-                  su_MEM_ALLOC_MARK_LOFI),
+               ((mbaf & (su_MEM_BAG_ALLOC_OVERFLOW_OK |
+                     su_MEM_BAG_ALLOC_NOMEM_OK)) | su_MEM_ALLOC_MARK_LOFI),
                su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
          if(rv != NIL)
             *S(void**,mblcp->mblc_buf) = rv;

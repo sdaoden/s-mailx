@@ -188,7 +188,7 @@ su_state_err(uz state, char const *msg_or_nil){
       lvl = su_LOG_EMERG;
       goto jdolog;
    }
-   lvl = state & su__STATE_LOG_MASK;
+   lvl = S(enum su_log_level,state & su__STATE_LOG_MASK);
    if(state & su_STATE_ERR_PASS){
       lvl = su_LOG_DEBUG;
       goto jlog_check;
