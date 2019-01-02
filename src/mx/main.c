@@ -159,6 +159,7 @@ a_main_usage(FILE *fp){
    if(fp != n_stderr)
       putc('\n', fp);
 
+   /* (ISO C89 string length) */
    fprintf(fp, _(
          ". -d sandbox, -:/ no .rc files, -. end options and force send-mode\n"
          ". -a attachment[=input-charset[#output-charset]]\n"
@@ -167,7 +168,8 @@ a_main_usage(FILE *fp){
          ". -e only mail check, -H header summary; "
             "both: message specification via -L\n"
          ". -S (un)sets variable, -X/-Y execute commands pre/post startup, "
-            "-#: batch mode\n"
+            "-#: batch mode\n"));
+   fprintf(fp, _(
          ". Features via \"$ %s -Xversion -Xx\"; there is --long-help\n"
          ". Bugs/Contact via "
             "\"$ %s -Sexpandaddr=shquote '\\$contact-mail'\"\n"),
