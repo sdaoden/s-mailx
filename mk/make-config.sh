@@ -1356,8 +1356,9 @@ if [ -z "${VERBOSE}" ]; then
    printf -- "ECHO_GEN = @echo '  'GEN \$(@);\n" >> ${newmk}
    printf -- "ECHO_TEST = @\n" >> ${newmk}
    printf -- "ECHO_CMD = @echo '  CMD';\n" >> ${newmk}
-   printf -- "ECHO_BLOCK_BEGIN = @( \n" >> ${newmk}
-   printf -- "ECHO_BLOCK_END = ) >/dev/null\n" >> ${newmk}
+   printf -- "ECHO_BLOCK_BEGIN = @(exec 4>&1 1>/dev/null;\n" >> ${newmk}
+   printf -- "ECHO_BLOCK_END = )\n" >> ${newmk}
+   printf -- "ECHO_BLOCK_CMD = echo '  CMD' >&4;\n" >> ${newmk}
 fi
 printf 'test: all\n\t$(ECHO_TEST)%s %smx-test.sh --check-only %s\n' \
    "${SHELL}" "${TOPDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}

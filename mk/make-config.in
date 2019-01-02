@@ -194,32 +194,31 @@ install:
 	__mkdir() {\
 		_dir="$(DESTDIR)$${1}";\
 		if [ -d "$${_dir}" ]; then :; else \
-			$(mkdir) -m 0755 -p "$${_dir}";\
+			$(ECHO_BLOCK_CMD)$(mkdir) -m 0755 -p "$${_dir}";\
 		fi;\
 	};\
 	__copyfile() {\
 		_mode=$${1} _src=$${2} _xdst=$${3} _dst="$(DESTDIR)$${3}";\
 		echo "rm -f \"\$${DESTDIR}$${_xdst}\"" >> \
 			"$(OBJDIR)/$(VAL_UAGENT)-uninstall.sh";\
-		$(cp) -f "$${_src}" "$${_dst}";\
-		$(chmod) $${_mode} "$${_dst}";\
-		\
+		$(ECHO_BLOCK_CMD)$(cp) -f "$${_src}" "$${_dst}";\
+		$(ECHO_BLOCK_CMD)$(chmod) $${_mode} "$${_dst}";\
 	};\
 	__copychownfile() {\
 		_mode=$${1} _ident=$${2} _src=$${3} \
 			_xdst=$${4} _dst="$(DESTDIR)$${4}";\
 		echo "rm -f \"\$${DESTDIR}$${_xdst}\"" >> \
 			"$(OBJDIR)/$(VAL_UAGENT)-uninstall.sh";\
-		$(cp) -f "$${_src}" "$${_dst}";\
-		$(chown) $${_ident} "$${_dst}" || true;\
-		$(chmod) $${_mode} "$${_dst}";\
+		$(ECHO_BLOCK_CMD)$(cp) -f "$${_src}" "$${_dst}";\
+		$(ECHO_BLOCK_CMD)$(chown) $${_ident} "$${_dst}" || true;\
+		$(ECHO_BLOCK_CMD)$(chmod) $${_mode} "$${_dst}";\
 		\
 	};\
 	__stripfile() {\
 		_file=$${1};\
 		if [ "$(OPT_DEBUG)" != 0 ]; then :;\
 		elif [ -n "$(HAVE_STRIP)" ]; then \
-			$(strip) "$${_file}";\
+			$(ECHO_BLOCK_CMD)$(strip) "$${_file}";\
 		fi;\
 	};\
 	\
