@@ -458,6 +458,7 @@ public:
 
    /*! \r{su_mem_bag_create()} */
    mem_bag(uz bsz=0) {su_mem_bag_create(this, bsz);}
+
    /*! \r{su_mem_bag_gut()} */
    ~mem_bag(void) {su_mem_bag_gut(this);}
 

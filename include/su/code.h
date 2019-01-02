@@ -1140,21 +1140,26 @@ EXPORT_DATA char const *su_program;
 
 /*! Interaction with the SU library \r{su_state_flags} machine.
  * The last to be called once one of the \c{STATE_ERR*} conditions occurred,
- * it returns (if it returns) the corresponding \r{su_err_number} */
+ * it returns (if it returns) the corresponding \r{su_err_number}. */
 INLINE boole su_state_has(uz flags){
    return ((su__state & (flags & su__STATE_USER_MASK)) != 0);
 }
+
 /*! \_ */
 INLINE void su_state_set(uz flags) {su__state |= flags & su__STATE_USER_MASK;}
+
 /*! \_ */
 INLINE void su_state_clear(uz flags){
    su__state &= ~(flags & su__STATE_USER_MASK);
 }
-/*! Notify an error to the \SU state machine; see \r{su_STATE_ERR_NOMEM}. */
+
+/*! Notify an error to the \SU state machine; see \r{su_STATE_ERR_NOMEM}.
+ * The return value is the corresponding \r{su_err_number}. */
 EXPORT s32 su_state_err(uz state, char const *msg_or_nil);
 
 /*! \_ */
 EXPORT s32 su_err_no(void);
+
 /*! \_ */
 EXPORT s32 su_err_set_no(s32 eno);
 
@@ -1162,6 +1167,7 @@ EXPORT s32 su_err_set_no(s32 eno);
  * This is effectively identical to \r{su_err_name()} if the compile-time
  * option \r{su_HAVE_DOCSTRINGS} is missing. */
 EXPORT char const *su_err_doc(s32 eno);
+
 /*! \_ */
 EXPORT char const *su_err_name(s32 eno);
 
@@ -1176,6 +1182,7 @@ EXPORT s32 su_err_no_via_errno(void);
 INLINE enum su_log_level su_log_get_level(void){
    return S(enum su_log_level,su__state & su__STATE_LOG_MASK);
 }
+
 /*! \_ */
 INLINE void su_log_set_level(enum su_log_level nlvl){
    su__state = (su__state & su__STATE_USER_MASK) |
@@ -1185,6 +1192,7 @@ INLINE void su_log_set_level(enum su_log_level nlvl){
 /*! Log functions of various sort.
  * Regardless of the level these also log if \c{STATE_DEBUG|STATE_VERBOSE}. */
 EXPORT void su_log_write(enum su_log_level lvl, char const *fmt, ...);
+
 /*! See \r{su_log_write()}.  The vp is a &va_list. */
 EXPORT void su_log_vwrite(enum su_log_level lvl, char const *fmt, void *vp);
 
@@ -1503,8 +1511,10 @@ class bom{
 public:
    /*! \r{su_BOM} */
    static u16 host(void) {return su_BOM;}
+
    /*! \r{su_bom_little} */
    static u16 little(void) {return su_bom_little;}
+
    /*! \r{su_bom_big} */
    static u16 big(void) {return su_bom_big;}
 };
@@ -1525,13 +1535,16 @@ public:
 
    /*! \r{su_err_no()} */
    static s32 no(void) {return su_err_no();}
+
    /*! \r{su_err_set_no()} */
    static void set_no(s32 eno) {su_err_set_no(eno);}
 
    /*! \r{su_err_doc()} */
    static char const *doc(s32 eno) {return su_err_doc(eno);}
+
    /*! \r{su_err_name()} */
    static char const *name(s32 eno) {return su_err_name(eno);}
+
    /*! \r{su_err_from_name()} */
    static s32 from_name(char const *name) {return su_err_from_name(name);}
 
@@ -1559,14 +1572,18 @@ public:
    // The vp is a &va_list
    /*! \r{su_log_get_level()} */
    static level get_level(void) {return S(level,su_log_get_level());}
+
    /*! \r{su_log_set_level()} */
    static void set_level(level lvl) {su_log_set_level(S(su_log_level,lvl));}
+
    /*! \r{su_log_write()} */
    static void write(level lvl, char const *fmt, ...);
+
    /*! \r{su_log_vwrite()} */
    static void vwrite(level lvl, char const *fmt, void *vp){
       su_log_vwrite(S(enum su_log_level,lvl), fmt, vp);
    }
+
    /*! \r{su_perr()} */
    static void perr(char const *msg, s32 eno_or_0) {su_perr(msg, eno_or_0);}
 };
@@ -1591,15 +1608,15 @@ public:
       err_noerrno = su_STATE_ERR_NOERRNO /*!< \r{su_STATE_ERR_NOERRNO} */
    };
 
-   // Interaction with the SU library "enum state" machine.
-   // The last to be called once one of the state_err* conditions occurred
-   // it returns (if it returns) the corresponding enum \r{su_err_number}
    /*! \r{su_state_has()} */
    static boole has(uz state) {return su_state_has(state);}
+
    /*! \r{su_state_set()} */
    static void set(uz state) {su_state_set(state);}
+
    /*! \r{su_state_clear()} */
    static void clear(uz state) {su_state_clear(state);}
+
    /*! \r{su_state_err()} */
    static s32 err(uz state, char const *msg_or_nil=NIL){
       return su_state_err(state, msg_or_nil);

@@ -79,28 +79,40 @@ INLINE boole su_cs_is_ascii(s32 x) {return (S(u32,x) <= S8_MAX);}
 
 /*! \r{su_CS_CTYPE_ALNUM}. */
 INLINE boole su_cs_is_alnum(s32 x) {a_X(x, ALNUM);}
+
 /*! \r{su_CS_CTYPE_ALPHA}. */
 INLINE boole su_cs_is_alpha(s32 x) {a_X(x, ALPHA);}
+
 /*! \r{su_CS_CTYPE_BLANK}. */
 INLINE boole su_cs_is_blank(s32 x) {a_X(x, BLANK);}
+
 /*! \r{su_CS_CTYPE_CNTRL}. */
 INLINE boole su_cs_is_cntrl(s32 x) {a_X(x, CNTRL);}
+
 /*! \r{su_CS_CTYPE_DIGIT}. */
 INLINE boole su_cs_is_digit(s32 x) {a_X(x, DIGIT);}
+
 /*! \r{su_CS_CTYPE_GRAPH}. */
 INLINE boole su_cs_is_graph(s32 x) {a_X(x, GRAPH);}
+
 /*! \r{su_CS_CTYPE_LOWER}. */
 INLINE boole su_cs_is_lower(s32 x) {a_X(x, LOWER);}
+
 /*! \r{su_CS_CTYPE_PRINT}. */
 INLINE boole su_cs_is_print(s32 x) {a_X(x, PRINT);}
+
 /*! \r{su_CS_CTYPE_PUNCT}. */
 INLINE boole su_cs_is_punct(s32 x) {a_X(x, PUNCT);}
+
 /*! \r{su_CS_CTYPE_SPACE}. */
 INLINE boole su_cs_is_space(s32 x) {a_X(x, SPACE);}
+
 /*! \r{su_CS_CTYPE_UPPER}. */
 INLINE boole su_cs_is_upper(s32 x) {a_X(x, UPPER);}
+
 /*! \r{su_CS_CTYPE_WHITE}. */
 INLINE boole su_cs_is_white(s32 x) {a_X(x, WHITE);}
+
 /*! \r{su_CS_CTYPE_XDIGIT}. */
 INLINE boole su_cs_is_xdigit(s32 x) {a_X(x, XDIGIT);}
 
@@ -113,11 +125,13 @@ INLINE boole su_cs_is_ctype(s32 x, u32 csct){
 
 /*! String comparison, byte-based, case-sensitive. */
 EXPORT sz su_cs_cmp(char const *cp1, char const *cp2);
+
 /*! \r{su_cs_cmp()}, size-cramped. */
 EXPORT sz su_cs_cmp_n(char const *cp1, char const *cp2, uz n);
 
 /*! String comparison, byte-based, case-insensitive. */
 EXPORT sz su_cs_cmp_case(char const *cp1, char const *cp2);
+
 /*! \r{su_cs_cmp_case()}, size-cramped. */
 EXPORT sz su_cs_cmp_case_n(char const *cp1, char const *cp2, uz n);
 
@@ -133,12 +147,14 @@ EXPORT char *su_cs_copy_n(char *dst, char const *src, uz n);
  * May return \NIL for \r{su_STATE_ERR_NOMEM} or \r{su_STATE_ERR_OVERFLOW},
  * depending on the global \r{su_state_has()}. */
 EXPORT char *su_cs_dup_cbuf(char const *buf, uz len);
+
 /*! \r{su_cs_dup_cbuf()}. */
 EXPORT char *su_cs_dup(char const *cp);
 
 /*! Search \a{x} within \a{cp}, return pointer to location or \NIL.
  * Returns \a{cp} if \a{x} is the empty buffer. */
 EXPORT char *su_cs_find(char const *cp, char const *x);
+
 /*! Search \a{x} within \a{cp}, return pointer to location or \NIL. */
 EXPORT char *su_cs_find_c(char const *cp, char x);
 
@@ -187,6 +203,7 @@ EXPORT uz su_cs_len(char const *cp);
 
 /*! Copy \a{src} to \a{dst}, return pointer to NUL in \a{dst}. */
 EXPORT char *su_cs_pcopy(char *dst, char const *src);
+
 /*! Copy \a{src} to \a{dst}, return pointer to NUL in \a{dst}.
  * Returns \NIL if \a{dst} is not large enough; \a{dst} will always be
  * terminated unless \a{n} was 0 on entry. */
@@ -304,28 +321,40 @@ public:
 
    /*! \r{su_cs_is_alnum()} */
    static boole is_alnum(s32 x) {return su_cs_is_alnum(x);}
+
    /*! \r{su_cs_is_alpha()} */
    static boole is_alpha(s32 x) {return su_cs_is_alpha(x);}
+
    /*! \r{su_cs_is_blank()} */
    static boole is_blank(s32 x) {return su_cs_is_blank(x);}
+
    /*! \r{su_cs_is_cntrl()} */
    static boole is_cntrl(s32 x) {return su_cs_is_cntrl(x);}
+
    /*! \r{su_cs_is_digit()} */
    static boole is_digit(s32 x) {return su_cs_is_digit(x);}
+
    /*! \r{su_cs_is_graph()} */
    static boole is_graph(s32 x) {return su_cs_is_graph(x);}
+
    /*! \r{su_cs_is_lower()} */
    static boole is_lower(s32 x) {return su_cs_is_lower(x);}
+
    /*! \r{su_cs_is_print()} */
    static boole is_print(s32 x) {return su_cs_is_print(x);}
+
    /*! \r{su_cs_is_punct()} */
    static boole is_punct(s32 x) {return su_cs_is_punct(x);}
+
    /*! \r{su_cs_is_space()} */
    static boole is_space(s32 x) {return su_cs_is_space(x);}
+
    /*! \r{su_cs_is_upper()} */
    static boole is_upper(s32 x) {return su_cs_is_upper(x);}
+
    /*! \r{su_cs_is_white()} */
    static boole is_white(s32 x) {return su_cs_is_white(x);}
+
    /*! \r{su_cs_is_xdigit()} */
    static boole is_xdigit(s32 x) {return su_cs_is_xdigit(x);}
 
@@ -336,6 +365,7 @@ public:
    static sz cmp(char const *cp1, char const *cp2){
       return su_cs_cmp(cp1, cp2);
    }
+
    /*! \r{su_cs_cmp_n()} */
    static sz cmp(char const *cp1, char const *cp2, uz n){
       return su_cs_cmp_n(cp1, cp2, n);
@@ -345,6 +375,7 @@ public:
    static sz cmp_case(char const *cp1, char const *cp2){
       return su_cs_cmp_case(cp1, cp2);
    }
+
    /*! \r{su_cs_cmp_case_n()} */
    static sz cmp_case(char const *cp1, char const *cp2, uz n){
       return su_cs_cmp_case_n(cp1, cp2, n);
@@ -357,16 +388,19 @@ public:
 
    /*! \r{su_cs_dup_cbuf()} */
    static char *dup(char const *buf, uz len) {return su_cs_dup_cbuf(buf, len);}
+
    /*! \r{su_cs_dup()} */
    static char *dup(char const *cp) {return su_cs_dup(cp);}
 
    /*! \r{su_cs_find()} */
    static char *find(char const *cp, char const *x) {return su_cs_find(cp, x);}
+
    /*! \r{su_cs_find_c()} */
    static char *find(char const *cp, char x) {return su_cs_find_c(cp, x);}
 
    /*! \r{su_cs_hash_cbuf()} */
    static uz hash(char const *buf, uz len) {return su_cs_hash_cbuf(buf, len);}
+
    /*! \r{su_cs_hash()} */
    static uz hash(char const *cp) {return su_cs_hash(cp);}
 
@@ -374,6 +408,7 @@ public:
    static uz hash_case(char const *buf, uz len){
       return su_cs_hash_case_cbuf(buf, len);
    }
+
    /*! \r{su_cs_hash_case()} */
    static uz hash_case(char const *cp) {return su_cs_hash_case(cp);}
 
@@ -384,6 +419,7 @@ public:
    static char *pcopy(char *dst, char const *src){
       return su_cs_pcopy(dst, src);
    }
+
    /*! \r{su_cs_pcopy_n()} */
    static char *pcopy(char *dst, char const *src, uz n){
       return su_cs_pcopy_n(dst, src, n);
@@ -409,6 +445,7 @@ public:
 
    /*! \r{su_cs_to_lower()} */
    static s32 to_lower(s32 c) {return su_cs_to_lower(c);}
+
    /*! \r{su_cs_to_upper()} */
    static s32 to_upper(s32 c) {return su_cs_to_upper(c);}
 };
