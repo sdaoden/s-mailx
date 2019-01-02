@@ -1,6 +1,4 @@
 /*@ Implementation of avopt.h.
- *@ TODO Add the doc array, provide an easy iter function with short/long/doc
- *@ TODO tuples for the purpose of a --long-help.
  *
  * Copyright (c) 2001 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
@@ -103,12 +101,22 @@ su_avopt_setup(struct su_avopt *self, u32 argc, char const * const *argv,
                   "strings are unsupported\n");
             }else do{
                if(*cp == ';'){
-                  if(cp == self->avo_opts_long[i] ||
-                        cp[1] == '\0' || cp[2] != '\0'){
+                  /* Empty option, or no equivalence? */
+                  if(cp == self->avo_opts_long[i] || cp[1] == '\0'){
+jelong_semicolon:
                      self->avo_flags &= ~a_AVOPT_LONG;
                      su_log_write(su_LOG_CRIT, "su_avopt_setup(): invalid "
-                        "semicolon in long option string: %s\n",
+                        "semicolon usage in long option string: %s\n",
                         self->avo_opts_long[i]);
+                  }
+                  /* Could only indicate documentation string, too */
+                  else if(cp[1] == ';'){
+                     ;
+                  }
+                  /* Otherwise we require an equivalence, optionally followed
+                   * by documentation */
+                  else if(cp[2] != '\0' && cp[2] != ';'){
+                     goto jelong_semicolon;
                   }else if(cp[1] == su_AVOPT_STATE_DONE ||
                         cp[1] == su_AVOPT_STATE_LONG ||
                         cp[1] == su_AVOPT_STATE_ERR_OPT ||
@@ -118,18 +126,19 @@ su_avopt_setup(struct su_avopt *self, u32 argc, char const * const *argv,
                         "equivalence byte shadows enum su_avopt_state: %s\n",
                         self->avo_opts_long[i]);
                   }else if(self->avo_flags & a_AVOPT_SHORT){
+                     char const *osp;
                      char sopt;
                      boole wantsopt;
 
                      wantsopt = (cp[-1] == ':');
                      sopt = cp[1];
 
-                     for(cp = self->avo_opts_short; *cp != '\0'; ++cp){
-                        if(*cp != sopt){
-                           if(cp[1] == ':')
-                              ++cp;
+                     for(osp = self->avo_opts_short; *osp != '\0'; ++osp){
+                        if(*osp != sopt){
+                           if(osp[1] == ':')
+                              ++osp;
                         }else{
-                           if((cp[1] == ':') != wantsopt){
+                           if((osp[1] == ':') != wantsopt){
                               self->avo_flags &= ~a_AVOPT_LONG;
                               su_log_write(su_LOG_CRIT, "su_avopt_setup(): "
                                  "long option %s argument, short does%s: %s\n",
@@ -144,11 +153,11 @@ su_avopt_setup(struct su_avopt *self, u32 argc, char const * const *argv,
                   break;
                }else if(*cp == ':'){
                   if(cp == self->avo_opts_long[i])
-                     goto jelongcolon;
+                     goto jelong_colon;
                   if(cp[1] != '\0'){
                      if(cp[1] == ';')
                         continue;
-jelongcolon:
+jelong_colon:
                      self->avo_flags &= ~a_AVOPT_LONG;
                      su_log_write(su_LOG_CRIT, "su_avopt_setup(): invalid "
                         "colon in long option string: %s\n",
@@ -263,8 +272,8 @@ jlong_outer:
          self->avo_current_long_idx = P2UZ(opta - self->avo_opts_long) - 1;
 
          /* Short option equivalence instead of su_AVOPT_STATE_LONG? */
-         if(*opt == ';')
-            rv = *++opt;
+         if(*opt == ';' && *++opt != ';')
+            rv = *opt;
       }
    }else if(UNLIKELY((flags & a_AVOPT_SHORT) == 0))
       goto jerropt;
@@ -333,6 +342,63 @@ jerrarg:
    flags |= a_AVOPT_ERR_ARG;
    rv = su_AVOPT_STATE_ERR_ARG;
    goto jleave;
+}
+
+boole
+su_avopt_dump_doc(struct su_avopt const *self,
+      boole (*ptf)(up cookie, boole has_arg, char const *sopt,
+         char const *lopt, char const *doc), up cookie){
+   char s_so[8], s_lo[128];
+   char const * const *opta, *opt, *cp;
+   uz l;
+   boole rv;
+   NYD_IN;
+   ASSERT(self);
+   ASSERT_NYD_RET(ptf != NIL, rv = TRU1);
+
+   rv = TRU1;
+
+   if(self->avo_flags & a_AVOPT_LONG){
+      s_so[2] = '\0';
+      s_lo[0] = s_lo[1] = '-';
+
+      for(opta = self->avo_opts_long; (opt = *opta++) != NIL;){
+         cp = opt;
+
+         while(*++opt != '\0')
+            if(*opt == ':' || *opt == ';')
+               break;
+         l = P2UZ(opt - cp);
+         if(l > sizeof(s_lo) - 2 -1)
+            l = sizeof(s_lo) - 2 -1;
+         su_mem_copy(&s_lo[2], cp, l);
+         s_lo[l += 2] = '\0';
+
+         /* Have it: argument? */
+         if((rv = (*opt == ':')))
+            ++opt;
+
+         /* (Actual) Short option equivalence? */
+         s_so[0] = '\0';
+         if(*opt == ';' && *++opt != ';'){
+            if(su_cs_is_print(*opt)){
+               s_so[0] = '-';
+               s_so[1] = *opt;
+            }
+            ++opt;
+         }
+
+         /* Documentation? */
+         if(*opt == ';')
+            ++opt;
+         else
+            opt = su_empty;
+
+         rv = (*ptf)(cookie, rv, s_so, s_lo, opt);
+      }
+   }
+   NYD_OU;
+   return rv;
 }
 
 #include "su/code-ou.h"

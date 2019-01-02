@@ -127,6 +127,21 @@ EXPORT struct su_avopt *su_avopt_setup(struct su_avopt *self,
  * detected. */
 EXPORT s8 su_avopt_parse(struct su_avopt *self);
 
+/*! If there are long options, query them all in order and dump them via the
+ * given pointer to function \a{ptf}.
+ * If there is a short option equivalence, \a{sopt} is not the empty string.
+ * Options will be preceeded with \c{-} and \c{--}, respectively.
+ * Stops when \a{ptf} returns \FAL0, otherwise returns \TRU1.
+ *
+ * \remarks{The long option string is copied over to a stack buffer of 128
+ * bytes (\a{lopt}), any excess is cut off.}
+ *
+ * \remarks{The documentation string \a{doc} always points to a byte in the
+ * corresponding long option string passed in by the user.} */
+EXPORT boole su_avopt_dump_doc(struct su_avopt const *self,
+      boole (*ptf)(up cookie, boole has_arg, char const *sopt,
+         char const *lopt, char const *doc), up cookie);
+
 /*! @} */
 C_DECL_END
 #include <su/code-ou.h>
@@ -189,6 +204,12 @@ public:
 
    /*! \r{su_avopt::avo_opts_long} */
    char const * const *opts_long(void) const {return avo_opts_long;}
+
+   /*! \r{su_avopt_dump_doc()} */
+   boole dump_doc(boole (*ptf)(up cookie, boole has_arg, char const *sopt,
+         char const *lopt, char const *doc), up cookie=NIL) const{
+      return su_avopt_dump_doc(this, ptf, cookie);
+   }
 };
 
 NSPC_END(su)

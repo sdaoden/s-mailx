@@ -81,6 +81,8 @@ VL char const n_at[2] = "@";
 
 /* */
 static void a_main_usage(FILE *fp);
+static su_boole a_main_dump_doc(su_up cookie, su_boole has_arg,
+      char const *sopt, char const *lopt, char const *doc);
 
 /* Perform basic startup initialization */
 static void a_main_startup(void);
@@ -164,13 +166,31 @@ a_main_usage(FILE *fp){
          ". -[Mmqt]: special input data (-t: template message on stdin)\n"
          ". -e only mail check, -H header summary; "
             "both: message specification via -L\n"
-         ". -S (un)sets variable, -X and -Y execute commands early/late, "
+         ". -S (un)sets variable, -X/-Y execute commands pre/post startup, "
             "-#: batch mode\n"
-         ". Features via \"$ %s -Xversion -Xx\"\n"
+         ". Features via \"$ %s -Xversion -Xx\"; there is --long-help\n"
          ". Bugs/Contact via "
             "\"$ %s -Sexpandaddr=shquote '\\$contact-mail'\"\n"),
          su_program, su_program);
    n_NYD2_OU;
+}
+
+static su_boole
+a_main_dump_doc(su_up cookie, su_boole has_arg, char const *sopt,
+      char const *lopt, char const *doc){
+   char const *x1, *x2;
+   n_NYD2_IN;
+
+   if(has_arg)
+      /* I18N: describing arguments to command line options */
+      x1 = (sopt[0] != '\0' ? _(" ARG, ") : sopt), x2 = _("=ARG");
+   else
+      /* I18N: separating command line options */
+      x1 = (sopt[0] != '\0' ? _(", ") : sopt), x2 = su_empty;
+   /* I18N: short option, "[ ARG], " separator, long option [=ARG], doc */
+   fprintf(su_S(FILE*,cookie), _("%s%s%s%s: %s\n"), sopt, x1, lopt, x2, doc);
+   n_NYD2_OU;
+   return TRU1;
 }
 
 static void
@@ -594,27 +614,36 @@ main(int argc, char *argv[]){
    static char const a_sopts[] =
          "::A:a:Bb:C:c:DdEeFfHhiL:M:m:NnO:q:Rr:S:s:tu:VvX:Y:~#.";
    static char const * const a_lopts[] = {
-      "resource-files:;:",
-      "account:;A", "attach:;a",
-      "bcc:;b",
-      "custom-header:;C", "cc:;c",
-      "disconnected;D", "debug;d",
-      "discard-empty-messages;E", "check-and-exit;e",
-      "file;f",
-      "header-summary;H", "help;h",
-      "header-search:;L",
-      "no-header-summary;N",
-      "quote-file:;q",
-      "read-only;R", "from-address:;r",
-      "set:;S", "subject:;s",
-      "template;t",
-      "inbox-of:;u",
-      "version;V", "verbose;v",
-      "startup-command:;X",
-      "command:;Y",
-      "enable-command-escapes;~",
-      "batch-mode;#",
-      "end-options;.",
+      "resource-files:;:;" N_("control loading of resource files"),
+      "account:;A;" N_("execute an `account command'"),
+         "attach:;a;" N_("attach a file to message to be sent"),
+      "bcc:;b;" N_("add blind carbon copy recipient"),
+      "custom-header:;C;" N_("create custom header (\"field: body\")"),
+         "cc:;c;" N_("add carbon copy recipient"),
+      "disconnected;D;" N_("identical to -Sdisconnected"),
+         "debug;d;" N_("identical to -Sdebug"),
+      "discard-empty-messages;E;" N_("identical to -Sskipemptybody"),
+         "check-and-exit;e;" N_("note mail presence (of -L) via exit status"),
+      "file;f;" N_("open secondary mailbox (or \"file\" last on command line"),
+      "header-summary;H;" N_("is to be displayed (for given file) only"),
+         "help;h;" N_("short help"),
+      "header-search:;L;" N_("like -H (or -e) for the given \"spec\" only"),
+      "no-header-summary;N;" N_("identical to -Snoheader"),
+      "quote-file:;q;" N_("initialize body of message to be sent with a file"),
+      "read-only;R;" N_("any mailbox file will be opened read-only"),
+         "from-address:;r;" N_("set source address used by MTAs (+ -Sfrom)"),
+      "set:;S;" N_("set one of the INTERNAL VARIABLES (unset via \"noARG\")"),
+         "subject:;s;" N_("specify subject of message to be sent"),
+      "template;t;" N_("message to be sent is read from standard input"),
+      "inbox-of:;u;" N_("initially open primary mailbox of the given user"),
+      "version;V;" N_("print version (more so with \"[-v] -Xversion -Xx\")"),
+         "verbose;v;" N_("identical to -Sverbose (twice for more verbosity)"),
+      "startup-cmd:;X;" N_("to be executed before normal operation"),
+      "cmd:;Y;" N_("to be executed under normal operation (is \"input\")"),
+      "enable-cmd-escapes;~;" N_("even in non-interactive compose mode"),
+      "batch-mode;#;" N_("more confined non-interactive setup"),
+      "end-options;.;" N_("force the end of options, and send mode"),
+      "long-help;\201;" N_("this listing"),
       NULL
    };
    struct su_avopt avo;
@@ -651,7 +680,10 @@ main(int argc, char *argv[]){
    su_program = argv[0];
    a_main_startup();
 
-   /* Command line parsing */
+   /* Command line parsing.
+    * XXX We could parse silently to grasp the actual mode (send, receive
+    * XXX with/out -f, then use an according option array.  This would ease
+    * XXX the interdependency checking necessities! */
    su_avopt_setup(&avo, --argc, su_C(char const*const*,++argv),
       a_sopts, a_lopts);
    while((i = su_avopt_parse(&avo)) != su_AVOPT_STATE_DONE){
@@ -734,7 +766,13 @@ main(int argc, char *argv[]){
          n_poption |= n_PO_HEADERSONLY;
          break;
       case 'h':
+      case (char)(su_u8)'\201':
          a_main_usage(n_stdout);
+         if(i != 'h'){
+            fprintf(n_stdout, "\nLong options:\n");
+            (void)su_avopt_dump_doc(&avo, &a_main_dump_doc,
+               su_S(su_up,n_stdout));
+         }
          goto j_leave;
       case 'i':
          /* Ignore interrupts */

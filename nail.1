@@ -435,7 +435,9 @@ This mode does not honour
 .
 .Mx
 .It Fl h , Fl Fl help
-Show a short usage summary.
+Show a brief usage summary; use
+.Fl Fl long-help
+for a list long options.
 .
 .Mx
 .It Fl i
@@ -724,7 +726,7 @@ enables display of some informational context messages.
 Using it twice increases the level of verbosity.
 .
 .Mx
-.It Fl X Ar cmd , Fl Fl startup-command Ns =..
+.It Fl X Ar cmd , Fl Fl early-cmd Ns =..
 Add the given (or multiple for a multiline argument)
 .Ar cmd
 to a list of commands to be executed before normal operation starts.
@@ -736,7 +738,7 @@ and
 .Va errexit .
 .
 .Mx
-.It Fl Y Ar cmd , Fl Fl command Ns =..
+.It Fl Y Ar cmd , Fl Fl cmd Ns =..
 Add the given (or multiple for a multiline argument)
 .Ar cmd
 to a list of commands to be executed after normal operation has started.
@@ -747,7 +749,7 @@ In conjunction with
 they will be evaluated after the template mail has been fully read.
 .
 .Mx
-.It Fl ~ , Fl Fl enable-command-escapes
+.It Fl ~ , Fl Fl enable-cmd-escapes
 Enable
 .Sx "COMMAND ESCAPES"
 in compose mode even in non-interactive use cases.
