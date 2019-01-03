@@ -7433,8 +7433,9 @@ settings and character sets, effectively assuming ASCII data.
 .It Cm length
 Queries the length of the given argument.
 .
-.It Cm hash
+.It Cm hash , Cm hash32
 Calculates the Chris Torek hash of the given argument.
+The latter will return a 32-bit result regardless of host environment.
 .
 .It Cm find
 Byte-searches in the first for the second argument.

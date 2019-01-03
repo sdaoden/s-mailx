@@ -70,10 +70,10 @@
 /* Special "pseudo macro" that stabs you from the back */
 #define a_AMV_MACKY_MACK ((struct a_amv_mac*)-1)
 
-/* Note: changing the hash function must be reflected in `vexpr' "hash",
+/* Note: changing the hash function must be reflected in `vexpr' "hash32",
  * because that is used by the hashtable creator scripts! */
 #define a_AMV_PRIME HSHSIZE
-#define a_AMV_NAME2HASH(N) su_cs_hash(N)
+#define a_AMV_NAME2HASH(N) ((ui32_t)su_cs_hash(N))
 #define a_AMV_HASH2PRIME(H) ((H) % a_AMV_PRIME)
 
 enum a_amv_mac_flags{
@@ -3755,12 +3755,15 @@ jenum_plusminus:
       if(UICMP(64, i, >, SI64_MAX))
          goto jestr_overflow;
       lhv = (si64_t)i;
-   }else if(su_cs_starts_with_case("hash", cp)){
+   }else if((lhv = 0, su_cs_starts_with_case("hash", cp)) ||
+         (++lhv, su_cs_starts_with_case("hash32", cp))){
       f |= a_ISNUM | a_ISDECIMAL;
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
 
       i = su_cs_hash(*++argv);
+      if(lhv != 0)
+         i = (ui32_t)i;
       lhv = (si64_t)i;
    }else if(su_cs_starts_with_case("find", cp)){
       f |= a_ISNUM | a_ISDECIMAL;

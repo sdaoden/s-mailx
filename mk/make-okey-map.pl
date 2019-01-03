@@ -268,7 +268,7 @@ sub hash_em{
    die "hash_em: open: $^E"
       unless my $pid = open2 *RFD, *WFD, $MAILX;
    foreach my $e (@ENTS){
-      print WFD "vexpr hash $e->{name}\n";
+      print WFD "vexpr hash32 $e->{name}\n";
       my $h = <RFD>;
       chomp $h;
       $e->{hash} = $h
