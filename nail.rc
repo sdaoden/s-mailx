@@ -222,4 +222,11 @@ retain from_ date from to cc subject message-id mail-followup-to reply-to
 #   zst 'zstd -dc' 'zstd -19 -zc' \
 #   zst.pgp 'gpg -d | zstd -dc' 'zstd -19 -zc | gpg -e'
 
+# If mail is send from cron scripts and iconv(3) is compiled it, it could be
+# that sending fails because of invalid (according to locale) character input.
+# This undesired event can be prevented like this:
+#if ! terminal && [ "$LOGNAME" == root ]
+#   set mime-force-sendout
+#endif
+
 # s-it-mode

@@ -1371,6 +1371,7 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_b_mime_alternative_favour_rich,
    ok_v_mime_counter_evidence,         /* {posnum=1} */
    ok_v_mime_encoding,
+   ok_b_mime_force_sendout,
    ok_v_mimetypes_load_control,
    ok_v_mta,                           /* {notempty=1,defval=VAL_MTA} */
    ok_v_mta_arguments,

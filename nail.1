@@ -1133,6 +1133,7 @@ $ echo bla | \*(uA -Sexpandaddr -s test ./mbox.mbox
 $ echo bla | \*(uA -Sexpandaddr -s test '|cat >> ./mbox.mbox'
 $ echo safe | LC_ALL=C \e
     \*(uA -:/ -Sv15-compat -Ssendwait -Sttycharset=utf8 \e
+      --set mime-force-sendout \e
       -Sexpandaddr=fail,-all,+addr,failinvaddr -s test \e
       -. bob@exam.ple
 .Ed
@@ -1252,7 +1253,8 @@ to specify variables:
 .
 .Bd -literal -offset indent
 $ env LC_ALL=C \*(uA -:/ \e
-    -Sv15-compat -Ssendwait -Sttycharset=utf-8 \e
+    -Sv15-compat -Ssendwait \e
+    -Sttycharset=utf-8 -Smime-force-sendout \e
     -Sexpandaddr=fail,-all,failinvaddr \e
     -S mta=smtps://mylogin@exam.ple:465 -Ssmtp-auth=login \e
     -S from=scriptreply@exam.ple \e
@@ -1270,6 +1272,24 @@ a locale environment, the above specifies the all-compatible 7-bit clean
 .Dq C ,
 but will nonetheless take and send UTF-8 in the message text by using
 .Va ttycharset .
+If character set conversion is compiled in
+.Pf ( Va features
+includes the term
+.Ql +iconv )
+invalid (according to
+.Va ttycharset )
+character input data would normally cause errors; setting
+.Va mime-force-sendout
+will instead, as a last resort, classify the input as binary data, and
+therefore allow message creation to be successful.
+(Such content can then be inspected either by installing a
+.Va pipe-TYPE/SUBTYPE
+handler for
+.Ql application/octet-stream ,
+or possibly automatically through
+.Va mime-counter-evidence ) .
+.
+.Pp
 In interactive mode, which is introduced in the next section, messages
 can be sent by calling the
 .Ic mail
@@ -2240,6 +2260,15 @@ then the message will not be send and its text will optionally be
 .Va save Ns d
 in
 .Ev DEAD .
+If that is not acceptible, the variable
+.Va mime-force-sendout
+can be set in order to force sending of non-convertible text as
+.Ql application/octet-stream
+classified binary content instead; like this receivers still have the
+option to inspect message content (for example by setting
+.Va mime-counter-evidence ) .
+.
+.Pp
 In general, if a message saying
 .Dq cannot convert from a to b
 appears, either some characters are not appropriate for the currently
@@ -2249,8 +2278,6 @@ In the first case, it is necessary to set an appropriate
 .Ev LC_CTYPE
 locale and/or the variable
 .Va ttycharset .
-.
-.Pp
 The best results are usually achieved when \*(UA is run in a UTF-8
 locale on an UTF-8 capable terminal, in which case the full Unicode
 spectrum of characters is available.
@@ -8990,9 +9017,6 @@ environment is known to always and exclusively support UTF-8 locales),
 in which case the only supported character set is
 .Va ttycharset
 and this variable is effectively ignored.
-Refer to the section
-.Sx "Character sets"
-for the complete picture of character set conversion in \*(UA.
 .
 .Mx
 .It Va charset-unknown-8bit
@@ -10234,6 +10258,16 @@ to four bytes of output.
 This transfer-encoding is not human readable without performing
 a decoding step.
 .El
+.
+.Mx
+.It Va mime-force-sendout
+\*(BO\*(OP Whenever it is not acceptible to fail sending out messages
+because of non-convertible character content this variable may be set.
+It will, as a last resort, classify the part content as
+.Ql application/octet-stream .
+Please refer to the section
+.Sx "Character sets"
+for the complete picture of character set conversion in \*(UA.
 .
 .Mx
 .It Va mimetypes-load-control

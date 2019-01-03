@@ -87,9 +87,9 @@ static si32_t a_sendout_body(FILE *fo, FILE *fi, enum conversion convert);
 
 /* Write an attachment to the file buffer, converting to MIME */
 static si32_t a_sendout_attach_file(struct header *hp, struct attachment *ap,
-               FILE *fo);
+               FILE *fo, bool_t force);
 static si32_t a_sendout__attach_file(struct header *hp, struct attachment *ap,
-               FILE *fo);
+               FILE *f, bool_t force);
 
 /* There are non-local receivers, collect credentials etc. */
 static bool_t        _sendbundle_setup_creds(struct sendbundle *sbpm,
@@ -101,10 +101,11 @@ static si32_t a_sendout_attach_msg(struct header *hp, struct attachment *ap,
 
 /* Generate the body of a MIME multipart message */
 static si32_t make_multipart(struct header *hp, int convert, FILE *fi,
-               FILE *fo, char const *contenttype, char const *charset);
+               FILE *fo, char const *contenttype, char const *charset,
+               bool_t force);
 
 /* Prepend a header in front of the collected stuff and return the new file */
-static FILE *        infix(struct header *hp, FILE *fi);
+static FILE *        infix(struct header *hp, FILE *fi, bool_t force);
 
 /* Check whether Disposition-Notification-To: is desired */
 static bool_t        _check_dispo_notif(struct name *mdn, struct header *hp,
@@ -345,11 +346,13 @@ jleave:
 }
 
 static si32_t
-a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo)
+a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo,
+   bool_t force)
 {
    /* TODO of course, the MIME classification needs to performed once
     * TODO only, not for each and every charset anew ... ;-// */
    char *charset_iter_orig[2];
+   bool_t any;
    long offs;
    si32_t err;
    n_NYD_IN;
@@ -358,7 +361,7 @@ a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo)
 
    /* Is this already in target charset?  Simply copy over */
    if (ap->a_conv == AC_TMPFILE) {
-      err = a_sendout__attach_file(hp, ap, fo);
+      err = a_sendout__attach_file(hp, ap, fo, force);
       Fclose(ap->a_tmpf);
       su_DBG( ap->a_tmpf = NULL; )
       goto jleave;
@@ -368,7 +371,7 @@ a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo)
     * we also simply copy over, since it's the users desire */
    if (ap->a_conv == AC_FIX_INCS) {
       ap->a_charset = ap->a_input_charset;
-      err = a_sendout__attach_file(hp, ap, fo);
+      err = a_sendout__attach_file(hp, ap, fo, force);
       goto jleave;
    } else
       assert(ap->a_input_charset != NULL);
@@ -379,12 +382,17 @@ a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo)
       goto jleave;
    }
    charset_iter_recurse(charset_iter_orig);
-   for (charset_iter_reset(NULL);; charset_iter_next()) {
+   for(any = FAL0, charset_iter_reset(NULL);; any = TRU1, charset_iter_next()){
+      bool_t myforce;
+
+      myforce = FAL0;
       if (!charset_iter_is_valid()) {
-         err = su_ERR_NOENT;
-         break;
+         if(!any || !(myforce = force)){
+            err = su_ERR_NOENT;
+            break;
+         }
       }
-      err = a_sendout__attach_file(hp, ap, fo);
+      err = a_sendout__attach_file(hp, ap, fo, myforce);
       if (err == su_ERR_NONE || (err != su_ERR_ILSEQ && err != su_ERR_INVAL))
          break;
       clearerr(fo);
@@ -405,7 +413,8 @@ jleave:
 }
 
 static si32_t
-a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo)
+a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo,
+   bool_t force)
 {
    FILE *fi;
    char const *charset;
@@ -434,9 +443,16 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo)
       charset = ap->a_charset;
       convert = n_mimetype_classify_file(fi, (char const**)&ct,
          &charset, &do_iconv);
+
       if (charset == NULL || ap->a_conv == AC_FIX_INCS ||
             ap->a_conv == AC_TMPFILE)
          do_iconv = 0;
+      if(force && do_iconv){
+         convert = CONV_TOB64;
+         ap->a_content_type = ct = "application/octet-stream";
+         ap->a_charset = charset = NULL;
+         do_iconv = FAL0;
+      }
 
       if (fprintf(fo, "\n--%s\n", _sendout_boundary) < 0 ||
             a_sendout_put_ct(fo, ct, charset) < 0 ||
@@ -627,7 +643,7 @@ jerr:
 
 static si32_t
 make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
-   char const *contenttype, char const *charset)
+   char const *contenttype, char const *charset, bool_t force)
 {
    struct attachment *att;
    si32_t err;
@@ -664,7 +680,8 @@ make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
       if (att->a_msgno) {
          if ((err = a_sendout_attach_msg(hp, att, fo)) != su_ERR_NONE)
             goto jleave;
-      } else if ((err = a_sendout_attach_file(hp, att, fo)) != su_ERR_NONE)
+      }else if((err = a_sendout_attach_file(hp, att, fo, force)
+            ) != su_ERR_NONE)
          goto jleave;
    }
 
@@ -679,7 +696,7 @@ jleave:
 }
 
 static FILE *
-infix(struct header *hp, FILE *fi) /* TODO check */
+infix(struct header *hp, FILE *fi, bool_t force) /* TODO check */
 {
    char *tempMail;
    enum conversion convert;
@@ -717,7 +734,19 @@ infix(struct header *hp, FILE *fi) /* TODO check */
    convert = n_mimetype_classify_file(fi, &contenttype, &charset, &do_iconv);
 
 #ifdef mx_HAVE_ICONV
+   /* This is the logic behind *charset-force-transport*.  XXX very weird
+    * XXX as said a thousand times, Part==object, has dump_to_{wire,user}, and
+    * XXX does it (including _force_) for _itself_ only; the global header
+    * XXX has then to become spliced in (for multipart messages) */
+   if(force && do_iconv){
+      convert = CONV_TOB64;
+      contenttype = "application/octet-stream";
+      charset = NULL;
+      do_iconv = FAL0;
+   }
+
    tcs = ok_vlook(ttycharset);
+
    if ((convhdr = need_hdrconv(hp))) {
       if (iconvd != (iconv_t)-1) /* XXX  */
          n_iconv_close(iconvd);
@@ -755,8 +784,8 @@ jiconv_err:
 #endif
 
    if(hp->h_attach != NULL){
-      if((err = make_multipart(hp, convert, fi, nfo, contenttype, charset)
-            ) != su_ERR_NONE)
+      if((err = make_multipart(hp, convert, fi, nfo, contenttype, charset,
+            force)) != su_ERR_NONE)
          goto jerr;
    }else if((err = a_sendout_body(nfo, fi, convert)) != su_ERR_NONE)
       goto jerr;
@@ -1909,24 +1938,33 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
    }
 
    /* 'Bit ugly kind of control flow until we find a charset that does it */
-   for (charset_iter_reset(hp->h_charset);; charset_iter_next()) {
-      int err;
+   /* C99 */{
+      bool_t any;
 
-      if (!charset_iter_is_valid())
-         err = su_ERR_NOENT;
-      else if ((nmtf = infix(hp, mtf)) != NULL)
-         break;
+      for(any = FAL0, charset_iter_reset(hp->h_charset);;
+            any = TRU1, charset_iter_next()){
+         int err;
+         bool_t volatile force;
+
+         force = FAL0;
+         if(!charset_iter_is_valid() &&
+               (!any || !(force = ok_blook(mime_force_sendout))))
+            err = su_ERR_NOENT;
+         else if((nmtf = infix(hp, mtf, force)) != NULL)
+            break;
 #ifdef mx_HAVE_ICONV
-      else if ((err = n_iconv_err_no) == su_ERR_ILSEQ || err == su_ERR_INVAL ||
-            err == su_ERR_NOENT) {
-         rewind(mtf);
-         continue;
-      }
+         else if((err = n_iconv_err_no) == su_ERR_ILSEQ ||
+               err == su_ERR_INVAL || err == su_ERR_NOENT){
+            rewind(mtf);
+            continue;
+         }
 #endif
 
-      n_perr(_("Cannot find a usable character set to encode message"), err);
-      n_pstate_err_no = su_ERR_NOTSUP;
-      goto jfail_dead;
+         n_perr(_("Cannot find a usable character set to encode message"),
+            err);
+         n_pstate_err_no = su_ERR_NOTSUP;
+         goto jfail_dead;
+      }
    }
    mtf = nmtf;
 

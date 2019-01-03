@@ -356,6 +356,7 @@ t_all() {
    t_xxxheads_rfc2047
    t_iconv_mbyte_base64
    t_iconv_mainbody
+   t_mime_force_sendout
    t_binary_mainbody
    t_C_opt_customhdr
 
@@ -3564,6 +3565,64 @@ t_binary_mainbody() {
    check 3 0 ./.tall '733582513 319'
    check 4 - ./.tcat '3817108933 15'
    check 5 - ./.twrite '3817108933 15'
+
+   t_epilog
+}
+
+t_mime_force_sendout() {
+   if have_feat iconv; then
+      :
+   else
+      echo '[mime_force_sendout]: unsupported, skip'
+      return
+   fi
+   t_prolog mime_force_sendout
+   TRAP_EXIT_ADDONS="./.t*"
+
+   t_xmta 'OenotheraBiennis Thu Jan 03 17:27:31 2019'
+   printf '\150\303\274' > ./.tmba
+   printf 'ha' > ./.tsba
+   printf '' > "${MBOX}"
+
+   printf '\150\303\244' | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+      -s nogo \
+      over-the@rain.bow 2>>${ERR}
+   check 1 4 "${MBOX}" '4294967295 0'
+
+   printf '\150\303\244' | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+      -s go -Smime-force-sendout \
+      over-the@rain.bow 2>>${ERR}
+   check 2 0 "${MBOX}" '1302465325 217'
+
+   printf ha | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+      -s nogo \
+      -a ./.tmba over-the@rain.bow 2>>${ERR}
+   check 3 4 "${MBOX}" '1302465325 217'
+
+   printf ha | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+      -s go -Smime-force-sendout \
+      -a ./.tmba over-the@rain.bow 2>>${ERR}
+   check 4 0 "${MBOX}" '3895092636 876'
+
+   printf ha | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+      -s nogo \
+      -a ./.tsba -a ./.tmba over-the@rain.bow 2>>${ERR}
+   check 5 4 "${MBOX}" '3895092636 876'
+
+   printf ha | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+      -s go -Smime-force-sendout \
+      -a ./.tsba -a ./.tmba over-the@rain.bow 2>>${ERR}
+   check 6 0 "${MBOX}" '824424508 1723'
+
+   printf '\150\303\244' | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+      -s nogo \
+      -a ./.tsba -a ./.tmba over-the@rain.bow 2>>${ERR}
+   check 7 4 "${MBOX}" '824424508 1723'
+
+   printf '\150\303\244' | ${MAILX} ${ARGS} -Smta=./.tmta.sh \
+      -s go -Smime-force-sendout \
+      -a ./.tsba -a ./.tmba over-the@rain.bow 2>>${ERR}
+   check 8 0 "${MBOX}" '796644887 2557'
 
    t_epilog
 }
