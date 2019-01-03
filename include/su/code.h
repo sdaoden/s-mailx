@@ -1046,10 +1046,13 @@ enum su_state_flags{
    su_STATE_VERBOSE = 1u<<9,  /*!< \_ */
    su__STATE_D_V = su_STATE_DEBUG | su_STATE_VERBOSE,
 
+   /* Prefix level for global domain */
+   su__STATE_LOG_LEVEL = 1u<<10,
+
    /*! Reproducible behaviour switch.
     * See \r{su_reproducible_build},
     * and \xln{https://reproducible-builds.org}. */
-   su_STATE_REPRODUCIBLE = 1u<<10,
+   su_STATE_REPRODUCIBLE = 1u<<11,
 
    /*! By default out-of-memory situations, or container and string etc.
     * insertions etc. which cause count/offset datatype overflow result in
@@ -1135,7 +1138,8 @@ EXPORT_DATA char const su_empty[1];
 /*! The string \c{reproducible_build}, see \r{su_STATE_REPRODUCIBLE}. */
 EXPORT_DATA char const su_reproducible_build[];
 
-/*! Set to the name of the program to create a common log message prefix. */
+/*! Can be set to the name of the program to, e.g., create a common log
+ * message prefix. */
 EXPORT_DATA char const *su_program;
 
 /*! Interaction with the SU library \r{su_state_flags} machine.
@@ -1189,11 +1193,22 @@ INLINE void su_log_set_level(enum su_log_level nlvl){
          (S(uz,nlvl) & su__STATE_LOG_MASK);
 }
 
+/*! Cause the \r{su_log_level} to become prepended to messages written. */
+INLINE void su_log_enable_level_prefix(void){
+   su__state |= su__STATE_LOG_LEVEL;
+}
+
+/*! Cause the \r{su_log_level} to not become prepended to messages written. */
+INLINE void su_log_disable_level_prefix(void){
+   su__state &= ~su__STATE_LOG_LEVEL;
+}
+
 /*! Log functions of various sort.
- * Regardless of the level these also log if \c{STATE_DEBUG|STATE_VERBOSE}. */
+ * Regardless of the level these also log if \c{STATE_DEBUG|STATE_VERBOSE}.
+ * If \r{su_program} is set, it will be prepended to messages.TODO 1perLn */
 EXPORT void su_log_write(enum su_log_level lvl, char const *fmt, ...);
 
-/*! See \r{su_log_write()}.  The vp is a &va_list. */
+/*! See \r{su_log_write()}.  The \a{vp} is a \c{&va_list}. */
 EXPORT void su_log_vwrite(enum su_log_level lvl, char const *fmt, void *vp);
 
 /*! Like perror(3). */
@@ -1575,6 +1590,12 @@ public:
 
    /*! \r{su_log_set_level()} */
    static void set_level(level lvl) {su_log_set_level(S(su_log_level,lvl));}
+
+   /*! \r{su_log_enable_level_prefix()} */
+   static void enable_level_prefix(void) {su_log_enable_level_prefix();}
+
+   /*! \r{su_log_disable_level_prefix()} */
+   static void disable_level_prefix(void) {su_log_disable_level_prefix();}
 
    /*! \r{su_log_write()} */
    static void write(level lvl, char const *fmt, ...);

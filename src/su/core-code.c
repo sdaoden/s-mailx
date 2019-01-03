@@ -48,7 +48,7 @@ struct a_core_nyd_info{
 };
 #endif
 
-static char const a_c_lvlnames[][8] = { /* TODO no level name stuff yet*/
+static char const a_core_lvlnames[][8] = {
    FIELD_INITI(su_LOG_EMERG) "emerg",
    FIELD_INITI(su_LOG_ALERT) "alert",
    FIELD_INITI(su_LOG_CRIT) "crit",
@@ -107,6 +107,11 @@ a_evlog(enum su_log_level lvl, char const *fmt, va_list ap){
 
    if(su_program != NIL)
       fprintf(stderr, "%s: ", su_program);
+
+   if(su_state_has(su__STATE_LOG_LEVEL))
+      fprintf(stderr, "[%s] ",
+         a_core_lvlnames[S(u32,lvl) /*& su__STATE_LOG_MASK*/]);
+
    vfprintf(stderr, fmt, ap);
 
 #ifdef su_USECASE_MX
