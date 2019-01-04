@@ -1330,7 +1330,7 @@ public:
    typedef T const const_type; /*!< \_ */
    typedef T const *const_tp; /*!< \_ */
 
-   typedef NSPC(su)type_toolbox<type> toolbox; /*!< \_ */
+   typedef NSPC(su)type_toolbox<type> type_toolbox; /*!< \_ */
    typedef NSPC(su)auto_type_toolbox<type> auto_type_toolbox; /*!< \_ */
 
    /*! Non-pointer types are by default own-guessed, pointer based ones not. */
@@ -1357,7 +1357,7 @@ public:
    typedef T *tp;
    typedef T const const_type;
    typedef T const *const_tp;
-   typedef NSPC(su)type_toolbox<type> toolbox;
+   typedef NSPC(su)type_toolbox<type> type_toolbox;
    typedef NSPC(su)auto_type_toolbox<type> auto_type_toolbox;
 
    static boole const ownguess = FAL0;
@@ -1376,7 +1376,7 @@ public:
    typedef T *tp;
    typedef T const const_type;
    typedef T const *const_tp;
-   typedef NSPC(su)type_toolbox<type> toolbox;
+   typedef NSPC(su)type_toolbox<type> type_toolbox;
    typedef NSPC(su)auto_type_toolbox<type> auto_type_toolbox;
 
    static boole const ownguess = FAL0;
@@ -1395,7 +1395,7 @@ public:
    typedef void *tp;
    typedef void const *const_type;
    typedef void const *const_tp;
-   typedef NSPC(su)toolbox toolbox;
+   typedef NSPC(su)toolbox type_toolbox;
    typedef NSPC(su)auto_type_toolbox<void *> auto_type_toolbox;
 
    static boole const ownguess = FAL0;
@@ -1414,7 +1414,7 @@ public:
    typedef void const *tp;
    typedef void const *const_type;
    typedef void const *const_tp;
-   typedef NSPC(su)toolbox toolbox;
+   typedef NSPC(su)toolbox type_toolbox;
    typedef NSPC(su)auto_type_toolbox<void const *> auto_type_toolbox;
 
    static boole const ownguess = FAL0;
@@ -1433,7 +1433,7 @@ public:
    typedef char *tp;
    typedef char const *const_type;
    typedef char const *const_tp;
-   typedef NSPC(su)type_toolbox<type> toolbox;
+   typedef NSPC(su)type_toolbox<type> type_toolbox;
    typedef NSPC(su)auto_type_toolbox<type> auto_type_toolbox;
 
    static boole const ownguess = FAL0;
@@ -1452,7 +1452,7 @@ public:
    typedef char const *tp;
    typedef char const *const_type;
    typedef char const *const_tp;
-   typedef NSPC(su)type_toolbox<type> toolbox;
+   typedef NSPC(su)type_toolbox<type> type_toolbox;
    typedef NSPC(su)auto_type_toolbox<type> auto_type_toolbox;
 
    static boole const ownguess = FAL0;
