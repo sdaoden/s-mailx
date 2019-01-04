@@ -87,18 +87,16 @@ template<class VIEWTRAITS, class GBASEVIEWT> class view_assoc_bidir_const;
  * \fn{self_class &invalidate(void)}
  * Invalidate the position, but keep the parent collection tied.
  * }\li{
- * \fn{void *data(void)}, \fn{void const *data(void) const}:
+ * \fn{void const *data(void) const}:
  * \NIL is returned if \fn{is_valid()} assertion triggers.
+ * Also avaiable via \fn{operator*(void) const}
+ * and \fn{operator->(void) const}.
  * }\li{
  * \fn{self_class &begin(void)}:
  * Move the \fn{is_setup()} view to the first iteratable position, if any.
  * }\li{
  * \fn{boole has_next(void) const}, \fn{self_class &next(void)}:
  * Step the \c{is_valid()} view to the next position, if any.
- * }\li{
- * \fn{self_class &remove(void)}:
- * Remove the current \c{is_valid()} entry, and move to the next position,
- * if there is any.
  * }\li{
  * \fn{sz cmp(self_class const &t) const}:
  * This need not compare all possible cases, only those which make sense;
@@ -108,14 +106,31 @@ template<class VIEWTRAITS, class GBASEVIEWT> class view_assoc_bidir_const;
  * \fn{is_setup()} one, ditto \fn{is_valid()}.
  * }}
  *
- * \head2{Additions for non-associative views}
+ * \head2{Additions for views with non-constant parent}
  *
  * \list{\li{
- * \fn{s32 insert(void const *dat)}:
+ * \fn{void *data(void)}:
+ * \NIL is returned if \fn{is_valid()} assertion triggers.
+ * Also avaiable via \fn{operator*(void)} and \fn{operator->(void)}.
+ * }\li{
+ * \fn{s32 set_data(void *dat)}:
+ * Replace the value of an \fn{is_valid()} position.
+ * Returns \err{none} upon success, and \err{einval} if the \fn{is_setup()}
+ * assertion fails.
+ * }\li{
+ * \fn{self_class &remove(void)}:
+ * Remove the current \c{is_valid()} entry, and move to the next position,
+ * if there is any.
+ * }}
+ *
+ * \head2{Additions for non-associative views, non-constant parent}
+ *
+ * \list{\li{
+ * \fn{s32 insert(void *dat)}:
  * Insert new element after current position if that \fn{is_valid()},
  * otherwise creates a new \fn{begin()}.
  * Returns \err{none} and is positioned at the inserted element upon
- * success, and \err{none} if the \fn{is_setup()} assertion fails.
+ * success, and \err{einval} if the \fn{is_setup()} assertion fails.
  * }\li{
  * \fn{s32 insert_range(self_class &startpos, self_class &endpos)}:
  * Insert new element(s) after current position if that \fn{is_valid()},
@@ -127,7 +142,7 @@ template<class VIEWTRAITS, class GBASEVIEWT> class view_assoc_bidir_const;
  * If \a{endpos} is \fn{is_valid()} \c{startpos.is_same_parent(endpos)} must
  * assert and the iteration does not include \a{endpos}.
  * Returns \err{none} and is positioned at the last inserted element
- * upon success, and \err{inval} if the \fn{is_setup()} or any of the
+ * upon success, and \err{einval} if the \fn{is_setup()} or any of the
  * argument assertions fail, among others.
  * }\li{
  * \fn{self_class &remove_range(self_class &endpos)}:
@@ -377,6 +392,10 @@ public:\
       ASSERT_RET(is_valid(), NIL);\
       return type_traits::to_tp(m_view.data());\
    }\
+   s32 set_data(tp dat){\
+      ASSERT_RET(is_valid(), err::einval);\
+      return m_view.set_data(type_traits::to_vp(dat));\
+   }\
    tp operator*(void) {return data();}\
    tp operator->(void) {return data();}\
    \
@@ -419,9 +438,9 @@ public:\
 
 #define su__VIEW_IMPL_NONASSOC_NONCONST /*{{{*/\
    /* err::enone or error */\
-   s32 insert(tp_const dat){\
+   s32 insert(tp dat){\
       ASSERT_RET(is_setup(), err::einval);\
-      return m_view.insert(type_traits::to_const_vp(dat));\
+      return m_view.insert(type_traits::to_vp(dat));\
    }\
    s32 insert(base &startpos, base const &endpos){\
       ASSERT_RET(is_setup(), err::einval);\
