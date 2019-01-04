@@ -8,7 +8,7 @@
  *@ - update the *termcap* member documentation on changes!
  *@ Bug: in case of clashes of two-letter names terminfo(5) wins.
  *
- * Copyright (c) 2016 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2016 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

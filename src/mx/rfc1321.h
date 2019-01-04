@@ -4,7 +4,7 @@
  *@ and contains MD5.H as well as MD5C.C from the RFC.
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  */
 
 /* MD5.H - header file for MD5C.C

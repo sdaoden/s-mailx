@@ -2,7 +2,7 @@
  *@ Some constants etc. for which adjustments may be desired.
  *@ This is included (as mx/config.h) after all the (system) headers.
  *
- * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

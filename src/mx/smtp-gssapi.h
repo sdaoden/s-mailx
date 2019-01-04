@@ -2,7 +2,7 @@
  *@ Implementation of SMTP GSS-API authentication according to RFC 4954.
  *@ TODO GSS-API should also be joined into "a VFS".
  *
- * Copyright (c) 2014 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2014 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: BSD-4-Clause
  */
 

@@ -1,7 +1,7 @@
 /*@ (Yet) Manual config.h.
  *@ XXX Should be splitted into gen-config.h and config.h.
  *
- * Copyright (c) 2001 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2001 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

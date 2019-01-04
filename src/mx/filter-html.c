@@ -8,7 +8,7 @@
  *@ TODO   place sizeof(stack) ">"s first.  But aren't these HTML mails rude?
  *@ TODO Interlocking and non-well-formed data will break us down
  *
- * Copyright (c) 2015 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2015 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

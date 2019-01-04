@@ -9,7 +9,7 @@
 #@ -c: only with -t or -T: whether compact TOC display shall be generated
 #@ Set $AWK environment to force a special awk(1) interpreter.
 #
-# Written 2014 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+# Written 2014 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
 # Public Domain
 
 : ${TMPDIR:=/tmp}

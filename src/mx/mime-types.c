@@ -2,7 +2,7 @@
  *@ `(un)?mimetype' and other mime.types(5) related facilities.
  *@ "Keep in sync with" ./mime.types.
  *
- * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any

@@ -3,7 +3,7 @@
  *@ TODO GSS-API should also be joined into "a VFS".
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
- * Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
+ * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <sdaoden@users.sf.net>.
  * SPDX-License-Identifier: BSD-4-Clause
  */
 /*

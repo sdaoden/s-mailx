@@ -1,7 +1,7 @@
 /*@ Implementation of cs.h: finding related things.
  *@ TODO Optimize (even asm hooks?)
  *
- * Copyright (c) 2017 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * Copyright (c) 2017 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
  * SPDX-License-Identifier: ISC
  *
  * Permission to use, copy, modify, and/or distribute this software for any
