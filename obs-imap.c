@@ -257,7 +257,7 @@ static enum okay  imap_appenduid(struct mailbox *mp, FILE *fp, time_t t,
                      const char *name);
 static enum okay  imap_appenduid_cached(struct mailbox *mp, FILE *fp);
 #ifdef HAVE_IMAP_SEARCH
-static enum okay  imap_search2(struct mailbox *mp, struct message *m, int cnt,
+static ssize_t    imap_search2(struct mailbox *mp, struct message *m, int cnt,
                      const char *spec, int f);
 #endif
 static enum okay  imap_remove1(struct mailbox *mp, const char *name);
@@ -3684,7 +3684,7 @@ jstop:
 }
 
 #ifdef HAVE_IMAP_SEARCH
-static enum okay
+static ssize_t
 imap_search2(struct mailbox *mp, struct message *m, int cnt, const char *spec,
    int f)
 {
@@ -3693,7 +3693,7 @@ imap_search2(struct mailbox *mp, struct message *m, int cnt, const char *spec,
    FILE *queuefp = NULL;
    int i;
    const char *cp, *xp;
-   enum okay ok = STOP;
+   ssize_t rv = -1;
    NYD_X;
 
    c = 0;
@@ -3721,19 +3721,30 @@ imap_search2(struct mailbox *mp, struct message *m, int cnt, const char *spec,
    o = n_lofi_alloc(n = strlen(spec) + 60);
    snprintf(o, n, "%s UID SEARCH %s%s\r\n", tag(1), cs, spec);
    IMAP_OUT(o, MB_COMD, goto out)
-   while (mp->mb_active & MB_COMD) {
-      ok = imap_answer(mp, 0);
-      if (response_status == RESPONSE_OTHER &&
-            response_other == MAILBOX_DATA_SEARCH) {
-         xp = responded_other_text;
-         while (*xp && *xp != '\r') {
-            ui64_t uid;
+   /* C99 */{
+      enum okay ok;
 
-            n_idec_ui64_cp(&uid, xp, 10, &xp);/* TODO errors? */
-            for (i = 0; i < cnt; i++)
-               if (m[i].m_uid == uid && !(m[i].m_flag & MHIDDEN) &&
-                     (f == MDELETED || !(m[i].m_flag & MDELETED)))
-                  mark(i+1, f);
+      for (rv = 0, ok = OKAY; (mp->mb_active & MB_COMD);) {
+         if (imap_answer(mp, 0) != OKAY) {
+            rv = -1;
+            ok = STOP;
+         }
+         if (response_status == RESPONSE_OTHER &&
+               response_other == MAILBOX_DATA_SEARCH) {
+            xp = responded_other_text;
+            while (*xp && *xp != '\r') {
+               ui64_t uid;
+
+               n_idec_ui64_cp(&uid, xp, 10, &xp);/* TODO errors? */
+               for (i = 0; i < cnt; i++)
+                  if (m[i].m_uid == uid && !(m[i].m_flag & MHIDDEN) &&
+                        (f == MDELETED || !(m[i].m_flag & MDELETED))){
+                     if(ok == OKAY){
+                        mark(i+1, f);
+                        ++rv;
+                     }
+                  }
+            }
          }
       }
    }
@@ -3741,14 +3752,14 @@ out:
    n_lofi_free(o);
    if(cs != n_empty)
       n_lofi_free(cs);
-   return ok;
+   return rv;
 }
 
-FL enum okay
+FL ssize_t
 imap_search1(const char * volatile spec, int f)
 {
    sighandler_type saveint, savepipe;
-   enum okay volatile rv = STOP;
+   ssize_t volatile rv = -1;
    NYD_ENTER;
 
    if (mb.mb_type != MB_IMAP)

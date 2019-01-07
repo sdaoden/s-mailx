@@ -2810,7 +2810,7 @@ FL enum okay   imap_append(const char *xserver, FILE *fp, long offset);
 FL int         imap_folders(const char *name, int strip);
 FL enum okay   imap_copy(struct message *m, int n, const char *name);
 # ifdef HAVE_IMAP_SEARCH
-FL enum okay   imap_search1(const char *spec, int f);
+FL ssize_t     imap_search1(const char *spec, int f);
 # endif
 FL int         imap_thisaccount(const char *cp);
 FL enum okay   imap_remove(const char *name);
