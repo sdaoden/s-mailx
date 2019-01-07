@@ -2759,6 +2759,15 @@ val_random_tls() {
    if feat_yes TLS; then
       msg ' . VAL_RANDOM: tls ... yes'
       echo '#define mx_HAVE_RANDOM n_RANDOM_IMPL_TLS' >> ${h}
+      # Avoid reseeding, all we need is a streamy random producer
+      link_check xtls_rand_drbg_set_reseed_defaults \
+         'RAND_DRBG_set_reseed_defaults(3ssl)' \
+         '#define mx_HAVE_XTLS_SET_RESEED_DEFAULTS' << \!
+#include <openssl/rand_drbg.h>
+int main(void){
+   return (RAND_DRBG_set_reseed_defaults(0, 0, 0, 0) != 0);
+}
+!
       return 0
    else
       msg ' . VAL_RANDOM: tls ... no'

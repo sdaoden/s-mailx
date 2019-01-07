@@ -175,8 +175,9 @@ su_EMPTY_FILE()
 
 enum a_xtls_state{
    a_XTLS_S_INIT = 1u<<0,
-   a_XTLS_S_RAND_INIT = 1u<<1,
-   a_XTLS_S_CONF_LOAD = 1u<<2,
+   a_XTLS_S_RAND_DRBG_INIT = 1u<<1,
+   a_XTLS_S_RAND_INIT = 1u<<2,
+   a_XTLS_S_CONF_LOAD = 1u<<3,
 
 #if mx_HAVE_XTLS_OPENSSL < 0x10100
    a_XTLS_S_EXIT_HDL = 1u<<8,
@@ -344,9 +345,15 @@ static struct a_xtls_x509_v_flags const a_xtls_x509_v_flags[] = { /* Manual! */
    {"trusted-first", X509_V_FLAG_TRUSTED_FIRST},
 };
 
-static enum a_xtls_state a_xtls_state;
+static size_t a_xtls_state;
 static size_t a_xtls_msgno;
 
+#ifdef a_XTLS_S_RAND_DRBG_INIT
+su_SINLINE void a_xtls_rand_drbg_init(void);
+#else
+# define a_xtls_rand_drbg_init() \
+   do {a_xtls_state |= a_XTLS_S_RAND_DRBG_INIT;} while(0)
+#endif
 static void a_xtls_rand_init(void);
 static void a_xtls_init(void);
 
@@ -402,6 +409,14 @@ static enum okay  load_crl1(X509_STORE *store, char const *name);
 #endif
 static enum okay  load_crls(X509_STORE *store, enum okeys fok, enum okeys dok);
 
+#ifdef a_XTLS_S_RAND_DRBG_INIT
+su_SINLINE void
+a_xtls_rand_drbg_init(void){
+   (void)RAND_DRBG_set_reseed_defaults(0, 0, 0, 0); /* (does not fail here) */
+   a_xtls_state |= a_XTLS_S_RAND_DRBG_INIT;
+}
+#endif
+
 static void
 a_xtls_rand_init(void){
 #define a_XTLS_RAND_ENTROPY 32
@@ -409,6 +424,8 @@ a_xtls_rand_init(void){
    char const *cp, *x;
    bool_t err;
    n_NYD2_IN;
+
+   a_xtls_rand_drbg_init();
 
    a_xtls_state |= a_XTLS_S_RAND_INIT;
 
@@ -504,6 +521,7 @@ a_xtls_init(void){
 #endif
    a_xtls_state |= a_XTLS_S_INIT;
 
+   a_xtls_rand_drbg_init();
 
    /* Load openssl.cnf or whatever was given in *tls-config-file* */
 #ifdef mx_HAVE_XTLS_CONFIG
