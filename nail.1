@@ -287,19 +287,18 @@ has been specified (the default).
 If an output character set has also been given then the conversion will
 be performed exactly as specified and on-the-fly, not considering the
 file type and content.
-As an exception, if the output character set is specified as the empty
-string or hyphen-minus
+As an exception the empty string or hyphen-minus
 .Ql - ,
-then the default conversion algorithm (see
-.Sx "Character sets" )
-is applied (therefore no conversion is performed on-the-fly,
+select the default conversion algorithm (see
+.Sx "Character sets" ) :
+no conversion is performed on-the-fly,
 .Ar file
-will be MIME-classified and its contents will be inspected first) \(em
-without support for character set conversions
+and its contents will be MIME-classified
+.Pf ( Sx "HTML mail and MIME attachments" , "The mime.types files") ;
+Only this mode is supported without support for character set conversions
 .Pf ( Va features
-does not include the term
-.Ql +iconv )
-only this argument is supported.
+does not mention
+.Ql +iconv ) .
 .
 .It Fl B
 (\*(OB: \*(UA will always use line-buffered output, to gain
@@ -480,8 +479,9 @@ be enabled explicitly (e.g., by using the option
 .It Fl M Ar type
 Special send mode that will flag standard input with the MIME
 .Ql Content-Type:
-set to the given
+set to the given known
 .Ar type
+.Pf ( Sx "HTML mail and MIME attachments" , "The mime.types files" )
 and use it as the main message body.
 \*(ID Using this option will bypass processing of
 .Va message-inject-head
@@ -493,7 +493,7 @@ Also see
 .Mx
 .It Fl m Ar file
 Special send mode that will MIME classify the specified
-.Ar file
+.Ar file ,
 and use it as the main message body.
 \*(ID Using this option will bypass processing of
 .Va message-inject-head
