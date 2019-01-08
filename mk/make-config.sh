@@ -2421,12 +2421,26 @@ if feat_yes TLS; then # {{{
 !
    then
       ossl_v1_1=
-      VAL_TLS_FEATURES=libressl
+      VAL_TLS_FEATURES=libressl,-tls-rand-file
    # TODO OPENSSL_IS_BORINGSSL, but never tried that one!
+   elif compile_check _xtls 'TLS (OpenSSL >= v1.1.1)' \
+      '#define mx_HAVE_TLS
+      #define mx_HAVE_XTLS
+      #define mx_HAVE_XTLS_OPENSSL 0x10101' << \!
+#include <openssl/opensslv.h>
+#if OPENSSL_VERSION_NUMBER + 0 >= 0x1010100fL
+#else
+# error nope
+#endif
+!
+   then
+      ossl_v1_1=1
+      VAL_TLS_FEATURES=libssl-0x10100,-tls-rand-file
    elif compile_check _xtls 'TLS (OpenSSL >= v1.1.0)' \
       '#define mx_HAVE_TLS
       #define mx_HAVE_XTLS
-      #define mx_HAVE_XTLS_OPENSSL 0x10100' << \!
+      #define mx_HAVE_XTLS_OPENSSL 0x10100
+      #define mx_HAVE_TLS_RAND_FILE' << \!
 #include <openssl/opensslv.h>
 #if OPENSSL_VERSION_NUMBER + 0 >= 0x10100000L
 #else
@@ -2435,11 +2449,12 @@ if feat_yes TLS; then # {{{
 !
    then
       ossl_v1_1=1
-      VAL_TLS_FEATURES=libssl-0x10100
+      VAL_TLS_FEATURES=libssl-0x10100,+tls-rand-file
    elif compile_check _xtls 'TLS (OpenSSL)' \
       '#define mx_HAVE_TLS
       #define mx_HAVE_XTLS
-      #define mx_HAVE_XTLS_OPENSSL 0x10000' << \!
+      #define mx_HAVE_XTLS_OPENSSL 0x10000
+      #define mx_HAVE_TLS_RAND_FILE' << \!
 #include <openssl/opensslv.h>
 #ifdef OPENSSL_VERSION_NUMBER
 #else
@@ -2448,7 +2463,7 @@ if feat_yes TLS; then # {{{
 !
    then
       ossl_v1_1=
-      VAL_TLS_FEATURES=libssl-0x10000
+      VAL_TLS_FEATURES=libssl-0x10000,+tls-rand-file
    else
       feat_bail_required TLS
    fi # }}}
@@ -2726,7 +2741,9 @@ else
    feat_is_disabled TLS
    feat_is_disabled TLS_ALL_ALGORITHMS
 fi # }}} feat_yes TLS
+printf '#ifdef mx_SOURCE\n' >> ${h}
 printf '#define VAL_TLS_FEATURES "#'"${VAL_TLS_FEATURES}"'"\n' >> ${h}
+printf '#endif /* mx_SOURCE */\n' >> ${h}
 
 if [ "${have_xtls}" = yes ]; then
    OPT_SMIME=1

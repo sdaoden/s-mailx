@@ -12600,8 +12600,8 @@ PEM format to use when verifying TLS server certificates.
 .
 .Mx
 .It Va tls-features
-\*(OP\*(RO This expands to a comma separated list of the TLS library
-identity and optional SSL library features.
+\*(OP\*(RO This expands to a comma-separated list of the TLS library
+identity and optional features.
 Currently supported identities are
 .Ql libressl
 (LibreSSL) ,
@@ -12617,19 +12617,21 @@ when available, and with a hyphen-minus
 otherwise.
 .Pp
 Currently known features are
-.Ql modules-load-file
-.Pf ( Va tls-config-file ) ,
 .Ql conf-ctx
 .Pf ( Va tls-config-pairs ) ,
 .Ql ctx-config
 .Pf ( Va tls-config-module ) ,
+.Ql ctx-set-ciphersuites
+.Pf ( Cd Ciphersuites
+slot of
+.Va tls-config-pairs ) ,
 .Ql ctx-set-maxmin-proto
 .Pf ( Va tls-config-pairs ) ,
-.Ql ctx-set-ciphersuites
-(the
-.Cd Ciphersuites
-slot of
-.Va tls-config-pairs ) .
+.Ql modules-load-file
+.Pf ( Va tls-config-file ) ,
+and
+.Ql tls-rand-file
+.Pf ( Va tls-rand-file ) .
 .
 .Mx Va tls-fingerprint
 .It Va tls-fingerprint-USER@HOST , tls-fingerprint-HOST , tls-fingerprint
@@ -12654,17 +12656,25 @@ For the complete list of digest algorithms refer to
 .
 .Mx
 .It Va tls-rand-file
-\*(OP Gives the filename to a file with random entropy data, see
+\*(OP If
+.Va tls-features
+announces
+.Ql +tls-rand-file
+then this will be queried to find a file with random entropy data which
+can be used to seed the P(seudo)R(andom)N(umber)G(enerator), see
 .Xr RAND_load_file 3 .
-If this variable is not set, or set to the empty string, or if the
+The default filename
+.Pf ( Xr RAND_file_name 3 ,
+normally
+.Pa ~/.rnd )
+will be used if this variable is not set or empty, or if the
 .Sx "Filename transformations"
-fail, then
-.Xr RAND_file_name 3
-will be used to create the filename.
-If the SSL PRNG was seeded successfully
-The file will be updated
-.Pf ( Xr RAND_write_file 3 )
-if and only if seeding and buffer stirring succeeds.
+fail.
+Shall seeding the PRNG have been successful,
+.Xr RAND_write_file 3
+will be called to update the entropy.
+Remarks: libraries which do not announce this feature seed the PRNG by
+other means.
 .
 .Mx Va tls-verify
 .It Va tls-verify-USER@HOST , tls-verify-HOST , tls-verify
