@@ -2744,6 +2744,8 @@ else
    config_exit 1
 fi
 
+# Random implementations which completely replace our builtin machine
+
 val_random_arc4() {
    link_check arc4random 'VAL_RANDOM: arc4random(3)' \
       '#define mx_HAVE_RANDOM n_RANDOM_IMPL_ARC4' << \!
@@ -2775,7 +2777,25 @@ int main(void){
    fi
 }
 
+# The remaining random implementation are only used to seed our builtin
+# machine; we are prepared to handle failures of those, meaning that we have
+# a homebrew seeder; that tries to yield the time slice once, via
+# sched_yield(2) if available, nanosleep({0,0},) otherwise
+val__random_yield_ok=
+val__random_check_yield() {
+   [ -n "${val__random_yield_ok}" ] && return
+   val__random_yield_ok=1
+   link_check sched_yield 'sched_yield(2)' '#define mx_HAVE_SCHED_YIELD' << \!
+#include <sched.h>
+int main(void){
+   sched_yield();
+   return 0;
+}
+!
+}
+
 val_random_libgetrandom() {
+   val__random_check_yield
    link_check getrandom 'VAL_RANDOM: getrandom(3) (in sys/random.h)' \
       '#define mx_HAVE_RANDOM n_RANDOM_IMPL_GETRANDOM
       #define n_RANDOM_GETRANDOM_FUN(B,S) getrandom(B, S, 0)
@@ -2790,6 +2810,7 @@ int main(void){
 }
 
 val_random_sysgetrandom() {
+   val__random_check_yield
    link_check getrandom 'VAL_RANDOM: getrandom(2) (via syscall(2))' \
       '#define mx_HAVE_RANDOM n_RANDOM_IMPL_GETRANDOM
       #define n_RANDOM_GETRANDOM_FUN(B,S) syscall(SYS_getrandom, B, S, 0)
@@ -2804,6 +2825,7 @@ int main(void){
 }
 
 val_random_urandom() {
+   val__random_check_yield
    msg_nonl ' . VAL_RANDOM: /dev/urandom ... '
    if feat_yes CROSS_BUILD; then
       msg 'yes (unchecked)'
@@ -2819,6 +2841,7 @@ val_random_urandom() {
 }
 
 val_random_builtin() {
+   val__random_check_yield
    msg_nonl ' . VAL_RANDOM: builtin ... '
    if [ -n "${have_no_subsecond_time}" ]; then
       msg 'no\nERROR: %s %s' 'without a specialized PRG ' \
