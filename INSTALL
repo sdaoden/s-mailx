@@ -32,7 +32,7 @@ and cause automatic cleanups and rebuilds as necessary.
 
 With adjustments:
 
-  $ make OPT_POP3=no OPT_SMTP=require tangerine
+  $ make OPT_POP3=no OPT_SMTP=require tangerine OBJDIR=/tmpfs/mx
   $ make OPT_CROSS_BUILD=y VAL_PREFIX=/some/nasty/prefix citron
 
 With utility program and feature adjustments:
@@ -53,9 +53,13 @@ mechanism, e.g.:
 would create a "s-nail" binary and install a "s-nail" manual etc.  under
 the prefix "/usr" but rooted under "[./]xy", i.e., the binary would be
 installed as "[./]xy/usr/bin/s-nail".
+
 Out-of-tree compilation is supported; to use it, create the target
 directory of desire, change into it and run the make-emerge.sh script
 shipped with S-nail, then proceed as with normal in-tree building.
+Generated configuration files, objects and test output will be located
+in the directory .obj/ (or what $OBJDIR defines), in- or off-tree.
+
 The following make(1) targets exist, the default being `build':
 
 - tangerine   Shorthand for "$ make config build test install": create
@@ -270,8 +274,9 @@ Thank you!
 Development and/or regular tests:
 
 . AlpineLinux <https://www.alpinelinux.org/> (edge; x86-64).
+
 . ArchLinux <https://www.archlinux.org/> (~weekly updated; x86-64).
-. CRUX Linux <https://www.crux.nu/> (3.4; x86-64).
+
 . FreeBSD <https://www.freebsd.org/> (11.2; x86).
   - The tests iconv_mbyte_base64-4 and
     iconv_mbyte_base64-8 will fail because the ISO C function
@@ -280,27 +285,60 @@ Development and/or regular tests:
     replacements.  This is a known bug, see
       <https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=225692>
 
-Occasional tests:
+(More or less) Frequently tested:
 
-. DragonFly BSD <https://www.dragonflybsd.org/> (5.2.1; x86-64).
-  See FreeBSD for the two failing test cases.
-. NetBSD <https://www.netbsd.org/> (8.0_RC1; i386).
-  - Test shcodec-unicode fails, like Solaris.  (Faulty Unicode ctype.)
-. OpenBSD <https://www.openbsd.org/> (6.3; x86).
+. CRUX Linux <https://www.crux.nu/> (3.4; x86-64).
+
+. OpenBSD <https://www.openbsd.org/> (6.4; x86).
+
+. OSUKISS Linux <https://osukiss.safe.ca/>
+  @ Thanks to Jean-Marc Pigeon for generously providing access to
+    a VZGOT on the most "beefy" machine i have ever worked on!
+    It does the thing i need an hour for in 90 seconds.  ^_^
+
 . Solaris <http://opencsw.org/>
   @ First of all: thanks to OpenCSW.org for offering SSH access to
     their Solaris build cluster!
+
   * Some notes collected on earlier trials:
-    + We may forcefully disable stack protectors on SunOS/gcc because of
+    + We forcefully disable stack protectors on SunOS/gcc because of
       linking errors seen in earlier tests.
     + If you get the compiler / system header installation error
         Undefined                       first referenced
          symbol                             in file
         __builtin_stdarg_start              auxlily.o
-      then you have to overwrite this symbol with __builtin_va_start,
+      you have to overwrite the symbol with __builtin_va_start,
       e.g., in conjunction with OPT_AUTOCC add this:
        EXTRA_CFLAGS='-D__builtin_stdarg_start=__builtin_va_start'
-  - On elder SunOS the test shcodec-unicode fails, like NetBSD.
+
+  - At least some combinations of the NFS based filesystem and the
+    OpenCSW machines cause [pipe_handlers] test failure due to hard link
+    count mismatch the NFS implementation links the file to some other
+    name, too, and that lingers too long (reproducibly).
+
+  - You may see failures in Unicode-related tests due to outdated or
+    false Unicode tables on elder releases (as in NetBSD).
+
+  - The make(1) often seems to have problems with file descriptors,
+    especially when pipes are involved.
+    Such "make test" failures often cannot be reproduced via
+      $ ./mx-test.sh --run-test ./s-nail
+
+  -   $ make all OPT_USE_PKGSYS=no OPT_GSSAPI=no
+    ok on Solaris/SPARC 5.9 (+ OPT_IDN=no), 5.10 and 5.11.
+    The latter two have a hanging test X_Y_opt_input_go_stack no.
+    2 which needs -KILLing, the rest will run fine; this is about FDs
+    again, and since the same snippet succeeds in other combinations
+    i am out of ideas).  Solaris/x86 did not even need the caveats.
+
+Occasional tests:
+
+. DragonFly BSD <https://www.dragonflybsd.org/> (5.2.1; x86-64).
+  See FreeBSD for the two failing test cases.
+
+. NetBSD <https://www.netbsd.org/> (8.0_RC1; i386).
+  - Test shcodec-unicode fails, like Solaris.  (Faulty Unicode ctype.)
+
 . Void Linux <https://www.voidlinux.eu/> (x86)
 
 # s-ts-mode
