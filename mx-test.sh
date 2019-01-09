@@ -988,11 +988,11 @@ t_shcodec() {
 		shcodec e aՍc
 		shcodec +e aՍc
 		shcodec d $'a\u054Dc'
-		shcodec e a😃c
-		shcodec +e a😃c
-		shcodec d $'a\U0001F603c'
+		shcodec e a𝕂c
+		shcodec +e a𝕂c
+		shcodec d $'a\U0001D542c'
 		__EOT
-      check unicode 0 "${MBOX}" '4233409480 77'
+      check unicode 0 "${MBOX}" '1175985867 77'
    fi
 
    t_epilog
