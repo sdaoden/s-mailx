@@ -245,26 +245,29 @@ static void a_mema_release_free(void);
 #ifdef su_MEM_ALLOC_DEBUG
 static void
 a_mema_release_free(void){
-   union a_mema_ptr p;
    uz c, s;
+   union a_mema_ptr p;
    NYD2_IN;
 
-   c = s = 0;
+   if((p.map_hc = a_mema_free_list) != NIL){
+      a_mema_free_list = NIL;
+      c = s = 0;
 
-   for(p.map_hc = a_mema_free_list, a_mema_free_list = NIL; p.map_hc != NIL;){
-      void *vp;
+      for(; p.map_hc != NIL;){
+         void *vp;
 
-      vp = p.map_hc;
-      ++c;
-      s += p.map_c->mac_size;
-      p.map_hc = p.map_hc->mahc_next;
-      free(vp);
+         vp = p.map_hc;
+         ++c;
+         s += p.map_c->mac_size;
+         p.map_hc = p.map_hc->mahc_next;
+         free(vp);
+      }
+
+      su_log_write(su_LOG_INFO,
+         "su_mem_set_conf(LINGER_FREE_RELEASE): freed %" PRIuZ
+            " chunks / %" PRIuZ " bytes\n",
+         c, s);
    }
-
-   su_log_write(su_LOG_DEBUG,
-      "su_mem_set_conf(LINGER_FREE_RELEASE): freed %" PRIuZ
-         " chunks / %" PRIuZ " bytes\n",
-      c, s);
    NYD2_OU;
 }
 #endif /* su_MEM_ALLOC_DEBUG */
