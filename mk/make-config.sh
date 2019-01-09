@@ -2962,7 +2962,7 @@ if feat_yes IDNA; then # {{{
    fi
 
    val_idna_idn2() {
-      link_check idna 'OPT_IDNA: GNU Libidn2' \
+      link_check idna 'OPT_IDNA->VAL_IDNA: GNU Libidn2' \
          '#define mx_HAVE_IDNA n_IDNA_IMPL_LIBIDN2' '-lidn2' << \!
 #include <idn2.h>
 int main(void){
@@ -2981,7 +2981,7 @@ int main(void){
    }
 
    val_idna_idn() {
-      link_check idna 'OPT_IDNA: GNU Libidn' \
+      link_check idna 'OPT_IDNA->VAL_IDNA: GNU Libidn' \
          '#define mx_HAVE_IDNA n_IDNA_IMPL_LIBIDN' '-lidn' << \!
 #include <idna.h>
 #include <idn-free.h>
@@ -3002,7 +3002,7 @@ int main(void){
    }
 
    val_idna_idnkit() {
-      link_check idna 'OPT_IDNA: idnkit' \
+      link_check idna 'OPT_IDNA->VAL_IDNA: idnkit' \
          '#define mx_HAVE_IDNA n_IDNA_IMPL_IDNKIT' '-lidnkit' << \!
 #include <stdio.h>
 #include <idn/api.h>
