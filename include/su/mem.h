@@ -378,32 +378,32 @@ public:
     * @{
     */
 
-   /*! \_ */
+   /*! \copydoc{su_mem_cmp()} */
    static sz cmp(void const *vpa, void const *vpb, uz len){
       return su_mem_cmp(vpa, vpb, len);
    }
 
-   /*! \_ */
+   /*! \copydoc{su_mem_copy()} */
    static void *copy(void *vp, void const *src, uz len){
       return su_mem_copy(vp, src, len);
    }
 
-   /*! \_ */
+   /*! \copydoc{su_mem_find()} */
    static void *find(void const *vp, s32 what, uz len){
       return su_mem_find(vp, what, len);
    }
 
-   /*! \_ */
+   /*! \copydoc{su_mem_rfind()} */
    static void *rfind(void const *vp, s32 what, uz len){
       return su_mem_rfind(vp, what, len);
    }
 
-   /*! \_ */
+   /*! \copydoc{su_mem_move()} */
    static void *move(void *vp, void const *src, uz len){
       return su_mem_move(vp, src, len);
    }
 
-   /*! \_ */
+   /*! \copydoc{su_mem_set()} */
    static void *set(void *vp, s32 what, uz len){
       return su_mem_set(vp, what, len);
    }
@@ -423,37 +423,39 @@ public:
 
    struct johnny, mary;
 
-   /*! \r{su_mem_alloc_flags} */
+   /*! \copydoc{su_mem_alloc_flags} */
    enum alloc_flags{
-      alloc_none = su_MEM_ALLOC_NONE, /*!< \r{su_MEM_ALLOC_NONE} */
-      alloc_clear = su_MEM_ALLOC_CLEAR, /*!< \r{su_MEM_ALLOC_CLEAR} */
-      /*! \r{su_MEM_ALLOC_32BIT_OVERFLOW} */
+      alloc_none = su_MEM_ALLOC_NONE, /*!< \copydoc{su_MEM_ALLOC_NONE} */
+      alloc_clear = su_MEM_ALLOC_CLEAR, /*!< \copydoc{su_MEM_ALLOC_CLEAR} */
+      /*! \copydoc{su_MEM_ALLOC_32BIT_OVERFLOW} */
       alloc_32bit_overflow = su_MEM_ALLOC_32BIT_OVERFLOW,
-      /*! \r{su_MEM_ALLOC_31BIT_OVERFLOW} */
+      /*! \copydoc{su_MEM_ALLOC_31BIT_OVERFLOW} */
       alloc_31bit_overflow = su_MEM_ALLOC_31BIT_OVERFLOW,
-      /*! \r{su_MEM_ALLOC_OVERFLOW_OK} */
+      /*! \copydoc{su_MEM_ALLOC_OVERFLOW_OK} */
       alloc_overflow_ok = su_MEM_ALLOC_OVERFLOW_OK,
-      alloc_nomem_ok = su_MEM_ALLOC_NOMEM_OK, /*!< \r{su_MEM_ALLOC_NOMEM_OK} */
-      alloc_mustfail = su_MEM_ALLOC_MUSTFAIL, /*!< \r{su_MEM_ALLOC_MUSTFAIL} */
+      /*! \copydoc{su_MEM_ALLOC_NOMEM_OK} */
+      alloc_nomem_ok = su_MEM_ALLOC_NOMEM_OK,
+      /*! \copydoc{su_MEM_ALLOC_MUSTFAIL} */
+      alloc_mustfail = su_MEM_ALLOC_MUSTFAIL,
 
-      alloc_mark_0 = su_MEM_ALLOC_MARK_0, /*!< r\{su_MEM_ALLOC_MARK_0} */
-      alloc_mark_1 = su_MEM_ALLOC_MARK_1, /*!< r\{su_MEM_ALLOC_MARK_1} */
-      alloc_mark_2 = su_MEM_ALLOC_MARK_2, /*!< r\{su_MEM_ALLOC_MARK_2} */
-      alloc_mark_3 = su_MEM_ALLOC_MARK_3 /*!< r\{su_MEM_ALLOC_MARK_3} */
+      alloc_mark_0 = su_MEM_ALLOC_MARK_0, /*!< \copydoc{su_MEM_ALLOC_MARK_0} */
+      alloc_mark_1 = su_MEM_ALLOC_MARK_1, /*!< \copydoc{su_MEM_ALLOC_MARK_1} */
+      alloc_mark_2 = su_MEM_ALLOC_MARK_2, /*!< \copydoc{su_MEM_ALLOC_MARK_2} */
+      alloc_mark_3 = su_MEM_ALLOC_MARK_3 /*!< \copydoc{su_MEM_ALLOC_MARK_3} */
    };
 
    enum{
-      alloc_min = su_MEM_ALLOC_MIN /*!< \r{su_MEM_ALLOC_MIN} */
+      alloc_min = su_MEM_ALLOC_MIN /*!< \copydoc{su_MEM_ALLOC_MIN} */
    };
 
-   /*! \r{su_mem_conf_option} */
+   /*! \copydoc{su_mem_conf_option} */
    enum conf_option{
-      conf_debug = su_MEM_CONF_DEBUG, /*!< \r{su_MEM_CONF_DEBUG} */
-      /*! \r{su_MEM_CONF_ON_ERROR_EMERG} */
+      conf_debug = su_MEM_CONF_DEBUG, /*!< \copydoc{su_MEM_CONF_DEBUG} */
+      /*! \copydoc{su_MEM_CONF_ON_ERROR_EMERG} */
       conf_on_error_emerg = su_MEM_CONF_ON_ERROR_EMERG,
-      /*! \r{su_MEM_CONF_LINGER_FREE} */
+      /*! \copydoc{su_MEM_CONF_LINGER_FREE} */
       conf_linger_free = su_MEM_CONF_LINGER_FREE,
-      /*! \r{su_MEM_CONF_LINGER_FREE_RELEASE} */
+      /*! \copydoc{su_MEM_CONF_LINGER_FREE_RELEASE} */
       conf_linger_free_release = su_MEM_CONF_LINGER_FREE_RELEASE
    };
 
@@ -546,15 +548,15 @@ public:
     * @{
     */
 
-   /*! \r{su_mem_get_usable_size()} */
+   /*! \copydoc{su_mem_get_usable_size()} */
    static uz get_usable_size(uz size) {return su_mem_get_usable_size(size);}
 
-   /*! \r{su_mem_get_usable_size_32()} */
+   /*! \copydoc{su_mem_get_usable_size_32()} */
    static u32 get_usable_size_32(uz size){
       return su_mem_get_usable_size_32(size);
    }
 
-   /*! \r{su_mem_conf_option()} */
+   /*! \copydoc{su_mem_conf_option()} */
    static void set_conf(u32 co, uz val) {su_mem_set_conf(co, val);}
 
    /*! \r{su_mem_check()} */
@@ -583,7 +585,7 @@ inline void *operator new(size_t sz, void *vp, NSPC(su)mem::johnny const *j){
 }
 
 NSPC_END(su)
-#include <su/code-ou.h>
+# include <su/code-ou.h>
 #endif /* !C_LANG || CXX_DOXYGEN */
 #endif /* !su_MEM_H */
 /* s-it-mode */

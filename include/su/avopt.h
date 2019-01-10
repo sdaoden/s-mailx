@@ -158,19 +158,19 @@ class avopt;
  */
 class EXPORT avopt : private struct su_avopt{
 public:
-   /*! \r{su_avopt_state} */
+   /*! \copydoc{su_avopt_state} */
    enum state{
-      /*! \r{su_AVOPT_STATE_DONE} */
+      /*! \copydoc{su_AVOPT_STATE_DONE} */
       state_done = su_AVOPT_STATE_DONE,
-      /*! \r{su_AVOPT_STATE_LONG} */
+      /*! \copydoc{su_AVOPT_STATE_LONG} */
       state_long = su_AVOPT_STATE_LONG,
-      /*! \r{su_AVOPT_STATE_ERR_ARG} */
+      /*! \copydoc{su_AVOPT_STATE_ERR_ARG} */
       state_err_arg = su_AVOPT_STATE_ERR_ARG,
-      /*! \r{su_AVOPT_STATE_ERR_OPT} */
+      /*! \copydoc{su_AVOPT_STATE_ERR_OPT} */
       state_err_opt = su_AVOPT_STATE_ERR_OPT
    };
 
-   /*! \r{su_avopt_setup()} */
+   /*! \copydoc{su_avopt_setup()} */
    avopt(u32 argc, char const * const *argv, char const *opts_short,
          char const * const *opts_long=NIL){
       su_avopt_setup(this, argc, argv, opts_short, opts_long);
@@ -178,34 +178,34 @@ public:
    /*! \_ */
    ~avopt(void){}
 
-   /*! \r{su_avopt_parse()} */
+   /*! \copydoc{su_avopt_parse()} */
    s8 parse(void) {return su_avopt_parse(this);}
 
-   /*! \r{su_avopt::avo_current_arg} */
+   /*! \copydoc{su_avopt::avo_current_arg} */
    char const *current_arg(void) const {return avo_current_arg;}
 
-   /*! \r{su_avopt::avo_current_opt} */
+   /*! \copydoc{su_avopt::avo_current_opt} */
    s8 current_opt(void) const {return avo_current_opt;}
 
-   /*! \r{su_avopt::avo_current_long_idx} */
+   /*! \copydoc{su_avopt::avo_current_long_idx} */
    u16 current_long_idx(void) const {return avo_current_long_idx;}
 
-   /*! \r{su_avopt::avo_current_err_opt} */
+   /*! \copydoc{su_avopt::avo_current_err_opt} */
    char const *current_err_opt(void) const {return avo_current_err_opt;}
 
-   /*! \r{su_avopt::avo_argc} */
+   /*! \copydoc{su_avopt::avo_argc} */
    s32 argc(void) const {return avo_argc;}
 
-   /*! \r{su_avopt::avo_argv} */
+   /*! \copydoc{su_avopt::avo_argv} */
    char const * const *argv(void) const {return avo_argv;}
 
-   /*! \r{su_avopt::avo_opts_short} */
+   /*! \copydoc{su_avopt::avo_opts_short} */
    char const *opts_short(void) const {return avo_opts_short;}
 
-   /*! \r{su_avopt::avo_opts_long} */
+   /*! \copydoc{su_avopt::avo_opts_long} */
    char const * const *opts_long(void) const {return avo_opts_long;}
 
-   /*! \r{su_avopt_dump_doc()} */
+   /*! \copydoc{su_avopt_dump_doc()} */
    boole dump_doc(boole (*ptf)(up cookie, boole has_arg, char const *sopt,
          char const *lopt, char const *doc), up cookie=NIL) const{
       return su_avopt_dump_doc(this, ptf, cookie);
@@ -213,7 +213,7 @@ public:
 };
 
 NSPC_END(su)
-#include <su/code-ou.h>
+# include <su/code-ou.h>
 #endif /* !C_LANG || CXX_DOXYGEN */
 #endif /* su_AVOPT_H */
 /* s-it-mode */

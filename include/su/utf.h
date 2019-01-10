@@ -95,14 +95,14 @@ class utf32;
 class EXPORT utf8{
 public:
    enum{
-      /*! \r{su_UTF8_BUFFER_SIZE} */
+      /*! \copydoc{su_UTF8_BUFFER_SIZE} */
       buffer_size = su_UTF8_BUFFER_SIZE
    };
 
-   /*! \r{su_UTF8_REPLACER} */
+   /*! \copydoc{su_UTF8_REPLACER} */
    static char const replacer[sizeof su_UTF8_REPLACER];
 
-   /*! \r{su_utf8_to_32()} */
+   /*! \copydoc{su_utf8_to_32()} */
    static u32 convert_to_32(char const **bdat, uz *blen){
       return su_utf8_to_32(bdat, blen);
    }
@@ -114,15 +114,15 @@ public:
  */
 class utf32{
 public:
-   /*! \r{su_UTF32_REPLACER} */
+   /*! \copydoc{su_UTF32_REPLACER} */
    static u32 const replacer = su_UTF32_REPLACER;
 
-   /*! \r{su_utf32_to_8()} */
+   /*! \copydoc{su_utf32_to_8()} */
    static uz convert_to_8(u32 c, char *bp) {return su_utf32_to_8(c, bp);}
 };
 
 NSPC_END(su)
-#include <su/code-ou.h>
+# include <su/code-ou.h>
 #endif /* !C_LANG || CXX_DOXYGEN */
 #endif /* su_UTF_H */
 /* s-it-mode */

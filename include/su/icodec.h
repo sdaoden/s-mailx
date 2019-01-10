@@ -295,43 +295,43 @@ class ienc;
  */
 class idec{
 public:
-   /*! \r{su_idec_mode} */
+   /*! \copydoc{su_idec_mode} */
    enum mode{
-      /*! \r{su_IDEC_MODE_NONE} */
+      /*! \copydoc{su_IDEC_MODE_NONE} */
       mode_none = su_IDEC_MODE_NONE,
-      /*! \r{su_IDEC_MODE_SIGNED_TYPE} */
+      /*! \copydoc{su_IDEC_MODE_SIGNED_TYPE} */
       mode_signed_type = su_IDEC_MODE_SIGNED_TYPE,
-      /*! \r{su_IDEC_MODE_POW2BASE_UNSIGNED} */
+      /*! \copydoc{su_IDEC_MODE_POW2BASE_UNSIGNED} */
       mode_pow2base_unsigned = su_IDEC_MODE_POW2BASE_UNSIGNED,
-      /*! \r{su_IDEC_MODE_LIMIT_8BIT} */
+      /*! \copydoc{su_IDEC_MODE_LIMIT_8BIT} */
       mode_limit_8bit = su_IDEC_MODE_LIMIT_8BIT,
-      /*! \r{su_IDEC_MODE_LIMIT_16BIT} */
+      /*! \copydoc{su_IDEC_MODE_LIMIT_16BIT} */
       mode_limit_16bit = su_IDEC_MODE_LIMIT_16BIT,
-      /*! \r{su_IDEC_MODE_LIMIT_32BIT} */
+      /*! \copydoc{su_IDEC_MODE_LIMIT_32BIT} */
       mode_limit_32bit = su_IDEC_MODE_LIMIT_32BIT,
-      /*! \r{su_IDEC_MODE_LIMIT_NOERROR} */
+      /*! \copydoc{su_IDEC_MODE_LIMIT_NOERROR} */
       mode_limit_noerror = su_IDEC_MODE_LIMIT_NOERROR
    };
 
-   /*! \r{su_idec_state} */
+   /*! \copydoc{su_idec_state} */
    enum state{
-      /*! \r{su_IDEC_STATE_NONE} */
+      /*! \copydoc{su_IDEC_STATE_NONE} */
       state_none = su_IDEC_STATE_NONE,
-      /*! \r{su_IDEC_STATE_EINVAL} */
+      /*! \copydoc{su_IDEC_STATE_EINVAL} */
       state_einval = su_IDEC_STATE_EINVAL,
-      /*! \r{su_IDEC_STATE_EBASE} */
+      /*! \copydoc{su_IDEC_STATE_EBASE} */
       state_ebase = su_IDEC_STATE_EBASE,
-      /*! \r{su_IDEC_STATE_EOVERFLOW} */
+      /*! \copydoc{su_IDEC_STATE_EOVERFLOW} */
       state_eoverflow = su_IDEC_STATE_EOVERFLOW,
-      /*! \r{su_IDEC_STATE_EMASK} */
+      /*! \copydoc{su_IDEC_STATE_EMASK} */
       state_emask = su_IDEC_STATE_EMASK,
-      /*! \r{su_IDEC_STATE_SEEN_MINUS} */
+      /*! \copydoc{su_IDEC_STATE_SEEN_MINUS} */
       state_seen_minus = su_IDEC_STATE_SEEN_MINUS,
-      /*! \r{su_IDEC_STATE_CONSUMED} */
+      /*! \copydoc{su_IDEC_STATE_CONSUMED} */
       state_consumed = su_IDEC_STATE_CONSUMED
    };
 
-   /*! \r{su_idec()} */
+   /*! \copydoc{su_idec()} */
    static u32 convert(void *resp, char const *cbuf, uz clen, u8 base, u32 mode,
          char const **endptr_or_nil=NIL){
       return su_idec(resp, cbuf, clen, base, mode, endptr_or_nil);
@@ -438,27 +438,27 @@ public:
 class ienc{
 public:
    enum{
-      /*! \r{su_IENC_BUFFER_SIZE} */
+      /*! \copydoc{su_IENC_BUFFER_SIZE} */
       buffer_size = su_IENC_BUFFER_SIZE
    };
 
-   /*! \r{su_ienc_mode} */
+   /*! \copydoc{su_ienc_mode} */
    enum mode{
-      /*! \r{su_IENC_MODE_NONE} */
+      /*! \copydoc{su_IENC_MODE_NONE} */
       mode_none = su_IENC_MODE_NONE,
-      /*! \r{su_IENC_MODE_SIGNED_TYPE} */
+      /*! \copydoc{su_IENC_MODE_SIGNED_TYPE} */
       mode_signed_type = su_IENC_MODE_SIGNED_TYPE,
-      /*! \r{su_IENC_MODE_SIGNED_PLUS} */
+      /*! \copydoc{su_IENC_MODE_SIGNED_PLUS} */
       mode_signed_plus = su_IENC_MODE_SIGNED_PLUS,
-      /*! \r{su_IENC_MODE_SIGNED_SPACE} */
+      /*! \copydoc{su_IENC_MODE_SIGNED_SPACE} */
       mode_signed_space = su_IENC_MODE_SIGNED_SPACE,
-      /*! \r{su_IENC_MODE_NO_PREFIX} */
+      /*! \copydoc{su_IENC_MODE_NO_PREFIX} */
       mode_no_prefix = su_IENC_MODE_NO_PREFIX,
-      /*! \r{su_IENC_MODE_LOWERCASE} */
+      /*! \copydoc{su_IENC_MODE_LOWERCASE} */
       mode_lowercase = su_IENC_MODE_LOWERCASE
    };
 
-   /*! \r{su_ienc()} */
+   /*! \copydoc{su_ienc()} */
    static char *convert(char *cbuf, u64 value, u8 base=10, u32 mode=mode_none){
       return su_ienc(cbuf, value, base, mode);
    }
@@ -496,7 +496,7 @@ public:
 };
 
 NSPC_END(su)
-#include <su/code-ou.h>
+# include <su/code-ou.h>
 #endif /* !C_LANG || CXX_DOXYGEN */
 #endif /* su_ICODEC_H */
 /* s-it-mode */

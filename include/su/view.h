@@ -40,15 +40,15 @@ NSPC_BEGIN(su)
 template<class BASECOLLT, class KEYT, class T> class view_traits;
 template<class VIEWTRAITS, class GBASEVIEWT> class view__base;
 template<class VIEWTRAITS, class GBASEVIEWT> class view_unidir;
-template<class VIEWTRAITS, class GBASEVIEWT> class const_view_unidir;
+template<class VIEWTRAITS, class GBASEVIEWT> class view_unidir_const;
 template<class VIEWTRAITS, class GBASEVIEWT> class view_bidir;
-template<class VIEWTRAITS, class GBASEVIEWT> class const_view_bidir;
+template<class VIEWTRAITS, class GBASEVIEWT> class view_bidir_const;
 template<class VIEWTRAITS, class GBASEVIEWT> class view_random;
-template<class VIEWTRAITS, class GBASEVIEWT> class const_view_random;
+template<class VIEWTRAITS, class GBASEVIEWT> class view_random_const;
 template<class VIEWTRAITS, class GBASEVIEWT> class view_assoc_unidir;
-template<class VIEWTRAITS, class GBASEVIEWT> class const_view_assoc_unidir;
+template<class VIEWTRAITS, class GBASEVIEWT> class view_assoc_unidir_const;
 template<class VIEWTRAITS, class GBASEVIEWT> class view_assoc_bidir;
-template<class VIEWTRAITS, class GBASEVIEWT> class const_view_assoc_bidir;
+template<class VIEWTRAITS, class GBASEVIEWT> class view_assoc_bidir_const;
 
 /*!
  * \defgroup VIEW C++ View superclasses
@@ -298,11 +298,11 @@ class su__VIEW_NAME : public view__base<VIEWTRAITS,GBASEVIEWT>{\
    typedef typename VIEWTRAITS::key_type_traits key_type_traits;\
    typedef typename VIEWTRAITS::type_traits type_traits;\
    \
-   /* (Simply add _key_ - for non-associative this is eq const_tp) */\
-   typedef typename key_type_traits::const_tp const_key_tp;\
+   /* (Simply add _key_ - for non-associative this is eq tp_const) */\
+   typedef typename key_type_traits::tp_const key_tp_const;\
    typedef typename type_traits::type type;\
    typedef typename type_traits::tp tp;\
-   typedef typename type_traits::const_tp const_tp;\
+   typedef typename type_traits::tp_const tp_const;\
    \
 protected:\
    /* (GCC (up to and incl. 3.4.2) does not find it otherwise) */\
@@ -339,12 +339,12 @@ public:\
    \
    su__VIEW_NAME &invalidate(void) {return S(myself&,base::invalidate());}\
    \
-   const_tp data(void) const{\
+   tp_const data(void) const{\
       ASSERT_RET(is_valid(), NIL);\
       return type_traits::to_const_tp(m_view.data());\
    }\
-   const_tp operator*(void) const {return data();}\
-   const_tp operator->(void) const {return data();}\
+   tp_const operator*(void) const {return data();}\
+   tp_const operator->(void) const {return data();}\
    \
    su__VIEW_NAME &begin(void){\
       ASSERT_RET(is_setup(), *this);\
@@ -393,18 +393,18 @@ public:\
       (void)m_view.setup(S(base_coll_type&,C(TCOLL&,tc))).begin();\
    }\
    /* (Need to offer all copy-forms to allow TCOLL template..) */\
-   explicit su__VIEW_NAME(su__NONCONST_VIEW_NAME<VIEWTRAITS,GBASEVIEWT> &t)\
+   explicit su__VIEW_NAME(su__VIEW_NAME_NONCONST<VIEWTRAITS,GBASEVIEWT> &t)\
          : base(t){\
    }\
    explicit su__VIEW_NAME(\
-         su__NONCONST_VIEW_NAME<VIEWTRAITS,GBASEVIEWT> const &t) : base(t) {}\
+         su__VIEW_NAME_NONCONST<VIEWTRAITS,GBASEVIEWT> const &t) : base(t) {}\
    \
    su__VIEW_NAME &assign(\
-         su__NONCONST_VIEW_NAME<VIEWTRAITS,GBASEVIEWT> const &t){\
+         su__VIEW_NAME_NONCONST<VIEWTRAITS,GBASEVIEWT> const &t){\
       return S(myself&,base::assign(t));\
    }\
    su__VIEW_NAME &operator=(\
-         su__NONCONST_VIEW_NAME<VIEWTRAITS,GBASEVIEWT> const &t){\
+         su__VIEW_NAME_NONCONST<VIEWTRAITS,GBASEVIEWT> const &t){\
       return assign(t);\
    }\
    \
@@ -419,7 +419,7 @@ public:\
 
 #define su__VIEW_IMPL_NONASSOC_NONCONST /*{{{*/\
    /* err::enone or error */\
-   s32 insert(const_tp dat){\
+   s32 insert(tp_const dat){\
       ASSERT_RET(is_setup(), err::einval);\
       return m_view.insert(type_traits::to_const_vp(dat));\
    }\
@@ -459,7 +459,7 @@ public:\
 #define su__VIEW_IMPL_NONASSOC_CONST
 
 #define su__VIEW_IMPL_ASSOC /*{{{*/\
-   const_key_tp key(void) const{\
+   key_tp_const key(void) const{\
       ASSERT_RET(is_valid(), NIL);\
       return key_type_traits::to_const_tp(m_view.key());\
    }\
@@ -487,7 +487,7 @@ public:\
       return *this;\
    }\
    \
-   boole find(const_tp dat, boole byptr=FAL0){\
+   boole find(tp_const dat, boole byptr=FAL0){\
       ASSERT_RET(is_setup(), (invalidate(), FAL0));\
       /* FIXME toolbox assert if !byptr */\
       return m_view.find(type_traits::to_const_vp(dat), byptr);\
@@ -495,7 +495,7 @@ public:\
 /*}}}*/
 
 #define su__VIEW_IMPL_UNIDIR_ASSOC /*{{{*/\
-   boole find(const_key_tp key){\
+   boole find(key_tp_const key){\
       ASSERT_RET(is_setup(), (invalidate(), FAL0));\
       return m_view.find(key_type_traits::to_const_vp(key));\
    }\
@@ -536,7 +536,7 @@ public:\
 /*}}}*/
 
 #define su__VIEW_IMPL_BIDIR_NONASSOC /*{{{*/\
-   boole rfind(const_tp dat, boole byptr=FAL0){\
+   boole rfind(tp_const dat, boole byptr=FAL0){\
       ASSERT_RET(is_setup(), (invalidate(), FAL0));\
       /* FIXME toolbox assert if !byptr */\
       return m_view.rfind(type_traits::to_const_vp(dat), byptr);\
@@ -587,9 +587,9 @@ public:\
 #define su__VIEW_TYPE view_type_unidir
 
 #undef su__VIEW_NAME
-#undef su__NONCONST_VIEW_NAME
+#undef su__VIEW_NAME_NONCONST
 #define su__VIEW_NAME view_unidir
-#define su__NONCONST_VIEW_NAME view_unidir
+#define su__VIEW_NAME_NONCONST view_unidir
 su__VIEW_IMPL_START
    su__VIEW_IMPL_NONCONST
    su__VIEW_IMPL_NONASSOC
@@ -600,7 +600,7 @@ su__VIEW_IMPL_START
 su__VIEW_IMPL_END
 
 #undef su__VIEW_NAME
-#define su__VIEW_NAME const_view_unidir
+#define su__VIEW_NAME view_unidir_const
 su__VIEW_IMPL_START
    su__VIEW_IMPL_CONST
    su__VIEW_IMPL_NONASSOC
@@ -614,9 +614,9 @@ su__VIEW_IMPL_END
 #define su__VIEW_TYPE view_type_bidir
 
 #undef su__VIEW_NAME
-#undef su__NONCONST_VIEW_NAME
+#undef su__VIEW_NAME_NONCONST
 #define su__VIEW_NAME view_bidir
-#define su__NONCONST_VIEW_NAME view_bidir
+#define su__VIEW_NAME_NONCONST view_bidir
 su__VIEW_IMPL_START
    su__VIEW_IMPL_NONCONST
    su__VIEW_IMPL_NONASSOC
@@ -630,7 +630,7 @@ su__VIEW_IMPL_START
 su__VIEW_IMPL_END
 
 #undef su__VIEW_NAME
-#define su__VIEW_NAME const_view_bidir
+#define su__VIEW_NAME view_bidir_const
 su__VIEW_IMPL_START
    su__VIEW_IMPL_CONST
    su__VIEW_IMPL_NONASSOC
@@ -647,9 +647,9 @@ su__VIEW_IMPL_END
 #define su__VIEW_TYPE view_type_random
 
 #undef su__VIEW_NAME
-#undef su__NONCONST_VIEW_NAME
+#undef su__VIEW_NAME_NONCONST
 #define su__VIEW_NAME view_random
-#define su__NONCONST_VIEW_NAME view_random
+#define su__VIEW_NAME_NONCONST view_random
 su__VIEW_IMPL_START
    su__VIEW_IMPL_NONCONST
    su__VIEW_IMPL_NONASSOC
@@ -666,7 +666,7 @@ su__VIEW_IMPL_START
 su__VIEW_IMPL_END
 
 #undef su__VIEW_NAME
-#define su__VIEW_NAME const_view_random
+#define su__VIEW_NAME view_random_const
 su__VIEW_IMPL_START
    su__VIEW_IMPL_CONST
    su__VIEW_IMPL_NONASSOC
@@ -689,9 +689,9 @@ su__VIEW_IMPL_END
 #define su__VIEW_TYPE view_type_assoc_unidir
 
 #undef su__VIEW_NAME
-#undef su__NONCONST_VIEW_NAME
+#undef su__VIEW_NAME_NONCONST
 #define su__VIEW_NAME view_assoc_unidir
-#define su__NONCONST_VIEW_NAME view_assoc_unidir
+#define su__VIEW_NAME_NONCONST view_assoc_unidir
 su__VIEW_IMPL_START
    su__VIEW_IMPL_NONCONST
    su__VIEW_IMPL_ASSOC
@@ -702,7 +702,7 @@ su__VIEW_IMPL_START
 su__VIEW_IMPL_END
 
 #undef su__VIEW_NAME
-#define su__VIEW_NAME const_view_assoc_unidir
+#define su__VIEW_NAME view_assoc_unidir_const
 su__VIEW_IMPL_START
    su__VIEW_IMPL_CONST
    su__VIEW_IMPL_ASSOC
@@ -716,9 +716,9 @@ su__VIEW_IMPL_END
 #define su__VIEW_TYPE view_type_assoc_bidir
 
 #undef su__VIEW_NAME
-#undef su__NONCONST_VIEW_NAME
+#undef su__VIEW_NAME_NONCONST
 #define su__VIEW_NAME view_assoc_bidir
-#define su__NONCONST_VIEW_NAME view_assoc_bidir
+#define su__VIEW_NAME_NONCONST view_assoc_bidir
 su__VIEW_IMPL_START
    su__VIEW_IMPL_NONCONST
    su__VIEW_IMPL_ASSOC
@@ -732,7 +732,7 @@ su__VIEW_IMPL_START
 su__VIEW_IMPL_END
 
 #undef su__VIEW_NAME
-#define su__VIEW_NAME const_view_assoc_bidir
+#define su__VIEW_NAME view_assoc_bidir_const
 su__VIEW_IMPL_START
    su__VIEW_IMPL_CONST
    su__VIEW_IMPL_ASSOC
@@ -783,7 +783,7 @@ su__VIEW_IMPL_END
 #undef su__VIEW_CATEGORY
 #undef su__VIEW_TYPE
 #undef su__VIEW_NAME
-#undef su__NONCONST_VIEW_NAME
+#undef su__VIEW_NAME_NONCONST
 
 // }}}
 

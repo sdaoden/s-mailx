@@ -273,180 +273,180 @@ class cs;
  */
 class EXPORT cs{
 public:
-   /*! \r{su_cs_ctype} */
+   /*! \copydoc{su_cs_ctype} */
    enum ctype{
-      /*! \r{su_CS_CTYPE_NONE} */
+      /*! \copydoc{su_CS_CTYPE_NONE} */
       ctype_none = su_CS_CTYPE_NONE,
-      /*! \r{su_CS_CTYPE_ALNUM} */
+      /*! \copydoc{su_CS_CTYPE_ALNUM} */
       ctype_alnum = su_CS_CTYPE_ALNUM,
-      /*! \r{su_CS_CTYPE_ALPHA} */
+      /*! \copydoc{su_CS_CTYPE_ALPHA} */
       ctype_alpha = su_CS_CTYPE_ALPHA,
-      /*! \r{su_CS_CTYPE_BLANK} */
+      /*! \copydoc{su_CS_CTYPE_BLANK} */
       ctype_blank = su_CS_CTYPE_BLANK,
-      /*! \r{su_CS_CTYPE_CNTRL} */
+      /*! \copydoc{su_CS_CTYPE_CNTRL} */
       ctype_cntrl = su_CS_CTYPE_CNTRL,
-      /*! \r{su_CS_CTYPE_DIGIT} */
+      /*! \copydoc{su_CS_CTYPE_DIGIT} */
       ctype_digit = su_CS_CTYPE_DIGIT,
-      /*! \r{su_CS_CTYPE_GRAPH} */
+      /*! \copydoc{su_CS_CTYPE_GRAPH} */
       ctype_graph = su_CS_CTYPE_GRAPH,
-      /*! \r{su_CS_CTYPE_LOWER} */
+      /*! \copydoc{su_CS_CTYPE_LOWER} */
       ctype_lower = su_CS_CTYPE_LOWER,
-      /*! \r{su_CS_CTYPE_PRINT} */
+      /*! \copydoc{su_CS_CTYPE_PRINT} */
       ctype_print = su_CS_CTYPE_PRINT,
-      /*! \r{su_CS_CTYPE_PUNCT} */
+      /*! \copydoc{su_CS_CTYPE_PUNCT} */
       ctype_punct = su_CS_CTYPE_PUNCT,
-      /*! \r{su_CS_CTYPE_SPACE} */
+      /*! \copydoc{su_CS_CTYPE_SPACE} */
       ctype_space = su_CS_CTYPE_SPACE,
-      /*! \r{su_CS_CTYPE_UPPER} */
+      /*! \copydoc{su_CS_CTYPE_UPPER} */
       ctype_upper = su_CS_CTYPE_UPPER,
-      /*! \r{su_CS_CTYPE_WHITE} */
+      /*! \copydoc{su_CS_CTYPE_WHITE} */
       ctype_white = su_CS_CTYPE_WHITE,
-      /*! \r{su_CS_CTYPE_XDIGIT} */
+      /*! \copydoc{su_CS_CTYPE_XDIGIT} */
       ctype_xdigit = su_CS_CTYPE_XDIGIT
    };
 
-   /*! \r{su_cs_toolbox} */
+   /*! \copydoc{su_cs_toolbox} */
    static NSPC(su)type_toolbox<char*> const * const type_toolbox;
-   /*! \r{su_cs_toolbox} */
+   /*! \copydoc{su_cs_toolbox} */
    static NSPC(su)type_toolbox<char const*> const * const const_type_toolbox;
 
-   /*! \r{su_cs_toolbox_case} */
+   /*! \copydoc{su_cs_toolbox_case} */
    static NSPC(su)type_toolbox<char*> const * const type_toolbox_case;
-   /*! \r{su_cs_toolbox_case} */
+   /*! \copydoc{su_cs_toolbox_case} */
    static NSPC(su)type_toolbox<char const*> const * const
          const_type_toolbox_case;
 
-   /*! \r{su_cs_is_ascii()} */
+   /*! \copydoc{su_cs_is_ascii()} */
    static boole is_ascii(s32 x) {return su_cs_is_ascii(x);}
 
-   /*! \r{su_cs_is_alnum()} */
+   /*! \copydoc{su_cs_is_alnum()} */
    static boole is_alnum(s32 x) {return su_cs_is_alnum(x);}
 
-   /*! \r{su_cs_is_alpha()} */
+   /*! \copydoc{su_cs_is_alpha()} */
    static boole is_alpha(s32 x) {return su_cs_is_alpha(x);}
 
-   /*! \r{su_cs_is_blank()} */
+   /*! \copydoc{su_cs_is_blank()} */
    static boole is_blank(s32 x) {return su_cs_is_blank(x);}
 
-   /*! \r{su_cs_is_cntrl()} */
+   /*! \copydoc{su_cs_is_cntrl()} */
    static boole is_cntrl(s32 x) {return su_cs_is_cntrl(x);}
 
-   /*! \r{su_cs_is_digit()} */
+   /*! \copydoc{su_cs_is_digit()} */
    static boole is_digit(s32 x) {return su_cs_is_digit(x);}
 
-   /*! \r{su_cs_is_graph()} */
+   /*! \copydoc{su_cs_is_graph()} */
    static boole is_graph(s32 x) {return su_cs_is_graph(x);}
 
-   /*! \r{su_cs_is_lower()} */
+   /*! \copydoc{su_cs_is_lower()} */
    static boole is_lower(s32 x) {return su_cs_is_lower(x);}
 
-   /*! \r{su_cs_is_print()} */
+   /*! \copydoc{su_cs_is_print()} */
    static boole is_print(s32 x) {return su_cs_is_print(x);}
 
-   /*! \r{su_cs_is_punct()} */
+   /*! \copydoc{su_cs_is_punct()} */
    static boole is_punct(s32 x) {return su_cs_is_punct(x);}
 
-   /*! \r{su_cs_is_space()} */
+   /*! \copydoc{su_cs_is_space()} */
    static boole is_space(s32 x) {return su_cs_is_space(x);}
 
-   /*! \r{su_cs_is_upper()} */
+   /*! \copydoc{su_cs_is_upper()} */
    static boole is_upper(s32 x) {return su_cs_is_upper(x);}
 
-   /*! \r{su_cs_is_white()} */
+   /*! \copydoc{su_cs_is_white()} */
    static boole is_white(s32 x) {return su_cs_is_white(x);}
 
-   /*! \r{su_cs_is_xdigit()} */
+   /*! \copydoc{su_cs_is_xdigit()} */
    static boole is_xdigit(s32 x) {return su_cs_is_xdigit(x);}
 
-   /*! \r{su_cs_is_ctype()} */
+   /*! \copydoc{su_cs_is_ctype()} */
    static boole is_ctype(s32 x, u32 ct) {return su_cs_is_ctype(x, ct);}
 
-   /*! \r{su_cs_cmp()} */
+   /*! \copydoc{su_cs_cmp()} */
    static sz cmp(char const *cp1, char const *cp2){
       return su_cs_cmp(cp1, cp2);
    }
 
-   /*! \r{su_cs_cmp_n()} */
+   /*! \copydoc{su_cs_cmp_n()} */
    static sz cmp(char const *cp1, char const *cp2, uz n){
       return su_cs_cmp_n(cp1, cp2, n);
    }
 
-   /*! \r{su_cs_cmp_case()} */
+   /*! \copydoc{su_cs_cmp_case()} */
    static sz cmp_case(char const *cp1, char const *cp2){
       return su_cs_cmp_case(cp1, cp2);
    }
 
-   /*! \r{su_cs_cmp_case_n()} */
+   /*! \copydoc{su_cs_cmp_case_n()} */
    static sz cmp_case(char const *cp1, char const *cp2, uz n){
       return su_cs_cmp_case_n(cp1, cp2, n);
    }
 
-   /*! \r{su_cs_copy_n()} */
+   /*! \copydoc{su_cs_copy_n()} */
    static char *copy(char *dst, char const *src, uz n){
       return su_cs_copy_n(dst, src, n);
    }
 
-   /*! \r{su_cs_dup_cbuf()} */
+   /*! \copydoc{su_cs_dup_cbuf()} */
    static char *dup(char const *buf, uz len) {return su_cs_dup_cbuf(buf, len);}
 
-   /*! \r{su_cs_dup()} */
+   /*! \copydoc{su_cs_dup()} */
    static char *dup(char const *cp) {return su_cs_dup(cp);}
 
-   /*! \r{su_cs_find()} */
+   /*! \copydoc{su_cs_find()} */
    static char *find(char const *cp, char const *x) {return su_cs_find(cp, x);}
 
-   /*! \r{su_cs_find_c()} */
+   /*! \copydoc{su_cs_find_c()} */
    static char *find(char const *cp, char x) {return su_cs_find_c(cp, x);}
 
-   /*! \r{su_cs_hash_cbuf()} */
+   /*! \copydoc{su_cs_hash_cbuf()} */
    static uz hash(char const *buf, uz len) {return su_cs_hash_cbuf(buf, len);}
 
-   /*! \r{su_cs_hash()} */
+   /*! \copydoc{su_cs_hash()} */
    static uz hash(char const *cp) {return su_cs_hash(cp);}
 
-   /*! \r{su_cs_hash_case_cbuf()} */
+   /*! \copydoc{su_cs_hash_case_cbuf()} */
    static uz hash_case(char const *buf, uz len){
       return su_cs_hash_case_cbuf(buf, len);
    }
 
-   /*! \r{su_cs_hash_case()} */
+   /*! \copydoc{su_cs_hash_case()} */
    static uz hash_case(char const *cp) {return su_cs_hash_case(cp);}
 
-   /*! \r{su_cs_len()} */
+   /*! \copydoc{su_cs_len()} */
    static uz len(char const *cp) {return su_cs_len(cp);}
 
-   /*! \r{su_cs_pcopy()} */
+   /*! \copydoc{su_cs_pcopy()} */
    static char *pcopy(char *dst, char const *src){
       return su_cs_pcopy(dst, src);
    }
 
-   /*! \r{su_cs_pcopy_n()} */
+   /*! \copydoc{su_cs_pcopy_n()} */
    static char *pcopy(char *dst, char const *src, uz n){
       return su_cs_pcopy_n(dst, src, n);
    }
 
-   /*! \r{su_cs_rfind_c()} */
+   /*! \copydoc{su_cs_rfind_c()} */
    static char *rfind(char const *cp, char x) {return su_cs_rfind_c(cp, x);}
 
-   /*! \r{su_cs_sep_c()} */
+   /*! \copydoc{su_cs_sep_c()} */
    static char *sep(char **iolist, char sep, boole ignore_empty){
       return su_cs_sep_c(iolist, sep, ignore_empty);
    }
 
-   /*! \r{su_cs_sep_escable_c()} */
+   /*! \copydoc{su_cs_sep_escable_c()} */
    static char *sep_escable(char **iolist, char sep, boole ignore_empty){
       return su_cs_sep_escable_c(iolist, sep, ignore_empty);
    }
 
-   /*! \r{su_cs_starts_with()} */
+   /*! \copydoc{su_cs_starts_with()} */
    static boole starts_with(char const *cp, char const *x){
       return su_cs_starts_with(cp, x);
    }
 
-   /*! \r{su_cs_to_lower()} */
+   /*! \copydoc{su_cs_to_lower()} */
    static s32 to_lower(s32 c) {return su_cs_to_lower(c);}
 
-   /*! \r{su_cs_to_upper()} */
+   /*! \copydoc{su_cs_to_upper()} */
    static s32 to_upper(s32 c) {return su_cs_to_upper(c);}
 };
 
@@ -477,7 +477,7 @@ public:
 };
 
 NSPC_END(su)
-#include <su/code-ou.h>
+# include <su/code-ou.h>
 #endif /* !C_LANG || CXX_DOXYGEN */
 #endif /* su_CS_H */
 /* s-it-mode */

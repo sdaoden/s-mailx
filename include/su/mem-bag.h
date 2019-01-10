@@ -444,74 +444,76 @@ class mem_bag;
 class EXPORT mem_bag : private struct su_mem_bag{
    su_CLASS_NO_COPY(mem_bag)
 public:
-   /*! \_ */
+   /*! \copydoc{su_mem_bag_alloc_flags} */
    enum alloc_flags{
-      alloc_none = su_MEM_BAG_ALLOC_NONE, /*!< \r{su_MEM_BAG_ALLOC_NONE} */
-      alloc_clear = su_MEM_BAG_ALLOC_CLEAR, /*!< \r{su_MEM_BAG_ALLOC_CLEAR} */
-      /*! \r{su_MEM_BAG_ALLOC_OVERFLOW_OK} */
+      /*! \copydoc{su_MEM_BAG_ALLOC_NONE} */
+      alloc_none = su_MEM_BAG_ALLOC_NONE,
+      /*! \copydoc{su_MEM_BAG_ALLOC_CLEAR} */
+      alloc_clear = su_MEM_BAG_ALLOC_CLEAR,
+      /*! \copydoc{su_MEM_BAG_ALLOC_OVERFLOW_OK} */
       alloc_overflow_ok = su_MEM_BAG_ALLOC_OVERFLOW_OK,
-      /*! \r{su_MEM_BAG_ALLOC_NOMEM_OK} */
+      /*! \copydoc{su_MEM_BAG_ALLOC_NOMEM_OK} */
       alloc_nomem_ok = su_MEM_BAG_ALLOC_NOMEM_OK,
-      /*! \r{su_MEM_BAG_ALLOC_MUSTFAIL} */
+      /*! \copydoc{su_MEM_BAG_ALLOC_MUSTFAIL} */
       alloc_mustfail = su_MEM_BAG_ALLOC_MUSTFAIL
    };
 
-   /*! \r{su_mem_bag_create()} */
+   /*! \copydoc{su_mem_bag_create()} */
    mem_bag(uz bsz=0) {su_mem_bag_create(this, bsz);}
 
-   /*! \r{su_mem_bag_gut()} */
+   /*! \copydoc{su_mem_bag_gut()} */
    ~mem_bag(void) {su_mem_bag_gut(this);}
 
-   /*! \r{su_mem_bag_fixate()} */
+   /*! \copydoc{su_mem_bag_fixate()} */
    mem_bag &fixate(void) {return *su_mem_bag_fixate(this);}
 
-   /*! \r{su_mem_bag_reset()} */
+   /*! \copydoc{su_mem_bag_reset()} */
    mem_bag &reset(void) {return *su_mem_bag_reset(this);}
 
-   /*! \r{su_mem_bag_push()} */
+   /*! \copydoc{su_mem_bag_push()} */
    mem_bag &push(mem_bag &that_one) {return *su_mem_bag_push(this, &that_one);}
 
-   /*! \r{su_mem_bag_pop()} */
+   /*! \copydoc{su_mem_bag_pop()} */
    mem_bag &pop(mem_bag &that_one) {return *su_mem_bag_pop(this, &that_one);}
 
-   /*! \r{su_mem_bag_top()} */
+   /*! \copydoc{su_mem_bag_top()} */
    mem_bag &top(void) {return (mb_top != NIL) ? *mb_top : *this;}
 
 #ifdef su_HAVE_MEM_BAG_AUTO
-   /*! \r{su_mem_bag_auto_relax_create()} */
+   /*! \copydoc{su_mem_bag_auto_relax_create()} */
    mem_bag &auto_relax_create(void){
       return *su_mem_bag_auto_relax_create(this);
    }
 
-   /*! \r{su_mem_bag_auto_relax_gut()} */
+   /*! \copydoc{su_mem_bag_auto_relax_gut()} */
    mem_bag &auto_relax_gut(void) {return *su_mem_bag_auto_relax_gut(this);}
 
-   /*! \r{su_mem_bag_auto_relax_unroll()} */
+   /*! \copydoc{su_mem_bag_auto_relax_unroll()} */
    mem_bag &auto_relax_unroll(void){
       return *su_mem_bag_auto_relax_unroll(this);
    }
 
-   /*! \r{su_mem_bag_auto_allocate()} */
+   /*! \copydoc{su_mem_bag_auto_allocate()} */
    void *auto_allocate(uz size, uz no=1, u32 af=alloc_none){
       return su_mem_bag_auto_allocate(this, size, no, af, su_DBG_LOC_ARGS_INJ);
    }
 #endif /* su_HAVE_MEM_BAG_AUTO */
 
 #ifdef su_HAVE_MEM_BAG_LOFI
-   /*! \r{su_mem_bag_lofi_snap_create()} */
+   /*! \copydoc{su_mem_bag_lofi_snap_create()} */
    void *lofi_snap_create(void) {return su_mem_bag_lofi_snap_create(this);}
 
-   /*! \r{su_mem_bag_lofi_snap_unroll()} */
+   /*! \copydoc{su_mem_bag_lofi_snap_unroll()} */
    mem_bag &lofi_snap_unroll(void *cookie){
       return *su_mem_bag_lofi_snap_unroll(this, cookie);
    }
 
-   /*! \r{su_mem_bag_lofi_allocate()} */
+   /*! \copydoc{su_mem_bag_lofi_allocate()} */
    void *lofi_allocate(uz size, uz no=1, u32 af=alloc_none){
       return su_mem_bag_lofi_allocate(this, size, no, af, su_DBG_LOC_ARGS_INJ);
    }
 
-   /*! \r{su_mem_bag_lofi_free()} */
+   /*! \copydoc{su_mem_bag_lofi_free()} */
    mem_bag &lofi_free(void *ovp){
       return *su_mem_bag_lofi_free(this, su_DBG_LOC_ARGS_INJ);
    }
@@ -519,7 +521,7 @@ public:
 };
 
 NSPC_END(su)
-#include <su/code-ou.h>
+# include <su/code-ou.h>
 #endif /* !C_LANG || CXX_DOXYGEN */
 #endif /* su_HAVE_MEM_BAG */
 #endif /* !su_MEM_BAG_H */

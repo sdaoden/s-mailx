@@ -1270,13 +1270,13 @@ typedef su_sz sz; /*!< \_ */
 typedef su_up up; /*!< \_ */
 typedef su_sp sp; /*!< \_ */
 
+typedef su_boole boole; /*!< \_ */
 /*! Values for \r{su_boole}. */
 enum{
    FAL0 = su_FAL0,   /*!< \_ */
    TRU1 = su_TRU1,   /*!< \_ */
    TRUM1 = su_TRUM1  /*!< All bits set. */
 };
-typedef su_boole boole; /*!< \_ */
 
 /* Place the mentioned alignment CTAs */
 MCTA(IS_POW2(sizeof(uz)), "Must be power of two")
@@ -1286,27 +1286,27 @@ MCTA(IS_POW2(su__ZAL_L), "Must be power of two")
 /*! \_ */
 class min{
 public:
-   static NSPC(su)s8 const s8 = su_S8_MIN;      /*!< \r{su_S8_MIN} */
-   static NSPC(su)s16 const s16 = su_S16_MIN;   /*!< \r{su_S16_MIN} */
-   static NSPC(su)s32 const s32 = su_S32_MIN;   /*!< \r{su_S32_MIN} */
-   static NSPC(su)s64 const s64 = su_S64_MIN;   /*!< \r{su_S64_MIN} */
-   static NSPC(su)sz const sz = su_SZ_MIN;      /*!< \r{su_SZ_MIN} */
+   static NSPC(su)s8 const s8 = su_S8_MIN;      /*!< \copydoc{su_S8_MIN} */
+   static NSPC(su)s16 const s16 = su_S16_MIN;   /*!< \copydoc{su_S16_MIN} */
+   static NSPC(su)s32 const s32 = su_S32_MIN;   /*!< \copydoc{su_S32_MIN} */
+   static NSPC(su)s64 const s64 = su_S64_MIN;   /*!< \copydoc{su_S64_MIN} */
+   static NSPC(su)sz const sz = su_SZ_MIN;      /*!< \copydoc{su_SZ_MIN} */
 };
 
 /*! \_ */
 class max{
 public:
-   static NSPC(su)s8 const s8 = su_S8_MAX;      /*!< \r{su_S8_MAX} */
-   static NSPC(su)s16 const s16 = su_S16_MAX;   /*!< \r{su_S16_MAX} */
-   static NSPC(su)s32 const s32 = su_S32_MAX;   /*!< \r{su_S32_MAX} */
-   static NSPC(su)s64 const s64 = su_S64_MAX;   /*!< \r{su_S64_MAX} */
-   static NSPC(su)sz const sz = su_SZ_MAX;      /*!< \r{su_SZ_MAX} */
+   static NSPC(su)s8 const s8 = su_S8_MAX;      /*!< \copydoc{su_S8_MAX} */
+   static NSPC(su)s16 const s16 = su_S16_MAX;   /*!< \copydoc{su_S16_MAX} */
+   static NSPC(su)s32 const s32 = su_S32_MAX;   /*!< \copydoc{su_S32_MAX} */
+   static NSPC(su)s64 const s64 = su_S64_MAX;   /*!< \copydoc{su_S64_MAX} */
+   static NSPC(su)sz const sz = su_SZ_MAX;      /*!< \copydoc{su_SZ_MAX} */
 
-   static NSPC(su)u8 const u8 = su_U8_MAX;      /*!< \r{su_U8_MAX} */
-   static NSPC(su)u16 const u16 = su_U16_MAX;   /*!< \r{su_U16_MAX} */
-   static NSPC(su)u32 const u32 = su_U32_MAX;   /*!< \r{su_U32_MAX} */
-   static NSPC(su)u64 const u64 = su_U64_MAX;   /*!< \r{su_U64_MAX} */
-   static NSPC(su)uz const uz = su_UZ_MAX;      /*!< \r{su_UZ_MAX} */
+   static NSPC(su)u8 const u8 = su_U8_MAX;      /*!< \copydoc{su_U8_MAX} */
+   static NSPC(su)u16 const u16 = su_U16_MAX;   /*!< \copydoc{su_U16_MAX} */
+   static NSPC(su)u32 const u32 = su_U32_MAX;   /*!< \copydoc{su_U32_MAX} */
+   static NSPC(su)u64 const u64 = su_U64_MAX;   /*!< \copydoc{su_U64_MAX} */
+   static NSPC(su)uz const uz = su_UZ_MAX;      /*!< \copydoc{su_UZ_MAX} */
 };
 
 /* POD TYPE SUPPORT }}} */
@@ -1327,8 +1327,8 @@ class type_traits{
 public:
    typedef T type; /*!< \_ */
    typedef T *tp; /*!< \_ */
-   typedef T const const_type; /*!< \_ */
-   typedef T const *const_tp; /*!< \_ */
+   typedef T const type_const; /*!< \_ */
+   typedef T const *tp_const; /*!< \_ */
 
    typedef NSPC(su)type_toolbox<type> type_toolbox; /*!< \_ */
    typedef NSPC(su)auto_type_toolbox<type> auto_type_toolbox; /*!< \_ */
@@ -1339,14 +1339,14 @@ public:
    static boole const ownguess_key = TRU1;
 
    /*! \_ */
-   static void *to_vp(const_tp t) {return C(void*,S(void const*,t));}
+   static void *to_vp(tp_const t) {return C(void*,S(void const*,t));}
    /*! \_ */
-   static void const *to_const_vp(const_tp t) {return t;}
+   static void const *to_const_vp(tp_const t) {return t;}
 
    /*! \_ */
-   static tp to_tp(void const *t) {return C(tp,S(const_tp,t));}
+   static tp to_tp(void const *t) {return C(tp,S(tp_const,t));}
    /*! \_ */
-   static const_tp to_const_tp(void const *t) {return S(const_tp,t);}
+   static tp_const to_const_tp(void const *t) {return S(tp_const,t);}
 };
 
 // Some specializations
@@ -1355,18 +1355,18 @@ class type_traits<T const>{ // (ugly, but required for some node based colls..)
 public:
    typedef T type;
    typedef T *tp;
-   typedef T const const_type;
-   typedef T const *const_tp;
+   typedef T const type_const;
+   typedef T const *tp_const;
    typedef NSPC(su)type_toolbox<type> type_toolbox;
    typedef NSPC(su)auto_type_toolbox<type> auto_type_toolbox;
 
    static boole const ownguess = FAL0;
    static boole const ownguess_key = TRU1;
 
-   static void *to_vp(const_tp t) {return C(tp,t);}
-   static void const *to_const_vp(const_tp t) {return t;}
-   static tp to_tp(void const *t) {return C(tp,S(const_tp,t));}
-   static const_tp to_const_tp(void const *t) {return S(const_tp,t);}
+   static void *to_vp(tp_const t) {return C(tp,t);}
+   static void const *to_const_vp(tp_const t) {return t;}
+   static tp to_tp(void const *t) {return C(tp,S(tp_const,t));}
+   static tp_const to_const_tp(void const *t) {return S(tp_const,t);}
 };
 
 template<class T>
@@ -1374,18 +1374,18 @@ class type_traits<T *>{
 public:
    typedef T type;
    typedef T *tp;
-   typedef T const const_type;
-   typedef T const *const_tp;
+   typedef T const type_const;
+   typedef T const *tp_const;
    typedef NSPC(su)type_toolbox<type> type_toolbox;
    typedef NSPC(su)auto_type_toolbox<type> auto_type_toolbox;
 
    static boole const ownguess = FAL0;
    static boole const ownguess_key = TRU1;
 
-   static void *to_vp(const_tp t) {return C(tp,t);}
-   static void const *to_const_vp(const_tp t) {return t;}
-   static tp to_tp(void const *t) {return C(tp,S(const_tp,t));}
-   static const_tp to_const_tp(void const *t) {return S(const_tp,t);}
+   static void *to_vp(tp_const t) {return C(tp,t);}
+   static void const *to_const_vp(tp_const t) {return t;}
+   static tp to_tp(void const *t) {return C(tp,S(tp_const,t));}
+   static tp_const to_const_tp(void const *t) {return S(tp_const,t);}
 };
 
 template<>
@@ -1393,18 +1393,18 @@ class type_traits<void *>{
 public:
    typedef void *type;
    typedef void *tp;
-   typedef void const *const_type;
-   typedef void const *const_tp;
+   typedef void const *type_const;
+   typedef void const *tp_const;
    typedef NSPC(su)toolbox type_toolbox;
    typedef NSPC(su)auto_type_toolbox<void *> auto_type_toolbox;
 
    static boole const ownguess = FAL0;
    static boole const ownguess_key = FAL0;
 
-   static void *to_vp(const_tp t) {return C(tp,t);}
-   static void const *to_const_vp(const_tp t) {return t;}
-   static tp to_tp(void const *t) {return C(tp,S(const_tp,t));}
-   static const_tp to_const_tp(void const *t) {return S(const_tp,t);}
+   static void *to_vp(tp_const t) {return C(tp,t);}
+   static void const *to_const_vp(tp_const t) {return t;}
+   static tp to_tp(void const *t) {return C(tp,S(tp_const,t));}
+   static tp_const to_const_tp(void const *t) {return S(tp_const,t);}
 };
 
 template<>
@@ -1412,18 +1412,18 @@ class type_traits<void const *>{
 public:
    typedef void const *type;
    typedef void const *tp;
-   typedef void const *const_type;
-   typedef void const *const_tp;
+   typedef void const *type_const;
+   typedef void const *tp_const;
    typedef NSPC(su)toolbox type_toolbox;
    typedef NSPC(su)auto_type_toolbox<void const *> auto_type_toolbox;
 
    static boole const ownguess = FAL0;
    static boole const ownguess_key = FAL0;
 
-   static void *to_vp(const_tp t) {return C(void*,t);}
-   static void const *to_const_vp(const_tp t) {return t;}
+   static void *to_vp(tp_const t) {return C(void*,t);}
+   static void const *to_const_vp(tp_const t) {return t;}
    static tp to_tp(void const *t) {return C(void*,t);}
-   static const_tp to_const_tp(void const *t) {return t;}
+   static tp_const to_const_tp(void const *t) {return t;}
 };
 
 template<>
@@ -1431,18 +1431,18 @@ class type_traits<char *>{
 public:
    typedef char *type;
    typedef char *tp;
-   typedef char const *const_type;
-   typedef char const *const_tp;
+   typedef char const *type_const;
+   typedef char const *tp_const;
    typedef NSPC(su)type_toolbox<type> type_toolbox;
    typedef NSPC(su)auto_type_toolbox<type> auto_type_toolbox;
 
    static boole const ownguess = FAL0;
    static boole const ownguess_key = TRU1;
 
-   static void *to_vp(const_tp t) {return C(tp,t);}
-   static void const *to_const_vp(const_tp t) {return t;}
-   static tp to_tp(void const *t) {return C(tp,S(const_tp,t));}
-   static const_tp to_const_tp(void const *t) {return S(const_tp,t);}
+   static void *to_vp(tp_const t) {return C(tp,t);}
+   static void const *to_const_vp(tp_const t) {return t;}
+   static tp to_tp(void const *t) {return C(tp,S(tp_const,t));}
+   static tp_const to_const_tp(void const *t) {return S(tp_const,t);}
 };
 
 template<>
@@ -1450,18 +1450,18 @@ class type_traits<char const *>{
 public:
    typedef char const *type;
    typedef char const *tp;
-   typedef char const *const_type;
-   typedef char const *const_tp;
+   typedef char const *type_const;
+   typedef char const *tp_const;
    typedef NSPC(su)type_toolbox<type> type_toolbox;
    typedef NSPC(su)auto_type_toolbox<type> auto_type_toolbox;
 
    static boole const ownguess = FAL0;
    static boole const ownguess_key = TRU1;
 
-   static void *to_vp(const_tp t) {return C(char*,t);}
-   static void const *to_const_vp(const_tp t) {return t;}
-   static tp to_tp(void const *t) {return C(char*,S(const_tp,t));}
-   static const_tp to_const_tp(void const *t) {return S(const_tp,t);}
+   static void *to_vp(tp_const t) {return C(char*,t);}
+   static void const *to_const_vp(tp_const t) {return t;}
+   static tp to_tp(void const *t) {return C(char*,S(tp_const,t));}
+   static tp_const to_const_tp(void const *t) {return S(tp_const,t);}
 };
 
 /*! This is binary compatible with \r{toolbox} (and \r{su_toolbox})!
@@ -1472,17 +1472,17 @@ struct type_toolbox{
    typedef NSPC(su)type_traits<T> type_traits;
 
    /*! \_ */
-   typename type_traits::tp (*ttb_clone)(typename type_traits::const_tp t);
+   typename type_traits::tp (*ttb_clone)(typename type_traits::tp_const t);
    /*! \_ */
    void (*ttb_delete)(typename type_traits::tp self);
    /*! \_ */
    typename type_traits::tp (*ttb_assign)(typename type_traits::tp self,
-         typename type_traits::const_tp t);
+         typename type_traits::tp_const t);
    /*! \_ */
-   sz (*ttb_compare)(typename type_traits::const_tp self,
-         typename type_traits::const_tp t);
+   sz (*ttb_compare)(typename type_traits::tp_const self,
+         typename type_traits::tp_const t);
    /*! \_ */
-   uz (*ttb_hash)(typename type_traits::const_tp self);
+   uz (*ttb_hash)(typename type_traits::tp_const self);
 };
 /*! \_ */
 #define su_TYPE_TOOLBOX_I9R(CLONE,DELETE,ASSIGN,COMPARE,HASH) \
@@ -1497,17 +1497,22 @@ struct type_toolbox{
 // abc,clip,max,min,pow2 -- the C macros are in SUPPORT MACROS+
 /*! \_ */
 template<class T> inline T get_abs(T const &a) {return su_ABS(a);}
-/*! \_ */
+
+/*! \copydoc{su_CLIP()} */
 template<class T>
 inline T const &get_clip(T const &a, T const &min, T const &max){
    return su_CLIP(a, min, max);
 }
-/*! \_ */
+
+/*! \copydoc{su_MAX()} */
 template<class T>
 inline T const &get_max(T const &a, T const &b) {return su_MAX(a, b);}
-/*! \_ */
+
+/*! \copydoc{su_MIN()} */
 template<class T>
 inline T const &get_min(T const &a, T const &b) {return su_MIN(a, b);}
+
+/*! \copydoc{su_IS_POW2()} */
 template<class T> inline int is_pow2(T const &a) {return su_IS_POW2(a);}
 
 /* BASIC TYPE TRAITS }}} */
@@ -1524,20 +1529,20 @@ class state;
 /*! \_ */
 class bom{
 public:
-   /*! \r{su_BOM} */
+   /*! \copydoc{su_BOM} */
    static u16 host(void) {return su_BOM;}
 
-   /*! \r{su_bom_little} */
+   /*! \copydoc{su_bom_little} */
    static u16 little(void) {return su_bom_little;}
 
-   /*! \r{su_bom_big} */
+   /*! \copydoc{su_bom_big} */
    static u16 big(void) {return su_bom_big;}
 };
 
 /*! \_ */
 class err{
 public:
-   /*! \r{su_err_number} */
+   /*! \copydoc{su_err_number} */
    enum err_number{
 #ifdef DOXYGEN
       err_none,      /*!< No error. */
@@ -1548,22 +1553,22 @@ public:
 #endif
    };
 
-   /*! \r{su_err_no()} */
+   /*! \copydoc{su_err_no()} */
    static s32 no(void) {return su_err_no();}
 
-   /*! \r{su_err_set_no()} */
+   /*! \copydoc{su_err_set_no()} */
    static void set_no(s32 eno) {su_err_set_no(eno);}
 
-   /*! \r{su_err_doc()} */
+   /*! \copydoc{su_err_doc()} */
    static char const *doc(s32 eno) {return su_err_doc(eno);}
 
-   /*! \r{su_err_name()} */
+   /*! \copydoc{su_err_name()} */
    static char const *name(s32 eno) {return su_err_name(eno);}
 
-   /*! \r{su_err_from_name()} */
+   /*! \copydoc{su_err_from_name()} */
    static s32 from_name(char const *name) {return su_err_from_name(name);}
 
-   /*! \r{su_err_no_via_errno()} */
+   /*! \copydoc{su_err_no_via_errno()} */
    static s32 no_via_errno(void) {return su_err_no_via_errno();}
 };
 
@@ -1572,40 +1577,40 @@ class log{
 public:
    /*! Log priorities, for simplicity of use without _LEVEL or _LVL prefix */
    enum level{
-      emerg = su_LOG_EMERG,   /*! \r{su_LOG_EMERG} */
-      alert = su_LOG_ALERT,   /*! \r{su_LOG_ALERT} */
-      crit = su_LOG_CRIT,     /*! \r{su_LOG_CRIT} */
-      err = su_LOG_ERR,       /*! \r{su_LOG_ERR} */
-      warn = su_LOG_WARN,     /*! \r{su_LOG_WARN} */
-      notice = su_LOG_NOTICE, /*! \r{su_LOG_NOTICE} */
-      info = su_LOG_INFO,     /*! \r{su_LOG_INFO} */
-      debug = su_LOG_DEBUG    /*! \r{su_LOG_DEBUG} */
+      emerg = su_LOG_EMERG,   /*!< \copydoc{su_LOG_EMERG} */
+      alert = su_LOG_ALERT,   /*!< \copydoc{su_LOG_ALERT} */
+      crit = su_LOG_CRIT,     /*!< \copydoc{su_LOG_CRIT} */
+      err = su_LOG_ERR,       /*!< \copydoc{su_LOG_ERR} */
+      warn = su_LOG_WARN,     /*!< \copydoc{su_LOG_WARN} */
+      notice = su_LOG_NOTICE, /*!< \copydoc{su_LOG_NOTICE} */
+      info = su_LOG_INFO,     /*!< \copydoc{su_LOG_INFO} */
+      debug = su_LOG_DEBUG    /*!< \copydoc{su_LOG_DEBUG} */
    };
 
    // Log functions of various sort.
    // Regardless of the level these also log if state_debug|state_verbose.
    // The vp is a &va_list
-   /*! \r{su_log_get_level()} */
+   /*! \copydoc{su_log_get_level()} */
    static level get_level(void) {return S(level,su_log_get_level());}
 
-   /*! \r{su_log_set_level()} */
+   /*! \copydoc{su_log_set_level()} */
    static void set_level(level lvl) {su_log_set_level(S(su_log_level,lvl));}
 
-   /*! \r{su_log_enable_level_prefix()} */
+   /*! \copydoc{su_log_enable_level_prefix()} */
    static void enable_level_prefix(void) {su_log_enable_level_prefix();}
 
-   /*! \r{su_log_disable_level_prefix()} */
+   /*! \copydoc{su_log_disable_level_prefix()} */
    static void disable_level_prefix(void) {su_log_disable_level_prefix();}
 
-   /*! \r{su_log_write()} */
+   /*! \copydoc{su_log_write()} */
    static void write(level lvl, char const *fmt, ...);
 
-   /*! \r{su_log_vwrite()} */
+   /*! \copydoc{su_log_vwrite()} */
    static void vwrite(level lvl, char const *fmt, void *vp){
       su_log_vwrite(S(enum su_log_level,lvl), fmt, vp);
    }
 
-   /*! \r{su_perr()} */
+   /*! \copydoc{su_perr()} */
    static void perr(char const *msg, s32 eno_or_0) {su_perr(msg, eno_or_0);}
 };
 
@@ -1614,31 +1619,34 @@ class state{
 public:
    /*! \_ */
    enum flags{
-      debug = su_STATE_DEBUG, /*!< \r{su_STATE_DEBUG} */
-      verbose = su_STATE_VERBOSE, /*!< \r{su_STATE_VERBOSE} */
+      debug = su_STATE_DEBUG, /*!< \copydoc{su_STATE_DEBUG} */
+      verbose = su_STATE_VERBOSE, /*!< \copydoc{su_STATE_VERBOSE} */
 
       // reproducible-build.org
-      reproducible = su_STATE_REPRODUCIBLE, /*!< \r{su_STATE_REPRODUCIBLE} */
+      /*! \copydoc{su_STATE_REPRODUCIBLE} */
+      reproducible = su_STATE_REPRODUCIBLE,
 
-      err_nomem = su_STATE_ERR_NOMEM, /*!< \r{su_STATE_ERR_NOMEM} */
-      err_overflow = su_STATE_ERR_OVERFLOW, /*!< \r{su_STATE_ERR_OVERFLOW} */
-      err_type_mask = su_STATE_ERR_TYPE_MASK,/*!< \r{su_STATE_ERR_TYPE_MASK} */
+      err_nomem = su_STATE_ERR_NOMEM, /*!< \copydoc{su_STATE_ERR_NOMEM} */
+      /*! \copydoc{su_STATE_ERR_OVERFLOW} */
+      err_overflow = su_STATE_ERR_OVERFLOW,
+      /*! \copydoc{su_STATE_ERR_TYPE_MASK} */
+      err_type_mask = su_STATE_ERR_TYPE_MASK,
 
-      err_pass = su_STATE_ERR_PASS, /*!< \r{su_STATE_ERR_PASS} */
-      err_nopass = su_STATE_ERR_NOPASS, /*!< \r{su_STATE_ERR_NOPASS} */
-      err_noerrno = su_STATE_ERR_NOERRNO /*!< \r{su_STATE_ERR_NOERRNO} */
+      err_pass = su_STATE_ERR_PASS, /*!< \copydoc{su_STATE_ERR_PASS} */
+      err_nopass = su_STATE_ERR_NOPASS, /*!< \copydoc{su_STATE_ERR_NOPASS} */
+      err_noerrno = su_STATE_ERR_NOERRNO /*!< \copydoc{su_STATE_ERR_NOERRNO} */
    };
 
-   /*! \r{su_state_has()} */
+   /*! \copydoc{su_state_has()} */
    static boole has(uz state) {return su_state_has(state);}
 
-   /*! \r{su_state_set()} */
+   /*! \copydoc{su_state_set()} */
    static void set(uz state) {su_state_set(state);}
 
-   /*! \r{su_state_clear()} */
+   /*! \copydoc{su_state_clear()} */
    static void clear(uz state) {su_state_clear(state);}
 
-   /*! \r{su_state_err()} */
+   /*! \copydoc{su_state_err()} */
    static s32 err(uz state, char const *msg_or_nil=NIL){
       return su_state_err(state, msg_or_nil);
    }
