@@ -69,7 +69,9 @@ template<class T> class auto_type_toolbox;
  * For this to work, we need:
  *
  * \list{\li{
- * A copy constructor, and an assignment operator.
+ * A default constructor and an assignment method, the latter of which with the
+ * \r{su_state_err_type} plus \r{su_state_err_flags} status argument documented
+ * for \r{su_clone_fun}.
  * }\li{
  * An unequality operator \fn{!=}.
  * }\li{
@@ -78,6 +80,9 @@ template<class T> class auto_type_toolbox;
  *
  * \remarks{If \a{T} is a pointer type, the a-t-t will still create heap
  * clones, so \c{T*} and \c{T} are in fact treated alike!}
+ *
+ * \remarks{Many \SU object types and functionality groups offer
+ * specializations, for example \r{CS}.}
  */
 template<class T>
 class auto_type_toolbox{
@@ -93,13 +98,14 @@ public:
    static type_toolbox<T> const *get_instance(void) {return &instance;}
 
 private:
-   static typename type_traits::ptr s_clone(typename type_traits::const_ptr t);
-   static void s_delete(typename type_traits::ptr self);
-   static typename type_traits::ptr s_assign(typename type_traits::ptr self,
-         typename type_traits::const_ptr t);
-   static sz s_compare(typename type_traits::const_ptr self,
-         typename type_traits::const_ptr t);
-   static uz s_hash(typename type_traits::const_ptr self);
+   static typename type_traits::tp s_clone(typename type_traits::tp_const t,
+         u32 estate);
+   static void s_delete(typename type_traits::tp self);
+   static typename type_traits::tp s_assign(typename type_traits::tp self,
+         typename type_traits::tp_const t, u32 estate);
+   static sz s_compare(typename type_traits::tp_const self,
+         typename type_traits::tp_const t);
+   static uz s_hash(typename type_traits::tp_const self);
 };
 #endif /* su_A_T_T_DECL_OK */
 
@@ -107,34 +113,41 @@ private:
 # undef su_A_T_T_DECL_ONLY
 #else
 template<class T>
-PRI STA typename type_traits::ptr
-auto_type_toolbox<T>::s_clone(typename type_traits::const_ptr t){
+PRI STA typename type_traits::tp
+auto_type_toolbox<T>::s_clone(typename type_traits::tp_const t, u32 estate){
    ASSERT_RET(t != NIL, NIL);
-   return su_NEW(typename type_traits::type)(*t);
+   type_traits::tp self = su_NEW(typename type_traits::type);
+   if(self->assign(t, estate) != 0){
+      su_DEL(self);
+      self = NIL;
+   }
+   return self;
 }
 
 template<class T>
 PRI STA void
-auto_type_toolbox<T>::s_delete(typename type_traits::ptr self){
+auto_type_toolbox<T>::s_delete(typename type_traits::tp self){
    ASSERT_RET_VOID(self != NIL);
    su_DEL(self);
 }
 
 template<class T>
-PRI STA typename type_traits::ptr
-auto_type_toolbox<T>::s_assign(typename type_traits::ptr self,
-      typename type_traits::const_ptr t){
+PRI STA typename type_traits::tp
+auto_type_toolbox<T>::s_assign(typename type_traits::tp self,
+      typename type_traits::tp_const t, u32 estate){
    ASSERT_RET(self != NIL, NIL);
    ASSER_RET(t != NIL, self);
-   if(self != t)
-      *self = *t;
+   if(self != t){
+      if(self->assign(t, estate) != 0)
+         self = NIL;
+   }
    return self;
 }
 
 template<class T>
 PRI STA sz
-auto_type_toolbox<T>::s_compare(typename type_traits::const_ptr self,
-      typename type_traits::const_ptr t){
+auto_type_toolbox<T>::s_compare(typename type_traits::tp_const self,
+      typename type_traits::tp_const t){
    ASSERT_RET(self != NIL, (t != NIL) ? -1 : 0);
    ASSERT_RET(t != NIL, 1);
    return self->compare(*t);
@@ -142,13 +155,13 @@ auto_type_toolbox<T>::s_compare(typename type_traits::const_ptr self,
 
 template<class T>
 PRI STA uz
-auto_type_toolbox<T>::s_hash(typename type_traits::const_ptr self){
+auto_type_toolbox<T>::s_hash(typename type_traits::tp_const self){
    ASSERT_RET(self != NIL, 0);
    return self->hash();
 }
 
 template<class T>
-PUB STA type_toolbox<T> const auto_type_toolbox<T>::instance =
+STA type_toolbox<T> const auto_type_toolbox<T>::instance =
       su_TYPE_TOOLBOX_I9R(&s_clone, &s_delete, &s_assign, &s_compare, &s_hash);
 #endif // !su_A_T_T_DECL_ONLY
 

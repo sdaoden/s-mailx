@@ -543,7 +543,7 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
    /* XXX Unfortunately we yet need to dup the macro lines! :( */
    args_base = args = n_alloc(sizeof(*args) * (amp->am_line_cnt +1));
    for(amlp = amp->am_line_dat; *amlp != NULL; ++amlp)
-      *(args++) = su_cs_dup_cbuf((*amlp)->aml_dat, (*amlp)->aml_len);
+      *(args++) = su_cs_dup_cbuf((*amlp)->aml_dat, (*amlp)->aml_len, 0);
    *args = NULL;
 
    losp = n_lofi_alloc(sizeof *losp);
@@ -2034,7 +2034,7 @@ a_amv_var__putenv(struct a_amv_var_carrier *avcp, struct a_amv_var *avp){
 #ifdef mx_HAVE_SETENV
    rv = (setenv(avcp->avc_name, avp->av_value, 1) == 0);
 #else
-   cp = su_cs_dup(savecatsep(avcp->avc_name, '=', avp->av_value));
+   cp = su_cs_dup(savecatsep(avcp->avc_name, '=', avp->av_value), 0);
 
    if((rv = (putenv(cp) == 0))){
       char *ocp;

@@ -796,7 +796,7 @@ getmdot(int nmail)
       } else if ((cp = ok_vlook(autosort)) != NULL) {
          if (mb.mb_sorted != NULL)
             n_free(mb.mb_sorted);
-         mb.mb_sorted = su_cs_dup(cp);
+         mb.mb_sorted = su_cs_dup(cp, 0);
          c_sort(NULL);
       }
    }

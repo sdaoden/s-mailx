@@ -381,7 +381,7 @@ initcache(struct mailbox *mp)
    mp->mb_cache_directory = NULL;
    if ((name = encname(mp, "", 1, NULL)) == NULL)
       goto jleave;
-   mp->mb_cache_directory = su_cs_dup(name);
+   mp->mb_cache_directory = su_cs_dup(name, 0);
    if ((uvname = encname(mp, "UIDVALIDITY", 1, NULL)) == NULL)
       goto jleave;
    if (cwget(&cw) == STOP)
@@ -610,7 +610,7 @@ cache_setptr(enum fedit_mode fm, int transparent)
    }
    if ((name = encname(&mb, "", 1, NULL)) == NULL)
       goto jleave;
-   mb.mb_cache_directory = su_cs_dup(name);
+   mb.mb_cache_directory = su_cs_dup(name, 0);
    if (cwget(&cw) == STOP)
       goto jleave;
    if (chdir(name) < 0)
@@ -837,7 +837,7 @@ cache_dequeue(struct mailbox *mp)
       /* FIXME MUST BLOCK SIGNALS IN ORDER TO ENSURE PROPER RESTORE!
        * (but wuuuuh, what a shit!) */
       mp->mb_imap_mailbox = su_cs_dup(
-            imap_path_decode(urlxdec(dp->d_name), NULL));
+            imap_path_decode(urlxdec(dp->d_name), NULL), 0);
       dequeue1(mp);
       {  char *x = mp->mb_imap_mailbox;
          mp->mb_imap_mailbox = oldbox;

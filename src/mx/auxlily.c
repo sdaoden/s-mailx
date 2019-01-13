@@ -678,7 +678,7 @@ n_nodename(bool_t mayoverride){
          /*n_string_gut(&cnv);*/
       }
 #else
-      sys_hostname = su_cs_dup(hn);
+      sys_hostname = su_cs_dup(hn, 0);
 #endif
 
       if(lofi)
@@ -688,7 +688,7 @@ n_nodename(bool_t mayoverride){
 
    if(hostname != NULL && hostname != sys_hostname)
       n_free(hostname);
-   hostname = su_cs_dup(hn);
+   hostname = su_cs_dup(hn, 0);
    n_NYD2_OU;
    return hostname;
 }

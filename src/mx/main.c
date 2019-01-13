@@ -205,7 +205,10 @@ a_main_startup(void){
 
    if((cp = su_cs_rfind_c(su_program, '/')) != NULL)
       su_program = ++cp;
-   /* XXX Somewhen: su_state_set(su_STATE_ERR_NOMEM | su_STATE_ERR_OVERFLOW);*/
+   /* XXX Due to n_err() mess the su_log config only applies to EMERG yet! */
+   su_state_set(su_STATE_LOG_SHOW_LEVEL | su_STATE_LOG_SHOW_PID
+         /* XXX | su_STATE_ERR_NOMEM | su_STATE_ERR_OVERFLOW */
+   );
    su_log_set_level(n_LOG_LEVEL); /* XXX _EMERG is 0.. */
 
 #ifdef mx_HAVE_n_NYD

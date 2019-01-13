@@ -66,6 +66,7 @@ EXPORT_DATA u8 const su__cs_toupper[S8_MAX + 1];
 
 /*! \_ */
 EXPORT_DATA struct su_toolbox const su_cs_toolbox;
+
 /*! \_ */
 EXPORT_DATA struct su_toolbox const su_cs_toolbox_case;
 
@@ -144,12 +145,11 @@ EXPORT char *su_cs_copy_n(char *dst, char const *src, uz n);
 /*! Duplicate a buffer into a \r{su_MEM_TALLOC()}ated duplicate.
  * Unless \a{len} was \r{su_UZ_MAX} and thus detected by searching NUL,
  * embedded NUL bytes will be included in the result.
- * May return \NIL for \r{su_STATE_ERR_NOMEM} or \r{su_STATE_ERR_OVERFLOW},
- * depending on the global \r{su_state_has()}. */
-EXPORT char *su_cs_dup_cbuf(char const *buf, uz len);
+ * \copydoc{su_clone_fun}. */
+EXPORT char *su_cs_dup_cbuf(char const *buf, uz len, u32 estate);
 
 /*! \r{su_cs_dup_cbuf()}. */
-EXPORT char *su_cs_dup(char const *cp);
+EXPORT char *su_cs_dup(char const *cp, u32 estate);
 
 /*! Search \a{x} within \a{cp}, return pointer to location or \NIL.
  * Returns \a{cp} if \a{x} is the empty buffer. */
@@ -387,10 +387,14 @@ public:
    }
 
    /*! \copydoc{su_cs_dup_cbuf()} */
-   static char *dup(char const *buf, uz len) {return su_cs_dup_cbuf(buf, len);}
+   static char *dup(char const *buf, uz len, u32 estate=state::none){
+      return su_cs_dup_cbuf(buf, len, estate);
+   }
 
    /*! \copydoc{su_cs_dup()} */
-   static char *dup(char const *cp) {return su_cs_dup(cp);}
+   static char *dup(char const *cp, u32 estate=state::none){
+      return su_cs_dup(cp, estate);
+   }
 
    /*! \copydoc{su_cs_find()} */
    static char *find(char const *cp, char const *x) {return su_cs_find(cp, x);}

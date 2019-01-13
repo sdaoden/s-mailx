@@ -1673,7 +1673,7 @@ _imap_getcred(struct mailbox *mbp, struct ccred *ccredp, struct url *urlp)
       if ((var = mbp->mb_imap_pass) != NULL) {
          var = savecat("password-", xuhp);
          if ((old = n_UNCONST(n_var_vlook(var, FAL0))) != NULL)
-            old = su_cs_dup(old);
+            old = su_cs_dup(old, 0);
          n_var_vset(var, (uintptr_t)mbp->mb_imap_pass);
       }
       rv = ccred_lookup_old(ccredp, CPROTO_IMAP, xuhp);
@@ -1768,10 +1768,10 @@ jduppass:
       n_free(mb.mb_imap_account);
    if (mb.mb_imap_pass != NULL)
       n_free(mb.mb_imap_pass);
-   mb.mb_imap_account = su_cs_dup(urlp->url_p_eu_h_p);
+   mb.mb_imap_account = su_cs_dup(urlp->url_p_eu_h_p, 0);
    /* TODO This is a hack to allow '@boxname'; in the end everything will be an
     * TODO object, and mailbox will naturally have an URL and credentials */
-   mb.mb_imap_pass = su_cs_dup_cbuf(ccred.cc_pass.s, ccred.cc_pass.l);
+   mb.mb_imap_pass = su_cs_dup_cbuf(ccred.cc_pass.s, ccred.cc_pass.l, 0);
 
    if (!same_imap_account) {
       if (mb.mb_sock.s_fd >= 0)
@@ -1793,7 +1793,7 @@ jduppass:
       assert(urlp->url_path.s != NULL);
       imap_delim_init(&mb, urlp);
       mb.mb_imap_mailbox = su_cs_dup(imap_path_normalize(&mb,
-            urlp->url_path.s));
+            urlp->url_path.s), 0);
       initbox(savecatsep(urlp->url_p_eu_h_p,
          (mb.mb_imap_delim[0] != '\0' ? mb.mb_imap_delim[0] : n_IMAP_DELIM[0]),
          mb.mb_imap_mailbox));
@@ -3129,7 +3129,8 @@ imap_append(const char *xserver, FILE *fp, long offset)
          goto jleave;
 
       imap_delim_init(&mx, &url);
-      mx.mb_imap_mailbox = su_cs_dup(imap_path_normalize(&mx, url.url_path.s));
+      mx.mb_imap_mailbox = su_cs_dup(imap_path_normalize(&mx, url.url_path.s),
+            0);
 
       if (disconnected(url.url_p_eu_h_p) == 0) {
          if (!sopen(&mx.mb_sock, &url))
@@ -3538,13 +3539,13 @@ imap_copyuid(struct mailbox *mp, struct message *m, const char *name)
 
    xmb = *mp;
    xmb.mb_cache_directory = NULL;
-   xmb.mb_imap_account = su_cs_dup(mp->mb_imap_account);
-   xmb.mb_imap_pass = su_cs_dup(mp->mb_imap_pass);
+   xmb.mb_imap_account = su_cs_dup(mp->mb_imap_account, 0);
+   xmb.mb_imap_pass = su_cs_dup(mp->mb_imap_pass, 0);
    su_mem_copy(&xmb.mb_imap_delim[0], &mp->mb_imap_delim[0],
       sizeof(xmb.mb_imap_delim));
-   xmb.mb_imap_mailbox = su_cs_dup(imap_path_normalize(&xmb, name));
+   xmb.mb_imap_mailbox = su_cs_dup(imap_path_normalize(&xmb, name), 0);
    if (mp->mb_cache_directory != NULL)
-      xmb.mb_cache_directory = su_cs_dup(mp->mb_cache_directory);
+      xmb.mb_cache_directory = su_cs_dup(mp->mb_cache_directory, 0);
    xmb.mb_uidvalidity = uidvalidity;
    initcache(&xmb);
 
@@ -3600,7 +3601,7 @@ imap_appenduid(struct mailbox *mp, FILE *fp, time_t t, long off1, long xsize,
    xmb = *mp;
    xmb.mb_cache_directory = NULL;
    /* XXX mb_imap_delim reused */
-   xmb.mb_imap_mailbox = su_cs_dup(imap_path_normalize(&xmb, name));
+   xmb.mb_imap_mailbox = su_cs_dup(imap_path_normalize(&xmb, name), 0);
    xmb.mb_uidvalidity = uidvalidity;
    xmb.mb_otf = xmb.mb_itf = fp;
    initcache(&xmb);

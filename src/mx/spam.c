@@ -1095,7 +1095,7 @@ jtail:
                state |= _ERRORS;
             } else {
                scfp->cf_result = su_cs_dup_cbuf(vcp->vc_buffer,
-                     PTR2SIZE(cp - vcp->vc_buffer));
+                     PTR2SIZE(cp - vcp->vc_buffer), 0);
 /* FIXME consume child output until EOF??? */
             }
          } else if (i != 0)

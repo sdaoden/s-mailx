@@ -527,6 +527,7 @@ su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no, u32 mbaf
       size = 1;
    if(UNLIKELY(no == 0))
       no = 1;
+   mbaf &= su__MEM_BAG_ALLOC_USER_MASK;
 
    rv = NIL;
 
@@ -565,9 +566,8 @@ su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no, u32 mbaf
 
          /* Ran out of usable pools.  Allocate one, and make it the serving
           * head (top) if possible */
-         mbabp = su_MEM_ALLOCATE_LOC(self->mb_bsz + a_MEMBAG_BSZ_BASE, 1,
-               ((mbaf & (su_MEM_BAG_ALLOC_OVERFLOW_OK |
-                     su_MEM_BAG_ALLOC_NOMEM_OK)) | su_MEM_ALLOC_MARK_AUTO),
+         mbabp = su_ALLOCATE_LOC(self->mb_bsz + a_MEMBAG_BSZ_BASE, 1,
+               (mbaf | su_MEM_ALLOC_MARK_AUTO),
                su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
          if(mbabp == NIL)
             goto jleave;
@@ -587,9 +587,7 @@ su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no, u32 mbaf
 jhave_pool:;
 #if a_MEMBAG_HULL
          cp = S(char*,rv);
-         rv = su_MEM_ALLOCATE_LOC(size, 1,
-               ((mbaf & (su_MEM_BAG_ALLOC_OVERFLOW_OK |
-                  su_MEM_BAG_ALLOC_NOMEM_OK)) | su_MEM_ALLOC_MARK_AUTO),
+         rv = su_ALLOCATE_LOC(size, 1, (mbaf | su_MEM_ALLOC_MARK_AUTO),
                su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
          if(rv != NIL)
             *R(void**,cp) = rv;
@@ -605,19 +603,17 @@ jhave_pool:;
             "%" PRIuZ " bytes from %s:%" PRIu32 "!\n",
             size  su_DBG_LOC_ARGS_USE); )
 
-         mbahp = su_MEM_ALLOCATE_LOC(VSTRUCT_SIZEOF(
+         mbahp = su_ALLOCATE_LOC(VSTRUCT_SIZEOF(
                   struct su__mem_bag_auto_huge,mbah_buf) + chunksz, 1,
-               ((mbaf & (su_MEM_BAG_ALLOC_OVERFLOW_OK |
-                  su_MEM_BAG_ALLOC_NOMEM_OK)) | su_MEM_ALLOC_MARK_AUTO_HUGE),
+               (mbaf | su_MEM_ALLOC_MARK_AUTO_HUGE),
                su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
          if(UNLIKELY(mbahp == NIL))
             goto jleave;
 #if !a_MEMBAG_HULL
          rv = mbahp->mbah_buf;
 #else
-         rv = su_MEM_ALLOCATE_LOC(size, 1,
-               ((mbaf & (su_MEM_BAG_ALLOC_OVERFLOW_OK |
-                  su_MEM_BAG_ALLOC_NOMEM_OK)) | su_MEM_ALLOC_MARK_AUTO_HUGE),
+         rv = su_ALLOCATE_LOC(size, 1,
+               (mbaf | su_MEM_ALLOC_MARK_AUTO_HUGE),
                su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
          if(rv != NIL)
             *R(void**,mbahp->mbah_buf) = rv;
@@ -633,9 +629,7 @@ jhave_pool:;
       if(mbaf & su_MEM_BAG_ALLOC_CLEAR)
          su_mem_set(rv, 0, size);
    }else
-      su_state_err((su_STATE_ERR_OVERFLOW |
-            (mbaf & su_MEM_BAG_ALLOC_OVERFLOW_OK ? su_STATE_ERR_PASS : 0) |
-            (mbaf & su_MEM_BAG_ALLOC_MUSTFAIL ? su_STATE_ERR_NOPASS : 0)),
+      su_state_err(su_STATE_ERR_OVERFLOW, mbaf,
          _("SU memory bag: auto allocation request"));
 jleave:
    NYD_OU;
@@ -699,6 +693,7 @@ su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no, u32 mbaf
       size = 1;
    if(UNLIKELY(no == 0))
       no = 1;
+   mbaf &= su__MEM_BAG_ALLOC_USER_MASK;
 
    rv = NIL;
 
@@ -737,9 +732,8 @@ su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no, u32 mbaf
       }
 
       /* Need a pool */
-      mblpp = su_MEM_ALLOCATE_LOC(self->mb_bsz + a_MEMBAG_BSZ_BASE, 1,
-            ((mbaf & (su_MEM_BAG_ALLOC_OVERFLOW_OK |
-                  su_MEM_BAG_ALLOC_NOMEM_OK)) | su_MEM_ALLOC_MARK_LOFI),
+      mblpp = su_ALLOCATE_LOC(self->mb_bsz + a_MEMBAG_BSZ_BASE, 1,
+            (mbaf | su_MEM_ALLOC_MARK_LOFI),
             su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
       if(mblpp == NIL)
          goto jleave;
@@ -757,9 +751,7 @@ jhave_pool:
          rv = mblcp->mblc_buf;
       else{
          cp = rv;
-         rv = su_MEM_ALLOCATE_LOC(size, 1,
-               ((mbaf & (su_MEM_BAG_ALLOC_OVERFLOW_OK |
-                     su_MEM_BAG_ALLOC_NOMEM_OK)) | su_MEM_ALLOC_MARK_LOFI),
+         rv = su_ALLOCATE_LOC(size, 1, (mbaf | su_MEM_ALLOC_MARK_LOFI),
                su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
          if(rv != NIL)
             *S(void**,mblcp->mblc_buf) = rv;
@@ -773,9 +765,7 @@ jhave_pool:
       if(mbaf & su_MEM_BAG_ALLOC_CLEAR)
          su_mem_set(rv, 0, size);
    }else
-      su_state_err((su_STATE_ERR_OVERFLOW |
-            (mbaf & su_MEM_BAG_ALLOC_OVERFLOW_OK ? su_STATE_ERR_PASS : 0) |
-            (mbaf & su_MEM_BAG_ALLOC_MUSTFAIL ? su_STATE_ERR_NOPASS : 0)),
+      su_state_err(su_STATE_ERR_OVERFLOW, mbaf,
          _("SU memory bag: lofi allocation request"));
 jleave:
    NYD_OU;

@@ -849,7 +849,7 @@ imap_search(char const *spec, int f)
       if (lastspec != NULL)
          n_free(lastspec);
       i = su_cs_len(spec);
-      lastspec = su_cs_dup_cbuf(spec, i);
+      lastspec = su_cs_dup_cbuf(spec, i, 0);
    } else if (lastspec == NULL) {
       n_err(_("No last SEARCH criteria available\n"));
       rv = -1;

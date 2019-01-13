@@ -27,23 +27,25 @@
 #include "su/code-in.h"
 
 char *
-su_cs_dup_cbuf(char const *buf, uz len){
+su_cs_dup_cbuf(char const *buf, uz len, u32 estate){
    char *rv;
    NYD_IN;
    ASSERT_EXEC(len == 0 || buf != NIL, len = 0);
 
    if(len == UZ_MAX)
       len = su_cs_len(buf);
+   estate &= su_STATE_ERR_MASK;
 
    if(LIKELY(len != UZ_MAX)){
-      if((rv = su_TALLOC(char, len +1)) != NIL){
+      rv = S(char*,su_ALLOCATE(1, len +1, estate));
+      if(LIKELY(rv != NIL)){
          if(len > 0)
             su_mem_copy(rv, buf, len);
          rv[len] = '\0';
       }
    }else{
-      su_state_err(su_STATE_ERR_OVERFLOW,
-         _("SU cs_dup_cbuf: buffer too large"));
+      su_state_err(su_STATE_ERR_OVERFLOW, estate,
+            _("SU cs_dup_cbuf: buffer too large"));
       rv = NIL;
    }
    NYD_OU;
@@ -51,18 +53,22 @@ su_cs_dup_cbuf(char const *buf, uz len){
 }
 
 char *
-su_cs_dup(char const *cp){
+su_cs_dup(char const *cp, u32 estate){
    char *rv;
    uz l;
    NYD_IN;
    ASSERT_EXEC(cp != NIL, cp = su_empty);
 
-   if(LIKELY((l = su_cs_len(cp)) != UZ_MAX)){
+   estate &= su_STATE_ERR_MASK;
+   l = su_cs_len(cp);
+
+   if(LIKELY(l != UZ_MAX)){
       ++l;
-      if((rv = su_TALLOC(char, l)) != NIL)
+      if(LIKELY((rv = S(char*,su_ALLOCATE(1, l, estate))) != NIL))
          su_mem_copy(rv, cp, l);
    }else{
-      su_state_err(su_STATE_ERR_OVERFLOW, _("SU cs_dup: string too long"));
+      su_state_err(su_STATE_ERR_OVERFLOW, estate,
+            _("SU cs_dup: string too long"));
       rv = NIL;
    }
    NYD_OU;

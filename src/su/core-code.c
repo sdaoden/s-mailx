@@ -30,6 +30,9 @@
 #include <stdarg.h>
 #include <stdio.h> /* TODO Get rid */
 #include <stdlib.h>
+#include <unistd.h> /* TODO POSIX module! */
+
+#include "su/icodec.h"
 
 #include "su/code.h"
 #include "su/code-in.h"
@@ -99,16 +102,26 @@ a_evlog(enum su_log_level lvl, char const *fmt, va_list ap){
    /*extern*/ void n_verr(char const *fmt, va_list ap);
 # endif
 #endif
+   char buf[su_IENC_BUFFER_SIZE];
+   char const *cp, *xfmt;
 
 #ifdef su_USECASE_MX
    if(lvl != su_LOG_EMERG)
       goto jnostd;
 #endif
 
-   if(su_program != NIL)
-      fprintf(stderr, "%s: ", su_program);
+   if(su_program != NIL){
+      if(su_state_has(su_STATE_LOG_SHOW_PID)){
+         cp = su_ienc_u32(buf, getpid(), 10);
+         xfmt = "%s[%s]: ";
+      }else{
+         cp = su_empty;
+         xfmt = "%s: ";
+      }
+      fprintf(stderr, xfmt, su_program, cp);
+   }
 
-   if(su_state_has(su__STATE_LOG_LEVEL))
+   if(su_state_has(su_STATE_LOG_SHOW_LEVEL))
       fprintf(stderr, "[%s] ",
          a_core_lvlnames[S(u32,lvl) /*& su__STATE_LOG_MASK*/]);
 
@@ -163,54 +176,49 @@ a_core_nyd_printone(void (*ptf)(up cookie, char const *buf, uz blen),
 #endif /* DVLOR(1, 0) */
 
 s32
-su_state_err(uz state, char const *msg_or_nil){
+su_state_err(enum su_state_err_type err, uz state, char const *msg_or_nil){
    static char const intro_nomem[] = N_("Out of memory: %s\n"),
       intro_overflow[] = N_("Datatype overflow: %s\n");
 
    enum su_log_level lvl;
    char const *introp;
-   s32 err;
+   s32 eno;
    NYD2_IN;
-   ASSERT((state & su__STATE_ERR_MASK) && !(state & ~su__STATE_ERR_MASK));
 
-   switch(state & su_STATE_ERR_TYPE_MASK){
+   if(msg_or_nil == NIL)
+      msg_or_nil = N_("(no error information)");
+   state &= su_STATE_ERR_MASK;
+
+   switch(err &= su_STATE_ERR_TYPE_MASK){
    default:
       ASSERT(0);
       /* FALLTHRU */
    case su_STATE_ERR_NOMEM:
-      err = su_ERR_NOMEM;
+      eno = su_ERR_NOMEM;
       introp = intro_nomem;
       break;
    case su_STATE_ERR_OVERFLOW:
-      err = su_ERR_OVERFLOW;
+      eno = su_ERR_OVERFLOW;
       introp = intro_overflow;
       break;
    }
-   if(msg_or_nil == NIL)
-      msg_or_nil = N_("(no error information)");
 
-   if(state & su_STATE_ERR_NOPASS){
-      lvl = su_LOG_EMERG;
+   lvl = su_LOG_EMERG;
+   if(state & su_STATE_ERR_NOPASS)
       goto jdolog;
-   }
-   lvl = S(enum su_log_level,state & su__STATE_LOG_MASK);
-   if(state & su_STATE_ERR_PASS){
+   if(state & su_STATE_ERR_PASS)
       lvl = su_LOG_DEBUG;
-      goto jlog_check;
-   }else if(su_state_has(state)){
+   else if((state & err) || su_state_has(err))
       lvl = su_LOG_ALERT;
-      goto jlog_check;
-   }else{
-jlog_check:
-      if(a_PRIMARY_DOLOG(lvl))
-jdolog:
-         su_log_write(lvl, V_(introp), V_(msg_or_nil));
-   }
 
-   if(err != su_ERR_NONE && !(state & su_STATE_ERR_NOERRNO))
-      su_err_set_no(err);
+   if(a_PRIMARY_DOLOG(lvl))
+jdolog:
+      su_log_write(lvl, V_(introp), V_(msg_or_nil));
+
+   if(!(state & su_STATE_ERR_NOERRNO))
+      su_err_set_no(eno);
    NYD2_OU;
-   return err;
+   return eno;
 }
 
 s32

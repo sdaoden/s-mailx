@@ -173,7 +173,7 @@ _execute_command(struct header *hp, char const *linebuf, size_t linesize){
    /* If the above todo is worked, remove or outsource to attachment.c! */
    if(hp != NULL && (ap = hp->h_attach) != NULL) do
       if(ap->a_msgno){
-         mnbuf = su_cs_dup(mailname);
+         mnbuf = su_cs_dup(mailname, 0);
          break;
       }
    while((ap = ap->a_flink) != NULL);

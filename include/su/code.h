@@ -47,21 +47,25 @@
  * }\li{
  * Datatype overflow errors and out-of-memory situations are usually detected
  * and result in abortions (via \r{su_LOG_EMERG} logs).
- * Alternatively errors are reported to callers.
- * The actual mode of operation is configurable via \r{su_state_set()} and
- * \r{su_state_clear()}, and often the default can also be changed by-call
- * or by-object.
+ * Alternatively all or individual \r{su_state_err_type}s will not cause
+ * hard-failures.
  *
- * C++ object creation failures via \c{su_MEM_NEW()} etc. will however always
- * cause program abortion due to standard imposed execution flow.
- * This can be worked around by using \c{su_MEM_NEW_HEAP()} as appropriate.
+ * The actual global mode of operation can be queried via \r{su_state_get()}
+ * (presence checks with \r{su_state_has()},
+ * is configurable via \r{su_state_set()} and \r{su_state_clear()}, and often
+ * the default can also be changed on a by-call or by-object basis, see
+ * \r{su_state_err_flags} and \r{su_clone_fun} for more on this.
+ *
+ * \remarks{C++ object creation failures via \c{su_MEM_NEW()} etc. will however
+ * always cause program abortion due to standard imposed execution flow.
+ * This can be worked around by using \c{su_MEM_NEW_HEAP()} as appropriate.}
  * }\li{
  * Most collection and string object types work on 32-bit (or even 31-bit)
  * lengths a.k.a. counts a.k.a. sizes.
  * For simplicity of use, and because datatype overflow is a handled case, the
  * user interface very often uses \r{su_uz} (i.e., \c{size_t}).
  * Other behaviour is explicitly declared with a "big" prefix, as in
- * "biglist", but none such object does yet exist.
+ * "biglist", but none such object does exist at the time of this writing.
  * }}
  */
 
@@ -985,33 +989,68 @@ typedef su_s8 su_boole; /*!< The \SU boolean type (see \FAL0 etc.). */
 struct su_toolbox;
 /* plus PTF typedefs */
 
-/*! \_ */
-typedef void *(*su_new_fun)(void);
-/*! \_ */
-typedef void *(*su_clone_fun)(void const *t);
-/*! \_ */
+/*! Create a new default instance of an object type, return it or \NIL.
+ * See \r{su_clone_fun} for the meaning of \a{estate}. */
+typedef void *(*su_new_fun)(u32 estate);
+
+/*! Create a clone of \a{t}, and return it.
+ * \a{estate} might be set to some \r{su_state_err_type}s to be turned to
+ * non-fatal errors, and contain \r{su_state_err_flags} with additional
+ * control requests.
+ * Otherwise (\a{estate} is 0) \NIL can still be returned for
+ * \r{su_STATE_ERR_NOMEM} or \r{su_STATE_ERR_OVERFLOW}, dependent on the
+ * global \r{su_state_get()} / \r{su_state_has()} setting,
+ * as well as for other errors and with other \r{su_err_number}s, of course.
+ * Also see \r{su_STATE_ERR_NIL_IS_VALID_OBJECT}. */
+typedef void *(*su_clone_fun)(void const *t, u32 estate);
+
+/*! Delete an instance returned by \r{su_new_fun} or \r{su_clone_fun} (or
+ * \r{su_assign_fun}). */
 typedef void (*su_delete_fun)(void *self);
-/*! Update of \SELF should not be assumed, use return value instead! */
-typedef void *(*su_assign_fun)(void *self, void const *t);
-/*! \_ */
+
+/*! Assign \a{t}; see \r{su_clone_fun} for the meaning of \a{estate}.
+ * In-place update of \SELF is (and should) not (be) assumed, but instead the
+ * return value has to be used, with the exception as follows.
+ * First all resources of \a{self} should be released (an operation which is
+ * not supposed to fail), then the assignment be performed.
+ * If this fails, \a{self} should be turned to cleared state again,
+ * and \NIL should be returned.
+ *
+ * \remarks{This function is not used by (object owning) \r{COLL} unless
+ * \r{su_STATE_ERR_NIL_IS_VALID_OBJECT} is set.  Regardless, if \NIL is
+ * returned to indicate error then the caller which passed a non-\NIL object
+ * is responsible for deletion or taking other appropriate steps.}
+ *
+ * \remarks{If \a{self} and \a{t} are \r{COLLS}, then if assignment fails then
+ * whereas \a{self} will not manage any elements, it has been assigned \a{t}'s
+ * possible existent \r{su_toolbox} as well as other attributes.
+ * Some \r{COLLS} will provide an additional \c{assign_elems()} function.} */
+typedef void *(*su_assign_fun)(void *self, void const *t, u32 estate);
+
+/*! Compare \a{a} and \a{b}, and return a value less than 0 if \a{a} is "less
+ * than \a{b}", 0 on equality, and a value greater than 0 if \a{a} is
+ * "greate than \a{b}". */
 typedef su_sz (*su_compare_fun)(void const *a, void const *b);
-/*! \_ */
+
+/*! Create a hash that reproducibly represents \SELF. */
 typedef su_uz (*su_hash_fun)(void const *self);
 
-/*! Needs to be binary compatible with \c{su::{toolbox,type_toolbox<T>}}!
- * Also see \r{COLL}. */
+/* Needs to be binary compatible with \c{su::{toolbox,type_toolbox<T>}}! */
+/*! A toolbox provides object handling knowledge to \r{COLL}.
+ * Also see \r{su_TOOLBOX_I9R()}. */
 struct su_toolbox{
-   su_new_fun tb_clone;       /*!< \_ */
-   su_delete_fun tb_delete;   /*!< \_ */
-   su_assign_fun tb_assign;   /*!< \_ */
-   su_compare_fun tb_compare; /*!< \_ */
-   su_hash_fun tb_hash;       /*!< \_ */
+   su_clone_fun tb_clone;     /*!< \copydoc{su_clone_fun}. */
+   su_delete_fun tb_delete;   /*!< \copydoc{su_delete_fun}. */
+   su_assign_fun tb_assign;   /*!< \copydoc{su_assign_fun}. */
+   su_compare_fun tb_compare; /*!< \copydoc{su_compare_fun}. */
+   su_hash_fun tb_hash;       /*!< \copydoc{su_hash_fun}. */
 };
-/*! Initialize a \r{su_toolbox}.
- * Use C-style casts, not and ever \r{su_R()}! */
+
+/* Use C-style casts, not and ever su_R()! */
+/*! Initialize a \r{su_toolbox}. */
 #define su_TOOLBOX_I9R(CLONE,DELETE,ASSIGN,COMPARE,HASH) \
 {\
-   su_FIELD_INITN(tb_clone) (su_new_fun)CLONE,\
+   su_FIELD_INITN(tb_clone) (su_clone_fun)CLONE,\
    su_FIELD_INITN(tb_delete) (su_delete_fun)DELETE,\
    su_FIELD_INITN(tb_assign) (su_assign_fun)ASSIGN,\
    su_FIELD_INITN(tb_compare) (su_compare_fun)COMPARE,\
@@ -1021,11 +1060,14 @@ struct su_toolbox{
 /* BASIC TYPE TRAITS }}} */
 /* BASIC C INTERFACE (SYMBOLS) {{{ */
 
-/*! Byte order mark macro; there is \r{su_bom} plus endianess support below.
- * We optionally may have \c{su_CC_BOM{,_BIG,_LITTLE}} support, too! */
+/*! Byte order mark macro; there are also \r{su_bom}, \r{su_BOM_IS_BIG()} and
+ * \r{su_BOM_IS_LITTLE()}. */
 #define su_BOM 0xFEFFu
 
-/*! Log priorities, for simplicity of use without _LEVEL or _LVL prefix */
+/* su_state.. machinery: first byte: global log instance.. */
+
+/*! Log priorities, for simplicity of use without _LEVEL or _LVL prefix,
+ * for \r{su_log_set_level()}. */
 enum su_log_level{
    su_LOG_EMERG,  /*!< System is unusable (abort()s the program) */
    su_LOG_ALERT,  /*!< Action must be taken immediately */
@@ -1037,54 +1079,108 @@ enum su_log_level{
    su_LOG_DEBUG   /*!< Debug-level message */
 };
 
+/*! Adjustment possibilities for the global log domain (e.g,
+ * \r{su_log_write()}), to be set via \r{su_state_set()}, to be queried via
+ * \r{su_state_has()}. */
+enum su_state_log_flags{
+   /*! Prepend a messages \r{su_log_level}. */
+   su_STATE_LOG_SHOW_LEVEL = 1u<<4,
+   /*! Show the PID (Process IDentification number).
+    * This flag is only honoured if \r{su_program} set to non-\NIL. */
+   su_STATE_LOG_SHOW_PID = 1u<<5
+};
+
+/* ..second byte: hardening errors.. */
+
+/*! Global hardening for out-of-memory and integer etc. overflow: types.
+ * By default out-of-memory situations, or container and string etc.
+ * insertions etc. which cause count/offset datatype overflow result in
+ * \r{su_LOG_EMERG}s, and thus program abortion.
+ *
+ * This global default can be changed by including the corresponding
+ * \c{su_state_err_type} (\r{su_STATE_ERR_NOMEM} and
+ * \r{su_STATE_ERR_OVERFLOW}, respectively), in the global \SU state machine
+ * via \r{su_state_set()}, in which case logging uses \r{su_LOG_ALERT} level,
+ * a corresponding \r{su_err_number} will be assigned for \r{su_err_no()}, and
+ * the failed function will return error.
+ *
+ * Often functions and object allow additional control over the global on
+ * a by-call or by-object basis, taking a state argument which consists of
+ * \c{su_state_err_type} and \r{su_state_err_flags} bits.
+ * In order to support this these values do not form an enumeration, but
+ * rather are combinable bits. */
+enum su_state_err_type{
+   su_STATE_ERR_NOMEM = 1u<<8,   /*!< Out-of-memory. */
+   su_STATE_ERR_OVERFLOW = 1u<<9 /*!< Integer/xy domain overflow. */
+};
+
+/*! Hardening for out-of-memory and integer etc. overflow: adjustment flags.
+ * Many functions offer the possibility to adjust the global \r{su_state_get()}
+ * (\r{su_state_has()}) \r{su_state_err_type} default on a per-call level, and
+ * object types (can) do so on a per-object basis.
+ *
+ * If so, the global state can (selectively) be bypassed by adding in
+ * \r{su_state_err_type}s to be ignored to an (optional) function argument,
+ * or object control function or field.
+ * It is also possible to instead enforce program abortion regardless of
+ * a global ignorance policy, and pass other control flags. */
+enum su_state_err_flags{
+   /*! A mask containing all \r{su_state_err_type} bits. */
+   su_STATE_ERR_TYPE_MASK = su_STATE_ERR_NOMEM | su_STATE_ERR_OVERFLOW,
+   /*! Allow passing of all errors.
+    * This is just a better name alias for \r{su_STATE_ERR_TYPE_MASK}. */
+   su_STATE_ERR_PASS = su_STATE_ERR_TYPE_MASK,
+   /*! Regardless of global (and additional local) policy, if this flag is
+    * set, an actual error causes a hard program abortion. */
+   su_STATE_ERR_NOPASS = 1u<<12,
+   /*! If this flag is set and no abortion is about to happen, a corresponding
+    * \r{su_err_number} will not be assigned to \r{su_err_no()}. */
+   su_STATE_ERR_NOERRNO = 1u<<13,
+   /*! This is special in that it plays no role in the global state machine.
+    * However, many types or functions which provide \a{estate} arguments and
+    * use (NOT) \r{su_STATE_ERR_MASK} to overload that with meaning, adding
+    * support for owning \r{COLL} (for \r{su_toolbox} users, to be exact)
+    * actually made sense: if this bit is set it indicates that \NIL values
+    * returned by \r{su_toolbox} members are acceptible values (and thus do not
+    * cause actions like insertion, replacement etc. to fail). */
+   su_STATE_ERR_NIL_IS_VALID_OBJECT = 1u<<14,
+   /*! Alias for \r{su_STATE_ERR_NIL_IS_VALID_OBJECT}. */
+   su_STATE_ERR_NILISVALO = su_STATE_ERR_NIL_IS_VALID_OBJECT,
+   /*! Handy mask for the entire family of error \SU error bits,
+    * \r{su_state_err_type} and \r{su_state_err_flags}.
+    * It can be used by functions or methods which allow fine-tuning of error
+    * behaviour to strip down an user argument.
+    *
+    * \remarks{This mask itself is covered by the mask \c{0xFF00}.
+    * This condition is compile-time asserted.} */
+   su_STATE_ERR_MASK = su_STATE_ERR_TYPE_MASK |
+         su_STATE_ERR_PASS | su_STATE_ERR_NOPASS | su_STATE_ERR_NOERRNO |
+         su_STATE_ERR_NIL_IS_VALID_OBJECT
+};
+
+/* ..third byte: misc flags */
+
 /*! \_ */
 enum su_state_flags{
-   /* enum su_log_level is first "member" */
-   su__STATE_LOG_MASK = 0xFFu,
-
-   su_STATE_DEBUG = 1u<<8,    /*!< \_ */
-   su_STATE_VERBOSE = 1u<<9,  /*!< \_ */
-   su__STATE_D_V = su_STATE_DEBUG | su_STATE_VERBOSE,
-
-   /* Prefix level for global domain */
-   su__STATE_LOG_LEVEL = 1u<<10,
-
+   su_STATE_NONE,             /*!< No flag: this is 0. */
+   su_STATE_DEBUG = 1u<<16,   /*!< \_ */
+   su_STATE_VERBOSE = 1u<<17, /*!< \_ */
    /*! Reproducible behaviour switch.
     * See \r{su_reproducible_build},
     * and \xln{https://reproducible-builds.org}. */
-   su_STATE_REPRODUCIBLE = 1u<<11,
+   su_STATE_REPRODUCIBLE = 1u<<18
+};
 
-   /*! By default out-of-memory situations, or container and string etc.
-    * insertions etc. which cause count/offset datatype overflow result in
-    * \r{su_LOG_EMERG}s, and thus program abortion.
-    *
-    * This default can be changed by setting the corresponding su_state*()
-    * bit, \c{su_STATE_ERR_NOMEM} and \r{su_STATE_ERR_OVERFLOW}, respectively,
-    * in which case the functions will return corresponding error codes, then,
-    * and the log will happen with a \r{su_LOG_ALERT} level instead.
-    *
-    * \r{su_STATE_ERR_PASS} may be used only as an argument to
-    * \r{su_state_err()}, when \r{su_LOG_EMERG} is to be avoided at all cost
-    * (only \r{su_LOG_DEBUG} logs happen then).
-    * Likewise, \r{su_STATE_ERR_NOPASS}, to be used when \r{su_state_err()}
-    * must not return.
-    * Ditto, \r{su_STATE_ERR_NOERRNO}, to be used when \r{su_err_no()} shall
-    * not be set. */
-   su_STATE_ERR_NOMEM = 1u<<26,
-   su_STATE_ERR_OVERFLOW = 1u<<27,  /*!< \r{su_STATE_ERR_NOMEM}. */
-   /*! \_ */
-   su_STATE_ERR_TYPE_MASK = su_STATE_ERR_NOMEM | su_STATE_ERR_OVERFLOW,
-
-   su_STATE_ERR_PASS = 1u<<28,      /*!< \r{su_STATE_ERR_NOMEM}. */
-   su_STATE_ERR_NOPASS = 1u<<29,    /*!< \r{su_STATE_ERR_NOMEM}. */
-   su_STATE_ERR_NOERRNO = 1u<<30,   /*!< \r{su_STATE_ERR_NOMEM}. */
-   su__STATE_ERR_MASK = su_STATE_ERR_TYPE_MASK |
-         su_STATE_ERR_PASS | su_STATE_ERR_NOPASS | su_STATE_ERR_NOERRNO,
-
-   su__STATE_USER_MASK = ~(su__STATE_LOG_MASK |
-         su_STATE_ERR_PASS | su_STATE_ERR_NOPASS | su_STATE_ERR_NOERRNO)
+enum su__state_flags{
+   /* enum su_log_level is first "member" */
+   su__STATE_LOG_MASK = 0x0Fu,
+   su__STATE_D_V = su_STATE_DEBUG | su_STATE_VERBOSE,
+   /* What is not allowed in the global state machine */
+   su__STATE_GLOBAL_MASK = 0x00FFFFFFu & ~(su__STATE_LOG_MASK |
+         (su_STATE_ERR_MASK & ~su_STATE_ERR_TYPE_MASK))
 };
 MCTA((uz)su_LOG_DEBUG <= (uz)su__STATE_LOG_MASK, "Bit ranges may not overlap")
+MCTA(((uz)su_STATE_ERR_MASK & ~0xFF00) == 0, "Bits excess documented bounds")
 
 /*! The \SU error number constants.
  * In order to achieve a 1:1 mapping of the \SU and the host value, e.g.,
@@ -1111,18 +1207,20 @@ union su__bom_union{
 EXPORT_DATA union su__bom_union const su__bom_little;
 EXPORT_DATA union su__bom_union const su__bom_big;
 
-/* (Not yet) Internal enum su_state_flags bit carrier */
+/* (Not yet) Internal enum su_state_* bit carrier */
 EXPORT_DATA uz su__state;
 
-/*! The byte order mark \r{su_BOM} in host, little and big byte order.
+/*! The byte order mark \r{su_BOM} in host, \r{su_bom_little} and
+ * \r{su_bom_big} byte order.
  * The latter two are macros which access constant union data.
  * We also define two helpers \r{su_BOM_IS_BIG()} and \r{su_BOM_IS_LITTLE()},
- * which will expand to preprocessor statements if possible. */
+ * which will expand to preprocessor statements if possible (by using
+ * \r{su_CC_BOM}, \r{su_CC_BOM_LITTLE} and \r{su_CC_BOM_BIG}), but otherwise
+ * to comparisons of the external constants. */
 EXPORT_DATA u16 const su_bom;
-/*! \_ */
-#define su_bom_little su__bom_little.bu_val
-/*! \_ */
-#define su_bom_big su__bom_big.bu_val
+
+#define su_bom_little su__bom_little.bu_val  /*!< \_ */
+#define su_bom_big su__bom_big.bu_val        /*!< \_ */
 
 #if defined su_CC_BOM || defined DOXYGEN
 # define su_BOM_IS_BIG() (su_CC_BOM == su_CC_BOM_BIG)       /*!< \r{su_bom}. */
@@ -1139,27 +1237,39 @@ EXPORT_DATA char const su_empty[1];
 EXPORT_DATA char const su_reproducible_build[];
 
 /*! Can be set to the name of the program to, e.g., create a common log
- * message prefix. */
+ * message prefix.
+ * Also see \r{su_STATE_LOG_SHOW_PID}, \r{su_STATE_LOG_SHOW_LEVEL}. */
 EXPORT_DATA char const *su_program;
 
-/*! Interaction with the SU library \r{su_state_flags} machine.
- * The last to be called once one of the \c{STATE_ERR*} conditions occurred,
- * it returns (if it returns) the corresponding \r{su_err_number}. */
+/*! Interaction with the SU library (global) state machine.
+ * This covers \r{su_state_log_flags}, \r{su_state_err_type},
+ * and \r{su_state_flags} flags and values. */
+INLINE u32 su_state_get(void){
+   return (su__state & su__STATE_GLOBAL_MASK);
+}
+
+/*! Interaction with the SU library (global) state machine:
+ * test whether all (not any) of \a{flags} are set in \r{su_state_get()}. */
 INLINE boole su_state_has(uz flags){
-   return ((su__state & (flags & su__STATE_USER_MASK)) != 0);
+   uz f = flags & su__STATE_GLOBAL_MASK;
+   return ((su__state & f) == f);
 }
 
 /*! \_ */
-INLINE void su_state_set(uz flags) {su__state |= flags & su__STATE_USER_MASK;}
+INLINE void su_state_set(uz flags){
+   su__state |= flags & su__STATE_GLOBAL_MASK;
+}
 
 /*! \_ */
 INLINE void su_state_clear(uz flags){
-   su__state &= ~(flags & su__STATE_USER_MASK);
+   su__state &= ~(flags & su__STATE_GLOBAL_MASK);
 }
 
-/*! Notify an error to the \SU state machine; see \r{su_STATE_ERR_NOMEM}.
- * The return value is the corresponding \r{su_err_number}. */
-EXPORT s32 su_state_err(uz state, char const *msg_or_nil);
+/*! Notify an error to the \SU (global) state machine.
+ * If the function is allowd to return a corresponding \r{su_err_number} will
+ * be returned. */
+EXPORT s32 su_state_err(enum su_state_err_type err, uz state,
+      char const *msg_or_nil);
 
 /*! \_ */
 EXPORT s32 su_err_no(void);
@@ -1189,18 +1299,8 @@ INLINE enum su_log_level su_log_get_level(void){
 
 /*! \_ */
 INLINE void su_log_set_level(enum su_log_level nlvl){
-   su__state = (su__state & su__STATE_USER_MASK) |
+   su__state = (su__state & su__STATE_GLOBAL_MASK) |
          (S(uz,nlvl) & su__STATE_LOG_MASK);
-}
-
-/*! Cause the \r{su_log_level} to become prepended to messages written. */
-INLINE void su_log_enable_level_prefix(void){
-   su__state |= su__STATE_LOG_LEVEL;
-}
-
-/*! Cause the \r{su_log_level} to not become prepended to messages written. */
-INLINE void su_log_disable_level_prefix(void){
-   su__state &= ~su__STATE_LOG_LEVEL;
 }
 
 /*! Log functions of various sort.
@@ -1471,20 +1571,22 @@ struct type_toolbox{
    /*! \_ */
    typedef NSPC(su)type_traits<T> type_traits;
 
-   /*! \_ */
-   typename type_traits::tp (*ttb_clone)(typename type_traits::tp_const t);
-   /*! \_ */
+   /*! \copydoc{su_clone_fun} */
+   typename type_traits::tp (*ttb_clone)(typename type_traits::tp_const t,
+         u32 estate);
+   /*! \copydoc{su_delete_fun} */
    void (*ttb_delete)(typename type_traits::tp self);
-   /*! \_ */
+   /*! \copydoc{su_assign_fun} */
    typename type_traits::tp (*ttb_assign)(typename type_traits::tp self,
-         typename type_traits::tp_const t);
-   /*! \_ */
+         typename type_traits::tp_const t, u32 estate);
+   /*! \copydoc{su_compare_fun} */
    sz (*ttb_compare)(typename type_traits::tp_const self,
          typename type_traits::tp_const t);
-   /*! \_ */
+   /*! \copydoc{su_hash_fun} */
    uz (*ttb_hash)(typename type_traits::tp_const self);
 };
-/*! \_ */
+
+/*! Initialize a \r{type_toolbox}. */
 #define su_TYPE_TOOLBOX_I9R(CLONE,DELETE,ASSIGN,COMPARE,HASH) \
 {\
    su_FIELD_INITN(ttb_clone) CLONE,\
@@ -1526,7 +1628,7 @@ class err;
 class log;
 class state;
 
-/*! \_ */
+/*! \copydoc{su_bom} */
 class bom{
 public:
    /*! \copydoc{su_BOM} */
@@ -1575,7 +1677,7 @@ public:
 /*! \_ */
 class log{
 public:
-   /*! Log priorities, for simplicity of use without _LEVEL or _LVL prefix */
+   /*! \copydoc{su_log_level} */
    enum level{
       emerg = su_LOG_EMERG,   /*!< \copydoc{su_LOG_EMERG} */
       alert = su_LOG_ALERT,   /*!< \copydoc{su_LOG_ALERT} */
@@ -1596,11 +1698,31 @@ public:
    /*! \copydoc{su_log_set_level()} */
    static void set_level(level lvl) {su_log_set_level(S(su_log_level,lvl));}
 
-   /*! \copydoc{su_log_enable_level_prefix()} */
-   static void enable_level_prefix(void) {su_log_enable_level_prefix();}
+   /*! \copydoc{su_STATE_LOG_SHOW_LEVEL} */
+   static boole get_show_level(void){
+      return su_state_has(su_STATE_LOG_SHOW_LEVEL);
+   }
 
-   /*! \copydoc{su_log_disable_level_prefix()} */
-   static void disable_level_prefix(void) {su_log_disable_level_prefix();}
+   /*! \copydoc{su_STATE_LOG_SHOW_LEVEL} */
+   static void set_show_level(boole on){
+      if(on)
+         su_state_set(su_STATE_LOG_SHOW_LEVEL);
+      else
+         su_state_clear(su_STATE_LOG_SHOW_LEVEL);
+   }
+
+   /*! \copydoc{su_STATE_LOG_SHOW_PID} */
+   static boole get_show_pid(void){
+      return su_state_has(su_STATE_LOG_SHOW_PID);
+   }
+
+   /*! \copydoc{su_STATE_LOG_SHOW_PID} */
+   static void set_show_pid(boole on){
+      if(on)
+         su_state_set(su_STATE_LOG_SHOW_PID);
+      else
+         su_state_clear(su_STATE_LOG_SHOW_PID);
+   }
 
    /*! \copydoc{su_log_write()} */
    static void write(level lvl, char const *fmt, ...);
@@ -1617,25 +1739,48 @@ public:
 /*! \_ */
 class state{
 public:
-   /*! \_ */
-   enum flags{
-      debug = su_STATE_DEBUG, /*!< \copydoc{su_STATE_DEBUG} */
-      verbose = su_STATE_VERBOSE, /*!< \copydoc{su_STATE_VERBOSE} */
-
-      // reproducible-build.org
-      /*! \copydoc{su_STATE_REPRODUCIBLE} */
-      reproducible = su_STATE_REPRODUCIBLE,
-
-      err_nomem = su_STATE_ERR_NOMEM, /*!< \copydoc{su_STATE_ERR_NOMEM} */
+   /*! \copydoc{su_state_err_type} */
+   enum err_type{
+      /*! \copydoc{su_STATE_ERR_NOMEM} */
+      err_nomem = su_STATE_ERR_NOMEM,
       /*! \copydoc{su_STATE_ERR_OVERFLOW} */
-      err_overflow = su_STATE_ERR_OVERFLOW,
+      err_overflow = su_STATE_ERR_OVERFLOW
+   };
+
+   /*! \copydoc{su_state_err_flags} */
+   enum err_flags{
       /*! \copydoc{su_STATE_ERR_TYPE_MASK} */
       err_type_mask = su_STATE_ERR_TYPE_MASK,
-
-      err_pass = su_STATE_ERR_PASS, /*!< \copydoc{su_STATE_ERR_PASS} */
-      err_nopass = su_STATE_ERR_NOPASS, /*!< \copydoc{su_STATE_ERR_NOPASS} */
-      err_noerrno = su_STATE_ERR_NOERRNO /*!< \copydoc{su_STATE_ERR_NOERRNO} */
+      /*! \copydoc{su_STATE_ERR_PASS} */
+      err_pass = su_STATE_ERR_PASS,
+      /*! \copydoc{su_STATE_ERR_NOPASS} */
+      err_nopass = su_STATE_ERR_NOPASS,
+      /*! \copydoc{su_STATE_ERR_NOERRNO} */
+      err_noerrno = su_STATE_ERR_NOERRNO,
+      /*! \copydoc{su_STATE_ERR_MASK} */
+      err_mask = su_STATE_ERR_MASK
    };
+
+   /*! \copydoc{su_state_flags} */
+   enum flags{
+      /*! \copydoc{su_STATE_NONE} */
+      none = su_STATE_NONE,
+      /*! \copydoc{su_STATE_DEBUG} */
+      debug = su_STATE_DEBUG,
+      /*! \copydoc{su_STATE_VERBOSE} */
+      verbose = su_STATE_VERBOSE,
+      /*! \copydoc{su_STATE_REPRODUCIBLE} */
+      reproducible = su_STATE_REPRODUCIBLE
+   };
+
+   /*! \copydoc{su_program} */
+   static char const *get_program(void) {return su_program;}
+
+   /*! \copydoc{su_program} */
+   static void set_program(char const *name) {su_program = name;}
+
+   /*! \copydoc{su_state_get()} */
+   static boole get(void) {return su_state_get();}
 
    /*! \copydoc{su_state_has()} */
    static boole has(uz state) {return su_state_has(state);}
@@ -1647,8 +1792,8 @@ public:
    static void clear(uz state) {su_state_clear(state);}
 
    /*! \copydoc{su_state_err()} */
-   static s32 err(uz state, char const *msg_or_nil=NIL){
-      return su_state_err(state, msg_or_nil);
+   static s32 err(err_type err, uz state, char const *msg_or_nil=NIL){
+      return su_state_err(S(su_state_err_type,err), state, msg_or_nil);
    }
 };
 

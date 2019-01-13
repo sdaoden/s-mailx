@@ -16,9 +16,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #undef su_FILE
-#define su_FILE su_cs_toolbox
+#define su_FILE su_cs_tbox
 #define su_SOURCE
-#define su_SOURCE_CS_TOOLBOX
+#define su_SOURCE_CS_TBOX
 
 #include "su/code.h"
 
@@ -29,19 +29,19 @@
 
 /**/
 #if DVLOR(1, 0)
-static void a_cstoolbox_free(void *t);
+static void a_cstbox_free(void *t);
 #else
-# define a_cstoolbox_free su_mem_free
+# define a_cstbox_free su_mem_free
 #endif
 
 /**/
-static void *a_cstoolbox_assign(void *self, void const *t);
-static uz a_cstoolbox_hash(void *self);
-static uz a_cstoolbox_hash_case(void *self);
+static void *a_cstbox_assign(void *self, void const *t, u32 estate);
+static uz a_cstbox_hash(void *self);
+static uz a_cstbox_hash_case(void *self);
 
 #if DVLOR(1, 0)
 static void
-a_cstoolbox_free(void *t){
+a_cstbox_free(void *t){
    NYD2_IN;
    su_FREE(t);
    NYD2_OU;
@@ -49,16 +49,18 @@ a_cstoolbox_free(void *t){
 #endif
 
 static void *
-a_cstoolbox_assign(void *self, void const *t){
+a_cstbox_assign(void *self, void const *t, u32 estate){
+   char *rv;
    NYD2_IN;
-   su_FREE(self);
-   self = su_cs_dup(t);
+
+   if((rv = su_cs_dup(S(char const*,t), estate)) != NIL)
+      su_FREE(self);
    NYD2_OU;
-   return self;
+   return rv;
 }
 
 static uz
-a_cstoolbox_hash(void *self){
+a_cstbox_hash(void *self){
    uz rv;
    NYD2_IN;
 
@@ -68,7 +70,7 @@ a_cstoolbox_hash(void *self){
 }
 
 static uz
-a_cstoolbox_hash_case(void *self){
+a_cstbox_hash_case(void *self){
    uz rv;
    NYD2_IN;
 
@@ -78,12 +80,12 @@ a_cstoolbox_hash_case(void *self){
 }
 
 struct su_toolbox const su_cs_toolbox = su_TOOLBOX_I9R(
-   &su_cs_dup, &a_cstoolbox_free, &a_cstoolbox_assign,
-   &su_cs_cmp, &a_cstoolbox_hash);
+   &su_cs_dup, &a_cstbox_free, &a_cstbox_assign,
+   &su_cs_cmp, &a_cstbox_hash);
 
 struct su_toolbox const su_cs_toolbox_case = su_TOOLBOX_I9R(
-   &su_cs_dup, &a_cstoolbox_free, &a_cstoolbox_assign,
-   &su_cs_cmp_case, &a_cstoolbox_hash_case);
+   &su_cs_dup, &a_cstbox_free, &a_cstbox_assign,
+   &su_cs_cmp_case, &a_cstbox_hash_case);
 
 #include "su/code-ou.h"
 /* s-it-mode */

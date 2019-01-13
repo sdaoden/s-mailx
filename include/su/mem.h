@@ -97,15 +97,16 @@ enum su_mem_alloc_flags{
    su_MEM_ALLOC_32BIT_OVERFLOW = 1u<<2,
    /*! Perform overflow checks against 31-bit, not \r{su_UZ_MAX}. */
    su_MEM_ALLOC_31BIT_OVERFLOW = 1u<<3,
-   /*! Overflow error: return \NIL.
-    * Correlates with \r{su_STATE_ERR_NOMEM} and \r{su_STATE_ERR_OVERFLOW}. */
-   su_MEM_ALLOC_OVERFLOW_OK = 1u<<5,
-   /*! Out-of-memory: return \NIL.
-    * Correlates with \r{su_STATE_ERR_NOMEM} and \r{su_STATE_ERR_OVERFLOW}. */
-   su_MEM_ALLOC_NOMEM_OK = 1u<<6,
-   su_MEM_ALLOC_MUSTFAIL = 1u<<7, /*!< \NIL return must not happen. */
+   /*! An alias (i.e., same value) for \r{su_STATE_ERR_OVERFLOW}. */
+   su_MEM_ALLOC_OVERFLOW_OK = su_STATE_ERR_OVERFLOW,
+   /*! An alias (i.e., same value) for \r{su_STATE_ERR_NOMEM}. */
+   su_MEM_ALLOC_NOMEM_OK = su_STATE_ERR_NOMEM,
+   /*! An alias (i.e., same value) for \r{su_STATE_ERR_PASS}. */
+   su_MEM_ALLOC_MAYFAIL = su_STATE_ERR_PASS,
+   /*! An alias (i.e., same value) for \r{su_STATE_ERR_NOPASS}. */
+   su_MEM_ALLOC_MUSTFAIL = su_STATE_ERR_NOPASS,
 
-   su__MEM_ALLOC_MARK_SHIFT = 8u,
+   su__MEM_ALLOC_MARK_SHIFT = 16u,
    /*! Debug (log etc.) flag mark "no mark", */
    su_MEM_ALLOC_MARK_0 = 0u<<su__MEM_ALLOC_MARK_SHIFT,
    /*! ..mark 1, */
@@ -123,8 +124,14 @@ enum su_mem_alloc_flags{
    su_MEM_ALLOC_MARK_LOFI = su_MEM_ALLOC_MARK_3,
 
    su__MEM_ALLOC_MARK_MAX = 3u,
-   su__MEM_ALLOC_MARK_MASK = 3u
+   su__MEM_ALLOC_MARK_MASK = 3u,
+   su__MEM_ALLOC_USER_MASK = 0xFF | su_STATE_ERR_MASK |
+         (su__MEM_ALLOC_MARK_MASK << su__MEM_ALLOC_MARK_SHIFT)
 };
+#ifdef su_SOURCE_MEM_ALLOC
+CTA((su_STATE_ERR_MASK & ~0xFF00u) == 0,
+   "Reuse of low order bits impossible, or mask excesses storage");
+#endif
 
 enum{
    /*! Minimum size served for an allocation (\r{su_mem_get_usable_size()}).
@@ -435,6 +442,8 @@ public:
       alloc_overflow_ok = su_MEM_ALLOC_OVERFLOW_OK,
       /*! \copydoc{su_MEM_ALLOC_NOMEM_OK} */
       alloc_nomem_ok = su_MEM_ALLOC_NOMEM_OK,
+      /*! \copydoc{su_MEM_ALLOC_MAYFAIL} */
+      alloc_mayfail = su_MEM_ALLOC_MAYFAIL,
       /*! \copydoc{su_MEM_ALLOC_MUSTFAIL} */
       alloc_mustfail = su_MEM_ALLOC_MUSTFAIL,
 

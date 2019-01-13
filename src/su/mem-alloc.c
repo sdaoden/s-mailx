@@ -396,6 +396,7 @@ su_mem_allocate(uz size, uz no, u32 maf  su_DBG_LOC_ARGS_DECL){
       size = 1;
    if(UNLIKELY(no == 0))
       no = 1;
+   maf &= su__MEM_ALLOC_USER_MASK;
 
    rv = NIL;
 
@@ -451,14 +452,10 @@ su_mem_allocate(uz size, uz no, u32 maf  su_DBG_LOC_ARGS_DECL){
                a_mema_stats[mark].mas_mem_curr);
 #endif /* su_MEM_ALLOC_DEBUG */
       }else
-         su_state_err((su_STATE_ERR_NOMEM |
-               (maf & su_MEM_ALLOC_NOMEM_OK ? su_STATE_ERR_PASS : 0) |
-               (maf & su_MEM_ALLOC_MUSTFAIL ? su_STATE_ERR_NOPASS : 0)),
+         su_state_err(su_STATE_ERR_NOMEM, maf,
             _("SU memory: allocation request"));
    }else
-      su_state_err((su_STATE_ERR_OVERFLOW |
-            (maf & su_MEM_ALLOC_OVERFLOW_OK ? su_STATE_ERR_PASS : 0) |
-            (maf & su_MEM_ALLOC_MUSTFAIL ? su_STATE_ERR_NOPASS : 0)),
+      su_state_err(su_STATE_ERR_OVERFLOW, maf,
          _("SU memory: allocation request"));
    NYD_OU;
    return rv;
@@ -480,6 +477,7 @@ su_mem_reallocate(void *ovp, uz size, uz no, u32 maf  su_DBG_LOC_ARGS_DECL){
       size = 1;
    if(UNLIKELY(no == 0))
       no = 1;
+   maf &= su__MEM_ALLOC_USER_MASK;
 
    rv = NIL;
 
@@ -498,9 +496,7 @@ su_mem_reallocate(void *ovp, uz size, uz no, u32 maf  su_DBG_LOC_ARGS_DECL){
             "SU memory: reallocation: pointer corrupted!  At %s, line %" PRIu32
                "\n\tLast seen: %s, line %" PRIu32 "\n"
             su_DBG_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
-         su_state_err((su_STATE_ERR_NOMEM |
-               (maf & su_MEM_ALLOC_NOMEM_OK ? su_STATE_ERR_PASS : 0) |
-               (maf & su_MEM_ALLOC_MUSTFAIL ? su_STATE_ERR_NOPASS : 0)),
+         su_state_err(su_STATE_ERR_NOMEM, maf,
             _("SU memory: reallocation of corrupted pointer"));
          goto su_NYD_OU_LABEL;
       }else{
@@ -508,9 +504,7 @@ su_mem_reallocate(void *ovp, uz size, uz no, u32 maf  su_DBG_LOC_ARGS_DECL){
             "SU memory: reallocation: pointer freed!  At %s, line %" PRIu32
                "\n\tLast seen: %s, line %" PRIu32 "\n"
             su_DBG_LOC_ARGS_USE, p.map_c->mac_file, p.map_c->mac_line);
-         su_state_err((su_STATE_ERR_NOMEM |
-               (maf & su_MEM_ALLOC_NOMEM_OK ? su_STATE_ERR_PASS : 0) |
-               (maf & su_MEM_ALLOC_MUSTFAIL ? su_STATE_ERR_NOPASS : 0)),
+         su_state_err(su_STATE_ERR_NOMEM, maf,
             _("SU memory: reallocation of a freed pointer"));
          goto su_NYD_OU_LABEL;
       }
@@ -533,9 +527,7 @@ su_mem_reallocate(void *ovp, uz size, uz no, u32 maf  su_DBG_LOC_ARGS_DECL){
 #endif
 
       if(UNLIKELY((rv = realloc(ovp, size)) == NIL))
-         su_state_err((su_STATE_ERR_NOMEM |
-               (maf & su_MEM_ALLOC_NOMEM_OK ? su_STATE_ERR_PASS : 0) |
-               (maf & su_MEM_ALLOC_MUSTFAIL ? su_STATE_ERR_NOPASS : 0)),
+         su_state_err(su_STATE_ERR_NOMEM, maf,
             _("SU memory: reallocation request"));
 #ifdef su_MEM_ALLOC_DEBUG
       else{
@@ -575,9 +567,7 @@ su_mem_reallocate(void *ovp, uz size, uz no, u32 maf  su_DBG_LOC_ARGS_DECL){
       }
 #endif /* su_MEM_ALLOC_DEBUG */
    }else
-      su_state_err((su_STATE_ERR_OVERFLOW |
-            (maf & su_MEM_ALLOC_OVERFLOW_OK ? su_STATE_ERR_PASS : 0) |
-            (maf & su_MEM_ALLOC_MUSTFAIL ? su_STATE_ERR_NOPASS : 0)),
+      su_state_err(su_STATE_ERR_OVERFLOW, maf,
          _("SU memory: reallocation request"));
    NYD_OU;
    return rv;

@@ -32,7 +32,7 @@ NSPC_USE(su)
 
 // code.h
 
-void
+STA void
 log::write(level lvl, char const *fmt, ...){ // XXX unroll
    va_list va;
    NYD_IN;
@@ -45,19 +45,19 @@ log::write(level lvl, char const *fmt, ...){ // XXX unroll
 
 // cs.h
 
-type_toolbox<char*> const * const cs::type_toolbox =
+STA type_toolbox<char*> const * const cs::type_toolbox =
       R(NSPC(su)type_toolbox<char*> const*,&su_cs_toolbox);
-type_toolbox<char const*> const * const cs::const_type_toolbox =
+STA type_toolbox<char const*> const * const cs::const_type_toolbox =
       R(NSPC(su)type_toolbox<char const*> const*,&su_cs_toolbox);
 
-type_toolbox<char*> const * const cs::type_toolbox_case =
+STA type_toolbox<char*> const * const cs::type_toolbox_case =
       R(NSPC(su)type_toolbox<char*> const*,&su_cs_toolbox_case);
-type_toolbox<char const*> const * const cs::const_type_toolbox_case =
+STA type_toolbox<char const*> const * const cs::const_type_toolbox_case =
       R(NSPC(su)type_toolbox<char const*> const*,&su_cs_toolbox_case);
 
 // utf.h
 
-char const utf8::replacer[sizeof su_UTF8_REPLACER] = su_UTF8_REPLACER;
+STA char const utf8::replacer[sizeof su_UTF8_REPLACER] = su_UTF8_REPLACER;
 
 #include "su/code-ou.h"
 /* s-it-mode */

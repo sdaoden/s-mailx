@@ -194,7 +194,7 @@ _mlook(char *id, struct mitem *mt, struct message *mdata, ui32_t mprime)
    }
 
    if (mdata != NULL && mp->mi_id == NULL) {
-      mp->mi_id = su_cs_dup(id);
+      mp->mi_id = su_cs_dup(id, 0);
       mp->mi_data = mdata;
       mdata->m_idhash = ~h;
    }
@@ -536,7 +536,7 @@ c_thread(void *vp)
       _makethreads(message, msgCount, (vp == (void*)-1));
       if (mb.mb_sorted != NULL)
          n_free(mb.mb_sorted);
-      mb.mb_sorted = su_cs_dup("thread");
+      mb.mb_sorted = su_cs_dup("thread", 0);
    }
 
    if (vp != NULL && vp != (void*)-1 && !(n_pstate & n_PS_HOOK_MASK) &&
@@ -704,7 +704,7 @@ c_sort(void *vp)
 
    if (mb.mb_sorted != NULL)
       n_free(mb.mb_sorted);
-   mb.mb_sorted = su_cs_dup(args[0]);
+   mb.mb_sorted = su_cs_dup(args[0], 0);
 
    method = methnames[i].me_method;
    func = methnames[i].me_func;
@@ -770,11 +770,11 @@ c_sort(void *vp)
          case SORT_TO:
             if ((cp = hfield1((method == SORT_FROM ?  "from" : "to"), mp)
                   ) != NULL) {
-               ms[n].ms_u.ms_char = su_cs_dup(showname ? realname(cp)
-                     : skin(cp));
+               ms[n].ms_u.ms_char = su_cs_dup((showname ? realname(cp)
+                     : skin(cp)), 0);
                makelow(ms[n].ms_u.ms_char);
             } else
-               ms[n].ms_u.ms_char = su_cs_dup(n_empty);
+               ms[n].ms_u.ms_char = su_cs_dup(n_empty, 0);
             break;
          default:
          case SORT_SUBJECT:
@@ -782,11 +782,11 @@ c_sort(void *vp)
                in.s = cp;
                in.l = su_cs_len(in.s);
                mime_fromhdr(&in, &out, TD_ICONV);
-               ms[n].ms_u.ms_char = su_cs_dup(subject_re_trim(out.s));
+               ms[n].ms_u.ms_char = su_cs_dup(subject_re_trim(out.s), 0);
                n_free(out.s);
                makelow(ms[n].ms_u.ms_char);
             } else
-               ms[n].ms_u.ms_char = su_cs_dup(n_empty);
+               ms[n].ms_u.ms_char = su_cs_dup(n_empty, 0);
             break;
          }
          ms[n++].ms_n = i;

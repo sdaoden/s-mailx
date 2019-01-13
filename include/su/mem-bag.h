@@ -87,13 +87,15 @@ struct su_mem_bag;
 enum su_mem_bag_alloc_flags{
    su_MEM_BAG_ALLOC_NONE,              /*!< \_ */
    su_MEM_BAG_ALLOC_CLEAR = 1u<<1,     /*!< Zero memory. */
-   /*! Overflow error: return \NIL.
-    * Correlates with \r{su_STATE_ERR_NOMEM} and \r{su_STATE_ERR_OVERFLOW}. */
-   su_MEM_BAG_ALLOC_OVERFLOW_OK = 1u<<5,
-   /*! Out-of-memory: return \NIL.
-    * Correlates with \r{su_STATE_ERR_NOMEM} and \r{su_STATE_ERR_OVERFLOW}. */
-   su_MEM_BAG_ALLOC_NOMEM_OK = 1u<<6,
-   su_MEM_BAG_ALLOC_MUSTFAIL = 1u<<7   /*!< \NIL return must not happen. */
+   /*! An alias (i.e., same value) for \r{su_STATE_ERR_OVERFLOW}. */
+   su_MEM_BAG_ALLOC_OVERFLOW_OK = su_STATE_ERR_OVERFLOW,
+   /*! An alias (i.e., same value) for \r{su_STATE_ERR_NOMEM}. */
+   su_MEM_BAG_ALLOC_NOMEM_OK = su_STATE_ERR_NOMEM,
+   /*! An alias (i.e., same value) for \r{su_STATE_ERR_PASS}. */
+   su_MEM_BAG_ALLOC_MAYFAIL = su_STATE_ERR_PASS,
+   /*! An alias (i.e., same value) for \r{su_STATE_ERR_NOPASS}. */
+   su_MEM_BAG_ALLOC_MUSTFAIL = su_STATE_ERR_NOPASS,
+   su__MEM_BAG_ALLOC_USER_MASK = 0xFF | su_STATE_ERR_MASK
 };
 
 /*! \_ */
@@ -454,6 +456,8 @@ public:
       alloc_overflow_ok = su_MEM_BAG_ALLOC_OVERFLOW_OK,
       /*! \copydoc{su_MEM_BAG_ALLOC_NOMEM_OK} */
       alloc_nomem_ok = su_MEM_BAG_ALLOC_NOMEM_OK,
+      /*! \copydoc{su_MEM_BAG_ALLOC_MAYFAIL} */
+      alloc_mayfail = su_MEM_BAG_ALLOC_MAYFAIL,
       /*! \copydoc{su_MEM_BAG_ALLOC_MUSTFAIL} */
       alloc_mustfail = su_MEM_BAG_ALLOC_MUSTFAIL
    };

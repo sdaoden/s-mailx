@@ -159,8 +159,8 @@ register_file(FILE *fp, int omode, int pid, int flags,
    fpp->pid = pid;
    fpp->link = fp_head;
    fpp->flags = flags;
-   fpp->realfile = (realfile != NULL) ? su_cs_dup(realfile) : NULL;
-   fpp->save_cmd = (save_cmd != NULL) ? su_cs_dup(save_cmd) : NULL;
+   fpp->realfile = (realfile != NULL) ? su_cs_dup(realfile, 0) : NULL;
+   fpp->save_cmd = (save_cmd != NULL) ? su_cs_dup(save_cmd, 0) : NULL;
    fpp->fp_tios = tiosp;
    fpp->fp_osigint = osigint;
    fpp->offset = offset;

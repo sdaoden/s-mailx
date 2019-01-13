@@ -1575,7 +1575,7 @@ jinject:
          ++a_go_ctx->gc_loff;
          *linesize = su_cs_len(*linebuf);
          if(!(a_go_ctx->gc_flags & a_GO_MACRO_FREE_DATA))
-            *linebuf = su_cs_dup_cbuf(*linebuf, *linesize);
+            *linebuf = su_cs_dup_cbuf(*linebuf, *linesize, 0);
 
          iftype = (a_go_ctx->gc_flags & a_GO_MACRO_X_OPTION)
                ? "-X OPTION"
