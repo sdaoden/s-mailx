@@ -197,6 +197,7 @@ a_main_dump_doc(su_up cookie, su_boole has_arg, char const *sopt,
 
 static void
 a_main_startup(void){
+   struct passwd *pwuid;
    char *cp;
    n_NYD2_IN;
 
@@ -261,32 +262,9 @@ a_main_startup(void){
    iconvd = (iconv_t)-1;
 #endif
 
-   /* Ensure some variables get loaded and/or verified, I. (pre-getopt) */
-
-   (void)ok_blook(POSIXLY_CORRECT);
-   n_NYD2_OU;
-}
-
-static size_t
-a_main_grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt){
-   /* Just use auto-reclaimed storage, it will be preserved */
-   char const **newcpp;
-   n_NYD2_IN;
-
-   newcpp = n_autorec_alloc(sizeof(char*) * (newsize + 1));
-
-   if(oldcnt > 0)
-      su_mem_copy(newcpp, *cpp, oldcnt * sizeof(char*));
-   *cpp = newcpp;
-   n_NYD2_OU;
-   return newsize;
-}
-
-static void
-a_main_setup_vars(void){
-   struct passwd *pwuid;
-   char const *cp;
-   n_NYD2_IN;
+   /*
+    * Ensure some variables get loaded and/or verified, I. (pre-getopt)
+    */
 
    /* Detect, verify and fixate our invoking user (environment) */
    n_group_id = getgid();
@@ -318,9 +296,6 @@ a_main_setup_vars(void){
       /* XXX myfullname = pw->pw_gecos[OPTIONAL!] -> GUT THAT; TODO pw_shell */
    }
 
-   /* Ensure some variables get loaded and/or verified, II. (post getopt).
-    * While doing so, take special care for invocations as root */
-
    /* This is not automated just as $TMPDIR is for the initial setting, since
     * we have the pwuid at hand and can simply use it!  See accmacvar.c! */
    if(n_user_id == 0 || (cp = ok_vlook(HOME)) == NULL){
@@ -329,6 +304,34 @@ a_main_setup_vars(void){
       ok_vset(HOME, cp);
       n_pstate &= ~n_PS_ROOT;
    }
+
+   (void)ok_blook(POSIXLY_CORRECT);
+   n_NYD2_OU;
+}
+
+static size_t
+a_main_grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt){
+   /* Just use auto-reclaimed storage, it will be preserved */
+   char const **newcpp;
+   n_NYD2_IN;
+
+   newcpp = n_autorec_alloc(sizeof(char*) * (newsize + 1));
+
+   if(oldcnt > 0)
+      su_mem_copy(newcpp, *cpp, oldcnt * sizeof(char*));
+   *cpp = newcpp;
+   n_NYD2_OU;
+   return newsize;
+}
+
+static void
+a_main_setup_vars(void){
+   char const *cp;
+   n_NYD2_IN;
+
+   /*
+    * Ensure some variables get loaded and/or verified, II. (post getopt).
+    */
 
    /* Do not honour TMPDIR if root */
    if(n_user_id == 0)
