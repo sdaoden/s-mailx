@@ -159,6 +159,9 @@ FL bool_t temporary_addhist_hook(char const *ctx, bool_t gabby,
             char const *histent);
 #endif
 
+/* Setting up batch mode, variable-handling side */
+FL void n_var_setup_batch_mode(void);
+
 /* Can name freely be used as a variable by users? */
 FL bool_t n_var_is_user_writable(char const *name);
 

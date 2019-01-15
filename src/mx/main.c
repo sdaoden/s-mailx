@@ -261,7 +261,7 @@ a_main_startup(void){
    iconvd = (iconv_t)-1;
 #endif
 
-   /* Ensure some variables get loaded and/or verified */
+   /* Ensure some variables get loaded and/or verified, I. (pre-getopt) */
 
    (void)ok_blook(POSIXLY_CORRECT);
    n_NYD2_OU;
@@ -318,7 +318,7 @@ a_main_setup_vars(void){
       /* XXX myfullname = pw->pw_gecos[OPTIONAL!] -> GUT THAT; TODO pw_shell */
    }
 
-   /* Ensure some variables get loaded and/or verified.
+   /* Ensure some variables get loaded and/or verified, II. (post getopt).
     * While doing so, take special care for invocations as root */
 
    /* This is not automated just as $TMPDIR is for the initial setting, since
@@ -987,18 +987,7 @@ je_S:
             setvbuf(n_stdin, NULL, _IOLBF, 0);
          n_poption |= n_PO_TILDE_FLAG | n_PO_BATCH_FLAG;
          folder = n_path_devnull;
-         n_pstate |= n_PS_ROBOT; /* (be silent unsetting undefined variables) */
-         ok_vset(MAIL, folder);
-         ok_vset(MBOX, folder);
-         ok_bset(emptystart);
-         ok_bclear(errexit);
-         ok_bclear(header);
-         ok_vset(inbox, folder);
-         ok_bclear(posix);
-         ok_bset(quiet);
-         ok_bset(sendwait);
-         ok_bset(typescript_mode);
-         n_pstate &= ~n_PS_ROBOT;
+         n_var_setup_batch_mode();
          break;
       case '.':
          /* Enforce send mode */

@@ -3021,6 +3021,24 @@ temporary_addhist_hook(char const *ctx, bool_t gabby, char const *histent){
 }
 #endif /* mx_HAVE_HISTORY */
 
+FL void
+n_var_setup_batch_mode(void){
+   n_NYD2_IN;
+   n_pstate |= n_PS_ROBOT; /* (be silent unsetting undefined variables) */
+   ok_vset(MAIL, n_path_devnull);
+   ok_vset(MBOX, n_path_devnull);
+   ok_bset(emptystart);
+   ok_bclear(errexit);
+   ok_bclear(header);
+   ok_vset(inbox, n_path_devnull);
+   ok_bclear(posix);
+   ok_bset(quiet);
+   ok_bset(sendwait);
+   ok_bset(typescript_mode);
+   n_pstate &= ~n_PS_ROBOT;
+   n_NYD2_OU;
+}
+
 FL bool_t
 n_var_is_user_writable(char const *name){
    struct a_amv_var_carrier avc;
