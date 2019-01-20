@@ -42,7 +42,7 @@ su_mem_find(void const *vp, s32 what, uz len){
 
 void *
 su_mem_rfind(void const *vp, s32 what, uz len){
-   u8 *rv;
+   void *rv;
    NYD_IN;
    ASSERT_NYD_RET(len == 0 || vp != NIL, rv = NIL);
 

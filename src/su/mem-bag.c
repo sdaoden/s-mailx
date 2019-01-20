@@ -566,9 +566,9 @@ su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no, u32 mbaf
 
          /* Ran out of usable pools.  Allocate one, and make it the serving
           * head (top) if possible */
-         mbabp = su_ALLOCATE_LOC(self->mb_bsz + a_MEMBAG_BSZ_BASE, 1,
-               (mbaf | su_MEM_ALLOC_MARK_AUTO),
-               su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
+         mbabp = S(struct su__mem_bag_auto_buf*,su_ALLOCATE_LOC((self->mb_bsz +
+                  a_MEMBAG_BSZ_BASE), 1, (mbaf | su_MEM_ALLOC_MARK_AUTO),
+               su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE));
          if(mbabp == NIL)
             goto jleave;
          cp = mbabp->mbab_buf;
@@ -603,10 +603,10 @@ jhave_pool:;
             "%" PRIuZ " bytes from %s:%" PRIu32 "!\n",
             size  su_DBG_LOC_ARGS_USE); )
 
-         mbahp = su_ALLOCATE_LOC(VSTRUCT_SIZEOF(
-                  struct su__mem_bag_auto_huge,mbah_buf) + chunksz, 1,
-               (mbaf | su_MEM_ALLOC_MARK_AUTO_HUGE),
-               su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
+         mbahp = S(struct su__mem_bag_auto_huge*,su_ALLOCATE_LOC(
+               VSTRUCT_SIZEOF(struct su__mem_bag_auto_huge,mbah_buf) + chunksz,
+               1, (mbaf | su_MEM_ALLOC_MARK_AUTO_HUGE),
+               su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE));
          if(UNLIKELY(mbahp == NIL))
             goto jleave;
 #if !a_MEMBAG_HULL
@@ -732,9 +732,9 @@ su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no, u32 mbaf
       }
 
       /* Need a pool */
-      mblpp = su_ALLOCATE_LOC(self->mb_bsz + a_MEMBAG_BSZ_BASE, 1,
-            (mbaf | su_MEM_ALLOC_MARK_LOFI),
-            su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
+      mblpp = S(struct su__mem_bag_lofi_pool*,su_ALLOCATE_LOC((self->mb_bsz +
+            a_MEMBAG_BSZ_BASE), 1, (mbaf | su_MEM_ALLOC_MARK_LOFI),
+            su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE));
       if(mblpp == NIL)
          goto jleave;
       rv = cp = mblpp->mblp_buf;
@@ -744,17 +744,17 @@ su_mem_bag_lofi_allocate(struct su_mem_bag *self, uz size, uz no, u32 mbaf
 
       /* Have a pool, chunk in rv (and: cp==.mbab_caster == rv+chunksz) */
 jhave_pool:
-      mblcp = rv;
+      mblcp = S(struct su__mem_bag_lofi_chunk*,rv);
       mblcp->mblc_last = R(struct su__mem_bag_lofi_chunk*,
-            S(up,self->mb_lofi_top) | isheap);
+            R(up,self->mb_lofi_top) | isheap);
       if(!isheap)
          rv = mblcp->mblc_buf;
       else{
-         cp = rv;
+         cp = S(char*,rv);
          rv = su_ALLOCATE_LOC(size, 1, (mbaf | su_MEM_ALLOC_MARK_LOFI),
                su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
          if(rv != NIL)
-            *S(void**,mblcp->mblc_buf) = rv;
+            *R(void**,mblcp->mblc_buf) = rv;
          else{
             mblpp->mblp_caster = cp;
             goto jleave;

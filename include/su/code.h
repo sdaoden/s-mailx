@@ -217,6 +217,9 @@
 
    /* Disable copy-construction and assigment of class */
 # define su_CLASS_NO_COPY(C) private:C(C const &);C &operator=(C const &);
+   /* If C++ class inherits from a C class, and the C class "return self", we
+    * have to waste a return register even if self==this */
+# define su_SELFTHIS_RET(X) /* return *(X); */ X; return *this
 
    /* C++ only allows those at the declaration, not the definition */
 # define su_PUB
@@ -682,10 +685,10 @@ do{\
 #define su_NYD_OU_LABEL su__nydou
 
 /*! Pointer to size_t */
-#define su_P2UZ(X) su_S(su_uz,su_S(su_up,X))
+#define su_P2UZ(X) su_S(su_uz,(su_up)(X))
 
 /*! Pointer comparison */
-#define su_PCMP(A,C,B) (su_S(su_up,A) C su_S(su_up,B))
+#define su_PCMP(A,C,B) (su_R(su_up,A) C su_R(su_up,B))
 
 /* String stuff.
  * __STDC_VERSION__ is ISO C99, so also use __STDC__, which should work */
@@ -711,13 +714,11 @@ do{\
 #endif
 
 /* Casts-away (*NOT* cast-away) */
-#if su_C_LANG
-# define su_UNCONST(P) su_S(void*,su_S(su_up,su_S(void const*,P)))
-# define su_UNVOLATILE(P) su_S(void*,su_S(su_up,su_S(void volatile*,P)))
-  /* To avoid warnings with modern compilers for "char*i; *(s32_t*)i=;" */
-# define su_UNALIGN(T,P) su_S(T,su_S(su_up,P))
-# define su_UNXXX(T,C,P) su_S(T,su_S(su_up,su_S(C,P)))
-#endif
+#define su_UNCONST(P) su_R(void*,su_R(su_up,su_S(void const*,P)))
+#define su_UNVOLATILE(P) su_R(void*,su_R(su_up,su_S(void volatile*,P)))
+/* To avoid warnings with modern compilers for "char*i; *(s32_t*)i=;" */
+#define su_UNALIGN(T,P) su_R(T,su_R(su_up,P))
+#define su_UNXXX(T,C,P) su_R(T,su_R(su_up,su_S(C,P)))
 
 /* Avoid "may be used uninitialized" warnings */
 #if defined NDEBUG && !(defined su_HAVE_DEBUG || defined su_HAVE_DEVEL)

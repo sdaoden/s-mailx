@@ -36,8 +36,8 @@ static void a_cstbox_free(void *t);
 
 /**/
 static void *a_cstbox_assign(void *self, void const *t, u32 estate);
-static uz a_cstbox_hash(void *self);
-static uz a_cstbox_hash_case(void *self);
+static uz a_cstbox_hash(void const *self);
+static uz a_cstbox_hash_case(void const *self);
 
 #if DVLOR(1, 0)
 static void
@@ -60,21 +60,21 @@ a_cstbox_assign(void *self, void const *t, u32 estate){
 }
 
 static uz
-a_cstbox_hash(void *self){
+a_cstbox_hash(void const *self){
    uz rv;
    NYD2_IN;
 
-   rv = su_cs_hash(self);
+   rv = su_cs_hash(S(char const*,self));
    NYD2_OU;
    return rv;
 }
 
 static uz
-a_cstbox_hash_case(void *self){
+a_cstbox_hash_case(void const *self){
    uz rv;
    NYD2_IN;
 
-   rv = su_cs_hash_case(self);
+   rv = su_cs_hash_case(S(char const*,self));
    NYD2_OU;
    return rv;
 }

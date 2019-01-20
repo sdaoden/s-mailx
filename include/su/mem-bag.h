@@ -443,7 +443,7 @@ class mem_bag;
  * \ingroup MEM_BAG
  * C++ variant of \r{MEM_BAG} (\r{su/mem-bag.h})
  */
-class EXPORT mem_bag : private struct su_mem_bag{
+class EXPORT mem_bag : private su_mem_bag{
    su_CLASS_NO_COPY(mem_bag)
 public:
    /*! \copydoc{su_mem_bag_alloc_flags} */
@@ -469,37 +469,45 @@ public:
    ~mem_bag(void) {su_mem_bag_gut(this);}
 
    /*! \copydoc{su_mem_bag_fixate()} */
-   mem_bag &fixate(void) {return *su_mem_bag_fixate(this);}
+   mem_bag &fixate(void) {SELFTHIS_RET(su_mem_bag_fixate(this));}
 
    /*! \copydoc{su_mem_bag_reset()} */
-   mem_bag &reset(void) {return *su_mem_bag_reset(this);}
+   mem_bag &reset(void) {SELFTHIS_RET(su_mem_bag_reset(this));}
 
    /*! \copydoc{su_mem_bag_push()} */
-   mem_bag &push(mem_bag &that_one) {return *su_mem_bag_push(this, &that_one);}
+   mem_bag &push(mem_bag &that_one){
+      SELFTHIS_RET(su_mem_bag_push(this, &that_one));
+   }
 
    /*! \copydoc{su_mem_bag_pop()} */
-   mem_bag &pop(mem_bag &that_one) {return *su_mem_bag_pop(this, &that_one);}
+   mem_bag &pop(mem_bag &that_one){
+      SELFTHIS_RET(su_mem_bag_pop(this, &that_one));
+   }
 
    /*! \copydoc{su_mem_bag_top()} */
-   mem_bag &top(void) {return (mb_top != NIL) ? *mb_top : *this;}
+   mem_bag &top(void){
+      return (mb_top != NIL) ? *S(mem_bag*,mb_top) : *this;
+   }
 
 #ifdef su_HAVE_MEM_BAG_AUTO
    /*! \copydoc{su_mem_bag_auto_relax_create()} */
    mem_bag &auto_relax_create(void){
-      return *su_mem_bag_auto_relax_create(this);
+      SELFTHIS_RET(su_mem_bag_auto_relax_create(this));
    }
 
    /*! \copydoc{su_mem_bag_auto_relax_gut()} */
-   mem_bag &auto_relax_gut(void) {return *su_mem_bag_auto_relax_gut(this);}
+   mem_bag &auto_relax_gut(void){
+      SELFTHIS_RET(su_mem_bag_auto_relax_gut(this));
+   }
 
    /*! \copydoc{su_mem_bag_auto_relax_unroll()} */
    mem_bag &auto_relax_unroll(void){
-      return *su_mem_bag_auto_relax_unroll(this);
+      SELFTHIS_RET(su_mem_bag_auto_relax_unroll(this));
    }
 
    /*! \copydoc{su_mem_bag_auto_allocate()} */
    void *auto_allocate(uz size, uz no=1, u32 af=alloc_none){
-      return su_mem_bag_auto_allocate(this, size, no, af, su_DBG_LOC_ARGS_INJ);
+      return su_mem_bag_auto_allocate(this, size, no, af  su_DBG_LOC_ARGS_INJ);
    }
 #endif /* su_HAVE_MEM_BAG_AUTO */
 
@@ -509,17 +517,17 @@ public:
 
    /*! \copydoc{su_mem_bag_lofi_snap_unroll()} */
    mem_bag &lofi_snap_unroll(void *cookie){
-      return *su_mem_bag_lofi_snap_unroll(this, cookie);
+      SELFTHIS_RET(su_mem_bag_lofi_snap_unroll(this, cookie));
    }
 
    /*! \copydoc{su_mem_bag_lofi_allocate()} */
    void *lofi_allocate(uz size, uz no=1, u32 af=alloc_none){
-      return su_mem_bag_lofi_allocate(this, size, no, af, su_DBG_LOC_ARGS_INJ);
+      return su_mem_bag_lofi_allocate(this, size, no, af  su_DBG_LOC_ARGS_INJ);
    }
 
    /*! \copydoc{su_mem_bag_lofi_free()} */
    mem_bag &lofi_free(void *ovp){
-      return *su_mem_bag_lofi_free(this, su_DBG_LOC_ARGS_INJ);
+      SELFTHIS_RET(su_mem_bag_lofi_free(this, ovp  su_DBG_LOC_ARGS_INJ));
    }
 #endif /* su_HAVE_MEM_BAG_LOFI */
 };

@@ -240,25 +240,44 @@ EXPORT void su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL);
       su_MEM_REALLOCATE_LOC(OVP, SZ, NO, su_MEM_ALLOC_NONE, FNAME, LNNO)
 
 /*! \_ */
-#define su_MEM_TALLOC(T,NO) su_S(T *,su_MEM_ALLOC_N(sizeof(T), su_S(su_uz,NO)))
+#define su_MEM_TALLOC(T,NO) su_S(T *,su_MEM_ALLOC_N(sizeof(T), NO))
 /*! \_ */
 #define su_MEM_TALLOC_LOC(T,NO,FNAME,LNNO) \
-      su_S(T *,su_MEM_ALLOC_N_LOC(sizeof(T), su_S(su_uz,NO), FNAME, LNNO))
+      su_S(T *,su_MEM_ALLOC_N_LOC(sizeof(T), NO, FNAME, LNNO))
 
 /*! \_ */
-#define su_MEM_TCALLOC(T,NO) \
-      su_S(T *,su_MEM_CALLOC_N(sizeof(T), su_S(su_uz,NO))
+#define su_MEM_TCALLOC(T,NO) su_S(T *,su_MEM_CALLOC_N(sizeof(T), NO))
 /*! \_ */
 #define su_MEM_TCALLOC_LOC(T,NO,FNAME,LNNO) \
-      su_S(T *,su_MEM_CALLOC_N_LOC(sizeof(T), su_S(su_uz,NO), FNAME, LNNO))
+      su_S(T *,su_MEM_CALLOC_N_LOC(sizeof(T), NO, FNAME, LNNO))
 
 /*! \_ */
 #define su_MEM_TREALLOC(T,OVP,NO) \
-      su_S(T *,su_MEM_REALLOC_N(OVP, sizeof(T), su_S(su_uz,NO)))
+      su_S(T *,su_MEM_REALLOC_N(OVP, sizeof(T), NO))
 /*! \_ */
 #define su_MEM_TREALLOC_LOC(T,OVP,NO,FNAME,LNNO) \
-      su_S(T *,su_MEM_REALLOC_N_LOC(OVP, sizeof(T), su_S(su_uz,NO),\
-         FNAME, LNNO))
+      su_S(T *,su_MEM_REALLOC_N_LOC(OVP, sizeof(T), NO, FNAME, LNNO))
+
+/*! \_ */
+#define su_MEM_TALLOCF(T,NO,F) su_S(T *,su_MEM_ALLOCATE(sizeof(T), NO, F))
+/*! \_ */
+#define su_MEM_TALLOCF_LOC(T,NO,F,FNAME,LNNO) \
+      su_S(T *,su_MEM_ALLOCATE_LOC(sizeof(T), NO, F, FNAME, LNNO))
+
+/*! \_ */
+#define su_MEM_TCALLOCF(T,NO,F) \
+   su_S(T *,su_MEM_ALLOCATE(sizeof(T), NO, su_MEM_ALLOC_CLEAR | (F)))
+/*! \_ */
+#define su_MEM_TCALLOCF_LOC(T,NO,F,FNAME,LNNO) \
+   su_S(T *,su_MEM_ALLOCATE_LOC(sizeof(T), NO, su_MEM_ALLOC_CLEAR | (F)),\
+      FNAME, LNNO)
+
+/*! \_ */
+#define su_MEM_TREALLOCF(T,OVP,NO,F) \
+      su_S(T *,su_MEM_REALLOCATE(OVP, sizeof(T), NO, F))
+/*! \_ */
+#define su_MEM_TREALLOCF_LOC(T,OVP,NO,F,FNAME,LNNO) \
+      su_S(T *,su_MEM_REALLOCATE_LOC(OVP, sizeof(T), NO, F, FNAME, LNNO))
 
 /*! \_ */
 #define su_MEM_FREE(OVP) su_mem_free(OVP  su_DBG_LOC_ARGS_INJ)
@@ -284,6 +303,12 @@ EXPORT void su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL);
 # define su_MEM_TCALLOC_LOCOR(T,NO,ORARGS) su_MEM_TCALLOC_LOC(T, NO, ORARGS)
 # define su_MEM_TREALLOC_LOCOR(T,OVP,NO,ORARGS) \
       su_MEM_TREALLOC_LOC(T, OVP, NO, ORARGS)
+# define su_MEM_TALLOCF_LOCOR(T,NO,F,ORARGS) \
+   su_MEM_TALLOCF_LOC(T, NO, F, ORARGS)
+# define su_MEM_TCALLOCF_LOCOR(T,NO,F,ORARGS) \
+   su_MEM_TCALLOCF_LOC(T, NO, F, ORARGS)
+# define su_MEM_TREALLOCF_LOCOR(T,OVP,NO,F,ORARGS) \
+      su_MEM_TREALLOCF_LOC(T, OVP, NO, F, ORARGS)
 # define su_MEM_FREE_LOCOR(OVP,ORARGS) su_MEM_FREE_LOC(OVP, ORARGS)
 #else
    /*! \_ */
@@ -304,6 +329,12 @@ EXPORT void su_mem_free(void *ovp  su_DBG_LOC_ARGS_DECL);
 # define su_MEM_TCALLOC_LOCOR(T,NO,ORARGS) su_MEM_TCALLOC(T, NO)
    /*! \_ */
 # define su_MEM_TREALLOC_LOCOR(T,OVP,NO) su_MEM_TREALLOC(T, OVP, NO)
+   /*! \_ */
+# define su_MEM_TALLOCF_LOCOR(T,NO,F,ORARGS) su_MEM_TALLOCF(T, NO, F)
+   /*! \_ */
+# define su_MEM_TCALLOCF_LOCOR(T,NO,F,ORARGS) su_MEM_TCALLOCF(T, NO, F)
+   /*! \_ */
+# define su_MEM_TREALLOCF_LOCOR(T,OVP,F,NO) su_MEM_TREALLOCF(T, OVP, NO, F)
    /*! \_ */
 # define su_MEM_FREE_LOCOR(OVP,ORARGS) su_MEM_FREE_LOC(OVP, ORARGS)
 #endif /* !su_HAVE_DBG_LOC_ARGS */
@@ -428,7 +459,8 @@ public:
     * @{
     */
 
-   struct johnny, mary;
+   struct johnny;
+   struct mary;
 
    /*! \copydoc{su_mem_alloc_flags} */
    enum alloc_flags{

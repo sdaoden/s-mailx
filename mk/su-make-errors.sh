@@ -175,7 +175,7 @@ config() {
       }
 
       /* Create a list of all errors */
-      head = tail = malloc(sizeof *head);
+      head = tail = (struct a_in*)malloc(sizeof *head);
       head->next = NULL; head->name = "su_ERR_NONE"; head->no = 0;
 __EOT__
    for n in `error_parse 0 0`; do
@@ -187,7 +187,7 @@ __EOT__
       i = --xavail;
       #endif
       if(imin > i) {imin = i;} if(imax < i) {imax = i;}
-      np = malloc(sizeof *np);
+      np = (struct a_in*)malloc(sizeof *np);
       np->next = NULL; np->name = "su_ERR_${n}"; np->no = i;
       tail->next = np; tail = np;
 __EOT__
@@ -223,7 +223,7 @@ __EOT__
 
       /* Sort this list */
 
-      nap = malloc(sizeof(*nap) * (unsigned)total);
+      nap = (struct a_in**)malloc(sizeof(*nap) * (unsigned)total);
       for(i = 0, np = head; np != NULL; ++i, np = np->next)
          nap[i] = np;
       if(i != total){
@@ -415,7 +415,7 @@ reversy(size_t size){
       *cemaxp = cemp + su_NELEM(a_corerr_map);
    size_t ldist = 0, *arr;
 
-   arr = malloc(sizeof *arr * size);
+   arr = (size_t*)malloc(sizeof *arr * size);
    for(size_t i = 0; i < size; ++i)
       arr[i] = su_NELEM(a_corerr_map);
 

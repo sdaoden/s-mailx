@@ -56,7 +56,7 @@ static char const a_core_lvlnames[][8] = {
    FIELD_INITI(su_LOG_ALERT) "alert",
    FIELD_INITI(su_LOG_CRIT) "crit",
    FIELD_INITI(su_LOG_ERR) "error",
-   FIELD_INITI(su_LOG_WARN) "warning\0",
+   FIELD_INITI(su_LOG_WARN) "warning",
    FIELD_INITI(su_LOG_NOTICE) "notice",
    FIELD_INITI(su_LOG_INFO) "info",
    FIELD_INITI(su_LOG_DEBUG) "debug"
@@ -183,13 +183,15 @@ su_state_err(enum su_state_err_type err, uz state, char const *msg_or_nil){
    enum su_log_level lvl;
    char const *introp;
    s32 eno;
+   u32 xerr;
    NYD2_IN;
 
    if(msg_or_nil == NIL)
       msg_or_nil = N_("(no error information)");
    state &= su_STATE_ERR_MASK;
 
-   switch(err &= su_STATE_ERR_TYPE_MASK){
+   xerr = err;
+   switch(xerr &= su_STATE_ERR_TYPE_MASK){
    default:
       ASSERT(0);
       /* FALLTHRU */
@@ -208,7 +210,7 @@ su_state_err(enum su_state_err_type err, uz state, char const *msg_or_nil){
       goto jdolog;
    if(state & su_STATE_ERR_PASS)
       lvl = su_LOG_DEBUG;
-   else if((state & err) || su_state_has(err))
+   else if((state & xerr) || su_state_has(xerr))
       lvl = su_LOG_ALERT;
 
    if(a_PRIMARY_DOLOG(lvl))

@@ -36,8 +36,8 @@ static u8 const a_icoe_shifts[35] = {
 };
 
 /* XXX itoa byte maps not locale aware.. */
-static char const a_icoe_upper[36] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-static char const a_icoe_lower[36] = "0123456789abcdefghijklmnopqrstuvwxyz";
+static char const a_icoe_upper[36 +1] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+static char const a_icoe_lower[36 +1] = "0123456789abcdefghijklmnopqrstuvwxyz";
 
 char *
 su_ienc(char cbuf[su_IENC_BUFFER_SIZE], u64 value, u8 base, u32 ienc_mode){

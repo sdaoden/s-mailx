@@ -32,6 +32,7 @@
 
 #if defined su_CXX_HEADER || (defined su_SOURCE && !su_C_LANG)
 # undef CLASS_NO_COPY
+# undef SELFTHIS_RET
 
 # undef PUB
 # undef PRO
@@ -241,6 +242,15 @@
 #undef su_TREALLOC
 #undef su_TREALLOC_LOC
 #undef su_TREALLOC_LOCOR
+#undef su_TALLOCF
+#undef su_TALLOCF_LOC
+#undef su_TALLOCF_LOCOR
+#undef su_TCALLOCF
+#undef su_TCALLOCF_LOC
+#undef su_TCALLOCF_LOCOR
+#undef su_TREALLOCF
+#undef su_TREALLOCF_LOC
+#undef su_TREALLOCF_LOCOR
 #undef su_FREE
 #undef su_FREE_LOC
 #undef su_FREE_LOCOR

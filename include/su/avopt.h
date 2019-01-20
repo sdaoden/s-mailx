@@ -156,7 +156,7 @@ class avopt;
  * \ingroup AVOPT
  * C++ variant of \r{AVOPT} (\r{su/avopt.h})
  */
-class EXPORT avopt : private struct su_avopt{
+class EXPORT avopt : private su_avopt{
 public:
    /*! \copydoc{su_avopt_state} */
    enum state{
