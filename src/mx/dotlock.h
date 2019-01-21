@@ -57,9 +57,17 @@ a_dotlock_create(struct n_dotlock_info *dip){
    ssize_t w;
    enum n_dotlock_state rv, xrv;
 
-   /* (Callee ensured this doesn't end up as plain "di_lock_name") */
-   snprintf(lname, sizeof lname, "%s.%s.%s",
-      dip->di_randstr, dip->di_lock_name, dip->di_hostname);
+   /* The callee ensured this does not end up as plain "di_lock_name".
+    * However, when called via dotlock-ps, this may not be true in malicious
+    * cases, so add another check, then */
+   snprintf(lname, sizeof lname, "%s%s%s",
+      dip->di_lock_name, dip->di_randstr, dip->di_hostname);
+#ifdef mx_SOURCE_DOTLOCK_PS
+   if(!strcmp(lname, dip->di_lock_name)){
+      rv = n_DLS_FISHY | n_DLS_ABANDON;
+      goto jleave;
+   }
+#endif
 
    sigfillset(&nset);
 
@@ -83,6 +91,7 @@ a_dotlock_create(struct n_dotlock_info *dip){
       }
       n_msleep(dip->di_pollmsecs, FAL0);
    }
+jleave:
    return rv;
 }
 

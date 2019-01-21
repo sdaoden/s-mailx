@@ -151,12 +151,19 @@ jeuse:
 
    /* Ensure the lock name and the file name are identical */
    /* C99 */{
-      size_t i = strlen(di.di_file_name);
+      size_t i;
 
+      i = strlen(di.di_file_name);
       if(i == 0 || strncmp(di.di_file_name, di.di_lock_name, i) ||
             di.di_lock_name[i] == '\0' || strcmp(di.di_lock_name + i, ".lock"))
          goto jeuse;
    }
+
+   /* Ensure that we got some random string, and some hostname.
+    * a_dotlock_create() will later ensure that it will produce some string
+    * not-equal to .di_lock_name if it is called by us */
+   if(di.di_hostname[0] == '\0' || di.di_randstr[0] == '\0')
+      goto jeuse;
 
    close(STDERR_FILENO);
 
