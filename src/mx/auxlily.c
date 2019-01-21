@@ -700,6 +700,10 @@ n_nodename(bool_t mayoverride){
 # endif
 #endif /* mx_HAVE_SOCKETS */
 
+      /* Ensure it is non-empty! */
+      if(hn[0] == '\0')
+         hn = n_UNCONST(n_LOCALHOST_DEFAULT_NAME);
+
 #ifdef mx_HAVE_IDNA
       /* C99 */{
          struct n_string cnv;

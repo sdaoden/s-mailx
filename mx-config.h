@@ -21,22 +21,24 @@
 # define mx_CONFIG_H
 
 #define ACCOUNT_NULL "null"   /* Name of "null" account */
+#define n_ALIAS_MAXEXP 25     /* Maximum expansion of aliases */
 /* Protocol version for *on-compose-splice** -- update manual on change! */
 #define n_DIG_MSG_PLUMBING_VERSION "0 0 1"
 #define DOTLOCK_TRIES 5       /* Number of open(2) calls for dotlock */
-#define FILE_LOCK_TRIES 10    /* Maximum tries before n_file_lock() fails */
-#define FILE_LOCK_MILLIS 200  /* If UIZ_MAX, fall back to that */
 #define n_ERROR "ERROR"       /* Is-error?  Also as n_error[] */
 #define ERRORS_MAX 5000       /* Error queue size (s32) TODO configurable */
 #define n_ESCAPE "~"          /* Default escape for sending (POSIX) */
-#define FTMP_OPEN_TRIES 10    /* Maximum number of Ftmp() open(2) tries */
+#define FILE_LOCK_TRIES 10    /* Maximum tries before n_file_lock() fails */
+#define FILE_LOCK_MILLIS 200  /* If UIZ_MAX, fall back to that */
 #define n_FORWARD_INJECT_HEAD "-------- Original Message --------\n" /* DOC! */
 #define n_FORWARD_INJECT_TAIL NULL /* DOC! */
+#define FTMP_OPEN_TRIES 10    /* Maximum number of Ftmp() open(2) tries */
 #define HSHSIZE 23            /* Hash prime TODO make dynamic, obsolete */
 #define n_IMAP_DELIM "/."     /* Directory separator ([0] == replacer, too) */
+/* Fallback in case the systems reports an empty hostname (?) */
+#define n_LOCALHOST_DEFAULT_NAME "localhost.localdomain"
 #define n_MAILDIR_SEPARATOR ':' /* Flag separator character */
 #define n_MAXARGC 512         /* Maximum list of raw strings TODO dyn vector! */
-#define n_ALIAS_MAXEXP 25     /* Maximum expansion of aliases */
 #define n_PATH_DEVNULL "/dev/null"  /* Note: manual uses /dev/null as such */
 #define n_QUOTE_INJECT_HEAD "%f wrote:\n\n" /* DOC! */
 #define n_QUOTE_INJECT_TAIL NULL /* DOC! */
