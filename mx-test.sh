@@ -310,7 +310,7 @@ if ( [ "$((1 + 1))" = 2 ] ) >/dev/null 2>&1; then
    }
 else
    add() {
-      echo `${awk} 'BEGIN{print '${1}' + '${2}'}'`
+      ${awk} 'BEGIN{print '${1}' + '${2}'}'
    }
 fi
 
@@ -320,7 +320,7 @@ if ( [ "$((2 % 3))" = 2 ] ) >/dev/null 2>&1; then
    }
 else
    modulo() {
-      echo `${awk} 'BEGIN{print '${1}' % '${2}'}'`
+      ${awk} 'BEGIN{print '${1}' % '${2}'}'
    }
 fi
 
@@ -6715,6 +6715,7 @@ cc_all_configs() {
 }
 
 [ -n "${ERR}" ]  && echo > ${ERR}
+ssec=$SECONDS
 if [ -z "${CHECK_ONLY}${RUN_TEST}" ]; then
    cc_all_configs
 elif [ -z "${RUN_TEST}" ] || [ ${#} -eq 0 ]; then
@@ -6731,6 +6732,11 @@ else
       eval t_${1}
       shift
    done
+fi
+esec=$SECONDS
+
+if [ -n "${ssec}" ] && [ -n "${esec}" ]; then
+   ( echo Elapsed seconds: `$awk 'BEGIN{print '"${esec}"' - '"${ssec}"'}'` )
 fi
 
 [ ${ESTAT} -eq 0 ] && printf 'Exit status ok\n' ||
