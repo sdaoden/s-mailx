@@ -133,10 +133,17 @@ update_release_hook() {
       ${make} d-tcaps-nv && ${git} add src/mx/gen-tcaps.h
       ${make} d-errors-nv && ${git} add src/su/gen-errors.h
       ${make} d-cs-ctype-nv && ${git} add src/su/gen-cs-ctype.h
+      perl mk/su-doc-strip.pl include/su/*.h && ${git} add include/su
    fi
 
    ${git} rm -f .gitignore .mailmap TODO \
-      mk/make-release.* mk/make-news-anchors.sh mk/mdocmx.sh \
+      \
+      mk/make-news-anchors.sh mk/make-release.* \
+      \
+      mk/mdocmx.sh \
+      \
+      mk/su-doc-strip.pl mk/su-doxygen.rc mk/su-make-cs-ctype.sh \
+      \
       `${git} grep -l ^su_USECASE_MX_DISABLED`
 }
 
