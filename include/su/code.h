@@ -116,6 +116,9 @@
  *
  * \list{\li{
  * Reacts upon \vr{su_HAVE_DEBUG}, \vr{su_HAVE_DEVEL}, and \vr{NDEBUG}.
+ * Whereas the former two are configuration-time constants which will create
+ * additional API and cause a different ABI, the latter will only cause
+ * preprocessor changes, for example for \r{ASSERT()}.
  * }\li{
  * The latter is a precondition for \vr{su_HAVE_INLINE}.
  * }\li{
@@ -521,7 +524,7 @@ do{\
 # define su__ZAL_L su_MAX(su__ZAL_S, su_ALIGNOF(su_u64))/* XXX FP,128bit */
 
 /* Variants of ASSERT */
-#if defined NDEBUG || !defined su_HAVE_DEBUG || defined DOXYGEN
+#if defined NDEBUG || defined DOXYGEN
 # define su_ASSERT_INJ(X)                                /*!< Injection! */
 # define su_ASSERT(X) do{}while(0)                       /*!< \_ */
 # define su_ASSERT_LOC(X,FNAME,LNNO) do{}while(0)        /*!< \_ */
@@ -587,7 +590,7 @@ do if(!(X)){\
    su_assert(su_STRING(X), FNAME, LNNO, su_FUN, su_FAL0);\
    goto su_NYD_OU_LABEL;\
 }while(0)
-#endif /* defined NDEBUG || !defined su_HAVE_DEBUG */
+#endif /* defined NDEBUG || defined DOXYGEN */
 
 /*! Create a bit mask for the bit range LO..HI -- HI cannot use highest bit! */
 #define su_BITENUM_MASK(LO,HI) (((1u << ((HI) + 1)) - 1) & ~((1u << (LO)) - 1))
@@ -1324,7 +1327,7 @@ EXPORT void su_assert(char const *expr, char const *file, u32 line,
 # define su_assert(EXPR,FILE,LINE,FUN,CRASH)
 #endif
 
-#if defined su_HAVE_DEBUG || defined su_HAVE_DEVEL
+#if DVLOR(1, 0)
 void su_nyd_chirp(u8 act, char const *file, u32 line, char const *fun);
 void su_nyd_dump(void (*ptf)(up cookie, char const *buf, uz blen), up cookie);
 #endif
