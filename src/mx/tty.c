@@ -435,6 +435,9 @@ n_CTAV(a_TTY_BIND_TIMEOUT_MAX <= UI8_MAX);
 n_CTAV(n_ISPOW2(a_TTY_BIND_CAPEXP_ROUNDUP));
 n_CTA(a_TTY_BIND_CAPEXP_ROUNDUP <= SI8_MAX / 2, "Variable must fit in 6-bit");
 n_CTA(a_TTY_BIND_CAPEXP_ROUNDUP >= 8, "Variable too small");
+
+   /* Bind lookup trees organized in (wchar_t indexed) hashmaps */
+#  define a_TTY_PRIME 0xBu
 # endif /* mx_HAVE_KEY_BINDINGS */
 
 # ifdef mx_HAVE_HISTORY
@@ -641,7 +644,7 @@ struct a_tty_global{
    char tg_bind_shcut_cancel[n__GO_INPUT_CTX_MAX1][a_TTY_SHCUT_MAX];
    char tg_bind_shcut_prompt_char[n__GO_INPUT_CTX_MAX1][a_TTY_SHCUT_MAX];
    struct a_tty_bind_ctx *tg_bind[n__GO_INPUT_CTX_MAX1];
-   struct a_tty_bind_tree *tg_bind_tree[n__GO_INPUT_CTX_MAX1][HSHSIZE];
+   struct a_tty_bind_tree *tg_bind_tree[n__GO_INPUT_CTX_MAX1][a_TTY_PRIME];
 # endif
    struct termios tg_tios_old;
    struct termios tg_tios_new;
@@ -683,7 +686,7 @@ struct a_tty_line{
    ui8_t tl__bind_dummy[3];
    char (*tl_bind_shcut_cancel)[a_TTY_SHCUT_MAX]; /* Special _CANCEL control */
    char (*tl_bind_shcut_prompt_char)[a_TTY_SHCUT_MAX]; /* ..for _PROMPT_CHAR */
-   struct a_tty_bind_tree *(*tl_bind_tree_hmap)[HSHSIZE];/* Bind lookup tree */
+   struct a_tty_bind_tree *(*tl_bind_tree_hmap)[a_TTY_PRIME]; /* Lookup tree */
    struct a_tty_bind_tree *tl_bind_tree;
 # endif
    /* Line data / content handling */
@@ -967,7 +970,7 @@ static void a_tty_bind_tree_build(void);
 static void a_tty_bind_tree_teardown(void);
 
 static void a_tty__bind_tree_add(ui32_t hmap_idx,
-               struct a_tty_bind_tree *store[HSHSIZE],
+               struct a_tty_bind_tree *store[a_TTY_PRIME],
                struct a_tty_bind_ctx *tbcp);
 static struct a_tty_bind_tree *a_tty__bind_tree_add_wc(
                struct a_tty_bind_tree **treep, struct a_tty_bind_tree *parentp,
@@ -3243,7 +3246,7 @@ jinput_loop:
 
                /* Search for this character in the bind tree */
                tbtp = (isp != NULL) ? isp->tbtp->tbt_childs
-                     : (*tlp->tl_bind_tree_hmap)[wc % HSHSIZE];
+                     : (*tlp->tl_bind_tree_hmap)[wc % a_TTY_PRIME];
                for(; tbtp != NULL; tbtp = tbtp->tbt_sibling){
                   if(tbtp->tbt_char == wc){
                      struct inseq *nisp;
@@ -3970,7 +3973,7 @@ a_tty_bind_tree_teardown(void){
       sizeof(a_tty.tg_bind_shcut_prompt_char));
 
    for(i = 0; i < n__GO_INPUT_CTX_MAX1; ++i)
-      for(j = 0; j < HSHSIZE; ++j)
+      for(j = 0; j < a_TTY_PRIME; ++j)
          a_tty__bind_tree_free(a_tty.tg_bind_tree[i][j]);
    su_mem_set(&a_tty.tg_bind_tree[0], 0, sizeof(a_tty.tg_bind_tree));
 
@@ -3979,8 +3982,8 @@ a_tty_bind_tree_teardown(void){
 }
 
 static void
-a_tty__bind_tree_add(ui32_t hmap_idx, struct a_tty_bind_tree *store[HSHSIZE],
-      struct a_tty_bind_ctx *tbcp){
+a_tty__bind_tree_add(ui32_t hmap_idx,
+      struct a_tty_bind_tree *store[a_TTY_PRIME], struct a_tty_bind_ctx *tbcp){
    ui32_t cnvlen;
    char const *cnvdat;
    struct a_tty_bind_tree *ntbtp;
@@ -4065,7 +4068,7 @@ a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep,
    n_NYD2_IN;
 
    if(parentp == NULL){
-      treep += wc % HSHSIZE;
+      treep += wc % a_TTY_PRIME;
 
       /* Having no parent also means that the tree slot is possibly empty */
       for(tbtp = *treep; tbtp != NULL;
