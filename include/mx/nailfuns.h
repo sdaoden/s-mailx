@@ -993,6 +993,9 @@ FL char *      skin(char const *name);
 FL char const *n_addrspec_with_guts(struct n_addrguts *agp, char const *name,
                   bool_t doskin, bool_t issingle_hack);
 
+/* `addrcodec' */
+FL int c_addrcodec(void *vp);
+
 /* Fetch the real name from an internet mail address field */
 FL char *      realname(char const *name);
 
@@ -1500,9 +1503,6 @@ FL struct name *n_alternates_remove(struct name *np, bool_t keep_single);
 
 /* Likewise, is name an alternate in broadest sense? */
 FL bool_t n_is_myname(char const *name);
-
-/* `addrcodec' */
-FL int c_addrcodec(void *vp);
 
 /* `(un)?commandalias'.
  * And whether a `commandalias' name exists, returning name or NULL, pointing
