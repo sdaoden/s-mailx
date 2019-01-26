@@ -124,7 +124,7 @@
  * Reacts upon \vr{su_HAVE_DEBUG}, \vr{su_HAVE_DEVEL}, and \vr{NDEBUG}.
  * Whereas the former two are configuration-time constants which will create
  * additional API and cause a different ABI, the latter will only cause
- * preprocessor changes, for example for \r{ASSERT()}.
+ * preprocessor changes, for example for \r{su_ASSERT()}.
  * }\li{
  * The latter is a precondition for \vr{su_HAVE_INLINE}.
  * }\li{
@@ -1046,10 +1046,10 @@ typedef void (*su_delete_fun)(void *self);
  * returned to indicate error then the caller which passed a non-\NIL object
  * is responsible for deletion or taking other appropriate steps.}
  *
- * \remarks{If \a{self} and \a{t} are \r{COLLS}, then if assignment fails then
+ * \remarks{If \a{self} and \a{t} are \r{COLL}, then if assignment fails then
  * whereas \a{self} will not manage any elements, it has been assigned \a{t}'s
  * possible existent \r{su_toolbox} as well as other attributes.
- * Some \r{COLLS} will provide an additional \c{assign_elems()} function.} */
+ * Some \r{COLL} will provide an additional \c{assign_elems()} function.} */
 typedef void *(*su_assign_fun)(void *self, void const *t, u32 estate);
 
 /*! Compare \a{a} and \a{b}, and return a value less than 0 if \a{a} is "less
@@ -1075,11 +1075,11 @@ struct su_toolbox{
 /*! Initialize a \r{su_toolbox}. */
 #define su_TOOLBOX_I9R(CLONE,DELETE,ASSIGN,COMPARE,HASH) \
 {\
-   su_FIELD_INITN(tb_clone) (su_clone_fun)CLONE,\
-   su_FIELD_INITN(tb_delete) (su_delete_fun)DELETE,\
-   su_FIELD_INITN(tb_assign) (su_assign_fun)ASSIGN,\
-   su_FIELD_INITN(tb_compare) (su_compare_fun)COMPARE,\
-   su_FIELD_INITN(tb_hash) (su_hash_fun)HASH\
+   su_FIELD_INITN(tb_clone) (su_clone_fun)(CLONE),\
+   su_FIELD_INITN(tb_delete) (su_delete_fun)(DELETE),\
+   su_FIELD_INITN(tb_assign) (su_assign_fun)(ASSIGN),\
+   su_FIELD_INITN(tb_compare) (su_compare_fun)(COMPARE),\
+   su_FIELD_INITN(tb_hash) (su_hash_fun)(HASH)\
 }
 
 /* BASIC TYPE TRAITS }}} */
@@ -1627,29 +1627,35 @@ struct type_toolbox{
    typedef NSPC(su)type_traits<T> type_traits;
 
    /*! \copydoc{su_clone_fun} */
-   typename type_traits::tp (*ttb_clone)(typename type_traits::tp_const t,
-         u32 estate);
-   /*! \copydoc{su_delete_fun} */
-   void (*ttb_delete)(typename type_traits::tp self);
-   /*! \copydoc{su_assign_fun} */
-   typename type_traits::tp (*ttb_assign)(typename type_traits::tp self,
+   typedef typename type_traits::tp (*clone_fun)(
          typename type_traits::tp_const t, u32 estate);
+   /*! \copydoc{su_delete_fun} */
+   typedef void (*delete_fun)(typename type_traits::tp self);
+   /*! \copydoc{su_assign_fun} */
+   typedef typename type_traits::tp (*assign_fun)(
+         typename type_traits::tp self, typename type_traits::tp_const t,
+         u32 estate);
    /*! \copydoc{su_compare_fun} */
-   sz (*ttb_compare)(typename type_traits::tp_const self,
+   typedef sz (*compare_fun)(typename type_traits::tp_const self,
          typename type_traits::tp_const t);
    /*! \copydoc{su_hash_fun} */
-   uz (*ttb_hash)(typename type_traits::tp_const self);
+   typedef uz (*hash_fun)(typename type_traits::tp_const self);
+
+   /*! \r{#clone_fun} */
+   clone_fun ttb_clone;
+   /*! \r{#delete_fun} */
+   delete_fun ttb_delete;
+   /*! \r{#assign_fun} */
+   assign_fun ttb_assign;
+   /*! \r{#compare_fun} */
+   compare_fun ttb_compare;
+   /*! \r{#hash_fun} */
+   hash_fun ttb_hash;
 };
 
 /*! Initialize a \r{type_toolbox}. */
 #define su_TYPE_TOOLBOX_I9R(CLONE,DELETE,ASSIGN,COMPARE,HASH) \
-{\
-   su_FIELD_INITN(ttb_clone) CLONE,\
-   su_FIELD_INITN(ttb_delete) DELETE,\
-   su_FIELD_INITN(ttb_assign) ASSIGN,\
-   su_FIELD_INITN(ttb_compare) COMPARE,\
-   su_FIELD_INITN(ttb_hash) HASH\
-}
+      { CLONE, DELETE, ASSIGN, COMPARE, HASH }
 
 // abc,clip,max,min,pow2 -- the C macros are in SUPPORT MACROS+
 /*! \_ */
