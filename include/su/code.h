@@ -85,6 +85,7 @@
  */
 
 #ifdef DOXYGEN
+   /* Features */
    /*! Whether the \SU namespace exists.
     * If not, facilities exist in the global namespace. */
 # define su_HAVE_NSPC
@@ -102,7 +103,12 @@
     * the ASAN (address sanitizer) compiler extensions, the \SU checkers can be
     * disabled explicitly. */
 # define su_HAVE_MEM_CANARIES_DISABLE
+# define su_HAVE_SMP          /*!< \r{SMP} support available? */
+   /*!< Multithreading support available?
+    * This is a subfeature of \r{SMP}. */
+# define su_HAVE_MT
 
+   /* Values */
 # define su_PAGE_SIZE   /*!< \_ */
 #endif
 
@@ -609,16 +615,6 @@ do if(!(X)){\
 # define su_DBGOR(X,Y) Y
 #endif
 
-#if defined su_HAVE_DEVEL || defined su_HAVE_DEBUG /* Not: !defined NDEBUG) */
-# define su_DVL(X) X
-# define su_NDVL(X)
-# define su_DVLOR(X,Y) X
-#else
-# define su_DVL(X)
-# define su_NDVL(X) X
-# define su_DVLOR(X,Y) Y
-#endif
-
 /* Debug file location arguments.  (For an usage example see su/mem.h.) */
 #if defined su_HAVE_DEVEL || defined su_HAVE_DEBUG
 # define su_HAVE_DBG_LOC_ARGS
@@ -652,7 +648,18 @@ do{\
 # define su_DBG_LOC_ARGS_UNUSED() do{}while(0)
 #endif /* su_HAVE_DEVEL || su_HAVE_DEBUG */
 
-/* To avoid files are overall empty */
+/* Development injections */
+#if defined su_HAVE_DEVEL || defined su_HAVE_DEBUG /* Not: !defined NDEBUG) */
+# define su_DVL(X) X
+# define su_NDVL(X)
+# define su_DVLOR(X,Y) X
+#else
+# define su_DVL(X)
+# define su_NDVL(X) X
+# define su_DVLOR(X,Y) Y
+#endif
+
+/* To avoid files that are overall empty */
 #define su_EMPTY_FILE() typedef int su_CONCAT(su_notempty_shall_b_, su_FILE);
 
 /* C field init */
@@ -680,6 +687,13 @@ do{\
 /*! sizeof() for member fields */
 #define su_FIELD_SIZEOF(T,F) sizeof(su_S(T *,su_NIL)->F)
 
+/* Multithread injections */
+#ifdef su_HAVE_MT
+# define su_MT(X) X
+#else
+# define su_MT(X)
+#endif
+
 /*! Members in constant array */
 #define su_NELEM(A) (sizeof(A) / sizeof((A)[0]))
 
@@ -692,6 +706,13 @@ do{\
 
 /*! Pointer comparison */
 #define su_PCMP(A,C,B) (su_R(su_up,A) C su_R(su_up,B))
+
+/* SMP injections */
+#ifdef su_HAVE_SMP
+# define su_SMP(X) X
+#else
+# define su_SMP(X)
+#endif
 
 /* String stuff.
  * __STDC_VERSION__ is ISO C99, so also use __STDC__, which should work */
@@ -1186,6 +1207,14 @@ enum su__state_flags{
 MCTA((uz)su_LOG_DEBUG <= (uz)su__STATE_LOG_MASK, "Bit ranges may not overlap")
 MCTA(((uz)su_STATE_ERR_MASK & ~0xFF00) == 0, "Bits excess documented bounds")
 
+#ifdef su_HAVE_MT
+enum su__glock_type{
+   su__GLOCK_STATE,
+   su__GLOCK_LOG,
+   su__GLOCK_MAX = su__GLOCK_LOG
+};
+#endif
+
 /*! The \SU error number constants.
  * In order to achieve a 1:1 mapping of the \SU and the host value, e.g.,
  * of \ERR{INTR} and \c{EINTR}, the actual values will be detected at
@@ -1245,6 +1274,12 @@ EXPORT_DATA char const su_reproducible_build[];
  * Also see \r{su_STATE_LOG_SHOW_PID}, \r{su_STATE_LOG_SHOW_LEVEL}. */
 EXPORT_DATA char const *su_program;
 
+/**/
+#ifdef su_HAVE_MT
+EXPORT void su__glock(enum su__glock_type gt);
+EXPORT void su__gunlock(enum su__glock_type gt);
+#endif
+
 /*! Interaction with the SU library (global) state machine.
  * This covers \r{su_state_log_flags}, \r{su_state_err_type},
  * and \r{su_state_flags} flags and values. */
@@ -1261,12 +1296,16 @@ INLINE boole su_state_has(uz flags){
 
 /*! \_ */
 INLINE void su_state_set(uz flags){
+   MT( su__glock(su__GLOCK_STATE); )
    su__state |= flags & su__STATE_GLOBAL_MASK;
+   MT( su__gunlock(su__GLOCK_STATE); )
 }
 
 /*! \_ */
 INLINE void su_state_clear(uz flags){
+   MT( su__glock(su__GLOCK_STATE); )
    su__state &= ~(flags & su__STATE_GLOBAL_MASK);
+   MT( su__gunlock(su__GLOCK_STATE); )
 }
 
 /*! Notify an error to the \SU (global) state machine.
@@ -1303,8 +1342,20 @@ INLINE enum su_log_level su_log_get_level(void){
 
 /*! \_ */
 INLINE void su_log_set_level(enum su_log_level nlvl){
+   MT( su__glock(su__GLOCK_STATE); )
    su__state = (su__state & su__STATE_GLOBAL_MASK) |
          (S(uz,nlvl) & su__STATE_LOG_MASK);
+   MT( su__gunlock(su__GLOCK_STATE); )
+}
+
+/*! SMP lock the global log domain. */
+INLINE void su_log_lock(void){
+   MT( su__glock(su__GLOCK_LOG); )
+}
+
+/*! SMP unlock the global log domain. */
+INLINE void su_log_unlock(void){
+   MT( su__gunlock(su__GLOCK_LOG); )
 }
 
 /*! Log functions of various sort.
@@ -1728,6 +1779,12 @@ public:
          su_state_clear(su_STATE_LOG_SHOW_PID);
    }
 
+   /*! \copydoc{su_log_lock()} */
+   static void lock(void) {su_log_lock();}
+
+   /*! \copydoc{su_log_unlock()} */
+   static void unlock(void) {su_log_unlock();}
+
    /*! \copydoc{su_log_write()} */
    static void write(level lvl, char const *fmt, ...);
 
@@ -1842,6 +1899,9 @@ NSPC_END(su)
 /*!
  * \defgroup SMP SMP
  * \brief Simultaneous Multi Processing
+ *
+ * This covers general \r{su_HAVE_SMP}, as well as its multi-threading subset
+ * \r{su_HAVE_MT}.
  */
 
 /*!

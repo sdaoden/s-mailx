@@ -114,6 +114,8 @@
 #undef FIELD_RANGEOF
 #undef FIELD_SIZEOF
 
+#undef MT
+
 #undef NELEM
 
 #undef NYD_OU_LABEL
@@ -133,6 +135,8 @@
 # undef N_
 # undef V_
 #endif
+
+#undef SMP
 
 #undef UCMP
 

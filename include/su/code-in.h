@@ -148,6 +148,8 @@
 #define FIELD_RANGEOF su_FIELD_RANGEOF
 #define FIELD_SIZEOF su_FIELD_SIZEOF
 
+#define MT su_MT
+
 #define NELEM su_NELEM
 
 /* Not-Yet-Dead macros TODO stubs */
@@ -215,6 +217,8 @@
 # define N_(S) S
 # define V_(S) S
 #endif
+
+#define SMP su_SMP
 
 #define UCMP su_UCMP
 

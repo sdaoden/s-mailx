@@ -1,5 +1,4 @@
 /*@ Implementation of code.h: (unavoidable) basics.
- *@ TODO SMP locks: global_lock(), log_lock(); logging needs lock encapsul!
  *@ TODO Log: domain should be configurable
  *@ TODO Assert: the C++ lib has per-thread assertion states, s_nolog to
  *@ TODO    suppress log, test_state(), test_and_clear_state(): for unit tests!
@@ -69,6 +68,8 @@ union su__bom_union const su__bom_little = {{'\xFF', '\xFE'}};
 union su__bom_union const su__bom_big = {{'\xFE', '\xFF'}};
 
 #if DVLOR(1, 0)
+MT( static uz a_core_glock_recno[su__GLOCK_MAX +1]; )
+
 static u32 a_core_nyd_curr, a_core_nyd_level;
 static boole a_core_nyd_skip;
 static struct a_core_nyd_info a_core_nyd_infos[su_NYD_ENTRIES];
@@ -174,6 +175,44 @@ a_core_nyd_printone(void (*ptf)(up cookie, char const *buf, uz blen),
    }
 }
 #endif /* DVLOR(1, 0) */
+
+#ifdef su_HAVE_MT
+void
+su__glock(enum su__glock_type gt){
+   NYD2_IN;
+
+   switch(gt){
+   case su__GLOCK_STATE: /* XXX spinlock */
+      break;
+   case su__GLOCK_LOG: /* XXX mutex */
+      break;
+   }
+
+# if DVLOR(1, 0)
+   ASSERT(a_core_glock_recno[gt] != UZ_MAX);
+   ++a_core_glock_recno[gt];
+# endif
+   NYD2_OU;
+}
+
+void
+su__gunlock(enum su__glock_type gt){
+   NYD2_IN;
+
+   switch(gt){
+   case su__GLOCK_STATE: /* XXX spinlock */
+      break;
+   case su__GLOCK_LOG: /* XXX mutex */
+      break;
+   }
+
+# if DVLOR(1, 0)
+   ASSERT(a_core_glock_recno[gt] > 0);
+   --a_core_glock_recno[gt];
+# endif
+   NYD2_OU;
+}
+#endif /* su_HAVE_MT */
 
 s32
 su_state_err(enum su_state_err_type err, uz state, char const *msg_or_nil){

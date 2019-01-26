@@ -39,10 +39,12 @@
 # include <su/gen-config.h>
 #endif
 
+/* Internal configurables: values */
+
 /* Number of Not-Yet-Dead calls that are remembered */
 #define su_NYD_ENTRIES (25 * 84)
 
-/**/
+/* Global configurables (code.h:CONFIG): features */
 
 #ifdef mx_HAVE_DEBUG
 # define su_HAVE_DEBUG
@@ -60,6 +62,11 @@
 #ifdef mx_HAVE_NOMEMDBG
 # define su_HAVE_MEM_CANARIES_DISABLE
 #endif
+
+#undef su_HAVE_MT
+#undef su_HAVE_SMP
+
+/* Global configurables (code.h:CONFIG): values */
 
 /* Hardware page size (xxx additional dynamic lookup support) */
 #ifndef su_PAGE_SIZE
