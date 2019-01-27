@@ -46,7 +46,7 @@ update_stable_hook() {
    echo 'gen-version.h: update'
    TOPDIR= grep=${grep} sed=${sed} cmp=${cmp} mv=${mv} \
       ${make} -f mk/make-config.in _update-version
-   ${git} add include/mx/gen-version.h
+   ${git} add -f include/mx/gen-version.h
 
    #
    echo 'nail.1: expanding MKREL'
@@ -97,10 +97,10 @@ update_stable_hook() {
 
    #
    if [ -n "${have_perl}" ]; then
-      ${make} d-okeys && ${git} add src/mx/gen-okeys.h
-      ${make} d-tcaps && ${git} add src/mx/gen-tcaps.h
-      ${make} d-errors && ${git} add src/su/gen-errors.h
-      ${make} d-cs-ctype && ${git} add src/su/gen-cs-ctype.h
+      ${make} d-okeys && ${git} add -f src/mx/gen-okeys.h
+      ${make} d-tcaps && ${git} add -f src/mx/gen-tcaps.h
+      ${make} d-errors && ${git} add -f src/su/gen-errors.h
+      ${make} d-cs-ctype && ${git} add -f src/su/gen-cs-ctype.h
    fi
 }
 
@@ -129,10 +129,10 @@ update_release_hook() {
    ${git} add nail.rc
 
    if [ -n "${have_perl}" ]; then
-      ${make} d-okeys-nv && ${git} add src/mx/gen-okeys.h
-      ${make} d-tcaps-nv && ${git} add src/mx/gen-tcaps.h
-      ${make} d-errors-nv && ${git} add src/su/gen-errors.h
-      ${make} d-cs-ctype-nv && ${git} add src/su/gen-cs-ctype.h
+      ${make} d-okeys-nv && ${git} add -f src/mx/gen-okeys.h
+      ${make} d-tcaps-nv && ${git} add -f src/mx/gen-tcaps.h
+      ${make} d-errors-nv && ${git} add -f src/su/gen-errors.h
+      ${make} d-cs-ctype-nv && ${git} add -f src/su/gen-cs-ctype.h
       perl mk/su-doc-strip.pl include/su/*.h && ${git} add include/su
    fi
 

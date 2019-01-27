@@ -33,7 +33,7 @@
 # non-grappa only
 : ${gzip:=gzip}
 : ${openssl:=openssl}
-: ${pgp:=pgp}
+: ${gpg:=gpg}
 : ${rm:=rm}
 : ${sftp:=sftp}
 : ${tar:=tar}
@@ -63,7 +63,8 @@ yesno() {
 ref_status() {
    headref="`${git} rev-parse --verify HEAD`"
    brref=
-   for i in `${git} rev-parse --branches=stable master^{commit}`; do
+   for i in `${git} rev-parse --branches=stable master^{commit} \
+         2>/dev/null`; do
       if [ ${headref} = ${i} ]; then
          brref=${headref}
          break
