@@ -105,8 +105,8 @@ while getopts hvtT:c i; do
   esac
 done
 [ -n "${TT}" ] && [ -z "${T}" ] && synopsis ${EX_USAGE} '-c requires -t or -T'
-OPTIND=`expr ${OPTIND} - 1`
-shift ${OPTIND}
+i=`expr ${OPTIND} - 1`
+[ ${i} -gt 0 ] && shift ${i}
 
 [ ${#} -gt 1 ] && synopsis ${EX_USAGE} 'Excess arguments given'
 [ ${#} -eq 0 ] && F=- || F=${1}
