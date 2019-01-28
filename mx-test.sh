@@ -50,11 +50,12 @@ MAIL=/dev/null
 #UTF8_LOCALE= autodetected unless set
 TMPDIR=`pwd`
 
-# When testing mass mail, maximum number of receivers. TODO note we do not
-# TODO gracefully handle ARG_MAX excess yet!
+# When testing mass mail/loops, maximum number of receivers/loops.
+# TODO note we do not gracefully handle ARG_MAX excess yet!
 # Those which use this have checksums for 2001 and 201.
-MASS_MAX=2001
-MASS_MAX=201
+# Some use the smaller automatically if +debug
+LOOPS_BIG=2001 LOOPS_SMALL=201
+LOOPS_MAX=$LOOPS_SMALL
 
 # Note valgrind has problems with FDs in forked childs, which causes some tests
 # to fail (the FD is rewound and thus will be dumped twice)
@@ -2739,11 +2740,19 @@ t_call_ret() {
 t_xcall() {
    t_prolog xcall
 
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Snomemdebug > "${MBOX}" 2>&1
+   ${cat} <<- '__EOT' | \
+      ${MAILX} ${ARGS} -Snomemdebug \
+         -SLOOPS_BIG=${LOOPS_BIG} -SLOOPS_SMALL=${LOOPS_SMALL} \
+         > "${MBOX}" 2>&1
+	\if [ "$features" !% +debug ]
+		\wysh set max=$LOOPS_BIG
+	\else
+		\wysh set max=$LOOPS_SMALL
+	\end
 	define work {
 		echon "$1 "
 		vput vexpr i + $1 1
-		if [ $i -le 1111 ]
+		if [ $i -le "$max" ]
 			vput vexpr j '&' $i 7
 			if [ $j -eq 7 ]
 				echo .
@@ -2771,7 +2780,14 @@ t_xcall() {
 	echo ?=$? !=$^ERRNAME
 	__EOT
 
-   check 1 0 "${MBOX}" '2401702082 23801'
+   i=${?}
+   if have_feat debug; then
+      check_ex0 1-${LOOPS_SMALL} ${i}
+      check 1-${LOOPS_SMALL} - "${MBOX}" '859201011 3894'
+   else
+      check_ex0 1-${LOOPS_BIG} ${i}
+      check 1-${LOOPS_BIG} - "${MBOX}" '1069764187 47161'
+   fi
 
    ##
 
@@ -6012,27 +6028,27 @@ __EOT__
 
    printf 'm this-goes@nowhere\nbody\n!.\n' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
-      -X'source ./.trc' -Smta=./.tmta.sh -Smaximum=$MASS_MAX \
+      -X'source ./.trc' -Smta=./.tmta.sh -Smaximum=${LOOPS_MAX} \
       >./.tall 2>&1
    check_ex0 1-estat
    ${cat} ./.tall >> "${MBOX}"
-   if [ $MASS_MAX -eq 2001 ]; then
-      check 1-2001 - "${MBOX}" '2912243346 51526'
-   elif [ $MASS_MAX -eq 201 ]; then
-      check 1-201 - "${MBOX}" '3517315544 4678'
+   if [ ${LOOPS_MAX} -eq ${LOOPS_BIG} ]; then
+      check 1-${LOOPS_BIG} - "${MBOX}" '2912243346 51526'
+   elif [ ${LOOPS_MAX} -eq ${LOOPS_SMALL} ]; then
+      check 1-${LOOPS_SMALL} - "${MBOX}" '3517315544 4678'
    fi
 
    ${rm} "${MBOX}"
    printf 'm this-goes@nowhere\nbody\n!.\n' |
    ${MAILX} ${ARGS} -Snomemdebug -Sescape=! -Sstealthmua=noagent \
-      -St_remove=1 -X'source ./.trc' -Smta=./.tmta.sh -Smaximum=$MASS_MAX \
+      -St_remove=1 -X'source ./.trc' -Smta=./.tmta.sh -Smaximum=${LOOPS_MAX} \
       >./.tall 2>&1
    check_ex0 2-estat
    ${cat} ./.tall >> "${MBOX}"
-   if [ $MASS_MAX -eq 2001 ]; then
-      check 2-2001 - "${MBOX}" '4097804632 34394'
-   elif [ $MASS_MAX -eq 201 ]; then
-      check 2-201 - "${MBOX}" '3994680040 3162'
+   if [ ${LOOPS_MAX} -eq ${LOOPS_BIG} ]; then
+      check 2-${LOOPS_BIG} - "${MBOX}" '4097804632 34394'
+   elif [ $LOOPS_MAX -eq ${LOOPS_SMALL} ]; then
+      check 2-${LOOPS_SMALL} - "${MBOX}" '3994680040 3162'
    fi
 
    t_epilog
