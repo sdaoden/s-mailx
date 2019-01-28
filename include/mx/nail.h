@@ -2102,7 +2102,10 @@ enum gfield{ /* TODO -> enum m_grab_head, m_GH_xy */
    GFILES = 1u<<17,     /* Include filename and pipe addresses */
    GFULLEXTRA = 1u<<18, /* Only with GFULL: GFULL less address */
    GBCC_IS_FCC = 1u<<19, /* This GBCC is (or was) indeed a Fcc: */
-   GSHEXP_PARSE_HACK = 1u<<20 /* lextract()+: *expandaddr*=shquote */
+   GSHEXP_PARSE_HACK = 1u<<20, /* lextract()+: *expandaddr*=shquote */
+   /* All given input (nalloc() etc.) to be interpreted as a single address */
+   GNOT_A_LIST = 1u<<21,
+   GNULL_OK = 1u<<22    /* NULL return OK for nalloc()+ */
 };
 #define GMASK           (GTO | GSUBJECT | GCC | GBCC)
 

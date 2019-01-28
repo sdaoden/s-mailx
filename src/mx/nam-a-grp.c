@@ -1195,14 +1195,17 @@ nalloc(char const *str, enum gfield ntype)
    assert(!(ntype & GFULLEXTRA) || (ntype & GFULL) != 0);
 
    str = n_addrspec_with_guts(&ag, str,
-         ((ntype & (GFULL | GSKIN | GREF)) != 0), FAL0);
+         ((ntype & (GFULL | GSKIN | GREF)) != 0),
+         ((ntype & GNOT_A_LIST) != 0));
    if(str == NULL){
-      /*
-      np = NULL; TODO We cannot return NULL,
-      goto jleave; TODO thus handle failures in here!
-      */
-      str = ag.ag_input;
+      /* TODO this may not return NULL but for new-style callers */
+      if(ntype & GNULL_OK){
+         np = NULL;
+         goto jleave;
+      }
    }
+   ntype &= ~(GNOT_A_LIST | GNULL_OK); /* (all this a hack is) */
+   str = ag.ag_input; /* Take the possibly reordered thing */
 
    if (!(ag.ag_n_flags & NAME_NAME_SALLOC)) {
       ag.ag_n_flags |= NAME_NAME_SALLOC;
@@ -1462,6 +1465,16 @@ lextract(char const *line, enum gfield ntype)
 
    if(cp != NULL)
       n_lofi_free(cp);
+   n_NYD_OU;
+   return rv;
+}
+
+FL struct name *
+n_extract_single(char const *line, enum gfield ntype){
+   struct name *rv;
+   n_NYD_IN;
+
+   rv = nalloc(line, ntype | GSKIN | GNOT_A_LIST | GNULL_OK);
    n_NYD_OU;
    return rv;
 }

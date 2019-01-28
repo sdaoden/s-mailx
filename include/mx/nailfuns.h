@@ -989,7 +989,8 @@ FL char *      skin(char const *name);
  * actually been seen.
  * Return NULL on error, or name again, but which may have been replaced by
  * a version with fixed quotation etc.!
- * issingle_hack is a HACK that allows usage for `addrcodec' */
+ * issingle_hack is a HACK that allows usage for `addrcodec': name shall be
+ * interpreted as a single address, rather than a possible list thereof */
 FL char const *n_addrspec_with_guts(struct n_addrguts *agp, char const *name,
                   bool_t doskin, bool_t issingle_hack);
 
@@ -1432,8 +1433,9 @@ FL enum mime_handler_flags n_mimetype_handler(struct mime_handler *mhp,
  */
 
 /* Allocate a single element of a name list, initialize its name field to the
- * passed name and return it */
-FL struct name * nalloc(char const *str, enum gfield ntype);
+ * passed name and return it.
+ * May return NULL with GNULL_OK (only, unfortunately) */
+FL struct name *nalloc(char const *str, enum gfield ntype);
 
 /* Alloc an Fcc: entry TODO temporary only i hope */
 FL struct name *nalloc_fcc(char const *file);
@@ -1459,6 +1461,11 @@ FL struct name * extract(char const *line, enum gfield ntype);
 /* Like extract() unless line contains anyof ",\"\\(<|", in which case
  * comma-separated list extraction is used instead */
 FL struct name * lextract(char const *line, enum gfield ntype);
+
+/* Interprets the entire line as one address: identical to extract() and
+ * lextract() but only returns one (or none) name.
+ * GSKIN will be added to ntype as well as GNULL_OK: may return NULL! */
+FL struct name *n_extract_single(char const *line, enum gfield ntype);
 
 /* Turn a list of names into a string of the same names */
 FL char *      detract(struct name *np, enum gfield ntype);

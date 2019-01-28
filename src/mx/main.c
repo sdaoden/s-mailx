@@ -862,8 +862,9 @@ jeMmq:
          else{
             struct name *fa;
 
-            fa = nalloc(avo.avo_current_arg, GSKIN | GFULL | GFULLEXTRA);
-            if(is_addr_invalid(fa, EACM_STRICT | EACM_NOLOG)){
+            fa = nalloc(avo.avo_current_arg, GSKIN | GFULL | GFULLEXTRA |
+                  GNOT_A_LIST | GNULL_OK);
+            if(fa == NULL || is_addr_invalid(fa, EACM_STRICT | EACM_NOLOG)){
                emsg = N_("Invalid address argument with -r");
                goto jusage;
             }

@@ -1963,12 +1963,15 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
       goto jcheck;
    }
 
+   /* We will skin that thing */
    flags = a_NONE;
    nbuf = n_lofi_alloc(agp->ag_ilen +1);
    /*agp->ag_iaddr_start = 0;*/
    cp2 = bufend = nbuf;
 
-   /* TODO This is complete crap and should use a token parser */
+   /* TODO This is complete crap and should use a token parser.
+    * TODO It can be fooled and is too stupid to find an email address in
+    * TODO something valid unless it contains <>.  oh my */
    for(cp = name++; (c = *cp++) != '\0';){
       switch (c) {
       case '(':
@@ -2023,7 +2026,9 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
             agp->ag_iaddr_aend = PTR2SIZE(cp - name);
 
             /* Skip over the entire remaining field */
-            while((c = *cp) != '\0' && c != ','){
+            while((c = *cp) != '\0'){
+               if(c == ',' && !issingle_hack)
+                  break;
                ++cp;
                if (c == '(')
                   cp = skip_comment(cp);
@@ -2065,8 +2070,8 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
          }
       }
    }
-   --name;
    agp->ag_slen = PTR2SIZE(cp2 - nbuf);
+
    if (agp->ag_iaddr_aend == 0)
       agp->ag_iaddr_aend = agp->ag_ilen;
    /* Misses > */
@@ -2078,6 +2083,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
       cp2[agp->ag_ilen] = '\0';
       agp->ag_input = cp2;
    }
+
    agp->ag_skinned = savestrbuf(nbuf, agp->ag_slen);
    n_lofi_free(nbuf);
    agp->ag_n_flags = NAME_NAME_SALLOC | NAME_SKINNED;
@@ -2093,7 +2099,6 @@ jleave:
 
 FL int
 c_addrcodec(void *vp){
-   struct n_addrguts ag;
    struct str trims;
    struct n_string s_b, *sp;
    size_t alen;
@@ -2132,6 +2137,7 @@ c_addrcodec(void *vp){
    if(su_cs_starts_with_case_n("encode", act, alen)){
       /* This function cannot be a simple nalloc() wrapper even later on, since
        * we may need to turn any ", () or \ into quoted-pairs */
+      struct name *np;
       char c;
 
       while((c = *cp++) != '\0'){
@@ -2141,17 +2147,11 @@ c_addrcodec(void *vp){
          sp = n_string_push_c(sp, c);
       }
 
-      if(n_addrspec_with_guts(&ag, n_string_cp(sp), TRU1, TRU1) == NULL ||
-            (ag.ag_n_flags & (NAME_ADDRSPEC_ISADDR | NAME_ADDRSPEC_INVALID)
-               ) != NAME_ADDRSPEC_ISADDR){
-         cp = sp->s_dat;
+      if((np = n_extract_single(cp = n_string_cp(sp), GTO | GFULL)) != NULL)
+         cp = np->n_fullname;
+      else{
          n_pstate_err_no = su_ERR_INVAL;
          vp = NULL;
-      }else{
-         struct name *np;
-
-         np = nalloc(ag.ag_input, GTO | GFULL | GSKIN);
-         cp = np->n_fullname;
       }
    }else if(mode == 0){
       if(su_cs_starts_with_case_n("decode", act, alen)){
@@ -2186,20 +2186,16 @@ c_addrcodec(void *vp){
          cp = n_string_cp(sp);
       }else if(su_cs_starts_with_case_n("skin", act, alen) ||
             (mode = 1, su_cs_starts_with_case_n("skinlist", act, alen))){
-         /* Let's just use the is-single-address hack for this one, too.. */
-         if(n_addrspec_with_guts(&ag, cp, TRU1, TRU1) == NULL ||
-               (ag.ag_n_flags & (NAME_ADDRSPEC_ISADDR | NAME_ADDRSPEC_INVALID)
-                  ) != NAME_ADDRSPEC_ISADDR){
-            n_pstate_err_no = su_ERR_INVAL;
-            vp = NULL;
-         }else{
-            struct name *np;
+         struct name *np;
 
-            np = nalloc(ag.ag_input, GTO | GFULL | GSKIN);
+         if((np = n_extract_single(cp, GTO | GFULL)) != NULL){
             cp = np->n_name;
 
             if(mode == 1 && is_mlist(cp, FAL0) != MLIST_OTHER)
                n_pstate_err_no = su_ERR_EXIST;
+         }else{
+            n_pstate_err_no = su_ERR_INVAL;
+            vp = NULL;
          }
       }else
          goto jesynopsis;
