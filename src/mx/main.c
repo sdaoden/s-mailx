@@ -83,11 +83,6 @@ VL char const n_hy[2] = "-";
 VL char const n_qm[2] = "?";
 VL char const n_at[2] = "@";
 
-/* */
-static void a_main_usage(FILE *fp);
-static su_boole a_main_dump_doc(su_up cookie, su_boole has_arg,
-      char const *sopt, char const *lopt, char const *doc);
-
 /* Perform basic startup initialization */
 static void a_main_startup(void);
 
@@ -115,87 +110,10 @@ static int a_main_rcv_mode(boole had_A_arg, char const *folder,
 /* Interrupt printing of the headers */
 static void a_main_hdrstop(int signo);
 
-static void
-a_main_usage(FILE *fp){
-   /* Stay in VAL_HEIGHT lines; On buf length change: verify visual output! */
-   char buf[7];
-   uz i;
-   NYD2_IN;
-
-   i = su_cs_len(su_program);
-   i = n_MIN(i, sizeof(buf) -1);
-   if(i > 0)
-      su_mem_set(buf, ' ', i);
-   buf[i] = '\0';
-
-   fprintf(fp, _("%s (%s %s): send and receive Internet mail\n"),
-      su_program, n_uagent, ok_vlook(version));
-   if(fp != n_stderr)
-      putc('\n', fp);
-
-   fprintf(fp, _(
-      "Send-only mode: send mail \"to-address\" receiver(s):\n"
-      "  %s [-DdEFinv~#] [-: spec] [-A account] [:-C \"field: body\":]\n"
-      "  %s [:-a attachment:] [:-b bcc-address:] [:-c cc-address:]\n"
-      "  %s [-M type | -m file | -q file | -t] [-r from-address]\n"
-      "  %s [:-S var[=value]:] [-s subject] [:-X/Y cmd:] [-.] :to-address:\n"),
-      su_program, buf, buf, buf);
-   if(fp != n_stderr)
-      putc('\n', fp);
-
-   fprintf(fp, _(
-      "\"Receive\" mode, starting on [-u user], primary *inbox* or [$MAIL]:\n"
-      "  %s [-DdEeHiNnRv~#] [-: spec] [-A account] [:-C \"field: body\":]\n"
-      "  %s [-L spec] [-r from-address] [:-S var[=value]:] [-u user] "
-         "[:-X/Y cmd:]\n"),
-      su_program, buf);
-   if(fp != n_stderr)
-      putc('\n', fp);
-
-   fprintf(fp, _(
-      "\"Receive\" mode, starting on -f (secondary $MBOX or [file]):\n"
-      "  %s [-DdEeHiNnRv~#] [-: spec] [-A account] [:-C \"field: body\":] -f\n"
-      "  %s [-L spec] [-r from-address] [:-S var[=value]:] [:-X/Y cmd:] "
-         "[file]\n"),
-      su_program, buf);
-   if(fp != n_stderr)
-      putc('\n', fp);
-
-   /* (ISO C89 string length) */
-   fprintf(fp, _(
-         ". -d sandbox, -:/ no .rc files, -. end options and force send-mode\n"
-         ". -a attachment[=input-charset[#output-charset]]\n"
-         ". -b, -c, to-address, (-r): ex@am.ple or '(Lovely) Ex <am@p.le>'\n"
-         ". -[Mmqt]: special input data (-t: template message on stdin)\n"
-         ". -e only mail check, -H header summary; "
-            "both: message specification via -L\n"
-         ". -S (un)sets variable, -X/-Y execute commands pre/post startup, "
-            "-#: batch mode\n"));
-   fprintf(fp, _(
-         ". Features via \"$ %s -Xversion -Xx\"; there is --long-help\n"
-         ". Bugs/Contact via "
-            "\"$ %s -Sexpandaddr=shquote '\\$contact-mail'\"\n"),
-         su_program, su_program);
-   NYD2_OU;
-}
-
-static su_boole
-a_main_dump_doc(su_up cookie, su_boole has_arg, char const *sopt,
-      char const *lopt, char const *doc){
-   char const *x1, *x2;
-   NYD2_IN;
-
-   if(has_arg)
-      /* I18N: describing arguments to command line options */
-      x1 = (sopt[0] != '\0' ? _(" ARG, ") : sopt), x2 = _("=ARG");
-   else
-      /* I18N: separating command line options */
-      x1 = (sopt[0] != '\0' ? _(", ") : sopt), x2 = su_empty;
-   /* I18N: short option, "[ ARG], " separator, long option [=ARG], doc */
-   fprintf(su_S(FILE*,cookie), _("%s%s%s%s: %s\n"), sopt, x1, lopt, x2, doc);
-   NYD2_OU;
-   return TRU1;
-}
+/* */
+static void a_main_usage(FILE *fp);
+static boole a_main_dump_doc(up cookie, boole has_arg, char const *sopt,
+      char const *lopt, char const *doc);
 
 static void
 a_main_startup(void){
@@ -610,6 +528,89 @@ a_main_hdrstop(int signo){
    siglongjmp(a_main__hdrjmp, 1);
 }
 
+static void
+a_main_usage(FILE *fp){
+   /* Stay in VAL_HEIGHT lines; On buf length change: verify visual output! */
+   char buf[7];
+   uz i;
+   NYD2_IN;
+
+   i = su_cs_len(su_program);
+   i = MIN(i, sizeof(buf) -1);
+   if(i > 0)
+      su_mem_set(buf, ' ', i);
+   buf[i] = '\0';
+
+   fprintf(fp, _("%s (%s %s): send and receive Internet mail\n"),
+      su_program, n_uagent, ok_vlook(version));
+   if(fp != n_stderr)
+      putc('\n', fp);
+
+   fprintf(fp, _(
+      "Send-only mode: send mail \"to-addr\"(ess) receiver(s):\n"
+      "  %s [-DdEFinv~#] [-: spec] [-A account] [:-C \"field: body\":]\n"
+      "  %s [:-a attachment:] [:-b bcc-addr:] [:-c cc-addr:]\n"
+      "  %s [-M type | -m file | -q file | -t] [-r from-addr] "
+         "[:-S var[=value]:]\n"
+      "  %s [-s subject] [-T \"arget: addr\"] [:-X/Y cmd:] [-.] :to-addr:\n"),
+      su_program, buf, buf, buf);
+   if(fp != n_stderr)
+      putc('\n', fp);
+
+   fprintf(fp, _(
+      "\"Receive\" mode, starting on [-u user], primary *inbox* or [$MAIL]:\n"
+      "  %s [-DdEeHiNnRv~#] [-: spec] [-A account] [:-C \"field: body\":]\n"
+      "  %s [-L spec] [-r from-addr] [:-S var[=value]:] [-u user] "
+         "[:-X/Y cmd:]\n"),
+      su_program, buf);
+   if(fp != n_stderr)
+      putc('\n', fp);
+
+   fprintf(fp, _(
+      "\"Receive\" mode, starting on -f (secondary $MBOX or [file]):\n"
+      "  %s [-DdEeHiNnRv~#] [-: spec] [-A account] [:-C \"field: body\":] -f\n"
+      "  %s [-L spec] [-r from-addr] [:-S var[=value]:] [:-X/Y cmd:] "
+         "[file]\n"),
+      su_program, buf);
+   if(fp != n_stderr)
+      putc('\n', fp);
+
+   /* (ISO C89 string length) */
+   fprintf(fp, _(
+         ". -d sandbox, -:/ no .rc files, -. end options and force send-mode\n"
+         ". -a attachment[=input-charset[#output-charset]]\n"
+         ". -[bcrT], to-addr: ex@am.ple or '(Lovely) Ex <am@p.le>'\n"
+         ". -[Mmqt]: special input data (-t: template message on stdin)\n"
+         ". -e only mail check, -H header summary; "
+            "both: message specification via -L\n"
+         ". -S (un)sets variable, -X/-Y execute commands pre/post startup, "
+            "-#: batch mode\n"));
+   fprintf(fp, _(
+         ". Features via \"$ %s -Xversion -Xx\"; there is --long-help\n"
+         ". Bugs/Contact via "
+            "\"$ %s -Sexpandaddr=shquote '\\$contact-mail'\"\n"),
+         su_program, su_program);
+   NYD2_OU;
+}
+
+static boole
+a_main_dump_doc(up cookie, boole has_arg, char const *sopt, char const *lopt,
+      char const *doc){
+   char const *x1, *x2;
+   NYD2_IN;
+
+   if(has_arg)
+      /* I18N: describing arguments to command line options */
+      x1 = (sopt[0] != '\0' ? _(" ARG, ") : sopt), x2 = _("=ARG");
+   else
+      /* I18N: separating command line options */
+      x1 = (sopt[0] != '\0' ? _(", ") : sopt), x2 = su_empty;
+   /* I18N: short option, "[ ARG], " separator, long option [=ARG], doc */
+   fprintf(S(FILE*,cookie), _("%s%s%s%s: %s\n"), sopt, x1, lopt, x2, doc);
+   NYD2_OU;
+   return TRU1;
+}
+
 int
 main(int argc, char *argv[]){
    /* TODO Once v15 control flow/carrier rewrite took place main() should
@@ -622,7 +623,7 @@ main(int argc, char *argv[]){
     * TODO redo -S like so, etc.) */
    /* Keep in SYNC: ./nail.1:"SYNOPSIS, main() */
    static char const a_sopts[] =
-         "::A:a:Bb:C:c:DdEeFfHhiL:M:m:NnO:q:Rr:S:s:tu:VvX:Y:~#.";
+         "::A:a:Bb:C:c:DdEeFfHhiL:M:m:NnO:q:Rr:S:s:T:tu:VvX:Y:~#.";
    static char const * const a_lopts[] = {
       "resource-files:;:;" N_("control loading of resource files"),
       "account:;A;" N_("execute an `account command'"),
@@ -644,6 +645,7 @@ main(int argc, char *argv[]){
          "from-address:;r;" N_("set source address used by MTAs (+ -Sfrom)"),
       "set:;S;" N_("set one of the INTERNAL VARIABLES (unset via \"noARG\")"),
          "subject:;s;" N_("specify subject of message to be sent"),
+      "target:;T;" N_("add single receiver via \"header-field: address\""),
       "template;t;" N_("message to be sent is read from standard input"),
       "inbox-of:;u;" N_("initially open primary mailbox of the given user"),
       "version;V;" N_("print version (more so with \"[-v] -Xversion -Xx\")"),
@@ -934,6 +936,69 @@ je_S:
          }
          n_psonce |= n_PSO_SENDMODE;
          break;
+
+      case 'T':{
+         /* Target mode: `digmsg header insert' from command line.
+          * TODO So far code cannot be shared since `digmsg' backing objects
+          * TODO do not exist yet (stack local for compose mode right now).
+          * TODO Thus need to unroll and can offer header subset only yet */
+         struct mx_name **npp, *np;
+         enum gfield gf;
+
+         cp = UNCONST(char*,avo.avo_current_arg); /* (logical) */
+
+         if(!su_cs_cmp_case_n(cp, "bcc", i = 3))
+            gf = GBCC, npp = &bcc;
+         else if(!su_cs_cmp_case_n(cp, "cc", i = 2))
+            gf = GCC, npp = &cc;
+         else if(!su_cs_cmp_case_n(cp, "fcc", i = 3))
+            gf = GBCC_IS_FCC, npp = &bcc;
+         else if(!su_cs_cmp_case_n(cp, "to", i = 2))
+            gf = GTO, npp = &to;
+         else{
+            emsg = N_("-T: supports only to,cc,bcc and fcc for now");
+            goto jusage;
+         }
+         cp += i;
+
+         gf |= GSHEXP_PARSE_HACK | GFULL | GNULL_OK | GNOT_A_LIST;
+
+         if(*cp == '?'){
+            char c;
+
+            for(i = 0; (c = *++cp) != '\0'; ++i)
+               if(su_cs_is_blank(c) || c == ':')
+                  break;
+            if(i > 0 && !su_cs_starts_with_case_n("list", &cp[-i], i)){
+               emsg = N_("-T: invalid modifier");
+               goto jusage;
+            }
+            gf &= ~GNOT_A_LIST;
+         }
+
+         while(su_cs_is_blank(*cp))
+            ++cp;
+         if(*cp == ':')
+            ++cp;
+         while(su_cs_is_blank(*cp))
+            ++cp;
+         if(*cp == '\0')
+            goto jt_err;
+
+         if(!(gf & GBCC_IS_FCC))
+            np = lextract(cp, gf);
+         else if(gf & GNOT_A_LIST)
+            np = nalloc_fcc(cp);
+         else
+            goto jt_err;
+         if(np == su_NIL){
+jt_err:
+            emsg = N_("-T: invalid format or addressee");
+            goto jusage;
+         }
+         *npp = cat(*npp, np);
+         }break;
+
       case 't':
          /* Use the given message as send template */
          n_poption |= n_PO_t_FLAG;

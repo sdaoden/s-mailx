@@ -382,6 +382,9 @@ t_all() {
    t_atxplode
    t_read
 
+   # Send/RFC absolute basics
+   t_can_send_rfc
+
    # VFS
    t_mbox
    t_maildir
@@ -3106,6 +3109,50 @@ t_read() {
 
    t_epilog
 }
+# }}}
+
+# Send/RFC absolute basics {{{
+t_can_send_rfc() {
+   t_prolog can_send_rfc
+   TRAP_EXIT_ADDONS="./.t*"
+
+   t_xmta
+
+   </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s Sub.1 \
+      receiver@number.1 \
+      > ./.terr 2>&1
+   check 1 0 "${MBOX}" '2479071721 124'
+   check 1-err - .terr '4294967295 0'
+
+   </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s Sub.2 \
+      -b bcc@no.1\ bcc@no.2 -b bcc@no.3 \
+      -c cc@no.1\ cc@no.2 -c cc@no.3 \
+      to@no.1,to@no.2 to@no.3 \
+      > ./.terr 2>&1
+   check 2 0 "${MBOX}" '1963862532 320'
+   check 2-err - .terr '4294967295 0'
+
+   # XXX NOTE we cannot test "cc@no1 <cc@no.2>" because our stupid parser
+   # XXX would not treat that as a list but look for "," as a separator
+   </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -Sfullnames -s Sub.3 \
+      -T 'bcc: bcc@no.1, <bcc@no.2>' -T bcc:\ bcc@no.3 \
+      -T cc\ \ :\ \ 'cc@no.1, <cc@no.2>' -T cc:\ cc@no.3 \
+      -T to\ to@no.1,'<to@no.2>' -T to\ to@no.3 \
+      > ./.terr 2>&1
+   check 3 0 "${MBOX}" '1655058429 528'
+   check 3-err - .terr '4294967295 0'
+
+   </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -Sfullnames -s Sub.4 \
+      -T 'bcc?list: bcc@no.1, <bcc@no.2>' -T bcc?:\ bcc@no.3 \
+      -T cc?:\ 'cc@no.1, <cc@no.2>' -T cc?\ \ :\ \ cc@no.3 \
+      -T to?\ to@no.1,'<to@no.2>' -T to?:\ to@no.3 \
+      > ./.terr 2>&1
+   check 4 0 "${MBOX}" '3402771336 730'
+   check 4-err - .terr '4294967295 0'
+
+   t_epilog
+}
+
 # }}}
 
 # VFS {{{

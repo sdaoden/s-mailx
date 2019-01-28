@@ -220,34 +220,38 @@ jleave:
 static struct mx_name *
 a_nm_extract1(char const *line, enum gfield ntype, char const *seps,
       boole keepcomms){
-   char const *cp;
-   char *nbuf;
    struct mx_name *headp, *tailp, *np;
    NYD_IN;
 
    headp = NULL;
 
    if(line == NULL || *line == '\0')
-      goto jleave;
+      ;
+   else if(ntype & GNOT_A_LIST)
+      /* Not GNULL_OK! (yet: see below) */
+      headp = nalloc(line, ntype | GSKIN | GNOT_A_LIST);
+   else{
+      char const *cp;
+      char *nbuf;
 
-   nbuf = n_alloc(su_cs_len(cp = line) +1);
+      nbuf = n_lofi_alloc(su_cs_len(cp = line) +1);
 
-   for(tailp = headp;
-         ((cp = a_nm_yankname(cp, nbuf, seps, keepcomms)) != NULL);)
-      /* TODO We cannot set GNULL_OK because otherwise this software blows up.
-       * TODO We will need a completely new way of reporting the errors of
-       * TODO is_addr_invalid() ... */
-      if((np = nalloc(nbuf, ntype /*| GNULL_OK*/)) != NULL){
-         if((np->n_blink = tailp) != NULL)
-            tailp->n_flink = np;
-         else
-            headp = np;
-         tailp = np;
-      }
+      for(tailp = headp;
+            ((cp = a_nm_yankname(cp, nbuf, seps, keepcomms)) != NULL);)
+         /* TODO Cannot set GNULL_OK because otherwise this software blows up.
+          * TODO We will need a completely new way of reporting the errors of
+          * TODO is_addr_invalid() ... */
+         if((np = nalloc(nbuf, ntype /*| GNULL_OK*/)) != NULL){
+            if((np->n_blink = tailp) != NULL)
+               tailp->n_flink = np;
+            else
+               headp = np;
+            tailp = np;
+         }
 
-   n_free(nbuf);
+      n_lofi_free(nbuf);
+   }
 
-jleave:
    NYD_OU;
    return headp;
 }
@@ -656,14 +660,18 @@ lextract(char const *line, enum gfield ntype)
          line = cp = n_lofi_alloc(s->s_len +1);
          su_mem_copy(cp, n_string_cp(s), s->s_len +1);
       }else
-         line = cp = NULL;
+         line = cp = su_NIL;
       n_autorec_relax_gut();
    }
 
-   rv = ((line != NULL && strpbrk(line, ",\"\\(<|"))
-         ? a_nm_extract1(line, ntype, ",", 1) : extract(line, ntype));
+   if(line == su_NIL)
+      rv = su_NIL;
+   else if((ntype & GNOT_A_LIST) || strpbrk(line, ",\"\\(<|"))
+      rv = a_nm_extract1(line, ntype, ",", 1);
+   else
+      rv = extract(line, ntype);
 
-   if(cp != NULL)
+   if(cp != su_NIL)
       n_lofi_free(cp);
    NYD_OU;
    return rv;

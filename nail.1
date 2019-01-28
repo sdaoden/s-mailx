@@ -91,6 +91,7 @@
 .Fl S\0 Ns Ar var Ns Op Ns = Ns Ar value Ns
 .Pf \&: Oc
 .Op Fl s Ar subject
+.Op : Ns Fl T Ar """field:\0addr""" Ns \&:
 .Op : Ns Fl X Ar cmd Ns \&:
 .Op : Ns Fl Y Ar cmd Ns \&:
 .Op Fl \&.
@@ -307,15 +308,15 @@ line-buffered input even in batch mode enable batch mode via
 .
 .Mx
 .It Fl b Ar addr , Fl Fl bcc Ns =..
-Send a blind carbon copy to
-.Ar addr Ns
-ess, if the
+Send blind carbon copies to (the list of recipients given in)
+.Ar addr ,
+if the
 .Ic set Ns
 ting of
 .Va expandaddr ,
 one of the
 .Sx "INTERNAL VARIABLES" ,
-allows; the
+allows (for each recipient, individually); the
 .Ql shquote
 .Va expandaddr
 flag is supported.
@@ -641,6 +642,38 @@ Newline (NL) and carriage-return (CR) bytes are invalid and will be
 normalized to space (SP) characters.
 .
 .Mx
+.It Fl T Ar """field: addr""" , Fl Fl target Ns =..
+Add
+.Ar addr ,
+interpreted as a single addressee, to the list of receivers targeted by
+.Ar field ,
+for now supported are only
+.Ql bcc ,
+.Ql cc ,
+.Ql fcc ,
+and
+.Ql to .
+Field and body (address) are separated by a colon
+.Ql \&:
+and/or blank (space, tabulator) characters.
+The
+.Ql shquote
+.Va expandaddr
+flag is supported.
+Via the question mark
+.Ql \&?
+modifier suffix the
+.Fl b , c
+etc. list parse mode is available, the keyword
+.Ql list
+is optional, e.g.,
+.Ql to? ,
+.Ql to?: ,
+.Ql to?list
+etc. are identical.
+This option may be used multiple times.
+.
+.Mx
 .It Fl t , Fl Fl template
 The message given (on standard input) is expected to contain, separated
 from the message body by an empty line, one or multiple message headers.
@@ -811,6 +844,8 @@ arguments and all receivers established via
 .Fl b
 and
 .Fl c
+as well as
+.Fl T
 are subject to the checks established by
 .Va expandaddr ,
 one of the
