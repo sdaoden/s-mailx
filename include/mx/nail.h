@@ -1946,7 +1946,8 @@ enum gfield{ /* TODO -> enum m_grab_head, m_GH_xy */
    GSHEXP_PARSE_HACK = 1u<<20, /* lextract()+: *expandaddr*=shquote */
    /* All given input (nalloc() etc.) to be interpreted as a single address */
    GNOT_A_LIST = 1u<<21,
-   GNULL_OK = 1u<<22 /* NULL return OK for nalloc()+ */
+   GNULL_OK = 1u<<22, /* NULL return OK for nalloc()+ */
+   GMAILTO_URI = 1u<<23 /* RFC 6068-style */
 };
 #define GMASK (GTO | GSUBJECT | GCC | GBCC)
 

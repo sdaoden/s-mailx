@@ -391,9 +391,7 @@ nalloc(char const *str, enum gfield ntype)
    NYD_IN;
    ASSERT(!(ntype & GFULLEXTRA) || (ntype & GFULL) != 0);
 
-   str = n_addrspec_with_guts(&ag, str,
-         ((ntype & (GFULL | GSKIN | GREF)) != 0),
-         ((ntype & GNOT_A_LIST) != 0));
+   str = n_addrspec_with_guts(&ag, str, ntype);
    if(str == NULL){
       /* TODO this may not return NULL but for new-style callers */
       if(ntype & GNULL_OK){
@@ -401,7 +399,7 @@ nalloc(char const *str, enum gfield ntype)
          goto jleave;
       }
    }
-   ntype &= ~(GNOT_A_LIST | GNULL_OK); /* (all this a hack is) */
+   ntype &= ~(GNOT_A_LIST | GNULL_OK | GMAILTO_URI); /* (all this a hack is) */
    str = ag.ag_input; /* Take the possibly reordered thing */
 
    if (!(ag.ag_n_flags & mx_NAME_NAME_SALLOC)) {

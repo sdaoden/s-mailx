@@ -444,11 +444,8 @@ jrecipients_done:
    if((hf & HF_LIST_REPLY) && (cp = hfield1("list-post", mp)) != NULL){
       struct mx_name *x;
 
-      if((x = lextract(cp, GEXTRA | GSKIN)) == NULL || x->n_flink != NULL ||
-            (cp = url_mailto_to_address(x->n_name)) == NULL ||
-            /* XXX terribly wasteful to create a new name, and can't we find
-             * XXX a way to mitigate that?? */
-            is_addr_invalid(x = nalloc(cp, GEXTRA | GSKIN), EACM_STRICT)){
+      if((x = n_extract_single(cp, GEXTRA | GMAILTO_URI)) == NULL ||
+            is_addr_invalid(x, EACM_STRICT)){
          if(n_poption & n_PO_D_V)
             n_err(_("Message contains invalid List-Post: header\n"));
       }else{

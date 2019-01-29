@@ -128,7 +128,7 @@ static struct n_addrguts *a_header_idna_apply(struct n_addrguts *agp);
  * *addr-spec* rules; if it (is assumed to has been) skinned it may however be
  * also a file or a pipe command, so check that first, then.
  * Otherwise perform content checking and isolate the domain part (for IDNA).
- * issingle_hack has the same meaning as for n_addrspec_with_guts() */
+ * issingle_hack <-> GNOT_A_LIST */
 static boole a_header_addrspec_check(struct n_addrguts *agp, boole skinned,
                boole issingle_hack);
 
@@ -1933,7 +1933,7 @@ skin(char const *name)
    NYD_IN;
 
    if(name != NULL){
-      /*name =*/ n_addrspec_with_guts(&ag, name, TRU1, FAL0);
+      /*name =*/ n_addrspec_with_guts(&ag, name, GSKIN);
       rv = ag.ag_skinned;
       if(!(ag.ag_n_flags & mx_NAME_NAME_SALLOC))
          rv = savestrbuf(rv, ag.ag_slen);
@@ -1944,21 +1944,24 @@ skin(char const *name)
 }
 
 /* TODO addrspec_with_guts: RFC 5322
- * TODO addrspec_with_guts: trim whitespace ETC. ETC. ETC.!!! */
+ * TODO addrspec_with_guts: trim whitespace ETC. ETC. ETC. BAD BAD BAD!!! */
 FL char const *
-n_addrspec_with_guts(struct n_addrguts *agp, char const *name, boole doskin,
-      boole issingle_hack){
+n_addrspec_with_guts(struct n_addrguts *agp, char const *name, u32 gfield){
    char const *cp;
    char *cp2, *bufend, *nbuf, c;
    enum{
       a_NONE,
-      a_GOTLT = 1<<0,
-      a_GOTADDR = 1<<1,
-      a_GOTSPACE = 1<<2,
-      a_LASTSP = 1<<3
+      a_DOSKIN = 1u<<0,
+      a_NOLIST = 1u<<1,
+
+      a_GOTLT = 1u<<2,
+      a_GOTADDR = 1u<<3,
+      a_GOTSPACE = 1u<<4,
+      a_LASTSP = 1u<<5
    } flags;
    NYD_IN;
 
+jredo_uri:
    su_mem_set(agp, 0, sizeof *agp);
 
    if((agp->ag_input = name) == NULL || (agp->ag_ilen = su_cs_len(name)) == 0){
@@ -1967,7 +1970,16 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, boole doskin,
       agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
             mx_NAME_ADDRSPEC_ERR_EMPTY, '\0');
       goto jleave;
-   }else if(!doskin){
+   }
+
+   flags = a_NONE;
+   if(gfield & (GFULL | GSKIN | GREF))
+      flags |= a_DOSKIN;
+   if(gfield & GNOT_A_LIST)
+      flags |= a_NOLIST;
+
+   if(!(flags & a_DOSKIN)){
+      su_ASSERT(!(gfield & GMAILTO_URI));
       /*agp->ag_iaddr_start = 0;*/
       agp->ag_iaddr_aend = agp->ag_ilen;
       agp->ag_skinned = n_UNCONST(name); /* (mx_NAME_SALLOC not set) */
@@ -1976,8 +1988,16 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, boole doskin,
       goto jcheck;
    }
 
+   if(gfield & GMAILTO_URI){
+      su_ASSERT(gfield & GNOT_A_LIST);
+      if(*(cp = name) == '<' && cp[agp->ag_ilen - 1] == '>'){
+         name = url_mailto_to_address(savestrbuf(++cp, agp->ag_ilen - 2));
+         gfield &= ~GMAILTO_URI;
+         goto jredo_uri;
+      }
+   }
+
    /* We will skin that thing */
-   flags = a_NONE;
    nbuf = n_lofi_alloc(agp->ag_ilen +1);
    /*agp->ag_iaddr_start = 0;*/
    cp2 = bufend = nbuf;
@@ -2040,7 +2060,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, boole doskin,
 
             /* Skip over the entire remaining field */
             while((c = *cp) != '\0'){
-               if(c == ',' && !issingle_hack)
+               if(c == ',' && !(flags & a_NOLIST))
                   break;
                ++cp;
                if (c == '(')
@@ -2069,7 +2089,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, boole doskin,
           * next character would be a "..) */
          if(c == '\\' && *cp != '\0')
             *cp2++ = *cp++;
-         if(c == ',' && !issingle_hack){
+         if(c == ',' && !(flags & a_NOLIST)){
             if(!(flags & a_GOTLT)){
                *cp2++ = ' ';
                for(; su_cs_is_blank(*cp); ++cp)
@@ -2101,7 +2121,8 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, boole doskin,
    n_lofi_free(nbuf);
    agp->ag_n_flags = mx_NAME_NAME_SALLOC | mx_NAME_SKINNED;
 jcheck:
-   if(a_header_addrspec_check(agp, doskin, issingle_hack) <= FAL0)
+   if(a_header_addrspec_check(agp, ((flags & a_DOSKIN) != 0),
+         ((flags & GNOT_A_LIST) != 0)) <= FAL0)
       name = NULL;
    else
       name = agp->ag_input;

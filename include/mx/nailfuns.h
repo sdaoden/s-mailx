@@ -1006,15 +1006,13 @@ FL s8       is_addr_invalid(struct mx_name *np,
 /* Skin an address according to the RFC 822 interpretation of "host-phrase" */
 FL char *      skin(char const *name);
 
-/* Skin *name* and extract the *addr-spec* according to RFC 5322.
+/* Skin *name* and extract *addr-spec* according to RFC 5322 and enum gfield.
  * Store the result in .ag_skinned and also fill in those .ag_ fields that have
  * actually been seen.
  * Return NULL on error, or name again, but which may have been replaced by
- * a version with fixed quotation etc.!
- * issingle_hack is a HACK that allows usage for `addrcodec': name shall be
- * interpreted as a single address, rather than a possible list thereof */
+ * a version with fixed quotation etc.! */
 FL char const *n_addrspec_with_guts(struct n_addrguts *agp, char const *name,
-                  boole doskin, boole issingle_hack);
+      u32 gfield);
 
 /* `addrcodec' */
 FL int c_addrcodec(void *vp);
