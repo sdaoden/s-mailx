@@ -52,9 +52,9 @@ static boole a_dmsg_cmd(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmd,
                uz cmdl, char const *cp);
 
 static boole a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp,
-               char const *cmda[3]);
+               char *cmda[3]);
 static boole a_dmsg__attach(FILE *fp, struct n_dig_msg_ctx *dmcp,
-               char const *cmda[3]);
+               char *cmda[3]);
 
 static s32
 a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp, boole oexcl){
@@ -112,7 +112,7 @@ jleave:
 static boole
 a_dmsg_cmd(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmd, uz cmdl,
       char const *cp){
-   char const *cmda[3];
+   char *cmda[3];
    boole rv;
    NYD2_IN;
 
@@ -126,17 +126,19 @@ a_dmsg_cmd(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmd, uz cmdl,
          if(*cp == '\0')
             cmda[i] = NULL;
          else{
+            char const *xp;
+
             if(i < NELEM(cmda) - 1)
-               for(cmda[i] = cp++; *cp != '\0' && !su_cs_is_blank(*cp); ++cp)
+               for(xp = cp++; *cp != '\0' && !su_cs_is_blank(*cp); ++cp)
                   ;
             else{
                /* Last slot takes all the rest of the line, less trailing WS */
-               for(cmda[i] = cp++; *cp != '\0'; ++cp)
+               for(xp = cp++; *cp != '\0'; ++cp)
                   ;
                while(su_cs_is_blank(cp[-1]))
                   --cp;
             }
-            cmda[i] = savestrbuf(cmda[i], P2UZ(cp - cmda[i]));
+            cmda[i] = savestrbuf(xp, P2UZ(cp - xp));
          }
       }
    }
@@ -165,7 +167,7 @@ jecmd:
 }
 
 static boole
-a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmda[3]){
+a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp, char *cmda[3]){
    uz i;
    struct n_header_field *hfp;
    struct mx_name *np, **npp;
@@ -198,12 +200,11 @@ a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmda[3]){
 
       /* Strip [\r\n] which would render a body invalid XXX all controls? */
       /* C99 */{
-         char *xp, c;
+         char c;
 
-         cmda[2] = xp = savestr(cmda[2]);
-         for(; (c = *xp) != '\0'; ++xp)
+         for(cp = cmda[2]; (c = *cp) != '\0'; ++cp)
             if(c == '\n' || c == '\r')
-               *xp = ' ';
+               *su_UNCONST(char*,cp) = ' ';
       }
 
       if(!su_cs_cmp_case(cmda[1], cp = "Subject")){
@@ -211,7 +212,7 @@ a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmda[3]){
             if(hp->h_subject != NULL)
                hp->h_subject = savecatsep(hp->h_subject, ' ', cmda[2]);
             else
-               hp->h_subject = n_UNCONST(cmda[2]);
+               hp->h_subject = su_UNCONST(char*,cmda[2]);
             if(fprintf(fp, "210 %s 1\n", cp) < 0)
                cp = NULL;
             goto jleave;
@@ -233,7 +234,8 @@ jins:
             if(is_addr_invalid(np, eacm))
                goto jins_505;
          }else{
-            if((np = lextract(cmda[2], ntype)) == NULL)
+            if((np = (mult_ok ? lextract : n_extract_single)(cmda[2],
+                  ntype | GNULL_OK)) == NULL)
                goto j501cp;
 
             if((np = checkaddrs(np, eacm, &aerr), aerr != 0)){
@@ -269,64 +271,27 @@ jins_505:
          }
          goto jleave;
       }
-      if(!su_cs_cmp_case(cmda[1], cp = "Sender")){
-         mult_ok = FAL0;
-         npp = &hp->h_sender;
-         goto jins;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "To")){
-         npp = &hp->h_to;
-         ntype = GTO | GFULL;
-         eacm = EACM_NORMAL | EAF_NAME;
-         goto jins;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Cc")){
-         npp = &hp->h_cc;
-         ntype = GCC | GFULL;
-         eacm = EACM_NORMAL | EAF_NAME;
-         goto jins;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Bcc")){
-         npp = &hp->h_bcc;
-         ntype = GBCC | GFULL;
-         eacm = EACM_NORMAL | EAF_NAME;
-         goto jins;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Fcc")){
-         npp = &hp->h_fcc;
-         ntype = GBCC | GBCC_IS_FCC;
-         eacm = EACM_NORMAL /* Not | EAF_FILE, depend on *expandaddr*! */;
-         goto jins;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Reply-To")){
-         npp = &hp->h_reply_to;
-         eacm = EACM_NONAME;
-         goto jins;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Mail-Followup-To")){
-         npp = &hp->h_mft;
-         eacm = EACM_NONAME;
-         goto jins;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Message-ID")){
-         mult_ok = FAL0;
-         npp = &hp->h_message_id;
-         ntype = GREF;
-         eacm = EACM_NONAME;
-         goto jins;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "References")){
-         npp = &hp->h_ref;
-         ntype = GREF;
-         eacm = EACM_NONAME;
-         goto jins;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "In-Reply-To")){
-         npp = &hp->h_in_reply_to;
-         ntype = GREF;
-         eacm = EACM_NONAME;
-         goto jins;
-      }
+
+#undef a_X
+#define a_X(F,H,INS) \
+   if(!su_cs_cmp_case(cmda[1], cp = F)) {npp = &hp->H; INS; goto jins;}
+
+      a_X("Sender", h_sender, mult_ok = FAL0);
+      a_X("To", h_to, ntype = GTO|GFULL su_COMMA eacm = EACM_NORMAL|EAF_NAME);
+      a_X("Cc", h_cc, ntype = GCC|GFULL su_COMMA eacm = EACM_NORMAL|EAF_NAME);
+      a_X("Bcc", h_bcc, ntype = GBCC|GFULL su_COMMA
+         eacm = EACM_NORMAL|EAF_NAME);
+      /* Not | EAF_FILE, depend on *expandaddr*! */
+      a_X("Fcc", h_fcc, ntype = GBCC|GBCC_IS_FCC su_COMMA eacm = EACM_NORMAL);
+      a_X("Reply-To", h_reply_to, eacm = EACM_NONAME);
+      a_X("Mail-Followup-To", h_mft, eacm = EACM_NONAME);
+      a_X("Message-ID", h_message_id,
+         mult_ok = FAL0 su_COMMA ntype = GREF su_COMMA eacm = EACM_NONAME);
+      a_X("References", h_ref, ntype = GREF su_COMMA eacm = EACM_NONAME);
+      a_X("In-Reply-To", h_in_reply_to, ntype = GREF su_COMMA
+         eacm = EACM_NONAME);
+
+#undef a_X
 
       if((cp = n_header_is_known(cmda[1], UZ_MAX)) != NULL)
          goto j505r;
@@ -419,77 +384,34 @@ jlist:
          fprintf(fp, "%s %s\n", (np == NULL ? "501" : "210"), cp);
          goto jleave;
       }
-      if(!su_cs_cmp_case(cmda[1], cp = "Sender")){
-         np = hp->h_sender;
-         goto jlist;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "To")){
-         np = hp->h_to;
-         goto jlist;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Cc")){
-         np = hp->h_cc;
-         goto jlist;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Bcc")){
-         np = hp->h_bcc;
-         goto jlist;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Fcc")){
-         np = hp->h_fcc;
-         goto jlist;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Reply-To")){
-         np = hp->h_reply_to;
-         goto jlist;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Mail-Followup-To")){
-         np = hp->h_mft;
-         goto jlist;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Message-ID")){
-         np = hp->h_message_id;
-         goto jlist;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "References")){
-         np = hp->h_ref;
-         goto jlist;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "In-Reply-To")){
-         np = hp->h_in_reply_to;
-         goto jlist;
-      }
+
+#undef a_X
+#define a_X(F,H) \
+   if(!su_cs_cmp_case(cmda[1], cp = F)) {np = hp->H; goto jlist;}
+
+      a_X("Sender", h_sender);
+      a_X("To", h_to);
+      a_X("Cc", h_cc);
+      a_X("Bcc", h_bcc);
+      a_X("Fcc", h_fcc);
+      a_X("Reply-To", h_reply_to);
+      a_X("Mail-Followup-To", h_mft);
+      a_X("Message-ID", h_message_id);
+      a_X("References", h_ref);
+      a_X("In-Reply-To", h_in_reply_to);
+
+      a_X("Mailx-Raw-To", h_mailx_raw_to);
+      a_X("Mailx-Raw-Cc", h_mailx_raw_cc);
+      a_X("Mailx-Raw-Bcc", h_mailx_raw_bcc);
+      a_X("Mailx-Orig-From", h_mailx_orig_from);
+      a_X("Mailx-Orig-To", h_mailx_orig_to);
+      a_X("Mailx-Orig-Cc", h_mailx_orig_cc);
+      a_X("Mailx-Orig-Bcc", h_mailx_orig_bcc);
+
+#undef a_X
 
       if(!su_cs_cmp_case(cmda[1], cp = "Mailx-Command")){
          np = (hp->h_mailx_command != NULL) ? (struct mx_name*)-1 : NULL;
-         goto jlist;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Mailx-Raw-To")){
-         np = hp->h_mailx_raw_to;
-         goto jlist;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Mailx-Raw-Cc")){
-         np = hp->h_mailx_raw_cc;
-         goto jlist;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Mailx-Raw-Bcc")){
-         np = hp->h_mailx_raw_bcc;
-         goto jlist;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Mailx-Orig-From")){
-         np = hp->h_mailx_orig_from;
-         goto jlist;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Mailx-Orig-To")){
-         np = hp->h_mailx_orig_to;
-         goto jlist;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Mailx-Orig-Cc")){
-         np = hp->h_mailx_orig_cc;
-         goto jlist;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Mailx-Orig-Bcc")){
-         np = hp->h_mailx_orig_bcc;
          goto jlist;
       }
 
@@ -536,46 +458,23 @@ jrem:
          }else
             goto j501cp;
       }
-      if(!su_cs_cmp_case(cmda[1], cp = "Sender")){
-         npp = &hp->h_sender;
-         goto jrem;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "To")){
-         npp = &hp->h_to;
-         goto jrem;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Cc")){
-         npp = &hp->h_cc;
-         goto jrem;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Bcc")){
-         npp = &hp->h_bcc;
-         goto jrem;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Fcc")){
-         npp = &hp->h_fcc;
-         goto jrem;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Reply-To")){
-         npp = &hp->h_reply_to;
-         goto jrem;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Mail-Followup-To")){
-         npp = &hp->h_mft;
-         goto jrem;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Message-ID")){
-         npp = &hp->h_message_id;
-         goto jrem;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "References")){
-         npp = &hp->h_ref;
-         goto jrem;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "In-Reply-To")){
-         npp = &hp->h_in_reply_to;
-         goto jrem;
-      }
+
+#undef a_X
+#define a_X(F,H) \
+   if(!su_cs_cmp_case(cmda[1], cp = F)) {npp = &hp->H; goto jrem;}
+
+      a_X("Sender", h_sender);
+      a_X("To", h_to);
+      a_X("Cc", h_cc);
+      a_X("Bcc", h_bcc);
+      a_X("Fcc", h_fcc);
+      a_X("Reply-To", h_reply_to);
+      a_X("Mail-Followup-To", h_mft);
+      a_X("Message-ID", h_message_id);
+      a_X("References", h_ref);
+      a_X("In-Reply-To", h_in_reply_to);
+
+#undef a_X
 
       if((cp = n_header_is_known(cmda[1], UZ_MAX)) != NULL)
          goto j505r;
@@ -653,46 +552,23 @@ jremat:
             cp = NULL;
          goto jleave;
       }
-      if(!su_cs_cmp_case(cmda[1], cp = "Sender")){
-         npp = &hp->h_sender;
-         goto jremat;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "To")){
-         npp = &hp->h_to;
-         goto jremat;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Cc")){
-         npp = &hp->h_cc;
-         goto jremat;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Bcc")){
-         npp = &hp->h_bcc;
-         goto jremat;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Fcc")){
-         npp = &hp->h_fcc;
-         goto jremat;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Reply-To")){
-         npp = &hp->h_reply_to;
-         goto jremat;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Mail-Followup-To")){
-         npp = &hp->h_mft;
-         goto jremat;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Message-ID")){
-         npp = &hp->h_message_id;
-         goto jremat;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "References")){
-         npp = &hp->h_ref;
-         goto jremat;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "In-Reply-To")){
-         npp = &hp->h_in_reply_to;
-         goto jremat;
-      }
+
+#undef a_X
+#define a_X(F,H) \
+   if(!su_cs_cmp_case(cmda[1], cp = F)) {npp = &hp->H; goto jremat;}
+
+      a_X("Sender", h_sender);
+      a_X("To", h_to);
+      a_X("Cc", h_cc);
+      a_X("Bcc", h_bcc);
+      a_X("Fcc", h_fcc);
+      a_X("Reply-To", h_reply_to);
+      a_X("Mail-Followup-To", h_mft);
+      a_X("Message-ID", h_message_id);
+      a_X("References", h_ref);
+      a_X("In-Reply-To", h_in_reply_to);
+
+#undef a_X
 
       if((cp = n_header_is_known(cmda[1], UZ_MAX)) != NULL)
          goto j505r;
@@ -755,46 +631,31 @@ jshow:
          }else
             goto j501cp;
       }
-      if(!su_cs_cmp_case(cmda[1], cp = "Sender")){
-         np = hp->h_sender;
-         goto jshow;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "To")){
-         np = hp->h_to;
-         goto jshow;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Cc")){
-         np = hp->h_cc;
-         goto jshow;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Bcc")){
-         np = hp->h_bcc;
-         goto jshow;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Fcc")){
-         np = hp->h_fcc;
-         goto jshow;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Reply-To")){
-         np = hp->h_reply_to;
-         goto jshow;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Mail-Followup-To")){
-         np = hp->h_mft;
-         goto jshow;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Message-ID")){
-         np = hp->h_message_id;
-         goto jshow;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "References")){
-         np = hp->h_ref;
-         goto jshow;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "In-Reply-To")){
-         np = hp->h_in_reply_to;
-         goto jshow;
-      }
+
+#undef a_X
+#define a_X(F,H) \
+   if(!su_cs_cmp_case(cmda[1], cp = F)) {np = hp->H; goto jshow;}
+
+      a_X("Sender", h_sender);
+      a_X("To", h_to);
+      a_X("Cc", h_cc);
+      a_X("Bcc", h_bcc);
+      a_X("Fcc", h_fcc);
+      a_X("Reply-To", h_reply_to);
+      a_X("Mail-Followup-To", h_mft);
+      a_X("Message-ID", h_message_id);
+      a_X("References", h_ref);
+      a_X("In-Reply-To", h_in_reply_to);
+
+      a_X("Mailx-Raw-To", h_mailx_raw_to);
+      a_X("Mailx-Raw-Cc", h_mailx_raw_cc);
+      a_X("Mailx-Raw-Bcc", h_mailx_raw_bcc);
+      a_X("Mailx-Orig-From", h_mailx_orig_from);
+      a_X("Mailx-Orig-To", h_mailx_orig_to);
+      a_X("Mailx-Orig-Cc", h_mailx_orig_cc);
+      a_X("Mailx-Orig-Bcc", h_mailx_orig_bcc);
+
+#undef a_X
 
       if(!su_cs_cmp_case(cmda[1], cp = "Mailx-Command")){
          if(hp->h_mailx_command == NULL)
@@ -804,34 +665,7 @@ jshow:
             cp = NULL;
          goto jleave;
       }
-      if(!su_cs_cmp_case(cmda[1], cp = "Mailx-Raw-To")){
-         np = hp->h_mailx_raw_to;
-         goto jshow;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Mailx-Raw-Cc")){
-         np = hp->h_mailx_raw_cc;
-         goto jshow;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Mailx-Raw-Bcc")){
-         np = hp->h_mailx_raw_bcc;
-         goto jshow;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Mailx-Orig-From")){
-         np = hp->h_mailx_orig_from;
-         goto jshow;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Mailx-Orig-To")){
-         np = hp->h_mailx_orig_to;
-         goto jshow;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Mailx-Orig-Cc")){
-         np = hp->h_mailx_orig_cc;
-         goto jshow;
-      }
-      if(!su_cs_cmp_case(cmda[1], cp = "Mailx-Orig-Bcc")){
-         np = hp->h_mailx_orig_bcc;
-         goto jshow;
-      }
+
 
       /* Free-form header fields */
       /* C99 */{
@@ -881,7 +715,7 @@ j501cp:
 }
 
 static boole
-a_dmsg__attach(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmda[3]){
+a_dmsg__attach(FILE *fp, struct n_dig_msg_ctx *dmcp, char *cmda[3]){
    boole status;
    struct attachment *ap;
    char const *cp;
@@ -963,20 +797,20 @@ jatt_attset:
          }else{
             char c, *keyw;
 
-            cp = cmda[2];
+            cp = keyw = cmda[2];
             while((c = *cp) != '\0' && !su_cs_is_blank(c))
                ++cp;
-            keyw = savestrbuf(cmda[2], P2UZ(cp - cmda[2]));
+            *UNCONST(char*,cp++) = '\0';
+
             if(c != '\0'){
-               for(; (c = *++cp) != '\0' && su_cs_is_blank(c);)
-                  ;
+               while((c = *cp) != '\0' && su_cs_is_blank(c))
+                  ++cp;
                if(c != '\0'){
                   char *xp;
 
                   /* Strip [\r\n] which would render a parameter invalid XXX
                    * XXX all controls? */
-                  cp = xp = savestr(cp);
-                  for(; (c = *xp) != '\0'; ++xp)
+                  for(xp = su_UNCONST(char*,cp); (c = *xp) != '\0'; ++xp)
                      if(c == '\n' || c == '\r')
                         *xp = ' ';
                   c = *cp;
@@ -993,6 +827,7 @@ jatt_attset:
                if(c != '\0'){
                   struct mx_name *np;
 
+                  /* XXX lextract->extract_single() */
                   np = checkaddrs(lextract(cp, GREF),
                         /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG |
                         EACM_NONAME, NULL);
@@ -1336,7 +1171,7 @@ jeremove:
          cp = n_empty;
          if(cap == NULL){ /* XXX cmd_arg_parse is stupid */
             cmdsp = &cmds_b;
-            cmdsp->s = n_UNCONST(cp);
+            cmdsp->s = su_UNCONST(char*,cp);
             cmdsp->l = 0;
          }else{
             cmdsp = &cap->ca_arg.ca_str;

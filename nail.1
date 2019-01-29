@@ -7871,58 +7871,19 @@ Also see
 .
 .Mx
 .It Ic ~^ Ar cmd Op Ar subcmd Op Ar arg3 Op Ar arg4
-Low-level compose mode command which shares semantic with
+Low-level compose mode command which shares semantics with
 .Ic digmsg .
-In general the first field of a response line represents a status code
-which specifies whether a command was successful or not, whether result
-data is to be expected, and if, the format of the result data.
 Does not manage the error number
 .Va \&!
 and the exit status
-.Va \&? ,
-because errors are reported via the protocol
-(hard errors like I/O failures cannot be handled).
-.
-.Pp
-This command has read-only access to several virtual pseudo headers in
-the \*(UA private namespace which optionally (except for the
-non-optional first) exist in compose mode:
-.
-.
-.Pp
-.Bl -tag -compact -width ".It Va BaNg"
-.It Ql Mailx-Command:
-The name of the command that generates the message, one of
-.Ql forward ,
-.Ql Lreply ,
-.Ql mail ,
-.Ql Reply ,
-.Ql reply ,
-.Ql resend .
-.
-.It Ql Mailx-Raw-To:
-.It Ql Mailx-Raw-Cc:
-.It Ql Mailx-Raw-Bcc:
-Represent the frozen initial state of these headers before any
-transformation (e.g.,
-.Ic alias ,
-.Ic alternates ,
-.Va recipients-in-cc
-etc.) took place.
-.
-.It Ql Mailx-Orig-From:
-.It Ql Mailx-Orig-To:
-.It Ql Mailx-Orig-Cc:
-.It Ql Mailx-Orig-Bcc:
-The values of said headers of the original message which has been
-addressed by any of
-.Ic reply , forward , resend .
-.El
-.
-.
-.Pp
-Error status code lines may optionally contain additional context.
-The status codes are:
+.Va \&? :
+errors are handled via the protocol, and hard errors like I/O failures
+cannot be handled.
+The protocol consists of command lines followed by (a) response line(s).
+The first field of the response line represents a status code
+which specifies whether a command was successful or not, whether result
+data is to be expected, and if, the format of the result data.
+Error status code lines may optionally contain additional context:
 .
 .
 .Pp
@@ -7933,24 +7894,21 @@ Status ok; the remains of the line are the result.
 .It Ql 211
 Status ok; the rest of the line is optionally used for more status.
 What follows are lines of result addresses, terminated by an empty line.
-The address lines consist of two fields, the first of which is the
-plain address, e.g.,
+All the input, including the empty line, must be consumed before further
+commands can be issued.
+Address lines consist of two fields, first the plain network address, e.g.,
 .Ql bob@exam.ple ,
-separated by a single ASCII SP space from the second which contains the
-unstripped address, even if that is identical to the first field, e.g.,
+separated by a single ASCII SP space from the full address as known, e.g.,
 .Ql (Lovely) Bob <bob@exam.ple> .
-Non-network addressees, however, place a single-letter indicating
-the address type in the first field (hyphen-minus
+Non-network addresses use the first field to indicate the type (hyphen-minus
 .Ql -
 for files, vertical bar
 .Ql |
 for pipes, and number sign
 .Ql #
-for names: what is supposed to become expanded via
-.Ic alias Ns
-), and only the second field contains a value.
-All the input, including the empty line, must be consumed before further
-commands can be issued.
+for names which will undergo
+.Ic alias
+processing) instead, the actual value will be in the second field.
 .
 .It Ql 212
 Status ok; the rest of the line is optionally used for more status.
@@ -7998,6 +7956,7 @@ Header name case is not normalized, and case-insensitive comparison
 should be used when matching names.
 The second argument specifies the subcommand to apply, one of:
 .
+.
 .Bl -hang -width ".It Cm remove"
 .It Cm list
 Without a third argument a list of all yet existing headers is given via
@@ -8026,7 +7985,7 @@ argument, reporting
 upon success,
 .Ql 501
 if no such header can be found, and
-Ql 505
+.Ql 505
 on \*(UA namespace violations.
 .
 .It Cm remove-at
@@ -8062,6 +8021,43 @@ is returned upon success, followed by the name of the header and the list
 position of the newly inserted instance.
 The list position is always 1 for single-instance header fields.
 All free-form header fields are managed in a single list.
+.El
+.
+.
+.Pp
+In compose-mode read-only access to optional pseudo headers in the \*(UA
+private namespace is available:
+.
+.
+.Pp
+.Bl -tag -compact -width ".It Va BaNg"
+.It Ql Mailx-Command:
+The name of the command that generates the message, one of
+.Ql forward ,
+.Ql Lreply ,
+.Ql mail ,
+.Ql Reply ,
+.Ql reply ,
+.Ql resend .
+This pseudo header always exists (in compose-mode).
+.
+.It Ql Mailx-Raw-To:
+.It Ql Mailx-Raw-Cc:
+.It Ql Mailx-Raw-Bcc:
+Represent the frozen initial state of these headers before any
+transformation (e.g.,
+.Ic alias ,
+.Ic alternates ,
+.Va recipients-in-cc
+etc.) took place.
+.
+.It Ql Mailx-Orig-From:
+.It Ql Mailx-Orig-To:
+.It Ql Mailx-Orig-Cc:
+.It Ql Mailx-Orig-Bcc:
+The values of said headers of the original message which has been
+addressed by any of
+.Ic reply , forward , resend .
 .El
 .
 .
