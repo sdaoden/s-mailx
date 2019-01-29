@@ -35,6 +35,8 @@
 #include <su/cs.h>
 #include <su/cs-dict.h>
 
+#include "mx/names.h"
+
 #include "mx/mlist.h"
 #include "su/code-in.h"
 
@@ -538,7 +540,7 @@ jregex_leave:;
 FL enum mx_mlist_type
 mx_mlist_query_mp(struct message *mp, enum mx_mlist_type what){
    /* XXX mlist_query_mp() possibly belongs to message or header instead */
-   struct name *np;
+   struct mx_name *np;
    boole cc;
    enum mx_mlist_type rv;
    NYD_IN;

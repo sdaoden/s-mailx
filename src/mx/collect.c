@@ -46,6 +46,7 @@
 #include <su/utf.h>
 
 #include "mx/filter-quote.h"
+#include "mx/names.h"
 #include "mx/ui-str.h"
 
 struct a_coll_fmt_ctx{ /* xxx This is temporary until v15 has objects */
@@ -505,7 +506,7 @@ a_coll_quote_message(FILE *fp, struct message *mp, bool_t isfwd){
             &cfc.cfc_addr, &cfc.cfc_real, &cfc.cfc_full, NULL);
          cfc.cfc_date = n_header_textual_date_info(mp, NULL);
          /* C99 */{
-            struct name *np;
+            struct mx_name *np;
             char const *msgid;
 
             if((msgid = hfield1("message-id", mp)) != NULL &&
@@ -663,7 +664,7 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
    struct n_sigman sm;
    FILE *nf;
    sighandler_type volatile sigint;
-   struct name *saved_in_reply_to;
+   struct mx_name *saved_in_reply_to;
    bool_t saved_filrec;
    si32_t volatile rv;
    n_NYD_IN;
@@ -686,7 +687,7 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
 
    saved_in_reply_to = NULL;
    if(hp != NULL){
-      struct name *np;
+      struct mx_name *np;
 
       if((np = hp->h_in_reply_to) == NULL)
          hp->h_in_reply_to = np = n_header_setup_in_reply_to(hp);
@@ -1485,7 +1486,7 @@ jearg:
          if(cnt == 0)
             goto jearg;
          else{
-            struct name *np;
+            struct mx_name *np;
             si8_t soe;
 
             soe = 0;
@@ -1507,7 +1508,7 @@ jearg:
          if(cnt == 0)
             goto jearg;
          else{
-            struct name *np;
+            struct mx_name *np;
             si8_t soe;
 
             soe = 0;
@@ -1716,7 +1717,7 @@ jIi_putesc:
          if(cnt == 0)
             goto jearg;
          else{
-            struct name *np;
+            struct mx_name *np;
             si8_t soe;
 
             soe = 0;

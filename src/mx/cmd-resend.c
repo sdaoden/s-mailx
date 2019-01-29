@@ -45,18 +45,19 @@
 
 #include "mx/charsetalias.h"
 #include "mx/mlist.h"
+#include "mx/names.h"
 
 /* Modify subject we reply to to begin with Re: if it does not already */
 static char *a_crese_reedit(char const *subj);
 
 /* Fetch these headers, as appropriate */
-static struct name *a_crese_reply_to(struct message *mp);
-static struct name *a_crese_mail_followup_to(struct message *mp);
+static struct mx_name *a_crese_reply_to(struct message *mp);
+static struct mx_name *a_crese_mail_followup_to(struct message *mp);
 
 /* We honoured Reply-To: and/or Mail-Followup-To:, but *recipients-in-cc* is
  * set so try to keep "secondary" addressees in Cc:, if possible, */
 static void a_crese_polite_rt_mft_move(struct message *mp, struct header *hp,
-                     struct name *np);
+      struct mx_name *np);
 
 /* References and charset, as appropriate */
 static void a_crese_make_ref_and_cs(struct message *mp, struct header *head);
@@ -111,10 +112,10 @@ a_crese_reedit(char const *subj){
    return newsubj;
 }
 
-static struct name *
+static struct mx_name *
 a_crese_reply_to(struct message *mp){
    char const *cp, *cp2;
-   struct name *rt, *np;
+   struct mx_name *rt, *np;
    enum gfield gf;
    n_NYD2_IN;
 
@@ -150,10 +151,10 @@ a_crese_reply_to(struct message *mp){
    return rt;
 }
 
-static struct name *
+static struct mx_name *
 a_crese_mail_followup_to(struct message *mp){
    char const *cp, *cp2;
-   struct name *mft, *np;
+   struct mx_name *mft, *np;
    enum gfield gf;
    n_NYD2_IN;
 
@@ -192,7 +193,7 @@ a_crese_mail_followup_to(struct message *mp){
 
 static void
 a_crese_polite_rt_mft_move(struct message *mp, struct header *hp,
-      struct name *np){
+      struct mx_name *np){
    bool_t once;
    n_NYD2_IN;
    n_UNUSED(mp);
@@ -208,7 +209,7 @@ a_crese_polite_rt_mft_move(struct message *mp, struct header *hp,
 jredo:
    while(np != NULL){
       enum gfield gf;
-      struct name *nnp, **xpp, *xp;
+      struct mx_name *nnp, **xpp, *xp;
 
       nnp = np;
       np = np->n_flink;
@@ -275,7 +276,7 @@ a_crese_make_ref_and_cs(struct message *mp, struct header *head) /* TODO ASAP*/
    char *oldref, *oldmsgid, *newref;
    size_t oldreflen = 0, oldmsgidlen = 0, reflen;
    unsigned i;
-   struct name *n;
+   struct mx_name *n;
    n_NYD2_IN;
 
    oldref = hfield1("references", mp);
@@ -336,7 +337,7 @@ a_crese_list_reply(int *msgvec, enum header_flags hf){
    struct message *mp;
    char const *cp, *cp2;
    enum gfield gf;
-   struct name *rt, *mft, *np;
+   struct mx_name *rt, *mft, *np;
    n_NYD2_IN;
 
    n_pstate_err_no = su_ERR_NONE;
@@ -400,7 +401,7 @@ jwork_msg:
    if(ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL)
       np = lextract(cp, GCC | gf);
    if((cp = hfield1("cc", mp)) != NULL){
-      struct name *x;
+      struct mx_name *x;
 
       if((x = lextract(cp, GCC | gf)) != NULL)
          np = cat(np, x);
@@ -415,7 +416,7 @@ jwork_msg:
    if(cp2 != NULL)
       np = lextract(cp2, GTO | gf);
    if(!ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL){
-      struct name *x;
+      struct mx_name *x;
 
       if((x = lextract(cp, GTO | gf)) != NULL)
          np = cat(np, x);
@@ -438,7 +439,7 @@ jrecipients_done:
     * given in the List-Post: header, so that we will not throw away a possible
     * corresponding receiver: temporarily "`mlist' the List-Post: address" */
    if((hf & HF_LIST_REPLY) && (cp = hfield1("list-post", mp)) != NULL){
-      struct name *x;
+      struct mx_name *x;
 
       if((x = lextract(cp, GEXTRA | GSKIN)) == NULL || x->n_flink != NULL ||
             (cp = url_mailto_to_address(x->n_name)) == NULL ||
@@ -472,7 +473,7 @@ jrecipients_done:
 
    /* In case of list replies we actively sort out any non-list recipient */
    if(hf & HF_LIST_REPLY){
-      struct name **nhpp, *nhp, *tail;
+      struct mx_name **nhpp, *nhp, *tail;
 
       cp = head.h_list_post;
 
@@ -582,7 +583,7 @@ a_crese_Reply(int *msgvec, bool_t recipient_record){
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
 
    for(ap = msgvec; *ap != 0; ++ap){
-      struct name *np;
+      struct mx_name *np;
 
       mp = &message[*ap - 1];
       touch(mp);
@@ -721,7 +722,7 @@ jleave:
 static int
 a_crese_resend1(void *vp, bool_t add_resent){
    struct header head;
-   struct name *myto, *myrawto;
+   struct mx_name *myto, *myrawto;
    enum gfield gf;
    int *msgvec, rv, *ip;
    struct n_cmd_arg *cap;

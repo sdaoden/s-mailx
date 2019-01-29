@@ -48,6 +48,8 @@
 #include <su/cs.h>
 #include <su/prime.h>
 
+#include "mx/names.h"
+
 /* Open addressing is used for Message-IDs because the maximum number of
  * messages in the table is known in advance (== msgCount) */
 struct mitem {
@@ -339,7 +341,7 @@ _mcharlt(void const *a, void const *b)
 static void
 _lookup(struct message *m, struct mitem *mi, ui32_t mprime)
 {
-   struct name *np;
+   struct mx_name *np;
    struct mitem *ip;
    char *cp;
    long dist;

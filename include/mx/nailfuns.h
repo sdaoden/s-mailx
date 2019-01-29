@@ -986,17 +986,12 @@ FL enum expand_addr_flags expandaddr_to_eaf(void);
 /* Check if an address is invalid, either because it is malformed or, if not,
  * according to eacm.  Return FAL0 when it looks good, TRU1 if it is invalid
  * but the error condition wasn't covered by a 'hard "fail"ure', -1 otherwise */
-FL si8_t       is_addr_invalid(struct name *np,
+FL si8_t       is_addr_invalid(struct mx_name *np,
                   enum expand_addr_check_mode eacm);
 
 /* Does *NP* point to a file or pipe addressee? */
 #define is_fileorpipe_addr(NP)   \
-   (((NP)->n_flags & NAME_ADDRSPEC_ISFILEORPIPE) != 0)
-
-/* Return skinned version of *NP*s name */
-#define skinned_name(NP)         \
-   (assert((NP)->n_flags & NAME_SKINNED), \
-   ((struct name const*)NP)->n_name)
+   (((NP)->n_flags & mx_NAME_ADDRSPEC_ISFILEORPIPE) != 0)
 
 /* Skin an address according to the RFC 822 interpretation of "host-phrase" */
 FL char *      skin(char const *name);
@@ -1063,7 +1058,7 @@ FL char *n_header_textual_date_info(struct message *mp,
  * TODO *is_to_or_null could be set to whether we actually used To:, or not.
  * TODO n_header_textual_sender_info(): should only create a list of matching
  * TODO name objects, which the user can iterate over and o->to_str().. */
-FL struct name *n_header_textual_sender_info(struct message *mp,
+FL struct mx_name *n_header_textual_sender_info(struct message *mp,
                   char **cumulation_or_null, char **addr_or_null,
                   char **name_real_or_null, char **name_full_or_null,
                   bool_t *is_to_or_null);
@@ -1072,8 +1067,8 @@ FL struct name *n_header_textual_sender_info(struct message *mp,
 FL void        setup_from_and_sender(struct header *hp);
 
 /* Note: returns 0x1 if both args were NULL */
-FL struct name const * check_from_and_sender(struct name const *fromfield,
-                        struct name const *senderfield);
+FL struct mx_name const *check_from_and_sender(struct mx_name const *fromfield,
+                        struct mx_name const *senderfield);
 
 #ifdef mx_HAVE_XTLS
 FL char *      getsender(struct message *m);
@@ -1081,7 +1076,7 @@ FL char *      getsender(struct message *m);
 
 /* This returns NULL if hp is NULL or when no information is available.
  * hp remains unchanged (->h_in_reply_to is not set!)  */
-FL struct name *n_header_setup_in_reply_to(struct header *hp);
+FL struct mx_name *n_header_setup_in_reply_to(struct header *hp);
 
 /* Fill in / reedit the desired header fields */
 FL int         grab_headers(enum n_go_input_flags gif, struct header *hp,
@@ -1446,96 +1441,6 @@ FL enum mime_handler_flags n_mimetype_handler(struct mime_handler *mhp,
                               enum sendaction action);
 
 /*
- * nam-a-grp.c
- */
-
-/* Allocate a single element of a name list, initialize its name field to the
- * passed name and return it.
- * May return NULL with GNULL_OK (only, unfortunately) */
-FL struct name *nalloc(char const *str, enum gfield ntype);
-
-/* Alloc an Fcc: entry TODO temporary only i hope */
-FL struct name *nalloc_fcc(char const *file);
-
-/* Like nalloc(), but initialize from content of np */
-FL struct name * ndup(struct name *np, enum gfield ntype);
-
-/* Concatenate the two passed name lists, return the result */
-FL struct name * cat(struct name *n1, struct name *n2);
-
-/* Duplicate np */
-FL struct name *n_namelist_dup(struct name const *np, enum gfield ntype);
-
-/* Determine the number of undeleted elements in a name list and return it;
- * the latter also doesn't count file and pipe addressees in addition */
-FL ui32_t      count(struct name const *np);
-FL ui32_t      count_nonlocal(struct name const *np);
-
-/* Extract a list of names from a line, and make a list of names from it.
- * Return the list or NULL if none found */
-FL struct name * extract(char const *line, enum gfield ntype);
-
-/* Like extract() unless line contains anyof ",\"\\(<|", in which case
- * comma-separated list extraction is used instead */
-FL struct name * lextract(char const *line, enum gfield ntype);
-
-/* Interprets the entire line as one address: identical to extract() and
- * lextract() but only returns one (or none) name.
- * GSKIN will be added to ntype as well as GNULL_OK: may return NULL! */
-FL struct name *n_extract_single(char const *line, enum gfield ntype);
-
-/* Turn a list of names into a string of the same names */
-FL char *      detract(struct name *np, enum gfield ntype);
-
-/* Get a lextract() list via n_go_input_cp(), reassigning to *np* */
-FL struct name * grab_names(enum n_go_input_flags gif, char const *field,
-                     struct name *np, int comma, enum gfield gflags);
-
-/* Check whether n1 n2 share the domain name */
-FL bool_t      name_is_same_domain(struct name const *n1,
-                  struct name const *n2);
-
-/* Check all addresses in np and delete invalid ones; if set_on_error is not
- * NULL it'll be set to TRU1 for error or -1 for "hard fail" error */
-FL struct name * checkaddrs(struct name *np, enum expand_addr_check_mode eacm,
-                  si8_t *set_on_error);
-
-/* Vaporise all duplicate addresses in hp (.h_(to|cc|bcc)) so that an address
- * that "first" occurs in To: is solely in there, ditto Cc:, after expanding
- * aliases etc.  eacm and set_on_error are passed to checkaddrs().
- * metoo is implied (for usermap()).
- * After updating hp to the new state this returns a flat list of all
- * addressees, which may be NULL */
-FL struct name *n_namelist_vaporise_head(bool_t strip_alternates,
-                  struct header *hp, enum expand_addr_check_mode eacm,
-                  si8_t *set_on_error);
-
-/* Map all of the aliased users in the invoker's mailrc file and insert them
- * into the list */
-FL struct name * usermap(struct name *names, bool_t force_metoo);
-
-/* Remove all of the duplicates from the passed name list by insertion sorting
- * them, then checking for dups.  Return the head of the new list */
-FL struct name * elide(struct name *names);
-
-/* `(un)?alternates' deal with the list of alternate names */
-FL int c_alternates(void *v);
-FL int c_unalternates(void *v);
-
-/* If keep_single is set one alternates member will be allowed in np */
-FL struct name *n_alternates_remove(struct name *np, bool_t keep_single);
-
-/* Likewise, is name an alternate in broadest sense? */
-FL bool_t n_is_myname(char const *name);
-
-/* Is name a valid alias */
-FL bool_t n_alias_is_valid_name(char const *name);
-
-/* `(un)?alias' */
-FL int         c_alias(void *v);
-FL int         c_unalias(void *v);
-
-/*
  * path.c
  */
 
@@ -1720,9 +1625,9 @@ FL int         sendmp(struct message *mp, FILE *obuf,
 
 /* Interface between the argument list and the mail1 routine which does all the
  * dirty work */
-FL int n_mail(enum n_mailsend_flags msf, struct name *to, struct name *cc,
-         struct name *bcc, char const *subject, struct attachment *attach,
-         char const *quotefile);
+FL int n_mail(enum n_mailsend_flags msf, struct mx_name *to,
+      struct mx_name *cc, struct mx_name *bcc, char const *subject,
+      struct attachment *attach, char const *quotefile);
 
 /* `mail' and `Mail' commands, respectively */
 FL int c_sendmail(void *v);
@@ -2365,7 +2270,7 @@ FL int c_urlencode(void *v); /* TODO obsolete*/
 FL int c_urldecode(void *v); /* TODO obsolete */
 
 /* Parse a RFC 6058 'mailto' URI to a single to: (TODO yes, for now hacky).
- * Return NULL or something that can be converted to a struct name */
+ * Return NULL or something that can be converted to a struct mx_name */
 FL char *      url_mailto_to_address(char const *mailtop);
 
 /* Return port for proto (and set irv_or_null), or NULL if unknown.

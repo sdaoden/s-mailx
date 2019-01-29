@@ -54,6 +54,7 @@
 #include "mx/filetype.h"
 #include "mx/shortcut.h"
 #include "mx/mlist.h"
+#include "mx/names.h"
 
 /* Create a multiline info string about all known additional infos for lcp */
 #ifdef mx_HAVE_DOCSTRINGS

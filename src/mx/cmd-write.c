@@ -43,6 +43,8 @@
 
 #include <su/cs.h>
 
+#include "mx/names.h"
+
 /* Save/copy the indicated messages at the end of the passed file name.
  * If mark is true, mark the message "saved" */
 static int a_cwrite_save1(void *vp, struct n_ignore const *itp,
@@ -73,7 +75,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
    file = NULL;
 
    if(!(cap->ca_ent_flags[0] & n_CMD_ARG_DESC_MSGLIST_AND_TARGET)){
-      struct name *np;
+      struct mx_name *np;
 
       if((cp = n_header_senderfield_of(message + *msgvec - 1)) == NULL ||
             (np = lextract(cp, GTO | GSKIN)) == NULL){

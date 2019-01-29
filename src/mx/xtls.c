@@ -71,6 +71,8 @@ su_EMPTY_FILE()
 
 #include <su/cs.h>
 
+#include "mx/names.h"
+
 /* Compatibility shims which assume 0/-1 cannot really happen */
 #ifndef mx_HAVE_XTLS_CONF_CTX
 # ifndef SSL_OP_NO_SSLv2
@@ -1562,7 +1564,7 @@ smime_sign_cert(char const *xname, char const *xname2, bool_t dowarn,
 {
    char *vn;
    int vs;
-   struct name *np;
+   struct mx_name *np;
    char const *name = xname, *name2 = xname2, *cp;
    FILE *fp = NULL;
    n_NYD_IN;
@@ -1620,7 +1622,7 @@ _smime_sign_include_certs(char const *name)
 
    /* See comments in smime_sign_cert() for algorithm pitfalls */
    if (name != NULL) {
-      struct name *np;
+      struct mx_name *np;
 
       for (np = lextract(name, GTO | GSKIN); np != NULL; np = np->n_flink) {
          int vs;
@@ -1690,7 +1692,7 @@ a_xtls_smime_sign_digest(char const *name, char const **digname){
 
    /* See comments in smime_sign_cert() for algorithm pitfalls */
    if(name != NULL){
-      struct name *np;
+      struct mx_name *np;
 
       for(np = lextract(name, GTO | GSKIN); np != NULL; np = np->n_flink){
          int vs;

@@ -53,6 +53,8 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/icodec.h>
 
+#include "mx/names.h"
+
 enum itoken {
    ITBAD, ITEOD, ITBOL, ITEOL, ITAND, ITSET, ITALL, ITANSWERED,
    ITBCC, ITBEFORE, ITBODY,
@@ -147,7 +149,7 @@ static bool_t        matchfield(struct message *m, char const *field,
                         void const *what);
 static int           matchenvelope(struct message *m, char const *field,
                         void const *what);
-static char *        mkenvelope(struct name *np);
+static char *        mkenvelope(struct mx_name *np);
 static char const *  around(char const *cp);
 
 static enum okay
@@ -715,7 +717,7 @@ jleave:
 static int
 matchenvelope(struct message *m, char const *field, void const *what)
 {
-   struct name *np;
+   struct mx_name *np;
    char *cp;
    int rv = 0;
    n_NYD_IN;
@@ -736,7 +738,7 @@ jleave:
 }
 
 static char *
-mkenvelope(struct name *np)
+mkenvelope(struct mx_name *np)
 {
    size_t epsize;
    char *ep, *realnam = NULL, /**sourceaddr = NULL,*/ *localpart,

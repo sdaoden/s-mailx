@@ -52,6 +52,7 @@
 /* TODO nonsense (should be filter chain!) */
 #include "mx/filter-quote.h"
 #include "mx/iconv.h"
+#include "mx/names.h"
 #include "mx/ui-str.h"
 
 /* Don't ask, but it keeps body and soul together */
@@ -73,7 +74,7 @@ static char                   *_cs_iter_base, *_cs_iter;
 /* Is 7-bit enough? */
 #ifdef mx_HAVE_ICONV
 static bool_t           _has_highbit(char const *s);
-static bool_t           _name_highbit(struct name *np);
+static bool_t           _name_highbit(struct mx_name *np);
 #endif
 
 /* fwrite(3) while checking for displayability */
@@ -122,7 +123,7 @@ jleave:
 }
 
 static bool_t
-_name_highbit(struct name *np)
+_name_highbit(struct mx_name *np)
 {
    bool_t rv = TRU1;
    n_NYD_IN;
