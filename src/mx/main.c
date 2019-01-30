@@ -135,7 +135,7 @@ a_main_usage(FILE *fp){
 
    fprintf(fp, _(
       "Send-only mode: send mail \"to-address\" receiver(s):\n"
-      "  %s [-DdEFinv~#] [-: spec] [-A account] [:-C \"custom: header\":]\n"
+      "  %s [-DdEFinv~#] [-: spec] [-A account] [:-C \"field: body\":]\n"
       "  %s [:-a attachment:] [:-b bcc-address:] [:-c cc-address:]\n"
       "  %s [-M type | -m file | -q file | -t] [-r from-address]\n"
       "  %s [:-S var[=value]:] [-s subject] [:-X/Y cmd:] [-.] :to-address:\n"),
@@ -145,8 +145,7 @@ a_main_usage(FILE *fp){
 
    fprintf(fp, _(
       "\"Receive\" mode, starting on [-u user], primary *inbox* or [$MAIL]:\n"
-      "  %s [-DdEeHiNnRv~#] [-: spec] [-A account] "
-         "[:-C \"custom: header\":]\n"
+      "  %s [-DdEeHiNnRv~#] [-: spec] [-A account] [:-C \"field: body\":]\n"
       "  %s [-L spec] [-r from-address] [:-S var[=value]:] [-u user] "
          "[:-X/Y cmd:]\n"),
       su_program, buf);
@@ -155,8 +154,7 @@ a_main_usage(FILE *fp){
 
    fprintf(fp, _(
       "\"Receive\" mode, starting on -f (secondary $MBOX or [file]):\n"
-      "  %s [-DdEeHiNnRv~#] [-: spec] [-A account] "
-         "[:-C \"custom: header\":] -f\n"
+      "  %s [-DdEeHiNnRv~#] [-: spec] [-A account] [:-C \"field: body\":] -f\n"
       "  %s [-L spec] [-r from-address] [:-S var[=value]:] [:-X/Y cmd:] "
          "[file]\n"),
       su_program, buf);
@@ -630,7 +628,7 @@ main(int argc, char *argv[]){
       "account:;A;" N_("execute an `account command'"),
          "attach:;a;" N_("attach a file to message to be sent"),
       "bcc:;b;" N_("add blind carbon copy recipient"),
-      "custom-header:;C;" N_("create custom header (\"field: body\")"),
+      "custom-header:;C;" N_("create custom header (\"header-field: body\")"),
          "cc:;c;" N_("add carbon copy recipient"),
       "disconnected;D;" N_("identical to -Sdisconnected"),
          "debug;d;" N_("identical to -Sdebug"),
