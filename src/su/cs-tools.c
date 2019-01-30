@@ -144,7 +144,7 @@ su_cs_rfind_c(char const *cp, char x){
          break;
    }
    NYD_OU;
-   return S(char*,su_UNCONST(match));
+   return UNCONST(char*,match);
 }
 
 char *

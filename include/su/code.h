@@ -744,8 +744,8 @@ do{\
 #endif
 
 /* Casts-away (*NOT* cast-away) */
-#define su_UNCONST(P) su_R(void*,su_R(su_up,su_S(void const*,P)))
-#define su_UNVOLATILE(P) su_R(void*,su_R(su_up,su_S(void volatile*,P)))
+#define su_UNCONST(T,P) su_R(T,su_R(su_up,su_S(void const*,P)))
+#define su_UNVOLATILE(T,P) su_R(T,su_R(su_up,su_S(void volatile*,P)))
 /* To avoid warnings with modern compilers for "char*i; *(s32_t*)i=;" */
 #define su_UNALIGN(T,P) su_R(T,su_R(su_up,P))
 #define su_UNXXX(T,C,P) su_R(T,su_R(su_up,su_S(C,P)))

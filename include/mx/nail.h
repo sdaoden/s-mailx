@@ -150,10 +150,9 @@
 #define n_SIZEOF_FIELD su_FIELD_SIZEOF
 
 #define n_UNUSED su_UNUSED
-#define n_UNCONST su_UNCONST
-#define n_UNVOLATILE su_UNVOLATILE
+#define n_UNCONST(X) su_UNCONST(void*,X)
+#define n_UNVOLATILE(X) su_UNVOLATILE(void*,X)
 #define n_UNALIGN su_UNALIGN
-#define n_UNXXX su_UNXXX
 
 #define n_STRING su_STRING
 #define n_XSTRING su_XSTRING

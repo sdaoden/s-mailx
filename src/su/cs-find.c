@@ -48,7 +48,7 @@ su_cs_find(char const *cp, char const *x){
    }
 jleave:
    NYD_OU;
-   return S(char*,su_UNCONST(cp));
+   return UNCONST(char*,cp);
 }
 
 char *
@@ -67,7 +67,7 @@ su_cs_find_c(char const *cp, char x){
       }
    }
    NYD_OU;
-   return S(char*,su_UNCONST(cp));
+   return UNCONST(char*,cp);
 }
 
 char *
@@ -91,7 +91,7 @@ su_cs_find_case(char const *cp, char const *x){
    }
 jleave:
    NYD_OU;
-   return S(char*,su_UNCONST(cp));
+   return UNCONST(char*,cp);
 }
 
 uz
