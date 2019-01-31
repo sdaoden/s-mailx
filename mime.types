@@ -16,8 +16,8 @@
 # Syntax extensions:
 # - Follow lines may be used: instead of repeating MIMETYPE, start the next
 #   line with whitespace.  (Intervening comment lines may be used.)
-# - TYPEMARKER: an at sign (@) will tag the MIME type as plain text (unless
-#   the user installs a specific handler for the type in question).
+# - TYPEMARKER: a question mark (?) will tag the MIME type as plain text
+#   (unless the user installs a specific handler for the type in question).
 #   The meaning is identical to what is documented for command `mimetypes'.
 #
 # Syntax restrictions:
@@ -30,24 +30,24 @@
 
 # Expected frequent use
 # text/plain CHANGE: m4->text/x-m4, pod->text/x-pod; rc<-
-@ text/plain  txt text conf cfg def list log in properties rc
-@ text/x-diff  diff patch
-@ text/troff  t tr roff man me ms tmac 1 2 3 4 5 6 7 8 9
+? text/plain  txt text conf cfg def list log in properties rc
+? text/x-diff  diff patch
+? text/troff  t tr roff man me ms tmac 1 2 3 4 5 6 7 8 9
 application/pdf  pdf
-@h@ application/xhtml+xml  xhtml xht
-@h@ text/html  html htm
+?h application/xhtml+xml  xhtml xht
+?h text/html  html htm
 application/xml  xml xsl xsd
 
-@ application/x-sh  sh bash
-@ text/x-awk  awk
-@ text/x-chdr  h
-@ text/x-csrc  c
-@ text/x-c++hdr  hpp hxx hh h++ hp
-@ text/x-c++src  cpp cxx cc c++
-@ text/x-ini  ini
-@ text/x-perl  pl pm al perl
+? application/x-sh  sh bash
+? text/x-awk  awk
+? text/x-chdr  h
+? text/x-csrc  c
+? text/x-c++hdr  hpp hxx hh h++ hp
+? text/x-c++src  cpp cxx cc c++
+? text/x-ini  ini
+? text/x-perl  pl pm al perl
 # CHANGE (tika: text/plain)
-@ text/x-pod  pod
+? text/x-pod  pod
 
 # EXTENSION .txz
 application/x-xz  xz txz
@@ -64,9 +64,9 @@ application/x-lzip  lz
 application/zip  zip
 
 application/pgp-encrypted  pgp
-@q@ application/pgp-signature  sig asc
+?q application/pgp-signature  sig asc
 application/pkcs7-mime  p7m p7c
-@q@ application/pkcs7-signature  p7s
+?q application/pkcs7-signature  p7s
 application/postscript  ps eps epsf epsi
 
 image/gif  gif
@@ -77,23 +77,23 @@ image/png  png
 application/cbor  cbor
 
 # Remains alphabetically
-@ application/javascript  js
-@ application/json  json
-@ application/mbox  mbox
+? application/javascript  js
+? application/json  json
+? application/mbox  mbox
 application/rdf+xml  rdf owl
 application/rss+xml  rss
-@ application/sql  sql
+? application/sql  sql
 application/x-bcpio  bcpio
 application/x-bittorrent  torrent
 application/x-bzip  bz tbz
 application/x-compress  z
 application/x-cpio  cpio
-@ application/x-csh  csh tcsh
+? application/x-csh  csh tcsh
 application/x-dvi  dvi
-@ application/x-latex  latex
+? application/x-latex  latex
 application/x-shar  shar
-@ application/x-tex  tex
-@ application/x-texinfo  texinfo texi
+? application/x-tex  tex
+? application/x-texinfo  texinfo texi
 application/x-x509-ca-cert  der crt
 application/x-xfig  fig
 application/xml-dtd  dtd
@@ -118,35 +118,35 @@ image/x-xbitmap  xbm
 image/x-xpixmap  xpm
 image/x-xwindowdump  xwd
 message/rfc822  eml mime mht mhtml
-@ text/calendar  ics ifb
-@ text/css  css
-@ text/csv  csv
-@ text/sgml  sgml sgm
-@ text/x-assembly  s S asm
+? text/calendar  ics ifb
+? text/css  css
+? text/csv  csv
+? text/sgml  sgml sgm
+? text/x-assembly  s S asm
 # (Note that the tuple extensions will never match since text/plain wins!)
-@ text/x-asciidoc  asciidoc adoc ad ad.txt adoc.txt
-@ text/x-csharp  cs
-# (I have assembler .cgi's written myself, don't "@ " mark that one)
+? text/x-asciidoc  asciidoc adoc ad ad.txt adoc.txt
+? text/x-csharp  cs
+# (I have assembler .cgi's written myself, don't "? " mark that one)
 text/x-cgi  cgi
-@ text/x-d  d
-@ text/x-go  go
-@ text/x-java  java
+? text/x-d  d
+? text/x-go  go
+? text/x-java  java
 text/x-jsp  jsp
-@ text/x-lex  l
+? text/x-lex  l
 # EXTENSION nim
-@ text/x-nim  nim
+? text/x-nim  nim
 # CHANGE (tika: text/plain)
-@ text/x-m4  m4
-@ text/x-objcsrc  m
-@ text/x-php  php php3 php4
-@ text/x-python  py
-@ text/x-rst  rst rest restx
-@ text/x-ruby  rb
+? text/x-m4  m4
+? text/x-objcsrc  m
+? text/x-php  php php3 php4
+? text/x-python  py
+? text/x-rst  rst rest restx
+? text/x-ruby  rb
 text/x-uuencode  uu
-@ text/x-vcalendar  vcs
-@ text/vcard  vcf
-@ text/markdown  md markdown
-@ text/x-yacc  y
-@ text/x-yaml  yaml
+? text/x-vcalendar  vcs
+? text/vcard  vcf
+? text/markdown  md markdown
+? text/x-yacc  y
+? text/x-yaml  yaml
 
 # s-it-mode

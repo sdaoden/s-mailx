@@ -1623,13 +1623,13 @@ asynchronously and with some other magic attached:
 .
 .Bd -literal -offset indent
 ? if [ "$features" !% +filter-html-tagsoup ]
-?   #set pipe-text/html='@* elinks -force-html -dump 1'
-?   set pipe-text/html='@* lynx -stdin -dump -force_html'
+?   #set pipe-text/html='?* elinks -force-html -dump 1'
+?   set pipe-text/html='?* lynx -stdin -dump -force_html'
 ?   # Display HTML as plain text instead
-?   #set pipe-text/html=@
+?   #set pipe-text/html=?
 ? endif
-? mimetype @ application/mathml+xml mathml
-? wysh set pipe-application/pdf='@&=@ \e
+? mimetype ? application/mathml+xml mathml
+? wysh set pipe-application/pdf='?&=? \e
     trap "rm -f \e"${MAILX_FILENAME_TEMPORARY}\e"" EXIT;\e
     trap "trap \e"\e" INT QUIT TERM; exit 1" INT QUIT TERM;\e
     mupdf "${MAILX_FILENAME_TEMPORARY}"'
@@ -10785,10 +10785,10 @@ considered by and for the command
 .Ic mimeview .
 .
 .Pp
-The special value commercial at
-.Ql @
+The special value question mark
+.Ql \&?
 forces interpretation of the message part as plain text, e.g.,
-.Ql set pipe-application/xml=@
+.Ql set pipe-application/xml=?
 will henceforth display XML
 .Dq as is .
 (The same could also be achieved by adding a MIME type marker with the
@@ -10801,15 +10801,15 @@ And \*(OPally MIME type handlers may be defined via
 has already been used, should be referred to for further documentation.
 .
 .Pp
-The commercial at
-.Ql @
+The question mark
+.Ql \&?
 can in fact be used as a trigger character to adjust usage and behaviour
 of a following shell command specification more thoroughly by appending
 more special characters which refer to further mailcap directives, e.g.,
 the following hypothetical command specification could be used:
 .
 .Bd -literal -offset indent
-? set pipe-X/Y='@!++=@vim ${MAILX_FILENAME_TEMPORARY}'
+? set pipe-X/Y='?!++=? vim ${MAILX_FILENAME_TEMPORARY}'
 .Ed
 .
 .Pp
@@ -10851,9 +10851,9 @@ deletion of the temporary file you still have to use two plus signs
 .Ql ++
 explicitly!
 .
-.It Ql @
-To avoid ambiguities with normal shell command content you can use
-another commercial at to forcefully terminate interpretation of
+.It Ql \&?
+To avoid ambiguities with normal shell command content another
+question mark can be used to forcefully terminate interpretation of
 remaining characters.
 (Any character not in this list will have the same effect.)
 .El
@@ -13320,7 +13320,7 @@ files have the following syntax:
 .
 .Bd -literal -offset indent
 type/subtype extension [extension ...]
-# E.g., text/html html htm
+# E.g.: text/html html htm
 .Ed
 .
 .Pp
@@ -13352,21 +13352,21 @@ The following type markers are supported:
 .
 .Pp
 .Bl -tag -compact -width ".It Ar _n_u"
-.It Ar @
+.It Ar \&?
 Treat message parts with this content as plain text.
-.It Ar @t
+.It Ar ?t
 The same as plain
-.Ar @ .
-.It Ar @h
+.Ar \&? .
+.It Ar ?h
 Treat message parts with this content as HTML tagsoup.
 If the \*(OPal HTML-tagsoup-to-text converter is not available treat
 the content as plain text instead.
-.It Ar @H
+.It Ar ?H
 Likewise
-.Ar @h ,
+.Ar ?h ,
 but instead of falling back to plain text require an explicit content
 handler to be defined.
-.It Ar @q
+.It Ar ?q
 If no handler can be found a text message is displayed which says so.
 This can be annoying, for example signatures serve a contextual purpose,
 their content is of no use by itself.
@@ -14060,13 +14060,13 @@ account XandeX {
 commandalias lls '!ls ${LS_COLOUR_FLAG} -aFlrS'
 commandalias llS '!ls ${LS_COLOUR_FLAG} -aFlS'
 
-set pipe-message/external-body='@* echo $MAILX_EXTERNAL_BODY_URL'
+set pipe-message/external-body='?* echo $MAILX_EXTERNAL_BODY_URL'
 
 # We do not support gpg(1) directly yet.  But simple --clearsign'd
 # message parts can be dealt with as follows:
 define V {
   localopts yes
-  wysh set pipe-text/plain=$'@*#++=@\e
+  wysh set pipe-text/plain=$'?*#++=?\e
     < "${MAILX_FILENAME_TEMPORARY}" awk \e
         -v TMPFILE="${MAILX_FILENAME_TEMPORARY}" \e'\e
       BEGIN{done=0}\e

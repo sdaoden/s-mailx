@@ -4476,12 +4476,12 @@ t_mime_types_load_control() {
    TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<-_EOT > ./.tmts1
-   @ application/mathml+xml mathml
+   ? application/mathml+xml mathml
 	_EOT
    ${cat} <<-_EOT > ./.tmts2
-   @ x-conference/x-cooltalk ice
-   @ aga-aga aga
-   @ application/aga-aga aga
+   ? x-conference/x-cooltalk ice
+   ?t aga-aga aga
+   ? application/aga-aga aga
 	_EOT
 
    ${cat} <<-_EOT > ./.tmts1.mathml
@@ -6292,7 +6292,7 @@ t_pipe_handlers() {
 
    # "Test for" [d6f316a] (Gavin Troy)
    printf "m ${MBOX}\n~s subject1\nEmail body\n~.\nfi ${MBOX}\np\nx\n" |
-   ${MAILX} ${ARGS} ${ADDARG_UNI} -Spipe-text/plain="@* ${cat}" > "${BODY}"
+   ${MAILX} ${ARGS} ${ADDARG_UNI} -Spipe-text/plain="?* ${cat}" > "${BODY}"
    check 1 0 "${MBOX}" '3942990636 118'
    check 2 - "${BODY}" '3951695530 170'
 
@@ -6300,7 +6300,8 @@ t_pipe_handlers() {
    printf "m %s\n~s subject2\n~@%s\nBody2\n~.\nFi %s\nmimeview\nx\n" \
          "${MBOX}" "${TOPDIR}snailmail.jpg" "${MBOX}" |
       ${MAILX} ${ARGS} ${ADDARG_UNI} \
-         -S 'pipe-image/jpeg=@=&@'\
+         -S 'pipe-text/plain=?' \
+         -S 'pipe-image/jpeg=?=&?'\
 'trap \"'"${rm}"' -f '\ '\\"${MAILX_FILENAME_TEMPORARY}\\"\" EXIT;'\
 'trap \"trap \\\"\\\" INT QUIT TERM; exit 1\" INT QUIT TERM;'\
 'echo C=$MAILX_CONTENT;'\
@@ -6323,7 +6324,8 @@ t_pipe_handlers() {
       printf 'Fi %s\nmimeview\nvput vexpr v file-stat .t.one-link\n'\
 'eval wysh set $v;echo should be $st_nlink link\nx\n' "${MBOX}" |
          ${MAILX} ${ARGS} ${ADDARG_UNI} \
-            -S 'pipe-image/jpeg=@=++@'\
+            -S 'pipe-text/plain=?' \
+            -S 'pipe-image/jpeg=?=++?'\
 'echo C=$MAILX_CONTENT;'\
 'echo C-E=$MAILX_CONTENT_EVIDENCE;'\
 'echo E-B-U=$MAILX_EXTERNAL_BODY_URL;'\
@@ -6340,7 +6342,8 @@ t_pipe_handlers() {
       printf 'Fi %s\nmimeview\nvput vexpr v file-stat .t.one-link\n'\
 'eval wysh set $v;echo should be $st_nlink link\nx\n' "${MBOX}" |
          ${MAILX} ${ARGS} ${ADDARG_UNI} \
-            -S 'pipe-image/jpeg=@++@'\
+            -S 'pipe-text/plain=?' \
+            -S 'pipe-image/jpeg=?++?'\
 "${cat}"' > $MAILX_FILENAME_TEMPORARY;'\
 'echo C=$MAILX_CONTENT;'\
 'echo C-E=$MAILX_CONTENT_EVIDENCE;'\
@@ -6357,7 +6360,8 @@ t_pipe_handlers() {
       printf 'Fi %s\np\nvput vexpr v file-stat .t.one-link\n'\
 'eval wysh set $v;echo should be $st_nlink link\nx\n' "${MBOX}" |
          ${MAILX} ${ARGS} ${ADDARG_UNI} \
-            -S 'pipe-image/jpeg=@*++@'\
+            -S 'pipe-text/plain=?' \
+            -S 'pipe-image/jpeg=?*++?'\
 "${cat}"' > $MAILX_FILENAME_TEMPORARY;'\
 'echo C=$MAILX_CONTENT;'\
 'echo C-E=$MAILX_CONTENT_EVIDENCE;'\

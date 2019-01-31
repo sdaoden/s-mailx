@@ -321,7 +321,10 @@ _mt_create(boole cmdcalled, u32 orflags, char const *line, uz len)
 
    /* (But wait - is there a type marker?) */
    tlen = len;
-   if(!(orflags & (_MT_USR | _MT_SYS)) && *typ == '@'){
+   if(!(orflags & (_MT_USR | _MT_SYS)) && (*typ == '?' || *typ == '@')){
+      if(*typ == '@') /* v15compat (plus trailing below) */
+         n_OBSOLETE2(_("`mimetype': type markers (and much more) use ? not @"),
+            line);
       if(len < 2)
          goto jeinval;
       if(typ[1] == ' '){
@@ -332,11 +335,9 @@ _mt_create(boole cmdcalled, u32 orflags, char const *line, uz len)
       }else if(len > 3){
          if(typ[2] == ' ')
             i = 3;
-         else if(len > 4 && typ[2] == '@' && typ[3] == ' '){
-            n_OBSOLETE("`mimetype': the trailing \"@\" in \"type-marker\" "
-               "is redundant");
+         else if(len > 4 && (typ[2] == '?' || typ[2] == '@') && typ[3] == ' ')
             i = 4;
-         }else
+         else
             goto jeinval;
 
          switch(typ[1]){
@@ -846,10 +847,13 @@ a_mt_pipe_check(struct mime_handler *mhp){
    /* Do we have any handler for this part? */
    if(*(cp = mhp->mh_shell_cmd) == '\0')
       goto jleave;
-   else if(*cp++ != '@'){
+   else if(*cp++ != '?' && cp[-1] != '@'/* v15compat */){
       rv |= MIME_HDL_CMD;
       goto jleave;
    }else if(*cp == '\0'){
+      if(cp[-1] == '@')
+         n_OBSOLETE2(_("*pipe-TYPE/SUBTYPE*+': type markers (and much more) "
+            "use ? not @"), mhp->mh_shell_cmd);
       rv |= MIME_HDL_TEXT;
       goto jleave;
    }
@@ -870,7 +874,9 @@ jnextc:
       rv |= MIME_HDL_TMPF_FILL;
       ++cp;
       goto jnextc;
-   case '@':
+   case '@':/* v15compat */
+      /* FALLTHRU */
+   case '?':
       ++cp;
       /* FALLTHRU */
    default:
@@ -974,10 +980,10 @@ c_mimetype(void *v){
          s = n_string_trunc(s, 0);
 
          switch(mtnp->mt_flags & a_MT__TM_MARKMASK){
-         case a_MT_TM_PLAIN: cp = "@t "; break;
-         case a_MT_TM_SOUP_h: cp = "@h "; break;
-         case a_MT_TM_SOUP_H: cp = "@H "; break;
-         case a_MT_TM_QUIET: cp = "@q "; break;
+         case a_MT_TM_PLAIN: cp = "?t "; break;
+         case a_MT_TM_SOUP_h: cp = "?h "; break;
+         case a_MT_TM_SOUP_H: cp = "?H "; break;
+         case a_MT_TM_QUIET: cp = "?q "; break;
          default: cp = NULL; break;
          }
          if(cp != NULL)
