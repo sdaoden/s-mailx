@@ -8,37 +8,16 @@ _version_from_header = VERSION="`< $(CWDDIR)include/mx/gen-version.h $(sed) \
 		-e '/ n_VERSION /b X' -e d -e ':X' \
 		-e 's/[^\"]*\"v\([^\"]\{1,\}\)\"/\1/'`"
 
-all: $(VAL_UAGENT) $(OPTIONAL_DOTLOCK_PS)
-
-$(SU_OBJ): $(INCDIR)su/code.h $(INCDIR)su/config.h
-$(AMALGAM_TARGET) core-errors.o: $(SRCDIR)su/gen-errors.h
-$(AMALGAM_TARGET) cs-class.o: $(SRCDIR)su/gen-cs-class.h
+all: $(VAL_UAGENT) $(OPTIONAL_PS_DOTLOCK)
 
 $(VAL_UAGENT): $(OBJ) uman.1 urc.rc
 	$(ECHO_LINK)$(CC) $(LDFLAGS) -o $(@) $(OBJ) $(LIBS)
 	$(SIZE_CHECK)
 
-$(OBJ): $(CWDDIR)include/mx/gen-config.h $(CWDDIR)include/mx/config.h \
-		$(INCDIR)mx/nail.h $(INCDIR)mx/nailfuns.h \
-		$(AMALGAM_DEP)
-$(AMALGAM_TARGET) accmacvar.o: $(SRCDIR)mx/gen-okeys.h \
-		$(CWDDIR)include/mx/gen-version.h
-$(AMALGAM_TARGET) cmd-tab.o: $(SRCDIR)mx/cmd-tab.h
-$(AMALGAM_TARGET) dotlock.o: $(SRCDIR)mx/dotlock.h
-$(AMALGAM_TARGET) obs-imap.o: $(SRCDIR)mx/obs-imap-gssapi.h
-$(AMALGAM_TARGET) mime-types.o: gen-mime-types.h
-$(AMALGAM_TARGET) obs-imap.o pop3.o smtp.o urlcrecry.o: $(SRCDIR)mx/rfc1321.h
-$(AMALGAM_TARGET) smtp.o: $(SRCDIR)mx/smtp-gssapi.h
-$(AMALGAM_TARGET) termcap.o: $(SRCDIR)mx/gen-tcaps.h
-
-$(VAL_DOTLOCK_PS): dotlock-ps.o
-	$(ECHO_LINK)$(CC) $(LDFLAGS) -o $(@) dotlock-ps.o $(BASE_LIBS)
+$(VAL_PS_DOTLOCK): $(PS_DOTLOCK_C_OBJ)
+	$(ECHO_LINK)$(CC) $(PS_DOTLOCK_LDFLAGS) -o $(@) $(PS_DOTLOCK_C_OBJ) \
+		$(PS_DOTLOCK_LIBS)
 	$(SIZE_CHECK)
-
-dotlock-ps.o: $(SRCDIR)mx/dotlock-ps.c \
-		$(CWDDIR)include/mx/gen-config.h $(CWDDIR)include/mx/config.h \
-		$(INCDIR)mx/nail.h $(SRCDIR)mx/dotlock.h
-	$(ECHO_CC)$(CC) $(CFLAGS) $(BASE_INCS) -c $(SRCDIR)mx/dotlock-ps.c
 
 gen-mime-types.h: $(TOPDIR)mime.types
 	$(ECHO_GEN)\
@@ -246,24 +225,24 @@ install:
 			"$(VAL_SYSCONFDIR)/$(VAL_SYSCONFRC)";\
 	fi;\
 	\
-	if [ -n "$(OPTIONAL_DOTLOCK_PS)" ]; then \
+	if [ -n "$(OPTIONAL_PS_DOTLOCK)" ]; then \
 		__mkdir "$(VAL_LIBEXECDIR)";\
 		\
-		__stripfile "$(OBJDIR)"/"$(VAL_DOTLOCK_PS)";\
+		__stripfile "$(OBJDIR)"/"$(VAL_PS_DOTLOCK)";\
 		m='o=rx' o=;\
 		if [ -n "$(_____PRIVSEP_GROUP)" ]; then \
 			m="g=rxs,$${m}" o=":$(VAL_PRIVSEP_GROUP)";\
 		else \
 			m="g=rx,$${m}";\
 		fi;\
-		if [ -n "$(VAL_DOTLOCK_PS_USER)" ]; then \
-			m="u=rxs,$${m}" o="$(VAL_DOTLOCK_PS_USER)$${o}";\
+		if [ -n "$(VAL_PS_DOTLOCK_USER)" ]; then \
+			m="u=rxs,$${m}" o="$(VAL_PS_DOTLOCK_USER)$${o}";\
 		else \
 			m="u=rx,$${m}";\
 		fi;\
 		__copychownfile "$${m}" "$${o}" \
-			"$(OBJDIR)"/"$(VAL_DOTLOCK_PS)" \
-			"$(VAL_LIBEXECDIR)/$(VAL_DOTLOCK_PS)";\
+			"$(OBJDIR)"/"$(VAL_PS_DOTLOCK)" \
+			"$(VAL_LIBEXECDIR)/$(VAL_PS_DOTLOCK)";\
 	fi;\
 	\
 	if [ -z "$(DESTDIR)" ]; then \
@@ -282,8 +261,8 @@ clean:
 	$(ECHO_CMD)\
 	$(rm) -f $(OBJ) "$(VAL_UAGENT)" ./gen-mime-types.h ./uman.1 ./urc.rc;\
 	\
-	if [ -n "$(OPTIONAL_DOTLOCK_PS)" ]; then \
-		$(rm) -f ./dotlock-ps.o ./"$(VAL_DOTLOCK_PS)";\
+	if [ -n "$(OPTIONAL_PS_DOTLOCK)" ]; then \
+		$(rm) -f $(PS_DOTLOCK_C_OBJ) "$(VAL_PS_DOTLOCK)";\
 	fi
 
 distclean: clean

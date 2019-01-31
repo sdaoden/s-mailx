@@ -1210,7 +1210,7 @@ enum n_program_state_once{
    n_PSO_TERMCAP_DISABLE = 1u<<20,
    n_PSO_TERMCAP_CA_MODE = 1u<<21,
    n_PSO_TERMCAP_FULLWIDTH = 1u<<22,   /* !am or am+xn (right margin wrap) */
-   n_PSO_DOTLOCK_PS_NOTED = 1u<<23
+   n_PSO_PS_DOTLOCK_NOTED = 1u<<23
 };
 
 /* {{{ A large enum with all the boolean and value options a.k.a their keys.
@@ -2379,7 +2379,7 @@ VL sighandler_type dflpipe;
  * Finally, let's include the function prototypes XXX embed
  */
 
-#ifndef mx_SOURCE_DOTLOCK_PS
+#ifndef mx_SOURCE_PS_DOTLOCK_MAIN
 # include "mx/nailfuns.h"
 #endif
 
