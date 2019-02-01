@@ -893,34 +893,34 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
          goto jerr;
       }
    }else if(!su_cs_cmp_case(cmd, xcmd = "Ciphersuites")){
-#ifdef mx_HAVE_XTLS_SET_CIPHERSUITES
+# ifdef mx_HAVE_XTLS_SET_CIPHERSUITES
       if(SSL_CTX_set_ciphersuites(ctxp, value) != 1){
          emsg = N_("TLS: %s: invalid: %s\n");
          goto jerr;
       }
-#else
+# else
       value = NULL;
       emsg = N_("TLS: %s: directive not supported\n");
       goto jxerr;
-#endif
+# endif
    }else if(!su_cs_cmp_case(cmd, xcmd = "Curves")){
-#ifdef SSL_CTRL_SET_CURVES_LIST
+# ifdef SSL_CTRL_SET_CURVES_LIST
       if(SSL_CTX_set1_curves_list(ctxp, n_UNCONST(value)) != 1){
          emsg = N_("TLS: %s: invalid: %s\n");
          goto jerr;
       }
-#else
+# else
       value = NULL;
       emsg = N_("TLS: %s: directive not supported\n");
       goto jxerr;
-#endif
+# endif
    }else if((emsg = NULL, !su_cs_cmp_case(cmd, xcmd = "MaxProtocol")) ||
          (emsg = (char*)-1, !su_cs_cmp_case(cmd, xcmd = "MinProtocol"))){
-#ifndef mx_HAVE_XTLS_SET_MIN_PROTO_VERSION
+# ifndef mx_HAVE_XTLS_SET_MIN_PROTO_VERSION
       value = NULL;
       emsg = N_("TLS: %s: directive not supported\n");
       goto jxerr;
-#else
+# else
       struct a_xtls_protocol const *xpp;
       size_t i;
 
@@ -941,7 +941,7 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
          emsg = N_("TLS: %s: invalid protocol: %s\n");
          goto jerr;
       }
-#endif /* !mx_HAVE_XTLS_SET_MIN_PROTO_VERSION */
+# endif /* !mx_HAVE_XTLS_SET_MIN_PROTO_VERSION */
    }else if(!su_cs_cmp_case(cmd, xcmd = "Options")){
       if(su_cs_cmp_case(value, "Bugs")){
          emsg = N_("TLS: %s: fallback only supports value \"Bugs\": %s\n");
