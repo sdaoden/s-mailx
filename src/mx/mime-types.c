@@ -28,7 +28,8 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 
-#include "mx/filter-html.h" /* TODO that this does not belong: clear */
+/* TODO that this does not belong: clear */
+#include "mx/filter-html.h"
 
 enum mime_type {
    _MT_APPLICATION,
@@ -109,7 +110,7 @@ struct mt_class_arg {
 };
 
 static struct mtbltin const   _mt_bltin[] = {
-#include "gen-mime-types.h"
+#include "gen-mime-types.h" /* */
 };
 
 static char const             _mt_typnames[][16] = {

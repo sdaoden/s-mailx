@@ -27,7 +27,7 @@
 #ifdef mx_HAVE_DOTLOCK
 # include <su/cs.h>
 
-# include "mx/dotlock.h"
+# include "mx/dotlock.h" /* $(MX_SRCDIR) */
 #endif
 
 /* XXX Our Popen() main() takes void, temporary global data store */

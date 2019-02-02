@@ -336,7 +336,7 @@ jleave:
 }
 
 #ifdef mx_HAVE_GSSAPI
-# include "smtp-gssapi.h"
+# include "mx/smtp-gssapi.h" /* $(MX_SRCDIR) */
 #endif
 
 #undef _OUT

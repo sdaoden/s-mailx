@@ -3372,13 +3372,15 @@ printf '"\n' >> ${h}
 # Create the real mk-config.mk
 # Note we cannot use explicit ./ filename prefix for source and object
 # pathnames because of a bug in bmake(1)
-${cat} "${SRCDIR}"ps-dotlock/makefile.obj >> ${mk}
-${cat} "${SRCDIR}"mx/makefile.obj >> ${mk}
-${cat} "${SRCDIR}"su/makefile.obj >> ${mk}
+msg 'Creating object make rules'
+(cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh ps-dotlock/*.c) >> ${mk}
 mx_obj= su_obj=
 if feat_no AMALGAMATION; then
+   (cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh su/*.c) >> ${mk}
+   (cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh mx/*.c) >> ${mk}
    mx_obj='$(MX_C_OBJ)' su_obj='$(SU_C_OBJ)'
 else
+   (cd "${SRCDIR}"; COUNT_MODE=0 ${SHELL} ../mk/make-rules.sh mx/*.c) >> ${mk}
    mx_obj=mx-main.o
    printf 'mx-main.o: gen-mime-types.h' >> ${mk}
 
@@ -3387,16 +3389,19 @@ else
    printf '#elif mx_GEN_CONFIG_H + 0 == 1\n' >> ${h}
    printf '# undef mx_GEN_CONFIG_H\n' >> ${h}
    printf '# define mx_GEN_CONFIG_H 2\n#ifdef mx_SOURCE\n' >> ${h}
+
+   for i in `printf '%s\n' "${SRCDIR}"su/*.c | ${sort}`; do
+      i=`basename "${i}"`
+      printf '# include "%s%s"\n' "${SRCDIR}su/" "${i}" >> ${h}
+   done
+   echo >> ${mk}
+
    for i in `printf '%s\n' "${SRCDIR}"mx/*.c | ${sort}`; do
       i=`basename "${i}"`
       if [ "${i}" = main.c ]; then
          continue
       fi
       printf '# include "%s%s"\n' "${SRCDIR}mx/" "${i}" >> ${h}
-   done
-   for i in `printf '%s\n' "${SRCDIR}"su/*.c | ${sort}`; do
-      i=`basename "${i}"`
-      printf '# include "%s%s"\n' "${SRCDIR}su/" "${i}" >> ${h}
    done
    echo >> ${mk}
 fi

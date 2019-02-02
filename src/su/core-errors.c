@@ -34,7 +34,7 @@ struct a_corerr_map{
 };
 
 /* Include the constant su-make-errors.sh output */
-#include "su/gen-errors.h"
+#include "su/gen-errors.h" /* $(SU_SRCDIR) */
 
 /* And these come in via su/config.h (config-time su-make-errors.sh output) */
 static su__ERR_NUMBER_TYPE const a_corerr_no2mapoff[][2] = {

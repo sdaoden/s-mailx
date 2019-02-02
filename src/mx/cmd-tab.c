@@ -67,10 +67,10 @@ static int a_ctab_c_memtrace(void *vp);
 #endif
 
 /* List of all commands; but first their n_cmd_arg_desc instances */
-#include "mx/cmd-tab.h"
+#include "mx/cmd-tab.h" /* $(MX_SRCDIR) */
 
 static struct n_cmd_desc const a_ctab_ctable[] = {
-#include "mx/cmd-tab.h"
+#include <mx/cmd-tab.h>
 };
 
 /* And a list of things which are special to the lexer in go.c, so that we can

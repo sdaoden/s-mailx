@@ -43,7 +43,8 @@
 
 #include <su/cs.h>
 
-#include "mx/filter-quote.h" /* TODO but only for creating chain! */
+/* TODO but only for creating chain! */
+#include "mx/filter-quote.h"
 #include "mx/iconv.h"
 #include "mx/ui-str.h"
 

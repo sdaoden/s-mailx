@@ -1451,7 +1451,7 @@ jleave:
 }
 
 #ifdef mx_HAVE_GSSAPI
-# include "mx/obs-imap-gssapi.h"
+# include "mx/obs-imap-gssapi.h" /* $(MX_SRCDIR) */
 #endif
 
 FL enum okay

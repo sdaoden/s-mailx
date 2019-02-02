@@ -46,7 +46,7 @@ static uiz_t n_msleep(uiz_t millis, bool_t ignint);
 
 #define su_err_no() errno
 #define su_err_set_no(X) (errno = X)
-#include "mx/dotlock.h"
+#include "mx/dotlock.h" /* $(PS_DOTLOCK_SRCDIR) */
 
 /* TODO Avoid linkage errors, instantiate what is needed;
  * TODO SU needs to be available as a library to overcome this,

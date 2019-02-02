@@ -49,7 +49,8 @@
 #include <su/cs.h>
 #include <su/utf.h>
 
-#include "mx/filter-quote.h" /* TODO nonsense (should be filter chain!) */
+/* TODO nonsense (should be filter chain!) */
+#include "mx/filter-quote.h"
 #include "mx/iconv.h"
 #include "mx/ui-str.h"
 
