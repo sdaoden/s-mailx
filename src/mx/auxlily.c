@@ -77,8 +77,6 @@
 # elif mx_HAVE_IDNA == n_IDNA_IMPL_IDNKIT
 #  include <idn/api.h>
 # endif
-
-# include "mx/iconv.h"
 #endif
 
 #include <su/cs.h>
@@ -87,6 +85,12 @@
 
 #ifdef a_AUX_RAND_USE_BUILTIN
 # include <su/prime.h>
+#endif
+
+#include "mx/filetype.h"
+
+#ifdef mx_HAVE_IDNA
+# include "mx/iconv.h"
 #endif
 
 #ifdef a_AUX_RAND_USE_BUILTIN
@@ -486,7 +490,7 @@ jfile:
    rv = PROTO_FILE;
 
    if(check_stat || try_hooks){
-      struct n_file_type ft;
+      struct mx_filetype ft;
       struct stat stb;
       char *np;
       size_t sz;
@@ -511,7 +515,7 @@ jfile:
             rv = PROTO_UNKNOWN;
 #endif
          }
-      }else if(try_hooks && n_filetype_trial(&ft, name))
+      }else if(try_hooks && mx_filetype_trial(&ft, name))
          orig_name = savecatsep(name, '.', ft.ft_ext_dat);
       else if((cp = ok_vlook(newfolders)) != NULL &&
             !su_cs_cmp_case(cp, "maildir")){

@@ -52,7 +52,6 @@ enum a_nag_type{
    a_NAG_T_ALIAS,
    a_NAG_T_MLIST,
    a_NAG_T_SHORTCUT,
-   a_NAG_T_FILETYPE,
    a_NAG_T_MASK = 0x1F,
 
    /* Subtype bits and flags */
@@ -65,7 +64,7 @@ enum a_nag_type{
     * attribute set */
    a_NAG_T_PRINT_MASK = a_NAG_T_MASK | a_NAG_T_SUBSCRIBE
 };
-n_CTA(a_NAG_T_MASK >= a_NAG_T_FILETYPE, "Mask does not cover necessary bits");
+n_CTA(a_NAG_T_MASK >= a_NAG_T_SHORTCUT, "Mask does not cover necessary bits");
 
 struct a_nag_group{
    struct a_nag_group *ng_next;
@@ -103,25 +102,11 @@ struct a_nag_grp_regex{
 };
 #endif
 
-struct a_nag_file_type{
-   struct str nft_load;
-   struct str nft_save;
-};
-
 struct a_nag_group_lookup{
    struct a_nag_group **ngl_htable;
    struct a_nag_group **ngl_slot;
    struct a_nag_group *ngl_slot_last;
    struct a_nag_group *ngl_group;
-};
-
-static struct n_file_type const a_nag_OBSOLETE_xz = { /* TODO v15 compat */
-   "xz", 2, "xz -cd", sizeof("xz -cd") -1, "xz -cz", sizeof("xz -cz") -1
-}, a_nag_OBSOLETE_gz = {
-   "gz", 2, "gzip -cd", sizeof("gzip -cd") -1, "gzip -cz", sizeof("gzip -cz") -1
-}, a_nag_OBSOLETE_bz2 = {
-   "bz2", 3, "bzip2 -cd", sizeof("bzip2 -cd") -1,
-   "bzip2 -cz", sizeof("bzip2 -cz") -1
 };
 
 /* `alternates' */
@@ -152,9 +137,6 @@ static size_t a_nag_mlsub_hits;
 
 /* `shortcut' */
 static struct a_nag_group *a_nag_shortcut_heads[HSHSIZE];
-
-/* `filetype' */
-static struct a_nag_group *a_nag_filetype_heads[HSHSIZE];
 
 /* Same name, while taking care for *allnet*? */
 static bool_t a_nag_is_same_name(char const *n1, char const *n2);
@@ -488,10 +470,6 @@ a_nag_group_lookup(enum a_nag_type nt, struct a_nag_group_lookup *nglp,
       case a_NAG_T_SHORTCUT:
          ngpa = a_nag_shortcut_heads;
          break;
-      case a_NAG_T_FILETYPE:
-         ngpa = a_nag_filetype_heads;
-         icase = TRU1;
-         break;
       }
 
       nglp->ngl_htable = ngpa;
@@ -551,9 +529,6 @@ a_nag_group_go_first(enum a_nag_type nt, struct a_nag_group_lookup *nglp){
       break;
    case a_NAG_T_SHORTCUT:
       ngpa = a_nag_shortcut_heads;
-      break;
-   case a_NAG_T_FILETYPE:
-      ngpa = a_nag_filetype_heads;
       break;
    }
 
@@ -623,9 +598,6 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
       }
 #endif
       break;
-   case a_NAG_T_FILETYPE:
-      addsz += sizeof(struct a_nag_file_type);
-      break;
    }
    if(UIZ_MAX - i < addsz || UI32_MAX <= i || UI16_MAX < i - l)
       goto jleave;
@@ -637,8 +609,7 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
    ngp->ng_type = nt;
    switch(nt & a_NAG_T_MASK){
    case a_NAG_T_ALTERNATES:
-   case a_NAG_T_MLIST:
-   case a_NAG_T_FILETYPE:{
+   case a_NAG_T_MLIST:{
       char *cp, c;
 
       for(cp = ngp->ng_id; (c = *cp) != '\0'; ++cp)
@@ -800,10 +771,6 @@ a_nag_group_print_all(enum a_nag_type nt, char const *varname){
    case a_NAG_T_SHORTCUT:
       tname = "shortcut";
       ngpa = a_nag_shortcut_heads;
-      break;
-   case a_NAG_T_FILETYPE:
-      tname = "filetype";
-      ngpa = a_nag_filetype_heads;
       break;
    }
 
@@ -974,16 +941,6 @@ a_nag_group_print(struct a_nag_group const *ngp, FILE *fo,
       fprintf(fo, "wysh shortcut %s %s\n",
          ngp->ng_id, n_shexp_quote_cp(cp, TRU1));
       break;
-   case a_NAG_T_FILETYPE:{
-      struct a_nag_file_type *nftp;
-
-      assert(fo != NULL); /* xxx no vput yet */
-      a_NAG_GP_TO_SUBCLASS(nftp, ngp);
-      fprintf(fo, "filetype %s %s %s\n",
-         n_shexp_quote_cp(ngp->ng_id, TRU1),
-         n_shexp_quote_cp(nftp->nft_load.s, TRU1),
-         n_shexp_quote_cp(nftp->nft_save.s, TRU1));
-      }break;
    }
    n_NYD2_OU;
    return rv;
@@ -2185,272 +2142,6 @@ shortcut_expand(char const *str){
       str = NULL;
    n_NYD_OU;
    return str;
-}
-
-FL int
-c_filetype(void *vp){ /* TODO support automatic chains: .tar.gz -> .gz + .tar */
-   struct a_nag_group *ngp;
-   char **argv; /* TODO While there: let ! prefix mean: direct execlp(2) */
-   int rv;
-   n_NYD_IN;
-
-   rv = 0;
-   argv = vp;
-
-   if(*argv == NULL)
-      a_nag_group_print_all(a_NAG_T_FILETYPE, NULL);
-   else if(argv[1] == NULL){
-      if((ngp = a_nag_group_find(a_NAG_T_FILETYPE, *argv)) != NULL)
-         a_nag_group_print(ngp, n_stdout, NULL);
-      else{
-         n_err(_("No such filetype: %s\n"), n_shexp_quote_cp(*argv, FAL0));
-         rv = 1;
-      }
-   }else for(; *argv != NULL; argv += 3){
-      /* Because one hardly ever redefines, anything is stored in one chunk */
-      char const *ccp;
-      char *cp, c;
-      size_t llc, lsc;
-
-      if(argv[1] == NULL || argv[2] == NULL){
-         n_err(_("Synopsis: filetype: <extension> <load-cmd> <save-cmd>\n"));
-         rv = 1;
-         break;
-      }
-
-      /* Delete the old one, if any; don't get fooled to remove them all */
-      ccp = argv[0];
-      if(ccp[0] != '*' || ccp[1] != '\0')
-         a_nag_group_del(a_NAG_T_FILETYPE, ccp);
-
-      /* Lowercase it all (for display purposes) */
-      cp = savestr(ccp);
-      ccp = cp;
-      while((c = *cp) != '\0')
-         *cp++ = su_cs_to_lower(c);
-
-      llc = su_cs_len(argv[1]) +1;
-      lsc = su_cs_len(argv[2]) +1;
-      if(UIZ_MAX - llc <= lsc)
-         goto jenomem;
-
-      if((ngp = a_nag_group_fetch(a_NAG_T_FILETYPE, ccp, llc + lsc)) == NULL){
-jenomem:
-         n_err(_("Failed to create storage for filetype: %s\n"),
-            n_shexp_quote_cp(argv[0], FAL0));
-         rv = 1;
-      }else{
-         struct a_nag_file_type *nftp;
-
-         a_NAG_GP_TO_SUBCLASS(nftp, ngp);
-         a_NAG_GP_TO_SUBCLASS(cp, ngp);
-         cp += sizeof *nftp;
-         su_mem_copy(nftp->nft_load.s = cp, argv[1], llc);
-            cp += llc;
-            nftp->nft_load.l = --llc;
-         su_mem_copy(nftp->nft_save.s = cp, argv[2], lsc);
-            /*cp += lsc;*/
-            nftp->nft_save.l = --lsc;
-      }
-   }
-   n_NYD_OU;
-   return rv;
-}
-
-FL int
-c_unfiletype(void *vp){
-   char **argv;
-   int rv;
-   n_NYD_IN;
-
-   rv = 0;
-   argv = vp;
-
-   do if(!a_nag_group_del(a_NAG_T_FILETYPE, *argv)){
-      n_err(_("No such `filetype': %s\n"), n_shexp_quote_cp(*argv, FAL0));
-      rv = 1;
-   }while(*++argv != NULL);
-   n_NYD_OU;
-   return rv;
-}
-
-FL bool_t
-n_filetype_trial(struct n_file_type *res_or_null, char const *file){
-   struct stat stb;
-   struct a_nag_group_lookup ngl;
-   struct n_string s, *sp;
-   struct a_nag_group const *ngp;
-   ui32_t l;
-   n_NYD2_IN;
-
-   sp = n_string_creat_auto(&s);
-   sp = n_string_assign_cp(sp, file);
-   sp = n_string_push_c(sp, '.');
-   l = sp->s_len;
-
-   for(ngp = a_nag_group_go_first(a_NAG_T_FILETYPE, &ngl); ngp != NULL;
-         ngp = a_nag_group_go_next(&ngl)){
-      sp = n_string_trunc(sp, l);
-      sp = n_string_push_buf(sp, ngp->ng_id,
-            ngp->ng_subclass_off - ngp->ng_id_len_sub);
-
-      if(!stat(n_string_cp(sp), &stb) && S_ISREG(stb.st_mode)){
-         if(res_or_null != NULL){
-            struct a_nag_file_type *nftp;
-
-            a_NAG_GP_TO_SUBCLASS(nftp, ngp);
-            res_or_null->ft_ext_dat = ngp->ng_id;
-            res_or_null->ft_ext_len = ngp->ng_subclass_off - ngp->ng_id_len_sub;
-            res_or_null->ft_load_dat = nftp->nft_load.s;
-            res_or_null->ft_load_len = nftp->nft_load.l;
-            res_or_null->ft_save_dat = nftp->nft_save.s;
-            res_or_null->ft_save_len = nftp->nft_save.l;
-         }
-         goto jleave; /* TODO after v15 legacy drop: break; */
-      }
-   }
-
-   /* TODO v15 legacy code: automatic file hooks for .{bz2,gz,xz},
-    * TODO but NOT supporting *file-hook-{load,save}-EXTENSION* */
-   ngp = (struct a_nag_group*)0x1;
-
-   sp = n_string_trunc(sp, l);
-   sp = n_string_push_buf(sp, a_nag_OBSOLETE_xz.ft_ext_dat,
-         a_nag_OBSOLETE_xz.ft_ext_len);
-   if(!stat(n_string_cp(sp), &stb) && S_ISREG(stb.st_mode)){
-      n_OBSOLETE(".xz support will vanish, please use the `filetype' command");
-      if(res_or_null != NULL)
-         *res_or_null = a_nag_OBSOLETE_xz;
-      goto jleave;
-   }
-
-   sp = n_string_trunc(sp, l);
-   sp = n_string_push_buf(sp, a_nag_OBSOLETE_gz.ft_ext_dat,
-         a_nag_OBSOLETE_gz.ft_ext_len);
-   if(!stat(n_string_cp(sp), &stb) && S_ISREG(stb.st_mode)){
-      n_OBSOLETE(".gz support will vanish, please use the `filetype' command");
-      if(res_or_null != NULL)
-         *res_or_null = a_nag_OBSOLETE_gz;
-      goto jleave;
-   }
-
-   sp = n_string_trunc(sp, l);
-   sp = n_string_push_buf(sp, a_nag_OBSOLETE_bz2.ft_ext_dat,
-         a_nag_OBSOLETE_bz2.ft_ext_len);
-   if(!stat(n_string_cp(sp), &stb) && S_ISREG(stb.st_mode)){
-      n_OBSOLETE(".bz2 support will vanish, please use the `filetype' command");
-      if(res_or_null != NULL)
-         *res_or_null = a_nag_OBSOLETE_bz2;
-      goto jleave;
-   }
-
-   ngp = NULL;
-
-jleave:
-   n_NYD2_OU;
-   return (ngp != NULL);
-}
-
-FL bool_t
-n_filetype_exists(struct n_file_type *res_or_null, char const *file){
-   char const *ext, *lext;
-   n_NYD2_IN;
-
-   if((ext = su_cs_rfind_c(file, '/')) != NULL)
-      file = ++ext;
-
-   for(lext = NULL; (ext = su_cs_find_c(file, '.')) != NULL;
-         lext = file = ext){
-      struct a_nag_group const *ngp;
-
-      if((ngp = a_nag_group_find(a_NAG_T_FILETYPE, ++ext)) != NULL){
-         lext = ext;
-         if(res_or_null != NULL){
-            struct a_nag_file_type *nftp;
-
-            a_NAG_GP_TO_SUBCLASS(nftp, ngp);
-            res_or_null->ft_ext_dat = ngp->ng_id;
-            res_or_null->ft_ext_len = ngp->ng_subclass_off - ngp->ng_id_len_sub;
-            res_or_null->ft_load_dat = nftp->nft_load.s;
-            res_or_null->ft_load_len = nftp->nft_load.l;
-            res_or_null->ft_save_dat = nftp->nft_save.s;
-            res_or_null->ft_save_len = nftp->nft_save.l;
-         }
-         goto jleave; /* TODO after v15 legacy drop: break; */
-      }
-   }
-
-   /* TODO v15 legacy code: automatic file hooks for .{bz2,gz,xz},
-    * TODO as well as supporting *file-hook-{load,save}-EXTENSION* */
-   if(lext == NULL)
-      goto jleave;
-
-   if(!su_cs_cmp_case(lext, "xz")){
-      n_OBSOLETE(".xz support will vanish, please use the `filetype' command");
-      if(res_or_null != NULL)
-         *res_or_null = a_nag_OBSOLETE_xz;
-      goto jleave;
-   }else if(!su_cs_cmp_case(lext, "gz")){
-      n_OBSOLETE(".gz support will vanish, please use the `filetype' command");
-      if(res_or_null != NULL)
-         *res_or_null = a_nag_OBSOLETE_gz;
-      goto jleave;
-   }else if(!su_cs_cmp_case(lext, "bz2")){
-      n_OBSOLETE(".bz2 support will vanish, please use the `filetype' command");
-      if(res_or_null != NULL)
-         *res_or_null = a_nag_OBSOLETE_bz2;
-      goto jleave;
-   }else{
-      char const *cload, *csave;
-      char *vbuf;
-      size_t l; 
-
-#undef a_X1
-#define a_X1 "file-hook-load-"
-#undef a_X2
-#define a_X2 "file-hook-save-"
-      l = su_cs_len(lext);
-      vbuf = n_lofi_alloc(l + n_MAX(sizeof(a_X1), sizeof(a_X2)));
-
-      su_mem_copy(vbuf, a_X1, sizeof(a_X1) -1);
-      su_mem_copy(&vbuf[sizeof(a_X1) -1], lext, l);
-      vbuf[sizeof(a_X1) -1 + l] = '\0';
-      cload = n_var_vlook(vbuf, FAL0);
-
-      su_mem_copy(vbuf, a_X2, sizeof(a_X2) -1);
-      su_mem_copy(&vbuf[sizeof(a_X2) -1], lext, l);
-      vbuf[sizeof(a_X2) -1 + l] = '\0';
-      csave = n_var_vlook(vbuf, FAL0);
-
-#undef a_X2
-#undef a_X1
-      n_lofi_free(vbuf);
-
-      if((csave != NULL) | (cload != NULL)){
-         n_OBSOLETE("*file-hook-{load,save}-EXTENSION* will vanish, "
-            "please use the `filetype' command");
-
-         if(((csave != NULL) ^ (cload != NULL)) == 0){
-            if(res_or_null != NULL){
-               res_or_null->ft_ext_dat = lext;
-               res_or_null->ft_ext_len = l;
-               res_or_null->ft_load_dat = cload;
-               res_or_null->ft_load_len = su_cs_len(cload);
-               res_or_null->ft_save_dat = csave;
-               res_or_null->ft_save_len = su_cs_len(csave);
-            }
-            goto jleave;
-         }else
-            n_alert(_("Incomplete *file-hook-{load,save}-EXTENSION* for: .%s"),
-               lext);
-      }
-   }
-
-   lext = NULL;
-
-jleave:
-   n_NYD2_OU;
-   return (lext != NULL);
 }
 
 /* s-it-mode */

@@ -1778,15 +1778,6 @@ struct n_dotlock_info{
 };
 #endif
 
-struct n_file_type{
-   char const *ft_ext_dat;    /* Extension this handles, without first period */
-   size_t ft_ext_len;
-   char const *ft_load_dat;   /* And the load and save command strings */
-   size_t ft_load_len;
-   char const *ft_save_dat;
-   size_t ft_save_len;
-};
-
 struct n_go_data_ctx{
    struct su_mem_bag *gdc_membag;
    void *gdc_ifcond;                /* Saved state of conditional stack */

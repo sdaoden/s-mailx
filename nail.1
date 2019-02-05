@@ -5357,6 +5357,23 @@ compression tool and a combined compressed and encrypted format:
 .Ed
 .
 .Pp
+.Ic filetype Ns
+s also provide limited (case-sensitive) auto-completion capabilities.
+For example
+.Ql mbox.gz
+will be found for
+.Ql ? file mbox
+provided that a corresponding handler is installed.
+It will neither find
+.Ql mbox.GZ
+nor
+.Ql mbox.Gz
+however, on the other hand doing an explicit
+.Ql ? file mbox.GZ
+will find and use the handler for
+.Ql gz .
+.
+.Pp
 MBOX databases will always be protected via file-region locks
 .Pf ( Xr fcntl 2 )
 during file operations in order to avoid inconsistencies due to
@@ -5417,11 +5434,17 @@ controls the format of mailboxes yet to be created.
 .Mx
 .Mx
 .It Ic filetype , unfiletype
-\*(NQ Define or list, and remove, respectively, file handler hooks,
+\*(NQ Define, list, and remove, respectively, file handler hooks,
 which provide (shell) commands that enable \*(UA to load and save MBOX
-files from and to files with the registered file extensions;
-it will use an intermediate temporary file to store the plain data.
-The latter command removes the hooks for all given extensions,
+files from and to files with the registered file extensions, as shown
+and described for
+.Ic file .
+The extensions are used case-insensitively, yet the auto-completion
+feature of, e.g.,
+.Ic file
+will only work case-sensitively.
+An intermediate temporary file will be used to store the expanded data.
+The latter command will remove hooks for all given extensions, asterisk
 .Ql *
 will remove all existing handlers.
 .Pp
@@ -5429,7 +5452,7 @@ When used without arguments the former shows a list of all currently
 defined file hooks, with one argument the expansion of the given alias.
 Otherwise three arguments are expected, the first specifying the file
 extension for which the hook is meant, and the second and third defining
-the load- and save commands, respectively, to deal with the file type,
+the load- and save commands to deal with the file type, respectively,
 both of which must read from standard input and write to standard
 output.
 Changing hooks will not affect already opened mailboxes (\*(ID except below).

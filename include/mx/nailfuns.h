@@ -1552,15 +1552,6 @@ FL int         c_unshortcut(void *v);
 
 FL char const * shortcut_expand(char const *str);
 
-/* `(un)?filetype', and check whether file has a known (stat(2)ed) "equivalent",
- * as well as check whether (extension of) file is known, respectively;
- * res_or_null can be NULL, otherwise on success result data must be copied */
-FL int c_filetype(void *vp);
-FL int c_unfiletype(void *vp);
-
-FL bool_t n_filetype_trial(struct n_file_type *res_or_null, char const *file);
-FL bool_t n_filetype_exists(struct n_file_type *res_or_null, char const *file);
-
 /*
  * path.c
  */
