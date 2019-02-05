@@ -565,13 +565,13 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Open a new mailbox readonly, or show the current mailbox")) },
    { "Folder", &c_File, (M | T | TWYRA), 0, 1, NULL
      DS(N_("Open a new mailbox readonly, or show the current mailbox")) },
-   { "mlist", &c_mlist, (M | TWYRA), 0, MAC, NULL
+   { "mlist", &c_mlist, (M | TWYSH), 0, MAC, NULL
      DS(N_("Show all known mailing lists or define some")) },
-   { "unmlist", &c_unmlist, (M | TWYRA), 1, MAC, NULL
+   { "unmlist", &c_unmlist, (M | TWYSH), 1, MAC, NULL
      DS(N_("Un`mlist' <name-list> (* for all)")) },
-   { "mlsubscribe", &c_mlsubscribe, (M | TWYRA), 0, MAC, NULL
+   { "mlsubscribe", &c_mlsubscribe, (M | TWYSH), 0, MAC, NULL
      DS(N_("Show all mailing list subscriptions or define some")) },
-   { "unmlsubscribe", &c_unmlsubscribe, (M | TWYRA), 1, MAC, NULL
+   { "unmlsubscribe", &c_unmlsubscribe, (M | TWYSH), 1, MAC, NULL
      DS(N_("Un`mlsubscribe' <name-list> (* for all)"))},
    { "Lreply", &c_Lreply, (A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Mailing-list reply to the given <msglist>")) },

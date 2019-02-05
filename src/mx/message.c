@@ -43,6 +43,8 @@
 
 #include <su/cs.h>
 
+#include "mx/mlist.h"
+
 /* Token values returned by the scanner used for argument lists.
  * Also, sizes of scanner-related things */
 enum a_msg_token{
@@ -790,11 +792,11 @@ jnamesearch_sepfree:
                if(colp->mco_mask == 0){
                   if(colp->mco_bit & (a_MSG_S_MLIST |
                            a_MSG_S_MLSUBSCRIBE)){
-                     enum mlist_state what;
+                     enum mx_mlist_type what;
 
-                     what = (colp->mco_bit & a_MSG_S_MLIST) ? MLIST_KNOWN
-                           : MLIST_SUBSCRIBED;
-                     if(what == is_mlist_mp(mp, what))
+                     what = (colp->mco_bit & a_MSG_S_MLIST) ? mx_MLIST_KNOWN
+                           : mx_MLIST_SUBSCRIBED;
+                     if(what == mx_mlist_query_mp(mp, what))
                         goto jcolonmod_mark;
                   }
                }else if((mp->m_flag & colp->mco_mask

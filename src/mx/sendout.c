@@ -44,6 +44,7 @@
 #include <su/cs.h>
 
 #include "mx/iconv.h"
+#include "mx/mlist.h"
 
 #undef SEND_LINESIZE
 #define SEND_LINESIZE \
@@ -2305,20 +2306,20 @@ jto_fmt:
             np = np->n_flink;
 
             /* Automatically make MLIST_KNOWN List-Post: address */
-            /* XXX is_mlist_mp()?? */
-            if((ml = is_mlist(x->n_name, FAL0)) == MLIST_OTHER &&
+            /* XXX mx_mlist_query_mp()?? */
+            if((ml = mx_mlist_query(x->n_name, FAL0)) == mx_MLIST_OTHER &&
                   addr != NULL && !su_cs_cmp_case(addr, x->n_name))
-               ml = MLIST_KNOWN;
+               ml = mx_MLIST_KNOWN;
 
             /* Any non-subscribed list?  Add ourselves */
             switch(ml){
-            case MLIST_KNOWN:
+            case mx_MLIST_KNOWN:
                f |= HF_MFT_SENDER;
                /* FALLTHRU */
-            case MLIST_SUBSCRIBED:
+            case mx_MLIST_SUBSCRIBED:
                f |= a_ANYLIST;
                goto j_mft_add;
-            case MLIST_OTHER:
+            case mx_MLIST_OTHER:
                f |= a_OTHER;
                if(!(f & HF_LIST_REPLY)){
 j_mft_add:

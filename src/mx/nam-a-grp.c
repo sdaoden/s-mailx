@@ -50,20 +50,14 @@ enum a_nag_type{
    /* Main types */
    a_NAG_T_ALTERNATES = 1,
    a_NAG_T_ALIAS,
-   a_NAG_T_MLIST,
    a_NAG_T_MASK = 0x1F,
 
-   /* Subtype bits and flags */
-   a_NAG_T_SUBSCRIBE = 1u<<6,
-   a_NAG_T_REGEX = 1u<<7,
-
-   /* Extended type mask to be able to reflect what we really have; i.e., mlist
-    * can have a_NAG_T_REGEX if they are subscribed or not, but `mlsubscribe'
-    * should print out only a_NAG_T_MLIST which have the a_NAG_T_SUBSCRIBE
-    * attribute set */
-   a_NAG_T_PRINT_MASK = a_NAG_T_MASK | a_NAG_T_SUBSCRIBE
+   /* Extended type mask to be able to reflect what we really have.
+    * This is a leftover from when mlist/mlsubscribe were handled in here,
+    * i.e., being able to differentiate in between several subtypes */
+   a_NAG_T_PRINT_MASK = a_NAG_T_MASK
 };
-n_CTA(a_NAG_T_MASK >= a_NAG_T_MLIST, "Mask does not cover necessary bits");
+n_CTA(a_NAG_T_MASK >= a_NAG_T_ALIAS, "Mask does not cover necessary bits");
 
 struct a_nag_group{
    struct a_nag_group *ng_next;
@@ -91,16 +85,6 @@ struct a_nag_grp_names{
    char ngn_id[n_VFIELD_SIZE(0)];
 };
 
-#ifdef mx_HAVE_REGEX
-struct a_nag_grp_regex{
-   struct a_nag_grp_regex *ngr_last;
-   struct a_nag_grp_regex *ngr_next;
-   struct a_nag_group *ngr_mygroup; /* xxx because lists use grp_regex*! ?? */
-   size_t ngr_hits;                 /* Number of times this group matched */
-   regex_t ngr_regex;
-};
-#endif
-
 struct a_nag_group_lookup{
    struct a_nag_group **ngl_htable;
    struct a_nag_group **ngl_slot;
@@ -113,26 +97,6 @@ static struct a_nag_group *a_nag_alternates_heads[HSHSIZE];
 
 /* `alias' */
 static struct a_nag_group *a_nag_alias_heads[HSHSIZE];
-
-/* `mlist', `mlsubscribe'.  Anything is stored in the hashmap.. */
-static struct a_nag_group *a_nag_mlist_heads[HSHSIZE];
-
-/* ..but entries which have a_NAG_T_REGEX set are false lookups and will really
- * be accessed via sequential lists instead, which are type-specific for better
- * performance, but also to make it possible to have ".*@xy.org" as a mlist
- * and "(one|two)@xy.org" as a mlsubscription.
- * These lists use a bit of QOS optimization in that a matching group will
- * become relinked as the new list head if its hit count is
- *    (>= ((xy_hits / _xy_size) >> 2))
- * Note that the hit counts only count currently linked in nodes.. */
-#ifdef mx_HAVE_REGEX
-static struct a_nag_grp_regex *a_nag_mlist_regex; /* XXX use a su_list */
-static struct a_nag_grp_regex *a_nag_mlsub_regex;
-static size_t a_nag_mlist_size;
-static size_t a_nag_mlist_hits;
-static size_t a_nag_mlsub_size;
-static size_t a_nag_mlsub_hits;
-#endif
 
 /* Same name, while taking care for *allnet*? */
 static bool_t a_nag_is_same_name(char const *n1, char const *n2);
@@ -192,23 +156,6 @@ static int a_nag__group_print_qsorter(void const *a, void const *b);
  * Return number of written lines */
 static size_t a_nag_group_print(struct a_nag_group const *ngp, FILE *fo,
                struct n_string *vputsp);
-
-/* Multiplexers for list and subscribe commands */
-static int a_nag_mlmux(enum a_nag_type nt, char const **argv);
-static int a_nag_unmlmux(enum a_nag_type nt, char const **argv);
-
-/* Relinkers for the sequential match lists */
-#ifdef mx_HAVE_REGEX
-static void a_nag_mlmux_linkin(struct a_nag_group *ngp);
-static void a_nag_mlmux_linkout(struct a_nag_group *ngp);
-# define a_NAG_MLMUX_LINKIN(GP) \
-   do if((GP)->ng_type & a_NAG_T_REGEX) a_nag_mlmux_linkin(GP); while(0)
-# define a_NAG_MLMUX_LINKOUT(GP) \
-   do if((GP)->ng_type & a_NAG_T_REGEX) a_nag_mlmux_linkout(GP); while(0)
-#else
-# define a_NAG_MLMUX_LINKIN(GP)
-# define a_NAG_MLMUX_LINKOUT(GP)
-#endif
 
 static bool_t
 a_nag_is_same_name(char const *n1, char const *n2){
@@ -459,10 +406,6 @@ a_nag_group_lookup(enum a_nag_type nt, struct a_nag_group_lookup *nglp,
       case a_NAG_T_ALIAS:
          ngpa = a_nag_alias_heads;
          break;
-      case a_NAG_T_MLIST:
-         ngpa = a_nag_mlist_heads;
-         icase = TRU1;
-         break;
       }
 
       nglp->ngl_htable = ngpa;
@@ -516,9 +459,6 @@ a_nag_group_go_first(enum a_nag_type nt, struct a_nag_group_lookup *nglp){
    default:
    case a_NAG_T_ALIAS:
       ngpa = a_nag_alias_heads;
-      break;
-   case a_NAG_T_MLIST:
-      ngpa = a_nag_mlist_heads;
       break;
    }
 
@@ -579,14 +519,6 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
    case a_NAG_T_ALIAS:
       addsz += sizeof(struct a_nag_grp_names_head);
       break;
-   case a_NAG_T_MLIST:
-#ifdef mx_HAVE_REGEX
-      if(n_is_maybe_regex(id)){
-         addsz = sizeof(struct a_nag_grp_regex);
-         nt |= a_NAG_T_REGEX;
-      }
-#endif
-      break;
    }
    if(UIZ_MAX - i < addsz || UI32_MAX <= i || UI16_MAX < i - l)
       goto jleave;
@@ -597,8 +529,7 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
    ngp->ng_id_len_sub = (ui16_t)(i - --l);
    ngp->ng_type = nt;
    switch(nt & a_NAG_T_MASK){
-   case a_NAG_T_ALTERNATES:
-   case a_NAG_T_MLIST:{
+   case a_NAG_T_ALTERNATES:{
       char *cp, c;
 
       for(cp = ngp->ng_id; (c = *cp) != '\0'; ++cp)
@@ -614,25 +545,6 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
       a_NAG_GP_TO_SUBCLASS(ngnhp, ngp);
       ngnhp->ngnh_head = NULL;
    }
-#ifdef mx_HAVE_REGEX
-   else if(nt & a_NAG_T_REGEX){
-      int s;
-      struct a_nag_grp_regex *ngrp;
-
-      a_NAG_GP_TO_SUBCLASS(ngrp, ngp);
-
-      if((s = regcomp(&ngrp->ngr_regex, id,
-            REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
-         n_err(_("Invalid regular expression: %s: %s\n"),
-            n_shexp_quote_cp(id, FAL0), n_regex_err_to_doc(NULL, s));
-         n_free(ngp);
-         ngp = NULL;
-         goto jleave;
-      }
-      ngrp->ngr_mygroup = ngp;
-      a_nag_mlmux_linkin(ngp);
-   }
-#endif /* mx_HAVE_REGEX */
 
    ngp->ng_next = *ngl.ngl_slot;
    *ngl.ngl_slot = ngp;
@@ -691,16 +603,6 @@ a_nag__group_del(struct a_nag_group_lookup *nglp){
 
    if((x->ng_type & a_NAG_T_MASK) == a_NAG_T_ALIAS)
       a_nag__names_del(x);
-#ifdef mx_HAVE_REGEX
-   else if(x->ng_type & a_NAG_T_REGEX){
-      struct a_nag_grp_regex *ngrp;
-
-      a_NAG_GP_TO_SUBCLASS(ngrp, x);
-
-      regfree(&ngrp->ngr_regex);
-      a_nag_mlmux_linkout(x);
-   }
-#endif
 
    n_free(x);
    n_NYD2_OU;
@@ -753,10 +655,6 @@ a_nag_group_print_all(enum a_nag_type nt, char const *varname){
       tname = "alias";
       ngpa = a_nag_alias_heads;
       break;
-   case a_NAG_T_MLIST:
-      tname = "mlist";
-      ngpa = a_nag_mlist_heads;
-      break;
    }
 
    /* Count entries */
@@ -803,23 +701,6 @@ a_nag_group_print_all(enum a_nag_type nt, char const *varname){
 
    for(i = 0; ida[i] != NULL; ++i)
       lines += a_nag_group_print(a_nag_group_find(nt, ida[i]), fp, &s);
-
-#ifdef mx_HAVE_REGEX
-   if(varname == NULL && (nt & a_NAG_T_MASK) == a_NAG_T_MLIST){
-      if(nt & a_NAG_T_SUBSCRIBE)
-         i = (ui32_t)a_nag_mlsub_size, h = (ui32_t)a_nag_mlsub_hits;
-      else
-         i = (ui32_t)a_nag_mlist_size, h = (ui32_t)a_nag_mlist_hits;
-
-      if(i > 0 && (n_poption & n_PO_D_V)){
-         assert(fp != NULL);
-         fprintf(fp, _("# %s list regex(7) total: %u entries, %u hits\n"),
-            (nt & a_NAG_T_SUBSCRIBE ? _("Subscribed") : _("Non-subscribed")),
-            i, h);
-         ++lines;
-      }
-   }
-#endif
 
    switch(xnt & a_NAG_T_MASK){
    case a_NAG_T_ALTERNATES:
@@ -898,174 +779,10 @@ a_nag_group_print(struct a_nag_group const *ngp, FILE *fo,
       }
       putc('\n', fo);
       }break;
-   case a_NAG_T_MLIST:
-      assert(fo != NULL); /* xxx no vput yet */
-#ifdef mx_HAVE_REGEX
-      if((ngp->ng_type & a_NAG_T_REGEX) && (n_poption & n_PO_D_V)){
-         size_t i;
-         struct a_nag_grp_regex *lp, *ngrp;
-
-         lp = (ngp->ng_type & a_NAG_T_SUBSCRIBE ? a_nag_mlsub_regex
-               : a_nag_mlist_regex);
-         a_NAG_GP_TO_SUBCLASS(ngrp, ngp);
-         for(i = 1; lp != ngrp; lp = lp->ngr_next)
-            ++i;
-         fprintf(fo, "# regex(7): hits %" PRIuZ ", sort %" PRIuZ ".\n  ",
-            ngrp->ngr_hits, i);
-         ++rv;
-      }
-#endif
-      fprintf(fo, "wysh %s %s\n",
-         (ngp->ng_type & a_NAG_T_SUBSCRIBE ? "mlsubscribe" : "mlist"),
-         n_shexp_quote_cp(ngp->ng_id, TRU1));
-      break;
    }
    n_NYD2_OU;
    return rv;
 }
-
-static int
-a_nag_mlmux(enum a_nag_type nt, char const **argv){
-   struct a_nag_group *ngp;
-   char const *ecp;
-   int rv;
-   n_NYD2_IN;
-
-   rv = 0;
-   n_UNINIT(ecp, NULL);
-
-   if(*argv == NULL)
-      a_nag_group_print_all(nt, NULL);
-   else do{
-      if((ngp = a_nag_group_find(nt, *argv)) != NULL){
-         if(nt & a_NAG_T_SUBSCRIBE){
-            if(!(ngp->ng_type & a_NAG_T_SUBSCRIBE)){
-               a_NAG_MLMUX_LINKOUT(ngp);
-               ngp->ng_type |= a_NAG_T_SUBSCRIBE;
-               a_NAG_MLMUX_LINKIN(ngp);
-            }else{
-               ecp = N_("Mailing-list already `mlsubscribe'd: %s\n");
-               goto jerr;
-            }
-         }else{
-            ecp = N_("Mailing-list already `mlist'ed: %s\n");
-            goto jerr;
-         }
-      }else if(a_nag_group_fetch(nt, *argv, 0) == NULL){
-         ecp = N_("Failed to create storage for mailing-list: %s\n");
-jerr:
-         n_err(V_(ecp), n_shexp_quote_cp(*argv, FAL0));
-         rv = 1;
-      }
-   }while(*++argv != NULL);
-
-   n_NYD2_OU;
-   return rv;
-}
-
-static int
-a_nag_unmlmux(enum a_nag_type nt, char const **argv){
-   struct a_nag_group *ngp;
-   int rv;
-   n_NYD2_IN;
-
-   rv = 0;
-
-   for(; *argv != NULL; ++argv){
-      if(nt & a_NAG_T_SUBSCRIBE){
-         struct a_nag_group_lookup ngl;
-         bool_t isaster;
-
-         if(!(isaster = (**argv == '*')))
-            ngp = a_nag_group_find(nt, *argv);
-         else if((ngp = a_nag_group_go_first(nt, &ngl)) == NULL)
-            continue;
-         else if(ngp != NULL && !(ngp->ng_type & a_NAG_T_SUBSCRIBE))
-            goto jaster_entry;
-
-         if(ngp != NULL){
-jaster_redo:
-            if(ngp->ng_type & a_NAG_T_SUBSCRIBE){
-               a_NAG_MLMUX_LINKOUT(ngp);
-               ngp->ng_type &= ~a_NAG_T_SUBSCRIBE;
-               a_NAG_MLMUX_LINKIN(ngp);
-
-               if(isaster){
-jaster_entry:
-                  while((ngp = a_nag_group_go_next(&ngl)) != NULL &&
-                        !(ngp->ng_type & a_NAG_T_SUBSCRIBE))
-                     ;
-                  if(ngp != NULL)
-                     goto jaster_redo;
-               }
-            }else{
-               n_err(_("Mailing-list not `mlsubscribe'd: %s\n"),
-                  n_shexp_quote_cp(*argv, FAL0));
-               rv = 1;
-            }
-            continue;
-         }
-      }else if(a_nag_group_del(nt, *argv))
-         continue;
-      n_err(_("No such mailing-list: %s\n"), n_shexp_quote_cp(*argv, FAL0));
-      rv = 1;
-   }
-   n_NYD2_OU;
-   return rv;
-}
-
-#ifdef mx_HAVE_REGEX
-static void
-a_nag_mlmux_linkin(struct a_nag_group *ngp){
-   struct a_nag_grp_regex **lpp, *ngrp, *lhp;
-   n_NYD2_IN;
-
-   if(ngp->ng_type & a_NAG_T_SUBSCRIBE){
-      lpp = &a_nag_mlsub_regex;
-      ++a_nag_mlsub_size;
-   }else{
-      lpp = &a_nag_mlist_regex;
-      ++a_nag_mlist_size;
-   }
-
-   a_NAG_GP_TO_SUBCLASS(ngrp, ngp);
-
-   if((lhp = *lpp) != NULL){
-      (ngrp->ngr_last = lhp->ngr_last)->ngr_next = ngrp;
-      (ngrp->ngr_next = lhp)->ngr_last = ngrp;
-   }else
-      *lpp = ngrp->ngr_last = ngrp->ngr_next = ngrp;
-   ngrp->ngr_hits = 0;
-   n_NYD2_OU;
-}
-
-static void
-a_nag_mlmux_linkout(struct a_nag_group *ngp){
-   struct a_nag_grp_regex *ngrp, **lpp;
-   n_NYD2_IN;
-
-   a_NAG_GP_TO_SUBCLASS(ngrp, ngp);
-
-   if(ngp->ng_type & a_NAG_T_SUBSCRIBE){
-      lpp = &a_nag_mlsub_regex;
-      --a_nag_mlsub_size;
-      a_nag_mlsub_hits -= ngrp->ngr_hits;
-   }else{
-      lpp = &a_nag_mlist_regex;
-      --a_nag_mlist_size;
-      a_nag_mlist_hits -= ngrp->ngr_hits;
-   }
-
-   if(ngrp->ngr_next == ngrp)
-      *lpp = NULL;
-   else{
-      (ngrp->ngr_last->ngr_next = ngrp->ngr_next)->ngr_last = ngrp->ngr_last;
-      if(*lpp == ngrp)
-         *lpp = ngrp->ngr_next;
-   }
-   n_NYD2_OU;
-}
-#endif /* mx_HAVE_REGEX */
 
 FL struct name *
 nalloc(char const *str, enum gfield ntype)
@@ -1888,160 +1605,6 @@ c_unalias(void *v){
       n_err(_("No such alias: %s\n"), *argv);
       rv = 1;
    }while(*++argv != NULL);
-   n_NYD_OU;
-   return rv;
-}
-
-FL int
-c_mlist(void *v){
-   int rv;
-   n_NYD_IN;
-
-   rv = a_nag_mlmux(a_NAG_T_MLIST, v);
-   n_NYD_OU;
-   return rv;
-}
-
-FL int
-c_unmlist(void *v){
-   int rv;
-   n_NYD_IN;
-
-   rv = a_nag_unmlmux(a_NAG_T_MLIST, v);
-   n_NYD_OU;
-   return rv;
-}
-
-FL int
-c_mlsubscribe(void *v){
-   int rv;
-   n_NYD_IN;
-
-   rv = a_nag_mlmux(a_NAG_T_MLIST | a_NAG_T_SUBSCRIBE, v);
-   n_NYD_OU;
-   return rv;
-}
-
-FL int
-c_unmlsubscribe(void *v){
-   int rv;
-   n_NYD_IN;
-
-   rv = a_nag_unmlmux(a_NAG_T_MLIST | a_NAG_T_SUBSCRIBE, v);
-   n_NYD_OU;
-   return rv;
-}
-
-FL enum mlist_state
-is_mlist(char const *name, bool_t subscribed_only){
-   struct a_nag_group *ngp;
-#ifdef mx_HAVE_REGEX
-   struct a_nag_grp_regex **lpp, *ngrp;
-   bool_t re2;
-#endif
-   enum mlist_state rv;
-   n_NYD_IN;
-
-   ngp = a_nag_group_find(a_NAG_T_MLIST, name);
-   rv = (ngp != NULL) ? MLIST_KNOWN : MLIST_OTHER;
-
-   if(rv == MLIST_KNOWN){
-      if(ngp->ng_type & a_NAG_T_SUBSCRIBE)
-         rv = MLIST_SUBSCRIBED;
-      else if(subscribed_only)
-         rv = MLIST_OTHER;
-      /* Of course, if that is a regular expression it doesn't mean a thing */
-#ifdef mx_HAVE_REGEX
-      if(ngp->ng_type & a_NAG_T_REGEX)
-         rv = MLIST_OTHER;
-      else
-#endif
-         goto jleave;
-   }
-
-   /* Not in the hashmap (as something matchable), walk the lists */
-#ifdef mx_HAVE_REGEX
-   re2 = FAL0;
-   lpp = &a_nag_mlsub_regex;
-
-jregex_redo:
-   if((ngrp = *lpp) != NULL){
-      do if(regexec(&ngrp->ngr_regex, name, 0,NULL, 0) != REG_NOMATCH){
-         /* Relink as the head of this list if the hit count of this group is
-          * >= 25% of the average hit count */
-         size_t i;
-
-         if(!re2)
-            i = ++a_nag_mlsub_hits / a_nag_mlsub_size;
-         else
-            i = ++a_nag_mlist_hits / a_nag_mlist_size;
-         i >>= 2;
-
-         if(++ngrp->ngr_hits >= i && *lpp != ngrp && ngrp->ngr_next != ngrp){
-            ngrp->ngr_last->ngr_next = ngrp->ngr_next;
-            ngrp->ngr_next->ngr_last = ngrp->ngr_last;
-            (ngrp->ngr_last = (*lpp)->ngr_last)->ngr_next = ngrp;
-            (ngrp->ngr_next = *lpp)->ngr_last = ngrp;
-            *lpp = ngrp;
-         }
-         rv = !re2 ? MLIST_SUBSCRIBED : MLIST_KNOWN;
-         goto jleave;
-      }while((ngrp = ngrp->ngr_next) != *lpp);
-   }
-
-   if(!re2 && !subscribed_only){
-      re2 = TRU1;
-      lpp = &a_nag_mlist_regex;
-      goto jregex_redo;
-   }
-   assert(rv == MLIST_OTHER);
-#endif /* mx_HAVE_REGEX */
-
-jleave:
-   n_NYD_OU;
-   return rv;
-}
-
-FL enum mlist_state
-is_mlist_mp(struct message *mp, enum mlist_state what){
-   struct name *np;
-   bool_t cc;
-   enum mlist_state rv;
-   n_NYD_IN;
-
-   rv = MLIST_OTHER;
-
-   cc = FAL0;
-   np = lextract(hfield1("to", mp), GTO | GSKIN);
-jredo:
-   for(; np != NULL; np = np->n_flink){
-      switch(is_mlist(np->n_name, FAL0)){
-      case MLIST_OTHER:
-         break;
-      case MLIST_KNOWN:
-         if(what == MLIST_KNOWN || what == MLIST_OTHER){
-            if(rv == MLIST_OTHER)
-               rv = MLIST_KNOWN;
-            if(what == MLIST_KNOWN)
-               goto jleave;
-         }
-         break;
-      case MLIST_SUBSCRIBED:
-         if(what == MLIST_SUBSCRIBED || what == MLIST_OTHER){
-            if(rv != MLIST_SUBSCRIBED)
-               rv = MLIST_SUBSCRIBED;
-            goto jleave;
-         }
-         break;
-      }
-   }
-
-   if(!cc){
-      cc = TRU1;
-      np = lextract(hfield1("cc", mp), GCC | GSKIN);
-      goto jredo;
-   }
-jleave:
    n_NYD_OU;
    return rv;
 }

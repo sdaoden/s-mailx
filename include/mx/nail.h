@@ -738,12 +738,6 @@ enum mime_handler_flags {
    MIME_HDL_TMPF_UNLINK = 1u<<11 /* Delete it later again */
 };
 
-enum mlist_state {
-   MLIST_OTHER       = 0,     /* Normal address */
-   MLIST_KNOWN       = 1,     /* A known `mlist' */
-   MLIST_SUBSCRIBED  = -1     /* A `mlsubscribe'd list */
-};
-
 enum oflags {
    OF_RDONLY = 1u<<0,
    OF_WRONLY = 1u<<1,

@@ -1535,17 +1535,6 @@ FL bool_t n_alias_is_valid_name(char const *name);
 FL int         c_alias(void *v);
 FL int         c_unalias(void *v);
 
-/* `(un)?ml(ist|subscribe)', and a check whether a name is a (wanted) list;
- * give MLIST_OTHER to the latter to search for any, in which case all
- * receivers are searched until EOL or MLIST_SUBSCRIBED is seen */
-FL int         c_mlist(void *v);
-FL int         c_unmlist(void *v);
-FL int         c_mlsubscribe(void *v);
-FL int         c_unmlsubscribe(void *v);
-
-FL enum mlist_state is_mlist(char const *name, bool_t subscribed_only);
-FL enum mlist_state is_mlist_mp(struct message *mp, enum mlist_state what);
-
 /*
  * path.c
  */

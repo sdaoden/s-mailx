@@ -47,6 +47,7 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 
+#include "mx/mlist.h"
 #include "mx/ui-str.h"
 
 struct a_header_cmatch_data{
@@ -2191,7 +2192,7 @@ c_addrcodec(void *vp){
          if((np = n_extract_single(cp, GTO | GFULL)) != NULL){
             cp = np->n_name;
 
-            if(mode == 1 && is_mlist(cp, FAL0) != MLIST_OTHER)
+            if(mode == 1 && mx_mlist_query(cp, FAL0) != mx_MLIST_OTHER)
                n_pstate_err_no = su_ERR_EXIST;
          }else{
             n_pstate_err_no = su_ERR_INVAL;

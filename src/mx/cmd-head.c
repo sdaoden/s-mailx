@@ -44,6 +44,7 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 
+#include "mx/mlist.h"
 #include "mx/ui-str.h"
 
 static int        _screen;
@@ -374,10 +375,10 @@ jputcb:
          break;
       case 'L': /* ML status */
 jmlist: /* v15compat */
-         switch(is_mlist_mp(mp, MLIST_OTHER)){
-         case MLIST_OTHER: c = ' '; break;
-         case MLIST_KNOWN: c = 'l'; break;
-         case MLIST_SUBSCRIBED: c = 'L'; break;
+         switch(mx_mlist_query_mp(mp, mx_MLIST_OTHER)){
+         case mx_MLIST_OTHER: c = ' '; break;
+         case mx_MLIST_KNOWN: c = 'l'; break;
+         case mx_MLIST_SUBSCRIBED: c = 'L'; break;
          }
          goto jputcb;
       case 'l':

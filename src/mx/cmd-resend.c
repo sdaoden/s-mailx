@@ -44,6 +44,7 @@
 #include <su/cs.h>
 
 #include "mx/charsetalias.h"
+#include "mx/mlist.h"
 
 /* Modify subject we reply to to begin with Re: if it does not already */
 static char *a_crese_reedit(char const *subj);
@@ -463,8 +464,8 @@ jrecipients_done:
          else
             cp = x->n_name;
 
-         /* XXX is_mlist_mp()?? */
-         if(is_mlist(cp, FAL0) == MLIST_OTHER)
+         /* XXX mx_mlist_query_mp()?? */
+         if(mx_mlist_query(cp, FAL0) == mx_MLIST_OTHER)
             head.h_list_post = cp;
       }
    }
@@ -482,9 +483,9 @@ j_lt_redo:
          np = nhp;
          nhp = nhp->n_flink;
 
-         /* XXX is_mlist_mp()?? */
+         /* XXX mx_mlist_query_mp()?? */
          if((cp != NULL && !su_cs_cmp_case(cp, np->n_name)) ||
-               is_mlist(np->n_name, FAL0) != MLIST_OTHER){
+               mx_mlist_query(np->n_name, FAL0) != mx_MLIST_OTHER){
             if((np->n_blink = tail) != NULL)
                tail->n_flink = np;
             else
