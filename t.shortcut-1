@@ -1,0 +1,23 @@
+1
+0/NONE
+0/NONE
+0/NONE
+0/NONE
+2
+shortcut file1 expansion-of-file1
+0/NONE
+shortcut file2 expansion-of-file2
+0/NONE
+shortcut file3 expansion-of-file3
+0/NONE
+shortcut file4 'expansion of file4'
+0/NONE
+shortcut 'file 5' 'expansion of file5'
+0/NONE
+3
+shortcut 'file 5' 'expansion of file5'
+shortcut file1 expansion-of-file1
+shortcut file2 expansion-of-file2
+shortcut file3 expansion-of-file3
+shortcut file4 'expansion of file4'
+0/NONE
