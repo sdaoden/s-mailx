@@ -1,0 +1,31 @@
+1
+0/NONE
+charsetalias latin1 latin15
+0/NONE
+charsetalias latin1 latin15
+0/NONE
+2
+0/NONE
+charsetalias cp1252 latin1
+0/NONE
+charsetalias latin15 utf8
+0/NONE
+charsetalias utf8 utf16
+0/NONE
+3
+charsetalias cp1252 utf16
+0/NONE
+charsetalias latin15 utf16
+0/NONE
+charsetalias utf8 utf16
+0/NONE
+4
+charsetalias latin1 latin15
+0/NONE
+charsetalias latin1 utf16
+0/NONE
+0/NONE
+charsetalias latin1 latin15
+0/NONE
+charsetalias latin1 latin15
+0/NONE
