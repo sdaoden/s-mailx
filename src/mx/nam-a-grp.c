@@ -53,7 +53,6 @@ enum a_nag_type{
    a_NAG_T_ALIAS,
    a_NAG_T_MLIST,
    a_NAG_T_SHORTCUT,
-   a_NAG_T_CHARSETALIAS,
    a_NAG_T_FILETYPE,
    a_NAG_T_MASK = 0x1F,
 
@@ -161,9 +160,6 @@ static size_t a_nag_mlsub_hits;
 
 /* `shortcut' */
 static struct a_nag_group *a_nag_shortcut_heads[HSHSIZE];
-
-/* `charsetalias' */
-static struct a_nag_group *a_nag_charsetalias_heads[HSHSIZE];
 
 /* `filetype' */
 static struct a_nag_group *a_nag_filetype_heads[HSHSIZE];
@@ -503,10 +499,6 @@ a_nag_group_lookup(enum a_nag_type nt, struct a_nag_group_lookup *nglp,
       case a_NAG_T_SHORTCUT:
          ngpa = a_nag_shortcut_heads;
          break;
-      case a_NAG_T_CHARSETALIAS:
-         ngpa = a_nag_charsetalias_heads;
-         icase = TRU1;
-         break;
       case a_NAG_T_FILETYPE:
          ngpa = a_nag_filetype_heads;
          icase = TRU1;
@@ -574,9 +566,6 @@ a_nag_group_go_first(enum a_nag_type nt, struct a_nag_group_lookup *nglp){
    case a_NAG_T_SHORTCUT:
       ngpa = a_nag_shortcut_heads;
       break;
-   case a_NAG_T_CHARSETALIAS:
-      ngpa = a_nag_charsetalias_heads;
-      break;
    case a_NAG_T_FILETYPE:
       ngpa = a_nag_filetype_heads;
       break;
@@ -635,7 +624,6 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
    switch(nt & a_NAG_T_MASK){
    case a_NAG_T_ALTERNATES:
    case a_NAG_T_SHORTCUT:
-   case a_NAG_T_CHARSETALIAS:
    default:
       break;
    case a_NAG_T_COMMANDALIAS:
@@ -667,7 +655,6 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
    switch(nt & a_NAG_T_MASK){
    case a_NAG_T_ALTERNATES:
    case a_NAG_T_MLIST:
-   case a_NAG_T_CHARSETALIAS:
    case a_NAG_T_FILETYPE:{
       char *cp, c;
 
@@ -834,10 +821,6 @@ a_nag_group_print_all(enum a_nag_type nt, char const *varname){
    case a_NAG_T_SHORTCUT:
       tname = "shortcut";
       ngpa = a_nag_shortcut_heads;
-      break;
-   case a_NAG_T_CHARSETALIAS:
-      tname = "charsetalias";
-      ngpa = a_nag_charsetalias_heads;
       break;
    case a_NAG_T_FILETYPE:
       tname = "filetype";
@@ -1020,12 +1003,6 @@ a_nag_group_print(struct a_nag_group const *ngp, FILE *fo,
       a_NAG_GP_TO_SUBCLASS(cp, ngp);
       fprintf(fo, "wysh shortcut %s %s\n",
          ngp->ng_id, n_shexp_quote_cp(cp, TRU1));
-      break;
-   case a_NAG_T_CHARSETALIAS:
-      assert(fo != NULL); /* xxx no vput yet */
-      a_NAG_GP_TO_SUBCLASS(cp, ngp);
-      fprintf(fo, "charsetalias %s %s\n",
-         n_shexp_quote_cp(ngp->ng_id, TRU1), n_shexp_quote_cp(cp, TRU1));
       break;
    case a_NAG_T_FILETYPE:{
       struct a_nag_file_type *nftp;
@@ -2351,107 +2328,6 @@ shortcut_expand(char const *str){
       str = NULL;
    n_NYD_OU;
    return str;
-}
-
-FL int
-c_charsetalias(void *vp){
-   struct a_nag_group *ngp;
-   char **argv;
-   int rv;
-   n_NYD_IN;
-
-   rv = 0;
-   argv = vp;
-
-   if(*argv == NULL)
-      a_nag_group_print_all(a_NAG_T_CHARSETALIAS, NULL);
-   else if(argv[1] == NULL){
-      if((ngp = a_nag_group_find(a_NAG_T_CHARSETALIAS, *argv)) != NULL)
-         a_nag_group_print(ngp, n_stdout, NULL);
-      else{
-         n_err(_("No such charsetalias: %s\n"), n_shexp_quote_cp(*argv, FAL0));
-         rv = 1;
-      }
-   }else for(; *argv != NULL; argv += 2){
-      /* Because one hardly ever redefines, anything is stored in one chunk */
-      char *cp;
-      size_t dstl;
-      char const *dst, *src;
-
-      if((dst = argv[1]) == NULL){
-         n_err(_("Synopsis: charsetalias: <charset> <charset-alias>\n"));
-         rv = 1;
-         break;
-      }else if((dst = n_iconv_normalize_name(dst)) == NULL){
-         n_err(_("charsetalias: invalid target charset %s\n"),
-            n_shexp_quote_cp(argv[1], FAL0));
-         rv = 1;
-         continue;
-      }else if((src = n_iconv_normalize_name(argv[0])) == NULL){
-         n_err(_("charsetalias: invalid source charset %s\n"),
-            n_shexp_quote_cp(argv[0], FAL0));
-         rv = 1;
-         continue;
-      }
-
-      /* Delete the old one, if any; don't get fooled to remove them all */
-      if(src[0] != '*' || src[1] != '\0')
-         a_nag_group_del(a_NAG_T_CHARSETALIAS, src);
-
-      dstl = su_cs_len(dst) +1;
-      if((ngp = a_nag_group_fetch(a_NAG_T_CHARSETALIAS, src, dstl)) == NULL){
-         n_err(_("Failed to create storage for charsetalias: %s\n"),
-            n_shexp_quote_cp(src, FAL0));
-         rv = 1;
-      }else{
-         a_NAG_GP_TO_SUBCLASS(cp, ngp);
-         su_mem_copy(cp, dst, dstl);
-      }
-   }
-   n_NYD_OU;
-   return rv;
-}
-
-FL int
-c_uncharsetalias(void *vp){
-   char **argv, *cp;
-   int rv;
-   n_NYD_IN;
-
-   rv = 0;
-   argv = vp;
-
-   do{
-      if((cp = n_iconv_normalize_name(*argv)) == NULL ||
-            !a_nag_group_del(a_NAG_T_CHARSETALIAS, cp)){
-         n_err(_("No such `charsetalias': %s\n"),
-            n_shexp_quote_cp(*argv, FAL0));
-         rv = 1;
-      }
-   }while(*++argv != NULL);
-   n_NYD_OU;
-   return rv;
-}
-
-FL char const *
-n_charsetalias_expand(char const *cp){
-   struct a_nag_group *ngp;
-   size_t i;
-   char const *cp_orig;
-   n_NYD_IN;
-
-   cp_orig = cp;
-
-   for(i = 0; (ngp = a_nag_group_find(a_NAG_T_CHARSETALIAS, cp)) != NULL;){
-      a_NAG_GP_TO_SUBCLASS(cp, ngp);
-      if(++i == 8) /* XXX Magic (same as for `ghost' expansion) */
-         break;
-   }
-
-   if(cp != cp_orig)
-      cp = savestr(cp);
-   n_NYD_OU;
-   return cp;
 }
 
 FL int

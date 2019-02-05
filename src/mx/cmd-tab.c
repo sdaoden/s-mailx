@@ -49,6 +49,8 @@
 
 #include <su/cs.h>
 
+#include "mx/charsetalias.h"
+
 /* Create a multiline info string about all known additional infos for lcp */
 #ifdef mx_HAVE_DOCSTRINGS
 static char const *a_ctab_cmdinfo(struct n_cmd_desc const *cdp);

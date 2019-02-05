@@ -43,7 +43,7 @@
 
 #include <su/cs.h>
 
-#include "mx/iconv.h"
+#include "mx/charsetalias.h"
 
 /* Modify subject we reply to to begin with Re: if it does not already */
 static char *a_crese_reedit(char const *subj);
@@ -321,8 +321,7 @@ a_crese_make_ref_and_cs(struct message *mp, struct header *head) /* TODO ASAP*/
    if (ok_blook(reply_in_same_charset) &&
          (ccp = hfield1("content-type", mp)) != NULL){
       if((head->h_charset = ccp = mime_param_get("charset", ccp)) != NULL){
-         if((ccp = n_iconv_normalize_name(ccp)) != NULL)
-            ccp = n_charsetalias_expand(ccp);
+         ccp = mx_charsetalias_expand(ccp, FAL0);
          head->h_charset = ccp;
       }
    }

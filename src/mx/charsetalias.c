@@ -1,0 +1,173 @@
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Implementation of charsetalias.h.
+ *@ TODO Support vput, i.e.: vput charsetalias x what-this-expands-to
+ *
+ * Copyright (c) 2017 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: ISC
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+#undef su_FILE
+#define su_FILE charsetalias
+#define mx_SOURCE
+#define mx_SOURCE_CHARSETALIAS
+
+#ifndef mx_HAVE_AMALGAMATION
+# include "mx/nail.h"
+#endif
+
+#include <su/cs.h>
+#include <su/cs-dict.h>
+
+#include "mx/iconv.h"
+
+#include "mx/charsetalias.h"
+#include "su/code-in.h"
+
+/* ..of a_csal_dp */
+#define a_CSAL_FLAGS (su_CS_DICT_OWNS | su_CS_DICT_HEAD_RESORT |\
+      su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
+#define a_CSAL_TRESHOLD_SHIFT 4
+
+struct su_cs_dict *a_csal_dp, a_csal__d; /* XXX atexit _gut() (DVL()) */
+
+static boole a_csal_print(FILE *fp, char const *key, char const *dat);
+
+static boole
+a_csal_print(FILE *fp, char const *key, char const *dat){
+   boole rv;
+   NYD2_IN;
+
+   fprintf(fp, "charsetalias %s %s\n",
+      n_shexp_quote_cp(key, TRU1), n_shexp_quote_cp(dat, TRU1));
+   rv = (ferror(fp) == 0);
+   NYD2_OU;
+   return rv;
+}
+
+FL int
+c_charsetalias(void *vp){
+   struct su_cs_dict_view dv;
+   int rv;
+   char const **argv, *key, *dat;
+   NYD_IN;
+
+   if((key = *(argv = vp)) == NIL)
+      rv = !mx_show_sorted_dict("charsetalias", a_csal_dp,
+            R(boole(*)(FILE*,char const*,void const*),&a_csal_print), NIL);
+   else if(argv[1] == NIL ||
+         (argv[2] == NIL && argv[0][0] == '-' && argv[0][1] == '\0')){
+      if(argv[1] != NIL)
+         key = argv[1];
+      dat = key;
+
+      if((key = n_iconv_normalize_name(key)) != NIL && a_csal_dp != NIL &&
+            su_cs_dict_view_find(su_cs_dict_view_setup(&dv, a_csal_dp), key)){
+         if(argv[1] == NIL)
+            dat = S(char const*,su_cs_dict_view_data(&dv));
+         else
+            dat = mx_charsetalias_expand(key, TRU1);
+
+         rv = !a_csal_print(n_stdout, key, dat);
+      }else{
+         n_err(_("No such charsetalias: %s\n"), n_shexp_quote_cp(dat, FAL0));
+         rv = 1;
+      }
+   }else{
+      if(a_csal_dp == NIL)
+         a_csal_dp = su_cs_dict_set_treshold_shift(
+               su_cs_dict_create(&a_csal__d, a_CSAL_FLAGS, &su_cs_toolbox),
+               a_CSAL_TRESHOLD_SHIFT);
+
+      for(rv = 0; key != NIL; argv += 2, key = *argv){
+         if((key = n_iconv_normalize_name(key)) == NIL){
+            n_err(_("charsetalias: invalid source charset %s\n"),
+               n_shexp_quote_cp(*argv, FAL0));
+            rv = 1;
+            continue;
+         }else if((dat = argv[1]) == NIL){
+            n_err(_("Synopsis: charsetalias: <charset> <charset-alias>\n"));
+            rv = 1;
+            break;
+         }else if((dat = n_iconv_normalize_name(dat)) == NIL){
+            n_err(_("charsetalias: %s: invalid target charset %s\n"),
+               n_shexp_quote_cp(argv[0], FAL0),
+               n_shexp_quote_cp(argv[1], FAL0));
+            rv = 1;
+            continue;
+         }
+
+         if(su_cs_dict_replace(a_csal_dp, key, C(char*,dat)) > 0){
+            n_err(_("Failed to create `charsetalias' storage: %s\n"),
+               n_shexp_quote_cp(key, FAL0));
+            rv = 1;
+         }
+      }
+   }
+
+   NYD_OU;
+   return rv;
+}
+
+FL int
+c_uncharsetalias(void *vp){
+   char const **argv, *cp, *key;
+   int rv;
+   NYD_IN;
+
+   rv = 0;
+   cp = (argv = vp)[0];
+
+   do{
+      if(cp[1] == '\0' && cp[0] == '*'){
+         if(a_csal_dp != NIL)
+            su_cs_dict_clear(a_csal_dp);
+      }else if((key = n_iconv_normalize_name(cp)) == NIL ||
+            a_csal_dp == NIL || !su_cs_dict_remove(a_csal_dp, key)){
+         n_err(_("No such `charsetalias': %s\n"), n_shexp_quote_cp(cp, FAL0));
+         rv = 1;
+      }
+   }while((cp = *++argv) != NIL);
+
+   NYD_OU;
+   return rv;
+}
+
+FL char const *
+mx_charsetalias_expand(char const *cp, boole is_normalized){
+   uz i;
+   char const *cp_orig, *dat;
+   NYD_IN;
+
+   cp_orig = cp;
+
+   if(!is_normalized)
+      cp = n_iconv_normalize_name(cp);
+
+   if(a_csal_dp != NIL)
+      for(i = 0;; ++i){
+         if((dat = S(char*,su_cs_dict_lookup(a_csal_dp, cp))) == NIL)
+            break;
+         cp = dat;
+         if(i == 8) /* XXX Magic (same as for `ghost' expansion) */
+            break;
+      }
+
+   if(cp != cp_orig)
+      cp = savestr(cp);
+   NYD_OU;
+   return cp;
+}
+
+#include "su/code-ou.h"
+/* s-it-mode */

@@ -1561,13 +1561,6 @@ FL int         c_unshortcut(void *v);
 
 FL char const * shortcut_expand(char const *str);
 
-/* `(un)?charsetalias', and try to expand a charset, return mapping or itself.
- * The charset to expand must have gone through iconv_normalize_name() */
-FL int c_charsetalias(void *vp);
-FL int c_uncharsetalias(void *vp);
-
-FL char const *n_charsetalias_expand(char const *cp);
-
 /* `(un)?filetype', and check whether file has a known (stat(2)ed) "equivalent",
  * as well as check whether (extension of) file is known, respectively;
  * res_or_null can be NULL, otherwise on success result data must be copied */

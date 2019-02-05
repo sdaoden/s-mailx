@@ -4586,23 +4586,28 @@ variables.
 .It Ic charsetalias , uncharsetalias
 \*(NQ Manage alias mappings for (conversion of)
 .Sx "Character sets" .
-Mappings are ineffective if character set conversion is not available
+Alias processing is not performed for
+.Sx "INTERNAL VARIABLES" ,
+e.g.,
+.Va charset-8bit ,
+and mappings are ineffective if character set conversion is not available
 .Pf ( Va features
 does not announce
 .Ql +iconv ) .
-Expansion happens recursively, but expansion is not performed for
-.Sx "INTERNAL VARIABLES" ,
-e.g.,
-.Va charset-8bit .
+Expansion happens recursively for cases where aliases point to other
+aliases (builtin loop limit: 8).
 .Pp
 The latter command deletes all aliases given as arguments,
-all aliases can be deleted at once with the special argument
+or all at once when given the asterisk
 .Ql * .
 The former shows the list of all currently defined aliases if used
-without arguments, the expansion of the given alias with one argument.
-Otherwise all given arguments are treated as pairs of character sets and
-their desired target alias name, creating new or changing already
-existing aliases, as necessary.
+without arguments, or the target of the given single argument;
+when given two arguments, hyphen-minus
+.Ql -
+being the first, the second is instead expanded recursively.
+In all other cases the given arguments are treated as pairs of character
+sets and their desired target alias name, creating new or updating
+already existing aliases.
 .
 .Mx
 .It Ic chdir
@@ -7853,7 +7858,7 @@ referring to the current message of the active mailbox, the so-called
 then the given message is attached as a
 .Ql message/rfc822
 MIME message part.
-The number sign must be quoted to avoid misinterpretation with the shell
+The number sign must be quoted to avoid misinterpretation as a shell
 comment character.
 .
 .Mx

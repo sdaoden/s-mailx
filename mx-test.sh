@@ -363,6 +363,7 @@ t_all() {
 
    # Operational basics with easy tests
    t_alias
+   t_charsetalias
    t_expandaddr # (after t_alias)
    t_filetype
    t_record_a_resend
@@ -3718,6 +3719,50 @@ _EOT
 
    # TODO t_alias: n_ALIAS_MAXEXP is compile-time constant,
    # TODO need to somehow provide its contents to the test, then test
+
+   t_epilog
+}
+
+t_charsetalias() {
+   t_prolog charsetalias
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+	echo 1
+	charsetalias latin1 latin15
+	echo $?/$^ERRNAME
+	charsetalias latin1
+	echo $?/$^ERRNAME
+	charsetalias - latin1
+	echo $?/$^ERRNAME
+	echo 2
+	charsetalias cp1252 latin1  latin15 utf8  utf8 utf16
+	echo $?/$^ERRNAME
+	charsetalias cp1252
+	echo $?/$^ERRNAME
+	charsetalias latin15
+	echo $?/$^ERRNAME
+	charsetalias utf8
+	echo $?/$^ERRNAME
+	echo 3
+	charsetalias - cp1252
+	echo $?/$^ERRNAME
+	charsetalias - latin15
+	echo $?/$^ERRNAME
+	charsetalias - utf8
+	echo $?/$^ERRNAME
+	echo 4
+	charsetalias latin1
+	echo $?/$^ERRNAME
+	charsetalias - latin1
+	echo $?/$^ERRNAME
+	uncharsetalias latin15
+	echo $?/$^ERRNAME
+	charsetalias latin1
+	echo $?/$^ERRNAME
+	charsetalias - latin1
+	echo $?/$^ERRNAME
+	__EOT
+   check 1 0 "${MBOX}" '3551595280 433'
 
    t_epilog
 }
