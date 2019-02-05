@@ -82,6 +82,7 @@
 #endif
 
 #include <su/cs.h>
+#include <su/cs-dict.h>
 #include <su/icodec.h>
 
 #ifdef a_AUX_RAND_USE_BUILTIN
@@ -125,6 +126,9 @@ static void a_aux_rand_init(void);
 su_SINLINE ui8_t a_aux_rand_get8(void);
 static ui32_t a_aux_rand_weak(ui32_t seed);
 #endif
+
+/* */
+static int a_aux_qsort_cpp(void const *a, void const *b);
 
 #ifdef a_AUX_RAND_USE_BUILTIN
 static void
@@ -287,6 +291,16 @@ a_aux_rand_weak(ui32_t seed){
    return seed;
 }
 #endif /* a_AUX_RAND_USE_BUILTIN */
+
+static int
+a_aux_qsort_cpp(void const *a, void const *b){
+   int rv;
+   n_NYD2_IN;
+
+   rv = su_cs_cmp(*(char**)n_UNCONST(a), *(char**)n_UNCONST(b));
+   n_NYD2_OU;
+   return rv;
+}
 
 FL void
 n_locale_init(void){
@@ -1513,5 +1527,81 @@ n_regex_err_to_doc(const regex_t *rep, int e){
    return cp;
 }
 #endif
+
+FL su_boole
+mx_show_sorted_dict(char const *cmdname, void *vdp,
+      su_boole (*ptf)(FILE *fp, char const *key, void const *dat),
+      FILE **fpp_or_nil){
+   struct su_cs_dict_view dv;
+   char const **cpp, **xcpp;
+   struct su_cs_dict *dp;
+   su_u32 lines, cnt;
+   FILE *fp;
+   su_boole rv;
+   n_NYD_IN;
+
+   rv = TRU1;
+
+   /* Continuation request? */
+   if(fpp_or_nil != su_NIL){
+      fp = *fpp_or_nil;
+      /* Final dump? */
+      if(cmdname == su_NIL){
+         lines = 0;
+         goto jdump;
+      }
+   }else
+      fp = n_stdout;
+
+   dp = su_S(struct su_cs_dict*,vdp);
+
+   if(dp == su_NIL || (cnt = su_cs_dict_count(dp)) == 0){
+      fprintf(fp, _("# no %s registered\n"), cmdname);
+      rv = (ferror(fp) == 0);
+      goto jleave;
+   }
+
+   su_cs_dict_statistics(dp);
+
+   /* TODO we need LOFI/AUTOREC TALLOC version which check overflow!!
+    * TODO these then could _really_ return NIL... */
+   if(su_U32_MAX / sizeof(*cpp) <= cnt ||
+         (cpp = su_S(char const**,n_autorec_alloc(sizeof(*cpp) * cnt))
+            ) == su_NIL){
+      rv = FAL0;
+      goto jleave;
+   }
+
+   xcpp = cpp;
+   su_CS_DICT_FOREACH(dp, &dv)
+      *xcpp++ = su_cs_dict_view_key(&dv);
+   if(cnt > 1)
+      qsort(cpp, cnt, sizeof *cpp, &a_aux_qsort_cpp);
+
+   if(fpp_or_nil == su_NIL || *fpp_or_nil == su_NIL){
+      if((fp = Ftmp(NULL, cmdname, OF_RDWR | OF_UNLINK | OF_REGISTER)
+            ) == su_NIL)
+         fp = n_stdout;
+      if(fpp_or_nil != su_NIL)
+         *fpp_or_nil = fp;
+   }
+
+   /* Create visual result */
+   lines = 0;
+
+   for(xcpp = cpp; cnt > 0; ++lines, ++xcpp, --cnt)
+      if(!(rv = (*ptf)(fp, *xcpp, su_cs_dict_lookup(dp, *xcpp))))
+         break;
+
+jdump:
+   if(fp != n_stdout && (fpp_or_nil == su_NIL || cmdname == su_NIL)){
+      page_or_print(fp, lines);
+      Fclose(fp);
+   }
+
+jleave:
+   n_NYD_OU;
+   return rv;
+}
 
 /* s-it-mode */

@@ -376,6 +376,19 @@ FL int c_errors(void *vp);
 FL char const *n_regex_err_to_doc(const regex_t *rep, int e);
 #endif
 
+/* Sort all keys of vdp (a su_cs_dict* indeed), then iterate over them, calling
+ * the given hook for each key/data pair, collecting the output and paging it
+ * to the user under the headline cmdname.
+ *
+ * Setting fpp_or_nil requests continuation support: we will act as normal but
+ * not yet dump out data, instead we will place in it a temporary file pointer;
+ * if *!=NIL we will continue (vdp likely different) unless cmdname==NIL, in
+ * which case we finally dump and remove the temporary file.
+ * TODO This should just work through su_iodevice */
+FL su_boole mx_show_sorted_dict(char const *cmdname, void *vdp,
+      su_boole (*ptf)(FILE *fp, char const *key, void const *dat),
+      FILE **fpp_or_nil);
+
 /*
  * cmd-cnd.c
  */
