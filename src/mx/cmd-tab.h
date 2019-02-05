@@ -419,9 +419,9 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Obsoleted by `unheaderpick'")) },
    { "newmail", &c_newmail, (A | T | TWYSH), 0, 0, NULL
      DS(N_("Check for new mail in current folder")) },
-   { "shortcut", &c_shortcut, (M | TWYRA), 0, MAC, NULL
-     DS(N_("Define <shortcut>s and their <expansion>, or list shortcuts")) },
-   { "unshortcut", &c_unshortcut, (M | TWYRA), 1, MAC, NULL
+   { "shortcut", &c_shortcut, (M | TWYSH), 0, MAC, NULL
+     DS(N_("Define [:<shortcut> plus <expansion>:], or list shortcuts")) },
+   { "unshortcut", &c_unshortcut, (M | TWYSH), 1, MAC, NULL
      DS(N_("Delete <shortcut-list> (* for all)")) },
    { "thread", &c_thread, (O | A | TMSGLST), 0, 0, NULL
      DS(N_("Obsoleted by `sort' \"thread\"")) },

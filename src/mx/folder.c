@@ -45,6 +45,7 @@
 
 #include <su/cs.h>
 
+#include "mx/shortcut.h"
 #include "mx/ui-str.h"
 
 /* Update mailname (if name != NULL) and displayname, return whether displayname
@@ -451,7 +452,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    /* C99 */{
       enum fexp_mode fexpm;
 
-      if((who = shortcut_expand(name)) != NULL){
+      if((who = mx_shortcut_expand(name)) != NULL){
          fexpm = FEXP_NSHORTCUT/* XXX | FEXP_NSHELL*/;
          name = who;
       }else

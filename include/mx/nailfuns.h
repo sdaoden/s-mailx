@@ -1546,12 +1546,6 @@ FL int         c_unmlsubscribe(void *v);
 FL enum mlist_state is_mlist(char const *name, bool_t subscribed_only);
 FL enum mlist_state is_mlist_mp(struct message *mp, enum mlist_state what);
 
-/* `(un)?shortcut', and check if str is one, return expansion or NULL */
-FL int         c_shortcut(void *v);
-FL int         c_unshortcut(void *v);
-
-FL char const * shortcut_expand(char const *str);
-
 /*
  * path.c
  */

@@ -6843,14 +6843,15 @@ and returns its exit status.
 .Mx
 .Mx
 .It Ic shortcut , unshortcut
-Without arguments the list of all currently defined shortcuts is
-shown, with one argument the expansion of the given shortcut.
-Otherwise all given arguments are treated as pairs of shortcuts and
-their expansions, creating new or changing already existing shortcuts,
-as necessary.
-The latter command will remove all given shortcuts, the special name
-.Ql *
-will remove all registered shortcuts.
+\*(NQ Manage the file- or pathname shortcuts as documented for
+.Ic file .
+The latter command deletes all shortcuts given as arguments,
+or all at once when given the asterisk
+.Ql * .
+The former shows the list of all currently defined shortcuts if used
+without arguments, the target of the given with a single argument.
+Otherwise arguments are treated as pairs of shortcuts and their desired
+expansion, creating new or updating already existing ones.
 .
 .Mx
 .It Ic shift

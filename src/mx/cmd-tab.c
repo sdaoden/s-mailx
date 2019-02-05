@@ -52,6 +52,7 @@
 #include "mx/charsetalias.h"
 #include "mx/commandalias.h"
 #include "mx/filetype.h"
+#include "mx/shortcut.h"
 
 /* Create a multiline info string about all known additional infos for lcp */
 #ifdef mx_HAVE_DOCSTRINGS

@@ -361,9 +361,12 @@ t_all() {
    t_binary_mainbody
    t_C_opt_customhdr
 
-   # Operational basics with easy tests
+   # Operational basics with trivial tests
    t_alias
    t_charsetalias
+   t_shortcut
+
+   # Operational basics with easy tests
    t_expandaddr # (after t_alias)
    t_filetype
    t_record_a_resend
@@ -3685,7 +3688,7 @@ t_C_opt_customhdr() {
 }
 # }}}
 
-# Operational basics with easy tests {{{
+# Operational basics with trivial tests {{{
 t_alias() {
    t_prolog alias
    TRAP_EXIT_ADDONS="./.t*"
@@ -3767,6 +3770,41 @@ t_charsetalias() {
    t_epilog
 }
 
+t_shortcut() {
+   t_prolog shortcut
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+	echo 1
+	shortcut file1 expansion-of-file1
+	echo $?/$^ERRNAME
+	shortcut file2 expansion-of-file2
+	echo $?/$^ERRNAME
+	shortcut file3 expansion-of-file3
+	echo $?/$^ERRNAME
+	shortcut   file4   'expansion of file4'  'file 5' 'expansion of file5'
+	echo $?/$^ERRNAME
+	echo 2
+	shortcut file1
+	echo $?/$^ERRNAME
+	shortcut file2
+	echo $?/$^ERRNAME
+	shortcut file3
+	echo $?/$^ERRNAME
+	shortcut file4
+	echo $?/$^ERRNAME
+	shortcut 'file 5'
+	echo $?/$^ERRNAME
+	echo 3
+	shortcut
+	echo $?/$^ERRNAME
+	__EOT
+   check 1 0 "${MBOX}" '1970515669 430'
+
+   t_epilog
+}
+# }}}
+
+# Operational basics with easy tests {{{
 t_expandaddr() {
    if have_feat uistrings; then :; else
       echo '[expandaddr]: unsupported, skip'

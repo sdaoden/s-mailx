@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ Name lists, alternates and groups: aliases, mailing lists, shortcuts.
+ *@ Name lists, alternates and groups: aliases, mailing lists.
  *@ TODO Dynamic hashmaps; names and (these) groups have _nothing_ in common!
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
@@ -51,7 +51,6 @@ enum a_nag_type{
    a_NAG_T_ALTERNATES = 1,
    a_NAG_T_ALIAS,
    a_NAG_T_MLIST,
-   a_NAG_T_SHORTCUT,
    a_NAG_T_MASK = 0x1F,
 
    /* Subtype bits and flags */
@@ -64,7 +63,7 @@ enum a_nag_type{
     * attribute set */
    a_NAG_T_PRINT_MASK = a_NAG_T_MASK | a_NAG_T_SUBSCRIBE
 };
-n_CTA(a_NAG_T_MASK >= a_NAG_T_SHORTCUT, "Mask does not cover necessary bits");
+n_CTA(a_NAG_T_MASK >= a_NAG_T_MLIST, "Mask does not cover necessary bits");
 
 struct a_nag_group{
    struct a_nag_group *ng_next;
@@ -134,9 +133,6 @@ static size_t a_nag_mlist_hits;
 static size_t a_nag_mlsub_size;
 static size_t a_nag_mlsub_hits;
 #endif
-
-/* `shortcut' */
-static struct a_nag_group *a_nag_shortcut_heads[HSHSIZE];
 
 /* Same name, while taking care for *allnet*? */
 static bool_t a_nag_is_same_name(char const *n1, char const *n2);
@@ -467,9 +463,6 @@ a_nag_group_lookup(enum a_nag_type nt, struct a_nag_group_lookup *nglp,
          ngpa = a_nag_mlist_heads;
          icase = TRU1;
          break;
-      case a_NAG_T_SHORTCUT:
-         ngpa = a_nag_shortcut_heads;
-         break;
       }
 
       nglp->ngl_htable = ngpa;
@@ -527,9 +520,6 @@ a_nag_group_go_first(enum a_nag_type nt, struct a_nag_group_lookup *nglp){
    case a_NAG_T_MLIST:
       ngpa = a_nag_mlist_heads;
       break;
-   case a_NAG_T_SHORTCUT:
-      ngpa = a_nag_shortcut_heads;
-      break;
    }
 
    nglp->ngl_htable = ngpa;
@@ -584,7 +574,6 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
    i = n_ALIGN(n_VSTRUCT_SIZEOF(struct a_nag_group, ng_id) + l);
    switch(nt & a_NAG_T_MASK){
    case a_NAG_T_ALTERNATES:
-   case a_NAG_T_SHORTCUT:
    default:
       break;
    case a_NAG_T_ALIAS:
@@ -768,10 +757,6 @@ a_nag_group_print_all(enum a_nag_type nt, char const *varname){
       tname = "mlist";
       ngpa = a_nag_mlist_heads;
       break;
-   case a_NAG_T_SHORTCUT:
-      tname = "shortcut";
-      ngpa = a_nag_shortcut_heads;
-      break;
    }
 
    /* Count entries */
@@ -878,7 +863,6 @@ a_nag__group_print_qsorter(void const *a, void const *b){
 static size_t
 a_nag_group_print(struct a_nag_group const *ngp, FILE *fo,
       struct n_string *vputsp){
-   char const *cp;
    size_t rv;
    n_NYD2_IN;
 
@@ -934,12 +918,6 @@ a_nag_group_print(struct a_nag_group const *ngp, FILE *fo,
       fprintf(fo, "wysh %s %s\n",
          (ngp->ng_type & a_NAG_T_SUBSCRIBE ? "mlsubscribe" : "mlist"),
          n_shexp_quote_cp(ngp->ng_id, TRU1));
-      break;
-   case a_NAG_T_SHORTCUT:
-      assert(fo != NULL); /* xxx no vput yet */
-      a_NAG_GP_TO_SUBCLASS(cp, ngp);
-      fprintf(fo, "wysh shortcut %s %s\n",
-         ngp->ng_id, n_shexp_quote_cp(cp, TRU1));
       break;
    }
    n_NYD2_OU;
@@ -2066,82 +2044,6 @@ jredo:
 jleave:
    n_NYD_OU;
    return rv;
-}
-
-FL int
-c_shortcut(void *vp){
-   struct a_nag_group *ngp;
-   char **argv;
-   int rv;
-   n_NYD_IN;
-
-   rv = 0;
-   argv = vp;
-
-   if(*argv == NULL)
-      a_nag_group_print_all(a_NAG_T_SHORTCUT, NULL);
-   else if(argv[1] == NULL){
-      if((ngp = a_nag_group_find(a_NAG_T_SHORTCUT, *argv)) != NULL)
-         a_nag_group_print(ngp, n_stdout, NULL);
-      else{
-         n_err(_("No such shortcut: %s\n"), n_shexp_quote_cp(*argv, FAL0));
-         rv = 1;
-      }
-   }else for(; *argv != NULL; argv += 2){
-      /* Because one hardly ever redefines, anything is stored in one chunk */
-      size_t l;
-      char *cp;
-
-      if(argv[1] == NULL){
-         n_err(_("Synopsis: shortcut: <shortcut> <expansion>\n"));
-         rv = 1;
-         break;
-      }
-      if(a_nag_group_find(a_NAG_T_SHORTCUT, *argv) != NULL)
-         a_nag_group_del(a_NAG_T_SHORTCUT, *argv);
-
-      l = su_cs_len(argv[1]) +1;
-      if((ngp = a_nag_group_fetch(a_NAG_T_SHORTCUT, *argv, l)) == NULL){
-         n_err(_("Failed to create storage for shortcut: %s\n"),
-            n_shexp_quote_cp(*argv, FAL0));
-         rv = 1;
-      }else{
-         a_NAG_GP_TO_SUBCLASS(cp, ngp);
-         su_mem_copy(cp, argv[1], l);
-      }
-   }
-   n_NYD_OU;
-   return rv;
-}
-
-FL int
-c_unshortcut(void *vp){
-   char **argv;
-   int rv;
-   n_NYD_IN;
-
-   rv = 0;
-   argv = vp;
-
-   do if(!a_nag_group_del(a_NAG_T_SHORTCUT, *argv)){
-      n_err(_("No such shortcut: %s\n"), *argv);
-      rv = 1;
-   }while(*++argv != NULL);
-   n_NYD_OU;
-   return rv;
-}
-
-FL char const *
-shortcut_expand(char const *str){
-   struct a_nag_group *ngp;
-   n_NYD_IN;
-
-   if((ngp = a_nag_group_find(a_NAG_T_SHORTCUT, str)) != NULL)
-      a_NAG_GP_TO_SUBCLASS(str, ngp);
-   else
-      str = NULL;
-   n_NYD_OU;
-   return str;
 }
 
 /* s-it-mode */
