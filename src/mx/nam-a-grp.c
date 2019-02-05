@@ -49,7 +49,6 @@
 enum a_nag_type{
    /* Main types */
    a_NAG_T_ALTERNATES = 1,
-   a_NAG_T_COMMANDALIAS,
    a_NAG_T_ALIAS,
    a_NAG_T_MLIST,
    a_NAG_T_SHORTCUT,
@@ -104,10 +103,6 @@ struct a_nag_grp_regex{
 };
 #endif
 
-struct a_nag_cmd_alias{
-   struct str nca_expand;
-};
-
 struct a_nag_file_type{
    struct str nft_load;
    struct str nft_save;
@@ -131,9 +126,6 @@ static struct n_file_type const a_nag_OBSOLETE_xz = { /* TODO v15 compat */
 
 /* `alternates' */
 static struct a_nag_group *a_nag_alternates_heads[HSHSIZE];
-
-/* `commandalias' */
-static struct a_nag_group *a_nag_commandalias_heads[HSHSIZE];
 
 /* `alias' */
 static struct a_nag_group *a_nag_alias_heads[HSHSIZE];
@@ -486,9 +478,6 @@ a_nag_group_lookup(enum a_nag_type nt, struct a_nag_group_lookup *nglp,
          icase = TRU1;
          break;
       default:
-      case a_NAG_T_COMMANDALIAS:
-         ngpa = a_nag_commandalias_heads;
-         break;
       case a_NAG_T_ALIAS:
          ngpa = a_nag_alias_heads;
          break;
@@ -554,9 +543,6 @@ a_nag_group_go_first(enum a_nag_type nt, struct a_nag_group_lookup *nglp){
       ngpa = a_nag_alternates_heads;
       break;
    default:
-   case a_NAG_T_COMMANDALIAS:
-      ngpa = a_nag_commandalias_heads;
-      break;
    case a_NAG_T_ALIAS:
       ngpa = a_nag_alias_heads;
       break;
@@ -625,9 +611,6 @@ a_nag_group_fetch(enum a_nag_type nt, char const *id, size_t addsz){
    case a_NAG_T_ALTERNATES:
    case a_NAG_T_SHORTCUT:
    default:
-      break;
-   case a_NAG_T_COMMANDALIAS:
-      addsz += sizeof(struct a_nag_cmd_alias);
       break;
    case a_NAG_T_ALIAS:
       addsz += sizeof(struct a_nag_grp_names_head);
@@ -806,10 +789,6 @@ a_nag_group_print_all(enum a_nag_type nt, char const *varname){
       ngpa = a_nag_alternates_heads;
       break;
    default:
-   case a_NAG_T_COMMANDALIAS:
-      tname = "commandalias";
-      ngpa = a_nag_commandalias_heads;
-      break;
    case a_NAG_T_ALIAS:
       tname = "alias";
       ngpa = a_nag_alias_heads;
@@ -948,15 +927,6 @@ a_nag_group_print(struct a_nag_group const *ngp, FILE *fo,
          /*vputsp =*/ n_string_push_cp(vputsp, ngp->ng_id);
       }
       rv = 0;
-      }break;
-   case a_NAG_T_COMMANDALIAS:{
-      struct a_nag_cmd_alias *ncap;
-
-      assert(fo != NULL); /* xxx no vput yet */
-      a_NAG_GP_TO_SUBCLASS(ncap, ngp);
-      fprintf(fo, "commandalias %s %s\n",
-         n_shexp_quote_cp(ngp->ng_id, TRU1),
-         n_shexp_quote_cp(ncap->nca_expand.s, TRU1));
       }break;
    case a_NAG_T_ALIAS:{
       struct a_nag_grp_names_head *ngnhp;
@@ -1885,119 +1855,6 @@ n_is_myname(char const *name){
 jleave:
    n_NYD_OU;
    return (name != NULL);
-}
-
-FL int
-c_commandalias(void *vp){
-   struct a_nag_group *ngp;
-   char const **argv, *ccp;
-   int rv;
-   n_NYD_IN;
-
-   rv = 0;
-   argv = vp;
-
-   if((ccp = *argv) == NULL){
-      a_nag_group_print_all(a_NAG_T_COMMANDALIAS, NULL);
-      goto jleave;
-   }
-
-   /* Verify the name is a valid one, and not a command modifier.
-    * NOTE: this list duplicates settings isolated somewhere else (go.c) */
-   if(*ccp == '\0' || *n_cmd_isolate(ccp) != '\0' ||
-         !su_cs_cmp_case(ccp, "ignerr") || !su_cs_cmp_case(ccp, "local") ||
-         !su_cs_cmp_case(ccp, "wysh") || !su_cs_cmp_case(ccp, "vput") ||
-         !su_cs_cmp_case(ccp, "scope") || !su_cs_cmp_case(ccp, "u")){
-      n_err(_("`commandalias': not a valid command name: %s\n"),
-         n_shexp_quote_cp(ccp, FAL0));
-      rv = 1;
-      goto jleave;
-   }
-
-   if(argv[1] == NULL){
-      if((ngp = a_nag_group_find(a_NAG_T_COMMANDALIAS, ccp)) != NULL)
-         a_nag_group_print(ngp, n_stdout, NULL);
-      else{
-         n_err(_("No such commandalias: %s\n"), n_shexp_quote_cp(ccp, FAL0));
-         rv = 1;
-      }
-   }else{
-      /* Because one hardly ever redefines, anything is stored in one chunk */
-      char *cp;
-      size_t i, len;
-
-      /* Delete the old one, if any; don't get fooled to remove them all */
-      if(ccp[0] != '*' || ccp[1] != '\0')
-         a_nag_group_del(a_NAG_T_COMMANDALIAS, ccp);
-
-      for(i = len = 0, ++argv; argv[i] != NULL; ++i)
-         len += su_cs_len(argv[i]) + 1;
-      if(len == 0)
-         len = 1;
-
-      if((ngp = a_nag_group_fetch(a_NAG_T_COMMANDALIAS, ccp, len)) == NULL){
-         n_err(_("Failed to create storage for commandalias: %s\n"),
-            n_shexp_quote_cp(ccp, FAL0));
-         rv = 1;
-      }else{
-         struct a_nag_cmd_alias *ncap;
-
-         a_NAG_GP_TO_SUBCLASS(ncap, ngp);
-         a_NAG_GP_TO_SUBCLASS(cp, ngp);
-         cp += sizeof *ncap;
-         ncap->nca_expand.s = cp;
-         ncap->nca_expand.l = len - 1;
-
-         for(len = 0; (ccp = *argv++) != NULL;)
-            if((i = su_cs_len(ccp)) > 0){
-               if(len++ != 0)
-                  *cp++ = ' ';
-               su_mem_copy(cp, ccp, i);
-               cp += i;
-            }
-         *cp = '\0';
-      }
-   }
-jleave:
-   n_NYD_OU;
-   return rv;
-}
-
-FL int
-c_uncommandalias(void *vp){
-   char **argv;
-   int rv;
-   n_NYD_IN;
-
-   rv = 0;
-   argv = vp;
-
-   do if(!a_nag_group_del(a_NAG_T_COMMANDALIAS, *argv)){
-      n_err(_("No such `commandalias': %s\n"), n_shexp_quote_cp(*argv, FAL0));
-      rv = 1;
-   }while(*++argv != NULL);
-   n_NYD_OU;
-   return rv;
-}
-
-FL char const *
-n_commandalias_exists(char const *name, struct str const **expansion_or_null){
-   struct a_nag_group *ngp;
-   n_NYD_IN;
-
-   if((ngp = a_nag_group_find(a_NAG_T_COMMANDALIAS, name)) != NULL){
-      name = ngp->ng_id;
-
-      if(expansion_or_null != NULL){
-         struct a_nag_cmd_alias *ncap;
-
-         a_NAG_GP_TO_SUBCLASS(ncap, ngp);
-         *expansion_or_null = &ncap->nca_expand;
-      }
-   }else
-      name = NULL;
-   n_NYD_OU;
-   return name;
 }
 
 FL bool_t

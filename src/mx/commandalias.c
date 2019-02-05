@@ -1,0 +1,157 @@
+/*@ S-nail - a mail user agent derived from Berkeley Mail.
+ *@ Implementation of commandalias.h.
+ *@ TODO Support vput, i.e.: vput commandalias x what-this-expands-to
+ *
+ * Copyright (c) 2017 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+ * SPDX-License-Identifier: ISC
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+#undef su_FILE
+#define su_FILE commandalias
+#define mx_SOURCE
+#define mx_SOURCE_COMMANDALIAS
+
+#ifndef mx_HAVE_AMALGAMATION
+# include "mx/nail.h"
+#endif
+
+#include <su/cs.h>
+#include <su/cs-dict.h>
+
+#include "mx/commandalias.h"
+#include "su/code-in.h"
+
+/* ..of a_cmdal_dp */
+#define a_CMDAL_FLAGS (su_CS_DICT_OWNS | su_CS_DICT_HEAD_RESORT |\
+      su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
+#define a_CMDAL_TRESHOLD_SHIFT 2
+
+struct su_cs_dict *a_cmdal_dp, a_cmdal__d; /* XXX atexit _gut() (DVL()) */
+
+static boole a_cmdal_print(FILE *fp, char const *key, char const *dat);
+
+static boole
+a_cmdal_print(FILE *fp, char const *key, char const *dat){
+   boole rv;
+   NYD2_IN;
+
+   fprintf(fp, "commandalias %s %s\n",
+      n_shexp_quote_cp(key, TRU1), n_shexp_quote_cp(dat, TRU1));
+   rv = (ferror(fp) == 0);
+   NYD2_OU;
+   return rv;
+}
+
+FL int
+c_commandalias(void *vp){
+   struct su_cs_dict_view dv;
+   struct n_string s_b, *s;
+   int rv;
+   char const **argv, *key;
+   NYD_IN;
+
+   if((key = *(argv = vp)) == NIL){
+      rv = !mx_show_sorted_dict("commandalias", a_cmdal_dp,
+            R(boole(*)(FILE*,char const*,void const*),&a_cmdal_print), NIL);
+      goto jleave;
+   }
+
+   /* Verify the name is a valid one, and not a command modifier.
+    * NOTE: duplicates command prefix handling located somewhere else (go.c) */
+   if(*key == '\0' || *n_cmd_isolate(key) != '\0')
+      goto jename;
+   else{
+      char const prefixes[][8] = {
+            "ignerr", "local", "wysh", "vput", "scope", "u"
+            };
+      uz i;
+
+      for(i = 0;;){
+         if(!su_cs_cmp_case(key, prefixes[i])){
+jename:
+            n_err(_("`commandalias': not a valid command name: %s\n"),
+               n_shexp_quote_cp(key, FAL0));
+            rv = 1;
+            goto jleave;
+         }
+         if(++i == NELEM(prefixes))
+            break;
+      }
+   }
+
+   if(argv[1] == NIL){
+      if(a_cmdal_dp != NIL &&
+            su_cs_dict_view_find(su_cs_dict_view_setup(&dv, a_cmdal_dp), key))
+         rv = !a_cmdal_print(n_stdout, key,
+               S(char const*,su_cs_dict_view_data(&dv)));
+      else{
+         n_err(_("No such commandalias: %s\n"), n_shexp_quote_cp(key, FAL0));
+         rv = 1;
+      }
+   }else{
+      if(a_cmdal_dp == NIL)
+         a_cmdal_dp = su_cs_dict_set_treshold_shift(
+               su_cs_dict_create(&a_cmdal__d, a_CMDAL_FLAGS, &su_cs_toolbox),
+               a_CMDAL_TRESHOLD_SHIFT);
+
+      s = n_string_creat_auto(&s_b);
+      s = n_string_book(s, 500); /* xxx magic */
+      while(*++argv != NIL){
+         if(s->s_len > 0)
+            s = n_string_push_c(s, ' ');
+         s = n_string_push_cp(s, *argv); /* XXX with SU string, EOVERFLOW++ !*/
+      }
+
+      if(su_cs_dict_replace(a_cmdal_dp, key, n_string_cp(s)) <= 0)
+         rv = 0;
+      else{
+         n_err(_("Failed to create `commandalias' storage: %s\n"),
+            n_shexp_quote_cp(key, FAL0));
+         rv = 1;
+      }
+
+      /*n_string_gut(s);*/
+   }
+
+jleave:
+   NYD_OU;
+   return rv;
+}
+
+FL int
+c_uncommandalias(void *vp){
+   int rv;
+   NYD_IN;
+
+   rv = !mx_unxy_dict("commandalias", a_cmdal_dp, vp);
+   NYD_OU;
+   return rv;
+}
+
+FL char const *
+mx_commandalias_exists(char const *name, char const **expansion_or_nil){
+   char const *dat;
+   NYD_IN;
+
+   if(a_cmdal_dp == NIL ||
+         (dat = S(char*,su_cs_dict_lookup(a_cmdal_dp, name))) == NIL)
+      name = NIL;
+   else if(expansion_or_nil != NIL)
+      *expansion_or_nil = dat;
+   NYD_OU;
+   return name;
+}
+
+#include "su/code-ou.h"
+/* s-it-mode */

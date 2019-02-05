@@ -1528,15 +1528,6 @@ FL struct name *n_alternates_remove(struct name *np, bool_t keep_single);
 /* Likewise, is name an alternate in broadest sense? */
 FL bool_t n_is_myname(char const *name);
 
-/* `(un)?commandalias'.
- * And whether a `commandalias' name exists, returning name or NULL, pointing
- * expansion_or_null to expansion if set: both point into internal storage */
-FL int c_commandalias(void *vp);
-FL int c_uncommandalias(void *vp);
-
-FL char const *n_commandalias_exists(char const *name,
-                  struct str const **expansion_or_null);
-
 /* Is name a valid alias */
 FL bool_t n_alias_is_valid_name(char const *name);
 
