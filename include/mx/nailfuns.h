@@ -376,6 +376,10 @@ FL int c_errors(void *vp);
 FL char const *n_regex_err_to_doc(const regex_t *rep, int e);
 #endif
 
+/* Shared code for c_unxy() which base upon su_cs_dict, e.g., `shortcut' */
+struct su_cs_dict;
+FL su_boole mx_unxy_dict(char const *cmdname, struct su_cs_dict *dp, void *vp);
+
 /* Sort all keys of vdp (a su_cs_dict* indeed), then iterate over them, calling
  * the given hook for each key/data pair, collecting the output and paging it
  * to the user under the headline cmdname.

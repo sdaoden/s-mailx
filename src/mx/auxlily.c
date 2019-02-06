@@ -1529,6 +1529,29 @@ n_regex_err_to_doc(const regex_t *rep, int e){
 #endif
 
 FL su_boole
+mx_unxy_dict(char const *cmdname, struct su_cs_dict *dp, void *vp){
+   char const **argv, *key;
+   su_boole rv;
+   n_NYD_IN;
+
+   rv = TRU1;
+   key = (argv = vp)[0];
+
+   do{
+      if(key[1] == '\0' && key[0] == '*'){
+         if(dp != su_NIL)
+            su_cs_dict_clear(dp);
+      }else if(dp == su_NIL || !su_cs_dict_remove(dp, key)){
+         n_err(_("No such `%s': %s\n"), cmdname, n_shexp_quote_cp(key, FAL0));
+         rv = FAL0;
+      }
+   }while((key = *++argv) != su_NIL);
+
+   n_NYD_OU;
+   return rv;
+}
+
+FL su_boole
 mx_show_sorted_dict(char const *cmdname, void *vdp,
       su_boole (*ptf)(FILE *fp, char const *key, void const *dat),
       FILE **fpp_or_nil){
