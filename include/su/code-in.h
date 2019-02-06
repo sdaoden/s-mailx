@@ -240,7 +240,8 @@
 #define VSTRUCT_SIZEOF su_VSTRUCT_SIZEOF
 
 /* POD TYPE SUPPORT (only if !C++) */
-#if defined su_HEADER || (defined su_SOURCE && su_C_LANG)
+#if defined su_HEADER ||\
+   ((defined su_SOURCE || defined mx_SOURCE) && su_C_LANG)
 # define ul su_ul
 # define ui su_ui
 # define us su_us
@@ -269,11 +270,13 @@
 # define up su_up
 # define sp su_sp
 
-# define FAL0 su_FAL0
-# define TRU1 su_TRU1
-# define TRUM1 su_TRUM1
+# ifndef mx_SOURCE /* TODO */
+#  define FAL0 su_FAL0
+#  define TRU1 su_TRU1
+#  define TRUM1 su_TRUM1
+# endif
 # define boole su_boole
-#endif /* defined su_HEADER || (defined su_SOURCE && su_C_LANG) */
+#endif /* su_HEADER || ((su_SOURCE || mx_SOURCE) && su_C_LANG) */
 
 #define U8_MAX su_U8_MAX
 #define S8_MIN su_S8_MIN
