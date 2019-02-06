@@ -1639,7 +1639,7 @@ asynchronously and with some other magic attached:
 .\" .Ss "Mailing lists" {{{
 .Ss "Mailing lists"
 .
-\*(UA offers some support to ease handling of mailing lists.
+There is support for handling mailing lists.
 The command
 .Ic mlist
 promotes all given arguments to known mailing lists, and
@@ -1655,7 +1655,7 @@ currently defined mailing lists.
 The
 .Va headline
 format
-.Ql \&%T
+.Ql %L
 can be used to mark out messages with configured list addresses
 in the display of
 .Ic headers .
@@ -9665,22 +9665,22 @@ The address of the message sender.
 The message thread tree structure.
 (Note that this format does not support a field width, and honours
 .Va headline-plain . )
+.It Ql %L
+Mailing list status: is the addressee of the message a known
+.Pf ( Ic mlist )
+or
+.Ic mlsubscribe Ns
+d mailing list?
 .It Ql %l
 The number of lines of the message, if available.
 .It Ql %m
 Message number.
 .It Ql %o
 The number of octets (bytes) in the message, if available.
-.It Ql %s
-Message subject (if any).
 .It Ql %S
 Message subject (if any) in double quotes.
-.It Ql \&%T
-Message recipient flags: is the addressee of the message a known or
-subscribed mailing list \(en see
-.Ic mlist
-and
-.Ic mlsubscribe .
+.It Ql %s
+Message subject (if any).
 .It Ql %t
 The position in threaded/sorted order.
 .It Ql \&%U

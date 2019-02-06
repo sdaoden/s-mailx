@@ -372,6 +372,14 @@ jputcb:
 #endif
          }
          break;
+      case 'L': /* ML status */
+jmlist: /* v15compat */
+         switch(is_mlist_mp(mp, MLIST_OTHER)){
+         case MLIST_OTHER: c = ' '; break;
+         case MLIST_KNOWN: c = 'l'; break;
+         case MLIST_SUBSCRIBED: c = 'L'; break;
+         }
+         goto jputcb;
       case 'l':
          if (n == 0)
             n = 4;
@@ -440,13 +448,10 @@ jputcb:
                wleft = 0;
          }
          break;
-      case 'T': /* Message recipient flags */
-         switch(is_mlist_mp(mp, MLIST_OTHER)){
-         case MLIST_OTHER: c = ' '; break;
-         case MLIST_KNOWN: c = 'l'; break;
-         case MLIST_SUBSCRIBED: c = 'L'; break;
-         }
-         goto jputcb;
+      case 'T':
+         n_OBSOLETE("*headline*: please use %L not %T for mailing-list "
+            "status");
+         goto jmlist;
       case 't':
          if (n == 0) {
             n = 3;
