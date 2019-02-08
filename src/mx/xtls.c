@@ -73,6 +73,9 @@ su_EMPTY_FILE()
 
 #include "mx/names.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* Compatibility shims which assume 0/-1 cannot really happen */
 #ifndef mx_HAVE_XTLS_CONF_CTX
 # ifndef SSL_OP_NO_SSLv2
@@ -1286,14 +1289,14 @@ jleave:
 }
 
 static bool_t
-a_xtls_check_host(struct sock *sp, X509 *peercert, struct url const *urlp){
+a_xtls_check_host(struct sock *sop, X509 *peercert, struct url const *urlp){
    char data[256];
    n_XTLS_STACKOF(GENERAL_NAME) *gens;
    GENERAL_NAME *gen;
    X509_NAME *subj;
    bool_t rv;
    n_NYD_IN;
-   n_UNUSED(sp);
+   n_UNUSED(sop);
 
    rv = FAL0;
 
@@ -1871,7 +1874,7 @@ n_tls_rand_bytes(void *buf, size_t blen){
 #endif
 
 FL bool_t
-n_tls_open(struct url *urlp, struct sock *sp){
+n_tls_open(struct url *urlp, struct sock *sop){
    void *confp;
    SSL_CTX *ctxp;
    const EVP_MD *fprnt_mdp;
@@ -1881,7 +1884,7 @@ n_tls_open(struct url *urlp, struct sock *sp){
    a_xtls_init();
    n_tls_set_verify_level(urlp); /* TODO should come in via URL! */
 
-   sp->s_tls = NULL;
+   sop->s_tls = NULL;
    if(urlp->url_cproto != CPROTO_CERTINFO)
       fprnt = xok_vlook(tls_fingerprint, urlp, OXM_ALL);
    else
@@ -1925,7 +1928,7 @@ n_tls_open(struct url *urlp, struct sock *sp){
       goto jleave;
    assert(confp == NULL);
 
-   if((sp->s_tls = SSL_new(ctxp)) == NULL){
+   if((sop->s_tls = SSL_new(ctxp)) == NULL){
       ssl_gen_err(_("SSL_new() failed"));
       goto jleave;
    }
@@ -1937,7 +1940,7 @@ n_tls_open(struct url *urlp, struct sock *sp){
 #ifdef SSL_CTRL_SET_TLSEXT_HOSTNAME
    if((urlp->url_flags & n_URL_TLS_MASK) &&
          (urlp->url_flags & n_URL_HOST_IS_NAME)){
-      if(!SSL_set_tlsext_host_name(sp->s_tls, urlp->url_host.s) &&
+      if(!SSL_set_tlsext_host_name(sop->s_tls, urlp->url_host.s) &&
             (n_poption & n_PO_D_V))
          n_err(_("Hostname cannot be used with ServerNameIndication "
                "TLS extension: %s\n"),
@@ -1945,9 +1948,9 @@ n_tls_open(struct url *urlp, struct sock *sp){
    }
 #endif
 
-   SSL_set_fd(sp->s_tls, sp->s_fd);
+   SSL_set_fd(sop->s_tls, sop->s_fd);
 
-   if(SSL_connect(sp->s_tls) < 0){
+   if(SSL_connect(sop->s_tls) < 0){
       ssl_gen_err(_("could not initiate TLS connection"));
       goto jerr2;
    }
@@ -1957,7 +1960,7 @@ n_tls_open(struct url *urlp, struct sock *sp){
       bool_t stay;
       X509 *peercert;
 
-      if((peercert = SSL_get_peer_certificate(sp->s_tls)) == NULL){
+      if((peercert = SSL_get_peer_certificate(sop->s_tls)) == NULL){
          n_err(_("TLS: no certificate from peer: %s\n"), urlp->url_h_p.s);
          goto jerr2;
       }
@@ -1965,7 +1968,7 @@ n_tls_open(struct url *urlp, struct sock *sp){
       stay = FAL0;
 
       if(fprnt == NULL){
-         if(!a_xtls_check_host(sp, peercert, urlp)){
+         if(!a_xtls_check_host(sop, peercert, urlp)){
             n_err(_("TLS certificate does not match: %s\n"), urlp->url_h_p.s);
             stay = n_tls_verify_decide();
          }else{
@@ -2006,7 +2009,7 @@ n_tls_open(struct url *urlp, struct sock *sp){
                n_err(_("TLS fingerprint ok\n"));
             goto jpeer_leave;
          }else if(urlp->url_cproto == CPROTO_CERTINFO)
-            sp->s_tls_finger = savestrbuf(fpmdhexbuf,
+            sop->s_tls_finger = savestrbuf(fpmdhexbuf,
                   PTR2SIZE(cp - fpmdhexbuf));
       }
 
@@ -2016,17 +2019,17 @@ jpeer_leave:
          goto jerr2;
    }
 
-   sp->s_use_tls = 1;
+   sop->s_use_tls = 1;
 jleave:
    /* We're fully setup: since we don't reuse the SSL_CTX (pooh) keep it local
     * and free it right now -- it is reference counted by sp->s_tls.. */
    SSL_CTX_free(ctxp);
 j_leave:
    n_NYD_OU;
-   return (sp->s_tls != NULL);
+   return (sop->s_tls != NULL);
 jerr2:
-   SSL_free(sp->s_tls);
-   sp->s_tls = NULL;
+   SSL_free(sop->s_tls);
+   sop->s_tls = NULL;
 jerr1:
    if(confp != NULL)
       a_xtls_conf_finish(&confp, TRU1);
@@ -2122,7 +2125,7 @@ jleave:
 FL FILE *
 smime_sign(FILE *ip, char const *addr)
 {
-   FILE *rv, *sp, *fp, *bp, *hp;
+   FILE *rv, *sfp, *fp, *bp, *hp;
    X509 *cert = NULL;
    n_XTLS_STACKOF(X509) *chain = NULL;
    EVP_PKEY *pkey = NULL;
@@ -2134,7 +2137,7 @@ smime_sign(FILE *ip, char const *addr)
    n_NYD_IN;
 
    assert(addr != NULL);
-   rv = sp = fp = bp = hp = NULL;
+   rv = sfp = fp = bp = hp = NULL;
 
    a_xtls_init();
 
@@ -2169,7 +2172,7 @@ smime_sign(FILE *ip, char const *addr)
    if ((md = a_xtls_smime_sign_digest(addr, &name)) == NULL)
       goto jleave;
 
-   if ((sp = Ftmp(NULL, "smimesign", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
+   if ((sfp = Ftmp(NULL, "smimesign", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==
          NULL) {
       n_perr(_("tempfile"), 0);
       goto jleave;
@@ -2183,7 +2186,7 @@ smime_sign(FILE *ip, char const *addr)
    pkcs7 = NULL;
 
    if ((bb = BIO_new_fp(bp, BIO_NOCLOSE)) == NULL ||
-         (sb = BIO_new_fp(sp, BIO_NOCLOSE)) == NULL) {
+         (sb = BIO_new_fp(sfp, BIO_NOCLOSE)) == NULL) {
       ssl_gen_err(_("Error creating BIO signing objects"));
       bail = TRU1;
       goto jerr;
@@ -2222,9 +2225,9 @@ jerr:
       BIO_free(bb);
    if (!bail) {
       rewind(bp);
-      fflush_rewind(sp);
-      rv = smime_sign_assemble(hp, bp, sp, name);
-      hp = bp = sp = NULL;
+      fflush_rewind(sfp);
+      rv = smime_sign_assemble(hp, bp, sfp, name);
+      hp = bp = sfp = NULL;
    }
 
 jleave:
@@ -2240,8 +2243,8 @@ jleave:
       Fclose(hp);
    if (bp != NULL)
       Fclose(bp);
-   if (sp != NULL)
-      Fclose(sp);
+   if (sfp != NULL)
+      Fclose(sfp);
    n_NYD_OU;
    return rv;
 }
@@ -2553,6 +2556,7 @@ jleave:
    n_NYD_OU;
    return rv;
 }
-#endif /* mx_HAVE_XTLS */
 
+#include "su/code-ou.h"
+#endif /* mx_HAVE_XTLS */
 /* s-it-mode */

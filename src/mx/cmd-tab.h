@@ -225,8 +225,10 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
 #define M n_CMD_ARG_M
 #define O n_CMD_ARG_O
 #define P n_CMD_ARG_P
+#undef R
 #define R n_CMD_ARG_R
 #define SC n_CMD_ARG_SC
+#undef S
 #define S n_CMD_ARG_S
 #define T n_CMD_ARG_T
 #define V n_CMD_ARG_V
@@ -838,8 +840,10 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
 #undef O
 #undef P
 #undef R
+#define R su_R
 #undef SC
 #undef S
+#define S su_S
 #undef T
 #undef V
 #undef W

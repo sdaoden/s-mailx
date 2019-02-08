@@ -52,6 +52,9 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/icodec.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 static char *           encname(struct mailbox *mp, const char *name, int same,
                            const char *box);
 static char *           encuid(struct mailbox *mp, ui64_t uid);
@@ -657,7 +660,7 @@ cache_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
    char *name, *cachedir, *eaccount;
    DIR *dirp;
    struct dirent *dp;
-   const char *cp, *bp, *sp;
+   const char *cp, *bp, *cp2;
    int namesz;
    enum okay rv = STOP;
    n_NYD_IN;
@@ -674,12 +677,12 @@ cache_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
    while ((dp = readdir(dirp)) != NULL) {
       if (dp->d_name[0] == '.')
          continue;
-      cp = sp = imap_path_decode(urlxdec(dp->d_name), NULL);
-      for (bp = base; *bp && *bp == *sp; bp++)
-         sp++;
+      cp = cp2 = imap_path_decode(urlxdec(dp->d_name), NULL);
+      for (bp = base; *bp && *bp == *cp2; bp++)
+         cp2++;
       if (*bp)
          continue;
-      cp = strip ? sp : cp;
+      cp = strip ? cp2 : cp;
       fprintf(fp, "%s\n", *cp ? cp : "INBOX");
    }
    closedir(dirp);
@@ -896,6 +899,7 @@ jleave:
    n_NYD_OU;
    return rv;
 }
-#endif /* mx_HAVE_IMAP */
 
+#include "su/code-ou.h"
+#endif /* mx_HAVE_IMAP */
 /* s-it-mode */

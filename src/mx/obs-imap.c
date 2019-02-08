@@ -62,6 +62,9 @@ su_EMPTY_FILE()
 #include "mx/iconv.h"
 #include "mx/ui-str.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 #define IMAP_ANSWER() \
 {\
    if (mp->mb_type != MB_CACHE) {\
@@ -666,20 +669,20 @@ jeincpl:
          mb64p = mb64xp = mb64p_base;
 
          while(i > 0){
-            ui8_t ul, u0, u1, u2, u3;
+            ui8_t unil, u0, u1, u2, u3;
 
-            ul = (i >= 4) ? 4 : i & 0x3;
-            i -= ul;
+            unil = (i >= 4) ? 4 : i & 0x3;
+            i -= unil;
             u0 = mb64xp[0];
             u1 = mb64xp[1];
-            u2 = (ul < 3) ? 0 : mb64xp[2];
-            u3 = (ul < 4) ? 0 : mb64xp[3];
-            mb64xp += ul;
+            u2 = (unil < 3) ? 0 : mb64xp[2];
+            u3 = (unil < 4) ? 0 : mb64xp[3];
+            mb64xp += unil;
             *mb64p++ = (u0 <<= 2) | (u1 >> 4);
-            if(ul < 3)
+            if(unil < 3)
                break;
             *mb64p++ = (u1 <<= 4) | (u2 >> 2);
-            if(ul < 4)
+            if(unil < 4)
                break;
             *mb64p++ = (u2 <<= 6, u2 &= 0xC0) | u3;
          }
@@ -4402,6 +4405,7 @@ FL char *
    n_NYD2_OU;
    return n;
 }
-#endif /* mx_HAVE_IMAP */
 
+#include "su/code-ou.h"
+#endif /* mx_HAVE_IMAP */
 /* s-it-mode */

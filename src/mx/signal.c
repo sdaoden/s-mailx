@@ -44,6 +44,9 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /*
  * TODO At the beginning of November 2015 -- for v14.9 -- i've tried for one
  * TODO and a half week to convert this codebase to SysV style signal handling,
@@ -541,4 +544,5 @@ _nyd_oncrash(int signo)
 }
 #endif /* mx_HAVE_n_NYD */
 
+#include "su/code-ou.h"
 /* s-it-mode */

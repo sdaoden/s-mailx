@@ -56,6 +56,9 @@
 #include "mx/mlist.h"
 #include "mx/names.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* Create a multiline info string about all known additional infos for lcp */
 #ifdef mx_HAVE_DOCSTRINGS
 static char const *a_ctab_cmdinfo(struct n_cmd_desc const *cdp);
@@ -75,7 +78,6 @@ static int a_ctab_c_memtrace(void *vp);
 
 /* List of all commands; but first their n_cmd_arg_desc instances */
 #include "mx/cmd-tab.h" /* $(MX_SRCDIR) */
-
 static struct n_cmd_desc const a_ctab_ctable[] = {
 #include <mx/cmd-tab.h>
 };
@@ -938,4 +940,5 @@ jleave:
    return res_no;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

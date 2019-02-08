@@ -93,6 +93,9 @@
 # include "mx/iconv.h"
 #endif
 
+/* TODO fake */
+#include "su/code-in.h"
+
 #ifdef a_AUX_RAND_USE_BUILTIN
 union rand_state{
    struct rand_arc4{
@@ -493,19 +496,19 @@ jfile:
       struct mx_filetype ft;
       struct stat stb;
       char *np;
-      size_t sz;
+      size_t i;
 
-      np = n_lofi_alloc((sz = su_cs_len(name)) + 4 +1);
-      su_mem_copy(np, name, sz + 1);
+      np = n_lofi_alloc((i = su_cs_len(name)) + 4 +1);
+      su_mem_copy(np, name, i +1);
 
       if(!stat(name, &stb)){
          if(S_ISDIR(stb.st_mode)
 #ifdef mx_HAVE_MAILDIR
-               && (su_mem_copy(&np[sz], "/tmp", 5),
+               && (su_mem_copy(&np[i], "/tmp", 5),
                   !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
-               (su_mem_copy(&np[sz], "/new", 5),
+               (su_mem_copy(&np[i], "/new", 5),
                   !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
-               (su_mem_copy(&np[sz], "/cur", 5),
+               (su_mem_copy(&np[i], "/cur", 5),
                   !stat(np, &stb) && S_ISDIR(stb.st_mode))
 #endif
                ){
@@ -1681,4 +1684,5 @@ mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp){
    return rv;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

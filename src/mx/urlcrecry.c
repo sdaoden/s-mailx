@@ -34,6 +34,9 @@
 
 #include "mx/ui-str.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 #ifdef mx_HAVE_NETRC
   /* NetBSD usr.bin/ftp/ruserpass.c uses 100 bytes for that, we need four
    * concurrently (dummy, host, user, pass), so make it a KB */
@@ -67,7 +70,7 @@ static struct nrc_node  *_nrc_list;
 /* Find the last @ before a slash
  * TODO Casts off the const but this is ok here; obsolete function! */
 #ifdef mx_HAVE_SOCKETS /* temporary (we'll have file://..) */
-static char *           _url_last_at_before_slash(char const *sp);
+static char *           _url_last_at_before_slash(char const *cp);
 #endif
 
 #ifdef mx_HAVE_NETRC
@@ -97,21 +100,20 @@ static bool_t           _agent_shell_lookup(struct url *urlp, char const *comm);
 
 #ifdef mx_HAVE_SOCKETS
 static char *
-_url_last_at_before_slash(char const *sp)
-{
-   char const *cp;
+_url_last_at_before_slash(char const *cp){
+   char const *xcp;
    char c;
-   n_NYD2_IN;
+   NYD2_IN;
 
-   for (cp = sp; (c = *cp) != '\0'; ++cp)
-      if (c == '/')
+   for(xcp = cp; (c = *xcp) != '\0'; ++xcp)
+      if(c == '/')
          break;
-   while (cp > sp && *--cp != '@')
+   while(xcp > cp && *--xcp != '@')
       ;
-   if (*cp != '@')
-      cp = NULL;
-   n_NYD2_OU;
-   return n_UNCONST(cp);
+   if(*xcp != '@')
+      xcp = NIL;
+   NYD2_OU;
+   return UNCONST(char*,xcp);
 }
 #endif
 
@@ -227,10 +229,10 @@ jm_h:
       }
 
       if (!seen_default && (*user != '\0' || *pass != '\0')) {
-         size_t hl = su_cs_len(host), ul = su_cs_len(user),
+         size_t hl = su_cs_len(host), usrl = su_cs_len(user),
             pl = su_cs_len(pass);
          struct nrc_node *nx = n_alloc(n_VSTRUCT_SIZEOF(struct nrc_node,
-               nrc_dat) + hl +1 + ul +1 + pl +1);
+               nrc_dat) + hl +1 + usrl +1 + pl +1);
 
          if (nhead != NULL)
             ntail->nrc_next = nx;
@@ -239,11 +241,11 @@ jm_h:
          ntail = nx;
          nx->nrc_next = NULL;
          nx->nrc_mlen = hl;
-         nx->nrc_ulen = ul;
+         nx->nrc_ulen = usrl;
          nx->nrc_plen = pl;
          su_mem_copy(nx->nrc_dat, host, ++hl);
-         su_mem_copy(nx->nrc_dat + hl, user, ++ul);
-         su_mem_copy(nx->nrc_dat + hl + ul, pass, ++pl);
+         su_mem_copy(nx->nrc_dat + hl, user, ++usrl);
+         su_mem_copy(nx->nrc_dat + hl + usrl, pass, ++pl);
       }
       if (t == NRC_MACHINE)
          goto jm_h;
@@ -1776,4 +1778,5 @@ hmac_md5(unsigned char *text, int text_len, unsigned char *key, int key_len,
 }
 #endif /* mx_HAVE_MD5 */
 
+#include "su/code-ou.h"
 /* s-it-mode */

@@ -49,6 +49,9 @@ su_EMPTY_FILE()
 #ifdef mx_HAVE_TLS
 #include <su/cs.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 struct a_tls_verify_levels{
    char const tv_name[8];
    enum n_tls_verify_level tv_level;
@@ -183,7 +186,7 @@ jleave:
 }
 
 FL FILE *
-smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp, char const *message_digest)
+smime_sign_assemble(FILE *hp, FILE *bp, FILE *tsp, char const *message_digest)
 {
    char *boundary;
    int c, lastc = EOF;
@@ -216,9 +219,9 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp, char const *message_digest)
       "Content-Transfer-Encoding: base64\n"
       "Content-Disposition: attachment; filename=\"smime.p7s\"\n"
       "Content-Description: S/MIME digital signature\n\n", op);
-   while ((c = getc(sp)) != EOF) {
+   while ((c = getc(tsp)) != EOF) {
       if (c == '-') {
-         while ((c = getc(sp)) != EOF && c != '\n');
+         while ((c = getc(tsp)) != EOF && c != '\n');
          continue;
       }
       putc(c, op);
@@ -228,7 +231,7 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp, char const *message_digest)
 
    Fclose(hp);
    Fclose(bp);
-   Fclose(sp);
+   Fclose(tsp);
 
    fflush(op);
    if (ferror(op)) {
@@ -496,6 +499,7 @@ jeinval:
    n_pstate_err_no = su_ERR_INVAL;
    goto jleave;
 }
-#endif /* mx_HAVE_TLS */
 
+#include "su/code-ou.h"
+#endif /* mx_HAVE_TLS */
 /* s-it-mode */

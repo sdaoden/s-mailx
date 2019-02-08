@@ -53,6 +53,9 @@
 #include "mx/commandalias.h"
 #include "mx/ui-str.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 enum a_go_flags{
    a_GO_NONE,
    a_GO_FREE = 1u<<0,         /* Structure was allocated, n_free() it */
@@ -259,7 +262,7 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    /* TODO a_go_evaluate() should be splitted in multiple subfunctions,
     * TODO `eval' should be a prefix, etc., a Ctx should be passed along */
    struct str line;
-   struct n_string s, *sp;
+   struct n_string s_b, *s;
    char _wordbuf[2], *argv_stack[3], **argv_base, **argvp, *vput, *cp, *word;
    char const *alias_name;
    struct n_cmd_desc const *cdp;
@@ -298,7 +301,7 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
       gecp->gec_hist_flags = a_GO_HIST_NONE;
    else if(gecp->gec_hist_flags & a_GO_HIST_ADD)
       gecp->gec_hist_cmd = gecp->gec_hist_args = NULL;
-   sp = NULL;
+   s = NULL;
 
    /* Aliases that refer to shell commands or macro expansion restart */
 jrestart:
@@ -397,22 +400,23 @@ jrestart:
    if((gecp->gec_hist_flags & (a_GO_HIST_ADD | a_GO_HIST_INIT)
          ) == a_GO_HIST_ADD){
       if(line.l > 0){
-         sp = n_string_creat_auto(&s);
-         sp = n_string_assign_buf(sp, line.s, line.l);
-         gecp->gec_hist_args = n_string_cp(sp);
+         s = n_string_creat_auto(&s_b);
+         s = n_string_assign_buf(s, line.s, line.l);
+         gecp->gec_hist_args = n_string_cp(s);
+         /* n_string_gut(n_string_drop_ownership(s)); */
       }
 
-      sp = n_string_creat_auto(&s);
-      sp = n_string_reserve(sp, 32);
+      s = n_string_creat_auto(&s_b);
+      s = n_string_reserve(s, 32);
 
       if(flags & a_NOALIAS)
-         sp = n_string_push_c(sp, '\\');
+         s = n_string_push_c(s, '\\');
       if(flags & a_IGNERR)
-         sp = n_string_push_buf(sp, "ignerr ", sizeof("ignerr ") -1);
+         s = n_string_push_buf(s, "ignerr ", sizeof("ignerr ") -1);
       if(flags & a_WYSH)
-         sp = n_string_push_buf(sp, "wysh ", sizeof("wysh ") -1);
+         s = n_string_push_buf(s, "wysh ", sizeof("wysh ") -1);
       if(flags & a_VPUT)
-         sp = n_string_push_buf(sp, "vput ", sizeof("vput ") -1);
+         s = n_string_push_buf(s, "vput ", sizeof("vput ") -1);
       gecp->gec_hist_flags = a_GO_HIST_ADD | a_GO_HIST_INIT;
    }
 
@@ -449,10 +453,10 @@ jempty:
       if((alias_name = mx_commandalias_exists(word, &alias_exp)) != NULL){
          size_t i;
 
-         if(sp != NULL){
-            sp = n_string_push_cp(sp, word);
-            gecp->gec_hist_cmd = n_string_cp(sp);
-            sp = NULL;
+         if(s != NULL){
+            s = n_string_push_cp(s, word);
+            gecp->gec_hist_cmd = n_string_cp(s);
+            s = NULL;
          }
 
          /* And join arguments onto alias expansion */
@@ -493,10 +497,11 @@ jexec:
       goto jret0;
    }
 
-   if(sp != NULL){
-      sp = n_string_push_cp(sp, cdp->cd_name);
-      gecp->gec_hist_cmd = n_string_cp(sp);
-      sp = NULL;
+   if(s != NULL){
+      s = n_string_push_cp(s, cdp->cd_name);
+      gecp->gec_hist_cmd = n_string_cp(s);
+      /* n_string_gut(n_string_drop_ownership(s)); */
+      s = NULL;
    }
 
    nerrn = su_ERR_INVAL;
@@ -2166,7 +2171,7 @@ c_eval(void *vp){
     * TODO ARGV with shell rules, but if that is not possible then simply
     * TODO adjust argv/argc of "the CmdCtx" that we will have "exec" real cmd */
    struct a_go_eval_ctx gec;
-   struct n_string s_b, *sp;
+   struct n_string s_b, *s;
    size_t i, j;
    char const **argv, *cp;
    n_NYD_IN;
@@ -2176,18 +2181,18 @@ c_eval(void *vp){
    for(j = i = 0; (cp = argv[i]) != NULL; ++i)
       j += su_cs_len(cp);
 
-   sp = n_string_creat_auto(&s_b);
-   sp = n_string_reserve(sp, j);
+   s = n_string_creat_auto(&s_b);
+   s = n_string_reserve(s, j);
 
    for(i = 0; (cp = argv[i]) != NULL; ++i){
       if(i > 0)
-         sp = n_string_push_c(sp, ' ');
-      sp = n_string_push_cp(sp, cp);
+         s = n_string_push_c(s, ' ');
+      s = n_string_push_cp(s, cp);
    }
 
    su_mem_set(&gec, 0, sizeof gec);
-   gec.gec_line.s = n_string_cp(sp);
-   gec.gec_line.l = sp->s_len;
+   gec.gec_line.s = n_string_cp(s);
+   gec.gec_line.l = s->s_len;
    if(n_poption & n_PO_D_VV)
       n_err(_("EVAL %" PRIuZ " bytes <%s>\n"), gec.gec_line.l, gec.gec_line.s);
    (void)/* XXX */a_go_evaluate(&gec);
@@ -2478,4 +2483,5 @@ jshow:
    goto jleave;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

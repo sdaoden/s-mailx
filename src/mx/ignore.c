@@ -26,6 +26,9 @@
 
 #include <su/cs.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 struct a_ignore_type{
    ui32_t it_count;     /* Entries in .it_ht (and .it_re) */
    bool_t it_all;       /* _All_ fields ought to be _type_ (ignore/retain) */
@@ -816,4 +819,5 @@ n_ignore_lookup(struct n_ignore const *self, char const *dat, size_t len){
    return rv;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

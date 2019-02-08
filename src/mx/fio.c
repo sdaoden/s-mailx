@@ -41,6 +41,9 @@
 # include "mx/nail.h"
 #endif
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* line is a buffer with the result of fgets(). Returns the first newline or
  * the last character read */
 static size_t     _length_of_line(char const *line, size_t linesize);
@@ -147,7 +150,7 @@ FL char *
 (fgetline)(char **line, size_t *linesize, size_t *cnt, size_t *llen, FILE *fp,
    int appendnl su_DBG_LOC_ARGS_DECL)
 {
-   size_t i_llen, sz;
+   size_t i_llen, size;
    char *rv;
    n_NYD2_IN;
 
@@ -164,31 +167,31 @@ FL char *
    if ((rv = *line) == NULL || *linesize < LINESIZE)
       *line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize = LINESIZE,
             su_DBG_LOC_ARGS_ORUSE);
-   sz = (*linesize <= *cnt) ? *linesize : *cnt + 1;
-   if (sz <= 1 || fgets(rv, sz, fp) == NULL) {
+   size = (*linesize <= *cnt) ? *linesize : *cnt + 1;
+   if (size <= 1 || fgets(rv, size, fp) == NULL) {
       /* Leave llen untouched; it is used to determine whether the last line
        * was \n-terminated in some callers */
       rv = NULL;
       goto jleave;
    }
 
-   i_llen = _length_of_line(rv, sz);
+   i_llen = _length_of_line(rv, size);
    *cnt -= i_llen;
    while (rv[i_llen - 1] != '\n') {
       *line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize += 256,
             su_DBG_LOC_ARGS_ORUSE);
-      sz = *linesize - i_llen;
-      sz = (sz <= *cnt) ? sz : *cnt + 1;
-      if (sz <= 1 || fgets(rv + i_llen, sz, fp) == NULL) {
+      size = *linesize - i_llen;
+      size = (size <= *cnt) ? size : *cnt + 1;
+      if (size <= 1 || fgets(rv + i_llen, size, fp) == NULL) {
          if (appendnl) {
             rv[i_llen++] = '\n';
             rv[i_llen] = '\0';
          }
          break;
       }
-      sz = _length_of_line(rv + i_llen, sz);
-      i_llen += sz;
-      *cnt -= sz;
+      size = _length_of_line(rv + i_llen, size);
+      i_llen += size;
+      *cnt -= size;
    }
    if (llen)
       *llen = i_llen;
@@ -205,7 +208,7 @@ FL int
     * TODO should be configurable just as for fgetline(); ..or whatever..
     * TODO intwrap */
    int rv = -1;
-   long sz;
+   long size;
    n_NYD2_IN;
 
    clearerr(ibuf);
@@ -222,16 +225,16 @@ FL int
                   su_DBG_LOC_ARGS_ORUSE);
          }
 jagain:
-         sz = read(0, *linebuf + n, *linesize - n - 1);
-         if (sz > 0) {
-            n += sz;
+         size = read(0, *linebuf + n, *linesize - n - 1);
+         if (size > 0) {
+            n += size;
             (*linebuf)[n] = '\0';
             if ((*linebuf)[n - 1] == '\n') {
                n_pstate |= n_PS_READLINE_NL;
                break;
             }
          } else {
-            if (sz < 0 && su_err_no() == su_ERR_INTR)
+            if (size < 0 && su_err_no() == su_ERR_INTR)
                goto jagain;
             /* TODO eh.  what is this?  that now supposed to be a line?!? */
             if (n > 0) {
@@ -310,4 +313,5 @@ n_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len,
    return rv;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

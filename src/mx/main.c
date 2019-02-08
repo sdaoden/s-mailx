@@ -52,6 +52,9 @@
 #include "mx/iconv.h"
 #include "mx/names.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 struct a_arg{
    struct a_arg *aa_next;
    char const *aa_file;
@@ -880,40 +883,40 @@ jeMmq:
          /* FALLTHRU */
       case 'S':
          {  struct str sin;
-            struct n_string s, *sp;
+            struct n_string s_b, *s;
             char const *a[2];
             bool_t b;
 
             if(!ok_blook(v15_compat)){
                okey = a[0] = avo.avo_current_arg;
-               sp = NULL;
+               s = NIL;
             }else{
                enum n_shexp_state shs;
 
                n_autorec_relax_create();
-               sp = n_string_creat_auto(&s);
+               s = n_string_creat_auto(&s_b);
                sin.s = n_UNCONST(avo.avo_current_arg);
                sin.l = UIZ_MAX;
                shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
                      n_SHEXP_PARSE_IGNORE_EMPTY |
                      n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
-                     n_SHEXP_PARSE_QUOTE_AUTO_DSQ), sp, &sin, NULL);
+                     n_SHEXP_PARSE_QUOTE_AUTO_DSQ), s, &sin, NULL);
                if((shs & n_SHEXP_STATE_ERR_MASK) ||
                      !(shs & n_SHEXP_STATE_STOP)){
                   n_autorec_relax_gut();
                   goto je_S;
                }
-               okey = a[0] = n_string_cp_const(sp);
+               okey = a[0] = n_string_cp_const(s);
             }
 
-            a[1] = NULL;
+            a[1] = NIL;
             n_poption |= n_PO_S_FLAG_TEMPORARY;
             n_pstate |= n_PS_ROBOT;
             b = (c_set(a) == 0);
             n_pstate &= ~n_PS_ROBOT;
             n_poption &= ~n_PO_S_FLAG_TEMPORARY;
 
-            if(sp != NULL)
+            if(s != NIL)
                n_autorec_relax_gut();
             if(!b && (ok_blook(errexit) || ok_blook(posix))){
 je_S:
@@ -1288,6 +1291,8 @@ j_leave:
    n_NYD_OU;
    return n_exit_status;
 }
+
+#include "su/code-ou.h"
 
 /* Source the others in that case! */
 #ifdef mx_HAVE_AMALGAMATION

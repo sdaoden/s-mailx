@@ -57,6 +57,9 @@
 #include "mx/shortcut.h"
 #include "mx/ui-str.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* POSIX says
  *   Environment variable names used by the utilities in the Shell and
  *   Utilities volume of POSIX.1-2008 consist solely of uppercase
@@ -168,15 +171,15 @@ a_shexp_findmail(char const *user, bool_t force){
    }
 
    /* C99 */{
-      size_t ul, i;
+      size_t ulen, i;
 
-      ul = su_cs_len(user) +1;
-      i = sizeof(VAL_MAIL) -1 + 1 + ul;
+      ulen = su_cs_len(user) +1;
+      i = sizeof(VAL_MAIL) -1 + 1 + ulen;
 
       rv = n_autorec_alloc(i);
       su_mem_copy(rv, VAL_MAIL, (i = sizeof(VAL_MAIL) -1));
       rv[i] = '/';
-      su_mem_copy(&rv[++i], user, ul);
+      su_mem_copy(&rv[++i], user, ulen);
    }
 jleave:
    n_NYD2_OU;
@@ -783,22 +786,22 @@ jpush:
              * sequences etc.  For the sake of compile testing, don't enwrap in
              * mx_HAVE_ALWAYS_UNICODE_LOCALE || mx_HAVE_NATCH_CHAR */
             if(n_psonce & n_PSO_UNICODE){
-               ui32_t uc;
+               ui32_t unic;
                char const *ib2;
                size_t il2, il3;
 
                ib2 = ib;
                il2 = il;
-               if((uc = su_utf8_to_32(&ib2, &il2)) != UI32_MAX){
+               if((unic = su_utf8_to_32(&ib2, &il2)) != UI32_MAX){
                   char itoa[32];
                   char const *cp;
 
                   il2 = PTR2SIZE(&ib2[0] - &ib[0]);
-                  if((flags & a_SHEXP_QUOTE_ROUNDTRIP) || uc == 0xFFFDu){
+                  if((flags & a_SHEXP_QUOTE_ROUNDTRIP) || unic == 0xFFFDu){
                      /* Use padding to make ambiguities impossible */
                      il3 = snprintf(itoa, sizeof itoa, "\\%c%0*X",
-                           (uc > 0xFFFFu ? 'U' : 'u'),
-                           (int)(uc > 0xFFFFu ? 8 : 4), uc);
+                           (unic > 0xFFFFu ? 'U' : 'u'),
+                           (int)(unic > 0xFFFFu ? 8 : 4), unic);
                      cp = itoa;
                   }else{
                      il3 = il2;
@@ -823,19 +826,19 @@ jpush:
 #ifdef mx_HAVE_ICONV
             else if((vic.vic_indat = n_iconv_onetime_cp(n_ICONV_NONE,
                   "utf-8", ok_vlook(ttycharset), savestrbuf(ib, il))) != NULL){
-               ui32_t uc;
+               ui32_t unic;
                char const *ib2;
                size_t il2, il3;
 
                il2 = su_cs_len(ib2 = vic.vic_indat);
-               if((uc = su_utf8_to_32(&ib2, &il2)) != UI32_MAX){
+               if((unic = su_utf8_to_32(&ib2, &il2)) != UI32_MAX){
                   char itoa[32];
 
                   il2 = PTR2SIZE(&ib2[0] - &vic.vic_indat[0]);
                   /* Use padding to make ambiguities impossible */
                   il3 = snprintf(itoa, sizeof itoa, "\\%c%0*X",
-                        (uc > 0xFFFFu ? 'U' : 'u'),
-                        (int)(uc > 0xFFFFu ? 8 : 4), uc);
+                        (unic > 0xFFFFu ? 'U' : 'u'),
+                        (int)(unic > 0xFFFFu ? 8 : 4), unic);
                   u.store = n_string_push_buf(u.store, itoa, il3);
                }else
                   goto Jxseq;
@@ -1983,4 +1986,5 @@ jesynopsis:
    goto jleave;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

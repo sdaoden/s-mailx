@@ -34,6 +34,9 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/icodec.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* Not needed publically, but extends a set from nail.h */
 #define n_COLOUR_TAG_ERR ((char*)-1)
 #define a_COLOUR_TAG_IS_SPECIAL(P) (PTR2SIZE(P) >= PTR2SIZE(-3))
@@ -280,7 +283,7 @@ a_colour_mux(char **argv){
 
    /* Create mapping */
    /* C99 */{
-      size_t tl, ul, cl;
+      size_t tl, usrl, cl;
       char *bp, *cp;
 
       if(!a_colour_iso6429(ct, &cp, argv[1])){
@@ -293,7 +296,7 @@ a_colour_mux(char **argv){
       tl = (ctag != NULL && !a_COLOUR_TAG_IS_SPECIAL(ctag))
             ? su_cs_len(ctag) : 0;
       cmp = n_alloc(n_VSTRUCT_SIZEOF(struct a_colour_map, cm_buf) +
-            tl +1 + (ul = su_cs_len(argv[1])) +1 + (cl = su_cs_len(cp)) +1);
+            tl +1 + (usrl = su_cs_len(argv[1])) +1 + (cl = su_cs_len(cp)) +1);
 
       /* .cm_buf stuff */
       cmp->cm_pen.cp_dat.s = bp = cmp->cm_buf;
@@ -302,8 +305,8 @@ a_colour_mux(char **argv){
       bp += cl;
 
       cmp->cm_user_off = (ui32_t)PTR2SIZE(bp - cmp->cm_buf);
-      su_mem_copy(bp, argv[1], ++ul);
-      bp += ul;
+      su_mem_copy(bp, argv[1], ++usrl);
+      bp += usrl;
 
       if(tl > 0){
          cmp->cm_tag = bp;
@@ -1013,6 +1016,7 @@ n_colour_pen_to_str(struct n_colour_pen *self){
    n_NYD_OU;
    return rv;
 }
-#endif /* mx_HAVE_COLOUR */
 
+#include "su/code-ou.h"
+#endif /* mx_HAVE_COLOUR */
 /* s-it-mode */

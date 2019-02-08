@@ -45,6 +45,9 @@
 
 #include <su/cs.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* Expand the shell escape by expanding unescaped !'s into the last issued
  * command where possible */
 static char const *a_cmisc_bangexp(char const *cp);
@@ -104,7 +107,7 @@ jleave:
 
 static int
 a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
-   struct n_string s, *sp;
+   struct n_string s_b, *s;
    int rv;
    bool_t doerr;
    char const **argv, *varname, **ap, *cp;
@@ -112,7 +115,7 @@ a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
 
    argv = vp;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
-   sp = n_string_reserve(n_string_creat_auto(&s), 121/* XXX */);
+   s = n_string_reserve(n_string_creat_auto(&s_b), 121/* XXX */);
 #ifdef mx_HAVE_ERRORS
    doerr = (fp == n_stderr &&  (n_psonce & n_PSO_INTERACTIVE));
 #else
@@ -121,14 +124,14 @@ a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
 
    for(ap = argv; *ap != NULL; ++ap){
       if(ap != argv)
-         sp = n_string_push_c(sp, ' ');
+         s = n_string_push_c(s, ' ');
       if((cp = fexpand(*ap, FEXP_NSHORTCUT | FEXP_NVAR)) == NULL)
          cp = *ap;
-      sp = n_string_push_cp(sp, cp);
+      s = n_string_push_cp(s, cp);
    }
    if(donl)
-      sp = n_string_push_c(sp, '\n');
-   cp = n_string_cp(sp);
+      s = n_string_push_c(s, '\n');
+   cp = n_string_cp(s);
 
    if(varname == NULL){
       si32_t e;
@@ -137,7 +140,7 @@ a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
       if(doerr){
          /* xxx Ensure *log-prefix* will be placed by n_err() for next msg */
          if(donl)
-            cp = n_string_cp(n_string_trunc(sp, sp->s_len - 1));
+            cp = n_string_cp(n_string_trunc(s, s->s_len - 1));
          n_err((donl ? "%s\n" : "%s"), cp);
       }else if(fputs(cp, fp) == EOF)
          e = su_err_no();
@@ -150,7 +153,7 @@ a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
       rv = -1;
    }else{
       n_pstate_err_no = su_ERR_NONE;
-      rv = (int)sp->s_len;
+      rv = (int)s->s_len;
    }
    n_NYD2_OU;
    return rv;
@@ -287,19 +290,19 @@ c_dosh(void *v)
 
 FL int
 c_cwd(void *v){
-   struct n_string s_b, *sp;
+   struct n_string s_b, *s;
    size_t l;
    char const *varname;
    n_NYD_IN;
 
-   sp = n_string_creat_auto(&s_b);
+   s = n_string_creat_auto(&s_b);
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *(char const**)v : NULL;
    l = PATH_MAX;
 
    for(;; l += PATH_MAX){
-      sp = n_string_resize(n_string_trunc(sp, 0), l);
+      s = n_string_resize(n_string_trunc(s, 0), l);
 
-      if(getcwd(sp->s_dat, sp->s_len) == NULL){
+      if(getcwd(s->s_dat, s->s_len) == NULL){
          int e;
 
          e = su_err_no();
@@ -311,12 +314,12 @@ c_cwd(void *v){
       }
 
       if(varname != NULL){
-         if(!n_var_vset(varname, (uintptr_t)sp->s_dat))
+         if(!n_var_vset(varname, (uintptr_t)s->s_dat))
             v = NULL;
       }else{
-         l = su_cs_len(sp->s_dat);
-         sp = n_string_trunc(sp, l);
-         if(fwrite(sp->s_dat, 1, sp->s_len, n_stdout) == sp->s_len &&
+         l = su_cs_len(s->s_dat);
+         s = n_string_trunc(s, l);
+         if(fwrite(s->s_dat, 1, s->s_len, n_stdout) == s->s_len &&
                putc('\n', n_stdout) == EOF)
             v = NULL;
       }
@@ -390,15 +393,15 @@ FL int
 c_read(void * volatile vp){
    struct n_sigman sm;
    struct str trim;
-   struct n_string s, *sp;
+   struct n_string s_b, *s;
    char *linebuf;
    size_t linesize, i;
    int rv;
    char const *ifs, **argv, *cp;
    n_NYD2_IN;
 
-   sp = n_string_creat_auto(&s);
-   sp = n_string_reserve(sp, 64 -1);
+   s = n_string_creat_auto(&s_b);
+   s = n_string_reserve(s, 64 -1);
 
    ifs = ok_vlook(ifs);
    linesize = 0;
@@ -440,11 +443,11 @@ c_read(void * volatile vp){
          /* The last variable gets the remaining line less trailing IFS-WS */
          if(argv[1] == NULL){
 jitall:
-            sp = n_string_assign_buf(sp, trim.s, trim.l);
+            s = n_string_assign_buf(s, trim.s, trim.l);
             trim.l = 0;
          }else for(cp = trim.s, i = 1;; ++cp, ++i){
             if(su_cs_find_c(ifs, *cp) != NULL){
-               sp = n_string_assign_buf(sp, trim.s, i - 1);
+               s = n_string_assign_buf(s, trim.s, i - 1);
                trim.s += i;
                trim.l -= i;
                break;
@@ -453,7 +456,7 @@ jitall:
                goto jitall;
          }
 
-         if(!a_cmisc_read_set(*argv, n_string_cp(sp))){
+         if(!a_cmisc_read_set(*argv, n_string_cp(s))){
             n_pstate_err_no = su_ERR_NOTSUP;
             rv = -1;
             break;
@@ -481,15 +484,15 @@ jleave:
 FL int
 c_readall(void * vp){ /* TODO 64-bit retval */
    struct n_sigman sm;
-   struct n_string s, *sp;
+   struct n_string s_b, *s;
    char *linebuf;
    size_t linesize;
    int rv;
    char const **argv;
    n_NYD2_IN;
 
-   sp = n_string_creat_auto(&s);
-   sp = n_string_reserve(sp, 64 -1);
+   s = n_string_creat_auto(&s_b);
+   s = n_string_reserve(s, 64 -1);
 
    linesize = 0;
    linebuf = NULL;
@@ -517,7 +520,7 @@ c_readall(void * vp){ /* TODO 64-bit retval */
             n_pstate_err_no = su_ERR_BADF;
             goto jleave;
          }
-         if(sp->s_len == 0)
+         if(s->s_len == 0)
             goto jleave;
          break;
       }
@@ -527,14 +530,14 @@ c_readall(void * vp){ /* TODO 64-bit retval */
 
       if(n_UNLIKELY(rv == 0)){ /* xxx will not get*/
          if(n_go_input_is_eof()){
-            if(sp->s_len == 0){
+            if(s->s_len == 0){
                rv = -1;
                goto jleave;
             }
             break;
          }
-      }else if(n_LIKELY(UICMP(32, SI32_MAX - sp->s_len, >, rv)))
-         sp = n_string_push_buf(sp, linebuf, rv);
+      }else if(n_LIKELY(UICMP(32, SI32_MAX - s->s_len, >, rv)))
+         s = n_string_push_buf(s, linebuf, rv);
       else{
          n_pstate_err_no = su_ERR_OVERFLOW;
          rv = -1;
@@ -542,12 +545,12 @@ c_readall(void * vp){ /* TODO 64-bit retval */
       }
    }
 
-   if(!a_cmisc_read_set(argv[0], n_string_cp(sp))){
+   if(!a_cmisc_read_set(argv[0], n_string_cp(s))){
       n_pstate_err_no = su_ERR_NOTSUP;
       rv = -1;
       goto jleave;
    }
-   rv = sp->s_len;
+   rv = s->s_len;
 
    n_sigman_cleanup_ping(&sm);
 jleave:
@@ -559,40 +562,40 @@ jleave:
 }
 
 FL struct n_string *
-n_version(struct n_string *sp){
+n_version(struct n_string *s){
    n_NYD_IN;
-   sp = n_string_push_cp(sp, n_uagent);
-   sp = n_string_push_c(sp, ' ');
-   sp = n_string_push_cp(sp, ok_vlook(version));
-   sp = n_string_push_c(sp, ',');
-   sp = n_string_push_c(sp, ' ');
-   sp = n_string_push_cp(sp, ok_vlook(version_date));
-   sp = n_string_push_c(sp, ' ');
-   sp = n_string_push_c(sp, '(');
-   sp = n_string_push_cp(sp, _("build for "));
-   sp = n_string_push_cp(sp, ok_vlook(build_os));
-   sp = n_string_push_c(sp, ')');
-   sp = n_string_push_c(sp, '\n');
+   s = n_string_push_cp(s, n_uagent);
+   s = n_string_push_c(s, ' ');
+   s = n_string_push_cp(s, ok_vlook(version));
+   s = n_string_push_c(s, ',');
+   s = n_string_push_c(s, ' ');
+   s = n_string_push_cp(s, ok_vlook(version_date));
+   s = n_string_push_c(s, ' ');
+   s = n_string_push_c(s, '(');
+   s = n_string_push_cp(s, _("build for "));
+   s = n_string_push_cp(s, ok_vlook(build_os));
+   s = n_string_push_c(s, ')');
+   s = n_string_push_c(s, '\n');
    n_NYD_OU;
-   return sp;
+   return s;
 }
 
 FL int
 c_version(void *vp){
    struct utsname ut;
-   struct n_string s, *sp = &s;
+   struct n_string s_b, *s;
    int rv;
    char *iop;
    char const *cp, **arr;
    size_t i, lnlen, j;
    n_NYD_IN;
 
-   sp = n_string_creat_auto(sp);
-   sp = n_string_book(sp, 1024);
+   s = n_string_creat_auto(&s_b);
+   s = n_string_book(s, 1024);
 
    /* First two lines */
-   sp = n_version(sp);
-   sp = n_string_push_cp(sp, _("Features included (+) or not (-):\n"));
+   s = n_version(s);
+   s = n_string_push_cp(s, _("Features included (+) or not (-):\n"));
 
    /* Some lines with the features.
     * *features* starts with dummy byte to avoid + -> *folder* expansions */
@@ -610,41 +613,41 @@ c_version(void *vp){
       j = su_cs_len(cp);
 
       if((lnlen += j + 1) > 72){
-         sp = n_string_push_c(sp, '\n');
+         s = n_string_push_c(s, '\n');
          lnlen = j + 1;
       }
-      sp = n_string_push_c(sp, ' ');
-      sp = n_string_push_buf(sp, cp, j);
+      s = n_string_push_c(s, ' ');
+      s = n_string_push_buf(s, cp, j);
    }
-   sp = n_string_push_c(sp, '\n');
+   s = n_string_push_c(s, '\n');
 
    /* */
    if(n_poption & n_PO_VERB){
-      sp = n_string_push_cp(sp, "Compile: ");
-      sp = n_string_push_cp(sp, ok_vlook(build_cc));
-      sp = n_string_push_cp(sp, "\nLink: ");
-      sp = n_string_push_cp(sp, ok_vlook(build_ld));
+      s = n_string_push_cp(s, "Compile: ");
+      s = n_string_push_cp(s, ok_vlook(build_cc));
+      s = n_string_push_cp(s, "\nLink: ");
+      s = n_string_push_cp(s, ok_vlook(build_ld));
       if(*(cp = ok_vlook(build_rest)) != '\0'){
-         sp = n_string_push_cp(sp, "\nRest: ");
-         sp = n_string_push_cp(sp, cp);
+         s = n_string_push_cp(s, "\nRest: ");
+         s = n_string_push_cp(s, cp);
       }
-      sp = n_string_push_c(sp, '\n');
+      s = n_string_push_c(s, '\n');
 
       /* A trailing line with info of the running machine */
       uname(&ut);
-      sp = n_string_push_c(sp, '@');
-      sp = n_string_push_cp(sp, ut.sysname);
-      sp = n_string_push_c(sp, ' ');
-      sp = n_string_push_cp(sp, ut.release);
-      sp = n_string_push_c(sp, ' ');
-      sp = n_string_push_cp(sp, ut.version);
-      sp = n_string_push_c(sp, ' ');
-      sp = n_string_push_cp(sp, ut.machine);
-      sp = n_string_push_c(sp, '\n');
+      s = n_string_push_c(s, '@');
+      s = n_string_push_cp(s, ut.sysname);
+      s = n_string_push_c(s, ' ');
+      s = n_string_push_cp(s, ut.release);
+      s = n_string_push_c(s, ' ');
+      s = n_string_push_cp(s, ut.version);
+      s = n_string_push_c(s, ' ');
+      s = n_string_push_cp(s, ut.machine);
+      s = n_string_push_c(s, '\n');
    }
 
    /* Done */
-   cp = n_string_cp(sp);
+   cp = n_string_cp(s);
 
    if(n_pstate & n_PS_ARGMOD_VPUT){
       if(n_var_vset(*(char const**)vp, (uintptr_t)cp))
@@ -663,4 +666,5 @@ c_version(void *vp){
    return rv;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

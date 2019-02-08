@@ -27,6 +27,9 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 #define a_CCND_IF_ISSKIP() \
    (n_go_data->gdc_ifcond != NULL &&\
       (((struct a_ccnd_if_node*)n_go_data->gdc_ifcond)->cin_noop ||\
@@ -623,4 +626,5 @@ n_cnd_if_stack_del(struct n_go_data_ctx *gdcp){
    n_NYD2_OU;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

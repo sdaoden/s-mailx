@@ -34,6 +34,9 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/icodec.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* This is chosen rather arbitrarily.
  * It must be able to swallow the first line of a rate response,
  * and an entire CHECK/TELL spamd(1) response */
@@ -1258,6 +1261,7 @@ c_spam_spam(void *v)
    n_NYD_OU;
    return rv;
 }
-#endif /* mx_HAVE_SPAM */
 
+#include "su/code-ou.h"
+#endif /* mx_HAVE_SPAM */
 /* s-it-mode */

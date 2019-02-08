@@ -45,6 +45,9 @@
 
 #include "mx/names.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* Save/copy the indicated messages at the end of the passed file name.
  * If mark is true, mark the message "saved" */
 static int a_cwrite_save1(void *vp, struct n_ignore const *itp,
@@ -89,10 +92,12 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
          ;
       *cq = '\0';
       if (ok_blook(outfolder)) {
-         size_t sz = su_cs_len(cp) +1;
-         file = n_autorec_alloc(sz + 1);
+         size_t i;
+
+         i = su_cs_len(cp) +1;
+         file = n_autorec_alloc(i + 1);
          file[0] = '+';
-         su_mem_copy(file + 1, cp, sz);
+         su_mem_copy(file + 1, cp, i);
       } else
          file = cp;
    }else{
@@ -346,4 +351,5 @@ c_write(void *vp){
    return rv;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

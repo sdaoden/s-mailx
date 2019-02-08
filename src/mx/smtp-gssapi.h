@@ -119,7 +119,7 @@ _smtp_gssapi_error(char const *s, OM_uint32 maj_stat, OM_uint32 min_stat)
 }
 
 static bool_t
-_smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
+_smtp_gssapi(struct sock *sop, struct sendbundle *sbp, struct smtp_line *slp)
 {
    struct str in, out;
    gss_buffer_desc send_tok, recv_tok;

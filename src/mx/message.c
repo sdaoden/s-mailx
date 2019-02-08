@@ -46,6 +46,9 @@
 #include "mx/mlist.h"
 #include "mx/names.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* Token values returned by the scanner used for argument lists.
  * Also, sizes of scanner-related things */
 enum a_msg_token{
@@ -1017,7 +1020,7 @@ jleave:
 static bool_t
 a_msg_match_sender(struct message *mp, char const *str, bool_t allnet){
    char const *str_base, *np_base, *np;
-   char sc, nc;
+   char c, nc;
    struct mx_name *namep;
    bool_t rv;
    n_NYD2_IN;
@@ -1036,14 +1039,14 @@ a_msg_match_sender(struct message *mp, char const *str, bool_t allnet){
    if(allnet){
       for(; namep != NULL; str = str_base, namep = namep->n_flink){
          for(np_base = np = namep->n_name;;){
-            if((sc = *str++) == '@')
-               sc = '\0';
-            if((nc = *np++) == '@' || nc == '\0' || sc == '\0'){
-               if((rv = (sc == '\0')))
+            if((c = *str++) == '@')
+               c = '\0';
+            if((nc = *np++) == '@' || nc == '\0' || c == '\0'){
+               if((rv = (c == '\0')))
                   goto jleave;
                break;
             }
-            if(sc != nc){
+            if(c != nc){
                np = ++np_base;
                str = str_base;
             }
@@ -1065,15 +1068,15 @@ jagain:
          np_base = np = again ? namep->n_fullname : namep->n_name;
          str = str_base;
          for(;;){
-            sc = *str++;
-            if((nc = *np++) == '\0' || sc == '\0'){
-               if((rv = (sc == '\0')))
+            c = *str++;
+            if((nc = *np++) == '\0' || c == '\0'){
+               if((rv = (c == '\0')))
                   goto jleave;
                break;
             }
-            sc = su_cs_to_upper(sc);
+            c = su_cs_to_upper(c);
             nc = su_cs_to_upper(nc);
-            if(sc != nc){
+            if(c != nc){
                np = ++np_base;
                str = str_base;
             }
@@ -1667,4 +1670,5 @@ mark(int mno, int f){
    n_NYD_OU;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

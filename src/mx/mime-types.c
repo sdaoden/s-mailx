@@ -31,6 +31,9 @@
 /* TODO that this does not belong: clear */
 #include "mx/filter-html.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 enum mime_type {
    _MT_APPLICATION,
    _MT_AUDIO,
@@ -937,7 +940,7 @@ jerr:
 
 FL int
 c_mimetype(void *v){
-   struct n_string s, *sp;
+   struct n_string s_b, *s;
    struct mtnode *mtnp;
    char **argv;
    n_NYD_IN;
@@ -945,7 +948,7 @@ c_mimetype(void *v){
    if(!_mt_is_init)
       _mt_init();
 
-   sp = n_string_creat_auto(&s);
+   s = n_string_creat_auto(&s_b);
 
    if(*(argv = v) == NULL){
       FILE *fp;
@@ -963,12 +966,12 @@ c_mimetype(void *v){
          goto jleave;
       }
 
-      sp = n_string_reserve(sp, 63);
+      s = n_string_reserve(s, 63);
 
       for(l = 0, mtnp = _mt_list; mtnp != NULL; ++l, mtnp = mtnp->mt_next){
          char const *cp;
 
-         sp = n_string_trunc(sp, 0);
+         s = n_string_trunc(s, 0);
 
          switch(mtnp->mt_flags & a_MT__TM_MARKMASK){
          case a_MT_TM_PLAIN: cp = "@t "; break;
@@ -978,17 +981,17 @@ c_mimetype(void *v){
          default: cp = NULL; break;
          }
          if(cp != NULL)
-            sp = n_string_push_cp(sp, cp);
+            s = n_string_push_cp(s, cp);
 
          if((mtnp->mt_flags & __MT_TMASK) != _MT_OTHER)
-            sp = n_string_push_cp(sp, _mt_typnames[mtnp->mt_flags &__MT_TMASK]);
+            s = n_string_push_cp(s, _mt_typnames[mtnp->mt_flags &__MT_TMASK]);
 
-         sp = n_string_push_buf(sp, mtnp->mt_line, mtnp->mt_mtlen);
-         sp = n_string_push_c(sp, ' ');
-         sp = n_string_push_c(sp, ' ');
-         sp = n_string_push_cp(sp, &mtnp->mt_line[mtnp->mt_mtlen]);
+         s = n_string_push_buf(s, mtnp->mt_line, mtnp->mt_mtlen);
+         s = n_string_push_c(s, ' ');
+         s = n_string_push_c(s, ' ');
+         s = n_string_push_cp(s, &mtnp->mt_line[mtnp->mt_mtlen]);
 
-         fprintf(fp, "mimetype %s%s\n", n_string_cp(sp),
+         fprintf(fp, "mimetype %s%s\n", n_string_cp(s),
             ((n_poption & n_PO_D_V) == 0 ? n_empty
                : (mtnp->mt_flags & _MT_USR ? " # user"
                : (mtnp->mt_flags & _MT_SYS ? " # system"
@@ -1000,12 +1003,12 @@ c_mimetype(void *v){
       Fclose(fp);
    }else{
       for(; *argv != NULL; ++argv){
-         if(sp->s_len > 0)
-            sp = n_string_push_c(sp, ' ');
-         sp = n_string_push_cp(sp, *argv);
+         if(s->s_len > 0)
+            s = n_string_push_c(s, ' ');
+         s = n_string_push_cp(s, *argv);
       }
 
-      mtnp = _mt_create(TRU1, _MT_CMD, n_string_cp(sp), sp->s_len);
+      mtnp = _mt_create(TRU1, _MT_CMD, n_string_cp(s), s->s_len);
       if(mtnp != NULL){
          mtnp->mt_next = _mt_list;
          _mt_list = mtnp;
@@ -1432,4 +1435,5 @@ jleave:
 #undef __S
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

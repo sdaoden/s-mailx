@@ -45,6 +45,9 @@
 
 #include "mx/filetype.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 #define READ 0
 #define WRITE 1
 
@@ -1385,4 +1388,5 @@ n_child_wait(int pid, int *wait_status_or_null){
    return rv;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

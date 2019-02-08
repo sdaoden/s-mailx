@@ -48,6 +48,9 @@
 #include "mx/shortcut.h"
 #include "mx/ui-str.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* Update mailname (if name != NULL) and displayname, return whether displayname
  * was large enough to swallow mailname */
 static bool_t  _update_mailname(char const *name);
@@ -777,12 +780,12 @@ newmailinfo(int omsgCount)
 }
 
 FL void
-setmsize(int sz)
+setmsize(int size)
 {
    n_NYD_IN;
-   if (n_msgvec != NULL)
+   if(n_msgvec != NULL)
       n_free(n_msgvec);
-   n_msgvec = n_calloc(sz +1, sizeof *n_msgvec);
+   n_msgvec = n_calloc(size +1, sizeof *n_msgvec);
    n_NYD_OU;
 }
 
@@ -1004,14 +1007,14 @@ initbox(char const *name)
 
 FL char const *
 n_folder_query(void){
-   struct n_string s, *sp = &s;
+   struct n_string s_b, *s;
    enum protocol proto;
    char *cp;
    char const *rv, *adjcp;
    bool_t err;
    n_NYD_IN;
 
-   sp = n_string_creat_auto(sp);
+   s = n_string_creat_auto(&s_b);
 
    /* *folder* is linked with *folder_resolved*: we only use the latter */
    for(err = FAL0;;){
@@ -1079,19 +1082,19 @@ n_folder_query(void){
          l1 = su_cs_len(home);
          l2 = su_cs_len(cp);
 
-         sp = n_string_reserve(sp, l1 + 1 + l2 +1);
+         s = n_string_reserve(s, l1 + 1 + l2 +1);
          if(cp != adjcp){
             size_t i;
 
-            sp = n_string_push_buf(sp, cp, i = PTR2SIZE(adjcp - cp));
+            s = n_string_push_buf(s, cp, i = PTR2SIZE(adjcp - cp));
             cp += i;
             l2 -= i;
          }
-         sp = n_string_push_buf(sp, home, l1);
-         sp = n_string_push_c(sp, '/');
-         sp = n_string_push_buf(sp, cp, l2);
-         cp = n_string_cp(sp);
-         sp = n_string_drop_ownership(sp);
+         s = n_string_push_buf(s, home, l1);
+         s = n_string_push_c(s, '/');
+         s = n_string_push_buf(s, cp, l2);
+         cp = n_string_cp(s);
+         s = n_string_drop_ownership(s);
       }
 
       /* TODO Since our visual mailname is resolved via realpath(3) if available
@@ -1102,17 +1105,17 @@ n_folder_query(void){
 #ifndef mx_HAVE_REALPATH
       rv = cp;
 #else
-      assert(sp->s_len == 0 && sp->s_dat == NULL);
+      assert(s->s_len == 0 && s->s_dat == NULL);
 # ifndef mx_HAVE_REALPATH_NULL
-      sp = n_string_reserve(sp, PATH_MAX +1);
+      s = n_string_reserve(s, PATH_MAX +1);
 # endif
 
-      if((sp->s_dat = realpath(cp, sp->s_dat)) != NULL){
+      if((s->s_dat = realpath(cp, s->s_dat)) != NULL){
 # ifdef mx_HAVE_REALPATH_NULL
-         n_string_cp(sp = n_string_assign_cp(sp, cp = sp->s_dat));
+         n_string_cp(s = n_string_assign_cp(s, cp = s->s_dat));
          (free)(cp);
 # endif
-         rv = sp->s_dat;
+         rv = s->s_dat;
       }else if(su_err_no() == su_ERR_NOENT)
          rv = cp;
       else{
@@ -1121,7 +1124,7 @@ n_folder_query(void){
          err = TRU1;
          rv = n_empty;
       }
-      sp = n_string_drop_ownership(sp);
+      s = n_string_drop_ownership(s);
 #endif /* mx_HAVE_REALPATH */
 
       /* Always append a solidus to our result path upon success */
@@ -1129,11 +1132,11 @@ n_folder_query(void){
          size_t i;
 
          if(rv[(i = su_cs_len(rv)) - 1] != '/'){
-            sp = n_string_reserve(sp, i + 1 +1);
-            sp = n_string_push_buf(sp, rv, i);
-            sp = n_string_push_c(sp, '/');
-            rv = n_string_cp(sp);
-            sp = n_string_drop_ownership(sp);
+            s = n_string_reserve(s, i + 1 +1);
+            s = n_string_push_buf(s, rv, i);
+            s = n_string_push_c(s, '/');
+            rv = n_string_cp(s);
+            s = n_string_drop_ownership(s);
          }
       }
 
@@ -1194,4 +1197,5 @@ jleave:
    return rv;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

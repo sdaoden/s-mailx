@@ -43,6 +43,9 @@
 
 #include "mx/ui-str.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 FL bool_t
 n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
 #ifdef mx_HAVE_C90AMEND1
@@ -182,7 +185,7 @@ FL char *
 colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
 {
    n_NATCH_CHAR( struct bidi_info bi; )
-   int col_orig = col, n, sz;
+   int col_orig = col, n, size;
    bool_t isbidi, isuni, istab, isrepl;
    char *nb, *np;
    n_NYD_IN;
@@ -224,10 +227,10 @@ jnobidi:
 
          n = 1;
          isrepl = TRU1;
-         if ((sz = mbtowc(&wc, cp, n_mb_cur_max)) == -1)
-            sz = 1;
+         if ((size = mbtowc(&wc, cp, n_mb_cur_max)) == -1)
+            size = 1;
          else if (wc == L'\t') {
-            cp += sz - 1; /* Silly, no such charset known (.. until S-Ctext) */
+            cp += size - 1; /* Silly, charset unknown (.. until S-Ctext) */
             isrepl = FAL0;
             istab = TRU1;
          } else if (iswprint(wc)) {
@@ -243,7 +246,7 @@ jnobidi:
       } else
 #endif
       {
-         n = sz = 1;
+         n = size = 1;
          istab = (*cp == '\t');
          isrepl = !(istab || su_cs_is_print((uc_i)*cp));
       }
@@ -260,12 +263,12 @@ jnobidi:
             np += sizeof(su_utf8_replacer) -1;
          } else
             *np++ = '?';
-         cp += sz;
-      } else if (istab || (sz == 1 && su_cs_is_space(*cp))) {
+         cp += size;
+      } else if (istab || (size == 1 && su_cs_is_space(*cp))) {
          *np++ = ' ';
          ++cp;
       } else
-         while (sz--)
+         while (size--)
             *np++ = *cp++;
    }
 
@@ -413,14 +416,14 @@ prstr(char const *s)
 }
 
 FL int
-prout(char const *s, size_t sz, FILE *fp)
+prout(char const *s, size_t size, FILE *fp)
 {
    struct str in, out;
    int n;
    n_NYD_IN;
 
    in.s = n_UNCONST(s);
-   in.l = sz;
+   in.l = size;
    makeprint(&in, &out);
    n = fwrite(out.s, 1, out.l, fp);
    n_free(out.s);
@@ -498,4 +501,5 @@ bidi_info_create(struct bidi_info *bip)
    n_NYD_OU;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

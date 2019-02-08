@@ -38,6 +38,9 @@
 
 #include "mx/ui-str.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 #if defined mx_HAVE_MLE || defined mx_HAVE_TERMCAP
 # define a_TTY_SIGNALS
 #endif
@@ -3680,11 +3683,11 @@ jeempty:
    /* C99 */{
       struct a_tty_bind_ctx *ltbcp, *tbcp;
       char *cpbase, *cp, *cnv;
-      size_t sl, cl;
+      size_t seql, cnvl;
 
       /* Unite the parsed sequence(s) into single string representations */
-      for(sl = cl = 0, tail = head; tail != NULL; tail = tail->next){
-         sl += tail->seq_len + 1;
+      for(seql = cnvl = 0, tail = head; tail != NULL; tail = tail->next){
+         seql += tail->seq_len + 1;
 
          if(!isbindcmd)
             continue;
@@ -3709,25 +3712,25 @@ jeempty:
             /* struct{si32_t buf_len_iscap; wc_t buf[]+NUL;} */
             i *= sizeof(wc_t);
          i += sizeof(si32_t) + sizeof(wc_t); /* (buf_len_iscap, NUL) */
-         cl += i;
+         cnvl += i;
          if(tail->cnv_len & SI32_MIN){
             tail->cnv_len &= SI32_MAX;
             i |= SI32_MIN;
          }
          tail->calc_cnv_len = (ui32_t)i;
       }
-      --sl;
+      --seql;
 
-      tbpcp->tbpc_seq_len = sl;
-      tbpcp->tbpc_cnv_len = cl;
+      tbpcp->tbpc_seq_len = seql;
+      tbpcp->tbpc_cnv_len = cnvl;
       /* C99 */{
          size_t j;
 
-         j = i = sl + 1; /* Room for comma separator */
+         j = i = seql + 1; /* Room for comma separator */
          if(isbindcmd){
             i = (i + tbpcp->tbpc_cnv_align_mask) & ~tbpcp->tbpc_cnv_align_mask;
             j = i;
-            i += cl;
+            i += cnvl;
          }
          tbpcp->tbpc_seq = cp = cpbase = n_autorec_alloc(i);
          tbpcp->tbpc_cnv = cnv = &cpbase[j];
@@ -3769,8 +3772,8 @@ jeempty:
 
          for(ltbcp = NULL, tbcp = a_tty.tg_bind[gif]; tbcp != NULL;
                ltbcp = tbcp, tbcp = tbcp->tbc_next)
-            if(tbcp->tbc_seq_len == sl &&
-                  !su_mem_cmp(tbcp->tbc_seq, cpbase, sl)){
+            if(tbcp->tbc_seq_len == seql &&
+                  !su_mem_cmp(tbcp->tbc_seq, cpbase, seql)){
                tbpcp->tbpc_tbcp = tbcp;
                break;
             }
@@ -4283,20 +4286,20 @@ FL int
    if(n_COLOUR_IS_ACTIVE()){
       char const *ccol;
       struct n_colour_pen *ccp;
-      struct str const *sp;
+      struct str const *s;
 
       if((ccp = n_colour_pen_create(n_COLOUR_ID_MLE_POSITION, NULL)) != NULL &&
-            (sp = n_colour_pen_to_str(ccp)) != NULL){
-         ccol = sp->s;
-         if((sp = n_colour_reset_to_str()) != NULL){
+            (s = n_colour_pen_to_str(ccp)) != NULL){
+         ccol = s->s;
+         if((s = n_colour_reset_to_str()) != NULL){
             size_t l1, l2;
 
             l1 = su_cs_len(ccol);
-            l2 = su_cs_len(sp->s);
+            l2 = su_cs_len(s->s);
             posbuf = n_autorec_alloc(l1 + 4 + l2 +1);
             su_mem_copy(posbuf, ccol, l1);
             pos = &posbuf[l1];
-            su_mem_copy(&pos[4], sp->s, ++l2);
+            su_mem_copy(&pos[4], s->s, ++l2);
          }
       }
    }
@@ -4806,4 +4809,6 @@ n_tty_addhist(char const *s, enum n_go_input_flags gif){
 #endif /* nothing at all */
 
 #undef a_TTY_SIGNALS
+
+#include "su/code-ou.h"
 /* s-it-mode */

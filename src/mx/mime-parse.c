@@ -45,6 +45,9 @@
 
 #include "mx/charsetalias.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* Fetch plain */
 static char *  _mime_parse_ct_plain_from_ct(char const *cth);
 
@@ -361,7 +364,6 @@ __mime_parse_new(struct mimepart *ip, struct mimepart **np, off_t offs,
    int *part)
 {
    struct mimepart *pp;
-   size_t sz;
    n_NYD_IN;
 
    *np = n_autorec_calloc(1, sizeof **np);
@@ -371,14 +373,16 @@ __mime_parse_new(struct mimepart *ip, struct mimepart **np, off_t offs,
    (*np)->m_offset = mailx_offsetof(offs);
 
    if (part) {
+      size_t i;
+
       ++(*part);
-      sz = (ip->m_partstring != NULL) ? su_cs_len(ip->m_partstring) : 0;
-      sz += 20;
-      (*np)->m_partstring = n_autorec_alloc(sz);
+      i = (ip->m_partstring != NULL) ? su_cs_len(ip->m_partstring) : 0;
+      i += 20;
+      (*np)->m_partstring = n_autorec_alloc(i);
       if (ip->m_partstring)
-         snprintf((*np)->m_partstring, sz, "%s.%u", ip->m_partstring, *part);
+         snprintf((*np)->m_partstring, i, "%s.%u", ip->m_partstring, *part);
       else
-         snprintf((*np)->m_partstring, sz, "%u", *part);
+         snprintf((*np)->m_partstring, i, "%u", *part);
    } else
       (*np)->m_mimecontent = MIME_DISCARD;
    (*np)->m_parent = ip;
@@ -426,4 +430,5 @@ mime_parse_msg(struct message *mp, enum mime_parse_flags mpf)
    return ip;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

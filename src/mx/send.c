@@ -48,6 +48,9 @@
 #include "mx/iconv.h"
 #include "mx/ui-str.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 static sigjmp_buf _send_pipejmp;
 
 /* Going for user display, print Part: info string */
@@ -373,7 +376,7 @@ _out(char const *buf, size_t len, FILE *fp, enum conversion convert, enum
    sendaction action, struct quoteflt *qf, ui64_t *stats, struct str *outrest,
    struct str *inrest)
 {
-   ssize_t sz = 0, n;
+   ssize_t size = 0, n;
    int flags;
    n_NYD_IN;
 
@@ -388,7 +391,7 @@ _out(char const *buf, size_t len, FILE *fp, enum conversion convert, enum
          if(from_ != TRUM1 || (mb.mb_active & MB_BAD_FROM_) ||
                ok_blook(mbox_rfc4155)){
             putc('>', fp);
-            ++sz;
+            ++size;
          }
       }
    }
@@ -406,14 +409,14 @@ _out(char const *buf, size_t len, FILE *fp, enum conversion convert, enum
             ? TD_ICONV : (action == SEND_SHOW ? TD_ISPR : TD_NONE)),
          qf, outrest, inrest);
    if (n < 0)
-      sz = n;
+      size = n;
    else if (n > 0) {
-      sz += n;
+      size += n;
       if (stats != NULL)
-         *stats += sz;
+         *stats += size;
    }
    n_NYD_OU;
-   return sz;
+   return size;
 }
 
 static bool_t
@@ -1488,7 +1491,7 @@ pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf, struct quoteflt *qf,
 {
    char *line = NULL; /* TODO line pool */
    size_t linesize = 0, linelen, cnt;
-   ssize_t all_sz, sz;
+   ssize_t all_sz, i;
    n_NYD_IN;
 
    fflush(pipebuf);
@@ -1498,12 +1501,12 @@ pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf, struct quoteflt *qf,
 
    quoteflt_reset(qf, outbuf);
    while (fgetline(&line, &linesize, &cnt, &linelen, pipebuf, 0) != NULL) {
-      if ((sz = quoteflt_push(qf, line, linelen)) < 0)
+      if ((i = quoteflt_push(qf, line, linelen)) < 0)
          break;
-      all_sz += sz;
+      all_sz += i;
    }
-   if ((sz = quoteflt_flush(qf)) > 0)
-      all_sz += sz;
+   if ((i = quoteflt_flush(qf)) > 0)
+      all_sz += i;
    if (line)
       n_free(line);
 
@@ -1598,7 +1601,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
    FILE *ibuf;
    enum mime_parse_flags mpf;
    struct mimepart *ip;
-   size_t linesize, cnt, sz, i;
+   size_t linesize, cnt, size, i;
    char *linedat;
    int rv, c;
    n_NYD_IN;
@@ -1626,7 +1629,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
       goto jleave;
 
    cnt = mp->m_size;
-   sz = 0;
+   size = 0;
    {
    bool_t nozap;
    char const *cpre = n_empty, *csuf = n_empty;
@@ -1634,14 +1637,14 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
 #ifdef mx_HAVE_COLOUR
    if(n_COLOUR_IS_ACTIVE()){
       struct n_colour_pen *cpen;
-      struct str const *sp;
+      struct str const *s;
 
       cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_FROM_,NULL);
-      if((sp = n_colour_pen_to_str(cpen)) != NULL){
-         cpre = sp->s;
-         sp = n_colour_reset_to_str();
-         if(sp != NULL)
-            csuf = sp->s;
+      if((s = n_colour_pen_to_str(cpen)) != NULL){
+         cpre = s->s;
+         s = n_colour_reset_to_str();
+         if(s != NULL)
+            csuf = s->s;
       }
    }
 #endif
@@ -1651,7 +1654,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
          !n_ignore_is_ign(doitp, "from_", sizeof("from_") -1));
    if (mp->m_flag & (MNOFROM | MBADFROM_)) {
       if (nozap)
-         sz = fprintf(obuf, "%s%.*sFrom %s %s%s\n",
+         size = fprintf(obuf, "%s%.*sFrom %s %s%s\n",
                cpre, (int)qf.qf_pfix_len,
                (qf.qf_bypass ? n_empty : qf.qf_pfix), fakefrom(mp),
                n_time_ctime(mp->m_time, NULL), csuf);
@@ -1660,7 +1663,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
          i = fwrite(qf.qf_pfix, sizeof *qf.qf_pfix, qf.qf_pfix_len, obuf);
          if (i != qf.qf_pfix_len)
             goto jleave;
-         sz += i;
+         size += i;
       }
 #ifdef mx_HAVE_COLOUR
       if(*cpre != '\0'){
@@ -1677,7 +1680,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
          }
 #endif
          putc(c, obuf);
-         ++sz;
+         ++size;
          --cnt;
          if (c == '\n')
             break;
@@ -1695,8 +1698,8 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
       }
    }
    }
-   if (sz > 0 && stats != NULL)
-      *stats += sz;
+   if (size > 0 && stats != NULL)
+      *stats += size;
 
    mpf = MIME_PARSE_NONE;
    if (action != SEND_MBOX && action != SEND_RFC822 && action != SEND_SHOW)
@@ -1721,4 +1724,5 @@ jleave:
    return rv;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

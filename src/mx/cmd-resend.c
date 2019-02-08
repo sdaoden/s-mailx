@@ -47,6 +47,9 @@
 #include "mx/mlist.h"
 #include "mx/names.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* Modify subject we reply to to begin with Re: if it does not already */
 static char *a_crese_reedit(char const *subj);
 
@@ -126,7 +129,7 @@ a_crese_reply_to(struct message *mp){
          (cp2 = hfield1("reply-to", mp)) != NULL &&
          (rt = checkaddrs(lextract(cp2, GTO | gf), EACM_STRICT, NULL)
             ) != NULL){
-      char *sp;
+      char *lp;
       size_t l;
       char const *tr;
 
@@ -139,13 +142,13 @@ a_crese_reply_to(struct message *mp){
 
       tr = _("Reply-To %s%s");
       l = su_cs_len(tr) + su_cs_len(rt->n_name) + 3 +1;
-      sp = n_lofi_alloc(l);
+      lp = n_lofi_alloc(l);
 
-      snprintf(sp, l, tr, rt->n_name, (rt->n_flink != NULL ? "..." : n_empty));
-      if(n_quadify(cp, UIZ_MAX, sp, TRU1) <= FAL0)
+      snprintf(lp, l, tr, rt->n_name, (rt->n_flink != NULL ? "..." : n_empty));
+      if(n_quadify(cp, UIZ_MAX, lp, TRU1) <= FAL0)
          rt = NULL;
 
-      n_lofi_free(sp);
+      n_lofi_free(lp);
    }
    n_NYD2_OU;
    return rt;
@@ -165,7 +168,7 @@ a_crese_mail_followup_to(struct message *mp){
          (cp2 = hfield1("mail-followup-to", mp)) != NULL &&
          (mft = checkaddrs(lextract(cp2, GTO | gf), EACM_STRICT, NULL)
             ) != NULL){
-      char *sp;
+      char *lp;
       size_t l;
       char const *tr;
 
@@ -178,14 +181,14 @@ a_crese_mail_followup_to(struct message *mp){
 
       tr = _("Followup-To %s%s");
       l = su_cs_len(tr) + su_cs_len(mft->n_name) + 3 +1;
-      sp = n_lofi_alloc(l);
+      lp = n_lofi_alloc(l);
 
-      snprintf(sp, l, tr, mft->n_name,
+      snprintf(lp, l, tr, mft->n_name,
          (mft->n_flink != NULL ? "..." : n_empty));
-      if(n_quadify(cp, UIZ_MAX, sp, TRU1) <= FAL0)
+      if(n_quadify(cp, UIZ_MAX, lp, TRU1) <= FAL0)
          mft = NULL;
 
-      n_lofi_free(sp);
+      n_lofi_free(lp);
    }
    n_NYD2_OU;
    return mft;
@@ -913,4 +916,5 @@ c_Resend(void *vp){
    return rv;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

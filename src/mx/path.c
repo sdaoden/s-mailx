@@ -43,6 +43,9 @@
 
 #include <su/cs.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 FL bool_t
 n_is_dir(char const *name, bool_t check_access){
    struct stat sbuf;
@@ -185,4 +188,5 @@ cwrelse(struct cw *cw)
 }
 #endif /* !mx_HAVE_FCHDIR */
 
+#include "su/code-ou.h"
 /* s-it-mode */

@@ -46,6 +46,9 @@
 
 #include "mx/iconv.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* We use calloc() for struct attachment */
 n_CTAV(AC_DEFAULT == 0);
 
@@ -601,4 +604,5 @@ n_attachment_list_print(struct attachment const *aplist, FILE *fp){
    return rv;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

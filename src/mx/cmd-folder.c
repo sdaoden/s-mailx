@@ -43,6 +43,9 @@
 
 #include <su/cs.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* c_file, c_File */
 static int        _c_file(void *v, enum fedit_mode fm);
 
@@ -381,4 +384,5 @@ jleave:
    return rv;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

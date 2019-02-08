@@ -47,6 +47,9 @@
 #include "mx/mlist.h"
 #include "mx/names.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 #undef SEND_LINESIZE
 #define SEND_LINESIZE \
    ((1024 / B64_ENCODE_INPUT_PER_LINE) * B64_ENCODE_INPUT_PER_LINE)
@@ -294,7 +297,7 @@ static si32_t
 a_sendout_body(FILE *fo, FILE *fi, enum conversion convert){
    struct str outrest, inrest;
    char *buf;
-   size_t sz, bufsize, cnt;
+   size_t size, bufsize, cnt;
    bool_t iseof;
    si32_t rv;
    n_NYD2_IN;
@@ -320,17 +323,17 @@ a_sendout_body(FILE *fo, FILE *fi, enum conversion convert){
             || iconvd != (iconv_t)-1
 #endif
       ){
-         if(fgetline(&buf, &bufsize, &cnt, &sz, fi, 0) == NULL)
+         if(fgetline(&buf, &bufsize, &cnt, &size, fi, 0) == NULL)
             break;
-      }else if((sz = fread(buf, sizeof *buf, bufsize, fi)) == 0)
+      }else if((size = fread(buf, sizeof *buf, bufsize, fi)) == 0)
          break;
 joutln:
-      if(xmime_write(buf, sz, fo, convert, TD_ICONV, &outrest,
+      if(xmime_write(buf, size, fo, convert, TD_ICONV, &outrest,
             (iseof > FAL0 ? NULL : &inrest)) < 0)
          goto jleave;
    }
    if(iseof <= FAL0 && (outrest.l != 0 || inrest.l != 0)){
-      sz = 0;
+      size = 0;
       iseof = (iseof || inrest.l == 0) ? TRU1 : TRUM1;
       goto joutln;
    }
@@ -2691,4 +2694,5 @@ jleave:
 
 #undef SEND_LINESIZE
 
+#include "su/code-ou.h"
 /* s-it-mode */

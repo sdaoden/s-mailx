@@ -120,21 +120,21 @@ _imap_gssapi_error(const char *s, OM_uint32 maj_stat, OM_uint32 min_stat)
 }
 
 static char *
-_imap_gssapi_last_at_before_slash(char const *sp)
+_imap_gssapi_last_at_before_slash(char const *cp)
 {
-   char const *cp;
+   char const *xcp;
    char c;
    n_NYD_IN;
 
-   for (cp = sp; (c = *cp) != '\0'; ++cp)
+   for (xcp = cp; (c = *xcp) != '\0'; ++xcp)
       if (c == '/')
          break;
-   while (cp > sp && *--cp != '@')
+   while (xcp > cp && *--xcp != '@')
       ;
-   if (*cp != '@')
-      cp = NULL;
+   if (*xcp != '@')
+      xcp = NULL;
    n_NYD_OU;
-   return n_UNCONST(cp);
+   return n_UNCONST(xcp);
 }
 
 static enum okay

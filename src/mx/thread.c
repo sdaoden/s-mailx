@@ -50,6 +50,9 @@
 
 #include "mx/names.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* Open addressing is used for Message-IDs because the maximum number of
  * messages in the table is known in advance (== msgCount) */
 struct mitem {
@@ -462,7 +465,7 @@ static void
 _colps(struct message *b, int cl)
 {
    struct message *m;
-   int cc = 0, uc = 0;
+   int cc = 0, uncc = 0;
    n_NYD2_IN;
 
    if (cl && (b->m_collapsed > 0 || (b->m_flag & (MNEW | MREAD)) == MNEW))
@@ -470,26 +473,26 @@ _colps(struct message *b, int cl)
 
    if (b->m_child != NULL) {
       m = b->m_child;
-      _colpm(m, cl, &cc, &uc);
+      _colpm(m, cl, &cc, &uncc);
       for (m = m->m_younger; m != NULL; m = m->m_younger)
-         _colpm(m, cl, &cc, &uc);
+         _colpm(m, cl, &cc, &uncc);
    }
 
    if (cl) {
       b->m_collapsed = -cc;
       for (m = b->m_parent; m != NULL; m = m->m_parent)
-         if (m->m_collapsed <= -uc) {
-            m->m_collapsed += uc;
+         if (m->m_collapsed <= -uncc) {
+            m->m_collapsed += uncc;
             break;
          }
    } else {
       if (b->m_collapsed > 0) {
          b->m_collapsed = 0;
-         ++uc;
+         ++uncc;
       }
       for (m = b; m != NULL; m = m->m_parent)
-         if (m->m_collapsed <= -uc) {
-            m->m_collapsed += uc;
+         if (m->m_collapsed <= -uncc) {
+            m->m_collapsed += uncc;
             break;
          }
    }
@@ -498,12 +501,12 @@ jleave:
 }
 
 static void
-_colpm(struct message *m, int cl, int *cc, int *uc)
+_colpm(struct message *m, int cl, int *cc, int *uncc)
 {
    n_NYD2_IN;
    if (cl) {
       if (m->m_collapsed > 0)
-         ++(*uc);
+         ++(*uncc);
       if ((m->m_flag & (MNEW | MREAD)) != MNEW || m->m_collapsed < 0)
          m->m_collapsed = 1;
       if (m->m_collapsed > 0)
@@ -511,15 +514,15 @@ _colpm(struct message *m, int cl, int *cc, int *uc)
    } else {
       if (m->m_collapsed > 0) {
          m->m_collapsed = 0;
-         ++(*uc);
+         ++(*uncc);
       }
    }
 
    if (m->m_child != NULL) {
       m = m->m_child;
-      _colpm(m, cl, cc, uc);
+      _colpm(m, cl, cc, uncc);
       for (m = m->m_younger; m != NULL; m = m->m_younger)
-         _colpm(m, cl, cc, uc);
+         _colpm(m, cl, cc, uncc);
    }
    n_NYD2_OU;
 }
@@ -863,4 +866,5 @@ uncollapse1(struct message *mp, int always)
    n_NYD_OU;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

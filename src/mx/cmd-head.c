@@ -47,6 +47,9 @@
 #include "mx/mlist.h"
 #include "mx/ui-str.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 static int        _screen;
 
 /* Print out the header of a specific message.
@@ -556,7 +559,7 @@ static int
 a_chead__putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX magics */
 {
    struct message *mq;
-   int *us, indlvl, indw, i, important = MNEW | MFLAGGED;
+   int *unis, indlvl, indw, i, important = MNEW | MFLAGGED;
    char *cs;
    n_NYD2_IN;
 
@@ -566,20 +569,20 @@ a_chead__putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX magics */
    }
 
    cs = n_lofi_alloc(mp->m_level);
-   us = n_lofi_alloc(mp->m_level * sizeof *us);
+   unis = n_lofi_alloc(mp->m_level * sizeof *unis);
 
    i = mp->m_level - 1;
    if (mp->m_younger && UICMP(32, i + 1, ==, mp->m_younger->m_level)) {
       if (mp->m_parent && mp->m_parent->m_flag & important)
-         us[i] = mp->m_flag & important ? 0x2523 : 0x2520;
+         unis[i] = mp->m_flag & important ? 0x2523 : 0x2520;
       else
-         us[i] = mp->m_flag & important ? 0x251D : 0x251C;
+         unis[i] = mp->m_flag & important ? 0x251D : 0x251C;
       cs[i] = '+';
    } else {
       if (mp->m_parent && mp->m_parent->m_flag & important)
-         us[i] = mp->m_flag & important ? 0x2517 : 0x2516;
+         unis[i] = mp->m_flag & important ? 0x2517 : 0x2516;
       else
-         us[i] = mp->m_flag & important ? 0x2515 : 0x2514;
+         unis[i] = mp->m_flag & important ? 0x2515 : 0x2514;
       cs[i] = '\\';
    }
 
@@ -587,33 +590,33 @@ a_chead__putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX magics */
    for (i = mp->m_level - 2; i >= 0; --i) {
       if (mq) {
          if (UICMP(32, i, >, mq->m_level - 1)) {
-            us[i] = cs[i] = ' ';
+            unis[i] = cs[i] = ' ';
             continue;
          }
          if (mq->m_younger) {
             if (mq->m_parent && (mq->m_parent->m_flag & important))
-               us[i] = 0x2503;
+               unis[i] = 0x2503;
             else
-               us[i] = 0x2502;
+               unis[i] = 0x2502;
             cs[i] = '|';
          } else
-            us[i] = cs[i] = ' ';
+            unis[i] = cs[i] = ' ';
          mq = mq->m_parent;
       } else
-         us[i] = cs[i] = ' ';
+         unis[i] = cs[i] = ' ';
    }
 
    --maxwidth;
    for (indlvl = indw = 0; (ui8_t)indlvl < mp->m_level && indw < maxwidth;
          ++indlvl) {
       if (indw < maxwidth - 1)
-         indw += (int)a_chead__putuc(us[indlvl], cs[indlvl] & 0xFF, fp);
+         indw += (int)a_chead__putuc(unis[indlvl], cs[indlvl] & 0xFF, fp);
       else
          indw += (int)a_chead__putuc(0x21B8, '^', fp);
    }
    indw += a_chead__putuc(0x25B8, '>', fp);
 
-   n_lofi_free(us);
+   n_lofi_free(unis);
    n_lofi_free(cs);
 jleave:
    n_NYD2_OU;
@@ -1109,4 +1112,5 @@ print_headers(int const *msgvec, bool_t only_marked,
    n_NYD_OU;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

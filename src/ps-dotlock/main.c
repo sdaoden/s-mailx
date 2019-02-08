@@ -41,12 +41,8 @@
 # include <priv.h>
 #endif
 
-static void _ign_signal(int signum);
-static uiz_t n_msleep(uiz_t millis, bool_t ignint);
-
-#define su_err_no() errno
-#define su_err_set_no(X) (errno = X)
-#include "mx/dotlock.h" /* $(PS_DOTLOCK_SRCDIR) */
+/* TODO fake */
+#include "su/code-in.h"
 
 /* TODO Avoid linkage errors, instantiate what is needed;
  * TODO SU needs to be available as a library to overcome this,
@@ -56,6 +52,13 @@ su_uz su__state;
 su_boole su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE) {return FAL0;}
 su_boole su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE) {return FAL0;}
 #endif
+#define su_err_no() errno
+#define su_err_set_no(X) (errno = X)
+
+static void _ign_signal(int signum);
+static uiz_t n_msleep(uiz_t millis, bool_t ignint);
+
+#include "mx/dotlock.h" /* $(PS_DOTLOCK_SRCDIR) */
 
 static void
 _ign_signal(int signum){
@@ -229,4 +232,5 @@ jmsg:
    return (dls == n_DLS_NONE ? n_EXIT_OK : n_EXIT_ERR);
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

@@ -36,6 +36,9 @@
 
 #include "mx/names.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* Try to convert cp into an unsigned number that corresponds to an existing
  * message number (or ERR_INVAL), search for an existing object (ERR_EXIST if
  * oexcl and exists; ERR_NOENT if not oexcl and does not exist).
@@ -1366,4 +1369,5 @@ jeinval:
    goto jleave;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

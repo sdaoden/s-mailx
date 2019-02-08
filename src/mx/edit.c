@@ -41,6 +41,9 @@
 # include "mx/nail.h"
 #endif
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* Edit a message by writing the message into a funnily-named file (which
  * should not exist) and forking an editor on it */
 static int edit1(int *msgvec, int viored);
@@ -256,4 +259,5 @@ jleave:
    return nf;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

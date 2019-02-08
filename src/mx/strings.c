@@ -47,6 +47,9 @@
 
 #include <su/cs.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 FL char *
 (savestr)(char const *str  su_DBG_LOC_ARGS_DECL)
 {
@@ -241,19 +244,19 @@ substr(char const *str, char const *sub)
 #ifdef mx_HAVE_C90AMEND1
       if (n_mb_cur_max > 1) {
          wchar_t c, c2;
-         int sz;
+         int i;
 
-         if ((sz = mbtowc(&c, cp, n_mb_cur_max)) == -1)
+         if ((i = mbtowc(&c, cp, n_mb_cur_max)) == -1)
             goto Jsinglebyte;
-         cp += sz;
-         if ((sz = mbtowc(&c2, str, n_mb_cur_max)) == -1)
+         cp += i;
+         if ((i = mbtowc(&c2, str, n_mb_cur_max)) == -1)
             goto Jsinglebyte;
-         str += sz;
+         str += i;
          c = towupper(c);
          c2 = towupper(c2);
          if (c != c2) {
-            if ((sz = mbtowc(&c, backup, n_mb_cur_max)) > 0) {
-               backup += sz;
+            if ((i = mbtowc(&c, backup, n_mb_cur_max)) > 0) {
+               backup += i;
                str = backup;
             } else
                str = ++backup;
@@ -675,4 +678,5 @@ n_string_cp_const(struct n_string const *self){
    return rv;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

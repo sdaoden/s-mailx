@@ -52,6 +52,9 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/icodec.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 #define POP3_ANSWER(RV,ACTIONSTOP) \
 do if (((RV) = pop3_answer(mp)) == STOP) {\
    ACTIONSTOP;\
@@ -300,13 +303,13 @@ pop3_timer_off(void)
 static enum okay
 pop3_answer(struct mailbox *mp)
 {
-   int sz;
+   int i;
    size_t blen;
    enum okay rv = STOP;
    n_NYD_IN;
 
 jretry:
-   if ((sz = sgetline(&_pop3_buf, &_pop3_bufsize, &blen, &mp->mb_sock)) > 0) {
+   if ((i = sgetline(&_pop3_buf, &_pop3_bufsize, &blen, &mp->mb_sock)) > 0) {
       if ((mp->mb_active & (MB_COMD | MB_MULT)) == MB_MULT)
          goto jmultiline;
       if (n_poption & n_PO_VERBVERB)
@@ -331,8 +334,8 @@ jretry:
 jmultiline:
          while (_pop3_buf[0] != '.' || _pop3_buf[1] != NETNL[0] ||
                _pop3_buf[2] != NETNL[1] || _pop3_buf[3] != '\0') {
-            sz = sgetline(&_pop3_buf, &_pop3_bufsize, NULL, &mp->mb_sock);
-            if (sz <= 0)
+            i = sgetline(&_pop3_buf, &_pop3_bufsize, NULL, &mp->mb_sock);
+            if (i <= 0)
                goto jeof;
          }
          mp->mb_active &= ~MB_MULT;
@@ -822,7 +825,7 @@ pop3_noop(void)
 FL int
 pop3_setfile(char const *who, char const *server, enum fedit_mode fm)
 {
-   struct sockconn sc;
+   struct sockconn sockc;
    sighandler_type saveint, savepipe;
    char const *cp;
    int volatile rv;
@@ -833,25 +836,26 @@ pop3_setfile(char const *who, char const *server, enum fedit_mode fm)
       goto jleave;
    rv = -1;
 
-   if (!url_parse(&sc.sc_url, CPROTO_POP3, server))
+   if (!url_parse(&sockc.sc_url, CPROTO_POP3, server))
       goto jleave;
    if (!ok_blook(v15_compat) &&
-         (!(sc.sc_url.url_flags & n_URL_HAD_USER) ||
-            sc.sc_url.url_pass.s != NULL)) {
+         (!(sockc.sc_url.url_flags & n_URL_HAD_USER) ||
+            sockc.sc_url.url_pass.s != NULL)) {
       n_err(_("New-style URL used without *v15-compat* being set\n"));
       goto jleave;
    }
 
-   if (!(ok_blook(v15_compat) ? ccred_lookup(&sc.sc_cred, &sc.sc_url)
-         : ccred_lookup_old(&sc.sc_cred, CPROTO_POP3,
-            ((sc.sc_url.url_flags & n_URL_HAD_USER) ? sc.sc_url.url_eu_h_p.s
-             : sc.sc_url.url_u_h_p.s))))
+   if (!(ok_blook(v15_compat) ? ccred_lookup(&sockc.sc_cred, &sockc.sc_url)
+         : ccred_lookup_old(&sockc.sc_cred, CPROTO_POP3,
+            ((sockc.sc_url.url_flags & n_URL_HAD_USER)
+             ? sockc.sc_url.url_eu_h_p.s
+             : sockc.sc_url.url_u_h_p.s))))
       goto jleave;
 
    if (!quit(FAL0))
       goto jleave;
 
-   if (!sopen(&sc.sc_sock, &sc.sc_url))
+   if (!sopen(&sockc.sc_sock, &sockc.sc_url))
       goto jleave;
 
    rv = 1;
@@ -871,10 +875,10 @@ pop3_setfile(char const *who, char const *server, enum fedit_mode fm)
       mb.mb_otf = NULL;
    }
 
-   initbox(sc.sc_url.url_p_u_h_p);
+   initbox(sockc.sc_url.url_p_u_h_p);
    mb.mb_type = MB_VOID;
    _pop3_lock = 1;
-   mb.mb_sock = sc.sc_sock;
+   mb.mb_sock = sockc.sc_sock;
 
    saveint = safe_signal(SIGINT, SIG_IGN);
    savepipe = safe_signal(SIGPIPE, SIG_IGN);
@@ -894,7 +898,7 @@ pop3_setfile(char const *who, char const *server, enum fedit_mode fm)
    if (savepipe != SIG_IGN)
       safe_signal(SIGPIPE, pop3catch);
 
-   if ((cp = xok_vlook(pop3_keepalive, &sc.sc_url, OXM_ALL)) != NULL) {
+   if ((cp = xok_vlook(pop3_keepalive, &sockc.sc_url, OXM_ALL)) != NULL) {
       su_idec_s32_cp(&_pop3_keepalive, cp, 10, NULL);
       if (_pop3_keepalive > 0) {
          _pop3_savealrm = safe_signal(SIGALRM, pop3alarm);
@@ -902,10 +906,10 @@ pop3_setfile(char const *who, char const *server, enum fedit_mode fm)
       }
    }
 
-   mb.mb_sock.s_desc = (sc.sc_url.url_flags & n_URL_TLS_REQUIRED)
+   mb.mb_sock.s_desc = (sockc.sc_url.url_flags & n_URL_TLS_REQUIRED)
          ? "POP3S" : "POP3";
    mb.mb_sock.s_onclose = pop3_timer_off;
-   if (_pop3_login(&mb, &sc) != OKAY ||
+   if (_pop3_login(&mb, &sockc) != OKAY ||
          pop3_stat(&mb, &mailsize, &msgCount) != OKAY) {
       sclose(&mb.mb_sock);
       pop3_timer_off();
@@ -919,7 +923,7 @@ pop3_setfile(char const *who, char const *server, enum fedit_mode fm)
    mb.mb_type = MB_POP3;
    mb.mb_perm = ((n_poption & n_PO_R_FLAG) || (fm & FEDIT_RDONLY))
          ? 0 : MB_DELE;
-   pop3_setptr(&mb, &sc);
+   pop3_setptr(&mb, &sockc);
 
    /*if (!(fm & FEDIT_NEWMAIL)) */{
       n_pstate &= ~n_PS_SAW_COMMAND;
@@ -937,7 +941,7 @@ pop3_setfile(char const *who, char const *server, enum fedit_mode fm)
 
    if (!(n_pstate & n_PS_EDIT) && msgCount == 0) {
       if (!ok_blook(emptystart))
-         n_err(_("No mail for %s at %s\n"), who, sc.sc_url.url_p_eu_h_p);
+         n_err(_("No mail for %s at %s\n"), who, sockc.sc_url.url_p_eu_h_p);
       goto jleave;
    }
 
@@ -1016,6 +1020,7 @@ jleave:
    n_NYD_OU;
    return rv;
 }
-#endif /* mx_HAVE_POP3 */
 
+#include "su/code-ou.h"
+#endif /* mx_HAVE_POP3 */
 /* s-it-mode */

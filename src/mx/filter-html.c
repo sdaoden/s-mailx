@@ -43,6 +43,8 @@ su_EMPTY_FILE()
 #include <su/utf.h>
 
 #include "mx/filter-html.h"
+/* TODO fake */
+#include "su/code-in.h"
 
 enum hf_limits {
    _HF_MINLEN  = 10,    /* Minimum line length (can't really be smaller) */
@@ -1261,5 +1263,6 @@ htmlflt_flush(struct htmlflt *self)
    return rv;
 }
 
+#include "su/code-ou.h"
 #endif /* mx_HAVE_FILTER_HTML_TAGSOUP */
 /* s-it-mode */

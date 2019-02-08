@@ -44,6 +44,9 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* Prepare and print "[Message: xy]:" intro */
 static bool_t a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no);
 
@@ -72,12 +75,12 @@ a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no){
       struct n_colour_pen *cpen;
 
       if((cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_MSGINFO, NULL)) != NULL){
-         struct str const *sp;
+         struct str const *s;
 
-         if((sp = n_colour_pen_to_str(cpen)) != NULL)
-            cpre = sp->s;
-         if((sp = n_colour_reset_to_str()) != NULL)
-            csuf = sp->s;
+         if((s = n_colour_pen_to_str(cpen)) != NULL)
+            cpre = s->s;
+         if((s = n_colour_reset_to_str()) != NULL)
+            csuf = s->s;
       }
    }
 #endif
@@ -658,14 +661,14 @@ jleave:
 FL int
 c_pdot(void *vp){
    char cbuf[su_IENC_BUFFER_SIZE], sep1, sep2;
-   struct n_string s, *sp;
+   struct n_string s_b, *s;
    int *mlp;
    struct n_cmd_arg_ctx *cacp;
    n_NYD_IN;
    n_UNUSED(vp);
 
    n_pstate_err_no = su_ERR_NONE;
-   sp = n_string_creat_auto(&s);
+   s = n_string_creat_auto(&s_b);
    sep1 = *ok_vlook(ifs);
    sep2 = *ok_vlook(ifs_ws);
    if(sep1 == sep2)
@@ -676,33 +679,33 @@ c_pdot(void *vp){
    cacp = vp;
 
    for(mlp = cacp->cac_arg->ca_arg.ca_msglist; *mlp != 0; ++mlp){
-      if(!n_string_can_book(sp, su_IENC_BUFFER_SIZE + 2u)){
+      if(!n_string_can_book(s, su_IENC_BUFFER_SIZE + 2u)){
          n_err(_("`=': overflow: string too long!\n"));
          n_pstate_err_no = su_ERR_OVERFLOW;
          vp = NULL;
          goto jleave;
       }
-      if(sp->s_len > 0){
-         sp = n_string_push_c(sp, sep1);
+      if(s->s_len > 0){
+         s = n_string_push_c(s, sep1);
          if(sep2 != '\0')
-            sp = n_string_push_c(sp, sep2);
+            s = n_string_push_c(s, sep2);
       }
-      sp = n_string_push_cp(sp,
+      s = n_string_push_cp(s,
             su_ienc(cbuf, (ui32_t)*mlp, 10, su_IENC_MODE_NONE));
    }
 
-   (void)n_string_cp(sp);
+   (void)n_string_cp(s);
    if(cacp->cac_vput == NULL){
-      if(fprintf(n_stdout, "%s\n", sp->s_dat) < 0){
+      if(fprintf(n_stdout, "%s\n", s->s_dat) < 0){
          n_pstate_err_no = su_err_no();
          vp = NULL;
       }
-   }else if(!n_var_vset(cacp->cac_vput, (uintptr_t)sp->s_dat)){
+   }else if(!n_var_vset(cacp->cac_vput, (uintptr_t)s->s_dat)){
       n_pstate_err_no = su_ERR_NOTSUP;
       vp = NULL;
    }
 jleave:
-   /* n_string_gut(sp); */
+   /* n_string_gut(s); */
    n_NYD_OU;
    return (vp == NULL);
 }
@@ -995,4 +998,5 @@ c_undraft(void *v)
    return 0;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

@@ -72,14 +72,17 @@ su_EMPTY_FILE()
 
 #include <su/cs.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* */
-static bool_t a_socket_open(struct sock *sp, struct url *urlp);
+static bool_t a_socket_open(struct sock *sop, struct url *urlp);
 
 /* */
 static int a_socket_connect(int fd, struct sockaddr *soap, size_t soapl);
 
 /* Write to socket fd, restarting on EINTR, unless anything is written */
-static long a_socket_xwrite(int fd, char const *data, size_t sz);
+static long a_socket_xwrite(int fd, char const *data, size_t size);
 
 static sigjmp_buf __sopen_actjmp; /* TODO someday, we won't need it no more */
 static int        __sopen_sig; /* TODO someday, we won't need it no more */
@@ -98,7 +101,7 @@ __sopen_onsig(int sig) /* TODO someday, we won't need it no more */
 }
 
 static bool_t
-a_socket_open(struct sock *sp, struct url *urlp) /* TODO sigstuff; refactor */
+a_socket_open(struct sock *sop, struct url *urlp) /* TODO sigstuff; refactor */
 {
 # ifdef mx_HAVE_SO_XTIMEO
    struct timeval tv;
@@ -123,7 +126,7 @@ a_socket_open(struct sock *sp, struct url *urlp) /* TODO sigstuff; refactor */
    int volatile sofd = -1, errval;
    n_NYD2_IN;
 
-   su_mem_set(sp, 0, sizeof *sp);
+   su_mem_set(sop, 0, sizeof *sop);
    n_UNINIT(errval, 0);
 
    serv = (urlp->url_port != NULL) ? urlp->url_port : urlp->url_proto;
@@ -294,7 +297,7 @@ jjumped:
       goto jleave;
    }
 
-   sp->s_fd = sofd;
+   sop->s_fd = sofd;
    if (n_poption & n_PO_D_V)
       n_err(_("connected.\n"));
 
@@ -339,12 +342,12 @@ jjumped:
       }
       rele_sigs();
 
-      if(!n_tls_open(urlp, sp)){
+      if(!n_tls_open(urlp, sop)){
 jsclose:
-         sclose(sp);
+         sclose(sop);
          sofd = -1;
       }else if(urlp->url_cproto == CPROTO_CERTINFO)
-         sclose(sp);
+         sclose(sop);
 
       hold_sigs();
       safe_signal(SIGINT, oint);
@@ -448,51 +451,51 @@ jerr_noerrno:
 }
 
 static long
-a_socket_xwrite(int fd, char const *data, size_t sz)
+a_socket_xwrite(int fd, char const *data, size_t size)
 {
    long rv = -1, wo;
    size_t wt = 0;
    n_NYD_IN;
 
    do {
-      if ((wo = write(fd, data + wt, sz - wt)) < 0) {
+      if ((wo = write(fd, data + wt, size - wt)) < 0) {
          if (su_err_no() == su_ERR_INTR)
             continue;
          else
             goto jleave;
       }
       wt += wo;
-   } while (wt < sz);
-   rv = (long)sz;
+   } while (wt < size);
+   rv = (long)size;
 jleave:
    n_NYD_OU;
    return rv;
 }
 
 FL int
-sclose(struct sock *sp)
+sclose(struct sock *sop)
 {
    int i;
    n_NYD_IN;
 
-   i = sp->s_fd;
-   sp->s_fd = -1;
+   i = sop->s_fd;
+   sop->s_fd = -1;
    /* TODO NOTE: we MUST NOT close the descriptor 0 here...
     * TODO of course this should be handled in a VMAILFS->open() .s_fd=-1,
     * TODO but unfortunately it isn't yet */
    if (i <= 0)
       i = 0;
    else {
-      if (sp->s_onclose != NULL)
-         (*sp->s_onclose)();
-      if (sp->s_wbuf != NULL)
-         n_free(sp->s_wbuf);
+      if (sop->s_onclose != NULL)
+         (*sop->s_onclose)();
+      if (sop->s_wbuf != NULL)
+         n_free(sop->s_wbuf);
 # ifdef mx_HAVE_XTLS
-      if (sp->s_use_tls) {
-         void *s_tls = sp->s_tls;
+      if (sop->s_use_tls) {
+         void *s_tls = sop->s_tls;
 
-         sp->s_tls = NULL;
-         sp->s_use_tls = 0;
+         sop->s_tls = NULL;
+         sop->s_use_tls = 0;
          while (!SSL_shutdown(s_tls)) /* XXX proper error handling;signals! */
             ;
          SSL_free(s_tls);
@@ -505,18 +508,18 @@ sclose(struct sock *sp)
 }
 
 FL enum okay
-swrite(struct sock *sp, char const *data)
+swrite(struct sock *sop, char const *data)
 {
    enum okay rv;
    n_NYD2_IN;
 
-   rv = swrite1(sp, data, su_cs_len(data), 0);
+   rv = swrite1(sop, data, su_cs_len(data), 0);
    n_NYD2_OU;
    return rv;
 }
 
 FL enum okay
-swrite1(struct sock *sp, char const *data, int sz, int use_buffer)
+swrite1(struct sock *sop, char const *data, int size, int use_buffer)
 {
    enum okay rv = STOP;
    int x;
@@ -525,51 +528,51 @@ swrite1(struct sock *sp, char const *data, int sz, int use_buffer)
    if (use_buffer > 0) {
       int di;
 
-      if (sp->s_wbuf == NULL) {
-         sp->s_wbufsize = 4096;
-         sp->s_wbuf = n_alloc(sp->s_wbufsize);
-         sp->s_wbufpos = 0;
+      if (sop->s_wbuf == NULL) {
+         sop->s_wbufsize = 4096;
+         sop->s_wbuf = n_alloc(sop->s_wbufsize);
+         sop->s_wbufpos = 0;
       }
-      while (sp->s_wbufpos + sz > sp->s_wbufsize) {
-         di = sp->s_wbufsize - sp->s_wbufpos;
-         sz -= di;
-         if (sp->s_wbufpos > 0) {
-            su_mem_copy(sp->s_wbuf + sp->s_wbufpos, data, di);
-            rv = swrite1(sp, sp->s_wbuf, sp->s_wbufsize, -1);
+      while (sop->s_wbufpos + size > sop->s_wbufsize) {
+         di = sop->s_wbufsize - sop->s_wbufpos;
+         size -= di;
+         if (sop->s_wbufpos > 0) {
+            su_mem_copy(&sop->s_wbuf[sop->s_wbufpos], data, di);
+            rv = swrite1(sop, sop->s_wbuf, sop->s_wbufsize, -1);
          } else
-            rv = swrite1(sp, data, sp->s_wbufsize, -1);
+            rv = swrite1(sop, data, sop->s_wbufsize, -1);
          if (rv != OKAY)
             goto jleave;
          data += di;
-         sp->s_wbufpos = 0;
+         sop->s_wbufpos = 0;
       }
-      if (sz == sp->s_wbufsize) {
-         rv = swrite1(sp, data, sp->s_wbufsize, -1);
+      if (size == sop->s_wbufsize) {
+         rv = swrite1(sop, data, sop->s_wbufsize, -1);
          if (rv != OKAY)
             goto jleave;
-      } else if (sz) {
-         su_mem_copy(sp->s_wbuf+ sp->s_wbufpos, data, sz);
-         sp->s_wbufpos += sz;
+      } else if (size > 0) {
+         su_mem_copy(&sop->s_wbuf[sop->s_wbufpos], data, size);
+         sop->s_wbufpos += size;
       }
       rv = OKAY;
       goto jleave;
-   } else if (use_buffer == 0 && sp->s_wbuf != NULL && sp->s_wbufpos > 0) {
-      x = sp->s_wbufpos;
-      sp->s_wbufpos = 0;
-      if ((rv = swrite1(sp, sp->s_wbuf, x, -1)) != OKAY)
+   } else if (use_buffer == 0 && sop->s_wbuf != NULL && sop->s_wbufpos > 0) {
+      x = sop->s_wbufpos;
+      sop->s_wbufpos = 0;
+      if ((rv = swrite1(sop, sop->s_wbuf, x, -1)) != OKAY)
          goto jleave;
    }
-   if (sz == 0) {
+   if (size == 0) {
       rv = OKAY;
       goto jleave;
    }
 
 # ifdef mx_HAVE_XTLS
-   if (sp->s_use_tls) {
+   if (sop->s_use_tls) {
 jssl_retry:
-      x = SSL_write(sp->s_tls, data, sz);
+      x = SSL_write(sop->s_tls, data, size);
       if (x < 0) {
-         switch (SSL_get_error(sp->s_tls, x)) {
+         switch (SSL_get_error(sop->s_tls, x)) {
          case SSL_ERROR_WANT_READ:
          case SSL_ERROR_WANT_WRITE:
             goto jssl_retry;
@@ -578,21 +581,21 @@ jssl_retry:
    } else
 # endif
    {
-      x = a_socket_xwrite(sp->s_fd, data, sz);
+      x = a_socket_xwrite(sop->s_fd, data, size);
    }
-   if (x != sz) {
+   if (x != size) {
       char o[512];
 
       snprintf(o, sizeof o, "%s write error",
-         (sp->s_desc ? sp->s_desc : "socket"));
+         (sop->s_desc ? sop->s_desc : "socket"));
 # ifdef mx_HAVE_XTLS
-      if (sp->s_use_tls)
+      if (sop->s_use_tls)
          ssl_gen_err("%s", o);
       else
 # endif
          n_perr(o, 0);
       if (x < 0)
-         sclose(sp);
+         sclose(sop);
       rv = STOP;
       goto jleave;
    }
@@ -603,7 +606,7 @@ jleave:
 }
 
 FL bool_t
-sopen(struct sock *sp, struct url *urlp){
+sopen(struct sock *sop, struct url *urlp){
    char const *cp;
    bool_t rv;
    n_NYD_IN;
@@ -612,7 +615,7 @@ sopen(struct sock *sp, struct url *urlp){
 
    /* We may have a proxy configured */
    if((cp = xok_vlook(socks_proxy, urlp, OXM_ALL)) == NULL)
-      rv = a_socket_open(sp, urlp);
+      rv = a_socket_open(sop, urlp);
    else{
       ui8_t pbuf[4 + 1 + 255 + 2];
       size_t i;
@@ -634,7 +637,7 @@ sopen(struct sock *sp, struct url *urlp){
             urlp->url_host.s,
             (urlp->url_port != NULL ? urlp->url_port : urlp->url_proto));
 
-      if(!a_socket_open(sp, &url2)){
+      if(!a_socket_open(sop, &url2)){
          n_err(_("Failed to connect to *socks-proxy*: %s\n"), cp);
          goto jleave;
       }
@@ -643,16 +646,16 @@ sopen(struct sock *sp, struct url *urlp){
       pbuf[0] = 0x05; /* VER: protocol version: X'05' */
       pbuf[1] = 0x01; /* NMETHODS: 1 */
       pbuf[2] = 0x00; /* METHOD: X'00' NO AUTHENTICATION REQUIRED */
-      if(write(sp->s_fd, pbuf, 3) != 3){
+      if(write(sop->s_fd, pbuf, 3) != 3){
 jerrsocks:
          n_perr("*socks-proxy*", 0);
 jesocks:
-         sclose(sp);
+         sclose(sop);
          goto jleave;
       }
 
       /* Receive greeting */
-      if(read(sp->s_fd, pbuf, 2) != 2)
+      if(read(sop->s_fd, pbuf, 2) != 2)
          goto jerrsocks;
       if(pbuf[0] != 0x05 || pbuf[1] != 0x00){
 jesocksreply:
@@ -677,11 +680,11 @@ jesocksreplymsg:
          su_mem_copy(&pbuf[i += urlp->url_host.l], (ui8_t*)&x, sizeof x);
          i += sizeof x;
       }
-      if(write(sp->s_fd, pbuf, i) != (ssize_t)i)
+      if(write(sop->s_fd, pbuf, i) != (ssize_t)i)
          goto jerrsocks;
 
       /* Connect result */
-      if((i = read(sp->s_fd, pbuf, 4)) != 4)
+      if((i = read(sop->s_fd, pbuf, 4)) != 4)
          goto jerrsocks;
       /* Version 5, reserved must be 0 */
       if(pbuf[0] != 0x05 || pbuf[2] != 0x00)
@@ -712,11 +715,11 @@ jesocksreplymsg:
       default: goto jesocksreply;
       }
       i += sizeof(ui16_t);
-      if(read(sp->s_fd, pbuf, i) != (ssize_t)i)
+      if(read(sop->s_fd, pbuf, i) != (ssize_t)i)
          goto jerrsocks;
       if(i == 1 + sizeof(ui16_t)){
          i = pbuf[0];
-         if(read(sp->s_fd, pbuf, i) != (ssize_t)i)
+         if(read(sop->s_fd, pbuf, i) != (ssize_t)i)
             goto jerrsocks;
       }
       rv = TRU1;
@@ -727,7 +730,7 @@ jleave:
 }
 
 FL int
-(sgetline)(char **line, size_t *linesize, size_t *linelen, struct sock *sp
+(sgetline)(char **line, size_t *linesize, size_t *linelen, struct sock *sop
    su_DBG_LOC_ARGS_DECL)
 {
    int rv;
@@ -739,9 +742,9 @@ FL int
    lp_base = *line;
    lp = lp_base;
 
-   if (sp->s_rsz < 0) {
-      sclose(sp);
-      rv = sp->s_rsz;
+   if (sop->s_rsz < 0) {
+      sclose(sop);
+      rv = sop->s_rsz;
       goto jleave;
    }
 
@@ -754,23 +757,23 @@ FL int
          lp = lp_base + diff;
       }
 
-      if (sp->s_rbufptr == NULL ||
-            PTRCMP(sp->s_rbufptr, >=, sp->s_rbuf + sp->s_rsz)) {
+      if (sop->s_rbufptr == NULL ||
+            PTRCMP(sop->s_rbufptr, >=, sop->s_rbuf + sop->s_rsz)) {
 # ifdef mx_HAVE_XTLS
-         if (sp->s_use_tls) {
+         if (sop->s_use_tls) {
 jssl_retry:
-            sp->s_rsz = SSL_read(sp->s_tls, sp->s_rbuf, sizeof sp->s_rbuf);
-            if (sp->s_rsz <= 0) {
-               if (sp->s_rsz < 0) {
+            sop->s_rsz = SSL_read(sop->s_tls, sop->s_rbuf, sizeof sop->s_rbuf);
+            if (sop->s_rsz <= 0) {
+               if (sop->s_rsz < 0) {
                   char o[512];
 
-                  switch(SSL_get_error(sp->s_tls, sp->s_rsz)) {
+                  switch(SSL_get_error(sop->s_tls, sop->s_rsz)) {
                   case SSL_ERROR_WANT_READ:
                   case SSL_ERROR_WANT_WRITE:
                      goto jssl_retry;
                   }
                   snprintf(o, sizeof o, "%s",
-                     (sp->s_desc ?  sp->s_desc : "socket"));
+                     (sop->s_desc ?  sop->s_desc : "socket"));
                   ssl_gen_err("%s", o);
                }
                break;
@@ -779,23 +782,23 @@ jssl_retry:
 # endif
          {
 jagain:
-            sp->s_rsz = read(sp->s_fd, sp->s_rbuf, sizeof sp->s_rbuf);
-            if (sp->s_rsz <= 0) {
-               if (sp->s_rsz < 0) {
+            sop->s_rsz = read(sop->s_fd, sop->s_rbuf, sizeof sop->s_rbuf);
+            if (sop->s_rsz <= 0) {
+               if (sop->s_rsz < 0) {
                   char o[512];
 
                   if (su_err_no() == su_ERR_INTR)
                      goto jagain;
                   snprintf(o, sizeof o, "%s",
-                     (sp->s_desc ?  sp->s_desc : "socket"));
+                     (sop->s_desc ?  sop->s_desc : "socket"));
                   n_perr(o, 0);
                }
                break;
             }
          }
-         sp->s_rbufptr = sp->s_rbuf;
+         sop->s_rbufptr = sop->s_rbuf;
       }
-   } while ((*lp++ = *sp->s_rbufptr++) != '\n');
+   } while ((*lp++ = *sop->s_rbufptr++) != '\n');
    *lp = '\0';
    lsize = PTR2SIZE(lp - lp_base);
 
@@ -806,6 +809,7 @@ jleave:
    n_NYD2_OU;
    return rv;
 }
-#endif /* mx_HAVE_SOCKETS */
 
+#include "su/code-ou.h"
+#endif /* mx_HAVE_SOCKETS */
 /* s-it-mode */

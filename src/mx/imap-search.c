@@ -55,6 +55,9 @@ su_EMPTY_FILE()
 
 #include "mx/names.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 enum itoken {
    ITBAD, ITEOD, ITBOL, ITEOL, ITAND, ITSET, ITALL, ITANSWERED,
    ITBCC, ITBEFORE, ITBODY,
@@ -897,6 +900,7 @@ jleave:
    n_NYD_OU;
    return rv;
 }
-#endif /* mx_HAVE_IMAP_SEARCH */
 
+#include "su/code-ou.h"
+#endif /* mx_HAVE_IMAP_SEARCH */
 /* s-it-mode */

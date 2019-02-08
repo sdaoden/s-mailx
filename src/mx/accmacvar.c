@@ -61,6 +61,9 @@
 #include "mx/names.h"
 #include "mx/ui-str.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 #if !defined mx_HAVE_SETENV && !defined mx_HAVE_PUTENV
 # error Exactly one of mx_HAVE_SETENV and mx_HAVE_PUTENV
 #endif
@@ -1034,10 +1037,10 @@ jefrom:
             }
          }break;
       case ok_v_sendcharsets:{
-         struct n_string s, *sp = &s;
+         struct n_string s_b, *s = &s_b;
          char *csv, *cp;
 
-         sp = n_string_creat_auto(sp);
+         s = n_string_creat_auto(s);
          csv = savestr(*val);
 
          while((cp = su_cs_sep_c(&csv, ',', TRU1)) != NULL){
@@ -1045,13 +1048,13 @@ jefrom:
                ok = FAL0;
                break;
             }
-            if(sp->s_len > 0)
-               sp = n_string_push_c(sp, ',');
-            sp = n_string_push_cp(sp, cp);
+            if(s->s_len > 0)
+               s = n_string_push_c(s, ',');
+            s = n_string_push_cp(s, cp);
          }
 
-         *val = n_string_cp(sp);
-         /* n_string_drop_ownership(sp); */
+         *val = n_string_cp(s);
+         /* n_string_drop_ownership(so); */
          }break;
       case ok_v_TMPDIR:
          if(!n_is_dir(*val, TRU1)){
@@ -3192,7 +3195,7 @@ FL char *
 n_var_xoklook(enum okeys okey, struct url const *urlp,
       enum okey_xlook_mode oxm){
    struct a_amv_var_carrier avc;
-   struct str const *us;
+   struct str const *usp;
    size_t nlen;
    char *nbuf, *rv;
    n_NYD_IN;
@@ -3211,14 +3214,14 @@ n_var_xoklook(enum okeys okey, struct url const *urlp,
    avc.avc_okey = okey;
    avc.avc_is_chain_variant = TRU1;
 
-   us = (oxm & OXM_U_H_P) ? &urlp->url_u_h_p : &urlp->url_h_p;
+   usp = (oxm & OXM_U_H_P) ? &urlp->url_u_h_p : &urlp->url_h_p;
    nlen = su_cs_len(avc.avc_name);
-   nbuf = n_lofi_alloc(nlen + 1 + us->l +1);
+   nbuf = n_lofi_alloc(nlen + 1 + usp->l +1);
    su_mem_copy(nbuf, avc.avc_name, nlen);
 
    /* One of .url_u_h_p and .url_h_p we test in here */
    nbuf[nlen++] = '-';
-   su_mem_copy(&nbuf[nlen], us->s, us->l +1);
+   su_mem_copy(&nbuf[nlen], usp->s, usp->l +1);
    avc.avc_name = nbuf;
    avc.avc_hash = a_AMV_NAME2HASH(avc.avc_name);
    if(a_amv_var_lookup(&avc, a_AMV_VLOOK_NONE))
@@ -3226,8 +3229,8 @@ n_var_xoklook(enum okeys okey, struct url const *urlp,
 
    /* The second */
    if((oxm & (OXM_U_H_P | OXM_H_P)) == (OXM_U_H_P | OXM_H_P)){
-      us = &urlp->url_h_p;
-      su_mem_copy(&nbuf[nlen], us->s, us->l +1);
+      usp = &urlp->url_h_p;
+      su_mem_copy(&nbuf[nlen], usp->s, usp->l +1);
       avc.avc_name = nbuf;
       avc.avc_hash = a_AMV_NAME2HASH(avc.avc_name);
       if(a_amv_var_lookup(&avc, a_AMV_VLOOK_NONE)){
@@ -3928,8 +3931,8 @@ jesubstring_len:
          goto jestr_nodata;
    }else if((lhv = 0, su_cs_starts_with_case("file-stat", cp)) ||
          (++lhv, su_cs_starts_with_case("file-lstat", cp))){
-      struct stat s;
-      struct n_string s_b, *sp;
+      struct stat st;
+      struct n_string s_b, *s;
       char c;
 
       if(argv[1] == NULL || argv[2] != NULL)
@@ -3937,59 +3940,59 @@ jesubstring_len:
 
       if((varres = fexpand(argv[1], FEXP_NVAR | FEXP_NOPROTO)) == NULL)
          goto jestr_nodata;
-      if((*((lhv == 0) ? &stat : &lstat))(varres, &s) != 0)
+      if((*((lhv == 0) ? &stat : &lstat))(varres, &st) != 0)
          goto jestr_nodata;
 
-      sp = n_string_book(n_string_creat_auto(&s_b), 128);
-      sp = n_string_push_cp(sp, "st_file=");
-      sp = n_string_push_cp(sp, n_shexp_quote_cp(varres, FAL0));
-      sp = n_string_push_c(sp, ' ');
+      s = n_string_book(n_string_creat_auto(&s_b), 128);
+      s = n_string_push_cp(s, "st_file=");
+      s = n_string_push_cp(s, n_shexp_quote_cp(varres, FAL0));
+      s = n_string_push_c(s, ' ');
 
-      sp = n_string_push_cp(sp, "st_type=");
-      if(S_ISDIR(s.st_mode)) c = '/';
-      else if(S_ISLNK(s.st_mode)) c = '@';
+      s = n_string_push_cp(s, "st_type=");
+      if(S_ISDIR(st.st_mode)) c = '/';
+      else if(S_ISLNK(st.st_mode)) c = '@';
 #ifdef S_ISFIFO
-      else if(S_ISFIFO(s.st_mode)) c = '|';
+      else if(S_ISFIFO(st.st_mode)) c = '|';
 #endif
 #ifdef S_ISSOCK
-      else if(S_ISSOCK(s.st_mode)) c = '=';
+      else if(S_ISSOCK(st.st_mode)) c = '=';
 #endif
 #ifdef S_ISCHR
-      else if(S_ISCHR(s.st_mode)) c = '%';
+      else if(S_ISCHR(st.st_mode)) c = '%';
 #endif
 #ifdef S_ISBLK
-      else if(S_ISBLK(s.st_mode)) c = '#';
+      else if(S_ISBLK(st.st_mode)) c = '#';
 #endif
       else c = '.';
-      sp = n_string_push_c(sp, c);
-      sp = n_string_push_c(sp, ' ');
+      s = n_string_push_c(s, c);
+      s = n_string_push_c(s, ' ');
 
-      sp = n_string_push_cp(sp, "st_nlink=");
-      snprintf(iencbuf, sizeof iencbuf, "%ld", (long)s.st_nlink);
-      sp = n_string_push_cp(sp, iencbuf);
-      sp = n_string_push_c(sp, ' ');
+      s = n_string_push_cp(s, "st_nlink=");
+      snprintf(iencbuf, sizeof iencbuf, "%ld", (long)st.st_nlink);
+      s = n_string_push_cp(s, iencbuf);
+      s = n_string_push_c(s, ' ');
 
-      sp = n_string_push_cp(sp, "st_size=");
-      snprintf(iencbuf, sizeof iencbuf, "%lu", (unsigned long)s.st_size);
-      sp = n_string_push_cp(sp, iencbuf);
-      sp = n_string_push_c(sp, ' ');
+      s = n_string_push_cp(s, "st_size=");
+      snprintf(iencbuf, sizeof iencbuf, "%lu", (unsigned long)st.st_size);
+      s = n_string_push_cp(s, iencbuf);
+      s = n_string_push_c(s, ' ');
 
-      sp = n_string_push_cp(sp, "st_mode=");
-      snprintf(iencbuf, sizeof iencbuf, "%ld", (long)s.st_mode);
-      sp = n_string_push_cp(sp, iencbuf);
-      sp = n_string_push_c(sp, ' ');
+      s = n_string_push_cp(s, "st_mode=");
+      snprintf(iencbuf, sizeof iencbuf, "%ld", (long)st.st_mode);
+      s = n_string_push_cp(s, iencbuf);
+      s = n_string_push_c(s, ' ');
 
-      sp = n_string_push_cp(sp, "st_uid=");
-      snprintf(iencbuf, sizeof iencbuf, "%ld", (long)s.st_uid);
-      sp = n_string_push_cp(sp, iencbuf);
-      sp = n_string_push_c(sp, ' ');
+      s = n_string_push_cp(s, "st_uid=");
+      snprintf(iencbuf, sizeof iencbuf, "%ld", (long)st.st_uid);
+      s = n_string_push_cp(s, iencbuf);
+      s = n_string_push_c(s, ' ');
 
-      sp = n_string_push_cp(sp, "st_gid=");
-      snprintf(iencbuf, sizeof iencbuf, "%ld", (long)s.st_gid);
-      sp = n_string_push_cp(sp, iencbuf);
-      sp = n_string_push_c(sp, ' ');
+      s = n_string_push_cp(s, "st_gid=");
+      snprintf(iencbuf, sizeof iencbuf, "%ld", (long)st.st_gid);
+      s = n_string_push_cp(s, iencbuf);
+      s = n_string_push_c(s, ' ');
 
-      varres = n_string_cp(sp);
+      varres = n_string_cp(s);
    }else if(su_cs_starts_with_case("makeprint", cp)){
       struct str sin, sout;
 
@@ -4286,10 +4289,10 @@ c_vpospar(void *v){
          varres = n_empty;
       else{
          struct str in;
-         struct n_string s, *sp;
+         struct n_string s_b, *s;
          char sep1, sep2;
 
-         sp = n_string_creat_auto(&s);
+         s = n_string_creat_auto(&s_b);
 
          sep1 = *ok_vlook(ifs);
          sep2 = *ok_vlook(ifs_ws);
@@ -4299,27 +4302,27 @@ c_vpospar(void *v){
             sep1 = ' ';
 
          for(i = 0; i < appp->app_count; ++i){
-            if(sp->s_len){
-               if(!n_string_can_book(sp, 2))
+            if(s->s_len){
+               if(!n_string_can_book(s, 2))
                   goto jeover;
-               sp = n_string_push_c(sp, sep1);
+               s = n_string_push_c(s, sep1);
                if(sep2 != '\0')
-                  sp = n_string_push_c(sp, sep2);
+                  s = n_string_push_c(s, sep2);
             }
             in.l = su_cs_len(in.s =
                   n_UNCONST(appp->app_dat[i + appp->app_idx]));
 
-            if(!n_string_can_book(sp, in.l)){
+            if(!n_string_can_book(s, in.l)){
 jeover:
                n_err(_("`vpospar': overflow: string too long!\n"));
                n_pstate_err_no = su_ERR_OVERFLOW;
                f = a_ERR;
                goto jleave;
             }
-            sp = n_shexp_quote(sp, &in, TRU1);
+            s = n_shexp_quote(s, &in, TRU1);
          }
 
-         varres = n_string_cp(sp);
+         varres = n_string_cp(s);
       }
 
       if(cacp->cac_vput == NULL){
@@ -4337,4 +4340,5 @@ jleave:
    return (f & a_ERR) ? 1 : 0;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

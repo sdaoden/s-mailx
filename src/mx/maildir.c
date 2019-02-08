@@ -55,6 +55,9 @@ su_EMPTY_FILE()
 #include <su/icodec.h>
 #include <su/prime.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* a_maildir_tbl should be a hash-indexed array of trees! */
 static struct message **a_maildir_tbl, **a_maildir_tbl_top;
 static ui32_t a_maildir_tbl_prime, a_maildir_tbl_maxdist;
@@ -124,7 +127,7 @@ static void
 _cleantmp(void)
 {
    struct stat st;
-   struct n_string s, *sp;
+   struct n_string s_b, *s;
    si64_t now;
    DIR *dirp;
    struct dirent *dp;
@@ -134,19 +137,19 @@ _cleantmp(void)
       goto jleave;
 
    now = n_time_now(FAL0)->ts_sec;
-   sp = n_string_creat_auto(&s);
+   s = n_string_creat_auto(&s_b);
 
    while ((dp = readdir(dirp)) != NULL) {
       if (dp->d_name[0] == '.')
          continue;
 
-      sp = n_string_trunc(sp, 0);
-      sp = n_string_push_buf(sp, "tmp/", sizeof("tmp/") -1);
-      sp = n_string_push_cp(sp, dp->d_name);
-      if (stat(n_string_cp(sp), &st) == -1)
+      s = n_string_trunc(s, 0);
+      s = n_string_push_buf(s, "tmp/", sizeof("tmp/") -1);
+      s = n_string_push_cp(s, dp->d_name);
+      if (stat(n_string_cp(s), &st) == -1)
          continue;
       if (st.st_atime + 36*3600 < now)
-         unlink(sp->s_dat);
+         unlink(s->s_dat);
    }
    closedir(dirp);
 jleave:
@@ -429,14 +432,14 @@ _maildir_append(char const *name, char const *sub, char const *fn)
    m = &message[msgCount++];
    /* C99 */{
       char *tmp;
-      size_t sz, i;
+      size_t i, j;
 
       i = su_cs_len(fn) +1;
-      sz = su_cs_len(sub);
-      m->m_maildir_file = tmp = n_alloc(sz + 1 + i);
-      su_mem_copy(tmp, sub, sz);
-      tmp[sz++] = '/';
-      su_mem_copy(&tmp[sz], fn, i);
+      j = su_cs_len(sub);
+      m->m_maildir_file = tmp = n_alloc(j + 1 + i);
+      su_mem_copy(tmp, sub, j);
+      tmp[j++] = '/';
+      su_mem_copy(&tmp[j], fn, i);
    }
    m->m_time = t;
    m->m_flag = f;
@@ -777,18 +780,18 @@ static enum okay
 mkmaildir(char const *name) /* TODO proper cleanup on error; use path[] loop */
 {
    char *np;
-   size_t sz;
+   size_t i;
    enum okay rv = STOP;
    n_NYD_IN;
 
    if (trycreate(name) == OKAY) {
-      np = n_lofi_alloc((sz = su_cs_len(name)) + 4 +1);
-      su_mem_copy(np, name, sz);
-      su_mem_copy(np + sz, "/tmp", 4 +1);
+      np = n_lofi_alloc((i = su_cs_len(name)) + 4 +1);
+      su_mem_copy(np, name, i);
+      su_mem_copy(&np[i], "/tmp", 4 +1);
       if (trycreate(np) == OKAY) {
-         su_mem_copy(np + sz, "/new", 4 +1);
+         su_mem_copy(&np[i], "/new", 4);
          if (trycreate(np) == OKAY) {
-            su_mem_copy(np + sz, "/cur", 4 +1);
+            su_mem_copy(&np[i], "/cur", 4);
             rv = trycreate(np);
          }
       }
@@ -1181,6 +1184,7 @@ jleave:
    n_NYD_OU;
    return rv;
 }
-#endif /* mx_HAVE_MAILDIR */
 
+#include "su/code-ou.h"
+#endif /* mx_HAVE_MAILDIR */
 /* s-it-mode */

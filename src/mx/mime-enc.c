@@ -33,6 +33,9 @@
 
 #include <su/cs.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 enum a_me_qact{
    a_ME_N = 0,
    a_ME_Q = 1,       /* Must quote */
@@ -655,7 +658,7 @@ jleave:
 FL bool_t
 qp_decode_part(struct str *out, struct str const *in, struct str *outrest,
       struct str *inrest_or_null){
-   struct n_string s, *sp;
+   struct n_string s_b, *s;
    char const *is, *ie;
    n_NYD_IN;
 
@@ -671,17 +674,17 @@ qp_decode_part(struct str *out, struct str const *in, struct str *outrest,
          SI32_MAX <= out->l + in->l) /* XXX wrong, we may replace */
       goto jerr;
 
-   sp = n_string_creat(&s);
-   sp = n_string_take_ownership(sp, out->s,
+   s = n_string_creat(&s_b);
+   s = n_string_take_ownership(s, out->s,
          (out->l == 0 ? 0 : out->l +1), out->l);
-   sp = n_string_reserve(sp, in->l + (in->l >> 2));
+   s = n_string_reserve(s, in->l + (in->l >> 2));
 
    for(is = in->s, ie = &is[in->l - 1]; is <= ie;){
       si32_t c;
 
       if((c = *is++) != '='){
 jpushc:
-         n_string_push_c(sp, (char)c);
+         n_string_push_c(s, (char)c);
          continue;
       }
 
@@ -725,15 +728,15 @@ jpushc:
        * check for this special case, and simply forget we have seen one, so as
        * not to end up with the entire DOS file in a contiguous buffer */
 jsoftnl:
-      if(sp->s_len > 0 && sp->s_dat[sp->s_len - 1] == '\n'){
+      if(s->s_len > 0 && s->s_dat[s->s_len - 1] == '\n'){
 #if 0       /* TODO qp_decode_part() we do not normalize CRLF
           * TODO to LF because for that we would need
           * TODO to know if we are about to write to
           * TODO the display or do save the file!
           * TODO 'hope the MIME/send layer rewrite will
           * TODO offer the possibility to DTRT */
-         if(sp->s_len > 1 && sp->s_dat[sp->s_len - 2] == '\r')
-            n_string_push_c(n_string_trunc(sp, sp->s_len - 2), '\n');
+         if(s->s_len > 1 && s->s_dat[s->s_len - 2] == '\r')
+            n_string_push_c(n_string_trunc(s, s->s_len - 2), '\n');
 #endif
          break;
       }
@@ -748,18 +751,18 @@ jsoftnl:
             n_str_assign_buf(inrest_or_null, is, l);
          }
          cp = outrest->s;
-         outrest->s = n_string_cp(sp);
-         outrest->l = s.s_len;
-         n_string_drop_ownership(sp);
+         outrest->s = n_string_cp(s);
+         outrest->l = s->s_len;
+         n_string_drop_ownership(s);
          if(cp != NULL)
             n_free(cp);
       }
       break;
    }
 
-   out->s = n_string_cp(sp);
-   out->l = sp->s_len;
-   n_string_gut(n_string_drop_ownership(sp));
+   out->s = n_string_cp(s);
+   out->l = s->s_len;
+   n_string_gut(n_string_drop_ownership(s));
 jleave:
    n_NYD_OU;
    return (out != NULL);
@@ -1115,4 +1118,5 @@ jerr:
    goto jleave;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

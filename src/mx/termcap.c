@@ -45,6 +45,9 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/icodec.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /*
  * xxx We are not really compatible with very old and strange terminals since
  * we don't care at all for circumstances indicated by terminal flags: if we
@@ -968,6 +971,7 @@ n_termcap_name_of_query(enum n_termcap_query query){
    return rv;
 }
 #endif /* mx_HAVE_KEY_BINDINGS */
-#endif /* n_HAVE_TCAP */
 
+#include "su/code-ou.h"
+#endif /* n_HAVE_TCAP */
 /* s-it-mode */

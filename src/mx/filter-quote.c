@@ -38,6 +38,8 @@
 #endif
 
 #include "mx/filter-quote.h"
+/* TODO fake */
+#include "su/code-in.h"
 
 #ifdef mx_HAVE_QUOTE_FOLD
 n_CTAV(n_QUOTE_MAX > 3);
@@ -540,4 +542,5 @@ quoteflt_flush(struct quoteflt *self)
    return rv;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

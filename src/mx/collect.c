@@ -49,6 +49,9 @@
 #include "mx/names.h"
 #include "mx/ui-str.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 struct a_coll_fmt_ctx{ /* xxx This is temporary until v15 has objects */
    char const *cfc_fmt;
    FILE *cfc_fp;
@@ -543,7 +546,7 @@ jleave:
 static bool_t
 a_coll__fmt_inj(struct a_coll_fmt_ctx const *cfcp){
    struct quoteflt qf;
-   struct n_string s_b, *sp;
+   struct n_string s_b, *s;
    char c;
    char const *fmt;
    n_NYD_IN;
@@ -551,31 +554,31 @@ a_coll__fmt_inj(struct a_coll_fmt_ctx const *cfcp){
    if((fmt = cfcp->cfc_fmt) == NULL || *fmt == '\0')
       goto jleave;
 
-   sp = n_string_book(n_string_creat_auto(&s_b), 127);
+   s = n_string_book(n_string_creat_auto(&s_b), 127);
 
    while((c = *fmt++) != '\0'){
       if(c != '%' || (c = *fmt++) == '%'){
 jwrite_char:
-         sp = n_string_push_c(sp, c);
+         s = n_string_push_c(s, c);
       }else switch(c){
       case 'a':
-         sp = n_string_push_cp(sp, cfcp->cfc_addr);
+         s = n_string_push_cp(s, cfcp->cfc_addr);
          break;
       case 'd':
-         sp = n_string_push_cp(sp, cfcp->cfc_date);
+         s = n_string_push_cp(s, cfcp->cfc_date);
          break;
       case 'f':
-         sp = n_string_push_cp(sp, cfcp->cfc_full);
+         s = n_string_push_cp(s, cfcp->cfc_full);
          break;
       case 'i':
          if(cfcp->cfc_msgid != NULL)
-            sp = n_string_push_cp(sp, cfcp->cfc_msgid);
+            s = n_string_push_cp(s, cfcp->cfc_msgid);
          break;
       case 'n':
-         sp = n_string_push_cp(sp, cfcp->cfc_cumul);
+         s = n_string_push_cp(s, cfcp->cfc_cumul);
          break;
       case 'r':
-         sp = n_string_push_cp(sp, cfcp->cfc_real);
+         s = n_string_push_cp(s, cfcp->cfc_real);
          break;
       case '\0':
          --fmt;
@@ -591,11 +594,11 @@ jwrite_char:
 
    quoteflt_init(&qf, NULL, FAL0);
    quoteflt_reset(&qf, cfcp->cfc_fp);
-   if(quoteflt_push(&qf, sp->s_dat, sp->s_len) < 0 || quoteflt_flush(&qf) < 0)
+   if(quoteflt_push(&qf, s->s_dat, s->s_len) < 0 || quoteflt_flush(&qf) < 0)
       cfcp = NULL;
    quoteflt_destroy(&qf);
 
-   /*n_string_gut(sp);*/
+   /*n_string_gut(s);*/
 jleave:
    n_NYD_OU;
    return (cfcp != NULL);
@@ -1026,7 +1029,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    char const *quotefile, si8_t *checkaddr_err)
 {
    struct n_dig_msg_ctx dmc;
-   struct n_string s, * volatile sp;
+   struct n_string s_b, * volatile s;
    struct a_coll_ocs_arg *coap;
    int c;
    int volatile t, eofcnt, getfields;
@@ -1056,7 +1059,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    eofcnt = 0;
    ifs_saved = coapm = NULL;
    coap = NULL;
-   sp = NULL;
+   s = NULL;
 
    /* Start catching signals from here, but we still die on interrupts
     * until we're in the main loop */
@@ -1139,8 +1142,8 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
 
       if(n_psonce & n_PSO_INTERACTIVE){
          if(!(n_pstate & n_PS_SOURCING)){
-            sp = n_string_creat_auto(&s);
-            sp = n_string_reserve(sp, 80);
+            s = n_string_creat_auto(&s_b);
+            s = n_string_reserve(s, 80);
          }
 
          if(!(n_poption & n_PO_Mm_FLAG) && !(n_pstate & n_PS_ROBOT)){
@@ -1227,7 +1230,7 @@ jcont:
 
          /* TODO optimize: no need to evaluate that anew for each loop tick! */
          gif = n_GO_INPUT_CTX_COMPOSE;
-         histadd = (sp != NULL);
+         histadd = (s != NULL);
          if(!(n_poption & n_PO_t_FLAG) || (n_psonce & n_PSO_t_FLAG_DONE)){
             if((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_TILDE_FLAG))
                gif |= n_GO_INPUT_NL_ESC;
@@ -1325,13 +1328,13 @@ jputnl:
       }
 
       if(hist != a_HIST_NONE){
-         sp = n_string_assign_c(sp, escape);
+         s = n_string_assign_c(s, escape);
          if(flags & a_IGNERR)
-            sp = n_string_push_c(sp, '-');
-         sp = n_string_push_c(sp, c);
+            s = n_string_push_c(s, '-');
+         s = n_string_push_c(s, c);
          if(cnt > 0){
-            sp = n_string_push_c(sp, ' ');
-            sp = n_string_push_buf(sp, cp, cnt);
+            s = n_string_push_c(s, ' ');
+            s = n_string_push_buf(s, cp, cnt);
          }
       }
 
@@ -1772,7 +1775,7 @@ jhistcont:
          /* Do not add *escape* to the history in order to allow history search
           * to be handled generically in the MLE regardless of actual *escape*
           * settings etc. */
-         n_tty_addhist(&n_string_cp(sp)[1], (n_GO_INPUT_CTX_COMPOSE |
+         n_tty_addhist(&n_string_cp(s)[1], (n_GO_INPUT_CTX_COMPOSE |
             (hist & a_HIST_GABBY ? n_GO_INPUT_HIST_GABBY : n_GO_INPUT_NONE)));
       }
       if(c != '\0')
@@ -2057,4 +2060,5 @@ jerr:
 #undef a_HARDERR
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

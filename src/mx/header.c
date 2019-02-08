@@ -51,6 +51,9 @@
 #include "mx/names.h"
 #include "mx/ui-str.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 struct a_header_cmatch_data{
    ui32_t hcmd_len_x;      /* Length of .tdata,.. */
    ui32_t hcmd_len_min;    /* ..less all optional entries */
@@ -2109,13 +2112,13 @@ jleave:
 FL int
 c_addrcodec(void *vp){
    struct str trims;
-   struct n_string s_b, *sp;
+   struct n_string s_b, *s;
    size_t alen;
    int mode;
    char const **argv, *varname, *act, *cp;
    n_NYD_IN;
 
-   sp = n_string_creat_auto(&s_b);
+   s = n_string_creat_auto(&s_b);
    argv = vp;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
 
@@ -2139,7 +2142,7 @@ c_addrcodec(void *vp){
    cp = savestrbuf(n_str_trim(&trims, n_STR_TRIM_BOTH)->s, trims.l);
    if(trims.l <= UIZ_MAX / 4)
          trims.l <<= 1;
-   sp = n_string_reserve(sp, trims.l);
+   s = n_string_reserve(s, trims.l);
 
    n_pstate_err_no = su_ERR_NONE;
 
@@ -2152,11 +2155,11 @@ c_addrcodec(void *vp){
       while((c = *cp++) != '\0'){
          if(((c == '(' || c == ')') && mode < 1) || (c == '"' && mode < 2) ||
                (c == '\\' && mode < 3))
-            sp = n_string_push_c(sp, '\\');
-         sp = n_string_push_c(sp, c);
+            s = n_string_push_c(s, '\\');
+         s = n_string_push_c(s, c);
       }
 
-      if((np = n_extract_single(cp = n_string_cp(sp), GTO | GFULL)) != NULL)
+      if((np = n_extract_single(cp = n_string_cp(s), GTO | GFULL)) != NULL)
          cp = np->n_fullname;
       else{
          n_pstate_err_no = su_ERR_INVAL;
@@ -2169,11 +2172,11 @@ c_addrcodec(void *vp){
          while((c = *cp++) != '\0'){
             switch(c){
             case '(':
-               sp = n_string_push_c(sp, '(');
+               s = n_string_push_c(s, '(');
                act = skip_comment(cp);
                if(--act > cp)
-                  sp = n_string_push_buf(sp, cp, PTR2SIZE(act - cp));
-               sp = n_string_push_c(sp, ')');
+                  s = n_string_push_buf(s, cp, PTR2SIZE(act - cp));
+               s = n_string_push_c(s, ')');
                cp = ++act;
                break;
             case '"':
@@ -2182,17 +2185,17 @@ c_addrcodec(void *vp){
                      break;
                   if(c == '\\' && (c = *cp) != '\0')
                      ++cp;
-                  sp = n_string_push_c(sp, c);
+                  s = n_string_push_c(s, c);
                }
                break;
             default:
                if(c == '\\' && (c = *cp++) == '\0')
                   break;
-               sp = n_string_push_c(sp, c);
+               s = n_string_push_c(s, c);
                break;
             }
          }
-         cp = n_string_cp(sp);
+         cp = n_string_cp(s);
       }else if(su_cs_starts_with_case_n("skin", act, alen) ||
             (mode = 1, su_cs_starts_with_case_n("skinlist", act, alen))){
          struct mx_name *np;
@@ -3334,4 +3337,5 @@ jerr:
    goto jleave;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

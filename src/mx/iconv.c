@@ -46,6 +46,9 @@
 
 #include "mx/iconv.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 FL char *
 n_iconv_normalize_name(char const *cset){
    char *cp, c, *tcp, tc;
@@ -170,11 +173,11 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
       icf &= ~n_ICONV_UNIREPL;
 
    for(;;){
-      size_t sz;
+      size_t i;
 
-      if((sz = iconv(cd, __INBCAST(inb), inbleft, outb, outbleft)) == 0)
+      if((i = iconv(cd, __INBCAST(inb), inbleft, outb, outbleft)) == 0)
          break;
-      if(sz != (size_t)-1){
+      if(i != (size_t)-1){
          if(!(icf & n_ICONV_IGN_NOREVERSE)){
             err = su_ERR_NOENT;
             goto jleave;
@@ -221,7 +224,7 @@ jleave:
 FL int
 n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
       struct str *out, struct str const *in, struct str *in_rest_or_null){
-   struct n_string s, *sp = &s;
+   struct n_string s_b, *s;
    char const *ib;
    int err;
    size_t il;
@@ -234,38 +237,38 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
    }
    ib = in->s;
 
-   sp = n_string_creat(sp);
-   sp = n_string_take_ownership(sp, out->s, out->l, 0);
+   s = n_string_creat(&s_b);
+   s = n_string_take_ownership(s, out->s, out->l, 0);
 
    for(;;){
       char *ob_base, *ob;
       size_t ol, nol;
 
-      if((nol = ol = sp->s_len) < il)
+      if((nol = ol = s->s_len) < il)
          nol = il;
-      assert(sizeof(sp->s_len) == sizeof(ui32_t));
+      assert(sizeof(s->s_len) == sizeof(ui32_t));
       if(nol < 128)
          nol += 32;
       else{
          ui64_t xnol;
 
          xnol = (ui64_t)(nol << 1) - (nol >> 4);
-         if(!n_string_can_book(sp, xnol)){
+         if(!n_string_can_book(s, xnol)){
             xnol = ol + 64;
-            if(!n_string_can_book(sp, xnol)){
+            if(!n_string_can_book(s, xnol)){
                err = su_ERR_INVAL;
                goto jleave;
             }
          }
          nol = (size_t)xnol;
       }
-      sp = n_string_resize(sp, nol);
+      s = n_string_resize(s, nol);
 
-      ob = ob_base = &sp->s_dat[ol];
+      ob = ob_base = &s->s_dat[ol];
       nol -= ol;
       err = n_iconv_buf(cd, icf, &ib, &il, &ob, &nol);
 
-      sp = n_string_trunc(sp, ol + PTR2SIZE(ob - ob_base));
+      s = n_string_trunc(s, ol + PTR2SIZE(ob - ob_base));
       if(err == 0 || err != su_ERR_2BIG)
          break;
    }
@@ -276,10 +279,10 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
    }
 
 jleave:
-   out->s = n_string_cp(sp);
-   out->l = sp->s_len;
-   sp = n_string_drop_ownership(sp);
-   /* n_string_gut(sp)*/
+   out->s = n_string_cp(s);
+   out->l = s->s_len;
+   s = n_string_drop_ownership(s);
+   /* n_string_gut(s)*/
 j_leave:
    n_NYD2_OU;
    return err;
@@ -316,4 +319,5 @@ jleave:
 }
 #endif /* mx_HAVE_ICONV */
 
+#include "su/code-ou.h"
 /* s-it-mode */

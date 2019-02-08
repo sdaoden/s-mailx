@@ -29,6 +29,9 @@
 
 #include "mx/iconv.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 struct rfc2231_joiner {
    struct rfc2231_joiner *rj_next;
    ui32_t      rj_no;            /* Continuation number */
@@ -911,14 +914,14 @@ mime_param_boundary_get(char const *headerbody, size_t *len)
    n_NYD_IN;
 
    if ((p = mime_param_get("boundary", headerbody)) != NULL) {
-      size_t sz = su_cs_len(p);
+      size_t i = su_cs_len(p);
 
       if (len != NULL)
-         *len = sz + 2;
-      q = n_autorec_alloc(sz + 2 +1);
+         *len = i + 2;
+      q = n_autorec_alloc(i + 2 +1);
       q[0] = q[1] = '-';
-      su_mem_copy(q + 2, p, sz);
-      *(q + sz + 2) = '\0';
+      su_mem_copy(q + 2, p, i);
+      *(q + i + 2) = '\0';
    }
    n_NYD_OU;
    return q;
@@ -940,4 +943,5 @@ mime_param_boundary_create(void)
    return bp;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

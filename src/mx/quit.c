@@ -45,6 +45,9 @@
 
 #include <su/cs.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 enum quitflags {
    QUITFLAG_HOLD      = 1<<0,
    QUITFLAG_KEEP      = 1<<1,
@@ -682,4 +685,5 @@ restorequitflags(int qf)
    n_NYD_OU;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

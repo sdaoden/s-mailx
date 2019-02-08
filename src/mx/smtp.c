@@ -55,6 +55,9 @@ su_EMPTY_FILE()
 
 #include "mx/names.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 struct smtp_line {
    char     *dat;    /* Actual data */
    size_t   datlen;
@@ -87,7 +90,7 @@ _smtp_onterm(int signo)
 }
 
 static int
-_smtp_read(struct sock *sp, struct smtp_line *slp, int val,
+_smtp_read(struct sock *sop, struct smtp_line *slp, int val,
    bool_t ign_eof, bool_t want_dat)
 {
    int rv, len;
@@ -95,7 +98,7 @@ _smtp_read(struct sock *sp, struct smtp_line *slp, int val,
    n_NYD_IN;
 
    do {
-      if ((len = sgetline(&slp->buf, &slp->bufsize, NULL, sp)) < 6) {
+      if ((len = sgetline(&slp->buf, &slp->bufsize, NULL, sop)) < 6) {
          if (len >= 0 && !ign_eof)
             n_err(_("Unexpected EOF on SMTP connection\n"));
          rv = -1;
@@ -133,7 +136,7 @@ jleave:
 #define _ANSWER(X, IGNEOF, WANTDAT) \
 do if (!(n_poption & n_PO_DEBUG)) {\
    int y;\
-   if ((y = _smtp_read(sp, slp, X, IGNEOF, WANTDAT)) != (X) &&\
+   if ((y = _smtp_read(sop, slp, X, IGNEOF, WANTDAT)) != (X) &&\
          (!(IGNEOF) || y != -1))\
       goto jleave;\
 } while (0)
@@ -148,11 +151,11 @@ do {\
       n_err(">>> %s\n", __x__);\
    }\
    if (!(n_poption & n_PO_DEBUG))\
-      swrite(sp, X);\
+      swrite(sop, X);\
 } while (0)
 
 static bool_t
-_smtp_talk(struct sock *sp, struct sendbundle *sbp) /* TODO n_string etc. */
+_smtp_talk(struct sock *sop, struct sendbundle *sbp) /* TODO n_string++ */
 {
    char o[LINESIZE];
    char const *hostname;
@@ -171,7 +174,8 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp) /* TODO n_string etc. */
    _ANSWER(2, FAL0, FAL0);
 
 #ifdef mx_HAVE_TLS
-   if (!sp->s_use_tls && xok_blook(smtp_use_starttls, &sbp->sb_url, OXM_ALL)) {
+   if (!sop->s_use_tls &&
+         xok_blook(smtp_use_starttls, &sbp->sb_url, OXM_ALL)) {
       snprintf(o, sizeof o, NETLINE("EHLO %s"), hostname);
       _OUT(o);
       _ANSWER(2, FAL0, FAL0);
@@ -179,7 +183,7 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp) /* TODO n_string etc. */
       _OUT(NETLINE("STARTTLS"));
       _ANSWER(2, FAL0, FAL0);
 
-      if(!(n_poption & n_PO_DEBUG) && !n_tls_open(&sbp->sb_url, sp))
+      if(!(n_poption & n_PO_DEBUG) && !n_tls_open(&sbp->sb_url, sop))
          goto jleave;
    }
 #else
@@ -269,7 +273,7 @@ jerr_cred:
    case AUTHTYPE_GSSAPI:
       if (n_poption & n_PO_DEBUG)
          n_err(_(">>> We would perform GSS-API authentication now\n"));
-      else if (!_smtp_gssapi(sp, sbp, slp))
+      else if (!_smtp_gssapi(sop, sbp, slp))
          goto jleave;
       break;
 #endif
@@ -319,10 +323,10 @@ jsend:
          continue;
       }
       if (*slp->buf == '.')
-         swrite1(sp, ".", 1, 1); /* TODO I/O rewrite.. */
+         swrite1(sop, ".", 1, 1); /* TODO I/O rewrite.. */
       slp->buf[blen - 1] = NETNL[0];
       slp->buf[blen] = NETNL[1];
-      swrite1(sp, slp->buf, blen + 1, 1);
+      swrite1(sop, slp->buf, blen + 1, 1);
    }
    _OUT(NETLINE("."));
    _ANSWER(2, FAL0, FAL0);
@@ -373,6 +377,7 @@ jleave:
    n_NYD_OU;
    return rv;
 }
-#endif /* mx_HAVE_SMTP */
 
+#include "su/code-ou.h"
+#endif /* mx_HAVE_SMTP */
 /* s-it-mode */

@@ -30,6 +30,9 @@
 # include "mx/dotlock.h" /* $(MX_SRCDIR) */
 #endif
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* XXX Our Popen() main() takes void, temporary global data store */
 #ifdef mx_HAVE_DOTLOCK
 static enum n_file_lock_type a_dotlock_flt;
@@ -462,4 +465,5 @@ jemsg:
 #undef _DOMSG
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */
