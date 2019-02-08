@@ -555,10 +555,24 @@ jexec:
     * TODO argument state should be property of a per-command carrier instead */
    n_pstate &= ~n_PS_ARGLIST_MASK;
 
-   if((flags & a_WYSH) &&
-         (cdp->cd_caflags & n_CMD_ARG_TYPE_MASK) != n_CMD_ARG_TYPE_WYRA){
-      n_err(_("`wysh' command modifier does not affect `%s'\n"), cdp->cd_name);
-      goto jleave;
+   if(flags & a_WYSH){
+      switch(cdp->cd_caflags & n_CMD_ARG_TYPE_MASK){
+      case n_CMD_ARG_TYPE_MSGLIST:
+      case n_CMD_ARG_TYPE_NDMLIST:
+      case n_CMD_ARG_TYPE_WYSH:
+      case n_CMD_ARG_TYPE_ARG:
+         n_OBSOLETE2(cdp->cd_name, _("`wysh' modifier redundant/needless"));
+         flags ^= a_WYSH;
+         /* FALLTHRU */
+      case n_CMD_ARG_TYPE_WYRA:
+         break;
+      case n_CMD_ARG_TYPE_RAWDAT:
+      case n_CMD_ARG_TYPE_STRING:
+      case n_CMD_ARG_TYPE_RAWLIST:
+         n_err(_("`wysh' command modifier does not affect `%s'\n"),
+            cdp->cd_name);
+         goto jleave;
+      }
    }
 
    if(flags & a_LOCAL){
