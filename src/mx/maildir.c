@@ -1156,7 +1156,7 @@ maildir_append(char const *name, FILE *fp, long offset)
          }
       }
    }
-   assert(rv == OKAY);
+   ASSERT(rv == OKAY);
 jfree:
    n_autorec_relax_gut();
    n_free(buf);

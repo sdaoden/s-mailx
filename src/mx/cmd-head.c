@@ -974,7 +974,7 @@ print_header_group(int *vector)
    int rv;
    NYD_IN;
 
-   assert(vector != NULL && vector != (void*)-1);
+   ASSERT(vector != NULL && vector != (void*)-1);
    rv = _headers(vector[0]);
    NYD_OU;
    return rv;

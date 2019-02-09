@@ -661,7 +661,7 @@ jat_where_default:
                if(n_is_maybe_regex(cp)){
                   int s;
 
-                  assert(sep[j].ss_field == NULL);
+                  ASSERT(sep[j].ss_field == NULL);
                   if((s = regcomp(&sep[j].ss__fieldre_buf, cp,
                         REG_EXTENDED | REG_ICASE | REG_NOSUB)) != 0){
                      if(flags & a_LOG)
@@ -821,7 +821,7 @@ jcolonmod_mark:
    }else if(!(flags & a_ANY))
       goto jenoapp;
 
-   assert(!(flags & a_ERROR));
+   ASSERT(!(flags & a_ERROR));
 jleave:
    if(flags & a_ALLOC)
       n_lofi_free(nmadat_lofi);
@@ -1664,7 +1664,7 @@ mark(int mno, int f){
    if(mb.mb_threaded == 1 && a_msg_threadflag)
       a_msg__threadmark(mp, f);
    else{
-      assert(!(mp->m_flag & MHIDDEN));
+      ASSERT(!(mp->m_flag & MHIDDEN));
       mp->m_flag |= MMARK;
    }
    NYD_OU;

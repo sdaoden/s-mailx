@@ -400,7 +400,7 @@ n_attachment_remove(struct attachment *aplist, struct attachment *ap){
 #ifdef mx_HAVE_DEVEL
    for(bap = aplist; aplist != NULL && aplist != ap; aplist = aplist->a_flink)
       ;
-   assert(aplist != NULL);
+   ASSERT(aplist != NULL);
    aplist = bap;
 #endif
 

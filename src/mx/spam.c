@@ -349,7 +349,7 @@ jlearn:
       *args++ = "-u";
       *args++ = cp;
    }
-   assert(PTR2SIZE(args - sscp->c_cmd_arr) <= n_NELEM(sscp->c_cmd_arr));
+   ASSERT(PTR2SIZE(args - sscp->c_cmd_arr) <= n_NELEM(sscp->c_cmd_arr));
 
    *args = NULL;
    sscp->c_super.cf_cmd = str_concat_cpa(&str, sscp->c_cmd_arr, " ")->s;
@@ -729,7 +729,7 @@ jleave:
       sigaddset(&cset, __spamd_sig);
       sigprocmask(SIG_UNBLOCK, &cset, NULL);
       n_raise(__spamd_sig);
-      assert(rv == FAL0);
+      ASSERT(rv == FAL0);
    }
    return rv;
 }
@@ -1126,7 +1126,7 @@ jtail:
 
    NYD2_OU;
    if (state & _JUMPED) {
-      assert(vcp->vc_dtor != NULL);
+      ASSERT(vcp->vc_dtor != NULL);
       (*vcp->vc_dtor)(vcp);
 
       sigemptyset(&cset);

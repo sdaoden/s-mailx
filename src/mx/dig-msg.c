@@ -1294,7 +1294,7 @@ c_digmsg(void *vp){
          if(dmcp->dmc_last != NULL)
             dmcp->dmc_last->dmc_next = dmcp->dmc_next;
          else{
-            assert(dmcp == mb.mb_digmsg);
+            ASSERT(dmcp == mb.mb_digmsg);
             mb.mb_digmsg = dmcp->dmc_next;
          }
          if(dmcp->dmc_next != NULL)

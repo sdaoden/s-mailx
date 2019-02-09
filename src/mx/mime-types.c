@@ -697,7 +697,7 @@ _mt_classify_os_part(ui32_t mce, struct mimepart *mpp, bool_t deep_inspect)
    enum mimecontent mc;
    NYD2_IN;
 
-   assert(mpp->m_mime_enc != MIMEE_BIN);
+   ASSERT(mpp->m_mime_enc != MIMEE_BIN);
 
    outrest = inrest = dec = in;
    mc = MIME_UNKNOWN;
@@ -1127,7 +1127,7 @@ n_mimetype_classify_file(FILE *fp, char const **contenttype,
    enum conversion c;
    NYD_IN;
 
-   assert(ftell(fp) == 0x0l);
+   ASSERT(ftell(fp) == 0x0l);
 
    *do_iconv = 0;
 

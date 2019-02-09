@@ -61,9 +61,6 @@
 #include <time.h>
 #include <unistd.h>
 
-#ifdef mx_HAVE_DEBUG
-# include <assert.h> /* TODO SU */
-#endif
 #ifdef mx_HAVE_REGEX
 # include <regex.h>
 #endif
@@ -78,6 +75,9 @@
 #include <su/code.h>
 #include <su/mem.h> /* TODO should not be needed */
 #include <su/mem-bag.h> /* TODO should not be needed */
+
+/* TODO fake */
+#include "su/code-in.h"
 
 /* Special FD requests for n_child_run(), n_child_start() */
 #define n_CHILD_FD_PASS -1
@@ -191,16 +191,6 @@
 #define n_UNINIT su_UNINIT
 #define n_BITENUM_MASK su_BITENUM_MASK
 
-#undef DBG
-#undef NDBG
-#define DBG su_DBG
-#define NDBG su_NDBG
-#define DBGOR su_DBGOR
-#ifndef mx_HAVE_DEBUG
-# undef assert
-# define assert(X) su_UNUSED(0)
-#endif
-
 /* Translation (init in main.c): may NOT set errno! */
 #undef UIS
 #undef A_
@@ -253,7 +243,6 @@ typedef su_sz siz_t;
 # define uintptr_t su_up
 #endif
 
-enum {FAL0=su_FAL0, TRU1=su_TRU1, TRU2, TRUM1=su_TRUM1};
 typedef su_boole bool_t;
 
 /* Add shorter aliases for "normal" integers TODO v15 -> n_XX_t */
@@ -750,7 +739,7 @@ enum oflags {
    OF_HOLDSIGS = 1u<<8,    /* Ftmp(): await Ftmp_free(), mutual OF_UNLINK */
    OF_FN_AUTOREC = 1u<<9,  /* Ftmp(): fn not on heap, mutual OF_UNLINK */
    OF_REGISTER = 1u<<10,   /* Register file in our file table */
-   OF_REGISTER_UNLINK = 1u<<11, /* unlink(2) upon unreg.; _REGISTER asserted */
+   OF_REGISTER_UNLINK = 1u<<11, /* unlink(2) upon unreg.; _REGISTER ASSERTed */
    OF_SUFFIX = 1u<<12      /* Ftmp() name hint is mandatory! extension! */
 };
 
@@ -1759,7 +1748,7 @@ do{\
 }while(0)
 #define n_DIG_MSG_COMPOSE_GUT(DMCP) \
 do{\
-   assert(n_dig_msg_compose_ctx == DMCP);\
+   ASSERT(n_dig_msg_compose_ctx == DMCP);\
    /* File cleaned up via close_all_files() */\
    n_dig_msg_compose_ctx = NULL;\
 }while(0)
@@ -2322,5 +2311,6 @@ VL sighandler_type dflpipe;
 # include "mx/nailfuns.h"
 #endif
 
+#include "su/code-ou.h"
 #endif /* n_NAIL_H */
 /* s-it-mode */

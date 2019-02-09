@@ -137,7 +137,7 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
       }
    }
 
-   assert(ip->m_external_body_url == NULL);
+   ASSERT(ip->m_external_body_url == NULL);
    if(!su_cs_cmp_case(ip->m_ct_type_plain, "message/external-body") &&
          (cp = mime_param_get("access-type", ip->m_ct_type)) != NULL &&
          !su_cs_cmp_case(cp, "URL"))

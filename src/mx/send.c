@@ -1289,7 +1289,7 @@ _send_al7ive_have_better(struct mimepart *mpp, enum sendaction action,
          if (want_rich) {
 jflag:
             mpp->m_flag |= MDISPLAY;
-            assert(mpp->m_parent != NULL);
+            ASSERT(mpp->m_parent != NULL);
             mpp->m_parent->m_flag |= MDISPLAY;
             rv = TRU1;
          }
@@ -1314,7 +1314,7 @@ _send_al7ive_flag_tree(struct mimepart *mpp, enum sendaction action,
    bool_t hot;
    NYD_IN;
 
-   assert(mpp->m_parent != NULL);
+   ASSERT(mpp->m_parent != NULL);
    hot = ((mpp->m_parent->m_flag & MDISPLAY) != 0);
 
    for (; mpp != NULL; mpp = mpp->m_nextpart) {

@@ -468,49 +468,49 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
    struct n_cmd_arg_desc const *cadp;
    NYD_IN;
 
-   assert(cacp->cac_inlen == 0 || cacp->cac_indat != NULL);
-   assert(cacp->cac_desc->cad_no > 0);
+   ASSERT(cacp->cac_inlen == 0 || cacp->cac_indat != NULL);
+   ASSERT(cacp->cac_desc->cad_no > 0);
 #ifdef mx_HAVE_DEBUG
    /* C99 */{
       bool_t opt_seen = FAL0;
 
       for(cadp = cacp->cac_desc, cad_idx = 0;
             cad_idx < cadp->cad_no; ++cad_idx){
-         assert(cadp->cad_ent_flags[cad_idx][0] & n__CMD_ARG_DESC_TYPE_MASK);
+         ASSERT(cadp->cad_ent_flags[cad_idx][0] & n__CMD_ARG_DESC_TYPE_MASK);
 
          /* TODO n_CMD_ARG_DESC_MSGLIST+ may only be used as the last entry */
-         assert(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
             cad_idx + 1 == cadp->cad_no);
-         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
                n_CMD_ARG_DESC_NDMSGLIST) || cad_idx + 1 == cadp->cad_no);
-         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
                n_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
             cad_idx + 1 == cadp->cad_no);
 
-         assert(!opt_seen ||
+         ASSERT(!opt_seen ||
             (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
          if(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION)
             opt_seen = TRU1;
-         assert(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY) ||
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY) ||
             cad_idx + 1 == cadp->cad_no);
 
          /* TODO n_CMD_ARG_DESC_MSGLIST+ can only be n_CMD_ARG_DESC_GREEDY.
           * TODO And they may not be n_CMD_ARG_DESC_OPTION */
-         assert(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
             (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY));
-         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
                n_CMD_ARG_DESC_NDMSGLIST) ||
             (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY));
-         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
                n_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
             (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY));
 
-         assert(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
             !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
-         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
                n_CMD_ARG_DESC_NDMSGLIST) ||
             !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
-         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
                n_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
             !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
       }
@@ -591,7 +591,7 @@ jredo:
       case n_CMD_ARG_DESC_NDMSGLIST:
          /* TODO _MSGLIST yet at end and greedy only (fast hack).
           * TODO And consumes too much memory */
-         assert(shin.s[shin.l] == '\0');
+         ASSERT(shin.s[shin.l] == '\0');
          if(n_getmsglist(shin.s, (ncap.ca_arg.ca_msglist =
                   n_autorec_calloc(msgCount +1, sizeof *ncap.ca_arg.ca_msglist)
                ), cacp->cac_msgflag, target_argpp) < 0){
@@ -648,10 +648,10 @@ jredo:
          char *cp;
          size_t i;
 
-         assert((ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK
+         ASSERT((ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK
             ) != n_CMD_ARG_DESC_MSGLIST);
-         assert(lcap != NULL);
-         assert(target_argpp == NULL);
+         ASSERT(lcap != NULL);
+         ASSERT(target_argpp == NULL);
          i = lcap->ca_arg.ca_str.l;
          lcap->ca_arg.ca_str.l += 1 + ncap.ca_arg.ca_str.l;
          cp = n_autorec_alloc(lcap->ca_arg.ca_str.l +1);

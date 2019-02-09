@@ -289,7 +289,7 @@ FL struct str *
    if(buflen == UIZ_MAX)
       buflen = (buf == NULL) ? 0 : su_cs_len(buf);
 
-   assert(buflen == 0 || buf != NULL);
+   ASSERT(buflen == 0 || buf != NULL);
 
    if(n_LIKELY(buflen > 0)){
       self->s = su_MEM_REALLOC_LOCOR(self->s, (self->l = buflen) +1,
@@ -309,7 +309,7 @@ FL struct str *
    if(buflen == UIZ_MAX)
       buflen = (buf == NULL) ? 0 : su_cs_len(buf);
 
-   assert(buflen == 0 || buf != NULL);
+   ASSERT(buflen == 0 || buf != NULL);
 
    if(buflen > 0) {
       size_t osl = self->l, nsl = osl + buflen;
@@ -457,7 +457,7 @@ FL struct n_string *
 (n_string_clear)(struct n_string *self su_DBG_LOC_ARGS_DECL){
    NYD_IN;
 
-   assert(self != NULL);
+   ASSERT(self != NULL);
 
    if(self->s_size != 0){
       if(!self->s_auto)
@@ -473,7 +473,7 @@ FL struct n_string *
 (n_string_reserve)(struct n_string *self, size_t noof  su_DBG_LOC_ARGS_DECL){
    ui32_t i, l, s;
    NYD_IN;
-   assert(self != NULL);
+   ASSERT(self != NULL);
 
    s = self->s_size;
    l = self->s_len;
@@ -504,7 +504,7 @@ FL struct n_string *
 FL struct n_string *
 (n_string_resize)(struct n_string *self, size_t nlen  su_DBG_LOC_ARGS_DECL){
    NYD_IN;
-   assert(self != NULL);
+   ASSERT(self != NULL);
 
    if(UICMP(z, SI32_MAX, <=, nlen))
       n_panic(_("Memory allocation too large"));
@@ -521,8 +521,8 @@ FL struct n_string *
       su_DBG_LOC_ARGS_DECL){
    NYD_IN;
 
-   assert(self != NULL);
-   assert(buflen == 0 || buf != NULL);
+   ASSERT(self != NULL);
+   ASSERT(buflen == 0 || buf != NULL);
 
    if(buflen == UIZ_MAX)
       buflen = (buf == NULL) ? 0 : su_cs_len(buf);
@@ -542,7 +542,7 @@ FL struct n_string *
 (n_string_push_c)(struct n_string *self, char c  su_DBG_LOC_ARGS_DECL){
    NYD_IN;
 
-   assert(self != NULL);
+   ASSERT(self != NULL);
 
    if(self->s_len + 1 >= self->s_size)
       self = (n_string_reserve)(self, 1  su_DBG_LOC_ARGS_USE);
@@ -556,8 +556,8 @@ FL struct n_string *
       su_DBG_LOC_ARGS_DECL){
    NYD_IN;
 
-   assert(self != NULL);
-   assert(buflen == 0 || buf != NULL);
+   ASSERT(self != NULL);
+   ASSERT(buflen == 0 || buf != NULL);
 
    if(buflen == UIZ_MAX)
       buflen = (buf == NULL) ? 0 : su_cs_len(buf);
@@ -577,7 +577,7 @@ FL struct n_string *
 (n_string_unshift_c)(struct n_string *self, char c  su_DBG_LOC_ARGS_DECL){
    NYD_IN;
 
-   assert(self != NULL);
+   ASSERT(self != NULL);
 
    if(self->s_len + 1 >= self->s_size)
       self = (n_string_reserve)(self, 1  su_DBG_LOC_ARGS_USE);
@@ -594,9 +594,9 @@ FL struct n_string *
       char const *buf, size_t buflen  su_DBG_LOC_ARGS_DECL){
    NYD_IN;
 
-   assert(self != NULL);
-   assert(buflen == 0 || buf != NULL);
-   assert(idx <= self->s_len);
+   ASSERT(self != NULL);
+   ASSERT(buflen == 0 || buf != NULL);
+   ASSERT(idx <= self->s_len);
 
    if(buflen == UIZ_MAX)
       buflen = (buf == NULL) ? 0 : su_cs_len(buf);
@@ -618,8 +618,8 @@ FL struct n_string *
       char c  su_DBG_LOC_ARGS_DECL){
    NYD_IN;
 
-   assert(self != NULL);
-   assert(idx <= self->s_len);
+   ASSERT(self != NULL);
+   ASSERT(idx <= self->s_len);
 
    if(self->s_len + 1 >= self->s_size)
       self = (n_string_reserve)(self, 1  su_DBG_LOC_ARGS_USE);
@@ -635,10 +635,10 @@ FL struct n_string *
 n_string_cut(struct n_string *self, size_t idx, size_t len){
    NYD_IN;
 
-   assert(self != NULL);
-   assert(UIZ_MAX - idx > len);
-   assert(SI32_MAX >= idx + len);
-   assert(idx + len <= self->s_len);
+   ASSERT(self != NULL);
+   ASSERT(UIZ_MAX - idx > len);
+   ASSERT(SI32_MAX >= idx + len);
+   ASSERT(idx + len <= self->s_len);
 
    if(len > 0)
       su_mem_move(&self->s_dat[idx], &self->s_dat[idx + len],
@@ -652,7 +652,7 @@ FL char *
    char *rv;
    NYD2_IN;
 
-   assert(self != NULL);
+   ASSERT(self != NULL);
 
    if(self->s_size == 0)
       self = (n_string_reserve)(self, 1  su_DBG_LOC_ARGS_USE);
@@ -667,7 +667,7 @@ n_string_cp_const(struct n_string const *self){
    char const *rv;
    NYD2_IN;
 
-   assert(self != NULL);
+   ASSERT(self != NULL);
 
    if(self->s_size != 0){
       ((struct n_string*)n_UNCONST(self))->s_dat[self->s_len] = '\0';

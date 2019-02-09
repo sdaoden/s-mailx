@@ -75,7 +75,7 @@ _c_file(void *v, enum fedit_mode fm)
       i = 1;
       goto jleave;
    }
-   assert(!(fm & FEDIT_NEWMAIL)); /* (Prevent implementation error) */
+   ASSERT(!(fm & FEDIT_NEWMAIL)); /* (Prevent implementation error) */
    if (n_pstate & n_PS_SETFILE_OPENED)
       temporary_folder_hook_check(FAL0);
 

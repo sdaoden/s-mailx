@@ -294,10 +294,10 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
       if(cnt >= 2 && linebuf[cnt - 2] == '\r')
          linebuf[--cnt] = '\0';
       linebuf[--cnt] = '\0';
-      /* We cannot use this assertion since it will trigger for example when
+      /* We cannot use this ASSERTion since it will trigger for example when
        * the Linux kernel crashes and the log files (which may contain NULs)
        * are sent out via email!  (It has been active for quite some time..) */
-      /*assert(linebuf[0] != '\0' || cnt == 0);*/
+      /*ASSERT(linebuf[0] != '\0' || cnt == 0);*/
 
       /* TODO In v15 this should use a/the flat MIME parser in order to ignore
        * TODO "From " when MIME boundaries are active -- whereas this opens
@@ -423,7 +423,7 @@ jputln:
          msgCount++;
       }
       linebuf[cnt++] = '\n';
-      assert(linebuf[cnt] == '\0');
+      ASSERT(linebuf[cnt] == '\0');
       fwrite(linebuf, sizeof *linebuf, cnt, mb.mb_otf);
       if(ferror(mb.mb_otf)){
          n_perr(_("/tmp"), 0);
@@ -800,7 +800,7 @@ print_header_summary(char const *Larg)
       if(mb.mb_type == MB_IMAP)
          imap_getheaders(0, msgCount); /* TODO not here */
 #endif
-   assert(n_msgvec != NULL);
+   ASSERT(n_msgvec != NULL);
 
    if (Larg != NULL) {
       /* Avoid any messages XXX add a make_mua_silent() and use it? */
@@ -1105,7 +1105,7 @@ n_folder_query(void){
 #ifndef mx_HAVE_REALPATH
       rv = cp;
 #else
-      assert(s->s_len == 0 && s->s_dat == NULL);
+      ASSERT(s->s_len == 0 && s->s_dat == NULL);
 # ifndef mx_HAVE_REALPATH_NULL
       s = n_string_reserve(s, PATH_MAX +1);
 # endif
@@ -1146,7 +1146,7 @@ jset:
 
    if(err){
       n_err(_("*folder* is not resolvable, using CWD\n"));
-      assert(rv != NULL && *rv == '\0');
+      ASSERT(rv != NULL && *rv == '\0');
    }
    NYD_OU;
    return rv;

@@ -295,7 +295,7 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    vput = NULL;
    alias_name = NULL;
    line = gecp->gec_line; /* TODO const-ify original (buffer)! */
-   assert(line.s[line.l] == '\0');
+   ASSERT(line.s[line.l] == '\0');
 
    if(line.l > 0 && su_cs_is_space(line.s[0]))
       gecp->gec_hist_flags = a_GO_HIST_NONE;
@@ -930,10 +930,10 @@ jrestart:
       su_DBG( su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0); )
 
       n_pstate &= ~(n_PS_SOURCING | n_PS_ROBOT);
-      assert(a_go_xcall == NULL);
-      assert(!(gcp->gc_flags & a_GO_XCALL_LOOP_MASK));
-      assert(gcp->gc_on_finalize == NULL);
-      n_COLOUR( assert(gcp->gc_data.gdc_colour == NULL); )
+      ASSERT(a_go_xcall == NULL);
+      ASSERT(!(gcp->gc_flags & a_GO_XCALL_LOOP_MASK));
+      ASSERT(gcp->gc_on_finalize == NULL);
+      n_COLOUR( ASSERT(gcp->gc_data.gdc_colour == NULL); )
       goto jxleave;
    }else if(gcm & a_GO_CLEANUP_LOOPTICK){
       su_mem_bag_reset(gcp->gc_data.gdc_membag);
@@ -989,13 +989,13 @@ jrestart:
 jstackpop:
    /* Update a_go_ctx and n_go_data, n_pstate ... */
    a_go_ctx = gcp->gc_outer;
-   assert(a_go_ctx != NULL);
+   ASSERT(a_go_ctx != NULL);
    /* C99 */{
       struct a_go_ctx *x;
 
       for(x = a_go_ctx; x->gc_flags & a_GO_DATACTX_INHERITED;){
          x = x->gc_outer;
-         assert(x != NULL);
+         ASSERT(x != NULL);
       }
       n_go_data = &x->gc_data;
    }
@@ -1003,11 +1003,11 @@ jstackpop:
    if((a_go_ctx->gc_flags & (a_GO_MACRO | a_GO_SUPER_MACRO)) ==
          (a_GO_MACRO | a_GO_SUPER_MACRO)){
       n_pstate &= ~n_PS_SOURCING;
-      assert(n_pstate & n_PS_ROBOT);
+      ASSERT(n_pstate & n_PS_ROBOT);
    }else if(!(a_go_ctx->gc_flags & a_GO_TYPE_MASK))
       n_pstate &= ~(n_PS_SOURCING | n_PS_ROBOT);
    else
-      assert(n_pstate & n_PS_ROBOT);
+      ASSERT(n_pstate & n_PS_ROBOT);
 
    if(gcp->gc_on_finalize != NULL)
       (*gcp->gc_on_finalize)(gcp->gc_finalize_arg);
@@ -1145,8 +1145,8 @@ static bool_t
 a_go_load(struct a_go_ctx *gcp){
    NYD2_IN;
 
-   assert(!(n_psonce & n_PSO_STARTED));
-   assert(!(a_go_ctx->gc_flags & a_GO_TYPE_MASK));
+   ASSERT(!(n_psonce & n_PSO_STARTED));
+   ASSERT(!(a_go_ctx->gc_flags & a_GO_TYPE_MASK));
 
    gcp->gc_flags |= a_GO_MEMBAG_INHERITED;
    gcp->gc_data.gdc_membag = n_go_data->gdc_membag;
@@ -1227,7 +1227,7 @@ a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
          break;
 
       rele_all_sigs();
-      assert(gec.gec_hist_flags == a_GO_HIST_NONE);
+      ASSERT(gec.gec_hist_flags == a_GO_HIST_NONE);
       if(!a_go_evaluate(&gec))
          f &= ~a_RETOK;
       hold_all_sigs();
@@ -1261,7 +1261,7 @@ n_go_init(void){
    struct a_go_ctx *gcp;
    NYD2_IN;
 
-   assert(n_stdin != NULL);
+   ASSERT(n_stdin != NULL);
 
    gcp = (void*)a_go__mainctx_b.uf;
    su_DBGOR( su_mem_set(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name)),
@@ -1428,7 +1428,7 @@ n_go_main_loop(void){ /* FIXME */
             cc = savecatsep(cc, ' ', ca);
          else if(ca != NULL)
             cc = ca;
-         assert(cc != NULL);
+         ASSERT(cc != NULL);
          n_tty_addhist(cc, (n_GO_INPUT_CTX_DEFAULT |
             (gec.gec_hist_flags & a_GO_HIST_GABBY ? n_GO_INPUT_HIST_GABBY
                : n_GO_INPUT_NONE)));
@@ -1664,14 +1664,14 @@ jforce_stdin:
    }else
       ifile = a_go_ctx->gc_file;
    if(ifile == NULL){
-      assert((n_pstate & n_PS_COMPOSE_FORKHOOK) &&
+      ASSERT((n_pstate & n_PS_COMPOSE_FORKHOOK) &&
          (a_go_ctx->gc_flags & a_GO_MACRO));
       ifile = n_stdin;
    }
 
    for(nold = n = 0;;){
       if(f & a_USE_MLE){
-         assert(ifile == n_stdin);
+         ASSERT(ifile == n_stdin);
          if(string != NULL && (n = (int)su_cs_len(string)) > 0){
             if(*linesize > 0)
                *linesize += n +1;
@@ -1942,7 +1942,7 @@ n_go_XYargs(bool_t injectit, char const **lines, size_t cnt){
          cp = NULL, len = 0;
    }
    if(cp != NULL){
-      assert(i + 1 < imax);
+      ASSERT(i + 1 < imax);
       gcp->gc_lines[i++] = cp;
    }
    gcp->gc_lines[i] = NULL;

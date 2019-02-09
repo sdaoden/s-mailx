@@ -26,8 +26,6 @@
 
 #ifdef mx_HAVE_DOTLOCK
 # include <su/cs.h>
-
-# include "mx/dotlock.h" /* $(MX_SRCDIR) */
 #endif
 
 /* TODO fake */
@@ -43,6 +41,10 @@ struct n_dotlock_info *a_dotlock_dip;
 /* main() of fork(2)ed dot file locker */
 #ifdef mx_HAVE_DOTLOCK
 static int a_dotlock_main(void);
+#endif
+
+#ifdef mx_HAVE_DOTLOCK
+# include "mx/dotlock.h" /* $(MX_SRCDIR) */
 #endif
 
 #ifdef mx_HAVE_DOTLOCK
@@ -168,7 +170,7 @@ jenametool:
     * either assume a directory we are not allowed to write in, or that we run
     * via -u/$USER/%USER as someone else, in which case we favour our
     * privilege-separated dotlock process */
-   assert(cp != NULL); /* Ugly: avoid a useless var and reuse that one */
+   ASSERT(cp != NULL); /* Ugly: avoid a useless var and reuse that one */
    if(access(".", W_OK)){
       /* This may however also indicate a read-only filesystem, which is not
        * really an error from our point of view since the mailbox will degrade
@@ -363,7 +365,7 @@ jleave:
          serr = su_ERR_ACCES;
          break;
       case n_DLS_ROFS:
-         assert(dls & n_DLS_ABANDON);
+         ASSERT(dls & n_DLS_ABANDON);
          if(n_poption & n_PO_D_V)
             emsg = N_("  Read-only filesystem, not creating lock file\n");
          serr = su_ERR_ROFS;

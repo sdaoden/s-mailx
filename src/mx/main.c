@@ -413,7 +413,7 @@ a_main__scrsz(int is_sighdl){
    struct ttysize ts;
 #endif
    NYD2_IN;
-   assert((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_BATCH_FLAG));
+   ASSERT((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_BATCH_FLAG));
 
    n_scrnheight = n_realscreenheight = n_scrnwidth = 0;
 
@@ -1181,7 +1181,7 @@ je_expandargv:
             goto jleave;
          }
          do{
-            assert(n_smopts_cnt + 1 <= smopts_size);
+            ASSERT(n_smopts_cnt + 1 <= smopts_size);
             n_smopts[n_smopts_cnt++] = cp;
          }while((cp = argv[++i]) != NULL);
       }

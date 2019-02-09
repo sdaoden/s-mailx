@@ -187,7 +187,7 @@ jpseudo_jump:
             n_err(_("  Including a port number in the URL may "
                "circumvent this problem\n"));
       }
-      assert(sofd == -1);
+      ASSERT(sofd == -1);
       errval = 0;
       goto jjumped;
    }
@@ -232,7 +232,7 @@ jjumped:
             n_err(_("  Unknown service: %s\n"), urlp->url_proto);
             n_err(_("  Including a port number in the URL may "
                "circumvent this problem\n"));
-            assert(sofd == -1 && errval == 0);
+            ASSERT(sofd == -1 && errval == 0);
             goto jjumped;
          }
       }
@@ -267,7 +267,7 @@ jjumped:
    pptr = (struct in_addr**)hp->h_addr_list;
    if ((sofd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
       n_perr(_("could not create socket"), 0);
-      assert(sofd == -1 && errval == 0);
+      ASSERT(sofd == -1 && errval == 0);
       goto jjumped;
    }
 

@@ -249,7 +249,7 @@ struct a_amv_var{
 };
 n_CTA(a_AMV_VF_EXT__MASK <= UI32_MAX, "Enumeration excesses storage datatype");
 
-/* After inclusion of gen-okeys.h we assert keyoff fits in 16-bit */
+/* After inclusion of gen-okeys.h we ASSERT keyoff fits in 16-bit */
 struct a_amv_var_map{
    ui32_t avm_hash;
    ui16_t avm_keyoff;
@@ -542,7 +542,7 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
    NYD2_IN;
 
    amp = amcap->amca_amp;
-   assert(amp != NULL && amp != a_AMV_MACKY_MACK);
+   ASSERT(amp != NULL && amp != a_AMV_MACKY_MACK);
    ++amp->am_refcnt;
    /* XXX Unfortunately we yet need to dup the macro lines! :( */
    args_base = args = n_alloc(sizeof(*args) * (amp->am_line_cnt +1));
@@ -599,9 +599,9 @@ a_amv_mac__finalize(void *vp){
       for(avpp_base = *amcap->amca_local_vars, avpp = &avpp_base[a_AMV_PRIME];
             avpp-- != avpp_base;)
          while((avp = *avpp)){
-            assert((avp->av_flags & (a_AMV_VF_NOLOPTS | a_AMV_VF_EXT_LOCAL)) ==
+            ASSERT((avp->av_flags & (a_AMV_VF_NOLOPTS | a_AMV_VF_EXT_LOCAL)) ==
                (a_AMV_VF_NOLOPTS | a_AMV_VF_EXT_LOCAL));
-            assert(!(avp->av_flags &
+            ASSERT(!(avp->av_flags &
                   ((a_AMV_VF__MASK | a_AMV_VF_EXT__MASK) &
                      ~(a_AMV_VF_NOLOPTS | a_AMV_VF_EXT_LOCAL))));
             *avpp = avp->av_link;
@@ -852,7 +852,7 @@ a_amv_lopts_add(struct a_amv_lostack *alp, char const *name,
    NYD2_IN;
 
    /* Propagate unrolling up the stack, as necessary */
-   assert(alp != NULL);
+   ASSERT(alp != NULL);
    for(;;){
       if(alp->as_loflags & a_AMV_LF_SCOPE_MASK)
          break;
@@ -1295,7 +1295,7 @@ jmultiplex:
 
    /* This is nothing special, but a plain variable */
 jno_special_param:
-   assert(a_AMV_VSC_NONE == 0);/*avcp->avc_special_cat = a_AMV_VSC_NONE;*/
+   ASSERT(a_AMV_VSC_NONE == 0);/*avcp->avc_special_cat = a_AMV_VSC_NONE;*/
    avcp->avc_name = name;
    avcp->avc_hash = hash = a_AMV_NAME2HASH(name);
 
@@ -1328,10 +1328,10 @@ jno_special_param:
    if(try_harder && a_amv_var_revlookup_chain(avcp, name))
       goto jleave;
 
-   assert(avcp->avc_map == NULL);/*avcp->avc_map = NULL;*/
+   ASSERT(avcp->avc_map == NULL);/*avcp->avc_map = NULL;*/
    avcp = NULL;
 jleave:
-   assert(avcp == NULL || avcp->avc_map != NULL ||
+   ASSERT(avcp == NULL || avcp->avc_map != NULL ||
       avcp->avc_special_cat == a_AMV_VSC_NONE);
    NYD2_OU;
    return (avcp != NULL);
@@ -1427,8 +1427,8 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp,
    struct a_amv_var *avp;
    NYD2_IN;
 
-   assert(!(avlf & a_AMV_VLOOK_LOCAL_ONLY) || (avlf & a_AMV_VLOOK_LOCAL));
-   assert(!(avlf & a_AMV_VLOOK_I3VAL_NONEW_REPORT) ||
+   ASSERT(!(avlf & a_AMV_VLOOK_LOCAL_ONLY) || (avlf & a_AMV_VLOOK_LOCAL));
+   ASSERT(!(avlf & a_AMV_VLOOK_I3VAL_NONEW_REPORT) ||
       (avlf & a_AMV_VLOOK_I3VAL_NONEW));
 
    /* C99 */{
@@ -1601,8 +1601,8 @@ j_leave:
    return (avp != NULL);
 
 jnewval:
-   assert(avmp != NULL);
-   assert(f == avmp->avm_flags);
+   ASSERT(avmp != NULL);
+   ASSERT(f == avmp->avm_flags);
    /* E.g., $TMPDIR may be set to non-existent, so we need to be able to catch
     * that and redirect to a possible default value */
    if((f & a_AMV_VF_VIP) &&
@@ -1623,7 +1623,7 @@ jnewval:
       avp = n_calloc(1, n_VSTRUCT_SIZEOF(struct a_amv_var, av_name) + l);
       avp->av_link = *(avpp = &a_amv_vars[avcp->avc_prime]);
       *avpp = avp;
-      assert(!avcp->avc_is_chain_variant);
+      ASSERT(!avcp->avc_is_chain_variant);
       avp->av_flags = f;
       avp->av_value = a_amv_var_copy(cp);
       su_mem_copy(avp->av_name, avcp->avc_name, l);
@@ -1777,9 +1777,8 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
       /* ..in a `call'ed macro only, to be exact.  Or in a_AMV_MACKY_MACK */
       if(!(ismacky = (amcap->amca_amp == a_AMV_MACKY_MACK)) &&
             (amcap->amca_ps_hook_mask ||
-             (assert(amcap->amca_amp != NULL),
-              (amcap->amca_amp->am_flags & a_AMV_MF_TYPE_MASK
-               ) == a_AMV_MF_ACCOUNT)))
+             (amcap->amca_amp->am_flags & a_AMV_MF_TYPE_MASK
+               ) == a_AMV_MF_ACCOUNT))
          goto jleave;
 
       if(avcp->avc_special_cat == a_AMV_VSC_POSPAR){
@@ -1961,8 +1960,8 @@ jeavmp:
       if(!(avp->av_flags & a_AMV_VF_EXT_FROZEN_UNSET))
          avp->av_flags &= ~a_AMV_VF_EXT__FROZEN_MASK;
       else{
-         assert(avp->av_value == n_empty);
-         assert(a_amv_vars[avcp->avc_prime] == avp);
+         ASSERT(avp->av_value == n_empty);
+         ASSERT(a_amv_vars[avcp->avc_prime] == avp);
          a_amv_vars[avcp->avc_prime] = avp->av_link;
          n_free(avp);
          avcp->avc_var = avp = NULL;
@@ -2006,7 +2005,7 @@ joval_and_go:
    if(avmp == NULL)
       avp->av_value = a_amv_var_copy(value);
    else{
-      assert(!(avscf & a_AMV_VSETCLR_LOCAL));
+      ASSERT(!(avscf & a_AMV_VSETCLR_LOCAL));
       /* Via `set' etc. the user may give even boolean options non-boolean
        * values, ignore that and force boolean */
       if(!(avp->av_flags & a_AMV_VF_BOOL))
@@ -2107,7 +2106,7 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp,
             ? (a_AMV_VLOOK_LOCAL | a_AMV_VLOOK_LOCAL_ONLY)
             : a_AMV_VLOOK_LOCAL) |
           a_AMV_VLOOK_I3VAL_NONEW | a_AMV_VLOOK_I3VAL_NONEW_REPORT)))){
-      assert(avcp->avc_var == NULL);
+      ASSERT(avcp->avc_var == NULL);
       /* This may be a clearance request from the command line, via -S, and we
        * need to keep track of that!  Unfortunately we are not prepared for
        * this, really, so we need to create a fake entry that is known and
@@ -2124,7 +2123,7 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp,
          avp->av_link = *(avpp = &a_amv_vars[avcp->avc_prime]);
          *avpp = avp;
          avp->av_value = n_UNCONST(n_empty); /* Sth. covered by _var_free()! */
-         assert(f == (avmp != NULL ? avmp->avm_flags : 0));
+         ASSERT(f == (avmp != NULL ? avmp->avm_flags : 0));
          avp->av_flags = f | a_AMV_VF_EXT_FROZEN | a_AMV_VF_EXT_FROZEN_UNSET;
          su_mem_copy(avp->av_name, avcp->avc_name, l);
 
@@ -2152,7 +2151,7 @@ jerr_env_unset:
          goto jforce_env;
       goto jleave;
    }
-   assert(avcp->avc_var != NULL);
+   ASSERT(avcp->avc_var != NULL);
 
    /* `local' variables bypass "frozen" checks and `localopts' coverage etc. */
    if((f = avp->av_flags) & a_AMV_VF_EXT_LOCAL)
@@ -2193,12 +2192,12 @@ jerr_env_unset:
       a_amv_lopts_add(a_amv_lopts, avcp->avc_name, avcp->avc_var);
 
 jdefault_path:
-   assert(avp == avcp->avc_var);
+   ASSERT(avp == avcp->avc_var);
    avcp->avc_var = NULL;
    avpp = &(((f = avp->av_flags) & a_AMV_VF_EXT_LOCAL)
          ? *a_amv_lopts->as_amcap->amca_local_vars : a_amv_vars
          )[avcp->avc_prime];
-   assert(*avpp == avp); /* (always listhead after lookup()) */
+   ASSERT(*avpp == avp); /* (always listhead after lookup()) */
    *avpp = (*avpp)->av_link;
 
    if(f & (a_AMV_VF_ENV | a_AMV_VF_EXT_LINKED))
@@ -2361,7 +2360,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
             {a_AMV_VF_NODEL, "nodelete"},
             {a_AMV_VF_I3VAL, "initial-value"},
             {a_AMV_VF_DEFVAL, "default-value"},
-            {a_AMV_VF_IMPORT, "import-environ-first\0"}, /* assert NUL in max */
+            {a_AMV_VF_IMPORT, "import-environ-first\0"}, /* \0 fits longest */
             {a_AMV_VF_ENV, "sync-environ"},
             {a_AMV_VF_NOLOPTS, "no-localopts"},
             {a_AMV_VF_NOTEMPTY, "notempty"},
@@ -2369,7 +2368,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
             {a_AMV_VF_POSNUM, "positive-number"},
             {a_AMV_VF_OBSOLETE, "obsoleted"},
          }, *tp;
-         assert(!isset || ((avp->av_flags & a_AMV_VF__MASK) ==
+         ASSERT(!isset || ((avp->av_flags & a_AMV_VF__MASK) ==
             (avc.avc_map->avm_flags & a_AMV_VF__MASK)));
 
          for(tp = tbase; PTRCMP(tp, <, &tbase[n_NELEM(tbase)]); ++tp)
@@ -2634,7 +2633,7 @@ c_account(void *v){
 
    /* And switch to any non-"null" account */
    if(amp != NULL){
-      assert(amp->am_lopts == NULL);
+      ASSERT(amp->am_lopts == NULL);
       amcap = n_lofi_alloc(sizeof *amcap);
       su_mem_set(amcap, 0, sizeof *amcap);
       amcap->amca_name = amp->am_name;
@@ -2655,7 +2654,7 @@ c_account(void *v){
 
    /* Otherwise likely initial setfile() in a_main_rcv_mode() will pick up */
    if(n_psonce & n_PSO_STARTED){
-      assert(!(n_pstate & n_PS_HOOK_MASK));
+      ASSERT(!(n_pstate & n_PS_HOOK_MASK));
       nqf = savequitflags(); /* TODO obsolete (leave -> void -> new box!) */
       restorequitflags(oqf);
       i = setfile("%", FEDIT_SYSBOX | FEDIT_ACCOUNT);
@@ -2909,7 +2908,7 @@ temporary_folder_hook_unroll(void){ /* XXX intermediate hack */
 
       a_amv_lopts = NULL;
       a_amv_lopts_unroll(&a_amv_folder_hook_lopts);
-      assert(a_amv_folder_hook_lopts == NULL);
+      ASSERT(a_amv_folder_hook_lopts == NULL);
       a_amv_lopts = save;
    }
    NYD_OU;
@@ -2970,7 +2969,7 @@ temporary_compose_mode_hook_unroll(void){ /* XXX intermediate hack */
 
       a_amv_lopts = NULL;
       a_amv_lopts_unroll(&a_amv_compose_lopts);
-      assert(a_amv_compose_lopts == NULL);
+      ASSERT(a_amv_compose_lopts == NULL);
       a_amv_lopts = save;
    }
    NYD_OU;
@@ -3199,7 +3198,7 @@ n_var_xoklook(enum okeys okey, struct url const *urlp,
    char *nbuf, *rv;
    NYD_IN;
 
-   assert(oxm & (OXM_PLAIN | OXM_H_P | OXM_U_H_P));
+   ASSERT(oxm & (OXM_PLAIN | OXM_H_P | OXM_U_H_P));
 
    /* For simplicity: allow this case too */
    if(!(oxm & (OXM_H_P | OXM_U_H_P))){
@@ -4021,7 +4020,7 @@ jesubstring_len:
       if((reflrv = regcomp(&re, argv[2], reflrv))){
          n_err(_("`vexpr': invalid regular expression: %s: %s\n"),
             n_shexp_quote_cp(argv[2], FAL0), n_regex_err_to_doc(NULL, reflrv));
-         assert(f & a_ERR);
+         ASSERT(f & a_ERR);
          n_pstate_err_no = su_ERR_INVAL;
          goto jestr;
       }
@@ -4139,8 +4138,7 @@ jleave:
          if(fprintf(n_stdout,
                   "0b %s\n0%" PRIo64 " | 0x%" PRIX64 " | %" PRId64 "\n",
                   binabuf, lhv, lhv, lhv) < 0 ||
-               ((f & a_PBASE) && (assert(varres != NULL),
-                fprintf(n_stdout, "%s\n", varres) < 0))){
+               ((f & a_PBASE) && fprintf(n_stdout, "%s\n", varres) < 0)){
             n_pstate_err_no = su_err_no();
             f |= a_ERR;
          }

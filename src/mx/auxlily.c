@@ -897,7 +897,7 @@ jinc1:
    oudat = (len >= oulen) ? dat : n_lofi_alloc(oulen +1);
    b64.s = oudat;
    b64_encode_buf(&b64, indat, inlen, B64_BUF | B64_RFC4648URL | B64_NOPAD);
-   assert(b64.l >= len);
+   ASSERT(b64.l >= len);
    su_mem_copy(dat, b64.s, len);
    dat[len] = '\0';
    if(oudat != dat)
@@ -924,7 +924,7 @@ FL bool_t
 n_boolify(char const *inbuf, uiz_t inlen, bool_t emptyrv){
    bool_t rv;
    NYD2_IN;
-   assert(inlen == 0 || inbuf != NULL);
+   ASSERT(inlen == 0 || inbuf != NULL);
 
    if(inlen == UIZ_MAX)
       inlen = su_cs_len(inbuf);
@@ -961,7 +961,7 @@ FL bool_t
 n_quadify(char const *inbuf, uiz_t inlen, char const *prompt, bool_t emptyrv){
    bool_t rv;
    NYD2_IN;
-   assert(inlen == 0 || inbuf != NULL);
+   ASSERT(inlen == 0 || inbuf != NULL);
 
    if(inlen == UIZ_MAX)
       inlen = su_cs_len(inbuf);
@@ -1048,7 +1048,7 @@ jredo:
       cp = su_cs_pcopy(tc->tc_ctime, n_time_ctime((si64_t)tc->tc_time, tmp));
       *cp++ = '\n';
       *cp = '\0';
-      assert(PTR2SIZE(++cp - tc->tc_ctime) < sizeof(tc->tc_ctime));
+      ASSERT(PTR2SIZE(++cp - tc->tc_ctime) < sizeof(tc->tc_ctime));
    }
    NYD_OU;
 }

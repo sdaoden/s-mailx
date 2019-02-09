@@ -462,7 +462,7 @@ j_beejump:
          if ((flags & _NO_QP) || j >= i >> 1)/*(i >> 2) + (i >> 3))*/
             flags |= _ENC_B64;
       }
-      su_DBG( if (flags & _8BIT) assert(flags & _ENCODE); )
+      su_DBG( if (flags & _8BIT) ASSERT(flags & _ENCODE); )
 
       if (!(flags & _ENCODE)) {
          /* Encoded word produced, but no linear whitespace for necessary RFC
@@ -1395,7 +1395,7 @@ jqpb64_dec:
        * TODO in the same relaxed fashion like completely bogus bytes by at
        * TODO least mutt and OpenSSL.  So we need an expensive workaround
        * TODO unless we have input->iconv->base64 filter chain as such!! :( */
-      if(size != 0 && /* for Coverity, else assert() */ inrest != NULL){
+      if(size != 0 && /* for Coverity, else ASSERT() */ inrest != NULL){
          if(in.l > B64_ENCODE_INPUT_PER_LINE){
             size_t i;
 
@@ -1403,7 +1403,7 @@ jqpb64_dec:
             in.l -= i;
 
             if(i != 0){
-               assert(inrest->l == 0);
+               ASSERT(inrest->l == 0);
                inrest->s = n_realloc(inrest->s, i +1);
                su_mem_copy(inrest->s, &in.s[in.l], i);
                inrest->s[inrest->l = i] = '\0';

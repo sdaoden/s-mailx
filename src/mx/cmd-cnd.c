@@ -493,7 +493,7 @@ a_ccnd_if(void *v, bool_t iselif){
       cinp->cin_outer = n_go_data->gdc_ifcond;
    }else{
       cinp = n_go_data->gdc_ifcond;
-      assert(cinp != NULL);
+      ASSERT(cinp != NULL);
    }
    cinp->cin_error = FAL0;
    cinp->cin_noop = a_CCND_IF_ISSKIP();

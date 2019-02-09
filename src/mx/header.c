@@ -801,7 +801,7 @@ jnode_redo:
 #endif
          }
          tp->t_end = agp->ag_iaddr_aend;
-         assert(tp->t_start <= tp->t_end);
+         ASSERT(tp->t_start <= tp->t_end);
          tp = NULL;
 
          cp = &agp->ag_input[agp->ag_iaddr_aend + 1];
@@ -811,7 +811,7 @@ jnode_redo:
       }
 
       /* Nothing may follow the address, move it to the end */
-      assert(tcurr != NULL);
+      ASSERT(tcurr != NULL);
       if(tcurr != NULL && !(tcurr->t_f & a_T_TADDR)){
          for(tp = thead; tp != NULL; tp = tp->t_next){
             if(tp->t_f & a_T_TADDR){
@@ -1182,9 +1182,9 @@ msgidnextc(char const **cp, int *status)
    int c;
    NYD2_IN;
 
-   assert(cp != NULL);
-   assert(*cp != NULL);
-   assert(status != NULL);
+   ASSERT(cp != NULL);
+   ASSERT(*cp != NULL);
+   ASSERT(status != NULL);
 
    for (;;) {
       if (*status & 01) {
@@ -1887,10 +1887,10 @@ is_addr_invalid(struct mx_name *np, enum expand_addr_check_mode eacm){
       else{
          char const *doms;
 
-         assert(np->n_flags & mx_NAME_SKINNED);
+         ASSERT(np->n_flags & mx_NAME_SKINNED);
          /* XXX We had this info before, and threw it away.. */
          doms = su_cs_rfind_c(np->n_name, '@');
-         assert(doms != NULL);
+         ASSERT(doms != NULL);
          ++doms;
 
          if(!su_cs_cmp_case("localhost", doms))
@@ -2854,7 +2854,7 @@ jredo_localtime:
    }else if(t == (time_t)0 && !(mp->m_flag & MNOFROM)){
       /* TODO eliminate this path, query the FROM_ date in setptr(),
        * TODO all other codepaths do so by themselves ALREADY ?????
-       * TODO assert(mp->m_time != 0);, then
+       * TODO ASSERT(mp->m_time != 0);, then
        * TODO ALSO changes behaviour of datefield_markout_older */
       a_header_parse_from_(mp, rv = n_autorec_alloc(n_FROM_DATEBUF));
    }else

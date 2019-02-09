@@ -325,7 +325,7 @@ _hf_store(struct htmlflt *self, char c)
    ui32_t l, i;
    NYD2_IN;
 
-   assert(c != '\n');
+   ASSERT(c != '\n');
 
    l = self->hf_len;
    if(n_UNLIKELY(l == 0) && (i = (self->hf_flags & _HF_BQUOTE_MASK)) != 0 &&
@@ -744,7 +744,7 @@ _hf_check_tag(struct htmlflt *self, char const *s)
    NYD2_IN;
 
    /* Extra check only */
-   assert(s != NULL);
+   ASSERT(s != NULL);
    if (*s != '<') {
       su_DBG( n_alert("HTML tagsoup filter _hf_check_tag() called on soup!"); )
 jput_as_is:
@@ -932,9 +932,9 @@ _hf_check_ent(struct htmlflt *self, char const *s, size_t l)
 
    s_save = s;
    l_save = l;
-   assert(*s == '&');
-   assert(l > 0);
-   /* False entities seen in the wild assert(s[l - 1] == ';'); */
+   ASSERT(*s == '&');
+   ASSERT(l > 0);
+   /* False entities seen in the wild ASSERT(s[l - 1] == ';'); */
    ++s;
    l -= 2;
 

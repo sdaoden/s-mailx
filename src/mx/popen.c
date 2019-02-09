@@ -155,8 +155,8 @@ register_file(FILE *fp, int omode, int pid, int flags,
    struct fp *fpp;
    NYD_IN;
 
-   assert(!(flags & FP_UNLINK) || realfile != NULL);
-   assert(!(flags & FP_TERMIOS) || tiosp != NULL);
+   ASSERT(!(flags & FP_UNLINK) || realfile != NULL);
+   ASSERT(!(flags & FP_TERMIOS) || tiosp != NULL);
 
    fpp = n_alloc(sizeof *fpp);
    fpp->fp = fp;
@@ -698,10 +698,10 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
    FILE *fp;
    NYD_IN;
 
-   assert(namehint != NULL);
-   assert((oflags & OF_WRONLY) || (oflags & OF_RDWR));
-   assert(!(oflags & OF_RDONLY));
-   assert(!(oflags & OF_REGISTER_UNLINK) || (oflags & OF_REGISTER));
+   ASSERT(namehint != NULL);
+   ASSERT((oflags & OF_WRONLY) || (oflags & OF_RDWR));
+   ASSERT(!(oflags & OF_RDONLY));
+   ASSERT(!(oflags & OF_REGISTER_UNLINK) || (oflags & OF_REGISTER));
 
    fp = NULL;
    relesigs = FAL0;
@@ -1052,7 +1052,7 @@ n_pager_open(void)
    FILE *rv;
    NYD_IN;
 
-   assert(n_psonce & n_PSO_INTERACTIVE);
+   ASSERT(n_psonce & n_PSO_INTERACTIVE);
 
    pager = n_pager_get(env_add + 0);
    env_add[1] = NULL;
@@ -1214,9 +1214,9 @@ n_child_start(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
 
             ee = env_addon_or_null[ai];
             kvs = su_cs_find_c(ee, '=');
-            assert(kvs != NULL);
+            ASSERT(kvs != NULL);
             kl = PTR2SIZE(kvs - ee);
-            assert(kl > 0);
+            ASSERT(kl > 0);
             for (ei = ei_orig; ei-- > 0;) {
                char const *ekvs = su_cs_find_c(env[ei], '=');
                if (ekvs != NULL && kl == PTR2SIZE(ekvs - env[ei]) &&

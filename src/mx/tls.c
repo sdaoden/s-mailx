@@ -380,7 +380,7 @@ c_certsave(void *vp){
    NYD_IN;
 
    cacp = vp;
-   assert(cacp->cac_no == 2);
+   ASSERT(cacp->cac_no == 2);
 
    msgvec = cacp->cac_arg->ca_arg.ca_msglist;
    /* C99 */{

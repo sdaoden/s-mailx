@@ -379,7 +379,7 @@ a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo,
       err = a_sendout__attach_file(hp, ap, fo, force);
       goto jleave;
    } else
-      assert(ap->a_input_charset != NULL);
+      ASSERT(ap->a_input_charset != NULL);
 
    /* Otherwise we need to iterate over all possible output charsets */
    if ((offs = ftell(fo)) == -1) {
@@ -433,7 +433,7 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo,
    /* Either charset-converted temporary file, or plain path */
    if (ap->a_conv == AC_TMPFILE) {
       fi = ap->a_tmpf;
-      assert(ftell(fi) == 0);
+      ASSERT(ftell(fi) == 0);
    } else if ((fi = Fopen(ap->a_path, "r")) == NULL) {
       err = su_err_no();
       n_err(_("%s: %s\n"), n_shexp_quote_cp(ap->a_path, FAL0),
@@ -1176,7 +1176,7 @@ a_sendout__savemail(char const *name, FILE *fp, bool_t resend){
       if(resend){
          if(emptyline && is_head(buf, buflen, FAL0))
             putc('>', fo);
-      }su_DBG(else assert(!is_head(buf, buflen, FAL0)); )
+      }su_DBG(else ASSERT(!is_head(buf, buflen, FAL0)); )
 
       emptyline = (buflen > 0 && *buf == '\n');
       fwrite(buf, sizeof *buf, buflen, fo);
@@ -1471,7 +1471,7 @@ __mta_prepare_args(struct mx_name *to, struct header *hp)
          }
          cp = np->n_name;
       } else {
-         assert(n_poption_arg_r == NULL);
+         ASSERT(n_poption_arg_r == NULL);
          cp = skin(myorigin(NULL));
       }
 
@@ -1653,7 +1653,7 @@ a_sendout_put_addrline(char const *hname, struct mx_name *np, FILE *fo,
          /* GREF needs to be placed in angle brackets, but which are missing */
          hb = np->n_fullname;
          if(np->n_type & GREF){
-            assert(UICMP(z, len, ==, su_cs_len(np->n_fullname) + 2));
+            ASSERT(UICMP(z, len, ==, su_cs_len(np->n_fullname) + 2));
             hb = n_lofi_alloc(len +1);
             len -= 2;
             hb[0] = '<';

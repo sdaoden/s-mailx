@@ -246,7 +246,7 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
 
       if((nol = ol = s->s_len) < il)
          nol = il;
-      assert(sizeof(s->s_len) == sizeof(ui32_t));
+      ASSERT(sizeof(s->s_len) == sizeof(ui32_t));
       if(nol < 128)
          nol += 32;
       else{

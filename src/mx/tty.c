@@ -1722,7 +1722,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
          struct a_tty_cell const *tc1p = tlp->tl_line.cells;
          ui32_t vil1 = vi_left;
 
-         assert(!(f & a_SHOW_PROMPT));
+         ASSERT(!(f & a_SHOW_PROMPT));
          w += tlp->tl_prompt_width;
          for(tcxp = tcp_left;;){
             ui32_t i = tcxp[-1].tc_width;
@@ -1782,12 +1782,12 @@ a_tty_vi__paint(struct a_tty_line *tlp){
 
    /* We know what we have to paint, start synchronizing */
 jpaint:
-   assert(phy_cur == tlp->tl_phy_cursor);
-   assert(phy_wid == phy_wid_base - phy_base);
-   assert(cnt == tlp->tl_count);
-   assert(cnt > 0);
-   assert(lstcur == tlp->tl_lst_cursor);
-   assert(tccp == tlp->tl_line.cells + cur);
+   ASSERT(phy_cur == tlp->tl_phy_cursor);
+   ASSERT(phy_wid == phy_wid_base - phy_base);
+   ASSERT(cnt == tlp->tl_count);
+   ASSERT(cnt > 0);
+   ASSERT(lstcur == tlp->tl_lst_cursor);
+   ASSERT(tccp == tlp->tl_line.cells + cur);
 
    phy_nxtcur = phy_base; /* FIXME only if repaint cpl. */
 
@@ -1814,7 +1814,7 @@ jpaint:
    }
 
    if(f & a_SHOW_PROMPT){
-      assert(phy_base == tlp->tl_prompt_width);
+      ASSERT(phy_base == tlp->tl_prompt_width);
       if(fputs(tlp->tl_prompt, n_tty_fp) == EOF)
          goto jerr;
       phy_cur = phy_nxtcur;
@@ -1946,7 +1946,7 @@ a_tty_wboundary(struct a_tty_line *tlp, si32_t dir){/* TODO shell token-wise */
    si32_t rv;
    NYD2_IN;
 
-   assert(dir == 1 || dir == -1);
+   ASSERT(dir == 1 || dir == -1);
 
    rv = -1;
    cnt = tlp->tl_count;
@@ -2358,7 +2358,7 @@ a_tty_kht(struct a_tty_line *tlp){
             if(sub.l != 0){
                size_t x;
 
-               assert(max >= sub.l);
+               ASSERT(max >= sub.l);
                x = max - sub.l;
                bot.l += x;
                max -= x;
@@ -2561,7 +2561,7 @@ jmulti:{
          /* Next result */
          sub = exp;
          sub.l = i = su_cs_len(sub.s);
-         assert(exp.l >= i);
+         ASSERT(exp.l >= i);
          if((exp.l -= i) > 0)
             --exp.l;
          exp.s += ++i;
@@ -3060,7 +3060,7 @@ a_tty_readline(struct a_tty_line *tlp, size_t len, bool_t *histok_or_null
 
    n_UNINIT(rv, 0);
 # ifdef mx_HAVE_KEY_BINDINGS
-   assert(tlp->tl_bind_takeover == '\0');
+   ASSERT(tlp->tl_bind_takeover == '\0');
 # endif
 jrestart:
    su_mem_set(ps, 0, sizeof ps);
@@ -3089,8 +3089,8 @@ jinput_loop:
          cbufp =
          cbuf = cbuf_base;
       }else{
-         assert(tlp->tl_defc.l > 0 && tlp->tl_defc.s != NULL);
-         assert(tlp->tl_defc.l >= len);
+         ASSERT(tlp->tl_defc.l > 0 && tlp->tl_defc.s != NULL);
+         ASSERT(tlp->tl_defc.l >= len);
          cbufp =
          cbuf = tlp->tl_defc.s + (tlp->tl_defc.l - len);
          cbufp += len;
@@ -3152,8 +3152,8 @@ jinput_loop:
 # ifdef mx_HAVE_KEY_BINDINGS
                      /* Timeout expiration */
                      if(rv == 0){
-                        assert(flags & a_TIMEOUT);
-                        assert(isp != NULL);
+                        ASSERT(flags & a_TIMEOUT);
+                        ASSERT(isp != NULL);
                         a_tty_term_rawmode_timeout(tlp, FAL0);
 
                         /* Something "atomic" broke.  Maybe the current one can
@@ -3169,7 +3169,7 @@ jinput_loop:
                         for(xtbtp = tbtp;
                               (xtbtp = xtbtp->tbt_sibling) != NULL;)
                            if(xtbtp->tbt_char == tbtp->tbt_char){
-                              assert(!xtbtp->tbt_isseq);
+                              ASSERT(!xtbtp->tbt_isseq);
                               break;
                            }
                         /* Lay down on read(2)? */
@@ -3194,7 +3194,7 @@ jinput_loop:
                    * via type-ahead as when typing "yes\n^@" during sleep of
                    *    $ sleep 5; mail -s byjove $LOGNAME */
                   if(*cbufp == '\0'){
-                     assert((n_psonce & n_PSO_INTERACTIVE) &&
+                     ASSERT((n_psonce & n_PSO_INTERACTIVE) &&
                         !(n_pstate & n_PS_ROBOT));
                      *cbuf = '\x04';
                   }
@@ -3256,7 +3256,7 @@ jinput_loop:
 
                      /* If this one cannot continue we're likely finished! */
                      if(tbtp->tbt_childs == NULL){
-                        assert(tbtp->tbt_bind != NULL);
+                        ASSERT(tbtp->tbt_bind != NULL);
                         tbf = tbtp->tbt_bind->tbc_flags;
                         goto jmle_fun;
                      }
@@ -3293,7 +3293,7 @@ jinput_loop:
                      for(xtbtp = (tbtp = isp->tbtp);
                            (xtbtp = xtbtp->tbt_sibling) != NULL;)
                         if(xtbtp->tbt_char == tbtp->tbt_char){
-                           assert(!xtbtp->tbt_isseq);
+                           ASSERT(!xtbtp->tbt_isseq);
                            break;
                         }
                      if(xtbtp != NULL){
@@ -3334,7 +3334,7 @@ jmle_fun:
                            rv = -1;
                            goto jleave;
                         }
-                        assert(0);
+                        ASSERT(0);
                      }else if(tbtp->tbt_bind->tbc_flags & a_TTY_BIND_NOCOMMIT){
                         struct a_tty_bind_ctx *tbcp;
 
@@ -3387,7 +3387,7 @@ jtake_over:
 jbuiltin_redo:
             for(; tbbtp < tbbtp_max; ++tbbtp){
                /* Assert default_tuple table is properly subset'ed */
-               assert(tbbtp->tbdt_iskey);
+               ASSERT(tbbtp->tbdt_iskey);
                if(tbbtp->tbbt_ckey == c){
                   if(tbbtp->tbbt_exp[0] == '\0'){
                      tbf = a_TTY_BIND_FUN_EXPAND((ui8_t)tbbtp->tbbt_exp[1]);
@@ -3402,7 +3402,7 @@ jbuiltin_redo:
                         rv = -1;
                         goto jleave;
                      }
-                     assert(0);
+                     ASSERT(0);
                   }else{
                      cbufp = n_UNCONST(tbbtp->tbbt_exp);
                      goto jinject_input;
@@ -4008,7 +4008,7 @@ a_tty__bind_tree_add(ui32_t hmap_idx,
          for(u.cp = (char const*)&n_UNALIGN(si32_t const*,cnvdat)[2];
                *u.cp != '\0'; ++u.cp)
             ntbtp = a_tty__bind_tree_add_wc(store, ntbtp, *u.cp, TRU1);
-         assert(ntbtp != NULL);
+         ASSERT(ntbtp != NULL);
          ntbtp->tbt_isseq_trail = TRU1;
          entlen &= SI32_MAX;
       }else{
@@ -4049,7 +4049,7 @@ a_tty__bind_tree_add(ui32_t hmap_idx,
          for(; *u.wp != '\0'; ++u.wp)
             ntbtp = a_tty__bind_tree_add_wc(store, ntbtp, *u.wp, isseq);
          if(isseq){
-            assert(ntbtp != NULL);
+            ASSERT(ntbtp != NULL);
             ntbtp->tbt_isseq_trail = TRU1;
          }
       }
@@ -4059,7 +4059,7 @@ a_tty__bind_tree_add(ui32_t hmap_idx,
    }
 
    /* Should have been rendered defunctional at first instead */
-   assert(ntbtp != NULL);
+   ASSERT(ntbtp != NULL);
    ntbtp->tbt_bind = tbcp;
    NYD2_OU;
 }
@@ -4086,7 +4086,7 @@ a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep,
          if(isseq){
 #ifdef mx_HAVE_DEBUG
             while((tbtp = tbtp->tbt_sibling) != NULL)
-               assert(tbtp->tbt_char != wc);
+               ASSERT(tbtp->tbt_char != wc);
 #endif
             break;
          }
@@ -4115,7 +4115,7 @@ a_tty__bind_tree_add_wc(struct a_tty_bind_tree **treep,
                if(isseq){
 #ifdef mx_HAVE_DEBUG
                   while((tbtp = tbtp->tbt_sibling) != NULL)
-                     assert(tbtp->tbt_char != wc);
+                     ASSERT(tbtp->tbt_char != wc);
 #endif
                   tbtp = NULL;
                   break;
@@ -4272,10 +4272,10 @@ FL int
    ssize_t nn;
    NYD_IN;
 
-   assert(!ok_blook(line_editor_disable));
+   ASSERT(!ok_blook(line_editor_disable));
    if(!(n_psonce & n_PSO_LINE_EDITOR_INIT))
       n_tty_init();
-   assert(n_psonce & n_PSO_LINE_EDITOR_INIT);
+   ASSERT(n_psonce & n_PSO_LINE_EDITOR_INIT);
 
 # ifdef mx_HAVE_COLOUR
    n_colour_env_create(n_COLOUR_CTX_MLE, n_tty_fp, FAL0);
@@ -4421,7 +4421,7 @@ c_history(void *v){
 
    if(!(n_psonce & n_PSO_LINE_EDITOR_INIT)){
       n_tty_init();
-      assert(n_psonce & n_PSO_LINE_EDITOR_INIT);
+      ASSERT(n_psonce & n_PSO_LINE_EDITOR_INIT);
    }
 
    if(*(argv = v) == NULL)
@@ -4521,7 +4521,7 @@ jentry:{
       else
          ep = (siz_t)a_tty.tg_hist_size - ep;
       for(thp = a_tty.tg_hist;; thp = thp->th_older){
-         assert(thp != NULL);
+         ASSERT(thp != NULL);
          if(ep-- == 0){
             n_go_input_inject((n_GO_INPUT_INJECT_COMMIT |
                n_GO_INPUT_INJECT_HISTORY), v = thp->th_dat, thp->th_len);

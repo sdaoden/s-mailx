@@ -312,7 +312,7 @@ jeeqaaster:
                l = x, x = x->rj_next;
             if (x != NULL)
                np->rj_next = x;
-            assert(l != NULL);
+            ASSERT(l != NULL);
             l->rj_next = np;
          }
 
@@ -353,7 +353,7 @@ jeeqaaster:
       } else
          hbp = _mime_param_skip(hbp);
    }
-   assert(head != NULL); /* (always true due to jumpin:, but..) */
+   ASSERT(head != NULL); /* (always true due to jumpin:, but..) */
 
    errors |= __rfc2231_join(head, &rv, &emsg);
    if (errors && (n_poption & n_PO_D_V)) {
@@ -570,7 +570,7 @@ jneed_enc:
       su_DBG( n_alert("_mime_param_create(): Hunky Dory!"); )
       bp_max = buf + (MIME_LINELEN >> 1); /* And then it is SHOULD, anyway */
    }
-   assert(PTRCMP(bp_max + (4 * 3), <=, bp_xmax)); /* UTF-8 extra pad, below */
+   ASSERT(PTRCMP(bp_max + (4 * 3), <=, bp_xmax)); /* UTF-8 extra pad, below */
 
    f &= _ISENC;
    while (vl > 0) {
@@ -799,7 +799,7 @@ __mime_param_join(struct mime_param_builder *head)
    }
    *cp = '\0';
    result->l = PTR2SIZE(cp - result->s);
-   assert(result->l < len_max);
+   ASSERT(result->l < len_max);
    NYD2_OU;
 }
 

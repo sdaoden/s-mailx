@@ -538,6 +538,7 @@ do{\
 /* Variants of ASSERT */
 #if defined NDEBUG || defined DOXYGEN
 # define su_ASSERT_INJ(X) /*!< Injection! */
+# define su_ASSERT_NB(X) ((void)0) /*!< No block. */
 # define su_ASSERT(X) do{}while(0) /*!< \_ */
 # define su_ASSERT_LOC(X,FNAME,LNNO) do{}while(0) /*!< \_ */
 # define su_ASSERT_EXEC(X,S) do{}while(0) /*!< \_ */
@@ -554,6 +555,11 @@ do{\
 # define su_ASSERT_NYD_LOC(X,FNAME,LNNO) do{}while(0) /*!< \_ */
 #else
 # define su_ASSERT_INJ(X) X
+
+# define su_ASSERT_NB(X) \
+   su_R(void,((X) ? su_TRU1 \
+      : su_assert(su_STRING(X), __FILE__, __LINE__, su_FUN, su_TRU1), su_FAL0))
+
 # define su_ASSERT(X) su_ASSERT_LOC(X, __FILE__, __LINE__)
 # define su_ASSERT_LOC(X,FNAME,LNNO) \
 do if(!(X))\
@@ -1016,8 +1022,13 @@ typedef su_sl su_sp;
 # endif
 #endif
 
-/*! Values for #su_boole. */
-enum {su_FAL0 /*!< \_ */, su_TRU1 /*!< \_ */, su_TRUM1 = -1 /*!< \_ */};
+/*! Values for #su_boole (normally only \c{FAL0} and \c{TRU1}). */
+enum{
+   su_FAL0, /*!< 0 (no bits set). */
+   su_TRU1, /*!< The value 1. */
+   su_TRU2, /*!< The value 2. */
+   su_TRUM1 = -1 /*!< All bits set. */
+};
 typedef su_s8 su_boole; /*!< The \SU boolean type (see \FAL0 etc.). */
 
 /* POD TYPE SUPPORT }}} */
@@ -1440,9 +1451,10 @@ typedef su_sp sp; /*!< \_ */
 typedef su_boole boole; /*!< \_ */
 /*! Values for \r{su_boole}. */
 enum{
-   FAL0 = su_FAL0,   /*!< \_ */
-   TRU1 = su_TRU1,   /*!< \_ */
-   TRUM1 = su_TRUM1  /*!< All bits set. */
+   FAL0 = su_FAL0, /*!< \_ */
+   TRU1 = su_TRU1, /*!< \_ */
+   TRU2 = su_TRU2, /*!< \_ */
+   TRUM1 = su_TRUM1 /*!< All bits set. */
 };
 
 /* Place the mentioned alignment CTAs */

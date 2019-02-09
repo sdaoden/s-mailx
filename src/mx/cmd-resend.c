@@ -388,9 +388,9 @@ jwork_msg:
       head.h_to = mx_alternates_remove(head.h_to, FAL0);
 #ifdef mx_HAVE_DEVEL
       for(np = head.h_to; np != NULL; np = np->n_flink)
-         assert((np->n_type & GMASK) == GTO);
+         ASSERT((np->n_type & GMASK) == GTO);
       for(np = head.h_cc; np != NULL; np = np->n_flink)
-         assert((np->n_type & GMASK) == GCC);
+         ASSERT((np->n_type & GMASK) == GCC);
 #endif
       goto jrecipients_done;
    }

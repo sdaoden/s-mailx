@@ -259,7 +259,7 @@ jerr:
       if(n_poption & n_PO_D_V)
          n_err(_("Errors occurred while parsing %s\n"),
             n_shexp_quote_cp(netrc_load, FAL0));
-      assert(nrc == NRC_NODE_ERR);
+      ASSERT(nrc == NRC_NODE_ERR);
       goto jleave;
    }
 
@@ -377,8 +377,8 @@ _nrc_lookup(struct url *urlp, bool_t only_pass)
    bool_t rv = FAL0;
    NYD_IN;
 
-   assert(!only_pass || urlp->url_user.s != NULL);
-   assert(only_pass || urlp->url_user.s == NULL);
+   ASSERT(!only_pass || urlp->url_user.s != NULL);
+   ASSERT(only_pass || urlp->url_user.s == NULL);
 
    if (_nrc_list == NULL)
       _nrc_init();

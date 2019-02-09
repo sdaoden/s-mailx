@@ -2043,7 +2043,7 @@ jerr:
 
    rele_all_sigs();
 
-   assert(checkaddr_err != NULL);
+   ASSERT(checkaddr_err != NULL);
    /* TODO We don't save in $DEAD upon error because msg not readily composed?
     * TODO But this no good, it should go ZOMBIE / DRAFT / POSTPONED or what! */
    if(*checkaddr_err != 0){

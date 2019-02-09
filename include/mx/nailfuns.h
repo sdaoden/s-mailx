@@ -749,7 +749,7 @@ FL int         c_visual(void *v);
 /* Run an editor on either size bytes of the file fp (or until EOF if size is
  * negative) or on the message mp, and return a new file or NULL on error of if
  * the user didn't perform any edits (not possible in pipe mode).
- * For now we assert that mp==NULL if hp!=NULL, treating this as a special call
+ * For now we ASSERT that mp==NULL if hp!=NULL, treating this as a special call
  * from within compose mode, and giving TRUM1 to n_puthead().
  * Signals must be handled by the caller.
  * viored is 'e' for $EDITOR, 'v' for $VISUAL, or '|' for n_child_run(), in
@@ -1243,7 +1243,7 @@ FL struct message * setdot(struct message *mp);
 FL void        touch(struct message *mp);
 
 /* Convert user message spec. to message numbers and store them in vector,
- * which should be capable to hold msgCount+1 entries (n_msgvec asserts this).
+ * which should be capable to hold msgCount+1 entries (n_msgvec ASSERTs this).
  * flags is n_cmd_arg_ctx.cac_msgflag == n_cmd_desc.cd_msgflag == enum mflag.
  * If capp_or_null is not NULL then the last (string) token is stored in here
  * and not interpreted as a message specification; in addition, if only one
@@ -1911,12 +1911,12 @@ FL struct str *n_str_trim_ifs(struct str *self, bool_t dodefaults);
 
 /* Truncate to size, which must be LE current length */
 #define n_string_trunc(S,L) \
-   (assert(UICMP(z, L, <=, (S)->s_len)), (S)->s_len = (ui32_t)(L), (S))
+   (ASSERT_NB(UICMP(z, L, <=, (S)->s_len)), (S)->s_len = (ui32_t)(L), (S))
 
 /* Take/Release buffer ownership */
 #define n_string_take_ownership(SP,B,S,L) \
-   (assert((SP)->s_dat == NULL), assert((S) == 0 || (B) != NULL),\
-    assert((L) < (S) || (L) == 0),\
+   (ASSERT_NB((SP)->s_dat == NULL), ASSERT_NB((S) == 0 || (B) != NULL),\
+    ASSERT_NB((L) < (S) || (L) == 0),\
     (SP)->s_dat = (B), (SP)->s_len = (L), (SP)->s_size = (S), (SP))
 #define n_string_drop_ownership(SP) \
    ((SP)->s_dat = NULL, (SP)->s_len = (SP)->s_size = 0, (SP))

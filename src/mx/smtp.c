@@ -123,7 +123,7 @@ _smtp_read(struct sock *sop, struct smtp_line *slp, int val,
       for (; su_cs_is_blank(*cp); --len, ++cp)
          ;
       slp->dat = cp;
-      assert(len >= 2);
+      ASSERT(len >= 2);
       len -= 2;
       cp[slp->datlen = (size_t)len] = '\0';
    }

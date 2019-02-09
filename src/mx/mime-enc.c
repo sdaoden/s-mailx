@@ -401,7 +401,7 @@ mime_enc_mustquote(char const *ln, size_t lnlen, enum mime_enc_flags flags){
       case a_ME_US:
       case a_ME_EQ:
       case a_ME_HT:
-         assert(flags & MIMEEF_ISENCWORD);
+         ASSERT(flags & MIMEEF_ISENCWORD);
          /* FALLTHRU */
       case 0:
          continue;
@@ -551,7 +551,7 @@ jheadq:
           * that'll end the line anyway */
          /* XXX but - ensure is+1>=ie, then??
           * xxx and/or - what about resetting lnlen; that contra
-          * xxx dicts input==1 input line assertion, though */
+          * xxx dicts input==1 input line ASSERTion, though */
          if(c == '\n' || is == ie || is[0] == '\n' || is[1] == '\n')
             continue;
 jsoftnl:
@@ -793,7 +793,7 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags){
    char *b64;
    NYD_IN;
 
-   assert(!(flags & B64_NOPAD) ||
+   ASSERT(!(flags & B64_NOPAD) ||
       !(flags & (B64_CRLF | B64_LF | B64_MULTILINE)));
 
    p = (ui8_t const*)in->s;

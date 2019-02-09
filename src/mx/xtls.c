@@ -1852,7 +1852,7 @@ n_tls_rand_bytes(void *buf, size_t blen){
           * a_xtls_rand_init() that the PRNG is seeded, so it does not fail.
           *
           * With newer OpenSSL we disable automatic reseeding, but do not
-          * assert RAND_status() ("Since you always have to check RAND_bytes's
+          * ASSERT RAND_status() ("Since you always have to check RAND_bytes's
           * return value now, RAND_status is mostly useless.",
           * 20190104180735.GA25041@roeckx.be), so we have not that many options
           * on what to do.  Since OSs will try hard to serve, a simple sleep
@@ -1926,7 +1926,7 @@ n_tls_open(struct url *urlp, struct sock *sop){
    /* Done with context setup, create our new per-connection structure */
    if(!a_xtls_conf_finish(&confp, FAL0))
       goto jleave;
-   assert(confp == NULL);
+   ASSERT(confp == NULL);
 
    if((sop->s_tls = SSL_new(ctxp)) == NULL){
       ssl_gen_err(_("SSL_new() failed"));
@@ -1988,7 +1988,7 @@ n_tls_open(struct url *urlp, struct sock *sop){
             ssl_gen_err(_("TLS %s fingerprint creation failed"), fprnt_namep);
             goto jpeer_leave;
          }
-         assert(fpmdlen <= EVP_MAX_MD_SIZE);
+         ASSERT(fpmdlen <= EVP_MAX_MD_SIZE);
 
          for(cp = fpmdhexbuf, ucp = fpmdbuf; fpmdlen > 0; --fpmdlen){
             n_c_to_hex_base16(cp, (char)*ucp++);
@@ -2136,7 +2136,7 @@ smime_sign(FILE *ip, char const *addr)
    bool_t bail = FAL0;
    NYD_IN;
 
-   assert(addr != NULL);
+   ASSERT(addr != NULL);
    rv = sfp = fp = bp = hp = NULL;
 
    a_xtls_init();

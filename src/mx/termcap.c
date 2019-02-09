@@ -185,7 +185,7 @@ a_termcap_init_var(struct str const *termvar){
       goto j_leave;
    }
 
-   assert(termvar->s[termvar->l] == '\0');
+   ASSERT(termvar->s[termvar->l] == '\0');
    i = termvar->l +1;
    cbp_base = n_autorec_alloc(i);
    su_mem_copy(cbp = cbp_base, termvar->s, i);
@@ -471,7 +471,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
       char const *cname, ui16_t cflags){
    bool_t rv;
    NYD2_IN;
-   assert(!(n_psonce & n_PSO_TERMCAP_DISABLE));
+   ASSERT(!(n_psonce & n_PSO_TERMCAP_DISABLE));
 
    if(n_UNLIKELY(*cname == '\0'))
       rv = FAL0;
@@ -508,7 +508,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
 su_SINLINE bool_t
 a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
       struct a_termcap_control const *tcp){
-   assert(!(n_psonce & n_PSO_TERMCAP_DISABLE));
+   ASSERT(!(n_psonce & n_PSO_TERMCAP_DISABLE));
    return a_termcap_ent_query(tep, &a_termcap_namedat[tcp->tc_off] + 2,
       tcp->tc_flags);
 }
@@ -537,7 +537,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
       char const *cname, ui16_t cflags){
    bool_t rv;
    NYD2_IN;
-   assert(!(n_psonce & n_PSO_TERMCAP_DISABLE));
+   ASSERT(!(n_psonce & n_PSO_TERMCAP_DISABLE));
 
    if(n_UNLIKELY(*cname == '\0'))
       rv = FAL0;
@@ -580,7 +580,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
 su_SINLINE bool_t
 a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
       struct a_termcap_control const *tcp){
-   assert(!(n_psonce & n_PSO_TERMCAP_DISABLE));
+   ASSERT(!(n_psonce & n_PSO_TERMCAP_DISABLE));
    return a_termcap_ent_query(tep, &a_termcap_namedat[tcp->tc_off],
       tcp->tc_flags);
 }
@@ -628,7 +628,7 @@ n_termcap_init(void){
    char const *ccp;
    NYD_IN;
 
-   assert((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK));
+   ASSERT((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK));
 
    a_termcap_g = n_alloc(sizeof *a_termcap_g);
    a_termcap_g->tg_ext_ents = NULL;
@@ -685,8 +685,8 @@ n_termcap_init(void){
 FL void
 n_termcap_destroy(void){
    NYD_IN;
-   assert((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK));
-   assert(a_termcap_g != NULL);
+   ASSERT((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK));
+   ASSERT(a_termcap_g != NULL);
 
    n_TERMCAP_SUSPEND(TRU1);
 
@@ -758,7 +758,7 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
    else if(!(tep->te_flags & a_TERMCAP_F_ALTERN)){
       char const *cp;
 
-      assert((tep->te_flags & a_TERMCAP_F_TYPE_MASK) ==
+      ASSERT((tep->te_flags & a_TERMCAP_F_TYPE_MASK) ==
          n_TERMCAP_CAPTYPE_STRING);
 
       cp = &a_termcap_g->tg_dat.s_dat[tep->te_off];
@@ -868,7 +868,7 @@ n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
    bool_t rv;
    NYD2_IN;
 
-   assert(tvp != NULL);
+   ASSERT(tvp != NULL);
 
    rv = FAL0;
    if(a_termcap_g == NULL)

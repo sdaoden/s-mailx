@@ -79,7 +79,7 @@ _fgetline_byone(char **line, size_t *linesize, size_t *llen, FILE *fp,
    int c;
    NYD2_IN;
 
-   assert(*linesize == 0 || *line != NULL);
+   ASSERT(*linesize == 0 || *line != NULL);
    n_pstate &= ~n_PS_READLINE_NL;
 
    for (rv = *line;;) {
@@ -216,7 +216,7 @@ FL int
    /* Interrupts will cause trouble if we are inside a stdio call. As this is
     * only relevant if input is from tty, bypass it by read(), then */
    if ((n_psonce & n_PSO_TTYIN) && fileno(ibuf) == 0) {
-      assert(*linesize == 0 || *linebuf != NULL);
+      ASSERT(*linesize == 0 || *linebuf != NULL);
       n_pstate &= ~n_PS_READLINE_NL;
       for (;;) {
          if (*linesize <= LINESIZE || n >= *linesize - 128) {

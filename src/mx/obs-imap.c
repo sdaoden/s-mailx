@@ -538,7 +538,7 @@ imap_path_encode(char const *cp, bool_t *err_or_null){
       }
    }
    out.s[out.l] = '\0';
-   assert(out.l <= l_plain);
+   ASSERT(out.l <= l_plain);
    *err_or_null = FAL0;
    cp = out.s;
 jleave:
@@ -626,7 +626,7 @@ jeincpl:
 
          /* Decode the mUTF-7 to what is indeed UTF-16BE */
          for(mb64p = mb64p_base;;){
-            assert(l >= 3);
+            ASSERT(l >= 3);
             if((mb64p[0] = mb64dt[(ui8_t)cp[0]]) == XX ||
                   (mb64p[1] = mb64dt[(ui8_t)cp[1]]) == XX)
                goto jerr;
@@ -1793,7 +1793,7 @@ jduppass:
       }
       if (mb.mb_imap_mailbox != NULL)
          n_free(mb.mb_imap_mailbox);
-      assert(urlp->url_path.s != NULL);
+      ASSERT(urlp->url_path.s != NULL);
       imap_delim_init(&mb, urlp);
       mb.mb_imap_mailbox = su_cs_dup(imap_path_normalize(&mb,
             urlp->url_path.s), 0);
@@ -1857,7 +1857,7 @@ jduppass:
    mb.mb_perm = (fm & FEDIT_RDONLY) ? 0 : MB_DELE;
    mb.mb_type = MB_IMAP;
    cache_dequeue(&mb);
-   assert(urlp->url_path.s != NULL);
+   ASSERT(urlp->url_path.s != NULL);
    if (imap_select(&mb, &mailsize, &msgCount, urlp->url_path.s, fm) != OKAY) {
       /*sclose(&mb.mb_sock);
       imap_timer_off();*/
@@ -2420,7 +2420,7 @@ imap_exit(struct mailbox *mp)
    mp->mb_imap_mailbox =
    mp->mb_cache_directory = "";
 #else
-   mp->mb_imap_account = NULL; /* for assert legacy time.. */
+   mp->mb_imap_account = NULL; /* for ASSERT legacy time.. */
    mp->mb_imap_mailbox = NULL;
    mp->mb_cache_directory = NULL;
 #endif
@@ -3109,7 +3109,7 @@ imap_append(const char *xserver, FILE *fp, long offset)
    if (!ok_blook(v15_compat) &&
          (!(url.url_flags & n_URL_HAD_USER) || url.url_pass.s != NULL))
       n_err(_("New-style URL used without *v15-compat* being set!\n"));
-   assert(url.url_path.s != NULL);
+   ASSERT(url.url_path.s != NULL);
 
    imaplock = 1;
    if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)

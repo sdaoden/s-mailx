@@ -56,9 +56,9 @@ n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
    bool_t rv;
    NYD2_IN;
 
-   assert(vicp != NULL);
-   assert(vicp->vic_inlen == 0 || vicp->vic_indat != NULL);
-   assert(!(vif & n__VISUAL_INFO_FLAGS) || !(vif & n_VISUAL_INFO_ONE_CHAR));
+   ASSERT(vicp != NULL);
+   ASSERT(vicp->vic_inlen == 0 || vicp->vic_indat != NULL);
+   ASSERT(!(vif & n__VISUAL_INFO_FLAGS) || !(vif & n_VISUAL_INFO_ONE_CHAR));
 
    rv = TRU1;
    ib = vicp->vic_indat;
@@ -364,7 +364,7 @@ makeprint(struct str const *in, struct str *out) /* TODO <-> TTYCHARSET!! */
          if ((n = wctomb(mbb, wc)) <= 0)
             continue;
          out->l += n;
-         assert(out->l < msz);
+         ASSERT(out->l < msz);
          for (i = 0; i < n; ++i)
             *outp++ = mbb[i];
       }

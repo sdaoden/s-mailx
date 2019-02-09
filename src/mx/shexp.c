@@ -353,7 +353,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
 
       /* Trim solidus, everywhere */
       if(sgcp->sgc_patlen > 0){
-         assert(sgcp->sgc_patdat[sgcp->sgc_patlen -1] == '/');
+         ASSERT(sgcp->sgc_patdat[sgcp->sgc_patlen -1] == '/');
          ((char*)n_UNCONST(sgcp->sgc_patdat))[--sgcp->sgc_patlen] = '\0';
       }
       while(nsgc.sgc_patlen > 0 && nsgc.sgc_patdat[0] == '/'){
@@ -727,8 +727,8 @@ jstep:
          c = *ib;
 
          if(su_cs_is_cntrl(c)){
-            assert(c == '\t' || (flags & a_SHEXP_QUOTE_T_DOLLAR));
-            assert((flags & (a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_SINGLE |
+            ASSERT(c == '\t' || (flags & a_SHEXP_QUOTE_T_DOLLAR));
+            ASSERT((flags & (a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_SINGLE |
                a_SHEXP_QUOTE_T_DOUBLE | a_SHEXP_QUOTE_T_DOLLAR)));
             switch((c2 = c)){
             case 0x07: c = 'a'; break;
@@ -760,19 +760,19 @@ jstep:
                c == '"' || c == '$'){
             if(flags & (a_SHEXP_QUOTE_T_SINGLE | a_SHEXP_QUOTE_T_DOLLAR))
                goto jpush;
-            assert(flags & (a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_DOUBLE));
+            ASSERT(flags & (a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_DOUBLE));
             u.store = n_string_push_c(u.store, '\\');
             goto jpush;
          }else if(c == '\''){
             if(flags & a_SHEXP_QUOTE_T_DOUBLE)
                goto jpush;
-            assert(!(flags & a_SHEXP_QUOTE_T_SINGLE));
+            ASSERT(!(flags & a_SHEXP_QUOTE_T_SINGLE));
             u.store = n_string_push_c(u.store, '\\');
             goto jpush;
          }else if(c == '\\' || (c == '#' && ib == ib_base)){
             if(flags & a_SHEXP_QUOTE_T_SINGLE)
                goto jpush;
-            assert(flags & (a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_DOUBLE |
+            ASSERT(flags & (a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_DOUBLE |
                a_SHEXP_QUOTE_T_DOLLAR));
             u.store = n_string_push_c(u.store, '\\');
             goto jpush;
@@ -1099,13 +1099,13 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
    } state;
    NYD2_IN;
 
-   assert((flags & n_SHEXP_PARSE_DRYRUN) || store != NULL);
-   assert(input != NULL);
-   assert(input->l == 0 || input->s != NULL);
-   assert(!(flags & n_SHEXP_PARSE_LOG) || !(flags & n_SHEXP_PARSE_LOG_D_V));
-   assert(!(flags & n_SHEXP_PARSE_IFS_ADD_COMMA) ||
+   ASSERT((flags & n_SHEXP_PARSE_DRYRUN) || store != NULL);
+   ASSERT(input != NULL);
+   ASSERT(input->l == 0 || input->s != NULL);
+   ASSERT(!(flags & n_SHEXP_PARSE_LOG) || !(flags & n_SHEXP_PARSE_LOG_D_V));
+   ASSERT(!(flags & n_SHEXP_PARSE_IFS_ADD_COMMA) ||
       !(flags & n_SHEXP_PARSE_IFS_IS_COMMA));
-   assert(!(flags & n_SHEXP_PARSE_QUOTE_AUTO_FIXED) ||
+   ASSERT(!(flags & n_SHEXP_PARSE_QUOTE_AUTO_FIXED) ||
       (flags & n__SHEXP_PARSE_QUOTE_AUTO_MASK));
 
    if((flags & n_SHEXP_PARSE_LOG_D_V) && (n_poption & n_PO_D_V))
@@ -1131,7 +1131,7 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
    n_UNINIT(c, '\0');
 
    if(cookie != NULL && *cookie != NULL){
-      assert(!(flags & n_SHEXP_PARSE_DRYRUN));
+      ASSERT(!(flags & n_SHEXP_PARSE_DRYRUN));
       state |= a_COOKIE;
    }
 
@@ -1341,7 +1341,7 @@ jrestart:
          }
       }else{
          /* Quote-mode */
-         assert(!(state & a_NTOKEN));
+         ASSERT(!(state & a_NTOKEN));
          if(c == quotec && !(flags & n_SHEXP_PARSE_QUOTE_AUTO_FIXED)){
             state &= a_ROUND_MASK;
             quotec = '\0';
@@ -1765,7 +1765,7 @@ j_var_look_buf:
    }
 
 jleave:
-   assert(!(state & a_COOKIE));
+   ASSERT(!(state & a_COOKIE));
    if((flags & n_SHEXP_PARSE_DRYRUN) && store != NULL){
       store = n_string_push_buf(store, input->s, PTR2SIZE(ib - input->s));
       rv |= n_SHEXP_STATE_OUTPUT;
@@ -1807,8 +1807,8 @@ jleave:
          (flags & n_SHEXP_PARSE_META_MASK))
       goto jrestart;
 jleave_quick:
-   assert((rv & n_SHEXP_STATE_OUTPUT) || !(rv & n_SHEXP_STATE_UNICODE));
-   assert((rv & n_SHEXP_STATE_OUTPUT) || !(rv & n_SHEXP_STATE_CONTROL));
+   ASSERT((rv & n_SHEXP_STATE_OUTPUT) || !(rv & n_SHEXP_STATE_UNICODE));
+   ASSERT((rv & n_SHEXP_STATE_OUTPUT) || !(rv & n_SHEXP_STATE_CONTROL));
    NYD2_OU;
    return rv;
 }
@@ -1821,7 +1821,7 @@ n_shexp_parse_token_cp(enum n_shexp_parse_flags flags, char const **cp){
    enum n_shexp_state shs;
    NYD2_IN;
 
-   assert(cp != NULL);
+   ASSERT(cp != NULL);
 
    input.s = n_UNCONST(*cp);
    input.l = UIZ_MAX;
@@ -1846,9 +1846,9 @@ n_shexp_quote(struct n_string *store, struct str const *input, bool_t rndtrip){
    struct a_shexp_quote_ctx sqc;
    NYD2_IN;
 
-   assert(store != NULL);
-   assert(input != NULL);
-   assert(input->l == 0 || input->s != NULL);
+   ASSERT(store != NULL);
+   ASSERT(input != NULL);
+   ASSERT(input->l == 0 || input->s != NULL);
 
    su_mem_set(&sqc, 0, sizeof sqc);
    sqc.sqc_store = store;
@@ -1876,7 +1876,7 @@ n_shexp_quote_cp(char const *cp, bool_t rndtrip){
    char *rv;
    NYD2_IN;
 
-   assert(cp != NULL);
+   ASSERT(cp != NULL);
 
    input.s = n_UNCONST(cp);
    input.l = UIZ_MAX;

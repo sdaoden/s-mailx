@@ -167,13 +167,13 @@ jetempo:
    }
 
    if(hp != NULL){
-      assert(mp == NULL);
+      ASSERT(mp == NULL);
       if(!n_header_put4compose(nf_tmp, hp))
          goto jleave;
    }
 
    if(mp != NULL){
-      assert(hp == NULL);
+      ASSERT(hp == NULL);
       if(sendmp(mp, nf_tmp, NULL, NULL, action, NULL) < 0){
          n_err(_("Failed to prepare editable message\n"));
          goto jleave;
@@ -208,7 +208,7 @@ jetempo:
    }
 
    if(viored == '|'){
-      assert(pipecmd != NULL);
+      ASSERT(pipecmd != NULL);
       tmp_name = NULL;
       if((nf_pipetmp = Ftmp(&tmp_name, "runed", OF_WRONLY | OF_REGISTER |
             OF_REGISTER_UNLINK | OF_FN_AUTOREC)) == NULL)

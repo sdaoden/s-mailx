@@ -120,6 +120,7 @@
 
 /* ASSERT series */
 #define ASSERT_INJ su_ASSERT_INJ
+#define ASSERT_NB su_ASSERT_NB
 #define ASSERT su_ASSERT
 #define ASSERT_LOC su_ASSERT_LOC
 #define ASSERT_EXEC su_ASSERT_EXEC
@@ -270,11 +271,10 @@
 # define up su_up
 # define sp su_sp
 
-# ifndef mx_SOURCE /* TODO */
-#  define FAL0 su_FAL0
-#  define TRU1 su_TRU1
-#  define TRUM1 su_TRUM1
-# endif
+# define FAL0 su_FAL0
+# define TRU1 su_TRU1
+# define TRU2 su_TRU2
+# define TRUM1 su_TRUM1
 # define boole su_boole
 #endif /* su_HEADER || ((su_SOURCE || mx_SOURCE) && su_C_LANG) */
 
