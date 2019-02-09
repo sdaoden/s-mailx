@@ -191,26 +191,6 @@
 #define n_UNINIT su_UNINIT
 #define n_BITENUM_MASK su_BITENUM_MASK
 
-/* Translation (init in main.c): may NOT set errno! */
-#undef UIS
-#undef A_
-#undef _
-#undef N_
-#undef V_
-#ifdef mx_HAVE_UISTRINGS
-# define UIS(X) X
-# define A_(S) S
-# define _(S) S
-# define N_(S) S
-# define V_(S) S
-#else
-# define UIS(X)
-# define A_(S) S
-# define _(S) su_empty
-# define N_(S) ""
-# define V_(S) su_empty
-#endif
-
 /*
  * Types TODO v15: n_XX_t
  */

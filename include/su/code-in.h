@@ -215,10 +215,22 @@
 #define PCMP su_PCMP
 
 /* Translation: may NOT set errno! */
-#ifdef su_SOURCE
-# undef _
-# undef N_
-# undef V_
+#undef _
+#undef N_
+#undef V_
+#ifdef mx_SOURCE
+# undef A_
+# define A_(S) S
+# ifdef mx_HAVE_UISTRINGS
+#  define _(S) S
+#  define N_(S) S
+#  define V_(S) S
+# else
+#  define _(S) su_empty
+#  define N_(S) ""
+#  define V_(S) su_empty
+# endif
+#elif defined su_SOURCE
 # define _(S) S
 # define N_(S) S
 # define V_(S) S

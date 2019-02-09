@@ -136,7 +136,10 @@
 
 #undef PCMP
 
-#ifdef su_SOURCE
+#ifdef mx_SOURCE
+# undef A_
+#endif
+#if defined su_SOURCE || defined mx_SOURCE
 # undef _
 # undef N_
 # undef V_

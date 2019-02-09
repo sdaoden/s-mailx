@@ -524,11 +524,11 @@ n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
                n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_LOG |
                n_SHEXP_PARSE_IGNORE_EMPTY),
                shoup, &shin, NULL);
-         UIS(
+#ifdef mx_HAVE_UISTRINGS
          if(!(shs & n_SHEXP_STATE_STOP))
             n_err(_("# May be given one argument a time only: %s\n"),
                n_shexp_quote_cp(s_save, FAL0));
-         )
+#endif
          if((shs & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_STOP |
                   n_SHEXP_STATE_ERR_MASK)
                ) != (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_STOP))
