@@ -129,7 +129,7 @@ _nrc_init(void)
    bool_t volatile ispipe;
    bool_t seen_default, nl_last;
    struct nrc_node * volatile ntail, * volatile nhead, * volatile nrc;
-   n_NYD_IN;
+   NYD_IN;
 
    n_UNINIT(ntail, NULL);
    nhead = NULL;
@@ -281,7 +281,7 @@ jleave:
 j_leave:
    _nrc_list = nrc;
    rele_all_sigs();
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static enum nrc_token
@@ -290,7 +290,7 @@ __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN], bool_t *nl_last)
    int c;
    char *cp;
    enum nrc_token rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    rv = NRC_NONE;
    for (;;) {
@@ -366,7 +366,7 @@ __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN], bool_t *nl_last)
 jleave:
    if (c == EOF && !feof(fi))
       rv = NRC_ERROR;
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -375,7 +375,7 @@ _nrc_lookup(struct url *urlp, bool_t only_pass)
 {
    struct nrc_node *nrc, *nrc_wild, *nrc_exact;
    bool_t rv = FAL0;
-   n_NYD_IN;
+   NYD_IN;
 
    assert(!only_pass || urlp->url_user.s != NULL);
    assert(only_pass || urlp->url_user.s == NULL);
@@ -424,7 +424,7 @@ j_user:
          __nrc_find_pass(urlp, FAL0, nrc_wild))
       rv = TRU1;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -434,7 +434,7 @@ __nrc_host_match(struct nrc_node const *nrc, struct url const *urlp)
    char const *d2, *d1;
    size_t l2, l1;
    int rv = 0;
-   n_NYD2_IN;
+   NYD2_IN;
 
    /* Find a matching machine -- entries are all lowercase normalized */
    if (nrc->nrc_mlen == urlp->url_host.l) {
@@ -468,14 +468,14 @@ __nrc_host_match(struct nrc_node const *nrc, struct url const *urlp)
        * exact match first! */
       rv = -1;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 static bool_t
 __nrc_find_user(struct url *urlp, struct nrc_node const *nrc)
 {
-   n_NYD2_IN;
+   NYD2_IN;
 
    for (; nrc != NULL; nrc = nrc->nrc_result)
       if (nrc->nrc_ulen > 0) {
@@ -487,14 +487,14 @@ __nrc_find_user(struct url *urlp, struct nrc_node const *nrc)
          break;
       }
 
-   n_NYD2_OU;
+   NYD2_OU;
    return (nrc != NULL);
 }
 
 static bool_t
 __nrc_find_pass(struct url *urlp, bool_t user_match, struct nrc_node const *nrc)
 {
-   n_NYD2_IN;
+   NYD2_IN;
 
    for (; nrc != NULL; nrc = nrc->nrc_result) {
       bool_t um = (nrc->nrc_ulen == urlp->url_user.l &&
@@ -515,7 +515,7 @@ __nrc_find_pass(struct url *urlp, bool_t user_match, struct nrc_node const *nrc)
       break;
    }
 
-   n_NYD2_OU;
+   NYD2_OU;
    return (nrc != NULL);
 }
 #endif /* mx_HAVE_NETRC */
@@ -531,7 +531,7 @@ _agent_shell_lookup(struct url *urlp, char const *comm) /* TODO v15-compat */
    union {int c; sighandler_type sht;} u;
    size_t cl, l;
    bool_t rv = FAL0;
-   n_NYD2_IN;
+   NYD2_IN;
 
    env_addon[0] = str_concat_csvl(&s, "NAIL_USER", "=", urlp->url_user.s,
          NULL)->s;
@@ -574,7 +574,7 @@ _agent_shell_lookup(struct url *urlp, char const *comm) /* TODO v15-compat */
 jleave:
    if (s.s != NULL)
       n_free(s.s);
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 #endif /* mx_HAVE_AGENT */
@@ -583,7 +583,7 @@ FL char *
 (urlxenc)(char const *cp, bool_t ispath  su_DBG_LOC_ARGS_DECL)
 {
    char *n, *np, c1;
-   n_NYD2_IN;
+   NYD2_IN;
 
    /* C99 */{
       size_t i;
@@ -619,7 +619,7 @@ jesc:
    }
    *np = '\0';
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return n;
 }
 
@@ -628,7 +628,7 @@ FL char *
 {
    char *n, *np;
    si32_t c;
-   n_NYD2_IN;
+   NYD2_IN;
 
    np = n = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(su_cs_len(cp) +1,
          su_DBG_LOC_ARGS_ORUSE);
@@ -644,7 +644,7 @@ FL char *
       *np++ = (char)c;
    }
    *np = '\0';
-   n_NYD2_OU;
+   NYD2_OU;
    return n;
 }
 
@@ -653,7 +653,7 @@ c_urlcodec(void *vp){
    bool_t ispath;
    size_t alen;
    char const **argv, *varname, *varres, *act, *cp;
-   n_NYD_IN;
+   NYD_IN;
 
    argv = vp;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
@@ -704,7 +704,7 @@ c_urlcodec(void *vp){
    }
 
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return (vp != NULL ? 0 : 1);
 jesynopsis:
    n_err(_("Synopsis: urlcodec: "
@@ -718,7 +718,7 @@ FL int
 c_urlencode(void *v) /* XXX IDNA?? */
 {
    char **ap;
-   n_NYD_IN;
+   NYD_IN;
 
    n_OBSOLETE("`urlencode': please use `urlcodec enc[ode]' instead");
 
@@ -731,7 +731,7 @@ c_urlencode(void *v) /* XXX IDNA?? */
          " in: <%s> (%" PRIuZ " bytes)\nout: <%s> (%" PRIuZ " bytes)\n",
          in, su_cs_len(in), out, su_cs_len(out));
    }
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
@@ -739,7 +739,7 @@ FL int
 c_urldecode(void *v) /* XXX IDNA?? */
 {
    char **ap;
-   n_NYD_IN;
+   NYD_IN;
 
    n_OBSOLETE("`urldecode': please use `urlcodec dec[ode]' instead");
 
@@ -752,7 +752,7 @@ c_urldecode(void *v) /* XXX IDNA?? */
          " in: <%s> (%" PRIuZ " bytes)\nout: <%s> (%" PRIuZ " bytes)\n",
          in, su_cs_len(in), out, su_cs_len(out));
    }
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
@@ -761,7 +761,7 @@ url_mailto_to_address(char const *mailtop){ /* TODO hack! RFC 6068; factory? */
    size_t i;
    char *rv;
    char const *mailtop_orig;
-   n_NYD_IN;
+   NYD_IN;
 
    if(!su_cs_starts_with(mailtop_orig = mailtop, "mailto:")){
       rv = NULL;
@@ -809,7 +809,7 @@ jhex_putc:
       rv = rv_base;
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -832,7 +832,7 @@ n_servbyname(char const *proto, ui16_t *irv_or_null){
    };
    char const *rv;
    size_t l, i;
-   n_NYD2_IN;
+   NYD2_IN;
 
    for(rv = proto; *rv != '\0'; ++rv)
       if(*rv == ':')
@@ -846,7 +846,7 @@ n_servbyname(char const *proto, ui16_t *irv_or_null){
             *irv_or_null = tbl[i].portno;
          break;
       }
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -863,7 +863,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
    char *cp, *x;
 #endif
    bool_t rv = FAL0;
-   n_NYD_IN;
+   NYD_IN;
    n_UNUSED(data);
 
    su_mem_set(urlp, 0, sizeof *urlp);
@@ -1241,7 +1241,7 @@ jurlp_err:
    rv = TRU1;
 #endif /* a_ANYPROTO */
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 #undef a_ANYPROTO
 #undef a_ALLPROTO
@@ -1257,7 +1257,7 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
    enum {NONE=0, WANT_PASS=1<<0, REQ_PASS=1<<1, WANT_USER=1<<2, REQ_USER=1<<3}
       ware = NONE;
    bool_t addr_is_nuser = FAL0; /* XXX v15.0 legacy! v15_compat */
-   n_NYD_IN;
+   NYD_IN;
 
    n_OBSOLETE(_("Use of old-style credentials, which will vanish in v15!\n"
       "  Please read the manual section "
@@ -1423,7 +1423,7 @@ jleave:
       n_err(_("Credentials: host %s, user %s, pass %s\n"),
          addr, (ccp->cc_user.s != NULL ? ccp->cc_user.s : n_empty),
          (ccp->cc_pass.s != NULL ? ccp->cc_pass.s : n_empty));
-   n_NYD_OU;
+   NYD_OU;
    return (ccp != NULL);
 }
 
@@ -1436,7 +1436,7 @@ ccred_lookup(struct ccred *ccp, struct url *urlp)
    enum okeys authokey;
    enum {NONE=0, WANT_PASS=1<<0, REQ_PASS=1<<1, WANT_USER=1<<2, REQ_USER=1<<3}
       ware;
-   n_NYD_IN;
+   NYD_IN;
 
    su_mem_set(ccp, 0, sizeof *ccp);
    ccp->cc_user = urlp->url_user;
@@ -1564,7 +1564,7 @@ jleave:
       n_err(_("Credentials: host %s, user %s, pass %s\n"),
          urlp->url_h_p.s, (ccp->cc_user.s != NULL ? ccp->cc_user.s : n_empty),
          (ccp->cc_pass.s != NULL ? ccp->cc_pass.s : n_empty));
-   n_NYD_OU;
+   NYD_OU;
    return (ccp != NULL);
 }
 #endif /* mx_HAVE_SOCKETS */
@@ -1576,7 +1576,7 @@ c_netrc(void *v)
    char **argv = v;
    struct nrc_node *nrc;
    bool_t load_only;
-   n_NYD_IN;
+   NYD_IN;
 
    load_only = FAL0;
    if (*argv == NULL)
@@ -1594,7 +1594,7 @@ jerr:
    n_err(_("Synopsis: netrc: (<show> or) <clear> the .netrc cache\n"));
    v = NULL;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 
 jlist:   {
@@ -1651,7 +1651,7 @@ md5tohex(char hex[MD5TOHEX_SIZE], void const *vp)
 {
    char const *cp = vp;
    size_t i, j;
-   n_NYD_IN;
+   NYD_IN;
 
    for (i = 0; i < MD5TOHEX_SIZE / 2; ++i) {
       j = i << 1;
@@ -1660,7 +1660,7 @@ md5tohex(char hex[MD5TOHEX_SIZE], void const *vp)
       hex[++j] = __hex(cp[i] & 0x0F);
 # undef __hex
    }
-   n_NYD_OU;
+   NYD_OU;
    return hex;
 }
 
@@ -1670,7 +1670,7 @@ cram_md5_string(struct str const *user, struct str const *pass,
 {
    struct str in, out;
    char digest[16], *cp;
-   n_NYD_IN;
+   NYD_IN;
 
    out.s = NULL;
    if(user->l >= UIZ_MAX - 1 - MD5TOHEX_SIZE - 1)
@@ -1701,7 +1701,7 @@ cram_md5_string(struct str const *user, struct str const *pass,
       out.s = NULL;
    n_lofi_free(in.s);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return out.s;
 }
 
@@ -1728,7 +1728,7 @@ hmac_md5(unsigned char *text, int text_len, unsigned char *key, int key_len,
    unsigned char k_opad[65]; /* outer padding - key XORd with opad */
    unsigned char tk[16];
    int i;
-   n_NYD_IN;
+   NYD_IN;
 
    /* if key is longer than 64 bytes reset it to key=MD5(key) */
    if (key_len > 64) {
@@ -1774,7 +1774,7 @@ hmac_md5(unsigned char *text, int text_len, unsigned char *key, int key_len,
    md5_update(&context, k_opad, 64);   /* start with outer pad */
    md5_update(&context, digest, 16);   /* then results of 1st hash */
    md5_final(digest, &context);        /* finish up 2nd pass */
-   n_NYD_OU;
+   NYD_OU;
 }
 #endif /* mx_HAVE_MD5 */
 

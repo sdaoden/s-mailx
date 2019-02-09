@@ -120,7 +120,7 @@ a_main_usage(FILE *fp){
    /* Stay in VAL_HEIGHT lines; On buf length change: verify visual output! */
    char buf[7];
    size_t i;
-   n_NYD2_IN;
+   NYD2_IN;
 
    i = su_cs_len(su_program);
    i = n_MIN(i, sizeof(buf) -1);
@@ -178,14 +178,14 @@ a_main_usage(FILE *fp){
          ". Bugs/Contact via "
             "\"$ %s -Sexpandaddr=shquote '\\$contact-mail'\"\n"),
          su_program, su_program);
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 static su_boole
 a_main_dump_doc(su_up cookie, su_boole has_arg, char const *sopt,
       char const *lopt, char const *doc){
    char const *x1, *x2;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if(has_arg)
       /* I18N: describing arguments to command line options */
@@ -195,7 +195,7 @@ a_main_dump_doc(su_up cookie, su_boole has_arg, char const *sopt,
       x1 = (sopt[0] != '\0' ? _(", ") : sopt), x2 = su_empty;
    /* I18N: short option, "[ ARG], " separator, long option [=ARG], doc */
    fprintf(su_S(FILE*,cookie), _("%s%s%s%s: %s\n"), sopt, x1, lopt, x2, doc);
-   n_NYD2_OU;
+   NYD2_OU;
    return TRU1;
 }
 
@@ -203,7 +203,7 @@ static void
 a_main_startup(void){
    struct passwd *pwuid;
    char *cp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    n_stdin = stdin;
    n_stdout = stdout;
@@ -218,14 +218,14 @@ a_main_startup(void){
    );
    su_log_set_level(n_LOG_LEVEL); /* XXX _EMERG is 0.. */
 
-#ifdef mx_HAVE_n_NYD
-   safe_signal(SIGABRT, &_nyd_oncrash);
+#if su_DVLOR(1, 0)
+   safe_signal(SIGABRT, &mx__nyd_oncrash);
 # ifdef SIGBUS
-   safe_signal(SIGBUS, &_nyd_oncrash);
+   safe_signal(SIGBUS, &mx__nyd_oncrash);
 # endif
-   safe_signal(SIGFPE, &_nyd_oncrash);
-   safe_signal(SIGILL, &_nyd_oncrash);
-   safe_signal(SIGSEGV, &_nyd_oncrash);
+   safe_signal(SIGFPE, &mx__nyd_oncrash);
+   safe_signal(SIGILL, &mx__nyd_oncrash);
+   safe_signal(SIGSEGV, &mx__nyd_oncrash);
 #endif
 
    /* Initialize our input, loop and command machinery */
@@ -310,28 +310,28 @@ a_main_startup(void){
    }
 
    (void)ok_blook(POSIXLY_CORRECT);
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 static size_t
 a_main_grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt){
    /* Just use auto-reclaimed storage, it will be preserved */
    char const **newcpp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    newcpp = n_autorec_alloc(sizeof(char*) * (newsize + 1));
 
    if(oldcnt > 0)
       su_mem_copy(newcpp, *cpp, oldcnt * sizeof(char*));
    *cpp = newcpp;
-   n_NYD2_OU;
+   NYD2_OU;
    return newsize;
 }
 
 static void
 a_main_setup_vars(void){
    char const *cp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    /*
     * Ensure some variables get loaded and/or verified, II. (post getopt).
@@ -355,7 +355,7 @@ a_main_setup_vars(void){
       cp = savecat(su_reproducible_build, ": ");
       ok_vset(log_prefix, cp);
    }
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 su_SINLINE void
@@ -378,7 +378,7 @@ a_main_setup_screen(void){
       : (((VAL_WIDTH[0] - '0') * 10 + (VAL_WIDTH[1] - '0')) * 10 + \
          (VAL_WIDTH[2] - '0'))))
 
-   n_NYD2_IN;
+   NYD2_IN;
 
    if(!su_state_has(su_STATE_REPRODUCIBLE) &&
          ((n_psonce & n_PSO_INTERACTIVE) ||
@@ -401,7 +401,7 @@ a_main_setup_screen(void){
       /* $COLUMNS and $LINES defaults as documented in the manual */
       n_scrnheight = n_realscreenheight = a_HEIGHT,
       n_scrnwidth = a_WIDTH;
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 static void
@@ -412,7 +412,7 @@ a_main__scrsz(int is_sighdl){
 #elif defined TIOCGSIZE
    struct ttysize ts;
 #endif
-   n_NYD2_IN;
+   NYD2_IN;
    assert((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_BATCH_FLAG));
 
    n_scrnheight = n_realscreenheight = n_scrnwidth = 0;
@@ -508,7 +508,7 @@ jleave:
    if(n_scrnwidth > 1 && !(n_psonce & n_PSO_TERMCAP_FULLWIDTH))
       --n_scrnwidth;
 /*#endif*/
-   n_NYD2_OU;
+   NYD2_OU;
 
 #undef a_HEIGHT
 #undef a_WIDTH
@@ -522,7 +522,7 @@ a_main_rcv_mode(bool_t had_A_arg, char const *folder, char const *Larg,
    /* XXX a_main_rcv_mode(): use argument carrier */
    sighandler_type prevint;
    int i;
-   n_NYD_IN;
+   NYD_IN;
 
    i = had_A_arg ? FEDIT_ACCOUNT : FEDIT_NONE;
    if(n_poption & n_PO_QUICKRUN_MASK)
@@ -598,13 +598,13 @@ jquit:
       quit(FAL0);
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return n_exit_status;
 }
 
 static void
 a_main_hdrstop(int signo){
-   n_NYD_X; /* Signal handler */
+   NYD; /* Signal handler */
    n_UNUSED(signo);
 
    fflush(n_stdout);
@@ -674,7 +674,7 @@ main(int argc, char *argv[]){
       a_RF_USER = 1<<2,
       a_RF_ALL = a_RF_SYSTEM | a_RF_USER
    } resfiles;
-   n_NYD_IN;
+   NYD_IN;
 
    a_head = NULL;
    n_UNINIT(a_curr, NULL);
@@ -1288,7 +1288,7 @@ j_leave:
    su_mem_bag_gut(n_go_data->gdc_membag); /* Was init in go_init() */
    su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0);
 #endif
-   n_NYD_OU;
+   NYD_OU;
    return n_exit_status;
 }
 

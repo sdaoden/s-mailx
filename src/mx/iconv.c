@@ -53,7 +53,7 @@ FL char *
 n_iconv_normalize_name(char const *cset){
    char *cp, c, *tcp, tc;
    bool_t any;
-   n_NYD2_IN;
+   NYD2_IN;
 
    /* We need to strip //SUFFIXes off, we want to normalize to all lowercase,
     * and we perform some slight content testing, too */
@@ -81,7 +81,7 @@ n_iconv_normalize_name(char const *cset){
       cset = cp;
    }
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return n_UNCONST(cset);
 }
 
@@ -93,13 +93,13 @@ n_iconv_name_is_ascii(char const *cset){ /* TODO ctext/su */
          "ANSI_X3.4-1968", "ASCII", "US-ASCII"};
    bool_t rv;
    char const * const *npp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    npp = &names[n_NELEM(names)];
    do if((rv = !su_cs_cmp_case(cset, *--npp)))
       break;
    while((rv = (npp != &names[0])));
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -107,7 +107,7 @@ n_iconv_name_is_ascii(char const *cset){ /* TODO ctext/su */
 FL iconv_t
 n_iconv_open(char const *tocode, char const *fromcode){
    iconv_t id;
-   n_NYD_IN;
+   NYD_IN;
 
    if((!su_cs_cmp_case(fromcode, "unknown-8bit") ||
             !su_cs_cmp_case(fromcode, "binary")) &&
@@ -123,24 +123,24 @@ n_iconv_open(char const *tocode, char const *fromcode){
     * names */
    if (id == (iconv_t)-1 && !su_cs_cmp_case(tocode, fromcode))
       su_err_set_no(su_ERR_NONE);
-   n_NYD_OU;
+   NYD_OU;
    return id;
 }
 
 FL void
 n_iconv_close(iconv_t cd){
-   n_NYD_IN;
+   NYD_IN;
    iconv_close(cd);
    if(cd == iconvd)
       iconvd = (iconv_t)-1;
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL void
 n_iconv_reset(iconv_t cd){
-   n_NYD_IN;
+   NYD_IN;
    iconv(cd, NULL, NULL, NULL, NULL);
-   n_NYD_OU;
+   NYD_OU;
 }
 
 /* (2012-09-24: export and use it exclusively to isolate prototype problems
@@ -167,7 +167,7 @@ FL int
 n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
    char const **inb, size_t *inbleft, char **outb, size_t *outbleft){
    int err;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if((icf & n_ICONV_UNIREPL) && !(n_psonce & n_PSO_UNICODE))
       icf &= ~n_ICONV_UNIREPL;
@@ -216,7 +216,7 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
    err = 0;
 jleave:
    n_iconv_err_no = err;
-   n_NYD2_OU;
+   NYD2_OU;
    return err;
 }
 # undef __INBCAST
@@ -228,7 +228,7 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
    char const *ib;
    int err;
    size_t il;
-   n_NYD2_IN;
+   NYD2_IN;
 
    il = in->l;
    if(!n_string_get_can_book(il) || !n_string_get_can_book(out->l)){
@@ -284,7 +284,7 @@ jleave:
    s = n_string_drop_ownership(s);
    /* n_string_gut(s)*/
 j_leave:
-   n_NYD2_OU;
+   NYD2_OU;
    return err;
 }
 
@@ -294,7 +294,7 @@ n_iconv_onetime_cp(enum n_iconv_flags icf,
    struct str out, in;
    iconv_t icd;
    char *rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    rv = NULL;
    if(tocode == NULL)
@@ -314,7 +314,7 @@ n_iconv_onetime_cp(enum n_iconv_flags icf,
 
    iconv_close(icd);
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 #endif /* mx_HAVE_ICONV */

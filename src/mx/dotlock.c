@@ -57,7 +57,7 @@ a_dotlock_main(void){
    char const *cp;
    int fd;
    enum n_file_lock_type flt;
-   n_NYD_IN;
+   NYD_IN;
 
    /* Ignore SIGPIPE, we will see su_ERR_PIPE and "fall through" */
    safe_signal(SIGPIPE, SIG_IGN);
@@ -211,9 +211,9 @@ jenametool:
    safe_signal(SIGQUIT, SIG_IGN);
    safe_signal(SIGTERM, SIG_IGN);
 
-   n_NYD;
+   NYD;
    dls = a_dotlock_create(&di);
-   n_NYD;
+   NYD;
 
    /* Finally: notify our parent about the actual lock state.. */
 jmsg:
@@ -227,7 +227,7 @@ jmsg:
 
       unlink(name);
    }
-   n_NYD_OU;
+   NYD_OU;
    return n_EXIT_OK;
 }
 #endif /* mx_HAVE_DOTLOCK */
@@ -249,7 +249,7 @@ n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
    union {size_t tries; int (*ptf)(void); char const *sh; ssize_t r;} u;
    bool_t flocked, didmsg;
    FILE *rv;
-   n_NYD_IN;
+   NYD_IN;
 
    if(pollmsecs == UIZ_MAX)
       pollmsecs = FILE_LOCK_MILLIS;
@@ -294,7 +294,7 @@ jleave:
       rv = (FILE*)-1;
    else
       su_err_set_no(serr);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 
 #else
@@ -452,7 +452,7 @@ jleave:
 jserr:
          su_err_set_no(serr);
    }
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 jemsg:
    if(!didmsg)

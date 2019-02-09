@@ -148,7 +148,7 @@ a_me_mustquote(char const *s, char const *e, bool_t sol,
       enum mime_enc_flags flags){
    ui8_t const *qtab;
    enum a_me_qact a, r;
-   n_NYD2_IN;
+   NYD2_IN;
 
    qtab = (flags & (MIMEEF_ISHEAD | MIMEEF_ISENCWORD))
          ? a_me_qp_head : a_me_qp_body;
@@ -215,14 +215,14 @@ a_me_mustquote(char const *s, char const *e, bool_t sol,
 jnquote:
    r = 0;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return r;
 }
 
 static size_t
 a_me_b64_decode_prepare(struct str *work, struct str const *in){
    size_t cp_len;
-   n_NYD2_IN;
+   NYD2_IN;
 
    *work = *in;
    cp_len = n_str_trim(work, n_STR_TRIM_BOTH)->l;
@@ -237,7 +237,7 @@ a_me_b64_decode_prepare(struct str *work, struct str const *in){
    }
    cp_len += (2 * 3) +1;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return cp_len;
 }
 
@@ -246,7 +246,7 @@ a_me_b64_decode(struct str *out, struct str *in){
    ui8_t *p, pb;
    ui8_t const *q, *end;
    ssize_t rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    rv = -1;
    p = (ui8_t*)&out->s[out->l];
@@ -297,7 +297,7 @@ jleave:{
    }
    in->l -= PTR2SIZE(q - (ui8_t*)in->s);
    in->s = n_UNCONST(q);
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -305,7 +305,7 @@ FL enum mime_enc
 mime_enc_target(void){
    char const *cp, *v15;
    enum mime_enc rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if((v15 = ok_vlook(encoding)) != NULL)
       n_OBSOLETE(_("please use *mime-encoding* instead of *encoding*"));
@@ -325,14 +325,14 @@ mime_enc_target(void){
       n_err(_("Warning: invalid *mime-encoding*, using Base64: %s\n"), cp);
       rv = MIMEE_B64;
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL enum mime_enc
 mime_enc_from_ctehead(char const *hbody){
    enum mime_enc rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if(hbody == NULL)
       rv = MIMEE_7B;
@@ -369,14 +369,14 @@ mime_enc_from_ctehead(char const *hbody){
             break;
          }
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL char const *
 mime_enc_from_conversion(enum conversion const convert){
    char const *rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    switch(convert){
    case CONV_7BIT: rv = &a_me_ctes[a_ME_CTES_7B_OFF]; break;
@@ -386,7 +386,7 @@ mime_enc_from_conversion(enum conversion const convert){
    case CONV_NONE: rv = &a_me_ctes[a_ME_CTES_BIN_OFF]; break;
    default: rv = n_empty; break;
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -394,7 +394,7 @@ FL size_t
 mime_enc_mustquote(char const *ln, size_t lnlen, enum mime_enc_flags flags){
    size_t rv;
    bool_t sol;
-   n_NYD2_IN;
+   NYD2_IN;
 
    for(rv = 0, sol = TRU1; lnlen > 0; sol = FAL0, ++ln, --lnlen)
       switch(a_me_mustquote(ln, ln + lnlen, sol, flags)){
@@ -408,14 +408,14 @@ mime_enc_mustquote(char const *ln, size_t lnlen, enum mime_enc_flags flags){
       default:
          ++rv;
       }
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL size_t
 qp_encode_calc_size(size_t len){
    size_t bytes, lines;
-   n_NYD2_IN;
+   NYD2_IN;
 
    /* The worst case sequence is 'CRLF' -> '=0D=0A=\n\0'.
     * However, we must be aware that (a) the output may span multiple lines
@@ -451,7 +451,7 @@ qp_encode_calc_size(size_t len){
    bytes += lines;
    len = bytes;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return len;
 }
 
@@ -459,12 +459,12 @@ jleave:
 FL struct str *
 qp_encode_cp(struct str *out, char const *cp, enum qpflags flags){
    struct str in;
-   n_NYD_IN;
+   NYD_IN;
 
    in.s = n_UNCONST(cp);
    in.l = su_cs_len(cp);
    out = qp_encode(out, &in, flags);
-   n_NYD_OU;
+   NYD_OU;
    return out;
 }
 
@@ -472,12 +472,12 @@ FL struct str *
 qp_encode_buf(struct str *out, void const *vp, size_t vp_len,
       enum qpflags flags){
    struct str in;
-   n_NYD_IN;
+   NYD_IN;
 
    in.s = n_UNCONST(vp);
    in.l = vp_len;
    out = qp_encode(out, &in, flags);
-   n_NYD_OU;
+   NYD_OU;
    return out;
 }
 #endif /* notyet */
@@ -488,7 +488,7 @@ qp_encode(struct str *out, struct str const *in, enum qpflags flags){
    char *qp;
    char const *is, *ie;
    bool_t sol, seenx;
-   n_NYD_IN;
+   NYD_IN;
 
    sol = (flags & QP_ISHEAD ? FAL0 : TRU1);
 
@@ -590,7 +590,7 @@ jleave:
    out->l = PTR2SIZE(qp - out->s);
    out->s[out->l] = '\0';
 jerr:
-   n_NYD_OU;
+   NYD_OU;
    return out;
 }
 
@@ -598,7 +598,7 @@ FL bool_t
 qp_decode_header(struct str *out, struct str const *in){
    struct n_string s;
    char const *is, *ie;
-   n_NYD_IN;
+   NYD_IN;
 
    /* su_ERR_OVERFLOW */
    if(UIZ_MAX -1 - out->l <= in->l ||
@@ -651,7 +651,7 @@ jpushc:
    out->l = s.s_len;
    n_string_gut(n_string_drop_ownership(&s));
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return (out != NULL);
 }
 
@@ -660,7 +660,7 @@ qp_decode_part(struct str *out, struct str const *in, struct str *outrest,
       struct str *inrest_or_null){
    struct n_string s_b, *s;
    char const *is, *ie;
-   n_NYD_IN;
+   NYD_IN;
 
    if(outrest->l != 0){
       is = out->s;
@@ -764,7 +764,7 @@ jsoftnl:
    out->l = s->s_len;
    n_string_gut(n_string_drop_ownership(s));
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return (out != NULL);
 jerr:
    out->l = 0;
@@ -774,7 +774,7 @@ jerr:
 
 FL size_t
 b64_encode_calc_size(size_t len){
-   n_NYD2_IN;
+   NYD2_IN;
    if(len >= UIZ_MAX / 4)
       len = UIZ_MAX;
    else{
@@ -782,7 +782,7 @@ b64_encode_calc_size(size_t len){
       len += (((len / B64_ENCODE_INPUT_PER_LINE) + 1) * 3);
       len += 2 + 1; /* CRLF, \0 */
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return len;
 }
 
@@ -791,7 +791,7 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags){
    ui8_t const *p;
    size_t i, lnlen;
    char *b64;
-   n_NYD_IN;
+   NYD_IN;
 
    assert(!(flags & B64_NOPAD) ||
       !(flags & (B64_CRLF | B64_LF | B64_MULTILINE)));
@@ -879,7 +879,7 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags){
                *b64 = '_';
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return out;
 }
 
@@ -887,12 +887,12 @@ FL struct str *
 b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
       enum b64flags flags){
    struct str in;
-   n_NYD_IN;
+   NYD_IN;
 
    in.s = n_UNCONST(vp);
    in.l = vp_len;
    out = b64_encode(out, &in, flags);
-   n_NYD_OU;
+   NYD_OU;
    return out;
 }
 
@@ -900,12 +900,12 @@ b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
 FL struct str *
 b64_encode_cp(struct str *out, char const *cp, enum b64flags flags){
    struct str in;
-   n_NYD_IN;
+   NYD_IN;
 
    in.s = n_UNCONST(cp);
    in.l = su_cs_len(cp);
    out = b64_encode(out, &in, flags);
-   n_NYD_OU;
+   NYD_OU;
    return out;
 }
 #endif /* notyet */
@@ -914,7 +914,7 @@ FL bool_t
 b64_decode(struct str *out, struct str const *in){
    struct str work;
    size_t len;
-   n_NYD_IN;
+   NYD_IN;
 
    out->l = 0;
 
@@ -932,7 +932,7 @@ b64_decode(struct str *out, struct str const *in){
       goto jerr;
    out->s[out->l] = '\0';
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return (out != NULL);
 jerr:
    out = NULL;
@@ -942,7 +942,7 @@ jerr:
 FL bool_t
 b64_decode_header(struct str *out, struct str const *in){
    struct str outr, inr;
-   n_NYD_IN;
+   NYD_IN;
 
    if(!b64_decode(out, in)){
       su_mem_set(&outr, 0, sizeof outr);
@@ -956,7 +956,7 @@ b64_decode_header(struct str *out, struct str const *in){
       if(outr.s != NULL)
          n_free(outr.s);
    }
-   n_NYD_OU;
+   NYD_OU;
    return (out != NULL);
 }
 
@@ -968,7 +968,7 @@ b64_decode_part(struct str *out, struct str const *in, struct str *outrest,
    char ca, cb, cc, cx;
    struct n_string s, workbuf;
    size_t len;
-   n_NYD_IN;
+   NYD_IN;
 
    n_string_creat(&s);
    if((len = out->l) > 0 && out->s[len] == '\0')
@@ -1111,7 +1111,7 @@ jok:
 jleave:
    n_string_gut(&workbuf);
    n_string_gut(&s);
-   n_NYD_OU;
+   NYD_OU;
    return (out != NULL);
 jerr:
    out = NULL;

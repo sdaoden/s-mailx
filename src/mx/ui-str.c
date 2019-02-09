@@ -54,7 +54,7 @@ n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
    size_t il;
    char const *ib;
    bool_t rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    assert(vicp != NULL);
    assert(vicp->vic_inlen == 0 || vicp->vic_indat != NULL);
@@ -152,7 +152,7 @@ n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
    vicp->vic_oudat = ib;
    vicp->vic_oulen = il;
    vicp->vic_flags = vif;
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -160,7 +160,7 @@ FL size_t
 field_detect_clip(size_t maxlen, char const *buf, size_t blen)/*TODO mbrtowc()*/
 {
    size_t rv;
-   n_NYD_IN;
+   NYD_IN;
 
 #ifdef mx_HAVE_NATCH_CHAR
    maxlen = n_MIN(maxlen, blen);
@@ -177,7 +177,7 @@ field_detect_clip(size_t maxlen, char const *buf, size_t blen)/*TODO mbrtowc()*/
 #else
    rv = n_MIN(blen, maxlen);
 #endif
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -188,7 +188,7 @@ colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
    int col_orig = col, n, size;
    bool_t isbidi, isuni, istab, isrepl;
    char *nb, *np;
-   n_NYD_IN;
+   NYD_IN;
 
    /* Bidi only on request and when there is 8-bit data */
    isbidi = isuni = FAL0;
@@ -292,7 +292,7 @@ jnobidi:
    *np = '\0';
    if (cols_decr_used_or_null != NULL)
       *cols_decr_used_or_null -= col_orig - col;
-   n_NYD_OU;
+   NYD_OU;
    return nb;
 }
 
@@ -307,7 +307,7 @@ makeprint(struct str const *in, struct str *out) /* TODO <-> TTYCHARSET!! */
    char const *inp, *maxp;
    char *outp;
    su_DBG( size_t msz; )
-   n_NYD_IN;
+   NYD_IN;
 
    out->s =
    outp = n_alloc(su_DBG( msz = ) in->l*n_mb_cur_max + 2u*n_mb_cur_max +1);
@@ -382,20 +382,20 @@ makeprint(struct str const *in, struct str *out) /* TODO <-> TTYCHARSET!! */
       out->l = in->l;
    }
    out->s[out->l] = '\0';
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL size_t
 delctrl(char *cp, size_t len)
 {
    size_t x, y;
-   n_NYD_IN;
+   NYD_IN;
 
    for (x = y = 0; x < len; ++x)
       if (!su_cs_is_cntrl(cp[x]))
          cp[y++] = cp[x];
    cp[y] = '\0';
-   n_NYD_OU;
+   NYD_OU;
    return y;
 }
 
@@ -404,14 +404,14 @@ prstr(char const *s)
 {
    struct str in, out;
    char *rp;
-   n_NYD_IN;
+   NYD_IN;
 
    in.s = n_UNCONST(s);
    in.l = su_cs_len(s);
    makeprint(&in, &out);
    rp = savestrbuf(out.s, out.l);
    n_free(out.s);
-   n_NYD_OU;
+   NYD_OU;
    return rp;
 }
 
@@ -420,14 +420,14 @@ prout(char const *s, size_t size, FILE *fp)
 {
    struct str in, out;
    int n;
-   n_NYD_IN;
+   NYD_IN;
 
    in.s = n_UNCONST(s);
    in.l = size;
    makeprint(&in, &out);
    n = fwrite(out.s, 1, out.l, fp);
    n_free(out.s);
-   n_NYD_OU;
+   NYD_OU;
    return n;
 }
 
@@ -435,7 +435,7 @@ FL bool_t
 bidi_info_needed(char const *bdat, size_t blen)
 {
    bool_t rv = FAL0;
-   n_NYD_IN;
+   NYD_IN;
 
 #ifdef mx_HAVE_NATCH_CHAR
    if (n_psonce & n_PSO_UNICODE)
@@ -460,7 +460,7 @@ bidi_info_needed(char const *bdat, size_t blen)
          }
       }
 #endif /* mx_HAVE_NATCH_CHAR */
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -473,7 +473,7 @@ bidi_info_create(struct bidi_info *bip)
     *                 U+2069 (E2 81 A9) POP DIRECTIONAL ISOLATE
     * Worse results seen for: U+202D "\xE2\x80\xAD" U+202C "\xE2\x80\xAC" */
    n_NATCH_CHAR( char const *hb; )
-   n_NYD_IN;
+   NYD_IN;
 
    su_mem_set(bip, 0, sizeof *bip);
    bip->bi_start.s = bip->bi_end.s = n_UNCONST(n_empty);
@@ -498,7 +498,7 @@ bidi_info_create(struct bidi_info *bip)
       bip->bi_start.l = bip->bi_end.l = 3;
    }
 #endif
-   n_NYD_OU;
+   NYD_OU;
 }
 
 #include "su/code-ou.h"

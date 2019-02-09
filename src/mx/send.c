@@ -116,7 +116,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
    bool_t want_ct, needsep;
    struct str const *cpre, *csuf;
    char const *cp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    cpre = csuf = NULL;
 #ifdef mx_HAVE_COLOUR
@@ -258,7 +258,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
             NULL, NULL);
       _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
    }
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 static FILE *
@@ -270,7 +270,7 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
    char const *env_addon[9 +8/*v15*/], *cp, *sh;
    size_t i;
    FILE *rbuf;
-   n_NYD_IN;
+   NYD_IN;
 
    rbuf = *qbuf;
 
@@ -367,7 +367,7 @@ jerror:
       }
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rbuf;
 }
 
@@ -378,7 +378,7 @@ _out(char const *buf, size_t len, FILE *fp, enum conversion convert, enum
 {
    ssize_t size = 0, n;
    int flags;
-   n_NYD_IN;
+   NYD_IN;
 
    /* TODO We should not need is_head() here, i think in v15 the actual Mailbox
     * TODO subclass should detect such From_ cases and either reencode the part
@@ -415,7 +415,7 @@ _out(char const *buf, size_t len, FILE *fp, enum conversion convert, enum
       if (stats != NULL)
          *stats += size;
    }
-   n_NYD_OU;
+   NYD_OU;
    return size;
 }
 
@@ -423,19 +423,19 @@ static bool_t
 a_send_out_nl(FILE *fp, ui64_t *stats){
    struct quoteflt *qf;
    bool_t rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    quoteflt_reset(qf = quoteflt_dummy(), fp);
    rv = (_out("\n", 1, fp, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL) > 0);
    quoteflt_flush(qf);
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 static void
 _send_onpipe(int signo)
 {
-   n_NYD_X; /* Signal handler */
+   NYD; /* Signal handler */
    n_UNUSED(signo);
    siglongjmp(_send_pipejmp, 1);
 }
@@ -446,7 +446,7 @@ static sighandler_type  __sendp_opipe;
 static void
 __sendp_onsig(int sig) /* TODO someday, we won't need it no more */
 {
-   n_NYD_X; /* Signal handler */
+   NYD; /* Signal handler */
    __sendp_sig = sig;
    siglongjmp(__sendp_actjmp, 1);
 }
@@ -470,7 +470,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
       * volatile qbuf = obuf, *origobuf = obuf;
    enum conversion volatile convert;
    sighandler_type volatile oldpipe = SIG_DFL;
-   n_NYD_IN;
+   NYD_IN;
 
    n_UNINIT(term_infd, 0);
    n_UNINIT(cnt, 0);
@@ -1246,7 +1246,7 @@ jend:
       n_iconv_close(iconvd);
 #endif
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -1255,7 +1255,7 @@ _send_al7ive_have_better(struct mimepart *mpp, enum sendaction action,
    bool_t want_rich)
 {
    bool_t rv = FAL0;
-   n_NYD_IN;
+   NYD_IN;
 
    for (; mpp != NULL; mpp = mpp->m_nextpart) {
       switch (mpp->m_mimecontent) {
@@ -1303,7 +1303,7 @@ jflag:
       }
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -1312,7 +1312,7 @@ _send_al7ive_flag_tree(struct mimepart *mpp, enum sendaction action,
    bool_t want_rich)
 {
    bool_t hot;
-   n_NYD_IN;
+   NYD_IN;
 
    assert(mpp->m_parent != NULL);
    hot = ((mpp->m_parent->m_flag & MDISPLAY) != 0);
@@ -1360,7 +1360,7 @@ _send_al7ive_flag_tree(struct mimepart *mpp, enum sendaction action,
       }
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static FILE *
@@ -1369,7 +1369,7 @@ newfile(struct mimepart *ip, bool_t volatile *ispipe)
    struct str in, out;
    char *f;
    FILE *fp;
-   n_NYD_IN;
+   NYD_IN;
 
    f = ip->m_filename;
    *ispipe = FAL0;
@@ -1481,7 +1481,7 @@ jgetname:
       }
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return fp;
 }
 
@@ -1492,7 +1492,7 @@ pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf, struct quoteflt *qf,
    char *line = NULL; /* TODO line pool */
    size_t linesize = 0, linelen, cnt;
    ssize_t all_sz, i;
-   n_NYD_IN;
+   NYD_IN;
 
    fflush(pipebuf);
    rewind(pipebuf);
@@ -1513,7 +1513,7 @@ pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf, struct quoteflt *qf,
    if (all_sz > 0 && outbuf == origobuf && stats != NULL)
       *stats += all_sz;
    Fclose(pipebuf);
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static void
@@ -1521,7 +1521,7 @@ statusput(const struct message *mp, FILE *obuf, struct quoteflt *qf,
    ui64_t *stats)
 {
    char statout[3], *cp = statout;
-   n_NYD_IN;
+   NYD_IN;
 
    if (mp->m_flag & MREAD)
       *cp++ = 'R';
@@ -1534,7 +1534,7 @@ statusput(const struct message *mp, FILE *obuf, struct quoteflt *qf,
       if (i > 0 && stats != NULL)
          *stats += i;
    }
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static void
@@ -1543,7 +1543,7 @@ xstatusput(const struct message *mp, FILE *obuf, struct quoteflt *qf,
 {
    char xstatout[4];
    char *xp = xstatout;
-   n_NYD_IN;
+   NYD_IN;
 
    if (mp->m_flag & MFLAGGED)
       *xp++ = 'F';
@@ -1558,7 +1558,7 @@ xstatusput(const struct message *mp, FILE *obuf, struct quoteflt *qf,
       if (i > 0 && stats != NULL)
          *stats += i;
    }
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static void
@@ -1566,7 +1566,7 @@ put_from_(FILE *fp, struct mimepart *ip, ui64_t *stats)
 {
    char const *froma, *date, *nl;
    int i;
-   n_NYD_IN;
+   NYD_IN;
 
    if (ip != NULL && ip->m_from != NULL) {
       froma = ip->m_from;
@@ -1589,7 +1589,7 @@ put_from_(FILE *fp, struct mimepart *ip, ui64_t *stats)
    )
    if (i > 0 && stats != NULL)
       *stats += i;
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL int
@@ -1604,7 +1604,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
    size_t linesize, cnt, size, i;
    char *linedat;
    int rv, c;
-   n_NYD_IN;
+   NYD_IN;
 
    time_current_update(&time_current, TRU1);
    rv = -1;
@@ -1719,7 +1719,7 @@ jleave:
    quoteflt_destroy(&qf);
    if(linedat != NULL)
       n_free(linedat);
-   n_NYD_OU;
+   NYD_OU;
    n_sigman_leave(&linedat_protect, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
 }

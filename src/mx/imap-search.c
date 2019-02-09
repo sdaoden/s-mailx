@@ -161,7 +161,7 @@ itparse(char const *spec, char const **xp, int sub)
    int level = 0;
    struct itnode n, *z, *ittree;
    enum okay rv;
-   n_NYD_IN;
+   NYD_IN;
 
    _it_tree = NULL;
    while ((rv = itscan(spec, xp)) == OKAY && _it_token != ITBAD &&
@@ -244,7 +244,7 @@ itparse(char const *spec, char const **xp, int sub)
          break;
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -253,7 +253,7 @@ itscan(char const *spec, char const **xp)
 {
    int i, n;
    enum okay rv = OKAY;
-   n_NYD_IN;
+   NYD_IN;
 
    while (su_cs_is_space(*spec))
       ++spec;
@@ -304,7 +304,7 @@ itscan(char const *spec, char const **xp)
    _it_token = ITBAD;
    rv = STOP;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -314,7 +314,7 @@ itsplit(char const *spec, char const **xp)
    char const *cp;
    time_t t;
    enum okay rv;
-   n_NYD_IN;
+   NYD_IN;
 
    switch (_it_token) {
    case ITBCC:
@@ -401,7 +401,7 @@ itsplit(char const *spec, char const **xp)
       rv = OKAY;
       break;
    }
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -411,7 +411,7 @@ itstring(void **tp, char const *spec, char const **xp) /* XXX lesser derefs */
    int inquote = 0;
    char *ap;
    enum okay rv = STOP;
-   n_NYD_IN;
+   NYD_IN;
 
    while (su_cs_is_space(*spec))
       ++spec;
@@ -438,7 +438,7 @@ itstring(void **tp, char const *spec, char const **xp) /* XXX lesser derefs */
    *tp = _imap_unquotestr(*tp);
    rv = OKAY;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -450,7 +450,7 @@ itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
    size_t linesize = 0;
    FILE *ibuf;
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    if (n == NULL) {
       n_err(_("Internal error: Empty node in SEARCH tree\n"));
@@ -603,7 +603,7 @@ itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
       break;
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -614,7 +614,7 @@ _imap_read_date(char const *cp)
    si32_t year, month, day, i, tzdiff;
    struct tm *tmptr;
    char const *xp, *yp;
-   n_NYD_IN;
+   NYD_IN;
 
    if (*cp == '"')
       ++cp;
@@ -647,7 +647,7 @@ _imap_read_date(char const *cp)
       tzdiff += 3600;
    t -= tzdiff;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return t;
 jerr:
    t = (time_t)-1;
@@ -658,7 +658,7 @@ static char *
 _imap_quotestr(char const *s)
 {
    char *n, *np;
-   n_NYD2_IN;
+   NYD2_IN;
 
    np = n = n_autorec_alloc(2 * su_cs_len(s) + 3);
    *np++ = '"';
@@ -669,7 +669,7 @@ _imap_quotestr(char const *s)
    }
    *np++ = '"';
    *np = '\0';
-   n_NYD2_OU;
+   NYD2_OU;
    return n;
 }
 
@@ -677,7 +677,7 @@ static char *
 _imap_unquotestr(char const *s)
 {
    char *n, *np;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if (*s != '"') {
       n = savestr(s);
@@ -694,7 +694,7 @@ _imap_unquotestr(char const *s)
    }
    *np = '\0';
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return n;
 }
 
@@ -703,7 +703,7 @@ matchfield(struct message *m, char const *field, void const *what)
 {
    struct str in, out;
    bool_t rv = FAL0;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((in.s = hfieldX(field, m)) == NULL)
       goto jleave;
@@ -713,7 +713,7 @@ matchfield(struct message *m, char const *field, void const *what)
    rv = substr(out.s, what);
    n_free(out.s);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -723,7 +723,7 @@ matchenvelope(struct message *m, char const *field, void const *what)
    struct mx_name *np;
    char *cp;
    int rv = 0;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((cp = hfieldX(field, m)) == NULL)
       goto jleave;
@@ -736,7 +736,7 @@ matchenvelope(struct message *m, char const *field, void const *what)
    }
 
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -749,7 +749,7 @@ mkenvelope(struct mx_name *np)
    struct str in, out;
    int level = 0;
    bool_t hadphrase = FAL0;
-   n_NYD_IN;
+   NYD_IN;
 
    in.s = np->n_fullname;
    in.l = su_cs_len(in.s);
@@ -818,7 +818,7 @@ jdone:
       _imap_quotestr(localpart),
       domainpart ? _imap_quotestr(domainpart) : "NIL");
    n_lofi_free(ip);
-   n_NYD_OU;
+   NYD_OU;
    return ep;
 }
 
@@ -829,14 +829,14 @@ around(char const *cp)
    static char ab[2 * SURROUNDING +1];
 
    size_t i;
-   n_NYD_IN;
+   NYD_IN;
 
    for (i = 0; i < SURROUNDING && cp > _it_begin; ++i)
       --cp;
    for (i = 0; i < sizeof(ab) -1; ++i)
       ab[i] = *cp++;
    ab[i] = '\0';
-   n_NYD_OU;
+   NYD_OU;
    return ab;
 }
 
@@ -848,7 +848,7 @@ imap_search(char const *spec, int f)
    char const *xp;
    size_t i;
    ssize_t rv;
-   n_NYD_IN;
+   NYD_IN;
 
    if (su_cs_cmp(spec, "()")) {
       if (lastspec != NULL)
@@ -897,7 +897,7 @@ imap_search(char const *spec, int f)
    }
    srelax_rele();
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 

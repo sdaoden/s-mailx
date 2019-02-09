@@ -67,7 +67,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
    int last, *msgvec, *ip;
    struct n_cmd_arg *cap;
    struct n_cmd_arg_ctx *cacp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    cacp = vp;
    cap = cacp->cac_arg;
@@ -251,87 +251,87 @@ jferr:
       setdot(message + (last != 0 ? last - 1 : 0));
    }
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return (success == FAL0);
 }
 
 FL int
 c_save(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, TRU1, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_Save(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, TRU1, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_copy(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, FAL0, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_Copy(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, FAL0, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_move(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, FAL0, TRU1);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_Move(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, FAL0, TRU1);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_decrypt(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_DECRYPT, FAL0, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_Decrypt(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_DECRYPT, FAL0, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -340,14 +340,14 @@ c_write(void *vp){
    int rv;
    struct n_cmd_arg *cap;
    struct n_cmd_arg_ctx *cacp;
-   n_NYD_IN;
+   NYD_IN;
 
    if((cap = (cacp = vp)->cac_arg->ca_next)->ca_arg.ca_str.s[0] == '\0')
       cap->ca_arg.ca_str.s = savestrbuf(n_path_devnull,
             cap->ca_arg.ca_str.l = su_cs_len(n_path_devnull));
 
    rv = a_cwrite_save1(vp, n_IGNORE_ALL, SEND_TOFILE, FAL0, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 

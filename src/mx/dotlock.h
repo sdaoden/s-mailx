@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Creation of an exclusive "dotlock" file.  This is (potentially) shared
  *@ in between n_dotlock() and the privilege-separated "dotlocker"..
- *@ (Which is why it doesn't use n_NYD or other utilities.)
+ *@ (Which is why it doesn't use NYD or other utilities.)
  *@ The code assumes it has been chdir(2)d into the target directory and
  *@ that SIGPIPE is ignored (we react upon ERR_PIPE).
  *@ It furtherly assumes that it can create a file name that is at least one

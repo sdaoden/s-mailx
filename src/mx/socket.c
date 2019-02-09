@@ -89,7 +89,7 @@ static int        __sopen_sig; /* TODO someday, we won't need it no more */
 static void
 __sopen_onsig(int sig) /* TODO someday, we won't need it no more */
 {
-   n_NYD_X; /* Signal handler */
+   NYD; /* Signal handler */
    if (__sopen_sig == -1) {
       fprintf(n_stderr, _("\nInterrupting this operation may turn "
          "the DNS resolver unusable\n"));
@@ -124,7 +124,7 @@ a_socket_open(struct sock *sop, struct url *urlp) /* TODO sigstuff; refactor */
    sighandler_type volatile ohup, oint;
    char const * volatile serv;
    int volatile sofd = -1, errval;
-   n_NYD2_IN;
+   NYD2_IN;
 
    su_mem_set(sop, 0, sizeof *sop);
    n_UNINIT(errval, 0);
@@ -366,14 +366,14 @@ jleave:
       sigprocmask(SIG_UNBLOCK, &cset, NULL);
       n_raise(__sopen_sig);
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return (sofd >= 0);
 }
 
 static int
 a_socket_connect(int fd, struct sockaddr *soap, size_t soapl){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
 #ifdef mx_HAVE_NONBLOCKSOCK
    rv = fcntl(fd, F_GETFL, 0);
@@ -446,7 +446,7 @@ jerr_noerrno:
       n_perr(_("connect(2) failed:"), rv);
       close(fd);
    }
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -455,7 +455,7 @@ a_socket_xwrite(int fd, char const *data, size_t size)
 {
    long rv = -1, wo;
    size_t wt = 0;
-   n_NYD_IN;
+   NYD_IN;
 
    do {
       if ((wo = write(fd, data + wt, size - wt)) < 0) {
@@ -468,7 +468,7 @@ a_socket_xwrite(int fd, char const *data, size_t size)
    } while (wt < size);
    rv = (long)size;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -476,7 +476,7 @@ FL int
 sclose(struct sock *sop)
 {
    int i;
-   n_NYD_IN;
+   NYD_IN;
 
    i = sop->s_fd;
    sop->s_fd = -1;
@@ -503,7 +503,7 @@ sclose(struct sock *sop)
 # endif
       i = close(i);
    }
-   n_NYD_OU;
+   NYD_OU;
    return i;
 }
 
@@ -511,10 +511,10 @@ FL enum okay
 swrite(struct sock *sop, char const *data)
 {
    enum okay rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    rv = swrite1(sop, data, su_cs_len(data), 0);
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -523,7 +523,7 @@ swrite1(struct sock *sop, char const *data, int size, int use_buffer)
 {
    enum okay rv = STOP;
    int x;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if (use_buffer > 0) {
       int di;
@@ -601,7 +601,7 @@ jssl_retry:
    }
    rv = OKAY;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -609,7 +609,7 @@ FL bool_t
 sopen(struct sock *sop, struct url *urlp){
    char const *cp;
    bool_t rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = FAL0;
 
@@ -725,7 +725,7 @@ jesocksreplymsg:
       rv = TRU1;
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -736,7 +736,7 @@ FL int
    int rv;
    size_t lsize;
    char *lp_base, *lp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    lsize = *linesize;
    lp_base = *line;
@@ -806,7 +806,7 @@ jagain:
       *linelen = lsize;
    rv = (int)lsize;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 

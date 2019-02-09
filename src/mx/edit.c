@@ -56,7 +56,7 @@ edit1(int *msgvec, int viored)
    struct message *mp;
    off_t size;
    bool_t wb, lastnl;
-   n_NYD_IN;
+   NYD_IN;
 
    wb = ok_blook(writebackedited);
 
@@ -114,7 +114,7 @@ edit1(int *msgvec, int viored)
 
       safe_signal(SIGINT, sigint);
    }
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
@@ -122,10 +122,10 @@ FL int
 c_editor(void *v)
 {
    int *msgvec = v, rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = edit1(msgvec, 'e');
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -133,10 +133,10 @@ FL int
 c_visual(void *v)
 {
    int *msgvec = v, rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = edit1(msgvec, 'v');
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -152,7 +152,7 @@ n_run_editor(FILE *fp, off_t size, int viored, bool_t readonly,
    off_t modsize;
    char *tmp_name;
    FILE *nf, *nf_pipetmp, *nf_tmp;
-   n_NYD_IN;
+   NYD_IN;
 
    nf = nf_pipetmp = NULL;
    tmp_name = NULL;
@@ -255,7 +255,7 @@ jleave:
          Fclose(nf);
       nf = NULL;
    }
-   n_NYD_OU;
+   NYD_OU;
    return nf;
 }
 

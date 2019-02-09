@@ -465,12 +465,4 @@ OPT_NOMEMDBG=`\
       echo no;\
    fi`
 
-# Our functions are instrumented with Not-Yet-Dead chirps, which print
-# a function call trace when the program crashes.  Whereas NYD will be
-# used automatically when either of $OPT_DEBUG and $OPT_DEVEL is
-# defined, an extended level of NYD is compiled in only on explicit
-# request.
-# TODO Separation in between NYD and NYD2 not yet fully done.
-OPT_NYD2=no
-
 # vim:set tw=72: s-it-mode

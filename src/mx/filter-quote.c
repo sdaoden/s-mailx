@@ -71,7 +71,7 @@ _qf_dump_prefix(struct quoteflt *self)
 {
    ssize_t rv;
    size_t i;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((i = self->qf_pfix_len) > 0 && i != fwrite(self->qf_pfix, 1, i,
          self->qf_os))
@@ -83,7 +83,7 @@ _qf_dump_prefix(struct quoteflt *self)
       goto jerr;
    rv += i;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 jerr:
    rv = -1;
@@ -97,7 +97,7 @@ _qf_add_data(struct quoteflt *self, wchar_t wc)
    char *save_b;
    ui32_t save_l, save_w;
    ssize_t rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = 0;
    save_l = save_w = 0; /* silence cc */
@@ -199,7 +199,7 @@ jflush:
       self->qf_currq.l = 0;
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -211,7 +211,7 @@ _qf_state_prefix(struct qf_vc *vc)
    char const *buf;
    size_t len, i;
    wchar_t wc;
-   n_NYD_IN;
+   NYD_IN;
 
    self = vc->self;
    rv = 0;
@@ -271,7 +271,7 @@ jfin:
 
    vc->buf = buf;
    vc->len = len;
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -283,7 +283,7 @@ _qf_state_data(struct qf_vc *vc)
    char const *buf;
    size_t len, i;
    wchar_t wc;
-   n_NYD_IN;
+   NYD_IN;
 
    self = vc->self;
    rv = 0;
@@ -321,7 +321,7 @@ _qf_state_data(struct qf_vc *vc)
 
    vc->buf = buf;
    vc->len = len;
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 #endif /* mx_HAVE_QUOTE_FOLD */
@@ -341,7 +341,7 @@ quoteflt_init(struct quoteflt *self, char const *prefix, bool_t bypass)
 #ifdef mx_HAVE_QUOTE_FOLD
    char const *xcp, *cp;
 #endif
-   n_NYD_IN;
+   NYD_IN;
 
    su_mem_set(self, 0, sizeof *self);
 
@@ -385,21 +385,21 @@ quoteflt_init(struct quoteflt *self, char const *prefix, bool_t bypass)
       self->qf_currq.s = n_autorec_alloc((n_QUOTE_MAX + 1) * n_mb_cur_max);
    }
 #endif
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL void
 quoteflt_destroy(struct quoteflt *self) /* xxx inline */
 {
-   n_NYD_IN;
+   NYD_IN;
    n_UNUSED(self);
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL void
 quoteflt_reset(struct quoteflt *self, FILE *f) /* xxx inline */
 {
-   n_NYD_IN;
+   NYD_IN;
    self->qf_os = f;
 #ifdef mx_HAVE_QUOTE_FOLD
    self->qf_state = _QF_CLEAN;
@@ -407,7 +407,7 @@ quoteflt_reset(struct quoteflt *self, FILE *f) /* xxx inline */
    self->qf_currq.l = 0;
    su_mem_set(self->qf_mbps, 0, sizeof self->qf_mbps);
 #endif
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL ssize_t
@@ -416,7 +416,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
    /* (xxx Ideally the actual push() [and flush()] would be functions on their
     * xxx own, via indirect vtbl call ..) */
    ssize_t rv = 0;
-   n_NYD_IN;
+   NYD_IN;
 
    self->qf_nl_last = (len > 0 && dat[len - 1] == '\n'); /* TODO HACK */
 
@@ -508,7 +508,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
 #endif /* mx_HAVE_QUOTE_FOLD */
 
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 jerr:
    rv = -1;
@@ -519,7 +519,7 @@ FL ssize_t
 quoteflt_flush(struct quoteflt *self)
 {
    ssize_t rv = 0;
-   n_NYD_IN;
+   NYD_IN;
    n_UNUSED(self);
 
 #ifdef mx_HAVE_QUOTE_FOLD
@@ -538,7 +538,7 @@ quoteflt_flush(struct quoteflt *self)
       }
    }
 #endif
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 

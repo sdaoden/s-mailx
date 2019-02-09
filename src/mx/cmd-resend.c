@@ -91,7 +91,7 @@ static int a_crese_resend1(void *v, bool_t add_resent);
 static char *
 a_crese_reedit(char const *subj){
    char *newsubj;
-   n_NYD2_IN;
+   NYD2_IN;
 
    newsubj = NULL;
 
@@ -111,7 +111,7 @@ a_crese_reedit(char const *subj){
 
       n_free(out.s);
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return newsubj;
 }
 
@@ -120,7 +120,7 @@ a_crese_reply_to(struct message *mp){
    char const *cp, *cp2;
    struct mx_name *rt, *np;
    enum gfield gf;
-   n_NYD2_IN;
+   NYD2_IN;
 
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
    rt = NULL;
@@ -150,7 +150,7 @@ a_crese_reply_to(struct message *mp){
 
       n_lofi_free(lp);
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return rt;
 }
 
@@ -159,7 +159,7 @@ a_crese_mail_followup_to(struct message *mp){
    char const *cp, *cp2;
    struct mx_name *mft, *np;
    enum gfield gf;
-   n_NYD2_IN;
+   NYD2_IN;
 
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
    mft = NULL;
@@ -190,7 +190,7 @@ a_crese_mail_followup_to(struct message *mp){
 
       n_lofi_free(lp);
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return mft;
 }
 
@@ -198,7 +198,7 @@ static void
 a_crese_polite_rt_mft_move(struct message *mp, struct header *hp,
       struct mx_name *np){
    bool_t once;
-   n_NYD2_IN;
+   NYD2_IN;
    n_UNUSED(mp);
 
    if(np == hp->h_to)
@@ -269,7 +269,7 @@ jlink:
          for(hp->h_to = np; np != NULL; np = np->n_flink)
             np->n_type = (np->n_type & ~GMASK) | GTO;
    }
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 static void
@@ -280,7 +280,7 @@ a_crese_make_ref_and_cs(struct message *mp, struct header *head) /* TODO ASAP*/
    size_t oldreflen = 0, oldmsgidlen = 0, reflen;
    unsigned i;
    struct mx_name *n;
-   n_NYD2_IN;
+   NYD2_IN;
 
    oldref = hfield1("references", mp);
    oldmsgid = hfield1("message-id", mp);
@@ -331,7 +331,7 @@ a_crese_make_ref_and_cs(struct message *mp, struct header *head) /* TODO ASAP*/
       }
    }
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 static int
@@ -341,7 +341,7 @@ a_crese_list_reply(int *msgvec, enum header_flags hf){
    char const *cp, *cp2;
    enum gfield gf;
    struct mx_name *rt, *mft, *np;
-   n_NYD2_IN;
+   NYD2_IN;
 
    n_pstate_err_no = su_ERR_NONE;
 
@@ -549,28 +549,28 @@ jskip_to_next:
    }
 
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return (msgvec == NULL);
 }
 
 static int
 (*a_crese_reply_or_Reply(char c))(int *, bool_t){
    int (*rv)(int*, bool_t);
-   n_NYD2_IN;
+   NYD2_IN;
 
    rv = (ok_blook(flipr) ^ (c == 'R')) ? &a_crese_Reply : &a_crese_reply;
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 static int
 a_crese_reply(int *msgvec, bool_t recipient_record){
    int rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    rv = a_crese_list_reply(msgvec,
          (recipient_record ? HF_RECIPIENT_RECORD : HF_NONE));
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -580,7 +580,7 @@ a_crese_Reply(int *msgvec, bool_t recipient_record){
    struct message *mp;
    int *ap;
    enum gfield gf;
-   n_NYD2_IN;
+   NYD2_IN;
 
    su_mem_set(&head, 0, sizeof head);
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
@@ -631,7 +631,7 @@ a_crese_Reply(int *msgvec, bool_t recipient_record){
    if(ok_blook(markanswered) && !(mp->m_flag & MANSWERED))
       mp->m_flag |= MANSWER | MANSWERED;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return (msgvec == NULL);
 }
 
@@ -644,7 +644,7 @@ a_crese_fwd(void *vp, bool_t recipient_record){
    int *msgvec, rv;
    struct n_cmd_arg *cap;
    struct n_cmd_arg_ctx *cacp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    cacp = vp;
    cap = cacp->cac_arg;
@@ -689,7 +689,7 @@ a_crese_fwd(void *vp, bool_t recipient_record){
             n_MAILSEND_HEADERS_PRINT), &head,
          (forward_as_attachment ? NULL : mp), NULL) != OKAY); /* reverse! */
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -697,7 +697,7 @@ static char *
 a_crese__fwdedit(char *subj){
    struct str in, out;
    char *newsubj;
-   n_NYD2_IN;
+   NYD2_IN;
 
    newsubj = NULL;
 
@@ -718,7 +718,7 @@ a_crese__fwdedit(char *subj){
 
    n_free(out.s);
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return newsubj;
 }
 
@@ -730,7 +730,7 @@ a_crese_resend1(void *vp, bool_t add_resent){
    int *msgvec, rv, *ip;
    struct n_cmd_arg *cap;
    struct n_cmd_arg_ctx *cacp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    cacp = vp;
    cap = cacp->cac_arg;
@@ -782,137 +782,137 @@ a_crese_resend1(void *vp, bool_t add_resent){
    n_pstate_err_no = su_ERR_NONE;
    rv = 0;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL int
 c_reply(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = (*a_crese_reply_or_Reply('r'))(vp, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_replyall(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_crese_reply(vp, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_replysender(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_crese_Reply(vp, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_Reply(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = (*a_crese_reply_or_Reply('R'))(vp, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_Lreply(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_crese_list_reply(vp, HF_LIST_REPLY);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_followup(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = (*a_crese_reply_or_Reply('r'))(vp, TRU1);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_followupall(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_crese_reply(vp, TRU1);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_followupsender(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_crese_Reply(vp, TRU1);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_Followup(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = (*a_crese_reply_or_Reply('R'))(vp, TRU1);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_forward(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_crese_fwd(vp, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_Forward(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_crese_fwd(vp, TRU1);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_resend(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_crese_resend1(vp, TRU1);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_Resend(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_crese_resend1(vp, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 

@@ -50,7 +50,7 @@ FL bool_t
 n_is_dir(char const *name, bool_t check_access){
    struct stat sbuf;
    bool_t rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if((rv = (stat(name, &sbuf) == 0))){
       if((rv = (S_ISDIR(sbuf.st_mode) != 0)) && check_access){
@@ -62,7 +62,7 @@ n_is_dir(char const *name, bool_t check_access){
          rv = (access(name, mode) == 0);
       }
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -70,7 +70,7 @@ FL bool_t
 n_path_mkdir(char const *name){
    struct stat st;
    bool_t rv;
-   n_NYD_IN;
+   NYD_IN;
 
 jredo:
    if(!mkdir(name, 0777))
@@ -95,7 +95,7 @@ jredo:
       rv = ((e == su_ERR_EXIST || e == su_ERR_NOSYS) && !stat(name, &st) &&
             S_ISDIR(st.st_mode));
    }
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -103,7 +103,7 @@ FL bool_t
 n_path_rm(char const *name){
    struct stat sb;
    bool_t rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if(stat(name, &sb) != 0)
       rv = FAL0;
@@ -111,7 +111,7 @@ n_path_rm(char const *name){
       rv = TRUM1;
    else
       rv = (unlink(name) == 0);
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -120,7 +120,7 @@ FL enum okay
 cwget(struct cw *cw)
 {
    enum okay rv = STOP;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((cw->cw_fd = open(".", O_RDONLY)) == -1)
       goto jleave;
@@ -130,7 +130,7 @@ cwget(struct cw *cw)
    }
    rv = OKAY;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -138,20 +138,20 @@ FL enum okay
 cwret(struct cw *cw)
 {
    enum okay rv = STOP;
-   n_NYD_IN;
+   NYD_IN;
 
    if (!fchdir(cw->cw_fd))
       rv = OKAY;
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL void
 cwrelse(struct cw *cw)
 {
-   n_NYD_IN;
+   NYD_IN;
    close(cw->cw_fd);
-   n_NYD_OU;
+   NYD_OU;
 }
 
 #else /* !mx_HAVE_FCHDIR */
@@ -159,11 +159,11 @@ FL enum okay
 cwget(struct cw *cw)
 {
    enum okay rv = STOP;
-   n_NYD_IN;
+   NYD_IN;
 
    if (getcwd(cw->cw_wd, sizeof cw->cw_wd) != NULL && !chdir(cw->cw_wd))
       rv = OKAY;
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -171,20 +171,20 @@ FL enum okay
 cwret(struct cw *cw)
 {
    enum okay rv = STOP;
-   n_NYD_IN;
+   NYD_IN;
 
    if (!chdir(cw->cw_wd))
       rv = OKAY;
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL void
 cwrelse(struct cw *cw)
 {
-   n_NYD_IN;
+   NYD_IN;
    n_UNUSED(cw);
-   n_NYD_OU;
+   NYD_OU;
 }
 #endif /* !mx_HAVE_FCHDIR */
 

@@ -61,7 +61,7 @@ a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp, bool_t oexcl){
    struct n_dig_msg_ctx *dmcp;
    si32_t rv;
    ui32_t msgno;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if(cp[0] == '-' && cp[1] == '\0'){
       if((dmcp = n_dig_msg_compose_ctx) != NULL){
@@ -105,7 +105,7 @@ a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp, bool_t oexcl){
    /* Rest done by caller */
    rv = su_ERR_NONE;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -114,7 +114,7 @@ a_dmsg_cmd(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmd, uiz_t cmdl,
       char const *cp){
    char const *cmda[3];
    bool_t rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    /* C99 */{
       size_t i;
@@ -160,7 +160,7 @@ jecmd:
    }
    fflush(fp);
 
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -171,7 +171,7 @@ a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmda[3]){
    struct mx_name *np, **npp;
    char const *cp;
    struct header *hp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    hp = dmcp->dmc_hp;
 
@@ -863,7 +863,7 @@ jshow:
       goto jecmd;
 
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return (cp != NULL);
 
 jecmd:
@@ -886,7 +886,7 @@ a_dmsg__attach(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmda[3]){
    struct attachment *ap;
    char const *cp;
    struct header *hp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    hp = dmcp->dmc_hp;
 
@@ -1141,7 +1141,7 @@ jdefault:
       goto jecmd;
 
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return (cp != NULL);
 jecmd:
    (void)fputs("500\n", fp);
@@ -1156,7 +1156,7 @@ j505r:
 FL void
 n_dig_msg_on_mailbox_close(struct mailbox *mbp){
    struct n_dig_msg_ctx *dmcp;
-   n_NYD_IN;
+   NYD_IN;
 
    while((dmcp = mbp->mb_digmsg) != NULL){
       mbp->mb_digmsg = dmcp->dmc_next;
@@ -1166,7 +1166,7 @@ n_dig_msg_on_mailbox_close(struct mailbox *mbp){
          su_mem_bag_gut(dmcp->dmc_membag);
       n_free(dmcp);
    }
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL bool_t
@@ -1174,7 +1174,7 @@ n_dig_msg_circumflex(struct n_dig_msg_ctx *dmcp, FILE *fp, char const *cmd){
    bool_t rv;
    char c;
    char const *cp, *cmd_top;
-   n_NYD_IN;
+   NYD_IN;
 
    cp = cmd;
    while(su_cs_is_blank(*cp))
@@ -1185,7 +1185,7 @@ n_dig_msg_circumflex(struct n_dig_msg_ctx *dmcp, FILE *fp, char const *cmd){
          break;
 
    rv = a_dmsg_cmd(fp, dmcp, cmd, PTR2SIZE(cmd_top - cmd), cp);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -1195,7 +1195,7 @@ c_digmsg(void *vp){
    struct n_dig_msg_ctx *dmcp;
    struct n_cmd_arg *cap;
    struct n_cmd_arg_ctx *cacp;
-   n_NYD_IN;
+   NYD_IN;
 
    n_pstate_err_no = su_ERR_NONE;
    cacp = vp;
@@ -1355,7 +1355,7 @@ jeremove:
    }
 
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return (vp == NULL);
 
 jesynopsis:

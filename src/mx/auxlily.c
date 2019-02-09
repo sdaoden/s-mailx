@@ -141,7 +141,7 @@ static int a_aux_qsort_cpp(void const *a, void const *b);
 static void
 a_aux_rand_init(void){
    union {int fd; size_t i;} u;
-   n_NYD2_IN;
+   NYD2_IN;
 
    a_aux_rand = n_alloc(sizeof *a_aux_rand);
 
@@ -266,7 +266,7 @@ a_aux_rand_init(void){
       goto jleave; /* (avoid unused warning) */
    }
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 su_SINLINE ui8_t
@@ -302,16 +302,16 @@ a_aux_rand_weak(ui32_t seed){
 static int
 a_aux_qsort_cpp(void const *a, void const *b){
    int rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    rv = su_cs_cmp(*(char**)n_UNCONST(a), *(char**)n_UNCONST(b));
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL void
 n_locale_init(void){
-   n_NYD2_IN;
+   NYD2_IN;
 
    n_psonce &= ~(n_PSO_UNICODE | n_PSO_ENC_MBSTATE);
 
@@ -347,14 +347,14 @@ n_locale_init(void){
    }
 # endif
 #endif /* mx_HAVE_C90AMEND1 */
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 FL size_t
 n_screensize(void){
    char const *cp;
    uiz_t rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if((cp = ok_vlook(screen)) != NULL){
       su_idec_uz_cp(&rv, cp, 0, NULL);
@@ -365,14 +365,14 @@ n_screensize(void){
 
    if(rv > 2)
       rv -= 2;
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL char const *
 n_pager_get(char const **env_addon){
    char const *rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = ok_vlook(PAGER);
 
@@ -388,7 +388,7 @@ n_pager_get(char const **env_addon){
             *env_addon = "LV=-c";
       }
    }
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -397,7 +397,7 @@ page_or_print(FILE *fp, size_t lines)
 {
    int c;
    char const *cp;
-   n_NYD_IN;
+   NYD_IN;
 
    fflush_rewind(fp);
 
@@ -430,7 +430,7 @@ page_or_print(FILE *fp, size_t lines)
    while ((c = getc(fp)) != EOF)
       putc(c, n_stdout);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL enum protocol
@@ -440,7 +440,7 @@ which_protocol(char const *name, bool_t check_stat, bool_t try_hooks,
    /* TODO This which_protocol() sickness should be URL::new()->protocol() */
    char const *cp, *orig_name;
    enum protocol rv = PROTO_UNKNOWN;
-   n_NYD_IN;
+   NYD_IN;
 
    if(name[0] == '%' && name[1] == ':')
       name += 2;
@@ -534,20 +534,20 @@ jfile:
 jleave:
    if(adjusted_or_null != NULL)
       *adjusted_or_null = orig_name;
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL char *
 n_c_to_hex_base16(char store[3], char c){
    static char const itoa16[] = "0123456789ABCDEF";
-   n_NYD2_IN;
+   NYD2_IN;
 
    store[2] = '\0';
    store[1] = itoa16[(ui8_t)c & 0x0F];
    c = ((ui8_t)c >> 4) & 0x0F;
    store[0] = itoa16[(ui8_t)c];
-   n_NYD2_OU;
+   NYD2_OU;
    return store;
 }
 
@@ -564,7 +564,7 @@ n_c_from_hex_base16(char const hex[2]){
    };
    ui8_t i1, i2;
    si32_t rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if ((i1 = (ui8_t)hex[0] - '0') >= n_NELEM(atoi16) ||
          (i2 = (ui8_t)hex[1] - '0') >= n_NELEM(atoi16))
@@ -577,81 +577,18 @@ n_c_from_hex_base16(char const hex[2]){
    rv <<= 4;
    rv += i2;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 jerr:
    rv = -1;
    goto jleave;
 }
 
-#if 0
-FL enum n_icalc_state
-n_icalc_buf(si64_t *resp, char const *cbuf, uiz_t clen, enum n_icalc_mode icm,
-      char const **endptr_or_null){
-   si64_t res;
-   struct a_group{
-      struct a_group *outer;
-      char unary;
-      ui8_t pad[7];
-   } *tail;
-   void *lofi_snap;
-   enum su_idec_state rv;
-   n_NYD_IN;
-
-   if(clen == UIZ_MAX)
-      clen = su_cs_len(cbuf);
-
-   icm &= n__ICALC_MODE_MASK;
-   rv = n_ICALC_STATE_NONE | icm;
-   lofi_snap = NULL;
-   tail = NULL;
-   res = 0;
-
-   while(clen > 0){
-      char c, unary;
-
-      if((c = *cbuf) == '-' || c == '+' || c == '~'){
-         unary = c;
-      }
-
-      if(*cbuf == '('){
-         if(lofi_snap == NULL)
-            lofi_snap = n_lofi_snap_create();
-
-
-      }
-
-   }
-
-
-jleave:
-   if(lofi_snap != NULL)
-      n_lofi_snap_unroll(lofi_snap);
-   *resp = res;
-   if(endptr_or_null != NULL)
-      *endptr_or_null = cbuf;
-   if(clen == 0)
-      rv |= n_ICALC_STATE_CONSUMED;
-   n_NYD_OU;
-   return rv;
-
-jeinval:
-   rv |= su_IDEC_STATE_EINVAL;
-   goto j_maxval;
-jeover:
-   rv |= su_IDEC_STATE_EOVERFLOW;
-j_maxval:
-   res = (rv & su_IDEC_STATE_SEEN_MINUS) ? SI64_MIN : SI64_MAX;
-   rv &= ~su_IDEC_STATE_SEEN_MINUS;
-   goto jleave;
-}
-#endif
-
 FL char const *
 n_getdeadletter(void){
    char const *cp;
    bool_t bla;
-   n_NYD_IN;
+   NYD_IN;
 
    bla = FAL0;
 jredo:
@@ -668,7 +605,7 @@ jredo:
          n_err(_("Cannot expand *DEAD*, using: %s\n"), cp);
       }
    }
-   n_NYD_OU;
+   NYD_OU;
    return cp;
 }
 
@@ -685,7 +622,7 @@ n_nodename(bool_t mayoverride){
    struct hostent *hent;
 # endif
 #endif
-   n_NYD2_IN;
+   NYD2_IN;
 
    if(su_state_has(su_STATE_REPRODUCIBLE))
       hn = n_UNCONST(su_reproducible_build);
@@ -750,7 +687,7 @@ n_nodename(bool_t mayoverride){
    if(hostname != NULL && hostname != sys_hostname)
       n_free(hostname);
    hostname = su_cs_dup(hn, 0);
-   n_NYD2_OU;
+   NYD2_OU;
    return hostname;
 }
 
@@ -759,7 +696,7 @@ FL bool_t
 n_idna_to_ascii(struct n_string *out, char const *ibuf, size_t ilen){
    char *idna_utf8;
    bool_t lofi, rv;
-   n_NYD_IN;
+   NYD_IN;
 
    if(ilen == UIZ_MAX)
       ilen = su_cs_len(ibuf);
@@ -851,7 +788,7 @@ jleave:
    if(lofi)
       n_lofi_free(n_UNCONST(ibuf));
    out = n_string_trunc(out, ilen);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 #endif /* mx_HAVE_IDNA */
@@ -861,7 +798,7 @@ n_random_create_buf(char *dat, size_t len, ui32_t *reprocnt_or_null){
    struct str b64;
    char *indat, *cp, *oudat;
    size_t i, inlen, oulen;
-   n_NYD_IN;
+   NYD_IN;
 
    if(!(n_psonce & n_PSO_RANDOM_INIT)){
       n_psonce |= n_PSO_RANDOM_INIT;
@@ -968,25 +905,25 @@ jinc1:
 
    n_lofi_free(indat);
 
-   n_NYD_OU;
+   NYD_OU;
    return dat;
 }
 
 FL char *
 n_random_create_cp(size_t len, ui32_t *reprocnt_or_null){
    char *dat;
-   n_NYD_IN;
+   NYD_IN;
 
    dat = n_autorec_alloc(len +1);
    dat = n_random_create_buf(dat, len, reprocnt_or_null);
-   n_NYD_OU;
+   NYD_OU;
    return dat;
 }
 
 FL bool_t
 n_boolify(char const *inbuf, uiz_t inlen, bool_t emptyrv){
    bool_t rv;
-   n_NYD2_IN;
+   NYD2_IN;
    assert(inlen == 0 || inbuf != NULL);
 
    if(inlen == UIZ_MAX)
@@ -1016,14 +953,14 @@ n_boolify(char const *inbuf, uiz_t inlen, bool_t emptyrv){
             rv = (ib != 0);
       }
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL bool_t
 n_quadify(char const *inbuf, uiz_t inlen, char const *prompt, bool_t emptyrv){
    bool_t rv;
-   n_NYD2_IN;
+   NYD2_IN;
    assert(inlen == 0 || inbuf != NULL);
 
    if(inlen == UIZ_MAX)
@@ -1036,24 +973,24 @@ n_quadify(char const *inbuf, uiz_t inlen, char const *prompt, bool_t emptyrv){
          (rv = n_boolify(&inbuf[4], inlen - 4, emptyrv)) >= FAL0 &&
          (n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT))
       rv = getapproval(prompt, rv);
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL bool_t
 n_is_all_or_aster(char const *name){
    bool_t rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    rv = ((name[0] == '*' && name[1] == '\0') || !su_cs_cmp_case(name, "all"));
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL struct n_timespec const *
 n_time_now(bool_t force_update){ /* TODO event loop update IF cmd requests! */
    static struct n_timespec ts_now;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if(n_UNLIKELY(su_state_has(su_STATE_REPRODUCIBLE))){
       /* Guaranteed 32-bit posnum TODO SOURCE_DATE_EPOCH should be 64-bit! */
@@ -1082,13 +1019,13 @@ n_time_now(bool_t force_update){ /* TODO event loop update IF cmd requests! */
    /* Just in case.. */
    if(n_UNLIKELY(ts_now.ts_sec < 0))
       ts_now.ts_sec = 0;
-   n_NYD2_OU;
+   NYD2_OU;
    return &ts_now;
 }
 
 FL void
 time_current_update(struct time_current *tc, bool_t full_update){
-   n_NYD_IN;
+   NYD_IN;
    tc->tc_time = (time_t)n_time_now(TRU1)->ts_sec;
 
    if(full_update){
@@ -1113,7 +1050,7 @@ jredo:
       *cp = '\0';
       assert(PTR2SIZE(++cp - tc->tc_ctime) < sizeof(tc->tc_ctime));
    }
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL char *
@@ -1132,7 +1069,7 @@ n_time_ctime(si64_t secsepoch, struct tm const *localtime_or_nil){/* TODO err*/
    si32_t y, md, th, tm, ts;
    char const *wdn, *mn;
    struct tm const *tmp;
-   n_NYD_IN;
+   NYD_IN;
 
    if((tmp = localtime_or_nil) == NULL){
       time_t t;
@@ -1172,14 +1109,14 @@ jredo:
 
    (void)snprintf(buf, sizeof buf, "%3s %3s%3d %.2d:%.2d:%.2d %d",
          wdn, mn, md, th, tm, ts, y);
-   n_NYD_OU;
+   NYD_OU;
    return buf;
 }
 
 FL uiz_t
 n_msleep(uiz_t millis, bool_t ignint){
    uiz_t rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
 #ifdef mx_HAVE_NANOSLEEP
    /* C99 */{
@@ -1203,14 +1140,14 @@ n_msleep(uiz_t millis, bool_t ignint){
 # error Configuration should have detected a function for sleeping.
 #endif
 
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL void
 n_err(char const *format, ...){
    va_list ap;
-   n_NYD2_IN;
+   NYD2_IN;
 
    va_start(ap, format);
 #ifdef mx_HAVE_ERRORS
@@ -1257,7 +1194,7 @@ n_err(char const *format, ...){
       fflush(n_stderr);
    }
    va_end(ap);
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 FL void
@@ -1267,7 +1204,7 @@ n_verr(char const *format, va_list ap){
 #endif
    bool_t doname;
    size_t len;
-   n_NYD2_IN;
+   NYD2_IN;
 
    doname = FAL0;
 
@@ -1389,13 +1326,13 @@ jcreat:
 
 jleave:
    fflush(n_stderr);
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 FL void
 n_err_sighdl(char const *format, ...){ /* TODO sigsafe; obsolete! */
    va_list ap;
-   n_NYD_X;
+   NYD;
 
    va_start(ap, format);
    vfprintf(n_stderr, format, ap);
@@ -1407,7 +1344,7 @@ FL void
 n_perr(char const *msg, int errval){
    int e;
    char const *fmt;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if(msg == NULL){
       fmt = "%s%s\n";
@@ -1419,13 +1356,13 @@ n_perr(char const *msg, int errval){
    n_err(fmt, msg, su_err_doc(e));
    if(errval == 0)
       su_err_set_no(e);
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 FL void
 n_alert(char const *format, ...){
    va_list ap;
-   n_NYD2_IN;
+   NYD2_IN;
 
    n_err(a_aux_err_linelen > 0 ? _("\nAlert: ") : _("Alert: "));
 
@@ -1434,13 +1371,13 @@ n_alert(char const *format, ...){
    va_end(ap);
 
    n_err("\n");
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 FL void
 n_panic(char const *format, ...){
    va_list ap;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if(a_aux_err_linelen > 0){
       putc('\n', n_stderr);
@@ -1454,7 +1391,7 @@ n_panic(char const *format, ...){
 
    putc('\n', n_stderr);
    fflush(n_stderr);
-   n_NYD2_OU;
+   NYD2_OU;
    abort(); /* Was exit(n_EXIT_ERR); for a while, but no */
 }
 
@@ -1463,7 +1400,7 @@ FL int
 c_errors(void *v){
    char **argv = v;
    struct a_aux_err_node *enp;
-   n_NYD_IN;
+   NYD_IN;
 
    if(*argv == NULL)
       goto jlist;
@@ -1478,7 +1415,7 @@ jerr:
       _("Synopsis: errors: (<show> or) <clear> the error ring\n"));
    v = NULL;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return (v == NULL) ? !STOP : !OKAY; /* xxx 1:bad 0:good -- do some */
 
 jlist:{
@@ -1525,12 +1462,12 @@ FL char const *
 n_regex_err_to_doc(const regex_t *rep, int e){
    char *cp;
    size_t i;
-   n_NYD2_IN;
+   NYD2_IN;
 
    i = regerror(e, rep, NULL, 0) +1;
    cp = n_autorec_alloc(i);
    regerror(e, rep, cp, i);
-   n_NYD2_OU;
+   NYD2_OU;
    return cp;
 }
 #endif
@@ -1539,7 +1476,7 @@ FL su_boole
 mx_unxy_dict(char const *cmdname, struct su_cs_dict *dp, void *vp){
    char const **argv, *key;
    su_boole rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = TRU1;
    key = (argv = vp)[0];
@@ -1554,7 +1491,7 @@ mx_unxy_dict(char const *cmdname, struct su_cs_dict *dp, void *vp){
       }
    }while((key = *++argv) != su_NIL);
 
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -1568,7 +1505,7 @@ mx_xy_dump_dict(char const *cmdname, struct su_cs_dict *dp,
    su_u32 cnt;
    struct n_strlist *resp, *tailp;
    su_boole rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = TRU1;
 
@@ -1616,7 +1553,7 @@ jleave:
    if(tailpp_or_nil != su_NIL)
       *tailpp_or_nil = tailp;
 
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -1627,7 +1564,7 @@ mx_xy_dump_dict_gen_ptf(char const *cmdname, char const *key, void const *dat){
    struct n_strlist *slp;
    su_uz kl, dl, cl;
    char const *kp, *dp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    kp = n_shexp_quote_cp(key, TRU1);
    dp = n_shexp_quote_cp(su_S(char const*,dat), TRU1);
@@ -1649,7 +1586,7 @@ mx_xy_dump_dict_gen_ptf(char const *cmdname, char const *key, void const *dat){
    *cp = '\0';
    slp->sl_len = su_P2UZ(cp - slp->sl_dat);
 
-   n_NYD2_OU;
+   NYD2_OU;
    return slp;
 }
 
@@ -1658,11 +1595,11 @@ mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp){
    su_uz lines;
    FILE *fp;
    su_boole rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = TRU1;
 
-   if((fp = Ftmp(NULL, cmdname, OF_RDWR | OF_UNLINK | OF_REGISTER)) == NIL)
+   if((fp = Ftmp(NULL, cmdname, OF_RDWR | OF_UNLINK | OF_REGISTER)) == su_NIL)
       fp = n_stdout;
 
    /* Create visual result */
@@ -1680,7 +1617,7 @@ mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp){
       Fclose(fp);
    }
 
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 

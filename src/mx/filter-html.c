@@ -244,7 +244,7 @@ static struct htmlflt *
 _hf_dump_hrefs(struct htmlflt *self)
 {
    struct htmlflt_href *hhp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if (!(self->hf_flags & _HF_NL_2) && putc('\n', self->hf_os) == EOF) {
       self->hf_flags |= _HF_ERROR;
@@ -276,7 +276,7 @@ _hf_dump_hrefs(struct htmlflt *self)
          ?  _HF_ERROR : _HF_NL_1 | _HF_NL_2;
    self->hf_href_dist = (ui32_t)n_realscreenheight >> 1;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
@@ -285,7 +285,7 @@ _hf_dump(struct htmlflt *self)
 {
    ui32_t f, l;
    char c, *cp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    f = self->hf_flags & ~_HF_BLANK;
    l = self->hf_len;
@@ -315,7 +315,7 @@ jput:
    if (--self->hf_href_dist < 0 && (f & _HF_NL_2) && self->hf_hrefs != NULL)
       self = _hf_dump_hrefs(self);
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
@@ -323,7 +323,7 @@ static struct htmlflt *
 _hf_store(struct htmlflt *self, char c)
 {
    ui32_t l, i;
-   n_NYD2_IN;
+   NYD2_IN;
 
    assert(c != '\n');
 
@@ -442,7 +442,7 @@ jput:
          self = _hf_dump(self);
    }
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
@@ -453,7 +453,7 @@ __hf_sync_mbstuff(struct htmlflt *self)
    wchar_t wc;
    char const *b;
    ui32_t o, w, l;
-   n_NYD2_IN;
+   NYD2_IN;
 
    b = self->hf_line;
    o = w = 0;
@@ -488,7 +488,7 @@ jumpin:
    self->hf_mboff = o;
    self->hf_mbwidth = w;
 
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 # endif /* mx_HAVE_NATCH_CHAR */
@@ -497,7 +497,7 @@ static struct htmlflt *
 _hf_nl(struct htmlflt *self)
 {
    ui32_t f;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if (!((f = self->hf_flags) & _HF_ERROR)) {
       if (f & _HF_ANY) {
@@ -506,17 +506,17 @@ _hf_nl(struct htmlflt *self)
       } else
          self->hf_flags = (f |= _HF_NL_MASK);
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
 static struct htmlflt *
 _hf_nl_force(struct htmlflt *self)
 {
-   n_NYD2_IN;
+   NYD2_IN;
    if (!(self->hf_flags & _HF_ERROR))
       self = _hf_dump(self);
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
@@ -524,7 +524,7 @@ static struct htmlflt *
 _hf_putc(struct htmlflt *self, char c)
 {
    ui32_t f;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if ((f = self->hf_flags) & _HF_ERROR)
       goto jleave;
@@ -542,7 +542,7 @@ _hf_putc(struct htmlflt *self, char c)
    self->hf_flags = (f |= _HF_ANY);
    self = _hf_store(self, c);
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
@@ -550,7 +550,7 @@ static struct htmlflt *
 _hf_putc_premode(struct htmlflt *self, char c)
 {
    ui32_t f;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if ((f = self->hf_flags) & _HF_ERROR) {
       ;
@@ -561,7 +561,7 @@ _hf_putc_premode(struct htmlflt *self, char c)
       self->hf_flags = (f |= _HF_ANY);
       self = _hf_store(self, c);
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
@@ -569,22 +569,22 @@ static struct htmlflt *
 _hf_puts(struct htmlflt *self, char const *cp)
 {
    char c;
-   n_NYD2_IN;
+   NYD2_IN;
 
    while ((c = *cp++) != '\0')
       self = _hf_putc(self, c);
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
 static struct htmlflt *
 _hf_putbuf(struct htmlflt *self, char const *cp, size_t len)
 {
-   n_NYD2_IN;
+   NYD2_IN;
 
    while (len-- > 0)
       self = _hf_putc(self, *cp++);
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
@@ -595,7 +595,7 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
    char c, x, quote;
    size_t i;
    bool_t hot;
-   n_NYD2_IN;
+   NYD2_IN;
 
    store->s = NULL;
    store->l = 0;
@@ -694,7 +694,7 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
    if ((store->l = i) == 0)
       store->s = NULL;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
@@ -704,7 +704,7 @@ _hf_expand_all_ents(struct htmlflt *self, struct str const *param)
    char const *cp, *maxcp, *ep;
    char c;
    size_t i;
-   n_NYD2_IN;
+   NYD2_IN;
 
    for (cp = param->s, maxcp = cp + param->l; cp < maxcp;)
       if ((c = *cp++) != '&')
@@ -729,7 +729,7 @@ jputc:
          cp = ep;
       }
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
@@ -741,7 +741,7 @@ _hf_check_tag(struct htmlflt *self, char const *s)
    size_t i;
    struct htmlflt_tag const *hftp;
    ui32_t f;
-   n_NYD2_IN;
+   NYD2_IN;
 
    /* Extra check only */
    assert(s != NULL);
@@ -885,7 +885,7 @@ jimg_put:
       break;
    }
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 
    /* The problem is that even invalid tagsoup is widely used, without real
@@ -928,7 +928,7 @@ _hf_check_ent(struct htmlflt *self, char const *s, size_t l)
    size_t l_save;
    struct hf_ent const *hfep;
    size_t i;
-   n_NYD2_IN;
+   NYD2_IN;
 
    s_save = s;
    l_save = l;
@@ -976,7 +976,7 @@ jeent:
       self = _hf_putbuf(self, s_save, l_save);
    }
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
@@ -986,7 +986,7 @@ _hf_add_data(struct htmlflt *self, char const *dat, size_t len)
    char c, *cp, *cp_max;
    bool_t hot;
    ssize_t rv = 0;
-   n_NYD_IN;
+   NYD_IN;
 
    /* Final put request? */
    if (dat == NULL) {
@@ -1136,7 +1136,7 @@ jdo_c:
    }
    self->hf_curr = cp;
 jleave:
-  n_NYD_OU;
+  NYD_OU;
   return (self->hf_flags & _HF_ERROR) ? -1 : rv;
 }
 
@@ -1148,7 +1148,7 @@ static bool_t __hf_hadpipesig;
 static void
 __hf_onpipe(int signo)
 {
-   n_NYD_X; /* Signal handler */
+   NYD; /* Signal handler */
    n_UNUSED(signo);
    __hf_hadpipesig = TRU1;
 }
@@ -1160,7 +1160,7 @@ htmlflt_process_main(void)
    struct htmlflt hf;
    size_t i;
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    __hf_hadpipesig = FAL0;
    safe_signal(SIGPIPE, &__hf_onpipe);
@@ -1188,32 +1188,32 @@ htmlflt_process_main(void)
    htmlflt_destroy(&hf);
 
    rv |= __hf_hadpipesig;
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL void
 htmlflt_init(struct htmlflt *self)
 {
-   n_NYD_IN;
+   NYD_IN;
    /* (Rather redundant though) */
    su_mem_set(self, 0, sizeof *self);
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL void
 htmlflt_destroy(struct htmlflt *self)
 {
-   n_NYD_IN;
+   NYD_IN;
    htmlflt_reset(self, NULL);
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL void
 htmlflt_reset(struct htmlflt *self, FILE *f)
 {
    struct htmlflt_href *hfhp;
-   n_NYD_IN;
+   NYD_IN;
 
    while ((hfhp = self->hf_hrefs) != NULL) {
       self->hf_hrefs = hfhp->hfh_next;
@@ -1237,17 +1237,17 @@ htmlflt_reset(struct htmlflt *self, FILE *f)
          self->hf_flags = _HF_UTF8;
       self->hf_os = f;
    }
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL ssize_t
 htmlflt_push(struct htmlflt *self, char const *dat, size_t len)
 {
    ssize_t rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = _hf_add_data(self, dat, len);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -1255,11 +1255,11 @@ FL ssize_t
 htmlflt_flush(struct htmlflt *self)
 {
    ssize_t rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = _hf_add_data(self, NULL, 0);
    rv |= !fflush(self->hf_os) ? 0 : -1;
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 

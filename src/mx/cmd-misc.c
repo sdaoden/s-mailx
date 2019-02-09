@@ -68,7 +68,7 @@ a_cmisc_bangexp(char const *cp){
    struct n_string xbang, *bang;
    char c;
    bool_t changed;
-   n_NYD_IN;
+   NYD_IN;
 
    if(!ok_blook(bang))
       goto jleave;
@@ -101,7 +101,7 @@ a_cmisc_bangexp(char const *cp){
    if(changed)
       fprintf(n_stdout, "!%s\n", cp);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return cp;
 }
 
@@ -111,7 +111,7 @@ a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
    int rv;
    bool_t doerr;
    char const **argv, *varname, **ap, *cp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    argv = vp;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
@@ -155,14 +155,14 @@ a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
       n_pstate_err_no = su_ERR_NONE;
       rv = (int)s->s_len;
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 static bool_t
 a_cmisc_read_set(char const *cp, char const *value){
    bool_t rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if(!n_shexp_is_valid_varname(cp))
       value = N_("not a valid variable name");
@@ -177,7 +177,7 @@ a_cmisc_read_set(char const *cp, char const *value){
    n_err("`read': %s: %s\n", V_(value), n_shexp_quote_cp(cp, FAL0));
    rv = FAL0;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -185,12 +185,12 @@ static int
 a_cmisc_version_cmp(void const *s1, void const *s2){
    char const * const *cp1, * const *cp2;
    int rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    cp1 = s1;
    cp2 = s2;
    rv = su_cs_cmp(&(*cp1)[1], &(*cp2)[1]);
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -201,7 +201,7 @@ c_shell(void *v)
    int rv;
    FILE *fp;
    char const **argv, *varname, *varres, *cp;
-   n_NYD_IN;
+   NYD_IN;
 
    n_pstate_err_no = su_ERR_NONE;
    argv = v;
@@ -263,7 +263,7 @@ c_shell(void *v)
       fprintf(n_stdout, "!\n");
       /* Line buffered fflush(n_stdout); */
    }
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -271,7 +271,7 @@ FL int
 c_dosh(void *v)
 {
    int rv;
-   n_NYD_IN;
+   NYD_IN;
    n_UNUSED(v);
 
    if(n_child_run(ok_vlook(SHELL), 0, n_CHILD_FD_PASS, n_CHILD_FD_PASS, NULL,
@@ -284,7 +284,7 @@ c_dosh(void *v)
       n_pstate_err_no = su_ERR_NONE;
       rv = WEXITSTATUS(rv);
    }
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -293,7 +293,7 @@ c_cwd(void *v){
    struct n_string s_b, *s;
    size_t l;
    char const *varname;
-   n_NYD_IN;
+   NYD_IN;
 
    s = n_string_creat_auto(&s_b);
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *(char const**)v : NULL;
@@ -325,7 +325,7 @@ c_cwd(void *v){
       }
       break;
    }
-   n_NYD_OU;
+   NYD_OU;
    return (v == NULL);
 }
 
@@ -334,7 +334,7 @@ c_chdir(void *v)
 {
    char **arglist = v;
    char const *cp;
-   n_NYD_IN;
+   NYD_IN;
 
    if (*arglist == NULL)
       cp = ok_vlook(HOME);
@@ -345,47 +345,47 @@ c_chdir(void *v)
       cp = NULL;
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return (cp == NULL);
 }
 
 FL int
 c_echo(void *v){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cmisc_echo(v, n_stdout, TRU1);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_echoerr(void *v){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cmisc_echo(v, n_stderr, TRU1);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_echon(void *v){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cmisc_echo(v, n_stdout, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_echoerrn(void *v){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cmisc_echo(v, n_stderr, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -398,7 +398,7 @@ c_read(void * volatile vp){
    size_t linesize, i;
    int rv;
    char const *ifs, **argv, *cp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    s = n_string_creat_auto(&s_b);
    s = n_string_reserve(s, 64 -1);
@@ -476,7 +476,7 @@ jitall:
 jleave:
    if(linebuf != NULL)
       n_free(linebuf);
-   n_NYD2_OU;
+   NYD2_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
 }
@@ -489,7 +489,7 @@ c_readall(void * vp){ /* TODO 64-bit retval */
    size_t linesize;
    int rv;
    char const **argv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    s = n_string_creat_auto(&s_b);
    s = n_string_reserve(s, 64 -1);
@@ -556,14 +556,14 @@ c_readall(void * vp){ /* TODO 64-bit retval */
 jleave:
    if(linebuf != NULL)
       n_free(linebuf);
-   n_NYD2_OU;
+   NYD2_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
 }
 
 FL struct n_string *
 n_version(struct n_string *s){
-   n_NYD_IN;
+   NYD_IN;
    s = n_string_push_cp(s, n_uagent);
    s = n_string_push_c(s, ' ');
    s = n_string_push_cp(s, ok_vlook(version));
@@ -576,7 +576,7 @@ n_version(struct n_string *s){
    s = n_string_push_cp(s, ok_vlook(build_os));
    s = n_string_push_c(s, ')');
    s = n_string_push_c(s, '\n');
-   n_NYD_OU;
+   NYD_OU;
    return s;
 }
 
@@ -588,7 +588,7 @@ c_version(void *vp){
    char *iop;
    char const *cp, **arr;
    size_t i, lnlen, j;
-   n_NYD_IN;
+   NYD_IN;
 
    s = n_string_creat_auto(&s_b);
    s = n_string_book(s, 1024);
@@ -662,7 +662,7 @@ c_version(void *vp){
          rv = 1;
       }
    }
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 

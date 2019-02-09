@@ -1773,32 +1773,8 @@ FL int         n_sigman_peek(void);
 FL void        n_sigman_consume(void);
 
 /* Not-Yet-Dead debug information (handler installation in main.c) */
-#if defined mx_HAVE_DEBUG || defined mx_HAVE_DEVEL
-FL void        _nyd_oncrash(int signo);
-
-# define mx_HAVE_n_NYD
-# define n_NYD_IN su_nyd_chirp(1, __FILE__, __LINE__, su_FUN)
-# define n_NYD_OU su_nyd_chirp(2, __FILE__, __LINE__, su_FUN)
-# define n_NYD su_nyd_chirp(0, __FILE__, __LINE__, su_FUN)
-# define n_NYD_X su_nyd_chirp(0, __FILE__, __LINE__, su_FUN)
-# ifdef mx_HAVE_n_NYD2
-#  define n_NYD2_IN su_nyd_chirp(1, __FILE__, __LINE__, su_FUN)
-#  define n_NYD2_OU su_nyd_chirp(2, __FILE__, __LINE__, su_FUN)
-#  define n_NYD2 su_nyd_chirp(0, __FILE__, __LINE__, su_FUN)
-# endif
-#else
-# undef mx_HAVE_n_NYD
-#endif
-#ifndef n_NYD
-# define n_NYD_IN                  do {} while (0)
-# define n_NYD_OU                  do {} while (0)
-# define n_NYD                     do {} while (0)
-# define n_NYD_X                   do {} while (0) /* XXX LEGACY */
-#endif
-#ifndef n_NYD2
-# define n_NYD2_IN                 do {} while (0)
-# define n_NYD2_OU                 do {} while (0)
-# define n_NYD2                    do {} while (0)
+#if su_DVLOR(1, 0)
+FL void mx__nyd_oncrash(int signo);
 #endif
 
 /*
