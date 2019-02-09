@@ -39,7 +39,7 @@ su_EMPTY_FILE()
 
 /* Not needed publically, but extends a set from nail.h */
 #define n_COLOUR_TAG_ERR ((char*)-1)
-#define a_COLOUR_TAG_IS_SPECIAL(P) (PTR2SIZE(P) >= PTR2SIZE(-3))
+#define a_COLOUR_TAG_IS_SPECIAL(P) (P2UZ(P) >= P2UZ(-3))
 
 enum a_colour_type{
    a_COLOUR_T_256,
@@ -70,7 +70,7 @@ struct a_colour_map_id{
    ui8_t cmi_tt;     /* enum a_colour_tag_type */
    char const cmi_name[13];
 };
-n_CTA(n__COLOUR_IDS <= UI8_MAX, "Enumeration exceeds storage datatype");
+CTA(n__COLOUR_IDS <= UI8_MAX, "Enumeration exceeds storage datatype");
 
 struct n_colour_pen{
    struct str cp_dat;   /* Pre-prepared ISO 6429 escape sequence */
@@ -86,7 +86,7 @@ struct a_colour_map /* : public n_colour_pen */{
 #endif
    ui32_t cm_refcnt;             /* Beware of reference drops in recursions */
    ui32_t cm_user_off;           /* User input offset in .cm_buf */
-   char cm_buf[n_VFIELD_SIZE(0)];
+   char cm_buf[VFIELD_SIZE(0)];
 };
 
 struct a_colour_g{
@@ -96,14 +96,14 @@ struct a_colour_g{
    struct n_colour_pen cg_reset;    /* The reset sequence */
    struct a_colour_map
       *cg_maps[a_COLOUR_T_NONE][n__COLOUR_CTX_MAX1][n__COLOUR_IDS];
-   char cg__reset_buf[n_ALIGN_SMALL(sizeof("\033[0m"))];
+   char cg__reset_buf[Z_ALIGN_SMALL(sizeof("\033[0m"))];
 };
 
 /* C99: use [INDEX]={} */
 /* */
-n_CTA(a_COLOUR_T_256 == 0, "Unexpected value of constant");
-n_CTA(a_COLOUR_T_8 == 1, "Unexpected value of constant");
-n_CTA(a_COLOUR_T_1 == 2, "Unexpected value of constant");
+CTA(a_COLOUR_T_256 == 0, "Unexpected value of constant");
+CTA(a_COLOUR_T_8 == 1, "Unexpected value of constant");
+CTA(a_COLOUR_T_1 == 2, "Unexpected value of constant");
 static char const a_colour_types[][8] = {"256", "iso", "mono"};
 
 static struct a_colour_type_map const a_colour_type_maps[] = {
@@ -112,9 +112,9 @@ static struct a_colour_type_map const a_colour_type_maps[] = {
    {a_COLOUR_T_1, "1"}, {a_COLOUR_T_1, "mono"}
 };
 
-n_CTA(n_COLOUR_CTX_SUM == 0, "Unexpected value of constant");
-n_CTA(n_COLOUR_CTX_VIEW == 1, "Unexpected value of constant");
-n_CTA(n_COLOUR_CTX_MLE == 2, "Unexpected value of constant");
+CTA(n_COLOUR_CTX_SUM == 0, "Unexpected value of constant");
+CTA(n_COLOUR_CTX_VIEW == 1, "Unexpected value of constant");
+CTA(n_COLOUR_CTX_MLE == 2, "Unexpected value of constant");
 static char const a_colour_ctx_prefixes[n__COLOUR_CTX_MAX1][8] = {
    "sum-", "view-", "mle-"
 };
@@ -190,8 +190,8 @@ a_colour_type_find(char const *name){
    do if(!su_cs_cmp_case(ctmp->ctm_name, name)){
       rv = ctmp->ctm_type;
       goto jleave;
-   }while(PTRCMP(++ctmp, !=,
-      a_colour_type_maps + n_NELEM(a_colour_type_maps)));
+   }while(PCMP(++ctmp, !=,
+      a_colour_type_maps + NELEM(a_colour_type_maps)));
 
    rv = (enum a_colour_type)-1;
 jleave:
@@ -295,7 +295,7 @@ a_colour_mux(char **argv){
 
       tl = (ctag != NULL && !a_COLOUR_TAG_IS_SPECIAL(ctag))
             ? su_cs_len(ctag) : 0;
-      cmp = n_alloc(n_VSTRUCT_SIZEOF(struct a_colour_map, cm_buf) +
+      cmp = n_alloc(VSTRUCT_SIZEOF(struct a_colour_map, cm_buf) +
             tl +1 + (usrl = su_cs_len(argv[1])) +1 + (cl = su_cs_len(cp)) +1);
 
       /* .cm_buf stuff */
@@ -304,7 +304,7 @@ a_colour_mux(char **argv){
       su_mem_copy(bp, cp, ++cl);
       bp += cl;
 
-      cmp->cm_user_off = (ui32_t)PTR2SIZE(bp - cmp->cm_buf);
+      cmp->cm_user_off = (ui32_t)P2UZ(bp - cmp->cm_buf);
       su_mem_copy(bp, argv[1], ++usrl);
       bp += usrl;
 
@@ -497,7 +497,7 @@ static char const *
 a_colour__tag_identify(struct a_colour_map_id const *cmip, char const *ctag,
       void **regexpp){
    NYD2_IN;
-   n_UNUSED(regexpp);
+   UNUSED(regexpp);
 
    if((cmip->cmi_tt & a_COLOUR_TT_DOT) && !su_cs_cmp_case(ctag, "dot"))
       ctag = n_COLOUR_TAG_SUM_DOT;
@@ -659,7 +659,7 @@ a_colour_iso6429(enum a_colour_type ct, char **store, char const *spec){
     * return value, ensure we have enough room for that */
    /* C99 */{
       size_t i = su_cs_len(spec) +1;
-      xspec = n_autorec_alloc(n_MAX(i,
+      xspec = n_autorec_alloc(MAX(i,
             sizeof("\033[1;4;7;38;5;255;48;5;255m")));
       su_mem_copy(xspec, spec, i);
       spec = xspec;
@@ -682,11 +682,11 @@ jbail:
             x = n_UNCONST("reverse");
          }
          for(idp = fta;; ++idp)
-            if(idp == fta + n_NELEM(fta)){
+            if(idp == fta + NELEM(fta)){
                *store = n_UNCONST(_("invalid font attribute"));
                goto jleave;
             }else if(!su_cs_cmp_case(x, idp->id_name)){
-               if(ftno < n_NELEM(fg))
+               if(ftno < NELEM(fg))
                   fg[ftno++] = idp->id_modc;
                else{
                   *store = n_UNCONST(_("too many font attributes"));
@@ -723,7 +723,7 @@ jiter_colour:
             su_mem_copy((y == &cfg[0] ? y + 2 : y + 1 + sizeof("255")), x,
                (x[1] == '\0' ? 2 : (x[2] == '\0' ? 3 : 4)));
          }else for(idp = ca;; ++idp)
-            if(idp == ca + n_NELEM(ca)){
+            if(idp == ca + NELEM(ca)){
                *store = n_UNCONST(_("invalid colour attribute"));
                goto jleave;
             }else if(!su_cs_cmp_case(x, idp->id_name)){
@@ -858,7 +858,7 @@ n_colour_env_create(enum n_colour_ctx cctx, FILE *fp, bool_t pager_used){
    if(ok_blook(colour_disable) || (pager_used && !ok_blook(colour_pager)))
       goto jleave;
 
-   if(n_UNLIKELY(a_colour_g.cg_type == a_COLOUR_T_UNKNOWN)){
+   if(UNLIKELY(a_colour_g.cg_type == a_COLOUR_T_UNKNOWN)){
       struct n_termcap_value tv;
 
       if(!n_termcap_query(n_TERMCAP_QUERY_colors, &tv)){

@@ -126,7 +126,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       nlines = 0;
 
       if (!dopage) {
-         for (ip = msgvec; *ip && PTRCMP(ip - msgvec, <, msgCount); ++ip) {
+         for (ip = msgvec; *ip && PCMP(ip - msgvec, <, msgCount); ++ip) {
             mp = message + *ip - 1;
             if (!(mp->m_content_info & CI_HAVE_BODY))
                if (get_body(mp) != OKAY)
@@ -154,7 +154,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 
    rv = 0;
    srelax_hold();
-   for (ip = msgvec; *ip && PTRCMP(ip - msgvec, <, msgCount); ++ip) {
+   for (ip = msgvec; *ip && PCMP(ip - msgvec, <, msgCount); ++ip) {
       mp = message + *ip - 1;
       touch(mp);
       setdot(mp);
@@ -267,7 +267,7 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
       if(l <= 0){
          tmax = n_screensize();
          if(l < 0){
-            l = n_ABS(l);
+            l = ABS(l);
             tmax >>= l;
          }
       }else
@@ -591,7 +591,7 @@ c_next(void *v)
    if (*msgvec != 0) {
       /* If some messages were supplied, find the first applicable one
        * following dot using wrap around */
-      mdot = (int)PTR2SIZE(dot - message + 1);
+      mdot = (int)P2UZ(dot - message + 1);
 
       /* Find first message in supplied message list which follows dot */
       for (ip = msgvec; *ip != 0; ++ip) {
@@ -628,7 +628,7 @@ c_next(void *v)
    /* Just find the next good message after dot, no wraparound */
    if (mb.mb_threaded == 0) {
       for (mp = dot + !!(n_pstate & n_PS_DID_PRINT_DOT);
-            PTRCMP(mp, <, message + msgCount); ++mp)
+            PCMP(mp, <, message + msgCount); ++mp)
          if (!(mp->m_flag & MMNORM))
             break;
    } else {
@@ -640,7 +640,7 @@ c_next(void *v)
       while (mp != NULL && (mp->m_flag & MMNORM))
          mp = next_in_thread(mp);
    }
-   if (mp == NULL || PTRCMP(mp, >=, message + msgCount)) {
+   if (mp == NULL || PCMP(mp, >=, message + msgCount)) {
 jateof:
       fprintf(n_stdout, _("At EOF\n"));
       rv = 0;
@@ -650,7 +650,7 @@ jateof:
 
    /* Print dot */
 jhitit:
-   list[0] = (int)PTR2SIZE(dot - message + 1);
+   list[0] = (int)P2UZ(dot - message + 1);
    list[1] = 0;
    rv = c_type(list);
 jleave:
@@ -665,7 +665,7 @@ c_pdot(void *vp){
    int *mlp;
    struct n_cmd_arg_ctx *cacp;
    NYD_IN;
-   n_UNUSED(vp);
+   UNUSED(vp);
 
    n_pstate_err_no = su_ERR_NONE;
    s = n_string_creat_auto(&s_b);
@@ -748,9 +748,9 @@ c_deltype(void *v)
    int list[2], rv = 0, *msgvec = v, lastdot;
    NYD_IN;
 
-   lastdot = (int)PTR2SIZE(dot - message + 1);
+   lastdot = (int)P2UZ(dot - message + 1);
    if (delm(msgvec) >= 0) {
-      list[0] = (int)PTR2SIZE(dot - message + 1);
+      list[0] = (int)P2UZ(dot - message + 1);
       if (list[0] > lastdot) {
          touch(dot);
          list[1] = 0;

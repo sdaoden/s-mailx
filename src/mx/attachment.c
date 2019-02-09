@@ -50,7 +50,7 @@
 #include "su/code-in.h"
 
 /* We use calloc() for struct attachment */
-n_CTAV(AC_DEFAULT == 0);
+CTAV(AC_DEFAULT == 0);
 
 /* Return >=0 if file denotes a valid message number */
 static int a_attachment_is_msg(char const *file);
@@ -84,11 +84,11 @@ a_attachment_is_msg(char const *file){
       /* TODO Message numbers should be size_t, and 0 may be a valid one */
       if(file[2] == '\0' && file[1] == '.'){
          if(dot != NULL)
-            rv = (int)PTR2SIZE(dot - message + 1);
+            rv = (int)P2UZ(dot - message + 1);
       }else if((su_idec_uz_cp(&ib, &file[1], 10, NULL
                ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
             ) != su_IDEC_STATE_CONSUMED || ib == 0 ||
-            UICMP(z, ib, >, msgCount))
+            UCMP(z, ib, >, msgCount))
          rv = -1;
       else
          rv = (int)ib;
@@ -269,14 +269,14 @@ jrefexp:
             size_t i;
             char *nfp, c;
 
-            nfp = savestrbuf(file, PTR2SIZE(cp - file));
+            nfp = savestrbuf(file, P2UZ(cp - file));
 
             for(ncp = ++cp; (c = *cp) != '\0'; ++cp)
                if(!su_cs_is_alnum(c) && !su_cs_is_punct(c))
                   break;
                else if(c == '#'){
                   if(incs == NULL){
-                     i = PTR2SIZE(cp - ncp);
+                     i = P2UZ(cp - ncp);
                      if(i == 0 || (i == 1 && ncp[0] == '-'))
                         incs = (char*)-1;
                      else if((incs = n_iconv_normalize_name(savestrbuf(ncp, i))
@@ -291,7 +291,7 @@ jrefexp:
             if(c == '\0'){
                char *xp;
 
-               i = PTR2SIZE(cp - ncp);
+               i = P2UZ(cp - ncp);
                if(i == 0 || (i == 1 && ncp[0] == '-'))
                   xp = (char*)-1;
                else if((xp = n_iconv_normalize_name(savestrbuf(ncp, i))

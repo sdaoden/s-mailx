@@ -121,7 +121,7 @@ writeback(FILE *res, FILE *obuf) /* TODO errors */
       goto jleave;
 
    srelax_hold();
-   for (p = 0, mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
+   for (p = 0, mp = message; PCMP(mp, <, message + msgCount); ++mp)
       if ((mp->m_flag & MPRESERVE) || !(mp->m_flag & MTOUCH)) {
          ++p;
          if (sendmp(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
@@ -179,7 +179,7 @@ edstop(void) /* TODO oh my god */
    if (mb.mb_perm == 0)
       goto j_leave;
 
-   for (mp = message, gotcha = 0; PTRCMP(mp, <, message + msgCount); ++mp) {
+   for (mp = message, gotcha = 0; PCMP(mp, <, message + msgCount); ++mp) {
       if (mp->m_flag & MNEW) {
          mp->m_flag &= ~MNEW;
          mp->m_flag |= MSTATUS;
@@ -231,7 +231,7 @@ edstop(void) /* TODO oh my god */
 
    srelax_hold();
    c = 0;
-   for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp) {
+   for (mp = message; PCMP(mp, <, message + msgCount); ++mp) {
       if (mp->m_flag & MDELETED)
          continue;
       ++c;
@@ -407,7 +407,7 @@ jnewmail:
 
    anystat = holdbits();
    modify = 0;
-   for (c = 0, p = 0, mp = message; PTRCMP(mp, <, message + msgCount); ++mp) {
+   for (c = 0, p = 0, mp = message; PCMP(mp, <, message + msgCount); ++mp) {
       if (mp->m_flag & MBOX)
          c++;
       if (mp->m_flag & MPRESERVE)
@@ -500,7 +500,7 @@ holdbits(void)
    nohold = MBOX | MSAVED | MDELETED | MPRESERVE;
    if (ok_blook(keepsave))
       nohold &= ~MSAVED;
-   for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp) {
+   for (mp = message; PCMP(mp, <, message + msgCount); ++mp) {
       if (mp->m_flag & MNEW) {
          mp->m_flag &= ~MNEW;
          mp->m_flag |= MSTATUS;
@@ -580,13 +580,13 @@ makembox(void) /* TODO oh my god (also error reporting) */
    }
 
    srelax_hold();
-   for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp) {
+   for (mp = message; PCMP(mp, <, message + msgCount); ++mp) {
       if (mp->m_flag & MBOX) {
          ++mcount;
 #ifdef mx_HAVE_IMAP
          if((fs & n_PROTO_MASK) == n_PROTO_IMAP &&
                !n_ignore_is_any(n_IGNORE_SAVE) && imap_thisaccount(mbox)){
-            if(imap_copy(mp, PTR2SIZE(mp - message + 1), mbox) == STOP)
+            if(imap_copy(mp, P2UZ(mp - message + 1), mbox) == STOP)
                goto jcopyerr;
          }else
 #endif
@@ -661,7 +661,7 @@ savequitflags(void)
    size_t i;
    NYD_IN;
 
-   for (i = 0; i < n_NELEM(_quitnames); ++i)
+   for (i = 0; i < NELEM(_quitnames); ++i)
       if (n_var_oklook(_quitnames[i].okey) != NULL)
          qf |= _quitnames[i].flag;
    NYD_OU;
@@ -674,7 +674,7 @@ restorequitflags(int qf)
    size_t i;
    NYD_IN;
 
-   for (i = 0;  i < n_NELEM(_quitnames); ++i) {
+   for (i = 0;  i < NELEM(_quitnames); ++i) {
       char *x = n_var_oklook(_quitnames[i].okey);
       if (qf & _quitnames[i].flag) {
          if (x == NULL)

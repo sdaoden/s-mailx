@@ -361,7 +361,7 @@ a_main_setup_vars(void){
 su_SINLINE void
 a_main_setup_screen(void){
    /* Problem: VAL_ configuration values are strings, we need numbers */
-   n_LCTAV(VAL_HEIGHT[0] != '\0' && (VAL_HEIGHT[1] == '\0' ||
+   LCTAV(VAL_HEIGHT[0] != '\0' && (VAL_HEIGHT[1] == '\0' ||
       VAL_HEIGHT[2] == '\0' || VAL_HEIGHT[3] == '\0'));
 #define a_HEIGHT \
    (VAL_HEIGHT[1] == '\0' ? (VAL_HEIGHT[0] - '0') \
@@ -369,7 +369,7 @@ a_main_setup_screen(void){
       ? ((VAL_HEIGHT[0] - '0') * 10 + (VAL_HEIGHT[1] - '0')) \
       : (((VAL_HEIGHT[0] - '0') * 10 + (VAL_HEIGHT[1] - '0')) * 10 + \
          (VAL_HEIGHT[2] - '0'))))
-   n_LCTAV(VAL_WIDTH[0] != '\0' &&
+   LCTAV(VAL_WIDTH[0] != '\0' &&
       (VAL_WIDTH[1] == '\0' || VAL_WIDTH[2] == '\0' || VAL_WIDTH[3] == '\0'));
 #define a_WIDTH \
    (VAL_WIDTH[1] == '\0' ? (VAL_WIDTH[0] - '0') \
@@ -605,7 +605,7 @@ jleave:
 static void
 a_main_hdrstop(int signo){
    NYD; /* Signal handler */
-   n_UNUSED(signo);
+   UNUSED(signo);
 
    fflush(n_stdout);
    n_err_sighdl(_("\nInterrupt\n"));
@@ -677,7 +677,7 @@ main(int argc, char *argv[]){
    NYD_IN;
 
    a_head = NULL;
-   n_UNINIT(a_curr, NULL);
+   UNINIT(a_curr, NULL);
    to = cc = bcc = NULL;
    attach = NULL;
    Aarg = emsg = folder = Larg = okey = qf = subject = uarg = NULL;

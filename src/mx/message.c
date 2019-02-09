@@ -202,7 +202,7 @@ static enum okay
 a_msg_get_header(struct message *mp){
    enum okay rv;
    NYD2_IN;
-   n_UNUSED(mp);
+   UNUSED(mp);
 
    switch(mb.mb_type){
    case MB_FILE:
@@ -235,7 +235,7 @@ a_msg_add_to_nmadat(char ***nmadat, size_t *nmasize, /* TODO Vector */
    size_t idx, i;
    NYD2_IN;
 
-   if((idx = PTR2SIZE(np - *nmadat)) >= *nmasize){
+   if((idx = P2UZ(np - *nmadat)) >= *nmasize){
       char **narr;
 
       i = *nmasize << 1;
@@ -277,7 +277,7 @@ a_msg_markall(char const *orig, struct n_cmd_arg *cap, int f){
       a_TMP = 1u<<30
    } flags;
    NYD_IN;
-   n_LCTA((ui32_t)a_ALLNET == (ui32_t)TRU1,
+   LCTA((ui32_t)a_ALLNET == (ui32_t)TRU1,
       "Constant is converted to bool_t via AND, thus");
 
    /* Update message array: clear MMARK but remember its former state for ` */
@@ -299,10 +299,10 @@ a_msg_markall(char const *orig, struct n_cmd_arg *cap, int f){
 
    np = nmadat =
    nmadat_lofi = n_lofi_alloc((nmasize = 64) * sizeof *np); /* TODO vector */
-   n_UNINIT(beg, 0);
-   n_UNINIT(idfield, a_MSG_ID_REFERENCES);
+   UNINIT(beg, 0);
+   UNINIT(idfield, a_MSG_ID_REFERENCES);
    a_msg_threadflag = FAL0;
-   valdot = (int)PTR2SIZE(dot - message + 1);
+   valdot = (int)P2UZ(dot - message + 1);
    colmod = 0;
    id = NULL;
    flags = a_ALLOC | (mb.mb_threaded ? a_THREADED : 0) |
@@ -393,7 +393,7 @@ jnumber__thr:
                      id = N_("Range crosses multiple threads\n");
                      goto jerrmsg;
                   }
-                  i = (int)PTR2SIZE(mx - message + 1);
+                  i = (int)P2UZ(mx - message + 1);
                }
             }
 
@@ -419,7 +419,7 @@ jnumber__thr:
          do{
             if(flags & a_THREADED){
                mx = next_in_thread(&message[i - 1]);
-               i = mx ? (int)PTR2SIZE(mx - message + 1) : msgCount + 1;
+               i = mx ? (int)P2UZ(mx - message + 1) : msgCount + 1;
             }else
                ++i;
             if(i > msgCount){
@@ -437,7 +437,7 @@ jnumber__thr:
          do{
             if(flags & a_THREADED){
                mx = prev_in_thread(&message[i - 1]);
-               i = mx ? (int)PTR2SIZE(mx - message + 1) : 0;
+               i = mx ? (int)P2UZ(mx - message + 1) : 0;
             }else
                --i;
             if(i <= 0){
@@ -617,7 +617,7 @@ jnumber__thr:
        * common case we walk the entire array even in case of errors */
       /* XXX Like many other things around here: this should be outsourced */
       if(np > nmadat){
-         j = PTR2SIZE(np - nmadat) * sizeof(*sep);
+         j = P2UZ(np - nmadat) * sizeof(*sep);
          sep = n_lofi_alloc(j);
          su_mem_set(sep, 0, j);
 
@@ -654,7 +654,7 @@ jat_where_default:
                      continue;
                   }
                }
-               cp = savestrbuf(xsave, PTR2SIZE(x - xsave));
+               cp = savestrbuf(xsave, P2UZ(x - xsave));
 
                /* Namelist could be a regular expression, too */
 #ifdef mx_HAVE_REGEX
@@ -680,7 +680,7 @@ jat_where_default:
                   /* Because of the special cases we need to trim explicitly
                    * here, they are not covered by su_cs_sep_c() */
                   sio.s = cp;
-                  sio.l = PTR2SIZE(x - xsave);
+                  sio.l = P2UZ(x - xsave);
                   if(*(cp = n_str_trim(&sio, n_STR_TRIM_BOTH)->s) == '\0')
                      goto jat_where_default;
                   sep[j].ss_field = cp;
@@ -735,7 +735,7 @@ jat_where_default:
          if(np > nmadat){
             for(nq = nmadat; *nq != NULL; ++nq){
                if(**nq == '@'){
-                  if(a_msg_match_at(mp, &sep[PTR2SIZE(nq - nmadat)])){
+                  if(a_msg_match_at(mp, &sep[P2UZ(nq - nmadat)])){
                      flags |= a_TMP;
                      break;
                   }
@@ -765,7 +765,7 @@ jat_where_default:
 jnamesearch_sepfree:
       if(sep != NULL){
 #ifdef mx_HAVE_REGEX
-         for(j = PTR2SIZE(np - nmadat); j-- != 0;){
+         for(j = P2UZ(np - nmadat); j-- != 0;){
             if(sep[j].ss_fieldre != NULL)
                regfree(sep[j].ss_fieldre);
             if(sep[j].ss_bodyre != NULL)
@@ -790,7 +790,7 @@ jnamesearch_sepfree:
             continue;
 
          for(colp = a_msg_coltabs;
-               PTRCMP(colp, <, &a_msg_coltabs[n_NELEM(a_msg_coltabs)]); ++colp)
+               PCMP(colp, <, &a_msg_coltabs[NELEM(a_msg_coltabs)]); ++colp)
             if(colp->mco_bit & colmod){
                /* Is this a colon modifier that requires evaluation? */
                if(colp->mco_mask == 0){
@@ -849,7 +849,7 @@ a_msg_evalcol(int col){
 
    rv = 0;
    for(colp = a_msg_coltabs;
-         PTRCMP(colp, <, &a_msg_coltabs[n_NELEM(a_msg_coltabs)]); ++colp)
+         PCMP(colp, <, &a_msg_coltabs[NELEM(a_msg_coltabs)]); ++colp)
       if(colp->mco_char == col){
          rv = colp->mco_bit;
          break;
@@ -996,7 +996,7 @@ jmtop:
 
    /* Check for single character tokens; return such if found */
    for(lp = a_msg_singles;
-         PTRCMP(lp, <, &a_msg_singles[n_NELEM(a_msg_singles)]); ++lp){
+         PCMP(lp, <, &a_msg_singles[NELEM(a_msg_singles)]); ++lp){
       if(c == lp->ml_char){
          mslp->msl_str = mslp->msl__smallstrbuf;
          mslp->msl_str[0] = c;
@@ -1148,7 +1148,7 @@ a_msg_match_dash(struct message *mp, char const *str){
    if(ok_blook(searchheaders) && (hfield = su_cs_find_c(str, ':'))){
       size_t l;
 
-      l = PTR2SIZE(hfield - str);
+      l = P2UZ(hfield - str);
       hfield = n_lofi_alloc(l +1);
       su_mem_copy(hfield, str, l);
       hfield[l] = '\0';
@@ -1206,7 +1206,7 @@ a_msg_unmark(int mesg){
    NYD2_IN;
 
    i = (size_t)mesg;
-   if(i < 1 || UICMP(z, i, >, msgCount))
+   if(i < 1 || UCMP(z, i, >, msgCount))
       n_panic(_("Bad message number to unmark"));
    message[--i].m_flag &= ~MMARK;
    NYD2_OU;
@@ -1223,9 +1223,9 @@ a_msg_metamess(int meta, int f)
    switch (c) {
    case '^': /* First 'good' message left */
       mp = mb.mb_threaded ? threadroot : message;
-      while (PTRCMP(mp, <, message + msgCount)) {
+      while (PCMP(mp, <, message + msgCount)) {
          if (!(mp->m_flag & MHIDDEN) && (mp->m_flag & MDELETED) == (ui32_t)f) {
-            c = (int)PTR2SIZE(mp - message + 1);
+            c = (int)P2UZ(mp - message + 1);
             goto jleave;
          }
          if (mb.mb_threaded) {
@@ -1244,7 +1244,7 @@ a_msg_metamess(int meta, int f)
             ? this_in_thread(threadroot, -1) : message + msgCount - 1;
       while (mp >= message) {
          if (!(mp->m_flag & MHIDDEN) && (mp->m_flag & MDELETED) == (ui32_t)f) {
-            c = (int)PTR2SIZE(mp - message + 1);
+            c = (int)P2UZ(mp - message + 1);
             goto jleave;
          }
          if (mb.mb_threaded) {
@@ -1354,7 +1354,7 @@ FL enum okay
 get_body(struct message *mp){
    enum okay rv;
    NYD_IN;
-   n_UNUSED(mp);
+   UNUSED(mp);
 
    switch(mb.mb_type){
    case MB_FILE:
@@ -1396,7 +1396,7 @@ message_reset(void){
 FL void
 message_append(struct message *mp){
    NYD_IN;
-   if(UICMP(z, msgCount + 1, >=, a_msg_mem_space)){
+   if(UCMP(z, msgCount + 1, >=, a_msg_mem_space)){
       /* XXX remove _mem_space magics (or use s_Vector) */
       a_msg_mem_space = ((a_msg_mem_space >= 128 &&
                a_msg_mem_space <= 1000000)
@@ -1584,7 +1584,7 @@ n_getmsglist(char const *buf, int *vector, int flags,
       for(mp = message; mp < &message[msgCount]; ++mp)
          if(mp->m_flag & MMARK){
             if(!(mp->m_flag & MNEWEST))
-               a_msg_unmark((int)PTR2SIZE(mp - message + 1));
+               a_msg_unmark((int)P2UZ(mp - message + 1));
             else
                ++mc;
          }
@@ -1597,14 +1597,14 @@ n_getmsglist(char const *buf, int *vector, int flags,
    if(mb.mb_threaded == 0){
       for(mp = message; mp < &message[msgCount]; ++mp)
          if(mp->m_flag & MMARK)
-            *ip++ = (int)PTR2SIZE(mp - message + 1);
+            *ip++ = (int)P2UZ(mp - message + 1);
    }else{
       for(mp = threadroot; mp != NULL; mp = next_in_thread(mp))
          if(mp->m_flag & MMARK)
-            *ip++ = (int)PTR2SIZE(mp - message + 1);
+            *ip++ = (int)P2UZ(mp - message + 1);
    }
    *ip = 0;
-   mc = (int)PTR2SIZE(ip - vector);
+   mc = (int)P2UZ(ip - vector);
    if(mc != 1)
       n_pstate &= ~n_PS_MSGLIST_DIRECT;
 jleave:
@@ -1627,10 +1627,10 @@ first(int f, int m)
    f &= MDELETED;
    m &= MDELETED;
    for (mp = dot;
-         mb.mb_threaded ? (mp != NULL) : PTRCMP(mp, <, message + msgCount);
+         mb.mb_threaded ? (mp != NULL) : PCMP(mp, <, message + msgCount);
          mb.mb_threaded ? (mp = next_in_thread(mp)) : ++mp) {
       if (!(mp->m_flag & MHIDDEN) && (mp->m_flag & m) == (ui32_t)f) {
-         rv = (int)PTR2SIZE(mp - message + 1);
+         rv = (int)P2UZ(mp - message + 1);
          goto jleave;
       }
    }
@@ -1639,7 +1639,7 @@ first(int f, int m)
       for (mp = dot - 1; (mb.mb_threaded ? (mp != NULL) : (mp >= message));
             mb.mb_threaded ? (mp = prev_in_thread(mp)) : --mp) {
          if (!(mp->m_flag & MHIDDEN) && (mp->m_flag & m) == (ui32_t)f) {
-            rv = (int)PTR2SIZE(mp - message + 1);
+            rv = (int)P2UZ(mp - message + 1);
             goto jleave;
          }
       }

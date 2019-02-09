@@ -163,13 +163,13 @@ _mime_param_value_trim(struct str *result, char const *start,
             co = '\0';
          else
             co = cn;
-      i = PTR2SIZE(e++ - start);
+      i = P2UZ(e++ - start);
       rv = -TRU1;
    } else {
       for (e = start; (cn = *e) != '\0' && !su_cs_is_white(cn) && cn != ';';
             ++e)
          ;
-      i = PTR2SIZE(e - start);
+      i = P2UZ(e - start);
       rv = TRU1;
    }
 
@@ -250,7 +250,7 @@ _rfc2231_param_parse(char const *param, size_t plen, char const *hbp)
 jumpin:
          for (cp = hbp; su_cs_is_digit(*cp); ++cp)
             ;
-         i = PTR2SIZE(cp - hbp);
+         i = P2UZ(cp - hbp);
          if (i != 0) {
             if (i >= sizeof(nobuf)) {
                emsg = N_("too many digits to form a valid number");
@@ -340,13 +340,13 @@ jeeqaaster:
          /* Watch out for character set and language info */
          if (np->rj_is_enc &&
                (eptr = su_mem_find(xval.s, '\'', xval.l)) != NULL) {
-            np->rj_cs_len = PTR2SIZE(eptr - xval.s);
+            np->rj_cs_len = P2UZ(eptr - xval.s);
             if ((eptr = su_mem_find(eptr + 1, '\'', xval.l - np->rj_cs_len - 1)
                   ) == NULL) {
                emsg = N_("faulty RFC 2231 parameter extension");
                goto jerr;
             }
-            np->rj_val_off = PTR2SIZE(++eptr - xval.s);
+            np->rj_val_off = P2UZ(++eptr - xval.s);
          }
 
          hbp = cp;
@@ -403,7 +403,7 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
    NYD2_IN;
 
 #ifdef mx_HAVE_ICONV
-   n_UNINIT(fhicd, (iconv_t)-1);
+   UNINIT(fhicd, (iconv_t)-1);
 
    if (head->rj_is_enc) {
       char const *tcs;
@@ -537,7 +537,7 @@ _mime_param_create(struct mime_param_builder *self)
     * multibyte sequences until sizeof(buf) is reached, but since we (a) don't
     * support stateful encodings and (b) will try to synchronize on UTF-8 this
     * problem is scarce, possibly even artificial */
-   char buf[n_MIN(MIME_LINELEN_MAX >> 1, MIME_LINELEN * 2)],
+   char buf[MIN(MIME_LINELEN_MAX >> 1, MIME_LINELEN * 2)],
       *bp, *bp_max, *bp_xmax, *bp_lanoenc;
    char const *vb, *vb_lanoenc;
    size_t vl;
@@ -548,7 +548,7 @@ _mime_param_create(struct mime_param_builder *self)
       _RAW     = 1<<2
    } f = _NONE;
    NYD2_IN;
-   n_LCTA(sizeof(buf) >= MIME_LINELEN * 2, "Buffer to small for operation");
+   LCTA(sizeof(buf) >= MIME_LINELEN * 2, "Buffer to small for operation");
 
 jneed_enc:
    self->mpb_buf = bp = bp_lanoenc = buf;
@@ -566,11 +566,11 @@ jneed_enc:
       bp_max -= self->mpb_charset_len;
       bp_xmax -= self->mpb_charset_len;
    }
-   if (PTRCMP(bp_max, <=, buf + sizeof("Hunky Dory"))) {
+   if (PCMP(bp_max, <=, buf + sizeof("Hunky Dory"))) {
       su_DBG( n_alert("_mime_param_create(): Hunky Dory!"); )
       bp_max = buf + (MIME_LINELEN >> 1); /* And then it is SHOULD, anyway */
    }
-   ASSERT(PTRCMP(bp_max + (4 * 3), <=, bp_xmax)); /* UTF-8 extra pad, below */
+   ASSERT(PCMP(bp_max + (4 * 3), <=, bp_xmax)); /* UTF-8 extra pad, below */
 
    f &= _ISENC;
    while (vl > 0) {
@@ -588,7 +588,7 @@ jneed_enc:
               * are splitted across "too many" fields, including ones that
               * misread RFC 2231 to allow only one digit, i.e., a maximum of
               * ten.  This is plain wrong, but that won't help their users */
-            if (PTR2SIZE(bp - buf) > /*10 (strawberry) COMPAT*/MIME_LINELEN>>1)
+            if (P2UZ(bp - buf) > /*10 (strawberry) COMPAT*/MIME_LINELEN>>1)
                goto jrecurse;
             f |= _ISENC;
             goto jneed_enc;
@@ -634,11 +634,11 @@ jneed_enc:
       if (bp <= bp_max)
          continue;
 
-      if ((f & _HADRAW) && (PTRCMP(bp - bp_lanoenc, <=, bp_lanoenc - buf) ||
+      if ((f & _HADRAW) && (PCMP(bp - bp_lanoenc, <=, bp_lanoenc - buf) ||
             (!self->mpb_is_utf8 &&
-             PTR2SIZE(bp_lanoenc - buf) >= (MIME_LINELEN >> 2)))) {
+             P2UZ(bp_lanoenc - buf) >= (MIME_LINELEN >> 2)))) {
          bp = bp_lanoenc;
-         vl += PTR2SIZE(vb - vb_lanoenc);
+         vl += P2UZ(vb - vb_lanoenc);
          vb = vb_lanoenc;
          goto jrecurse;
       }
@@ -658,7 +658,7 @@ jneed_enc:
 
    /* That level made the great and completed encoding.  Build result */
    self->mpb_is_enc = ((f & _ISENC) != 0);
-   self->mpb_buf_len = PTR2SIZE(bp - buf);
+   self->mpb_buf_len = P2UZ(bp - buf);
    __mime_param_join(self);
 jleave:
    NYD2_OU;
@@ -673,7 +673,7 @@ jrecurse:
    }
 
    self->mpb_is_enc = ((f & _ISENC) != 0);
-   self->mpb_buf_len = PTR2SIZE(bp - buf);
+   self->mpb_buf_len = P2UZ(bp - buf);
 
    su_mem_set(&next, 0, sizeof next);
    next.mpb_next = self;
@@ -746,7 +746,7 @@ __mime_param_join(struct mime_param_builder *head)
          while (*nop != '\0')
             *cp++ = *nop++;
 
-         ll += PTR2SIZE(cp - cpo);
+         ll += P2UZ(cp - cpo);
       }
 
       if ((f & _ISENC) || np->mpb_is_enc) {
@@ -798,7 +798,7 @@ __mime_param_join(struct mime_param_builder *head)
       ++ll;
    }
    *cp = '\0';
-   result->l = PTR2SIZE(cp - result->s);
+   result->l = P2UZ(cp - result->s);
    ASSERT(result->l < len_max);
    NYD2_OU;
 }

@@ -501,7 +501,7 @@ itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
       rv = matchenvelope(m, "bcc", n->n_v);
       break;
    case ITBEFORE:
-      rv = UICMP(z, m->m_time, <, n->n_n);
+      rv = UCMP(z, m->m_time, <, n->n_n);
       break;
    case ITBODY:
       su_mem_set(&se, 0, sizeof se);
@@ -543,8 +543,8 @@ itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
       rv = !(m->m_flag & MNEW);
       break;
    case ITON:
-      rv = (UICMP(z, m->m_time, >=, n->n_n) &&
-            UICMP(z, m->m_time, <, n->n_n + 86400));
+      rv = (UCMP(z, m->m_time, >=, n->n_n) &&
+            UCMP(z, m->m_time, <, n->n_n + 86400));
       break;
    case ITOR:
       rv = itexecute(mp, m, c, n->n_x) | itexecute(mp, m, c, n->n_y);
@@ -556,20 +556,20 @@ itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
       rv = ((m->m_flag & MREAD) != 0);
       break;
    case ITSENTBEFORE:
-      rv = UICMP(z, m->m_date, <, n->n_n);
+      rv = UCMP(z, m->m_date, <, n->n_n);
       break;
    case ITSENTON:
-      rv = (UICMP(z, m->m_date, >=, n->n_n) &&
-            UICMP(z, m->m_date, <, n->n_n + 86400));
+      rv = (UCMP(z, m->m_date, >=, n->n_n) &&
+            UCMP(z, m->m_date, <, n->n_n + 86400));
       break;
    case ITSENTSINCE:
-      rv = UICMP(z, m->m_date, >=, n->n_n);
+      rv = UCMP(z, m->m_date, >=, n->n_n);
       break;
    case ITSINCE:
-      rv = UICMP(z, m->m_time, >=, n->n_n);
+      rv = UCMP(z, m->m_time, >=, n->n_n);
       break;
    case ITSMALLER:
-      rv = UICMP(z, m->m_xsize, <, n->n_n);
+      rv = UCMP(z, m->m_xsize, <, n->n_n);
       break;
    case ITSUBJECT:
       rv = matchfield(m, "subject", n->n_v);
@@ -632,7 +632,7 @@ _imap_read_date(char const *cp)
    if (xp[3] != '-')
       goto jerr;
    su_idec_s32_cp(&year, &xp[4], 10, &yp);
-   if (year < 1970 || year > 2037 || PTRCMP(yp, !=, xp + 8))
+   if (year < 1970 || year > 2037 || PCMP(yp, !=, xp + 8))
       goto jerr;
    if (yp[0] != '\0' && (yp[1] != '"' || yp[2] != '\0'))
       goto jerr;
@@ -771,7 +771,7 @@ mkenvelope(struct mx_name *np)
             --cp;
          rp = ip;
          xp = out.s;
-         if (PTRCMP(xp, <, cp - 1) && *xp == '"' && cp[-1] == '"') {
+         if (PCMP(xp, <, cp - 1) && *xp == '"' && cp[-1] == '"') {
             ++xp;
             --cp;
          }
@@ -883,7 +883,7 @@ imap_search(char const *spec, int f)
       imap_getheaders(1, msgCount);
 #endif
    srelax_hold();
-   for (i = 0; UICMP(z, i, <, msgCount); ++i) {
+   for (i = 0; UCMP(z, i, <, msgCount); ++i) {
       if (message[i].m_flag & MHIDDEN)
          continue;
       if (f == MDELETED || !(message[i].m_flag & MDELETED)) {

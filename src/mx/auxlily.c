@@ -150,9 +150,9 @@ a_aux_rand_init(void){
     * However, support sequential reading to avoid possible hangs that have
     * been reported on the ML (2017-08-22, s-nail/s-mailx freezes when
     * mx_HAVE_GETRANDOM is #defined) */
-   n_LCTA(sizeof(a_aux_rand->a._dat) <= 256,
+   LCTA(sizeof(a_aux_rand->a._dat) <= 256,
       "Buffer too large to be served without su_ERR_INTR error");
-   n_LCTA(sizeof(a_aux_rand->a._dat) >= 256,
+   LCTA(sizeof(a_aux_rand->a._dat) >= 256,
       "Buffer too small to serve used array indices");
    /* C99 */{
       size_t o, i;
@@ -221,7 +221,7 @@ a_aux_rand_init(void){
 
       for(;;){
          /* Stir the entire pool once */
-         for(u.i = n_NELEM(a_aux_rand->b32); u.i-- != 0;){
+         for(u.i = NELEM(a_aux_rand->b32); u.i-- != 0;){
 
 # ifdef mx_HAVE_CLOCK_GETTIME
             clock_gettime(CLOCK_REALTIME, &ts);
@@ -233,11 +233,11 @@ a_aux_rand_init(void){
             if(rnd & 1)
                t = (t >> 16) | (t << 16);
             a_aux_rand->b32[u.i] ^= a_aux_rand_weak(seed ^ t);
-            a_aux_rand->b32[t % n_NELEM(a_aux_rand->b32)] ^= seed;
+            a_aux_rand->b32[t % NELEM(a_aux_rand->b32)] ^= seed;
             if(rnd == 7 || rnd == 17)
                a_aux_rand->b32[u.i] ^=
                   a_aux_rand_weak(seed ^ (ui32_t)ts.tv_sec);
-            k = a_aux_rand->b32[u.i] % n_NELEM(a_aux_rand->b32);
+            k = a_aux_rand->b32[u.i] % NELEM(a_aux_rand->b32);
             a_aux_rand->b32[k] ^= a_aux_rand->b32[u.i];
             seed ^= a_aux_rand_weak(a_aux_rand->b32[k]);
             if((rnd & 3) == 3)
@@ -566,8 +566,8 @@ n_c_from_hex_base16(char const hex[2]){
    si32_t rv;
    NYD2_IN;
 
-   if ((i1 = (ui8_t)hex[0] - '0') >= n_NELEM(atoi16) ||
-         (i2 = (ui8_t)hex[1] - '0') >= n_NELEM(atoi16))
+   if ((i1 = (ui8_t)hex[0] - '0') >= NELEM(atoi16) ||
+         (i2 = (ui8_t)hex[1] - '0') >= NELEM(atoi16))
       goto jerr;
    i1 = atoi16[i1];
    i2 = atoi16[i2];
@@ -992,7 +992,7 @@ n_time_now(bool_t force_update){ /* TODO event loop update IF cmd requests! */
    static struct n_timespec ts_now;
    NYD2_IN;
 
-   if(n_UNLIKELY(su_state_has(su_STATE_REPRODUCIBLE))){
+   if(UNLIKELY(su_state_has(su_STATE_REPRODUCIBLE))){
       /* Guaranteed 32-bit posnum TODO SOURCE_DATE_EPOCH should be 64-bit! */
       (void)su_idec_s64_cp(&ts_now.ts_sec, ok_vlook(SOURCE_DATE_EPOCH),
          0,NULL);
@@ -1017,7 +1017,7 @@ n_time_now(bool_t force_update){ /* TODO event loop update IF cmd requests! */
    }
 
    /* Just in case.. */
-   if(n_UNLIKELY(ts_now.ts_sec < 0))
+   if(UNLIKELY(ts_now.ts_sec < 0))
       ts_now.ts_sec = 0;
    NYD2_OU;
    return &ts_now;
@@ -1048,7 +1048,7 @@ jredo:
       cp = su_cs_pcopy(tc->tc_ctime, n_time_ctime((si64_t)tc->tc_time, tmp));
       *cp++ = '\n';
       *cp = '\0';
-      ASSERT(PTR2SIZE(++cp - tc->tc_ctime) < sizeof(tc->tc_ctime));
+      ASSERT(P2UZ(++cp - tc->tc_ctime) < sizeof(tc->tc_ctime));
    }
    NYD_OU;
 }
@@ -1083,7 +1083,7 @@ jredo:
       }
    }
 
-   if(n_UNLIKELY((y = tmp->tm_year) < 0 || y >= 9999/*SI32_MAX*/ - 1900)){
+   if(UNLIKELY((y = tmp->tm_year) < 0 || y >= 9999/*SI32_MAX*/ - 1900)){
       y = 1970;
       wdn = n_weekday_names[4];
       mn = n_month_names[0];
@@ -1257,7 +1257,7 @@ n_verr(char const *format, va_list ap){
 #ifdef mx_HAVE_ERRORS
    else{
       int imax, i;
-      n_LCTAV(ERRORS_MAX > 3);
+      LCTAV(ERRORS_MAX > 3);
 
       /* Link it into the `errors' message ring */
       if((enp = a_aux_err_tail) == NULL){
@@ -1287,7 +1287,7 @@ jcreat:
 # ifdef mx_HAVE_N_VA_COPY
       imax = 64;
 # else
-      imax = n_MIN(LINESIZE, 1024);
+      imax = MIN(LINESIZE, 1024);
 # endif
       for(i = imax;; imax = ++i /* xxx could wrap, maybe */){
 # ifdef mx_HAVE_N_VA_COPY
@@ -1307,7 +1307,7 @@ jcreat:
 # endif
          if(i <= 0)
             goto jleave;
-         if(UICMP(z, i, >=, imax)){
+         if(UCMP(z, i, >=, imax)){
 # ifdef mx_HAVE_N_VA_COPY
             /* XXX Check overflow for upcoming LEN+++i! */
             n_string_trunc(&enp->ae_str, len);

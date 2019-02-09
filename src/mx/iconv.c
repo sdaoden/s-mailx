@@ -70,7 +70,7 @@ n_iconv_normalize_name(char const *cset){
    }
 
    if(any || c != '\0'){
-      cp = savestrbuf(cset, PTR2SIZE(cp - cset));
+      cp = savestrbuf(cset, P2UZ(cp - cset));
       for(tcp = cp; (tc = *tcp) != '\0'; ++tcp)
          *tcp = su_cs_to_lower(tc);
 
@@ -95,7 +95,7 @@ n_iconv_name_is_ascii(char const *cset){ /* TODO ctext/su */
    char const * const *npp;
    NYD2_IN;
 
-   npp = &names[n_NELEM(names)];
+   npp = &names[NELEM(names)];
    do if((rv = !su_cs_cmp_case(cset, *--npp)))
       break;
    while((rv = (npp != &names[0])));
@@ -151,12 +151,12 @@ n_iconv_reset(iconv_t cd){
 /* Citrus project? */
 # if defined _ICONV_H_ && defined __ICONV_F_HIDE_INVALID
   /* DragonFly 3.2.1 is special TODO newer DragonFly too, but different */
-#  if n_OS_DRAGONFLY
+#  if su_OS_DRAGONFLY
 #   define __INBCAST(S) (char ** __restrict__)n_UNCONST(S)
 #  else
 #   define __INBCAST(S) (char const **)n_UNCONST(S)
 #  endif
-# elif n_OS_SUNOS || n_OS_SOLARIS
+# elif su_OS_SUNOS || su_OS_SOLARIS
 #  define __INBCAST(S) (char const ** __restrict__)n_UNCONST(S)
 # endif
 # ifndef __INBCAST
@@ -268,7 +268,7 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
       nol -= ol;
       err = n_iconv_buf(cd, icf, &ib, &il, &ob, &nol);
 
-      s = n_string_trunc(s, ol + PTR2SIZE(ob - ob_base));
+      s = n_string_trunc(s, ol + P2UZ(ob - ob_base));
       if(err == 0 || err != su_ERR_2BIG)
          break;
    }

@@ -110,17 +110,6 @@
  * OS, CC support, generic macros etc. TODO remove -> SU!
  */
 
-#define n_ABS su_ABS
-#define n_CLIP su_CLIP
-#define n_MAX su_MAX
-#define n_MIN su_MIN
-#define n_ISPOW2 su_IS_POW2
-
-#define n_OS_DRAGONFLY su_OS_DRAGONFLY
-#define n_OS_OPENBSD su_OS_OPENBSD
-#define n_OS_SOLARIS su_OS_SOLARIS
-#define n_OS_SUNOS su_OS_SUNOS
-
 /* CC */
 
 /* Suppress some technical warnings via #pragma's unless developing.
@@ -136,39 +125,7 @@
 # endif
 #endif
 
-#define COMMA su_COMMA
-#define EMPTY_FILE su_EMPTY_FILE
-
-#define PTR2SIZE su_P2UZ
-#define PTRCMP su_PCMP
-#define UICMP su_UCMP
-
-#define n_ALIGN su_Z_ALIGN
-#define n_ALIGN_SMALL su_Z_ALIGN_SMALL
-
-#define n_NELEM su_NELEM
-#define n_SIZEOF_FIELD su_FIELD_SIZEOF
-
-#define n_UNUSED su_UNUSED
-#define n_UNCONST(X) su_UNCONST(void*,X)
-#define n_UNVOLATILE(X) su_UNVOLATILE(void*,X)
-#define n_UNALIGN su_UNALIGN
-
-#define n_STRING su_STRING
-#define n_XSTRING su_XSTRING
-#define n_CONCAT su_CONCAT
-
-#define n_FIELD_INITN su_FIELD_INITN
-#define n_FIELD_INITI su_FIELD_INITI
-
-#define n_VFIELD_SIZE su_VFIELD_SIZE
-#define n_VSTRUCT_SIZEOF su_VSTRUCT_SIZEOF
-
-#undef __FUN__
-#define __FUN__ su_FUN
-
-#define n_LIKELY su_LIKELY
-#define n_UNLIKELY su_UNLIKELY
+#define n_UNCONST(X) su_UNCONST(void*,X) /* TODO */
 
 #undef mx_HAVE_NATCH_CHAR
 #if defined mx_HAVE_SETLOCALE && defined mx_HAVE_C90AMEND1 && \
@@ -178,18 +135,6 @@
 #else
 # define n_NATCH_CHAR(X)
 #endif
-
-/* Compile-Time-Assert
- * Problem is that some compilers warn on unused local typedefs, so add
- * a special local CTA to overcome this */
-#define n_CTA su_CTA
-#define n_LCTA su_LCTA
-#define n_CTAV su_CTAV
-#define n_LCTAV su_LCTAV
-#define n_MCTA su_MCTA
-
-#define n_UNINIT su_UNINIT
-#define n_BITENUM_MASK su_BITENUM_MASK
 
 /*
  * Types TODO v15: n_XX_t
@@ -501,7 +446,7 @@ enum n_file_lock_type{
 };
 
 enum n_fopen_state{ /* TODO add n_fopen_mode, too */
-   /* First n__PROTO_SHIFT bits are enum protocol!  n_MCTA()d below */
+   /* First n__PROTO_SHIFT bits are enum protocol!  MCTA()d below */
    n_FOPEN_STATE_NONE = 0,
    n_FOPEN_STATE_EXISTS = 1u<<5
 };
@@ -759,7 +704,7 @@ PROTO_UNKNOWN = n_PROTO_UNKNOWN,
    n__PROTO_SHIFT = n_PROTO_UNKNOWN,
    n_PROTO_MASK = (1u << n__PROTO_SHIFT) - 1
 };
-n_MCTA(n__PROTO_SHIFT == 5, "enum n_fopen_state shift value must be adjusted!")
+MCTA(n__PROTO_SHIFT == 5, "enum n_fopen_state shift value must be adjusted!")
 
 enum sendaction {
    SEND_MBOX,        /* no conversion to perform */
@@ -847,7 +792,7 @@ enum n_shexp_state{
    n_SHEXP_STATE_ERR_GROUPOPEN = 1u<<21,  /* _QUOTEOPEN + no }/]/)/ 4 ${/[/( */
    n_SHEXP_STATE_ERR_QUOTEOPEN = 1u<<22,  /* Quote remains open at EOS */
 
-   n_SHEXP_STATE_ERR_MASK = n_BITENUM_MASK(16, 22)
+   n_SHEXP_STATE_ERR_MASK = su_BITENUM_MASK(16, 22)
 };
 
 enum n_sigman_flags{
@@ -1125,7 +1070,7 @@ do{\
    n_PS_SIGWINCH_PEND = 1u<<13,        /* Need update of $COLUMNS/$LINES */
    n_PS_PSTATE_PENDMASK = n_PS_SIGWINCH_PEND, /* pstate housekeeping needed */
 
-   n_PS_ARGLIST_MASK = n_BITENUM_MASK(14, 16),
+   n_PS_ARGLIST_MASK = su_BITENUM_MASK(14, 16),
    n_PS_ARGMOD_LOCAL = 1u<<14,         /* "local" modifier TODO struct CmdCtx */
    n_PS_ARGMOD_VPUT = 1u<<16,          /* "vput" modifier TODO struct CmdCtx */
    n_PS_MSGLIST_GABBY = 1u<<14,        /* n_getmsglist() saw something gabby */
@@ -1584,14 +1529,14 @@ struct n_string{
 struct n_strlist{
    struct n_strlist *sl_next;
    size_t sl_len;
-   char sl_dat[n_VFIELD_SIZE(0)];
+   char sl_dat[VFIELD_SIZE(0)];
 };
 #define n_STRLIST_ALLOC(SZ) /* XXX -> nailfuns.h (and pimp interface) */\
-   n_alloc(n_VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
+   n_alloc(VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
 #define n_STRLIST_AUTO_ALLOC(SZ) \
-   n_autorec_alloc(n_VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
+   n_autorec_alloc(VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
 #define n_STRLIST_LOFI_ALLOC(SZ) \
-   n_lofi_alloc(n_VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
+   n_lofi_alloc(VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
 
 struct bidi_info {
    struct str  bi_start;      /* Start of (possibly) bidirectional text */
@@ -1603,7 +1548,7 @@ struct n_cmd_arg_desc{
    char cad_name[12];   /* Name of command */
    ui32_t cad_no;       /* Number of entries in cad_ent_flags */
    /* [enum n_cmd_arg_desc_flags,arg-dep] */
-   ui32_t cad_ent_flags[n_VFIELD_SIZE(0)][2];
+   ui32_t cad_ent_flags[VFIELD_SIZE(0)][2];
 };
 /* ISO C(99) doesn't allow initialization of "flex array" */
 #define n_CMD_ARG_DESC_SUBCLASS_DEF(CMD,NO,VAR) \
@@ -2080,7 +2025,7 @@ struct n_header_field{
    struct n_header_field *hf_next;
    ui32_t hf_nl;              /* Field-name length */
    ui32_t hf_bl;              /* Field-body length*/
-   char hf_dat[n_VFIELD_SIZE(0)];
+   char hf_dat[VFIELD_SIZE(0)];
 };
 
 struct header {

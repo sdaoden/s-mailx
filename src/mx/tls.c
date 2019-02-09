@@ -79,7 +79,7 @@ n_tls_set_verify_level(struct url const *urlp){
          if(!su_cs_cmp_case(a_tls_verify_levels[i].tv_name, cp)){
             n_tls_verify_level = a_tls_verify_levels[i].tv_level;
             break;
-         }else if(++i >= n_NELEM(a_tls_verify_levels)){
+         }else if(++i >= NELEM(a_tls_verify_levels)){
             n_err(_("Invalid value of *tls-verify*: %s\n"), cp);
             break;
          }
@@ -115,7 +115,7 @@ smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
    struct myline {
       struct myline  *ml_next;
       size_t         ml_len;
-      char           ml_buf[n_VFIELD_SIZE(0)];
+      char           ml_buf[VFIELD_SIZE(0)];
    } *head, *tail;
    char *buf;
    size_t bufsize, buflen, cnt;
@@ -143,7 +143,7 @@ jetmp:
          if (keep)
             fputs("X-Encoded-", *hp);
          for (;;) {
-            struct myline *ml = n_alloc(n_VSTRUCT_SIZEOF(struct myline, ml_buf
+            struct myline *ml = n_alloc(VSTRUCT_SIZEOF(struct myline, ml_buf
                   ) + buflen +1);
             if (tail != NULL)
                tail->ml_next = ml;

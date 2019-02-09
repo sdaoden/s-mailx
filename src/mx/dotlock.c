@@ -67,7 +67,7 @@ a_dotlock_main(void){
    /* Get the arguments "passed to us" */
    flt = a_dotlock_flt;
    fd = a_dotlock_fd;
-   n_UNUSED(fd);
+   UNUSED(fd);
    di = *a_dotlock_dip;
 
    /* chdir(2)? */
@@ -77,9 +77,9 @@ jislink:
    if((cp = su_cs_rfind_c(di.di_file_name, '/')) != NULL){
       char const *fname = cp + 1;
 
-      while(PTRCMP(cp - 1, >, di.di_file_name) && cp[-1] == '/')
+      while(PCMP(cp - 1, >, di.di_file_name) && cp[-1] == '/')
          --cp;
-      cp = savestrbuf(di.di_file_name, PTR2SIZE(cp - di.di_file_name));
+      cp = savestrbuf(di.di_file_name, P2UZ(cp - di.di_file_name));
       if(chdir(cp))
          goto jmsg;
 
@@ -105,7 +105,7 @@ jislink:
             dls = n_DLS_FISHY | n_DLS_ABANDON;
             goto jmsg;
          }
-         if(UICMP(z, sr, <, i)){
+         if(UCMP(z, sr, <, i)){
             x[sr] = '\0';
             break;
          }
@@ -133,7 +133,7 @@ jislink:
       int i;
 
       i = snprintf(name, sizeof name, "%s.lock", di.di_file_name);
-      if(i < 0 || UICMP(32, i, >=, sizeof name)){
+      if(i < 0 || UCMP(32, i, >=, sizeof name)){
 jenametool:
          dls = n_DLS_NAMETOOLONG | n_DLS_ABANDON;
          goto jmsg;
@@ -147,7 +147,7 @@ jenametool:
          if(su_err_no() == 0)
             break;
 # endif
-         if(UICMP(z, NAME_MAX - 1, <, i))
+         if(UCMP(z, NAME_MAX - 1, <, i))
             goto jenametool;
 # ifdef mx_HAVE_PATHCONF
       }else if(pc - 1 >= i)
@@ -258,7 +258,7 @@ n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
 
    rv = NULL;
    didmsg = FAL0;
-   n_UNINIT(serr, 0);
+   UNINIT(serr, 0);
 #ifdef mx_HAVE_DOTLOCK
    emsg = NULL;
 #endif
@@ -343,7 +343,7 @@ jleave:
    /* Let's check whether we were able to create the dotlock file */
    for(;;){
       u.r = read(cpipe[0], &dls, sizeof dls);
-      if(UICMP(z, u.r, !=, sizeof dls)){
+      if(UCMP(z, u.r, !=, sizeof dls)){
          serr = (u.r != -1) ? su_ERR_AGAIN : su_err_no();
          dls = n_DLS_DUNNO | n_DLS_ABANDON;
       }else

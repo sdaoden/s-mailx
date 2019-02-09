@@ -86,7 +86,7 @@ static struct a_header_cmatch_data const a_header_cmatch_data[] = {
    {0, 0, NULL}
 };
 #define a_HEADER_DATE_MINLEN 20
-n_CTAV(n_FROM_DATEBUF > sizeof("From_") -1 + 3 + 30 +1);
+CTAV(n_FROM_DATEBUF > sizeof("From_") -1 + 3 + 30 +1);
 
 /* Savage extract date field from From_ line.  linelen is convenience as line
  * must be terminated (but it may end in a newline [sequence]).
@@ -188,7 +188,7 @@ jat_dot:
       }
    }
 
-   linelen -= PTR2SIZE(cp - line);
+   linelen -= P2UZ(cp - line);
    if (linelen < a_HEADER_DATE_MINLEN)
       goto jerr;
    if (cp[linelen - 1] == '\n') {
@@ -529,7 +529,7 @@ jaddr_check:
                   mx_NAME_ADDRSPEC_ERR_ATSEQ, c.u);
             goto jleave;
          }
-         agp->ag_sdom_start = PTR2SIZE(p - addr);
+         agp->ag_sdom_start = P2UZ(p - addr);
          agp->ag_n_flags |= mx_NAME_ADDRSPEC_ISADDR; /* TODO .. really? */
          flags &= ~a_DOMAIN_MASK;
          flags |= (*p == '[') ? a_IN_AT | a_IN_DOMAIN | a_DOMAIN_V6
@@ -636,7 +636,7 @@ jnode_redo:
          switch((c.c = *cp)){
          case '(':
             if(tp != NULL)
-               tp->t_end = PTR2SIZE(cp - cp1st);
+               tp->t_end = P2UZ(cp - cp1st);
             tp = n_lofi_alloc(sizeof *tp);
             tp->t_next = NULL;
             if((tp->t_last = tcurr) != NULL)
@@ -645,9 +645,9 @@ jnode_redo:
                thead = tp;
             tcurr = tp;
             tp->t_f = a_T_TCOMM;
-            tp->t_start = PTR2SIZE(++cp - cp1st);
+            tp->t_start = P2UZ(++cp - cp1st);
             xp = skip_comment(cp);
-            tp->t_end = PTR2SIZE(xp - cp1st);
+            tp->t_end = P2UZ(xp - cp1st);
             cp = xp;
             if(tp->t_end > tp->t_start){
                if(xp[-1] == ')')
@@ -664,7 +664,7 @@ jnode_redo:
 
          case '"':
             if(tp != NULL)
-               tp->t_end = PTR2SIZE(cp - cp1st);
+               tp->t_end = P2UZ(cp - cp1st);
             tp = n_lofi_alloc(sizeof *tp);
             tp->t_next = NULL;
             if((tp->t_last = tcurr) != NULL)
@@ -673,14 +673,14 @@ jnode_redo:
                thead = tp;
             tcurr = tp;
             tp->t_f = a_T_TQUOTE;
-            tp->t_start = PTR2SIZE(++cp - cp1st);
+            tp->t_start = P2UZ(++cp - cp1st);
             for(xp = cp; xp < cpmax; ++xp){
                if((c.c = *xp) == '"')
                   break;
                if(c.c == '\\' && xp[1] != '\0')
                   ++xp;
             }
-            tp->t_end = PTR2SIZE(xp - cp1st);
+            tp->t_end = P2UZ(xp - cp1st);
             cp = &xp[1];
             if(tp->t_end > tp->t_start){
                /* No closing quote - strip trailing whitespace */
@@ -696,7 +696,7 @@ jnode_redo:
          default:
             if(su_cs_is_blank(c.c)){
                if(tp != NULL)
-                  tp->t_end = PTR2SIZE(cp - cp1st);
+                  tp->t_end = P2UZ(cp - cp1st);
                tp = NULL;
                ++cp;
                break;
@@ -711,7 +711,7 @@ jnode_redo:
                   thead = tp;
                tcurr = tp;
                tp->t_f = a_T_TATOM;
-               tp->t_start = PTR2SIZE(cp - cp1st);
+               tp->t_start = P2UZ(cp - cp1st);
             }
             ++cp;
 
@@ -742,7 +742,7 @@ jnode_redo:
          }
       }
       if(tp != NULL)
-         tp->t_end = PTR2SIZE(cp - cp1st);
+         tp->t_end = P2UZ(cp - cp1st);
 
       if(!(flags & a_REDO_NODE_AFTER_ADDR)){
          flags |= a_REDO_NODE_AFTER_ADDR;
@@ -938,7 +938,7 @@ jput_quote:
                   ostp = n_string_push_c(ostp, ' ');
 
                if((tcurr->t_f & (a_T_TATOM | a_T_SPECIAL)) == a_T_TATOM)
-                  ostp = n_string_push_buf(ostp, cp, PTR2SIZE(cpmax - cp));
+                  ostp = n_string_push_buf(ostp, cp, P2UZ(cpmax - cp));
                else{
                   bool_t esc;
 
@@ -994,7 +994,7 @@ jput_quote_esc:
          goto jleave;
       }
 
-      addr = agp->ag_skinned = savestrbuf(cp, PTR2SIZE(cpmax - cp));
+      addr = agp->ag_skinned = savestrbuf(cp, P2UZ(cpmax - cp));
 
       /* TODO This parser is a mess.  We do not know whether this is truly
        * TODO valid, and all our checks are not truly RFC conforming.
@@ -1070,7 +1070,7 @@ jinsert_domain:
 
                cp = &agp->ag_input[agp->ag_iaddr_start];
                cpmax = &agp->ag_input[agp->ag_iaddr_aend];
-               agp->ag_skinned = savestrbuf(cp, PTR2SIZE(cpmax - cp));
+               agp->ag_skinned = savestrbuf(cp, P2UZ(cpmax - cp));
             }
          }else
             agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
@@ -1135,12 +1135,12 @@ a_gethfield(enum n_header_extract_flags hef, FILE *f,
       cp = *linebuf + c;
       for (;;) {
          isenc = 0;
-         while (PTRCMP(--cp, >=, *linebuf) && su_cs_is_blank(*cp))
+         while (PCMP(--cp, >=, *linebuf) && su_cs_is_blank(*cp))
             ;
          cp++;
          if (rem <= 0)
             break;
-         if (PTRCMP(cp - 8, >=, *linebuf) && cp[-1] == '=' && cp[-2] == '?')
+         if (PCMP(cp - 8, >=, *linebuf) && cp[-1] == '=' && cp[-2] == '?')
             isenc |= 1;
          ungetc(c = getc(f), f);
          if (!su_cs_is_blank(c))
@@ -1151,12 +1151,12 @@ a_gethfield(enum n_header_extract_flags hef, FILE *f,
          --rem;
          for (cp2 = line2; su_cs_is_blank(*cp2); ++cp2)
             ;
-         c -= (int)PTR2SIZE(cp2 - line2);
+         c -= (int)P2UZ(cp2 - line2);
          if (cp2[0] == '=' && cp2[1] == '?' && c > 8)
             isenc |= 2;
-         if (PTRCMP(cp + c, >=, *linebuf + *linesize - 2)) {
-            size_t diff = PTR2SIZE(cp - *linebuf),
-               colondiff = PTR2SIZE(*colon - *linebuf);
+         if (PCMP(cp + c, >=, *linebuf + *linesize - 2)) {
+            size_t diff = P2UZ(cp - *linebuf),
+               colondiff = P2UZ(*colon - *linebuf);
             *linebuf = n_realloc(*linebuf, *linesize += c + 2);
             cp = &(*linebuf)[diff];
             *colon = &(*linebuf)[colondiff];
@@ -1497,7 +1497,7 @@ jeseek:
          for(nstart = cp = linebuf;; ++cp)
             if(!fieldnamechar(*cp))
                break;
-         nl = (ui32_t)PTR2SIZE(cp - nstart);
+         nl = (ui32_t)P2UZ(cp - nstart);
 
          while(su_cs_is_blank(*cp))
             ++cp;
@@ -1512,7 +1512,7 @@ jebadhead:
 
          ++seenfields;
          *hftail =
-         hfp = n_autorec_alloc(n_VSTRUCT_SIZEOF(struct n_header_field,
+         hfp = n_autorec_alloc(VSTRUCT_SIZEOF(struct n_header_field,
                hf_dat) + nl +1 + bl);
             hftail = &hfp->hf_next;
          hfp->hf_next = NULL;
@@ -1530,7 +1530,7 @@ jebadhead:
       if (linebuf[0] != '\0') {
          for (cp = linebuf; *(++cp) != '\0';)
             ;
-         fseek(fp, (long)-PTR2SIZE(1 + cp - linebuf), SEEK_CUR);
+         fseek(fp, (long)-P2UZ(1 + cp - linebuf), SEEK_CUR);
       } else {
          if ((c = getc(fp)) != '\n' && c != EOF)
             ungetc(c, fp);
@@ -1754,7 +1754,7 @@ expandaddr_to_eaf(void){
             ++cp;
 
          for(eafp = eafa;; ++eafp) {
-            if(eafp == &eafa[n_NELEM(eafa)]){
+            if(eafp == &eafa[NELEM(eafa)]){
                if(n_poption & n_PO_D_V)
                   n_err(_("Unknown *expandaddr* value: %s\n"), cp);
                break;
@@ -2016,7 +2016,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
       case '\t':
          if((flags & (a_GOTADDR | a_GOTSPACE)) == a_GOTADDR){
             flags |= a_GOTSPACE;
-            agp->ag_iaddr_aend = PTR2SIZE(cp - name);
+            agp->ag_iaddr_aend = P2UZ(cp - name);
          }
          if (cp[0] == 'a' && cp[1] == 't' && su_cs_is_blank(cp[2]))
             cp += 3, *cp2++ = '@';
@@ -2026,7 +2026,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
             flags |= a_LASTSP;
          break;
       case '<':
-         agp->ag_iaddr_start = PTR2SIZE(cp - (name - 1));
+         agp->ag_iaddr_start = P2UZ(cp - (name - 1));
          cp2 = bufend;
          flags &= ~(a_GOTSPACE | a_LASTSP);
          flags |= a_GOTLT | a_GOTADDR;
@@ -2035,7 +2035,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
          if(flags & a_GOTLT){
             /* (_addrspec_check() verifies these later!) */
             flags &= ~(a_GOTLT | a_LASTSP);
-            agp->ag_iaddr_aend = PTR2SIZE(cp - name);
+            agp->ag_iaddr_aend = P2UZ(cp - name);
 
             /* Skip over the entire remaining field */
             while((c = *cp) != '\0'){
@@ -2078,11 +2078,11 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
             }
          }else if(!(flags & a_GOTADDR)){
             flags |= a_GOTADDR;
-            agp->ag_iaddr_start = PTR2SIZE(cp - name);
+            agp->ag_iaddr_start = P2UZ(cp - name);
          }
       }
    }
-   agp->ag_slen = PTR2SIZE(cp2 - nbuf);
+   agp->ag_slen = P2UZ(cp2 - nbuf);
 
    if (agp->ag_iaddr_aend == 0)
       agp->ag_iaddr_aend = agp->ag_ilen;
@@ -2134,7 +2134,7 @@ c_addrcodec(void *vp){
       mode = 3, ++act;
    if(act >= cp)
       goto jesynopsis;
-   alen = PTR2SIZE(cp - act);
+   alen = P2UZ(cp - act);
    if(*cp != '\0')
       ++cp;
 
@@ -2175,7 +2175,7 @@ c_addrcodec(void *vp){
                s = n_string_push_c(s, '(');
                act = skip_comment(cp);
                if(--act > cp)
-                  s = n_string_push_buf(s, cp, PTR2SIZE(act - cp));
+                  s = n_string_push_buf(s, cp, P2UZ(act - cp));
                s = n_string_push_c(s, ')');
                cp = ++act;
                break;
@@ -2295,19 +2295,19 @@ jbrk:
    /* Strip quotes. Note that quotes that appear within a MIME encoded word are
     * not stripped. The idea is to strip only syntactical relevant things (but
     * this is not necessarily the most sensible way in practice) */
-   rp = rname = n_lofi_alloc(PTR2SIZE(cend - cstart +1));
+   rp = rname = n_lofi_alloc(P2UZ(cend - cstart +1));
    quoted = 0;
    for (cp = cstart; cp < cend; ++cp) {
       if (*cp == '(' && !quoted) {
          cq = skip_comment(++cp);
-         if (PTRCMP(--cq, >, cend))
+         if (PCMP(--cq, >, cend))
             cq = cend;
          while (cp < cq) {
-            if (*cp == '\\' && PTRCMP(cp + 1, <, cq))
+            if (*cp == '\\' && PCMP(cp + 1, <, cq))
                ++cp;
             *rp++ = *cp++;
          }
-      } else if (*cp == '\\' && PTRCMP(cp + 1, <, cend))
+      } else if (*cp == '\\' && PCMP(cp + 1, <, cend))
          *rp++ = *++cp;
       else if (*cp == '"') {
          quoted = !quoted;
@@ -2327,7 +2327,7 @@ jbrk:
       ++rname;
    for (rp = rname; *rp != '\0'; ++rp)
       ;
-   while (PTRCMP(--rp, >=, rname) && su_cs_is_blank(*rp))
+   while (PCMP(--rp, >=, rname) && su_cs_is_blank(*rp))
       *rp = '\0';
    if (rp == rname) {
       cp = mime_fromaddr(name);
@@ -2340,7 +2340,7 @@ jbrk:
     * probably better to display the plain email address instead */
    good = 0;
    nogood = 0;
-   for (rp = rname; *rp != '\0' && PTRCMP(rp, <, rname + 20); ++rp)
+   for (rp = rname; *rp != '\0' && PCMP(rp, <, rname + 20); ++rp)
       if (*rp == '?' || su_cs_is_blank(*rp))
          ++nogood;
       else
@@ -2385,7 +2385,7 @@ jnewname:
          ;
       for (cp2 = namebuf + su_cs_len(namebuf);
             *cp && !su_cs_is_blank(*cp) &&
-            PTRCMP(cp2, <, namebuf + namesize -1);)
+            PCMP(cp2, <, namebuf + namesize -1);)
          *cp2++ = *cp++;
       *cp2 = '\0';
 
@@ -2413,7 +2413,7 @@ jnewname:
                f1st = 0;
             } else {
                cp2 = su_cs_rfind_c(namebuf, '!') + 1;
-               strncpy(cp2, cp, PTR2SIZE(namebuf + namesize - cp2));
+               strncpy(cp2, cp, P2UZ(namebuf + namesize - cp2));
             }
             namebuf[namesize - 2] = '!';
             namebuf[namesize - 1] = '\0';
@@ -2456,7 +2456,7 @@ subject_re_trim(char const *s){
    any = FAL0;
    orig_s = s;
    re_st = NULL;
-   n_UNINIT(re_l, 0);
+   UNINIT(re_l, 0);
 
    if((re_st_x = ok_vlook(reply_strings)) != NULL &&
          (re_l = su_cs_len(re_st_x)) > 0){
@@ -2546,7 +2546,7 @@ unixtime(char const *fromline)
    for (fp = fromline; *fp != '\0' && *fp != '\n'; ++fp)
       ;
    fp -= 24;
-   if (PTR2SIZE(fp - fromline) < 7)
+   if (P2UZ(fp - fromline) < 7)
       goto jinvalid;
    if (fp[3] != ' ')
       goto jinvalid;
@@ -2630,7 +2630,7 @@ rfctime(char const *date) /* TODO su_idec_ return tests */
     *  is encountered with a value between 50 and 99, or any three digit
     *  year is encountered, the year is interpreted by adding 1900 */
    su_idec_s32_cp(&year, cp, 10, &x);
-   i = (int)PTR2SIZE(x - cp);
+   i = (int)P2UZ(x - cp);
    if (i == 2 && year >= 0 && year <= 49)
       year += 2000;
    else if (i == 3 || (i == 2 && year >= 50 && year <= 99))
@@ -2703,9 +2703,9 @@ combinetime(int year, int month, int day, int hour, int minute, int second){
    time_t t;
    NYD2_IN;
 
-   if(UICMP(32, second, >/*XXX leap=*/, n_DATE_SECSMIN) ||
-         UICMP(32, minute, >=, n_DATE_MINSHOUR) ||
-         UICMP(32, hour, >=, n_DATE_HOURSDAY) ||
+   if(UCMP(32, second, >/*XXX leap=*/, n_DATE_SECSMIN) ||
+         UCMP(32, minute, >=, n_DATE_MINSHOUR) ||
+         UCMP(32, hour, >=, n_DATE_HOURSDAY) ||
          day < 1 || day > 31 ||
          month < 1 || month > 12 ||
          year < 1970)
@@ -2772,7 +2772,7 @@ n_header_textual_date_info(struct message *mp, char const **color_tag_or_null){
    char const *fmt, *cp;
    time_t t;
    NYD_IN;
-   n_UNUSED(color_tag_or_null);
+   UNUSED(color_tag_or_null);
 
    t = mp->m_time;
    fmt = ok_vlook(datefield);
@@ -2814,13 +2814,13 @@ jredo_localtime:
       }
 
       if((i & 2) &&
-            (UICMP(64, t, >, time_current.tc_time + n_DATE_SECSDAY) ||
+            (UCMP(64, t, >, time_current.tc_time + n_DATE_SECSDAY) ||
 #define _6M ((n_DATE_DAYSYEAR / 2) * n_DATE_SECSDAY)
-            UICMP(64, t + _6M, <, time_current.tc_time))){
+            UCMP(64, t + _6M, <, time_current.tc_time))){
 #undef _6M
          if((fmt = (i & 4) ? cp : NULL) == NULL){
             char *x;
-            n_LCTA(n_FROM_DATEBUF >= 4 + 7 + 1 + 4, "buffer too small");
+            LCTA(n_FROM_DATEBUF >= 4 + 7 + 1 + 4, "buffer too small");
 
             x = n_autorec_alloc(n_FROM_DATEBUF);
             su_mem_set(x, ' ', 4 + 7 + 1 + 4);
@@ -3112,8 +3112,8 @@ n_header_match(struct message *mp, struct search_expr const *sep){
    match = a_NONE;
    linebuf = &termios_state.ts_linebuf; /* XXX line pool */
    linesize = &termios_state.ts_linesize; /* XXX line pool */
-   n_UNINIT(fiter.l, 0);
-   n_UNINIT(fiter.s, NULL);
+   UNINIT(fiter.l, 0);
+   UNINIT(fiter.s, NULL);
 
    if((ibuf = setinput(&mb, mp, NEED_HEADER)) == NULL)
       goto jleave;
@@ -3161,7 +3161,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
 
             if(field[0] != '\0' && field[1] == '\0'){
                c1 = su_cs_to_lower(field[0]);
-               for(i = 0; i < n_NELEM(x); ++i){
+               for(i = 0; i < NELEM(x); ++i){
                   if(c1 == x[i][0]){
                      field = x[i];
                      break;
@@ -3169,7 +3169,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
                }
             }
 
-            if(!su_cs_cmp_case_n(field, *linebuf, PTR2SIZE(colon - *linebuf)))
+            if(!su_cs_cmp_case_n(field, *linebuf, P2UZ(colon - *linebuf)))
                break;
          }
          if(field == NULL)
@@ -3179,7 +3179,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
          char *cp;
          size_t i;
 
-         i = PTR2SIZE(colon - *linebuf);
+         i = P2UZ(colon - *linebuf);
          cp = n_lofi_alloc(i +1);
          su_mem_copy(cp, *linebuf, i);
          cp[i] = '\0';
@@ -3296,7 +3296,7 @@ jename:
       }
       break;
    }
-   nl = (ui32_t)PTR2SIZE(cp - dat);
+   nl = (ui32_t)P2UZ(cp - dat);
    if(nl == 0)
       goto jename;
 
@@ -3320,7 +3320,7 @@ jename:
          goto jerr;
       }
 
-   i = n_VSTRUCT_SIZEOF(struct n_header_field, hf_dat) + nl +1 + bl;
+   i = VSTRUCT_SIZEOF(struct n_header_field, hf_dat) + nl +1 + bl;
    *hflp = hfp = heap ? n_alloc(i) : n_autorec_alloc(i);
    hfp->hf_next = NULL;
    hfp->hf_nl = nl;

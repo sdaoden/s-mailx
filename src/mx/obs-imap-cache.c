@@ -531,7 +531,7 @@ purge(struct mailbox *mp, struct message *m, long mc, struct cw *cw,
    ui64_t *contents;
    long i, j, contentelem;
    NYD_IN;
-   n_UNUSED(mp);
+   UNUSED(mp);
 
    if (chdir(name) < 0)
       goto jleave;

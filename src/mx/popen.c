@@ -131,7 +131,7 @@ a_popen_scan_mode(char const *mode, int *omode){
    int i;
    NYD2_IN;
 
-   for(i = 0; UICMP(z, i, <, n_NELEM(maps)); ++i)
+   for(i = 0; UCMP(z, i, <, NELEM(maps)); ++i)
       if(!su_cs_cmp(maps[i].mode, mode)){
          *omode = maps[i].omode;
          i = 0;
@@ -407,7 +407,7 @@ a_popen_sigchld(int signo){
    int status;
    struct child *cp;
    NYD; /* Signal handler */
-   n_UNUSED(signo);
+   UNUSED(signo);
 
    for (;;) {
       pid = waitpid(-1, &status, WNOHANG);
@@ -735,7 +735,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
       if (!(oflags & OF_SUFFIX))
          x = su_cs_pcopy(x, namehint);
 
-      i = PTR2SIZE(x - cp);
+      i = P2UZ(x - cp);
       if (i > maxname - xlen - _RANDCHARS) {
          size_t j = maxname - xlen - _RANDCHARS;
          x -= i - j;
@@ -894,7 +894,7 @@ Popen(char const *cmd, char const *mode, char const *sh,
 
    rv = NULL;
    tiosp = NULL;
-   n_UNINIT(osigint, SIG_ERR);
+   UNINIT(osigint, SIG_ERR);
    mod[0] = '0', mod[1] = '\0';
 
    if (!pipe_cloexec(p))
@@ -950,7 +950,7 @@ Popen(char const *cmd, char const *mode, char const *sh,
           * TODO   n_stdin->_IO_read_ptr = n_stdin->_IO_read_end;
           * TODO #elif *BSD*
           * TODO   n_stdin->_r = 0;
-          * TODO #elif n_OS_SOLARIS || n_OS_SUNOS
+          * TODO #elif su_OS_SOLARIS || su_OS_SUNOS
           * TODO   n_stdin->_cnt = 0;
           * TODO #endif
           * TODO ) which should have additional config test for sure! */
@@ -1105,7 +1105,7 @@ n_child_run(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
    NYD_IN;
 
    f = a_NONE;
-   n_UNINIT(soldint, SIG_ERR);
+   UNINIT(soldint, SIG_ERR);
 
    /* TODO Of course this is a joke given that during a "p*" the PAGER may
     * TODO be up and running while we play around like this... but i guess
@@ -1215,11 +1215,11 @@ n_child_start(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
             ee = env_addon_or_null[ai];
             kvs = su_cs_find_c(ee, '=');
             ASSERT(kvs != NULL);
-            kl = PTR2SIZE(kvs - ee);
+            kl = P2UZ(kvs - ee);
             ASSERT(kl > 0);
             for (ei = ei_orig; ei-- > 0;) {
                char const *ekvs = su_cs_find_c(env[ei], '=');
-               if (ekvs != NULL && kl == PTR2SIZE(ekvs - env[ei]) &&
+               if (ekvs != NULL && kl == P2UZ(ekvs - env[ei]) &&
                      !su_mem_cmp(ee, env[ei], kl)) {
                   env[ei] = n_UNCONST(ee);
                   env_addon_or_null[ai] = NULL;
@@ -1237,7 +1237,7 @@ n_child_start(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
          environ = env;
       }
 
-      i = (int)getrawlist(TRU1, argv, n_NELEM(argv), cmd, su_cs_len(cmd));
+      i = (int)getrawlist(TRU1, argv, NELEM(argv), cmd, su_cs_len(cmd));
       if(i >= 0){
          if ((argv[i++] = n_UNCONST(a0_or_null)) != NULL &&
                (argv[i++] = n_UNCONST(a1_or_null)) != NULL &&

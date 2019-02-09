@@ -129,7 +129,8 @@ a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
    char const *date, *name, *fp, *color_tag;
    int i, n, s, wleft, subjlen;
    struct message *mp;
-   n_COLOUR( struct n_colour_pen *cpen_new COMMA *cpen_cur COMMA *cpen_bas; )
+   n_COLOUR( struct n_colour_pen *cpen_new su_COMMA
+      *cpen_cur su_COMMA *cpen_bas; )
    enum {
       _NONE       = 0,
       _ISDOT      = 1<<0,
@@ -143,7 +144,7 @@ a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
       _PUTCB_UTF8_MASK = 3<<5
    } flags = _NONE;
    NYD2_IN;
-   n_UNUSED(buf);
+   UNUSED(buf);
 
    if ((mp = message + msgno - 1) == dot)
       flags = _ISDOT;
@@ -273,7 +274,7 @@ a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
 #ifdef mx_HAVE_SPAM
          if (n == 0)
             n = 5;
-         if (UICMP(32, n_ABS(n), >, wleft))
+         if (UCMP(32, ABS(n), >, wleft))
             wleft = 0;
          else{
             snprintf(buf, sizeof buf, "%u.%02u",
@@ -297,7 +298,7 @@ jputcb:
                n_colour_pen_put(cpen_cur = cpen_new);
          }
 #endif
-         if (UICMP(32, n_ABS(n), >, wleft))
+         if (UCMP(32, ABS(n), >, wleft))
             n = (n < 0) ? -wleft : wleft;
          cbuf[0] = c;
          n = fprintf(f, "%*s", n, cbuf);
@@ -318,15 +319,15 @@ jputcb:
       case 'd':
          if (n == 0)
             n = 16;
-         if (UICMP(32, n_ABS(n), >, wleft))
+         if (UCMP(32, ABS(n), >, wleft))
             n = (n < 0) ? -wleft : wleft;
-         n = fprintf(f, "%*.*s", n, n_ABS(n), date);
+         n = fprintf(f, "%*.*s", n, ABS(n), date);
          wleft = (n >= 0) ? wleft - n : 0;
          break;
       case 'e':
          if (n == 0)
             n = 2;
-         if (UICMP(32, n_ABS(n), >, wleft))
+         if (UCMP(32, ABS(n), >, wleft))
             wleft = 0;
          else{
             n = fprintf(f, "%*u", n, (threaded == 1 ? mp->m_level : 0));
@@ -339,7 +340,7 @@ jputcb:
             if (s < 0)
                n = -n;
          }
-         i = n_ABS(n);
+         i = ABS(n);
          if (i > wleft) {
             i = wleft;
             n = (n < 0) ? -wleft : wleft;
@@ -368,7 +369,7 @@ jputcb:
                   n_colour_pen_put(cpen_cur = cpen_new);
             }
 #endif
-            n = a_chead__putindent(f, mp, n_MIN(wleft, (int)n_scrnwidth - 60));
+            n = a_chead__putindent(f, mp, MIN(wleft, (int)n_scrnwidth - 60));
             wleft = (n >= 0) ? wleft - n : 0;
 #ifdef mx_HAVE_COLOUR
             if(n_COLOUR_IS_ACTIVE() && (cpen_new = cpen_bas) != cpen_cur)
@@ -387,13 +388,13 @@ jmlist: /* v15compat */
       case 'l':
          if (n == 0)
             n = 4;
-         if (UICMP(32, n_ABS(n), >, wleft))
+         if (UCMP(32, ABS(n), >, wleft))
             wleft = 0;
          else if (mp->m_xlines) {
             n = fprintf(f, "%*ld", n, mp->m_xlines);
             wleft = (n >= 0) ? wleft - n : 0;
          } else {
-            n = n_ABS(n);
+            n = ABS(n);
             wleft -= n;
             while (n-- != 0)
                putc(' ', f);
@@ -406,7 +407,7 @@ jmlist: /* v15compat */
                for (i = msgCount; i > 999; i /= 10)
                   ++n;
          }
-         if (UICMP(32, n_ABS(n), >, wleft))
+         if (UCMP(32, ABS(n), >, wleft))
             wleft = 0;
          else{
             n = fprintf(f, "%*lu", n, (ul_i)msgno);
@@ -416,7 +417,7 @@ jmlist: /* v15compat */
       case 'o':
          if (n == 0)
             n = -5;
-         if (UICMP(32, n_ABS(n), >, wleft))
+         if (UCMP(32, ABS(n), >, wleft))
             wleft = 0;
          else{
             n = fprintf(f, "%*lu", n, (ul_i)mp->m_xsize);
@@ -433,7 +434,7 @@ jmlist: /* v15compat */
             n = -n;
          if (subjlen > wleft)
             subjlen = wleft;
-         if (UICMP(32, n_ABS(n), >, subjlen))
+         if (UCMP(32, ABS(n), >, subjlen))
             n = (n < 0) ? -subjlen : subjlen;
          if (flags & _SFMT)
             n -= (n < 0) ? -2 : 2;
@@ -447,7 +448,7 @@ jmlist: /* v15compat */
             wleft = (n >= 0) ? wleft - n : 0;
          } else {
             n = fprintf(f, ((flags & _SFMT) ? "\"%s\"" : "%s"),
-                  colalign(subjline, n_ABS(n), n, &wleft));
+                  colalign(subjline, ABS(n), n, &wleft));
             if (n < 0)
                wleft = 0;
          }
@@ -463,7 +464,7 @@ jmlist: /* v15compat */
                for (i = msgCount; i > 999; i /= 10)
                   ++n;
          }
-         if (UICMP(32, n_ABS(n), >, wleft))
+         if (UCMP(32, ABS(n), >, wleft))
             wleft = 0;
          else{
             n = fprintf(f, "%*lu",
@@ -475,7 +476,7 @@ jmlist: /* v15compat */
 #ifdef mx_HAVE_IMAP
             if (n == 0)
                n = 9;
-            if (UICMP(32, n_ABS(n), >, wleft))
+            if (UCMP(32, ABS(n), >, wleft))
                wleft = 0;
             else{
                n = fprintf(f, "%*" PRIu64 , n, mp->m_uid);
@@ -572,7 +573,7 @@ a_chead__putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX magics */
    unis = n_lofi_alloc(mp->m_level * sizeof *unis);
 
    i = mp->m_level - 1;
-   if (mp->m_younger && UICMP(32, i + 1, ==, mp->m_younger->m_level)) {
+   if (mp->m_younger && UCMP(32, i + 1, ==, mp->m_younger->m_level)) {
       if (mp->m_parent && mp->m_parent->m_flag & important)
          unis[i] = mp->m_flag & important ? 0x2523 : 0x2520;
       else
@@ -589,7 +590,7 @@ a_chead__putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX magics */
    mq = mp->m_parent;
    for (i = mp->m_level - 2; i >= 0; --i) {
       if (mq) {
-         if (UICMP(32, i, >, mq->m_level - 1)) {
+         if (UCMP(32, i, >, mq->m_level - 1)) {
             unis[i] = cs[i] = ' ';
             continue;
          }
@@ -627,7 +628,7 @@ static size_t
 a_chead__putuc(int u, int c, FILE *fp){
    size_t rv;
    NYD2_IN;
-   n_UNUSED(u);
+   UNUSED(u);
 
 #ifdef mx_HAVE_NATCH_CHAR
    if((n_psonce & n_PSO_UNICODE) && (u & ~(wchar_t)0177) &&
@@ -833,7 +834,7 @@ _headers(int msgspec) /* TODO rework v15 */
    if (mb.mb_threaded == 0) {
       g = 0;
       mq = message;
-      for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
+      for (mp = message; PCMP(mp, <, message + msgCount); ++mp)
          if (visible(mp)) {
             if (g % size == 0)
                mq = mp;
@@ -841,7 +842,7 @@ _headers(int msgspec) /* TODO rework v15 */
                lastg = g;
                lastmq = mq;
             }
-            if ((msgspec > 0 && PTRCMP(mp, ==, message + msgspec - 1)) ||
+            if ((msgspec > 0 && PCMP(mp, ==, message + msgspec - 1)) ||
                   (msgspec == 0 && g == k) ||
                   (msgspec == -2 && g == k + size && lastmq) ||
                   (msgspec < 0 && g >= k && (mp->m_flag & fl) != 0))
@@ -849,14 +850,14 @@ _headers(int msgspec) /* TODO rework v15 */
             g++;
          }
       if (lastmq && (msgspec == -2 ||
-            (msgspec == -1 && PTRCMP(mp, ==, message + msgCount)))) {
+            (msgspec == -1 && PCMP(mp, ==, message + msgCount)))) {
          g = lastg;
          mq = lastmq;
       }
       _screen = g / size;
       mp = mq;
 
-      mesg = (int)PTR2SIZE(mp - message);
+      mesg = (int)P2UZ(mp - message);
 #ifdef mx_HAVE_IMAP
       if (mb.mb_type == MB_IMAP)
          imap_getheaders(mesg + 1, mesg + size);
@@ -867,11 +868,11 @@ _headers(int msgspec) /* TODO rework v15 */
          ++mesg;
          if (!visible(mp))
             continue;
-         if (UICMP(32, flag, >=, size))
+         if (UCMP(32, flag, >=, size))
             break;
          if(needdot){
             if(showlast){
-               if(UICMP(32, flag, ==, size - 1) || &mp[1] == mq)
+               if(UCMP(32, flag, ==, size - 1) || &mp[1] == mq)
                   goto jdot_unsort;
             }else if(flag == 0){
 jdot_unsort:
@@ -894,14 +895,14 @@ jdot_unsort:
          /* TODO thread handling needs rewrite, m_collapsed must go */
          if (visible(mp) &&
                (mp->m_collapsed <= 0 ||
-                PTRCMP(mp, ==, message + msgspec - 1))) {
+                PCMP(mp, ==, message + msgspec - 1))) {
             if (g % size == 0)
                mq = mp;
             if (mp->m_flag & fl) {
                lastg = g;
                lastmq = mq;
             }
-            if ((msgspec > 0 && PTRCMP(mp, ==, message + msgspec - 1)) ||
+            if ((msgspec > 0 && PCMP(mp, ==, message + msgspec - 1)) ||
                   (msgspec == 0 && g == k) ||
                   (msgspec == -2 && g == k + size && lastmq) ||
                   (msgspec < 0 && g >= k && (mp->m_flag & fl) != 0))
@@ -910,7 +911,7 @@ jdot_unsort:
          }
       }
       if (lastmq && (msgspec == -2 ||
-            (msgspec == -1 && PTRCMP(mp, ==, message + msgCount)))) {
+            (msgspec == -1 && PCMP(mp, ==, message + msgCount)))) {
          g = lastg;
          mq = lastmq;
       }
@@ -923,12 +924,12 @@ jdot_unsort:
          mq = next_in_thread(mp);
          if (visible(mp) &&
                (mp->m_collapsed <= 0 ||
-                PTRCMP(mp, ==, message + msgspec - 1))) {
-            if (UICMP(32, flag, >=, size))
+                PCMP(mp, ==, message + msgspec - 1))) {
+            if (UCMP(32, flag, >=, size))
                break;
             if(needdot){
                if(showlast){
-                  if(UICMP(32, flag, ==, size - 1) || mq == NULL)
+                  if(UCMP(32, flag, ==, size - 1) || mq == NULL)
                      goto jdot_sort;
                }else if(flag == 0){
 jdot_sort:
@@ -936,7 +937,7 @@ jdot_sort:
                   setdot(mp);
                }
             }
-            a_chead_print_head(flag, PTR2SIZE(mp - message + 1), n_stdout,
+            a_chead_print_head(flag, P2UZ(mp - message + 1), n_stdout,
                mb.mb_threaded, TRU1);
             ++flag;
             srelax();
@@ -1059,7 +1060,7 @@ c_from(void *vp)
             ib = n_screensize();
          else
             su_idec_uz_cp(&ib, cp, 0, NULL);
-         if (UICMP(z, n, >, ib) && (obuf = n_pager_open()) == NULL)
+         if (UCMP(z, n, >, ib) && (obuf = n_pager_open()) == NULL)
             obuf = n_stdout;
       }
    }

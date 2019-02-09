@@ -125,7 +125,7 @@ c_newmail(void *v)
 {
    int val = 1, mdot;
    NYD_IN;
-   n_UNUSED(v);
+   UNUSED(v);
 
    if (n_pstate & n_PS_HOOK_MASK)
       n_err(_("Cannot call `newmail' from within a hook\n"));
@@ -148,7 +148,7 @@ c_noop(void *v)
 {
    int rv = 0;
    NYD_IN;
-   n_UNUSED(v);
+   UNUSED(v);
 
    switch (mb.mb_type) {
 #ifdef mx_HAVE_POP3

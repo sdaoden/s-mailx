@@ -252,7 +252,7 @@ a_me_b64_decode(struct str *out, struct str *in){
    p = (ui8_t*)&out->s[out->l];
    q = (ui8_t const*)in->s;
 
-   for(end = &q[in->l]; PTR2SIZE(end - q) >= 4; q += 4){
+   for(end = &q[in->l]; P2UZ(end - q) >= 4; q += 4){
       ui32_t a, b, c, d;
 
       a = a_ME_B64_DECUI8(q[0]);
@@ -260,7 +260,7 @@ a_me_b64_decode(struct str *out, struct str *in){
       c = a_ME_B64_DECUI8(q[2]);
       d = a_ME_B64_DECUI8(q[3]);
 
-      if(n_UNLIKELY(a >= a_ME_B64_EQU || b >= a_ME_B64_EQU ||
+      if(UNLIKELY(a >= a_ME_B64_EQU || b >= a_ME_B64_EQU ||
             c == a_ME_B64_BAD || d == a_ME_B64_BAD))
          goto jleave;
 
@@ -270,7 +270,7 @@ a_me_b64_decode(struct str *out, struct str *in){
 
       if(c == a_ME_B64_EQU){ /* got '=' */
          q += 4;
-         if(n_UNLIKELY(d != a_ME_B64_EQU))
+         if(UNLIKELY(d != a_ME_B64_EQU))
             goto jleave;
          break;
       }
@@ -290,12 +290,12 @@ a_me_b64_decode(struct str *out, struct str *in){
 jleave:{
       size_t i;
 
-      i = PTR2SIZE((char*)p - out->s);
+      i = P2UZ((char*)p - out->s);
       out->l = i;
       if(rv == 0)
          rv = (ssize_t)i;
    }
-   in->l -= PTR2SIZE(q - (ui8_t*)in->s);
+   in->l -= P2UZ(q - (ui8_t*)in->s);
    in->s = n_UNCONST(q);
    NYD2_OU;
    return rv;
@@ -358,7 +358,7 @@ mime_enc_from_ctehead(char const *hbody){
       else
          for(u.s = hbody; *u.s != '\0' && !su_cs_is_white(*u.s); ++u.s)
             ;
-      u.l = PTR2SIZE(u.s - hbody);
+      u.l = P2UZ(u.s - hbody);
 
       for(cte = cte_base;;)
          if(cte->len == u.l && !su_cs_cmp_case(&a_me_ctes[cte->off], hbody)){
@@ -587,7 +587,7 @@ jsoftnl:
       qp += 2;
    }
 jleave:
-   out->l = PTR2SIZE(qp - out->s);
+   out->l = P2UZ(qp - out->s);
    out->s[out->l] = '\0';
 jerr:
    NYD_OU;
@@ -745,7 +745,7 @@ jsoftnl:
          char *cp;
          size_t l;
 
-         if((l = PTR2SIZE(ie - is)) > 0){
+         if((l = P2UZ(ie - is)) > 0){
             if(inrest_or_null == NULL)
                goto jerr;
             n_str_assign_buf(inrest_or_null, is, l);
@@ -862,7 +862,7 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags){
       while(b64 != out->s && b64[-1] == '=')
          --b64;
 
-   out->l = PTR2SIZE(b64 - out->s);
+   out->l = P2UZ(b64 - out->s);
    out->s[out->l] = '\0';
 
    /* Base64 includes + and /, replace them with _ and -.
@@ -1016,9 +1016,9 @@ b64_decode_part(struct str *out, struct str const *in, struct str *outrest,
 
    /* TODO b64_decode_part() does not yet STOP if it sees padding, whereas
     * TODO OpenSSL and mutt simply bail on such stuff */
-   n_UNINIT(ca, 0);
-   n_UNINIT(cb, 0);
-   n_UNINIT(cc, 0);
+   UNINIT(ca, 0);
+   UNINIT(cb, 0);
+   UNINIT(cc, 0);
    for(b64l = 0;;){
       ui32_t x;
 

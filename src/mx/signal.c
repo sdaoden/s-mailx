@@ -104,7 +104,7 @@ static void a_signal_dummyhdl(int sig);
 
 static void
 a_signal_dummyhdl(int sig){
-   n_UNUSED(sig);
+   UNUSED(sig);
 }
 
 FL int
@@ -209,7 +209,7 @@ c_sigstate(void *vp){ /* TODO remove again */
 
    fprintf(n_stdout, "alls_depth %zu, hold_sigdepth %zu\nHandlers:\n",
       _alls_depth, _hold_sigdepth);
-   for(hdlp = hdla; hdlp < &hdla[n_NELEM(hdla)]; ++hdlp){
+   for(hdlp = hdla; hdlp < &hdla[NELEM(hdla)]; ++hdlp){
       sighandler_type shp;
 
       shp = safe_signal(hdlp->val, SIG_IGN);
@@ -482,7 +482,7 @@ mx__nyd_oncrash(int signo)
    size_t i, fnl;
    char const *tmpdir;
 
-   n_LCTA(sizeof("./") -1 + sizeof(VAL_UAGENT) -1 + sizeof(".dat") < PATH_MAX,
+   LCTA(sizeof("./") -1 + sizeof(VAL_UAGENT) -1 + sizeof(".dat") < PATH_MAX,
       "System limits too low for fixed-size buffer operation");
 
    xact.sa_handler = SIG_DFL;
@@ -518,7 +518,7 @@ mx__nyd_oncrash(int signo)
       *--cp = "0123456789"[i % 10];
       i /= 10;
    } while (i != 0);
-   write(fd, cp, PTR2SIZE((s2ibuf + sizeof(s2ibuf) -1) - cp));
+   write(fd, cp, P2UZ((s2ibuf + sizeof(s2ibuf) -1) - cp));
 
    write(fd, _X(":\n"));
 

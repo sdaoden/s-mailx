@@ -121,7 +121,7 @@ static char const             _mt_typnames[][16] = {
    "message/", "multipart/", "text/",
    "video/"
 };
-n_CTAV(_MT_APPLICATION == 0 && _MT_AUDIO == 1 && _MT_IMAGE == 2 &&
+CTAV(_MT_APPLICATION == 0 && _MT_AUDIO == 1 && _MT_IMAGE == 2 &&
    _MT_MESSAGE == 3 && _MT_MULTIPART == 4 && _MT_TEXT == 5 &&
    _MT_VIDEO == 6);
 
@@ -177,7 +177,7 @@ _mt_init(void)
     *  goto jleave;*/
 
    /* Always load our built-ins */
-   for (tail = NULL, i = 0; i < n_NELEM(_mt_bltin); ++i) {
+   for (tail = NULL, i = 0; i < NELEM(_mt_bltin); ++i) {
       struct mtbltin const *mtbp = _mt_bltin + i;
       struct mtnode *mtnp = n_alloc(sizeof *mtnp);
 
@@ -218,7 +218,7 @@ _mt_init(void)
             break;
          case 'F': case 'f':
             if (*++ccp == '=' && *++ccp != '\0') {
-               if (PTR2SIZE(srcs - srcs_arr) < n_NELEM(srcs_arr))
+               if (P2UZ(srcs - srcs_arr) < NELEM(srcs_arr))
                   *srcs++ = ccp;
                else
                   n_err(_("*mimetypes-load-control*: too many sources, "
@@ -243,7 +243,7 @@ jecontent:
    /* Load all file-based sources in the desired order */
    line = NULL;
    linesize = 0;
-   for (j = 0, i = (ui32_t)PTR2SIZE(srcs - srcs_arr), srcs = srcs_arr;
+   for (j = 0, i = (ui32_t)P2UZ(srcs - srcs_arr), srcs = srcs_arr;
          i > 0; ++j, ++srcs, --i)
       if (*srcs == NULL)
          continue;
@@ -306,7 +306,7 @@ _mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
 
    /* Drop anything after a comment first TODO v15: only when read from file */
    if ((typ = su_mem_find(line, '#', len)) != NULL)
-      len = PTR2SIZE(typ - line);
+      len = P2UZ(typ - line);
 
    /* Then trim any trailing whitespace from line (including NL/CR) */
    /* C99 */{
@@ -357,7 +357,7 @@ _mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
       ++line, --len;
    /* Ignore empty lines and even incomplete specifications (only MIME type)
     * because this is quite common in mime.types(5) files */
-   if (len == 0 || (tlen = PTR2SIZE(line - typ)) == 0) {
+   if (len == 0 || (tlen = P2UZ(line - typ)) == 0) {
       if (cmdcalled || (orflags & _MT_FSPEC)) {
          if(len == 0){
             line = _("(no value)");
@@ -381,17 +381,17 @@ jeinval:
    ++subtyp;
 
    /* Map to mime_type */
-   tlen = PTR2SIZE(subtyp - typ);
+   tlen = P2UZ(subtyp - typ);
    for (i = __MT_TMIN;;) {
       if (!su_cs_cmp_case_n(_mt_typnames[i], typ, tlen)) {
          orflags |= i;
-         tlen = PTR2SIZE(line - subtyp);
+         tlen = P2UZ(line - subtyp);
          typ = subtyp;
          break;
       }
       if (++i == __MT_TMAX) {
          orflags |= _MT_OTHER;
-         tlen = PTR2SIZE(line - typ);
+         tlen = P2UZ(line - typ);
          break;
       }
    }
@@ -459,7 +459,7 @@ _mt_by_filename(struct mtlookup *mtlp, char const *name, bool_t with_result)
          while (!su_cs_is_white(*cp) && *cp != '\0')
             ++cp;
 
-         if ((i = PTR2SIZE(cp - ext)) == 0)
+         if ((i = P2UZ(cp - ext)) == 0)
             break;
          /* Don't allow neither of ".txt" or "txt" to match "txt" */
          else if (i + 1 >= nlen || name[(j = nlen - i) - 1] != '.' ||
@@ -658,10 +658,10 @@ _mt_classify_round(struct mt_class_arg *mtcap) /* TODO dig UTF-8 for !text/!! */
             mtc |= _MT_C_HASNUL /* Force base64 */ | _MT_C_SUGGEST_DONE;
             break;
          }
-      } else if (!(mtc & _MT_C_FROM_) && UICMP(z, curlnlen, <, F_SIZEOF)) {
+      } else if (!(mtc & _MT_C_FROM_) && UCMP(z, curlnlen, <, F_SIZEOF)) {
          *f_p++ = (char)c;
-         if (UICMP(z, curlnlen, ==, F_SIZEOF - 1) &&
-               PTR2SIZE(f_p - f_buf) == F_SIZEOF &&
+         if (UCMP(z, curlnlen, ==, F_SIZEOF - 1) &&
+               P2UZ(f_p - f_buf) == F_SIZEOF &&
                !su_mem_cmp(f_buf, F_, F_SIZEOF)){
             mtc |= _MT_C_FROM_;
             if (mtc & _MT_C__1STLINE)
@@ -701,7 +701,7 @@ _mt_classify_os_part(ui32_t mce, struct mimepart *mpp, bool_t deep_inspect)
 
    outrest = inrest = dec = in;
    mc = MIME_UNKNOWN;
-   n_UNINIT(mtc, 0);
+   UNINIT(mtc, 0);
    did_inrest = FAL0;
 
    /* TODO v15-compat Note we actually bypass our usual file handling by
@@ -1156,7 +1156,7 @@ n_mimetype_classify_file(FILE *fp, char const **contenttype,
 
       _mt_classify_init(&mtca, mtc);
       for (;;) {
-         mtca.mtca_len = fread(buf, sizeof(buf[0]), n_NELEM(buf), fp);
+         mtca.mtca_len = fread(buf, sizeof(buf[0]), NELEM(buf), fp);
          mtca.mtca_buf = buf;
          if ((mtc = _mt_classify_round(&mtca)) & _MT_C_SUGGEST_DONE)
             break;
@@ -1295,7 +1295,7 @@ n_mimetype_classify_part(struct mimepart *mpp, bool_t for_user_context){
          if(!su_cs_cmp_case(ct, mtap->mt_name)){
             mc = mtap->mt_mc;
             break;
-         }else if(++mtap == mta + n_NELEM(mta)){
+         }else if(++mtap == mta + NELEM(mta)){
             mc = MIME_MULTI;
             break;
          }
@@ -1346,7 +1346,7 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
          *++es != '\0') ? su_cs_len(es) : 0;
    cl = ((cs = mpp->m_ct_type_usr_ovwr) != NULL ||
          (cs = mpp->m_ct_type_plain) != NULL) ? su_cs_len(cs) : 0;
-   if ((l = n_MAX(el, cl)) == 0) {
+   if ((l = MAX(el, cl)) == 0) {
       /* TODO this should be done during parse time! */
       goto jleave;
    }

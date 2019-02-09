@@ -707,10 +707,10 @@ a_xtls_digest_find(char const *name,
       *cp = '\0';
 
       if(normalized_name_or_null != NULL)
-         *normalized_name_or_null = savestrbuf(nn, PTR2SIZE(cp - nn));
+         *normalized_name_or_null = savestrbuf(nn, P2UZ(cp - nn));
    }
 
-   for(i = 0; i < n_NELEM(a_xtls_digests); ++i)
+   for(i = 0; i < NELEM(a_xtls_digests); ++i)
       if(!su_cs_cmp(a_xtls_digests[i].xd_name, nn)){
          *mdp = (*a_xtls_digests[i].xd_fun)();
          goto jleave;
@@ -743,7 +743,7 @@ jouter:
          struct a_xtls_x509_v_flags const *xvfp;
 
          for(xvfp = &a_xtls_x509_v_flags[0];
-               xvfp < &a_xtls_x509_v_flags[n_NELEM(a_xtls_x509_v_flags)];
+               xvfp < &a_xtls_x509_v_flags[NELEM(a_xtls_x509_v_flags)];
                ++xvfp)
             if(!su_cs_cmp_case(cp, xvfp->xxvf_name)){
                if(xvfp->xxvf_flag != -1){
@@ -935,7 +935,7 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
          if(xpp->xp_ok_minmaxproto && !su_cs_cmp_case(value, xpp->xp_name))
             break;
 
-         if(++i >= n_NELEM(a_xtls_protocols)){
+         if(++i >= NELEM(a_xtls_protocols)){
             emsg = N_("TLS: %s: unsupported element: %s\n");
             goto jxerr;
          }
@@ -994,7 +994,7 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
                break;
             }
 
-            if(++i >= n_NELEM(a_xtls_protocols)){
+            if(++i >= NELEM(a_xtls_protocols)){
                emsg = N_("TLS: %s: unsupported element: %s\n");
                goto jxerr;
             }
@@ -1026,8 +1026,8 @@ jxerr:
 
 static bool_t
 a_xtls_conf_finish(void **confp, bool_t error){
-   n_UNUSED(confp);
-   n_UNUSED(error);
+   UNUSED(confp);
+   UNUSED(error);
    *confp = NULL;
    return TRU1;
 }
@@ -1097,7 +1097,7 @@ a_xtls_obsolete_conf_vars(void *confp, struct url const *urlp){
             cp = _ssl_methods[i].sm_map;
             break;
          }
-         if(++i == n_NELEM(_ssl_methods)){
+         if(++i == NELEM(_ssl_methods)){
             n_err(_("Unsupported SSL method: %s\n"), cp);
             goto jleave;
          }
@@ -1296,7 +1296,7 @@ a_xtls_check_host(struct sock *sop, X509 *peercert, struct url const *urlp){
    X509_NAME *subj;
    bool_t rv;
    NYD_IN;
-   n_UNUSED(sop);
+   UNUSED(sop);
 
    rv = FAL0;
 
@@ -1492,13 +1492,13 @@ _smime_cipher(char const *name)
    }
    cipher = NULL;
 
-   for(i = 0; i < n_NELEM(a_xtls_ciphers); ++i)
+   for(i = 0; i < NELEM(a_xtls_ciphers); ++i)
       if(!su_cs_cmp_case(a_xtls_ciphers[i].xc_name, cp)){
          cipher = (*a_xtls_ciphers[i].xc_fun)();
          goto jleave;
       }
 #ifndef OPENSSL_NO_AES
-   for (i = 0; i < n_NELEM(a_xtls_smime_ciphers_obs); ++i) /* TODO obsolete */
+   for (i = 0; i < NELEM(a_xtls_smime_ciphers_obs); ++i) /* TODO obsolete */
       if (!su_cs_cmp_case(a_xtls_smime_ciphers_obs[i].xc_name, cp)) {
          n_OBSOLETE2(_("*smime-cipher* names with hyphens will vanish"), cp);
          cipher = (*a_xtls_smime_ciphers_obs[i].xc_fun)();
@@ -1524,8 +1524,8 @@ ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
    char *pass;
    size_t len;
    NYD_IN;
-   n_UNUSED(rwflag);
-   n_UNUSED(userdata);
+   UNUSED(rwflag);
+   UNUSED(userdata);
 
    /* New-style */
    if(userdata != NULL){
@@ -1537,7 +1537,7 @@ ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
             char *end;
 
             if((end = su_cs_pcopy_n(buf, cred.cc_pass.s, size)) != NULL){
-               size = (int)PTR2SIZE(end - buf);
+               size = (int)P2UZ(end - buf);
                goto jleave;
             }
          }
@@ -1549,7 +1549,7 @@ ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
    /* Old-style */
    if ((pass = getpassword("PEM pass phrase:")) != NULL) {
       len = su_cs_len(pass);
-      if (UICMP(z, len, >=, size))
+      if (UCMP(z, len, >=, size))
          len = size -1;
       su_mem_copy(buf, pass, len);
       buf[len] = '\0';
@@ -1845,7 +1845,7 @@ n_tls_rand_bytes(void *buf, size_t blen){
    while(blen > 0){
       si32_t i;
 
-      switch(RAND_bytes(buf, i = n_MIN(SI32_MAX, blen))){
+      switch(RAND_bytes(buf, i = MIN(SI32_MAX, blen))){
       default:
          /* LibreSSL always succeeds, i think it aborts otherwise.
           * With elder OpenSSL we ensure via RAND_status() in
@@ -2010,7 +2010,7 @@ n_tls_open(struct url *urlp, struct sock *sop){
             goto jpeer_leave;
          }else if(urlp->url_cproto == CPROTO_CERTINFO)
             sop->s_tls_finger = savestrbuf(fpmdhexbuf,
-                  PTR2SIZE(cp - fpmdhexbuf));
+                  P2UZ(cp - fpmdhexbuf));
       }
 
 jpeer_leave:

@@ -42,7 +42,7 @@
 #include "su/code-in.h"
 
 #ifdef mx_HAVE_QUOTE_FOLD
-n_CTAV(n_QUOTE_MAX > 3);
+CTAV(n_QUOTE_MAX > 3);
 
 enum qf_state {
    _QF_CLEAN,
@@ -392,7 +392,7 @@ FL void
 quoteflt_destroy(struct quoteflt *self) /* xxx inline */
 {
    NYD_IN;
-   n_UNUSED(self);
+   UNUSED(self);
    NYD_OU;
 }
 
@@ -457,7 +457,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
             ll = len;
          else {
             pxok = FAL0;
-            ll = PTR2SIZE((char*)vp - dat) + 1;
+            ll = P2UZ((char*)vp - dat) + 1;
          }
 
          if (ll != fwrite(dat, sizeof *dat, ll, self->qf_os))
@@ -520,7 +520,7 @@ quoteflt_flush(struct quoteflt *self)
 {
    ssize_t rv = 0;
    NYD_IN;
-   n_UNUSED(self);
+   UNUSED(self);
 
 #ifdef mx_HAVE_QUOTE_FOLD
    if (self->qf_dat.l > 0) {

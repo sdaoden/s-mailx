@@ -259,7 +259,7 @@ _interlink(struct message *m, ui32_t cnt, int nmail)
          ok_blook(autocollapse));
    ms = n_alloc(sizeof *ms * cnt);
 
-   for (n = 0, i = 0; UICMP(32, i, <, cnt); ++i) {
+   for (n = 0, i = 0; UCMP(32, i, <, cnt); ++i) {
       if (m[i].m_parent == NULL) {
          if (autocollapse)
             _colps(m + i, 1);
@@ -272,7 +272,7 @@ _interlink(struct message *m, ui32_t cnt, int nmail)
    if (n > 0) {
       qsort(ms, n, sizeof *ms, &_mlonglt);
       root = m + ms[0].ms_n;
-      for (i = 1; UICMP(32, i, <, n); ++i) {
+      for (i = 1; UCMP(32, i, <, n); ++i) {
          m[ms[i-1].ms_n].m_younger = m + ms[i].ms_n;
          m[ms[i].ms_n].m_elder = m + ms[i - 1].ms_n;
       }
@@ -565,7 +565,7 @@ c_unthread(void *vp)
       n_free(mb.mb_sorted);
    mb.mb_sorted = NULL;
 
-   for (m = message; PTRCMP(m, <, message + msgCount); ++m)
+   for (m = message; PCMP(m, <, message + msgCount); ++m)
       m->m_collapsed = 0;
 
    if (vp && !(n_pstate & n_PS_HOOK_MASK) && ok_blook(header))
@@ -700,7 +700,7 @@ c_sort(void *vp)
    for (;;) {
       if (*args[0] != '\0' && su_cs_starts_with(methnames[i].me_name, args[0]))
          break;
-      if (UICMP(z, ++i, >=, n_NELEM(methnames))) {
+      if (UCMP(z, ++i, >=, NELEM(methnames))) {
          n_err(_("Unknown sorting method: %s\n"), args[0]);
          i = 1;
          goto jleave;
@@ -713,7 +713,7 @@ c_sort(void *vp)
 
    method = methnames[i].me_method;
    func = methnames[i].me_func;
-   msgvec[0] = (int)PTR2SIZE(dot - message + 1);
+   msgvec[0] = (int)P2UZ(dot - message + 1);
    msgvec[1] = 0;
 
    if (method == SORT_THREAD) {

@@ -63,7 +63,7 @@ su_EMPTY_FILE()
  * Use a ui16_t for storage */
 #define a_TERMCAP_ENTRYSIZE_MAX ((2668 + 128) & ~127) /* As of ncurses 6.0 */
 
-n_CTA(a_TERMCAP_ENTRYSIZE_MAX < UI16_MAX,
+CTA(a_TERMCAP_ENTRYSIZE_MAX < UI16_MAX,
    "Chosen buffer size exceeds datatype capability");
 
 /* For simplicity we store commands and queries in single continuous control
@@ -91,7 +91,7 @@ enum a_termcap_flags{
 
    a_TERMCAP_F__LAST = a_TERMCAP_F_ARG_CNT
 };
-n_CTA((ui32_t)n__TERMCAP_CAPTYPE_MAX1 <= (ui32_t)a_TERMCAP_F_TYPE_MASK,
+CTA((ui32_t)n__TERMCAP_CAPTYPE_MAX1 <= (ui32_t)a_TERMCAP_F_TYPE_MASK,
    "enum n_termcap_captype exceeds bit range of a_termcap_flags");
 
 struct a_termcap_control{
@@ -102,14 +102,14 @@ struct a_termcap_control{
     * a terminfo(5) name may be empty for the same purpose */
    ui16_t tc_off;
 };
-n_CTA(a_TERMCAP_F__LAST <= UI16_MAX,
+CTA(a_TERMCAP_F__LAST <= UI16_MAX,
    "a_termcap_flags exceed storage datatype in a_termcap_control");
 
 struct a_termcap_ent{
    ui16_t te_flags;
    ui16_t te_off;    /* in a_termcap_g->tg_dat / value for T_BOOL and T_NUM */
 };
-n_CTA(a_TERMCAP_F__LAST <= UI16_MAX,
+CTA(a_TERMCAP_F__LAST <= UI16_MAX,
    "a_termcap_flags exceed storage datatype in a_termcap_ent");
 
 /* Structure for extended queries, which don't have an entry constant in
@@ -120,7 +120,7 @@ struct a_termcap_ext_ent{
    struct a_termcap_ext_ent *tee_next;
    /* Resolvable termcap(5)/terminfo(5) name as given by user; the actual data
     * is stored just like for normal queries */
-   char tee_name[n_VFIELD_SIZE(0)];
+   char tee_name[VFIELD_SIZE(0)];
 };
 
 struct a_termcap_g{
@@ -134,9 +134,9 @@ struct a_termcap_g{
 
 /* Include the constant make-tcap-map.pl output */
 #include "mx/gen-tcaps.h" /* $(MX_SRCDIR) */
-n_CTA(sizeof a_termcap_namedat <= UI16_MAX,
+CTA(sizeof a_termcap_namedat <= UI16_MAX,
    "Termcap command and query name data exceed storage datatype");
-n_CTA(a_TERMCAP_ENT_MAX1 == n_NELEM(a_termcap_control),
+CTA(a_TERMCAP_ENT_MAX1 == NELEM(a_termcap_control),
    "Control array does not match command/query array to be controlled");
 
 static struct a_termcap_g *a_termcap_g;
@@ -231,7 +231,7 @@ jeinvent:
             if((f & a_TERMCAP_F_TYPE_MASK) == n_TERMCAP_CAPTYPE_STRING){
                struct a_termcap_ext_ent *teep;
 
-               teep = n_alloc(n_VSTRUCT_SIZEOF(struct a_termcap_ext_ent,
+               teep = n_alloc(VSTRUCT_SIZEOF(struct a_termcap_ext_ent,
                      tee_name) + kl +1);
                teep->tee_next = a_termcap_g->tg_ext_ents;
                a_termcap_g->tg_ext_ents = teep;
@@ -386,7 +386,7 @@ a_termcap_init_altern(void){
 
    struct a_termcap_ent *tep;
    NYD2_IN;
-   n_UNUSED(tep);
+   UNUSED(tep);
 
    /* For simplicity in the rest of this file null flags of disabled commands,
     * as we won't check and try to lazy query any command */
@@ -473,7 +473,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
    NYD2_IN;
    ASSERT(!(n_psonce & n_PSO_TERMCAP_DISABLE));
 
-   if(n_UNLIKELY(*cname == '\0'))
+   if(UNLIKELY(*cname == '\0'))
       rv = FAL0;
    else switch((tep->te_flags = cflags) & a_TERMCAP_F_TYPE_MASK){
    case n_TERMCAP_CAPTYPE_BOOL:
@@ -485,7 +485,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
       int r = tigetnum(cname);
 
       if((rv = (r >= 0)))
-         tep->te_off = (ui16_t)n_MIN(UI16_MAX, r);
+         tep->te_off = (ui16_t)MIN(UI16_MAX, r);
       else
          tep->te_flags |= a_TERMCAP_F_NOENT;
       }break;
@@ -539,7 +539,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
    NYD2_IN;
    ASSERT(!(n_psonce & n_PSO_TERMCAP_DISABLE));
 
-   if(n_UNLIKELY(*cname == '\0'))
+   if(UNLIKELY(*cname == '\0'))
       rv = FAL0;
    else switch((tep->te_flags = cflags) & a_TERMCAP_F_TYPE_MASK){
    case n_TERMCAP_CAPTYPE_BOOL:
@@ -551,7 +551,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
       int r = tgetnum(cname);
 
       if((rv = (r >= 0)))
-         tep->te_off = (ui16_t)n_MIN(UI16_MAX, r);
+         tep->te_off = (ui16_t)MIN(UI16_MAX, r);
       else
          tep->te_flags |= a_TERMCAP_F_NOENT;
       }break;
@@ -739,8 +739,8 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
    enum a_termcap_flags flags;
    ssize_t rv;
    NYD2_IN;
-   n_UNUSED(a1);
-   n_UNUSED(a2);
+   UNUSED(a1);
+   UNUSED(a2);
 
    rv = FAL0;
    if(a_termcap_g == NULL)
@@ -905,7 +905,7 @@ n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
          goto jleave;
 #ifdef mx_HAVE_TERMCAP
       nlen = su_cs_len(ndat) +1;
-      teep = n_alloc(n_VSTRUCT_SIZEOF(struct a_termcap_ext_ent, tee_name) +
+      teep = n_alloc(VSTRUCT_SIZEOF(struct a_termcap_ext_ent, tee_name) +
             nlen);
       tep = &teep->tee_super;
       teep->tee_next = a_termcap_g->tg_ext_ents;

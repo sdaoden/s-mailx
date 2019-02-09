@@ -170,18 +170,18 @@ FL bool_t n_var_is_user_writable(char const *name);
 
 /* Constant option key look/(un)set/clear */
 FL char *n_var_oklook(enum okeys okey);
-#define ok_blook(C) (n_var_oklook(n_CONCAT(ok_b_, C)) != NULL)
-#define ok_vlook(C) n_var_oklook(n_CONCAT(ok_v_, C))
+#define ok_blook(C) (n_var_oklook(su_CONCAT(ok_b_, C)) != NULL)
+#define ok_vlook(C) n_var_oklook(su_CONCAT(ok_v_, C))
 
 FL bool_t n_var_okset(enum okeys okey, uintptr_t val);
 #define ok_bset(C) \
-   n_var_okset(n_CONCAT(ok_b_, C), (uintptr_t)TRU1)
+   n_var_okset(su_CONCAT(ok_b_, C), (uintptr_t)TRU1)
 #define ok_vset(C,V) \
-   n_var_okset(n_CONCAT(ok_v_, C), (uintptr_t)(V))
+   n_var_okset(su_CONCAT(ok_v_, C), (uintptr_t)(V))
 
 FL bool_t n_var_okclear(enum okeys okey);
-#define ok_bclear(C) n_var_okclear(n_CONCAT(ok_b_, C))
-#define ok_vclear(C) n_var_okclear(n_CONCAT(ok_v_, C))
+#define ok_bclear(C) n_var_okclear(su_CONCAT(ok_b_, C))
+#define ok_vclear(C) n_var_okclear(su_CONCAT(ok_v_, C))
 
 /* Variable option key lookup/(un)set/clear.
  * If try_getenv is true we'll getenv(3) _if_ vokey is not a known enum okey.
@@ -200,8 +200,8 @@ FL char *n_var_xoklook(enum okeys okey, struct url const *urlp,
             enum okey_xlook_mode oxm);
 # define xok_BLOOK(C,URL,M) (n_var_xoklook(C, URL, M) != NULL)
 # define xok_VLOOK(C,URL,M) n_var_xoklook(C, URL, M)
-# define xok_blook(C,URL,M) xok_BLOOK(n_CONCAT(ok_b_, C), URL, M)
-# define xok_vlook(C,URL,M) xok_VLOOK(n_CONCAT(ok_v_, C), URL, M)
+# define xok_blook(C,URL,M) xok_BLOOK(su_CONCAT(ok_b_, C), URL, M)
+# define xok_vlook(C,URL,M) xok_VLOOK(su_CONCAT(ok_v_, C), URL, M)
 #endif
 
 /* User variable access: `set', `local' and `unset' */
@@ -1911,7 +1911,7 @@ FL struct str *n_str_trim_ifs(struct str *self, bool_t dodefaults);
 
 /* Truncate to size, which must be LE current length */
 #define n_string_trunc(S,L) \
-   (ASSERT_NB(UICMP(z, L, <=, (S)->s_len)), (S)->s_len = (ui32_t)(L), (S))
+   (ASSERT_NB(UCMP(z, L, <=, (S)->s_len)), (S)->s_len = (ui32_t)(L), (S))
 
 /* Take/Release buffer ownership */
 #define n_string_take_ownership(SP,B,S,L) \
@@ -1931,10 +1931,10 @@ FL struct n_string *n_string_clear(struct n_string *self su_DBG_LOC_ARGS_DECL);
 #endif
 
 /* Check whether a buffer of Len bytes can be inserted into S(elf) */
-#define n_string_get_can_book(L) ((uiz_t)SI32_MAX - n_ALIGN(1) > L)
+#define n_string_get_can_book(L) ((uiz_t)SI32_MAX - Z_ALIGN(1) > L)
 #define n_string_can_book(S,L) \
    (n_string_get_can_book(L) &&\
-    (uiz_t)SI32_MAX - n_ALIGN(1) - (L) > (S)->s_len)
+    (uiz_t)SI32_MAX - Z_ALIGN(1) - (L) > (S)->s_len)
 
 /* Reserve room for noof additional bytes, but don't adjust length (yet) */
 FL struct n_string *n_string_reserve(struct n_string *self, size_t noof

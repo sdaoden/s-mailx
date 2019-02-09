@@ -128,7 +128,7 @@ sub create_c_tool{
 #include <stdio.h>
 #include <string.h>
 
-#define n_NELEM(A) (sizeof(A) / sizeof(A[0]))
+#define NELEM(A) (sizeof(A) / sizeof(A[0]))
 
 #define ui32_t uint32_t
 #define ui16_t uint16_t
@@ -182,7 +182,7 @@ struct a_amv_var_chain_map{
    ui16_t avcm_okey;
 };
 
-#define n_CTA(A,S)
+#define CTA(A,S)
 _EOT
 
    print F '#include "', $OUT, "\"\n\n";
@@ -204,12 +204,12 @@ jredo:
 static size_t *
 reversy(size_t size){
    struct a_amv_var_map const *vmp = a_amv_var_map,
-      *vmaxp = vmp + n_NELEM(a_amv_var_map);
+      *vmaxp = vmp + NELEM(a_amv_var_map);
    size_t ldist = 0, *arr;
 
    arr = malloc(sizeof *arr * size);
    for(size_t i = 0; i < size; ++i)
-      arr[i] = n_NELEM(a_amv_var_map);
+      arr[i] = NELEM(a_amv_var_map);
 
    seen_wraparound = 0;
    longest_distance = 0;
@@ -217,7 +217,7 @@ reversy(size_t size){
    while(vmp < vmaxp){
       ui32_t hash = vmp->avm_hash, i = hash % size, l;
 
-      for(l = 0; arr[i] != n_NELEM(a_amv_var_map); ++l)
+      for(l = 0; arr[i] != NELEM(a_amv_var_map); ++l)
          if(++i == size){
             seen_wraparound = 1;
             i = 0;
@@ -231,7 +231,7 @@ reversy(size_t size){
 
 int
 main(int argc, char **argv){
-   size_t *arr, size = n_NELEM(a_amv_var_map);
+   size_t *arr, size = NELEM(a_amv_var_map);
 
    fprintf(stderr, "Starting reversy, okeys=%zu\n", size);
    for(;;){
@@ -249,7 +249,7 @@ main(int argc, char **argv){
       "#define a_AMV_VAR_REV_LONGEST %zuu\n"
       "#define a_AMV_VAR_REV_WRAPAROUND %d\n"
       "static %s const a_amv_var_revmap[a_AMV_VAR_REV_PRIME] = {\n%s",
-      n_NELEM(a_amv_var_map), size, longest_distance, seen_wraparound,
+      NELEM(a_amv_var_map), size, longest_distance, seen_wraparound,
       argv[1], (argc > 2 ? "  " : ""));
    for(size_t i = 0; i < size; ++i)
       printf("%s%zuu", (i == 0 ? ""
@@ -338,7 +338,7 @@ sub dump_map{
    print F '};', "\n#define a_AMV_VAR_NAME_KEY_MAXOFF ${alen}U\n\n";
 
    # Create the management map
-   print F 'n_CTA(a_AMV_VF_NONE == 0, "Value not 0 as expected");', "\n";
+   print F 'CTA(a_AMV_VF_NONE == 0, "Value not 0 as expected");', "\n";
    print F 'static struct a_amv_var_map const a_amv_var_map[] = {', "\n";
    foreach my $e (@ENTS){
       my $f = $VERB ? 'a_AMV_VF_NONE' : '0';
@@ -364,8 +364,8 @@ _EOT
    #
    if(%chains){
       my (@prefixes,$last_pstr,$last_pbeg,$last_pend,$i);
-      print F 'n_CTAV(4 == ',
-         'n_SIZEOF_FIELD(struct a_amv_var_chain_map_bsrch, avcmb_prefix));',
+      print F 'CTAV(4 == ',
+         'FIELD_SIZEOF(struct a_amv_var_chain_map_bsrch, avcmb_prefix));',
          "\n";
       print F 'static struct a_amv_var_chain_map const ',
          'a_amv_var_chain_map[] = {', "\n";
@@ -422,7 +422,7 @@ _EOT
       my $fa = join '|', @{$e->{flags}};
       $f .= '|' . $fa if length $fa;
       print F "} const a_amv_$e->{vstruct} = ",
-         "{NULL, a_amv_$e->{vstruct}_val, a_X(0 COMMA) $f, ",
+         "{NULL, a_amv_$e->{vstruct}_val, a_X(0 su_COMMA) $f, ",
          "\"$e->{name}\"};\n\n"
    }
 

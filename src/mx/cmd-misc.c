@@ -233,7 +233,7 @@ c_shell(void *v)
 
             fflush_rewind(fp);
             l = fsize(fp);
-            if(UICMP(64, l, >=, UIZ_MAX -42)){
+            if(UCMP(64, l, >=, UIZ_MAX -42)){
                n_pstate_err_no = su_ERR_NOMEM;
                varres = n_empty;
             }else{
@@ -272,7 +272,7 @@ c_dosh(void *v)
 {
    int rv;
    NYD_IN;
-   n_UNUSED(v);
+   UNUSED(v);
 
    if(n_child_run(ok_vlook(SHELL), 0, n_CHILD_FD_PASS, n_CHILD_FD_PASS, NULL,
          NULL, NULL, NULL, &rv) < 0){
@@ -528,7 +528,7 @@ c_readall(void * vp){ /* TODO 64-bit retval */
       if(n_pstate & n_PS_READLINE_NL)
          linebuf[rv++] = '\n'; /* Replace NUL with it */
 
-      if(n_UNLIKELY(rv == 0)){ /* xxx will not get*/
+      if(UNLIKELY(rv == 0)){ /* xxx will not get*/
          if(n_go_input_is_eof()){
             if(s->s_len == 0){
                rv = -1;
@@ -536,7 +536,7 @@ c_readall(void * vp){ /* TODO 64-bit retval */
             }
             break;
          }
-      }else if(n_LIKELY(UICMP(32, SI32_MAX - s->s_len, >, rv)))
+      }else if(LIKELY(UCMP(32, SI32_MAX - s->s_len, >, rv)))
          s = n_string_push_buf(s, linebuf, rv);
       else{
          n_pstate_err_no = su_ERR_OVERFLOW;

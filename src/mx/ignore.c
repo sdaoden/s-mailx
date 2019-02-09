@@ -35,13 +35,13 @@ struct a_ignore_type{
    ui8_t it__dummy[3];
    struct a_ignore_field{
       struct a_ignore_field *if_next;
-      char if_field[n_VFIELD_SIZE(0)]; /* Header field */
+      char if_field[VFIELD_SIZE(0)]; /* Header field */
    } *it_ht[3]; /* TODO make hashmap dynamic */
 #ifdef mx_HAVE_REGEX
    struct a_ignore_re{
       struct a_ignore_re *ir_next;
       regex_t ir_regex;
-      char ir_input[n_VFIELD_SIZE(0)]; /* Regex input text (for showing it) */
+      char ir_input[VFIELD_SIZE(0)]; /* Regex input text (for showing it) */
    } *it_re, *it_re_tail;
 #endif
 };
@@ -70,11 +70,11 @@ static struct a_ignore_bltin_map const a_ignore_bltin_map[] = {
    {n_IGNORE_FWD, "fwd\0"}
 };
 #ifdef mx_HAVE_DEVEL /* Avoid gcc warn cascade "n_ignore is defined locally" */
-n_CTAV(-n__IGNORE_TYPE - n__IGNORE_ADJUST == 0);
-n_CTAV(-n__IGNORE_SAVE - n__IGNORE_ADJUST == 1);
-n_CTAV(-n__IGNORE_FWD - n__IGNORE_ADJUST == 2);
-n_CTAV(-n__IGNORE_TOP - n__IGNORE_ADJUST == 3);
-n_CTAV(n__IGNORE_MAX == 3);
+CTAV(-n__IGNORE_TYPE - n__IGNORE_ADJUST == 0);
+CTAV(-n__IGNORE_SAVE - n__IGNORE_ADJUST == 1);
+CTAV(-n__IGNORE_FWD - n__IGNORE_ADJUST == 2);
+CTAV(-n__IGNORE_TOP - n__IGNORE_ADJUST == 3);
+CTAV(n__IGNORE_MAX == 3);
 #endif
 
 static struct n_ignore *a_ignore_bltin[n__IGNORE_MAX + 1];
@@ -153,7 +153,7 @@ a_ignore_lookup(struct n_ignore const *self, bool_t retain,
 
    if(len == UIZ_MAX)
       len = su_cs_len(dat);
-   hi = su_cs_hash_case_cbuf(dat, len) % n_NELEM(self->i_retain.it_ht);
+   hi = su_cs_hash_case_cbuf(dat, len) % NELEM(self->i_retain.it_ht);
 
    /* Again: doesn't handle .it_all conditions! */
    /* (Inner functions would be nice, again) */
@@ -208,7 +208,7 @@ a_ignore_del_allof(struct n_ignore *ip, bool_t retain){
    if(!ip->i_auto){
       size_t i;
 
-      for(i = 0; i < n_NELEM(itp->it_ht); ++i)
+      for(i = 0; i < NELEM(itp->it_ht); ++i)
          for(ifp = itp->it_ht[i]; ifp != NULL;){
             struct a_ignore_field *x;
 
@@ -242,7 +242,7 @@ a_ignore_resolve_bltin(char const *cp){
    for(ibmp = &a_ignore_bltin_map[0];;)
       if(!su_cs_cmp_case(cp, ibmp->ibm_name))
          break;
-      else if(++ibmp == &a_ignore_bltin_map[n_NELEM(a_ignore_bltin_map)]){
+      else if(++ibmp == &a_ignore_bltin_map[NELEM(a_ignore_bltin_map)]){
          ibmp = NULL;
          break;
       }
@@ -312,12 +312,12 @@ a_ignore__show(struct n_ignore const *ip, bool_t retain){
    }while(0);
 
    ring = n_autorec_alloc((itp->it_count +1) * sizeof *ring);
-   for(ap = ring, i = 0; i < n_NELEM(itp->it_ht); ++i)
+   for(ap = ring, i = 0; i < NELEM(itp->it_ht); ++i)
       for(ifp = itp->it_ht[i]; ifp != NULL; ifp = ifp->if_next)
          *ap++ = ifp->if_field;
    *ap = NULL;
 
-   qsort(ring, PTR2SIZE(ap - ring), sizeof *ring, &a_ignore__cmp);
+   qsort(ring, P2UZ(ap - ring), sizeof *ring, &a_ignore__cmp);
 
    i = fprintf(n_stdout, "headerpick %s %s",
       a_ignore_bltin_map[ip->i_ibm_idx].ibm_name,
@@ -329,7 +329,7 @@ a_ignore__show(struct n_ignore const *ip, bool_t retain){
       size_t len;
 
       len = su_cs_len(*ap) + 1;
-      if(UICMP(z, len, >=, sw - i)){
+      if(UCMP(z, len, >=, sw - i)){
          fputs(" \\\n ", n_stdout);
          i = 1;
       }
@@ -346,7 +346,7 @@ a_ignore__show(struct n_ignore const *ip, bool_t retain){
 
       cp = n_shexp_quote_cp(irp->ir_input, FAL0);
       len = su_cs_len(cp) + 1;
-      if(UICMP(z, len, >=, sw - i)){
+      if(UCMP(z, len, >=, sw - i)){
          fputs(" \\\n ", n_stdout);
          i = 1;
       }
@@ -426,7 +426,7 @@ a_ignore__delone(struct n_ignore *ip, bool_t retain, char const *field){
       struct a_ignore_field **ifpp, *ifp;
       ui32_t hi;
 
-      hi = su_cs_hash_case_cbuf(field, UIZ_MAX) % n_NELEM(itp->it_ht);
+      hi = su_cs_hash_case_cbuf(field, UIZ_MAX) % NELEM(itp->it_ht);
 
       for(ifp = *(ifpp = &itp->it_ht[hi]); ifp != NULL;
             ifpp = &ifp->if_next, ifp = ifp->if_next)
@@ -745,7 +745,7 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
 
    if(itp->it_count == UI32_MAX){
       n_err(_("Header selection size limit reached, cannot insert: %.*s\n"),
-         (int)n_MIN(len, SI32_MAX), dat);
+         (int)MIN(len, SI32_MAX), dat);
       rv = FAL0;
       goto jleave;
    }
@@ -757,7 +757,7 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
       int s;
       size_t i;
 
-      i = n_VSTRUCT_SIZEOF(struct a_ignore_re, ir_input) + ++len;
+      i = VSTRUCT_SIZEOF(struct a_ignore_re, ir_input) + ++len;
       irp = self->i_auto ? n_autorec_alloc(i) : n_alloc(i);
       su_mem_copy(irp->ir_input, dat, --len);
       irp->ir_input[len] = '\0';
@@ -785,11 +785,11 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
       ui32_t hi;
       size_t i;
 
-      i = n_VSTRUCT_SIZEOF(struct a_ignore_field, if_field) + len + 1;
+      i = VSTRUCT_SIZEOF(struct a_ignore_field, if_field) + len + 1;
       ifp = self->i_auto ? n_autorec_alloc(i) : n_alloc(i);
       su_mem_copy(ifp->if_field, dat, len);
       ifp->if_field[len] = '\0';
-      hi = su_cs_hash_case_cbuf(dat, len) % n_NELEM(itp->it_ht);
+      hi = su_cs_hash_case_cbuf(dat, len) % NELEM(itp->it_ht);
       ifp->if_next = itp->it_ht[hi];
       itp->it_ht[hi] = ifp;
    }

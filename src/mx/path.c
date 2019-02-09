@@ -85,7 +85,7 @@ jredo:
          if((vp = su_cs_rfind_c(name, '/')) != NULL){ /* TODO magic dirsep */
             while(vp > name && vp[-1] == '/')
                --vp;
-            vp = savestrbuf(name, PTR2SIZE(vp - name));
+            vp = savestrbuf(name, P2UZ(vp - name));
 
             if(n_path_mkdir(vp))
                goto jredo;
@@ -183,7 +183,7 @@ FL void
 cwrelse(struct cw *cw)
 {
    NYD_IN;
-   n_UNUSED(cw);
+   UNUSED(cw);
    NYD_OU;
 }
 #endif /* !mx_HAVE_FCHDIR */

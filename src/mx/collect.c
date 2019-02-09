@@ -71,7 +71,7 @@ struct a_coll_ocs_arg{
    FILE *coa_stdout; /* The Popen()ed pipe through which we write to the hook */
    int coa_pipe[2];  /* ..backing .coa_stdin */
    si8_t *coa_senderr; /* Set to 1 on failure */
-   char coa_cmd[n_VFIELD_SIZE(0)];
+   char coa_cmd[VFIELD_SIZE(0)];
 };
 
 /* The following hookiness with global variables is so that on receipt of an
@@ -162,7 +162,7 @@ _execute_command(struct header *hp, char const *linebuf, size_t linesize){
    char * volatile mnbuf;
    NYD_IN;
 
-   n_UNUSED(linesize);
+   UNUSED(linesize);
    mnbuf = NULL;
 
    n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_HUP | n_SIGMAN_INT | n_SIGMAN_QUIT){
@@ -250,7 +250,7 @@ jdelim_empty:
                rv = su_ERR_INVAL;
                goto jleave;
             }
-            if((heredl = PTR2SIZE(indb - heredb)) == 0)
+            if((heredl = P2UZ(indb - heredb)) == 0)
                goto jdelim_empty;
             heredb = savestrbuf(heredb, heredl);
          }
@@ -673,7 +673,7 @@ a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
    NYD_IN;
 
    rv = su_ERR_NONE;
-   n_UNINIT(sigint, SIG_ERR);
+   UNINIT(sigint, SIG_ERR);
    saved_filrec = ok_blook(add_file_recipients);
 
    n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
@@ -872,7 +872,7 @@ static void
 collhup(int s)
 {
    NYD; /* Signal handler */
-   n_UNUSED(s);
+   UNUSED(s);
 
    savedeadletter(_coll_fp, TRU1);
    /* Let's pretend nobody else wants to clean up, a true statement at
@@ -1105,7 +1105,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
          }
       }
    }else{
-      n_UNINIT(t, 0);
+      UNINIT(t, 0);
    }
 
    _coll_hadintr = 0;
@@ -1808,7 +1808,7 @@ jout:
       }
 
       i = su_cs_len(cp) +1;
-      coap = n_lofi_alloc(n_VSTRUCT_SIZEOF(struct a_coll_ocs_arg, coa_cmd
+      coap = n_lofi_alloc(VSTRUCT_SIZEOF(struct a_coll_ocs_arg, coa_cmd
             ) + i);
       coap->coa_pipe[0] = coap->coa_pipe[1] = -1;
       coap->coa_stdin = coap->coa_stdout = NULL;
@@ -1951,15 +1951,15 @@ jreasksend:
       if(linebuf == NULL)
          linebuf = n_alloc(linesize = LINESIZE);
       c = '\0';
-      while((i = fread(linebuf, sizeof *linebuf, linesize, n_UNVOLATILE(sigfp)))
-            > 0){
+      while((i = fread(linebuf, sizeof *linebuf, linesize,
+            UNVOLATILE(FILE*,sigfp))) > 0){
          c = linebuf[i - 1];
          if(i != fwrite(linebuf, sizeof *linebuf, i, _coll_fp))
             goto jerr;
       }
 
       /* C99 */{
-         FILE *x = n_UNVOLATILE(sigfp);
+         FILE *x = UNVOLATILE(FILE*,sigfp);
          int e = su_err_no(), ise = ferror(x);
 
          sigfp = NULL;
@@ -2003,7 +2003,7 @@ jskiptails:
       if((ap->a_flink = hp->h_attach) != NULL)
          hp->h_attach->a_blink = ap;
       hp->h_attach = ap;
-      ap->a_msgno = (int)PTR2SIZE(mp - message + 1);
+      ap->a_msgno = (int)P2UZ(mp - message + 1);
       ap->a_content_description = _("Original message content");
    }
 
@@ -2033,7 +2033,7 @@ jerr:
       ifs_saved = NULL;
    }
    if(sigfp != NULL){
-      Fclose(n_UNVOLATILE(sigfp));
+      Fclose(UNVOLATILE(FILE*,sigfp));
       sigfp = NULL;
    }
    if(_coll_fp != NULL){

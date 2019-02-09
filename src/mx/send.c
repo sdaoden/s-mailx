@@ -307,7 +307,7 @@ env_addon[i++] = str_concat_csvl(&s, "NAIL_FILENAME", "=", cp, NULL)->s;/*v15*/
     * TODO a file wherever he wants!  *Do* create a zero-size temporary file
     * TODO and give *that* path as MAILX_FILENAME_TEMPORARY, clean it up once
     * TODO the pipe returns?  Like this we *can* verify path/name issues! */
-   cp = n_random_create_cp(n_MIN(NAME_MAX - 3, 16), &reprocnt);
+   cp = n_random_create_cp(MIN(NAME_MAX - 3, 16), &reprocnt);
    env_addon[i++] = str_concat_csvl(&s, n_PIPEENV_FILENAME_GENERATED, "=", cp,
          NULL)->s;
 env_addon[i++] = str_concat_csvl(&s, "NAIL_FILENAME_GENERATED", "=", cp,/*v15*/
@@ -436,7 +436,7 @@ static void
 _send_onpipe(int signo)
 {
    NYD; /* Signal handler */
-   n_UNUSED(signo);
+   UNUSED(signo);
    siglongjmp(_send_pipejmp, 1);
 }
 
@@ -472,8 +472,8 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    sighandler_type volatile oldpipe = SIG_DFL;
    NYD_IN;
 
-   n_UNINIT(term_infd, 0);
-   n_UNINIT(cnt, 0);
+   UNINIT(term_infd, 0);
+   UNINIT(cnt, 0);
 
    quoteflt_reset(qf, obuf);
 
@@ -531,7 +531,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
 
    hlp = n_string_creat_auto(&hl); /* TODO pool [or, v15: filter!] */
    /* Reserve three lines, still not enough for references and DKIM etc. */
-   hlp = n_string_reserve(hlp, n_MAX(MIME_LINELEN, MIME_LINELEN_RFC2047) * 3);
+   hlp = n_string_reserve(hlp, MAX(MIME_LINELEN, MIME_LINELEN_RFC2047) * 3);
 
    for(hstop = /*see below hany =*/ FAL0; !hstop;){
       size_t lcnt;
@@ -608,7 +608,7 @@ jhdrput:
       /* C99 */{
          size_t i;
 
-         i = PTR2SIZE(cp - hlp->s_dat);
+         i = P2UZ(cp - hlp->s_dat);
          if((doitp != NULL && n_ignore_is_ign(doitp, hlp->s_dat, i)) ||
                !su_cs_cmp_case(hlp->s_dat, "status") ||
                !su_cs_cmp_case(hlp->s_dat, "x-status") ||
@@ -1122,7 +1122,7 @@ jpipe_close:
       }
 
 jpipe_for_real:
-      pbuf = _pipefile(mhp, ip, n_UNVOLATILE(&qbuf), tmpname, term_infd);
+      pbuf = _pipefile(mhp, ip, UNVOLATILE(FILE**,&qbuf), tmpname, term_infd);
       if (pbuf == NULL) {
 jesend:
          pbuf = qbuf = NULL;

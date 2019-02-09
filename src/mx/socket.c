@@ -127,7 +127,7 @@ a_socket_open(struct sock *sop, struct url *urlp) /* TODO sigstuff; refactor */
    NYD2_IN;
 
    su_mem_set(sop, 0, sizeof *sop);
-   n_UNINIT(errval, 0);
+   UNINIT(errval, 0);
 
    serv = (urlp->url_port != NULL) ? urlp->url_port : urlp->url_proto;
 
@@ -749,8 +749,8 @@ FL int
    }
 
    do {
-      if (lp_base == NULL || PTRCMP(lp, >, lp_base + lsize - 128)) {
-         size_t diff = PTR2SIZE(lp - lp_base);
+      if (lp_base == NULL || PCMP(lp, >, lp_base + lsize - 128)) {
+         size_t diff = P2UZ(lp - lp_base);
          *linesize = (lsize += 256); /* XXX magic */
          *line = lp_base = su_MEM_REALLOC_LOCOR(lp_base, lsize,
                su_DBG_LOC_ARGS_ORUSE);
@@ -758,7 +758,7 @@ FL int
       }
 
       if (sop->s_rbufptr == NULL ||
-            PTRCMP(sop->s_rbufptr, >=, sop->s_rbuf + sop->s_rsz)) {
+            PCMP(sop->s_rbufptr, >=, sop->s_rbuf + sop->s_rsz)) {
 # ifdef mx_HAVE_XTLS
          if (sop->s_use_tls) {
 jssl_retry:
@@ -800,7 +800,7 @@ jagain:
       }
    } while ((*lp++ = *sop->s_rbufptr++) != '\n');
    *lp = '\0';
-   lsize = PTR2SIZE(lp - lp_base);
+   lsize = P2UZ(lp - lp_base);
 
    if (linelen)
       *linelen = lsize;

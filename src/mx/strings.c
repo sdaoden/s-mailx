@@ -291,7 +291,7 @@ FL struct str *
 
    ASSERT(buflen == 0 || buf != NULL);
 
-   if(n_LIKELY(buflen > 0)){
+   if(LIKELY(buflen > 0)){
       self->s = su_MEM_REALLOC_LOCOR(self->s, (self->l = buflen) +1,
             su_DBG_LOC_ARGS_ORUSE);
       su_mem_copy(self->s, buf, buflen);
@@ -477,12 +477,12 @@ FL struct n_string *
 
    s = self->s_size;
    l = self->s_len;
-   if((size_t)SI32_MAX - n_ALIGN(1) - l <= noof)
+   if((size_t)SI32_MAX - Z_ALIGN(1) - l <= noof)
       n_panic(_("Memory allocation too large"));
 
    if((i = s - l) <= ++noof){
       i += l + (ui32_t)noof;
-      i = n_ALIGN(i);
+      i = Z_ALIGN(i);
       self->s_size = i -1;
 
       if(!self->s_auto)
@@ -506,7 +506,7 @@ FL struct n_string *
    NYD_IN;
    ASSERT(self != NULL);
 
-   if(UICMP(z, SI32_MAX, <=, nlen))
+   if(UCMP(z, SI32_MAX, <=, nlen))
       n_panic(_("Memory allocation too large"));
 
    if(self->s_len < nlen)

@@ -174,7 +174,7 @@ jsend:
 #ifdef mx_HAVE_IMAP
       if((fs & n_PROTO_MASK) == n_PROTO_IMAP &&
             !n_ignore_is_any(n_IGNORE_SAVE) && imap_thisaccount(file)){
-         if(imap_copy(mp, PTR2SIZE(mp - message + 1), file) == STOP){
+         if(imap_copy(mp, P2UZ(mp - message + 1), file) == STOP){
             success = FAL0;
             goto jferr;
          }

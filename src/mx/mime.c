@@ -175,8 +175,8 @@ _fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
    struct str in, out;
    ssize_t rv;
    NYD_IN;
-   n_UNUSED(failiconv);
-   n_UNUSED(outrest);
+   UNUSED(failiconv);
+   UNUSED(outrest);
 
    in = *input;
    out.s = NULL;
@@ -210,7 +210,7 @@ _fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
          char const *cp;
 
          if((cp = su_mem_find(in.s, '\n', j = in.l)) != NULL){
-            i = PTR2SIZE(cp - in.s);
+            i = P2UZ(cp - in.s);
             j -= i;
             while(j > 0 && *cp == '\n') /* XXX one iteration too much */
                ++cp, --j, ++i;
@@ -271,7 +271,7 @@ _fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
 
       for (cp = &in.s[in.l]; cp > in.s && cp[-1] != '\n'; --cp)
          ;
-      i = PTR2SIZE(cp - in.s);
+      i = P2UZ(cp - in.s);
 
       if (i != in.l) {
          if (i > 0) {
@@ -447,7 +447,7 @@ mime_write_tohdr(struct str *in, FILE *fo, size_t *colp,
       }
 
       /* Decide whether the range has to become encoded or not */
-      i = PTR2SIZE(wend - wcur);
+      i = P2UZ(wend - wcur);
       j = mime_enc_mustquote(wcur, i, MIMEEF_ISHEAD);
       /* If it just cannot fit on a SHOULD line length, force encode */
       if (i > a_MAXCOL_NENC) {
@@ -491,7 +491,7 @@ jnoenc_putws:
           * todo (2) the standard is braindead and (3) usually this is one
           * todo word only, and why be smarter than the standard? */
 jnoenc_retry:
-         i = PTR2SIZE(wend - wbot);
+         i = P2UZ(wend - wbot);
          if (i + col + ((flags & _MSH_NOTHING) != 0) <=
                   (flags & _OVERLONG ? MIME_LINELEN_MAX
                    : (flags & a_ANYENC ? a_MAXCOL : a_MAXCOL_NENC))) {
@@ -567,7 +567,7 @@ jnoenc_retry:
           *    or more 'encoded-word's is limited to 76 characters */
 jenc_retry:
          cin.s = n_UNCONST(wbot);
-         cin.l = PTR2SIZE(wend - wbot);
+         cin.l = P2UZ(wend - wbot);
 
          /* C99 */{
             struct str *xout;
@@ -644,7 +644,7 @@ jenc_retry_same:
          }*/
 
 /* FIXME n_PSO_UNICODE and parse using UTF-8 sync possibility! */
-         i = PTR2SIZE(wend - wbot) + !!(flags & _SPACE);
+         i = P2UZ(wend - wbot) + !!(flags & _SPACE);
          j = 3 + !(flags & _ENC_B64);
          for (;;) {
             wend -= j;
@@ -716,7 +716,7 @@ mime_write_tohdr_a(struct str *in, FILE *f, size_t *colp,
 
    if((cp = routeaddr(lastcp = in->s)) != NULL && cp > lastcp) {
       xin.s = n_UNCONST(lastcp);
-      xin.l = PTR2SIZE(cp - lastcp);
+      xin.l = P2UZ(cp - lastcp);
       if ((size = a_mime__convhdra(&xin, f, colp, msh)) < 0)
          goto jleave;
       lastcp = cp;
@@ -728,7 +728,7 @@ mime_write_tohdr_a(struct str *in, FILE *f, size_t *colp,
    for( ; *cp != '\0'; ++cp){
       switch(*cp){
       case '(':
-         i = PTR2SIZE(cp - lastcp);
+         i = P2UZ(cp - lastcp);
          if(i > 0){
             if(fwrite(lastcp, 1, i, f) != i)
                goto jerr;
@@ -740,14 +740,14 @@ mime_write_tohdr_a(struct str *in, FILE *f, size_t *colp,
             --cp;
          /* We want to keep empty comments, too! */
          xin.s = n_UNCONST(lastcp);
-         xin.l = PTR2SIZE(cp - lastcp);
+         xin.l = P2UZ(cp - lastcp);
          if ((x = a_mime__convhdra(&xin, f, colp, a_MIME_SH_COMMENT)) < 0)
             goto jerr;
          size += x;
          lastcp = &cp[1];
          break;
       case '"':
-         i = PTR2SIZE(cp - lastcp);
+         i = P2UZ(cp - lastcp);
          if(i > 0){
             if(fwrite(lastcp, 1, i, f) != i)
                goto jerr;
@@ -761,7 +761,7 @@ mime_write_tohdr_a(struct str *in, FILE *f, size_t *colp,
          }
          /* We want to keep empty quoted-strings, too! */
          xin.s = n_UNCONST(lastcp);
-         xin.l = PTR2SIZE(cp - lastcp);
+         xin.l = P2UZ(cp - lastcp);
          if((x = a_mime__convhdra(&xin, f, colp, a_MIME_SH_QUOTE)) < 0)
             goto jerr;
          size += x;
@@ -771,7 +771,7 @@ mime_write_tohdr_a(struct str *in, FILE *f, size_t *colp,
       }
    }
 
-   i = PTR2SIZE(cp - lastcp);
+   i = P2UZ(cp - lastcp);
    if(i > 0){
       if(fwrite(lastcp, 1, i, f) != i)
          goto jerr;
@@ -817,7 +817,7 @@ charset_iter_reset(char const *a_charset_to_try_first) /* TODO elim. dups! */
    size_t sarrl[3], len;
    char *cp;
    NYD_IN;
-   n_UNUSED(a_charset_to_try_first);
+   UNUSED(a_charset_to_try_first);
 
 #ifdef mx_HAVE_ICONV
    sarr[2] = ok_vlook(CHARSET_8BIT_OKEY);
@@ -954,7 +954,7 @@ need_hdrconv(struct header *hp) /* TODO once only, then iter */
       chlp[1] = n_customhdr_list;
       chlp[2] = hp->h_user_headers;
 
-      for(i = 0; i < n_NELEM(chlp); ++i)
+      for(i = 0; i < NELEM(chlp); ++i)
          if((hfp = chlp[i]) != NULL)
             do if(_has_highbit(hfp->hf_dat + hfp->hf_nl +1))
                goto jneeds;
@@ -1058,7 +1058,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
          ++p;
 #ifdef mx_HAVE_ICONV
          if (flags & TD_ICONV) {
-            size_t i = PTR2SIZE(p - cbeg);
+            size_t i = P2UZ(p - cbeg);
             char *ltag, *cs = n_lofi_alloc(i);
 
             su_mem_copy(cs, cbeg, --i);
@@ -1090,7 +1090,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
          cin.s = ++p;
          cin.l = 1;
          for (;;) {
-            if (PTRCMP(p + 1, >=, upper))
+            if (PCMP(p + 1, >=, upper))
                goto jnotmime;
             if (*p++ == '?' && *p == '=')
                break;
@@ -1164,13 +1164,13 @@ jnotmime: {
          for (;;) {
             if (++op == upper)
                break;
-            if (op[0] == '=' && (PTRCMP(op + 1, ==, upper) || op[1] == '?'))
+            if (op[0] == '=' && (PCMP(op + 1, ==, upper) || op[1] == '?'))
                break;
             if (onlyws && !su_cs_is_blank(*op))
                onlyws = FAL0;
          }
 
-         out = n_str_add_buf(out, p, PTR2SIZE(op - p));
+         out = n_str_add_buf(out, p, P2UZ(op - p));
          p = op;
          if (!onlyws || lastoutl != lastenc)
             lastenc = out->l;
@@ -1211,7 +1211,7 @@ mime_fromaddr(char const *name)
    }
 
    if ((cp = routeaddr(name)) != NULL && cp > name) {
-      _append_conv(&res, &ressz, &rescur, name, PTR2SIZE(cp - name));
+      _append_conv(&res, &ressz, &rescur, name, P2UZ(cp - name));
       lastcp = cp;
    } else
       cp = lastcp = name;
@@ -1219,11 +1219,11 @@ mime_fromaddr(char const *name)
    for ( ; *cp; ++cp) {
       switch (*cp) {
       case '(':
-         _append_str(&res, &ressz, &rescur, lastcp, PTR2SIZE(cp - lastcp + 1));
+         _append_str(&res, &ressz, &rescur, lastcp, P2UZ(cp - lastcp + 1));
          lastcp = ++cp;
          cp = skip_comment(cp);
          if (--cp > lastcp)
-            _append_conv(&res, &ressz, &rescur, lastcp, PTR2SIZE(cp - lastcp));
+            _append_conv(&res, &ressz, &rescur, lastcp, P2UZ(cp - lastcp));
          lastcp = cp;
          break;
       case '"':
@@ -1237,7 +1237,7 @@ mime_fromaddr(char const *name)
       }
    }
    if (cp > lastcp)
-      _append_str(&res, &ressz, &rescur, lastcp, PTR2SIZE(cp - lastcp));
+      _append_str(&res, &ressz, &rescur, lastcp, P2UZ(cp - lastcp));
    /* C99 */{
       char *x;
 

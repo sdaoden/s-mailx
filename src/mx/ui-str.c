@@ -163,7 +163,7 @@ field_detect_clip(size_t maxlen, char const *buf, size_t blen)/*TODO mbrtowc()*/
    NYD_IN;
 
 #ifdef mx_HAVE_NATCH_CHAR
-   maxlen = n_MIN(maxlen, blen);
+   maxlen = MIN(maxlen, blen);
    for (rv = 0; maxlen > 0;) {
       int ml = mblen(buf, maxlen);
       if (ml <= 0) {
@@ -175,7 +175,7 @@ field_detect_clip(size_t maxlen, char const *buf, size_t blen)/*TODO mbrtowc()*/
       maxlen -= ml;
    }
 #else
-   rv = n_MIN(blen, maxlen);
+   rv = MIN(blen, maxlen);
 #endif
    NYD_OU;
    return rv;
@@ -274,7 +274,7 @@ jnobidi:
 
    if (fill && col != 0) {
       if (fill > 0) {
-         su_mem_move(nb + col, nb, PTR2SIZE(np - nb));
+         su_mem_move(nb + col, nb, P2UZ(np - nb));
          su_mem_set(nb, ' ', col);
       } else
          su_mem_set(np, ' ', col);
@@ -324,7 +324,7 @@ makeprint(struct str const *in, struct str *out) /* TODO <-> TTYCHARSET!! */
       out->l = 0;
       while (inp < maxp) {
          if (*inp & 0200)
-            n = mbtowc(&wc, inp, PTR2SIZE(maxp - inp));
+            n = mbtowc(&wc, inp, P2UZ(maxp - inp));
          else {
             wc = *inp;
             n = 1;

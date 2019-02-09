@@ -61,7 +61,7 @@ enum a_sendout_addrline_flags{
    a_SENDOUT_AL_FILES = GFILES,
    _a_SENDOUT_AL_GMASK = a_SENDOUT_AL_COMMA | a_SENDOUT_AL_FILES
 };
-n_CTA(!(_a_SENDOUT_AL_GMASK & (a_SENDOUT_AL_INC_INVADDR|a_SENDOUT_AL_DOMIME)),
+CTA(!(_a_SENDOUT_AL_GMASK & (a_SENDOUT_AL_INC_INVADDR|a_SENDOUT_AL_DOMIME)),
    "Code-required condition not satisfied but actual bit carrier value");
 
 static char const *__sendout_ident; /* TODO temporary; rewrite n_puthead() */
@@ -605,7 +605,7 @@ a_sendout_attach_msg(struct header *hp, struct attachment *ap, FILE *fo)
    char const *ccp;
    si32_t err;
    NYD_IN;
-   n_UNUSED(hp);
+   UNUSED(hp);
 
    err = su_ERR_NONE;
 
@@ -1318,7 +1318,7 @@ __mta_start(struct sendbundle *sbp)
          goto jleave;
       }
    } else {
-      n_UNINIT(args, NULL);
+      UNINIT(args, NULL);
 #ifndef mx_HAVE_SMTP
       n_err(_("No SMTP support compiled in\n"));
       goto jstop;
@@ -1632,7 +1632,7 @@ a_sendout_put_addrline(char const *hname, struct mx_name *np, FILE *fo,
          len += 2;
       ++col; /* The separating space */
       if ((m & m_INIT) && /*col > 1 &&*/
-            UICMP(z, col + len, >,
+            UCMP(z, col + len, >,
                (np->n_type & GREF ? MIME_LINELEN : 72))) {
          if (fputs("\n ", fo) == EOF)
             goto jleave;
@@ -1653,7 +1653,7 @@ a_sendout_put_addrline(char const *hname, struct mx_name *np, FILE *fo,
          /* GREF needs to be placed in angle brackets, but which are missing */
          hb = np->n_fullname;
          if(np->n_type & GREF){
-            ASSERT(UICMP(z, len, ==, su_cs_len(np->n_fullname) + 2));
+            ASSERT(UCMP(z, len, ==, su_cs_len(np->n_fullname) + 2));
             hb = n_lofi_alloc(len +1);
             len -= 2;
             hb[0] = '<';
@@ -2386,7 +2386,7 @@ j_mft_add:
       chlp[0] = n_poption_arg_C;
       chlp[1] = n_customhdr_list;
 
-      for(i = 0; i < n_NELEM(chlp); ++i)
+      for(i = 0; i < NELEM(chlp); ++i)
          if((hfp = chlp[i]) != NULL){
             if(!_sendout_header_list(fo, hfp, nodisp))
                goto jleave;

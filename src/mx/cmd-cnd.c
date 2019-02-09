@@ -101,7 +101,7 @@ a_ccnd_oif_test(struct a_ccnd_if_ctx *cicp, bool_t noop){
    rv = -1;
    emsg = NULL;
    argv = cicp->cic_argv;
-   argc = PTR2SIZE(cicp->cic_argv_max - cicp->cic_argv);
+   argc = P2UZ(cicp->cic_argv_max - cicp->cic_argv);
    cp = argv[0];
 
    if(*cp != '$'){
@@ -568,7 +568,7 @@ c_else(void *v){
    int rv;
    struct a_ccnd_if_node *cinp;
    NYD_IN;
-   n_UNUSED(v);
+   UNUSED(v);
 
    if((cinp = n_go_data->gdc_ifcond) == NULL || cinp->cin_else){
       n_err(_("`else' without a matching `if'\n"));
@@ -587,7 +587,7 @@ c_endif(void *v){
    int rv;
    struct a_ccnd_if_node *cinp;
    NYD_IN;
-   n_UNUSED(v);
+   UNUSED(v);
 
    if((cinp = n_go_data->gdc_ifcond) == NULL){
       n_err(_("`endif' without a matching `if'\n"));

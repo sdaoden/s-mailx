@@ -182,7 +182,7 @@ a_folder_info(void){
    }
 
    s = d = hidden = moved = 0;
-   for (mp = message, n = 0, u = 0; PTRCMP(mp, <, message + msgCount); ++mp) {
+   for (mp = message, n = 0, u = 0; PCMP(mp, <, message + msgCount); ++mp) {
       if (mp->m_flag & MNEW)
          ++n;
       if ((mp->m_flag & MREAD) == 0)
@@ -256,7 +256,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
 
    for(;;){
       /* Ensure space for terminating LF, so do append it */
-      if(n_UNLIKELY(fgetline(&linebuf, &linesize, &filesize, &cnt, ibuf, TRU1
+      if(UNLIKELY(fgetline(&linebuf, &linesize, &filesize, &cnt, ibuf, TRU1
             ) == NULL)){
          if(f & a_HADONE){
             if(f & a_CREATE){
@@ -306,9 +306,9 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
        * TODO That is: Mailbox superclass, MBOX:Mailbox, virtual load() which
        * TODO creates collection of MessageHull objects which are able to load
        * TODO their content, and normalize content, correct structural errors */
-      if(n_UNLIKELY(cnt == 0)){
+      if(UNLIKELY(cnt == 0)){
          f |= a_MAYBE;
-         if(n_LIKELY(!(f & a_CREATE)))
+         if(LIKELY(!(f & a_CREATE)))
             f &= ~a_INHEAD;
          else{
             commit.m_size += self.m_size;
@@ -319,7 +319,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
          goto jputln;
       }
 
-      if(n_UNLIKELY((f & a_MAYBE) && linebuf[0] == 'F') &&
+      if(UNLIKELY((f & a_MAYBE) && linebuf[0] == 'F') &&
             (from_ = is_head(linebuf, cnt, TRU1)) &&
             (from_ == TRU1 || !(f & a_RFC4155))){
          /* TODO char date[n_FROM_DATEBUF];
@@ -353,10 +353,10 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
       }
 
       f &= ~a_MAYBE;
-      if(n_LIKELY(!(f & a_INHEAD)))
+      if(LIKELY(!(f & a_INHEAD)))
          goto jputln;
 
-      if(n_LIKELY((cp = su_mem_find(linebuf, ':', cnt)) != NULL)){
+      if(LIKELY((cp = su_mem_find(linebuf, ':', cnt)) != NULL)){
          char *cps, *cpe, c;
 
          if(f & a_CREATE)
@@ -366,7 +366,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
             ;
          for(cpe = cp; cpe > cps && (--cpe, su_cs_is_blank(*cpe));)
             ;
-         switch(PTR2SIZE(cpe - cps)){
+         switch(P2UZ(cpe - cps)){
          case 5:
             if(!su_cs_cmp_case_n(cps, "status", 5))
                for(;;){
@@ -678,7 +678,7 @@ jlogname:
 
    /* TODO This is too simple minded?  We should regenerate an index file
     * TODO to be able to truly tell whether *anything* has changed! */
-   if ((fm & FEDIT_NEWMAIL) && UICMP(z, mailsize, <=, offset)) {
+   if ((fm & FEDIT_NEWMAIL) && UCMP(z, mailsize, <=, offset)) {
       rele_sigs();
       goto jleave;
    }
@@ -816,13 +816,13 @@ print_header_summary(char const *Larg)
    } else {
       i = 0;
       if(!mb.mb_threaded){
-         for(; UICMP(z, i, <, msgCount); ++i)
+         for(; UCMP(z, i, <, msgCount); ++i)
             n_msgvec[i] = i + 1;
       }else{
          struct message *mp;
 
          for(mp = threadroot; mp; ++i, mp = next_in_thread(mp))
-            n_msgvec[i] = (int)PTR2SIZE(mp - message + 1);
+            n_msgvec[i] = (int)P2UZ(mp - message + 1);
       }
       print_headers(n_msgvec, FAL0, TRU1); /* TODO should be iterator! */
    }
@@ -887,76 +887,76 @@ getmdot(int nmail)
    }
 
    if (nmail)
-      for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
+      for (mp = message; PCMP(mp, <, message + msgCount); ++mp)
          if ((mp->m_flag & (MNEWEST | avoid)) == MNEWEST)
             break;
 
-   if (!nmail || PTRCMP(mp, >=, message + msgCount)) {
+   if (!nmail || PCMP(mp, >=, message + msgCount)) {
       if (mb.mb_threaded) {
          for (mp = threadroot; mp != NULL; mp = next_in_thread(mp))
             if ((mp->m_flag & (MNEW | avoid)) == MNEW)
                break;
       } else {
-         for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
+         for (mp = message; PCMP(mp, <, message + msgCount); ++mp)
             if ((mp->m_flag & (MNEW | avoid)) == MNEW)
                break;
       }
    }
 
-   if ((mb.mb_threaded ? (mp == NULL) : PTRCMP(mp, >=, message + msgCount))) {
+   if ((mb.mb_threaded ? (mp == NULL) : PCMP(mp, >=, message + msgCount))) {
       if (mb.mb_threaded) {
          for (mp = threadroot; mp != NULL; mp = next_in_thread(mp))
             if (mp->m_flag & MFLAGGED)
                break;
       } else {
-         for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
+         for (mp = message; PCMP(mp, <, message + msgCount); ++mp)
             if (mp->m_flag & MFLAGGED)
                break;
       }
    }
 
-   if ((mb.mb_threaded ? (mp == NULL) : PTRCMP(mp, >=, message + msgCount))) {
+   if ((mb.mb_threaded ? (mp == NULL) : PCMP(mp, >=, message + msgCount))) {
       if (mb.mb_threaded) {
          for (mp = threadroot; mp != NULL; mp = next_in_thread(mp))
             if (!(mp->m_flag & (MREAD | avoid)))
                break;
       } else {
-         for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
+         for (mp = message; PCMP(mp, <, message + msgCount); ++mp)
             if (!(mp->m_flag & (MREAD | avoid)))
                break;
       }
    }
 
    if (nmail &&
-         (mb.mb_threaded ? (mp != NULL) : PTRCMP(mp, <, message + msgCount)))
-      mdot = (int)PTR2SIZE(mp - message + 1);
+         (mb.mb_threaded ? (mp != NULL) : PCMP(mp, <, message + msgCount)))
+      mdot = (int)P2UZ(mp - message + 1);
    else if (ok_blook(showlast)) {
       if (mb.mb_threaded) {
          for (mp = this_in_thread(threadroot, -1); mp;
                mp = prev_in_thread(mp))
             if (!(mp->m_flag & avoid))
                break;
-         mdot = (mp != NULL) ? (int)PTR2SIZE(mp - message + 1) : msgCount;
+         mdot = (mp != NULL) ? (int)P2UZ(mp - message + 1) : msgCount;
       } else {
          for (mp = message + msgCount - 1; mp >= message; --mp)
             if (!(mp->m_flag & avoid))
                break;
-         mdot = (mp >= message) ? (int)PTR2SIZE(mp - message + 1) : msgCount;
+         mdot = (mp >= message) ? (int)P2UZ(mp - message + 1) : msgCount;
       }
    } else if (!nmail &&
-         (mb.mb_threaded ? (mp != NULL) : PTRCMP(mp, <, message + msgCount)))
-      mdot = (int)PTR2SIZE(mp - message + 1);
+         (mb.mb_threaded ? (mp != NULL) : PCMP(mp, <, message + msgCount)))
+      mdot = (int)P2UZ(mp - message + 1);
    else if (mb.mb_threaded) {
       for (mp = threadroot; mp; mp = next_in_thread(mp))
          if (!(mp->m_flag & avoid))
             break;
-      mdot = (mp != NULL) ? (int)PTR2SIZE(mp - message + 1) : 1;
+      mdot = (mp != NULL) ? (int)P2UZ(mp - message + 1) : 1;
    } else {
-      for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
+      for (mp = message; PCMP(mp, <, message + msgCount); ++mp)
          if (!(mp->m_flag & avoid))
             break;
-      mdot = PTRCMP(mp, <, message + msgCount)
-            ? (int)PTR2SIZE(mp - message + 1) : 1;
+      mdot = PCMP(mp, <, message + msgCount)
+            ? (int)P2UZ(mp - message + 1) : 1;
    }
 jleave:
    NYD_OU;
@@ -1086,7 +1086,7 @@ n_folder_query(void){
          if(cp != adjcp){
             size_t i;
 
-            s = n_string_push_buf(s, cp, i = PTR2SIZE(adjcp - cp));
+            s = n_string_push_buf(s, cp, i = P2UZ(adjcp - cp));
             cp += i;
             l2 -= i;
          }

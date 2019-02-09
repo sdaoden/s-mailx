@@ -334,7 +334,7 @@ imap_delim_init(struct mailbox *mp, struct url const *urlp){
          goto jcopy;
       }
 
-      if(i < n_NELEM(mp->mb_imap_delim))
+      if(i < NELEM(mp->mb_imap_delim))
 jcopy:
          su_mem_copy(&mb.mb_imap_delim[0], cp, i +1);
       else
@@ -377,7 +377,7 @@ imap_path_normalize(struct mailbox *mp, char const *cp){
             break;
 
       /* And we don't need to reevaluate what we have seen yet */
-      i = PTR2SIZE(cpx - cp);
+      i = P2UZ(cpx - cp);
       rv = rv_base = n_autorec_alloc(i + (j = su_cs_len(cpx) +1));
       if(i > 0)
          su_mem_copy(rv, cp, i);
@@ -512,7 +512,7 @@ imap_path_encode(char const *cp, bool_t *err_or_null){
 
          /* And then warp that UTF-16BE to mUTF-7 */
          out.s[out.l++] = '&';
-         utf32 = (ui32_t)PTR2SIZE(be16p - be16p_base);
+         utf32 = (ui32_t)P2UZ(be16p - be16p_base);
          be16p = be16p_base;
 
          for(; utf32 >= 3; be16p += 3, utf32 -= 3){
@@ -574,7 +574,7 @@ imap_path_decode(char const *path, bool_t *err_or_null){
    *err_or_null = TRU1;
 
    emsg = N_("Invalid mUTF-7 encoding");
-   i = PTR2SIZE(cp - path);
+   i = P2UZ(cp - path);
    rv += i;
    l -= i;
    mb64p_base = NULL;
@@ -665,7 +665,7 @@ jeincpl:
          }
 
          /* Yet halfway decoded mUTF-7, go remaining way to gain UTF-16BE */
-         i = PTR2SIZE(mb64p - mb64p_base);
+         i = P2UZ(mb64p - mb64p_base);
          mb64p = mb64xp = mb64p_base;
 
          while(i > 0){
@@ -688,7 +688,7 @@ jeincpl:
          }
 
          /* UTF-16BE we convert to UTF-8 */
-         i = PTR2SIZE(mb64p - mb64p_base);
+         i = P2UZ(mb64p - mb64p_base);
          if(i & 1){
             emsg = N_("Odd bytecount for UTF-16BE input");
             goto jerr;
@@ -1093,7 +1093,7 @@ static void
 _imap_maincatch(int s)
 {
    NYD; /*  Signal handler */
-   n_UNUSED(s);
+   UNUSED(s);
    if (interrupts++ == 0) {
       n_err_sighdl(_("Interrupt\n"));
       return;
@@ -1247,7 +1247,7 @@ rec_dequeue(void)
       n_free(rq);
 
    record = recend = NULL;
-   if (rv == OKAY && UICMP(z, exists, >, msgCount)) {
+   if (rv == OKAY && UCMP(z, exists, >, msgCount)) {
       message = n_realloc(message, (exists + 1) * sizeof *message);
       su_mem_set(&message[msgCount], 0,
          (exists - msgCount + 1) * sizeof *message);
@@ -1287,7 +1287,7 @@ imapalarm(int s)
 {
    sighandler_type volatile saveint, savepipe;
    NYD; /* Signal handler */
-   n_UNUSED(s);
+   UNUSED(s);
 
    if (imaplock++ == 0) {
       if ((saveint = safe_signal(SIGINT, SIG_IGN)) != SIG_IGN)
@@ -1466,7 +1466,7 @@ imap_select(struct mailbox *mp, off_t *size, int *cnt, const char *mbx,
    FILE *queuefp;
    enum okay ok;
    NYD;
-   n_UNUSED(size);
+   UNUSED(size);
 
    ok = STOP;
    queuefp = NULL;
@@ -1573,7 +1573,7 @@ imap_init(struct mailbox *mp, int n)
 {
    struct message *m;
    NYD_IN;
-   n_UNUSED(mp);
+   UNUSED(mp);
 
    m = message + n;
    m->m_flag = MUSED | MNOFROM;
@@ -1871,7 +1871,7 @@ jduppass:
 
 jnmail:
    imap_setptr(&mb, ((fm & FEDIT_NEWMAIL) != 0), transparent,
-      n_UNVOLATILE(&prevcount));
+      UNVOLATILE(int*,&prevcount));
 jdone:
    setmsize(msgCount);
    safe_signal(SIGINT, saveint);
@@ -2067,7 +2067,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
    head = NULL;
    cp = loc = item = resp = NULL;
    headsize = 0;
-   number = (int)PTR2SIZE(m - message + 1);
+   number = (int)P2UZ(m - message + 1);
    queuefp = NULL;
    headlines = 0;
    ok = STOP;
@@ -2376,7 +2376,7 @@ imap_getheaders(int volatile bot, int volatile topp) /* TODO iterator!! */
 
       for (i = bot; i <= topp; i += chunk) {
          int j = i + chunk - 1;
-         j = n_MIN(j, topp);
+         j = MIN(j, topp);
          if (visible(message + j))
             /*ok = */imap_fetchheaders(&mb, message, i, j);
          if (interrupts)
@@ -2464,7 +2464,7 @@ imap_update(struct mailbox *mp)
    if (!(n_pstate & n_PS_EDIT) && mp->mb_perm != 0) {
       holdbits();
       c = 0;
-      for (m = message; PTRCMP(m, <, message + msgCount); ++m)
+      for (m = message; PCMP(m, <, message + msgCount); ++m)
          if (m->m_flag & MBOX)
             ++c;
       if (c > 0)
@@ -2473,7 +2473,7 @@ imap_update(struct mailbox *mp)
    }
 
    gotcha = held = 0;
-   for (m = message; PTRCMP(m, <, message + msgCount); ++m) {
+   for (m = message; PCMP(m, <, message + msgCount); ++m) {
       if (mp->mb_perm == 0)
          dodel = 0;
       else if (n_pstate & n_PS_EDIT)
@@ -2541,7 +2541,7 @@ jbypass:
    if (gotcha)
       imap_close(mp);
 
-   for (m = &message[0]; PTRCMP(m, <, message + msgCount); ++m)
+   for (m = &message[0]; PCMP(m, <, message + msgCount); ++m)
       if (!(m->m_flag & MUNLINKED) &&
             m->m_flag & (MBOXED | MDELETED | MSAVED | MSTATUS | MFLAG |
                MUNFLAG | MANSWER | MUNANSWER | MDRAFT | MUNDRAFT)) {
@@ -2724,7 +2724,7 @@ c_imapcodec(void *vp){
       ;
    if(act == cp)
       goto jesynopsis;
-   alen = PTR2SIZE(cp - act);
+   alen = P2UZ(cp - act);
    if(*cp != '\0')
       ++cp;
 
@@ -4016,7 +4016,7 @@ again:
             goto fail;
          }
          while (octets > 0) {
-            size_t n = (UICMP(z, octets, >, sizeof iob)
+            size_t n = (UCMP(z, octets, >, sizeof iob)
                   ? sizeof iob : (size_t)octets);
             octets -= n;
             if (n != fread(iob, 1, n, fp))
@@ -4114,7 +4114,7 @@ c_connect(void *vp) /* TODO v15-compat mailname<->URL (with password) */
    struct url url;
    int rv, omsgCount = msgCount;
    NYD_IN;
-   n_UNUSED(vp);
+   UNUSED(vp);
 
    if (mb.mb_type == MB_IMAP && mb.mb_sock.s_fd > 0) {
       n_err(_("Already connected\n"));
@@ -4247,8 +4247,8 @@ transflags(struct message *omessage, long omsgCount, int transparent)
    nmp = message;
    newdot = message;
    newprevdot = NULL;
-   while (PTRCMP(omp, <, omessage + omsgCount) &&
-         PTRCMP(nmp, <, message + msgCount)) {
+   while (PCMP(omp, <, omessage + omsgCount) &&
+         PCMP(nmp, <, message + msgCount)) {
       if (dot && nmp->m_uid == dot->m_uid)
          newdot = nmp;
       if (prevdot && nmp->m_uid == prevdot->m_uid)
@@ -4351,7 +4351,7 @@ jredo:
    if (tmp->tm_isdst > 0)
       tzdiff_hour++;
 
-   if(n_UNLIKELY((y = tmp->tm_year) < 0 || y >= 9999/*SI32_MAX*/ - 1900)){
+   if(UNLIKELY((y = tmp->tm_year) < 0 || y >= 9999/*SI32_MAX*/ - 1900)){
       y = 1970;
       mn = n_month_names[0];
       md = 1;

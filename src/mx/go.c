@@ -128,7 +128,7 @@ enum a_go_cleanup_mode{
    a_GO_CLEANUP_UNWIND = 1u<<0,     /* Teardown all contexts except outermost */
    a_GO_CLEANUP_TEARDOWN = 1u<<1,   /* Teardown current context */
    a_GO_CLEANUP_LOOPTICK = 1u<<2,   /* Normal looptick cleanup */
-   a_GO_CLEANUP_MODE_MASK = n_BITENUM_MASK(0, 2),
+   a_GO_CLEANUP_MODE_MASK = su_BITENUM_MASK(0, 2),
 
    a_GO_CLEANUP_ERROR = 1u<<8,      /* Error occurred on level */
    a_GO_CLEANUP_SIGINT = 1u<<9,     /* Interrupt signal received */
@@ -157,7 +157,7 @@ struct a_go_input_inject{
    size_t gii_len;
    bool_t gii_commit;
    bool_t gii_no_history;
-   char gii_dat[n_VFIELD_SIZE(6)];
+   char gii_dat[VFIELD_SIZE(6)];
 };
 
 struct a_go_ctx{
@@ -177,7 +177,7 @@ struct a_go_ctx{
    ui32_t gc_splice_psonce;
    ui8_t gc_splice__dummy[4];
    struct n_go_data_ctx gc_data;
-   char gc_name[n_VFIELD_SIZE(0)]; /* Name of file or macro */
+   char gc_name[VFIELD_SIZE(0)]; /* Name of file or macro */
 };
 
 struct a_go_readctl_ctx{ /* TODO localize readctl_read_overlay: OnForkEvent! */
@@ -186,7 +186,7 @@ struct a_go_readctl_ctx{ /* TODO localize readctl_read_overlay: OnForkEvent! */
    char const *grc_expand;          /* If filename based, expanded string */
    FILE *grc_fp;
    si32_t grc_fd;                   /* Based upon file-descriptor */
-   char grc_name[n_VFIELD_SIZE(4)]; /* User input for identification purposes */
+   char grc_name[VFIELD_SIZE(4)]; /* User input for identification purposes */
 };
 
 static sighandler_type a_go_oldpipe;
@@ -198,7 +198,7 @@ static struct a_go_ctx *a_go_ctx;
 #define a_GO_MAINCTX_NAME "Main event loop"
 static union{
    ui64_t align;
-   char uf[n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
+   char uf[VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
          sizeof(a_GO_MAINCTX_NAME)];
 } a_go__mainctx_b;
 
@@ -270,7 +270,7 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    int rv, c;
    enum{
       a_NONE = 0,
-      a_ALIAS_MASK = n_BITENUM_MASK(0, 2), /* Alias recursion counter bits */
+      a_ALIAS_MASK = su_BITENUM_MASK(0, 2), /* Alias recursion counter bits */
       a_NOPREFIX = 1u<<4,  /* Modifier prefix not allowed right now */
       a_NOALIAS = 1u<<5,   /* "No alias!" expansion modifier */
       a_IGNERR = 1u<<6,    /* ignerr modifier prefix */
@@ -279,7 +279,7 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
       a_U = 1u<<9,         /* TODO UTF-8 modifier prefix */
       a_VPUT = 1u<<10,     /* vput modifier prefix */
       a_WYSH = 1u<<11,      /* XXX v15+ drop wysh modifier prefix */
-      a_MODE_MASK = n_BITENUM_MASK(5, 11),
+      a_MODE_MASK = su_BITENUM_MASK(5, 11),
       a_NO_ERRNO = 1u<<16  /* Don't set n_pstate_err_no */
    } flags;
    NYD_IN;
@@ -338,8 +338,8 @@ jrestart:
    else if((cp = n_UNCONST(n_cmd_isolate(cp))) == line.s &&
          (*cp == '|' || *cp == '?'))
       ++cp;
-   c = (int)PTR2SIZE(cp - line.s);
-   word = UICMP(z, c, <, sizeof _wordbuf) ? _wordbuf : n_autorec_alloc(c +1);
+   c = (int)P2UZ(cp - line.s);
+   word = UCMP(z, c, <, sizeof _wordbuf) ? _wordbuf : n_autorec_alloc(c +1);
    su_mem_copy(word, line.s, c);
    word[c] = '\0';
    line.l -= c;
@@ -600,7 +600,7 @@ jexec:
          vput = n_shexp_parse_token_cp((n_SHEXP_PARSE_TRIM_SPACE |
                n_SHEXP_PARSE_TRIM_IFSSPACE | n_SHEXP_PARSE_LOG |
                n_SHEXP_PARSE_META_SEMICOLON | n_SHEXP_PARSE_META_KEEP), &emsg);
-         line.l -= PTR2SIZE(emsg - line.s);
+         line.l -= P2UZ(emsg - line.s);
          line.s = cp = n_UNCONST(emsg);
          if(cp == NULL)
             emsg = N_("could not parse input token");
@@ -715,14 +715,14 @@ jmsglist_go:
          break;
       }
 
-      if(UICMP(32, c, <, cdp->cd_minargs)){
+      if(UCMP(32, c, <, cdp->cd_minargs)){
          n_err(_("`%s' requires at least %u arg(s)\n"),
             cdp->cd_name, (ui32_t)cdp->cd_minargs);
          flags |= a_NO_ERRNO;
          break;
       }
 #undef cd_minargs
-      if(UICMP(32, c, >, cdp->cd_maxargs)){
+      if(UCMP(32, c, >, cdp->cd_maxargs)){
          n_err(_("`%s' takes no more than %u arg(s)\n"),
             cdp->cd_name, (ui32_t)cdp->cd_maxargs);
          flags |= a_NO_ERRNO;
@@ -859,7 +859,7 @@ jret:
 static void
 a_go_hangup(int s){
    NYD; /* Signal handler */
-   n_UNUSED(s);
+   UNUSED(s);
    /* nothing to do? */
    exit(n_EXIT_ERR);
 }
@@ -870,7 +870,7 @@ FL void n_go_onintr_for_imap(void){a_go_onintr(0);}
 static void
 a_go_onintr(int s){ /* TODO block signals while acting */
    NYD; /* Signal handler */
-   n_UNUSED(s);
+   UNUSED(s);
 
    safe_signal(SIGINT, a_go_onintr);
 
@@ -1021,7 +1021,7 @@ jleave:
    if(gcp->gc_flags & a_GO_FREE)
       n_free(gcp);
 
-   if(n_UNLIKELY((gcm & a_GO_CLEANUP_UNWIND) && gcp != a_go_ctx))
+   if(UNLIKELY((gcm & a_GO_CLEANUP_UNWIND) && gcp != a_go_ctx))
       goto jrestart;
 
 jxleave:
@@ -1116,9 +1116,9 @@ jeopencheck:
 
    sigprocmask(SIG_BLOCK, NULL, &osigmask);
 
-   gcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
+   gcp = n_alloc(VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
          (nlen = su_cs_len(nbuf) +1));
-   su_mem_set(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
+   su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
    gcp->gc_data.gdc_membag =
          su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
 
@@ -1178,7 +1178,7 @@ a_go_load(struct a_go_ctx *gcp){
 static void
 a_go__eloopint(int sig){ /* TODO one day, we don't need it no more */
    NYD; /* Signal handler */
-   n_UNUSED(sig);
+   UNUSED(sig);
    siglongjmp(a_go_ctx->gc_eloop_jmp, 1);
 }
 
@@ -1264,7 +1264,7 @@ n_go_init(void){
    ASSERT(n_stdin != NULL);
 
    gcp = (void*)a_go__mainctx_b.uf;
-   su_DBGOR( su_mem_set(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name)),
+   su_DBGOR( su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx, gc_name)),
       su_mem_set(&gcp->gc_data, 0, sizeof gcp->gc_data) );
    gcp->gc_data.gdc_membag =
          su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
@@ -1339,7 +1339,7 @@ n_go_main_loop(void){ /* FIXME */
                   ui32_t odid;
                   size_t odot;
 
-                  odot = PTR2SIZE(dot - message);
+                  odot = P2UZ(dot - message);
                   odid = (n_pstate & n_PS_DID_PRINT_DOT);
 
                   rele_all_sigs();
@@ -1510,13 +1510,13 @@ n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
    if(len == UIZ_MAX)
       len = su_cs_len(buf);
 
-   if(UIZ_MAX - n_VSTRUCT_SIZEOF(struct a_go_input_inject, gii_dat) -1 > len &&
+   if(UIZ_MAX - VSTRUCT_SIZEOF(struct a_go_input_inject, gii_dat) -1 > len &&
          len > 0){
       struct a_go_input_inject *giip,  **giipp;
 
       hold_all_sigs();
 
-      giip = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_input_inject, gii_dat
+      giip = n_alloc(VSTRUCT_SIZEOF(struct a_go_input_inject, gii_dat
             ) + 1 + len +1);
       giipp = &a_go_ctx->gc_inject;
       giip->gii_next = *giipp;
@@ -1840,8 +1840,8 @@ n_go_load(char const *name){
    }
 
    i = su_cs_len(name) +1;
-   gcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) + i);
-   su_mem_set(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
+   gcp = n_alloc(VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) + i);
+   su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
 
    gcp->gc_file = fip;
    gcp->gc_flags = a_GO_FREE | a_GO_FILE;
@@ -1862,7 +1862,7 @@ n_go_XYargs(bool_t injectit, char const **lines, size_t cnt){
    union{
       bool_t rv;
       ui64_t align;
-      char uf[n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) + sizeof(name)];
+      char uf[VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) + sizeof(name)];
    } b;
    char const *srcp, *xsrcp;
    char *cp;
@@ -1871,7 +1871,7 @@ n_go_XYargs(bool_t injectit, char const **lines, size_t cnt){
    NYD_IN;
 
    gcp = (void*)b.uf;
-   su_mem_set(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
+   su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
 
    if(!injectit){
       gcp->gc_flags = a_GO_MACRO | a_GO_MACRO_X_OPTION |
@@ -1902,7 +1902,7 @@ n_go_XYargs(bool_t injectit, char const **lines, size_t cnt){
       /* Separate one line from a possible multiline input string */
       if((xsrcp = su_mem_find(srcp, '\n', j)) != NULL){
          *lines = &xsrcp[1];
-         j = PTR2SIZE(xsrcp - srcp);
+         j = P2UZ(xsrcp - srcp);
       }else
          ++lines, --cnt;
 
@@ -1994,9 +1994,9 @@ n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
 
    sigprocmask(SIG_BLOCK, NULL, &osigmask);
 
-   gcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
+   gcp = n_alloc(VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
          (i = su_cs_len(name) +1));
-   su_mem_set(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
+   su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
    gcp->gc_data.gdc_membag =
          su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
 
@@ -2061,10 +2061,10 @@ n_go_command(enum n_go_input_flags gif, char const *cmd){
    sigprocmask(SIG_BLOCK, NULL, &osigmask);
 
    i = su_cs_len(cmd) +1;
-   ial = n_ALIGN(i);
-   gcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
+   ial = Z_ALIGN(i);
+   gcp = n_alloc(VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
          ial + 2*sizeof(char*));
-   su_mem_set(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
+   su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
    gcp->gc_data.gdc_membag =
          su_mem_bag_create(&gcp->gc_data.gdc__membag_buf[0], 0);
 
@@ -2097,9 +2097,9 @@ n_go_splice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
 
    sigprocmask(SIG_BLOCK, NULL, &osigmask);
 
-   gcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
+   gcp = n_alloc(VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
          (i = su_cs_len(cmd) +1));
-   su_mem_set(gcp, 0, n_VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
+   su_mem_set(gcp, 0, VSTRUCT_SIZEOF(struct a_go_ctx, gc_name));
 
    hold_all_sigs();
 
@@ -2294,7 +2294,7 @@ c_readctl(void *vp){
     * TODO work in turn we need an instance for default STDIN!  Sigh. */
    static union{
       ui64_t alignme;
-      ui8_t buf[n_VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name)+1 +1];
+      ui8_t buf[VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name)+1 +1];
    } a;
    static struct a_go_readctl_ctx *a_stdin;
 
@@ -2420,7 +2420,7 @@ jfound:
 
          if((i = UIZ_MAX - elen) <= cap->ca_arg.ca_str.l ||
                (i -= cap->ca_arg.ca_str.l) <=
-                  n_VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name) +2){
+                  VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name) +2){
             n_err(_("`readctl': failed to create storage for %s\n"),
                cap->ca_arg.ca_str.s);
             n_pstate_err_no = su_ERR_OVERFLOW;
@@ -2428,7 +2428,7 @@ jfound:
             goto jleave;
          }
 
-         grcp = n_alloc(n_VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name) +
+         grcp = n_alloc(VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name) +
                cap->ca_arg.ca_str.l +1 + elen +1);
          grcp->grc_last = NULL;
          if((grcp->grc_next = n_readctl_read_overlay) != NULL)

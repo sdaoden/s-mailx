@@ -211,7 +211,7 @@ _pop3_lookup_apop_timestamp(char const *bp)
    if (*ep != '>')
       goto jleave;
 
-   tl = PTR2SIZE(++ep - cp);
+   tl = P2UZ(++ep - cp);
    rp = n_autorec_alloc(tl +1);
    su_mem_copy(rp, cp, tl);
    rp[tl] = '\0';
@@ -267,7 +267,7 @@ _pop3_auth_plain(struct mailbox *mp, struct sockconn const *scp)
    NYD_IN;
 
    /* The USER/PASS plain text version */
-   cp = n_lofi_alloc(n_MAX(scp->sc_cred.cc_user.l, scp->sc_cred.cc_pass.l) +
+   cp = n_lofi_alloc(MAX(scp->sc_cred.cc_user.l, scp->sc_cred.cc_pass.l) +
          5 + sizeof(NETNL)-1 +1);
 
    su_mem_copy(cp, "USER ", 5);
@@ -380,7 +380,7 @@ static void
 _pop3_maincatch(int s)
 {
    NYD; /* Signal handler */
-   n_UNUSED(s);
+   UNUSED(s);
    if (interrupts == 0)
       n_err_sighdl(_("\n(Interrupt -- one more to abort operation)\n"));
    else {
@@ -407,7 +407,7 @@ pop3alarm(int s)
 {
    sighandler_type volatile saveint, savepipe;
    NYD; /* Signal handler */
-   n_UNUSED(s);
+   UNUSED(s);
 
    if (_pop3_lock++ == 0) {
       hold_all_sigs();
@@ -521,7 +521,7 @@ pop3_setptr(struct mailbox *mp, struct sockconn const *scp)
    message[msgCount].m_lines = 0;
    dot = message; /* (Just do it: avoid crash -- shall i now do ointr(0).. */
 
-   for (i = 0; UICMP(z, i, <, msgCount); ++i) {
+   for (i = 0; UCMP(z, i, <, msgCount); ++i) {
       struct message *m = message + i;
       m->m_flag = MUSED | MNEW | MNOFROM | MNEWEST;
       m->m_block = 0;
@@ -529,19 +529,19 @@ pop3_setptr(struct mailbox *mp, struct sockconn const *scp)
       m->m_size = m->m_xsize = 0;
    }
 
-   for (i = 0; UICMP(z, i, <, msgCount); ++i)
+   for (i = 0; UCMP(z, i, <, msgCount); ++i)
       if (!pop3_list(mp, i + 1, &message[i].m_xsize))
          goto jleave;
 
    /* Force the load of all messages right now */
    ns = xok_blook(pop3_bulk_load, &scp->sc_url, OXM_ALL)
          ? NEED_BODY : NEED_HEADER;
-   for (i = 0; UICMP(z, i, <, msgCount); ++i)
+   for (i = 0; UCMP(z, i, <, msgCount); ++i)
       if (!pop3_get(mp, message + i, ns))
          goto jleave;
 
    srelax_hold();
-   for (i = 0; UICMP(z, i, <, msgCount); ++i) {
+   for (i = 0; UCMP(z, i, <, msgCount); ++i) {
       struct message *m = message + i;
       char const *cp;
 
@@ -579,7 +579,7 @@ pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
    line = NULL; /* TODO line pool */
    saveint = savepipe = SIG_IGN;
    linesize = 0;
-   number = (int)PTR2SIZE(m - message + 1);
+   number = (int)P2UZ(m - message + 1);
    emptyline = 0;
    rv = STOP;
 
@@ -756,7 +756,7 @@ pop3_update(struct mailbox *mp)
    if (!(n_pstate & n_PS_EDIT)) {
       holdbits();
       c = 0;
-      for (m = message; PTRCMP(m, <, message + msgCount); ++m)
+      for (m = message; PCMP(m, <, message + msgCount); ++m)
          if (m->m_flag & MBOX)
             ++c;
       if (c > 0)
@@ -764,13 +764,13 @@ pop3_update(struct mailbox *mp)
    }
 
    gotcha = held = 0;
-   for (m = message; PTRCMP(m, <, message + msgCount); ++m) {
+   for (m = message; PCMP(m, <, message + msgCount); ++m) {
       if (n_pstate & n_PS_EDIT)
          dodel = m->m_flag & MDELETED;
       else
          dodel = !((m->m_flag & MPRESERVE) || !(m->m_flag & MTOUCH));
       if (dodel) {
-         pop3_delete(mp, PTR2SIZE(m - message + 1));
+         pop3_delete(mp, P2UZ(m - message + 1));
          ++gotcha;
       } else
          ++held;

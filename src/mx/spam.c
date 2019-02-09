@@ -53,7 +53,7 @@ su_EMPTY_FILE()
 #endif
 
 #ifdef mx_HAVE_SPAM_FILTER
-  /* n_NELEM() of regmatch_t groups */
+  /* NELEM() of regmatch_t groups */
 # define SPAM_FILTER_MATCHES  32u
 #endif
 
@@ -349,7 +349,7 @@ jlearn:
       *args++ = "-u";
       *args++ = cp;
    }
-   ASSERT(PTR2SIZE(args - sscp->c_cmd_arr) <= n_NELEM(sscp->c_cmd_arr));
+   ASSERT(P2UZ(args - sscp->c_cmd_arr) <= NELEM(sscp->c_cmd_arr));
 
    *args = NULL;
    sscp->c_super.cf_cmd = str_concat_cpa(&str, sscp->c_cmd_arr, " ")->s;
@@ -398,7 +398,7 @@ _spamc_interact(struct spam_vc *vcp)
 
       if ((cp = su_cs_find_c(buf = vcp->vc_t.spamc.c_super.cf_result, '/')
             ) != NULL)
-         buf[PTR2SIZE(cp - buf)] = '\0';
+         buf[P2UZ(cp - buf)] = '\0';
       _spam_rate2score(vcp, buf);
    }
 jleave:
@@ -570,7 +570,7 @@ _spamd_interact(struct spam_vc *vcp)
    }
 # undef _X
 
-   i = PTR2SIZE(lp - headbuf);
+   i = P2UZ(lp - headbuf);
    if (n_poption & n_PO_VERBVERB)
       n_err(">>> %.*s <<<\n", (int)i, headbuf);
    if (i != (size_t)write(dsfd, headbuf, i))
@@ -579,7 +579,7 @@ _spamd_interact(struct spam_vc *vcp)
    /* Then simply pass through the message "as-is" */
    for (size = vcp->vc_mp->m_size; size > 0;) {
       i = fread(vcp->vc_buffer, sizeof *vcp->vc_buffer,
-            n_MIN(size, BUFFER_SIZE), vcp->vc_ifp);
+            MIN(size, BUFFER_SIZE), vcp->vc_ifp);
       if (i == 0) {
          if (ferror(vcp->vc_ifp))
             goto jeso;
@@ -635,7 +635,7 @@ jebogus:
       if (lp[1] != NETNL[1])
          goto jebogus;
       lp += 2;
-      size -= PTR2SIZE(lp - cp);
+      size -= P2UZ(lp - cp);
 
       if (i == 0) {
          if (!strncmp(cp, "SPAMD/1.1 0 EX_OK", sizeof("SPAMD/1.1 0 EX_OK") -1))
@@ -674,7 +674,7 @@ jebogus:
             else {
                char *xcp = su_cs_find_c(cp, '/');
                if (xcp != NULL) {
-                  size = PTR2SIZE(xcp - cp);
+                  size = P2UZ(xcp - cp);
                   cp[size] = '\0';
                }
                _spam_rate2score(vcp, cp);
@@ -791,7 +791,7 @@ jecmd:
       }
       bp = &var[1];
 
-      if((su_idec(&sfp->f_score_grpno, cp, PTR2SIZE(var - cp), 0,
+      if((su_idec(&sfp->f_score_grpno, cp, P2UZ(var - cp), 0,
                   su_IDEC_MODE_LIMIT_32BIT, NULL
                ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
             ) != su_IDEC_STATE_CONSUMED){
@@ -883,7 +883,7 @@ _spamfilter_interact(struct spam_vc *vcp)
 
    remp = rem + sfp->f_score_grpno;
 
-   if (regexec(&sfp->f_score_regex, sfp->f_super.cf_result, n_NELEM(rem), rem,
+   if (regexec(&sfp->f_score_regex, sfp->f_super.cf_result, NELEM(rem), rem,
          0) == REG_NOMATCH || (remp->rm_so | remp->rm_eo) < 0) {
       n_err(_("`%s': *spamfilter-rate-scanscore* "
          "does not match filter output!\n"),
@@ -929,7 +929,7 @@ _spam_cf_setup(struct spam_vc *vcp, bool_t useshell)
    char const *cp;
    struct spam_cf *scfp;
    NYD2_IN;
-   n_LCTA(2 < n_NELEM(scfp->cf_env), "Preallocated buffer too small");
+   LCTA(2 < NELEM(scfp->cf_env), "Preallocated buffer too small");
 
    scfp = &vcp->vc_t.cf;
 
@@ -942,7 +942,7 @@ _spam_cf_setup(struct spam_vc *vcp, bool_t useshell)
     * TODO a file wherever he wants!  *Do* create a zero-size temporary file
     * TODO and give *that* path as MAILX_FILENAME_TEMPORARY, clean it up once
     * TODO the pipe returns?  Like this we *can* verify path/name issues! */
-   cp = n_random_create_cp(n_MIN(NAME_MAX / 4, 16), NULL);
+   cp = n_random_create_cp(MIN(NAME_MAX / 4, 16), NULL);
    scfp->cf_env[0] = str_concat_csvl(&s,
          n_PIPEENV_FILENAME_GENERATED, "=", cp, NULL)->s;
    /* v15 compat NAIL_ environments vanish! */
@@ -1050,7 +1050,7 @@ _spam_cf_interact(struct spam_vc *vcp)
    for (size = vcp->vc_mp->m_size; size > 0;) {
       size_t i;
 
-      i = fread(vcp->vc_buffer, 1, n_MIN(size, BUFFER_SIZE), vcp->vc_ifp);
+      i = fread(vcp->vc_buffer, 1, MIN(size, BUFFER_SIZE), vcp->vc_ifp);
       if (i == 0) {
          if (ferror(vcp->vc_ifp))
             state |= _ERRORS;
@@ -1098,7 +1098,7 @@ jtail:
                state |= _ERRORS;
             } else {
                scfp->cf_result = su_cs_dup_cbuf(vcp->vc_buffer,
-                     PTR2SIZE(cp - vcp->vc_buffer), 0);
+                     P2UZ(cp - vcp->vc_buffer), 0);
 /* FIXME consume child output until EOF??? */
             }
          } else if (i != 0)

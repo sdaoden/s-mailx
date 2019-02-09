@@ -225,12 +225,12 @@ a_ctab_c_list(void *vp){
    size_t i, l, scrwid;
    NYD_IN;
 
-   i = n_NELEM(a_ctab_ctable) + n_NELEM(a_ctab_ctable_plus) +1;
+   i = NELEM(a_ctab_ctable) + NELEM(a_ctab_ctable_plus) +1;
    cdpa = n_autorec_alloc(sizeof(cdp) * i);
 
-   for(i = 0; i < n_NELEM(a_ctab_ctable); ++i)
+   for(i = 0; i < NELEM(a_ctab_ctable); ++i)
       cdpa[i] = &a_ctab_ctable[i];
-   for(l = 0; l < n_NELEM(a_ctab_ctable_plus); ++i, ++l)
+   for(l = 0; l < NELEM(a_ctab_ctable_plus); ++i, ++l)
       cdpa[i] = &a_ctab_ctable_plus[l];
    cdpa[i] = NULL;
 
@@ -323,7 +323,7 @@ a_ctab_c_help(void *vp){
          arg = alias_exp;
       }
 
-      cdp_max = &(cdp = a_ctab_ctable)[n_NELEM(a_ctab_ctable)];
+      cdp_max = &(cdp = a_ctab_ctable)[NELEM(a_ctab_ctable)];
 jredo:
       for(; cdp < cdp_max; ++cdp){
          if(su_cs_starts_with(cdp->cd_name, arg)){
@@ -343,9 +343,9 @@ jredo:
          goto jleave;
       }
 
-      if(cdp_max == &a_ctab_ctable[n_NELEM(a_ctab_ctable)]){
+      if(cdp_max == &a_ctab_ctable[NELEM(a_ctab_ctable)]){
          cdp_max = &(cdp =
-               a_ctab_ctable_plus)[n_NELEM(a_ctab_ctable_plus)];
+               a_ctab_ctable_plus)[NELEM(a_ctab_ctable_plus)];
          goto jredo;
       }
 
@@ -409,7 +409,7 @@ a_ctab_c_memtrace(void *vp){
    int rv;
    ui32_t oopt;
    NYD2_IN;
-   n_UNUSED(vp);
+   UNUSED(vp);
 
    /* Only for development.. */
    oopt = n_poption;
@@ -438,7 +438,7 @@ n_cmd_firstfit(char const *cmd){ /* TODO *hashtable*! linear list search!!! */
    struct n_cmd_desc const *cdp;
    NYD2_IN;
 
-   for(cdp = a_ctab_ctable; cdp < &a_ctab_ctable[n_NELEM(a_ctab_ctable)]; ++cdp)
+   for(cdp = a_ctab_ctable; cdp < &a_ctab_ctable[NELEM(a_ctab_ctable)]; ++cdp)
       if(*cmd == *cdp->cd_name && cdp->cd_func != NULL &&
             su_cs_starts_with(cdp->cd_name, cmd))
          goto jleave;
@@ -563,7 +563,7 @@ jredo:
                   n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_LOG),
                shoup, &shin,
                (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_GREEDY ? &cookie : NULL));
-         ncap.ca_inlen = PTR2SIZE(shin.s - ncap.ca_indat);
+         ncap.ca_inlen = P2UZ(shin.s - ncap.ca_indat);
          if((shs & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_ERR_MASK)) ==
                n_SHEXP_STATE_OUTPUT){
             if((shs & n_SHEXP_STATE_META_SEMICOLON) && shou.s_len == 0)
@@ -741,7 +741,7 @@ n_cmd_arg_save_to_heap(struct n_cmd_arg_ctx const *cacp){
    len = sizeof *cacp;
    for(cap = cacp->cac_arg; cap != NULL; cap = cap->ca_next){
       i = cap->ca_arg.ca_str.l +1;
-      i = n_ALIGN(i);
+      i = Z_ALIGN(i);
       len += sizeof(*cap) + i;
    }
    if(cacp->cac_vput != NULL)
@@ -770,7 +770,7 @@ n_cmd_arg_save_to_heap(struct n_cmd_arg_ctx const *cacp){
          cap->ca_arg.ca_str.s,
          (ncap->ca_arg.ca_str.l = i = cap->ca_arg.ca_str.l) +1);
 
-      i = n_ALIGN(i);
+      i = Z_ALIGN(i);
       buf += sizeof(*ncap) + i;
    }
 
@@ -828,7 +828,7 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
    if(res_size == 0){
       res_no = -1;
       goto jleave;
-   }else if(UICMP(z, res_size, >, INT_MAX))
+   }else if(UCMP(z, res_size, >, INT_MAX))
       res_size = INT_MAX;
    else
       --res_size;
@@ -846,7 +846,7 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
          if(*line == '\0')
             break;
 
-         if(UICMP(z, res_no, >=, res_size)){
+         if(UCMP(z, res_no, >=, res_size)){
             n_err(_("Too many input tokens for result storage\n"));
             res_no = -1;
             break;
@@ -880,7 +880,7 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
             *cp2++ = c;
          }
 
-         res_dat[res_no++] = savestrbuf(linebuf, PTR2SIZE(cp2 - linebuf));
+         res_dat[res_no++] = savestrbuf(linebuf, P2UZ(cp2 - linebuf));
          if(c == '\0')
             break;
       }
@@ -898,7 +898,7 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
       cookie = NULL;
 
       for(;;){
-         if(UICMP(z, res_no, >=, res_size)){
+         if(UCMP(z, res_no, >=, res_size)){
             n_err(_("Too many input tokens for result storage\n"));
             res_no = -1;
             break;

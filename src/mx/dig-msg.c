@@ -78,7 +78,7 @@ a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp, bool_t oexcl){
    if((su_idec_u32_cp(&msgno, cp, 0, NULL
             ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
          ) != su_IDEC_STATE_CONSUMED ||
-         msgno == 0 || UICMP(z, msgno, >, msgCount)){
+         msgno == 0 || UCMP(z, msgno, >, msgCount)){
       rv = su_ERR_INVAL;
       goto jleave;
    }
@@ -94,13 +94,13 @@ a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp, bool_t oexcl){
       goto jleave;
    }
 
-   *dmcpp = dmcp = n_calloc(1, n_ALIGN(sizeof *dmcp) + sizeof(struct header));
+   *dmcpp = dmcp = n_calloc(1, Z_ALIGN(sizeof *dmcp) + sizeof(struct header));
    dmcp->dmc_mp = &message[msgno - 1];
    dmcp->dmc_flags = n_DIG_MSG_OWN_MEMBAG |
          ((TRU1/*TODO*/ || !(mb.mb_perm & MB_DELE))
             ? n_DIG_MSG_RDONLY : n_DIG_MSG_NONE);
    dmcp->dmc_msgno = msgno;
-   dmcp->dmc_hp = (struct header*)PTR2SIZE(&dmcp[1]);
+   dmcp->dmc_hp = (struct header*)P2UZ(&dmcp[1]);
    dmcp->dmc_membag = su_mem_bag_create(&dmcp->dmc__membag_buf[0], 0);
    /* Rest done by caller */
    rv = su_ERR_NONE;
@@ -120,13 +120,13 @@ a_dmsg_cmd(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmd, uiz_t cmdl,
       size_t i;
 
       /* TODO trim+strlist_split(_ifs?)() */
-      for(i = 0; i < n_NELEM(cmda); ++i){
+      for(i = 0; i < NELEM(cmda); ++i){
          while(su_cs_is_blank(*cp))
             ++cp;
          if(*cp == '\0')
             cmda[i] = NULL;
          else{
-            if(i < n_NELEM(cmda) - 1)
+            if(i < NELEM(cmda) - 1)
                for(cmda[i] = cp++; *cp != '\0' && !su_cs_is_blank(*cp); ++cp)
                   ;
             else{
@@ -136,7 +136,7 @@ a_dmsg_cmd(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmd, uiz_t cmdl,
                while(su_cs_is_blank(cp[-1]))
                   --cp;
             }
-            cmda[i] = savestrbuf(cmda[i], PTR2SIZE(cp - cmda[i]));
+            cmda[i] = savestrbuf(cmda[i], P2UZ(cp - cmda[i]));
          }
       }
    }
@@ -347,7 +347,7 @@ jins_505:
 
          nl = su_cs_len(cp = cmda[1]) +1;
          bl = su_cs_len(cmda[2]) +1;
-         *hfpp = hfp = n_autorec_alloc(n_VSTRUCT_SIZEOF(struct n_header_field,
+         *hfpp = hfp = n_autorec_alloc(VSTRUCT_SIZEOF(struct n_header_field,
                hf_dat) + nl + bl);
          hfp->hf_next = NULL;
          hfp->hf_nl = nl - 1;
@@ -966,7 +966,7 @@ jatt_attset:
             cp = cmda[2];
             while((c = *cp) != '\0' && !su_cs_is_blank(c))
                ++cp;
-            keyw = savestrbuf(cmda[2], PTR2SIZE(cp - cmda[2]));
+            keyw = savestrbuf(cmda[2], P2UZ(cp - cmda[2]));
             if(c != '\0'){
                for(; (c = *++cp) != '\0' && su_cs_is_blank(c);)
                   ;
@@ -1184,7 +1184,7 @@ n_dig_msg_circumflex(struct n_dig_msg_ctx *dmcp, FILE *fp, char const *cmd){
       if(su_cs_is_blank(c))
          break;
 
-   rv = a_dmsg_cmd(fp, dmcp, cmd, PTR2SIZE(cmd_top - cmd), cp);
+   rv = a_dmsg_cmd(fp, dmcp, cmd, P2UZ(cmd_top - cmd), cp);
    NYD_OU;
    return rv;
 }

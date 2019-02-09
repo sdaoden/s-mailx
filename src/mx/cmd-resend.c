@@ -199,7 +199,7 @@ a_crese_polite_rt_mft_move(struct message *mp, struct header *hp,
       struct mx_name *np){
    bool_t once;
    NYD2_IN;
-   n_UNUSED(mp);
+   UNUSED(mp);
 
    if(np == hp->h_to)
       hp->h_to = NULL;

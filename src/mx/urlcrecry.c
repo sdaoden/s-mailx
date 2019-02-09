@@ -60,7 +60,7 @@ struct nrc_node {
    ui32_t            nrc_mlen;      /* Length of machine name */
    ui32_t            nrc_ulen;      /* Length of user name */
    ui32_t            nrc_plen;      /* Length of password */
-   char              nrc_dat[n_VFIELD_SIZE(sizeof(ui32_t))];
+   char              nrc_dat[VFIELD_SIZE(sizeof(ui32_t))];
 };
 # define NRC_NODE_ERR   ((struct nrc_node*)-1)
 
@@ -131,7 +131,7 @@ _nrc_init(void)
    struct nrc_node * volatile ntail, * volatile nhead, * volatile nrc;
    NYD_IN;
 
-   n_UNINIT(ntail, NULL);
+   UNINIT(ntail, NULL);
    nhead = NULL;
    nrc = NRC_NODE_ERR;
    ispipe = FAL0;
@@ -231,7 +231,7 @@ jm_h:
       if (!seen_default && (*user != '\0' || *pass != '\0')) {
          size_t hl = su_cs_len(host), usrl = su_cs_len(user),
             pl = su_cs_len(pass);
-         struct nrc_node *nx = n_alloc(n_VSTRUCT_SIZEOF(struct nrc_node,
+         struct nrc_node *nx = n_alloc(VSTRUCT_SIZEOF(struct nrc_node,
                nrc_dat) + hl +1 + usrl +1 + pl +1);
 
          if (nhead != NULL)
@@ -326,7 +326,7 @@ __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN], bool_t *nl_last)
             if ((c = getc(fi)) == EOF)
                break;
          *cp++ = c;
-         if (PTRCMP(cp, ==, buffer + NRC_TOKEN_MAXLEN)) {
+         if (PCMP(cp, ==, buffer + NRC_TOKEN_MAXLEN)) {
             rv = NRC_ERROR;
             goto jleave;
          }
@@ -338,7 +338,7 @@ __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN], bool_t *nl_last)
          if (c == '\\' && (c = getc(fi)) == EOF)
                break;
          *cp++ = c;
-         if (PTRCMP(cp, ==, buffer + NRC_TOKEN_MAXLEN)) {
+         if (PCMP(cp, ==, buffer + NRC_TOKEN_MAXLEN)) {
             rv = NRC_ERROR;
             goto jleave;
          }
@@ -438,7 +438,7 @@ __nrc_host_match(struct nrc_node const *nrc, struct url const *urlp)
 
    /* Find a matching machine -- entries are all lowercase normalized */
    if (nrc->nrc_mlen == urlp->url_host.l) {
-      if (n_LIKELY(!su_mem_cmp(nrc->nrc_dat,
+      if (LIKELY(!su_mem_cmp(nrc->nrc_dat,
             urlp->url_host.s, urlp->url_host.l)))
          rv = 1;
       goto jleave;
@@ -608,7 +608,7 @@ FL char *
          if (c1 != '-' && c1 != '.' && c1 != '~')
             goto jesc;
          *np++ = c1;
-      } else if (PTRCMP(np, >, n) && (*cp == '-' || *cp == '.')) /* XXX imap */
+      } else if (PCMP(np, >, n) && (*cp == '-' || *cp == '.')) /* XXX imap */
          *np++ = c1;
       else {
 jesc:
@@ -636,7 +636,7 @@ FL char *
    while ((c = (uc_i)*cp++) != '\0') {
       if (c == '%' && cp[0] != '\0' && cp[1] != '\0') {
          si32_t o = c;
-         if (n_LIKELY((c = n_c_from_hex_base16(cp)) >= '\0'))
+         if (LIKELY((c = n_c_from_hex_base16(cp)) >= '\0'))
             cp += 2;
          else
             c = o;
@@ -667,7 +667,7 @@ c_urlcodec(void *vp){
    }
    if(act >= cp)
       goto jesynopsis;
-   alen = PTR2SIZE(cp - act);
+   alen = P2UZ(cp - act);
    if(*cp != '\0')
       ++cp;
 
@@ -773,7 +773,7 @@ url_mailto_to_address(char const *mailtop){ /* TODO hack! RFC 6068; factory? */
     * TODO a little bit of a little more advanced List-Post: headers. */
    /* Strip any hfield additions, keep only to addr-spec's */
    if((rv = su_cs_find_c(mailtop, '?')) != NULL)
-      rv = savestrbuf(mailtop, i = PTR2SIZE(rv - mailtop));
+      rv = savestrbuf(mailtop, i = P2UZ(rv - mailtop));
    else
       rv = savestrbuf(mailtop, i = su_cs_len(mailtop));
 
@@ -837,9 +837,9 @@ n_servbyname(char const *proto, ui16_t *irv_or_null){
    for(rv = proto; *rv != '\0'; ++rv)
       if(*rv == ':')
          break;
-   l = PTR2SIZE(rv - proto);
+   l = P2UZ(rv - proto);
 
-   for(rv = NULL, i = 0; i < n_NELEM(tbl); ++i)
+   for(rv = NULL, i = 0; i < NELEM(tbl); ++i)
       if(!su_cs_cmp_case_n(tbl[i].name, proto, l)){
          rv = tbl[i].port;
          if(irv_or_null != NULL)
@@ -864,7 +864,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 #endif
    bool_t rv = FAL0;
    NYD_IN;
-   n_UNUSED(data);
+   UNUSED(data);
 
    su_mem_set(urlp, 0, sizeof *urlp);
    urlp->url_input = data;
@@ -904,7 +904,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
       else{
          size_t i;
 
-         if((i = PTR2SIZE(&cp[sizeof("://") -1] - data)) + 2 >=
+         if((i = P2UZ(&cp[sizeof("://") -1] - data)) + 2 >=
                sizeof(urlp->url_proto))
             goto jeproto;
          su_mem_copy(urlp->url_proto, data, i);
@@ -984,7 +984,7 @@ juser:
       char const *urlpe, *d;
       char *ub;
 
-      l = PTR2SIZE(cp - data);
+      l = P2UZ(cp - data);
       ub = n_lofi_alloc(l +1);
       d = data;
       urlp->url_flags |= n_URL_HAD_USER;
@@ -992,7 +992,7 @@ juser:
 
       /* And also have a password? */
       if((cp = su_mem_find(d, ':', l)) != NULL){
-         size_t i = PTR2SIZE(cp - d);
+         size_t i = P2UZ(cp - d);
 
          l -= i + 1;
          su_mem_copy(ub, cp + 1, l);
@@ -1045,7 +1045,7 @@ jurlp_err:
       }
    } else {
       if ((x = su_cs_find_c(data, '/')) != NULL) {
-         data = savestrbuf(data, PTR2SIZE(x - data));
+         data = savestrbuf(data, P2UZ(x - data));
          while(*++x == '/')
             ;
       }
@@ -1088,7 +1088,7 @@ jurlp_err:
             urlp->url_path.l = sizeof("INBOX") -1);
 # endif
 
-   urlp->url_host.s = savestrbuf(data, urlp->url_host.l = PTR2SIZE(cp - data));
+   urlp->url_host.s = savestrbuf(data, urlp->url_host.l = P2UZ(cp - data));
    {  size_t i;
       for (cp = urlp->url_host.s, i = urlp->url_host.l; i != 0; ++cp, --i)
          *cp = su_cs_to_lower(*cp);
@@ -1359,7 +1359,7 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
       if ((s = _url_last_at_before_slash(addr)) != NULL) {
          char *cp;
 
-         cp = savestrbuf(addr, PTR2SIZE(s - addr));
+         cp = savestrbuf(addr, P2UZ(s - addr));
 
          if((ccp->cc_user.s = urlxdec(cp)) == NULL){
             n_err(_("String is not properly URL percent encoded: %s\n"), cp);
