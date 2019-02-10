@@ -46,9 +46,9 @@ struct quoteflt;
 
 #undef FL
 #ifndef mx_HAVE_AMALGAMATION
-# define FL                      extern
+# define FL extern
 #else
-# define FL                      static
+# define FL static
 #endif
 
 /*
@@ -68,9 +68,9 @@ struct quoteflt;
 /* Single-threaded, use unlocked I/O */
 #ifdef mx_HAVE_PUTC_UNLOCKED
 # undef getc
-# define getc(c)        getc_unlocked(c)
+# define getc(c) getc_unlocked(c)
 # undef putc
-# define putc(c, f)     putc_unlocked(c, f)
+# define putc(c, f) putc_unlocked(c, f)
 #endif
 
 /* There are problems with dup()ing of file-descriptors for child processes.

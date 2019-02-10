@@ -41,8 +41,7 @@
 # include <iconv.h>
 #endif
 
-/* TODO fake */
-#include "su/code-in.h"
+#include <su/code-in.h>
 
 #ifdef mx_HAVE_ICONV
 enum n_iconv_flags{
@@ -94,6 +93,6 @@ FL char *n_iconv_onetime_cp(enum n_iconv_flags icf, char const *tocode,
       char const *fromcode, char const *input);
 #endif /* mx_HAVE_ICONV */
 
-#include "su/code-ou.h"
+#include <su/code-ou.h>
 #endif /* mx_ICONV_H */
 /* s-it-mode */
