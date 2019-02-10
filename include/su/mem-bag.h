@@ -85,8 +85,8 @@ struct su_mem_bag;
 
 /*! Mirrors a subset of the \r{su_mem_alloc_flags}. *//* Equality CTAsserted */
 enum su_mem_bag_alloc_flags{
-   su_MEM_BAG_ALLOC_NONE,              /*!< \_ */
-   su_MEM_BAG_ALLOC_CLEAR = 1u<<1,     /*!< Zero memory. */
+   su_MEM_BAG_ALLOC_NONE, /*!< \_ */
+   su_MEM_BAG_ALLOC_CLEAR = 1u<<1, /*!< Zero memory. */
    /*! An alias (i.e., same value) for \r{su_STATE_ERR_OVERFLOW}. */
    su_MEM_BAG_ALLOC_OVERFLOW_OK = su_STATE_ERR_OVERFLOW,
    /*! An alias (i.e., same value) for \r{su_STATE_ERR_NOMEM}. */
@@ -100,11 +100,11 @@ enum su_mem_bag_alloc_flags{
 
 /*! \_ */
 struct su_mem_bag{
-   struct su_mem_bag *mb_top;    /* Stacktop (outermost object only) */
-   struct su_mem_bag *mb_outer;  /* Outer object in stack */
+   struct su_mem_bag *mb_top; /* Stacktop (outermost object only) */
+   struct su_mem_bag *mb_outer; /* Outer object in stack */
    struct su_mem_bag *mb_outer_save;
-   u32 mb_bsz;                   /* Pool size available to users.. */
-   u32 mb_bsz_wo_gap;            /* ..less some GAP */
+   u32 mb_bsz; /* Pool size available to users.. */
+   u32 mb_bsz_wo_gap; /* ..less some GAP */
 #ifdef su_HAVE_MEM_BAG_AUTO
    sz mb_auto_relax_recur;
    struct su__mem_bag_auto_buf *mb_auto_top;

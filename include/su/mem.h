@@ -149,9 +149,9 @@ enum{
 enum su_mem_conf_option{
    su_MEM_CONF_NONE,
    /* su_MEM_ALLOC_DEBUG only: booleans */
-   su_MEM_CONF_DEBUG = 1u<<0,          /*!< More tests, be verbose. */
+   su_MEM_CONF_DEBUG = 1u<<0, /*!< More tests, be verbose. */
    su_MEM_CONF_ON_ERROR_EMERG = 1u<<1, /*!< Error out if tests fail. */
-   su_MEM_CONF_LINGER_FREE = 1u<<2,    /*!< Keep \c{free()}s until.. */
+   su_MEM_CONF_LINGER_FREE = 1u<<2, /*!< Keep \c{free()}s until.. */
    su_MEM_CONF_LINGER_FREE_RELEASE = 1u<<3, /*!< ..they are released */
 
 /*madvise,free area count*/

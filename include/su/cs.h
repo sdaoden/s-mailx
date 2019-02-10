@@ -41,7 +41,7 @@ C_DECL_BEGIN
 
 /*! \_ */
 enum su_cs_ctype{
-   su_CS_CTYPE_NONE,          /*!< \_ */
+   su_CS_CTYPE_NONE, /*!< \_ */
    su_CS_CTYPE_ALNUM = 1u<<0, /*!< \_ */
    su_CS_CTYPE_ALPHA = 1u<<1, /*!< \_ */
    su_CS_CTYPE_BLANK = 1u<<2, /*!< \_ */
@@ -52,8 +52,8 @@ enum su_cs_ctype{
    su_CS_CTYPE_PRINT = 1u<<7, /*!< \_ */
    su_CS_CTYPE_PUNCT = 1u<<8, /*!< \_ */
    su_CS_CTYPE_SPACE = 1u<<9, /*!< \_ */
-   su_CS_CTYPE_UPPER = 1u<<10,   /*!< \_ */
-   su_CS_CTYPE_WHITE = 1u<<11,   /*!< SPACE, HT or LF */
+   su_CS_CTYPE_UPPER = 1u<<10, /*!< \_ */
+   su_CS_CTYPE_WHITE = 1u<<11, /*!< SPACE, HT or LF */
    su_CS_CTYPE_XDIGIT = 1u<<12,  /*!< \_ */
 
    su__CS_CTYPE_MAXSHIFT = 13u,

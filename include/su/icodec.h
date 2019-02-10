@@ -73,16 +73,16 @@ enum su_idec_mode{
 
 /*! \_ */
 enum su_idec_state{
-   su_IDEC_STATE_NONE,  /*!< \_*/
+   su_IDEC_STATE_NONE, /*!< \_*/
    /*! Malformed input, no usable result has been stored. */
    su_IDEC_STATE_EINVAL = 1u<<8,
    /*! Bad character according to base, but we have seen some good ones
     * before, otherwise \r{su_IDEC_STATE_EINVAL} would have been used. */
    su_IDEC_STATE_EBASE = 2u<<8,
-   su_IDEC_STATE_EOVERFLOW = 3u<<8,    /*!< Result too large. */
-   su_IDEC_STATE_EMASK = 3u<<8,        /*!< Any errors, that is. */
-   su_IDEC_STATE_SEEN_MINUS = 1u<<16,  /*!< Seen hyphen-minus in the input? */
-   su_IDEC_STATE_CONSUMED = 1u<<17,    /*!< All the input has been consumed. */
+   su_IDEC_STATE_EOVERFLOW = 3u<<8, /*!< Result too large. */
+   su_IDEC_STATE_EMASK = 3u<<8, /*!< Any errors, that is. */
+   su_IDEC_STATE_SEEN_MINUS = 1u<<16, /*!< Seen hyphen-minus in the input? */
+   su_IDEC_STATE_CONSUMED = 1u<<17, /*!< All the input has been consumed. */
    su__IDEC_PRIVATE_SHIFT1 = 24u
 };
 MCTA(su__IDEC_MODE_MASK <= (1u<<8) - 1, "Shared bit range overlaps")

@@ -90,11 +90,11 @@
     * If not, facilities exist in the global namespace. */
 # define su_HAVE_NSPC
 
-# define su_HAVE_DEBUG        /*!< Debug variant, including assertions etc. */
+# define su_HAVE_DEBUG /*!< Debug variant, including assertions etc. */
    /*! Test paths available in non-debug code.
     * Also, compiler pragmas which suppress some warnings are not set, etc.*/
 # define su_HAVE_DEVEL
-# define su_HAVE_DOCSTRINGS   /*!< Some more helpful strings. */
+# define su_HAVE_DOCSTRINGS /*!< Some more helpful strings. */
 # define su_HAVE_MEM_BAG_AUTO /*!< \_ */
 # define su_HAVE_MEM_BAG_LOFI /*!< \_ */
    /*! Normally the debug library provides memory write boundary excess via
@@ -103,13 +103,13 @@
     * the ASAN (address sanitizer) compiler extensions, the \SU checkers can be
     * disabled explicitly. */
 # define su_HAVE_MEM_CANARIES_DISABLE
-# define su_HAVE_SMP          /*!< \r{SMP} support available? */
+# define su_HAVE_SMP /*!< \r{SMP} support available? */
    /*!< Multithreading support available?
     * This is a subfeature of \r{SMP}. */
 # define su_HAVE_MT
 
    /* Values */
-# define su_PAGE_SIZE   /*!< \_ */
+# define su_PAGE_SIZE /*!< \_ */
 #endif
 
 /*! @} *//* CONFIG }}} */
@@ -198,16 +198,16 @@
 /* LANG {{{ */
 
 #ifndef __cplusplus
-# define su_C_LANG 1       /*!< \_ */
-# define su_C_DECL_BEGIN   /*!< \_ */
-# define su_C_DECL_END     /*!< \_ */
+# define su_C_LANG 1 /*!< \_ */
+# define su_C_DECL_BEGIN /*!< \_ */
+# define su_C_DECL_END /*!< \_ */
 
    /* Casts */
-# define su_S(T,I) ((T)(I))   /*!< \_ */
-# define su_R(T,I) ((T)(I))   /*!< \_ */
-# define su_C(T,I) ((T)(I))   /*!< \_ */
+# define su_S(T,I) ((T)(I)) /*!< \_ */
+# define su_R(T,I) ((T)(I)) /*!< \_ */
+# define su_C(T,I) ((T)(I)) /*!< \_ */
 
-# define su_NIL ((void*)0)    /*!< \_ */
+# define su_NIL ((void*)0) /*!< \_ */
 #else
 # define su_C_LANG 0
 # define su_C_DECL_BEGIN extern "C" {
@@ -270,10 +270,10 @@
 # define su_IMPORT __declspec((dllimport))
 # define su_IMPORT_DATA __declspec((dllimport))
 #else
-# define su_EXPORT /*extern*/    /*!< \_ */
-# define su_EXPORT_DATA extern   /*!< \_ */
-# define su_IMPORT /*extern*/    /*!< \_ */
-# define su_IMPORT_DATA extern   /*!< \_ */
+# define su_EXPORT /*extern*/ /*!< \_ */
+# define su_EXPORT_DATA extern /*!< \_ */
+# define su_IMPORT /*extern*/ /*!< \_ */
+# define su_IMPORT_DATA extern /*!< \_ */
 #endif
 
 /* Compile-Time-Assert
@@ -283,8 +283,8 @@
 # define su_CTA(T,M) static_assert(T, M)
 # define su_LCTA(T,M) static_assert(T, M)
 #elif defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 201112L
-# define su_CTA(T,M) _Static_assert(T, M)    /*!< \_ */
-# define su_LCTA(T,M) _Static_assert(T, M)   /*!< \_ */
+# define su_CTA(T,M) _Static_assert(T, M) /*!< \_ */
+# define su_LCTA(T,M) _Static_assert(T, M) /*!< \_ */
 #else
 # define su_CTA(T,M) su__CTA_1(T, su_FILE, __LINE__)
 # define su_LCTA(T,M) su__LCTA_1(T, su_FILE, __LINE__)
@@ -301,7 +301,7 @@ do{\
 }while(0)
 #endif
 
-#define su_CTAV(T) su_CTA(T, "Unexpected value of constant")   /*!< \_ */
+#define su_CTAV(T) su_CTA(T, "Unexpected value of constant") /*!< \_ */
 #define su_LCTAV(T) su_LCTA(T, "Unexpected value of constant") /*!< \_ */
 #ifdef su_MASTER
 # define su_MCTA(T,M) su_CTA(T, M);
@@ -312,16 +312,16 @@ do{\
 /* LANG }}} */
 /* CC {{{ */
 
-#define su_CC_CLANG 0               /*!< \_ */
-#define su_CC_VCHECK_CLANG(X,Y) 0   /*!< \_ */
-#define su_CC_GCC 0                 /*!< \_ */
-#define su_CC_VCHECK_GCC(X,Y) 0     /*!< \_ */
-#define su_CC_PCC 0                 /*!< \_ */
-#define su_CC_VCHECK_PCC(X,Y) 0     /*!< \_ */
-#define su_CC_SUNPROC 0             /*!< \_ */
+#define su_CC_CLANG 0 /*!< \_ */
+#define su_CC_VCHECK_CLANG(X,Y) 0 /*!< \_ */
+#define su_CC_GCC 0 /*!< \_ */
+#define su_CC_VCHECK_GCC(X,Y) 0 /*!< \_ */
+#define su_CC_PCC 0 /*!< \_ */
+#define su_CC_VCHECK_PCC(X,Y) 0 /*!< \_ */
+#define su_CC_SUNPROC 0 /*!< \_ */
 #define su_CC_VCHECK_SUNPROC(X,Y) 0 /*!< \_ */
-#define su_CC_TINYC 0               /*!< \_ */
-#define su_CC_VCHECK_TINYC(X,Y) 0   /*!< \_ */
+#define su_CC_TINYC 0 /*!< \_ */
+#define su_CC_VCHECK_TINYC(X,Y) 0 /*!< \_ */
 
 #ifdef __clang__
 # undef su_CC_CLANG
@@ -415,8 +415,8 @@ do{\
     * \r{su_CC_BOM_LITTLE} or \r{su_CC_BOM_BIG}, otherwise not defined. */
 #  define su_CC_BOM
 # endif
-# define su_CC_BOM_LITTLE 1234   /*!< Only if there is \r{su_CC_BOM}. */
-# define su_CC_BOM_BIG 4321      /*!< Only if there is \r{su_CC_BOM}. */
+# define su_CC_BOM_LITTLE 1234 /*!< Only if there is \r{su_CC_BOM}. */
+# define su_CC_BOM_BIG 4321 /*!< Only if there is \r{su_CC_BOM}. */
 #endif
 #if !defined su_CC_UZ_TYPE && defined __SIZE_TYPE__
 # define su_CC_UZ_TYPE __SIZE_TYPE__
@@ -455,7 +455,7 @@ do{\
 # if su_CC_CLANG || su_CC_GCC || su_CC_PCC || defined DOXYGEN
 #  if defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901L
 #   ifndef NDEBUG
-#    define su_INLINE static inline  /*!< \_ */
+#    define su_INLINE static inline /*!< \_ */
 #   else
 #    define su_INLINE inline
 #   endif
@@ -484,8 +484,8 @@ do{\
 # define su_LIKELY(X) __builtin_expect((X) != 0, 1)
 # define su_UNLIKELY(X) __builtin_expect((X) != 0, 0)
 #else
-# define su_LIKELY(X) ((X) != 0)    /*!< \_ */
-# define su_UNLIKELY(X) ((X) != 0)  /*!< \_ */
+# define su_LIKELY(X) ((X) != 0) /*!< \_ */
+# define su_UNLIKELY(X) ((X) != 0) /*!< \_ */
 #endif
 
 /* CC }}} */
@@ -537,20 +537,20 @@ do{\
 
 /* Variants of ASSERT */
 #if defined NDEBUG || defined DOXYGEN
-# define su_ASSERT_INJ(X)                                /*!< Injection! */
-# define su_ASSERT(X) do{}while(0)                       /*!< \_ */
-# define su_ASSERT_LOC(X,FNAME,LNNO) do{}while(0)        /*!< \_ */
-# define su_ASSERT_EXEC(X,S) do{}while(0)                /*!< \_ */
+# define su_ASSERT_INJ(X) /*!< Injection! */
+# define su_ASSERT(X) do{}while(0) /*!< \_ */
+# define su_ASSERT_LOC(X,FNAME,LNNO) do{}while(0) /*!< \_ */
+# define su_ASSERT_EXEC(X,S) do{}while(0) /*!< \_ */
 # define su_ASSERT_EXEC_LOC(X,S,FNAME,LNNO) do{}while(0) /*!< \_ */
-# define su_ASSERT_JUMP(X,L) do{}while(0)                /*!< \_ */
+# define su_ASSERT_JUMP(X,L) do{}while(0) /*!< \_ */
 # define su_ASSERT_JUMP_LOC(X,L,FNAME,LNNO) do{}while(0) /*!< \_ */
-# define su_ASSERT_RET(X,Y) do{}while(0)                 /*!< \_ */
-# define su_ASSERT_RET_LOC(X,Y,FNAME,LNNO) do{}while(0)  /*!< \_ */
-# define su_ASSERT_RET_VOID(X) do{}while(0)              /*!< \_ */
+# define su_ASSERT_RET(X,Y) do{}while(0) /*!< \_ */
+# define su_ASSERT_RET_LOC(X,Y,FNAME,LNNO) do{}while(0) /*!< \_ */
+# define su_ASSERT_RET_VOID(X) do{}while(0) /*!< \_ */
 # define su_ASSERT_RET_VOID_LOC(X,Y,FNAME,LNNO) do{}while(0) /*!< \_ */
-# define su_ASSERT_NYD_RET(X,Y) do{}while(0)             /*!< \_ */
+# define su_ASSERT_NYD_RET(X,Y) do{}while(0) /*!< \_ */
 # define su_ASSERT_NYD_RET_LOC(X,FNAME,LNNO) do{}while(0) /*!< \_ */
-# define su_ASSERT_NYD_RET_VOID(X) do{}while(0)          /*!< \_ */
+# define su_ASSERT_NYD_RET_VOID(X) do{}while(0) /*!< \_ */
 # define su_ASSERT_NYD_RET_VOID_LOC(X,FNAME,LNNO) do{}while(0) /*!< \_ */
 #else
 # define su_ASSERT_INJ(X) X
@@ -688,7 +688,7 @@ do{\
 
 /*! Distance in between the fields \a{S}tart and \a{E}end in type \a{T}. */
 #define su_FIELD_RANGEOF(T,S,E) \
-        (su_FIELD_OFFSETOF(T, E) - su_FIELD_OFFSETOF(T, S))
+      (su_FIELD_OFFSETOF(T, E) - su_FIELD_OFFSETOF(T, S))
 
 /*! sizeof() for member fields */
 #define su_FIELD_SIZEOF(T,F) sizeof(su_S(T *,su_NIL)->F)
@@ -791,22 +791,22 @@ C_DECL_BEGIN
 /* TODO Note: the PRI* series will go away once we have FormatCtx! */
 
 /* First some shorter aliases for "normal" integers */
-typedef unsigned long su_ul;  /*!< \_ */
-typedef unsigned int su_ui;   /*!< \_ */
+typedef unsigned long su_ul; /*!< \_ */
+typedef unsigned int su_ui; /*!< \_ */
 typedef unsigned short su_us; /*!< \_ */
-typedef unsigned char su_uc;  /*!< \_ */
+typedef unsigned char su_uc; /*!< \_ */
 
-typedef signed long su_sl;    /*!< \_ */
-typedef signed int su_si;     /*!< \_ */
-typedef signed short su_ss;   /*!< \_ */
-typedef signed char su_sc;    /*!< \_ */
+typedef signed long su_sl; /*!< \_ */
+typedef signed int su_si; /*!< \_ */
+typedef signed short su_ss; /*!< \_ */
+typedef signed char su_sc; /*!< \_ */
 
 #if defined UINT8_MAX || defined DOXYGEN
-# define su_U8_MAX UINT8_MAX  /*!< \_ */
-# define su_S8_MIN INT8_MIN   /*!< \_ */
-# define su_S8_MAX INT8_MAX   /*!< \_ */
-typedef uint8_t su_u8;        /*!< \_ */
-typedef int8_t su_s8;         /*!< \_ */
+# define su_U8_MAX UINT8_MAX /*!< \_ */
+# define su_S8_MIN INT8_MIN /*!< \_ */
+# define su_S8_MAX INT8_MAX /*!< \_ */
+typedef uint8_t su_u8; /*!< \_ */
+typedef int8_t su_s8; /*!< \_ */
 #elif UCHAR_MAX != 255
 # error UCHAR_MAX must be 255
 #else
@@ -825,11 +825,11 @@ typedef signed char su_s8;
 #endif
 
 #if defined UINT16_MAX || defined DOXYGEN
-# define su_U16_MAX UINT16_MAX   /*!< \_ */
-# define su_S16_MIN INT16_MIN    /*!< \_ */
-# define su_S16_MAX INT16_MAX    /*!< \_ */
-typedef uint16_t su_u16;         /*!< \_ */
-typedef int16_t su_s16;          /*!< \_ */
+# define su_U16_MAX UINT16_MAX /*!< \_ */
+# define su_S16_MIN INT16_MIN /*!< \_ */
+# define su_S16_MAX INT16_MAX /*!< \_ */
+typedef uint16_t su_u16; /*!< \_ */
+typedef int16_t su_s16; /*!< \_ */
 #elif USHRT_MAX != 0xFFFFu
 # error USHRT_MAX must be 0xFFFF
 #else
@@ -853,11 +853,11 @@ typedef signed short su_s16;
 #endif
 
 #if defined UINT32_MAX || defined DOXYGEN
-# define su_U32_MAX UINT32_MAX   /*!< \_ */
-# define su_S32_MIN INT32_MIN    /*!< \_ */
-# define su_S32_MAX INT32_MAX    /*!< \_ */
-typedef uint32_t su_u32;         /*!< \_ */
-typedef int32_t su_s32;          /*!< \_ */
+# define su_U32_MAX UINT32_MAX /*!< \_ */
+# define su_S32_MIN INT32_MIN /*!< \_ */
+# define su_S32_MAX INT32_MAX /*!< \_ */
+typedef uint32_t su_u32; /*!< \_ */
+typedef int32_t su_s32; /*!< \_ */
 #elif ULONG_MAX == 0xFFFFFFFFu
 # define su_U32_MAX ULONG_MAX
 # define su_S32_MIN LONG_MIN
@@ -887,13 +887,13 @@ typedef signed int su_s32;
 #endif
 
 #if defined UINT64_MAX || defined DOXYGEN
-# define su_U64_MAX UINT64_MAX   /*!< \_ */
-# define su_S64_MIN INT64_MIN    /*!< \_ */
-# define su_S64_MAX INT64_MAX    /*!< \_ */
-# define su_S64_C(C) INT64_C(C)  /*!< \_ */
+# define su_U64_MAX UINT64_MAX /*!< \_ */
+# define su_S64_MIN INT64_MIN /*!< \_ */
+# define su_S64_MAX INT64_MAX /*!< \_ */
+# define su_S64_C(C) INT64_C(C) /*!< \_ */
 # define su_U64_C(C) UINT64_C(C) /*!< \_ */
-typedef uint64_t su_u64;         /*!< \_ */
-typedef int64_t su_s64;          /*!< \_ */
+typedef uint64_t su_u64; /*!< \_ */
+typedef int64_t su_s64; /*!< \_ */
 #elif ULONG_MAX <= 0xFFFFFFFFu
 # if !defined ULLONG_MAX
 #  error We need a 64 bit integer
@@ -938,7 +938,7 @@ typedef signed long su_s64;
 #ifdef su_CC_SIZE_TYPE
 typedef su_CC_SIZE_TYPE su_uz;
 #else
-typedef size_t su_uz;   /*!< \_ */
+typedef size_t su_uz; /*!< \_ */
 #endif
 
 #undef PRIuZ
@@ -976,11 +976,11 @@ MCTA(sizeof(size_t) == sizeof(unsigned long),
 #if su_UZ_MAX == su_U32_MAX || su_UZ_MAX == su_S32_MAX || defined DOXYGEN
 # define su_SZ_MIN su_S32_MIN /*!< \_ */
 # define su_SZ_MAX su_S32_MAX /*!< \_ */
-# define su_UZ_BITS 32u       /*!< \_ */
-# define su_64(X)             /*!< \_ */
-# define su_32(X) X           /*!< \_ */
-# define su_6432(X,Y) Y       /*!< \_ */
-typedef su_s32 su_sz;         /*!< \_ */
+# define su_UZ_BITS 32u /*!< \_ */
+# define su_64(X) /*!< \_ */
+# define su_32(X) X /*!< \_ */
+# define su_6432(X,Y) Y /*!< \_ */
+typedef su_s32 su_sz; /*!< \_ */
 #elif su_UZ_MAX == su_U64_MAX
 # define su_SZ_MIN su_S64_MIN
 # define su_SZ_MAX su_S64_MAX
@@ -998,8 +998,8 @@ MCTA(sizeof(su_uz) == sizeof(void*),
 
 /* Regardless of P2UZ provide this one; only use it rarely */
 #if defined UINTPTR_MAX || defined DOXYGEN
-typedef uintptr_t su_up;   /*!< \_ */
-typedef intptr_t su_sp;    /*!< \_ */
+typedef uintptr_t su_up; /*!< \_ */
+typedef intptr_t su_sp; /*!< \_ */
 #else
 # ifdef SIZE_MAX
 typedef su_uz su_up;
@@ -1070,11 +1070,11 @@ typedef su_uz (*su_hash_fun)(void const *self);
 /*! A toolbox provides object handling knowledge to \r{COLL}.
  * Also see \r{su_TOOLBOX_I9R()}. */
 struct su_toolbox{
-   su_clone_fun tb_clone;     /*!< \copydoc{su_clone_fun}. */
-   su_delete_fun tb_delete;   /*!< \copydoc{su_delete_fun}. */
-   su_assign_fun tb_assign;   /*!< \copydoc{su_assign_fun}. */
+   su_clone_fun tb_clone; /*!< \copydoc{su_clone_fun}. */
+   su_delete_fun tb_delete; /*!< \copydoc{su_delete_fun}. */
+   su_assign_fun tb_assign; /*!< \copydoc{su_assign_fun}. */
    su_compare_fun tb_compare; /*!< \copydoc{su_compare_fun}. */
-   su_hash_fun tb_hash;       /*!< \copydoc{su_hash_fun}. */
+   su_hash_fun tb_hash; /*!< \copydoc{su_hash_fun}. */
 };
 
 /* Use C-style casts, not and ever su_R()! */
@@ -1100,14 +1100,14 @@ struct su_toolbox{
 /*! Log priorities, for simplicity of use without _LEVEL or _LVL prefix,
  * for \r{su_log_set_level()}. */
 enum su_log_level{
-   su_LOG_EMERG,  /*!< System is unusable (abort()s the program) */
-   su_LOG_ALERT,  /*!< Action must be taken immediately */
-   su_LOG_CRIT,   /*!< Critical conditions */
-   su_LOG_ERR,    /*!< Error conditions */
-   su_LOG_WARN,   /*!< Warning conditions */
+   su_LOG_EMERG, /*!< System is unusable (abort()s the program) */
+   su_LOG_ALERT, /*!< Action must be taken immediately */
+   su_LOG_CRIT, /*!< Critical conditions */
+   su_LOG_ERR, /*!< Error conditions */
+   su_LOG_WARN, /*!< Warning conditions */
    su_LOG_NOTICE, /*!< Normal but significant condition */
-   su_LOG_INFO,   /*!< Informational */
-   su_LOG_DEBUG   /*!< Debug-level message */
+   su_LOG_INFO, /*!< Informational */
+   su_LOG_DEBUG /*!< Debug-level message */
 };
 
 /*! Adjustment possibilities for the global log domain (e.g,
@@ -1141,7 +1141,7 @@ enum su_state_log_flags{
  * In order to support this these values do not form an enumeration, but
  * rather are combinable bits. */
 enum su_state_err_type{
-   su_STATE_ERR_NOMEM = 1u<<8,   /*!< Out-of-memory. */
+   su_STATE_ERR_NOMEM = 1u<<8, /*!< Out-of-memory. */
    su_STATE_ERR_OVERFLOW = 1u<<9 /*!< Integer/xy domain overflow. */
 };
 
@@ -1193,8 +1193,8 @@ enum su_state_err_flags{
 
 /*! \_ */
 enum su_state_flags{
-   su_STATE_NONE,             /*!< No flag: this is 0. */
-   su_STATE_DEBUG = 1u<<16,   /*!< \_ */
+   su_STATE_NONE, /*!< No flag: this is 0. */
+   su_STATE_DEBUG = 1u<<16, /*!< \_ */
    su_STATE_VERBOSE = 1u<<17, /*!< \_ */
    /*! Reproducible behaviour switch.
     * See \r{su_reproducible_build},
@@ -1229,8 +1229,8 @@ enum su__glock_type{
  * \SU mappings with no (native) mapping will have high unsigned numbers. */
 enum su_err_number{
 #ifdef DOXYGEN
-   su_ERR_NONE,      /*!< No error. */
-   su_ERR_NOTOBACCO  /*!< No such errno, fallback: no mapping exists. */
+   su_ERR_NONE, /*!< No error. */
+   su_ERR_NOTOBACCO /*!< No such errno, fallback: no mapping exists. */
 #else
    su__ERR_NUMBER_ENUM_C
 # undef su__ERR_NUMBER_ENUM_C
@@ -1258,11 +1258,11 @@ EXPORT_DATA uz su__state;
  * to comparisons of the external constants. */
 EXPORT_DATA u16 const su_bom;
 
-#define su_bom_little su__bom_little.bu_val  /*!< \_ */
-#define su_bom_big su__bom_big.bu_val        /*!< \_ */
+#define su_bom_little su__bom_little.bu_val /*!< \_ */
+#define su_bom_big su__bom_big.bu_val /*!< \_ */
 
 #if defined su_CC_BOM || defined DOXYGEN
-# define su_BOM_IS_BIG() (su_CC_BOM == su_CC_BOM_BIG)       /*!< \r{su_bom}. */
+# define su_BOM_IS_BIG() (su_CC_BOM == su_CC_BOM_BIG) /*!< \r{su_bom}. */
 # define su_BOM_IS_LITTLE() (su_CC_BOM == su_CC_BOM_LITTLE) /*!< \r{su_bom}. */
 #else
 # define su_BOM_IS_BIG() (su_bom == su_bom_big)
@@ -1416,14 +1416,14 @@ typedef su_si si; /*!< \_ */
 typedef su_ss ss; /*!< \_ */
 typedef su_sc sc; /*!< \_ */
 
-typedef su_u8 u8;    /*!< \_ */
-typedef su_s8 s8;    /*!< \_ */
-typedef su_u16 u16;  /*!< \_ */
-typedef su_s16 s16;  /*!< \_ */
-typedef su_u32 u32;  /*!< \_ */
-typedef su_s32 s32;  /*!< \_ */
-typedef su_u64 u64;  /*!< \_ */
-typedef su_s64 s64;  /*!< \_ */
+typedef su_u8 u8; /*!< \_ */
+typedef su_s8 s8; /*!< \_ */
+typedef su_u16 u16; /*!< \_ */
+typedef su_s16 s16; /*!< \_ */
+typedef su_u32 u32; /*!< \_ */
+typedef su_s32 s32; /*!< \_ */
+typedef su_u64 u64; /*!< \_ */
+typedef su_s64 s64; /*!< \_ */
 
 typedef su_uz uz; /*!< \_ */
 typedef su_sz sz; /*!< \_ */
@@ -1447,27 +1447,27 @@ MCTA(IS_POW2(su__ZAL_L), "Must be power of two")
 /*! \_ */
 class min{
 public:
-   static NSPC(su)s8 const s8 = su_S8_MIN;      /*!< \copydoc{su_S8_MIN} */
-   static NSPC(su)s16 const s16 = su_S16_MIN;   /*!< \copydoc{su_S16_MIN} */
-   static NSPC(su)s32 const s32 = su_S32_MIN;   /*!< \copydoc{su_S32_MIN} */
-   static NSPC(su)s64 const s64 = su_S64_MIN;   /*!< \copydoc{su_S64_MIN} */
-   static NSPC(su)sz const sz = su_SZ_MIN;      /*!< \copydoc{su_SZ_MIN} */
+   static NSPC(su)s8 const s8 = su_S8_MIN; /*!< \copydoc{su_S8_MIN} */
+   static NSPC(su)s16 const s16 = su_S16_MIN; /*!< \copydoc{su_S16_MIN} */
+   static NSPC(su)s32 const s32 = su_S32_MIN; /*!< \copydoc{su_S32_MIN} */
+   static NSPC(su)s64 const s64 = su_S64_MIN; /*!< \copydoc{su_S64_MIN} */
+   static NSPC(su)sz const sz = su_SZ_MIN; /*!< \copydoc{su_SZ_MIN} */
 };
 
 /*! \_ */
 class max{
 public:
-   static NSPC(su)s8 const s8 = su_S8_MAX;      /*!< \copydoc{su_S8_MAX} */
-   static NSPC(su)s16 const s16 = su_S16_MAX;   /*!< \copydoc{su_S16_MAX} */
-   static NSPC(su)s32 const s32 = su_S32_MAX;   /*!< \copydoc{su_S32_MAX} */
-   static NSPC(su)s64 const s64 = su_S64_MAX;   /*!< \copydoc{su_S64_MAX} */
-   static NSPC(su)sz const sz = su_SZ_MAX;      /*!< \copydoc{su_SZ_MAX} */
+   static NSPC(su)s8 const s8 = su_S8_MAX; /*!< \copydoc{su_S8_MAX} */
+   static NSPC(su)s16 const s16 = su_S16_MAX; /*!< \copydoc{su_S16_MAX} */
+   static NSPC(su)s32 const s32 = su_S32_MAX; /*!< \copydoc{su_S32_MAX} */
+   static NSPC(su)s64 const s64 = su_S64_MAX; /*!< \copydoc{su_S64_MAX} */
+   static NSPC(su)sz const sz = su_SZ_MAX; /*!< \copydoc{su_SZ_MAX} */
 
-   static NSPC(su)u8 const u8 = su_U8_MAX;      /*!< \copydoc{su_U8_MAX} */
-   static NSPC(su)u16 const u16 = su_U16_MAX;   /*!< \copydoc{su_U16_MAX} */
-   static NSPC(su)u32 const u32 = su_U32_MAX;   /*!< \copydoc{su_U32_MAX} */
-   static NSPC(su)u64 const u64 = su_U64_MAX;   /*!< \copydoc{su_U64_MAX} */
-   static NSPC(su)uz const uz = su_UZ_MAX;      /*!< \copydoc{su_UZ_MAX} */
+   static NSPC(su)u8 const u8 = su_U8_MAX; /*!< \copydoc{su_U8_MAX} */
+   static NSPC(su)u16 const u16 = su_U16_MAX; /*!< \copydoc{su_U16_MAX} */
+   static NSPC(su)u32 const u32 = su_U32_MAX; /*!< \copydoc{su_U32_MAX} */
+   static NSPC(su)u64 const u64 = su_U64_MAX; /*!< \copydoc{su_U64_MAX} */
+   static NSPC(su)uz const uz = su_UZ_MAX; /*!< \copydoc{su_UZ_MAX} */
 };
 
 /* POD TYPE SUPPORT }}} */
@@ -1746,14 +1746,14 @@ class log{
 public:
    /*! \copydoc{su_log_level} */
    enum level{
-      emerg = su_LOG_EMERG,   /*!< \copydoc{su_LOG_EMERG} */
-      alert = su_LOG_ALERT,   /*!< \copydoc{su_LOG_ALERT} */
-      crit = su_LOG_CRIT,     /*!< \copydoc{su_LOG_CRIT} */
-      err = su_LOG_ERR,       /*!< \copydoc{su_LOG_ERR} */
-      warn = su_LOG_WARN,     /*!< \copydoc{su_LOG_WARN} */
+      emerg = su_LOG_EMERG, /*!< \copydoc{su_LOG_EMERG} */
+      alert = su_LOG_ALERT, /*!< \copydoc{su_LOG_ALERT} */
+      crit = su_LOG_CRIT, /*!< \copydoc{su_LOG_CRIT} */
+      err = su_LOG_ERR, /*!< \copydoc{su_LOG_ERR} */
+      warn = su_LOG_WARN, /*!< \copydoc{su_LOG_WARN} */
       notice = su_LOG_NOTICE, /*!< \copydoc{su_LOG_NOTICE} */
-      info = su_LOG_INFO,     /*!< \copydoc{su_LOG_INFO} */
-      debug = su_LOG_DEBUG    /*!< \copydoc{su_LOG_DEBUG} */
+      info = su_LOG_INFO, /*!< \copydoc{su_LOG_INFO} */
+      debug = su_LOG_DEBUG /*!< \copydoc{su_LOG_DEBUG} */
    };
 
    // Log functions of various sort.
