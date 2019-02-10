@@ -65,20 +65,20 @@ struct a_coll_fmt_ctx{ /* xxx This is temporary until v15 has objects */
 };
 
 struct a_coll_ocs_arg{
-   sighandler_type coa_opipe;
-   sighandler_type coa_oint;
+   n_sighdl_t coa_opipe;
+   n_sighdl_t coa_oint;
    FILE *coa_stdin;  /* The descriptor (pipe(2)+Fdopen()) we read from */
    FILE *coa_stdout; /* The Popen()ed pipe through which we write to the hook */
    int coa_pipe[2];  /* ..backing .coa_stdin */
-   si8_t *coa_senderr; /* Set to 1 on failure */
+   s8 *coa_senderr; /* Set to 1 on failure */
    char coa_cmd[VFIELD_SIZE(0)];
 };
 
 /* The following hookiness with global variables is so that on receipt of an
  * interrupt signal, the partial message can be salted away on *DEAD* */
 
-static sighandler_type  _coll_saveint;    /* Previous SIGINT value */
-static sighandler_type  _coll_savehup;    /* Previous SIGHUP value */
+static n_sighdl_t  _coll_saveint;    /* Previous SIGINT value */
+static n_sighdl_t  _coll_savehup;    /* Previous SIGHUP value */
 static FILE             *_coll_fp;        /* File for saving away */
 static int volatile     _coll_hadintr;    /* Have seen one SIGINT so far */
 static sigjmp_buf       _coll_jmp;        /* To get back to work */
@@ -90,47 +90,47 @@ static void       _execute_command(struct header *hp, char const *linebuf,
                      size_t linesize);
 
 /* Return errno */
-static si32_t a_coll_include_file(char const *name, bool_t indent,
-               bool_t writestat);
+static s32 a_coll_include_file(char const *name, boole indent,
+               boole writestat);
 
 /* Execute cmd and insert its standard output into fp, return errno */
-static si32_t a_coll_insert_cmd(FILE *fp, char const *cmd);
+static s32 a_coll_insert_cmd(FILE *fp, char const *cmd);
 
 /* ~p command */
 static void       print_collf(FILE *collf, struct header *hp);
 
 /* Write a file, ex-like if f set */
-static si32_t a_coll_write(char const *name, FILE *fp, int f);
+static s32 a_coll_write(char const *name, FILE *fp, int f);
 
 /* *message-inject-head* */
-static bool_t a_coll_message_inject_head(FILE *fp);
+static boole a_coll_message_inject_head(FILE *fp);
 
 /* With bells and whistles */
-static bool_t a_coll_quote_message(FILE *fp, struct message *mp, bool_t isfwd);
+static boole a_coll_quote_message(FILE *fp, struct message *mp, boole isfwd);
 
 /* *{forward,quote}-inject-{head,tail}*.
  * fmt may be NULL or the empty string, in which case no output is produced */
-static bool_t a_coll__fmt_inj(struct a_coll_fmt_ctx const *cfcp);
+static boole a_coll__fmt_inj(struct a_coll_fmt_ctx const *cfcp);
 
 /* Parse off the message header from fp and store relevant fields in hp,
  * replace _coll_fp with a shiny new version without any header.
  * Takes care for closing of fp and _coll_fp as necessary */
-static bool_t a_coll_makeheader(FILE *fp, struct header *hp,
-               si8_t *checkaddr_err, bool_t do_delayed_due_t);
+static boole a_coll_makeheader(FILE *fp, struct header *hp,
+               s8 *checkaddr_err, boole do_delayed_due_t);
 
 /* Edit the message being collected on fp.
  * If c=='|' pipecmd must be set and is passed through to n_run_editor().
  * On successful return, make the edit file the new temp file; return errno */
-static si32_t a_coll_edit(int c, struct header *hp, char const *pipecmd);
+static s32 a_coll_edit(int c, struct header *hp, char const *pipecmd);
 
 /* Pipe the message through the command.  Old message is on stdin of command,
  * new message collected from stdout.  Shell must return 0 to accept new msg */
-static si32_t a_coll_pipe(char const *cmd);
+static s32 a_coll_pipe(char const *cmd);
 
 /* Interpolate the named messages into the current message, possibly doing
  * indent stuff.  The flag argument is one of the command escapes: [mMfFuU].
  * Return errno */
-static si32_t a_coll_forward(char const *ms, FILE *fp, int f);
+static s32 a_coll_forward(char const *ms, FILE *fp, int f);
 
 /* On interrupt, come here to save the partial message in ~/dead.letter.
  * Then jump out of the collection loop */
@@ -139,7 +139,7 @@ static void       _collint(int s);
 static void       collhup(int s);
 
 /* ~[AaIi], *message-inject-**: put value, expand \[nt] if *posix* */
-static bool_t a_coll_putesc(char const *s, bool_t addnl, FILE *stream);
+static boole a_coll_putesc(char const *s, boole addnl, FILE *stream);
 
 /* *on-compose-splice* driver and *on-compose-splice(-shell)?* finalizer */
 static int a_coll_ocs__mac(void);
@@ -196,14 +196,14 @@ jleave:
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
 }
 
-static si32_t
-a_coll_include_file(char const *name, bool_t indent, bool_t writestat){
+static s32
+a_coll_include_file(char const *name, boole indent, boole writestat){
    FILE *fbuf;
    char const *heredb, *indb;
    size_t linesize, heredl, indl, cnt, linelen;
    char *linebuf;
-   si64_t lc, cc;
-   si32_t rv;
+   s64 lc, cc;
+   s32 rv;
    NYD_IN;
 
    rv = su_ERR_NONE;
@@ -312,11 +312,11 @@ jleave:
    return rv;
 }
 
-static si32_t
+static s32
 a_coll_insert_cmd(FILE *fp, char const *cmd){
    FILE *ibuf;
-   si64_t lc, cc;
-   si32_t rv;
+   s64 lc, cc;
+   s32 rv;
    NYD_IN;
 
    rv = su_ERR_NONE;
@@ -395,13 +395,13 @@ jleave:
    NYD_OU;
 }
 
-static si32_t
+static s32
 a_coll_write(char const *name, FILE *fp, int f)
 {
    FILE *of;
    int c;
-   si64_t lc, cc;
-   si32_t rv;
+   s64 lc, cc;
+   s32 rv;
    NYD_IN;
 
    rv = su_ERR_NONE;
@@ -440,9 +440,9 @@ jerr:
    goto jleave;
 }
 
-static bool_t
+static boole
 a_coll_message_inject_head(FILE *fp){
-   bool_t rv;
+   boole rv;
    char const *cp, *cp_obsolete;
    NYD2_IN;
 
@@ -459,13 +459,13 @@ a_coll_message_inject_head(FILE *fp){
    return rv;
 }
 
-static bool_t
-a_coll_quote_message(FILE *fp, struct message *mp, bool_t isfwd){
+static boole
+a_coll_quote_message(FILE *fp, struct message *mp, boole isfwd){
    struct a_coll_fmt_ctx cfc;
    char const *cp;
    struct n_ignore const *quoteitp;
    enum sendaction action;
-   bool_t rv;
+   boole rv;
    NYD_IN;
 
    rv = FAL0;
@@ -543,7 +543,7 @@ jleave:
    return rv;
 }
 
-static bool_t
+static boole
 a_coll__fmt_inj(struct a_coll_fmt_ctx const *cfcp){
    struct quoteflt qf;
    struct n_string s_b, *s;
@@ -604,13 +604,13 @@ jleave:
    return (cfcp != NULL);
 }
 
-static bool_t
-a_coll_makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err,
-   bool_t do_delayed_due_t)
+static boole
+a_coll_makeheader(FILE *fp, struct header *hp, s8 *checkaddr_err,
+   boole do_delayed_due_t)
 {
    FILE *nf;
    int c;
-   bool_t rv;
+   boole rv;
    NYD_IN;
 
    rv = FAL0;
@@ -661,15 +661,15 @@ jleave:
    return rv;
 }
 
-static si32_t
+static s32
 a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
 {
    struct n_sigman sm;
    FILE *nf;
-   sighandler_type volatile sigint;
+   n_sighdl_t volatile sigint;
    struct mx_name *saved_in_reply_to;
-   bool_t saved_filrec;
-   si32_t volatile rv;
+   boole saved_filrec;
+   s32 volatile rv;
    NYD_IN;
 
    rv = su_ERR_NONE;
@@ -734,13 +734,13 @@ jleave:
    return rv;
 }
 
-static si32_t
+static s32
 a_coll_pipe(char const *cmd)
 {
    int ws;
    FILE *nf;
-   sighandler_type sigint;
-   si32_t rv;
+   n_sighdl_t sigint;
+   s32 rv;
    NYD_IN;
 
    rv = su_ERR_NONE;
@@ -780,7 +780,7 @@ jout:
    return rv;
 }
 
-static si32_t
+static s32
 a_coll_forward(char const *ms, FILE *fp, int f)
 {
    int *msgvec, rv = 0;
@@ -880,10 +880,10 @@ collhup(int s)
    exit(n_EXIT_ERR);
 }
 
-static bool_t
-a_coll_putesc(char const *s, bool_t addnl, FILE *stream){
+static boole
+a_coll_putesc(char const *s, boole addnl, FILE *stream){
    char c1, c2;
-   bool_t isposix;
+   boole isposix;
    NYD2_IN;
 
    isposix = ok_blook(posix);
@@ -936,8 +936,8 @@ a_coll_ocs__mac(void){
 static void
 a_coll_ocs__finalize(void *vp){
    /* Note we use this for destruction upon setup errors, thus */
-   sighandler_type opipe;
-   sighandler_type oint;
+   n_sighdl_t opipe;
+   n_sighdl_t oint;
    struct a_coll_ocs_arg **coapp, *coap;
    NYD2_IN;
 
@@ -1026,7 +1026,7 @@ n_temporary_compose_hook_varset(void *arg){ /* TODO v15: drop */
 
 FL FILE *
 n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
-   char const *quotefile, si8_t *checkaddr_err)
+   char const *quotefile, s8 *checkaddr_err)
 {
    struct n_dig_msg_ctx dmc;
    struct n_string s_b, * volatile s;
@@ -1226,7 +1226,7 @@ jcont:
 
       /* C99 */{
          enum n_go_input_flags gif;
-         bool_t histadd;
+         boole histadd;
 
          /* TODO optimize: no need to evaluate that anew for each loop tick! */
          gif = n_GO_INPUT_CTX_COMPOSE;
@@ -1490,7 +1490,7 @@ jearg:
             goto jearg;
          else{
             struct mx_name *np;
-            si8_t soe;
+            s8 soe;
 
             soe = 0;
             if((np = checkaddrs(lextract(cp, GBCC | GFULL), EACM_NORMAL, &soe)
@@ -1512,7 +1512,7 @@ jearg:
             goto jearg;
          else{
             struct mx_name *np;
-            si8_t soe;
+            s8 soe;
 
             soe = 0;
             if((np = checkaddrs(lextract(cp, GCC | GFULL), EACM_NORMAL, &soe)
@@ -1721,7 +1721,7 @@ jIi_putesc:
             goto jearg;
          else{
             struct mx_name *np;
-            si8_t soe;
+            s8 soe;
 
             soe = 0;
             if((np = checkaddrs(lextract(cp, GTO | GFULL), EACM_NORMAL, &soe)
@@ -1876,7 +1876,7 @@ jout:
                n_GO_INPUT_CTX_COMPOSE);
 
       if(ok_blook(asksend)){
-         bool_t b;
+         boole b;
 
          ifs_saved = coapm = NULL;
          coap = NULL;
@@ -1896,7 +1896,7 @@ jreasksend:
             cp = n_1;
          }
 
-         if((b = n_boolify(linebuf, UIZ_MAX, TRUM1)) < FAL0)
+         if((b = n_boolify(linebuf, UZ_MAX, TRUM1)) < FAL0)
             goto jreasksend;
          if(b == TRU2)
             goto jcont;

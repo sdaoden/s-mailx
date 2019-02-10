@@ -76,13 +76,13 @@ static char                   *_cs_iter_base, *_cs_iter;
 
 /* Is 7-bit enough? */
 #ifdef mx_HAVE_ICONV
-static bool_t           _has_highbit(char const *s);
-static bool_t           _name_highbit(struct mx_name *np);
+static boole           _has_highbit(char const *s);
+static boole           _name_highbit(struct mx_name *np);
 #endif
 
 /* fwrite(3) while checking for displayability */
 static ssize_t          _fwrite_td(struct str const *input,
-                           bool_t failiconv, enum tdflags flags,
+                           boole failiconv, enum tdflags flags,
                            struct str *outrest, struct quoteflt *qf);
 
 /* Convert header fields to RFC 2047 format and write to the file fo */
@@ -107,15 +107,15 @@ static void             _append_conv(char **buf, size_t *size, size_t *pos,
                            char const *str, size_t len);
 
 #ifdef mx_HAVE_ICONV
-static bool_t
+static boole
 _has_highbit(char const *s)
 {
-   bool_t rv = TRU1;
+   boole rv = TRU1;
    NYD_IN;
 
    if (s) {
       do
-         if ((ui8_t)*s & 0x80)
+         if ((u8)*s & 0x80)
             goto jleave;
       while (*s++ != '\0');
    }
@@ -125,10 +125,10 @@ jleave:
    return rv;
 }
 
-static bool_t
+static boole
 _name_highbit(struct mx_name *np)
 {
-   bool_t rv = TRU1;
+   boole rv = TRU1;
    NYD_IN;
 
    while (np) {
@@ -145,7 +145,7 @@ jleave:
 
 static sigjmp_buf       __mimefwtd_actjmp; /* TODO someday.. */
 static int              __mimefwtd_sig; /* TODO someday.. */
-static sighandler_type  __mimefwtd_opipe;
+static n_sighdl_t  __mimefwtd_opipe;
 static void
 __mimefwtd_onsig(int sig) /* TODO someday, we won't need it no more */
 {
@@ -155,7 +155,7 @@ __mimefwtd_onsig(int sig) /* TODO someday, we won't need it no more */
 }
 
 static ssize_t
-_fwrite_td(struct str const *input, bool_t failiconv, enum tdflags flags,
+_fwrite_td(struct str const *input, boole failiconv, enum tdflags flags,
    struct str *outrest, struct quoteflt *qf)
 {
    /* TODO note: after send/MIME layer rewrite we will have a string pool
@@ -369,7 +369,7 @@ mime_write_tohdr(struct str *in, FILE *fo, size_t *colp,
       _OVERLONG   = 1<<(_RND_SHIFT+5)     /* Temporarily rised limit */
    } flags;
    char const *cset7, *cset8, *wbot, *upper, *wend, *wcur;
-   ui32_t cset7_len, cset8_len;
+   u32 cset7_len, cset8_len;
    size_t col, i, j;
    ssize_t size;
 
@@ -377,9 +377,9 @@ mime_write_tohdr(struct str *in, FILE *fo, size_t *colp,
 
    cout.s = NULL, cout.l = 0;
    cset7 = ok_vlook(charset_7bit);
-   cset7_len = (ui32_t)su_cs_len(cset7);
+   cset7_len = (u32)su_cs_len(cset7);
    cset8 = _CS_ITER_GET(); /* TODO MIME/send layer: iter active? iter! else */
-   cset8_len = (ui32_t)su_cs_len(cset8);
+   cset8_len = (u32)su_cs_len(cset8);
 
    flags = _FIRST;
    if(msh != a_MIME_SH_NONE)
@@ -442,7 +442,7 @@ mime_write_tohdr(struct str *in, FILE *fo, size_t *colp,
       for (wend = wcur; wend < upper; ++wend) {
          if (su_cs_is_white(*wend))
             break;
-         if ((uc_i)*wend & 0x80)
+         if ((uc)*wend & 0x80)
             flags |= _8BIT;
       }
 
@@ -511,7 +511,7 @@ jnoenc_retry:
          if (col > 1) {
             putc('\n', fo);
             if (su_cs_is_white(*wbot)) {
-               putc((uc_i)*wbot, fo);
+               putc((uc)*wbot, fo);
                ++wbot;
             } else
                putc(' ', fo); /* Bad standard: artificial data! */
@@ -623,7 +623,7 @@ jenc_retry_same:
                /*flags |= _OVERLONG;*/
                goto jenc_retry_same;
             } else {
-               putc((uc_i)*wcur, fo);
+               putc((uc)*wcur, fo);
                if (su_cs_is_white(*(wcur = wbot)))
                   ++wbot;
                else {
@@ -810,7 +810,7 @@ _append_conv(char **buf, size_t *size, size_t *pos, char const *str,
    NYD_OU;
 }
 
-FL bool_t
+FL boole
 charset_iter_reset(char const *a_charset_to_try_first) /* TODO elim. dups! */
 {
    char const *sarr[3];
@@ -873,10 +873,10 @@ charset_iter_reset(char const *a_charset_to_try_first) /* TODO elim. dups! */
    return (_cs_iter != NULL);
 }
 
-FL bool_t
+FL boole
 charset_iter_next(void)
 {
-   bool_t rv;
+   boole rv;
    NYD_IN;
 
    _CS_ITER_STEP();
@@ -885,10 +885,10 @@ charset_iter_next(void)
    return rv;
 }
 
-FL bool_t
+FL boole
 charset_iter_is_valid(void)
 {
-   bool_t rv;
+   boole rv;
    NYD_IN;
 
    rv = (_cs_iter != NULL);
@@ -948,7 +948,7 @@ need_hdrconv(struct header *hp) /* TODO once only, then iter */
 
    /* C99 */{
       struct n_header_field *chlp[3]; /* TODO JOINED AFTER COMPOSE! */
-      ui32_t i;
+      u32 i;
 
       chlp[0] = n_poption_arg_C;
       chlp[1] = n_customhdr_list;
@@ -1022,7 +1022,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
     * TODO RFC 2047 and be renamed: mime_fromhdr() -> mime_rfc2047_decode() */
    struct str cin, cout;
    char *p, *op, *upper;
-   ui32_t convert, lastenc, lastoutl;
+   u32 convert, lastenc, lastoutl;
 #ifdef mx_HAVE_ICONV
    char const *tcs;
    char *cbeg;
@@ -1109,8 +1109,8 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
          /* Normalize all decoded newlines to spaces XXX only \0/\n yet */
          /* C99 */{
             char const *xcp;
-            bool_t any;
-            uiz_t i, j;
+            boole any;
+            uz i, j;
 
             for(any = FAL0, i = cout.l; i-- != 0;)
                switch(cout.s[i]){
@@ -1157,7 +1157,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
          n_free(cout.s);
       } else
 jnotmime: {
-         bool_t onlyws;
+         boole onlyws;
 
          p = op;
          onlyws = (lastenc > 0);
@@ -1269,7 +1269,7 @@ xmime_write(char const *ptr, size_t size, FILE *f, enum conversion convert,
 
 static sigjmp_buf       __mimemw_actjmp; /* TODO someday.. */
 static int              __mimemw_sig; /* TODO someday.. */
-static sighandler_type  __mimemw_opipe;
+static n_sighdl_t  __mimemw_opipe;
 static void
 __mimemw_onsig(int sig) /* TODO someday, we won't need it no more */
 {

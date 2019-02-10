@@ -65,7 +65,7 @@ static struct attachment *a_attachment_setup_msg(struct attachment *ap,
 
 /* Try to create temporary charset converted version */
 #ifdef mx_HAVE_ICONV
-static bool_t a_attachment_iconv(struct attachment *ap, FILE *ifp);
+static boole a_attachment_iconv(struct attachment *ap, FILE *ifp);
 #endif
 
 /* */
@@ -79,7 +79,7 @@ a_attachment_is_msg(char const *file){
    rv = -1;
 
    if(file[0] == '#'){
-      uiz_t ib;
+      uz ib;
 
       /* TODO Message numbers should be size_t, and 0 may be a valid one */
       if(file[2] == '\0' && file[1] == '.'){
@@ -128,7 +128,7 @@ a_attachment_setup_msg(struct attachment *ap, char const *msgcp, int msgno){
 }
 
 #ifdef mx_HAVE_ICONV
-static bool_t
+static boole
 a_attachment_iconv(struct attachment *ap, FILE *ifp){
    struct str oul = {NULL, 0}, inl = {NULL, 0};
    size_t cnt, lbsize;
@@ -365,7 +365,7 @@ n_attachment_append_list(struct attachment *aplist, char const *names){
 
    shoup = n_string_creat_auto(&shou);
 
-   for(shin.s = n_UNCONST(names), shin.l = UIZ_MAX;;){
+   for(shin.s = n_UNCONST(names), shin.l = UZ_MAX;;){
       struct attachment *nap;
       enum n_shexp_state shs;
 
@@ -424,10 +424,10 @@ n_attachment_remove(struct attachment *aplist, struct attachment *ap){
 
 FL struct attachment *
 n_attachment_find(struct attachment *aplist, char const *name,
-      bool_t *stat_or_null){
+      boole *stat_or_null){
    int msgno;
    char const *bname;
-   bool_t status, sym;
+   boole status, sym;
    struct attachment *saved;
    NYD_IN;
 
@@ -485,7 +485,7 @@ n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
    struct str shin;
    struct n_string shou, *shoup;
    struct attachment *naplist, *ap;
-   ui32_t attno;
+   u32 attno;
    NYD_IN;
 
    if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_ATTACH_QUOTE_NOTED)
@@ -519,7 +519,7 @@ n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
          char const *s_save;
 
          s_save = shin.s;
-         shin.l = UIZ_MAX;
+         shin.l = UZ_MAX;
          shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC |
                n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_LOG |
                n_SHEXP_PARSE_IGNORE_EMPTY),
@@ -558,7 +558,7 @@ n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
 FL ssize_t
 n_attachment_list_print(struct attachment const *aplist, FILE *fp){
    struct attachment const *ap;
-   ui32_t attno;
+   u32 attno;
    ssize_t rv;
    NYD_IN;
 

@@ -46,10 +46,10 @@
 /* TODO fake */
 #include "su/code-in.h"
 
-FL bool_t
-n_is_dir(char const *name, bool_t check_access){
+FL boole
+n_is_dir(char const *name, boole check_access){
    struct stat sbuf;
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    if((rv = (stat(name, &sbuf) == 0))){
@@ -66,10 +66,10 @@ n_is_dir(char const *name, bool_t check_access){
    return rv;
 }
 
-FL bool_t
+FL boole
 n_path_mkdir(char const *name){
    struct stat st;
-   bool_t rv;
+   boole rv;
    NYD_IN;
 
 jredo:
@@ -99,10 +99,10 @@ jredo:
    return rv;
 }
 
-FL bool_t
+FL boole
 n_path_rm(char const *name){
    struct stat sb;
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    if(stat(name, &sb) != 0)

@@ -60,26 +60,26 @@ static int        _screen;
  * a_chead__putuc: print out a Unicode character or a substitute for it, return
  *    0 on error or wcwidth() (or 1) on success */
 static void a_chead_print_head(size_t yetprinted, size_t msgno, FILE *f,
-               bool_t threaded, bool_t subject_thread_compress);
+               boole threaded, boole subject_thread_compress);
 
 static void a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno,
-               FILE *f, bool_t threaded, bool_t subject_thread_compress,
+               FILE *f, boole threaded, boole subject_thread_compress,
                char const *attrlist);
-static char *a_chead__subject(struct message *mp, bool_t threaded,
-               bool_t subject_thread_compress, size_t yetprinted);
+static char *a_chead__subject(struct message *mp, boole threaded,
+               boole subject_thread_compress, size_t yetprinted);
 static int a_chead__putindent(FILE *fp, struct message *mp, int maxwidth);
 static size_t a_chead__putuc(int u, int c, FILE *fp);
 static int a_chead__dispc(struct message *mp, char const *a);
 
 /* Shared `z' implementation */
-static int a_chead_scroll(char const *arg, bool_t onlynew);
+static int a_chead_scroll(char const *arg, boole onlynew);
 
 /* Shared `headers' implementation */
 static int     _headers(int msgspec);
 
 static void
-a_chead_print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded,
-      bool_t subject_thread_compress){
+a_chead_print_head(size_t yetprinted, size_t msgno, FILE *f, boole threaded,
+      boole subject_thread_compress){
    enum {attrlen = 14};
    char attrlist[attrlen +1], *cp;
    char const *fmt;
@@ -123,7 +123,7 @@ jattrok:
 
 static void
 a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
-   bool_t threaded, bool_t subject_thread_compress, char const *attrlist)
+   boole threaded, boole subject_thread_compress, char const *attrlist)
 {
    char buf[16], cbuf[8], *cp, *subjline;
    char const *date, *name, *fp, *color_tag;
@@ -152,7 +152,7 @@ a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
    color_tag = NULL;
    date = n_header_textual_date_info(mp, &color_tag);
    /* C99 */{
-      bool_t isto;
+      boole isto;
 
       n_header_textual_sender_info(mp, &cp, NULL, NULL, NULL, &isto);
       name = cp;
@@ -410,7 +410,7 @@ jmlist: /* v15compat */
          if (UCMP(32, ABS(n), >, wleft))
             wleft = 0;
          else{
-            n = fprintf(f, "%*lu", n, (ul_i)msgno);
+            n = fprintf(f, "%*lu", n, (ul)msgno);
             wleft = (n >= 0) ? wleft - n : 0;
          }
          break;
@@ -420,7 +420,7 @@ jmlist: /* v15compat */
          if (UCMP(32, ABS(n), >, wleft))
             wleft = 0;
          else{
-            n = fprintf(f, "%*lu", n, (ul_i)mp->m_xsize);
+            n = fprintf(f, "%*lu", n, (ul)mp->m_xsize);
             wleft = (n >= 0) ? wleft - n : 0;
          }
          break;
@@ -468,7 +468,7 @@ jmlist: /* v15compat */
             wleft = 0;
          else{
             n = fprintf(f, "%*lu",
-                  n, (threaded ? (ul_i)mp->m_threadpos : (ul_i)msgno));
+                  n, (threaded ? (ul)mp->m_threadpos : (ul)msgno));
             wleft = (n >= 0) ? wleft - n : 0;
          }
          break;
@@ -507,8 +507,8 @@ jmlist: /* v15compat */
 }
 
 static char *
-a_chead__subject(struct message *mp, bool_t threaded,
-   bool_t subject_thread_compress, size_t yetprinted)
+a_chead__subject(struct message *mp, boole threaded,
+   boole subject_thread_compress, size_t yetprinted)
 {
    struct str in, out;
    char *rv, *ms;
@@ -608,7 +608,7 @@ a_chead__putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX magics */
    }
 
    --maxwidth;
-   for (indlvl = indw = 0; (ui8_t)indlvl < mp->m_level && indw < maxwidth;
+   for (indlvl = indw = 0; (u8)indlvl < mp->m_level && indw < maxwidth;
          ++indlvl) {
       if (indw < maxwidth - 1)
          indw += (int)a_chead__putuc(unis[indlvl], cs[indlvl] & 0xFF, fp);
@@ -700,9 +700,9 @@ a_chead__dispc(struct message *mp, char const *a)
 }
 
 static int
-a_chead_scroll(char const *arg, bool_t onlynew){
-   siz_t l;
-   bool_t isabs;
+a_chead_scroll(char const *arg, boole onlynew){
+   sz l;
+   boole isabs;
    int msgspec, size, maxs;
    NYD2_IN;
 
@@ -797,11 +797,11 @@ jleave:
 static int
 _headers(int msgspec) /* TODO rework v15 */
 {
-   bool_t needdot, showlast;
+   boole needdot, showlast;
    int g, k, mesg, size;
    struct message *lastmq, *mp, *mq;
    int volatile lastg;
-   ui32_t volatile flag;
+   u32 volatile flag;
    enum mflag fl;
    NYD_IN;
 
@@ -1051,7 +1051,7 @@ c_from(void *vp)
 
    if (n_psonce & n_PSO_INTERACTIVE) {
       if ((cp = ok_vlook(crt)) != NULL) {
-         uiz_t ib;
+         uz ib;
 
          for (n = 0, ip = msgvec; *ip != 0; ++ip)
             ++n;
@@ -1087,8 +1087,8 @@ jleave:
 }
 
 FL void
-print_headers(int const *msgvec, bool_t only_marked,
-   bool_t subject_thread_compress)
+print_headers(int const *msgvec, boole only_marked,
+   boole subject_thread_compress)
 {
    size_t printed;
    NYD_IN;

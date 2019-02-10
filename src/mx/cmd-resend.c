@@ -69,24 +69,24 @@ static void a_crese_make_ref_and_cs(struct message *mp, struct header *head);
 static int a_crese_list_reply(int *msgvec, enum header_flags hf);
 
 /* Get PTF to implementation of command c (i.e., take care for *flipr*) */
-static int (*a_crese_reply_or_Reply(char c))(int *, bool_t);
+static int (*a_crese_reply_or_Reply(char c))(int *, boole);
 
 /* Reply to a single message.  Extract each name from the message header and
  * send them off to mail1() */
-static int a_crese_reply(int *msgvec, bool_t recipient_record);
+static int a_crese_reply(int *msgvec, boole recipient_record);
 
 /* Reply to a series of messages by simply mailing to the senders and not
  * messing around with the To: and Cc: lists as in normal reply */
-static int a_crese_Reply(int *msgvec, bool_t recipient_record);
+static int a_crese_Reply(int *msgvec, boole recipient_record);
 
 /* Forward a message to a new recipient, in the sense of RFC 2822 */
-static int a_crese_fwd(void *vp, bool_t recipient_record);
+static int a_crese_fwd(void *vp, boole recipient_record);
 
 /* Modify the subject we are replying to to begin with Fwd: */
 static char *a_crese__fwdedit(char *subj);
 
 /* Do the real work of resending */
-static int a_crese_resend1(void *v, bool_t add_resent);
+static int a_crese_resend1(void *v, boole add_resent);
 
 static char *
 a_crese_reedit(char const *subj){
@@ -145,7 +145,7 @@ a_crese_reply_to(struct message *mp){
       lp = n_lofi_alloc(l);
 
       snprintf(lp, l, tr, rt->n_name, (rt->n_flink != NULL ? "..." : n_empty));
-      if(n_quadify(cp, UIZ_MAX, lp, TRU1) <= FAL0)
+      if(n_quadify(cp, UZ_MAX, lp, TRU1) <= FAL0)
          rt = NULL;
 
       n_lofi_free(lp);
@@ -185,7 +185,7 @@ a_crese_mail_followup_to(struct message *mp){
 
       snprintf(lp, l, tr, mft->n_name,
          (mft->n_flink != NULL ? "..." : n_empty));
-      if(n_quadify(cp, UIZ_MAX, lp, TRU1) <= FAL0)
+      if(n_quadify(cp, UZ_MAX, lp, TRU1) <= FAL0)
          mft = NULL;
 
       n_lofi_free(lp);
@@ -197,7 +197,7 @@ a_crese_mail_followup_to(struct message *mp){
 static void
 a_crese_polite_rt_mft_move(struct message *mp, struct header *hp,
       struct mx_name *np){
-   bool_t once;
+   boole once;
    NYD2_IN;
    UNUSED(mp);
 
@@ -554,8 +554,8 @@ jleave:
 }
 
 static int
-(*a_crese_reply_or_Reply(char c))(int *, bool_t){
-   int (*rv)(int*, bool_t);
+(*a_crese_reply_or_Reply(char c))(int *, boole){
+   int (*rv)(int*, boole);
    NYD2_IN;
 
    rv = (ok_blook(flipr) ^ (c == 'R')) ? &a_crese_Reply : &a_crese_reply;
@@ -564,7 +564,7 @@ static int
 }
 
 static int
-a_crese_reply(int *msgvec, bool_t recipient_record){
+a_crese_reply(int *msgvec, boole recipient_record){
    int rv;
    NYD2_IN;
 
@@ -575,7 +575,7 @@ a_crese_reply(int *msgvec, bool_t recipient_record){
 }
 
 static int
-a_crese_Reply(int *msgvec, bool_t recipient_record){
+a_crese_Reply(int *msgvec, boole recipient_record){
    struct header head;
    struct message *mp;
    int *ap;
@@ -636,11 +636,11 @@ jleave:
 }
 
 static int
-a_crese_fwd(void *vp, bool_t recipient_record){
+a_crese_fwd(void *vp, boole recipient_record){
    struct header head;
    struct message *mp;
    enum gfield gf;
-   bool_t forward_as_attachment;
+   boole forward_as_attachment;
    int *msgvec, rv;
    struct n_cmd_arg *cap;
    struct n_cmd_arg_ctx *cacp;
@@ -723,7 +723,7 @@ jleave:
 }
 
 static int
-a_crese_resend1(void *vp, bool_t add_resent){
+a_crese_resend1(void *vp, boole add_resent){
    struct header head;
    struct mx_name *myto, *myrawto;
    enum gfield gf;

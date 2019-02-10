@@ -40,6 +40,9 @@
 # include <wctype.h>
 #endif
 
+/* TODO fake */
+#include "su/code-in.h"
+
 #ifdef mx_HAVE_C90AMEND1
 typedef wchar_t         wc_t;
 # define n_WC_C(X)      L ## X
@@ -50,7 +53,7 @@ typedef char            wc_t; /* Yep: really 8-bit char */
 
 struct n_visual_info_ctx{
    char const *vic_indat;  /*I Input data */
-   size_t vic_inlen;       /*I If UIZ_MAX, su_cs_len(.vic_indat) */
+   size_t vic_inlen;       /*I If UZ_MAX, su_cs_len(.vic_indat) */
    char const *vic_oudat;  /*O remains */
    size_t vic_oulen;
    size_t vic_chars_seen;  /*O number of characters processed */
@@ -70,7 +73,7 @@ struct n_visual_info_ctx{
 /* Parse (onechar of) a given buffer, and generate infos along the way.
  * If _WOUT_CREATE is set in vif, .vic_woudat will be NUL terminated!
  * vicp must be zeroed before first use */
-FL bool_t      n_visual_info(struct n_visual_info_ctx *vicp,
+FL boole      n_visual_info(struct n_visual_info_ctx *vicp,
                   enum n_visual_info_flags vif);
 
 /* Check (multibyte-safe) how many bytes of buf (which is blen byts) can be
@@ -90,11 +93,12 @@ FL char *      prstr(char const *s);
 FL int         prout(char const *s, size_t sz, FILE *fp);
 
 /* Check whether bidirectional info maybe needed for blen bytes of bdat */
-FL bool_t      bidi_info_needed(char const *bdat, size_t blen);
+FL boole      bidi_info_needed(char const *bdat, size_t blen);
 
 /* Create bidirectional text encapsulation info; without mx_HAVE_NATCH_CHAR
  * the strings are always empty */
 FL void        bidi_info_create(struct bidi_info *bip);
 
+#include "su/code-ou.h"
 #endif /* mx_UI_STR_H */
 /* s-it-mode */

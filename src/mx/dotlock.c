@@ -249,11 +249,11 @@ n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
 #endif
    int serr;
    union {size_t tries; int (*ptf)(void); char const *sh; ssize_t r;} u;
-   bool_t flocked, didmsg;
+   boole flocked, didmsg;
    FILE *rv;
    NYD_IN;
 
-   if(pollmsecs == UIZ_MAX)
+   if(pollmsecs == UZ_MAX)
       pollmsecs = FILE_LOCK_MILLIS;
 
    rv = NULL;

@@ -198,7 +198,7 @@ c_remove(void *v)
          continue;
       }
       /* C99 */{
-         bool_t asw;
+         boole asw;
          char *vb;
          size_t vl;
 

@@ -71,13 +71,13 @@ static void    _smtp_onterm(int signo);
 
 /* Get the SMTP server's answer, expecting val */
 static int     _smtp_read(struct sock *sp, struct smtp_line *slp, int val,
-                  bool_t ign_eof, bool_t want_dat);
+                  boole ign_eof, boole want_dat);
 
 /* Talk to a SMTP server */
-static bool_t  _smtp_talk(struct sock *sp, struct sendbundle *sbp);
+static boole  _smtp_talk(struct sock *sp, struct sendbundle *sbp);
 
 #ifdef mx_HAVE_GSSAPI
-static bool_t  _smtp_gssapi(struct sock *sp, struct sendbundle *sbp,
+static boole  _smtp_gssapi(struct sock *sp, struct sendbundle *sbp,
                   struct smtp_line *slp);
 #endif
 
@@ -91,7 +91,7 @@ _smtp_onterm(int signo)
 
 static int
 _smtp_read(struct sock *sop, struct smtp_line *slp, int val,
-   bool_t ign_eof, bool_t want_dat)
+   boole ign_eof, boole want_dat)
 {
    int rv, len;
    char *cp;
@@ -154,7 +154,7 @@ do {\
       swrite(sop, X);\
 } while (0)
 
-static bool_t
+static boole
 _smtp_talk(struct sock *sop, struct sendbundle *sbp) /* TODO n_string++ */
 {
    char o[LINESIZE];
@@ -163,7 +163,7 @@ _smtp_talk(struct sock *sop, struct sendbundle *sbp) /* TODO n_string++ */
    struct str b64;
    struct mx_name *np;
    size_t blen, cnt;
-   bool_t inhdr = TRU1, inbcc = FAL0, rv = FAL0;
+   boole inhdr = TRU1, inbcc = FAL0, rv = FAL0;
    NYD_IN;
 
    hostname = n_nodename(TRU1);
@@ -211,8 +211,8 @@ _smtp_talk(struct sock *sop, struct sendbundle *sbp) /* TODO n_string++ */
       /* FALLTHRU (doesn't happen) */
    case AUTHTYPE_PLAIN:
       cnt = sbp->sb_ccred.cc_user.l;
-      if(sbp->sb_ccred.cc_pass.l >= UIZ_MAX - 2 ||
-            cnt >= UIZ_MAX - 2 - sbp->sb_ccred.cc_pass.l){
+      if(sbp->sb_ccred.cc_pass.l >= UZ_MAX - 2 ||
+            cnt >= UZ_MAX - 2 - sbp->sb_ccred.cc_pass.l){
 jerr_cred:
          n_err(_("Credentials overflow buffer sizes\n"));
          goto jleave;
@@ -222,7 +222,7 @@ jerr_cred:
       if(cnt >= sizeof(o) - 2)
          goto jerr_cred;
       cnt += 2;
-      if(b64_encode_calc_size(cnt) == UIZ_MAX)
+      if(b64_encode_calc_size(cnt) == UZ_MAX)
          goto jerr_cred;
 
       _OUT(NETLINE("AUTH PLAIN"));
@@ -236,8 +236,8 @@ jerr_cred:
       _ANSWER(2, FAL0, FAL0);
       break;
    case AUTHTYPE_LOGIN:
-      if(b64_encode_calc_size(sbp->sb_ccred.cc_user.l) == UIZ_MAX ||
-            b64_encode_calc_size(sbp->sb_ccred.cc_pass.l) == UIZ_MAX)
+      if(b64_encode_calc_size(sbp->sb_ccred.cc_user.l) == UZ_MAX ||
+            b64_encode_calc_size(sbp->sb_ccred.cc_pass.l) == UZ_MAX)
          goto jerr_cred;
 
       _OUT(NETLINE("AUTH LOGIN"));
@@ -348,12 +348,12 @@ jleave:
 #undef _OUT
 #undef _ANSWER
 
-FL bool_t
+FL boole
 smtp_mta(struct sendbundle *sbp)
 {
    struct sock so;
-   sighandler_type volatile saveterm;
-   bool_t volatile rv = FAL0;
+   n_sighdl_t volatile saveterm;
+   boole volatile rv = FAL0;
    NYD_IN;
 
    saveterm = safe_signal(SIGTERM, SIG_IGN);

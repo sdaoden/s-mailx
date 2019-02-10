@@ -60,17 +60,17 @@ enum a_colour_tag_type{
 };
 
 struct a_colour_type_map{
-   ui8_t ctm_type;   /* a_colour_type */
+   u8 ctm_type;   /* a_colour_type */
    char ctm_name[7];
 };
 
 struct a_colour_map_id{
-   ui8_t cmi_ctx;    /* enum n_colour_ctx */
-   ui8_t cmi_id;     /* enum n_colour_id */
-   ui8_t cmi_tt;     /* enum a_colour_tag_type */
+   u8 cmi_ctx;    /* enum n_colour_ctx */
+   u8 cmi_id;     /* enum n_colour_id */
+   u8 cmi_tt;     /* enum a_colour_tag_type */
    char const cmi_name[13];
 };
-CTA(n__COLOUR_IDS <= UI8_MAX, "Enumeration exceeds storage datatype");
+CTA(n__COLOUR_IDS <= U8_MAX, "Enumeration exceeds storage datatype");
 
 struct n_colour_pen{
    struct str cp_dat;   /* Pre-prepared ISO 6429 escape sequence */
@@ -84,15 +84,15 @@ struct a_colour_map /* : public n_colour_pen */{
 #ifdef mx_HAVE_REGEX
    regex_t *cm_regex;
 #endif
-   ui32_t cm_refcnt;             /* Beware of reference drops in recursions */
-   ui32_t cm_user_off;           /* User input offset in .cm_buf */
+   u32 cm_refcnt;             /* Beware of reference drops in recursions */
+   u32 cm_user_off;           /* User input offset in .cm_buf */
    char cm_buf[VFIELD_SIZE(0)];
 };
 
 struct a_colour_g{
-   bool_t cg_is_init;
-   ui8_t cg_type;                   /* a_colour_type */
-   ui8_t __cg_pad[6];
+   boole cg_is_init;
+   u8 cg_type;                   /* a_colour_type */
+   u8 __cg_pad[6];
    struct n_colour_pen cg_reset;    /* The reset sequence */
    struct a_colour_map
       *cg_maps[a_COLOUR_T_NONE][n__COLOUR_CTX_MAX1][n__COLOUR_IDS];
@@ -145,10 +145,10 @@ static void a_colour_init(void);
 static enum a_colour_type a_colour_type_find(char const *name);
 
 /* `(un)?colour' implementations */
-static bool_t a_colour_mux(char **argv);
-static bool_t a_colour_unmux(char **argv);
+static boole a_colour_mux(char **argv);
+static boole a_colour_unmux(char **argv);
 
-static bool_t a_colour__show(enum a_colour_type ct);
+static boole a_colour__show(enum a_colour_type ct);
 /* (regexpp may be NULL) */
 static char const *a_colour__tag_identify(struct a_colour_map_id const *cmip,
                      char const *ctag, void **regexpp);
@@ -166,7 +166,7 @@ static void a_colour_map_unref(struct a_colour_map *self);
 
 /* Create an ISO 6429 (ECMA-48/ANSI) terminal control escape sequence from user
  * input spec, store it or on error message in *store */
-static bool_t a_colour_iso6429(enum a_colour_type ct, char **store,
+static boole a_colour_iso6429(enum a_colour_type ct, char **store,
                char const *spec);
 
 static void
@@ -199,13 +199,13 @@ jleave:
    return rv;
 }
 
-static bool_t
+static boole
 a_colour_mux(char **argv){
    void *regexp;
    char const *mapname, *ctag;
    struct a_colour_map **cmap, *blcmp, *lcmp, *cmp;
    struct a_colour_map_id const *cmip;
-   bool_t rv;
+   boole rv;
    enum a_colour_type ct;
    NYD2_IN;
 
@@ -304,7 +304,7 @@ a_colour_mux(char **argv){
       su_mem_copy(bp, cp, ++cl);
       bp += cl;
 
-      cmp->cm_user_off = (ui32_t)P2UZ(bp - cmp->cm_buf);
+      cmp->cm_user_off = (u32)P2UZ(bp - cmp->cm_buf);
       su_mem_copy(bp, argv[1], ++usrl);
       bp += usrl;
 
@@ -345,13 +345,13 @@ jleave:
    return rv;
 }
 
-static bool_t
+static boole
 a_colour_unmux(char **argv){
    char const *mapname, *ctag, *xtag;
    struct a_colour_map **cmap, *lcmp, *cmp;
    struct a_colour_map_id const *cmip;
    enum a_colour_type ct;
-   bool_t aster, rv;
+   boole aster, rv;
    NYD2_IN;
 
    rv = TRU1;
@@ -451,11 +451,11 @@ j_leave:
    return rv;
 }
 
-static bool_t
+static boole
 a_colour__show(enum a_colour_type ct){
    struct a_colour_map *cmp;
    size_t i1, i2;
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    /* Show all possible types? */
@@ -530,7 +530,7 @@ a_colour__tag_identify(struct a_colour_map_id const *cmip, char const *ctag,
          cp = n_autorec_alloc(i +1);
 
          for(i = 0; (c = *ctag++) != '\0';){
-            bool_t isblspc = su_cs_is_space(c);
+            boole isblspc = su_cs_is_space(c);
 
             if(!isblspc && !su_cs_is_alnum(c) && c != '-' && c != ',')
                goto jetag;
@@ -635,7 +635,7 @@ a_colour_map_unref(struct a_colour_map *self){
    NYD2_OU;
 }
 
-static bool_t
+static boole
 a_colour_iso6429(enum a_colour_type ct, char **store, char const *spec){
    struct isodesc{
       char id_name[15];
@@ -647,8 +647,8 @@ a_colour_iso6429(enum a_colour_type ct, char **store, char const *spec){
       {"blue", '4'}, {"magenta", '5'}, {"cyan", '6'}, {"white", '7'}
    }, *idp;
    char *xspec, *cp, fg[3], cfg[2 + 2*sizeof("255")];
-   ui8_t ftno_base, ftno;
-   bool_t rv;
+   u8 ftno_base, ftno;
+   boole rv;
    NYD_IN;
 
    rv = FAL0;
@@ -706,7 +706,7 @@ jiter_colour:
          }
          /* Maybe 256 color spec */
          if(su_cs_is_digit(x[0])){
-            ui8_t xv;
+            u8 xv;
 
             if(ct == a_COLOUR_T_8){
                *store = n_UNCONST(_("invalid colour for 8-colour mode"));
@@ -834,7 +834,7 @@ n_colour_stack_del(struct n_go_data_ctx *gdcp){
 }
 
 FL void
-n_colour_env_create(enum n_colour_ctx cctx, FILE *fp, bool_t pager_used){
+n_colour_env_create(enum n_colour_ctx cctx, FILE *fp, boole pager_used){
    struct n_colour_env *cep;
    NYD_IN;
 

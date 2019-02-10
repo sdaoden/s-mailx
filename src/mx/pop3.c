@@ -76,8 +76,8 @@ do {\
 static char             *_pop3_buf;
 static size_t           _pop3_bufsize;
 static sigjmp_buf       _pop3_jmp;
-static sighandler_type  _pop3_savealrm;
-static si32_t           _pop3_keepalive;
+static n_sighdl_t  _pop3_savealrm;
+static s32           _pop3_keepalive;
 static int volatile     _pop3_lock;
 
 /* Perform entire login handshake */
@@ -190,7 +190,7 @@ _pop3_lookup_apop_timestamp(char const *bp)
    char const *cp, *ep;
    size_t tl;
    char *rp = NULL;
-   bool_t hadat = FAL0;
+   boole hadat = FAL0;
    NYD_IN;
 
    if ((cp = su_cs_find_c(bp, '<')) == NULL)
@@ -233,8 +233,8 @@ _pop3_auth_apop(struct mailbox *mp, struct sockconn const *scp, char const *ts)
    NYD_IN;
 
    md5_init(&ctx);
-   md5_update(&ctx, (uc_i*)n_UNCONST(ts), su_cs_len(ts));
-   md5_update(&ctx, (uc_i*)scp->sc_cred.cc_pass.s, scp->sc_cred.cc_pass.l);
+   md5_update(&ctx, (uc*)n_UNCONST(ts), su_cs_len(ts));
+   md5_update(&ctx, (uc*)scp->sc_cred.cc_pass.s, scp->sc_cred.cc_pass.l);
    md5_final(digest, &ctx);
    md5tohex(hex, digest);
 
@@ -405,7 +405,7 @@ jleave:
 static void
 pop3alarm(int s)
 {
-   sighandler_type volatile saveint, savepipe;
+   n_sighdl_t volatile saveint, savepipe;
    NYD; /* Signal handler */
    UNUSED(s);
 
@@ -568,7 +568,7 @@ static enum okay
 pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
 {
    char o[LINESIZE], *line, *lp;
-   sighandler_type volatile saveint, savepipe;
+   n_sighdl_t volatile saveint, savepipe;
    size_t linesize, linelen, size;
    int number, lines;
    int volatile emptyline;
@@ -800,7 +800,7 @@ pop3_update(struct mailbox *mp)
 FL enum okay
 pop3_noop(void)
 {
-   sighandler_type volatile saveint, savepipe;
+   n_sighdl_t volatile saveint, savepipe;
    enum okay volatile rv = STOP;
    NYD_IN;
 
@@ -826,7 +826,7 @@ FL int
 pop3_setfile(char const *who, char const *server, enum fedit_mode fm)
 {
    struct sockconn sockc;
-   sighandler_type saveint, savepipe;
+   n_sighdl_t saveint, savepipe;
    char const *cp;
    int volatile rv;
    NYD_IN;
@@ -974,11 +974,11 @@ pop3_body(struct message *m)
    return rv;
 }
 
-FL bool_t
-pop3_quit(bool_t hold_sigs_on)
+FL boole
+pop3_quit(boole hold_sigs_on)
 {
-   sighandler_type volatile saveint, savepipe;
-   bool_t rv;
+   n_sighdl_t volatile saveint, savepipe;
+   boole rv;
    NYD_IN;
 
    if(hold_sigs_on)

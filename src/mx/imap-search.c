@@ -84,7 +84,7 @@ struct itlex {
 
 struct itnode {
    enum itoken    n_token;
-   uiz_t          n_n;
+   uz          n_n;
    void           *n_v;
    void           *n_w;
    struct itnode  *n_x;
@@ -133,7 +133,7 @@ static struct itlex const  _it_strings[] = {
 static struct itnode    *_it_tree;
 static char             *_it_begin;
 static enum itoken      _it_token;
-static uiz_t            _it_number;
+static uz            _it_number;
 static void             *_it_args[2];
 static size_t           _it_need_headers;
 
@@ -148,7 +148,7 @@ static time_t        _imap_read_date(char const *cp);
 static char *        _imap_quotestr(char const *s);
 static char *        _imap_unquotestr(char const *s);
 
-static bool_t        matchfield(struct message *m, char const *field,
+static boole        matchfield(struct message *m, char const *field,
                         void const *what);
 static int           matchenvelope(struct message *m, char const *field,
                         void const *what);
@@ -611,7 +611,7 @@ static time_t
 _imap_read_date(char const *cp)
 {
    time_t t, t2;
-   si32_t year, month, day, i, tzdiff;
+   s32 year, month, day, i, tzdiff;
    struct tm *tmptr;
    char const *xp, *yp;
    NYD_IN;
@@ -698,11 +698,11 @@ jleave:
    return n;
 }
 
-static bool_t
+static boole
 matchfield(struct message *m, char const *field, void const *what)
 {
    struct str in, out;
-   bool_t rv = FAL0;
+   boole rv = FAL0;
    NYD_IN;
 
    if ((in.s = hfieldX(field, m)) == NULL)
@@ -748,7 +748,7 @@ mkenvelope(struct mx_name *np)
       *domainpart, *cp, *rp, *xp, *ip;
    struct str in, out;
    int level = 0;
-   bool_t hadphrase = FAL0;
+   boole hadphrase = FAL0;
    NYD_IN;
 
    in.s = np->n_fullname;

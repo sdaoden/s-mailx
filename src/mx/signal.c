@@ -111,8 +111,8 @@ FL int
 c_sleep(void *v){ /* XXX installs sighdl+ due to outer jumps and SA_RESTART! */
    sigset_t nset, oset;
    struct sigaction nact, oact;
-   bool_t ignint;
-   uiz_t sec, msec;
+   boole ignint;
+   uz sec, msec;
    char **argv;
    NYD_IN;
 
@@ -133,11 +133,11 @@ c_sleep(void *v){ /* XXX installs sighdl+ due to outer jumps and SA_RESTART! */
    else
       ignint = (argv[2] != NULL);
 
-   if(UIZ_MAX / n_DATE_MILLISSEC < sec)
+   if(UZ_MAX / n_DATE_MILLISSEC < sec)
       goto jeover;
    sec *= n_DATE_MILLISSEC;
 
-   if(UIZ_MAX - sec < msec)
+   if(UZ_MAX - sec < msec)
       goto jeover;
    msec += sec;
 
@@ -210,7 +210,7 @@ c_sigstate(void *vp){ /* TODO remove again */
    fprintf(n_stdout, "alls_depth %zu, hold_sigdepth %zu\nHandlers:\n",
       _alls_depth, _hold_sigdepth);
    for(hdlp = hdla; hdlp < &hdla[NELEM(hdla)]; ++hdlp){
-      sighandler_type shp;
+      n_sighdl_t shp;
 
       shp = safe_signal(hdlp->val, SIG_IGN);
       safe_signal(hdlp->val, shp);
@@ -233,11 +233,11 @@ n_raise(int signo)
    NYD2_OU;
 }
 
-FL sighandler_type
-safe_signal(int signum, sighandler_type handler)
+FL n_sighdl_t
+safe_signal(int signum, n_sighdl_t handler)
 {
    struct sigaction nact, oact;
-   sighandler_type rv;
+   n_sighdl_t rv;
    NYD2_IN;
 
    nact.sa_handler = handler;
@@ -371,7 +371,7 @@ n__sigman_enter(struct n_sigman *self, int flags){
 
 FL void
 n_sigman_cleanup_ping(struct n_sigman *self){
-   ui32_t f;
+   u32 f;
    NYD2_IN;
 
    hold_sigs();
@@ -396,7 +396,7 @@ n_sigman_cleanup_ping(struct n_sigman *self){
 FL void
 n_sigman_leave(struct n_sigman *self,
       enum n_sigman_flags reraise_flags){
-   ui32_t f;
+   u32 f;
    int sig;
    NYD2_IN;
 

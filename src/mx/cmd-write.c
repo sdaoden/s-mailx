@@ -51,19 +51,19 @@
 /* Save/copy the indicated messages at the end of the passed file name.
  * If mark is true, mark the message "saved" */
 static int a_cwrite_save1(void *vp, struct n_ignore const *itp,
-            int convert, bool_t domark, bool_t domove);
+            int convert, boole domark, boole domove);
 
 static int
 a_cwrite_save1(void *vp, struct n_ignore const *itp,
-   int convert, bool_t domark, bool_t domove)
+   int convert, boole domark, boole domove)
 {
-   ui64_t mstats[1], tstats[2];
+   u64 mstats[1], tstats[2];
    enum n_fopen_state fs;
    struct message *mp;
    char *file, *cp, *cq;
    FILE *obuf;
    char const *shell, *disp;
-   bool_t success;
+   boole success;
    int last, *msgvec, *ip;
    struct n_cmd_arg *cap;
    struct n_cmd_arg_ctx *cacp;
@@ -153,7 +153,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
 
       /* TODO RETURN check, but be aware of protocols: v15: Mailbox->lock()!
        * TODO BETTER yet: should be returned in lock state already! */
-      n_file_lock(fileno(obuf), FLT_WRITE, 0,0, UIZ_MAX);
+      n_file_lock(fileno(obuf), FLT_WRITE, 0,0, UZ_MAX);
 
       if((xerr = n_folder_mbox_prepare_append(obuf, NULL)) != su_ERR_NONE){
          n_perr(file, xerr);

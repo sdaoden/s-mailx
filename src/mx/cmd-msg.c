@@ -48,14 +48,14 @@
 #include "su/code-in.h"
 
 /* Prepare and print "[Message: xy]:" intro */
-static bool_t a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no);
+static boole a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no);
 
 /* Show the requested messages */
-static int     _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
-                  bool_t donotdecode, char *cmd, ui64_t *tstats);
+static int     _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
+                  boole donotdecode, char *cmd, u64 *tstats);
 
 /* Pipe the requested messages */
-static int a_cmsg_pipe1(void *vp, bool_t doign);
+static int a_cmsg_pipe1(void *vp, boole doign);
 
 /* `top' / `Top' */
 static int a_cmsg_top(void *vp, struct n_ignore const *itp);
@@ -63,9 +63,9 @@ static int a_cmsg_top(void *vp, struct n_ignore const *itp);
 /* Delete the indicated messages.  Set dot to some nice place afterwards */
 static int     delm(int *msgvec);
 
-static bool_t
+static boole
 a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no){
-   bool_t rv;
+   boole rv;
    char const *cpre, *csuf;
    NYD2_IN;
 
@@ -87,21 +87,21 @@ a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no){
    /* XXX Message info uses wire format for line count */
    rv = (fprintf(obuf,
          A_("%s[-- Message %2d -- %lu lines, %lu bytes --]:%s\n"),
-         cpre, msg_no, (ul_i)mp->m_lines, (ul_i)mp->m_size, csuf) > 0);
+         cpre, msg_no, (ul)mp->m_lines, (ul)mp->m_size, csuf) > 0);
    NYD2_OU;
    return rv;
 }
 
 static int
-_type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
-   bool_t donotdecode, char *cmd, ui64_t *tstats)
+_type1(int *msgvec, boole doign, boole dopage, boole dopipe,
+   boole donotdecode, char *cmd, u64 *tstats)
 {
-   ui64_t mstats[1];
+   u64 mstats[1];
    int *ip;
    struct message *mp;
    char const *cp;
    enum sendaction action;
-   bool_t volatile formfeed;
+   boole volatile formfeed;
    FILE * volatile obuf;
    int volatile rv;
    NYD_IN;
@@ -121,7 +121,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       }
    } else if ((n_psonce & n_PSO_TTYOUT) && (dopage ||
          ((n_psonce & n_PSO_INTERACTIVE) && (cp = ok_vlook(crt)) != NULL))) {
-      uiz_t nlines, lib;
+      uz nlines, lib;
 
       nlines = 0;
 
@@ -138,7 +138,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       /* >= not <: we return to the prompt */
       if(dopage || nlines >= (*cp != '\0'
                ? (su_idec_uz_cp(&lib, cp, 0, NULL), lib)
-               : (uiz_t)n_realscreenheight)){
+               : (uz)n_realscreenheight)){
          if((obuf = n_pager_open()) == NULL)
             obuf = n_stdout;
       }
@@ -196,8 +196,8 @@ jleave:
 }
 
 static int
-a_cmsg_pipe1(void *vp, bool_t doign){
-   ui64_t stats[1];
+a_cmsg_pipe1(void *vp, boole doign){
+   u64 stats[1];
    char const *cmd, *cmdq;
    int *msgvec, rv;
    struct n_cmd_arg *cap;
@@ -258,7 +258,7 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
    n_COLOUR( n_colour_env_create(n_COLOUR_CTX_VIEW, iobuf, FAL0); )
    n_string_creat_auto(&s);
    /* C99 */{
-      siz_t l;
+      sz l;
 
       if((su_idec_sz_cp(&l, ok_vlook(toplines), 0, NULL
                ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
@@ -691,7 +691,7 @@ c_pdot(void *vp){
             s = n_string_push_c(s, sep2);
       }
       s = n_string_push_cp(s,
-            su_ienc(cbuf, (ui32_t)*mlp, 10, su_IENC_MODE_NONE));
+            su_ienc(cbuf, (u32)*mlp, 10, su_IENC_MODE_NONE));
    }
 
    (void)n_string_cp(s);
@@ -700,7 +700,7 @@ c_pdot(void *vp){
          n_pstate_err_no = su_err_no();
          vp = NULL;
       }
-   }else if(!n_var_vset(cacp->cac_vput, (uintptr_t)s->s_dat)){
+   }else if(!n_var_vset(cacp->cac_vput, (up)s->s_dat)){
       n_pstate_err_no = su_ERR_NOTSUP;
       vp = NULL;
    }
@@ -725,7 +725,7 @@ c_messize(void *v)
          fprintf(n_stdout, "%ld", mp->m_xlines);
       else
          putc(' ', n_stdout);
-      fprintf(n_stdout, "/%lu\n", (ul_i)mp->m_xsize);
+      fprintf(n_stdout, "/%lu\n", (ul)mp->m_xsize);
    }
    NYD_OU;
    return 0;

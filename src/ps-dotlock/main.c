@@ -47,16 +47,16 @@
 /* TODO Avoid linkage errors, instantiate what is needed;
  * TODO SU needs to be available as a library to overcome this,
  * TODO or a compiler capable of inlining can only be used */
-su_uz su__state;
+uz su__state;
 #ifdef su_MEM_ALLOC_DEBUG
-su_boole su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE) {return FAL0;}
-su_boole su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE) {return FAL0;}
+boole su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE) {return FAL0;}
+boole su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE) {return FAL0;}
 #endif
 #define su_err_no() errno
 #define su_err_set_no(X) (errno = X)
 
 static void _ign_signal(int signum);
-static uiz_t n_msleep(uiz_t millis, bool_t ignint);
+static uz n_msleep(uz millis, boole ignint);
 
 #include "mx/dotlock.h" /* $(PS_DOTLOCK_SRCDIR) */
 
@@ -70,9 +70,9 @@ _ign_signal(int signum){
    sigaction(signum, &nact, &oact);
 }
 
-static uiz_t
-n_msleep(uiz_t millis, bool_t ignint){
-   uiz_t rv;
+static uz
+n_msleep(uz millis, boole ignint){
+   uz rv;
 
 #ifdef mx_HAVE_NANOSLEEP
    /* C99 */{
@@ -84,13 +84,14 @@ n_msleep(uiz_t millis, bool_t ignint){
 
       while((i = nanosleep(&ts, &trem)) != 0 && ignint)
          ts = trem;
-      rv = (i == 0) ? 0 : (trem.tv_sec * 1000) + (trem.tv_nsec / (1000 * 1000));
+      rv = (i == 0) ? 0
+            : (trem.tv_sec * 1000) + (trem.tv_nsec / (1000 * 1000));
    }
 
 #elif defined mx_HAVE_SLEEP
    if((millis /= 1000) == 0)
       millis = 1;
-   while((rv = sleep((unsigned int)millis)) != 0 && ignint)
+   while((rv = sleep(S(ui,millis))) != 0 && ignint)
       millis = rv;
 #else
 # error Configuration should have detected a function for sleeping.

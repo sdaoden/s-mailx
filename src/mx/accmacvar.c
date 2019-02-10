@@ -69,7 +69,7 @@
 #endif
 
 /* Positional parameter maximum (macro arguments, `vexpr' "splitifs") */
-#define a_AMV_POSPAR_MAX SI16_MAX
+#define a_AMV_POSPAR_MAX S16_MAX
 
 /* Special "pseudo macro" that stabs you from the back */
 #define a_AMV_MACKY_MACK ((struct a_amv_mac*)-1)
@@ -77,7 +77,7 @@
 /* Note: changing the hash function must be reflected in `vexpr' "hash32",
  * because that is used by the hashtable creator scripts! */
 #define a_AMV_PRIME HSHSIZE
-#define a_AMV_NAME2HASH(N) ((ui32_t)su_cs_hash(N))
+#define a_AMV_NAME2HASH(N) ((u32)su_cs_hash(N))
 #define a_AMV_HASH2PRIME(H) ((H) % a_AMV_PRIME)
 
 enum a_amv_mac_flags{
@@ -188,30 +188,30 @@ enum a_amv_var_vip_mode{
 };
 
 struct a_amv_pospar{
-   ui16_t app_maxcount;    /* == slots in .app_dat */
-   ui16_t app_count;       /* Maximum a_AMV_POSPAR_MAX */
-   ui16_t app_idx;         /* `shift' moves this one, decs .app_count */
-   bool_t app_not_heap;    /* .app_dat stuff not dynamically allocated */
-   ui8_t app__dummy[1];
+   u16 app_maxcount;    /* == slots in .app_dat */
+   u16 app_count;       /* Maximum a_AMV_POSPAR_MAX */
+   u16 app_idx;         /* `shift' moves this one, decs .app_count */
+   boole app_not_heap;    /* .app_dat stuff not dynamically allocated */
+   u8 app__dummy[1];
    char const **app_dat;   /* NULL terminated (for "$@" explosion support) */
 };
-CTA(a_AMV_POSPAR_MAX <= SI16_MAX, "Limit exceeds datatype capabilities");
+CTA(a_AMV_POSPAR_MAX <= S16_MAX, "Limit exceeds datatype capabilities");
 
 struct a_amv_mac{
    struct a_amv_mac *am_next;
-   ui32_t am_maxlen;             /* of any line in .am_line_dat */
-   ui32_t am_line_cnt;           /* of *.am_line_dat (but NULL terminated) */
+   u32 am_maxlen;             /* of any line in .am_line_dat */
+   u32 am_line_cnt;           /* of *.am_line_dat (but NULL terminated) */
    struct a_amv_mac_line **am_line_dat; /* TODO use deque? */
    struct a_amv_var *am_lopts;   /* `localopts' unroll list */
-   ui32_t am_refcnt;             /* 0-based for `un{account,define}' purposes */
-   ui8_t am_flags;               /* enum a_amv_mac_flags */
+   u32 am_refcnt;             /* 0-based for `un{account,define}' purposes */
+   u8 am_flags;               /* enum a_amv_mac_flags */
    char am_name[VFIELD_SIZE(3)]; /* of this macro */
 };
-CTA(a_AMV_MF__MAX <= UI8_MAX, "Enumeration excesses storage datatype");
+CTA(a_AMV_MF__MAX <= U8_MAX, "Enumeration excesses storage datatype");
 
 struct a_amv_mac_line{
-   ui32_t aml_len;
-   ui32_t aml_prespc;   /* Number of leading SPACEs, for display purposes */
+   u32 aml_len;
+   u32 aml_prespc;   /* Number of leading SPACEs, for display purposes */
    char aml_dat[VFIELD_SIZE(0)];
 };
 
@@ -221,10 +221,10 @@ struct a_amv_mac_call_args{
    struct a_amv_var **amca_unroller;
    void (*amca_hook_pre)(void *);
    void *amca_hook_arg;
-   ui8_t amca_loflags;
-   bool_t amca_ps_hook_mask;
-   bool_t amca_no_xcall;         /* We want n_GO_INPUT_NO_XCALL for this */
-   ui8_t amca__pad[5];
+   u8 amca_loflags;
+   boole amca_ps_hook_mask;
+   boole amca_no_xcall;         /* We want n_GO_INPUT_NO_XCALL for this */
+   u8 amca__pad[5];
    struct a_amv_var *(*amca_local_vars)[a_AMV_PRIME]; /* `local's, or NULL */
    struct a_amv_pospar amca_pospar;
 };
@@ -234,8 +234,8 @@ struct a_amv_lostack{
    struct a_amv_mac_call_args *as_amcap;
    struct a_amv_lostack *as_up;  /* Outer context */
    struct a_amv_var *as_lopts;
-   ui8_t as_loflags;             /* enum a_amv_mac_loflags */
-   ui8_t avs__pad[7];
+   u8 as_loflags;             /* enum a_amv_mac_loflags */
+   u8 avs__pad[7];
 };
 
 struct a_amv_var{
@@ -244,60 +244,60 @@ struct a_amv_var{
 #ifdef mx_HAVE_PUTENV
    char *av_env;              /* Actively managed putenv(3) memory, or NULL */
 #endif
-   ui32_t av_flags;           /* enum a_amv_var_flags inclusive extended bits */
+   u32 av_flags;           /* enum a_amv_var_flags inclusive extended bits */
    char av_name[VFIELD_SIZE(4)];
 };
-CTA(a_AMV_VF_EXT__MASK <= UI32_MAX, "Enumeration excesses storage datatype");
+CTA(a_AMV_VF_EXT__MASK <= U32_MAX, "Enumeration excesses storage datatype");
 
 /* After inclusion of gen-okeys.h we ASSERT keyoff fits in 16-bit */
 struct a_amv_var_map{
-   ui32_t avm_hash;
-   ui16_t avm_keyoff;
-   ui16_t avm_flags;    /* enum a_amv_var_flags without extended bits */
+   u32 avm_hash;
+   u16 avm_keyoff;
+   u16 avm_flags;    /* enum a_amv_var_flags without extended bits */
 };
-CTA(a_AMV_VF__MASK <= UI16_MAX, "Enumeration excesses storage datatype");
+CTA(a_AMV_VF__MASK <= U16_MAX, "Enumeration excesses storage datatype");
 
 /* XXX Since there is no indicator character used for variable chains, we just
  * XXX cannot do better than using some s....y detection.
  * The length of avcmb_prefix is highly hardwired with make-okey-map.pl etc. */
 struct a_amv_var_chain_map_bsrch{
    char avcmb_prefix[4];
-   ui16_t avcmb_chain_map_off;
-   ui16_t avcmb_chain_map_eokey; /* This is an enum okey */
+   u16 avcmb_chain_map_off;
+   u16 avcmb_chain_map_eokey; /* This is an enum okey */
 };
 
 /* Use 16-bit for enum okeys, which should always be sufficient; all around
  * here we use 32-bit for it instead, but that owed to faster access (?) */
 struct a_amv_var_chain_map{
-   ui16_t avcm_keyoff;
-   ui16_t avcm_okey;
+   u16 avcm_keyoff;
+   u16 avcm_okey;
 };
-CTA(n_OKEYS_MAX <= UI16_MAX, "Enumeration excesses storage datatype");
+CTA(n_OKEYS_MAX <= U16_MAX, "Enumeration excesses storage datatype");
 
 struct a_amv_var_virt{
-   ui32_t avv_okey;
-   ui8_t avv__dummy[4];
+   u32 avv_okey;
+   u8 avv__dummy[4];
    struct a_amv_var const *avv_var;
 };
 
 struct a_amv_var_defval{
-   ui32_t avdv_okey;
-   ui8_t avdv__pad[4];
+   u32 avdv_okey;
+   u8 avdv__pad[4];
    char const *avdv_value; /* Only for !BOOL (otherwise plain existence) */
 };
 
 struct a_amv_var_carrier{
    char const *avc_name;
-   ui32_t avc_hash;
-   ui32_t avc_prime;
+   u32 avc_hash;
+   u32 avc_prime;
    struct a_amv_var *avc_var;
    struct a_amv_var_map const *avc_map;
    enum okeys avc_okey;
-   bool_t avc_is_chain_variant;  /* Base is a chain, this a variant thereof */
-   ui8_t avc_special_cat;
+   boole avc_is_chain_variant;  /* Base is a chain, this a variant thereof */
+   u8 avc_special_cat;
    /* Numerical parameter name if .avc_special_cat=a_AMV_VSC_POSPAR,
     * otherwise a enum a_amv_var_special_type */
-   ui16_t avc_special_prop;
+   u16 avc_special_prop;
 };
 
 /* Include constant make-okey-map.pl output, and the generated version data */
@@ -305,7 +305,7 @@ struct a_amv_var_carrier{
 #include "mx/gen-okeys.h" /* $(MX_SRCDIR) */
 
 /* As promised above, CTAs to protect our structures */
-CTA(a_AMV_VAR_NAME_KEY_MAXOFF <= UI16_MAX,
+CTA(a_AMV_VAR_NAME_KEY_MAXOFF <= U16_MAX,
    "Enumeration excesses storage datatype");
 
 /* The currently active account */
@@ -339,20 +339,20 @@ static struct a_amv_mac *a_amv_mac_lookup(char const *name,
                            struct a_amv_mac *newamp, enum a_amv_mac_flags amf);
 
 /* `call', `call_if' (and `xcall' via go.c -> c_call()) */
-static int a_amv_mac_call(void *v, bool_t silent_nexist);
+static int a_amv_mac_call(void *v, boole silent_nexist);
 
 /* Execute a macro; amcap must reside in LOFI memory */
-static bool_t a_amv_mac_exec(struct a_amv_mac_call_args *amcap);
+static boole a_amv_mac_exec(struct a_amv_mac_call_args *amcap);
 
 static void a_amv_mac__finalize(void *vp);
 
 /* User display helpers */
-static bool_t a_amv_mac_show(enum a_amv_mac_flags amf);
+static boole a_amv_mac_show(enum a_amv_mac_flags amf);
 
 /* _def() returns error for faulty definitions and already existing * names,
  * _undef() returns error if a named thing doesn't exist */
-static bool_t a_amv_mac_def(char const *name, enum a_amv_mac_flags amf);
-static bool_t a_amv_mac_undef(char const *name, enum a_amv_mac_flags amf);
+static boole a_amv_mac_def(char const *name, enum a_amv_mac_flags amf);
+static boole a_amv_mac_undef(char const *name, enum a_amv_mac_flags amf);
 
 /* */
 static void a_amv_mac_free(struct a_amv_mac *amp);
@@ -368,19 +368,19 @@ static void a_amv_var_free(char *cp);
 
 /* Check for special housekeeping.  _VIP_SET_POST and _VIP_CLEAR do not fail
  * (or propagate errors), _VIP_SET_PRE may and should case abortion */
-static bool_t a_amv_var_check_vips(enum a_amv_var_vip_mode avvm,
+static boole a_amv_var_check_vips(enum a_amv_var_vip_mode avvm,
                enum okeys okey, char const **val);
 
 /* _VF_NUM / _VF_POSNUM */
-static bool_t a_amv_var_check_num(char const *val, bool_t posnum);
+static boole a_amv_var_check_num(char const *val, boole posnum);
 
 /* Try to reverse lookup a name to an enum okeys mapping, zeroing avcp.
  * Updates .avc_name and .avc_hash; .avc_map is NULL if none found.
  * We may try_harder to identify name: it may be an extended chain.
  * That test only is actually performed by the latter(, then) */
-static bool_t a_amv_var_revlookup(struct a_amv_var_carrier *avcp,
-               char const *name, bool_t try_harder);
-static bool_t a_amv_var_revlookup_chain(struct a_amv_var_carrier *avcp,
+static boole a_amv_var_revlookup(struct a_amv_var_carrier *avcp,
+               char const *name, boole try_harder);
+static boole a_amv_var_revlookup_chain(struct a_amv_var_carrier *avcp,
                char const *name);
 
 /* Lookup a variable from .avc_(map|name|hash), return whether it was found.
@@ -390,7 +390,7 @@ static bool_t a_amv_var_revlookup_chain(struct a_amv_var_carrier *avcp,
  * create a new variable if _VLOOK_I3VAL_NONEW is set; if
  * _VLOOK_I3VAL_NONEW_REPORT is set then we set .avc_var to -1 and return true
  * if that was the case, otherwise we'll return FAL0, then! */
-static bool_t a_amv_var_lookup(struct a_amv_var_carrier *avcp,
+static boole a_amv_var_lookup(struct a_amv_var_carrier *avcp,
                enum a_amv_var_lookup_flags avlf);
 
 /* Lookup functions for special category variables, _pospar drives all
@@ -400,17 +400,17 @@ static char const *a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp);
 static char const *a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp);
 
 /* Set var from .avc_(map|name|hash), return success */
-static bool_t a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
+static boole a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
                enum a_amv_var_setclr_flags avscf);
 
-static bool_t a_amv_var__putenv(struct a_amv_var_carrier *avcp,
+static boole a_amv_var__putenv(struct a_amv_var_carrier *avcp,
                struct a_amv_var *avp);
 
 /* Clear var from .avc_(map|name|hash); sets .avc_var=NULL, return success */
-static bool_t a_amv_var_clear(struct a_amv_var_carrier *avcp,
+static boole a_amv_var_clear(struct a_amv_var_carrier *avcp,
                enum a_amv_var_setclr_flags avscf);
 
-static bool_t a_amv_var__clearenv(char const *name, struct a_amv_var *avp);
+static boole a_amv_var__clearenv(char const *name, struct a_amv_var *avp);
 
 /* List all variables */
 static void a_amv_var_show_all(void);
@@ -421,13 +421,13 @@ static int a_amv_var__show_cmp(void const *s1, void const *s2);
 static size_t a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp);
 
 /* Shared c_set() and c_environ():set impl, return success */
-static bool_t a_amv_var_c_set(char **ap, enum a_amv_var_setclr_flags avscf);
+static boole a_amv_var_c_set(char **ap, enum a_amv_var_setclr_flags avscf);
 
 static struct a_amv_mac *
 a_amv_mac_lookup(char const *name, struct a_amv_mac *newamp,
       enum a_amv_mac_flags amf){
    struct a_amv_mac *amp, **ampp;
-   ui32_t h;
+   u32 h;
    enum a_amv_mac_flags save_amf;
    NYD2_IN;
 
@@ -471,7 +471,7 @@ jleave:
 }
 
 static int
-a_amv_mac_call(void *v, bool_t silent_nexist){
+a_amv_mac_call(void *v, boole silent_nexist){
    struct a_amv_mac *amp;
    int rv;
    char const *name;
@@ -519,7 +519,7 @@ a_amv_mac_call(void *v, bool_t silent_nexist){
          amcap->amca_loflags = (a_amv_lopts->as_loflags & a_AMV_LF_CALL_MASK
                ) >> a_AMV_LF_CALL_TO_SCOPE_SHIFT;
       if(argc > 0){
-         amcap->amca_pospar.app_count = (ui16_t)argc;
+         amcap->amca_pospar.app_count = (u16)argc;
          amcap->amca_pospar.app_not_heap = TRU1;
          amcap->amca_pospar.app_dat = argv;
       }
@@ -532,13 +532,13 @@ jleave:
    return rv;
 }
 
-static bool_t
+static boole
 a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
    struct a_amv_lostack *losp;
    struct a_amv_mac_line **amlp;
    char **args_base, **args;
    struct a_amv_mac *amp;
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    amp = amcap->amca_amp;
@@ -585,7 +585,7 @@ a_amv_mac__finalize(void *vp){
 
    /* Delete positional parameter stack */
    if(!amcap->amca_pospar.app_not_heap && amcap->amca_pospar.app_maxcount > 0){
-      ui16_t i;
+      u16 i;
 
       for(i = amcap->amca_pospar.app_maxcount; i-- != 0;)
          n_free(n_UNCONST(amcap->amca_pospar.app_dat[i]));
@@ -630,12 +630,12 @@ a_amv_mac__finalize(void *vp){
    NYD2_OU;
 }
 
-static bool_t
+static boole
 a_amv_mac_show(enum a_amv_mac_flags amf){
    size_t lc, mc, ti, i;
    char const *typestr;
    FILE *fp;
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    rv = FAL0;
@@ -683,17 +683,17 @@ jleave:
    return rv;
 }
 
-static bool_t
+static boole
 a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
    struct str line;
-   ui32_t line_cnt, maxlen;
+   u32 line_cnt, maxlen;
    struct linelist{
       struct linelist *ll_next;
       struct a_amv_mac_line *ll_amlp;
    } *llp, *ll_head, *ll_tail;
-   union {size_t s; int i; ui32_t ui; size_t l;} n;
+   union {size_t s; int i; u32 ui; size_t l;} n;
    struct a_amv_mac *amp;
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    su_mem_set(&line, 0, sizeof line);
@@ -706,7 +706,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
     * TODO possible from the input side */
    /* Read in the lines which form the macro content */
    for(ll_tail = ll_head = NULL, line_cnt = maxlen = 0;;){
-      ui32_t leaspc;
+      u32 leaspc;
       char *cp;
 
       n.i = n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, n_empty,
@@ -739,7 +739,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
       if(*cp == '}')
          break;
 
-      if(LIKELY(++line_cnt < UI32_MAX)){
+      if(LIKELY(++line_cnt < U32_MAX)){
          struct a_amv_mac_line *amlp;
 
          llp = n_autorec_alloc(sizeof *llp);
@@ -798,10 +798,10 @@ jerr:
    goto jleave;
 }
 
-static bool_t
+static boole
 a_amv_mac_undef(char const *name, enum a_amv_mac_flags amf){
    struct a_amv_mac *amp;
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    rv = TRU1;
@@ -894,7 +894,7 @@ a_amv_lopts_unroll(struct a_amv_var **avpp){
    while(avp != NULL){
       x = avp;
       avp = avp->av_link;
-      n_PS_ROOT_BLOCK(n_var_vset(x->av_name, (uintptr_t)x->av_value));
+      n_PS_ROOT_BLOCK(n_var_vset(x->av_name, (up)x->av_value));
       n_free(x);
    }
    a_amv_lopts = save_alp;
@@ -936,11 +936,11 @@ a_amv_var_free(char *cp){
    NYD2_OU;
 }
 
-static bool_t
+static boole
 a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
       char const **val){
    char const *emsg;
-   bool_t ok;
+   boole ok;
    NYD2_IN;
 
    ok = TRU1;
@@ -1014,7 +1014,7 @@ jefrom:
             struct n_string cnv;
 
             n_string_creat_auto(&cnv);
-            if(!n_idna_to_ascii(&cnv, *val, UIZ_MAX)){
+            if(!n_idna_to_ascii(&cnv, *val, UZ_MAX)){
                /*n_string_gut(&res);*/
                emsg = N_("*hostname*/*smtp_hostname*: "
                      "IDNA encoding failed: %s\n");
@@ -1063,7 +1063,7 @@ jefrom:
          break;
       case ok_v_umask:
          if(**val != '\0'){
-            ui64_t uib;
+            u64 uib;
 
             su_idec_u64_cp(&uib, *val, 0, NULL);
             if(uib & ~0777u){ /* (is valid _VF_POSNUM) */
@@ -1134,7 +1134,7 @@ jefrom:
          break;
       case ok_v_umask:
          if(**val != '\0'){
-            ui64_t uib;
+            u64 uib;
 
             su_idec_u64_cp(&uib, *val, 0, NULL);
             umask((mode_t)uib);
@@ -1206,19 +1206,19 @@ jerr:
    goto jleave;
 }
 
-static bool_t
-a_amv_var_check_num(char const *val, bool_t posnum){
+static boole
+a_amv_var_check_num(char const *val, boole posnum){
    /* TODO The internal/environment  variables which are num= or posnum= should
     * TODO gain special lookup functions, or the return should be void* and
     * TODO castable to integer; i.e. no more strtoX() should be needed.
     * TODO I.e., the result of this function should instead be stored */
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    rv = TRU1;
 
    if(*val != '\0'){ /* Would be _VF_NOTEMPTY if not allowed */
-      ui64_t uib;
+      u64 uib;
       enum su_idec_state ids;
 
       ids = su_idec_cp(&uib, val, 0,
@@ -1236,10 +1236,10 @@ a_amv_var_check_num(char const *val, bool_t posnum){
    return rv;
 }
 
-static bool_t
+static boole
 a_amv_var_revlookup(struct a_amv_var_carrier *avcp, char const *name,
-      bool_t try_harder){
-   ui32_t hash, i, j;
+      boole try_harder){
+   u32 hash, i, j;
    struct a_amv_var_map const *avmp;
    char c;
    NYD2_IN;
@@ -1250,13 +1250,13 @@ a_amv_var_revlookup(struct a_amv_var_carrier *avcp, char const *name,
    c = name[0];
    if(UNLIKELY(su_cs_is_digit(c))){
       /* (Inline dec. atoi, ugh) */
-      for(j = (ui8_t)c - '0', i = 1;; ++i){
+      for(j = (u8)c - '0', i = 1;; ++i){
          c = name[i];
          if(c == '\0')
             break;
          if(!su_cs_is_digit(c))
             goto jno_special_param;
-         j = j * 10 + (ui8_t)c - '0';
+         j = j * 10 + (u8)c - '0';
       }
       if(j <= a_AMV_POSPAR_MAX){
          avcp->avc_special_cat = a_AMV_VSC_POSPAR;
@@ -1301,7 +1301,7 @@ jno_special_param:
 
    /* Is it a known okey?  Walk over the hashtable */
    for(i = hash % a_AMV_VAR_REV_PRIME, j = 0; j <= a_AMV_VAR_REV_LONGEST; ++j){
-      ui32_t x;
+      u32 x;
 
       if((x = a_amv_var_revmap[i]) == a_AMV_VAR_REV_ILL)
          break;
@@ -1339,7 +1339,7 @@ jleave:
    /* All these are mapped to *--special-param* */
 jspecial_param:
    avcp->avc_name = name;
-   avcp->avc_special_prop = (ui16_t)j;
+   avcp->avc_special_prop = (u16)j;
    avmp = &a_amv_var_map[a_AMV_VAR__SPECIAL_PARAM_MAP_IDX];
    avcp->avc_hash = avmp->avm_hash;
    avcp->avc_map = avmp;
@@ -1347,9 +1347,9 @@ jspecial_param:
    goto jleave;
 }
 
-static bool_t
+static boole
 a_amv_var_revlookup_chain(struct a_amv_var_carrier *avcp, char const *name){
-   uiz_t i;
+   uz i;
    struct a_amv_var_chain_map_bsrch const *avcmbp, *avcmbp_x;
    NYD_IN;
 
@@ -1417,12 +1417,12 @@ jleave:
    return (avcp != NULL);
 }
 
-static bool_t
+static boole
 a_amv_var_lookup(struct a_amv_var_carrier *avcp,
       enum a_amv_var_lookup_flags avlf){
    size_t i;
    char const *cp;
-   ui32_t f;
+   u32 f;
    struct a_amv_var_map const *avmp;
    struct a_amv_var *avp;
    NYD2_IN;
@@ -1504,7 +1504,7 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp,
          if(LIKELY((cp = getenv(avcp->avc_name)) != NULL)){
             /* May be better not to use that one, though? */
             /* TODO Outsource the tests into a _shared_ test function! */
-            bool_t isempty, isbltin;
+            boole isempty, isbltin;
 
             isempty = (*cp == '\0' && (f & a_AMV_VF_NOTEMPTY) != 0);
             isbltin = ((f & (a_AMV_VF_I3VAL | a_AMV_VF_DEFVAL)) != 0);
@@ -1640,7 +1640,7 @@ static char const *
 a_amv_var_vsc_global(struct a_amv_var_carrier *avcp){
    char iencbuf[su_IENC_BUFFER_SIZE];
    char const *rv;
-   si32_t *ep;
+   s32 *ep;
    struct a_amv_var_map const *avmp;
    NYD2_IN;
 
@@ -1667,7 +1667,7 @@ a_amv_var_vsc_global(struct a_amv_var_carrier *avcp){
       rv = su_ienc(iencbuf, *ep, 10, su_IENC_MODE_SIGNED_TYPE);
       break;
    }
-   n_PS_ROOT_BLOCK(n_var_okset(avcp->avc_okey, (uintptr_t)rv));
+   n_PS_ROOT_BLOCK(n_var_okset(avcp->avc_okey, (up)rv));
 
    avcp->avc_hash = avmp->avm_hash;
    avcp->avc_map = avmp;
@@ -1680,7 +1680,7 @@ a_amv_var_vsc_global(struct a_amv_var_carrier *avcp){
 static char const *
 a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp){
    char iencbuf[su_IENC_BUFFER_SIZE];
-   si32_t e;
+   s32 e;
    size_t i;
    char const *rv;
    NYD2_IN;
@@ -1758,7 +1758,7 @@ jleave:
 static char const *
 a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
    size_t i, j;
-   ui16_t argc;
+   u16 argc;
    char const *rv, **argv;
    NYD2_IN;
 
@@ -1766,7 +1766,7 @@ a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
 
    /* If in a macro/xy.. */
    if(a_amv_lopts != NULL){
-      bool_t ismacky;
+      boole ismacky;
       struct a_amv_mac_call_args *amcap;
 
       amcap = a_amv_lopts->as_amcap;
@@ -1857,13 +1857,13 @@ jleave:
    return rv;
 }
 
-static bool_t
+static boole
 a_amv_var_set(struct a_amv_var_carrier *avcp, char const *value,
       enum a_amv_var_setclr_flags avscf){
    struct a_amv_var *avp;
    char *oval;
    struct a_amv_var_map const *avmp;
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    if(value == NULL){
@@ -2021,7 +2021,7 @@ joval_and_go:
 
    /* A `local' setting can skip all the crude special things */
    if(!(avscf & a_AMV_VSETCLR_LOCAL)){
-      ui32_t f;
+      u32 f;
 
       f = avp->av_flags;
 
@@ -2046,12 +2046,12 @@ jleave:
    return rv;
 }
 
-static bool_t
+static boole
 a_amv_var__putenv(struct a_amv_var_carrier *avcp, struct a_amv_var *avp){
 #ifndef mx_HAVE_SETENV
    char *cp;
 #endif
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
 #ifdef mx_HAVE_SETENV
@@ -2074,13 +2074,13 @@ a_amv_var__putenv(struct a_amv_var_carrier *avcp, struct a_amv_var *avp){
    return rv;
 }
 
-static bool_t
+static boole
 a_amv_var_clear(struct a_amv_var_carrier *avcp,
       enum a_amv_var_setclr_flags avscf){
    struct a_amv_var **avpp, *avp;
-   ui32_t f;
+   u32 f;
    struct a_amv_var_map const *avmp;
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    rv = FAL0;
@@ -2220,11 +2220,11 @@ jleave:
    return rv;
 }
 
-static bool_t
+static boole
 a_amv_var__clearenv(char const *name, struct a_amv_var *avp){
    extern char **environ;
    char **ecpp;
-   bool_t rv;
+   boole rv;
    NYD2_IN;
    UNUSED(avp);
 
@@ -2334,7 +2334,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
    struct a_amv_var_carrier avc;
    char const *quote;
    struct a_amv_var *avp;
-   bool_t isset;
+   boole isset;
    size_t i;
    NYD2_IN;
 
@@ -2351,7 +2351,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
          i = 1;
       }else{
          struct{
-            ui16_t flag;
+            u16 flag;
             char msg[22];
          } const tbase[] = {
             {a_AMV_VF_CHAIN, "variable chain"},
@@ -2433,7 +2433,7 @@ jleave:
    return (i > 0 ? 2 : 1);
 }
 
-static bool_t
+static boole
 a_amv_var_c_set(char **ap, enum a_amv_var_setclr_flags avscf){
    char *cp, *cp2, *varbuf, c;
    size_t errs;
@@ -2465,7 +2465,7 @@ jouter:
          ++errs;
       }else{
          struct a_amv_var_carrier avc;
-         bool_t isunset;
+         boole isunset;
 
          if((isunset = (varbuf[0] == 'n' && varbuf[1] == 'o')))
             varbuf = &varbuf[2];
@@ -2720,7 +2720,7 @@ jesynopsis:
       goto jleave;
    }
 
-   if((rv = n_boolify(*argv, UIZ_MAX, FAL0)) < FAL0)
+   if((rv = n_boolify(*argv, UZ_MAX, FAL0)) < FAL0)
       goto jesynopsis;
    a_amv_lopts->as_loflags &= ~alm;
    if(rv > FAL0)
@@ -2734,7 +2734,7 @@ jleave:
 FL int
 c_shift(void *vp){ /* xxx move to bottom, not in macro part! */
    struct a_amv_pospar *appp;
-   ui16_t i;
+   u16 i;
    int rv;
    NYD_IN;
 
@@ -2743,7 +2743,7 @@ c_shift(void *vp){ /* xxx move to bottom, not in macro part! */
    if((vp = *(char**)vp) == NULL)
       i = 1;
    else{
-      si16_t sib;
+      s16 sib;
 
       if((su_idec_s16_cp(&sib, vp, 10, NULL
                ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
@@ -2751,7 +2751,7 @@ c_shift(void *vp){ /* xxx move to bottom, not in macro part! */
          n_err(_("`shift': invalid argument: %s\n"), vp);
          goto jleave;
       }
-      i = (ui16_t)sib;
+      i = (u16)sib;
    }
 
    /* If in in a macro/xy */
@@ -2798,7 +2798,7 @@ c_return(void *vp){ /* TODO the exit status should be m_si64! */
       rv = 0;
 
       if((argv = vp)[0] != NULL){
-         si32_t i;
+         s32 i;
 
          if((su_idec_s32_cp(&i, argv[0], 10, NULL
                   ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
@@ -2833,14 +2833,14 @@ c_return(void *vp){ /* TODO the exit status should be m_si64! */
    return rv;
 }
 
-FL bool_t
-temporary_folder_hook_check(bool_t nmail){ /* TODO temporary, v15: drop */
+FL boole
+temporary_folder_hook_check(boole nmail){ /* TODO temporary, v15: drop */
    struct a_amv_mac_call_args *amcap;
    struct a_amv_mac *amp;
    size_t len;
    char const *cp;
    char *var;
-   bool_t rv;
+   boole rv;
    NYD_IN;
 
    rv = TRU1;
@@ -2976,14 +2976,14 @@ temporary_compose_mode_hook_unroll(void){ /* XXX intermediate hack */
 }
 
 #ifdef mx_HAVE_HISTORY
-FL bool_t
-temporary_addhist_hook(char const *ctx, bool_t gabby, char const *histent){
+FL boole
+temporary_addhist_hook(char const *ctx, boole gabby, char const *histent){
    /* XXX temporary_addhist_hook(): intermediate hack */
    struct a_amv_mac_call_args *amcap;
-   si32_t perrn, pexn;
+   s32 perrn, pexn;
    struct a_amv_mac *amp;
    char const *macname, *argv[4];
-   bool_t rv;
+   boole rv;
    NYD_IN;
 
    if((macname = ok_vlook(on_history_addition)) == NULL)
@@ -3041,11 +3041,11 @@ n_var_setup_batch_mode(void){
    NYD2_OU;
 }
 
-FL bool_t
+FL boole
 n_var_is_user_writable(char const *name){
    struct a_amv_var_carrier avc;
    struct a_amv_var_map const *avmp;
-   bool_t rv;
+   boole rv;
    NYD_IN;
 
    a_amv_var_revlookup(&avc, name, TRU1);
@@ -3078,10 +3078,10 @@ n_var_oklook(enum okeys okey){
    return rv;
 }
 
-FL bool_t
-n_var_okset(enum okeys okey, uintptr_t val){
+FL boole
+n_var_okset(enum okeys okey, up val){
    struct a_amv_var_carrier avc;
-   bool_t ok;
+   boole ok;
    struct a_amv_var_map const *avmp;
    NYD_IN;
 
@@ -3097,10 +3097,10 @@ n_var_okset(enum okeys okey, uintptr_t val){
    return ok;
 }
 
-FL bool_t
+FL boole
 n_var_okclear(enum okeys okey){
    struct a_amv_var_carrier avc;
-   bool_t rv;
+   boole rv;
    struct a_amv_var_map const *avmp;
    NYD_IN;
 
@@ -3116,7 +3116,7 @@ n_var_okclear(enum okeys okey){
 }
 
 FL char const *
-n_var_vlook(char const *vokey, bool_t try_getenv){
+n_var_vlook(char const *vokey, boole try_getenv){
    struct a_amv_var_carrier avc;
    char const *rv;
    NYD_IN;
@@ -3149,7 +3149,7 @@ n_var_vlook(char const *vokey, bool_t try_getenv){
    return rv;
 }
 
-FL bool_t
+FL boole
 n_var_vexplode(void const **cookie){
    struct a_amv_pospar *appp;
    NYD_IN;
@@ -3161,10 +3161,10 @@ n_var_vexplode(void const **cookie){
    return (*cookie != NULL);
 }
 
-FL bool_t
-n_var_vset(char const *vokey, uintptr_t val){
+FL boole
+n_var_vset(char const *vokey, up val){
    struct a_amv_var_carrier avc;
-   bool_t ok;
+   boole ok;
    NYD_IN;
 
    a_amv_var_revlookup(&avc, vokey, TRU1);
@@ -3175,10 +3175,10 @@ n_var_vset(char const *vokey, uintptr_t val){
    return ok;
 }
 
-FL bool_t
+FL boole
 n_var_vclear(char const *vokey){
    struct a_amv_var_carrier avc;
-   bool_t ok;
+   boole ok;
    NYD_IN;
 
    a_amv_var_revlookup(&avc, vokey, FAL0);
@@ -3332,7 +3332,7 @@ c_varedit(void *v){ /* TODO v15 drop */
    FILE *of, *nf;
    char *val, **argv;
    int err;
-   sighandler_type sigint;
+   n_sighdl_t sigint;
    NYD_IN;
 
    sigint = safe_signal(SIGINT, SIG_IGN);
@@ -3379,7 +3379,7 @@ c_varedit(void *v){ /* TODO v15 drop */
          off_t l;
 
          l = fsize(nf);
-         if(UCMP(64, l, >=, UIZ_MAX -42)){
+         if(UCMP(64, l, >=, UZ_MAX -42)){
             n_err(_("`varedit': not enough memory to store variable: %s\n"),
                avc.avc_name);
             varres = n_empty;
@@ -3417,7 +3417,7 @@ c_environ(void *v){
    struct a_amv_var_carrier avc;
    int err;
    char **ap;
-   bool_t islnk;
+   boole islnk;
    NYD_IN;
 
    if((islnk = su_cs_starts_with_case("link", *(ap = v))) ||
@@ -3478,7 +3478,7 @@ c_vexpr(void *v){ /* TODO POSIX expr(1) comp. exit status; overly complicat. */
    size_t i;
    enum su_idec_state ids;
    enum su_idec_mode idm;
-   si64_t lhv, rhv;
+   s64 lhv, rhv;
    char const **argv, *varname, *varres, *cp;
    enum{
       a_ERR = 1u<<0,
@@ -3594,7 +3594,7 @@ jnumop_again:
             switch(xop){
             case '+':
                if(rhv < 0){
-                  if(rhv != SI64_MIN){
+                  if(rhv != S64_MIN){
                      rhv = -rhv;
                      xop = '-';
                      goto jnumop_again;
@@ -3604,13 +3604,13 @@ jnumop_again:
                      lhv = rhv;
                      break;
                   }
-               }else if(SI64_MAX - rhv < lhv)
+               }else if(S64_MAX - rhv < lhv)
                   goto jenum_plusminus;
                lhv += rhv;
                break;
             case '-':
                if(rhv < 0){
-                  if(rhv != SI64_MIN){
+                  if(rhv != S64_MIN){
                      rhv = -rhv;
                      xop = '+';
                      goto jnumop_again;
@@ -3620,12 +3620,12 @@ jnumop_again:
                      lhv = rhv;
                      break;
                   }
-               }else if(SI64_MIN + rhv > lhv){
+               }else if(S64_MIN + rhv > lhv){
 jenum_plusminus:
                   if(!(f & a_SATURATED))
                      goto jenum_overflow;
                   f |= a_SOFTOVERFLOW;
-                  lhv = (lhv < 0 || xop == '-') ? SI64_MIN : SI64_MAX;
+                  lhv = (lhv < 0 || xop == '-') ? S64_MIN : S64_MAX;
                   break;
                }
                lhv -= rhv;
@@ -3637,28 +3637,28 @@ jenum_plusminus:
                      lhv = -lhv;
                      rhv = -rhv;
                   }
-                  if(rhv != 0 && lhv != 0 && SI64_MAX / rhv > lhv){
+                  if(rhv != 0 && lhv != 0 && S64_MAX / rhv > lhv){
                      if(!(f & a_SATURATED))
                         goto jenum_overflow;
                      f |= a_SOFTOVERFLOW;
-                     lhv = SI64_MAX;
+                     lhv = S64_MAX;
                   }else
                      lhv *= rhv;
                }else{
                   if(rhv > 0){
-                     if(lhv != 0 && SI64_MIN / lhv < rhv){
+                     if(lhv != 0 && S64_MIN / lhv < rhv){
                         if(!(f & a_SATURATED))
                            goto jenum_overflow;
                         f |= a_SOFTOVERFLOW;
-                        lhv = SI64_MIN;
+                        lhv = S64_MIN;
                      }else
                         lhv *= rhv;
                   }else{
-                     if(rhv != 0 && lhv != 0 && SI64_MIN / rhv < lhv){
+                     if(rhv != 0 && lhv != 0 && S64_MIN / rhv < lhv){
                         if(!(f & a_SATURATED))
                            goto jenum_overflow;
                         f |= a_SOFTOVERFLOW;
-                        lhv = SI64_MIN;
+                        lhv = S64_MIN;
                      }else
                         lhv *= rhv;
                   }
@@ -3669,7 +3669,7 @@ jenum_plusminus:
                   if(!(f & a_SATURATED))
                      goto jenum_range;
                   f |= a_SOFTOVERFLOW;
-                  lhv = SI64_MAX;
+                  lhv = S64_MAX;
                }else
                   lhv /= rhv;
                break;
@@ -3678,7 +3678,7 @@ jenum_plusminus:
                   if(!(f & a_SATURATED))
                      goto jenum_range;
                   f |= a_SOFTOVERFLOW;
-                  lhv = SI64_MAX;
+                  lhv = S64_MAX;
                }else
                   lhv %= rhv;
                break;
@@ -3703,11 +3703,11 @@ jenum_plusminus:
                   rhv = 63;
                }
                if(op == '<')
-                  lhv <<= (ui8_t)rhv;
+                  lhv <<= (u8)rhv;
                else if(f & a_UNSIGNED_OP)
-                  lhv = (ui64_t)lhv >> (ui8_t)rhv;
+                  lhv = (u64)lhv >> (u8)rhv;
                else
-                  lhv >>= (ui8_t)rhv;
+                  lhv >>= (u8)rhv;
                break;
             }
          }
@@ -3801,9 +3801,9 @@ jpbase:
          goto jesynopsis;
 
       i = su_cs_len(*++argv);
-      if(UCMP(64, i, >, SI64_MAX))
+      if(UCMP(64, i, >, S64_MAX))
          goto jestr_overflow;
-      lhv = (si64_t)i;
+      lhv = (s64)i;
    }else if((lhv = 0, su_cs_starts_with_case("hash", cp)) ||
          (++lhv, su_cs_starts_with_case("hash32", cp))){
       f |= a_ISNUM | a_ISDECIMAL;
@@ -3812,8 +3812,8 @@ jpbase:
 
       i = su_cs_hash(*++argv);
       if(lhv != 0)
-         i = (ui32_t)i;
-      lhv = (si64_t)i;
+         i = (u32)i;
+      lhv = (s64)i;
    }else if(su_cs_starts_with_case("find", cp)){
       f |= a_ISNUM | a_ISDECIMAL;
       if(argv[1] == NULL || argv[2] == NULL || argv[3] != NULL)
@@ -3822,9 +3822,9 @@ jpbase:
       if((cp = su_cs_find(argv[1], argv[2])) == NULL)
          goto jestr_nodata;
       i = P2UZ(cp - argv[1]);
-      if(UCMP(64, i, >, SI64_MAX))
+      if(UCMP(64, i, >, S64_MAX))
          goto jestr_overflow;
-      lhv = (si64_t)i;
+      lhv = (s64)i;
    }else if(su_cs_starts_with_case("ifind", cp)){
       f |= a_ISNUM | a_ISDECIMAL;
       if(argv[1] == NULL || argv[2] == NULL || argv[3] != NULL)
@@ -3833,9 +3833,9 @@ jpbase:
       if((cp = su_cs_find_case(argv[1], argv[2])) == NULL)
          goto jestr_nodata;
       i = P2UZ(cp - argv[1]);
-      if(UCMP(64, i, >, SI64_MAX))
+      if(UCMP(64, i, >, S64_MAX))
          goto jestr_overflow;
-      lhv = (si64_t)i;
+      lhv = (s64)i;
    }else if(su_cs_starts_with_case("substring", cp)){
       if(argv[1] == NULL || argv[2] == NULL)
          goto jesynopsis;
@@ -4031,9 +4031,9 @@ jesubstring_len:
 
       /* Search only?  Else replace, which is a bit */
       if(argv[3] == NULL){
-         if(UCMP(64, rema[0].rm_so, >, SI64_MAX))
+         if(UCMP(64, rema[0].rm_so, >, S64_MAX))
             goto jestr_overflow;
-         lhv = (si64_t)rema[0].rm_so;
+         lhv = (s64)rema[0].rm_so;
       }else{
          /* We need to setup some kind of pseudo macro environment for this */
          struct a_amv_lostack los;
@@ -4048,7 +4048,7 @@ jesubstring_len:
          for(cnt = i = 1; i < NELEM(rema); ++i)
             if(rema[i].rm_so != -1)
                cnt = i;
-         amca.amca_pospar.app_count = (ui32_t)cnt;
+         amca.amca_pospar.app_count = (u32)cnt;
          amca.amca_pospar.app_not_heap = TRU1;
          amca.amca_pospar.app_dat =
                reargv = n_autorec_alloc(sizeof(char*) * (cnt +1));
@@ -4073,7 +4073,7 @@ jesubstring_len:
             enum n_shexp_state shs;
 
             templ.s = n_UNCONST(argv[3]);
-            templ.l = UIZ_MAX;
+            templ.l = UZ_MAX;
             shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
                   n_SHEXP_PARSE_IGNORE_EMPTY | n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
                   n_SHEXP_PARSE_QUOTE_AUTO_DSQ),
@@ -4127,7 +4127,7 @@ jleave:
          size_t j;
 
          for(j = 1, i = 0; i < 64; ++i){
-            binabuf[63 + 64 / 8 -j - i] = (lhv & ((ui64_t)1 << i)) ? '1' : '0';
+            binabuf[63 + 64 / 8 -j - i] = (lhv & ((u64)1 << i)) ? '1' : '0';
             if((i & 7) == 7 && i != 63){
                ++j;
                binabuf[63 + 64 / 8 -j - i] = ' ';
@@ -4146,7 +4146,7 @@ jleave:
          n_pstate_err_no = su_err_no();
          f |= a_ERR;
       }
-   }else if(!n_var_vset(varname, (uintptr_t)varres)){
+   }else if(!n_var_vset(varname, (up)varres)){
       n_pstate_err_no = su_ERR_NOTSUP;
       f |= a_ERR;
    }
@@ -4266,7 +4266,7 @@ c_vpospar(void *v){
 
          su_mem_set(appp, 0, sizeof *appp);
          if(i > 0){
-            appp->app_maxcount = appp->app_count = (ui16_t)i;
+            appp->app_maxcount = appp->app_count = (u16)i;
             /* XXX Optimize: store it all in one chunk! */
             ++i;
             i *= sizeof *appp->app_dat;
@@ -4327,7 +4327,7 @@ jeover:
             n_pstate_err_no = su_err_no();
             f |= a_ERR;
          }
-      }else if(!n_var_vset(cacp->cac_vput, (uintptr_t)varres)){
+      }else if(!n_var_vset(cacp->cac_vput, (up)varres)){
          n_pstate_err_no = su_ERR_NOTSUP;
          f |= a_ERR;
       }

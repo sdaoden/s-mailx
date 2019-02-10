@@ -232,7 +232,7 @@ makelow(char *cp) /* TODO isn't that crap? --> */
    NYD_OU;
 }
 
-FL bool_t
+FL boole
 substr(char const *str, char const *sub)
 {
    char const *cp, *backup;
@@ -283,10 +283,10 @@ Jsinglebyte:
 }
 
 FL struct str *
-(n_str_assign_buf)(struct str *self, char const *buf, uiz_t buflen
+(n_str_assign_buf)(struct str *self, char const *buf, uz buflen
       su_DBG_LOC_ARGS_DECL){
    NYD_IN;
-   if(buflen == UIZ_MAX)
+   if(buflen == UZ_MAX)
       buflen = (buf == NULL) ? 0 : su_cs_len(buf);
 
    ASSERT(buflen == 0 || buf != NULL);
@@ -303,10 +303,10 @@ FL struct str *
 }
 
 FL struct str *
-(n_str_add_buf)(struct str *self, char const *buf, uiz_t buflen
+(n_str_add_buf)(struct str *self, char const *buf, uz buflen
       su_DBG_LOC_ARGS_DECL){
    NYD_IN;
-   if(buflen == UIZ_MAX)
+   if(buflen == UZ_MAX)
       buflen = (buf == NULL) ? 0 : su_cs_len(buf);
 
    ASSERT(buflen == 0 || buf != NULL);
@@ -352,7 +352,7 @@ n_str_trim(struct str *self, enum n_str_trim_flags stf){
 }
 
 FL struct str *
-n_str_trim_ifs(struct str *self, bool_t dodefaults){
+n_str_trim_ifs(struct str *self, boole dodefaults){
    char s, t, n, c;
    char const *ifs, *cp;
    size_t l, i;
@@ -386,9 +386,9 @@ n_str_trim_ifs(struct str *self, bool_t dodefaults){
                   break;
                /* An uneven number of reverse solidus escapes last WS! */
                else if(*--cp == '\\'){
-                  siz_t j;
+                  sz j;
 
-                  for(j = 1; l - (uiz_t)j > 0 && cp[-j] == '\\'; ++j)
+                  for(j = 1; l - (uz)j > 0 && cp[-j] == '\\'; ++j)
                      ;
                   if(j & 1){
                      ++l;
@@ -432,9 +432,9 @@ n_str_trim_ifs(struct str *self, bool_t dodefaults){
             break;
          /* An uneven number of reverse solidus escapes last WS! */
          else if(*--cp == '\\'){
-            siz_t j;
+            sz j;
 
-            for(j = 1; l - (uiz_t)j > 0 && cp[-j] == '\\'; ++j)
+            for(j = 1; l - (uz)j > 0 && cp[-j] == '\\'; ++j)
                ;
             if(j & 1){
                ++l;
@@ -471,17 +471,17 @@ FL struct n_string *
 
 FL struct n_string *
 (n_string_reserve)(struct n_string *self, size_t noof  su_DBG_LOC_ARGS_DECL){
-   ui32_t i, l, s;
+   u32 i, l, s;
    NYD_IN;
    ASSERT(self != NULL);
 
    s = self->s_size;
    l = self->s_len;
-   if((size_t)SI32_MAX - Z_ALIGN(1) - l <= noof)
+   if((size_t)S32_MAX - Z_ALIGN(1) - l <= noof)
       n_panic(_("Memory allocation too large"));
 
    if((i = s - l) <= ++noof){
-      i += l + (ui32_t)noof;
+      i += l + (u32)noof;
       i = Z_ALIGN(i);
       self->s_size = i -1;
 
@@ -506,12 +506,12 @@ FL struct n_string *
    NYD_IN;
    ASSERT(self != NULL);
 
-   if(UCMP(z, SI32_MAX, <=, nlen))
+   if(UCMP(z, S32_MAX, <=, nlen))
       n_panic(_("Memory allocation too large"));
 
    if(self->s_len < nlen)
       self = (n_string_reserve)(self, nlen  su_DBG_LOC_ARGS_USE);
-   self->s_len = (ui32_t)nlen;
+   self->s_len = (u32)nlen;
    NYD_OU;
    return self;
 }
@@ -524,15 +524,15 @@ FL struct n_string *
    ASSERT(self != NULL);
    ASSERT(buflen == 0 || buf != NULL);
 
-   if(buflen == UIZ_MAX)
+   if(buflen == UZ_MAX)
       buflen = (buf == NULL) ? 0 : su_cs_len(buf);
 
    if(buflen > 0){
-      ui32_t i;
+      u32 i;
 
       self = (n_string_reserve)(self, buflen  su_DBG_LOC_ARGS_USE);
       su_mem_copy(&self->s_dat[i = self->s_len], buf, buflen);
-      self->s_len = (i += (ui32_t)buflen);
+      self->s_len = (i += (u32)buflen);
    }
    NYD_OU;
    return self;
@@ -559,7 +559,7 @@ FL struct n_string *
    ASSERT(self != NULL);
    ASSERT(buflen == 0 || buf != NULL);
 
-   if(buflen == UIZ_MAX)
+   if(buflen == UZ_MAX)
       buflen = (buf == NULL) ? 0 : su_cs_len(buf);
 
    if(buflen > 0){
@@ -567,7 +567,7 @@ FL struct n_string *
       if(self->s_len > 0)
          su_mem_move(&self->s_dat[buflen], self->s_dat, self->s_len);
       su_mem_copy(self->s_dat, buf, buflen);
-      self->s_len += (ui32_t)buflen;
+      self->s_len += (u32)buflen;
    }
    NYD_OU;
    return self;
@@ -598,7 +598,7 @@ FL struct n_string *
    ASSERT(buflen == 0 || buf != NULL);
    ASSERT(idx <= self->s_len);
 
-   if(buflen == UIZ_MAX)
+   if(buflen == UZ_MAX)
       buflen = (buf == NULL) ? 0 : su_cs_len(buf);
 
    if(buflen > 0){
@@ -607,7 +607,7 @@ FL struct n_string *
          su_mem_move(&self->s_dat[idx + buflen], &self->s_dat[idx],
             self->s_len - idx);
       su_mem_copy(&self->s_dat[idx], buf, buflen);
-      self->s_len += (ui32_t)buflen;
+      self->s_len += (u32)buflen;
    }
    NYD_OU;
    return self;
@@ -636,8 +636,8 @@ n_string_cut(struct n_string *self, size_t idx, size_t len){
    NYD_IN;
 
    ASSERT(self != NULL);
-   ASSERT(UIZ_MAX - idx > len);
-   ASSERT(SI32_MAX >= idx + len);
+   ASSERT(UZ_MAX - idx > len);
+   ASSERT(S32_MAX >= idx + len);
    ASSERT(idx + len <= self->s_len);
 
    if(len > 0)

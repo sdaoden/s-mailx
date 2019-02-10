@@ -76,7 +76,7 @@ su_EMPTY_FILE()
 #include "su/code-in.h"
 
 /* */
-static bool_t a_socket_open(struct sock *sop, struct url *urlp);
+static boole a_socket_open(struct sock *sop, struct url *urlp);
 
 /* */
 static int a_socket_connect(int fd, struct sockaddr *soap, size_t soapl);
@@ -100,7 +100,7 @@ __sopen_onsig(int sig) /* TODO someday, we won't need it no more */
    }
 }
 
-static bool_t
+static boole
 a_socket_open(struct sock *sop, struct url *urlp) /* TODO sigstuff; refactor */
 {
 # ifdef mx_HAVE_SO_XTIMEO
@@ -121,7 +121,7 @@ a_socket_open(struct sock *sop, struct url *urlp) /* TODO sigstuff; refactor */
    struct hostent *hp;
    struct servent *ep;
 # endif
-   sighandler_type volatile ohup, oint;
+   n_sighdl_t volatile ohup, oint;
    char const * volatile serv;
    int volatile sofd = -1, errval;
    NYD2_IN;
@@ -381,8 +381,8 @@ a_socket_connect(int fd, struct sockaddr *soap, size_t soapl){
       fd_set fdset;
       struct timeval tv; /* XXX configurable */
       socklen_t sol;
-      bool_t show_progress;
-      uiz_t cnt;
+      boole show_progress;
+      uz cnt;
       int i, soe;
 
       if(connect(fd, soap, soapl) && (i = su_err_no()) != su_ERR_INPROGRESS){
@@ -605,10 +605,10 @@ jleave:
    return rv;
 }
 
-FL bool_t
+FL boole
 sopen(struct sock *sop, struct url *urlp){
    char const *cp;
-   bool_t rv;
+   boole rv;
    NYD_IN;
 
    rv = FAL0;
@@ -617,7 +617,7 @@ sopen(struct sock *sop, struct url *urlp){
    if((cp = xok_vlook(socks_proxy, urlp, OXM_ALL)) == NULL)
       rv = a_socket_open(sop, urlp);
    else{
-      ui8_t pbuf[4 + 1 + 255 + 2];
+      u8 pbuf[4 + 1 + 255 + 2];
       size_t i;
       char const *emsg;
       struct url url2;
@@ -671,13 +671,13 @@ jesocksreplymsg:
       pbuf[1] = 0x01; /* CMD: CONNECT X'01' */
       pbuf[2] = 0x00; /* RESERVED */
       pbuf[3] = 0x03; /* ATYP: domain name */
-      pbuf[4] = (ui8_t)urlp->url_host.l;
+      pbuf[4] = (u8)urlp->url_host.l;
       su_mem_copy(&pbuf[i = 5], urlp->url_host.s, urlp->url_host.l);
       /* C99 */{
-         ui16_t x;
+         u16 x;
 
          x = htons(urlp->url_portno);
-         su_mem_copy(&pbuf[i += urlp->url_host.l], (ui8_t*)&x, sizeof x);
+         su_mem_copy(&pbuf[i += urlp->url_host.l], (u8*)&x, sizeof x);
          i += sizeof x;
       }
       if(write(sop->s_fd, pbuf, i) != (ssize_t)i)
@@ -714,10 +714,10 @@ jesocksreplymsg:
       case 0x04: i = 16; break;
       default: goto jesocksreply;
       }
-      i += sizeof(ui16_t);
+      i += sizeof(u16);
       if(read(sop->s_fd, pbuf, i) != (ssize_t)i)
          goto jerrsocks;
-      if(i == 1 + sizeof(ui16_t)){
+      if(i == 1 + sizeof(u16)){
          i = pbuf[0];
          if(read(sop->s_fd, pbuf, i) != (ssize_t)i)
             goto jerrsocks;

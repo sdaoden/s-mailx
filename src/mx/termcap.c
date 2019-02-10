@@ -60,10 +60,10 @@ su_EMPTY_FILE()
  * value to space the buffer we pass through to tgetent(3).
  * Since for (such) elder non-emulated terminals really weird things will
  * happen if an entry would require more than 1024 bytes, don't really mind.
- * Use a ui16_t for storage */
+ * Use a u16 for storage */
 #define a_TERMCAP_ENTRYSIZE_MAX ((2668 + 128) & ~127) /* As of ncurses 6.0 */
 
-CTA(a_TERMCAP_ENTRYSIZE_MAX < UI16_MAX,
+CTA(a_TERMCAP_ENTRYSIZE_MAX < U16_MAX,
    "Chosen buffer size exceeds datatype capability");
 
 /* For simplicity we store commands and queries in single continuous control
@@ -91,32 +91,32 @@ enum a_termcap_flags{
 
    a_TERMCAP_F__LAST = a_TERMCAP_F_ARG_CNT
 };
-CTA((ui32_t)n__TERMCAP_CAPTYPE_MAX1 <= (ui32_t)a_TERMCAP_F_TYPE_MASK,
+CTA((u32)n__TERMCAP_CAPTYPE_MAX1 <= (u32)a_TERMCAP_F_TYPE_MASK,
    "enum n_termcap_captype exceeds bit range of a_termcap_flags");
 
 struct a_termcap_control{
-   ui16_t tc_flags;
+   u16 tc_flags;
    /* Offset base into a_termcap_namedat[], which stores the two-letter
     * termcap(5) name directly followed by a NUL terminated terminfo(5) name.
     * A termcap(5) name may consist of two NULs meaning ERR_NOENT,
     * a terminfo(5) name may be empty for the same purpose */
-   ui16_t tc_off;
+   u16 tc_off;
 };
-CTA(a_TERMCAP_F__LAST <= UI16_MAX,
+CTA(a_TERMCAP_F__LAST <= U16_MAX,
    "a_termcap_flags exceed storage datatype in a_termcap_control");
 
 struct a_termcap_ent{
-   ui16_t te_flags;
-   ui16_t te_off;    /* in a_termcap_g->tg_dat / value for T_BOOL and T_NUM */
+   u16 te_flags;
+   u16 te_off;    /* in a_termcap_g->tg_dat / value for T_BOOL and T_NUM */
 };
-CTA(a_TERMCAP_F__LAST <= UI16_MAX,
+CTA(a_TERMCAP_F__LAST <= U16_MAX,
    "a_termcap_flags exceed storage datatype in a_termcap_ent");
 
 /* Structure for extended queries, which don't have an entry constant in
  * n_termcap_query (to allow free query/binding of keycodes) */
 struct a_termcap_ext_ent{
    struct a_termcap_ent tee_super;
-   ui8_t tee__dummy[4];
+   u8 tee__dummy[4];
    struct a_termcap_ext_ent *tee_next;
    /* Resolvable termcap(5)/terminfo(5) name as given by user; the actual data
     * is stored just like for normal queries */
@@ -134,7 +134,7 @@ struct a_termcap_g{
 
 /* Include the constant make-tcap-map.pl output */
 #include "mx/gen-tcaps.h" /* $(MX_SRCDIR) */
-CTA(sizeof a_termcap_namedat <= UI16_MAX,
+CTA(sizeof a_termcap_namedat <= U16_MAX,
    "Termcap command and query name data exceed storage datatype");
 CTA(a_TERMCAP_ENT_MAX1 == NELEM(a_termcap_control),
    "Control array does not match command/query array to be controlled");
@@ -145,19 +145,19 @@ static struct a_termcap_g *a_termcap_g;
 static void a_termcap_init_var(struct str const *termvar);
 
 /* Expand ^CNTRL, \[Ee] and \OCT.  False for parse error and empty results */
-static bool_t a_termcap__strexp(struct n_string *store, char const *ibuf);
+static boole a_termcap__strexp(struct n_string *store, char const *ibuf);
 
 /* Initialize any _ent for which we have _F_ALTERN and which isn't yet set */
 static void a_termcap_init_altern(void);
 
 #ifdef mx_HAVE_TERMCAP
 /* Setup the library we use to work with term */
-static bool_t a_termcap_load(char const *term);
+static boole a_termcap_load(char const *term);
 
 /* Query the capability tcp and fill in tep (upon success) */
-static bool_t a_termcap_ent_query(struct a_termcap_ent *tep,
-               char const *cname, ui16_t cflags);
-su_SINLINE bool_t a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
+static boole a_termcap_ent_query(struct a_termcap_ent *tep,
+               char const *cname, u16 cflags);
+su_SINLINE boole a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
                   struct a_termcap_control const *tcp);
 
 /* Output PTF for both, termcap(5) and terminfo(5) */
@@ -166,8 +166,8 @@ static int a_termcap_putc(int c);
 
 /* Get n_termcap_cmd or n_termcap_query constant belonging to (nlen bytes of)
  * name, -1 if not found.  min and max have to be used to cramp the result */
-static si32_t a_termcap_enum_for_name(char const *name, size_t nlen,
-               si32_t min, si32_t max);
+static s32 a_termcap_enum_for_name(char const *name, size_t nlen,
+               s32 min, s32 max);
 #define a_termcap_cmd_for_name(NB,NL) \
    a_termcap_enum_for_name(NB, NL, 0, n__TERMCAP_CMD_MAX1)
 #define a_termcap_query_for_name(NB,NL) \
@@ -180,7 +180,7 @@ a_termcap_init_var(struct str const *termvar){
    char const *ccp;
    NYD2_IN;
 
-   if(termvar->l >= UI16_MAX){
+   if(termvar->l >= U16_MAX){
       n_err(_("*termcap*: length excesses internal limit, skipping\n"));
       goto j_leave;
    }
@@ -194,7 +194,7 @@ a_termcap_init_var(struct str const *termvar){
       struct a_termcap_ent *tep;
       size_t kl;
       char const *v;
-      ui16_t f;
+      u16 f;
 
       /* Separate key/value, if any */
       if(/* no empties ccp[0] == '\0' ||*/ ccp[1] == '\0'){
@@ -222,7 +222,7 @@ jeinvent:
       /* Do we know about this one? */
       /* C99 */{
          struct a_termcap_control const *tcp;
-         si32_t tci;
+         s32 tci;
 
          tci = a_termcap_enum_for_name(ccp, kl, 0, a_TERMCAP_ENT_MAX1);
          if(tci < 0){
@@ -240,7 +240,7 @@ jeinvent:
 
                tep = &teep->tee_super;
                tep->te_flags = n_TERMCAP_CAPTYPE_STRING | a_TERMCAP_F_QUERY;
-               tep->te_off = (ui16_t)a_termcap_g->tg_dat.s_len;
+               tep->te_off = (u16)a_termcap_g->tg_dat.s_len;
                if(!a_termcap__strexp(&a_termcap_g->tg_dat, v))
                   tep->te_flags |= a_TERMCAP_F_DISABLED;
                goto jlearned;
@@ -259,7 +259,7 @@ jeinvent:
          }
          tep = &a_termcap_g->tg_ents[i];
          tep->te_flags = tcp->tc_flags;
-         tep->te_off = (ui16_t)a_termcap_g->tg_dat.s_len;
+         tep->te_off = (u16)a_termcap_g->tg_dat.s_len;
       }
 
       if((f & a_TERMCAP_F_TYPE_MASK) == n_TERMCAP_CAPTYPE_BOOL)
@@ -284,7 +284,7 @@ jlearned:
    }
    su_DBG( if(n_poption & n_PO_D_VV)
       n_err("*termcap* parsed: buffer used=%lu\n",
-         (ul_i)a_termcap_g->tg_dat.s_len) );
+         (ul)a_termcap_g->tg_dat.s_len) );
 
    /* Catch some inter-dependencies the user may have triggered */
 #ifdef mx_HAVE_TERMCAP
@@ -299,7 +299,7 @@ j_leave:
    NYD2_OU;
 }
 
-static bool_t
+static boole
 a_termcap__strexp(struct n_string *store, char const *ibuf){ /* XXX ASCII */
    char c;
    char const *oibuf;
@@ -329,7 +329,7 @@ a_termcap__strexp(struct n_string *store, char const *ibuf){ /* XXX ASCII */
             }
             c -= '0', c2 -= '0', c3 -= '0';
             c <<= 3, c |= c2;
-            if((ui8_t)c > 0x1F){
+            if((u8)c > 0x1F){
                n_err(_("*termcap*: octal number too large: %s\n"), oibuf);
                goto jerr;
             }
@@ -347,7 +347,7 @@ jebsseq:
             goto jerr;
          }
          c = su_cs_to_upper(c) ^ 0x40;
-         if((ui8_t)c > 0x1F && c != 0x7F){ /* ASCII C0: 0..1F, 7F */
+         if((u8)c > 0x1F && c != 0x7F){ /* ASCII C0: 0..1F, 7F */
             n_err(_("*termcap*: invalid ^CNTRL sequence: %s\n"), oibuf);
             goto jerr;
          }
@@ -416,7 +416,7 @@ a_termcap_init_altern(void){
    tep = &a_termcap_g->tg_ents[n_TERMCAP_CMD_cr];
    if(!a_OOK(tep)){
       a_SET(tep, n_TERMCAP_CMD_cr, FAL0);
-      tep->te_off = (ui16_t)a_termcap_g->tg_dat.s_len;
+      tep->te_off = (u16)a_termcap_g->tg_dat.s_len;
       n_string_push_c(n_string_push_c(&a_termcap_g->tg_dat, '\r'), '\0');
    }
 
@@ -424,7 +424,7 @@ a_termcap_init_altern(void){
    tep = &a_termcap_g->tg_ents[n_TERMCAP_CMD_le];
    if(!a_OOK(tep)){
       a_SET(tep, n_TERMCAP_CMD_le, FAL0);
-      tep->te_off = (ui16_t)a_termcap_g->tg_dat.s_len;
+      tep->te_off = (u16)a_termcap_g->tg_dat.s_len;
       n_string_push_c(n_string_push_c(&a_termcap_g->tg_dat, '\b'), '\0');
    }
 
@@ -432,7 +432,7 @@ a_termcap_init_altern(void){
    tep = &a_termcap_g->tg_ents[n_TERMCAP_CMD_nd];
    if(!a_OOK(tep)){
       a_SET(tep, n_TERMCAP_CMD_nd, FAL0);
-      tep->te_off = (ui16_t)a_termcap_g->tg_dat.s_len;
+      tep->te_off = (u16)a_termcap_g->tg_dat.s_len;
       n_string_push_buf(&a_termcap_g->tg_dat, "\033[C", sizeof("\033[C"));
    }
 
@@ -454,9 +454,9 @@ a_termcap_init_altern(void){
 
 #ifdef mx_HAVE_TERMCAP
 # ifdef mx_HAVE_TERMINFO
-static bool_t
+static boole
 a_termcap_load(char const *term){
-   bool_t rv;
+   boole rv;
    int err;
    NYD2_IN;
 
@@ -466,10 +466,10 @@ a_termcap_load(char const *term){
    return rv;
 }
 
-static bool_t
+static boole
 a_termcap_ent_query(struct a_termcap_ent *tep,
-      char const *cname, ui16_t cflags){
-   bool_t rv;
+      char const *cname, u16 cflags){
+   boole rv;
    NYD2_IN;
    ASSERT(!(n_psonce & n_PSO_TERMCAP_DISABLE));
 
@@ -485,7 +485,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
       int r = tigetnum(cname);
 
       if((rv = (r >= 0)))
-         tep->te_off = (ui16_t)MIN(UI16_MAX, r);
+         tep->te_off = (u16)MIN(U16_MAX, r);
       else
          tep->te_flags |= a_TERMCAP_F_NOENT;
       }break;
@@ -495,7 +495,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
 
       cp = tigetstr(cname);
       if((rv = (cp != NULL && cp != (char*)-1))){
-         tep->te_off = (ui16_t)a_termcap_g->tg_dat.s_len;
+         tep->te_off = (u16)a_termcap_g->tg_dat.s_len;
          n_string_push_buf(&a_termcap_g->tg_dat, cp, su_cs_len(cp) +1);
       }else
          tep->te_flags |= a_TERMCAP_F_NOENT;
@@ -505,7 +505,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
    return rv;
 }
 
-su_SINLINE bool_t
+su_SINLINE boole
 a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
       struct a_termcap_control const *tcp){
    ASSERT(!(n_psonce & n_PSO_TERMCAP_DISABLE));
@@ -514,9 +514,9 @@ a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
 }
 
 # else /* mx_HAVE_TERMINFO */
-static bool_t
+static boole
 a_termcap_load(char const *term){
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    /* ncurses may return -1 */
@@ -532,10 +532,10 @@ a_termcap_load(char const *term){
    return rv;
 }
 
-static bool_t
+static boole
 a_termcap_ent_query(struct a_termcap_ent *tep,
-      char const *cname, ui16_t cflags){
-   bool_t rv;
+      char const *cname, u16 cflags){
+   boole rv;
    NYD2_IN;
    ASSERT(!(n_psonce & n_PSO_TERMCAP_DISABLE));
 
@@ -551,7 +551,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
       int r = tgetnum(cname);
 
       if((rv = (r >= 0)))
-         tep->te_off = (ui16_t)MIN(UI16_MAX, r);
+         tep->te_off = (u16)MIN(U16_MAX, r);
       else
          tep->te_flags |= a_TERMCAP_F_NOENT;
       }break;
@@ -566,7 +566,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
       char *cp;
 
       if((rv = ((cp = tgetstr(cname, a_BUF)) != NULL))){
-         tep->te_off = (ui16_t)a_termcap_g->tg_dat.s_len;
+         tep->te_off = (u16)a_termcap_g->tg_dat.s_len;
          n_string_push_buf(&a_termcap_g->tg_dat, cp, su_cs_len(cp) +1);
 # undef a_BUF
       }else
@@ -577,7 +577,7 @@ a_termcap_ent_query(struct a_termcap_ent *tep,
    return rv;
 }
 
-su_SINLINE bool_t
+su_SINLINE boole
 a_termcap_ent_query_tcp(struct a_termcap_ent *tep,
       struct a_termcap_control const *tcp){
    ASSERT(!(n_psonce & n_PSO_TERMCAP_DISABLE));
@@ -592,11 +592,11 @@ a_termcap_putc(int c){
 }
 #endif /* mx_HAVE_TERMCAP */
 
-static si32_t
-a_termcap_enum_for_name(char const *name, size_t nlen, si32_t min, si32_t max){
+static s32
+a_termcap_enum_for_name(char const *name, size_t nlen, s32 min, s32 max){
    struct a_termcap_control const *tcp;
    char const *cnam;
-   si32_t rv;
+   s32 rv;
    NYD2_IN;
 
    /* Prefer terminfo(5) names */
@@ -606,7 +606,7 @@ a_termcap_enum_for_name(char const *name, size_t nlen, si32_t min, si32_t max){
          break;
       }
 
-      tcp = &a_termcap_control[(ui32_t)rv];
+      tcp = &a_termcap_control[(u32)rv];
       cnam = &a_termcap_namedat[tcp->tc_off];
       if(cnam[2] != '\0'){
          char const *xcp = cnam + 2;
@@ -708,7 +708,7 @@ n_termcap_destroy(void){
 
 #ifdef mx_HAVE_TERMCAP
 FL void
-n_termcap_resume(bool_t complete){
+n_termcap_resume(boole complete){
    NYD_IN;
    if(a_termcap_g != NULL && !(n_psonce & n_PSO_TERMCAP_DISABLE)){
       if(complete && (n_psonce & n_PSO_TERMCAP_CA_MODE))
@@ -720,7 +720,7 @@ n_termcap_resume(bool_t complete){
 }
 
 FL void
-n_termcap_suspend(bool_t complete){
+n_termcap_suspend(boole complete){
    NYD_IN;
    if(a_termcap_g != NULL && !(n_psonce & n_PSO_TERMCAP_DISABLE)){
       n_termcap_cmdx(n_TERMCAP_CMD_ke);
@@ -789,7 +789,7 @@ n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
           * In that case, the first parameter is merely a placeholder. */
          if(!(tep->te_flags & a_TERMCAP_F_ARG_IDX2)){
             a2 = a1;
-            a1 = (ui32_t)-1;
+            a1 = (u32)-1;
          }
          if((cp = tgoto(cp, (int)a1, (int)a2)) == NULL)
             goto jleave;
@@ -860,12 +860,12 @@ jleave:
    return rv;
 }
 
-FL bool_t
+FL boole
 n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
    /* Queries are lazy queried upon request */
    /* XXX n_termcap_query(): boole handling suboptimal, tvp used on success */
    struct a_termcap_ent const *tep;
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    ASSERT(tvp != NULL);
@@ -926,10 +926,10 @@ jextok:;
 
    switch((tvp->tv_captype = tep->te_flags & a_TERMCAP_F_TYPE_MASK)){
    case n_TERMCAP_CAPTYPE_BOOL:
-      tvp->tv_data.tvd_bool = (bool_t)tep->te_off;
+      tvp->tv_data.tvd_bool = (boole)tep->te_off;
       break;
    case n_TERMCAP_CAPTYPE_NUMERIC:
-      tvp->tv_data.tvd_numeric = (ui32_t)tep->te_off;
+      tvp->tv_data.tvd_numeric = (u32)tep->te_off;
       break;
    default:
    case n_TERMCAP_CAPTYPE_STRING:
@@ -942,13 +942,13 @@ jleave:
 }
 
 #ifdef mx_HAVE_KEY_BINDINGS
-FL si32_t
+FL s32
 n_termcap_query_for_name(char const *name, enum n_termcap_captype type){
-   si32_t rv;
+   s32 rv;
    NYD2_IN;
 
    if((rv = a_termcap_query_for_name(name, su_cs_len(name))) >= 0){
-      struct a_termcap_control const *tcp = &a_termcap_control[(ui32_t)rv];
+      struct a_termcap_control const *tcp = &a_termcap_control[(u32)rv];
 
       if(type != n_TERMCAP_CAPTYPE_NONE &&
             (tcp->tc_flags & a_TERMCAP_F_TYPE_MASK) != type)

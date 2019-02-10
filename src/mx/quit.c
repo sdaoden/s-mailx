@@ -79,7 +79,7 @@ static int  writeback(FILE *res, FILE *obuf);
 
 /* Terminate an editing session by attempting to write out the user's file from
  * the temporary.  Save any new stuff appended to the file */
-static bool_t edstop(void);
+static boole edstop(void);
 
 static void
 _alter(char const *name) /* TODO error handling */
@@ -134,7 +134,7 @@ writeback(FILE *res, FILE *obuf) /* TODO errors */
    srelax_rele();
 
    if(res != NULL){
-      bool_t lastnl;
+      boole lastnl;
 
       for(lastnl = FAL0; (c = getc(res)) != EOF && putc(c, obuf) != EOF;)
          lastnl = (c == '\n') ? (lastnl ? TRU2 : TRU1) : FAL0;
@@ -163,7 +163,7 @@ jleave:
    return rv;
 }
 
-static bool_t
+static boole
 edstop(void) /* TODO oh my god */
 {
    int gotcha, c;
@@ -171,7 +171,7 @@ edstop(void) /* TODO oh my god */
    FILE *obuf = NULL, *ibuf = NULL;
    struct stat statb;
    enum n_fopen_state fs;
-   bool_t rv;
+   boole rv;
    NYD_IN;
 
    rv = TRU1;
@@ -208,7 +208,7 @@ edstop(void) /* TODO oh my god */
          goto jleave;
       }
 
-      n_file_lock(fileno(ibuf), FLT_READ, 0,0, UIZ_MAX); /* TODO ign. lock err*/
+      n_file_lock(fileno(ibuf), FLT_READ, 0,0, UZ_MAX); /* TODO ign. lock err*/
       fseek(ibuf, (long)mailsize, SEEK_SET);
       while ((c = getc(ibuf)) != EOF) /* xxx bytewise??? TODO ... I/O error? */
          putc(c, obuf);
@@ -226,7 +226,7 @@ edstop(void) /* TODO oh my god */
       n_perr(n_shexp_quote_cp(mailname, FAL0), e);
       goto jleave;
    }
-   n_file_lock(fileno(obuf), FLT_WRITE, 0,0, UIZ_MAX); /* TODO ign. lock err! */
+   n_file_lock(fileno(obuf), FLT_WRITE, 0,0, UZ_MAX); /* TODO ign. lock err! */
    ftrunc(obuf);
 
    srelax_hold();
@@ -246,7 +246,7 @@ edstop(void) /* TODO oh my god */
 
    gotcha = (c == 0 && ibuf == NULL);
    if (ibuf != NULL) {
-      bool_t lastnl;
+      boole lastnl;
 
       for(lastnl = FAL0; (c = getc(ibuf)) != EOF && putc(c, obuf) != EOF;)
          lastnl = (c == '\n') ? (lastnl ? TRU2 : TRU1) : FAL0;
@@ -302,14 +302,14 @@ j_leave:
    return rv;
 }
 
-FL bool_t
-quit(bool_t hold_sigs_on)
+FL boole
+quit(boole hold_sigs_on)
 {
    int p, modify, anystat, c;
    FILE *fbuf, *lckfp, *rbuf, *abuf;
    struct message *mp;
    struct stat minfo;
-   bool_t rv;
+   boole rv;
    NYD_IN;
 
    if(!hold_sigs_on)
@@ -380,7 +380,7 @@ jnewmail:
       goto jleave;
    }
 
-   if ((lckfp = n_dotlock(mailname, fileno(fbuf), FLT_WRITE, 0,0, UIZ_MAX)
+   if ((lckfp = n_dotlock(mailname, fileno(fbuf), FLT_WRITE, 0,0, UZ_MAX)
          ) == NULL) {
       n_perr(_("Unable to (dot) lock mailbox"), 0);
       Fclose(fbuf);
@@ -391,7 +391,7 @@ jnewmail:
 
    rbuf = NULL;
    if (!fstat(fileno(fbuf), &minfo) && minfo.st_size > mailsize) {
-      bool_t lastnl;
+      boole lastnl;
 
       fprintf(n_stdout, _("New mail has arrived.\n"));
       rbuf = Ftmp(NULL, "quit", OF_RDWR | OF_UNLINK | OF_REGISTER);
@@ -552,7 +552,7 @@ makembox(void) /* TODO oh my god (also error reporting) */
       }
 
       if ((abuf = n_fopen_any(mbox, "r", &fs)) != NULL) {
-         bool_t lastnl;
+         boole lastnl;
 
          for (lastnl = FAL0; (c = getc(abuf)) != EOF && putc(c, obuf) != EOF;)
             lastnl = (c == '\n') ? (lastnl ? TRU2 : TRU1) : FAL0;
@@ -610,7 +610,7 @@ jcopyerr:
    /* Copy the user's old mbox contents back to the end of the stuff we just
     * saved.  If we are appending, this is unnecessary */
    if (!ok_blook(append)) {
-      bool_t lastnl;
+      boole lastnl;
 
       rewind(ibuf);
       for(lastnl = FAL0; (c = getc(ibuf)) != EOF && putc(c, obuf) != EOF;)

@@ -53,7 +53,7 @@
 
 /* Update mailname (if name != NULL) and displayname, return whether displayname
  * was large enough to swallow mailname */
-static bool_t  _update_mailname(char const *name);
+static boole  _update_mailname(char const *name);
 #ifdef mx_HAVE_C90AMEND1 /* TODO unite __narrow_suffix() into one fun! */
 su_SINLINE size_t __narrow_suffix(char const *cp, size_t cpl, size_t maxl);
 #endif
@@ -64,13 +64,13 @@ static void a_folder_info(void);
 /* Set up the input pointers while copying the mail file into /tmp */
 static void a_folder_mbox_setptr(FILE *ibuf, off_t offset);
 
-static bool_t
+static boole
 _update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Object! */
 {
    char const *foldp;
    char *mailp, *dispp;
    size_t i, j, foldlen;
-   bool_t rv;
+   boole rv;
    NYD_IN;
 
    /* Don't realpath(3) if it's only an update request */
@@ -233,7 +233,7 @@ static void
 a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
    struct message self, commit;
    char *linebuf, *cp;
-   bool_t from_;
+   boole from_;
    enum{
       a_RFC4155 = 1u<<0,
       a_HAD_BAD_FROM_ = 1u<<1,
@@ -447,7 +447,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    char const *who, *orig_name;
    int rv, omsgCount = 0;
    FILE *ibuf = NULL, *lckfp = NULL;
-   bool_t isdevnull = FAL0;
+   boole isdevnull = FAL0;
    NYD_IN;
 
    n_pstate &= ~n_PS_SETFILE_OPENED;
@@ -654,9 +654,9 @@ jlogname:
       lckfp = (FILE*)-1;
    else if (!(n_pstate & n_PS_EDIT))
       lckfp = n_dotlock(name, fileno(ibuf), FLT_READ, offset,0,
-            (fm & FEDIT_NEWMAIL ? 0 : UIZ_MAX));
+            (fm & FEDIT_NEWMAIL ? 0 : UZ_MAX));
    else if (n_file_lock(fileno(ibuf), FLT_READ, offset,0,
-         (fm & FEDIT_NEWMAIL ? 0 : UIZ_MAX)))
+         (fm & FEDIT_NEWMAIL ? 0 : UZ_MAX)))
       lckfp = (FILE*)-1;
 
    if (lckfp == NULL) {
@@ -966,7 +966,7 @@ jleave:
 FL void
 initbox(char const *name)
 {
-   bool_t err;
+   boole err;
    char *tempMesg;
    NYD_IN;
 
@@ -1011,7 +1011,7 @@ n_folder_query(void){
    enum protocol proto;
    char *cp;
    char const *rv, *adjcp;
-   bool_t err;
+   boole err;
    NYD_IN;
 
    s = n_string_creat_auto(&s_b);
@@ -1158,7 +1158,7 @@ n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_null){
    struct stat stb;
    char buf[2];
    int rv;
-   bool_t needsep;
+   boole needsep;
    NYD2_IN;
 
    if(!fseek(fout, -2L, SEEK_END)){

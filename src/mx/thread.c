@@ -64,7 +64,7 @@ struct mitem {
 struct msort {
    union {
 #ifdef mx_HAVE_SPAM
-      ui32_t   ms_ui;
+      u32   ms_ui;
 #endif
       long     ms_long;
       char     *ms_char;
@@ -74,12 +74,12 @@ struct msort {
 
 /* Return the hash value for a message id modulo mprime, or mprime if the
  * passed string does not look like a message-id */
-static ui32_t           _mhash(char const *cp, ui32_t mprime);
+static u32           _mhash(char const *cp, u32 mprime);
 
 /* Look up a message id. Returns NOT_AN_ID if the passed string does not look
  * like a message-id */
 static struct mitem *   _mlook(char *id, struct mitem *mt,
-                           struct message *mdata, ui32_t mprime);
+                           struct message *mdata, u32 mprime);
 
 /* Child is to be adopted by parent.  A thread tree is structured as follows:
  *
@@ -111,7 +111,7 @@ static void             _adopt(struct message *parent, struct message *child,
                            int dist);
 
 /* Connect all msgs on the lowest thread level with m_younger/m_elder links */
-static struct message * _interlink(struct message *m, ui32_t cnt, int nmail);
+static struct message * _interlink(struct message *m, u32 cnt, int nmail);
 
 static void             _finalize(struct message *mp);
 
@@ -123,16 +123,16 @@ static int              _mlonglt(void const *a, void const *b);
 static int              _mcharlt(void const *a, void const *b);
 
 static void             _lookup(struct message *m, struct mitem *mi,
-                           ui32_t mprime);
-static void             _makethreads(struct message *m, ui32_t cnt, int nmail);
+                           u32 mprime);
+static void             _makethreads(struct message *m, u32 cnt, int nmail);
 static int              _colpt(int *msgvec, int cl);
 static void             _colps(struct message *b, int cl);
 static void             _colpm(struct message *m, int cl, int *cc, int *uc);
 
-static ui32_t
-_mhash(char const *cp, ui32_t mprime)
+static u32
+_mhash(char const *cp, u32 mprime)
 {
-   ui32_t h = 0, g, at = 0;
+   u32 h = 0, g, at = 0;
    NYD2_IN;
 
    for (--cp; *++cp != '\0';) {
@@ -158,10 +158,10 @@ _mhash(char const *cp, ui32_t mprime)
 }
 
 static struct mitem *
-_mlook(char *id, struct mitem *mt, struct message *mdata, ui32_t mprime)
+_mlook(char *id, struct mitem *mt, struct message *mdata, u32 mprime)
 {
    struct mitem *mp = NULL;
-   ui32_t h, c, n = 0;
+   u32 h, c, n = 0;
    NYD2_IN;
 
    if (id == NULL) {
@@ -191,7 +191,7 @@ _mlook(char *id, struct mitem *mt, struct message *mdata, ui32_t mprime)
          break;
       c += (n & 1) ? -((n+1)/2) * ((n+1)/2) : ((n+1)/2) * ((n+1)/2);
       ++n;
-      if ((si32_t)c < 0)
+      if ((s32)c < 0)
          c = 0;
       else while (c >= mprime)
          c -= mprime;
@@ -247,10 +247,10 @@ jleave:
 }
 
 static struct message *
-_interlink(struct message *m, ui32_t cnt, int nmail)
+_interlink(struct message *m, u32 cnt, int nmail)
 {
    struct message *root;
-   ui32_t n;
+   u32 n;
    struct msort *ms;
    int i, autocollapse;
    NYD2_IN;
@@ -342,7 +342,7 @@ _mcharlt(void const *a, void const *b)
 }
 
 static void
-_lookup(struct message *m, struct mitem *mi, ui32_t mprime)
+_lookup(struct message *m, struct mitem *mi, u32 mprime)
 {
    struct mx_name *np;
    struct mitem *ip;
@@ -385,11 +385,11 @@ jleave:
 }
 
 static void
-_makethreads(struct message *m, ui32_t cnt, int nmail)
+_makethreads(struct message *m, u32 cnt, int nmail)
 {
    struct mitem *mt;
    char *cp;
-   ui32_t i, mprime;
+   u32 i, mprime;
    NYD2_IN;
 
    if (cnt == 0)
@@ -397,7 +397,7 @@ _makethreads(struct message *m, ui32_t cnt, int nmail)
 
    /* It is performance crucial to space this large enough in order to minimize
     * bucket sharing */
-   mprime = su_prime_lookup_next((cnt < UI32_MAX >> 3) ? cnt << 2 : cnt);
+   mprime = su_prime_lookup_next((cnt < U32_MAX >> 3) ? cnt << 2 : cnt);
    mt = n_calloc(mprime, sizeof *mt);
 
    srelax_hold();
@@ -682,7 +682,7 @@ c_sort(void *vp)
    int (*func)(void const *, void const *);
    struct msort *ms;
    struct message *mp;
-   bool_t showname;
+   boole showname;
    NYD_IN;
 
    if (vp == NULL || vp == (void*)-1) {

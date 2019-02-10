@@ -118,7 +118,7 @@ _smtp_gssapi_error(char const *s, OM_uint32 maj_stat, OM_uint32 min_stat)
    NYD_OU;
 }
 
-static bool_t
+static boole
 _smtp_gssapi(struct sock *sop, struct sendbundle *sbp, struct smtp_line *slp)
 {
    struct str in, out;
@@ -134,7 +134,7 @@ _smtp_gssapi(struct sock *sop, struct sendbundle *sbp, struct smtp_line *slp)
       a_F_TARGET_NAME = 1u<<2,
       a_F_GSS_CONTEXT = 1u<<3
    } f;
-   bool_t ok;
+   boole ok;
    NYD_IN;
 
    ok = FAL0;

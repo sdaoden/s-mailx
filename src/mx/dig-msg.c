@@ -44,23 +44,23 @@
  * oexcl and exists; ERR_NOENT if not oexcl and does not exist).
  * On oexcl success *dmcp will be n_alloc()ated with .dmc_msgno and .dmc_mp
  * etc. set; but not linked into mb.mb_digmsg and .dmc_fp not created etc. */
-static si32_t a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp,
-               bool_t oexcl);
+static s32 a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp,
+               boole oexcl);
 
 /* Subcommand drivers */
-static bool_t a_dmsg_cmd(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmd,
-               uiz_t cmdl, char const *cp);
+static boole a_dmsg_cmd(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmd,
+               uz cmdl, char const *cp);
 
-static bool_t a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp,
+static boole a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp,
                char const *cmda[3]);
-static bool_t a_dmsg__attach(FILE *fp, struct n_dig_msg_ctx *dmcp,
+static boole a_dmsg__attach(FILE *fp, struct n_dig_msg_ctx *dmcp,
                char const *cmda[3]);
 
-static si32_t
-a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp, bool_t oexcl){
+static s32
+a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp, boole oexcl){
    struct n_dig_msg_ctx *dmcp;
-   si32_t rv;
-   ui32_t msgno;
+   s32 rv;
+   u32 msgno;
    NYD2_IN;
 
    if(cp[0] == '-' && cp[1] == '\0'){
@@ -109,11 +109,11 @@ jleave:
    return rv;
 }
 
-static bool_t
-a_dmsg_cmd(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmd, uiz_t cmdl,
+static boole
+a_dmsg_cmd(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmd, uz cmdl,
       char const *cp){
    char const *cmda[3];
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    /* C99 */{
@@ -164,9 +164,9 @@ jecmd:
    return rv;
 }
 
-static bool_t
+static boole
 a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmda[3]){
-   uiz_t i;
+   uz i;
    struct n_header_field *hfp;
    struct mx_name *np, **npp;
    char const *cp;
@@ -186,10 +186,10 @@ a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmda[3]){
        * TODO which differentiate in between structured and unstructured
        * TODO header fields etc., a little workaround */
       struct mx_name *xnp;
-      si8_t aerr;
+      s8 aerr;
       enum expand_addr_check_mode eacm;
       enum gfield ntype;
-      bool_t mult_ok;
+      boole mult_ok;
 
       if(cmda[1] == NULL || cmda[2] == NULL)
          goto jecmd;
@@ -328,7 +328,7 @@ jins_505:
          goto jins;
       }
 
-      if((cp = n_header_is_known(cmda[1], UIZ_MAX)) != NULL)
+      if((cp = n_header_is_known(cmda[1], UZ_MAX)) != NULL)
          goto j505r;
 
       /* Free-form header fields */
@@ -577,13 +577,13 @@ jrem:
          goto jrem;
       }
 
-      if((cp = n_header_is_known(cmda[1], UIZ_MAX)) != NULL)
+      if((cp = n_header_is_known(cmda[1], UZ_MAX)) != NULL)
          goto j505r;
 
       /* Free-form header fields (note j501cp may print non-normalized name) */
       /* C99 */{
          struct n_header_field **hfpp;
-         bool_t any;
+         boole any;
 
          for(cp = cmda[1]; *cp != '\0'; ++cp)
             if(!fieldnamechar(*cp)){
@@ -694,7 +694,7 @@ jremat:
          goto jremat;
       }
 
-      if((cp = n_header_is_known(cmda[1], UIZ_MAX)) != NULL)
+      if((cp = n_header_is_known(cmda[1], UZ_MAX)) != NULL)
          goto j505r;
 
       /* Free-form header fields */
@@ -835,7 +835,7 @@ jshow:
 
       /* Free-form header fields */
       /* C99 */{
-         bool_t any;
+         boole any;
 
          for(cp = cmda[1]; *cp != '\0'; ++cp)
             if(!fieldnamechar(*cp)){
@@ -880,9 +880,9 @@ j501cp:
    goto jleave;
 }
 
-static bool_t
+static boole
 a_dmsg__attach(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmda[3]){
-   bool_t status;
+   boole status;
    struct attachment *ap;
    char const *cp;
    struct header *hp;
@@ -928,7 +928,7 @@ jatt_att:
             cp = NULL;
       }
    }else if(su_cs_starts_with_case("attribute-at", cp)){
-      uiz_t i;
+      uz i;
 
       if(cmda[1] == NULL || cmda[2] != NULL)
          goto jecmd;
@@ -1025,7 +1025,7 @@ jatt_attset:
             cp = NULL;
       }
    }else if(su_cs_starts_with_case("attribute-set-at", cp)){
-      uiz_t i;
+      uz i;
 
       if(cmda[1] == NULL || cmda[2] == NULL)
          goto jecmd;
@@ -1113,7 +1113,7 @@ jdefault:
             cp = NULL;
       }
    }else if(su_cs_starts_with_case("remove-at", cp)){
-      uiz_t i;
+      uz i;
 
       if(cmda[1] == NULL || cmda[2] != NULL)
          goto jecmd;
@@ -1169,9 +1169,9 @@ n_dig_msg_on_mailbox_close(struct mailbox *mbp){
    NYD_OU;
 }
 
-FL bool_t
+FL boole
 n_dig_msg_circumflex(struct n_dig_msg_ctx *dmcp, FILE *fp, char const *cmd){
-   bool_t rv;
+   boole rv;
    char c;
    char const *cp, *cmd_top;
    NYD_IN;

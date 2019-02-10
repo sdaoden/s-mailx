@@ -172,14 +172,14 @@ struct list_item {
 static char             *imapbuf;   /* TODO not static, use pool */
 static size_t           imapbufsize;
 static sigjmp_buf       imapjmp;
-static sighandler_type  savealrm;
+static n_sighdl_t  savealrm;
 static int              imapkeepalive;
 static long             had_exists = -1;
 static long             had_expunge = -1;
 static long             expunged_messages;
 static int volatile     imaplock;
 static int              same_imap_account;
-static bool_t           _imap_rdonly;
+static boole           _imap_rdonly;
 
 static char *imap_quotestr(char const *s);
 static char *imap_unquotestr(char const *s);
@@ -215,7 +215,7 @@ static enum okay  imap_flags(struct mailbox *mp, unsigned X, unsigned Y);
 static void       imap_init(struct mailbox *mp, int n);
 static void       imap_setptr(struct mailbox *mp, int nmail, int transparent,
                      int *prevcount);
-static bool_t     _imap_getcred(struct mailbox *mbp, struct ccred *ccredp,
+static boole     _imap_getcred(struct mailbox *mbp, struct ccred *ccredp,
                      struct url *urlp);
 static int _imap_setfile1(char const *who, struct url *urlp,
             enum fedit_mode fm, int transparent);
@@ -254,9 +254,9 @@ static enum okay  imap_list(struct mailbox *mp, const char *base, int strip,
 static enum okay  imap_copy1(struct mailbox *mp, struct message *m, int n,
                      const char *name);
 static enum okay  imap_copyuid_parse(const char *cp,
-                     ui64_t *uidvalidity, ui64_t *olduid, ui64_t *newuid);
+                     u64 *uidvalidity, u64 *olduid, u64 *newuid);
 static enum okay  imap_appenduid_parse(const char *cp,
-                     ui64_t *uidvalidity, ui64_t *uid);
+                     u64 *uidvalidity, u64 *uid);
 static enum okay  imap_copyuid(struct mailbox *mp, struct message *m,
                      const char *name);
 static enum okay  imap_appenduid(struct mailbox *mp, FILE *fp, time_t t,
@@ -402,11 +402,11 @@ jleave:
 }
 
 FL char const *
-imap_path_encode(char const *cp, bool_t *err_or_null){
+imap_path_encode(char const *cp, boole *err_or_null){
    /* To a large extend inspired by dovecot(1) */
    struct str out;
-   bool_t err_def;
-   ui8_t *be16p_base, *be16p;
+   boole err_def;
+   u8 *be16p_base, *be16p;
    char const *emsg;
    char c;
    size_t l, l_plain;
@@ -477,13 +477,13 @@ imap_path_encode(char const *cp, bool_t *err_or_null){
       else{
          static char const mb64ct[] =
             "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+,";
-         ui32_t utf32;
+         u32 utf32;
 
          /* Convert consecutive non-representables */
          emsg = N_("Invalid UTF-8 sequence, cannot convert to UTF-32");
 
          for(be16p = be16p_base, --cp, ++l;;){
-            if((utf32 = su_utf8_to_32(&cp, &l)) == UI32_MAX)
+            if((utf32 = su_utf8_to_32(&cp, &l)) == U32_MAX)
                goto jerr;
 
             /* TODO S-CText: magic utf16 conversions */
@@ -492,7 +492,7 @@ imap_path_encode(char const *cp, bool_t *err_or_null){
                be16p[0] = (utf32 >>= 8, utf32 &= 0xFF);
                be16p += 2;
             }else{
-               ui16_t s7e;
+               u16 s7e;
 
                utf32 -= 0x10000;
                s7e = 0xD800u | (utf32 >> 10);
@@ -512,7 +512,7 @@ imap_path_encode(char const *cp, bool_t *err_or_null){
 
          /* And then warp that UTF-16BE to mUTF-7 */
          out.s[out.l++] = '&';
-         utf32 = (ui32_t)P2UZ(be16p - be16p_base);
+         utf32 = (u32)P2UZ(be16p - be16p_base);
          be16p = be16p_base;
 
          for(; utf32 >= 3; be16p += 3, utf32 -= 3){
@@ -550,10 +550,10 @@ jerr:
 }
 
 FL char *
-imap_path_decode(char const *path, bool_t *err_or_null){
+imap_path_decode(char const *path, boole *err_or_null){
    /* To a large extend inspired by dovecot(1) TODO use string */
-   bool_t err_def;
-   ui8_t *mb64p_base, *mb64p, *mb64xp;
+   boole err_def;
+   u8 *mb64p_base, *mb64p, *mb64xp;
    char const *emsg, *cp;
    char *rv_base, *rv, c;
    size_t l_orig, l, i;
@@ -600,7 +600,7 @@ jeincpl:
          goto jerr;
       }else{
          /* mUTF-7 -> UTF-16BE -> UTF-8 */
-         static ui8_t const mb64dt[256] = {
+         static u8 const mb64dt[256] = {
 #undef XX
 #define XX 0xFFu
             XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX, XX,XX,XX,XX,
@@ -627,8 +627,8 @@ jeincpl:
          /* Decode the mUTF-7 to what is indeed UTF-16BE */
          for(mb64p = mb64p_base;;){
             ASSERT(l >= 3);
-            if((mb64p[0] = mb64dt[(ui8_t)cp[0]]) == XX ||
-                  (mb64p[1] = mb64dt[(ui8_t)cp[1]]) == XX)
+            if((mb64p[0] = mb64dt[(u8)cp[0]]) == XX ||
+                  (mb64p[1] = mb64dt[(u8)cp[1]]) == XX)
                goto jerr;
             mb64p += 2;
 
@@ -637,7 +637,7 @@ jeincpl:
             l -= 3;
             if(c == '-')
                break;
-            if((*mb64p++ = mb64dt[(ui8_t)c]) == XX)
+            if((*mb64p++ = mb64dt[(u8)c]) == XX)
                goto jerr;
 
             if(l == 0)
@@ -645,7 +645,7 @@ jeincpl:
             --l;
             if((c = *cp++) == '-')
                break;
-            if((*mb64p++ = mb64dt[(ui8_t)c]) == XX)
+            if((*mb64p++ = mb64dt[(u8)c]) == XX)
                goto jerr;
 
             if(l < 3){
@@ -669,7 +669,7 @@ jeincpl:
          mb64p = mb64xp = mb64p_base;
 
          while(i > 0){
-            ui8_t unil, u0, u1, u2, u3;
+            u8 unil, u0, u1, u2, u3;
 
             unil = (i >= 4) ? 4 : i & 0x3;
             i -= unil;
@@ -698,8 +698,8 @@ jeincpl:
          emsg = N_("Invalid UTF-16BE encoding");
 
          for(mb64p = mb64p_base; i > 0;){
-            ui32_t utf32;
-            ui16_t uhi, ulo;
+            u32 utf32;
+            u16 uhi, ulo;
 
             uhi = mb64p[0];
             uhi <<= 8;
@@ -760,7 +760,7 @@ jerr:
 
 static char *
 imap_path_quote(struct mailbox *mp, char const *cp){
-   bool_t err;
+   boole err;
    char *rv;
    NYD2_IN;
 
@@ -1144,7 +1144,7 @@ jleave:
 FL enum okay
 imap_noop(void)
 {
-   sighandler_type volatile oldint, oldpipe;
+   n_sighdl_t volatile oldint, oldpipe;
    enum okay volatile rv = STOP;
    NYD_IN;
 
@@ -1193,7 +1193,7 @@ rec_dequeue(void)
 {
    struct message *omessage;
    struct record *rp, *rq;
-   uiz_t exists = 0, i;
+   uz exists = 0, i;
    enum okay rv = STOP;
    NYD_IN;
 
@@ -1285,7 +1285,7 @@ rec_rmqueue(void)
 static void
 imapalarm(int s)
 {
-   sighandler_type volatile saveint, savepipe;
+   n_sighdl_t volatile saveint, savepipe;
    NYD; /* Signal handler */
    UNUSED(s);
 
@@ -1660,10 +1660,10 @@ jleave:
    return rv;
 }
 
-static bool_t
+static boole
 _imap_getcred(struct mailbox *mbp, struct ccred *ccredp, struct url *urlp)
 {
-   bool_t rv = FAL0;
+   boole rv = FAL0;
    NYD_IN;
 
    if (ok_blook(v15_compat))
@@ -1677,12 +1677,12 @@ _imap_getcred(struct mailbox *mbp, struct ccred *ccredp, struct url *urlp)
          var = savecat("password-", xuhp);
          if ((old = n_UNCONST(n_var_vlook(var, FAL0))) != NULL)
             old = su_cs_dup(old, 0);
-         n_var_vset(var, (uintptr_t)mbp->mb_imap_pass);
+         n_var_vset(var, (up)mbp->mb_imap_pass);
       }
       rv = ccred_lookup_old(ccredp, CPROTO_IMAP, xuhp);
       if (var != NULL) {
          if (old != NULL) {
-            n_var_vset(var, (uintptr_t)old);
+            n_var_vset(var, (up)old);
             n_free(old);
          } else
             n_var_vclear(var);
@@ -1699,7 +1699,7 @@ _imap_setfile1(char const * volatile who, struct url *urlp,
 {
    struct sock so;
    struct ccred ccred;
-   sighandler_type volatile saveint, savepipe;
+   n_sighdl_t volatile saveint, savepipe;
    char const *cp;
    int rv;
    int volatile prevcount = 0;
@@ -2051,7 +2051,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
 {
    char o[LINESIZE];
    struct message mt;
-   sighandler_type volatile saveint, savepipe;
+   n_sighdl_t volatile saveint, savepipe;
    char * volatile head;
    char const *cp, *loc, * volatile item, * volatile resp;
    size_t expected;
@@ -2075,7 +2075,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
    if (getcache(mp, m, need) == OKAY)
       return OKAY;
    if (mp->mb_type == MB_CACHE) {
-      n_err(_("Message %lu not available\n"), (ul_i)number);
+      n_err(_("Message %lu not available\n"), (ul)number);
       return STOP;
    }
 
@@ -2134,7 +2134,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
    }
    IMAP_OUT(o, MB_COMD, goto out)
    for (;;) {
-      ui64_t uid;
+      u64 uid;
 
       ok = imap_answer(mp, 1);
       if (ok == STOP)
@@ -2290,7 +2290,7 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
       expected = atol(&cp[1]);
       if (m[bot-1].m_uid) {
          if ((cp = su_cs_find_case(responded_other_text, "UID ")) != NULL) {
-            ui64_t uid;
+            u64 uid;
 
             su_idec_u64_cp(&uid, &cp[4], 10, NULL);/* TODO errors? */
             for (n = bot; n <= topp; n++)
@@ -2316,7 +2316,7 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
          if (n_poption & n_PO_VERBVERB)
             fputs(imapbuf, stderr);
          if ((cp = su_cs_find_case(imapbuf, "UID ")) != NULL) {
-            ui64_t uid;
+            u64 uid;
 
             su_idec_u64_cp(&uid, &cp[4], 10, NULL);/* TODO errors? */
             for (n = bot; n <= topp; n++)
@@ -2338,7 +2338,7 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
 FL void
 imap_getheaders(int volatile bot, int volatile topp) /* TODO iterator!! */
 {
-   sighandler_type saveint, savepipe;
+   n_sighdl_t saveint, savepipe;
    /*enum okay ok = STOP;*/
    int i, chunk = 256;
    NYD;
@@ -2568,11 +2568,11 @@ jbypass:
    return OKAY;
 }
 
-FL bool_t
-imap_quit(bool_t hold_sigs_on)
+FL boole
+imap_quit(boole hold_sigs_on)
 {
-   sighandler_type volatile saveint, savepipe;
-   bool_t rv;
+   n_sighdl_t volatile saveint, savepipe;
+   boole rv;
    NYD_IN;
 
    if(hold_sigs_on)
@@ -2671,7 +2671,7 @@ imap_unread(struct message *m, int n)
 static enum okay
 imap_unstore(struct message *m, int n, const char *flag)
 {
-   sighandler_type saveint, savepipe;
+   n_sighdl_t saveint, savepipe;
    enum okay volatile rv = STOP;
    NYD_IN;
 
@@ -2711,7 +2711,7 @@ tag(int new)
 
 FL int
 c_imapcodec(void *vp){
-   bool_t err;
+   boole err;
    size_t alen;
    char const **argv, *varname, *varres, *act, *cp;
    NYD_IN;
@@ -2745,7 +2745,7 @@ c_imapcodec(void *vp){
    }
 
    if(varname != NULL){
-      if(!n_var_vset(varname, (uintptr_t)varres)){
+      if(!n_var_vset(varname, (up)varres)){
          n_pstate_err_no = su_ERR_NOTSUP;
          vp = NULL;
       }
@@ -2775,7 +2775,7 @@ FL int
 c_imap_imap(void *vp)
 {
    char o[LINESIZE];
-   sighandler_type saveint, savepipe;
+   n_sighdl_t saveint, savepipe;
    struct mailbox *mp = &mb;
    FILE *queuefp = NULL;
    enum okay volatile ok = STOP;
@@ -2908,7 +2908,7 @@ imap_append1(struct mailbox *mp, const char *name, FILE *fp, off_t off1,
    size_t bufsize, buflen, cnt;
    long size, lines, ysize;
    char const *qname;
-   bool_t twice;
+   boole twice;
    FILE *queuefp;
    enum okay rv;
    NYD_IN;
@@ -3098,7 +3098,7 @@ jleave:
 FL enum okay
 imap_append(const char *xserver, FILE *fp, long offset)
 {
-   sighandler_type volatile saveint, savepipe;
+   n_sighdl_t volatile saveint, savepipe;
    struct url url;
    struct ccred ccred;
    enum okay rv = STOP;
@@ -3274,7 +3274,7 @@ jleave:
 FL int
 imap_folders(const char * volatile name, int strip)
 {
-   sighandler_type saveint, savepipe;
+   n_sighdl_t saveint, savepipe;
    const char * volatile fold, *cp, *sp;
    FILE * volatile fp;
    int rv = 1;
@@ -3350,7 +3350,7 @@ imap_copy1(struct mailbox *mp, struct message *m, int n, const char *name)
 {
    char o[LINESIZE];
    const char *qname;
-   bool_t twice, stored;
+   boole twice, stored;
    FILE *queuefp;
    enum okay ok;
    NYD;
@@ -3464,7 +3464,7 @@ jleave:
 FL enum okay
 imap_copy(struct message *m, int n, const char *name)
 {
-   sighandler_type saveint, savepipe;
+   n_sighdl_t saveint, savepipe;
    enum okay volatile rv = STOP;
    NYD_IN;
 
@@ -3489,8 +3489,8 @@ imap_copy(struct message *m, int n, const char *name)
 }
 
 static enum okay
-imap_copyuid_parse(const char *cp, ui64_t *uidvalidity, ui64_t *olduid,
-   ui64_t *newuid)
+imap_copyuid_parse(const char *cp, u64 *uidvalidity, u64 *olduid,
+   u64 *newuid)
 {
    char const *xp, *yp, *zp;
    enum okay rv;
@@ -3506,7 +3506,7 @@ imap_copyuid_parse(const char *cp, ui64_t *uidvalidity, ui64_t *olduid,
 }
 
 static enum okay
-imap_appenduid_parse(const char *cp, ui64_t *uidvalidity, ui64_t *uid)
+imap_appenduid_parse(const char *cp, u64 *uidvalidity, u64 *uid)
 {
    char const *xp, *yp;
    enum okay rv;
@@ -3526,7 +3526,7 @@ imap_copyuid(struct mailbox *mp, struct message *m, const char *name)
    struct mailbox xmb;
    struct message xm;
    const char *cp;
-   ui64_t uidvalidity, olduid, newuid;
+   u64 uidvalidity, olduid, newuid;
    enum okay rv;
    NYD_IN;
 
@@ -3589,7 +3589,7 @@ imap_appenduid(struct mailbox *mp, FILE *fp, time_t t, long off1, long xsize,
    struct mailbox xmb;
    struct message xm;
    const char *cp;
-   ui64_t uidvalidity, uid;
+   u64 uidvalidity, uid;
    enum okay rv;
    NYD_IN;
 
@@ -3746,7 +3746,7 @@ imap_search2(struct mailbox *mp, struct message *m, int cnt, const char *spec,
                response_other == MAILBOX_DATA_SEARCH) {
             xp = responded_other_text;
             while (*xp && *xp != '\r') {
-               ui64_t uid;
+               u64 uid;
 
                su_idec_u64_cp(&uid, xp, 10, &xp);/* TODO errors? */
                for (i = 0; i < cnt; i++)
@@ -3771,7 +3771,7 @@ out:
 FL ssize_t
 imap_search1(const char * volatile spec, int f)
 {
-   sighandler_type saveint, savepipe;
+   n_sighdl_t saveint, savepipe;
    ssize_t volatile rv = -1;
    NYD_IN;
 
@@ -3819,7 +3819,7 @@ imap_thisaccount(const char *cp)
 FL enum okay
 imap_remove(const char * volatile name)
 {
-   sighandler_type volatile saveint, savepipe;
+   n_sighdl_t volatile saveint, savepipe;
    enum okay volatile rv = STOP;
    NYD_IN;
 
@@ -3885,7 +3885,7 @@ out:
 FL enum okay
 imap_rename(const char *old, const char *new)
 {
-   sighandler_type saveint, savepipe;
+   n_sighdl_t saveint, savepipe;
    enum okay volatile rv = STOP;
    NYD_IN;
 
@@ -4328,7 +4328,7 @@ imap_make_date_time(time_t t)
 {
    static char s[40];
    char const *mn;
-   si32_t y, md, th, tm, ts;
+   s32 y, md, th, tm, ts;
    struct tm *tmp;
    int tzdiff, tzdiff_hour, tzdiff_min;
    time_t t2;
@@ -4351,7 +4351,7 @@ jredo:
    if (tmp->tm_isdst > 0)
       tzdiff_hour++;
 
-   if(UNLIKELY((y = tmp->tm_year) < 0 || y >= 9999/*SI32_MAX*/ - 1900)){
+   if(UNLIKELY((y = tmp->tm_year) < 0 || y >= 9999/*S32_MAX*/ - 1900)){
       y = 1970;
       mn = n_month_names[0];
       md = 1;

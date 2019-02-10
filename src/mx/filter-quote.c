@@ -95,7 +95,7 @@ _qf_add_data(struct quoteflt *self, wchar_t wc)
 {
    int w, l;
    char *save_b;
-   ui32_t save_l, save_w;
+   u32 save_l, save_w;
    ssize_t rv;
    NYD_IN;
 
@@ -143,7 +143,7 @@ jbad:
       l = wctomb(self->qf_dat.s + self->qf_dat.l, wc);
       if (l < 0)
          goto jbad;
-      self->qf_datw += (ui32_t)w;
+      self->qf_datw += (u32)w;
       self->qf_dat.l += (size_t)l;
    }
 
@@ -172,7 +172,7 @@ jflush:
          su_mem_move(self->qf_dat.s, save_b, save_l);
       }
    } else if (self->qf_datw >= self->qf_qfold_min && !self->qf_brk_isws) {
-      bool_t isws = (iswspace(wc) != 0);
+      boole isws = (iswspace(wc) != 0);
 
       if (isws || !self->qf_brk_isws || self->qf_brkl == 0) {
          if((self->qf_brk_isws = isws) ||
@@ -336,7 +336,7 @@ quoteflt_dummy(void) /* TODO LEGACY (until filters are plugged when needed) */
 }
 
 FL void
-quoteflt_init(struct quoteflt *self, char const *prefix, bool_t bypass)
+quoteflt_init(struct quoteflt *self, char const *prefix, boole bypass)
 {
 #ifdef mx_HAVE_QUOTE_FOLD
    char const *xcp, *cp;
@@ -346,14 +346,14 @@ quoteflt_init(struct quoteflt *self, char const *prefix, bool_t bypass)
    su_mem_set(self, 0, sizeof *self);
 
    if ((self->qf_pfix = prefix) != NULL)
-      self->qf_pfix_len = (ui32_t)su_cs_len(prefix);
+      self->qf_pfix_len = (u32)su_cs_len(prefix);
    self->qf_bypass = bypass;
 
    /* Check whether the user wants the more fancy quoting algorithm */
    /* TODO *quote-fold*: n_QUOTE_MAX may excess it! */
 #ifdef mx_HAVE_QUOTE_FOLD
    if (!bypass && (cp = ok_vlook(quote_fold)) != NULL) {
-      ui32_t qmax, qmaxnws, qmin;
+      u32 qmax, qmaxnws, qmin;
 
       /* These magic values ensure we don't bail */
       su_idec_u32_cp(&qmax, cp, 10, &xcp);
@@ -438,7 +438,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
    {
       void *vp;
       size_t ll;
-      bool_t pxok = (self->qf_qfold_min != 0);
+      boole pxok = (self->qf_qfold_min != 0);
 
       for (;;) {
          if (!pxok && (ll = self->qf_pfix_len) > 0) {

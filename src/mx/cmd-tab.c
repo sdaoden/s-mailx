@@ -132,7 +132,7 @@ a_ctab_cmdinfo(struct n_cmd_desc const *cdp){
       break;
    default:
    case n_CMD_ARG_TYPE_ARG:{
-      ui32_t flags, xflags;
+      u32 flags, xflags;
       size_t i;
       struct n_cmd_arg_desc const *cadp;
 
@@ -407,7 +407,7 @@ jleave:
 static int
 a_ctab_c_memtrace(void *vp){
    int rv;
-   ui32_t oopt;
+   u32 oopt;
    NYD2_IN;
    UNUSED(vp);
 
@@ -458,11 +458,11 @@ n_cmd_default(void){
    return cdp;
 }
 
-FL bool_t
+FL boole
 n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
    struct n_cmd_arg ncap, *lcap, *target_argp, **target_argpp, *cap;
    struct str shin_orig, shin;
-   bool_t stoploop, greedyjoin;
+   boole stoploop, greedyjoin;
    void const *cookie;
    size_t cad_idx, parsed_args;
    struct n_cmd_arg_desc const *cadp;
@@ -472,7 +472,7 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
    ASSERT(cacp->cac_desc->cad_no > 0);
 #ifdef mx_HAVE_DEBUG
    /* C99 */{
-      bool_t opt_seen = FAL0;
+      boole opt_seen = FAL0;
 
       for(cadp = cacp->cac_desc, cad_idx = 0;
             cad_idx < cadp->cad_no; ++cad_idx){
@@ -519,7 +519,7 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
 
    n_pstate_err_no = su_ERR_NONE;
    shin.s = n_UNCONST(cacp->cac_indat); /* "logical" only */
-   shin.l = (cacp->cac_inlen == UIZ_MAX ? su_cs_len(shin.s) : cacp->cac_inlen);
+   shin.l = (cacp->cac_inlen == UZ_MAX ? su_cs_len(shin.s) : cacp->cac_inlen);
    shin_orig = shin;
    cacp->cac_no = 0;
    cacp->cac_arg = lcap = NULL;
@@ -547,7 +547,7 @@ jredo:
       case n_CMD_ARG_DESC_SHEXP:{
          struct n_string shou, *shoup;
          enum n_shexp_state shs;
-         ui32_t addflags;
+         u32 addflags;
 
          if(shin.l == 0) goto jloop_break; /* TODO */
 
@@ -600,7 +600,7 @@ jredo:
          }
 
          if(ncap.ca_arg.ca_msglist[0] == 0){
-            ui32_t e;
+            u32 e;
 
             switch(ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK){
             case n_CMD_ARG_DESC_MSGLIST_AND_TARGET:
@@ -818,7 +818,7 @@ n_cmd_arg_restore_from_heap(void *vp){
 }
 
 FL int
-getrawlist(bool_t wysh, char **res_dat, size_t res_size,
+getrawlist(boole wysh, char **res_dat, size_t res_size,
       char const *line, size_t linesize){
    int res_no;
    NYD_IN;

@@ -46,14 +46,14 @@
 /* TODO fake */
 #include "su/code-in.h"
 
-FL bool_t
+FL boole
 n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
 #ifdef mx_HAVE_C90AMEND1
    mbstate_t *mbp;
 #endif
    size_t il;
    char const *ib;
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    ASSERT(vicp != NULL);
@@ -62,7 +62,7 @@ n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
 
    rv = TRU1;
    ib = vicp->vic_indat;
-   if((il = vicp->vic_inlen) == UIZ_MAX)
+   if((il = vicp->vic_inlen) == UZ_MAX)
       il = vicp->vic_inlen = su_cs_len(ib);
 
    if((vif & (n_VISUAL_INFO_WIDTH_QUERY | n_VISUAL_INFO_WOUT_PRINTABLE)) ==
@@ -186,7 +186,7 @@ colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
 {
    n_NATCH_CHAR( struct bidi_info bi; )
    int col_orig = col, n, size;
-   bool_t isbidi, isuni, istab, isrepl;
+   boole isbidi, isuni, istab, isrepl;
    char *nb, *np;
    NYD_IN;
 
@@ -248,7 +248,7 @@ jnobidi:
       {
          n = size = 1;
          istab = (*cp == '\t');
-         isrepl = !(istab || su_cs_is_print((uc_i)*cp));
+         isrepl = !(istab || su_cs_is_print((uc)*cp));
       }
 
       if (n > col)
@@ -319,7 +319,7 @@ makeprint(struct str const *in, struct str *out) /* TODO <-> TTYCHARSET!! */
       char mbb[MB_LEN_MAX + 1];
       wchar_t wc;
       int i, n;
-      bool_t isuni = ((n_psonce & n_PSO_UNICODE) != 0);
+      boole isuni = ((n_psonce & n_PSO_UNICODE) != 0);
 
       out->l = 0;
       while (inp < maxp) {
@@ -431,10 +431,10 @@ prout(char const *s, size_t size, FILE *fp)
    return n;
 }
 
-FL bool_t
+FL boole
 bidi_info_needed(char const *bdat, size_t blen)
 {
-   bool_t rv = FAL0;
+   boole rv = FAL0;
    NYD_IN;
 
 #ifdef mx_HAVE_NATCH_CHAR
@@ -442,8 +442,8 @@ bidi_info_needed(char const *bdat, size_t blen)
       while (blen > 0) {
          /* TODO Checking for BIDI character: use S-CText fromutf8
           * TODO plus isrighttoleft (or whatever there will be)! */
-         ui32_t c = su_utf8_to_32(&bdat, &blen);
-         if (c == UI32_MAX)
+         u32 c = su_utf8_to_32(&bdat, &blen);
+         if (c == U32_MAX)
             break;
 
          if (c <= 0x05BE)

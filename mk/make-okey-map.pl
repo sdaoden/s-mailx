@@ -130,9 +130,9 @@ sub create_c_tool{
 
 #define NELEM(A) (sizeof(A) / sizeof(A[0]))
 
-#define ui32_t uint32_t
-#define ui16_t uint16_t
-#define ui8_t uint8_t
+#define u32 uint32_t
+#define u16 uint16_t
+#define u8 uint8_t
 
 enum a_amv_var_flags{
    a_AMV_VF_NONE = 0,
@@ -166,20 +166,20 @@ enum a_amv_var_flags{
 };
 
 struct a_amv_var_map{
-   ui32_t avm_hash;
-   ui16_t avm_keyoff;
-   ui16_t avm_flags;    /* enum a_amv_var_flags */
+   u32 avm_hash;
+   u16 avm_keyoff;
+   u16 avm_flags; /* enum a_amv_var_flags */
 };
 
 struct a_amv_var_chain_map_bsrch{
    char avcmb_prefix[4];
-   ui16_t avcmb_chain_map_off;
-   ui16_t avcmb_chain_map_eokey; /* This is an enum okey */
+   u16 avcmb_chain_map_off;
+   u16 avcmb_chain_map_eokey; /* This is an enum okey */
 };
 
 struct a_amv_var_chain_map{
-   ui16_t avcm_keyoff;
-   ui16_t avcm_okey;
+   u16 avcm_keyoff;
+   u16 avcm_okey;
 };
 
 #define CTA(A,S)
@@ -188,7 +188,7 @@ _EOT
    print F '#include "', $OUT, "\"\n\n";
 
    print F <<'_EOT';
-static ui8_t seen_wraparound;
+static u8 seen_wraparound;
 static size_t longest_distance;
 
 static size_t
@@ -215,7 +215,7 @@ reversy(size_t size){
    longest_distance = 0;
 
    while(vmp < vmaxp){
-      ui32_t hash = vmp->avm_hash, i = hash % size, l;
+      u32 hash = vmp->avm_hash, i = hash % size, l;
 
       for(l = 0; arr[i] != NELEM(a_amv_var_map); ++l)
          if(++i == size){
@@ -416,7 +416,7 @@ _EOT
       print F "${S}struct a_amv_var *av_link;\n";
       print F "${S}char const *av_value;\n";
       print F "${S}a_X(char *av_env;)\n";
-      print F "${S}ui32_t av_flags;\n";
+      print F "${S}u32 av_flags;\n";
       print F "${S}char const av_name[", length($e->{name}), " +1];\n";
       my $f = $VERB ? 'a_AMV_VF_NONE' : '0';
       my $fa = join '|', @{$e->{flags}};
@@ -487,7 +487,7 @@ _EOT
 sub reverser{
    my $argv2 = $VERB ? ' verb' : '';
    system("\$CC -I. -o $CTOOL_EXE $CTOOL");
-   my $t = (@ENTS < 0xFF ? 'ui8_t' : (@ENTS < 0xFFFF ? 'ui16_t' : 'ui32_t'));
+   my $t = (@ENTS < 0xFF ? 'u8' : (@ENTS < 0xFFFF ? 'u16' : 'u32'));
    `$CTOOL_EXE $t$argv2 >> $OUT`
 }
 

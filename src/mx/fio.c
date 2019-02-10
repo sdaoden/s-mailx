@@ -53,7 +53,7 @@ static char *     _fgetline_byone(char **line, size_t *linesize, size_t *llen,
                      FILE *fp, int appendnl, size_t n  su_DBG_LOC_ARGS_DECL);
 
 /* Workhorse */
-static bool_t a_file_lock(int fd, enum n_file_lock_type ft, off_t off,
+static boole a_file_lock(int fd, enum n_file_lock_type ft, off_t off,
                off_t len);
 
 static size_t
@@ -116,11 +116,11 @@ jleave:
    return rv;
 }
 
-static bool_t
+static boole
 a_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len)
 {
    struct flock flp;
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    su_mem_set(&flp, 0, sizeof flp);
@@ -276,15 +276,15 @@ fsize(FILE *iob)
    return rv;
 }
 
-FL bool_t
+FL boole
 n_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len,
    size_t pollmsecs)
 {
    size_t tries;
-   bool_t didmsg, rv;
+   boole didmsg, rv;
    NYD_IN;
 
-   if(pollmsecs == UIZ_MAX)
+   if(pollmsecs == UZ_MAX)
       pollmsecs = FILE_LOCK_MILLIS;
 
    UNINIT(rv, 0);

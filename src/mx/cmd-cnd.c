@@ -37,11 +37,11 @@
 
 struct a_ccnd_if_node{
    struct a_ccnd_if_node *cin_outer;
-   bool_t cin_error;    /* Bad expression, skip entire if..endif */
-   bool_t cin_noop;     /* Outer stack !cin_go, entirely no-op */
-   bool_t cin_go;       /* Green light */
-   bool_t cin_else;     /* In `else' clause */
-   ui8_t cin__dummy[4];
+   boole cin_error;    /* Bad expression, skip entire if..endif */
+   boole cin_noop;     /* Outer stack !cin_go, entirely no-op */
+   boole cin_go;       /* Green light */
+   boole cin_else;     /* In `else' clause */
+   u8 cin__dummy[4];
 };
 
 struct a_ccnd_if_ctx{
@@ -56,12 +56,12 @@ static void a_ccnd_oif_error(struct a_ccnd_if_ctx const *cicp,
 
 /* noop and (1) don't work for real, only syntax-check and
  * (2) non-error return is ignored */
-static si8_t a_ccnd_oif_test(struct a_ccnd_if_ctx *cicp, bool_t noop);
-static si8_t a_ccnd_oif_group(struct a_ccnd_if_ctx *cicp, size_t level,
-               bool_t noop);
+static s8 a_ccnd_oif_test(struct a_ccnd_if_ctx *cicp, boole noop);
+static s8 a_ccnd_oif_group(struct a_ccnd_if_ctx *cicp, size_t level,
+               boole noop);
 
 /* Shared `if' / `elif' implementation */
-static int a_ccnd_if(void *v, bool_t iselif);
+static int a_ccnd_if(void *v, boole iselif);
 
 static void
 a_ccnd_oif_error(struct a_ccnd_if_ctx const *cicp, char const *msg_or_null,
@@ -90,12 +90,12 @@ a_ccnd_oif_error(struct a_ccnd_if_ctx const *cicp, char const *msg_or_null,
    NYD2_OU;
 }
 
-static si8_t
-a_ccnd_oif_test(struct a_ccnd_if_ctx *cicp, bool_t noop){
+static s8
+a_ccnd_oif_test(struct a_ccnd_if_ctx *cicp, boole noop){
    char const *emsg, * const *argv, *cp, *lhv, *op, *rhv;
    size_t argc;
    char c;
-   si8_t rv;
+   s8 rv;
    NYD2_IN;
 
    rv = -1;
@@ -124,7 +124,7 @@ jesyn:
 
    switch(*cp){
    default:
-      switch((rv = n_boolify(cp, UIZ_MAX, TRUM1))){
+      switch((rv = n_boolify(cp, UZ_MAX, TRUM1))){
       case FAL0:
       case TRU1:
          break;
@@ -276,7 +276,7 @@ jesyn:
          rv = ((flags & a_ICASE ? su_cs_find_case(lhv, rhv)
                : su_cs_find(lhv, rhv)) == NULL) ^ (c == '=');
       }else if(c == '-'){
-         si64_t lhvi, rhvi;
+         s64 lhvi, rhvi;
 
          if(*lhv == '\0')
             lhv = n_0;
@@ -301,7 +301,7 @@ jesyn:
          }
          break;
       }else{
-         si32_t scmp;
+         s32 scmp;
 
          scmp = (flags & a_ICASE) ? su_cs_cmp_case(lhv, rhv)
                : su_cs_cmp(lhv, rhv);
@@ -323,8 +323,8 @@ jleave:
    return rv;
 }
 
-static si8_t
-a_ccnd_oif_group(struct a_ccnd_if_ctx *cicp, size_t level, bool_t noop){
+static s8
+a_ccnd_oif_group(struct a_ccnd_if_ctx *cicp, size_t level, boole noop){
    char const *emsg, *arg0, * const *argv, * const *argv_max_save;
    size_t i;
    char unary, c;
@@ -339,7 +339,7 @@ a_ccnd_oif_group(struct a_ccnd_if_ctx *cicp, size_t level, bool_t noop){
       a_CANNOT_LIST = a_FIRST,
       a_CANNOT_COND = a_NEED_LIST
    } state;
-   si8_t rv, xrv;
+   s8 rv, xrv;
    NYD2_IN;
 
    rv = -1;
@@ -480,11 +480,11 @@ jesyn:
 }
 
 static int
-a_ccnd_if(void *v, bool_t iselif){
+a_ccnd_if(void *v, boole iselif){
    struct a_ccnd_if_ctx cic;
    char const * const *argv;
    size_t argc;
-   si8_t xrv, rv;
+   s8 xrv, rv;
    struct a_ccnd_if_node *cinp;
    NYD_IN;
 
@@ -524,7 +524,7 @@ a_ccnd_if(void *v, bool_t iselif){
    xrv = a_ccnd_oif_group(&cic, 0, FAL0);
 
    if(xrv >= 0){
-      cinp->cin_go = (bool_t)xrv;
+      cinp->cin_go = (boole)xrv;
       rv = 0;
    }else{
       cinp->cin_error = cinp->cin_noop = TRU1;
@@ -601,9 +601,9 @@ c_endif(void *v){
    return rv;
 }
 
-FL bool_t
+FL boole
 n_cnd_if_isskip(void){
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    rv = a_CCND_IF_ISSKIP();

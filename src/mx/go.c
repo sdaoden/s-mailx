@@ -144,10 +144,10 @@ enum a_go_hist_flags{
 
 struct a_go_eval_ctx{
    struct str gec_line;    /* The terminated data to _evaluate() */
-   ui32_t gec_line_size;   /* May be used to store line memory size */
-   bool_t gec_ever_seen;   /* Has ever been used (main_loop() only) */
-   ui8_t gec__dummy[2];
-   ui8_t gec_hist_flags;   /* enum a_go_hist_flags */
+   u32 gec_line_size;   /* May be used to store line memory size */
+   boole gec_ever_seen;   /* Has ever been used (main_loop() only) */
+   u8 gec__dummy[2];
+   u8 gec_hist_flags;   /* enum a_go_hist_flags */
    char const *gec_hist_cmd; /* If a_GO_HIST_ADD only, cmd and args */
    char const *gec_hist_args;
 };
@@ -155,16 +155,16 @@ struct a_go_eval_ctx{
 struct a_go_input_inject{
    struct a_go_input_inject *gii_next;
    size_t gii_len;
-   bool_t gii_commit;
-   bool_t gii_no_history;
+   boole gii_commit;
+   boole gii_no_history;
    char gii_dat[VFIELD_SIZE(6)];
 };
 
 struct a_go_ctx{
    struct a_go_ctx *gc_outer;
    sigset_t gc_osigmask;
-   ui32_t gc_flags;           /* enum a_go_flags */
-   ui32_t gc_loff;            /* Pseudo (macro): index in .gc_lines */
+   u32 gc_flags;           /* enum a_go_flags */
+   u32 gc_loff;            /* Pseudo (macro): index in .gc_lines */
    char **gc_lines;           /* Pseudo content, lines unfolded */
    FILE *gc_file;             /* File we were in, if applicable */
    struct a_go_input_inject *gc_inject; /* To be consumed first */
@@ -174,8 +174,8 @@ struct a_go_ctx{
    /* SPLICE hacks: saved stdin/stdout, saved pstate */
    FILE *gc_splice_stdin;
    FILE *gc_splice_stdout;
-   ui32_t gc_splice_psonce;
-   ui8_t gc_splice__dummy[4];
+   u32 gc_splice_psonce;
+   u8 gc_splice__dummy[4];
    struct n_go_data_ctx gc_data;
    char gc_name[VFIELD_SIZE(0)]; /* Name of file or macro */
 };
@@ -185,11 +185,11 @@ struct a_go_readctl_ctx{ /* TODO localize readctl_read_overlay: OnForkEvent! */
    struct a_go_readctl_ctx *grc_next;
    char const *grc_expand;          /* If filename based, expanded string */
    FILE *grc_fp;
-   si32_t grc_fd;                   /* Based upon file-descriptor */
+   s32 grc_fd;                   /* Based upon file-descriptor */
    char grc_name[VFIELD_SIZE(4)]; /* User input for identification purposes */
 };
 
-static sighandler_type a_go_oldpipe;
+static n_sighdl_t a_go_oldpipe;
 /* a_go_cmd_tab[] after fun protos */
 
 /* Our current execution context, and the buffer backing the outermost level */
@@ -197,7 +197,7 @@ static struct a_go_ctx *a_go_ctx;
 
 #define a_GO_MAINCTX_NAME "Main event loop"
 static union{
-   ui64_t align;
+   u64 align;
    char uf[VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) +
          sizeof(a_GO_MAINCTX_NAME)];
 } a_go__mainctx_b;
@@ -213,7 +213,7 @@ static sigjmp_buf a_go_srbuf; /* TODO GET RID */
 static void a_go_update_pstate(void);
 
 /* Evaluate a single command */
-static bool_t a_go_evaluate(struct a_go_eval_ctx *gecp);
+static boole a_go_evaluate(struct a_go_eval_ctx *gecp);
 
 /* Branch here on hangup signal and simulate "exit" */
 static void a_go_hangup(int s);
@@ -229,17 +229,17 @@ static void a_go_cleanup(enum a_go_cleanup_mode gcm);
 /* `source' and `source_if' (if silent_open_error: no pipes allowed, then).
  * Returns FAL0 if file is somehow not usable (unless silent_open_error) or
  * upon evaluation error, and TRU1 on success */
-static bool_t a_go_file(char const *file, bool_t silent_open_error);
+static boole a_go_file(char const *file, boole silent_open_error);
 
 /* System resource file load()ing or -X command line option array traversal */
-static bool_t a_go_load(struct a_go_ctx *gcp);
+static boole a_go_load(struct a_go_ctx *gcp);
 
 /* A simplified command loop for recursed state machines */
-static bool_t a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif);
+static boole a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif);
 
 static void
 a_go_update_pstate(void){
-   bool_t act;
+   boole act;
    NYD_IN;
 
    act = ((n_pstate & n_PS_SIGWINCH_PEND) != 0);
@@ -256,7 +256,7 @@ a_go_update_pstate(void){
    NYD_OU;
 }
 
-static bool_t
+static boole
 a_go_evaluate(struct a_go_eval_ctx *gecp){
    /* xxx old style(9), but also old code */
    /* TODO a_go_evaluate() should be splitted in multiple subfunctions,
@@ -266,7 +266,7 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    char _wordbuf[2], *argv_stack[3], **argv_base, **argvp, *vput, *cp, *word;
    char const *alias_name;
    struct n_cmd_desc const *cdp;
-   si32_t nerrn, nexn;     /* TODO n_pstate_ex_no -> si64_t! */
+   s32 nerrn, nexn;     /* TODO n_pstate_ex_no -> s64! */
    int rv, c;
    enum{
       a_NONE = 0,
@@ -437,7 +437,7 @@ jempty:
 
    if(!(flags & a_NOALIAS) && (flags & a_ALIAS_MASK) != a_ALIAS_MASK){
       char const *alias_exp;
-      ui8_t expcnt;
+      u8 expcnt;
 
       expcnt = (flags & a_ALIAS_MASK);
       ++expcnt;
@@ -476,7 +476,7 @@ jempty:
    }
 
    if((cdp = n_cmd_firstfit(word)) == NULL){
-      bool_t doskip;
+      boole doskip;
 
       if(!(doskip = n_cnd_if_isskip()) || (n_poption & n_PO_D_V))
          n_err(_("Unknown command%s: `%s'\n"),
@@ -717,14 +717,14 @@ jmsglist_go:
 
       if(UCMP(32, c, <, cdp->cd_minargs)){
          n_err(_("`%s' requires at least %u arg(s)\n"),
-            cdp->cd_name, (ui32_t)cdp->cd_minargs);
+            cdp->cd_name, (u32)cdp->cd_minargs);
          flags |= a_NO_ERRNO;
          break;
       }
 #undef cd_minargs
       if(UCMP(32, c, >, cdp->cd_maxargs)){
          n_err(_("`%s' takes no more than %u arg(s)\n"),
-            cdp->cd_name, (ui32_t)cdp->cd_maxargs);
+            cdp->cd_name, (u32)cdp->cd_maxargs);
          flags |= a_NO_ERRNO;
          break;
       }
@@ -808,7 +808,7 @@ jleave:
          n_exit_status = n_EXIT_OK;
       n_pstate &= ~n_PS_ERR_EXIT_MASK;
    }else if(rv != 0){
-      bool_t bo;
+      boole bo;
 
       if((bo = ok_blook(batch_exit_on_error))){
          n_OBSOLETE(_("please use *errexit*, not *batch-exit-on-error*"));
@@ -1063,13 +1063,13 @@ jerr:
    goto jleave;
 }
 
-static bool_t
-a_go_file(char const *file, bool_t silent_open_error){
+static boole
+a_go_file(char const *file, boole silent_open_error){
    struct a_go_ctx *gcp;
    sigset_t osigmask;
    size_t nlen;
    char *nbuf;
-   bool_t ispipe;
+   boole ispipe;
    FILE *fip;
    NYD_IN;
 
@@ -1141,7 +1141,7 @@ jleave:
    return (fip != NULL);
 }
 
-static bool_t
+static boole
 a_go_load(struct a_go_ctx *gcp){
    NYD2_IN;
 
@@ -1182,9 +1182,9 @@ a_go__eloopint(int sig){ /* TODO one day, we don't need it no more */
    siglongjmp(a_go_ctx->gc_eloop_jmp, 1);
 }
 
-static bool_t
+static boole
 a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
-   sighandler_type soldhdl;
+   n_sighdl_t soldhdl;
    struct a_go_eval_ctx gec;
    enum {a_RETOK = TRU1, a_TICKED = 1<<1} volatile f;
    volatile int hadint; /* TODO get rid of shitty signal stuff (see signal.c) */
@@ -1220,8 +1220,8 @@ a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
       rele_all_sigs();
       n = n_go_input(gif, NULL, &gec.gec_line.s, &gec.gec_line.l, NULL, NULL);
       hold_all_sigs();
-      gec.gec_line_size = (ui32_t)gec.gec_line.l;
-      gec.gec_line.l = (ui32_t)n;
+      gec.gec_line_size = (u32)gec.gec_line.l;
+      gec.gec_line.l = (u32)n;
 
       if(n < 0)
          break;
@@ -1278,11 +1278,11 @@ n_go_init(void){
    NYD2_OU;
 }
 
-FL bool_t
+FL boole
 n_go_main_loop(void){ /* FIXME */
    struct a_go_eval_ctx gec;
    int n, eofcnt;
-   bool_t volatile rv;
+   boole volatile rv;
    NYD_IN;
 
    rv = TRU1;
@@ -1336,7 +1336,7 @@ n_go_main_loop(void){ /* FIXME */
                Jnewmail:
 #endif
                {
-                  ui32_t odid;
+                  u32 odid;
                   size_t odot;
 
                   odot = P2UZ(dot - message);
@@ -1389,7 +1389,7 @@ n_go_main_loop(void){ /* FIXME */
       /* Read a line of commands and handle end of file specially */
       gec.gec_line.l = gec.gec_line_size;
       /* C99 */{
-         bool_t histadd;
+         boole histadd;
 
          histadd = (!(n_pstate & n_PS_SOURCING) &&
                (n_psonce & n_PSO_INTERACTIVE));
@@ -1400,8 +1400,8 @@ n_go_main_loop(void){ /* FIXME */
 
          gec.gec_hist_flags = histadd ? a_GO_HIST_ADD : a_GO_HIST_NONE;
       }
-      gec.gec_line_size = (ui32_t)gec.gec_line.l;
-      gec.gec_line.l = (ui32_t)n;
+      gec.gec_line_size = (u32)gec.gec_line.l;
+      gec.gec_line.l = (u32)n;
 
       if (n < 0) {
          if (!(n_pstate & n_PS_ROBOT) &&
@@ -1482,9 +1482,9 @@ n_go_input_force_eof(void){
    NYD2_OU;
 }
 
-FL bool_t
+FL boole
 n_go_input_is_eof(void){
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    rv = ((a_go_ctx->gc_flags & a_GO_IS_EOF) != 0);
@@ -1492,9 +1492,9 @@ n_go_input_is_eof(void){
    return rv;
 }
 
-FL bool_t
+FL boole
 n_go_input_have_injections(void){
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    rv = (a_go_ctx->gc_inject != NULL);
@@ -1507,10 +1507,10 @@ n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
       size_t len){
    NYD_IN;
 
-   if(len == UIZ_MAX)
+   if(len == UZ_MAX)
       len = su_cs_len(buf);
 
-   if(UIZ_MAX - VSTRUCT_SIZEOF(struct a_go_input_inject, gii_dat) -1 > len &&
+   if(UZ_MAX - VSTRUCT_SIZEOF(struct a_go_input_inject, gii_dat) -1 > len &&
          len > 0){
       struct a_go_input_inject *giip,  **giipp;
 
@@ -1533,9 +1533,9 @@ n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
 
 FL int
 (n_go_input)(enum n_go_input_flags gif, char const *prompt, char **linebuf,
-      size_t *linesize, char const *string, bool_t *histok_or_null
+      size_t *linesize, char const *string, boole *histok_or_null
       su_DBG_LOC_ARGS_DECL){
-   /* TODO readline: linebuf pool!; n_go_input should return si64_t.
+   /* TODO readline: linebuf pool!; n_go_input should return s64.
     * TODO This thing should be replaced by a(n) (stack of) event generator(s)
     * TODO and consumed by OnLineCompletedEvent listeners */
    struct n_string xprompt;
@@ -1788,7 +1788,7 @@ FL char *
 n_go_input_cp(enum n_go_input_flags gif, char const *prompt,
       char const *string){
    struct n_sigman sm;
-   bool_t histadd;
+   boole histadd;
    size_t linesize;
    char *linebuf, * volatile rv;
    int n;
@@ -1821,12 +1821,12 @@ jleave:
    return rv;
 }
 
-FL bool_t
+FL boole
 n_go_load(char const *name){
    struct a_go_ctx *gcp;
    size_t i;
    FILE *fip;
-   bool_t rv;
+   boole rv;
    NYD_IN;
 
    rv = TRU1;
@@ -1855,13 +1855,13 @@ jleave:
    return rv;
 }
 
-FL bool_t
-n_go_XYargs(bool_t injectit, char const **lines, size_t cnt){
+FL boole
+n_go_XYargs(boole injectit, char const **lines, size_t cnt){
    static char const name[] = "-X";
 
    union{
-      bool_t rv;
-      ui64_t align;
+      boole rv;
+      u64 align;
       char uf[VSTRUCT_SIZEOF(struct a_go_ctx, gc_name) + sizeof(name)];
    } b;
    char const *srcp, *xsrcp;
@@ -1891,7 +1891,7 @@ n_go_XYargs(bool_t injectit, char const **lines, size_t cnt){
 
    /* For each of the input lines.. */
    for(i = len = 0, cp = NULL; cnt > 0;){
-      bool_t keep;
+      boole keep;
       size_t j;
 
       if((j = su_cs_len(srcp = *lines)) == 0){
@@ -1952,7 +1952,7 @@ n_go_XYargs(bool_t injectit, char const **lines, size_t cnt){
    else{
       while(i > 0){
          n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, cp = gcp->gc_lines[--i],
-            UIZ_MAX);
+            UZ_MAX);
          n_free(cp);
       }
       n_free(gcp->gc_lines);
@@ -1983,7 +1983,7 @@ c_source_if(void *v){ /* XXX obsolete?, support file tests in `if' etc.! */
    return rv;
 }
 
-FL bool_t
+FL boole
 n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
       void (*on_finalize)(void*), void *finalize_arg){
    struct a_go_ctx *gcp;
@@ -2050,10 +2050,10 @@ n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
    return rv;
 }
 
-FL bool_t
+FL boole
 n_go_command(enum n_go_input_flags gif, char const *cmd){
    struct a_go_ctx *gcp;
-   bool_t rv;
+   boole rv;
    size_t i, ial;
    sigset_t osigmask;
    NYD_IN;
@@ -2089,7 +2089,7 @@ n_go_command(enum n_go_input_flags gif, char const *cmd){
 
 FL void
 n_go_splice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
-      ui32_t new_psonce, void (*on_finalize)(void*), void *finalize_arg){
+      u32 new_psonce, void (*on_finalize)(void*), void *finalize_arg){
    struct a_go_ctx *gcp;
    size_t i;
    sigset_t osigmask;
@@ -2130,10 +2130,10 @@ n_go_splice_hack_remove_after_jump(void){
    a_go_cleanup(a_GO_CLEANUP_TEARDOWN);
 }
 
-FL bool_t
+FL boole
 n_go_may_yield_control(void){ /* TODO this is a terrible hack */
    struct a_go_ctx *gcp;
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    rv = FAL0;
@@ -2293,8 +2293,8 @@ c_readctl(void *vp){
     * TODO n_readctl_read_overlay to be accessible via =NULL, and to make that
     * TODO work in turn we need an instance for default STDIN!  Sigh. */
    static union{
-      ui64_t alignme;
-      ui8_t buf[VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name)+1 +1];
+      u64 alignme;
+      u8 buf[VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name)+1 +1];
    } a;
    static struct a_go_readctl_ctx *a_stdin;
 
@@ -2382,7 +2382,7 @@ jfound:
    }else{
       FILE *fp;
       size_t elen;
-      si32_t fd;
+      s32 fd;
 
       if(grcp != NULL){
          n_err(_("`readctl': channel already exists: %s\n"), /* TODO reopen */
@@ -2418,7 +2418,7 @@ jfound:
       if(fp != NULL){
          size_t i;
 
-         if((i = UIZ_MAX - elen) <= cap->ca_arg.ca_str.l ||
+         if((i = UZ_MAX - elen) <= cap->ca_arg.ca_str.l ||
                (i -= cap->ca_arg.ca_str.l) <=
                   VSTRUCT_SIZEOF(struct a_go_readctl_ctx, grc_name) +2){
             n_err(_("`readctl': failed to create storage for %s\n"),

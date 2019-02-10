@@ -57,9 +57,9 @@ su_EMPTY_FILE()
 
 static char *           encname(struct mailbox *mp, const char *name, int same,
                            const char *box);
-static char *           encuid(struct mailbox *mp, ui64_t uid);
+static char *           encuid(struct mailbox *mp, u64 uid);
 static FILE *           clean(struct mailbox *mp, struct cw *cw);
-static ui64_t *         builds(long *contentelem);
+static u64 *         builds(long *contentelem);
 static void             purge(struct mailbox *mp, struct message *m, long mc,
                            struct cw *cw, const char *name);
 static int              longlt(const void *a, const void *b);
@@ -119,7 +119,7 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
       eaccount = urlxenc(mp->mb_imap_account, TRU1);
 
       if (box != NULL || su_cs_cmp_case(box = mp->mb_imap_mailbox, "INBOX")) {
-         bool_t err;
+         boole err;
 
          box = imap_path_encode(box, &err);
          if(err)
@@ -139,7 +139,7 @@ jleave:
 }
 
 static char *
-encuid(struct mailbox *mp, ui64_t uid)
+encuid(struct mailbox *mp, u64 uid)
 {
    char buf[64], *cp;
    NYD2_IN;
@@ -375,7 +375,7 @@ initcache(struct mailbox *mp)
 {
    char *name, *uvname;
    FILE *uvfp;
-   ui64_t uv;
+   u64 uv;
    struct cw cw;
    NYD_IN;
 
@@ -443,7 +443,7 @@ clean(struct mailbox *mp, struct cw *cw)
       goto jleave;
    eaccount = urlxenc(mp->mb_imap_account, TRU1);
    if (su_cs_cmp_case(emailbox = mp->mb_imap_mailbox, "INBOX")) {
-      bool_t err;
+      boole err;
 
       emailbox = imap_path_encode(emailbox, &err);
       if(err)
@@ -488,10 +488,10 @@ jleave:
    return fp;
 }
 
-static ui64_t *
+static u64 *
 builds(long *contentelem)
 {
-   ui64_t n, *contents = NULL;
+   u64 n, *contents = NULL;
    long contentalloc = 0;
    char const *x;
    DIR *dirp;
@@ -528,7 +528,7 @@ static void
 purge(struct mailbox *mp, struct message *m, long mc, struct cw *cw,
    const char *name)
 {
-   ui64_t *contents;
+   u64 *contents;
    long i, j, contentelem;
    NYD_IN;
    UNUSED(mp);
@@ -598,7 +598,7 @@ cache_setptr(enum fedit_mode fm, int transparent)
    struct cw cw;
    int i, omsgCount = 0;
    char *name;
-   ui64_t *contents;
+   u64 *contents;
    long contentelem;
    struct message *omessage;
    enum okay rv = STOP;
@@ -760,12 +760,12 @@ jleave:
    return rv;
 }
 
-FL ui64_t
+FL u64
 cached_uidvalidity(struct mailbox *mp)
 {
    FILE *uvfp;
    char *uvname;
-   ui64_t uv;
+   u64 uv;
    NYD_IN;
 
    if ((uvname = encname(mp, "UIDVALIDITY", 1, NULL)) == NULL) {
@@ -858,7 +858,7 @@ dequeue1(struct mailbox *mp)
 {
    FILE *fp = NULL, *uvfp = NULL;
    char *qname, *uvname;
-   ui64_t uv;
+   u64 uv;
    off_t is_size;
    int is_count;
    enum okay rv = OKAY;

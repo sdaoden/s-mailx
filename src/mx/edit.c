@@ -55,14 +55,14 @@ edit1(int *msgvec, int viored)
    FILE *fp = NULL;
    struct message *mp;
    off_t size;
-   bool_t wb, lastnl;
+   boole wb, lastnl;
    NYD_IN;
 
    wb = ok_blook(writebackedited);
 
    /* Deal with each message to be edited... */
    for (i = 0; msgvec[i] != 0 && i < msgCount; ++i) {
-      sighandler_type sigint;
+      n_sighdl_t sigint;
 
       if(i > 0){
          char prompt[64];
@@ -141,9 +141,9 @@ c_visual(void *v)
 }
 
 FL FILE *
-n_run_editor(FILE *fp, off_t size, int viored, bool_t readonly,
+n_run_editor(FILE *fp, off_t size, int viored, boole readonly,
    struct header *hp, struct message *mp, enum sendaction action,
-   sighandler_type oldint, char const *pipecmd)
+   n_sighdl_t oldint, char const *pipecmd)
 {
    struct stat statb;
    sigset_t cset;

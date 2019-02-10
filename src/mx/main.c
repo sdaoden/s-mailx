@@ -109,7 +109,7 @@ static void a_main__scrsz(int is_sighdl);
 
 /* Ok, we are reading mail.  Decide whether we are editing a mailbox or reading
  * the system mailbox, and open up the right stuff */
-static int a_main_rcv_mode(bool_t had_A_arg, char const *folder,
+static int a_main_rcv_mode(boole had_A_arg, char const *folder,
             char const *Larg, char const **Yargs, size_t Yargs_cnt);
 
 /* Interrupt printing of the headers */
@@ -273,10 +273,10 @@ a_main_startup(void){
    /* Detect, verify and fixate our invoking user (environment) */
    n_group_id = getgid();
    if((pwuid = getpwuid(n_user_id = getuid())) == NULL)
-      n_panic(_("Cannot associate a name with uid %lu"), (ul_i)n_user_id);
+      n_panic(_("Cannot associate a name with uid %lu"), (ul)n_user_id);
    else{
       char const *ep;
-      bool_t doenv;
+      boole doenv;
 
       if(!(doenv = (ep = ok_vlook(LOGNAME)) == NULL) &&
             (doenv = (su_cs_cmp(pwuid->pw_name, ep) != 0)))
@@ -422,7 +422,7 @@ a_main__scrsz(int is_sighdl){
     * only honour it upon first run; abuse *is_sighdl* as an indicator */
    if(!is_sighdl){
       char const *cp;
-      bool_t hadl, hadc;
+      boole hadl, hadc;
 
       if((hadl = ((cp = ok_vlook(LINES)) != NULL))){
          su_idec_u32_cp(&n_scrnheight, cp, 0, NULL);
@@ -517,10 +517,10 @@ jleave:
 static sigjmp_buf a_main__hdrjmp; /* XXX */
 
 static int
-a_main_rcv_mode(bool_t had_A_arg, char const *folder, char const *Larg,
+a_main_rcv_mode(boole had_A_arg, char const *folder, char const *Larg,
       char const **Yargs, size_t Yargs_cnt){
    /* XXX a_main_rcv_mode(): use argument carrier */
-   sighandler_type prevint;
+   n_sighdl_t prevint;
    int i;
    NYD_IN;
 
@@ -885,7 +885,7 @@ jeMmq:
          {  struct str sin;
             struct n_string s_b, *s;
             char const *a[2];
-            bool_t b;
+            boole b;
 
             if(!ok_blook(v15_compat)){
                okey = a[0] = avo.avo_current_arg;
@@ -896,7 +896,7 @@ jeMmq:
                n_autorec_relax_create();
                s = n_string_creat_auto(&s_b);
                sin.s = n_UNCONST(avo.avo_current_arg);
-               sin.l = UIZ_MAX;
+               sin.l = UZ_MAX;
                shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
                      n_SHEXP_PARSE_IGNORE_EMPTY |
                      n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
@@ -1135,7 +1135,7 @@ jgetopt_done:
       /* *expand() returns a savestr(), but load() only uses the file name
        * for fopen(), so it is safe to do this */
       if(resfiles & a_RF_SYSTEM){
-         bool_t nload;
+         boole nload;
 
          if((nload = ok_blook(NAIL_NO_SYSTEM_RC)))
             n_OBSOLETE(_("Please use $MAILX_NO_SYSTEM_RC instead of "
@@ -1163,7 +1163,7 @@ jgetopt_done:
    /* Additional options to pass-through to MTA, and allowed to do so? */
    i = argc;
    if((cp = ok_vlook(expandargv)) != NULL){
-      bool_t isfail, isrestrict;
+      boole isfail, isrestrict;
 
       isfail = !su_cs_cmp_case(cp, "fail");
       isrestrict = (!isfail && !su_cs_cmp_case(cp, "restrict"));

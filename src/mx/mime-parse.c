@@ -51,7 +51,7 @@
 /* Fetch plain */
 static char *  _mime_parse_ct_plain_from_ct(char const *cth);
 
-static bool_t  _mime_parse_part(struct message *zmp, struct mimepart *ip,
+static boole  _mime_parse_part(struct message *zmp, struct mimepart *ip,
                   enum mime_parse_flags mpf, int level);
 
 static void    _mime_parse_rfc822(struct message *zmp, struct mimepart *ip,
@@ -62,7 +62,7 @@ static void    _mime_parse_pkcs7(struct message *zmp, struct mimepart *ip,
                   enum mime_parse_flags mpf, int level);
 #endif
 
-static bool_t  _mime_parse_multipart(struct message *zmp,
+static boole  _mime_parse_multipart(struct message *zmp,
                   struct mimepart *ip, enum mime_parse_flags mpf, int level);
 static void    __mime_parse_new(struct mimepart *ip, struct mimepart **np,
                   off_t offs, int *part);
@@ -88,12 +88,12 @@ _mime_parse_ct_plain_from_ct(char const *cth)
    return rv_b;
 }
 
-static bool_t
+static boole
 _mime_parse_part(struct message *zmp, struct mimepart *ip,
    enum mime_parse_flags mpf, int level)
 {
    char const *cp;
-   bool_t rv = FAL0;
+   boole rv = FAL0;
    NYD_IN;
 
    ip->m_ct_type = hfield1("content-type", (struct message*)ip);
@@ -274,7 +274,7 @@ _mime_parse_pkcs7(struct message *zmp, struct mimepart *ip,
 }
 #endif /* mx_HAVE_TLS */
 
-static bool_t
+static boole
 _mime_parse_multipart(struct message *zmp, struct mimepart *ip,
    enum mime_parse_flags mpf, int level)
 {

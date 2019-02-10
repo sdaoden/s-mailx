@@ -57,10 +57,10 @@ enum nrc_token {
 struct nrc_node {
    struct nrc_node   *nrc_next;
    struct nrc_node   *nrc_result;   /* In match phase, former possible one */
-   ui32_t            nrc_mlen;      /* Length of machine name */
-   ui32_t            nrc_ulen;      /* Length of user name */
-   ui32_t            nrc_plen;      /* Length of password */
-   char              nrc_dat[VFIELD_SIZE(sizeof(ui32_t))];
+   u32            nrc_mlen;      /* Length of machine name */
+   u32            nrc_ulen;      /* Length of user name */
+   u32            nrc_plen;      /* Length of password */
+   char              nrc_dat[VFIELD_SIZE(sizeof(u32))];
 };
 # define NRC_NODE_ERR   ((struct nrc_node*)-1)
 
@@ -77,25 +77,25 @@ static char *           _url_last_at_before_slash(char const *cp);
 /* Initialize .netrc cache */
 static void             _nrc_init(void);
 static enum nrc_token   __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN],
-                           bool_t *nl_last);
+                           boole *nl_last);
 
 /* We shall lookup a machine in .netrc says ok_blook(netrc_lookup).
  * only_pass is true then the lookup is for the password only, otherwise we
  * look for a user (and add password only if we have an exact machine match) */
-static bool_t           _nrc_lookup(struct url *urlp, bool_t only_pass);
+static boole           _nrc_lookup(struct url *urlp, boole only_pass);
 
 /* 0=no match; 1=exact match; -1=wildcard match */
 static int              __nrc_host_match(struct nrc_node const *nrc,
                            struct url const *urlp);
-static bool_t           __nrc_find_user(struct url *urlp,
+static boole           __nrc_find_user(struct url *urlp,
                            struct nrc_node const *nrc);
-static bool_t           __nrc_find_pass(struct url *urlp, bool_t user_match,
+static boole           __nrc_find_pass(struct url *urlp, boole user_match,
                            struct nrc_node const *nrc);
 #endif /* mx_HAVE_NETRC */
 
 /* The password can also be gained through external agents TODO v15-compat */
 #ifdef mx_HAVE_AGENT
-static bool_t           _agent_shell_lookup(struct url *urlp, char const *comm);
+static boole           _agent_shell_lookup(struct url *urlp, char const *comm);
 #endif
 
 #ifdef mx_HAVE_SOCKETS
@@ -126,8 +126,8 @@ _nrc_init(void)
    struct stat sb;
    FILE * volatile fi;
    enum nrc_token t;
-   bool_t volatile ispipe;
-   bool_t seen_default, nl_last;
+   boole volatile ispipe;
+   boole seen_default, nl_last;
    struct nrc_node * volatile ntail, * volatile nhead, * volatile nrc;
    NYD_IN;
 
@@ -285,7 +285,7 @@ j_leave:
 }
 
 static enum nrc_token
-__nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN], bool_t *nl_last)
+__nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN], boole *nl_last)
 {
    int c;
    char *cp;
@@ -294,7 +294,7 @@ __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN], bool_t *nl_last)
 
    rv = NRC_NONE;
    for (;;) {
-      bool_t seen_nl;
+      boole seen_nl;
 
       c = EOF;
       if (feof(fi) || ferror(fi))
@@ -370,11 +370,11 @@ jleave:
    return rv;
 }
 
-static bool_t
-_nrc_lookup(struct url *urlp, bool_t only_pass)
+static boole
+_nrc_lookup(struct url *urlp, boole only_pass)
 {
    struct nrc_node *nrc, *nrc_wild, *nrc_exact;
-   bool_t rv = FAL0;
+   boole rv = FAL0;
    NYD_IN;
 
    ASSERT(!only_pass || urlp->url_user.s != NULL);
@@ -472,7 +472,7 @@ jleave:
    return rv;
 }
 
-static bool_t
+static boole
 __nrc_find_user(struct url *urlp, struct nrc_node const *nrc)
 {
    NYD2_IN;
@@ -491,13 +491,13 @@ __nrc_find_user(struct url *urlp, struct nrc_node const *nrc)
    return (nrc != NULL);
 }
 
-static bool_t
-__nrc_find_pass(struct url *urlp, bool_t user_match, struct nrc_node const *nrc)
+static boole
+__nrc_find_pass(struct url *urlp, boole user_match, struct nrc_node const *nrc)
 {
    NYD2_IN;
 
    for (; nrc != NULL; nrc = nrc->nrc_result) {
-      bool_t um = (nrc->nrc_ulen == urlp->url_user.l &&
+      boole um = (nrc->nrc_ulen == urlp->url_user.l &&
             !su_mem_cmp(nrc->nrc_dat + nrc->nrc_mlen +1, urlp->url_user.s,
                urlp->url_user.l));
 
@@ -521,16 +521,16 @@ __nrc_find_pass(struct url *urlp, bool_t user_match, struct nrc_node const *nrc)
 #endif /* mx_HAVE_NETRC */
 
 #ifdef mx_HAVE_AGENT
-static bool_t
+static boole
 _agent_shell_lookup(struct url *urlp, char const *comm) /* TODO v15-compat */
 {
    char buf[128];
    char const *env_addon[8];
    struct str s;
    FILE *pbuf;
-   union {int c; sighandler_type sht;} u;
+   union {int c; n_sighdl_t sht;} u;
    size_t cl, l;
-   bool_t rv = FAL0;
+   boole rv = FAL0;
    NYD2_IN;
 
    env_addon[0] = str_concat_csvl(&s, "NAIL_USER", "=", urlp->url_user.s,
@@ -580,7 +580,7 @@ jleave:
 #endif /* mx_HAVE_AGENT */
 
 FL char *
-(urlxenc)(char const *cp, bool_t ispath  su_DBG_LOC_ARGS_DECL)
+(urlxenc)(char const *cp, boole ispath  su_DBG_LOC_ARGS_DECL)
 {
    char *n, *np, c1;
    NYD2_IN;
@@ -589,7 +589,7 @@ FL char *
       size_t i;
 
       i = su_cs_len(cp);
-      if(i >= UIZ_MAX / 3){
+      if(i >= UZ_MAX / 3){
          n = NULL;
          goto jleave;
       }
@@ -627,15 +627,15 @@ FL char *
 (urlxdec)(char const *cp  su_DBG_LOC_ARGS_DECL)
 {
    char *n, *np;
-   si32_t c;
+   s32 c;
    NYD2_IN;
 
    np = n = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(su_cs_len(cp) +1,
          su_DBG_LOC_ARGS_ORUSE);
 
-   while ((c = (uc_i)*cp++) != '\0') {
+   while ((c = (uc)*cp++) != '\0') {
       if (c == '%' && cp[0] != '\0' && cp[1] != '\0') {
-         si32_t o = c;
+         s32 o = c;
          if (LIKELY((c = n_c_from_hex_base16(cp)) >= '\0'))
             cp += 2;
          else
@@ -650,7 +650,7 @@ FL char *
 
 FL int
 c_urlcodec(void *vp){
-   bool_t ispath;
+   boole ispath;
    size_t alen;
    char const **argv, *varname, *varres, *act, *cp;
    NYD_IN;
@@ -687,7 +687,7 @@ c_urlcodec(void *vp){
    }
 
    if(varname != NULL){
-      if(!n_var_vset(varname, (uintptr_t)varres)){
+      if(!n_var_vset(varname, (up)varres)){
          n_pstate_err_no = su_ERR_NOTSUP;
          cp = NULL;
       }
@@ -782,13 +782,13 @@ url_mailto_to_address(char const *mailtop){ /* TODO hack! RFC 6068; factory? */
    /* Simply perform percent-decoding if there is a percent % */
    if(su_mem_find(rv, '%', i) != NULL){
       char *rv_base;
-      bool_t err;
+      boole err;
 
       for(err = FAL0, mailtop = rv_base = rv; i > 0;){
          char c;
 
          if((c = *mailtop++) == '%'){
-            si32_t cc;
+            s32 cc;
 
             if(i < 3 || (cc = n_c_from_hex_base16(mailtop)) < 0){
                if(!err && (err = TRU1, n_poption & n_PO_D_V))
@@ -814,11 +814,11 @@ jleave:
 }
 
 FL char const *
-n_servbyname(char const *proto, ui16_t *irv_or_null){
+n_servbyname(char const *proto, u16 *irv_or_null){
    static struct{
       char const name[14];
       char const port[8];
-      ui16_t portno;
+      u16 portno;
    } const tbl[] = {
       { "smtp", "25", 25},
       { "smtps", "465", 465},
@@ -851,7 +851,7 @@ n_servbyname(char const *proto, ui16_t *irv_or_null){
 }
 
 #ifdef mx_HAVE_SOCKETS /* Note: not indented for that -- later: file:// etc.! */
-FL bool_t
+FL boole
 url_parse(struct url *urlp, enum cproto cproto, char const *data)
 {
 #if defined mx_HAVE_SMTP && defined mx_HAVE_POP3 && defined mx_HAVE_IMAP
@@ -862,7 +862,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 # define a_ANYPROTO
    char *cp, *x;
 #endif
-   bool_t rv = FAL0;
+   boole rv = FAL0;
    NYD_IN;
    UNUSED(data);
 
@@ -1057,7 +1057,7 @@ jurlp_err:
       /* Take care not to count adjacent solidus for real, on either end */
       char *x2;
       size_t i;
-      bool_t trailsol;
+      boole trailsol;
 
       for(trailsol = FAL0, x2 = savestrbuf(x, i = su_cs_len(x)); i > 0;
             trailsol = TRU1, --i)
@@ -1247,16 +1247,16 @@ jleave:
 #undef a_ALLPROTO
 }
 
-FL bool_t
+FL boole
 ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
 {
    char const *pname, *pxstr, *authdef, *s;
    size_t pxlen, addrlen, i;
    char *vbuf;
-   ui8_t authmask;
+   u8 authmask;
    enum {NONE=0, WANT_PASS=1<<0, REQ_PASS=1<<1, WANT_USER=1<<2, REQ_USER=1<<3}
       ware = NONE;
-   bool_t addr_is_nuser = FAL0; /* XXX v15.0 legacy! v15_compat */
+   boole addr_is_nuser = FAL0; /* XXX v15.0 legacy! v15_compat */
    NYD_IN;
 
    n_OBSOLETE(_("Use of old-style credentials, which will vanish in v15!\n"
@@ -1427,12 +1427,12 @@ jleave:
    return (ccp != NULL);
 }
 
-FL bool_t
+FL boole
 ccred_lookup(struct ccred *ccp, struct url *urlp)
 {
    char *s;
    char const *pstr, *authdef;
-   ui8_t authmask;
+   u8 authmask;
    enum okeys authokey;
    enum {NONE=0, WANT_PASS=1<<0, REQ_PASS=1<<1, WANT_USER=1<<2, REQ_USER=1<<3}
       ware;
@@ -1575,7 +1575,7 @@ c_netrc(void *v)
 {
    char **argv = v;
    struct nrc_node *nrc;
-   bool_t load_only;
+   boole load_only;
    NYD_IN;
 
    load_only = FAL0;
@@ -1673,7 +1673,7 @@ cram_md5_string(struct str const *user, struct str const *pass,
    NYD_IN;
 
    out.s = NULL;
-   if(user->l >= UIZ_MAX - 1 - MD5TOHEX_SIZE - 1)
+   if(user->l >= UZ_MAX - 1 - MD5TOHEX_SIZE - 1)
       goto jleave;
    if(pass->l >= INT_MAX)
       goto jleave;
@@ -1688,7 +1688,7 @@ cram_md5_string(struct str const *user, struct str const *pass,
       goto jleave;
    }
 
-   hmac_md5((uc_i*)out.s, out.l, (uc_i*)pass->s, pass->l, digest);
+   hmac_md5((uc*)out.s, out.l, (uc*)pass->s, pass->l, digest);
    n_free(out.s);
    cp = md5tohex(n_autorec_alloc(MD5TOHEX_SIZE +1), digest);
 

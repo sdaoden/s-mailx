@@ -34,27 +34,27 @@
 
 struct rfc2231_joiner {
    struct rfc2231_joiner *rj_next;
-   ui32_t      rj_no;            /* Continuation number */
-   ui32_t      rj_len;           /* of useful data in .rj_dat */
-   ui32_t      rj_val_off;       /* Start of value data therein */
-   ui32_t      rj_cs_len;        /* Length of charset part */
-   bool_t      rj_is_enc;        /* Is percent encoded */
-   ui8_t       __pad[7];
+   u32      rj_no;            /* Continuation number */
+   u32      rj_len;           /* of useful data in .rj_dat */
+   u32      rj_val_off;       /* Start of value data therein */
+   u32      rj_cs_len;        /* Length of charset part */
+   boole      rj_is_enc;        /* Is percent encoded */
+   u8       __pad[7];
    char const  *rj_dat;
 };
 
 struct mime_param_builder {
    struct mime_param_builder *mpb_next;
    struct str  *mpb_result;
-   ui32_t      mpb_level;        /* of recursion (<-> continuation number) */
-   ui32_t      mpb_name_len;     /* of the parameter .mpb_name */
-   ui32_t      mpb_value_len;    /* of remaining value */
-   ui32_t      mpb_charset_len;  /* of .mpb_charset (iff in outermost level) */
-   ui32_t      mpb_buf_len;      /* Usable result of this level in .mpb_buf */
-   bool_t      mpb_is_enc;       /* Level requires encoding */
-   ui8_t       __dummy[1];
-   bool_t      mpb_is_utf8;      /* Encoding is UTF-8 */
-   si8_t       mpb_rv;
+   u32      mpb_level;        /* of recursion (<-> continuation number) */
+   u32      mpb_name_len;     /* of the parameter .mpb_name */
+   u32      mpb_value_len;    /* of remaining value */
+   u32      mpb_charset_len;  /* of .mpb_charset (iff in outermost level) */
+   u32      mpb_buf_len;      /* Usable result of this level in .mpb_buf */
+   boole      mpb_is_enc;       /* Level requires encoding */
+   u8       __dummy[1];
+   boole      mpb_is_utf8;      /* Encoding is UTF-8 */
+   s8       mpb_rv;
    char const  *mpb_name;
    char const  *mpb_value;       /* Remains of, once the level was entered */
    char const  *mpb_charset;     /* *ttycharset* */
@@ -62,7 +62,7 @@ struct mime_param_builder {
 };
 
 /* All ASCII characters which cause RFC 2231 to be applied XXX check -1 slots*/
-static bool_t const        _rfc2231_etab[] = {
+static boole const        _rfc2231_etab[] = {
     1, 1, 1, 1,  1, 1, 1, 1,  1, 1,-1,-1,  1,-1, 1, 1,   /* NUL..SI */
     1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,  1, 1, 1, 1,   /* DLE..US */
     1, 0, 1, 0,  0, 1, 0, 1,  1, 1, 1, 0,  1, 0, 0, 1,   /* CAN.. / */
@@ -82,7 +82,7 @@ static char const * _mime_param_skip(char const *hbp);
  * On successful return (1,-1; -1 is returned if the value was quoted via
  * double quotation marks) a set end_or_null points to after the value and any
  * possible separator and result->s is the autorec_alloc()d normalized value */
-static si8_t      _mime_param_value_trim(struct str *result, char const *start,
+static s8      _mime_param_value_trim(struct str *result, char const *start,
                      char const **end_or_null);
 
 /* mime_param_get() found the desired parameter but it seems to use RFC 2231
@@ -90,7 +90,7 @@ static si8_t      _mime_param_value_trim(struct str *result, char const *start,
  * Note that _join() returns is-error */
 static char *     _rfc2231_param_parse(char const *param, size_t plen,
                      char const *hbp);
-static bool_t     __rfc2231_join(struct rfc2231_joiner *head, char **result,
+static boole     __rfc2231_join(struct rfc2231_joiner *head, char **result,
                      char const **emsg);
 
 /* Recursive parameter builder.  Note we have a magic limit of 999 levels.
@@ -140,14 +140,14 @@ jleave:
    return hbp;
 }
 
-static si8_t
+static s8
 _mime_param_value_trim(struct str *result, char const *start,
    char const **end_or_null)
 {
    char const *e;
    char co, cn;
    size_t i;
-   si8_t rv;
+   s8 rv;
    NYD2_IN;
 
    while (su_cs_is_white(*start)) /* XXX? */
@@ -216,7 +216,7 @@ _rfc2231_param_parse(char const *param, size_t plen, char const *hbp)
    char nobuf[32], *eptr, *rv = NULL, c;
    char const *hbp_base, *cp, *emsg = NULL;
    struct rfc2231_joiner *head = NULL, *np;
-   bool_t errors = FAL0;
+   boole errors = FAL0;
    size_t i;
    NYD2_IN;
 
@@ -296,7 +296,7 @@ jeeqaaster:
           * creating an unsorted list and sorting it after parsing */
          np = n_alloc(sizeof *np);
          np->rj_next = NULL;
-         np->rj_no = (ui32_t)i;
+         np->rj_no = (u32)i;
          np->rj_is_enc = (c == '*');
          np->rj_val_off = np->rj_cs_len = 0;
 
@@ -328,11 +328,11 @@ jeeqaaster:
              * XXX } */np->rj_is_enc = FAL0; /* Silently ignore */
             /* FALLTHRU */
          case 1:
-            if (xval.l >= UI32_MAX) {
+            if (xval.l >= U32_MAX) {
                emsg = N_("parameter value too long");
                goto jerr;
             }
-            np->rj_len = (ui32_t)xval.l;
+            np->rj_len = (u32)xval.l;
             np->rj_dat = xval.s;
             break;
          }
@@ -382,7 +382,7 @@ jerr:
    goto jleave;
 }
 
-static bool_t
+static boole
 __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
 {
    struct str sin, sou;
@@ -396,7 +396,7 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
       _SEEN_ANY   = 1<<2,
       _ERRORS     = 1<<3
    } f = _NONE;
-   ui32_t no;
+   u32 no;
 #ifdef mx_HAVE_ICONV
    iconv_t fhicd;
 #endif
@@ -468,7 +468,7 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
             char c;
 
             if ((c = *cp++) == '%') {
-               si32_t cc;
+               s32 cc;
 
                if (i < 3 || (cc = n_c_from_hex_base16(cp)) < 0) {
                   if (!(f & _ERRORS))
@@ -574,7 +574,7 @@ jneed_enc:
 
    f &= _ISENC;
    while (vl > 0) {
-      union {char c; ui8_t uc;} u; u.c = *vb;
+      union {char c; u8 uc;} u; u.c = *vb;
 
       f |= _RAW;
       if (!(f & _ISENC)) {
@@ -643,7 +643,7 @@ jneed_enc:
          goto jrecurse;
       }
 
-      if (self->mpb_is_utf8 && ((ui8_t)(vb[-1]) & 0xC0) != 0x80) {
+      if (self->mpb_is_utf8 && ((u8)(vb[-1]) & 0xC0) != 0x80) {
          bp -= 3;
          --vb;
          ++vl;
@@ -735,7 +735,7 @@ __mime_param_join(struct mime_param_builder *head)
 
       if (f & _ISCONT) {
          char *cpo = cp, *nop = nobuf + sizeof(nobuf);
-         ui32_t noi = np->mpb_level;
+         u32 noi = np->mpb_level;
 
          *--nop = '\0';
          do
@@ -868,7 +868,7 @@ jleave:
    return rv;
 }
 
-FL si8_t
+FL s8
 mime_param_create(struct str *result, char const *name, char const *value)
 {
    /* TODO All this needs rework when we have (1) a real string and even more
@@ -882,15 +882,15 @@ mime_param_create(struct str *result, char const *name, char const *value)
 
    su_mem_set(&top, 0, sizeof top);
    top.mpb_result = result;
-   if ((i = su_cs_len(top.mpb_name = name)) >= UI32_MAX)
+   if ((i = su_cs_len(top.mpb_name = name)) >= U32_MAX)
       goto jleave;
-   top.mpb_name_len = (ui32_t)i;
-   if ((i = su_cs_len(top.mpb_value = value)) >= UI32_MAX)
+   top.mpb_name_len = (u32)i;
+   if ((i = su_cs_len(top.mpb_value = value)) >= U32_MAX)
       goto jleave;
-   top.mpb_value_len = (ui32_t)i;
-   if ((i = su_cs_len(name = ok_vlook(ttycharset))) >= UI32_MAX)
+   top.mpb_value_len = (u32)i;
+   if ((i = su_cs_len(name = ok_vlook(ttycharset))) >= U32_MAX)
       goto jleave;
-   top.mpb_charset_len = (ui32_t)i;
+   top.mpb_charset_len = (u32)i;
    top.mpb_charset = n_autorec_alloc(++i);
    su_mem_copy(n_UNCONST(top.mpb_charset), name, i);
    if(top.mpb_charset_len >= 4 && !su_mem_cmp(top.mpb_charset, "utf", 3) &&
@@ -930,7 +930,7 @@ mime_param_boundary_get(char const *headerbody, size_t *len)
 FL char *
 mime_param_boundary_create(void)
 {
-   static ui32_t reprocnt;
+   static u32 reprocnt;
    char *bp;
    NYD_IN;
 

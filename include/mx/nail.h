@@ -125,8 +125,6 @@
 # endif
 #endif
 
-#define n_UNCONST(X) su_UNCONST(void*,X) /* TODO */
-
 #undef mx_HAVE_NATCH_CHAR
 #if defined mx_HAVE_SETLOCALE && defined mx_HAVE_C90AMEND1 && \
       defined mx_HAVE_WCWIDTH
@@ -136,52 +134,13 @@
 # define n_NATCH_CHAR(X)
 #endif
 
+#define n_UNCONST(X) su_UNCONST(void*,X) /* TODO */
+
 /*
- * Types TODO v15: n_XX_t
+ * Types
  */
 
-#define UI8_MAX su_U8_MAX
-#define SI8_MIN su_S8_MIN
-#define SI8_MAX su_S8_MAX
-typedef su_u8 ui8_t;
-typedef su_s8 si8_t;
-#define UI16_MAX su_U16_MAX
-#define SI16_MIN su_S16_MIN
-#define SI16_MAX su_S16_MAX
-typedef su_u16 ui16_t;
-typedef su_s16 si16_t;
-#define UI32_MAX su_U32_MAX
-#define SI32_MIN su_S32_MIN
-#define SI32_MAX su_S32_MAX
-typedef su_u32 ui32_t;
-typedef su_s32 si32_t;
-#define UI64_MAX su_U64_MAX
-#define SI64_MIN su_S64_MIN
-#define SI64_MAX su_S64_MAX
-typedef su_u64 ui64_t;
-typedef su_s64 si64_t;
-#define UIZ_MAX su_UZ_MAX
-typedef su_uz uiz_t;
-typedef su_sz siz_t;
-
-#ifndef UINTPTR_MAX
-# define uintptr_t su_up
-#endif
-
-typedef su_boole bool_t;
-
-/* Add shorter aliases for "normal" integers TODO v15 -> n_XX_t */
-typedef su_ul ul_i;
-typedef su_ui ui_i;
-typedef su_us us_i;
-typedef su_uc uc_i;
-typedef su_sl sl_i;
-typedef su_si si_i;
-typedef su_ss ss_i;
-typedef su_sc sc_i;
-
-typedef void (          *sighandler_type)(int); /* TODO v15 obsolete */
-typedef void (          *n_sighdl_t)(int);
+typedef void (*n_sighdl_t)(int);
 
 enum n_announce_flags{
    n_ANNOUNCE_NONE = 0,          /* Only housekeeping */
@@ -250,7 +209,7 @@ enum expand_addr_check_mode {
 enum n_cmd_arg_flags{ /* TODO Most of these need to change, in fact in v15
    * TODO i rather see the mechanism that is used in c_bind() extended and used
    * TODO anywhere, i.e. n_cmd_arg_parse().
-   * TODO Note we may NOT support arguments with su_cs_len()>=UI32_MAX (?) */
+   * TODO Note we may NOT support arguments with su_cs_len()>=U32_MAX (?) */
    n_CMD_ARG_TYPE_MSGLIST = 0,   /* Message list type */
    n_CMD_ARG_TYPE_NDMLIST = 1,   /* Message list, no defaults */
    n_CMD_ARG_TYPE_RAWDAT = 2,    /* The plain string in an argv[] */
@@ -317,9 +276,9 @@ enum n_cmd_arg_desc_flags{
    n_CMD_ARG_DESC_ERRNO_MASK = (1u<<10) - 1
 };
 #define n_CMD_ARG_DESC_ERRNO_TO_ORBITS(ENO) \
-   (((ui32_t)(ENO)) << n_CMD_ARG_DESC_ERRNO)
+   (((u32)(ENO)) << n_CMD_ARG_DESC_ERRNO)
 #define n_CMD_ARG_DESC_TO_ERRNO(FLAGCARRIER) \
-   (((ui32_t)(FLAGCARRIER) >> n_CMD_ARG_DESC_ERRNO_SHIFT) &\
+   (((u32)(FLAGCARRIER) >> n_CMD_ARG_DESC_ERRNO_SHIFT) &\
       n_CMD_ARG_DESC_ERRNO_MASK)
 
 #ifdef mx_HAVE_COLOUR
@@ -1040,7 +999,7 @@ enum n_program_state{
    n_PS_ROOT = 1u<<30,                 /* Temporary "bypass any checks" bit */
 #define n_PS_ROOT_BLOCK(ACT) \
 do{\
-   bool_t a___reset___ = !(n_pstate & n_PS_ROOT);\
+   boole a___reset___ = !(n_pstate & n_PS_ROOT);\
    n_pstate |= n_PS_ROOT;\
    ACT;\
    if(a___reset___)\
@@ -1521,9 +1480,9 @@ struct str {
 
 struct n_string{
    char *s_dat;         /*@ May contain NULs, not automatically terminated */
-   ui32_t s_len;        /*@ gth of string */
-   ui32_t s_auto : 1;   /* Stored in auto-reclaimed storage? */
-   ui32_t s_size : 31;  /* of .s_dat, -1 */
+   u32 s_len;        /*@ gth of string */
+   u32 s_auto : 1;   /* Stored in auto-reclaimed storage? */
+   u32 s_size : 31;  /* of .s_dat, -1 */
 };
 
 struct n_strlist{
@@ -1546,16 +1505,16 @@ struct bidi_info {
 
 struct n_cmd_arg_desc{
    char cad_name[12];   /* Name of command */
-   ui32_t cad_no;       /* Number of entries in cad_ent_flags */
+   u32 cad_no;       /* Number of entries in cad_ent_flags */
    /* [enum n_cmd_arg_desc_flags,arg-dep] */
-   ui32_t cad_ent_flags[VFIELD_SIZE(0)][2];
+   u32 cad_ent_flags[VFIELD_SIZE(0)][2];
 };
 /* ISO C(99) doesn't allow initialization of "flex array" */
 #define n_CMD_ARG_DESC_SUBCLASS_DEF(CMD,NO,VAR) \
    static struct n_cmd_arg_desc_ ## CMD {\
       char cad_name[12];\
-      ui32_t cad_no;\
-      ui32_t cad_ent_flags[NO][2];\
+      u32 cad_no;\
+      u32 cad_ent_flags[NO][2];\
    } const VAR = { #CMD "\0", NO,
 #define n_CMD_ARG_DESC_SUBCLASS_DEF_END }
 #define n_CMD_ARG_DESC_SUBCLASS_CAST(P) ((struct n_cmd_arg_desc const*)P)
@@ -1563,9 +1522,9 @@ struct n_cmd_arg_desc{
 struct n_cmd_arg_ctx{
    struct n_cmd_arg_desc const *cac_desc; /* Input: description of command */
    char const *cac_indat;     /* Input that shall be parsed */
-   size_t cac_inlen;          /* Input length (UIZ_MAX: do a su_cs_len()) */
-   ui32_t cac_msgflag;        /* Input (option): required flags of messages */
-   ui32_t cac_msgmask;        /* Input (option): relevant flags of messages */
+   size_t cac_inlen;          /* Input length (UZ_MAX: do a su_cs_len()) */
+   u32 cac_msgflag;        /* Input (option): required flags of messages */
+   u32 cac_msgmask;        /* Input (option): relevant flags of messages */
    size_t cac_no;             /* Output: number of parsed arguments */
    struct n_cmd_arg *cac_arg; /* Output: parsed arguments */
    char const *cac_vput;      /* "Output": vput prefix used: varname */
@@ -1575,9 +1534,9 @@ struct n_cmd_arg{
    struct n_cmd_arg *ca_next;
    char const *ca_indat;   /*[PRIV] Pointer into n_cmd_arg_ctx.cac_indat */
    size_t ca_inlen;        /*[PRIV] of .ca_indat of this arg (not terminated) */
-   ui32_t ca_ent_flags[2]; /* Copy of n_cmd_arg_desc.cad_ent_flags[X] */
-   ui32_t ca_arg_flags;    /* [Output: _WYSH: copy of parse result flags] */
-   ui8_t ca__dummy[4];
+   u32 ca_ent_flags[2]; /* Copy of n_cmd_arg_desc.cad_ent_flags[X] */
+   u32 ca_arg_flags;    /* [Output: _WYSH: copy of parse result flags] */
+   u8 ca__dummy[4];
    union{
       struct str ca_str;      /* _CMD_ARG_DESC_SHEXP */
       int *ca_msglist;        /* _CMD_ARG_DESC_MSGLIST+ */
@@ -1588,9 +1547,9 @@ struct n_cmd_desc{
    char const *cd_name;    /* Name of command */
    int (*cd_func)(void*);  /* Implementor of command */
    enum n_cmd_arg_flags cd_caflags;
-   ui32_t cd_msgflag;      /* Required flags of msgs */
-   ui32_t cd_msgmask;      /* Relevant flags of msgs */
-   /* XXX requires cmd-tab.h initializer changes ui8_t cd__pad[4];*/
+   u32 cd_msgflag;      /* Required flags of msgs */
+   u32 cd_msgmask;      /* Relevant flags of msgs */
+   /* XXX requires cmd-tab.h initializer changes u8 cd__pad[4];*/
    struct n_cmd_arg_desc const *cd_cadp;
 #ifdef mx_HAVE_DOCSTRINGS
    char const *cd_doc;     /* One line doc for command */
@@ -1603,10 +1562,10 @@ struct n_cmd_desc{
 #ifdef mx_HAVE_COLOUR
 struct n_colour_env{
    struct n_colour_env *ce_last;
-   bool_t ce_enabled;   /* Colour enabled on this level */
-   ui8_t ce_ctx;        /* enum n_colour_ctx */
-   ui8_t ce_ispipe;     /* .ce_outfp known to be a pipe */
-   ui8_t ce__pad[5];
+   boole ce_enabled;   /* Colour enabled on this level */
+   u8 ce_ctx;        /* enum n_colour_ctx */
+   u8 ce_ispipe;     /* .ce_outfp known to be a pipe */
+   u8 ce__pad[5];
    FILE *ce_outfp;
    struct a_colour_map *ce_current; /* Active colour or NULL */
 };
@@ -1616,10 +1575,10 @@ struct n_colour_pen;
 
 struct url {
    char const     *url_input;       /* Input as given (really) */
-   ui32_t         url_flags;
-   ui16_t         url_portno;       /* atoi .url_port or default, host endian */
-   ui8_t          url_cproto;       /* enum cproto as given */
-   ui8_t          url_proto_len;    /* Length of .url_proto (to first '\0') */
+   u32         url_flags;
+   u16         url_portno;       /* atoi .url_port or default, host endian */
+   u8          url_cproto;       /* enum cproto as given */
+   u8          url_proto_len;    /* Length of .url_proto (to first '\0') */
    char           url_proto[16];    /* Communication protocol as 'xy\0://\0' */
    char const     *url_port;        /* Port (if given) or NULL */
    struct str     url_user;         /* User, exactly as given / looked up */
@@ -1657,7 +1616,7 @@ struct n_dig_msg_ctx{
    struct n_dig_msg_ctx *dmc_next;
    struct message *dmc_mp; /* XXX Yet NULL if n_DIG_MSG_COMPOSE */
    enum n_dig_msg_flags dmc_flags;
-   ui32_t dmc_msgno;       /* XXX Only if !n_DIG_MSG_COMPOSE */
+   u32 dmc_msgno;       /* XXX Only if !n_DIG_MSG_COMPOSE */
    FILE *dmc_fp;
    struct header *dmc_hp;
    struct su_mem_bag *dmc_membag;
@@ -1694,8 +1653,8 @@ struct n_go_data_ctx{
    void *gdc_ifcond;                /* Saved state of conditional stack */
 #ifdef mx_HAVE_COLOUR
    struct n_colour_env *gdc_colour;
-   bool_t gdc_colour_active;
-   ui8_t gdc__colour_pad[7];
+   boole gdc_colour_active;
+   u8 gdc__colour_pad[7];
 # define n_COLOUR_IS_ACTIVE() \
    (/*n_go_data->gc_data.gdc_colour != NULL &&*/\
     /*n_go_data->gc_data.gdc_colour->ce_enabled*/ n_go_data->gdc_colour_active)
@@ -1713,9 +1672,9 @@ struct mime_handler {
 
 struct search_expr {
    /* XXX Type of search should not be evaluated but be enum */
-   bool_t ss_field_exists; /* Only check whether field spec. exists */
-   bool_t ss_skin;         /* Shall work on (skin()ned) addresses */
-   ui8_t ss__pad[6];
+   boole ss_field_exists; /* Only check whether field spec. exists */
+   boole ss_skin;         /* Shall work on (skin()ned) addresses */
+   u8 ss__pad[6];
    char const *ss_field;   /* Field spec. where to search (not always used) */
    char const *ss_body;    /* Field body search expression */
 #ifdef mx_HAVE_REGEX
@@ -1728,27 +1687,27 @@ struct search_expr {
 
 /* This is somewhat temporary for pre v15 */
 struct n_sigman{
-   ui32_t sm_flags;           /* enum n_sigman_flags */
+   u32 sm_flags;           /* enum n_sigman_flags */
    int sm_signo;
    struct n_sigman *sm_outer;
-   sighandler_type sm_ohup;
-   sighandler_type sm_oint;
-   sighandler_type sm_oquit;
-   sighandler_type sm_oterm;
-   sighandler_type sm_opipe;
+   n_sighdl_t sm_ohup;
+   n_sighdl_t sm_oint;
+   n_sighdl_t sm_oquit;
+   n_sighdl_t sm_oterm;
+   n_sighdl_t sm_opipe;
    sigjmp_buf sm_jump;
 };
 
 struct n_timespec{
-   si64_t ts_sec;
-   siz_t ts_nsec;
+   s64 ts_sec;
+   sz ts_nsec;
 };
 
 struct termios_state {
    struct termios ts_tios;
    char        *ts_linebuf;
    size_t      ts_linesize;
-   bool_t      ts_needs_reset;
+   boole      ts_needs_reset;
 };
 
 #define termios_state_reset() \
@@ -1762,16 +1721,16 @@ do {\
 #ifdef n_HAVE_TCAP
 struct n_termcap_value{
    enum n_termcap_captype tv_captype;
-   ui8_t tv__dummy[4];
+   u8 tv__dummy[4];
    union n_termcap_value_data{
-      bool_t tvd_bool;
-      ui32_t tvd_numeric;
+      boole tvd_bool;
+      u32 tvd_numeric;
       char const *tvd_string;
    } tv_data;
 };
 #endif
 
-struct time_current { /* TODO si64_t, etc. */
+struct time_current { /* TODO s64, etc. */
    time_t      tc_time;
    struct tm   tc_gm;
    struct tm   tc_local;
@@ -1833,7 +1792,7 @@ MB_CACHE,         /* IMAP cache */
       MB_NOFLAGS  = 000,
       MB_UIDPLUS  = 001 /* supports IMAP UIDPLUS */
    }           mb_flags;
-   ui64_t mb_uidvalidity;           /* IMAP unique identifier validity */
+   u64 mb_uidvalidity;           /* IMAP unique identifier validity */
    char        *mb_imap_account;    /* name of current IMAP account */
    char        *mb_imap_pass;       /* xxx v15-compat URL workaround */
    char        *mb_imap_mailbox;    /* name of current IMAP mailbox */
@@ -1913,9 +1872,9 @@ struct mimepart {
    enum mflag  m_flag;
    enum content_info m_content_info;
 #ifdef mx_HAVE_SPAM
-   ui32_t      m_spamscore;         /* Spam score as int, 24:8 bits */
+   u32      m_spamscore;         /* Spam score as int, 24:8 bits */
 #else
-   ui8_t m__pad1[4];
+   u8 m__pad1[4];
 #endif
    int         m_block;             /* Block number of this part */
    size_t      m_offset;            /* Offset in block of part */
@@ -1946,9 +1905,9 @@ struct message {
    enum mflag  m_flag;        /* flags */
    enum content_info m_content_info;
 #ifdef mx_HAVE_SPAM
-   ui32_t      m_spamscore;   /* Spam score as int, 24:8 bits */
+   u32      m_spamscore;   /* Spam score as int, 24:8 bits */
 #else
-   ui8_t m__pad1[4];
+   u8 m__pad1[4];
 #endif
    int         m_block;       /* block number of this message */
    size_t      m_offset;      /* offset in block of message */
@@ -1959,11 +1918,11 @@ struct message {
    time_t      m_time;        /* time the message was sent */
    time_t      m_date;        /* time in the 'Date' field */
 #ifdef mx_HAVE_IMAP
-   ui64_t m_uid;              /* IMAP unique identifier */
+   u64 m_uid;              /* IMAP unique identifier */
 #endif
 #ifdef mx_HAVE_MAILDIR
    char const  *m_maildir_file; /* original maildir file of msg */
-   ui32_t      m_maildir_hash; /* hash of file name in maildir sub */
+   u32      m_maildir_hash; /* hash of file name in maildir sub */
 #endif
    int         m_collapsed;   /* collapsed thread information */
    unsigned    m_idhash;      /* hash on Message-ID for threads */
@@ -2023,14 +1982,14 @@ enum header_flags {
 /* Structure used to pass about the current state of a message (header) */
 struct n_header_field{
    struct n_header_field *hf_next;
-   ui32_t hf_nl;              /* Field-name length */
-   ui32_t hf_bl;              /* Field-body length*/
+   u32 hf_nl;              /* Field-name length */
+   u32 hf_bl;              /* Field-body length*/
    char hf_dat[VFIELD_SIZE(0)];
 };
 
 struct header {
-   ui32_t      h_flags;       /* enum header_flags bits */
-   ui32_t      h_dummy;
+   u32      h_flags;       /* enum header_flags bits */
+   u32      h_dummy;
    char        *h_subject;    /* Subject string */
    char const  *h_charset;    /* preferred charset */
    struct mx_name *h_from;    /* overridden "From:" field */
@@ -2068,7 +2027,7 @@ struct n_addrguts{
    char *ag_skinned;          /* Output (alloced if !=.ag_input) */
    size_t ag_slen;            /* su_cs_len() of .ag_skinned */
    size_t ag_sdom_start;      /* Start of domain in .ag_skinned, */
-   ui32_t ag_n_flags;         /* enum mx_name_flags of .ag_skinned */
+   u32 ag_n_flags;         /* enum mx_name_flags of .ag_skinned */
 };
 
 /* MIME attachments */
@@ -2170,17 +2129,17 @@ VL void *n_readctl_read_overlay; /* `readctl' XXX HACK */
 VL struct n_dig_msg_ctx *n_digmsg_read_overlay; /* `digmsg' XXX HACK */
 VL struct n_dig_msg_ctx *n_dig_msg_compose_ctx; /* Or NULL XXX HACK */
 
-VL ui32_t n_mb_cur_max;          /* Value of MB_CUR_MAX */
-VL ui32_t n_realscreenheight;    /* The real screen height */
-VL ui32_t n_scrnwidth;           /* Screen width/guess; also n_SCRNWIDTH_LIST */
-VL ui32_t n_scrnheight;          /* Screen height/guess (for header summary+) */
+VL u32 n_mb_cur_max;          /* Value of MB_CUR_MAX */
+VL u32 n_realscreenheight;    /* The real screen height */
+VL u32 n_scrnwidth;           /* Screen width/guess; also n_SCRNWIDTH_LIST */
+VL u32 n_scrnheight;          /* Screen height/guess (for header summary+) */
 
 VL gid_t n_group_id;             /* getgid() and getuid() */
 VL uid_t n_user_id;
 VL pid_t n_pid;                  /* getpid() (lazy initialized) */
 
 VL int n_exit_status;            /* Program exit status TODO long term: ex_no */
-VL ui32_t n_poption;             /* Bits of enum n_program_option */
+VL u32 n_poption;             /* Bits of enum n_program_option */
 VL struct n_header_field *n_poption_arg_C; /* -C custom header list */
 VL char const *n_poption_arg_Mm; /* Argument for -[Mm] aka n_PO_[Mm]_FLAG */
 VL struct mx_name *n_poption_arg_r; /* Argument to -r option */
@@ -2189,16 +2148,16 @@ VL size_t n_smopts_cnt;          /* Entries in n_smopts */
 
 /* The current execution data context */
 VL struct n_go_data_ctx *n_go_data;
-VL ui32_t n_psonce;              /* Bits of enum n_program_state_once */
-VL ui32_t n_pstate;              /* Bits of enum n_program_state */
+VL u32 n_psonce;              /* Bits of enum n_program_state_once */
+VL u32 n_pstate;              /* Bits of enum n_program_state */
 /* TODO "cmd_tab.h ARG_EM set"-storage (n_[01..]) as long as we don't have a
  * TODO struct CmdCtx where each command has its own ARGC/ARGV, errno and exit
  * TODO status and may-place-in-history bit, need to manage a global bypass.. */
 #ifdef mx_HAVE_ERRORS
-VL si32_t n_pstate_err_cnt;      /* What backs $^ERRQUEUE-xy */
+VL s32 n_pstate_err_cnt;      /* What backs $^ERRQUEUE-xy */
 #endif
-VL si32_t n_pstate_err_no;       /* What backs $! su_ERR_* TODO ..HACK */
-VL si32_t n_pstate_ex_no;        /* What backs $? n_EX_* TODO ..HACK ->64-bit */
+VL s32 n_pstate_err_no;       /* What backs $! su_ERR_* TODO ..HACK */
+VL s32 n_pstate_ex_no;        /* What backs $? n_EX_* TODO ..HACK ->64-bit */
 
 /* XXX stylish sorting */
 VL int            msgCount;            /* Count of messages read in */
@@ -2226,7 +2185,7 @@ VL enum n_tls_verify_level n_tls_verify_level; /* TODO local per-context! */
 #endif
 
 VL volatile int interrupts; /* TODO rid! */
-VL sighandler_type dflpipe;
+VL n_sighdl_t dflpipe;
 
 /*
  * Finally, let's include the function prototypes XXX embed

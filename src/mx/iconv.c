@@ -52,7 +52,7 @@
 FL char *
 n_iconv_normalize_name(char const *cset){
    char *cp, c, *tcp, tc;
-   bool_t any;
+   boole any;
    NYD2_IN;
 
    /* We need to strip //SUFFIXes off, we want to normalize to all lowercase,
@@ -85,13 +85,13 @@ jleave:
    return n_UNCONST(cset);
 }
 
-FL bool_t
+FL boole
 n_iconv_name_is_ascii(char const *cset){ /* TODO ctext/su */
    /* In reversed MIME preference order */
    static char const * const names[] = {"csASCII", "cp367", "IBM367", "us",
          "ISO646-US", "ISO_646.irv:1991", "ANSI_X3.4-1986", "iso-ir-6",
          "ANSI_X3.4-1968", "ASCII", "US-ASCII"};
-   bool_t rv;
+   boole rv;
    char const * const *npp;
    NYD2_IN;
 
@@ -246,13 +246,13 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
 
       if((nol = ol = s->s_len) < il)
          nol = il;
-      ASSERT(sizeof(s->s_len) == sizeof(ui32_t));
+      ASSERT(sizeof(s->s_len) == sizeof(u32));
       if(nol < 128)
          nol += 32;
       else{
-         ui64_t xnol;
+         u64 xnol;
 
-         xnol = (ui64_t)(nol << 1) - (nol >> 4);
+         xnol = (u64)(nol << 1) - (nol >> 4);
          if(!n_string_can_book(s, xnol)){
             xnol = ol + 64;
             if(!n_string_can_book(s, xnol)){

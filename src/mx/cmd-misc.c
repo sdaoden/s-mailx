@@ -53,10 +53,10 @@
 static char const *a_cmisc_bangexp(char const *cp);
 
 /* c_n?echo(), c_n?echoerr() */
-static int a_cmisc_echo(void *vp, FILE *fp, bool_t donl);
+static int a_cmisc_echo(void *vp, FILE *fp, boole donl);
 
 /* c_read() */
-static bool_t a_cmisc_read_set(char const *cp, char const *value);
+static boole a_cmisc_read_set(char const *cp, char const *value);
 
 /* c_version() */
 static int a_cmisc_version_cmp(void const *s1, void const *s2);
@@ -67,7 +67,7 @@ a_cmisc_bangexp(char const *cp){
 
    struct n_string xbang, *bang;
    char c;
-   bool_t changed;
+   boole changed;
    NYD_IN;
 
    if(!ok_blook(bang))
@@ -106,10 +106,10 @@ jleave:
 }
 
 static int
-a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
+a_cmisc_echo(void *vp, FILE *fp, boole donl){
    struct n_string s_b, *s;
    int rv;
-   bool_t doerr;
+   boole doerr;
    char const **argv, *varname, **ap, *cp;
    NYD2_IN;
 
@@ -134,7 +134,7 @@ a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
    cp = n_string_cp(s);
 
    if(varname == NULL){
-      si32_t e;
+      s32 e;
 
       e = su_ERR_NONE;
       if(doerr){
@@ -148,7 +148,7 @@ a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
          e = su_err_no();
       rv |= ferror(fp) ? 1 : 0;
       n_pstate_err_no = e;
-   }else if(!n_var_vset(varname, (uintptr_t)cp)){
+   }else if(!n_var_vset(varname, (up)cp)){
       n_pstate_err_no = su_ERR_NOTSUP;
       rv = -1;
    }else{
@@ -159,16 +159,16 @@ a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
    return rv;
 }
 
-static bool_t
+static boole
 a_cmisc_read_set(char const *cp, char const *value){
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    if(!n_shexp_is_valid_varname(cp))
       value = N_("not a valid variable name");
    else if(!n_var_is_user_writable(cp))
       value = N_("variable is read-only");
-   else if(!n_var_vset(cp, (uintptr_t)value))
+   else if(!n_var_vset(cp, (up)value))
       value = N_("failed to update variable value");
    else{
       rv = TRU1;
@@ -233,7 +233,7 @@ c_shell(void *v)
 
             fflush_rewind(fp);
             l = fsize(fp);
-            if(UCMP(64, l, >=, UIZ_MAX -42)){
+            if(UCMP(64, l, >=, UZ_MAX -42)){
                n_pstate_err_no = su_ERR_NOMEM;
                varres = n_empty;
             }else{
@@ -255,7 +255,7 @@ c_shell(void *v)
       Fclose(fp);
 
    if(varname != NULL){
-      if(!n_var_vset(varname, (uintptr_t)varres)){
+      if(!n_var_vset(varname, (up)varres)){
          n_pstate_err_no = su_ERR_NOTSUP;
          rv = -1;
       }
@@ -314,7 +314,7 @@ c_cwd(void *v){
       }
 
       if(varname != NULL){
-         if(!n_var_vset(varname, (uintptr_t)s->s_dat))
+         if(!n_var_vset(varname, (up)s->s_dat))
             v = NULL;
       }else{
          l = su_cs_len(s->s_dat);
@@ -536,7 +536,7 @@ c_readall(void * vp){ /* TODO 64-bit retval */
             }
             break;
          }
-      }else if(LIKELY(UCMP(32, SI32_MAX - s->s_len, >, rv)))
+      }else if(LIKELY(UCMP(32, S32_MAX - s->s_len, >, rv)))
          s = n_string_push_buf(s, linebuf, rv);
       else{
          n_pstate_err_no = su_ERR_OVERFLOW;
@@ -650,7 +650,7 @@ c_version(void *vp){
    cp = n_string_cp(s);
 
    if(n_pstate & n_PS_ARGMOD_VPUT){
-      if(n_var_vset(*(char const**)vp, (uintptr_t)cp))
+      if(n_var_vset(*(char const**)vp, (up)cp))
          rv = 0;
       else
          rv = -1;

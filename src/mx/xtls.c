@@ -202,11 +202,11 @@ struct ssl_method { /* TODO v15 obsolete */
 #ifndef mx_HAVE_XTLS_CONF_CTX
 struct a_xtls_protocol{
    char const xp_name[8];
-   sl_i xp_op_no;             /* SSL_OP_NO_* bit */
-   ui16_t xp_version;         /* *_VERSION number */
-   bool_t xp_ok_minmaxproto;  /* Valid for {Min,Max}Protocol= */
-   bool_t xp_ok_proto;        /* Valid for Protocol= */
-   ui8_t xp__dummy[4];
+   sl xp_op_no;               /* SSL_OP_NO_* bit */
+   u16 xp_version;            /* *_VERSION number */
+   boole xp_ok_minmaxproto;   /* Valid for {Min,Max}Protocol= */
+   boole xp_ok_proto;         /* Valid for Protocol= */
+   u8 xp__dummy[4];
 };
 #endif
 
@@ -222,7 +222,7 @@ struct a_xtls_digest{
 
 struct a_xtls_x509_v_flags{
    char const xxvf_name[20];
-   si32_t xxvf_flag;
+   s32 xxvf_flag;
 };
 
 /* Supported SSL/TLS methods: update manual on change! */
@@ -387,11 +387,11 @@ static void a_xtls_atexit(void);
 # define a_xtls_load_algos() do{;}while(0)
 #endif
 
-static bool_t a_xtls_parse_asn1_time(ASN1_TIME const *atp,
+static boole a_xtls_parse_asn1_time(ASN1_TIME const *atp,
                char *bdat, size_t blen);
 static int a_xtls_verify_cb(int success, X509_STORE_CTX *store);
 
-static bool_t a_xtls_digest_find(char const *name, EVP_MD const **mdp,
+static boole a_xtls_digest_find(char const *name, EVP_MD const **mdp,
                char const **normalized_name_or_null);
 
 /* *smime-ca-flags*, *tls-ca-flags* */
@@ -399,14 +399,14 @@ static void a_xtls_ca_flags(X509_STORE *store, char const *flags);
 
 /* SSL_CTX configuration; the latter always NULLs *confp */
 static void *a_xtls_conf_setup(SSL_CTX *ctxp, struct url const *urlp);
-static bool_t a_xtls_conf(void *confp, char const *cmd, char const *value);
-static bool_t a_xtls_conf_finish(void **confp, bool_t error);
+static boole a_xtls_conf(void *confp, char const *cmd, char const *value);
+static boole a_xtls_conf_finish(void **confp, boole error);
 
-static bool_t a_xtls_obsolete_conf_vars(void *confp, struct url const *urlp);
-static bool_t a_xtls_config_pairs(void *confp, struct url const *urlp);
-static bool_t a_xtls_load_verifications(SSL_CTX *ctxp, struct url const *urlp);
+static boole a_xtls_obsolete_conf_vars(void *confp, struct url const *urlp);
+static boole a_xtls_config_pairs(void *confp, struct url const *urlp);
+static boole a_xtls_load_verifications(SSL_CTX *ctxp, struct url const *urlp);
 
-static bool_t a_xtls_check_host(struct sock *sp, X509 *peercert,
+static boole a_xtls_check_host(struct sock *sp, X509 *peercert,
                struct url const *urlp);
 
 static int        smime_verify(struct message *m, int n,
@@ -415,9 +415,9 @@ static EVP_CIPHER const * _smime_cipher(char const *name);
 static int        ssl_password_cb(char *buf, int size, int rwflag,
                      void *userdata);
 static FILE *     smime_sign_cert(char const *xname, char const *xname2,
-                     bool_t dowarn, char const **match);
+                     boole dowarn, char const **match);
 static char const * _smime_sign_include_certs(char const *name);
-static bool_t     _smime_sign_include_chain_creat(n_XTLS_STACKOF(X509) **chain,
+static boole     _smime_sign_include_chain_creat(n_XTLS_STACKOF(X509) **chain,
                      char const *cfiles, char const *addr);
 static EVP_MD const *a_xtls_smime_sign_digest(char const *name,
                         char const **digname);
@@ -440,7 +440,7 @@ a_xtls_rand_init(void){
 # define a_XTLS_RAND_ENTROPY 32
    char b64buf[a_XTLS_RAND_ENTROPY * 5 +1], *randfile;
    char const *cp, *x;
-   bool_t err;
+   boole err;
    NYD2_IN;
 
    a_xtls_rand_drbg_init();
@@ -485,7 +485,7 @@ a_xtls_rand_init(void){
    for(x = (char*)-1;;){
       RAND_add(n_random_create_buf(b64buf, sizeof(b64buf) -1, NULL),
          sizeof(b64buf) -1, a_XTLS_RAND_ENTROPY);
-      if((x = (char*)((uintptr_t)x >> (1
+      if((x = (char*)((up)x >> (1
 # if mx_HAVE_RANDOM == n_RANDOM_IMPL_TLS
          + 3
 # endif
@@ -546,7 +546,7 @@ a_xtls_init(void){
    if((cp = ok_vlook(tls_config_file)) != NULL ||
          (cp = ok_vlook(ssl_config_file)) != NULL){
       char const *msg;
-      ul_i flags;
+      ul flags;
 
       if(*cp == '\0'){
          msg = "[default]";
@@ -619,7 +619,7 @@ a_xtls_atexit(void){
 # endif
 #endif /* mx_HAVE_XTLS_OPENSSL < 0x10100 */
 
-static bool_t
+static boole
 a_xtls_parse_asn1_time(ASN1_TIME const *atp, char *bdat, size_t blen)
 {
    BIO *mbp;
@@ -654,7 +654,7 @@ a_xtls_verify_cb(int success, X509_STORE_CTX *store)
       goto jleave;
 
    if (a_xtls_msgno != 0) {
-      n_err(_("Message %lu:\n"), (ul_i)a_xtls_msgno);
+      n_err(_("Message %lu:\n"), (ul)a_xtls_msgno);
       a_xtls_msgno = 0;
    }
    n_err(_(" Certificate depth %d %s\n"),
@@ -690,7 +690,7 @@ jleave:
    return rv;
 }
 
-static bool_t
+static boole
 a_xtls_digest_find(char const *name,
       EVP_MD const **mdp, char const **normalized_name_or_null){
    size_t i;
@@ -802,7 +802,7 @@ jleave:
    return sccp;
 }
 
-static bool_t
+static boole
 a_xtls_conf(void *confp, char const *cmd, char const *value){
    int rv;
    SSL_CONF_CTX *sccp;
@@ -837,10 +837,10 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
    return (rv == 0);
 }
 
-static bool_t
-a_xtls_conf_finish(void **confp, bool_t error){
+static boole
+a_xtls_conf_finish(void **confp, boole error){
    SSL_CONF_CTX *sccp;
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    sccp = (SSL_CONF_CTX*)*confp;
@@ -874,7 +874,7 @@ a_xtls_conf_setup(SSL_CTX* ctxp, struct url const *urlp){
    return ctxp;
 }
 
-static bool_t
+static boole
 a_xtls_conf(void *confp, char const *cmd, char const *value){
    char const *xcmd, *emsg;
    SSL_CTX *ctxp;
@@ -960,8 +960,8 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
       }
    }else if(!su_cs_cmp_case(cmd, xcmd = "Protocol")){
       char *iolist, *cp, addin;
-      size_t i;
-      sl_i opts;
+      uz i;
+      sl opts;
 
       opts = 0;
 
@@ -1024,8 +1024,8 @@ jxerr:
    goto jleave;
 }
 
-static bool_t
-a_xtls_conf_finish(void **confp, bool_t error){
+static boole
+a_xtls_conf_finish(void **confp, boole error){
    UNUSED(confp);
    UNUSED(error);
    *confp = NULL;
@@ -1033,10 +1033,10 @@ a_xtls_conf_finish(void **confp, bool_t error){
 }
 #endif /* !mx_HAVE_XTLS_CONF_CTX */
 
-static bool_t
+static boole
 a_xtls_obsolete_conf_vars(void *confp, struct url const *urlp){
    char const *cp, *cp_base, *certchain;
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    rv = FAL0;
@@ -1119,7 +1119,7 @@ jleave:
    return rv;
 }
 
-static bool_t
+static boole
 a_xtls_config_pairs(void *confp, struct url const *urlp){
    /* Due to interdependencies some commands have to be delayed a bit */
    static char const cmdcert[] = "Certificate", cmdprivkey[] = "PrivateKey";
@@ -1226,11 +1226,11 @@ jleave:
    return (pairs == NULL);
 }
 
-static bool_t
+static boole
 a_xtls_load_verifications(SSL_CTX *ctxp, struct url const *urlp){
    char *ca_dir, *ca_file;
    X509_STORE *store;
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    if(n_tls_verify_level == n_TLS_VERIFY_IGNORE){
@@ -1261,7 +1261,7 @@ a_xtls_load_verifications(SSL_CTX *ctxp, struct url const *urlp){
    }
 
    /* C99 */{
-      bool_t xv15;
+      boole xv15;
 
       if((xv15 = ok_blook(ssl_no_default_ca)))
          n_OBSOLETE(_("please use *tls-ca-no-defaults*, "
@@ -1288,13 +1288,13 @@ jleave:
    return rv;
 }
 
-static bool_t
+static boole
 a_xtls_check_host(struct sock *sop, X509 *peercert, struct url const *urlp){
    char data[256];
    n_XTLS_STACKOF(GENERAL_NAME) *gens;
    GENERAL_NAME *gen;
    X509_NAME *subj;
-   bool_t rv;
+   boole rv;
    NYD_IN;
    UNUSED(sop);
 
@@ -1562,7 +1562,7 @@ jleave:
 }
 
 static FILE *
-smime_sign_cert(char const *xname, char const *xname2, bool_t dowarn,
+smime_sign_cert(char const *xname, char const *xname2, boole dowarn,
    char const **match)
 {
    char *vn;
@@ -1645,7 +1645,7 @@ jleave:
    return rv;
 }
 
-static bool_t
+static boole
 _smime_sign_include_chain_creat(n_XTLS_STACKOF(X509) **chain,
    char const *cfiles, char const *addr)
 {
@@ -1762,7 +1762,7 @@ load_crls(X509_STORE *store, enum okeys fok, enum okeys dok)/*TODO nevertried*/
    char *fn = NULL;
    int fs = 0, ds, es;
 #endif
-   bool_t any;
+   boole any;
    enum okay rv;
    NYD_IN;
 
@@ -1843,9 +1843,9 @@ n_tls_rand_bytes(void *buf, size_t blen){
       a_xtls_rand_init();
 
    while(blen > 0){
-      si32_t i;
+      s32 i;
 
-      switch(RAND_bytes(buf, i = MIN(SI32_MAX, blen))){
+      switch(RAND_bytes(buf, i = MIN(S32_MAX, blen))){
       default:
          /* LibreSSL always succeeds, i think it aborts otherwise.
           * With elder OpenSSL we ensure via RAND_status() in
@@ -1867,13 +1867,13 @@ n_tls_rand_bytes(void *buf, size_t blen){
          break;
       }
       blen -= i;
-      buf = (ui8_t*)buf + i;
+      buf = (u8*)buf + i;
    }
    NYD2_OU;
 }
 #endif
 
-FL bool_t
+FL boole
 n_tls_open(struct url *urlp, struct sock *sop){
    void *confp;
    SSL_CTX *ctxp;
@@ -1957,7 +1957,7 @@ n_tls_open(struct url *urlp, struct sock *sop){
 
    if(fprnt != NULL || urlp->url_cproto == CPROTO_CERTINFO ||
          n_tls_verify_level != n_TLS_VERIFY_IGNORE){
-      bool_t stay;
+      boole stay;
       X509 *peercert;
 
       if((peercert = SSL_get_peer_certificate(sop->s_tls)) == NULL){
@@ -2087,7 +2087,7 @@ c_verify(void *vp)
    }
 
    /* C99 */{
-      bool_t xv15;
+      boole xv15;
 
       if((xv15 = ok_blook(smime_no_default_ca)))
          n_OBSOLETE(_("please use *smime-ca-no-defaults*, "
@@ -2133,7 +2133,7 @@ smime_sign(FILE *ip, char const *addr)
    PKCS7 *pkcs7;
    EVP_MD const *md;
    char const *name;
-   bool_t bail = FAL0;
+   boole bail = FAL0;
    NYD_IN;
 
    ASSERT(addr != NULL);
@@ -2259,7 +2259,7 @@ smime_encrypt(FILE *ip, char const *xcertfile, char const *to)
    n_XTLS_STACKOF(X509) *certs;
    EVP_CIPHER const *cipher;
    char *certfile;
-   bool_t bail;
+   boole bail;
    NYD_IN;
 
    bail = FAL0;
@@ -2349,7 +2349,7 @@ jleave:
 
 FL struct message *
 smime_decrypt(struct message *m, char const *to, char const *cc,
-   bool_t signcall)
+   boole signcall)
 {
    char const *myaddr;
    long size;

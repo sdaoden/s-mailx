@@ -87,9 +87,9 @@ n_tls_set_verify_level(struct url const *urlp){
    NYD2_OU;
 }
 
-FL bool_t
+FL boole
 n_tls_verify_decide(void){
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    switch(n_tls_verify_level){
@@ -297,7 +297,7 @@ jleave:
 FL struct message *
 smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
 {
-   ui32_t lastnl = 0;
+   u32 lastnl = 0;
    int binary = 0;
    char *buf = NULL;
    size_t bufsize = 0, buflen, cnt;
@@ -416,9 +416,9 @@ jleave:
    return (vp != NULL);
 }
 
-FL bool_t
+FL boole
 n_tls_rfc2595_hostname_match(char const *host, char const *pattern){
-   bool_t rv;
+   boole rv;
    NYD_IN;
 
    if(pattern[0] == '*' && pattern[1] == '.'){
@@ -455,7 +455,7 @@ c_tls(void *vp){
 
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
-      if((i = su_cs_len(*++argv)) >= UI32_MAX)
+      if((i = su_cs_len(*++argv)) >= U32_MAX)
          goto jeoverflow; /* TODO generic for ALL commands!! */
       if(!url_parse(&url, CPROTO_CERTINFO, *argv))
          goto jeinval;
@@ -478,7 +478,7 @@ jleave:
          n_pstate_err_no = su_err_no();
          vp = NULL;
       }
-   }else if(!n_var_vset(varname, (uintptr_t)varres)){
+   }else if(!n_var_vset(varname, (up)varres)){
       n_pstate_err_no = su_ERR_NOTSUP;
       vp = NULL;
    }

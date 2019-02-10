@@ -30,9 +30,9 @@
 #include "su/code-in.h"
 
 struct a_ignore_type{
-   ui32_t it_count;     /* Entries in .it_ht (and .it_re) */
-   bool_t it_all;       /* _All_ fields ought to be _type_ (ignore/retain) */
-   ui8_t it__dummy[3];
+   u32 it_count;     /* Entries in .it_ht (and .it_re) */
+   boole it_all;       /* _All_ fields ought to be _type_ (ignore/retain) */
+   u8 it__dummy[3];
    struct a_ignore_field{
       struct a_ignore_field *if_next;
       char if_field[VFIELD_SIZE(0)]; /* Header field */
@@ -49,10 +49,10 @@ struct a_ignore_type{
 struct n_ignore{
    struct a_ignore_type i_retain;
    struct a_ignore_type i_ignore;
-   bool_t i_auto;       /* In auto-reclaimed, not heap memory */
-   bool_t i_bltin;      /* Is a built-in n_IGNORE* type */
-   ui8_t i_ibm_idx;     /* If .i_bltin: a_ignore_bltin_map[] idx */
-   ui8_t i__dummy[5];
+   boole i_auto;       /* In auto-reclaimed, not heap memory */
+   boole i_bltin;      /* Is a built-in n_IGNORE* type */
+   u8 i_ibm_idx;     /* If .i_bltin: a_ignore_bltin_map[] idx */
+   u8 i__dummy[5];
 };
 
 struct a_ignore_bltin_map{
@@ -85,44 +85,44 @@ static struct n_ignore a_ignore_type;
  * in which case NULL is returned if nonexistent and docreate is false.
  * The other statics assume self has been resolved (unless noted) */
 static struct n_ignore *a_ignore_resolve_self(struct n_ignore *xself,
-                           bool_t docreate);
+                           boole docreate);
 
 /* Lookup whether a mapping is contained: TRU1=retained, TRUM1=ignored.
  * If retain is _not_ TRUM1 then only the retained/ignored slot is inspected,
  * and regular expressions are not executed but instead their .ir_input is
  * text-compared against len bytes of dat.
  * Note it doesn't handle the .it_all "all fields" condition */
-static bool_t a_ignore_lookup(struct n_ignore const *self, bool_t retain,
+static boole a_ignore_lookup(struct n_ignore const *self, boole retain,
                char const *dat, size_t len);
 
 /* Delete all retain( else ignor)ed members */
-static void a_ignore_del_allof(struct n_ignore *ip, bool_t retain);
+static void a_ignore_del_allof(struct n_ignore *ip, boole retain);
 
 /* Try to map a string to one of the built-in types */
 static struct a_ignore_bltin_map const *a_ignore_resolve_bltin(char const *cp);
 
 /* Logic behind `headerpick T T' (a.k.a. `retain'+) */
-static bool_t a_ignore_addcmd_mux(struct n_ignore *ip, char const **list,
-               bool_t retain);
+static boole a_ignore_addcmd_mux(struct n_ignore *ip, char const **list,
+               boole retain);
 
-static void a_ignore__show(struct n_ignore const *ip, bool_t retain);
+static void a_ignore__show(struct n_ignore const *ip, boole retain);
 static int a_ignore__cmp(void const *l, void const *r);
 
 /* Logic behind `unheaderpick T T' (a.k.a. `unretain'+) */
-static bool_t a_ignore_delcmd_mux(struct n_ignore *ip, char const **list,
-               bool_t retain);
+static boole a_ignore_delcmd_mux(struct n_ignore *ip, char const **list,
+               boole retain);
 
-static bool_t a_ignore__delone(struct n_ignore *ip, bool_t retain,
+static boole a_ignore__delone(struct n_ignore *ip, boole retain,
                char const *field);
 
 static struct n_ignore *
-a_ignore_resolve_self(struct n_ignore *xself, bool_t docreate){
-   uintptr_t suip;
+a_ignore_resolve_self(struct n_ignore *xself, boole docreate){
+   up suip;
    struct n_ignore *self;
    NYD2_IN;
 
    self = xself;
-   suip = -(uintptr_t)self - n__IGNORE_ADJUST;
+   suip = -(up)self - n__IGNORE_ADJUST;
 
    if(suip <= n__IGNORE_MAX){
       if((self = a_ignore_bltin[suip]) == NULL && docreate){
@@ -132,7 +132,7 @@ a_ignore_resolve_self(struct n_ignore *xself, bool_t docreate){
          }else
             self = n_ignore_new(FAL0);
          self->i_bltin = TRU1;
-         self->i_ibm_idx = (ui8_t)suip;
+         self->i_ibm_idx = (u8)suip;
          a_ignore_bltin[suip] = self;
       }
    }
@@ -140,18 +140,18 @@ a_ignore_resolve_self(struct n_ignore *xself, bool_t docreate){
    return self;
 }
 
-static bool_t
-a_ignore_lookup(struct n_ignore const *self, bool_t retain,
+static boole
+a_ignore_lookup(struct n_ignore const *self, boole retain,
       char const *dat, size_t len){
-   bool_t rv;
+   boole rv;
 #ifdef mx_HAVE_REGEX
    struct a_ignore_re *irp;
 #endif
    struct a_ignore_field *ifp;
-   ui32_t hi;
+   u32 hi;
    NYD2_IN;
 
-   if(len == UIZ_MAX)
+   if(len == UZ_MAX)
       len = su_cs_len(dat);
    hi = su_cs_hash_case_cbuf(dat, len) % NELEM(self->i_retain.it_ht);
 
@@ -195,7 +195,7 @@ jleave:
 }
 
 static void
-a_ignore_del_allof(struct n_ignore *ip, bool_t retain){
+a_ignore_del_allof(struct n_ignore *ip, boole retain){
 #ifdef mx_HAVE_REGEX
    struct a_ignore_re *irp;
 #endif
@@ -250,10 +250,10 @@ a_ignore_resolve_bltin(char const *cp){
    return ibmp;
 }
 
-static bool_t
-a_ignore_addcmd_mux(struct n_ignore *ip, char const **list, bool_t retain){
+static boole
+a_ignore_addcmd_mux(struct n_ignore *ip, char const **list, boole retain){
    char const **ap;
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    ip = a_ignore_resolve_self(ip, rv = (*list != NULL));
@@ -284,7 +284,7 @@ a_ignore_addcmd_mux(struct n_ignore *ip, char const **list, bool_t retain){
 }
 
 static void
-a_ignore__show(struct n_ignore const *ip, bool_t retain){
+a_ignore__show(struct n_ignore const *ip, boole retain){
 #ifdef mx_HAVE_REGEX
    struct a_ignore_re *irp;
 #endif
@@ -370,11 +370,11 @@ a_ignore__cmp(void const *l, void const *r){
    return rv;
 }
 
-static bool_t
-a_ignore_delcmd_mux(struct n_ignore *ip, char const **list, bool_t retain){
+static boole
+a_ignore_delcmd_mux(struct n_ignore *ip, char const **list, boole retain){
    char const *cp;
    struct a_ignore_type *itp;
-   bool_t rv;
+   boole rv;
    NYD2_IN;
 
    ip = a_ignore_resolve_self(ip, rv = (*list != NULL));
@@ -396,8 +396,8 @@ a_ignore_delcmd_mux(struct n_ignore *ip, char const **list, bool_t retain){
    return rv;
 }
 
-static bool_t
-a_ignore__delone(struct n_ignore *ip, bool_t retain, char const *field){
+static boole
+a_ignore__delone(struct n_ignore *ip, boole retain, char const *field){
    struct a_ignore_type *itp;
    NYD_IN;
 
@@ -424,9 +424,9 @@ a_ignore__delone(struct n_ignore *ip, bool_t retain, char const *field){
 #endif /* mx_HAVE_REGEX */
    {
       struct a_ignore_field **ifpp, *ifp;
-      ui32_t hi;
+      u32 hi;
 
-      hi = su_cs_hash_case_cbuf(field, UIZ_MAX) % NELEM(itp->it_ht);
+      hi = su_cs_hash_case_cbuf(field, UZ_MAX) % NELEM(itp->it_ht);
 
       for(ifp = *(ifpp = &itp->it_ht[hi]); ifp != NULL;
             ifpp = &ifp->if_next, ifp = ifp->if_next)
@@ -447,7 +447,7 @@ jleave:
 
 FL int
 c_headerpick(void *vp){
-   bool_t retain;
+   boole retain;
    struct a_ignore_bltin_map const *ibmp;
    char const **argv;
    int rv;
@@ -505,7 +505,7 @@ jleave:
 
 FL int
 c_unheaderpick(void *vp){
-   bool_t retain;
+   boole retain;
    struct a_ignore_bltin_map const *ibmp;
    char const **argv;
    int rv;
@@ -657,7 +657,7 @@ c_unfwdignore(void *v){ /* TODO v15 drop */
 }
 
 FL struct n_ignore *
-n_ignore_new(bool_t isauto){
+n_ignore_new(boole isauto){
    struct n_ignore *self;
    NYD_IN;
 
@@ -677,9 +677,9 @@ n_ignore_del(struct n_ignore *self){
    NYD_OU;
 }
 
-FL bool_t
+FL boole
 n_ignore_is_any(struct n_ignore const *self){
-   bool_t rv;
+   boole rv;
    NYD_IN;
 
    self = a_ignore_resolve_self(n_UNCONST(self), FAL0);
@@ -690,23 +690,23 @@ n_ignore_is_any(struct n_ignore const *self){
    return rv;
 }
 
-FL bool_t
-n_ignore_insert(struct n_ignore *self, bool_t retain,
+FL boole
+n_ignore_insert(struct n_ignore *self, boole retain,
       char const *dat, size_t len){
 #ifdef mx_HAVE_REGEX
    struct a_ignore_re *irp;
-   bool_t isre;
+   boole isre;
 #endif
    struct a_ignore_field *ifp;
    struct a_ignore_type *itp;
-   bool_t rv;
+   boole rv;
    NYD_IN;
 
    retain = !!retain; /* Make it true bool, TRUM1 has special _lookup meaning */
    rv = FAL0;
    self = a_ignore_resolve_self(self, TRU1);
 
-   if(len == UIZ_MAX)
+   if(len == UZ_MAX)
       len = su_cs_len(dat);
 
    /* Request to ignore or retain _anything_?  That is special-treated */
@@ -743,9 +743,9 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
 
    itp = retain ? &self->i_retain : &self->i_ignore;
 
-   if(itp->it_count == UI32_MAX){
+   if(itp->it_count == U32_MAX){
       n_err(_("Header selection size limit reached, cannot insert: %.*s\n"),
-         (int)MIN(len, SI32_MAX), dat);
+         (int)MIN(len, S32_MAX), dat);
       rv = FAL0;
       goto jleave;
    }
@@ -782,7 +782,7 @@ n_ignore_insert(struct n_ignore *self, bool_t retain,
    }else
 #endif /* mx_HAVE_REGEX */
    {
-      ui32_t hi;
+      u32 hi;
       size_t i;
 
       i = VSTRUCT_SIZEOF(struct a_ignore_field, if_field) + len + 1;
@@ -799,9 +799,9 @@ jleave:
    return rv;
 }
 
-FL bool_t
+FL boole
 n_ignore_lookup(struct n_ignore const *self, char const *dat, size_t len){
-   bool_t rv;
+   boole rv;
    NYD_IN;
 
    if(self == n_IGNORE_ALL)
