@@ -179,7 +179,7 @@ if [ -n "${CHECK_ONLY}${RUN_TEST}" ]; then
    fi
 fi
 
-TESTS_PERFORMED=0 TESTS_OK=0 TESTS_FAILED=0
+TESTS_PERFORMED=0 TESTS_OK=0 TESTS_FAILED=0 TESTS_SKIPPED=0
 
 COLOR_ERR_ON= COLOR_ERR_OFF=
 ESTAT=0
@@ -232,6 +232,13 @@ t_echoerr() {
    printf "${__i__}"'%sERROR:%s %s\n' \
       "${COLOR_ERR_ON}" "${COLOR_ERR_OFF}" "${@}"
    TEST_ANY=
+}
+
+t_echoskip() {
+   [ -n "${TEST_ANY}" ] && __i__=' ' || __i__=
+   printf "${__i__}"'%s[skip]' "${@}"
+   TEST_ANY=1
+   TESTS_SKIPPED=`add ${TESTS_SKIPPED} 1`
 }
 
 check() {
@@ -582,18 +589,20 @@ t_X_Y_opt_input_go_stack() {
       ${MAILX} ${ARGS} -RX'bind      ;echo $?' -Xx >> ./.tall 2>&1
       check cmdline 0 ./.tall '1867586969 8'
    else
-      t_echo 'cmdline:[unsupported, skipped]'
+      t_echoskip 'cmdline:[no option key-bindings]'
    fi
 
    t_epilog
 }
 
 t_X_errexit() {
+   t_prolog X_errexit
+
    if have_feat uistrings; then :; else
-      echo '[X_errexit]: unsupported, skip'
+      t_echoskip '[test unsupported]'
+      t_epilog
       return
    fi
-   t_prolog X_errexit
 
    ${cat} <<- '__EOT' > "${BODY}"
 	echo one
@@ -658,11 +667,13 @@ t_X_errexit() {
 }
 
 t_Y_errexit() {
+   t_prolog Y_errexit
+
    if have_feat uistrings; then :; else
-      echo '[Y_errexit]: unsupported, skip'
+      t_echoskip '[test unsupported]'
+      t_epilog
       return
    fi
-   t_prolog Y_errexit
 
    ${cat} <<- '__EOT' > "${BODY}"
 	echo one
@@ -767,7 +778,7 @@ t_S_freeze() {
 
    # TODO once we have a detached one with env=1..
    if [ -n "`</dev/null ${MAILX} ${ARGS} -X'!echo \$TERM' -Xx`" ]; then
-      t_echo 's_freeze-{6,7}:[shell sets $TERM, skipped]'
+      t_echoskip 's_freeze-{6,7}:[shell sets $TERM]'
    else
       ${cat} <<- '__EOT' > "${BODY}"
 		!echo "shell says TERM<$TERM>"
@@ -996,7 +1007,7 @@ t_shcodec() {
    check 1 0 "${MBOX}" '3316745312 1241'
 
    if [ -z "${UTF8_LOCALE}" ]; then
-      t_echo 'unicode:[unsupported, skipped]'
+      t_echoskip 'unicode:[no UTF-8 locale]'
    else
       ${cat} <<- '__EOT' | LC_ALL=${UTF8_LOCALE} \
          ${MAILX} ${ARGS} > "${MBOX}" 2>>${ERR}
@@ -1079,7 +1090,7 @@ t_wysh() {
 	__EOT
 
    if [ -z "${UTF8_LOCALE}" ]; then
-      echo 'Skip wysh-unicode, no UTF8_LOCALE'
+      t_echoskip 'wysh-unicode:[no UTF-8 locale]'
    else
       < "${BODY}" DIET=CURD TIED= \
       LC_ALL=${UTF8_LOCALE} ${MAILX} ${ARGS} > "${MBOX}" 2>>${ERR}
@@ -1840,7 +1851,7 @@ t_ifelse() {
 
       check regex 0 "${MBOX}" '1115671789 95'
    else
-      t_echo 'regex:[unsupported, skipped]'
+      t_echoskip 'regex:[no regex option]'
    fi
 
    t_epilog
@@ -2311,7 +2322,7 @@ t_addrcodec() {
 
       check idna 0 "${MBOX}" '498775983 326'
    else
-      t_echo 'idna:[unsupported, skipped]'
+      t_echoskip 'idna:[no IDNA option]'
    fi
 
    t_epilog
@@ -2672,7 +2683,7 @@ t_vexpr() {
 
       check regex 0 "${MBOX}" '3949279959 384'
    else
-      t_echo 'regex:[unsupported, skipped]'
+      t_echoskip 'regex:[no regex option]'
    fi
 
    t_epilog
@@ -2857,8 +2868,7 @@ t_xcall() {
          -Snomemdebug > "${MBOX}" 2>&1
       check 3 1 "${MBOX}" '1006776201 2799'
    else
-      t_echo '2:[unsupported, skipped]'
-      t_echo '3:[unsupported, skipped]'
+      t_echoskip '2-3:[test unsupported]'
    fi
 
    t_epilog
@@ -3214,11 +3224,13 @@ t_mbox() {
 }
 
 t_maildir() {
+   t_prolog maildir
+
    if have_feat maildir; then :; else
-      echo '[maildir]: unsupported, skip'
+      t_echoskip '[no maildir option]'
+      t_epilog
       return
    fi
-   t_prolog maildir
 
    TRAP_EXIT_ADDONS="./.t*"
 
@@ -3403,26 +3415,30 @@ _EOT
          -Smta=./.tmta.sh -Rf ./.trebox
       check 8 0 "${MBOX}" '2914485741 280'
    else
-      t_echo '8:[iconv unsupported, skipped]'
+      t_echoskip '8:[no iconv option]'
    fi
 
    t_epilog
 }
 
 t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
+   t_prolog iconv_mbyte_base64
+
    if [ -n "${UTF8_LOCALE}" ] && have_feat iconv; then
       if (</dev/null iconv -f ascii -t iso-2022-jp) >/dev/null 2>&1 ||
             (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
          :
       else
-         echo '[iconv_mbyte_base64]: unsupported, skip'
+         t_echoskip '[iconv(1) missing conversion]'
+         t_epilog
          return
       fi
    else
-      echo '[iconv_mbyte_base64]: unsupported, skip'
+      t_echoskip '[no UTF-8 locale/no iconv option]'
+      t_epilog
       return
    fi
-   t_prolog iconv_mbyte_base64
+
    TRAP_EXIT_ADDONS="./.t*"
 
    t_xmta 'DroseriaRotundifolia Thu Aug 03 17:26:25 2017'
@@ -3473,7 +3489,7 @@ t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
       ${sed} -e '/^\[-- M/d' < ./.tlog > ./.txlog
       check 4 - ./.txlog '3659773472 2035'
    else
-      t_echo '1-4:[ISO-2022-JP unsupported, skipped]'
+      t_echoskip '1-4:[ISO-2022-JP unsupported]'
    fi
 
    if (</dev/null iconv -f ascii -t euc-jp) >/dev/null 2>&1; then
@@ -3522,20 +3538,21 @@ t_iconv_mbyte_base64() { # TODO uses sed(1) and special *headline*!!
       ${sed} -e '/^\[-- M/d' < ./.tlog > ./.txlog
       check 8 - ./.txlog '2528199891 1988'
    else
-      t_echo '5-8:[EUC-JP unsupported, skipped]'
+      t_echoskip '5-8:[EUC-JP unsupported]'
    fi
 
    t_epilog
 }
 
 t_iconv_mainbody() {
-   if [ -n "${UTF8_LOCALE}" ] && have_feat iconv; then
-      :
-   else
-      echo '[iconv_mainbody]: unsupported, skip'
+   t_prolog iconv_mainbody
+
+   if [ -n "${UTF8_LOCALE}" ] && have_feat iconv; then :; else
+      t_echoskip '[no UTF-8 locale/no iconv option]'
+      t_epilog
       return
    fi
-   t_prolog iconv_mainbody
+
    TRAP_EXIT_ADDONS="./.t*"
 
    t_xmta 'HamamelisVirginiana Fri Oct 20 16:23:21 2017'
@@ -3558,7 +3575,7 @@ t_iconv_mainbody() {
          check 4 - ./.terr '271380835 121'
       fi
    else
-      t_echo '4:[unsupported, skipped]'
+      t_echoskip '4:[test unsupported]'
    fi
 
    # The different iconv(3) implementations use different replacement sequence
@@ -3579,7 +3596,7 @@ t_iconv_mainbody() {
          check 5-5 - ./.tout '3760313827 279'
       fi
    else
-      t_echo '5:[unsupported, skipped]'
+      t_echoskip '5:[test unsupported]'
    fi
 
    t_epilog
@@ -3607,13 +3624,14 @@ t_binary_mainbody() {
 }
 
 t_mime_force_sendout() {
-   if have_feat iconv; then
-      :
-   else
-      echo '[mime_force_sendout]: unsupported, skip'
+   t_prolog mime_force_sendout
+
+   if have_feat iconv; then :; else
+      t_echoskip '[option iconv missing, unsupported]'
+      t_epilog
       return
    fi
-   t_prolog mime_force_sendout
+
    TRAP_EXIT_ADDONS="./.t*"
 
    t_xmta 'OenotheraBiennis Thu Jan 03 17:27:31 2019'
@@ -3864,11 +3882,14 @@ t_shortcut() {
 
 # Operational basics with easy tests {{{
 t_expandaddr() {
+   t_prolog expandaddr
+
    if have_feat uistrings; then :; else
-      echo '[expandaddr]: unsupported, skip'
+      t_echoskip '[test unsupported]'
+      t_epilog
       return
    fi
-   t_prolog expandaddr
+
    TRAP_EXIT_ADDONS="./.t*"
 
    t_xmta 'GentianaCruciata Sun Aug 19 00:33:32 2017'
@@ -4177,8 +4198,8 @@ t_filetype() {
       check 2 - "./.t.mbox" '1594682963 13520'
       check 3 - "./.t.out" '2392348396 102'
    else
-      t_echo '2:[unsupported, skipped]'
-      t_echo '3:[unsupported, skipped]'
+      t_echoskip '2:[missing gzip(1)]'
+      t_echoskip '3:[missing gzip(1)]'
    fi
 
    {
@@ -4432,7 +4453,7 @@ t_attachments() {
    if have_feat uistrings; then
       check 2 - .tall '1928331872 720'
    else
-      t_echo '2:[unsupported, skipped]'
+      t_echoskip '2:[test unsupported]'
    fi
 
    ${rm} "${MBOX}"
@@ -4486,7 +4507,7 @@ t_attachments() {
    if have_feat uistrings; then
       check 4 - .tall '2526106274 1910'
    else
-      t_echo '4:[unsupported, skipped]'
+      t_echoskip '4:[test unsupported]'
    fi
 
    ${rm} "${MBOX}"
@@ -4521,7 +4542,7 @@ reply 1 2
    if have_feat uistrings; then
       check 6 - .tall '3662598562 509'
    else
-      t_echo '6:[unsupported, skipped]'
+      t_echoskip '6:[test unsupported]'
    fi
 
    t_epilog
@@ -4567,11 +4588,14 @@ t_rfc2231() {
 }
 
 t_mime_types_load_control() {
+   t_prolog mime_types_load_control
+
    if have_feat uistrings; then :; else
-      echo '[mime_types_load_control]: unsupported, skip'
+      t_echoskip '[test unsupported]'
+      t_epilog
       return
    fi
-   t_prolog mime_types_load_control
+
    TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<-_EOT > ./.tmts1
@@ -4757,7 +4781,7 @@ _EOT
    if have_feat uistrings; then
       check 2 - .tall '1878598364 505'
    else
-      t_echo '2:[unsupported, skipped]'
+      t_echoskip '2:[test unsupported]'
    fi
 
    # Automatic alternates, also from command line (freezing etc.)
@@ -5174,11 +5198,14 @@ t_digmsg() { # XXX rudimentary
 
 # Heavy use of/rely on state machine (behaviour) and basics {{{
 t_compose_hooks() { # {{{ TODO monster
+   t_prolog compose_hooks
+
    if have_feat uistrings; then :; else
-      echo '[compose_hooks]: unsupported, skip'
+      t_echoskip '[test unsupported]'
+      t_epilog
       return
    fi
-   t_prolog compose_hooks
+
    TRAP_EXIT_ADDONS="./.t*"
 
    t_xmta 'PrimulaVeris Wed Apr 10 22:59:00 2017'
@@ -6342,7 +6369,7 @@ t_lreply_futh_rth_etc() {
    if have_feat uistrings; then
       check 1 - "${MBOX}" '1530821219 29859'
    else
-      t_echo '1:[content test unsupported, skipped]'
+      t_echoskip '1:[test unsupported]'
    fi
 
    ##
@@ -6438,7 +6465,7 @@ t_pipe_handlers() {
 
    # Keep $MBOX..
    if [ -z "${ln}" ]; then
-      echo 'pipe_handlers 5: ln(1) not found, skipping'
+      t_echoskip '5:[ln(1) not found]'
    else
       # Let us fill in tmpfile, test auto-deletion
       printf 'Fi %s\nmimeview\nvput vexpr v file-stat .t.one-link\n'\
@@ -6499,12 +6526,14 @@ t_pipe_handlers() {
 
 # Rest {{{
 t_s_mime() {
-   have_feat smime || {
-      echo '[s_mime]: unsupported, skip'
-      return
-   }
-
    t_prolog s_mime
+
+   if have_feat smime; then :; else
+      t_echoskip '[no S/MIME option]'
+      t_epilog
+      return
+   fi
+
    TRAP_EXIT_ADDONS="./.t.conf ./.tkey.pem ./.tcert.pem ./.tpair.pem"
    TRAP_EXIT_ADDONS="${TRAP_EXIT_ADDONS} ./.VERIFY ./.DECRYPT ./.ENCRYPT"
    TRAP_EXIT_ADDONS="${TRAP_EXIT_ADDONS} ./.tmta.sh"
@@ -6898,8 +6927,8 @@ esec=$SECONDS
 if [ -n "${ssec}" ] && [ -n "${esec}" ]; then
    ( echo Elapsed seconds: `$awk 'BEGIN{print '"${esec}"' - '"${ssec}"'}'` )
 fi
-printf 'Tests: performed %u, %u ok, %u failures\n' \
-   "${TESTS_PERFORMED}" "${TESTS_OK}" "${TESTS_FAILED}"
+printf 'Tests: performed %u, %u ok, %u failure(s), %u test(s) skipped\n' \
+   "${TESTS_PERFORMED}" "${TESTS_OK}" "${TESTS_FAILED}" "${TESTS_SKIPPED}"
 
 [ ${ESTAT} -eq 0 ] && printf 'Exit status ok\n' ||
    printf >&2 'Errors occurred\n'
