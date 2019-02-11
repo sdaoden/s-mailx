@@ -179,6 +179,8 @@ if [ -n "${CHECK_ONLY}${RUN_TEST}" ]; then
    fi
 fi
 
+TESTS_PERFORMED=0 TESTS_OK=0 TESTS_FAILED=0
+
 COLOR_ERR_ON= COLOR_ERR_OFF=
 ESTAT=0
 TEST_NAME=
@@ -235,27 +237,39 @@ t_echoerr() {
 check() {
    restat=${?} tid=${1} eestat=${2} f=${3} s=${4}
 
+   TESTS_PERFORMED=`add ${TESTS_PERFORMED} 1`
+
+   check__bad= check__runx=
+
    if [ "${eestat}" != - ] && [ "${restat}" != "${eestat}" ]; then
+      ESTAT=1
       t_echoerr "${tid}: bad-status: ${restat} != ${eestat}"
+      check__bad=1
    fi
 
    csum="`${cksum} < ${f} | ${sed} -e 's/[ 	]\{1,\}/ /g'`"
    if [ "${csum}" = "${s}" ]; then
-      runx=
       t_echo "${tid}:ok"
    else
-      runx=yes
       ESTAT=1
       t_echoerr "${tid}: checksum mismatch (got ${csum})"
+      check__bad=1 check__runx=1
+   fi
+
+   if [ -z "${check__bad}" ]; then
+      TESTS_OK=`add ${TESTS_OK} 1`
+   else
+      TESTS_FAILED=`add ${TESTS_FAILED} 1`
    fi
 
    if [ -n "${CHECK_ONLY}${RUN_TEST}" ]; then
       x="t.${TEST_NAME}-${tid}"
-      if [ -n "${RUN_TEST}" ] || [ -n "${runx}" -a -n "${GIT_REPO}" ]; then
+      if [ -n "${RUN_TEST}" ] ||
+            [ -n "${check__runx}" -a -n "${GIT_REPO}" ]; then
          ${cp} -f "${f}" ./"${x}"
       fi
 
-      if [ -n "${runx}" ] && [ -n "${GIT_REPO}" ] &&
+      if [ -n "${check__runx}" ] && [ -n "${GIT_REPO}" ] &&
             command -v diff >/dev/null 2>&1 &&
             (git rev-parse --verify test-out) >/dev/null 2>&1 &&
             git show test-out:"${x}" > ./"${x}".old 2>/dev/null; then
@@ -6884,6 +6898,8 @@ esec=$SECONDS
 if [ -n "${ssec}" ] && [ -n "${esec}" ]; then
    ( echo Elapsed seconds: `$awk 'BEGIN{print '"${esec}"' - '"${ssec}"'}'` )
 fi
+printf 'Tests: performed %u, %u ok, %u failures\n' \
+   "${TESTS_PERFORMED}" "${TESTS_OK}" "${TESTS_FAILED}"
 
 [ ${ESTAT} -eq 0 ] && printf 'Exit status ok\n' ||
    printf >&2 'Errors occurred\n'
