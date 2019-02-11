@@ -135,14 +135,14 @@ static char             *_it_begin;
 static enum itoken      _it_token;
 static uz            _it_number;
 static void             *_it_args[2];
-static size_t           _it_need_headers;
+static uz           _it_need_headers;
 
 static enum okay     itparse(char const *spec, char const **xp, int sub);
 static enum okay     itscan(char const *spec, char const **xp);
 static enum okay     itsplit(char const *spec, char const **xp);
 static enum okay     itstring(void **tp, char const *spec, char const **xp);
 static int           itexecute(struct mailbox *mp, struct message *m,
-                        size_t c, struct itnode *n);
+                        uz c, struct itnode *n);
 
 static time_t        _imap_read_date(char const *cp);
 static char *        _imap_quotestr(char const *s);
@@ -443,11 +443,11 @@ jleave:
 }
 
 static int
-itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
+itexecute(struct mailbox *mp, struct message *m, uz c, struct itnode *n)
 {
    struct search_expr se;
    char *cp, *line = NULL; /* TODO line pool */
-   size_t linesize = 0;
+   uz linesize = 0;
    FILE *ibuf;
    int rv;
    NYD_IN;
@@ -743,7 +743,7 @@ jleave:
 static char *
 mkenvelope(struct mx_name *np)
 {
-   size_t epsize;
+   uz epsize;
    char *ep, *realnam = NULL, /**sourceaddr = NULL,*/ *localpart,
       *domainpart, *cp, *rp, *xp, *ip;
    struct str in, out;
@@ -828,7 +828,7 @@ around(char const *cp)
 {
    static char ab[2 * SURROUNDING +1];
 
-   size_t i;
+   uz i;
    NYD_IN;
 
    for (i = 0; i < SURROUNDING && cp > _it_begin; ++i)
@@ -840,14 +840,14 @@ around(char const *cp)
    return ab;
 }
 
-FL ssize_t
+FL sz
 imap_search(char const *spec, int f)
 {
    static char *lastspec;
 
    char const *xp;
-   size_t i;
-   ssize_t rv;
+   uz i;
+   sz rv;
    NYD_IN;
 
    if (su_cs_cmp(spec, "()")) {
@@ -887,7 +887,7 @@ imap_search(char const *spec, int f)
       if (message[i].m_flag & MHIDDEN)
          continue;
       if (f == MDELETED || !(message[i].m_flag & MDELETED)) {
-         size_t j = (int)(i + 1);
+         uz j = (int)(i + 1);
          if (itexecute(&mb, message + i, j, _it_tree)){
             mark((int)j, f);
             ++rv;

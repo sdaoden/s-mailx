@@ -352,8 +352,8 @@ static struct a_xtls_x509_v_flags const a_xtls_x509_v_flags[] = { /* Manual! */
    {"trusted-first", X509_V_FLAG_TRUSTED_FIRST},
 };
 
-static size_t a_xtls_state;
-static size_t a_xtls_msgno;
+static uz a_xtls_state;
+static uz a_xtls_msgno;
 
 /* Special pre-PRNG PRNG init */
 #ifdef a_XTLS_S_RAND_DRBG_INIT
@@ -388,7 +388,7 @@ static void a_xtls_atexit(void);
 #endif
 
 static boole a_xtls_parse_asn1_time(ASN1_TIME const *atp,
-               char *bdat, size_t blen);
+               char *bdat, uz blen);
 static int a_xtls_verify_cb(int success, X509_STORE_CTX *store);
 
 static boole a_xtls_digest_find(char const *name, EVP_MD const **mdp,
@@ -620,7 +620,7 @@ a_xtls_atexit(void){
 #endif /* mx_HAVE_XTLS_OPENSSL < 0x10100 */
 
 static boole
-a_xtls_parse_asn1_time(ASN1_TIME const *atp, char *bdat, size_t blen)
+a_xtls_parse_asn1_time(ASN1_TIME const *atp, char *bdat, uz blen)
 {
    BIO *mbp;
    char *mcp;
@@ -693,7 +693,7 @@ jleave:
 static boole
 a_xtls_digest_find(char const *name,
       EVP_MD const **mdp, char const **normalized_name_or_null){
-   size_t i;
+   uz i;
    char *nn;
    NYD2_IN;
 
@@ -927,7 +927,7 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
       goto jxerr;
 # else
       struct a_xtls_protocol const *xpp;
-      size_t i;
+      uz i;
 
       for(i = 1 /* [0] == ALL */;;){
          xpp = &a_xtls_protocols[i];
@@ -1089,7 +1089,7 @@ a_xtls_obsolete_conf_vars(void *confp, struct url const *urlp){
 
    /* Protocol via ssl-method or ssl-protocol */
    if((cp = xok_vlook(ssl_method, urlp, OXM_ALL)) != NULL){
-      size_t i;
+      uz i;
 
       n_OBSOLETE(_("please use *tls-config-pairs* instead of *ssl-method*"));
       for(i = 0;;){
@@ -1355,7 +1355,7 @@ smime_verify(struct message *m, int n, n_XTLS_STACKOF(X509) *chain,
    pkcs7 = NULL;
    certs = NULL;
    a_xtls_state &= ~a_XTLS_S_VERIFY_ERROR;
-   a_xtls_msgno = (size_t)n;
+   a_xtls_msgno = (uz)n;
 
    for (;;) {
       sender = getsender(m);
@@ -1478,7 +1478,7 @@ _smime_cipher(char const *name)
    EVP_CIPHER const *cipher;
    char *vn;
    char const *cp;
-   size_t i;
+   uz i;
    NYD_IN;
 
    vn = n_lofi_alloc(i = su_cs_len(name) + sizeof("smime-cipher-") -1 +1);
@@ -1522,7 +1522,7 @@ static int
 ssl_password_cb(char *buf, int size, int rwflag, void *userdata)
 {
    char *pass;
-   size_t len;
+   uz len;
    NYD_IN;
    UNUSED(rwflag);
    UNUSED(userdata);
@@ -1837,7 +1837,7 @@ jleave:
 
 #if mx_HAVE_RANDOM == n_RANDOM_IMPL_TLS
 FL void
-n_tls_rand_bytes(void *buf, size_t blen){
+n_tls_rand_bytes(void *buf, uz blen){
    NYD2_IN;
    if(!(a_xtls_state & a_XTLS_S_RAND_INIT))
       a_xtls_rand_init();
@@ -2480,7 +2480,7 @@ smime_certsave(struct message *m, int n, FILE *op)
 
    pkcs7 = NULL;
 
-   a_xtls_msgno = (size_t)n;
+   a_xtls_msgno = (uz)n;
 jloop:
    to = hfield1("to", m);
    cc = hfield1("cc", m);

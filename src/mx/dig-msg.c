@@ -117,7 +117,7 @@ a_dmsg_cmd(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmd, uz cmdl,
    NYD2_IN;
 
    /* C99 */{
-      size_t i;
+      uz i;
 
       /* TODO trim+strlist_split(_ifs?)() */
       for(i = 0; i < NELEM(cmda); ++i){
@@ -333,7 +333,7 @@ jins_505:
 
       /* Free-form header fields */
       /* C99 */{
-         size_t nl, bl;
+         uz nl, bl;
          struct n_header_field **hfpp;
 
          for(cp = cmda[1]; *cp != '\0'; ++cp)
@@ -1009,7 +1009,7 @@ jatt_attset:
                cp = NULL;
 
             if(cp != NULL){
-               size_t i;
+               uz i;
 
                for(i = 0; ap != NULL; ++i, ap = ap->a_blink)
                   ;
@@ -1068,7 +1068,7 @@ jatt_ins:
             cp = NULL;
          break;
       case n_ATTACH_ERR_NONE:{
-         size_t i;
+         uz i;
 
          for(i = 0; ap != NULL; ++i, ap = ap->a_blink)
             ;

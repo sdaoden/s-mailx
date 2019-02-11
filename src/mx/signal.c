@@ -92,11 +92,11 @@
  */
 
 /* {hold,rele}_all_sigs() */
-static size_t           _alls_depth;
+static uz           _alls_depth;
 static sigset_t         _alls_nset, _alls_oset;
 
 /* {hold,rele}_sigs() */
-static size_t           _hold_sigdepth;
+static uz           _hold_sigdepth;
 static sigset_t         _hold_nset, _hold_oset;
 
 /* */
@@ -479,7 +479,7 @@ mx__nyd_oncrash(int signo)
    struct sigaction xact;
    sigset_t xset;
    int fd;
-   size_t i, fnl;
+   uz i, fnl;
    char const *tmpdir;
 
    LCTA(sizeof("./") -1 + sizeof(VAL_UAGENT) -1 + sizeof(".dat") < PATH_MAX,

@@ -92,7 +92,7 @@ static su_boole a_main_dump_doc(su_up cookie, su_boole has_arg,
 static void a_main_startup(void);
 
 /* Grow a char** */
-static size_t a_main_grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt);
+static uz a_main_grow_cpp(char const ***cpp, uz newsize, uz oldcnt);
 
 /* Setup some variables which we require to be valid / verified */
 static void a_main_setup_vars(void);
@@ -110,7 +110,7 @@ static void a_main__scrsz(int is_sighdl);
 /* Ok, we are reading mail.  Decide whether we are editing a mailbox or reading
  * the system mailbox, and open up the right stuff */
 static int a_main_rcv_mode(boole had_A_arg, char const *folder,
-            char const *Larg, char const **Yargs, size_t Yargs_cnt);
+            char const *Larg, char const **Yargs, uz Yargs_cnt);
 
 /* Interrupt printing of the headers */
 static void a_main_hdrstop(int signo);
@@ -119,7 +119,7 @@ static void
 a_main_usage(FILE *fp){
    /* Stay in VAL_HEIGHT lines; On buf length change: verify visual output! */
    char buf[7];
-   size_t i;
+   uz i;
    NYD2_IN;
 
    i = su_cs_len(su_program);
@@ -313,8 +313,8 @@ a_main_startup(void){
    NYD2_OU;
 }
 
-static size_t
-a_main_grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt){
+static uz
+a_main_grow_cpp(char const ***cpp, uz newsize, uz oldcnt){
    /* Just use auto-reclaimed storage, it will be preserved */
    char const **newcpp;
    NYD2_IN;
@@ -518,7 +518,7 @@ static sigjmp_buf a_main__hdrjmp; /* XXX */
 
 static int
 a_main_rcv_mode(boole had_A_arg, char const *folder, char const *Larg,
-      char const **Yargs, size_t Yargs_cnt){
+      char const **Yargs, uz Yargs_cnt){
    /* XXX a_main_rcv_mode(): use argument carrier */
    n_sighdl_t prevint;
    int i;
@@ -661,7 +661,7 @@ main(int argc, char *argv[]){
    struct su_avopt avo;
    int i;
    char *cp;
-   size_t Xargs_size, Xargs_cnt, Yargs_size, Yargs_cnt, smopts_size;
+   uz Xargs_size, Xargs_cnt, Yargs_size, Yargs_cnt, smopts_size;
    char const *Aarg, *emsg, *folder, *Larg, *okey, *qf,
       *subject, *uarg, **Xargs, **Yargs;
    struct attachment *attach;
@@ -796,7 +796,7 @@ main(int argc, char *argv[]){
          Larg = avo.avo_current_arg;
          n_poption |= n_PO_HEADERLIST;
          if(*Larg == '"' || *Larg == '\''){ /* TODO list.c:listspec_check() */
-            size_t j;
+            uz j;
 
             j = su_cs_len(++Larg);
             if(j > 0){

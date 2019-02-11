@@ -57,7 +57,7 @@ static void a_ccnd_oif_error(struct a_ccnd_if_ctx const *cicp,
 /* noop and (1) don't work for real, only syntax-check and
  * (2) non-error return is ignored */
 static s8 a_ccnd_oif_test(struct a_ccnd_if_ctx *cicp, boole noop);
-static s8 a_ccnd_oif_group(struct a_ccnd_if_ctx *cicp, size_t level,
+static s8 a_ccnd_oif_group(struct a_ccnd_if_ctx *cicp, uz level,
                boole noop);
 
 /* Shared `if' / `elif' implementation */
@@ -93,7 +93,7 @@ a_ccnd_oif_error(struct a_ccnd_if_ctx const *cicp, char const *msg_or_null,
 static s8
 a_ccnd_oif_test(struct a_ccnd_if_ctx *cicp, boole noop){
    char const *emsg, * const *argv, *cp, *lhv, *op, *rhv;
-   size_t argc;
+   uz argc;
    char c;
    s8 rv;
    NYD2_IN;
@@ -153,7 +153,7 @@ jesyn:
 
       /* Look up the value in question, we need it anyway */
       if(*++cp == '{'){
-         size_t i = su_cs_len(cp);
+         uz i = su_cs_len(cp);
 
          if(i > 0 && cp[i - 1] == '}')
             cp = savestrbuf(++cp, i -= 2);
@@ -230,7 +230,7 @@ jesyn:
          if(*++rhv == '\0')
             goto jesyn;
          else if(*rhv == '{'){
-            size_t i = su_cs_len(rhv);
+            uz i = su_cs_len(rhv);
 
             if(i > 0 && rhv[i - 1] == '}')
                rhv = savestrbuf(++rhv, i -= 2);
@@ -324,9 +324,9 @@ jleave:
 }
 
 static s8
-a_ccnd_oif_group(struct a_ccnd_if_ctx *cicp, size_t level, boole noop){
+a_ccnd_oif_group(struct a_ccnd_if_ctx *cicp, uz level, boole noop){
    char const *emsg, *arg0, * const *argv, * const *argv_max_save;
-   size_t i;
+   uz i;
    char unary, c;
    enum{
       a_FIRST = 1<<0,
@@ -483,7 +483,7 @@ static int
 a_ccnd_if(void *v, boole iselif){
    struct a_ccnd_if_ctx cic;
    char const * const *argv;
-   size_t argc;
+   uz argc;
    s8 xrv, rv;
    struct a_ccnd_if_node *cinp;
    NYD_IN;
@@ -511,7 +511,7 @@ a_ccnd_if(void *v, boole iselif){
    for(argc = 0, argv = v; argv[argc] != NULL; ++argc)
       if(argv[argc][0] == '#'){
          char const **nav = n_autorec_alloc(sizeof(char*) * (argc + 1));
-         size_t i;
+         uz i;
 
          for(i = 0; i < argc; ++i)
             nav[i] = argv[i];

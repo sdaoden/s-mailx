@@ -310,7 +310,7 @@ putcache(struct mailbox *mp, struct message *m)
             (ob == 'B' || (ob == 'H' && c != 'B'))) {
          if (m->m_xlines <= 0 && olines > 0)
             m->m_xlines = olines;
-         if ((c != 'N' && (size_t)osize != m->m_xsize) ||
+         if ((c != 'N' && (uz)osize != m->m_xsize) ||
                oflag != (int)USEBITS(m->m_flag) || otime != m->m_time ||
                (m->m_xlines > 0 && olines != m->m_xlines)) {
             fflush(obuf);
@@ -338,7 +338,7 @@ putcache(struct mailbox *mp, struct message *m)
    while (cnt > 0) {
       n = (cnt > (long)sizeof iob) ? (long)sizeof iob : cnt;
       cnt -= n;
-      if ((size_t)n != fread(iob, 1, n, ibuf) ||
+      if ((uz)n != fread(iob, 1, n, ibuf) ||
             n != (long)zwrite(zp, iob, n)) {
          unlink(name);
          zfree(zp);

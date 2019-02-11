@@ -92,7 +92,7 @@ enum a_shexp_quote_flags{
 #ifdef mx_HAVE_FNMATCH
 struct a_shexp_glob_ctx{
    char const *sgc_patdat;       /* Remaining pattern (at and below level) */
-   size_t sgc_patlen;
+   uz sgc_patlen;
    struct n_string *sgc_outer;   /* Resolved path up to this level */
    u32 sgc_flags;
    u8 sgc__dummy[4];
@@ -171,7 +171,7 @@ a_shexp_findmail(char const *user, boole force){
    }
 
    /* C99 */{
-      size_t ulen, i;
+      uz ulen, i;
 
       ulen = su_cs_len(user) +1;
       i = sizeof(VAL_MAIL) -1 + 1 + ulen;
@@ -189,7 +189,7 @@ jleave:
 static char *
 a_shexp_tilde(char const *s){
    struct passwd *pwp;
-   size_t nl, rl;
+   uz nl, rl;
    char const *rp, *np;
    char *rv;
    NYD2_IN;
@@ -256,7 +256,7 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
       cp = savestrbuf(slp->sl_dat, slp->sl_len);
    else if(fexpm & FEXP_MULTIOK){
       struct n_strlist **sorta, *xslp;
-      size_t i, no, l;
+      uz i, no, l;
 
       no = l = 0;
       for(xslp = slp; xslp != NULL; xslp = xslp->sl_next){
@@ -322,7 +322,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
    struct a_shexp_glob_ctx nsgc;
    struct dirent *dep;
    DIR *dp;
-   size_t old_outerlen;
+   uz old_outerlen;
    char const *ccp, *myp;
    NYD2_IN;
 
@@ -395,7 +395,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
     * TODO parse tree, otherwise we do not know what is desired! */
    /* C99 */{
       char *ncp;
-      size_t i;
+      uz i;
       boole need;
 
       for(need = FAL0, i = 0, myp = sgcp->sgc_patdat; *myp != '\0'; ++myp)
@@ -465,7 +465,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
             n_string_trunc(sgcp->sgc_outer, old_outerlen);
          }else{
             struct n_strlist *slp;
-            size_t i, j;
+            uz i, j;
 
             i = su_cs_len(dep->d_name);
             j = (old_outerlen > 0) ? old_outerlen + 1 + i : i;
@@ -549,7 +549,7 @@ a_shexp__quote(struct a_shexp_quote_ctx *sqcp, struct a_shexp_quote_lvl *sqlp){
    struct n_visual_info_ctx vic;
    union {struct a_shexp_quote_lvl *head; struct n_string *store;} u;
    u32 flags;
-   size_t il;
+   uz il;
    char const *ib, *ib_base;
    NYD2_IN;
 
@@ -788,7 +788,7 @@ jpush:
             if(n_psonce & n_PSO_UNICODE){
                u32 unic;
                char const *ib2;
-               size_t il2, il3;
+               uz il2, il3;
 
                ib2 = ib;
                il2 = il;
@@ -828,7 +828,7 @@ jpush:
                   "utf-8", ok_vlook(ttycharset), savestrbuf(ib, il))) != NULL){
                u32 unic;
                char const *ib2;
-               size_t il2, il3;
+               uz il2, il3;
 
                il2 = su_cs_len(ib2 = vic.vic_indat);
                if((unic = su_utf8_to_32(&ib2, &il2)) != U32_MAX){
@@ -1077,7 +1077,7 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
    u32 last_known_meta_trim_len;
    char c2, c, quotec, utf[8];
    enum n_shexp_state rv;
-   size_t i, il;
+   uz i, il;
    char const *ifs, *ifs_ws, *ib_save, *ib;
    enum{
       a_NONE = 0,
@@ -1485,7 +1485,7 @@ jerr_ib_save:
                      static u8 const hexatoi[] = { /* XXX uses ASCII */
                         0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
                      };
-                     size_t no, j;
+                     uz no, j;
 
                      i = MIN(il, i);
                      for(no = j = 0; i-- > 0; --il, ++ib, ++j){
@@ -1914,7 +1914,7 @@ c_shcodec(void *vp){
    struct str in;
    struct n_string sou_b, *soup;
    s32 nerrn;
-   size_t alen;
+   uz alen;
    boole norndtrip;
    char const **argv, *varname, *act, *cp;
    NYD_IN;

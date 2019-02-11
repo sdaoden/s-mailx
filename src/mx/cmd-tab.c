@@ -133,7 +133,7 @@ a_ctab_cmdinfo(struct n_cmd_desc const *cdp){
    default:
    case n_CMD_ARG_TYPE_ARG:{
       u32 flags, xflags;
-      size_t i;
+      uz i;
       struct n_cmd_arg_desc const *cadp;
 
       rv = n_string_push_cp(rv, _("argument tokens: "));
@@ -222,7 +222,7 @@ static int
 a_ctab_c_list(void *vp){
    FILE *fp;
    struct n_cmd_desc const **cdpa, *cdp, **cdpa_curr;
-   size_t i, l, scrwid;
+   uz i, l, scrwid;
    NYD_IN;
 
    i = NELEM(a_ctab_ctable) + NELEM(a_ctab_ctable_plus) +1;
@@ -263,7 +263,7 @@ a_ctab_c_list(void *vp){
       }else
 #endif
            {
-         size_t j;
+         uz j;
 
          j = su_cs_len(cdp->cd_name);
          if(*pre != '\0')
@@ -464,7 +464,7 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
    struct str shin_orig, shin;
    boole stoploop, greedyjoin;
    void const *cookie;
-   size_t cad_idx, parsed_args;
+   uz cad_idx, parsed_args;
    struct n_cmd_arg_desc const *cadp;
    NYD_IN;
 
@@ -646,7 +646,7 @@ jredo:
 
       if(greedyjoin == TRU1){ /* TODO speed this up! */
          char *cp;
-         size_t i;
+         uz i;
 
          ASSERT((ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK
             ) != n_CMD_ARG_DESC_MSGLIST);
@@ -707,7 +707,7 @@ jerr:
 
       if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
             (n_poption & n_PO_D_V)){
-         size_t i;
+         uz i;
 
          for(i = 0; (i < cadp->cad_no &&
                !(cadp->cad_ent_flags[i][0] & n_CMD_ARG_DESC_OPTION)); ++i)
@@ -733,7 +733,7 @@ n_cmd_arg_save_to_heap(struct n_cmd_arg_ctx const *cacp){
    struct n_cmd_arg_ctx *ncacp;
    char *buf;
    struct n_cmd_arg const *cap;
-   size_t len, i;
+   uz len, i;
    NYD2_IN;
 
    /* For simplicity, save it all in once chunk, so that it can be thrown away
@@ -818,8 +818,8 @@ n_cmd_arg_restore_from_heap(void *vp){
 }
 
 FL int
-getrawlist(boole wysh, char **res_dat, size_t res_size,
-      char const *line, size_t linesize){
+getrawlist(boole wysh, char **res_dat, uz res_size,
+      char const *line, uz linesize){
    int res_no;
    NYD_IN;
 
@@ -934,7 +934,7 @@ getrawlist(boole wysh, char **res_dat, size_t res_size,
    }
 
    if(res_no >= 0)
-      res_dat[(size_t)res_no] = NULL;
+      res_dat[(uz)res_no] = NULL;
 jleave:
    NYD_OU;
    return res_no;

@@ -432,7 +432,7 @@ _maildir_append(char const *name, char const *sub, char const *fn)
    m = &message[msgCount++];
    /* C99 */{
       char *tmp;
-      size_t i, j;
+      uz i, j;
 
       i = su_cs_len(fn) +1;
       j = su_cs_len(sub);
@@ -453,7 +453,7 @@ static void
 readin(char const *name, struct message *m)
 {
    char *buf;
-   size_t bufsize, buflen, cnt;
+   uz bufsize, buflen, cnt;
    long size = 0, lines = 0;
    off_t offset;
    FILE *fp;
@@ -698,7 +698,7 @@ maildir_append1(struct n_timespec const *tsp, char const *name, FILE *fp,
    char buf[4096], *fn, *tfn, *nfn;
    struct stat st;
    FILE *op;
-   size_t nlen, flen, n;
+   uz nlen, flen, n;
    enum okay rv = STOP;
    NYD_IN;
 
@@ -726,7 +726,7 @@ maildir_append1(struct n_timespec const *tsp, char const *name, FILE *fp,
    if (fseek(fp, off1, SEEK_SET) == -1)
       goto jtmperr;
    while (size > 0) {
-      size_t z = UCMP(z, size, >, sizeof buf) ? sizeof buf : (size_t)size;
+      uz z = UCMP(z, size, >, sizeof buf) ? sizeof buf : S(uz,size);
 
       if (z != (n = fread(buf, 1, z, fp)) || n != fwrite(buf, 1, n, op)) {
 jtmperr:
@@ -780,7 +780,7 @@ static enum okay
 mkmaildir(char const *name) /* TODO proper cleanup on error; use path[] loop */
 {
    char *np;
-   size_t i;
+   uz i;
    enum okay rv = STOP;
    NYD_IN;
 
@@ -842,7 +842,7 @@ static void
 mktable(void)
 {
    struct message *mp;
-   size_t i;
+   uz i;
    NYD_IN;
 
    i = a_maildir_tbl_prime = msgCount;
@@ -1071,7 +1071,7 @@ maildir_append(char const *name, FILE *fp, long offset)
 {
    struct n_timespec const *tsp;
    char *buf, *bp, *lp;
-   size_t bufsize, buflen, cnt;
+   uz bufsize, buflen, cnt;
    off_t off1 = -1, offs;
    long size;
    int flag;

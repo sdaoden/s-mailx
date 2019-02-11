@@ -233,7 +233,7 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
    int *msgvec, *ip;
    enum{a_NONE, a_SQUEEZE = 1u<<0,
       a_EMPTY = 1u<<8, a_STOP = 1u<<9,  a_WORKMASK = 0xFF00u} f;
-   size_t tmax, plines;
+   uz tmax, plines;
    FILE *iobuf, *pbuf;
    NYD2_IN;
 
@@ -271,7 +271,7 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
             tmax >>= l;
          }
       }else
-         tmax = (size_t)l;
+         tmax = (uz)l;
    }
    f = ok_blook(topsqueeze) ? a_SQUEEZE : a_NONE;
 
@@ -315,7 +315,7 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
       ++plines;
 
       /* C99 */{
-         size_t l;
+         uz l;
 
          n_string_trunc(&s, 0);
          for(l = 0, f &= ~a_WORKMASK; !(f & a_STOP);){

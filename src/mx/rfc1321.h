@@ -148,7 +148,7 @@ static unsigned char PADDING[64] = {
 	(a) = ((a) + (b)) & UINT4B_MAX; \
 }
 
-static void * (* volatile _volatile_su_mem_set)(void*, int, size_t
+static void * (* volatile _volatile_su_mem_set)(void*, int, uz
 	) = &(su_mem_set);
 
 static void Encode(unsigned char *outp, md5_type *inp, unsigned int len);

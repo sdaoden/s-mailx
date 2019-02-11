@@ -1501,10 +1501,10 @@ struct n_cmd_arg_desc{
 struct n_cmd_arg_ctx{
    struct n_cmd_arg_desc const *cac_desc; /* Input: description of command */
    char const *cac_indat; /* Input that shall be parsed */
-   size_t cac_inlen; /* Input length (UZ_MAX: do a su_cs_len()) */
+   uz cac_inlen; /* Input length (UZ_MAX: do a su_cs_len()) */
    u32 cac_msgflag; /* Input (option): required flags of messages */
    u32 cac_msgmask; /* Input (option): relevant flags of messages */
-   size_t cac_no; /* Output: number of parsed arguments */
+   uz cac_no; /* Output: number of parsed arguments */
    struct n_cmd_arg *cac_arg; /* Output: parsed arguments */
    char const *cac_vput; /* "Output": vput prefix used: varname */
 };
@@ -1622,7 +1622,7 @@ struct n_dotlock_info{
    char const *di_lock_name; /* .di_file_name + .lock */
    char const *di_hostname; /* ..filled in parent (due resolver delays) */
    char const *di_randstr; /* ..ditto, random string */
-   size_t di_pollmsecs;  /* Delay in between locking attempts */
+   uz di_pollmsecs;  /* Delay in between locking attempts */
    struct stat *di_stb;
 };
 #endif
@@ -1856,9 +1856,9 @@ struct mimepart{
    u8 m__pad1[4];
 #endif
    int m_block; /* Block number of this part */
-   size_t m_offset; /* Offset in block of part */
-   size_t m_size; /* Bytes in the part */
-   size_t m_xsize; /* Bytes in the full part */
+   uz m_offset; /* Offset in block of part */
+   uz m_size; /* Bytes in the part */
+   uz m_xsize; /* Bytes in the full part */
    long m_lines; /* Lines in the message; wire format! */
    long m_xlines; /* Lines in the full message; ditto */
    time_t m_time; /* Time the message was sent */
@@ -1889,9 +1889,9 @@ struct message{
    u8 m__pad1[4];
 #endif
    int m_block; /* block number of this message */
-   size_t m_offset; /* offset in block of message */
-   size_t m_size; /* Bytes in the message */
-   size_t m_xsize; /* Bytes in the full message */
+   uz m_offset; /* offset in block of message */
+   uz m_size; /* Bytes in the message */
+   uz m_xsize; /* Bytes in the full message */
    long m_lines; /* Lines in the message */
    long m_xlines; /* Lines in the full message */
    time_t m_time; /* time the message was sent */
@@ -2000,12 +2000,12 @@ struct header{
 struct n_addrguts{
    /* Input string as given (maybe replaced with a fixed one!) */
    char const *ag_input;
-   size_t ag_ilen; /* su_cs_len() of input */
-   size_t ag_iaddr_start; /* Start of *addr-spec* in .ag_input */
-   size_t ag_iaddr_aend; /* ..and one past its end */
+   uz ag_ilen; /* su_cs_len() of input */
+   uz ag_iaddr_start; /* Start of *addr-spec* in .ag_input */
+   uz ag_iaddr_aend; /* ..and one past its end */
    char *ag_skinned; /* Output (alloced if !=.ag_input) */
-   size_t ag_slen; /* su_cs_len() of .ag_skinned */
-   size_t ag_sdom_start; /* Start of domain in .ag_skinned, */
+   uz ag_slen; /* su_cs_len() of .ag_skinned */
+   uz ag_sdom_start; /* Start of domain in .ag_skinned, */
    u32 ag_n_flags; /* enum mx_name_flags of .ag_skinned */
 };
 
@@ -2123,7 +2123,7 @@ VL struct n_header_field *n_poption_arg_C; /* -C custom header list */
 VL char const *n_poption_arg_Mm; /* Argument for -[Mm] aka n_PO_[Mm]_FLAG */
 VL struct mx_name *n_poption_arg_r; /* Argument to -r option */
 VL char const **n_smopts; /* MTA options from command line */
-VL size_t n_smopts_cnt; /* Entries in n_smopts */
+VL uz n_smopts_cnt; /* Entries in n_smopts */
 
 /* The current execution data context */
 VL struct n_go_data_ctx *n_go_data;

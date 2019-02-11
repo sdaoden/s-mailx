@@ -291,7 +291,7 @@ c_dosh(void *v)
 FL int
 c_cwd(void *v){
    struct n_string s_b, *s;
-   size_t l;
+   uz l;
    char const *varname;
    NYD_IN;
 
@@ -395,7 +395,7 @@ c_read(void * volatile vp){
    struct str trim;
    struct n_string s_b, *s;
    char *linebuf;
-   size_t linesize, i;
+   uz linesize, i;
    int rv;
    char const *ifs, **argv, *cp;
    NYD2_IN;
@@ -486,7 +486,7 @@ c_readall(void * vp){ /* TODO 64-bit retval */
    struct n_sigman sm;
    struct n_string s_b, *s;
    char *linebuf;
-   size_t linesize;
+   uz linesize;
    int rv;
    char const **argv;
    NYD2_IN;
@@ -587,7 +587,7 @@ c_version(void *vp){
    int rv;
    char *iop;
    char const *cp, **arr;
-   size_t i, lnlen, j;
+   uz i, lnlen, j;
    NYD_IN;
 
    s = n_string_creat_auto(&s_b);

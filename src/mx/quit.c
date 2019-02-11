@@ -658,7 +658,7 @@ FL int
 savequitflags(void)
 {
    enum quitflags qf = 0;
-   size_t i;
+   uz i;
    NYD_IN;
 
    for (i = 0; i < NELEM(_quitnames); ++i)
@@ -671,7 +671,7 @@ savequitflags(void)
 FL void
 restorequitflags(int qf)
 {
-   size_t i;
+   uz i;
    NYD_IN;
 
    for (i = 0;  i < NELEM(_quitnames); ++i) {

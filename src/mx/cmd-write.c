@@ -92,7 +92,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
          ;
       *cq = '\0';
       if (ok_blook(outfolder)) {
-         size_t i;
+         uz i;
 
          i = su_cs_len(cp) +1;
          file = n_autorec_alloc(i + 1);

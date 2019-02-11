@@ -94,15 +94,15 @@ struct mtnode {
 
 struct mtlookup {
    char const           *mtl_name;
-   size_t               mtl_nlen;
+   uz               mtl_nlen;
    struct mtnode const  *mtl_node;
    char                 *mtl_result;   /* If requested, salloc()ed MIME type */
 };
 
 struct mt_class_arg {
    char const *mtca_buf;
-   size_t mtca_len;
-   ssize_t mtca_curlnlen;
+   uz mtca_len;
+   sz mtca_curlnlen;
    /*char mtca_lastc;*/
    char mtca_c;
    u8 mtca__dummy[3];
@@ -132,12 +132,12 @@ static struct mtnode    *_mt_list;
 /* Initialize MIME type list in order */
 static void             _mt_init(void);
 static boole           __mt_load_file(u32 orflags,
-                           char const *file, char **line, size_t *linesize);
+                           char const *file, char **line, uz *linesize);
 
 /* Create (prepend) a new MIME type; cmdcalled results in a bit more verbosity
  * for `mimetype' */
 static struct mtnode *  _mt_create(boole cmdcalled, u32 orflags,
-                           char const *line, size_t len);
+                           char const *line, uz len);
 
 /* Try to find MIME type by X (after zeroing mtlp), return NULL if not found;
  * if with_result >mtl_result will be created upon success for the former */
@@ -168,7 +168,7 @@ _mt_init(void)
 {
    struct mtnode *tail;
    char c, *line; /* TODO line pool (below) */
-   size_t linesize;
+   uz linesize;
    u32 i, j;
    char const *srcs_arr[10], *ccp, **srcs;
    NYD_IN;
@@ -261,12 +261,12 @@ jleave:
 }
 
 static boole
-__mt_load_file(u32 orflags, char const *file, char **line, size_t *linesize)
+__mt_load_file(u32 orflags, char const *file, char **line, uz *linesize)
 {
    char const *cp;
    FILE *fp;
    struct mtnode *head, *tail, *mtnp;
-   size_t len;
+   uz len;
    NYD_IN;
 
    if ((cp = fexpand(file, FEXP_LOCAL | FEXP_NOPROTO)) == NULL ||
@@ -295,11 +295,11 @@ jleave:
 }
 
 static struct mtnode *
-_mt_create(boole cmdcalled, u32 orflags, char const *line, size_t len)
+_mt_create(boole cmdcalled, u32 orflags, char const *line, uz len)
 {
    struct mtnode *mtnp;
    char const *typ, *subtyp;
-   size_t tlen, i;
+   uz tlen, i;
    NYD_IN;
 
    mtnp = NULL;
@@ -426,7 +426,7 @@ static struct mtlookup *
 _mt_by_filename(struct mtlookup *mtlp, char const *name, boole with_result)
 {
    struct mtnode *mtnp;
-   size_t nlen, i, j;
+   uz nlen, i, j;
    char const *ext, *cp;
    NYD2_IN;
 
@@ -498,7 +498,7 @@ static struct mtlookup *
 _mt_by_mtname(struct mtlookup *mtlp, char const *mtname)
 {
    struct mtnode *mtnp;
-   size_t nlen, i, j;
+   uz nlen, i, j;
    char const *cp;
    NYD2_IN;
 
@@ -565,8 +565,8 @@ _mt_classify_round(struct mt_class_arg *mtcap) /* TODO dig UTF-8 for !text/!! */
 #define F_SIZEOF  (sizeof(F_) -1)
    char f_buf[F_SIZEOF], *f_p = f_buf;
    char const *buf;
-   size_t blen;
-   ssize_t curlnlen;
+   uz blen;
+   sz curlnlen;
    s64 alllen;
    int c, lastc;
    enum mime_type_class mtc;
@@ -691,7 +691,7 @@ _mt_classify_os_part(u32 mce, struct mimepart *mpp, boole deep_inspect)
    boole did_inrest;
    enum mime_type_class mtc;
    int lc, c;
-   size_t cnt, lsz;
+   uz cnt, lsz;
    FILE *ibuf;
    off_t start_off;
    enum mimecontent mc;
@@ -780,7 +780,7 @@ jdobuf:
       }
 
       mtca.mtca_buf = dec.s;
-      mtca.mtca_len = (ssize_t)dec.l;
+      mtca.mtca_len = (sz)dec.l;
       if ((mtc = _mt_classify_round(&mtca)) & _MT_C_SUGGEST_DONE) {
          mtc = _MT_C_HASNUL;
          break;
@@ -952,7 +952,7 @@ c_mimetype(void *v){
 
    if(*(argv = v) == NULL){
       FILE *fp;
-      size_t l;
+      uz l;
 
       if(_mt_list == NULL){
          fprintf(n_stdout, _("# `mimetype': no mime.types(5) available\n"));
@@ -1050,7 +1050,7 @@ jdelall:
       for (match = FAL0, lnp = NULL, mtnp = _mt_list; mtnp != NULL;) {
          char const *typ;
          char *val;
-         size_t i;
+         uz i;
 
          if ((mtnp->mt_flags & __MT_TMASK) == _MT_OTHER) {
             typ = n_empty;
@@ -1328,7 +1328,7 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
    char *buf, *cp;
    enum mime_handler_flags rv, xrv;
    char const *es, *cs, *ccp;
-   size_t el, cl, l;
+   uz el, cl, l;
    NYD_IN;
 
    su_mem_set(mhp, 0, sizeof *mhp);

@@ -92,7 +92,7 @@ CTAV(n_FROM_DATEBUF > sizeof("From_") -1 + 3 + 30 +1);
  * must be terminated (but it may end in a newline [sequence]).
  * Return whether the From_ line was parsed successfully (-1 if the From_ line
  * wasn't really RFC 4155 compliant) */
-static int a_header_extract_date_from_from_(char const *line, size_t linelen,
+static int a_header_extract_date_from_from_(char const *line, uz linelen,
             char datebuf[n_FROM_DATEBUF]);
 
 /* Skip over "word" as found in From_ line */
@@ -107,9 +107,9 @@ static boole a_header_cmatch(char const *tp, char const *date);
 static boole a_header_is_date(char const *date);
 
 /* JulianDayNumber converter(s) */
-static size_t a_header_gregorian_to_jdn(u32 y, u32 m, u32 d);
+static uz a_header_gregorian_to_jdn(u32 y, u32 m, u32 d);
 #if 0
-static void a_header_jdn_to_gregorian(size_t jdn,
+static void a_header_jdn_to_gregorian(uz jdn,
                u32 *yp, u32 *mp, u32 *dp);
 #endif
 
@@ -137,14 +137,14 @@ static boole a_header_addrspec_check(struct n_addrguts *agp, boole skinned,
  * "colon" is set to point to the colon in the header.
  * Must deal with \ continuations & other such fraud */
 static long a_gethfield(enum n_header_extract_flags hef, FILE *f,
-               char **linebuf, size_t *linesize, long rem, char **colon);
+               char **linebuf, uz *linesize, long rem, char **colon);
 
 static int                 msgidnextc(char const **cp, int *status);
 
 static char const *        nexttoken(char const *cp);
 
 static int
-a_header_extract_date_from_from_(char const *line, size_t linelen,
+a_header_extract_date_from_from_(char const *line, uz linelen,
    char datebuf[n_FROM_DATEBUF])
 {
    int rv;
@@ -293,7 +293,7 @@ jleave:
 static boole
 a_header_is_date(char const *date){
    struct a_header_cmatch_data const *hcmdp;
-   size_t dl;
+   uz dl;
    boole rv;
    NYD2_IN;
 
@@ -308,13 +308,13 @@ a_header_is_date(char const *date){
    return rv;
 }
 
-static size_t
+static uz
 a_header_gregorian_to_jdn(u32 y, u32 m, u32 d){
    /* Algorithm is taken from Communications of the ACM, Vol 6, No 8.
     * (via third hand, plus adjustments).
     * This algorithm is supposed to work for all dates in between 1582-10-15
     * (0001-01-01 but that not Gregorian) and 65535-12-31 */
-   size_t jdn;
+   uz jdn;
    NYD2_IN;
 
 #if 0
@@ -352,10 +352,10 @@ a_header_gregorian_to_jdn(u32 y, u32 m, u32 d){
 
 #if 0
 static void
-a_header_jdn_to_gregorian(size_t jdn, u32 *yp, u32 *mp, u32 *dp){
+a_header_jdn_to_gregorian(uz jdn, u32 *yp, u32 *mp, u32 *dp){
    /* Algorithm is taken from Communications of the ACM, Vol 6, No 8.
     * (via third hand, plus adjustments) */
-   size_t y, x;
+   uz y, x;
    NYD2_IN;
 
    jdn -= 1721119;
@@ -396,7 +396,7 @@ a_header_parse_from_(struct message *mp, char date[n_FROM_DATEBUF]){
    FILE *ibuf;
    int hlen;
    char *hline = NULL; /* TODO line pool */
-   size_t hsize = 0;
+   uz hsize = 0;
    NYD2_IN;
 
    if((ibuf = setinput(&mb, mp, NEED_HEADER)) != NULL &&
@@ -581,8 +581,8 @@ jaddr_check:
             a_T_SPECIAL = 1u<<8     /* An atom actually needs to go TQUOTE */
          } t_f;
          u8 t__pad[4];
-         size_t t_start;
-         size_t t_end;
+         uz t_start;
+         uz t_end;
       } *thead, *tcurr, *tp;
 
       struct n_string ost, *ostp;
@@ -1089,10 +1089,10 @@ jleave:
 
 static long
 a_gethfield(enum n_header_extract_flags hef, FILE *f,
-   char **linebuf, size_t *linesize, long rem, char **colon)
+   char **linebuf, uz *linesize, long rem, char **colon)
 {
    char *line2 = NULL, *cp, *cp2;
-   size_t line2size = 0;
+   uz line2size = 0;
    int c, isenc;
    NYD2_IN;
 
@@ -1155,7 +1155,7 @@ a_gethfield(enum n_header_extract_flags hef, FILE *f,
          if (cp2[0] == '=' && cp2[1] == '?' && c > 8)
             isenc |= 2;
          if (PCMP(cp + c, >=, *linebuf + *linesize - 2)) {
-            size_t diff = P2UZ(cp - *linebuf),
+            uz diff = P2UZ(cp - *linebuf),
                colondiff = P2UZ(*colon - *linebuf);
             *linebuf = n_realloc(*linebuf, *linesize += c + 2);
             cp = &(*linebuf)[diff];
@@ -1239,7 +1239,7 @@ nexttoken(char const *cp)
       }
 
       if (*cp == '(') {
-         size_t nesting = 1;
+         uz nesting = 1;
 
          do switch (*++cp) {
          case '(':
@@ -1292,7 +1292,7 @@ jleave:
 jnodename:{
       char *cp;
       char const *hn, *ln;
-      size_t i;
+      uz i;
 
       hn = n_nodename(TRU1);
       ln = ok_vlook(LOGNAME);
@@ -1324,7 +1324,7 @@ myorigin(struct header *hp) /* TODO */
 }
 
 FL boole
-is_head(char const *linebuf, size_t linelen, boole check_rfc4155)
+is_head(char const *linebuf, uz linelen, boole check_rfc4155)
 {
    char date[n_FROM_DATEBUF];
    boole rv;
@@ -1365,7 +1365,7 @@ n_header_extract(enum n_header_extract_flags hef, FILE *fp, struct header *hp,
    struct n_header_field **hftail;
    struct header nh, *hq = &nh;
    char *linebuf = NULL /* TODO line pool */, *colon;
-   size_t linesize = 0, seenfields = 0;
+   uz linesize = 0, seenfields = 0;
    int c;
    long lc;
    off_t firstoff;
@@ -1587,7 +1587,7 @@ hfield_mult(char const *field, struct message *mp, int mult)
    FILE *ibuf;
    struct str hfs;
    long lc;
-   size_t linesize = 0; /* TODO line pool */
+   uz linesize = 0; /* TODO line pool */
    char *linebuf = NULL, *colon;
    char const *hfield;
    NYD_IN;
@@ -1661,7 +1661,7 @@ jleave:
 FL char const *
 skip_comment(char const *cp)
 {
-   size_t nesting;
+   uz nesting;
    NYD_IN;
 
    for (nesting = 1; nesting > 0 && *cp; ++cp) {
@@ -2113,7 +2113,7 @@ FL int
 c_addrcodec(void *vp){
    struct str trims;
    struct n_string s_b, *s;
-   size_t alen;
+   uz alen;
    int mode;
    char const **argv, *varname, *act, *cp;
    NYD_IN;
@@ -2362,7 +2362,7 @@ n_header_senderfield_of(struct message *mp){
       ;
    else{
       char *namebuf, *cp2, *linebuf = NULL /* TODO line pool */;
-      size_t namesize, linesize = 0;
+      uz namesize, linesize = 0;
       FILE *ibuf;
       int f1st = 1;
 
@@ -2450,7 +2450,7 @@ subject_re_trim(char const *s){
    boole any;
    char *re_st, *re_st_x;
    char const *orig_s;
-   size_t re_l;
+   uz re_l;
    NYD_IN;
 
    any = FAL0;
@@ -2696,10 +2696,10 @@ jinvalid:
 
 FL time_t
 combinetime(int year, int month, int day, int hour, int minute, int second){
-   size_t const jdn_epoch = 2440588;
+   uz const jdn_epoch = 2440588;
    boole const y2038p = (sizeof(time_t) == 4);
 
-   size_t jdn;
+   uz jdn;
    time_t t;
    NYD2_IN;
 
@@ -2838,7 +2838,7 @@ jredo_localtime:
          fmt = NULL;
 
       if(fmt != NULL){
-         size_t j;
+         uz j;
 
          for(j = n_FROM_DATEBUF;; j <<= 1){
             i = strftime(rv = n_autorec_alloc(j), j, fmt, &tmlocal);
@@ -2888,7 +2888,7 @@ n_header_textual_sender_info(struct message *mp, char **cumulation_or_null,
 
       if(((b = ok_blook(showname)) && cumulation_or_null != NULL) ||
             name_real_or_null != NULL || name_full_or_null != NULL){
-         size_t i;
+         uz i;
 
          for(i = 0, np2 = np; np2 != NULL; np2 = np2->n_flink)
             i += su_cs_len(np2->n_fullname) +3;
@@ -3102,7 +3102,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
    char const *field;
    long lc;
    FILE *ibuf;
-   size_t *linesize;
+   uz *linesize;
    char **linebuf, *colon;
    enum {a_NONE, a_ALL, a_ITER, a_RE} match;
    boole rv;
@@ -3156,7 +3156,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
          while((field = su_cs_sep_c(&itercp, ',', TRU1)) != NULL){
             /* It may be an abbreviation */
             char const x[][8] = {"from", "to", "cc", "bcc", "subject"};
-            size_t i;
+            uz i;
             char c1;
 
             if(field[0] != '\0' && field[1] == '\0'){
@@ -3177,7 +3177,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
 #ifdef mx_HAVE_REGEX
       }else if(match == a_RE){
          char *cp;
-         size_t i;
+         uz i;
 
          i = P2UZ(colon - *linebuf);
          cp = n_lofi_alloc(i +1);
@@ -3240,7 +3240,7 @@ jleave:
 }
 
 FL char const *
-n_header_is_known(char const *name, size_t len){
+n_header_is_known(char const *name, uz len){
    static char const * const names[] = {
       "Bcc", "Cc", "From",
       "In-Reply-To", "Mail-Followup-To",
@@ -3270,7 +3270,7 @@ n_header_is_known(char const *name, size_t len){
 FL boole
 n_header_add_custom(struct n_header_field **hflp, char const *dat,
       boole heap){
-   size_t i;
+   uz i;
    u32 nl, bl;
    char const *cp;
    struct n_header_field *hfp;

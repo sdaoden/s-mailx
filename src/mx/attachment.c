@@ -81,7 +81,7 @@ a_attachment_is_msg(char const *file){
    if(file[0] == '#'){
       uz ib;
 
-      /* TODO Message numbers should be size_t, and 0 may be a valid one */
+      /* TODO Message numbers should be uz, and 0 may be a valid one */
       if(file[2] == '\0' && file[1] == '.'){
          if(dot != NULL)
             rv = (int)P2UZ(dot - message + 1);
@@ -131,7 +131,7 @@ a_attachment_setup_msg(struct attachment *ap, char const *msgcp, int msgno){
 static boole
 a_attachment_iconv(struct attachment *ap, FILE *ifp){
    struct str oul = {NULL, 0}, inl = {NULL, 0};
-   size_t cnt, lbsize;
+   uz cnt, lbsize;
    iconv_t icp;
    FILE *ofp;
    NYD_IN;
@@ -149,7 +149,7 @@ a_attachment_iconv(struct attachment *ap, FILE *ifp){
       goto jerr;
    }
 
-   cnt = (size_t)fsize(ifp);
+   cnt = (uz)fsize(ifp);
 
    if((ofp = Ftmp(NULL, "atticonv", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==NULL){
       n_perr(_("Temporary attachment data file"), 0);
@@ -266,7 +266,7 @@ jrefexp:
          /* It may not have worked because of a character-set specification,
           * so try to extract that and retry once */
          if(incs == NULL && (cp = su_cs_rfind_c(file, '=')) != NULL){
-            size_t i;
+            uz i;
             char *nfp, c;
 
             nfp = savestrbuf(file, P2UZ(cp - file));
@@ -555,11 +555,11 @@ n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
    return naplist;
 }
 
-FL ssize_t
+FL sz
 n_attachment_list_print(struct attachment const *aplist, FILE *fp){
    struct attachment const *ap;
    u32 attno;
-   ssize_t rv;
+   sz rv;
    NYD_IN;
 
    rv = 0;

@@ -331,7 +331,7 @@ jeeval:
       /* but \[ .. \] is not taken into account */
       if(vic.vic_indat[0] == '\\' && vic.vic_inlen > 1 &&
             vic.vic_indat[1] == '['){
-         size_t i;
+         uz i;
 
          i = P2UZ(vic.vic_indat - store->s_dat);
          store = n_string_cut(store, i, 2);
@@ -635,8 +635,8 @@ struct a_tty_global{
 # ifdef mx_HAVE_HISTORY
    struct a_tty_hist *tg_hist;
    struct a_tty_hist *tg_hist_tail;
-   size_t tg_hist_size;
-   size_t tg_hist_size_max;
+   uz tg_hist_size;
+   uz tg_hist_size_max;
 # endif
 # ifdef mx_HAVE_KEY_BINDINGS
    u32 tg_bind_cnt;           /* Overall number of bindings */
@@ -681,7 +681,7 @@ struct a_tty_input_ctx_map{
 struct a_tty_line{
    /* Caller pointers */
    char **tl_x_buf;
-   size_t *tl_x_bufsize;
+   uz *tl_x_bufsize;
    /* Input processing */
 # ifdef mx_HAVE_KEY_BINDINGS
    wchar_t tl_bind_takeover;     /* Leftover byte to consume next */
@@ -700,7 +700,7 @@ struct a_tty_line{
       struct a_tty_cell *cells;
    } tl_line;
    struct str tl_defc;           /* Current default content */
-   size_t tl_defc_cursor_byte;   /* Desired cursor position after takeover */
+   uz tl_defc_cursor_byte;   /* Desired cursor position after takeover */
    struct str tl_savec;          /* Saved default content */
    struct str tl_pastebuf;       /* Last snarfed data */
 # ifdef mx_HAVE_HISTORY
@@ -897,7 +897,7 @@ static u8 a_tty_wcwidth(wchar_t wc);
 /* Memory / cell / word generics */
 static void a_tty_check_grow(struct a_tty_line *tlp, u32 no
                su_DBG_LOC_ARGS_DECL);
-static ssize_t a_tty_cell2dat(struct a_tty_line *tlp);
+static sz a_tty_cell2dat(struct a_tty_line *tlp);
 static void a_tty_cell2save(struct a_tty_line *tlp);
 
 /* Save away data bytes of given range (max = non-inclusive) */
@@ -943,10 +943,10 @@ static u32 a_tty__khist_shared(struct a_tty_line *tlp,
 
 /* Handle a function */
 static enum a_tty_fun_status a_tty_fun(struct a_tty_line *tlp,
-                              enum a_tty_bind_flags tbf, size_t *len);
+                              enum a_tty_bind_flags tbf, uz *len);
 
 /* Readline core */
-static ssize_t a_tty_readline(struct a_tty_line *tlp, size_t len,
+static sz a_tty_readline(struct a_tty_line *tlp, uz len,
                   boole *histok_or_null  su_DBG_LOC_ARGS_DECL);
 
 # ifdef mx_HAVE_KEY_BINDINGS
@@ -1040,7 +1040,7 @@ jleave:
 static boole
 a_tty_hist_load(void){
    u8 version;
-   size_t lsize, cnt, llen;
+   uz lsize, cnt, llen;
    char *lbuf, *cp;
    FILE *f;
    char const *v;
@@ -1080,7 +1080,7 @@ a_tty_hist_load(void){
 
    lbuf = NULL;
    lsize = 0;
-   cnt = (size_t)fsize(f);
+   cnt = (uz)fsize(f);
    version = 0;
 
    while(fgetline(&lbuf, &lsize, &cnt, &llen, f, FAL0) != NULL){
@@ -1150,7 +1150,7 @@ jleave:
 
 static boole
 a_tty_hist_save(void){
-   size_t i;
+   uz i;
    struct a_tty_hist *thp;
    FILE *f;
    char const *v;
@@ -1355,7 +1355,7 @@ a_tty_check_grow(struct a_tty_line *tlp, u32 no  su_DBG_LOC_ARGS_DECL){
    NYD2_IN;
 
    if(UNLIKELY((cmax = tlp->tl_count + no) > tlp->tl_count_max)){
-      size_t i;
+      uz i;
 
       i = cmax * sizeof(struct a_tty_cell) + 2 * sizeof(struct a_tty_cell);
       if(LIKELY(i >= *tlp->tl_x_bufsize)){
@@ -1372,9 +1372,9 @@ a_tty_check_grow(struct a_tty_line *tlp, u32 no  su_DBG_LOC_ARGS_DECL){
    NYD2_OU;
 }
 
-static ssize_t
+static sz
 a_tty_cell2dat(struct a_tty_line *tlp){
-   size_t len, i;
+   uz len, i;
    NYD2_IN;
 
    len = 0;
@@ -1391,12 +1391,12 @@ a_tty_cell2dat(struct a_tty_line *tlp){
 
    tlp->tl_line.cbuf[len] = '\0';
    NYD2_OU;
-   return (ssize_t)len;
+   return (sz)len;
 }
 
 static void
 a_tty_cell2save(struct a_tty_line *tlp){
-   size_t len, i;
+   uz len, i;
    struct a_tty_cell *tcap;
    NYD2_IN;
 
@@ -1427,7 +1427,7 @@ a_tty_copy2paste(struct a_tty_line *tlp, struct a_tty_cell *tcpmin,
       struct a_tty_cell *tcpmax){
    char *cp;
    struct a_tty_cell *tcp;
-   size_t l;
+   uz l;
    NYD2_IN;
 
    l = 0;
@@ -1528,8 +1528,8 @@ a_tty_vi_refresh(struct a_tty_line *tlp){
       /* kht may want to restore a cursor position after inserting some
        * data somewhere */
       if(tlp->tl_defc_cursor_byte > 0){
-         size_t i, j;
-         ssize_t k;
+         uz i, j;
+         sz k;
 
          a_tty_khome(tlp, FAL0);
 
@@ -2242,7 +2242,7 @@ a_tty_kother(struct a_tty_line *tlp, wchar_t wc){
    /* First init a cell and see whether we'll really handle this wc */
    su_mem_set(&ps, 0, sizeof ps);
    /* C99 */{
-      size_t l;
+      uz l;
 
       l = wcrtomb(tc.tc_cbuf, tc.tc_wc = wc, &ps);
       if(UNLIKELY(l > MB_LEN_MAX)){
@@ -2319,7 +2319,7 @@ a_tty_kht(struct a_tty_line *tlp){
    f = a_TTY_VF_NONE;
 
    /* C99 */{
-      size_t max;
+      uz max;
       struct a_tty_cell *cword;
 
       /* Find the word to be expanded */
@@ -2356,7 +2356,7 @@ a_tty_kht(struct a_tty_line *tlp){
                   n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_IGNORE_EMPTY |
                   n_SHEXP_PARSE_QUOTE_AUTO_CLOSE), NULL, &sub, NULL);
             if(sub.l != 0){
-               size_t x;
+               uz x;
 
                ASSERT(max >= sub.l);
                x = max - sub.l;
@@ -2412,7 +2412,7 @@ jredo:
        * TODO Only like that we would be able to properly requote user input
        * TODO like "'['a-z]<TAB>" to e.g. "\[a-z]" for glob purposes! */
       if(wedid == TRU1){
-         size_t i, li;
+         uz i, li;
 
          wedid = TRUM1;
          for(li = UZ_MAX, i = sub.l;;){
@@ -2524,7 +2524,7 @@ jmulti:{
       wc_t c2, c1;
       boole isfirst;
       char const *lococp;
-      size_t locolen, scrwid, lnlen, lncnt, prefixlen;
+      uz locolen, scrwid, lnlen, lncnt, prefixlen;
       FILE *fp;
 
       if((fp = Ftmp(NULL, "tabex", OF_RDWR | OF_UNLINK | OF_REGISTER)
@@ -2538,7 +2538,7 @@ jmulti:{
        * initial allocation of our accumulator string */
       locolen = preexp.l;
       do{
-         size_t i;
+         uz i;
 
          i = su_cs_len(&exp.s[++exp.l]);
          locolen = MAX(locolen, i);
@@ -2555,7 +2555,7 @@ jmulti:{
       UNINIT(lococp, NULL);
       UNINIT(c1, '\0');
       for(isfirst = TRU1; exp.l > 0; isfirst = FAL0, c1 = c2){
-         size_t i;
+         uz i;
          char const *fullpath;
 
          /* Next result */
@@ -2717,7 +2717,7 @@ a_tty__khist_shared(struct a_tty_line *tlp, struct a_tty_hist *thp){
 
    if(LIKELY((tlp->tl_hist = thp) != NULL)){
       char *cp;
-      size_t i;
+      uz i;
 
       i = thp->th_len;
       if(tlp->tl_goinflags & n_GO_INPUT_CTX_COMPOSE){
@@ -2857,7 +2857,7 @@ jleave:
 # endif /* mx_HAVE_HISTORY */
 
 static enum a_tty_fun_status
-a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, size_t *len){
+a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, uz *len){
    enum a_tty_fun_status rv;
    NYD2_IN;
 
@@ -3038,8 +3038,8 @@ jreset:
    return rv;
 }
 
-static ssize_t
-a_tty_readline(struct a_tty_line *tlp, size_t len, boole *histok_or_null
+static sz
+a_tty_readline(struct a_tty_line *tlp, uz len, boole *histok_or_null
       su_DBG_LOC_ARGS_DECL){
    /* We want to save code, yet we may have to incorporate a lines'
     * default content and / or default input to switch back to after some
@@ -3047,7 +3047,7 @@ a_tty_readline(struct a_tty_line *tlp, size_t len, boole *histok_or_null
     * buffer" -> a_BUFMODE, and only otherwise read(2) it */
    mbstate_t ps[2];
    char cbuf_base[MB_LEN_MAX * 2], *cbuf, *cbufp;
-   ssize_t rv;
+   sz rv;
    struct a_tty_bind_tree *tbtp;
    wchar_t wc;
    enum a_tty_bind_flags tbf;
@@ -3201,7 +3201,7 @@ jinput_loop:
                   ++cbufp;
                }
 
-               rv = (ssize_t)mbrtowc(&wc, cbuf, P2UZ(cbufp - cbuf), &ps[0]);
+               rv = (sz)mbrtowc(&wc, cbuf, P2UZ(cbufp - cbuf), &ps[0]);
                if(rv <= 0){
                   /* Any error during buffer mode can only result in a hard
                    * reset;  Otherwise, if it's a hard error, or if too many
@@ -3361,7 +3361,7 @@ jtake_over:
             }
 # endif /* mx_HAVE_KEY_BINDINGS */
 
-            if((flags & a_BUFMODE) && (len -= (size_t)rv) == 0){
+            if((flags & a_BUFMODE) && (len -= (uz)rv) == 0){
                /* Buffer mode completed */
                tlp->tl_defc.s = NULL;
                tlp->tl_defc.l = 0;
@@ -3442,7 +3442,7 @@ jleave:
    return rv;
 
 jinject_input:{
-   size_t i;
+   uz i;
 
    hold_all_sigs(); /* XXX v15 drop */
    i = a_tty_cell2dat(tlp);
@@ -3457,7 +3457,7 @@ jinject_input:{
    rele_all_sigs(); /* XXX v15 drop */
    if(histok_or_null != NULL)
       *histok_or_null = FAL0;
-   rv = (ssize_t)--i;
+   rv = (sz)--i;
    }
    goto jleave;
 }
@@ -3504,7 +3504,7 @@ a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, boole replace){
    }
 
    /* C99 */{
-      size_t i, j;
+      uz i, j;
 
       tbcp = n_alloc(VSTRUCT_SIZEOF(struct a_tty_bind_ctx, tbc__buf) +
             tbpcp->tbpc_seq_len + tbpcp->tbpc_exp.l +2 +
@@ -3553,7 +3553,7 @@ a_tty_bind_parse(boole isbindcmd, struct a_tty_bind_parse_ctx *tbpcp){
    struct n_visual_info_ctx vic;
    struct str shin_save, shin;
    struct n_string shou, *shoup;
-   size_t i;
+   uz i;
    struct kse{
       struct kse *next;
       char *seq_dat;
@@ -3683,7 +3683,7 @@ jeempty:
    /* C99 */{
       struct a_tty_bind_ctx *ltbcp, *tbcp;
       char *cpbase, *cp, *cnv;
-      size_t seql, cnvl;
+      uz seql, cnvl;
 
       /* Unite the parsed sequence(s) into single string representations */
       for(seql = cnvl = 0, tail = head; tail != NULL; tail = tail->next){
@@ -3724,7 +3724,7 @@ jeempty:
       tbpcp->tbpc_seq_len = seql;
       tbpcp->tbpc_cnv_len = cnvl;
       /* C99 */{
-         size_t j;
+         uz j;
 
          j = i = seql + 1; /* Room for comma separator */
          if(isbindcmd){
@@ -3842,7 +3842,7 @@ static void
 a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
    char capname[a_TTY_BIND_CAPNAME_MAX +1];
    struct n_termcap_value tv;
-   size_t len;
+   uz len;
    boole isfirst; /* TODO For now: first char must be control! */
    char *cp, *next;
    NYD2_IN;
@@ -3890,7 +3890,7 @@ a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
 
       /* struct{s32 buf_len_iscap; s32 cap_len; char buf[]+NUL;} */
       /* C99 */{
-         size_t i;
+         uz i;
 
          i = su_cs_len(tv.tv_data.tvd_string);
          if(/*i > S32_MAX ||*/ i >= P2UZ(next - cp)){
@@ -3940,7 +3940,7 @@ a_tty_bind_del(struct a_tty_bind_parse_ctx *tbpcp){
 
 static void
 a_tty_bind_tree_build(void){
-   size_t i;
+   uz i;
    NYD2_IN;
 
    for(i = 0; i < n__GO_INPUT_CTX_MAX1; ++i){
@@ -3967,7 +3967,7 @@ a_tty_bind_tree_build(void){
 
 static void
 a_tty_bind_tree_teardown(void){
-   size_t i, j;
+   uz i, j;
    NYD2_IN;
 
    su_mem_set(&a_tty.tg_bind_shcut_cancel[0], 0,
@@ -4262,14 +4262,14 @@ jleave:
 
 FL int
 (n_tty_readline)(enum n_go_input_flags gif, char const *prompt,
-      char **linebuf, size_t *linesize, size_t n, boole *histok_or_null
+      char **linebuf, uz *linesize, uz n, boole *histok_or_null
       su_DBG_LOC_ARGS_DECL){
    struct a_tty_line tl;
    struct n_string xprompt;
 # ifdef mx_HAVE_COLOUR
    char *posbuf, *pos;
 # endif
-   ssize_t nn;
+   sz nn;
    NYD_IN;
 
    ASSERT(!ok_blook(line_editor_disable));
@@ -4292,7 +4292,7 @@ FL int
             (s = n_colour_pen_to_str(ccp)) != NULL){
          ccol = s->s;
          if((s = n_colour_reset_to_str()) != NULL){
-            size_t l1, l2;
+            uz l1, l2;
 
             l1 = su_cs_len(ccol);
             l2 = su_cs_len(s->s);
@@ -4458,7 +4458,7 @@ jleave:
    return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 
 jlist:{
-   size_t no, l, b;
+   uz no, l, b;
    FILE *fp;
 
    if(a_tty.tg_hist == NULL)
@@ -4772,7 +4772,7 @@ n_tty_destroy(boole xit_fastpath){
 
 FL int
 (n_tty_readline)(enum n_go_input_flags gif, char const *prompt,
-      char **linebuf, size_t *linesize, size_t n, boole *histok_or_null
+      char **linebuf, uz *linesize, uz n, boole *histok_or_null
       su_DBG_LOC_ARGS_DECL){
    struct n_string xprompt;
    int rv;

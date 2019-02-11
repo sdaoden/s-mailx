@@ -88,7 +88,7 @@ static s8      _mime_param_value_trim(struct str *result, char const *start,
 /* mime_param_get() found the desired parameter but it seems to use RFC 2231
  * extended syntax: perform full RFC 2231 parsing starting at this point.
  * Note that _join() returns is-error */
-static char *     _rfc2231_param_parse(char const *param, size_t plen,
+static char *     _rfc2231_param_parse(char const *param, uz plen,
                      char const *hbp);
 static boole     __rfc2231_join(struct rfc2231_joiner *head, char **result,
                      char const **emsg);
@@ -146,7 +146,7 @@ _mime_param_value_trim(struct str *result, char const *start,
 {
    char const *e;
    char co, cn;
-   size_t i;
+   uz i;
    s8 rv;
    NYD2_IN;
 
@@ -178,7 +178,7 @@ _mime_param_value_trim(struct str *result, char const *start,
       su_mem_copy(result->s, start, result->l = i);
       result->s[i] = '\0';
    } else {
-      size_t j;
+      uz j;
       char *cp;
 
       for (j = 0, cp = result->s, co = '\0'; i-- > 0; co = cn) {
@@ -209,7 +209,7 @@ jerr:
 }
 
 static char *
-_rfc2231_param_parse(char const *param, size_t plen, char const *hbp)
+_rfc2231_param_parse(char const *param, uz plen, char const *hbp)
 {
    /* TODO Do it for real and unite with mime_param_get() */
    struct str xval;
@@ -217,7 +217,7 @@ _rfc2231_param_parse(char const *param, size_t plen, char const *hbp)
    char const *hbp_base, *cp, *emsg = NULL;
    struct rfc2231_joiner *head = NULL, *np;
    boole errors = FAL0;
-   size_t i;
+   uz i;
    NYD2_IN;
 
    /* We were called by mime_param_get() after a param name match that
@@ -388,7 +388,7 @@ __rfc2231_join(struct rfc2231_joiner *head, char **result, char const **emsg)
    struct str sin, sou;
    struct rfc2231_joiner *np;
    char const *cp;
-   size_t i;
+   uz i;
    enum {
       _NONE       = 0,
       _HAVE_ENC   = 1<<0,
@@ -540,7 +540,7 @@ _mime_param_create(struct mime_param_builder *self)
    char buf[MIN(MIME_LINELEN_MAX >> 1, MIME_LINELEN * 2)],
       *bp, *bp_max, *bp_xmax, *bp_lanoenc;
    char const *vb, *vb_lanoenc;
-   size_t vl;
+   uz vl;
    enum {
       _NONE    = 0,
       _ISENC   = 1<<0,
@@ -692,7 +692,7 @@ __mime_param_join(struct mime_param_builder *head)
 {
    char nobuf[16];
    struct mime_param_builder *np;
-   size_t i, ll;  su_DBG( size_t len_max; )
+   uz i, ll;  DBG( uz len_max; )
    struct str *result;
    char *cp;
    enum {
@@ -808,7 +808,7 @@ mime_param_get(char const *param, char const *headerbody) /* TODO rewr. */
 {
    struct str xval;
    char *rv = NULL;
-   size_t plen;
+   uz plen;
    char const *p;
    NYD_IN;
 
@@ -875,7 +875,7 @@ mime_param_create(struct str *result, char const *name, char const *value)
     * TODO (2) use objects instead of stupid string concat; it's temporary
     * TODO I.e., this function should return a HeaderBodyParam */
    struct mime_param_builder top;
-   size_t i;
+   uz i;
    NYD_IN;
 
    su_mem_set(result, 0, sizeof *result);
@@ -908,13 +908,13 @@ jleave:
 }
 
 FL char *
-mime_param_boundary_get(char const *headerbody, size_t *len)
+mime_param_boundary_get(char const *headerbody, uz *len)
 {
    char *q = NULL, *p;
    NYD_IN;
 
    if ((p = mime_param_get("boundary", headerbody)) != NULL) {
-      size_t i = su_cs_len(p);
+      uz i = su_cs_len(p);
 
       if (len != NULL)
          *len = i + 2;

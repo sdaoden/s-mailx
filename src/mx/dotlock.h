@@ -53,8 +53,8 @@ a_dotlock_create(struct n_dotlock_info *dip){
     * problems (SunOS), since the pathconf(3) value came too late! */
    char lname[PATH_MAX +1];
    sigset_t nset, oset;
-   size_t tries;
-   ssize_t w;
+   uz tries;
+   sz w;
    enum n_dotlock_state rv, xrv;
 
    /* The callee ensured this does not end up as plain "di_lock_name".
@@ -99,7 +99,7 @@ static enum n_dotlock_state
 a_dotlock__create_excl(struct n_dotlock_info *dip, char const *lname){
    struct stat stb;
    int fd, e;
-   size_t tries;
+   uz tries;
    enum n_dotlock_state rv = n_DLS_NONE;
 
    /* We try to create the unique filename */

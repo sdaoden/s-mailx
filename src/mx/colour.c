@@ -283,7 +283,7 @@ a_colour_mux(char **argv){
 
    /* Create mapping */
    /* C99 */{
-      size_t tl, usrl, cl;
+      uz tl, usrl, cl;
       char *bp, *cp;
 
       if(!a_colour_iso6429(ct, &cp, argv[1])){
@@ -377,7 +377,7 @@ a_colour_unmux(char **argv){
    /* Delete anything? */
 jredo:
    if(ctag == NULL && mapname[0] == '*' && mapname[1] == '\0'){
-      size_t i1, i2;
+      uz i1, i2;
       struct a_colour_map *tmp;
 
       for(i1 = 0; i1 < n__COLOUR_CTX_MAX1; ++i1)
@@ -454,7 +454,7 @@ j_leave:
 static boole
 a_colour__show(enum a_colour_type ct){
    struct a_colour_map *cmp;
-   size_t i1, i2;
+   uz i1, i2;
    boole rv;
    NYD2_IN;
 
@@ -506,7 +506,7 @@ a_colour__tag_identify(struct a_colour_map_id const *cmip, char const *ctag,
       ctag = n_COLOUR_TAG_SUM_OLDER;
    else if(cmip->cmi_tt & a_COLOUR_TT_HEADERS){
       char *cp, c;
-      size_t i;
+      uz i;
 
       /* Can this be a valid list of headers?  However, with regular expressions
        * simply use the input as such if it appears to be a regex */
@@ -551,7 +551,7 @@ jetag:
 
 static struct a_colour_map_id const *
 a_colour_map_id_find(char const *cp){
-   size_t i;
+   uz i;
    struct a_colour_map_id const (*cmip)[n__COLOUR_IDS], *rv;
    NYD2_IN;
 
@@ -561,7 +561,7 @@ a_colour_map_id_find(char const *cp){
       if(i == n__COLOUR_IDS)
          goto jleave;
       else{
-         size_t j = su_cs_len(a_colour_ctx_prefixes[i]);
+         uz j = su_cs_len(a_colour_ctx_prefixes[i]);
          if(!su_cs_cmp_case_n(cp, a_colour_ctx_prefixes[i], j)){
             cp += j;
             break;
@@ -658,7 +658,7 @@ a_colour_iso6429(enum a_colour_type ct, char **store, char const *spec){
    /* Since we use autorec_alloc(), reuse the su_cs_sep_c() buffer also for the
     * return value, ensure we have enough room for that */
    /* C99 */{
-      size_t i = su_cs_len(spec) +1;
+      uz i = su_cs_len(spec) +1;
       xspec = n_autorec_alloc(MAX(i,
             sizeof("\033[1;4;7;38;5;255;48;5;255m")));
       su_mem_copy(xspec, spec, i);

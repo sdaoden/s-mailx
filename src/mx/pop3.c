@@ -74,7 +74,7 @@ do {\
 } while (0)
 
 static char             *_pop3_buf;
-static size_t           _pop3_bufsize;
+static uz           _pop3_bufsize;
 static sigjmp_buf       _pop3_jmp;
 static n_sighdl_t  _pop3_savealrm;
 static s32           _pop3_keepalive;
@@ -104,7 +104,7 @@ static void       _pop3_maincatch(int s);
 static enum okay  pop3_noop1(struct mailbox *mp);
 static void       pop3alarm(int s);
 static enum okay  pop3_stat(struct mailbox *mp, off_t *size, int *cnt);
-static enum okay  pop3_list(struct mailbox *mp, int n, size_t *size);
+static enum okay  pop3_list(struct mailbox *mp, int n, uz *size);
 static void       pop3_setptr(struct mailbox *mp,
                      struct sockconn const *scp);
 static enum okay  pop3_get(struct mailbox *mp, struct message *m,
@@ -188,7 +188,7 @@ _pop3_lookup_apop_timestamp(char const *bp)
     * msg-id   = "<" addr-spec ">"
     * addr-spec   = local-part "@" domain */
    char const *cp, *ep;
-   size_t tl;
+   uz tl;
    char *rp = NULL;
    boole hadat = FAL0;
    NYD_IN;
@@ -228,7 +228,7 @@ _pop3_auth_apop(struct mailbox *mp, struct sockconn const *scp, char const *ts)
    unsigned char digest[16];
    char hex[MD5TOHEX_SIZE], *cp;
    md5_ctx ctx;
-   size_t i;
+   uz i;
    enum okay rv = STOP;
    NYD_IN;
 
@@ -304,7 +304,7 @@ static enum okay
 pop3_answer(struct mailbox *mp)
 {
    int i;
-   size_t blen;
+   uz blen;
    enum okay rv = STOP;
    NYD_IN;
 
@@ -454,7 +454,7 @@ pop3_stat(struct mailbox *mp, off_t *size, int *cnt)
 
    rv = STOP;
    if (*cp != '\0') {
-      size_t i;
+      uz i;
 
       if(su_idec_uz_cp(&i, cp, 10, &cp) & su_IDEC_STATE_EMASK)
          goto jerr;
@@ -484,7 +484,7 @@ jleave:
 }
 
 static enum okay
-pop3_list(struct mailbox *mp, int n, size_t *size)
+pop3_list(struct mailbox *mp, int n, uz *size)
 {
    char o[LINESIZE], *cp;
    enum okay rv;
@@ -512,7 +512,7 @@ jleave:
 static void
 pop3_setptr(struct mailbox *mp, struct sockconn const *scp)
 {
-   size_t i;
+   uz i;
    enum needspec ns;
    NYD_IN;
 
@@ -569,7 +569,7 @@ pop3_get(struct mailbox *mp, struct message *m, enum needspec volatile need)
 {
    char o[LINESIZE], *line, *lp;
    n_sighdl_t volatile saveint, savepipe;
-   size_t linesize, linelen, size;
+   uz linesize, linelen, size;
    int number, lines;
    int volatile emptyline;
    off_t offset;

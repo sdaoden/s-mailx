@@ -87,7 +87,7 @@ FL char *colalign(char const *cp, int col, int fill,
 /* Convert a string to a displayable one;
  * prstr() returns the result savestr()d, prout() writes it */
 FL void makeprint(struct str const *in, struct str *out);
-FL size_t delctrl(char *cp, uz len);
+FL uz delctrl(char *cp, uz len);
 FL char *prstr(char const *s);
 FL int prout(char const *s, uz sz, FILE *fp);
 

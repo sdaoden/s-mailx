@@ -170,7 +170,7 @@ struct list_item {
 };
 
 static char             *imapbuf;   /* TODO not static, use pool */
-static size_t           imapbufsize;
+static uz           imapbufsize;
 static sigjmp_buf       imapjmp;
 static n_sighdl_t  savealrm;
 static int              imapkeepalive;
@@ -220,10 +220,10 @@ static boole     _imap_getcred(struct mailbox *mbp, struct ccred *ccredp,
 static int _imap_setfile1(char const *who, struct url *urlp,
             enum fedit_mode fm, int transparent);
 static int        imap_fetchdata(struct mailbox *mp, struct message *m,
-                     size_t expected, int need, const char *head,
-                     size_t headsize, long headlines);
+                     uz expected, int need, const char *head,
+                     uz headsize, long headlines);
 static void       imap_putstr(struct mailbox *mp, struct message *m,
-                     const char *str, const char *head, size_t headsize,
+                     const char *str, const char *head, uz headsize,
                      long headlines);
 static enum okay  imap_get(struct mailbox *mp, struct message *m,
                      enum needspec need);
@@ -264,7 +264,7 @@ static enum okay  imap_appenduid(struct mailbox *mp, FILE *fp, time_t t,
                      const char *name);
 static enum okay  imap_appenduid_cached(struct mailbox *mp, FILE *fp);
 #ifdef mx_HAVE_IMAP_SEARCH
-static ssize_t    imap_search2(struct mailbox *mp, struct message *m, int cnt,
+static sz    imap_search2(struct mailbox *mp, struct message *m, int cnt,
                      const char *spec, int f);
 #endif
 static enum okay  imap_remove1(struct mailbox *mp, const char *name);
@@ -319,7 +319,7 @@ jleave:
 
 static void
 imap_delim_init(struct mailbox *mp, struct url const *urlp){
-   size_t i;
+   uz i;
    char const *cp;
    NYD2_IN;
 
@@ -360,7 +360,7 @@ imap_path_normalize(struct mailbox *mp, char const *cp){
 
    /* Plain names don't need path quoting */
    /* C99 */{
-      size_t i, j;
+      uz i, j;
       char const *cpx;
 
       for(cpx = cp;; ++cpx)
@@ -409,7 +409,7 @@ imap_path_encode(char const *cp, boole *err_or_null){
    u8 *be16p_base, *be16p;
    char const *emsg;
    char c;
-   size_t l, l_plain;
+   uz l, l_plain;
    NYD2_IN;
 
    if(err_or_null == NULL)
@@ -556,7 +556,7 @@ imap_path_decode(char const *path, boole *err_or_null){
    u8 *mb64p_base, *mb64p, *mb64xp;
    char const *emsg, *cp;
    char *rv_base, *rv, c;
-   size_t l_orig, l, i;
+   uz l_orig, l, i;
    NYD2_IN;
 
    if(err_or_null == NULL)
@@ -846,7 +846,7 @@ static void
 imap_response_parse(void)
 {
    static char *parsebuf; /* TODO Use pool */
-   static size_t  parsebufsize;
+   static uz  parsebufsize;
 
    const char *ip = imapbuf;
    char *pp;
@@ -1920,11 +1920,11 @@ jleave:
 }
 
 static int
-imap_fetchdata(struct mailbox *mp, struct message *m, size_t expected,
-   int need, const char *head, size_t headsize, long headlines)
+imap_fetchdata(struct mailbox *mp, struct message *m, uz expected,
+   int need, const char *head, uz headsize, long headlines)
 {
    char *line = NULL, *lp;
-   size_t linesize = 0, linelen, size = 0;
+   uz linesize = 0, linelen, size = 0;
    int emptyline = 0, lines = 0, excess = 0;
    off_t offset;
    NYD_IN;
@@ -2016,10 +2016,10 @@ imap_fetchdata(struct mailbox *mp, struct message *m, size_t expected,
 
 static void
 imap_putstr(struct mailbox *mp, struct message *m, const char *str,
-   const char *head, size_t headsize, long headlines)
+   const char *head, uz headsize, long headlines)
 {
    off_t offset;
-   size_t len;
+   uz len;
    NYD_IN;
 
    len = su_cs_len(str);
@@ -2054,8 +2054,8 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
    n_sighdl_t volatile saveint, savepipe;
    char * volatile head;
    char const *cp, *loc, * volatile item, * volatile resp;
-   size_t expected;
-   size_t volatile headsize;
+   uz expected;
+   uz volatile headsize;
    int number;
    FILE *queuefp;
    long volatile headlines;
@@ -2256,7 +2256,7 @@ imap_fetchheaders(struct mailbox *mp, struct message *m, int bot, int topp)
    char o[LINESIZE];
    char const *cp;
    struct message mt;
-   size_t expected;
+   uz expected;
    int n = 0;
    FILE *queuefp = NULL;
    enum okay ok;
@@ -2712,7 +2712,7 @@ tag(int new)
 FL int
 c_imapcodec(void *vp){
    boole err;
-   size_t alen;
+   uz alen;
    char const **argv, *varname, *varres, *act, *cp;
    NYD_IN;
 
@@ -2905,7 +2905,7 @@ imap_append1(struct mailbox *mp, const char *name, FILE *fp, off_t off1,
    long xsize, enum mflag flag, time_t t)
 {
    char o[LINESIZE], *buf;
-   size_t bufsize, buflen, cnt;
+   uz bufsize, buflen, cnt;
    long size, lines, ysize;
    char const *qname;
    boole twice;
@@ -3010,7 +3010,7 @@ static enum okay
 imap_append0(struct mailbox *mp, const char *name, FILE *fp, long offset)
 {
    char *buf, *bp, *lp;
-   size_t bufsize, buflen, cnt;
+   uz bufsize, buflen, cnt;
    off_t off1 = -1, offs;
    int flag;
    enum {_NONE = 0, _INHEAD = 1<<0, _NLSEP = 1<<1} state;
@@ -3360,7 +3360,7 @@ imap_copy1(struct mailbox *mp, struct message *m, int n, const char *name)
    twice = stored = FAL0;
 
    /* C99 */{
-      size_t i;
+      uz i;
 
       i = su_cs_len(name = imap_fileof(name));
       if(i == 0 || (i > 0 && name[i - 1] == '/'))
@@ -3635,7 +3635,7 @@ imap_appenduid_cached(struct mailbox *mp, FILE *fp)
    enum mflag flag = MNEW;
    char *name, *buf, *bp;
    char const *cp;
-   size_t bufsize, buflen, cnt;
+   uz bufsize, buflen, cnt;
    enum okay rv = STOP;
    NYD_IN;
 
@@ -3697,16 +3697,16 @@ jstop:
 }
 
 #ifdef mx_HAVE_IMAP_SEARCH
-static ssize_t
+static sz
 imap_search2(struct mailbox *mp, struct message *m, int cnt, const char *spec,
    int f)
 {
    char *o, *cs, c;
-   size_t n;
+   uz n;
    FILE *queuefp = NULL;
    int i;
    const char *cp, *xp;
-   ssize_t rv = -1;
+   sz rv = -1;
    NYD;
 
    c = 0;
@@ -3768,11 +3768,11 @@ out:
    return rv;
 }
 
-FL ssize_t
+FL sz
 imap_search1(const char * volatile spec, int f)
 {
    n_sighdl_t saveint, savepipe;
-   ssize_t volatile rv = -1;
+   sz volatile rv = -1;
    NYD_IN;
 
    if (mb.mb_type != MB_IMAP)
@@ -3953,7 +3953,7 @@ FL enum okay
 imap_dequeue(struct mailbox *mp, FILE *fp)
 {
    char o[LINESIZE], *newname, *buf, *bp, *cp, iob[4096];
-   size_t bufsize, buflen, cnt;
+   uz bufsize, buflen, cnt;
    long offs, offs1, offs2, octets;
    int twice, gotcha = 0;
    FILE *queuefp = NULL;
@@ -4016,8 +4016,8 @@ again:
             goto fail;
          }
          while (octets > 0) {
-            size_t n = (UCMP(z, octets, >, sizeof iob)
-                  ? sizeof iob : (size_t)octets);
+            uz n = (UCMP(z, octets, >, sizeof iob)
+                  ? sizeof iob : (uz)octets);
             octets -= n;
             if (n != fread(iob, 1, n, fp))
                goto fail;

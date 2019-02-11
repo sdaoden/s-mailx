@@ -46,20 +46,20 @@
 
 /* line is a buffer with the result of fgets(). Returns the first newline or
  * the last character read */
-static size_t     _length_of_line(char const *line, size_t linesize);
+static uz     _length_of_line(char const *line, uz linesize);
 
 /* Read a line, one character at a time */
-static char *     _fgetline_byone(char **line, size_t *linesize, size_t *llen,
-                     FILE *fp, int appendnl, size_t n  su_DBG_LOC_ARGS_DECL);
+static char *     _fgetline_byone(char **line, uz *linesize, uz *llen,
+                     FILE *fp, int appendnl, uz n  su_DBG_LOC_ARGS_DECL);
 
 /* Workhorse */
 static boole a_file_lock(int fd, enum n_file_lock_type ft, off_t off,
                off_t len);
 
-static size_t
-_length_of_line(char const *line, size_t linesize)
+static uz
+_length_of_line(char const *line, uz linesize)
 {
-   size_t i;
+   uz i;
    NYD2_IN;
 
    /* Last character is always '\0' and was added by fgets() */
@@ -72,8 +72,8 @@ _length_of_line(char const *line, size_t linesize)
 }
 
 static char *
-_fgetline_byone(char **line, size_t *linesize, size_t *llen, FILE *fp,
-   int appendnl, size_t n  su_DBG_LOC_ARGS_DECL)
+_fgetline_byone(char **line, uz *linesize, uz *llen, FILE *fp,
+   int appendnl, uz n  su_DBG_LOC_ARGS_DECL)
 {
    char *rv;
    int c;
@@ -147,10 +147,10 @@ a_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len)
 }
 
 FL char *
-(fgetline)(char **line, size_t *linesize, size_t *cnt, size_t *llen, FILE *fp,
+(fgetline)(char **line, uz *linesize, uz *cnt, uz *llen, FILE *fp,
    int appendnl su_DBG_LOC_ARGS_DECL)
 {
-   size_t i_llen, size;
+   uz i_llen, size;
    char *rv;
    NYD2_IN;
 
@@ -201,7 +201,7 @@ jleave:
 }
 
 FL int
-(readline_restart)(FILE *ibuf, char **linebuf, size_t *linesize, size_t n
+(readline_restart)(FILE *ibuf, char **linebuf, uz *linesize, uz n
    su_DBG_LOC_ARGS_DECL)
 {
    /* TODO readline_restart(): always *appends* LF just to strip it again;
@@ -278,9 +278,9 @@ fsize(FILE *iob)
 
 FL boole
 n_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len,
-   size_t pollmsecs)
+   uz pollmsecs)
 {
-   size_t tries;
+   uz tries;
    boole didmsg, rv;
    NYD_IN;
 

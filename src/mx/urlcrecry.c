@@ -229,7 +229,7 @@ jm_h:
       }
 
       if (!seen_default && (*user != '\0' || *pass != '\0')) {
-         size_t hl = su_cs_len(host), usrl = su_cs_len(user),
+         uz hl = su_cs_len(host), usrl = su_cs_len(user),
             pl = su_cs_len(pass);
          struct nrc_node *nx = n_alloc(VSTRUCT_SIZEOF(struct nrc_node,
                nrc_dat) + hl +1 + usrl +1 + pl +1);
@@ -432,7 +432,7 @@ static int
 __nrc_host_match(struct nrc_node const *nrc, struct url const *urlp)
 {
    char const *d2, *d1;
-   size_t l2, l1;
+   uz l2, l1;
    int rv = 0;
    NYD2_IN;
 
@@ -529,7 +529,7 @@ _agent_shell_lookup(struct url *urlp, char const *comm) /* TODO v15-compat */
    struct str s;
    FILE *pbuf;
    union {int c; n_sighdl_t sht;} u;
-   size_t cl, l;
+   uz cl, l;
    boole rv = FAL0;
    NYD2_IN;
 
@@ -586,7 +586,7 @@ FL char *
    NYD2_IN;
 
    /* C99 */{
-      size_t i;
+      uz i;
 
       i = su_cs_len(cp);
       if(i >= UZ_MAX / 3){
@@ -651,7 +651,7 @@ FL char *
 FL int
 c_urlcodec(void *vp){
    boole ispath;
-   size_t alen;
+   uz alen;
    char const **argv, *varname, *varres, *act, *cp;
    NYD_IN;
 
@@ -758,7 +758,7 @@ c_urldecode(void *v) /* XXX IDNA?? */
 
 FL char *
 url_mailto_to_address(char const *mailtop){ /* TODO hack! RFC 6068; factory? */
-   size_t i;
+   uz i;
    char *rv;
    char const *mailtop_orig;
    NYD_IN;
@@ -831,7 +831,7 @@ n_servbyname(char const *proto, u16 *irv_or_null){
       { "file", "", 0}
    };
    char const *rv;
-   size_t l, i;
+   uz l, i;
    NYD2_IN;
 
    for(rv = proto; *rv != '\0'; ++rv)
@@ -902,7 +902,7 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
       if((cp = su_cs_find(data, "://")) == NULL)
          a_PRIVPROTOX("https", 443, urlp->url_flags |= n_URL_TLS_REQUIRED);
       else{
-         size_t i;
+         uz i;
 
          if((i = P2UZ(&cp[sizeof("://") -1] - data)) + 2 >=
                sizeof(urlp->url_proto))
@@ -980,7 +980,7 @@ jeproto:
    /* User and password, I */
 juser:
    if ((cp = _url_last_at_before_slash(data)) != NULL) {
-      size_t l;
+      uz l;
       char const *urlpe, *d;
       char *ub;
 
@@ -992,7 +992,7 @@ juser:
 
       /* And also have a password? */
       if((cp = su_mem_find(d, ':', l)) != NULL){
-         size_t i = P2UZ(cp - d);
+         uz i = P2UZ(cp - d);
 
          l -= i + 1;
          su_mem_copy(ub, cp + 1, l);
@@ -1056,7 +1056,7 @@ jurlp_err:
    if (x != NULL && *x != '\0') {
       /* Take care not to count adjacent solidus for real, on either end */
       char *x2;
-      size_t i;
+      uz i;
       boole trailsol;
 
       for(trailsol = FAL0, x2 = savestrbuf(x, i = su_cs_len(x)); i > 0;
@@ -1089,7 +1089,7 @@ jurlp_err:
 # endif
 
    urlp->url_host.s = savestrbuf(data, urlp->url_host.l = P2UZ(cp - data));
-   {  size_t i;
+   {  uz i;
       for (cp = urlp->url_host.s, i = urlp->url_host.l; i != 0; ++cp, --i)
          *cp = su_cs_to_lower(*cp);
    }
@@ -1108,7 +1108,7 @@ jurlp_err:
 # endif /* mx_HAVE_IDNA */
 
    /* .url_h_p: HOST:PORT */
-   {  size_t upl, i;
+   {  uz upl, i;
       struct str *s = &urlp->url_h_p;
 
       upl = (urlp->url_port == NULL) ? 0 : 1u + su_cs_len(urlp->url_port);
@@ -1151,7 +1151,7 @@ jurlp_err:
     * For SMTP we apply ridiculously complicated *v15-compat* plus
     * *smtp-hostname* / *hostname* dependent rules */
    {  struct str h, *s;
-      size_t i;
+      uz i;
 
       if (cproto == CPROTO_SMTP && ok_blook(v15_compat) &&
             (cp = ok_vlook(smtp_hostname)) != NULL) {
@@ -1176,7 +1176,7 @@ jurlp_err:
 
    /* .url_u_h_p: .url_user@.url_host[:.url_port] */
    {  struct str *s = &urlp->url_u_h_p;
-      size_t i = urlp->url_user.l;
+      uz i = urlp->url_user.l;
 
       s->s = n_autorec_alloc(i + 1 + urlp->url_h_p.l +1);
       if (i > 0) {
@@ -1190,7 +1190,7 @@ jurlp_err:
 
    /* .url_eu_h_p: .url_user_enc@.url_host[:.url_port] */
    {  struct str *s = &urlp->url_eu_h_p;
-      size_t i = urlp->url_user_enc.l;
+      uz i = urlp->url_user_enc.l;
 
       s->s = n_autorec_alloc(i + 1 + urlp->url_h_p.l +1);
       if (i > 0) {
@@ -1203,7 +1203,7 @@ jurlp_err:
    }
 
    /* .url_p_u_h_p: .url_proto://.url_u_h_p */
-   {  size_t i;
+   {  uz i;
       char *ud;
 
       ud = n_autorec_alloc((i = urlp->url_proto_len + sizeof("://") -1 +
@@ -1217,7 +1217,7 @@ jurlp_err:
    }
 
    /* .url_p_eu_h_p, .url_p_eu_h_p_p: .url_proto://.url_eu_h_p[/.url_path] */
-   {  size_t i;
+   {  uz i;
       char *ud;
 
       ud = n_autorec_alloc((i = urlp->url_proto_len + sizeof("://") -1 +
@@ -1251,7 +1251,7 @@ FL boole
 ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
 {
    char const *pname, *pxstr, *authdef, *s;
-   size_t pxlen, addrlen, i;
+   uz pxlen, addrlen, i;
    char *vbuf;
    u8 authmask;
    enum {NONE=0, WANT_PASS=1<<0, REQ_PASS=1<<1, WANT_USER=1<<2, REQ_USER=1<<3}
@@ -1599,7 +1599,7 @@ jleave:
 
 jlist:   {
    FILE *fp;
-   size_t l;
+   uz l;
 
    if (_nrc_list == NULL)
       _nrc_init();
@@ -1650,7 +1650,7 @@ FL char *
 md5tohex(char hex[MD5TOHEX_SIZE], void const *vp)
 {
    char const *cp = vp;
-   size_t i, j;
+   uz i, j;
    NYD_IN;
 
    for (i = 0; i < MD5TOHEX_SIZE / 2; ++i) {

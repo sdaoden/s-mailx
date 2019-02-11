@@ -93,7 +93,7 @@ static struct n_ignore *a_ignore_resolve_self(struct n_ignore *xself,
  * text-compared against len bytes of dat.
  * Note it doesn't handle the .it_all "all fields" condition */
 static boole a_ignore_lookup(struct n_ignore const *self, boole retain,
-               char const *dat, size_t len);
+               char const *dat, uz len);
 
 /* Delete all retain( else ignor)ed members */
 static void a_ignore_del_allof(struct n_ignore *ip, boole retain);
@@ -142,7 +142,7 @@ a_ignore_resolve_self(struct n_ignore *xself, boole docreate){
 
 static boole
 a_ignore_lookup(struct n_ignore const *self, boole retain,
-      char const *dat, size_t len){
+      char const *dat, uz len){
    boole rv;
 #ifdef mx_HAVE_REGEX
    struct a_ignore_re *irp;
@@ -206,7 +206,7 @@ a_ignore_del_allof(struct n_ignore *ip, boole retain){
    itp = retain ? &ip->i_retain : &ip->i_ignore;
 
    if(!ip->i_auto){
-      size_t i;
+      uz i;
 
       for(i = 0; i < NELEM(itp->it_ht); ++i)
          for(ifp = itp->it_ht[i]; ifp != NULL;){
@@ -289,7 +289,7 @@ a_ignore__show(struct n_ignore const *ip, boole retain){
    struct a_ignore_re *irp;
 #endif
    struct a_ignore_field *ifp;
-   size_t i, sw;
+   uz i, sw;
    char const **ap, **ring;
    struct a_ignore_type const *itp;
    NYD2_IN;
@@ -326,7 +326,7 @@ a_ignore__show(struct n_ignore const *ip, boole retain){
 
    for(ap = ring; *ap != NULL; ++ap){
       /* These fields are all ASCII, no visual width needed */
-      size_t len;
+      uz len;
 
       len = su_cs_len(*ap) + 1;
       if(UCMP(z, len, >=, sw - i)){
@@ -341,7 +341,7 @@ a_ignore__show(struct n_ignore const *ip, boole retain){
    /* Regular expression in FIFO order */
 #ifdef mx_HAVE_REGEX
    for(irp = itp->it_re; irp != NULL; irp = irp->ir_next){
-      size_t len;
+      uz len;
       char const *cp;
 
       cp = n_shexp_quote_cp(irp->ir_input, FAL0);
@@ -692,7 +692,7 @@ n_ignore_is_any(struct n_ignore const *self){
 
 FL boole
 n_ignore_insert(struct n_ignore *self, boole retain,
-      char const *dat, size_t len){
+      char const *dat, uz len){
 #ifdef mx_HAVE_REGEX
    struct a_ignore_re *irp;
    boole isre;
@@ -728,7 +728,7 @@ n_ignore_insert(struct n_ignore *self, boole retain,
 #endif
    {
       char c;
-      size_t i;
+      uz i;
 
       for(i = 0; i < len; ++i){
          c = dat[i];
@@ -755,7 +755,7 @@ n_ignore_insert(struct n_ignore *self, boole retain,
    if(isre){
       struct a_ignore_re *x;
       int s;
-      size_t i;
+      uz i;
 
       i = VSTRUCT_SIZEOF(struct a_ignore_re, ir_input) + ++len;
       irp = self->i_auto ? n_autorec_alloc(i) : n_alloc(i);
@@ -783,7 +783,7 @@ n_ignore_insert(struct n_ignore *self, boole retain,
 #endif /* mx_HAVE_REGEX */
    {
       u32 hi;
-      size_t i;
+      uz i;
 
       i = VSTRUCT_SIZEOF(struct a_ignore_field, if_field) + len + 1;
       ifp = self->i_auto ? n_autorec_alloc(i) : n_alloc(i);
@@ -800,7 +800,7 @@ jleave:
 }
 
 FL boole
-n_ignore_lookup(struct n_ignore const *self, char const *dat, size_t len){
+n_ignore_lookup(struct n_ignore const *self, char const *dat, uz len){
    boole rv;
    NYD_IN;
 

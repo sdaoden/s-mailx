@@ -691,7 +691,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
    enum {_RANDCHARS = 8u};
 
    char *cp_base, *cp;
-   size_t maxname, xlen, i;
+   uz maxname, xlen, i;
    char const *tmpdir;
    int osoflags, fd, e;
    boole relesigs;
@@ -712,7 +712,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
    {  long pc;
 
       if ((pc = pathconf(tmpdir, _PC_NAME_MAX)) != -1)
-         maxname = (size_t)pc;
+         maxname = (uz)pc;
    }
 #endif
 
@@ -737,7 +737,7 @@ Ftmp(char **fn, char const *namehint, enum oflags oflags)
 
       i = P2UZ(x - cp);
       if (i > maxname - xlen - _RANDCHARS) {
-         size_t j = maxname - xlen - _RANDCHARS;
+         uz j = maxname - xlen - _RANDCHARS;
          x -= i - j;
       }
 
@@ -1192,7 +1192,7 @@ n_child_start(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
 
       if (env_addon_or_null != NULL) {
          extern char **environ;
-         size_t ei, ei_orig, ai, ai_orig;
+         uz ei, ei_orig, ai, ai_orig;
          char **env;
 
          /* TODO note we don't check the POSIX limit:
@@ -1210,7 +1210,7 @@ n_child_start(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
          /* Replace all those keys that yet exist */
          while (ai-- > 0) {
             char const *ee, *kvs;
-            size_t kl;
+            uz kl;
 
             ee = env_addon_or_null[ai];
             kvs = su_cs_find_c(ee, '=');

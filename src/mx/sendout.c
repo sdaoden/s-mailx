@@ -297,7 +297,7 @@ static s32
 a_sendout_body(FILE *fo, FILE *fi, enum conversion convert){
    struct str outrest, inrest;
    char *buf;
-   size_t size, bufsize, cnt;
+   uz size, bufsize, cnt;
    boole iseof;
    s32 rv;
    NYD2_IN;
@@ -1137,7 +1137,7 @@ jbail:
 static boole
 a_sendout__savemail(char const *name, FILE *fp, boole resend){
    FILE *fo;
-   size_t bufsize, buflen, cnt;
+   uz bufsize, buflen, cnt;
    enum n_fopen_state fs;
    boole rv, emptyline;
    char *buf;
@@ -1210,7 +1210,7 @@ _transfer(struct sendbundle *sbp)
 
    for (cnt = 0, np = sbp->sb_to; np != NULL;) {
       char const k[] = "smime-encrypt-", *cp;
-      size_t nl = strlen(np->n_name);
+      uz nl = strlen(np->n_name);
       char *vs = n_lofi_alloc(sizeof(k)-1 + nl +1);
       memcpy(vs, k, sizeof(k) -1);
       memcpy(vs + sizeof(k) -1, np->n_name, nl +1);
@@ -1401,7 +1401,7 @@ jleave:
 static char const **
 __mta_prepare_args(struct mx_name *to, struct header *hp)
 {
-   size_t vas_cnt, i, j;
+   uz vas_cnt, i, j;
    char **vas;
    char const **args, *cp, *cp_v15compat;
    boole snda;
@@ -1419,7 +1419,7 @@ __mta_prepare_args(struct mx_name *to, struct header *hp)
        * like this getrawlist will never overflow (and return -1) */
       j = su_cs_len(cp);
       vas = n_lofi_alloc(sizeof(*vas) * j);
-      vas_cnt = (size_t)getrawlist(TRU1, vas, j, cp, j);
+      vas_cnt = (uz)getrawlist(TRU1, vas, j, cp, j);
    }
 
    i = 4 + n_smopts_cnt + vas_cnt + 4 + 1 + count(to) + 1;
@@ -1502,7 +1502,7 @@ __mta_prepare_args(struct mx_name *to, struct header *hp)
 static void
 __mta_debug(struct sendbundle *sbp, char const *mta, char const **args)
 {
-   size_t cnt, bufsize, llen;
+   uz cnt, bufsize, llen;
    char *buf;
    NYD_IN;
 
@@ -1531,7 +1531,7 @@ a_sendout_random_id(struct header *hp, boole msgid)
    static u32 reprocnt;
    struct tm *tmp;
    char const *h;
-   size_t rl, i;
+   uz rl, i;
    char *rv, sep;
    NYD_IN;
 
@@ -1578,7 +1578,7 @@ static boole
 a_sendout_put_addrline(char const *hname, struct mx_name *np, FILE *fo,
    enum a_sendout_addrline_flags saf)
 {
-   ssize_t hnlen, col, len;
+   sz hnlen, col, len;
    enum{
       m_ERROR = 1u<<0,
       m_INIT = 1u<<1,
@@ -1684,7 +1684,7 @@ static int
 infix_resend(FILE *fi, FILE *fo, struct message *mp, struct mx_name *to,
    int add_resent)
 {
-   size_t cnt, c, bufsize = 0;
+   uz cnt, c, bufsize = 0;
    char *buf = NULL;
    char const *cp;
    struct mx_name *fromfield = NULL, *senderfield = NULL, *mdn;
@@ -2098,7 +2098,7 @@ do {\
 } while (0)
 
    char const *addr;
-   size_t gotcha;
+   uz gotcha;
    struct mx_name *np, *fromasender = NULL;
    int stealthmua;
    boole nodisp;
@@ -2179,7 +2179,7 @@ jto_fmt:
       if (fwrite("Subject: ", sizeof(char), 9, fo) != 9)
          goto jleave;
       if (hp->h_subject != NULL) {
-         size_t sublen;
+         uz sublen;
          char const *sub;
 
          sublen = su_cs_len(sub = subject_re_trim(hp->h_subject));
@@ -2642,7 +2642,7 @@ savedeadletter(FILE *fp, boole fflush_rewind_first){
        * TODO have a complete MIME encoded message.  We don't know, and we
        * TODO have no usable mechanism to dig it!!  We need v15! */
       if(!(flags & a_INIT)){
-         size_t i;
+         uz i;
 
          /* Throw away leading empty lines! */
          if(line.s_len == 0)

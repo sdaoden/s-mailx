@@ -142,7 +142,7 @@ static struct a_msg_lex const a_msg_singles[] = {
 };
 
 /* Slots in ::message */
-static size_t a_msg_mem_space;
+static uz a_msg_mem_space;
 
 /* Mark entire threads */
 static boole a_msg_threadflag;
@@ -154,7 +154,7 @@ static boole a_msg_list_saw_d, a_msg_list_last_saw_d;
 static enum okay a_msg_get_header(struct message *mp);
 
 /* Append, taking care of resizes TODO vector */
-static char **a_msg_add_to_nmadat(char ***nmadat, size_t *nmasize,
+static char **a_msg_add_to_nmadat(char ***nmadat, uz *nmasize,
                char **np, char *string);
 
 /* Mark all messages that the user wanted from the command line in the message
@@ -230,9 +230,9 @@ a_msg_get_header(struct message *mp){
 }
 
 static char **
-a_msg_add_to_nmadat(char ***nmadat, size_t *nmasize, /* TODO Vector */
+a_msg_add_to_nmadat(char ***nmadat, uz *nmasize, /* TODO Vector */
       char **np, char *string){
-   size_t idx, i;
+   uz idx, i;
    NYD2_IN;
 
    if((idx = P2UZ(np - *nmadat)) >= *nmasize){
@@ -254,7 +254,7 @@ static int
 a_msg_markall(char const *orig, struct n_cmd_arg *cap, int f){
    struct a_msg_speclex msl;
    enum a_msg_idfield idfield;
-   size_t j, nmasize;
+   uz j, nmasize;
    char const *id;
    char **nmadat_lofi, **nmadat, **np, **nq, *cp;
    struct message *mp, *mx;
@@ -481,7 +481,7 @@ jnumber__thr:
 
 #ifdef mx_HAVE_IMAP_SEARCH
          /* C99 */{
-            ssize_t ires;
+            sz ires;
 
             if((ires = imap_search(msl.msl_str, f)) >= 0){
                if(ires > 0)
@@ -1146,7 +1146,7 @@ a_msg_match_dash(struct message *mp, char const *str){
 
    /* Now look, ignoring case, for the word in the string */
    if(ok_blook(searchheaders) && (hfield = su_cs_find_c(str, ':'))){
-      size_t l;
+      uz l;
 
       l = P2UZ(hfield - str);
       hfield = n_lofi_alloc(l +1);
@@ -1202,10 +1202,10 @@ jleave:
 
 static void
 a_msg_unmark(int mesg){
-   size_t i;
+   uz i;
    NYD2_IN;
 
-   i = (size_t)mesg;
+   i = (uz)mesg;
    if(i < 1 || UCMP(z, i, >, msgCount))
       n_panic(_("Bad message number to unmark"));
    message[--i].m_flag &= ~MMARK;
@@ -1427,7 +1427,7 @@ FL boole
 message_match(struct message *mp, struct search_expr const *sep,
       boole with_headers){
    char **line;
-   size_t *linesize, cnt;
+   uz *linesize, cnt;
    FILE *fp;
    boole rv;
    NYD_IN;

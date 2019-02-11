@@ -55,7 +55,7 @@
  * was large enough to swallow mailname */
 static boole  _update_mailname(char const *name);
 #ifdef mx_HAVE_C90AMEND1 /* TODO unite __narrow_suffix() into one fun! */
-su_SINLINE size_t __narrow_suffix(char const *cp, size_t cpl, size_t maxl);
+su_SINLINE uz __narrow_suffix(char const *cp, uz cpl, uz maxl);
 #endif
 
 /**/
@@ -69,7 +69,7 @@ _update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Object! */
 {
    char const *foldp;
    char *mailp, *dispp;
-   size_t i, j, foldlen;
+   uz i, j, foldlen;
    boole rv;
    NYD_IN;
 
@@ -141,11 +141,11 @@ jdocopy:
 }
 
 #ifdef mx_HAVE_C90AMEND1
-su_SINLINE size_t
-__narrow_suffix(char const *cp, size_t cpl, size_t maxl)
+su_SINLINE uz
+__narrow_suffix(char const *cp, uz cpl, uz maxl)
 {
    int err;
-   size_t i, ok;
+   uz i, ok;
    NYD_IN;
 
    for (err = ok = i = 0; cpl > maxl || err;) {
@@ -243,7 +243,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
       a_INHEAD = 1u<<5,
       a_COMMIT = 1u<<6
    } f;
-   size_t filesize, linesize, cnt;
+   uz filesize, linesize, cnt;
    NYD_IN;
 
    su_mem_set(&self, 0, sizeof self);
@@ -443,7 +443,7 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    static int shudclob;
 
    struct stat stb;
-   size_t offset;
+   uz offset;
    char const *who, *orig_name;
    int rv, omsgCount = 0;
    FILE *ibuf = NULL, *lckfp = NULL;
@@ -792,7 +792,7 @@ setmsize(int size)
 FL void
 print_header_summary(char const *Larg)
 {
-   size_t i;
+   uz i;
    NYD_IN;
 
    getmdot(0);
@@ -1041,7 +1041,7 @@ n_folder_query(void){
             ) == NULL) || *cp == '\0')
          goto jset;
       else{
-         size_t i;
+         uz i;
 
          for(i = su_cs_len(cp);;){
             if(--i == 0)
@@ -1075,7 +1075,7 @@ n_folder_query(void){
 
       /* Prefix HOME as necessary */
       if(*adjcp != '/'){ /* XXX path_is_absolute() */
-         size_t l1, l2;
+         uz l1, l2;
          char const *home;
 
          home = ok_vlook(HOME);
@@ -1084,7 +1084,7 @@ n_folder_query(void){
 
          s = n_string_reserve(s, l1 + 1 + l2 +1);
          if(cp != adjcp){
-            size_t i;
+            uz i;
 
             s = n_string_push_buf(s, cp, i = P2UZ(adjcp - cp));
             cp += i;
@@ -1129,7 +1129,7 @@ n_folder_query(void){
 
       /* Always append a solidus to our result path upon success */
       if(!err){
-         size_t i;
+         uz i;
 
          if(rv[(i = su_cs_len(rv)) - 1] != '/'){
             s = n_string_reserve(s, i + 1 +1);

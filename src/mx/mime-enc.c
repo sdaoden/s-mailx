@@ -136,12 +136,12 @@ su_SINLINE enum a_me_qact a_me_mustquote(char const *s, char const *e,
 /* Trim WS and make work point to the decodable range of in.
  * Return the amount of bytes a b64_decode operation on that buffer requires,
  * or UZ_MAX on overflow error */
-static size_t a_me_b64_decode_prepare(struct str *work, struct str const *in);
+static uz a_me_b64_decode_prepare(struct str *work, struct str const *in);
 
 /* Perform b64_decode on in(put) to sufficiently spaced out(put).
  * Return number of useful bytes in out or -1 on error.
  * Note: may enter endless loop if in->l < 4 and 0 return is not handled! */
-static ssize_t a_me_b64_decode(struct str *out, struct str *in);
+static sz a_me_b64_decode(struct str *out, struct str *in);
 
 su_SINLINE enum a_me_qact
 a_me_mustquote(char const *s, char const *e, boole sol,
@@ -219,9 +219,9 @@ jleave:
    return r;
 }
 
-static size_t
+static uz
 a_me_b64_decode_prepare(struct str *work, struct str const *in){
-   size_t cp_len;
+   uz cp_len;
    NYD2_IN;
 
    *work = *in;
@@ -241,11 +241,11 @@ jleave:
    return cp_len;
 }
 
-static ssize_t
+static sz
 a_me_b64_decode(struct str *out, struct str *in){
    u8 *p, pb;
    u8 const *q, *end;
-   ssize_t rv;
+   sz rv;
    NYD2_IN;
 
    rv = -1;
@@ -288,12 +288,12 @@ a_me_b64_decode(struct str *out, struct str *in){
    rv ^= rv;
 
 jleave:{
-      size_t i;
+      uz i;
 
       i = P2UZ((char*)p - out->s);
       out->l = i;
       if(rv == 0)
-         rv = (ssize_t)i;
+         rv = (sz)i;
    }
    in->l -= P2UZ(q - (u8*)in->s);
    in->s = n_UNCONST(q);
@@ -350,7 +350,7 @@ mime_enc_from_ctehead(char const *hbody){
          {a_ME_CTES_BIN_OFF, a_ME_CTES_BIN_LEN, MIMEE_BIN, 0},
          {0, 0, MIMEE_NONE, 0}
       };
-      union {char const *s; size_t l;} u;
+      union {char const *s; uz l;} u;
 
       if(*hbody == '"')
          for(u.s = ++hbody; *u.s != '\0' && *u.s != '"'; ++u.s)
@@ -390,9 +390,9 @@ mime_enc_from_conversion(enum conversion const convert){
    return rv;
 }
 
-FL size_t
-mime_enc_mustquote(char const *ln, size_t lnlen, enum mime_enc_flags flags){
-   size_t rv;
+FL uz
+mime_enc_mustquote(char const *ln, uz lnlen, enum mime_enc_flags flags){
+   uz rv;
    boole sol;
    NYD2_IN;
 
@@ -412,9 +412,9 @@ mime_enc_mustquote(char const *ln, size_t lnlen, enum mime_enc_flags flags){
    return rv;
 }
 
-FL size_t
-qp_encode_calc_size(size_t len){
-   size_t bytes, lines;
+FL uz
+qp_encode_calc_size(uz len){
+   uz bytes, lines;
    NYD2_IN;
 
    /* The worst case sequence is 'CRLF' -> '=0D=0A=\n\0'.
@@ -469,7 +469,7 @@ qp_encode_cp(struct str *out, char const *cp, enum qpflags flags){
 }
 
 FL struct str *
-qp_encode_buf(struct str *out, void const *vp, size_t vp_len,
+qp_encode_buf(struct str *out, void const *vp, uz vp_len,
       enum qpflags flags){
    struct str in;
    NYD_IN;
@@ -484,7 +484,7 @@ qp_encode_buf(struct str *out, void const *vp, size_t vp_len,
 
 FL struct str *
 qp_encode(struct str *out, struct str const *in, enum qpflags flags){
-   size_t lnlen;
+   uz lnlen;
    char *qp;
    char const *is, *ie;
    boole sol, seenx;
@@ -743,7 +743,7 @@ jsoftnl:
 
       /* C99 */{
          char *cp;
-         size_t l;
+         uz l;
 
          if((l = P2UZ(ie - is)) > 0){
             if(inrest_or_null == NULL)
@@ -772,8 +772,8 @@ jerr:
    goto jleave;
 }
 
-FL size_t
-b64_encode_calc_size(size_t len){
+FL uz
+b64_encode_calc_size(uz len){
    NYD2_IN;
    if(len >= UZ_MAX / 4)
       len = UZ_MAX;
@@ -789,7 +789,7 @@ b64_encode_calc_size(size_t len){
 FL struct str *
 b64_encode(struct str *out, struct str const *in, enum b64flags flags){
    u8 const *p;
-   size_t i, lnlen;
+   uz i, lnlen;
    char *b64;
    NYD_IN;
 
@@ -811,7 +811,7 @@ b64_encode(struct str *out, struct str const *in, enum b64flags flags){
    if(!(flags & (B64_CRLF | B64_LF)))
       flags &= ~B64_MULTILINE;
 
-   for(lnlen = 0, i = in->l; (ssize_t)i > 0; p += 3, i -= 3){
+   for(lnlen = 0, i = in->l; (sz)i > 0; p += 3, i -= 3){
       u32 a, b, c;
 
       a = p[0];
@@ -884,7 +884,7 @@ jleave:
 }
 
 FL struct str *
-b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
+b64_encode_buf(struct str *out, void const *vp, uz vp_len,
       enum b64flags flags){
    struct str in;
    NYD_IN;
@@ -913,7 +913,7 @@ b64_encode_cp(struct str *out, char const *cp, enum b64flags flags){
 FL boole
 b64_decode(struct str *out, struct str const *in){
    struct str work;
-   size_t len;
+   uz len;
    NYD_IN;
 
    out->l = 0;
@@ -926,7 +926,7 @@ b64_decode(struct str *out, struct str const *in){
       out->s = n_realloc(out->s, 1);
    else if(work.l >= 4 && !(work.l & 3)){
       out->s = n_realloc(out->s, len +1);
-      if((ssize_t)(len = a_me_b64_decode(out, &work)) < 0)
+      if((sz)(len = a_me_b64_decode(out, &work)) < 0)
          goto jerr;
    }else
       goto jerr;
@@ -967,7 +967,7 @@ b64_decode_part(struct str *out, struct str const *in, struct str *outrest,
    u32 a, b, c, b64l;
    char ca, cb, cc, cx;
    struct n_string s, workbuf;
-   size_t len;
+   uz len;
    NYD_IN;
 
    n_string_creat(&s);

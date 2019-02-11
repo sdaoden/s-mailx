@@ -127,7 +127,7 @@ struct spam_vc {
    boole            (*vc_act)(struct spam_vc *);
    void              (*vc_dtor)(struct spam_vc *);
    char              *vc_buffer;    /* I/O buffer, BUFFER_SIZE bytes */
-   size_t            vc_mno;        /* Current message number */
+   uz            vc_mno;        /* Current message number */
    struct message    *vc_mp;        /* Current message */
    FILE              *vc_ifp;       /* Input stream on .vc_mp */
    union {
@@ -191,7 +191,7 @@ static boole
 _spam_action(enum spam_action sa, int *ip)
 {
    struct spam_vc vc;
-   size_t maxsize, skipped, cnt, curr;
+   uz maxsize, skipped, cnt, curr;
    char const *cp;
    boole ok = FAL0;
    NYD_IN;
@@ -242,7 +242,7 @@ _spam_action(enum spam_action sa, int *ip)
          ++cnt;
    }
    for (curr = 0, ok = TRU1; *ip != 0; --cnt, ++curr, ++ip) {
-      vc.vc_mno = (size_t)*ip;
+      vc.vc_mno = (uz)*ip;
       vc.vc_mp = message + vc.vc_mno - 1;
       if (sa == _SPAM_RATE)
          vc.vc_mp->m_spamscore = 0;
@@ -250,7 +250,7 @@ _spam_action(enum spam_action sa, int *ip)
       if (vc.vc_mp->m_size > maxsize) {
          if (vc.vc_verbose)
             n_err(_("`%s': message %lu exceeds maxsize (%lu > %lu), skip\n"),
-               _spam_cmds[sa], (ul)vc.vc_mno, (ul)(size_t)vc.vc_mp->m_size,
+               _spam_cmds[sa], (ul)vc.vc_mno, (ul)(uz)vc.vc_mp->m_size,
                (ul)maxsize);
          else if (vc.vc_progress) {
             fprintf(n_stdout, "\r%s: !%-6" PRIuZ " %6" PRIuZ "/%-6" PRIuZ,
@@ -422,7 +422,7 @@ _spamd_setup(struct spam_vc *vcp)
 {
    struct spam_spamd *ssdp;
    char const *cp;
-   size_t l;
+   uz l;
    boole rv = FAL0;
    NYD2_IN;
 
@@ -468,7 +468,7 @@ static boole
 _spamd_interact(struct spam_vc *vcp)
 {
    struct spam_spamd *ssdp;
-   size_t size, i;
+   uz size, i;
    char *lp, *cp, * volatile headbuf = NULL;
    int volatile dsfd = -1;
    boole volatile rv = FAL0;
@@ -536,7 +536,7 @@ _spamd_interact(struct spam_vc *vcp)
    }
 
    lp += snprintf(lp, size, NETLINE("Content-length: %" PRIuZ),
-         (size_t)vcp->vc_mp->m_size);
+         (uz)vcp->vc_mp->m_size);
 
    if (cp != NULL) {
       _X("User: ");
@@ -573,7 +573,7 @@ _spamd_interact(struct spam_vc *vcp)
    i = P2UZ(lp - headbuf);
    if (n_poption & n_PO_VERBVERB)
       n_err(">>> %.*s <<<\n", (int)i, headbuf);
-   if (i != (size_t)write(dsfd, headbuf, i))
+   if (i != (uz)write(dsfd, headbuf, i))
       goto jeso;
 
    /* Then simply pass through the message "as-is" */
@@ -587,7 +587,7 @@ _spamd_interact(struct spam_vc *vcp)
       }
       size -= i;
 
-      if (i != (size_t)write(dsfd, vcp->vc_buffer, i)) {
+      if (i != (uz)write(dsfd, vcp->vc_buffer, i)) {
 jeso:
          n_err(_("%s`%s': I/O on *spamd-socket* failed: %s\n"),
             vcp->vc_esep, _spam_cmds[vcp->vc_action], su_err_doc(su_err_no()));
@@ -600,7 +600,7 @@ jeso:
 
    /* Be aware on goto: i will be a line counter after this loop! */
    for (size = 0, i = BUFFER_SIZE -1;;) {
-      ssize_t j = read(dsfd, vcp->vc_buffer + size, i);
+      sz j = read(dsfd, vcp->vc_buffer + size, i);
       if (j == -1)
          goto jeso;
       if (j == 0)
@@ -969,7 +969,7 @@ _spam_cf_interact(struct spam_vc *vcp)
    int p2c[2], c2p[2];
    sigset_t cset;
    char const *cp;
-   size_t size;
+   uz size;
    pid_t volatile pid;
    enum {
       _NONE    = 0,
@@ -1048,7 +1048,7 @@ _spam_cf_interact(struct spam_vc *vcp)
     * content does the same in effect, however much more efficiently.
     * XXX NOTE: this may mean we pass a message without From_ line! */
    for (size = vcp->vc_mp->m_size; size > 0;) {
-      size_t i;
+      uz i;
 
       i = fread(vcp->vc_buffer, 1, MIN(size, BUFFER_SIZE), vcp->vc_ifp);
       if (i == 0) {
@@ -1057,7 +1057,7 @@ _spam_cf_interact(struct spam_vc *vcp)
          break;
       }
       size -= i;
-      if (i != (size_t)write(p2c[1], vcp->vc_buffer, i)) {
+      if (i != (uz)write(p2c[1], vcp->vc_buffer, i)) {
          state |= _ERRORS;
          break;
       }
@@ -1087,7 +1087,7 @@ jtail:
    if (state & _RUNNING) {
       if (!(state & _ERRORS) &&
             vcp->vc_action == _SPAM_RATE && !(state & (_JUMPED | _ERRORS))) {
-         ssize_t i = read(c2p[0], vcp->vc_buffer, BUFFER_SIZE - 1);
+         sz i = read(c2p[0], vcp->vc_buffer, BUFFER_SIZE - 1);
          if (i > 0) {
             vcp->vc_buffer[i] = '\0';
             if ((cp = su_cs_find_c(vcp->vc_buffer, NETNL[0])) == NULL &&
@@ -1199,7 +1199,7 @@ c_spam_clear(void *v)
    NYD_IN;
 
    for (ip = v; *ip != 0; ++ip)
-      message[(size_t)*ip - 1].m_flag &= ~(MSPAM | MSPAMUNSURE);
+      message[(uz)*ip - 1].m_flag &= ~(MSPAM | MSPAMUNSURE);
    NYD_OU;
    return 0;
 }
@@ -1211,8 +1211,8 @@ c_spam_set(void *v)
    NYD_IN;
 
    for (ip = v; *ip != 0; ++ip) {
-      message[(size_t)*ip - 1].m_flag &= ~(MSPAM | MSPAMUNSURE);
-      message[(size_t)*ip - 1].m_flag |= MSPAM;
+      message[(uz)*ip - 1].m_flag &= ~(MSPAM | MSPAMUNSURE);
+      message[(uz)*ip - 1].m_flag |= MSPAM;
    }
    NYD_OU;
    return 0;

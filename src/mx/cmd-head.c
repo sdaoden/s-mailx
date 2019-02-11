@@ -59,16 +59,16 @@ static int        _screen;
  * a_chead__putindent: print out the indenting in threaded display
  * a_chead__putuc: print out a Unicode character or a substitute for it, return
  *    0 on error or wcwidth() (or 1) on success */
-static void a_chead_print_head(size_t yetprinted, size_t msgno, FILE *f,
+static void a_chead_print_head(uz yetprinted, uz msgno, FILE *f,
                boole threaded, boole subject_thread_compress);
 
-static void a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno,
+static void a_chead__hprf(uz yetprinted, char const *fmt, uz msgno,
                FILE *f, boole threaded, boole subject_thread_compress,
                char const *attrlist);
 static char *a_chead__subject(struct message *mp, boole threaded,
-               boole subject_thread_compress, size_t yetprinted);
+               boole subject_thread_compress, uz yetprinted);
 static int a_chead__putindent(FILE *fp, struct message *mp, int maxwidth);
-static size_t a_chead__putuc(int u, int c, FILE *fp);
+static uz a_chead__putuc(int u, int c, FILE *fp);
 static int a_chead__dispc(struct message *mp, char const *a);
 
 /* Shared `z' implementation */
@@ -78,7 +78,7 @@ static int a_chead_scroll(char const *arg, boole onlynew);
 static int     _headers(int msgspec);
 
 static void
-a_chead_print_head(size_t yetprinted, size_t msgno, FILE *f, boole threaded,
+a_chead_print_head(uz yetprinted, uz msgno, FILE *f, boole threaded,
       boole subject_thread_compress){
    enum {attrlen = 14};
    char attrlist[attrlen +1], *cp;
@@ -122,7 +122,7 @@ jattrok:
 }
 
 static void
-a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
+a_chead__hprf(uz yetprinted, char const *fmt, uz msgno, FILE *f,
    boole threaded, boole subject_thread_compress, char const *attrlist)
 {
    char buf[16], cbuf[8], *cp, *subjline;
@@ -508,7 +508,7 @@ jmlist: /* v15compat */
 
 static char *
 a_chead__subject(struct message *mp, boole threaded,
-   boole subject_thread_compress, size_t yetprinted)
+   boole subject_thread_compress, uz yetprinted)
 {
    struct str in, out;
    char *rv, *ms;
@@ -624,9 +624,9 @@ jleave:
    return indw;
 }
 
-static size_t
+static uz
 a_chead__putuc(int u, int c, FILE *fp){
-   size_t rv;
+   uz rv;
    NYD2_IN;
    UNUSED(u);
 
@@ -1073,7 +1073,7 @@ c_from(void *vp)
    n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, obuf, obuf != n_stdout); )
    srelax_hold();
    for (n = 0, ip = msgvec; *ip != 0; ++ip) { /* TODO join into _print_head() */
-      a_chead_print_head((size_t)n++, (size_t)*ip, obuf, mb.mb_threaded, FAL0);
+      a_chead_print_head((uz)n++, S(uz,*ip), obuf, mb.mb_threaded, FAL0);
       srelax();
    }
    srelax_rele();
@@ -1090,7 +1090,7 @@ FL void
 print_headers(int const *msgvec, boole only_marked,
    boole subject_thread_compress)
 {
-   size_t printed;
+   uz printed;
    NYD_IN;
 
    time_current_update(&time_current, FAL0);

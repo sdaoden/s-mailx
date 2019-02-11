@@ -133,7 +133,7 @@ jeuse:
    }else{
       /* Prevent one more path injection attack vector, but be friendly */
       char const *ccp;
-      size_t i;
+      uz i;
       char *cp, c;
 
       for(ccp = argv[7], cp = hostbuf, i = 0; (c = *ccp) != '\0'; ++cp, ++ccp){
@@ -151,11 +151,11 @@ jeuse:
    di.di_lock_name = argv[5];
    di.di_hostname = argv[7];
    di.di_randstr = argv[9];
-   di.di_pollmsecs = (size_t)strtoul(argv[11], NULL, 10);
+   di.di_pollmsecs = (uz)strtoul(argv[11], NULL, 10);
 
    /* Ensure the lock name and the file name are identical */
    /* C99 */{
-      size_t i;
+      uz i;
 
       i = strlen(di.di_file_name);
       if(i == 0 || strncmp(di.di_file_name, di.di_lock_name, i) ||

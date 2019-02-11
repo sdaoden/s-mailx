@@ -65,7 +65,7 @@ static FILE *        _pipefile(struct mime_handler *mhp,
                         char const *tmpname, int term_infd);
 
 /* Call mime_write() as approbiate and adjust statistics */
-su_SINLINE ssize_t _out(char const *buf, size_t len, FILE *fp,
+su_SINLINE sz _out(char const *buf, uz len, FILE *fp,
       enum conversion convert, enum sendaction action, struct quoteflt *qf,
       u64 *stats, struct str *outrest, struct str *inrest);
 
@@ -79,7 +79,7 @@ static void          _send_onpipe(int signo);
 static int           sendpart(struct message *zmp, struct mimepart *ip,
                         FILE *obuf, struct n_ignore const *doitp,
                         struct quoteflt *qf, enum sendaction action,
-                        char **linedat, size_t *linesize,
+                        char **linedat, uz *linesize,
                         u64 *stats, int level);
 
 /* Dependent on *mime-alternative-favour-rich* (favour_rich) do a tree walk
@@ -156,8 +156,8 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
       cp = mpp->m_ct_type_plain;
    if (want_ct && (to.l = su_cs_len(cp)) > 30 &&
             su_cs_starts_with_case(cp, "application/")) {
-      size_t const al = sizeof("appl../") -1, fl = sizeof("application/") -1;
-      size_t i = to.l - fl;
+      uz const al = sizeof("appl../") -1, fl = sizeof("application/") -1;
+      uz i = to.l - fl;
       char *x = n_autorec_alloc(al + i +1);
 
       su_mem_copy(x, "appl../", al);
@@ -268,7 +268,7 @@ _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
    static u32 reprocnt;
    struct str s;
    char const *env_addon[9 +8/*v15*/], *cp, *sh;
-   size_t i;
+   uz i;
    FILE *rbuf;
    NYD_IN;
 
@@ -371,12 +371,12 @@ jleave:
    return rbuf;
 }
 
-su_SINLINE ssize_t
-_out(char const *buf, size_t len, FILE *fp, enum conversion convert, enum
+su_SINLINE sz
+_out(char const *buf, uz len, FILE *fp, enum conversion convert, enum
    sendaction action, struct quoteflt *qf, u64 *stats, struct str *outrest,
    struct str *inrest)
 {
-   ssize_t size = 0, n;
+   sz size = 0, n;
    int flags;
    NYD_IN;
 
@@ -455,14 +455,14 @@ static int
 sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    struct n_ignore const *doitp, struct quoteflt *qf,
    enum sendaction volatile action,
-   char **linedat, size_t *linesize, u64 * volatile stats, int level)
+   char **linedat, uz *linesize, u64 * volatile stats, int level)
 {
    int volatile rv = 0;
    struct mime_handler mh_stack, * volatile mhp;
    struct str outrest, inrest;
    char *cp;
    char const * volatile tmpname = NULL;
-   size_t linelen, cnt;
+   uz linelen, cnt;
    int volatile dostat, term_infd;
    int c;
    struct mimepart * volatile np;
@@ -526,7 +526,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    /* Work the headers */
    /* C99 */{
    struct n_string hl, *hlp;
-   size_t lineno = 0;
+   uz lineno = 0;
    boole hstop/*see below, hany*/;
 
    hlp = n_string_creat_auto(&hl); /* TODO pool [or, v15: filter!] */
@@ -534,7 +534,7 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    hlp = n_string_reserve(hlp, MAX(MIME_LINELEN, MIME_LINELEN_RFC2047) * 3);
 
    for(hstop = /*see below hany =*/ FAL0; !hstop;){
-      size_t lcnt;
+      uz lcnt;
 
       lcnt = cnt;
       if(fgetline(linedat, linesize, &cnt, &linelen, ibuf, 0) == NULL)
@@ -606,7 +606,7 @@ jhdrput:
       /* If it is an ignored header, skip it */
       *(cp = su_mem_find(hlp->s_dat, ':', hlp->s_len)) = '\0';
       /* C99 */{
-         size_t i;
+         uz i;
 
          i = P2UZ(cp - hlp->s_dat);
          if((doitp != NULL && n_ignore_is_ign(doitp, hlp->s_dat, i)) ||
@@ -677,7 +677,7 @@ jheaders_skip:
       case SEND_QUOTE_ALL:
          if (ok_blook(rfc822_body_from_)) {
             if (!qf->qf_bypass) {
-               size_t i = fwrite(qf->qf_pfix, sizeof *qf->qf_pfix,
+               uz i = fwrite(qf->qf_pfix, sizeof *qf->qf_pfix,
                      qf->qf_pfix_len, obuf);
                if (i == qf->qf_pfix_len && stats != NULL)
                   *stats += i;
@@ -1490,13 +1490,13 @@ pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf, struct quoteflt *qf,
    u64 *stats)
 {
    char *line = NULL; /* TODO line pool */
-   size_t linesize = 0, linelen, cnt;
-   ssize_t all_sz, i;
+   uz linesize = 0, linelen, cnt;
+   sz all_sz, i;
    NYD_IN;
 
    fflush(pipebuf);
    rewind(pipebuf);
-   cnt = (size_t)fsize(pipebuf);
+   cnt = (uz)fsize(pipebuf);
    all_sz = 0;
 
    quoteflt_reset(qf, outbuf);
@@ -1601,7 +1601,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
    FILE *ibuf;
    enum mime_parse_flags mpf;
    struct mimepart *ip;
-   size_t linesize, cnt, size, i;
+   uz linesize, cnt, size, i;
    char *linedat;
    int rv, c;
    NYD_IN;

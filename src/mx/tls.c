@@ -67,7 +67,7 @@ static struct a_tls_verify_levels const a_tls_verify_levels[] = {
 
 FL void
 n_tls_set_verify_level(struct url const *urlp){
-   size_t i;
+   uz i;
    char const *cp;
    NYD2_IN;
 
@@ -114,11 +114,11 @@ smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
 {
    struct myline {
       struct myline  *ml_next;
-      size_t         ml_len;
+      uz         ml_len;
       char           ml_buf[VFIELD_SIZE(0)];
    } *head, *tail;
    char *buf;
-   size_t bufsize, buflen, cnt;
+   uz bufsize, buflen, cnt;
    int c;
    enum okay rv = STOP;
    NYD_IN;
@@ -300,7 +300,7 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
    u32 lastnl = 0;
    int binary = 0;
    char *buf = NULL;
-   size_t bufsize = 0, buflen, cnt;
+   uz bufsize = 0, buflen, cnt;
    long lns = 0, octets = 0;
    struct message *x;
    off_t offset;
@@ -433,7 +433,7 @@ n_tls_rfc2595_hostname_match(char const *host, char const *pattern){
 
 FL int
 c_tls(void *vp){
-   size_t i;
+   uz i;
    char const **argv, *varname, *varres, *cp;
    NYD_IN;
 

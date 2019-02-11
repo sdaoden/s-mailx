@@ -165,7 +165,7 @@ n_iconv_reset(iconv_t cd){
 
 FL int
 n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
-   char const **inb, size_t *inbleft, char **outb, size_t *outbleft){
+   char const **inb, uz *inbleft, char **outb, uz *outbleft){
    int err;
    NYD2_IN;
 
@@ -173,11 +173,11 @@ n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
       icf &= ~n_ICONV_UNIREPL;
 
    for(;;){
-      size_t i;
+      uz i;
 
       if((i = iconv(cd, __INBCAST(inb), inbleft, outb, outbleft)) == 0)
          break;
-      if(i != (size_t)-1){
+      if(i != (uz)-1){
          if(!(icf & n_ICONV_IGN_NOREVERSE)){
             err = su_ERR_NOENT;
             goto jleave;
@@ -227,7 +227,7 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
    struct n_string s_b, *s;
    char const *ib;
    int err;
-   size_t il;
+   uz il;
    NYD2_IN;
 
    il = in->l;
@@ -242,7 +242,7 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
 
    for(;;){
       char *ob_base, *ob;
-      size_t ol, nol;
+      uz ol, nol;
 
       if((nol = ol = s->s_len) < il)
          nol = il;
@@ -260,7 +260,7 @@ n_iconv_str(iconv_t cd, enum n_iconv_flags icf,
                goto jleave;
             }
          }
-         nol = (size_t)xnol;
+         nol = (uz)xnol;
       }
       s = n_string_resize(s, nol);
 

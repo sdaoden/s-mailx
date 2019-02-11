@@ -106,7 +106,7 @@ edit1(int *msgvec, int viored)
             ++size;
          if (putc('\n', mb.mb_otf) != EOF)
             ++size;
-         mp->m_size = (size_t)size;
+         mp->m_size = (uz)size;
          if (ferror(mb.mb_otf))
             n_perr(_("/tmp"), 0);
          Fclose(fp);

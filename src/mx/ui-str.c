@@ -169,12 +169,12 @@ n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
    if(il > 0){
       do/* while(!(vif & n_VISUAL_INFO_ONE_CHAR) && il > 0) */{
 #ifdef mx_HAVE_C90AMEND1
-         size_t i = mbrtowc(&vicp->vic_waccu, ib, il, mbp);
+         uz i = mbrtowc(&vicp->vic_waccu, ib, il, mbp);
 
-         if(i == (size_t)-2){
+         if(i == (uz)-2){
             rv = FAL0;
             break;
-         }else if(i == (size_t)-1){
+         }else if(i == (uz)-1){
             if(!(vif & n_VISUAL_INFO_SKIP_ERRORS)){
                rv = FAL0;
                break;
@@ -473,7 +473,7 @@ makeprint(struct str const *in, struct str *out) /* TODO <-> TTYCHARSET!! */
 FL uz
 delctrl(char *cp, uz len)
 {
-   size_t x, y;
+   uz x, y;
    NYD_IN;
 
    for (x = y = 0; x < len; ++x)

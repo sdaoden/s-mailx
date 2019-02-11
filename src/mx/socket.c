@@ -79,10 +79,10 @@ su_EMPTY_FILE()
 static boole a_socket_open(struct sock *sop, struct url *urlp);
 
 /* */
-static int a_socket_connect(int fd, struct sockaddr *soap, size_t soapl);
+static int a_socket_connect(int fd, struct sockaddr *soap, uz soapl);
 
 /* Write to socket fd, restarting on EINTR, unless anything is written */
-static long a_socket_xwrite(int fd, char const *data, size_t size);
+static long a_socket_xwrite(int fd, char const *data, uz size);
 
 static sigjmp_buf __sopen_actjmp; /* TODO someday, we won't need it no more */
 static int        __sopen_sig; /* TODO someday, we won't need it no more */
@@ -371,7 +371,7 @@ jleave:
 }
 
 static int
-a_socket_connect(int fd, struct sockaddr *soap, size_t soapl){
+a_socket_connect(int fd, struct sockaddr *soap, uz soapl){
    int rv;
    NYD_IN;
 
@@ -451,10 +451,10 @@ jerr_noerrno:
 }
 
 static long
-a_socket_xwrite(int fd, char const *data, size_t size)
+a_socket_xwrite(int fd, char const *data, uz size)
 {
    long rv = -1, wo;
-   size_t wt = 0;
+   uz wt = 0;
    NYD_IN;
 
    do {
@@ -618,7 +618,7 @@ sopen(struct sock *sop, struct url *urlp){
       rv = a_socket_open(sop, urlp);
    else{
       u8 pbuf[4 + 1 + 255 + 2];
-      size_t i;
+      uz i;
       char const *emsg;
       struct url url2;
 
@@ -680,7 +680,7 @@ jesocksreplymsg:
          su_mem_copy(&pbuf[i += urlp->url_host.l], (u8*)&x, sizeof x);
          i += sizeof x;
       }
-      if(write(sop->s_fd, pbuf, i) != (ssize_t)i)
+      if(write(sop->s_fd, pbuf, i) != (sz)i)
          goto jerrsocks;
 
       /* Connect result */
@@ -715,11 +715,11 @@ jesocksreplymsg:
       default: goto jesocksreply;
       }
       i += sizeof(u16);
-      if(read(sop->s_fd, pbuf, i) != (ssize_t)i)
+      if(read(sop->s_fd, pbuf, i) != (sz)i)
          goto jerrsocks;
       if(i == 1 + sizeof(u16)){
          i = pbuf[0];
-         if(read(sop->s_fd, pbuf, i) != (ssize_t)i)
+         if(read(sop->s_fd, pbuf, i) != (sz)i)
             goto jerrsocks;
       }
       rv = TRU1;
@@ -730,11 +730,11 @@ jleave:
 }
 
 FL int
-(sgetline)(char **line, size_t *linesize, size_t *linelen, struct sock *sop
+(sgetline)(char **line, uz *linesize, uz *linelen, struct sock *sop
    su_DBG_LOC_ARGS_DECL)
 {
    int rv;
-   size_t lsize;
+   uz lsize;
    char *lp_base, *lp;
    NYD2_IN;
 
@@ -750,7 +750,7 @@ FL int
 
    do {
       if (lp_base == NULL || PCMP(lp, >, lp_base + lsize - 128)) {
-         size_t diff = P2UZ(lp - lp_base);
+         uz diff = P2UZ(lp - lp_base);
          *linesize = (lsize += 256); /* XXX magic */
          *line = lp_base = su_MEM_REALLOC_LOCOR(lp_base, lsize,
                su_DBG_LOC_ARGS_ORUSE);

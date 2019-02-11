@@ -418,7 +418,7 @@ static void a_amv_var_show_all(void);
 static int a_amv_var__show_cmp(void const *s1, void const *s2);
 
 /* Actually do print one, return number of lines written */
-static size_t a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp);
+static uz a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp);
 
 /* Shared c_set() and c_environ():set impl, return success */
 static boole a_amv_var_c_set(char **ap, enum a_amv_var_setclr_flags avscf);
@@ -502,7 +502,7 @@ a_amv_mac_call(void *v, boole silent_nexist){
    }else{
       char const **argv;
       struct a_amv_mac_call_args *amcap;
-      size_t argc;
+      uz argc;
 
       argc = cacp->cac_no + 1;
       amcap = n_lofi_alloc(sizeof *amcap + (argc * sizeof *argv));
@@ -632,7 +632,7 @@ a_amv_mac__finalize(void *vp){
 
 static boole
 a_amv_mac_show(enum a_amv_mac_flags amf){
-   size_t lc, mc, ti, i;
+   uz lc, mc, ti, i;
    char const *typestr;
    FILE *fp;
    boole rv;
@@ -691,7 +691,7 @@ a_amv_mac_def(char const *name, enum a_amv_mac_flags amf){
       struct linelist *ll_next;
       struct a_amv_mac_line *ll_amlp;
    } *llp, *ll_head, *ll_tail;
-   union {size_t s; int i; u32 ui; size_t l;} n;
+   union {uz s; int i; u32 ui; uz l;} n;
    struct a_amv_mac *amp;
    boole rv;
    NYD2_IN;
@@ -848,7 +848,7 @@ static void
 a_amv_lopts_add(struct a_amv_lostack *alp, char const *name,
       struct a_amv_var *oavp){
    struct a_amv_var *avp;
-   size_t nl, vl;
+   uz nl, vl;
    NYD2_IN;
 
    /* Propagate unrolling up the stack, as necessary */
@@ -904,7 +904,7 @@ a_amv_lopts_unroll(struct a_amv_var **avpp){
 static char *
 a_amv_var_copy(char const *str){
    char *news;
-   size_t len;
+   uz len;
    NYD2_IN;
 
    if(*str == '\0')
@@ -1420,7 +1420,7 @@ jleave:
 static boole
 a_amv_var_lookup(struct a_amv_var_carrier *avcp,
       enum a_amv_var_lookup_flags avlf){
-   size_t i;
+   uz i;
    char const *cp;
    u32 f;
    struct a_amv_var_map const *avmp;
@@ -1616,7 +1616,7 @@ jnewval:
       goto jerr;
    }else{
       struct a_amv_var **avpp;
-      size_t l;
+      uz l;
 
       l = su_cs_len(avcp->avc_name) +1;
       avcp->avc_var =
@@ -1681,7 +1681,7 @@ static char const *
 a_amv_var_vsc_multiplex(struct a_amv_var_carrier *avcp){
    char iencbuf[su_IENC_BUFFER_SIZE];
    s32 e;
-   size_t i;
+   uz i;
    char const *rv;
    NYD2_IN;
 
@@ -1757,7 +1757,7 @@ jleave:
 
 static char const *
 a_amv_var_vsc_pospar(struct a_amv_var_carrier *avcp){
-   size_t i, j;
+   uz i, j;
    u16 argc;
    char const *rv, **argv;
    NYD2_IN;
@@ -1978,7 +1978,7 @@ jislocal:
 joval_and_go:
       oval = avp->av_value;
    else{
-      size_t l;
+      uz l;
       struct a_amv_var **avpp;
 
       if(avscf & a_AMV_VSETCLR_LOCAL){
@@ -2116,7 +2116,7 @@ a_amv_var_clear(struct a_amv_var_carrier *avcp,
          goto jleave;
       if(UNLIKELY(!(n_psonce & n_PSO_STARTED_GETOPT)) &&
             (n_poption & n_PO_S_FLAG_TEMPORARY)) Jfreeze:{
-         size_t l;
+         uz l;
 
          l = su_cs_len(avcp->avc_name) +1;
          avp = n_calloc(1, VSTRUCT_SIZEOF(struct a_amv_var, av_name) + l);
@@ -2246,7 +2246,7 @@ a_amv_var__clearenv(char const *name, struct a_amv_var *avp){
    }else
 #endif
    {
-      size_t l;
+      uz l;
 
       if((l = su_cs_len(name)) > 0){
          for(; *ecpp != NULL; ++ecpp)
@@ -2271,7 +2271,7 @@ static void
 a_amv_var_show_all(void){
    struct n_string msg, *msgp;
    FILE *fp;
-   size_t no, i;
+   uz no, i;
    struct a_amv_var *avp;
    char const **vacp, **cap;
    NYD2_IN;
@@ -2326,7 +2326,7 @@ a_amv_var__show_cmp(void const *s1, void const *s2){
    return rv;
 }
 
-static size_t
+static uz
 a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
    /* XXX a_amv_var_show(): if we iterate over all the actually set variables
     * XXX via a_amv_var_show_all() there is no need to call
@@ -2335,7 +2335,7 @@ a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp){
    char const *quote;
    struct a_amv_var *avp;
    boole isset;
-   size_t i;
+   uz i;
    NYD2_IN;
 
    msgp = n_string_trunc(msgp, 0);
@@ -2436,7 +2436,7 @@ jleave:
 static boole
 a_amv_var_c_set(char **ap, enum a_amv_var_setclr_flags avscf){
    char *cp, *cp2, *varbuf, c;
-   size_t errs;
+   uz errs;
    NYD2_IN;
 
    errs = 0;
@@ -2837,7 +2837,7 @@ FL boole
 temporary_folder_hook_check(boole nmail){ /* TODO temporary, v15: drop */
    struct a_amv_mac_call_args *amcap;
    struct a_amv_mac *amp;
-   size_t len;
+   uz len;
    char const *cp;
    char *var;
    boole rv;
@@ -3194,7 +3194,7 @@ n_var_xoklook(enum okeys okey, struct url const *urlp,
       enum okey_xlook_mode oxm){
    struct a_amv_var_carrier avc;
    struct str const *usp;
-   size_t nlen;
+   uz nlen;
    char *nbuf, *rv;
    NYD_IN;
 
@@ -3475,7 +3475,7 @@ FL int
 c_vexpr(void *v){ /* TODO POSIX expr(1) comp. exit status; overly complicat. */
    /* TODO This should be splitted in several subfunctions: too large! */
    char pbase, op, iencbuf[2+1/* BASE# prefix*/ + su_IENC_BUFFER_SIZE + 1];
-   size_t i;
+   uz i;
    enum su_idec_state ids;
    enum su_idec_mode idm;
    s64 lhv, rhv;
@@ -3880,7 +3880,7 @@ jesubstring_off:
          }
          if(UCMP(64, i, >=, lhv)){
             if(UCMP(64, i, !=, lhv))
-               varres = savestrbuf(varres, (size_t)lhv);
+               varres = savestrbuf(varres, (uz)lhv);
          }else{
 jesubstring_len:
             if(n_poption & n_PO_D_V)
@@ -3920,7 +3920,7 @@ jesubstring_len:
          goto jestr_numrange;
       if(lhv == 0)
          lhv = NAME_MAX;
-      varres = n_random_create_cp((size_t)lhv, NULL);
+      varres = n_random_create_cp((uz)lhv, NULL);
    }else if(su_cs_starts_with_case("file-expand", cp)){
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
@@ -4039,7 +4039,7 @@ jesubstring_len:
          struct a_amv_lostack los;
          struct a_amv_mac_call_args amca;
          char const **reargv;
-         size_t cnt;
+         uz cnt;
 
          su_mem_set(&amca, 0, sizeof amca);
          amca.amca_name = savestrbuf(&argv[1][rema[0].rm_so],
@@ -4124,7 +4124,7 @@ jleave:
        * more bases for the fun of it */
       if((f & (a_ERR | a_ISNUM | a_ISDECIMAL)) == a_ISNUM){
          char binabuf[64 + 64 / 8 +1];
-         size_t j;
+         uz j;
 
          for(j = 1, i = 0; i < 64; ++i){
             binabuf[63 + 64 / 8 -j - i] = (lhv & ((u64)1 << i)) ? '1' : '0';
@@ -4200,7 +4200,7 @@ jestr:
 FL int
 c_vpospar(void *v){
    struct n_cmd_arg *cap;
-   size_t i;
+   uz i;
    struct a_amv_pospar *appp;
    enum{
       a_NONE = 0,

@@ -154,7 +154,7 @@ struct a_go_eval_ctx{
 
 struct a_go_input_inject{
    struct a_go_input_inject *gii_next;
-   size_t gii_len;
+   uz gii_len;
    boole gii_commit;
    boole gii_no_history;
    char gii_dat[VFIELD_SIZE(6)];
@@ -451,7 +451,7 @@ jempty:
          flags |= a_NOALIAS;
 
       if((alias_name = mx_commandalias_exists(word, &alias_exp)) != NULL){
-         size_t i;
+         uz i;
 
          if(s != NULL){
             s = n_string_push_cp(s, word);
@@ -1067,7 +1067,7 @@ static boole
 a_go_file(char const *file, boole silent_open_error){
    struct a_go_ctx *gcp;
    sigset_t osigmask;
-   size_t nlen;
+   uz nlen;
    char *nbuf;
    boole ispipe;
    FILE *fip;
@@ -1337,7 +1337,7 @@ n_go_main_loop(void){ /* FIXME */
 #endif
                {
                   u32 odid;
-                  size_t odot;
+                  uz odot;
 
                   odot = P2UZ(dot - message);
                   odid = (n_pstate & n_PS_DID_PRINT_DOT);
@@ -1504,7 +1504,7 @@ n_go_input_have_injections(void){
 
 FL void
 n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
-      size_t len){
+      uz len){
    NYD_IN;
 
    if(len == UZ_MAX)
@@ -1533,7 +1533,7 @@ n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
 
 FL int
 (n_go_input)(enum n_go_input_flags gif, char const *prompt, char **linebuf,
-      size_t *linesize, char const *string, boole *histok_or_null
+      uz *linesize, char const *string, boole *histok_or_null
       su_DBG_LOC_ARGS_DECL){
    /* TODO readline: linebuf pool!; n_go_input should return s64.
     * TODO This thing should be replaced by a(n) (stack of) event generator(s)
@@ -1676,10 +1676,10 @@ jforce_stdin:
             if(*linesize > 0)
                *linesize += n +1;
             else
-               *linesize = (size_t)n + LINESIZE +1;
+               *linesize = (uz)n + LINESIZE +1;
             *linebuf = su_MEM_REALLOC_LOCOR(*linebuf, *linesize,
                   su_DBG_LOC_ARGS_ORUSE);
-           su_mem_copy(*linebuf, string, (size_t)n +1);
+           su_mem_copy(*linebuf, string, (uz)n +1);
          }
          string = NULL;
 
@@ -1740,9 +1740,9 @@ jforce_stdin:
       /* Definitely outside of quotes, thus the quoting rules are so that an
        * uneven number of successive reverse solidus at EOL is a continuation */
       if(n > 1){
-         size_t i, j;
+         uz i, j;
 
-         for(j = 1, i = (size_t)n - 1; i-- > 0; ++j)
+         for(j = 1, i = (uz)n - 1; i-- > 0; ++j)
             if((*linebuf)[i] != '\\')
                break;
          if(!(j & 1))
@@ -1789,7 +1789,7 @@ n_go_input_cp(enum n_go_input_flags gif, char const *prompt,
       char const *string){
    struct n_sigman sm;
    boole histadd;
-   size_t linesize;
+   uz linesize;
    char *linebuf, * volatile rv;
    int n;
    NYD2_IN;
@@ -1807,7 +1807,7 @@ n_go_input_cp(enum n_go_input_flags gif, char const *prompt,
 
    histadd = TRU1;
    n = n_go_input(gif, prompt, &linebuf, &linesize, string, &histadd);
-   if(n > 0 && *(rv = savestrbuf(linebuf, (size_t)n)) != '\0' &&
+   if(n > 0 && *(rv = savestrbuf(linebuf, (uz)n)) != '\0' &&
          (gif & n_GO_INPUT_HIST_ADD) && (n_psonce & n_PSO_INTERACTIVE) &&
          histadd)
       n_tty_addhist(rv, gif);
@@ -1824,7 +1824,7 @@ jleave:
 FL boole
 n_go_load(char const *name){
    struct a_go_ctx *gcp;
-   size_t i;
+   uz i;
    FILE *fip;
    boole rv;
    NYD_IN;
@@ -1856,7 +1856,7 @@ jleave:
 }
 
 FL boole
-n_go_XYargs(boole injectit, char const **lines, size_t cnt){
+n_go_XYargs(boole injectit, char const **lines, uz cnt){
    static char const name[] = "-X";
 
    union{
@@ -1866,7 +1866,7 @@ n_go_XYargs(boole injectit, char const **lines, size_t cnt){
    } b;
    char const *srcp, *xsrcp;
    char *cp;
-   size_t imax, i, len;
+   uz imax, i, len;
    struct a_go_ctx *gcp;
    NYD_IN;
 
@@ -1892,7 +1892,7 @@ n_go_XYargs(boole injectit, char const **lines, size_t cnt){
    /* For each of the input lines.. */
    for(i = len = 0, cp = NULL; cnt > 0;){
       boole keep;
-      size_t j;
+      uz j;
 
       if((j = su_cs_len(srcp = *lines)) == 0){
          ++lines, --cnt;
@@ -1908,7 +1908,7 @@ n_go_XYargs(boole injectit, char const **lines, size_t cnt){
 
       /* The (separated) string may itself indicate soft newline escaping */
       if((keep = (srcp[j - 1] == '\\'))){
-         size_t xj, xk;
+         uz xj, xk;
 
          /* Need an uneven number of reverse solidus */
          for(xk = 1, xj = j - 1; xj-- > 0; ++xk)
@@ -1987,7 +1987,7 @@ FL boole
 n_go_macro(enum n_go_input_flags gif, char const *name, char **lines,
       void (*on_finalize)(void*), void *finalize_arg){
    struct a_go_ctx *gcp;
-   size_t i;
+   uz i;
    int rv;
    sigset_t osigmask;
    NYD_IN;
@@ -2054,7 +2054,7 @@ FL boole
 n_go_command(enum n_go_input_flags gif, char const *cmd){
    struct a_go_ctx *gcp;
    boole rv;
-   size_t i, ial;
+   uz i, ial;
    sigset_t osigmask;
    NYD_IN;
 
@@ -2091,7 +2091,7 @@ FL void
 n_go_splice_hack(char const *cmd, FILE *new_stdin, FILE *new_stdout,
       u32 new_psonce, void (*on_finalize)(void*), void *finalize_arg){
    struct a_go_ctx *gcp;
-   size_t i;
+   uz i;
    sigset_t osigmask;
    NYD_IN;
 
@@ -2172,7 +2172,7 @@ c_eval(void *vp){
     * TODO adjust argv/argc of "the CmdCtx" that we will have "exec" real cmd */
    struct a_go_eval_ctx gec;
    struct n_string s_b, *s;
-   size_t i, j;
+   uz i, j;
    char const **argv, *cp;
    NYD_IN;
 
@@ -2381,7 +2381,7 @@ jfound:
       n_free(grcp);
    }else{
       FILE *fp;
-      size_t elen;
+      uz elen;
       s32 fd;
 
       if(grcp != NULL){
@@ -2416,7 +2416,7 @@ jfound:
       }
 
       if(fp != NULL){
-         size_t i;
+         uz i;
 
          if((i = UZ_MAX - elen) <= cap->ca_arg.ca_str.l ||
                (i -= cap->ca_arg.ca_str.l) <=

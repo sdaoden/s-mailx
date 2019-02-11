@@ -221,7 +221,7 @@ static struct htmlflt * _hf_putc(struct htmlflt *self, char c);
 static struct htmlflt * _hf_putc_premode(struct htmlflt *self, char c);
 static struct htmlflt * _hf_puts(struct htmlflt *self, char const *cp);
 static struct htmlflt * _hf_putbuf(struct htmlflt *self,
-                           char const *cp, size_t len);
+                           char const *cp, uz len);
 
 /* Try to locate a param'eter in >hf_bdat, store it (non-terminated!) or NULL */
 static struct htmlflt * _hf_param(struct htmlflt *self, struct str *store,
@@ -234,11 +234,11 @@ static struct htmlflt * _hf_expand_all_ents(struct htmlflt *self,
 /* Completely parsed over a tag / an entity, interpret that */
 static struct htmlflt * _hf_check_tag(struct htmlflt *self, char const *s);
 static struct htmlflt * _hf_check_ent(struct htmlflt *self, char const *s,
-                           size_t l);
+                           uz l);
 
 /* Input handler */
-static ssize_t          _hf_add_data(struct htmlflt *self,
-                           char const *dat, size_t len);
+static sz          _hf_add_data(struct htmlflt *self,
+                           char const *dat, uz len);
 
 static struct htmlflt *
 _hf_dump_hrefs(struct htmlflt *self)
@@ -578,7 +578,7 @@ _hf_puts(struct htmlflt *self, char const *cp)
 }
 
 static struct htmlflt *
-_hf_putbuf(struct htmlflt *self, char const *cp, size_t len)
+_hf_putbuf(struct htmlflt *self, char const *cp, uz len)
 {
    NYD2_IN;
 
@@ -593,7 +593,7 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
 {
    char const *cp;
    char c, x, quote;
-   size_t i;
+   uz i;
    boole hot;
    NYD2_IN;
 
@@ -703,7 +703,7 @@ _hf_expand_all_ents(struct htmlflt *self, struct str const *param)
 {
    char const *cp, *maxcp, *ep;
    char c;
-   size_t i;
+   uz i;
    NYD2_IN;
 
    for (cp = param->s, maxcp = cp + param->l; cp < maxcp;)
@@ -738,7 +738,7 @@ _hf_check_tag(struct htmlflt *self, char const *s)
 {
    char nobuf[32], c;
    struct str param;
-   size_t i;
+   uz i;
    struct htmlflt_tag const *hftp;
    u32 f;
    NYD2_IN;
@@ -756,7 +756,7 @@ jput_as_is:
       /* Special massage for things like <br/>: after the slash only whitespace
        * may separate us from the closing right angle! */
       if (c == '/') {
-         size_t j = i + 1;
+         uz j = i + 1;
 
          while ((c = s[j]) != '\0' && c != '>' && su_cs_is_white(c))
             ++j;
@@ -921,13 +921,13 @@ jnotknown:
 }
 
 static struct htmlflt *
-_hf_check_ent(struct htmlflt *self, char const *s, size_t l)
+_hf_check_ent(struct htmlflt *self, char const *s, uz l)
 {
    char nobuf[32];
    char const *s_save;
-   size_t l_save;
+   uz l_save;
    struct hf_ent const *hfep;
-   size_t i;
+   uz i;
    NYD2_IN;
 
    s_save = s;
@@ -980,12 +980,12 @@ jleave:
    return self;
 }
 
-static ssize_t
-_hf_add_data(struct htmlflt *self, char const *dat, size_t len)
+static sz
+_hf_add_data(struct htmlflt *self, char const *dat, uz len)
 {
    char c, *cp, *cp_max;
    boole hot;
-   ssize_t rv = 0;
+   sz rv = 0;
    NYD_IN;
 
    /* Final put request? */
@@ -1008,7 +1008,7 @@ _hf_add_data(struct htmlflt *self, char const *dat, size_t len)
    }
    hot = (cp != self->hf_bdat);
 
-   for (rv = (ssize_t)len; len > 0; --len) {
+   for (rv = (sz)len; len > 0; --len) {
       u32 f = self->hf_flags;
 
       if (f & _HF_ERROR)
@@ -1025,7 +1025,7 @@ _hf_add_data(struct htmlflt *self, char const *dat, size_t len)
        * TODO that is a single mechanism we should have made it! */
       if (f & _HF_IGN) {
          struct htmlflt_tag const *hftp = self->hf_ign_tag;
-         size_t i;
+         uz i;
 
          if (c == '<') {
             hot = TRU1;
@@ -1123,7 +1123,7 @@ jdo_c:
          } else {
             /* We may need to grow the buffer */
             if (PCMP(cp + 42/2, >=, cp_max)) {
-               size_t i = P2UZ(cp - self->hf_bdat),
+               uz i = P2UZ(cp - self->hf_bdat),
                   m = P2UZ(self->hf_bmax - self->hf_bdat) + LINESIZE;
 
                cp = self->hf_bdat = n_realloc(self->hf_bdat, m);
@@ -1158,7 +1158,7 @@ htmlflt_process_main(void)
 {
    char buf[BUFFER_SIZE];
    struct htmlflt hf;
-   size_t i;
+   uz i;
    int rv;
    NYD_IN;
 
@@ -1230,7 +1230,7 @@ htmlflt_reset(struct htmlflt *self, FILE *f)
    if (f != NULL) {
       u32 sw = MAX(_HF_MINLEN, (u32)n_scrnwidth);
 
-      self->hf_line = n_alloc((size_t)sw * n_mb_cur_max +1);
+      self->hf_line = n_alloc((uz)sw * n_mb_cur_max +1);
       self->hf_lmax = sw;
 
       if (n_psonce & n_PSO_UNICODE) /* TODO not truly generic */
@@ -1240,10 +1240,10 @@ htmlflt_reset(struct htmlflt *self, FILE *f)
    NYD_OU;
 }
 
-FL ssize_t
-htmlflt_push(struct htmlflt *self, char const *dat, size_t len)
+FL sz
+htmlflt_push(struct htmlflt *self, char const *dat, uz len)
 {
-   ssize_t rv;
+   sz rv;
    NYD_IN;
 
    rv = _hf_add_data(self, dat, len);
@@ -1251,10 +1251,10 @@ htmlflt_push(struct htmlflt *self, char const *dat, size_t len)
    return rv;
 }
 
-FL ssize_t
+FL sz
 htmlflt_flush(struct htmlflt *self)
 {
-   ssize_t rv;
+   sz rv;
    NYD_IN;
 
    rv = _hf_add_data(self, NULL, 0);

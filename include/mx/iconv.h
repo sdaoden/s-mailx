@@ -83,7 +83,7 @@ FL void n_iconv_reset(iconv_t cd);
  * TODO n_iconv_err_no in order to be able to access it when stuff happens
  * TODO "in between"! */
 FL int n_iconv_buf(iconv_t cd, enum n_iconv_flags icf,
-      char const **inb, size_t *inbleft, char **outb, size_t *outbleft);
+      char const **inb, uz *inbleft, char **outb, uz *outbleft);
 FL int n_iconv_str(iconv_t icp, enum n_iconv_flags icf,
       struct str *out, struct str const *in, struct str *in_rest_or_nil);
 

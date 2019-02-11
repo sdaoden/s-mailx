@@ -172,7 +172,7 @@ FL int
 c_remove(void *v)
 {
    char const *fmt;
-   size_t fmt_len;
+   uz fmt_len;
    char **args, *name, *ename;
    int ec;
    NYD_IN;
@@ -200,7 +200,7 @@ c_remove(void *v)
       /* C99 */{
          boole asw;
          char *vb;
-         size_t vl;
+         uz vl;
 
          vl = su_cs_len(ename) + fmt_len +1;
          vb = n_autorec_alloc(vl);

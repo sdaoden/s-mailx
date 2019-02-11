@@ -97,7 +97,7 @@ a_crese_reedit(char const *subj){
 
    if(subj != NULL && *subj != '\0'){
       struct str in, out;
-      size_t i;
+      uz i;
       char const *cp;
 
       in.l = su_cs_len(in.s = n_UNCONST(subj));
@@ -130,7 +130,7 @@ a_crese_reply_to(struct message *mp){
          (rt = checkaddrs(lextract(cp2, GTO | gf), EACM_STRICT, NULL)
             ) != NULL){
       char *lp;
-      size_t l;
+      uz l;
       char const *tr;
 
       if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)){
@@ -169,7 +169,7 @@ a_crese_mail_followup_to(struct message *mp){
          (mft = checkaddrs(lextract(cp2, GTO | gf), EACM_STRICT, NULL)
             ) != NULL){
       char *lp;
-      size_t l;
+      uz l;
       char const *tr;
 
       if((n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT)){
@@ -277,7 +277,7 @@ a_crese_make_ref_and_cs(struct message *mp, struct header *head) /* TODO ASAP*/
 {
    char const *ccp;
    char *oldref, *oldmsgid, *newref;
-   size_t oldreflen = 0, oldmsgidlen = 0, reflen;
+   uz oldreflen = 0, oldmsgidlen = 0, reflen;
    unsigned i;
    struct mx_name *n;
    NYD2_IN;

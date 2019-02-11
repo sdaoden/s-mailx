@@ -87,7 +87,7 @@ static char const *a_coll_ocs__macname;   /* *on-compose-splice* */
 
 /* Handle `~:', `~_' and some hooks; hp may be NULL */
 static void       _execute_command(struct header *hp, char const *linebuf,
-                     size_t linesize);
+                     uz linesize);
 
 /* Return errno */
 static s32 a_coll_include_file(char const *name, boole indent,
@@ -146,7 +146,7 @@ static int a_coll_ocs__mac(void);
 static void a_coll_ocs__finalize(void *vp);
 
 static void
-_execute_command(struct header *hp, char const *linebuf, size_t linesize){
+_execute_command(struct header *hp, char const *linebuf, uz linesize){
    /* The problem arises if there are rfc822 message attachments and the
     * user uses `~:' to change the current file.  TODO Unfortunately we
     * TODO cannot simply keep a pointer to, or increment a reference count
@@ -200,7 +200,7 @@ static s32
 a_coll_include_file(char const *name, boole indent, boole writestat){
    FILE *fbuf;
    char const *heredb, *indb;
-   size_t linesize, heredl, indl, cnt, linelen;
+   uz linesize, heredl, indl, cnt, linelen;
    char *linebuf;
    s64 lc, cc;
    s32 rv;
@@ -356,11 +356,11 @@ print_collf(FILE *cf, struct header *hp)
 {
    char *lbuf;
    FILE *obuf;
-   size_t cnt, linesize, linelen;
+   uz cnt, linesize, linelen;
    NYD_IN;
 
    fflush_rewind(cf);
-   cnt = (size_t)fsize(cf);
+   cnt = (uz)fsize(cf);
 
    if((obuf = Ftmp(NULL, "collfp", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
       n_perr(_("Can't create temporary file for `~p' command"), 0);
@@ -1043,7 +1043,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    } volatile flags;
    char *linebuf;
    char const *cp, *cp_base, * volatile coapm, * volatile ifs_saved;
-   size_t i, linesize; /* TODO line pool */
+   uz i, linesize; /* TODO line pool */
    long cnt;
    sigset_t oset, nset;
    FILE * volatile sigfp;
@@ -1200,7 +1200,7 @@ jcont:
                }
                break;
             }
-            i = (size_t)cnt;
+            i = (uz)cnt;
             if(i != fwrite(linebuf, sizeof *linebuf, i, _coll_fp))
                goto jerr;
             /* TODO n_PS_READLINE_NL is a hack to ensure that _in_all_-
@@ -1275,7 +1275,7 @@ jcont:
       }
       if(cp[0] != escape){
 jputline:
-         if(fwrite(cp, sizeof *cp, cnt, _coll_fp) != (size_t)cnt)
+         if(fwrite(cp, sizeof *cp, cnt, _coll_fp) != (uz)cnt)
             goto jerr;
          /* TODO n_PS_READLINE_NL is a terrible hack to ensure that _in_all_-
           * TODO _code_paths_ a file without trailing newline isn't modified
@@ -1320,7 +1320,7 @@ jputnl:
          struct str x;
 
          x.s = n_UNCONST(cp);
-         x.l = (size_t)cnt;
+         x.l = (uz)cnt;
          n_str_trim_ifs(&x, TRU1);
          x.s[x.l] = '\0';
          cp = x.s;

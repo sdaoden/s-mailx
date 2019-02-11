@@ -166,7 +166,7 @@ static int a_termcap_putc(int c);
 
 /* Get n_termcap_cmd or n_termcap_query constant belonging to (nlen bytes of)
  * name, -1 if not found.  min and max have to be used to cramp the result */
-static s32 a_termcap_enum_for_name(char const *name, size_t nlen,
+static s32 a_termcap_enum_for_name(char const *name, uz nlen,
                s32 min, s32 max);
 #define a_termcap_cmd_for_name(NB,NL) \
    a_termcap_enum_for_name(NB, NL, 0, n__TERMCAP_CMD_MAX1)
@@ -176,7 +176,7 @@ static s32 a_termcap_enum_for_name(char const *name, size_t nlen,
 static void
 a_termcap_init_var(struct str const *termvar){
    char *cbp_base, *cbp;
-   size_t i;
+   uz i;
    char const *ccp;
    NYD2_IN;
 
@@ -192,7 +192,7 @@ a_termcap_init_var(struct str const *termvar){
 
    for(; (ccp = su_cs_sep_c(&cbp, ',', TRU1)) != NULL;){
       struct a_termcap_ent *tep;
-      size_t kl;
+      uz kl;
       char const *v;
       u16 f;
 
@@ -250,7 +250,7 @@ jeinvent:
                n_err(_("*termcap*: unknown capability: %s\n"), ccp);
             continue;
          }
-         i = (size_t)tci;
+         i = (uz)tci;
 
          tcp = &a_termcap_control[i];
          if((tcp->tc_flags & a_TERMCAP_F_TYPE_MASK) != f){
@@ -303,7 +303,7 @@ static boole
 a_termcap__strexp(struct n_string *store, char const *ibuf){ /* XXX ASCII */
    char c;
    char const *oibuf;
-   size_t olen;
+   uz olen;
    NYD2_IN;
 
    olen = store->s_len;
@@ -391,7 +391,7 @@ a_termcap_init_altern(void){
    /* For simplicity in the rest of this file null flags of disabled commands,
     * as we won't check and try to lazy query any command */
    /* C99 */{
-      size_t i;
+      uz i;
 
       for(i = n__TERMCAP_CMD_MAX1;;){
          if(i-- == 0)
@@ -593,7 +593,7 @@ a_termcap_putc(int c){
 #endif /* mx_HAVE_TERMCAP */
 
 static s32
-a_termcap_enum_for_name(char const *name, size_t nlen, s32 min, s32 max){
+a_termcap_enum_for_name(char const *name, uz nlen, s32 min, s32 max){
    struct a_termcap_control const *tcp;
    char const *cnam;
    s32 rv;
@@ -654,7 +654,7 @@ n_termcap_init(void){
    else{
       /* Query termcap(5) for each command slot that is not yet set */
       struct a_termcap_ent *tep;
-      size_t i;
+      uz i;
 
       for(i = n__TERMCAP_CMD_MAX1;;){
          if(i-- == 0)
@@ -732,12 +732,12 @@ n_termcap_suspend(boole complete){
 }
 #endif /* mx_HAVE_TERMCAP */
 
-FL ssize_t
-n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2){
+FL sz
+n_termcap_cmd(enum n_termcap_cmd cmd, sz a1, sz a2){
    /* Commands are not lazy queried */
    struct a_termcap_ent const *tep;
    enum a_termcap_flags flags;
-   ssize_t rv;
+   sz rv;
    NYD2_IN;
    UNUSED(a1);
    UNUSED(a2);
@@ -888,7 +888,7 @@ n_termcap_query(enum n_termcap_query query, struct n_termcap_value *tvp){
          goto jleave;
    }else{
 #ifdef mx_HAVE_TERMCAP
-      size_t nlen;
+      uz nlen;
 #endif
       struct a_termcap_ext_ent *teep;
       char const *ndat = tvp->tv_data.tvd_string;

@@ -162,7 +162,7 @@ _imap_gssapi(struct mailbox *mp, struct ccred *ccred)
    ok = STOP;
    f = a_F_NONE;
 
-   {  size_t i = su_cs_len(mp->mb_imap_account) +1;
+   {  uz i = su_cs_len(mp->mb_imap_account) +1;
       server = n_autorec_alloc(i);
       su_mem_copy(server, mp->mb_imap_account, i);
    }

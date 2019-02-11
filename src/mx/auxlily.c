@@ -124,7 +124,7 @@ static union rand_state *a_aux_rand;
 #ifdef mx_HAVE_ERRORS
 static struct a_aux_err_node *a_aux_err_head, *a_aux_err_tail;
 #endif
-static size_t a_aux_err_linelen;
+static uz a_aux_err_linelen;
 
 /* Our ARC4 random generator with its completely unacademical pseudo
  * initialization (shall /dev/urandom fail) */
@@ -140,7 +140,7 @@ static int a_aux_qsort_cpp(void const *a, void const *b);
 #ifdef a_AUX_RAND_USE_BUILTIN
 static void
 a_aux_rand_init(void){
-   union {int fd; size_t i;} u;
+   union {int fd; uz i;} u;
    NYD2_IN;
 
    a_aux_rand = n_alloc(sizeof *a_aux_rand);
@@ -155,10 +155,10 @@ a_aux_rand_init(void){
    LCTA(sizeof(a_aux_rand->a._dat) >= 256,
       "Buffer too small to serve used array indices");
    /* C99 */{
-      size_t o, i;
+      uz o, i;
 
       for(o = 0, i = sizeof a_aux_rand->a._dat;;){
-         ssize_t gr;
+         sz gr;
 
          gr = n_RANDOM_GETRANDOM_FUN(&a_aux_rand->a._dat[o], i);
          if(gr == -1 && su_err_no() == su_ERR_NOSYS)
@@ -169,10 +169,10 @@ a_aux_rand_init(void){
                a_aux_rand->a._dat[42]]);
          /* ..but be on the safe side */
          if(gr > 0){
-            i -= (size_t)gr;
+            i -= (uz)gr;
             if(i == 0)
                goto jleave;
-            o += (size_t)gr;
+            o += (uz)gr;
          }
          n_err(_("Not enough entropy for the "
             "P(seudo)R(andom)N(umber)G(enerator), waiting a bit\n"));
@@ -184,7 +184,7 @@ a_aux_rand_init(void){
    if((u.fd = open("/dev/urandom", O_RDONLY)) != -1){
       boole ok;
 
-      ok = (sizeof(a_aux_rand->a._dat) == (size_t)read(u.fd,
+      ok = (sizeof(a_aux_rand->a._dat) == (uz)read(u.fd,
             a_aux_rand->a._dat, sizeof(a_aux_rand->a._dat)));
       close(u.fd);
 
@@ -350,7 +350,7 @@ n_locale_init(void){
    NYD2_OU;
 }
 
-FL size_t
+FL uz
 n_screensize(void){
    char const *cp;
    uz rv;
@@ -393,7 +393,7 @@ n_pager_get(char const **env_addon){
 }
 
 FL void
-page_or_print(FILE *fp, size_t lines)
+page_or_print(FILE *fp, uz lines)
 {
    int c;
    char const *cp;
@@ -402,10 +402,10 @@ page_or_print(FILE *fp, size_t lines)
    fflush_rewind(fp);
 
    if (n_go_may_yield_control() && (cp = ok_vlook(crt)) != NULL) {
-      size_t rows;
+      uz rows;
 
       if(*cp == '\0')
-         rows = (size_t)n_scrnheight;
+         rows = (uz)n_scrnheight;
       else
          su_idec_uz_cp(&rows, cp, 0, NULL);
 
@@ -496,7 +496,7 @@ jfile:
       struct mx_filetype ft;
       struct stat stb;
       char *np;
-      size_t i;
+      uz i;
 
       np = n_lofi_alloc((i = su_cs_len(name)) + 4 +1);
       su_mem_copy(np, name, i +1);
@@ -642,7 +642,7 @@ n_nodename(boole mayoverride){
       hints.ai_flags = AI_CANONNAME;
       if(getaddrinfo(hn, NULL, &hints, &res) == 0){
          if(res->ai_canonname != NULL){
-            size_t l;
+            uz l;
 
             l = su_cs_len(res->ai_canonname) +1;
             hn = n_lofi_alloc(l);
@@ -693,7 +693,7 @@ n_nodename(boole mayoverride){
 
 #ifdef mx_HAVE_IDNA
 FL boole
-n_idna_to_ascii(struct n_string *out, char const *ibuf, size_t ilen){
+n_idna_to_ascii(struct n_string *out, char const *ibuf, uz ilen){
    char *idna_utf8;
    boole lofi, rv;
    NYD_IN;
@@ -794,10 +794,10 @@ jleave:
 #endif /* mx_HAVE_IDNA */
 
 FL char *
-n_random_create_buf(char *dat, size_t len, u32 *reprocnt_or_null){
+n_random_create_buf(char *dat, uz len, u32 *reprocnt_or_null){
    struct str b64;
    char *indat, *cp, *oudat;
-   size_t i, inlen, oulen;
+   uz i, inlen, oulen;
    NYD_IN;
 
    if(!(n_psonce & n_PSO_RANDOM_INIT)){
@@ -854,7 +854,7 @@ jinc1:
 #else
       for(cp = indat, i = inlen; i > 0;){
          union {u32 i4; char c[4];} r;
-         size_t j;
+         uz j;
 
          r.i4 = (u32)arc4random();
          switch((j = i & 3)){
@@ -870,7 +870,7 @@ jinc1:
    }else{
       for(cp = indat, i = inlen; i > 0;){
          union {u32 i4; char c[4];} r;
-         size_t j;
+         uz j;
 
          r.i4 = ++*reprocnt_or_null;
          if(su_BOM_IS_BIG()){ /* TODO BSWAP */
@@ -910,7 +910,7 @@ jinc1:
 }
 
 FL char *
-n_random_create_cp(size_t len, u32 *reprocnt_or_null){
+n_random_create_cp(uz len, u32 *reprocnt_or_null){
    char *dat;
    NYD_IN;
 
@@ -1156,7 +1156,7 @@ n_err(char const *format, ...){
    else
 #endif
    {
-      size_t len;
+      uz len;
       boole doname;
 
       doname = FAL0;
@@ -1180,7 +1180,7 @@ n_err(char const *format, ...){
          vfprintf(n_stderr, format, ap);
 
          /* C99 */{
-            size_t i = len;
+            uz i = len;
             do{
                if(format[--len] == '\n'){
                   a_aux_err_linelen = (i -= ++len);
@@ -1203,7 +1203,7 @@ n_verr(char const *format, va_list ap){
    struct a_aux_err_node *enp;
 #endif
    boole doname;
-   size_t len;
+   uz len;
    NYD2_IN;
 
    doname = FAL0;
@@ -1240,7 +1240,7 @@ n_verr(char const *format, va_list ap){
    }
 
    /* C99 */{
-      size_t i = len;
+      uz i = len;
       do{
          if(format[--len] == '\n'){
             a_aux_err_linelen = (i -= ++len);
@@ -1298,8 +1298,8 @@ jcreat:
 #  define vac ap
 # endif
 
-         n_string_resize(&enp->ae_str, (len = enp->ae_str.s_len) + (size_t)i);
-         i = vsnprintf(&enp->ae_str.s_dat[len], (size_t)i, format, vac);
+         n_string_resize(&enp->ae_str, (len = enp->ae_str.s_len) + (uz)i);
+         i = vsnprintf(&enp->ae_str.s_dat[len], (uz)i, format, vac);
 # ifdef mx_HAVE_N_VA_COPY
          va_end(vac);
 # else
@@ -1318,9 +1318,9 @@ jcreat:
          }
          break;
       }
-      n_string_trunc(&enp->ae_str, len + (size_t)i);
+      n_string_trunc(&enp->ae_str, len + (uz)i);
 
-      fwrite(&enp->ae_str.s_dat[len], 1, (size_t)i, n_stderr);
+      fwrite(&enp->ae_str.s_dat[len], 1, (uz)i, n_stderr);
    }
 #endif /* mx_HAVE_ERRORS */
 
@@ -1420,7 +1420,7 @@ jleave:
 
 jlist:{
       FILE *fp;
-      size_t i;
+      uz i;
 
       if(a_aux_err_head == NULL){
          fprintf(n_stderr, _("The error ring is empty\n"));
@@ -1461,7 +1461,7 @@ jclear:
 FL char const *
 n_regex_err_to_doc(const regex_t *rep, int e){
    char *cp;
-   size_t i;
+   uz i;
    NYD2_IN;
 
    i = regerror(e, rep, NULL, 0) +1;

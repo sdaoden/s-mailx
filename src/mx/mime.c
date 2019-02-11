@@ -81,30 +81,30 @@ static boole           _name_highbit(struct mx_name *np);
 #endif
 
 /* fwrite(3) while checking for displayability */
-static ssize_t          _fwrite_td(struct str const *input,
+static sz          _fwrite_td(struct str const *input,
                            boole failiconv, enum tdflags flags,
                            struct str *outrest, struct quoteflt *qf);
 
 /* Convert header fields to RFC 2047 format and write to the file fo */
-static ssize_t          mime_write_tohdr(struct str *in, FILE *fo,
-                           size_t *colp, enum a_mime_structure_hack msh);
+static sz          mime_write_tohdr(struct str *in, FILE *fo,
+                           uz *colp, enum a_mime_structure_hack msh);
 
 #ifdef mx_HAVE_ICONV
-static ssize_t a_mime__convhdra(struct str *inp, FILE *fp, size_t *colp,
+static sz a_mime__convhdra(struct str *inp, FILE *fp, uz *colp,
                   enum a_mime_structure_hack msh);
 #else
 # define a_mime__convhdra(S,F,C,MSH) mime_write_tohdr(S, F, C, MSH)
 #endif
 
 /* Write an address to a header field */
-static ssize_t          mime_write_tohdr_a(struct str *in, FILE *f,
-                           size_t *colp, enum a_mime_structure_hack msh);
+static sz          mime_write_tohdr_a(struct str *in, FILE *f,
+                           uz *colp, enum a_mime_structure_hack msh);
 
 /* Append to buf, handling resizing */
-static void             _append_str(char **buf, size_t *size, size_t *pos,
-                           char const *str, size_t len);
-static void             _append_conv(char **buf, size_t *size, size_t *pos,
-                           char const *str, size_t len);
+static void             _append_str(char **buf, uz *size, uz *pos,
+                           char const *str, uz len);
+static void             _append_conv(char **buf, uz *size, uz *pos,
+                           char const *str, uz len);
 
 #ifdef mx_HAVE_ICONV
 static boole
@@ -154,7 +154,7 @@ __mimefwtd_onsig(int sig) /* TODO someday, we won't need it no more */
    siglongjmp(__mimefwtd_actjmp, 1);
 }
 
-static ssize_t
+static sz
 _fwrite_td(struct str const *input, boole failiconv, enum tdflags flags,
    struct str *outrest, struct quoteflt *qf)
 {
@@ -173,7 +173,7 @@ _fwrite_td(struct str const *input, boole failiconv, enum tdflags flags,
    /* *input* _may_ point to non-modifyable buffer; but even then it only
     * needs to be dup'ed away if we have to transform the content */
    struct str in, out;
-   ssize_t rv;
+   sz rv;
    NYD_IN;
    UNUSED(failiconv);
    UNUSED(outrest);
@@ -206,7 +206,7 @@ _fwrite_td(struct str const *input, boole failiconv, enum tdflags flags,
        * TODO if we do not (only seen on FreeBSD) */
 #if 0 /* TODO actually not needed indeed, it was known iswprint() error! */
       if(!(flags & _TD_EOF) && outrest != NULL){
-         size_t i, j;
+         uz i, j;
          char const *cp;
 
          if((cp = su_mem_find(in.s, '\n', j = in.l)) != NULL){
@@ -266,7 +266,7 @@ _fwrite_td(struct str const *input, boole failiconv, enum tdflags flags,
 #endif
          (!(flags & _TD_EOF) || outrest->l > 0)
    ) {
-      size_t i;
+      uz i;
       char *cp;
 
       for (cp = &in.s[in.l]; cp > in.s && cp[-1] != '\n'; --cp)
@@ -319,8 +319,8 @@ jleave:
    return rv;
 }
 
-static ssize_t
-mime_write_tohdr(struct str *in, FILE *fo, size_t *colp,
+static sz
+mime_write_tohdr(struct str *in, FILE *fo, uz *colp,
    enum a_mime_structure_hack msh)
 {
    /* TODO mime_write_tohdr(): we don't know the name of our header->maxcol..
@@ -370,8 +370,8 @@ mime_write_tohdr(struct str *in, FILE *fo, size_t *colp,
    } flags;
    char const *cset7, *cset8, *wbot, *upper, *wend, *wcur;
    u32 cset7_len, cset8_len;
-   size_t col, i, j;
-   ssize_t size;
+   uz col, i, j;
+   sz size;
 
    NYD_IN;
 
@@ -674,11 +674,11 @@ jenc_retry_same:
 }
 
 #ifdef mx_HAVE_ICONV
-static ssize_t
-a_mime__convhdra(struct str *inp, FILE *fp, size_t *colp,
+static sz
+a_mime__convhdra(struct str *inp, FILE *fp, uz *colp,
       enum a_mime_structure_hack msh){
    struct str ciconv;
-   ssize_t rv;
+   sz rv;
    NYD_IN;
 
    rv = 0;
@@ -702,14 +702,14 @@ jleave:
 }
 #endif /* mx_HAVE_ICONV */
 
-static ssize_t
-mime_write_tohdr_a(struct str *in, FILE *f, size_t *colp,
+static sz
+mime_write_tohdr_a(struct str *in, FILE *f, uz *colp,
    enum a_mime_structure_hack msh)
 {
    struct str xin;
-   size_t i;
+   uz i;
    char const *cp, *lastcp;
-   ssize_t size, x;
+   sz size, x;
    NYD_IN;
 
    in->s[in->l] = '\0';
@@ -786,7 +786,7 @@ jerr:
 }
 
 static void
-_append_str(char **buf, size_t *size, size_t *pos, char const *str, size_t len)
+_append_str(char **buf, uz *size, uz *pos, char const *str, uz len)
 {
    NYD_IN;
    *buf = n_realloc(*buf, *size += len);
@@ -796,8 +796,7 @@ _append_str(char **buf, size_t *size, size_t *pos, char const *str, size_t len)
 }
 
 static void
-_append_conv(char **buf, size_t *size, size_t *pos, char const *str,
-   size_t len)
+_append_conv(char **buf, uz *size, uz *pos, char const *str, uz len)
 {
    struct str in, out;
    NYD_IN;
@@ -814,7 +813,7 @@ FL boole
 charset_iter_reset(char const *a_charset_to_try_first) /* TODO elim. dups! */
 {
    char const *sarr[3];
-   size_t sarrl[3], len;
+   uz sarrl[3], len;
    char *cp;
    NYD_IN;
    UNUSED(a_charset_to_try_first);
@@ -1058,7 +1057,7 @@ mime_fromhdr(struct str const *in, struct str *out, enum tdflags flags)
          ++p;
 #ifdef mx_HAVE_ICONV
          if (flags & TD_ICONV) {
-            size_t i = P2UZ(p - cbeg);
+            uz i = P2UZ(p - cbeg);
             char *ltag, *cs = n_lofi_alloc(i);
 
             su_mem_copy(cs, cbeg, --i);
@@ -1200,7 +1199,7 @@ mime_fromaddr(char const *name)
 {
    char const *cp, *lastcp;
    char *res = NULL;
-   size_t ressz = 1, rescur = 0;
+   uz ressz = 1, rescur = 0;
    NYD_IN;
 
    if (name == NULL)
@@ -1251,12 +1250,12 @@ jleave:
    return res;
 }
 
-FL ssize_t
-xmime_write(char const *ptr, size_t size, FILE *f, enum conversion convert,
+FL sz
+xmime_write(char const *ptr, uz size, FILE *f, enum conversion convert,
    enum tdflags dflags, struct str * volatile outrest,
    struct str * volatile inrest)
 {
-   ssize_t rv;
+   sz rv;
    struct quoteflt *qf;
    NYD_IN;
 
@@ -1278,8 +1277,8 @@ __mimemw_onsig(int sig) /* TODO someday, we won't need it no more */
    siglongjmp(__mimemw_actjmp, 1);
 }
 
-FL ssize_t
-mime_write(char const *ptr, size_t size, FILE *f,
+FL sz
+mime_write(char const *ptr, uz size, FILE *f,
    enum conversion convert, enum tdflags volatile dflags,
    struct quoteflt *qf, struct str * volatile outrest,
    struct str * volatile inrest)
@@ -1289,7 +1288,7 @@ mime_write(char const *ptr, size_t size, FILE *f,
     * TODO v14.0 that is, we pay a lot & heavily depend on the allocator.
     * TODO P.S.: furthermore all this encapsulated in filter objects instead */
    struct str in, out;
-   ssize_t volatile xsize;
+   sz volatile xsize;
    NYD_IN;
 
    dflags |= _TD_BUFCOPY;
@@ -1397,7 +1396,7 @@ jqpb64_dec:
        * TODO unless we have input->iconv->base64 filter chain as such!! :( */
       if(size != 0 && /* for Coverity, else ASSERT() */ inrest != NULL){
          if(in.l > B64_ENCODE_INPUT_PER_LINE){
-            size_t i;
+            uz i;
 
             i = in.l % B64_ENCODE_INPUT_PER_LINE;
             in.l -= i;
@@ -1423,7 +1422,7 @@ jqpb64_dec:
       }
 jqpb64_enc:
       xsize = fwrite(out.s, sizeof *out.s, out.l, f);
-      if (xsize != (ssize_t)out.l)
+      if (xsize != (sz)out.l)
          xsize = -1;
       break;
    case CONV_FROMHDR:
@@ -1434,7 +1433,7 @@ jqpb64_enc:
       xsize = mime_write_tohdr(&in, f, NULL, a_MIME_SH_NONE);
       break;
    case CONV_TOHDR_A:{
-      size_t col;
+      uz col;
 
       if(dflags & _TD_BUFCOPY){
          n_str_dup(&out, &in);

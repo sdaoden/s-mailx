@@ -261,7 +261,7 @@ FL struct attachment *n_attachment_list_edit(struct attachment *aplist,
                         enum n_go_input_flags gif);
 
 /* Print all attachments to fp, return number of lines written, -1 on error */
-FL ssize_t n_attachment_list_print(struct attachment const *aplist, FILE *fp);
+FL sz n_attachment_list_print(struct attachment const *aplist, FILE *fp);
 
 /*
  * auxlily.c
@@ -271,7 +271,7 @@ FL ssize_t n_attachment_list_print(struct attachment const *aplist, FILE *fp);
 FL void n_locale_init(void);
 
 /* Compute screen size */
-FL size_t n_screensize(void);
+FL uz n_screensize(void);
 
 /* Get our $PAGER; if env_addon is not NULL it is checked whether we know about
  * some environment variable that supports colour+ and set *env_addon to that,
@@ -279,7 +279,7 @@ FL size_t n_screensize(void);
 FL char const *n_pager_get(char const **env_addon);
 
 /* Use a pager or STDOUT to print *fp*; if *lines* is 0, they'll be counted */
-FL void        page_or_print(FILE *fp, size_t lines);
+FL void        page_or_print(FILE *fp, uz lines);
 
 /* Parse name and guess at the required protocol.
  * If check_stat is true then stat(2) will be consulted - a TODO c..p hack
@@ -305,17 +305,17 @@ FL char *n_nodename(boole mayoverride);
 
 /* Convert from / to *ttycharset* */
 #ifdef mx_HAVE_IDNA
-FL boole n_idna_to_ascii(struct n_string *out, char const *ibuf, size_t ilen);
+FL boole n_idna_to_ascii(struct n_string *out, char const *ibuf, uz ilen);
 /*TODO FL boole n_idna_from_ascii(struct n_string *out, char const *ibuf,
-            size_t ilen);*/
+            uz ilen);*/
 #endif
 
 /* Get a (pseudo) random string of *len* bytes, _not_ counting the NUL
  * terminator, the second returns an n_autorec_alloc()ed buffer.
  * If su_STATE_REPRODUCIBLE and reprocnt_or_null not NULL then we produce
  * a reproducable string by using and managing that counter instead */
-FL char *n_random_create_buf(char *dat, size_t len, u32 *reprocnt_or_null);
-FL char *n_random_create_cp(size_t len, u32 *reprocnt_or_null);
+FL char *n_random_create_buf(char *dat, uz len, u32 *reprocnt_or_null);
+FL char *n_random_create_cp(uz len, u32 *reprocnt_or_null);
 
 /* Check whether the argument string is a TRU1 or FAL0 boolean, or an invalid
  * string, in which case TRUM1 is returned.
@@ -625,8 +625,8 @@ FL struct n_cmd_arg_ctx *n_cmd_arg_restore_from_heap(void *vp);
 
 /* Scan out the list of string arguments according to rm, return -1 on error;
  * res_dat is NULL terminated unless res_size is 0 or error occurred */
-FL int /* TODO v15*/ getrawlist(boole wysh, char **res_dat, size_t res_size,
-                  char const *line, size_t linesize);
+FL int /* TODO v15*/ getrawlist(boole wysh, char **res_dat, uz res_size,
+                  char const *line, uz linesize);
 
 /*
  * cmd-write.c
@@ -734,7 +734,7 @@ FL int c_digmsg(void *vp);
  * If *dotlock_ignore_error* is set (FILE*)-1 will be returned if at least the
  * normal file lock could be established, otherwise su_err_no() is usable */
 FL FILE *n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
-            off_t off, off_t len, size_t pollmsecs);
+            off_t off, off_t len, uz pollmsecs);
 
 /*
  * edit.c
@@ -772,8 +772,8 @@ FL FILE *n_run_editor(FILE *fp, off_t size, int viored, boole readonly,
  * fp - input FILE.
  * appendnl - always terminate line with \n, append if necessary.
  * Manages the n_PS_READLINE_NL hack */
-FL char *      fgetline(char **line, size_t *linesize, size_t *count,
-                  size_t *llen, FILE *fp, int appendnl  su_DBG_LOC_ARGS_DECL);
+FL char *      fgetline(char **line, uz *linesize, uz *count,
+                  uz *llen, FILE *fp, int appendnl  su_DBG_LOC_ARGS_DECL);
 #ifdef su_HAVE_DBG_LOC_ARGS
 # define fgetline(A,B,C,D,E,F)   \
    fgetline(A, B, C, D, E, F  su_DBG_LOC_ARGS_INJ)
@@ -784,8 +784,8 @@ FL char *      fgetline(char **line, size_t *linesize, size_t *count,
  * n is the number of characters already read and present in *linebuf; it'll be
  * treated as _the_ line if no more (successful) reads are possible.
  * Manages the n_PS_READLINE_NL hack */
-FL int         readline_restart(FILE *ibuf, char **linebuf, size_t *linesize,
-                  size_t n  su_DBG_LOC_ARGS_DECL);
+FL int         readline_restart(FILE *ibuf, char **linebuf, uz *linesize,
+                  uz n  su_DBG_LOC_ARGS_DECL);
 #ifdef su_HAVE_DBG_LOC_ARGS
 # define readline_restart(A,B,C,D) \
    readline_restart(A, B, C, D  su_DBG_LOC_ARGS_INJ)
@@ -797,7 +797,7 @@ FL off_t       fsize(FILE *iob);
 /* Will retry FILE_LOCK_RETRIES times if pollmsecs > 0.
  * If pollmsecs is UZ_MAX, FILE_LOCK_MILLIS is used */
 FL boole      n_file_lock(int fd, enum n_file_lock_type flt,
-                  off_t off, off_t len, size_t pollmsecs);
+                  off_t off, off_t len, uz pollmsecs);
 
 /*
  * folder.c
@@ -869,7 +869,7 @@ FL boole n_go_input_have_injections(void);
  * If n_GO_INPUT_INJECT_COMMIT is not set the line editor is reentered with buf
  * as the default/initial line content */
 FL void n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
-            size_t len);
+            uz len);
 
 /* Read a complete line of input, with editing if interactive and possible.
  * If string is set it is used as the initial line content if in interactive
@@ -881,7 +881,7 @@ FL void n_go_input_inject(enum n_go_input_inject_flags giif, char const *buf,
  * Manages the n_PS_READLINE_NL hack
  * TODO We need an OnReadLineCompletedEvent and drop this function */
 FL int n_go_input(enum n_go_input_flags gif, char const *prompt,
-         char **linebuf, size_t *linesize, char const *string,
+         char **linebuf, uz *linesize, char const *string,
          boole *histok_or_null  su_DBG_LOC_ARGS_DECL);
 #ifdef su_HAVE_DBG_LOC_ARGS
 # define n_go_input(A,B,C,D,E,F) n_go_input(A,B,C,D,E,F  su_DBG_LOC_ARGS_INJ)
@@ -905,7 +905,7 @@ FL boole n_go_load(char const *name);
 /* "Load" or go_inject() command line option "cmd" arguments in order.
  * *Only* for main(), returns whether program shall continue unless injectit is
  * set, in which case this function does not fail */
-FL boole n_go_XYargs(boole injectit, char const **lines, size_t cnt);
+FL boole n_go_XYargs(boole injectit, char const **lines, uz cnt);
 
 /* Pushdown current input file and switch to a new one.  Set the global flag
  * n_PS_SOURCING so that others will realize that they are no longer reading
@@ -955,7 +955,7 @@ FL char const * myorigin(struct header *hp);
  * is a mail From_ header line according to POSIX ("From ").
  * If check_rfc4155 is true we'll return TRUM1 instead if the From_ line
  * matches POSIX but is _not_ compatible to RFC 4155 */
-FL boole      is_head(char const *linebuf, size_t linelen,
+FL boole      is_head(char const *linebuf, uz linelen,
                   boole check_rfc4155);
 
 /* Print hp "to user interface" fp for composing purposes xxx what a sigh */
@@ -1096,7 +1096,7 @@ FL boole n_header_match(struct message *mp, struct search_expr const *sep);
 /* Verify whether len (UZ_MAX=su_cs_len) bytes of name form a standard or
  * otherwise known header name (that must not be used as a custom header).
  * Return the (standard) header name, or NULL */
-FL char const *n_header_is_known(char const *name, size_t len);
+FL char const *n_header_is_known(char const *name, uz len);
 
 /* Add a custom header to the given list, in auto-reclaimed or heap memory */
 FL boole n_header_add_custom(struct n_header_field **hflp, char const *dat,
@@ -1141,12 +1141,12 @@ FL boole n_ignore_is_any(struct n_ignore const *self);
  * Returns FAL0 if dat is not a valid header field name or an invalid regular
  * expression, TRU1 if insertion took place, and TRUM1 if already set */
 FL boole n_ignore_insert(struct n_ignore *self, boole retain,
-            char const *dat, size_t len);
+            char const *dat, uz len);
 #define n_ignore_insert_cp(SELF,RT,CP) n_ignore_insert(SELF, RT, CP, UZ_MAX)
 
 /* Returns TRU1 if retained, TRUM1 if ignored, FAL0 if not covered */
 FL boole n_ignore_lookup(struct n_ignore const *self, char const *dat,
-            size_t len);
+            uz len);
 #define n_ignore_lookup_cp(SELF,CP) n_ignore_lookup(SELF, CP, UZ_MAX)
 #define n_ignore_is_ign(SELF,FDAT,FLEN) \
    (n_ignore_lookup(SELF, FDAT, FLEN) == TRUM1)
@@ -1157,7 +1157,7 @@ FL boole n_ignore_lookup(struct n_ignore const *self, char const *dat,
 
 /* Return -1 on invalid spec etc., the number of matches otherwise */
 #ifdef mx_HAVE_IMAP_SEARCH
-FL ssize_t     imap_search(char const *spec, int f);
+FL sz     imap_search(char const *spec, int f);
 #endif
 
 /*
@@ -1293,11 +1293,11 @@ FL void        mime_fromhdr(struct str const *in, struct str *out,
 FL char *      mime_fromaddr(char const *name);
 
 /* fwrite(3) performing the given MIME conversion */
-FL ssize_t     mime_write(char const *ptr, size_t size, FILE *f,
+FL sz     mime_write(char const *ptr, uz size, FILE *f,
                   enum conversion convert, enum tdflags dflags,
                   struct quoteflt *qf, struct str *outrest,
                   struct str *inrest);
-FL ssize_t     xmime_write(char const *ptr, size_t size, /* TODO LEGACY */
+FL sz     xmime_write(char const *ptr, uz size, /* TODO LEGACY */
                   FILE *f, enum conversion convert, enum tdflags dflags,
                   struct str *outrest, struct str *inrest);
 
@@ -1323,12 +1323,12 @@ FL char const * mime_enc_from_conversion(enum conversion const convert);
 
 /* How many characters of (the complete body) ln need to be quoted.
  * Only MIMEEF_ISHEAD and MIMEEF_ISENCWORD are understood */
-FL size_t      mime_enc_mustquote(char const *ln, size_t lnlen,
+FL uz      mime_enc_mustquote(char const *ln, uz lnlen,
                   enum mime_enc_flags flags);
 
 /* How much space is necessary to encode len bytes in QP, worst case.
  * Includes room for terminator, UZ_MAX on overflow */
-FL size_t      qp_encode_calc_size(size_t len);
+FL uz      qp_encode_calc_size(uz len);
 
 /* If flags includes QP_ISHEAD these assume "word" input and use special
  * quoting rules in addition; soft line breaks are not generated.
@@ -1339,7 +1339,7 @@ FL struct str * qp_encode(struct str *out, struct str const *in,
 #ifdef notyet
 FL struct str * qp_encode_cp(struct str *out, char const *cp,
                   enum qpflags flags);
-FL struct str * qp_encode_buf(struct str *out, void const *vp, size_t vp_len,
+FL struct str * qp_encode_buf(struct str *out, void const *vp, uz vp_len,
                   enum qpflags flags);
 #endif
 
@@ -1352,7 +1352,7 @@ FL boole      qp_decode_part(struct str *out, struct str const *in,
 
 /* How much space is necessary to encode len bytes in Base64, worst case.
  * Includes room for (CR/LF/CRLF and) terminator, UZ_MAX on overflow */
-FL size_t      b64_encode_calc_size(size_t len);
+FL uz      b64_encode_calc_size(uz len);
 
 /* Note these simply convert all the input (if possible), including the
  * insertion of NL sequences if B64_CRLF or B64_LF is set (and multiple thereof
@@ -1361,7 +1361,7 @@ FL size_t      b64_encode_calc_size(size_t len);
  * Return NULL on error (overflow; cannot happen for B64_BUF) */
 FL struct str * b64_encode(struct str *out, struct str const *in,
                   enum b64flags flags);
-FL struct str * b64_encode_buf(struct str *out, void const *vp, size_t vp_len,
+FL struct str * b64_encode_buf(struct str *out, void const *vp, uz vp_len,
                   enum b64flags flags);
 #ifdef notyet
 FL struct str * b64_encode_cp(struct str *out, char const *cp,
@@ -1403,7 +1403,7 @@ FL s8       mime_param_create(struct str *result, char const *name,
 
 /* Get the boundary out of a Content-Type: multipart/xyz header field, return
  * autorec_alloc()ed copy of it; store su_cs_len() in *len if set */
-FL char *      mime_param_boundary_get(char const *headerbody, size_t *len);
+FL char *      mime_param_boundary_get(char const *headerbody, uz *len);
 
 /* Create a autorec_alloc()ed MIME boundary */
 FL char *      mime_param_boundary_create(void);
@@ -1799,7 +1799,7 @@ FL enum okay   swrite1(struct sock *sp, char const *data, int sz,
                   int use_buffer);
 
 /*  */
-FL int         sgetline(char **line, size_t *linesize, size_t *linelen,
+FL int         sgetline(char **line, uz *linesize, uz *linelen,
                   struct sock *sp  su_DBG_LOC_ARGS_DECL);
 # ifdef su_HAVE_DBG_LOC_ARGS
 #  define sgetline(A,B,C,D) sgetline(A, B, C, D  su_DBG_LOC_ARGS_INJ)
@@ -1826,7 +1826,7 @@ FL int c_spam_spam(void *v);
 
 /* Return a pointer to a dynamic copy of the argument */
 FL char *savestr(char const *str  su_DBG_LOC_ARGS_DECL);
-FL char *savestrbuf(char const *sbuf, size_t slen  su_DBG_LOC_ARGS_DECL);
+FL char *savestrbuf(char const *sbuf, uz slen  su_DBG_LOC_ARGS_DECL);
 #ifdef su_HAVE_DBG_LOC_ARGS
 # define savestr(CP) savestr(CP  su_DBG_LOC_ARGS_INJ)
 # define savestrbuf(CBP,CBL) savestrbuf(CBP, CBL  su_DBG_LOC_ARGS_INJ)
@@ -1937,12 +1937,12 @@ FL struct n_string *n_string_clear(struct n_string *self su_DBG_LOC_ARGS_DECL);
     (uz)S32_MAX - Z_ALIGN(1) - (L) > (S)->s_len)
 
 /* Reserve room for noof additional bytes, but don't adjust length (yet) */
-FL struct n_string *n_string_reserve(struct n_string *self, size_t noof
+FL struct n_string *n_string_reserve(struct n_string *self, uz noof
       su_DBG_LOC_ARGS_DECL);
 #define n_string_book n_string_reserve
 
 /* Resize to exactly nlen bytes; any new storage isn't initialized */
-FL struct n_string *n_string_resize(struct n_string *self, size_t nlen
+FL struct n_string *n_string_resize(struct n_string *self, uz nlen
       su_DBG_LOC_ARGS_DECL);
 
 #ifdef su_HAVE_DBG_LOC_ARGS
@@ -1952,7 +1952,7 @@ FL struct n_string *n_string_resize(struct n_string *self, size_t nlen
 
 /* */
 FL struct n_string *n_string_push_buf(struct n_string *self, char const *buf,
-      size_t buflen  su_DBG_LOC_ARGS_DECL);
+      uz buflen  su_DBG_LOC_ARGS_DECL);
 #define n_string_push(S, T)       n_string_push_buf(S, (T)->s_len, (T)->s_dat)
 #define n_string_push_cp(S,CP)    n_string_push_buf(S, CP, UZ_MAX)
 FL struct n_string *n_string_push_c(struct n_string *self, char c
@@ -1972,7 +1972,7 @@ FL struct n_string *n_string_push_c(struct n_string *self, char c
 
 /* */
 FL struct n_string *n_string_unshift_buf(struct n_string *self,
-      char const *buf, size_t buflen  su_DBG_LOC_ARGS_DECL);
+      char const *buf, uz buflen  su_DBG_LOC_ARGS_DECL);
 #define n_string_unshift(S,T) \
    n_string_unshift_buf(S, (T)->s_len, (T)->s_dat)
 #define n_string_unshift_cp(S,CP) \
@@ -1988,13 +1988,13 @@ FL struct n_string *n_string_unshift_c(struct n_string *self, char c
 #endif
 
 /* */
-FL struct n_string *n_string_insert_buf(struct n_string *self, size_t idx,
-      char const *buf, size_t buflen  su_DBG_LOC_ARGS_DECL);
+FL struct n_string *n_string_insert_buf(struct n_string *self, uz idx,
+      char const *buf, uz buflen  su_DBG_LOC_ARGS_DECL);
 #define n_string_insert(S,I,T) \
    n_string_insert_buf(S, I, (T)->s_len, (T)->s_dat)
 #define n_string_insert_cp(S,I,CP) \
    n_string_insert_buf(S, I, CP, UZ_MAX)
-FL struct n_string *n_string_insert_c(struct n_string *self, size_t idx,
+FL struct n_string *n_string_insert_c(struct n_string *self, uz idx,
       char c  su_DBG_LOC_ARGS_DECL);
 
 #ifdef su_HAVE_DBG_LOC_ARGS
@@ -2005,8 +2005,8 @@ FL struct n_string *n_string_insert_c(struct n_string *self, size_t idx,
 #endif
 
 /* */
-FL struct n_string *n_string_cut(struct n_string *self, size_t idx,
-      size_t len);
+FL struct n_string *n_string_cut(struct n_string *self, uz idx,
+      uz len);
 
 /* Ensure self has a - NUL terminated - buffer, and return that.
  * The latter may return the pointer to an internal empty RODATA instead */
@@ -2037,7 +2037,7 @@ su_INLINE void
 # undef n_string_gut
 
 su_INLINE struct n_string *
-(n_string_trunc)(struct n_string *self, size_t l){
+(n_string_trunc)(struct n_string *self, uz l){
    return n_string_trunc(self, l);
 }
 # undef n_string_trunc
@@ -2058,8 +2058,8 @@ su_INLINE struct n_string *
 #ifdef n_HAVE_TCAP
 /* termcap(3) / xy lifetime handling -- only called if we're n_PSO_INTERACTIVE
  * but not doing something in n_PO_QUICKRUN_MASK */
-FL void        n_termcap_init(void);
-FL void        n_termcap_destroy(void);
+FL void n_termcap_init(void);
+FL void n_termcap_destroy(void);
 
 /* enter_ca_mode / enable keypad (both if possible).
  * TODO When complete is not set we won't enter_ca_mode, for example: we don't
@@ -2067,10 +2067,10 @@ FL void        n_termcap_destroy(void);
  * TODO a mail, because otherwise the screen would look differently for normal
  * TODO stdout display messages.  Etc. */
 # ifdef mx_HAVE_TERMCAP
-FL void        n_termcap_resume(boole complete);
-FL void        n_termcap_suspend(boole complete);
+FL void n_termcap_resume(boole complete);
+FL void n_termcap_suspend(boole complete);
 
-#  define n_TERMCAP_RESUME(CPL)  do{ n_termcap_resume(CPL); }while(0)
+#  define n_TERMCAP_RESUME(CPL) do{ n_termcap_resume(CPL); }while(0)
 #  define n_TERMCAP_SUSPEND(CPL) do{ n_termcap_suspend(CPL); }while(0)
 # endif
 
@@ -2079,8 +2079,8 @@ FL void        n_termcap_suspend(boole complete);
  * For query options the return represents a true value and -1 error.
  * Will return FAL0 directly unless we've been initialized.
  * By convention unused argument slots are given as -1 */
-FL ssize_t     n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2);
-# define n_termcap_cmdx(CMD)     n_termcap_cmd(CMD, -1, -1)
+FL sz n_termcap_cmd(enum n_termcap_cmd cmd, sz a1, sz a2);
+# define n_termcap_cmdx(CMD) n_termcap_cmd(CMD, -1, -1)
 
 /* Query multiplexer.  If query is n__TERMCAP_QUERY_MAX1 then
  * tvp->tv_data.tvd_string must contain the name of the query to look up; this
@@ -2089,13 +2089,12 @@ FL ssize_t     n_termcap_cmd(enum n_termcap_cmd cmd, ssize_t a1, ssize_t a2);
  * is returned; FAL0 is returned on non-availability; for boolean the return
  * value equals the result as such (still tvp is mandatory argument) */
 FL boole n_termcap_query(enum n_termcap_query query,
-            struct n_termcap_value *tvp);
+      struct n_termcap_value *tvp);
 
 /* Get a n_termcap_query for name or -1 if it is not known, and -2 if
  * type wasn't _NONE and the type doesn't match. */
 # ifdef mx_HAVE_KEY_BINDINGS
-FL s32      n_termcap_query_for_name(char const *name,
-                  enum n_termcap_captype type);
+FL s32 n_termcap_query_for_name(char const *name, enum n_termcap_captype type);
 FL char const *n_termcap_name_of_query(enum n_termcap_query query);
 # endif
 #endif /* n_HAVE_TCAP */
@@ -2210,7 +2209,7 @@ FL void n_tty_destroy(boole xit_fastpath);
  * histok_or_null like for n_go_input().
  * Only the _CTX_ bits in lif are used */
 FL int n_tty_readline(enum n_go_input_flags gif, char const *prompt,
-         char **linebuf, size_t *linesize, size_t n, boole *histok_or_null
+         char **linebuf, uz *linesize, uz n, boole *histok_or_null
          su_DBG_LOC_ARGS_DECL);
 #ifdef su_HAVE_DBG_LOC_ARGS
 # define n_tty_readline(A,B,C,D,E,F) \
@@ -2316,7 +2315,7 @@ FL void        hmac_md5(unsigned char *text, int text_len, unsigned char *key,
 #ifdef mx_HAVE_XTLS
 /* Our wrapper for RAND_bytes(3) */
 # if mx_HAVE_RANDOM == n_RANDOM_IMPL_TLS
-FL void n_tls_rand_bytes(void *buf, size_t blen);
+FL void n_tls_rand_bytes(void *buf, uz blen);
 # endif
 
 /* Will fill in a non-NULL *urlp->url_cert_fprint with auto-reclaimed
@@ -2372,7 +2371,7 @@ FL enum okay   imap_append(const char *xserver, FILE *fp, long offset);
 FL int         imap_folders(const char *name, int strip);
 FL enum okay   imap_copy(struct message *m, int n, const char *name);
 # ifdef mx_HAVE_IMAP_SEARCH
-FL ssize_t     imap_search1(const char *spec, int f);
+FL sz     imap_search1(const char *spec, int f);
 # endif
 FL int         imap_thisaccount(const char *cp);
 FL enum okay   imap_remove(const char *name);

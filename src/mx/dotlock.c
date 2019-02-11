@@ -95,8 +95,8 @@ jislink:
    if(S_ISLNK(stb.st_mode)){
       /* Use n_autorec_alloc() and hope we stay in built-in buffer.. */
       char *x;
-      size_t i;
-      ssize_t sr;
+      uz i;
+      sz sr;
 
       for(x = NULL, i = PATH_MAX;; i += PATH_MAX){
          x = n_autorec_alloc(i +1);
@@ -236,7 +236,7 @@ jmsg:
 
 FL FILE *
 n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
-      off_t off, off_t len, size_t pollmsecs){
+      off_t off, off_t len, uz pollmsecs){
 #undef _DOMSG
 #define _DOMSG() \
    n_err(_("Creating file lock for %s "), n_shexp_quote_cp(fname, FAL0))
@@ -248,7 +248,7 @@ n_dotlock(char const *fname, int fd, enum n_file_lock_type flt,
    char const *emsg;
 #endif
    int serr;
-   union {size_t tries; int (*ptf)(void); char const *sh; ssize_t r;} u;
+   union {uz tries; int (*ptf)(void); char const *sh; sz r;} u;
    boole flocked, didmsg;
    FILE *rv;
    NYD_IN;

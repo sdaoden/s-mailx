@@ -190,7 +190,7 @@ _mime_parse_rfc822(struct message *zmp, struct mimepart *ip,
    enum mime_parse_flags mpf, int level)
 {
    int c, lastc = '\n';
-   size_t cnt;
+   uz cnt;
    FILE *ibuf;
    off_t offs;
    struct mimepart *np;
@@ -280,7 +280,7 @@ _mime_parse_multipart(struct message *zmp, struct mimepart *ip,
 {
    struct mimepart *np = NULL;
    char *boundary, *line = NULL;
-   size_t linesize = 0, linelen, cnt, boundlen;
+   uz linesize = 0, linelen, cnt, boundlen;
    FILE *ibuf;
    off_t offs;
    int part = 0;
@@ -373,7 +373,7 @@ __mime_parse_new(struct mimepart *ip, struct mimepart **np, off_t offs,
    (*np)->m_offset = mailx_offsetof(offs);
 
    if (part) {
-      size_t i;
+      uz i;
 
       ++(*part);
       i = (ip->m_partstring != NULL) ? su_cs_len(ip->m_partstring) : 0;

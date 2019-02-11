@@ -60,9 +60,9 @@ su_EMPTY_FILE()
 
 struct smtp_line {
    char     *dat;    /* Actual data */
-   size_t   datlen;
+   uz   datlen;
    char     *buf;    /* Memory buffer */
-   size_t   bufsize;
+   uz   bufsize;
 };
 
 static sigjmp_buf _smtp_jmp;
@@ -125,7 +125,7 @@ _smtp_read(struct sock *sop, struct smtp_line *slp, int val,
       slp->dat = cp;
       ASSERT(len >= 2);
       len -= 2;
-      cp[slp->datlen = (size_t)len] = '\0';
+      cp[slp->datlen = (uz)len] = '\0';
    }
 jleave:
    NYD_OU;
@@ -162,7 +162,7 @@ _smtp_talk(struct sock *sop, struct sendbundle *sbp) /* TODO n_string++ */
    struct smtp_line _sl, *slp = &_sl;
    struct str b64;
    struct mx_name *np;
-   size_t blen, cnt;
+   uz blen, cnt;
    boole inhdr = TRU1, inbcc = FAL0, rv = FAL0;
    NYD_IN;
 
