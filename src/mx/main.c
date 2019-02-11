@@ -979,7 +979,7 @@ je_S:
             switch(i){
             case 'S': case 's': resfiles |= a_RF_SYSTEM; break;
             case 'U': case 'u': resfiles |= a_RF_USER; break;
-            case ':': case '/': resfiles &= ~a_RF_ALL; break;
+            case '-': case '/': resfiles &= ~a_RF_ALL; break;
             default:
                emsg = N_("Invalid argument of -:");
                goto jusage;
