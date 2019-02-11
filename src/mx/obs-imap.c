@@ -2060,7 +2060,7 @@ imap_get(struct mailbox *mp, struct message *m, enum needspec need)
    FILE *queuefp;
    long volatile headlines;
    long n;
-   enum okay ok;
+   enum okay volatile ok;
    NYD;
 
    saveint = savepipe = SIG_IGN;
@@ -3101,7 +3101,7 @@ imap_append(const char *xserver, FILE *fp, long offset)
    n_sighdl_t volatile saveint, savepipe;
    struct url url;
    struct ccred ccred;
-   enum okay rv = STOP;
+   enum okay volatile rv = STOP;
    NYD_IN;
 
    if (!url_parse(&url, CPROTO_IMAP, xserver))
