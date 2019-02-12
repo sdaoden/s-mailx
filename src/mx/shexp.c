@@ -232,18 +232,28 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
    struct n_string outer;
    struct n_strlist *slp;
    char *cp;
+   void *lofi_snap;
    NYD_IN;
 
+   lofi_snap = n_lofi_snap_create();
+
    su_mem_set(&sgc, 0, sizeof sgc);
-   sgc.sgc_patlen = su_cs_len(name);
-   sgc.sgc_patdat = savestrbuf(name, sgc.sgc_patlen);
-   sgc.sgc_outer = n_string_reserve(n_string_creat(&outer), sgc.sgc_patlen);
-   sgc.sgc_flags = ((fexpm & FEXP_SILENT) != 0);
+   /* C99 */{
+      uz i;
+
+      sgc.sgc_patlen = i = su_cs_len(name);
+      sgc.sgc_patdat = cp = n_lofi_alloc(++i);
+      su_mem_copy(cp, name, i);
+      sgc.sgc_outer = n_string_book(n_string_creat(&outer), i);
+   }
+   sgc.sgc_flags = ((fexpm & FEXP_SILENT) != 0); /* a_shexp__glob():a_SILENT */
+
    slp = NULL;
    if(a_shexp__glob(&sgc, &slp))
-      cp = (char*)1;
+      cp = (char*)0x1;
    else
       cp = NULL;
+
    n_string_gut(&outer);
 
    if(cp == NULL)
@@ -264,7 +274,8 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
          l += xslp->sl_len + 1;
       }
 
-      sorta = n_alloc(sizeof(*sorta) * no);
+      sorta = n_lofi_alloc(sizeof(*sorta) * no);
+
       no = 0;
       for(xslp = slp; xslp != NULL; xslp = xslp->sl_next)
          sorta[no++] = xslp;
@@ -280,7 +291,7 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
       }
       cp[l] = '\0';
 
-      n_free(sorta);
+      /*n_lofi_free(sorta);*/
       n_pstate |= n_PS_EXPAND_MULTIRESULT;
    }else{
       cp = UNCONST(char*,N_("File pattern matches multiple results"));
@@ -288,12 +299,7 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
    }
 
 jleave:
-   while(slp != NULL){
-      struct n_strlist *tmp = slp;
-
-      slp = slp->sl_next;
-      n_free(tmp);
-   }
+   n_lofi_snap_unroll(lofi_snap);
    NYD_OU;
    return cp;
 
@@ -317,7 +323,8 @@ jerr:
 #ifdef mx_HAVE_FNMATCH
 static boole
 a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
-   enum{a_SILENT = 1<<0, a_DEEP=1<<1, a_SALLOC=1<<2};
+   /* a_SILENT == a_shexp_globname():((fexpm & FEXP_SILENT) != 0) */
+   enum{a_SILENT = 1<<0, a_DEEP=1<<1};
 
    struct a_shexp_glob_ctx nsgc;
    struct dirent *dep;
@@ -411,7 +418,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
          }
 
       if(need){
-         ncp = n_autorec_alloc(i +1);
+         ncp = n_lofi_alloc(i +1);
          for(i = 0, myp = sgcp->sgc_patdat; *myp != '\0'; ++myp)
             switch(*myp){
             case '\'': case '"': case '\\': case '$':
@@ -469,7 +476,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
 
             i = su_cs_len(dep->d_name);
             j = (old_outerlen > 0) ? old_outerlen + 1 + i : i;
-            slp = n_STRLIST_ALLOC(j);
+            slp = n_STRLIST_LOFI_ALLOC(j);
             *slpp = slp;
             slpp = &slp->sl_next;
             slp->sl_next = NULL;
