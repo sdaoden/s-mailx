@@ -32,7 +32,6 @@
 # undef a_T_PRISYM
 # undef a_T_PUBSYM
 # undef a_FUN
-# undef a_T_HASH_TO_IDX /* Note: array could be non-existent! */
 # undef a_TK
 # undef a_N
 # undef a_N_F
@@ -62,7 +61,6 @@
 #  define a_T_PRISYM(X) su_CONCAT(su__cs_dict_, X)
 #  define a_T_PUBSYM(X) su_CONCAT(su_cs_dict_, X)
 #  define a_FUN(X) su_CONCAT(a_csdict_, X)
-#  define a_T_HASH_TO_IDX(HASH,SIZE) ((HASH) & ((SIZE) - 1))
 #  define a_TK char
 #  define a_N su__cs_dict_node
 #  define a_N_F(X) su_CONCAT(csdn_, X)
@@ -132,10 +130,12 @@ static s32
 a_FUN(resize)(struct a_T *self, u32 xcount){
    s32 rv;
    struct a_N **narr, **arr;
+   boole pow2;
    u32 size, nsize;
    NYD_IN;
 
    size = self->a_T_F(size);
+   pow2 = ((self->a_T_F(flags) & a_T_PUBNAME(POW2_SPACED)) != 0);
 
    /* Calculate new size */
    /* C99 */{
@@ -149,19 +149,18 @@ a_FUN(resize)(struct a_T *self, u32 xcount){
       for(;;){
          onsize = nsize;
 
-# if a_TYPE_IS_DICT
-         ASSERT(nsize == 0 || nsize == 1 || IS_POW2(nsize));
-         if(grow){
-            if(nsize == 0)
-               nsize = 1u << 1;
-            else if(UCMP(32, nsize, <, S32_MIN))
-               nsize <<= 1;
-         }else if(nsize > (1u << 1))
-            nsize >>= 1;
-# else
-         nsize = grow ? su_prime_lookup_next(nsize)
-               : su_prime_lookup_former(nsize);
-# endif
+         if(pow2){
+            ASSERT(nsize == 0 || nsize == 1 || IS_POW2(nsize));
+            if(grow){
+               if(nsize == 0)
+                  nsize = 1u << 1;
+               else if(UCMP(32, nsize, <, S32_MIN))
+                  nsize <<= 1;
+            }else if(nsize > (1u << 1))
+               nsize >>= 1;
+         }else
+            nsize = grow ? su_prime_lookup_next(nsize)
+                  : su_prime_lookup_former(nsize);
 
          /* Refuse to excess storage bounds, but do not fail for this: simply
           * keep on going and place more nodes in the slots.
@@ -199,7 +198,11 @@ a_FUN(resize)(struct a_T *self, u32 xcount){
       struct a_N *np, **npos, *xnp;
 
       do for(np = arr[--size]; np != NIL; --xcount){
-         npos = &narr[a_T_HASH_TO_IDX(np->a_N_F(khash), nsize)];
+         uz i;
+
+         i = np->a_N_F(khash);
+         i= pow2 ? i & (nsize - 1) : i % nsize;
+         npos = &narr[i];
          xnp = np;
          np = np->a_N_F(next);
          xnp->a_N_F(next) = *npos;
@@ -253,6 +256,7 @@ jerr:
 
    /* C99 */{
       struct a_LA la;
+      boole pow2;
       u32 size, tsize, tcnt;
       struct a_N **arr, **tarr, *np, *tnp;
 
@@ -261,12 +265,15 @@ jerr:
       size = self->a_T_F(size);
       tsize = t->a_T_F(size);
       tcnt = t->a_T_F(count);
+      pow2 = ((self->a_T_F(flags) & a_T_PUBNAME(POW2_SPACED)) != 0);
 
       while(tcnt != 0){
          for(tnp = tarr[--tsize]; tnp != NIL; --tcnt, tnp = tnp->a_N_F(next)){
-            la.la_slot = &arr[
-                  la.la_slotidx = a_T_HASH_TO_IDX(
-                        la.la_khash = tnp->a_N_F(khash), size)];
+            uz i;
+
+            la.la_khash = i = tnp->a_N_F(khash);
+            la.la_slotidx = S(u32,i = pow2 ? i & (size - 1) : i % size);
+            la.la_slot = &arr[i];
 # if a_TYPE_IS_DICT
             la.la_klen = tnp->a_N_F(klen);
 # endif
@@ -411,16 +418,13 @@ a_T_PRISYM(lookup)(struct a_T const *self, a_TK const *key,
 # else
    u32 klen;
 # endif
+   u32 cnt, slotidx;
    uz khash;
    struct a_N *rv, **arr, *last;
-   u32 cnt, slotidx;
    NYD_IN;
    ASSERT(self);
 
    rv = NIL;
-
-   if(UNLIKELY((cnt = self->a_T_F(count)) == 0 && lookarg_or_nil == NIL))
-      goto jleave;
 
 # if a_TYPE == a_TYPE_CSDICT
    khash = su_cs_len(key);
@@ -432,9 +436,11 @@ a_T_PRISYM(lookup)(struct a_T const *self, a_TK const *key,
 # else
 #  error
 # endif
-   slotidx = a_T_HASH_TO_IDX(khash, self->a_T_F(size));
-   if((arr = self->a_T_F(array)) != NIL)
-      arr = &arr[slotidx];
+
+   if(LIKELY((slotidx = self->a_T_F(size)) > 0))
+      slotidx = (self->a_T_F(flags) & a_T_PUBNAME(POW2_SPACED))
+            ? khash & (slotidx - 1) : khash % slotidx;
+   arr = self->a_T_F(array) + slotidx;
 
    if(lookarg_or_nil != NIL){
       struct a_LA *lap;
@@ -449,7 +455,7 @@ a_T_PRISYM(lookup)(struct a_T const *self, a_TK const *key,
       lap->la_khash = khash;
    }
 
-   if(UNLIKELY(cnt == 0))
+   if(UNLIKELY((cnt = self->a_T_F(count)) == 0))
       goto jleave;
 
    for(last = rv, rv = *arr; rv != NIL; last = rv, rv = rv->a_N_F(next)){
@@ -578,14 +584,14 @@ a_T_PRISYM(stats)(struct a_T const *self){
 
    su_log_write(su_LOG_INFO,
       "* Overview\n"
-      "  - "
+      "  - POW2_SPACED=%d "
 # if a_TYPE != a_TYPE_CSDICT
          "OWNS_KEYS=%d "
 # endif
-         "OWNS=%d "
 # if a_TYPE == a_TYPE_CSDICT
          "CASE=%d "
 # endif
+         "OWNS=%d "
          "\n"
       "  - HEAD_RESORT=%d AUTO_SHRINK=%d FROZEN=%d ERR_PASS=%d NILISVALO=%d\n"
       "  - Array size : %lu\n"
@@ -595,13 +601,14 @@ a_T_PRISYM(stats)(struct a_T const *self){
       "  - Slots: empty: %lu, multiple: %lu, maximum: %lu, avg/multi: ~%lu\n"
       "* Distribution, visual\n"
       ,
+      ((self->a_T_F(flags) & a_T_PUBNAME(POW2_SPACED)) != 0),
 # if a_TYPE != a_TYPE_CSDICT
-      ((self->a_T_F(flags) & a_T_PUBNAME(OWNS_KEYS)) != 0),
+         ((self->a_T_F(flags) & a_T_PUBNAME(OWNS_KEYS)) != 0),
 # endif
-         ((self->a_T_F(flags) & a_T_PUBNAME(OWNS)) != 0),
 # if a_TYPE == a_TYPE_CSDICT
          ((self->a_T_F(flags) & a_T_PUBNAME(CASE)) != 0),
 # endif
+         ((self->a_T_F(flags) & a_T_PUBNAME(OWNS)) != 0),
       ((self->a_T_F(flags) & a_T_PUBNAME(HEAD_RESORT)) != 0),
          ((self->a_T_F(flags) & a_T_PUBNAME(AUTO_SHRINK)) != 0),
          ((self->a_T_F(flags) & a_T_PUBNAME(FROZEN)) != 0),
@@ -933,7 +940,6 @@ a_V_PUBSYM(remove)(struct a_V *self){
 # undef a_T_PUBNAME
 # undef a_T_PUBSYM
 # undef a_T_PRISYM
-# undef a_T_HASH_TO_IDX
 # undef a_FUN
 # undef a_TK
 # undef a_N

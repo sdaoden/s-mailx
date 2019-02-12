@@ -45,9 +45,6 @@ struct su_cs_dict_view;
  *
  * \list{\li{
  * Keys will be stored in full in the list nodes which make up the dictionary.
- * Because the key type and hash quality is known, the array will be
- * power-of-two spaced and binary-and indexed, instead of going for prime
- * size- and module indexing.
  * They will be hashed and compared by means of \ref{CS}.
  * }\li{
  * Values are optionally owned (\r{su_CS_DICT_OWNS}), in which case the given,
@@ -85,29 +82,34 @@ struct su_cs_dict_view;
  * \r{su_cs_dict_flags()}, and to be adjusted via \r{su_cs_dict_add_flags()}
  * and \r{su_cs_dict_clear_flags()}. */
 enum su_cs_dict_flags{
+   /*! Whether power-of-two spacing and mask indexing is used.
+    * If this is not set, prime spacing and modulo indexing will be used.
+    * \remarks{Changing this setting later on is possible, but testifying the
+    * implied consequences work out is up to the caller.} */
+   su_CS_DICT_POW2_SPACED = 1u<<0,
    /*! Values are owned.
     * \remarks{Changing this setting later on is possible, but testifying the
     * implied consequences work out is up to the caller.} */
-   su_CS_DICT_OWNS = 1u<<0,
+   su_CS_DICT_OWNS = 1u<<1,
    /*! Keys shall be hashed, compared and stored case-insensitively. */
-   su_CS_DICT_CASE = 1u<<1,
+   su_CS_DICT_CASE = 1u<<2,
    /*! Enable array-index list head rotation?
     * This dictionary uses an array of nodes which form singly-linked lists.
     * With this bit set, whenever a key is found in such a list, its list node
     * will become the new head of the list, which could over time improve
     * lookup speed due to lists becoming sorted by "hotness" over time. */
-   su_CS_DICT_HEAD_RESORT = 1u<<2,
+   su_CS_DICT_HEAD_RESORT = 1u<<3,
    /*! Enable automatic shrinking of the management array.
     * This is not enabled by default (the array only grows).
     * See \r{su_CS_DICT_FROZEN} (and \r{su_cs_dict_set_treshold_shift()}). */
-   su_CS_DICT_AUTO_SHRINK = 1u<<3,
+   su_CS_DICT_AUTO_SHRINK = 1u<<4,
    /*! Freeze the dictionary.
     * A frozen dictionary will neither grow nor shrink the management array of
     * nodes automatically.
     * When inserting/removing many key/value tuples it increases efficiency to
     * first freeze, perform the operations, and then perform finalization
     * by calling \r{su_cs_dict_balance()}. */
-   su_CS_DICT_FROZEN = 1u<<4,
+   su_CS_DICT_FROZEN = 1u<<5,
    /*! Mapped to \r{su_STATE_ERR_PASS}. */
    su_CS_DICT_ERR_PASS = su_STATE_ERR_PASS,
    /*! Mapped to \r{su_STATE_ERR_NIL_IS_VALID_OBJECT}, but only honoured for
@@ -116,7 +118,8 @@ enum su_cs_dict_flags{
    /*! Alias for \r{su_CS_DICT_NIL_IS_VALID_OBJECT}. */
    su_CS_DICT_NILISVALO = su_CS_DICT_NIL_IS_VALID_OBJECT,
 
-   su__CS_DICT_CREATE_MASK = su_CS_DICT_OWNS | su_CS_DICT_CASE |
+   su__CS_DICT_CREATE_MASK = su_CS_DICT_POW2_SPACED |
+         su_CS_DICT_OWNS | su_CS_DICT_CASE |
          su_CS_DICT_HEAD_RESORT | su_CS_DICT_AUTO_SHRINK | su_CS_DICT_FROZEN |
          su_CS_DICT_ERR_PASS | su_CS_DICT_NIL_IS_VALID_OBJECT
 };
@@ -539,6 +542,8 @@ public:
    /*! \copydoc{su_cs_dict_flags} */
    enum flags{
       f_none, /*!< This is 0. */
+      /*! \copydoc{su_CS_DICT_POW2_SPACED} */
+      f_pow2_spaced = su_CS_DICT_POW2_SPACED,
       /*! \copydoc{su_CS_DICT_CASE} */
       f_case = su_CS_DICT_CASE,
       /*! \copydoc{su_CS_DICT_HEAD_RESORT} */

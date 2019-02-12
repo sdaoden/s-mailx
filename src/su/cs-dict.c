@@ -24,6 +24,7 @@
 
 #include "su/cs.h"
 #include "su/mem.h"
+#include "su/prime.h"
 
 #include "su/cs-dict.h"
 #include "su/code-in.h"
