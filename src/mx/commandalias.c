@@ -57,26 +57,13 @@ c_commandalias(void *vp){
       goto jleave;
    }
 
-   /* Verify the name is a valid one, and not a command modifier.
-    * NOTE: duplicates command prefix handling located somewhere else (go.c) */
-   if(*key == '\0' || *n_cmd_isolate(key) != '\0')
-      goto jename;
-   else{
-      char const prefixes[][8] =
-            {"ignerr", "local", "wysh", "vput", "scope", "u"};
-      uz i;
-
-      for(i = 0;;){
-         if(!su_cs_cmp_case(key, prefixes[i])){
-jename:
-            n_err(_("`commandalias': not a valid command name: %s\n"),
-               n_shexp_quote_cp(key, FAL0));
-            rv = 1;
-            goto jleave;
-         }
-         if(++i == NELEM(prefixes))
-            break;
-      }
+   /* Verify the name is a valid one, and not a command modifier */
+   if(*key == '\0' || *n_cmd_isolate_name(key) != '\0' ||
+         !n_cmd_is_valid_name(key)){
+      n_err(_("`commandalias': not a valid command name: %s\n"),
+         n_shexp_quote_cp(key, FAL0));
+      rv = 1;
+      goto jleave;
    }
 
    if(argv[1] == NIL){

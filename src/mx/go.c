@@ -335,7 +335,7 @@ jrestart:
     * separated from the arguments (as in `p1') we need to duplicate it to
     * be able to create a NUL terminated version.
     * We must be aware of several special one letter commands here */
-   else if((cp = n_UNCONST(n_cmd_isolate(cp))) == line.s &&
+   else if((cp = n_UNCONST(n_cmd_isolate_name(cp))) == line.s &&
          (*cp == '|' || *cp == '?'))
       ++cp;
    c = (int)P2UZ(cp - line.s);
@@ -346,8 +346,7 @@ jrestart:
    line.s = cp;
 
    /* It may be a modifier.
-    * NOTE: changing modifiers must be reflected in `commandalias' handling
-    * code as well as in the manual (of course)! */
+    * NOTE: changing modifiers must be reflected in n_cmd_is_valid_name() */
    switch(c){
    default:
       break;

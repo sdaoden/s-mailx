@@ -603,7 +603,10 @@ FL int c_Resend(void *vp);
  */
 
 /* Isolate the command from the arguments, return pointer to end of cmd name */
-FL char const *n_cmd_isolate(char const *cmd);
+FL char const *n_cmd_isolate_name(char const *cmd);
+
+/* Whether cmd is a valid command name (and not a modifier, for example) */
+FL boole n_cmd_is_valid_name(char const *cmd);
 
 /* First command which fits for cmd, or NULL */
 FL struct n_cmd_desc const *n_cmd_firstfit(char const *cmd);

@@ -424,13 +424,31 @@ a_ctab_c_memtrace(void *vp){
 #endif
 
 FL char const *
-n_cmd_isolate(char const *cmd){
+n_cmd_isolate_name(char const *cmd){
    NYD2_IN;
    while(*cmd != '\0' &&
          su_cs_find_c("\\!~|? \t0123456789&%@$^.:/-+*'\",;(`", *cmd) == NULL)
       ++cmd;
    NYD2_OU;
    return n_UNCONST(cmd);
+}
+
+FL boole
+n_cmd_is_valid_name(char const *cmd){
+   /* Mirrors things from go.c */
+   static char const a_prefixes[][8] =
+         {"ignerr", "local", "wysh", "vput", "scope", "u"};
+   uz i;
+   NYD2_IN;
+
+   i = 0;
+   do if(!su_cs_cmp_case(cmd, a_prefixes[i])){
+      cmd = NIL;
+      break;
+   }while(++i < NELEM(a_prefixes));
+
+   NYD2_OU;
+   return (cmd != NIL);
 }
 
 FL struct n_cmd_desc const *
