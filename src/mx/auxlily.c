@@ -1556,37 +1556,29 @@ mx_unxy_dict(char const *cmdname, struct su_cs_dict *dp, void *vp){
 }
 
 FL su_boole
-mx_show_sorted_dict(char const *cmdname, void *vdp,
-      su_boole (*ptf)(FILE *fp, char const *key, void const *dat),
-      FILE **fpp_or_nil){
+mx_xy_dump_dict(char const *cmdname, struct su_cs_dict *dp,
+      struct n_strlist **result, struct n_strlist **tailpp_or_nil,
+      struct n_strlist *(*ptf)(char const *cmdname, char const *key,
+         void const *dat)){
    struct su_cs_dict_view dv;
    char const **cpp, **xcpp;
-   struct su_cs_dict *dp;
-   su_u32 lines, cnt;
-   FILE *fp;
+   su_u32 cnt;
+   struct n_strlist *resp, *tailp;
    su_boole rv;
    n_NYD_IN;
 
    rv = TRU1;
 
-   /* Continuation request? */
-   if(fpp_or_nil != su_NIL){
-      fp = *fpp_or_nil;
-      /* Final dump? */
-      if(cmdname == su_NIL){
-         lines = 0;
-         goto jdump;
-      }
-   }else
-      fp = n_stdout;
+   resp = *result;
+   if(tailpp_or_nil != su_NIL)
+      tailp = *tailpp_or_nil;
+   else if((tailp = resp) != su_NIL)
+      for(;; tailp = tailp->sl_next)
+         if(tailp->sl_next == su_NIL)
+            break;
 
-   dp = su_S(struct su_cs_dict*,vdp);
-
-   if(dp == su_NIL || (cnt = su_cs_dict_count(dp)) == 0){
-      fprintf(fp, _("# no %s registered\n"), cmdname);
-      rv = (ferror(fp) == 0);
+   if(dp == su_NIL || (cnt = su_cs_dict_count(dp)) == 0)
       goto jleave;
-   }
 
    su_cs_dict_statistics(dp);
 
@@ -1594,10 +1586,8 @@ mx_show_sorted_dict(char const *cmdname, void *vdp,
     * TODO these then could _really_ return NIL... */
    if(su_U32_MAX / sizeof(*cpp) <= cnt ||
          (cpp = su_S(char const**,n_autorec_alloc(sizeof(*cpp) * cnt))
-            ) == su_NIL){
-      rv = FAL0;
+            ) == su_NIL)
       goto jleave;
-   }
 
    xcpp = cpp;
    su_CS_DICT_FOREACH(dp, &dv)
@@ -1605,28 +1595,88 @@ mx_show_sorted_dict(char const *cmdname, void *vdp,
    if(cnt > 1)
       qsort(cpp, cnt, sizeof *cpp, &a_aux_qsort_cpp);
 
-   if(fpp_or_nil == su_NIL || *fpp_or_nil == su_NIL){
-      if((fp = Ftmp(NULL, cmdname, OF_RDWR | OF_UNLINK | OF_REGISTER)
+   for(xcpp = cpp; cnt > 0; ++xcpp, --cnt){
+      struct n_strlist *slp;
+
+      if((slp = (*ptf)(cmdname, *xcpp, su_cs_dict_lookup(dp, *xcpp))
             ) == su_NIL)
-         fp = n_stdout;
-      if(fpp_or_nil != su_NIL)
-         *fpp_or_nil = fp;
+         continue;
+      if(resp == su_NIL)
+         resp = slp;
+      else
+         tailp->sl_next = slp;
+      tailp = slp;
    }
 
+jleave:
+   *result = resp;
+   if(tailpp_or_nil != su_NIL)
+      *tailpp_or_nil = tailp;
+
+   n_NYD_OU;
+   return rv;
+}
+
+FL struct n_strlist *
+mx_xy_dump_dict_gen_ptf(char const *cmdname, char const *key, void const *dat){
+   /* XXX real strlist + str_to_fmt() */
+   char *cp;
+   struct n_strlist *slp;
+   su_uz kl, dl, cl;
+   char const *kp, *dp;
+   n_NYD2_IN;
+
+   kp = n_shexp_quote_cp(key, TRU1);
+   dp = n_shexp_quote_cp(su_S(char const*,dat), TRU1);
+   kl = su_cs_len(kp);
+   dl = su_cs_len(dp);
+   cl = su_cs_len(cmdname);
+
+   slp = n_STRLIST_AUTO_ALLOC(cl + 1 + kl + 1 + dl +1);
+   slp->sl_next = su_NIL;
+   cp = slp->sl_dat;
+   su_mem_copy(cp, cmdname, cl);
+   cp += cl;
+   *cp++ = ' ';
+   su_mem_copy(cp, kp, kl);
+   cp += kl;
+   *cp++ = ' ';
+   su_mem_copy(cp, dp, dl);
+   cp += dl;
+   *cp = '\0';
+   slp->sl_len = su_P2UZ(cp - slp->sl_dat);
+
+   n_NYD2_OU;
+   return slp;
+}
+
+FL boole
+mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp){
+   su_uz lines;
+   FILE *fp;
+   su_boole rv;
+   n_NYD_IN;
+
+   rv = TRU1;
+
+   if((fp = Ftmp(NULL, cmdname, OF_RDWR | OF_UNLINK | OF_REGISTER)) == NIL)
+      fp = n_stdout;
+
    /* Create visual result */
-   lines = 0;
-
-   for(xcpp = cpp; cnt > 0; ++lines, ++xcpp, --cnt)
-      if(!(rv = (*ptf)(fp, *xcpp, su_cs_dict_lookup(dp, *xcpp))))
+   for(lines = 0; slp != su_NIL; ++lines, slp = slp->sl_next)
+      if(fputs(slp->sl_dat, fp) == EOF || putc('\n', fp) == EOF){
+         rv = FAL0;
          break;
+      }
 
-jdump:
-   if(fp != n_stdout && (fpp_or_nil == su_NIL || cmdname == su_NIL)){
+   if(rv && lines == 0 && fprintf(fp, _("# no %s registered\n"), cmdname) < 0)
+      rv = FAL0;
+
+   if(fp != n_stdout){
       page_or_print(fp, lines);
       Fclose(fp);
    }
 
-jleave:
    n_NYD_OU;
    return rv;
 }

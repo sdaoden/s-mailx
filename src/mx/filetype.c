@@ -75,7 +75,8 @@ static struct su_toolbox const a_ft_tbox = su_TOOLBOX_I9R(
 );
 
 /* */
-static boole a_ft_print(FILE *fp, char const *key, void const *dat);
+static struct n_strlist *a_ft_dump(char const *cmdname, char const *key,
+      void const *dat);
 
 static void *
 a_ft_clone(void const *t, u32 estate){
@@ -123,22 +124,44 @@ a_ft_assign(void *self, void const *t, u32 estate){
    return rv;
 }
 
-static boole
-a_ft_print(FILE *fp, char const *key, void const *dat){
-   boole rv;
+static struct n_strlist *
+a_ft_dump(char const *cmdname, char const *key, void const *dat){
+   /* XXX real strlist + str_to_fmt() */
+   char *cp;
+   struct n_strlist *slp;
+   uz kl, dloadl, dsavel, cl;
+   char const *kp, *dloadp, *dsavep;
    struct a_ft_dat *ftdp;
-   NYD_IN;
+   NYD2_IN;
 
    ftdp = S(struct a_ft_dat*,dat);
+   kp = n_shexp_quote_cp(key, TRU1);
+   dloadp = n_shexp_quote_cp(ftdp->ftd_load.s, TRU1);
+   dsavep = n_shexp_quote_cp(ftdp->ftd_save.s, TRU1);
+   kl = su_cs_len(kp);
+   dloadl = su_cs_len(dloadp);
+   dsavel = su_cs_len(dsavep);
+   cl = su_cs_len(cmdname);
 
-   fprintf(fp, "filetype %s %s %s\n",
-      n_shexp_quote_cp(key, TRU1),
-      n_shexp_quote_cp(ftdp->ftd_load.s, TRU1),
-      n_shexp_quote_cp(ftdp->ftd_save.s, TRU1));
+   slp = n_STRLIST_AUTO_ALLOC(cl + 1 + kl + 1 + dloadl + 1 + dsavel +1);
+   slp->sl_next = NIL;
+   cp = slp->sl_dat;
+   su_mem_copy(cp, cmdname, cl);
+   cp += cl;
+   *cp++ = ' ';
+   su_mem_copy(cp, kp, kl);
+   cp += kl;
+   *cp++ = ' ';
+   su_mem_copy(cp, dloadp, dloadl);
+   cp += dloadl;
+   *cp++ = ' ';
+   su_mem_copy(cp, dsavep, dsavel);
+   cp += dsavel;
+   *cp = '\0';
+   slp->sl_len = P2UZ(cp - slp->sl_dat);
 
-   rv = (ferror(fp) == 0);
-   NYD_OU;
-   return rv;
+   NYD2_OU;
+   return slp;
 }
 
 FL int
@@ -150,16 +173,24 @@ c_filetype(void *vp){ /* TODO support auto chains: .tar.gz -> .gz + .tar */
    NYD_IN;
 
    if((key = *(argv = vp)) == NIL){
-      rv = !mx_show_sorted_dict("filetype", a_ft_dp, &a_ft_print, NIL);
+      struct n_strlist *slp;
+
+      slp = NIL;
+      rv = !(mx_xy_dump_dict("filetype", a_ft_dp, &slp, NIL, &a_ft_dump) &&
+            mx_page_or_print_strlist("filetype", slp));
       goto jleave;
    }
 
    if(argv[1] == NIL){
       if(a_ft_dp != NIL &&
-            su_cs_dict_view_find(su_cs_dict_view_setup(&dv, a_ft_dp), key))
-         rv = !a_ft_print(n_stdout, su_cs_dict_view_key(&dv),
+            su_cs_dict_view_find(su_cs_dict_view_setup(&dv, a_ft_dp), key)){
+         struct n_strlist *slp;
+
+         slp = a_ft_dump("filetype", su_cs_dict_view_key(&dv),
                su_cs_dict_view_data(&dv));
-      else{
+         rv = (fputs(slp->sl_dat, n_stdout) == EOF);
+         rv |= (putc('\n', n_stdout) == EOF);
+      }else{
          n_err(_("No such filetype: %s\n"), n_shexp_quote_cp(key, FAL0));
          rv = 1;
       }

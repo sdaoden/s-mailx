@@ -1619,7 +1619,7 @@ struct n_strlist{
 };
 #define n_STRLIST_ALLOC(SZ) /* XXX -> nailfuns.h (and pimp interface) */\
    n_alloc(n_VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
-#define n_STRLIST_AUTOREC_ALLOC(SZ) \
+#define n_STRLIST_AUTO_ALLOC(SZ) \
    n_autorec_alloc(n_VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
 #define n_STRLIST_LOFI_ALLOC(SZ) \
    n_lofi_alloc(n_VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)

@@ -86,8 +86,11 @@ static struct a_ml_regex *a_ml_re_def, *a_ml_re_sub;
 static boole a_ml_mux(boole subscribe, char const **argv);
 
 /* */
-static boole a_ml_print(FILE *fp, char const *key, void const *dat);
-static boole a_ml_print_sub(FILE *fp, char const *key, void const *dat);
+static void a_ml_unsub_all(struct su_cs_dict_view *dvp, struct su_cs_dict *dp);
+
+/* */
+static struct n_strlist *a_ml_dump(char const *cmdname, char const *key,
+      void const *dat);
 
 /* su_toolbox for a_ml_re_dp */
 #ifdef mx_HAVE_REGEX
@@ -110,17 +113,14 @@ a_ml_mux(boole subscribe, char const **argv){
    cmd = subscribe ? "mlsubscribe" : "mlist";
 
    if((key = *argv) == NIL){
-      FILE *xfp;
-      boole (*lfunp)(FILE*,char const*,void const*);
+      struct n_strlist *slp, *stailp;
 
-      lfunp = subscribe ? &a_ml_print_sub : &a_ml_print;
-      xfp = NIL;
-      notrv = !mx_show_sorted_dict(cmd, a_ml_dp, lfunp, &xfp);
+      stailp = slp = NIL;
+      notrv = !(mx_xy_dump_dict(cmd, a_ml_dp, &slp, &stailp, &a_ml_dump) &&
 #ifdef mx_HAVE_REGEX
-      cmd = subscribe ? "mlsubscribe/regex" : "mlist/regex";
-      notrv |= !mx_show_sorted_dict(cmd, a_ml_re_dp, lfunp, &xfp);
+            mx_xy_dump_dict(cmd, a_ml_re_dp, &slp, &stailp, &a_ml_dump) &&
 #endif
-      notrv |= !mx_show_sorted_dict(NIL, NIL, NIL, &xfp);
+            mx_page_or_print_strlist(cmd, slp));
    }else{
       if(a_ml_dp == NIL){
          a_ml_dp = su_cs_dict_set_treshold_shift(
@@ -193,55 +193,76 @@ jset_data:
    return !notrv;
 }
 
-static boole
-a_ml_print(FILE *fp, char const *key, void const *dat){
-   boole rv;
-   char const *type;
-   union {void const *cvp; up flags;} u;
+static void
+a_ml_unsub_all(struct su_cs_dict_view *dvp, struct su_cs_dict *dp){
+   union {void *vp; up flags;} u;
    NYD2_IN;
 
-   u.cvp = dat;
+   for(su_cs_dict_view_setup(dvp, dp); su_cs_dict_view_is_valid(dvp);
+         su_cs_dict_view_next(dvp)){
+      u.vp = su_cs_dict_view_data(dvp);
 
-   if(!(u.flags & TRU1)){
-#ifdef mx_HAVE_REGEX
-      if(u.cvp != NIL && (n_poption & n_PO_D_V))
-         type = "  # regex(7)";
-      else
-#endif
-         type = su_empty;
-
-      fprintf(fp, "mlist %s%s\n", n_shexp_quote_cp(key, TRU1), type);
+      if(u.flags & TRU1){
+         u.flags ^= TRU1;
+         su_cs_dict_view_set_data(dvp, u.vp);
+      }
    }
-
-   rv = (ferror(fp) == 0);
    NYD2_OU;
-   return rv;
 }
 
-static boole
-a_ml_print_sub(FILE *fp, char const *key, void const *dat){
-   boole rv;
-   char const *type;
+static struct n_strlist *
+a_ml_dump(char const *cmdname, char const *key, void const *dat){
+   /* XXX real strlist + str_to_fmt() */
+   char *cp;
    union {void const *cvp; up flags;} u;
+   struct n_strlist *slp;
+   uz typel, kl, cl;
+   char const *typep, *kp;
    NYD2_IN;
 
+   typep = su_empty;
+   typel = 0;
+
+   slp = NIL;
    u.cvp = dat;
    if(u.flags & TRU1){
       u.flags &= ~TRU1;
 
+      if(!su_cs_cmp(cmdname, "mlist"))
+         goto jleave;
+
 #ifdef mx_HAVE_REGEX
-      if(u.cvp != NIL && (n_poption & n_PO_D_V))
-         type = " # regex(7)";
-      else
+      if(u.cvp != NIL && (n_poption & n_PO_D_V)){
+         typep = " # regex(7)";
+         typel = sizeof(" # regex(7)") -1;
+      }
 #endif
-         type = su_empty;
+   }else if(!su_cs_cmp(cmdname, "mlsubscribe"))
+      goto jleave;
 
-      fprintf(fp, "mlsubscribe %s%s\n", n_shexp_quote_cp(key, TRU1), type);
+   kp = n_shexp_quote_cp(key, TRU1);
+   kl = su_cs_len(kp);
+   cl = su_cs_len(cmdname);
+
+   slp = n_STRLIST_AUTO_ALLOC(cl + 1 + kl + 1 + typel +1);
+   slp->sl_next = NIL;
+   cp = slp->sl_dat;
+   su_mem_copy(cp, cmdname, cl);
+   cp += cl;
+   *cp++ = ' ';
+   su_mem_copy(cp, kp, kl);
+   cp += kl;
+   if(typel > 0){
+      *cp++ = ' ';
+      su_mem_copy(cp, typep, typel);
+      cp += typel;
    }
+   *cp = '\0';
+   slp->sl_len = P2UZ(cp - slp->sl_dat);
 
-   rv = (ferror(fp) == 0);
+jleave:
    NYD2_OU;
-   return rv;
+   return slp;
 }
 
 #ifdef mx_HAVE_REGEX
@@ -415,24 +436,6 @@ c_mlsubscribe(void *vp){
    rv = !a_ml_mux(TRU1, vp);
    NYD_OU;
    return rv;
-}
-
-static void a_ml_unsub_all(struct su_cs_dict_view *dvp, struct su_cs_dict *dp);
-static void
-a_ml_unsub_all(struct su_cs_dict_view *dvp, struct su_cs_dict *dp){
-   union {void *vp; up flags;} u;
-   NYD2_IN;
-
-   for(su_cs_dict_view_setup(dvp, dp); su_cs_dict_view_is_valid(dvp);
-         su_cs_dict_view_next(dvp)){
-      u.vp = su_cs_dict_view_data(dvp);
-
-      if(u.flags & TRU1){
-         u.flags ^= TRU1;
-         su_cs_dict_view_set_data(dvp, u.vp);
-      }
-   }
-   NYD2_OU;
 }
 
 FL int

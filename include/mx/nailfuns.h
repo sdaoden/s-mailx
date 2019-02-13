@@ -35,6 +35,7 @@
  * SUCH DAMAGE.
  */
 
+struct su_cs_dict;
 struct quoteflt;
 
 /*
@@ -377,21 +378,27 @@ FL char const *n_regex_err_to_doc(const regex_t *rep, int e);
 #endif
 
 /* Shared code for c_unxy() which base upon su_cs_dict, e.g., `shortcut' */
-struct su_cs_dict;
 FL su_boole mx_unxy_dict(char const *cmdname, struct su_cs_dict *dp, void *vp);
 
-/* Sort all keys of vdp (a su_cs_dict* indeed), then iterate over them, calling
- * the given hook for each key/data pair, collecting the output and paging it
- * to the user under the headline cmdname.
- *
- * Setting fpp_or_nil requests continuation support: we will act as normal but
- * not yet dump out data, instead we will place in it a temporary file pointer;
- * if *!=NIL we will continue (vdp likely different) unless cmdname==NIL, in
- * which case we finally dump and remove the temporary file.
- * TODO This should just work through su_iodevice */
-FL su_boole mx_show_sorted_dict(char const *cmdname, void *vdp,
-      su_boole (*ptf)(FILE *fp, char const *key, void const *dat),
-      FILE **fpp_or_nil);
+/* Sort all keys of dp, iterate over them, call the given hook ptf for each
+ * key/data pair, place any non-NIL returned in the *result list.
+ * A non-NIL *result will not be updated, but be appended to.
+ * tailpp_or_nil can be set to speed up follow runs.
+ * The boole return states error, *result may be NIL even upon success,
+ * e.g., if dp is NIL or empty */
+FL su_boole mx_xy_dump_dict(char const *cmdname, struct su_cs_dict *dp,
+      struct n_strlist **result, struct n_strlist **tailpp_or_nil,
+      struct n_strlist *(*ptf)(char const *cmdname, char const *key,
+         void const *dat));
+
+/* Default callback which can be used when dat is in fact a char const* */
+FL struct n_strlist *mx_xy_dump_dict_gen_ptf(char const *cmdname,
+      char const *key, void const *dat);
+
+/* page_or_print() all members of slp, one line per node.
+ * If slp is NIL print a line that no cmdname are registered */
+FL su_boole mx_page_or_print_strlist(char const *cmdname,
+      struct n_strlist *slp);
 
 /*
  * cmd-cnd.c

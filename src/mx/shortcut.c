@@ -39,20 +39,6 @@
 
 struct su_cs_dict *a_scut_dp, a_scut__d; /* XXX atexit _gut() (DVL()) */
 
-static boole a_scut_print(FILE *fp, char const *key, char const *dat);
-
-static boole
-a_scut_print(FILE *fp, char const *key, char const *dat){
-   boole rv;
-   NYD2_IN;
-
-   fprintf(fp, "shortcut %s %s\n",
-      n_shexp_quote_cp(key, TRU1), n_shexp_quote_cp(dat, TRU1));
-   rv = (ferror(fp) == 0);
-   NYD2_OU;
-   return rv;
-}
-
 FL int
 c_shortcut(void *vp){
    struct su_cs_dict_view dv;
@@ -60,14 +46,22 @@ c_shortcut(void *vp){
    char const **argv, *key, *dat;
    NYD_IN;
 
-   if((key = *(argv = vp)) == NIL)
-      rv = !mx_show_sorted_dict("shortcut", a_scut_dp,
-            R(boole(*)(FILE*,char const*,void const*),&a_scut_print), NIL);
-   else if(argv[1] == NIL){
+   if((key = *(argv = vp)) == NIL){
+      struct n_strlist *slp;
+
+      slp = NIL;
+      rv = !(mx_xy_dump_dict("shortcut", a_scut_dp, &slp, NIL,
+               &mx_xy_dump_dict_gen_ptf) &&
+            mx_page_or_print_strlist("shortcut", slp));
+   }else if(argv[1] == NIL){
       if(a_scut_dp != NIL &&
             su_cs_dict_view_find(su_cs_dict_view_setup(&dv, a_scut_dp), key)){
-         dat = S(char const*,su_cs_dict_view_data(&dv));
-         rv = !a_scut_print(n_stdout, key, dat);
+         struct n_strlist *slp;
+
+         slp = mx_xy_dump_dict_gen_ptf("shortcut", key,
+               su_cs_dict_view_data(&dv));
+         rv = (fputs(slp->sl_dat, n_stdout) == EOF);
+         rv |= (putc('\n', n_stdout) == EOF);
       }else{
          n_err(_("No such shortcut: %s\n"), n_shexp_quote_cp(key, FAL0));
          rv = 1;

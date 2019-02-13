@@ -41,20 +41,6 @@
 
 struct su_cs_dict *a_csal_dp, a_csal__d; /* XXX atexit _gut() (DVL()) */
 
-static boole a_csal_print(FILE *fp, char const *key, char const *dat);
-
-static boole
-a_csal_print(FILE *fp, char const *key, char const *dat){
-   boole rv;
-   NYD2_IN;
-
-   fprintf(fp, "charsetalias %s %s\n",
-      n_shexp_quote_cp(key, TRU1), n_shexp_quote_cp(dat, TRU1));
-   rv = (ferror(fp) == 0);
-   NYD2_OU;
-   return rv;
-}
-
 FL int
 c_charsetalias(void *vp){
    struct su_cs_dict_view dv;
@@ -62,10 +48,14 @@ c_charsetalias(void *vp){
    char const **argv, *key, *dat;
    NYD_IN;
 
-   if((key = *(argv = vp)) == NIL)
-      rv = !mx_show_sorted_dict("charsetalias", a_csal_dp,
-            R(boole(*)(FILE*,char const*,void const*),&a_csal_print), NIL);
-   else if(argv[1] == NIL ||
+   if((key = *(argv = vp)) == NIL){
+      struct n_strlist *slp;
+
+      slp = NIL;
+      rv = !(mx_xy_dump_dict("charsetalias", a_csal_dp, &slp, NIL,
+               &mx_xy_dump_dict_gen_ptf) &&
+            mx_page_or_print_strlist("charsetalias", slp));
+   }else if(argv[1] == NIL ||
          (argv[2] == NIL && argv[0][0] == '-' && argv[0][1] == '\0')){
       if(argv[1] != NIL)
          key = argv[1];
@@ -73,12 +63,16 @@ c_charsetalias(void *vp){
 
       if((key = n_iconv_normalize_name(key)) != NIL && a_csal_dp != NIL &&
             su_cs_dict_view_find(su_cs_dict_view_setup(&dv, a_csal_dp), key)){
+         struct n_strlist *slp;
+
          if(argv[1] == NIL)
             dat = S(char const*,su_cs_dict_view_data(&dv));
          else
             dat = mx_charsetalias_expand(key, TRU1);
 
-         rv = !a_csal_print(n_stdout, key, dat);
+         slp = mx_xy_dump_dict_gen_ptf("charsetalias", key, dat);
+         rv = (fputs(slp->sl_dat, n_stdout) == EOF);
+         rv |= (putc('\n', n_stdout) == EOF);
       }else{
          n_err(_("No such charsetalias: %s\n"), n_shexp_quote_cp(dat, FAL0));
          rv = 1;
