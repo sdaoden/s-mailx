@@ -145,7 +145,12 @@ enum a_amv_var_lookup_flags{
    a_AMV_VLOOK_LOCAL_ONLY = 1u<<1,  /* MUST be a `local' variable */
    /* Do not allocate new var for _I3VAL, see _var_lookup() for more */
    a_AMV_VLOOK_I3VAL_NONEW = 1u<<2,
-   a_AMV_VLOOK_I3VAL_NONEW_REPORT = 1u<<3
+   a_AMV_VLOOK_I3VAL_NONEW_REPORT = 1u<<3,
+   /* And then we must be able to detect endless recursion, for example if
+    * $TMPDIR is set to non-existent we can use the VAL_TMPDIR config default,
+    * but if this also fails (filesystem read-only for example), then all bets
+    * are off, and we must not enter an endless loop */
+   a_AMV_VLOOK_BELLA_CIAO_CIAO_CIAO = 1u<<30
 };
 
 enum a_amv_var_setclr_flags{
@@ -1418,7 +1423,7 @@ jleave:
 }
 
 static boole
-a_amv_var_lookup(struct a_amv_var_carrier *avcp,
+a_amv_var_lookup(struct a_amv_var_carrier *avcp, /* XXX too complicated! */
       enum a_amv_var_lookup_flags avlf){
    uz i;
    char const *cp;
@@ -1430,6 +1435,7 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp,
    ASSERT(!(avlf & a_AMV_VLOOK_LOCAL_ONLY) || (avlf & a_AMV_VLOOK_LOCAL));
    ASSERT(!(avlf & a_AMV_VLOOK_I3VAL_NONEW_REPORT) ||
       (avlf & a_AMV_VLOOK_I3VAL_NONEW));
+   ASSERT(!(avlf & a_AMV_VLOOK_BELLA_CIAO_CIAO_CIAO));
 
    /* C99 */{
       struct a_amv_var **avpp, *lavp;
@@ -1538,7 +1544,7 @@ a_amv_var_lookup(struct a_amv_var_carrier *avcp,
          static struct a_amv_var_defval const **arr,
             *arr_base[a_AMV_VAR_I3VALS_CNT +1];
 
-         if(arr == NULL){
+         if(UNLIKELY(arr == NULL)){
             arr = &arr_base[0];
             arr[i = a_AMV_VAR_I3VALS_CNT] = NULL;
             while(i-- > 0)
@@ -1588,7 +1594,8 @@ jerr:
 jleave:
    avcp->avc_var = avp;
 j_leave:
-   if(!(avlf & a_AMV_VLOOK_I3VAL_NONEW) && (n_poption & n_PO_VERBVERB) &&
+   if(UNLIKELY(!(avlf & a_AMV_VLOOK_I3VAL_NONEW)) &&
+         UNLIKELY(n_poption & n_PO_VERBVERB) &&
          avp != (struct a_amv_var*)-1 && avcp->avc_okey != ok_v_log_prefix){
       /* I18N: Variable "name" is set to "value" */
       n_err(_("*%s* is %s\n"),
@@ -1597,6 +1604,7 @@ j_leave:
             : ((avp->av_flags & a_AMV_VF_BOOL) ? _("boolean set")
                : n_shexp_quote_cp(avp->av_value, FAL0))));
    }
+
    NYD2_OU;
    return (avp != NULL);
 
@@ -1611,8 +1619,14 @@ jnewval:
       if(f & (a_AMV_VF_IMPORT | a_AMV_VF_ENV))
          unsetenv(avcp->avc_name);
 #endif
-      if(UNLIKELY(f & a_AMV_VF_DEFVAL) != 0)
+      if(UNLIKELY(f & a_AMV_VF_DEFVAL) != 0){
+         if(avlf & a_AMV_VLOOK_BELLA_CIAO_CIAO_CIAO)
+            n_panic(_("Cannot set *%s* to default value: %s"),
+               n_shexp_quote_cp(avcp->avc_name, FAL0),
+               n_shexp_quote_cp((cp == NIL ? su_empty : cp), FAL0));
+         avlf |= a_AMV_VLOOK_BELLA_CIAO_CIAO_CIAO;
          goto jdefval;
+      }
       goto jerr;
    }else{
       struct a_amv_var **avpp;
