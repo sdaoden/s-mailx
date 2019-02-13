@@ -147,14 +147,14 @@ FL struct mx_name *usermap(struct mx_name *names, boole force_metoo);
 FL struct mx_name *elide(struct mx_name *names);
 
 /* `(un)?alternates' deal with the list of alternate names */
-FL int c_alternates(void *v);
-FL int c_unalternates(void *v);
+FL int c_alternates(void *vp);
+FL int c_unalternates(void *vp);
 
 /* If keep_single is set one alternates member will be allowed in np */
-FL struct mx_name *n_alternates_remove(struct mx_name *np, boole keep_single);
+FL struct mx_name *mx_alternates_remove(struct mx_name *np, boole keep_single);
 
 /* Likewise, is name an alternate in broadest sense? */
-FL boole n_is_myname(char const *name);
+FL boole mx_name_is_mine(char const *name);
 
 /* Is name a valid alias */
 FL boole n_alias_is_valid_name(char const *name);

@@ -377,12 +377,12 @@ jwork_msg:
          a_crese_polite_rt_mft_move(mp, &head, np);
 
          head.h_mailx_raw_cc = n_namelist_dup(head.h_cc, GCC | gf);
-         head.h_cc = n_alternates_remove(head.h_cc, FAL0);
+         head.h_cc = mx_alternates_remove(head.h_cc, FAL0);
       }else
          head.h_to = np;
 
       head.h_mailx_raw_to = n_namelist_dup(head.h_to, GTO | gf);
-      head.h_to = n_alternates_remove(head.h_to, FAL0);
+      head.h_to = mx_alternates_remove(head.h_to, FAL0);
 #ifdef mx_HAVE_DEVEL
       for(np = head.h_to; np != NULL; np = np->n_flink)
          assert((np->n_type & GMASK) == GTO);
@@ -408,7 +408,7 @@ jwork_msg:
    }
    if(np != NULL){
       head.h_mailx_raw_cc = n_namelist_dup(np, GCC | gf);
-      head.h_cc = n_alternates_remove(np, FAL0);
+      head.h_cc = mx_alternates_remove(np, FAL0);
    }
 
    /* To: */
@@ -424,7 +424,7 @@ jwork_msg:
    /* Delete my name from reply list, and with it, all my alternate names */
    if(np != NULL){
       head.h_mailx_raw_to = n_namelist_dup(np, GTO | gf);
-      np = n_alternates_remove(np, FAL0);
+      np = mx_alternates_remove(np, FAL0);
       /* The user may have send this to himself, don't ignore that */
       if(count(np) == 0){
          np = lextract(cp2, GTO | gf);
@@ -608,10 +608,10 @@ a_crese_Reply(int *msgvec, bool_t recipient_record){
       a_crese_polite_rt_mft_move(mp, &head, head.h_to);
 
       head.h_mailx_raw_cc = n_namelist_dup(head.h_cc, GCC | gf);
-      head.h_cc = n_alternates_remove(head.h_cc, FAL0);
+      head.h_cc = mx_alternates_remove(head.h_cc, FAL0);
    }
    head.h_mailx_raw_to = n_namelist_dup(head.h_to, GTO | gf);
-   head.h_to = n_alternates_remove(head.h_to, FAL0);
+   head.h_to = mx_alternates_remove(head.h_to, FAL0);
 
    if(ok_blook(quote_as_attachment)){
       head.h_attach = n_autorec_calloc(1, sizeof *head.h_attach);
@@ -747,7 +747,7 @@ a_crese_resend1(void *vp, bool_t add_resent){
    myrawto = nalloc(cap->ca_arg.ca_str.s, GTO | gf);
    myto = usermap(n_namelist_dup(myrawto, myrawto->n_type), FAL0);
    if(!ok_blook(posix))
-      myto = n_alternates_remove(myto, TRU1);
+      myto = mx_alternates_remove(myto, TRU1);
    if(myto == NULL)
       goto jleave;
 

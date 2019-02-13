@@ -2278,7 +2278,7 @@ jto_fmt:
             /* Detect whether we were part of the former MFT:.
              * Throw away MFT: if we were the sole member (kidding) */
             hp->h_mft = mft = elide(hp->h_mft);
-            mft = n_alternates_remove(n_namelist_dup(mft, GNONE), FAL0);
+            mft = mx_alternates_remove(n_namelist_dup(mft, GNONE), FAL0);
             if(mft == NULL)
                f ^= a_HADMFT;
             else for(x = hp->h_mft; x != NULL;
@@ -2296,7 +2296,7 @@ jto_fmt:
           * TODO that is _currently_ in some header fields!!!  v15.0: complete
           * TODO rewrite, object based, lazy evaluated, on-the-fly marked.
           * TODO then this should be a really cheap thing in here... */
-         np = elide(n_alternates_remove(cat(
+         np = elide(mx_alternates_remove(cat(
                n_namelist_dup(hp->h_to, GEXTRA | GFULL),
                n_namelist_dup(hp->h_cc, GEXTRA | GFULL)), FAL0));
          addr = hp->h_list_post;

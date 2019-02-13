@@ -1,6 +1,6 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Implementation of names.h.
- *@ FIXME Use the new GNOT_A_LIST
+ *@ XXX Use a su_cs_set for alternates stuff?
  *
  * Copyright (c) 2000-2004 Gunnar Ritter, Freiburg i. Br., Germany.
  * Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
@@ -44,16 +44,21 @@
 #endif
 
 #include <su/cs.h>
+#include <su/cs-dict.h>
 
 #include "mx/iconv.h"
 
 #include "mx/names.h"
 #include "su/code-in.h"
 
+/* ..of a_nm_a8s_dp */
+#define a_NM_A8S_FLAGS (su_CS_DICT_CASE |\
+      su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
+#define a_NM_A8S_TRESHOLD_SHIFT 2
+
 enum a_nm_type{
    /* Main types */
-   a_NM_T_ALTERNATES = 1,
-   a_NM_T_ALIAS,
+   a_NM_T_ALIAS = 1,
    a_NM_T_MASK = 0x1F,
 
    /* Extended type mask to be able to reflect what we really have.
@@ -66,8 +71,8 @@ CTA(a_NM_T_MASK >= a_NM_T_ALIAS, "Mask does not cover necessary bits");
 struct a_nm_group{
    struct a_nm_group *ng_next;
    u32 ng_subclass_off; /* of "subclass" in .ng_id (if any) */
-   u16 ng_id_len_sub;   /* length of .ng_id: _subclass_off - this */
-   u8 ng_type;          /* enum a_nm_type */
+   u16 ng_id_len_sub; /* length of .ng_id: _subclass_off - this */
+   u8 ng_type; /* enum a_nm_type */
    /* Identifying name, of variable size.  Dependent on actual "subtype" more
     * data follows thereafter, but note this is always used (i.e., for regular
     * expression entries this is still set to the plain string) */
@@ -96,8 +101,7 @@ struct a_nm_lookup{
    struct a_nm_group *ngl_group;
 };
 
-/* `alternates' */
-static struct a_nm_group *a_nm_alternates_heads[HSHSIZE];
+struct su_cs_dict *a_nm_a8s_dp, a_nm_a8s__d; /* XXX atexit _gut() (DVL()) */
 
 /* `alias' */
 static struct a_nm_group *a_nm_alias_heads[HSHSIZE];
@@ -151,16 +155,17 @@ static boole a_nm_group_del(enum a_nm_type nt, char const *id);
 static struct a_nm_group *a_nm__group_del(struct a_nm_lookup *nglp);
 static void a_nm__names_del(struct a_nm_group *ngp);
 
-/* Print all groups of the given type, alphasorted, or store in `vput' varname:
- * only in this mode it can return failure */
-static boole a_nm_group_print_all(enum a_nm_type nt, char const *varname);
+/* Print all groups of the given type, alphasorted */
+static void a_nm_group_print_all(enum a_nm_type nt);
 
 static int a_nm__group_print_qsorter(void const *a, void const *b);
 
-/* Really print a group, actually.  Or store in vputsp, if set.
- * Return number of written lines */
-static uz a_nm_group_print(struct a_nm_group const *ngp, FILE *fo,
-      struct n_string *vputsp);
+/* Really print a group, actually.  Return number of written lines */
+static uz a_nm_group_print(struct a_nm_group const *ngp, FILE *fo);
+
+/* */
+static struct n_strlist *a_nm_a8s_dump(char const *cmdname, char const *key,
+      void const *dat);
 
 static boole
 a_nm_is_same_name(char const *n1, char const *n2){
@@ -405,10 +410,6 @@ a_nm_lookup(enum a_nm_type nt, struct a_nm_lookup *nglp,
       struct a_nm_group **ngpa;
 
       switch((nt &= a_NM_T_MASK)){
-      case a_NM_T_ALTERNATES:
-         ngpa = a_nm_alternates_heads;
-         icase = TRU1;
-         break;
       default:
       case a_NM_T_ALIAS:
          ngpa = a_nm_alias_heads;
@@ -460,9 +461,6 @@ a_nm_group_go_first(enum a_nm_type nt, struct a_nm_lookup *nglp){
    NYD2_IN;
 
    switch((nt &= a_NM_T_MASK)){
-   case a_NM_T_ALTERNATES:
-      ngpa = a_nm_alternates_heads;
-      break;
    default:
    case a_NM_T_ALIAS:
       ngpa = a_nm_alias_heads;
@@ -520,9 +518,6 @@ a_nm_group_fetch(enum a_nm_type nt, char const *id, uz addsz){
 
    i = Z_ALIGN(VSTRUCT_SIZEOF(struct a_nm_group, ng_id) + l);
    switch(nt & a_NM_T_MASK){
-   case a_NM_T_ALTERNATES:
-   default:
-      break;
    case a_NM_T_ALIAS:
       addsz += sizeof(struct a_nm_grp_names_head);
       break;
@@ -535,16 +530,6 @@ a_nm_group_fetch(enum a_nm_type nt, char const *id, uz addsz){
    ngp->ng_subclass_off = S(u32,i);
    ngp->ng_id_len_sub = S(u16,i - --l);
    ngp->ng_type = nt;
-   switch(nt & a_NM_T_MASK){
-   case a_NM_T_ALTERNATES:{
-      char *cp, c;
-
-      for(cp = ngp->ng_id; (c = *cp) != '\0'; ++cp)
-         *cp = su_cs_to_lower(c);
-      }break;
-   default:
-      break;
-   }
 
    if((nt & a_NM_T_MASK) == a_NM_T_ALIAS){
       struct a_nm_grp_names_head *ngnhp;
@@ -634,9 +619,8 @@ a_nm__names_del(struct a_nm_group *ngp){
    NYD2_OU;
 }
 
-static boole
-a_nm_group_print_all(enum a_nm_type nt, char const *varname){
-   struct n_string s;
+static void
+a_nm_group_print_all(enum a_nm_type nt){
    uz lines;
    FILE *fp;
    char const **ida;
@@ -647,22 +631,10 @@ a_nm_group_print_all(enum a_nm_type nt, char const *varname){
    enum a_nm_type xnt;
    NYD_IN;
 
-   if(varname != NULL)
-      n_string_creat_auto(&s);
-
    xnt = nt & a_NM_T_PRINT_MASK;
 
-   switch(xnt & a_NM_T_MASK){
-   case a_NM_T_ALTERNATES:
-      tname = "alternates";
-      ngpa = a_nm_alternates_heads;
-      break;
-   default:
-   case a_NM_T_ALIAS:
-      tname = "alias";
-      ngpa = a_nm_alias_heads;
-      break;
-   }
+   tname = "alias";
+   ngpa = a_nm_alias_heads;
 
    /* Count entries */
    for(i = h = 0; h < HSHSIZE; ++h)
@@ -670,8 +642,7 @@ a_nm_group_print_all(enum a_nm_type nt, char const *varname){
          if((ngp->ng_type & a_NM_T_PRINT_MASK) == xnt)
             ++i;
    if(i == 0){
-      if(varname == NULL)
-         fprintf(n_stdout, _("# no %s registered\n"), tname);
+      fprintf(n_stdout, _("# no %s registered\n"), tname);
       goto jleave;
    }
    ++i;
@@ -686,56 +657,22 @@ a_nm_group_print_all(enum a_nm_type nt, char const *varname){
       qsort(ida, i, sizeof *ida, &a_nm__group_print_qsorter);
    ida[i] = NULL;
 
-   if(varname != NULL)
-      fp = NULL;
-   else if((fp = Ftmp(NULL, "nagprint", OF_RDWR | OF_UNLINK | OF_REGISTER)
-         ) == NULL)
+   if((fp = Ftmp(NULL, "nagprint", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
       fp = n_stdout;
 
    /* Create visual result */
    lines = 0;
 
-   switch(xnt & a_NM_T_MASK){
-   case a_NM_T_ALTERNATES:
-      if(fp != NULL){
-         fputs(tname, fp);
-         lines = 1;
-      }
-      break;
-   default:
-      break;
-   }
-
    for(i = 0; ida[i] != NULL; ++i)
-      lines += a_nm_group_print(a_nm_group_find(nt, ida[i]), fp, &s);
+      lines += a_nm_group_print(a_nm_group_find(nt, ida[i]), fp);
 
-   switch(xnt & a_NM_T_MASK){
-   case a_NM_T_ALTERNATES:
-      if(fp != NULL){
-         putc('\n', fp);
-         ASSERT(lines == 1);
-      }
-      break;
-   default:
-      break;
-   }
-
-   if(varname == NULL && fp != n_stdout){
-      ASSERT(fp != NULL);
+   if(fp != n_stdout){
       page_or_print(fp, lines);
       Fclose(fp);
    }
 
 jleave:
-   if(varname != NULL){
-      tname = n_string_cp(&s);
-      if(n_var_vset(varname, (up)tname))
-         varname = NULL;
-      else
-         n_pstate_err_no = su_ERR_NOTSUP;
-   }
    NYD_OU;
-   return (varname == NULL);
 }
 
 static int
@@ -749,24 +686,14 @@ a_nm__group_print_qsorter(void const *a, void const *b){
 }
 
 static uz
-a_nm_group_print(struct a_nm_group const *ngp, FILE *fo,
-      struct n_string *vputsp){
+a_nm_group_print(struct a_nm_group const *ngp, FILE *fo){
    uz rv;
    NYD2_IN;
 
    rv = 1;
 
    switch(ngp->ng_type & a_NM_T_MASK){
-   case a_NM_T_ALTERNATES:{
-      if(fo != NULL)
-         fprintf(fo, " %s", ngp->ng_id);
-      else{
-         if(vputsp->s_len > 0)
-            vputsp = n_string_push_c(vputsp, ' ');
-         /*vputsp =*/ n_string_push_cp(vputsp, ngp->ng_id);
-      }
-      rv = 0;
-      }break;
+   default:
    case a_NM_T_ALIAS:{
       struct a_nm_grp_names_head *ngnhp;
       struct a_nm_grp_names *ngnp;
@@ -789,6 +716,26 @@ a_nm_group_print(struct a_nm_group const *ngp, FILE *fo,
    }
    NYD2_OU;
    return rv;
+}
+
+static struct n_strlist *
+a_nm_a8s_dump(char const *cmdname, char const *key, void const *dat){
+   /* XXX real strlist + str_to_fmt() */
+   struct n_strlist *slp;
+   uz kl;
+   NYD2_IN;
+   UNUSED(cmdname);
+   UNUSED(dat);
+
+   /*key = n_shexp_quote_cp(key, TRU1); plain address: not needed */
+   kl = su_cs_len(key);
+
+   slp = n_STRLIST_AUTO_ALLOC(kl +1);
+   slp->sl_next = NIL;
+   slp->sl_len = kl;
+   su_mem_copy(slp->sl_dat, key, kl +1);
+   NYD2_OU;
+   return slp;
 }
 
 FL struct mx_name *
@@ -1207,7 +1154,7 @@ n_namelist_vaporise_head(boole strip_alternates, struct header *hp,
 
    tolist = usermap(tolist, strip_alternates/*metoo*/);
    if(strip_alternates)
-      tolist = n_alternates_remove(tolist, TRU1);
+      tolist = mx_alternates_remove(tolist, TRU1);
    tolist = elide(checkaddrs(tolist, eacm, set_on_error));
 
    for (np = tolist; np != NULL; np = np->n_flink) {
@@ -1333,77 +1280,95 @@ jleave:
 
 FL int
 c_alternates(void *vp){
-   struct a_nm_group *ngp;
-   char const *varname, *ccp;
-   char **argv;
+   struct n_string s_b, *s;
+   struct n_strlist *slp;
+   int rv;
+   char const **argv, *varname, *key;
    NYD_IN;
 
    n_pstate_err_no = su_ERR_NONE;
 
-   argv = vp;
-   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
+   argv = S(char const**,vp);
+   varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NIL;
 
-   if(*argv == NULL){
-      if(!a_nm_group_print_all(a_NM_T_ALTERNATES, varname))
-         vp = NULL;
+   if((key = *argv) == NIL){
+      slp = NIL;
+      rv = !mx_xy_dump_dict("alternates", a_nm_a8s_dp, &slp, NIL,
+               &a_nm_a8s_dump);
+      if(!rv){
+         s = n_string_creat_auto(&s_b);
+         s = n_string_book(s, 500); /* xxx */
+
+         for(; slp != NIL; slp = slp->sl_next){
+            if(s->s_len > 0)
+               s = n_string_push_c(s, ' ');
+            s = n_string_push_buf(s, slp->sl_dat, slp->sl_len);
+         }
+         key = n_string_cp(s);
+
+         if(varname != NIL){
+            if(!n_var_vset(varname, S(up,key))){
+               n_pstate_err_no = su_ERR_NOTSUP;
+               rv = 1;
+            }
+         }else if(*key != '\0')
+            rv = !(fprintf(n_stdout, "alternates %s\n", key) >= 0);
+         else
+            rv = !(fprintf(n_stdout, _("# no alternates registered\n")) >= 0);
+      }
    }else{
       if(varname != NULL)
          n_err(_("`alternates': `vput' only supported for show mode\n"));
 
-      /* Delete the old set to "declare a list", if *posix* */
-      if(ok_blook(posix))
-         a_nm_group_del(a_NM_T_ALTERNATES, n_star);
+      if(a_nm_a8s_dp == NIL)
+         a_nm_a8s_dp = su_cs_dict_set_treshold_shift(
+               su_cs_dict_create(&a_nm_a8s__d, a_NM_A8S_FLAGS, NIL),
+               a_NM_A8S_TRESHOLD_SHIFT);
+      /* In POSIX mode this command declares a, not appends to a list */
+      else if(ok_blook(posix))
+         su_cs_dict_clear_elems(a_nm_a8s_dp);
 
-      while((ccp = *argv++) != NULL){
-         uz l;
+      for(rv = 0; (key = *argv++) != NIL;){
          struct mx_name *np;
 
-         if((np = lextract(ccp, GSKIN)) == NULL || np->n_flink != NULL ||
-               (np = checkaddrs(np, EACM_STRICT, NULL)) == NULL){
+         if((np = n_extract_single(key, 0)) == NIL ||
+               (np = checkaddrs(np, EACM_STRICT, NIL)) == NIL){
             n_err(_("Invalid `alternates' argument: %s\n"),
-               n_shexp_quote_cp(ccp, FAL0));
+               n_shexp_quote_cp(key, FAL0));
             n_pstate_err_no = su_ERR_INVAL;
-            vp = NULL;
+            rv = 1;
             continue;
          }
-         ccp = np->n_name;
+         key = np->n_name;
 
-         l = su_cs_len(ccp) +1;
-         if((ngp = a_nm_group_fetch(a_NM_T_ALTERNATES, ccp, l)) == NULL){
-            n_err(_("Failed to create storage for alternates: %s\n"),
-               n_shexp_quote_cp(ccp, FAL0));
-            n_pstate_err_no = su_ERR_NOMEM;
-            vp = NULL;
+         if(su_cs_dict_replace(a_nm_a8s_dp, key, NIL) > 0){
+            n_err(_("Failed to create `alternates' storage: %s\n"),
+               n_shexp_quote_cp(key, FAL0));
+            n_pstate_err_no = su_ERR_INVAL;
+            rv = 1;
          }
       }
    }
+
    NYD_OU;
-   return (vp != NULL ? 0 : 1);
+   return rv;
 }
 
 FL int
 c_unalternates(void *vp){
-   char **argv;
    int rv;
    NYD_IN;
 
-   rv = 0;
-   argv = vp;
-
-   do if(!a_nm_group_del(a_NM_T_ALTERNATES, *argv)){
-      n_err(_("No such `alternates': %s\n"), n_shexp_quote_cp(*argv, FAL0));
-      rv = 1;
-   }while(*++argv != NULL);
+   rv = !mx_unxy_dict("alternates", a_nm_a8s_dp, vp);
    NYD_OU;
    return rv;
 }
 
 FL struct mx_name *
-n_alternates_remove(struct mx_name *np, boole keep_single){
+mx_alternates_remove(struct mx_name *np, boole keep_single){
    /* XXX keep a single pointer, initial null, and immediate remove nodes
     * XXX on successful match unless keep single and that pointer null! */
-   struct a_nm_lookup ngl;
-   struct a_nm_group *ngp;
+   struct su_cs_dict_view dv;
    struct mx_name *xp, *newnp;
    NYD_IN;
 
@@ -1413,9 +1378,9 @@ n_alternates_remove(struct mx_name *np, boole keep_single){
 
    /* Mark all possible alternate names (xxx sic: instead walk over namelist
     * and hash-lookup alternate instead (unless *allnet*) */
-   for(ngp = a_nm_group_go_first(a_NM_T_ALTERNATES, &ngl); ngp != NULL;
-         ngp = a_nm_group_go_next(&ngl))
-      np = a_nm_namelist_mark_name(np, ngp->ng_id);
+   if(a_nm_a8s_dp != NIL)
+      su_CS_DICT_FOREACH(a_nm_a8s_dp, &dv)
+         np = a_nm_namelist_mark_name(np, su_cs_dict_view_key(&dv));
 
    np = a_nm_namelist_mark_name(np, ok_vlook(LOGNAME));
 
@@ -1471,22 +1436,20 @@ n_alternates_remove(struct mx_name *np, boole keep_single){
 }
 
 FL boole
-n_is_myname(char const *name){
-   struct a_nm_lookup ngl;
-   struct a_nm_group *ngp;
+mx_name_is_mine(char const *name){
+   struct su_cs_dict_view dv;
    struct mx_name *xp;
    NYD_IN;
 
    if(a_nm_is_same_name(ok_vlook(LOGNAME), name))
       goto jleave;
 
-   if(!ok_blook(allnet)){
-      if(a_nm_lookup(a_NM_T_ALTERNATES, &ngl, name) != NULL)
-         goto jleave;
-   }else{
-      for(ngp = a_nm_group_go_first(a_NM_T_ALTERNATES, &ngl); ngp != NULL;
-            ngp = a_nm_group_go_next(&ngl))
-         if(a_nm_is_same_name(ngp->ng_id, name))
+   if(a_nm_a8s_dp != NIL){
+      if(!ok_blook(allnet)){
+         if(su_cs_dict_has_key(a_nm_a8s_dp, name))
+            goto jleave;
+      }else su_CS_DICT_FOREACH(a_nm_a8s_dp, &dv)
+         if(a_nm_is_same_name(name, su_cs_dict_view_key(&dv)))
             goto jleave;
    }
 
@@ -1517,10 +1480,10 @@ n_is_myname(char const *name){
       if(a_nm_is_same_name(xp->n_name, name))
          goto jleave;
 
-   name = NULL;
+   name = NIL;
 jleave:
    NYD_OU;
-   return (name != NULL);
+   return (name != NIL);
 }
 
 FL boole
@@ -1562,13 +1525,13 @@ c_alias(void *v)
    UNINIT(ecp, NULL);
 
    if(*argv == NULL)
-      a_nm_group_print_all(a_NM_T_ALIAS, NULL);
+      a_nm_group_print_all(a_NM_T_ALIAS);
    else if(!n_alias_is_valid_name(*argv)){
       ecp = N_("Not a valid alias name: %s\n");
       goto jerr;
    }else if(argv[1] == NULL){
       if((ngp = a_nm_group_find(a_NM_T_ALIAS, *argv)) != NULL)
-         a_nm_group_print(ngp, n_stdout, NULL);
+         a_nm_group_print(ngp, n_stdout);
       else{
          ecp = N_("No such alias: %s\n");
          goto jerr;
