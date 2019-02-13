@@ -1433,7 +1433,8 @@ jeseek:
          if(hef & n_HEADER_EXTRACT_FULL){
             ++seenfields;
             hq->h_sender = cat(hq->h_sender, /* TODO cat? check! */
-                  checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
+                  checkaddrs(n_extract_single(val,
+                        GEXTRA | GFULL | GFULLEXTRA),
                      EACM_STRICT, NULL));
          } else
             goto jebadhead;
