@@ -240,8 +240,8 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Goes to the next message (-list) and prints it")) },
 
 
-   { "alias", &c_alias, (M | TWYRA), 0, MAC, NULL
-     DS(N_("Show all (or <alias>), or (re)define <alias> to :<data>:")) },
+   { "alias", &c_alias, (M | TWYSH), 0, MAC, NULL
+     DS(N_("Show all (or <alias>), or append to <alias> :<data>:")) },
    { "print", &c_type, (A | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Type all messages of <msglist>, honouring `ignore' / `retain'")) },
    { "type", &c_type, (A | TMSGLST), 0, MMNDEL, NULL
@@ -310,7 +310,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Like `save', but derive filename from first sender")) },
    { "set", &c_set, (G | L | M | X | TWYRA), 0, MAC, NULL
      DS(N_("Print all variables, or set (a) <variable>(s)")) },
-   { "unalias", &c_unalias, (M | TWYRA), 1, MAC, NULL
+   { "unalias", &c_unalias, (M | TWYSH), 1, MAC, NULL
      DS(N_("Un`alias' <name-list> (* for all)")) },
    { "write", &c_write, (A | TARG), 0, 0,
      n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_write)

@@ -146,6 +146,13 @@ FL struct mx_name *usermap(struct mx_name *names, boole force_metoo);
  * them, then checking for dups.  Return the head of the new list */
 FL struct mx_name *elide(struct mx_name *names);
 
+/* `(un)?alias' */
+FL int c_alias(void *vp);
+FL int c_unalias(void *vp);
+
+/* Is name a valid alias name (as opposed to: "is an alias") */
+FL boole mx_alias_is_valid_name(char const *name);
+
 /* `(un)?alternates' deal with the list of alternate names */
 FL int c_alternates(void *vp);
 FL int c_unalternates(void *vp);
@@ -155,13 +162,6 @@ FL struct mx_name *mx_alternates_remove(struct mx_name *np, boole keep_single);
 
 /* Likewise, is name an alternate in broadest sense? */
 FL boole mx_name_is_mine(char const *name);
-
-/* Is name a valid alias */
-FL boole n_alias_is_valid_name(char const *name);
-
-/* `(un)?alias' */
-FL int c_alias(void *v);
-FL int c_unalias(void *v);
 
 #include <su/code-ou.h>
 #endif /* mx_NAMES_H */

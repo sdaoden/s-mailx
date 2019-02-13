@@ -4234,30 +4234,39 @@ diet@exam.ple
 .Mx
 .Mx
 .It Ic alias , unalias
-(a, una) Aliases are a method of creating personal distribution lists
-that map a single alias name to none to multiple real receivers;
-these aliases become expanded after message composing is completed.
-The latter command removes the given list of aliases, the special name
+\*(NQ (a, una) Define or list, and remove, respectively, address aliases.
+Address aliases are a method of creating personal distribution lists
+that map a single alias name to none to multiple receivers;
+aliases are expanded after message composing is completed.
+The latter command removes all given aliases, the special name asterisk
 .Ql *
-will discard all existing aliases.
+will remove all existing aliases.
+When used without arguments the former shows a list of all currently
+known aliases, with one argument only the target(s) of the given one.
+When given two arguments, hyphen-minus
+.Ql -
+being the first, the target(s) of the second is/are expanded recursively.
 .Pp
-The former command shows all currently defined aliases when used without
-arguments, and with one argument the expansion of the given alias.
-With more than one argument, creates or appends to the alias name given
-as the first argument the remaining arguments.
-Alias names adhere to the Postfix MTA
+In all other cases the given address alias is newly defined or will be
+appended to: target arguments must either be valid alias names, or any
+other address type.
+Recursive expansion of (what looks like) alias name(s) targets can be
+prevented by prefixing the target with the modifier reverse solidus
+.Cm \e .
+A valid alias name conforms to the Postfix MTA
 .Xr aliases 5
-rules and are thus restricted to alphabetic characters, digits, the
-underscore, hyphen-minus, the number sign, colon and commercial at,
-a dollar sign is allowed but in the first position;
-As extensions the exclamation mark
+rules, and may consist of alphabetic characters, digits, the underscore,
+the number sign, colon, commercial at and hyphen-minus; extensions:
+exclamation mark
 .Ql \&! ,
 period
 .Ql \&.
 as well as
-.Dq any haracter that has the high bit set
+.Dq any character that has the high bit set
 may be used:
-.Ql [[:alnum:]_#:@-][[:alnum:]_#:@$;.-]* .
+.Ql [[:alnum:]_#:@!.-]+ .
+The number sign may need be quoted to avoid misinterpretation as the
+shell comment character.
 .Pp
 .\" ALIASCOLON next sentence
 \*(ID Unfortunately the colon is currently not supported, as it

@@ -3718,7 +3718,51 @@ t_alias() {
 _EOT
 	__EOT
    check 1 0 "${MBOX}" '2496925843 272'
-   check 2 - .tall '3548953204 152'
+   check 2 - .tall '1598893942 133'
+
+   if have_feat uistrings; then
+      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+		commandalias x echo '$?/$^ERRNAME'
+		echo 1
+		alias :abra!  ha@m beb@ra ha@m '' zeb@ra ha@m; x
+		alias :abra!; x
+		alias ha@m  ham-expansion  ha@m '';x
+		alias ha@m;x
+		alias beb@ra  ceb@ra beb@ra1;x
+		alias beb@ra;x
+		alias ceb@ra  ceb@ra1;x
+		alias ceb@ra;x
+		alias deb@ris   '';x
+		alias deb@ris;x
+		echo 2
+		alias - :abra!;x
+		alias - ha@m;x
+		alias - beb@ra;x
+		alias - ceb@ra;x
+		alias - deb@ris;x
+		echo 3
+		unalias ha@m;x
+		alias - :abra!;x
+		unalias beb@ra;x
+		alias - :abra!;x
+		echo 4
+		unalias*;x;alias;x
+		echo 5
+		\alias noexpa@and this@error1;x
+		\alias ha@m '\noexp@and' expa@and \\noexp@and2;x
+		\alias ha@m;x
+		\alias - ha@m;x
+		\alias noexpa@and2 this@error2;x
+		\alias expa1@and this@error3;x
+		\alias expa@and \\expa1@and;x
+		\alias expa@and;x
+		\alias - ha@m;x
+		\alias - expa@and;x
+		__EOT
+      check 3 0 "${MBOX}" '1072772360 789'
+   else
+      t_echoskip '3:[test unsupported]'
+   fi
 
    # TODO t_alias: n_ALIAS_MAXEXP is compile-time constant,
    # TODO need to somehow provide its contents to the test, then test

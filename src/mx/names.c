@@ -51,60 +51,22 @@
 #include "mx/names.h"
 #include "su/code-in.h"
 
+/* ..of a_nm_alias_dp.
+ * We rely on resorting, and use has_key()...lookup() (a_nm_alias_expand()).
+ * The value is a n_strlist*, which we manage directly (no toolbox).
+ * name::n_name, after .sl_dat[.sl_len] one boole that indicates
+ * recursion-allowed, thereafter name::n_fullname (empty if EQ n_name) */
+#define a_NM_ALIAS_FLAGS (\
+      su_CS_DICT_HEAD_RESORT | su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
+#define a_NM_ALIAS_TRESHOLD_SHIFT 2
+
 /* ..of a_nm_a8s_dp */
 #define a_NM_A8S_FLAGS (su_CS_DICT_CASE |\
       su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
 #define a_NM_A8S_TRESHOLD_SHIFT 2
 
-enum a_nm_type{
-   /* Main types */
-   a_NM_T_ALIAS = 1,
-   a_NM_T_MASK = 0x1F,
-
-   /* Extended type mask to be able to reflect what we really have.
-    * This is a leftover from when mlist/mlsubscribe were handled in here,
-    * i.e., being able to differentiate in between several subtypes */
-   a_NM_T_PRINT_MASK = a_NM_T_MASK
-};
-CTA(a_NM_T_MASK >= a_NM_T_ALIAS, "Mask does not cover necessary bits");
-
-struct a_nm_group{
-   struct a_nm_group *ng_next;
-   u32 ng_subclass_off; /* of "subclass" in .ng_id (if any) */
-   u16 ng_id_len_sub; /* length of .ng_id: _subclass_off - this */
-   u8 ng_type; /* enum a_nm_type */
-   /* Identifying name, of variable size.  Dependent on actual "subtype" more
-    * data follows thereafter, but note this is always used (i.e., for regular
-    * expression entries this is still set to the plain string) */
-   char ng_id[VFIELD_SIZE(1)];
-};
-#define a_NM_GP_TO_SUBCLASS(X,G) \
-do{\
-   union a_nm_group_subclass {void *gs_vp; char *gs_cp;} a__gs__;\
-   a__gs__.gs_cp = &UNCONST(char*,G)[(G)->ng_subclass_off];\
-   (X) = a__gs__.gs_vp;\
-}while(0)
-
-struct a_nm_grp_names_head{
-   struct a_nm_grp_names *ngnh_head;
-};
-
-struct a_nm_grp_names{
-   struct a_nm_grp_names *ngn_next;
-   char ngn_id[VFIELD_SIZE(0)];
-};
-
-struct a_nm_lookup{
-   struct a_nm_group **ngl_htable;
-   struct a_nm_group **ngl_slot;
-   struct a_nm_group *ngl_slot_last;
-   struct a_nm_group *ngl_group;
-};
-
+struct su_cs_dict *a_nm_alias_dp, a_nm_alias__d; /* XXX atexit gut() (DVL()) */
 struct su_cs_dict *a_nm_a8s_dp, a_nm_a8s__d; /* XXX atexit _gut() (DVL()) */
-
-/* `alias' */
-static struct a_nm_group *a_nm_alias_heads[HSHSIZE];
 
 /* Same name, while taking care for *allnet*? */
 static boole a_nm_is_same_name(char const *n1, char const *n2);
@@ -121,47 +83,18 @@ static char const *a_nm_yankname(char const *ap, char *wbuf,
 static struct mx_name *a_nm_extract1(char const *line, enum gfield ntype,
       char const *separators, boole keepcomms);
 
-/* Recursively expand a alias name.  Limit expansion to some fixed level.
- * Direct recursion is not expanded for convenience */
-static struct mx_name *a_nm_gexpand(uz level, struct mx_name *nlist,
-      struct a_nm_group *ngp, boole metoo, int ntype, char const *logname);
-
 /* elide() helper */
 static int a_nm_elide_qsort(void const *s1, void const *s2);
 
-/* Lookup a group, return it or NULL, fill in glp anyway */
-static struct a_nm_group *a_nm_lookup(enum a_nm_type nt,
-      struct a_nm_lookup *nglp, char const *id);
+/* Recursively expand an alias name, adjust nlist for result and return it;
+ * limit expansion to some fixed level.
+ * metoo=*metoo*, logname=$LOGNAME == optimization */
+static struct mx_name *a_nm_alias_expand(uz level, struct mx_name *nlist,
+      char const *name, int ntype, boole metoo, char const *logname);
 
-/* Easier-to-use wrapper around _group_lookup() */
-static struct a_nm_group *a_nm_group_find(enum a_nm_type nt,
-      char const *id);
-
-/* Iteration: go to the first group, which also inits the iterator.  A valid
- * iterator can be stepped via _next().  A NULL return means no (more) groups
- * to be iterated exist, in which case only nglp->ngl_group is set (NULL) */
-static struct a_nm_group *a_nm_group_go_first(enum a_nm_type nt,
-      struct a_nm_lookup *nglp);
-static struct a_nm_group *a_nm_group_go_next(struct a_nm_lookup *nglp);
-
-/* Fetch the group id, create it as necessary, fail with NULL if impossible */
-static struct a_nm_group *a_nm_group_fetch(enum a_nm_type nt,
-      char const *id, uz addsz);
-
-/* "Intelligent" delete which handles a "*" id, too;
- * returns a true boolean if a group was deleted, and always succeeds for "*" */
-static boole a_nm_group_del(enum a_nm_type nt, char const *id);
-
-static struct a_nm_group *a_nm__group_del(struct a_nm_lookup *nglp);
-static void a_nm__names_del(struct a_nm_group *ngp);
-
-/* Print all groups of the given type, alphasorted */
-static void a_nm_group_print_all(enum a_nm_type nt);
-
-static int a_nm__group_print_qsorter(void const *a, void const *b);
-
-/* Really print a group, actually.  Return number of written lines */
-static uz a_nm_group_print(struct a_nm_group const *ngp, FILE *fo);
+/* */
+static struct n_strlist *a_nm_alias_dump(char const *cmdname, char const *key,
+      void const *dat);
 
 /* */
 static struct n_strlist *a_nm_a8s_dump(char const *cmdname, char const *key,
@@ -319,65 +252,6 @@ jleave:
    return headp;
 }
 
-static struct mx_name *
-a_nm_gexpand(uz level, struct mx_name *nlist, struct a_nm_group *ngp,
-      boole metoo, int ntype, char const *logname){
-   struct a_nm_grp_names *ngnp;
-   struct mx_name *nlist_tail;
-   struct a_nm_grp_names_head *ngnhp;
-   NYD2_IN;
-
-   if(UCMP(z, level++, >, n_ALIAS_MAXEXP)){
-      n_err(_("Expanding alias to depth larger than %d\n"), n_ALIAS_MAXEXP);
-      goto jleave;
-   }
-
-   a_NM_GP_TO_SUBCLASS(ngnhp, ngp);
-
-   for(ngnp = ngnhp->ngnh_head; ngnp != NULL; ngnp = ngnp->ngn_next){
-      struct a_nm_group *xngp;
-      char *cp;
-
-      cp = ngnp->ngn_id;
-
-      if(!su_cs_cmp(cp, ngp->ng_id))
-         goto jas_is;
-
-      if((xngp = a_nm_group_find(a_NM_T_ALIAS, cp)) != NULL){
-         /* For S-nail(1), the "alias" may *be* the sender in that a name maps
-          * to a full address specification; aliases cannot be empty */
-         struct a_nm_grp_names_head *xngnhp;
-
-         a_NM_GP_TO_SUBCLASS(xngnhp, xngp);
-
-         ASSERT(xngnhp->ngnh_head != NULL);
-         if(metoo || xngnhp->ngnh_head->ngn_next != NULL ||
-               !a_nm_is_same_name(cp, logname))
-            nlist = a_nm_gexpand(level, nlist, xngp, metoo, ntype, logname);
-         continue;
-      }
-
-      /* Here we should allow to expand to itself if only person in alias */
-jas_is:
-      if(metoo || ngnhp->ngnh_head->ngn_next == NULL ||
-            !a_nm_is_same_name(cp, logname)){
-         struct mx_name *np;
-
-         np = nalloc(cp, ntype | GFULL);
-         if((nlist_tail = nlist) != NULL){
-            while(nlist_tail->n_flink != NULL)
-               nlist_tail = nlist_tail->n_flink;
-            nlist_tail->n_flink = np;
-            np->n_blink = nlist_tail;
-         }else
-            nlist = np;
-      }
-   }
-jleave:
-   NYD2_OU;
-   return nlist;
-}
-
 static int
 a_nm_elide_qsort(void const *s1, void const *s2){
    struct mx_name const * const *np1, * const *np2;
@@ -395,327 +269,97 @@ a_nm_elide_qsort(void const *s1, void const *s2){
    return rv;
 }
 
-static struct a_nm_group *
-a_nm_lookup(enum a_nm_type nt, struct a_nm_lookup *nglp,
-      char const *id){
-   char c1;
-   struct a_nm_group *lngp, *ngp;
-   boole icase;
+static struct mx_name *
+a_nm_alias_expand(uz level, struct mx_name *nlist, char const *name, int ntype,
+      boole metoo, char const *logname){
+   struct mx_name *np, *nlist_tail;
+   char const *ccp;
+   struct n_strlist const *slp, *slp_base, *slp_next;
    NYD2_IN;
+   ASSERT_NYD(a_nm_alias_dp != NIL);
+   ASSERT(mx_alias_is_valid_name(name));
 
-   icase = FAL0;
+   if(UCMP(z, level++, ==, n_ALIAS_MAXEXP)){
+      n_err(_("alias: stopping recursion at depth %d\n"), n_ALIAS_MAXEXP);
+      goto jleave;
+   }
 
-   /* C99 */{
-      u32 h;
-      struct a_nm_group **ngpa;
+   slp_next = slp_base =
+   slp = S(struct n_strlist const*,su_cs_dict_lookup(a_nm_alias_dp, name));
 
-      switch((nt &= a_NM_T_MASK)){
-      default:
-      case a_NM_T_ALIAS:
-         ngpa = a_nm_alias_heads;
-         break;
+   if(slp == NIL){
+      ccp = name;
+      goto jlinkin;
+   }
+   do{ /* while(slp != NIL); */
+      slp_next = slp->sl_next;
+
+      if(slp->sl_len == 0)
+         continue;
+
+      /* Cannot shadow itself.  Recursion allowed for target? */
+      if(su_cs_cmp(name, slp->sl_dat) && slp->sl_dat[slp->sl_len + 1] != FAL0){
+         /* For S-nail(1), the "alias" may *be* the sender in that a name
+          * to a full address specification */
+         nlist = a_nm_alias_expand(level, nlist, slp->sl_dat, ntype, metoo,
+               logname);
+         continue;
       }
 
-      nglp->ngl_htable = ngpa;
-      h = icase ? su_cs_hash_case(id) : su_cs_hash(id);
-      ngp = *(nglp->ngl_slot = &ngpa[h % HSHSIZE]);
-   }
+      /* Here we should allow to expand to itself if only person in alias */
+      if(metoo || slp_base->sl_next == NIL ||
+            !a_nm_is_same_name(slp->sl_dat, logname)){
+         /* Use .n_name if .n_fullname is not set */
+         if(*(ccp = &slp->sl_dat[slp->sl_len + 2]) == '\0')
+            ccp = slp->sl_dat;
 
-   lngp = NULL;
-   c1 = *id++;
-
-   if(icase){
-      c1 = su_cs_to_lower(c1);
-      for(; ngp != NULL; lngp = ngp, ngp = ngp->ng_next)
-         if((ngp->ng_type & a_NM_T_MASK) == nt && *ngp->ng_id == c1 &&
-               !su_cs_cmp_case(&ngp->ng_id[1], id))
-            break;
-   }else{
-      for(; ngp != NULL; lngp = ngp, ngp = ngp->ng_next)
-         if((ngp->ng_type & a_NM_T_MASK) == nt && *ngp->ng_id == c1 &&
-               !su_cs_cmp(&ngp->ng_id[1], id))
-            break;
-   }
-
-   nglp->ngl_slot_last = lngp;
-   nglp->ngl_group = ngp;
-   NYD2_OU;
-   return ngp;
-}
-
-static struct a_nm_group *
-a_nm_group_find(enum a_nm_type nt, char const *id){
-   struct a_nm_lookup ngl;
-   struct a_nm_group *ngp;
-   NYD2_IN;
-
-   ngp = a_nm_lookup(nt, &ngl, id);
-   NYD2_OU;
-   return ngp;
-}
-
-static struct a_nm_group *
-a_nm_group_go_first(enum a_nm_type nt, struct a_nm_lookup *nglp){
-   uz i;
-   struct a_nm_group **ngpa, *ngp;
-   NYD2_IN;
-
-   switch((nt &= a_NM_T_MASK)){
-   default:
-   case a_NM_T_ALIAS:
-      ngpa = a_nm_alias_heads;
-      break;
-   }
-
-   nglp->ngl_htable = ngpa;
-
-   for(i = 0; i < HSHSIZE; ++ngpa, ++i)
-      if((ngp = *ngpa) != NULL){
-         nglp->ngl_slot = ngpa;
-         nglp->ngl_group = ngp;
-         goto jleave;
+jlinkin:
+         if((np = n_extract_single(ccp, ntype | GFULL)) != NIL){
+            if((nlist_tail = nlist) != NIL){ /* XXX su_list_push()! */
+               while(nlist_tail->n_flink != NIL)
+                  nlist_tail = nlist_tail->n_flink;
+               nlist_tail->n_flink = np;
+               np->n_blink = nlist_tail;
+            }else
+               nlist = np;
+         }
       }
+   }while((slp = slp_next) != NIL);
 
-   nglp->ngl_group = ngp = NULL;
-jleave:
-   nglp->ngl_slot_last = NULL;
-   NYD2_OU;
-   return ngp;
-}
-
-static struct a_nm_group *
-a_nm_group_go_next(struct a_nm_lookup *nglp){
-   struct a_nm_group *ngp, **ngpa;
-   NYD2_IN;
-
-   if((ngp = nglp->ngl_group->ng_next) != NULL)
-      nglp->ngl_slot_last = nglp->ngl_group;
-   else{
-      nglp->ngl_slot_last = NULL;
-      for(ngpa = &nglp->ngl_htable[HSHSIZE]; ++nglp->ngl_slot < ngpa;)
-         if((ngp = *nglp->ngl_slot) != NULL)
-            break;
-   }
-   nglp->ngl_group = ngp;
-   NYD2_OU;
-   return ngp;
-}
-
-static struct a_nm_group *
-a_nm_group_fetch(enum a_nm_type nt, char const *id, uz addsz){
-   struct a_nm_lookup ngl;
-   struct a_nm_group *ngp;
-   uz l, i;
-   NYD2_IN;
-
-   if((ngp = a_nm_lookup(nt, &ngl, id)) != NULL)
-      goto jleave;
-
-   l = su_cs_len(id) +1;
-   if(UZ_MAX - Z_ALIGN(l) <=
-         Z_ALIGN(VSTRUCT_SIZEOF(struct a_nm_group, ng_id)))
-      goto jleave;
-
-   i = Z_ALIGN(VSTRUCT_SIZEOF(struct a_nm_group, ng_id) + l);
-   switch(nt & a_NM_T_MASK){
-   case a_NM_T_ALIAS:
-      addsz += sizeof(struct a_nm_grp_names_head);
-      break;
-   }
-   if(UZ_MAX - i < addsz || U32_MAX <= i || U16_MAX < i - l)
-      goto jleave;
-
-   ngp = n_alloc(i + addsz);
-   su_mem_copy(ngp->ng_id, id, l);
-   ngp->ng_subclass_off = S(u32,i);
-   ngp->ng_id_len_sub = S(u16,i - --l);
-   ngp->ng_type = nt;
-
-   if((nt & a_NM_T_MASK) == a_NM_T_ALIAS){
-      struct a_nm_grp_names_head *ngnhp;
-
-      a_NM_GP_TO_SUBCLASS(ngnhp, ngp);
-      ngnhp->ngnh_head = NULL;
-   }
-
-   ngp->ng_next = *ngl.ngl_slot;
-   *ngl.ngl_slot = ngp;
 jleave:
    NYD2_OU;
-   return ngp;
+   return nlist;
 }
 
-static boole
-a_nm_group_del(enum a_nm_type nt, char const *id){
-   struct a_nm_lookup ngl;
-   struct a_nm_group *ngp;
-   enum a_nm_type xnt;
+static struct n_strlist *
+a_nm_alias_dump(char const *cmdname, char const *key, void const *dat){
+   struct n_string s_b, *s;
+   struct n_strlist *slp;
    NYD2_IN;
 
-   xnt = nt & a_NM_T_MASK;
+   s = n_string_creat_auto(&s_b);
+   s = n_string_resize(s, 511);
+   s = n_string_trunc(s, VSTRUCT_SIZEOF(struct n_strlist, sl_dat)); /* gross */
 
-   /* Delete 'em all? */
-   if(id[0] == '*' && id[1] == '\0'){
-      for(ngp = a_nm_group_go_first(nt, &ngl); ngp != NULL;)
-         ngp = ((ngp->ng_type & a_NM_T_MASK) == xnt) ? a_nm__group_del(&ngl)
-               : a_nm_group_go_next(&ngl);
-      ngp = (struct a_nm_group*)TRU1;
-   }else if((ngp = a_nm_lookup(nt, &ngl, id)) != NULL){
-      if(ngp->ng_type & xnt)
-         a_nm__group_del(&ngl);
-      else
-         ngp = NULL;
+   s = n_string_push_cp(s, cmdname);
+   s = n_string_push_c(s, ' ');
+   s = n_string_push_cp(s, key); /*n_shexp_quote_cp(key, TRU1); valid alias */
+
+   for(slp = UNCONST(struct n_strlist*,dat); slp != NIL; slp = slp->sl_next){
+      s = n_string_push_c(s, ' ');
+      /* Use .n_fullname if available, fall back to .n_name */
+      key = &slp->sl_dat[slp->sl_len + 2];
+      if(*key == '\0')
+         key = slp->sl_dat;
+      s = n_string_push_cp(s, n_shexp_quote_cp(key, TRU1));
    }
+
+   slp = S(struct n_strlist*,n_string_cp(s));
+   slp->sl_next = NIL;
+   slp->sl_len = s->s_len - VSTRUCT_SIZEOF(struct n_strlist, sl_dat);
+
    NYD2_OU;
-   return (ngp != NULL);
-}
-
-static struct a_nm_group *
-a_nm__group_del(struct a_nm_lookup *nglp){
-   struct a_nm_group *x, *ngp;
-   NYD2_IN;
-
-   /* Overly complicated: link off this node, step ahead to next.. */
-   x = nglp->ngl_group;
-   if((ngp = nglp->ngl_slot_last) != NULL)
-      ngp = (ngp->ng_next = x->ng_next);
-   else{
-      nglp->ngl_slot_last = NULL;
-      ngp = (*nglp->ngl_slot = x->ng_next);
-
-      if(ngp == NULL){
-         struct a_nm_group **ngpa;
-
-         for(ngpa = &nglp->ngl_htable[HSHSIZE]; ++nglp->ngl_slot < ngpa;)
-            if((ngp = *nglp->ngl_slot) != NULL)
-               break;
-      }
-   }
-   nglp->ngl_group = ngp;
-
-   if((x->ng_type & a_NM_T_MASK) == a_NM_T_ALIAS)
-      a_nm__names_del(x);
-
-   n_free(x);
-   NYD2_OU;
-   return ngp;
-}
-
-static void
-a_nm__names_del(struct a_nm_group *ngp){
-   struct a_nm_grp_names_head *ngnhp;
-   struct a_nm_grp_names *ngnp;
-   NYD2_IN;
-
-   a_NM_GP_TO_SUBCLASS(ngnhp, ngp);
-
-   for(ngnp = ngnhp->ngnh_head; ngnp != NULL;){
-      struct a_nm_grp_names *x;
-
-      x = ngnp;
-      ngnp = ngnp->ngn_next;
-      n_free(x);
-   }
-   NYD2_OU;
-}
-
-static void
-a_nm_group_print_all(enum a_nm_type nt){
-   uz lines;
-   FILE *fp;
-   char const **ida;
-   struct a_nm_group const *ngp;
-   u32 h, i;
-   struct a_nm_group **ngpa;
-   char const *tname;
-   enum a_nm_type xnt;
-   NYD_IN;
-
-   xnt = nt & a_NM_T_PRINT_MASK;
-
-   tname = "alias";
-   ngpa = a_nm_alias_heads;
-
-   /* Count entries */
-   for(i = h = 0; h < HSHSIZE; ++h)
-      for(ngp = ngpa[h]; ngp != NULL; ngp = ngp->ng_next)
-         if((ngp->ng_type & a_NM_T_PRINT_MASK) == xnt)
-            ++i;
-   if(i == 0){
-      fprintf(n_stdout, _("# no %s registered\n"), tname);
-      goto jleave;
-   }
-   ++i;
-   ida = n_autorec_alloc(i * sizeof *ida);
-
-   /* Create alpha sorted array of entries */
-   for(i = h = 0; h < HSHSIZE; ++h)
-      for(ngp = ngpa[h]; ngp != NULL; ngp = ngp->ng_next)
-         if((ngp->ng_type & a_NM_T_PRINT_MASK) == xnt)
-            ida[i++] = ngp->ng_id;
-   if(i > 1)
-      qsort(ida, i, sizeof *ida, &a_nm__group_print_qsorter);
-   ida[i] = NULL;
-
-   if((fp = Ftmp(NULL, "nagprint", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
-      fp = n_stdout;
-
-   /* Create visual result */
-   lines = 0;
-
-   for(i = 0; ida[i] != NULL; ++i)
-      lines += a_nm_group_print(a_nm_group_find(nt, ida[i]), fp);
-
-   if(fp != n_stdout){
-      page_or_print(fp, lines);
-      Fclose(fp);
-   }
-
-jleave:
-   NYD_OU;
-}
-
-static int
-a_nm__group_print_qsorter(void const *a, void const *b){
-   int rv;
-   NYD2_IN;
-
-   rv = su_cs_cmp(*UNCONST(char**,a), *UNCONST(char**,b));
-   NYD2_OU;
-   return rv;
-}
-
-static uz
-a_nm_group_print(struct a_nm_group const *ngp, FILE *fo){
-   uz rv;
-   NYD2_IN;
-
-   rv = 1;
-
-   switch(ngp->ng_type & a_NM_T_MASK){
-   default:
-   case a_NM_T_ALIAS:{
-      struct a_nm_grp_names_head *ngnhp;
-      struct a_nm_grp_names *ngnp;
-
-      ASSERT(fo != NULL); /* xxx no vput yet */
-      fprintf(fo, "alias %s ", ngp->ng_id);
-
-      a_NM_GP_TO_SUBCLASS(ngnhp, ngp);
-      if((ngnp = ngnhp->ngnh_head) != NULL) { /* xxx always 1+ entries */
-         do{
-            struct a_nm_grp_names *x;
-
-            x = ngnp;
-            ngnp = ngnp->ngn_next;
-            fprintf(fo, " \"%s\"", string_quote(x->ngn_id)); /* TODO shexp */
-         }while(ngnp != NULL);
-      }
-      putc('\n', fo);
-      }break;
-   }
-   NYD2_OU;
-   return rv;
+   return slp;
 }
 
 static struct n_strlist *
@@ -1172,36 +816,47 @@ n_namelist_vaporise_head(boole strip_alternates, struct header *hp,
 
 FL struct mx_name *
 usermap(struct mx_name *names, boole force_metoo){
-   struct a_nm_group *ngp;
-   struct mx_name *nlist, *nlist_tail, *np, *cp;
+   struct su_cs_dict_view dv;
+   struct mx_name *nlist, **nlist_tail, *np, *nxtnp;
    int metoo;
    char const *logname;
    NYD_IN;
 
    logname = ok_vlook(LOGNAME);
    metoo = (force_metoo || ok_blook(metoo));
-   nlist = nlist_tail = NULL;
+   nlist = NIL;
+   nlist_tail = &nlist;
    np = names;
 
-   for(; np != NULL; np = cp){
-      ASSERT(!(np->n_type & GDEL)); /* TODO legacy */
-      cp = np->n_flink;
+   if(a_nm_alias_dp != NIL)
+      su_cs_dict_view_setup(&dv, a_nm_alias_dp);
 
-      if(is_fileorpipe_addr(np) ||
-            (ngp = a_nm_group_find(a_NM_T_ALIAS, np->n_name)) == NULL){
-         if((np->n_blink = nlist_tail) != NULL)
-            nlist_tail->n_flink = np;
-         else
-            nlist = np;
-         nlist_tail = np;
-         np->n_flink = NULL;
+   for(; np != NULL; np = nxtnp){
+      ASSERT(!(np->n_type & GDEL)); /* TODO legacy */
+      nxtnp = np->n_flink;
+
+      /* Only valid alias names may enter expansion; even so GFULL may cause
+       * .n_fullname to be different memory, it will be bitwise equal) */
+      if(is_fileorpipe_addr(np) || (np->n_name != np->n_fullname &&
+               su_cs_cmp(np->n_name, np->n_fullname)) ||
+            a_nm_alias_dp == NIL || !su_cs_dict_view_find(&dv, np->n_name)){
+         np->n_blink = *nlist_tail;
+         np->n_flink = NIL;
+         *nlist_tail = np;
+         nlist_tail = &np->n_flink;
       }else{
-         nlist = a_nm_gexpand(0, nlist, ngp, metoo, np->n_type, logname);
-         if((nlist_tail = nlist) != NULL)
-            while(nlist_tail->n_flink != NULL)
-               nlist_tail = nlist_tail->n_flink;
+         nlist = a_nm_alias_expand(0, nlist, np->n_name, np->n_type, metoo,
+               logname);
+         if((np = nlist) == NIL)
+            nlist_tail = &nlist;
+         else for(;; np = np->n_flink)
+            if(np->n_flink == NIL){
+               nlist_tail = &np->n_flink;
+               break;
+            }
       }
    }
+
    NYD_OU;
    return nlist;
 }
@@ -1276,6 +931,197 @@ jiter:;
 jleave:
    NYD_OU;
    return nlist;
+}
+
+FL int
+c_alias(void *vp){
+   struct su_cs_dict_view dv;
+   union {void const *cvp; boole haskey; struct n_strlist *slp;} dat;
+   int rv;
+   char const **argv, *key;
+   NYD_IN;
+
+   if((key = *(argv = S(char const**,vp))) == NIL){
+      dat.slp = NIL;
+      rv = !(mx_xy_dump_dict("alias", a_nm_alias_dp, &dat.slp, NIL,
+               &a_nm_alias_dump) &&
+            mx_page_or_print_strlist("alias", dat.slp));
+      goto jleave;
+   }
+
+   if(argv[1] != NIL && argv[2] == NIL && key[0] == '-' && key[1] == '\0')
+      key = argv[1];
+
+   if(!mx_alias_is_valid_name(key)){
+      n_err(_("alias: not a valid name: %s\n"), n_shexp_quote_cp(key, FAL0));
+      rv = 1;
+      goto jleave;
+   }
+
+   if(a_nm_alias_dp != NIL && su_cs_dict_view_find(
+            su_cs_dict_view_setup(&dv, a_nm_alias_dp), key))
+      dat.cvp = su_cs_dict_view_data(&dv);
+   else
+      dat.cvp = NIL;
+
+   if(argv[1] == NIL || key == argv[1]){
+      if(dat.cvp != NIL){
+         if(argv[1] == NIL){
+            dat.slp = a_nm_alias_dump("alias", key, dat.cvp);
+            rv = (fputs(dat.slp->sl_dat, n_stdout) == EOF);
+            rv |= (putc('\n', n_stdout) == EOF);
+         }else{
+            struct mx_name *np;
+
+            np = a_nm_alias_expand(0, NIL, key, 0, TRU1, ok_vlook(LOGNAME));
+            np = elide(np);
+            rv = (fprintf(n_stdout, "alias %s", key) < 0);
+            if(!rv){
+               for(; np != NIL; np = np->n_flink){
+                  rv |= (putc(' ', n_stdout) == EOF);
+                  rv |= (fputs(n_shexp_quote_cp(np->n_fullname, TRU1),
+                        n_stdout) == EOF);
+               }
+               rv |= (putc('\n', n_stdout) == EOF);
+            }
+         }
+      }else{
+         n_err(_("No such alias: %s\n"), n_shexp_quote_cp(key, FAL0));
+         rv = 1;
+      }
+   }else{
+      struct n_strlist *head, **tailp;
+      boole exists;
+      char const *val1, *val2;
+
+      if(a_nm_alias_dp == NIL)
+         a_nm_alias_dp = su_cs_dict_set_treshold_shift(
+               su_cs_dict_create(&a_nm_alias__d, a_NM_ALIAS_FLAGS, NIL),
+               a_NM_ALIAS_TRESHOLD_SHIFT);
+
+      if((exists = (head = dat.slp) != NIL)){
+         while(dat.slp->sl_next != NIL)
+            dat.slp = dat.slp->sl_next;
+         tailp = &dat.slp->sl_next;
+      }else
+         head = NIL, tailp = &head;
+
+      while((val1 = *++argv) != NIL){
+         uz l1, l2;
+         struct mx_name *np;
+         boole norecur, name_eq_fullname;
+
+         if((norecur = (*val1 == '\\')))
+            ++val1;
+
+         /* We need to allow empty targets */
+         name_eq_fullname = TRU1;
+         if(*val1 == '\0')
+            val2 = val1;
+         else if((np = n_extract_single(val1, GFULL)) != NIL){
+            val1 = np->n_name;
+            val2 = np->n_fullname;
+            if((name_eq_fullname = !su_cs_cmp(val1, val2)))
+               val2 = su_empty;
+         }else{
+            n_err(_("alias: %s: invalid argument: %s\n"),
+               key, n_shexp_quote_cp(val1, FAL0));
+            rv = 1;
+            continue;
+         }
+
+         l1 = su_cs_len(val1) +1;
+         l2 = su_cs_len(val2) +1;
+         dat.slp = n_STRLIST_ALLOC(l1 + 1 + l2);
+         *tailp = dat.slp;
+         dat.slp->sl_next = NIL;
+         tailp = &dat.slp->sl_next;
+         dat.slp->sl_len = l1 -1;
+         su_mem_copy(dat.slp->sl_dat, val1, l1);
+         dat.slp->sl_dat[l1++] = (!norecur && name_eq_fullname &&
+               mx_alias_is_valid_name(val1));
+         su_mem_copy(&dat.slp->sl_dat[l1], val2, l2);
+      }
+
+      if(exists){
+         su_cs_dict_view_set_data(&dv, head);
+         rv = !TRU1;
+      }else
+         rv = !(su_cs_dict_insert(a_nm_alias_dp, key, head) == 0);
+   }
+
+jleave:
+   NYD_OU;
+   return rv;
+}
+
+FL int
+c_unalias(void *vp){ /* XXX how about toolbox and generic unxy_dict()? */
+   struct su_cs_dict_view dv;
+   struct n_strlist *slp;
+   char const **argv, *key;
+   int rv;
+   NYD_IN;
+
+   rv = 0;
+   key = (argv = vp)[0];
+
+   if(a_nm_alias_dp != NIL)
+      su_cs_dict_view_setup(&dv, a_nm_alias_dp);
+
+   do{
+      if(key[1] == '\0' && key[0] == '*'){
+         if(a_nm_alias_dp != NIL){
+            su_CS_DICT_VIEW_FOREACH(&dv){
+               slp = S(struct n_strlist*,su_cs_dict_view_data(&dv));
+               do{
+                  vp = slp;
+                  slp = slp->sl_next;
+                  n_free(vp);
+               }while(slp != NIL);
+            }
+            su_cs_dict_clear(a_nm_alias_dp);
+         }
+      }else if(!su_cs_dict_view_find(&dv, key)){
+         n_err(_("No such `alias': %s\n"), n_shexp_quote_cp(key, FAL0));
+         rv = 1;
+      }else{
+         slp = S(struct n_strlist*,su_cs_dict_view_data(&dv));
+         do{
+            vp = slp;
+            slp = slp->sl_next;
+            n_free(vp);
+         }while(slp != NIL);
+         su_cs_dict_view_remove(&dv);
+      }
+   }while((key = *++argv) != NIL);
+
+   NYD_OU;
+   return rv;
+}
+
+FL boole
+mx_alias_is_valid_name(char const *name){
+   char c;
+   char const *cp;
+   boole rv;
+   NYD2_IN;
+
+   for(rv = TRU1, cp = name++; (c = *cp++) != '\0';)
+      /* User names, plus things explicitly mentioned in Postfix aliases(5).
+       * As extensions allow high-bit bytes, exclamation mark and period:
+       *    [[:alnum:]_#:@!.-]+ */
+      /* TODO alias_is_valid_name(): locale dependent validity check,
+       * TODO with Unicode prefix valid UTF-8! */
+      if(!su_cs_is_alnum(c) && c != '_' && c != '-' &&
+            c != '#' && c != ':' && c != '@' &&
+            /* Extensions */
+            !(S(u8,c) & 0x80) && c != '!' && c != '.'){
+         rv = FAL0;
+         break;
+      }
+   NYD2_OU;
+   return rv;
 }
 
 FL int
@@ -1484,106 +1330,6 @@ mx_name_is_mine(char const *name){
 jleave:
    NYD_OU;
    return (name != NIL);
-}
-
-FL boole
-n_alias_is_valid_name(char const *name){
-   char c;
-   char const *cp;
-   boole rv;
-   NYD2_IN;
-
-   for(rv = TRU1, cp = name++; (c = *cp++) != '\0';)
-      /* User names, plus things explicitly mentioned in Postfix aliases(5),
-       * i.e., [[:alnum:]_#:@.-]+$?.
-       * As extensions allow high-bit bytes, semicolon and period. */
-      /* TODO n_alias_is_valid_name(): locale dependent validity check,
-       * TODO with Unicode prefix valid UTF-8! */
-      if(!su_cs_is_alnum(c) && c != '_' && c != '-' &&
-            c != '#' && c != ':' && c != '@' &&
-            !(S(u8,c) & 0x80) && c != '!' && c != '.'){
-         if(c == '$' && cp != name && *cp == '\0')
-            break;
-         rv = FAL0;
-         break;
-      }
-   NYD2_OU;
-   return rv;
-}
-
-FL int
-c_alias(void *v)
-{
-   char const *ecp;
-   char **argv;
-   struct a_nm_group *ngp;
-   int rv;
-   NYD_IN;
-
-   rv = 0;
-   argv = v;
-   UNINIT(ecp, NULL);
-
-   if(*argv == NULL)
-      a_nm_group_print_all(a_NM_T_ALIAS);
-   else if(!n_alias_is_valid_name(*argv)){
-      ecp = N_("Not a valid alias name: %s\n");
-      goto jerr;
-   }else if(argv[1] == NULL){
-      if((ngp = a_nm_group_find(a_NM_T_ALIAS, *argv)) != NULL)
-         a_nm_group_print(ngp, n_stdout);
-      else{
-         ecp = N_("No such alias: %s\n");
-         goto jerr;
-      }
-   }else if((ngp = a_nm_group_fetch(a_NM_T_ALIAS, *argv, 0)) == NULL){
-      ecp = N_("Failed to create alias storage for: %s\n");
-jerr:
-      n_err(V_(ecp), n_shexp_quote_cp(*argv, FAL0));
-      rv = 1;
-   }else{
-      struct a_nm_grp_names *ngnp_tail, *ngnp;
-      struct a_nm_grp_names_head *ngnhp;
-
-      a_NM_GP_TO_SUBCLASS(ngnhp, ngp);
-
-      if((ngnp_tail = ngnhp->ngnh_head) != NULL)
-         while((ngnp = ngnp_tail->ngn_next) != NULL)
-            ngnp_tail = ngnp;
-
-      for(++argv; *argv != NULL; ++argv){
-         uz i;
-
-         i = su_cs_len(*argv) +1;
-         ngnp = n_alloc(VSTRUCT_SIZEOF(struct a_nm_grp_names, ngn_id) + i);
-         if(ngnp_tail != NULL)
-            ngnp_tail->ngn_next = ngnp;
-         else
-            ngnhp->ngnh_head = ngnp;
-         ngnp_tail = ngnp;
-         ngnp->ngn_next = NULL;
-         su_mem_copy(ngnp->ngn_id, *argv, i);
-      }
-   }
-   NYD_OU;
-   return rv;
-}
-
-FL int
-c_unalias(void *v){
-   char **argv;
-   int rv;
-   NYD_IN;
-
-   rv = 0;
-   argv = v;
-
-   do if(!a_nm_group_del(a_NM_T_ALIAS, *argv)){
-      n_err(_("No such alias: %s\n"), *argv);
-      rv = 1;
-   }while(*++argv != NULL);
-   NYD_OU;
-   return rv;
 }
 
 #include "su/code-ou.h"

@@ -553,7 +553,7 @@ jaddr_check:
          !su_cs_cmp(agp->ag_skinned, agp->ag_input)){
       /* TODO This may be an UUCP address */
       agp->ag_n_flags |= mx_NAME_ADDRSPEC_ISNAME;
-      if(!n_alias_is_valid_name(agp->ag_input))
+      if(!mx_alias_is_valid_name(agp->ag_input))
          agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
                mx_NAME_ADDRSPEC_ERR_NAME, '.');
    }else{
