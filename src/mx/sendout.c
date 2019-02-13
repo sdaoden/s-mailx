@@ -73,8 +73,8 @@ static struct mx_name *a_sendout_fullnames_cleanup(struct mx_name *np);
 
 /* */
 static boole a_sendout_put_name(char const *line, enum gfield w,
-               enum sendaction action, char const *prefix,
-               FILE *fo, struct mx_name **xp, enum gfield addflags);
+      enum sendaction action, char const *prefix, FILE *fo,
+      struct mx_name **xp);
 
 /* Place Content-Type:, Content-Transfer-Encoding:, Content-Disposition:
  * headers, respectively */
@@ -163,12 +163,12 @@ a_sendout_fullnames_cleanup(struct mx_name *np){
 
 static boole
 a_sendout_put_name(char const *line, enum gfield w, enum sendaction action,
-   char const *prefix, FILE *fo, struct mx_name **xp, enum gfield addflags){
+   char const *prefix, FILE *fo, struct mx_name **xp){
    boole rv;
    struct mx_name *np;
    NYD_IN;
 
-   np = lextract(line, GEXTRA | GFULL | addflags);
+   np = (w & GNOT_A_LIST ? n_extract_single : lextract)(line, GEXTRA | GFULL);
    if(xp != NULL)
       *xp = np;
 
@@ -1699,13 +1699,13 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct mx_name *to,
       mkdate(fo, "Date");
       if ((cp = myaddrs(NULL)) != NULL) {
          if (!a_sendout_put_name(cp, GCOMMA, SEND_MBOX, "Resent-From:", fo,
-               &fromfield, 0))
+               &fromfield))
             goto jleave;
       }
       /* TODO RFC 5322: Resent-Sender SHOULD NOT be used if it's EQ -From: */
       if ((cp = ok_vlook(sender)) != NULL) {
-         if (!a_sendout_put_name(cp, GCOMMA, SEND_MBOX, "Resent-Sender:", fo,
-               &senderfield, 0))
+         if (!a_sendout_put_name(cp, GCOMMA | GNOT_A_LIST, SEND_MBOX,
+               "Resent-Sender:", fo, &senderfield))
             goto jleave;
       }
       if (!a_sendout_put_addrline("Resent-To:", to, fo, a_SENDOUT_AL_COMMA))

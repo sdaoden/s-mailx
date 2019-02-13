@@ -992,14 +992,13 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
       case ok_v_sender:{
          struct mx_name *np;
 
-         if((np = lextract(*val, GEXTRA | GFULL)) == NULL){
+         np = (okey == ok_v_sender ? n_extract_single : lextract
+               )(*val, GEXTRA | GFULL);
+         if(np == NIL){
 jefrom:
             emsg = N_("*from* / *sender*: invalid  address(es): %s\n");
             goto jerr;
-         }else if(okey == ok_v_sender && np->n_flink != NULL){
-            emsg = N_("*sender*: may not contain multiple addresses: %s\n");
-            goto jerr;
-         }else for(; np != NULL; np = np->n_flink)
+         }else for(; np != NIL; np = np->n_flink)
             if(is_addr_invalid(np, EACM_STRICT | EACM_NOLOG | EACM_NONAME))
                goto jefrom;
          }break;

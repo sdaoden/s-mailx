@@ -1230,13 +1230,9 @@ mx_alternates_remove(struct mx_name *np, boole keep_single){
 
    np = a_nm_namelist_mark_name(np, ok_vlook(LOGNAME));
 
-   if((xp = extract(ok_vlook(sender), GEXTRA | GSKIN)) != NULL){
-      /* TODO check_from_and_sender(): drop; *sender*: only one name!
-       * TODO At assignment time, as VIP var? */
-      do
-         np = a_nm_namelist_mark_name(np, xp->n_name);
-      while((xp = xp->n_flink) != NULL);
-   }else for(xp = lextract(ok_vlook(from), GEXTRA | GSKIN); xp != NULL;
+   if((xp = n_extract_single(ok_vlook(sender), GEXTRA)) != NIL)
+      np = a_nm_namelist_mark_name(np, xp->n_name);
+   else for(xp = lextract(ok_vlook(from), GEXTRA | GSKIN); xp != NULL;
          xp = xp->n_flink)
       np = a_nm_namelist_mark_name(np, xp->n_name);
 
@@ -1321,10 +1317,9 @@ mx_name_is_mine(char const *name){
       if(a_nm_is_same_name(xp->n_name, name))
          goto jleave;
 
-   for(xp = extract(ok_vlook(sender), GEXTRA | GSKIN); xp != NULL;
-         xp = xp->n_flink)
-      if(a_nm_is_same_name(xp->n_name, name))
-         goto jleave;
+   if((xp = n_extract_single(ok_vlook(sender), GEXTRA)) != NIL &&
+         a_nm_is_same_name(xp->n_name, name))
+      goto jleave;
 
    name = NIL;
 jleave:

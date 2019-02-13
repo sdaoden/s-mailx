@@ -1570,7 +1570,7 @@ jebadhead:
             hp->h_from = n_poption_arg_r;
          else if((hef & n_HEADER_EXTRACT_FULL) &&
                hp->h_from->n_flink != NULL && hp->h_sender == NULL)
-            hp->h_sender = lextract(ok_vlook(sender),
+            hp->h_sender = n_extract_single(ok_vlook(sender),
                   GEXTRA | GFULL | GFULLEXTRA);
       }
    } else
@@ -2975,7 +2975,7 @@ setup_from_and_sender(struct header *hp)
    if ((np = hp->h_sender) != NULL) {
       ;
    } else if ((addr = ok_vlook(sender)) != NULL)
-      np = lextract(addr, GEXTRA | GFULL | GFULLEXTRA);
+      np = n_extract_single(addr, GEXTRA | GFULL | GFULLEXTRA);
    hp->h_sender = np;
 
    NYD_OU;
@@ -3085,7 +3085,7 @@ grab_headers(enum n_go_input_flags gif, struct header *hp, enum gfield gflags,
       hp->h_reply_to = grab_names(gif, "Reply-To: ", hp->h_reply_to, comma,
             GEXTRA | GFULL);
       if (hp->h_sender == NULL)
-         hp->h_sender = extract(ok_vlook(sender), GEXTRA | GFULL);
+         hp->h_sender = n_extract_single(ok_vlook(sender), GEXTRA | GFULL);
       hp->h_sender = grab_names(gif, "Sender: ", hp->h_sender, comma,
             GEXTRA | GFULL);
    }
