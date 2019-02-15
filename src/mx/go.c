@@ -1759,7 +1759,8 @@ jforce_stdin:
 
 jhave_dat:
    if(n_poption & n_PO_D_VV)
-      n_err(_("%s %d bytes <%s>\n"), iftype, n, *linebuf);
+      n_err(_("%s%s %d bytes <%s>\n"),
+         iftype, (n_cnd_if_is_skip() ? "?whiteout" : su_empty), n, *linebuf);
 jleave:
    if (n_pstate & n_PS_PSTATE_PENDMASK)
       a_go_update_pstate();
