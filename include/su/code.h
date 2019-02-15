@@ -548,10 +548,10 @@ do{\
 # define su_ASSERT_RET_LOC(X,Y,FNAME,LNNO) do{}while(0) /*!< \_ */
 # define su_ASSERT_RET_VOID(X) do{}while(0) /*!< \_ */
 # define su_ASSERT_RET_VOID_LOC(X,Y,FNAME,LNNO) do{}while(0) /*!< \_ */
-# define su_ASSERT_NYD_RET(X,Y) do{}while(0) /*!< \_ */
-# define su_ASSERT_NYD_RET_LOC(X,FNAME,LNNO) do{}while(0) /*!< \_ */
-# define su_ASSERT_NYD_RET_VOID(X) do{}while(0) /*!< \_ */
-# define su_ASSERT_NYD_RET_VOID_LOC(X,FNAME,LNNO) do{}while(0) /*!< \_ */
+# define su_ASSERT_NYD_EXEC(X,Y) do{}while(0) /*!< \_ */
+# define su_ASSERT_NYD_EXEC_LOC(X,FNAME,LNNO) do{}while(0) /*!< \_ */
+# define su_ASSERT_NYD(X) do{}while(0) /*!< \_ */
+# define su_ASSERT_NYD_LOC(X,FNAME,LNNO) do{}while(0) /*!< \_ */
 #else
 # define su_ASSERT_INJ(X) X
 # define su_ASSERT(X) su_ASSERT_LOC(X, __FILE__, __LINE__)
@@ -588,21 +588,27 @@ do if(!(X)){\
    return;\
 }while(0)
 
-# define su_ASSERT_NYD_RET(X,Y) su_ASSERT_NYD_RET_LOC(X, Y, __FILE__, __LINE__)
-# define su_ASSERT_NYD_RET_LOC(X,Y,FNAME,LNNO) \
+# define su_ASSERT_NYD_EXEC(X,Y) \
+   su_ASSERT_NYD_RET_LOC(X, Y, __FILE__, __LINE__)
+# define su_ASSERT_NYD_EXEC_LOC(X,Y,FNAME,LNNO) \
 do if(!(X)){\
    su_assert(su_STRING(X), FNAME, LNNO, su_FUN, su_FAL0);\
    Y; goto su_NYD_OU_LABEL;\
 }while(0)
 
-# define su_ASSERT_NYD_RET_VOID(X) \
-   su_ASSERT_NYD_RET_VOID_LOC(X, __FILE__, __LINE__)
-# define su_ASSERT_NYD_RET_VOID_LOC(X,FNAME,LNNO) \
+# define su_ASSERT_NYD(X) su_ASSERT_NYD_LOC(X, __FILE__, __LINE__)
+# define su_ASSERT_NYD_LOC(X,FNAME,LNNO) \
 do if(!(X)){\
    su_assert(su_STRING(X), FNAME, LNNO, su_FUN, su_FAL0);\
    goto su_NYD_OU_LABEL;\
 }while(0)
 #endif /* defined NDEBUG || defined DOXYGEN */
+
+/* FIXME legacy, remove! */
+#define su_ASSERT_NYD_RET su_ASSERT_NYD_EXEC
+#define su_ASSERT_NYD_RET_LOC su_ASSERT_NYD_EXEC_LOC
+#define su_ASSERT_NYD_RET_VOID su_ASSERT_NYD
+#define su_ASSERT_NYD_RET_VOID_LOC su_ASSERT_NYD_LOC
 
 /*! Create a bit mask for the bit range LO..HI -- HI cannot use highest bit! */
 #define su_BITENUM_MASK(LO,HI) (((1u << ((HI) + 1)) - 1) & ~((1u << (LO)) - 1))
