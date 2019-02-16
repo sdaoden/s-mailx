@@ -1,0 +1,54 @@
+1
+0/NONE
+alias :abra! ha@m beb@ra ha@m '' zeb@ra ha@m
+0/NONE
+0/NONE
+alias ha@m ham-expansion ha@m ''
+0/NONE
+0/NONE
+alias beb@ra ceb@ra beb@ra1
+0/NONE
+0/NONE
+alias ceb@ra ceb@ra1
+0/NONE
+0/NONE
+alias deb@ris ''
+0/NONE
+2
+alias :abra! ham-expansion ha@m ceb@ra1 beb@ra1 zeb@ra
+0/NONE
+alias ha@m ham-expansion ha@m
+0/NONE
+alias beb@ra ceb@ra1 beb@ra1
+0/NONE
+alias ceb@ra ceb@ra1
+0/NONE
+alias deb@ris
+0/NONE
+3
+0/NONE
+alias :abra! ha@m ceb@ra1 beb@ra1 zeb@ra
+0/NONE
+0/NONE
+alias :abra! ha@m beb@ra zeb@ra
+0/NONE
+4
+0/NONE
+# no alias registered
+0/NONE
+5
+0/NONE
+0/NONE
+alias ha@m noexp@and expa@and noexp@and2
+0/NONE
+alias ha@m noexp@and expa@and noexp@and2
+0/NONE
+0/NONE
+0/NONE
+0/NONE
+alias expa@and expa1@and
+0/NONE
+alias ha@m noexp@and expa1@and noexp@and2
+0/NONE
+alias expa@and expa1@and
+0/NONE

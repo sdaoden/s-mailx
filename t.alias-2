@@ -1,4 +1,4 @@
-alias a1  "ex1@a1.ple" "ex2@a1.ple" "EX3 <ex3@a1.ple>" "ex4@a1.ple"
-alias a2  "ex1@a2.ple" "ex2@a2.ple" "ex3@a2.ple" "ex4@a2.ple"
-alias a3  "a4"
+alias a1 ex1@a1.ple ex2@a1.ple 'EX3 <ex3@a1.ple>' ex4@a1.ple
+alias a2 ex1@a2.ple ex2@a2.ple ex3@a2.ple ex4@a2.ple
+alias a3 a4
 - 2/40
