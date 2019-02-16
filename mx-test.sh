@@ -347,15 +347,17 @@ else
 fi
 
 t_all() {
-   # Basics
+   # Absolute Basics
    t_X_Y_opt_input_go_stack
    t_X_errexit
    t_Y_errexit
    t_S_freeze
    t_input_inject_semicolon_seq
-   t_shcodec
    t_wysh
-   t_commandalias
+   t_commandalias # test now, save space later on!
+
+   # Basics
+   t_shcodec
    t_ifelse
    t_localopts
    t_local
@@ -414,7 +416,7 @@ t_all() {
    t_s_mime
 }
 
-# Basics {{{
+# Absolute Basics {{{
 t_X_Y_opt_input_go_stack() {
    t_prolog X_Y_opt_input_go_stack
    TRAP_EXIT_ADDONS="./.t*"
@@ -839,195 +841,6 @@ t_input_inject_semicolon_seq() {
    t_epilog
 }
 
-t_shcodec() {
-   t_prolog shcodec
-
-   # XXX the first needs to be checked, it is quite dumb as such
-   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
-	shcodec e abcd
-	echo $?/$^ERRNAME
-	shcodec d abcd
-	echo $?/$^ERRNAME
-	shcodec e a'b'c'd'
-	echo $?/$^ERRNAME
-	shcodec d a'b'c'd'
-	echo $?/$^ERRNAME
-	shcodec e a"b"c"d"
-	echo $?/$^ERRNAME
-	shcodec d a"b"c"d"
-	echo $?/$^ERRNAME
-	shcodec e a$'b'c$'d'
-	echo $?/$^ERRNAME
-	shcodec d a$'b'c$'d'
-	echo $?/$^ERRNAME
-	shcodec e 'abcd'
-	echo $?/$^ERRNAME
-	shcodec d 'abcd'
-	echo $?/$^ERRNAME
-	shcodec e "abcd"
-	echo $?/$^ERRNAME
-	shcodec d "abcd"
-	echo $?/$^ERRNAME
-	shcodec e $'abcd'
-	echo $?/$^ERRNAME
-	shcodec d $'abcd'
-	echo $?/$^ERRNAME
-	# same but with vput
-	vput shcodec res e abcd
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res d abcd
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res e a'b'c'd'
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res d a'b'c'd'
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res e a"b"c"d"
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res d a"b"c"d"
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res e a$'b'c$'d'
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res d a$'b'c$'d'
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res e 'abcd'
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res d 'abcd'
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res e "abcd"
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res d "abcd"
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res e $'abcd'
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res d $'abcd'
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	#
-	vput shcodec res e a b\ c d
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res d a b\ c d
-	echo $?/$^ERRNAME $res
-	vput shcodec res e ab cd
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res d 'ab cd'
-	echo $?/$^ERRNAME $res
-	vput shcodec res e a 'b c' d
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res d a 'b c' d
-	echo $?/$^ERRNAME $res
-	vput shcodec res e a "b c" d
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res d a "b c" d
-	echo $?/$^ERRNAME $res
-	vput shcodec res e a $'b c' d
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res d a $'b c' d
-	echo $?/$^ERRNAME $res
-	#
-	vput shcodec res e 'a$`"\'
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res d 'a$`"\'
-	echo $?/$^ERRNAME $res
-	vput shcodec res e "a\$\`'\"\\"
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res d "a\$\`'\"\\"
-	echo $?/$^ERRNAME $res
-	vput shcodec res e $'a\$`\'\"\\'
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res d $'a\$`\'\"\\'
-	echo $?/$^ERRNAME $res
-	vput shcodec res e $'a\$`\'"\\'
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res d $'a\$`\'"\\'
-	echo $?/$^ERRNAME $res
-	#
-	set diet=curd
-	vput shcodec res e a${diet}c
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	eval vput shcodec res e a${diet}c
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	vput shcodec res e "a${diet}c"
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	eval vput shcodec res e "a${diet}c"
-	echo $?/$^ERRNAME $res
-	eval shcodec d $res
-	echo $?/$^ERRNAME
-	__EOT
-   check 1 0 "${MBOX}" '3316745312 1241'
-
-   if [ -z "${UTF8_LOCALE}" ]; then
-      t_echoskip 'unicode:[no UTF-8 locale]'
-   else
-      ${cat} <<- '__EOT' | LC_ALL=${UTF8_LOCALE} \
-         ${MAILX} ${ARGS} > "${MBOX}" 2>>${ERR}
-		#
-		shcodec e täst
-		shcodec +e täst
-		shcodec d $'t\u00E4st'
-		shcodec e aՍc
-		shcodec +e aՍc
-		shcodec d $'a\u054Dc'
-		shcodec e a𝕂c
-		shcodec +e a𝕂c
-		shcodec d $'a\U0001D542c'
-		__EOT
-      check unicode 0 "${MBOX}" '1175985867 77'
-   fi
-
-   t_epilog
-}
-
 t_wysh() {
    t_prolog wysh
 
@@ -1135,6 +948,199 @@ t_commandalias() {
 	__EOT
 
    check 1 0 "${MBOX}" '1638809585 36'
+
+   t_epilog
+}
+# }}}
+
+# Basics {{{
+t_shcodec() {
+   t_prolog shcodec
+
+   # XXX the first needs to be checked, it is quite dumb as such
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+	commandalias x echo '$?/$^ERRNAME'
+	shcodec e abcd
+	x
+	shcodec d abcd
+	x
+	shcodec e a'b'c'd'
+	x
+	shcodec d a'b'c'd'
+	x
+	shcodec e a"b"c"d"
+	x
+	shcodec d a"b"c"d"
+	x
+	shcodec e a$'b'c$'d'
+	x
+	shcodec d a$'b'c$'d'
+	x
+	shcodec e 'abcd'
+	x
+	shcodec d 'abcd'
+	x
+	shcodec e "abcd"
+	x
+	shcodec d "abcd"
+	x
+	shcodec e $'abcd'
+	x
+	shcodec d $'abcd'
+	x
+	# same but with vput
+	commandalias y echo '$?/$^ERRNAME $res'
+	vput shcodec res e abcd
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res d abcd
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res e a'b'c'd'
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res d a'b'c'd'
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res e a"b"c"d"
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res d a"b"c"d"
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res e a$'b'c$'d'
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res d a$'b'c$'d'
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res e 'abcd'
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res d 'abcd'
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res e "abcd"
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res d "abcd"
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res e $'abcd'
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res d $'abcd'
+	y
+	eval shcodec d $res
+	x
+	#
+	vput shcodec res e a b\ c d
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res d a b\ c d
+	y
+	vput shcodec res e ab cd
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res d 'ab cd'
+	y
+	vput shcodec res e a 'b c' d
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res d a 'b c' d
+	y
+	vput shcodec res e a "b c" d
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res d a "b c" d
+	y
+	vput shcodec res e a $'b c' d
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res d a $'b c' d
+	y
+	#
+	vput shcodec res e 'a$`"\'
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res d 'a$`"\'
+	y
+	vput shcodec res e "a\$\`'\"\\"
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res d "a\$\`'\"\\"
+	y
+	vput shcodec res e $'a\$`\'\"\\'
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res d $'a\$`\'\"\\'
+	y
+	vput shcodec res e $'a\$`\'"\\'
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res d $'a\$`\'"\\'
+	y
+	#
+	set diet=curd
+	vput shcodec res e a${diet}c
+	y
+	eval shcodec d $res
+	x
+	eval vput shcodec res e a${diet}c
+	y
+	eval shcodec d $res
+	x
+	vput shcodec res e "a${diet}c"
+	y
+	eval shcodec d $res
+	x
+	eval vput shcodec res e "a${diet}c"
+	y
+	eval shcodec d $res
+	x
+	__EOT
+   check 1 0 "${MBOX}" '3316745312 1241'
+
+   if [ -z "${UTF8_LOCALE}" ]; then
+      t_echoskip 'unicode:[no UTF-8 locale]'
+   else
+      ${cat} <<- '__EOT' | LC_ALL=${UTF8_LOCALE} \
+         ${MAILX} ${ARGS} > "${MBOX}" 2>>${ERR}
+		#
+		shcodec e täst
+		shcodec +e täst
+		shcodec d $'t\u00E4st'
+		shcodec e aՍc
+		shcodec +e aՍc
+		shcodec d $'a\u054Dc'
+		shcodec e a𝕂c
+		shcodec +e a𝕂c
+		shcodec d $'a\U0001D542c'
+		__EOT
+      check unicode 0 "${MBOX}" '1175985867 77'
+   fi
 
    t_epilog
 }
@@ -2156,168 +2162,171 @@ t_addrcodec() {
    t_prolog addrcodec
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+	commandalias x echo '$?/$^ERRNAME $res'
 	vput addrcodec res e 1 <doog@def>
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	vput addrcodec res e 2 . <doog@def>
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	vput addrcodec res e 3 Sauer Dr. <doog@def>
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	vput addrcodec res e 3.50 Sauer (Ma) Dr. <doog@def>
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	vput addrcodec res e 3.51 Sauer (Ma) "Dr." <doog@def>
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	#
 	vput addrcodec res +e 4 Sauer (Ma) Dr. <doog@def>
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	vput addrcodec res +e 5 Sauer (Ma) Braten Dr. <doog@def>
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	vput addrcodec res +e 6 Sauer (Ma) Braten Dr. (Heu) <doog@def>
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	vput addrcodec res +e 7 Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu)
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	vput addrcodec res +e 8 \
 		Dr. Sauer (Ma) Braten Dr. (Heu) <doog@def> (bu) Boom. Boom
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	vput addrcodec res +e 9 Dr.Sauer(Ma)Braten Dr. (Heu) <doog@def>
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	vput addrcodec res +e 10 (Ma)Braten Dr. (Heu) <doog@def>
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	vput addrcodec res +e 11 (Ma)Braten Dr"." (Heu) <doog@def>
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	vput addrcodec res +e 12 Dr.     Sauer  (Ma)   Braten    Dr.   (u) <doog@def>
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	vput addrcodec res +e 13(Ma)Braten    Dr.     (Heu)     <doog@def>
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	vput addrcodec res +e 14 Hey, Du <doog@def> Wie() findet Dr. das? ()
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	vput addrcodec res +e 15 \
 		Hey, Du <doog@def> Wie() findet "" Dr. "" das? ()
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	vput addrcodec res +e 16 \
 		"Hey," "Du" <doog@def> "Wie()" findet "" Dr. "" das? ()
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	vput addrcodec res +e 17 \
 		"Hey" Du <doog@def> "Wie() findet " " Dr. """ das? ()
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	vput addrcodec res +e 18 \
 		<doog@def> "Hey" Du "Wie() findet " " Dr. """ das? ()
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	vput addrcodec res +e 19 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	#
 	vput addrcodec res ++e 20 Hey\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
-	echo $?/$^ERRNAME $res
+	x
 	vput addrcodec res ++e 21 Hey\,\""  <doog@def> "Wie()" findet \" Dr. \" das?
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	#
 	vput addrcodec res +++e 22 Hey\\,\"  <doog@def> "Wie()" findet \" Dr. \" das?
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	#
 	vput addrcodec res s \
 		"23 Hey\\,\\\" \"Wie" () "\" findet \\\" Dr. \\\" das?" <doog@def>
-	echo $?/$^ERRNAME $res
+	x
 	#
 	# Fix for [f3852f88]
 	vput addrcodec res ++e <from2@exam.ple> 100 (comment) "Quot(e)d"
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	vput addrcodec res e <from2@exam.ple> 100 (comment) "Quot(e)d"
-	echo $?/$^ERRNAME $res
+	x
 	eval vput addrcodec res d $res
-	echo $?/$^ERRNAME $res
+	x
 	__EOT
 
    check 1 0 "${MBOX}" '1047317989 2612'
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+	commandalias x echo '$?/$^ERRNAME $res'
    mlist isa1@list
    mlsubscribe isa2@list
    #
    vput addrcodec res skin Hey\\,\"  <isa0@list> "Wie()" find \" Dr. \" das?
-   echo $?/$^ERRNAME $res
+   x
    vput addrcodec res skinlist Hey\\,\"  <isa0@list> "Wie()" find \" Dr. \" das?
-   echo $?/$^ERRNAME $res
+   x
    vput addrcodec res skin Hey\\,\"  <isa1@list> "Wie()" find \" Dr. \" das?
-   echo $?/$^ERRNAME $res
+   x
    vput addrcodec res skinlist Hey\\,\"  <isa1@list> "Wie()" find \" Dr. \" das?
-   echo $?/$^ERRNAME $res
+   x
    vput addrcodec res skin Hey\\,\"  <isa2@list> "Wie()" find \" Dr. \" das?
-   echo $?/$^ERRNAME $res
+   x
    vput addrcodec res skinlist Hey\\,\"  <isa2@list> "Wie()" find \" Dr. \" das?
-   echo $?/$^ERRNAME $res
+   x
 	__EOT
 
    check 2 0 "${MBOX}" '1391779299 104'
 
    if have_feat idna; then
       ${cat} <<- '__EOT' | ${MAILX} ${ARGS} ${ADDARG_UNI} > "${MBOX}" 2>&1
+		commandalias x echo '$?/$^ERRNAME $res'
       vput addrcodec res e    (heu) <du@blödiän> "stroh" du   
-      echo $?/$^ERRNAME $res
+      x
       eval vput addrcodec res d $res
-      echo $?/$^ERRNAME $res
+      x
       vput addrcodec res e       <du@blödiän>   du     
-      echo $?/$^ERRNAME $res
+      x
       eval vput addrcodec res d $res
-      echo $?/$^ERRNAME $res
+      x
       vput addrcodec res e     du    <du@blödiän>   
-      echo $?/$^ERRNAME $res
+      x
       eval vput addrcodec res d $res
-      echo $?/$^ERRNAME $res
+      x
       vput addrcodec res e        <du@blödiän>    
-      echo $?/$^ERRNAME $res
+      x
       eval vput addrcodec res d $res
-      echo $?/$^ERRNAME $res
+      x
       vput addrcodec res e        du@blödiän    
-      echo $?/$^ERRNAME $res
+      x
       eval vput addrcodec res d $res
-      echo $?/$^ERRNAME $res
+      x
 		__EOT
 
       check idna 0 "${MBOX}" '498775983 326'
@@ -2332,352 +2341,206 @@ t_vexpr() {
    t_prolog vexpr
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>>${ERR}
+	commandalias x echo '$?/$^ERRNAME $res'
 	echo ' #0.0'
-	vput vexpr res = 9223372036854775807
-	echo $?/$^ERRNAME $res
-	vput vexpr res = 9223372036854775808
-	echo $?/$^ERRNAME $res
-	vput vexpr res = u9223372036854775808
-	echo $?/$^ERRNAME $res
-	vput vexpr res @= 9223372036854775808
-	echo $?/$^ERRNAME $res
-	vput vexpr res = -9223372036854775808
-	echo $?/$^ERRNAME $res
-	vput vexpr res = -9223372036854775809
-	echo $?/$^ERRNAME $res
-	vput vexpr res @= -9223372036854775809
-	echo $?/$^ERRNAME $res
-	vput vexpr res = U9223372036854775809
-	echo $?/$^ERRNAME $res
+	vput vexpr res = 9223372036854775807;x
+	vput vexpr res = 9223372036854775808;x
+	vput vexpr res = u9223372036854775808;x
+	vput vexpr res @= 9223372036854775808;x
+	vput vexpr res = -9223372036854775808;x
+	vput vexpr res = -9223372036854775809;x
+	vput vexpr res @= -9223372036854775809;x
+	vput vexpr res = U9223372036854775809;x
 	echo ' #0.1'
 	vput vexpr res = \
-		0b0111111111111111111111111111111111111111111111111111111111111111
-	echo $?/$^ERRNAME $res
+		0b0111111111111111111111111111111111111111111111111111111111111111;x
 	vput vexpr res = \
-		S0b1000000000000000000000000000000000000000000000000000000000000000
-	echo $?/$^ERRNAME $res
+		S0b1000000000000000000000000000000000000000000000000000000000000000;x
 	vput vexpr res @= \
-		S0b1000000000000000000000000000000000000000000000000000000000000000
-	echo $?/$^ERRNAME $res
+		S0b1000000000000000000000000000000000000000000000000000000000000000;x
 	vput vexpr res = \
-		U0b1000000000000000000000000000000000000000000000000000000000000000
-	echo $?/$^ERRNAME $res
+		U0b1000000000000000000000000000000000000000000000000000000000000000;x
 	vput vexpr res = \
-		0b1000000000000000000000000000000000000000000000000000000000000000
-	echo $?/$^ERRNAME $res
+		0b1000000000000000000000000000000000000000000000000000000000000000;x
 	vput vexpr res @= \
-		0b1000000000000000000000000000000000000000000000000000000000000000
-	echo $?/$^ERRNAME $res
+		0b1000000000000000000000000000000000000000000000000000000000000000;x
 	vput vexpr res = \
-		-0b1000000000000000000000000000000000000000000000000000000000000000
-	echo $?/$^ERRNAME $res
+		-0b1000000000000000000000000000000000000000000000000000000000000000;x
 	vput vexpr res = \
-		S0b1000000000000000000000000000000000000000000000000000000000000001
-	echo $?/$^ERRNAME $res
+		S0b1000000000000000000000000000000000000000000000000000000000000001;x
 	vput vexpr res @= \
-		S0b1000000000000000000000000000000000000000000000000000000000000001
-	echo $?/$^ERRNAME $res
+		S0b1000000000000000000000000000000000000000000000000000000000000001;x
 	vput vexpr res @= \
-		-0b1000000000000000000000000000000000000000000000000000000000000001
-	echo $?/$^ERRNAME $res
+		-0b1000000000000000000000000000000000000000000000000000000000000001;x
 	vput vexpr res = \
-		U0b1000000000000000000000000000000000000000000000000000000000000001
-	echo $?/$^ERRNAME $res
+		U0b1000000000000000000000000000000000000000000000000000000000000001;x
 	echo ' #0.2'
-	vput vexpr res = 0777777777777777777777
-	echo $?/$^ERRNAME $res
-	vput vexpr res = S01000000000000000000000
-	echo $?/$^ERRNAME $res
-	vput vexpr res @= S01000000000000000000000
-	echo $?/$^ERRNAME $res
-	vput vexpr res = U01000000000000000000000
-	echo $?/$^ERRNAME $res
-	vput vexpr res = 01000000000000000000000
-	echo $?/$^ERRNAME $res
-	vput vexpr res @= 01000000000000000000000
-	echo $?/$^ERRNAME $res
-	vput vexpr res = -01000000000000000000000
-	echo $?/$^ERRNAME $res
-	vput vexpr res = S01000000000000000000001
-	echo $?/$^ERRNAME $res
-	vput vexpr res @= S01000000000000000000001
-	echo $?/$^ERRNAME $res
-	vput vexpr res @= -01000000000000000000001
-	echo $?/$^ERRNAME $res
-	vput vexpr res = U01000000000000000000001
-	echo $?/$^ERRNAME $res
+	vput vexpr res = 0777777777777777777777;x
+	vput vexpr res = S01000000000000000000000;x
+	vput vexpr res @= S01000000000000000000000;x
+	vput vexpr res = U01000000000000000000000;x
+	vput vexpr res = 01000000000000000000000;x
+	vput vexpr res @= 01000000000000000000000;x
+	vput vexpr res = -01000000000000000000000;x
+	vput vexpr res = S01000000000000000000001;x
+	vput vexpr res @= S01000000000000000000001;x
+	vput vexpr res @= -01000000000000000000001;x
+	vput vexpr res = U01000000000000000000001;x
 	echo ' #0.3'
-	vput vexpr res = 0x7FFFFFFFFFFFFFFF
-	echo $?/$^ERRNAME $res
-	vput vexpr res = S0x8000000000000000
-	echo $?/$^ERRNAME $res
-	vput vexpr res @= S0x8000000000000000
-	echo $?/$^ERRNAME $res
-	vput vexpr res = U0x8000000000000000
-	echo $?/$^ERRNAME $res
-	vput vexpr res = 0x8000000000000000
-	echo $?/$^ERRNAME $res
-	vput vexpr res @= 0x8000000000000000
-	echo $?/$^ERRNAME $res
-	vput vexpr res = -0x8000000000000000
-	echo $?/$^ERRNAME $res
-	vput vexpr res = S0x8000000000000001
-	echo $?/$^ERRNAME $res
-	vput vexpr res @= S0x8000000000000001
-	echo $?/$^ERRNAME $res
-   vput vexpr res @= -0x8000000000000001
-   echo $?/$^ERRNAME $res
-	vput vexpr res = u0x8000000000000001
-	echo $?/$^ERRNAME $res
+	vput vexpr res = 0x7FFFFFFFFFFFFFFF;x
+	vput vexpr res = S0x8000000000000000;x
+	vput vexpr res @= S0x8000000000000000;x
+	vput vexpr res = U0x8000000000000000;x
+	vput vexpr res = 0x8000000000000000;x
+	vput vexpr res @= 0x8000000000000000;x
+	vput vexpr res = -0x8000000000000000;x
+	vput vexpr res = S0x8000000000000001;x
+	vput vexpr res @= S0x8000000000000001;x
+   vput vexpr res @= -0x8000000000000001;x
+	vput vexpr res = u0x8000000000000001;x
 	echo ' #1'
-	vput vexpr res ~ 0
-	echo $?/$^ERRNAME $res
-	vput vexpr res ~ 1
-	echo $?/$^ERRNAME $res
-	vput vexpr res ~ -1
-	echo $?/$^ERRNAME $res
+	vput vexpr res ~ 0;x
+	vput vexpr res ~ 1;x
+	vput vexpr res ~ -1;x
 	echo ' #2'
-	vput vexpr res + 0 0
-	echo $?/$^ERRNAME $res
-	vput vexpr res + 0 1
-	echo $?/$^ERRNAME $res
-	vput vexpr res + 1 1
-	echo $?/$^ERRNAME $res
+	vput vexpr res + 0 0;x
+	vput vexpr res + 0 1;x
+	vput vexpr res + 1 1;x
 	echo ' #3'
-	vput vexpr res + 9223372036854775807 0
-	echo $?/$^ERRNAME $res
-	vput vexpr res + 9223372036854775807 1
-	echo $?/$^ERRNAME $res
-	vput vexpr res @+ 9223372036854775807 1
-	echo $?/$^ERRNAME $res
-	vput vexpr res + 0 9223372036854775807
-	echo $?/$^ERRNAME $res
-	vput vexpr res + 1 9223372036854775807
-	echo $?/$^ERRNAME $res
-	vput vexpr res @+ 1 9223372036854775807
-	echo $?/$^ERRNAME $res
+	vput vexpr res + 9223372036854775807 0;x
+	vput vexpr res + 9223372036854775807 1;x
+	vput vexpr res @+ 9223372036854775807 1;x
+	vput vexpr res + 0 9223372036854775807;x
+	vput vexpr res + 1 9223372036854775807;x
+	vput vexpr res @+ 1 9223372036854775807;x
 	echo ' #4'
-	vput vexpr res + -9223372036854775808 0
-	echo $?/$^ERRNAME $res
-	vput vexpr res + -9223372036854775808 -1
-	echo $?/$^ERRNAME $res
-	vput vexpr res @+ -9223372036854775808 -1
-	echo $?/$^ERRNAME $res
-	vput vexpr res + 0 -9223372036854775808
-	echo $?/$^ERRNAME $res
-	vput vexpr res + -1 -9223372036854775808
-	echo $?/$^ERRNAME $res
-	vput vexpr res @+ -1 -9223372036854775808
-	echo $?/$^ERRNAME $res
+	vput vexpr res + -9223372036854775808 0;x
+	vput vexpr res + -9223372036854775808 -1;x
+	vput vexpr res @+ -9223372036854775808 -1;x
+	vput vexpr res + 0 -9223372036854775808;x
+	vput vexpr res + -1 -9223372036854775808;x
+	vput vexpr res @+ -1 -9223372036854775808;x
 	echo ' #5'
-	vput vexpr res - 0 0
-	echo $?/$^ERRNAME $res
-	vput vexpr res - 0 1
-	echo $?/$^ERRNAME $res
-	vput vexpr res - 1 1
-	echo $?/$^ERRNAME $res
+	vput vexpr res - 0 0;x
+	vput vexpr res - 0 1;x
+	vput vexpr res - 1 1;x
 	echo ' #6'
-	vput vexpr res - 9223372036854775807 0
-	echo $?/$^ERRNAME $res
-	vput vexpr res - 9223372036854775807 -1
-	echo $?/$^ERRNAME $res
-	vput vexpr res @- 9223372036854775807 -1
-	echo $?/$^ERRNAME $res
-	vput vexpr res - 0 9223372036854775807
-	echo $?/$^ERRNAME $res
-	vput vexpr res - -1 9223372036854775807
-	echo $?/$^ERRNAME $res
-	vput vexpr res - -2 9223372036854775807
-	echo $?/$^ERRNAME $res
-	vput vexpr res @- -2 9223372036854775807
-	echo $?/$^ERRNAME $res
+	vput vexpr res - 9223372036854775807 0;x
+	vput vexpr res - 9223372036854775807 -1;x
+	vput vexpr res @- 9223372036854775807 -1;x
+	vput vexpr res - 0 9223372036854775807;x
+	vput vexpr res - -1 9223372036854775807;x
+	vput vexpr res - -2 9223372036854775807;x
+	vput vexpr res @- -2 9223372036854775807;x
 	echo ' #7'
-	vput vexpr res - -9223372036854775808 +0
-	echo $?/$^ERRNAME $res
-	vput vexpr res - -9223372036854775808 +1
-	echo $?/$^ERRNAME $res
-	vput vexpr res @- -9223372036854775808 +1
-	echo $?/$^ERRNAME $res
-	vput vexpr res - 0 -9223372036854775808
-	echo $?/$^ERRNAME $res
-	vput vexpr res - +1 -9223372036854775808
-	echo $?/$^ERRNAME $res
-	vput vexpr res @- +1 -9223372036854775808
-	echo $?/$^ERRNAME $res
+	vput vexpr res - -9223372036854775808 +0;x
+	vput vexpr res - -9223372036854775808 +1;x
+	vput vexpr res @- -9223372036854775808 +1;x
+	vput vexpr res - 0 -9223372036854775808;x
+	vput vexpr res - +1 -9223372036854775808;x
+	vput vexpr res @- +1 -9223372036854775808;x
 	echo ' #8'
-	vput vexpr res + -13 -2
-	echo $?/$^ERRNAME $res
-	vput vexpr res - 0 0
-	echo $?/$^ERRNAME $res
-	vput vexpr res - 0 1
-	echo $?/$^ERRNAME $res
-	vput vexpr res - 1 1
-	echo $?/$^ERRNAME $res
-	vput vexpr res - -13 -2
-	echo $?/$^ERRNAME $res
+	vput vexpr res + -13 -2;x
+	vput vexpr res - 0 0;x
+	vput vexpr res - 0 1;x
+	vput vexpr res - 1 1;x
+	vput vexpr res - -13 -2;x
 	echo ' #9'
-	vput vexpr res * 0 0
-	echo $?/$^ERRNAME $res
-	vput vexpr res * 0 1
-	echo $?/$^ERRNAME $res
-	vput vexpr res * 1 1
-	echo $?/$^ERRNAME $res
-	vput vexpr res * -13 -2
-	echo $?/$^ERRNAME $res
+	vput vexpr res * 0 0;x
+	vput vexpr res * 0 1;x
+	vput vexpr res * 1 1;x
+	vput vexpr res * -13 -2;x
 	echo ' #10'
-	vput vexpr res / 0 0
-	echo $?/$^ERRNAME $res
-	vput vexpr res / 0 1
-	echo $?/$^ERRNAME $res
-	vput vexpr res / 1 1
-	echo $?/$^ERRNAME $res
-	vput vexpr res / -13 -2
-	echo $?/$^ERRNAME $res
+	vput vexpr res / 0 0;x
+	vput vexpr res / 0 1;x
+	vput vexpr res / 1 1;x
+	vput vexpr res / -13 -2;x
 	echo ' #11'
-	vput vexpr res % 0 0
-	echo $?/$^ERRNAME $res
-	vput vexpr res % 0 1
-	echo $?/$^ERRNAME $res
-	vput vexpr res % 1 1
-	echo $?/$^ERRNAME $res
-	vput vexpr res % -13 -2
-	echo $?/$^ERRNAME $res
+	vput vexpr res % 0 0;x
+	vput vexpr res % 0 1;x
+	vput vexpr res % 1 1;x
+	vput vexpr res % -13 -2;x
 	__EOT
 
    check numeric 0 "${MBOX}" '960821755 1962'
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
-	vput vexpr res find 'bananarama' 'nana'
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res find 'bananarama' 'bana'
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res find 'bananarama' 'Bana'
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res find 'bananarama' 'rama'
-	echo $?/$^ERRNAME :$res:
+	commandalias x echo '$?/$^ERRNAME :$res:'
+	vput vexpr res find 'bananarama' 'nana';x
+	vput vexpr res find 'bananarama' 'bana';x
+	vput vexpr res find 'bananarama' 'Bana';x
+	vput vexpr res find 'bananarama' 'rama';x
 	echo ' #1'
-	vput vexpr res ifind 'bananarama' 'nana'
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res ifind 'bananarama' 'bana'
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res ifind 'bananarama' 'Bana'
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res ifind 'bananarama' 'rama'
-	echo $?/$^ERRNAME :$res:
+	vput vexpr res ifind 'bananarama' 'nana';x
+	vput vexpr res ifind 'bananarama' 'bana';x
+	vput vexpr res ifind 'bananarama' 'Bana';x
+	vput vexpr res ifind 'bananarama' 'rama';x
 	echo ' #2'
-	vput vexpr res substring 'bananarama' 1
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res substring 'bananarama' 3
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res substring 'bananarama' 5
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res substring 'bananarama' 7
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res substring 'bananarama' 9
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res substring 'bananarama' 10
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res substring 'bananarama' 1 3
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res substring 'bananarama' 3 3
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res substring 'bananarama' 5 3
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res substring 'bananarama' 7 3
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res substring 'bananarama' 9 3
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res substring 'bananarama' 10 3
-	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' 1;x
+	vput vexpr res substring 'bananarama' 3;x
+	vput vexpr res substring 'bananarama' 5;x
+	vput vexpr res substring 'bananarama' 7;x
+	vput vexpr res substring 'bananarama' 9;x
+	vput vexpr res substring 'bananarama' 10;x
+	vput vexpr res substring 'bananarama' 1 3;x
+	vput vexpr res substring 'bananarama' 3 3;x
+	vput vexpr res substring 'bananarama' 5 3;x
+	vput vexpr res substring 'bananarama' 7 3;x
+	vput vexpr res substring 'bananarama' 9 3;x
+	vput vexpr res substring 'bananarama' 10 3;x
 	echo ' #3'
-	vput vexpr res substring 'bananarama' -1
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res substring 'bananarama' -3
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res substring 'bananarama' -5
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res substring 'bananarama' -7
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res substring 'bananarama' -9
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res substring 'bananarama' -10
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res substring 'bananarama' 1 -3
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res substring 'bananarama' 3 -3
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res substring 'bananarama' 5 -3
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res substring 'bananarama' 7 -3
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res substring 'bananarama' 9 -3
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res substring 'bananarama' 10 -3
-	echo $?/$^ERRNAME :$res:
+	vput vexpr res substring 'bananarama' -1;x
+	vput vexpr res substring 'bananarama' -3;x
+	vput vexpr res substring 'bananarama' -5;x
+	vput vexpr res substring 'bananarama' -7;x
+	vput vexpr res substring 'bananarama' -9;x
+	vput vexpr res substring 'bananarama' -10;x
+	vput vexpr res substring 'bananarama' 1 -3;x
+	vput vexpr res substring 'bananarama' 3 -3;x
+	vput vexpr res substring 'bananarama' 5 -3;x
+	vput vexpr res substring 'bananarama' 7 -3;x
+	vput vexpr res substring 'bananarama' 9 -3;x
+	vput vexpr res substring 'bananarama' 10 -3;x
 	echo ' #4'
-	vput vexpr res trim 'Cocoon  Cocoon'
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res trim '  Cocoon  Cocoon 	  '
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res trim-front 'Cocoon  Cocoon'
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res trim-front '  Cocoon  Cocoon 	  '
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res trim-end 'Cocoon  Cocoon'
-	echo $?/$^ERRNAME :$res:
-	vput vexpr res trim-end '  Cocoon  Cocoon 	  '
-	echo $?/$^ERRNAME :$res:
+	vput vexpr res trim 'Cocoon  Cocoon';x
+	vput vexpr res trim '  Cocoon  Cocoon 	  ';x
+	vput vexpr res trim-front 'Cocoon  Cocoon';x
+	vput vexpr res trim-front '  Cocoon  Cocoon 	  ';x
+	vput vexpr res trim-end 'Cocoon  Cocoon';x
+	vput vexpr res trim-end '  Cocoon  Cocoon 	  ';x
 	__EOT
 
    check string 0 "${MBOX}" '3182004322 601'
 
    if have_feat regex; then
       ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
-		vput vexpr res regex 'bananarama' 'nana'
-		echo $?/$^ERRNAME :$res:
-		vput vexpr res regex 'bananarama' 'bana'
-		echo $?/$^ERRNAME :$res:
-		vput vexpr res regex 'bananarama' 'Bana'
-		echo $?/$^ERRNAME :$res:
-		vput vexpr res regex 'bananarama' 'rama'
-		echo $?/$^ERRNAME :$res:
+		commandalias x echo '$?/$^ERRNAME :$res:'
+		vput vexpr res regex 'bananarama' 'nana';x
+		vput vexpr res regex 'bananarama' 'bana';x
+		vput vexpr res regex 'bananarama' 'Bana';x
+		vput vexpr res regex 'bananarama' 'rama';x
 		echo ' #1'
-		vput vexpr res iregex 'bananarama' 'nana'
-		echo $?/$^ERRNAME :$res:
-		vput vexpr res iregex 'bananarama' 'bana'
-		echo $?/$^ERRNAME :$res:
-		vput vexpr res iregex 'bananarama' 'Bana'
-		echo $?/$^ERRNAME :$res:
-		vput vexpr res iregex 'bananarama' 'rama'
-		echo $?/$^ERRNAME :$res:
+		vput vexpr res iregex 'bananarama' 'nana';x
+		vput vexpr res iregex 'bananarama' 'bana';x
+		vput vexpr res iregex 'bananarama' 'Bana';x
+		vput vexpr res iregex 'bananarama' 'rama';x
 		echo ' #2'
-		vput vexpr res regex 'bananarama' '(.*)nana(.*)' '\${1}a\${0}u{\$2}'
-		echo $?/$^ERRNAME :$res:
-		vput vexpr res regex 'bananarama' '(.*)bana(.*)' '\${1}a\${0}u\$2'
-		echo $?/$^ERRNAME :$res:
-		vput vexpr res regex 'bananarama' 'Bana(.+)' '\$1\$0'
-		echo $?/$^ERRNAME :$res:
-		vput vexpr res regex 'bananarama' '(.+)rama' '\$1\$0'
-		echo $?/$^ERRNAME :$res:
+		vput vexpr res regex 'bananarama' '(.*)nana(.*)' '\${1}a\${0}u{\$2}';x
+		vput vexpr res regex 'bananarama' '(.*)bana(.*)' '\${1}a\${0}u\$2';x
+		vput vexpr res regex 'bananarama' 'Bana(.+)' '\$1\$0';x
+		vput vexpr res regex 'bananarama' '(.+)rama' '\$1\$0';x
 		echo ' #3'
-		vput vexpr res iregex 'bananarama' '(.*)nana(.*)' '\${1}a\${0}u{\$2}'
-		echo $?/$^ERRNAME :$res:
-		vput vexpr res iregex 'bananarama' '(.*)bana(.*)' '\${1}a\${0}u\$2'
-		echo $?/$^ERRNAME :$res:
-		vput vexpr res iregex 'bananarama' 'Bana(.+)' '\$1\$0'
-		echo $?/$^ERRNAME :$res:
-		vput vexpr res iregex 'bananarama' '(.+)rama' '\$1\$0'
-		echo $?/$^ERRNAME :$res:
+		vput vexpr res iregex 'bananarama' '(.*)nana(.*)' '\${1}a\${0}u{\$2}';x
+		vput vexpr res iregex 'bananarama' '(.*)bana(.*)' '\${1}a\${0}u\$2';x
+		vput vexpr res iregex 'bananarama' 'Bana(.+)' '\$1\$0';x
+		vput vexpr res iregex 'bananarama' '(.+)rama' '\$1\$0';x
 		echo ' #4'
 		vput vexpr res regex 'banana' '(club )?(.*)(nana)(.*)' \
-         '\$1\${2}\$4\${3}rama'
-		echo $?/$^ERRNAME :$res:
+         '\$1\${2}\$4\${3}rama';x
 		vput vexpr res regex 'Banana' '(club )?(.*)(nana)(.*)' \
-         '\$1\$2\${2}\$2\$4\${3}rama'
-		echo $?/$^ERRNAME :$res:
+         '\$1\$2\${2}\$2\$4\${3}rama';x
 		vput vexpr res regex 'Club banana' '(club )?(.*)(nana)(.*)' \
-         '\$1\${2}\$4\${3}rama'
-		echo $?/$^ERRNAME :$res:
+         '\$1\${2}\$4\${3}rama';x
 		echo ' #5'
 		__EOT
 
@@ -3018,16 +2881,12 @@ t_read() {
 
    ${cat} <<- '__EOT' |\
       ${MAILX} ${ARGS} -X'readctl create ./.tin' > "${MBOX}" 2>&1
-   read a b c
-   echo $?/$^ERRNAME / <$a><$b><$c>
-   read a b c
-   echo $?/$^ERRNAME / <$a><$b><$c>
-   read a b c
-   echo $?/$^ERRNAME / <$a><$b><$c>
-   read a b c
-   echo $?/$^ERRNAME / <$a><$b><$c>
-   unset a b c;read a b c
-   echo $?/$^ERRNAME / <$a><$b><$c>
+	commandalias x echo '$?/$^ERRNAME / <$a><$b><$c>'
+   read a b c;x
+   read a b c;x
+   read a b c;x
+   read a b c;x
+   unset a b c;read a b c;x
    readctl remove ./.tin;echo readctl remove:$?/$^ERRNAME
 	__EOT
    check 1 0 "${MBOX}" '1527910147 173'
@@ -3043,40 +2902,34 @@ t_read() {
 
    ${cat} <<- '__EOT' |\
       6< .tin2 ${MAILX} ${ARGS} -X 'readctl create 6' > "${MBOX}" 2>&1
+	commandalias x echo '$?/$^ERRNAME / <$a><$b><$c>'
    set ifs=:
-   read a b c
-   echo $?/$^ERRNAME / <$a><$b><$c>
-   read a b c
-   echo $?/$^ERRNAME / <$a><$b><$c>
-   read a b c
-   echo $?/$^ERRNAME / <$a><$b><$c>
-   read a b c
-   echo $?/$^ERRNAME / <$a><$b><$c>
-   read a b c
-   echo $?/$^ERRNAME / <$a><$b><$c>
-   read a b c
-   echo $?/$^ERRNAME / <$a><$b><$c>
-   unset a b c;read a b c
-   echo $?/$^ERRNAME / <$a><$b><$c>
-   read a b c
-   echo $?/$^ERRNAME / <$a><$b><$c>
+   read a b c;x
+   read a b c;x
+   read a b c;x
+   read a b c;x
+   read a b c;x
+   read a b c;x
+   unset a b c;read a b c;x
+   read a b c;x
    readctl remove 6;echo readctl remove:$?/$^ERRNAME
 	__EOT
    check ifs 0 "${MBOX}" '890153490 298'
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+	commandalias x echo '$?/$^ERRNAME / <$d>'
    readctl create .tin
-   readall d; echo $?/$^ERRNAME / <$d>
-   wysh set d;readall d;echo $?/$^ERRNAME / <$d>
+   readall d;x
+   wysh set d;readall d;x
    readctl create .tin2
-   readall d; echo $?/$^ERRNAME / <$d>
-   wysh set d;readall d;echo $?/$^ERRNAME / <$d>
+   readall d;x
+   wysh set d;readall d;x
    readctl remove .tin;echo $?/$^ERRNAME;\
       readctl remove .tin2;echo $?/$^ERRNAME
    echo '### now with empty lines'
    ! printf 'one line\n\ntwo line\n\n' > ./.temptynl
    readctl create .temptynl;echo $?/$^ERRNAME
-   readall d; echo "$?/$^ERRNAME / <$d>"
+   readall d;x
    readctl remove .temptynl;echo $?/$^ERRNAME
 	__EOT
    check readall 0 "${MBOX}" '4113506527 405'
@@ -3806,40 +3659,26 @@ t_charsetalias() {
    t_prolog charsetalias
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+   commandalias x echo '$?/$^ERRNAME'
 	echo 1
-	charsetalias latin1 latin15
-	echo $?/$^ERRNAME
-	charsetalias latin1
-	echo $?/$^ERRNAME
-	charsetalias - latin1
-	echo $?/$^ERRNAME
+	charsetalias latin1 latin15;x
+	charsetalias latin1;x
+	charsetalias - latin1;x
 	echo 2
-	charsetalias cp1252 latin1  latin15 utf8  utf8 utf16
-	echo $?/$^ERRNAME
-	charsetalias cp1252
-	echo $?/$^ERRNAME
-	charsetalias latin15
-	echo $?/$^ERRNAME
-	charsetalias utf8
-	echo $?/$^ERRNAME
+	charsetalias cp1252 latin1  latin15 utf8  utf8 utf16;x
+	charsetalias cp1252;x
+	charsetalias latin15;x
+	charsetalias utf8;x
 	echo 3
-	charsetalias - cp1252
-	echo $?/$^ERRNAME
-	charsetalias - latin15
-	echo $?/$^ERRNAME
-	charsetalias - utf8
-	echo $?/$^ERRNAME
+	charsetalias - cp1252;x
+	charsetalias - latin15;x
+	charsetalias - utf8;x
 	echo 4
-	charsetalias latin1
-	echo $?/$^ERRNAME
-	charsetalias - latin1
-	echo $?/$^ERRNAME
-	uncharsetalias latin15
-	echo $?/$^ERRNAME
-	charsetalias latin1
-	echo $?/$^ERRNAME
-	charsetalias - latin1
-	echo $?/$^ERRNAME
+	charsetalias latin1;x
+	charsetalias - latin1;x
+	uncharsetalias latin15;x
+	charsetalias latin1;x
+	charsetalias - latin1;x
 	__EOT
    check 1 0 "${MBOX}" '3551595280 433'
 
@@ -3850,29 +3689,20 @@ t_shortcut() {
    t_prolog shortcut
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+   commandalias x echo '$?/$^ERRNAME'
 	echo 1
-	shortcut file1 expansion-of-file1
-	echo $?/$^ERRNAME
-	shortcut file2 expansion-of-file2
-	echo $?/$^ERRNAME
-	shortcut file3 expansion-of-file3
-	echo $?/$^ERRNAME
-	shortcut   file4   'expansion of file4'  'file 5' 'expansion of file5'
-	echo $?/$^ERRNAME
+	shortcut file1 expansion-of-file1;x
+	shortcut file2 expansion-of-file2;x
+	shortcut file3 expansion-of-file3;x
+	shortcut   file4   'expansion of file4'  'file 5' 'expansion of file5';x
 	echo 2
-	shortcut file1
-	echo $?/$^ERRNAME
-	shortcut file2
-	echo $?/$^ERRNAME
-	shortcut file3
-	echo $?/$^ERRNAME
-	shortcut file4
-	echo $?/$^ERRNAME
-	shortcut 'file 5'
-	echo $?/$^ERRNAME
+	shortcut file1;x
+	shortcut file2;x
+	shortcut file3;x
+	shortcut file4;x
+	shortcut 'file 5';x
 	echo 3
-	shortcut
-	echo $?/$^ERRNAME
+	shortcut;x
 	__EOT
    check 1 0 "${MBOX}" '1970515669 430'
 
@@ -4653,58 +4483,46 @@ t_alternates() {
    t_xmta 'Valeriana Sat Jul 08 15:54:03 2017'
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Smta=./.tmta.sh > ./.tall 2>&1
+   commandalias x echo '$?/$^ERRNAME'
+   commandalias y echo '$?/$^ERRNAME <$rv>'
    echo --0
-   alternates
-   echo $?/$^ERRNAME
-   alternates a1@b1 a2@b2 a3@b3
-   echo $?/$^ERRNAME
-   alternates
-   echo $?/$^ERRNAME
-   vput alternates rv
-   echo $?/$^ERRNAME <$rv>
+   alternates;x
+   alternates a1@b1 a2@b2 a3@b3;x
+   alternates;x
+   vput alternates rv;y
 
    echo --1
    unalternates a2@b2
-   vput alternates rv
-   echo $?/$^ERRNAME <$rv>
+   vput alternates rv;y
    unalternates a3@b3
-   vput alternates rv
-   echo $?/$^ERRNAME <$rv>
+   vput alternates rv;y
    unalternates a1@b1
-   vput alternates rv
-   echo $?/$^ERRNAME <$rv>
+   vput alternates rv;y
 
    echo --2
    unalternates *
    alternates a1@b1 a2@b2 a3@b3
    unalternates a3@b3
-   vput alternates rv
-   echo $?/$^ERRNAME <$rv>
+   vput alternates rv;y
    unalternates a2@b2
-   vput alternates rv
-   echo $?/$^ERRNAME <$rv>
+   vput alternates rv;y
    unalternates a1@b1
-   vput alternates rv
-   echo $?/$^ERRNAME <$rv>
+   vput alternates rv;y
 
    echo --3
    alternates a1@b1 a2@b2 a3@b3
    unalternates a1@b1
-   vput alternates rv
-   echo $?/$^ERRNAME <$rv>
+   vput alternates rv;y
    unalternates a2@b2
-   vput alternates rv
-   echo $?/$^ERRNAME <$rv>
+   vput alternates rv;y
    unalternates a3@b3
-   vput alternates rv
-   echo $?/$^ERRNAME <$rv>
+   vput alternates rv;y
 
    echo --4
    unalternates *
    alternates a1@b1 a2@b2 a3@b3
    unalternates *
-   vput alternates rv
-   echo $?/$^ERRNAME <$rv>
+   vput alternates rv;y
 
    echo --5
    unalternates *
@@ -4744,37 +4562,24 @@ _EOT
 
    echo --10
    unalternates *
-   alternates a1@b1
-   echo $?/$^ERRNAME
-   vput alternates rv
-   echo $?/$^ERRNAME <$rv>
-   alternates a2@b2
-   echo $?/$^ERRNAME
-   vput alternates rv
-   echo $?/$^ERRNAME <$rv>
-   alternates a3@b3
-   echo $?/$^ERRNAME
-   vput alternates rv
-   echo $?/$^ERRNAME <$rv>
-   alternates a4@b4
-   echo $?/$^ERRNAME
-   vput alternates rv
-   echo $?/$^ERRNAME <$rv>
+   alternates a1@b1;x
+   vput alternates rv;y
+   alternates a2@b2;x
+   vput alternates rv;y
+   alternates a3@b3;x
+   vput alternates rv;y
+   alternates a4@b4;x
+   vput alternates rv;y
 
    unalternates *
-   vput alternates rv
-   echo $?/$^ERRNAME <$rv>
+   vput alternates rv;y
 
    echo --11
    set posix
-   alternates a1@b1 a2@b2
-   echo $?/$^ERRNAME
-   vput alternates rv
-   echo $?/$^ERRNAME <$rv>
-   alternates a3@b3 a4@b4
-   echo $?/$^ERRNAME
-   vput alternates rv
-   echo $?/$^ERRNAME <$rv>
+   alternates a1@b1 a2@b2;x
+   vput alternates rv;y
+   alternates a3@b3 a4@b4;x
+   vput alternates rv;y
 	__EOT
 
    check 1 0 "${MBOX}" '142184864 515'
