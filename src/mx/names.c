@@ -56,7 +56,7 @@
  * The value is a n_strlist*, which we manage directly (no toolbox).
  * name::n_name, after .sl_dat[.sl_len] one boole that indicates
  * recursion-allowed, thereafter name::n_fullname (empty if EQ n_name) */
-#define a_NM_ALIAS_FLAGS (\
+#define a_NM_ALIAS_FLAGS (su_CS_DICT_POW2_SPACED |\
       su_CS_DICT_HEAD_RESORT | su_CS_DICT_AUTO_SHRINK | su_CS_DICT_ERR_PASS)
 #define a_NM_ALIAS_TRESHOLD_SHIFT 2
 
