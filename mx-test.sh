@@ -377,6 +377,7 @@ t_all() {
 
    # MIME and RFC basics
    t_mime_if_not_ascii
+   t_mime_encoding
    t_xxxheads_rfc2047
    t_iconv_mbyte_base64
    t_iconv_mainbody
@@ -3174,6 +3175,42 @@ t_mime_if_not_ascii() {
    </dev/null ${MAILX} ${ARGS} -Scharset-7bit=not-ascii -s Subject "${MBOX}" \
       >> "${MBOX}" 2>&1
    check 2 0 "${MBOX}" '3964303752 274'
+
+   t_epilog
+}
+
+t_mime_encoding() {
+   t_prolog mime_encoding
+
+   # 8B
+   printf 'Hey, you.\nFrom me to you\nCiao\n' |
+      ${MAILX} ${ARGS} -s Subject -Smime-encoding=8b "${MBOX}" \
+         >> "${MBOX}" 2>&1
+   check 1 0 "${MBOX}" '3835153597 136'
+   printf 'Hey, you.\n\nFrom me to you\nCiao.\n' |
+      ${MAILX} ${ARGS} -s Subject -Smime-encoding=8b "${MBOX}" \
+         >> "${MBOX}" 2>&1
+   check 2 0 "${MBOX}" '63875210 275'
+
+   # QP
+   printf 'Hey, you.\n From me to you\nCiao\n' |
+      ${MAILX} ${ARGS} -s Subject -Smime-encoding=qp "${MBOX}" \
+         >> "${MBOX}" 2>&1
+   check 3 0 "${MBOX}" '465798521 412'
+   printf 'Hey, you.\nFrom me to you\nCiao\n' |
+      ${MAILX} ${ARGS} -s Subject -Smime-encoding=qp "${MBOX}" \
+         >> "${MBOX}" 2>&1
+   check 4 0 "${MBOX}" '2075263697 655'
+
+   # B64
+   printf 'Hey, you.\n From me to you\nCiao\n' |
+      ${MAILX} ${ARGS} -s Subject -Smime-encoding=b64 "${MBOX}" \
+         >> "${MBOX}" 2>&1
+   check 5 0 "${MBOX}" '601672771 792'
+   printf 'Hey, you.\nFrom me to you\nCiao\n' |
+      ${MAILX} ${ARGS} -s Subject -Smime-encoding=b64 "${MBOX}" \
+         >> "${MBOX}" 2>&1
+   check 6 0 "${MBOX}" '3926760595 1034'
 
    t_epilog
 }

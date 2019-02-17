@@ -1114,7 +1114,7 @@ n_mimetype_classify_filename(char const *name)
 
 FL enum conversion
 n_mimetype_classify_file(FILE *fp, char const **contenttype,
-   char const **charset, int *do_iconv)
+   char const **charset, int *do_iconv, boole no_mboxo)
 {
    /* TODO classify once only PLEASE PLEASE PLEASE */
    /* TODO message/rfc822 is special in that it may only be 7bit, 8bit or
@@ -1178,20 +1178,26 @@ n_mimetype_classify_file(FILE *fp, char const **contenttype,
       goto jleave;
    }
 
-   if (mtc &
-         (_MT_C_LONGLINES | _MT_C_CTRLCHAR | _MT_C_NOTERMNL | _MT_C_FROM_)) {
-      if (menc != MIMEE_B64)
-         menc = MIMEE_QP;
-      goto jstepi;
-   }
-   if (mtc & _MT_C_HIGHBIT) {
-jstepi:
-      if (mtc & (_MT_C_NCTT | _MT_C_ISTXT))
-         *do_iconv = ((mtc & _MT_C_HIGHBIT) != 0);
-   } else
+   if(mtc & (_MT_C_LONGLINES | _MT_C_CTRLCHAR | _MT_C_NOTERMNL | _MT_C_FROM_)){
+      if(menc != MIMEE_B64 && menc != MIMEE_QP){
+         /* If the user chooses 8bit, and we do not privacy-sign the message,
+          * then if encoding would be enforced only because of a ^From_, no */
+         if((mtc & (_MT_C_LONGLINES | _MT_C_CTRLCHAR | _MT_C_NOTERMNL |
+               _MT_C_FROM_)) != _MT_C_FROM_ || no_mboxo)
+            menc = MIMEE_QP;
+         else{
+            ASSERT(menc != MIMEE_7B);
+            menc = (mtc & _MT_C_HIGHBIT) ? MIMEE_8B : MIMEE_7B;
+         }
+      }
+      *do_iconv = ((mtc & _MT_C_HIGHBIT) != 0);
+   }else if(mtc & _MT_C_HIGHBIT){
+      if(mtc & (_MT_C_NCTT | _MT_C_ISTXT))
+         *do_iconv = TRU1;
+   }else
 j7bit:
       menc = MIMEE_7B;
-   if (mtc & _MT_C_NCTT)
+   if(mtc & _MT_C_NCTT)
       *contenttype = "text/plain";
 
    /* Not an attachment with specified charset? */

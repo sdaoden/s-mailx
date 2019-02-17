@@ -1313,7 +1313,8 @@ FL sz     xmime_write(char const *ptr, uz size, /* TODO LEGACY */
  * TODO gain clear error codes
  */
 
-/* Default MIME Content-Transfer-Encoding: as via *mime-encoding* */
+/* Default MIME Content-Transfer-Encoding: as via *mime-encoding*.
+ * Cannot be MIMEE_BIN nor MIMEE_7B (i.e., only B64, QP, 8B) */
 FL enum mime_enc mime_enc_target(void);
 
 /* Map from a Content-Transfer-Encoding: header body (which may be NULL) */
@@ -1432,9 +1433,14 @@ FL boole n_mimetype_check_mtname(char const *name);
 FL char *n_mimetype_classify_filename(char const *name);
 
 /* Classify content of *fp* as necessary and fill in arguments; **charset* is
- * set to *charset-7bit* or charset_iter_or_fallback() if NULL */
+ * set to *charset-7bit* or charset_iter_or_fallback() if NULL.
+ * no_mboxo states whether 7BIT/8BIT is acceptible if only existence of
+ * a ^From_ would otherwise enforce QP/BASE64
+ * TODO this should take a carrier and only fill that in with what has been
+ * TODO detected/classified, and suggest hints; rest up to caller!
+ * TODO This is not only more correct (no_mboxo crux++), it simplifies a lot */
 FL enum conversion n_mimetype_classify_file(FILE *fp, char const **contenttype,
-                     char const **charset, int *do_iconv);
+      char const **charset, int *do_iconv, boole no_mboxo);
 
 /* Dependend on *mime-counter-evidence* mpp->m_ct_type_usr_ovwr will be set,
  * but otherwise mpp is const.  for_user_context rather maps 1:1 to

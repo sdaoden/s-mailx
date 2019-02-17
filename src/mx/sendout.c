@@ -92,9 +92,9 @@ static s32 a_sendout_body(FILE *fo, FILE *fi, enum conversion convert);
 
 /* Write an attachment to the file buffer, converting to MIME */
 static s32 a_sendout_attach_file(struct header *hp, struct attachment *ap,
-               FILE *fo, boole force);
+      FILE *fo, boole force);
 static s32 a_sendout__attach_file(struct header *hp, struct attachment *ap,
-               FILE *f, boole force);
+      FILE *f, boole force);
 
 /* There are non-local receivers, collect credentials etc. */
 static boole        _sendbundle_setup_creds(struct sendbundle *sbpm,
@@ -106,11 +106,11 @@ static s32 a_sendout_attach_msg(struct header *hp, struct attachment *ap,
 
 /* Generate the body of a MIME multipart message */
 static s32 make_multipart(struct header *hp, int convert, FILE *fi,
-               FILE *fo, char const *contenttype, char const *charset,
-               boole force);
+   FILE *fo, char const *contenttype, char const *charset, boole force);
 
 /* Prepend a header in front of the collected stuff and return the new file */
-static FILE *        infix(struct header *hp, FILE *fi, boole force);
+static FILE *a_sendout_infix(struct header *hp, FILE *fi, boole dosign,
+      boole force);
 
 /* Check whether Disposition-Notification-To: is desired */
 static boole        _check_dispo_notif(struct mx_name *mdn, struct header *hp,
@@ -296,19 +296,18 @@ _sendout_header_list(FILE *fo, struct n_header_field *hfp, boole nodisp){
 static s32
 a_sendout_body(FILE *fo, FILE *fi, enum conversion convert){
    struct str outrest, inrest;
+   boole iseof, seenempty;
    char *buf;
    uz size, bufsize, cnt;
-   boole iseof;
    s32 rv;
    NYD2_IN;
 
    rv = su_ERR_INVAL;
-   iseof = FAL0;
    buf = n_alloc(bufsize = SEND_LINESIZE);
    outrest.s = inrest.s = NULL;
    outrest.l = inrest.l = 0;
 
-   if(convert == CONV_TOQP
+   if(convert == CONV_TOQP || convert == CONV_8BIT || convert == CONV_7BIT
 #ifdef mx_HAVE_ICONV
          || iconvd != (iconv_t)-1
 #endif
@@ -317,14 +316,25 @@ a_sendout_body(FILE *fo, FILE *fi, enum conversion convert){
       cnt = fsize(fi);
    }
 
+   seenempty = iseof = FAL0;
    while(!iseof){
-      if(convert == CONV_TOQP
+      if(convert == CONV_TOQP || convert == CONV_8BIT || convert == CONV_7BIT
 #ifdef mx_HAVE_ICONV
             || iconvd != (iconv_t)-1
 #endif
       ){
          if(fgetline(&buf, &bufsize, &cnt, &size, fi, 0) == NULL)
             break;
+         if(convert != CONV_TOQP && seenempty && is_head(buf, size, FAL0)){
+            if(bufsize - 1 >= size + 1){
+               bufsize += 32;
+               buf = su_MEM_REALLOC(buf, bufsize);
+            }
+            su_mem_move(&buf[1], &buf[0], ++size);
+            buf[0] = '>';
+            seenempty = FAL0;
+         }else
+            seenempty = (size == 1 /*&& buf[0] == '\n'*/);
       }else if((size = fread(buf, sizeof *buf, bufsize, fi)) == 0)
          break;
 joutln:
@@ -444,10 +454,11 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo,
    /* MIME part header for attachment */
    {  char const *ct, *cp;
 
+      /* No MBOXO quoting here, never!! */
       ct = ap->a_content_type;
       charset = ap->a_charset;
       convert = n_mimetype_classify_file(fi, (char const**)&ct,
-         &charset, &do_iconv);
+         &charset, &do_iconv, TRU1);
 
       if (charset == NULL || ap->a_conv == AC_FIX_INCS ||
             ap->a_conv == AC_TMPFILE)
@@ -701,7 +712,7 @@ jleave:
 }
 
 static FILE *
-infix(struct header *hp, FILE *fi, boole force) /* TODO check */
+a_sendout_infix(struct header *hp, FILE *fi, boole dosign, boole force)
 {
    char *tempMail;
    enum conversion convert;
@@ -733,10 +744,21 @@ infix(struct header *hp, FILE *fi, boole force) /* TODO check */
 
    n_pstate &= ~n_PS_HEADER_NEEDED_MIME; /* TODO hack -> be carrier tracked */
 
-   contenttype = "text/plain";
-   if((n_poption & n_PO_Mm_FLAG) && n_poption_arg_Mm != NULL)
-      contenttype = n_poption_arg_Mm;
-   convert = n_mimetype_classify_file(fi, &contenttype, &charset, &do_iconv);
+   /* C99 */{
+      boole no_mboxo;
+
+      no_mboxo = dosign;
+
+      /* Will be NULL for text/plain */
+      if((n_poption & n_PO_Mm_FLAG) && n_poption_arg_Mm != NULL){
+         contenttype = n_poption_arg_Mm;
+         no_mboxo = TRU1;
+      }else
+         contenttype = "text/plain";
+
+      convert = n_mimetype_classify_file(fi, &contenttype, &charset, &do_iconv,
+            no_mboxo);
+   }
 
 #ifdef mx_HAVE_ICONV
    /* This is the logic behind *charset-force-transport*.  XXX very weird
@@ -1142,6 +1164,7 @@ a_sendout__savemail(char const *name, FILE *fp, boole resend){
    boole rv, emptyline;
    char *buf;
    NYD_IN;
+   UNUSED(resend);
 
    buf = n_alloc(bufsize = LINESIZE);
    rv = FAL0;
@@ -1172,11 +1195,13 @@ a_sendout__savemail(char const *name, FILE *fp, boole resend){
    for(emptyline = FAL0, buflen = 0, cnt = fsize(fp);
          fgetline(&buf, &bufsize, &cnt, &buflen, fp, 0) != NULL;){
       /* Only if we are resending it can happen that we have to quote From_
-       * lines here; we don't generate messages which are ambiguous ourselves */
-      if(resend){
+       * lines here; we don't generate messages which are ambiguous ourselves.
+       * xxx No longer true after (Reintroduce ^From_ MBOXO with
+       * xxx *mime-encoding*=8b (too many!)[..]) */
+      /*if(resend){*/
          if(emptyline && is_head(buf, buflen, FAL0))
             putc('>', fo);
-      }su_DBG(else ASSERT(!is_head(buf, buflen, FAL0)); )
+      /*}su_DBG(else ASSERT(!is_head(buf, buflen, FAL0)); )*/
 
       emptyline = (buflen > 0 && *buf == '\n');
       fwrite(buf, sizeof *buf, buflen, fo);
@@ -1957,7 +1982,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
          if(!charset_iter_is_valid() &&
                (!any || !(force = ok_blook(mime_force_sendout))))
             err = su_ERR_NOENT;
-         else if((nmtf = infix(hp, mtf, force)) != NULL)
+         else if((nmtf = a_sendout_infix(hp, mtf, dosign, force)) != NULL)
             break;
 #ifdef mx_HAVE_ICONV
          else if((err = n_iconv_err_no) == su_ERR_ILSEQ ||

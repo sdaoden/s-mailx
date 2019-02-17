@@ -90,7 +90,7 @@
 #endif
 #define BUFFER_SIZE (BUFSIZ >= (1u << 13) ? BUFSIZ : (1u << 14))
 
-/* Default *mime-encoding* as enum mime_enc */
+/* Default *mime-encoding* as enum mime_enc; one of _B64, _QP, _8B */
 #define MIME_DEFAULT_ENCODING MIMEE_QP
 
 /* Maximum allowed line length in a mail before QP folding is necessary), and
