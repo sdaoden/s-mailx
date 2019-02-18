@@ -267,15 +267,6 @@ OPT_MD5=yes
 # from the ~/.netrc file ($NETRC; see *netrc-lookup* manual entry).
 OPT_NETRC=yes
 
-# If $OPT_SOCKETS: passwords can also be looked up through an external
-# "agent" in order to allow for encrypted password storage (see
-# *agent-shell-lookup*).
-# [Obsolete] Even though marked *v15-compat* this feature has been
-# obsoleted; please use an encrypted .netrc file (via *netrc-pipe*) or
-# encrypt a complete resource file and load this like, e.g.,
-#     source "gpg -qd ~/.mailprivate.gpg | "
-OPT_AGENT=yes
-
 # IDNA (internationalized domain names for applications) offers users
 # the possibility to use domain names in their native language, i.e., to
 # use non-US-ASCII content, as in, e.g., <www.räksmörgåsa.example>,
@@ -355,15 +346,11 @@ OPT_UISTRINGS=yes
 # see the manual example section "Handling spam".
 # . OPT_SPAM_SPAMC:
 #   Support for interaction with spamassassin(1)s spamc(1).
-# . [Obsolete] OPT_SPAM_SPAMD:
-#   Direct communication with spamassassin(1)s spamd(1).
-#   Needs unix(4) domain sockets (checked).  Can be "require"d.
 # . OPT_SPAM_FILTER:
 #   Generic filter hook which can be used with e.g. bogofilter(1)
 #   and sylfilter(1): see documentation for the *spam-filter-**
 #   variables for expected application behaviour.
 OPT_SPAM_SPAMC=no
-OPT_SPAM_SPAMD=no
 OPT_SPAM_FILTER=yes
 
 # A simple line-based quoting mechanism can be made available via the
@@ -464,5 +451,9 @@ OPT_NOMEMDBG=`\
    else \
       echo no;\
    fi`
+
+# Obsolete stuff
+OPT_AGENT=no
+OPT_SPAM_SPAMD=no
 
 # vim:set tw=72: s-it-mode
