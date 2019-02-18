@@ -1906,42 +1906,72 @@ FL struct str *n_str_trim(struct str *self, enum n_str_trim_flags stf);
 FL struct str *n_str_trim_ifs(struct str *self, boole dodefaults);
 
 /* struct n_string
- * May have NULL buffer, may contain embedded NULs */
+ * May have NIL buffer, may contain embedded NULs */
+
+FL struct n_string *n__string_clear(struct n_string *self);
 
 /* Lifetime.  n_string_gut() is optional for _creat_auto() strings */
-#define n_string_creat(S) \
-   ((S)->s_dat = NULL, (S)->s_len = (S)->s_auto = (S)->s_size = 0, (S))
-#define n_string_creat_auto(S) \
-   ((S)->s_dat = NULL, (S)->s_len = (S)->s_size = 0, (S)->s_auto = TRU1, (S))
-#define n_string_gut(S) \
-      ((S)->s_dat != NULL ? (void)n_string_clear(S) : (void)0)
+INLINE struct n_string *
+n_string_creat(struct n_string *self){
+   self->s_dat = NIL;
+   self->s_len = self->s_auto = self->s_size = 0;
+   return self;
+}
 
-/* Truncate to size, which must be LE current length */
-#define n_string_trunc(S,L) \
-   (ASSERT_NB(UCMP(z, L, <=, (S)->s_len)), (S)->s_len = (u32)(L), (S))
+INLINE struct n_string *
+n_string_creat_auto(struct n_string *self){
+   self->s_dat = NIL;
+   self->s_len = self->s_auto = self->s_size = 0;
+   self->s_auto = TRU1;
+   return self;
+}
 
-/* Take/Release buffer ownership */
-#define n_string_take_ownership(SP,B,S,L) \
-   (ASSERT_NB((SP)->s_dat == NULL), ASSERT_NB((S) == 0 || (B) != NULL),\
-    ASSERT_NB((L) < (S) || (L) == 0),\
-    (SP)->s_dat = (B), (SP)->s_len = (L), (SP)->s_size = (S), (SP))
-#define n_string_drop_ownership(SP) \
-   ((SP)->s_dat = NULL, (SP)->s_len = (SP)->s_size = 0, (SP))
+INLINE void n_string_gut(struct n_string *self){
+   if(self->s_dat != NIL)
+      n__string_clear(self);
+}
 
-/* Release all memory */
-FL struct n_string *n_string_clear(struct n_string *self su_DBG_LOC_ARGS_DECL);
-#ifdef su_HAVE_DBG_LOC_ARGS
-# define n_string_clear(S) \
-   ((S)->s_size != 0 ? (n_string_clear)(S  su_DBG_LOC_ARGS_INJ) : (S))
-#else
-# define n_string_clear(S) ((S)->s_size != 0 ? (n_string_clear)(S) : (S))
-#endif
+INLINE struct n_string *
+n_string_trunc(struct n_string *self, uz len){
+   ASSERT(UCMP(z, len, <=, self->s_len));
+   self->s_len = S(u32,len);
+   return self;
+}
+
+INLINE struct n_string *
+n_string_take_ownership(struct n_string *self, char *buf, u32 size, u32 len){
+   ASSERT(self->s_dat == NIL);
+   ASSERT(size == 0 || buf != NIL);
+   ASSERT(len == 0 || len < size);
+   self->s_dat = buf;
+   self->s_size = size;
+   self->s_len = len;
+   return self;
+}
+
+INLINE struct n_string *
+n_string_drop_ownership(struct n_string *self){
+   self->s_dat = NIL;
+   self->s_len = self->s_size = 0;
+   return self;
+}
+
+INLINE struct n_string *
+n_string_clear(struct n_string *self){
+   if(self->s_size > 0)
+      self = n__string_clear(self);
+   return self;
+}
 
 /* Check whether a buffer of Len bytes can be inserted into S(elf) */
-#define n_string_get_can_book(L) ((uz)S32_MAX - Z_ALIGN(1) > L)
-#define n_string_can_book(S,L) \
-   (n_string_get_can_book(L) &&\
-    (uz)S32_MAX - Z_ALIGN(1) - (L) > (S)->s_len)
+INLINE boole n_string_get_can_book(uz len){
+   return (S(uz,S32_MAX) - Z_ALIGN(1) > len);
+}
+
+INLINE boole n_string_can_book(struct n_string *self, uz len){
+   return (n_string_get_can_book(len) &&
+      S(uz,S32_MAX) - Z_ALIGN(1) - len > self->s_len);
+}
 
 /* Reserve room for noof additional bytes, but don't adjust length (yet) */
 FL struct n_string *n_string_reserve(struct n_string *self, uz noof
@@ -2023,38 +2053,6 @@ FL char const *n_string_cp_const(struct n_string const *self);
 #ifdef su_HAVE_DBG_LOC_ARGS
 # define n_string_cp(S) (n_string_cp)(S  su_DBG_LOC_ARGS_INJ)
 #endif
-
-#ifdef su_HAVE_INLINE
-su_INLINE struct n_string *
-(n_string_creat)(struct n_string *self){
-   return n_string_creat(self);
-}
-# undef n_string_creat
-
-su_INLINE struct n_string *
-(n_string_creat_auto)(struct n_string *self){
-   return n_string_creat_auto(self);
-}
-# undef n_string_creat_auto
-
-su_INLINE void
-(n_string_gut)(struct n_string *self){
-   n_string_gut(self);
-}
-# undef n_string_gut
-
-su_INLINE struct n_string *
-(n_string_trunc)(struct n_string *self, uz l){
-   return n_string_trunc(self, l);
-}
-# undef n_string_trunc
-
-su_INLINE struct n_string *
-(n_string_drop_ownership)(struct n_string *self){
-   return n_string_drop_ownership(self);
-}
-# undef n_string_drop_ownership
-#endif /* su_HAVE_INLINE */
 
 /*
  * termcap.c

@@ -454,16 +454,15 @@ jleave:
  */
 
 FL struct n_string *
-(n_string_clear)(struct n_string *self su_DBG_LOC_ARGS_DECL){
+n__string_clear(struct n_string *self){
    NYD_IN;
-
    ASSERT(self != NULL);
 
    if(self->s_size != 0){
       if(!self->s_auto)
-         su_MEM_FREE_LOCOR(self->s_dat, su_DBG_LOC_ARGS_ORUSE);
+         su_MEM_FREE(self->s_dat);
       self->s_len = self->s_auto = self->s_size = 0;
-      self->s_dat = NULL;
+      self->s_dat = NIL;
    }
    NYD_OU;
    return self;
