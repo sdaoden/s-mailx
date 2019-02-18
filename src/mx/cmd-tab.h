@@ -644,7 +644,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
       NULL,
 #endif
       (M | TWYSH), 0, 1, NULL
-     DS(N_("[<show>], <load> or <clear> the .netrc cache")) },
+      DS(N_("[<show>], <load> or <clear> the .netrc cache")) },
 
    { "quit", &c_quit, TWYSH, 0, 1, NULL
      DS(N_("Exit session with [<status>], saving messages as necessary")) },
@@ -677,14 +677,29 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Show some information about the given <variables>")) },
    { "varedit", &c_varedit, (O | G | I | M | S | TWYSH), 1, MAC, NULL
      DS(N_("Edit the value(s) of (an) variable(s), or create them")) },
-   { "vexpr", &c_vexpr, (G | M | V | X | EM | TWYSH), 2, MAC, NULL
-     DS(N_("Evaluate according to <operator> any :<arguments>:")) },
    { "vpospar", &c_vpospar, (G | M | V | X | EM | TARG), 0, 0,
       n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_vpospar)
      DS(N_("Positional parameters: <clear>, <quote>, or <set> from :<arg>:"))},
 
    { "version", &c_version, (H | M | V | X | TWYSH), 0, 0, NULL
      DS(N_("Show the version and feature set of the program")) },
+
+   { "csop",
+#ifdef mx_HAVE_CMD_CSOP
+      &c_csop,
+#else
+      NIL,
+#endif
+      (G | M | V | X | EM | TWYSH), 2, MAC, NULL
+      DS(N_("C-style byte string <operation>s on given :<argument>:")) },
+   { "vexpr",
+#ifdef mx_HAVE_CMD_VEXPR
+      &c_vexpr,
+#else
+      NIL,
+#endif
+      (G | M | V | X | EM | TWYSH), 2, MAC, NULL
+      DS(N_("Evaluate according to <operator> any :<argument>:")) },
 
    { "xit"/*POSIX, first!*/, &c_exit, (M | X | TWYSH), 0, 1, NULL
      DS(N_("Immediately return [<status>] to the shell without saving")) },

@@ -197,6 +197,11 @@ OPT_USE_PKGSYS=yes
 # (Remember, file is parsed from top to bottom, sorry.)
 OPT_AUTOCC=yes
 
+# Whether the commands `csop', `vexpr' .. shall be included.
+# v15compat: until v15 VEXPR needs CSOP.
+OPT_CMD_CSOP=yes
+OPT_CMD_VEXPR=yes
+
 # It is possible to compile S-nail as a "single-source", meaning that
 # all source files are injected into a single compilation unit, which is
 # then compiled.  This allows the compiler to perform more

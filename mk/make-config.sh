@@ -19,6 +19,8 @@ export SHELL
 # entry is suppressed when configuration overview is printed, and also in the
 # *features* string: most likely for obsolete features etc.
 XOPTIONS="\
+   CMD_CSOP='csop command: C-style string operations' \
+   CMD_VEXPR='vexpr command: evaluate arguments as expressions' \
    ICONV='Character set conversion using iconv(3)' \
    MAILDIR='Maildir E-mail directories' \
    SOCKETS='Network support' \
@@ -117,6 +119,8 @@ option_setup() {
          OPT_UISTRINGS=1
          ;;
       [mM][iI][nN][iI][mM][aA][lL])
+         OPT_CMD_CSOP=1
+         OPT_CMD_VEXPR=1
          OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
          OPT_COLOUR=1
          OPT_DOCSTRINGS=1
@@ -129,6 +133,8 @@ option_setup() {
          OPT_SPAM_FILTER=1
          ;;
       [nN][eE][tT][sS][eE][nN][dD])
+         OPT_CMD_CSOP=1
+         OPT_CMD_VEXPR=1
          OPT_DOTLOCK=require OPT_ICONV=require OPT_REGEX=require
          OPT_SOCKETS=require
             OPT_TLS=require
@@ -3281,6 +3287,12 @@ if feat_yes SPAM_SPAMC || feat_yes SPAM_SPAMD || feat_yes SPAM_FILTER; then
    echo '#define mx_HAVE_SPAM' >> ${h}
 else
    echo '/* mx_HAVE_SPAM */' >> ${h}
+fi
+
+if feat_def CMD_CSOP; then
+   feat_def CMD_VEXPR # v15compat: VEXPR needs CSOP for byte string ops YET
+else
+   feat_bail_required CMD_VEXPR
 fi
 
 if feat_yes QUOTE_FOLD; then

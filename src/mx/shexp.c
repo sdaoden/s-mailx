@@ -1080,7 +1080,12 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
     * TODO big big thing up in little pieces!
     * TODO This means it should produce a tree of objects, so that callees
     * TODO can recognize whether something happened inside single/double etc.
-    * TODO quotes; e.g., to requote "'[a-z]'" to, e.g., "\[a-z]", etc.! */
+    * TODO quotes; e.g., to requote "'[a-z]'" to, e.g., "\[a-z]", etc.!
+    * TODO Also, it should be possible to "yield" this, e.g., like this
+    * TODO we would not need to be wired to variable handling for positional
+    * TODO parameters, instead these should be fields of the carrier, and
+    * TODO once we need them we should yield saying we need them, and if
+    * TODO we are reentered we simply access the fields directly */
    u32 last_known_meta_trim_len;
    char c2, c, quotec, utf[8];
    enum n_shexp_state rv;
