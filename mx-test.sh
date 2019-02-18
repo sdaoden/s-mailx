@@ -182,6 +182,8 @@ fi
 TESTS_PERFORMED=0 TESTS_OK=0 TESTS_FAILED=0 TESTS_SKIPPED=0
 
 COLOR_ERR_ON= COLOR_ERR_OFF=
+COLOR_WARN_ON= COLOR_WARN_OFF=
+COLOR_OK_ON= COLOR_OK_OFF=
 ESTAT=0
 TEST_NAME=
 TRAP_EXIT_ADDONS=
@@ -211,7 +213,7 @@ t_prolog() {
    if [ ${#} -gt 0 ]; then
       TEST_NAME=${1}
       TEST_ANY=
-      printf '[%s]\n' "${1}"
+      printf '%s[%s]%s\n' "" "${1}" ""
    fi
 }
 
@@ -222,21 +224,28 @@ t_epilog() {
 
 t_echo() {
    [ -n "${TEST_ANY}" ] && __i__=' ' || __i__=
-   printf "${__i__}"'%s' "${@}"
+   printf "${__i__}"'%s' "${*}"
+   TEST_ANY=1
+}
+
+t_echook() {
+   [ -n "${TEST_ANY}" ] && __i__=' ' || __i__=
+   printf "${__i__}"'%s%s:ok%s' "${COLOR_OK_ON}" "${*}" "${COLOR_OK_OFF}"
    TEST_ANY=1
 }
 
 t_echoerr() {
    ESTAT=1
    [ -n "${TEST_ANY}" ] && __i__="\n" || __i__=
-   printf "${__i__}"'%sERROR:%s %s\n' \
-      "${COLOR_ERR_ON}" "${COLOR_ERR_OFF}" "${@}"
+   printf "${__i__}"'%sERROR: %s%s\n' \
+      "${COLOR_ERR_ON}" "${*}" "${COLOR_ERR_OFF}"
    TEST_ANY=
 }
 
 t_echoskip() {
    [ -n "${TEST_ANY}" ] && __i__=' ' || __i__=
-   printf "${__i__}"'%s[skip]' "${@}"
+   printf "${__i__}"'%s%s[skip]%s' \
+      "${COLOR_WARN_ON}" "${*}" "${COLOR_WARN_OFF}"
    TEST_ANY=1
    TESTS_SKIPPED=`add ${TESTS_SKIPPED} 1`
 }
@@ -256,7 +265,7 @@ check() {
 
    csum="`${cksum} < ${f} | ${sed} -e 's/[ 	]\{1,\}/ /g'`"
    if [ "${csum}" = "${s}" ]; then
-      t_echo "${tid}:ok"
+      t_echook "${tid}"
    else
       ESTAT=1
       t_echoerr "${tid}: checksum mismatch (got ${csum})"
@@ -289,16 +298,16 @@ check_ex0() {
    # $1=test name [$2=status]
    __qm__=${?}
    [ ${#} -gt 1 ] && __qm__=${2}
+
+   TESTS_PERFORMED=`add ${TESTS_PERFORMED} 1`
+
    if [ ${__qm__} -ne 0 ]; then
       ESTAT=1
-      [ -n "${TEST_ANY}" ] && __i__="\n" || __i__=
-      printf "${__i__}"'%sERROR:%s %s: unexpected non-0 exist status: %s\n' \
-         "${COLOR_ERR_ON}" "${COLOR_ERR_OFF}" "${1}" "${__qm__}"
-      TEST_ANY=
+      t_echoerr "${1}: unexpected non-0 exit status: ${__qm__}"
+      TESTS_FAILED=`add ${TESTS_FAILED} 1`
    else
-      [ -n "${TEST_ANY}" ] && __i__=' ' || __i__=
-      printf "${__i__}"'%s%s:ok' "${1}"
-      TEST_ANY=1
+      t_echook "${1}"
+      TESTS_OK=`add ${TESTS_OK} 1`
    fi
 }
 
@@ -306,23 +315,24 @@ check_exn0() {
    # $1=test name [$2=status]
    __qm__=${?}
    [ ${#} -gt 1 ] && __qm__=${2}
+
+   TESTS_PERFORMED=`add ${TESTS_PERFORMED} 1`
+
    if [ ${__qm__} -eq 0 ]; then
       ESTAT=1
-      [ -n "${TEST_ANY}" ] && __i__="\n" || __i__=
-      printf "${__i__}"'%sERROR:%s %s: unexpected 0 exist status: %s\n' \
-         "${COLOR_ERR_ON}" "${COLOR_ERR_OFF}" "${1}" "${__qm__}"
-      TEST_ANY=
+      t_echoerr "${1}: unexpected 0 exit status: ${__qm__}"
+      TESTS_FAILED=`add ${TESTS_FAILED} 1`
    else
-      [ -n "${TEST_ANY}" ] && __i__=' ' || __i__=
-      printf "${__i__}"'%s%s:ok' "${1}"
-      TEST_ANY=1
+      t_echook "${1}"
+      TESTS_OK=`add ${TESTS_OK} 1`
    fi
 }
 
 color_init() {
    if (command -v tput && tput setaf 1 && tput sgr0) >/dev/null 2>&1; then
-      COLOR_ERR_ON=`tput setaf 1``tput bold`
-      COLOR_ERR_OFF=`tput sgr0`
+      COLOR_ERR_ON=`tput setaf 1``tput bold`  COLOR_ERR_OFF=`tput sgr0`
+      COLOR_WARN_ON=`tput setaf 3``tput bold`  COLOR_WARN_OFF=`tput sgr0`
+      COLOR_OK_ON=`tput setaf 2`  COLOR_OK_OFF=`tput sgr0`
    fi
 }
 
@@ -6766,14 +6776,13 @@ else
 fi
 esec=$SECONDS
 
+printf '%u tests: %s%u ok%s, %s%u failure(s)%s, %s%u test(s) skipped%s\n' \
+   "${TESTS_PERFORMED}" "${COLOR_OK_ON}" "${TESTS_OK}" "${COLOR_OK_OFF}" \
+   "${COLOR_ERR_ON}" "${TESTS_FAILED}" "${COLOR_ERR_OFF}" \
+   "${COLOR_WARN_ON}" "${TESTS_SKIPPED}" "${COLOR_WARN_OFF}"
 if [ -n "${ssec}" ] && [ -n "${esec}" ]; then
-   ( echo Elapsed seconds: `$awk 'BEGIN{print '"${esec}"' - '"${ssec}"'}'` )
+   ( echo 'Elapsed seconds: '`$awk 'BEGIN{print '"${esec}"' - '"${ssec}"'}'` )
 fi
-printf 'Tests: performed %u, %u ok, %u failure(s), %u test(s) skipped\n' \
-   "${TESTS_PERFORMED}" "${TESTS_OK}" "${TESTS_FAILED}" "${TESTS_SKIPPED}"
-
-[ ${ESTAT} -eq 0 ] && printf 'Exit status ok\n' ||
-   printf >&2 'Errors occurred\n'
 
 exit ${ESTAT}
 # s-sh-mode
