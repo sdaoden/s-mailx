@@ -1205,7 +1205,8 @@ jleave:
    NYD2_OU;
    return ok;
 jerr:
-   n_err(V_(emsg), n_shexp_quote_cp(*val, FAL0));
+   emsg = V_(emsg);
+   n_err(emsg, n_shexp_quote_cp(*val, FAL0));
    ok = FAL0;
    goto jleave;
 }

@@ -1197,7 +1197,8 @@ jesynopsis:
    n_err(_("Synopsis: digmsg: <command> <-|msgno> [<:argument:>]\n"));
    goto jeinval;
 jeinval_quote:
-   n_err(V_(emsg), n_shexp_quote_cp(cp, FAL0));
+   emsg = V_(emsg);
+   n_err(emsg, n_shexp_quote_cp(cp, FAL0));
 jeinval:
    n_pstate_err_no = su_ERR_INVAL;
    vp = NULL;

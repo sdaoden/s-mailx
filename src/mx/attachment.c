@@ -516,9 +516,11 @@ n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
       ap = NULL;
       if((shin.s = n_go_input_cp(gif, prefix, shin.s)) != NULL){
          enum n_shexp_state shs;
+#ifdef mx_HAVE_UISTRINGS
          char const *s_save;
 
          s_save = shin.s;
+#endif
          shin.l = UZ_MAX;
          shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC |
                n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_LOG |
