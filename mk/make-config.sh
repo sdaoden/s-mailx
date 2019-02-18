@@ -21,36 +21,36 @@ export SHELL
 XOPTIONS="\
    CMD_CSOP='csop command: C-style string operations' \
    CMD_VEXPR='vexpr command: evaluate arguments as expressions' \
+   COLOUR='Coloured message display' \
+   DOCSTRINGS='Command documentation help strings' \
+   DOTLOCK='Dotlock files and privilege-separated dotlock program' \
+   ERRORS='Log message ring' \
+   FILTER_HTML_TAGSOUP='Simple built-in HTML-to-text display filter' \
+   FILTER_QUOTE_FOLD='Extended *quote-fold*ing filter' \
    ICONV='Character set conversion using iconv(3)' \
-   MAILDIR='Maildir E-mail directories' \
-   SOCKETS='Network support' \
-      TLS='Transport Layer Security (OpenSSL / LibreSSL)' \
-         TLS_ALL_ALGORITHMS='Support of all digest and cipher algorithms' \
-      SMTP='Simple Mail Transfer Protocol client' \
-      POP3='Post Office Protocol Version 3 client' \
-      IMAP='IMAP v4r1 client' \
-      GSSAPI='Generic Security Service authentication' \
-      NETRC='.netrc file support' \
-         AGENT='-' \
-      MD5='MD5 message digest (APOP, CRAM-MD5)' \
    IDNA='Internationalized Domain Names for Applications (encode only)' \
    IMAP_SEARCH='IMAP-style search expressions' \
-   REGEX='Regular expressions' \
+   MAILDIR='Maildir E-mail directories' \
    MLE='Mailx Line Editor' \
       HISTORY='Line editor history management' \
       KEY_BINDINGS='Configurable key bindings' \
-   TERMCAP='Terminal capability queries (termcap(5))' \
-      TERMCAP_VIA_TERMINFO='Terminal capability queries use terminfo(5)' \
-   ERRORS='Log message ring' \
+   REGEX='Regular expressions' \
+   SOCKETS='Network support' \
+         AGENT='-' \
+      GSSAPI='Generic Security Service authentication' \
+      IMAP='IMAP v4r1 client' \
+      MD5='MD5 message digest (APOP, CRAM-MD5)' \
+      NETRC='.netrc file support' \
+      POP3='Post Office Protocol Version 3 client' \
+      SMTP='Simple Mail Transfer Protocol client' \
+      TLS='Transport Layer Security (OpenSSL / LibreSSL)' \
+         TLS_ALL_ALGORITHMS='Support of all digest and cipher algorithms' \
+   SPAM_FILTER='Freely configurable *spam-filter-..*s' \
    SPAM_SPAMC='Spam management via spamc(1) of spamassassin(1)' \
       SPAM_SPAMD='-' \
-   SPAM_FILTER='Freely configurable *spam-filter-..*s' \
-   DOCSTRINGS='Command documentation help strings' \
+   TERMCAP='Terminal capability queries (termcap(5))' \
+      TERMCAP_VIA_TERMINFO='Terminal capability queries use terminfo(5)' \
    UISTRINGS='User interface and error message strings' \
-   QUOTE_FOLD='Extended *quote-fold*ing' \
-   FILTER_HTML_TAGSOUP='Simple built-in HTML-to-text display filter' \
-   COLOUR='Coloured message display' \
-   DOTLOCK='Dotlock files and privilege-separated dotlock program' \
 "
 
 # Options which are automatically deduced from host environment, i.e., these
@@ -66,11 +66,11 @@ XOPTIONS_DETECT="\
 # Rather special options, for custom building, or which always exist.
 # Mostly for generating the visual overview and the *features* string
 XOPTIONS_XTRA="\
-   MIME='Multipurpose Internet Mail Extensions' \
-   SMIME='S/MIME message signing, verification, en- and decryption' \
    CROSS_BUILD='Cross-compilation: trust any detected environment' \
    DEBUG='Debug enabled binary, not for end-users: THANKS!' \
    DEVEL='Computers do not blunder' \
+   MIME='Multipurpose Internet Mail Extensions' \
+   SMIME='S/MIME message signing, verification, en- and decryption' \
 "
 
 # To avoid too many recompilations we use a two-stage "configuration changed"
@@ -3290,20 +3290,20 @@ if feat_def CMD_CSOP; then
 else
    feat_bail_required CMD_VEXPR
 fi
-
-if feat_yes QUOTE_FOLD; then
-   if [ -n "${have_c90amend1}" ] && [ -n "${have_wcwidth}" ]; then
-      echo '#define mx_HAVE_QUOTE_FOLD' >> ${h}
-   else
-      feat_bail_required QUOTE_FOLD
-   fi
-else
-   feat_is_disabled QUOTE_FOLD
-fi
-
-feat_def FILTER_HTML_TAGSOUP
 feat_def COLOUR
 feat_def DOTLOCK
+feat_def FILTER_HTML_TAGSOUP
+
+if feat_yes FILTER_QUOTE_FOLD; then
+   if [ -n "${have_c90amend1}" ] && [ -n "${have_wcwidth}" ]; then
+      echo '#define mx_HAVE_FILTER_QUOTE_FOLD' >> ${h}
+   else
+      feat_bail_required FILTER_QUOTE_FOLD
+   fi
+else
+   feat_is_disabled FILTER_QUOTE_FOLD
+fi
+
 feat_def MD5
 
 ## Summarizing

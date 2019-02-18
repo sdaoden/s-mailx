@@ -28,7 +28,7 @@
 
 #include <su/cs.h>
 
-#ifdef mx_HAVE_QUOTE_FOLD
+#ifdef mx_HAVE_FILTER_QUOTE_FOLD
 # ifdef mx_HAVE_C90AMEND1
 #  include <wchar.h>
 #  include <wctype.h>
@@ -41,7 +41,7 @@
 /* TODO fake */
 #include "su/code-in.h"
 
-#ifdef mx_HAVE_QUOTE_FOLD
+#ifdef mx_HAVE_FILTER_QUOTE_FOLD
 CTAV(n_QUOTE_MAX > 3);
 
 enum qf_state {
@@ -324,7 +324,7 @@ _qf_state_data(struct qf_vc *vc)
    NYD_OU;
    return rv;
 }
-#endif /* mx_HAVE_QUOTE_FOLD */
+#endif /* mx_HAVE_FILTER_QUOTE_FOLD */
 
 FL struct quoteflt *
 quoteflt_dummy(void) /* TODO LEGACY (until filters are plugged when needed) */
@@ -338,7 +338,7 @@ quoteflt_dummy(void) /* TODO LEGACY (until filters are plugged when needed) */
 FL void
 quoteflt_init(struct quoteflt *self, char const *prefix, boole bypass)
 {
-#ifdef mx_HAVE_QUOTE_FOLD
+#ifdef mx_HAVE_FILTER_QUOTE_FOLD
    char const *xcp, *cp;
 #endif
    NYD_IN;
@@ -351,7 +351,7 @@ quoteflt_init(struct quoteflt *self, char const *prefix, boole bypass)
 
    /* Check whether the user wants the more fancy quoting algorithm */
    /* TODO *quote-fold*: n_QUOTE_MAX may excess it! */
-#ifdef mx_HAVE_QUOTE_FOLD
+#ifdef mx_HAVE_FILTER_QUOTE_FOLD
    if (!bypass && (cp = ok_vlook(quote_fold)) != NULL) {
       u32 qmax, qmaxnws, qmin;
 
@@ -401,7 +401,7 @@ quoteflt_reset(struct quoteflt *self, FILE *f) /* xxx inline */
 {
    NYD_IN;
    self->qf_os = f;
-#ifdef mx_HAVE_QUOTE_FOLD
+#ifdef mx_HAVE_FILTER_QUOTE_FOLD
    self->qf_state = _QF_CLEAN;
    self->qf_dat.l =
    self->qf_currq.l = 0;
@@ -432,7 +432,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, uz len)
    }
    /* Normal: place *indentprefix* at every BOL */
    else
-#ifdef mx_HAVE_QUOTE_FOLD
+#ifdef mx_HAVE_FILTER_QUOTE_FOLD
       if (self->qf_qfold_max == 0)
 #endif
    {
@@ -481,7 +481,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, uz len)
     *   TODO can be found, because of compatibility reasons; however, being
     *   TODO a problem rather than a solution is not a good thing (tm))
     * - Lookout for a newline */
-#ifdef mx_HAVE_QUOTE_FOLD
+#ifdef mx_HAVE_FILTER_QUOTE_FOLD
    else {
       struct qf_vc vc;
       sz i;
@@ -505,7 +505,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, uz len)
          rv += i;
       }
    }
-#endif /* mx_HAVE_QUOTE_FOLD */
+#endif /* mx_HAVE_FILTER_QUOTE_FOLD */
 
 jleave:
    NYD_OU;
@@ -522,7 +522,7 @@ quoteflt_flush(struct quoteflt *self)
    NYD_IN;
    UNUSED(self);
 
-#ifdef mx_HAVE_QUOTE_FOLD
+#ifdef mx_HAVE_FILTER_QUOTE_FOLD
    if (self->qf_dat.l > 0) {
       rv = _qf_dump_prefix(self);
       if (rv >= 0) {

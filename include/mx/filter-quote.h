@@ -21,7 +21,7 @@
 
 #include <mx/nail.h>
 
-#if defined mx_HAVE_QUOTE_FOLD && defined mx_HAVE_C90AMEND1
+#if defined mx_HAVE_FILTER_QUOTE_FOLD && defined mx_HAVE_C90AMEND1
 # include <wchar.h>
 #endif
 
@@ -37,7 +37,7 @@ struct quoteflt{
     * TODO finally can gracefully place a newline last in the visual display.
     * TODO I.e., for cases where quoteflt shouldn't be used at all  */
    boole qf_nl_last; /* Last thing written/seen was NL */
-#ifndef mx_HAVE_QUOTE_FOLD
+#ifndef mx_HAVE_FILTER_QUOTE_FOLD
    u8 qf__dummy[6];
 #else
    u8 qf_state; /* *quote-fold* state machine */
