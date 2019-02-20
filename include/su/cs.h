@@ -151,26 +151,26 @@ EXPORT char *su_cs_dup_cbuf(char const *buf, uz len, u32 estate);
 /*! \r{su_cs_dup_cbuf()}. */
 EXPORT char *su_cs_dup(char const *cp, u32 estate);
 
-/*! Search \a{x} within \a{cp}, return pointer to location or \NIL.
- * Returns \a{cp} if \a{x} is the empty buffer. */
-EXPORT char *su_cs_find(char const *cp, char const *x);
+/*! Search \a{xp} within \a{cp}, return pointer to location or \NIL.
+ * Returns \a{cp} if \a{xp} is the empty buffer. */
+EXPORT char *su_cs_find(char const *cp, char const *xp);
 
-/*! Search \a{x} within \a{cp}, return pointer to location or \NIL. */
-EXPORT char *su_cs_find_c(char const *cp, char x);
+/*! Search \a{xc} within \a{cp}, return pointer to location or \NIL. */
+EXPORT char *su_cs_find_c(char const *cp, char xc);
 
 /*! Like \r{su_cs_find()}, but case-insensitive. */
-EXPORT char *su_cs_find_case(char const *cp, char const *x);
+EXPORT char *su_cs_find_case(char const *cp, char const *xp);
 
-/*! Returns offset to first character of \a{x} in \a{cp}, or \r{su_UZ_MAX}.
+/*! Returns offset to first character of \a{xp} in \a{cp}, or \r{su_UZ_MAX}.
  * \remarks{Will not find NUL.} */
 EXPORT uz su_cs_first_of_cbuf_cbuf(char const *cp, uz cplen,
-      char const *x, uz xlen);
+      char const *xp, uz xlen);
 
 /*! \_ */
-INLINE uz su_cs_first_of(char const *cp, char const *x){
+INLINE uz su_cs_first_of(char const *cp, char const *xp){
    ASSERT_RET(cp != NIL, UZ_MAX);
-   ASSERT_RET(x != NIL, UZ_MAX);
-   return su_cs_first_of_cbuf_cbuf(cp, UZ_MAX, x, UZ_MAX);
+   ASSERT_RET(xp != NIL, UZ_MAX);
+   return su_cs_first_of_cbuf_cbuf(cp, UZ_MAX, xp, UZ_MAX);
 }
 
 /*! Hash a string (buffer).
