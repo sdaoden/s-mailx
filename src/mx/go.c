@@ -580,6 +580,7 @@ jexec:
    }
 
    if(flags & a_LOCAL){
+      /* TODO a_LOCAL should affect !CMD_ARG_L commands if `vput' is used!! */
       if(!(cdp->cd_caflags & n_CMD_ARG_L)){
          n_err(_("`local' command modifier does not affect `%s'\n"),
             cdp->cd_name);
