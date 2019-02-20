@@ -1,3 +1,19 @@
+ #-2
+0/NONE :0:
+0/NONE :1:
+0/NONE :2:
+0/NONE :0:
+0/NONE :1:
+0/NONE :0:
+ #-1
+1/NODATA ::
+0/NONE :0:
+0/NONE :1:
+0/NONE :2:
+0/NONE :0:
+0/NONE :1:
+0/NONE :0:
+ #0
 0/NONE :2:
 0/NONE :0:
 1/NODATA ::
@@ -35,7 +51,7 @@
 0/OVERFLOW ::
  #4
 0/NONE :Cocoon  Cocoon:
-0/NONE :Cocoon  Cocoon 	  :
+0/NONE :Cocoon  Cocoon:
 0/NONE :Cocoon  Cocoon:
 0/NONE :Cocoon  Cocoon 	  :
 0/NONE :Cocoon  Cocoon:
