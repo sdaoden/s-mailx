@@ -6987,6 +6987,9 @@ elif [ -z "${RUN_TEST}" ] || [ ${#} -eq 0 ]; then
 #      ARGS="${ARGS} -Smemdebug"
 #      export ARGS
 #   fi
+   if have_feat debug; then :; elif have_feat devel; then
+      LOOPS_MAX=${LOOPS_BIG}
+   fi
    color_init
    t_all
    t_z
