@@ -411,18 +411,6 @@ VAL_SYSCONFRC="${VAL_SID}${VAL_MAILX}.rc"
 
 ## FEATURE SET, DEVELOPMENT ##
 
-# Use debug compiler flags, enable some additional commands and code
-# assertions.  Note that setting this also enables our own memory
-# canaries, which require a rather large amount of runtime memory.
-OPT_DEBUG=no
-
-# Experimental code etc.
-# Note: this forcefully enables OPT_DEBUG
-OPT_DEVEL=no
-
-# We use the crypto libraries' MD5 implementation if possible, unless..
-OPT_NOEXTMD5=no
-
 # With $OPT_AUTOCC we can make use of the ASan AddressSanitizer and ASan
 # MemorySanitizer of Google
 # (https://github.com/google/sanitizers/wiki/AddressSanitizer).
@@ -435,6 +423,14 @@ OPT_ASAN_ADDRESS=no
 OPT_ASAN_MEMORY=no
 OPT_USAN=no
 
+# Use debug compiler flags, enable some additional commands and code
+# assertions.  Note that setting this also enables our own memory
+# canaries, which require a rather large amount of runtime memory.
+OPT_DEBUG=no
+
+# Development only.
+OPT_DEVEL=no
+
 # With $OPT_AUTOCC we will use stack protector guards shall the
 # detected compiler support them; this goes in line with our own (heap)
 # memory canaries and will detect buffer overflows.  It is usually only
@@ -446,6 +442,9 @@ OPT_FORCED_STACKPROT=`\
    else \
       echo no;\
    fi`
+
+# We use the crypto libraries' MD5 implementation if possible, unless..
+OPT_NOEXTMD5=no
 
 # If $OPT_DEBUG is true we'll use a simple memory wrapper with
 # canaries.  This interferes with memory debuggers like valgrind(1) or

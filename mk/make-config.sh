@@ -237,10 +237,6 @@ option_update() {
    if feat_no TERMCAP; then
       OPT_TERMCAP_VIA_TERMINFO=0
    fi
-
-   if feat_yes DEVEL; then
-      OPT_DEBUG=1
-   fi
 }
 
 : ${OBJDIR:=.obj}
