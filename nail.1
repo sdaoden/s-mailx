@@ -5873,13 +5873,15 @@ Available operators are
 String data operators compare the left and right hand side according to
 their textual content.
 Unset variables are treated as the empty string.
-The behaviour of string operators can be adjusted by prefixing the
-operator with the modifier trigger commercial at
-.Ql @ ,
-followed by none to multiple modifiers: for now supported is
-.Ql i ,
-which turns the comparison into a case-insensitive one: this is
-implied if no modifier follows the trigger.
+Via the question mark
+.Ql \&?
+modifier suffix a case-insensitive operation mode is available, the keyword
+.Ql case
+is optional, e.g.,
+.Ql ==?
+and
+.Ql ==?case
+are identical.
 .
 .Pp
 Available string operators are
@@ -5943,7 +5945,7 @@ if $debug
   echo *debug* is set
 endif
 if [ "$ttycharset" == UTF-8 ] || \e
-    [ "$ttycharset" @i== UTF8 ]
+    [ "$ttycharset" ==?case UTF8 ]
   echo *ttycharset* is UTF-8, the former case-sensitive!
 endif
 set t1=one t2=one
@@ -5951,7 +5953,7 @@ if [ "${t1}" == "${t2}" ]
   echo These two variables are equal
 endif
 if [ "$features" =% +regex ] && \e
-    [ "$TERM" @i=~ "^xterm\&.*" ]
+    [ "$TERM" =~?case "^xterm\&.*" ]
   echo ..in an X terminal
 endif
 if [ [ true ] && [ [ "${debug}" != '' ] || \e
@@ -10727,7 +10729,7 @@ define ocsm {
   if [ "$es" != 2 ]
     echoerr 'Cannot read header list'; echo '~x'; xit
   endif
-  if [ "$hl" @i!% ' cc' ]
+  if [ "$hl" !%?case ' cc' ]
     echo '~^h i cc Diet is your <mirr.or>'; read es;\e
       vput csop es substring "${es}" 0 1
     if [ "$es" != 2 ]

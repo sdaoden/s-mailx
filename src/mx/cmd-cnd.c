@@ -104,81 +104,99 @@ a_ccnd_oif_test(struct a_ccnd_if_ctx *cicp, boole noop){
    argc = P2UZ(cicp->cic_argv_max - cicp->cic_argv);
    cp = argv[0];
 
-   if(*cp != '$'){
-      if(argc > 1)
-         goto jesyn;
-   }else if(cp[1] == '\0')
-      goto jesyn;
-   else if(argc > 3){
+   if(UNLIKELY(argc != 1 && argc != 3)){
+jesyn:
+      if(emsg != NULL)
+         emsg = V_(emsg);
 #ifdef mx_HAVE_REGEX
 jesyn_ntr:
 #endif
-      if(0){
-jesyn:
-         if(emsg != NULL)
-            emsg = V_(emsg);
-      }
       a_ccnd_oif_error(cicp, emsg, cp);
       goto jleave;
    }
 
-   switch(*cp){
-   default:
-      switch((rv = n_boolify(cp, UZ_MAX, TRUM1))){
-      case FAL0:
-      case TRU1:
+   if(argc == 1){
+      switch(*cp){
+      case '$': /* v15compat */
+         /* v15compat (!wysh): $ trigger? */
+         if(cp[1] == '\0')
+            goto jesyn;
+
+         /* Look up the value in question, we need it anyway */
+         if(*++cp == '{'){
+            uz i = su_cs_len(cp);
+
+            if(i > 0 && cp[i - 1] == '}')
+               cp = savestrbuf(++cp, i -= 2);
+            else
+               goto jesyn;
+         }
+
+         lhv = noop ? NULL : n_var_vlook(cp, TRU1);
+         rv = (lhv != NULL);
          break;
+
       default:
-         emsg = N_("Expected a boolean");
-         goto jesyn;
+         switch((rv = n_boolify(cp, UZ_MAX, TRUM1))){
+         case FAL0:
+         case TRU1:
+            break;
+         default:
+            emsg = N_("Expected a boolean");
+            goto jesyn;
+         }
+         break;
+      case 'R': case 'r':
+         rv = ((n_psonce & n_PSO_SENDMODE) == 0);
+         break;
+      case 'S': case 's':
+         rv = ((n_psonce & n_PSO_SENDMODE) != 0);
+         break;
+      case 'T': case 't':
+         if(!su_cs_cmp_case(cp, "true")) /* Beware! */
+            rv = TRU1;
+         else
+            rv = ((n_psonce & n_PSO_INTERACTIVE) != 0);
+         break;
       }
-      break;
-   case 'R': case 'r':
-      rv = !(n_psonce & n_PSO_SENDMODE);
-      break;
-   case 'S': case 's':
-      rv = ((n_psonce & n_PSO_SENDMODE) != 0);
-      break;
-   case 'T': case 't':
-      if(!su_cs_cmp_case(cp, "true")) /* Beware! */
-         rv = TRU1;
-      else
-         rv = ((n_psonce & n_PSO_INTERACTIVE) != 0);
-      break;
-   case '$':{
+   }else{
       enum{
          a_NONE,
          a_ICASE = 1u<<0
       } flags = a_NONE;
 
-      /* Look up the value in question, we need it anyway */
-      if(*++cp == '{'){
-         uz i = su_cs_len(cp);
-
-         if(i > 0 && cp[i - 1] == '}')
-            cp = savestrbuf(++cp, i -= 2);
-         else
+      /* v15compat (!wysh): $ trigger? */
+      if(*cp == '$'){
+         if(cp[1] == '\0')
             goto jesyn;
-      }
-      if(noop)
-         lhv = NULL;
-      else
-         lhv = n_var_vlook(cp, TRU1);
 
-      /* Single argument, "implicit boolean" form? */
-      if(argc == 1){
-         rv = (lhv != NULL);
-         break;
-      }
-      op = argv[1];
+         /* Look up the value in question, we need it anyway */
+         if(*++cp == '{'){
+            uz i = su_cs_len(cp);
+
+            if(i > 0 && cp[i - 1] == '}')
+               cp = savestrbuf(++cp, i -= 2);
+            else
+               goto jesyn;
+         }
+
+         lhv = noop ? NULL : n_var_vlook(cp, TRU1);
+      }else
+         goto jesyn;
 
       /* Three argument comparison form required, check syntax */
       emsg = N_("unrecognized condition");
-      if(argc == 2 || (c = op[0]) == '\0')
+      op = argv[1];
+      if((c = op[0]) == '\0')
          goto jesyn;
 
       /* May be modifier */
       if(c == '@'){
+         n_OBSOLETE2(_("if/elif: please use ? modifier suffix, "
+               "not @ prefix: %s"),
+               savecatsep(n_shexp_quote_cp(argv[0], FAL0), ' ',
+                  savecatsep(n_shexp_quote_cp(argv[1], FAL0), ' ',
+                     n_shexp_quote_cp(argv[2], FAL0))));
          for(;;){
             c = *++op;
             if(c == 'i')
@@ -188,6 +206,20 @@ jesyn:
          }
          if(flags == a_NONE)
             flags = a_ICASE;
+      }else
+      if((cp = su_cs_find_c(op, '?')) != su_NIL){
+         if(cp[1] == '\0')
+            flags |= a_ICASE;
+         else if(su_cs_starts_with_case("case", &cp[1]))
+            flags |= a_ICASE;
+         /*else if(su_cs_starts_with_case("saturated", &cp[1]))
+            f = a_VEXPR_MOD_SATURATED;*/
+         else{
+            emsg = N_("invalid modifier");
+            goto jesyn;
+         }
+         op = savestrbuf(op, P2UZ(cp - op)); /* v15compat */
+         cp = argv[0];
       }
 
       if(op[1] == '\0'){
@@ -226,6 +258,7 @@ jesyn:
       emsg = N_("invalid right hand side");
       if((rhv = argv[2]) == NULL /* Can't happen */)
          goto jesyn;
+
       if(*rhv == '$'){
          if(*++rhv == '\0')
             goto jesyn;
@@ -248,9 +281,9 @@ jesyn:
       /* A null value is treated as the empty string */
       emsg = NULL;
       if(lhv == NULL)
-         lhv = n_UNCONST(n_empty);
+         lhv = n_UNCONST(su_empty);
       if(rhv == NULL)
-         rhv = n_UNCONST(n_empty);
+         rhv = n_UNCONST(su_empty);
 
 #ifdef mx_HAVE_REGEX
       if(op[1] == '~'){
@@ -268,15 +301,20 @@ jesyn:
          regfree(&re);
       }else
 #endif
-            if(noop)
-         break;
-      else if(op[1] == '%' || op[1] == '@'){
+            if(noop){
+         ;
+      }else if(op[1] == '%' || op[1] == '@'){
          if(op[1] == '@')
             n_OBSOLETE("`if'++: \"=@\" and \"!@\" became \"=%\" and \"!%\"");
          rv = ((flags & a_ICASE ? su_cs_find_case(lhv, rhv)
                : su_cs_find(lhv, rhv)) == NULL) ^ (c == '=');
       }else if(c == '-'){
          s64 lhvi, rhvi;
+
+         if(flags & a_ICASE){
+            emsg = N_("invalid modifier for operational mode");
+            goto jesyn;
+         }
 
          if(*lhv == '\0')
             lhv = n_0;
@@ -313,7 +351,6 @@ jesyn:
          case '>': rv = (op[1] == '\0') ? scmp > 0 : scmp >= 0; break;
          }
       }
-      }break;
    }
 
    if(noop && rv < 0)

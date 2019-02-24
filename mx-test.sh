@@ -136,7 +136,7 @@ if [ -n "${CHECK_ONLY}${RUN_TEST}" ]; then
          echo 'Trying to detect UTF-8 locale via '"${RAWMAILX}"
          i=`LC_ALL=C.utf8 "${RAWMAILX}" ${ARGS} -X '
             \define cset_test {
-               \if [ "${ttycharset}" @i=% utf ]
+               \if [ "${ttycharset}" =%?case utf ]
                   \echo $LC_ALL
                   \xit 0
                \end
@@ -1188,7 +1188,7 @@ t_ifelse() {
 		else
 		   echo 5.err
 		endif
-		if $dietcurd @== 'Yoho'
+		if $dietcurd ==? 'Yoho'
 			echo 5-1.ok
 		else
 			echo 5-1.err
@@ -1203,7 +1203,7 @@ t_ifelse() {
 		else
 		   echo 6.ok
 		endif
-		if $dietcurd @!= 'Yoho'
+		if $dietcurd !=?case 'Yoho'
 			echo 6-1.err
 		else
 			echo 6-1.ok
@@ -1342,32 +1342,32 @@ t_ifelse() {
 		set dietcurd=Abc
 		if $dietcurd < aBd
 		   echo 12.ok1
-		   if $dietcurd @> abB
+		   if $dietcurd >? abB
 		      echo 12.ok2
 		   else
 		      echo 12.err2
 		   endif
-		   if $dietcurd @== aBC
+		   if $dietcurd ==?case aBC
 		      echo 12.ok3
 		   else
 		      echo 12.err3
 		   endif
-		   if $dietcurd @>= AbC
+		   if $dietcurd >=?ca AbC
 		      echo 12.ok4
 		   else
 		      echo 12.err4
 		   endif
-		   if $dietcurd @<= ABc
+		   if $dietcurd <=? ABc
 		      echo 12.ok5
 		   else
 		      echo 12.err5
 		   endif
-		   if $dietcurd @>= abd
+		   if $dietcurd >=?case abd
 		      echo 12.err6
 		   else
 		      echo 12.ok6
 		   endif
-		   if $dietcurd @<= abb
+		   if $dietcurd <=? abb
 		      echo 12.err7
 		   else
 		      echo 12.ok7
@@ -1380,7 +1380,7 @@ t_ifelse() {
       else
          echo 12-1.err
       endif
-      if $dietcurd @< aBc
+      if $dietcurd <? aBc
          echo 12-2.err
       else
          echo 12-2.ok
@@ -1390,12 +1390,12 @@ t_ifelse() {
       else
          echo 12-3.err
       endif
-      if $dietcurd @> ABc
+      if $dietcurd >? ABc
          echo 12-3.err
       else
          echo 12-3.ok
       endif
-		if $dietcurd @i=% aB
+		if $dietcurd =%?case aB
 		   echo 13.ok
 		else
 		   echo 13.err
@@ -1405,7 +1405,7 @@ t_ifelse() {
 		else
 		   echo 13-1.ok
 		endif
-		if $dietcurd @=% bC
+		if $dietcurd =%? bC
 		   echo 14.ok
 		else
 		   echo 14.err
@@ -1415,7 +1415,7 @@ t_ifelse() {
 		else
 		   echo 15-1.err
 		endif
-		if $dietcurd @!% aB
+		if $dietcurd !%? aB
 		   echo 15-2.err
 		else
 		   echo 15-2.ok
@@ -1425,7 +1425,7 @@ t_ifelse() {
 		else
 		   echo 15-3.err
 		endif
-		if $dietcurd @!% bC
+		if $dietcurd !%? bC
 		   echo 15-4.err
 		else
 		   echo 15-4.ok
@@ -1788,7 +1788,7 @@ t_ifelse() {
 			else
 			   echo 1-1.ok
 			endif
-			if $dietcurd @=~ '^Yo.*'
+			if $dietcurd =~?case '^Yo.*'
 			   echo 1-2.ok
 			else
 			   echo 1-2.err
@@ -1798,7 +1798,7 @@ t_ifelse() {
 			else
 			   echo 2.ok
 			endif
-			if $dietcurd @!~ '.*Ho$'
+			if $dietcurd !~? '.*Ho$'
 			   echo 3.err
 			else
 			   echo 3.ok
@@ -1808,27 +1808,27 @@ t_ifelse() {
 			else
 			   echo 4.err
 			endif
-			if [ $dietcurd @i!~ '.+yoho$' ]
+			if [ $dietcurd !~?cas '.+yoho$' ]
 			   echo 5.ok
 			else
 			   echo 5.err
 			endif
-			if ! [ $dietcurd @i=~ '.+yoho$' ]
+			if ! [ $dietcurd =~?case '.+yoho$' ]
 			   echo 6.ok
 			else
 			   echo 6.err
 			endif
-			if ! ! [ $dietcurd @i!~ '.+yoho$' ]
+			if ! ! [ $dietcurd !~? '.+yoho$' ]
 			   echo 7.ok
 			else
 			   echo 7.err
 			endif
-			if ! [ ! [ $dietcurd @i!~ '.+yoho$' ] ]
+			if ! [ ! [ $dietcurd !~? '.+yoho$' ] ]
 			   echo 8.ok
 			else
 			   echo 8.err
 			endif
-			if [ ! [ ! [ $dietcurd @i!~ '.+yoho$' ] ] ]
+			if [ ! [ ! [ $dietcurd !~? '.+yoho$' ] ] ]
 			   echo 9.ok
 			else
 			   echo 9.err
