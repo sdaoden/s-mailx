@@ -741,6 +741,8 @@ jmsglist_go:
          n_pstate |= n_PS_ARGMOD_LOCAL;
       if(flags & a_VPUT)
          n_pstate |= n_PS_ARGMOD_VPUT; /* TODO due to getrawlist(), as above */
+      if(flags & a_WYSH)
+         n_pstate |= n_PS_ARGMOD_WYSH;
 
       if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
          su_err_set_no(su_ERR_NONE);
