@@ -2619,7 +2619,7 @@ jleave:
 }
 
 static enum okay
-imap_store(struct mailbox *mp, struct message *m, int n, int c, const char *sp,
+imap_store(struct mailbox *mp, struct message *m, int n, int c, const char *xsp,
    int needstat)
 {
    char o[LINESIZE];
@@ -2630,11 +2630,11 @@ imap_store(struct mailbox *mp, struct message *m, int n, int c, const char *sp,
       return STOP;
    if (m->m_uid)
       snprintf(o, sizeof o, "%s UID STORE %" PRIu64 " %cFLAGS (%s)\r\n",
-         tag(1), m->m_uid, c, sp);
+         tag(1), m->m_uid, c, xsp);
    else {
       if (check_expunged() == STOP)
          return STOP;
-      snprintf(o, sizeof o, "%s STORE %u %cFLAGS (%s)\r\n", tag(1), n, c, sp);
+      snprintf(o, sizeof o, "%s STORE %u %cFLAGS (%s)\r\n", tag(1), n, c, xsp);
    }
    IMAP_OUT(o, MB_COMD, return STOP)
    if (needstat)
@@ -3275,19 +3275,19 @@ FL int
 imap_folders(const char * volatile name, int strip)
 {
    n_sighdl_t saveint, savepipe;
-   const char * volatile fold, *cp, *sp;
+   const char * volatile fold, *cp, *xsp;
    FILE * volatile fp;
    int rv = 1;
    NYD_IN;
 
    cp = protbase(name);
-   sp = mb.mb_imap_account;
-   if (sp == NULL || su_cs_cmp(cp, sp)) {
+   xsp = mb.mb_imap_account;
+   if (xsp == NULL || su_cs_cmp(cp, xsp)) {
       n_err(
          _("Cannot perform `folders' but when on the very IMAP "
          "account; the current one is\n  `%s' -- "
          "try `folders @'\n"),
-         (sp != NULL ? sp : _("[NONE]")));
+         (xsp != NULL ? xsp : _("[NONE]")));
       goto jleave;
    }
 
