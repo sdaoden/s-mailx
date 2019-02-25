@@ -25,6 +25,7 @@
 #endif
 
 #include <su/cs.h>
+#include <su/sort.h>
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -106,7 +107,6 @@ static boole a_ignore_addcmd_mux(struct n_ignore *ip, char const **list,
                boole retain);
 
 static void a_ignore__show(struct n_ignore const *ip, boole retain);
-static int a_ignore__cmp(void const *l, void const *r);
 
 /* Logic behind `unheaderpick T T' (a.k.a. `unretain'+) */
 static boole a_ignore_delcmd_mux(struct n_ignore *ip, char const **list,
@@ -317,7 +317,8 @@ a_ignore__show(struct n_ignore const *ip, boole retain){
          *ap++ = ifp->if_field;
    *ap = NULL;
 
-   qsort(ring, P2UZ(ap - ring), sizeof *ring, &a_ignore__cmp);
+   su_sort_shell_vpp(su_S(void const**,ring), P2UZ(ap - ring),
+      su_cs_toolbox_case.tb_compare);
 
    i = fprintf(n_stdout, "headerpick %s %s",
       a_ignore_bltin_map[ip->i_ibm_idx].ibm_name,
@@ -360,14 +361,6 @@ a_ignore__show(struct n_ignore const *ip, boole retain){
 jleave:
    fflush(n_stdout);
    NYD2_OU;
-}
-
-static int
-a_ignore__cmp(void const *l, void const *r){
-   int rv;
-
-   rv = su_cs_cmp_case(*(char const * const *)l, *(char const * const *)r);
-   return rv;
 }
 
 static boole

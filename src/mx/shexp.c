@@ -51,6 +51,7 @@
 #endif
 
 #include <su/cs.h>
+#include <su/sort.h>
 #include <su/utf.h>
 
 #include "mx/iconv.h"
@@ -130,7 +131,7 @@ static char *a_shexp_globname(char const *name, enum fexp_mode fexpm);
 #ifdef mx_HAVE_FNMATCH
 static boole a_shexp__glob(struct a_shexp_glob_ctx *sgcp,
                struct n_strlist **slpp);
-static int a_shexp__globsort(void const *cvpa, void const *cvpb);
+static su_sz a_shexp__globsort(void const *cvpa, void const *cvpb);
 #endif
 
 /* Parse an input string and create a sh(1)ell-quoted result */
@@ -279,7 +280,7 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
       no = 0;
       for(xslp = slp; xslp != NULL; xslp = xslp->sl_next)
          sorta[no++] = xslp;
-      qsort(sorta, no, sizeof *sorta, &a_shexp__globsort);
+      su_sort_shell_vpp(su_S(void const**,sorta), no, &a_shexp__globsort);
 
       cp = n_autorec_alloc(++l);
       l = 0;
@@ -521,15 +522,15 @@ jerr:
    goto jleave;
 }
 
-static int
+static su_sz
 a_shexp__globsort(void const *cvpa, void const *cvpb){
-   int rv;
-   struct n_strlist const * const *slpa, * const *slpb;
+   su_sz rv;
+   struct n_strlist const *slpa, *slpb;
    NYD2_IN;
 
    slpa = cvpa;
    slpb = cvpb;
-   rv = su_cs_cmp_case((*slpa)->sl_dat, (*slpb)->sl_dat);
+   rv = su_cs_cmp_case(slpa->sl_dat, slpb->sl_dat);
    NYD2_OU;
    return rv;
 }

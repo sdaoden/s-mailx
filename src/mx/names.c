@@ -45,6 +45,7 @@
 
 #include <su/cs.h>
 #include <su/cs-dict.h>
+#include <su/sort.h>
 
 #include "mx/iconv.h"
 
@@ -84,7 +85,7 @@ static struct mx_name *a_nm_extract1(char const *line, enum gfield ntype,
       char const *separators, boole keepcomms);
 
 /* elide() helper */
-static int a_nm_elide_qsort(void const *s1, void const *s2);
+static su_sz a_nm_elide_sort(void const *s1, void const *s2);
 
 /* Recursively expand an alias name, adjust nlist for result and return it;
  * limit expansion to some fixed level.
@@ -256,18 +257,18 @@ a_nm_extract1(char const *line, enum gfield ntype, char const *seps,
    return headp;
 }
 
-static int
-a_nm_elide_qsort(void const *s1, void const *s2){
-   struct mx_name const * const *np1, * const *np2;
-   int rv;
+static su_sz
+a_nm_elide_sort(void const *s1, void const *s2){
+   struct mx_name const *np1, *np2;
+   su_sz rv;
    NYD2_IN;
 
    np1 = s1;
    np2 = s2;
-   if(!(rv = su_cs_cmp_case((*np1)->n_name, (*np2)->n_name))){
+   if(!(rv = su_cs_cmp_case(np1->n_name, np2->n_name))){
       LCTAV(GTO < GCC && GCC < GBCC);
-      rv = ((*np1)->n_type & (GTO | GCC | GBCC)) -
-            ((*np2)->n_type & (GTO | GCC | GBCC));
+      rv = (np1->n_type & (GTO | GCC | GBCC)) -
+            (np2->n_type & (GTO | GCC | GBCC));
    }
    NYD2_OU;
    return rv;
@@ -900,7 +901,7 @@ elide(struct mx_name *names)
    for(i = 0, np = nlist; np != NULL; np = np->n_flink)
       nparr[i++] = np;
 
-   qsort(nparr, i, sizeof *nparr, &a_nm_elide_qsort);
+   su_sort_shell_vpp(su_S(void const**,nparr), i, &a_nm_elide_sort);
 
    /* Remove duplicates XXX speedup, or list_uniq()! */
    for(j = 0, --i; j < i;){

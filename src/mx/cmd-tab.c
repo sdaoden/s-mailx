@@ -48,6 +48,7 @@
 #endif
 
 #include <su/cs.h>
+#include <su/sort.h>
 
 #include "mx/charsetalias.h"
 #include "mx/commandalias.h"
@@ -69,7 +70,7 @@ static char const *a_ctab_cmdinfo(struct n_cmd_desc const *cdp);
 /* Print a list of all commands */
 static int a_ctab_c_list(void *vp);
 
-static int a_ctab__pcmd_cmp(void const *s1, void const *s2);
+static su_sz a_ctab__pcmd_cmp(void const *s1, void const *s2);
 
 /* `help' / `?' command */
 static int a_ctab_c_help(void *vp);
@@ -237,7 +238,7 @@ a_ctab_c_list(void *vp){
    cdpa[i] = NULL;
 
    if(*(void**)vp == NULL)
-      qsort(cdpa, i, sizeof(*cdpa), &a_ctab__pcmd_cmp);
+      su_sort_shell_vpp(su_S(void const**,cdpa), i, &a_ctab__pcmd_cmp);
 
    if((fp = Ftmp(NULL, "list", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
       fp = n_stdout;
@@ -289,15 +290,15 @@ a_ctab_c_list(void *vp){
    return 0;
 }
 
-static int
+static su_sz
 a_ctab__pcmd_cmp(void const *s1, void const *s2){
-   struct n_cmd_desc const * const *cdpa1, * const *cdpa2;
-   int rv;
+   su_sz rv;
+   struct n_cmd_desc const *cdpa1, *cdpa2;
    NYD2_IN;
 
    cdpa1 = s1;
    cdpa2 = s2;
-   rv = su_cs_cmp((*cdpa1)->cd_name, (*cdpa2)->cd_name);
+   rv = su_cs_cmp(cdpa1->cd_name, cdpa2->cd_name);
    NYD2_OU;
    return rv;
 }

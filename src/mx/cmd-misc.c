@@ -44,6 +44,7 @@
 #include <sys/utsname.h>
 
 #include <su/cs.h>
+#include <su/sort.h>
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -59,7 +60,7 @@ static int a_cmisc_echo(void *vp, FILE *fp, boole donl);
 static boole a_cmisc_read_set(char const *cp, char const *value);
 
 /* c_version() */
-static int a_cmisc_version_cmp(void const *s1, void const *s2);
+static su_sz a_cmisc_version_cmp(void const *s1, void const *s2);
 
 static char const *
 a_cmisc_bangexp(char const *cp){
@@ -181,15 +182,15 @@ jleave:
    return rv;
 }
 
-static int
+static su_sz
 a_cmisc_version_cmp(void const *s1, void const *s2){
-   char const * const *cp1, * const *cp2;
-   int rv;
+   su_sz rv;
+   char const *cp1, *cp2;
    NYD2_IN;
 
    cp1 = s1;
    cp2 = s2;
-   rv = su_cs_cmp(&(*cp1)[1], &(*cp2)[1]);
+   rv = su_cs_cmp(&cp1[1], &cp2[1]);
    NYD2_OU;
    return rv;
 }
@@ -606,7 +607,7 @@ c_version(void *vp){
    arr = n_autorec_alloc(sizeof(cp) * VAL_FEATURES_CNT);
    for(i = 0; (cp = su_cs_sep_c(&iop, ',', TRU1)) != NULL; ++i)
       arr[i] = cp;
-   qsort(arr, i, sizeof(cp), &a_cmisc_version_cmp);
+   su_sort_shell_vpp(su_S(void const**,arr), i, &a_cmisc_version_cmp);
 
    for(lnlen = 0; i-- > 0;){
       cp = *(arr++);

@@ -82,6 +82,7 @@
 #include <su/cs.h>
 #include <su/cs-dict.h>
 #include <su/icodec.h>
+#include <su/sort.h>
 
 #ifdef a_AUX_RAND_USE_BUILTIN
 # include <su/prime.h>
@@ -133,9 +134,6 @@ static void a_aux_rand_init(void);
 su_SINLINE u8 a_aux_rand_get8(void);
 static u32 a_aux_rand_weak(u32 seed);
 #endif
-
-/* */
-static int a_aux_qsort_cpp(void const *a, void const *b);
 
 #ifdef a_AUX_RAND_USE_BUILTIN
 static void
@@ -298,16 +296,6 @@ a_aux_rand_weak(u32 seed){
    return seed;
 }
 #endif /* a_AUX_RAND_USE_BUILTIN */
-
-static int
-a_aux_qsort_cpp(void const *a, void const *b){
-   int rv;
-   NYD2_IN;
-
-   rv = su_cs_cmp(*(char**)n_UNCONST(a), *(char**)n_UNCONST(b));
-   NYD2_OU;
-   return rv;
-}
 
 FL void
 n_locale_init(void){
@@ -1532,7 +1520,7 @@ mx_xy_dump_dict(char const *cmdname, struct su_cs_dict *dp,
    su_CS_DICT_FOREACH(dp, &dv)
       *xcpp++ = su_cs_dict_view_key(&dv);
    if(cnt > 1)
-      qsort(cpp, cnt, sizeof *cpp, &a_aux_qsort_cpp);
+      su_sort_shell_vpp(su_S(void const**,cpp), cnt, su_cs_toolbox.tb_compare);
 
    for(xcpp = cpp; cnt > 0; ++xcpp, --cnt){
       struct n_strlist *slp;

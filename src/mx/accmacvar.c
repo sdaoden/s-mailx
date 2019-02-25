@@ -56,6 +56,7 @@
 
 #include <su/cs.h>
 #include <su/icodec.h>
+#include <su/sort.h>
 
 #include "mx/iconv.h"
 #include "mx/names.h"
@@ -418,8 +419,6 @@ static boole a_amv_var__clearenv(char const *name, struct a_amv_var *avp);
 
 /* List all variables */
 static void a_amv_var_show_all(void);
-
-static int a_amv_var__show_cmp(void const *s1, void const *s2);
 
 /* Actually do print one, return number of lines written */
 static uz a_amv_var_show(char const *name, FILE *fp, struct n_string *msgp);
@@ -2315,7 +2314,7 @@ a_amv_var_show_all(void){
       *cap++ = a_amv_var_virts[i].avv_var->av_name;
 
    if(no > 1)
-      qsort(vacp, no, sizeof *vacp, &a_amv_var__show_cmp);
+      su_sort_shell_vpp(su_S(void const**,vacp), no, su_cs_toolbox.tb_compare);
 
    msgp = &msg;
    msgp = n_string_reserve(n_string_creat(msgp), 80);
@@ -2327,16 +2326,6 @@ a_amv_var_show_all(void){
    Fclose(fp);
 jleave:
    NYD2_OU;
-}
-
-static int
-a_amv_var__show_cmp(void const *s1, void const *s2){
-   int rv;
-   NYD2_IN;
-
-   rv = su_cs_cmp(*(char**)n_UNCONST(s1), *(char**)n_UNCONST(s2));
-   NYD2_OU;
-   return rv;
 }
 
 static uz
