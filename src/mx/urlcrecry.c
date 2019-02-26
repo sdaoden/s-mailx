@@ -1129,7 +1129,7 @@ jurlp_err:
             == NULL) {
          /* No, check whether .netrc lookup is desired */
 # ifdef mx_HAVE_NETRC
-         if (!ok_blook(v15_compat) ||
+         if (ok_vlook(v15_compat) == su_NIL ||
                !xok_blook(netrc_lookup, urlp, OXM_PLAIN | OXM_H_P) ||
                !_nrc_lookup(urlp, FAL0))
 # endif
@@ -1153,7 +1153,7 @@ jurlp_err:
    {  struct str h, *s;
       uz i;
 
-      if (cproto == CPROTO_SMTP && ok_blook(v15_compat) &&
+      if (cproto == CPROTO_SMTP && ok_vlook(v15_compat) != su_NIL &&
             (cp = ok_vlook(smtp_hostname)) != NULL) {
          if (*cp == '\0')
             cp = n_nodename(TRU1);

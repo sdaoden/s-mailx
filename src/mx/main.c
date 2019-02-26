@@ -887,7 +887,7 @@ jeMmq:
             char const *a[2];
             boole b;
 
-            if(!ok_blook(v15_compat)){
+            if(ok_vlook(v15_compat) == su_NIL){
                okey = a[0] = avo.avo_current_arg;
                s = NIL;
             }else{

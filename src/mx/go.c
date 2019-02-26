@@ -699,6 +699,13 @@ jmsglist_go:
       if(0){
          /* FALLTHRU */
    case n_CMD_ARG_TYPE_WYRA:
+         /* C99 */{
+            char const *v15compat;
+
+            if((v15compat = ok_vlook(v15_compat)) != su_NIL &&
+                  *v15compat != '\0')
+               flags |= a_WYSH;
+         }
          c = (flags & a_WYSH) ? 1 : 0;
          if(0){
    case n_CMD_ARG_TYPE_RAWLIST:

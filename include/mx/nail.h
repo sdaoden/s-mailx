@@ -1433,7 +1433,7 @@ ok_v_ssl_verify, /* {chain=1,obsolete=1} */
    ok_v_user,                       /* {notempty=1,chain=1} */
 
    ok_v_VISUAL,                     /* {env=1,notempty=1,defval=VAL_VISUAL} */
-   ok_b_v15_compat,
+   ok_v_v15_compat,
    ok_b_verbose,                       /* {vip=1} */
    ok_v_version,                       /* {virt=n_VERSION} */
    ok_v_version_date,                  /* {virt=n_VERSION_DATE} */

@@ -163,7 +163,9 @@ New and old behaviour is flagged \*(IN and \*(OU, and setting
 .Va v15-compat ,
 one of the many
 .Sx "INTERNAL VARIABLES" ,
-will choose new behaviour when applicable.
+will choose new behaviour when applicable; when set with value,
+.Cm wysh
+is default behaviour.
 \*(OB flags what will vanish, and enabling
 .Fl d
 or
@@ -3594,6 +3596,9 @@ can be used for some old and established commands to choose the new
 .Sx "Shell-style argument quoting"
 rules over the traditional
 .Sx "Old-style argument quoting" .
+This modifier is implied if
+.Va v15-compat
+is set to a non-empty value.
 .El
 .\" }}}
 .
@@ -12843,9 +12848,15 @@ This variable defaults to the name of the user who runs \*(UA.
 .
 .Mx
 .It Va v15-compat
-\*(BO Setting this enables upward compatibility with \*(UA
-version 15.0 in respect to which configuration options are available and
-how they are handled.
+Enable upward compatibility with \*(UA version 15.0 in respect to which
+configuration options are available and how they are handled.
+If set to a non-empty value the command modifier
+.Cm wysh
+is implied and thus enforces
+.Sx "Shell-style argument quoting"
+over
+.Sx "Old-style argument quoting"
+for all commands which support both.
 This manual uses \*(IN and \*(OU to refer to the new and the old way of
 doing things, respectively.
 .

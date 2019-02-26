@@ -1649,7 +1649,7 @@ imap_setfile(char const * volatile who, const char *xserver,
       rv = 1;
       goto jleave;
    }
-   if (!ok_blook(v15_compat) &&
+   if (ok_vlook(v15_compat) == su_NIL &&
          (!(url.url_flags & n_URL_HAD_USER) || url.url_pass.s != NULL))
       n_err(_("New-style URL used without *v15-compat* being set!\n"));
 
@@ -1666,7 +1666,7 @@ _imap_getcred(struct mailbox *mbp, struct ccred *ccredp, struct url *urlp)
    boole rv = FAL0;
    NYD_IN;
 
-   if (ok_blook(v15_compat))
+   if (ok_vlook(v15_compat) != su_NIL)
       rv = ccred_lookup(ccredp, urlp);
    else {
       char *var, *old,
@@ -3106,7 +3106,7 @@ imap_append(const char *xserver, FILE *fp, long offset)
 
    if (!url_parse(&url, CPROTO_IMAP, xserver))
       goto j_leave;
-   if (!ok_blook(v15_compat) &&
+   if (ok_vlook(v15_compat) == su_NIL &&
          (!(url.url_flags & n_URL_HAD_USER) || url.url_pass.s != NULL))
       n_err(_("New-style URL used without *v15-compat* being set!\n"));
    ASSERT(url.url_path.s != NULL);

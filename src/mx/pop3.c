@@ -123,7 +123,7 @@ _pop3_login(struct mailbox *mp, struct sockconn *scp)
    enum okay rv;
    NYD_IN;
 
-   oxm = ok_blook(v15_compat) ? OXM_ALL : OXM_PLAIN | OXM_U_H_P;
+   oxm = (ok_vlook(v15_compat) != su_NIL) ? OXM_ALL : OXM_PLAIN | OXM_U_H_P;
 
    /* Get the greeting, check whether APOP is advertised */
    POP3_ANSWER(rv, goto jleave);
@@ -838,14 +838,15 @@ pop3_setfile(char const *who, char const *server, enum fedit_mode fm)
 
    if (!url_parse(&sockc.sc_url, CPROTO_POP3, server))
       goto jleave;
-   if (!ok_blook(v15_compat) &&
+   if (ok_vlook(v15_compat) == su_NIL &&
          (!(sockc.sc_url.url_flags & n_URL_HAD_USER) ||
             sockc.sc_url.url_pass.s != NULL)) {
       n_err(_("New-style URL used without *v15-compat* being set\n"));
       goto jleave;
    }
 
-   if (!(ok_blook(v15_compat) ? ccred_lookup(&sockc.sc_cred, &sockc.sc_url)
+   if (!((ok_vlook(v15_compat) != su_NIL)
+         ? ccred_lookup(&sockc.sc_cred, &sockc.sc_url)
          : ccred_lookup_old(&sockc.sc_cred, CPROTO_POP3,
             ((sockc.sc_url.url_flags & n_URL_HAD_USER)
              ? sockc.sc_url.url_eu_h_p.s

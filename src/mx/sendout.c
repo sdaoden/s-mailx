@@ -541,7 +541,7 @@ _sendbundle_setup_creds(struct sendbundle *sbp, boole signing_caps)
 #endif
    NYD_IN;
 
-   v15 = ok_blook(v15_compat);
+   v15 = (ok_vlook(v15_compat) != su_NIL);
    shost = (v15 ? ok_vlook(smtp_hostname) : NULL);
    from = ((signing_caps || !v15 || shost == NULL)
          ? skin(myorigin(sbp->sb_hp)) : NULL);
