@@ -5844,13 +5844,11 @@ eceive
 and
 .Ql s Ns
 end, the remaining are non-portable extensions.
-\*(ID These commands do not yet use
+\*(ID In conjunction with the
+.Cm wysh
+command prefix(es)
 .Sx "Shell-style argument quoting"
-and therefore do not know about input tokens, so that syntax
-elements have to be surrounded by whitespace; in v15 \*(UA will inspect
-all conditions bracket group wise and consider the tokens, representing
-values and operators, therein, which also means that variables will
-already have been expanded at that time (just like in the shell).
+and more test operators are available.
 .
 .Bd -literal -offset indent
 if receive
@@ -5861,23 +5859,21 @@ endif
 .Ed
 .
 .Pp
-The (case-insensitive) condition
+Further (case-insensitive) one-argument conditions are
 .Ql t Ns
-erminal will evaluate to true if the standard input is a terminal, i.e.,
-in interactive sessions.
-Another condition can be any boolean value (see the section
+erminal which evaluates to true in interactive (terminal) sessions,
+as well as any boolean value (see
 .Sx "INTERNAL VARIABLES"
 for textual boolean representations) to mark an enwrapped block as
 .Dq never execute
 or
 .Dq always execute .
-(It shall be remarked that a faulty condition skips all branches until
+(Remarks: condition syntax errors skip all branches until
 .Ic endif . )
 .
 .Pp
-(\*(ID In v15
-.Sx "Shell-style argument quoting"
-will be used, and this command will simply interpret expanded tokens.)
+\*(OU and without
+.Cm wysh :
 It is possible to check
 .Sx "INTERNAL VARIABLES"
 as well as
@@ -5890,7 +5886,30 @@ conditional trigger character;
 a variable on the right hand side may be signalled using the same
 mechanism.
 Variable names may be enclosed in a pair of matching braces.
-When this mode has been triggered, several operators are available:
+When this mode has been triggered, several operators are available
+(\*(IN and
+.Cm wysh :
+they are always available, and there is no trigger: variables will have
+been expanded by the shell-compatible parser before the
+.Ic if
+etc. command sees them).
+.
+.Pp
+\*(IN Two argument conditions.
+Variables can be tested for existence and expansion:
+.Ql -N
+will test whether the given variable exists, e.g.,
+.Ql -N editalong
+will evaluate to true when
+.Va editalong
+is set, whereas
+.Ql -Z editalong
+will if it is not.
+.Ql -n """$editalong"""
+will be true if the variable is set and expands to a non-empty string,
+.Ql -z $'\e$editalong'
+only if the expansion is empty, whether the variable exists or not.
+The remaining conditions take three arguments.
 .
 .Pp
 Integer operators treat the arguments on the left and right hand side of
@@ -5982,10 +6001,8 @@ via unary operators: the unary operator
 will reverse the result.
 .
 .Bd -literal -offset indent
-# (This not in v15, there [ -n "$debug"]!)
-if $debug
-  echo *debug* is set
-endif
+wysh set v15-compat=yes # with value: automatic "wysh"!
+if -N debug; echo; *debug* is set; endif
 if [ "$ttycharset" == UTF-8 ] || \e
     [ "$ttycharset" ==?case UTF8 ]
   echo *ttycharset* is UTF-8, the former case-sensitive!
@@ -5994,15 +6011,14 @@ set t1=one t2=one
 if [ "${t1}" == "${t2}" ]
   echo These two variables are equal
 endif
-if [ "$features" =% +regex ] && \e
-    [ "$TERM" =~?case "^xterm\&.*" ]
+if "$features" =% +regex && "$TERM" =~?case "^xterm\&.*"
   echo ..in an X terminal
 endif
 if [ [ true ] && [ [ "${debug}" != '' ] || \e
     [ "$verbose" != '' ] ] ]
   echo Noisy, noisy
 endif
-if true && [ "$debug" != '' ] || [ "${verbose}" != '' ]
+if true && [ -n "$debug" || -n "${verbose}" ]
   echo Left associativity, as is known from the shell
 endif
 .Ed

@@ -104,7 +104,8 @@ a_ccnd_oif_test(struct a_ccnd_if_ctx *cicp, boole noop){
    argc = P2UZ(cicp->cic_argv_max - cicp->cic_argv);
    cp = argv[0];
 
-   if(UNLIKELY(argc != 1 && argc != 3)){
+   if(UNLIKELY(argc != 1 && argc != 3 &&
+         (argc != 2 || !(n_pstate & n_PS_ARGMOD_WYSH)))){
 jesyn:
       if(emsg != NULL)
          emsg = V_(emsg);
@@ -118,23 +119,26 @@ jesyn_ntr:
    if(argc == 1){
       switch(*cp){
       case '$': /* v15compat */
-         /* v15compat (!wysh): $ trigger? */
-         if(cp[1] == '\0')
-            goto jesyn;
-
-         /* Look up the value in question, we need it anyway */
-         if(*++cp == '{'){
-            uz i = su_cs_len(cp);
-
-            if(i > 0 && cp[i - 1] == '}')
-               cp = savestrbuf(++cp, i -= 2);
-            else
+         if(!(n_pstate & n_PS_ARGMOD_WYSH)){
+            /* v15compat (!wysh): $ trigger? */
+            if(cp[1] == '\0')
                goto jesyn;
-         }
 
-         lhv = noop ? NULL : n_var_vlook(cp, TRU1);
-         rv = (lhv != NULL);
-         break;
+            /* Look up the value in question, we need it anyway */
+            if(*++cp == '{'){
+               uz i = su_cs_len(cp);
+
+               if(i > 0 && cp[i - 1] == '}')
+                  cp = savestrbuf(++cp, i -= 2);
+               else
+                  goto jesyn;
+            }
+
+            lhv = noop ? NULL : n_var_vlook(cp, TRU1);
+            rv = (lhv != NULL);
+            break;
+         }
+         /* FALLTHRU */
 
       default:
          switch((rv = n_boolify(cp, UZ_MAX, TRUM1))){
@@ -159,30 +163,61 @@ jesyn_ntr:
             rv = ((n_psonce & n_PSO_INTERACTIVE) != 0);
          break;
       }
+   }else if(argc == 2){
+      ASSERT(n_pstate & n_PS_ARGMOD_WYSH);
+      emsg = N_("unrecognized condition");
+      if(cp[0] != '-' || cp[2] != '\0')
+         goto jesyn;
+
+      switch((c = cp[1])){
+      case 'N':
+      case 'Z':
+         if(noop)
+            rv = TRU1;
+         else{
+            lhv = n_var_vlook(argv[1], TRU1);
+            rv = (c == 'N') ? (lhv != su_NIL) : (lhv == su_NIL);
+         }
+         break;
+      case 'n':
+      case 'z':
+         if(noop)
+            rv = TRU1;
+         else{
+            lhv = argv[1];
+            rv = (c == 'n') ? (*lhv != '\0') : (*lhv == '\0');
+         }
+         break;
+      default:
+         goto jesyn;
+      }
    }else{
       enum{
          a_NONE,
          a_ICASE = 1u<<0
       } flags = a_NONE;
 
-      /* v15compat (!wysh): $ trigger? */
-      if(*cp == '$'){
-         if(cp[1] == '\0')
-            goto jesyn;
-
-         /* Look up the value in question, we need it anyway */
-         if(*++cp == '{'){
-            uz i = su_cs_len(cp);
-
-            if(i > 0 && cp[i - 1] == '}')
-               cp = savestrbuf(++cp, i -= 2);
-            else
+      if(n_pstate & n_PS_ARGMOD_WYSH)
+         lhv = cp;
+      else{
+         if(*cp == '$'){ /* v15compat (!wysh): $ trigger? */
+            if(cp[1] == '\0')
                goto jesyn;
-         }
 
-         lhv = noop ? NULL : n_var_vlook(cp, TRU1);
-      }else
-         goto jesyn;
+            /* Look up the value in question, we need it anyway */
+            if(*++cp == '{'){
+               uz i = su_cs_len(cp);
+
+               if(i > 0 && cp[i - 1] == '}')
+                  cp = savestrbuf(++cp, i -= 2);
+               else
+                  goto jesyn;
+            }
+
+            lhv = noop ? NULL : n_var_vlook(cp, TRU1);
+         }else
+            goto jesyn;
+      }
 
       /* Three argument comparison form required, check syntax */
       emsg = N_("unrecognized condition");
@@ -191,7 +226,7 @@ jesyn_ntr:
          goto jesyn;
 
       /* May be modifier */
-      if(c == '@'){
+      if(c == '@'){ /* v15compat */
          n_OBSOLETE2(_("if/elif: please use ? modifier suffix, "
                "not @ prefix: %s"),
                savecatsep(n_shexp_quote_cp(argv[0], FAL0), ' ',
@@ -259,23 +294,25 @@ jesyn_ntr:
       if((rhv = argv[2]) == NULL /* Can't happen */)
          goto jesyn;
 
-      if(*rhv == '$'){
-         if(*++rhv == '\0')
-            goto jesyn;
-         else if(*rhv == '{'){
-            uz i = su_cs_len(rhv);
-
-            if(i > 0 && rhv[i - 1] == '}')
-               rhv = savestrbuf(++rhv, i -= 2);
-            else{
-               cp = --rhv;
+      if(!(n_pstate & n_PS_ARGMOD_WYSH)){
+         if(*rhv == '$'){/* v15compat */
+            if(*++rhv == '\0')
                goto jesyn;
+            else if(*rhv == '{'){
+               uz i = su_cs_len(rhv);
+
+               if(i > 0 && rhv[i - 1] == '}')
+                  rhv = savestrbuf(++rhv, i -= 2);
+               else{
+                  cp = --rhv;
+                  goto jesyn;
+               }
             }
+            if(noop)
+               rhv = NULL;
+            else
+               rhv = n_var_vlook(cp = rhv, TRU1);
          }
-         if(noop)
-            rhv = NULL;
-         else
-            rhv = n_var_vlook(cp = rhv, TRU1);
       }
 
       /* A null value is treated as the empty string */
