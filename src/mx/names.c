@@ -916,10 +916,14 @@ elide(struct mx_name *names)
 
    /* Throw away all list members which are not part of the array.
     * Note this keeps the original, possibly carefully crafted, order of the
-    * addressees, thus */
+    * addressees, thus.. */
    for(np = nlist; np != NULL; np = np->n_flink){
       for(j = 0; j <= i; ++j)
-         if(np == nparr[j]){
+         /* The order of pointers depends on the sorting algorithm, and
+          * therefore our desire to keep the original order of addessees cannot
+          * be guaranteed when there are multiple equal names (ham zebra ham)
+          * of equal weight: we need to compare names _once_again_ :( */
+         if(nparr[j] != NULL && !su_cs_cmp_case(np->n_name, nparr[j]->n_name)){
             nparr[j] = NULL;
             goto jiter;
          }
