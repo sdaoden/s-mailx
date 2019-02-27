@@ -599,15 +599,11 @@ t_X_Y_opt_input_go_stack() {
 
    # Test for [8412796a] (n_cmd_arg_parse(): FIX token error -> crash, e.g.
    # "-RX 'bind;echo $?' -Xx".., 2018-08-02)
-   if have_feat key-bindings; then
-      ${MAILX} ${ARGS} -RX'bind;echo $?' -Xx > ./.tall 2>&1
-      ${MAILX} ${ARGS} -RX'bind ;echo $?' -Xx >> ./.tall 2>&1
-      ${MAILX} ${ARGS} -RX'bind	;echo $?' -Xx >> ./.tall 2>&1
-      ${MAILX} ${ARGS} -RX'bind      ;echo $?' -Xx >> ./.tall 2>&1
-      check cmdline 0 ./.tall '1867586969 8'
-   else
-      t_echoskip 'cmdline:[no option key-bindings]'
-   fi
+   ${MAILX} ${ARGS} -RX'call;echo $?' -Xx > ./.tall 2>&1
+   ${MAILX} ${ARGS} -RX'call ;echo $?' -Xx >> ./.tall 2>&1
+   ${MAILX} ${ARGS} -RX'call	;echo $?' -Xx >> ./.tall 2>&1
+   ${MAILX} ${ARGS} -RX'call      ;echo $?' -Xx >> ./.tall 2>&1
+   check cmdline 0 ./.tall '1867586969 8'
 
    t_epilog
 }

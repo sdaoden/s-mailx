@@ -3507,7 +3507,7 @@ a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, boole replace){
       uz i, j;
 
       tbcp = n_alloc(VSTRUCT_SIZEOF(struct a_tty_bind_ctx, tbc__buf) +
-            tbpcp->tbpc_seq_len + tbpcp->tbpc_exp.l +2 +
+            tbpcp->tbpc_seq_len +1 + tbpcp->tbpc_exp.l +1 +
             tbpcp->tbpc_cnv_align_mask + 1 + tbpcp->tbpc_cnv_len);
       if(tbpcp->tbpc_ltbcp != NULL){
          tbcp->tbc_next = tbpcp->tbpc_ltbcp->tbc_next;
@@ -3521,6 +3521,7 @@ a_tty_bind_create(struct a_tty_bind_parse_ctx *tbpcp, boole replace){
       }
       su_mem_copy(tbcp->tbc_seq = &tbcp->tbc__buf[0],
          tbpcp->tbpc_seq, i = (tbcp->tbc_seq_len = tbpcp->tbpc_seq_len) +1);
+      ASSERT(tbpcp->tbpc_exp.l > 0);
       su_mem_copy(tbcp->tbc_exp = &tbcp->tbc__buf[i],
          tbpcp->tbpc_exp.s, j = (tbcp->tbc_exp_len = tbpcp->tbpc_exp.l) +1);
       i += j;
@@ -3813,6 +3814,9 @@ jeempty:
          goto jleave;
       }
 
+      /* TODO `bind': since empty expansions are forbidden it would be nice to
+       * TODO be able to say "bind base a,b,c" and see the expansion of only
+       * TODO that (just like we do for `alias', `commandalias' etc.!) */
       if(i == 0)
          goto jeempty;
 
@@ -4540,29 +4544,34 @@ jentry:{
 # ifdef mx_HAVE_KEY_BINDINGS
 FL int
 c_bind(void *v){
+   /* TODO `bind': since empty expansions are forbidden it would be nice to
+    * TODO be able to say "bind base a,b,c" and see the expansion of only
+    * TODO that (just like we do for `alias', `commandalias' etc.!) */
    struct a_tty_bind_ctx *tbcp;
-   enum n_go_input_flags gif;
-   boole aster, show;
    union {char const *cp; char *p; char c;} c;
+   boole show, aster;
+   enum n_go_input_flags gif;
    struct n_cmd_arg_ctx *cacp;
    NYD_IN;
 
    cacp = v;
+   gif = 0;
 
-   c.cp = cacp->cac_arg->ca_arg.ca_str.s;
-   if(cacp->cac_no == 1)
-      show = TRU1;
-   else
+   if(cacp->cac_no <= 1)
+      aster = show = TRU1;
+   else{
+      c.cp = cacp->cac_arg->ca_arg.ca_str.s;
       show = !su_cs_cmp_case(cacp->cac_arg->ca_next->ca_arg.ca_str.s, "show");
-   aster = FAL0;
+      aster = FAL0;
 
-   if((gif = a_tty_bind_ctx_find(c.cp)) == (enum n_go_input_flags)-1){
-      if(!(aster = n_is_all_or_aster(c.cp)) || !show){
-         n_err(_("`bind': invalid context: %s\n"), c.cp);
-         v = NULL;
-         goto jleave;
+      if((gif = a_tty_bind_ctx_find(c.cp)) == (enum n_go_input_flags)-1){
+         if(!(aster = n_is_all_or_aster(c.cp)) || !show){
+            n_err(_("`bind': invalid context: %s\n"), c.cp);
+            v = NULL;
+            goto jleave;
+         }
+         gif = 0;
       }
-      gif = 0;
    }
 
    if(show){

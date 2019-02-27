@@ -49,7 +49,8 @@
 #ifdef mx_HAVE_KEY_BINDINGS
 # define a_CTAB_CAD_BIND n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_bind)
 n_CMD_ARG_DESC_SUBCLASS_DEF(bind, 3, a_ctab_cad_bind){
-   {n_CMD_ARG_DESC_SHEXP, n_SHEXP_PARSE_TRIM_IFSSPACE}, /* context */
+   {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_OPTION,
+      n_SHEXP_PARSE_TRIM_IFSSPACE}, /* context */
    {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_OPTION | n_CMD_ARG_DESC_HONOUR_STOP,
       n_SHEXP_PARSE_DRYRUN}, /* subcommand / key sequence */
    {n_CMD_ARG_DESC_SHEXP | n_CMD_ARG_DESC_OPTION |
@@ -725,8 +726,9 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
 #else
       NULL,
 #endif
-      (M | TARG), 1, MAC, a_CTAB_CAD_BIND
-     DS(N_("For <context> (base), [<show>] or bind <key[:,key:]> [:<data>:]"))},
+      (M | TARG), 0, MAC, a_CTAB_CAD_BIND
+     DS(N_("For [<context> (base)], [<show>] "
+         "or bind <key[:,key:]> [:<data>:]"))},
    { "unbind",
 #ifdef mx_HAVE_KEY_BINDINGS
       &c_unbind,
