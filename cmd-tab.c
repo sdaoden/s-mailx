@@ -494,7 +494,7 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
 
    /* TODO We need to test >= 0 in order to deal with MSGLIST arguments, as
     * TODO those use getmsglist() and that needs to deal with that situation.
-    * TODO In the future that should change; see jmsglist_related TODO below */
+    * TODO In the future that should change; see jloop_break TODO below */
    for(cadp = cacp->cac_desc, cad_idx = 0;
          /*shin.l >= 0 &&*/ cad_idx < cadp->cad_no; ++cad_idx){
 jredo:
@@ -513,7 +513,7 @@ jredo:
          enum n_shexp_state shs;
          ui32_t addflags;
 
-         if(shin.l == 0) goto jmsglist_related; /* TODO */
+         if(shin.l == 0) goto jloop_break; /* TODO */
 
          if(cad_idx == cadp->cad_no - 1 ||
                (cadp->cad_ent_flags[cad_idx + 1][0] & n_CMD_ARG_DESC_OPTION))
@@ -531,7 +531,7 @@ jredo:
          if((shs & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_ERR_MASK)) ==
                n_SHEXP_STATE_OUTPUT){
             if((shs & n_SHEXP_STATE_META_SEMICOLON) && shou.s_len == 0)
-               break;
+               goto jloop_break;
             ncap.ca_arg.ca_str.s = n_string_cp(shoup);
             ncap.ca_arg.ca_str.l = shou.s_len;
             shoup = n_string_drop_ownership(shoup);
@@ -655,7 +655,7 @@ jredo:
       }
    }
 
-jmsglist_related:
+jloop_break:
    if(cad_idx < cadp->cad_no &&
          !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION))
       goto jerr;
