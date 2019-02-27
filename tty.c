@@ -3746,10 +3746,12 @@ jeempty:
 
       i = tbpcp->tbpc_exp.l;
       if(i > 0 && exp[i - 1] == '@'){
-         while(--i > 0){
-            if(!blankspacechar(exp[i - 1]))
+         --i;
+#if 0 /* xxx no: allow trailing whitespace, as in 'echo du @' .. */
+         while(--i > 0)
+            if(!su_cs_is_space(exp[i - 1]))
                break;
-         }
+#endif
          if(i == 0)
             goto jeempty;
 
@@ -3765,6 +3767,9 @@ jeempty:
             tbpcp->tbpc_cmd, tbpcp->tbpc_in_seq);
          goto jleave;
       }
+
+      if(i == 0)
+         goto jeempty;
 
       /* It may map to an internal MLE command! */
       for(i = 0; i < n_NELEM(a_tty_bind_fun_names); ++i)
