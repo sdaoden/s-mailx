@@ -626,6 +626,9 @@ jexec:
       }
    }
 
+   if(n_poption & n_PO_D_VV)
+      n_err(_("COMMAND <%s> %s\n"), cdp->cd_name, line.s);
+
    switch(cdp->cd_caflags & n_CMD_ARG_TYPE_MASK){
    case n_CMD_ARG_TYPE_MSGLIST:
       /* Message list defaulting to nearest forward legal message */

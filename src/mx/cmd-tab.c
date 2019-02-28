@@ -570,7 +570,7 @@ jredo:
          enum n_shexp_state shs;
          u32 addflags;
 
-         if(shin.l == 0) goto jloop_break; /* TODO */
+         if(shin.l == 0) goto jloop_break; /* xxx (required grrr) quickshot */
 
          if(cad_idx == cadp->cad_no - 1 ||
                (cadp->cad_ent_flags[cad_idx + 1][0] & n_CMD_ARG_DESC_OPTION))
@@ -579,31 +579,46 @@ jredo:
             addflags = n_SHEXP_PARSE_NONE;
 
          shoup = n_string_creat_auto(&shou);
+
          ncap.ca_arg_flags =
          shs = n_shexp_parse_token((ncap.ca_ent_flags[1] | addflags |
                   n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_LOG),
                shoup, &shin,
                (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_GREEDY ? &cookie : NULL));
+
+         if((shs & n_SHEXP_STATE_META_SEMICOLON) && shin.l > 0){
+            ASSERT(shs & n_SHEXP_STATE_STOP);
+            n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, shin.s, shin.l);
+            shin.l = 0;
+         }
+
          ncap.ca_inlen = P2UZ(shin.s - ncap.ca_indat);
          if((shs & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_ERR_MASK)) ==
                n_SHEXP_STATE_OUTPUT){
-            if((shs & n_SHEXP_STATE_META_SEMICOLON) && shou.s_len == 0)
-               goto jloop_break;
             ncap.ca_arg.ca_str.s = n_string_cp(shoup);
             ncap.ca_arg.ca_str.l = shou.s_len;
-            shoup = n_string_drop_ownership(shoup);
          }
-         n_string_gut(shoup);
 
          if(shs & n_SHEXP_STATE_ERR_MASK)
             goto jerr;
          if((shs & n_SHEXP_STATE_STOP) &&
-               (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_HONOUR_STOP)){
-            if(!(shs & n_SHEXP_STATE_OUTPUT))
+               (ncap.ca_ent_flags[0] & (n_CMD_ARG_DESC_OPTION |
+                  n_CMD_ARG_DESC_HONOUR_STOP))){
+            if(!(shs & n_SHEXP_STATE_OUTPUT)){
+               /* We would return FAL0 for bind in "bind;echo huhu", whereas we
+                * do not for "bind" due to the "shin.l==0 goto jloop_break;"
+                * introductional quickshot; ensure we succeed */
+               if(shs & n_SHEXP_STATE_META_SEMICOLON)
+                  goto jloop_break;
                goto jleave;
+            }
+
+            /* Succeed if we had any arg */
             stoploop = TRU1;
-         }else if(!(shs & n_SHEXP_STATE_OUTPUT)) /* XXX Is this right? */
+         }else if(!(shs & n_SHEXP_STATE_OUTPUT)){
+            ASSERT(0);
             goto jerr;
+         }
          }break;
       case n_CMD_ARG_DESC_MSGLIST_AND_TARGET:
          target_argpp = &target_argp;
@@ -928,12 +943,17 @@ getrawlist(boole wysh, char **res_dat, uz res_size,
          /* C99 */{
             enum n_shexp_state shs;
 
-            if((shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
-                        (cookie == NULL ? n_SHEXP_PARSE_TRIM_SPACE : 0) |
-                        /* TODO not here in old style n_SHEXP_PARSE_IFS_VAR |*/
-                        n_SHEXP_PARSE_META_SEMICOLON),
-                     &store, &input, &cookie)
-                  ) & n_SHEXP_STATE_ERR_MASK){
+            shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
+                  (cookie == NULL ? n_SHEXP_PARSE_TRIM_SPACE : 0) |
+                  /* TODO not here in old style n_SHEXP_PARSE_IFS_VAR |*/
+                  n_SHEXP_PARSE_META_SEMICOLON), &store, &input, &cookie);
+
+            if((shs & n_SHEXP_STATE_META_SEMICOLON) && input.l > 0){
+               ASSERT(shs & n_SHEXP_STATE_STOP);
+               n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, input.s, input.l);
+            }
+
+            if(shs & n_SHEXP_STATE_ERR_MASK){
                /* Simply ignore Unicode error, just keep the normalized \[Uu] */
                if((shs & n_SHEXP_STATE_ERR_MASK) != n_SHEXP_STATE_ERR_UNICODE){
                   res_no = -1;

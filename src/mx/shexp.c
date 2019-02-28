@@ -1086,7 +1086,9 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
     * TODO we would not need to be wired to variable handling for positional
     * TODO parameters, instead these should be fields of the carrier, and
     * TODO once we need them we should yield saying we need them, and if
-    * TODO we are reentered we simply access the fields directly */
+    * TODO we are reentered we simply access the fields directly.
+    * TODO That is: do that, also for normal variables: like this the shell
+    * TODO expression parser can be made entirely generic and placed in SU! */
    u32 last_known_meta_trim_len;
    char c2, c, quotec, utf[8];
    enum n_shexp_state rv;
@@ -1107,7 +1109,8 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
       a_ROUND_MASK = a_SKIPT | (int)~su_BITENUM_MASK(0, 7),
       a_COOKIE = 1u<<8,
       a_EXPLODE = 1u<<9,
-      a_CONSUME = 1u<<10,  /* When done, "consume" remaining input */
+      /* Remove one more byte from the input after pushing data to output */
+      a_CHOP_ONE = 1u<<10,
       a_TMP = 1u<<30
    } state;
    NYD2_IN;
@@ -1295,15 +1298,15 @@ jrestart:
 
             /* The parsed sequence may be _the_ output, so ensure we don't
              * include the metacharacter, then. */
-            if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
+            if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP)){
+               if(!(flags & n_SHEXP_PARSE_META_KEEP))
+                  state |= a_CHOP_ONE;
                ++il, --ib;
+            }
             /*last_known_meta_trim_len = U32_MAX;*/
             break;
          }else if(c == ';' && (flags & n_SHEXP_PARSE_META_SEMICOLON)){
-            if(il > 0)
-               n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, ib, il);
             rv |= n_SHEXP_STATE_META_SEMICOLON | n_SHEXP_STATE_STOP;
-            state |= a_CONSUME;
             if(!(flags & n_SHEXP_PARSE_DRYRUN) &&
                   (rv & n_SHEXP_STATE_OUTPUT) &&
                   last_known_meta_trim_len != U32_MAX)
@@ -1311,16 +1314,22 @@ jrestart:
 
             /* The parsed sequence may be _the_ output, so ensure we don't
              * include the metacharacter, then. */
-            if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
+            /*if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP)){*/
+               if(!(flags & n_SHEXP_PARSE_META_KEEP))
+                  state |= a_CHOP_ONE;
                ++il, --ib;
+          /*  }*/
             /*last_known_meta_trim_len = U32_MAX;*/
             break;
          }else if(c == ',' && (flags &
                (n_SHEXP_PARSE_IFS_ADD_COMMA | n_SHEXP_PARSE_IFS_IS_COMMA))){
             /* The parsed sequence may be _the_ output, so ensure we don't
              * include the metacharacter, then. */
-            if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
+            if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP)){
+               if(!(flags & n_SHEXP_PARSE_META_KEEP))
+                  state |= a_CHOP_ONE;
                ++il, --ib;
+            }
             /*last_known_meta_trim_len = U32_MAX;*/
             break;
          }else{
@@ -1337,8 +1346,11 @@ jrestart:
                if(!(flags & n_SHEXP_PARSE_IFS_IS_COMMA)){
                   /* The parsed sequence may be _the_ output, so ensure we do
                    * not include the metacharacter, then. */
-                  if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
+                  if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP)){
+                     if(!(flags & n_SHEXP_PARSE_META_KEEP))
+                        state |= a_CHOP_ONE;
                      ++il, --ib;
+                  }
                   /*last_known_meta_trim_len = U32_MAX;*/
                   break;
                }
@@ -1784,29 +1796,27 @@ jleave:
       rv |= n_SHEXP_STATE_OUTPUT;
    }
 
-   if(state & a_CONSUME){
-      input->s = UNCONST(char*,&ib[il]);
-      input->l = 0;
-   }else{
-      if(flags & n_SHEXP_PARSE_TRIM_SPACE){
-         for(; il > 0; ++ib, --il){
-            if(!su_cs_is_space(*ib))
-               break;
-            rv |= n_SHEXP_STATE_WS_TRAIL;
-         }
-      }
+   if(state & a_CHOP_ONE)
+      ++ib, --il;
 
-      if(flags & n_SHEXP_PARSE_TRIM_IFSSPACE){
-         for(; il > 0; ++ib, --il){
-            if(su_cs_find_c(ifs_ws, *ib) == NULL)
-               break;
-            rv |= n_SHEXP_STATE_WS_TRAIL;
-         }
+   if(flags & n_SHEXP_PARSE_TRIM_SPACE){
+      for(; il > 0; ++ib, --il){
+         if(!su_cs_is_space(*ib))
+            break;
+         rv |= n_SHEXP_STATE_WS_TRAIL;
       }
-
-      input->l = il;
-      input->s = UNCONST(char*,ib);
    }
+
+   if(flags & n_SHEXP_PARSE_TRIM_IFSSPACE){
+      for(; il > 0; ++ib, --il){
+         if(su_cs_find_c(ifs_ws, *ib) == NULL)
+            break;
+         rv |= n_SHEXP_STATE_WS_TRAIL;
+      }
+   }
+
+   input->l = il;
+   input->s = UNCONST(char*,ib);
 
    if(!(rv & n_SHEXP_STATE_STOP)){
       if(!(rv & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_META_MASK)) &&
