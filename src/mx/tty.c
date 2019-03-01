@@ -4399,6 +4399,11 @@ n_tty_addhist(char const *s, enum n_go_input_flags gif){
 
       ticmp = &a_tty_input_ctx_maps[gif & a_TTY_HIST_CTX_MASK];
 
+      /* TODO *on-history-addition*: a future version will give the expanded
+       * TODO command name as the third argument, followed by the tokenized
+       * TODO command line as parsed in the remaining arguments, the first of
+       * TODO which is the original unexpanded command name; i.e., one may do
+       * TODO "shift 4" and access the arguments normal via $#, $@ etc. */
       if(temporary_addhist_hook(ticmp->ticm_name,
             ((gif & n_GO_INPUT_HIST_GABBY) != 0), s)){
          hold_all_sigs();

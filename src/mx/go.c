@@ -1429,6 +1429,11 @@ n_go_main_loop(void){ /* FIXME */
       if(gec.gec_hist_flags & a_GO_HIST_ADD){
          char const *cc, *ca;
 
+         /* TODO history handling is terrible; this should pass the command
+          * TODO evaluation context carrier all along the way, so that commands
+          * TODO can alter the "add history" behaviour at will; also the
+          * TODO arguments as passed into ARGV should be passed along to
+          * TODO addhist, see *on-history-addition* for the why of this */
          cc = gec.gec_hist_cmd;
          ca = gec.gec_hist_args;
          if(cc != NULL && ca != NULL)
