@@ -4930,10 +4930,12 @@ are identical.
 Queries the length of the given argument.
 .
 .It Cm hash , Cm hash32
-Calculates the Chris Torek hash of the given argument.
+Calculates a hash value of the given argument.
 The latter will return a 32-bit result regardless of host environment.
 .Ql \&?
 modifier suffix is supported.
+These use Chris Torek's hash algorithm, the resulting hash value is
+bit mixed as shown by Bret Mulvey.
 .
 .It Cm find
 Search for the second in the first argument.
