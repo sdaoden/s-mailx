@@ -70,7 +70,8 @@ enum su_idec_mode{
    su_IDEC_MODE_LIMIT_32BIT = 3u<<3,
    su__IDEC_MODE_LIMIT_MASK = 3u<<3,
    /*! Do not treat it as an error if the limit is excessed!
-    * Like this saturated (and bit-limited) results can be created. */
+    * Like this saturated (and bit-limited) results can be created
+    * (in that \r{su_IDEC_STATE_EOVERFLOW is suppressed). */
    su_IDEC_MODE_LIMIT_NOERROR = 1u<<5,
    /* These bits are duplicated in the _state result bits! */
    su__IDEC_MODE_MASK = (1u<<6) - 1

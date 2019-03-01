@@ -255,8 +255,7 @@ jleave:
             }
          }else
             res = umask;
-         if(!(rv & su_IDEC_MODE_LIMIT_NOERROR))
-            rv |= su_IDEC_STATE_EOVERFLOW;
+         rv |= su_IDEC_STATE_EOVERFLOW;
       }else if(rv & su_IDEC_STATE_SEEN_MINUS)
          res = -res;
    }while(0);
@@ -287,6 +286,8 @@ jleave:
          *S(u64*,resp) = S(u64,res);
       break;
    }
+   if(rv & su_IDEC_MODE_LIMIT_NOERROR)
+      rv &= ~su_IDEC_STATE_EOVERFLOW;
 
    if(endptr_or_nil != NIL)
       *endptr_or_nil = cbuf;
