@@ -175,7 +175,8 @@ INLINE uz su_cs_first_of(char const *cp, char const *xp){
 
 /*! Hash a string (buffer).
  * This should be considered an attackable hash, for now Chris Torek's hash
- * algorithm is used.  TODO Add _strong_hash (with, e.g., siphash algo)
+ * algorithm is used, the resulting hash is stirred as shown by Bret Mulvey.
+ * TODO Add _strong_hash (with, e.g., siphash algo)
  * Also see \r{su_cs_hash_case_cbuf()}. */
 EXPORT uz su_cs_hash_cbuf(char const *buf, uz len);
 
@@ -185,11 +186,9 @@ INLINE uz su_cs_hash(char const *cp){
    return su_cs_hash_cbuf(cp, UZ_MAX);
 }
 
-/*! Hash a string (buffer), case-insensitively.
- * This should be considered an attackable hash, for now Chris Torek's hash
- * algorithm is used.  TODO Add _strong_hash (with, e.g., siphash algo)
- * As usual, if \a{len} is 0 \a{buf} may be \NIL.
- * Also see \r{su_cs_hash_cbuf()}. */
+/*! Hash a string (buffer), case-insensitively, otherwise identical to
+ * \r{su_cs_hash_cbuf()}.
+ * As usual, if \a{len} is 0 \a{buf} may be \NIL. */
 EXPORT uz su_cs_hash_case_cbuf(char const *buf, uz len);
 
 /*! \r{su_cs_hash_case_cbuf()}. */

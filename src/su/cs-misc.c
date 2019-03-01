@@ -25,6 +25,29 @@
 #include "su/cs.h"
 #include "su/code-in.h"
 
+#define a_CSMISC_HASH(C) \
+do{\
+   u64 xh = 0;\
+\
+   if(len == UZ_MAX)\
+      for(; (c = *buf++) != '\0';)\
+         xh = (xh * 33) + S(u8,C);\
+   else\
+      while(len-- != 0){ /* XXX Duff's device, unroll 8? */\
+         c = *buf++;\
+         xh = (xh * 33) + S(u8,C);\
+      }\
+\
+   /* Since mixing matters mostly for pow2 spaced maps, mixing the \
+    * lower 32-bit seems to be sufficient (? in practice) */\
+   xh += xh << 13;\
+   xh ^= xh >> 7;\
+   xh += xh << 3;\
+   xh ^= xh >> 17;\
+   xh += xh << 5;\
+   h = S(uz,xh);\
+}while(0)
+
 uz
 su_cs_hash_cbuf(char const *buf, uz len){
    char c;
@@ -32,13 +55,7 @@ su_cs_hash_cbuf(char const *buf, uz len){
    NYD_IN;
    ASSERT_NYD_RET(len == 0 || buf != NIL, h = 0);
 
-   h = 0;
-   if(len == UZ_MAX)
-      for(; (c = *buf++) != '\0';)
-         h = (h * 33) + c;
-   else
-      while(len-- != 0) /* XXX Duff's device, unroll 8? */
-         h = (h * 33) + *buf++;
+   a_CSMISC_HASH(c);
    NYD_OU;
    return h;
 }
@@ -50,20 +67,12 @@ su_cs_hash_case_cbuf(char const *buf, uz len){
    NYD_IN;
    ASSERT_NYD_RET(len == 0 || buf != NIL, h = 0);
 
-   h = 0;
-   if(len == UZ_MAX)
-      for(; (c = *buf++) != '\0';){
-         c = su_cs_to_lower(c);
-         h = (h * 33) + c;
-      }
-   else
-      while(len-- != 0){
-         c = su_cs_to_lower(*buf++);
-         h = (h * 33) + c;
-      }
+   a_CSMISC_HASH(su_cs_to_lower(c));
    NYD_OU;
    return h;
 }
+
+#undef a_CSMISC_HASH
 
 #include "su/code-ou.h"
 /* s-it-mode */
