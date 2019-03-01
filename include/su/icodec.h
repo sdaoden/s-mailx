@@ -49,11 +49,16 @@ enum su_idec_mode{
    su_IDEC_MODE_NONE, /*!< \_ */
    /*! Will be used to choose limits, error constants, etc. */
    su_IDEC_MODE_SIGNED_TYPE = 1u<<0,
-   /*! If a power-of-two is used explicitly, or if base 0 is used and a known
-    * standard prefix is seen, enforce interpretation as unsigned.
+   /*! If a power-of-two is used explicitly, or if a \a{base} of 0 is used
+    * and a known standard prefix is seen, enforce interpretation as unsigned.
     * This only makes a difference in conjunction with
     * \r{su_IDEC_MODE_SIGNED_TYPE}. */
    su_IDEC_MODE_POW2BASE_UNSIGNED = 1u<<1,
+   /*! Relaxed \a{base} 0 convenience: if the input used \c{BASE#number} number
+    * sign syntax, then the scan will be restarted anew with the base given.
+    * Like this an UI can be permissive and support \c{s='  -008'; eval 10#$s}
+    * out of the box (it would require a lot of logic otherwise). */
+   su_IDEC_MODE_BASE0_NUMBER_SIGN_RESCAN = 1u<<2,
 #if 0
    su_IDEC_MODE_SIGN_FORCE_SIGNED_TYPE = 1u<<2,
 #endif
@@ -90,10 +95,11 @@ MCTA(su__IDEC_MODE_MASK <= (1u<<8) - 1, "Shared bit range overlaps")
 /*! Decode \a{clen} (or \r{su_cs_len()} if \r{su_UZ_MAX}) bytes of \a{cbuf}
  * into an integer according to the \r{su_idec_mode} \a{idec_mode},
  * store a/the result in \a{*resp} (in the \r{su_IDEC_STATE_EINVAL} case an
- * overflow constant is used, for signed types it depends on parse state w.
- * MIN/MAX), which must point to storage of the correct type,
+ * overflow constant is used, for signed types it depends on parse state
+ * whether MIN/MAX are used), which must point to storage of the correct type,
  * return the resulting \r{su_idec_state} (which includes \a{idec_mode}).
- * If \a{endptr_or_nil} is will be pointed to the last parsed byte. */
+ * If \a{endptr_or_nil} is will be pointed to the last parsed byte.
+ * Base auto-detection can be enfored by setting \a{base} to 0. */
 EXPORT u32 su_idec(void *resp, char const *cbuf, uz clen, u8 base,
       u32 idec_mode, char const **endptr_or_nil);
 
@@ -303,6 +309,8 @@ public:
       mode_signed_type = su_IDEC_MODE_SIGNED_TYPE,
       /*! \copydoc{su_IDEC_MODE_POW2BASE_UNSIGNED} */
       mode_pow2base_unsigned = su_IDEC_MODE_POW2BASE_UNSIGNED,
+      /*! \copydoc{su_IDEC_MODE_BASE0_NUMBER_SIGN_RESCAN} */
+      mode_base0_number_sign_rescan = su_IDEC_MODE_BASE0_NUMBER_SIGN_RESCAN,
       /*! \copydoc{su_IDEC_MODE_LIMIT_8BIT} */
       mode_limit_8bit = su_IDEC_MODE_LIMIT_8BIT,
       /*! \copydoc{su_IDEC_MODE_LIMIT_16BIT} */

@@ -91,6 +91,7 @@ su_idec(void *resp, char const *cbuf, uz clen, u8 base, u32 idec_mode,
    /*if(base == 1 || base > 36)
     *   goto jeinval;*/
 
+jnumber_sign_rescan:
    /* Leading WS */
    while(su_cs_is_space(*cbuf))
       if(*++cbuf == '\0' || --clen == 0)
@@ -132,12 +133,19 @@ su_idec(void *resp, char const *cbuf, uz clen, u8 base, u32 idec_mode,
                 * did not get a valid base or if the first char is not valid
                 * according to base, to comply to the latest interpretion of
                 * "prefix", see comment for standard prefixes below */
-               if(base < 2 || base > 36 || a_icod_atoi[S(u8,c3)] >= base)
+               if(base < 2 || base > 36 ||
+                     (a_icod_atoi[S(u8,c3)] >= base &&
+                        !(rv & su_IDEC_MODE_BASE0_NUMBER_SIGN_RESCAN)))
                   base = 10;
-               else if(c2 == '#')
-                  clen -= 2, cbuf += 2;
-               else
-                  clen -= 3, cbuf += 3;
+               else{
+                  if(c2 == '#')
+                     clen -= 2, cbuf += 2;
+                  else
+                     clen -= 3, cbuf += 3;
+
+                  if(rv & su_IDEC_MODE_BASE0_NUMBER_SIGN_RESCAN)
+                     goto jnumber_sign_rescan;
+               }
             }
          }
       }
