@@ -253,16 +253,16 @@ n_tty_create_prompt(struct n_string *store, char const *xprompt,
    u32 pwidth;
    char const *cp;
    NYD2_IN;
+   ASSERT(n_psonce & n_PSO_INTERACTIVE);
 
    /* Prompt creation indicates that prompt printing is directly ahead, so take
     * this opportunity of UI-in-a-known-state and advertise the error ring */
 #ifdef mx_HAVE_ERRORS
-   if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_ERRORS_NOTED)
-         ) == n_PSO_INTERACTIVE && (n_pstate & n_PS_ERRORS_PROMPT)){
+   if(!(n_psonce & n_PSO_ERRORS_NOTED) && (n_pstate & n_PS_ERRORS_PROMPT)){
       n_psonce |= n_PSO_ERRORS_NOTED;
       fprintf(n_stdout, _("There are new messages in the error message ring "
          "(denoted by %s)\n"
-         "  The `errors' command manages this message ring\n"),
+         "  It can be managed with the `errors' command\n"),
          V_(n_error));
    }
 #endif
@@ -274,6 +274,7 @@ jredo:
       pwidth = 0;
       goto jleave;
    }
+
 #ifdef mx_HAVE_ERRORS
    if(n_pstate & n_PS_ERRORS_PROMPT){
       n_pstate &= ~n_PS_ERRORS_PROMPT;
@@ -282,6 +283,9 @@ jredo:
       store = n_string_push_c(store, ' ');
    }
 #endif
+
+   if(!(gif & n_GO_INPUT_NL_FOLLOW) && n_cnd_if_isskip())
+      store = n_string_push_cp(store, _("WHITEOUT: NEED `endif'# "));
 
    cp = (gif & n_GO_INPUT_PROMPT_EVAL)
          ? (gif & n_GO_INPUT_NL_FOLLOW ? ok_vlook(prompt2) : ok_vlook(prompt))
