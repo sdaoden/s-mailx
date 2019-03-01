@@ -7431,16 +7431,16 @@ output, and supports
 calculations, as well as other, mostly string-based operations.
 C-style byte string operations are available via
 .Ic csop .
-An operator is the first argument and defines the number and type,
-and the meaning of the remaining arguments.
-An empty argument is replaced with a 0 if a number is expected.
+The first argument defines the number, type, and meaning of the
+remaining arguments.
+An empty number argument is treated as 0.
 Supports
 .Cm vput
 (see
 .Sx "Command modifiers" ) .
-The result that is shown in case of errors is always
+The result shown in case of errors is
 .Ql -1
-for usage errors and numeric operations, and the empty string otherwise;
+for usage errors and numeric operations, the empty string otherwise;
 .Dq soft
 errors, like when a search operation failed, will also set the
 .Va \&!
@@ -7480,6 +7480,14 @@ a difference regarding overflow detection and overflow constant.
 It is possible to enforce signed interpretation by (instead) prefixing a
 .Ql s
 (case-insensitively).
+The number sign notation uses a permissive parse mode and as such
+supports complicated conditions out of the box:
+.Bd -literal -offset indent
+? wysh set ifs=:;read i;unset ifs;echo $i;vexpr pb 2 10#$i
+   -009
+<   -009>
+0b1001
+.Ed
 .
 .Pp
 One integer is expected by assignment (equals sign
@@ -10788,7 +10796,7 @@ This hook will be called if an entry is about to be added to the
 .Ic history
 of the MLE, as is documented in
 .Sx "On terminal control and line editor" .
-It will be called with three arguments the first is the name of the
+It will be called with three arguments: the first is the name of the
 input context (see
 .Ic bind ) ,
 the second whether the command relates to

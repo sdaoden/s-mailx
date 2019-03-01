@@ -237,11 +237,13 @@ jlhv_redo:
       lhv = 0;
    else{
       vcp->vc_arg = cp;
-      idecm = ((*cp == 'u' || *cp == 'U')
-            ? (f |= a_VEXPR_PBASE_FORCE_UNSIGNED, ++cp, su_IDEC_MODE_NONE)
-            : ((*cp == 's' || *cp == 'S')
-               ? (++cp, su_IDEC_MODE_SIGNED_TYPE)
-               : su_IDEC_MODE_SIGNED_TYPE | su_IDEC_MODE_POW2BASE_UNSIGNED));
+      idecm = (((*cp == 'u' || *cp == 'U')
+               ? (f |= a_VEXPR_PBASE_FORCE_UNSIGNED, ++cp, su_IDEC_MODE_NONE)
+               : ((*cp == 's' || *cp == 'S')
+                  ? (++cp, su_IDEC_MODE_SIGNED_TYPE)
+                  : su_IDEC_MODE_SIGNED_TYPE | su_IDEC_MODE_POW2BASE_UNSIGNED)
+               ) |
+            su_IDEC_MODE_BASE0_NUMBER_SIGN_RESCAN);
       if(((idecs = su_idec_cp(&lhv, cp, 0, idecm, NIL)
                ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
             ) != su_IDEC_STATE_CONSUMED){
@@ -301,12 +303,13 @@ jbinop:
       if(*cp == '\0')
          rhv = 0;
       else{
-         idecm = ((*cp == 'u' || *cp == 'U')
-               ? (++cp, su_IDEC_MODE_NONE)
-               : ((*cp == 's' || *cp == 'S')
-                  ? (++cp, su_IDEC_MODE_SIGNED_TYPE)
-                  : su_IDEC_MODE_SIGNED_TYPE |
-                     su_IDEC_MODE_POW2BASE_UNSIGNED));
+         idecm = (((*cp == 'u' || *cp == 'U')
+                  ? (++cp, su_IDEC_MODE_NONE)
+                  : ((*cp == 's' || *cp == 'S')
+                     ? (++cp, su_IDEC_MODE_SIGNED_TYPE)
+                     : su_IDEC_MODE_SIGNED_TYPE |
+                        su_IDEC_MODE_POW2BASE_UNSIGNED)) |
+               su_IDEC_MODE_BASE0_NUMBER_SIGN_RESCAN);
          if(((idecs = su_idec_cp(&rhv, cp, 0, idecm, NIL)
                   ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
                ) != su_IDEC_STATE_CONSUMED){
