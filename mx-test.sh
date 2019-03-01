@@ -2048,7 +2048,7 @@ t_ifelse() {
 		   else
 		      echo 11.ok6
 		   endif
-		   if $dietcurd -le 9
+		   if $dietcurd -ge?satu -0xFFFFFFFFFFFFFFFF1
 		      echo 11.err7
 		   else
 		      echo 11.ok7

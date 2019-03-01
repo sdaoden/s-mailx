@@ -194,7 +194,9 @@ jesyn_ntr:
    }else{
       enum{
          a_NONE,
-         a_ICASE = 1u<<0
+         a_MOD = 1u<<0,
+         a_ICASE = 1u<<1,
+         a_SATURATED = 1u<<2
       } flags = a_NONE;
 
       if(n_pstate & n_PS_ARGMOD_WYSH)
@@ -244,11 +246,11 @@ jesyn_ntr:
       }else
       if((cp = su_cs_find_c(op, '?')) != su_NIL){
          if(cp[1] == '\0')
-            flags |= a_ICASE;
+            flags |= a_MOD;
          else if(su_cs_starts_with_case("case", &cp[1]))
             flags |= a_ICASE;
-         /*else if(su_cs_starts_with_case("saturated", &cp[1]))
-            f = a_VEXPR_MOD_SATURATED;*/
+         else if(su_cs_starts_with_case("saturated", &cp[1]))
+            flags |= a_SATURATED;
          else{
             emsg = N_("invalid modifier");
             goto jesyn;
@@ -327,8 +329,13 @@ jesyn_ntr:
          regex_t re;
          int s;
 
+         if(flags & a_SATURATED){
+            emsg = N_("invalid modifier for operational mode");
+            goto jesyn;
+         }
+
          if((s = regcomp(&re, rhv, REG_EXTENDED | REG_NOSUB |
-               (flags & a_ICASE ? REG_ICASE : 0))) != 0){
+               (flags & (a_MOD | a_ICASE) ? REG_ICASE : 0))) != 0){
             emsg = savecat(_("invalid regular expression: "),
                   n_regex_err_to_doc(NULL, s));
             goto jesyn_ntr;
@@ -341,11 +348,17 @@ jesyn_ntr:
             if(noop){
          ;
       }else if(op[1] == '%' || op[1] == '@'){
-         if(op[1] == '@')
+         if(flags & a_SATURATED){
+            emsg = N_("invalid modifier for operational mode");
+            goto jesyn;
+         }
+
+         if(op[1] == '@') /* v15compat */
             n_OBSOLETE("`if'++: \"=@\" and \"!@\" became \"=%\" and \"!%\"");
-         rv = ((flags & a_ICASE ? su_cs_find_case(lhv, rhv)
+         rv = ((flags & (a_MOD | a_ICASE) ? su_cs_find_case(lhv, rhv)
                : su_cs_find(lhv, rhv)) == NULL) ^ (c == '=');
       }else if(c == '-'){
+         u32 lhvis, rhvis;
          s64 lhvi, rhvi;
 
          if(flags & a_ICASE){
@@ -357,12 +370,17 @@ jesyn_ntr:
             lhv = n_0;
          if(*rhv == '\0')
             rhv = n_0;
-         if((su_idec_s64_cp(&lhvi, lhv, 0, NULL
-                  ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-               ) != su_IDEC_STATE_CONSUMED || (su_idec_s64_cp(&rhvi, rhv,
-                  0, NULL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-               ) != su_IDEC_STATE_CONSUMED){
-            emsg = N_("integer expression expected");
+         rhvis = lhvis = (flags & (a_MOD | a_SATURATED)
+                  ? su_IDEC_MODE_LIMIT_NOERROR : su_IDEC_MODE_NONE) |
+               su_IDEC_MODE_SIGNED_TYPE;
+         lhvis = su_idec_cp(&lhvi, lhv, 0, lhvis, su_NIL);
+         rhvis = su_idec_cp(&rhvi, rhv, 0, rhvis, su_NIL);
+
+         if((lhvis & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+                  ) != su_IDEC_STATE_CONSUMED ||
+               (rhvis & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+                  ) != su_IDEC_STATE_CONSUMED){
+            emsg = N_("invalid integer number");
             goto jesyn;
          }
 
@@ -378,7 +396,12 @@ jesyn_ntr:
       }else{
          s32 scmp;
 
-         scmp = (flags & a_ICASE) ? su_cs_cmp_case(lhv, rhv)
+         if(flags & a_SATURATED){
+            emsg = N_("invalid modifier for operational mode");
+            goto jesyn;
+         }
+
+         scmp = (flags & (a_MOD | a_ICASE)) ? su_cs_cmp_case(lhv, rhv)
                : su_cs_cmp(lhv, rhv);
          switch(c){
          default:

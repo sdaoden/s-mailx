@@ -5916,6 +5916,18 @@ Integer operators treat the arguments on the left and right hand side of
 the operator as integral numbers and compare them arithmetically.
 It is an error if any of the operands is not a valid integer, an empty
 argument (which implies it had been quoted) is treated as if it were 0.
+Via the question mark
+.Ql \&?
+modifier suffix a saturated operation mode is available where numbers
+will linger at the minimum or maximum possible value, instead of
+overflowing (or trapping), the keyword
+.Ql saturated
+is optional, e.g.,
+.Ql ==? ,
+.Ql ==?satu
+and
+.Ql ==?saturated
+are identical.
 Available operators are
 .Ql -lt
 (less than),
@@ -7554,7 +7566,8 @@ Numeric operations support a saturated mode via the question mark
 modifier suffix; the keyword
 .Ql saturated
 is optional, e.g.,
-.Ql +?
+.Ql +? ,
+.Ql +?satu ,
 and
 .Ql +?saturated
 are identical.
