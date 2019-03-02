@@ -1141,7 +1141,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
       }
 
       if(n_psonce & n_PSO_INTERACTIVE){
-         if(!(n_pstate & n_PS_SOURCING)){
+         if(!(n_pstate & n_PS_ROBOT)){
             s = n_string_creat_auto(&s_b);
             s = n_string_reserve(s, 80);
          }

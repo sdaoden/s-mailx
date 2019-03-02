@@ -2,7 +2,6 @@
  *@ Program input of all sorts, input lexing, event loops, command evaluation.
  *@ TODO - _PS_ERR_EXIT_* and _PSO_EXIT_* mixup is a mess: TERRIBLE!
  *@ TODO - hold_all_sigs() most often on, especially robot mode: TERRIBLE!
- *@ TODO - n_PS_ROBOT requires yet n_PS_SOURCING, which REALLY sucks.
  *@ TODO - go_input(): with IO::Device we could have CStringListDevice, for
  *@ TODO   example to handle injections, and also `readctl' channels!
  *@ TODO   (Including sh(1)ell HERE strings and such.)
@@ -1355,7 +1354,10 @@ n_go_main_loop(void){ /* FIXME */
       if(gec.gec_ever_seen)
          a_go_cleanup(a_GO_CLEANUP_LOOPTICK | a_GO_CLEANUP_HOLDALLSIGS);
 
-      if (!(n_pstate & n_PS_SOURCING)) {
+      /* TODO This condition test may not be here: if the condition is not true
+       * TODO a recursive mainloop object without that cruft should be used!! */
+      if(a_go_ctx->gc_inject == su_NIL &&
+            !(n_pstate & (n_PS_ROBOT | n_PS_SOURCING))){
          char *cp;
 
          /* TODO Note: this buffer may contain a password.  We should redefine
@@ -1370,66 +1372,64 @@ n_go_main_loop(void){ /* FIXME */
             gec.gec_line.s = NULL;
             gec.gec_line.l = gec.gec_line_size = 0;
          }
-      }
 
-      if (!(n_pstate & n_PS_SOURCING) && (n_psonce & n_PSO_INTERACTIVE)) {
-         char *cp;
+         if(n_psonce & n_PSO_INTERACTIVE){
+            if ((cp = ok_vlook(newmail)) != NULL) { /* TODO bla */
+               struct stat st;
 
-         if ((cp = ok_vlook(newmail)) != NULL) { /* TODO bla */
-            struct stat st;
-
-            if(mb.mb_type == MB_FILE){
-               if(!stat(mailname, &st) && st.st_size > mailsize)
+               if(mb.mb_type == MB_FILE){
+                  if(!stat(mailname, &st) && st.st_size > mailsize)
 #if defined mx_HAVE_MAILDIR || defined mx_HAVE_IMAP
-               Jnewmail:
+                  Jnewmail:
 #endif
-               {
-                  u32 odid;
-                  uz odot;
+                  {
+                     u32 odid;
+                     uz odot;
 
-                  odot = P2UZ(dot - message);
-                  odid = (n_pstate & n_PS_DID_PRINT_DOT);
+                     odot = P2UZ(dot - message);
+                     odid = (n_pstate & n_PS_DID_PRINT_DOT);
 
-                  rele_all_sigs();
-                  n = setfile(mailname,
-                        (FEDIT_NEWMAIL |
-                           ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY)));
-                  hold_all_sigs();
+                     rele_all_sigs();
+                     n = setfile(mailname,
+                           (FEDIT_NEWMAIL |
+                              ((mb.mb_perm & MB_DELE) ? 0 : FEDIT_RDONLY)));
+                     hold_all_sigs();
 
-                  if(n < 0) {
-                     n_exit_status |= n_EXIT_ERR;
-                     rv = FAL0;
-                     break;
-                  }
+                     if(n < 0) {
+                        n_exit_status |= n_EXIT_ERR;
+                        rv = FAL0;
+                        break;
+                     }
 #ifdef mx_HAVE_IMAP
-                  if(mb.mb_type != MB_IMAP){
+                     if(mb.mb_type != MB_IMAP){
 #endif
-                     dot = &message[odot];
-                     n_pstate |= odid;
+                        dot = &message[odot];
+                        n_pstate |= odid;
 #ifdef mx_HAVE_IMAP
-                  }
+                     }
 #endif
-               }
-            }else{
+                  }
+               }else{
 #if defined mx_HAVE_MAILDIR || defined mx_HAVE_IMAP
-               n = (cp != NULL && su_cs_cmp(cp, "nopoll"));
+                  n = (cp != NULL && su_cs_cmp(cp, "nopoll"));
 #endif
 
 #ifdef mx_HAVE_MAILDIR
-               if(mb.mb_type == MB_MAILDIR){
-                  if(n != 0)
-                     goto Jnewmail;
-               }
+                  if(mb.mb_type == MB_MAILDIR){
+                     if(n != 0)
+                        goto Jnewmail;
+                  }
 #endif
 #ifdef mx_HAVE_IMAP
-               if(mb.mb_type == MB_IMAP){
-                  if(!n)
-                     n = (cp != NULL && su_cs_cmp(cp, "noimap"));
+                  if(mb.mb_type == MB_IMAP){
+                     if(!n)
+                        n = (cp != NULL && su_cs_cmp(cp, "noimap"));
 
-                  if(imap_newmail(n) > (cp == NULL))
-                     goto Jnewmail;
-               }
+                     if(imap_newmail(n) > (cp == NULL))
+                        goto Jnewmail;
+                  }
 #endif
+               }
             }
          }
       }
@@ -1439,8 +1439,9 @@ n_go_main_loop(void){ /* FIXME */
       /* C99 */{
          boole histadd;
 
-         histadd = (!(n_pstate & n_PS_SOURCING) &&
-               (n_psonce & n_PSO_INTERACTIVE));
+         histadd = ((n_psonce & n_PSO_INTERACTIVE) &&
+               !(n_pstate & (n_PS_ROBOT | n_PS_SOURCING)) &&
+                a_go_ctx->gc_inject == su_NIL); /* xxx really injection? */
          rele_all_sigs();
          n = n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, NULL,
                &gec.gec_line.s, &gec.gec_line.l, NULL, &histadd);
