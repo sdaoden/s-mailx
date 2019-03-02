@@ -1877,6 +1877,34 @@ t_ifelse() {
 
    ## post v15compat
 
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Sv15-compat=X > "${MBOX}"
+	\if -N xyz; echo 1.err-1; \
+		\elif ! -Z xyz;echo 1.err-2;\
+		\elif -n "$xyz"     ;      echo 1.err-3   ;    \
+		\elif ! -z "$xyz"     ;      echo 1.err-4   ;    \
+		\else;echo 1.ok;\
+		\end
+	\set xyz
+	\if ! -N xyz; echo 2.err-1; \
+		\elif -Z xyz;echo 2.err-2;\
+		\elif -n "$xyz"     ;      echo 2.err-3   ;    \
+		\elif ! -z "$xyz"     ;      echo 2.err-4   ;    \
+		\else;echo 2.ok;\
+		\end
+	\set xyz=notempty
+	\if ! -N xyz; echo 3.err-1; \
+		\elif -Z xyz;echo 3.err-2;\
+		\elif ! -n "$xyz";echo 3.err-3;\
+		\elif -z "$xyz";echo 3.err-4;\
+		\else;echo 3.ok;\
+		\end
+	\if $xyz != notempty;echo 4.err-1;else;echo 4.ok;\end
+	\if $xyz == notempty;echo 5.ok;else;echo 5.err-1;\end
+	__EOT
+
+   check NnZz_whiteout 0 "${MBOX}" '4280687462 25'
+
+   # TODO t_ifelse: individual tests as for NnZz_whiteout
    # Nestable conditions test
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Sv15-compat=x > "${MBOX}"
 		if 0
