@@ -568,21 +568,14 @@ jredo:
       case n_CMD_ARG_DESC_SHEXP:{
          struct n_string shou, *shoup;
          enum n_shexp_state shs;
-         u32 addflags;
 
          if(shin.l == 0) goto jloop_break; /* xxx (required grrr) quickshot */
-
-         if(cad_idx == cadp->cad_no - 1 ||
-               (cadp->cad_ent_flags[cad_idx + 1][0] & n_CMD_ARG_DESC_OPTION))
-            addflags = n_SHEXP_PARSE_META_SEMICOLON;
-         else
-            addflags = n_SHEXP_PARSE_NONE;
 
          shoup = n_string_creat_auto(&shou);
 
          ncap.ca_arg_flags =
-         shs = n_shexp_parse_token((ncap.ca_ent_flags[1] | addflags |
-                  n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_LOG),
+         shs = n_shexp_parse_token((ncap.ca_ent_flags[1] | n_SHEXP_PARSE_LOG |
+               n_SHEXP_PARSE_META_SEMICOLON | n_SHEXP_PARSE_TRIM_SPACE),
                shoup, &shin,
                (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_GREEDY ? &cookie : NULL));
 

@@ -284,7 +284,7 @@ jredo:
    }
 #endif
 
-   if(!(gif & n_GO_INPUT_NL_FOLLOW) && n_cnd_if_isskip())
+   if(!(gif & n_GO_INPUT_NL_FOLLOW) && n_cnd_if_is_skip())
       store = n_string_push_cp(store, _("WHITEOUT: NEED `endif'# "));
 
    cp = (gif & n_GO_INPUT_PROMPT_EVAL)

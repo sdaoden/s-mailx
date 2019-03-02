@@ -6014,7 +6014,7 @@ will reverse the result.
 .
 .Bd -literal -offset indent
 wysh set v15-compat=yes # with value: automatic "wysh"!
-if -N debug; echo; *debug* is set; endif
+if -N debug;echo *debug* set;else;echo not;endif
 if [ "$ttycharset" == UTF-8 ] || \e
     [ "$ttycharset" ==?case UTF8 ]
   echo *ttycharset* is UTF-8, the former case-sensitive!

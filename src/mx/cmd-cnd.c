@@ -30,8 +30,9 @@
 /* TODO fake */
 #include "su/code-in.h"
 
-#define a_CCND_IF_ISSKIP() \
-   (n_go_data->gdc_ifcond != NULL &&\
+#define a_CCND_IF_IS_ACTIVE() (n_go_data->gdc_ifcond != su_NIL)
+#define a_CCND_IF_IS_SKIP() \
+   (a_CCND_IF_IS_ACTIVE() &&\
       (((struct a_ccnd_if_node*)n_go_data->gdc_ifcond)->cin_noop ||\
        !((struct a_ccnd_if_node*)n_go_data->gdc_ifcond)->cin_go))
 
@@ -593,7 +594,7 @@ a_ccnd_if(void *v, boole iselif){
       ASSERT(cinp != NULL);
    }
    cinp->cin_error = FAL0;
-   cinp->cin_noop = a_CCND_IF_ISSKIP();
+   cinp->cin_noop = a_CCND_IF_IS_SKIP();
    cinp->cin_go = TRU1;
    cinp->cin_else = FAL0;
    if(!iselif)
@@ -652,7 +653,7 @@ c_elif(void *v){
       n_err(_("`elif' without a matching `if'\n"));
       rv = 1;
    }else if(!cinp->cin_error){
-      cinp->cin_go = !cinp->cin_go; /* Cause right _IF_ISSKIP() result */
+      cinp->cin_go = !cinp->cin_go; /* Cause right _IF_IS_SKIP() result */
       rv = a_ccnd_if(v, TRU1);
    }else
       rv = 0;
@@ -699,11 +700,11 @@ c_endif(void *v){
 }
 
 FL boole
-n_cnd_if_isskip(void){
+n_cnd_if_is_skip(void){
    boole rv;
    NYD2_IN;
 
-   rv = a_CCND_IF_ISSKIP();
+   rv = a_CCND_IF_IS_SKIP();
    NYD2_OU;
    return rv;
 }
