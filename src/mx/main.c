@@ -725,7 +725,7 @@ main(int argc, char *argv[]){
          /* Add (a) blind carbon copy recipient (list) */
          n_psonce |= n_PSO_SENDMODE;
          bcc = cat(bcc, lextract(avo.avo_current_arg,
-               GBCC | GFULL | GSHEXP_PARSE_HACK));
+               GBCC | GFULL | GNOT_A_LIST | GSHEXP_PARSE_HACK));
          break;
       case 'C':{
          /* Create custom header (at list tail) */
@@ -745,7 +745,7 @@ main(int argc, char *argv[]){
          /* Add (a) carbon copy recipient (list) */
          n_psonce |= n_PSO_SENDMODE;
          cc = cat(cc, lextract(avo.avo_current_arg,
-               GCC | GFULL | GSHEXP_PARSE_HACK));
+               GCC | GFULL | GNOT_A_LIST | GSHEXP_PARSE_HACK));
          break;
       case 'D':
 #ifdef mx_HAVE_IMAP
@@ -1108,7 +1108,8 @@ jgetopt_done:
    }else{
       n_psonce |= n_PSO_SENDMODE;
       for(;;){
-         to = cat(to, lextract(cp, GTO | GFULL | GSHEXP_PARSE_HACK));
+         to = cat(to, lextract(cp, GTO | GFULL | GNOT_A_LIST |
+               GSHEXP_PARSE_HACK));
          if((cp = argv[++i]) == NULL)
             break;
          if(cp[0] == '-' && cp[1] == '-' && cp[2] == '\0'){

@@ -310,7 +310,7 @@ line-buffered input even in batch mode enable batch mode via
 .
 .Mx
 .It Fl b Ar addr , Fl Fl bcc Ns =..
-Send blind carbon copies to (the list of recipients given in)
+Send a blind carbon copy to recipient
 .Ar addr ,
 if the
 .Ic set Ns
@@ -318,7 +318,7 @@ ting of
 .Va expandaddr ,
 one of the
 .Sx "INTERNAL VARIABLES" ,
-allows (for each recipient, individually); the
+allows; the
 .Ql shquote
 .Va expandaddr
 flag is supported.
@@ -663,10 +663,10 @@ The
 .Va expandaddr
 flag is supported.
 Via the question mark
-.Ql \&?
-modifier suffix the
-.Fl b , c
-etc. list parse mode is available, the keyword
+.Ql \&?list
+modifier suffix
+.Ar addr
+is parsed like a message header address line, the keyword
 .Ql list
 is optional, e.g.,
 .Ql to? ,

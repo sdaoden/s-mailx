@@ -3878,12 +3878,24 @@ t_can_send_rfc() {
    check 1-err - .terr '4294967295 0'
 
    </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s Sub.2 \
-      -b bcc@no.1\ bcc@no.2 -b bcc@no.3 \
-      -c cc@no.1\ cc@no.2 -c cc@no.3 \
-      to@no.1,to@no.2 to@no.3 \
+      -b bcc@no.1 -b bcc@no.2 -b bcc@no.3 \
+      -c cc@no.1 -c cc@no.2 -c cc@no.3 \
+      to@no.1 to@no.2 to@no.3 \
       > ./.terr 2>&1
    check 2 0 "${MBOX}" '1963862532 320'
    check 2-err - .terr '4294967295 0'
+
+   </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s Sub.2no \
+      -b bcc@no.1\ \ bcc@no.2 -b bcc@no.3 \
+      -c cc@no.1,cc@no.2 -c cc@no.3 \
+      to@no.1,to@no.2 to@no.3 \
+      > ./.terr 2>&1
+   check 2no 4 "${MBOX}" '1327601796 462'
+   if have_feat uistrings; then
+      check 2no-err - .terr '3397557940 190'
+   else
+      check 2no-err - .terr '4294967295 0'
+   fi
 
    # XXX NOTE we cannot test "cc@no1 <cc@no.2>" because our stupid parser
    # XXX would not treat that as a list but look for "," as a separator
@@ -3892,7 +3904,7 @@ t_can_send_rfc() {
       -T cc\ \ :\ \ 'cc@no.1, <cc@no.2>' -T cc:\ cc@no.3 \
       -T to\ to@no.1,'<to@no.2>' -T to\ to@no.3 \
       > ./.terr 2>&1
-   check 3 0 "${MBOX}" '1655058429 528'
+   check 3 0 "${MBOX}" '3798301395 670'
    check 3-err - .terr '4294967295 0'
 
    </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -Sfullnames -s Sub.4 \
@@ -3900,7 +3912,7 @@ t_can_send_rfc() {
       -T cc?:\ 'cc@no.1, <cc@no.2>' -T cc?\ \ :\ \ cc@no.3 \
       -T to?\ to@no.1,'<to@no.2>' -T to?:\ to@no.3 \
       > ./.terr 2>&1
-   check 4 0 "${MBOX}" '3402771336 730'
+   check 4 0 "${MBOX}" '1809352988 872'
    check 4-err - .terr '4294967295 0'
 
    t_epilog
@@ -5651,7 +5663,7 @@ my body
 
    ${rm} "${MBOX}"
    </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s '-Sfrom + -r ++ test' \
-      -c a@b.example,b@b.example,c@c.example \
+      -c a@b.example -c b@b.example -c c@c.example \
       -S from=a@b.example,b@b.example,c@c.example \
       -S sender=a@b.example \
       -r a@b.example b@b.example ./.tout >./.tall 2>&1
@@ -5660,7 +5672,7 @@ my body
    check 9 - .tall '4294967295 0'
 
    </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s '-Sfrom + -r ++ test' \
-      -c a@b.example,b@b.example,c@c.example \
+      -c a@b.example -c b@b.example -c c@c.example \
       -S from=a@b.example,b@b.example,c@c.example \
       -r a@b.example b@b.example ./.tout >./.tall 2>&1
    check 10 0 "${MBOX}" '2282326606 364'
@@ -5668,7 +5680,7 @@ my body
    check 12 - .tall '4294967295 0'
 
    </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -s '-Sfrom + -r ++ test' \
-      -c a@b.example,b@b.example,c@c.example \
+      -c a@b.example -c b@b.example -c c@c.example \
       -S from=a@b.example,b@b.example,c@c.example \
       -S sender=a@b.example \
       b@b.example >./.tall 2>&1
