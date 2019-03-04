@@ -92,11 +92,20 @@ enum a_shexp_quote_flags{
 
 #ifdef mx_HAVE_FNMATCH
 struct a_shexp_glob_ctx{
-   char const *sgc_patdat;       /* Remaining pattern (at and below level) */
+   char const *sgc_patdat; /* Remaining pattern (at and below level) */
    uz sgc_patlen;
-   struct n_string *sgc_outer;   /* Resolved path up to this level */
+   struct n_string *sgc_outer; /* Resolved path up to this level */
    u32 sgc_flags;
-   u8 sgc__dummy[4];
+   u8 sgc__pad[4];
+};
+
+struct a_shexp_glob_one_ctx{
+   struct a_shexp_glob_ctx *sgoc_sgcp;
+   struct a_shexp_glob_ctx *sgoc_new_sgcp;
+   struct n_strlist **sgoc_slpp;
+   uz sgoc_old_outer_len;
+   sz sgoc_dt_type; /* Can be -1 even if mx_HAVE_DIRENT_TYPE */
+   char const *sgoc_name;
 };
 #endif
 
@@ -131,6 +140,7 @@ static char *a_shexp_globname(char const *name, enum fexp_mode fexpm);
 #ifdef mx_HAVE_FNMATCH
 static boole a_shexp__glob(struct a_shexp_glob_ctx *sgcp,
                struct n_strlist **slpp);
+static char const *a_shexp__glob_one(struct a_shexp_glob_one_ctx *sgocp);
 static su_sz a_shexp__globsort(void const *cvpa, void const *cvpb);
 #endif
 
@@ -328,9 +338,9 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
    enum{a_SILENT = 1<<0, a_DEEP=1<<1};
 
    struct a_shexp_glob_ctx nsgc;
+   struct a_shexp_glob_one_ctx sgoc;
    struct dirent *dep;
    DIR *dp;
-   uz old_outerlen;
    char const *ccp, *myp;
    NYD2_IN;
 
@@ -346,7 +356,11 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
          myp = "./";
    }else
       myp = n_string_cp(sgcp->sgc_outer);
-   old_outerlen = sgcp->sgc_outer->s_len;
+
+   sgoc.sgoc_sgcp = sgcp;
+   sgoc.sgoc_new_sgcp = &nsgc;
+   sgoc.sgoc_slpp = slpp;
+   sgoc.sgoc_old_outer_len = sgcp->sgc_outer->s_len;
 
    /* Separate current directory/pattern level from any possible remaining
     * pattern in order to be able to use it for fnmatch(3) */
@@ -370,7 +384,6 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
       }
    }
 
-   /* Our current directory level */
    /* xxx Plenty of room for optimizations, like quickshot lstat(2) which may
     * xxx be the (sole) result depending on pattern surroundings, etc. */
    if((dp = opendir(myp)) == NULL){
@@ -383,12 +396,23 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
       case su_ERR_NOENT:
          ccp = N_("path component of (sub)pattern non-existent");
          goto jerr;
-      case su_ERR_ACCES:
-         ccp = N_("file permission for file (sub)pattern denied");
-         goto jerr;
       case su_ERR_NFILE:
       case su_ERR_MFILE:
          ccp = N_("file descriptor limit reached, cannot open directory");
+         goto jerr;
+      case su_ERR_ACCES:
+         /* Special case: an intermediate directory may not be read, but we
+          * possibly could dive into it? */
+         if(sgcp->sgc_patlen > 0 &&
+               su_cs_first_of(sgcp->sgc_patdat, "?*[") == su_UZ_MAX){
+            sgoc.sgoc_dt_type = -1;
+            sgoc.sgoc_name = sgcp->sgc_patdat;
+            if((ccp = a_shexp__glob_one(&sgoc)) == su_NIL ||
+                  ccp == R(char*,-1))
+               goto jleave;
+            goto jerr;
+         }
+         ccp = N_("file permission for file (sub)pattern denied");
          goto jerr;
       default:
          ccp = N_("cannot open path component as directory");
@@ -436,61 +460,22 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
          myp = sgcp->sgc_patdat;
    }
 
-   while((dep = readdir(dp)) != NULL){
+   while((dep = readdir(dp)) != su_NIL){
       switch(fnmatch(myp, dep->d_name, FNM_PATHNAME | FNM_PERIOD)){
-      case 0:{
-         /* A match expresses the desire to recurse if there is more pattern */
-         if(nsgc.sgc_patlen > 0){
-            boole isdir;
-
-            n_string_push_cp((sgcp->sgc_outer->s_len > 0
-                  ? n_string_push_c(sgcp->sgc_outer, '/') : sgcp->sgc_outer),
-               dep->d_name);
-
-            isdir = FAL0;
+      case 0:
+         sgoc.sgoc_dt_type =
 #ifdef mx_HAVE_DIRENT_TYPE
-            if(dep->d_type == DT_DIR)
-               isdir = TRU1;
-            else if(dep->d_type == DT_LNK || dep->d_type == DT_UNKNOWN)
+               dep->d_type;
+#else
+               -1;
 #endif
-            {
-               struct stat sb;
-
-               if(stat(n_string_cp(sgcp->sgc_outer), &sb)){
-                  ccp = N_("I/O error when querying file status");
-                  goto jerr;
-               }else if(S_ISDIR(sb.st_mode))
-                  isdir = TRU1;
-            }
-
-            /* TODO Recurse with current dir FD open, which could E[MN]FILE!
-             * TODO Instead save away a list of such n_string's for later */
-            if(isdir && !a_shexp__glob(&nsgc, slpp)){
-               ccp = (char*)1;
+         sgoc.sgoc_name = dep->d_name;
+         if((ccp = a_shexp__glob_one(&sgoc)) != su_NIL){
+            if(ccp == R(char*,-1))
                goto jleave;
-            }
-
-            n_string_trunc(sgcp->sgc_outer, old_outerlen);
-         }else{
-            struct n_strlist *slp;
-            uz i, j;
-
-            i = su_cs_len(dep->d_name);
-            j = (old_outerlen > 0) ? old_outerlen + 1 + i : i;
-            slp = n_STRLIST_LOFI_ALLOC(j);
-            *slpp = slp;
-            slpp = &slp->sl_next;
-            slp->sl_next = NULL;
-            if((j = old_outerlen) > 0){
-               su_mem_copy(&slp->sl_dat[0], sgcp->sgc_outer->s_dat, j);
-               if(slp->sl_dat[j -1] != '/')
-                  slp->sl_dat[j++] = '/';
-            }
-            su_mem_copy(&slp->sl_dat[j], dep->d_name, i);
-            slp->sl_dat[j += i] = '\0';
-            slp->sl_len = j;
+            goto jerr;
          }
-         }break;
+         break;
       case FNM_NOMATCH:
          break;
       default:
@@ -520,6 +505,72 @@ jerr:
          n_shexp_quote_cp(sgcp->sgc_patdat, FAL0));
    }
    goto jleave;
+}
+
+static char const *
+a_shexp__glob_one(struct a_shexp_glob_one_ctx *sgocp){
+   char const *rv;
+   NYD2_IN;
+
+   /* A match expresses the desire to recurse if there is more pattern */
+   if(sgocp->sgoc_new_sgcp->sgc_patlen > 0){
+      boole isdir;
+
+      n_string_push_cp((sgocp->sgoc_sgcp->sgc_outer->s_len > 0
+            ? n_string_push_c(sgocp->sgoc_sgcp->sgc_outer, '/')
+            : sgocp->sgoc_sgcp->sgc_outer), sgocp->sgoc_name);
+
+      isdir = FAL0;
+      if(sgocp->sgoc_dt_type == -1) Jstat: {
+         struct stat sb;
+
+         if(stat(n_string_cp(sgocp->sgoc_sgcp->sgc_outer), &sb)){
+            rv = N_("I/O error when querying file status");
+            goto jleave;
+         }else if(S_ISDIR(sb.st_mode))
+            isdir = TRU1;
+#ifdef mx_HAVE_DIRENT_TYPE
+      }else if(sgocp->sgoc_dt_type == DT_DIR)
+         isdir = TRU1;
+      else if(sgocp->sgoc_dt_type == DT_LNK ||
+            sgocp->sgoc_dt_type == DT_UNKNOWN)
+         goto Jstat;
+#endif
+
+      /* TODO Recurse with current dir FD open, which could E[MN]FILE!
+       * TODO Instead save away a list of such n_string's for later */
+      if(isdir && !a_shexp__glob(sgocp->sgoc_new_sgcp, sgocp->sgoc_slpp))
+         rv = R(char*,-1);
+      else{
+         n_string_trunc(sgocp->sgoc_sgcp->sgc_outer,
+            sgocp->sgoc_old_outer_len);
+         rv = su_NIL;
+      }
+   }else{
+      struct n_strlist *slp;
+      uz i, j;
+
+      i = su_cs_len(sgocp->sgoc_name);
+      j = (sgocp->sgoc_old_outer_len > 0)
+            ? sgocp->sgoc_old_outer_len + 1 + i : i;
+      slp = n_STRLIST_LOFI_ALLOC(j);
+      *sgocp->sgoc_slpp = slp;
+      sgocp->sgoc_slpp = &slp->sl_next;
+      slp->sl_next = NULL;
+      if((j = sgocp->sgoc_old_outer_len) > 0){
+         su_mem_copy(&slp->sl_dat[0], sgocp->sgoc_sgcp->sgc_outer->s_dat, j);
+         if(slp->sl_dat[j -1] != '/')
+            slp->sl_dat[j++] = '/';
+      }
+      su_mem_copy(&slp->sl_dat[j], sgocp->sgoc_name, i);
+      slp->sl_dat[j += i] = '\0';
+      slp->sl_len = j;
+      rv = su_NIL;
+   }
+
+jleave:
+   NYD2_OU;
+   return rv;
 }
 
 static su_sz
