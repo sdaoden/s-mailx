@@ -424,7 +424,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
          if(nsgc.sgc_patlen > 0){
             bool_t isdir;
 
-            n_string_push_cp((sgcp->sgc_outer->s_len > 1
+            n_string_push_cp((sgcp->sgc_outer->s_len > 0
                   ? n_string_push_c(sgcp->sgc_outer, '/') : sgcp->sgc_outer),
                dep->d_name);
 
