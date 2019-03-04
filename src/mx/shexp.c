@@ -384,8 +384,18 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
       }
    }
 
-   /* xxx Plenty of room for optimizations, like quickshot lstat(2) which may
-    * xxx be the (sole) result depending on pattern surroundings, etc. */
+   /* Quickshot: cannot be a fnmatch(3) pattern? */
+   if(sgcp->sgc_patlen == 0 ||
+         su_cs_first_of(sgcp->sgc_patdat, "?*[") == su_UZ_MAX){
+      dp = NULL;
+      sgoc.sgoc_dt_type = -1;
+      sgoc.sgoc_name = sgcp->sgc_patdat;
+      if((ccp = a_shexp__glob_one(&sgoc)) == su_NIL ||
+            ccp == R(char*,-1))
+         goto jleave;
+      goto jerr;
+   }
+
    if((dp = opendir(myp)) == NULL){
       int err;
 
@@ -465,10 +475,11 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
       case 0:
          sgoc.sgoc_dt_type =
 #ifdef mx_HAVE_DIRENT_TYPE
-               dep->d_type;
+               dep->d_type
 #else
-               -1;
+               -1
 #endif
+               ;
          sgoc.sgoc_name = dep->d_name;
          if((ccp = a_shexp__glob_one(&sgoc)) != su_NIL){
             if(ccp == R(char*,-1))
@@ -510,27 +521,35 @@ jerr:
 static char const *
 a_shexp__glob_one(struct a_shexp_glob_one_ctx *sgocp){
    char const *rv;
+   struct n_string *ousp;
    NYD2_IN;
+
+   ousp = sgocp->sgoc_sgcp->sgc_outer;
 
    /* A match expresses the desire to recurse if there is more pattern */
    if(sgocp->sgoc_new_sgcp->sgc_patlen > 0){
       boole isdir;
 
-      n_string_push_cp((sgocp->sgoc_sgcp->sgc_outer->s_len > 0
-            ? n_string_push_c(sgocp->sgoc_sgcp->sgc_outer, '/')
-            : sgocp->sgoc_sgcp->sgc_outer), sgocp->sgoc_name);
+      if(ousp->s_len > 0 && (ousp->s_len > 1 || ousp->s_dat[0] != '/'))
+         ousp = n_string_push_c(ousp, '/');
+      n_string_push_cp(ousp, sgocp->sgoc_name);
 
       isdir = FAL0;
-      if(sgocp->sgoc_dt_type == -1) Jstat: {
+      if(sgocp->sgoc_dt_type == -1)
+#ifdef mx_HAVE_DIRENT_TYPE
+Jstat:
+#endif
+      {
          struct stat sb;
 
-         if(stat(n_string_cp(sgocp->sgoc_sgcp->sgc_outer), &sb)){
+         if(stat(n_string_cp(ousp), &sb)){
             rv = N_("I/O error when querying file status");
             goto jleave;
          }else if(S_ISDIR(sb.st_mode))
             isdir = TRU1;
+      }
 #ifdef mx_HAVE_DIRENT_TYPE
-      }else if(sgocp->sgoc_dt_type == DT_DIR)
+      else if(sgocp->sgoc_dt_type == DT_DIR)
          isdir = TRU1;
       else if(sgocp->sgoc_dt_type == DT_LNK ||
             sgocp->sgoc_dt_type == DT_UNKNOWN)
@@ -542,8 +561,7 @@ a_shexp__glob_one(struct a_shexp_glob_one_ctx *sgocp){
       if(isdir && !a_shexp__glob(sgocp->sgoc_new_sgcp, sgocp->sgoc_slpp))
          rv = R(char*,-1);
       else{
-         n_string_trunc(sgocp->sgoc_sgcp->sgc_outer,
-            sgocp->sgoc_old_outer_len);
+         n_string_trunc(ousp, sgocp->sgoc_old_outer_len);
          rv = su_NIL;
       }
    }else{
@@ -558,7 +576,7 @@ a_shexp__glob_one(struct a_shexp_glob_one_ctx *sgocp){
       sgocp->sgoc_slpp = &slp->sl_next;
       slp->sl_next = NULL;
       if((j = sgocp->sgoc_old_outer_len) > 0){
-         su_mem_copy(&slp->sl_dat[0], sgocp->sgoc_sgcp->sgc_outer->s_dat, j);
+         su_mem_copy(&slp->sl_dat[0], ousp->s_dat, j);
          if(slp->sl_dat[j -1] != '/')
             slp->sl_dat[j++] = '/';
       }
