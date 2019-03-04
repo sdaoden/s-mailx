@@ -2389,22 +2389,31 @@ jredo:
          size_t i, li;
 
          wedid = TRUM1;
-         for(li = UIZ_MAX, i = sub.l; i-- > 0;){
+         for(li = UIZ_MAX, i = sub.l;;){
             char c;
 
-            if((c = sub.s[i]) == '/' || c == '+' /* *folder*! */)
+            if(--i == 0)
+               goto jnope;
+            if((c = sub.s[i]) == '/')
                li = i;
+            else if((c == '+' /* *folder*! */ || c == '&' /* *MBOX* */ ||
+                     c == '%' /* $MAIL or *inbox* */) &&
+                  i == sub.l - 1){
+               li = i;
+               break;
+            }
             /* Do stop once some "magic" characters are seen XXX magic set */
-            else if(c == '<' || c == '>' || c == '=' || c == ':')
+            else if(c == '<' || c == '>' || c == '=' || c == ':' ||
+                  spacechar(c))
                break;
          }
-         if(li != UIZ_MAX){
-            preexp = sub;
-            preexp.l = li;
-            sub.l -= li;
-            sub.s += li;
-            goto jredo;
-         }
+         if(li == UIZ_MAX)
+            goto jnope;
+         preexp = sub;
+         preexp.l = li;
+         sub.l -= li;
+         sub.s += li;
+         goto jredo;
       }
 
       /* A different case is that the user input includes for example character
