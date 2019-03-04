@@ -575,6 +575,10 @@ the name part will be passed to a file-based
 .Va mta
 individually via
 .Fl \&\&F Ar name .
+Even though not a recipient the
+.Ql shquote
+.Va expandaddr
+flag is supported.
 .
 .Pp
 If an empty string is passed as
@@ -9451,7 +9455,7 @@ and the non-empty value of
 can be set to extend this list.
 Finally some address providers (for example
 .Fl b , c
-and all recipients given on the command line) will be will evaluated as
+and all other command line recipients) will be evaluated as
 if specified within dollar-single-quotes (see
 .Sx "Shell-style argument quoting" )
 if the value list contains the string
