@@ -328,7 +328,7 @@ os_setup() {
    #[ ${OS} = darwin ] && OS_DEFINES="${OS_DEFINES}#define _DARWIN_C_SOURCE\n"
 
    # On pkgsrc(7) systems automatically add /usr/pkg/*
-   if [ -d /usr/pkg ] && feat_yes USE_PKGSYS; then
+   if feat_def USE_PKGSYS && [ -d /usr/pkg ]; then
       msg ' . found pkgsrc(7), merging C_INCLUDE_PATH and LD_LIBRARY_PATH'
       C_INCLUDE_PATH=/usr/pkg/include:${C_INCLUDE_PATH}
       LD_LIBRARY_PATH=/usr/pkg/lib:${LD_LIBRARY_PATH}
@@ -341,17 +341,19 @@ _os_setup_sunos() {
    LD_LIBRARY_PATH=/usr/xpg4/lib:${LD_LIBRARY_PATH}
 
    # Include packages
-   if [ -d /opt/csw ] && feat_yes USE_PKGSYS; then
-      msg ' . found OpenCSW PKGSYS, merging C_INCLUDE_PATH and LD_LIBRARY_PATH'
-      C_INCLUDE_PATH=/opt/csw/include:${C_INCLUDE_PATH}
-      LD_LIBRARY_PATH=/opt/csw/lib:${LD_LIBRARY_PATH}
-      ld_no_bind_now=1 ld_rpath_not_runpath=1
-   fi
-   if [ -d /opt/schily ] && feat_yes USE_PKGSYS; then
-      msg ' . found Schily PKGSYS, merging C_INCLUDE_PATH and LD_LIBRARY_PATH'
-      C_INCLUDE_PATH=/opt/schily/include:${C_INCLUDE_PATH}
-      LD_LIBRARY_PATH=/opt/schily/lib:${LD_LIBRARY_PATH}
-      ld_no_bind_now=1 ld_rpath_not_runpath=1
+   if feat_yes USE_PKGSYS; then
+      if [ -d /opt/csw ]; then
+         msg ' . found OpenCSW PKGSYS'
+         C_INCLUDE_PATH=/opt/csw/include:${C_INCLUDE_PATH}
+         LD_LIBRARY_PATH=/opt/csw/lib:${LD_LIBRARY_PATH}
+         ld_no_bind_now=1 ld_rpath_not_runpath=1
+      fi
+      if [ -d /opt/schily ]; then
+         msg ' . found Schily PKGSYS'
+         C_INCLUDE_PATH=/opt/schily/include:${C_INCLUDE_PATH}
+         LD_LIBRARY_PATH=/opt/schily/lib:${LD_LIBRARY_PATH}
+         ld_no_bind_now=1 ld_rpath_not_runpath=1
+      fi
    fi
 
    OS_DEFINES="${OS_DEFINES}#define __EXTENSIONS__\n"
