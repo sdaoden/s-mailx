@@ -7316,6 +7316,7 @@ t_pipe_handlers() {
 ''"${sed}"' -e "s/[ 	]\{1,\}/ /g"' \
             > "${BODY}" 2>&1
    check 3 0 "${MBOX}" '1933681911 13435'
+   sleep 1 # occasional errors, try that..
    check 4 - "${BODY}" '4256558715 620'
 
    # Keep $MBOX..
