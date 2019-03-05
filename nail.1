@@ -8144,6 +8144,17 @@ on \*(UA namespace violations, and
 to indicate prevention of excessing a single-instance header \(em note that
 .Ql Subject:
 can be appended to (a space separator will be added automatically first).
+.Ql To: ,
+.Ql Cc:
+or
+.Ql Bcc:
+support the
+.Ql ?single
+modifier to enforce treatment as a single addressee, e.g.,
+.Ql header insert To?single: exa, <m@ple> ;
+the word
+.Ql single
+is optional.
 .Pp
 .Ql 210
 is returned upon success, followed by the name of the header and the list
