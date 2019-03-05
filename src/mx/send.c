@@ -192,7 +192,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
    }
 
    needsep = !needsep;
-   _out(&" --]"[needsep], 4 - needsep,
+   _out(&" --]"[su_S(su_u8,needsep)], 4 - needsep,
       obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
    if (csuf != NULL)
       _out(csuf->s, csuf->l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
