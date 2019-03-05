@@ -43,7 +43,7 @@
 #define n_QUOTE_INJECT_HEAD "%f wrote:\n\n" /* DOC! */
 #define n_QUOTE_INJECT_TAIL NULL /* DOC! */
 #define REFERENCES_MAX 20     /* Maximum entries in References: */
-#define n_SIGSUSPEND_NOT_WAITPID 1 /* Not waitpid(2), but sigsuspend(2) */
+#define n_SIGSUSPEND_NOT_WAITPID 0 /* Not waitpid(2), but sigsuspend(2) */
 #define mx_VEXPR_REGEX_MAX 16 /* Maximum address. `vexpr' regex(7) matches */
 
 /* * */
