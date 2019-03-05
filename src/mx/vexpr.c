@@ -221,8 +221,7 @@ a_vexpr_numeric(struct a_vexpr_ctx *vcp){
    u32 f;
    NYD2_IN;
 
-   UNINIT(lhv, 0);
-   UNINIT(rhv, 0);
+   lhv = rhv = 0;
    f = vcp->vc_flags;
    f |= a_VEXPR_ISNUM;
 

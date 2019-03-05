@@ -359,7 +359,7 @@ a_nm_alias_dump(char const *cmdname, char const *key, void const *dat){
       s = n_string_push_cp(s, n_shexp_quote_cp(key, TRU1));
    }
 
-   slp = S(struct n_strlist*,n_string_cp(s));
+   slp = C(struct n_strlist*,S(void const*,n_string_cp(s)));
    slp->sl_next = NIL;
    slp->sl_len = s->s_len - VSTRUCT_SIZEOF(struct n_strlist, sl_dat);
 

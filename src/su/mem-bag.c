@@ -754,7 +754,7 @@ jhave_pool:
          rv = su_ALLOCATE_LOC(size, 1, (mbaf | su_MEM_ALLOC_MARK_LOFI),
                su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
          if(rv != NIL)
-            *R(void**,mblcp->mblc_buf) = rv;
+            *R(void**,mblcp->mblc_buf) = S(void*,rv);
          else{
             mblpp->mblp_caster = cp;
             goto jleave;

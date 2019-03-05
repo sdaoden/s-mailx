@@ -91,7 +91,10 @@ a_dotlock_create(struct n_dotlock_info *dip){
       }
       n_msleep(dip->di_pollmsecs, FAL0);
    }
+
+#ifdef mx_SOURCE_DOTLOCK_PS
 jleave:
+#endif
    return rv;
 }
 

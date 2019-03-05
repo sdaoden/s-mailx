@@ -82,13 +82,14 @@ static void *
 a_ft_clone(void const *t, u32 estate){
    char *cp;
    uz l;
-   struct a_ft_dat *tp, *rv;
+   struct a_ft_dat *rv;
+   struct a_ft_dat const *tp;
    NYD_IN;
 
    estate &= su_STATE_ERR_MASK;
 
    /* The public entry ensures this fits U32_MAX! */
-   tp = S(struct a_ft_dat*,t);
+   tp = S(struct a_ft_dat const*,t);
    l = sizeof(*rv) + tp->ftd_load.l +1 + tp->ftd_save.l +1;
 
    if((rv = S(struct a_ft_dat*,su_ALLOCATE(l, 1, estate))) != NIL){
@@ -131,10 +132,10 @@ a_ft_dump(char const *cmdname, char const *key, void const *dat){
    struct n_strlist *slp;
    uz kl, dloadl, dsavel, cl;
    char const *kp, *dloadp, *dsavep;
-   struct a_ft_dat *ftdp;
+   struct a_ft_dat const *ftdp;
    NYD2_IN;
 
-   ftdp = S(struct a_ft_dat*,dat);
+   ftdp = S(struct a_ft_dat const*,dat);
    kp = n_shexp_quote_cp(key, TRU1);
    dloadp = n_shexp_quote_cp(ftdp->ftd_load.s, TRU1);
    dsavep = n_shexp_quote_cp(ftdp->ftd_save.s, TRU1);
