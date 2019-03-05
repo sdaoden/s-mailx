@@ -692,6 +692,10 @@ Message recipients can be given via the message headers
 .Ql To: ,
 .Ql Cc: ,
 .Ql Bcc:
+(the
+.Ql ?single
+modifier enforces treatment as a single addressee, e.g.,
+.Ql To?single: exa, <m@ple> )
 or
 .Ql Fcc: ,
 they will be added to any recipients specified on the command line,
@@ -1112,7 +1116,11 @@ Message recipients (as specified on the command line or defined in
 .Ql To: ,
 .Ql Cc:
 or
-.Ql Bcc: )
+.Ql Bcc: ;
+these support the
+.Ql ?single
+modifier to enforce treatment as a single addressee, e.g.,
+.Ql To?single: exa, <m@ple> )
 are subject to
 .Ic alternates
 filtering, and may not only be email addressees but can also be names of

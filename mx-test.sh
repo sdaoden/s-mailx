@@ -263,7 +263,7 @@ check() {
       check__bad=1
    fi
 
-   csum="`${cksum} < ${f} | ${sed} -e 's/[ 	]\{1,\}/ /g'`"
+   csum="`${cksum} < "${f}" | ${sed} -e 's/[ 	]\{1,\}/ /g'`"
    if [ "${csum}" = "${s}" ]; then
       t_echook "${tid}"
    else
@@ -5184,6 +5184,8 @@ t_q_t_etc_opts() {
    t_prolog q_t_etc_opts
    TRAP_EXIT_ADDONS="./.t*"
 
+   t_xmta
+
    # Three tests for MIME encoding and (a bit) content classification.
    # At the same time testing -q FILE, < FILE and -t FILE
    t__put_body > ./.tin
@@ -5209,12 +5211,28 @@ t_q_t_etc_opts() {
 		# Ein Kommentar
 		From: du@da
 		# Noch ein Kommentar
-		Subject: hey you
+		Subject    :       hey you
 		# Nachgestelltes Kommentar
 		
 		BOOOM
 		_EOT
    check 4 0 "${MBOX}" '4161555890 124'
+
+   # ?MODifier suffix
+   printf '' > "${MBOX}"
+   (  echo 'To?single    : ./.tout1 .tout2  ' &&
+      echo 'CC: ./.tcc1 ./.tcc2' &&
+      echo 'BcC?sin  : ./.tbcc1 .tbcc2 ' &&
+      echo 'To?    : ./.tout3 .tout4  ' &&
+      echo &&
+      echo body
+   ) | ${MAILX} ${ARGS} ${ADDARG_UNI} -Snodot -t -Smta=./.tmta.sh
+   check 5 0 './.tout1 .tout2' '2948857341 94'
+   check 6 - ./.tcc1 '2948857341 94'
+   check 7 - ./.tcc2 '2948857341 94'
+   check 8 - './.tbcc1 .tbcc2' '2948857341 94'
+   check 9 - './.tout3 .tout4' '2948857341 94'
+   check 10 - "${MBOX}" '4294967295 0'
 
    t_epilog
 }

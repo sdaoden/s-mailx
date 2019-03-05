@@ -2167,6 +2167,11 @@ do {\
       /* Note that fromasender is (NULL,) 0x1 or real sender here */
    }
 
+   if(nosend_msg == TRUM1 &&
+         fputs(_("# To:, Cc: and Bcc: support a ?single modifier: "
+            "To?: exa, <m@ple>\n"), fo) == EOF)
+      goto jleave;
+
 #if 1
    if ((w & GTO) && (hp->h_to != NULL || nosend_msg == TRUM1)) {
       if (!a_sendout_put_addrline("To:", hp->h_to, fo, saf))

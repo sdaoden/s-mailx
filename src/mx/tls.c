@@ -317,7 +317,8 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
       char const *cp;
       if (buf[0] == '\n')
          break;
-      if ((cp = thisfield(buf, "content-transfer-encoding")) != NULL)
+      if ((cp = n_header_get_field(buf, "content-transfer-encoding", su_NIL)
+            ) != NULL)
          if (!su_cs_cmp_case_n(cp, "binary", 7))
             binary = 1;
       fwrite(buf, sizeof *buf, buflen, mb.mb_otf);
