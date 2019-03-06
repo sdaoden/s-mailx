@@ -434,9 +434,6 @@ do{\
 # elif su_CC_VCHECK_CLANG(3, 4)
 /*#  pragma clang diagnostic ignored "-Wformat"*/
 #  pragma clang diagnostic ignored "-Wunused-result"
-#  ifdef NDEBUG
-#   pragma clang diagnostic ignored "-Wmaybe-uninitialized"
-#  endif
 # endif
 #endif
 

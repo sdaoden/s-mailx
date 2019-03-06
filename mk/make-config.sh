@@ -518,22 +518,25 @@ _cc_flags_generic() {
       cc_check -W
       cc_check -Wall
       cc_check -Wextra
-      cc_check -Wbad-function-cast
-      cc_check -Wcast-align
-      cc_check -Wcast-qual
-      cc_check -Winit-self
-      cc_check -Wmissing-prototypes
-      cc_check -Wshadow
-      cc_check -Wunused
-      cc_check -Wwrite-strings
-      cc_check -Wno-long-long
+      if feat_yes DEVEL; then
+         cc_check -Wbad-function-cast
+         cc_check -Wcast-align
+         cc_check -Wcast-qual
+         cc_check -Winit-self
+         cc_check -Wmissing-prototypes
+         cc_check -Wshadow
+         cc_check -Wunused
+         cc_check -Wwrite-strings
+         cc_check -Wno-long-long
+      fi
    #fi
    cc_check -pedantic
-
-   if feat_yes AMALGAMATION && feat_no DEVEL; then
-      cc_check -Wno-unused-function
+   if feat_no DEVEL; then
+      if feat_yes AMALGAMATION; then
+         cc_check -Wno-unused-function
+      fi
+      cc_check -Wno-unused-result
    fi
-   feat_no DEVEL && cc_check -Wno-unused-result # XXX do right way (pragma too)
 
    cc_check -fno-unwind-tables
    cc_check -fno-asynchronous-unwind-tables
