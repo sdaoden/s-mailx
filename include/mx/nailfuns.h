@@ -984,8 +984,12 @@ FL char *      hfield_mult(char const *field, struct message *mp, int mult);
 #define hfield1(a, b)            hfield_mult(a, b, 0)
 
 /* Check whether the passed line is a header line of the desired breed.
- * Return the field body, or 0 */
-FL char const * thisfield(char const *linebuf, char const *field);
+ * If qm_suffix_or_nil is set then the field?[MOD]: syntax is supported, the
+ * suffix substring range of linebuf will be stored in there, then, or NIL;
+ * this logically casts away the const.
+ * Return the field body, or NULL */
+FL char const *n_header_get_field(char const *linebuf, char const *field,
+      struct str *qm_suffix_or_nil);
 
 /* Start of a "comment".  Ignore it */
 FL char const * skip_comment(char const *cp);

@@ -725,7 +725,7 @@ main(int argc, char *argv[]){
          /* Add (a) blind carbon copy recipient (list) */
          n_psonce |= n_PSO_SENDMODE;
          bcc = cat(bcc, lextract(avo.avo_current_arg,
-               GBCC | GFULL | GSHEXP_PARSE_HACK));
+               GBCC | GFULL | GNOT_A_LIST | GSHEXP_PARSE_HACK));
          break;
       case 'C':{
          /* Create custom header (at list tail) */
@@ -745,7 +745,7 @@ main(int argc, char *argv[]){
          /* Add (a) carbon copy recipient (list) */
          n_psonce |= n_PSO_SENDMODE;
          cc = cat(cc, lextract(avo.avo_current_arg,
-               GCC | GFULL | GSHEXP_PARSE_HACK));
+               GCC | GFULL | GNOT_A_LIST | GSHEXP_PARSE_HACK));
          break;
       case 'D':
 #ifdef mx_HAVE_IMAP
@@ -867,7 +867,7 @@ jeMmq:
             struct mx_name *fa;
 
             fa = nalloc(avo.avo_current_arg, GSKIN | GFULL | GFULLEXTRA |
-                  GNOT_A_LIST | GNULL_OK);
+                  GNOT_A_LIST | GNULL_OK | GSHEXP_PARSE_HACK);
             if(fa == NULL || is_addr_invalid(fa, EACM_STRICT | EACM_NOLOG)){
                emsg = N_("Invalid address argument with -r");
                goto jusage;
@@ -887,7 +887,7 @@ jeMmq:
             char const *a[2];
             boole b;
 
-            if(ok_vlook(v15_compat) == su_NIL){
+            if(i != 'S' || ok_vlook(v15_compat) == su_NIL){
                okey = a[0] = avo.avo_current_arg;
                s = NIL;
             }else{
@@ -1108,7 +1108,8 @@ jgetopt_done:
    }else{
       n_psonce |= n_PSO_SENDMODE;
       for(;;){
-         to = cat(to, lextract(cp, GTO | GFULL | GSHEXP_PARSE_HACK));
+         to = cat(to, lextract(cp, GTO | GFULL | GNOT_A_LIST |
+               GSHEXP_PARSE_HACK));
          if((cp = argv[++i]) == NULL)
             break;
          if(cp[0] == '-' && cp[1] == '-' && cp[2] == '\0'){

@@ -1362,6 +1362,7 @@ FL void
 n_header_extract(enum n_header_extract_flags hef, FILE *fp, struct header *hp,
    s8 *checkaddr_err_or_null)
 {
+   struct str suffix;
    struct n_header_field **hftail;
    struct header nh, *hq = &nh;
    char *linebuf = NULL /* TODO line pool */, *colon;
@@ -1400,46 +1401,55 @@ jeseek:
 
       /* We explicitly allow EAF_NAME for some addressees since aliases are not
        * yet expanded when we parse these! */
-      if ((val = thisfield(linebuf, "to")) != NULL) {
+      if ((val = n_header_get_field(linebuf, "to", &suffix)) != NULL) {
          ++seenfields;
-         hq->h_to = cat(hq->h_to, checkaddrs(lextract(val, GTO | GFULL),
+         if(suffix.s != su_NIL && suffix.l > 0 &&
+               !su_cs_starts_with_case_n("single", suffix.s, suffix.l))
+            goto jebadhead;
+         hq->h_to = cat(hq->h_to, checkaddrs(lextract(val, GTO | GFULL |
+               (suffix.s != su_NIL ? GNOT_A_LIST : GNONE)),
                EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err_or_null));
-      } else if ((val = thisfield(linebuf, "cc")) != NULL) {
+      } else if ((val = n_header_get_field(linebuf, "cc", &suffix)) != NULL) {
          ++seenfields;
-         hq->h_cc = cat(hq->h_cc, checkaddrs(lextract(val, GCC | GFULL),
+         if(suffix.s != su_NIL && suffix.l > 0 &&
+               !su_cs_starts_with_case_n("single", suffix.s, suffix.l))
+            goto jebadhead;
+         hq->h_cc = cat(hq->h_cc, checkaddrs(lextract(val, GCC | GFULL |
+               (suffix.s != su_NIL ? GNOT_A_LIST : GNONE)),
                EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err_or_null));
-      } else if ((val = thisfield(linebuf, "bcc")) != NULL) {
+      } else if ((val = n_header_get_field(linebuf, "bcc", &suffix)) != NULL) {
          ++seenfields;
-         hq->h_bcc = cat(hq->h_bcc, checkaddrs(lextract(val, GBCC | GFULL),
+         if(suffix.s != su_NIL && suffix.l > 0 &&
+               !su_cs_starts_with_case_n("single", suffix.s, suffix.l))
+            goto jebadhead;
+         hq->h_bcc = cat(hq->h_bcc, checkaddrs(lextract(val, GBCC | GFULL |
+               (suffix.s != su_NIL ? GNOT_A_LIST : GNONE)),
                EACM_NORMAL | EAF_NAME | EAF_MAYKEEP, checkaddr_err_or_null));
-      } else if ((val = thisfield(linebuf, "fcc")) != NULL) {
+      } else if ((val = n_header_get_field(linebuf, "fcc", NULL)) != NULL) {
          if(hef & n_HEADER_EXTRACT__MODE_MASK){
             ++seenfields;
             hq->h_fcc = cat(hq->h_fcc, nalloc_fcc(val));
          }else
             goto jebadhead;
-      } else if ((val = thisfield(linebuf, "from")) != NULL) {
+      } else if ((val = n_header_get_field(linebuf, "from", NULL)) != NULL) {
          if(hef & n_HEADER_EXTRACT_FULL){
             ++seenfields;
             hq->h_from = cat(hq->h_from,
                   checkaddrs(lextract(val, GEXTRA | GFULL | GFULLEXTRA),
                      EACM_STRICT, NULL));
          }
-      } else if ((val = thisfield(linebuf, "reply-to")) != NULL) {
+      }else if((val = n_header_get_field(linebuf, "reply-to", NULL)) != NULL){
          ++seenfields;
          hq->h_reply_to = cat(hq->h_reply_to,
                checkaddrs(lextract(val, GEXTRA | GFULL), EACM_STRICT, NULL));
-      } else if ((val = thisfield(linebuf, "sender")) != NULL) {
+      }else if((val = n_header_get_field(linebuf, "sender", NULL)) != NULL){
          if(hef & n_HEADER_EXTRACT_FULL){
             ++seenfields;
-            hq->h_sender = cat(hq->h_sender, /* TODO cat? check! */
-                  checkaddrs(n_extract_single(val,
-                        GEXTRA | GFULL | GFULLEXTRA),
-                     EACM_STRICT, NULL));
+            hq->h_sender = checkaddrs(n_extract_single(val,
+                  GEXTRA | GFULL | GFULLEXTRA), EACM_STRICT, NULL);
          } else
             goto jebadhead;
-      } else if ((val = thisfield(linebuf, "subject")) != NULL ||
-            (val = thisfield(linebuf, "subj")) != NULL) {
+      }else if((val = n_header_get_field(linebuf, "subject", NULL)) != NULL){
          ++seenfields;
          for (cp = val; su_cs_is_blank(*cp); ++cp)
             ;
@@ -1448,9 +1458,9 @@ jeseek:
       }
       /* The remaining are mostly hacked in and thus TODO -- at least in
        * TODO respect to their content checking */
-      else if((val = thisfield(linebuf, "message-id")) != NULL){
+      else if((val = n_header_get_field(linebuf, "message-id", NULL)) != NULL){
          if(hef & n_HEADER_EXTRACT__MODE_MASK){
-            np = checkaddrs(lextract(val, GREF),
+            np = checkaddrs(lextract(val, GREF | GNOT_A_LIST),
                   /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
                   NULL);
             if (np == NULL || np->n_flink != NULL)
@@ -1459,7 +1469,8 @@ jeseek:
             hq->h_message_id = np;
          }else
             goto jebadhead;
-      }else if((val = thisfield(linebuf, "in-reply-to")) != NULL){
+      }else if((val = n_header_get_field(linebuf, "in-reply-to", NULL)
+            ) != NULL){
          if(hef & n_HEADER_EXTRACT__MODE_MASK){
             np = checkaddrs(lextract(val, GREF),
                   /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG | EACM_NONAME,
@@ -1468,7 +1479,8 @@ jeseek:
             hq->h_in_reply_to = np;
          }else
             goto jebadhead;
-      }else if((val = thisfield(linebuf, "references")) != NULL){
+      }else if((val = n_header_get_field(linebuf, "references", NULL)
+            ) != NULL){
          if(hef & n_HEADER_EXTRACT__MODE_MASK){
             ++seenfields;
             /* TODO Limit number of references TODO better on parser side */
@@ -1479,7 +1491,8 @@ jeseek:
             goto jebadhead;
       }
       /* and that is very hairy */
-      else if((val = thisfield(linebuf, "mail-followup-to")) != NULL){
+      else if((val = n_header_get_field(linebuf, "mail-followup-to", NULL)
+               ) != NULL){
          if(hef & n_HEADER_EXTRACT__MODE_MASK){
             ++seenfields;
             hq->h_mft = cat(hq->h_mft, checkaddrs(lextract(val,
@@ -1611,7 +1624,8 @@ hfield_mult(char const *field, struct message *mp, int mult)
       if ((lc = a_gethfield(n_HEADER_EXTRACT_NONE, ibuf, &linebuf, &linesize,
             lc, &colon)) < 0)
          break;
-      if ((hfield = thisfield(linebuf, field)) != NULL && *hfield != '\0') {
+      if ((hfield = n_header_get_field(linebuf, field, NULL)) != NULL &&
+            *hfield != '\0') {
          if (mult)
             n_str_add_buf(&hfs, hfield, su_cs_len(hfield));
          else {
@@ -1634,25 +1648,43 @@ jleave:
 }
 
 FL char const *
-thisfield(char const *linebuf, char const *field)
+n_header_get_field(char const *linebuf, char const *field,
+   struct str *suffix_or_nil)
 {
    char const *rv = NULL;
    NYD2_IN;
+
+   if(suffix_or_nil != su_NIL)
+      suffix_or_nil->s = su_NIL;
 
    while (su_cs_to_lower(*linebuf) == su_cs_to_lower(*field)) {
       ++linebuf;
       ++field;
    }
-   if (*field != '\0')
+
+   if(*field != '\0')
       goto jleave;
 
-   while (su_cs_is_blank(*linebuf))
+   if(suffix_or_nil != su_NIL && *linebuf == '?'){
+      char c;
+      uz i;
+
+      for(i = 0; (c = *linebuf) != '\0'; ++linebuf, ++i)
+         if(su_cs_is_blank(c) || c == ':')
+            break;
+      if(i > 0){
+         suffix_or_nil->l = --i;
+         suffix_or_nil->s = UNCONST(char*,&linebuf[-i]);
+      }
+   }
+
+   while(su_cs_is_blank(*linebuf))
       ++linebuf;
-   if (*linebuf++ != ':')
+   if(*linebuf++ != ':')
       goto jleave;
-
    while(su_cs_is_blank(*linebuf)) /* TODO header parser.. strip trailing WS */
       ++linebuf;
+
    rv = linebuf;
 jleave:
    NYD2_OU;
@@ -3108,7 +3140,7 @@ grab_headers(enum n_go_input_flags gif, struct header *hp, enum gfield gflags,
       if (hp->h_sender == NULL)
          hp->h_sender = n_extract_single(ok_vlook(sender), GEXTRA | GFULL);
       hp->h_sender = grab_names(gif, "Sender: ", hp->h_sender, comma,
-            GEXTRA | GFULL);
+            GEXTRA | GFULL | GNOT_A_LIST);
    }
 
    if (!subjfirst && (gflags & GSUBJECT))

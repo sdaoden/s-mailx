@@ -177,7 +177,20 @@ a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp, char *cmda[3]){
 
    hp = dmcp->dmc_hp;
 
+   /* Strip the optional colon from header names */
+   if((cp = cmda[1]) != su_NIL){
+      for(i = 0; cp[i] != '\0'; ++i)
+         ;
+      if(i > 0 && cp[i - 1] == ':'){
+         --i;
+         while(i > 0 && su_cs_is_blank(cp[i - 1]))
+            --i;
+         cmda[1][i] = '\0';
+      }
+   }
+
    if((cp = cmda[0]) == NULL){
+      ASSERT(cmda[1] == NULL);
       cp = n_empty; /* xxx not NULL anyway */
       goto jdefault;
    }
@@ -189,6 +202,7 @@ a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp, char *cmda[3]){
        * TODO header fields etc., a little workaround */
       struct mx_name *xnp;
       s8 aerr;
+      char const *mod_suff;
       enum expand_addr_check_mode eacm;
       enum gfield ntype;
       boole mult_ok;
@@ -223,6 +237,7 @@ a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp, char *cmda[3]){
       mult_ok = TRU1;
       ntype = GEXTRA | GFULL | GFULLEXTRA;
       eacm = EACM_STRICT;
+      mod_suff = su_NIL;
 
       if(!su_cs_cmp_case(cmda[1], cp = "From")){
          npp = &hp->h_from;
@@ -234,7 +249,7 @@ jins:
             if(is_addr_invalid(np, eacm))
                goto jins_505;
          }else{
-            if((np = (mult_ok ? lextract : n_extract_single)(cmda[2],
+            if((np = (mult_ok > FAL0 ? lextract : n_extract_single)(cmda[2],
                   ntype | GNULL_OK)) == NULL)
                goto j501cp;
 
@@ -276,13 +291,27 @@ jins_505:
 #define a_X(F,H,INS) \
    if(!su_cs_cmp_case(cmda[1], cp = F)) {npp = &hp->H; INS; goto jins;}
 
-      a_X("Sender", h_sender, mult_ok = FAL0);
+      if((cp = su_cs_find_c(cmda[1], '?')) != su_NIL){
+         mod_suff = cp;
+         cmda[1][P2UZ(cp - cmda[1])] = '\0';
+         if(*++cp != '\0' && !su_cs_starts_with_case("single", cp)){
+            cp = mod_suff;
+            goto j501cp;
+         }
+         mult_ok = TRUM1;
+      }
+
       a_X("To", h_to, ntype = GTO|GFULL su_COMMA eacm = EACM_NORMAL|EAF_NAME);
       a_X("Cc", h_cc, ntype = GCC|GFULL su_COMMA eacm = EACM_NORMAL|EAF_NAME);
       a_X("Bcc", h_bcc, ntype = GBCC|GFULL su_COMMA
          eacm = EACM_NORMAL|EAF_NAME);
+
+      if((cp = mod_suff) != su_NIL)
+         goto j501cp;
+
       /* Not | EAF_FILE, depend on *expandaddr*! */
       a_X("Fcc", h_fcc, ntype = GBCC|GBCC_IS_FCC su_COMMA eacm = EACM_NORMAL);
+      a_X("Sender", h_sender, mult_ok = FAL0);
       a_X("Reply-To", h_reply_to, eacm = EACM_NONAME);
       a_X("Mail-Followup-To", h_mft, eacm = EACM_NONAME);
       a_X("Message-ID", h_message_id,

@@ -310,7 +310,7 @@ line-buffered input even in batch mode enable batch mode via
 .
 .Mx
 .It Fl b Ar addr , Fl Fl bcc Ns =..
-Send blind carbon copies to (the list of recipients given in)
+Send a blind carbon copy to recipient
 .Ar addr ,
 if the
 .Ic set Ns
@@ -318,7 +318,7 @@ ting of
 .Va expandaddr ,
 one of the
 .Sx "INTERNAL VARIABLES" ,
-allows (for each recipient, individually); the
+allows; the
 .Ql shquote
 .Va expandaddr
 flag is supported.
@@ -575,6 +575,10 @@ the name part will be passed to a file-based
 .Va mta
 individually via
 .Fl \&\&F Ar name .
+Even though not a recipient the
+.Ql shquote
+.Va expandaddr
+flag is supported.
 .
 .Pp
 If an empty string is passed as
@@ -663,10 +667,10 @@ The
 .Va expandaddr
 flag is supported.
 Via the question mark
-.Ql \&?
-modifier suffix the
-.Fl b , c
-etc. list parse mode is available, the keyword
+.Ql \&?list
+modifier suffix
+.Ar addr
+is parsed like a message header address line, the keyword
 .Ql list
 is optional, e.g.,
 .Ql to? ,
@@ -688,6 +692,10 @@ Message recipients can be given via the message headers
 .Ql To: ,
 .Ql Cc: ,
 .Ql Bcc:
+(the
+.Ql ?single
+modifier enforces treatment as a single addressee, e.g.,
+.Ql To?single: exa, <m@ple> )
 or
 .Ql Fcc: ,
 they will be added to any recipients specified on the command line,
@@ -1108,7 +1116,11 @@ Message recipients (as specified on the command line or defined in
 .Ql To: ,
 .Ql Cc:
 or
-.Ql Bcc: )
+.Ql Bcc: ;
+these support the
+.Ql ?single
+modifier to enforce treatment as a single addressee, e.g.,
+.Ql To?single: exa, <m@ple> )
 are subject to
 .Ic alternates
 filtering, and may not only be email addressees but can also be names of
@@ -8132,6 +8144,17 @@ on \*(UA namespace violations, and
 to indicate prevention of excessing a single-instance header \(em note that
 .Ql Subject:
 can be appended to (a space separator will be added automatically first).
+.Ql To: ,
+.Ql Cc:
+or
+.Ql Bcc:
+support the
+.Ql ?single
+modifier to enforce treatment as a single addressee, e.g.,
+.Ql header insert To?single: exa, <m@ple> ;
+the word
+.Ql single
+is optional.
 .Pp
 .Ql 210
 is returned upon success, followed by the name of the header and the list
@@ -9451,7 +9474,7 @@ and the non-empty value of
 can be set to extend this list.
 Finally some address providers (for example
 .Fl b , c
-and all recipients given on the command line) will be will evaluated as
+and all other command line recipients) will be evaluated as
 if specified within dollar-single-quotes (see
 .Sx "Shell-style argument quoting" )
 if the value list contains the string
