@@ -47,6 +47,8 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 
+#include "mx/mlist.h"
+#include "mx/names.h"
 #include "mx/ui-str.h"
 
 struct a_header_cmatch_data{
@@ -412,15 +414,15 @@ a_header_idna_apply(struct n_addrguts *agp){
 
    if(!n_idna_to_ascii(&idna_ascii, &agp->ag_skinned[agp->ag_sdom_start],
          agp->ag_slen - agp->ag_sdom_start))
-      agp->ag_n_flags ^= NAME_ADDRSPEC_ERR_IDNA | NAME_ADDRSPEC_ERR_CHAR;
+      agp->ag_n_flags ^= mx_NAME_ADDRSPEC_ERR_IDNA | mx_NAME_ADDRSPEC_ERR_CHAR;
    else{
       /* Replace the domain part of .ag_skinned with IDNA version */
       n_string_unshift_buf(&idna_ascii, agp->ag_skinned, agp->ag_sdom_start);
 
       agp->ag_skinned = n_string_cp(&idna_ascii);
       agp->ag_slen = idna_ascii.s_len;
-      NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags,
-         NAME_NAME_SALLOC | NAME_SKINNED | NAME_IDNA, 0);
+      agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
+         mx_NAME_NAME_SALLOC | mx_NAME_SKINNED | mx_NAME_IDNA, '\0');
    }
    n_NYD_OU;
    return agp;
@@ -454,7 +456,8 @@ a_header_addrspec_check(struct n_addrguts *agp, bool_t skinned,
 #endif
 
    if (agp->ag_iaddr_aend - agp->ag_iaddr_start == 0) {
-      NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_EMPTY, 0);
+      agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
+            mx_NAME_ADDRSPEC_ERR_EMPTY, '\0');
       goto jleave;
    }
 
@@ -467,7 +470,7 @@ a_header_addrspec_check(struct n_addrguts *agp, bool_t skinned,
    /* When changing any of the following adjust any RECIPIENTADDRSPEC;
     * grep the latter for the complete picture */
    if (*addr == '|') {
-      agp->ag_n_flags |= NAME_ADDRSPEC_ISPIPE;
+      agp->ag_n_flags |= mx_NAME_ADDRSPEC_ISPIPE;
       goto jleave;
    }
    if (addr[0] == '/' || (addr[0] == '.' && addr[1] == '/') ||
@@ -481,7 +484,7 @@ a_header_addrspec_check(struct n_addrguts *agp, bool_t skinned,
             break;
          if (c.c == '/') {
 jisfile:
-            agp->ag_n_flags |= NAME_ADDRSPEC_ISFILE;
+            agp->ag_n_flags |= mx_NAME_ADDRSPEC_ISFILE;
             goto jleave;
          }
       }
@@ -519,12 +522,12 @@ jaddr_check:
          ++p;
       } else if (c.c == '@') {
          if(flags & a_IN_AT){
-            NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_ATSEQ,
-               c.u);
+            agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
+                  mx_NAME_ADDRSPEC_ERR_ATSEQ, c.u);
             goto jleave;
          }
          agp->ag_sdom_start = PTR2SIZE(p - addr);
-         agp->ag_n_flags |= NAME_ADDRSPEC_ISADDR; /* TODO .. really? */
+         agp->ag_n_flags |= mx_NAME_ADDRSPEC_ISADDR; /* TODO .. really? */
          flags &= ~a_DOMAIN_MASK;
          flags |= (*p == '[') ? a_IN_AT | a_IN_DOMAIN | a_DOMAIN_V6
                : a_IN_AT | a_IN_DOMAIN;
@@ -539,18 +542,20 @@ jaddr_check:
       flags &= ~a_IN_AT;
    }
    if (c.c != '\0') {
-      NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_CHAR, c.u);
+      agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
+            mx_NAME_ADDRSPEC_ERR_CHAR, c.u);
       goto jleave;
    }
 
    /* If we do not think this is an address we may treat it as an alias name
     * if and only if the original input is identical to the skinned version */
-   if(!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR) &&
+   if(!(agp->ag_n_flags & mx_NAME_ADDRSPEC_ISADDR) &&
          !su_cs_cmp(agp->ag_skinned, agp->ag_input)){
       /* TODO This may be an UUCP address */
-      agp->ag_n_flags |= NAME_ADDRSPEC_ISNAME;
-      if(!n_alias_is_valid_name(agp->ag_input))
-         NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_NAME, '.');
+      agp->ag_n_flags |= mx_NAME_ADDRSPEC_ISNAME;
+      if(!mx_alias_is_valid_name(agp->ag_input))
+         agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
+               mx_NAME_ADDRSPEC_ERR_NAME, '.');
    }else{
       /* If we seem to know that this is an address.  Ensure this is correct
        * according to RFC 5322 TODO the entire address parser should be like
@@ -585,7 +590,8 @@ jaddr_check:
       if(*addr == '@' || &addr[2] >= p || p[-2] == '@'){
 jeat:
          c.c = '@';
-         NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_ATSEQ, c.u);
+         agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
+               mx_NAME_ADDRSPEC_ERR_ATSEQ, c.u);
          goto jleave;
       }
 
@@ -597,7 +603,7 @@ jeat:
        * TODO "abcd"@abc.  Etc. */
       if(agp->ag_iaddr_start == 0){
          /* No @ seen? */
-         if(!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR))
+         if(!(agp->ag_n_flags & mx_NAME_ADDRSPEC_ISADDR))
             goto jeat;
          if(agp->ag_iaddr_aend == agp->ag_ilen)
             goto jleave;
@@ -605,7 +611,7 @@ jeat:
             agp->ag_iaddr_aend == agp->ag_ilen - 1 &&
             cp[agp->ag_iaddr_aend] == '>'){
          /* No @ seen?  Possibly insert n_nodename() */
-         if(!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR)){
+         if(!(agp->ag_n_flags & mx_NAME_ADDRSPEC_ISADDR)){
             cp = &agp->ag_input[agp->ag_iaddr_start];
             cpmax = &agp->ag_input[agp->ag_iaddr_aend];
             goto jinsert_domain;
@@ -980,7 +986,8 @@ jput_quote_esc:
       cpmax = &agp->ag_input[agp->ag_iaddr_aend];
       if(*cp == '@' || &cp[2] > cpmax || cpmax[-1] == '@'){
          c.c = '@';
-         NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_ATSEQ, c.u);
+         agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
+               mx_NAME_ADDRSPEC_ERR_ATSEQ, c.u);
          goto jleave;
       }
 
@@ -992,7 +999,7 @@ jput_quote_esc:
        * TODO to catch problems from reordering, e.g., this additional
        * TODO test catches a final address without AT..
        * TODO This is a plain copy+paste of the weird thing above, no care */
-      agp->ag_n_flags &= ~NAME_ADDRSPEC_ISADDR;
+      agp->ag_n_flags &= ~mx_NAME_ADDRSPEC_ISADDR;
       flags &= a_RESET_MASK;
       for (p = addr; (c.c = *p++) != '\0';) {
          if(c.c == '"')
@@ -1012,12 +1019,12 @@ jput_quote_esc:
             ++p;
          } else if (c.c == '@') {
             if(flags & a_IN_AT){
-               NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_ATSEQ,
-                  c.u);
+               agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
+                     mx_NAME_ADDRSPEC_ERR_ATSEQ, c.u);
                goto jleave;
             }
             flags |= a_IN_AT;
-            agp->ag_n_flags |= NAME_ADDRSPEC_ISADDR; /* TODO .. really? */
+            agp->ag_n_flags |= mx_NAME_ADDRSPEC_ISADDR; /* TODO .. really? */
             flags &= ~a_DOMAIN_MASK;
             flags |= (*p == '[') ? a_IN_DOMAIN | a_DOMAIN_V6 : a_IN_DOMAIN;
             continue;
@@ -1028,8 +1035,9 @@ jput_quote_esc:
          flags &= ~a_IN_AT;
       }
       if(c.c != '\0')
-         NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_CHAR, c.u);
-      else if(!(agp->ag_n_flags & NAME_ADDRSPEC_ISADDR)){
+         agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
+               mx_NAME_ADDRSPEC_ERR_CHAR, c.u);
+      else if(!(agp->ag_n_flags & mx_NAME_ADDRSPEC_ISADDR)){
          /* This is not an address, but if we had seen angle brackets convert
           * it to a n_nodename() address if the name is a valid user */
 jinsert_domain:
@@ -1040,10 +1048,10 @@ jinsert_domain:
             /* XXX However, if hostname is set to the empty string this
              * XXX indicates that the used *mta* will perform the
              * XXX auto-expansion instead.  Not so with `addrcodec' though */
-            agp->ag_n_flags |= NAME_ADDRSPEC_ISADDR;
+            agp->ag_n_flags |= mx_NAME_ADDRSPEC_ISADDR;
             if(!issingle_hack &&
                   (cp = ok_vlook(hostname)) != NULL && *cp == '\0')
-               agp->ag_n_flags |= NAME_ADDRSPEC_WITHOUT_DOMAIN;
+               agp->ag_n_flags |= mx_NAME_ADDRSPEC_WITHOUT_DOMAIN;
             else{
                c.ui32 = su_cs_len(cp = n_nodename(TRU1));
                /* This is yet IDNA converted.. */
@@ -1062,18 +1070,18 @@ jinsert_domain:
                agp->ag_skinned = savestrbuf(cp, PTR2SIZE(cpmax - cp));
             }
          }else
-            NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_ATSEQ,
-               '@');
+            agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
+                  mx_NAME_ADDRSPEC_ERR_ATSEQ, '@');
       }
    }
 
 jleave:
 #ifdef mx_HAVE_IDNA
-   if(!(agp->ag_n_flags & NAME_ADDRSPEC_INVALID) && (flags & a_IDNA_APPLY))
+   if(!(agp->ag_n_flags & mx_NAME_ADDRSPEC_INVALID) && (flags & a_IDNA_APPLY))
       agp = a_header_idna_apply(agp);
 #endif
    n_NYD_OU;
-   return !(agp->ag_n_flags & NAME_ADDRSPEC_INVALID);
+   return !(agp->ag_n_flags & mx_NAME_ADDRSPEC_INVALID);
 }
 
 static long
@@ -1250,7 +1258,7 @@ nexttoken(char const *cp)
 FL char const *
 myaddrs(struct header *hp) /* TODO */
 {
-   struct name *np;
+   struct mx_name *np;
    char const *rv, *mta;
    n_NYD_IN;
 
@@ -1296,7 +1304,7 @@ FL char const *
 myorigin(struct header *hp) /* TODO */
 {
    char const *rv = NULL, *ccp;
-   struct name *np;
+   struct mx_name *np;
    n_NYD_IN;
 
    if((ccp = myaddrs(hp)) != NULL &&
@@ -1385,7 +1393,7 @@ jeseek:
 
    /* TODO yippieia, cat(check(lextract)) :-) */
    while ((lc = a_gethfield(hef, fp, &linebuf, &linesize, lc, &colon)) >= 0) {
-      struct name *np;
+      struct mx_name *np;
 
       /* We explicitly allow EAF_NAME for some addressees since aliases are not
        * yet expanded when we parse these! */
@@ -1786,7 +1794,7 @@ jandor:
 }
 
 FL si8_t
-is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm){
+is_addr_invalid(struct mx_name *np, enum expand_addr_check_mode eacm){
    /* TODO This is called much too often!  Message->DOMTree->modify->..
     * TODO I.e., [verify once before compose-mode], verify once after
     * TODO compose-mode, store result in object */
@@ -1800,11 +1808,11 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm){
    eaf = expandaddr_to_eaf();
    f = np->n_flags;
 
-   if((rv = ((f & NAME_ADDRSPEC_INVALID) != 0))){
+   if((rv = ((f & mx_NAME_ADDRSPEC_INVALID) != 0))){
       if(eaf & EAF_FAILINVADDR)
          rv = -rv;
 
-      if(!(eacm & EACM_NOLOG) && !(f & NAME_ADDRSPEC_ERR_EMPTY)){
+      if(!(eacm & EACM_NOLOG) && !(f & mx_NAME_ADDRSPEC_ERR_EMPTY)){
          ui32_t c;
          bool_t ok8bit;
          char const *fmt;
@@ -1812,18 +1820,18 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm){
          fmt = "'\\x%02X'";
          ok8bit = TRU1;
 
-         if(f & NAME_ADDRSPEC_ERR_IDNA) {
+         if(f & mx_NAME_ADDRSPEC_ERR_IDNA) {
             cs = _("Invalid domain name: %s, character %s\n");
             fmt = "'\\U%04X'";
             ok8bit = FAL0;
-         }else if(f & NAME_ADDRSPEC_ERR_ATSEQ)
+         }else if(f & mx_NAME_ADDRSPEC_ERR_ATSEQ)
             cs = _("%s contains invalid %s sequence\n");
-         else if(f & NAME_ADDRSPEC_ERR_NAME)
+         else if(f & mx_NAME_ADDRSPEC_ERR_NAME)
             cs = _("%s is an invalid alias name\n");
          else
             cs = _("%s contains invalid byte %s\n");
 
-         c = NAME_ADDRSPEC_ERR_GETWC(f);
+         c = mx_name_flags_get_err_wc(f);
          snprintf(cbuf, sizeof cbuf,
             (ok8bit && c >= 040 && c <= 0177 ? "'%c'" : fmt), c);
          goto jprint;
@@ -1836,7 +1844,7 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm){
       goto jleave;
 
    /* This header does not allow such targets at all (XXX >RFC 5322 parser) */
-   if((eacm & EACM_STRICT) && (f & NAME_ADDRSPEC_ISFILEORPIPE)){
+   if((eacm & EACM_STRICT) && (f & mx_NAME_ADDRSPEC_ISFILEORPIPE)){
       if(eaf & EAF_FAIL)
          rv = -rv;
       cs = _("%s%s: file or pipe addressees not allowed here\n");
@@ -1849,24 +1857,24 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm){
    if(eaf & EAF_FAIL)
       rv = -rv;
 
-   switch(f & NAME_ADDRSPEC_ISMASK){
-   case NAME_ADDRSPEC_ISFILE:
+   switch(f & mx_NAME_ADDRSPEC_ISMASK){
+   case mx_NAME_ADDRSPEC_ISFILE:
       if((eaf & EAF_FILE) || ((eaf & EAF_FCC) && (np->n_type & GBCC_IS_FCC)))
          goto jgood;
       cs = _("%s%s: *expandaddr* does not allow file target\n");
       break;
-   case NAME_ADDRSPEC_ISPIPE:
+   case mx_NAME_ADDRSPEC_ISPIPE:
       if(eaf & EAF_PIPE)
          goto jgood;
       cs = _("%s%s: *expandaddr* does not allow command pipe target\n");
       break;
-   case NAME_ADDRSPEC_ISNAME:
+   case mx_NAME_ADDRSPEC_ISNAME:
       if(eaf & EAF_NAME)
          goto jgood;
       cs = _("%s%s: *expandaddr* does not allow user name target\n");
       break;
    default:
-   case NAME_ADDRSPEC_ISADDR:
+   case mx_NAME_ADDRSPEC_ISADDR:
       if(!(eaf & EAF_ADDR)){
          cs = _("%s%s: *expandaddr* does not allow mail address target\n");
          break;
@@ -1876,7 +1884,7 @@ is_addr_invalid(struct name *np, enum expand_addr_check_mode eacm){
       else{
          char const *doms;
 
-         assert(np->n_flags & NAME_SKINNED);
+         assert(np->n_flags & mx_NAME_SKINNED);
          /* XXX We had this info before, and threw it away.. */
          doms = su_cs_rfind_c(np->n_name, '@');
          assert(doms != NULL);
@@ -1923,7 +1931,7 @@ skin(char const *name)
    if(name != NULL){
       /*name =*/ n_addrspec_with_guts(&ag, name, TRU1, FAL0);
       rv = ag.ag_skinned;
-      if(!(ag.ag_n_flags & NAME_NAME_SALLOC))
+      if(!(ag.ag_n_flags & mx_NAME_NAME_SALLOC))
          rv = savestrbuf(rv, ag.ag_slen);
    }else
       rv = NULL;
@@ -1950,16 +1958,17 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
    su_mem_set(agp, 0, sizeof *agp);
 
    if((agp->ag_input = name) == NULL || (agp->ag_ilen = su_cs_len(name)) == 0){
-      agp->ag_skinned = n_UNCONST(n_empty); /* ok: NAME_SALLOC is not set */
+      agp->ag_skinned = n_UNCONST(n_empty); /* ok: mx_NAME_SALLOC is not set */
       agp->ag_slen = 0;
-      NAME_ADDRSPEC_ERR_SET(agp->ag_n_flags, NAME_ADDRSPEC_ERR_EMPTY, 0);
+      agp->ag_n_flags = mx_name_flags_set_err(agp->ag_n_flags,
+            mx_NAME_ADDRSPEC_ERR_EMPTY, '\0');
       goto jleave;
    }else if(!doskin){
       /*agp->ag_iaddr_start = 0;*/
       agp->ag_iaddr_aend = agp->ag_ilen;
-      agp->ag_skinned = n_UNCONST(name); /* (NAME_SALLOC not set) */
+      agp->ag_skinned = n_UNCONST(name); /* (mx_NAME_SALLOC not set) */
       agp->ag_slen = agp->ag_ilen;
-      agp->ag_n_flags = NAME_SKINNED;
+      agp->ag_n_flags = mx_NAME_SKINNED;
       goto jcheck;
    }
 
@@ -2086,7 +2095,7 @@ n_addrspec_with_guts(struct n_addrguts *agp, char const *name, bool_t doskin,
 
    agp->ag_skinned = savestrbuf(nbuf, agp->ag_slen);
    n_lofi_free(nbuf);
-   agp->ag_n_flags = NAME_NAME_SALLOC | NAME_SKINNED;
+   agp->ag_n_flags = mx_NAME_NAME_SALLOC | mx_NAME_SKINNED;
 jcheck:
    if(a_header_addrspec_check(agp, doskin, issingle_hack) <= FAL0)
       name = NULL;
@@ -2137,7 +2146,7 @@ c_addrcodec(void *vp){
    if(su_cs_starts_with_case_n("encode", act, alen)){
       /* This function cannot be a simple nalloc() wrapper even later on, since
        * we may need to turn any ", () or \ into quoted-pairs */
-      struct name *np;
+      struct mx_name *np;
       char c;
 
       while((c = *cp++) != '\0'){
@@ -2186,12 +2195,12 @@ c_addrcodec(void *vp){
          cp = n_string_cp(sp);
       }else if(su_cs_starts_with_case_n("skin", act, alen) ||
             (mode = 1, su_cs_starts_with_case_n("skinlist", act, alen))){
-         struct name *np;
+         struct mx_name *np;
 
          if((np = n_extract_single(cp, GTO | GFULL)) != NULL){
             cp = np->n_name;
 
-            if(mode == 1 && is_mlist(cp, FAL0) != MLIST_OTHER)
+            if(mode == 1 && mx_mlist_query(cp, FAL0) != mx_MLIST_OTHER)
                n_pstate_err_no = su_ERR_EXIST;
          }else{
             n_pstate_err_no = su_ERR_INVAL;
@@ -2851,12 +2860,12 @@ jredo_localtime:
    return rv;
 }
 
-FL struct name *
+FL struct mx_name *
 n_header_textual_sender_info(struct message *mp, char **cumulation_or_null,
       char **addr_or_null, char **name_real_or_null, char **name_full_or_null,
       bool_t *is_to_or_null){
    struct n_string s_b1, s_b2, *sp1, *sp2;
-   struct name *np, *np2;
+   struct mx_name *np, *np2;
    bool_t isto, b;
    char *cp;
    n_NYD_IN;
@@ -2866,7 +2875,7 @@ n_header_textual_sender_info(struct message *mp, char **cumulation_or_null,
 
    if((np = lextract(cp, GFULL | GSKIN)) != NULL){
       if(is_to_or_null != NULL && ok_blook(showto) &&
-            np->n_flink == NULL && n_is_myname(np->n_name)){
+            np->n_flink == NULL && mx_name_is_mine(np->n_name)){
          if((cp = hfield1("to", mp)) != NULL &&
                (np2 = lextract(cp, GFULL | GSKIN)) != NULL){
             np = np2;
@@ -2945,7 +2954,7 @@ FL void
 setup_from_and_sender(struct header *hp)
 {
    char const *addr;
-   struct name *np;
+   struct mx_name *np;
    n_NYD_IN;
 
    /* If -t parsed or composed From: then take it.  With -t we otherwise
@@ -2968,11 +2977,11 @@ setup_from_and_sender(struct header *hp)
    n_NYD_OU;
 }
 
-FL struct name const *
-check_from_and_sender(struct name const *fromfield,
-   struct name const *senderfield)
+FL struct mx_name const *
+check_from_and_sender(struct mx_name const *fromfield,
+   struct mx_name const *senderfield)
 {
-   struct name const *rv = NULL;
+   struct mx_name const *rv = NULL;
    n_NYD_IN;
 
    if (senderfield != NULL) {
@@ -2994,7 +3003,7 @@ check_from_and_sender(struct name const *fromfield,
    }
 
    if (rv == NULL)
-      rv = (struct name*)0x1;
+      rv = (struct mx_name*)0x1;
 jleave:
    n_NYD_OU;
    return rv;
@@ -3005,7 +3014,7 @@ FL char *
 getsender(struct message *mp)
 {
    char *cp;
-   struct name *np;
+   struct mx_name *np;
    n_NYD_IN;
 
    if ((cp = hfield1("from", mp)) == NULL ||
@@ -3018,9 +3027,9 @@ getsender(struct message *mp)
 }
 #endif
 
-FL struct name *
+FL struct mx_name *
 n_header_setup_in_reply_to(struct header *hp){
-   struct name *np;
+   struct mx_name *np;
    n_NYD_IN;
 
    np = NULL;
@@ -3061,7 +3070,7 @@ grab_headers(enum n_go_input_flags gif, struct header *hp, enum gfield gflags,
       hp->h_from = grab_names(gif, "From: ", hp->h_from, comma,
             GEXTRA | GFULL | GFULLEXTRA);
       if (hp->h_reply_to == NULL) {
-         struct name *v15compat;
+         struct mx_name *v15compat;
 
          if((v15compat = lextract(ok_vlook(replyto), GEXTRA | GFULL)) != NULL)
             n_OBSOLETE(_("please use *reply-to*, not *replyto*"));
@@ -3130,7 +3139,7 @@ n_header_match(struct message *mp, struct search_expr const *sep){
 
    /* Iterate over all the headers */
    while(lc > 0){
-      struct name *np;
+      struct mx_name *np;
 
       if((lc = a_gethfield(n_HEADER_EXTRACT_NONE, ibuf, linebuf, linesize,
             lc, &colon)) <= 0)

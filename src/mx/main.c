@@ -50,6 +50,7 @@
 #include <su/icodec.h>
 
 #include "mx/iconv.h"
+#include "mx/names.h"
 
 struct a_arg{
    struct a_arg *aa_next;
@@ -661,7 +662,7 @@ main(int argc, char *argv[]){
    char const *Aarg, *emsg, *folder, *Larg, *okey, *qf,
       *subject, *uarg, **Xargs, **Yargs;
    struct attachment *attach;
-   struct name *to, *cc, *bcc;
+   struct mx_name *to, *cc, *bcc;
    struct a_arg *a_head, *a_curr;
    enum{
       a_RF_NONE = 0,
@@ -860,7 +861,7 @@ jeMmq:
          if(avo.avo_current_arg[0] == '\0')
             break;
          else{
-            struct name *fa;
+            struct mx_name *fa;
 
             fa = nalloc(avo.avo_current_arg, GSKIN | GFULL | GFULLEXTRA |
                   GNOT_A_LIST | GNULL_OK);

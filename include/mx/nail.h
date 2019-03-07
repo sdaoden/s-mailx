@@ -738,12 +738,6 @@ enum mime_handler_flags {
    MIME_HDL_TMPF_UNLINK = 1u<<11 /* Delete it later again */
 };
 
-enum mlist_state {
-   MLIST_OTHER       = 0,     /* Normal address */
-   MLIST_KNOWN       = 1,     /* A known `mlist' */
-   MLIST_SUBSCRIBED  = -1     /* A `mlsubscribe'd list */
-};
-
 enum oflags {
    OF_RDONLY = 1u<<0,
    OF_WRONLY = 1u<<1,
@@ -1603,6 +1597,9 @@ enum {
    C_LOWER        = 1<<8
 };
 
+/* Forwards */
+struct mx_name; /* -> names.h */
+
 struct str {
    char     *s;      /* the string's content */
    size_t   l;       /* the stings's length */
@@ -1622,7 +1619,7 @@ struct n_strlist{
 };
 #define n_STRLIST_ALLOC(SZ) /* XXX -> nailfuns.h (and pimp interface) */\
    n_alloc(n_VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
-#define n_STRLIST_AUTOREC_ALLOC(SZ) \
+#define n_STRLIST_AUTO_ALLOC(SZ) \
    n_autorec_alloc(n_VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
 #define n_STRLIST_LOFI_ALLOC(SZ) \
    n_lofi_alloc(n_VSTRUCT_SIZEOF(struct n_strlist, sl_dat) + (SZ) +1)
@@ -1777,15 +1774,6 @@ struct n_dotlock_info{
    struct stat *di_stb;
 };
 #endif
-
-struct n_file_type{
-   char const *ft_ext_dat;    /* Extension this handles, without first period */
-   size_t ft_ext_len;
-   char const *ft_load_dat;   /* And the load and save command strings */
-   size_t ft_load_len;
-   char const *ft_save_dat;
-   size_t ft_save_len;
-};
 
 struct n_go_data_ctx{
    struct su_mem_bag *gdc_membag;
@@ -2131,80 +2119,30 @@ struct header {
    ui32_t      h_dummy;
    char        *h_subject;    /* Subject string */
    char const  *h_charset;    /* preferred charset */
-   struct name *h_from;       /* overridden "From:" field */
-   struct name *h_sender;     /* overridden "Sender:" field */
-   struct name *h_to;         /* Dynamic "To:" string */
-   struct name *h_cc;         /* Carbon copies string */
-   struct name *h_bcc;        /* Blind carbon copies */
-   struct name *h_fcc;        /* Fcc: file carbon copies to */
-   struct name *h_ref;        /* References (possibly overridden) */
+   struct mx_name *h_from;    /* overridden "From:" field */
+   struct mx_name *h_sender;  /* overridden "Sender:" field */
+   struct mx_name *h_to;      /* Dynamic "To:" string */
+   struct mx_name *h_cc;      /* Carbon copies string */
+   struct mx_name *h_bcc;     /* Blind carbon copies */
+   struct mx_name *h_fcc;     /* Fcc: file carbon copies to */
+   struct mx_name *h_ref;     /* References (possibly overridden) */
    struct attachment *h_attach; /* MIME attachments */
-   struct name *h_reply_to;   /* overridden "Reply-To:" field */
-   struct name *h_message_id; /* overridden "Message-ID:" field */
-   struct name *h_in_reply_to;/* overridden "In-Reply-To:" field */
-   struct name *h_mft;        /* Mail-Followup-To */
+   struct mx_name *h_reply_to;   /* overridden "Reply-To:" field */
+   struct mx_name *h_message_id; /* overridden "Message-ID:" field */
+   struct mx_name *h_in_reply_to;/* overridden "In-Reply-To:" field */
+   struct mx_name *h_mft;     /* Mail-Followup-To */
    char const  *h_list_post;  /* Address from List-Post:, for `Lreply' */
    struct n_header_field *h_user_headers;
    struct n_header_field *h_custom_headers; /* (Cached result) */
    /* Raw/original versions of the header(s). If any */
    char const *h_mailx_command;
-   struct name *h_mailx_raw_to;
-   struct name *h_mailx_raw_cc;
-   struct name *h_mailx_raw_bcc;
-   struct name *h_mailx_orig_from;
-   struct name *h_mailx_orig_to;
-   struct name *h_mailx_orig_cc;
-   struct name *h_mailx_orig_bcc;
-};
-
-/* Handling of namelist nodes used in processing the recipients of mail and
- * aliases, inspection of mail-addresses and all that kind of stuff */
-enum nameflags {
-   NAME_SKINNED = 1u<<0,            /* Is actually skin()ned */
-   NAME_IDNA = 1u<<1,               /* IDNA was applied */
-   NAME_NAME_SALLOC = 1u<<2,        /* .n_name is doped */
-
-   NAME_ADDRSPEC_ISFILE = 1u<<3,    /* ..is a file path */
-   NAME_ADDRSPEC_ISPIPE = 1u<<4,    /* ..is a command for piping */
-   NAME_ADDRSPEC_ISFILEORPIPE = NAME_ADDRSPEC_ISFILE | NAME_ADDRSPEC_ISPIPE,
-   NAME_ADDRSPEC_ISNAME = 1u<<5,    /* ..is an alias name */
-   NAME_ADDRSPEC_ISADDR = 1u<<6,    /* ..is a mail network address.. */
-   NAME_ADDRSPEC_WITHOUT_DOMAIN = 1u<<7, /* ..but without domain name */
-   NAME_ADDRSPEC_ISMASK = n_BITENUM_MASK(3,6),
-
-   NAME_ADDRSPEC_ERR_EMPTY = 1u<<9, /* An empty string (or NULL) */
-   NAME_ADDRSPEC_ERR_ATSEQ = 1u<<10, /* Weird @ sequence */
-   NAME_ADDRSPEC_ERR_CHAR = 1u<<11, /* Invalid character */
-   NAME_ADDRSPEC_ERR_IDNA = 1u<<12, /* IDNA convertion failed */
-   NAME_ADDRSPEC_ERR_NAME = 1u<<13, /* Alias with invalid content */
-   NAME_ADDRSPEC_INVALID = NAME_ADDRSPEC_ERR_EMPTY |
-         NAME_ADDRSPEC_ERR_ATSEQ | NAME_ADDRSPEC_ERR_CHAR |
-         NAME_ADDRSPEC_ERR_IDNA | NAME_ADDRSPEC_ERR_NAME,
-
-   /* Error storage (we must fit in 31-bit) */
-   _NAME_SHIFTWC = 14,
-   _NAME_MAXWC = 0x1FFFF,
-   _NAME_MASKWC = _NAME_MAXWC << _NAME_SHIFTWC
-   /* Bit 31 (32) == SI32_MIN temporarily used */
-};
-
-/* In the !_ERR_EMPTY case, the failing character can be queried */
-#define NAME_ADDRSPEC_ERR_GETWC(F)  \
-   ((((unsigned int)(F) & _NAME_MASKWC) >> _NAME_SHIFTWC) & _NAME_MAXWC)
-#define NAME_ADDRSPEC_ERR_SET(F, E, WC) \
-do {\
-   (F) = ((F) & ~(NAME_ADDRSPEC_INVALID | _NAME_MASKWC)) |\
-         (E) | (((unsigned int)(WC) & _NAME_MAXWC) << _NAME_SHIFTWC);\
-} while (0)
-
-struct name{
-   struct name *n_flink;   /* Forward link in list. */
-   struct name *n_blink;   /* Backward list link */
-   enum gfield n_type;     /* From which list it came */
-   ui32_t n_flags;         /* enum nameflags */
-   char *n_name;           /* This fella's address */
-   char *n_fullname;       /* Ditto, unless GFULL including comment */
-   char *n_fullextra;      /* GFULL, without address */
+   struct mx_name *h_mailx_raw_to;
+   struct mx_name *h_mailx_raw_cc;
+   struct mx_name *h_mailx_raw_bcc;
+   struct mx_name *h_mailx_orig_from;
+   struct mx_name *h_mailx_orig_to;
+   struct mx_name *h_mailx_orig_cc;
+   struct mx_name *h_mailx_orig_bcc;
 };
 
 struct n_addrguts{
@@ -2216,7 +2154,7 @@ struct n_addrguts{
    char *ag_skinned;          /* Output (alloced if !=.ag_input) */
    size_t ag_slen;            /* su_cs_len() of .ag_skinned */
    size_t ag_sdom_start;      /* Start of domain in .ag_skinned, */
-   enum nameflags ag_n_flags; /* enum nameflags of .ag_skinned */
+   ui32_t ag_n_flags;         /* enum mx_name_flags of .ag_skinned */
 };
 
 /* MIME attachments */
@@ -2243,7 +2181,7 @@ struct attachment {
    char const  *a_name;       /* File name to be stored (EQ a_path_bname) */
    char const  *a_content_type;  /* content type */
    char const  *a_content_disposition; /* content disposition */
-   struct name *a_content_id; /* content id */
+   struct mx_name *a_content_id; /* content id */
    char const  *a_content_description; /* content description */
    char const  *a_input_charset; /* Interpretation depends on .a_conv */
    char const  *a_charset;    /* ... */
@@ -2254,7 +2192,7 @@ struct attachment {
 
 struct sendbundle {
    struct header  *sb_hp;
-   struct name    *sb_to;
+   struct mx_name *sb_to;
    FILE           *sb_input;
    struct str     sb_signer;  /* USER@HOST for signing+ */
    struct url     sb_url;
@@ -2331,7 +2269,7 @@ VL int n_exit_status;            /* Program exit status TODO long term: ex_no */
 VL ui32_t n_poption;             /* Bits of enum n_program_option */
 VL struct n_header_field *n_poption_arg_C; /* -C custom header list */
 VL char const *n_poption_arg_Mm; /* Argument for -[Mm] aka n_PO_[Mm]_FLAG */
-VL struct name *n_poption_arg_r; /* Argument to -r option */
+VL struct mx_name *n_poption_arg_r; /* Argument to -r option */
 VL char const **n_smopts;        /* MTA options from command line */
 VL size_t n_smopts_cnt;          /* Entries in n_smopts */
 

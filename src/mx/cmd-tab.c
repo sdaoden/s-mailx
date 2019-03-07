@@ -49,6 +49,13 @@
 
 #include <su/cs.h>
 
+#include "mx/charsetalias.h"
+#include "mx/commandalias.h"
+#include "mx/filetype.h"
+#include "mx/shortcut.h"
+#include "mx/mlist.h"
+#include "mx/names.h"
+
 /* Create a multiline info string about all known additional infos for lcp */
 #ifdef mx_HAVE_DOCSTRINGS
 static char const *a_ctab_cmdinfo(struct n_cmd_desc const *cdp);
@@ -300,19 +307,18 @@ a_ctab_c_help(void *vp){
    /* Help for a single command? */
    if((arg = *(char const**)vp) != NULL){
       struct n_cmd_desc const *cdp, *cdp_max;
-      struct str const *alias_exp;
-      char const *alias_name, *aepx;
+      char const *alias_name, *alias_exp, *aepx;
 
       /* Aliases take precedence.
        * Avoid self-recursion; since a commandalias can shadow a command of
        * equal name allow one level of expansion to return an equal result:
        * "commandalias q q;commandalias x q;x" should be "x->q->q->quit" */
       alias_name = NULL;
-      while((aepx = n_commandalias_exists(arg, &alias_exp)) != NULL &&
+      while((aepx = mx_commandalias_exists(arg, &alias_exp)) != NULL &&
             (alias_name == NULL || su_cs_cmp(alias_name, aepx))){
          alias_name = aepx;
          fprintf(n_stdout, "%s -> ", arg);
-         arg = alias_exp->s;
+         arg = alias_exp;
       }
 
       cdp_max = &(cdp = a_ctab_ctable)[n_NELEM(a_ctab_ctable)];

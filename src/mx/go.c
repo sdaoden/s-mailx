@@ -50,6 +50,7 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 
+#include "mx/commandalias.h"
 #include "mx/ui-str.h"
 
 enum a_go_flags{
@@ -259,7 +260,6 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
     * TODO `eval' should be a prefix, etc., a Ctx should be passed along */
    struct str line;
    struct n_string s, *sp;
-   struct str const *alias_exp;
    char _wordbuf[2], *argv_stack[3], **argv_base, **argvp, *vput, *cp, *word;
    char const *alias_name;
    struct n_cmd_desc const *cdp;
@@ -291,7 +291,6 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    cdp = NULL;
    vput = NULL;
    alias_name = NULL;
-   n_UNINIT(alias_exp, NULL);
    line = gecp->gec_line; /* TODO const-ify original (buffer)! */
    assert(line.s[line.l] == '\0');
 
@@ -433,6 +432,7 @@ jempty:
    }
 
    if(!(flags & a_NOALIAS) && (flags & a_ALIAS_MASK) != a_ALIAS_MASK){
+      char const *alias_exp;
       ui8_t expcnt;
 
       expcnt = (flags & a_ALIAS_MASK);
@@ -446,7 +446,7 @@ jempty:
       if(alias_name != NULL && !su_cs_cmp(word, alias_name))
          flags |= a_NOALIAS;
 
-      if((alias_name = n_commandalias_exists(word, &alias_exp)) != NULL){
+      if((alias_name = mx_commandalias_exists(word, &alias_exp)) != NULL){
          size_t i;
 
          if(sp != NULL){
@@ -457,10 +457,10 @@ jempty:
 
          /* And join arguments onto alias expansion */
          alias_name = word;
-         i = alias_exp->l;
+         i = strlen(alias_exp);
          cp = line.s;
          line.s = n_autorec_alloc(i + 1 + line.l +1);
-         su_mem_copy(line.s, alias_exp->s, i);
+         su_mem_copy(line.s, alias_exp, i);
          if(line.l > 0){
             line.s[i++] = ' ';
             su_mem_copy(&line.s[i], cp, line.l);

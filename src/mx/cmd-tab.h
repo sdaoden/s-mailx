@@ -240,8 +240,8 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Goes to the next message (-list) and prints it")) },
 
 
-   { "alias", &c_alias, (M | TWYRA), 0, MAC, NULL
-     DS(N_("Show all (or <alias>), or (re)define <alias> to :<data>:")) },
+   { "alias", &c_alias, (M | TWYSH), 0, MAC, NULL
+     DS(N_("Show all (or <alias>), or append to <alias> :<data>:")) },
    { "print", &c_type, (A | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Type all messages of <msglist>, honouring `ignore' / `retain'")) },
    { "type", &c_type, (A | TMSGLST), 0, MMNDEL, NULL
@@ -310,7 +310,7 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Like `save', but derive filename from first sender")) },
    { "set", &c_set, (G | L | M | X | TWYRA), 0, MAC, NULL
      DS(N_("Print all variables, or set (a) <variable>(s)")) },
-   { "unalias", &c_unalias, (M | TWYRA), 1, MAC, NULL
+   { "unalias", &c_unalias, (M | TWYSH), 1, MAC, NULL
      DS(N_("Un`alias' <name-list> (* for all)")) },
    { "write", &c_write, (A | TARG), 0, 0,
      n_CMD_ARG_DESC_SUBCLASS_CAST(&a_ctab_cad_write)
@@ -419,9 +419,9 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Obsoleted by `unheaderpick'")) },
    { "newmail", &c_newmail, (A | T | TWYSH), 0, 0, NULL
      DS(N_("Check for new mail in current folder")) },
-   { "shortcut", &c_shortcut, (M | TWYRA), 0, MAC, NULL
-     DS(N_("Define <shortcut>s and their <expansion>, or list shortcuts")) },
-   { "unshortcut", &c_unshortcut, (M | TWYRA), 1, MAC, NULL
+   { "shortcut", &c_shortcut, (M | TWYSH), 0, MAC, NULL
+     DS(N_("Define [:<shortcut> plus <expansion>:], or list shortcuts")) },
+   { "unshortcut", &c_unshortcut, (M | TWYSH), 1, MAC, NULL
      DS(N_("Delete <shortcut-list> (* for all)")) },
    { "thread", &c_thread, (O | A | TMSGLST), 0, 0, NULL
      DS(N_("Obsoleted by `sort' \"thread\"")) },
@@ -565,13 +565,13 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Open a new mailbox readonly, or show the current mailbox")) },
    { "Folder", &c_File, (M | T | TWYRA), 0, 1, NULL
      DS(N_("Open a new mailbox readonly, or show the current mailbox")) },
-   { "mlist", &c_mlist, (M | TWYRA), 0, MAC, NULL
+   { "mlist", &c_mlist, (M | TWYSH), 0, MAC, NULL
      DS(N_("Show all known mailing lists or define some")) },
-   { "unmlist", &c_unmlist, (M | TWYRA), 1, MAC, NULL
+   { "unmlist", &c_unmlist, (M | TWYSH), 1, MAC, NULL
      DS(N_("Un`mlist' <name-list> (* for all)")) },
-   { "mlsubscribe", &c_mlsubscribe, (M | TWYRA), 0, MAC, NULL
+   { "mlsubscribe", &c_mlsubscribe, (M | TWYSH), 0, MAC, NULL
      DS(N_("Show all mailing list subscriptions or define some")) },
-   { "unmlsubscribe", &c_unmlsubscribe, (M | TWYRA), 1, MAC, NULL
+   { "unmlsubscribe", &c_unmlsubscribe, (M | TWYSH), 1, MAC, NULL
      DS(N_("Un`mlsubscribe' <name-list> (* for all)"))},
    { "Lreply", &c_Lreply, (A | I | R | SC | EM | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Mailing-list reply to the given <msglist>")) },

@@ -159,7 +159,8 @@
 
 /* POD TYPE SUPPORT (only if !C++) */
 
-#if defined su_HEADER || (defined su_SOURCE && su_C_LANG)
+#if defined su_HEADER ||\
+   ((defined su_SOURCE || defined mx_SOURCE) && su_C_LANG)
 # undef ul
 # undef ui
 # undef us
@@ -188,11 +189,13 @@
 # undef up
 # undef sp
 
-# undef FAL0
-# undef TRU1
-# undef TRUM1
+# ifndef mx_SOURCE /* TODO */
+#  undef FAL0
+#  undef TRU1
+#  undef TRUM1
+# endif
 # undef boole
-#endif /* defined su_HEADER || (defined su_SOURCE && su_C_LANG) */
+#endif /* su_HEADER || ((su_SOURCE || mx_SOURCE) && su_C_LANG) */
 
 #undef U8_MAX
 #undef S8_MIN

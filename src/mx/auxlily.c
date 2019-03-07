@@ -77,15 +77,20 @@
 # elif mx_HAVE_IDNA == n_IDNA_IMPL_IDNKIT
 #  include <idn/api.h>
 # endif
-
-# include "mx/iconv.h"
 #endif
 
 #include <su/cs.h>
+#include <su/cs-dict.h>
 #include <su/icodec.h>
 
 #ifdef a_AUX_RAND_USE_BUILTIN
 # include <su/prime.h>
+#endif
+
+#include "mx/filetype.h"
+
+#ifdef mx_HAVE_IDNA
+# include "mx/iconv.h"
 #endif
 
 #ifdef a_AUX_RAND_USE_BUILTIN
@@ -125,6 +130,9 @@ static void a_aux_rand_init(void);
 su_SINLINE ui8_t a_aux_rand_get8(void);
 static ui32_t a_aux_rand_weak(ui32_t seed);
 #endif
+
+/* */
+static int a_aux_qsort_cpp(void const *a, void const *b);
 
 #ifdef a_AUX_RAND_USE_BUILTIN
 static void
@@ -287,6 +295,16 @@ a_aux_rand_weak(ui32_t seed){
    return seed;
 }
 #endif /* a_AUX_RAND_USE_BUILTIN */
+
+static int
+a_aux_qsort_cpp(void const *a, void const *b){
+   int rv;
+   n_NYD2_IN;
+
+   rv = su_cs_cmp(*(char**)n_UNCONST(a), *(char**)n_UNCONST(b));
+   n_NYD2_OU;
+   return rv;
+}
 
 FL void
 n_locale_init(void){
@@ -472,7 +490,7 @@ jfile:
    rv = PROTO_FILE;
 
    if(check_stat || try_hooks){
-      struct n_file_type ft;
+      struct mx_filetype ft;
       struct stat stb;
       char *np;
       size_t sz;
@@ -497,7 +515,7 @@ jfile:
             rv = PROTO_UNKNOWN;
 #endif
          }
-      }else if(try_hooks && n_filetype_trial(&ft, name))
+      }else if(try_hooks && mx_filetype_trial(&ft, name))
          orig_name = savecatsep(name, '.', ft.ft_ext_dat);
       else if((cp = ok_vlook(newfolders)) != NULL &&
             !su_cs_cmp_case(cp, "maildir")){
@@ -1513,5 +1531,154 @@ n_regex_err_to_doc(const regex_t *rep, int e){
    return cp;
 }
 #endif
+
+FL su_boole
+mx_unxy_dict(char const *cmdname, struct su_cs_dict *dp, void *vp){
+   char const **argv, *key;
+   su_boole rv;
+   n_NYD_IN;
+
+   rv = TRU1;
+   key = (argv = vp)[0];
+
+   do{
+      if(key[1] == '\0' && key[0] == '*'){
+         if(dp != su_NIL)
+            su_cs_dict_clear(dp);
+      }else if(dp == su_NIL || !su_cs_dict_remove(dp, key)){
+         n_err(_("No such `%s': %s\n"), cmdname, n_shexp_quote_cp(key, FAL0));
+         rv = FAL0;
+      }
+   }while((key = *++argv) != su_NIL);
+
+   n_NYD_OU;
+   return rv;
+}
+
+FL su_boole
+mx_xy_dump_dict(char const *cmdname, struct su_cs_dict *dp,
+      struct n_strlist **result, struct n_strlist **tailpp_or_nil,
+      struct n_strlist *(*ptf)(char const *cmdname, char const *key,
+         void const *dat)){
+   struct su_cs_dict_view dv;
+   char const **cpp, **xcpp;
+   su_u32 cnt;
+   struct n_strlist *resp, *tailp;
+   su_boole rv;
+   n_NYD_IN;
+
+   rv = TRU1;
+
+   resp = *result;
+   if(tailpp_or_nil != su_NIL)
+      tailp = *tailpp_or_nil;
+   else if((tailp = resp) != su_NIL)
+      for(;; tailp = tailp->sl_next)
+         if(tailp->sl_next == su_NIL)
+            break;
+
+   if(dp == su_NIL || (cnt = su_cs_dict_count(dp)) == 0)
+      goto jleave;
+
+   su_cs_dict_statistics(dp);
+
+   /* TODO we need LOFI/AUTOREC TALLOC version which check overflow!!
+    * TODO these then could _really_ return NIL... */
+   if(su_U32_MAX / sizeof(*cpp) <= cnt ||
+         (cpp = su_S(char const**,n_autorec_alloc(sizeof(*cpp) * cnt))
+            ) == su_NIL)
+      goto jleave;
+
+   xcpp = cpp;
+   su_CS_DICT_FOREACH(dp, &dv)
+      *xcpp++ = su_cs_dict_view_key(&dv);
+   if(cnt > 1)
+      qsort(cpp, cnt, sizeof *cpp, &a_aux_qsort_cpp);
+
+   for(xcpp = cpp; cnt > 0; ++xcpp, --cnt){
+      struct n_strlist *slp;
+
+      if((slp = (*ptf)(cmdname, *xcpp, su_cs_dict_lookup(dp, *xcpp))
+            ) == su_NIL)
+         continue;
+      if(resp == su_NIL)
+         resp = slp;
+      else
+         tailp->sl_next = slp;
+      tailp = slp;
+   }
+
+jleave:
+   *result = resp;
+   if(tailpp_or_nil != su_NIL)
+      *tailpp_or_nil = tailp;
+
+   n_NYD_OU;
+   return rv;
+}
+
+FL struct n_strlist *
+mx_xy_dump_dict_gen_ptf(char const *cmdname, char const *key, void const *dat){
+   /* XXX real strlist + str_to_fmt() */
+   char *cp;
+   struct n_strlist *slp;
+   su_uz kl, dl, cl;
+   char const *kp, *dp;
+   n_NYD2_IN;
+
+   kp = n_shexp_quote_cp(key, TRU1);
+   dp = n_shexp_quote_cp(su_S(char const*,dat), TRU1);
+   kl = su_cs_len(kp);
+   dl = su_cs_len(dp);
+   cl = su_cs_len(cmdname);
+
+   slp = n_STRLIST_AUTO_ALLOC(cl + 1 + kl + 1 + dl +1);
+   slp->sl_next = su_NIL;
+   cp = slp->sl_dat;
+   su_mem_copy(cp, cmdname, cl);
+   cp += cl;
+   *cp++ = ' ';
+   su_mem_copy(cp, kp, kl);
+   cp += kl;
+   *cp++ = ' ';
+   su_mem_copy(cp, dp, dl);
+   cp += dl;
+   *cp = '\0';
+   slp->sl_len = su_P2UZ(cp - slp->sl_dat);
+
+   n_NYD2_OU;
+   return slp;
+}
+
+FL boole
+mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp){
+   su_uz lines;
+   FILE *fp;
+   su_boole rv;
+   n_NYD_IN;
+
+   rv = TRU1;
+
+   if((fp = Ftmp(NULL, cmdname, OF_RDWR | OF_UNLINK | OF_REGISTER)) == NIL)
+      fp = n_stdout;
+
+   /* Create visual result */
+   for(lines = 0; slp != su_NIL; ++lines, slp = slp->sl_next)
+      if(fputs(slp->sl_dat, fp) == EOF || putc('\n', fp) == EOF){
+         rv = FAL0;
+         break;
+      }
+
+   if(rv && lines == 0 && fprintf(fp, _("# no %s registered\n"), cmdname) < 0)
+      rv = FAL0;
+
+   if(fp != n_stdout){
+      page_or_print(fp, lines);
+      Fclose(fp);
+   }
+
+   n_NYD_OU;
+   return rv;
+}
 
 /* s-it-mode */

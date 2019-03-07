@@ -53,6 +53,8 @@ su_EMPTY_FILE()
 
 #include <su/cs.h>
 
+#include "mx/names.h"
+
 struct smtp_line {
    char     *dat;    /* Actual data */
    size_t   datlen;
@@ -156,7 +158,7 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp) /* TODO n_string etc. */
    char const *hostname;
    struct smtp_line _sl, *slp = &_sl;
    struct str b64;
-   struct name *n;
+   struct mx_name *np;
    size_t blen, cnt;
    bool_t inhdr = TRU1, inbcc = FAL0, rv = FAL0;
    n_NYD_IN;
@@ -278,13 +280,13 @@ jsend:
    _OUT(o);
    _ANSWER(2, FAL0, FAL0);
 
-   for(n = sbp->sb_to; n != NULL; n = n->n_flink){
-      if (!(n->n_type & GDEL)) { /* TODO should not happen!?! */
-         if(n->n_flags & NAME_ADDRSPEC_WITHOUT_DOMAIN)
+   for(np = sbp->sb_to; np != NULL; np = np->n_flink){
+      if (!(np->n_type & GDEL)) { /* TODO should not happen!?! */
+         if(np->n_flags & mx_NAME_ADDRSPEC_WITHOUT_DOMAIN)
             snprintf(o, sizeof o, NETLINE("RCPT TO:<%s@%s>"),
-               skinned_name(n), hostname);
+               np->n_name, hostname);
          else
-            snprintf(o, sizeof o, NETLINE("RCPT TO:<%s>"), skinned_name(n));
+            snprintf(o, sizeof o, NETLINE("RCPT TO:<%s>"), np->n_name);
          _OUT(o);
          _ANSWER(2, FAL0, FAL0);
       }

@@ -54,6 +54,7 @@
 #include <su/utf.h>
 
 #include "mx/iconv.h"
+#include "mx/shortcut.h"
 #include "mx/ui-str.h"
 
 /* POSIX says
@@ -898,7 +899,7 @@ fexpand(char const *name, enum fexp_mode fexpm) /* TODO in parts: -> URL::!! */
     * "&" can expand into "+".  "+" can expand into shell meta characters.
     * Shell meta characters expand into constants.
     * This way, we make no recursive expansion */
-   if((fexpm & FEXP_NSHORTCUT) || (res = shortcut_expand(name)) == NULL)
+   if((fexpm & FEXP_NSHORTCUT) || (res = mx_shortcut_expand(name)) == NULL)
       res = n_UNCONST(name);
 
 jprotonext:

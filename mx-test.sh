@@ -361,8 +361,12 @@ t_all() {
    t_binary_mainbody
    t_C_opt_customhdr
 
-   # Operational basics with easy tests
+   # Operational basics with trivial tests
    t_alias
+   t_charsetalias
+   t_shortcut
+
+   # Operational basics with easy tests
    t_expandaddr # (after t_alias)
    t_filetype
    t_record_a_resend
@@ -3684,7 +3688,7 @@ t_C_opt_customhdr() {
 }
 # }}}
 
-# Operational basics with easy tests {{{
+# Operational basics with trivial tests {{{
 t_alias() {
    t_prolog alias
    TRAP_EXIT_ADDONS="./.t*"
@@ -3714,7 +3718,51 @@ t_alias() {
 _EOT
 	__EOT
    check 1 0 "${MBOX}" '2496925843 272'
-   check 2 - .tall '3548953204 152'
+   check 2 - .tall '1598893942 133'
+
+   if have_feat uistrings; then
+      ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+		commandalias x echo '$?/$^ERRNAME'
+		echo 1
+		alias :abra!  ha@m beb@ra ha@m '' zeb@ra ha@m; x
+		alias :abra!; x
+		alias ha@m  ham-expansion  ha@m '';x
+		alias ha@m;x
+		alias beb@ra  ceb@ra beb@ra1;x
+		alias beb@ra;x
+		alias ceb@ra  ceb@ra1;x
+		alias ceb@ra;x
+		alias deb@ris   '';x
+		alias deb@ris;x
+		echo 2
+		alias - :abra!;x
+		alias - ha@m;x
+		alias - beb@ra;x
+		alias - ceb@ra;x
+		alias - deb@ris;x
+		echo 3
+		unalias ha@m;x
+		alias - :abra!;x
+		unalias beb@ra;x
+		alias - :abra!;x
+		echo 4
+		unalias*;x;alias;x
+		echo 5
+		\alias noexpa@and this@error1;x
+		\alias ha@m '\noexp@and' expa@and \\noexp@and2;x
+		\alias ha@m;x
+		\alias - ha@m;x
+		\alias noexpa@and2 this@error2;x
+		\alias expa1@and this@error3;x
+		\alias expa@and \\expa1@and;x
+		\alias expa@and;x
+		\alias - ha@m;x
+		\alias - expa@and;x
+		__EOT
+      check 3 0 "${MBOX}" '1072772360 789'
+   else
+      t_echoskip '3:[test unsupported]'
+   fi
 
    # TODO t_alias: n_ALIAS_MAXEXP is compile-time constant,
    # TODO need to somehow provide its contents to the test, then test
@@ -3722,6 +3770,85 @@ _EOT
    t_epilog
 }
 
+t_charsetalias() {
+   t_prolog charsetalias
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+	echo 1
+	charsetalias latin1 latin15
+	echo $?/$^ERRNAME
+	charsetalias latin1
+	echo $?/$^ERRNAME
+	charsetalias - latin1
+	echo $?/$^ERRNAME
+	echo 2
+	charsetalias cp1252 latin1  latin15 utf8  utf8 utf16
+	echo $?/$^ERRNAME
+	charsetalias cp1252
+	echo $?/$^ERRNAME
+	charsetalias latin15
+	echo $?/$^ERRNAME
+	charsetalias utf8
+	echo $?/$^ERRNAME
+	echo 3
+	charsetalias - cp1252
+	echo $?/$^ERRNAME
+	charsetalias - latin15
+	echo $?/$^ERRNAME
+	charsetalias - utf8
+	echo $?/$^ERRNAME
+	echo 4
+	charsetalias latin1
+	echo $?/$^ERRNAME
+	charsetalias - latin1
+	echo $?/$^ERRNAME
+	uncharsetalias latin15
+	echo $?/$^ERRNAME
+	charsetalias latin1
+	echo $?/$^ERRNAME
+	charsetalias - latin1
+	echo $?/$^ERRNAME
+	__EOT
+   check 1 0 "${MBOX}" '3551595280 433'
+
+   t_epilog
+}
+
+t_shortcut() {
+   t_prolog shortcut
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+	echo 1
+	shortcut file1 expansion-of-file1
+	echo $?/$^ERRNAME
+	shortcut file2 expansion-of-file2
+	echo $?/$^ERRNAME
+	shortcut file3 expansion-of-file3
+	echo $?/$^ERRNAME
+	shortcut   file4   'expansion of file4'  'file 5' 'expansion of file5'
+	echo $?/$^ERRNAME
+	echo 2
+	shortcut file1
+	echo $?/$^ERRNAME
+	shortcut file2
+	echo $?/$^ERRNAME
+	shortcut file3
+	echo $?/$^ERRNAME
+	shortcut file4
+	echo $?/$^ERRNAME
+	shortcut 'file 5'
+	echo $?/$^ERRNAME
+	echo 3
+	shortcut
+	echo $?/$^ERRNAME
+	__EOT
+   check 1 0 "${MBOX}" '1970515669 430'
+
+   t_epilog
+}
+# }}}
+
+# Operational basics with easy tests {{{
 t_expandaddr() {
    if have_feat uistrings; then :; else
       echo '[expandaddr]: unsupported, skip'

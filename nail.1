@@ -1639,91 +1639,71 @@ asynchronously and with some other magic attached:
 .\" .Ss "Mailing lists" {{{
 .Ss "Mailing lists"
 .
-There is support for handling mailing lists.
-The command
-.Ic mlist
-promotes all given arguments to known mailing lists, and
-.Ic mlsubscribe
-sets their subscription attribute, creating them first as necessary.
-(On the other hand
-.Ic unmlsubscribe
-does not
-.Ic unmlist
-automatically, but only resets the subscription attribute.)
-Using the commands without arguments will show (a subset of) all
-currently defined mailing lists.
-The
-.Va headline
-format
-.Ql %L
-can be used to mark out messages with configured list addresses
-in the display of
-.Ic headers .
+Known or subscribed-to mailing lists may be flagged in the summary of
+.Ic headers
+.Pf ( Va headline
+format character
+.Ql %L ) ,
+and will gain special treatment when sending mails: the variable
+.Va followup-to-honour
+will ensure that a
+.Ql Mail-\:Followup-\:To:
+header is honoured when a message is being replied to
+.Pf ( Ic reply
+and
+.Ic Lreply ) ,
+and
+.Va followup-to
+controls creation of this header when creating
+.Ic mail Ns
+s; it may be created automatically, e.g., when list-replying via
+.Ic Lreply ,
+when
+.Ic reply
+is used and the messages
+.Ql Mail-Followup-To:
+is honoured etc.
 .
 .Pp
-If the \*(OPal regular expression support is available a mailing list
-specification that contains any of the
-.Dq magical
-regular expression characters
-.Ql ^[]*+?|$
-(see
-.Xr re_format 7 )
-will be interpreted as one, which allows matching of many addresses with
-a single expression.
-However, all fully qualified list addresses are matched via a fast
-dictionary, whereas expressions are placed in (a) list(s) which is
-(are) matched sequentially.
+The commands
+.Ic mlist
+and
+.Ic mlsubscribe
+manage \*(UAs notion of which addresses are mailing lists.
+With the \*(OPal regular expression support any such address
+.Mx -ix "magic regular expression characters"
+which contains magic regular expression characters
+.Ql ( ^[]*+?|$ ;
+see
+.Xr re_format 7
+or
+.Xr regex 7 ,
+dependent on the host system)
+will be compiled and used as one, possibly matching many addresses.
 .
 .Bd -literal -offset indent
 ? set followup-to followup-to-honour=ask-yes \e
     reply-to-honour=ask-yes
-? wysh mlist a1@b1.c1 a2@b2.c2 '.*@lists\e.c3$'
+? mlist a1@b1.c1 a2@b2.c2 '.*@lists\e.c3$'
 ? mlsubscribe a4@b4.c4 exact@lists.c3
 .Ed
 .
 .Pp
-The variable
-.Va followup-to-honour
-will ensure that a
-.Ql Mail-\:Followup-\:To:
-header is honoured when the message is being replied to (via
-.Ic reply
-and
-.Ic Lreply )
-and
-.Va followup-to
-controls whether this header is created when sending mails; it will be
-created automatically for a couple of reasons, too, like when the
-special
-.Dq mailing list specific
-respond command
-.Ic Lreply
-is used, when
-.Ic reply
-is used to respond to a message with its
-.Ql Mail-Followup-To:
-being honoured etc.
-.
-.Pp
-A difference in between the handling of known and subscribed lists is
-that the address of the user is usually not part of a generated
-.Ql Mail-Followup-To:
-when addressing the latter, whereas it is for the former kind of lists.
-Usually because there are exceptions: say, if multiple lists are
-addressed and not all of them are subscribed lists.
-.Pp
-For convenience \*(UA will, temporarily, automatically add a list
-address that is presented in the
-.Ql List-Post:
-header of a message that is being responded to to the list of known
-mailing lists.
-Shall that header have existed \*(UA will instead, dependent on the
-variable
-.Va reply-to-honour ,
-use an also set
+Known and subscribed lists differ in that for the latter the
+.Va user Ns
+s address is not part of a generated
+.Ql Mail-Followup-To: .
+There are exceptions, for example if multiple lists are addressed and
+not all have the subscription attribute.
+When replying to a message its list address
+.Pf ( Ql List-Post:
+header) is automatically and temporarily treated like a known
+.Ic mlist ;
+dependent on the variable
+.Va reply-to-honour
+an existing
 .Ql Reply-To:
-for this purpose (if it provides a single address which resides on the
-same domain as what is stated in
+is used instead (if it is a single address on the same domain as
 .Ql List-Post: )
 in order to accept a list administrator's wish that is supposed to have
 been manifested like that.
@@ -2604,11 +2584,9 @@ All messages that contain the given case-insensitive search
 ession;  If the \*(OPal regular expression support is available
 .Ar expr
 will be interpreted as (an extended) one if any of the
-.Dq magical
-regular expression characters
-.Ql ^[]*+?|$
-is seen (see
-.Xr re_format 7 ) .
+.Mx -sx
+.Sx "magic regular expression characters"
+is seen.
 If the optional
 .Ar @ Ns Ar name-list
 part is missing the search is restricted to the subject field body,
@@ -2647,8 +2625,9 @@ respectively and case-insensitively.
 .Ar expr ,
 .Ar name-list
 will be interpreted as (an extended) regular expression if any of the
-.Dq magical
-regular expression characters is seen.
+.Mx -sx
+.Sx "magic regular expression characters"
+is seen.
 .
 .Pp
 The special names
@@ -4255,30 +4234,39 @@ diet@exam.ple
 .Mx
 .Mx
 .It Ic alias , unalias
-(a, una) Aliases are a method of creating personal distribution lists
-that map a single alias name to none to multiple real receivers;
-these aliases become expanded after message composing is completed.
-The latter command removes the given list of aliases, the special name
+\*(NQ (a, una) Define or list, and remove, respectively, address aliases.
+Address aliases are a method of creating personal distribution lists
+that map a single alias name to none to multiple receivers;
+aliases are expanded after message composing is completed.
+The latter command removes all given aliases, the special name asterisk
 .Ql *
-will discard all existing aliases.
+will remove all existing aliases.
+When used without arguments the former shows a list of all currently
+known aliases, with one argument only the target(s) of the given one.
+When given two arguments, hyphen-minus
+.Ql -
+being the first, the target(s) of the second is/are expanded recursively.
 .Pp
-The former command shows all currently defined aliases when used without
-arguments, and with one argument the expansion of the given alias.
-With more than one argument, creates or appends to the alias name given
-as the first argument the remaining arguments.
-Alias names adhere to the Postfix MTA
+In all other cases the given address alias is newly defined or will be
+appended to: target arguments must either be valid alias names, or any
+other address type.
+Recursive expansion of (what looks like) alias name(s) targets can be
+prevented by prefixing the target with the modifier reverse solidus
+.Cm \e .
+A valid alias name conforms to the Postfix MTA
 .Xr aliases 5
-rules and are thus restricted to alphabetic characters, digits, the
-underscore, hyphen-minus, the number sign, colon and commercial at,
-a dollar sign is allowed but in the first position;
-As extensions the exclamation mark
+rules, and may consist of alphabetic characters, digits, the underscore,
+the number sign, colon, commercial at and hyphen-minus; extensions:
+exclamation mark
 .Ql \&! ,
 period
 .Ql \&.
 as well as
-.Dq any haracter that has the high bit set
+.Dq any character that has the high bit set
 may be used:
-.Ql [[:alnum:]_#:@-][[:alnum:]_#:@$;.-]* .
+.Ql [[:alnum:]_#:@!.-]+ .
+The number sign may need be quoted to avoid misinterpretation as the
+shell comment character.
 .Pp
 .\" ALIASCOLON next sentence
 \*(ID Unfortunately the colon is currently not supported, as it
@@ -4586,23 +4574,28 @@ variables.
 .It Ic charsetalias , uncharsetalias
 \*(NQ Manage alias mappings for (conversion of)
 .Sx "Character sets" .
-Mappings are ineffective if character set conversion is not available
+Alias processing is not performed for
+.Sx "INTERNAL VARIABLES" ,
+e.g.,
+.Va charset-8bit ,
+and mappings are ineffective if character set conversion is not available
 .Pf ( Va features
 does not announce
 .Ql +iconv ) .
-Expansion happens recursively, but expansion is not performed for
-.Sx "INTERNAL VARIABLES" ,
-e.g.,
-.Va charset-8bit .
+Expansion happens recursively for cases where aliases point to other
+aliases (builtin loop limit: 8).
 .Pp
 The latter command deletes all aliases given as arguments,
-all aliases can be deleted at once with the special argument
+or all at once when given the asterisk
 .Ql * .
 The former shows the list of all currently defined aliases if used
-without arguments, the expansion of the given alias with one argument.
-Otherwise all given arguments are treated as pairs of character sets and
-their desired target alias name, creating new or changing already
-existing aliases, as necessary.
+without arguments, or the target of the given single argument;
+when given two arguments, hyphen-minus
+.Ql -
+being the first, the second is instead expanded recursively.
+In all other cases the given arguments are treated as pairs of character
+sets and their desired target alias name, creating new or updating
+already existing aliases.
 .
 .Mx
 .It Ic chdir
@@ -4732,9 +4725,9 @@ For header lines.
 A comma-separated list of headers to which the mapping applies may be
 given as a precondition; if the \*(OPal regular expression support is
 available then if any of the
-.Dq magical
-(extended) regular expression characters is seen the precondition will
-be evaluated as (an extended) one.
+.Mx -sx
+.Sx "magic regular expression characters"
+is seen the precondition will be evaluated as (an extended) one.
 .It Ar view-msginfo
 For the introductional message info line.
 .It Ar view-partinfo
@@ -4820,7 +4813,7 @@ An (command)alias can be used everywhere a normal command can be used,
 but always takes precedence: any arguments that are given to the command
 alias are joined onto the alias expansion, and the resulting string
 forms the command line that is, in effect, executed.
-The latter command removes all given aliases, the special name
+The latter command removes all given aliases, the special name asterisk
 .Ql *
 will remove all existing aliases.
 When used without arguments the former shows a list of all currently
@@ -5352,6 +5345,23 @@ compression tool and a combined compressed and encrypted format:
 .Ed
 .
 .Pp
+.Ic filetype Ns
+s also provide limited (case-sensitive) auto-completion capabilities.
+For example
+.Ql mbox.gz
+will be found for
+.Ql ? file mbox
+provided that a corresponding handler is installed.
+It will neither find
+.Ql mbox.GZ
+nor
+.Ql mbox.Gz
+however, on the other hand doing an explicit
+.Ql ? file mbox.GZ
+will find and use the handler for
+.Ql gz .
+.
+.Pp
 MBOX databases will always be protected via file-region locks
 .Pf ( Xr fcntl 2 )
 during file operations in order to avoid inconsistencies due to
@@ -5412,11 +5422,17 @@ controls the format of mailboxes yet to be created.
 .Mx
 .Mx
 .It Ic filetype , unfiletype
-\*(NQ Define or list, and remove, respectively, file handler hooks,
+\*(NQ Define, list, and remove, respectively, file handler hooks,
 which provide (shell) commands that enable \*(UA to load and save MBOX
-files from and to files with the registered file extensions;
-it will use an intermediate temporary file to store the plain data.
-The latter command removes the hooks for all given extensions,
+files from and to files with the registered file extensions, as shown
+and described for
+.Ic file .
+The extensions are used case-insensitively, yet the auto-completion
+feature of, e.g.,
+.Ic file
+will only work case-sensitively.
+An intermediate temporary file will be used to store the expanded data.
+The latter command will remove hooks for all given extensions, asterisk
 .Ql *
 will remove all existing handlers.
 .Pp
@@ -5424,7 +5440,7 @@ When used without arguments the former shows a list of all currently
 defined file hooks, with one argument the expansion of the given alias.
 Otherwise three arguments are expected, the first specifying the file
 extension for which the hook is meant, and the second and third defining
-the load- and save commands, respectively, to deal with the file type,
+the load- and save commands to deal with the file type, respectively,
 both of which must read from standard input and write to standard
 output.
 Changing hooks will not affect already opened mailboxes (\*(ID except below).
@@ -6130,34 +6146,6 @@ but which also reenables cache initialization via
 .Va mimetypes-load-control .
 .
 .Mx
-.Mx
-.It Ic mlist , unmlist
-The latter command removes all given mailing lists, the special name
-.Ql *
-can be used to remove all registered lists.
-The former will list all currently defined mailing lists (and their
-attributes, if any) when used without arguments; a more verbose listing
-will be produced if either of
-.Va debug
-or
-.Va verbose
-are set.
-Otherwise all given arguments will be added and henceforth be recognized
-as mailing lists.
-If the \*(OPal regular expression support is available then any argument
-which contains any of the
-.Dq magical
-regular expression characters
-.Ql ^[]*+?|$
-(see
-.Xr re_format 7 )
-will be interpreted as one, which allows matching of many addresses with
-a single expression.
-The
-.Ic mlsubscribe
-pair of commands manages subscription attributes of mailing lists.
-.
-.Mx
 .It Ic mimeview
 \*(ID Only available in interactive mode, this command allows one to
 display MIME parts which require external MIME handler programs to run
@@ -6171,23 +6159,30 @@ turn whether the registered handler shall be used to display the part.
 .
 .Mx
 .Mx
+.It Ic mlist , unmlist
+\*(NQ Manage the list of known
+.Sx "Mailing lists" ;
+subscriptions are controlled via
+.Ic mlsubscribe .
+The latter command deletes all given arguments,
+or all at once when given the asterisk
+.Ql * .
+The former shows the list of all currently known lists if used
+without arguments, otherwise the given arguments will become known.
+\*(OP In the latter case, arguments which contain any of the
+.Mx -sx
+.Sx "magic regular expression characters"
+will be interpreted as one, possibly matching many addresses;
+these will be sequentially matched via linked lists instead of being
+looked up in a dictionary.
+.
+.Mx
+.Mx
 .It Ic mlsubscribe , unmlsubscribe
-The latter command removes the subscription attribute from all given
-mailing lists, the special name
-.Ql *
-can be used to do so for any registered list.
-The former will list all currently defined mailing lists which have
-a subscription attribute when used without arguments; a more verbose
-listing will be produced if either of
-.Va debug
-or
-.Va verbose
-are set.
-Otherwise this attribute will be set for all given mailing lists,
-newly creating them as necessary (as via
-.Ic mlist ) .
-Also see
-.Va followup-to .
+Building upon the command pair
+.Ic mlist , unmlist ,
+but only managing the subscription attribute of mailing lists.
+(The former will also create not yet existing mailing lists.)
 .
 .Mx
 .It Ic Move
@@ -6815,14 +6810,15 @@ and returns its exit status.
 .Mx
 .Mx
 .It Ic shortcut , unshortcut
-Without arguments the list of all currently defined shortcuts is
-shown, with one argument the expansion of the given shortcut.
-Otherwise all given arguments are treated as pairs of shortcuts and
-their expansions, creating new or changing already existing shortcuts,
-as necessary.
-The latter command will remove all given shortcuts, the special name
-.Ql *
-will remove all registered shortcuts.
+\*(NQ Manage the file- or pathname shortcuts as documented for
+.Ic file .
+The latter command deletes all shortcuts given as arguments,
+or all at once when given the asterisk
+.Ql * .
+The former shows the list of all currently defined shortcuts if used
+without arguments, the target of the given with a single argument.
+Otherwise arguments are treated as pairs of shortcuts and their desired
+expansion, creating new or updating already existing ones.
 .
 .Mx
 .It Ic shift
@@ -7853,7 +7849,7 @@ referring to the current message of the active mailbox, the so-called
 then the given message is attached as a
 .Ql message/rfc822
 MIME message part.
-The number sign must be quoted to avoid misinterpretation with the shell
+The number sign must be quoted to avoid misinterpretation as a shell
 comment character.
 .
 .Mx
@@ -14710,7 +14706,8 @@ and is not used if the session is already encrypted by the IMAPS method.
 .Xr terminfo 5 ,
 .Xr locale 7 ,
 .Xr mailaddr 7 ,
-.Xr re_format 7 ,
+.Xr re_format 7
+.Pf (or\0 Xr regex 7 ) ,
 .Xr mailwrapper 8 ,
 .Xr sendmail 8
 .

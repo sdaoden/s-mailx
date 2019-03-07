@@ -43,19 +43,21 @@
 
 #include <su/cs.h>
 
-#include "mx/iconv.h"
+#include "mx/charsetalias.h"
+#include "mx/mlist.h"
+#include "mx/names.h"
 
 /* Modify subject we reply to to begin with Re: if it does not already */
 static char *a_crese_reedit(char const *subj);
 
 /* Fetch these headers, as appropriate */
-static struct name *a_crese_reply_to(struct message *mp);
-static struct name *a_crese_mail_followup_to(struct message *mp);
+static struct mx_name *a_crese_reply_to(struct message *mp);
+static struct mx_name *a_crese_mail_followup_to(struct message *mp);
 
 /* We honoured Reply-To: and/or Mail-Followup-To:, but *recipients-in-cc* is
  * set so try to keep "secondary" addressees in Cc:, if possible, */
 static void a_crese_polite_rt_mft_move(struct message *mp, struct header *hp,
-                     struct name *np);
+      struct mx_name *np);
 
 /* References and charset, as appropriate */
 static void a_crese_make_ref_and_cs(struct message *mp, struct header *head);
@@ -110,10 +112,10 @@ a_crese_reedit(char const *subj){
    return newsubj;
 }
 
-static struct name *
+static struct mx_name *
 a_crese_reply_to(struct message *mp){
    char const *cp, *cp2;
-   struct name *rt, *np;
+   struct mx_name *rt, *np;
    enum gfield gf;
    n_NYD2_IN;
 
@@ -149,10 +151,10 @@ a_crese_reply_to(struct message *mp){
    return rt;
 }
 
-static struct name *
+static struct mx_name *
 a_crese_mail_followup_to(struct message *mp){
    char const *cp, *cp2;
-   struct name *mft, *np;
+   struct mx_name *mft, *np;
    enum gfield gf;
    n_NYD2_IN;
 
@@ -191,7 +193,7 @@ a_crese_mail_followup_to(struct message *mp){
 
 static void
 a_crese_polite_rt_mft_move(struct message *mp, struct header *hp,
-      struct name *np){
+      struct mx_name *np){
    bool_t once;
    n_NYD2_IN;
    n_UNUSED(mp);
@@ -207,7 +209,7 @@ a_crese_polite_rt_mft_move(struct message *mp, struct header *hp,
 jredo:
    while(np != NULL){
       enum gfield gf;
-      struct name *nnp, **xpp, *xp;
+      struct mx_name *nnp, **xpp, *xp;
 
       nnp = np;
       np = np->n_flink;
@@ -274,7 +276,7 @@ a_crese_make_ref_and_cs(struct message *mp, struct header *head) /* TODO ASAP*/
    char *oldref, *oldmsgid, *newref;
    size_t oldreflen = 0, oldmsgidlen = 0, reflen;
    unsigned i;
-   struct name *n;
+   struct mx_name *n;
    n_NYD2_IN;
 
    oldref = hfield1("references", mp);
@@ -321,8 +323,7 @@ a_crese_make_ref_and_cs(struct message *mp, struct header *head) /* TODO ASAP*/
    if (ok_blook(reply_in_same_charset) &&
          (ccp = hfield1("content-type", mp)) != NULL){
       if((head->h_charset = ccp = mime_param_get("charset", ccp)) != NULL){
-         if((ccp = n_iconv_normalize_name(ccp)) != NULL)
-            ccp = n_charsetalias_expand(ccp);
+         ccp = mx_charsetalias_expand(ccp, FAL0);
          head->h_charset = ccp;
       }
    }
@@ -336,7 +337,7 @@ a_crese_list_reply(int *msgvec, enum header_flags hf){
    struct message *mp;
    char const *cp, *cp2;
    enum gfield gf;
-   struct name *rt, *mft, *np;
+   struct mx_name *rt, *mft, *np;
    n_NYD2_IN;
 
    n_pstate_err_no = su_ERR_NONE;
@@ -376,12 +377,12 @@ jwork_msg:
          a_crese_polite_rt_mft_move(mp, &head, np);
 
          head.h_mailx_raw_cc = n_namelist_dup(head.h_cc, GCC | gf);
-         head.h_cc = n_alternates_remove(head.h_cc, FAL0);
+         head.h_cc = mx_alternates_remove(head.h_cc, FAL0);
       }else
          head.h_to = np;
 
       head.h_mailx_raw_to = n_namelist_dup(head.h_to, GTO | gf);
-      head.h_to = n_alternates_remove(head.h_to, FAL0);
+      head.h_to = mx_alternates_remove(head.h_to, FAL0);
 #ifdef mx_HAVE_DEVEL
       for(np = head.h_to; np != NULL; np = np->n_flink)
          assert((np->n_type & GMASK) == GTO);
@@ -400,14 +401,14 @@ jwork_msg:
    if(ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL)
       np = lextract(cp, GCC | gf);
    if((cp = hfield1("cc", mp)) != NULL){
-      struct name *x;
+      struct mx_name *x;
 
       if((x = lextract(cp, GCC | gf)) != NULL)
          np = cat(np, x);
    }
    if(np != NULL){
       head.h_mailx_raw_cc = n_namelist_dup(np, GCC | gf);
-      head.h_cc = n_alternates_remove(np, FAL0);
+      head.h_cc = mx_alternates_remove(np, FAL0);
    }
 
    /* To: */
@@ -415,7 +416,7 @@ jwork_msg:
    if(cp2 != NULL)
       np = lextract(cp2, GTO | gf);
    if(!ok_blook(recipients_in_cc) && (cp = hfield1("to", mp)) != NULL){
-      struct name *x;
+      struct mx_name *x;
 
       if((x = lextract(cp, GTO | gf)) != NULL)
          np = cat(np, x);
@@ -423,7 +424,7 @@ jwork_msg:
    /* Delete my name from reply list, and with it, all my alternate names */
    if(np != NULL){
       head.h_mailx_raw_to = n_namelist_dup(np, GTO | gf);
-      np = n_alternates_remove(np, FAL0);
+      np = mx_alternates_remove(np, FAL0);
       /* The user may have send this to himself, don't ignore that */
       if(count(np) == 0){
          np = lextract(cp2, GTO | gf);
@@ -438,7 +439,7 @@ jrecipients_done:
     * given in the List-Post: header, so that we will not throw away a possible
     * corresponding receiver: temporarily "`mlist' the List-Post: address" */
    if((hf & HF_LIST_REPLY) && (cp = hfield1("list-post", mp)) != NULL){
-      struct name *x;
+      struct mx_name *x;
 
       if((x = lextract(cp, GEXTRA | GSKIN)) == NULL || x->n_flink != NULL ||
             (cp = url_mailto_to_address(x->n_name)) == NULL ||
@@ -464,15 +465,15 @@ jrecipients_done:
          else
             cp = x->n_name;
 
-         /* XXX is_mlist_mp()?? */
-         if(is_mlist(cp, FAL0) == MLIST_OTHER)
+         /* XXX mx_mlist_query_mp()?? */
+         if(mx_mlist_query(cp, FAL0) == mx_MLIST_OTHER)
             head.h_list_post = cp;
       }
    }
 
    /* In case of list replies we actively sort out any non-list recipient */
    if(hf & HF_LIST_REPLY){
-      struct name **nhpp, *nhp, *tail;
+      struct mx_name **nhpp, *nhp, *tail;
 
       cp = head.h_list_post;
 
@@ -483,9 +484,9 @@ j_lt_redo:
          np = nhp;
          nhp = nhp->n_flink;
 
-         /* XXX is_mlist_mp()?? */
+         /* XXX mx_mlist_query_mp()?? */
          if((cp != NULL && !su_cs_cmp_case(cp, np->n_name)) ||
-               is_mlist(np->n_name, FAL0) != MLIST_OTHER){
+               mx_mlist_query(np->n_name, FAL0) != mx_MLIST_OTHER){
             if((np->n_blink = tail) != NULL)
                tail->n_flink = np;
             else
@@ -582,7 +583,7 @@ a_crese_Reply(int *msgvec, bool_t recipient_record){
    gf = ok_blook(fullnames) ? GFULL | GSKIN : GSKIN;
 
    for(ap = msgvec; *ap != 0; ++ap){
-      struct name *np;
+      struct mx_name *np;
 
       mp = &message[*ap - 1];
       touch(mp);
@@ -607,10 +608,10 @@ a_crese_Reply(int *msgvec, bool_t recipient_record){
       a_crese_polite_rt_mft_move(mp, &head, head.h_to);
 
       head.h_mailx_raw_cc = n_namelist_dup(head.h_cc, GCC | gf);
-      head.h_cc = n_alternates_remove(head.h_cc, FAL0);
+      head.h_cc = mx_alternates_remove(head.h_cc, FAL0);
    }
    head.h_mailx_raw_to = n_namelist_dup(head.h_to, GTO | gf);
-   head.h_to = n_alternates_remove(head.h_to, FAL0);
+   head.h_to = mx_alternates_remove(head.h_to, FAL0);
 
    if(ok_blook(quote_as_attachment)){
       head.h_attach = n_autorec_calloc(1, sizeof *head.h_attach);
@@ -721,7 +722,7 @@ jleave:
 static int
 a_crese_resend1(void *vp, bool_t add_resent){
    struct header head;
-   struct name *myto, *myrawto;
+   struct mx_name *myto, *myrawto;
    enum gfield gf;
    int *msgvec, rv, *ip;
    struct n_cmd_arg *cap;
@@ -746,7 +747,7 @@ a_crese_resend1(void *vp, bool_t add_resent){
    myrawto = nalloc(cap->ca_arg.ca_str.s, GTO | gf);
    myto = usermap(n_namelist_dup(myrawto, myrawto->n_type), FAL0);
    if(!ok_blook(posix))
-      myto = n_alternates_remove(myto, TRU1);
+      myto = mx_alternates_remove(myto, TRU1);
    if(myto == NULL)
       goto jleave;
 

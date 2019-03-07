@@ -58,6 +58,7 @@
 #include <su/icodec.h>
 
 #include "mx/iconv.h"
+#include "mx/names.h"
 #include "mx/ui-str.h"
 
 #if !defined mx_HAVE_SETENV && !defined mx_HAVE_PUTENV
@@ -982,7 +983,7 @@ a_amv_var_check_vips(enum a_amv_var_vip_mode avvm, enum okeys okey,
          }break;
       case ok_v_from:
       case ok_v_sender:{
-         struct name *np;
+         struct mx_name *np;
 
          if((np = lextract(*val, GEXTRA | GFULL)) == NULL){
 jefrom:

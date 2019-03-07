@@ -43,6 +43,9 @@
 
 #include <su/cs.h>
 
+#include "mx/mlist.h"
+#include "mx/names.h"
+
 /* Token values returned by the scanner used for argument lists.
  * Also, sizes of scanner-related things */
 enum a_msg_token{
@@ -542,7 +545,7 @@ jnumber__thr:
             if((cp = hfield1("in-reply-to", dot)) != NULL)
                idfield = a_MSG_ID_IN_REPLY_TO;
             else if((cp = hfield1("references", dot)) != NULL){
-               struct name *enp;
+               struct mx_name *enp;
 
                if((enp = extract(cp, GREF)) != NULL){
                   while(enp->n_flink != NULL)
@@ -790,11 +793,11 @@ jnamesearch_sepfree:
                if(colp->mco_mask == 0){
                   if(colp->mco_bit & (a_MSG_S_MLIST |
                            a_MSG_S_MLSUBSCRIBE)){
-                     enum mlist_state what;
+                     enum mx_mlist_type what;
 
-                     what = (colp->mco_bit & a_MSG_S_MLIST) ? MLIST_KNOWN
-                           : MLIST_SUBSCRIBED;
-                     if(what == is_mlist_mp(mp, what))
+                     what = (colp->mco_bit & a_MSG_S_MLIST) ? mx_MLIST_KNOWN
+                           : mx_MLIST_SUBSCRIBED;
+                     if(what == mx_mlist_query_mp(mp, what))
                         goto jcolonmod_mark;
                   }
                }else if((mp->m_flag & colp->mco_mask
@@ -1015,7 +1018,7 @@ static bool_t
 a_msg_match_sender(struct message *mp, char const *str, bool_t allnet){
    char const *str_base, *np_base, *np;
    char sc, nc;
-   struct name *namep;
+   struct mx_name *namep;
    bool_t rv;
    n_NYD2_IN;
 
@@ -1049,7 +1052,7 @@ a_msg_match_sender(struct message *mp, char const *str, bool_t allnet){
    }else{
       /* TODO POSIX says ~"match any address as shown in header overview",
        * TODO but a normalized match would be more sane i guess.
-       * TODO struct name should gain a comparison method, normalize realname
+       * TODO mx_name should gain a comparison method, normalize realname
        * TODO content (in TODO) and thus match as likewise
        * TODO "Buddy (Today) <here>" and "(Now) Buddy <here>" */
       bool_t again_base, again;
@@ -1105,7 +1108,7 @@ a_msg_match_mid(struct message *mp, char const *id,
             rv = TRU1;
          break;
       case a_MSG_ID_IN_REPLY_TO:{
-         struct name *np;
+         struct mx_name *np;
 
          if((np = extract(id, GREF)) != NULL)
             do{

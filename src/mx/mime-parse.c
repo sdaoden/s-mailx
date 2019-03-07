@@ -43,7 +43,7 @@
 
 #include <su/cs.h>
 
-#include "mx/iconv.h"
+#include "mx/charsetalias.h"
 
 /* Fetch plain */
 static char *  _mime_parse_ct_plain_from_ct(char const *cth);
@@ -89,7 +89,7 @@ static bool_t
 _mime_parse_part(struct message *zmp, struct mimepart *ip,
    enum mime_parse_flags mpf, int level)
 {
-   char *cp;
+   char const *cp;
    bool_t rv = FAL0;
    n_NYD_IN;
 
@@ -102,15 +102,12 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
       ip->m_ct_type_plain = "text/plain";
    ip->m_ct_type_usr_ovwr = NULL;
 
-   if(ip->m_ct_type != NULL &&
-         (ip->m_charset = cp = mime_param_get("charset", ip->m_ct_type)
-            ) != NULL)
-      ip->m_charset = n_iconv_normalize_name(cp);
-
-   if (ip->m_charset == NULL)
+   if((cp = ip->m_ct_type) != NULL)
+      cp = mime_param_get("charset", cp);
+   if(cp == NULL)
       ip->m_charset = ok_vlook(charset_7bit);
    else
-      ip->m_charset = n_charsetalias_expand(ip->m_charset);
+      ip->m_charset = mx_charsetalias_expand(cp, FAL0);
 
    if ((ip->m_ct_enc = hfield1("content-transfer-encoding",
          (struct message*)ip)) == NULL)

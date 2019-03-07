@@ -34,6 +34,8 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 
+#include "mx/names.h"
+
 /* Try to convert cp into an unsigned number that corresponds to an existing
  * message number (or ERR_INVAL), search for an existing object (ERR_EXIST if
  * oexcl and exists; ERR_NOENT if not oexcl and does not exist).
@@ -163,7 +165,7 @@ static bool_t
 a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmda[3]){
    uiz_t i;
    struct n_header_field *hfp;
-   struct name *np, **npp;
+   struct mx_name *np, **npp;
    char const *cp;
    struct header *hp;
    n_NYD2_IN;
@@ -180,7 +182,7 @@ a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmda[3]){
        * TODO I.e., as long as we don't have regular RFC compliant parsers
        * TODO which differentiate in between structured and unstructured
        * TODO header fields etc., a little workaround */
-      struct name *xnp;
+      struct mx_name *xnp;
       si8_t aerr;
       enum expand_addr_check_mode eacm;
       enum gfield ntype;
@@ -405,7 +407,7 @@ jdefault:
          goto jecmd;
 
       if(!su_cs_cmp_case(cmda[1], cp = "Subject")){
-         np = (hp->h_subject != NULL) ? (struct name*)-1 : NULL;
+         np = (hp->h_subject != NULL) ? (struct mx_name*)-1 : NULL;
          goto jlist;
       }
       if(!su_cs_cmp_case(cmda[1], cp = "From")){
@@ -456,7 +458,7 @@ jlist:
       }
 
       if(!su_cs_cmp_case(cmda[1], cp = "Mailx-Command")){
-         np = (hp->h_mailx_command != NULL) ? (struct name*)-1 : NULL;
+         np = (hp->h_mailx_command != NULL) ? (struct mx_name*)-1 : NULL;
          goto jlist;
       }
       if(!su_cs_cmp_case(cmda[1], cp = "Mailx-Raw-To")){
@@ -736,10 +738,10 @@ jshow:
          if(np != NULL){
             fprintf(fp, "211 %s\n", cp);
             do if(!(np->n_type & GDEL)){
-               switch(np->n_flags & NAME_ADDRSPEC_ISMASK){
-               case NAME_ADDRSPEC_ISFILE: cp = n_hy; break;
-               case NAME_ADDRSPEC_ISPIPE: cp = "|"; break;
-               case NAME_ADDRSPEC_ISNAME: cp = n_ns; break;
+               switch(np->n_flags & mx_NAME_ADDRSPEC_ISMASK){
+               case mx_NAME_ADDRSPEC_ISFILE: cp = n_hy; break;
+               case mx_NAME_ADDRSPEC_ISPIPE: cp = "|"; break;
+               case mx_NAME_ADDRSPEC_ISNAME: cp = n_ns; break;
                default: cp = np->n_name; break;
                }
                fprintf(fp, "%s %s\n", cp, np->n_fullname);
@@ -986,7 +988,7 @@ jatt_attset:
                ap->a_content_id = NULL;
 
                if(c != '\0'){
-                  struct name *np;
+                  struct mx_name *np;
 
                   np = checkaddrs(lextract(cp, GREF),
                         /*EACM_STRICT | TODO '/' valid!! */ EACM_NOLOG |

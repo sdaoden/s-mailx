@@ -43,8 +43,10 @@
 
 #include <su/cs.h>
 
-#define READ               0
-#define WRITE              1
+#include "mx/filetype.h"
+
+#define READ 0
+#define WRITE 1
 
 struct fp {
    struct fp   *link;
@@ -601,12 +603,12 @@ n_fopen_any(char const *file, char const *oflags, /* TODO should take flags */
       goto jleave;
 #endif
    case n_PROTO_FILE:{
-      struct n_file_type ft;
+      struct mx_filetype ft;
 
       if(!(osflags & O_EXCL) && fs_or_null != NULL && !access(file, F_OK))
          fs |= n_FOPEN_STATE_EXISTS;
 
-      if(n_filetype_exists(&ft, file)){
+      if(mx_filetype_exists(&ft, file)){
          flags |= FP_HOOK;
          cload = ft.ft_load_dat;
          csave = ft.ft_save_dat;

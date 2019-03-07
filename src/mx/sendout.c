@@ -44,6 +44,8 @@
 #include <su/cs.h>
 
 #include "mx/iconv.h"
+#include "mx/mlist.h"
+#include "mx/names.h"
 
 #undef SEND_LINESIZE
 #define SEND_LINESIZE \
@@ -64,12 +66,12 @@ static char *  _sendout_boundary;
 static si8_t   _sendout_error;
 
 /* *fullnames* appears after command line arguments have been parsed */
-static struct name *a_sendout_fullnames_cleanup(struct name *np);
+static struct mx_name *a_sendout_fullnames_cleanup(struct mx_name *np);
 
 /* */
 static bool_t a_sendout_put_name(char const *line, enum gfield w,
                enum sendaction action, char const *prefix,
-               FILE *fo, struct name **xp, enum gfield addflags);
+               FILE *fo, struct mx_name **xp, enum gfield addflags);
 
 /* Place Content-Type:, Content-Transfer-Encoding:, Content-Disposition:
  * headers, respectively */
@@ -108,18 +110,18 @@ static si32_t make_multipart(struct header *hp, int convert, FILE *fi,
 static FILE *        infix(struct header *hp, FILE *fi, bool_t force);
 
 /* Check whether Disposition-Notification-To: is desired */
-static bool_t        _check_dispo_notif(struct name *mdn, struct header *hp,
+static bool_t        _check_dispo_notif(struct mx_name *mdn, struct header *hp,
                         FILE *fo);
 
 /* Send mail to a bunch of user names.  The interface is through mail() */
 static int a_sendout_sendmail(void *v, enum n_mailsend_flags msf);
 
 /* Deal with file and pipe addressees */
-static struct name *a_sendout_file_a_pipe(struct name *names, FILE *fo,
+static struct mx_name *a_sendout_file_a_pipe(struct mx_name *names, FILE *fo,
                      bool_t *senderror);
 
 /* Record outgoing mail if instructed to do so; in *record* unless to is set */
-static bool_t        mightrecord(FILE *fp, struct name *to, bool_t resend);
+static bool_t        mightrecord(FILE *fp, struct mx_name *to, bool_t resend);
 
 static bool_t a_sendout__savemail(char const *name, FILE *fp, bool_t resend);
 
@@ -127,7 +129,7 @@ static bool_t a_sendout__savemail(char const *name, FILE *fp, bool_t resend);
 static bool_t        _transfer(struct sendbundle *sbp);
 
 static bool_t        __mta_start(struct sendbundle *sbp);
-static char const ** __mta_prepare_args(struct name *to, struct header *hp);
+static char const ** __mta_prepare_args(struct mx_name *to, struct header *hp);
 static void          __mta_debug(struct sendbundle *sbp, char const *mta,
                         char const **args);
 
@@ -135,16 +137,16 @@ static void          __mta_debug(struct sendbundle *sbp, char const *mta,
 static char const *a_sendout_random_id(struct header *hp, bool_t msgid);
 
 /* Format the given header line to not exceed 72 characters */
-static bool_t a_sendout_put_addrline(char const *hname, struct name *np,
+static bool_t a_sendout_put_addrline(char const *hname, struct mx_name *np,
                FILE *fo, enum a_sendout_addrline_flags saf);
 
 /* Rewrite a message for resending, adding the Resent-Headers */
 static int           infix_resend(FILE *fi, FILE *fo, struct message *mp,
-                        struct name *to, int add_resent);
+                        struct mx_name *to, int add_resent);
 
-static struct name *
-a_sendout_fullnames_cleanup(struct name *np){
-   struct name *xp;
+static struct mx_name *
+a_sendout_fullnames_cleanup(struct mx_name *np){
+   struct mx_name *xp;
    n_NYD2_IN;
 
    for(xp = np; xp != NULL; xp = xp->n_flink){
@@ -158,9 +160,9 @@ a_sendout_fullnames_cleanup(struct name *np){
 
 static bool_t
 a_sendout_put_name(char const *line, enum gfield w, enum sendaction action,
-   char const *prefix, FILE *fo, struct name **xp, enum gfield addflags){
+   char const *prefix, FILE *fo, struct mx_name **xp, enum gfield addflags){
    bool_t rv;
-   struct name *np;
+   struct mx_name *np;
    n_NYD_IN;
 
    np = lextract(line, GEXTRA | GFULL | addflags);
@@ -461,7 +463,7 @@ a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo,
          goto jerr_header;
 
       if((cp = ok_vlook(stealthmua)) == NULL || !su_cs_cmp(cp, "noagent")){
-         struct name *np;
+         struct mx_name *np;
 
          /* TODO RFC 2046 specifies that the same Content-ID should be used
           * TODO for identical data; this is too hard for use right now,
@@ -609,7 +611,7 @@ a_sendout_attach_msg(struct header *hp, struct attachment *ap, FILE *fo)
       goto jerr;
 
    if((ccp = ok_vlook(stealthmua)) == NULL || !su_cs_cmp(ccp, "noagent")){
-      struct name *np;
+      struct mx_name *np;
 
       /* TODO RFC 2046 specifies that the same Content-ID should be used
        * TODO for identical data; this is too hard for use right now,
@@ -814,7 +816,7 @@ jleave:
 }
 
 static bool_t
-_check_dispo_notif(struct name *mdn, struct header *hp, FILE *fo)
+_check_dispo_notif(struct mx_name *mdn, struct header *hp, FILE *fo)
 {
    char const *from;
    bool_t rv = TRU1;
@@ -825,7 +827,7 @@ _check_dispo_notif(struct name *mdn, struct header *hp, FILE *fo)
    if (!ok_blook(disposition_notification_send))
       goto jleave;
 
-   if (mdn != NULL && mdn != (struct name*)0x1)
+   if (mdn != NULL && mdn != (struct mx_name*)0x1)
       from = mdn->n_name;
    else if ((from = myorigin(hp)) == NULL) {
       if (n_poption & n_PO_D_V)
@@ -859,12 +861,12 @@ a_sendout_sendmail(void *v, enum n_mailsend_flags msf)
    return (rv != OKAY); /* reverse! */
 }
 
-static struct name *
-a_sendout_file_a_pipe(struct name *names, FILE *fo, bool_t *senderror){
+static struct mx_name *
+a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, bool_t *senderror){
    bool_t mfap;
    ui32_t pipecnt, xcnt, i;
    char const *sh;
-   struct name *np;
+   struct mx_name *np;
    FILE *fp, **fppa;
    n_NYD_IN;
 
@@ -876,9 +878,9 @@ a_sendout_file_a_pipe(struct name *names, FILE *fo, bool_t *senderror){
    for(pipecnt = xcnt = 0, np = names; np != NULL; np = np->n_flink){
       if(np->n_type & GDEL)
          continue;
-      switch(np->n_flags & NAME_ADDRSPEC_ISFILEORPIPE){
-      case NAME_ADDRSPEC_ISFILE: ++xcnt; break;
-      case NAME_ADDRSPEC_ISPIPE: ++pipecnt; break;
+      switch(np->n_flags & mx_NAME_ADDRSPEC_ISFILEORPIPE){
+      case mx_NAME_ADDRSPEC_ISFILE: ++xcnt; break;
+      case mx_NAME_ADDRSPEC_ISPIPE: ++pipecnt; break;
       }
    }
    if((pipecnt | xcnt) == 0)
@@ -903,7 +905,7 @@ a_sendout_file_a_pipe(struct name *names, FILE *fo, bool_t *senderror){
    mfap = ok_blook(mbox_fcc_and_pcc);
 
    for(np = names; np != NULL; np = np->n_flink){
-      if(!(np->n_flags & NAME_ADDRSPEC_ISFILEORPIPE) || (np->n_type & GDEL))
+      if(!(np->n_flags & mx_NAME_ADDRSPEC_ISFILEORPIPE) || (np->n_type & GDEL))
          continue;
 
       /* In days of old we removed the entry from the the list; now for sake of
@@ -914,8 +916,9 @@ a_sendout_file_a_pipe(struct name *names, FILE *fo, bool_t *senderror){
          n_err(_(">>> Writing message via %s\n"),
             n_shexp_quote_cp(np->n_name, FAL0));
       /* We _do_ write to STDOUT, anyway! */
-      if((n_poption & n_PO_DEBUG) && ((np->n_flags & NAME_ADDRSPEC_ISPIPE) ||
-            np->n_name[0] != '-' || np->n_name[1] != '\0'))
+      if((n_poption & n_PO_DEBUG) &&
+            ((np->n_flags & mx_NAME_ADDRSPEC_ISPIPE) ||
+               np->n_name[0] != '-' || np->n_name[1] != '\0'))
          continue;
 
       /* See if we have copied the complete message out yet.  If not, do so */
@@ -965,7 +968,7 @@ a_sendout_file_a_pipe(struct name *names, FILE *fo, bool_t *senderror){
 
       /* Now either copy "image" to the desired file or give it as the standard
        * input to the desired program as appropriate */
-      if(np->n_flags & NAME_ADDRSPEC_ISPIPE){
+      if(np->n_flags & mx_NAME_ADDRSPEC_ISPIPE){
          int pid;
          sigset_t nset;
 
@@ -1043,7 +1046,7 @@ jleave:
 jerror:
    *senderror = TRU1;
    while(np != NULL){
-      if(np->n_flags & NAME_ADDRSPEC_ISFILEORPIPE)
+      if(np->n_flags & mx_NAME_ADDRSPEC_ISFILEORPIPE)
          np->n_type |= GDEL;
       np = np->n_flink;
    }
@@ -1051,7 +1054,7 @@ jerror:
 }
 
 static bool_t
-mightrecord(FILE *fp, struct name *to, bool_t resend){
+mightrecord(FILE *fp, struct mx_name *to, bool_t resend){
    char *cp;
    char const *ccp;
    bool_t rv;
@@ -1062,7 +1065,7 @@ mightrecord(FILE *fp, struct name *to, bool_t resend){
    if(n_poption & n_PO_DEBUG)
       ccp = NULL;
    else if(to != NULL){
-      ccp = cp = savestr(skinned_name(to));
+      ccp = cp = savestr(to->n_name);
       while(*cp != '\0' && *cp != '@')
          ++cp;
       *cp = '\0';
@@ -1197,7 +1200,7 @@ j_leave:
 static bool_t
 _transfer(struct sendbundle *sbp)
 {
-   struct name *np;
+   struct mx_name *np;
    ui32_t cnt;
    bool_t rv = TRU1;
    n_NYD_IN;
@@ -1215,7 +1218,7 @@ _transfer(struct sendbundle *sbp)
 
          if ((ef = smime_encrypt(sbp->sb_input, cp, np->n_name)) != NULL) {
             FILE *fisave = sbp->sb_input;
-            struct name *nsave = sbp->sb_to;
+            struct mx_name *nsave = sbp->sb_to;
 
             sbp->sb_to = ndup(np, np->n_type & ~(GFULL | GSKIN));
             sbp->sb_input = ef;
@@ -1318,10 +1321,11 @@ __mta_start(struct sendbundle *sbp)
       goto jstop;
 #else
       /* C99 */{
-         struct name *np;
+         struct mx_name *np;
 
          for(np = sbp->sb_to; np != NULL; np = np->n_flink)
-            if(!(np->n_type & GDEL) && (np->n_flags & NAME_ADDRSPEC_ISNAME)){
+            if(!(np->n_type & GDEL) &&
+                  (np->n_flags & mx_NAME_ADDRSPEC_ISNAME)){
                n_err(_("SMTP *mta* cannot send to alias name: %s\n"),
                   n_shexp_quote_cp(np->n_name, FAL0));
                rv = FAL0;
@@ -1392,7 +1396,7 @@ jleave:
 }
 
 static char const **
-__mta_prepare_args(struct name *to, struct header *hp)
+__mta_prepare_args(struct mx_name *to, struct header *hp)
 {
    size_t vas_cnt, i, j;
    char **vas;
@@ -1450,7 +1454,7 @@ __mta_prepare_args(struct name *to, struct header *hp)
     * ignore it (it is -f / -F there) if the message specified From:/Sender:.
     * The interdependency with -t has been resolved in n_puthead() */
    if (!snda && ((n_poption & n_PO_r_FLAG) || ok_blook(r_option_implicit))) {
-      struct name const *np;
+      struct mx_name const *np;
 
       if (hp != NULL && (np = hp->h_from) != NULL) {
          /* However, what wasn't resolved there was the case that the message
@@ -1568,7 +1572,7 @@ jleave:
 }
 
 static bool_t
-a_sendout_put_addrline(char const *hname, struct name *np, FILE *fo,
+a_sendout_put_addrline(char const *hname, struct mx_name *np, FILE *fo,
    enum a_sendout_addrline_flags saf)
 {
    ssize_t hnlen, col, len;
@@ -1674,13 +1678,13 @@ jleave:
 }
 
 static int
-infix_resend(FILE *fi, FILE *fo, struct message *mp, struct name *to,
+infix_resend(FILE *fi, FILE *fo, struct message *mp, struct mx_name *to,
    int add_resent)
 {
    size_t cnt, c, bufsize = 0;
    char *buf = NULL;
    char const *cp;
-   struct name *fromfield = NULL, *senderfield = NULL, *mdn;
+   struct mx_name *fromfield = NULL, *senderfield = NULL, *mdn;
    int rv = 1;
    n_NYD_IN;
 
@@ -1747,8 +1751,8 @@ jleave:
 }
 
 FL int
-n_mail(enum n_mailsend_flags msf, struct name *to, struct name *cc,
-   struct name *bcc, char const *subject, struct attachment *attach,
+n_mail(enum n_mailsend_flags msf, struct mx_name *to, struct mx_name *cc,
+   struct mx_name *bcc, char const *subject, struct attachment *attach,
    char const *quotefile)
 {
    struct header head;
@@ -1823,7 +1827,7 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
 {
    struct n_sigman sm;
    struct sendbundle sb;
-   struct name *to;
+   struct mx_name *to;
    bool_t dosign;
    FILE * volatile mtf, *nmtf;
    enum okay volatile rv;
@@ -2092,7 +2096,7 @@ do {\
 
    char const *addr;
    size_t gotcha;
-   struct name *np, *fromasender = NULL;
+   struct mx_name *np, *fromasender = NULL;
    int stealthmua;
    bool_t nodisp;
    enum a_sendout_addrline_flags saf;
@@ -2145,7 +2149,7 @@ do {\
    /* TODO Thought about undisclosed recipients:;, but would be such a fake
     * TODO given that we cannot handle group addresses.  Ridiculous */
    if (w & GTO) {
-      struct name *xto;
+      struct mx_name *xto;
 
       if ((xto = hp->h_to) != NULL) {
          char const ud[] = "To: Undisclosed recipients:;\n" /* TODO groups */;
@@ -2266,7 +2270,7 @@ jto_fmt:
             a_ANYLIST = 1u<<(HF__NEXT_SHIFT + 2),
             a_OTHER = 1u<<(HF__NEXT_SHIFT + 3)
          };
-         struct name *mft, **mftp, *x;
+         struct mx_name *mft, **mftp, *x;
          ui32_t f;
 
          f = hp->h_flags | (hp->h_mft != NULL ? a_HADMFT : 0);
@@ -2274,7 +2278,7 @@ jto_fmt:
             /* Detect whether we were part of the former MFT:.
              * Throw away MFT: if we were the sole member (kidding) */
             hp->h_mft = mft = elide(hp->h_mft);
-            mft = n_alternates_remove(n_namelist_dup(mft, GNONE), FAL0);
+            mft = mx_alternates_remove(n_namelist_dup(mft, GNONE), FAL0);
             if(mft == NULL)
                f ^= a_HADMFT;
             else for(x = hp->h_mft; x != NULL;
@@ -2292,7 +2296,7 @@ jto_fmt:
           * TODO that is _currently_ in some header fields!!!  v15.0: complete
           * TODO rewrite, object based, lazy evaluated, on-the-fly marked.
           * TODO then this should be a really cheap thing in here... */
-         np = elide(n_alternates_remove(cat(
+         np = elide(mx_alternates_remove(cat(
                n_namelist_dup(hp->h_to, GEXTRA | GFULL),
                n_namelist_dup(hp->h_cc, GEXTRA | GFULL)), FAL0));
          addr = hp->h_list_post;
@@ -2305,20 +2309,20 @@ jto_fmt:
             np = np->n_flink;
 
             /* Automatically make MLIST_KNOWN List-Post: address */
-            /* XXX is_mlist_mp()?? */
-            if((ml = is_mlist(x->n_name, FAL0)) == MLIST_OTHER &&
+            /* XXX mx_mlist_query_mp()?? */
+            if((ml = mx_mlist_query(x->n_name, FAL0)) == mx_MLIST_OTHER &&
                   addr != NULL && !su_cs_cmp_case(addr, x->n_name))
-               ml = MLIST_KNOWN;
+               ml = mx_MLIST_KNOWN;
 
             /* Any non-subscribed list?  Add ourselves */
             switch(ml){
-            case MLIST_KNOWN:
+            case mx_MLIST_KNOWN:
                f |= HF_MFT_SENDER;
                /* FALLTHRU */
-            case MLIST_SUBSCRIBED:
+            case mx_MLIST_SUBSCRIBED:
                f |= a_ANYLIST;
                goto j_mft_add;
-            case MLIST_OTHER:
+            case mx_MLIST_OTHER:
                f |= a_OTHER;
                if(!(f & HF_LIST_REPLY)){
 j_mft_add:
@@ -2337,7 +2341,7 @@ j_mft_add:
                /* TODO If the user edited this list, then we should include
                 * TODO whatever she did therewith, even if _LIST_REPLY! */
                else if(f & a_HADMFT){
-                  struct name *ox;
+                  struct mx_name *ox;
 
                   for(ox = hp->h_mft; ox != NULL; ox = ox->n_flink)
                      if(!su_cs_cmp_case(ox->n_name, x->n_name))
@@ -2350,7 +2354,7 @@ j_mft_add:
          if((f & (a_ANYLIST | a_HADMFT)) && mft != NULL){
             if(((f & HF_MFT_SENDER) ||
                      ((f & (a_ANYLIST | a_HADMFT)) == a_HADMFT)) &&
-                  (np = fromasender) != NULL && np != (struct name*)0x1)
+                  (np = fromasender) != NULL && np != (struct mx_name*)0x1)
                *mftp = ndup(np, (np->n_type & ~GMASK) | GEXTRA | GFULL);
 
             if(!a_sendout_put_addrline("Mail-Followup-To:", mft, fo, saf))
@@ -2436,7 +2440,7 @@ resend_msg(struct message *mp, struct header *hp, bool_t add_resent)
    struct sendbundle sb;
    FILE * volatile ibuf, *nfo, * volatile nfi;
    char *tempMail;
-   struct name *to;
+   struct mx_name *to;
    enum okay volatile rv;
    n_NYD_IN;
 
