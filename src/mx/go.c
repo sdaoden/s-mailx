@@ -271,23 +271,24 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    enum{
       a_NONE = 0,
       a_ALIAS_MASK = su_BITENUM_MASK(0, 2), /* Alias recursion counter bits */
-      a_NOPREFIX = 1u<<4,  /* Modifier prefix not allowed right now */
-      a_NOALIAS = 1u<<5,   /* "No alias!" expansion modifier */
-      a_IGNERR = 1u<<6,    /* ignerr modifier prefix */
-      a_LOCAL = 1u<<7,     /* local modifier prefix */
-      a_SCOPE = 1u<<8,     /* TODO scope modifier prefix */
-      a_U = 1u<<9,         /* TODO UTF-8 modifier prefix */
-      a_VPUT = 1u<<10,     /* vput modifier prefix */
-      a_WYSH = 1u<<11,      /* XXX v15+ drop wysh modifier prefix */
+      a_NOPREFIX = 1u<<4, /* Modifier prefix not allowed right now */
+      a_NOALIAS = 1u<<5, /* "No alias!" expansion modifier */
+      a_IGNERR = 1u<<6, /* ignerr modifier prefix */
+      a_LOCAL = 1u<<7, /* local modifier prefix */
+      a_SCOPE = 1u<<8, /* TODO scope modifier prefix */
+      a_U = 1u<<9, /* TODO UTF-8 modifier prefix */
+      a_VPUT = 1u<<10, /* vput modifier prefix */
+      a_WYSH = 1u<<11, /* XXX v15+ drop wysh modifier prefix */
       a_MODE_MASK = su_BITENUM_MASK(5, 11),
-      a_NO_ERRNO = 1u<<16  /* Don't set n_pstate_err_no */
+      a_NO_ERRNO = 1u<<16, /* Don't set n_pstate_err_no */
+      a_IS_SKIP = 1u<<17 /* Conditional active, is skipping */
    } flags;
    NYD_IN;
 
    if(!(n_psonce & n_PSO_EXIT_MASK) && !(n_pstate & n_PS_ERR_EXIT_MASK))
       n_exit_status = n_EXIT_OK;
 
-   flags = a_NONE;
+   flags = n_cnd_if_is_skip() ? a_IS_SKIP : a_NONE;
    rv = 1;
    nerrn = su_ERR_NONE;
    nexn = n_EXIT_OK;
@@ -419,12 +420,11 @@ jrestart:
       gecp->gec_hist_flags = a_GO_HIST_ADD | a_GO_HIST_INIT;
    }
 
-   /* Look up the command; if not found, bitch.
-    * Normally, a blank command would map to the first command in the
-    * table; while n_PS_SOURCING, however, we ignore blank lines to eliminate
-    * confusion; act just the same for aliases */
+   /* Look up the command; if not found, bitch.  An empty cmd maps to the first
+    * command table entry.. */
    if(*word == '\0'){
 jempty:
+      /* ..not in a macro or when sourcing, when expanded an alias etc. */
       if((n_pstate & n_PS_ROBOT) || !(n_psonce & n_PSO_INTERACTIVE) ||
             alias_name != NULL){
          gecp->gec_hist_flags = a_GO_HIST_NONE;
@@ -434,6 +434,7 @@ jempty:
       goto jexec;
    }
 
+   /* Can we expand an alias from what we have? */
    if(!(flags & a_NOALIAS) && (flags & a_ALIAS_MASK) != a_ALIAS_MASK){
       char const *alias_exp;
       u8 expcnt;
@@ -475,14 +476,13 @@ jempty:
    }
 
    if((cdp = n_cmd_firstfit(word)) == NULL){
-      boole doskip;
-
-      if(!(doskip = n_cnd_if_isskip()) || (n_poption & n_PO_D_V))
+      if(!(flags & a_IS_SKIP) || (n_poption & n_PO_D_V))
          n_err(_("Unknown command%s: `%s'\n"),
-            (doskip ? _(" (ignored due to `if' condition)") : n_empty),
+            (flags & a_IS_SKIP ? _(" (ignored due to `if' condition)")
+               : n_empty),
             prstr(word));
       gecp->gec_hist_flags = a_GO_HIST_NONE;
-      if(doskip)
+      if(flags & a_IS_SKIP)
          goto jret0;
       nerrn = su_ERR_NOSYS;
       goto jleave;
@@ -491,8 +491,44 @@ jempty:
    /* See if we should execute the command -- if a conditional we always
     * execute it, otherwise, check the state of cond */
 jexec:
-   if(!(cdp->cd_caflags & n_CMD_ARG_F) && n_cnd_if_isskip()){
+   if((flags & a_IS_SKIP) && !(cdp->cd_caflags & n_CMD_ARG_F)){
       gecp->gec_hist_flags = a_GO_HIST_NONE;
+
+      /* However, to allow "if 0; echo no; else; echo yes;end" we need to be
+       * able to perform input line sequentiation / rest injection even in
+       * whiteout situations.  See if we can do that. */
+      switch(cdp->cd_caflags & n_CMD_ARG_TYPE_MASK){
+      case n_CMD_ARG_TYPE_WYRA:{
+            char const *v15compat;
+
+            if((v15compat = ok_vlook(v15_compat)) == su_NIL ||
+                  *v15compat == '\0')
+               break;
+         }
+         /* FALLTHRU */
+      case n_CMD_ARG_TYPE_MSGLIST:
+      case n_CMD_ARG_TYPE_NDMLIST:
+      case n_CMD_ARG_TYPE_WYSH:
+      case n_CMD_ARG_TYPE_ARG:
+         for(s = n_string_creat_auto(&s_b);;){
+            su_u32 shs;
+
+            shs = n_shexp_parse_token(n_SHEXP_PARSE_META_SEMICOLON, s, &line,
+                  NULL);
+            if(line.l == 0)
+               break;
+            if(shs & n_SHEXP_STATE_META_SEMICOLON){
+               ASSERT(shs & n_SHEXP_STATE_STOP);
+               n_go_input_inject(n_GO_INPUT_INJECT_COMMIT, line.s, line.l);
+               break;
+            }
+         }
+         break;
+      case n_CMD_ARG_TYPE_RAWDAT:
+      case n_CMD_ARG_TYPE_STRING:
+      case n_CMD_ARG_TYPE_RAWLIST:
+         break;
+      }
       goto jret0;
    }
 
@@ -601,8 +637,8 @@ jexec:
                n_SHEXP_PARSE_TRIM_IFSSPACE | n_SHEXP_PARSE_LOG |
                n_SHEXP_PARSE_META_SEMICOLON | n_SHEXP_PARSE_META_KEEP), &emsg);
          line.l -= P2UZ(emsg - line.s);
-         line.s = cp = n_UNCONST(emsg);
-         if(cp == NULL)
+         line.s = n_UNCONST(emsg);
+         if(emsg == NULL)
             emsg = N_("could not parse input token");
          else if(!n_shexp_is_valid_varname(vput))
             emsg = N_("not a valid variable name");
@@ -625,6 +661,9 @@ jexec:
          flags &= ~a_VPUT;
       }
    }
+
+   if(n_poption & n_PO_D_VV)
+      n_err(_("COMMAND <%s> %s\n"), cdp->cd_name, line.s);
 
    switch(cdp->cd_caflags & n_CMD_ARG_TYPE_MASK){
    case n_CMD_ARG_TYPE_MSGLIST:
@@ -741,6 +780,8 @@ jmsglist_go:
          n_pstate |= n_PS_ARGMOD_LOCAL;
       if(flags & a_VPUT)
          n_pstate |= n_PS_ARGMOD_VPUT; /* TODO due to getrawlist(), as above */
+      if(flags & a_WYSH)
+         n_pstate |= n_PS_ARGMOD_WYSH;
 
       if(!(flags & a_NO_ERRNO) && !(cdp->cd_caflags & n_CMD_ARG_EM)) /* XXX */
          su_err_set_no(su_ERR_NONE);

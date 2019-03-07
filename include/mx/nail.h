@@ -1029,7 +1029,8 @@ do{\
 
    n_PS_ARGLIST_MASK = su_BITENUM_MASK(14, 16),
    n_PS_ARGMOD_LOCAL = 1u<<14, /* "local" modifier TODO struct CmdCtx */
-   n_PS_ARGMOD_VPUT = 1u<<16, /* "vput" modifier TODO struct CmdCtx */
+   n_PS_ARGMOD_VPUT = 1u<<15, /* "vput" modifier TODO struct CmdCtx */
+   n_PS_ARGMOD_WYSH = 1u<<16, /* "wysh" modifier TODO struct CmdCtx */
    n_PS_MSGLIST_GABBY = 1u<<14, /* n_getmsglist() saw something gabby */
    n_PS_MSGLIST_DIRECT = 1u<<15, /* A msg was directly chosen by number */
 

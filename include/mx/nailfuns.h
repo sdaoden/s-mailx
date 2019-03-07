@@ -410,14 +410,14 @@ FL boole mx_page_or_print_strlist(char const *cmdname,
  * cmd-cnd.c
  */
 
-/* if.elif.else.endif conditional execution.
- * _isskip() tests whether current state doesn't allow execution of commands */
+/* if.elif.else.endif conditional execution */
 FL int c_if(void *v);
 FL int c_elif(void *v);
 FL int c_else(void *v);
 FL int c_endif(void *v);
 
-FL boole n_cnd_if_isskip(void);
+/* Whether an `if' block is in a whiteout condition */
+FL boole n_cnd_if_is_skip(void);
 
 /* An execution context is teared down, and it finds to have an if stack */
 FL void n_cnd_if_stack_del(struct n_go_data_ctx *gdcp);
@@ -916,9 +916,7 @@ FL boole n_go_load(char const *name);
  * set, in which case this function does not fail */
 FL boole n_go_XYargs(boole injectit, char const **lines, uz cnt);
 
-/* Pushdown current input file and switch to a new one.  Set the global flag
- * n_PS_SOURCING so that others will realize that they are no longer reading
- * from a tty (in all probability) */
+/* Pushdown current input file and switch to a new one. */
 FL int c_source(void *v);
 FL int c_source_if(void *v);
 

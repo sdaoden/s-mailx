@@ -30,8 +30,9 @@
 /* TODO fake */
 #include "su/code-in.h"
 
-#define a_CCND_IF_ISSKIP() \
-   (n_go_data->gdc_ifcond != NULL &&\
+#define a_CCND_IF_IS_ACTIVE() (n_go_data->gdc_ifcond != su_NIL)
+#define a_CCND_IF_IS_SKIP() \
+   (a_CCND_IF_IS_ACTIVE() &&\
       (((struct a_ccnd_if_node*)n_go_data->gdc_ifcond)->cin_noop ||\
        !((struct a_ccnd_if_node*)n_go_data->gdc_ifcond)->cin_go))
 
@@ -104,7 +105,8 @@ a_ccnd_oif_test(struct a_ccnd_if_ctx *cicp, boole noop){
    argc = P2UZ(cicp->cic_argv_max - cicp->cic_argv);
    cp = argv[0];
 
-   if(UNLIKELY(argc != 1 && argc != 3)){
+   if(UNLIKELY(argc != 1 && argc != 3 &&
+         (argc != 2 || !(n_pstate & n_PS_ARGMOD_WYSH)))){
 jesyn:
       if(emsg != NULL)
          emsg = V_(emsg);
@@ -118,23 +120,26 @@ jesyn_ntr:
    if(argc == 1){
       switch(*cp){
       case '$': /* v15compat */
-         /* v15compat (!wysh): $ trigger? */
-         if(cp[1] == '\0')
-            goto jesyn;
-
-         /* Look up the value in question, we need it anyway */
-         if(*++cp == '{'){
-            uz i = su_cs_len(cp);
-
-            if(i > 0 && cp[i - 1] == '}')
-               cp = savestrbuf(++cp, i -= 2);
-            else
+         if(!(n_pstate & n_PS_ARGMOD_WYSH)){
+            /* v15compat (!wysh): $ trigger? */
+            if(cp[1] == '\0')
                goto jesyn;
-         }
 
-         lhv = noop ? NULL : n_var_vlook(cp, TRU1);
-         rv = (lhv != NULL);
-         break;
+            /* Look up the value in question, we need it anyway */
+            if(*++cp == '{'){
+               uz i = su_cs_len(cp);
+
+               if(i > 0 && cp[i - 1] == '}')
+                  cp = savestrbuf(++cp, i -= 2);
+               else
+                  goto jesyn;
+            }
+
+            lhv = noop ? NULL : n_var_vlook(cp, TRU1);
+            rv = (lhv != NULL);
+            break;
+         }
+         /* FALLTHRU */
 
       default:
          switch((rv = n_boolify(cp, UZ_MAX, TRUM1))){
@@ -159,30 +164,63 @@ jesyn_ntr:
             rv = ((n_psonce & n_PSO_INTERACTIVE) != 0);
          break;
       }
+   }else if(argc == 2){
+      ASSERT(n_pstate & n_PS_ARGMOD_WYSH);
+      emsg = N_("unrecognized condition");
+      if(cp[0] != '-' || cp[2] != '\0')
+         goto jesyn;
+
+      switch((c = cp[1])){
+      case 'N':
+      case 'Z':
+         if(noop)
+            rv = TRU1;
+         else{
+            lhv = n_var_vlook(argv[1], TRU1);
+            rv = (c == 'N') ? (lhv != su_NIL) : (lhv == su_NIL);
+         }
+         break;
+      case 'n':
+      case 'z':
+         if(noop)
+            rv = TRU1;
+         else{
+            lhv = argv[1];
+            rv = (c == 'n') ? (*lhv != '\0') : (*lhv == '\0');
+         }
+         break;
+      default:
+         goto jesyn;
+      }
    }else{
       enum{
          a_NONE,
-         a_ICASE = 1u<<0
+         a_MOD = 1u<<0,
+         a_ICASE = 1u<<1,
+         a_SATURATED = 1u<<2
       } flags = a_NONE;
 
-      /* v15compat (!wysh): $ trigger? */
-      if(*cp == '$'){
-         if(cp[1] == '\0')
-            goto jesyn;
-
-         /* Look up the value in question, we need it anyway */
-         if(*++cp == '{'){
-            uz i = su_cs_len(cp);
-
-            if(i > 0 && cp[i - 1] == '}')
-               cp = savestrbuf(++cp, i -= 2);
-            else
+      if(n_pstate & n_PS_ARGMOD_WYSH)
+         lhv = cp;
+      else{
+         if(*cp == '$'){ /* v15compat (!wysh): $ trigger? */
+            if(cp[1] == '\0')
                goto jesyn;
-         }
 
-         lhv = noop ? NULL : n_var_vlook(cp, TRU1);
-      }else
-         goto jesyn;
+            /* Look up the value in question, we need it anyway */
+            if(*++cp == '{'){
+               uz i = su_cs_len(cp);
+
+               if(i > 0 && cp[i - 1] == '}')
+                  cp = savestrbuf(++cp, i -= 2);
+               else
+                  goto jesyn;
+            }
+
+            lhv = noop ? NULL : n_var_vlook(cp, TRU1);
+         }else
+            goto jesyn;
+      }
 
       /* Three argument comparison form required, check syntax */
       emsg = N_("unrecognized condition");
@@ -191,7 +229,7 @@ jesyn_ntr:
          goto jesyn;
 
       /* May be modifier */
-      if(c == '@'){
+      if(c == '@'){ /* v15compat */
          n_OBSOLETE2(_("if/elif: please use ? modifier suffix, "
                "not @ prefix: %s"),
                savecatsep(n_shexp_quote_cp(argv[0], FAL0), ' ',
@@ -209,11 +247,11 @@ jesyn_ntr:
       }else
       if((cp = su_cs_find_c(op, '?')) != su_NIL){
          if(cp[1] == '\0')
-            flags |= a_ICASE;
+            flags |= a_MOD;
          else if(su_cs_starts_with_case("case", &cp[1]))
             flags |= a_ICASE;
-         /*else if(su_cs_starts_with_case("saturated", &cp[1]))
-            f = a_VEXPR_MOD_SATURATED;*/
+         else if(su_cs_starts_with_case("saturated", &cp[1]))
+            flags |= a_SATURATED;
          else{
             emsg = N_("invalid modifier");
             goto jesyn;
@@ -259,23 +297,25 @@ jesyn_ntr:
       if((rhv = argv[2]) == NULL /* Can't happen */)
          goto jesyn;
 
-      if(*rhv == '$'){
-         if(*++rhv == '\0')
-            goto jesyn;
-         else if(*rhv == '{'){
-            uz i = su_cs_len(rhv);
-
-            if(i > 0 && rhv[i - 1] == '}')
-               rhv = savestrbuf(++rhv, i -= 2);
-            else{
-               cp = --rhv;
+      if(!(n_pstate & n_PS_ARGMOD_WYSH)){
+         if(*rhv == '$'){/* v15compat */
+            if(*++rhv == '\0')
                goto jesyn;
+            else if(*rhv == '{'){
+               uz i = su_cs_len(rhv);
+
+               if(i > 0 && rhv[i - 1] == '}')
+                  rhv = savestrbuf(++rhv, i -= 2);
+               else{
+                  cp = --rhv;
+                  goto jesyn;
+               }
             }
+            if(noop)
+               rhv = NULL;
+            else
+               rhv = n_var_vlook(cp = rhv, TRU1);
          }
-         if(noop)
-            rhv = NULL;
-         else
-            rhv = n_var_vlook(cp = rhv, TRU1);
       }
 
       /* A null value is treated as the empty string */
@@ -290,8 +330,13 @@ jesyn_ntr:
          regex_t re;
          int s;
 
+         if(flags & a_SATURATED){
+            emsg = N_("invalid modifier for operational mode");
+            goto jesyn;
+         }
+
          if((s = regcomp(&re, rhv, REG_EXTENDED | REG_NOSUB |
-               (flags & a_ICASE ? REG_ICASE : 0))) != 0){
+               (flags & (a_MOD | a_ICASE) ? REG_ICASE : 0))) != 0){
             emsg = savecat(_("invalid regular expression: "),
                   n_regex_err_to_doc(NULL, s));
             goto jesyn_ntr;
@@ -304,11 +349,17 @@ jesyn_ntr:
             if(noop){
          ;
       }else if(op[1] == '%' || op[1] == '@'){
-         if(op[1] == '@')
+         if(flags & a_SATURATED){
+            emsg = N_("invalid modifier for operational mode");
+            goto jesyn;
+         }
+
+         if(op[1] == '@') /* v15compat */
             n_OBSOLETE("`if'++: \"=@\" and \"!@\" became \"=%\" and \"!%\"");
-         rv = ((flags & a_ICASE ? su_cs_find_case(lhv, rhv)
+         rv = ((flags & (a_MOD | a_ICASE) ? su_cs_find_case(lhv, rhv)
                : su_cs_find(lhv, rhv)) == NULL) ^ (c == '=');
       }else if(c == '-'){
+         u32 lhvis, rhvis;
          s64 lhvi, rhvi;
 
          if(flags & a_ICASE){
@@ -320,12 +371,17 @@ jesyn_ntr:
             lhv = n_0;
          if(*rhv == '\0')
             rhv = n_0;
-         if((su_idec_s64_cp(&lhvi, lhv, 0, NULL
-                  ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-               ) != su_IDEC_STATE_CONSUMED || (su_idec_s64_cp(&rhvi, rhv,
-                  0, NULL) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
-               ) != su_IDEC_STATE_CONSUMED){
-            emsg = N_("integer expression expected");
+         rhvis = lhvis = (flags & (a_MOD | a_SATURATED)
+                  ? su_IDEC_MODE_LIMIT_NOERROR : su_IDEC_MODE_NONE) |
+               su_IDEC_MODE_SIGNED_TYPE;
+         lhvis = su_idec_cp(&lhvi, lhv, 0, lhvis, su_NIL);
+         rhvis = su_idec_cp(&rhvi, rhv, 0, rhvis, su_NIL);
+
+         if((lhvis & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+                  ) != su_IDEC_STATE_CONSUMED ||
+               (rhvis & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
+                  ) != su_IDEC_STATE_CONSUMED){
+            emsg = N_("invalid integer number");
             goto jesyn;
          }
 
@@ -341,7 +397,12 @@ jesyn_ntr:
       }else{
          s32 scmp;
 
-         scmp = (flags & a_ICASE) ? su_cs_cmp_case(lhv, rhv)
+         if(flags & a_SATURATED){
+            emsg = N_("invalid modifier for operational mode");
+            goto jesyn;
+         }
+
+         scmp = (flags & (a_MOD | a_ICASE)) ? su_cs_cmp_case(lhv, rhv)
                : su_cs_cmp(lhv, rhv);
          switch(c){
          default:
@@ -533,7 +594,7 @@ a_ccnd_if(void *v, boole iselif){
       ASSERT(cinp != NULL);
    }
    cinp->cin_error = FAL0;
-   cinp->cin_noop = a_CCND_IF_ISSKIP();
+   cinp->cin_noop = a_CCND_IF_IS_SKIP();
    cinp->cin_go = TRU1;
    cinp->cin_else = FAL0;
    if(!iselif)
@@ -592,7 +653,7 @@ c_elif(void *v){
       n_err(_("`elif' without a matching `if'\n"));
       rv = 1;
    }else if(!cinp->cin_error){
-      cinp->cin_go = !cinp->cin_go; /* Cause right _IF_ISSKIP() result */
+      cinp->cin_go = !cinp->cin_go; /* Cause right _IF_IS_SKIP() result */
       rv = a_ccnd_if(v, TRU1);
    }else
       rv = 0;
@@ -639,11 +700,11 @@ c_endif(void *v){
 }
 
 FL boole
-n_cnd_if_isskip(void){
+n_cnd_if_is_skip(void){
    boole rv;
    NYD2_IN;
 
-   rv = a_CCND_IF_ISSKIP();
+   rv = a_CCND_IF_IS_SKIP();
    NYD2_OU;
    return rv;
 }

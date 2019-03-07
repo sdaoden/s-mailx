@@ -388,11 +388,11 @@ n_CMD_ARG_DESC_SUBCLASS_DEF(write, 1, a_ctab_cad_write){
      DS(N_("Show size in bytes for <msglist>")) },
    { "hold", &c_preserve, (A | SC | W | TMSGLST), 0, MMNDEL, NULL
      DS(N_("Save <msglist> in system mailbox instead of *MBOX*")) },
-   { "if", &c_if, (G | F | M | X | TRAWLST), 1, MAC, NULL
+   { "if", &c_if, (G | F | M | X | TWYRA), 1, MAC, NULL
      DS(N_("Part of the if/elif/else/endif statement")) },
    { "else", &c_else, (G | F | M | X | TWYSH), 0, 0, NULL
      DS(N_("Part of the if/elif/else/endif statement")) },
-   { "elif", &c_elif, (G | F | M | X | TRAWLST), 1, MAC, NULL
+   { "elif", &c_elif, (G | F | M | X | TWYRA), 1, MAC, NULL
      DS(N_("Part of the if/elif/else/endif statement")) },
    { "endif", &c_endif, (G | F | M | X | TWYSH), 0, 0, NULL
      DS(N_("Part of the if/elif/else/endif statement")) },
