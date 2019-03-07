@@ -31,9 +31,10 @@ Annotated Excerpts from the Programmer's Manual, 1971-1986":
     or whatever. Not until v7 did the interface change (Thompson). [.]
 
 1. Where?
-2. Repository layout
-3. Security record
-4. Authors
+2. Repository access
+3. Repository layout
+4. Security record
+5. Authors
 
 1. Where?
 ---------
@@ -77,102 +78,20 @@ Thank you!
 
   [+1] http://cdn.whatculture.com/wp-content/uploads/2009/06/snailmail.jpg
 
-2. Repository layout
+2. Repository access
 --------------------
 
-- [release/*]
-    A new branch within release/ is created for every release, e.g.,
-    [release/v14.8.10].  History won't be rewritten.
-
-    These branches consist of one commit, and that commit is signed with
-    an OpenPGP key and used for the signed release tag,
-    vMAJOR.MINOR.UPDATE.ar (.ar for "archive").  The commit as such
-    covers the data modifications that make up a release, i.e., release
-    date fixation, manual preprocessing, removal of data which doesn't
-    make sense in release tarballs, etc.
-
-    All this is not true for older releases, the new repository layout
-    was introduced after v14.8.10.  But it used [timeline] as a source
-    for most references, therefore the signed tag v14.8.7.ar protects
-    all elder references within [release/]:
-
-      $ git describe --contains heads/release/v1.3.0
-      v14.8.7.ar~113
-
-- [release/latest] and [release/stable]
-    "Symbolic links" to the latest and stable, respectively, release
-    branches.
-
-- [stable/*]
-    A new branch within stable/ will be created for each new minor
-    version, e.g., [stable/v14.8].  History won't be rewritten.
-
-    These are the de-facto [master] branches for their respective minor
-    release, which extend for the full lifetime of the said, e.g., the
-    branch [stable/v14.7] has been created once the v14.7.0 release was
-    made, and it extends until the release of v14.7.11, the last v14.7
-    update release made.
-
-    Once the time for a new release has come, the head of such a stable
-    branch will gain a signed commit and a signed stable tag,
-    vMAJOR.MINOR.UPDATE, and then be used as the source for a new branch
-    in release/.
-
-- [stable/latest] and [stable/stable]
-    "Symbolic links" to the latest and stable, respectively, stable
-    branches.
-
-    These are possibly what users should track which want to have the
-    newest non-release bugfixes and stable, backward-compatible commits.
-    See below for examples how to accomplish that.
-
-- [master]
-    Rooted on top of [heirloom].  It gains only stable, but possibly
-    backward-incompatible changes (usually mentioned on the ML), and
-    will be used to create new entries in stable/.  It may gain signed
-    commits for sealing purposes from time to time.
-    History won't be rewritten.
-
-- [next]
-    Rooted on top of [master], this consists of a furious mixture of
-    commits that eventually end up in [master].  Daring users may give
-    this branch a try, but bugs and temporary nonstarters have to be
-    dealt with, then.
-
-- [crawl]
-    Developer chaos (distributed horror backup - don't use!).
-
-- [test-out]
-    This branch contains the test output files.  The test itself only
-    tests checksums, the full output is for development reference
-    purposes only.
-
-- [unix-mail,bsd-Mail,timeline]
-    Sketchy efforts to collect the complete history of Unix mail and
-    its successor, BSD Mail.  Anything from the pre-nail era has been
-    taken from CSRG and TUHS, for nail and Heirloom mailx i have used
-    release balls.
-
-    The [timeline] branch was the original effort, and it will be
-    continuously extended whenever new releases will be made, but its
-    history won't be rewritten, which is why it is a sketchy effort.
-    The [unix-mail] and [bsd-Mail] branches have been added later, and
-    will hopefully offer the most complete picture possible as time goes
-    by (not taking into account the "nupas" effort of Research Unix,
-    though) -- this means their history may change, but all commits are
-    signed with an OpenPGP key.
-
-- [heirloom]
-    A full git(1) cvsimport of the Heirloom mailx(1) cvs(1) repository.
-
 To create a full clone of the repository, with all the data and history:
+
   $ git clone https://git.sdaoden.eu/scm/s-nail.git
 
 With a newer git(1), and only tracking the latest stable branch:
+
   $ git clone --single-branch --branch=stable/latest \
       https://git.sdaoden.eu/scm/s-nail.git
 
 Or, being selective, also with older git(1)s:
+
   $ mkdir s-nail.git
   $ cd s-nail.git
   $ git init
@@ -189,19 +108,126 @@ And then, assuming the last had been done:
   $ git log --oneline --show-signature --max-count=1 HEAD
   $ make all && sudo make install
 
-3. Security record
+3. Repository layout
+--------------------
+
+- [release/*]
+    A new branch within release/ is created for every release, e.g.,
+    [release/v14.8.10].  History will not be rewritten.
+
+    These branches consist of one commit, and that commit is signed with
+    an OpenPGP key and used for the signed release tag,
+    vMAJOR.MINOR.UPDATE.ar (.ar for "archive").  The commit as such
+    covers the data modifications that make up a release, i.e., release
+    date fixation, manual preprocessing, removal of data which does not
+    make sense in release tarballs, etc.
+
+    All this is not true for older releases, the new repository layout
+    was introduced after v14.8.10.  But it used [timeline] as a source
+    for most references, therefore the signed tag v14.8.7.ar protects
+    all elder references within [release/]:
+
+      $ git describe --contains heads/release/v1.3.0
+      v14.8.7.ar~113
+
+- [release/latest] and [release/stable]
+    "Symbolic links" to the latest and stable, respectively, release
+    branches.
+
+- [stable/*]
+    A new branch within stable/ will be created for each new minor
+    version, e.g., [stable/v14.8].  History will not be rewritten.
+
+    These are the de-facto [master] branches for their respective minor
+    release, which extend for the full lifetime of the said, e.g., the
+    branch [stable/v14.7] has been created once the v14.7.0 release was
+    made, and it extends until the release of v14.7.11, the last v14.7
+    update release made.
+
+    Once the time for a new release has come, the head of such a stable
+    branch will gain a signed commit and a signed stable tag,
+    vMAJOR.MINOR.UPDATE, and then be used as the source for a new branch
+    in release/.
+
+    Packagers who want to include all the bugfixes when they eventually
+    iterate their package can create local "packager releases" with the
+    "grappa" mode of the script mk/make-release.sh.  With it, they can
+    track the stable/ branch of desire, and have a [myrelease] branch
+    where the local releases are made.  In order to get the very same
+    file modifications that are made in the official [release/] they
+    need an installed perl(1).  For example:
+
+      $ git fetch
+      $ git checkout stable/stable
+      $ sh mk/make-release.sh grappa myrel # myrel created as necessary
+      Preparing a release on commit [.]
+      Grappa to be brought from stable/stable to myrel
+      Program version is [.], packager release addition shall be: 2
+      Is s-nail <v[.]-2> correct? [y/n] y
+      Switched to branch 'myrel'
+      ..
+      $ git commit -S -n -m 'My release [.]-2'
+
+- [stable/latest] and [stable/stable]
+    "Symbolic links" to the latest and stable, respectively, stable
+    branches.
+
+    These are possibly what users should track which want to have the
+    newest non-release bugfixes and stable, backward-compatible commits.
+    See below for examples how to accomplish that.
+
+- [master]
+    Rooted on top of [heirloom].  It gains only stable, but possibly
+    backward-incompatible changes (usually mentioned on the ML), and
+    will be used to create new entries in stable/.  It may gain signed
+    commits for sealing purposes from time to time.
+    History will not be rewritten.
+
+- [next]
+    Rooted on top of [master], this consists of a furious mixture of
+    commits that eventually end up in [master].  Daring users may give
+    this branch a try, but bugs and temporary nonstarters have to be
+    dealt with, then.
+
+- [crawl]
+    Developer chaos (distributed horror backup - do not use!).
+
+- [test-out]
+    This branch contains the test output files.  The test itself only
+    tests checksums, the full output is for development reference
+    purposes only.
+
+- [unix-mail,bsd-Mail,timeline]
+    Sketchy efforts to collect the complete history of Unix mail and
+    its successor, BSD Mail.  Anything from the pre-nail era has been
+    taken from CSRG and TUHS, for nail and Heirloom mailx i have used
+    release balls.
+
+    The [timeline] branch was the original effort, and it will be
+    continuously extended whenever new releases will be made, but its
+    history will not be rewritten, which is why it is a sketchy effort.
+    The [unix-mail] and [bsd-Mail] branches have been added later, and
+    will hopefully offer the most complete picture possible as time goes
+    by (not taking into account the "nupas" effort of Research Unix,
+    though) -- this means their history may change, but all commits are
+    signed with an OpenPGP key.
+
+- [heirloom]
+    A full git(1) cvsimport of the Heirloom mailx(1) cvs(1) repository.
+
+4. Security record
 ------------------
 
 - CVE-2004-2771, and CVE-2014-7844.
   http://seclists.org/oss-sec/2014/q4/1066.
   Fixed in: v14.7.9 (on day of announcement on oss-sec)
-
-  Affected all BSD Mail-based codebases.
+  Note: Affected all BSD Mail-based codebases.
 
 - CVE-2017-5899.
   Credits: wapiflapi.
   Fixed in: v14.8.16 (on day of disclosure)
-
+  P.S.: helper program renamed to -dotlock.
+  Desc.:
     > vulnerability in the setuid root helper binary
 
     > The problem is that an O_EXCL file is created with a user controlled
@@ -209,7 +235,7 @@ And then, assuming the last had been done:
     > This means that using s-nail-privsep a normal user can create a file
     > anywhere on the filesystem, which is a security problem.
 
-4. Authors
+5. Authors
 ----------
 
 Unix mail seems to have been written mostly by Ken Thompson.

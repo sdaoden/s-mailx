@@ -1,6 +1,0 @@
-#define n_VERSION "v14.9.11"
-#define n_VERSION_DATE "2018-08-08"
-#define n_VERSION_MAJOR "14"
-#define n_VERSION_MINOR "9"
-#define n_VERSION_UPDATE "11"
-#define n_VERSION_HEXNUM "0x0E00900B"

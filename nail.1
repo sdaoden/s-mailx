@@ -1,7 +1,7 @@
 .\"@ nail.1 - S-nail(1) reference manual.
 .\"
 .\" Copyright (c) 2000-2008 Gunnar Ritter, Freiburg i. Br., Germany.
-.\" Copyright (c) 2012 - 2018 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
+.\" Copyright (c) 2012 - 2019 Steffen (Daode) Nurpmeso <steffen@sdaoden.eu>.
 .\"
 .\" Copyright (c) 1980, 1990, 1993
 .\"      The Regents of the University of California.  All rights reserved.
@@ -30,9 +30,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"@ S-nail v14.9.11 / 2018-08-08
-.Dd August 08, 2018
-.ds VV \\%v14.9.11
+.\"@ S-nail v14.9.12 / 2019-03-07
+.Dd March 07, 2019
+.ds VV \\%v14.9.12
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -107,6 +107,7 @@
 .Mx -anchor-spass Ss "I cannot login to Google mail aka GMail" 11
 .Mx -anchor-spass Ss "Not \(dqdefunctional\(dq, but the editor key does not work" 11
 .Mx -anchor-spass Ss "Can \*(UA git-send-email?" 11
+.Mx -anchor-spass Ss "Howto handle stale dotlock files" 11
 .Mx -anchor-spass Sh "IMAP CLIENT" 12
 .Mx -anchor-spass Sh "SEE ALSO" 13
 .Mx -anchor-spass Sh "HISTORY" 14
@@ -139,14 +140,17 @@
 .Mx -anchor-spass Fl "r"
 .Mx -anchor-spass Fl "S"
 .Mx -anchor-spass Fl "s"
+.Mx -anchor-spass Fl "T"
 .Mx -anchor-spass Fl "t"
 .Mx -anchor-spass Fl "u"
 .Mx -anchor-spass Fl "V"
 .Mx -anchor-spass Fl "v"
 .Mx -anchor-spass Fl "X"
+.Mx -anchor-spass Fl "Y"
 .Mx -anchor-spass Fl "~"
 .Mx -anchor-spass Fl "#"
 .Mx -anchor-spass Fl "."
+.Mx -anchor-spass ixsx "magic regular expression characters"
 .Mx -anchor-spass Cd "mle-go-home"
 .Mx -anchor-spass Cd "mle-go-bwd"
 .Mx -anchor-spass Cd "mle-del-fwd"
@@ -218,6 +222,7 @@
 .Mx -anchor-spass Ic "uncommandalias"
 .Mx -anchor-spass Ic "Copy"
 .Mx -anchor-spass Ic "copy"
+.Mx -anchor-spass Ic "csop"
 .Mx -anchor-spass Ic "cwd"
 .Mx -anchor-spass Ic "Decrypt"
 .Mx -anchor-spass Ic "decrypt"
@@ -276,9 +281,9 @@
 .Mx -anchor-spass Ic "mbox"
 .Mx -anchor-spass Ic "mimetype"
 .Mx -anchor-spass Ic "unmimetype"
+.Mx -anchor-spass Ic "mimeview"
 .Mx -anchor-spass Ic "mlist"
 .Mx -anchor-spass Ic "unmlist"
-.Mx -anchor-spass Ic "mimeview"
 .Mx -anchor-spass Ic "mlsubscribe"
 .Mx -anchor-spass Ic "unmlsubscribe"
 .Mx -anchor-spass Ic "Move"
@@ -404,6 +409,8 @@
 .Mx -anchor-spass Va "^ERR"
 .Mx -anchor-spass Va "^ERRDOC"
 .Mx -anchor-spass Va "^ERRNAME"
+.Mx -anchor-spass Va "^ERRQUEUE-COUNT"
+.Mx -anchor-spass Va "^ERRQUEUE-EXISTS"
 .Mx -anchor-spass Va "*"
 .Mx -anchor-spass Va "@"
 .Mx -anchor-spass Va "#"
@@ -459,6 +466,7 @@
 .Mx -anchor-spass Va "errexit"
 .Mx -anchor-spass Va "escape"
 .Mx -anchor-spass Va "expandaddr"
+.Mx -anchor-spass Va "expandaddr-domaincheck"
 .Mx -anchor-spass Va "expandargv"
 .Mx -anchor-spass Va "features"
 .Mx -anchor-spass Va "flipr"
@@ -499,6 +507,7 @@
 .Mx -anchor-spass Va "mailbox-resolved"
 .Mx -anchor-spass Va "mailx-extra-rc"
 .Mx -anchor-spass Va "markanswered"
+.Mx -anchor-spass Va "mbox-fcc-and-pcc"
 .Mx -anchor-spass Va "mbox-rfc4155"
 .Mx -anchor-spass Va "memdebug"
 .Mx -anchor-spass Va "message-id-disable"
@@ -509,6 +518,7 @@
 .Mx -anchor-spass Va "mime-alternative-favour-rich"
 .Mx -anchor-spass Va "mime-counter-evidence"
 .Mx -anchor-spass Va "mime-encoding"
+.Mx -anchor-spass Va "mime-force-sendout"
 .Mx -anchor-spass Va "mimetypes-load-control"
 .Mx -anchor-spass Va "mta"
 .Mx -anchor-spass Va "mta-arguments"
@@ -526,6 +536,7 @@
 .Mx -anchor-spass Va "on-compose-leave"
 .Mx -anchor-spass Va "on-compose-splice"
 .Mx -anchor-spass Va "on-compose-splice-shell"
+.Mx -anchor-spass Va "on-history-addition"
 .Mx -anchor-spass Va "on-resend-cleanup"
 .Mx -anchor-spass Va "on-resend-enter"
 .Mx -anchor-spass Va "page"
@@ -595,6 +606,7 @@
 .Mx -anchor-spass Va "smtp-auth"
 .Mx -anchor-spass Va "smtp-hostname"
 .Mx -anchor-spass Va "smtp-use-starttls"
+.Mx -anchor-spass Va "socket-connect-timeout"
 .Mx -anchor-spass Va "socks-proxy"
 .Mx -anchor-spass Va "spam-interface"
 .Mx -anchor-spass Va "spam-maxsize"
@@ -639,6 +651,7 @@
 .Mx -anchor-spass Va "version-hexnum"
 .Mx -anchor-spass Va "version-major"
 .Mx -anchor-spass Va "version-minor"
+.Mx -anchor-spass Va "version-update"
 .Mx -anchor-spass Va "writebackedited"
 .Mx -anchor-spass Ev "COLUMNS"
 .Mx -anchor-spass Ev "DEAD"
@@ -707,7 +720,7 @@
 .Op Fl A Ar account
 .Op : Ns Fl a Ar attachment Ns \&:
 .Op : Ns Fl b Ar bcc-addr Ns \&:
-.Op : Ns Fl C Ar """custom:\0header""" Ns \&:
+.Op : Ns Fl C Ar """field:\0body""" Ns \&:
 .Op : Ns Fl c Ar cc-addr Ns \&:
 .Op Fl M Ar type | Fl m Ar file | Fl q Ar file | Fl t
 .Op Fl r Ar from-addr
@@ -715,7 +728,9 @@
 .Fl S\0 Ns Ar var Ns Op Ns = Ns Ar value Ns
 .Pf \&: Oc
 .Op Fl s Ar subject
+.Op : Ns Fl T Ar """field:\0addr""" Ns \&:
 .Op : Ns Fl X Ar cmd Ns \&:
+.Op : Ns Fl Y Ar cmd Ns \&:
 .Op Fl \&.
 .Pf : Ar to-addr Ns \&:
 .Op Fl Fl \~ Ns : Ns Ar mta-option Ns \&:
@@ -726,7 +741,7 @@
 .Op Fl DdEeHiNnRv~#
 .Op Fl \&: Ar spec
 .Op Fl A Ar account
-.Op : Ns Fl C Ar """custom:\0header""" Ns \&:
+.Op : Ns Fl C Ar """field:\0body""" Ns \&:
 .Op Fl L Ar spec
 .Op Fl r Ar from-addr
 .Oo : Ns
@@ -734,6 +749,7 @@
 .Pf \&: Oc
 .Op Fl u Ar user
 .Op : Ns Fl X Ar cmd Ns \&:
+.Op : Ns Fl Y Ar cmd Ns \&:
 .Op Fl Fl \~ Ns : Ns Ar mta-option Ns \&:
 .Ek
 .Nm \*(uA
@@ -741,7 +757,7 @@
 .Op Fl DdEeHiNnRv~#
 .Op Fl \&: Ar spec
 .Op Fl A Ar account
-.Op : Ns Fl C Ar """custom:\0header""" Ns \&:
+.Op : Ns Fl C Ar """field:\0body""" Ns \&:
 .Fl f
 .Op Fl L Ar spec
 .Op Fl r Ar from-addr
@@ -749,6 +765,7 @@
 .Fl S Ar var Ns Op Ns = Ns Ar value Ns
 .Pf \&: Oc
 .Op : Ns Fl X Ar cmd Ns \&:
+.Op : Ns Fl Y Ar cmd Ns \&:
 .Op Ar file
 .Op Fl Fl \~ Ns : Ns Ar mta-option Ns \&:
 .Ek
@@ -767,11 +784,17 @@ Backward incompatibility has to be expected \(en
 will use
 .Sx "Shell-style argument quoting"
 rules, for example, and shell metacharacters will become meaningful.
+Many old-style commands accept new syntax via
+.Cm wysh ,
+one of the
+.Sx "Command modifiers" .
 New and old behaviour is flagged \*(IN and \*(OU, and setting
 .Va v15-compat ,
 one of the many
 .Sx "INTERNAL VARIABLES" ,
-will choose new behaviour when applicable.
+will choose new behaviour when applicable; when set with value,
+.Cm wysh
+is default behaviour.
 \*(OB flags what will vanish, and enabling
 .Fl d
 or
@@ -798,7 +821,7 @@ non-interactive scripting capabilities.
 .Ss "Options"
 .Bl -tag -width ".It Fl BaNg"
 .Mx
-.It Fl \&: Ar spec
+.It Fl \&: Ar spec , Fl Fl resource-files Ns =..
 Explicitly control which of the
 .Sx "Resource files"
 shall be
@@ -830,14 +853,14 @@ and running configurating commands via
 This option overrides
 .Fl n .
 .Mx
-.It Fl A Ar account
+.It Fl A Ar name , Fl Fl account Ns =..
 Executes an
 .Ic account
-command for the given user email
-.Ar account
+command for the given user email account
+.Ar name
 after program startup is complete (all resource files are loaded, any
 .Fl S
-setting is being established; only
+setting is being established, but
 .Fl X
 commands have not been evaluated yet).
 Being a special incarnation of
@@ -856,7 +879,8 @@ or
 .Va posix
 are set.
 .Mx
-.It Fl a Ar file Ns Op Ar =input-charset Ns Op Ar #output-charset
+.It Fl a Ar file Ns Oo Ar =input-charset Ns Oo Ar #output-charset Oc Oc , \
+  Fl Fl attach Ns =..
 Attach
 .Ar file
 to the message (for compose mode opportunities refer to
@@ -889,28 +913,27 @@ has been specified (the default).
 If an output character set has also been given then the conversion will
 be performed exactly as specified and on-the-fly, not considering the
 file type and content.
-As an exception, if the output character set is specified as the empty
-string or hyphen-minus
+As an exception the empty string or hyphen-minus
 .Ql - ,
-then the default conversion algorithm (see
-.Sx "Character sets" )
-is applied (therefore no conversion is performed on-the-fly,
+select the default conversion algorithm (see
+.Sx "Character sets" ) :
+no conversion is performed on-the-fly,
 .Ar file
-will be MIME-classified and its contents will be inspected first) \(em
-without support for character set conversions
+and its contents will be MIME-classified
+.Pf ( Sx "HTML mail and MIME attachments" , "The mime.types files") ;
+Only this mode is supported without support for character set conversions
 .Pf ( Va features
-does not include the term
-.Ql +iconv )
-only this argument is supported.
+does not mention
+.Ql +iconv ) .
 .It Fl B
 (\*(OB: \*(UA will always use line-buffered output, to gain
 line-buffered input even in batch mode enable batch mode via
 .Fl # . )
 .Mx
-.It Fl b Ar addr
-Send a blind carbon copy to
-.Ar addr Ns
-ess, if the
+.It Fl b Ar addr , Fl Fl bcc Ns =..
+Send a blind carbon copy to recipient
+.Ar addr ,
+if the
 .Ic set Ns
 ting of
 .Va expandaddr ,
@@ -924,7 +947,7 @@ The option may be used multiple times.
 Also see the section
 .Sx "On sending mail, and non-interactive mode" .
 .Mx
-.It Fl C Ar """field: body"""
+.It Fl C Ar """field: body""" , Fl Fl custom-header Ns =..
 Create a custom header which persists for an entire session.
 A custom header consists of the field name followed by a colon
 .Ql \&:
@@ -937,20 +960,22 @@ and in compose mode
 .Ic ~^ ,
 one of the
 .Sx "COMMAND ESCAPES" ,
-is the most flexible and powerful option to manage message headers.
+as well as
+.Ic digmsg
+are the most flexible and powerful options to manage message headers.
 This option may be used multiple times.
 .Mx
-.It Fl c Ar addr
+.It Fl c Ar addr , Fl Fl cc Ns =..
 Just like
 .Fl b ,
 except it places the argument in the list of carbon copies.
 .Mx
-.It Fl D
+.It Fl D , Fl Fl disconnected
 (\*(OP) Startup with
 .Va disconnected
 .Ic set .
 .Mx
-.It Fl d
+.It Fl d , Fl Fl debug
 Almost enable a sandbox mode with the internal variable
 .Va debug ;
 the same can be achieved via
@@ -958,12 +983,12 @@ the same can be achieved via
 or
 .Ql Ic set Va \&\&debug .
 .Mx
-.It Fl E
+.It Fl E , Fl Fl discard-empty-messages
 .Ic set
 .Va skipemptybody
 and thus discard messages with an empty message part body.
 .Mx
-.It Fl e
+.It Fl e , Fl Fl check-and-exit
 Just check if mail is present (in the system
 .Va inbox
 or the one specified via
@@ -978,7 +1003,7 @@ Save the message to send in a file named after the local part of the
 first recipient's address (instead of in
 .Va record Ns ).
 .Mx
-.It Fl f
+.It Fl f , Fl Fl file
 Read in the contents of the user's
 .Mx -sx
 .Sx "secondary mailbox"
@@ -1005,7 +1030,7 @@ In order to use a
 that starts with a hyphen-minus, prefix with a relative path, as in
 .Ql ./-hyphenbox.mbox .
 .Mx
-.It Fl H
+.It Fl H , Fl Fl header-summary
 Display a summary of
 .Ic headers
 for the given
@@ -1022,15 +1047,17 @@ A configurable summary view is available via the option
 This mode does not honour
 .Va showlast .
 .Mx
-.It Fl h
-Show a short usage summary.
+.It Fl h , Fl Fl help
+Show a brief usage summary; use
+.Fl Fl long-help
+for a list long options.
 .Mx
 .It Fl i
 .Ic set
 .Va ignore
 to ignore tty interrupt signals.
 .Mx
-.It Fl L Ar spec
+.It Fl L Ar spec , Fl Fl header-search Ns =..
 Display a summary of
 .Ic headers
 of all messages that match the given
@@ -1063,8 +1090,9 @@ be enabled explicitly (e.g., by using the option
 .It Fl M Ar type
 Special send mode that will flag standard input with the MIME
 .Ql Content-Type:
-set to the given
+set to the given known
 .Ar type
+.Pf ( Sx "HTML mail and MIME attachments" , "The mime.types files" )
 and use it as the main message body.
 \*(ID Using this option will bypass processing of
 .Va message-inject-head
@@ -1075,7 +1103,7 @@ Also see
 .Mx
 .It Fl m Ar file
 Special send mode that will MIME classify the specified
-.Ar file
+.Ar file ,
 and use it as the main message body.
 \*(ID Using this option will bypass processing of
 .Va message-inject-head
@@ -1084,7 +1112,7 @@ and
 Also see
 .Fl q , M , t .
 .Mx
-.It Fl N
+.It Fl N , Fl Fl no-header-summary
 inhibit the initial display of message headers when reading mail or
 editing a mailbox
 .Ic folder
@@ -1102,7 +1130,7 @@ The option
 allows more control over the startup sequence; also see
 .Sx "Resource files" .
 .Mx
-.It Fl q Ar file
+.It Fl q Ar file , Fl Fl quote-file Ns =..
 Special send mode that will initialize the message body with the
 contents of the specified
 .Ar file ,
@@ -1112,14 +1140,14 @@ only in non-interactive context.
 Also see
 .Fl M , m , t .
 .Mx
-.It Fl R
+.It Fl R , Fl Fl read-only
 Any mailbox
 .Ic folder
-a.k.a.\&
+aka\&
 .Ic file
 opened will be in read-only mode.
 .Mx
-.It Fl r Ar from-addr
+.It Fl r Ar from-addr , Fl Fl from-address Ns =..
 Whereas the source address that appears in the
 .Va from
 header of a message (or in the
@@ -1131,7 +1159,7 @@ built-in SMTP transport, it is not used by a file-based
 and delegating a message to its destination(s), for delivery errors
 etc., but it instead uses the local identity of the initiating user.
 .Pp
-When this command line option is used the given
+When this command line option is used the given single addressee
 .Ar from-addr
 will be assigned to the internal variable
 .Va from ,
@@ -1147,6 +1175,10 @@ the name part will be passed to a file-based
 .Va mta
 individually via
 .Fl \&\&F Ar name .
+Even though not a recipient the
+.Ql shquote
+.Va expandaddr
+flag is supported.
 .Pp
 If an empty string is passed as
 .Ar from-addr
@@ -1174,7 +1206,7 @@ local user identity like this unless either the MTA has been configured
 accordingly or the user is member of a group with special privileges.
 Passing an invalid address will cause an error.
 .Mx
-.It Fl S Ar var Ns Op = Ns value
+.It Fl S Ar var Ns Oo = Ns value Oc , Fl Fl set Ns =..
 .Ic set
 (or, with a prefix string
 .Ql no ,
@@ -1205,12 +1237,43 @@ They will become mutable again before commands registered via
 .Fl X
 are executed.
 .Mx
-.It Fl s Ar subject
+.It Fl s Ar subject , Fl Fl subject Ns =..
 Specify the subject of the message to be sent.
 Newline (NL) and carriage-return (CR) bytes are invalid and will be
 normalized to space (SP) characters.
 .Mx
-.It Fl t
+.It Fl T Ar """field: addr""" , Fl Fl target Ns =..
+Add
+.Ar addr ,
+interpreted as a single addressee, to the list of receivers targeted by
+.Ar field ,
+for now supported are only
+.Ql bcc ,
+.Ql cc ,
+.Ql fcc ,
+and
+.Ql to .
+Field and body (address) are separated by a colon
+.Ql \&:
+and/or blank (space, tabulator) characters.
+The
+.Ql shquote
+.Va expandaddr
+flag is supported.
+Via the question mark
+.Ql \&?list
+modifier suffix
+.Ar addr
+is parsed like a message header address line, the keyword
+.Ql list
+is optional, e.g.,
+.Ql to? ,
+.Ql to?: ,
+.Ql to?list
+etc. are identical.
+This option may be used multiple times.
+.Mx
+.It Fl t , Fl Fl template
 The message given (on standard input) is expected to contain, separated
 from the message body by an empty line, one or multiple message headers.
 Headers can span multiple consecutive lines if follow lines start with
@@ -1222,6 +1285,10 @@ Message recipients can be given via the message headers
 .Ql To: ,
 .Ql Cc: ,
 .Ql Bcc:
+(the
+.Ql ?single
+modifier enforces treatment as a single addressee, e.g.,
+.Ql To?single: exa, <m@ple> )
 or
 .Ql Fcc: ,
 they will be added to any recipients specified on the command line,
@@ -1265,7 +1332,7 @@ it is possible to embed
 Also see
 .Fl M , m , q .
 .Mx
-.It Fl u Ar user
+.It Fl u Ar user , Fl Fl inbox-of Ns =..
 Initially read the
 .Mx -sx
 .Sx "primary system mailbox"
@@ -1274,7 +1341,7 @@ of
 appropriate privileges presumed; effectively identical to
 .Ql Fl \&\&f Ns \0%user .
 .Mx
-.It Fl V
+.It Fl V , Fl Fl version
 Show \*(UAs
 .Va version
 and exit.
@@ -1282,22 +1349,19 @@ The command
 .Ic version
 will also show the list of
 .Va features :
-.Ql $ \*(uA -Xversion -Xx .
+.Ql $ \*(uA -:/ -Xversion -Xx .
 .Mx
-.It Fl v
+.It Fl v , Fl Fl verbose
 .Ic set Ns
 ting the internal variable
 .Va verbose
 enables display of some informational context messages.
 Using it twice increases the level of verbosity.
 .Mx
-.It Fl X Ar cmd
+.It Fl X Ar cmd , Fl Fl early-cmd Ns =..
 Add the given (or multiple for a multiline argument)
 .Ar cmd
-to the list of commands to be executed,
-as a last step of program startup, before normal operation starts.
-This is the only possibility to execute commands in non-interactive mode
-when reading startup files has been disabled.
+to a list of commands to be executed before normal operation starts.
 The commands will be evaluated as a unit, just as via
 .Ic source .
 Correlates with
@@ -1305,7 +1369,17 @@ Correlates with
 and
 .Va errexit .
 .Mx
-.It Fl ~
+.It Fl Y Ar cmd , Fl Fl cmd Ns =..
+Add the given (or multiple for a multiline argument)
+.Ar cmd
+to a list of commands to be executed after normal operation has started.
+The commands will be evaluated successively in the given order, and as
+if given on the program's standard input.
+In conjunction with
+.Fl t
+they will be evaluated after the template mail has been fully read.
+.Mx
+.It Fl ~ , Fl Fl enable-cmd-escapes
 Enable
 .Sx "COMMAND ESCAPES"
 in compose mode even in non-interactive use cases.
@@ -1317,7 +1391,7 @@ $ ( echo 'line    one. Word.     Word2.';\e
   LC_ALL=C \*(uA -d~:/ -Sttycharset=utf-8 bob@exam.ple
 .Ed
 .Mx
-.It Fl #
+.It Fl # , Fl Fl batch-mode
 Enables batch mode: standard input is made line buffered, the complete
 set of (interactive) commands is available, processing of
 .Sx "COMMAND ESCAPES"
@@ -1339,13 +1413,18 @@ and
 .Va inbox
 (the latter three to
 .Pa /dev/null ) .
+Also, the values of
+.Ev COLUMNS
+and
+.Ev LINES
+are looked up, and acted upon.
 The following prepares an email message in a batched dry run:
 .Bd -literal -offset indent
 $ LC_ALL=C printf 'm bob\en~s ubject\enText\en~.\enx\en' |\e
   LC_ALL=C \*(uA -d#:/ -X'alias bob bob@exam.ple'
 .Ed
 .Mx
-.It Fl \&.
+.It Fl \&. , Fl Fl end-options
 This flag forces termination of option processing in order to prevent
 .Dq option injection
 (attacks).
@@ -1359,6 +1438,8 @@ arguments and all receivers established via
 .Fl b
 and
 .Fl c
+as well as
+.Fl T
 are subject to the checks established by
 .Va expandaddr ,
 one of the
@@ -1428,7 +1509,7 @@ and
 .Va keep
 to not remove empty system MBOX mailbox files (or all empty such files if
 .Va posix
-.Pf a.k.a.\0 Ev POSIXLY_CORRECT
+.Pf aka\0 Ev POSIXLY_CORRECT
 mode has been enabled) to avoid mangling of file permissions when files
 eventually get recreated.
 .Pp
@@ -1458,8 +1539,6 @@ is fully enabled, too.
 Some random remarks.
 The file mode creation mask can be managed explicitly via the variable
 .Va umask .
-Sufficient system support provided symbolic links will not be followed
-when files are opened for writing.
 Files and shell pipe output can be
 .Ic source Ns
 d for evaluation, also during startup from within the
@@ -1521,7 +1600,8 @@ gives an overview of most other available command escapes.
 .Pp
 The command escape
 .Ic ~.
-will leave compose mode and send the message once it is completed.
+(see there) will call hooks, insert automatic injections and receivers,
+leave compose mode and send the message once it is completed.
 Aborting letter composition is possible with either of
 .Ic ~x
 or
@@ -1583,7 +1663,7 @@ whereas input data is assumed to be in
 .Va ttycharset .
 Message data will be passed over the wire in a
 .Va mime-encoding .
-MIME parts a.k.a. attachments need to be assigned a
+MIME parts aka attachments need to be assigned a
 .Ic mimetype ,
 usually taken out of
 .Sx "The mime.types files" .
@@ -1603,7 +1683,11 @@ Message recipients (as specified on the command line or defined in
 .Ql To: ,
 .Ql Cc:
 or
-.Ql Bcc: )
+.Ql Bcc: ;
+these support the
+.Ql ?single
+modifier to enforce treatment as a single addressee, e.g.,
+.Ql To?single: exa, <m@ple> )
 are subject to
 .Ic alternates
 filtering, and may not only be email addressees but can also be names of
@@ -1661,6 +1745,7 @@ $ echo bla | \*(uA -Sexpandaddr -s test ./mbox.mbox
 $ echo bla | \*(uA -Sexpandaddr -s test '|cat >> ./mbox.mbox'
 $ echo safe | LC_ALL=C \e
     \*(uA -:/ -Sv15-compat -Ssendwait -Sttycharset=utf8 \e
+      --set mime-force-sendout \e
       -Sexpandaddr=fail,-all,+addr,failinvaddr -s test \e
       -. bob@exam.ple
 .Ed
@@ -1683,6 +1768,8 @@ Like all other recipients
 .Ql Fcc:
 is subject to the checks of
 .Va expandaddr .
+Any local file and pipe command addressee honours the setting of
+.Va mbox-fcc-and-pcc .
 .Pp
 It is possible to create personal distribution lists via the
 .Ic alias
@@ -1711,31 +1798,6 @@ filtering.
 ? alias  mark  mark@exam.ple
 .Ed
 .Pp
-.Va on-compose-enter , on-compose-leave
-and
-.Va on-compose-cleanup
-hook variables may be set to
-.Ic define Ns
-d macros to automatically adjust some settings dependent
-on receiver, sender or subject contexts, and via the
-.Va on-compose-splice
-as well as
-.Va on-compose-splice-shell
-variables, the former also to be set to a
-.Ic define Ns
-d macro, increasingly powerful mechanisms to perform automated message
-adjustments, including signature creation, are available.
-(\*(ID These hooks work for commands which newly create messages, namely
-.Ic forward , mail , reply
-and variants;
-.Ic resend
-and
-.Ic Resend
-for now provide only the hooks
-.Va on-resend-enter
-and
-.Va on-resend-cleanup . )
-.Pp
 For the purpose of arranging a complete environment of settings that can
 be switched to with a single command or command line option there are
 .Ic account Ns s .
@@ -1757,6 +1819,35 @@ See
 and
 .Sx "INTERNAL VARIABLES" .
 .Pp
+The compose mode hooks
+.Va on-compose-enter , on-compose-splice , on-compose-leave
+and
+.Va on-compose-cleanup
+may be set to
+.Ic define Ns
+d macros and provide reliable and increasingly powerful mechanisms to
+perform automated message adjustments dependent on message context,
+for example addition of message signatures
+.Pf ( Va message-inject-head , message-inject-tail )
+or creation of additional receiver lists (also by setting
+.Va autocc , autobcc ) .
+To achieve that the command
+.Ic digmsg
+may be used in order to query and adjust status of message(s).
+The splice hook can also make use of
+.Sx "COMMAND ESCAPES" .
+(\*(ID The compose mode hooks work for
+.Ic forward , mail , reply
+and variants;
+.Ic resend
+and
+.Ic Resend
+only provide the hooks
+.Va on-resend-enter
+and
+.Va on-resend-cleanup ,
+which are pretty restricted due to the nature of the operation.)
+.Pp
 To avoid environmental noise scripts should
 .Dq detach
 \*(UA from any configuration files and create a script-local
@@ -1767,7 +1858,8 @@ to disable any configuration file in conjunction with repetitions of
 to specify variables:
 .Bd -literal -offset indent
 $ env LC_ALL=C \*(uA -:/ \e
-    -Sv15-compat -Ssendwait -Sttycharset=utf-8 \e
+    -Sv15-compat -Ssendwait \e
+    -Sttycharset=utf-8 -Smime-force-sendout \e
     -Sexpandaddr=fail,-all,failinvaddr \e
     -S mta=smtps://mylogin@exam.ple:465 -Ssmtp-auth=login \e
     -S from=scriptreply@exam.ple \e
@@ -1784,6 +1876,23 @@ a locale environment, the above specifies the all-compatible 7-bit clean
 .Dq C ,
 but will nonetheless take and send UTF-8 in the message text by using
 .Va ttycharset .
+If character set conversion is compiled in
+.Pf ( Va features
+includes the term
+.Ql +iconv )
+invalid (according to
+.Va ttycharset )
+character input data would normally cause errors; setting
+.Va mime-force-sendout
+will instead, as a last resort, classify the input as binary data, and
+therefore allow message creation to be successful.
+(Such content can then be inspected either by installing a
+.Va pipe-TYPE/SUBTYPE
+handler for
+.Ql application/octet-stream ,
+or possibly automatically through
+.Va mime-counter-evidence ) .
+.Pp
 In interactive mode, which is introduced in the next section, messages
 can be sent by calling the
 .Ic mail
@@ -1835,7 +1944,7 @@ If the \*(OPal documentation strings are available (see
 .Va features )
 one can type
 .Ql help X
-.Pf "(or " Ql ?X )
+.Pf "(or " Ql \&?X )
 and see the actual expansion of
 .Ql X
 and what its purpose is, i.e., commands can be abbreviated
@@ -2055,8 +2164,11 @@ will allow verification of the given assertion, and possible provision
 of an alternative, better MIME type.
 .Pp
 Whereas \*(UA \*(OPally supports a simple HTML-to-text filter for
-displaying HTML messages, it cannot handle MIME types other than plain
-text itself.
+displaying HTML messages (indicated by
+.Ql +filter-html-tagsoup
+in
+.Va features ) ,
+it cannot handle MIME types other than plain text itself.
 Instead programs need to become registered to deal with specific MIME
 types or file extensions.
 These programs may either prepare plain text versions of their input in
@@ -2094,99 +2206,80 @@ text, and to open PDF attachments in an external PDF viewer,
 asynchronously and with some other magic attached:
 .Bd -literal -offset indent
 ? if [ "$features" !% +filter-html-tagsoup ]
-?   #set pipe-text/html='@* elinks -force-html -dump 1'
-?   set pipe-text/html='@* lynx -stdin -dump -force_html'
+?   #set pipe-text/html='?* elinks -force-html -dump 1'
+?   set pipe-text/html='?* lynx -stdin -dump -force_html'
 ?   # Display HTML as plain text instead
-?   #set pipe-text/html=@
+?   #set pipe-text/html=?
 ? endif
-? mimetype @ application/mathml+xml mathml
-? wysh set pipe-application/pdf='@&=@ \e
+? mimetype ? application/mathml+xml mathml
+? wysh set pipe-application/pdf='?&=? \e
     trap "rm -f \e"${MAILX_FILENAME_TEMPORARY}\e"" EXIT;\e
     trap "trap \e"\e" INT QUIT TERM; exit 1" INT QUIT TERM;\e
     mupdf "${MAILX_FILENAME_TEMPORARY}"'
 .Ed
 .Ss "Mailing lists"
-\*(UA offers some support to ease handling of mailing lists.
-The command
-.Ic mlist
-promotes all given arguments to known mailing lists, and
-.Ic mlsubscribe
-sets their subscription attribute, creating them first as necessary.
-(On the other hand
-.Ic unmlsubscribe
-does not
-.Ic unmlist
-automatically, but only resets the subscription attribute.)
-Using the commands without arguments will show (a subset of) all
-currently defined mailing lists.
-The
-.Va headline
-format
-.Ql \&%T
-can be used to mark out messages with configured list addresses
-in the display of
-.Ic headers .
-.Pp
-If the \*(OPal regular expression support is available a mailing list
-specification that contains any of the
-.Dq magical
-regular expression characters
-.Ql ^[]*+?|$
-(see
-.Xr re_format 7 )
-will be interpreted as one, which allows matching of many addresses with
-a single expression.
-However, all fully qualified list addresses are matched via a fast
-dictionary, whereas expressions are placed in (a) list(s) which is
-(are) matched sequentially.
-.Bd -literal -offset indent
-? set followup-to followup-to-honour=ask-yes \e
-    reply-to-honour=ask-yes
-? wysh mlist a1@b1.c1 a2@b2.c2 '.*@lists\e.c3$'
-? mlsubscribe a4@b4.c4 exact@lists.c3
-.Ed
-.Pp
-The variable
+Known or subscribed-to mailing lists may be flagged in the summary of
+.Ic headers
+.Pf ( Va headline
+format character
+.Ql %L ) ,
+and will gain special treatment when sending mails: the variable
 .Va followup-to-honour
 will ensure that a
 .Ql Mail-\:Followup-\:To:
-header is honoured when the message is being replied to (via
-.Ic reply
+header is honoured when a message is being replied to
+.Pf ( Ic reply
 and
-.Ic Lreply )
+.Ic Lreply ) ,
 and
 .Va followup-to
-controls whether this header is created when sending mails; it will be
-created automatically for a couple of reasons, too, like when the
-special
-.Dq mailing list specific
-respond command
-.Ic Lreply
-is used, when
+controls creation of this header when creating
+.Ic mail Ns
+s; it may be created automatically, e.g., when list-replying via
+.Ic Lreply ,
+when
 .Ic reply
-is used to respond to a message with its
+is used and the messages
 .Ql Mail-Followup-To:
-being honoured etc.
+is honoured etc.
 .Pp
-A difference in between the handling of known and subscribed lists is
-that the address of the user is usually not part of a generated
-.Ql Mail-Followup-To:
-when addressing the latter, whereas it is for the former kind of lists.
-Usually because there are exceptions: say, if multiple lists are
-addressed and not all of them are subscribed lists.
+The commands
+.Ic mlist
+and
+.Ic mlsubscribe
+manage \*(UAs notion of which addresses are mailing lists.
+With the \*(OPal regular expression support any such address
+.Mx -ix "magic regular expression characters"
+which contains magic regular expression characters
+.Ql ( ^[]*+?|$ ;
+see
+.Xr re_format 7
+or
+.Xr regex 7 ,
+dependent on the host system)
+will be compiled and used as one, possibly matching many addresses.
+.Bd -literal -offset indent
+? set followup-to followup-to-honour=ask-yes \e
+    reply-to-honour=ask-yes
+? mlist a1@b1.c1 a2@b2.c2 '.*@lists\e.c3$'
+? mlsubscribe a4@b4.c4 exact@lists.c3
+.Ed
 .Pp
-For convenience \*(UA will, temporarily, automatically add a list
-address that is presented in the
-.Ql List-Post:
-header of a message that is being responded to to the list of known
-mailing lists.
-Shall that header have existed \*(UA will instead, dependent on the
-variable
-.Va reply-to-honour ,
-use an also set
+Known and subscribed lists differ in that for the latter the
+.Va user Ns
+s address is not part of a generated
+.Ql Mail-Followup-To: .
+There are exceptions, for example if multiple lists are addressed and
+not all have the subscription attribute.
+When replying to a message its list address
+.Pf ( Ql List-Post:
+header) is automatically and temporarily treated like a known
+.Ic mlist ;
+dependent on the variable
+.Va reply-to-honour
+an existing
 .Ql Reply-To:
-for this purpose (if it provides a single address which resides on the
-same domain as what is stated in
+is used instead (if it is a single address on the same domain as
 .Ql List-Post: )
 in order to accept a list administrator's wish that is supposed to have
 been manifested like that.
@@ -2280,6 +2373,10 @@ Additional variables of interest for S/MIME en- and decryption:
 .Va smime-cipher
 and
 .Va smime-encrypt-USER@HOST .
+S/MIME is available if
+.Ql +smime
+is included in
+.Va features .
 .Pp
 \*(ID Note that neither S/MIME signing nor encryption applies to
 message subjects or other header fields yet.
@@ -2448,7 +2545,7 @@ The section
 .Sx EXAMPLES
 contains complete example configurations.
 .Ss "Encrypted network communication"
-SSL (Secure Sockets Layer) a.k.a. its successor TLS (Transport Layer
+\*(OP SSL (Secure Sockets Layer) aka its successor TLS (Transport Layer
 Security) are protocols which aid in securing communication by providing
 a safely initiated and encrypted network connection.
 A central concept of TLS is that of certificates: as part of each
@@ -2507,7 +2604,8 @@ For example, to use the
 .Ql STLS
 that POP3 offers (a member of) the variable (chain)
 .Va pop3-use-starttls
-needs to be set:
+needs to be set, with convenience via
+.Ic shortcut :
 .Bd -literal -offset indent
 shortcut encpop1 pop3s://pop1.exam.ple
 
@@ -2557,6 +2655,12 @@ Variables of interest for TLS in general are
 .Va tls-rand-file
 as well as
 .Va tls-verify .
+Also see
+.Va tls-features .
+TLS is available if
+.Ql +tls
+is included in
+.Va features .
 .Ss "Character sets"
 \*(OP \*(UA detects the character set of the terminal by using
 mechanisms that are controlled by the
@@ -2621,7 +2725,7 @@ may be applied),
 and the rest of this section does not apply;
 it may however still be necessary to explicitly set it if automatic
 detection fails, since in that case it defaults to
-LATIN1 a.k.a. ISO-8859-1 unless the operating system environment is
+LATIN1 aka ISO-8859-1 unless the operating system environment is
 known to always and exclusively support UTF-8 locales.
 .Pp
 \*(OP When reading messages, their text is converted into
@@ -2672,6 +2776,14 @@ then the message will not be send and its text will optionally be
 .Va save Ns d
 in
 .Ev DEAD .
+If that is not acceptable, the variable
+.Va mime-force-sendout
+can be set in order to force sending of non-convertible text as
+.Ql application/octet-stream
+classified binary content instead; like this receivers still have the
+option to inspect message content (for example by setting
+.Va mime-counter-evidence ) .
+.Pp
 In general, if a message saying
 .Dq cannot convert from a to b
 appears, either some characters are not appropriate for the currently
@@ -2681,7 +2793,6 @@ In the first case, it is necessary to set an appropriate
 .Ev LC_CTYPE
 locale and/or the variable
 .Va ttycharset .
-.Pp
 The best results are usually achieved when \*(UA is run in a UTF-8
 locale on an UTF-8 capable terminal, in which case the full Unicode
 spectrum of characters is available.
@@ -2844,7 +2955,7 @@ Mark messages which need special attention.
 .Sx "Message list arguments" ,
 such as
 .Ic from
-a.k.a.\&
+aka\&
 .Ic search ,
 .Ic type
 and
@@ -2975,11 +3086,9 @@ All messages that contain the given case-insensitive search
 ession;  If the \*(OPal regular expression support is available
 .Ar expr
 will be interpreted as (an extended) one if any of the
-.Dq magical
-regular expression characters
-.Ql ^[]*+?|$
-is seen (see
-.Xr re_format 7 ) .
+.Mx -sx
+.Sx "magic regular expression characters"
+is seen.
 If the optional
 .Ar @ Ns Ar name-list
 part is missing the search is restricted to the subject field body,
@@ -3016,8 +3125,9 @@ respectively and case-insensitively.
 .Ar expr ,
 .Ar name-list
 will be interpreted as (an extended) regular expression if any of the
-.Dq magical
-regular expression characters is seen.
+.Mx -sx
+.Sx "magic regular expression characters"
+is seen.
 .Pp
 The special names
 .Ql header
@@ -3307,6 +3417,9 @@ internal variables
 .Va history-gabby-persist
 and
 .Va history-size .
+There also exists the macro hook
+.Va on-history-addition
+which can be used to apply fine control on what enters history.
 .Pp
 The MLE supports a set of editing and control commands.
 By default (as) many (as possible) of these will be assigned to a set of
@@ -3506,7 +3619,7 @@ ring the audible bell.
 .El
 .Ss "Coloured display"
 \*(OP \*(UA can be configured to support a coloured display and font
-attributes by emitting ANSI a.k.a. ISO 6429 SGR (select graphic
+attributes by emitting ANSI aka ISO 6429 SGR (select graphic
 rendition) escape sequences.
 Usage of colours and font attributes solely depends upon the
 capability of the detected terminal type that is defined by the
@@ -3549,7 +3662,7 @@ sense to conditionalize the colour setup by encapsulating it with
 .Bd -literal -offset indent
 if terminal && [ "$features" =% +colour ]
   colour iso view-msginfo ft=bold,fg=green
-  colour iso view-header ft=bold,fg=red from,subject
+  colour iso view-header ft=bold,fg=red (from|subject) # regex
   colour iso view-header fg=red
 
   uncolour iso view-header from,subject
@@ -3716,7 +3829,7 @@ ell, which is a programming language with syntactic elements of clearly
 defined semantics, and therefore capable to sequentially expand and
 evaluate individual elements of a line.
 \*(UA will never be able to handle
-.Ql ? set one=value two=$one
+.Ql \&? set one=value two=$one
 in a single statement, because the variable assignment is performed by
 the command
 .Pf ( Ic set ) ,
@@ -3733,9 +3846,9 @@ POSIX standard prescribes a set of abbreviations).
 .Ic \&? ) ,
 when given an argument, will show a documentation string for the
 command matching the expanded argument, as in
-.Ql ?t ,
+.Ql \&?t ,
 which should be a shorthand of
-.Ql ?type ;
+.Ql \&?type ;
 with these documentation strings both commands support a more
 .Va verbose
 listing mode which includes the argument type of the command and other
@@ -3847,6 +3960,9 @@ can be used for some old and established commands to choose the new
 .Sx "Shell-style argument quoting"
 rules over the traditional
 .Sx "Old-style argument quoting" .
+This modifier is implied if
+.Va v15-compat
+is set to a non-empty value.
 .El
 .Ss "Old-style argument quoting"
 \*(ID This section documents the old, traditional style of quoting
@@ -4078,7 +4194,7 @@ Adding the number 64 achieves this for the codes 0 to 31, e.g., 7 (BEL):
 The real operation is a bitwise logical XOR with 64 (bit 7 set, see
 .Ic vexpr ) ,
 thus also covering code 127 (DEL), which is mapped to 63 (question mark):
-.Ql ? vexpr ^ 127 64 .
+.Ql \&?\0vexpr\0^\0127\064 .
 .Pp
 Whereas historically circumflex notation has often been used for
 visualization purposes of control codes, e.g.,
@@ -4326,10 +4442,10 @@ and manages the error number
 shown instead; commands can be abbreviated in general and this command
 can be used to see the full expansion of an abbreviation including the
 synopsis, try, e.g.,
-.Ql ?h ,
-.Ql ?hel
+.Ql \&?h ,
+.Ql \&?hel
 and
-.Ql ?help
+.Ql \&?help
 and see how the output changes.
 This mode also supports a more
 .Va verbose
@@ -4456,30 +4572,39 @@ diet@exam.ple
 .Mx
 .Mx
 .It Ic alias , unalias
-(a, una) Aliases are a method of creating personal distribution lists
-that map a single alias name to none to multiple real receivers;
-these aliases become expanded after message composing is completed.
-The latter command removes the given list of aliases, the special name
+\*(NQ (a, una) Define or list, and remove, respectively, address aliases.
+Address aliases are a method of creating personal distribution lists
+that map a single alias name to none to multiple receivers;
+aliases are expanded after message composing is completed.
+The latter command removes all given aliases, the special name asterisk
 .Ql *
-will discard all existing aliases.
+will remove all existing aliases.
+When used without arguments the former shows a list of all currently
+known aliases, with one argument only the target(s) of the given one.
+When given two arguments, hyphen-minus
+.Ql -
+being the first, the target(s) of the second is/are expanded recursively.
 .Pp
-The former command shows all currently defined aliases when used without
-arguments, and with one argument the expansion of the given alias.
-With more than one argument, creates or appends to the alias name given
-as the first argument the remaining arguments.
-Alias names adhere to the Postfix MTA
+In all other cases the given address alias is newly defined or will be
+appended to: target arguments must either be valid alias names, or any
+other address type.
+Recursive expansion of (what looks like) alias name(s) targets can be
+prevented by prefixing the target with the modifier reverse solidus
+.Cm \e .
+A valid alias name conforms to the Postfix MTA
 .Xr aliases 5
-rules and are thus restricted to alphabetic characters, digits, the
-underscore, hyphen-minus, the number sign, colon and commercial at,
-a dollar sign is allowed but in the first position;
-As extensions the exclamation mark
+rules, and may consist of alphabetic characters, digits, the underscore,
+the number sign, colon, commercial at and hyphen-minus; extensions:
+exclamation mark
 .Ql \&! ,
 period
 .Ql \&.
 as well as
-.Dq any haracter that has the high bit set
+.Dq any character that has the high bit set
 may be used:
-.Ql [[:alnum:]_#:@-][[:alnum:]_#:@$;.-]* .
+.Ql [[:alnum:]_#:@!.-]+ .
+The number sign may need be quoted to avoid misinterpretation as the
+shell comment character.
 .Pp
 \*(ID Unfortunately the colon is currently not supported, as it
 interferes with normal address parsing rules.
@@ -4544,10 +4669,10 @@ bindings upon program startup, however: please use
 .Va line-editor-no-defaults
 for this purpose instead.
 .Pp
-With one argument the former command shows all key bindings for the
-given context, specifying an asterisk
+With zero arguments, or with a context name the former command shows all
+key bindings (of the given context; an asterisk
 .Ql *
-will show the bindings of all contexts; a more verbose listing will be
+will iterate over all contexts); a more verbose listing will be
 produced if either of
 .Va debug
 or
@@ -4564,6 +4689,7 @@ expansion shall instead be furtherly editable by the user, a commercial at
 (that will be removed) can be placed last in the expansion, from which
 leading and trailing whitespace will finally be removed.
 Reverse solidus cannot be used as the last character of expansion.
+An empty expansion will be rejected.
 .Pp
 Contexts define when a binding applies, i.e., a binding will not be seen
 unless the context for which it is defined for is currently active.
@@ -4764,23 +4890,28 @@ variables.
 .It Ic charsetalias , uncharsetalias
 \*(NQ Manage alias mappings for (conversion of)
 .Sx "Character sets" .
-Mappings are ineffective if character set conversion is not available
+Alias processing is not performed for
+.Sx "INTERNAL VARIABLES" ,
+e.g.,
+.Va charset-8bit ,
+and mappings are ineffective if character set conversion is not available
 .Pf ( Va features
 does not announce
 .Ql +iconv ) .
-Expansion happens recursively, but expansion is not performed for
-.Sx "INTERNAL VARIABLES" ,
-e.g.,
-.Va charset-8bit .
+Expansion happens recursively for cases where aliases point to other
+aliases (builtin loop limit: 8).
 .Pp
 The latter command deletes all aliases given as arguments,
-all aliases can be deleted at once with the special argument
+or all at once when given the asterisk
 .Ql * .
 The former shows the list of all currently defined aliases if used
-without arguments, the expansion of the given alias with one argument.
-Otherwise all given arguments are treated as pairs of character sets and
-their desired target alias name, creating new or changing already
-existing aliases, as necessary.
+without arguments, or the target of the given single argument;
+when given two arguments, hyphen-minus
+.Ql -
+being the first, the second is instead expanded recursively.
+In all other cases the given arguments are treated as pairs of character
+sets and their desired target alias name, creating new or updating
+already existing aliases.
 .Mx
 .It Ic chdir
 (ch) Change the working directory to
@@ -4895,15 +5026,16 @@ are used when displaying messages.
 .It Ar view-from_
 This mapping is used for so-called
 .Ql From_
-lines, which are MBOX file format specific header lines.
+lines, which are MBOX file format specific header lines (also see
+.Va mbox-rfc4155 ) .
 .It Ar view-header
 For header lines.
 A comma-separated list of headers to which the mapping applies may be
 given as a precondition; if the \*(OPal regular expression support is
 available then if any of the
-.Dq magical
-(extended) regular expression characters is seen the precondition will
-be evaluated as (an extended) one.
+.Mx -sx
+.Sx "magic regular expression characters"
+is seen the precondition will be evaluated as (an extended) one.
 .It Ar view-msginfo
 For the introductional message info line.
 .It Ar view-partinfo
@@ -4982,7 +5114,7 @@ An (command)alias can be used everywhere a normal command can be used,
 but always takes precedence: any arguments that are given to the command
 alias are joined onto the alias expansion, and the resulting string
 forms the command line that is, in effect, executed.
-The latter command removes all given aliases, the special name
+The latter command removes all given aliases, the special name asterisk
 .Ql *
 will remove all existing aliases.
 When used without arguments the former shows a list of all currently
@@ -5020,6 +5152,69 @@ otherwise identical to
 (c) Copy messages to the named file and do not mark them as being saved;
 otherwise identical to
 .Ic save .
+.Mx
+.It Ic csop
+\*(NQ A multiplexer command which provides C-style string operations on
+8-bit bytes without a notion of locale settings and character sets,
+effectively assuming ASCII data.
+For numeric and other operations refer to
+.Ic vexpr .
+.Cm vput ,
+one of the
+.Sx "Command modifiers" ,
+is supported.
+The error result is
+.Ql -1
+for usage errors and numeric results, the empty string otherwise;
+missing data errors, as for unsuccessful searches, result in the
+.Va \&!
+error number being set to
+.Va ^ERR Ns -NODATA .
+Where the question mark
+.Ql \&?
+modifier suffix is supported, a case-insensitive (ASCII mapping)
+operation mode is supported; the keyword
+.Ql case
+is optional, e.g.,
+.Ql find?
+and
+.Ql find?case
+are identical.
+.Bl -hang -width ".It Cm length"
+.It Cm length
+Queries the length of the given argument.
+.It Cm hash , Cm hash32
+Calculates a hash value of the given argument.
+The latter will return a 32-bit result regardless of host environment.
+.Ql \&?
+modifier suffix is supported.
+These use Chris Torek's hash algorithm, the resulting hash value is
+bit mixed as shown by Bret Mulvey.
+.It Cm find
+Search for the second in the first argument.
+Shows the resulting 0-based offset shall it have been found.
+.Ql \&?
+modifier suffix is supported.
+.It Cm substring
+Creates a substring of its first argument.
+The optional second argument is the 0-based starting offset,
+a negative one counts from the end;
+the optional third argument specifies the length of the desired result,
+a negative length leaves off the given number of bytes at the end of the
+original string; by default the entire string is used.
+This operation tries to work around faulty arguments (set
+.Va verbose
+for error logs), but reports them via the error number
+.Va \&!
+as
+.Va ^ERR Ns -OVERFLOW .
+.It Cm trim
+Trim away whitespace characters from both ends of the argument.
+.It Cm trim-front
+Trim away whitespace characters from the begin of the argument.
+.It Cm trim-end
+Trim away whitespace characters from the end of the argument.
+.El
 .Mx
 .It Ic cwd
 Show the name of the current working directory, as reported by
@@ -5094,8 +5289,10 @@ Positional parameters can be
 .Ic shift Ns
 ed, or become completely replaced, removed etc. via
 .Ic vpospar .
-A helpful command to perform many sorts of number and string evaluations is
-.Ic vexpr .
+A helpful command for numeric computation and string evaluations is
+.Ic vexpr ,
+.Ic csop
+offers C-style byte string operations.
 .Bd -literal -offset indent
 define name {
   command1
@@ -5157,7 +5354,7 @@ The objects may be
 d again by giving the same identifier used for creation;
 this step could be omitted: objects will be automatically closed
 when the active mailbox or the compose mode is left, respectively.
-In all other cases the second argument is an object identifier,
+In all other use cases the second argument is an object identifier,
 and the third and all following arguments are interpreted as via
 .Ic ~^
 (see
@@ -5338,18 +5535,18 @@ respectively, the program environment.
 .It Ic errors
 \*(OP Since \*(UA uses the console as a user interface it can happen
 that messages scroll by too fast to become recognized.
-An error message ring queue is available which stores duplicates of any
-error message and notifies the user in interactive sessions whenever
-a new error has occurred.
+Therefore an error log queue is available which can be managed by
+.Ic errors :
+.Ar show
+or no argument will display and clear the queue,
+.Ar clear
+will only clear the queue.
 The queue is finite: if its maximum size is reached any new message
 replaces the eldest.
-The command
-.Ic errors
-can be used to manage this message queue: if given
-.Ar show
-or no argument the queue will be displayed and cleared,
-.Ar clear
-will only clear all messages from the queue.
+There are also the variables
+.Va ^ERRQUEUE-COUNT
+and
+.Va ^ERRQUEUE-EXISTS .
 .Mx
 .It Ic eval
 \*(NQ Construct a command by concatenating the arguments, separated with
@@ -5426,8 +5623,10 @@ mechanisms apply.
 \*(OPally URLs can also be used to access network resources, which may
 be accessed securely via
 .Sx "Encrypted network communication"
-if so supported, and it is possible to proxy all network traffic over
-a SOCKS5 server given via
+if so supported.
+Network communication socket timeouts are configurable, e.g.,
+.Va socket-connect-timeout .
+All generated network traffic may be proxied over the SOCKS5 server given in
 .Va socks-proxy .
 .Pp
 .Dl \*(IN protocol://[user[:password]@]host[:port][/path]
@@ -5466,6 +5665,22 @@ compression tool and a combined compressed and encrypted format:
     zst.pgp 'gpg -d | zstd -dc' 'zstd -19 -zc | gpg -e'
 .Ed
 .Pp
+.Ic filetype Ns
+s also provide limited (case-sensitive) auto-completion capabilities.
+For example
+.Ql mbox.gz
+will be found for
+.Ql \&? file mbox
+provided that a corresponding handler is installed.
+It will neither find
+.Ql mbox.GZ
+nor
+.Ql mbox.Gz
+however, on the other hand doing an explicit
+.Ql \&? file mbox.GZ
+will find and use the handler for
+.Ql gz .
+.Pp
 MBOX databases will always be protected via file-region locks
 .Pf ( Xr fcntl 2 )
 during file operations in order to avoid inconsistencies due to
@@ -5488,6 +5703,9 @@ to create the dotlock file in the same directory and with the same user
 and group identities as the file of interest.
 .Va dotlock-disable
 can be used to turn off additional dotlock files, shall the need arise.
+There is also a related entry in the
+.Sx FAQ :
+.Sx "Howto handle stale dotlock files" .
 .Pp
 \*(UA by default uses tolerant POSIX rules when reading MBOX database
 files, but it will detect invalid message boundaries in this mode and
@@ -5518,11 +5736,17 @@ controls the format of mailboxes yet to be created.
 .Mx
 .Mx
 .It Ic filetype , unfiletype
-\*(NQ Define or list, and remove, respectively, file handler hooks,
+\*(NQ Define, list, and remove, respectively, file handler hooks,
 which provide (shell) commands that enable \*(UA to load and save MBOX
-files from and to files with the registered file extensions;
-it will use an intermediate temporary file to store the plain data.
-The latter command removes the hooks for all given extensions,
+files from and to files with the registered file extensions, as shown
+and described for
+.Ic file .
+The extensions are used case-insensitively, yet the auto-completion
+feature of, e.g.,
+.Ic file
+will only work case-sensitively.
+An intermediate temporary file will be used to store the expanded data.
+The latter command will remove hooks for all given extensions, asterisk
 .Ql *
 will remove all existing handlers.
 .Pp
@@ -5530,7 +5754,7 @@ When used without arguments the former shows a list of all currently
 defined file hooks, with one argument the expansion of the given alias.
 Otherwise three arguments are expected, the first specifying the file
 extension for which the hook is meant, and the second and third defining
-the load- and save commands, respectively, to deal with the file type,
+the load- and save commands to deal with the file type, respectively,
 both of which must read from standard input and write to standard
 output.
 Changing hooks will not affect already opened mailboxes (\*(ID except below).
@@ -5796,13 +6020,11 @@ eceive
 and
 .Ql s Ns
 end, the remaining are non-portable extensions.
-\*(ID These commands do not yet use
+\*(ID In conjunction with the
+.Cm wysh
+command prefix(es)
 .Sx "Shell-style argument quoting"
-and therefore do not know about input tokens, so that syntax
-elements have to be surrounded by whitespace; in v15 \*(UA will inspect
-all conditions bracket group wise and consider the tokens, representing
-values and operators, therein, which also means that variables will
-already have been expanded at that time (just like in the shell).
+and more test operators are available.
 .Bd -literal -offset indent
 if receive
   commands ...
@@ -5811,22 +6033,20 @@ else
 endif
 .Ed
 .Pp
-The (case-insensitive) condition
+Further (case-insensitive) one-argument conditions are
 .Ql t Ns
-erminal will evaluate to true if the standard input is a terminal, i.e.,
-in interactive sessions.
-Another condition can be any boolean value (see the section
+erminal which evaluates to true in interactive (terminal) sessions,
+as well as any boolean value (see
 .Sx "INTERNAL VARIABLES"
 for textual boolean representations) to mark an enwrapped block as
 .Dq never execute
 or
 .Dq always execute .
-(It shall be remarked that a faulty condition skips all branches until
+(Remarks: condition syntax errors skip all branches until
 .Ic endif . )
 .Pp
-(\*(ID In v15
-.Sx "Shell-style argument quoting"
-will be used, and this command will simply interpret expanded tokens.)
+\*(OU and without
+.Cm wysh :
 It is possible to check
 .Sx "INTERNAL VARIABLES"
 as well as
@@ -5839,12 +6059,46 @@ conditional trigger character;
 a variable on the right hand side may be signalled using the same
 mechanism.
 Variable names may be enclosed in a pair of matching braces.
-When this mode has been triggered, several operators are available:
+When this mode has been triggered, several operators are available
+(\*(IN and
+.Cm wysh :
+they are always available, and there is no trigger: variables will have
+been expanded by the shell-compatible parser before the
+.Ic if
+etc. command sees them).
+.Pp
+\*(IN Two argument conditions.
+Variables can be tested for existence and expansion:
+.Ql -N
+will test whether the given variable exists, e.g.,
+.Ql -N editalong
+will evaluate to true when
+.Va editalong
+is set, whereas
+.Ql -Z editalong
+will if it is not.
+.Ql -n """$editalong"""
+will be true if the variable is set and expands to a non-empty string,
+.Ql -z $'\e$editalong'
+only if the expansion is empty, whether the variable exists or not.
+The remaining conditions take three arguments.
 .Pp
 Integer operators treat the arguments on the left and right hand side of
 the operator as integral numbers and compare them arithmetically.
 It is an error if any of the operands is not a valid integer, an empty
 argument (which implies it had been quoted) is treated as if it were 0.
+Via the question mark
+.Ql \&?
+modifier suffix a saturated operation mode is available where numbers
+will linger at the minimum or maximum possible value, instead of
+overflowing (or trapping), the keyword
+.Ql saturated
+is optional, e.g.,
+.Ql ==? ,
+.Ql ==?satu
+and
+.Ql ==?saturated
+are identical.
 Available operators are
 .Ql -lt
 (less than),
@@ -5859,16 +6113,18 @@ Available operators are
 .Ql -gt
 (greater than).
 .Pp
-String data operators compare the left and right hand side according to
-their textual content.
+String and regular expression data operators compare the left and right
+hand side according to their textual content.
 Unset variables are treated as the empty string.
-The behaviour of string operators can be adjusted by prefixing the
-operator with the modifier trigger commercial at
-.Ql @ ,
-followed by none to multiple modifiers: for now supported is
-.Ql i ,
-which turns the comparison into a case-insensitive one: this is
-implied if no modifier follows the trigger.
+Via the question mark
+.Ql \&?
+modifier suffix a case-insensitive operation mode is available, the keyword
+.Ql case
+is optional, e.g.,
+.Ql ==?
+and
+.Ql ==?case
+are identical.
 .Pp
 Available string operators are
 .Ql <
@@ -5922,27 +6178,24 @@ via unary operators: the unary operator
 .Ql \&!
 will reverse the result.
 .Bd -literal -offset indent
-# (This not in v15, there [ -n "$debug"]!)
-if $debug
-  echo *debug* is set
-endif
+wysh set v15-compat=yes # with value: automatic "wysh"!
+if -N debug;echo *debug* set;else;echo not;endif
 if [ "$ttycharset" == UTF-8 ] || \e
-    [ "$ttycharset" @i== UTF8 ]
+    [ "$ttycharset" ==?case UTF8 ]
   echo *ttycharset* is UTF-8, the former case-sensitive!
 endif
 set t1=one t2=one
 if [ "${t1}" == "${t2}" ]
   echo These two variables are equal
 endif
-if [ "$features" =% +regex ] && \e
-    [ "$TERM" @i=~ "^xterm\&.*" ]
+if "$features" =% +regex && "$TERM" =~?case "^xterm\&.*"
   echo ..in an X terminal
 endif
 if [ [ true ] && [ [ "${debug}" != '' ] || \e
     [ "$verbose" != '' ] ] ]
   echo Noisy, noisy
 endif
-if true && [ "$debug" != '' ] || [ "${verbose}" != '' ]
+if true && [ -n "$debug" || -n "${verbose}" ]
   echo Left associativity, as is known from the shell
 endif
 .Ed
@@ -6006,7 +6259,9 @@ entries.
 .El
 .Mx
 .It Ic localopts
-This command can be used to localize changes to (linked)
+Enforce change localization of
+.Ic environ
+(linked)
 .Sx ENVIRONMENT
 as well as (global)
 .Sx "INTERNAL VARIABLES" ,
@@ -6107,7 +6362,7 @@ if an I/O error occurs,
 if a necessary character set conversion fails, and
 .Va ^ERR Ns -INVAL
 for other errors.
-Occurance of some of the errors depend on the value of
+Occurrence of some of the errors depend on the value of
 .Va expandaddr .
 Any error stops processing of further messages.
 .Mx
@@ -6144,7 +6399,7 @@ if an I/O error occurs,
 if a necessary character set conversion fails, and
 .Va ^ERR Ns -INVAL
 for other errors.
-Occurance of some of the errors depend on the value of
+Occurrence of some of the errors depend on the value of
 .Va expandaddr .
 .Mx
 .It Ic mbox
@@ -6161,7 +6416,7 @@ is set.
 .Mx
 .Mx
 .It Ic mimetype , unmimetype
-Without arguments the content of the MIME type cache will displayed;
+\*(NQ Without arguments the content of the MIME type cache will displayed;
 a more verbose listing will be produced if either of
 .Va debug
 or
@@ -6177,7 +6432,7 @@ In any event MIME type sources are loaded first as necessary \(en
 can be used to fine-tune which sources are actually loaded.
 .Pp
 The latter command deletes all specifications of the given MIME type, thus
-.Ql ? unmimetype text/plain
+.Ql \&? unmimetype text/plain
 will remove all registered specifications for the MIME type
 .Ql text/plain .
 The special name
@@ -6186,33 +6441,6 @@ will discard all existing MIME types, just as will
 .Ql reset ,
 but which also reenables cache initialization via
 .Va mimetypes-load-control .
-.Mx
-.Mx
-.It Ic mlist , unmlist
-The latter command removes all given mailing lists, the special name
-.Ql *
-can be used to remove all registered lists.
-The former will list all currently defined mailing lists (and their
-attributes, if any) when used without arguments; a more verbose listing
-will be produced if either of
-.Va debug
-or
-.Va verbose
-are set.
-Otherwise all given arguments will be added and henceforth be recognized
-as mailing lists.
-If the \*(OPal regular expression support is available then any argument
-which contains any of the
-.Dq magical
-regular expression characters
-.Ql ^[]*+?|$
-(see
-.Xr re_format 7 )
-will be interpreted as one, which allows matching of many addresses with
-a single expression.
-The
-.Ic mlsubscribe
-pair of commands manages subscription attributes of mailing lists.
 .Mx
 .It Ic mimeview
 \*(ID Only available in interactive mode, this command allows one to
@@ -6226,23 +6454,29 @@ The user will be asked for each non-text part of the given message in
 turn whether the registered handler shall be used to display the part.
 .Mx
 .Mx
+.It Ic mlist , unmlist
+\*(NQ Manage the list of known
+.Sx "Mailing lists" ;
+subscriptions are controlled via
+.Ic mlsubscribe .
+The latter command deletes all given arguments,
+or all at once when given the asterisk
+.Ql * .
+The former shows the list of all currently known lists if used
+without arguments, otherwise the given arguments will become known.
+\*(OP In the latter case, arguments which contain any of the
+.Mx -sx
+.Sx "magic regular expression characters"
+will be interpreted as one, possibly matching many addresses;
+these will be sequentially matched via linked lists instead of being
+looked up in a dictionary.
+.Mx
+.Mx
 .It Ic mlsubscribe , unmlsubscribe
-The latter command removes the subscription attribute from all given
-mailing lists, the special name
-.Ql *
-can be used to do so for any registered list.
-The former will list all currently defined mailing lists which have
-a subscription attribute when used without arguments; a more verbose
-listing will be produced if either of
-.Va debug
-or
-.Va verbose
-are set.
-Otherwise this attribute will be set for all given mailing lists,
-newly creating them as necessary (as via
-.Ic mlist ) .
-Also see
-.Va followup-to .
+Building upon the command pair
+.Ic mlist , unmlist ,
+but only managing the subscription attribute of mailing lists.
+(The former will also create not yet existing mailing lists.)
 .Mx
 .It Ic Move
 Similar to
@@ -6569,7 +6803,7 @@ if an I/O error occurs,
 if a necessary character set conversion fails, and
 .Va ^ERR Ns -INVAL
 for other errors.
-Occurance of some of the errors depend on the value of
+Occurrence of some of the errors depend on the value of
 .Va expandaddr .
 Any error stops processing of further messages.
 .Mx
@@ -6617,7 +6851,7 @@ if an I/O error occurs,
 if a necessary character set conversion fails, and
 .Va ^ERR Ns -INVAL
 for other errors.
-Occurance of some of the errors depend on the value of
+Occurrence of some of the errors depend on the value of
 .Va expandaddr .
 Any error stops processing of further messages.
 .Mx
@@ -6819,14 +7053,15 @@ and returns its exit status.
 .Mx
 .Mx
 .It Ic shortcut , unshortcut
-Without arguments the list of all currently defined shortcuts is
-shown, with one argument the expansion of the given shortcut.
-Otherwise all given arguments are treated as pairs of shortcuts and
-their expansions, creating new or changing already existing shortcuts,
-as necessary.
-The latter command will remove all given shortcuts, the special name
-.Ql *
-will remove all registered shortcuts.
+\*(NQ Manage the file- or pathname shortcuts as documented for
+.Ic file .
+The latter command deletes all shortcuts given as arguments,
+or all at once when given the asterisk
+.Ql * .
+The former shows the list of all currently defined shortcuts if used
+without arguments, the target of the given with a single argument.
+Otherwise arguments are treated as pairs of shortcuts and their desired
+expansion, creating new or updating already existing ones.
 .Mx
 .It Ic shift
 \*(NQ Shift the positional parameter stack (starting at
@@ -6855,7 +7090,7 @@ message-list.
 .Mx
 .It Ic sleep
 \*(NQ Sleep for the specified number of seconds (and optionally
-milliseconds), by default interruptably.
+milliseconds), by default interruptable.
 If a third argument is given the sleep will be uninterruptible,
 otherwise the error number
 .Va \&!
@@ -7022,7 +7257,7 @@ if so documented (see
 The result that is shown in case of errors is always the empty string,
 errors can be identified via the error number
 .Va \&! .
-For example, string length overflows are catched and set
+For example, string length overflows are caught and set
 .Va \&!
 to
 .Va ^ERR Ns -OVERFLOW .
@@ -7253,33 +7488,31 @@ Shows the
 .Va version
 and
 .Va features
-of \*(UA, as well as the build and running system environment.
-This command can produce a more
+of \*(UA, optionally in a more
 .Va verbose
-output, and supports
+form which also includes the build and running system environment.
+This command supports
 .Cm vput
 (see
 .Sx "Command modifiers" ) .
 .Mx
 .It Ic vexpr
-\*(NQ Evaluate arguments according to a given operator.
-This is a multiplexer command which can be used to perform signed 64-bit
-numeric calculations as well as byte string and string operations.
-It uses polish notation, i.e., the operator is the first argument and
-defines the number and type, and the meaning of the remaining arguments.
-An empty argument is replaced with a 0 if a number is expected.
+\*(NQ A multiplexer command which offers signed 64-bit numeric
+calculations, as well as other, mostly string-based operations.
+C-style byte string operations are available via
+.Ic csop .
+The first argument defines the number, type, and meaning of the
+remaining arguments.
+An empty number argument is treated as 0.
 Supports
 .Cm vput
 (see
 .Sx "Command modifiers" ) .
-.Pp
-The result that is shown in case of errors is always
+The result shown in case of errors is
 .Ql -1
-for usage errors and numeric operations, and the empty string for byte
-string and string operations;
-if the latter two fail to provide result data for
+for usage errors and numeric operations, the empty string otherwise;
 .Dq soft
-errors, e.g., when a search operation failed, they also set the
+errors, like when a search operation failed, will also set the
 .Va \&!
 error number to
 .Va ^ERR Ns -NODATA .
@@ -7316,13 +7549,21 @@ a difference regarding overflow detection and overflow constant.
 It is possible to enforce signed interpretation by (instead) prefixing a
 .Ql s
 (case-insensitively).
+The number sign notation uses a permissive parse mode and as such
+supports complicated conditions out of the box:
+.Bd -literal -offset indent
+? wysh set ifs=:;read i;unset ifs;echo $i;vexpr pb 2 10#$i
+   -009
+<   -009>
+0b1001
+.Ed
 .Pp
 One integer is expected by assignment (equals sign
 .Ql = ) ,
 which does nothing but parsing the argument, thus detecting validity and
-possible overflow conditions, and unary not (tilde
+possible overflow conditions, unary not (tilde
 .Ql ~ ) ,
-which creates the bitwise complement.
+which creates the bitwise complement, and unary plus and minus.
 Two integers are used by addition (plus sign
 .Ql + ) ,
 subtraction (hyphen-minus
@@ -7352,25 +7593,33 @@ Another numeric operation is
 which takes a number base in between 2 and 36, inclusive, and will act
 on the second number given just the same as what equals sign
 .Ql =
-does, but the number result will be formatted in the base given.
+does, but the number result will be formatted in the base given, as
+a signed 64-bit number unless unsigned interpretation of the input
+number had been forced (with an u prefix).
 .Pp
-All numeric operators can be prefixed with a commercial at
-.Ql @ ,
-e.g.,
-.Ql @* :
-this will turn the operation into a saturated one, which means that
-overflow errors and division and modulo by zero are no longer reported
-via the exit status, but the result will linger at the minimum or
-maximum possible value, instead of overflowing (or trapping).
+Numeric operations support a saturated mode via the question mark
+.Ql \&?
+modifier suffix; the keyword
+.Ql saturated
+is optional, e.g.,
+.Ql +? ,
+.Ql +?satu ,
+and
+.Ql +?saturated
+are identical.
+In saturated mode overflow errors and division and modulo by zero are no
+longer reported via the exit status, but the result will linger at the
+minimum or maximum possible value, instead of overflowing (or trapping).
 This is true also for the argument parse step.
 For the bitwise shifts, the saturated maximum is 63.
-Any catched overflow will be reported via the error number
+Any caught overflow will be reported via the error number
 .Va \&!
 as
 .Va ^ERR Ns -OVERFLOW .
 .Bd -literal -offset indent
-? vexpr @- +1 -9223372036854775808
-? echo $?/$!/$^ERRNAME
+? vput vexpr res -? +1 -9223372036854775808
+? echo $?/$!/$^ERRNAME:$res
+0/75/OVERFLOW:-9223372036854775808
 .Ed
 .Pp
 Character set agnostic string functions have no notion of locale
@@ -7380,6 +7629,16 @@ settings and character sets.
 Performs the usual
 .Sx "Filename transformations"
 on its argument.
+.It Cm file-stat , file-lstat
+Perform the usual
+.Sx "Filename transformations"
+on the argument, then call
+.Xr stat 2
+and
+.Xr lstat 2 ,
+respectively, in order to echo some stat fields such that
+.Ql vput vexpr v file-stat FILE; eval wysh set $v
+creates accessible variables.
 .It Cm random
 Generates a random string of the given length, or of
 .Dv \&\&PATH_MAX
@@ -7389,45 +7648,19 @@ if the value 0 is given; the random string will be base64url encoded
 according to RFC 4648, and thus be usable as a (portable) filename.
 .El
 .Pp
-Byte string operations work on 8-bit bytes and have no notion of locale
-settings and character sets, effectively assuming ASCII data.
-.Bl -hang -width ".It Cm length"
-.It Cm length
-Queries the length of the given argument.
-.It Cm hash
-Calculates the Chris Torek hash of the given argument.
-.It Cm find
-Byte-searches in the first for the second argument.
-Shows the resulting 0-based offset shall it have been found.
-.It Cm ifind
-Identical to
-.Cm find ,
-but works case-insensitively according to the rules of the ASCII
-character set.
-.It Cm substring
-Creates a substring of its first argument.
-The second argument is the 0-based starting offset, a negative one
-counts from the end;
-the optional third argument specifies the length of the desired result,
-a negative length leaves off the given number of bytes at the end of the
-original string, by default the entire string is used;
-this operation tries to work around faulty arguments (set
-.Va verbose
-for error logs), but reports them via the error number
-.Va \&!
-as
-.Va ^ERR Ns -OVERFLOW .
-.It Cm trim
-Trim away whitespace characters from both ends of the argument.
-.It Cm trim-front
-Trim away whitespace characters from the begin of the argument.
-.It Cm trim-end
-Trim away whitespace characters from the end of the argument.
-.El
-.Pp
 String operations work, sufficient support provided, according to the
 active user's locale encoding and character set (see
 .Sx "Character sets" ) .
+Where the question mark
+.Ql \&?
+modifier suffix is supported, a case-insensitive operation mode is
+available; the keyword
+.Ql case
+is optional, e.g.,
+.Ql regex?
+and
+.Ql regex?case
+are identical.
 .Bl -hang -width ".It Cm regex"
 .It Cm makeprint
 (One-way) Converts the argument to something safely printable on the
@@ -7435,25 +7668,24 @@ terminal.
 .It Cm regex
 \*(OP A string operation that will try to match the first argument with
 the regular expression given as the second argument.
+.Ql \&?
+modifier suffix is supported.
 If the optional third argument has been given then instead of showing
 the match offset a replacement operation is performed: the third
 argument is treated as if specified within dollar-single-quote (see
 .Sx "Shell-style argument quoting" ) ,
 and any occurrence of a positional parameter, e.g.,
-.Va 1 ,
-is replaced by the corresponding match group of the regular expression:
+.Va \&0 , 1
+etc. is replaced with the according match group of the regular expression:
 .Bd -literal -offset indent
 ? vput vexpr res regex bananarama \e
     (.*)NanA(.*) '\e${1}au\e$2'
-? echo $?/$!/$^ERRNAME: $res
-.Ed
-.It Cm iregex
-On otherwise identical case-insensitive equivalent to
-.Cm regex :
-.Bd -literal -offset indent
-? vput vexpr res ire bananarama \e
-    (.*)NanA(.*) '\e${1}au\e$2'
-? echo $?/$!/$^ERRNAME: $res
+? echo $?/$!/$^ERRNAME:$res:
+1/61/NODATA::
+? vput vexpr res regex?case bananarama \e
+    (.*)NanA(.*) '\e${1}uauf\e$2'
+? echo $?/$!/$^ERRNAME:$res:
+0/0/NONE:baauf:
 .Ed
 .El
 .Mx
@@ -7660,17 +7892,22 @@ The hooks
 .Va on-compose-splice-shell
 and
 .Va on-compose-splice ,
-in order, will be called when set, after which
+in order, will be called when set, after which, in interactive mode
 .Va askatend
-will be checked, a set
+(leading to
+.Va askcc , askbcc )
+and
+.Va askattach
+will be checked as well as
+.Va asksend ,
+after which a set
 .Va on-compose-leave
 hook will be called,
 .Va autocc
 and
 .Va autobcc
 will be joined in if set,
-.Va asksend
-will be honoured in interactive mode, finally a given
+finally a given
 .Va message-inject-tail
 will be incorporated, after which the compose mode is left.
 .Mx
@@ -7731,7 +7968,7 @@ referring to the current message of the active mailbox, the so-called
 then the given message is attached as a
 .Ql message/rfc822
 MIME message part.
-The number sign must be quoted to avoid misinterpretation with the shell
+The number sign must be quoted to avoid misinterpretation as a shell
 comment character.
 .Mx
 .It Ic ~| Ar command
@@ -7750,57 +7987,19 @@ Also see
 .Ic ~e , ~v .
 .Mx
 .It Ic ~^ Ar cmd Op Ar subcmd Op Ar arg3 Op Ar arg4
-Low-level compose mode command which shares the semantic with
-.Ic digmsg
-and is meant for scripted message access, i.e., for
-.Va on-compose-splice
-and
-.Va on-compose-splice-shell .
-The used protocol is likely subject to changes, and therefore the
-mentioned hooks receive the used protocol version as an initial line.
-In general the first field of a response line represents a status code
-which specifies whether a command was successful or not, whether result
-data is to be expected, and if, the format of the result data.
+Low-level compose mode command which shares semantics with
+.Ic digmsg .
 Does not manage the error number
 .Va \&!
 and the exit status
-.Va \&? ,
-because errors are reported via the protocol
-(hard errors like I/O failures cannot be handled).
-.Pp
-This command has read-only access to several virtual pseudo headers in
-the \*(UA private namespace which optionally (except for the
-non-optional first) exist in compose mode:
-.Pp
-.Bl -tag -compact -width ".It Va BaNg"
-.It Ql Mailx-Command:
-The name of the command that generates the message, one of
-.Ql forward ,
-.Ql Lreply ,
-.Ql mail ,
-.Ql Reply ,
-.Ql reply ,
-.Ql resend .
-.It Ql Mailx-Raw-To:
-.It Ql Mailx-Raw-Cc:
-.It Ql Mailx-Raw-Bcc:
-Represent the frozen initial state of these headers before any
-transformation (e.g.,
-.Ic alias ,
-.Ic alternates ,
-.Va recipients-in-cc
-etc.) took place.
-.It Ql Mailx-Orig-From:
-.It Ql Mailx-Orig-To:
-.It Ql Mailx-Orig-Cc:
-.It Ql Mailx-Orig-Bcc:
-The values of said headers of the original message which has been
-addressed by any of
-.Ic reply , forward , resend .
-.El
-.Pp
-Error status code lines may optionally contain additional context.
-The status codes are:
+.Va \&? :
+errors are handled via the protocol, and hard errors like I/O failures
+cannot be handled.
+The protocol consists of command lines followed by (a) response line(s).
+The first field of the response line represents a status code
+which specifies whether a command was successful or not, whether result
+data is to be expected, and if, the format of the result data.
+Error status code lines may optionally contain additional context:
 .Pp
 .Bl -tag -compact -width ".It Ql 210"
 .It Ql 210
@@ -7808,24 +8007,21 @@ Status ok; the remains of the line are the result.
 .It Ql 211
 Status ok; the rest of the line is optionally used for more status.
 What follows are lines of result addresses, terminated by an empty line.
-The address lines consist of two fields, the first of which is the
-plain address, e.g.,
+All the input, including the empty line, must be consumed before further
+commands can be issued.
+Address lines consist of two fields, first the plain network address, e.g.,
 .Ql bob@exam.ple ,
-separated by a single ASCII SP space from the second which contains the
-unstripped address, even if that is identical to the first field, e.g.,
+separated by a single ASCII SP space from the full address as known, e.g.,
 .Ql (Lovely) Bob <bob@exam.ple> .
-Non-network addressees, however, place a single-letter indicating
-the address type in the first field (hyphen-minus
+Non-network addresses use the first field to indicate the type (hyphen-minus
 .Ql -
 for files, vertical bar
 .Ql |
 for pipes, and number sign
 .Ql #
-for names: what is supposed to become expanded via
-.Ic alias Ns
-), and only the second field contains a value.
-All the input, including the empty line, must be consumed before further
-commands can be issued.
+for names which will undergo
+.Ic alias
+processing) instead, the actual value will be in the second field.
 .It Ql 212
 Status ok; the rest of the line is optionally used for more status.
 What follows are lines of furtherly unspecified string content,
@@ -7888,7 +8084,7 @@ argument, reporting
 upon success,
 .Ql 501
 if no such header can be found, and
-Ql 505
+.Ql 505
 on \*(UA namespace violations.
 .It Cm remove-at
 This will remove from the header given as the third argument the
@@ -7916,12 +8112,54 @@ on \*(UA namespace violations, and
 to indicate prevention of excessing a single-instance header \(em note that
 .Ql Subject:
 can be appended to (a space separator will be added automatically first).
+.Ql To: ,
+.Ql Cc:
+or
+.Ql Bcc:
+support the
+.Ql ?single
+modifier to enforce treatment as a single addressee, e.g.,
+.Ql header insert To?single: exa, <m@ple> ;
+the word
+.Ql single
+is optional.
 .Pp
 .Ql 210
 is returned upon success, followed by the name of the header and the list
 position of the newly inserted instance.
 The list position is always 1 for single-instance header fields.
 All free-form header fields are managed in a single list.
+.El
+.Pp
+In compose-mode read-only access to optional pseudo headers in the \*(UA
+private namespace is available:
+.Pp
+.Bl -tag -compact -width ".It Va BaNg"
+.It Ql Mailx-Command:
+The name of the command that generates the message, one of
+.Ql forward ,
+.Ql Lreply ,
+.Ql mail ,
+.Ql Reply ,
+.Ql reply ,
+.Ql resend .
+This pseudo header always exists (in compose-mode).
+.It Ql Mailx-Raw-To:
+.It Ql Mailx-Raw-Cc:
+.It Ql Mailx-Raw-Bcc:
+Represent the frozen initial state of these headers before any
+transformation (e.g.,
+.Ic alias ,
+.Ic alternates ,
+.Va recipients-in-cc
+etc.) took place.
+.It Ql Mailx-Orig-From:
+.It Ql Mailx-Orig-To:
+.It Ql Mailx-Orig-Cc:
+.It Ql Mailx-Orig-Bcc:
+The values of said headers of the original message which has been
+addressed by any of
+.Ic reply , forward , resend .
 .El
 .It Cm attachment
 This command allows listing, removal and addition of message attachments.
@@ -8367,7 +8605,7 @@ set to
 .Pf no Va page ,
 .Va prompt
 set to
-.Ql ?\0 ,
+.Ql \&?\0 ,
 .Pf no Va quiet ,
 .Pf no Va record ,
 .Va save ,
@@ -8473,6 +8711,16 @@ define work {
 }
 call work 0
 .Ed
+.Mx
+.Mx
+.It Va ^ERRQUEUE-COUNT , ^ERRQUEUE-EXISTS
+The number of messages present in the \*(OPal log queue of
+.Ic errors ,
+and a boolean which indicates whether the queue is not empty,
+respectively; both are always 0 unless
+.Va features
+indicates
+.Ql +errors .
 .El
 .Mx
 .It Va *
@@ -8554,19 +8802,19 @@ and
 lists to appear after the message has been edited.
 .Mx
 .It Va askattach
-\*(BO If set, \*(UA asks for files to attach at the end of each message.
-An empty line finalizes the list.
+\*(BO If set, \*(UA asks an interactive user for files to attach at the
+end of each message; An empty line finalizes the list.
 .Mx
 .It Va askcc
-\*(BO Causes the user to be prompted for carbon copy recipients
-(at the end of each message if
+\*(BO Causes the interactive user to be prompted for carbon copy
+recipients (at the end of each message if
 .Va askatend
 or
 .Va bsdcompat
 are set).
 .Mx
 .It Va askbcc
-\*(BO Causes the user to be prompted for blind carbon copy
+\*(BO Causes the interactive user to be prompted for blind carbon copy
 recipients (at the end of each message if
 .Va askatend
 or
@@ -8574,21 +8822,21 @@ or
 are set).
 .Mx
 .It Va asksend
-\*(BO Causes the user to be prompted for confirmation to send the
-message or reenter compose mode after having been shown an envelope
-summary.
+\*(BO Causes the interactive user to be prompted for confirmation to
+send the message or reenter compose mode after having been shown an
+envelope summary.
 This is by default enabled.
 .Mx
 .It Va asksign
-\*(BO\*(OP Causes the user to be prompted if the message is to be
-signed at the end of each message.
+\*(BO\*(OP Causes the interactive user to be prompted if the message is
+to be signed at the end of each message.
 The
 .Va smime-sign
 variable is ignored when this variable is set.
 .Mx
 .It Va asksub
-\*(BO Causes \*(UA to prompt for the subject upon entering compose mode
-unless a subject already exists.
+\*(BO Causes \*(UA to prompt the interactive user for the subject upon
+entering compose mode unless a subject already exists.
 .Mx
 .It Va attrlist
 A sequence of characters to display in the
@@ -8742,8 +8990,12 @@ operating system \*(UA has been build for, usually taken from
 .Xr uname 1
 via
 .Ql uname -s ,
-and then lowercased, as well as all the rest that may possibly be useful
-to include in a bug report, respectively.
+and then lowercased, as well as all the possibly interesting rest of the
+configuration and build environment.
+This information is also available in the
+.Va verbose
+output of the command
+.Ic version .
 .Mx
 .It Va charset-7bit
 The value that should appear in the
@@ -8765,9 +9017,6 @@ environment is known to always and exclusively support UTF-8 locales),
 in which case the only supported character set is
 .Va ttycharset
 and this variable is effectively ignored.
-Refer to the section
-.Sx "Character sets"
-for the complete picture of character set conversion in \*(UA.
 .Mx
 .It Va charset-unknown-8bit
 \*(OP RFC 1428 specifies conditions when internet mail gateways shall
@@ -8821,7 +9070,7 @@ adjustments dependent on the value of the environment variable
 \*(RO Addresses for contact per email and web, respectively, e.g., for
 bug reports, suggestions, or help regarding \*(UA.
 The former can be used directly:
-.Ql ? Ns \| Ic eval Ns \| Ic mail Ns \| $contact-mail .
+.Ql \&? Ns \| Ic eval Ns \| Ic mail Ns \| $contact-mail .
 .Mx
 .It Va crt
 In a(n interactive) terminal session, then if this valued variable is
@@ -8994,33 +9243,40 @@ If set to the empty string, command escapes are disabled.
 If unset then file and command pipeline address targets are not allowed,
 and any such address will be filtered out, giving a warning message.
 If set then all possible recipient address specifications will be
-accepted unless a possible value content is more specific (also see
-.Sx "On sending mail, and non-interactive mode" ) ;
-if desired so only in interactive mode, or when tilde commands were
-enabled explicitly via
+accepted, unless the optional value is more specific (also see
+.Sx "On sending mail, and non-interactive mode" ) .
+If the value contains
+.Ql restrict
+then behaviour equals the former unless in interactive mode, or when
+tilde commands were enabled explicitly via
 .Fl ~
 or
 .Fl # ,
-the (case-insensitive) value
+in which case it equals the latter, and thus allows all addressees.
 .Ql restrict
-can be used (this really acts like
-.Ql restrict,-all,+name,+addr ,
-so that care for ordering issues must be taken).
+really acts like
+.Ql restrict,\:-all,\:+name,\:+addr ,
+so care for ordering issues must be taken.
 .Pp
-The value is actually interpreted as a comma-separated list.
-If that contains
-.Ql fail
-the existence of disallowed addressees is treated as a hard send error
-instead of only causing them to be filtered out.
-Address targets can be added and subtracted by prefixing with a plus sign
+Indeed the value is interpreted as a comma-separated list of
+case-insensitive strings.
+Presence of forbidden address types is treated as a hard send error
+instead of only causing them to be filtered out if the list contains
+.Ql fail .
+Address targets can be added and subtracted with a plus sign
 .Ql +
 or hyphen-minus
 .Ql -
 prefix: the value
 .Ql all
 addresses all possible address specifications,
+.Ql fcc
+whitelists targets specified via
+.Ql Fcc:
+headers regardless of other settings,
 .Ql file
-file targets,
+file targets (it includes
+.Ql fcc ) ,
 .Ql pipe
 command pipeline targets,
 .Ql name
@@ -9030,27 +9286,46 @@ network addresses;
 Targets are interpreted in the given order, so that
 .Ql restrict,\:fail,\:+file,\:-all,\:+addr
 will cause hard errors for any non-network address recipient address
-unless \*(UA is in interactive mode or has been started with the
+unless running interactively or having been started with the option
 .Fl ~
 or
-.Fl #
-command line option; in the latter case(s) any address may be used, then.
+.Fl # ;
+in the latter case(s) any address may be used, then.
 .Pp
-Historically invalid network addressees were silently stripped off.
-To change this so that any encountered invalid email address causes
-a hard error it must be ensured that
+Historically invalid network addressees were silently stripped off \(em
+shall they cause hard errors instead it must be ensured that
 .Ql failinvaddr
-is an entry in the above list, which automatically enables network
-addressees; it really acts like
-.Ql failinvaddr,+addr ,
-so that care for ordering issues must be taken.
-\*(ID If the value
-.Ql shquote
-is present a few address providers (for example
+is an entry of the list (it really acts like
+.Ql failinvaddr,\:+addr ) .
+Likewise,
+.Ql domaincheck
+.Pf (actually\0\: Ql domaincheck,\:+addr )
+compares address domain names against a whitelist and strips off
+.Pf ( Ql fail
+for hard errors) addressees which fail this test; the domain name
+.Ql localhost
+and the non-empty value of
+.Va hostname
+(the real hostname otherwise) are always whitelisted,
+.Va expandaddr-domaincheck
+can be set to extend this list.
+Finally some address providers (for example
 .Fl b , c
-and all recipients given on the command line) will be will evaluated as
+and all other command line recipients) will be evaluated as
 if specified within dollar-single-quotes (see
-.Sx "Shell-style argument quoting" ) .
+.Sx "Shell-style argument quoting" )
+if the value list contains the string
+.Ql shquote .
+.Mx
+.It Va expandaddr-domaincheck
+Can be set to a comma-separated list of domain names which should be
+whitelisted for the evaluation of the
+.Ql domaincheck
+mode of
+.Va expandaddr .
+IDNA encoding is not automatically performed,
+.Ic addrcodec
+can be used to prepare the domain (of an address).
 .Mx
 .It Va expandargv
 Unless this variable is set additional
@@ -9336,25 +9611,25 @@ The address of the message sender.
 The message thread tree structure.
 (Note that this format does not support a field width, and honours
 .Va headline-plain . )
+.It Ql %L
+Mailing list status: is the addressee of the message a known
+.Pf ( Ic mlist )
+or
+.Ic mlsubscribe Ns
+d mailing list?
 .It Ql %l
 The number of lines of the message, if available.
 .It Ql %m
 Message number.
 .It Ql %o
 The number of octets (bytes) in the message, if available.
-.It Ql %s
-Message subject (if any).
 .It Ql %S
 Message subject (if any) in double quotes.
-.It Ql \&%T
-Message recipient flags: is the addressee of the message a known or
-subscribed mailing list \(en see
-.Ic mlist
-and
-.Ic mlsubscribe .
+.It Ql %s
+Message subject (if any).
 .It Ql %t
 The position in threaded/sorted order.
-.It Ql \%U
+.It Ql \&%U
 The value 0 except in an IMAP mailbox,
 where it expands to the UID of the message.
 .El
@@ -9467,11 +9742,11 @@ as the hostname when expanding local addresses, e.g., in
 .Ql From:
 (also see
 .Sx "On sending mail, and non-interactive mode" ,
-especially for expansion of network addresses that contain domain-less
-valid user names in angle brackets).
+e.g., for expansion of addresses that have a valid user-, but no domain
+name in angle brackets).
 If either of
 .Va from
-or this variable Is set the message and MIME part related unique ID fields
+or this variable is set the message and MIME part related unique ID fields
 .Ql Message-ID:
 and
 .Ql Content-ID:
@@ -9668,21 +9943,23 @@ it is marked as having been
 See the section
 .Sx "Message states" .
 .Mx
+.It Va mbox-fcc-and-pcc
+\*(BO By default all file and pipe message receivers (see
+.Va expandaddr )
+will be fed valid MBOX database entry message data (see
+.Ic file ,
+.Va mbox-rfc4155 ) ,
+and existing file targets will become extended in compliance to RFC 4155.
+If this variable is unset then a plain standalone RFC 5322 message will
+be written, and existing file targets will be overwritten.
+.Mx
 .It Va mbox-rfc4155
-\*(BO When opening MBOX mailbox databases \*(UA by default uses tolerant
-POSIX rules for detecting message boundaries (so-called
+\*(BO When opening MBOX mailbox databases, and in order to achieve
+compatibility with old software, the very tolerant POSIX standard rules
+for detecting message boundaries (so-called
 .Ql From_
-lines) due to compatibility reasons, instead of the stricter rules that
-have been standardized in RFC 4155.
-This behaviour can be switched to the stricter RFC 4155 rules by
-setting this variable.
-(This is never necessary for any message newly generated by \*(UA,
-it only applies to messages generated by buggy or malicious MUAs, or may
-occur in old MBOX databases: \*(UA itself will choose a proper
-.Va mime-encoding
-to avoid false interpretation of
-.Ql From_
-content lines in the MBOX database.)
+lines) are used instead of the stricter rules from the standard RFC 4155.
+This behaviour can be switched by setting this variable.
 .Pp
 This may temporarily be handy when \*(UA complains about invalid
 .Ql From_
@@ -9693,17 +9970,24 @@ If so, copying the entire mailbox to some other file, as in
 will perform proper, all-compatible
 .Ql From_
 quoting for all detected messages, resulting in a valid MBOX mailbox.
+(\*(ID The better and non-destructive approach is to reencode invalid
+messages, as if it would be created anew, instead of mangling the
+.Ql From_
+lines; this requires the structural code changes of the v15 rewrite.)
 Finally the variable can be unset again:
 .Bd -literal -offset indent
 define mboxfix {
   localopts yes; wysh set mbox-rfc4155;\e
-    wysh File "${1}"; eval copy * "${2}"
+    wysh File "${1}"; copy * "${2}"
 }
 call mboxfix /tmp/bad.mbox /tmp/good.mbox
 .Ed
 .Mx
 .It Va memdebug
 \*(BO Internal development variable.
+(Keeps memory debug enabled even if
+.Va debug
+is not set.)
 .Mx
 .It Va message-id-disable
 \*(BO By setting this variable the generation of
@@ -9741,6 +10025,8 @@ are understood (use the
 prefix when
 .Ic set Ns
 ting the variable(s) instead).
+Also see
+.Va on-compose-leave .
 .Mx
 .It Va metoo
 \*(BO Usually, when an
@@ -9848,9 +10134,8 @@ purposes, which includes masking of control characters, for example).
 .It Va mime-encoding
 The MIME
 .Ql Content-Transfer-Encoding
-to use in outgoing text messages and message parts, where applicable.
-(7-bit clean text messages are sent as-is, without a transfer encoding.)
-Valid values are:
+to use in outgoing text messages and message parts, where applicable
+(7-bit clean text messages are without an encoding if possible):
 .Pp
 .Bl -tag -compact -width ".It Ql _%%_"
 .It Ql 8bit
@@ -9860,6 +10145,15 @@ unchanged, but may cause problems when transferring mail messages over
 channels that are not ESMTP (RFC 1869) compliant.
 Also, several input data constructs are not allowed by the
 specifications and may cause a different transfer-encoding to be used.
+By established rules and popular demand occurrances of
+.Ql ^From_
+(see
+.Va mbox-rfc4155 )
+will be MBOXO quoted (prefixed with greater-than sign
+.Ql > )
+instead of causing a non-destructive encoding like
+.Ql quoted-printable
+to be chosen, unless context (e.g., message signing) requires otherwise.
 .It Ql quoted-printable
 .Pf (Or\0 Ql qp . )
 Quoted-printable encoding is 7-bit clean and has the property that ASCII
@@ -9879,6 +10173,15 @@ to four bytes of output.
 This transfer-encoding is not human readable without performing
 a decoding step.
 .El
+.Mx
+.It Va mime-force-sendout
+\*(BO\*(OP Whenever it is not acceptable to fail sending out messages
+because of non-convertible character content this variable may be set.
+It will, as a last resort, classify the part content as
+.Ql application/octet-stream .
+Please refer to the section
+.Sx "Character sets"
+for the complete picture of character set conversion in \*(UA.
 .Mx
 .It Va mimetypes-load-control
 Can be used to control which of
@@ -9914,7 +10217,7 @@ the MIME type cache).
 To choose an alternate Mail-Transfer-Agent, set this option to either
 the full pathname of an executable (optionally prefixed with the protocol
 .Ql file:// ) ,
-or \*(OPally a SMTP a.k.a. SUBMISSION protocol URL, e.g., \*(IN
+or \*(OPally a SMTP aka SUBMISSION protocol URL, e.g., \*(IN
 .Pp
 .Dl submissions://[user[:password]@]server[:port]
 .Pp
@@ -9972,7 +10275,7 @@ command line option \*(UA will also (not) pass
 as well as possibly
 .Fl \&\&F .
 .Pp
-\*(OPally \*(UA can send mail over SMTP a.k.a. SUBMISSION network
+\*(OPally \*(UA can send mail over SMTP aka SUBMISSION network
 connections to a single defined smart host by setting this variable to
 a SMTP or SUBMISSION URL (see
 .Sx "On URL syntax and credential lookup" ) .
@@ -9988,7 +10291,9 @@ variable in order to use a specific combination of
 .Va hostname
 and
 .Va mta .
-\*(UA also supports forwarding of all network traffic over a specified
+Network communication socket timeouts are configurable, e.g.,
+.Va socket-connect-timeout .
+All generated network traffic may be proxied over the SOCKS5 server given in
 .Va socks-proxy .
 The following SMTP variants may be used:
 .Bl -bullet
@@ -10045,7 +10350,7 @@ can be given via this variable, which is parsed according to
 .Sx "Shell-style argument quoting"
 into an array of arguments, and which will be joined onto MTA options
 from other sources, and then passed individually to the MTA:
-.Ql ? wysh set mta-arguments='-t -X \&"/tmp/my log\&"' .
+.Ql \&? wysh set mta-arguments='-t -X \&"/tmp/my log\&"' .
 .Mx
 .It Va mta-no-default-arguments
 \*(BO Unless this variable is set \*(UA will pass some well known
@@ -10097,7 +10402,7 @@ file if this variable is set (to the desired shell command).
 This can be used to, e.g., store
 .Pa \*(VN
 in encrypted form:
-.Ql ? set netrc-pipe='gpg -qd ~/.netrc.pgp' .
+.Ql \&? set netrc-pipe='gpg -qd ~/.netrc.pgp' .
 .Mx
 .It Va newfolders
 \*(OP If this variable has the value
@@ -10150,60 +10455,29 @@ For compose mode hooks that may affect the message content please see
 .Va on-compose-enter , on-compose-leave , on-compose-splice .
 \*(ID This hook exists because
 .Ic alias , alternates , commandalias , shortcut ,
-to name a few, are not covered by
-.Ic localopts :
+to name a few, are neither covered by
+.Ic localopts
+nor by
+.Cm local :
 changes applied in compose mode will continue to be in effect thereafter.
 .Mx
 .Mx
 .It Va on-compose-enter , on-compose-leave
 Macro hooks which will be called once compose mode is entered,
-and after composing has been finished, but before a set
-.Va message-inject-tail
-has been injected etc., respectively.
+and after composing has been finished, respectively;
+the exact order of the steps taken is documented for
+.Ic ~. ,
+one of the
+.Sx "COMMAND ESCAPES" .
+Context about the message being worked on can be queried via
+.Ic digmsg .
 .Ic localopts
 are enabled for these hooks, and changes on variables will be forgotten
 after the message has been sent.
 .Va on-compose-cleanup
 can be used to perform other necessary cleanup steps.
 .Pp
-The following (read-only) variables will be set temporarily during
-execution of the macros to represent respective message headers, to
-the empty string otherwise; most of them correspond to according virtual
-message headers that can be accessed via
-.Ic ~^ ,
-one of the
-.Sx "COMMAND ESCAPES"
-(also from within
-.Va on-compose-splice
-hooks):
-.Pp
-.Bl -tag -compact -width ".It Va mailx_subject"
-.It Va mailx-command
-The command that generates the message.
-.It Va mailx-subject
-The subject.
-.It Va mailx-from
-.Va from .
-.It Va mailx-sender
-.Va sender .
-.It Va mailx-to , mailx-cc , mailx-bcc
-The list of receiver addresses as a space-separated list.
-.It Va mailx-raw-to , mailx-raw-cc , mailx-raw-bcc
-The list of receiver addresses before any mangling (due to, e.g.,
-.Ic alternates ,
-.Ic alias
-.Va recipients-in-cc )
-as a space-separated list.
-.It Va mailx-orig-from
-When replying, forwarding or resending, this will be set to the
-.Ql From:
-of the given message.
-.It Va mailx-orig-to , mailx-orig-cc , mailx-orig-bcc
-When replying, forwarding or resending, this will be set to the
-receivers of the given message.
-.El
-.Pp
-Here is am example that injects a signature via
+Here is an example that injects a signature via
 .Va message-inject-tail ;
 instead using
 .Va on-compose-splice
@@ -10216,7 +10490,7 @@ may be a better approach.
 define t_ocl {
   vput ! i cat ~/.mysig
   if [ $? -eq 0 ]
-     vput vexpr message-inject-tail trim-end $i
+     vput csop message-inject-tail trim-end $i
   end
 
   # Alternatively
@@ -10224,7 +10498,7 @@ define t_ocl {
   if [ $? -eq 0 ]
     readall i
     if [ $? -eq 0 ]
-      vput vexpr message-inject-tail trim-end $i
+      vput csop vexpr message-inject-tail trim-end $i
     end
     readctl remove ~/.mysig
   end
@@ -10236,16 +10510,15 @@ set on-compose-leave=t_ocl
 .It Va on-compose-splice , on-compose-splice-shell
 These hooks run once the normal compose mode is finished, but before the
 .Va on-compose-leave
-macro hook is called, the
-.Va message-inject-tail
-is injected etc.
+macro hook is called etc.
 Both hooks will be executed in a subprocess, with their input and output
 connected to \*(UA such that they can act as if they would be an
 interactive user.
 The difference in between them is that the latter is a
 .Ev SHELL
-command, whereas the former is a normal \*(UA macro, but which is
-restricted to a small set of commands (the
+command, whereas the former is a normal
+.Ic define Ns
+d macro, but which is restricted to a small set of commands (the
 .Va verbose
 output of, e.g.,
 .Ic list
@@ -10302,13 +10575,13 @@ wysh set on-compose-splice-shell=$'\e
 define ocsm {
   read version
   echo Splice protocol version is $version
-  echo '~^h l'; read hl; vput vexpr es substring "${hl}" 0 1
+  echo '~^h l'; read hl; vput csop es substring "${hl}" 0 1
   if [ "$es" != 2 ]
     echoerr 'Cannot read header list'; echo '~x'; xit
   endif
-  if [ "$hl" @i!% ' cc' ]
+  if [ "$hl" !%?case ' cc' ]
     echo '~^h i cc Diet is your <mirr.or>'; read es;\e
-      vput vexpr es substring "${es}" 0 1
+      vput csop es substring "${es}" 0 1
     if [ "$es" != 2 ]
       echoerr 'Cannot insert Cc: header'; echo '~x'
       # (no xit, macro finishs anyway)
@@ -10317,6 +10590,28 @@ define ocsm {
 }
 set on-compose-splice=ocsm
 .Ed
+.Mx
+.It Va on-history-addition
+This hook will be called if an entry is about to be added to the
+.Ic history
+of the MLE, as is documented in
+.Sx "On terminal control and line editor" .
+It will be called with three arguments: the first is the name of the
+input context (see
+.Ic bind ) ,
+the second whether the command relates to
+.Va history-gabby ,
+and the third being the complete command line to be added.
+The entry will not be added to history if the hook uses a non-0
+.Ic return .
+\*(ID A future version will give the expanded command name as the third
+argument, followed by the tokenized command line as parsed in the
+remaining arguments, the first of which is the original unexpanded
+command name; i.e., one may do
+.Ql Ic shift Ns \| 4
+and will then be able to access the positional parameters as usual via
+.Va * , # , 1
+etc.
 .Mx
 .It Va on-resend-cleanup
 \*(ID Identical to
@@ -10328,7 +10623,10 @@ but is only triggered by
 \*(ID Identical to
 .Va on-compose-enter ,
 but is only triggered by
-.Ic resend .
+.Ic resend ;
+currently there is no
+.Ic digmsg
+support, for example.
 .Mx
 .It Va page
 \*(BO If set, each message feed through the command given for
@@ -10371,10 +10669,10 @@ are displayed unless otherwise noted, other MIME parts will only be
 considered by and for the command
 .Ic mimeview .
 .Pp
-The special value commercial at
-.Ql @
+The special value question mark
+.Ql \&?
 forces interpretation of the message part as plain text, e.g.,
-.Ql set pipe-application/xml=@
+.Ql set pipe-application/xml=?
 will henceforth display XML
 .Dq as is .
 (The same could also be achieved by adding a MIME type marker with the
@@ -10386,14 +10684,14 @@ And \*(OPally MIME type handlers may be defined via
 .Cd copiousoutput
 has already been used, should be referred to for further documentation.
 .Pp
-The commercial at
-.Ql @
+The question mark
+.Ql \&?
 can in fact be used as a trigger character to adjust usage and behaviour
 of a following shell command specification more thoroughly by appending
 more special characters which refer to further mailcap directives, e.g.,
 the following hypothetical command specification could be used:
 .Bd -literal -offset indent
-? set pipe-X/Y='@!++=@vim ${MAILX_FILENAME_TEMPORARY}'
+? set pipe-X/Y='?!++=? vim ${MAILX_FILENAME_TEMPORARY}'
 .Ed
 .Pp
 .Bl -tag -compact -width ".It Ql __"
@@ -10428,9 +10726,9 @@ the creation of which is implied; note however that in order to cause
 deletion of the temporary file you still have to use two plus signs
 .Ql ++
 explicitly!
-.It Ql @
-To avoid ambiguities with normal shell command content you can use
-another commercial at to forcefully terminate interpretation of
+.It Ql \&?
+To avoid ambiguities with normal shell command content another
+question mark can be used to forcefully terminate interpretation of
 remaining characters.
 (Any character not in this list will have the same effect.)
 .El
@@ -10620,7 +10918,7 @@ characters of interest in a pair of reverse solidus escaped brackets:
 a slot for coloured prompts is also available with the \*(OPal command
 .Ic colour .
 Prompting may be prevented by setting this to the null string
-(a.k.a.\|
+(aka\|
 .Ql set noprompt ) .
 .Mx
 .It Va prompt2
@@ -10853,7 +11151,8 @@ This is a quadoption; if set without a value it defaults to
 .Ql From_
 line for messages that are embedded into an envelope mail via the
 .Ql message/rfc822
-MIME mechanism, for more visual convenience.
+MIME mechanism, for more visual convenience, also see
+.Va mbox-rfc4155 .
 .Mx
 .It Va save
 \*(BO Enable saving of (partial) messages in
@@ -10927,14 +11226,20 @@ never comes into play as
 is implicitly assumed to be 8-bit and capable to represent all files the
 user may specify (as is the case when no character set conversion
 support is available in \*(UA and the only supported character set is
-.Va ttycharset :
+.Va ttycharset ,
+see
 .Sx "Character sets" ) .
 This might be a problem for scripts which use the suggested
 .Ql LC_ALL=C
 setting, since in this case the character set is US-ASCII by definition,
 so that it is better to also override
 .Va ttycharset ,
-then.
+then; and/or do something like the following in the resource file:
+.Bd -literal -offset indent
+if [ "$LC_ALL" == C ] || [ "$LC_CTYPE" == C ]
+  unset sendcharsets-else-ttycharset
+end
+.Ed
 .Mx
 .It Va sender
 An address that is put into the
@@ -11217,7 +11522,7 @@ perform a verification of the entire certificate chain, starting from
 a local root certificate, over the intermediate certificates, down to the
 .Va smime-sign-cert .
 Even though top level certificates may also be included in the chain,
-they won't be used for the verification on the receiver's side.
+they will not be used for the verification on the receiver's side.
 .Pp
 For the purpose of the mechanisms involved here,
 .Ql USER@HOST
@@ -11347,6 +11652,11 @@ variable assignment is aborted when a necessary conversion fails.
 command to make an SMTP
 .Va mta
 session TLS encrypted, i.e., to enable transport layer security.
+.Mx
+.It Va socket-connect-timeout
+\*(OP A positive number that defines the timeout to wait for
+establishing a socket connection before forcing
+.Va ^ERR Ns -TIMEDOUT .
 .Mx Va socks-proxy
 .It Va socks-proxy-USER@HOST , socks-proxy-HOST , socks-proxy
 \*(OP If this is set to the hostname (SOCKS URL) of a SOCKS5 server then
@@ -11636,30 +11946,12 @@ The following terminal capabilities are or may be meaningful for the
 operation of the built-in line editor or \*(UA in general:
 .Pp
 .Bl -tag -compact -width ".It Cd yay"
-.It Cd colors Ns \0or Cd Co
-.Cd max_colors :
-numeric capability specifying the maximum number of colours.
-Note that \*(UA does not actually care about the terminal beside that,
-but always emits ANSI / ISO 6429 escape sequences.
-.It Cd rmcup Ns \0or Cd te Ns \0/ Cd smcup Ns \0or Cd ti
-.Cd exit_ca_mode
-and
-.Cd enter_ca_mode ,
-respectively: exit and enter the alternative screen ca-mode,
-effectively turning \*(UA into a fullscreen application.
-This must be enabled explicitly by setting
-.Va termcap-ca-mode .
-.It Cd smkx Ns \0or Cd ks Ns \0/ Cd rmkx Ns \0or Cd ke
-.Cd keypad_xmit
-and
-.Cd keypad_local ,
-respectively: enable and disable the keypad.
-This is always enabled if available, because it seems even keyboards
-without keypads generate other key codes for, e.g., cursor keys in that
-case, and only if enabled we see the codes that we are interested in.
-.It Cd ed Ns \0or Cd cd
-.Cd clr_eos :
-clear the screen.
+.It Cd am
+.Cd auto_right_margin :
+boolean which indicates if the right margin needs special treatment; the
+.Cd xenl
+capability is related, for more see
+.Ev COLUMNS .
 .It Cd clear Ns \0or Cd cl
 .Cd clear_screen :
 clear the screen and home cursor.
@@ -11667,22 +11959,11 @@ clear the screen and home cursor.
 .Cd ho
 plus
 .Cd cd . )
-.It Cd home Ns \0or Cd ho
-.Cd cursor_home :
-home cursor.
-.It Cd el Ns \0or Cd ce
-.Cd clr_eol :
-clear to the end of line.
-(Will be simulated via
-.Cd ch
-plus repetitions of space characters.)
-.It Cd hpa Ns \0or Cd ch
-.Cd column_address :
-move the cursor (to the given column parameter) in the current row.
-(Will be simulated via
-.Cd cr
-plus
-.Cd nd . )
+.It Cd colors Ns \0or Cd Co
+.Cd max_colors :
+numeric capability specifying the maximum number of colours.
+Note that \*(UA does not actually care about the terminal beside that,
+but always emits ANSI / ISO 6429 escape sequences.
 .It Cd cr
 .Cd carriage_return :
 move to the first column in the current row.
@@ -11703,6 +11984,47 @@ Less often occur
 .Ql \eEC
 and
 .Ql \eEOC .
+.It Cd ed Ns \0or Cd cd
+.Cd clr_eos :
+clear the screen.
+.It Cd el Ns \0or Cd ce
+.Cd clr_eol :
+clear to the end of line.
+(Will be simulated via
+.Cd ch
+plus repetitions of space characters.)
+.It Cd home Ns \0or Cd ho
+.Cd cursor_home :
+home cursor.
+.It Cd hpa Ns \0or Cd ch
+.Cd column_address :
+move the cursor (to the given column parameter) in the current row.
+(Will be simulated via
+.Cd cr
+plus
+.Cd nd . )
+.It Cd rmcup Ns \0or Cd te Ns \0/ Cd smcup Ns \0or Cd ti
+.Cd exit_ca_mode
+and
+.Cd enter_ca_mode ,
+respectively: exit and enter the alternative screen ca-mode,
+effectively turning \*(UA into a fullscreen application.
+This must be enabled explicitly by setting
+.Va termcap-ca-mode .
+.It Cd smkx Ns \0or Cd ks Ns \0/ Cd rmkx Ns \0or Cd ke
+.Cd keypad_xmit
+and
+.Cd keypad_local ,
+respectively: enable and disable the keypad.
+This is always enabled if available, because it seems even keyboards
+without keypads generate other key codes for, e.g., cursor keys in that
+case, and only if enabled we see the codes that we are interested in.
+.It Cd xenl Ns \0or Cd xn
+.Cd eat_newline_glitch :
+boolean which indicates whether a newline written in the last column of an
+.Cd auto_right_margin
+indicating terminal is ignored.
+With it the full terminal width is available even on autowrap terminals.
 .El
 .Pp
 Many more capabilities which describe key-sequences are documented for
@@ -11996,8 +12318,8 @@ enables only the TLSv1.2 protocol.
 PEM format to use when verifying TLS server certificates.
 .Mx
 .It Va tls-features
-\*(OP\*(RO This expands to a comma separated list of the TLS library
-identity and optional SSL library features.
+\*(OP\*(RO This expands to a comma-separated list of the TLS library
+identity and optional features.
 Currently supported identities are
 .Ql libressl
 (LibreSSL) ,
@@ -12013,19 +12335,21 @@ when available, and with a hyphen-minus
 otherwise.
 .Pp
 Currently known features are
-.Ql modules-load-file
-.Pf ( Va tls-config-file ) ,
 .Ql conf-ctx
 .Pf ( Va tls-config-pairs ) ,
 .Ql ctx-config
 .Pf ( Va tls-config-module ) ,
+.Ql ctx-set-ciphersuites
+.Pf ( Cd Ciphersuites
+slot of
+.Va tls-config-pairs ) ,
 .Ql ctx-set-maxmin-proto
 .Pf ( Va tls-config-pairs ) ,
-.Ql ctx-set-ciphersuites
-(the
-.Cd Ciphersuites
-slot of
-.Va tls-config-pairs ) .
+.Ql modules-load-file
+.Pf ( Va tls-config-file ) ,
+and
+.Ql tls-rand-file
+.Pf ( Va tls-rand-file ) .
 .Mx Va tls-fingerprint
 .It Va tls-fingerprint-USER@HOST , tls-fingerprint-HOST , tls-fingerprint
 \*(OP It is possible to replace the verification of the connection
@@ -12047,17 +12371,25 @@ For the complete list of digest algorithms refer to
 .Va smime-sign-digest .
 .Mx
 .It Va tls-rand-file
-\*(OP Gives the filename to a file with random entropy data, see
+\*(OP If
+.Va tls-features
+announces
+.Ql +tls-rand-file
+then this will be queried to find a file with random entropy data which
+can be used to seed the P(seudo)R(andom)N(umber)G(enerator), see
 .Xr RAND_load_file 3 .
-If this variable is not set, or set to the empty string, or if the
+The default filename
+.Pf ( Xr RAND_file_name 3 ,
+normally
+.Pa ~/.rnd )
+will be used if this variable is not set or empty, or if the
 .Sx "Filename transformations"
-fail, then
-.Xr RAND_file_name 3
-will be used to create the filename.
-If the SSL PRNG was seeded successfully
-The file will be updated
-.Pf ( Xr RAND_write_file 3 )
-if and only if seeding and buffer stirring succeeds.
+fail.
+Shall seeding the PRNG have been successful,
+.Xr RAND_write_file 3
+will be called to update the entropy.
+Remarks: libraries which do not announce this feature seed the PRNG by
+other means.
 .Mx Va tls-verify
 .It Va tls-verify-USER@HOST , tls-verify-HOST , tls-verify
 \*(OP Variable chain that sets the action to be performed if an error
@@ -12147,9 +12479,15 @@ URL.
 This variable defaults to the name of the user who runs \*(UA.
 .Mx
 .It Va v15-compat
-\*(BO Setting this enables upward compatibility with \*(UA
-version 15.0 in respect to which configuration options are available and
-how they are handled.
+Enable upward compatibility with \*(UA version 15.0 in respect to which
+configuration options are available and how they are handled.
+If set to a non-empty value the command modifier
+.Cm wysh
+is implied and thus enforces
+.Sx "Shell-style argument quoting"
+over
+.Sx "Old-style argument quoting"
+for all commands which support both.
 This manual uses \*(IN and \*(OU to refer to the new and the old way of
 doing things, respectively.
 .Mx
@@ -12164,6 +12502,7 @@ the actual message delivery and protocol conversations are shown.
 A single
 .Pf no Va verbose
 is sufficient to disable verbosity as such.
+.Mx
 .Mx
 .Mx
 .Mx
@@ -12192,10 +12531,11 @@ commands are written back to the current folder when it is quit;
 it is only honoured for writable folders in MBOX format, though.
 Note that the editor will be pointed to the raw message content in that
 case, i.e., neither MIME decoding nor decryption will have been
-performed, and proper RFC 4155
+performed, and proper
+.Va mbox-rfc4155
 .Ql From_
-quoting of newly added or edited content is also left as an exercise to
-the user.
+quoting of newly added or edited content is also left as an exercise
+to the user.
 .El
 .Sh ENVIRONMENT
 The term
@@ -12234,15 +12574,30 @@ $ COLUMNS=80 \*(uA -R
 .Bl -tag -width ".It Ev BaNg"
 .Mx
 .It Ev COLUMNS
-The user's preferred width in column positions for the terminal screen
-or window.
-Queried and used once on program startup, actively managed for child
-processes and the MLE (see
+The user's preferred width in column positions for the terminal screen.
+Queried and used once on program startup in interactive or batch
+.Pf ( Fl \&# )
+mode, actively managed for child processes and the MLE (see
 .Sx "On terminal control and line editor" )
 in interactive mode thereafter.
-Ignored in non-interactive mode, which always uses 80 columns, unless in
-.Fl \&#
-batch mode.
+Non-interactive mode always uses, and the fallback default is
+a compile-time constant, by default 80 columns.
+If in batch mode
+.Ev \&\&COLUMNS
+and
+.Ev LINES
+are both set but not both are usable (empty, not a number, or 0) at
+program startup, then the real terminal screen size will be (tried to
+be) determined once.
+(Normally the
+.Xr sh 1
+manages these variables, and unsets them for pipe specifications etc.)
+Dependent on terminal control support the used width may be one less
+than this value for compatibility reasons, refer to the
+.Cd am / xenl
+capabilities of
+.Va termcap
+for more.
 .Mx
 .It Ev DEAD
 The name of the (mailbox)
@@ -12294,13 +12649,11 @@ which includes updating
 .Fl S ) .
 .Mx
 .It Ev LINES
-The user's preferred number of lines on a page or the vertical screen
-or window size in lines.
-Queried and used once on program startup, actively managed for child
-processes in interactive mode thereafter.
-Ignored in non-interactive mode, which always uses 24 lines, unless in
-.fl #
-batch mode.
+The user's preferred number of lines for the terminal screen.
+The behaviour is as described for
+.Ev COLUMNS ,
+yet the compile-time constant used in non-interactive mode and as
+a fallback defaults to 24 (lines).
 .Mx
 .It Ev LISTER
 Pathname of the directory lister to use in the
@@ -12349,7 +12702,7 @@ command line option should be used.
 .It Ev MAILX_NO_SYSTEM_RC
 If this variable is set then reading of
 .Pa \*(UR
-(a.k.a.\&
+(aka\&
 .Va system-mailrc )
 at startup is inhibited, i.e., the same effect is achieved as if \*(UA
 had been started up with the option
@@ -12615,7 +12968,7 @@ which also offers access to \*(UAs MIME type cache.
 files have the following syntax:
 .Bd -literal -offset indent
 type/subtype extension [extension ...]
-# E.g., text/html html htm
+# E.g.: text/html html htm
 .Ed
 .Pp
 where
@@ -12642,21 +12995,21 @@ and prepends an optional
 The following type markers are supported:
 .Pp
 .Bl -tag -compact -width ".It Ar _n_u"
-.It Ar @
+.It Ar \&?
 Treat message parts with this content as plain text.
-.It Ar @t
+.It Ar ?t
 The same as plain
-.Ar @ .
-.It Ar @h
+.Ar \&? .
+.It Ar ?h
 Treat message parts with this content as HTML tagsoup.
 If the \*(OPal HTML-tagsoup-to-text converter is not available treat
 the content as plain text instead.
-.It Ar @H
+.It Ar ?H
 Likewise
-.Ar @h ,
+.Ar ?h ,
 but instead of falling back to plain text require an explicit content
 handler to be defined.
-.It Ar @q
+.It Ar ?q
 If no handler can be found a text message is displayed which says so.
 This can be annoying, for example signatures serve a contextual purpose,
 their content is of no use by itself.
@@ -13160,7 +13513,7 @@ wysh set smime-ca-file="${tls-ca-file}" \e
 # MinProtocol,MaxProtocol: do not use protocols older than TLS v1.2.
 #   Change this only when the remote server does not support it:
 #   maybe use chain support via tls-config-pairs-HOST / -USER@HOST
-#   to define such explicit exceptions, then, e.g.
+#   to define such explicit exceptions, then, e.g.,
 #     MinProtocol=TLSv1.1
 if [ "$tls-features" =% +ctx-set-maxmin-proto ]
   wysh set tls-config-pairs='\e
@@ -13288,13 +13641,13 @@ account XandeX {
 commandalias lls '!ls ${LS_COLOUR_FLAG} -aFlrS'
 commandalias llS '!ls ${LS_COLOUR_FLAG} -aFlS'
 
-set pipe-message/external-body='@* echo $MAILX_EXTERNAL_BODY_URL'
+set pipe-message/external-body='?* echo $MAILX_EXTERNAL_BODY_URL'
 
 # We do not support gpg(1) directly yet.  But simple --clearsign'd
 # message parts can be dealt with as follows:
 define V {
   localopts yes
-  wysh set pipe-text/plain=$'@*#++=@\e
+  wysh set pipe-text/plain=$'?*#++=?\e
     < "${MAILX_FILENAME_TEMPORARY}" awk \e
         -v TMPFILE="${MAILX_FILENAME_TEMPORARY}" \e'\e
       BEGIN{done=0}\e
@@ -13439,7 +13792,7 @@ In order to use your new S/MIME setup a combined private key/public key
 This is the file \*(UA will work with.
 If you have created your private key with a passphrase then \*(UA will
 ask you for it whenever a message is signed or decrypted, unless this
-operation has been automatized as described in
+operation has been automated as described in
 .Sx "Signed and encrypted messages with S/MIME" .
 Set the following variables to henceforth use S/MIME (setting
 .Va smime-ca-file
@@ -13591,7 +13944,7 @@ Put (at least parts of) the following in your
 .Pa ~/.gitconfig :
 .Bd -literal -offset indent
 [sendemail]
-smtpserver = /usr/bin/s-mailx
+smtpserver = /usr/bin/\*(uA
 smtpserveroption = -t
 #smtpserveroption = -Sexpandaddr
 smtpserveroption = -Athe-account-you-need
@@ -13607,6 +13960,31 @@ thread = true
 quiet = true
 annotate = true
 .Ed
+.Pp
+Patches can also be send directly, for example:
+.Bd -literal -offset indent
+$ git mail-patch HEAD^ |
+  \*(uA -Athe-account-you-need -t RECEIVER
+.Ed
+.Ss "Howto handle stale dotlock files"
+.Ic file
+sometimes fails to open MBOX mail databases because creation of
+.Mx -sx
+.Sx "dotlock files"
+is impossible due to existing but unowned lock files.
+\*(UA does not offer an option to deal with those files, because it is
+considered a site policy what counts as unowned, and what not.
+The site policy is usually defined by administrator(s), and expressed in
+the configuration of a locally installed MTA (for example Postfix
+.Ql stale_lock_time=500s ) .
+Therefore the suggestion:
+.Bd -literal -offset indent
+$ </dev/null \*(uA -s 'MTA: be no frog, handle lock' $LOGNAME
+.Ed
+.Pp
+By sending a mail to yourself the local MTA can use its normal queue
+mechanism to try the delivery multiple times, finally decide a lock file
+has become stale, and remove it.
 .Sh "IMAP CLIENT"
 \*(OPally there is IMAP client support available.
 This part of the program is obsolete and will vanish in v15 with the
@@ -13825,7 +14203,8 @@ and is not used if the session is already encrypted by the IMAPS method.
 .Xr terminfo 5 ,
 .Xr locale 7 ,
 .Xr mailaddr 7 ,
-.Xr re_format 7 ,
+.Xr re_format 7
+.Pf (or\0 Xr regex 7 ) ,
 .Xr mailwrapper 8 ,
 .Xr sendmail 8
 .Sh HISTORY
@@ -13914,7 +14293,7 @@ in the source repository lists future directions.
 Please report bugs to the
 .Va contact-mail
 address, e.g., from within \*(uA:
-.Ql ? Ns \| Ic eval Ns \| Ic mail Ns \| $contact-mail .
+.Ql \&? Ns \| Ic eval Ns \| Ic mail Ns \| $contact-mail .
 Including the
 .Va verbose
 output of the command

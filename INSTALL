@@ -2,9 +2,9 @@ I n s t a l l i n g  S - n a i l / S - m a i l x
 ================================================
 
 1.0 Compilation
-1.1 What if configuration fails?
-1.2 What if building fails?
-1.3 What if tests fail?
+1.1 Configuration failed!
+1.2 Building failed!
+1.3 Tests failed!
 1.4 How can i enable debugging?
 2.0 Notes on building the latest release
 
@@ -15,6 +15,8 @@ System specific notes can be found in the next section.
 All (optional) features are documented (and adjustable) in make.rc.
 Adjustments may also take place, and are usually done, from the command
 line, overriding those made in make.rc (if any).
+The set of builtin MIME types could be adjusted in ./mime.types.
+Experts could find it valuable to adjust C code in ./mx-config.h.
 
 Without any adjustments all non-experimental features will be enabled,
 except some which provide redundant functionality (e.g., OPT_SPAM_SPAMC
@@ -23,102 +25,71 @@ None of the features are "require"d by default, so that configuration
 will not fail shall any of them not be available or usable.
 The generated configuration is tracked: changes will be recognized
 and cause automatic cleanups and rebuilds as necessary.
-Experts could find it valuable to adjust some settings in config.h.
 
-  $ make tangerine  # equals "$ make config build test install"
-  $ make citron     # equals "$ make config build install"
-  $ make distclean  # *Completely* cleanup working directory
+  $ make -j2 tangerine  # equals "$ make config build test install"
+  $ make citron         # equals "$ make config build install"
+  $ make distclean      # *Completely* cleanup working directory
 
 With adjustments:
 
-  $ make OPT_POP3=no OPT_SMTP=require tangerine
+  $ make OPT_POP3=no OPT_SMTP=require tangerine OBJDIR=/tmpfs/mx
   $ make OPT_CROSS_BUILD=y VAL_PREFIX=/some/nasty/prefix citron
 
 With utility program and feature adjustments:
 
-  $ make awk=/usr/bin/nawk OPT_SOCKETS=no DESTDIR=./zzz tangerine
+  $ make awk=/usr/bin/nawk VERBOSE=yes OPT_SOCKETS=no tangerine
 
 If OPT_DOTLOCK has been enabled then the minimal privilege-separated
-SETUID (to VAL_PRIVSEP_USER, default "root") helper program will be build
+SETUID (to VAL_DOTLOCK_USER, default "root") helper program will be build
 and installed, and therefore the installation process needs to have the
 appropriate privileges.  In this case it may be useful to separate the
 configuration / building and the installation tasks and give the last
 step higher privileges via super(1), sudo(1), su(1) or a similar
 mechanism, e.g.:
 
-  $ make VAL_PREFIX=/usr config && make MAKEJOBS='-j 4' &&
+  $ make VAL_PREFIX=/usr config && make -j4 &&
     super make DESTDIR=./xy install
 
 would create a "s-nail" binary and install a "s-nail" manual etc.  under
 the prefix "/usr" but rooted under "[./]xy", i.e., the binary would be
 installed as "[./]xy/usr/bin/s-nail".
+
 Out-of-tree compilation is supported; to use it, create the target
 directory of desire, change into it and run the make-emerge.sh script
 shipped with S-nail, then proceed as with normal in-tree building.
+Generated configuration files, objects and test output will be located
+in the directory .obj/ (or what $OBJDIR defines), in- or off-tree.
+
 The following make(1) targets exist, the default being `build':
 
 - tangerine   Shorthand for "$ make config build test install": create
               or check and update configuration, build, test and install.
               The variable $DESTDIR will be honoured (see make.rc),
               but not be tracked in the configuration.
-              In order to parallelize the `build' step pass a $MAKEJOBS
-              variable, as shown below.
 - citron      Shorthand for "$ make config build install".
-              `build' parallelization via $MAKEJOBS, as shown below.
 - all         Shorthand for "$ make config build".
-              `build' parallelization via $MAKEJOBS, as shown below.
 
 - config      Only create or check and update the configuration.
 - build       Only build (using the existing configuration).
-              This can be parallelized, either by a corresponding make(1)
-              invocation when the target is run by itself, or by setting
-              the $MAKEJOBS variable otherwise, e.g., "MAKEJOBS='-j 4'".
-              $MAKEJOBS is not tracked in the configuration.
 - install     Only install using the built files of the existing
               configuration.
               The variable $DESTDIR will be honoured (see make.rc),
               but not be tracked in the configuration.
 
               S-nail will create an uninstall shell script
-              (VAL_UAGENT-uninstall.sh), but which will *not* be installed
-              if $DESTDIR is set non-empty -- within $DESTDIR, that is.
-              Copy or move it manually from the S-nail root directory ./
-              into $DESTDIR as necessary.
+              (${VAL_SID}${VAL_MAILX}-uninstall.sh), but which will
+              *not* be installed if $DESTDIR is set non-empty -- within
+              $DESTDIR, that is.  Copy or move it manually from the S-nail
+              $OBJDIR into $DESTDIR as necessary in that case.
 
 - clean       Remove anything which can be rebuild.
 - distclean   Remove anything which can be rebuild or reconfigured.
 
-- test        Run cc-test.sh in --check-only mode on the built binary.
+- test        Run mx-test.sh in --check-only mode on the built binary.
 
 Setting the make(1) variable $VERBOSE to an arbitrary value during
 `config' time, as in "$ make VERBOSE=xy tangerine", will change the
 output of the `all', `install' etc. targets to a more verbose one.
-
-If some libraries are missing that you know are installed on your
-system, or if other errors occur due to missing files but which you know
-exist, please ensure that the environment variable $C_INCLUDE_PATH
-includes the necessary "include/" paths and the environment variable
-$LD_LIBRARY_PATH includes the necessary "lib/"rary paths.
-
-The S-nail make system will inspect these two environment variables and
-automatically convert them to cc(1) (c99(1)) -I and -L options (since
-these environment variables are, different to the command line options,
-not part of the POSIX standard).
-To set these environment variables, the following can be done in
-a Bourne / Korn / POSIX compatible shell:
-
-  $ C_INCLUDE_PATH="${C_INCLUDE_PATH}:/usr/local/include"
-  $ LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/local/lib"
-  $ export C_INCLUDE_PATH LD_LIBRARY_PATH
-  $ make tangerine
-
-Other than the standard paths /usr/{bin,include,lib} and /usr/local/[.]
-should possibly be placed first instead, presuming that they are meant
-to override things which usually exist in standard locations.
-If all else fails you can also forcefully pass in include directives and
-library paths via prefilled $INCS and $LIBS variables:
-
-  $ make INCS=-I/mypath/include LIBS="-L/mypath/lib -lmylib" tangerine
 
 There are also some predefined configuration sets available, meant to be
 used instead of doing manual adjustments.
@@ -149,20 +120,50 @@ used instead of doing manual adjustments.
   Like MINIMAL, but turns on all (other) options, also obsolete or
   redundant ones, but none of them required.
 
-1.1 What if configuration fails?
---------------------------------
+If during configuration or building some libraries seem to be missing
+that you know are installed on your system, or if other errors occur
+due to missing files but which you know exist, please ensure that the
+environment variable $C_INCLUDE_PATH includes the necessary "include/"
+paths and the environment variable $LD_LIBRARY_PATH includes the
+necessary "lib/"rary paths.
 
-The configuration process creates a directory ./.obj where the build
-will take place.  If anything goes wrong, it should be sufficient to
-simply remove this directory.  In there it will create some files named
-"mk-config.*":
+The build system will inspect these two environment variables and
+automatically convert them to cc(1) (c99(1)) -I and -L options (since
+these environment variables are, different to the command line options,
+not part of the POSIX standard).
+To set these environment variables, the following can be done in
+a Bourne / Korn / POSIX compatible shell:
 
-- mk-config.log  output generated by the configuration compile tests.
-- mk-config.lst  configuration (chosen option, programs, paths).
+  $ C_INCLUDE_PATH="${C_INCLUDE_PATH}:/usr/local/include"
+  $ LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:/usr/local/lib"
+  $ export C_INCLUDE_PATH LD_LIBRARY_PATH
+  $ make tangerine CONFIG=MINIMAL
+
+Other than the standard paths /usr/{bin,include,lib} and /usr/local/[.]
+should possibly be placed first instead, presuming that they are meant
+to override things which usually exist in standard locations.
+If all else fails you can also forcefully pass in include directives and
+library paths via prefilled $INCS and $LIBS variables:
+
+  $ make INCS=-I/mypath/include LIBS="-L/mypath/lib -lmylib" tangerine
+
+1.1 Configuration failed!
+-------------------------
+
+Please see the section "Notes on building the latest release" below
+first, maybe it has an item for the failing platform, or even gives an
+answer on how to proceed nonetheless.
+
+The configuration process creates a directory ./.obj (or $OBJDIR, if
+set) to store some files of interest (it is also here where the build
+and the tests take place):
+
+- mk-config.log  Any output generated during the configuration process.
+- mk-config.lst  Configuration (chosen option, programs, paths).
 - mk-config.h    C program header produced according to mk-config.lst.
 - mk-config.ev   A set of sh(1) variables for reproducible compile runs.
-- mk-config.inc  List of C header include paths, as compiler directives.
-- mk-config.lib  List of used library information, as compiler directives.
+- mk-config.inc  Compiler directives to include necessary C headers ...
+- mk-config.lib  ... to find and link against needed external libraries.
 
 Of special interest is mk-config.log since the error usually manifests
 here in textual output.  Maybe that makes it obvious what can be done
@@ -170,61 +171,78 @@ here in textual output.  Maybe that makes it obvious what can be done
 $C_INCLUDE_PATH, libraries could not be linked because of incomplete
 $LD_LIBRARY_PATH, etc.).
 
-Otherwise it is getting complicated, and it would be appreciated if you
-would contact the mailing-list!
+If things went wrong so completely that even "$ make distclean" is not
+possible, simply removing .obj ($OBJDIR) will do: "$ rm -rf ./.obj".
+In any case it would be appreciated if you could report the problem,
+so that problems can be fixed!
 
-1.2 What if building fails?
----------------------------
+1.2 Building failed!
+--------------------
 
-Even worse!  This should not happen if configuration succeeded!  It
-would be very kind and highly appreciated if you would report this
-to the mailing-list.
+Terrible!  This should not happen if configuration succeeded!
+Again, it would be appreciated if you could report the problem, so that
+problems can be fixed!
 
-1.3 What if tests fail?
------------------------
+1.3 Tests failed!
+-----------------
 
-That would be a disaster.  Please contact the mailing-list!
-If you have used OPT_AUTOCC (the default) and a non-debug target, you
-could try to reconfigure with an additional cc_maxopt=1 on the command
-line and report whether that turns the green testing light on.
+Please see the section "Notes on building the latest release" below
+first: sometimes it is known that certain tests fail on a specific
+target platform, and there is no applicable fix on application level.
+For example, it is not uncommon that Unicode tests fail because the
+platform uses old or incomplete character information.
 
-Otherwise you could run the cc-test.sh script in --mae-test mode and
-invoke the failing tests (testing echoes the actual test names in
-brackets): this will produce output files of the form t.TESTXY in the
-.obj directory.  Please send these files to the mailing-list, possibly
-stored altogether in a compressed tar(1) file (the mailing-list has
-a message size restriction).  For example:
+It could also be a miscompilation, caused by excessive optimization
+and/or a compiler bug.  If OPT_AUTOCC had been used in conjunction with
+a non-debug target (the defaults), an additional cc_maxopt=1 (or an
+EXTRA_CFLAGS=-O1 etc.) on the command line and a successive
+reconfiguration and -compilation could turn the green testing light on.
 
-  $ ./cc-test.sh --mae-test ./s-nail localopts mbox
-  $ tar -czf badtests.tar.gz .obj/t.*
+In order to inspect the error more thoroughly, the mx-test.sh script
+can be used in --run-test mode to invoke the failing tests (testing
+echoes the actual test names in brackets), for example
+
+  $ ./mx-test.sh --run-test ./s-nail localopts mbox
+
+would run the tests "localopts" and "mbox".  Test output files look
+like t.TESTNAME-XY and reside  in the ./.obj ($OBJDIR) directory.
+(If the build and test is done in a repository checkout, and if the
+branch "test-out" exists, then in addition to the failing test output
+the expected as well as -- optionally -- the file difference of these
+two is generated automatically, too.  And these outputs are also
+generated for normal "$ make test" runs, then.)
+
+It might make sense to send the output files of the failing tests to
+the mailing-list.  Because of ML message size restrictions, creating
+a compressed tar(1) archive of the files would be appreciated:
+
+  $ rm -f .obj/t.*.old .obj/t.*.diff  # In repository checkout only
+  $ tar -cf - .obj/t.* | xz > tlogs.tar.xz
+or
+  $ tar -cf - .obj/t.* | gzip > tlogs.tar.gz
+or
+  $ tar -cf - .obj/t.* | zstd -T0 -19 > tlogs.tar.zst
+etc.
 
 Thank you!
-(These output files will also be created by "make test" a.k.a. the
---check-only mode of cc-test.sh if run in a S-nail repository.)
 
 1.4 How can i enable debugging?
 -------------------------------
 
-Please ensure OPT_DEBUG=yes is enabled during compilation, as in
+Enable OPT_DEBUG=yes during compilation
 
   $ make CONFIG=MAXIMAL OPT_DEBUG=yes
 
-If OPT_AUTOCC is enabled then the build system should automatically
-adjust the compiler flags accordingly, please see make.rc for more.
-There is also a `devel'opment target which does most of this by itself:
+to gain compiler debug flags, memory bound canaries and Not-Yet-Dead
+function graph listings in case of crashes etc.
+For sanitizers plus special options exist, please read make.rc for more.
 
-  $ make devel
+In case of errors using the -d (*debug*) and -v (*verbose*; may be set
+twice for even more verbosity) options (variables) is always good idea:
 
-OPT_DEBUG (`devel') will enable memory bound debug canaries and
-Not-Yet-Dead function graph listings etc.  Whereas the latter will try
-to write its listing into a file named after your favourite MUA in
-your $TMPDIR (or "/tmp" or "./", in order), falling back to STDERR shall
-creation of the file not be possible (we will not overwrite an existing
-file), the debug facilities in general make their appearance on the
-standard error channel; because this can be a quite long output, then,
-it is possibly a good idea to redirect it to a file:
-
-  $ s-nail -dvv 2> error.log
+  $ s-nail -dv
+or
+  $ s-nail -Sdebug -Sverbose
 
 Should you really discover any problems with S-nail it would be very
 useful for development if you would contact the mailing-list!
@@ -247,8 +265,7 @@ Thank you!
     The codebase is ISO C89 which has no %z printf(3) format.
     However we try hard to detect the real type size and define the
     "PRI[du]Z" macros which end up with the correct size, which is
-    also compile-time asserted (see the "MCTA(sizeof(size_t) == XZ)"
-    statements in nail.h).
+    also compile-time asserted (via "MCTA(sizeof(size_t) == XZ)").
 
     By forcing ISO C99 mode when compiling these warnings vanish, e.g.,
     with gcc(1) and clang(1): with OPT_AUTOCC pass
@@ -257,8 +274,9 @@ Thank you!
 Development and/or regular tests:
 
 . AlpineLinux <https://www.alpinelinux.org/> (edge; x86-64).
+
 . ArchLinux <https://www.archlinux.org/> (~weekly updated; x86-64).
-. CRUX Linux <https://www.crux.nu/> (3.4; x86-64).
+
 . FreeBSD <https://www.freebsd.org/> (11.2; x86).
   - The tests iconv_mbyte_base64-4 and
     iconv_mbyte_base64-8 will fail because the ISO C function
@@ -267,30 +285,60 @@ Development and/or regular tests:
     replacements.  This is a known bug, see
       <https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=225692>
 
-Occasional tests:
+(More or less) Frequently tested:
 
-. DragonFly BSD <https://www.dragonflybsd.org/> (5.2.1; x86-64).
-  See FreeBSD for the two failing test cases.
-. NetBSD <https://www.netbsd.org/> (8.0_RC1; i386).
-  - Test shcodec-unicode fails, like Solaris.  (Faulty Unicode ctype.)
-. OpenBSD <https://www.openbsd.org/> (6.3; x86).
+. CRUX Linux <https://www.crux.nu/> (3.4; x86-64).
+
+. OpenBSD <https://www.openbsd.org/> (6.4; x86).
+
+. OSUKISS Linux <https://osukiss.safe.ca/>
+  @ Thanks to Jean-Marc Pigeon for generously providing access to
+    a VZGOT on the most "beefy" machine i have ever worked on!
+    It does the thing i need an hour for in 90 seconds.  ^_^
+
 . Solaris <http://opencsw.org/>
   @ First of all: thanks to OpenCSW.org for offering SSH access to
     their Solaris build cluster!
-  * With OPT_AUTOCC: we try to use Sun cc(1) whenever we find it.
-    If your gcc(1) installation is doing alright you have to turn
-    OPT_AUTOCC off and use $CC, $CFLAGS and $LDFLAGS.
+
   * Some notes collected on earlier trials:
-    + We may forcefully disable stack protectors on SunOS/gcc because of
+    + We forcefully disable stack protectors on SunOS/gcc because of
       linking errors seen in earlier tests.
     + If you get the compiler / system header installation error
         Undefined                       first referenced
          symbol                             in file
         __builtin_stdarg_start              auxlily.o
-      then you have to overwrite this symbol with __builtin_va_start,
+      you have to overwrite the symbol with __builtin_va_start,
       e.g., in conjunction with OPT_AUTOCC add this:
        EXTRA_CFLAGS='-D__builtin_stdarg_start=__builtin_va_start'
-  - On elder SunOS the test shcodec-unicode fails, like NetBSD.
+
+  - At least some combinations of the NFS based filesystem and the
+    OpenCSW machines cause [pipe_handlers] test failure due to hard link
+    count mismatch the NFS implementation links the file to some other
+    name, too, and that lingers too long (reproducibly).
+
+  - You may see failures in Unicode-related tests due to outdated or
+    false Unicode tables on elder releases (as in NetBSD).
+
+  - The make(1) often seems to have problems with file descriptors,
+    especially when pipes are involved.
+    Such "make test" failures often cannot be reproduced via
+      $ ./mx-test.sh --run-test ./s-nail
+
+  -   $ make all OPT_USE_PKGSYS=no OPT_GSSAPI=no
+    ok on Solaris/SPARC 5.9 (+ OPT_IDN=no), 5.10 and 5.11.
+    The latter two have a hanging test X_Y_opt_input_go_stack no.
+    2 which needs -KILLing, the rest will run fine; this is about FDs
+    again, and since the same snippet succeeds in other combinations
+    i am out of ideas).  Solaris/x86 did not even need the caveats.
+
+Occasional tests:
+
+. DragonFly BSD <https://www.dragonflybsd.org/> (5.2.1; x86-64).
+  See FreeBSD for the two failing test cases.
+
+. NetBSD <https://www.netbsd.org/> (8.0_RC1; i386).
+  - Test shcodec-unicode fails, like Solaris.  (Faulty Unicode ctype.)
+
 . Void Linux <https://www.voidlinux.eu/> (x86)
 
 # s-ts-mode
