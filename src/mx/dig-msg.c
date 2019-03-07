@@ -36,29 +36,32 @@
 
 #include "mx/names.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* Try to convert cp into an unsigned number that corresponds to an existing
  * message number (or ERR_INVAL), search for an existing object (ERR_EXIST if
  * oexcl and exists; ERR_NOENT if not oexcl and does not exist).
  * On oexcl success *dmcp will be n_alloc()ated with .dmc_msgno and .dmc_mp
  * etc. set; but not linked into mb.mb_digmsg and .dmc_fp not created etc. */
-static si32_t a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp,
-               bool_t oexcl);
+static s32 a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp,
+               boole oexcl);
 
 /* Subcommand drivers */
-static bool_t a_dmsg_cmd(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmd,
-               uiz_t cmdl, char const *cp);
+static boole a_dmsg_cmd(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmd,
+               uz cmdl, char const *cp);
 
-static bool_t a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp,
+static boole a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp,
                char const *cmda[3]);
-static bool_t a_dmsg__attach(FILE *fp, struct n_dig_msg_ctx *dmcp,
+static boole a_dmsg__attach(FILE *fp, struct n_dig_msg_ctx *dmcp,
                char const *cmda[3]);
 
-static si32_t
-a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp, bool_t oexcl){
+static s32
+a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp, boole oexcl){
    struct n_dig_msg_ctx *dmcp;
-   si32_t rv;
-   ui32_t msgno;
-   n_NYD2_IN;
+   s32 rv;
+   u32 msgno;
+   NYD2_IN;
 
    if(cp[0] == '-' && cp[1] == '\0'){
       if((dmcp = n_dig_msg_compose_ctx) != NULL){
@@ -75,7 +78,7 @@ a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp, bool_t oexcl){
    if((su_idec_u32_cp(&msgno, cp, 0, NULL
             ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
          ) != su_IDEC_STATE_CONSUMED ||
-         msgno == 0 || UICMP(z, msgno, >, msgCount)){
+         msgno == 0 || UCMP(z, msgno, >, msgCount)){
       rv = su_ERR_INVAL;
       goto jleave;
    }
@@ -91,39 +94,39 @@ a_dmsg_find(char const *cp, struct n_dig_msg_ctx **dmcpp, bool_t oexcl){
       goto jleave;
    }
 
-   *dmcpp = dmcp = n_calloc(1, n_ALIGN(sizeof *dmcp) + sizeof(struct header));
+   *dmcpp = dmcp = n_calloc(1, Z_ALIGN(sizeof *dmcp) + sizeof(struct header));
    dmcp->dmc_mp = &message[msgno - 1];
    dmcp->dmc_flags = n_DIG_MSG_OWN_MEMBAG |
          ((TRU1/*TODO*/ || !(mb.mb_perm & MB_DELE))
             ? n_DIG_MSG_RDONLY : n_DIG_MSG_NONE);
    dmcp->dmc_msgno = msgno;
-   dmcp->dmc_hp = (struct header*)PTR2SIZE(&dmcp[1]);
+   dmcp->dmc_hp = (struct header*)P2UZ(&dmcp[1]);
    dmcp->dmc_membag = su_mem_bag_create(&dmcp->dmc__membag_buf[0], 0);
    /* Rest done by caller */
    rv = su_ERR_NONE;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
-static bool_t
-a_dmsg_cmd(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmd, uiz_t cmdl,
+static boole
+a_dmsg_cmd(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmd, uz cmdl,
       char const *cp){
    char const *cmda[3];
-   bool_t rv;
-   n_NYD2_IN;
+   boole rv;
+   NYD2_IN;
 
    /* C99 */{
-      size_t i;
+      uz i;
 
       /* TODO trim+strlist_split(_ifs?)() */
-      for(i = 0; i < n_NELEM(cmda); ++i){
+      for(i = 0; i < NELEM(cmda); ++i){
          while(su_cs_is_blank(*cp))
             ++cp;
          if(*cp == '\0')
             cmda[i] = NULL;
          else{
-            if(i < n_NELEM(cmda) - 1)
+            if(i < NELEM(cmda) - 1)
                for(cmda[i] = cp++; *cp != '\0' && !su_cs_is_blank(*cp); ++cp)
                   ;
             else{
@@ -133,7 +136,7 @@ a_dmsg_cmd(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmd, uiz_t cmdl,
                while(su_cs_is_blank(cp[-1]))
                   --cp;
             }
-            cmda[i] = savestrbuf(cmda[i], PTR2SIZE(cp - cmda[i]));
+            cmda[i] = savestrbuf(cmda[i], P2UZ(cp - cmda[i]));
          }
       }
    }
@@ -157,18 +160,18 @@ jecmd:
    }
    fflush(fp);
 
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
-static bool_t
+static boole
 a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmda[3]){
-   uiz_t i;
+   uz i;
    struct n_header_field *hfp;
    struct mx_name *np, **npp;
    char const *cp;
    struct header *hp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    hp = dmcp->dmc_hp;
 
@@ -183,10 +186,10 @@ a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmda[3]){
        * TODO which differentiate in between structured and unstructured
        * TODO header fields etc., a little workaround */
       struct mx_name *xnp;
-      si8_t aerr;
+      s8 aerr;
       enum expand_addr_check_mode eacm;
       enum gfield ntype;
-      bool_t mult_ok;
+      boole mult_ok;
 
       if(cmda[1] == NULL || cmda[2] == NULL)
          goto jecmd;
@@ -325,12 +328,12 @@ jins_505:
          goto jins;
       }
 
-      if((cp = n_header_is_known(cmda[1], UIZ_MAX)) != NULL)
+      if((cp = n_header_is_known(cmda[1], UZ_MAX)) != NULL)
          goto j505r;
 
       /* Free-form header fields */
       /* C99 */{
-         size_t nl, bl;
+         uz nl, bl;
          struct n_header_field **hfpp;
 
          for(cp = cmda[1]; *cp != '\0'; ++cp)
@@ -344,7 +347,7 @@ jins_505:
 
          nl = su_cs_len(cp = cmda[1]) +1;
          bl = su_cs_len(cmda[2]) +1;
-         *hfpp = hfp = n_autorec_alloc(n_VSTRUCT_SIZEOF(struct n_header_field,
+         *hfpp = hfp = n_autorec_alloc(VSTRUCT_SIZEOF(struct n_header_field,
                hf_dat) + nl + bl);
          hfp->hf_next = NULL;
          hfp->hf_nl = nl - 1;
@@ -574,13 +577,13 @@ jrem:
          goto jrem;
       }
 
-      if((cp = n_header_is_known(cmda[1], UIZ_MAX)) != NULL)
+      if((cp = n_header_is_known(cmda[1], UZ_MAX)) != NULL)
          goto j505r;
 
       /* Free-form header fields (note j501cp may print non-normalized name) */
       /* C99 */{
          struct n_header_field **hfpp;
-         bool_t any;
+         boole any;
 
          for(cp = cmda[1]; *cp != '\0'; ++cp)
             if(!fieldnamechar(*cp)){
@@ -691,7 +694,7 @@ jremat:
          goto jremat;
       }
 
-      if((cp = n_header_is_known(cmda[1], UIZ_MAX)) != NULL)
+      if((cp = n_header_is_known(cmda[1], UZ_MAX)) != NULL)
          goto j505r;
 
       /* Free-form header fields */
@@ -832,7 +835,7 @@ jshow:
 
       /* Free-form header fields */
       /* C99 */{
-         bool_t any;
+         boole any;
 
          for(cp = cmda[1]; *cp != '\0'; ++cp)
             if(!fieldnamechar(*cp)){
@@ -860,7 +863,7 @@ jshow:
       goto jecmd;
 
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return (cp != NULL);
 
 jecmd:
@@ -877,13 +880,13 @@ j501cp:
    goto jleave;
 }
 
-static bool_t
+static boole
 a_dmsg__attach(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmda[3]){
-   bool_t status;
+   boole status;
    struct attachment *ap;
    char const *cp;
    struct header *hp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    hp = dmcp->dmc_hp;
 
@@ -925,7 +928,7 @@ jatt_att:
             cp = NULL;
       }
    }else if(su_cs_starts_with_case("attribute-at", cp)){
-      uiz_t i;
+      uz i;
 
       if(cmda[1] == NULL || cmda[2] != NULL)
          goto jecmd;
@@ -963,7 +966,7 @@ jatt_attset:
             cp = cmda[2];
             while((c = *cp) != '\0' && !su_cs_is_blank(c))
                ++cp;
-            keyw = savestrbuf(cmda[2], PTR2SIZE(cp - cmda[2]));
+            keyw = savestrbuf(cmda[2], P2UZ(cp - cmda[2]));
             if(c != '\0'){
                for(; (c = *++cp) != '\0' && su_cs_is_blank(c);)
                   ;
@@ -1006,7 +1009,7 @@ jatt_attset:
                cp = NULL;
 
             if(cp != NULL){
-               size_t i;
+               uz i;
 
                for(i = 0; ap != NULL; ++i, ap = ap->a_blink)
                   ;
@@ -1022,7 +1025,7 @@ jatt_attset:
             cp = NULL;
       }
    }else if(su_cs_starts_with_case("attribute-set-at", cp)){
-      uiz_t i;
+      uz i;
 
       if(cmda[1] == NULL || cmda[2] == NULL)
          goto jecmd;
@@ -1065,7 +1068,7 @@ jatt_ins:
             cp = NULL;
          break;
       case n_ATTACH_ERR_NONE:{
-         size_t i;
+         uz i;
 
          for(i = 0; ap != NULL; ++i, ap = ap->a_blink)
             ;
@@ -1110,7 +1113,7 @@ jdefault:
             cp = NULL;
       }
    }else if(su_cs_starts_with_case("remove-at", cp)){
-      uiz_t i;
+      uz i;
 
       if(cmda[1] == NULL || cmda[2] != NULL)
          goto jecmd;
@@ -1138,7 +1141,7 @@ jdefault:
       goto jecmd;
 
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return (cp != NULL);
 jecmd:
    (void)fputs("500\n", fp);
@@ -1153,7 +1156,7 @@ j505r:
 FL void
 n_dig_msg_on_mailbox_close(struct mailbox *mbp){
    struct n_dig_msg_ctx *dmcp;
-   n_NYD_IN;
+   NYD_IN;
 
    while((dmcp = mbp->mb_digmsg) != NULL){
       mbp->mb_digmsg = dmcp->dmc_next;
@@ -1163,15 +1166,15 @@ n_dig_msg_on_mailbox_close(struct mailbox *mbp){
          su_mem_bag_gut(dmcp->dmc_membag);
       n_free(dmcp);
    }
-   n_NYD_OU;
+   NYD_OU;
 }
 
-FL bool_t
+FL boole
 n_dig_msg_circumflex(struct n_dig_msg_ctx *dmcp, FILE *fp, char const *cmd){
-   bool_t rv;
+   boole rv;
    char c;
    char const *cp, *cmd_top;
-   n_NYD_IN;
+   NYD_IN;
 
    cp = cmd;
    while(su_cs_is_blank(*cp))
@@ -1181,8 +1184,8 @@ n_dig_msg_circumflex(struct n_dig_msg_ctx *dmcp, FILE *fp, char const *cmd){
       if(su_cs_is_blank(c))
          break;
 
-   rv = a_dmsg_cmd(fp, dmcp, cmd, PTR2SIZE(cmd_top - cmd), cp);
-   n_NYD_OU;
+   rv = a_dmsg_cmd(fp, dmcp, cmd, P2UZ(cmd_top - cmd), cp);
+   NYD_OU;
    return rv;
 }
 
@@ -1192,7 +1195,7 @@ c_digmsg(void *vp){
    struct n_dig_msg_ctx *dmcp;
    struct n_cmd_arg *cap;
    struct n_cmd_arg_ctx *cacp;
-   n_NYD_IN;
+   NYD_IN;
 
    n_pstate_err_no = su_ERR_NONE;
    cacp = vp;
@@ -1291,7 +1294,7 @@ c_digmsg(void *vp){
          if(dmcp->dmc_last != NULL)
             dmcp->dmc_last->dmc_next = dmcp->dmc_next;
          else{
-            assert(dmcp == mb.mb_digmsg);
+            ASSERT(dmcp == mb.mb_digmsg);
             mb.mb_digmsg = dmcp->dmc_next;
          }
          if(dmcp->dmc_next != NULL)
@@ -1352,7 +1355,7 @@ jeremove:
    }
 
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return (vp == NULL);
 
 jesynopsis:
@@ -1366,4 +1369,5 @@ jeinval:
    goto jleave;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

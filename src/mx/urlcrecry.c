@@ -34,6 +34,9 @@
 
 #include "mx/ui-str.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 #ifdef mx_HAVE_NETRC
   /* NetBSD usr.bin/ftp/ruserpass.c uses 100 bytes for that, we need four
    * concurrently (dummy, host, user, pass), so make it a KB */
@@ -54,10 +57,10 @@ enum nrc_token {
 struct nrc_node {
    struct nrc_node   *nrc_next;
    struct nrc_node   *nrc_result;   /* In match phase, former possible one */
-   ui32_t            nrc_mlen;      /* Length of machine name */
-   ui32_t            nrc_ulen;      /* Length of user name */
-   ui32_t            nrc_plen;      /* Length of password */
-   char              nrc_dat[n_VFIELD_SIZE(sizeof(ui32_t))];
+   u32            nrc_mlen;      /* Length of machine name */
+   u32            nrc_ulen;      /* Length of user name */
+   u32            nrc_plen;      /* Length of password */
+   char              nrc_dat[VFIELD_SIZE(sizeof(u32))];
 };
 # define NRC_NODE_ERR   ((struct nrc_node*)-1)
 
@@ -67,51 +70,50 @@ static struct nrc_node  *_nrc_list;
 /* Find the last @ before a slash
  * TODO Casts off the const but this is ok here; obsolete function! */
 #ifdef mx_HAVE_SOCKETS /* temporary (we'll have file://..) */
-static char *           _url_last_at_before_slash(char const *sp);
+static char *           _url_last_at_before_slash(char const *cp);
 #endif
 
 #ifdef mx_HAVE_NETRC
 /* Initialize .netrc cache */
 static void             _nrc_init(void);
 static enum nrc_token   __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN],
-                           bool_t *nl_last);
+                           boole *nl_last);
 
 /* We shall lookup a machine in .netrc says ok_blook(netrc_lookup).
  * only_pass is true then the lookup is for the password only, otherwise we
  * look for a user (and add password only if we have an exact machine match) */
-static bool_t           _nrc_lookup(struct url *urlp, bool_t only_pass);
+static boole           _nrc_lookup(struct url *urlp, boole only_pass);
 
 /* 0=no match; 1=exact match; -1=wildcard match */
 static int              __nrc_host_match(struct nrc_node const *nrc,
                            struct url const *urlp);
-static bool_t           __nrc_find_user(struct url *urlp,
+static boole           __nrc_find_user(struct url *urlp,
                            struct nrc_node const *nrc);
-static bool_t           __nrc_find_pass(struct url *urlp, bool_t user_match,
+static boole           __nrc_find_pass(struct url *urlp, boole user_match,
                            struct nrc_node const *nrc);
 #endif /* mx_HAVE_NETRC */
 
 /* The password can also be gained through external agents TODO v15-compat */
 #ifdef mx_HAVE_AGENT
-static bool_t           _agent_shell_lookup(struct url *urlp, char const *comm);
+static boole           _agent_shell_lookup(struct url *urlp, char const *comm);
 #endif
 
 #ifdef mx_HAVE_SOCKETS
 static char *
-_url_last_at_before_slash(char const *sp)
-{
-   char const *cp;
+_url_last_at_before_slash(char const *cp){
+   char const *xcp;
    char c;
-   n_NYD2_IN;
+   NYD2_IN;
 
-   for (cp = sp; (c = *cp) != '\0'; ++cp)
-      if (c == '/')
+   for(xcp = cp; (c = *xcp) != '\0'; ++xcp)
+      if(c == '/')
          break;
-   while (cp > sp && *--cp != '@')
+   while(xcp > cp && *--xcp != '@')
       ;
-   if (*cp != '@')
-      cp = NULL;
-   n_NYD2_OU;
-   return n_UNCONST(cp);
+   if(*xcp != '@')
+      xcp = NIL;
+   NYD2_OU;
+   return UNCONST(char*,xcp);
 }
 #endif
 
@@ -124,12 +126,12 @@ _nrc_init(void)
    struct stat sb;
    FILE * volatile fi;
    enum nrc_token t;
-   bool_t volatile ispipe;
-   bool_t seen_default, nl_last;
+   boole volatile ispipe;
+   boole seen_default, nl_last;
    struct nrc_node * volatile ntail, * volatile nhead, * volatile nrc;
-   n_NYD_IN;
+   NYD_IN;
 
-   n_UNINIT(ntail, NULL);
+   UNINIT(ntail, NULL);
    nhead = NULL;
    nrc = NRC_NODE_ERR;
    ispipe = FAL0;
@@ -227,10 +229,10 @@ jm_h:
       }
 
       if (!seen_default && (*user != '\0' || *pass != '\0')) {
-         size_t hl = su_cs_len(host), ul = su_cs_len(user),
+         uz hl = su_cs_len(host), usrl = su_cs_len(user),
             pl = su_cs_len(pass);
-         struct nrc_node *nx = n_alloc(n_VSTRUCT_SIZEOF(struct nrc_node,
-               nrc_dat) + hl +1 + ul +1 + pl +1);
+         struct nrc_node *nx = n_alloc(VSTRUCT_SIZEOF(struct nrc_node,
+               nrc_dat) + hl +1 + usrl +1 + pl +1);
 
          if (nhead != NULL)
             ntail->nrc_next = nx;
@@ -239,11 +241,11 @@ jm_h:
          ntail = nx;
          nx->nrc_next = NULL;
          nx->nrc_mlen = hl;
-         nx->nrc_ulen = ul;
+         nx->nrc_ulen = usrl;
          nx->nrc_plen = pl;
          su_mem_copy(nx->nrc_dat, host, ++hl);
-         su_mem_copy(nx->nrc_dat + hl, user, ++ul);
-         su_mem_copy(nx->nrc_dat + hl + ul, pass, ++pl);
+         su_mem_copy(nx->nrc_dat + hl, user, ++usrl);
+         su_mem_copy(nx->nrc_dat + hl + usrl, pass, ++pl);
       }
       if (t == NRC_MACHINE)
          goto jm_h;
@@ -257,7 +259,7 @@ jerr:
       if(n_poption & n_PO_D_V)
          n_err(_("Errors occurred while parsing %s\n"),
             n_shexp_quote_cp(netrc_load, FAL0));
-      assert(nrc == NRC_NODE_ERR);
+      ASSERT(nrc == NRC_NODE_ERR);
       goto jleave;
    }
 
@@ -279,20 +281,20 @@ jleave:
 j_leave:
    _nrc_list = nrc;
    rele_all_sigs();
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static enum nrc_token
-__nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN], bool_t *nl_last)
+__nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN], boole *nl_last)
 {
    int c;
    char *cp;
    enum nrc_token rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    rv = NRC_NONE;
    for (;;) {
-      bool_t seen_nl;
+      boole seen_nl;
 
       c = EOF;
       if (feof(fi) || ferror(fi))
@@ -324,7 +326,7 @@ __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN], bool_t *nl_last)
             if ((c = getc(fi)) == EOF)
                break;
          *cp++ = c;
-         if (PTRCMP(cp, ==, buffer + NRC_TOKEN_MAXLEN)) {
+         if (PCMP(cp, ==, buffer + NRC_TOKEN_MAXLEN)) {
             rv = NRC_ERROR;
             goto jleave;
          }
@@ -336,7 +338,7 @@ __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN], bool_t *nl_last)
          if (c == '\\' && (c = getc(fi)) == EOF)
                break;
          *cp++ = c;
-         if (PTRCMP(cp, ==, buffer + NRC_TOKEN_MAXLEN)) {
+         if (PCMP(cp, ==, buffer + NRC_TOKEN_MAXLEN)) {
             rv = NRC_ERROR;
             goto jleave;
          }
@@ -364,19 +366,19 @@ __nrc_token(FILE *fi, char buffer[NRC_TOKEN_MAXLEN], bool_t *nl_last)
 jleave:
    if (c == EOF && !feof(fi))
       rv = NRC_ERROR;
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
-static bool_t
-_nrc_lookup(struct url *urlp, bool_t only_pass)
+static boole
+_nrc_lookup(struct url *urlp, boole only_pass)
 {
    struct nrc_node *nrc, *nrc_wild, *nrc_exact;
-   bool_t rv = FAL0;
-   n_NYD_IN;
+   boole rv = FAL0;
+   NYD_IN;
 
-   assert(!only_pass || urlp->url_user.s != NULL);
-   assert(only_pass || urlp->url_user.s == NULL);
+   ASSERT(!only_pass || urlp->url_user.s != NULL);
+   ASSERT(only_pass || urlp->url_user.s == NULL);
 
    if (_nrc_list == NULL)
       _nrc_init();
@@ -422,7 +424,7 @@ j_user:
          __nrc_find_pass(urlp, FAL0, nrc_wild))
       rv = TRU1;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -430,13 +432,13 @@ static int
 __nrc_host_match(struct nrc_node const *nrc, struct url const *urlp)
 {
    char const *d2, *d1;
-   size_t l2, l1;
+   uz l2, l1;
    int rv = 0;
-   n_NYD2_IN;
+   NYD2_IN;
 
    /* Find a matching machine -- entries are all lowercase normalized */
    if (nrc->nrc_mlen == urlp->url_host.l) {
-      if (n_LIKELY(!su_mem_cmp(nrc->nrc_dat,
+      if (LIKELY(!su_mem_cmp(nrc->nrc_dat,
             urlp->url_host.s, urlp->url_host.l)))
          rv = 1;
       goto jleave;
@@ -466,14 +468,14 @@ __nrc_host_match(struct nrc_node const *nrc, struct url const *urlp)
        * exact match first! */
       rv = -1;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
-static bool_t
+static boole
 __nrc_find_user(struct url *urlp, struct nrc_node const *nrc)
 {
-   n_NYD2_IN;
+   NYD2_IN;
 
    for (; nrc != NULL; nrc = nrc->nrc_result)
       if (nrc->nrc_ulen > 0) {
@@ -485,17 +487,17 @@ __nrc_find_user(struct url *urlp, struct nrc_node const *nrc)
          break;
       }
 
-   n_NYD2_OU;
+   NYD2_OU;
    return (nrc != NULL);
 }
 
-static bool_t
-__nrc_find_pass(struct url *urlp, bool_t user_match, struct nrc_node const *nrc)
+static boole
+__nrc_find_pass(struct url *urlp, boole user_match, struct nrc_node const *nrc)
 {
-   n_NYD2_IN;
+   NYD2_IN;
 
    for (; nrc != NULL; nrc = nrc->nrc_result) {
-      bool_t um = (nrc->nrc_ulen == urlp->url_user.l &&
+      boole um = (nrc->nrc_ulen == urlp->url_user.l &&
             !su_mem_cmp(nrc->nrc_dat + nrc->nrc_mlen +1, urlp->url_user.s,
                urlp->url_user.l));
 
@@ -513,23 +515,23 @@ __nrc_find_pass(struct url *urlp, bool_t user_match, struct nrc_node const *nrc)
       break;
    }
 
-   n_NYD2_OU;
+   NYD2_OU;
    return (nrc != NULL);
 }
 #endif /* mx_HAVE_NETRC */
 
 #ifdef mx_HAVE_AGENT
-static bool_t
+static boole
 _agent_shell_lookup(struct url *urlp, char const *comm) /* TODO v15-compat */
 {
    char buf[128];
    char const *env_addon[8];
    struct str s;
    FILE *pbuf;
-   union {int c; sighandler_type sht;} u;
-   size_t cl, l;
-   bool_t rv = FAL0;
-   n_NYD2_IN;
+   union {int c; n_sighdl_t sht;} u;
+   uz cl, l;
+   boole rv = FAL0;
+   NYD2_IN;
 
    env_addon[0] = str_concat_csvl(&s, "NAIL_USER", "=", urlp->url_user.s,
          NULL)->s;
@@ -572,22 +574,22 @@ _agent_shell_lookup(struct url *urlp, char const *comm) /* TODO v15-compat */
 jleave:
    if (s.s != NULL)
       n_free(s.s);
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 #endif /* mx_HAVE_AGENT */
 
 FL char *
-(urlxenc)(char const *cp, bool_t ispath  su_DBG_LOC_ARGS_DECL)
+(urlxenc)(char const *cp, boole ispath  su_DBG_LOC_ARGS_DECL)
 {
    char *n, *np, c1;
-   n_NYD2_IN;
+   NYD2_IN;
 
    /* C99 */{
-      size_t i;
+      uz i;
 
       i = su_cs_len(cp);
-      if(i >= UIZ_MAX / 3){
+      if(i >= UZ_MAX / 3){
          n = NULL;
          goto jleave;
       }
@@ -606,7 +608,7 @@ FL char *
          if (c1 != '-' && c1 != '.' && c1 != '~')
             goto jesc;
          *np++ = c1;
-      } else if (PTRCMP(np, >, n) && (*cp == '-' || *cp == '.')) /* XXX imap */
+      } else if (PCMP(np, >, n) && (*cp == '-' || *cp == '.')) /* XXX imap */
          *np++ = c1;
       else {
 jesc:
@@ -617,7 +619,7 @@ jesc:
    }
    *np = '\0';
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return n;
 }
 
@@ -625,16 +627,16 @@ FL char *
 (urlxdec)(char const *cp  su_DBG_LOC_ARGS_DECL)
 {
    char *n, *np;
-   si32_t c;
-   n_NYD2_IN;
+   s32 c;
+   NYD2_IN;
 
    np = n = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(su_cs_len(cp) +1,
          su_DBG_LOC_ARGS_ORUSE);
 
-   while ((c = (uc_i)*cp++) != '\0') {
+   while ((c = (uc)*cp++) != '\0') {
       if (c == '%' && cp[0] != '\0' && cp[1] != '\0') {
-         si32_t o = c;
-         if (n_LIKELY((c = n_c_from_hex_base16(cp)) >= '\0'))
+         s32 o = c;
+         if (LIKELY((c = n_c_from_hex_base16(cp)) >= '\0'))
             cp += 2;
          else
             c = o;
@@ -642,16 +644,16 @@ FL char *
       *np++ = (char)c;
    }
    *np = '\0';
-   n_NYD2_OU;
+   NYD2_OU;
    return n;
 }
 
 FL int
 c_urlcodec(void *vp){
-   bool_t ispath;
-   size_t alen;
+   boole ispath;
+   uz alen;
    char const **argv, *varname, *varres, *act, *cp;
-   n_NYD_IN;
+   NYD_IN;
 
    argv = vp;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
@@ -665,7 +667,7 @@ c_urlcodec(void *vp){
    }
    if(act >= cp)
       goto jesynopsis;
-   alen = PTR2SIZE(cp - act);
+   alen = P2UZ(cp - act);
    if(*cp != '\0')
       ++cp;
 
@@ -685,7 +687,7 @@ c_urlcodec(void *vp){
    }
 
    if(varname != NULL){
-      if(!n_var_vset(varname, (uintptr_t)varres)){
+      if(!n_var_vset(varname, (up)varres)){
          n_pstate_err_no = su_ERR_NOTSUP;
          cp = NULL;
       }
@@ -702,7 +704,7 @@ c_urlcodec(void *vp){
    }
 
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return (vp != NULL ? 0 : 1);
 jesynopsis:
    n_err(_("Synopsis: urlcodec: "
@@ -716,7 +718,7 @@ FL int
 c_urlencode(void *v) /* XXX IDNA?? */
 {
    char **ap;
-   n_NYD_IN;
+   NYD_IN;
 
    n_OBSOLETE("`urlencode': please use `urlcodec enc[ode]' instead");
 
@@ -729,7 +731,7 @@ c_urlencode(void *v) /* XXX IDNA?? */
          " in: <%s> (%" PRIuZ " bytes)\nout: <%s> (%" PRIuZ " bytes)\n",
          in, su_cs_len(in), out, su_cs_len(out));
    }
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
@@ -737,7 +739,7 @@ FL int
 c_urldecode(void *v) /* XXX IDNA?? */
 {
    char **ap;
-   n_NYD_IN;
+   NYD_IN;
 
    n_OBSOLETE("`urldecode': please use `urlcodec dec[ode]' instead");
 
@@ -750,16 +752,16 @@ c_urldecode(void *v) /* XXX IDNA?? */
          " in: <%s> (%" PRIuZ " bytes)\nout: <%s> (%" PRIuZ " bytes)\n",
          in, su_cs_len(in), out, su_cs_len(out));
    }
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
 FL char *
 url_mailto_to_address(char const *mailtop){ /* TODO hack! RFC 6068; factory? */
-   size_t i;
+   uz i;
    char *rv;
    char const *mailtop_orig;
-   n_NYD_IN;
+   NYD_IN;
 
    if(!su_cs_starts_with(mailtop_orig = mailtop, "mailto:")){
       rv = NULL;
@@ -771,7 +773,7 @@ url_mailto_to_address(char const *mailtop){ /* TODO hack! RFC 6068; factory? */
     * TODO a little bit of a little more advanced List-Post: headers. */
    /* Strip any hfield additions, keep only to addr-spec's */
    if((rv = su_cs_find_c(mailtop, '?')) != NULL)
-      rv = savestrbuf(mailtop, i = PTR2SIZE(rv - mailtop));
+      rv = savestrbuf(mailtop, i = P2UZ(rv - mailtop));
    else
       rv = savestrbuf(mailtop, i = su_cs_len(mailtop));
 
@@ -780,13 +782,13 @@ url_mailto_to_address(char const *mailtop){ /* TODO hack! RFC 6068; factory? */
    /* Simply perform percent-decoding if there is a percent % */
    if(su_mem_find(rv, '%', i) != NULL){
       char *rv_base;
-      bool_t err;
+      boole err;
 
       for(err = FAL0, mailtop = rv_base = rv; i > 0;){
          char c;
 
          if((c = *mailtop++) == '%'){
-            si32_t cc;
+            s32 cc;
 
             if(i < 3 || (cc = n_c_from_hex_base16(mailtop)) < 0){
                if(!err && (err = TRU1, n_poption & n_PO_D_V))
@@ -807,16 +809,16 @@ jhex_putc:
       rv = rv_base;
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL char const *
-n_servbyname(char const *proto, ui16_t *irv_or_null){
+n_servbyname(char const *proto, u16 *irv_or_null){
    static struct{
       char const name[14];
       char const port[8];
-      ui16_t portno;
+      u16 portno;
    } const tbl[] = {
       { "smtp", "25", 25},
       { "smtps", "465", 465},
@@ -829,27 +831,27 @@ n_servbyname(char const *proto, ui16_t *irv_or_null){
       { "file", "", 0}
    };
    char const *rv;
-   size_t l, i;
-   n_NYD2_IN;
+   uz l, i;
+   NYD2_IN;
 
    for(rv = proto; *rv != '\0'; ++rv)
       if(*rv == ':')
          break;
-   l = PTR2SIZE(rv - proto);
+   l = P2UZ(rv - proto);
 
-   for(rv = NULL, i = 0; i < n_NELEM(tbl); ++i)
+   for(rv = NULL, i = 0; i < NELEM(tbl); ++i)
       if(!su_cs_cmp_case_n(tbl[i].name, proto, l)){
          rv = tbl[i].port;
          if(irv_or_null != NULL)
             *irv_or_null = tbl[i].portno;
          break;
       }
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 #ifdef mx_HAVE_SOCKETS /* Note: not indented for that -- later: file:// etc.! */
-FL bool_t
+FL boole
 url_parse(struct url *urlp, enum cproto cproto, char const *data)
 {
 #if defined mx_HAVE_SMTP && defined mx_HAVE_POP3 && defined mx_HAVE_IMAP
@@ -860,9 +862,9 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
 # define a_ANYPROTO
    char *cp, *x;
 #endif
-   bool_t rv = FAL0;
-   n_NYD_IN;
-   n_UNUSED(data);
+   boole rv = FAL0;
+   NYD_IN;
+   UNUSED(data);
 
    su_mem_set(urlp, 0, sizeof *urlp);
    urlp->url_input = data;
@@ -900,9 +902,9 @@ url_parse(struct url *urlp, enum cproto cproto, char const *data)
       if((cp = su_cs_find(data, "://")) == NULL)
          a_PRIVPROTOX("https", 443, urlp->url_flags |= n_URL_TLS_REQUIRED);
       else{
-         size_t i;
+         uz i;
 
-         if((i = PTR2SIZE(&cp[sizeof("://") -1] - data)) + 2 >=
+         if((i = P2UZ(&cp[sizeof("://") -1] - data)) + 2 >=
                sizeof(urlp->url_proto))
             goto jeproto;
          su_mem_copy(urlp->url_proto, data, i);
@@ -978,11 +980,11 @@ jeproto:
    /* User and password, I */
 juser:
    if ((cp = _url_last_at_before_slash(data)) != NULL) {
-      size_t l;
+      uz l;
       char const *urlpe, *d;
       char *ub;
 
-      l = PTR2SIZE(cp - data);
+      l = P2UZ(cp - data);
       ub = n_lofi_alloc(l +1);
       d = data;
       urlp->url_flags |= n_URL_HAD_USER;
@@ -990,7 +992,7 @@ juser:
 
       /* And also have a password? */
       if((cp = su_mem_find(d, ':', l)) != NULL){
-         size_t i = PTR2SIZE(cp - d);
+         uz i = P2UZ(cp - d);
 
          l -= i + 1;
          su_mem_copy(ub, cp + 1, l);
@@ -1043,7 +1045,7 @@ jurlp_err:
       }
    } else {
       if ((x = su_cs_find_c(data, '/')) != NULL) {
-         data = savestrbuf(data, PTR2SIZE(x - data));
+         data = savestrbuf(data, P2UZ(x - data));
          while(*++x == '/')
             ;
       }
@@ -1054,8 +1056,8 @@ jurlp_err:
    if (x != NULL && *x != '\0') {
       /* Take care not to count adjacent solidus for real, on either end */
       char *x2;
-      size_t i;
-      bool_t trailsol;
+      uz i;
+      boole trailsol;
 
       for(trailsol = FAL0, x2 = savestrbuf(x, i = su_cs_len(x)); i > 0;
             trailsol = TRU1, --i)
@@ -1086,8 +1088,8 @@ jurlp_err:
             urlp->url_path.l = sizeof("INBOX") -1);
 # endif
 
-   urlp->url_host.s = savestrbuf(data, urlp->url_host.l = PTR2SIZE(cp - data));
-   {  size_t i;
+   urlp->url_host.s = savestrbuf(data, urlp->url_host.l = P2UZ(cp - data));
+   {  uz i;
       for (cp = urlp->url_host.s, i = urlp->url_host.l; i != 0; ++cp, --i)
          *cp = su_cs_to_lower(*cp);
    }
@@ -1106,7 +1108,7 @@ jurlp_err:
 # endif /* mx_HAVE_IDNA */
 
    /* .url_h_p: HOST:PORT */
-   {  size_t upl, i;
+   {  uz upl, i;
       struct str *s = &urlp->url_h_p;
 
       upl = (urlp->url_port == NULL) ? 0 : 1u + su_cs_len(urlp->url_port);
@@ -1149,7 +1151,7 @@ jurlp_err:
     * For SMTP we apply ridiculously complicated *v15-compat* plus
     * *smtp-hostname* / *hostname* dependent rules */
    {  struct str h, *s;
-      size_t i;
+      uz i;
 
       if (cproto == CPROTO_SMTP && ok_blook(v15_compat) &&
             (cp = ok_vlook(smtp_hostname)) != NULL) {
@@ -1174,7 +1176,7 @@ jurlp_err:
 
    /* .url_u_h_p: .url_user@.url_host[:.url_port] */
    {  struct str *s = &urlp->url_u_h_p;
-      size_t i = urlp->url_user.l;
+      uz i = urlp->url_user.l;
 
       s->s = n_autorec_alloc(i + 1 + urlp->url_h_p.l +1);
       if (i > 0) {
@@ -1188,7 +1190,7 @@ jurlp_err:
 
    /* .url_eu_h_p: .url_user_enc@.url_host[:.url_port] */
    {  struct str *s = &urlp->url_eu_h_p;
-      size_t i = urlp->url_user_enc.l;
+      uz i = urlp->url_user_enc.l;
 
       s->s = n_autorec_alloc(i + 1 + urlp->url_h_p.l +1);
       if (i > 0) {
@@ -1201,7 +1203,7 @@ jurlp_err:
    }
 
    /* .url_p_u_h_p: .url_proto://.url_u_h_p */
-   {  size_t i;
+   {  uz i;
       char *ud;
 
       ud = n_autorec_alloc((i = urlp->url_proto_len + sizeof("://") -1 +
@@ -1215,7 +1217,7 @@ jurlp_err:
    }
 
    /* .url_p_eu_h_p, .url_p_eu_h_p_p: .url_proto://.url_eu_h_p[/.url_path] */
-   {  size_t i;
+   {  uz i;
       char *ud;
 
       ud = n_autorec_alloc((i = urlp->url_proto_len + sizeof("://") -1 +
@@ -1239,23 +1241,23 @@ jurlp_err:
    rv = TRU1;
 #endif /* a_ANYPROTO */
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 #undef a_ANYPROTO
 #undef a_ALLPROTO
 }
 
-FL bool_t
+FL boole
 ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
 {
    char const *pname, *pxstr, *authdef, *s;
-   size_t pxlen, addrlen, i;
+   uz pxlen, addrlen, i;
    char *vbuf;
-   ui8_t authmask;
+   u8 authmask;
    enum {NONE=0, WANT_PASS=1<<0, REQ_PASS=1<<1, WANT_USER=1<<2, REQ_USER=1<<3}
       ware = NONE;
-   bool_t addr_is_nuser = FAL0; /* XXX v15.0 legacy! v15_compat */
-   n_NYD_IN;
+   boole addr_is_nuser = FAL0; /* XXX v15.0 legacy! v15_compat */
+   NYD_IN;
 
    n_OBSOLETE(_("Use of old-style credentials, which will vanish in v15!\n"
       "  Please read the manual section "
@@ -1357,7 +1359,7 @@ ccred_lookup_old(struct ccred *ccp, enum cproto cproto, char const *addr)
       if ((s = _url_last_at_before_slash(addr)) != NULL) {
          char *cp;
 
-         cp = savestrbuf(addr, PTR2SIZE(s - addr));
+         cp = savestrbuf(addr, P2UZ(s - addr));
 
          if((ccp->cc_user.s = urlxdec(cp)) == NULL){
             n_err(_("String is not properly URL percent encoded: %s\n"), cp);
@@ -1421,20 +1423,20 @@ jleave:
       n_err(_("Credentials: host %s, user %s, pass %s\n"),
          addr, (ccp->cc_user.s != NULL ? ccp->cc_user.s : n_empty),
          (ccp->cc_pass.s != NULL ? ccp->cc_pass.s : n_empty));
-   n_NYD_OU;
+   NYD_OU;
    return (ccp != NULL);
 }
 
-FL bool_t
+FL boole
 ccred_lookup(struct ccred *ccp, struct url *urlp)
 {
    char *s;
    char const *pstr, *authdef;
-   ui8_t authmask;
+   u8 authmask;
    enum okeys authokey;
    enum {NONE=0, WANT_PASS=1<<0, REQ_PASS=1<<1, WANT_USER=1<<2, REQ_USER=1<<3}
       ware;
-   n_NYD_IN;
+   NYD_IN;
 
    su_mem_set(ccp, 0, sizeof *ccp);
    ccp->cc_user = urlp->url_user;
@@ -1562,7 +1564,7 @@ jleave:
       n_err(_("Credentials: host %s, user %s, pass %s\n"),
          urlp->url_h_p.s, (ccp->cc_user.s != NULL ? ccp->cc_user.s : n_empty),
          (ccp->cc_pass.s != NULL ? ccp->cc_pass.s : n_empty));
-   n_NYD_OU;
+   NYD_OU;
    return (ccp != NULL);
 }
 #endif /* mx_HAVE_SOCKETS */
@@ -1573,8 +1575,8 @@ c_netrc(void *v)
 {
    char **argv = v;
    struct nrc_node *nrc;
-   bool_t load_only;
-   n_NYD_IN;
+   boole load_only;
+   NYD_IN;
 
    load_only = FAL0;
    if (*argv == NULL)
@@ -1592,12 +1594,12 @@ jerr:
    n_err(_("Synopsis: netrc: (<show> or) <clear> the .netrc cache\n"));
    v = NULL;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 
 jlist:   {
    FILE *fp;
-   size_t l;
+   uz l;
 
    if (_nrc_list == NULL)
       _nrc_init();
@@ -1648,8 +1650,8 @@ FL char *
 md5tohex(char hex[MD5TOHEX_SIZE], void const *vp)
 {
    char const *cp = vp;
-   size_t i, j;
-   n_NYD_IN;
+   uz i, j;
+   NYD_IN;
 
    for (i = 0; i < MD5TOHEX_SIZE / 2; ++i) {
       j = i << 1;
@@ -1658,7 +1660,7 @@ md5tohex(char hex[MD5TOHEX_SIZE], void const *vp)
       hex[++j] = __hex(cp[i] & 0x0F);
 # undef __hex
    }
-   n_NYD_OU;
+   NYD_OU;
    return hex;
 }
 
@@ -1668,10 +1670,10 @@ cram_md5_string(struct str const *user, struct str const *pass,
 {
    struct str in, out;
    char digest[16], *cp;
-   n_NYD_IN;
+   NYD_IN;
 
    out.s = NULL;
-   if(user->l >= UIZ_MAX - 1 - MD5TOHEX_SIZE - 1)
+   if(user->l >= UZ_MAX - 1 - MD5TOHEX_SIZE - 1)
       goto jleave;
    if(pass->l >= INT_MAX)
       goto jleave;
@@ -1686,7 +1688,7 @@ cram_md5_string(struct str const *user, struct str const *pass,
       goto jleave;
    }
 
-   hmac_md5((uc_i*)out.s, out.l, (uc_i*)pass->s, pass->l, digest);
+   hmac_md5((uc*)out.s, out.l, (uc*)pass->s, pass->l, digest);
    n_free(out.s);
    cp = md5tohex(n_autorec_alloc(MD5TOHEX_SIZE +1), digest);
 
@@ -1699,7 +1701,7 @@ cram_md5_string(struct str const *user, struct str const *pass,
       out.s = NULL;
    n_lofi_free(in.s);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return out.s;
 }
 
@@ -1726,7 +1728,7 @@ hmac_md5(unsigned char *text, int text_len, unsigned char *key, int key_len,
    unsigned char k_opad[65]; /* outer padding - key XORd with opad */
    unsigned char tk[16];
    int i;
-   n_NYD_IN;
+   NYD_IN;
 
    /* if key is longer than 64 bytes reset it to key=MD5(key) */
    if (key_len > 64) {
@@ -1772,8 +1774,9 @@ hmac_md5(unsigned char *text, int text_len, unsigned char *key, int key_len,
    md5_update(&context, k_opad, 64);   /* start with outer pad */
    md5_update(&context, digest, 16);   /* then results of 1st hash */
    md5_final(digest, &context);        /* finish up 2nd pass */
-   n_NYD_OU;
+   NYD_OU;
 }
 #endif /* mx_HAVE_MD5 */
 
+#include "su/code-ou.h"
 /* s-it-mode */

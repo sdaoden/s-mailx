@@ -46,8 +46,11 @@
 
 #include "mx/iconv.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* We use calloc() for struct attachment */
-n_CTAV(AC_DEFAULT == 0);
+CTAV(AC_DEFAULT == 0);
 
 /* Return >=0 if file denotes a valid message number */
 static int a_attachment_is_msg(char const *file);
@@ -62,7 +65,7 @@ static struct attachment *a_attachment_setup_msg(struct attachment *ap,
 
 /* Try to create temporary charset converted version */
 #ifdef mx_HAVE_ICONV
-static bool_t a_attachment_iconv(struct attachment *ap, FILE *ifp);
+static boole a_attachment_iconv(struct attachment *ap, FILE *ifp);
 #endif
 
 /* */
@@ -71,32 +74,32 @@ static void a_attachment_yay(struct attachment const *ap);
 static int
 a_attachment_is_msg(char const *file){
    int rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    rv = -1;
 
    if(file[0] == '#'){
-      uiz_t ib;
+      uz ib;
 
-      /* TODO Message numbers should be size_t, and 0 may be a valid one */
+      /* TODO Message numbers should be uz, and 0 may be a valid one */
       if(file[2] == '\0' && file[1] == '.'){
          if(dot != NULL)
-            rv = (int)PTR2SIZE(dot - message + 1);
+            rv = (int)P2UZ(dot - message + 1);
       }else if((su_idec_uz_cp(&ib, &file[1], 10, NULL
                ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
             ) != su_IDEC_STATE_CONSUMED || ib == 0 ||
-            UICMP(z, ib, >, msgCount))
+            UCMP(z, ib, >, msgCount))
          rv = -1;
       else
          rv = (int)ib;
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 static struct attachment *
 a_attachment_setup_base(struct attachment *ap, char const *file){
-   n_NYD2_IN;
+   NYD2_IN;
    ap->a_input_charset = ap->a_charset = NULL;
    ap->a_path_user = ap->a_path = ap->a_path_bname = ap->a_name = file;
    if((file = su_cs_rfind_c(file, '/')) != NULL)
@@ -107,31 +110,31 @@ a_attachment_setup_base(struct attachment *ap, char const *file){
    ap->a_content_disposition = "attachment";
    ap->a_content_description = NULL;
    ap->a_content_id = NULL;
-   n_NYD2_OU;
+   NYD2_OU;
    return ap;
 }
 
 static struct attachment *
 a_attachment_setup_msg(struct attachment *ap, char const *msgcp, int msgno){
-   n_NYD2_IN;
+   NYD2_IN;
    ap->a_path_user = ap->a_path = ap->a_path_bname = ap->a_name = msgcp;
    ap->a_msgno = msgno;
    ap->a_content_type =
    ap->a_content_description =
    ap->a_content_disposition = NULL;
    ap->a_content_id = NULL;
-   n_NYD2_OU;
+   NYD2_OU;
    return ap;
 }
 
 #ifdef mx_HAVE_ICONV
-static bool_t
+static boole
 a_attachment_iconv(struct attachment *ap, FILE *ifp){
    struct str oul = {NULL, 0}, inl = {NULL, 0};
-   size_t cnt, lbsize;
+   uz cnt, lbsize;
    iconv_t icp;
    FILE *ofp;
-   n_NYD_IN;
+   NYD_IN;
 
    hold_sigs(); /* TODO until we have signal manager (see TODO) */
 
@@ -146,7 +149,7 @@ a_attachment_iconv(struct attachment *ap, FILE *ifp){
       goto jerr;
    }
 
-   cnt = (size_t)fsize(ifp);
+   cnt = (uz)fsize(ifp);
 
    if((ofp = Ftmp(NULL, "atticonv", OF_RDWR | OF_UNLINK | OF_REGISTER)) ==NULL){
       n_perr(_("Temporary attachment data file"), 0);
@@ -181,7 +184,7 @@ jleave:
    Fclose(ifp);
 
    rele_sigs(); /* TODO until we have signal manager (see TODO) */
-   n_NYD_OU;
+   NYD_OU;
    return (ofp != NULL);
 
 jeconv:
@@ -197,7 +200,7 @@ jerr:
 
 static void
 a_attachment_yay(struct attachment const *ap){
-   n_NYD2_IN;
+   NYD2_IN;
    if(ap->a_msgno > 0)
       fprintf(n_stdout, _("Added message/rfc822 attachment for message #%u\n"),
          ap->a_msgno);
@@ -205,7 +208,7 @@ a_attachment_yay(struct attachment const *ap){
       fprintf(n_stdout, _("Added attachment %s (%s)\n"),
          n_shexp_quote_cp(ap->a_name, FAL0),
          n_shexp_quote_cp(ap->a_path_user, FAL0));
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 FL struct attachment *
@@ -218,7 +221,7 @@ n_attachment_append(struct attachment *aplist, char const *file,
    char const *file_user, *incs, *oucs;
    struct attachment *nap, *ap;
    enum n_attach_error aerr;
-   n_NYD_IN;
+   NYD_IN;
 
 #ifdef mx_HAVE_ICONV
    cnvfp = NULL;
@@ -263,17 +266,17 @@ jrefexp:
          /* It may not have worked because of a character-set specification,
           * so try to extract that and retry once */
          if(incs == NULL && (cp = su_cs_rfind_c(file, '=')) != NULL){
-            size_t i;
+            uz i;
             char *nfp, c;
 
-            nfp = savestrbuf(file, PTR2SIZE(cp - file));
+            nfp = savestrbuf(file, P2UZ(cp - file));
 
             for(ncp = ++cp; (c = *cp) != '\0'; ++cp)
                if(!su_cs_is_alnum(c) && !su_cs_is_punct(c))
                   break;
                else if(c == '#'){
                   if(incs == NULL){
-                     i = PTR2SIZE(cp - ncp);
+                     i = P2UZ(cp - ncp);
                      if(i == 0 || (i == 1 && ncp[0] == '-'))
                         incs = (char*)-1;
                      else if((incs = n_iconv_normalize_name(savestrbuf(ncp, i))
@@ -288,7 +291,7 @@ jrefexp:
             if(c == '\0'){
                char *xp;
 
-               i = PTR2SIZE(cp - ncp);
+               i = P2UZ(cp - ncp);
                if(i == 0 || (i == 1 && ncp[0] == '-'))
                   xp = (char*)-1;
                else if((xp = n_iconv_normalize_name(savestrbuf(ncp, i))
@@ -350,7 +353,7 @@ jleave:
       *aerr_or_null = aerr;
    if(newap_or_null != NULL)
       *newap_or_null = nap;
-   n_NYD_OU;
+   NYD_OU;
    return aplist;
 }
 
@@ -358,11 +361,11 @@ FL struct attachment *
 n_attachment_append_list(struct attachment *aplist, char const *names){
    struct str shin;
    struct n_string shou, *shoup;
-   n_NYD_IN;
+   NYD_IN;
 
    shoup = n_string_creat_auto(&shou);
 
-   for(shin.s = n_UNCONST(names), shin.l = UIZ_MAX;;){
+   for(shin.s = n_UNCONST(names), shin.l = UZ_MAX;;){
       struct attachment *nap;
       enum n_shexp_state shs;
 
@@ -385,19 +388,19 @@ n_attachment_append_list(struct attachment *aplist, char const *names){
          break;
    }
    n_string_gut(shoup);
-   n_NYD_OU;
+   NYD_OU;
    return aplist;
 }
 
 FL struct attachment *
 n_attachment_remove(struct attachment *aplist, struct attachment *ap){
    struct attachment *bap, *fap;
-   n_NYD_IN;
+   NYD_IN;
 
 #ifdef mx_HAVE_DEVEL
    for(bap = aplist; aplist != NULL && aplist != ap; aplist = aplist->a_flink)
       ;
-   assert(aplist != NULL);
+   ASSERT(aplist != NULL);
    aplist = bap;
 #endif
 
@@ -415,18 +418,18 @@ n_attachment_remove(struct attachment *aplist, struct attachment *ap){
 
    if(ap->a_conv == AC_TMPFILE)
       Fclose(ap->a_tmpf);
-   n_NYD_OU;
+   NYD_OU;
    return aplist;
 }
 
 FL struct attachment *
 n_attachment_find(struct attachment *aplist, char const *name,
-      bool_t *stat_or_null){
+      boole *stat_or_null){
    int msgno;
    char const *bname;
-   bool_t status, sym;
+   boole status, sym;
    struct attachment *saved;
-   n_NYD_IN;
+   NYD_IN;
 
    saved = NULL;
    status = FAL0;
@@ -472,7 +475,7 @@ n_attachment_find(struct attachment *aplist, char const *name,
 jleave:
    if(stat_or_null != NULL)
       *stat_or_null = status;
-   n_NYD_OU;
+   NYD_OU;
    return aplist;
 }
 
@@ -482,8 +485,8 @@ n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
    struct str shin;
    struct n_string shou, *shoup;
    struct attachment *naplist, *ap;
-   ui32_t attno;
-   n_NYD_IN;
+   u32 attno;
+   NYD_IN;
 
    if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_ATTACH_QUOTE_NOTED)
          ) == n_PSO_INTERACTIVE){
@@ -516,16 +519,16 @@ n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
          char const *s_save;
 
          s_save = shin.s;
-         shin.l = UIZ_MAX;
+         shin.l = UZ_MAX;
          shs = n_shexp_parse_token((n_SHEXP_PARSE_TRUNC |
                n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_LOG |
                n_SHEXP_PARSE_IGNORE_EMPTY),
                shoup, &shin, NULL);
-         UIS(
+#ifdef mx_HAVE_UISTRINGS
          if(!(shs & n_SHEXP_STATE_STOP))
             n_err(_("# May be given one argument a time only: %s\n"),
                n_shexp_quote_cp(s_save, FAL0));
-         )
+#endif
          if((shs & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_STOP |
                   n_SHEXP_STATE_ERR_MASK)
                ) != (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_STOP))
@@ -548,16 +551,16 @@ n_attachment_list_edit(struct attachment *aplist, enum n_go_input_flags gif){
       if(ap == NULL)
          break;
    }
-   n_NYD_OU;
+   NYD_OU;
    return naplist;
 }
 
-FL ssize_t
+FL sz
 n_attachment_list_print(struct attachment const *aplist, FILE *fp){
    struct attachment const *ap;
-   ui32_t attno;
-   ssize_t rv;
-   n_NYD_IN;
+   u32 attno;
+   sz rv;
+   NYD_IN;
 
    rv = 0;
 
@@ -597,8 +600,9 @@ n_attachment_list_print(struct attachment const *aplist, FILE *fp){
          fprintf(fp, "]\n");
       }
    }
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

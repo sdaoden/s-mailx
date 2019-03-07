@@ -41,42 +41,45 @@
 # include "mx/nail.h"
 #endif
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* line is a buffer with the result of fgets(). Returns the first newline or
  * the last character read */
-static size_t     _length_of_line(char const *line, size_t linesize);
+static uz     _length_of_line(char const *line, uz linesize);
 
 /* Read a line, one character at a time */
-static char *     _fgetline_byone(char **line, size_t *linesize, size_t *llen,
-                     FILE *fp, int appendnl, size_t n  su_DBG_LOC_ARGS_DECL);
+static char *     _fgetline_byone(char **line, uz *linesize, uz *llen,
+                     FILE *fp, int appendnl, uz n  su_DBG_LOC_ARGS_DECL);
 
 /* Workhorse */
-static bool_t a_file_lock(int fd, enum n_file_lock_type ft, off_t off,
+static boole a_file_lock(int fd, enum n_file_lock_type ft, off_t off,
                off_t len);
 
-static size_t
-_length_of_line(char const *line, size_t linesize)
+static uz
+_length_of_line(char const *line, uz linesize)
 {
-   size_t i;
-   n_NYD2_IN;
+   uz i;
+   NYD2_IN;
 
    /* Last character is always '\0' and was added by fgets() */
    for (--linesize, i = 0; i < linesize; i++)
       if (line[i] == '\n')
          break;
    i = (i < linesize) ? i + 1 : linesize;
-   n_NYD2_OU;
+   NYD2_OU;
    return i;
 }
 
 static char *
-_fgetline_byone(char **line, size_t *linesize, size_t *llen, FILE *fp,
-   int appendnl, size_t n  su_DBG_LOC_ARGS_DECL)
+_fgetline_byone(char **line, uz *linesize, uz *llen, FILE *fp,
+   int appendnl, uz n  su_DBG_LOC_ARGS_DECL)
 {
    char *rv;
    int c;
-   n_NYD2_IN;
+   NYD2_IN;
 
-   assert(*linesize == 0 || *line != NULL);
+   ASSERT(*linesize == 0 || *line != NULL);
    n_pstate &= ~n_PS_READLINE_NL;
 
    for (rv = *line;;) {
@@ -109,16 +112,16 @@ _fgetline_byone(char **line, size_t *linesize, size_t *llen, FILE *fp,
    if (llen)
       *llen = n;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
-static bool_t
+static boole
 a_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len)
 {
    struct flock flp;
-   bool_t rv;
-   n_NYD2_IN;
+   boole rv;
+   NYD2_IN;
 
    su_mem_set(&flp, 0, sizeof flp);
 
@@ -139,17 +142,17 @@ a_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len)
          rv = TRUM1;
          break;
       }
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL char *
-(fgetline)(char **line, size_t *linesize, size_t *cnt, size_t *llen, FILE *fp,
+(fgetline)(char **line, uz *linesize, uz *cnt, uz *llen, FILE *fp,
    int appendnl su_DBG_LOC_ARGS_DECL)
 {
-   size_t i_llen, sz;
+   uz i_llen, size;
    char *rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if (cnt == NULL) {
       /* Without count, we can't determine where the chars returned by fgets()
@@ -164,56 +167,56 @@ FL char *
    if ((rv = *line) == NULL || *linesize < LINESIZE)
       *line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize = LINESIZE,
             su_DBG_LOC_ARGS_ORUSE);
-   sz = (*linesize <= *cnt) ? *linesize : *cnt + 1;
-   if (sz <= 1 || fgets(rv, sz, fp) == NULL) {
+   size = (*linesize <= *cnt) ? *linesize : *cnt + 1;
+   if (size <= 1 || fgets(rv, size, fp) == NULL) {
       /* Leave llen untouched; it is used to determine whether the last line
        * was \n-terminated in some callers */
       rv = NULL;
       goto jleave;
    }
 
-   i_llen = _length_of_line(rv, sz);
+   i_llen = _length_of_line(rv, size);
    *cnt -= i_llen;
    while (rv[i_llen - 1] != '\n') {
       *line = rv = su_MEM_REALLOC_LOCOR(rv, *linesize += 256,
             su_DBG_LOC_ARGS_ORUSE);
-      sz = *linesize - i_llen;
-      sz = (sz <= *cnt) ? sz : *cnt + 1;
-      if (sz <= 1 || fgets(rv + i_llen, sz, fp) == NULL) {
+      size = *linesize - i_llen;
+      size = (size <= *cnt) ? size : *cnt + 1;
+      if (size <= 1 || fgets(rv + i_llen, size, fp) == NULL) {
          if (appendnl) {
             rv[i_llen++] = '\n';
             rv[i_llen] = '\0';
          }
          break;
       }
-      sz = _length_of_line(rv + i_llen, sz);
-      i_llen += sz;
-      *cnt -= sz;
+      size = _length_of_line(rv + i_llen, size);
+      i_llen += size;
+      *cnt -= size;
    }
    if (llen)
       *llen = i_llen;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL int
-(readline_restart)(FILE *ibuf, char **linebuf, size_t *linesize, size_t n
+(readline_restart)(FILE *ibuf, char **linebuf, uz *linesize, uz n
    su_DBG_LOC_ARGS_DECL)
 {
    /* TODO readline_restart(): always *appends* LF just to strip it again;
     * TODO should be configurable just as for fgetline(); ..or whatever..
     * TODO intwrap */
    int rv = -1;
-   long sz;
-   n_NYD2_IN;
+   long size;
+   NYD2_IN;
 
    clearerr(ibuf);
 
    /* Interrupts will cause trouble if we are inside a stdio call. As this is
     * only relevant if input is from tty, bypass it by read(), then */
    if ((n_psonce & n_PSO_TTYIN) && fileno(ibuf) == 0) {
-      assert(*linesize == 0 || *linebuf != NULL);
+      ASSERT(*linesize == 0 || *linebuf != NULL);
       n_pstate &= ~n_PS_READLINE_NL;
       for (;;) {
          if (*linesize <= LINESIZE || n >= *linesize - 128) {
@@ -222,16 +225,16 @@ FL int
                   su_DBG_LOC_ARGS_ORUSE);
          }
 jagain:
-         sz = read(0, *linebuf + n, *linesize - n - 1);
-         if (sz > 0) {
-            n += sz;
+         size = read(0, *linebuf + n, *linesize - n - 1);
+         if (size > 0) {
+            n += size;
             (*linebuf)[n] = '\0';
             if ((*linebuf)[n - 1] == '\n') {
                n_pstate |= n_PS_READLINE_NL;
                break;
             }
          } else {
-            if (sz < 0 && su_err_no() == su_ERR_INTR)
+            if (size < 0 && su_err_no() == su_ERR_INTR)
                goto jagain;
             /* TODO eh.  what is this?  that now supposed to be a line?!? */
             if (n > 0) {
@@ -257,7 +260,7 @@ jagain:
       (*linebuf)[--n] = '\0';
    rv = (int)n;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -266,25 +269,25 @@ fsize(FILE *iob)
 {
    struct stat sbuf;
    off_t rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = (fstat(fileno(iob), &sbuf) == -1) ? 0 : sbuf.st_size;
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
-FL bool_t
+FL boole
 n_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len,
-   size_t pollmsecs)
+   uz pollmsecs)
 {
-   size_t tries;
-   bool_t didmsg, rv;
-   n_NYD_IN;
+   uz tries;
+   boole didmsg, rv;
+   NYD_IN;
 
-   if(pollmsecs == UIZ_MAX)
+   if(pollmsecs == UZ_MAX)
       pollmsecs = FILE_LOCK_MILLIS;
 
-   n_UNINIT(rv, 0);
+   UNINIT(rv, 0);
    for (didmsg = FAL0, tries = 0; tries <= FILE_LOCK_TRIES; ++tries) {
       rv = a_file_lock(fd, flt, off, len);
 
@@ -306,8 +309,9 @@ n_file_lock(int fd, enum n_file_lock_type flt, off_t off, off_t len,
    }
    if(didmsg)
       n_err(" %s\n", (rv ? _("ok") : _("failure")));
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

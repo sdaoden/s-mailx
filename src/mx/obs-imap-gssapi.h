@@ -93,7 +93,7 @@ _imap_gssapi_error1(const char *s, OM_uint32 code, int typ)
    OM_uint32 maj_stat, min_stat;
    gss_buffer_desc msg = GSS_C_EMPTY_BUFFER;
    OM_uint32 msg_ctx = 0;
-   n_NYD_IN;
+   NYD_IN;
 
    do {
       maj_stat = gss_display_status(&min_stat, code, typ, GSS_C_NO_OID,
@@ -107,34 +107,34 @@ _imap_gssapi_error1(const char *s, OM_uint32 code, int typ)
          break;
       }
    } while (msg_ctx);
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static void
 _imap_gssapi_error(const char *s, OM_uint32 maj_stat, OM_uint32 min_stat)
 {
-   n_NYD_IN;
+   NYD_IN;
    _imap_gssapi_error1(s, maj_stat, GSS_C_GSS_CODE);
    _imap_gssapi_error1(s, min_stat, GSS_C_MECH_CODE);
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static char *
-_imap_gssapi_last_at_before_slash(char const *sp)
+_imap_gssapi_last_at_before_slash(char const *cp)
 {
-   char const *cp;
+   char const *xcp;
    char c;
-   n_NYD_IN;
+   NYD_IN;
 
-   for (cp = sp; (c = *cp) != '\0'; ++cp)
+   for (xcp = cp; (c = *xcp) != '\0'; ++xcp)
       if (c == '/')
          break;
-   while (cp > sp && *--cp != '@')
+   while (xcp > cp && *--xcp != '@')
       ;
-   if (*cp != '@')
-      cp = NULL;
-   n_NYD_OU;
-   return n_UNCONST(cp);
+   if (*xcp != '@')
+      xcp = NULL;
+   NYD_OU;
+   return n_UNCONST(xcp);
 }
 
 static enum okay
@@ -157,12 +157,12 @@ _imap_gssapi(struct mailbox *mp, struct ccred *ccred)
       a_F_GSS_CONTEXT = 1u<<3
    } f;
    enum okay ok;
-   n_NYD_X;
+   NYD;
 
    ok = STOP;
    f = a_F_NONE;
 
-   {  size_t i = su_cs_len(mp->mb_imap_account) +1;
+   {  uz i = su_cs_len(mp->mb_imap_account) +1;
       server = n_autorec_alloc(i);
       su_mem_copy(server, mp->mb_imap_account, i);
    }

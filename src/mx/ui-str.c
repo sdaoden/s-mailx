@@ -43,23 +43,111 @@
 
 #include "mx/ui-str.h"
 
-FL bool_t
+/* TODO fake */
+#include "su/code-in.h"
+
+#ifdef mx_HAVE_NATCH_CHAR
+struct a_uis_bidi_info{
+   struct str bi_start; /* Start of (possibly) bidirectional text */
+   struct str bi_end;   /* End of ... */
+   uz bi_pad;           /* No of visual columns to reserve for BIDI pad */
+};
+#endif
+
+#ifdef mx_HAVE_NATCH_CHAR
+/* Check whether bidirectional info maybe needed for blen bytes of bdat */
+static boole a_uis_bidi_info_needed(char const *bdat, uz blen);
+
+/* Create bidirectional text encapsulation info; without mx_HAVE_NATCH_CHAR
+ * the strings are always empty */
+static void a_uis_bidi_info_create(struct a_uis_bidi_info *bip);
+#endif
+
+#ifdef mx_HAVE_NATCH_CHAR
+static boole
+a_uis_bidi_info_needed(char const *bdat, uz blen)
+{
+   boole rv = FAL0;
+   NYD_IN;
+
+   if (n_psonce & n_PSO_UNICODE)
+      while (blen > 0) {
+         /* TODO Checking for BIDI character: use S-CText fromutf8
+          * TODO plus isrighttoleft (or whatever there will be)! */
+         u32 c = su_utf8_to_32(&bdat, &blen);
+         if (c == U32_MAX)
+            break;
+
+         if (c <= 0x05BE)
+            continue;
+
+         /* (Very very fuzzy, awaiting S-CText for good) */
+         if ((c >= 0x05BE && c <= 0x08E3) ||
+               (c >= 0xFB1D && c <= 0xFE00) /* No: variation selectors */ ||
+               (c >= 0xFE70 && c <= 0xFEFC) ||
+               (c >= 0x10800 && c <= 0x10C48) ||
+               (c >= 0x1EE00 && c <= 0x1EEF1)) {
+            rv = TRU1;
+            break;
+         }
+      }
+   NYD_OU;
+   return rv;
+}
+
+static void
+a_uis_bidi_info_create(struct a_uis_bidi_info *bip)
+{
+   /* Unicode: how to isolate RIGHT-TO-LEFT scripts via *headline-bidi*
+    * 1.1 (Jun 1993): U+200E (E2 80 8E) LEFT-TO-RIGHT MARK
+    * 6.3 (Sep 2013): U+2068 (E2 81 A8) FIRST STRONG ISOLATE,
+    *                 U+2069 (E2 81 A9) POP DIRECTIONAL ISOLATE
+    * Worse results seen for: U+202D "\xE2\x80\xAD" U+202C "\xE2\x80\xAC" */
+   n_NATCH_CHAR( char const *hb; )
+   NYD_IN;
+
+   su_mem_set(bip, 0, sizeof *bip);
+   bip->bi_start.s = bip->bi_end.s = n_UNCONST(n_empty);
+
+   if ((n_psonce & n_PSO_UNICODE) && (hb = ok_vlook(headline_bidi)) != NULL) {
+      switch (*hb) {
+      case '3':
+         bip->bi_pad = 2;
+         /* FALLTHRU */
+      case '2':
+         bip->bi_start.s = bip->bi_end.s = n_UNCONST("\xE2\x80\x8E");
+         break;
+      case '1':
+         bip->bi_pad = 2;
+         /* FALLTHRU */
+      default:
+         bip->bi_start.s = n_UNCONST("\xE2\x81\xA8");
+         bip->bi_end.s = n_UNCONST("\xE2\x81\xA9");
+         break;
+      }
+      bip->bi_start.l = bip->bi_end.l = 3;
+   }
+   NYD_OU;
+}
+#endif /* mx_HAVE_NATCH_CHAR */
+
+FL boole
 n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
 #ifdef mx_HAVE_C90AMEND1
    mbstate_t *mbp;
 #endif
-   size_t il;
+   uz il;
    char const *ib;
-   bool_t rv;
-   n_NYD2_IN;
+   boole rv;
+   NYD2_IN;
 
-   assert(vicp != NULL);
-   assert(vicp->vic_inlen == 0 || vicp->vic_indat != NULL);
-   assert(!(vif & n__VISUAL_INFO_FLAGS) || !(vif & n_VISUAL_INFO_ONE_CHAR));
+   ASSERT(vicp != NULL);
+   ASSERT(vicp->vic_inlen == 0 || vicp->vic_indat != NULL);
+   ASSERT(!(vif & n__VISUAL_INFO_FLAGS) || !(vif & n_VISUAL_INFO_ONE_CHAR));
 
    rv = TRU1;
    ib = vicp->vic_indat;
-   if((il = vicp->vic_inlen) == UIZ_MAX)
+   if((il = vicp->vic_inlen) == UZ_MAX)
       il = vicp->vic_inlen = su_cs_len(ib);
 
    if((vif & (n_VISUAL_INFO_WIDTH_QUERY | n_VISUAL_INFO_WOUT_PRINTABLE)) ==
@@ -81,12 +169,12 @@ n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
    if(il > 0){
       do/* while(!(vif & n_VISUAL_INFO_ONE_CHAR) && il > 0) */{
 #ifdef mx_HAVE_C90AMEND1
-         size_t i = mbrtowc(&vicp->vic_waccu, ib, il, mbp);
+         uz i = mbrtowc(&vicp->vic_waccu, ib, il, mbp);
 
-         if(i == (size_t)-2){
+         if(i == (uz)-2){
             rv = FAL0;
             break;
-         }else if(i == (size_t)-1){
+         }else if(i == (uz)-1){
             if(!(vif & n_VISUAL_INFO_SKIP_ERRORS)){
                rv = FAL0;
                break;
@@ -149,18 +237,18 @@ n_visual_info(struct n_visual_info_ctx *vicp, enum n_visual_info_flags vif){
    vicp->vic_oudat = ib;
    vicp->vic_oulen = il;
    vicp->vic_flags = vif;
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
-FL size_t
-field_detect_clip(size_t maxlen, char const *buf, size_t blen)/*TODO mbrtowc()*/
+FL uz
+field_detect_clip(uz maxlen, char const *buf, uz blen)/*TODO mbrtowc()*/
 {
-   size_t rv;
-   n_NYD_IN;
+   uz rv;
+   NYD_IN;
 
 #ifdef mx_HAVE_NATCH_CHAR
-   maxlen = n_MIN(maxlen, blen);
+   maxlen = MIN(maxlen, blen);
    for (rv = 0; maxlen > 0;) {
       int ml = mblen(buf, maxlen);
       if (ml <= 0) {
@@ -172,32 +260,32 @@ field_detect_clip(size_t maxlen, char const *buf, size_t blen)/*TODO mbrtowc()*/
       maxlen -= ml;
    }
 #else
-   rv = n_MIN(blen, maxlen);
+   rv = MIN(blen, maxlen);
 #endif
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL char *
-colalign(char const *cp, int col, int fill, int *cols_decr_used_or_null)
+colalign(char const *cp, int col, int fill, int *cols_decr_used_or_nil)
 {
-   n_NATCH_CHAR( struct bidi_info bi; )
-   int col_orig = col, n, sz;
-   bool_t isbidi, isuni, istab, isrepl;
+   n_NATCH_CHAR( struct a_uis_bidi_info bi; )
+   int col_orig = col, n, size;
+   boole isbidi, isuni, istab, isrepl;
    char *nb, *np;
-   n_NYD_IN;
+   NYD_IN;
 
    /* Bidi only on request and when there is 8-bit data */
    isbidi = isuni = FAL0;
 #ifdef mx_HAVE_NATCH_CHAR
    isuni = ((n_psonce & n_PSO_UNICODE) != 0);
-   bidi_info_create(&bi);
+   a_uis_bidi_info_create(&bi);
    if (bi.bi_start.l == 0)
       goto jnobidi;
-   if (!(isbidi = bidi_info_needed(cp, su_cs_len(cp))))
+   if (!(isbidi = a_uis_bidi_info_needed(cp, su_cs_len(cp))))
       goto jnobidi;
 
-   if ((size_t)col >= bi.bi_pad)
+   if (S(uz,col) >= bi.bi_pad)
       col -= bi.bi_pad;
    else
       col = 0;
@@ -224,10 +312,10 @@ jnobidi:
 
          n = 1;
          isrepl = TRU1;
-         if ((sz = mbtowc(&wc, cp, n_mb_cur_max)) == -1)
-            sz = 1;
+         if ((size = mbtowc(&wc, cp, n_mb_cur_max)) == -1)
+            size = 1;
          else if (wc == L'\t') {
-            cp += sz - 1; /* Silly, no such charset known (.. until S-Ctext) */
+            cp += size - 1; /* Silly, charset unknown (.. until S-Ctext) */
             isrepl = FAL0;
             istab = TRU1;
          } else if (iswprint(wc)) {
@@ -243,9 +331,9 @@ jnobidi:
       } else
 #endif
       {
-         n = sz = 1;
+         n = size = 1;
          istab = (*cp == '\t');
-         isrepl = !(istab || su_cs_is_print((uc_i)*cp));
+         isrepl = !(istab || su_cs_is_print((uc)*cp));
       }
 
       if (n > col)
@@ -260,18 +348,18 @@ jnobidi:
             np += sizeof(su_utf8_replacer) -1;
          } else
             *np++ = '?';
-         cp += sz;
-      } else if (istab || (sz == 1 && su_cs_is_space(*cp))) {
+         cp += size;
+      } else if (istab || (size == 1 && su_cs_is_space(*cp))) {
          *np++ = ' ';
          ++cp;
       } else
-         while (sz--)
+         while (size--)
             *np++ = *cp++;
    }
 
    if (fill && col != 0) {
       if (fill > 0) {
-         su_mem_move(nb + col, nb, PTR2SIZE(np - nb));
+         su_mem_move(nb + col, nb, P2UZ(np - nb));
          su_mem_set(nb, ' ', col);
       } else
          su_mem_set(np, ' ', col);
@@ -287,9 +375,9 @@ jnobidi:
 #endif
 
    *np = '\0';
-   if (cols_decr_used_or_null != NULL)
-      *cols_decr_used_or_null -= col_orig - col;
-   n_NYD_OU;
+   if (cols_decr_used_or_nil != NIL)
+      *cols_decr_used_or_nil -= col_orig - col;
+   NYD_OU;
    return nb;
 }
 
@@ -303,8 +391,8 @@ makeprint(struct str const *in, struct str *out) /* TODO <-> TTYCHARSET!! */
     * TODO some special treatment for UTF-8 (take it from S-CText too then) */
    char const *inp, *maxp;
    char *outp;
-   su_DBG( size_t msz; )
-   n_NYD_IN;
+   DBG( uz msz; )
+   NYD_IN;
 
    out->s =
    outp = n_alloc(su_DBG( msz = ) in->l*n_mb_cur_max + 2u*n_mb_cur_max +1);
@@ -316,12 +404,12 @@ makeprint(struct str const *in, struct str *out) /* TODO <-> TTYCHARSET!! */
       char mbb[MB_LEN_MAX + 1];
       wchar_t wc;
       int i, n;
-      bool_t isuni = ((n_psonce & n_PSO_UNICODE) != 0);
+      boole isuni = ((n_psonce & n_PSO_UNICODE) != 0);
 
       out->l = 0;
       while (inp < maxp) {
          if (*inp & 0200)
-            n = mbtowc(&wc, inp, PTR2SIZE(maxp - inp));
+            n = mbtowc(&wc, inp, P2UZ(maxp - inp));
          else {
             wc = *inp;
             n = 1;
@@ -361,7 +449,7 @@ makeprint(struct str const *in, struct str *out) /* TODO <-> TTYCHARSET!! */
          if ((n = wctomb(mbb, wc)) <= 0)
             continue;
          out->l += n;
-         assert(out->l < msz);
+         ASSERT(out->l < msz);
          for (i = 0; i < n; ++i)
             *outp++ = mbb[i];
       }
@@ -379,20 +467,20 @@ makeprint(struct str const *in, struct str *out) /* TODO <-> TTYCHARSET!! */
       out->l = in->l;
    }
    out->s[out->l] = '\0';
-   n_NYD_OU;
+   NYD_OU;
 }
 
-FL size_t
-delctrl(char *cp, size_t len)
+FL uz
+delctrl(char *cp, uz len)
 {
-   size_t x, y;
-   n_NYD_IN;
+   uz x, y;
+   NYD_IN;
 
    for (x = y = 0; x < len; ++x)
       if (!su_cs_is_cntrl(cp[x]))
          cp[y++] = cp[x];
    cp[y] = '\0';
-   n_NYD_OU;
+   NYD_OU;
    return y;
 }
 
@@ -401,101 +489,32 @@ prstr(char const *s)
 {
    struct str in, out;
    char *rp;
-   n_NYD_IN;
+   NYD_IN;
 
    in.s = n_UNCONST(s);
    in.l = su_cs_len(s);
    makeprint(&in, &out);
    rp = savestrbuf(out.s, out.l);
    n_free(out.s);
-   n_NYD_OU;
+   NYD_OU;
    return rp;
 }
 
 FL int
-prout(char const *s, size_t sz, FILE *fp)
+prout(char const *s, uz size, FILE *fp)
 {
    struct str in, out;
    int n;
-   n_NYD_IN;
+   NYD_IN;
 
    in.s = n_UNCONST(s);
-   in.l = sz;
+   in.l = size;
    makeprint(&in, &out);
    n = fwrite(out.s, 1, out.l, fp);
    n_free(out.s);
-   n_NYD_OU;
+   NYD_OU;
    return n;
 }
 
-FL bool_t
-bidi_info_needed(char const *bdat, size_t blen)
-{
-   bool_t rv = FAL0;
-   n_NYD_IN;
-
-#ifdef mx_HAVE_NATCH_CHAR
-   if (n_psonce & n_PSO_UNICODE)
-      while (blen > 0) {
-         /* TODO Checking for BIDI character: use S-CText fromutf8
-          * TODO plus isrighttoleft (or whatever there will be)! */
-         ui32_t c = su_utf8_to_32(&bdat, &blen);
-         if (c == UI32_MAX)
-            break;
-
-         if (c <= 0x05BE)
-            continue;
-
-         /* (Very very fuzzy, awaiting S-CText for good) */
-         if ((c >= 0x05BE && c <= 0x08E3) ||
-               (c >= 0xFB1D && c <= 0xFE00) /* No: variation selectors */ ||
-               (c >= 0xFE70 && c <= 0xFEFC) ||
-               (c >= 0x10800 && c <= 0x10C48) ||
-               (c >= 0x1EE00 && c <= 0x1EEF1)) {
-            rv = TRU1;
-            break;
-         }
-      }
-#endif /* mx_HAVE_NATCH_CHAR */
-   n_NYD_OU;
-   return rv;
-}
-
-FL void
-bidi_info_create(struct bidi_info *bip)
-{
-   /* Unicode: how to isolate RIGHT-TO-LEFT scripts via *headline-bidi*
-    * 1.1 (Jun 1993): U+200E (E2 80 8E) LEFT-TO-RIGHT MARK
-    * 6.3 (Sep 2013): U+2068 (E2 81 A8) FIRST STRONG ISOLATE,
-    *                 U+2069 (E2 81 A9) POP DIRECTIONAL ISOLATE
-    * Worse results seen for: U+202D "\xE2\x80\xAD" U+202C "\xE2\x80\xAC" */
-   n_NATCH_CHAR( char const *hb; )
-   n_NYD_IN;
-
-   su_mem_set(bip, 0, sizeof *bip);
-   bip->bi_start.s = bip->bi_end.s = n_UNCONST(n_empty);
-
-#ifdef mx_HAVE_NATCH_CHAR
-   if ((n_psonce & n_PSO_UNICODE) && (hb = ok_vlook(headline_bidi)) != NULL) {
-      switch (*hb) {
-      case '3':
-         bip->bi_pad = 2;
-         /* FALLTHRU */
-      case '2':
-         bip->bi_start.s = bip->bi_end.s = n_UNCONST("\xE2\x80\x8E");
-         break;
-      case '1':
-         bip->bi_pad = 2;
-         /* FALLTHRU */
-      default:
-         bip->bi_start.s = n_UNCONST("\xE2\x81\xA8");
-         bip->bi_end.s = n_UNCONST("\xE2\x81\xA9");
-         break;
-      }
-      bip->bi_start.l = bip->bi_end.l = 3;
-   }
-#endif
-   n_NYD_OU;
-}
-
+#include "su/code-ou.h"
 /* s-it-mode */

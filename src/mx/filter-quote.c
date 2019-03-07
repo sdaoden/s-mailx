@@ -38,9 +38,11 @@
 #endif
 
 #include "mx/filter-quote.h"
+/* TODO fake */
+#include "su/code-in.h"
 
 #ifdef mx_HAVE_QUOTE_FOLD
-n_CTAV(n_QUOTE_MAX > 3);
+CTAV(n_QUOTE_MAX > 3);
 
 enum qf_state {
    _QF_CLEAN,
@@ -51,25 +53,25 @@ enum qf_state {
 struct qf_vc {
    struct quoteflt   *self;
    char const        *buf;
-   size_t            len;
+   uz            len;
 };
 
 /* Print out prefix and current quote */
-static ssize_t _qf_dump_prefix(struct quoteflt *self);
+static sz _qf_dump_prefix(struct quoteflt *self);
 
 /* Add one data character */
-static ssize_t _qf_add_data(struct quoteflt *self, wchar_t wc);
+static sz _qf_add_data(struct quoteflt *self, wchar_t wc);
 
 /* State machine handlers */
-static ssize_t _qf_state_prefix(struct qf_vc *vc);
-static ssize_t _qf_state_data(struct qf_vc *vc);
+static sz _qf_state_prefix(struct qf_vc *vc);
+static sz _qf_state_data(struct qf_vc *vc);
 
-static ssize_t
+static sz
 _qf_dump_prefix(struct quoteflt *self)
 {
-   ssize_t rv;
-   size_t i;
-   n_NYD_IN;
+   sz rv;
+   uz i;
+   NYD_IN;
 
    if ((i = self->qf_pfix_len) > 0 && i != fwrite(self->qf_pfix, 1, i,
          self->qf_os))
@@ -81,21 +83,21 @@ _qf_dump_prefix(struct quoteflt *self)
       goto jerr;
    rv += i;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 jerr:
    rv = -1;
    goto jleave;
 }
 
-static ssize_t
+static sz
 _qf_add_data(struct quoteflt *self, wchar_t wc)
 {
    int w, l;
    char *save_b;
-   ui32_t save_l, save_w;
-   ssize_t rv;
-   n_NYD_IN;
+   u32 save_l, save_w;
+   sz rv;
+   NYD_IN;
 
    rv = 0;
    save_l = save_w = 0; /* silence cc */
@@ -115,7 +117,7 @@ _qf_add_data(struct quoteflt *self, wchar_t wc)
       save_w = (save_l + n_QUOTE_TAB_SPACES) & ~(n_QUOTE_TAB_SPACES - 1);
       save_w -= save_l;
       while (save_w-- > 0) {
-         ssize_t j = _qf_add_data(self, L' ');
+         sz j = _qf_add_data(self, L' ');
          if (j < 0) {
             rv = j;
             break;
@@ -141,8 +143,8 @@ jbad:
       l = wctomb(self->qf_dat.s + self->qf_dat.l, wc);
       if (l < 0)
          goto jbad;
-      self->qf_datw += (ui32_t)w;
-      self->qf_dat.l += (size_t)l;
+      self->qf_datw += (u32)w;
+      self->qf_dat.l += (uz)l;
    }
 
    if (self->qf_datw >= self->qf_qfold_max) {
@@ -170,7 +172,7 @@ jflush:
          su_mem_move(self->qf_dat.s, save_b, save_l);
       }
    } else if (self->qf_datw >= self->qf_qfold_min && !self->qf_brk_isws) {
-      bool_t isws = (iswspace(wc) != 0);
+      boole isws = (iswspace(wc) != 0);
 
       if (isws || !self->qf_brk_isws || self->qf_brkl == 0) {
          if((self->qf_brk_isws = isws) ||
@@ -183,7 +185,7 @@ jflush:
 
    /* Did we hold this back to avoid qf_fold_max excess?  Then do it now */
    if(rv >= 0 && w == -1){
-      ssize_t j = _qf_add_data(self, wc);
+      sz j = _qf_add_data(self, wc);
       if(j < 0)
          rv = j;
       else
@@ -197,19 +199,19 @@ jflush:
       self->qf_currq.l = 0;
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
-static ssize_t
+static sz
 _qf_state_prefix(struct qf_vc *vc)
 {
    struct quoteflt *self;
-   ssize_t rv;
+   sz rv;
    char const *buf;
-   size_t len, i;
+   uz len, i;
    wchar_t wc;
-   n_NYD_IN;
+   NYD_IN;
 
    self = vc->self;
    rv = 0;
@@ -217,7 +219,7 @@ _qf_state_prefix(struct qf_vc *vc)
    for (buf = vc->buf, len = vc->len; len > 0;) {
       /* xxx NULL BYTE! */
       i = mbrtowc(&wc, buf, len, self->qf_mbps);
-      if (i == (size_t)-1) {
+      if (i == (uz)-1) {
          /* On hard error, don't modify mbstate_t and step one byte */
          self->qf_mbps[0] = self->qf_mbps[1];
          ++buf;
@@ -226,7 +228,7 @@ _qf_state_prefix(struct qf_vc *vc)
          continue;
       }
       self->qf_mbps[1] = self->qf_mbps[0];
-      if (i == (size_t)-2) {
+      if (i == (uz)-2) {
          /* Redundant shift sequence, out of buffer */
          len = 0;
          break;
@@ -269,19 +271,19 @@ jfin:
 
    vc->buf = buf;
    vc->len = len;
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
-static ssize_t
+static sz
 _qf_state_data(struct qf_vc *vc)
 {
    struct quoteflt *self;
-   ssize_t rv;
+   sz rv;
    char const *buf;
-   size_t len, i;
+   uz len, i;
    wchar_t wc;
-   n_NYD_IN;
+   NYD_IN;
 
    self = vc->self;
    rv = 0;
@@ -289,7 +291,7 @@ _qf_state_data(struct qf_vc *vc)
    for (buf = vc->buf, len = vc->len; len > 0;) {
       /* xxx NULL BYTE! */
       i = mbrtowc(&wc, buf, len, self->qf_mbps);
-      if (i == (size_t)-1) {
+      if (i == (uz)-1) {
          /* On hard error, don't modify mbstate_t and step one byte */
          self->qf_mbps[0] = self->qf_mbps[1];
          ++buf;
@@ -297,7 +299,7 @@ _qf_state_data(struct qf_vc *vc)
          continue;
       }
       self->qf_mbps[1] = self->qf_mbps[0];
-      if (i == (size_t)-2) {
+      if (i == (uz)-2) {
          /* Redundant shift sequence, out of buffer */
          len = 0;
          break;
@@ -305,7 +307,7 @@ _qf_state_data(struct qf_vc *vc)
       buf += i;
       len -= i;
 
-      {  ssize_t j = _qf_add_data(self, wc);
+      {  sz j = _qf_add_data(self, wc);
          if (j < 0) {
             rv = j;
             break;
@@ -319,7 +321,7 @@ _qf_state_data(struct qf_vc *vc)
 
    vc->buf = buf;
    vc->len = len;
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 #endif /* mx_HAVE_QUOTE_FOLD */
@@ -334,24 +336,24 @@ quoteflt_dummy(void) /* TODO LEGACY (until filters are plugged when needed) */
 }
 
 FL void
-quoteflt_init(struct quoteflt *self, char const *prefix, bool_t bypass)
+quoteflt_init(struct quoteflt *self, char const *prefix, boole bypass)
 {
 #ifdef mx_HAVE_QUOTE_FOLD
    char const *xcp, *cp;
 #endif
-   n_NYD_IN;
+   NYD_IN;
 
    su_mem_set(self, 0, sizeof *self);
 
    if ((self->qf_pfix = prefix) != NULL)
-      self->qf_pfix_len = (ui32_t)su_cs_len(prefix);
+      self->qf_pfix_len = (u32)su_cs_len(prefix);
    self->qf_bypass = bypass;
 
    /* Check whether the user wants the more fancy quoting algorithm */
    /* TODO *quote-fold*: n_QUOTE_MAX may excess it! */
 #ifdef mx_HAVE_QUOTE_FOLD
    if (!bypass && (cp = ok_vlook(quote_fold)) != NULL) {
-      ui32_t qmax, qmaxnws, qmin;
+      u32 qmax, qmaxnws, qmin;
 
       /* These magic values ensure we don't bail */
       su_idec_u32_cp(&qmax, cp, 10, &xcp);
@@ -383,21 +385,21 @@ quoteflt_init(struct quoteflt *self, char const *prefix, bool_t bypass)
       self->qf_currq.s = n_autorec_alloc((n_QUOTE_MAX + 1) * n_mb_cur_max);
    }
 #endif
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL void
 quoteflt_destroy(struct quoteflt *self) /* xxx inline */
 {
-   n_NYD_IN;
-   n_UNUSED(self);
-   n_NYD_OU;
+   NYD_IN;
+   UNUSED(self);
+   NYD_OU;
 }
 
 FL void
 quoteflt_reset(struct quoteflt *self, FILE *f) /* xxx inline */
 {
-   n_NYD_IN;
+   NYD_IN;
    self->qf_os = f;
 #ifdef mx_HAVE_QUOTE_FOLD
    self->qf_state = _QF_CLEAN;
@@ -405,16 +407,16 @@ quoteflt_reset(struct quoteflt *self, FILE *f) /* xxx inline */
    self->qf_currq.l = 0;
    su_mem_set(self->qf_mbps, 0, sizeof self->qf_mbps);
 #endif
-   n_NYD_OU;
+   NYD_OU;
 }
 
-FL ssize_t
-quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
+FL sz
+quoteflt_push(struct quoteflt *self, char const *dat, uz len)
 {
    /* (xxx Ideally the actual push() [and flush()] would be functions on their
     * xxx own, via indirect vtbl call ..) */
-   ssize_t rv = 0;
-   n_NYD_IN;
+   sz rv = 0;
+   NYD_IN;
 
    self->qf_nl_last = (len > 0 && dat[len - 1] == '\n'); /* TODO HACK */
 
@@ -435,8 +437,8 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
 #endif
    {
       void *vp;
-      size_t ll;
-      bool_t pxok = (self->qf_qfold_min != 0);
+      uz ll;
+      boole pxok = (self->qf_qfold_min != 0);
 
       for (;;) {
          if (!pxok && (ll = self->qf_pfix_len) > 0) {
@@ -455,7 +457,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
             ll = len;
          else {
             pxok = FAL0;
-            ll = PTR2SIZE((char*)vp - dat) + 1;
+            ll = P2UZ((char*)vp - dat) + 1;
          }
 
          if (ll != fwrite(dat, sizeof *dat, ll, self->qf_os))
@@ -482,7 +484,7 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
 #ifdef mx_HAVE_QUOTE_FOLD
    else {
       struct qf_vc vc;
-      ssize_t i;
+      sz i;
 
       vc.self = self;
       vc.buf = dat;
@@ -506,25 +508,25 @@ quoteflt_push(struct quoteflt *self, char const *dat, size_t len)
 #endif /* mx_HAVE_QUOTE_FOLD */
 
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 jerr:
    rv = -1;
    goto jleave;
 }
 
-FL ssize_t
+FL sz
 quoteflt_flush(struct quoteflt *self)
 {
-   ssize_t rv = 0;
-   n_NYD_IN;
-   n_UNUSED(self);
+   sz rv = 0;
+   NYD_IN;
+   UNUSED(self);
 
 #ifdef mx_HAVE_QUOTE_FOLD
    if (self->qf_dat.l > 0) {
       rv = _qf_dump_prefix(self);
       if (rv >= 0) {
-         size_t i = self->qf_dat.l;
+         uz i = self->qf_dat.l;
          if (i == fwrite(self->qf_dat.s, 1, i, self->qf_os))
             rv += i;
          else
@@ -536,8 +538,9 @@ quoteflt_flush(struct quoteflt *self)
       }
    }
 #endif
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

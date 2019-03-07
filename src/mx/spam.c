@@ -34,6 +34,9 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/icodec.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* This is chosen rather arbitrarily.
  * It must be able to swallow the first line of a rate response,
  * and an entire CHECK/TELL spamd(1) response */
@@ -50,7 +53,7 @@ su_EMPTY_FILE()
 #endif
 
 #ifdef mx_HAVE_SPAM_FILTER
-  /* n_NELEM() of regmatch_t groups */
+  /* NELEM() of regmatch_t groups */
 # define SPAM_FILTER_MATCHES  32u
 #endif
 
@@ -66,19 +69,19 @@ struct spam_cf {
    char const        *cf_cmd;
    char              *cf_result; /* _SPAM_RATE: first response line */
    int               cf_waitstat;
-   ui8_t             __pad[3];
-   bool_t            cf_useshell;
+   u8             __pad[3];
+   boole            cf_useshell;
    /* .cf_cmd may be adjusted for each call (`spamforget')... */
    char const        *cf_acmd;
    char const        *cf_a0;
    char const        *cf_env[4];
-   sighandler_type   cf_otstp;
-   sighandler_type   cf_ottin;
-   sighandler_type   cf_ottou;
-   sighandler_type   cf_ohup;
-   sighandler_type   cf_opipe;
-   sighandler_type   cf_oint;
-   sighandler_type   cf_oquit;
+   n_sighdl_t   cf_otstp;
+   n_sighdl_t   cf_ottin;
+   n_sighdl_t   cf_ottou;
+   n_sighdl_t   cf_ohup;
+   n_sighdl_t   cf_opipe;
+   n_sighdl_t   cf_oint;
+   n_sighdl_t   cf_oquit;
 };
 #endif
 
@@ -92,13 +95,13 @@ struct spam_spamc {
 #ifdef mx_HAVE_SPAM_SPAMD
 struct spam_spamd {
    struct str        d_user;
-   sighandler_type   d_otstp;
-   sighandler_type   d_ottin;
-   sighandler_type   d_ottou;
-   sighandler_type   d_ohup;
-   sighandler_type   d_opipe;
-   sighandler_type   d_oint;
-   sighandler_type   d_oquit;
+   n_sighdl_t   d_otstp;
+   n_sighdl_t   d_ottin;
+   n_sighdl_t   d_ottou;
+   n_sighdl_t   d_ohup;
+   n_sighdl_t   d_opipe;
+   n_sighdl_t   d_oint;
+   n_sighdl_t   d_oquit;
    struct sockaddr_un d_sun;
 };
 #endif
@@ -109,8 +112,8 @@ struct spam_filter {
    char const        *f_cmd_nospam; /* Working relative to current message.. */
    char const        *f_cmd_noham;
 # ifdef mx_HAVE_REGEX
-   ui8_t             __pad[4];
-   ui32_t            f_score_grpno; /* 0 for not set */
+   u8             __pad[4];
+   u32            f_score_grpno; /* 0 for not set */
    regex_t           f_score_regex;
 # endif
 };
@@ -118,13 +121,13 @@ struct spam_filter {
 
 struct spam_vc {
    enum spam_action  vc_action;
-   bool_t            vc_verbose;    /* Verbose output */
-   bool_t            vc_progress;   /* "Progress meter" (mutual verbose) */
-   ui8_t             __pad[2];
-   bool_t            (*vc_act)(struct spam_vc *);
+   boole            vc_verbose;    /* Verbose output */
+   boole            vc_progress;   /* "Progress meter" (mutual verbose) */
+   u8             __pad[2];
+   boole            (*vc_act)(struct spam_vc *);
    void              (*vc_dtor)(struct spam_vc *);
    char              *vc_buffer;    /* I/O buffer, BUFFER_SIZE bytes */
-   size_t            vc_mno;        /* Current message number */
+   uz            vc_mno;        /* Current message number */
    struct message    *vc_mp;        /* Current message */
    FILE              *vc_ifp;       /* Input stream on .vc_mp */
    union {
@@ -150,32 +153,32 @@ static char const _spam_cmds[][16] = {
 };
 
 /* Shared action setup */
-static bool_t  _spam_action(enum spam_action sa, int *ip);
+static boole  _spam_action(enum spam_action sa, int *ip);
 
 /* *spam-interface*=spamc: initialize, communicate */
 #ifdef mx_HAVE_SPAM_SPAMC
-static bool_t  _spamc_setup(struct spam_vc *vcp);
-static bool_t  _spamc_interact(struct spam_vc *vcp);
+static boole  _spamc_setup(struct spam_vc *vcp);
+static boole  _spamc_interact(struct spam_vc *vcp);
 static void    _spamc_dtor(struct spam_vc *vcp);
 #endif
 
 /* *spam-interface*=spamd: initialize, communicate */
 #ifdef mx_HAVE_SPAM_SPAMD
-static bool_t  _spamd_setup(struct spam_vc *vcp);
-static bool_t  _spamd_interact(struct spam_vc *vcp);
+static boole  _spamd_setup(struct spam_vc *vcp);
+static boole  _spamd_interact(struct spam_vc *vcp);
 #endif
 
 /* *spam-interface*=filter: initialize, communicate */
 #ifdef mx_HAVE_SPAM_FILTER
-static bool_t  _spamfilter_setup(struct spam_vc *vcp);
-static bool_t  _spamfilter_interact(struct spam_vc *vcp);
+static boole  _spamfilter_setup(struct spam_vc *vcp);
+static boole  _spamfilter_interact(struct spam_vc *vcp);
 static void    _spamfilter_dtor(struct spam_vc *vcp);
 #endif
 
 /* *spam-interface*=(spamc|filter): create child + communication */
 #if defined mx_HAVE_SPAM_SPAMC || defined mx_HAVE_SPAM_FILTER
-static void    _spam_cf_setup(struct spam_vc *vcp, bool_t useshell);
-static bool_t  _spam_cf_interact(struct spam_vc *vcp);
+static void    _spam_cf_setup(struct spam_vc *vcp, boole useshell);
+static boole  _spam_cf_interact(struct spam_vc *vcp);
 #endif
 
 /* Convert a floating-point spam rate into message.m_spamscore */
@@ -184,14 +187,14 @@ static bool_t  _spam_cf_interact(struct spam_vc *vcp);
 static void    _spam_rate2score(struct spam_vc *vcp, char *buf);
 #endif
 
-static bool_t
+static boole
 _spam_action(enum spam_action sa, int *ip)
 {
    struct spam_vc vc;
-   size_t maxsize, skipped, cnt, curr;
+   uz maxsize, skipped, cnt, curr;
    char const *cp;
-   bool_t ok = FAL0;
-   n_NYD_IN;
+   boole ok = FAL0;
+   NYD_IN;
 
    su_mem_set(&vc, 0, sizeof vc);
    vc.vc_action = sa;
@@ -239,7 +242,7 @@ _spam_action(enum spam_action sa, int *ip)
          ++cnt;
    }
    for (curr = 0, ok = TRU1; *ip != 0; --cnt, ++curr, ++ip) {
-      vc.vc_mno = (size_t)*ip;
+      vc.vc_mno = (uz)*ip;
       vc.vc_mp = message + vc.vc_mno - 1;
       if (sa == _SPAM_RATE)
          vc.vc_mp->m_spamscore = 0;
@@ -247,8 +250,8 @@ _spam_action(enum spam_action sa, int *ip)
       if (vc.vc_mp->m_size > maxsize) {
          if (vc.vc_verbose)
             n_err(_("`%s': message %lu exceeds maxsize (%lu > %lu), skip\n"),
-               _spam_cmds[sa], (ul_i)vc.vc_mno, (ul_i)(size_t)vc.vc_mp->m_size,
-               (ul_i)maxsize);
+               _spam_cmds[sa], (ul)vc.vc_mno, (ul)(uz)vc.vc_mp->m_size,
+               (ul)maxsize);
          else if (vc.vc_progress) {
             fprintf(n_stdout, "\r%s: !%-6" PRIuZ " %6" PRIuZ "/%-6" PRIuZ,
                _spam_cmds[sa], vc.vc_mno, cnt, curr);
@@ -257,7 +260,7 @@ _spam_action(enum spam_action sa, int *ip)
          ++skipped;
       } else {
          if (vc.vc_verbose)
-            n_err(_("`%s': message %lu\n"), _spam_cmds[sa], (ul_i)vc.vc_mno);
+            n_err(_("`%s': message %lu\n"), _spam_cmds[sa], (ul)vc.vc_mno);
          else if (vc.vc_progress) {
             fprintf(n_stdout, "\r%s: .%-6" PRIuZ " %6" PRIuZ "/%-6" PRIuZ,
                _spam_cmds[sa], vc.vc_mno, cnt, curr);
@@ -267,7 +270,7 @@ _spam_action(enum spam_action sa, int *ip)
          setdot(vc.vc_mp);
          if ((vc.vc_ifp = setinput(&mb, vc.vc_mp, NEED_BODY)) == NULL) {
             n_err(_("%s`%s': cannot load message %lu: %s\n"),
-               vc.vc_esep, _spam_cmds[sa], (ul_i)vc.vc_mno,
+               vc.vc_esep, _spam_cmds[sa], (ul)vc.vc_mno,
                su_err_doc(su_err_no()));
             ok = FAL0;
             break;
@@ -287,19 +290,19 @@ _spam_action(enum spam_action sa, int *ip)
    if (vc.vc_dtor != NULL)
       (*vc.vc_dtor)(&vc);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return !ok;
 }
 
 #ifdef mx_HAVE_SPAM_SPAMC
-static bool_t
+static boole
 _spamc_setup(struct spam_vc *vcp)
 {
    struct spam_spamc *sscp;
    struct str str;
    char const **args, *cp;
-   bool_t rv = FAL0;
-   n_NYD2_IN;
+   boole rv = FAL0;
+   NYD2_IN;
 
    sscp = &vcp->vc_t.spamc;
    args = sscp->c_cmd_arr;
@@ -346,7 +349,7 @@ jlearn:
       *args++ = "-u";
       *args++ = cp;
    }
-   assert(PTR2SIZE(args - sscp->c_cmd_arr) <= n_NELEM(sscp->c_cmd_arr));
+   ASSERT(P2UZ(args - sscp->c_cmd_arr) <= NELEM(sscp->c_cmd_arr));
 
    *args = NULL;
    sscp->c_super.cf_cmd = str_concat_cpa(&str, sscp->c_cmd_arr, " ")->s;
@@ -362,15 +365,15 @@ jlearn:
 # ifndef SPAM_SPAMC_PATH
 jleave:
 # endif
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
-static bool_t
+static boole
 _spamc_interact(struct spam_vc *vcp)
 {
-   bool_t rv;
-   n_NYD2_IN;
+   boole rv;
+   NYD2_IN;
 
    if (!(rv = _spam_cf_interact(vcp)))
       goto jleave;
@@ -395,33 +398,33 @@ _spamc_interact(struct spam_vc *vcp)
 
       if ((cp = su_cs_find_c(buf = vcp->vc_t.spamc.c_super.cf_result, '/')
             ) != NULL)
-         buf[PTR2SIZE(cp - buf)] = '\0';
+         buf[P2UZ(cp - buf)] = '\0';
       _spam_rate2score(vcp, buf);
    }
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 static void
 _spamc_dtor(struct spam_vc *vcp)
 {
-   n_NYD2_IN;
+   NYD2_IN;
    if (vcp->vc_t.spamc.c_super.cf_result != NULL)
       n_free(vcp->vc_t.spamc.c_super.cf_result);
-   n_NYD2_OU;
+   NYD2_OU;
 }
 #endif /* mx_HAVE_SPAM_SPAMC */
 
 #ifdef mx_HAVE_SPAM_SPAMD
-static bool_t
+static boole
 _spamd_setup(struct spam_vc *vcp)
 {
    struct spam_spamd *ssdp;
    char const *cp;
-   size_t l;
-   bool_t rv = FAL0;
-   n_NYD2_IN;
+   uz l;
+   boole rv = FAL0;
+   NYD2_IN;
 
    ssdp = &vcp->vc_t.spamd;
 
@@ -447,7 +450,7 @@ _spamd_setup(struct spam_vc *vcp)
    vcp->vc_act = &_spamd_interact;
    rv = TRU1;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -456,20 +459,20 @@ static int volatile  __spamd_sig; /* TODO oneday, we won't need it no more */
 static void
 __spamd_onsig(int sig) /* TODO someday, we won't need it no more */
 {
-   n_NYD_X; /* Signal handler */
+   NYD; /* Signal handler */
    __spamd_sig = sig;
    siglongjmp(__spamd_actjmp, 1);
 }
 
-static bool_t
+static boole
 _spamd_interact(struct spam_vc *vcp)
 {
    struct spam_spamd *ssdp;
-   size_t size, i;
+   uz size, i;
    char *lp, *cp, * volatile headbuf = NULL;
    int volatile dsfd = -1;
-   bool_t volatile rv = FAL0;
-   n_NYD2_IN;
+   boole volatile rv = FAL0;
+   NYD2_IN;
 
    ssdp = &vcp->vc_t.spamd;
 
@@ -533,7 +536,7 @@ _spamd_interact(struct spam_vc *vcp)
    }
 
    lp += snprintf(lp, size, NETLINE("Content-length: %" PRIuZ),
-         (size_t)vcp->vc_mp->m_size);
+         (uz)vcp->vc_mp->m_size);
 
    if (cp != NULL) {
       _X("User: ");
@@ -567,16 +570,16 @@ _spamd_interact(struct spam_vc *vcp)
    }
 # undef _X
 
-   i = PTR2SIZE(lp - headbuf);
+   i = P2UZ(lp - headbuf);
    if (n_poption & n_PO_VERBVERB)
       n_err(">>> %.*s <<<\n", (int)i, headbuf);
-   if (i != (size_t)write(dsfd, headbuf, i))
+   if (i != (uz)write(dsfd, headbuf, i))
       goto jeso;
 
    /* Then simply pass through the message "as-is" */
    for (size = vcp->vc_mp->m_size; size > 0;) {
       i = fread(vcp->vc_buffer, sizeof *vcp->vc_buffer,
-            n_MIN(size, BUFFER_SIZE), vcp->vc_ifp);
+            MIN(size, BUFFER_SIZE), vcp->vc_ifp);
       if (i == 0) {
          if (ferror(vcp->vc_ifp))
             goto jeso;
@@ -584,7 +587,7 @@ _spamd_interact(struct spam_vc *vcp)
       }
       size -= i;
 
-      if (i != (size_t)write(dsfd, vcp->vc_buffer, i)) {
+      if (i != (uz)write(dsfd, vcp->vc_buffer, i)) {
 jeso:
          n_err(_("%s`%s': I/O on *spamd-socket* failed: %s\n"),
             vcp->vc_esep, _spam_cmds[vcp->vc_action], su_err_doc(su_err_no()));
@@ -597,7 +600,7 @@ jeso:
 
    /* Be aware on goto: i will be a line counter after this loop! */
    for (size = 0, i = BUFFER_SIZE -1;;) {
-      ssize_t j = read(dsfd, vcp->vc_buffer + size, i);
+      sz j = read(dsfd, vcp->vc_buffer + size, i);
       if (j == -1)
          goto jeso;
       if (j == 0)
@@ -614,7 +617,7 @@ jeso:
    if (size == 0 || size == BUFFER_SIZE) {
 jebogus:
       n_err(_("%s`%s': bogus spamd(1) I/O interaction (%lu)\n"),
-         vcp->vc_esep, _spam_cmds[vcp->vc_action], (ul_i)i);
+         vcp->vc_esep, _spam_cmds[vcp->vc_action], (ul)i);
 # ifdef mx_HAVE_DEVEL
       if (n_poption & n_PO_VERBVERB)
          n_err(">>> BUFFER: %s <<<\n", vcp->vc_buffer);
@@ -632,7 +635,7 @@ jebogus:
       if (lp[1] != NETNL[1])
          goto jebogus;
       lp += 2;
-      size -= PTR2SIZE(lp - cp);
+      size -= P2UZ(lp - cp);
 
       if (i == 0) {
          if (!strncmp(cp, "SPAMD/1.1 0 EX_OK", sizeof("SPAMD/1.1 0 EX_OK") -1))
@@ -671,7 +674,7 @@ jebogus:
             else {
                char *xcp = su_cs_find_c(cp, '/');
                if (xcp != NULL) {
-                  size = PTR2SIZE(xcp - cp);
+                  size = P2UZ(xcp - cp);
                   cp[size] = '\0';
                }
                _spam_rate2score(vcp, cp);
@@ -719,27 +722,27 @@ jleave:
    safe_signal(SIGTTIN, ssdp->d_ottin);
    safe_signal(SIGTTOU, ssdp->d_ottou);
 
-   n_NYD2_OU;
+   NYD2_OU;
    if (__spamd_sig != 0) {
       sigset_t cset;
       sigemptyset(&cset);
       sigaddset(&cset, __spamd_sig);
       sigprocmask(SIG_UNBLOCK, &cset, NULL);
       n_raise(__spamd_sig);
-      assert(rv == FAL0);
+      ASSERT(rv == FAL0);
    }
    return rv;
 }
 #endif /* mx_HAVE_SPAM_SPAMD */
 
 #ifdef mx_HAVE_SPAM_FILTER
-static bool_t
+static boole
 _spamfilter_setup(struct spam_vc *vcp)
 {
    struct spam_filter *sfp;
    char const *cp, *var;
-   bool_t rv = FAL0;
-   n_NYD2_IN;
+   boole rv = FAL0;
+   NYD2_IN;
 
    sfp = &vcp->vc_t.filter;
 
@@ -788,7 +791,7 @@ jecmd:
       }
       bp = &var[1];
 
-      if((su_idec(&sfp->f_score_grpno, cp, PTR2SIZE(var - cp), 0,
+      if((su_idec(&sfp->f_score_grpno, cp, P2UZ(var - cp), 0,
                   su_IDEC_MODE_LIMIT_32BIT, NULL
                ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
             ) != su_IDEC_STATE_CONSUMED){
@@ -826,11 +829,11 @@ jecmd:
    vcp->vc_dtor = &_spamfilter_dtor;
    rv = TRU1;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
-static bool_t
+static boole
 _spamfilter_interact(struct spam_vc *vcp)
 {
 # ifdef mx_HAVE_REGEX
@@ -838,8 +841,8 @@ _spamfilter_interact(struct spam_vc *vcp)
    struct spam_filter *sfp;
    char *cp;
 # endif
-   bool_t rv;
-   n_NYD2_IN;
+   boole rv;
+   NYD2_IN;
 
    if (vcp->vc_action == _SPAM_FORGET)
       vcp->vc_t.cf.cf_cmd = (vcp->vc_mp->m_flag & MSPAM)
@@ -880,7 +883,7 @@ _spamfilter_interact(struct spam_vc *vcp)
 
    remp = rem + sfp->f_score_grpno;
 
-   if (regexec(&sfp->f_score_regex, sfp->f_super.cf_result, n_NELEM(rem), rem,
+   if (regexec(&sfp->f_score_regex, sfp->f_super.cf_result, NELEM(rem), rem,
          0) == REG_NOMATCH || (remp->rm_so | remp->rm_eo) < 0) {
       n_err(_("`%s': *spamfilter-rate-scanscore* "
          "does not match filter output!\n"),
@@ -896,7 +899,7 @@ _spamfilter_interact(struct spam_vc *vcp)
 # endif /* mx_HAVE_REGEX */
 
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -904,7 +907,7 @@ static void
 _spamfilter_dtor(struct spam_vc *vcp)
 {
    struct spam_filter *sfp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    sfp = &vcp->vc_t.filter;
 
@@ -914,19 +917,19 @@ _spamfilter_dtor(struct spam_vc *vcp)
    if (sfp->f_score_grpno > 0)
       regfree(&sfp->f_score_regex);
 # endif
-   n_NYD2_OU;
+   NYD2_OU;
 }
 #endif /* mx_HAVE_SPAM_FILTER */
 
 #if defined mx_HAVE_SPAM_SPAMC || defined mx_HAVE_SPAM_FILTER
 static void
-_spam_cf_setup(struct spam_vc *vcp, bool_t useshell)
+_spam_cf_setup(struct spam_vc *vcp, boole useshell)
 {
    struct str s;
    char const *cp;
    struct spam_cf *scfp;
-   n_NYD2_IN;
-   n_LCTA(2 < n_NELEM(scfp->cf_env), "Preallocated buffer too small");
+   NYD2_IN;
+   LCTA(2 < NELEM(scfp->cf_env), "Preallocated buffer too small");
 
    scfp = &vcp->vc_t.cf;
 
@@ -939,14 +942,14 @@ _spam_cf_setup(struct spam_vc *vcp, bool_t useshell)
     * TODO a file wherever he wants!  *Do* create a zero-size temporary file
     * TODO and give *that* path as MAILX_FILENAME_TEMPORARY, clean it up once
     * TODO the pipe returns?  Like this we *can* verify path/name issues! */
-   cp = n_random_create_cp(n_MIN(NAME_MAX / 4, 16), NULL);
+   cp = n_random_create_cp(MIN(NAME_MAX / 4, 16), NULL);
    scfp->cf_env[0] = str_concat_csvl(&s,
          n_PIPEENV_FILENAME_GENERATED, "=", cp, NULL)->s;
    /* v15 compat NAIL_ environments vanish! */
    scfp->cf_env[1] = str_concat_csvl(&s,
          "NAIL_FILENAME_GENERATED", "=", cp, NULL)->s;
    scfp->cf_env[2] = NULL;
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 static sigjmp_buf    __spam_cf_actjmp; /* TODO someday, we won't need it */
@@ -954,19 +957,19 @@ static int volatile  __spam_cf_sig; /* TODO someday, we won't need it */
 static void
 __spam_cf_onsig(int sig) /* TODO someday, we won't need it no more */
 {
-   n_NYD_X; /* Signal handler */
+   NYD; /* Signal handler */
    __spam_cf_sig = sig;
    siglongjmp(__spam_cf_actjmp, 1);
 }
 
-static bool_t
+static boole
 _spam_cf_interact(struct spam_vc *vcp)
 {
    struct spam_cf *scfp;
    int p2c[2], c2p[2];
    sigset_t cset;
    char const *cp;
-   size_t size;
+   uz size;
    pid_t volatile pid;
    enum {
       _NONE    = 0,
@@ -982,7 +985,7 @@ _spam_cf_interact(struct spam_vc *vcp)
       _GOODRUN = 1<<7,
       _ERRORS  = 1<<8
    } volatile state = _NONE;
-   n_NYD2_IN;
+   NYD2_IN;
 
    scfp = &vcp->vc_t.cf;
    if (scfp->cf_result != NULL) {
@@ -1045,16 +1048,16 @@ _spam_cf_interact(struct spam_vc *vcp)
     * content does the same in effect, however much more efficiently.
     * XXX NOTE: this may mean we pass a message without From_ line! */
    for (size = vcp->vc_mp->m_size; size > 0;) {
-      size_t i;
+      uz i;
 
-      i = fread(vcp->vc_buffer, 1, n_MIN(size, BUFFER_SIZE), vcp->vc_ifp);
+      i = fread(vcp->vc_buffer, 1, MIN(size, BUFFER_SIZE), vcp->vc_ifp);
       if (i == 0) {
          if (ferror(vcp->vc_ifp))
             state |= _ERRORS;
          break;
       }
       size -= i;
-      if (i != (size_t)write(p2c[1], vcp->vc_buffer, i)) {
+      if (i != (uz)write(p2c[1], vcp->vc_buffer, i)) {
          state |= _ERRORS;
          break;
       }
@@ -1084,7 +1087,7 @@ jtail:
    if (state & _RUNNING) {
       if (!(state & _ERRORS) &&
             vcp->vc_action == _SPAM_RATE && !(state & (_JUMPED | _ERRORS))) {
-         ssize_t i = read(c2p[0], vcp->vc_buffer, BUFFER_SIZE - 1);
+         sz i = read(c2p[0], vcp->vc_buffer, BUFFER_SIZE - 1);
          if (i > 0) {
             vcp->vc_buffer[i] = '\0';
             if ((cp = su_cs_find_c(vcp->vc_buffer, NETNL[0])) == NULL &&
@@ -1095,7 +1098,7 @@ jtail:
                state |= _ERRORS;
             } else {
                scfp->cf_result = su_cs_dup_cbuf(vcp->vc_buffer,
-                     PTR2SIZE(cp - vcp->vc_buffer), 0);
+                     P2UZ(cp - vcp->vc_buffer), 0);
 /* FIXME consume child output until EOF??? */
             }
          } else if (i != 0)
@@ -1121,9 +1124,9 @@ jtail:
    safe_signal(SIGTTIN, scfp->cf_ottin);
    safe_signal(SIGTTOU, scfp->cf_ottou);
 
-   n_NYD2_OU;
+   NYD2_OU;
    if (state & _JUMPED) {
-      assert(vcp->vc_dtor != NULL);
+      ASSERT(vcp->vc_dtor != NULL);
       (*vcp->vc_dtor)(vcp);
 
       sigemptyset(&cset);
@@ -1139,9 +1142,9 @@ jtail:
    (defined mx_HAVE_SPAM_FILTER && defined mx_HAVE_REGEX)
 static void
 _spam_rate2score(struct spam_vc *vcp, char *buf){
-   ui32_t m, s;
+   u32 m, s;
    enum su_idec_state ids;
-   n_NYD2_IN;
+   NYD2_IN;
 
    /* C99 */{ /* Overcome ISO C / compiler weirdness */
       char const *cp;
@@ -1185,7 +1188,7 @@ _spam_rate2score(struct spam_vc *vcp, char *buf){
 jscore_ok:
    vcp->vc_mp->m_spamscore = (m << 8) | s;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
 }
 #endif /* _SPAM_SPAMC || _SPAM_SPAMD || (_SPAM_FILTER && mx_HAVE_REGEX) */
 
@@ -1193,11 +1196,11 @@ FL int
 c_spam_clear(void *v)
 {
    int *ip;
-   n_NYD_IN;
+   NYD_IN;
 
    for (ip = v; *ip != 0; ++ip)
-      message[(size_t)*ip - 1].m_flag &= ~(MSPAM | MSPAMUNSURE);
-   n_NYD_OU;
+      message[(uz)*ip - 1].m_flag &= ~(MSPAM | MSPAMUNSURE);
+   NYD_OU;
    return 0;
 }
 
@@ -1205,13 +1208,13 @@ FL int
 c_spam_set(void *v)
 {
    int *ip;
-   n_NYD_IN;
+   NYD_IN;
 
    for (ip = v; *ip != 0; ++ip) {
-      message[(size_t)*ip - 1].m_flag &= ~(MSPAM | MSPAMUNSURE);
-      message[(size_t)*ip - 1].m_flag |= MSPAM;
+      message[(uz)*ip - 1].m_flag &= ~(MSPAM | MSPAMUNSURE);
+      message[(uz)*ip - 1].m_flag |= MSPAM;
    }
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
@@ -1219,10 +1222,10 @@ FL int
 c_spam_forget(void *v)
 {
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = _spam_action(_SPAM_FORGET, (int*)v) ? OKAY : STOP;
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -1230,10 +1233,10 @@ FL int
 c_spam_ham(void *v)
 {
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = _spam_action(_SPAM_HAM, (int*)v) ? OKAY : STOP;
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -1241,10 +1244,10 @@ FL int
 c_spam_rate(void *v)
 {
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = _spam_action(_SPAM_RATE, (int*)v) ? OKAY : STOP;
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -1252,12 +1255,13 @@ FL int
 c_spam_spam(void *v)
 {
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = _spam_action(_SPAM_SPAM, (int*)v) ? OKAY : STOP;
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
-#endif /* mx_HAVE_SPAM */
 
+#include "su/code-ou.h"
+#endif /* mx_HAVE_SPAM */
 /* s-it-mode */

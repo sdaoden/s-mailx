@@ -41,21 +41,24 @@
 # include <priv.h>
 #endif
 
-static void _ign_signal(int signum);
-static uiz_t n_msleep(uiz_t millis, bool_t ignint);
-
-#define su_err_no() errno
-#define su_err_set_no(X) (errno = X)
-#include "mx/dotlock.h" /* $(PS_DOTLOCK_SRCDIR) */
+/* TODO fake */
+#include "su/code-in.h"
 
 /* TODO Avoid linkage errors, instantiate what is needed;
  * TODO SU needs to be available as a library to overcome this,
  * TODO or a compiler capable of inlining can only be used */
-su_uz su__state;
+uz su__state;
 #ifdef su_MEM_ALLOC_DEBUG
-su_boole su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE) {return FAL0;}
-su_boole su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE) {return FAL0;}
+boole su__mem_check(su_DBG_LOC_ARGS_DECL_SOLE) {return FAL0;}
+boole su__mem_trace(su_DBG_LOC_ARGS_DECL_SOLE) {return FAL0;}
 #endif
+#define su_err_no() errno
+#define su_err_set_no(X) (errno = X)
+
+static void _ign_signal(int signum);
+static uz n_msleep(uz millis, boole ignint);
+
+#include "mx/dotlock.h" /* $(PS_DOTLOCK_SRCDIR) */
 
 static void
 _ign_signal(int signum){
@@ -67,9 +70,9 @@ _ign_signal(int signum){
    sigaction(signum, &nact, &oact);
 }
 
-static uiz_t
-n_msleep(uiz_t millis, bool_t ignint){
-   uiz_t rv;
+static uz
+n_msleep(uz millis, boole ignint){
+   uz rv;
 
 #ifdef mx_HAVE_NANOSLEEP
    /* C99 */{
@@ -81,13 +84,14 @@ n_msleep(uiz_t millis, bool_t ignint){
 
       while((i = nanosleep(&ts, &trem)) != 0 && ignint)
          ts = trem;
-      rv = (i == 0) ? 0 : (trem.tv_sec * 1000) + (trem.tv_nsec / (1000 * 1000));
+      rv = (i == 0) ? 0
+            : (trem.tv_sec * 1000) + (trem.tv_nsec / (1000 * 1000));
    }
 
 #elif defined mx_HAVE_SLEEP
    if((millis /= 1000) == 0)
       millis = 1;
-   while((rv = sleep((unsigned int)millis)) != 0 && ignint)
+   while((rv = sleep(S(ui,millis))) != 0 && ignint)
       millis = rv;
 #else
 # error Configuration should have detected a function for sleeping.
@@ -129,7 +133,7 @@ jeuse:
    }else{
       /* Prevent one more path injection attack vector, but be friendly */
       char const *ccp;
-      size_t i;
+      uz i;
       char *cp, c;
 
       for(ccp = argv[7], cp = hostbuf, i = 0; (c = *ccp) != '\0'; ++cp, ++ccp){
@@ -147,11 +151,11 @@ jeuse:
    di.di_lock_name = argv[5];
    di.di_hostname = argv[7];
    di.di_randstr = argv[9];
-   di.di_pollmsecs = (size_t)strtoul(argv[11], NULL, 10);
+   di.di_pollmsecs = (uz)strtoul(argv[11], NULL, 10);
 
    /* Ensure the lock name and the file name are identical */
    /* C99 */{
-      size_t i;
+      uz i;
 
       i = strlen(di.di_file_name);
       if(i == 0 || strncmp(di.di_file_name, di.di_lock_name, i) ||
@@ -229,4 +233,5 @@ jmsg:
    return (dls == n_DLS_NONE ? n_EXIT_OK : n_EXIT_ERR);
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

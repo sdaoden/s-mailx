@@ -45,6 +45,9 @@
 
 #include <su/cs.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 enum quitflags {
    QUITFLAG_HOLD      = 1<<0,
    QUITFLAG_KEEP      = 1<<1,
@@ -76,7 +79,7 @@ static int  writeback(FILE *res, FILE *obuf);
 
 /* Terminate an editing session by attempting to write out the user's file from
  * the temporary.  Save any new stuff appended to the file */
-static bool_t edstop(void);
+static boole edstop(void);
 
 static void
 _alter(char const *name) /* TODO error handling */
@@ -88,7 +91,7 @@ _alter(char const *name) /* TODO error handling */
    struct utimbuf utb;
 #endif
    struct n_timespec const *tsp;
-   n_NYD_IN;
+   NYD_IN;
 
    tsp = n_time_now(TRU1); /* TODO -> eventloop */
 
@@ -104,7 +107,7 @@ _alter(char const *name) /* TODO error handling */
       utime(name, &utb);
    }
 #endif
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static int
@@ -112,13 +115,13 @@ writeback(FILE *res, FILE *obuf) /* TODO errors */
 {
    struct message *mp;
    int rv = -1, p, c;
-   n_NYD_IN;
+   NYD_IN;
 
    if (fseek(obuf, 0L, SEEK_SET) == -1)
       goto jleave;
 
    srelax_hold();
-   for (p = 0, mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
+   for (p = 0, mp = message; PCMP(mp, <, message + msgCount); ++mp)
       if ((mp->m_flag & MPRESERVE) || !(mp->m_flag & MTOUCH)) {
          ++p;
          if (sendmp(mp, obuf, NULL, NULL, SEND_MBOX, NULL) < 0) {
@@ -131,7 +134,7 @@ writeback(FILE *res, FILE *obuf) /* TODO errors */
    srelax_rele();
 
    if(res != NULL){
-      bool_t lastnl;
+      boole lastnl;
 
       for(lastnl = FAL0; (c = getc(res)) != EOF && putc(c, obuf) != EOF;)
          lastnl = (c == '\n') ? (lastnl ? TRU2 : TRU1) : FAL0;
@@ -156,11 +159,11 @@ jerror:
       fprintf(n_stdout, _("Held %d messages in %s\n"), p, displayname);
    rv = 0;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
-static bool_t
+static boole
 edstop(void) /* TODO oh my god */
 {
    int gotcha, c;
@@ -168,15 +171,15 @@ edstop(void) /* TODO oh my god */
    FILE *obuf = NULL, *ibuf = NULL;
    struct stat statb;
    enum n_fopen_state fs;
-   bool_t rv;
-   n_NYD_IN;
+   boole rv;
+   NYD_IN;
 
    rv = TRU1;
 
    if (mb.mb_perm == 0)
       goto j_leave;
 
-   for (mp = message, gotcha = 0; PTRCMP(mp, <, message + msgCount); ++mp) {
+   for (mp = message, gotcha = 0; PCMP(mp, <, message + msgCount); ++mp) {
       if (mp->m_flag & MNEW) {
          mp->m_flag &= ~MNEW;
          mp->m_flag |= MSTATUS;
@@ -205,7 +208,7 @@ edstop(void) /* TODO oh my god */
          goto jleave;
       }
 
-      n_file_lock(fileno(ibuf), FLT_READ, 0,0, UIZ_MAX); /* TODO ign. lock err*/
+      n_file_lock(fileno(ibuf), FLT_READ, 0,0, UZ_MAX); /* TODO ign. lock err*/
       fseek(ibuf, (long)mailsize, SEEK_SET);
       while ((c = getc(ibuf)) != EOF) /* xxx bytewise??? TODO ... I/O error? */
          putc(c, obuf);
@@ -223,12 +226,12 @@ edstop(void) /* TODO oh my god */
       n_perr(n_shexp_quote_cp(mailname, FAL0), e);
       goto jleave;
    }
-   n_file_lock(fileno(obuf), FLT_WRITE, 0,0, UIZ_MAX); /* TODO ign. lock err! */
+   n_file_lock(fileno(obuf), FLT_WRITE, 0,0, UZ_MAX); /* TODO ign. lock err! */
    ftrunc(obuf);
 
    srelax_hold();
    c = 0;
-   for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp) {
+   for (mp = message; PCMP(mp, <, message + msgCount); ++mp) {
       if (mp->m_flag & MDELETED)
          continue;
       ++c;
@@ -243,7 +246,7 @@ edstop(void) /* TODO oh my god */
 
    gotcha = (c == 0 && ibuf == NULL);
    if (ibuf != NULL) {
-      bool_t lastnl;
+      boole lastnl;
 
       for(lastnl = FAL0; (c = getc(ibuf)) != EOF && putc(c, obuf) != EOF;)
          lastnl = (c == '\n') ? (lastnl ? TRU2 : TRU1) : FAL0;
@@ -295,19 +298,19 @@ jleave:
       rv = getapproval(_("Continue, possibly losing changes"), TRU1);
    }
 j_leave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
-FL bool_t
-quit(bool_t hold_sigs_on)
+FL boole
+quit(boole hold_sigs_on)
 {
    int p, modify, anystat, c;
    FILE *fbuf, *lckfp, *rbuf, *abuf;
    struct message *mp;
    struct stat minfo;
-   bool_t rv;
-   n_NYD_IN;
+   boole rv;
+   NYD_IN;
 
    if(!hold_sigs_on)
       hold_sigs();
@@ -377,7 +380,7 @@ jnewmail:
       goto jleave;
    }
 
-   if ((lckfp = n_dotlock(mailname, fileno(fbuf), FLT_WRITE, 0,0, UIZ_MAX)
+   if ((lckfp = n_dotlock(mailname, fileno(fbuf), FLT_WRITE, 0,0, UZ_MAX)
          ) == NULL) {
       n_perr(_("Unable to (dot) lock mailbox"), 0);
       Fclose(fbuf);
@@ -388,7 +391,7 @@ jnewmail:
 
    rbuf = NULL;
    if (!fstat(fileno(fbuf), &minfo) && minfo.st_size > mailsize) {
-      bool_t lastnl;
+      boole lastnl;
 
       fprintf(n_stdout, _("New mail has arrived.\n"));
       rbuf = Ftmp(NULL, "quit", OF_RDWR | OF_UNLINK | OF_REGISTER);
@@ -404,7 +407,7 @@ jnewmail:
 
    anystat = holdbits();
    modify = 0;
-   for (c = 0, p = 0, mp = message; PTRCMP(mp, <, message + msgCount); ++mp) {
+   for (c = 0, p = 0, mp = message; PCMP(mp, <, message + msgCount); ++mp) {
       if (mp->m_flag & MBOX)
          c++;
       if (mp->m_flag & MPRESERVE)
@@ -480,7 +483,7 @@ jleave:
 
    if(!hold_sigs_on)
       rele_sigs();
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -489,7 +492,7 @@ holdbits(void)
 {
    struct message *mp;
    int anystat, autohold, holdbit, nohold;
-   n_NYD_IN;
+   NYD_IN;
 
    anystat = 0;
    autohold = ok_blook(hold);
@@ -497,7 +500,7 @@ holdbits(void)
    nohold = MBOX | MSAVED | MDELETED | MPRESERVE;
    if (ok_blook(keepsave))
       nohold &= ~MSAVED;
-   for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp) {
+   for (mp = message; PCMP(mp, <, message + msgCount); ++mp) {
       if (mp->m_flag & MNEW) {
          mp->m_flag &= ~MNEW;
          mp->m_flag |= MSTATUS;
@@ -510,7 +513,7 @@ holdbits(void)
       if (!(mp->m_flag & nohold))
          mp->m_flag |= holdbit;
    }
-   n_NYD_OU;
+   NYD_OU;
    return anystat;
 }
 
@@ -523,7 +526,7 @@ makembox(void) /* TODO oh my god (also error reporting) */
    FILE *ibuf = NULL, *obuf, *abuf;
    enum n_fopen_state fs;
    enum okay rv = STOP;
-   n_NYD_IN;
+   NYD_IN;
 
    mbox = _mboxname;
    mcount = 0;
@@ -549,7 +552,7 @@ makembox(void) /* TODO oh my god (also error reporting) */
       }
 
       if ((abuf = n_fopen_any(mbox, "r", &fs)) != NULL) {
-         bool_t lastnl;
+         boole lastnl;
 
          for (lastnl = FAL0; (c = getc(abuf)) != EOF && putc(c, obuf) != EOF;)
             lastnl = (c == '\n') ? (lastnl ? TRU2 : TRU1) : FAL0;
@@ -577,13 +580,13 @@ makembox(void) /* TODO oh my god (also error reporting) */
    }
 
    srelax_hold();
-   for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp) {
+   for (mp = message; PCMP(mp, <, message + msgCount); ++mp) {
       if (mp->m_flag & MBOX) {
          ++mcount;
 #ifdef mx_HAVE_IMAP
          if((fs & n_PROTO_MASK) == n_PROTO_IMAP &&
                !n_ignore_is_any(n_IGNORE_SAVE) && imap_thisaccount(mbox)){
-            if(imap_copy(mp, PTR2SIZE(mp - message + 1), mbox) == STOP)
+            if(imap_copy(mp, P2UZ(mp - message + 1), mbox) == STOP)
                goto jcopyerr;
          }else
 #endif
@@ -607,7 +610,7 @@ jcopyerr:
    /* Copy the user's old mbox contents back to the end of the stuff we just
     * saved.  If we are appending, this is unnecessary */
    if (!ok_blook(append)) {
-      bool_t lastnl;
+      boole lastnl;
 
       rewind(ibuf);
       for(lastnl = FAL0; (c = getc(ibuf)) != EOF && putc(c, obuf) != EOF;)
@@ -636,42 +639,42 @@ jcopyerr:
       fprintf(n_stdout, _("Saved %d messages in mbox\n"), mcount);
    rv = OKAY;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL void
 save_mbox_for_possible_quitstuff(void){ /* TODO try to get rid of that */
    char const *cp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if((cp = fexpand("&", FEXP_NVAR)) == NULL)
       cp = n_empty;
    su_cs_pcopy_n(_mboxname, cp, sizeof _mboxname);
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 FL int
 savequitflags(void)
 {
    enum quitflags qf = 0;
-   size_t i;
-   n_NYD_IN;
+   uz i;
+   NYD_IN;
 
-   for (i = 0; i < n_NELEM(_quitnames); ++i)
+   for (i = 0; i < NELEM(_quitnames); ++i)
       if (n_var_oklook(_quitnames[i].okey) != NULL)
          qf |= _quitnames[i].flag;
-   n_NYD_OU;
+   NYD_OU;
    return qf;
 }
 
 FL void
 restorequitflags(int qf)
 {
-   size_t i;
-   n_NYD_IN;
+   uz i;
+   NYD_IN;
 
-   for (i = 0;  i < n_NELEM(_quitnames); ++i) {
+   for (i = 0;  i < NELEM(_quitnames); ++i) {
       char *x = n_var_oklook(_quitnames[i].okey);
       if (qf & _quitnames[i].flag) {
          if (x == NULL)
@@ -679,7 +682,8 @@ restorequitflags(int qf)
       } else if (x != NULL)
          n_var_okclear(_quitnames[i].okey);
    }
-   n_NYD_OU;
+   NYD_OU;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

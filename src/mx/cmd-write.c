@@ -45,26 +45,29 @@
 
 #include "mx/names.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* Save/copy the indicated messages at the end of the passed file name.
  * If mark is true, mark the message "saved" */
 static int a_cwrite_save1(void *vp, struct n_ignore const *itp,
-            int convert, bool_t domark, bool_t domove);
+            int convert, boole domark, boole domove);
 
 static int
 a_cwrite_save1(void *vp, struct n_ignore const *itp,
-   int convert, bool_t domark, bool_t domove)
+   int convert, boole domark, boole domove)
 {
-   ui64_t mstats[1], tstats[2];
+   u64 mstats[1], tstats[2];
    enum n_fopen_state fs;
    struct message *mp;
    char *file, *cp, *cq;
    FILE *obuf;
    char const *shell, *disp;
-   bool_t success;
+   boole success;
    int last, *msgvec, *ip;
    struct n_cmd_arg *cap;
    struct n_cmd_arg_ctx *cacp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    cacp = vp;
    cap = cacp->cac_arg;
@@ -89,10 +92,12 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
          ;
       *cq = '\0';
       if (ok_blook(outfolder)) {
-         size_t sz = su_cs_len(cp) +1;
-         file = n_autorec_alloc(sz + 1);
+         uz i;
+
+         i = su_cs_len(cp) +1;
+         file = n_autorec_alloc(i + 1);
          file[0] = '+';
-         su_mem_copy(file + 1, cp, sz);
+         su_mem_copy(file + 1, cp, i);
       } else
          file = cp;
    }else{
@@ -148,7 +153,7 @@ a_cwrite_save1(void *vp, struct n_ignore const *itp,
 
       /* TODO RETURN check, but be aware of protocols: v15: Mailbox->lock()!
        * TODO BETTER yet: should be returned in lock state already! */
-      n_file_lock(fileno(obuf), FLT_WRITE, 0,0, UIZ_MAX);
+      n_file_lock(fileno(obuf), FLT_WRITE, 0,0, UZ_MAX);
 
       if((xerr = n_folder_mbox_prepare_append(obuf, NULL)) != su_ERR_NONE){
          n_perr(file, xerr);
@@ -169,7 +174,7 @@ jsend:
 #ifdef mx_HAVE_IMAP
       if((fs & n_PROTO_MASK) == n_PROTO_IMAP &&
             !n_ignore_is_any(n_IGNORE_SAVE) && imap_thisaccount(file)){
-         if(imap_copy(mp, PTR2SIZE(mp - message + 1), file) == STOP){
+         if(imap_copy(mp, P2UZ(mp - message + 1), file) == STOP){
             success = FAL0;
             goto jferr;
          }
@@ -246,87 +251,87 @@ jferr:
       setdot(message + (last != 0 ? last - 1 : 0));
    }
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return (success == FAL0);
 }
 
 FL int
 c_save(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, TRU1, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_Save(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, TRU1, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_copy(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, FAL0, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_Copy(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, FAL0, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_move(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, FAL0, TRU1);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_Move(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_MBOX, FAL0, TRU1);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_decrypt(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_DECRYPT, FAL0, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_Decrypt(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cwrite_save1(vp, n_IGNORE_SAVE, SEND_DECRYPT, FAL0, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -335,15 +340,16 @@ c_write(void *vp){
    int rv;
    struct n_cmd_arg *cap;
    struct n_cmd_arg_ctx *cacp;
-   n_NYD_IN;
+   NYD_IN;
 
    if((cap = (cacp = vp)->cac_arg->ca_next)->ca_arg.ca_str.s[0] == '\0')
       cap->ca_arg.ca_str.s = savestrbuf(n_path_devnull,
             cap->ca_arg.ca_str.l = su_cs_len(n_path_devnull));
 
    rv = a_cwrite_save1(vp, n_IGNORE_ALL, SEND_TOFILE, FAL0, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

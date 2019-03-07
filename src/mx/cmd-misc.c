@@ -45,15 +45,18 @@
 
 #include <su/cs.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* Expand the shell escape by expanding unescaped !'s into the last issued
  * command where possible */
 static char const *a_cmisc_bangexp(char const *cp);
 
 /* c_n?echo(), c_n?echoerr() */
-static int a_cmisc_echo(void *vp, FILE *fp, bool_t donl);
+static int a_cmisc_echo(void *vp, FILE *fp, boole donl);
 
 /* c_read() */
-static bool_t a_cmisc_read_set(char const *cp, char const *value);
+static boole a_cmisc_read_set(char const *cp, char const *value);
 
 /* c_version() */
 static int a_cmisc_version_cmp(void const *s1, void const *s2);
@@ -64,8 +67,8 @@ a_cmisc_bangexp(char const *cp){
 
    struct n_string xbang, *bang;
    char c;
-   bool_t changed;
-   n_NYD_IN;
+   boole changed;
+   NYD_IN;
 
    if(!ok_blook(bang))
       goto jleave;
@@ -98,21 +101,21 @@ a_cmisc_bangexp(char const *cp){
    if(changed)
       fprintf(n_stdout, "!%s\n", cp);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return cp;
 }
 
 static int
-a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
-   struct n_string s, *sp;
+a_cmisc_echo(void *vp, FILE *fp, boole donl){
+   struct n_string s_b, *s;
    int rv;
-   bool_t doerr;
+   boole doerr;
    char const **argv, *varname, **ap, *cp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    argv = vp;
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *argv++ : NULL;
-   sp = n_string_reserve(n_string_creat_auto(&s), 121/* XXX */);
+   s = n_string_reserve(n_string_creat_auto(&s_b), 121/* XXX */);
 #ifdef mx_HAVE_ERRORS
    doerr = (fp == n_stderr &&  (n_psonce & n_PSO_INTERACTIVE));
 #else
@@ -121,23 +124,23 @@ a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
 
    for(ap = argv; *ap != NULL; ++ap){
       if(ap != argv)
-         sp = n_string_push_c(sp, ' ');
+         s = n_string_push_c(s, ' ');
       if((cp = fexpand(*ap, FEXP_NSHORTCUT | FEXP_NVAR)) == NULL)
          cp = *ap;
-      sp = n_string_push_cp(sp, cp);
+      s = n_string_push_cp(s, cp);
    }
    if(donl)
-      sp = n_string_push_c(sp, '\n');
-   cp = n_string_cp(sp);
+      s = n_string_push_c(s, '\n');
+   cp = n_string_cp(s);
 
    if(varname == NULL){
-      si32_t e;
+      s32 e;
 
       e = su_ERR_NONE;
       if(doerr){
          /* xxx Ensure *log-prefix* will be placed by n_err() for next msg */
          if(donl)
-            cp = n_string_cp(n_string_trunc(sp, sp->s_len - 1));
+            cp = n_string_cp(n_string_trunc(s, s->s_len - 1));
          n_err((donl ? "%s\n" : "%s"), cp);
       }else if(fputs(cp, fp) == EOF)
          e = su_err_no();
@@ -145,27 +148,27 @@ a_cmisc_echo(void *vp, FILE *fp, bool_t donl){
          e = su_err_no();
       rv |= ferror(fp) ? 1 : 0;
       n_pstate_err_no = e;
-   }else if(!n_var_vset(varname, (uintptr_t)cp)){
+   }else if(!n_var_vset(varname, (up)cp)){
       n_pstate_err_no = su_ERR_NOTSUP;
       rv = -1;
    }else{
       n_pstate_err_no = su_ERR_NONE;
-      rv = (int)sp->s_len;
+      rv = (int)s->s_len;
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
-static bool_t
+static boole
 a_cmisc_read_set(char const *cp, char const *value){
-   bool_t rv;
-   n_NYD2_IN;
+   boole rv;
+   NYD2_IN;
 
    if(!n_shexp_is_valid_varname(cp))
       value = N_("not a valid variable name");
    else if(!n_var_is_user_writable(cp))
       value = N_("variable is read-only");
-   else if(!n_var_vset(cp, (uintptr_t)value))
+   else if(!n_var_vset(cp, (up)value))
       value = N_("failed to update variable value");
    else{
       rv = TRU1;
@@ -174,7 +177,7 @@ a_cmisc_read_set(char const *cp, char const *value){
    n_err("`read': %s: %s\n", V_(value), n_shexp_quote_cp(cp, FAL0));
    rv = FAL0;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -182,12 +185,12 @@ static int
 a_cmisc_version_cmp(void const *s1, void const *s2){
    char const * const *cp1, * const *cp2;
    int rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    cp1 = s1;
    cp2 = s2;
    rv = su_cs_cmp(&(*cp1)[1], &(*cp2)[1]);
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -198,7 +201,7 @@ c_shell(void *v)
    int rv;
    FILE *fp;
    char const **argv, *varname, *varres, *cp;
-   n_NYD_IN;
+   NYD_IN;
 
    n_pstate_err_no = su_ERR_NONE;
    argv = v;
@@ -230,7 +233,7 @@ c_shell(void *v)
 
             fflush_rewind(fp);
             l = fsize(fp);
-            if(UICMP(64, l, >=, UIZ_MAX -42)){
+            if(UCMP(64, l, >=, UZ_MAX -42)){
                n_pstate_err_no = su_ERR_NOMEM;
                varres = n_empty;
             }else{
@@ -252,7 +255,7 @@ c_shell(void *v)
       Fclose(fp);
 
    if(varname != NULL){
-      if(!n_var_vset(varname, (uintptr_t)varres)){
+      if(!n_var_vset(varname, (up)varres)){
          n_pstate_err_no = su_ERR_NOTSUP;
          rv = -1;
       }
@@ -260,7 +263,7 @@ c_shell(void *v)
       fprintf(n_stdout, "!\n");
       /* Line buffered fflush(n_stdout); */
    }
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -268,8 +271,8 @@ FL int
 c_dosh(void *v)
 {
    int rv;
-   n_NYD_IN;
-   n_UNUSED(v);
+   NYD_IN;
+   UNUSED(v);
 
    if(n_child_run(ok_vlook(SHELL), 0, n_CHILD_FD_PASS, n_CHILD_FD_PASS, NULL,
          NULL, NULL, NULL, &rv) < 0){
@@ -281,25 +284,25 @@ c_dosh(void *v)
       n_pstate_err_no = su_ERR_NONE;
       rv = WEXITSTATUS(rv);
    }
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_cwd(void *v){
-   struct n_string s_b, *sp;
-   size_t l;
+   struct n_string s_b, *s;
+   uz l;
    char const *varname;
-   n_NYD_IN;
+   NYD_IN;
 
-   sp = n_string_creat_auto(&s_b);
+   s = n_string_creat_auto(&s_b);
    varname = (n_pstate & n_PS_ARGMOD_VPUT) ? *(char const**)v : NULL;
    l = PATH_MAX;
 
    for(;; l += PATH_MAX){
-      sp = n_string_resize(n_string_trunc(sp, 0), l);
+      s = n_string_resize(n_string_trunc(s, 0), l);
 
-      if(getcwd(sp->s_dat, sp->s_len) == NULL){
+      if(getcwd(s->s_dat, s->s_len) == NULL){
          int e;
 
          e = su_err_no();
@@ -311,18 +314,18 @@ c_cwd(void *v){
       }
 
       if(varname != NULL){
-         if(!n_var_vset(varname, (uintptr_t)sp->s_dat))
+         if(!n_var_vset(varname, (up)s->s_dat))
             v = NULL;
       }else{
-         l = su_cs_len(sp->s_dat);
-         sp = n_string_trunc(sp, l);
-         if(fwrite(sp->s_dat, 1, sp->s_len, n_stdout) == sp->s_len &&
+         l = su_cs_len(s->s_dat);
+         s = n_string_trunc(s, l);
+         if(fwrite(s->s_dat, 1, s->s_len, n_stdout) == s->s_len &&
                putc('\n', n_stdout) == EOF)
             v = NULL;
       }
       break;
    }
-   n_NYD_OU;
+   NYD_OU;
    return (v == NULL);
 }
 
@@ -331,7 +334,7 @@ c_chdir(void *v)
 {
    char **arglist = v;
    char const *cp;
-   n_NYD_IN;
+   NYD_IN;
 
    if (*arglist == NULL)
       cp = ok_vlook(HOME);
@@ -342,47 +345,47 @@ c_chdir(void *v)
       cp = NULL;
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return (cp == NULL);
 }
 
 FL int
 c_echo(void *v){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cmisc_echo(v, n_stdout, TRU1);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_echoerr(void *v){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cmisc_echo(v, n_stderr, TRU1);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_echon(void *v){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cmisc_echo(v, n_stdout, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_echoerrn(void *v){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cmisc_echo(v, n_stderr, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -390,15 +393,15 @@ FL int
 c_read(void * volatile vp){
    struct n_sigman sm;
    struct str trim;
-   struct n_string s, *sp;
+   struct n_string s_b, *s;
    char *linebuf;
-   size_t linesize, i;
+   uz linesize, i;
    int rv;
    char const *ifs, **argv, *cp;
-   n_NYD2_IN;
+   NYD2_IN;
 
-   sp = n_string_creat_auto(&s);
-   sp = n_string_reserve(sp, 64 -1);
+   s = n_string_creat_auto(&s_b);
+   s = n_string_reserve(s, 64 -1);
 
    ifs = ok_vlook(ifs);
    linesize = 0;
@@ -440,11 +443,11 @@ c_read(void * volatile vp){
          /* The last variable gets the remaining line less trailing IFS-WS */
          if(argv[1] == NULL){
 jitall:
-            sp = n_string_assign_buf(sp, trim.s, trim.l);
+            s = n_string_assign_buf(s, trim.s, trim.l);
             trim.l = 0;
          }else for(cp = trim.s, i = 1;; ++cp, ++i){
             if(su_cs_find_c(ifs, *cp) != NULL){
-               sp = n_string_assign_buf(sp, trim.s, i - 1);
+               s = n_string_assign_buf(s, trim.s, i - 1);
                trim.s += i;
                trim.l -= i;
                break;
@@ -453,7 +456,7 @@ jitall:
                goto jitall;
          }
 
-         if(!a_cmisc_read_set(*argv, n_string_cp(sp))){
+         if(!a_cmisc_read_set(*argv, n_string_cp(s))){
             n_pstate_err_no = su_ERR_NOTSUP;
             rv = -1;
             break;
@@ -473,7 +476,7 @@ jitall:
 jleave:
    if(linebuf != NULL)
       n_free(linebuf);
-   n_NYD2_OU;
+   NYD2_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
 }
@@ -481,15 +484,15 @@ jleave:
 FL int
 c_readall(void * vp){ /* TODO 64-bit retval */
    struct n_sigman sm;
-   struct n_string s, *sp;
+   struct n_string s_b, *s;
    char *linebuf;
-   size_t linesize;
+   uz linesize;
    int rv;
    char const **argv;
-   n_NYD2_IN;
+   NYD2_IN;
 
-   sp = n_string_creat_auto(&s);
-   sp = n_string_reserve(sp, 64 -1);
+   s = n_string_creat_auto(&s_b);
+   s = n_string_reserve(s, 64 -1);
 
    linesize = 0;
    linebuf = NULL;
@@ -517,7 +520,7 @@ c_readall(void * vp){ /* TODO 64-bit retval */
             n_pstate_err_no = su_ERR_BADF;
             goto jleave;
          }
-         if(sp->s_len == 0)
+         if(s->s_len == 0)
             goto jleave;
          break;
       }
@@ -525,16 +528,16 @@ c_readall(void * vp){ /* TODO 64-bit retval */
       if(n_pstate & n_PS_READLINE_NL)
          linebuf[rv++] = '\n'; /* Replace NUL with it */
 
-      if(n_UNLIKELY(rv == 0)){ /* xxx will not get*/
+      if(UNLIKELY(rv == 0)){ /* xxx will not get*/
          if(n_go_input_is_eof()){
-            if(sp->s_len == 0){
+            if(s->s_len == 0){
                rv = -1;
                goto jleave;
             }
             break;
          }
-      }else if(n_LIKELY(UICMP(32, SI32_MAX - sp->s_len, >, rv)))
-         sp = n_string_push_buf(sp, linebuf, rv);
+      }else if(LIKELY(UCMP(32, S32_MAX - s->s_len, >, rv)))
+         s = n_string_push_buf(s, linebuf, rv);
       else{
          n_pstate_err_no = su_ERR_OVERFLOW;
          rv = -1;
@@ -542,57 +545,57 @@ c_readall(void * vp){ /* TODO 64-bit retval */
       }
    }
 
-   if(!a_cmisc_read_set(argv[0], n_string_cp(sp))){
+   if(!a_cmisc_read_set(argv[0], n_string_cp(s))){
       n_pstate_err_no = su_ERR_NOTSUP;
       rv = -1;
       goto jleave;
    }
-   rv = sp->s_len;
+   rv = s->s_len;
 
    n_sigman_cleanup_ping(&sm);
 jleave:
    if(linebuf != NULL)
       n_free(linebuf);
-   n_NYD2_OU;
+   NYD2_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
 }
 
 FL struct n_string *
-n_version(struct n_string *sp){
-   n_NYD_IN;
-   sp = n_string_push_cp(sp, n_uagent);
-   sp = n_string_push_c(sp, ' ');
-   sp = n_string_push_cp(sp, ok_vlook(version));
-   sp = n_string_push_c(sp, ',');
-   sp = n_string_push_c(sp, ' ');
-   sp = n_string_push_cp(sp, ok_vlook(version_date));
-   sp = n_string_push_c(sp, ' ');
-   sp = n_string_push_c(sp, '(');
-   sp = n_string_push_cp(sp, _("build for "));
-   sp = n_string_push_cp(sp, ok_vlook(build_os));
-   sp = n_string_push_c(sp, ')');
-   sp = n_string_push_c(sp, '\n');
-   n_NYD_OU;
-   return sp;
+n_version(struct n_string *s){
+   NYD_IN;
+   s = n_string_push_cp(s, n_uagent);
+   s = n_string_push_c(s, ' ');
+   s = n_string_push_cp(s, ok_vlook(version));
+   s = n_string_push_c(s, ',');
+   s = n_string_push_c(s, ' ');
+   s = n_string_push_cp(s, ok_vlook(version_date));
+   s = n_string_push_c(s, ' ');
+   s = n_string_push_c(s, '(');
+   s = n_string_push_cp(s, _("build for "));
+   s = n_string_push_cp(s, ok_vlook(build_os));
+   s = n_string_push_c(s, ')');
+   s = n_string_push_c(s, '\n');
+   NYD_OU;
+   return s;
 }
 
 FL int
 c_version(void *vp){
    struct utsname ut;
-   struct n_string s, *sp = &s;
+   struct n_string s_b, *s;
    int rv;
    char *iop;
    char const *cp, **arr;
-   size_t i, lnlen, j;
-   n_NYD_IN;
+   uz i, lnlen, j;
+   NYD_IN;
 
-   sp = n_string_creat_auto(sp);
-   sp = n_string_book(sp, 1024);
+   s = n_string_creat_auto(&s_b);
+   s = n_string_book(s, 1024);
 
    /* First two lines */
-   sp = n_version(sp);
-   sp = n_string_push_cp(sp, _("Features included (+) or not (-):\n"));
+   s = n_version(s);
+   s = n_string_push_cp(s, _("Features included (+) or not (-):\n"));
 
    /* Some lines with the features.
     * *features* starts with dummy byte to avoid + -> *folder* expansions */
@@ -610,44 +613,44 @@ c_version(void *vp){
       j = su_cs_len(cp);
 
       if((lnlen += j + 1) > 72){
-         sp = n_string_push_c(sp, '\n');
+         s = n_string_push_c(s, '\n');
          lnlen = j + 1;
       }
-      sp = n_string_push_c(sp, ' ');
-      sp = n_string_push_buf(sp, cp, j);
+      s = n_string_push_c(s, ' ');
+      s = n_string_push_buf(s, cp, j);
    }
-   sp = n_string_push_c(sp, '\n');
+   s = n_string_push_c(s, '\n');
 
    /* */
    if(n_poption & n_PO_VERB){
-      sp = n_string_push_cp(sp, "Compile: ");
-      sp = n_string_push_cp(sp, ok_vlook(build_cc));
-      sp = n_string_push_cp(sp, "\nLink: ");
-      sp = n_string_push_cp(sp, ok_vlook(build_ld));
+      s = n_string_push_cp(s, "Compile: ");
+      s = n_string_push_cp(s, ok_vlook(build_cc));
+      s = n_string_push_cp(s, "\nLink: ");
+      s = n_string_push_cp(s, ok_vlook(build_ld));
       if(*(cp = ok_vlook(build_rest)) != '\0'){
-         sp = n_string_push_cp(sp, "\nRest: ");
-         sp = n_string_push_cp(sp, cp);
+         s = n_string_push_cp(s, "\nRest: ");
+         s = n_string_push_cp(s, cp);
       }
-      sp = n_string_push_c(sp, '\n');
+      s = n_string_push_c(s, '\n');
 
       /* A trailing line with info of the running machine */
       uname(&ut);
-      sp = n_string_push_c(sp, '@');
-      sp = n_string_push_cp(sp, ut.sysname);
-      sp = n_string_push_c(sp, ' ');
-      sp = n_string_push_cp(sp, ut.release);
-      sp = n_string_push_c(sp, ' ');
-      sp = n_string_push_cp(sp, ut.version);
-      sp = n_string_push_c(sp, ' ');
-      sp = n_string_push_cp(sp, ut.machine);
-      sp = n_string_push_c(sp, '\n');
+      s = n_string_push_c(s, '@');
+      s = n_string_push_cp(s, ut.sysname);
+      s = n_string_push_c(s, ' ');
+      s = n_string_push_cp(s, ut.release);
+      s = n_string_push_c(s, ' ');
+      s = n_string_push_cp(s, ut.version);
+      s = n_string_push_c(s, ' ');
+      s = n_string_push_cp(s, ut.machine);
+      s = n_string_push_c(s, '\n');
    }
 
    /* Done */
-   cp = n_string_cp(sp);
+   cp = n_string_cp(s);
 
    if(n_pstate & n_PS_ARGMOD_VPUT){
-      if(n_var_vset(*(char const**)vp, (uintptr_t)cp))
+      if(n_var_vset(*(char const**)vp, (up)cp))
          rv = 0;
       else
          rv = -1;
@@ -659,8 +662,9 @@ c_version(void *vp){
          rv = 1;
       }
    }
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

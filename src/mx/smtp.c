@@ -55,11 +55,14 @@ su_EMPTY_FILE()
 
 #include "mx/names.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 struct smtp_line {
    char     *dat;    /* Actual data */
-   size_t   datlen;
+   uz   datlen;
    char     *buf;    /* Memory buffer */
-   size_t   bufsize;
+   uz   bufsize;
 };
 
 static sigjmp_buf _smtp_jmp;
@@ -68,34 +71,34 @@ static void    _smtp_onterm(int signo);
 
 /* Get the SMTP server's answer, expecting val */
 static int     _smtp_read(struct sock *sp, struct smtp_line *slp, int val,
-                  bool_t ign_eof, bool_t want_dat);
+                  boole ign_eof, boole want_dat);
 
 /* Talk to a SMTP server */
-static bool_t  _smtp_talk(struct sock *sp, struct sendbundle *sbp);
+static boole  _smtp_talk(struct sock *sp, struct sendbundle *sbp);
 
 #ifdef mx_HAVE_GSSAPI
-static bool_t  _smtp_gssapi(struct sock *sp, struct sendbundle *sbp,
+static boole  _smtp_gssapi(struct sock *sp, struct sendbundle *sbp,
                   struct smtp_line *slp);
 #endif
 
 static void
 _smtp_onterm(int signo)
 {
-   n_NYD_X; /* Signal handler */
-   n_UNUSED(signo);
+   NYD; /* Signal handler */
+   UNUSED(signo);
    siglongjmp(_smtp_jmp, 1);
 }
 
 static int
-_smtp_read(struct sock *sp, struct smtp_line *slp, int val,
-   bool_t ign_eof, bool_t want_dat)
+_smtp_read(struct sock *sop, struct smtp_line *slp, int val,
+   boole ign_eof, boole want_dat)
 {
    int rv, len;
    char *cp;
-   n_NYD_IN;
+   NYD_IN;
 
    do {
-      if ((len = sgetline(&slp->buf, &slp->bufsize, NULL, sp)) < 6) {
+      if ((len = sgetline(&slp->buf, &slp->bufsize, NULL, sop)) < 6) {
          if (len >= 0 && !ign_eof)
             n_err(_("Unexpected EOF on SMTP connection\n"));
          rv = -1;
@@ -120,12 +123,12 @@ _smtp_read(struct sock *sp, struct smtp_line *slp, int val,
       for (; su_cs_is_blank(*cp); --len, ++cp)
          ;
       slp->dat = cp;
-      assert(len >= 2);
+      ASSERT(len >= 2);
       len -= 2;
-      cp[slp->datlen = (size_t)len] = '\0';
+      cp[slp->datlen = (uz)len] = '\0';
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -133,7 +136,7 @@ jleave:
 #define _ANSWER(X, IGNEOF, WANTDAT) \
 do if (!(n_poption & n_PO_DEBUG)) {\
    int y;\
-   if ((y = _smtp_read(sp, slp, X, IGNEOF, WANTDAT)) != (X) &&\
+   if ((y = _smtp_read(sop, slp, X, IGNEOF, WANTDAT)) != (X) &&\
          (!(IGNEOF) || y != -1))\
       goto jleave;\
 } while (0)
@@ -148,20 +151,20 @@ do {\
       n_err(">>> %s\n", __x__);\
    }\
    if (!(n_poption & n_PO_DEBUG))\
-      swrite(sp, X);\
+      swrite(sop, X);\
 } while (0)
 
-static bool_t
-_smtp_talk(struct sock *sp, struct sendbundle *sbp) /* TODO n_string etc. */
+static boole
+_smtp_talk(struct sock *sop, struct sendbundle *sbp) /* TODO n_string++ */
 {
    char o[LINESIZE];
    char const *hostname;
    struct smtp_line _sl, *slp = &_sl;
    struct str b64;
    struct mx_name *np;
-   size_t blen, cnt;
-   bool_t inhdr = TRU1, inbcc = FAL0, rv = FAL0;
-   n_NYD_IN;
+   uz blen, cnt;
+   boole inhdr = TRU1, inbcc = FAL0, rv = FAL0;
+   NYD_IN;
 
    hostname = n_nodename(TRU1);
    slp->buf = NULL;
@@ -171,7 +174,8 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp) /* TODO n_string etc. */
    _ANSWER(2, FAL0, FAL0);
 
 #ifdef mx_HAVE_TLS
-   if (!sp->s_use_tls && xok_blook(smtp_use_starttls, &sbp->sb_url, OXM_ALL)) {
+   if (!sop->s_use_tls &&
+         xok_blook(smtp_use_starttls, &sbp->sb_url, OXM_ALL)) {
       snprintf(o, sizeof o, NETLINE("EHLO %s"), hostname);
       _OUT(o);
       _ANSWER(2, FAL0, FAL0);
@@ -179,7 +183,7 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp) /* TODO n_string etc. */
       _OUT(NETLINE("STARTTLS"));
       _ANSWER(2, FAL0, FAL0);
 
-      if(!(n_poption & n_PO_DEBUG) && !n_tls_open(&sbp->sb_url, sp))
+      if(!(n_poption & n_PO_DEBUG) && !n_tls_open(&sbp->sb_url, sop))
          goto jleave;
    }
 #else
@@ -207,8 +211,8 @@ _smtp_talk(struct sock *sp, struct sendbundle *sbp) /* TODO n_string etc. */
       /* FALLTHRU (doesn't happen) */
    case AUTHTYPE_PLAIN:
       cnt = sbp->sb_ccred.cc_user.l;
-      if(sbp->sb_ccred.cc_pass.l >= UIZ_MAX - 2 ||
-            cnt >= UIZ_MAX - 2 - sbp->sb_ccred.cc_pass.l){
+      if(sbp->sb_ccred.cc_pass.l >= UZ_MAX - 2 ||
+            cnt >= UZ_MAX - 2 - sbp->sb_ccred.cc_pass.l){
 jerr_cred:
          n_err(_("Credentials overflow buffer sizes\n"));
          goto jleave;
@@ -218,7 +222,7 @@ jerr_cred:
       if(cnt >= sizeof(o) - 2)
          goto jerr_cred;
       cnt += 2;
-      if(b64_encode_calc_size(cnt) == UIZ_MAX)
+      if(b64_encode_calc_size(cnt) == UZ_MAX)
          goto jerr_cred;
 
       _OUT(NETLINE("AUTH PLAIN"));
@@ -232,8 +236,8 @@ jerr_cred:
       _ANSWER(2, FAL0, FAL0);
       break;
    case AUTHTYPE_LOGIN:
-      if(b64_encode_calc_size(sbp->sb_ccred.cc_user.l) == UIZ_MAX ||
-            b64_encode_calc_size(sbp->sb_ccred.cc_pass.l) == UIZ_MAX)
+      if(b64_encode_calc_size(sbp->sb_ccred.cc_user.l) == UZ_MAX ||
+            b64_encode_calc_size(sbp->sb_ccred.cc_pass.l) == UZ_MAX)
          goto jerr_cred;
 
       _OUT(NETLINE("AUTH LOGIN"));
@@ -269,7 +273,7 @@ jerr_cred:
    case AUTHTYPE_GSSAPI:
       if (n_poption & n_PO_DEBUG)
          n_err(_(">>> We would perform GSS-API authentication now\n"));
-      else if (!_smtp_gssapi(sp, sbp, slp))
+      else if (!_smtp_gssapi(sop, sbp, slp))
          goto jleave;
       break;
 #endif
@@ -319,10 +323,10 @@ jsend:
          continue;
       }
       if (*slp->buf == '.')
-         swrite1(sp, ".", 1, 1); /* TODO I/O rewrite.. */
+         swrite1(sop, ".", 1, 1); /* TODO I/O rewrite.. */
       slp->buf[blen - 1] = NETNL[0];
       slp->buf[blen] = NETNL[1];
-      swrite1(sp, slp->buf, blen + 1, 1);
+      swrite1(sop, slp->buf, blen + 1, 1);
    }
    _OUT(NETLINE("."));
    _ANSWER(2, FAL0, FAL0);
@@ -333,7 +337,7 @@ jsend:
 jleave:
    if (slp->buf != NULL)
       n_free(slp->buf);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -344,13 +348,13 @@ jleave:
 #undef _OUT
 #undef _ANSWER
 
-FL bool_t
+FL boole
 smtp_mta(struct sendbundle *sbp)
 {
    struct sock so;
-   sighandler_type volatile saveterm;
-   bool_t volatile rv = FAL0;
-   n_NYD_IN;
+   n_sighdl_t volatile saveterm;
+   boole volatile rv = FAL0;
+   NYD_IN;
 
    saveterm = safe_signal(SIGTERM, SIG_IGN);
    if (sigsetjmp(_smtp_jmp, 1))
@@ -370,9 +374,10 @@ smtp_mta(struct sendbundle *sbp)
       sclose(&so);
 jleave:
    safe_signal(SIGTERM, saveterm);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
-#endif /* mx_HAVE_SMTP */
 
+#include "su/code-ou.h"
+#endif /* mx_HAVE_SMTP */
 /* s-it-mode */

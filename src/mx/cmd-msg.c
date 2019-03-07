@@ -44,15 +44,18 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* Prepare and print "[Message: xy]:" intro */
-static bool_t a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no);
+static boole a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no);
 
 /* Show the requested messages */
-static int     _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
-                  bool_t donotdecode, char *cmd, ui64_t *tstats);
+static int     _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
+                  boole donotdecode, char *cmd, u64 *tstats);
 
 /* Pipe the requested messages */
-static int a_cmsg_pipe1(void *vp, bool_t doign);
+static int a_cmsg_pipe1(void *vp, boole doign);
 
 /* `top' / `Top' */
 static int a_cmsg_top(void *vp, struct n_ignore const *itp);
@@ -60,11 +63,11 @@ static int a_cmsg_top(void *vp, struct n_ignore const *itp);
 /* Delete the indicated messages.  Set dot to some nice place afterwards */
 static int     delm(int *msgvec);
 
-static bool_t
+static boole
 a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no){
-   bool_t rv;
+   boole rv;
    char const *cpre, *csuf;
-   n_NYD2_IN;
+   NYD2_IN;
 
    cpre = csuf = n_empty;
 #ifdef mx_HAVE_COLOUR
@@ -72,36 +75,36 @@ a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no){
       struct n_colour_pen *cpen;
 
       if((cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_MSGINFO, NULL)) != NULL){
-         struct str const *sp;
+         struct str const *s;
 
-         if((sp = n_colour_pen_to_str(cpen)) != NULL)
-            cpre = sp->s;
-         if((sp = n_colour_reset_to_str()) != NULL)
-            csuf = sp->s;
+         if((s = n_colour_pen_to_str(cpen)) != NULL)
+            cpre = s->s;
+         if((s = n_colour_reset_to_str()) != NULL)
+            csuf = s->s;
       }
    }
 #endif
    /* XXX Message info uses wire format for line count */
    rv = (fprintf(obuf,
          A_("%s[-- Message %2d -- %lu lines, %lu bytes --]:%s\n"),
-         cpre, msg_no, (ul_i)mp->m_lines, (ul_i)mp->m_size, csuf) > 0);
-   n_NYD2_OU;
+         cpre, msg_no, (ul)mp->m_lines, (ul)mp->m_size, csuf) > 0);
+   NYD2_OU;
    return rv;
 }
 
 static int
-_type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
-   bool_t donotdecode, char *cmd, ui64_t *tstats)
+_type1(int *msgvec, boole doign, boole dopage, boole dopipe,
+   boole donotdecode, char *cmd, u64 *tstats)
 {
-   ui64_t mstats[1];
+   u64 mstats[1];
    int *ip;
    struct message *mp;
    char const *cp;
    enum sendaction action;
-   bool_t volatile formfeed;
+   boole volatile formfeed;
    FILE * volatile obuf;
    int volatile rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = 1;
    obuf = n_stdout;
@@ -118,12 +121,12 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       }
    } else if ((n_psonce & n_PSO_TTYOUT) && (dopage ||
          ((n_psonce & n_PSO_INTERACTIVE) && (cp = ok_vlook(crt)) != NULL))) {
-      uiz_t nlines, lib;
+      uz nlines, lib;
 
       nlines = 0;
 
       if (!dopage) {
-         for (ip = msgvec; *ip && PTRCMP(ip - msgvec, <, msgCount); ++ip) {
+         for (ip = msgvec; *ip && PCMP(ip - msgvec, <, msgCount); ++ip) {
             mp = message + *ip - 1;
             if (!(mp->m_content_info & CI_HAVE_BODY))
                if (get_body(mp) != OKAY)
@@ -135,7 +138,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
       /* >= not <: we return to the prompt */
       if(dopage || nlines >= (*cp != '\0'
                ? (su_idec_uz_cp(&lib, cp, 0, NULL), lib)
-               : (uiz_t)n_realscreenheight)){
+               : (uz)n_realscreenheight)){
          if((obuf = n_pager_open()) == NULL)
             obuf = n_stdout;
       }
@@ -151,7 +154,7 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 
    rv = 0;
    srelax_hold();
-   for (ip = msgvec; *ip && PTRCMP(ip - msgvec, <, msgCount); ++ip) {
+   for (ip = msgvec; *ip && PCMP(ip - msgvec, <, msgCount); ++ip) {
       mp = message + *ip - 1;
       touch(mp);
       setdot(mp);
@@ -188,18 +191,18 @@ _type1(int *msgvec, bool_t doign, bool_t dopage, bool_t dopipe,
 jleave:
    if (obuf != n_stdout)
       n_pager_close(obuf);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 static int
-a_cmsg_pipe1(void *vp, bool_t doign){
-   ui64_t stats[1];
+a_cmsg_pipe1(void *vp, boole doign){
+   u64 stats[1];
    char const *cmd, *cmdq;
    int *msgvec, rv;
    struct n_cmd_arg *cap;
    struct n_cmd_arg_ctx *cacp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    cacp = vp;
    cap = cacp->cac_arg;
@@ -220,7 +223,7 @@ a_cmsg_pipe1(void *vp, bool_t doign){
          ) == 0)
       fprintf(n_stdout, "%s %" PRIu64 " bytes\n", cmdq, stats[0]);
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -230,9 +233,9 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
    int *msgvec, *ip;
    enum{a_NONE, a_SQUEEZE = 1u<<0,
       a_EMPTY = 1u<<8, a_STOP = 1u<<9,  a_WORKMASK = 0xFF00u} f;
-   size_t tmax, plines;
+   uz tmax, plines;
    FILE *iobuf, *pbuf;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if((iobuf = Ftmp(NULL, "topio", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
       n_perr(_("`top': I/O temporary file"), 0);
@@ -255,7 +258,7 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
    n_COLOUR( n_colour_env_create(n_COLOUR_CTX_VIEW, iobuf, FAL0); )
    n_string_creat_auto(&s);
    /* C99 */{
-      siz_t l;
+      sz l;
 
       if((su_idec_sz_cp(&l, ok_vlook(toplines), 0, NULL
                ) & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
@@ -264,11 +267,11 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
       if(l <= 0){
          tmax = n_screensize();
          if(l < 0){
-            l = n_ABS(l);
+            l = ABS(l);
             tmax >>= l;
          }
       }else
-         tmax = (size_t)l;
+         tmax = (uz)l;
    }
    f = ok_blook(topsqueeze) ? a_SQUEEZE : a_NONE;
 
@@ -312,7 +315,7 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
       ++plines;
 
       /* C99 */{
-         size_t l;
+         uz l;
 
          n_string_trunc(&s, 0);
          for(l = 0, f &= ~a_WORKMASK; !(f & a_STOP);){
@@ -398,7 +401,7 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
 jleave1:
    Fclose(iobuf);
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return (vp != NULL);
 }
 
@@ -407,7 +410,7 @@ delm(int *msgvec)
 {
    struct message *mp;
    int rv = -1, *ip, last;
-   n_NYD_IN;
+   NYD_IN;
 
    last = 0;
    for (ip = msgvec; *ip != 0; ++ip) {
@@ -427,7 +430,7 @@ delm(int *msgvec)
          setdot(message);
       }
    }
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -435,10 +438,10 @@ FL int
 c_more(void *v)
 {
    int *msgvec = v, rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = _type1(msgvec, TRU1, TRU1, FAL0, FAL0, NULL, NULL);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -446,10 +449,10 @@ FL int
 c_More(void *v)
 {
    int *msgvec = v, rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = _type1(msgvec, FAL0, TRU1, FAL0, FAL0, NULL, NULL);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -457,10 +460,10 @@ FL int
 c_type(void *v)
 {
    int *msgvec = v, rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = _type1(msgvec, TRU1, FAL0, FAL0, FAL0, NULL, NULL);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -468,10 +471,10 @@ FL int
 c_Type(void *v)
 {
    int *msgvec = v, rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = _type1(msgvec, FAL0, FAL0, FAL0, FAL0, NULL, NULL);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -479,10 +482,10 @@ FL int
 c_show(void *v)
 {
    int *msgvec = v, rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = _type1(msgvec, FAL0, FAL0, FAL0, TRU1, NULL, NULL);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -490,7 +493,7 @@ FL int
 c_mimeview(void *vp){ /* TODO direct addressable parts, multiple such */
    struct message *mp;
    int rv, *msgvec;
-   n_NYD_IN;
+   NYD_IN;
 
    if((msgvec = vp)[1] != 0){
       n_err(_("`mimeview': can yet only take one message, sorry!\n"));/* TODO */
@@ -523,27 +526,27 @@ c_mimeview(void *vp){ /* TODO direct addressable parts, multiple such */
 
    rv = (n_pstate_err_no != su_ERR_NONE);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_pipe(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cmsg_pipe1(vp, TRU1);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_Pipe(void *vp){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_cmsg_pipe1(vp, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -551,7 +554,7 @@ FL int
 c_top(void *v){
    struct n_ignore *itp;
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    if(n_ignore_is_any(n_IGNORE_TOP))
       itp = n_IGNORE_TOP;
@@ -564,17 +567,17 @@ c_top(void *v){
    }
 
    rv = !a_cmsg_top(v, itp);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_Top(void *v){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = !a_cmsg_top(v, n_IGNORE_TYPE);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -583,12 +586,12 @@ c_next(void *v)
 {
    int list[2], *ip, *ip2, mdot, *msgvec = v, rv = 1;
    struct message *mp;
-   n_NYD_IN;
+   NYD_IN;
 
    if (*msgvec != 0) {
       /* If some messages were supplied, find the first applicable one
        * following dot using wrap around */
-      mdot = (int)PTR2SIZE(dot - message + 1);
+      mdot = (int)P2UZ(dot - message + 1);
 
       /* Find first message in supplied message list which follows dot */
       for (ip = msgvec; *ip != 0; ++ip) {
@@ -625,7 +628,7 @@ c_next(void *v)
    /* Just find the next good message after dot, no wraparound */
    if (mb.mb_threaded == 0) {
       for (mp = dot + !!(n_pstate & n_PS_DID_PRINT_DOT);
-            PTRCMP(mp, <, message + msgCount); ++mp)
+            PCMP(mp, <, message + msgCount); ++mp)
          if (!(mp->m_flag & MMNORM))
             break;
    } else {
@@ -637,7 +640,7 @@ c_next(void *v)
       while (mp != NULL && (mp->m_flag & MMNORM))
          mp = next_in_thread(mp);
    }
-   if (mp == NULL || PTRCMP(mp, >=, message + msgCount)) {
+   if (mp == NULL || PCMP(mp, >=, message + msgCount)) {
 jateof:
       fprintf(n_stdout, _("At EOF\n"));
       rv = 0;
@@ -647,25 +650,25 @@ jateof:
 
    /* Print dot */
 jhitit:
-   list[0] = (int)PTR2SIZE(dot - message + 1);
+   list[0] = (int)P2UZ(dot - message + 1);
    list[1] = 0;
    rv = c_type(list);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_pdot(void *vp){
    char cbuf[su_IENC_BUFFER_SIZE], sep1, sep2;
-   struct n_string s, *sp;
+   struct n_string s_b, *s;
    int *mlp;
    struct n_cmd_arg_ctx *cacp;
-   n_NYD_IN;
-   n_UNUSED(vp);
+   NYD_IN;
+   UNUSED(vp);
 
    n_pstate_err_no = su_ERR_NONE;
-   sp = n_string_creat_auto(&s);
+   s = n_string_creat_auto(&s_b);
    sep1 = *ok_vlook(ifs);
    sep2 = *ok_vlook(ifs_ws);
    if(sep1 == sep2)
@@ -676,34 +679,34 @@ c_pdot(void *vp){
    cacp = vp;
 
    for(mlp = cacp->cac_arg->ca_arg.ca_msglist; *mlp != 0; ++mlp){
-      if(!n_string_can_book(sp, su_IENC_BUFFER_SIZE + 2u)){
+      if(!n_string_can_book(s, su_IENC_BUFFER_SIZE + 2u)){
          n_err(_("`=': overflow: string too long!\n"));
          n_pstate_err_no = su_ERR_OVERFLOW;
          vp = NULL;
          goto jleave;
       }
-      if(sp->s_len > 0){
-         sp = n_string_push_c(sp, sep1);
+      if(s->s_len > 0){
+         s = n_string_push_c(s, sep1);
          if(sep2 != '\0')
-            sp = n_string_push_c(sp, sep2);
+            s = n_string_push_c(s, sep2);
       }
-      sp = n_string_push_cp(sp,
-            su_ienc(cbuf, (ui32_t)*mlp, 10, su_IENC_MODE_NONE));
+      s = n_string_push_cp(s,
+            su_ienc(cbuf, (u32)*mlp, 10, su_IENC_MODE_NONE));
    }
 
-   (void)n_string_cp(sp);
+   (void)n_string_cp(s);
    if(cacp->cac_vput == NULL){
-      if(fprintf(n_stdout, "%s\n", sp->s_dat) < 0){
+      if(fprintf(n_stdout, "%s\n", s->s_dat) < 0){
          n_pstate_err_no = su_err_no();
          vp = NULL;
       }
-   }else if(!n_var_vset(cacp->cac_vput, (uintptr_t)sp->s_dat)){
+   }else if(!n_var_vset(cacp->cac_vput, (up)s->s_dat)){
       n_pstate_err_no = su_ERR_NOTSUP;
       vp = NULL;
    }
 jleave:
-   /* n_string_gut(sp); */
-   n_NYD_OU;
+   /* n_string_gut(s); */
+   NYD_OU;
    return (vp == NULL);
 }
 
@@ -712,7 +715,7 @@ c_messize(void *v)
 {
    int *msgvec = v, *ip, mesg;
    struct message *mp;
-   n_NYD_IN;
+   NYD_IN;
 
    for (ip = msgvec; *ip != 0; ++ip) {
       mesg = *ip;
@@ -722,9 +725,9 @@ c_messize(void *v)
          fprintf(n_stdout, "%ld", mp->m_xlines);
       else
          putc(' ', n_stdout);
-      fprintf(n_stdout, "/%lu\n", (ul_i)mp->m_xsize);
+      fprintf(n_stdout, "/%lu\n", (ul)mp->m_xsize);
    }
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
@@ -732,10 +735,10 @@ FL int
 c_delete(void *v)
 {
    int *msgvec = v;
-   n_NYD_IN;
+   NYD_IN;
 
    delm(msgvec);
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
@@ -743,11 +746,11 @@ FL int
 c_deltype(void *v)
 {
    int list[2], rv = 0, *msgvec = v, lastdot;
-   n_NYD_IN;
+   NYD_IN;
 
-   lastdot = (int)PTR2SIZE(dot - message + 1);
+   lastdot = (int)P2UZ(dot - message + 1);
    if (delm(msgvec) >= 0) {
-      list[0] = (int)PTR2SIZE(dot - message + 1);
+      list[0] = (int)P2UZ(dot - message + 1);
       if (list[0] > lastdot) {
          touch(dot);
          list[1] = 0;
@@ -758,7 +761,7 @@ c_deltype(void *v)
    } else
       fprintf(n_stdout, _("No more messages\n"));
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -767,7 +770,7 @@ c_undelete(void *v)
 {
    int *msgvec = v, *ip;
    struct message *mp;
-   n_NYD_IN;
+   NYD_IN;
 
    for (ip = msgvec; *ip != 0; ++ip) {
       mp = &message[*ip - 1];
@@ -782,7 +785,7 @@ c_undelete(void *v)
          imap_undelete(mp, *ip);
 #endif
    }
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
@@ -790,7 +793,7 @@ FL int
 c_stouch(void *v)
 {
    int *msgvec = v, *ip;
-   n_NYD_IN;
+   NYD_IN;
 
    for (ip = msgvec; *ip != 0; ++ip) {
       setdot(message + *ip - 1);
@@ -798,7 +801,7 @@ c_stouch(void *v)
       dot->m_flag &= ~MPRESERVE;
       n_pstate |= n_PS_DID_PRINT_DOT;
    }
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
@@ -806,7 +809,7 @@ FL int
 c_mboxit(void *v)
 {
    int *msgvec = v, *ip;
-   n_NYD_IN;
+   NYD_IN;
 
    if (n_pstate & n_PS_EDIT) {
       n_err(_("`mbox' can only be used in a system mailbox\n")); /* TODO */
@@ -820,7 +823,7 @@ c_mboxit(void *v)
       n_pstate |= n_PS_DID_PRINT_DOT;
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
@@ -829,7 +832,7 @@ c_preserve(void *v)
 {
    int *msgvec = v, *ip, mesg, rv = 1;
    struct message *mp;
-   n_NYD_IN;
+   NYD_IN;
 
    if (n_pstate & n_PS_EDIT) {
       fprintf(n_stdout, _("Cannot `preserve' in a system mailbox\n"));
@@ -846,7 +849,7 @@ c_preserve(void *v)
    }
    rv = 0;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -855,7 +858,7 @@ c_unread(void *v)
 {
    struct message *mp;
    int *msgvec = v, *ip;
-   n_NYD_IN;
+   NYD_IN;
 
    for (ip = msgvec; *ip != 0; ++ip) {
       mp = &message[*ip - 1];
@@ -868,7 +871,7 @@ c_unread(void *v)
 #endif
       n_pstate |= n_PS_DID_PRINT_DOT;
    }
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
@@ -876,14 +879,14 @@ FL int
 c_seen(void *v)
 {
    int *msgvec = v, *ip;
-   n_NYD_IN;
+   NYD_IN;
 
    for (ip = msgvec; *ip != 0; ++ip) {
       struct message *mp = message + *ip - 1;
       setdot(mp);
       touch(mp);
    }
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
@@ -892,7 +895,7 @@ c_flag(void *v)
 {
    struct message *m;
    int *msgvec = v, *ip;
-   n_NYD_IN;
+   NYD_IN;
 
    for (ip = msgvec; *ip != 0; ++ip) {
       m = message + *ip - 1;
@@ -900,7 +903,7 @@ c_flag(void *v)
       if (!(m->m_flag & (MFLAG | MFLAGGED)))
          m->m_flag |= MFLAG | MFLAGGED;
    }
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
@@ -909,7 +912,7 @@ c_unflag(void *v)
 {
    struct message *m;
    int *msgvec = v, *ip;
-   n_NYD_IN;
+   NYD_IN;
 
    for (ip = msgvec; *ip != 0; ++ip) {
       m = message + *ip - 1;
@@ -919,7 +922,7 @@ c_unflag(void *v)
          m->m_flag |= MUNFLAG;
       }
    }
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
@@ -928,7 +931,7 @@ c_answered(void *v)
 {
    struct message *m;
    int *msgvec = v, *ip;
-   n_NYD_IN;
+   NYD_IN;
 
    for (ip = msgvec; *ip != 0; ++ip) {
       m = message + *ip - 1;
@@ -936,7 +939,7 @@ c_answered(void *v)
       if (!(m->m_flag & (MANSWER | MANSWERED)))
          m->m_flag |= MANSWER | MANSWERED;
    }
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
@@ -945,7 +948,7 @@ c_unanswered(void *v)
 {
    struct message *m;
    int *msgvec = v, *ip;
-   n_NYD_IN;
+   NYD_IN;
 
    for (ip = msgvec; *ip != 0; ++ip) {
       m = message + *ip - 1;
@@ -955,7 +958,7 @@ c_unanswered(void *v)
          m->m_flag |= MUNANSWER;
       }
    }
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
@@ -964,7 +967,7 @@ c_draft(void *v)
 {
    struct message *m;
    int *msgvec = v, *ip;
-   n_NYD_IN;
+   NYD_IN;
 
    for (ip = msgvec; *ip != 0; ++ip) {
       m = message + *ip - 1;
@@ -972,7 +975,7 @@ c_draft(void *v)
       if (!(m->m_flag & (MDRAFT | MDRAFTED)))
          m->m_flag |= MDRAFT | MDRAFTED;
    }
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
@@ -981,7 +984,7 @@ c_undraft(void *v)
 {
    struct message *m;
    int *msgvec = v, *ip;
-   n_NYD_IN;
+   NYD_IN;
 
    for (ip = msgvec; *ip != 0; ++ip) {
       m = message + *ip - 1;
@@ -991,8 +994,9 @@ c_undraft(void *v)
          m->m_flag |= MUNDRAFT;
       }
    }
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

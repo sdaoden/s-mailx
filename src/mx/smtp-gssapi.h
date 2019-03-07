@@ -92,7 +92,7 @@ _smtp_gssapi_error1(char const *s, OM_uint32 code, int typ)
    OM_uint32 maj_stat, min_stat;
    gss_buffer_desc msg = GSS_C_EMPTY_BUFFER;
    OM_uint32 msg_ctx = 0;
-   n_NYD_IN;
+   NYD_IN;
 
    do {
       maj_stat = gss_display_status(&min_stat, code, typ, GSS_C_NO_OID,
@@ -106,20 +106,20 @@ _smtp_gssapi_error1(char const *s, OM_uint32 code, int typ)
          break;
       }
    } while (msg_ctx);
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static void
 _smtp_gssapi_error(char const *s, OM_uint32 maj_stat, OM_uint32 min_stat)
 {
-   n_NYD_IN;
+   NYD_IN;
    _smtp_gssapi_error1(s, maj_stat, GSS_C_GSS_CODE);
    _smtp_gssapi_error1(s, min_stat, GSS_C_MECH_CODE);
-   n_NYD_OU;
+   NYD_OU;
 }
 
-static bool_t
-_smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
+static boole
+_smtp_gssapi(struct sock *sop, struct sendbundle *sbp, struct smtp_line *slp)
 {
    struct str in, out;
    gss_buffer_desc send_tok, recv_tok;
@@ -134,8 +134,8 @@ _smtp_gssapi(struct sock *sp, struct sendbundle *sbp, struct smtp_line *slp)
       a_F_TARGET_NAME = 1u<<2,
       a_F_GSS_CONTEXT = 1u<<3
    } f;
-   bool_t ok;
-   n_NYD_IN;
+   boole ok;
+   NYD_IN;
 
    ok = FAL0;
    f = a_F_NONE;
@@ -286,7 +286,7 @@ jleave:
       gss_release_name(&min_stat, &target_name);
    if(f & a_F_GSS_CONTEXT)
       gss_delete_sec_context(&min_stat, &gss_context, GSS_C_NO_BUFFER);
-   n_NYD_OU;
+   NYD_OU;
    return ok;
 }
 

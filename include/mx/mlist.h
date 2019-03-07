@@ -39,8 +39,7 @@ FL int c_unmlsubscribe(void *vp);
  * give MLIST_OTHER to the latter to search for any, in which case all
  * receivers are searched until EOL or _SUBSCRIBED is seen.
  * XXX the latter possibly belongs to message or header */
-FL enum mx_mlist_type mx_mlist_query(char const *name,
-      su_boole subscribed_only);
+FL enum mx_mlist_type mx_mlist_query(char const *name, boole subscribed_only);
 FL enum mx_mlist_type mx_mlist_query_mp(struct message *mp,
       enum mx_mlist_type what);
 

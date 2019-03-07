@@ -150,7 +150,7 @@ option_setup() {
          ;;
       [dD][eE][vV][eE][lL])
          option_maximal
-         OPT_DEVEL=1 OPT_DEBUG=1 OPT_NYD2=1
+         OPT_DEVEL=1 OPT_DEBUG=1
          ;;
       [oO][dD][eE][vV][eE][lL])
          option_maximal
@@ -1543,7 +1543,6 @@ feat_def ASAN_MEMORY 0
 feat_def USAN 0
 feat_def DEBUG 0
 feat_def DEVEL 0
-feat_def NYD2 0
 feat_def NOMEMDBG 0
 
 ## Test for "basic" system-calls / functionality that is used by all parts

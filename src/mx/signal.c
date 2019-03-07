@@ -44,6 +44,9 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /*
  * TODO At the beginning of November 2015 -- for v14.9 -- i've tried for one
  * TODO and a half week to convert this codebase to SysV style signal handling,
@@ -89,11 +92,11 @@
  */
 
 /* {hold,rele}_all_sigs() */
-static size_t           _alls_depth;
+static uz           _alls_depth;
 static sigset_t         _alls_nset, _alls_oset;
 
 /* {hold,rele}_sigs() */
-static size_t           _hold_sigdepth;
+static uz           _hold_sigdepth;
 static sigset_t         _hold_nset, _hold_oset;
 
 /* */
@@ -101,17 +104,17 @@ static void a_signal_dummyhdl(int sig);
 
 static void
 a_signal_dummyhdl(int sig){
-   n_UNUSED(sig);
+   UNUSED(sig);
 }
 
 FL int
 c_sleep(void *v){ /* XXX installs sighdl+ due to outer jumps and SA_RESTART! */
    sigset_t nset, oset;
    struct sigaction nact, oact;
-   bool_t ignint;
-   uiz_t sec, msec;
+   boole ignint;
+   uz sec, msec;
    char **argv;
-   n_NYD_IN;
+   NYD_IN;
 
    argv = v;
 
@@ -130,11 +133,11 @@ c_sleep(void *v){ /* XXX installs sighdl+ due to outer jumps and SA_RESTART! */
    else
       ignint = (argv[2] != NULL);
 
-   if(UIZ_MAX / n_DATE_MILLISSEC < sec)
+   if(UZ_MAX / n_DATE_MILLISSEC < sec)
       goto jeover;
    sec *= n_DATE_MILLISSEC;
 
-   if(UIZ_MAX - sec < msec)
+   if(UZ_MAX - sec < msec)
       goto jeover;
    msec += sec;
 
@@ -162,7 +165,7 @@ c_sleep(void *v){ /* XXX installs sighdl+ due to outer jumps and SA_RESTART! */
    sigprocmask(SIG_SETMASK, &oset, NULL);
    sigaction(SIGINT, &oact, NULL);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return (argv == NULL);
 jeover:
    n_err(_("`sleep': argument(s) overflow(s) datatype\n"));
@@ -188,7 +191,7 @@ c_sigstate(void *vp){ /* TODO remove again */
       {SIGCHLD, "SIGCHLD"}, {SIGPIPE, "SIGPIPE"}
    };
    char const *cp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if((cp = vp) != NULL && cp[0] != '\0'){
       if(!su_cs_cmp_case(&cp[1], "all")){
@@ -206,8 +209,8 @@ c_sigstate(void *vp){ /* TODO remove again */
 
    fprintf(n_stdout, "alls_depth %zu, hold_sigdepth %zu\nHandlers:\n",
       _alls_depth, _hold_sigdepth);
-   for(hdlp = hdla; hdlp < &hdla[n_NELEM(hdla)]; ++hdlp){
-      sighandler_type shp;
+   for(hdlp = hdla; hdlp < &hdla[NELEM(hdla)]; ++hdlp){
+      n_sighdl_t shp;
 
       shp = safe_signal(hdlp->val, SIG_IGN);
       safe_signal(hdlp->val, shp);
@@ -215,7 +218,7 @@ c_sigstate(void *vp){ /* TODO remove again */
          (shp == SIG_ERR ? "ERR" : (shp == SIG_DFL ? "DFL"
             : (shp == SIG_IGN ? "IGN" : "ptf?"))));
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return OKAY;
 }
 #endif /* mx_HAVE_DEVEL */
@@ -223,45 +226,45 @@ c_sigstate(void *vp){ /* TODO remove again */
 FL void
 n_raise(int signo)
 {
-   n_NYD2_IN;
+   NYD2_IN;
    if(n_pid == 0)
       n_pid = getpid();
    kill(n_pid, signo);
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
-FL sighandler_type
-safe_signal(int signum, sighandler_type handler)
+FL n_sighdl_t
+safe_signal(int signum, n_sighdl_t handler)
 {
    struct sigaction nact, oact;
-   sighandler_type rv;
-   n_NYD2_IN;
+   n_sighdl_t rv;
+   NYD2_IN;
 
    nact.sa_handler = handler;
    sigfillset(&nact.sa_mask);
    nact.sa_flags = SA_RESTART;
    rv = (sigaction(signum, &nact, &oact) != 0) ? SIG_ERR : oact.sa_handler;
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL n_sighdl_t
 n_signal(int signo, n_sighdl_t hdl){
    struct sigaction nact, oact;
-   n_NYD2_IN;
+   NYD2_IN;
 
    nact.sa_handler = hdl;
    sigfillset(&nact.sa_mask);
    nact.sa_flags = 0;
    hdl = (sigaction(signo, &nact, &oact) != 0) ? SIG_ERR : oact.sa_handler;
-   n_NYD2_OU;
+   NYD2_OU;
    return hdl;
 }
 
 FL void
 hold_all_sigs(void)
 {
-   n_NYD2_IN;
+   NYD2_IN;
    if (_alls_depth++ == 0) {
       sigfillset(&_alls_nset);
       sigdelset(&_alls_nset, SIGABRT);
@@ -277,22 +280,22 @@ hold_all_sigs(void)
       sigdelset(&_alls_nset, SIGCHLD);
       sigprocmask(SIG_BLOCK, &_alls_nset, &_alls_oset);
    }
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 FL void
 rele_all_sigs(void)
 {
-   n_NYD2_IN;
+   NYD2_IN;
    if (--_alls_depth == 0)
       sigprocmask(SIG_SETMASK, &_alls_oset, (sigset_t*)NULL);
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 FL void
 hold_sigs(void)
 {
-   n_NYD2_IN;
+   NYD2_IN;
    if (_hold_sigdepth++ == 0) {
       sigemptyset(&_hold_nset);
       sigaddset(&_hold_nset, SIGHUP);
@@ -300,16 +303,16 @@ hold_sigs(void)
       sigaddset(&_hold_nset, SIGQUIT);
       sigprocmask(SIG_BLOCK, &_hold_nset, &_hold_oset);
    }
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 FL void
 rele_sigs(void)
 {
-   n_NYD2_IN;
+   NYD2_IN;
    if (--_hold_sigdepth == 0)
       sigprocmask(SIG_SETMASK, &_hold_oset, NULL);
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 /* TODO This is temporary gracyness */
@@ -317,7 +320,7 @@ static struct n_sigman *n__sigman;
 static void n__sigman_hdl(int signo);
 static void
 n__sigman_hdl(int signo){
-   n_NYD_X; /* Signal handler */
+   NYD; /* Signal handler */
    n__sigman->sm_signo = signo;
    siglongjmp(n__sigman->sm_jump, 1);
 }
@@ -326,7 +329,7 @@ FL int
 n__sigman_enter(struct n_sigman *self, int flags){
    /* TODO no error checking when installing sighdls */
    int rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if((int)flags >= 0){
       self->sm_flags = (enum n_sigman_flags)flags;
@@ -362,14 +365,14 @@ n__sigman_enter(struct n_sigman *self, int flags){
       ++_hold_sigdepth;
    }
    rele_sigs();
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL void
 n_sigman_cleanup_ping(struct n_sigman *self){
-   ui32_t f;
-   n_NYD2_IN;
+   u32 f;
+   NYD2_IN;
 
    hold_sigs();
 
@@ -387,15 +390,15 @@ n_sigman_cleanup_ping(struct n_sigman *self){
       safe_signal(SIGPIPE, SIG_IGN);
 
    rele_sigs();
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 FL void
 n_sigman_leave(struct n_sigman *self,
       enum n_sigman_flags reraise_flags){
-   ui32_t f;
+   u32 f;
    int sig;
-   n_NYD2_IN;
+   NYD2_IN;
 
    hold_sigs();
    n__sigman = self->sm_outer;
@@ -436,7 +439,7 @@ n_sigman_leave(struct n_sigman *self,
       break;
    }
 
-   n_NYD2_OU;
+   NYD2_OU;
    if(sig != 0){
       sigset_t cset;
 
@@ -450,19 +453,19 @@ n_sigman_leave(struct n_sigman *self,
 FL int
 n_sigman_peek(void){
    int rv;
-   n_NYD2_IN;
+   NYD2_IN;
    rv = 0;
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL void
 n_sigman_consume(void){
-   n_NYD2_IN;
-   n_NYD2_OU;
+   NYD2_IN;
+   NYD2_OU;
 }
 
-#ifdef mx_HAVE_n_NYD
+#if su_DVLOR(1, 0)
 static void a_signal_nyd__dump(su_up cookie, char const *buf, su_uz blen);
 static void
 a_signal_nyd__dump(su_up cookie, char const *buf, su_uz blen){
@@ -470,16 +473,16 @@ a_signal_nyd__dump(su_up cookie, char const *buf, su_uz blen){
 }
 
 FL void
-_nyd_oncrash(int signo)
+mx__nyd_oncrash(int signo)
 {
    char pathbuf[PATH_MAX], s2ibuf[32], *cp;
    struct sigaction xact;
    sigset_t xset;
    int fd;
-   size_t i, fnl;
+   uz i, fnl;
    char const *tmpdir;
 
-   n_LCTA(sizeof("./") -1 + sizeof(VAL_UAGENT) -1 + sizeof(".dat") < PATH_MAX,
+   LCTA(sizeof("./") -1 + sizeof(VAL_UAGENT) -1 + sizeof(".dat") < PATH_MAX,
       "System limits too low for fixed-size buffer operation");
 
    xact.sa_handler = SIG_DFL;
@@ -506,7 +509,7 @@ _nyd_oncrash(int signo)
 
 # undef _X
 # define _X(X) (X), sizeof(X) -1
-   write(fd, _X("\n\nn_NYD: program dying due to signal "));
+   write(fd, _X("\n\nNYD: program dying due to signal "));
 
    cp = s2ibuf + sizeof(s2ibuf) -1;
    *cp = '\0';
@@ -515,7 +518,7 @@ _nyd_oncrash(int signo)
       *--cp = "0123456789"[i % 10];
       i /= 10;
    } while (i != 0);
-   write(fd, cp, PTR2SIZE((s2ibuf + sizeof(s2ibuf) -1) - cp));
+   write(fd, cp, P2UZ((s2ibuf + sizeof(s2ibuf) -1) - cp));
 
    write(fd, _X(":\n"));
 
@@ -524,7 +527,7 @@ _nyd_oncrash(int signo)
    write(fd, _X("----------\nCome up to the lab and see what's on the slab\n"));
 
    if (fd != STDERR_FILENO) {
-      write(STDERR_FILENO, _X("Crash n_NYD listing written to "));
+      write(STDERR_FILENO, _X("Crash NYD listing written to "));
       write(STDERR_FILENO, pathbuf, fnl);
       write(STDERR_FILENO, _X("\n"));
 # undef _X
@@ -539,6 +542,7 @@ _nyd_oncrash(int signo)
    for (;;)
       _exit(n_EXIT_ERR);
 }
-#endif /* mx_HAVE_n_NYD */
+#endif /* DVLOR(1,0) */
 
+#include "su/code-ou.h"
 /* s-it-mode */

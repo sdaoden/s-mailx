@@ -52,6 +52,9 @@
 #include "mx/iconv.h"
 #include "mx/names.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 struct a_arg{
    struct a_arg *aa_next;
    char const *aa_file;
@@ -89,7 +92,7 @@ static su_boole a_main_dump_doc(su_up cookie, su_boole has_arg,
 static void a_main_startup(void);
 
 /* Grow a char** */
-static size_t a_main_grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt);
+static uz a_main_grow_cpp(char const ***cpp, uz newsize, uz oldcnt);
 
 /* Setup some variables which we require to be valid / verified */
 static void a_main_setup_vars(void);
@@ -106,8 +109,8 @@ static void a_main__scrsz(int is_sighdl);
 
 /* Ok, we are reading mail.  Decide whether we are editing a mailbox or reading
  * the system mailbox, and open up the right stuff */
-static int a_main_rcv_mode(bool_t had_A_arg, char const *folder,
-            char const *Larg, char const **Yargs, size_t Yargs_cnt);
+static int a_main_rcv_mode(boole had_A_arg, char const *folder,
+            char const *Larg, char const **Yargs, uz Yargs_cnt);
 
 /* Interrupt printing of the headers */
 static void a_main_hdrstop(int signo);
@@ -116,8 +119,8 @@ static void
 a_main_usage(FILE *fp){
    /* Stay in VAL_HEIGHT lines; On buf length change: verify visual output! */
    char buf[7];
-   size_t i;
-   n_NYD2_IN;
+   uz i;
+   NYD2_IN;
 
    i = su_cs_len(su_program);
    i = n_MIN(i, sizeof(buf) -1);
@@ -175,14 +178,14 @@ a_main_usage(FILE *fp){
          ". Bugs/Contact via "
             "\"$ %s -Sexpandaddr=shquote '\\$contact-mail'\"\n"),
          su_program, su_program);
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 static su_boole
 a_main_dump_doc(su_up cookie, su_boole has_arg, char const *sopt,
       char const *lopt, char const *doc){
    char const *x1, *x2;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if(has_arg)
       /* I18N: describing arguments to command line options */
@@ -192,7 +195,7 @@ a_main_dump_doc(su_up cookie, su_boole has_arg, char const *sopt,
       x1 = (sopt[0] != '\0' ? _(", ") : sopt), x2 = su_empty;
    /* I18N: short option, "[ ARG], " separator, long option [=ARG], doc */
    fprintf(su_S(FILE*,cookie), _("%s%s%s%s: %s\n"), sopt, x1, lopt, x2, doc);
-   n_NYD2_OU;
+   NYD2_OU;
    return TRU1;
 }
 
@@ -200,7 +203,7 @@ static void
 a_main_startup(void){
    struct passwd *pwuid;
    char *cp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    n_stdin = stdin;
    n_stdout = stdout;
@@ -215,14 +218,14 @@ a_main_startup(void){
    );
    su_log_set_level(n_LOG_LEVEL); /* XXX _EMERG is 0.. */
 
-#ifdef mx_HAVE_n_NYD
-   safe_signal(SIGABRT, &_nyd_oncrash);
+#if su_DVLOR(1, 0)
+   safe_signal(SIGABRT, &mx__nyd_oncrash);
 # ifdef SIGBUS
-   safe_signal(SIGBUS, &_nyd_oncrash);
+   safe_signal(SIGBUS, &mx__nyd_oncrash);
 # endif
-   safe_signal(SIGFPE, &_nyd_oncrash);
-   safe_signal(SIGILL, &_nyd_oncrash);
-   safe_signal(SIGSEGV, &_nyd_oncrash);
+   safe_signal(SIGFPE, &mx__nyd_oncrash);
+   safe_signal(SIGILL, &mx__nyd_oncrash);
+   safe_signal(SIGSEGV, &mx__nyd_oncrash);
 #endif
 
    /* Initialize our input, loop and command machinery */
@@ -270,10 +273,10 @@ a_main_startup(void){
    /* Detect, verify and fixate our invoking user (environment) */
    n_group_id = getgid();
    if((pwuid = getpwuid(n_user_id = getuid())) == NULL)
-      n_panic(_("Cannot associate a name with uid %lu"), (ul_i)n_user_id);
+      n_panic(_("Cannot associate a name with uid %lu"), (ul)n_user_id);
    else{
       char const *ep;
-      bool_t doenv;
+      boole doenv;
 
       if(!(doenv = (ep = ok_vlook(LOGNAME)) == NULL) &&
             (doenv = (su_cs_cmp(pwuid->pw_name, ep) != 0)))
@@ -307,28 +310,28 @@ a_main_startup(void){
    }
 
    (void)ok_blook(POSIXLY_CORRECT);
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
-static size_t
-a_main_grow_cpp(char const ***cpp, size_t newsize, size_t oldcnt){
+static uz
+a_main_grow_cpp(char const ***cpp, uz newsize, uz oldcnt){
    /* Just use auto-reclaimed storage, it will be preserved */
    char const **newcpp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    newcpp = n_autorec_alloc(sizeof(char*) * (newsize + 1));
 
    if(oldcnt > 0)
       su_mem_copy(newcpp, *cpp, oldcnt * sizeof(char*));
    *cpp = newcpp;
-   n_NYD2_OU;
+   NYD2_OU;
    return newsize;
 }
 
 static void
 a_main_setup_vars(void){
    char const *cp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    /*
     * Ensure some variables get loaded and/or verified, II. (post getopt).
@@ -352,13 +355,13 @@ a_main_setup_vars(void){
       cp = savecat(su_reproducible_build, ": ");
       ok_vset(log_prefix, cp);
    }
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 su_SINLINE void
 a_main_setup_screen(void){
    /* Problem: VAL_ configuration values are strings, we need numbers */
-   n_LCTAV(VAL_HEIGHT[0] != '\0' && (VAL_HEIGHT[1] == '\0' ||
+   LCTAV(VAL_HEIGHT[0] != '\0' && (VAL_HEIGHT[1] == '\0' ||
       VAL_HEIGHT[2] == '\0' || VAL_HEIGHT[3] == '\0'));
 #define a_HEIGHT \
    (VAL_HEIGHT[1] == '\0' ? (VAL_HEIGHT[0] - '0') \
@@ -366,7 +369,7 @@ a_main_setup_screen(void){
       ? ((VAL_HEIGHT[0] - '0') * 10 + (VAL_HEIGHT[1] - '0')) \
       : (((VAL_HEIGHT[0] - '0') * 10 + (VAL_HEIGHT[1] - '0')) * 10 + \
          (VAL_HEIGHT[2] - '0'))))
-   n_LCTAV(VAL_WIDTH[0] != '\0' &&
+   LCTAV(VAL_WIDTH[0] != '\0' &&
       (VAL_WIDTH[1] == '\0' || VAL_WIDTH[2] == '\0' || VAL_WIDTH[3] == '\0'));
 #define a_WIDTH \
    (VAL_WIDTH[1] == '\0' ? (VAL_WIDTH[0] - '0') \
@@ -375,7 +378,7 @@ a_main_setup_screen(void){
       : (((VAL_WIDTH[0] - '0') * 10 + (VAL_WIDTH[1] - '0')) * 10 + \
          (VAL_WIDTH[2] - '0'))))
 
-   n_NYD2_IN;
+   NYD2_IN;
 
    if(!su_state_has(su_STATE_REPRODUCIBLE) &&
          ((n_psonce & n_PSO_INTERACTIVE) ||
@@ -398,7 +401,7 @@ a_main_setup_screen(void){
       /* $COLUMNS and $LINES defaults as documented in the manual */
       n_scrnheight = n_realscreenheight = a_HEIGHT,
       n_scrnwidth = a_WIDTH;
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 static void
@@ -409,8 +412,8 @@ a_main__scrsz(int is_sighdl){
 #elif defined TIOCGSIZE
    struct ttysize ts;
 #endif
-   n_NYD2_IN;
-   assert((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_BATCH_FLAG));
+   NYD2_IN;
+   ASSERT((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_BATCH_FLAG));
 
    n_scrnheight = n_realscreenheight = n_scrnwidth = 0;
 
@@ -419,7 +422,7 @@ a_main__scrsz(int is_sighdl){
     * only honour it upon first run; abuse *is_sighdl* as an indicator */
    if(!is_sighdl){
       char const *cp;
-      bool_t hadl, hadc;
+      boole hadl, hadc;
 
       if((hadl = ((cp = ok_vlook(LINES)) != NULL))){
          su_idec_u32_cp(&n_scrnheight, cp, 0, NULL);
@@ -505,7 +508,7 @@ jleave:
    if(n_scrnwidth > 1 && !(n_psonce & n_PSO_TERMCAP_FULLWIDTH))
       --n_scrnwidth;
 /*#endif*/
-   n_NYD2_OU;
+   NYD2_OU;
 
 #undef a_HEIGHT
 #undef a_WIDTH
@@ -514,12 +517,12 @@ jleave:
 static sigjmp_buf a_main__hdrjmp; /* XXX */
 
 static int
-a_main_rcv_mode(bool_t had_A_arg, char const *folder, char const *Larg,
-      char const **Yargs, size_t Yargs_cnt){
+a_main_rcv_mode(boole had_A_arg, char const *folder, char const *Larg,
+      char const **Yargs, uz Yargs_cnt){
    /* XXX a_main_rcv_mode(): use argument carrier */
-   sighandler_type prevint;
+   n_sighdl_t prevint;
    int i;
-   n_NYD_IN;
+   NYD_IN;
 
    i = had_A_arg ? FEDIT_ACCOUNT : FEDIT_NONE;
    if(n_poption & n_PO_QUICKRUN_MASK)
@@ -595,14 +598,14 @@ jquit:
       quit(FAL0);
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return n_exit_status;
 }
 
 static void
 a_main_hdrstop(int signo){
-   n_NYD_X; /* Signal handler */
-   n_UNUSED(signo);
+   NYD; /* Signal handler */
+   UNUSED(signo);
 
    fflush(n_stdout);
    n_err_sighdl(_("\nInterrupt\n"));
@@ -658,7 +661,7 @@ main(int argc, char *argv[]){
    struct su_avopt avo;
    int i;
    char *cp;
-   size_t Xargs_size, Xargs_cnt, Yargs_size, Yargs_cnt, smopts_size;
+   uz Xargs_size, Xargs_cnt, Yargs_size, Yargs_cnt, smopts_size;
    char const *Aarg, *emsg, *folder, *Larg, *okey, *qf,
       *subject, *uarg, **Xargs, **Yargs;
    struct attachment *attach;
@@ -671,10 +674,10 @@ main(int argc, char *argv[]){
       a_RF_USER = 1<<2,
       a_RF_ALL = a_RF_SYSTEM | a_RF_USER
    } resfiles;
-   n_NYD_IN;
+   NYD_IN;
 
    a_head = NULL;
-   n_UNINIT(a_curr, NULL);
+   UNINIT(a_curr, NULL);
    to = cc = bcc = NULL;
    attach = NULL;
    Aarg = emsg = folder = Larg = okey = qf = subject = uarg = NULL;
@@ -793,7 +796,7 @@ main(int argc, char *argv[]){
          Larg = avo.avo_current_arg;
          n_poption |= n_PO_HEADERLIST;
          if(*Larg == '"' || *Larg == '\''){ /* TODO list.c:listspec_check() */
-            size_t j;
+            uz j;
 
             j = su_cs_len(++Larg);
             if(j > 0){
@@ -880,40 +883,40 @@ jeMmq:
          /* FALLTHRU */
       case 'S':
          {  struct str sin;
-            struct n_string s, *sp;
+            struct n_string s_b, *s;
             char const *a[2];
-            bool_t b;
+            boole b;
 
             if(!ok_blook(v15_compat)){
                okey = a[0] = avo.avo_current_arg;
-               sp = NULL;
+               s = NIL;
             }else{
                enum n_shexp_state shs;
 
                n_autorec_relax_create();
-               sp = n_string_creat_auto(&s);
+               s = n_string_creat_auto(&s_b);
                sin.s = n_UNCONST(avo.avo_current_arg);
-               sin.l = UIZ_MAX;
+               sin.l = UZ_MAX;
                shs = n_shexp_parse_token((n_SHEXP_PARSE_LOG |
                      n_SHEXP_PARSE_IGNORE_EMPTY |
                      n_SHEXP_PARSE_QUOTE_AUTO_FIXED |
-                     n_SHEXP_PARSE_QUOTE_AUTO_DSQ), sp, &sin, NULL);
+                     n_SHEXP_PARSE_QUOTE_AUTO_DSQ), s, &sin, NULL);
                if((shs & n_SHEXP_STATE_ERR_MASK) ||
                      !(shs & n_SHEXP_STATE_STOP)){
                   n_autorec_relax_gut();
                   goto je_S;
                }
-               okey = a[0] = n_string_cp_const(sp);
+               okey = a[0] = n_string_cp_const(s);
             }
 
-            a[1] = NULL;
+            a[1] = NIL;
             n_poption |= n_PO_S_FLAG_TEMPORARY;
             n_pstate |= n_PS_ROBOT;
             b = (c_set(a) == 0);
             n_pstate &= ~n_PS_ROBOT;
             n_poption &= ~n_PO_S_FLAG_TEMPORARY;
 
-            if(sp != NULL)
+            if(s != NIL)
                n_autorec_relax_gut();
             if(!b && (ok_blook(errexit) || ok_blook(posix))){
 je_S:
@@ -1132,7 +1135,7 @@ jgetopt_done:
       /* *expand() returns a savestr(), but load() only uses the file name
        * for fopen(), so it is safe to do this */
       if(resfiles & a_RF_SYSTEM){
-         bool_t nload;
+         boole nload;
 
          if((nload = ok_blook(NAIL_NO_SYSTEM_RC)))
             n_OBSOLETE(_("Please use $MAILX_NO_SYSTEM_RC instead of "
@@ -1160,7 +1163,7 @@ jgetopt_done:
    /* Additional options to pass-through to MTA, and allowed to do so? */
    i = argc;
    if((cp = ok_vlook(expandargv)) != NULL){
-      bool_t isfail, isrestrict;
+      boole isfail, isrestrict;
 
       isfail = !su_cs_cmp_case(cp, "fail");
       isrestrict = (!isfail && !su_cs_cmp_case(cp, "restrict"));
@@ -1178,7 +1181,7 @@ je_expandargv:
             goto jleave;
          }
          do{
-            assert(n_smopts_cnt + 1 <= smopts_size);
+            ASSERT(n_smopts_cnt + 1 <= smopts_size);
             n_smopts[n_smopts_cnt++] = cp;
          }while((cp = argv[++i]) != NULL);
       }
@@ -1285,9 +1288,11 @@ j_leave:
    su_mem_bag_gut(n_go_data->gdc_membag); /* Was init in go_init() */
    su_mem_set_conf(su_MEM_CONF_LINGER_FREE_RELEASE, 0);
 #endif
-   n_NYD_OU;
+   NYD_OU;
    return n_exit_status;
 }
+
+#include "su/code-ou.h"
 
 /* Source the others in that case! */
 #ifdef mx_HAVE_AMALGAMATION

@@ -69,8 +69,11 @@
 # include "mx/nail.h"
 #endif
 
-EMPTY_FILE()
+su_EMPTY_FILE()
 #ifdef mx_HAVE_IMAP
+/* TODO fake */
+#include "su/code-in.h"
+
 /* Minimize differences to FreeBSDs usr.bin/compress/zopen.c */
 #undef u_int
 #define u_int		unsigned int
@@ -753,4 +756,6 @@ zalloc(FILE *fp)
 #undef roffset
 #undef size
 #undef gbuf
+
+#include "su/code-ou.h"
 #endif /* ndef mx_HAVE_IMAP */

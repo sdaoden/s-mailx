@@ -55,9 +55,12 @@ su_EMPTY_FILE()
 #include <su/icodec.h>
 #include <su/prime.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* a_maildir_tbl should be a hash-indexed array of trees! */
 static struct message **a_maildir_tbl, **a_maildir_tbl_top;
-static ui32_t a_maildir_tbl_prime, a_maildir_tbl_maxdist;
+static u32 a_maildir_tbl_prime, a_maildir_tbl_maxdist;
 static sigjmp_buf    _maildir_jmp;
 
 static void             __maildircatch(int s);
@@ -104,15 +107,15 @@ static enum okay        subdir_remove(char const *name, char const *sub);
 static void
 __maildircatch(int s)
 {
-   n_NYD_X; /* Signal handler */
+   NYD; /* Signal handler */
    siglongjmp(_maildir_jmp, s);
 }
 
 static void
 __maildircatch_hold(int s)
 {
-   n_NYD_X; /* Signal handler */
-   n_UNUSED(s);
+   NYD; /* Signal handler */
+   UNUSED(s);
    /* TODO no STDIO in signal handler, no _() tr's -- pre-translate interrupt
     * TODO globally; */
    n_err_sighdl(_("\nImportant operation in progress: "
@@ -124,40 +127,40 @@ static void
 _cleantmp(void)
 {
    struct stat st;
-   struct n_string s, *sp;
-   si64_t now;
+   struct n_string s_b, *s;
+   s64 now;
    DIR *dirp;
    struct dirent *dp;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((dirp = opendir("tmp")) == NULL)
       goto jleave;
 
    now = n_time_now(FAL0)->ts_sec;
-   sp = n_string_creat_auto(&s);
+   s = n_string_creat_auto(&s_b);
 
    while ((dp = readdir(dirp)) != NULL) {
       if (dp->d_name[0] == '.')
          continue;
 
-      sp = n_string_trunc(sp, 0);
-      sp = n_string_push_buf(sp, "tmp/", sizeof("tmp/") -1);
-      sp = n_string_push_cp(sp, dp->d_name);
-      if (stat(n_string_cp(sp), &st) == -1)
+      s = n_string_trunc(s, 0);
+      s = n_string_push_buf(s, "tmp/", sizeof("tmp/") -1);
+      s = n_string_push_cp(s, dp->d_name);
+      if (stat(n_string_cp(s), &st) == -1)
          continue;
       if (st.st_atime + 36*3600 < now)
-         unlink(sp->s_dat);
+         unlink(s->s_dat);
    }
    closedir(dirp);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static int
 _maildir_setfile1(char const *name, enum fedit_mode fm, int omsgCount)
 {
    int i;
-   n_NYD_IN;
+   NYD_IN;
 
    if (!(fm & FEDIT_NEWMAIL))
       _cleantmp();
@@ -185,7 +188,7 @@ _maildir_setfile1(char const *name, enum fedit_mode fm, int omsgCount)
       qsort(message, msgCount, sizeof *message, &a_maildir_cmp);
    i = msgCount;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return i;
 }
 
@@ -193,16 +196,16 @@ static int
 a_maildir_cmp(void const *xa, void const *xb){
    char const *cpa, *cpa_pid, *cpb, *cpb_pid;
    union {struct message const *mp; char const *cp;} a, b;
-   si64_t at, bt;
+   s64 at, bt;
    int rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    a.mp = xa;
    b.mp = xb;
 
    /* We could have parsed the time somewhen in the past, do a quick shot */
-   at = (si64_t)a.mp->m_time;
-   bt = (si64_t)b.mp->m_time;
+   at = (s64)a.mp->m_time;
+   bt = (s64)b.mp->m_time;
    if(at != 0 && bt != 0 && (at -= bt) != 0)
       goto jret;
 
@@ -331,7 +334,7 @@ a_maildir_cmp(void const *xa, void const *xb){
 jret:
    rv = (at == 0 ? 0 : (at < 0 ? -1 : 1));
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 jm1:
    rv = -1;
@@ -347,7 +350,7 @@ _maildir_subdir(char const *name, char const *sub, enum fedit_mode fm)
    DIR *dirp;
    struct dirent *dp;
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((dirp = opendir(sub)) == NULL) {
       n_err(_("Cannot open directory %s\n"),
@@ -369,7 +372,7 @@ _maildir_subdir(char const *name, char const *sub, enum fedit_mode fm)
    closedir(dirp);
    rv = 0;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -380,21 +383,21 @@ _maildir_append(char const *name, char const *sub, char const *fn)
    time_t t = 0;
    enum mflag f = MUSED | MNOFROM | MNEWEST;
    char const *cp, *xp;
-   n_NYD_IN;
-   n_UNUSED(name);
+   NYD_IN;
+   UNUSED(name);
 
    if (fn != NULL && sub != NULL) {
       if (!su_cs_cmp(sub, "new"))
          f |= MNEW;
 
       /* C99 */{
-         si64_t tib;
+         s64 tib;
 
          (void)/*TODO*/su_idec_s64_cp(&tib, fn, 10, &xp);
          t = (time_t)tib;
       }
 
-      if ((cp = su_cs_rfind_c(xp, ',')) != NULL && PTRCMP(cp, >, xp + 2) &&
+      if ((cp = su_cs_rfind_c(xp, ',')) != NULL && PCMP(cp, >, xp + 2) &&
             cp[-1] == '2' && cp[-2] == n_MAILDIR_SEPARATOR) {
          while (*++cp != '\0') {
             switch (*cp) {
@@ -429,20 +432,20 @@ _maildir_append(char const *name, char const *sub, char const *fn)
    m = &message[msgCount++];
    /* C99 */{
       char *tmp;
-      size_t sz, i;
+      uz i, j;
 
       i = su_cs_len(fn) +1;
-      sz = su_cs_len(sub);
-      m->m_maildir_file = tmp = n_alloc(sz + 1 + i);
-      su_mem_copy(tmp, sub, sz);
-      tmp[sz++] = '/';
-      su_mem_copy(&tmp[sz], fn, i);
+      j = su_cs_len(sub);
+      m->m_maildir_file = tmp = n_alloc(j + 1 + i);
+      su_mem_copy(tmp, sub, j);
+      tmp[j++] = '/';
+      su_mem_copy(&tmp[j], fn, i);
    }
    m->m_time = t;
    m->m_flag = f;
    m->m_maildir_hash = su_cs_hash(fn);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return;
 }
 
@@ -450,17 +453,17 @@ static void
 readin(char const *name, struct message *m)
 {
    char *buf;
-   size_t bufsize, buflen, cnt;
+   uz bufsize, buflen, cnt;
    long size = 0, lines = 0;
    off_t offset;
    FILE *fp;
    int emptyline = 0;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((fp = Fopen(m->m_maildir_file, "r")) == NULL) {
       n_err(_("Cannot read %s for message %lu\n"),
          n_shexp_quote_cp(savecatsep(name, '/', m->m_maildir_file), FAL0),
-         (ul_i)PTR2SIZE(m - message + 1));
+         (ul)P2UZ(m - message + 1));
       m->m_flag |= MHIDDEN;
       goto jleave;
    }
@@ -501,7 +504,7 @@ readin(char const *name, struct message *m)
    m->m_offset = mailx_offsetof(offset);
    substdate(m);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static void
@@ -510,14 +513,14 @@ maildir_update(void)
    struct message *m;
    struct n_timespec const *tsp;
    int dodel, c, gotcha = 0, held = 0, modflags = 0;
-   n_NYD_IN;
+   NYD_IN;
 
    if (mb.mb_perm == 0)
       goto jfree;
 
    if (!(n_pstate & n_PS_EDIT)) {
       holdbits();
-      for (m = message, c = 0; PTRCMP(m, <, message + msgCount); ++m) {
+      for (m = message, c = 0; PCMP(m, <, message + msgCount); ++m) {
          if (m->m_flag & MBOX)
             c++;
       }
@@ -529,7 +532,7 @@ maildir_update(void)
    tsp = n_time_now(TRU1); /* TODO FAL0, eventloop update! */
 
    n_autorec_relax_create();
-   for (m = message, gotcha = 0, held = 0; PTRCMP(m, <, message + msgCount);
+   for (m = message, gotcha = 0, held = 0; PCMP(m, <, message + msgCount);
          ++m) {
       if (n_pstate & n_PS_EDIT)
          dodel = m->m_flag & MDELETED;
@@ -539,7 +542,7 @@ maildir_update(void)
          if (unlink(m->m_maildir_file) < 0)
             n_err(_("Cannot delete file %s for message %lu\n"),
                n_shexp_quote_cp(savecatsep(mailname, '/', m->m_maildir_file),
-                  FAL0), (ul_i)PTR2SIZE(m - message + 1));
+                  FAL0), (ul)P2UZ(m - message + 1));
          else
             ++gotcha;
       } else {
@@ -569,16 +572,16 @@ jbypass:
    }
    fflush(n_stdout);
 jfree:
-   for (m = message; PTRCMP(m, <, message + msgCount); ++m)
+   for (m = message; PCMP(m, <, message + msgCount); ++m)
       n_free(n_UNCONST(m->m_maildir_file));
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static void
 _maildir_move(struct n_timespec const *tsp, struct message *m)
 {
    char *fn, *newfn;
-   n_NYD_IN;
+   NYD_IN;
 
    fn = mkname(tsp, m->m_flag, m->m_maildir_file + 4);
    newfn = savecat("cur/", fn);
@@ -588,14 +591,14 @@ _maildir_move(struct n_timespec const *tsp, struct message *m)
       n_err(_("Cannot link %s to %s: message %lu not touched\n"),
          n_shexp_quote_cp(savecatsep(mailname, '/', m->m_maildir_file), FAL0),
          n_shexp_quote_cp(savecatsep(mailname, '/', newfn), FAL0),
-         (ul_i)PTR2SIZE(m - message + 1));
+         (ul)P2UZ(m - message + 1));
       goto jleave;
    }
    if (unlink(m->m_maildir_file) == -1)
       n_err(_("Cannot unlink %s\n"),
          n_shexp_quote_cp(savecatsep(mailname, '/', m->m_maildir_file), FAL0));
 jleave:
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static char *
@@ -606,10 +609,10 @@ mkname(struct n_timespec const *tsp, enum mflag f, char const *pref)
 
    char *cp;
    int size, n, i;
-   n_NYD_IN;
+   NYD_IN;
 
    if (pref == NULL) {
-      si64_t s;
+      s64 s;
 
       if(n_pid == 0)
          n_pid = getpid();
@@ -618,7 +621,7 @@ mkname(struct n_timespec const *tsp, enum mflag f, char const *pref)
          cp = n_nodename(FAL0);
          n = size = 0;
          do {
-            if (UICMP(32, n, <, size + 8))
+            if (UCMP(32, n, <, size + 8))
                node = n_realloc(node, size += 20);
             switch (*cp) {
             case '/':
@@ -684,7 +687,7 @@ mkname(struct n_timespec const *tsp, enum mflag f, char const *pref)
          cp[n++] = 'T';
       cp[n] = '\0';
    }
-   n_NYD_OU;
+   NYD_OU;
    return cp;
 }
 
@@ -695,9 +698,9 @@ maildir_append1(struct n_timespec const *tsp, char const *name, FILE *fp,
    char buf[4096], *fn, *tfn, *nfn;
    struct stat st;
    FILE *op;
-   size_t nlen, flen, n;
+   uz nlen, flen, n;
    enum okay rv = STOP;
-   n_NYD_IN;
+   NYD_IN;
 
    nlen = su_cs_len(name);
 
@@ -712,7 +715,7 @@ maildir_append1(struct n_timespec const *tsp, char const *name, FILE *fp,
             (op = Fopen(tfn, "wx")) != NULL)
          break;
 
-      nfn = (char*)(PTR2SIZE(nfn) - 1);
+      nfn = (char*)(P2UZ(nfn) - 1);
       if (nfn == NULL) {
          n_err(_("Can't create an unique file name in %s\n"),
             n_shexp_quote_cp(savecat(name, "/tmp"), FAL0));
@@ -723,7 +726,7 @@ maildir_append1(struct n_timespec const *tsp, char const *name, FILE *fp,
    if (fseek(fp, off1, SEEK_SET) == -1)
       goto jtmperr;
    while (size > 0) {
-      size_t z = UICMP(z, size, >, sizeof buf) ? sizeof buf : (size_t)size;
+      uz z = UCMP(z, size, >, sizeof buf) ? sizeof buf : S(uz,size);
 
       if (z != (n = fread(buf, 1, z, fp)) || n != fwrite(buf, 1, n, op)) {
 jtmperr:
@@ -747,7 +750,7 @@ jerr:
    if (unlink(tfn) == -1)
       n_err(_("Cannot unlink %s\n"), n_shexp_quote_cp(tfn, FAL0));
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -756,7 +759,7 @@ trycreate(char const *name)
 {
    struct stat st;
    enum okay rv = STOP;
-   n_NYD_IN;
+   NYD_IN;
 
    if (!stat(name, &st)) {
       if (!S_ISDIR(st.st_mode)) {
@@ -769,7 +772,7 @@ trycreate(char const *name)
    }
    rv = OKAY;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -777,24 +780,24 @@ static enum okay
 mkmaildir(char const *name) /* TODO proper cleanup on error; use path[] loop */
 {
    char *np;
-   size_t sz;
+   uz i;
    enum okay rv = STOP;
-   n_NYD_IN;
+   NYD_IN;
 
    if (trycreate(name) == OKAY) {
-      np = n_lofi_alloc((sz = su_cs_len(name)) + 4 +1);
-      su_mem_copy(np, name, sz);
-      su_mem_copy(np + sz, "/tmp", 4 +1);
+      np = n_lofi_alloc((i = su_cs_len(name)) + 4 +1);
+      su_mem_copy(np, name, i);
+      su_mem_copy(&np[i], "/tmp", 4 +1);
       if (trycreate(np) == OKAY) {
-         su_mem_copy(np + sz, "/new", 4 +1);
+         su_mem_copy(&np[i], "/new", 4);
          if (trycreate(np) == OKAY) {
-            su_mem_copy(np + sz, "/cur", 4 +1);
+            su_mem_copy(&np[i], "/cur", 4);
             rv = trycreate(np);
          }
       }
       n_lofi_free(np);
    }
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -802,8 +805,8 @@ static struct message *
 mdlook(char const *name, struct message *data)
 {
    struct message **mpp, *mp;
-   ui32_t h, i;
-   n_NYD_IN;
+   u32 h, i;
+   NYD_IN;
 
    if(data != NULL)
       i = data->m_maildir_hash;
@@ -814,7 +817,7 @@ mdlook(char const *name, struct message *data)
 
    for(i = 0;;){
       if((mp = *mpp) == NULL){
-         if(n_UNLIKELY(data != NULL)){
+         if(UNLIKELY(data != NULL)){
             *mpp = mp = data;
             if(i > a_maildir_tbl_maxdist)
                a_maildir_tbl_maxdist = i;
@@ -824,14 +827,14 @@ mdlook(char const *name, struct message *data)
             !su_cs_cmp(&mp->m_maildir_file[4], name))
          break;
 
-      if(n_UNLIKELY(mpp++ == a_maildir_tbl_top))
+      if(UNLIKELY(mpp++ == a_maildir_tbl_top))
          mpp = a_maildir_tbl;
-      if(++i > a_maildir_tbl_maxdist && n_UNLIKELY(data == NULL)){
+      if(++i > a_maildir_tbl_maxdist && UNLIKELY(data == NULL)){
          mp = NULL;
          break;
       }
    }
-   n_NYD_OU;
+   NYD_OU;
    return mp;
 }
 
@@ -839,8 +842,8 @@ static void
 mktable(void)
 {
    struct message *mp;
-   size_t i;
-   n_NYD_IN;
+   uz i;
+   NYD_IN;
 
    i = a_maildir_tbl_prime = msgCount;
    i <<= 1;
@@ -852,7 +855,7 @@ mktable(void)
    a_maildir_tbl_maxdist = 0;
    for(mp = message, i = msgCount; i-- != 0; ++mp)
       mdlook(&mp->m_maildir_file[4], mp);
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static enum okay
@@ -863,7 +866,7 @@ subdir_remove(char const *name, char const *sub)
    DIR *dirp;
    struct dirent *dp;
    enum okay rv = STOP;
-   n_NYD_IN;
+   NYD_IN;
 
    namelen = su_cs_len(name);
    sublen = su_cs_len(sub);
@@ -885,7 +888,7 @@ subdir_remove(char const *name, char const *sub)
       if (dp->d_name[0] == '.')
          continue;
       n = su_cs_len(dp->d_name);
-      if (UICMP(32, pathend + n +1, >, pathsize))
+      if (UCMP(32, pathend + n +1, >, pathsize))
          path = n_realloc(path, pathsize = pathend + n + 30);
       su_mem_copy(path + pathend, dp->d_name, n +1);
       if (unlink(path) == -1) {
@@ -904,7 +907,7 @@ subdir_remove(char const *name, char const *sub)
    rv = OKAY;
 jleave:
    n_free(path);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -912,12 +915,12 @@ FL int
 maildir_setfile(char const *who, char const * volatile name,
    enum fedit_mode fm)
 {
-   sighandler_type volatile saveint;
+   n_sighdl_t volatile saveint;
    struct cw cw;
    char const *emsg;
    int omsgCount;
    int volatile i = -1;
-   n_NYD_IN;
+   NYD_IN;
 
    omsgCount = msgCount;
    if (cwget(&cw) == STOP) {
@@ -1012,17 +1015,17 @@ jerr:
       newmailinfo(omsgCount);
    i = 0;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return i;
 }
 
-FL bool_t
-maildir_quit(bool_t hold_sigs_on)
+FL boole
+maildir_quit(boole hold_sigs_on)
 {
-   sighandler_type saveint;
+   n_sighdl_t saveint;
    struct cw cw;
-   bool_t rv;
-   n_NYD_IN;
+   boole rv;
+   NYD_IN;
 
    if(hold_sigs_on)
       rele_sigs();
@@ -1059,7 +1062,7 @@ maildir_quit(bool_t hold_sigs_on)
 jleave:
    if(hold_sigs_on)
       hold_sigs();
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -1068,13 +1071,13 @@ maildir_append(char const *name, FILE *fp, long offset)
 {
    struct n_timespec const *tsp;
    char *buf, *bp, *lp;
-   size_t bufsize, buflen, cnt;
+   uz bufsize, buflen, cnt;
    off_t off1 = -1, offs;
    long size;
    int flag;
    enum {_NONE = 0, _INHEAD = 1<<0, _NLSEP = 1<<1} state;
    enum okay rv;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((rv = mkmaildir(name)) != OKAY)
       goto jleave;
@@ -1153,12 +1156,12 @@ maildir_append(char const *name, FILE *fp, long offset)
          }
       }
    }
-   assert(rv == OKAY);
+   ASSERT(rv == OKAY);
 jfree:
    n_autorec_relax_gut();
    n_free(buf);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -1166,7 +1169,7 @@ FL enum okay
 maildir_remove(char const *name)
 {
    enum okay rv = STOP;
-   n_NYD_IN;
+   NYD_IN;
 
    if (subdir_remove(name, "tmp") == STOP ||
          subdir_remove(name, "new") == STOP ||
@@ -1178,9 +1181,10 @@ maildir_remove(char const *name)
    }
    rv = OKAY;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
-#endif /* mx_HAVE_MAILDIR */
 
+#include "su/code-ou.h"
+#endif /* mx_HAVE_MAILDIR */
 /* s-it-mode */

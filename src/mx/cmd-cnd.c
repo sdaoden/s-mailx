@@ -27,6 +27,9 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 #define a_CCND_IF_ISSKIP() \
    (n_go_data->gdc_ifcond != NULL &&\
       (((struct a_ccnd_if_node*)n_go_data->gdc_ifcond)->cin_noop ||\
@@ -34,11 +37,11 @@
 
 struct a_ccnd_if_node{
    struct a_ccnd_if_node *cin_outer;
-   bool_t cin_error;    /* Bad expression, skip entire if..endif */
-   bool_t cin_noop;     /* Outer stack !cin_go, entirely no-op */
-   bool_t cin_go;       /* Green light */
-   bool_t cin_else;     /* In `else' clause */
-   ui8_t cin__dummy[4];
+   boole cin_error;    /* Bad expression, skip entire if..endif */
+   boole cin_noop;     /* Outer stack !cin_go, entirely no-op */
+   boole cin_go;       /* Green light */
+   boole cin_else;     /* In `else' clause */
+   u8 cin__dummy[4];
 };
 
 struct a_ccnd_if_ctx{
@@ -53,18 +56,18 @@ static void a_ccnd_oif_error(struct a_ccnd_if_ctx const *cicp,
 
 /* noop and (1) don't work for real, only syntax-check and
  * (2) non-error return is ignored */
-static si8_t a_ccnd_oif_test(struct a_ccnd_if_ctx *cicp, bool_t noop);
-static si8_t a_ccnd_oif_group(struct a_ccnd_if_ctx *cicp, size_t level,
-               bool_t noop);
+static s8 a_ccnd_oif_test(struct a_ccnd_if_ctx *cicp, boole noop);
+static s8 a_ccnd_oif_group(struct a_ccnd_if_ctx *cicp, uz level,
+               boole noop);
 
 /* Shared `if' / `elif' implementation */
-static int a_ccnd_if(void *v, bool_t iselif);
+static int a_ccnd_if(void *v, boole iselif);
 
 static void
 a_ccnd_oif_error(struct a_ccnd_if_ctx const *cicp, char const *msg_or_null,
       char const *nearby_or_null){
    struct str s;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if(msg_or_null == NULL)
       msg_or_null = _("invalid expression syntax");
@@ -84,21 +87,21 @@ a_ccnd_oif_error(struct a_ccnd_if_ctx const *cicp, char const *msg_or_null,
          (*cicp->cic_argv != NULL ? " " : n_empty));
       n_err(_("   Stopped at: %s\n"), s.s);
    }
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
-static si8_t
-a_ccnd_oif_test(struct a_ccnd_if_ctx *cicp, bool_t noop){
+static s8
+a_ccnd_oif_test(struct a_ccnd_if_ctx *cicp, boole noop){
    char const *emsg, * const *argv, *cp, *lhv, *op, *rhv;
-   size_t argc;
+   uz argc;
    char c;
-   si8_t rv;
-   n_NYD2_IN;
+   s8 rv;
+   NYD2_IN;
 
    rv = -1;
    emsg = NULL;
    argv = cicp->cic_argv;
-   argc = PTR2SIZE(cicp->cic_argv_max - cicp->cic_argv);
+   argc = P2UZ(cicp->cic_argv_max - cicp->cic_argv);
    cp = argv[0];
 
    if(*cp != '$'){
@@ -121,7 +124,7 @@ jesyn:
 
    switch(*cp){
    default:
-      switch((rv = n_boolify(cp, UIZ_MAX, TRUM1))){
+      switch((rv = n_boolify(cp, UZ_MAX, TRUM1))){
       case FAL0:
       case TRU1:
          break;
@@ -150,7 +153,7 @@ jesyn:
 
       /* Look up the value in question, we need it anyway */
       if(*++cp == '{'){
-         size_t i = su_cs_len(cp);
+         uz i = su_cs_len(cp);
 
          if(i > 0 && cp[i - 1] == '}')
             cp = savestrbuf(++cp, i -= 2);
@@ -227,7 +230,7 @@ jesyn:
          if(*++rhv == '\0')
             goto jesyn;
          else if(*rhv == '{'){
-            size_t i = su_cs_len(rhv);
+            uz i = su_cs_len(rhv);
 
             if(i > 0 && rhv[i - 1] == '}')
                rhv = savestrbuf(++rhv, i -= 2);
@@ -273,7 +276,7 @@ jesyn:
          rv = ((flags & a_ICASE ? su_cs_find_case(lhv, rhv)
                : su_cs_find(lhv, rhv)) == NULL) ^ (c == '=');
       }else if(c == '-'){
-         si64_t lhvi, rhvi;
+         s64 lhvi, rhvi;
 
          if(*lhv == '\0')
             lhv = n_0;
@@ -298,7 +301,7 @@ jesyn:
          }
          break;
       }else{
-         si32_t scmp;
+         s32 scmp;
 
          scmp = (flags & a_ICASE) ? su_cs_cmp_case(lhv, rhv)
                : su_cs_cmp(lhv, rhv);
@@ -316,14 +319,14 @@ jesyn:
    if(noop && rv < 0)
       rv = TRU1;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
-static si8_t
-a_ccnd_oif_group(struct a_ccnd_if_ctx *cicp, size_t level, bool_t noop){
+static s8
+a_ccnd_oif_group(struct a_ccnd_if_ctx *cicp, uz level, boole noop){
    char const *emsg, *arg0, * const *argv, * const *argv_max_save;
-   size_t i;
+   uz i;
    char unary, c;
    enum{
       a_FIRST = 1<<0,
@@ -336,8 +339,8 @@ a_ccnd_oif_group(struct a_ccnd_if_ctx *cicp, size_t level, bool_t noop){
       a_CANNOT_LIST = a_FIRST,
       a_CANNOT_COND = a_NEED_LIST
    } state;
-   si8_t rv, xrv;
-   n_NYD2_IN;
+   s8 rv, xrv;
+   NYD2_IN;
 
    rv = -1;
    state = a_FIRST;
@@ -466,7 +469,7 @@ jneed_cond:
    }
 
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 jesyn:
    if(emsg == NULL)
@@ -477,20 +480,20 @@ jesyn:
 }
 
 static int
-a_ccnd_if(void *v, bool_t iselif){
+a_ccnd_if(void *v, boole iselif){
    struct a_ccnd_if_ctx cic;
    char const * const *argv;
-   size_t argc;
-   si8_t xrv, rv;
+   uz argc;
+   s8 xrv, rv;
    struct a_ccnd_if_node *cinp;
-   n_NYD_IN;
+   NYD_IN;
 
    if(!iselif){
       cinp = n_alloc(sizeof *cinp);
       cinp->cin_outer = n_go_data->gdc_ifcond;
    }else{
       cinp = n_go_data->gdc_ifcond;
-      assert(cinp != NULL);
+      ASSERT(cinp != NULL);
    }
    cinp->cin_error = FAL0;
    cinp->cin_noop = a_CCND_IF_ISSKIP();
@@ -508,7 +511,7 @@ a_ccnd_if(void *v, bool_t iselif){
    for(argc = 0, argv = v; argv[argc] != NULL; ++argc)
       if(argv[argc][0] == '#'){
          char const **nav = n_autorec_alloc(sizeof(char*) * (argc + 1));
-         size_t i;
+         uz i;
 
          for(i = 0; i < argc; ++i)
             nav[i] = argv[i];
@@ -521,24 +524,24 @@ a_ccnd_if(void *v, bool_t iselif){
    xrv = a_ccnd_oif_group(&cic, 0, FAL0);
 
    if(xrv >= 0){
-      cinp->cin_go = (bool_t)xrv;
+      cinp->cin_go = (boole)xrv;
       rv = 0;
    }else{
       cinp->cin_error = cinp->cin_noop = TRU1;
       rv = 1;
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_if(void *v){
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_ccnd_if(v, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -546,7 +549,7 @@ FL int
 c_elif(void *v){
    struct a_ccnd_if_node *cinp;
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    if((cinp = n_go_data->gdc_ifcond) == NULL || cinp->cin_else){
       n_err(_("`elif' without a matching `if'\n"));
@@ -556,7 +559,7 @@ c_elif(void *v){
       rv = a_ccnd_if(v, TRU1);
    }else
       rv = 0;
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -564,8 +567,8 @@ FL int
 c_else(void *v){
    int rv;
    struct a_ccnd_if_node *cinp;
-   n_NYD_IN;
-   n_UNUSED(v);
+   NYD_IN;
+   UNUSED(v);
 
    if((cinp = n_go_data->gdc_ifcond) == NULL || cinp->cin_else){
       n_err(_("`else' without a matching `if'\n"));
@@ -575,7 +578,7 @@ c_else(void *v){
       cinp->cin_go = !cinp->cin_go;
       rv = 0;
    }
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -583,8 +586,8 @@ FL int
 c_endif(void *v){
    int rv;
    struct a_ccnd_if_node *cinp;
-   n_NYD_IN;
-   n_UNUSED(v);
+   NYD_IN;
+   UNUSED(v);
 
    if((cinp = n_go_data->gdc_ifcond) == NULL){
       n_err(_("`endif' without a matching `if'\n"));
@@ -594,24 +597,24 @@ c_endif(void *v){
       n_free(cinp);
       rv = 0;
    }
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
-FL bool_t
+FL boole
 n_cnd_if_isskip(void){
-   bool_t rv;
-   n_NYD2_IN;
+   boole rv;
+   NYD2_IN;
 
    rv = a_CCND_IF_ISSKIP();
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL void
 n_cnd_if_stack_del(struct n_go_data_ctx *gdcp){
    struct a_ccnd_if_node *vp, *cinp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    vp = gdcp->gdc_ifcond;
    gdcp->gdc_ifcond = NULL;
@@ -620,7 +623,8 @@ n_cnd_if_stack_del(struct n_go_data_ctx *gdcp){
       vp = cinp->cin_outer;
       n_free(cinp);
    }
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

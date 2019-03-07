@@ -47,6 +47,9 @@
 #include "mx/mlist.h"
 #include "mx/ui-str.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 static int        _screen;
 
 /* Print out the header of a specific message.
@@ -56,31 +59,31 @@ static int        _screen;
  * a_chead__putindent: print out the indenting in threaded display
  * a_chead__putuc: print out a Unicode character or a substitute for it, return
  *    0 on error or wcwidth() (or 1) on success */
-static void a_chead_print_head(size_t yetprinted, size_t msgno, FILE *f,
-               bool_t threaded, bool_t subject_thread_compress);
+static void a_chead_print_head(uz yetprinted, uz msgno, FILE *f,
+               boole threaded, boole subject_thread_compress);
 
-static void a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno,
-               FILE *f, bool_t threaded, bool_t subject_thread_compress,
+static void a_chead__hprf(uz yetprinted, char const *fmt, uz msgno,
+               FILE *f, boole threaded, boole subject_thread_compress,
                char const *attrlist);
-static char *a_chead__subject(struct message *mp, bool_t threaded,
-               bool_t subject_thread_compress, size_t yetprinted);
+static char *a_chead__subject(struct message *mp, boole threaded,
+               boole subject_thread_compress, uz yetprinted);
 static int a_chead__putindent(FILE *fp, struct message *mp, int maxwidth);
-static size_t a_chead__putuc(int u, int c, FILE *fp);
+static uz a_chead__putuc(int u, int c, FILE *fp);
 static int a_chead__dispc(struct message *mp, char const *a);
 
 /* Shared `z' implementation */
-static int a_chead_scroll(char const *arg, bool_t onlynew);
+static int a_chead_scroll(char const *arg, boole onlynew);
 
 /* Shared `headers' implementation */
 static int     _headers(int msgspec);
 
 static void
-a_chead_print_head(size_t yetprinted, size_t msgno, FILE *f, bool_t threaded,
-      bool_t subject_thread_compress){
+a_chead_print_head(uz yetprinted, uz msgno, FILE *f, boole threaded,
+      boole subject_thread_compress){
    enum {attrlen = 14};
    char attrlist[attrlen +1], *cp;
    char const *fmt;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if((cp = ok_vlook(attrlist)) != NULL){
       if(su_cs_len(cp) == attrlen){
@@ -115,18 +118,19 @@ jattrok:
 
    a_chead__hprf(yetprinted, fmt, msgno, f, threaded, subject_thread_compress,
       attrlist);
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 static void
-a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
-   bool_t threaded, bool_t subject_thread_compress, char const *attrlist)
+a_chead__hprf(uz yetprinted, char const *fmt, uz msgno, FILE *f,
+   boole threaded, boole subject_thread_compress, char const *attrlist)
 {
    char buf[16], cbuf[8], *cp, *subjline;
    char const *date, *name, *fp, *color_tag;
    int i, n, s, wleft, subjlen;
    struct message *mp;
-   n_COLOUR( struct n_colour_pen *cpen_new COMMA *cpen_cur COMMA *cpen_bas; )
+   n_COLOUR( struct n_colour_pen *cpen_new su_COMMA
+      *cpen_cur su_COMMA *cpen_bas; )
    enum {
       _NONE       = 0,
       _ISDOT      = 1<<0,
@@ -139,8 +143,8 @@ a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
       _PUTCB_UTF8_SHIFT = 5,
       _PUTCB_UTF8_MASK = 3<<5
    } flags = _NONE;
-   n_NYD2_IN;
-   n_UNUSED(buf);
+   NYD2_IN;
+   UNUSED(buf);
 
    if ((mp = message + msgno - 1) == dot)
       flags = _ISDOT;
@@ -148,7 +152,7 @@ a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
    color_tag = NULL;
    date = n_header_textual_date_info(mp, &color_tag);
    /* C99 */{
-      bool_t isto;
+      boole isto;
 
       n_header_textual_sender_info(mp, &cp, NULL, NULL, NULL, &isto);
       name = cp;
@@ -270,7 +274,7 @@ a_chead__hprf(size_t yetprinted, char const *fmt, size_t msgno, FILE *f,
 #ifdef mx_HAVE_SPAM
          if (n == 0)
             n = 5;
-         if (UICMP(32, n_ABS(n), >, wleft))
+         if (UCMP(32, ABS(n), >, wleft))
             wleft = 0;
          else{
             snprintf(buf, sizeof buf, "%u.%02u",
@@ -294,7 +298,7 @@ jputcb:
                n_colour_pen_put(cpen_cur = cpen_new);
          }
 #endif
-         if (UICMP(32, n_ABS(n), >, wleft))
+         if (UCMP(32, ABS(n), >, wleft))
             n = (n < 0) ? -wleft : wleft;
          cbuf[0] = c;
          n = fprintf(f, "%*s", n, cbuf);
@@ -315,15 +319,15 @@ jputcb:
       case 'd':
          if (n == 0)
             n = 16;
-         if (UICMP(32, n_ABS(n), >, wleft))
+         if (UCMP(32, ABS(n), >, wleft))
             n = (n < 0) ? -wleft : wleft;
-         n = fprintf(f, "%*.*s", n, n_ABS(n), date);
+         n = fprintf(f, "%*.*s", n, ABS(n), date);
          wleft = (n >= 0) ? wleft - n : 0;
          break;
       case 'e':
          if (n == 0)
             n = 2;
-         if (UICMP(32, n_ABS(n), >, wleft))
+         if (UCMP(32, ABS(n), >, wleft))
             wleft = 0;
          else{
             n = fprintf(f, "%*u", n, (threaded == 1 ? mp->m_level : 0));
@@ -336,7 +340,7 @@ jputcb:
             if (s < 0)
                n = -n;
          }
-         i = n_ABS(n);
+         i = ABS(n);
          if (i > wleft) {
             i = wleft;
             n = (n < 0) ? -wleft : wleft;
@@ -365,7 +369,7 @@ jputcb:
                   n_colour_pen_put(cpen_cur = cpen_new);
             }
 #endif
-            n = a_chead__putindent(f, mp, n_MIN(wleft, (int)n_scrnwidth - 60));
+            n = a_chead__putindent(f, mp, MIN(wleft, (int)n_scrnwidth - 60));
             wleft = (n >= 0) ? wleft - n : 0;
 #ifdef mx_HAVE_COLOUR
             if(n_COLOUR_IS_ACTIVE() && (cpen_new = cpen_bas) != cpen_cur)
@@ -384,13 +388,13 @@ jmlist: /* v15compat */
       case 'l':
          if (n == 0)
             n = 4;
-         if (UICMP(32, n_ABS(n), >, wleft))
+         if (UCMP(32, ABS(n), >, wleft))
             wleft = 0;
          else if (mp->m_xlines) {
             n = fprintf(f, "%*ld", n, mp->m_xlines);
             wleft = (n >= 0) ? wleft - n : 0;
          } else {
-            n = n_ABS(n);
+            n = ABS(n);
             wleft -= n;
             while (n-- != 0)
                putc(' ', f);
@@ -403,20 +407,20 @@ jmlist: /* v15compat */
                for (i = msgCount; i > 999; i /= 10)
                   ++n;
          }
-         if (UICMP(32, n_ABS(n), >, wleft))
+         if (UCMP(32, ABS(n), >, wleft))
             wleft = 0;
          else{
-            n = fprintf(f, "%*lu", n, (ul_i)msgno);
+            n = fprintf(f, "%*lu", n, (ul)msgno);
             wleft = (n >= 0) ? wleft - n : 0;
          }
          break;
       case 'o':
          if (n == 0)
             n = -5;
-         if (UICMP(32, n_ABS(n), >, wleft))
+         if (UCMP(32, ABS(n), >, wleft))
             wleft = 0;
          else{
-            n = fprintf(f, "%*lu", n, (ul_i)mp->m_xsize);
+            n = fprintf(f, "%*lu", n, (ul)mp->m_xsize);
             wleft = (n >= 0) ? wleft - n : 0;
          }
          break;
@@ -430,7 +434,7 @@ jmlist: /* v15compat */
             n = -n;
          if (subjlen > wleft)
             subjlen = wleft;
-         if (UICMP(32, n_ABS(n), >, subjlen))
+         if (UCMP(32, ABS(n), >, subjlen))
             n = (n < 0) ? -subjlen : subjlen;
          if (flags & _SFMT)
             n -= (n < 0) ? -2 : 2;
@@ -444,7 +448,7 @@ jmlist: /* v15compat */
             wleft = (n >= 0) ? wleft - n : 0;
          } else {
             n = fprintf(f, ((flags & _SFMT) ? "\"%s\"" : "%s"),
-                  colalign(subjline, n_ABS(n), n, &wleft));
+                  colalign(subjline, ABS(n), n, &wleft));
             if (n < 0)
                wleft = 0;
          }
@@ -460,11 +464,11 @@ jmlist: /* v15compat */
                for (i = msgCount; i > 999; i /= 10)
                   ++n;
          }
-         if (UICMP(32, n_ABS(n), >, wleft))
+         if (UCMP(32, ABS(n), >, wleft))
             wleft = 0;
          else{
             n = fprintf(f, "%*lu",
-                  n, (threaded ? (ul_i)mp->m_threadpos : (ul_i)msgno));
+                  n, (threaded ? (ul)mp->m_threadpos : (ul)msgno));
             wleft = (n >= 0) ? wleft - n : 0;
          }
          break;
@@ -472,7 +476,7 @@ jmlist: /* v15compat */
 #ifdef mx_HAVE_IMAP
             if (n == 0)
                n = 9;
-            if (UICMP(32, n_ABS(n), >, wleft))
+            if (UCMP(32, ABS(n), >, wleft))
                wleft = 0;
             else{
                n = fprintf(f, "%*" PRIu64 , n, mp->m_uid);
@@ -499,16 +503,16 @@ jmlist: /* v15compat */
 
    if (subjline != NULL && subjline != (char*)-1)
       n_free(subjline);
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 static char *
-a_chead__subject(struct message *mp, bool_t threaded,
-   bool_t subject_thread_compress, size_t yetprinted)
+a_chead__subject(struct message *mp, boole threaded,
+   boole subject_thread_compress, uz yetprinted)
 {
    struct str in, out;
    char *rv, *ms;
-   n_NYD2_IN;
+   NYD2_IN;
 
    rv = (char*)-1;
 
@@ -548,7 +552,7 @@ a_chead__subject(struct message *mp, bool_t threaded,
       }
    }
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -556,9 +560,9 @@ static int
 a_chead__putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX magics */
 {
    struct message *mq;
-   int *us, indlvl, indw, i, important = MNEW | MFLAGGED;
+   int *unis, indlvl, indw, i, important = MNEW | MFLAGGED;
    char *cs;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if (mp->m_level == 0 || maxwidth == 0) {
       indw = 0;
@@ -566,65 +570,65 @@ a_chead__putindent(FILE *fp, struct message *mp, int maxwidth)/* XXX magics */
    }
 
    cs = n_lofi_alloc(mp->m_level);
-   us = n_lofi_alloc(mp->m_level * sizeof *us);
+   unis = n_lofi_alloc(mp->m_level * sizeof *unis);
 
    i = mp->m_level - 1;
-   if (mp->m_younger && UICMP(32, i + 1, ==, mp->m_younger->m_level)) {
+   if (mp->m_younger && UCMP(32, i + 1, ==, mp->m_younger->m_level)) {
       if (mp->m_parent && mp->m_parent->m_flag & important)
-         us[i] = mp->m_flag & important ? 0x2523 : 0x2520;
+         unis[i] = mp->m_flag & important ? 0x2523 : 0x2520;
       else
-         us[i] = mp->m_flag & important ? 0x251D : 0x251C;
+         unis[i] = mp->m_flag & important ? 0x251D : 0x251C;
       cs[i] = '+';
    } else {
       if (mp->m_parent && mp->m_parent->m_flag & important)
-         us[i] = mp->m_flag & important ? 0x2517 : 0x2516;
+         unis[i] = mp->m_flag & important ? 0x2517 : 0x2516;
       else
-         us[i] = mp->m_flag & important ? 0x2515 : 0x2514;
+         unis[i] = mp->m_flag & important ? 0x2515 : 0x2514;
       cs[i] = '\\';
    }
 
    mq = mp->m_parent;
    for (i = mp->m_level - 2; i >= 0; --i) {
       if (mq) {
-         if (UICMP(32, i, >, mq->m_level - 1)) {
-            us[i] = cs[i] = ' ';
+         if (UCMP(32, i, >, mq->m_level - 1)) {
+            unis[i] = cs[i] = ' ';
             continue;
          }
          if (mq->m_younger) {
             if (mq->m_parent && (mq->m_parent->m_flag & important))
-               us[i] = 0x2503;
+               unis[i] = 0x2503;
             else
-               us[i] = 0x2502;
+               unis[i] = 0x2502;
             cs[i] = '|';
          } else
-            us[i] = cs[i] = ' ';
+            unis[i] = cs[i] = ' ';
          mq = mq->m_parent;
       } else
-         us[i] = cs[i] = ' ';
+         unis[i] = cs[i] = ' ';
    }
 
    --maxwidth;
-   for (indlvl = indw = 0; (ui8_t)indlvl < mp->m_level && indw < maxwidth;
+   for (indlvl = indw = 0; (u8)indlvl < mp->m_level && indw < maxwidth;
          ++indlvl) {
       if (indw < maxwidth - 1)
-         indw += (int)a_chead__putuc(us[indlvl], cs[indlvl] & 0xFF, fp);
+         indw += (int)a_chead__putuc(unis[indlvl], cs[indlvl] & 0xFF, fp);
       else
          indw += (int)a_chead__putuc(0x21B8, '^', fp);
    }
    indw += a_chead__putuc(0x25B8, '>', fp);
 
-   n_lofi_free(us);
+   n_lofi_free(unis);
    n_lofi_free(cs);
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return indw;
 }
 
-static size_t
+static uz
 a_chead__putuc(int u, int c, FILE *fp){
-   size_t rv;
-   n_NYD2_IN;
-   n_UNUSED(u);
+   uz rv;
+   NYD2_IN;
+   UNUSED(u);
 
 #ifdef mx_HAVE_NATCH_CHAR
    if((n_psonce & n_PSO_UNICODE) && (u & ~(wchar_t)0177) &&
@@ -646,7 +650,7 @@ a_chead__putuc(int u, int c, FILE *fp){
    }else
 #endif
       rv = (putc(c, fp) != EOF);
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -654,7 +658,7 @@ static int
 a_chead__dispc(struct message *mp, char const *a)
 {
    int i = ' ';
-   n_NYD2_IN;
+   NYD2_IN;
 
    if ((mp->m_flag & (MREAD | MNEW)) == MREAD)
       i = a[3];
@@ -691,16 +695,16 @@ a_chead__dispc(struct message *mp, char const *a)
       else if (mp->m_collapsed < 0)
          i = a[10];
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return i;
 }
 
 static int
-a_chead_scroll(char const *arg, bool_t onlynew){
-   siz_t l;
-   bool_t isabs;
+a_chead_scroll(char const *arg, boole onlynew){
+   sz l;
+   boole isabs;
    int msgspec, size, maxs;
-   n_NYD2_IN;
+   NYD2_IN;
 
    /* TODO scroll problem: we do not know whether + and $ have already reached
     * TODO the last screen in threaded mode */
@@ -786,20 +790,20 @@ jerr:
 
    size = _headers(msgspec);
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return size;
 }
 
 static int
 _headers(int msgspec) /* TODO rework v15 */
 {
-   bool_t needdot, showlast;
+   boole needdot, showlast;
    int g, k, mesg, size;
    struct message *lastmq, *mp, *mq;
    int volatile lastg;
-   ui32_t volatile flag;
+   u32 volatile flag;
    enum mflag fl;
-   n_NYD_IN;
+   NYD_IN;
 
    time_current_update(&time_current, FAL0);
 
@@ -830,7 +834,7 @@ _headers(int msgspec) /* TODO rework v15 */
    if (mb.mb_threaded == 0) {
       g = 0;
       mq = message;
-      for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
+      for (mp = message; PCMP(mp, <, message + msgCount); ++mp)
          if (visible(mp)) {
             if (g % size == 0)
                mq = mp;
@@ -838,7 +842,7 @@ _headers(int msgspec) /* TODO rework v15 */
                lastg = g;
                lastmq = mq;
             }
-            if ((msgspec > 0 && PTRCMP(mp, ==, message + msgspec - 1)) ||
+            if ((msgspec > 0 && PCMP(mp, ==, message + msgspec - 1)) ||
                   (msgspec == 0 && g == k) ||
                   (msgspec == -2 && g == k + size && lastmq) ||
                   (msgspec < 0 && g >= k && (mp->m_flag & fl) != 0))
@@ -846,14 +850,14 @@ _headers(int msgspec) /* TODO rework v15 */
             g++;
          }
       if (lastmq && (msgspec == -2 ||
-            (msgspec == -1 && PTRCMP(mp, ==, message + msgCount)))) {
+            (msgspec == -1 && PCMP(mp, ==, message + msgCount)))) {
          g = lastg;
          mq = lastmq;
       }
       _screen = g / size;
       mp = mq;
 
-      mesg = (int)PTR2SIZE(mp - message);
+      mesg = (int)P2UZ(mp - message);
 #ifdef mx_HAVE_IMAP
       if (mb.mb_type == MB_IMAP)
          imap_getheaders(mesg + 1, mesg + size);
@@ -864,11 +868,11 @@ _headers(int msgspec) /* TODO rework v15 */
          ++mesg;
          if (!visible(mp))
             continue;
-         if (UICMP(32, flag, >=, size))
+         if (UCMP(32, flag, >=, size))
             break;
          if(needdot){
             if(showlast){
-               if(UICMP(32, flag, ==, size - 1) || &mp[1] == mq)
+               if(UCMP(32, flag, ==, size - 1) || &mp[1] == mq)
                   goto jdot_unsort;
             }else if(flag == 0){
 jdot_unsort:
@@ -891,14 +895,14 @@ jdot_unsort:
          /* TODO thread handling needs rewrite, m_collapsed must go */
          if (visible(mp) &&
                (mp->m_collapsed <= 0 ||
-                PTRCMP(mp, ==, message + msgspec - 1))) {
+                PCMP(mp, ==, message + msgspec - 1))) {
             if (g % size == 0)
                mq = mp;
             if (mp->m_flag & fl) {
                lastg = g;
                lastmq = mq;
             }
-            if ((msgspec > 0 && PTRCMP(mp, ==, message + msgspec - 1)) ||
+            if ((msgspec > 0 && PCMP(mp, ==, message + msgspec - 1)) ||
                   (msgspec == 0 && g == k) ||
                   (msgspec == -2 && g == k + size && lastmq) ||
                   (msgspec < 0 && g >= k && (mp->m_flag & fl) != 0))
@@ -907,7 +911,7 @@ jdot_unsort:
          }
       }
       if (lastmq && (msgspec == -2 ||
-            (msgspec == -1 && PTRCMP(mp, ==, message + msgCount)))) {
+            (msgspec == -1 && PCMP(mp, ==, message + msgCount)))) {
          g = lastg;
          mq = lastmq;
       }
@@ -920,12 +924,12 @@ jdot_unsort:
          mq = next_in_thread(mp);
          if (visible(mp) &&
                (mp->m_collapsed <= 0 ||
-                PTRCMP(mp, ==, message + msgspec - 1))) {
-            if (UICMP(32, flag, >=, size))
+                PCMP(mp, ==, message + msgspec - 1))) {
+            if (UCMP(32, flag, >=, size))
                break;
             if(needdot){
                if(showlast){
-                  if(UICMP(32, flag, ==, size - 1) || mq == NULL)
+                  if(UCMP(32, flag, ==, size - 1) || mq == NULL)
                      goto jdot_sort;
                }else if(flag == 0){
 jdot_sort:
@@ -933,7 +937,7 @@ jdot_sort:
                   setdot(mp);
                }
             }
-            a_chead_print_head(flag, PTR2SIZE(mp - message + 1), n_stdout,
+            a_chead_print_head(flag, P2UZ(mp - message + 1), n_stdout,
                mb.mb_threaded, TRU1);
             ++flag;
             srelax();
@@ -950,7 +954,7 @@ jdot_sort:
       if (n_pstate & (n_PS_ROBOT | n_PS_HOOK_MASK))
          flag = !flag;
    }
-   n_NYD_OU;
+   NYD_OU;
    return !flag;
 }
 
@@ -958,10 +962,10 @@ FL int
 c_headers(void *v)
 {
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = print_header_group((int*)v);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -969,11 +973,11 @@ FL int
 print_header_group(int *vector)
 {
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
-   assert(vector != NULL && vector != (void*)-1);
+   ASSERT(vector != NULL && vector != (void*)-1);
    rv = _headers(vector[0]);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -981,10 +985,10 @@ FL int
 c_scroll(void *v)
 {
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_chead_scroll(*(char const**)v, FAL0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -992,10 +996,10 @@ FL int
 c_Scroll(void *v)
 {
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_chead_scroll(*(char const**)v, TRU1);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -1004,7 +1008,7 @@ c_dotmove(void *v)
 {
    char const *args;
    int msgvec[2], rv;
-   n_NYD_IN;
+   NYD_IN;
 
    if (*(args = v) == '\0' || args[1] != '\0') {
 jerr:
@@ -1026,7 +1030,7 @@ jerr:
    default:
       goto jerr;
    }
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -1036,7 +1040,7 @@ c_from(void *vp)
    int *msgvec, *ip, n;
    char *cp;
    FILE * volatile obuf;
-   n_NYD_IN;
+   NYD_IN;
 
    if(*(msgvec = vp) == 0)
       goto jleave;
@@ -1047,7 +1051,7 @@ c_from(void *vp)
 
    if (n_psonce & n_PSO_INTERACTIVE) {
       if ((cp = ok_vlook(crt)) != NULL) {
-         uiz_t ib;
+         uz ib;
 
          for (n = 0, ip = msgvec; *ip != 0; ++ip)
             ++n;
@@ -1056,7 +1060,7 @@ c_from(void *vp)
             ib = n_screensize();
          else
             su_idec_uz_cp(&ib, cp, 0, NULL);
-         if (UICMP(z, n, >, ib) && (obuf = n_pager_open()) == NULL)
+         if (UCMP(z, n, >, ib) && (obuf = n_pager_open()) == NULL)
             obuf = n_stdout;
       }
    }
@@ -1069,7 +1073,7 @@ c_from(void *vp)
    n_COLOUR( n_colour_env_create(n_COLOUR_CTX_SUM, obuf, obuf != n_stdout); )
    srelax_hold();
    for (n = 0, ip = msgvec; *ip != 0; ++ip) { /* TODO join into _print_head() */
-      a_chead_print_head((size_t)n++, (size_t)*ip, obuf, mb.mb_threaded, FAL0);
+      a_chead_print_head((uz)n++, S(uz,*ip), obuf, mb.mb_threaded, FAL0);
       srelax();
    }
    srelax_rele();
@@ -1078,16 +1082,16 @@ c_from(void *vp)
    if (obuf != n_stdout)
       n_pager_close(obuf);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
 FL void
-print_headers(int const *msgvec, bool_t only_marked,
-   bool_t subject_thread_compress)
+print_headers(int const *msgvec, boole only_marked,
+   boole subject_thread_compress)
 {
-   size_t printed;
-   n_NYD_IN;
+   uz printed;
+   NYD_IN;
 
    time_current_update(&time_current, FAL0);
 
@@ -1106,7 +1110,8 @@ print_headers(int const *msgvec, bool_t only_marked,
    }
    srelax_rele();
    n_COLOUR( n_colour_env_gut(); )
-   n_NYD_OU;
+   NYD_OU;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

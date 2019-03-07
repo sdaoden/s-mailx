@@ -48,11 +48,14 @@
 #include "mx/shortcut.h"
 #include "mx/ui-str.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* Update mailname (if name != NULL) and displayname, return whether displayname
  * was large enough to swallow mailname */
-static bool_t  _update_mailname(char const *name);
+static boole  _update_mailname(char const *name);
 #ifdef mx_HAVE_C90AMEND1 /* TODO unite __narrow_suffix() into one fun! */
-su_SINLINE size_t __narrow_suffix(char const *cp, size_t cpl, size_t maxl);
+su_SINLINE uz __narrow_suffix(char const *cp, uz cpl, uz maxl);
 #endif
 
 /**/
@@ -61,14 +64,14 @@ static void a_folder_info(void);
 /* Set up the input pointers while copying the mail file into /tmp */
 static void a_folder_mbox_setptr(FILE *ibuf, off_t offset);
 
-static bool_t
+static boole
 _update_mailname(char const *name) /* TODO 2MUCH work, cache, prop of Object! */
 {
    char const *foldp;
    char *mailp, *dispp;
-   size_t i, j, foldlen;
-   bool_t rv;
-   n_NYD_IN;
+   uz i, j, foldlen;
+   boole rv;
+   NYD_IN;
 
    /* Don't realpath(3) if it's only an update request */
    if(name != NULL){
@@ -133,17 +136,17 @@ jdocopy:
 
    n_PS_ROOT_BLOCK((ok_vset(mailbox_resolved, mailname),
       ok_vset(mailbox_display, displayname)));
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 #ifdef mx_HAVE_C90AMEND1
-su_SINLINE size_t
-__narrow_suffix(char const *cp, size_t cpl, size_t maxl)
+su_SINLINE uz
+__narrow_suffix(char const *cp, uz cpl, uz maxl)
 {
    int err;
-   size_t i, ok;
-   n_NYD_IN;
+   uz i, ok;
+   NYD_IN;
 
    for (err = ok = i = 0; cpl > maxl || err;) {
       int ml = mblen(cp, cpl);
@@ -162,7 +165,7 @@ __narrow_suffix(char const *cp, size_t cpl, size_t maxl)
       i += ml;
       cpl -= ml;
    }
-   n_NYD_OU;
+   NYD_OU;
    return ok;
 }
 #endif /* mx_HAVE_C90AMEND1 */
@@ -171,7 +174,7 @@ static void
 a_folder_info(void){
    struct message *mp;
    int u, n, d, s, hidden, moved;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if(mb.mb_type == MB_VOID){
       fprintf(n_stdout, _("(Currently no active mailbox)"));
@@ -179,7 +182,7 @@ a_folder_info(void){
    }
 
    s = d = hidden = moved = 0;
-   for (mp = message, n = 0, u = 0; PTRCMP(mp, <, message + msgCount); ++mp) {
+   for (mp = message, n = 0, u = 0; PCMP(mp, <, message + msgCount); ++mp) {
       if (mp->m_flag & MNEW)
          ++n;
       if ((mp->m_flag & MREAD) == 0)
@@ -223,14 +226,14 @@ a_folder_info(void){
 
 jleave:
    putc('\n', n_stdout);
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 static void
 a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
    struct message self, commit;
    char *linebuf, *cp;
-   bool_t from_;
+   boole from_;
    enum{
       a_RFC4155 = 1u<<0,
       a_HAD_BAD_FROM_ = 1u<<1,
@@ -240,8 +243,8 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
       a_INHEAD = 1u<<5,
       a_COMMIT = 1u<<6
    } f;
-   size_t filesize, linesize, cnt;
-   n_NYD_IN;
+   uz filesize, linesize, cnt;
+   NYD_IN;
 
    su_mem_set(&self, 0, sizeof self);
    self.m_flag = MUSED | MNEW | MNEWEST;
@@ -253,7 +256,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
 
    for(;;){
       /* Ensure space for terminating LF, so do append it */
-      if(n_UNLIKELY(fgetline(&linebuf, &linesize, &filesize, &cnt, ibuf, TRU1
+      if(UNLIKELY(fgetline(&linebuf, &linesize, &filesize, &cnt, ibuf, TRU1
             ) == NULL)){
          if(f & a_HADONE){
             if(f & a_CREATE){
@@ -291,10 +294,10 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
       if(cnt >= 2 && linebuf[cnt - 2] == '\r')
          linebuf[--cnt] = '\0';
       linebuf[--cnt] = '\0';
-      /* We cannot use this assertion since it will trigger for example when
+      /* We cannot use this ASSERTion since it will trigger for example when
        * the Linux kernel crashes and the log files (which may contain NULs)
        * are sent out via email!  (It has been active for quite some time..) */
-      /*assert(linebuf[0] != '\0' || cnt == 0);*/
+      /*ASSERT(linebuf[0] != '\0' || cnt == 0);*/
 
       /* TODO In v15 this should use a/the flat MIME parser in order to ignore
        * TODO "From " when MIME boundaries are active -- whereas this opens
@@ -303,9 +306,9 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
        * TODO That is: Mailbox superclass, MBOX:Mailbox, virtual load() which
        * TODO creates collection of MessageHull objects which are able to load
        * TODO their content, and normalize content, correct structural errors */
-      if(n_UNLIKELY(cnt == 0)){
+      if(UNLIKELY(cnt == 0)){
          f |= a_MAYBE;
-         if(n_LIKELY(!(f & a_CREATE)))
+         if(LIKELY(!(f & a_CREATE)))
             f &= ~a_INHEAD;
          else{
             commit.m_size += self.m_size;
@@ -316,7 +319,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
          goto jputln;
       }
 
-      if(n_UNLIKELY((f & a_MAYBE) && linebuf[0] == 'F') &&
+      if(UNLIKELY((f & a_MAYBE) && linebuf[0] == 'F') &&
             (from_ = is_head(linebuf, cnt, TRU1)) &&
             (from_ == TRU1 || !(f & a_RFC4155))){
          /* TODO char date[n_FROM_DATEBUF];
@@ -350,10 +353,10 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
       }
 
       f &= ~a_MAYBE;
-      if(n_LIKELY(!(f & a_INHEAD)))
+      if(LIKELY(!(f & a_INHEAD)))
          goto jputln;
 
-      if(n_LIKELY((cp = su_mem_find(linebuf, ':', cnt)) != NULL)){
+      if(LIKELY((cp = su_mem_find(linebuf, ':', cnt)) != NULL)){
          char *cps, *cpe, c;
 
          if(f & a_CREATE)
@@ -363,7 +366,7 @@ a_folder_mbox_setptr(FILE *ibuf, off_t offset){ /* TODO Mailbox->setptr() */
             ;
          for(cpe = cp; cpe > cps && (--cpe, su_cs_is_blank(*cpe));)
             ;
-         switch(PTR2SIZE(cpe - cps)){
+         switch(P2UZ(cpe - cps)){
          case 5:
             if(!su_cs_cmp_case_n(cps, "status", 5))
                for(;;){
@@ -420,7 +423,7 @@ jputln:
          msgCount++;
       }
       linebuf[cnt++] = '\n';
-      assert(linebuf[cnt] == '\0');
+      ASSERT(linebuf[cnt] == '\0');
       fwrite(linebuf, sizeof *linebuf, cnt, mb.mb_otf);
       if(ferror(mb.mb_otf)){
          n_perr(_("/tmp"), 0);
@@ -430,7 +433,7 @@ jputln:
       self.m_size += cnt;
       ++self.m_lines;
    }
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL int
@@ -440,12 +443,12 @@ setfile(char const *name, enum fedit_mode fm) /* TODO oh my god */
    static int shudclob;
 
    struct stat stb;
-   size_t offset;
+   uz offset;
    char const *who, *orig_name;
    int rv, omsgCount = 0;
    FILE *ibuf = NULL, *lckfp = NULL;
-   bool_t isdevnull = FAL0;
-   n_NYD_IN;
+   boole isdevnull = FAL0;
+   NYD_IN;
 
    n_pstate &= ~n_PS_SETFILE_OPENED;
 
@@ -651,9 +654,9 @@ jlogname:
       lckfp = (FILE*)-1;
    else if (!(n_pstate & n_PS_EDIT))
       lckfp = n_dotlock(name, fileno(ibuf), FLT_READ, offset,0,
-            (fm & FEDIT_NEWMAIL ? 0 : UIZ_MAX));
+            (fm & FEDIT_NEWMAIL ? 0 : UZ_MAX));
    else if (n_file_lock(fileno(ibuf), FLT_READ, offset,0,
-         (fm & FEDIT_NEWMAIL ? 0 : UIZ_MAX)))
+         (fm & FEDIT_NEWMAIL ? 0 : UZ_MAX)))
       lckfp = (FILE*)-1;
 
    if (lckfp == NULL) {
@@ -675,7 +678,7 @@ jlogname:
 
    /* TODO This is too simple minded?  We should regenerate an index file
     * TODO to be able to truly tell whether *anything* has changed! */
-   if ((fm & FEDIT_NEWMAIL) && UICMP(z, mailsize, <=, offset)) {
+   if ((fm & FEDIT_NEWMAIL) && UCMP(z, mailsize, <=, offset)) {
       rele_sigs();
       goto jleave;
    }
@@ -726,7 +729,7 @@ jleave:
       if (lckfp != NULL && lckfp != (FILE*)-1)
          Pclose(lckfp, FAL0);
    }
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 jem2:
    if(mb.mb_digmsg != NULL)
@@ -742,7 +745,7 @@ FL int
 newmailinfo(int omsgCount)
 {
    int mdot, i;
-   n_NYD_IN;
+   NYD_IN;
 
    for (i = 0; i < omsgCount; ++i)
       message[i].m_flag &= ~MNEWEST;
@@ -772,32 +775,32 @@ newmailinfo(int omsgCount)
       n_msgvec[omsgCount] = 0;
       print_headers(n_msgvec, FAL0, FAL0);
    }
-   n_NYD_OU;
+   NYD_OU;
    return mdot;
 }
 
 FL void
-setmsize(int sz)
+setmsize(int size)
 {
-   n_NYD_IN;
-   if (n_msgvec != NULL)
+   NYD_IN;
+   if(n_msgvec != NULL)
       n_free(n_msgvec);
-   n_msgvec = n_calloc(sz +1, sizeof *n_msgvec);
-   n_NYD_OU;
+   n_msgvec = n_calloc(size +1, sizeof *n_msgvec);
+   NYD_OU;
 }
 
 FL void
 print_header_summary(char const *Larg)
 {
-   size_t i;
-   n_NYD_IN;
+   uz i;
+   NYD_IN;
 
    getmdot(0);
 #ifdef mx_HAVE_IMAP
       if(mb.mb_type == MB_IMAP)
          imap_getheaders(0, msgCount); /* TODO not here */
 #endif
-   assert(n_msgvec != NULL);
+   ASSERT(n_msgvec != NULL);
 
    if (Larg != NULL) {
       /* Avoid any messages XXX add a make_mua_silent() and use it? */
@@ -813,23 +816,23 @@ print_header_summary(char const *Larg)
    } else {
       i = 0;
       if(!mb.mb_threaded){
-         for(; UICMP(z, i, <, msgCount); ++i)
+         for(; UCMP(z, i, <, msgCount); ++i)
             n_msgvec[i] = i + 1;
       }else{
          struct message *mp;
 
          for(mp = threadroot; mp; ++i, mp = next_in_thread(mp))
-            n_msgvec[i] = (int)PTR2SIZE(mp - message + 1);
+            n_msgvec[i] = (int)P2UZ(mp - message + 1);
       }
       print_headers(n_msgvec, FAL0, TRU1); /* TODO should be iterator! */
    }
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL void
 n_folder_announce(enum n_announce_flags af){
    int vec[2], mdot;
-   n_NYD_IN;
+   NYD_IN;
 
    mdot = (mb.mb_type == MB_VOID) ? 1 : getmdot(0);
    dot = &message[mdot - 1];
@@ -855,7 +858,7 @@ n_folder_announce(enum n_announce_flags af){
 
    if(af & n__ANNOUNCE_ANY)
       fflush(n_stdout);
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL int
@@ -865,7 +868,7 @@ getmdot(int nmail)
    char *cp;
    int mdot;
    enum mflag avoid = MHIDDEN | MDELETED;
-   n_NYD_IN;
+   NYD_IN;
 
    if (!nmail) {
       if (ok_blook(autothread)) {
@@ -884,88 +887,88 @@ getmdot(int nmail)
    }
 
    if (nmail)
-      for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
+      for (mp = message; PCMP(mp, <, message + msgCount); ++mp)
          if ((mp->m_flag & (MNEWEST | avoid)) == MNEWEST)
             break;
 
-   if (!nmail || PTRCMP(mp, >=, message + msgCount)) {
+   if (!nmail || PCMP(mp, >=, message + msgCount)) {
       if (mb.mb_threaded) {
          for (mp = threadroot; mp != NULL; mp = next_in_thread(mp))
             if ((mp->m_flag & (MNEW | avoid)) == MNEW)
                break;
       } else {
-         for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
+         for (mp = message; PCMP(mp, <, message + msgCount); ++mp)
             if ((mp->m_flag & (MNEW | avoid)) == MNEW)
                break;
       }
    }
 
-   if ((mb.mb_threaded ? (mp == NULL) : PTRCMP(mp, >=, message + msgCount))) {
+   if ((mb.mb_threaded ? (mp == NULL) : PCMP(mp, >=, message + msgCount))) {
       if (mb.mb_threaded) {
          for (mp = threadroot; mp != NULL; mp = next_in_thread(mp))
             if (mp->m_flag & MFLAGGED)
                break;
       } else {
-         for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
+         for (mp = message; PCMP(mp, <, message + msgCount); ++mp)
             if (mp->m_flag & MFLAGGED)
                break;
       }
    }
 
-   if ((mb.mb_threaded ? (mp == NULL) : PTRCMP(mp, >=, message + msgCount))) {
+   if ((mb.mb_threaded ? (mp == NULL) : PCMP(mp, >=, message + msgCount))) {
       if (mb.mb_threaded) {
          for (mp = threadroot; mp != NULL; mp = next_in_thread(mp))
             if (!(mp->m_flag & (MREAD | avoid)))
                break;
       } else {
-         for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
+         for (mp = message; PCMP(mp, <, message + msgCount); ++mp)
             if (!(mp->m_flag & (MREAD | avoid)))
                break;
       }
    }
 
    if (nmail &&
-         (mb.mb_threaded ? (mp != NULL) : PTRCMP(mp, <, message + msgCount)))
-      mdot = (int)PTR2SIZE(mp - message + 1);
+         (mb.mb_threaded ? (mp != NULL) : PCMP(mp, <, message + msgCount)))
+      mdot = (int)P2UZ(mp - message + 1);
    else if (ok_blook(showlast)) {
       if (mb.mb_threaded) {
          for (mp = this_in_thread(threadroot, -1); mp;
                mp = prev_in_thread(mp))
             if (!(mp->m_flag & avoid))
                break;
-         mdot = (mp != NULL) ? (int)PTR2SIZE(mp - message + 1) : msgCount;
+         mdot = (mp != NULL) ? (int)P2UZ(mp - message + 1) : msgCount;
       } else {
          for (mp = message + msgCount - 1; mp >= message; --mp)
             if (!(mp->m_flag & avoid))
                break;
-         mdot = (mp >= message) ? (int)PTR2SIZE(mp - message + 1) : msgCount;
+         mdot = (mp >= message) ? (int)P2UZ(mp - message + 1) : msgCount;
       }
    } else if (!nmail &&
-         (mb.mb_threaded ? (mp != NULL) : PTRCMP(mp, <, message + msgCount)))
-      mdot = (int)PTR2SIZE(mp - message + 1);
+         (mb.mb_threaded ? (mp != NULL) : PCMP(mp, <, message + msgCount)))
+      mdot = (int)P2UZ(mp - message + 1);
    else if (mb.mb_threaded) {
       for (mp = threadroot; mp; mp = next_in_thread(mp))
          if (!(mp->m_flag & avoid))
             break;
-      mdot = (mp != NULL) ? (int)PTR2SIZE(mp - message + 1) : 1;
+      mdot = (mp != NULL) ? (int)P2UZ(mp - message + 1) : 1;
    } else {
-      for (mp = message; PTRCMP(mp, <, message + msgCount); ++mp)
+      for (mp = message; PCMP(mp, <, message + msgCount); ++mp)
          if (!(mp->m_flag & avoid))
             break;
-      mdot = PTRCMP(mp, <, message + msgCount)
-            ? (int)PTR2SIZE(mp - message + 1) : 1;
+      mdot = PCMP(mp, <, message + msgCount)
+            ? (int)P2UZ(mp - message + 1) : 1;
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return mdot;
 }
 
 FL void
 initbox(char const *name)
 {
-   bool_t err;
+   boole err;
    char *tempMesg;
-   n_NYD_IN;
+   NYD_IN;
 
    if (mb.mb_type != MB_VOID)
       su_cs_pcopy_n(prevfile, mailname, PATH_MAX);
@@ -999,19 +1002,19 @@ initbox(char const *name)
    }
    dot = prevdot = threadroot = NULL;
    n_pstate &= ~n_PS_DID_PRINT_DOT;
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL char const *
 n_folder_query(void){
-   struct n_string s, *sp = &s;
+   struct n_string s_b, *s;
    enum protocol proto;
    char *cp;
    char const *rv, *adjcp;
-   bool_t err;
-   n_NYD_IN;
+   boole err;
+   NYD_IN;
 
-   sp = n_string_creat_auto(sp);
+   s = n_string_creat_auto(&s_b);
 
    /* *folder* is linked with *folder_resolved*: we only use the latter */
    for(err = FAL0;;){
@@ -1038,7 +1041,7 @@ n_folder_query(void){
             ) == NULL) || *cp == '\0')
          goto jset;
       else{
-         size_t i;
+         uz i;
 
          for(i = su_cs_len(cp);;){
             if(--i == 0)
@@ -1072,26 +1075,26 @@ n_folder_query(void){
 
       /* Prefix HOME as necessary */
       if(*adjcp != '/'){ /* XXX path_is_absolute() */
-         size_t l1, l2;
+         uz l1, l2;
          char const *home;
 
          home = ok_vlook(HOME);
          l1 = su_cs_len(home);
          l2 = su_cs_len(cp);
 
-         sp = n_string_reserve(sp, l1 + 1 + l2 +1);
+         s = n_string_reserve(s, l1 + 1 + l2 +1);
          if(cp != adjcp){
-            size_t i;
+            uz i;
 
-            sp = n_string_push_buf(sp, cp, i = PTR2SIZE(adjcp - cp));
+            s = n_string_push_buf(s, cp, i = P2UZ(adjcp - cp));
             cp += i;
             l2 -= i;
          }
-         sp = n_string_push_buf(sp, home, l1);
-         sp = n_string_push_c(sp, '/');
-         sp = n_string_push_buf(sp, cp, l2);
-         cp = n_string_cp(sp);
-         sp = n_string_drop_ownership(sp);
+         s = n_string_push_buf(s, home, l1);
+         s = n_string_push_c(s, '/');
+         s = n_string_push_buf(s, cp, l2);
+         cp = n_string_cp(s);
+         s = n_string_drop_ownership(s);
       }
 
       /* TODO Since our visual mailname is resolved via realpath(3) if available
@@ -1102,17 +1105,17 @@ n_folder_query(void){
 #ifndef mx_HAVE_REALPATH
       rv = cp;
 #else
-      assert(sp->s_len == 0 && sp->s_dat == NULL);
+      ASSERT(s->s_len == 0 && s->s_dat == NULL);
 # ifndef mx_HAVE_REALPATH_NULL
-      sp = n_string_reserve(sp, PATH_MAX +1);
+      s = n_string_reserve(s, PATH_MAX +1);
 # endif
 
-      if((sp->s_dat = realpath(cp, sp->s_dat)) != NULL){
+      if((s->s_dat = realpath(cp, s->s_dat)) != NULL){
 # ifdef mx_HAVE_REALPATH_NULL
-         n_string_cp(sp = n_string_assign_cp(sp, cp = sp->s_dat));
+         n_string_cp(s = n_string_assign_cp(s, cp = s->s_dat));
          (free)(cp);
 # endif
-         rv = sp->s_dat;
+         rv = s->s_dat;
       }else if(su_err_no() == su_ERR_NOENT)
          rv = cp;
       else{
@@ -1121,19 +1124,19 @@ n_folder_query(void){
          err = TRU1;
          rv = n_empty;
       }
-      sp = n_string_drop_ownership(sp);
+      s = n_string_drop_ownership(s);
 #endif /* mx_HAVE_REALPATH */
 
       /* Always append a solidus to our result path upon success */
       if(!err){
-         size_t i;
+         uz i;
 
          if(rv[(i = su_cs_len(rv)) - 1] != '/'){
-            sp = n_string_reserve(sp, i + 1 +1);
-            sp = n_string_push_buf(sp, rv, i);
-            sp = n_string_push_c(sp, '/');
-            rv = n_string_cp(sp);
-            sp = n_string_drop_ownership(sp);
+            s = n_string_reserve(s, i + 1 +1);
+            s = n_string_push_buf(s, rv, i);
+            s = n_string_push_c(s, '/');
+            rv = n_string_cp(s);
+            s = n_string_drop_ownership(s);
          }
       }
 
@@ -1143,9 +1146,9 @@ jset:
 
    if(err){
       n_err(_("*folder* is not resolvable, using CWD\n"));
-      assert(rv != NULL && *rv == '\0');
+      ASSERT(rv != NULL && *rv == '\0');
    }
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -1155,8 +1158,8 @@ n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_null){
    struct stat stb;
    char buf[2];
    int rv;
-   bool_t needsep;
-   n_NYD2_IN;
+   boole needsep;
+   NYD2_IN;
 
    if(!fseek(fout, -2L, SEEK_END)){
       if(fread(buf, sizeof *buf, 2, fout) != 2)
@@ -1190,8 +1193,9 @@ n_folder_mbox_prepare_append(FILE *fout, struct stat *st_or_null){
 jerrno:
       rv = su_err_no();
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

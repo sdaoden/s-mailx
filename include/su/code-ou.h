@@ -86,6 +86,7 @@
 #undef Z_ALIGN_PZ
 
 #undef ASSERT_INJ
+#undef ASSERT_NB
 #undef ASSERT
 #undef ASSERT_LOC
 #undef ASSERT_EXEC
@@ -135,7 +136,10 @@
 
 #undef PCMP
 
-#ifdef su_SOURCE
+#ifdef mx_SOURCE
+# undef A_
+#endif
+#if defined su_SOURCE || defined mx_SOURCE
 # undef _
 # undef N_
 # undef V_
@@ -189,11 +193,10 @@
 # undef up
 # undef sp
 
-# ifndef mx_SOURCE /* TODO */
-#  undef FAL0
-#  undef TRU1
-#  undef TRUM1
-# endif
+# undef FAL0
+# undef TRU1
+# undef TRU2
+# undef TRUM1
 # undef boole
 #endif /* su_HEADER || ((su_SOURCE || mx_SOURCE) && su_C_LANG) */
 

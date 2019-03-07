@@ -43,6 +43,8 @@ su_EMPTY_FILE()
 #include <su/utf.h>
 
 #include "mx/filter-html.h"
+/* TODO fake */
+#include "su/code-in.h"
 
 enum hf_limits {
    _HF_MINLEN  = 10,    /* Minimum line length (can't really be smaller) */
@@ -88,26 +90,26 @@ enum hf_entity_flags {
 
 struct htmlflt_href {
    struct htmlflt_href *hfh_next;
-   ui32_t      hfh_no;     /* Running sequence */
-   ui32_t      hfh_len;    /* of .hfh_dat */
-   char        hfh_dat[n_VFIELD_SIZE(0)];
+   u32      hfh_no;     /* Running sequence */
+   u32      hfh_len;    /* of .hfh_dat */
+   char        hfh_dat[VFIELD_SIZE(0)];
 };
 
 struct htmlflt_tag {
-   si32_t      hft_act;    /* char or hf_special_actions */
+   s32      hft_act;    /* char or hf_special_actions */
    /* Not NUL: character to inject, with high bit set: place a space
     * afterwards.  Note: only recognized with _HFSA_NEEDSEP or _HFSA_NEEDNL */
    char        hft_injc;
-   ui8_t       hft_len;    /* Useful bytes in (NUL terminated) .hft_tag */
+   u8       hft_len;    /* Useful bytes in (NUL terminated) .hft_tag */
    char const  hft_tag[10]; /* Tag less < and > surroundings (TR, /TR, ..) */
 };
-n_CTA(n_SIZEOF_FIELD(struct htmlflt_tag, hft_tag) < LINESIZE,
+CTA(su_FIELD_SIZEOF(struct htmlflt_tag, hft_tag) < LINESIZE,
    "Structure field too large a size"); /* .hf_ign_tag */
 
 struct hf_ent {
-   ui8_t       hfe_flags;  /* enum hf_entity_flags plus length of .hfe_ent */
+   u8       hfe_flags;  /* enum hf_entity_flags plus length of .hfe_ent */
    char        hfe_c;      /* Plain replacement character */
-   ui16_t      hfe_uni;    /* Unicode codepoint if _HFE_HAVE_UNI */
+   u16      hfe_uni;    /* Unicode codepoint if _HFE_HAVE_UNI */
    char        hfe_cstr[5]; /* _HFE_HAVE_CSTR (e.g., &hellip; -> ...) */
    char const  hfe_ent[7]; /* Entity less & and ; surroundings */
 };
@@ -219,7 +221,7 @@ static struct htmlflt * _hf_putc(struct htmlflt *self, char c);
 static struct htmlflt * _hf_putc_premode(struct htmlflt *self, char c);
 static struct htmlflt * _hf_puts(struct htmlflt *self, char const *cp);
 static struct htmlflt * _hf_putbuf(struct htmlflt *self,
-                           char const *cp, size_t len);
+                           char const *cp, uz len);
 
 /* Try to locate a param'eter in >hf_bdat, store it (non-terminated!) or NULL */
 static struct htmlflt * _hf_param(struct htmlflt *self, struct str *store,
@@ -232,17 +234,17 @@ static struct htmlflt * _hf_expand_all_ents(struct htmlflt *self,
 /* Completely parsed over a tag / an entity, interpret that */
 static struct htmlflt * _hf_check_tag(struct htmlflt *self, char const *s);
 static struct htmlflt * _hf_check_ent(struct htmlflt *self, char const *s,
-                           size_t l);
+                           uz l);
 
 /* Input handler */
-static ssize_t          _hf_add_data(struct htmlflt *self,
-                           char const *dat, size_t len);
+static sz          _hf_add_data(struct htmlflt *self,
+                           char const *dat, uz len);
 
 static struct htmlflt *
 _hf_dump_hrefs(struct htmlflt *self)
 {
    struct htmlflt_href *hhp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if (!(self->hf_flags & _HF_NL_2) && putc('\n', self->hf_os) == EOF) {
       self->hf_flags |= _HF_ERROR;
@@ -272,18 +274,18 @@ _hf_dump_hrefs(struct htmlflt *self)
 
    self->hf_flags |= (putc('\n', self->hf_os) == EOF)
          ?  _HF_ERROR : _HF_NL_1 | _HF_NL_2;
-   self->hf_href_dist = (ui32_t)n_realscreenheight >> 1;
+   self->hf_href_dist = (u32)n_realscreenheight >> 1;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
 static struct htmlflt *
 _hf_dump(struct htmlflt *self)
 {
-   ui32_t f, l;
+   u32 f, l;
    char c, *cp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    f = self->hf_flags & ~_HF_BLANK;
    l = self->hf_len;
@@ -313,22 +315,22 @@ jput:
    if (--self->hf_href_dist < 0 && (f & _HF_NL_2) && self->hf_hrefs != NULL)
       self = _hf_dump_hrefs(self);
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
 static struct htmlflt *
 _hf_store(struct htmlflt *self, char c)
 {
-   ui32_t l, i;
-   n_NYD2_IN;
+   u32 l, i;
+   NYD2_IN;
 
-   assert(c != '\n');
+   ASSERT(c != '\n');
 
    l = self->hf_len;
-   if(n_UNLIKELY(l == 0) && (i = (self->hf_flags & _HF_BQUOTE_MASK)) != 0 &&
+   if(UNLIKELY(l == 0) && (i = (self->hf_flags & _HF_BQUOTE_MASK)) != 0 &&
          self->hf_lmax > _HF_MINLEN){
-      ui32_t len, j;
+      u32 len, j;
       char const *ip;
 
       ip = ok_vlook(indentprefix);
@@ -394,7 +396,7 @@ _hf_store(struct htmlflt *self, char c)
       } else {
          if (x < 0) {
             (void)mbtowc(&wc, NULL, n_mb_cur_max);
-            if (UICMP(32, l - self->hf_mboff, >=, n_mb_cur_max)) { /* XXX */
+            if (UCMP(32, l - self->hf_mboff, >=, n_mb_cur_max)) { /* XXX */
                ++self->hf_mboff;
                ++self->hf_mbwidth;
             }
@@ -406,7 +408,7 @@ _hf_store(struct htmlflt *self, char c)
 
    /* Do we need to break the line? */
    if (i >= self->hf_lmax - _HF_BRKSUB) {
-      ui32_t f, lim;
+      u32 f, lim;
 
 
       /* Let's hope we saw a sane place to break this line! */
@@ -430,7 +432,7 @@ jput:
          if (su_cs_is_ascii((c = self->hf_line[i]))) {
             self->hf_last_ws = ++i;
             goto jput;
-         } else if ((f & _HF_UTF8) && ((ui8_t)c & 0xC0) != 0x80) {
+         } else if ((f & _HF_UTF8) && ((u8)c & 0xC0) != 0x80) {
             self->hf_last_ws = i;
             goto jput;
          }
@@ -440,7 +442,7 @@ jput:
          self = _hf_dump(self);
    }
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
@@ -450,8 +452,8 @@ __hf_sync_mbstuff(struct htmlflt *self)
 {
    wchar_t wc;
    char const *b;
-   ui32_t o, w, l;
-   n_NYD2_IN;
+   u32 o, w, l;
+   NYD2_IN;
 
    b = self->hf_line;
    o = w = 0;
@@ -486,7 +488,7 @@ jumpin:
    self->hf_mboff = o;
    self->hf_mbwidth = w;
 
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 # endif /* mx_HAVE_NATCH_CHAR */
@@ -494,8 +496,8 @@ jumpin:
 static struct htmlflt *
 _hf_nl(struct htmlflt *self)
 {
-   ui32_t f;
-   n_NYD2_IN;
+   u32 f;
+   NYD2_IN;
 
    if (!((f = self->hf_flags) & _HF_ERROR)) {
       if (f & _HF_ANY) {
@@ -504,25 +506,25 @@ _hf_nl(struct htmlflt *self)
       } else
          self->hf_flags = (f |= _HF_NL_MASK);
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
 static struct htmlflt *
 _hf_nl_force(struct htmlflt *self)
 {
-   n_NYD2_IN;
+   NYD2_IN;
    if (!(self->hf_flags & _HF_ERROR))
       self = _hf_dump(self);
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
 static struct htmlflt *
 _hf_putc(struct htmlflt *self, char c)
 {
-   ui32_t f;
-   n_NYD2_IN;
+   u32 f;
+   NYD2_IN;
 
    if ((f = self->hf_flags) & _HF_ERROR)
       goto jleave;
@@ -540,15 +542,15 @@ _hf_putc(struct htmlflt *self, char c)
    self->hf_flags = (f |= _HF_ANY);
    self = _hf_store(self, c);
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
 static struct htmlflt *
 _hf_putc_premode(struct htmlflt *self, char c)
 {
-   ui32_t f;
-   n_NYD2_IN;
+   u32 f;
+   NYD2_IN;
 
    if ((f = self->hf_flags) & _HF_ERROR) {
       ;
@@ -559,7 +561,7 @@ _hf_putc_premode(struct htmlflt *self, char c)
       self->hf_flags = (f |= _HF_ANY);
       self = _hf_store(self, c);
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
@@ -567,22 +569,22 @@ static struct htmlflt *
 _hf_puts(struct htmlflt *self, char const *cp)
 {
    char c;
-   n_NYD2_IN;
+   NYD2_IN;
 
    while ((c = *cp++) != '\0')
       self = _hf_putc(self, c);
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
 static struct htmlflt *
-_hf_putbuf(struct htmlflt *self, char const *cp, size_t len)
+_hf_putbuf(struct htmlflt *self, char const *cp, uz len)
 {
-   n_NYD2_IN;
+   NYD2_IN;
 
    while (len-- > 0)
       self = _hf_putc(self, *cp++);
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
@@ -591,9 +593,9 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
 {
    char const *cp;
    char c, x, quote;
-   size_t i;
-   bool_t hot;
-   n_NYD2_IN;
+   uz i;
+   boole hot;
+   NYD2_IN;
 
    store->s = NULL;
    store->l = 0;
@@ -679,7 +681,7 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
          while((c = *cp) != '\0' && !su_cs_is_white(c) && c != '>')
             ++cp;
    }
-   i = PTR2SIZE(cp - store->s);
+   i = P2UZ(cp - store->s);
 
    /* Terrible tagsoup out there, e.g., groups.google.com produces href=""
     * parameter values prefixed and suffixed by newlines!  Therefore trim the
@@ -692,7 +694,7 @@ _hf_param(struct htmlflt *self, struct str *store, char const *param)
    if ((store->l = i) == 0)
       store->s = NULL;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
@@ -701,8 +703,8 @@ _hf_expand_all_ents(struct htmlflt *self, struct str const *param)
 {
    char const *cp, *maxcp, *ep;
    char c;
-   size_t i;
-   n_NYD2_IN;
+   uz i;
+   NYD2_IN;
 
    for (cp = param->s, maxcp = cp + param->l; cp < maxcp;)
       if ((c = *cp++) != '&')
@@ -715,7 +717,7 @@ jputc:
                   self = _hf_putc(self, *cp);
                goto jleave;
             } else if (c == ';') {
-               if ((i = PTR2SIZE(ep - cp)) > 1) {
+               if ((i = P2UZ(ep - cp)) > 1) {
                   self = _hf_check_ent(self, cp, i);
                   break;
                } else {
@@ -727,7 +729,7 @@ jputc:
          cp = ep;
       }
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
@@ -736,13 +738,13 @@ _hf_check_tag(struct htmlflt *self, char const *s)
 {
    char nobuf[32], c;
    struct str param;
-   size_t i;
+   uz i;
    struct htmlflt_tag const *hftp;
-   ui32_t f;
-   n_NYD2_IN;
+   u32 f;
+   NYD2_IN;
 
    /* Extra check only */
-   assert(s != NULL);
+   ASSERT(s != NULL);
    if (*s != '<') {
       su_DBG( n_alert("HTML tagsoup filter _hf_check_tag() called on soup!"); )
 jput_as_is:
@@ -754,7 +756,7 @@ jput_as_is:
       /* Special massage for things like <br/>: after the slash only whitespace
        * may separate us from the closing right angle! */
       if (c == '/') {
-         size_t j = i + 1;
+         uz j = i + 1;
 
          while ((c = s[j]) != '\0' && c != '>' && su_cs_is_white(c))
             ++j;
@@ -768,9 +770,9 @@ jput_as_is:
          if (c == '>' || c == '/' || su_cs_is_white(c))
             break;
       }
-      if (n_UNLIKELY(PTRCMP(++hftp, >=, _hf_tags + n_NELEM(_hf_tags)))){
+      if (UNLIKELY(PCMP(++hftp, >=, _hf_tags + NELEM(_hf_tags)))){
          /* A <blockquote> is very special xxx */
-         bool_t isct;
+         boole isct;
 
          if((isct = (i > 1 && *s == '/'))){
             ++s;
@@ -824,7 +826,7 @@ jput_as_is:
          self = _hf_nl(self);
       if (hftp->hft_injc != '\0') {
          self = _hf_putc(self, hftp->hft_injc & 0x7F);
-         if ((uc_i)hftp->hft_injc & 0x80)
+         if ((uc)hftp->hft_injc & 0x80)
             self = _hf_putc(self, ' ');
       }
       break;
@@ -854,11 +856,11 @@ jimg_put:
       /* Ignore non-external links */
       if (param.s != NULL && *param.s != '#') {
          struct htmlflt_href *hhp = n_alloc(
-               n_VSTRUCT_SIZEOF(struct htmlflt_href, hfh_dat) + param.l +1);
+               VSTRUCT_SIZEOF(struct htmlflt_href, hfh_dat) + param.l +1);
 
          hhp->hfh_next = self->hf_hrefs;
          hhp->hfh_no = ++self->hf_href_no;
-         hhp->hfh_len = (ui32_t)param.l;
+         hhp->hfh_len = (u32)param.l;
          su_mem_copy(hhp->hfh_dat, param.s, param.l);
 
          snprintf(nobuf, sizeof nobuf, "[%u]", hhp->hfh_no);
@@ -883,7 +885,7 @@ jimg_put:
       break;
    }
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 
    /* The problem is that even invalid tagsoup is widely used, without real
@@ -919,20 +921,20 @@ jnotknown:
 }
 
 static struct htmlflt *
-_hf_check_ent(struct htmlflt *self, char const *s, size_t l)
+_hf_check_ent(struct htmlflt *self, char const *s, uz l)
 {
    char nobuf[32];
    char const *s_save;
-   size_t l_save;
+   uz l_save;
    struct hf_ent const *hfep;
-   size_t i;
-   n_NYD2_IN;
+   uz i;
+   NYD2_IN;
 
    s_save = s;
    l_save = l;
-   assert(*s == '&');
-   assert(l > 0);
-   /* False entities seen in the wild assert(s[l - 1] == ';'); */
+   ASSERT(*s == '&');
+   ASSERT(l > 0);
+   /* False entities seen in the wild ASSERT(s[l - 1] == ';'); */
    ++s;
    l -= 2;
 
@@ -948,16 +950,16 @@ _hf_check_ent(struct htmlflt *self, char const *s, size_t l)
             self = _hf_putc(self, (char)i);
          else if (self->hf_flags & _HF_UTF8) {
 jputuni:
-            l = su_utf32_to_8((ui32_t)i, nobuf);
+            l = su_utf32_to_8((u32)i, nobuf);
             self = _hf_putbuf(self, nobuf, l);
          } else
             goto jeent;
       } else
          goto jeent;
    } else {
-      ui32_t f = self->hf_flags, hf;
+      u32 f = self->hf_flags, hf;
 
-      for (hfep = _hf_ents; PTRCMP(hfep, <, _hf_ents + n_NELEM(_hf_ents));
+      for (hfep = _hf_ents; PCMP(hfep, <, _hf_ents + NELEM(_hf_ents));
             ++hfep)
          if (l == ((hf = hfep->hfe_flags) & _HFE_LENGTH_MASK) &&
                !strncmp(s, hfep->hfe_ent, l)) {
@@ -974,17 +976,17 @@ jeent:
       self = _hf_putbuf(self, s_save, l_save);
    }
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
-static ssize_t
-_hf_add_data(struct htmlflt *self, char const *dat, size_t len)
+static sz
+_hf_add_data(struct htmlflt *self, char const *dat, uz len)
 {
    char c, *cp, *cp_max;
-   bool_t hot;
-   ssize_t rv = 0;
-   n_NYD_IN;
+   boole hot;
+   sz rv = 0;
+   NYD_IN;
 
    /* Final put request? */
    if (dat == NULL) {
@@ -1006,8 +1008,8 @@ _hf_add_data(struct htmlflt *self, char const *dat, size_t len)
    }
    hot = (cp != self->hf_bdat);
 
-   for (rv = (ssize_t)len; len > 0; --len) {
-      ui32_t f = self->hf_flags;
+   for (rv = (sz)len; len > 0; --len) {
+      u32 f = self->hf_flags;
 
       if (f & _HF_ERROR)
          break;
@@ -1023,7 +1025,7 @@ _hf_add_data(struct htmlflt *self, char const *dat, size_t len)
        * TODO that is a single mechanism we should have made it! */
       if (f & _HF_IGN) {
          struct htmlflt_tag const *hftp = self->hf_ign_tag;
-         size_t i;
+         uz i;
 
          if (c == '<') {
             hot = TRU1;
@@ -1031,7 +1033,7 @@ jcp_reset:
             cp = self->hf_bdat;
          } else if (c == '>') {
             if (hot) {
-               if ((i = PTR2SIZE(cp - self->hf_bdat)) > 1 &&
+               if ((i = P2UZ(cp - self->hf_bdat)) > 1 &&
                      --i == hftp->hft_len &&
                      !su_cs_cmp_case_n(self->hf_bdat + 1, hftp->hft_tag, i))
                   self->hf_flags = (f &= ~(_HF_IGN | _HF_NOPUT));
@@ -1040,7 +1042,7 @@ jcp_reset:
             }
          } else if (hot) {
             *cp++ = c;
-            i = PTR2SIZE(cp - self->hf_bdat);
+            i = P2UZ(cp - self->hf_bdat);
             if ((i == 1 && c != '/') || --i > hftp->hft_len) {
                hot = FAL0;
                goto jcp_reset;
@@ -1053,7 +1055,7 @@ jcp_reset:
             f &= ~_HF_ENT;
             /* Special case "<!--" buffer content to deal with really weird
              * things that can be done with "<!--[if gte mso 9]>" syntax */
-            if (PTR2SIZE(cp - self->hf_bdat) != 4 ||
+            if (P2UZ(cp - self->hf_bdat) != 4 ||
                   su_mem_cmp(self->hf_bdat, "<!--", 4)) {
                self->hf_flags = f;
                *cp = '\0';
@@ -1117,12 +1119,12 @@ jdo_c:
             f &= ~(_HF_NOPUT | _HF_ENT);
             self->hf_flags = f;
            self = _hf_check_ent(self, self->hf_bdat,
-               PTR2SIZE(cp + 1 - self->hf_bdat));
+               P2UZ(cp + 1 - self->hf_bdat));
          } else {
             /* We may need to grow the buffer */
-            if (PTRCMP(cp + 42/2, >=, cp_max)) {
-               size_t i = PTR2SIZE(cp - self->hf_bdat),
-                  m = PTR2SIZE(self->hf_bmax - self->hf_bdat) + LINESIZE;
+            if (PCMP(cp + 42/2, >=, cp_max)) {
+               uz i = P2UZ(cp - self->hf_bdat),
+                  m = P2UZ(self->hf_bmax - self->hf_bdat) + LINESIZE;
 
                cp = self->hf_bdat = n_realloc(self->hf_bdat, m);
                self->hf_bmax = cp_max = &cp[m -1];
@@ -1134,7 +1136,7 @@ jdo_c:
    }
    self->hf_curr = cp;
 jleave:
-  n_NYD_OU;
+  NYD_OU;
   return (self->hf_flags & _HF_ERROR) ? -1 : rv;
 }
 
@@ -1142,12 +1144,12 @@ jleave:
  * TODO Because we don't support filter chains yet this filter will be run
  * TODO in a dedicated subprocess, driven via a special Popen() mode
  */
-static bool_t __hf_hadpipesig;
+static boole __hf_hadpipesig;
 static void
 __hf_onpipe(int signo)
 {
-   n_NYD_X; /* Signal handler */
-   n_UNUSED(signo);
+   NYD; /* Signal handler */
+   UNUSED(signo);
    __hf_hadpipesig = TRU1;
 }
 
@@ -1156,9 +1158,9 @@ htmlflt_process_main(void)
 {
    char buf[BUFFER_SIZE];
    struct htmlflt hf;
-   size_t i;
+   uz i;
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    __hf_hadpipesig = FAL0;
    safe_signal(SIGPIPE, &__hf_onpipe);
@@ -1167,7 +1169,7 @@ htmlflt_process_main(void)
    htmlflt_reset(&hf, n_stdout);
 
    for (;;) {
-      if ((i = fread(buf, sizeof(buf[0]), n_NELEM(buf), n_stdin)) == 0) {
+      if ((i = fread(buf, sizeof(buf[0]), NELEM(buf), n_stdin)) == 0) {
          rv = !feof(n_stdin);
          break;
       }
@@ -1186,32 +1188,32 @@ htmlflt_process_main(void)
    htmlflt_destroy(&hf);
 
    rv |= __hf_hadpipesig;
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL void
 htmlflt_init(struct htmlflt *self)
 {
-   n_NYD_IN;
+   NYD_IN;
    /* (Rather redundant though) */
    su_mem_set(self, 0, sizeof *self);
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL void
 htmlflt_destroy(struct htmlflt *self)
 {
-   n_NYD_IN;
+   NYD_IN;
    htmlflt_reset(self, NULL);
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL void
 htmlflt_reset(struct htmlflt *self, FILE *f)
 {
    struct htmlflt_href *hfhp;
-   n_NYD_IN;
+   NYD_IN;
 
    while ((hfhp = self->hf_hrefs) != NULL) {
       self->hf_hrefs = hfhp->hfh_next;
@@ -1226,40 +1228,41 @@ htmlflt_reset(struct htmlflt *self, FILE *f)
    su_mem_set(self, 0, sizeof *self);
 
    if (f != NULL) {
-      ui32_t sw = n_MAX(_HF_MINLEN, (ui32_t)n_scrnwidth);
+      u32 sw = MAX(_HF_MINLEN, (u32)n_scrnwidth);
 
-      self->hf_line = n_alloc((size_t)sw * n_mb_cur_max +1);
+      self->hf_line = n_alloc((uz)sw * n_mb_cur_max +1);
       self->hf_lmax = sw;
 
       if (n_psonce & n_PSO_UNICODE) /* TODO not truly generic */
          self->hf_flags = _HF_UTF8;
       self->hf_os = f;
    }
-   n_NYD_OU;
+   NYD_OU;
 }
 
-FL ssize_t
-htmlflt_push(struct htmlflt *self, char const *dat, size_t len)
+FL sz
+htmlflt_push(struct htmlflt *self, char const *dat, uz len)
 {
-   ssize_t rv;
-   n_NYD_IN;
+   sz rv;
+   NYD_IN;
 
    rv = _hf_add_data(self, dat, len);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
-FL ssize_t
+FL sz
 htmlflt_flush(struct htmlflt *self)
 {
-   ssize_t rv;
-   n_NYD_IN;
+   sz rv;
+   NYD_IN;
 
    rv = _hf_add_data(self, NULL, 0);
    rv |= !fflush(self->hf_os) ? 0 : -1;
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
+#include "su/code-ou.h"
 #endif /* mx_HAVE_FILTER_HTML_TAGSOUP */
 /* s-it-mode */

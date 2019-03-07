@@ -57,6 +57,9 @@
 #include "mx/shortcut.h"
 #include "mx/ui-str.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* POSIX says
  *   Environment variable names used by the utilities in the Shell and
  *   Utilities volume of POSIX.1-2008 consist solely of uppercase
@@ -89,33 +92,33 @@ enum a_shexp_quote_flags{
 #ifdef mx_HAVE_FNMATCH
 struct a_shexp_glob_ctx{
    char const *sgc_patdat;       /* Remaining pattern (at and below level) */
-   size_t sgc_patlen;
+   uz sgc_patlen;
    struct n_string *sgc_outer;   /* Resolved path up to this level */
-   ui32_t sgc_flags;
-   ui8_t sgc__dummy[4];
+   u32 sgc_flags;
+   u8 sgc__dummy[4];
 };
 #endif
 
 struct a_shexp_quote_ctx{
    struct n_string *sqc_store;   /* Result storage */
    struct str sqc_input;         /* Input data, topmost level */
-   ui32_t sqc_cnt_revso;
-   ui32_t sqc_cnt_single;
-   ui32_t sqc_cnt_double;
-   ui32_t sqc_cnt_dollar;
+   u32 sqc_cnt_revso;
+   u32 sqc_cnt_single;
+   u32 sqc_cnt_double;
+   u32 sqc_cnt_dollar;
    enum a_shexp_quote_flags sqc_flags;
-   ui8_t sqc__dummy[4];
+   u8 sqc__dummy[4];
 };
 
 struct a_shexp_quote_lvl{
    struct a_shexp_quote_lvl *sql_link; /* Outer level */
    struct str sql_dat;                 /* This level (has to) handle(d) */
    enum a_shexp_quote_flags sql_flags;
-   ui8_t sql__dummy[4];
+   u8 sql__dummy[4];
 };
 
 /* Locate the user's mailbox file (where new, unread mail is queued) */
-static char *a_shexp_findmail(char const *user, bool_t force);
+static char *a_shexp_findmail(char const *user, boole force);
 
 /* Expand ^~/? and ^~USER/? constructs.
  * Returns the completely resolved (maybe empty or identical to input)
@@ -125,7 +128,7 @@ static char *a_shexp_tilde(char const *s);
 /* Perform fnmatch(3).  May return NULL on error */
 static char *a_shexp_globname(char const *name, enum fexp_mode fexpm);
 #ifdef mx_HAVE_FNMATCH
-static bool_t a_shexp__glob(struct a_shexp_glob_ctx *sgcp,
+static boole a_shexp__glob(struct a_shexp_glob_ctx *sgcp,
                struct n_strlist **slpp);
 static int a_shexp__globsort(void const *cvpa, void const *cvpb);
 #endif
@@ -135,10 +138,10 @@ static void a_shexp__quote(struct a_shexp_quote_ctx *sqcp,
                struct a_shexp_quote_lvl *sqlp);
 
 static char *
-a_shexp_findmail(char const *user, bool_t force){
+a_shexp_findmail(char const *user, boole force){
    char *rv;
    char const *cp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if(!force){
       if((cp = ok_vlook(inbox)) != NULL && *cp != '\0'){
@@ -168,35 +171,35 @@ a_shexp_findmail(char const *user, bool_t force){
    }
 
    /* C99 */{
-      size_t ul, i;
+      uz ulen, i;
 
-      ul = su_cs_len(user) +1;
-      i = sizeof(VAL_MAIL) -1 + 1 + ul;
+      ulen = su_cs_len(user) +1;
+      i = sizeof(VAL_MAIL) -1 + 1 + ulen;
 
       rv = n_autorec_alloc(i);
       su_mem_copy(rv, VAL_MAIL, (i = sizeof(VAL_MAIL) -1));
       rv[i] = '/';
-      su_mem_copy(&rv[++i], user, ul);
+      su_mem_copy(&rv[++i], user, ulen);
    }
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 static char *
 a_shexp_tilde(char const *s){
    struct passwd *pwp;
-   size_t nl, rl;
+   uz nl, rl;
    char const *rp, *np;
    char *rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if(*(rp = &s[1]) == '/' || *rp == '\0'){
       np = ok_vlook(HOME);
       rl = su_cs_len(rp);
    }else{
       if((rp = su_cs_find_c(np = rp, '/')) != NULL){
-         nl = PTR2SIZE(rp - np);
+         nl = P2UZ(rp - np);
          np = savestrbuf(np, nl);
          rl = su_cs_len(rp);
       }else
@@ -218,7 +221,7 @@ a_shexp_tilde(char const *s){
    }
    rv[nl] = '\0';
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -229,7 +232,7 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
    struct n_string outer;
    struct n_strlist *slp;
    char *cp;
-   n_NYD_IN;
+   NYD_IN;
 
    su_mem_set(&sgc, 0, sizeof sgc);
    sgc.sgc_patlen = su_cs_len(name);
@@ -247,13 +250,13 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
       goto jleave;
 
    if(slp == NULL){
-      cp = n_UNCONST(N_("File pattern does not match"));
+      cp = UNCONST(char*,N_("File pattern does not match"));
       goto jerr;
    }else if(slp->sl_next == NULL)
       cp = savestrbuf(slp->sl_dat, slp->sl_len);
    else if(fexpm & FEXP_MULTIOK){
       struct n_strlist **sorta, *xslp;
-      size_t i, no, l;
+      uz i, no, l;
 
       no = l = 0;
       for(xslp = slp; xslp != NULL; xslp = xslp->sl_next){
@@ -280,7 +283,7 @@ a_shexp_globname(char const *name, enum fexp_mode fexpm){
       n_free(sorta);
       n_pstate |= n_PS_EXPAND_MULTIRESULT;
    }else{
-      cp = n_UNCONST(N_("File pattern matches multiple results"));
+      cp = UNCONST(char*,N_("File pattern matches multiple results"));
       goto jerr;
    }
 
@@ -291,7 +294,7 @@ jleave:
       slp = slp->sl_next;
       n_free(tmp);
    }
-   n_NYD_OU;
+   NYD_OU;
    return cp;
 
 jerr:
@@ -303,7 +306,7 @@ jerr:
    goto jleave;
 
 #else /* mx_HAVE_FNMATCH */
-   n_UNUSED(fexpm);
+   UNUSED(fexpm);
 
    if(!(fexpm & FEXP_SILENT))
       n_err(_("No filename pattern (fnmatch(3)) support compiled in\n"));
@@ -312,16 +315,16 @@ jerr:
 }
 
 #ifdef mx_HAVE_FNMATCH
-static bool_t
+static boole
 a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
    enum{a_SILENT = 1<<0, a_DEEP=1<<1, a_SALLOC=1<<2};
 
    struct a_shexp_glob_ctx nsgc;
    struct dirent *dep;
    DIR *dp;
-   size_t old_outerlen;
+   uz old_outerlen;
    char const *ccp, *myp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    /* We need some special treatment for the outermost level.
     * All along our way, normalize path separators */
@@ -344,14 +347,14 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
    else{
       nsgc = *sgcp;
       nsgc.sgc_flags |= a_DEEP;
-      sgcp->sgc_patlen = PTR2SIZE((nsgc.sgc_patdat = &ccp[1]) -
+      sgcp->sgc_patlen = P2UZ((nsgc.sgc_patdat = &ccp[1]) -
             &sgcp->sgc_patdat[0]);
       nsgc.sgc_patlen -= sgcp->sgc_patlen;
 
       /* Trim solidus, everywhere */
       if(sgcp->sgc_patlen > 0){
-         assert(sgcp->sgc_patdat[sgcp->sgc_patlen -1] == '/');
-         ((char*)n_UNCONST(sgcp->sgc_patdat))[--sgcp->sgc_patlen] = '\0';
+         ASSERT(sgcp->sgc_patdat[sgcp->sgc_patlen -1] == '/');
+         UNCONST(char*,sgcp->sgc_patdat)[--sgcp->sgc_patlen] = '\0';
       }
       while(nsgc.sgc_patlen > 0 && nsgc.sgc_patdat[0] == '/'){
          --nsgc.sgc_patlen;
@@ -392,8 +395,8 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
     * TODO parse tree, otherwise we do not know what is desired! */
    /* C99 */{
       char *ncp;
-      size_t i;
-      bool_t need;
+      uz i;
+      boole need;
 
       for(need = FAL0, i = 0, myp = sgcp->sgc_patdat; *myp != '\0'; ++myp)
          switch(*myp){
@@ -430,7 +433,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
       case 0:{
          /* A match expresses the desire to recurse if there is more pattern */
          if(nsgc.sgc_patlen > 0){
-            bool_t isdir;
+            boole isdir;
 
             n_string_push_cp((sgcp->sgc_outer->s_len > 0
                   ? n_string_push_c(sgcp->sgc_outer, '/') : sgcp->sgc_outer),
@@ -462,7 +465,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
             n_string_trunc(sgcp->sgc_outer, old_outerlen);
          }else{
             struct n_strlist *slp;
-            size_t i, j;
+            uz i, j;
 
             i = su_cs_len(dep->d_name);
             j = (old_outerlen > 0) ? old_outerlen + 1 + i : i;
@@ -492,7 +495,7 @@ a_shexp__glob(struct a_shexp_glob_ctx *sgcp, struct n_strlist **slpp){
 jleave:
    if(dp != NULL)
       closedir(dp);
-   n_NYD2_OU;
+   NYD2_OU;
    return (ccp == NULL);
 
 jerr:
@@ -515,12 +518,12 @@ static int
 a_shexp__globsort(void const *cvpa, void const *cvpb){
    int rv;
    struct n_strlist const * const *slpa, * const *slpb;
-   n_NYD2_IN;
+   NYD2_IN;
 
    slpa = cvpa;
    slpb = cvpb;
    rv = su_cs_cmp_case((*slpa)->sl_dat, (*slpb)->sl_dat);
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 #endif /* mx_HAVE_FNMATCH */
@@ -545,10 +548,10 @@ a_shexp__quote(struct a_shexp_quote_ctx *sqcp, struct a_shexp_quote_lvl *sqlp){
 #endif
    struct n_visual_info_ctx vic;
    union {struct a_shexp_quote_lvl *head; struct n_string *store;} u;
-   ui32_t flags;
-   size_t il;
+   u32 flags;
+   uz il;
    char const *ib, *ib_base;
-   n_NYD2_IN;
+   NYD2_IN;
 
    ib_base = ib = sqlp->sql_dat.s;
    il = sqlp->sql_dat.l;
@@ -704,7 +707,7 @@ jstep:
             u.store = n_string_push_c(u.store, '"');
          flags &= ~a_SHEXP_QUOTE_T_MASK;
 
-         flags |= (ui32_t)il;
+         flags |= (u32)il;
          if(flags & a_SHEXP_QUOTE_T_DOLLAR)
             u.store = n_string_push_buf(u.store, "$'", sizeof("$'") -1);
          else if(flags & a_SHEXP_QUOTE_T_DOUBLE)
@@ -724,8 +727,8 @@ jstep:
          c = *ib;
 
          if(su_cs_is_cntrl(c)){
-            assert(c == '\t' || (flags & a_SHEXP_QUOTE_T_DOLLAR));
-            assert((flags & (a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_SINGLE |
+            ASSERT(c == '\t' || (flags & a_SHEXP_QUOTE_T_DOLLAR));
+            ASSERT((flags & (a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_SINGLE |
                a_SHEXP_QUOTE_T_DOUBLE | a_SHEXP_QUOTE_T_DOLLAR)));
             switch((c2 = c)){
             case 0x07: c = 'a'; break;
@@ -757,19 +760,19 @@ jstep:
                c == '"' || c == '$'){
             if(flags & (a_SHEXP_QUOTE_T_SINGLE | a_SHEXP_QUOTE_T_DOLLAR))
                goto jpush;
-            assert(flags & (a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_DOUBLE));
+            ASSERT(flags & (a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_DOUBLE));
             u.store = n_string_push_c(u.store, '\\');
             goto jpush;
          }else if(c == '\''){
             if(flags & a_SHEXP_QUOTE_T_DOUBLE)
                goto jpush;
-            assert(!(flags & a_SHEXP_QUOTE_T_SINGLE));
+            ASSERT(!(flags & a_SHEXP_QUOTE_T_SINGLE));
             u.store = n_string_push_c(u.store, '\\');
             goto jpush;
          }else if(c == '\\' || (c == '#' && ib == ib_base)){
             if(flags & a_SHEXP_QUOTE_T_SINGLE)
                goto jpush;
-            assert(flags & (a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_DOUBLE |
+            ASSERT(flags & (a_SHEXP_QUOTE_T_REVSOL | a_SHEXP_QUOTE_T_DOUBLE |
                a_SHEXP_QUOTE_T_DOLLAR));
             u.store = n_string_push_c(u.store, '\\');
             goto jpush;
@@ -783,22 +786,22 @@ jpush:
              * sequences etc.  For the sake of compile testing, don't enwrap in
              * mx_HAVE_ALWAYS_UNICODE_LOCALE || mx_HAVE_NATCH_CHAR */
             if(n_psonce & n_PSO_UNICODE){
-               ui32_t uc;
+               u32 unic;
                char const *ib2;
-               size_t il2, il3;
+               uz il2, il3;
 
                ib2 = ib;
                il2 = il;
-               if((uc = su_utf8_to_32(&ib2, &il2)) != UI32_MAX){
+               if((unic = su_utf8_to_32(&ib2, &il2)) != U32_MAX){
                   char itoa[32];
                   char const *cp;
 
-                  il2 = PTR2SIZE(&ib2[0] - &ib[0]);
-                  if((flags & a_SHEXP_QUOTE_ROUNDTRIP) || uc == 0xFFFDu){
+                  il2 = P2UZ(&ib2[0] - &ib[0]);
+                  if((flags & a_SHEXP_QUOTE_ROUNDTRIP) || unic == 0xFFFDu){
                      /* Use padding to make ambiguities impossible */
                      il3 = snprintf(itoa, sizeof itoa, "\\%c%0*X",
-                           (uc > 0xFFFFu ? 'U' : 'u'),
-                           (int)(uc > 0xFFFFu ? 8 : 4), uc);
+                           (unic > 0xFFFFu ? 'U' : 'u'),
+                           (int)(unic > 0xFFFFu ? 8 : 4), unic);
                      cp = itoa;
                   }else{
                      il3 = il2;
@@ -823,19 +826,19 @@ jpush:
 #ifdef mx_HAVE_ICONV
             else if((vic.vic_indat = n_iconv_onetime_cp(n_ICONV_NONE,
                   "utf-8", ok_vlook(ttycharset), savestrbuf(ib, il))) != NULL){
-               ui32_t uc;
+               u32 unic;
                char const *ib2;
-               size_t il2, il3;
+               uz il2, il3;
 
                il2 = su_cs_len(ib2 = vic.vic_indat);
-               if((uc = su_utf8_to_32(&ib2, &il2)) != UI32_MAX){
+               if((unic = su_utf8_to_32(&ib2, &il2)) != U32_MAX){
                   char itoa[32];
 
-                  il2 = PTR2SIZE(&ib2[0] - &vic.vic_indat[0]);
+                  il2 = P2UZ(&ib2[0] - &vic.vic_indat[0]);
                   /* Use padding to make ambiguities impossible */
                   il3 = snprintf(itoa, sizeof itoa, "\\%c%0*X",
-                        (uc > 0xFFFFu ? 'U' : 'u'),
-                        (int)(uc > 0xFFFFu ? 8 : 4), uc);
+                        (unic > 0xFFFFu ? 'U' : 'u'),
+                        (int)(unic > 0xFFFFu ? 8 : 4), unic);
                   u.store = n_string_push_buf(u.store, itoa, il3);
                }else
                   goto Jxseq;
@@ -865,7 +868,7 @@ jpush:
 #ifdef a_SHEXP_QUOTE_RECURSE
 jleave:
 #endif
-   n_NYD2_OU;
+   NYD2_OU;
    return;
 
 #ifdef a_SHEXP_QUOTE_RECURSE
@@ -873,7 +876,7 @@ jrecurse:
    sqlp->sql_dat.l -= il;
 
    sql.sql_link = sqlp;
-   sql.sql_dat.s = n_UNCONST(ib);
+   sql.sql_dat.s = UNCONST(char*,ib);
    sql.sql_dat.l = il;
    sql.sql_flags = flags;
    a_shexp__quote(sqcp, &sql);
@@ -889,8 +892,8 @@ fexpand(char const *name, enum fexp_mode fexpm) /* TODO in parts: -> URL::!! */
 {
    struct str proto, s;
    char const *res, *cp;
-   bool_t dyn, haveproto;
-   n_NYD_IN;
+   boole dyn, haveproto;
+   NYD_IN;
 
    n_pstate &= ~n_PS_EXPAND_MULTIRESULT;
    dyn = FAL0;
@@ -900,19 +903,19 @@ fexpand(char const *name, enum fexp_mode fexpm) /* TODO in parts: -> URL::!! */
     * Shell meta characters expand into constants.
     * This way, we make no recursive expansion */
    if((fexpm & FEXP_NSHORTCUT) || (res = mx_shortcut_expand(name)) == NULL)
-      res = n_UNCONST(name);
+      res = name;
 
 jprotonext:
-   n_UNINIT(proto.s, NULL), n_UNINIT(proto.l, 0);
+   UNINIT(proto.s, NULL), UNINIT(proto.l, 0);
    haveproto = FAL0;
    for(cp = res; *cp && *cp != ':'; ++cp)
       if(!su_cs_is_alnum(*cp))
          goto jnoproto;
    if(cp[0] == ':' && cp[1] == '/' && cp[2] == '/'){
       haveproto = TRU1;
-      proto.s = n_UNCONST(res);
+      proto.s = UNCONST(char*,res);
       cp += 3;
-      proto.l = PTR2SIZE(cp - res);
+      proto.l = P2UZ(cp - res);
       res = cp;
    }
 
@@ -926,7 +929,7 @@ jnext:
             res = &res[2];
             goto jprotonext;
          }else{
-            bool_t force;
+            boole force;
 
             force = (res[1] != '\0');
             res = a_shexp_findmail((force ? &res[1] : ok_vlook(LOGNAME)),
@@ -973,7 +976,7 @@ jnext:
    if((fexpm & (FEXP_NSHELL | FEXP_NVAR)) != FEXP_NVAR &&
          ((fexpm & FEXP_NSHELL) ? (su_cs_find_c(res, '$') != NULL)
           : (su_cs_first_of(res, "{}[]*?$") != su_UZ_MAX))){
-      bool_t doexp;
+      boole doexp;
 
       if(fexpm & FEXP_NOPROTO)
          doexp = TRU1;
@@ -995,8 +998,8 @@ jnext:
          struct str shin;
          struct n_string shou, *shoup;
 
-         shin.s = n_UNCONST(res);
-         shin.l = UIZ_MAX;
+         shin.s = UNCONST(char*,res);
+         shin.l = UZ_MAX;
          shoup = n_string_creat_auto(&shou);
          for(;;){
             enum n_shexp_state shs;
@@ -1056,8 +1059,8 @@ jislocal:
 jleave:
    if(res != NULL && !dyn)
       res = savestr(res);
-   n_NYD_OU;
-   return n_UNCONST(res);
+   NYD_OU;
+   return UNCONST(char*,res);
 }
 
 FL enum n_shexp_state
@@ -1071,10 +1074,10 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
     * TODO This means it should produce a tree of objects, so that callees
     * TODO can recognize whether something happened inside single/double etc.
     * TODO quotes; e.g., to requote "'[a-z]'" to, e.g., "\[a-z]", etc.! */
-   ui32_t last_known_meta_trim_len;
+   u32 last_known_meta_trim_len;
    char c2, c, quotec, utf[8];
    enum n_shexp_state rv;
-   size_t i, il;
+   uz i, il;
    char const *ifs, *ifs_ws, *ib_save, *ib;
    enum{
       a_NONE = 0,
@@ -1086,23 +1089,23 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
       a_BRACE = 1u<<4,     /* Variable substitution: brace enclosed */
       a_DIGIT1 = 1u<<5,    /* ..first character was digit */
       a_NONDIGIT = 1u<<6,  /* ..has seen any non-digits */
-      a_VARSUBST_MASK = n_BITENUM_MASK(4, 6),
+      a_VARSUBST_MASK = su_BITENUM_MASK(4, 6),
 
-      a_ROUND_MASK = a_SKIPT | (int)~n_BITENUM_MASK(0, 7),
+      a_ROUND_MASK = a_SKIPT | (int)~su_BITENUM_MASK(0, 7),
       a_COOKIE = 1u<<8,
       a_EXPLODE = 1u<<9,
       a_CONSUME = 1u<<10,  /* When done, "consume" remaining input */
       a_TMP = 1u<<30
    } state;
-   n_NYD2_IN;
+   NYD2_IN;
 
-   assert((flags & n_SHEXP_PARSE_DRYRUN) || store != NULL);
-   assert(input != NULL);
-   assert(input->l == 0 || input->s != NULL);
-   assert(!(flags & n_SHEXP_PARSE_LOG) || !(flags & n_SHEXP_PARSE_LOG_D_V));
-   assert(!(flags & n_SHEXP_PARSE_IFS_ADD_COMMA) ||
+   ASSERT((flags & n_SHEXP_PARSE_DRYRUN) || store != NULL);
+   ASSERT(input != NULL);
+   ASSERT(input->l == 0 || input->s != NULL);
+   ASSERT(!(flags & n_SHEXP_PARSE_LOG) || !(flags & n_SHEXP_PARSE_LOG_D_V));
+   ASSERT(!(flags & n_SHEXP_PARSE_IFS_ADD_COMMA) ||
       !(flags & n_SHEXP_PARSE_IFS_IS_COMMA));
-   assert(!(flags & n_SHEXP_PARSE_QUOTE_AUTO_FIXED) ||
+   ASSERT(!(flags & n_SHEXP_PARSE_QUOTE_AUTO_FIXED) ||
       (flags & n__SHEXP_PARSE_QUOTE_AUTO_MASK));
 
    if((flags & n_SHEXP_PARSE_LOG_D_V) && (n_poption & n_PO_D_V))
@@ -1117,18 +1120,18 @@ n_shexp_parse_token(enum n_shexp_parse_flags flags, struct n_string *store,
       ifs = ok_vlook(ifs);
       ifs_ws = ok_vlook(ifs_ws);
    }else{
-      n_UNINIT(ifs, n_empty);
-      n_UNINIT(ifs_ws, n_empty);
+      UNINIT(ifs, n_empty);
+      UNINIT(ifs_ws, n_empty);
    }
 
    state = a_NONE;
    ib = input->s;
-   if((il = input->l) == UIZ_MAX)
+   if((il = input->l) == UZ_MAX)
       input->l = il = su_cs_len(ib);
-   n_UNINIT(c, '\0');
+   UNINIT(c, '\0');
 
    if(cookie != NULL && *cookie != NULL){
-      assert(!(flags & n_SHEXP_PARSE_DRYRUN));
+      ASSERT(!(flags & n_SHEXP_PARSE_DRYRUN));
       state |= a_COOKIE;
    }
 
@@ -1151,7 +1154,7 @@ jrestart_empty:
          state &= ~a_COOKIE;
          flags |= n_SHEXP_PARSE_QUOTE_AUTO_DQ; /* ..why we are here! */
       }else
-         *cookie = n_UNCONST(xcookie);
+         *cookie = UNCONST(void*,xcookie);
 
       for(cp = &n_string_cp(store)[i]; (c = *cp++) != '\0';)
          if(su_cs_is_cntrl(c)){
@@ -1181,7 +1184,7 @@ jrestart:
          }
       }
 
-      input->s = n_UNCONST(ib);
+      input->s = UNCONST(char*,ib);
       input->l = il;
    }
 
@@ -1191,7 +1194,7 @@ jrestart:
    }
 
    if(store != NULL)
-      store = n_string_reserve(store, n_MIN(il, 32)); /* XXX */
+      store = n_string_reserve(store, MIN(il, 32)); /* XXX */
 
    switch(flags & n__SHEXP_PARSE_QUOTE_AUTO_MASK){
    case n_SHEXP_PARSE_QUOTE_AUTO_SQ:
@@ -1220,7 +1223,7 @@ jrestart:
     * TODO we need to be aware of and remove trailing unquoted WS that would
     * TODO otherwise remain, after we have seen a semicolon sequencer.
     * By sheer luck we only need to track this in non-quote-mode */
-   last_known_meta_trim_len = UI32_MAX;
+   last_known_meta_trim_len = U32_MAX;
 
    while(il > 0){ /* {{{ */
       --il, c = *ib++;
@@ -1234,13 +1237,13 @@ jrestart:
             else
                state &= ~a_SURPLUS;
             state &= ~a_NTOKEN;
-            last_known_meta_trim_len = UI32_MAX;
+            last_known_meta_trim_len = U32_MAX;
             rv |= n_SHEXP_STATE_QUOTE;
             continue;
          }else if(c == '$'){
             if(il > 0){
                state &= ~a_NTOKEN;
-               last_known_meta_trim_len = UI32_MAX;
+               last_known_meta_trim_len = U32_MAX;
                if(*ib == '\''){
                   --il, ++ib;
                   quotec = '\'';
@@ -1256,12 +1259,12 @@ jrestart:
              if(il > 0)
                --il, c = *ib++;
             state &= ~a_NTOKEN;
-            last_known_meta_trim_len = UI32_MAX;
+            last_known_meta_trim_len = U32_MAX;
          }
          /* A comment may it be if no token has yet started */
          else if(c == '#' && (state & a_NTOKEN)){
             rv |= n_SHEXP_STATE_STOP;
-            /*last_known_meta_trim_len = UI32_MAX;*/
+            /*last_known_meta_trim_len = U32_MAX;*/
             goto jleave;
          }
          /* Metacharacters that separate tokens must be turned on explicitly */
@@ -1272,7 +1275,7 @@ jrestart:
              * include the metacharacter, then. */
             if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
                ++il, --ib;
-            /*last_known_meta_trim_len = UI32_MAX;*/
+            /*last_known_meta_trim_len = U32_MAX;*/
             break;
          }else if(c == '&' && (flags & n_SHEXP_PARSE_META_AMPERSAND)){
             rv |= n_SHEXP_STATE_META_AMPERSAND;
@@ -1281,7 +1284,7 @@ jrestart:
              * include the metacharacter, then. */
             if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
                ++il, --ib;
-            /*last_known_meta_trim_len = UI32_MAX;*/
+            /*last_known_meta_trim_len = U32_MAX;*/
             break;
          }else if(c == ';' && (flags & n_SHEXP_PARSE_META_SEMICOLON)){
             if(il > 0)
@@ -1290,14 +1293,14 @@ jrestart:
             state |= a_CONSUME;
             if(!(flags & n_SHEXP_PARSE_DRYRUN) &&
                   (rv & n_SHEXP_STATE_OUTPUT) &&
-                  last_known_meta_trim_len != UI32_MAX)
+                  last_known_meta_trim_len != U32_MAX)
                store = n_string_trunc(store, last_known_meta_trim_len);
 
             /* The parsed sequence may be _the_ output, so ensure we don't
              * include the metacharacter, then. */
             if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
                ++il, --ib;
-            /*last_known_meta_trim_len = UI32_MAX;*/
+            /*last_known_meta_trim_len = U32_MAX;*/
             break;
          }else if(c == ',' && (flags &
                (n_SHEXP_PARSE_IFS_ADD_COMMA | n_SHEXP_PARSE_IFS_IS_COMMA))){
@@ -1305,10 +1308,10 @@ jrestart:
              * include the metacharacter, then. */
             if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
                ++il, --ib;
-            /*last_known_meta_trim_len = UI32_MAX;*/
+            /*last_known_meta_trim_len = U32_MAX;*/
             break;
          }else{
-            ui8_t blnk;
+            u8 blnk;
 
             blnk = su_cs_is_blank(c) ? 1 : 0;
             blnk |= ((flags & (n_SHEXP_PARSE_IFS_VAR |
@@ -1323,7 +1326,7 @@ jrestart:
                    * not include the metacharacter, then. */
                   if(flags & (n_SHEXP_PARSE_DRYRUN | n_SHEXP_PARSE_META_KEEP))
                      ++il, --ib;
-                  /*last_known_meta_trim_len = UI32_MAX;*/
+                  /*last_known_meta_trim_len = U32_MAX;*/
                   break;
                }
                state |= a_NTOKEN;
@@ -1331,14 +1334,14 @@ jrestart:
                state &= ~a_NTOKEN;
 
             if(blnk && store != NULL){
-               if(last_known_meta_trim_len == UI32_MAX)
+               if(last_known_meta_trim_len == U32_MAX)
                   last_known_meta_trim_len = store->s_len;
             }else
-               last_known_meta_trim_len = UI32_MAX;
+               last_known_meta_trim_len = U32_MAX;
          }
       }else{
          /* Quote-mode */
-         assert(!(state & a_NTOKEN));
+         ASSERT(!(state & a_NTOKEN));
          if(c == quotec && !(flags & n_SHEXP_PARSE_QUOTE_AUTO_FIXED)){
             state &= a_ROUND_MASK;
             quotec = '\0';
@@ -1400,11 +1403,11 @@ jrestart:
                      continue;
                   /* ASCII C0: 0..1F, 7F <- @.._ (+ a-z -> A-Z), ? */
                   c = su_cs_to_upper(c2) ^ 0x40;
-                  if((ui8_t)c > 0x1F && c != 0x7F){
+                  if((u8)c > 0x1F && c != 0x7F){
                      if(flags & n_SHEXP_PARSE_LOG)
                         n_err(_("Invalid \\c notation: %.*s: %.*s\n"),
                            (int)input->l, input->s,
-                           (int)PTR2SIZE(ib - ib_save), ib_save);
+                           (int)P2UZ(ib - ib_save), ib_save);
                      rv |= n_SHEXP_STATE_ERR_CONTROL;
                   }
                   /* As an implementation-defined extension, support \c@
@@ -1432,19 +1435,19 @@ jrestart:
                      --il, ++ib;
                   }
                   if(il > 0 && (c = *ib) >= '0' && c <= '7'){
-                     if(!(state & a_SKIPMASK) && (ui8_t)c2 > 0x1F){
+                     if(!(state & a_SKIPMASK) && (u8)c2 > 0x1F){
                         rv |= n_SHEXP_STATE_ERR_NUMBER;
                         --il, ++ib;
                         if(flags & n_SHEXP_PARSE_LOG)
                            n_err(_("\\0 argument exceeds byte: %.*s: %.*s\n"),
                               (int)input->l, input->s,
-                              (int)PTR2SIZE(ib - ib_save), ib_save);
+                              (int)P2UZ(ib - ib_save), ib_save);
                         /* Write unchanged */
 jerr_ib_save:
                         rv |= n_SHEXP_STATE_OUTPUT;
                         if(!(flags & n_SHEXP_PARSE_DRYRUN))
                            store = n_string_push_buf(store, ib_save,
-                                 PTR2SIZE(ib - ib_save));
+                                 P2UZ(ib - ib_save));
                         continue;
                      }
                      c2 = (c2 << 3) | (c -= '0');
@@ -1479,17 +1482,17 @@ jerr_ib_save:
                      i = 2;
                   }
                   /* C99 */{
-                     static ui8_t const hexatoi[] = { /* XXX uses ASCII */
+                     static u8 const hexatoi[] = { /* XXX uses ASCII */
                         0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
                      };
-                     size_t no, j;
+                     uz no, j;
 
-                     i = n_MIN(il, i);
+                     i = MIN(il, i);
                      for(no = j = 0; i-- > 0; --il, ++ib, ++j){
                         c = *ib;
                         if(su_cs_is_xdigit(c)){
                            no <<= 4;
-                           no += hexatoi[(ui8_t)((c) - ((c) <= '9' ? 48
+                           no += hexatoi[(u8)((c) - ((c) <= '9' ? 48
                                  : ((c) <= 'F' ? 55 : 87)))];
                         }else if(j == 0){
                            if(state & a_SKIPMASK)
@@ -1498,7 +1501,7 @@ jerr_ib_save:
                            if(flags & n_SHEXP_PARSE_LOG)
                               n_err(_("Invalid \\%c notation: %.*s: %.*s\n"),
                                  c2, (int)input->l, input->s,
-                                 (int)PTR2SIZE(ib - ib_save), ib_save);
+                                 (int)P2UZ(ib - ib_save), ib_save);
                            rv |= n_SHEXP_STATE_ERR_NUMBER;
                            goto jerr_ib_save;
                         }else
@@ -1513,14 +1516,14 @@ jerr_ib_save:
                         state |= a_SKIPQ;
                      else if(!(state & a_SKIPMASK)){
                         if(!(flags & n_SHEXP_PARSE_DRYRUN))
-                           store = n_string_reserve(store, n_MAX(j, 4));
+                           store = n_string_reserve(store, MAX(j, 4));
 
                         if(no > 0x10FFFF){ /* XXX magic; CText */
                            if(flags & n_SHEXP_PARSE_LOG)
                               n_err(_("\\U argument exceeds 0x10FFFF: %.*s: "
                                     "%.*s\n"),
                                  (int)input->l, input->s,
-                                 (int)PTR2SIZE(ib - ib_save), ib_save);
+                                 (int)P2UZ(ib - ib_save), ib_save);
                            rv |= n_SHEXP_STATE_ERR_NUMBER;
                            /* But normalize the output anyway */
                            goto Jerr_uni_norm;
@@ -1555,7 +1558,7 @@ jerr_ib_save:
                                  n_SHEXP_STATE_ERR_UNICODE;
                            i = snprintf(itoa, sizeof itoa, "\\%c%0*X",
                                  (no > 0xFFFFu ? 'U' : 'u'),
-                                 (int)(no > 0xFFFFu ? 8 : 4), (ui32_t)no);
+                                 (int)(no > 0xFFFFu ? 8 : 4), (u32)no);
                            store = n_string_push_buf(store, itoa, i);
                         }
                         continue;
@@ -1641,7 +1644,7 @@ j_dollar_ungetc:
                   if(flags & n_SHEXP_PARSE_LOG)
                      n_err(_("Invalid identifier for ${}: %.*s: %.*s\n"),
                         (int)input->l, input->s,
-                        (int)PTR2SIZE(ib - ib_save), ib_save);
+                        (int)P2UZ(ib - ib_save), ib_save);
                   rv |= n_SHEXP_STATE_ERR_IDENTIFIER;
                   goto jerr_ib_save;
                }else if(i == 0){
@@ -1650,7 +1653,7 @@ j_dollar_ungetc:
                         if(flags & n_SHEXP_PARSE_LOG)
                            n_err(_("No closing brace for ${}: %.*s: %.*s\n"),
                               (int)input->l, input->s,
-                              (int)PTR2SIZE(ib - ib_save), ib_save);
+                              (int)P2UZ(ib - ib_save), ib_save);
                         rv |= n_SHEXP_STATE_ERR_GROUPOPEN;
                         goto jerr_ib_save;
                      }
@@ -1660,7 +1663,7 @@ j_dollar_ungetc:
                         if(flags & n_SHEXP_PARSE_LOG)
                            n_err(_("Bad substitution for ${}: %.*s: %.*s\n"),
                               (int)input->l, input->s,
-                              (int)PTR2SIZE(ib - ib_save), ib_save);
+                              (int)P2UZ(ib - ib_save), ib_save);
                         rv |= n_SHEXP_STATE_ERR_BADSUB;
                         goto jerr_ib_save;
                      }
@@ -1673,7 +1676,7 @@ j_dollar_ungetc:
                         if(flags & n_SHEXP_PARSE_LOG)
                            n_err(_("No closing brace for ${}: %.*s: %.*s\n"),
                               (int)input->l, input->s,
-                              (int)PTR2SIZE(ib - ib_save), ib_save);
+                              (int)P2UZ(ib - ib_save), ib_save);
                         rv |= n_SHEXP_STATE_ERR_GROUPOPEN;
                         goto jerr_ib_save;
                      }
@@ -1683,7 +1686,7 @@ j_dollar_ungetc:
                         if(flags & n_SHEXP_PARSE_LOG)
                            n_err(_("Bad substitution for ${}: %.*s: %.*s\n"),
                               (int)input->l, input->s,
-                              (int)PTR2SIZE(ib - ib_save), ib_save);
+                              (int)P2UZ(ib - ib_save), ib_save);
                         rv |= n_SHEXP_STATE_ERR_BADSUB;
                         goto jerr_ib_save;
                      }
@@ -1695,7 +1698,7 @@ j_dollar_ungetc:
                   /* We may shall explode "${@}" to a series of successive,
                    * properly quoted tokens (instead).  The first exploded
                    * cookie will join with the current token */
-                  if(n_UNLIKELY(state & a_EXPLODE) &&
+                  if(UNLIKELY(state & a_EXPLODE) &&
                         !(flags & n_SHEXP_PARSE_DRYRUN) && cookie != NULL){
                      if(n_var_vexplode(cookie))
                         state |= a_COOKIE;
@@ -1762,14 +1765,14 @@ j_var_look_buf:
    }
 
 jleave:
-   assert(!(state & a_COOKIE));
+   ASSERT(!(state & a_COOKIE));
    if((flags & n_SHEXP_PARSE_DRYRUN) && store != NULL){
-      store = n_string_push_buf(store, input->s, PTR2SIZE(ib - input->s));
+      store = n_string_push_buf(store, input->s, P2UZ(ib - input->s));
       rv |= n_SHEXP_STATE_OUTPUT;
    }
 
    if(state & a_CONSUME){
-      input->s = n_UNCONST(&ib[il]);
+      input->s = UNCONST(char*,&ib[il]);
       input->l = 0;
    }else{
       if(flags & n_SHEXP_PARSE_TRIM_SPACE){
@@ -1789,7 +1792,7 @@ jleave:
       }
 
       input->l = il;
-      input->s = n_UNCONST(ib);
+      input->s = UNCONST(char*,ib);
    }
 
    if(!(rv & n_SHEXP_STATE_STOP)){
@@ -1804,9 +1807,9 @@ jleave:
          (flags & n_SHEXP_PARSE_META_MASK))
       goto jrestart;
 jleave_quick:
-   assert((rv & n_SHEXP_STATE_OUTPUT) || !(rv & n_SHEXP_STATE_UNICODE));
-   assert((rv & n_SHEXP_STATE_OUTPUT) || !(rv & n_SHEXP_STATE_CONTROL));
-   n_NYD2_OU;
+   ASSERT((rv & n_SHEXP_STATE_OUTPUT) || !(rv & n_SHEXP_STATE_UNICODE));
+   ASSERT((rv & n_SHEXP_STATE_OUTPUT) || !(rv & n_SHEXP_STATE_CONTROL));
+   NYD2_OU;
    return rv;
 }
 
@@ -1816,12 +1819,12 @@ n_shexp_parse_token_cp(enum n_shexp_parse_flags flags, char const **cp){
    struct n_string sou, *soup;
    char *rv;
    enum n_shexp_state shs;
-   n_NYD2_IN;
+   NYD2_IN;
 
-   assert(cp != NULL);
+   ASSERT(cp != NULL);
 
-   input.s = n_UNCONST(*cp);
-   input.l = UIZ_MAX;
+   input.s = UNCONST(char*,*cp);
+   input.l = UZ_MAX;
    soup = n_string_creat_auto(&sou);
 
    shs = n_shexp_parse_token(flags, soup, &input, NULL);
@@ -1833,24 +1836,24 @@ n_shexp_parse_token_cp(enum n_shexp_parse_flags flags, char const **cp){
 
    rv = n_string_cp(soup);
    /*n_string_gut(n_string_drop_ownership(soup));*/
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL struct n_string *
-n_shexp_quote(struct n_string *store, struct str const *input, bool_t rndtrip){
+n_shexp_quote(struct n_string *store, struct str const *input, boole rndtrip){
    struct a_shexp_quote_lvl sql;
    struct a_shexp_quote_ctx sqc;
-   n_NYD2_IN;
+   NYD2_IN;
 
-   assert(store != NULL);
-   assert(input != NULL);
-   assert(input->l == 0 || input->s != NULL);
+   ASSERT(store != NULL);
+   ASSERT(input != NULL);
+   ASSERT(input->l == 0 || input->s != NULL);
 
    su_mem_set(&sqc, 0, sizeof sqc);
    sqc.sqc_store = store;
    sqc.sqc_input.s = input->s;
-   if((sqc.sqc_input.l = input->l) == UIZ_MAX)
+   if((sqc.sqc_input.l = input->l) == UZ_MAX)
       sqc.sqc_input.l = su_cs_len(input->s);
    sqc.sqc_flags = rndtrip ? a_SHEXP_QUOTE_ROUNDTRIP : a_SHEXP_QUOTE_NONE;
 
@@ -1862,33 +1865,33 @@ n_shexp_quote(struct n_string *store, struct str const *input, bool_t rndtrip){
       sql.sql_flags = sqc.sqc_flags;
       a_shexp__quote(&sqc, &sql);
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return store;
 }
 
 FL char *
-n_shexp_quote_cp(char const *cp, bool_t rndtrip){
+n_shexp_quote_cp(char const *cp, boole rndtrip){
    struct n_string store;
    struct str input;
    char *rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
-   assert(cp != NULL);
+   ASSERT(cp != NULL);
 
-   input.s = n_UNCONST(cp);
-   input.l = UIZ_MAX;
+   input.s = UNCONST(char*,cp);
+   input.l = UZ_MAX;
    rv = n_string_cp(n_shexp_quote(n_string_creat_auto(&store), &input,
          rndtrip));
    n_string_gut(n_string_drop_ownership(&store));
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
-FL bool_t
+FL boole
 n_shexp_is_valid_varname(char const *name){
    char lc, c;
-   bool_t rv;
-   n_NYD2_IN;
+   boole rv;
+   NYD2_IN;
 
    rv = FAL0;
 
@@ -1902,7 +1905,7 @@ n_shexp_is_valid_varname(char const *name){
 
    rv = TRU1;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -1910,10 +1913,11 @@ FL int
 c_shcodec(void *vp){
    struct str in;
    struct n_string sou_b, *soup;
-   si32_t nerrn;
-   size_t alen;
-   bool_t norndtrip;
+   s32 nerrn;
+   uz alen;
+   boole norndtrip;
    char const **argv, *varname, *act, *cp;
+   NYD_IN;
 
    soup = n_string_creat_auto(&sou_b);
    argv = vp;
@@ -1926,11 +1930,11 @@ c_shcodec(void *vp){
       ++act;
    if(act == cp)
       goto jesynopsis;
-   alen = PTR2SIZE(cp - act);
+   alen = P2UZ(cp - act);
    if(*cp != '\0')
       ++cp;
 
-   in.l = su_cs_len(in.s = n_UNCONST(cp));
+   in.l = su_cs_len(in.s = UNCONST(char*,cp));
    nerrn = su_ERR_NONE;
 
    if(su_cs_starts_with_case_n("encode", act, alen))
@@ -1955,7 +1959,7 @@ c_shcodec(void *vp){
 
    if(varname != NULL){
       cp = n_string_cp(soup);
-      if(!n_var_vset(varname, (uintptr_t)cp)){
+      if(!n_var_vset(varname, (up)cp)){
          nerrn = su_ERR_NOTSUP;
          vp = NULL;
       }
@@ -1974,7 +1978,7 @@ c_shcodec(void *vp){
 
 jleave:
    n_pstate_err_no = nerrn;
-   n_NYD_OU;
+   NYD_OU;
    return (vp != NULL ? 0 : 1);
 jesynopsis:
    n_err(_("Synopsis: shcodec: <[+]e[ncode]|d[ecode]> <rest-of-line>\n"));
@@ -1983,4 +1987,5 @@ jesynopsis:
    goto jleave;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

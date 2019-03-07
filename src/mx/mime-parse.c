@@ -45,10 +45,13 @@
 
 #include "mx/charsetalias.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* Fetch plain */
 static char *  _mime_parse_ct_plain_from_ct(char const *cth);
 
-static bool_t  _mime_parse_part(struct message *zmp, struct mimepart *ip,
+static boole  _mime_parse_part(struct message *zmp, struct mimepart *ip,
                   enum mime_parse_flags mpf, int level);
 
 static void    _mime_parse_rfc822(struct message *zmp, struct mimepart *ip,
@@ -59,7 +62,7 @@ static void    _mime_parse_pkcs7(struct message *zmp, struct mimepart *ip,
                   enum mime_parse_flags mpf, int level);
 #endif
 
-static bool_t  _mime_parse_multipart(struct message *zmp,
+static boole  _mime_parse_multipart(struct message *zmp,
                   struct mimepart *ip, enum mime_parse_flags mpf, int level);
 static void    __mime_parse_new(struct mimepart *ip, struct mimepart **np,
                   off_t offs, int *part);
@@ -70,7 +73,7 @@ static char *
 _mime_parse_ct_plain_from_ct(char const *cth)
 {
    char *rv_b, *rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    rv_b = savestr(cth);
 
@@ -81,17 +84,17 @@ _mime_parse_ct_plain_from_ct(char const *cth)
    while (rv > rv_b && su_cs_is_blank(rv[-1]))
       --rv;
    *rv = '\0';
-   n_NYD2_OU;
+   NYD2_OU;
    return rv_b;
 }
 
-static bool_t
+static boole
 _mime_parse_part(struct message *zmp, struct mimepart *ip,
    enum mime_parse_flags mpf, int level)
 {
    char const *cp;
-   bool_t rv = FAL0;
-   n_NYD_IN;
+   boole rv = FAL0;
+   NYD_IN;
 
    ip->m_ct_type = hfield1("content-type", (struct message*)ip);
    if (ip->m_ct_type != NULL)
@@ -134,7 +137,7 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
       }
    }
 
-   assert(ip->m_external_body_url == NULL);
+   ASSERT(ip->m_external_body_url == NULL);
    if(!su_cs_cmp_case(ip->m_ct_type_plain, "message/external-body") &&
          (cp = mime_param_get("access-type", ip->m_ct_type)) != NULL &&
          !su_cs_cmp_case(cp, "URL"))
@@ -178,7 +181,7 @@ _mime_parse_part(struct message *zmp, struct mimepart *ip,
 
    rv = TRU1;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -187,12 +190,12 @@ _mime_parse_rfc822(struct message *zmp, struct mimepart *ip,
    enum mime_parse_flags mpf, int level)
 {
    int c, lastc = '\n';
-   size_t cnt;
+   uz cnt;
    FILE *ibuf;
    off_t offs;
    struct mimepart *np;
    long lines;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((ibuf = setinput(&mb, (struct message*)ip, NEED_BODY)) == NULL)
       goto jleave;
@@ -228,7 +231,7 @@ _mime_parse_rfc822(struct message *zmp, struct mimepart *ip,
 
    _mime_parse_part(zmp, np, mpf, level + 1);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
 }
 
 #ifdef mx_HAVE_TLS
@@ -239,7 +242,7 @@ _mime_parse_pkcs7(struct message *zmp, struct mimepart *ip,
    struct message m, *xmp;
    struct mimepart *np;
    char *to, *cc;
-   n_NYD_IN;
+   NYD_IN;
 
    su_mem_copy(&m, ip, sizeof m);
    to = hfield1("to", zmp);
@@ -267,22 +270,22 @@ _mime_parse_pkcs7(struct message *zmp, struct mimepart *ip,
       }
    } else
       ip->m_content_info |= CI_ENCRYPTED | CI_ENCRYPTED_BAD;
-   n_NYD_OU;
+   NYD_OU;
 }
 #endif /* mx_HAVE_TLS */
 
-static bool_t
+static boole
 _mime_parse_multipart(struct message *zmp, struct mimepart *ip,
    enum mime_parse_flags mpf, int level)
 {
    struct mimepart *np = NULL;
    char *boundary, *line = NULL;
-   size_t linesize = 0, linelen, cnt, boundlen;
+   uz linesize = 0, linelen, cnt, boundlen;
    FILE *ibuf;
    off_t offs;
    int part = 0;
    long lines = 0;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((boundary = mime_param_boundary_get(ip->m_ct_type, &linelen)) == NULL)
       goto jleave;
@@ -352,7 +355,7 @@ _mime_parse_multipart(struct message *zmp, struct mimepart *ip,
 jleave:
    if (line != NULL)
       n_free(line);
-   n_NYD_OU;
+   NYD_OU;
    return TRU1;
 }
 
@@ -361,8 +364,7 @@ __mime_parse_new(struct mimepart *ip, struct mimepart **np, off_t offs,
    int *part)
 {
    struct mimepart *pp;
-   size_t sz;
-   n_NYD_IN;
+   NYD_IN;
 
    *np = n_autorec_calloc(1, sizeof **np);
    (*np)->m_flag = MNOFROM;
@@ -371,14 +373,16 @@ __mime_parse_new(struct mimepart *ip, struct mimepart **np, off_t offs,
    (*np)->m_offset = mailx_offsetof(offs);
 
    if (part) {
+      uz i;
+
       ++(*part);
-      sz = (ip->m_partstring != NULL) ? su_cs_len(ip->m_partstring) : 0;
-      sz += 20;
-      (*np)->m_partstring = n_autorec_alloc(sz);
+      i = (ip->m_partstring != NULL) ? su_cs_len(ip->m_partstring) : 0;
+      i += 20;
+      (*np)->m_partstring = n_autorec_alloc(i);
       if (ip->m_partstring)
-         snprintf((*np)->m_partstring, sz, "%s.%u", ip->m_partstring, *part);
+         snprintf((*np)->m_partstring, i, "%s.%u", ip->m_partstring, *part);
       else
-         snprintf((*np)->m_partstring, sz, "%u", *part);
+         snprintf((*np)->m_partstring, i, "%u", *part);
    } else
       (*np)->m_mimecontent = MIME_DISCARD;
    (*np)->m_parent = ip;
@@ -389,27 +393,27 @@ __mime_parse_new(struct mimepart *ip, struct mimepart **np, off_t offs,
       pp->m_nextpart = *np;
    } else
       ip->m_multipart = *np;
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static void
 __mime_parse_end(struct mimepart **np, off_t xoffs, long lines)
 {
    off_t offs;
-   n_NYD_IN;
+   NYD_IN;
 
    offs = mailx_positionof((*np)->m_block, (*np)->m_offset);
    (*np)->m_size = (*np)->m_xsize = xoffs - offs;
    (*np)->m_lines = (*np)->m_xlines = lines;
    *np = NULL;
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL struct mimepart *
 mime_parse_msg(struct message *mp, enum mime_parse_flags mpf)
 {
    struct mimepart *ip;
-   n_NYD_IN;
+   NYD_IN;
 
    ip = n_autorec_calloc(1, sizeof *ip);
    ip->m_flag = mp->m_flag;
@@ -422,8 +426,9 @@ mime_parse_msg(struct message *mp, enum mime_parse_flags mpf)
    ip->m_xlines = mp->m_lines;
    if (!_mime_parse_part(mp, ip, mpf, 0))
       ip = NULL;
-   n_NYD_OU;
+   NYD_OU;
    return ip;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

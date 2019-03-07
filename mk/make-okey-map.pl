@@ -128,11 +128,11 @@ sub create_c_tool{
 #include <stdio.h>
 #include <string.h>
 
-#define n_NELEM(A) (sizeof(A) / sizeof(A[0]))
+#define NELEM(A) (sizeof(A) / sizeof(A[0]))
 
-#define ui32_t uint32_t
-#define ui16_t uint16_t
-#define ui8_t uint8_t
+#define u32 uint32_t
+#define u16 uint16_t
+#define u8 uint8_t
 
 enum a_amv_var_flags{
    a_AMV_VF_NONE = 0,
@@ -166,29 +166,29 @@ enum a_amv_var_flags{
 };
 
 struct a_amv_var_map{
-   ui32_t avm_hash;
-   ui16_t avm_keyoff;
-   ui16_t avm_flags;    /* enum a_amv_var_flags */
+   u32 avm_hash;
+   u16 avm_keyoff;
+   u16 avm_flags; /* enum a_amv_var_flags */
 };
 
 struct a_amv_var_chain_map_bsrch{
    char avcmb_prefix[4];
-   ui16_t avcmb_chain_map_off;
-   ui16_t avcmb_chain_map_eokey; /* This is an enum okey */
+   u16 avcmb_chain_map_off;
+   u16 avcmb_chain_map_eokey; /* This is an enum okey */
 };
 
 struct a_amv_var_chain_map{
-   ui16_t avcm_keyoff;
-   ui16_t avcm_okey;
+   u16 avcm_keyoff;
+   u16 avcm_okey;
 };
 
-#define n_CTA(A,S)
+#define CTA(A,S)
 _EOT
 
    print F '#include "', $OUT, "\"\n\n";
 
    print F <<'_EOT';
-static ui8_t seen_wraparound;
+static u8 seen_wraparound;
 static size_t longest_distance;
 
 static size_t
@@ -204,20 +204,20 @@ jredo:
 static size_t *
 reversy(size_t size){
    struct a_amv_var_map const *vmp = a_amv_var_map,
-      *vmaxp = vmp + n_NELEM(a_amv_var_map);
+      *vmaxp = vmp + NELEM(a_amv_var_map);
    size_t ldist = 0, *arr;
 
    arr = malloc(sizeof *arr * size);
    for(size_t i = 0; i < size; ++i)
-      arr[i] = n_NELEM(a_amv_var_map);
+      arr[i] = NELEM(a_amv_var_map);
 
    seen_wraparound = 0;
    longest_distance = 0;
 
    while(vmp < vmaxp){
-      ui32_t hash = vmp->avm_hash, i = hash % size, l;
+      u32 hash = vmp->avm_hash, i = hash % size, l;
 
-      for(l = 0; arr[i] != n_NELEM(a_amv_var_map); ++l)
+      for(l = 0; arr[i] != NELEM(a_amv_var_map); ++l)
          if(++i == size){
             seen_wraparound = 1;
             i = 0;
@@ -231,7 +231,7 @@ reversy(size_t size){
 
 int
 main(int argc, char **argv){
-   size_t *arr, size = n_NELEM(a_amv_var_map);
+   size_t *arr, size = NELEM(a_amv_var_map);
 
    fprintf(stderr, "Starting reversy, okeys=%zu\n", size);
    for(;;){
@@ -249,7 +249,7 @@ main(int argc, char **argv){
       "#define a_AMV_VAR_REV_LONGEST %zuu\n"
       "#define a_AMV_VAR_REV_WRAPAROUND %d\n"
       "static %s const a_amv_var_revmap[a_AMV_VAR_REV_PRIME] = {\n%s",
-      n_NELEM(a_amv_var_map), size, longest_distance, seen_wraparound,
+      NELEM(a_amv_var_map), size, longest_distance, seen_wraparound,
       argv[1], (argc > 2 ? "  " : ""));
    for(size_t i = 0; i < size; ++i)
       printf("%s%zuu", (i == 0 ? ""
@@ -338,7 +338,7 @@ sub dump_map{
    print F '};', "\n#define a_AMV_VAR_NAME_KEY_MAXOFF ${alen}U\n\n";
 
    # Create the management map
-   print F 'n_CTA(a_AMV_VF_NONE == 0, "Value not 0 as expected");', "\n";
+   print F 'CTA(a_AMV_VF_NONE == 0, "Value not 0 as expected");', "\n";
    print F 'static struct a_amv_var_map const a_amv_var_map[] = {', "\n";
    foreach my $e (@ENTS){
       my $f = $VERB ? 'a_AMV_VF_NONE' : '0';
@@ -364,8 +364,8 @@ _EOT
    #
    if(%chains){
       my (@prefixes,$last_pstr,$last_pbeg,$last_pend,$i);
-      print F 'n_CTAV(4 == ',
-         'n_SIZEOF_FIELD(struct a_amv_var_chain_map_bsrch, avcmb_prefix));',
+      print F 'CTAV(4 == ',
+         'FIELD_SIZEOF(struct a_amv_var_chain_map_bsrch, avcmb_prefix));',
          "\n";
       print F 'static struct a_amv_var_chain_map const ',
          'a_amv_var_chain_map[] = {', "\n";
@@ -416,13 +416,13 @@ _EOT
       print F "${S}struct a_amv_var *av_link;\n";
       print F "${S}char const *av_value;\n";
       print F "${S}a_X(char *av_env;)\n";
-      print F "${S}ui32_t av_flags;\n";
+      print F "${S}u32 av_flags;\n";
       print F "${S}char const av_name[", length($e->{name}), " +1];\n";
       my $f = $VERB ? 'a_AMV_VF_NONE' : '0';
       my $fa = join '|', @{$e->{flags}};
       $f .= '|' . $fa if length $fa;
       print F "} const a_amv_$e->{vstruct} = ",
-         "{NULL, a_amv_$e->{vstruct}_val, a_X(0 COMMA) $f, ",
+         "{NULL, a_amv_$e->{vstruct}_val, a_X(0 su_COMMA) $f, ",
          "\"$e->{name}\"};\n\n"
    }
 
@@ -487,7 +487,7 @@ _EOT
 sub reverser{
    my $argv2 = $VERB ? ' verb' : '';
    system("\$CC -I. -o $CTOOL_EXE $CTOOL");
-   my $t = (@ENTS < 0xFF ? 'ui8_t' : (@ENTS < 0xFFFF ? 'ui16_t' : 'ui32_t'));
+   my $t = (@ENTS < 0xFF ? 'u8' : (@ENTS < 0xFFFF ? 'u16' : 'u32'));
    `$CTOOL_EXE $t$argv2 >> $OUT`
 }
 

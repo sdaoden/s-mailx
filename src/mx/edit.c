@@ -41,6 +41,9 @@
 # include "mx/nail.h"
 #endif
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* Edit a message by writing the message into a funnily-named file (which
  * should not exist) and forking an editor on it */
 static int edit1(int *msgvec, int viored);
@@ -52,14 +55,14 @@ edit1(int *msgvec, int viored)
    FILE *fp = NULL;
    struct message *mp;
    off_t size;
-   bool_t wb, lastnl;
-   n_NYD_IN;
+   boole wb, lastnl;
+   NYD_IN;
 
    wb = ok_blook(writebackedited);
 
    /* Deal with each message to be edited... */
    for (i = 0; msgvec[i] != 0 && i < msgCount; ++i) {
-      sighandler_type sigint;
+      n_sighdl_t sigint;
 
       if(i > 0){
          char prompt[64];
@@ -103,7 +106,7 @@ edit1(int *msgvec, int viored)
             ++size;
          if (putc('\n', mb.mb_otf) != EOF)
             ++size;
-         mp->m_size = (size_t)size;
+         mp->m_size = (uz)size;
          if (ferror(mb.mb_otf))
             n_perr(_("/tmp"), 0);
          Fclose(fp);
@@ -111,7 +114,7 @@ edit1(int *msgvec, int viored)
 
       safe_signal(SIGINT, sigint);
    }
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
@@ -119,10 +122,10 @@ FL int
 c_editor(void *v)
 {
    int *msgvec = v, rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = edit1(msgvec, 'e');
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -130,17 +133,17 @@ FL int
 c_visual(void *v)
 {
    int *msgvec = v, rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = edit1(msgvec, 'v');
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL FILE *
-n_run_editor(FILE *fp, off_t size, int viored, bool_t readonly,
+n_run_editor(FILE *fp, off_t size, int viored, boole readonly,
    struct header *hp, struct message *mp, enum sendaction action,
-   sighandler_type oldint, char const *pipecmd)
+   n_sighdl_t oldint, char const *pipecmd)
 {
    struct stat statb;
    sigset_t cset;
@@ -149,7 +152,7 @@ n_run_editor(FILE *fp, off_t size, int viored, bool_t readonly,
    off_t modsize;
    char *tmp_name;
    FILE *nf, *nf_pipetmp, *nf_tmp;
-   n_NYD_IN;
+   NYD_IN;
 
    nf = nf_pipetmp = NULL;
    tmp_name = NULL;
@@ -164,13 +167,13 @@ jetempo:
    }
 
    if(hp != NULL){
-      assert(mp == NULL);
+      ASSERT(mp == NULL);
       if(!n_header_put4compose(nf_tmp, hp))
          goto jleave;
    }
 
    if(mp != NULL){
-      assert(hp == NULL);
+      ASSERT(hp == NULL);
       if(sendmp(mp, nf_tmp, NULL, NULL, action, NULL) < 0){
          n_err(_("Failed to prepare editable message\n"));
          goto jleave;
@@ -205,7 +208,7 @@ jetempo:
    }
 
    if(viored == '|'){
-      assert(pipecmd != NULL);
+      ASSERT(pipecmd != NULL);
       tmp_name = NULL;
       if((nf_pipetmp = Ftmp(&tmp_name, "runed", OF_WRONLY | OF_REGISTER |
             OF_REGISTER_UNLINK | OF_FN_AUTOREC)) == NULL)
@@ -252,8 +255,9 @@ jleave:
          Fclose(nf);
       nf = NULL;
    }
-   n_NYD_OU;
+   NYD_OU;
    return nf;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

@@ -31,6 +31,9 @@
 /* TODO that this does not belong: clear */
 #include "mx/filter-html.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 enum mime_type {
    _MT_APPLICATION,
    _MT_AUDIO,
@@ -75,15 +78,15 @@ enum mime_type_class {
 };
 
 struct mtbltin {
-   ui32_t         mtb_flags;
-   ui32_t         mtb_mtlen;
+   u32         mtb_flags;
+   u32         mtb_mtlen;
    char const     *mtb_line;
 };
 
 struct mtnode {
    struct mtnode  *mt_next;
-   ui32_t         mt_flags;
-   ui32_t         mt_mtlen;   /* Length of MIME type string, rest thereafter */
+   u32         mt_flags;
+   u32         mt_mtlen;   /* Length of MIME type string, rest thereafter */
    /* C99 forbids flexible arrays in union, so unfortunately we waste a pointer
     * that could already store character data here */
    char const     *mt_line;
@@ -91,22 +94,22 @@ struct mtnode {
 
 struct mtlookup {
    char const           *mtl_name;
-   size_t               mtl_nlen;
+   uz               mtl_nlen;
    struct mtnode const  *mtl_node;
    char                 *mtl_result;   /* If requested, salloc()ed MIME type */
 };
 
 struct mt_class_arg {
    char const *mtca_buf;
-   size_t mtca_len;
-   ssize_t mtca_curlnlen;
+   uz mtca_len;
+   sz mtca_curlnlen;
    /*char mtca_lastc;*/
    char mtca_c;
-   ui8_t mtca__dummy[3];
+   u8 mtca__dummy[3];
    enum mime_type_class mtca_mtc;
-   ui64_t mtca_all_len;
-   ui64_t mtca_all_highbit; /* TODO not yet interpreted */
-   ui64_t mtca_all_bogus;
+   u64 mtca_all_len;
+   u64 mtca_all_highbit; /* TODO not yet interpreted */
+   u64 mtca_all_bogus;
 };
 
 static struct mtbltin const   _mt_bltin[] = {
@@ -118,28 +121,28 @@ static char const             _mt_typnames[][16] = {
    "message/", "multipart/", "text/",
    "video/"
 };
-n_CTAV(_MT_APPLICATION == 0 && _MT_AUDIO == 1 && _MT_IMAGE == 2 &&
+CTAV(_MT_APPLICATION == 0 && _MT_AUDIO == 1 && _MT_IMAGE == 2 &&
    _MT_MESSAGE == 3 && _MT_MULTIPART == 4 && _MT_TEXT == 5 &&
    _MT_VIDEO == 6);
 
 /* */
-static bool_t           _mt_is_init;
+static boole           _mt_is_init;
 static struct mtnode    *_mt_list;
 
 /* Initialize MIME type list in order */
 static void             _mt_init(void);
-static bool_t           __mt_load_file(ui32_t orflags,
-                           char const *file, char **line, size_t *linesize);
+static boole           __mt_load_file(u32 orflags,
+                           char const *file, char **line, uz *linesize);
 
 /* Create (prepend) a new MIME type; cmdcalled results in a bit more verbosity
  * for `mimetype' */
-static struct mtnode *  _mt_create(bool_t cmdcalled, ui32_t orflags,
-                           char const *line, size_t len);
+static struct mtnode *  _mt_create(boole cmdcalled, u32 orflags,
+                           char const *line, uz len);
 
 /* Try to find MIME type by X (after zeroing mtlp), return NULL if not found;
  * if with_result >mtl_result will be created upon success for the former */
 static struct mtlookup * _mt_by_filename(struct mtlookup *mtlp,
-                           char const *name, bool_t with_result);
+                           char const *name, boole with_result);
 static struct mtlookup * _mt_by_mtname(struct mtlookup *mtlp,
                            char const *mtname);
 
@@ -152,8 +155,8 @@ su_SINLINE struct mt_class_arg * _mt_classify_init(struct mt_class_arg *mtcap,
 static enum mime_type_class   _mt_classify_round(struct mt_class_arg *mtcap);
 
 /* We need an in-depth inspection of an application/octet-stream part */
-static enum mimecontent _mt_classify_os_part(ui32_t mce, struct mimepart *mpp,
-                           bool_t deep_inspect);
+static enum mimecontent _mt_classify_os_part(u32 mce, struct mimepart *mpp,
+                           boole deep_inspect);
 
 /* Check whether a *pipe-XY* handler is applicable, and adjust flags according
  * to the defined trigger characters; upon entry MIME_HDL_NULL is set, and that
@@ -165,16 +168,16 @@ _mt_init(void)
 {
    struct mtnode *tail;
    char c, *line; /* TODO line pool (below) */
-   size_t linesize;
-   ui32_t i, j;
+   uz linesize;
+   u32 i, j;
    char const *srcs_arr[10], *ccp, **srcs;
-   n_NYD_IN;
+   NYD_IN;
 
    /*if (_mt_is_init)
     *  goto jleave;*/
 
    /* Always load our built-ins */
-   for (tail = NULL, i = 0; i < n_NELEM(_mt_bltin); ++i) {
+   for (tail = NULL, i = 0; i < NELEM(_mt_bltin); ++i) {
       struct mtbltin const *mtbp = _mt_bltin + i;
       struct mtnode *mtnp = n_alloc(sizeof *mtnp);
 
@@ -215,7 +218,7 @@ _mt_init(void)
             break;
          case 'F': case 'f':
             if (*++ccp == '=' && *++ccp != '\0') {
-               if (PTR2SIZE(srcs - srcs_arr) < n_NELEM(srcs_arr))
+               if (P2UZ(srcs - srcs_arr) < NELEM(srcs_arr))
                   *srcs++ = ccp;
                else
                   n_err(_("*mimetypes-load-control*: too many sources, "
@@ -240,7 +243,7 @@ jecontent:
    /* Load all file-based sources in the desired order */
    line = NULL;
    linesize = 0;
-   for (j = 0, i = (ui32_t)PTR2SIZE(srcs - srcs_arr), srcs = srcs_arr;
+   for (j = 0, i = (u32)P2UZ(srcs - srcs_arr), srcs = srcs_arr;
          i > 0; ++j, ++srcs, --i)
       if (*srcs == NULL)
          continue;
@@ -254,17 +257,17 @@ jecontent:
       n_free(line);
 jleave:
    _mt_is_init = TRU1;
-   n_NYD_OU;
+   NYD_OU;
 }
 
-static bool_t
-__mt_load_file(ui32_t orflags, char const *file, char **line, size_t *linesize)
+static boole
+__mt_load_file(u32 orflags, char const *file, char **line, uz *linesize)
 {
    char const *cp;
    FILE *fp;
    struct mtnode *head, *tail, *mtnp;
-   size_t len;
-   n_NYD_IN;
+   uz len;
+   NYD_IN;
 
    if ((cp = fexpand(file, FEXP_LOCAL | FEXP_NOPROTO)) == NULL ||
          (fp = Fopen(cp, "r")) == NULL) {
@@ -287,23 +290,23 @@ __mt_load_file(ui32_t orflags, char const *file, char **line, size_t *linesize)
 
    Fclose(fp);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return (cp != NULL);
 }
 
 static struct mtnode *
-_mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
+_mt_create(boole cmdcalled, u32 orflags, char const *line, uz len)
 {
    struct mtnode *mtnp;
    char const *typ, *subtyp;
-   size_t tlen, i;
-   n_NYD_IN;
+   uz tlen, i;
+   NYD_IN;
 
    mtnp = NULL;
 
    /* Drop anything after a comment first TODO v15: only when read from file */
    if ((typ = su_mem_find(line, '#', len)) != NULL)
-      len = PTR2SIZE(typ - line);
+      len = P2UZ(typ - line);
 
    /* Then trim any trailing whitespace from line (including NL/CR) */
    /* C99 */{
@@ -354,7 +357,7 @@ _mt_create(bool_t cmdcalled, ui32_t orflags, char const *line, size_t len)
       ++line, --len;
    /* Ignore empty lines and even incomplete specifications (only MIME type)
     * because this is quite common in mime.types(5) files */
-   if (len == 0 || (tlen = PTR2SIZE(line - typ)) == 0) {
+   if (len == 0 || (tlen = P2UZ(line - typ)) == 0) {
       if (cmdcalled || (orflags & _MT_FSPEC)) {
          if(len == 0){
             line = _("(no value)");
@@ -378,17 +381,17 @@ jeinval:
    ++subtyp;
 
    /* Map to mime_type */
-   tlen = PTR2SIZE(subtyp - typ);
+   tlen = P2UZ(subtyp - typ);
    for (i = __MT_TMIN;;) {
       if (!su_cs_cmp_case_n(_mt_typnames[i], typ, tlen)) {
          orflags |= i;
-         tlen = PTR2SIZE(line - subtyp);
+         tlen = P2UZ(line - subtyp);
          typ = subtyp;
          break;
       }
       if (++i == __MT_TMAX) {
          orflags |= _MT_OTHER;
-         tlen = PTR2SIZE(line - typ);
+         tlen = P2UZ(line - typ);
          break;
       }
    }
@@ -405,7 +408,7 @@ jeinval:
    mtnp = n_alloc(sizeof(*mtnp) + tlen + len +1);
    mtnp->mt_next = NULL;
    mtnp->mt_flags = orflags;
-   mtnp->mt_mtlen = (ui32_t)tlen;
+   mtnp->mt_mtlen = (u32)tlen;
    {  char *l = (char*)(mtnp + 1);
       mtnp->mt_line = l;
       su_mem_copy(l, typ, tlen);
@@ -415,17 +418,17 @@ jeinval:
    }
 
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return mtnp;
 }
 
 static struct mtlookup *
-_mt_by_filename(struct mtlookup *mtlp, char const *name, bool_t with_result)
+_mt_by_filename(struct mtlookup *mtlp, char const *name, boole with_result)
 {
    struct mtnode *mtnp;
-   size_t nlen, i, j;
+   uz nlen, i, j;
    char const *ext, *cp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    su_mem_set(mtlp, 0, sizeof *mtlp);
 
@@ -456,7 +459,7 @@ _mt_by_filename(struct mtlookup *mtlp, char const *name, bool_t with_result)
          while (!su_cs_is_white(*cp) && *cp != '\0')
             ++cp;
 
-         if ((i = PTR2SIZE(cp - ext)) == 0)
+         if ((i = P2UZ(cp - ext)) == 0)
             break;
          /* Don't allow neither of ".txt" or "txt" to match "txt" */
          else if (i + 1 >= nlen || name[(j = nlen - i) - 1] != '.' ||
@@ -487,7 +490,7 @@ _mt_by_filename(struct mtlookup *mtlp, char const *name, bool_t with_result)
 jnull_leave:
    mtlp = NULL;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return mtlp;
 }
 
@@ -495,9 +498,9 @@ static struct mtlookup *
 _mt_by_mtname(struct mtlookup *mtlp, char const *mtname)
 {
    struct mtnode *mtnp;
-   size_t nlen, i, j;
+   uz nlen, i, j;
    char const *cp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    su_mem_set(mtlp, 0, sizeof *mtlp);
 
@@ -537,18 +540,18 @@ _mt_by_mtname(struct mtlookup *mtlp, char const *mtname)
 jnull_leave:
    mtlp = NULL;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return mtlp;
 }
 
 su_SINLINE struct mt_class_arg *
 _mt_classify_init(struct mt_class_arg * mtcap, enum mime_type_class initval)
 {
-   n_NYD2_IN;
+   NYD2_IN;
    su_mem_set(mtcap, 0, sizeof *mtcap);
    /*mtcap->mtca_lastc =*/ mtcap->mtca_c = EOF;
    mtcap->mtca_mtc = initval | _MT_C__1STLINE;
-   n_NYD2_OU;
+   NYD2_OU;
    return mtcap;
 }
 
@@ -562,12 +565,12 @@ _mt_classify_round(struct mt_class_arg *mtcap) /* TODO dig UTF-8 for !text/!! */
 #define F_SIZEOF  (sizeof(F_) -1)
    char f_buf[F_SIZEOF], *f_p = f_buf;
    char const *buf;
-   size_t blen;
-   ssize_t curlnlen;
-   si64_t alllen;
+   uz blen;
+   sz curlnlen;
+   s64 alllen;
    int c, lastc;
    enum mime_type_class mtc;
-   n_NYD2_IN;
+   NYD2_IN;
 
    buf = mtcap->mtca_buf;
    blen = mtcap->mtca_len;
@@ -590,7 +593,7 @@ _mt_classify_round(struct mt_class_arg *mtcap) /* TODO dig UTF-8 for !text/!! */
       }else{
          ++alllen;
          lastc = c;
-         c = (uc_i)*buf++;
+         c = (uc)*buf++;
       }
       --blen;
 
@@ -648,17 +651,17 @@ _mt_classify_round(struct mt_class_arg *mtcap) /* TODO dig UTF-8 for !text/!! */
             mtc |= _MT_C_SUGGEST_DONE;
             break;
          }
-      } else if ((ui8_t)c & 0x80) {
+      } else if ((u8)c & 0x80) {
          mtc |= _MT_C_HIGHBIT;
          ++mtcap->mtca_all_highbit;
          if (!(mtc & (_MT_C_NCTT | _MT_C_ISTXT))) { /* TODO _NCTT?? */
             mtc |= _MT_C_HASNUL /* Force base64 */ | _MT_C_SUGGEST_DONE;
             break;
          }
-      } else if (!(mtc & _MT_C_FROM_) && UICMP(z, curlnlen, <, F_SIZEOF)) {
+      } else if (!(mtc & _MT_C_FROM_) && UCMP(z, curlnlen, <, F_SIZEOF)) {
          *f_p++ = (char)c;
-         if (UICMP(z, curlnlen, ==, F_SIZEOF - 1) &&
-               PTR2SIZE(f_p - f_buf) == F_SIZEOF &&
+         if (UCMP(z, curlnlen, ==, F_SIZEOF - 1) &&
+               P2UZ(f_p - f_buf) == F_SIZEOF &&
                !su_mem_cmp(f_buf, F_, F_SIZEOF)){
             mtc |= _MT_C_FROM_;
             if (mtc & _MT_C__1STLINE)
@@ -674,31 +677,31 @@ _mt_classify_round(struct mt_class_arg *mtcap) /* TODO dig UTF-8 for !text/!! */
    mtcap->mtca_c = c;
    mtcap->mtca_mtc = mtc;
    mtcap->mtca_all_len = alllen;
-   n_NYD2_OU;
+   NYD2_OU;
    return mtc;
 #undef F_
 #undef F_SIZEOF
 }
 
 static enum mimecontent
-_mt_classify_os_part(ui32_t mce, struct mimepart *mpp, bool_t deep_inspect)
+_mt_classify_os_part(u32 mce, struct mimepart *mpp, boole deep_inspect)
 {
    struct str in = {NULL, 0}, outrest, inrest, dec;
    struct mt_class_arg mtca;
-   bool_t did_inrest;
+   boole did_inrest;
    enum mime_type_class mtc;
    int lc, c;
-   size_t cnt, lsz;
+   uz cnt, lsz;
    FILE *ibuf;
    off_t start_off;
    enum mimecontent mc;
-   n_NYD2_IN;
+   NYD2_IN;
 
-   assert(mpp->m_mime_enc != MIMEE_BIN);
+   ASSERT(mpp->m_mime_enc != MIMEE_BIN);
 
    outrest = inrest = dec = in;
    mc = MIME_UNKNOWN;
-   n_UNINIT(mtc, 0);
+   UNINIT(mtc, 0);
    did_inrest = FAL0;
 
    /* TODO v15-compat Note we actually bypass our usual file handling by
@@ -729,7 +732,7 @@ jos_leave:
       (deep_inspect ? _MT_C_DEEP_INSPECT : _MT_C_NONE)));
 
    for (lsz = 0;;) {
-      bool_t dobuf;
+      boole dobuf;
 
       c = (--cnt == 0) ? EOF : getc(ibuf);
       if ((dobuf = (c == '\n'))) {
@@ -777,7 +780,7 @@ jdobuf:
       }
 
       mtca.mtca_buf = dec.s;
-      mtca.mtca_len = (ssize_t)dec.l;
+      mtca.mtca_len = (sz)dec.l;
       if ((mtc = _mt_classify_round(&mtca)) & _MT_C_SUGGEST_DONE) {
          mtc = _MT_C_HASNUL;
          break;
@@ -828,7 +831,7 @@ jstopit:
          mpp->m_ct_type_usr_ovwr = "text/plain";
    }
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return mc;
 }
 
@@ -836,7 +839,7 @@ static enum mime_handler_flags
 a_mt_pipe_check(struct mime_handler *mhp){
    enum mime_handler_flags rv_orig, rv;
    char const *cp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    rv_orig = rv = mhp->mh_flags;
 
@@ -928,7 +931,7 @@ jnextc:
    rv |= MIME_HDL_CMD;
 jleave:
    mhp->mh_flags = rv;
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 jerr:
    rv = rv_orig;
@@ -937,19 +940,19 @@ jerr:
 
 FL int
 c_mimetype(void *v){
-   struct n_string s, *sp;
+   struct n_string s_b, *s;
    struct mtnode *mtnp;
    char **argv;
-   n_NYD_IN;
+   NYD_IN;
 
    if(!_mt_is_init)
       _mt_init();
 
-   sp = n_string_creat_auto(&s);
+   s = n_string_creat_auto(&s_b);
 
    if(*(argv = v) == NULL){
       FILE *fp;
-      size_t l;
+      uz l;
 
       if(_mt_list == NULL){
          fprintf(n_stdout, _("# `mimetype': no mime.types(5) available\n"));
@@ -963,12 +966,12 @@ c_mimetype(void *v){
          goto jleave;
       }
 
-      sp = n_string_reserve(sp, 63);
+      s = n_string_reserve(s, 63);
 
       for(l = 0, mtnp = _mt_list; mtnp != NULL; ++l, mtnp = mtnp->mt_next){
          char const *cp;
 
-         sp = n_string_trunc(sp, 0);
+         s = n_string_trunc(s, 0);
 
          switch(mtnp->mt_flags & a_MT__TM_MARKMASK){
          case a_MT_TM_PLAIN: cp = "@t "; break;
@@ -978,17 +981,17 @@ c_mimetype(void *v){
          default: cp = NULL; break;
          }
          if(cp != NULL)
-            sp = n_string_push_cp(sp, cp);
+            s = n_string_push_cp(s, cp);
 
          if((mtnp->mt_flags & __MT_TMASK) != _MT_OTHER)
-            sp = n_string_push_cp(sp, _mt_typnames[mtnp->mt_flags &__MT_TMASK]);
+            s = n_string_push_cp(s, _mt_typnames[mtnp->mt_flags &__MT_TMASK]);
 
-         sp = n_string_push_buf(sp, mtnp->mt_line, mtnp->mt_mtlen);
-         sp = n_string_push_c(sp, ' ');
-         sp = n_string_push_c(sp, ' ');
-         sp = n_string_push_cp(sp, &mtnp->mt_line[mtnp->mt_mtlen]);
+         s = n_string_push_buf(s, mtnp->mt_line, mtnp->mt_mtlen);
+         s = n_string_push_c(s, ' ');
+         s = n_string_push_c(s, ' ');
+         s = n_string_push_cp(s, &mtnp->mt_line[mtnp->mt_mtlen]);
 
-         fprintf(fp, "mimetype %s%s\n", n_string_cp(sp),
+         fprintf(fp, "mimetype %s%s\n", n_string_cp(s),
             ((n_poption & n_PO_D_V) == 0 ? n_empty
                : (mtnp->mt_flags & _MT_USR ? " # user"
                : (mtnp->mt_flags & _MT_SYS ? " # system"
@@ -1000,12 +1003,12 @@ c_mimetype(void *v){
       Fclose(fp);
    }else{
       for(; *argv != NULL; ++argv){
-         if(sp->s_len > 0)
-            sp = n_string_push_c(sp, ' ');
-         sp = n_string_push_cp(sp, *argv);
+         if(s->s_len > 0)
+            s = n_string_push_c(s, ' ');
+         s = n_string_push_cp(s, *argv);
       }
 
-      mtnp = _mt_create(TRU1, _MT_CMD, n_string_cp(sp), sp->s_len);
+      mtnp = _mt_create(TRU1, _MT_CMD, n_string_cp(s), s->s_len);
       if(mtnp != NULL){
          mtnp->mt_next = _mt_list;
          _mt_list = mtnp;
@@ -1013,7 +1016,7 @@ c_mimetype(void *v){
          v = NULL;
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 }
 
@@ -1022,8 +1025,8 @@ c_unmimetype(void *v)
 {
    char **argv = v;
    struct mtnode *lnp, *mtnp;
-   bool_t match;
-   n_NYD_IN;
+   boole match;
+   NYD_IN;
 
    /* Need to load that first as necessary */
    if (!_mt_is_init)
@@ -1047,7 +1050,7 @@ jdelall:
       for (match = FAL0, lnp = NULL, mtnp = _mt_list; mtnp != NULL;) {
          char const *typ;
          char *val;
-         size_t i;
+         uz i;
 
          if ((mtnp->mt_flags & __MT_TMASK) == _MT_OTHER) {
             typ = n_empty;
@@ -1082,19 +1085,19 @@ jdelall:
          v = NULL;
       }
    }
-   n_NYD_OU;
+   NYD_OU;
    return (v == NULL ? !STOP : !OKAY); /* xxx 1:bad 0:good -- do some */
 }
 
-FL bool_t
+FL boole
 n_mimetype_check_mtname(char const *name)
 {
    struct mtlookup mtl;
-   bool_t rv;
-   n_NYD_IN;
+   boole rv;
+   NYD_IN;
 
    rv = (_mt_by_mtname(&mtl, name) != NULL);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -1102,10 +1105,10 @@ FL char *
 n_mimetype_classify_filename(char const *name)
 {
    struct mtlookup mtl;
-   n_NYD_IN;
+   NYD_IN;
 
    _mt_by_filename(&mtl, name, TRU1);
-   n_NYD_OU;
+   NYD_OU;
    return mtl.mtl_result;
 }
 
@@ -1117,14 +1120,14 @@ n_mimetype_classify_file(FILE *fp, char const **contenttype,
    /* TODO message/rfc822 is special in that it may only be 7bit, 8bit or
     * TODO binary according to RFC 2046, 5.2.1
     * TODO The handling of which is a hack */
-   bool_t rfc822;
+   boole rfc822;
    enum mime_type_class mtc;
    enum mime_enc menc;
    off_t fpsz;
    enum conversion c;
-   n_NYD_IN;
+   NYD_IN;
 
-   assert(ftell(fp) == 0x0l);
+   ASSERT(ftell(fp) == 0x0l);
 
    *do_iconv = 0;
 
@@ -1153,7 +1156,7 @@ n_mimetype_classify_file(FILE *fp, char const **contenttype,
 
       _mt_classify_init(&mtca, mtc);
       for (;;) {
-         mtca.mtca_len = fread(buf, sizeof(buf[0]), n_NELEM(buf), fp);
+         mtca.mtca_len = fread(buf, sizeof(buf[0]), NELEM(buf), fp);
          mtca.mtca_buf = buf;
          if ((mtc = _mt_classify_round(&mtca)) & _MT_C_SUGGEST_DONE)
             break;
@@ -1217,19 +1220,19 @@ jnorfc822:
       c = (menc == MIMEE_7B ? CONV_7BIT
             : (menc == MIMEE_8B ? CONV_8BIT
             : (menc == MIMEE_QP ? CONV_TOQP : CONV_TOB64)));
-   n_NYD_OU;
+   NYD_OU;
    return c;
 }
 
 FL enum mimecontent
-n_mimetype_classify_part(struct mimepart *mpp, bool_t for_user_context){
+n_mimetype_classify_part(struct mimepart *mpp, boole for_user_context){
    /* TODO n_mimetype_classify_part() <-> m_mime_classifier_ with life cycle */
    struct mtlookup mtl;
    enum mimecontent mc;
    char const *ct;
-   union {char const *cp; ui32_t f;} mce;
-   bool_t is_os;
-   n_NYD_IN;
+   union {char const *cp; u32 f;} mce;
+   boole is_os;
+   NYD_IN;
 
    mc = MIME_UNKNOWN;
    if ((ct = mpp->m_ct_type_plain) == NULL) /* TODO may not */
@@ -1292,7 +1295,7 @@ n_mimetype_classify_part(struct mimepart *mpp, bool_t for_user_context){
          if(!su_cs_cmp_case(ct, mtap->mt_name)){
             mc = mtap->mt_mc;
             break;
-         }else if(++mtap == mta + n_NELEM(mta)){
+         }else if(++mtap == mta + NELEM(mta)){
             mc = MIME_MULTI;
             break;
          }
@@ -1305,7 +1308,7 @@ n_mimetype_classify_part(struct mimepart *mpp, bool_t for_user_context){
          mc = MIME_PKCS7;
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return mc;
 
 jos_content_check:
@@ -1325,8 +1328,8 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
    char *buf, *cp;
    enum mime_handler_flags rv, xrv;
    char const *es, *cs, *ccp;
-   size_t el, cl, l;
-   n_NYD_IN;
+   uz el, cl, l;
+   NYD_IN;
 
    su_mem_set(mhp, 0, sizeof *mhp);
    buf = NULL;
@@ -1343,7 +1346,7 @@ n_mimetype_handler(struct mime_handler *mhp, struct mimepart const *mpp,
          *++es != '\0') ? su_cs_len(es) : 0;
    cl = ((cs = mpp->m_ct_type_usr_ovwr) != NULL ||
          (cs = mpp->m_ct_type_plain) != NULL) ? su_cs_len(cs) : 0;
-   if ((l = n_MAX(el, cl)) == 0) {
+   if ((l = MAX(el, cl)) == 0) {
       /* TODO this should be done during parse time! */
       goto jleave;
    }
@@ -1426,10 +1429,11 @@ jleave:
    }
    mhp->mh_flags = xrv;
 
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 #undef __L
 #undef __S
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

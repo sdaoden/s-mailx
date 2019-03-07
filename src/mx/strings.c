@@ -47,42 +47,45 @@
 
 #include <su/cs.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 FL char *
 (savestr)(char const *str  su_DBG_LOC_ARGS_DECL)
 {
-   size_t size;
+   uz size;
    char *news;
-   n_NYD_IN;
+   NYD_IN;
 
    size = su_cs_len(str);
    news = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(size +1,  su_DBG_LOC_ARGS_ORUSE);
    if(size > 0)
       su_mem_copy(news, str, size);
    news[size] = '\0';
-   n_NYD_OU;
+   NYD_OU;
    return news;
 }
 
 FL char *
-(savestrbuf)(char const *sbuf, size_t sbuf_len  su_DBG_LOC_ARGS_DECL)
+(savestrbuf)(char const *sbuf, uz sbuf_len  su_DBG_LOC_ARGS_DECL)
 {
    char *news;
-   n_NYD_IN;
+   NYD_IN;
 
    news = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(sbuf_len +1, su_DBG_LOC_ARGS_ORUSE);
    if(sbuf_len > 0)
       su_mem_copy(news, sbuf, sbuf_len);
    news[sbuf_len] = 0;
-   n_NYD_OU;
+   NYD_OU;
    return news;
 }
 
 FL char *
 (savecatsep)(char const *s1, char sep, char const *s2  su_DBG_LOC_ARGS_DECL)
 {
-   size_t l1, l2;
+   uz l1, l2;
    char *news;
-   n_NYD_IN;
+   NYD_IN;
 
    l1 = (s1 != NULL) ? su_cs_len(s1) : 0;
    l2 = su_cs_len(s2);
@@ -96,7 +99,7 @@ FL char *
    if(l2 > 0)
       su_mem_copy(news + l1, s2, l2);
    news[l1 + l2] = '\0';
-   n_NYD_OU;
+   NYD_OU;
    return news;
 }
 
@@ -108,9 +111,9 @@ FL struct str *
 str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 {
    va_list vl;
-   size_t l;
+   uz l;
    char const *cs;
-   n_NYD_IN;
+   NYD_IN;
 
    va_start(vl, self);
    for (l = 0; (cs = va_arg(vl, char const*)) != NULL;)
@@ -122,7 +125,7 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
 
    va_start(vl, self);
    for (l = 0; (cs = va_arg(vl, char const*)) != NULL;) {
-      size_t i;
+      uz i;
 
       i = su_cs_len(cs);
       if(i > 0){
@@ -132,7 +135,7 @@ str_concat_csvl(struct str *self, ...) /* XXX onepass maybe better here */
    }
    self->s[l] = '\0';
    va_end(vl);
-   n_NYD_OU;
+   NYD_OU;
    return self;
 }
 
@@ -140,9 +143,9 @@ FL struct str *
 (str_concat_cpa)(struct str *self, char const * const *cpa,
    char const *sep_o_null  su_DBG_LOC_ARGS_DECL)
 {
-   size_t sonl, l;
+   uz sonl, l;
    char const * const *xcpa;
-   n_NYD_IN;
+   NYD_IN;
 
    sonl = (sep_o_null != NULL) ? su_cs_len(sep_o_null) : 0;
 
@@ -153,7 +156,7 @@ FL struct str *
    self->s = su_MEM_BAG_SELF_AUTO_ALLOC_LOCOR(l +1, su_DBG_LOC_ARGS_ORUSE);
 
    for (l = 0, xcpa = cpa; *xcpa != NULL; ++xcpa) {
-      size_t i;
+      uz i;
 
       i = su_cs_len(*xcpa);
       if(i > 0){
@@ -166,7 +169,7 @@ FL struct str *
       }
    }
    self->s[l] = '\0';
-   n_NYD_OU;
+   NYD_OU;
    return self;
 }
 
@@ -178,9 +181,9 @@ FL char *
 string_quote(char const *v) /* TODO too simpleminded (getrawlist(), +++ ..) */
 {
    char const *cp;
-   size_t i;
+   uz i;
    char c, *rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    for (i = 0, cp = v; (c = *cp) != '\0'; ++i, ++cp)
       if (c == '"' || c == '\\')
@@ -191,14 +194,14 @@ string_quote(char const *v) /* TODO too simpleminded (getrawlist(), +++ ..) */
       if (c == '"' || c == '\\')
          rv[i++] = '\\';
    rv[i] = '\0';
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL void
 makelow(char *cp) /* TODO isn't that crap? --> */
 {
-      n_NYD_IN;
+      NYD_IN;
 #ifdef mx_HAVE_C90AMEND1
    if (n_mb_cur_max > 1) {
       char *tp = cp;
@@ -226,14 +229,14 @@ makelow(char *cp) /* TODO isn't that crap? --> */
       if(c == '\0')
          break;
    }
-   n_NYD_OU;
+   NYD_OU;
 }
 
-FL bool_t
+FL boole
 substr(char const *str, char const *sub)
 {
    char const *cp, *backup;
-   n_NYD_IN;
+   NYD_IN;
 
    cp = sub;
    backup = str;
@@ -241,19 +244,19 @@ substr(char const *str, char const *sub)
 #ifdef mx_HAVE_C90AMEND1
       if (n_mb_cur_max > 1) {
          wchar_t c, c2;
-         int sz;
+         int i;
 
-         if ((sz = mbtowc(&c, cp, n_mb_cur_max)) == -1)
+         if ((i = mbtowc(&c, cp, n_mb_cur_max)) == -1)
             goto Jsinglebyte;
-         cp += sz;
-         if ((sz = mbtowc(&c2, str, n_mb_cur_max)) == -1)
+         cp += i;
+         if ((i = mbtowc(&c2, str, n_mb_cur_max)) == -1)
             goto Jsinglebyte;
-         str += sz;
+         str += i;
          c = towupper(c);
          c2 = towupper(c2);
          if (c != c2) {
-            if ((sz = mbtowc(&c, backup, n_mb_cur_max)) > 0) {
-               backup += sz;
+            if ((i = mbtowc(&c, backup, n_mb_cur_max)) > 0) {
+               backup += i;
                str = backup;
             } else
                str = ++backup;
@@ -275,56 +278,56 @@ Jsinglebyte:
          }
       }
    }
-   n_NYD_OU;
+   NYD_OU;
    return (*cp == '\0');
 }
 
 FL struct str *
-(n_str_assign_buf)(struct str *self, char const *buf, uiz_t buflen
+(n_str_assign_buf)(struct str *self, char const *buf, uz buflen
       su_DBG_LOC_ARGS_DECL){
-   n_NYD_IN;
-   if(buflen == UIZ_MAX)
+   NYD_IN;
+   if(buflen == UZ_MAX)
       buflen = (buf == NULL) ? 0 : su_cs_len(buf);
 
-   assert(buflen == 0 || buf != NULL);
+   ASSERT(buflen == 0 || buf != NULL);
 
-   if(n_LIKELY(buflen > 0)){
+   if(LIKELY(buflen > 0)){
       self->s = su_MEM_REALLOC_LOCOR(self->s, (self->l = buflen) +1,
             su_DBG_LOC_ARGS_ORUSE);
       su_mem_copy(self->s, buf, buflen);
       self->s[buflen] = '\0';
    }else
       self->l = 0;
-   n_NYD_OU;
+   NYD_OU;
    return self;
 }
 
 FL struct str *
-(n_str_add_buf)(struct str *self, char const *buf, uiz_t buflen
+(n_str_add_buf)(struct str *self, char const *buf, uz buflen
       su_DBG_LOC_ARGS_DECL){
-   n_NYD_IN;
-   if(buflen == UIZ_MAX)
+   NYD_IN;
+   if(buflen == UZ_MAX)
       buflen = (buf == NULL) ? 0 : su_cs_len(buf);
 
-   assert(buflen == 0 || buf != NULL);
+   ASSERT(buflen == 0 || buf != NULL);
 
    if(buflen > 0) {
-      size_t osl = self->l, nsl = osl + buflen;
+      uz osl = self->l, nsl = osl + buflen;
 
       self->s = su_MEM_REALLOC_LOCOR(self->s, (self->l = nsl) +1,
             su_DBG_LOC_ARGS_ORUSE);
       su_mem_copy(self->s + osl, buf, buflen);
       self->s[nsl] = '\0';
    }
-   n_NYD_OU;
+   NYD_OU;
    return self;
 }
 
 FL struct str *
 n_str_trim(struct str *self, enum n_str_trim_flags stf){
-   size_t l;
+   uz l;
    char const *cp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    cp = self->s;
 
@@ -344,16 +347,16 @@ n_str_trim(struct str *self, enum n_str_trim_flags stf){
    }
    self->l = l;
 
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
 FL struct str *
-n_str_trim_ifs(struct str *self, bool_t dodefaults){
+n_str_trim_ifs(struct str *self, boole dodefaults){
    char s, t, n, c;
    char const *ifs, *cp;
-   size_t l, i;
-   n_NYD2_IN;
+   uz l, i;
+   NYD2_IN;
 
    if((l = self->l) == 0)
       goto jleave;
@@ -383,9 +386,9 @@ n_str_trim_ifs(struct str *self, bool_t dodefaults){
                   break;
                /* An uneven number of reverse solidus escapes last WS! */
                else if(*--cp == '\\'){
-                  siz_t j;
+                  sz j;
 
-                  for(j = 1; l - (uiz_t)j > 0 && cp[-j] == '\\'; ++j)
+                  for(j = 1; l - (uz)j > 0 && cp[-j] == '\\'; ++j)
                      ;
                   if(j & 1){
                      ++l;
@@ -429,9 +432,9 @@ n_str_trim_ifs(struct str *self, bool_t dodefaults){
             break;
          /* An uneven number of reverse solidus escapes last WS! */
          else if(*--cp == '\\'){
-            siz_t j;
+            sz j;
 
-            for(j = 1; l - (uiz_t)j > 0 && cp[-j] == '\\'; ++j)
+            for(j = 1; l - (uz)j > 0 && cp[-j] == '\\'; ++j)
                ;
             if(j & 1){
                ++l;
@@ -442,7 +445,7 @@ n_str_trim_ifs(struct str *self, bool_t dodefaults){
    }
    self->l = l;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return self;
 }
 
@@ -452,9 +455,9 @@ jleave:
 
 FL struct n_string *
 (n_string_clear)(struct n_string *self su_DBG_LOC_ARGS_DECL){
-   n_NYD_IN;
+   NYD_IN;
 
-   assert(self != NULL);
+   ASSERT(self != NULL);
 
    if(self->s_size != 0){
       if(!self->s_auto)
@@ -462,24 +465,24 @@ FL struct n_string *
       self->s_len = self->s_auto = self->s_size = 0;
       self->s_dat = NULL;
    }
-   n_NYD_OU;
+   NYD_OU;
    return self;
 }
 
 FL struct n_string *
-(n_string_reserve)(struct n_string *self, size_t noof  su_DBG_LOC_ARGS_DECL){
-   ui32_t i, l, s;
-   n_NYD_IN;
-   assert(self != NULL);
+(n_string_reserve)(struct n_string *self, uz noof  su_DBG_LOC_ARGS_DECL){
+   u32 i, l, s;
+   NYD_IN;
+   ASSERT(self != NULL);
 
    s = self->s_size;
    l = self->s_len;
-   if((size_t)SI32_MAX - n_ALIGN(1) - l <= noof)
+   if((uz)S32_MAX - Z_ALIGN(1) - l <= noof)
       n_panic(_("Memory allocation too large"));
 
    if((i = s - l) <= ++noof){
-      i += l + (ui32_t)noof;
-      i = n_ALIGN(i);
+      i += l + (u32)noof;
+      i = Z_ALIGN(i);
       self->s_size = i -1;
 
       if(!self->s_auto)
@@ -494,69 +497,69 @@ FL struct n_string *
          self->s_dat = ndat;
       }
    }
-   n_NYD_OU;
+   NYD_OU;
    return self;
 }
 
 FL struct n_string *
-(n_string_resize)(struct n_string *self, size_t nlen  su_DBG_LOC_ARGS_DECL){
-   n_NYD_IN;
-   assert(self != NULL);
+(n_string_resize)(struct n_string *self, uz nlen  su_DBG_LOC_ARGS_DECL){
+   NYD_IN;
+   ASSERT(self != NULL);
 
-   if(UICMP(z, SI32_MAX, <=, nlen))
+   if(UCMP(z, S32_MAX, <=, nlen))
       n_panic(_("Memory allocation too large"));
 
    if(self->s_len < nlen)
       self = (n_string_reserve)(self, nlen  su_DBG_LOC_ARGS_USE);
-   self->s_len = (ui32_t)nlen;
-   n_NYD_OU;
+   self->s_len = (u32)nlen;
+   NYD_OU;
    return self;
 }
 
 FL struct n_string *
-(n_string_push_buf)(struct n_string *self, char const *buf, size_t buflen
+(n_string_push_buf)(struct n_string *self, char const *buf, uz buflen
       su_DBG_LOC_ARGS_DECL){
-   n_NYD_IN;
+   NYD_IN;
 
-   assert(self != NULL);
-   assert(buflen == 0 || buf != NULL);
+   ASSERT(self != NULL);
+   ASSERT(buflen == 0 || buf != NULL);
 
-   if(buflen == UIZ_MAX)
+   if(buflen == UZ_MAX)
       buflen = (buf == NULL) ? 0 : su_cs_len(buf);
 
    if(buflen > 0){
-      ui32_t i;
+      u32 i;
 
       self = (n_string_reserve)(self, buflen  su_DBG_LOC_ARGS_USE);
       su_mem_copy(&self->s_dat[i = self->s_len], buf, buflen);
-      self->s_len = (i += (ui32_t)buflen);
+      self->s_len = (i += (u32)buflen);
    }
-   n_NYD_OU;
+   NYD_OU;
    return self;
 }
 
 FL struct n_string *
 (n_string_push_c)(struct n_string *self, char c  su_DBG_LOC_ARGS_DECL){
-   n_NYD_IN;
+   NYD_IN;
 
-   assert(self != NULL);
+   ASSERT(self != NULL);
 
    if(self->s_len + 1 >= self->s_size)
       self = (n_string_reserve)(self, 1  su_DBG_LOC_ARGS_USE);
    self->s_dat[self->s_len++] = c;
-   n_NYD_OU;
+   NYD_OU;
    return self;
 }
 
 FL struct n_string *
-(n_string_unshift_buf)(struct n_string *self, char const *buf, size_t buflen
+(n_string_unshift_buf)(struct n_string *self, char const *buf, uz buflen
       su_DBG_LOC_ARGS_DECL){
-   n_NYD_IN;
+   NYD_IN;
 
-   assert(self != NULL);
-   assert(buflen == 0 || buf != NULL);
+   ASSERT(self != NULL);
+   ASSERT(buflen == 0 || buf != NULL);
 
-   if(buflen == UIZ_MAX)
+   if(buflen == UZ_MAX)
       buflen = (buf == NULL) ? 0 : su_cs_len(buf);
 
    if(buflen > 0){
@@ -564,17 +567,17 @@ FL struct n_string *
       if(self->s_len > 0)
          su_mem_move(&self->s_dat[buflen], self->s_dat, self->s_len);
       su_mem_copy(self->s_dat, buf, buflen);
-      self->s_len += (ui32_t)buflen;
+      self->s_len += (u32)buflen;
    }
-   n_NYD_OU;
+   NYD_OU;
    return self;
 }
 
 FL struct n_string *
 (n_string_unshift_c)(struct n_string *self, char c  su_DBG_LOC_ARGS_DECL){
-   n_NYD_IN;
+   NYD_IN;
 
-   assert(self != NULL);
+   ASSERT(self != NULL);
 
    if(self->s_len + 1 >= self->s_size)
       self = (n_string_reserve)(self, 1  su_DBG_LOC_ARGS_USE);
@@ -582,20 +585,20 @@ FL struct n_string *
       su_mem_move(&self->s_dat[1], self->s_dat, self->s_len);
    self->s_dat[0] = c;
    ++self->s_len;
-   n_NYD_OU;
+   NYD_OU;
    return self;
 }
 
 FL struct n_string *
-(n_string_insert_buf)(struct n_string *self, size_t idx,
-      char const *buf, size_t buflen  su_DBG_LOC_ARGS_DECL){
-   n_NYD_IN;
+(n_string_insert_buf)(struct n_string *self, uz idx,
+      char const *buf, uz buflen  su_DBG_LOC_ARGS_DECL){
+   NYD_IN;
 
-   assert(self != NULL);
-   assert(buflen == 0 || buf != NULL);
-   assert(idx <= self->s_len);
+   ASSERT(self != NULL);
+   ASSERT(buflen == 0 || buf != NULL);
+   ASSERT(idx <= self->s_len);
 
-   if(buflen == UIZ_MAX)
+   if(buflen == UZ_MAX)
       buflen = (buf == NULL) ? 0 : su_cs_len(buf);
 
    if(buflen > 0){
@@ -604,19 +607,19 @@ FL struct n_string *
          su_mem_move(&self->s_dat[idx + buflen], &self->s_dat[idx],
             self->s_len - idx);
       su_mem_copy(&self->s_dat[idx], buf, buflen);
-      self->s_len += (ui32_t)buflen;
+      self->s_len += (u32)buflen;
    }
-   n_NYD_OU;
+   NYD_OU;
    return self;
 }
 
 FL struct n_string *
-(n_string_insert_c)(struct n_string *self, size_t idx,
+(n_string_insert_c)(struct n_string *self, uz idx,
       char c  su_DBG_LOC_ARGS_DECL){
-   n_NYD_IN;
+   NYD_IN;
 
-   assert(self != NULL);
-   assert(idx <= self->s_len);
+   ASSERT(self != NULL);
+   ASSERT(idx <= self->s_len);
 
    if(self->s_len + 1 >= self->s_size)
       self = (n_string_reserve)(self, 1  su_DBG_LOC_ARGS_USE);
@@ -624,55 +627,56 @@ FL struct n_string *
       su_mem_move(&self->s_dat[idx + 1], &self->s_dat[idx], self->s_len - idx);
    self->s_dat[idx] = c;
    ++self->s_len;
-   n_NYD_OU;
+   NYD_OU;
    return self;
 }
 
 FL struct n_string *
-n_string_cut(struct n_string *self, size_t idx, size_t len){
-   n_NYD_IN;
+n_string_cut(struct n_string *self, uz idx, uz len){
+   NYD_IN;
 
-   assert(self != NULL);
-   assert(UIZ_MAX - idx > len);
-   assert(SI32_MAX >= idx + len);
-   assert(idx + len <= self->s_len);
+   ASSERT(self != NULL);
+   ASSERT(UZ_MAX - idx > len);
+   ASSERT(S32_MAX >= idx + len);
+   ASSERT(idx + len <= self->s_len);
 
    if(len > 0)
       su_mem_move(&self->s_dat[idx], &self->s_dat[idx + len],
          (self->s_len -= len) - idx);
-   n_NYD_OU;
+   NYD_OU;
    return self;
 }
 
 FL char *
 (n_string_cp)(struct n_string *self  su_DBG_LOC_ARGS_DECL){
    char *rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
-   assert(self != NULL);
+   ASSERT(self != NULL);
 
    if(self->s_size == 0)
       self = (n_string_reserve)(self, 1  su_DBG_LOC_ARGS_USE);
 
    (rv = self->s_dat)[self->s_len] = '\0';
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL char const *
 n_string_cp_const(struct n_string const *self){
    char const *rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
-   assert(self != NULL);
+   ASSERT(self != NULL);
 
    if(self->s_size != 0){
       ((struct n_string*)n_UNCONST(self))->s_dat[self->s_len] = '\0';
       rv = self->s_dat;
    }else
       rv = n_empty;
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

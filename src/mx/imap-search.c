@@ -55,6 +55,9 @@ su_EMPTY_FILE()
 
 #include "mx/names.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 enum itoken {
    ITBAD, ITEOD, ITBOL, ITEOL, ITAND, ITSET, ITALL, ITANSWERED,
    ITBCC, ITBEFORE, ITBODY,
@@ -81,7 +84,7 @@ struct itlex {
 
 struct itnode {
    enum itoken    n_token;
-   uiz_t          n_n;
+   uz          n_n;
    void           *n_v;
    void           *n_w;
    struct itnode  *n_x;
@@ -130,22 +133,22 @@ static struct itlex const  _it_strings[] = {
 static struct itnode    *_it_tree;
 static char             *_it_begin;
 static enum itoken      _it_token;
-static uiz_t            _it_number;
+static uz            _it_number;
 static void             *_it_args[2];
-static size_t           _it_need_headers;
+static uz           _it_need_headers;
 
 static enum okay     itparse(char const *spec, char const **xp, int sub);
 static enum okay     itscan(char const *spec, char const **xp);
 static enum okay     itsplit(char const *spec, char const **xp);
 static enum okay     itstring(void **tp, char const *spec, char const **xp);
 static int           itexecute(struct mailbox *mp, struct message *m,
-                        size_t c, struct itnode *n);
+                        uz c, struct itnode *n);
 
 static time_t        _imap_read_date(char const *cp);
 static char *        _imap_quotestr(char const *s);
 static char *        _imap_unquotestr(char const *s);
 
-static bool_t        matchfield(struct message *m, char const *field,
+static boole        matchfield(struct message *m, char const *field,
                         void const *what);
 static int           matchenvelope(struct message *m, char const *field,
                         void const *what);
@@ -158,7 +161,7 @@ itparse(char const *spec, char const **xp, int sub)
    int level = 0;
    struct itnode n, *z, *ittree;
    enum okay rv;
-   n_NYD_IN;
+   NYD_IN;
 
    _it_tree = NULL;
    while ((rv = itscan(spec, xp)) == OKAY && _it_token != ITBAD &&
@@ -241,7 +244,7 @@ itparse(char const *spec, char const **xp, int sub)
          break;
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -250,7 +253,7 @@ itscan(char const *spec, char const **xp)
 {
    int i, n;
    enum okay rv = OKAY;
-   n_NYD_IN;
+   NYD_IN;
 
    while (su_cs_is_space(*spec))
       ++spec;
@@ -301,7 +304,7 @@ itscan(char const *spec, char const **xp)
    _it_token = ITBAD;
    rv = STOP;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -311,7 +314,7 @@ itsplit(char const *spec, char const **xp)
    char const *cp;
    time_t t;
    enum okay rv;
-   n_NYD_IN;
+   NYD_IN;
 
    switch (_it_token) {
    case ITBCC:
@@ -398,7 +401,7 @@ itsplit(char const *spec, char const **xp)
       rv = OKAY;
       break;
    }
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -408,7 +411,7 @@ itstring(void **tp, char const *spec, char const **xp) /* XXX lesser derefs */
    int inquote = 0;
    char *ap;
    enum okay rv = STOP;
-   n_NYD_IN;
+   NYD_IN;
 
    while (su_cs_is_space(*spec))
       ++spec;
@@ -435,19 +438,19 @@ itstring(void **tp, char const *spec, char const **xp) /* XXX lesser derefs */
    *tp = _imap_unquotestr(*tp);
    rv = OKAY;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 static int
-itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
+itexecute(struct mailbox *mp, struct message *m, uz c, struct itnode *n)
 {
    struct search_expr se;
    char *cp, *line = NULL; /* TODO line pool */
-   size_t linesize = 0;
+   uz linesize = 0;
    FILE *ibuf;
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    if (n == NULL) {
       n_err(_("Internal error: Empty node in SEARCH tree\n"));
@@ -498,7 +501,7 @@ itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
       rv = matchenvelope(m, "bcc", n->n_v);
       break;
    case ITBEFORE:
-      rv = UICMP(z, m->m_time, <, n->n_n);
+      rv = UCMP(z, m->m_time, <, n->n_n);
       break;
    case ITBODY:
       su_mem_set(&se, 0, sizeof se);
@@ -540,8 +543,8 @@ itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
       rv = !(m->m_flag & MNEW);
       break;
    case ITON:
-      rv = (UICMP(z, m->m_time, >=, n->n_n) &&
-            UICMP(z, m->m_time, <, n->n_n + 86400));
+      rv = (UCMP(z, m->m_time, >=, n->n_n) &&
+            UCMP(z, m->m_time, <, n->n_n + 86400));
       break;
    case ITOR:
       rv = itexecute(mp, m, c, n->n_x) | itexecute(mp, m, c, n->n_y);
@@ -553,20 +556,20 @@ itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
       rv = ((m->m_flag & MREAD) != 0);
       break;
    case ITSENTBEFORE:
-      rv = UICMP(z, m->m_date, <, n->n_n);
+      rv = UCMP(z, m->m_date, <, n->n_n);
       break;
    case ITSENTON:
-      rv = (UICMP(z, m->m_date, >=, n->n_n) &&
-            UICMP(z, m->m_date, <, n->n_n + 86400));
+      rv = (UCMP(z, m->m_date, >=, n->n_n) &&
+            UCMP(z, m->m_date, <, n->n_n + 86400));
       break;
    case ITSENTSINCE:
-      rv = UICMP(z, m->m_date, >=, n->n_n);
+      rv = UCMP(z, m->m_date, >=, n->n_n);
       break;
    case ITSINCE:
-      rv = UICMP(z, m->m_time, >=, n->n_n);
+      rv = UCMP(z, m->m_time, >=, n->n_n);
       break;
    case ITSMALLER:
-      rv = UICMP(z, m->m_xsize, <, n->n_n);
+      rv = UCMP(z, m->m_xsize, <, n->n_n);
       break;
    case ITSUBJECT:
       rv = matchfield(m, "subject", n->n_v);
@@ -600,7 +603,7 @@ itexecute(struct mailbox *mp, struct message *m, size_t c, struct itnode *n)
       break;
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -608,10 +611,10 @@ static time_t
 _imap_read_date(char const *cp)
 {
    time_t t, t2;
-   si32_t year, month, day, i, tzdiff;
+   s32 year, month, day, i, tzdiff;
    struct tm *tmptr;
    char const *xp, *yp;
-   n_NYD_IN;
+   NYD_IN;
 
    if (*cp == '"')
       ++cp;
@@ -629,7 +632,7 @@ _imap_read_date(char const *cp)
    if (xp[3] != '-')
       goto jerr;
    su_idec_s32_cp(&year, &xp[4], 10, &yp);
-   if (year < 1970 || year > 2037 || PTRCMP(yp, !=, xp + 8))
+   if (year < 1970 || year > 2037 || PCMP(yp, !=, xp + 8))
       goto jerr;
    if (yp[0] != '\0' && (yp[1] != '"' || yp[2] != '\0'))
       goto jerr;
@@ -644,7 +647,7 @@ _imap_read_date(char const *cp)
       tzdiff += 3600;
    t -= tzdiff;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return t;
 jerr:
    t = (time_t)-1;
@@ -655,7 +658,7 @@ static char *
 _imap_quotestr(char const *s)
 {
    char *n, *np;
-   n_NYD2_IN;
+   NYD2_IN;
 
    np = n = n_autorec_alloc(2 * su_cs_len(s) + 3);
    *np++ = '"';
@@ -666,7 +669,7 @@ _imap_quotestr(char const *s)
    }
    *np++ = '"';
    *np = '\0';
-   n_NYD2_OU;
+   NYD2_OU;
    return n;
 }
 
@@ -674,7 +677,7 @@ static char *
 _imap_unquotestr(char const *s)
 {
    char *n, *np;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if (*s != '"') {
       n = savestr(s);
@@ -691,16 +694,16 @@ _imap_unquotestr(char const *s)
    }
    *np = '\0';
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return n;
 }
 
-static bool_t
+static boole
 matchfield(struct message *m, char const *field, void const *what)
 {
    struct str in, out;
-   bool_t rv = FAL0;
-   n_NYD_IN;
+   boole rv = FAL0;
+   NYD_IN;
 
    if ((in.s = hfieldX(field, m)) == NULL)
       goto jleave;
@@ -710,7 +713,7 @@ matchfield(struct message *m, char const *field, void const *what)
    rv = substr(out.s, what);
    n_free(out.s);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -720,7 +723,7 @@ matchenvelope(struct message *m, char const *field, void const *what)
    struct mx_name *np;
    char *cp;
    int rv = 0;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((cp = hfieldX(field, m)) == NULL)
       goto jleave;
@@ -733,20 +736,20 @@ matchenvelope(struct message *m, char const *field, void const *what)
    }
 
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 static char *
 mkenvelope(struct mx_name *np)
 {
-   size_t epsize;
+   uz epsize;
    char *ep, *realnam = NULL, /**sourceaddr = NULL,*/ *localpart,
       *domainpart, *cp, *rp, *xp, *ip;
    struct str in, out;
    int level = 0;
-   bool_t hadphrase = FAL0;
-   n_NYD_IN;
+   boole hadphrase = FAL0;
+   NYD_IN;
 
    in.s = np->n_fullname;
    in.l = su_cs_len(in.s);
@@ -768,7 +771,7 @@ mkenvelope(struct mx_name *np)
             --cp;
          rp = ip;
          xp = out.s;
-         if (PTRCMP(xp, <, cp - 1) && *xp == '"' && cp[-1] == '"') {
+         if (PCMP(xp, <, cp - 1) && *xp == '"' && cp[-1] == '"') {
             ++xp;
             --cp;
          }
@@ -815,7 +818,7 @@ jdone:
       _imap_quotestr(localpart),
       domainpart ? _imap_quotestr(domainpart) : "NIL");
    n_lofi_free(ip);
-   n_NYD_OU;
+   NYD_OU;
    return ep;
 }
 
@@ -825,27 +828,27 @@ around(char const *cp)
 {
    static char ab[2 * SURROUNDING +1];
 
-   size_t i;
-   n_NYD_IN;
+   uz i;
+   NYD_IN;
 
    for (i = 0; i < SURROUNDING && cp > _it_begin; ++i)
       --cp;
    for (i = 0; i < sizeof(ab) -1; ++i)
       ab[i] = *cp++;
    ab[i] = '\0';
-   n_NYD_OU;
+   NYD_OU;
    return ab;
 }
 
-FL ssize_t
+FL sz
 imap_search(char const *spec, int f)
 {
    static char *lastspec;
 
    char const *xp;
-   size_t i;
-   ssize_t rv;
-   n_NYD_IN;
+   uz i;
+   sz rv;
+   NYD_IN;
 
    if (su_cs_cmp(spec, "()")) {
       if (lastspec != NULL)
@@ -880,11 +883,11 @@ imap_search(char const *spec, int f)
       imap_getheaders(1, msgCount);
 #endif
    srelax_hold();
-   for (i = 0; UICMP(z, i, <, msgCount); ++i) {
+   for (i = 0; UCMP(z, i, <, msgCount); ++i) {
       if (message[i].m_flag & MHIDDEN)
          continue;
       if (f == MDELETED || !(message[i].m_flag & MDELETED)) {
-         size_t j = (int)(i + 1);
+         uz j = (int)(i + 1);
          if (itexecute(&mb, message + i, j, _it_tree)){
             mark((int)j, f);
             ++rv;
@@ -894,9 +897,10 @@ imap_search(char const *spec, int f)
    }
    srelax_rele();
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
-#endif /* mx_HAVE_IMAP_SEARCH */
 
+#include "su/code-ou.h"
+#endif /* mx_HAVE_IMAP_SEARCH */
 /* s-it-mode */

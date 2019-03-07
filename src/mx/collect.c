@@ -49,6 +49,9 @@
 #include "mx/names.h"
 #include "mx/ui-str.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 struct a_coll_fmt_ctx{ /* xxx This is temporary until v15 has objects */
    char const *cfc_fmt;
    FILE *cfc_fp;
@@ -62,20 +65,20 @@ struct a_coll_fmt_ctx{ /* xxx This is temporary until v15 has objects */
 };
 
 struct a_coll_ocs_arg{
-   sighandler_type coa_opipe;
-   sighandler_type coa_oint;
+   n_sighdl_t coa_opipe;
+   n_sighdl_t coa_oint;
    FILE *coa_stdin;  /* The descriptor (pipe(2)+Fdopen()) we read from */
    FILE *coa_stdout; /* The Popen()ed pipe through which we write to the hook */
    int coa_pipe[2];  /* ..backing .coa_stdin */
-   si8_t *coa_senderr; /* Set to 1 on failure */
-   char coa_cmd[n_VFIELD_SIZE(0)];
+   s8 *coa_senderr; /* Set to 1 on failure */
+   char coa_cmd[VFIELD_SIZE(0)];
 };
 
 /* The following hookiness with global variables is so that on receipt of an
  * interrupt signal, the partial message can be salted away on *DEAD* */
 
-static sighandler_type  _coll_saveint;    /* Previous SIGINT value */
-static sighandler_type  _coll_savehup;    /* Previous SIGHUP value */
+static n_sighdl_t  _coll_saveint;    /* Previous SIGINT value */
+static n_sighdl_t  _coll_savehup;    /* Previous SIGHUP value */
 static FILE             *_coll_fp;        /* File for saving away */
 static int volatile     _coll_hadintr;    /* Have seen one SIGINT so far */
 static sigjmp_buf       _coll_jmp;        /* To get back to work */
@@ -84,50 +87,50 @@ static char const *a_coll_ocs__macname;   /* *on-compose-splice* */
 
 /* Handle `~:', `~_' and some hooks; hp may be NULL */
 static void       _execute_command(struct header *hp, char const *linebuf,
-                     size_t linesize);
+                     uz linesize);
 
 /* Return errno */
-static si32_t a_coll_include_file(char const *name, bool_t indent,
-               bool_t writestat);
+static s32 a_coll_include_file(char const *name, boole indent,
+               boole writestat);
 
 /* Execute cmd and insert its standard output into fp, return errno */
-static si32_t a_coll_insert_cmd(FILE *fp, char const *cmd);
+static s32 a_coll_insert_cmd(FILE *fp, char const *cmd);
 
 /* ~p command */
 static void       print_collf(FILE *collf, struct header *hp);
 
 /* Write a file, ex-like if f set */
-static si32_t a_coll_write(char const *name, FILE *fp, int f);
+static s32 a_coll_write(char const *name, FILE *fp, int f);
 
 /* *message-inject-head* */
-static bool_t a_coll_message_inject_head(FILE *fp);
+static boole a_coll_message_inject_head(FILE *fp);
 
 /* With bells and whistles */
-static bool_t a_coll_quote_message(FILE *fp, struct message *mp, bool_t isfwd);
+static boole a_coll_quote_message(FILE *fp, struct message *mp, boole isfwd);
 
 /* *{forward,quote}-inject-{head,tail}*.
  * fmt may be NULL or the empty string, in which case no output is produced */
-static bool_t a_coll__fmt_inj(struct a_coll_fmt_ctx const *cfcp);
+static boole a_coll__fmt_inj(struct a_coll_fmt_ctx const *cfcp);
 
 /* Parse off the message header from fp and store relevant fields in hp,
  * replace _coll_fp with a shiny new version without any header.
  * Takes care for closing of fp and _coll_fp as necessary */
-static bool_t a_coll_makeheader(FILE *fp, struct header *hp,
-               si8_t *checkaddr_err, bool_t do_delayed_due_t);
+static boole a_coll_makeheader(FILE *fp, struct header *hp,
+               s8 *checkaddr_err, boole do_delayed_due_t);
 
 /* Edit the message being collected on fp.
  * If c=='|' pipecmd must be set and is passed through to n_run_editor().
  * On successful return, make the edit file the new temp file; return errno */
-static si32_t a_coll_edit(int c, struct header *hp, char const *pipecmd);
+static s32 a_coll_edit(int c, struct header *hp, char const *pipecmd);
 
 /* Pipe the message through the command.  Old message is on stdin of command,
  * new message collected from stdout.  Shell must return 0 to accept new msg */
-static si32_t a_coll_pipe(char const *cmd);
+static s32 a_coll_pipe(char const *cmd);
 
 /* Interpolate the named messages into the current message, possibly doing
  * indent stuff.  The flag argument is one of the command escapes: [mMfFuU].
  * Return errno */
-static si32_t a_coll_forward(char const *ms, FILE *fp, int f);
+static s32 a_coll_forward(char const *ms, FILE *fp, int f);
 
 /* On interrupt, come here to save the partial message in ~/dead.letter.
  * Then jump out of the collection loop */
@@ -136,14 +139,14 @@ static void       _collint(int s);
 static void       collhup(int s);
 
 /* ~[AaIi], *message-inject-**: put value, expand \[nt] if *posix* */
-static bool_t a_coll_putesc(char const *s, bool_t addnl, FILE *stream);
+static boole a_coll_putesc(char const *s, boole addnl, FILE *stream);
 
 /* *on-compose-splice* driver and *on-compose-splice(-shell)?* finalizer */
 static int a_coll_ocs__mac(void);
 static void a_coll_ocs__finalize(void *vp);
 
 static void
-_execute_command(struct header *hp, char const *linebuf, size_t linesize){
+_execute_command(struct header *hp, char const *linebuf, uz linesize){
    /* The problem arises if there are rfc822 message attachments and the
     * user uses `~:' to change the current file.  TODO Unfortunately we
     * TODO cannot simply keep a pointer to, or increment a reference count
@@ -157,9 +160,9 @@ _execute_command(struct header *hp, char const *linebuf, size_t linesize){
    struct n_sigman sm;
    struct attachment *ap;
    char * volatile mnbuf;
-   n_NYD_IN;
+   NYD_IN;
 
-   n_UNUSED(linesize);
+   UNUSED(linesize);
    mnbuf = NULL;
 
    n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_HUP | n_SIGMAN_INT | n_SIGMAN_QUIT){
@@ -189,19 +192,19 @@ jleave:
             "rfc822 attachments became invalid!\n"));
       n_free(mnbuf);
    }
-   n_NYD_OU;
+   NYD_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
 }
 
-static si32_t
-a_coll_include_file(char const *name, bool_t indent, bool_t writestat){
+static s32
+a_coll_include_file(char const *name, boole indent, boole writestat){
    FILE *fbuf;
    char const *heredb, *indb;
-   size_t linesize, heredl, indl, cnt, linelen;
+   uz linesize, heredl, indl, cnt, linelen;
    char *linebuf;
-   si64_t lc, cc;
-   si32_t rv;
-   n_NYD_IN;
+   s64 lc, cc;
+   s32 rv;
+   NYD_IN;
 
    rv = su_ERR_NONE;
    lc = cc = 0;
@@ -247,7 +250,7 @@ jdelim_empty:
                rv = su_ERR_INVAL;
                goto jleave;
             }
-            if((heredl = PTR2SIZE(indb - heredb)) == 0)
+            if((heredl = P2UZ(indb - heredb)) == 0)
                goto jdelim_empty;
             heredb = savestrbuf(heredb, heredl);
          }
@@ -305,16 +308,16 @@ jleave:
    if(writestat)
       fprintf(n_stdout, "%s%s %" PRId64 "/%" PRId64 "\n",
          n_shexp_quote_cp(name, FAL0), (rv ? " " n_ERROR : n_empty), lc, cc);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
-static si32_t
+static s32
 a_coll_insert_cmd(FILE *fp, char const *cmd){
    FILE *ibuf;
-   si64_t lc, cc;
-   si32_t rv;
-   n_NYD_IN;
+   s64 lc, cc;
+   s32 rv;
+   NYD_IN;
 
    rv = su_ERR_NONE;
    lc = cc = 0;
@@ -344,7 +347,7 @@ a_coll_insert_cmd(FILE *fp, char const *cmd){
 
    fprintf(n_stdout, "CMD%s %" PRId64 "/%" PRId64 "\n",
       (rv == su_ERR_NONE ? n_empty : " " n_ERROR), lc, cc);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -353,11 +356,11 @@ print_collf(FILE *cf, struct header *hp)
 {
    char *lbuf;
    FILE *obuf;
-   size_t cnt, linesize, linelen;
-   n_NYD_IN;
+   uz cnt, linesize, linelen;
+   NYD_IN;
 
    fflush_rewind(cf);
-   cnt = (size_t)fsize(cf);
+   cnt = (uz)fsize(cf);
 
    if((obuf = Ftmp(NULL, "collfp", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL){
       n_perr(_("Can't create temporary file for `~p' command"), 0);
@@ -389,17 +392,17 @@ print_collf(FILE *cf, struct header *hp)
 
    Fclose(obuf);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
 }
 
-static si32_t
+static s32
 a_coll_write(char const *name, FILE *fp, int f)
 {
    FILE *of;
    int c;
-   si64_t lc, cc;
-   si32_t rv;
-   n_NYD_IN;
+   s64 lc, cc;
+   s32 rv;
+   NYD_IN;
 
    rv = su_ERR_NONE;
 
@@ -429,7 +432,7 @@ jleave:
    if(of != NULL)
       Fclose(of);
    fflush(n_stdout);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 jerr:
    putc('-', n_stdout);
@@ -437,11 +440,11 @@ jerr:
    goto jleave;
 }
 
-static bool_t
+static boole
 a_coll_message_inject_head(FILE *fp){
-   bool_t rv;
+   boole rv;
    char const *cp, *cp_obsolete;
-   n_NYD2_IN;
+   NYD2_IN;
 
    cp_obsolete = ok_vlook(NAIL_HEAD);
    if(cp_obsolete != NULL)
@@ -452,18 +455,18 @@ a_coll_message_inject_head(FILE *fp){
       rv = FAL0;
    else
       rv = TRU1;
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
-static bool_t
-a_coll_quote_message(FILE *fp, struct message *mp, bool_t isfwd){
+static boole
+a_coll_quote_message(FILE *fp, struct message *mp, boole isfwd){
    struct a_coll_fmt_ctx cfc;
    char const *cp;
    struct n_ignore const *quoteitp;
    enum sendaction action;
-   bool_t rv;
-   n_NYD_IN;
+   boole rv;
+   NYD_IN;
 
    rv = FAL0;
 
@@ -536,46 +539,46 @@ a_coll_quote_message(FILE *fp, struct message *mp, bool_t isfwd){
 
    rv = TRU1;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
-static bool_t
+static boole
 a_coll__fmt_inj(struct a_coll_fmt_ctx const *cfcp){
    struct quoteflt qf;
-   struct n_string s_b, *sp;
+   struct n_string s_b, *s;
    char c;
    char const *fmt;
-   n_NYD_IN;
+   NYD_IN;
 
    if((fmt = cfcp->cfc_fmt) == NULL || *fmt == '\0')
       goto jleave;
 
-   sp = n_string_book(n_string_creat_auto(&s_b), 127);
+   s = n_string_book(n_string_creat_auto(&s_b), 127);
 
    while((c = *fmt++) != '\0'){
       if(c != '%' || (c = *fmt++) == '%'){
 jwrite_char:
-         sp = n_string_push_c(sp, c);
+         s = n_string_push_c(s, c);
       }else switch(c){
       case 'a':
-         sp = n_string_push_cp(sp, cfcp->cfc_addr);
+         s = n_string_push_cp(s, cfcp->cfc_addr);
          break;
       case 'd':
-         sp = n_string_push_cp(sp, cfcp->cfc_date);
+         s = n_string_push_cp(s, cfcp->cfc_date);
          break;
       case 'f':
-         sp = n_string_push_cp(sp, cfcp->cfc_full);
+         s = n_string_push_cp(s, cfcp->cfc_full);
          break;
       case 'i':
          if(cfcp->cfc_msgid != NULL)
-            sp = n_string_push_cp(sp, cfcp->cfc_msgid);
+            s = n_string_push_cp(s, cfcp->cfc_msgid);
          break;
       case 'n':
-         sp = n_string_push_cp(sp, cfcp->cfc_cumul);
+         s = n_string_push_cp(s, cfcp->cfc_cumul);
          break;
       case 'r':
-         sp = n_string_push_cp(sp, cfcp->cfc_real);
+         s = n_string_push_cp(s, cfcp->cfc_real);
          break;
       case '\0':
          --fmt;
@@ -591,24 +594,24 @@ jwrite_char:
 
    quoteflt_init(&qf, NULL, FAL0);
    quoteflt_reset(&qf, cfcp->cfc_fp);
-   if(quoteflt_push(&qf, sp->s_dat, sp->s_len) < 0 || quoteflt_flush(&qf) < 0)
+   if(quoteflt_push(&qf, s->s_dat, s->s_len) < 0 || quoteflt_flush(&qf) < 0)
       cfcp = NULL;
    quoteflt_destroy(&qf);
 
-   /*n_string_gut(sp);*/
+   /*n_string_gut(s);*/
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return (cfcp != NULL);
 }
 
-static bool_t
-a_coll_makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err,
-   bool_t do_delayed_due_t)
+static boole
+a_coll_makeheader(FILE *fp, struct header *hp, s8 *checkaddr_err,
+   boole do_delayed_due_t)
 {
    FILE *nf;
    int c;
-   bool_t rv;
-   n_NYD_IN;
+   boole rv;
+   NYD_IN;
 
    rv = FAL0;
 
@@ -654,23 +657,23 @@ a_coll_makeheader(FILE *fp, struct header *hp, si8_t *checkaddr_err,
 jleave:
    if(nf != NULL)
       Fclose(nf);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
-static si32_t
+static s32
 a_coll_edit(int c, struct header *hp, char const *pipecmd) /* TODO errret */
 {
    struct n_sigman sm;
    FILE *nf;
-   sighandler_type volatile sigint;
+   n_sighdl_t volatile sigint;
    struct mx_name *saved_in_reply_to;
-   bool_t saved_filrec;
-   si32_t volatile rv;
-   n_NYD_IN;
+   boole saved_filrec;
+   s32 volatile rv;
+   NYD_IN;
 
    rv = su_ERR_NONE;
-   n_UNINIT(sigint, SIG_ERR);
+   UNINIT(sigint, SIG_ERR);
    saved_filrec = ok_blook(add_file_recipients);
 
    n_SIGMAN_ENTER_SWITCH(&sm, n_SIGMAN_ALL){
@@ -726,19 +729,19 @@ jleave:
    if(!saved_filrec)
       ok_bclear(add_file_recipients);
    safe_signal(SIGINT, sigint);
-   n_NYD_OU;
+   NYD_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
 }
 
-static si32_t
+static s32
 a_coll_pipe(char const *cmd)
 {
    int ws;
    FILE *nf;
-   sighandler_type sigint;
-   si32_t rv;
-   n_NYD_IN;
+   n_sighdl_t sigint;
+   s32 rv;
+   NYD_IN;
 
    rv = su_ERR_NONE;
    sigint = safe_signal(SIGINT, SIG_IGN);
@@ -773,18 +776,18 @@ jperr:
    _coll_fp = nf;
 jout:
    safe_signal(SIGINT, sigint);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
-static si32_t
+static s32
 a_coll_forward(char const *ms, FILE *fp, int f)
 {
    int *msgvec, rv = 0;
    struct n_ignore const *itp;
    char const *tabst;
    enum sendaction action;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((rv = n_getmsglist(ms, n_msgvec, 0, NULL)) < 0) {
       rv = su_ERR_NOENT; /* XXX not really, should be handled there! */
@@ -839,14 +842,14 @@ a_coll_forward(char const *ms, FILE *fp, int f)
    srelax_rele();
    fprintf(n_stdout, "\n");
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 static void
 _collint(int s)
 {
-   n_NYD_X; /* Signal handler */
+   NYD; /* Signal handler */
 
    /* the control flow is subtle, because we can be called from ~q */
    if (_coll_hadintr == 0) {
@@ -868,8 +871,8 @@ _collint(int s)
 static void
 collhup(int s)
 {
-   n_NYD_X; /* Signal handler */
-   n_UNUSED(s);
+   NYD; /* Signal handler */
+   UNUSED(s);
 
    savedeadletter(_coll_fp, TRU1);
    /* Let's pretend nobody else wants to clean up, a true statement at
@@ -877,11 +880,11 @@ collhup(int s)
    exit(n_EXIT_ERR);
 }
 
-static bool_t
-a_coll_putesc(char const *s, bool_t addnl, FILE *stream){
+static boole
+a_coll_putesc(char const *s, boole addnl, FILE *stream){
    char c1, c2;
-   bool_t isposix;
-   n_NYD2_IN;
+   boole isposix;
+   NYD2_IN;
 
    isposix = ok_blook(posix);
 
@@ -906,7 +909,7 @@ a_coll_putesc(char const *s, bool_t addnl, FILE *stream){
       goto jleave;
 
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return (c1 == '\0');
 }
 
@@ -933,10 +936,10 @@ a_coll_ocs__mac(void){
 static void
 a_coll_ocs__finalize(void *vp){
    /* Note we use this for destruction upon setup errors, thus */
-   sighandler_type opipe;
-   sighandler_type oint;
+   n_sighdl_t opipe;
+   n_sighdl_t oint;
    struct a_coll_ocs_arg **coapp, *coap;
-   n_NYD2_IN;
+   NYD2_IN;
 
    temporary_compose_mode_hook_call((char*)-1, NULL, NULL);
 
@@ -962,14 +965,14 @@ a_coll_ocs__finalize(void *vp){
    safe_signal(SIGPIPE, opipe);
    safe_signal(SIGINT, oint);
    rele_all_sigs();
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 FL void
 n_temporary_compose_hook_varset(void *arg){ /* TODO v15: drop */
    struct header *hp;
    char const *val;
-   n_NYD2_IN;
+   NYD2_IN;
 
    hp = arg;
 
@@ -1018,15 +1021,15 @@ n_temporary_compose_hook_varset(void *arg){ /* TODO v15: drop */
    if((val = detract(hp->h_mailx_orig_bcc, GNAMEONLY)) == NULL)
       val = n_empty;
    ok_vset(mailx_orig_bcc, val);
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 FL FILE *
 n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
-   char const *quotefile, si8_t *checkaddr_err)
+   char const *quotefile, s8 *checkaddr_err)
 {
    struct n_dig_msg_ctx dmc;
-   struct n_string s, * volatile sp;
+   struct n_string s_b, * volatile s;
    struct a_coll_ocs_arg *coap;
    int c;
    int volatile t, eofcnt, getfields;
@@ -1040,11 +1043,11 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    } volatile flags;
    char *linebuf;
    char const *cp, *cp_base, * volatile coapm, * volatile ifs_saved;
-   size_t i, linesize; /* TODO line pool */
+   uz i, linesize; /* TODO line pool */
    long cnt;
    sigset_t oset, nset;
    FILE * volatile sigfp;
-   n_NYD_IN;
+   NYD_IN;
 
    n_DIG_MSG_COMPOSE_CREATE(&dmc, hp);
    _coll_fp = NULL;
@@ -1056,7 +1059,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
    eofcnt = 0;
    ifs_saved = coapm = NULL;
    coap = NULL;
-   sp = NULL;
+   s = NULL;
 
    /* Start catching signals from here, but we still die on interrupts
     * until we're in the main loop */
@@ -1102,7 +1105,7 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
          }
       }
    }else{
-      n_UNINIT(t, 0);
+      UNINIT(t, 0);
    }
 
    _coll_hadintr = 0;
@@ -1139,8 +1142,8 @@ n_collect(enum n_mailsend_flags msf, struct header *hp, struct message *mp,
 
       if(n_psonce & n_PSO_INTERACTIVE){
          if(!(n_pstate & n_PS_SOURCING)){
-            sp = n_string_creat_auto(&s);
-            sp = n_string_reserve(sp, 80);
+            s = n_string_creat_auto(&s_b);
+            s = n_string_reserve(s, 80);
          }
 
          if(!(n_poption & n_PO_Mm_FLAG) && !(n_pstate & n_PS_ROBOT)){
@@ -1197,7 +1200,7 @@ jcont:
                }
                break;
             }
-            i = (size_t)cnt;
+            i = (uz)cnt;
             if(i != fwrite(linebuf, sizeof *linebuf, i, _coll_fp))
                goto jerr;
             /* TODO n_PS_READLINE_NL is a hack to ensure that _in_all_-
@@ -1223,11 +1226,11 @@ jcont:
 
       /* C99 */{
          enum n_go_input_flags gif;
-         bool_t histadd;
+         boole histadd;
 
          /* TODO optimize: no need to evaluate that anew for each loop tick! */
          gif = n_GO_INPUT_CTX_COMPOSE;
-         histadd = (sp != NULL);
+         histadd = (s != NULL);
          if(!(n_poption & n_PO_t_FLAG) || (n_psonce & n_PSO_t_FLAG_DONE)){
             if((n_psonce & n_PSO_INTERACTIVE) || (n_poption & n_PO_TILDE_FLAG))
                gif |= n_GO_INPUT_NL_ESC;
@@ -1272,7 +1275,7 @@ jcont:
       }
       if(cp[0] != escape){
 jputline:
-         if(fwrite(cp, sizeof *cp, cnt, _coll_fp) != (size_t)cnt)
+         if(fwrite(cp, sizeof *cp, cnt, _coll_fp) != (uz)cnt)
             goto jerr;
          /* TODO n_PS_READLINE_NL is a terrible hack to ensure that _in_all_-
           * TODO _code_paths_ a file without trailing newline isn't modified
@@ -1317,7 +1320,7 @@ jputnl:
          struct str x;
 
          x.s = n_UNCONST(cp);
-         x.l = (size_t)cnt;
+         x.l = (uz)cnt;
          n_str_trim_ifs(&x, TRU1);
          x.s[x.l] = '\0';
          cp = x.s;
@@ -1325,13 +1328,13 @@ jputnl:
       }
 
       if(hist != a_HIST_NONE){
-         sp = n_string_assign_c(sp, escape);
+         s = n_string_assign_c(s, escape);
          if(flags & a_IGNERR)
-            sp = n_string_push_c(sp, '-');
-         sp = n_string_push_c(sp, c);
+            s = n_string_push_c(s, '-');
+         s = n_string_push_c(s, c);
          if(cnt > 0){
-            sp = n_string_push_c(sp, ' ');
-            sp = n_string_push_buf(sp, cp, cnt);
+            s = n_string_push_c(s, ' ');
+            s = n_string_push_buf(s, cp, cnt);
          }
       }
 
@@ -1487,7 +1490,7 @@ jearg:
             goto jearg;
          else{
             struct mx_name *np;
-            si8_t soe;
+            s8 soe;
 
             soe = 0;
             if((np = checkaddrs(lextract(cp, GBCC | GFULL), EACM_NORMAL, &soe)
@@ -1509,7 +1512,7 @@ jearg:
             goto jearg;
          else{
             struct mx_name *np;
-            si8_t soe;
+            s8 soe;
 
             soe = 0;
             if((np = checkaddrs(lextract(cp, GCC | GFULL), EACM_NORMAL, &soe)
@@ -1718,7 +1721,7 @@ jIi_putesc:
             goto jearg;
          else{
             struct mx_name *np;
-            si8_t soe;
+            s8 soe;
 
             soe = 0;
             if((np = checkaddrs(lextract(cp, GTO | GFULL), EACM_NORMAL, &soe)
@@ -1772,7 +1775,7 @@ jhistcont:
          /* Do not add *escape* to the history in order to allow history search
           * to be handled generically in the MLE regardless of actual *escape*
           * settings etc. */
-         n_tty_addhist(&n_string_cp(sp)[1], (n_GO_INPUT_CTX_COMPOSE |
+         n_tty_addhist(&n_string_cp(s)[1], (n_GO_INPUT_CTX_COMPOSE |
             (hist & a_HIST_GABBY ? n_GO_INPUT_HIST_GABBY : n_GO_INPUT_NONE)));
       }
       if(c != '\0')
@@ -1805,7 +1808,7 @@ jout:
       }
 
       i = su_cs_len(cp) +1;
-      coap = n_lofi_alloc(n_VSTRUCT_SIZEOF(struct a_coll_ocs_arg, coa_cmd
+      coap = n_lofi_alloc(VSTRUCT_SIZEOF(struct a_coll_ocs_arg, coa_cmd
             ) + i);
       coap->coa_pipe[0] = coap->coa_pipe[1] = -1;
       coap->coa_stdin = coap->coa_stdout = NULL;
@@ -1873,7 +1876,7 @@ jout:
                n_GO_INPUT_CTX_COMPOSE);
 
       if(ok_blook(asksend)){
-         bool_t b;
+         boole b;
 
          ifs_saved = coapm = NULL;
          coap = NULL;
@@ -1893,7 +1896,7 @@ jreasksend:
             cp = n_1;
          }
 
-         if((b = n_boolify(linebuf, UIZ_MAX, TRUM1)) < FAL0)
+         if((b = n_boolify(linebuf, UZ_MAX, TRUM1)) < FAL0)
             goto jreasksend;
          if(b == TRU2)
             goto jcont;
@@ -1948,15 +1951,15 @@ jreasksend:
       if(linebuf == NULL)
          linebuf = n_alloc(linesize = LINESIZE);
       c = '\0';
-      while((i = fread(linebuf, sizeof *linebuf, linesize, n_UNVOLATILE(sigfp)))
-            > 0){
+      while((i = fread(linebuf, sizeof *linebuf, linesize,
+            UNVOLATILE(FILE*,sigfp))) > 0){
          c = linebuf[i - 1];
          if(i != fwrite(linebuf, sizeof *linebuf, i, _coll_fp))
             goto jerr;
       }
 
       /* C99 */{
-         FILE *x = n_UNVOLATILE(sigfp);
+         FILE *x = UNVOLATILE(FILE*,sigfp);
          int e = su_err_no(), ise = ferror(x);
 
          sigfp = NULL;
@@ -2000,7 +2003,7 @@ jskiptails:
       if((ap->a_flink = hp->h_attach) != NULL)
          hp->h_attach->a_blink = ap;
       hp->h_attach = ap;
-      ap->a_msgno = (int)PTR2SIZE(mp - message + 1);
+      ap->a_msgno = (int)P2UZ(mp - message + 1);
       ap->a_content_description = _("Original message content");
    }
 
@@ -2013,7 +2016,7 @@ jleave:
    safe_signal(SIGINT, _coll_saveint);
    safe_signal(SIGHUP, _coll_savehup);
    sigprocmask(SIG_SETMASK, &oset, NULL);
-   n_NYD_OU;
+   NYD_OU;
    return _coll_fp;
 
 jerr:
@@ -2030,7 +2033,7 @@ jerr:
       ifs_saved = NULL;
    }
    if(sigfp != NULL){
-      Fclose(n_UNVOLATILE(sigfp));
+      Fclose(UNVOLATILE(FILE*,sigfp));
       sigfp = NULL;
    }
    if(_coll_fp != NULL){
@@ -2040,7 +2043,7 @@ jerr:
 
    rele_all_sigs();
 
-   assert(checkaddr_err != NULL);
+   ASSERT(checkaddr_err != NULL);
    /* TODO We don't save in $DEAD upon error because msg not readily composed?
     * TODO But this no good, it should go ZOMBIE / DRAFT / POSTPONED or what! */
    if(*checkaddr_err != 0){
@@ -2057,4 +2060,5 @@ jerr:
 #undef a_HARDERR
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

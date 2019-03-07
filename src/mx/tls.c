@@ -49,6 +49,9 @@ su_EMPTY_FILE()
 #ifdef mx_HAVE_TLS
 #include <su/cs.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 struct a_tls_verify_levels{
    char const tv_name[8];
    enum n_tls_verify_level tv_level;
@@ -64,9 +67,9 @@ static struct a_tls_verify_levels const a_tls_verify_levels[] = {
 
 FL void
 n_tls_set_verify_level(struct url const *urlp){
-   size_t i;
+   uz i;
    char const *cp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    n_tls_verify_level = n_TLS_VERIFY_ASK;
 
@@ -76,18 +79,18 @@ n_tls_set_verify_level(struct url const *urlp){
          if(!su_cs_cmp_case(a_tls_verify_levels[i].tv_name, cp)){
             n_tls_verify_level = a_tls_verify_levels[i].tv_level;
             break;
-         }else if(++i >= n_NELEM(a_tls_verify_levels)){
+         }else if(++i >= NELEM(a_tls_verify_levels)){
             n_err(_("Invalid value of *tls-verify*: %s\n"), cp);
             break;
          }
    }
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
-FL bool_t
+FL boole
 n_tls_verify_decide(void){
-   bool_t rv;
-   n_NYD2_IN;
+   boole rv;
+   NYD2_IN;
 
    switch(n_tls_verify_level){
    default:
@@ -102,7 +105,7 @@ n_tls_verify_decide(void){
       rv = TRU1;
       break;
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -111,14 +114,14 @@ smime_split(FILE *ip, FILE **hp, FILE **bp, long xcount, int keep)
 {
    struct myline {
       struct myline  *ml_next;
-      size_t         ml_len;
-      char           ml_buf[n_VFIELD_SIZE(0)];
+      uz         ml_len;
+      char           ml_buf[VFIELD_SIZE(0)];
    } *head, *tail;
    char *buf;
-   size_t bufsize, buflen, cnt;
+   uz bufsize, buflen, cnt;
    int c;
    enum okay rv = STOP;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((*hp = Ftmp(NULL, "smimeh", OF_RDWR | OF_UNLINK | OF_REGISTER)) == NULL)
       goto jetmp;
@@ -140,7 +143,7 @@ jetmp:
          if (keep)
             fputs("X-Encoded-", *hp);
          for (;;) {
-            struct myline *ml = n_alloc(n_VSTRUCT_SIZEOF(struct myline, ml_buf
+            struct myline *ml = n_alloc(VSTRUCT_SIZEOF(struct myline, ml_buf
                   ) + buflen +1);
             if (tail != NULL)
                tail->ml_next = ml;
@@ -178,17 +181,17 @@ jetmp:
    n_free(buf);
    rv = OKAY;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL FILE *
-smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp, char const *message_digest)
+smime_sign_assemble(FILE *hp, FILE *bp, FILE *tsp, char const *message_digest)
 {
    char *boundary;
    int c, lastc = EOF;
    FILE *op;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((op = Ftmp(NULL, "smimea", OF_RDWR | OF_UNLINK | OF_REGISTER)
          ) == NULL) {
@@ -216,9 +219,9 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp, char const *message_digest)
       "Content-Transfer-Encoding: base64\n"
       "Content-Disposition: attachment; filename=\"smime.p7s\"\n"
       "Content-Description: S/MIME digital signature\n\n", op);
-   while ((c = getc(sp)) != EOF) {
+   while ((c = getc(tsp)) != EOF) {
       if (c == '-') {
-         while ((c = getc(sp)) != EOF && c != '\n');
+         while ((c = getc(tsp)) != EOF && c != '\n');
          continue;
       }
       putc(c, op);
@@ -228,7 +231,7 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp, char const *message_digest)
 
    Fclose(hp);
    Fclose(bp);
-   Fclose(sp);
+   Fclose(tsp);
 
    fflush(op);
    if (ferror(op)) {
@@ -239,7 +242,7 @@ smime_sign_assemble(FILE *hp, FILE *bp, FILE *sp, char const *message_digest)
    }
    rewind(op);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return op;
 }
 
@@ -248,7 +251,7 @@ smime_encrypt_assemble(FILE *hp, FILE *yp)
 {
    FILE *op;
    int c, lastc = EOF;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((op = Ftmp(NULL, "smimee", OF_RDWR | OF_UNLINK | OF_REGISTER)
          ) == NULL) {
@@ -287,21 +290,21 @@ smime_encrypt_assemble(FILE *hp, FILE *yp)
    }
    rewind(op);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return op;
 }
 
 FL struct message *
 smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
 {
-   ui32_t lastnl = 0;
+   u32 lastnl = 0;
    int binary = 0;
    char *buf = NULL;
-   size_t bufsize = 0, buflen, cnt;
+   uz bufsize = 0, buflen, cnt;
    long lns = 0, octets = 0;
    struct message *x;
    off_t offset;
-   n_NYD_IN;
+   NYD_IN;
 
    x = n_autorec_alloc(sizeof *x);
    *x = *m;
@@ -365,7 +368,7 @@ smime_decrypt_assemble(struct message *m, FILE *hp, FILE *bp)
       x->m_block = mailx_blockof(offset);
       x->m_offset = mailx_offsetof(offset);
    }
-   n_NYD_OU;
+   NYD_OU;
    return x;
 }
 
@@ -374,10 +377,10 @@ c_certsave(void *vp){
    FILE *fp;
    int *msgvec, *ip;
    struct n_cmd_arg_ctx *cacp;
-   n_NYD_IN;
+   NYD_IN;
 
    cacp = vp;
-   assert(cacp->cac_no == 2);
+   ASSERT(cacp->cac_no == 2);
 
    msgvec = cacp->cac_arg->ca_arg.ca_msglist;
    /* C99 */{
@@ -409,14 +412,14 @@ c_certsave(void *vp){
    if(vp != NULL)
       fprintf(n_stdout, "Certificate(s) saved\n");
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return (vp != NULL);
 }
 
-FL bool_t
+FL boole
 n_tls_rfc2595_hostname_match(char const *host, char const *pattern){
-   bool_t rv;
-   n_NYD_IN;
+   boole rv;
+   NYD_IN;
 
    if(pattern[0] == '*' && pattern[1] == '.'){
       ++pattern;
@@ -424,15 +427,15 @@ n_tls_rfc2595_hostname_match(char const *host, char const *pattern){
          ++host;
    }
    rv = (su_cs_cmp_case(host, pattern) == 0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL int
 c_tls(void *vp){
-   size_t i;
+   uz i;
    char const **argv, *varname, *varres, *cp;
-   n_NYD_IN;
+   NYD_IN;
 
    argv = vp;
    vp = NULL; /* -> return value (boolean) */
@@ -452,7 +455,7 @@ c_tls(void *vp){
 
       if(argv[1] == NULL || argv[2] != NULL)
          goto jesynopsis;
-      if((i = su_cs_len(*++argv)) >= UI32_MAX)
+      if((i = su_cs_len(*++argv)) >= U32_MAX)
          goto jeoverflow; /* TODO generic for ALL commands!! */
       if(!url_parse(&url, CPROTO_CERTINFO, *argv))
          goto jeinval;
@@ -475,11 +478,11 @@ jleave:
          n_pstate_err_no = su_err_no();
          vp = NULL;
       }
-   }else if(!n_var_vset(varname, (uintptr_t)varres)){
+   }else if(!n_var_vset(varname, (up)varres)){
       n_pstate_err_no = su_ERR_NOTSUP;
       vp = NULL;
    }
-   n_NYD_OU;
+   NYD_OU;
    return (vp == NULL);
 
 jeoverflow:
@@ -496,6 +499,7 @@ jeinval:
    n_pstate_err_no = su_ERR_INVAL;
    goto jleave;
 }
-#endif /* mx_HAVE_TLS */
 
+#include "su/code-ou.h"
+#endif /* mx_HAVE_TLS */
 /* s-it-mode */

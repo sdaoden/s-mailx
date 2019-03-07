@@ -56,6 +56,9 @@
 #include "mx/mlist.h"
 #include "mx/names.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 /* Create a multiline info string about all known additional infos for lcp */
 #ifdef mx_HAVE_DOCSTRINGS
 static char const *a_ctab_cmdinfo(struct n_cmd_desc const *cdp);
@@ -75,7 +78,6 @@ static int a_ctab_c_memtrace(void *vp);
 
 /* List of all commands; but first their n_cmd_arg_desc instances */
 #include "mx/cmd-tab.h" /* $(MX_SRCDIR) */
-
 static struct n_cmd_desc const a_ctab_ctable[] = {
 #include <mx/cmd-tab.h>
 };
@@ -101,7 +103,7 @@ static char const *
 a_ctab_cmdinfo(struct n_cmd_desc const *cdp){
    struct n_string rvb, *rv;
    char const *cp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    rv = n_string_creat_auto(&rvb);
    rv = n_string_reserve(rv, 80);
@@ -130,8 +132,8 @@ a_ctab_cmdinfo(struct n_cmd_desc const *cdp){
       break;
    default:
    case n_CMD_ARG_TYPE_ARG:{
-      ui32_t flags, xflags;
-      size_t i;
+      u32 flags, xflags;
+      uz i;
       struct n_cmd_arg_desc const *cadp;
 
       rv = n_string_push_cp(rv, _("argument tokens: "));
@@ -211,7 +213,7 @@ jfakeent:
       rv = n_string_push_cp(rv, _(" | gabby"));
 
    cp = n_string_cp(rv);
-   n_NYD2_OU;
+   NYD2_OU;
    return cp;
 }
 #endif /* mx_HAVE_DOCSTRINGS */
@@ -220,15 +222,15 @@ static int
 a_ctab_c_list(void *vp){
    FILE *fp;
    struct n_cmd_desc const **cdpa, *cdp, **cdpa_curr;
-   size_t i, l, scrwid;
-   n_NYD_IN;
+   uz i, l, scrwid;
+   NYD_IN;
 
-   i = n_NELEM(a_ctab_ctable) + n_NELEM(a_ctab_ctable_plus) +1;
+   i = NELEM(a_ctab_ctable) + NELEM(a_ctab_ctable_plus) +1;
    cdpa = n_autorec_alloc(sizeof(cdp) * i);
 
-   for(i = 0; i < n_NELEM(a_ctab_ctable); ++i)
+   for(i = 0; i < NELEM(a_ctab_ctable); ++i)
       cdpa[i] = &a_ctab_ctable[i];
-   for(l = 0; l < n_NELEM(a_ctab_ctable_plus); ++i, ++l)
+   for(l = 0; l < NELEM(a_ctab_ctable_plus); ++i, ++l)
       cdpa[i] = &a_ctab_ctable_plus[l];
    cdpa[i] = NULL;
 
@@ -261,7 +263,7 @@ a_ctab_c_list(void *vp){
       }else
 #endif
            {
-         size_t j;
+         uz j;
 
          j = su_cs_len(cdp->cd_name);
          if(*pre != '\0')
@@ -281,7 +283,7 @@ a_ctab_c_list(void *vp){
       page_or_print(fp, l);
       Fclose(fp);
    }
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
@@ -289,12 +291,12 @@ static int
 a_ctab__pcmd_cmp(void const *s1, void const *s2){
    struct n_cmd_desc const * const *cdpa1, * const *cdpa2;
    int rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    cdpa1 = s1;
    cdpa2 = s2;
    rv = su_cs_cmp((*cdpa1)->cd_name, (*cdpa2)->cd_name);
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -302,7 +304,7 @@ static int
 a_ctab_c_help(void *vp){
    int rv;
    char const *arg;
-   n_NYD_IN;
+   NYD_IN;
 
    /* Help for a single command? */
    if((arg = *(char const**)vp) != NULL){
@@ -321,7 +323,7 @@ a_ctab_c_help(void *vp){
          arg = alias_exp;
       }
 
-      cdp_max = &(cdp = a_ctab_ctable)[n_NELEM(a_ctab_ctable)];
+      cdp_max = &(cdp = a_ctab_ctable)[NELEM(a_ctab_ctable)];
 jredo:
       for(; cdp < cdp_max; ++cdp){
          if(su_cs_starts_with(cdp->cd_name, arg)){
@@ -341,9 +343,9 @@ jredo:
          goto jleave;
       }
 
-      if(cdp_max == &a_ctab_ctable[n_NELEM(a_ctab_ctable)]){
+      if(cdp_max == &a_ctab_ctable[NELEM(a_ctab_ctable)]){
          cdp_max = &(cdp =
-               a_ctab_ctable_plus)[n_NELEM(a_ctab_ctable_plus)];
+               a_ctab_ctable_plus)[NELEM(a_ctab_ctable_plus)];
          goto jredo;
       }
 
@@ -397,7 +399,7 @@ jredo:
       rv = (ferror(n_stdout) != 0);
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -405,9 +407,9 @@ jleave:
 static int
 a_ctab_c_memtrace(void *vp){
    int rv;
-   ui32_t oopt;
-   n_NYD2_IN;
-   n_UNUSED(vp);
+   u32 oopt;
+   NYD2_IN;
+   UNUSED(vp);
 
    /* Only for development.. */
    oopt = n_poption;
@@ -416,99 +418,99 @@ a_ctab_c_memtrace(void *vp){
    rv = (su_mem_trace() != FAL0);
    if(!(oopt & n_PO_VERB))
       ok_bclear(verbose);
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 #endif
 
 FL char const *
 n_cmd_isolate(char const *cmd){
-   n_NYD2_IN;
+   NYD2_IN;
    while(*cmd != '\0' &&
          su_cs_find_c("\\!~|? \t0123456789&%@$^.:/-+*'\",;(`", *cmd) == NULL)
       ++cmd;
-   n_NYD2_OU;
+   NYD2_OU;
    return n_UNCONST(cmd);
 }
 
 FL struct n_cmd_desc const *
 n_cmd_firstfit(char const *cmd){ /* TODO *hashtable*! linear list search!!! */
    struct n_cmd_desc const *cdp;
-   n_NYD2_IN;
+   NYD2_IN;
 
-   for(cdp = a_ctab_ctable; cdp < &a_ctab_ctable[n_NELEM(a_ctab_ctable)]; ++cdp)
+   for(cdp = a_ctab_ctable; cdp < &a_ctab_ctable[NELEM(a_ctab_ctable)]; ++cdp)
       if(*cmd == *cdp->cd_name && cdp->cd_func != NULL &&
             su_cs_starts_with(cdp->cd_name, cmd))
          goto jleave;
    cdp = NULL;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return cdp;
 }
 
 FL struct n_cmd_desc const *
 n_cmd_default(void){
    struct n_cmd_desc const *cdp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    cdp = &a_ctab_ctable[0];
-   n_NYD2_OU;
+   NYD2_OU;
    return cdp;
 }
 
-FL bool_t
+FL boole
 n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
    struct n_cmd_arg ncap, *lcap, *target_argp, **target_argpp, *cap;
    struct str shin_orig, shin;
-   bool_t stoploop, greedyjoin;
+   boole stoploop, greedyjoin;
    void const *cookie;
-   size_t cad_idx, parsed_args;
+   uz cad_idx, parsed_args;
    struct n_cmd_arg_desc const *cadp;
-   n_NYD_IN;
+   NYD_IN;
 
-   assert(cacp->cac_inlen == 0 || cacp->cac_indat != NULL);
-   assert(cacp->cac_desc->cad_no > 0);
+   ASSERT(cacp->cac_inlen == 0 || cacp->cac_indat != NULL);
+   ASSERT(cacp->cac_desc->cad_no > 0);
 #ifdef mx_HAVE_DEBUG
    /* C99 */{
-      bool_t opt_seen = FAL0;
+      boole opt_seen = FAL0;
 
       for(cadp = cacp->cac_desc, cad_idx = 0;
             cad_idx < cadp->cad_no; ++cad_idx){
-         assert(cadp->cad_ent_flags[cad_idx][0] & n__CMD_ARG_DESC_TYPE_MASK);
+         ASSERT(cadp->cad_ent_flags[cad_idx][0] & n__CMD_ARG_DESC_TYPE_MASK);
 
          /* TODO n_CMD_ARG_DESC_MSGLIST+ may only be used as the last entry */
-         assert(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
             cad_idx + 1 == cadp->cad_no);
-         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
                n_CMD_ARG_DESC_NDMSGLIST) || cad_idx + 1 == cadp->cad_no);
-         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
                n_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
             cad_idx + 1 == cadp->cad_no);
 
-         assert(!opt_seen ||
+         ASSERT(!opt_seen ||
             (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
          if(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION)
             opt_seen = TRU1;
-         assert(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY) ||
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY) ||
             cad_idx + 1 == cadp->cad_no);
 
          /* TODO n_CMD_ARG_DESC_MSGLIST+ can only be n_CMD_ARG_DESC_GREEDY.
           * TODO And they may not be n_CMD_ARG_DESC_OPTION */
-         assert(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
             (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY));
-         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
                n_CMD_ARG_DESC_NDMSGLIST) ||
             (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY));
-         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
                n_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
             (cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_GREEDY));
 
-         assert(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_MSGLIST) ||
             !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
-         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
                n_CMD_ARG_DESC_NDMSGLIST) ||
             !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
-         assert(!(cadp->cad_ent_flags[cad_idx][0] &
+         ASSERT(!(cadp->cad_ent_flags[cad_idx][0] &
                n_CMD_ARG_DESC_MSGLIST_AND_TARGET) ||
             !(cadp->cad_ent_flags[cad_idx][0] & n_CMD_ARG_DESC_OPTION));
       }
@@ -517,7 +519,7 @@ n_cmd_arg_parse(struct n_cmd_arg_ctx *cacp){
 
    n_pstate_err_no = su_ERR_NONE;
    shin.s = n_UNCONST(cacp->cac_indat); /* "logical" only */
-   shin.l = (cacp->cac_inlen == UIZ_MAX ? su_cs_len(shin.s) : cacp->cac_inlen);
+   shin.l = (cacp->cac_inlen == UZ_MAX ? su_cs_len(shin.s) : cacp->cac_inlen);
    shin_orig = shin;
    cacp->cac_no = 0;
    cacp->cac_arg = lcap = NULL;
@@ -545,7 +547,7 @@ jredo:
       case n_CMD_ARG_DESC_SHEXP:{
          struct n_string shou, *shoup;
          enum n_shexp_state shs;
-         ui32_t addflags;
+         u32 addflags;
 
          if(shin.l == 0) goto jloop_break; /* TODO */
 
@@ -561,7 +563,7 @@ jredo:
                   n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_LOG),
                shoup, &shin,
                (ncap.ca_ent_flags[0] & n_CMD_ARG_DESC_GREEDY ? &cookie : NULL));
-         ncap.ca_inlen = PTR2SIZE(shin.s - ncap.ca_indat);
+         ncap.ca_inlen = P2UZ(shin.s - ncap.ca_indat);
          if((shs & (n_SHEXP_STATE_OUTPUT | n_SHEXP_STATE_ERR_MASK)) ==
                n_SHEXP_STATE_OUTPUT){
             if((shs & n_SHEXP_STATE_META_SEMICOLON) && shou.s_len == 0)
@@ -589,7 +591,7 @@ jredo:
       case n_CMD_ARG_DESC_NDMSGLIST:
          /* TODO _MSGLIST yet at end and greedy only (fast hack).
           * TODO And consumes too much memory */
-         assert(shin.s[shin.l] == '\0');
+         ASSERT(shin.s[shin.l] == '\0');
          if(n_getmsglist(shin.s, (ncap.ca_arg.ca_msglist =
                   n_autorec_calloc(msgCount +1, sizeof *ncap.ca_arg.ca_msglist)
                ), cacp->cac_msgflag, target_argpp) < 0){
@@ -598,7 +600,7 @@ jredo:
          }
 
          if(ncap.ca_arg.ca_msglist[0] == 0){
-            ui32_t e;
+            u32 e;
 
             switch(ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK){
             case n_CMD_ARG_DESC_MSGLIST_AND_TARGET:
@@ -644,12 +646,12 @@ jredo:
 
       if(greedyjoin == TRU1){ /* TODO speed this up! */
          char *cp;
-         size_t i;
+         uz i;
 
-         assert((ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK
+         ASSERT((ncap.ca_ent_flags[0] & n__CMD_ARG_DESC_TYPE_MASK
             ) != n_CMD_ARG_DESC_MSGLIST);
-         assert(lcap != NULL);
-         assert(target_argpp == NULL);
+         ASSERT(lcap != NULL);
+         ASSERT(target_argpp == NULL);
          i = lcap->ca_arg.ca_str.l;
          lcap->ca_arg.ca_str.l += 1 + ncap.ca_arg.ca_str.l;
          cp = n_autorec_alloc(lcap->ca_arg.ca_str.l +1);
@@ -696,7 +698,7 @@ jloop_break:
 
    lcap = (struct n_cmd_arg*)-1;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return (lcap != NULL);
 
 jerr:
@@ -705,7 +707,7 @@ jerr:
 
       if(!(n_pstate & (n_PS_HOOK_MASK | n_PS_ROBOT)) ||
             (n_poption & n_PO_D_V)){
-         size_t i;
+         uz i;
 
          for(i = 0; (i < cadp->cad_no &&
                !(cadp->cad_ent_flags[i][0] & n_CMD_ARG_DESC_OPTION)); ++i)
@@ -731,15 +733,15 @@ n_cmd_arg_save_to_heap(struct n_cmd_arg_ctx const *cacp){
    struct n_cmd_arg_ctx *ncacp;
    char *buf;
    struct n_cmd_arg const *cap;
-   size_t len, i;
-   n_NYD2_IN;
+   uz len, i;
+   NYD2_IN;
 
    /* For simplicity, save it all in once chunk, so that it can be thrown away
     * with a simple n_free() from whoever is concerned */
    len = sizeof *cacp;
    for(cap = cacp->cac_arg; cap != NULL; cap = cap->ca_next){
       i = cap->ca_arg.ca_str.l +1;
-      i = n_ALIGN(i);
+      i = Z_ALIGN(i);
       len += sizeof(*cap) + i;
    }
    if(cacp->cac_vput != NULL)
@@ -768,7 +770,7 @@ n_cmd_arg_save_to_heap(struct n_cmd_arg_ctx const *cacp){
          cap->ca_arg.ca_str.s,
          (ncap->ca_arg.ca_str.l = i = cap->ca_arg.ca_str.l) +1);
 
-      i = n_ALIGN(i);
+      i = Z_ALIGN(i);
       buf += sizeof(*ncap) + i;
    }
 
@@ -777,7 +779,7 @@ n_cmd_arg_save_to_heap(struct n_cmd_arg_ctx const *cacp){
       su_mem_copy(buf, cacp->cac_vput, su_cs_len(cacp->cac_vput) +1);
    }else
       ncacp->cac_vput = NULL;
-   n_NYD2_OU;
+   NYD2_OU;
    return ncacp;
 }
 
@@ -785,7 +787,7 @@ FL struct n_cmd_arg_ctx *
 n_cmd_arg_restore_from_heap(void *vp){
    struct n_cmd_arg *cap, *ncap;
    struct n_cmd_arg_ctx *cacp, *rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    rv = n_autorec_alloc(sizeof *rv);
    cacp = vp;
@@ -811,22 +813,22 @@ n_cmd_arg_restore_from_heap(void *vp){
 
    if(cacp->cac_vput != NULL)
       rv->cac_vput = savestr(cacp->cac_vput);
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL int
-getrawlist(bool_t wysh, char **res_dat, size_t res_size,
-      char const *line, size_t linesize){
+getrawlist(boole wysh, char **res_dat, uz res_size,
+      char const *line, uz linesize){
    int res_no;
-   n_NYD_IN;
+   NYD_IN;
 
    n_pstate &= ~n_PS_ARGLIST_MASK;
 
    if(res_size == 0){
       res_no = -1;
       goto jleave;
-   }else if(UICMP(z, res_size, >, INT_MAX))
+   }else if(UCMP(z, res_size, >, INT_MAX))
       res_size = INT_MAX;
    else
       --res_size;
@@ -844,7 +846,7 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
          if(*line == '\0')
             break;
 
-         if(UICMP(z, res_no, >=, res_size)){
+         if(UCMP(z, res_no, >=, res_size)){
             n_err(_("Too many input tokens for result storage\n"));
             res_no = -1;
             break;
@@ -878,7 +880,7 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
             *cp2++ = c;
          }
 
-         res_dat[res_no++] = savestrbuf(linebuf, PTR2SIZE(cp2 - linebuf));
+         res_dat[res_no++] = savestrbuf(linebuf, P2UZ(cp2 - linebuf));
          if(c == '\0')
             break;
       }
@@ -896,7 +898,7 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
       cookie = NULL;
 
       for(;;){
-         if(UICMP(z, res_no, >=, res_size)){
+         if(UCMP(z, res_no, >=, res_size)){
             n_err(_("Too many input tokens for result storage\n"));
             res_no = -1;
             break;
@@ -932,10 +934,11 @@ getrawlist(bool_t wysh, char **res_dat, size_t res_size,
    }
 
    if(res_no >= 0)
-      res_dat[(size_t)res_no] = NULL;
+      res_dat[(uz)res_no] = NULL;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return res_no;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

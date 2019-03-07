@@ -52,11 +52,14 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/icodec.h>
 
+/* TODO fake */
+#include "su/code-in.h"
+
 static char *           encname(struct mailbox *mp, const char *name, int same,
                            const char *box);
-static char *           encuid(struct mailbox *mp, ui64_t uid);
+static char *           encuid(struct mailbox *mp, u64 uid);
 static FILE *           clean(struct mailbox *mp, struct cw *cw);
-static ui64_t *         builds(long *contentelem);
+static u64 *         builds(long *contentelem);
 static void             purge(struct mailbox *mp, struct message *m, long mc,
                            struct cw *cw, const char *name);
 static int              longlt(const void *a, const void *b);
@@ -99,7 +102,7 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
 {
    char *cachedir, *eaccount, *ename, *res;
    int resz;
-   n_NYD2_IN;
+   NYD2_IN;
 
    ename = urlxenc(name, TRU1);
    if (mp->mb_cache_directory && same && box == NULL) {
@@ -116,7 +119,7 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
       eaccount = urlxenc(mp->mb_imap_account, TRU1);
 
       if (box != NULL || su_cs_cmp_case(box = mp->mb_imap_mailbox, "INBOX")) {
-         bool_t err;
+         boole err;
 
          box = imap_path_encode(box, &err);
          if(err)
@@ -131,19 +134,19 @@ encname(struct mailbox *mp, const char *name, int same, const char *box)
             (*ename ? "/" : ""), ename);
    }
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return res;
 }
 
 static char *
-encuid(struct mailbox *mp, ui64_t uid)
+encuid(struct mailbox *mp, u64 uid)
 {
    char buf[64], *cp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    snprintf(buf, sizeof buf, "%" PRIu64, uid);
    cp = encname(mp, buf, 1, NULL);
-   n_NYD2_OU;
+   NYD2_OU;
    return cp;
 }
 
@@ -158,7 +161,7 @@ getcache1(struct mailbox *mp, struct message *m, enum needspec need,
    off_t offset;
    void *zp;
    enum okay rv = STOP;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if (setflags == 0 && ((mp->mb_type != MB_IMAP && mp->mb_type != MB_CACHE) ||
          m->m_uid == 0))
@@ -258,7 +261,7 @@ jflags:
 jfail:
    Fclose(fp);
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
@@ -266,10 +269,10 @@ FL enum okay
 getcache(struct mailbox *mp, struct message *m, enum needspec need)
 {
    enum okay rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = getcache1(mp, m, need, 0);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -281,7 +284,7 @@ putcache(struct mailbox *mp, struct message *m)
    int c, oflag;
    long n, cnt, oldoffset, osize, otime, olines = -1;
    void *zp;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((mp->mb_type != MB_IMAP && mp->mb_type != MB_CACHE) || m->m_uid == 0 ||
          m->m_time == 0 || (m->m_flag & (MTOUCH|MFULLYCACHED)) == MFULLYCACHED)
@@ -307,7 +310,7 @@ putcache(struct mailbox *mp, struct message *m)
             (ob == 'B' || (ob == 'H' && c != 'B'))) {
          if (m->m_xlines <= 0 && olines > 0)
             m->m_xlines = olines;
-         if ((c != 'N' && (size_t)osize != m->m_xsize) ||
+         if ((c != 'N' && (uz)osize != m->m_xsize) ||
                oflag != (int)USEBITS(m->m_flag) || otime != m->m_time ||
                (m->m_xlines > 0 && olines != m->m_xlines)) {
             fflush(obuf);
@@ -335,7 +338,7 @@ putcache(struct mailbox *mp, struct message *m)
    while (cnt > 0) {
       n = (cnt > (long)sizeof iob) ? (long)sizeof iob : cnt;
       cnt -= n;
-      if ((size_t)n != fread(iob, 1, n, ibuf) ||
+      if ((uz)n != fread(iob, 1, n, ibuf) ||
             n != (long)zwrite(zp, iob, n)) {
          unlink(name);
          zfree(zp);
@@ -364,7 +367,7 @@ jout:
    }
    (void)fseek(mp->mb_itf, oldoffset, SEEK_SET);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL void
@@ -372,9 +375,9 @@ initcache(struct mailbox *mp)
 {
    char *name, *uvname;
    FILE *uvfp;
-   ui64_t uv;
+   u64 uv;
    struct cw cw;
-   n_NYD_IN;
+   NYD_IN;
 
    if (mp->mb_cache_directory != NULL)
       n_free(mp->mb_cache_directory);
@@ -404,7 +407,7 @@ initcache(struct mailbox *mp)
 jout:
    cwrelse(&cw);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL void
@@ -412,7 +415,7 @@ purgecache(struct mailbox *mp, struct message *m, long mc)
 {
    char *name;
    struct cw cw;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((name = encname(mp, "", 1, NULL)) == NULL)
       goto jleave;
@@ -421,7 +424,7 @@ purgecache(struct mailbox *mp, struct message *m, long mc)
    purge(mp, m, mc, &cw, name);
    cwrelse(&cw);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static FILE *
@@ -433,14 +436,14 @@ clean(struct mailbox *mp, struct cw *cw)
    DIR *dirp;
    struct dirent *dp;
    FILE *fp = NULL;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((cachedir = ok_vlook(imap_cache)) == NULL ||
          (cachedir = fexpand(cachedir, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
       goto jleave;
    eaccount = urlxenc(mp->mb_imap_account, TRU1);
    if (su_cs_cmp_case(emailbox = mp->mb_imap_mailbox, "INBOX")) {
-      bool_t err;
+      boole err;
 
       emailbox = imap_path_encode(emailbox, &err);
       if(err)
@@ -481,19 +484,19 @@ jout:
       abort();
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return fp;
 }
 
-static ui64_t *
+static u64 *
 builds(long *contentelem)
 {
-   ui64_t n, *contents = NULL;
+   u64 n, *contents = NULL;
    long contentalloc = 0;
    char const *x;
    DIR *dirp;
    struct dirent *dp;
-   n_NYD_IN;
+   NYD_IN;
 
    *contentelem = 0;
    if ((dirp = opendir(".")) == NULL)
@@ -517,7 +520,7 @@ builds(long *contentelem)
       qsort(contents, *contentelem, sizeof *contents, longlt);
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return contents;
 }
 
@@ -525,10 +528,10 @@ static void
 purge(struct mailbox *mp, struct message *m, long mc, struct cw *cw,
    const char *name)
 {
-   ui64_t *contents;
+   u64 *contents;
    long i, j, contentelem;
-   n_NYD_IN;
-   n_UNUSED(mp);
+   NYD_IN;
+   UNUSED(mp);
 
    if (chdir(name) < 0)
       goto jleave;
@@ -551,18 +554,18 @@ purge(struct mailbox *mp, struct message *m, long mc, struct cw *cw,
       abort();
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static int
 longlt(const void *a, const void *b)
 {
    union {long l; int i;} u;
-   n_NYD_IN;
+   NYD_IN;
 
    u.l = *(long const*)a - *(long const*)b;
    u.i = (u.l < 0) ? -1 : ((u.l > 0) ? 1 : 0);
-   n_NYD_OU;
+   NYD_OU;
    return u.i;
 }
 
@@ -570,23 +573,23 @@ static void
 remve(unsigned long n)
 {
    char buf[30];
-   n_NYD_IN;
+   NYD_IN;
 
    snprintf(buf, sizeof buf, "%lu", n);
    unlink(buf);
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL void
 delcache(struct mailbox *mp, struct message *m)
 {
    char *fn;
-   n_NYD_IN;
+   NYD_IN;
 
    fn = encuid(mp, m->m_uid);
    if (fn && unlink(fn) == 0)
       m->m_flag |= MUNLINKED;
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL enum okay
@@ -595,11 +598,11 @@ cache_setptr(enum fedit_mode fm, int transparent)
    struct cw cw;
    int i, omsgCount = 0;
    char *name;
-   ui64_t *contents;
+   u64 *contents;
    long contentelem;
    struct message *omessage;
    enum okay rv = STOP;
-   n_NYD_IN;
+   NYD_IN;
 
    omessage = message;
    omsgCount = msgCount;
@@ -647,7 +650,7 @@ cache_setptr(enum fedit_mode fm, int transparent)
    setdot(message);
    rv = OKAY;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -657,10 +660,10 @@ cache_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
    char *name, *cachedir, *eaccount;
    DIR *dirp;
    struct dirent *dp;
-   const char *cp, *bp, *sp;
+   const char *cp, *bp, *cp2;
    int namesz;
    enum okay rv = STOP;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((cachedir = ok_vlook(imap_cache)) == NULL ||
          (cachedir = fexpand(cachedir, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
@@ -674,18 +677,18 @@ cache_list(struct mailbox *mp, const char *base, int strip, FILE *fp)
    while ((dp = readdir(dirp)) != NULL) {
       if (dp->d_name[0] == '.')
          continue;
-      cp = sp = imap_path_decode(urlxdec(dp->d_name), NULL);
-      for (bp = base; *bp && *bp == *sp; bp++)
-         sp++;
+      cp = cp2 = imap_path_decode(urlxdec(dp->d_name), NULL);
+      for (bp = base; *bp && *bp == *cp2; bp++)
+         cp2++;
       if (*bp)
          continue;
-      cp = strip ? sp : cp;
+      cp = strip ? cp2 : cp;
       fprintf(fp, "%s\n", *cp ? cp : "INBOX");
    }
    closedir(dirp);
    rv = OKAY;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -698,7 +701,7 @@ cache_remove(const char *name)
    char *path, *dir;
    int pathsize, pathend, n;
    enum okay rv = OKAY;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((dir = encname(&mb, "", 0, imap_fileof(name))) == NULL)
       goto jleave;
@@ -734,7 +737,7 @@ cache_remove(const char *name)
    rmdir(path);   /* no error on failure, might contain submailboxes */
    n_free(path);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -743,7 +746,7 @@ cache_rename(const char *old, const char *new)
 {
    char *olddir, *newdir;
    enum okay rv = OKAY;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((olddir = encname(&mb, "", 0, imap_fileof(old))) == NULL ||
          (newdir = encname(&mb, "",0, imap_fileof(new))) == NULL)
@@ -753,17 +756,17 @@ cache_rename(const char *old, const char *new)
       rv = STOP;
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
-FL ui64_t
+FL u64
 cached_uidvalidity(struct mailbox *mp)
 {
    FILE *uvfp;
    char *uvname;
-   ui64_t uv;
-   n_NYD_IN;
+   u64 uv;
+   NYD_IN;
 
    if ((uvname = encname(mp, "UIDVALIDITY", 1, NULL)) == NULL) {
       uv = 0;
@@ -776,7 +779,7 @@ cached_uidvalidity(struct mailbox *mp)
    if (uvfp != NULL)
       Fclose(uvfp);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return uv;
 }
 
@@ -785,7 +788,7 @@ cache_queue1(struct mailbox *mp, char const *mode, char **xname)
 {
    char *name;
    FILE *fp = NULL;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((name = encname(mp, "QUEUE", 0, NULL)) == NULL)
       goto jleave;
@@ -794,7 +797,7 @@ cache_queue1(struct mailbox *mp, char const *mode, char **xname)
    if (xname)
       *xname = name;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return fp;
 }
 
@@ -802,12 +805,12 @@ FL FILE *
 cache_queue(struct mailbox *mp)
 {
    FILE *fp;
-   n_NYD_IN;
+   NYD_IN;
 
    fp = cache_queue1(mp, "a", NULL);
    if (fp == NULL)
       n_err(_("Cannot queue IMAP command. Retry when online.\n"));
-   n_NYD_OU;
+   NYD_OU;
    return fp;
 }
 
@@ -819,7 +822,7 @@ cache_dequeue(struct mailbox *mp)
    DIR *dirp;
    struct dirent *dp;
    enum okay rv = OKAY;
-   n_NYD_IN;
+   NYD_IN;
 
    if ((cachedir = ok_vlook(imap_cache)) == NULL ||
          (cachedir = fexpand(cachedir, FEXP_LOCAL | FEXP_NOPROTO)) == NULL)
@@ -846,7 +849,7 @@ cache_dequeue(struct mailbox *mp)
    }
    closedir(dirp);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -855,11 +858,11 @@ dequeue1(struct mailbox *mp)
 {
    FILE *fp = NULL, *uvfp = NULL;
    char *qname, *uvname;
-   ui64_t uv;
+   u64 uv;
    off_t is_size;
    int is_count;
    enum okay rv = OKAY;
-   n_NYD_IN;
+   NYD_IN;
 
    fp = cache_queue1(mp, "r+", &qname);
    if (fp != NULL && fsize(fp) > 0) {
@@ -893,9 +896,10 @@ jsave:
       unlink(qname);
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
-#endif /* mx_HAVE_IMAP */
 
+#include "su/code-ou.h"
+#endif /* mx_HAVE_IMAP */
 /* s-it-mode */

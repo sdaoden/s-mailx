@@ -93,16 +93,19 @@
 # include "mx/iconv.h"
 #endif
 
+/* TODO fake */
+#include "su/code-in.h"
+
 #ifdef a_AUX_RAND_USE_BUILTIN
 union rand_state{
    struct rand_arc4{
-      ui8_t _dat[256];
-      ui8_t _i;
-      ui8_t _j;
-      ui8_t __pad[6];
+      u8 _dat[256];
+      u8 _i;
+      u8 _j;
+      u8 __pad[6];
    } a;
-   ui8_t b8[sizeof(struct rand_arc4)];
-   ui32_t b32[sizeof(struct rand_arc4) / sizeof(ui32_t)];
+   u8 b8[sizeof(struct rand_arc4)];
+   u32 b32[sizeof(struct rand_arc4) / sizeof(u32)];
 };
 #endif
 
@@ -121,14 +124,14 @@ static union rand_state *a_aux_rand;
 #ifdef mx_HAVE_ERRORS
 static struct a_aux_err_node *a_aux_err_head, *a_aux_err_tail;
 #endif
-static size_t a_aux_err_linelen;
+static uz a_aux_err_linelen;
 
 /* Our ARC4 random generator with its completely unacademical pseudo
  * initialization (shall /dev/urandom fail) */
 #ifdef a_AUX_RAND_USE_BUILTIN
 static void a_aux_rand_init(void);
-su_SINLINE ui8_t a_aux_rand_get8(void);
-static ui32_t a_aux_rand_weak(ui32_t seed);
+su_SINLINE u8 a_aux_rand_get8(void);
+static u32 a_aux_rand_weak(u32 seed);
 #endif
 
 /* */
@@ -137,8 +140,8 @@ static int a_aux_qsort_cpp(void const *a, void const *b);
 #ifdef a_AUX_RAND_USE_BUILTIN
 static void
 a_aux_rand_init(void){
-   union {int fd; size_t i;} u;
-   n_NYD2_IN;
+   union {int fd; uz i;} u;
+   NYD2_IN;
 
    a_aux_rand = n_alloc(sizeof *a_aux_rand);
 
@@ -147,15 +150,15 @@ a_aux_rand_init(void){
     * However, support sequential reading to avoid possible hangs that have
     * been reported on the ML (2017-08-22, s-nail/s-mailx freezes when
     * mx_HAVE_GETRANDOM is #defined) */
-   n_LCTA(sizeof(a_aux_rand->a._dat) <= 256,
+   LCTA(sizeof(a_aux_rand->a._dat) <= 256,
       "Buffer too large to be served without su_ERR_INTR error");
-   n_LCTA(sizeof(a_aux_rand->a._dat) >= 256,
+   LCTA(sizeof(a_aux_rand->a._dat) >= 256,
       "Buffer too small to serve used array indices");
    /* C99 */{
-      size_t o, i;
+      uz o, i;
 
       for(o = 0, i = sizeof a_aux_rand->a._dat;;){
-         ssize_t gr;
+         sz gr;
 
          gr = n_RANDOM_GETRANDOM_FUN(&a_aux_rand->a._dat[o], i);
          if(gr == -1 && su_err_no() == su_ERR_NOSYS)
@@ -166,10 +169,10 @@ a_aux_rand_init(void){
                a_aux_rand->a._dat[42]]);
          /* ..but be on the safe side */
          if(gr > 0){
-            i -= (size_t)gr;
+            i -= (uz)gr;
             if(i == 0)
                goto jleave;
-            o += (size_t)gr;
+            o += (uz)gr;
          }
          n_err(_("Not enough entropy for the "
             "P(seudo)R(andom)N(umber)G(enerator), waiting a bit\n"));
@@ -179,9 +182,9 @@ a_aux_rand_init(void){
 
 # elif mx_HAVE_RANDOM == n_RANDOM_IMPL_URANDOM
    if((u.fd = open("/dev/urandom", O_RDONLY)) != -1){
-      bool_t ok;
+      boole ok;
 
-      ok = (sizeof(a_aux_rand->a._dat) == (size_t)read(u.fd,
+      ok = (sizeof(a_aux_rand->a._dat) == (uz)read(u.fd,
             a_aux_rand->a._dat, sizeof(a_aux_rand->a._dat)));
       close(u.fd);
 
@@ -206,35 +209,35 @@ a_aux_rand_init(void){
 # else
       struct timeval ts;
 # endif
-      bool_t slept;
-      ui32_t seed, rnd, t, k;
+      boole slept;
+      u32 seed, rnd, t, k;
 
       /* We first do three rounds, and then add onto that a (cramped) random
        * number of rounds; in between we give up our timeslice once (from our
        * point of view) */
-      seed = (uintptr_t)a_aux_rand & UI32_MAX;
+      seed = (up)a_aux_rand & U32_MAX;
       rnd = 3;
       slept = FAL0;
 
       for(;;){
          /* Stir the entire pool once */
-         for(u.i = n_NELEM(a_aux_rand->b32); u.i-- != 0;){
+         for(u.i = NELEM(a_aux_rand->b32); u.i-- != 0;){
 
 # ifdef mx_HAVE_CLOCK_GETTIME
             clock_gettime(CLOCK_REALTIME, &ts);
-            t = (ui32_t)ts.tv_nsec;
+            t = (u32)ts.tv_nsec;
 # else
             gettimeofday(&ts, NULL);
-            t = (ui32_t)ts.tv_usec;
+            t = (u32)ts.tv_usec;
 # endif
             if(rnd & 1)
                t = (t >> 16) | (t << 16);
             a_aux_rand->b32[u.i] ^= a_aux_rand_weak(seed ^ t);
-            a_aux_rand->b32[t % n_NELEM(a_aux_rand->b32)] ^= seed;
+            a_aux_rand->b32[t % NELEM(a_aux_rand->b32)] ^= seed;
             if(rnd == 7 || rnd == 17)
                a_aux_rand->b32[u.i] ^=
-                  a_aux_rand_weak(seed ^ (ui32_t)ts.tv_sec);
-            k = a_aux_rand->b32[u.i] % n_NELEM(a_aux_rand->b32);
+                  a_aux_rand_weak(seed ^ (u32)ts.tv_sec);
+            k = a_aux_rand->b32[u.i] % NELEM(a_aux_rand->b32);
             a_aux_rand->b32[k] ^= a_aux_rand->b32[u.i];
             seed ^= a_aux_rand_weak(a_aux_rand->b32[k]);
             if((rnd & 3) == 3)
@@ -263,35 +266,35 @@ a_aux_rand_init(void){
       goto jleave; /* (avoid unused warning) */
    }
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
-su_SINLINE ui8_t
+su_SINLINE u8
 a_aux_rand_get8(void){
-   ui8_t si, sj;
+   u8 si, sj;
 
    si = a_aux_rand->a._dat[++a_aux_rand->a._i];
    sj = a_aux_rand->a._dat[a_aux_rand->a._j += si];
    a_aux_rand->a._dat[a_aux_rand->a._i] = sj;
    a_aux_rand->a._dat[a_aux_rand->a._j] = si;
-   return a_aux_rand->a._dat[(ui8_t)(si + sj)];
+   return a_aux_rand->a._dat[(u8)(si + sj)];
 }
 
-static ui32_t
-a_aux_rand_weak(ui32_t seed){
+static u32
+a_aux_rand_weak(u32 seed){
    /* From "Random number generators: good ones are hard to find",
     * Park and Miller, Communications of the ACM, vol. 31, no. 10,
     * October 1988, p. 1195.
     * (In fact: FreeBSD 4.7, /usr/src/lib/libc/stdlib/random.c.) */
-   ui32_t hi;
+   u32 hi;
 
    if(seed == 0)
       seed = 123459876;
    hi =  seed /  127773;
          seed %= 127773;
    seed = (seed * 16807) - (hi * 2836);
-   if((si32_t)seed < 0)
-      seed += SI32_MAX;
+   if((s32)seed < 0)
+      seed += S32_MAX;
    return seed;
 }
 #endif /* a_AUX_RAND_USE_BUILTIN */
@@ -299,16 +302,16 @@ a_aux_rand_weak(ui32_t seed){
 static int
 a_aux_qsort_cpp(void const *a, void const *b){
    int rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    rv = su_cs_cmp(*(char**)n_UNCONST(a), *(char**)n_UNCONST(b));
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL void
 n_locale_init(void){
-   n_NYD2_IN;
+   NYD2_IN;
 
    n_psonce &= ~(n_PSO_UNICODE | n_PSO_ENC_MBSTATE);
 
@@ -344,14 +347,14 @@ n_locale_init(void){
    }
 # endif
 #endif /* mx_HAVE_C90AMEND1 */
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
-FL size_t
+FL uz
 n_screensize(void){
    char const *cp;
-   uiz_t rv;
-   n_NYD2_IN;
+   uz rv;
+   NYD2_IN;
 
    if((cp = ok_vlook(screen)) != NULL){
       su_idec_uz_cp(&rv, cp, 0, NULL);
@@ -362,14 +365,14 @@ n_screensize(void){
 
    if(rv > 2)
       rv -= 2;
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL char const *
 n_pager_get(char const **env_addon){
    char const *rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = ok_vlook(PAGER);
 
@@ -385,24 +388,24 @@ n_pager_get(char const **env_addon){
             *env_addon = "LV=-c";
       }
    }
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL void
-page_or_print(FILE *fp, size_t lines)
+page_or_print(FILE *fp, uz lines)
 {
    int c;
    char const *cp;
-   n_NYD_IN;
+   NYD_IN;
 
    fflush_rewind(fp);
 
    if (n_go_may_yield_control() && (cp = ok_vlook(crt)) != NULL) {
-      size_t rows;
+      uz rows;
 
       if(*cp == '\0')
-         rows = (size_t)n_scrnheight;
+         rows = (uz)n_scrnheight;
       else
          su_idec_uz_cp(&rows, cp, 0, NULL);
 
@@ -427,17 +430,17 @@ page_or_print(FILE *fp, size_t lines)
    while ((c = getc(fp)) != EOF)
       putc(c, n_stdout);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL enum protocol
-which_protocol(char const *name, bool_t check_stat, bool_t try_hooks,
+which_protocol(char const *name, boole check_stat, boole try_hooks,
    char const **adjusted_or_null)
 {
    /* TODO This which_protocol() sickness should be URL::new()->protocol() */
    char const *cp, *orig_name;
    enum protocol rv = PROTO_UNKNOWN;
-   n_NYD_IN;
+   NYD_IN;
 
    if(name[0] == '%' && name[1] == ':')
       name += 2;
@@ -493,19 +496,19 @@ jfile:
       struct mx_filetype ft;
       struct stat stb;
       char *np;
-      size_t sz;
+      uz i;
 
-      np = n_lofi_alloc((sz = su_cs_len(name)) + 4 +1);
-      su_mem_copy(np, name, sz + 1);
+      np = n_lofi_alloc((i = su_cs_len(name)) + 4 +1);
+      su_mem_copy(np, name, i +1);
 
       if(!stat(name, &stb)){
          if(S_ISDIR(stb.st_mode)
 #ifdef mx_HAVE_MAILDIR
-               && (su_mem_copy(&np[sz], "/tmp", 5),
+               && (su_mem_copy(&np[i], "/tmp", 5),
                   !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
-               (su_mem_copy(&np[sz], "/new", 5),
+               (su_mem_copy(&np[i], "/new", 5),
                   !stat(np, &stb) && S_ISDIR(stb.st_mode)) &&
-               (su_mem_copy(&np[sz], "/cur", 5),
+               (su_mem_copy(&np[i], "/cur", 5),
                   !stat(np, &stb) && S_ISDIR(stb.st_mode))
 #endif
                ){
@@ -531,26 +534,26 @@ jfile:
 jleave:
    if(adjusted_or_null != NULL)
       *adjusted_or_null = orig_name;
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 FL char *
 n_c_to_hex_base16(char store[3], char c){
    static char const itoa16[] = "0123456789ABCDEF";
-   n_NYD2_IN;
+   NYD2_IN;
 
    store[2] = '\0';
-   store[1] = itoa16[(ui8_t)c & 0x0F];
-   c = ((ui8_t)c >> 4) & 0x0F;
-   store[0] = itoa16[(ui8_t)c];
-   n_NYD2_OU;
+   store[1] = itoa16[(u8)c & 0x0F];
+   c = ((u8)c >> 4) & 0x0F;
+   store[0] = itoa16[(u8)c];
+   NYD2_OU;
    return store;
 }
 
-FL si32_t
+FL s32
 n_c_from_hex_base16(char const hex[2]){
-   static ui8_t const atoi16[] = {
+   static u8 const atoi16[] = {
       0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, /* 0x30-0x37 */
       0x08, 0x09, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* 0x38-0x3F */
       0xFF, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0xFF, /* 0x40-0x47 */
@@ -559,12 +562,12 @@ n_c_from_hex_base16(char const hex[2]){
       0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, /* 0x58-0x5f */
       0xFF, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0xFF  /* 0x60-0x67 */
    };
-   ui8_t i1, i2;
-   si32_t rv;
-   n_NYD2_IN;
+   u8 i1, i2;
+   s32 rv;
+   NYD2_IN;
 
-   if ((i1 = (ui8_t)hex[0] - '0') >= n_NELEM(atoi16) ||
-         (i2 = (ui8_t)hex[1] - '0') >= n_NELEM(atoi16))
+   if ((i1 = (u8)hex[0] - '0') >= NELEM(atoi16) ||
+         (i2 = (u8)hex[1] - '0') >= NELEM(atoi16))
       goto jerr;
    i1 = atoi16[i1];
    i2 = atoi16[i2];
@@ -574,81 +577,18 @@ n_c_from_hex_base16(char const hex[2]){
    rv <<= 4;
    rv += i2;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 jerr:
    rv = -1;
    goto jleave;
 }
 
-#if 0
-FL enum n_icalc_state
-n_icalc_buf(si64_t *resp, char const *cbuf, uiz_t clen, enum n_icalc_mode icm,
-      char const **endptr_or_null){
-   si64_t res;
-   struct a_group{
-      struct a_group *outer;
-      char unary;
-      ui8_t pad[7];
-   } *tail;
-   void *lofi_snap;
-   enum su_idec_state rv;
-   n_NYD_IN;
-
-   if(clen == UIZ_MAX)
-      clen = su_cs_len(cbuf);
-
-   icm &= n__ICALC_MODE_MASK;
-   rv = n_ICALC_STATE_NONE | icm;
-   lofi_snap = NULL;
-   tail = NULL;
-   res = 0;
-
-   while(clen > 0){
-      char c, unary;
-
-      if((c = *cbuf) == '-' || c == '+' || c == '~'){
-         unary = c;
-      }
-
-      if(*cbuf == '('){
-         if(lofi_snap == NULL)
-            lofi_snap = n_lofi_snap_create();
-
-
-      }
-
-   }
-
-
-jleave:
-   if(lofi_snap != NULL)
-      n_lofi_snap_unroll(lofi_snap);
-   *resp = res;
-   if(endptr_or_null != NULL)
-      *endptr_or_null = cbuf;
-   if(clen == 0)
-      rv |= n_ICALC_STATE_CONSUMED;
-   n_NYD_OU;
-   return rv;
-
-jeinval:
-   rv |= su_IDEC_STATE_EINVAL;
-   goto j_maxval;
-jeover:
-   rv |= su_IDEC_STATE_EOVERFLOW;
-j_maxval:
-   res = (rv & su_IDEC_STATE_SEEN_MINUS) ? SI64_MIN : SI64_MAX;
-   rv &= ~su_IDEC_STATE_SEEN_MINUS;
-   goto jleave;
-}
-#endif
-
 FL char const *
 n_getdeadletter(void){
    char const *cp;
-   bool_t bla;
-   n_NYD_IN;
+   boole bla;
+   NYD_IN;
 
    bla = FAL0;
 jredo:
@@ -665,12 +605,12 @@ jredo:
          n_err(_("Cannot expand *DEAD*, using: %s\n"), cp);
       }
    }
-   n_NYD_OU;
+   NYD_OU;
    return cp;
 }
 
 FL char *
-n_nodename(bool_t mayoverride){
+n_nodename(boole mayoverride){
    static char *sys_hostname, *hostname; /* XXX free-at-exit */
 
    struct utsname ut;
@@ -682,14 +622,14 @@ n_nodename(bool_t mayoverride){
    struct hostent *hent;
 # endif
 #endif
-   n_NYD2_IN;
+   NYD2_IN;
 
    if(su_state_has(su_STATE_REPRODUCIBLE))
       hn = n_UNCONST(su_reproducible_build);
    else if(mayoverride && (hn = ok_vlook(hostname)) != NULL && *hn != '\0'){
       ;
    }else if((hn = sys_hostname) == NULL){
-      bool_t lofi;
+      boole lofi;
 
       lofi = FAL0;
       uname(&ut);
@@ -702,7 +642,7 @@ n_nodename(bool_t mayoverride){
       hints.ai_flags = AI_CANONNAME;
       if(getaddrinfo(hn, NULL, &hints, &res) == 0){
          if(res->ai_canonname != NULL){
-            size_t l;
+            uz l;
 
             l = su_cs_len(res->ai_canonname) +1;
             hn = n_lofi_alloc(l);
@@ -727,7 +667,7 @@ n_nodename(bool_t mayoverride){
          struct n_string cnv;
 
          n_string_creat(&cnv);
-         if(!n_idna_to_ascii(&cnv, hn, UIZ_MAX))
+         if(!n_idna_to_ascii(&cnv, hn, UZ_MAX))
             n_panic(_("The system hostname is invalid, "
                   "IDNA conversion failed: %s\n"),
                n_shexp_quote_cp(hn, FAL0));
@@ -747,18 +687,18 @@ n_nodename(bool_t mayoverride){
    if(hostname != NULL && hostname != sys_hostname)
       n_free(hostname);
    hostname = su_cs_dup(hn, 0);
-   n_NYD2_OU;
+   NYD2_OU;
    return hostname;
 }
 
 #ifdef mx_HAVE_IDNA
-FL bool_t
-n_idna_to_ascii(struct n_string *out, char const *ibuf, size_t ilen){
+FL boole
+n_idna_to_ascii(struct n_string *out, char const *ibuf, uz ilen){
    char *idna_utf8;
-   bool_t lofi, rv;
-   n_NYD_IN;
+   boole lofi, rv;
+   NYD_IN;
 
-   if(ilen == UIZ_MAX)
+   if(ilen == UZ_MAX)
       ilen = su_cs_len(ibuf);
 
    lofi = FAL0;
@@ -848,17 +788,17 @@ jleave:
    if(lofi)
       n_lofi_free(n_UNCONST(ibuf));
    out = n_string_trunc(out, ilen);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 #endif /* mx_HAVE_IDNA */
 
 FL char *
-n_random_create_buf(char *dat, size_t len, ui32_t *reprocnt_or_null){
+n_random_create_buf(char *dat, uz len, u32 *reprocnt_or_null){
    struct str b64;
    char *indat, *cp, *oudat;
-   size_t i, inlen, oulen;
-   n_NYD_IN;
+   uz i, inlen, oulen;
+   NYD_IN;
 
    if(!(n_psonce & n_PSO_RANDOM_INIT)){
       n_psonce |= n_PSO_RANDOM_INIT;
@@ -913,10 +853,10 @@ jinc1:
          indat[i] = (char)a_aux_rand_get8();
 #else
       for(cp = indat, i = inlen; i > 0;){
-         union {ui32_t i4; char c[4];} r;
-         size_t j;
+         union {u32 i4; char c[4];} r;
+         uz j;
 
-         r.i4 = (ui32_t)arc4random();
+         r.i4 = (u32)arc4random();
          switch((j = i & 3)){
          case 0:  cp[3] = r.c[3]; j = 4; /* FALLTHRU */
          case 3:  cp[2] = r.c[2]; /* FALLTHRU */
@@ -929,8 +869,8 @@ jinc1:
 #endif
    }else{
       for(cp = indat, i = inlen; i > 0;){
-         union {ui32_t i4; char c[4];} r;
-         size_t j;
+         union {u32 i4; char c[4];} r;
+         uz j;
 
          r.i4 = ++*reprocnt_or_null;
          if(su_BOM_IS_BIG()){ /* TODO BSWAP */
@@ -957,7 +897,7 @@ jinc1:
    oudat = (len >= oulen) ? dat : n_lofi_alloc(oulen +1);
    b64.s = oudat;
    b64_encode_buf(&b64, indat, inlen, B64_BUF | B64_RFC4648URL | B64_NOPAD);
-   assert(b64.l >= len);
+   ASSERT(b64.l >= len);
    su_mem_copy(dat, b64.s, len);
    dat[len] = '\0';
    if(oudat != dat)
@@ -965,28 +905,28 @@ jinc1:
 
    n_lofi_free(indat);
 
-   n_NYD_OU;
+   NYD_OU;
    return dat;
 }
 
 FL char *
-n_random_create_cp(size_t len, ui32_t *reprocnt_or_null){
+n_random_create_cp(uz len, u32 *reprocnt_or_null){
    char *dat;
-   n_NYD_IN;
+   NYD_IN;
 
    dat = n_autorec_alloc(len +1);
    dat = n_random_create_buf(dat, len, reprocnt_or_null);
-   n_NYD_OU;
+   NYD_OU;
    return dat;
 }
 
-FL bool_t
-n_boolify(char const *inbuf, uiz_t inlen, bool_t emptyrv){
-   bool_t rv;
-   n_NYD2_IN;
-   assert(inlen == 0 || inbuf != NULL);
+FL boole
+n_boolify(char const *inbuf, uz inlen, boole emptyrv){
+   boole rv;
+   NYD2_IN;
+   ASSERT(inlen == 0 || inbuf != NULL);
 
-   if(inlen == UIZ_MAX)
+   if(inlen == UZ_MAX)
       inlen = su_cs_len(inbuf);
 
    if(inlen == 0)
@@ -1004,7 +944,7 @@ n_boolify(char const *inbuf, uiz_t inlen, bool_t emptyrv){
             !su_cs_cmp_case_n(inbuf, "off", inlen))
          rv = FAL0;
       else{
-         ui64_t ib;
+         u64 ib;
 
          if((su_idec(&ib, inbuf, inlen, 0, 0, NULL) & (su_IDEC_STATE_EMASK |
                su_IDEC_STATE_CONSUMED)) != su_IDEC_STATE_CONSUMED)
@@ -1013,17 +953,17 @@ n_boolify(char const *inbuf, uiz_t inlen, bool_t emptyrv){
             rv = (ib != 0);
       }
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
-FL bool_t
-n_quadify(char const *inbuf, uiz_t inlen, char const *prompt, bool_t emptyrv){
-   bool_t rv;
-   n_NYD2_IN;
-   assert(inlen == 0 || inbuf != NULL);
+FL boole
+n_quadify(char const *inbuf, uz inlen, char const *prompt, boole emptyrv){
+   boole rv;
+   NYD2_IN;
+   ASSERT(inlen == 0 || inbuf != NULL);
 
-   if(inlen == UIZ_MAX)
+   if(inlen == UZ_MAX)
       inlen = su_cs_len(inbuf);
 
    if(inlen == 0)
@@ -1033,26 +973,26 @@ n_quadify(char const *inbuf, uiz_t inlen, char const *prompt, bool_t emptyrv){
          (rv = n_boolify(&inbuf[4], inlen - 4, emptyrv)) >= FAL0 &&
          (n_psonce & n_PSO_INTERACTIVE) && !(n_pstate & n_PS_ROBOT))
       rv = getapproval(prompt, rv);
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
-FL bool_t
+FL boole
 n_is_all_or_aster(char const *name){
-   bool_t rv;
-   n_NYD2_IN;
+   boole rv;
+   NYD2_IN;
 
    rv = ((name[0] == '*' && name[1] == '\0') || !su_cs_cmp_case(name, "all"));
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL struct n_timespec const *
-n_time_now(bool_t force_update){ /* TODO event loop update IF cmd requests! */
+n_time_now(boole force_update){ /* TODO event loop update IF cmd requests! */
    static struct n_timespec ts_now;
-   n_NYD2_IN;
+   NYD2_IN;
 
-   if(n_UNLIKELY(su_state_has(su_STATE_REPRODUCIBLE))){
+   if(UNLIKELY(su_state_has(su_STATE_REPRODUCIBLE))){
       /* Guaranteed 32-bit posnum TODO SOURCE_DATE_EPOCH should be 64-bit! */
       (void)su_idec_s64_cp(&ts_now.ts_sec, ok_vlook(SOURCE_DATE_EPOCH),
          0,NULL);
@@ -1062,30 +1002,30 @@ n_time_now(bool_t force_update){ /* TODO event loop update IF cmd requests! */
       struct timespec ts;
 
       clock_gettime(CLOCK_REALTIME, &ts);
-      ts_now.ts_sec = (si64_t)ts.tv_sec;
-      ts_now.ts_nsec = (siz_t)ts.tv_nsec;
+      ts_now.ts_sec = (s64)ts.tv_sec;
+      ts_now.ts_nsec = (sz)ts.tv_nsec;
 #elif defined mx_HAVE_GETTIMEOFDAY
       struct timeval tv;
 
       gettimeofday(&tv, NULL);
-      ts_now.ts_sec = (si64_t)tv.tv_sec;
-      ts_now.ts_nsec = (siz_t)tv.tv_usec * 1000;
+      ts_now.ts_sec = (s64)tv.tv_sec;
+      ts_now.ts_nsec = (sz)tv.tv_usec * 1000;
 #else
-      ts_now.ts_sec = (si64_t)time(NULL);
+      ts_now.ts_sec = (s64)time(NULL);
       ts_now.ts_nsec = 0;
 #endif
    }
 
    /* Just in case.. */
-   if(n_UNLIKELY(ts_now.ts_sec < 0))
+   if(UNLIKELY(ts_now.ts_sec < 0))
       ts_now.ts_sec = 0;
-   n_NYD2_OU;
+   NYD2_OU;
    return &ts_now;
 }
 
 FL void
-time_current_update(struct time_current *tc, bool_t full_update){
-   n_NYD_IN;
+time_current_update(struct time_current *tc, boole full_update){
+   NYD_IN;
    tc->tc_time = (time_t)n_time_now(TRU1)->ts_sec;
 
    if(full_update){
@@ -1105,16 +1045,16 @@ jredo:
          goto jredo;
       }
       su_mem_copy(&tc->tc_local, tmp, sizeof tc->tc_local);
-      cp = su_cs_pcopy(tc->tc_ctime, n_time_ctime((si64_t)tc->tc_time, tmp));
+      cp = su_cs_pcopy(tc->tc_ctime, n_time_ctime((s64)tc->tc_time, tmp));
       *cp++ = '\n';
       *cp = '\0';
-      assert(PTR2SIZE(++cp - tc->tc_ctime) < sizeof(tc->tc_ctime));
+      ASSERT(P2UZ(++cp - tc->tc_ctime) < sizeof(tc->tc_ctime));
    }
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL char *
-n_time_ctime(si64_t secsepoch, struct tm const *localtime_or_nil){/* TODO err*/
+n_time_ctime(s64 secsepoch, struct tm const *localtime_or_nil){/* TODO err*/
    /* Problem is that secsepoch may be invalid for representation of ctime(3),
     * which indeed is asctime(localtime(t)); musl libc says for asctime(3):
     *    ISO C requires us to use the above format string,
@@ -1126,10 +1066,10 @@ n_time_ctime(si64_t secsepoch, struct tm const *localtime_or_nil){/* TODO err*/
     * So we need to do it on our own or the libc may kill us */
    static char buf[32]; /* TODO static buffer (-> datetime_to_format()) */
 
-   si32_t y, md, th, tm, ts;
+   s32 y, md, th, tm, ts;
    char const *wdn, *mn;
    struct tm const *tmp;
-   n_NYD_IN;
+   NYD_IN;
 
    if((tmp = localtime_or_nil) == NULL){
       time_t t;
@@ -1143,7 +1083,7 @@ jredo:
       }
    }
 
-   if(n_UNLIKELY((y = tmp->tm_year) < 0 || y >= 9999/*SI32_MAX*/ - 1900)){
+   if(UNLIKELY((y = tmp->tm_year) < 0 || y >= 9999/*S32_MAX*/ - 1900)){
       y = 1970;
       wdn = n_weekday_names[4];
       mn = n_month_names[0];
@@ -1169,14 +1109,14 @@ jredo:
 
    (void)snprintf(buf, sizeof buf, "%3s %3s%3d %.2d:%.2d:%.2d %d",
          wdn, mn, md, th, tm, ts, y);
-   n_NYD_OU;
+   NYD_OU;
    return buf;
 }
 
-FL uiz_t
-n_msleep(uiz_t millis, bool_t ignint){
-   uiz_t rv;
-   n_NYD2_IN;
+FL uz
+n_msleep(uz millis, boole ignint){
+   uz rv;
+   NYD2_IN;
 
 #ifdef mx_HAVE_NANOSLEEP
    /* C99 */{
@@ -1200,14 +1140,14 @@ n_msleep(uiz_t millis, bool_t ignint){
 # error Configuration should have detected a function for sleeping.
 #endif
 
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 FL void
 n_err(char const *format, ...){
    va_list ap;
-   n_NYD2_IN;
+   NYD2_IN;
 
    va_start(ap, format);
 #ifdef mx_HAVE_ERRORS
@@ -1216,8 +1156,8 @@ n_err(char const *format, ...){
    else
 #endif
    {
-      size_t len;
-      bool_t doname;
+      uz len;
+      boole doname;
 
       doname = FAL0;
 
@@ -1240,7 +1180,7 @@ n_err(char const *format, ...){
          vfprintf(n_stderr, format, ap);
 
          /* C99 */{
-            size_t i = len;
+            uz i = len;
             do{
                if(format[--len] == '\n'){
                   a_aux_err_linelen = (i -= ++len);
@@ -1254,7 +1194,7 @@ n_err(char const *format, ...){
       fflush(n_stderr);
    }
    va_end(ap);
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 FL void
@@ -1262,9 +1202,9 @@ n_verr(char const *format, va_list ap){
 #ifdef mx_HAVE_ERRORS
    struct a_aux_err_node *enp;
 #endif
-   bool_t doname;
-   size_t len;
-   n_NYD2_IN;
+   boole doname;
+   uz len;
+   NYD2_IN;
 
    doname = FAL0;
 
@@ -1300,7 +1240,7 @@ n_verr(char const *format, va_list ap){
    }
 
    /* C99 */{
-      size_t i = len;
+      uz i = len;
       do{
          if(format[--len] == '\n'){
             a_aux_err_linelen = (i -= ++len);
@@ -1317,7 +1257,7 @@ n_verr(char const *format, va_list ap){
 #ifdef mx_HAVE_ERRORS
    else{
       int imax, i;
-      n_LCTAV(ERRORS_MAX > 3);
+      LCTAV(ERRORS_MAX > 3);
 
       /* Link it into the `errors' message ring */
       if((enp = a_aux_err_tail) == NULL){
@@ -1347,7 +1287,7 @@ jcreat:
 # ifdef mx_HAVE_N_VA_COPY
       imax = 64;
 # else
-      imax = n_MIN(LINESIZE, 1024);
+      imax = MIN(LINESIZE, 1024);
 # endif
       for(i = imax;; imax = ++i /* xxx could wrap, maybe */){
 # ifdef mx_HAVE_N_VA_COPY
@@ -1358,8 +1298,8 @@ jcreat:
 #  define vac ap
 # endif
 
-         n_string_resize(&enp->ae_str, (len = enp->ae_str.s_len) + (size_t)i);
-         i = vsnprintf(&enp->ae_str.s_dat[len], (size_t)i, format, vac);
+         n_string_resize(&enp->ae_str, (len = enp->ae_str.s_len) + (uz)i);
+         i = vsnprintf(&enp->ae_str.s_dat[len], (uz)i, format, vac);
 # ifdef mx_HAVE_N_VA_COPY
          va_end(vac);
 # else
@@ -1367,7 +1307,7 @@ jcreat:
 # endif
          if(i <= 0)
             goto jleave;
-         if(UICMP(z, i, >=, imax)){
+         if(UCMP(z, i, >=, imax)){
 # ifdef mx_HAVE_N_VA_COPY
             /* XXX Check overflow for upcoming LEN+++i! */
             n_string_trunc(&enp->ae_str, len);
@@ -1378,21 +1318,21 @@ jcreat:
          }
          break;
       }
-      n_string_trunc(&enp->ae_str, len + (size_t)i);
+      n_string_trunc(&enp->ae_str, len + (uz)i);
 
-      fwrite(&enp->ae_str.s_dat[len], 1, (size_t)i, n_stderr);
+      fwrite(&enp->ae_str.s_dat[len], 1, (uz)i, n_stderr);
    }
 #endif /* mx_HAVE_ERRORS */
 
 jleave:
    fflush(n_stderr);
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 FL void
 n_err_sighdl(char const *format, ...){ /* TODO sigsafe; obsolete! */
    va_list ap;
-   n_NYD_X;
+   NYD;
 
    va_start(ap, format);
    vfprintf(n_stderr, format, ap);
@@ -1404,7 +1344,7 @@ FL void
 n_perr(char const *msg, int errval){
    int e;
    char const *fmt;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if(msg == NULL){
       fmt = "%s%s\n";
@@ -1416,13 +1356,13 @@ n_perr(char const *msg, int errval){
    n_err(fmt, msg, su_err_doc(e));
    if(errval == 0)
       su_err_set_no(e);
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 FL void
 n_alert(char const *format, ...){
    va_list ap;
-   n_NYD2_IN;
+   NYD2_IN;
 
    n_err(a_aux_err_linelen > 0 ? _("\nAlert: ") : _("Alert: "));
 
@@ -1431,13 +1371,13 @@ n_alert(char const *format, ...){
    va_end(ap);
 
    n_err("\n");
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 FL void
 n_panic(char const *format, ...){
    va_list ap;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if(a_aux_err_linelen > 0){
       putc('\n', n_stderr);
@@ -1451,7 +1391,7 @@ n_panic(char const *format, ...){
 
    putc('\n', n_stderr);
    fflush(n_stderr);
-   n_NYD2_OU;
+   NYD2_OU;
    abort(); /* Was exit(n_EXIT_ERR); for a while, but no */
 }
 
@@ -1460,7 +1400,7 @@ FL int
 c_errors(void *v){
    char **argv = v;
    struct a_aux_err_node *enp;
-   n_NYD_IN;
+   NYD_IN;
 
    if(*argv == NULL)
       goto jlist;
@@ -1475,12 +1415,12 @@ jerr:
       _("Synopsis: errors: (<show> or) <clear> the error ring\n"));
    v = NULL;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return (v == NULL) ? !STOP : !OKAY; /* xxx 1:bad 0:good -- do some */
 
 jlist:{
       FILE *fp;
-      size_t i;
+      uz i;
 
       if(a_aux_err_head == NULL){
          fprintf(n_stderr, _("The error ring is empty\n"));
@@ -1521,72 +1461,71 @@ jclear:
 FL char const *
 n_regex_err_to_doc(const regex_t *rep, int e){
    char *cp;
-   size_t i;
-   n_NYD2_IN;
+   uz i;
+   NYD2_IN;
 
    i = regerror(e, rep, NULL, 0) +1;
    cp = n_autorec_alloc(i);
    regerror(e, rep, cp, i);
-   n_NYD2_OU;
+   NYD2_OU;
    return cp;
 }
 #endif
 
-FL su_boole
+FL boole
 mx_unxy_dict(char const *cmdname, struct su_cs_dict *dp, void *vp){
    char const **argv, *key;
-   su_boole rv;
-   n_NYD_IN;
+   boole rv;
+   NYD_IN;
 
    rv = TRU1;
    key = (argv = vp)[0];
 
    do{
       if(key[1] == '\0' && key[0] == '*'){
-         if(dp != su_NIL)
+         if(dp != NIL)
             su_cs_dict_clear(dp);
-      }else if(dp == su_NIL || !su_cs_dict_remove(dp, key)){
+      }else if(dp == NIL || !su_cs_dict_remove(dp, key)){
          n_err(_("No such `%s': %s\n"), cmdname, n_shexp_quote_cp(key, FAL0));
          rv = FAL0;
       }
-   }while((key = *++argv) != su_NIL);
+   }while((key = *++argv) != NIL);
 
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
-FL su_boole
+FL boole
 mx_xy_dump_dict(char const *cmdname, struct su_cs_dict *dp,
       struct n_strlist **result, struct n_strlist **tailpp_or_nil,
       struct n_strlist *(*ptf)(char const *cmdname, char const *key,
          void const *dat)){
    struct su_cs_dict_view dv;
    char const **cpp, **xcpp;
-   su_u32 cnt;
+   u32 cnt;
    struct n_strlist *resp, *tailp;
-   su_boole rv;
-   n_NYD_IN;
+   boole rv;
+   NYD_IN;
 
    rv = TRU1;
 
    resp = *result;
-   if(tailpp_or_nil != su_NIL)
+   if(tailpp_or_nil != NIL)
       tailp = *tailpp_or_nil;
-   else if((tailp = resp) != su_NIL)
+   else if((tailp = resp) != NIL)
       for(;; tailp = tailp->sl_next)
-         if(tailp->sl_next == su_NIL)
+         if(tailp->sl_next == NIL)
             break;
 
-   if(dp == su_NIL || (cnt = su_cs_dict_count(dp)) == 0)
+   if(dp == NIL || (cnt = su_cs_dict_count(dp)) == 0)
       goto jleave;
 
    su_cs_dict_statistics(dp);
 
    /* TODO we need LOFI/AUTOREC TALLOC version which check overflow!!
     * TODO these then could _really_ return NIL... */
-   if(su_U32_MAX / sizeof(*cpp) <= cnt ||
-         (cpp = su_S(char const**,n_autorec_alloc(sizeof(*cpp) * cnt))
-            ) == su_NIL)
+   if(U32_MAX / sizeof(*cpp) <= cnt ||
+         (cpp = S(char const**,n_autorec_alloc(sizeof(*cpp) * cnt))) == NIL)
       goto jleave;
 
    xcpp = cpp;
@@ -1598,10 +1537,9 @@ mx_xy_dump_dict(char const *cmdname, struct su_cs_dict *dp,
    for(xcpp = cpp; cnt > 0; ++xcpp, --cnt){
       struct n_strlist *slp;
 
-      if((slp = (*ptf)(cmdname, *xcpp, su_cs_dict_lookup(dp, *xcpp))
-            ) == su_NIL)
+      if((slp = (*ptf)(cmdname, *xcpp, su_cs_dict_lookup(dp, *xcpp))) == NIL)
          continue;
-      if(resp == su_NIL)
+      if(resp == NIL)
          resp = slp;
       else
          tailp->sl_next = slp;
@@ -1610,10 +1548,10 @@ mx_xy_dump_dict(char const *cmdname, struct su_cs_dict *dp,
 
 jleave:
    *result = resp;
-   if(tailpp_or_nil != su_NIL)
+   if(tailpp_or_nil != NIL)
       *tailpp_or_nil = tailp;
 
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -1622,9 +1560,9 @@ mx_xy_dump_dict_gen_ptf(char const *cmdname, char const *key, void const *dat){
    /* XXX real strlist + str_to_fmt() */
    char *cp;
    struct n_strlist *slp;
-   su_uz kl, dl, cl;
+   uz kl, dl, cl;
    char const *kp, *dp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    kp = n_shexp_quote_cp(key, TRU1);
    dp = n_shexp_quote_cp(su_S(char const*,dat), TRU1);
@@ -1633,7 +1571,7 @@ mx_xy_dump_dict_gen_ptf(char const *cmdname, char const *key, void const *dat){
    cl = su_cs_len(cmdname);
 
    slp = n_STRLIST_AUTO_ALLOC(cl + 1 + kl + 1 + dl +1);
-   slp->sl_next = su_NIL;
+   slp->sl_next = NIL;
    cp = slp->sl_dat;
    su_mem_copy(cp, cmdname, cl);
    cp += cl;
@@ -1644,18 +1582,18 @@ mx_xy_dump_dict_gen_ptf(char const *cmdname, char const *key, void const *dat){
    su_mem_copy(cp, dp, dl);
    cp += dl;
    *cp = '\0';
-   slp->sl_len = su_P2UZ(cp - slp->sl_dat);
+   slp->sl_len = P2UZ(cp - slp->sl_dat);
 
-   n_NYD2_OU;
+   NYD2_OU;
    return slp;
 }
 
 FL boole
 mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp){
-   su_uz lines;
+   uz lines;
    FILE *fp;
-   su_boole rv;
-   n_NYD_IN;
+   boole rv;
+   NYD_IN;
 
    rv = TRU1;
 
@@ -1663,7 +1601,7 @@ mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp){
       fp = n_stdout;
 
    /* Create visual result */
-   for(lines = 0; slp != su_NIL; ++lines, slp = slp->sl_next)
+   for(lines = 0; slp != NIL; ++lines, slp = slp->sl_next)
       if(fputs(slp->sl_dat, fp) == EOF || putc('\n', fp) == EOF){
          rv = FAL0;
          break;
@@ -1677,8 +1615,9 @@ mx_page_or_print_strlist(char const *cmdname, struct n_strlist *slp){
       Fclose(fp);
    }
 
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

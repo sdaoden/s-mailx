@@ -48,12 +48,15 @@
 #include "mx/iconv.h"
 #include "mx/ui-str.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 static sigjmp_buf _send_pipejmp;
 
 /* Going for user display, print Part: info string */
 static void          _print_part_info(FILE *obuf, struct mimepart const *mpp,
                         struct n_ignore const *doitp, int level,
-                        struct quoteflt *qf, ui64_t *stats);
+                        struct quoteflt *qf, u64 *stats);
 
 /* Create a pipe; if mpp is not NULL, place some n_PIPEENV_* environment
  * variables accordingly */
@@ -62,12 +65,12 @@ static FILE *        _pipefile(struct mime_handler *mhp,
                         char const *tmpname, int term_infd);
 
 /* Call mime_write() as approbiate and adjust statistics */
-su_SINLINE ssize_t _out(char const *buf, size_t len, FILE *fp,
+su_SINLINE sz _out(char const *buf, uz len, FILE *fp,
       enum conversion convert, enum sendaction action, struct quoteflt *qf,
-      ui64_t *stats, struct str *outrest, struct str *inrest);
+      u64 *stats, struct str *outrest, struct str *inrest);
 
 /* Simply (!) print out a LF */
-static bool_t a_send_out_nl(FILE *fp, ui64_t *stats);
+static boole a_send_out_nl(FILE *fp, u64 *stats);
 
 /* SIGPIPE handler */
 static void          _send_onpipe(int signo);
@@ -76,8 +79,8 @@ static void          _send_onpipe(int signo);
 static int           sendpart(struct message *zmp, struct mimepart *ip,
                         FILE *obuf, struct n_ignore const *doitp,
                         struct quoteflt *qf, enum sendaction action,
-                        char **linedat, size_t *linesize,
-                        ui64_t *stats, int level);
+                        char **linedat, uz *linesize,
+                        u64 *stats, int level);
 
 /* Dependent on *mime-alternative-favour-rich* (favour_rich) do a tree walk
  * and check whether there are any such down mpp, which is a .m_multipart of
@@ -85,35 +88,35 @@ static int           sendpart(struct message *zmp, struct mimepart *ip,
  * Afterwards the latter will flag all the subtree accordingly, setting
  * MDISPLAY in mimepart.m_flag if a part shall be displayed.
  * TODO of course all this is hacky in that it should ONLY be done so */
-static bool_t        _send_al7ive_have_better(struct mimepart *mpp,
-                        enum sendaction action, bool_t want_rich);
+static boole        _send_al7ive_have_better(struct mimepart *mpp,
+                        enum sendaction action, boole want_rich);
 static void          _send_al7ive_flag_tree(struct mimepart *mpp,
-                        enum sendaction action, bool_t want_rich);
+                        enum sendaction action, boole want_rich);
 
 /* Get a file for an attachment */
-static FILE *        newfile(struct mimepart *ip, bool_t volatile *ispipe);
+static FILE *        newfile(struct mimepart *ip, boole volatile *ispipe);
 
 static void          pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf,
-                        struct quoteflt *qf, ui64_t *stats);
+                        struct quoteflt *qf, u64 *stats);
 
 /* Output a reasonable looking status field */
 static void          statusput(const struct message *mp, FILE *obuf,
-                        struct quoteflt *qf, ui64_t *stats);
+                        struct quoteflt *qf, u64 *stats);
 static void          xstatusput(const struct message *mp, FILE *obuf,
-                        struct quoteflt *qf, ui64_t *stats);
+                        struct quoteflt *qf, u64 *stats);
 
-static void          put_from_(FILE *fp, struct mimepart *ip, ui64_t *stats);
+static void          put_from_(FILE *fp, struct mimepart *ip, u64 *stats);
 
 static void
 _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
-   struct n_ignore const *doitp, int level, struct quoteflt *qf, ui64_t *stats)
+   struct n_ignore const *doitp, int level, struct quoteflt *qf, u64 *stats)
 {
    char buf[64];
    struct str ti, to;
-   bool_t want_ct, needsep;
+   boole want_ct, needsep;
    struct str const *cpre, *csuf;
    char const *cp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    cpre = csuf = NULL;
 #ifdef mx_HAVE_COLOUR
@@ -140,7 +143,7 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
    _out(cp, su_cs_len(cp), obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
 
    to.l = snprintf(buf, sizeof buf, " %" PRIuZ "/%" PRIuZ " ",
-         (uiz_t)mpp->m_lines, (uiz_t)mpp->m_size);
+         (uz)mpp->m_lines, (uz)mpp->m_size);
    _out(buf, to.l, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL);
 
    needsep = FAL0;
@@ -153,8 +156,8 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
       cp = mpp->m_ct_type_plain;
    if (want_ct && (to.l = su_cs_len(cp)) > 30 &&
             su_cs_starts_with_case(cp, "application/")) {
-      size_t const al = sizeof("appl../") -1, fl = sizeof("application/") -1;
-      size_t i = to.l - fl;
+      uz const al = sizeof("appl../") -1, fl = sizeof("application/") -1;
+      uz i = to.l - fl;
       char *x = n_autorec_alloc(al + i +1);
 
       su_mem_copy(x, "appl../", al);
@@ -255,19 +258,19 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
             NULL, NULL);
       _out("\n", 1, obuf, CONV_NONE, SEND_MBOX, qf, stats, NULL, NULL);
    }
-   n_NYD2_OU;
+   NYD2_OU;
 }
 
 static FILE *
 _pipefile(struct mime_handler *mhp, struct mimepart const *mpp, FILE **qbuf,
    char const *tmpname, int term_infd)
 {
-   static ui32_t reprocnt;
+   static u32 reprocnt;
    struct str s;
    char const *env_addon[9 +8/*v15*/], *cp, *sh;
-   size_t i;
+   uz i;
    FILE *rbuf;
-   n_NYD_IN;
+   NYD_IN;
 
    rbuf = *qbuf;
 
@@ -304,7 +307,7 @@ env_addon[i++] = str_concat_csvl(&s, "NAIL_FILENAME", "=", cp, NULL)->s;/*v15*/
     * TODO a file wherever he wants!  *Do* create a zero-size temporary file
     * TODO and give *that* path as MAILX_FILENAME_TEMPORARY, clean it up once
     * TODO the pipe returns?  Like this we *can* verify path/name issues! */
-   cp = n_random_create_cp(n_MIN(NAME_MAX - 3, 16), &reprocnt);
+   cp = n_random_create_cp(MIN(NAME_MAX - 3, 16), &reprocnt);
    env_addon[i++] = str_concat_csvl(&s, n_PIPEENV_FILENAME_GENERATED, "=", cp,
          NULL)->s;
 env_addon[i++] = str_concat_csvl(&s, "NAIL_FILENAME_GENERATED", "=", cp,/*v15*/
@@ -364,31 +367,31 @@ jerror:
       }
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rbuf;
 }
 
-su_SINLINE ssize_t
-_out(char const *buf, size_t len, FILE *fp, enum conversion convert, enum
-   sendaction action, struct quoteflt *qf, ui64_t *stats, struct str *outrest,
+su_SINLINE sz
+_out(char const *buf, uz len, FILE *fp, enum conversion convert, enum
+   sendaction action, struct quoteflt *qf, u64 *stats, struct str *outrest,
    struct str *inrest)
 {
-   ssize_t sz = 0, n;
+   sz size = 0, n;
    int flags;
-   n_NYD_IN;
+   NYD_IN;
 
    /* TODO We should not need is_head() here, i think in v15 the actual Mailbox
     * TODO subclass should detect such From_ cases and either reencode the part
     * TODO in question, or perform From_ quoting as necessary!?!?!?  How?!? */
    /* C99 */{
-      bool_t from_;
+      boole from_;
 
       if((action == SEND_MBOX || action == SEND_DECRYPT) &&
             (from_ = is_head(buf, len, TRU1))){
          if(from_ != TRUM1 || (mb.mb_active & MB_BAD_FROM_) ||
                ok_blook(mbox_rfc4155)){
             putc('>', fp);
-            ++sz;
+            ++size;
          }
       }
    }
@@ -406,44 +409,44 @@ _out(char const *buf, size_t len, FILE *fp, enum conversion convert, enum
             ? TD_ICONV : (action == SEND_SHOW ? TD_ISPR : TD_NONE)),
          qf, outrest, inrest);
    if (n < 0)
-      sz = n;
+      size = n;
    else if (n > 0) {
-      sz += n;
+      size += n;
       if (stats != NULL)
-         *stats += sz;
+         *stats += size;
    }
-   n_NYD_OU;
-   return sz;
+   NYD_OU;
+   return size;
 }
 
-static bool_t
-a_send_out_nl(FILE *fp, ui64_t *stats){
+static boole
+a_send_out_nl(FILE *fp, u64 *stats){
    struct quoteflt *qf;
-   bool_t rv;
-   n_NYD2_IN;
+   boole rv;
+   NYD2_IN;
 
    quoteflt_reset(qf = quoteflt_dummy(), fp);
    rv = (_out("\n", 1, fp, CONV_NONE, SEND_MBOX, qf, stats, NULL,NULL) > 0);
    quoteflt_flush(qf);
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 static void
 _send_onpipe(int signo)
 {
-   n_NYD_X; /* Signal handler */
-   n_UNUSED(signo);
+   NYD; /* Signal handler */
+   UNUSED(signo);
    siglongjmp(_send_pipejmp, 1);
 }
 
 static sigjmp_buf       __sendp_actjmp; /* TODO someday.. */
 static int              __sendp_sig; /* TODO someday.. */
-static sighandler_type  __sendp_opipe;
+static n_sighdl_t  __sendp_opipe;
 static void
 __sendp_onsig(int sig) /* TODO someday, we won't need it no more */
 {
-   n_NYD_X; /* Signal handler */
+   NYD; /* Signal handler */
    __sendp_sig = sig;
    siglongjmp(__sendp_actjmp, 1);
 }
@@ -452,25 +455,25 @@ static int
 sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    struct n_ignore const *doitp, struct quoteflt *qf,
    enum sendaction volatile action,
-   char **linedat, size_t *linesize, ui64_t * volatile stats, int level)
+   char **linedat, uz *linesize, u64 * volatile stats, int level)
 {
    int volatile rv = 0;
    struct mime_handler mh_stack, * volatile mhp;
    struct str outrest, inrest;
    char *cp;
    char const * volatile tmpname = NULL;
-   size_t linelen, cnt;
+   uz linelen, cnt;
    int volatile dostat, term_infd;
    int c;
    struct mimepart * volatile np;
    FILE * volatile ibuf = NULL, * volatile pbuf = obuf,
       * volatile qbuf = obuf, *origobuf = obuf;
    enum conversion volatile convert;
-   sighandler_type volatile oldpipe = SIG_DFL;
-   n_NYD_IN;
+   n_sighdl_t volatile oldpipe = SIG_DFL;
+   NYD_IN;
 
-   n_UNINIT(term_infd, 0);
-   n_UNINIT(cnt, 0);
+   UNINIT(term_infd, 0);
+   UNINIT(cnt, 0);
 
    quoteflt_reset(qf, obuf);
 
@@ -523,15 +526,15 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
    /* Work the headers */
    /* C99 */{
    struct n_string hl, *hlp;
-   size_t lineno = 0;
-   bool_t hstop/*see below, hany*/;
+   uz lineno = 0;
+   boole hstop/*see below, hany*/;
 
    hlp = n_string_creat_auto(&hl); /* TODO pool [or, v15: filter!] */
    /* Reserve three lines, still not enough for references and DKIM etc. */
-   hlp = n_string_reserve(hlp, n_MAX(MIME_LINELEN, MIME_LINELEN_RFC2047) * 3);
+   hlp = n_string_reserve(hlp, MAX(MIME_LINELEN, MIME_LINELEN_RFC2047) * 3);
 
    for(hstop = /*see below hany =*/ FAL0; !hstop;){
-      size_t lcnt;
+      uz lcnt;
 
       lcnt = cnt;
       if(fgetline(linedat, linesize, &cnt, &linelen, ibuf, 0) == NULL)
@@ -580,10 +583,10 @@ sendpart(struct message *zmp, struct mimepart *ip, FILE * volatile obuf,
          cp = *linedat;
 jhdrpush:
          if(!(dostat & 4)){
-            hlp = n_string_push_buf(hlp, cp, (ui32_t)linelen);
+            hlp = n_string_push_buf(hlp, cp, (u32)linelen);
             hlp = n_string_push_c(hlp, '\n');
          }else{
-            bool_t lblank, isblank;
+            boole lblank, isblank;
 
             for(lblank = FAL0, lcnt = 0; lcnt < linelen; ++cp, ++lcnt){
                char c8;
@@ -603,9 +606,9 @@ jhdrput:
       /* If it is an ignored header, skip it */
       *(cp = su_mem_find(hlp->s_dat, ':', hlp->s_len)) = '\0';
       /* C99 */{
-         size_t i;
+         uz i;
 
-         i = PTR2SIZE(cp - hlp->s_dat);
+         i = P2UZ(cp - hlp->s_dat);
          if((doitp != NULL && n_ignore_is_ign(doitp, hlp->s_dat, i)) ||
                !su_cs_cmp_case(hlp->s_dat, "status") ||
                !su_cs_cmp_case(hlp->s_dat, "x-status") ||
@@ -674,7 +677,7 @@ jheaders_skip:
       case SEND_QUOTE_ALL:
          if (ok_blook(rfc822_body_from_)) {
             if (!qf->qf_bypass) {
-               size_t i = fwrite(qf->qf_pfix, sizeof *qf->qf_pfix,
+               uz i = fwrite(qf->qf_pfix, sizeof *qf->qf_pfix,
                      qf->qf_pfix_len, obuf);
                if (i == qf->qf_pfix_len && stats != NULL)
                   *stats += i;
@@ -917,7 +920,7 @@ jmulti:
          }
 
          for (np = ip->m_multipart; np != NULL; np = np->m_nextpart) {
-            bool_t volatile ispipe;
+            boole volatile ispipe;
 
             if (np->m_mimecontent == MIME_DISCARD && action != SEND_DECRYPT)
                continue;
@@ -1119,7 +1122,7 @@ jpipe_close:
       }
 
 jpipe_for_real:
-      pbuf = _pipefile(mhp, ip, n_UNVOLATILE(&qbuf), tmpname, term_infd);
+      pbuf = _pipefile(mhp, ip, UNVOLATILE(FILE**,&qbuf), tmpname, term_infd);
       if (pbuf == NULL) {
 jesend:
          pbuf = qbuf = NULL;
@@ -1147,9 +1150,9 @@ jmhp_default:
 
 jsend:
    {
-   bool_t volatile eof;
-   bool_t save_qf_bypass = qf->qf_bypass;
-   ui64_t *save_stats = stats;
+   boole volatile eof;
+   boole save_qf_bypass = qf->qf_bypass;
+   u64 *save_stats = stats;
 
    if (pbuf != origobuf) {
       qf->qf_bypass = TRU1;/* XXX legacy (remove filter instead) */
@@ -1243,16 +1246,16 @@ jend:
       n_iconv_close(iconvd);
 #endif
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
-static bool_t
+static boole
 _send_al7ive_have_better(struct mimepart *mpp, enum sendaction action,
-   bool_t want_rich)
+   boole want_rich)
 {
-   bool_t rv = FAL0;
-   n_NYD_IN;
+   boole rv = FAL0;
+   NYD_IN;
 
    for (; mpp != NULL; mpp = mpp->m_nextpart) {
       switch (mpp->m_mimecontent) {
@@ -1286,7 +1289,7 @@ _send_al7ive_have_better(struct mimepart *mpp, enum sendaction action,
          if (want_rich) {
 jflag:
             mpp->m_flag |= MDISPLAY;
-            assert(mpp->m_parent != NULL);
+            ASSERT(mpp->m_parent != NULL);
             mpp->m_parent->m_flag |= MDISPLAY;
             rv = TRU1;
          }
@@ -1300,18 +1303,18 @@ jflag:
       }
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 static void
 _send_al7ive_flag_tree(struct mimepart *mpp, enum sendaction action,
-   bool_t want_rich)
+   boole want_rich)
 {
-   bool_t hot;
-   n_NYD_IN;
+   boole hot;
+   NYD_IN;
 
-   assert(mpp->m_parent != NULL);
+   ASSERT(mpp->m_parent != NULL);
    hot = ((mpp->m_parent->m_flag & MDISPLAY) != 0);
 
    for (; mpp != NULL; mpp = mpp->m_nextpart) {
@@ -1357,16 +1360,16 @@ _send_al7ive_flag_tree(struct mimepart *mpp, enum sendaction action,
       }
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static FILE *
-newfile(struct mimepart *ip, bool_t volatile *ispipe)
+newfile(struct mimepart *ip, boole volatile *ispipe)
 {
    struct str in, out;
    char *f;
    FILE *fp;
-   n_NYD_IN;
+   NYD_IN;
 
    f = ip->m_filename;
    *ispipe = FAL0;
@@ -1402,7 +1405,7 @@ jgetname:
                ? n_shexp_quote_cp(f, FAL0) : NULL));
       if(f2 != NULL){
          in.s = n_UNCONST(f2);
-         in.l = UIZ_MAX;
+         in.l = UZ_MAX;
          if((n_shexp_parse_token((n_SHEXP_PARSE_TRUNC |
                   n_SHEXP_PARSE_TRIM_SPACE | n_SHEXP_PARSE_TRIM_IFSSPACE |
                   n_SHEXP_PARSE_LOG | n_SHEXP_PARSE_IGNORE_EMPTY),
@@ -1478,47 +1481,47 @@ jgetname:
       }
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return fp;
 }
 
 static void
 pipecpy(FILE *pipebuf, FILE *outbuf, FILE *origobuf, struct quoteflt *qf,
-   ui64_t *stats)
+   u64 *stats)
 {
    char *line = NULL; /* TODO line pool */
-   size_t linesize = 0, linelen, cnt;
-   ssize_t all_sz, sz;
-   n_NYD_IN;
+   uz linesize = 0, linelen, cnt;
+   sz all_sz, i;
+   NYD_IN;
 
    fflush(pipebuf);
    rewind(pipebuf);
-   cnt = (size_t)fsize(pipebuf);
+   cnt = (uz)fsize(pipebuf);
    all_sz = 0;
 
    quoteflt_reset(qf, outbuf);
    while (fgetline(&line, &linesize, &cnt, &linelen, pipebuf, 0) != NULL) {
-      if ((sz = quoteflt_push(qf, line, linelen)) < 0)
+      if ((i = quoteflt_push(qf, line, linelen)) < 0)
          break;
-      all_sz += sz;
+      all_sz += i;
    }
-   if ((sz = quoteflt_flush(qf)) > 0)
-      all_sz += sz;
+   if ((i = quoteflt_flush(qf)) > 0)
+      all_sz += i;
    if (line)
       n_free(line);
 
    if (all_sz > 0 && outbuf == origobuf && stats != NULL)
       *stats += all_sz;
    Fclose(pipebuf);
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static void
 statusput(const struct message *mp, FILE *obuf, struct quoteflt *qf,
-   ui64_t *stats)
+   u64 *stats)
 {
    char statout[3], *cp = statout;
-   n_NYD_IN;
+   NYD_IN;
 
    if (mp->m_flag & MREAD)
       *cp++ = 'R';
@@ -1531,16 +1534,16 @@ statusput(const struct message *mp, FILE *obuf, struct quoteflt *qf,
       if (i > 0 && stats != NULL)
          *stats += i;
    }
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static void
 xstatusput(const struct message *mp, FILE *obuf, struct quoteflt *qf,
-   ui64_t *stats)
+   u64 *stats)
 {
    char xstatout[4];
    char *xp = xstatout;
-   n_NYD_IN;
+   NYD_IN;
 
    if (mp->m_flag & MFLAGGED)
       *xp++ = 'F';
@@ -1555,15 +1558,15 @@ xstatusput(const struct message *mp, FILE *obuf, struct quoteflt *qf,
       if (i > 0 && stats != NULL)
          *stats += i;
    }
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static void
-put_from_(FILE *fp, struct mimepart *ip, ui64_t *stats)
+put_from_(FILE *fp, struct mimepart *ip, u64 *stats)
 {
    char const *froma, *date, *nl;
    int i;
-   n_NYD_IN;
+   NYD_IN;
 
    if (ip != NULL && ip->m_from != NULL) {
       froma = ip->m_from;
@@ -1586,22 +1589,22 @@ put_from_(FILE *fp, struct mimepart *ip, ui64_t *stats)
    )
    if (i > 0 && stats != NULL)
       *stats += i;
-   n_NYD_OU;
+   NYD_OU;
 }
 
 FL int
 sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
-   char const *prefix, enum sendaction action, ui64_t *stats)
+   char const *prefix, enum sendaction action, u64 *stats)
 {
    struct n_sigman linedat_protect;
    struct quoteflt qf;
    FILE *ibuf;
    enum mime_parse_flags mpf;
    struct mimepart *ip;
-   size_t linesize, cnt, sz, i;
+   uz linesize, cnt, size, i;
    char *linedat;
    int rv, c;
-   n_NYD_IN;
+   NYD_IN;
 
    time_current_update(&time_current, TRU1);
    rv = -1;
@@ -1626,22 +1629,22 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
       goto jleave;
 
    cnt = mp->m_size;
-   sz = 0;
+   size = 0;
    {
-   bool_t nozap;
+   boole nozap;
    char const *cpre = n_empty, *csuf = n_empty;
 
 #ifdef mx_HAVE_COLOUR
    if(n_COLOUR_IS_ACTIVE()){
       struct n_colour_pen *cpen;
-      struct str const *sp;
+      struct str const *s;
 
       cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_FROM_,NULL);
-      if((sp = n_colour_pen_to_str(cpen)) != NULL){
-         cpre = sp->s;
-         sp = n_colour_reset_to_str();
-         if(sp != NULL)
-            csuf = sp->s;
+      if((s = n_colour_pen_to_str(cpen)) != NULL){
+         cpre = s->s;
+         s = n_colour_reset_to_str();
+         if(s != NULL)
+            csuf = s->s;
       }
    }
 #endif
@@ -1651,7 +1654,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
          !n_ignore_is_ign(doitp, "from_", sizeof("from_") -1));
    if (mp->m_flag & (MNOFROM | MBADFROM_)) {
       if (nozap)
-         sz = fprintf(obuf, "%s%.*sFrom %s %s%s\n",
+         size = fprintf(obuf, "%s%.*sFrom %s %s%s\n",
                cpre, (int)qf.qf_pfix_len,
                (qf.qf_bypass ? n_empty : qf.qf_pfix), fakefrom(mp),
                n_time_ctime(mp->m_time, NULL), csuf);
@@ -1660,7 +1663,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
          i = fwrite(qf.qf_pfix, sizeof *qf.qf_pfix, qf.qf_pfix_len, obuf);
          if (i != qf.qf_pfix_len)
             goto jleave;
-         sz += i;
+         size += i;
       }
 #ifdef mx_HAVE_COLOUR
       if(*cpre != '\0'){
@@ -1677,7 +1680,7 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
          }
 #endif
          putc(c, obuf);
-         ++sz;
+         ++size;
          --cnt;
          if (c == '\n')
             break;
@@ -1695,8 +1698,8 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
       }
    }
    }
-   if (sz > 0 && stats != NULL)
-      *stats += sz;
+   if (size > 0 && stats != NULL)
+      *stats += size;
 
    mpf = MIME_PARSE_NONE;
    if (action != SEND_MBOX && action != SEND_RFC822 && action != SEND_SHOW)
@@ -1716,9 +1719,10 @@ jleave:
    quoteflt_destroy(&qf);
    if(linedat != NULL)
       n_free(linedat);
-   n_NYD_OU;
+   NYD_OU;
    n_sigman_leave(&linedat_protect, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
 }
 
+#include "su/code-ou.h"
 /* s-it-mode */

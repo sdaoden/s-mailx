@@ -47,6 +47,9 @@
 #include "mx/mlist.h"
 #include "mx/names.h"
 
+/* TODO fake */
+#include "su/code-in.h"
+
 #undef SEND_LINESIZE
 #define SEND_LINESIZE \
    ((1024 / B64_ENCODE_INPUT_PER_LINE) * B64_ENCODE_INPUT_PER_LINE)
@@ -58,18 +61,18 @@ enum a_sendout_addrline_flags{
    a_SENDOUT_AL_FILES = GFILES,
    _a_SENDOUT_AL_GMASK = a_SENDOUT_AL_COMMA | a_SENDOUT_AL_FILES
 };
-n_CTA(!(_a_SENDOUT_AL_GMASK & (a_SENDOUT_AL_INC_INVADDR|a_SENDOUT_AL_DOMIME)),
+CTA(!(_a_SENDOUT_AL_GMASK & (a_SENDOUT_AL_INC_INVADDR|a_SENDOUT_AL_DOMIME)),
    "Code-required condition not satisfied but actual bit carrier value");
 
 static char const *__sendout_ident; /* TODO temporary; rewrite n_puthead() */
 static char *  _sendout_boundary;
-static si8_t   _sendout_error;
+static s8   _sendout_error;
 
 /* *fullnames* appears after command line arguments have been parsed */
 static struct mx_name *a_sendout_fullnames_cleanup(struct mx_name *np);
 
 /* */
-static bool_t a_sendout_put_name(char const *line, enum gfield w,
+static boole a_sendout_put_name(char const *line, enum gfield w,
                enum sendaction action, char const *prefix,
                FILE *fo, struct mx_name **xp, enum gfield addflags);
 
@@ -81,36 +84,36 @@ su_SINLINE int a_sendout_put_cte(FILE *fo, enum conversion conv);
 static int a_sendout_put_cd(FILE *fo, char const *cd, char const *filename);
 
 /* Put all entries of the given header list */
-static bool_t        _sendout_header_list(FILE *fo, struct n_header_field *hfp,
-                        bool_t nodisp);
+static boole        _sendout_header_list(FILE *fo, struct n_header_field *hfp,
+                        boole nodisp);
 
 /* */
-static si32_t a_sendout_body(FILE *fo, FILE *fi, enum conversion convert);
+static s32 a_sendout_body(FILE *fo, FILE *fi, enum conversion convert);
 
 /* Write an attachment to the file buffer, converting to MIME */
-static si32_t a_sendout_attach_file(struct header *hp, struct attachment *ap,
-               FILE *fo, bool_t force);
-static si32_t a_sendout__attach_file(struct header *hp, struct attachment *ap,
-               FILE *f, bool_t force);
+static s32 a_sendout_attach_file(struct header *hp, struct attachment *ap,
+               FILE *fo, boole force);
+static s32 a_sendout__attach_file(struct header *hp, struct attachment *ap,
+               FILE *f, boole force);
 
 /* There are non-local receivers, collect credentials etc. */
-static bool_t        _sendbundle_setup_creds(struct sendbundle *sbpm,
-                        bool_t signing_caps);
+static boole        _sendbundle_setup_creds(struct sendbundle *sbpm,
+                        boole signing_caps);
 
 /* Attach a message to the file buffer */
-static si32_t a_sendout_attach_msg(struct header *hp, struct attachment *ap,
+static s32 a_sendout_attach_msg(struct header *hp, struct attachment *ap,
                FILE *fo);
 
 /* Generate the body of a MIME multipart message */
-static si32_t make_multipart(struct header *hp, int convert, FILE *fi,
+static s32 make_multipart(struct header *hp, int convert, FILE *fi,
                FILE *fo, char const *contenttype, char const *charset,
-               bool_t force);
+               boole force);
 
 /* Prepend a header in front of the collected stuff and return the new file */
-static FILE *        infix(struct header *hp, FILE *fi, bool_t force);
+static FILE *        infix(struct header *hp, FILE *fi, boole force);
 
 /* Check whether Disposition-Notification-To: is desired */
-static bool_t        _check_dispo_notif(struct mx_name *mdn, struct header *hp,
+static boole        _check_dispo_notif(struct mx_name *mdn, struct header *hp,
                         FILE *fo);
 
 /* Send mail to a bunch of user names.  The interface is through mail() */
@@ -118,26 +121,26 @@ static int a_sendout_sendmail(void *v, enum n_mailsend_flags msf);
 
 /* Deal with file and pipe addressees */
 static struct mx_name *a_sendout_file_a_pipe(struct mx_name *names, FILE *fo,
-                     bool_t *senderror);
+                     boole *senderror);
 
 /* Record outgoing mail if instructed to do so; in *record* unless to is set */
-static bool_t        mightrecord(FILE *fp, struct mx_name *to, bool_t resend);
+static boole        mightrecord(FILE *fp, struct mx_name *to, boole resend);
 
-static bool_t a_sendout__savemail(char const *name, FILE *fp, bool_t resend);
+static boole a_sendout__savemail(char const *name, FILE *fp, boole resend);
 
 /*  */
-static bool_t        _transfer(struct sendbundle *sbp);
+static boole        _transfer(struct sendbundle *sbp);
 
-static bool_t        __mta_start(struct sendbundle *sbp);
+static boole        __mta_start(struct sendbundle *sbp);
 static char const ** __mta_prepare_args(struct mx_name *to, struct header *hp);
 static void          __mta_debug(struct sendbundle *sbp, char const *mta,
                         char const **args);
 
 /* Create a Message-ID: header field.  Use either host name or from address */
-static char const *a_sendout_random_id(struct header *hp, bool_t msgid);
+static char const *a_sendout_random_id(struct header *hp, boole msgid);
 
 /* Format the given header line to not exceed 72 characters */
-static bool_t a_sendout_put_addrline(char const *hname, struct mx_name *np,
+static boole a_sendout_put_addrline(char const *hname, struct mx_name *np,
                FILE *fo, enum a_sendout_addrline_flags saf);
 
 /* Rewrite a message for resending, adding the Resent-Headers */
@@ -147,23 +150,23 @@ static int           infix_resend(FILE *fi, FILE *fo, struct message *mp,
 static struct mx_name *
 a_sendout_fullnames_cleanup(struct mx_name *np){
    struct mx_name *xp;
-   n_NYD2_IN;
+   NYD2_IN;
 
    for(xp = np; xp != NULL; xp = xp->n_flink){
       xp->n_type &= ~(GFULL | GFULLEXTRA);
       xp->n_fullname = xp->n_name;
       xp->n_fullextra = NULL;
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return np;
 }
 
-static bool_t
+static boole
 a_sendout_put_name(char const *line, enum gfield w, enum sendaction action,
    char const *prefix, FILE *fo, struct mx_name **xp, enum gfield addflags){
-   bool_t rv;
+   boole rv;
    struct mx_name *np;
-   n_NYD_IN;
+   NYD_IN;
 
    np = lextract(line, GEXTRA | GFULL | addflags);
    if(xp != NULL)
@@ -174,14 +177,14 @@ a_sendout_put_name(char const *line, enum gfield w, enum sendaction action,
    else
       rv = a_sendout_put_addrline(prefix, np, fo, ((w & GCOMMA) |
             ((action != SEND_TODISP) ? a_SENDOUT_AL_DOMIME : 0)));
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 static int
 a_sendout_put_ct(FILE *fo, char const *contenttype, char const *charset){
    int rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    if((rv = fprintf(fo, "Content-Type: %s", contenttype)) < 0)
       goto jerr;
@@ -213,7 +216,7 @@ jend:
       goto jerr;
    ++rv;
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 jerr:
    rv = -1;
@@ -223,7 +226,7 @@ jerr:
 su_SINLINE int
 a_sendout_put_cte(FILE *fo, enum conversion conv){
    int rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    /* RFC 2045, 6.1.:
     *    This is the default value -- that is,
@@ -233,16 +236,16 @@ a_sendout_put_cte(FILE *fo, enum conversion conv){
    rv = (conv == CONV_7BIT) ? 0
          : fprintf(fo, "Content-Transfer-Encoding: %s\n",
             mime_enc_from_conversion(conv));
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
 static int
 a_sendout_put_cd(FILE *fo, char const *cd, char const *filename){
    struct str f;
-   si8_t mpc;
+   s8 mpc;
    int rv;
-   n_NYD2_IN;
+   NYD2_IN;
 
    f.s = NULL;
 
@@ -263,7 +266,7 @@ a_sendout_put_cd(FILE *fo, char const *cd, char const *filename){
    rv += (int)++f.l;
 
 jleave:
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 jerr:
    rv = -1;
@@ -271,10 +274,10 @@ jerr:
 
 }
 
-static bool_t
-_sendout_header_list(FILE *fo, struct n_header_field *hfp, bool_t nodisp){
-   bool_t rv;
-   n_NYD2_IN;
+static boole
+_sendout_header_list(FILE *fo, struct n_header_field *hfp, boole nodisp){
+   boole rv;
+   NYD2_IN;
 
    for(rv = TRU1; hfp != NULL; hfp = hfp->hf_next)
       if(fwrite(hfp->hf_dat, sizeof(char), hfp->hf_nl, fo) != hfp->hf_nl ||
@@ -286,18 +289,18 @@ _sendout_header_list(FILE *fo, struct n_header_field *hfp, bool_t nodisp){
          rv = FAL0;
          break;
       }
-   n_NYD_OU;
+   NYD2_OU;
    return rv;
 }
 
-static si32_t
+static s32
 a_sendout_body(FILE *fo, FILE *fi, enum conversion convert){
    struct str outrest, inrest;
    char *buf;
-   size_t sz, bufsize, cnt;
-   bool_t iseof;
-   si32_t rv;
-   n_NYD2_IN;
+   uz size, bufsize, cnt;
+   boole iseof;
+   s32 rv;
+   NYD2_IN;
 
    rv = su_ERR_INVAL;
    iseof = FAL0;
@@ -320,17 +323,17 @@ a_sendout_body(FILE *fo, FILE *fi, enum conversion convert){
             || iconvd != (iconv_t)-1
 #endif
       ){
-         if(fgetline(&buf, &bufsize, &cnt, &sz, fi, 0) == NULL)
+         if(fgetline(&buf, &bufsize, &cnt, &size, fi, 0) == NULL)
             break;
-      }else if((sz = fread(buf, sizeof *buf, bufsize, fi)) == 0)
+      }else if((size = fread(buf, sizeof *buf, bufsize, fi)) == 0)
          break;
 joutln:
-      if(xmime_write(buf, sz, fo, convert, TD_ICONV, &outrest,
+      if(xmime_write(buf, size, fo, convert, TD_ICONV, &outrest,
             (iseof > FAL0 ? NULL : &inrest)) < 0)
          goto jleave;
    }
    if(iseof <= FAL0 && (outrest.l != 0 || inrest.l != 0)){
-      sz = 0;
+      size = 0;
       iseof = (iseof || inrest.l == 0) ? TRU1 : TRUM1;
       goto joutln;
    }
@@ -343,21 +346,21 @@ jleave:
       n_free(inrest.s);
    n_free(buf);
 
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
-static si32_t
+static s32
 a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo,
-   bool_t force)
+   boole force)
 {
    /* TODO of course, the MIME classification needs to performed once
     * TODO only, not for each and every charset anew ... ;-// */
    char *charset_iter_orig[2];
-   bool_t any;
+   boole any;
    long offs;
-   si32_t err;
-   n_NYD_IN;
+   s32 err;
+   NYD_IN;
 
    err = su_ERR_NONE;
 
@@ -376,7 +379,7 @@ a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo,
       err = a_sendout__attach_file(hp, ap, fo, force);
       goto jleave;
    } else
-      assert(ap->a_input_charset != NULL);
+      ASSERT(ap->a_input_charset != NULL);
 
    /* Otherwise we need to iterate over all possible output charsets */
    if ((offs = ftell(fo)) == -1) {
@@ -385,7 +388,7 @@ a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo,
    }
    charset_iter_recurse(charset_iter_orig);
    for(any = FAL0, charset_iter_reset(NULL);; any = TRU1, charset_iter_next()){
-      bool_t myforce;
+      boole myforce;
 
       myforce = FAL0;
       if (!charset_iter_is_valid()) {
@@ -410,27 +413,27 @@ a_sendout_attach_file(struct header *hp, struct attachment *ap, FILE *fo,
    }
    charset_iter_restore(charset_iter_orig);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return err;
 }
 
-static si32_t
+static s32
 a_sendout__attach_file(struct header *hp, struct attachment *ap, FILE *fo,
-   bool_t force)
+   boole force)
 {
    FILE *fi;
    char const *charset;
    enum conversion convert;
    int do_iconv;
-   si32_t err;
-   n_NYD_IN;
+   s32 err;
+   NYD_IN;
 
    err = su_ERR_NONE;
 
    /* Either charset-converted temporary file, or plain path */
    if (ap->a_conv == AC_TMPFILE) {
       fi = ap->a_tmpf;
-      assert(ftell(fi) == 0);
+      ASSERT(ftell(fi) == 0);
    } else if ((fi = Fopen(ap->a_path, "r")) == NULL) {
       err = su_err_no();
       n_err(_("%s: %s\n"), n_shexp_quote_cp(ap->a_path, FAL0),
@@ -513,19 +516,19 @@ jerr_fclose:
       Fclose(fi);
 
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return err;
 }
 
-static bool_t
-_sendbundle_setup_creds(struct sendbundle *sbp, bool_t signing_caps)
+static boole
+_sendbundle_setup_creds(struct sendbundle *sbp, boole signing_caps)
 {
-   bool_t v15, rv = FAL0;
+   boole v15, rv = FAL0;
    char *shost, *from;
 #ifdef mx_HAVE_SMTP
    char const *smtp;
 #endif
-   n_NYD_IN;
+   NYD_IN;
 
    v15 = ok_blook(v15_compat);
    shost = (v15 ? ok_vlook(smtp_hostname) : NULL);
@@ -591,18 +594,18 @@ jenofrom:
 #if defined mx_HAVE_SMIME || defined mx_HAVE_SMTP
 jleave:
 #endif
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
-static si32_t
+static s32
 a_sendout_attach_msg(struct header *hp, struct attachment *ap, FILE *fo)
 {
    struct message *mp;
    char const *ccp;
-   si32_t err;
-   n_NYD_IN;
-   n_UNUSED(hp);
+   s32 err;
+   NYD_IN;
+   UNUSED(hp);
 
    err = su_ERR_NONE;
 
@@ -639,17 +642,17 @@ a_sendout_attach_msg(struct header *hp, struct attachment *ap, FILE *fo)
 jerr:
       if((err = su_err_no()) == su_ERR_NONE)
          err = su_ERR_IO;
-   n_NYD_OU;
+   NYD_OU;
    return err;
 }
 
-static si32_t
+static s32
 make_multipart(struct header *hp, int convert, FILE *fi, FILE *fo,
-   char const *contenttype, char const *charset, bool_t force)
+   char const *contenttype, char const *charset, boole force)
 {
    struct attachment *att;
-   si32_t err;
-   n_NYD_IN;
+   s32 err;
+   NYD_IN;
 
    err = su_ERR_NONE;
 
@@ -693,12 +696,12 @@ jerr:
       if((err = su_err_no()) == su_ERR_NONE)
          err = su_ERR_IO;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return err;
 }
 
 static FILE *
-infix(struct header *hp, FILE *fi, bool_t force) /* TODO check */
+infix(struct header *hp, FILE *fi, boole force) /* TODO check */
 {
    char *tempMail;
    enum conversion convert;
@@ -708,7 +711,7 @@ infix(struct header *hp, FILE *fi, bool_t force) /* TODO check */
 #ifdef mx_HAVE_ICONV
    char const *tcs, *convhdr = NULL;
 #endif
-   n_NYD_IN;
+   NYD_IN;
 
    nfi = NULL;
    charset = NULL;
@@ -811,16 +814,16 @@ jleave:
 #endif
    if(nfi == NULL)
       su_err_set_no(err);
-   n_NYD_OU;
+   NYD_OU;
    return nfi;
 }
 
-static bool_t
+static boole
 _check_dispo_notif(struct mx_name *mdn, struct header *hp, FILE *fo)
 {
    char const *from;
-   bool_t rv = TRU1;
-   n_NYD_IN;
+   boole rv = TRU1;
+   NYD_IN;
 
    /* TODO smtp_disposition_notification (RFC 3798): relation to return-path
     * TODO not yet checked */
@@ -839,7 +842,7 @@ _check_dispo_notif(struct mx_name *mdn, struct header *hp, FILE *fo)
          nalloc(n_UNCONST(from), 0), fo, 0))
       rv = FAL0;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -849,7 +852,7 @@ a_sendout_sendmail(void *v, enum n_mailsend_flags msf)
    struct header head;
    char *str = v;
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    su_mem_set(&head, 0, sizeof head);
    head.h_mailx_command = "mail";
@@ -857,18 +860,18 @@ a_sendout_sendmail(void *v, enum n_mailsend_flags msf)
          (ok_blook(fullnames) ? GFULL | GSKIN : GSKIN))) != NULL)
       head.h_mailx_raw_to = n_namelist_dup(head.h_to, head.h_to->n_type);
    rv = n_mail1(msf, &head, NULL, NULL);
-   n_NYD_OU;
+   NYD_OU;
    return (rv != OKAY); /* reverse! */
 }
 
 static struct mx_name *
-a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, bool_t *senderror){
-   bool_t mfap;
-   ui32_t pipecnt, xcnt, i;
+a_sendout_file_a_pipe(struct mx_name *names, FILE *fo, boole *senderror){
+   boole mfap;
+   u32 pipecnt, xcnt, i;
    char const *sh;
    struct mx_name *np;
    FILE *fp, **fppa;
-   n_NYD_IN;
+   NYD_IN;
 
    fp = NULL;
    fppa = NULL;
@@ -1009,7 +1012,7 @@ jefile:
 
             if((fs & (n_PROTO_MASK | n_FOPEN_STATE_EXISTS)) ==
                   (n_PROTO_FILE | n_FOPEN_STATE_EXISTS)){
-               n_file_lock(fileno(fout), FLT_WRITE, 0,0, UIZ_MAX);
+               n_file_lock(fileno(fout), FLT_WRITE, 0,0, UZ_MAX);
 
                if(mfap && (xerr = n_folder_mbox_prepare_append(fout, NULL)
                      ) != su_ERR_NONE)
@@ -1040,7 +1043,7 @@ jleave:
             Fclose(fp);
       n_lofi_free(fppa);
    }
-   n_NYD_OU;
+   NYD_OU;
    return names;
 
 jerror:
@@ -1053,12 +1056,12 @@ jerror:
    goto jleave;
 }
 
-static bool_t
-mightrecord(FILE *fp, struct mx_name *to, bool_t resend){
+static boole
+mightrecord(FILE *fp, struct mx_name *to, boole resend){
    char *cp;
    char const *ccp;
-   bool_t rv;
-   n_NYD2_IN;
+   boole rv;
+   NYD2_IN;
 
    rv = TRU1;
 
@@ -1127,18 +1130,18 @@ jbail:
          rv = FAL0;
       }
    }
-   n_NYD2_OU;
+   NYD2_OU;
    return rv;
 }
 
-static bool_t
-a_sendout__savemail(char const *name, FILE *fp, bool_t resend){
+static boole
+a_sendout__savemail(char const *name, FILE *fp, boole resend){
    FILE *fo;
-   size_t bufsize, buflen, cnt;
+   uz bufsize, buflen, cnt;
    enum n_fopen_state fs;
-   bool_t rv, emptyline;
+   boole rv, emptyline;
    char *buf;
-   n_NYD_IN;
+   NYD_IN;
 
    buf = n_alloc(bufsize = LINESIZE);
    rv = FAL0;
@@ -1154,7 +1157,7 @@ a_sendout__savemail(char const *name, FILE *fp, bool_t resend){
 
       /* TODO RETURN check, but be aware of protocols: v15: Mailbox->lock()!
        * TODO BETTER yet: should be returned in lock state already! */
-      n_file_lock(fileno(fo), FLT_WRITE, 0,0, UIZ_MAX);
+      n_file_lock(fileno(fo), FLT_WRITE, 0,0, UZ_MAX);
 
       if((xerr = n_folder_mbox_prepare_append(fo, NULL)) != su_ERR_NONE){
          n_perr(name, xerr);
@@ -1173,7 +1176,7 @@ a_sendout__savemail(char const *name, FILE *fp, bool_t resend){
       if(resend){
          if(emptyline && is_head(buf, buflen, FAL0))
             putc('>', fo);
-      }su_DBG(else assert(!is_head(buf, buflen, FAL0)); )
+      }su_DBG(else ASSERT(!is_head(buf, buflen, FAL0)); )
 
       emptyline = (buflen > 0 && *buf == '\n');
       fwrite(buf, sizeof *buf, buflen, fo);
@@ -1193,21 +1196,21 @@ jleave:
       rv = FAL0;
 j_leave:
    n_free(buf);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
-static bool_t
+static boole
 _transfer(struct sendbundle *sbp)
 {
    struct mx_name *np;
-   ui32_t cnt;
-   bool_t rv = TRU1;
-   n_NYD_IN;
+   u32 cnt;
+   boole rv = TRU1;
+   NYD_IN;
 
    for (cnt = 0, np = sbp->sb_to; np != NULL;) {
       char const k[] = "smime-encrypt-", *cp;
-      size_t nl = strlen(np->n_name);
+      uz nl = strlen(np->n_name);
       char *vs = n_lofi_alloc(sizeof(k)-1 + nl +1);
       memcpy(vs, k, sizeof(k) -1);
       memcpy(vs + sizeof(k) -1, np->n_name, nl +1);
@@ -1256,18 +1259,18 @@ _transfer(struct sendbundle *sbp)
 
    if (cnt > 0 && (ok_blook(smime_force_encryption) || !__mta_start(sbp)))
       rv = FAL0;
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
-static bool_t
+static boole
 __mta_start(struct sendbundle *sbp)
 {
    pid_t pid;
    sigset_t nset;
    char const **args, *mta;
-   bool_t rv;
-   n_NYD_IN;
+   boole rv;
+   NYD_IN;
 
    /* Let rv mean "is smtp-based MTA" */
    if((mta = ok_vlook(smtp)) != NULL){
@@ -1315,7 +1318,7 @@ __mta_start(struct sendbundle *sbp)
          goto jleave;
       }
    } else {
-      n_UNINIT(args, NULL);
+      UNINIT(args, NULL);
 #ifndef mx_HAVE_SMTP
       n_err(_("No SMTP support compiled in\n"));
       goto jstop;
@@ -1391,18 +1394,18 @@ jstop:
       rv = TRU1;
    }
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
 static char const **
 __mta_prepare_args(struct mx_name *to, struct header *hp)
 {
-   size_t vas_cnt, i, j;
+   uz vas_cnt, i, j;
    char **vas;
    char const **args, *cp, *cp_v15compat;
-   bool_t snda;
-   n_NYD_IN;
+   boole snda;
+   NYD_IN;
 
    if((cp_v15compat = ok_vlook(sendmail_arguments)) != NULL)
       n_OBSOLETE(_("please use *mta-arguments*, not *sendmail-arguments*"));
@@ -1416,7 +1419,7 @@ __mta_prepare_args(struct mx_name *to, struct header *hp)
        * like this getrawlist will never overflow (and return -1) */
       j = su_cs_len(cp);
       vas = n_lofi_alloc(sizeof(*vas) * j);
-      vas_cnt = (size_t)getrawlist(TRU1, vas, j, cp, j);
+      vas_cnt = (uz)getrawlist(TRU1, vas, j, cp, j);
    }
 
    i = 4 + n_smopts_cnt + vas_cnt + 4 + 1 + count(to) + 1;
@@ -1468,7 +1471,7 @@ __mta_prepare_args(struct mx_name *to, struct header *hp)
          }
          cp = np->n_name;
       } else {
-         assert(n_poption_arg_r == NULL);
+         ASSERT(n_poption_arg_r == NULL);
          cp = skin(myorigin(NULL));
       }
 
@@ -1492,16 +1495,16 @@ __mta_prepare_args(struct mx_name *to, struct header *hp)
 
    if(vas != NULL)
       n_lofi_free(vas);
-   n_NYD_OU;
+   NYD_OU;
    return args;
 }
 
 static void
 __mta_debug(struct sendbundle *sbp, char const *mta, char const **args)
 {
-   size_t cnt, bufsize, llen;
+   uz cnt, bufsize, llen;
    char *buf;
-   n_NYD_IN;
+   NYD_IN;
 
    n_err(_(">>> MTA: %s, arguments:"), n_shexp_quote_cp(mta, FAL0));
    for (; *args != NULL; ++args)
@@ -1519,18 +1522,18 @@ __mta_debug(struct sendbundle *sbp, char const *mta, char const **args)
    }
    if (buf != NULL)
       n_free(buf);
-   n_NYD_OU;
+   NYD_OU;
 }
 
 static char const *
-a_sendout_random_id(struct header *hp, bool_t msgid)
+a_sendout_random_id(struct header *hp, boole msgid)
 {
-   static ui32_t reprocnt;
+   static u32 reprocnt;
    struct tm *tmp;
    char const *h;
-   size_t rl, i;
+   uz rl, i;
    char *rv, sep;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = NULL;
 
@@ -1567,15 +1570,15 @@ jgen:
       n_random_create_cp(rl, &reprocnt), sep, h);
    rv[i] = '\0'; /* Because we don't test snprintf(3) return */
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
-static bool_t
+static boole
 a_sendout_put_addrline(char const *hname, struct mx_name *np, FILE *fo,
    enum a_sendout_addrline_flags saf)
 {
-   ssize_t hnlen, col, len;
+   sz hnlen, col, len;
    enum{
       m_ERROR = 1u<<0,
       m_INIT = 1u<<1,
@@ -1584,7 +1587,7 @@ a_sendout_put_addrline(char const *hname, struct mx_name *np, FILE *fo,
       m_NONAME = 1u<<4,
       m_CSEEN = 1u<<5
    } m;
-   n_NYD_IN;
+   NYD_IN;
 
    m = (saf & GCOMMA) ? m_ERROR | m_COMMA : m_ERROR;
 
@@ -1629,7 +1632,7 @@ a_sendout_put_addrline(char const *hname, struct mx_name *np, FILE *fo,
          len += 2;
       ++col; /* The separating space */
       if ((m & m_INIT) && /*col > 1 &&*/
-            UICMP(z, col + len, >,
+            UCMP(z, col + len, >,
                (np->n_type & GREF ? MIME_LINELEN : 72))) {
          if (fputs("\n ", fo) == EOF)
             goto jleave;
@@ -1650,7 +1653,7 @@ a_sendout_put_addrline(char const *hname, struct mx_name *np, FILE *fo,
          /* GREF needs to be placed in angle brackets, but which are missing */
          hb = np->n_fullname;
          if(np->n_type & GREF){
-            assert(UICMP(z, len, ==, su_cs_len(np->n_fullname) + 2));
+            ASSERT(UCMP(z, len, ==, su_cs_len(np->n_fullname) + 2));
             hb = n_lofi_alloc(len +1);
             len -= 2;
             hb[0] = '<';
@@ -1673,7 +1676,7 @@ a_sendout_put_addrline(char const *hname, struct mx_name *np, FILE *fo,
    if(!(m & m_INIT) || putc('\n', fo) != EOF)
       m ^= m_ERROR;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return ((m & m_ERROR) == 0);
 }
 
@@ -1681,12 +1684,12 @@ static int
 infix_resend(FILE *fi, FILE *fo, struct message *mp, struct mx_name *to,
    int add_resent)
 {
-   size_t cnt, c, bufsize = 0;
+   uz cnt, c, bufsize = 0;
    char *buf = NULL;
    char const *cp;
    struct mx_name *fromfield = NULL, *senderfield = NULL, *mdn;
    int rv = 1;
-   n_NYD_IN;
+   NYD_IN;
 
    cnt = mp->m_size;
 
@@ -1746,7 +1749,7 @@ infix_resend(FILE *fi, FILE *fo, struct message *mp, struct mx_name *to,
    }
    rv = 0;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -1757,8 +1760,8 @@ n_mail(enum n_mailsend_flags msf, struct mx_name *to, struct mx_name *cc,
 {
    struct header head;
    struct str in, out;
-   bool_t fullnames;
-   n_NYD_IN;
+   boole fullnames;
+   NYD_IN;
 
    su_mem_set(&head, 0, sizeof head);
 
@@ -1795,7 +1798,7 @@ n_mail(enum n_mailsend_flags msf, struct mx_name *to, struct mx_name *cc,
 
    if (subject != NULL)
       n_free(out.s);
-   n_NYD_OU;
+   NYD_OU;
    return 0;
 }
 
@@ -1803,10 +1806,10 @@ FL int
 c_sendmail(void *v)
 {
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_sendout_sendmail(v, n_MAILSEND_NONE);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -1814,10 +1817,10 @@ FL int
 c_Sendmail(void *v)
 {
    int rv;
-   n_NYD_IN;
+   NYD_IN;
 
    rv = a_sendout_sendmail(v, n_MAILSEND_RECORD_RECIPIENT);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
@@ -1828,10 +1831,10 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
    struct n_sigman sm;
    struct sendbundle sb;
    struct mx_name *to;
-   bool_t dosign;
+   boole dosign;
    FILE * volatile mtf, *nmtf;
    enum okay volatile rv;
-   n_NYD_IN;
+   NYD_IN;
 
    _sendout_error = FAL0;
    __sendout_ident = NULL;
@@ -1943,12 +1946,12 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
 
    /* 'Bit ugly kind of control flow until we find a charset that does it */
    /* C99 */{
-      bool_t any;
+      boole any;
 
       for(any = FAL0, charset_iter_reset(hp->h_charset);;
             any = TRU1, charset_iter_next()){
          int err;
-         bool_t volatile force;
+         boole volatile force;
 
          force = FAL0;
          if(!charset_iter_is_valid() &&
@@ -1987,8 +1990,8 @@ n_mail1(enum n_mailsend_flags msf, struct header *hp, struct message *quote,
     * TODO even if (1) savedeadletter() etc.  To me this doesn't make sense? */
 
    /* C99 */{
-      ui32_t cnt;
-      bool_t b;
+      u32 cnt;
+      boole b;
 
       /* Deliver pipe and file addressees */
       b = (ok_blook(record_files) && count(to) > 0);
@@ -2031,7 +2034,7 @@ jleave:
       n_exit_status |= n_EXIT_SEND_ERROR;
    if(rv == OKAY)
       n_pstate_err_no = su_ERR_NONE;
-   n_NYD_OU;
+   NYD_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
 
@@ -2047,7 +2050,7 @@ mkdate(FILE *fo, char const *field)
 {
    struct tm tmpgm, *tmptr;
    int tzdiff, tzdiff_hour, tzdiff_min, rv;
-   n_NYD_IN;
+   NYD_IN;
 
    su_mem_copy(&tmpgm, &time_current.tc_gm, sizeof tmpgm);
    tzdiff = time_current.tc_time - mktime(&tmpgm);
@@ -2064,12 +2067,12 @@ mkdate(FILE *fo, char const *field)
          tmptr->tm_year + 1900, tmptr->tm_hour,
          tmptr->tm_min, tmptr->tm_sec,
          tzdiff_hour * 100 + tzdiff_min);
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 }
 
-FL bool_t
-n_puthead(bool_t nosend_msg, struct header *hp, FILE *fo, enum gfield w,
+FL boole
+n_puthead(boole nosend_msg, struct header *hp, FILE *fo, enum gfield w,
    enum sendaction action, enum conversion convert, char const *contenttype,
    char const *charset)
 {
@@ -2095,13 +2098,13 @@ do {\
 } while (0)
 
    char const *addr;
-   size_t gotcha;
+   uz gotcha;
    struct mx_name *np, *fromasender = NULL;
    int stealthmua;
-   bool_t nodisp;
+   boole nodisp;
    enum a_sendout_addrline_flags saf;
-   bool_t rv;
-   n_NYD_IN;
+   boole rv;
+   NYD_IN;
 
    rv = FAL0;
 
@@ -2176,7 +2179,7 @@ jto_fmt:
       if (fwrite("Subject: ", sizeof(char), 9, fo) != 9)
          goto jleave;
       if (hp->h_subject != NULL) {
-         size_t sublen;
+         uz sublen;
          char const *sub;
 
          sublen = su_cs_len(sub = subject_re_trim(hp->h_subject));
@@ -2271,7 +2274,7 @@ jto_fmt:
             a_OTHER = 1u<<(HF__NEXT_SHIFT + 3)
          };
          struct mx_name *mft, **mftp, *x;
-         ui32_t f;
+         u32 f;
 
          f = hp->h_flags | (hp->h_mft != NULL ? a_HADMFT : 0);
          if(f & a_HADMFT){
@@ -2304,7 +2307,7 @@ jto_fmt:
          mftp = &mft;
 
          while((x = np) != NULL){
-            si8_t ml;
+            s8 ml;
 
             np = np->n_flink;
 
@@ -2378,12 +2381,12 @@ j_mft_add:
    /* Custom headers, as via -C and *customhdr* TODO JOINED AFTER COMPOSE! */
    if(!nosend_msg){
       struct n_header_field *chlp[2], *hfp;
-      ui32_t i;
+      u32 i;
 
       chlp[0] = n_poption_arg_C;
       chlp[1] = n_customhdr_list;
 
-      for(i = 0; i < n_NELEM(chlp); ++i)
+      for(i = 0; i < NELEM(chlp); ++i)
          if((hfp = chlp[i]) != NULL){
             if(!_sendout_header_list(fo, hfp, nodisp))
                goto jleave;
@@ -2428,13 +2431,13 @@ j_mft_add:
          goto jleave;
    rv = TRU1;
 jleave:
-   n_NYD_OU;
+   NYD_OU;
    return rv;
 #undef a_PUT_CC_BCC_FCC
 }
 
 FL enum okay
-resend_msg(struct message *mp, struct header *hp, bool_t add_resent)
+resend_msg(struct message *mp, struct header *hp, boole add_resent)
 {
    struct n_sigman sm;
    struct sendbundle sb;
@@ -2442,7 +2445,7 @@ resend_msg(struct message *mp, struct header *hp, bool_t add_resent)
    char *tempMail;
    struct mx_name *to;
    enum okay volatile rv;
-   n_NYD_IN;
+   NYD_IN;
 
    _sendout_error = FAL0;
    __sendout_ident = NULL;
@@ -2538,7 +2541,7 @@ jerr_o:
    rewind(nfi);
 
    /* C99 */{
-      bool_t b, c;
+      boole b, c;
 
       /* Deliver pipe and file addressees */
       b = (ok_blook(record_files) && count(to) > 0);
@@ -2580,20 +2583,20 @@ jleave:
       n_exit_status |= n_EXIT_SEND_ERROR;
    if(rv == OKAY)
       n_pstate_err_no = su_ERR_NONE;
-   n_NYD_OU;
+   NYD_OU;
    n_sigman_leave(&sm, n_SIGMAN_VIPSIGS_NTTYOUT);
    return rv;
 }
 
 FL void
-savedeadletter(FILE *fp, bool_t fflush_rewind_first){
+savedeadletter(FILE *fp, boole fflush_rewind_first){
    struct n_string line;
    int c;
    enum {a_NONE, a_INIT = 1<<0, a_BODY = 1<<1, a_NL = 1<<2} flags;
-   ul_i bytes, lines;
+   ul bytes, lines;
    FILE *dbuf;
    char const *cp, *cpq;
-   n_NYD_IN;
+   NYD_IN;
 
    if(!ok_blook(save))
       goto jleave;
@@ -2617,7 +2620,7 @@ savedeadletter(FILE *fp, bool_t fflush_rewind_first){
       n_perr(_("Cannot save to $DEAD"), 0);
       goto jleave;
    }
-   n_file_lock(fileno(dbuf), FLT_WRITE, 0,0, UIZ_MAX); /* XXX Natomic */
+   n_file_lock(fileno(dbuf), FLT_WRITE, 0,0, UZ_MAX); /* XXX Natomic */
 
    fprintf(n_stdout, "%s ", cpq);
    fflush(n_stdout);
@@ -2627,7 +2630,7 @@ savedeadletter(FILE *fp, bool_t fflush_rewind_first){
     * TODO MIME is completely missing, we use MBOXO quoting!!  Yuck.
     * TODO I/O error handling missing.  Yuck! */
    n_string_reserve(n_string_creat_auto(&line), 2 * SEND_LINESIZE);
-   bytes = (ul_i)fprintf(dbuf, "From %s %s",
+   bytes = (ul)fprintf(dbuf, "From %s %s",
          ok_vlook(LOGNAME), time_current.tc_ctime);
    lines = 1;
    for(flags = a_NONE, c = '\0'; c != EOF; bytes += line.s_len, ++lines){
@@ -2639,7 +2642,7 @@ savedeadletter(FILE *fp, bool_t fflush_rewind_first){
        * TODO have a complete MIME encoded message.  We don't know, and we
        * TODO have no usable mechanism to dig it!!  We need v15! */
       if(!(flags & a_INIT)){
-         size_t i;
+         uz i;
 
          /* Throw away leading empty lines! */
          if(line.s_len == 0)
@@ -2686,9 +2689,10 @@ savedeadletter(FILE *fp, bool_t fflush_rewind_first){
 
    rewind(fp);
 jleave:
-   n_NYD_OU;
+   NYD_OU;
 }
 
 #undef SEND_LINESIZE
 
+#include "su/code-ou.h"
 /* s-it-mode */
