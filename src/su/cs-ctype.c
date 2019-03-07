@@ -26,7 +26,7 @@
 #include "su/code-in.h"
 
 /* Include the constant su-make-cs-ctype.sh output */
-#include "su/gen-cs-ctype.h"
+#include "su/gen-cs-ctype.h" /* $(SU_SRCDIR) */
 
 sz
 su_cs_cmp_case(char const *cp1, char const *cp2){

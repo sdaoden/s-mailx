@@ -29,7 +29,7 @@
 #include "su/cs-dict.h"
 #include "su/code-in.h"
 
-#include "su/x-assoc-map.h"
+#include "su/x-assoc-map.h" /* $(SU_SRCDIR) */
 #define a_TYPE a_TYPE_CSDICT
 #include <su/x-assoc-map.h>
 

@@ -26,7 +26,7 @@
 #include "su/code.h"
 
 #include "su/mem.h"
-#include "su/x-mem-tools.h"
+#include "su/x-mem-tools.h" /* $(SU_SRCDIR) */
 #include "su/code-in.h"
 
 void *

@@ -57,7 +57,7 @@ VAL_CONTACT_WEB=https://www.sdaoden.eu/code.html
 # be SETUID to, shall it be included ($OPT_DOTLOCK).
 # Installation will then require the chown(1) program (as below) and
 # sufficient privileges to perform a SETUID to this user ID.
-VAL_DOTLOCK_PS_USER=root
+VAL_PS_DOTLOCK_USER=root
 
 # General prefix where S-nail should be installed.
 VAL_PREFIX=/usr/local
@@ -199,9 +199,11 @@ OPT_AUTOCC=yes
 
 # It is possible to compile S-nail as a "single-source", meaning that
 # all source files are injected into a single compilation unit, which is
-# then compiled.  This allows the compiler to perform much more
+# then compiled.  This allows the compiler to perform more
 # optimizations, and also reduces the management overhead that is used
-# for / needed by the linker.
+# for / needed by the linker.  In theory.
+# (Note this meant as a pure optimization, the make(1)file system will
+# offer no source dependeny tracking in this mode.)
 OPT_AMALGAMATION=no
 
 # Character set conversion enables reading and sending of mails in
@@ -395,7 +397,7 @@ OPT_COLOUR=yes
 # ressort.  With it dotlock files can be created for any mailbox for
 # which the invoking user has read (or read-write) permissions, and
 # under the UID and GID of the mailbox itself!  We call it -dotlock.
-# It will be SETUID to VAL_DOTLOCK_PS_USER, as above.
+# It will be SETUID to VAL_PS_DOTLOCK_USER, as above.
 # $OPT_DOTLOCK can be "require"d.
 OPT_DOTLOCK=yes
 

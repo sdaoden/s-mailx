@@ -130,7 +130,7 @@ struct a_termcap_g{
 };
 
 /* Include the constant make-tcap-map.pl output */
-#include "mx/gen-tcaps.h"
+#include "mx/gen-tcaps.h" /* $(MX_SRCDIR) */
 n_CTA(sizeof a_termcap_namedat <= UI16_MAX,
    "Termcap command and query name data exceed storage datatype");
 n_CTA(a_TERMCAP_ENT_MAX1 == n_NELEM(a_termcap_control),

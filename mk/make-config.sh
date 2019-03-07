@@ -1275,10 +1275,18 @@ if [ -z "${TOPDIR}" ]; then
 fi
 INCDIR="${TOPDIR}"include/
 SRCDIR="${TOPDIR}"src/
-echo 'CWDDIR = '"${CWDDIR}" >> ${newmk}
-echo 'TOPDIR = '"${TOPDIR}" >> ${newmk}
-echo 'INCDIR = '"${INCDIR}" >> ${newmk}
-echo 'SRCDIR = '"${SRCDIR}" >> ${newmk}
+
+MX_CWDDIR=${CWDDIR}
+MX_INCDIR=${INCDIR}
+MX_SRCDIR=${SRCDIR}
+
+PS_DOTLOCK_CWDDIR=${CWDDIR}
+PS_DOTLOCK_INCDIR=${INCDIR}
+PS_DOTLOCK_SRCDIR=${SRCDIR}
+
+SU_CWDDIR=${CWDDIR}
+SU_INCDIR=${INCDIR}
+SU_SRCDIR=${SRCDIR}
 
 # Our configuration options may at this point still contain shell snippets,
 # we need to evaluate them in order to get them expanded, and we need those
@@ -1308,16 +1316,19 @@ printf 'test: all\n\t$(ECHO_TEST)%s %smx-test.sh --check-only %s\n' \
    "${SHELL}" "${TOPDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
 
 # Add the known utility and some other variables
-printf "#define VAL_DOTLOCK_PS \"${VAL_SID}${VAL_MAILX}-dotlock\"\n" >> ${newh}
-printf "VAL_DOTLOCK_PS = \$(VAL_UAGENT)-dotlock\n" >> ${newmk}
+printf "#define VAL_PS_DOTLOCK \"${VAL_SID}${VAL_MAILX}-dotlock\"\n" >> ${newh}
+printf "VAL_PS_DOTLOCK = \$(VAL_UAGENT)-dotlock\n" >> ${newmk}
 if feat_yes DOTLOCK; then
-   printf "OPTIONAL_DOTLOCK_PS = \$(VAL_DOTLOCK_PS)\n" >> ${newmk}
+   printf "OPTIONAL_PS_DOTLOCK = \$(VAL_PS_DOTLOCK)\n" >> ${newmk}
 else
-   printf "OPTIONAL_DOTLOCK_PS =\n" >> ${newmk}
+   printf "OPTIONAL_PS_DOTLOCK =\n" >> ${newmk}
 fi
 
 for i in \
    CWDDIR TOPDIR OBJDIR INCDIR SRCDIR \
+         MX_CWDDIR MX_INCDIR MX_SRCDIR \
+         PS_DOTLOCK_CWDDIR PS_DOTLOCK_INCDIR PS_DOTLOCK_SRCDIR \
+         SU_CWDDIR SU_INCDIR SU_SRCDIR \
       awk basename cat chmod chown cp cmp grep getconf \
          ln mkdir mv rm sed sort tee tr \
       MAKE MAKEFLAGS make SHELL strip \
@@ -1394,12 +1405,24 @@ for i in \
    eval j="\$${i}"
    printf -- "${i}=${j}\n" >> ${newlst}
 done
+
+MX_CFLAGS=${CFLAGS}
+
+PS_DOTLOCK_CFLAGS=${CFLAGS}
+PS_DOTLOCK_INCS=${INCS}
+PS_DOTLOCK_LDFLAGS=${LDFLAGS}
+
+SU_CFLAGS=${CFLAGS}
+SU_CXXFLAGS=
+SU_INCS=${INCS}
+
 for i in \
-      CC \
-      CFLAGS \
-      LDFLAGS \
+      CC CFLAGS LDFLAGS \
       PATH C_INCLUDE_PATH LD_LIBRARY_PATH \
       OSFULLSPEC \
+         MX_CFLAGS \
+         PS_DOTLOCK_CFLAGS PS_DOTLOCK_INCS PS_DOTLOCK_LDFLAGS \
+         SU_CFLAGS SU_CXXFLAGS SU_INCS \
       ; do
    eval j=\$${i}
    if [ -n "${j}" ]; then
@@ -2014,7 +2037,11 @@ squeeze_em ${lib} ${tmp}
 ${mv} ${tmp} ${lib}
 
 echo "BASE_LIBS = `${cat} ${lib}`" >> ${mk}
+echo 'PS_DOTLOCK_LIBS = $(BASE_LIBS)' >> ${mk}
+echo 'SU_LIBS = $(BASE_LIBS)' >> ${mk}
 echo "BASE_INCS = `${cat} ${inc}`" >> ${mk}
+echo 'PS_DOTLOCK_INCS = $(BASE_INCS)' >> ${mk}
+echo 'SU_INCS = $(BASE_INCS)' >> ${mk}
 
 ## The remains are expected to be used only by the main MUA binary!
 
@@ -3281,7 +3308,9 @@ squeeze_em ${lib} ${tmp}
 ${mv} ${tmp} ${lib}
 
 echo "LIBS = `${cat} ${lib}`" >> ${mk}
+echo 'MX_LIBS = $(LIBS)' >> ${mk}
 echo "INCS = `${cat} ${inc}`" >> ${mk}
+echo 'MX_INCS = $(INCS)' >> ${mk}
 echo >> ${mk}
 
 # mk-config.h (which becomes mx/gen-config.h)
@@ -3341,59 +3370,42 @@ done
 printf '"\n' >> ${h}
 
 # Create the real mk-config.mk
-# Note we cannout use explicit ./ filename prefix for source and object
+# Note we cannot use explicit ./ filename prefix for source and object
 # pathnames because of a bug in bmake(1)
-srclist= objlist= su_src= su_obj=
+msg 'Creating object make rules'
+(cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh ps-dotlock/*.c) >> ${mk}
+mx_obj= su_obj=
 if feat_no AMALGAMATION; then
-   for i in `printf '%s\n' "${SRCDIR}"mx/*.c | ${sort}`; do
-      i=`basename "${i}" .c`
-      if [ "${i}" = dotlock-ps ]; then
-         continue
-      fi
-      objlist="${objlist} ${i}.o"
-      srclist="${srclist} \$(SRCDIR)mx/${i}.c"
-      printf '%s: %s\n\t$(ECHO_CC)$(CC) $(CFLAGS) $(INCS) -c %s\n' \
-         "${i}.o" "\$(SRCDIR)mx/${i}.c" "\$(SRCDIR)mx/${i}.c" >> ${mk}
-   done
-   for i in `printf '%s\n' "${SRCDIR}"su/*.c | ${sort}`; do
-      i=`basename "${i}" .c`
-      su_obj="${su_obj} ${i}.o"
-      su_src="${su_src} \$(SRCDIR)su/${i}.c"
-      printf '%s: %s\n\t$(ECHO_CC)$(CC) $(CFLAGS) $(INCS) -c %s\n' \
-         "${i}.o" "\$(SRCDIR)su/${i}.c" "\$(SRCDIR)su/${i}.c" >> ${mk}
-   done
-   printf '\nAMALGAM_TARGET =\nAMALGAM_DEP =\n' >> ${mk}
+   (cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh su/*.c) >> ${mk}
+   (cd "${SRCDIR}"; ${SHELL} ../mk/make-rules.sh mx/*.c) >> ${mk}
+   mx_obj='$(MX_C_OBJ)' su_obj='$(SU_C_OBJ)'
 else
-   printf '%s:\n\t$(ECHO_CC)$(CC) $(CFLAGS) $(INCS) -c $(SRCDIR)mx/%s\n' \
-      "main.o" "main.c" >> ${mk}
-   srclist=main.c objlist=main.o
-   su_src=main.c su_obj=main.o
-   printf '\nAMALGAM_TARGET = main.o\nAMALGAM_DEP = ' >> ${mk}
+   (cd "${SRCDIR}"; COUNT_MODE=0 ${SHELL} ../mk/make-rules.sh mx/*.c) >> ${mk}
+   mx_obj=mx-main.o
+   printf 'mx-main.o: gen-mime-types.h' >> ${mk}
 
    printf '\n#endif /* mx_SOURCE */\n' >> ${h}
    printf '/* mx_HAVE_AMALGAMATION: include sources */\n' >> ${h}
    printf '#elif mx_GEN_CONFIG_H + 0 == 1\n' >> ${h}
    printf '# undef mx_GEN_CONFIG_H\n' >> ${h}
    printf '# define mx_GEN_CONFIG_H 2\n#ifdef mx_SOURCE\n' >> ${h}
-   for i in `printf '%s\n' "${SRCDIR}"mx/*.c | ${sort}`; do
-      i=`basename "${i}"`
-      if [ "${i}" = main.c ] ||
-            [ "${i}" = dotlock-ps.c ]; then
-         continue
-      fi
-      printf '$(SRCDIR)mx/%s ' "${i}" >> ${mk}
-      printf '# include "%s%s"\n' "${SRCDIR}mx/" "${i}" >> ${h}
-   done
+
    for i in `printf '%s\n' "${SRCDIR}"su/*.c | ${sort}`; do
       i=`basename "${i}"`
-      printf '$(SRCDIR)su/%s ' "${i}" >> ${mk}
       printf '# include "%s%s"\n' "${SRCDIR}su/" "${i}" >> ${h}
    done
    echo >> ${mk}
+
+   for i in `printf '%s\n' "${SRCDIR}"mx/*.c | ${sort}`; do
+      i=`basename "${i}"`
+      if [ "${i}" = main.c ]; then
+         continue
+      fi
+      printf '# include "%s%s"\n' "${SRCDIR}mx/" "${i}" >> ${h}
+   done
+   echo >> ${mk}
 fi
-printf 'OBJ_SRC = %s\nOBJ = %s\n' \
-   "${srclist} ${su_src}" "${objlist} ${su_obj}" >> "${mk}"
-printf 'SU_OBJ_SRC = %s\nSU_OBJ = %s\n' "${su_src}" "${su_obj}" >> "${mk}"
+printf 'OBJ = %s\n' "${mx_obj} ${su_obj}" >> "${mk}"
 
 printf '#endif /* mx_SOURCE */\n#endif /* mx_GEN_CONFIG_H */\n' >> ${h}
 

@@ -27,7 +27,7 @@
 #ifdef mx_HAVE_DOTLOCK
 # include <su/cs.h>
 
-# include "mx/dotlock.h"
+# include "mx/dotlock.h" /* $(MX_SRCDIR) */
 #endif
 
 /* XXX Our Popen() main() takes void, temporary global data store */
@@ -182,7 +182,7 @@ jenametool:
       char const *args[13];
 
       snprintf(itoabuf, sizeof itoabuf, "%" PRIuZ, di.di_pollmsecs);
-      args[ 0] = VAL_DOTLOCK_PS;
+      args[ 0] = VAL_PS_DOTLOCK;
       args[ 1] = (flt == FLT_READ ? "rdotlock" : "wdotlock");
       args[ 2] = "mailbox";   args[ 3] = di.di_file_name;
       args[ 4] = "name";      args[ 5] = di.di_lock_name;
@@ -373,9 +373,9 @@ jleave:
          serr = su_ERR_ACCES;
          break;
       case n_DLS_NOEXEC:
-         if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_DOTLOCK_PS_NOTED)
+         if((n_psonce & (n_PSO_INTERACTIVE | n_PSO_PS_DOTLOCK_NOTED)
                ) == n_PSO_INTERACTIVE || (n_poption & n_PO_D_V)){
-            n_psonce |= n_PSO_DOTLOCK_PS_NOTED;
+            n_psonce |= n_PSO_PS_DOTLOCK_NOTED;
             emsg = N_("  Cannot find privilege-separated dotlock program\n");
          }
          serr = su_ERR_NOENT;

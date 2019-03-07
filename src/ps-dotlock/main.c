@@ -1,7 +1,7 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
  *@ Privilege-separated dot file lock program (OPT_DOTLOCK=yes)
  *@ that is capable of calling setuid(2), and change its user identity
- *@ to the VAL_DOTLOCK_PS_USER (usually "root") in order to create a
+ *@ to the VAL_PS_DOTLOCK_USER (usually "root") in order to create a
  *@ dotlock file with the same UID/GID as the mailbox to be locked.
  *@ It should be started when chdir(2)d to the lock file's directory,
  *@ with a symlink-resolved target and with SIGPIPE being ignored.
@@ -22,9 +22,9 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #undef su_FILE
-#define su_FILE dotlock_ps
+#define su_FILE ps_dotlock_main
 #define mx_SOURCE
-#define mx_SOURCE_DOTLOCK_PS
+#define mx_SOURCE_PS_DOTLOCK_MAIN
 
 #define su_ASSERT_EXPAND_NOTHING
 
@@ -46,7 +46,7 @@ static uiz_t n_msleep(uiz_t millis, bool_t ignint);
 
 #define su_err_no() errno
 #define su_err_set_no(X) (errno = X)
-#include "mx/dotlock.h"
+#include "mx/dotlock.h" /* $(PS_DOTLOCK_SRCDIR) */
 
 /* TODO Avoid linkage errors, instantiate what is needed;
  * TODO SU needs to be available as a library to overcome this,
@@ -105,7 +105,7 @@ main(int argc, char **argv){
 
    /* We're a dumb helper, ensure as much as we can noone else uses us */
    if(argc != 12 ||
-         strcmp(argv[ 0], VAL_DOTLOCK_PS) ||
+         strcmp(argv[ 0], VAL_PS_DOTLOCK) ||
          (argv[1][0] != 'r' && argv[1][0] != 'w') ||
          strcmp(argv[ 1] + 1, "dotlock") ||
          strcmp(argv[ 2], "mailbox") ||
