@@ -160,6 +160,15 @@ FL boole temporary_addhist_hook(char const *ctx, boole gabby,
             char const *histent);
 #endif
 
+/* TODO v15 drop: let shexp_parse_token take a carrier with positional
+ * TODO params, then let callers use that as such!!
+ * Call hook in a recursed environment named name where positional params are
+ * setup according to argv/argc.  NOTE: all signals blocked! */
+#ifdef mx_HAVE_REGEX
+FL char *temporary_pospar_access_hook(char const *name, char const **argv,
+      u32 argc, char *(*hook)(void *uservp), void *uservp);
+#endif
+
 /* Setting up batch mode, variable-handling side */
 FL void n_var_setup_batch_mode(void);
 
@@ -216,9 +225,6 @@ FL int c_varedit(void *v);
 
 /* `environ' */
 FL int c_environ(void *v);
-
-/* `vexpr' */
-FL int c_vexpr(void *v);
 
 /* `vpospar' */
 FL int c_vpospar(void *v);

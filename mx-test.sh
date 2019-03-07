@@ -136,7 +136,7 @@ if [ -n "${CHECK_ONLY}${RUN_TEST}" ]; then
          echo 'Trying to detect UTF-8 locale via '"${RAWMAILX}"
          i=`LC_ALL=C.utf8 "${RAWMAILX}" ${ARGS} -X '
             \define cset_test {
-               \if [ "${ttycharset}" @i=% utf ]
+               \if [ "${ttycharset}" =%?case utf ]
                   \echo $LC_ALL
                   \xit 0
                \end
@@ -374,6 +374,7 @@ t_all() {
    t_environ
    t_macro_param_shift
    t_addrcodec
+   t_csop
    t_vexpr
    t_call_ret
    t_xcall
@@ -1187,7 +1188,7 @@ t_ifelse() {
 		else
 		   echo 5.err
 		endif
-		if $dietcurd @== 'Yoho'
+		if $dietcurd ==? 'Yoho'
 			echo 5-1.ok
 		else
 			echo 5-1.err
@@ -1202,7 +1203,7 @@ t_ifelse() {
 		else
 		   echo 6.ok
 		endif
-		if $dietcurd @!= 'Yoho'
+		if $dietcurd !=?case 'Yoho'
 			echo 6-1.err
 		else
 			echo 6-1.ok
@@ -1341,32 +1342,32 @@ t_ifelse() {
 		set dietcurd=Abc
 		if $dietcurd < aBd
 		   echo 12.ok1
-		   if $dietcurd @> abB
+		   if $dietcurd >? abB
 		      echo 12.ok2
 		   else
 		      echo 12.err2
 		   endif
-		   if $dietcurd @== aBC
+		   if $dietcurd ==?case aBC
 		      echo 12.ok3
 		   else
 		      echo 12.err3
 		   endif
-		   if $dietcurd @>= AbC
+		   if $dietcurd >=?ca AbC
 		      echo 12.ok4
 		   else
 		      echo 12.err4
 		   endif
-		   if $dietcurd @<= ABc
+		   if $dietcurd <=? ABc
 		      echo 12.ok5
 		   else
 		      echo 12.err5
 		   endif
-		   if $dietcurd @>= abd
+		   if $dietcurd >=?case abd
 		      echo 12.err6
 		   else
 		      echo 12.ok6
 		   endif
-		   if $dietcurd @<= abb
+		   if $dietcurd <=? abb
 		      echo 12.err7
 		   else
 		      echo 12.ok7
@@ -1379,7 +1380,7 @@ t_ifelse() {
       else
          echo 12-1.err
       endif
-      if $dietcurd @< aBc
+      if $dietcurd <? aBc
          echo 12-2.err
       else
          echo 12-2.ok
@@ -1389,12 +1390,12 @@ t_ifelse() {
       else
          echo 12-3.err
       endif
-      if $dietcurd @> ABc
+      if $dietcurd >? ABc
          echo 12-3.err
       else
          echo 12-3.ok
       endif
-		if $dietcurd @i=% aB
+		if $dietcurd =%?case aB
 		   echo 13.ok
 		else
 		   echo 13.err
@@ -1404,7 +1405,7 @@ t_ifelse() {
 		else
 		   echo 13-1.ok
 		endif
-		if $dietcurd @=% bC
+		if $dietcurd =%? bC
 		   echo 14.ok
 		else
 		   echo 14.err
@@ -1414,7 +1415,7 @@ t_ifelse() {
 		else
 		   echo 15-1.err
 		endif
-		if $dietcurd @!% aB
+		if $dietcurd !%? aB
 		   echo 15-2.err
 		else
 		   echo 15-2.ok
@@ -1424,7 +1425,7 @@ t_ifelse() {
 		else
 		   echo 15-3.err
 		endif
-		if $dietcurd @!% bC
+		if $dietcurd !%? bC
 		   echo 15-4.err
 		else
 		   echo 15-4.ok
@@ -1787,7 +1788,7 @@ t_ifelse() {
 			else
 			   echo 1-1.ok
 			endif
-			if $dietcurd @=~ '^Yo.*'
+			if $dietcurd =~?case '^Yo.*'
 			   echo 1-2.ok
 			else
 			   echo 1-2.err
@@ -1797,7 +1798,7 @@ t_ifelse() {
 			else
 			   echo 2.ok
 			endif
-			if $dietcurd @!~ '.*Ho$'
+			if $dietcurd !~? '.*Ho$'
 			   echo 3.err
 			else
 			   echo 3.ok
@@ -1807,27 +1808,27 @@ t_ifelse() {
 			else
 			   echo 4.err
 			endif
-			if [ $dietcurd @i!~ '.+yoho$' ]
+			if [ $dietcurd !~?cas '.+yoho$' ]
 			   echo 5.ok
 			else
 			   echo 5.err
 			endif
-			if ! [ $dietcurd @i=~ '.+yoho$' ]
+			if ! [ $dietcurd =~?case '.+yoho$' ]
 			   echo 6.ok
 			else
 			   echo 6.err
 			endif
-			if ! ! [ $dietcurd @i!~ '.+yoho$' ]
+			if ! ! [ $dietcurd !~? '.+yoho$' ]
 			   echo 7.ok
 			else
 			   echo 7.err
 			endif
-			if ! [ ! [ $dietcurd @i!~ '.+yoho$' ] ]
+			if ! [ ! [ $dietcurd !~? '.+yoho$' ] ]
 			   echo 8.ok
 			else
 			   echo 8.err
 			endif
-			if [ ! [ ! [ $dietcurd @i!~ '.+yoho$' ] ] ]
+			if [ ! [ ! [ $dietcurd !~? '.+yoho$' ] ] ]
 			   echo 9.ok
 			else
 			   echo 9.err
@@ -2348,8 +2349,90 @@ t_addrcodec() {
    t_epilog
 }
 
+t_csop() {
+   t_prolog csop
+
+   if have_feat cmd-csop; then :; else
+      t_echoskip '[test unsupported]'
+      t_epilog
+      return
+   fi
+
+   ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
+	commandalias x echo '$?/$^ERRNAME :$res:'
+	echo ' #-2'
+	vput csop res find you y;x
+	vput csop res find you o;x
+	vput csop res find you u;x
+	vput csop res find you yo;x
+	vput csop res find you ou;x
+	vput csop res find you you;x
+	echo ' #-1'
+	vput csop res find you Y;x
+	vput csop res find? you Y;x
+	vput csop res find?case you O;x
+	vput csop res find? you U;x
+	vput csop res find?ca you yO;x
+	vput csop res find? you oU;x
+	vput csop res find? you YoU;x
+	echo ' #0'
+	vput csop res find 'bananarama' 'nana';x
+	vput csop res find 'bananarama' 'bana';x
+	vput csop res find 'bananarama' 'Bana';x
+	vput csop res find 'bananarama' 'rama';x
+	echo ' #1'
+	vput csop res find? 'bananarama' 'nana';x
+	vput csop res find? 'bananarama' 'bana';x
+	vput csop res find? 'bananarama' 'Bana';x
+	vput csop res find? 'bananarama' 'rama';x
+	echo ' #2'
+	vput csop res substring 'bananarama' 1;x
+	vput csop res substring 'bananarama' 3;x
+	vput csop res substring 'bananarama' 5;x
+	vput csop res substring 'bananarama' 7;x
+	vput csop res substring 'bananarama' 9;x
+	vput csop res substring 'bananarama' 10;x
+	vput csop res substring 'bananarama' 1 3;x
+	vput csop res substring 'bananarama' 3 3;x
+	vput csop res substring 'bananarama' 5 3;x
+	vput csop res substring 'bananarama' 7 3;x
+	vput csop res substring 'bananarama' 9 3;x
+	vput csop res substring 'bananarama' 10 3;x
+	echo ' #3'
+	vput csop res substring 'bananarama' -1;x
+	vput csop res substring 'bananarama' -3;x
+	vput csop res substring 'bananarama' -5;x
+	vput csop res substring 'bananarama' -7;x
+	vput csop res substring 'bananarama' -9;x
+	vput csop res substring 'bananarama' -10;x
+	vput csop res substring 'bananarama' 1 -3;x
+	vput csop res substring 'bananarama' 3 -3;x
+	vput csop res substring 'bananarama' 5 -3;x
+	vput csop res substring 'bananarama' 7 -3;x
+	vput csop res substring 'bananarama' 9 -3;x
+	vput csop res substring 'bananarama' 10 -3;x
+	echo ' #4'
+	vput csop res trim 'Cocoon  Cocoon';x
+	vput csop res trim '  Cocoon  Cocoon 	  ';x
+	vput csop res trim-front 'Cocoon  Cocoon';x
+	vput csop res trim-front '  Cocoon  Cocoon 	  ';x
+	vput csop res trim-end 'Cocoon  Cocoon';x
+	vput csop res trim-end '  Cocoon  Cocoon 	  ';x
+	__EOT
+
+   check 1 0 "${MBOX}" '1892119538 755'
+
+   t_epilog
+}
+
 t_vexpr() {
    t_prolog vexpr
+
+   if have_feat cmd-vexpr; then :; else
+      t_echoskip '[test unsupported]'
+      t_epilog
+      return
+   fi
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>>${ERR}
 	commandalias x echo '$?/$^ERRNAME $res'
@@ -2357,62 +2440,86 @@ t_vexpr() {
 	vput vexpr res = 9223372036854775807;x
 	vput vexpr res = 9223372036854775808;x
 	vput vexpr res = u9223372036854775808;x
-	vput vexpr res @= 9223372036854775808;x
+	vput vexpr res =? 9223372036854775808;x
 	vput vexpr res = -9223372036854775808;x
 	vput vexpr res = -9223372036854775809;x
-	vput vexpr res @= -9223372036854775809;x
+	vput vexpr res =?saturated -9223372036854775809;x
 	vput vexpr res = U9223372036854775809;x
 	echo ' #0.1'
 	vput vexpr res = \
 		0b0111111111111111111111111111111111111111111111111111111111111111;x
 	vput vexpr res = \
 		S0b1000000000000000000000000000000000000000000000000000000000000000;x
-	vput vexpr res @= \
+	vput vexpr res =? \
 		S0b1000000000000000000000000000000000000000000000000000000000000000;x
 	vput vexpr res = \
 		U0b1000000000000000000000000000000000000000000000000000000000000000;x
 	vput vexpr res = \
 		0b1000000000000000000000000000000000000000000000000000000000000000;x
-	vput vexpr res @= \
+	vput vexpr res =? \
 		0b1000000000000000000000000000000000000000000000000000000000000000;x
 	vput vexpr res = \
 		-0b1000000000000000000000000000000000000000000000000000000000000000;x
 	vput vexpr res = \
 		S0b1000000000000000000000000000000000000000000000000000000000000001;x
-	vput vexpr res @= \
+	vput vexpr res =? \
 		S0b1000000000000000000000000000000000000000000000000000000000000001;x
-	vput vexpr res @= \
+	vput vexpr res =? \
 		-0b1000000000000000000000000000000000000000000000000000000000000001;x
 	vput vexpr res = \
 		U0b1000000000000000000000000000000000000000000000000000000000000001;x
 	echo ' #0.2'
 	vput vexpr res = 0777777777777777777777;x
 	vput vexpr res = S01000000000000000000000;x
-	vput vexpr res @= S01000000000000000000000;x
+	vput vexpr res =? S01000000000000000000000;x
 	vput vexpr res = U01000000000000000000000;x
 	vput vexpr res = 01000000000000000000000;x
-	vput vexpr res @= 01000000000000000000000;x
+	vput vexpr res =?satur 01000000000000000000000;x
 	vput vexpr res = -01000000000000000000000;x
 	vput vexpr res = S01000000000000000000001;x
-	vput vexpr res @= S01000000000000000000001;x
-	vput vexpr res @= -01000000000000000000001;x
+	vput vexpr res =?sat S01000000000000000000001;x
+	vput vexpr res = -01000000000000000000001;x
 	vput vexpr res = U01000000000000000000001;x
 	echo ' #0.3'
 	vput vexpr res = 0x7FFFFFFFFFFFFFFF;x
 	vput vexpr res = S0x8000000000000000;x
-	vput vexpr res @= S0x8000000000000000;x
+	vput vexpr res =? S0x8000000000000000;x
 	vput vexpr res = U0x8000000000000000;x
 	vput vexpr res = 0x8000000000000000;x
-	vput vexpr res @= 0x8000000000000000;x
+	vput vexpr res =? 0x8000000000000000;x
 	vput vexpr res = -0x8000000000000000;x
 	vput vexpr res = S0x8000000000000001;x
-	vput vexpr res @= S0x8000000000000001;x
-   vput vexpr res @= -0x8000000000000001;x
+	vput vexpr res =? S0x8000000000000001;x
+	vput vexpr res = -0x8000000000000001;x
 	vput vexpr res = u0x8000000000000001;x
+	vput vexpr res = 9223372036854775809;x
+	vput vexpr res =? 9223372036854775809;x
+	vput vexpr res = u9223372036854775809;x
 	echo ' #1'
 	vput vexpr res ~ 0;x
 	vput vexpr res ~ 1;x
 	vput vexpr res ~ -1;x
+	echo ' #1.1'
+	vput vexpr res - 0;x
+	vput vexpr res - 1;x
+	vput vexpr res - -1;x
+	vput vexpr res - -0xAFFE;x
+	vput vexpr res - 0xAFFE;x
+	vput vexpr res - u0x8000000000000001;x
+	vput vexpr res - 0x8000000000000001;x
+	vput vexpr res - 0x8000000000000001;x
+	vput vexpr res - 9223372036854775809;x
+	vput vexpr res -? 9223372036854775809;x
+	echo ' #1.2'
+	vput vexpr res + 0;x
+	vput vexpr res + 1;x
+	vput vexpr res + -1;x
+	vput vexpr res + -0xAFFE;x
+	vput vexpr res + 0xAFFE;x
+	vput vexpr res + u0x8000000000000001;x
+	vput vexpr res + 0x8000000000000001;x
+	vput vexpr res + 9223372036854775809;x
+	vput vexpr res +? 9223372036854775809;x
 	echo ' #2'
 	vput vexpr res + 0 0;x
 	vput vexpr res + 0 1;x
@@ -2420,17 +2527,17 @@ t_vexpr() {
 	echo ' #3'
 	vput vexpr res + 9223372036854775807 0;x
 	vput vexpr res + 9223372036854775807 1;x
-	vput vexpr res @+ 9223372036854775807 1;x
+	vput vexpr res +? 9223372036854775807 1;x
 	vput vexpr res + 0 9223372036854775807;x
 	vput vexpr res + 1 9223372036854775807;x
-	vput vexpr res @+ 1 9223372036854775807;x
+	vput vexpr res +? 1 9223372036854775807;x
 	echo ' #4'
 	vput vexpr res + -9223372036854775808 0;x
 	vput vexpr res + -9223372036854775808 -1;x
-	vput vexpr res @+ -9223372036854775808 -1;x
+	vput vexpr res +? -9223372036854775808 -1;x
 	vput vexpr res + 0 -9223372036854775808;x
 	vput vexpr res + -1 -9223372036854775808;x
-	vput vexpr res @+ -1 -9223372036854775808;x
+	vput vexpr res +? -1 -9223372036854775808;x
 	echo ' #5'
 	vput vexpr res - 0 0;x
 	vput vexpr res - 0 1;x
@@ -2438,18 +2545,18 @@ t_vexpr() {
 	echo ' #6'
 	vput vexpr res - 9223372036854775807 0;x
 	vput vexpr res - 9223372036854775807 -1;x
-	vput vexpr res @- 9223372036854775807 -1;x
+	vput vexpr res -? 9223372036854775807 -1;x
 	vput vexpr res - 0 9223372036854775807;x
 	vput vexpr res - -1 9223372036854775807;x
 	vput vexpr res - -2 9223372036854775807;x
-	vput vexpr res @- -2 9223372036854775807;x
+	vput vexpr res -? -2 9223372036854775807;x
 	echo ' #7'
 	vput vexpr res - -9223372036854775808 +0;x
 	vput vexpr res - -9223372036854775808 +1;x
-	vput vexpr res @- -9223372036854775808 +1;x
+	vput vexpr res -? -9223372036854775808 +1;x
 	vput vexpr res - 0 -9223372036854775808;x
 	vput vexpr res - +1 -9223372036854775808;x
-	vput vexpr res @- +1 -9223372036854775808;x
+	vput vexpr res -? +1 -9223372036854775808;x
 	echo ' #8'
 	vput vexpr res + -13 -2;x
 	vput vexpr res - 0 0;x
@@ -2471,12 +2578,36 @@ t_vexpr() {
 	vput vexpr res % 0 1;x
 	vput vexpr res % 1 1;x
 	vput vexpr res % -13 -2;x
+	echo ' #12'
+	vput vexpr res pbase 10 u0x8000000000000001;x
+	vput vexpr res pbase 16 0x8000000000000001;x
+	vput vexpr res pbase 16 s0x8000000000000001;x
+	vput vexpr res pbase 16 u0x8000000000000001;x
+	vput vexpr res pbase 36 0x8000000000000001;x
+	vput vexpr res pbase 36 u0x8000000000000001;x
 	__EOT
 
-   check numeric 0 "${MBOX}" '960821755 1962'
+   check numeric 0 "${MBOX}" '163128733 2519'
 
+   # v15compat: vexpr byte ops <> csop compat: drop this!
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
 	commandalias x echo '$?/$^ERRNAME :$res:'
+	echo ' #-2'
+	vput vexpr res find you y;x
+	vput vexpr res find you o;x
+	vput vexpr res find you u;x
+	vput vexpr res find you yo;x
+	vput vexpr res find you ou;x
+	vput vexpr res find you you;x
+	echo ' #-1'
+	vput vexpr res find you Y;x
+	vput vexpr res find? you Y;x
+	vput vexpr res find? you O;x
+	vput vexpr res find? you U;x
+	vput vexpr res find? you yO;x
+	vput vexpr res find? you oU;x
+	vput vexpr res find? you YoU;x
+	echo ' #0'
 	vput vexpr res find 'bananarama' 'nana';x
 	vput vexpr res find 'bananarama' 'bana';x
 	vput vexpr res find 'bananarama' 'Bana';x
@@ -2521,11 +2652,27 @@ t_vexpr() {
 	vput vexpr res trim-end '  Cocoon  Cocoon 	  ';x
 	__EOT
 
-   check string 0 "${MBOX}" '3182004322 601'
+   check byte 0 "${MBOX}" '1892119538 755'
 
    if have_feat regex; then
       ${cat} <<- '__EOT' | ${MAILX} ${ARGS} > "${MBOX}" 2>&1
 		commandalias x echo '$?/$^ERRNAME :$res:'
+		echo ' #-2'
+		vput vexpr res regex you y;x
+		vput vexpr res regex you o;x
+		vput vexpr res regex you u;x
+		vput vexpr res regex you yo;x
+		vput vexpr res regex you ou;x
+		vput vexpr res regex you you;x
+		echo ' #-1'
+		vput vexpr res regex you Y;x
+		vput vexpr res regex? you Y;x
+		vput vexpr res regex? you O;x
+		vput vexpr res regex? you U;x
+		vput vexpr res regex? you yO;x
+		vput vexpr res regex? you oU;x
+		vput vexpr res regex? you YoU;x
+		echo ' #0'
 		vput vexpr res regex 'bananarama' 'nana';x
 		vput vexpr res regex 'bananarama' 'bana';x
 		vput vexpr res regex 'bananarama' 'Bana';x
@@ -2555,7 +2702,7 @@ t_vexpr() {
 		echo ' #5'
 		__EOT
 
-      check regex 0 "${MBOX}" '3949279959 384'
+      check regex 0 "${MBOX}" '2831099111 542'
    else
       t_echoskip 'regex:[no regex option]'
    fi
@@ -2565,6 +2712,12 @@ t_vexpr() {
 
 t_call_ret() {
    t_prolog call_ret
+
+   if have_feat cmd-vexpr; then :; else
+      t_echoskip '[test unsupported]'
+      t_epilog
+      return
+   fi
 
    ${cat} <<- '__EOT' | ${MAILX} ${ARGS} -Snomemdebug > "${MBOX}" 2>&1
 	define w1 {
@@ -2642,6 +2795,12 @@ t_call_ret() {
 
 t_xcall() {
    t_prolog xcall
+
+   if have_feat cmd-vexpr; then :; else
+      t_echoskip '[test unsupported]'
+      t_epilog
+      return
+   fi
 
    ${cat} <<- '__EOT' | \
       ${MAILX} ${ARGS} -Snomemdebug \
@@ -4476,12 +4635,12 @@ t_mime_types_load_control() {
    TRAP_EXIT_ADDONS="./.t*"
 
    ${cat} <<-_EOT > ./.tmts1
-   @ application/mathml+xml mathml
+   ? application/mathml+xml mathml
 	_EOT
    ${cat} <<-_EOT > ./.tmts2
-   @ x-conference/x-cooltalk ice
-   @ aga-aga aga
-   @ application/aga-aga aga
+   ? x-conference/x-cooltalk ice
+   ?t aga-aga aga
+   ? application/aga-aga aga
 	_EOT
 
    ${cat} <<-_EOT > ./.tmts1.mathml
@@ -5052,7 +5211,8 @@ t_digmsg() { # XXX rudimentary
 t_compose_hooks() { # {{{ TODO monster
    t_prolog compose_hooks
 
-   if have_feat uistrings; then :; else
+   if have_feat uistrings &&
+         have_feat cmd-csop && have_feat cmd-vexpr; then :; else
       t_echoskip '[test unsupported]'
       t_epilog
       return
@@ -5070,7 +5230,7 @@ t_compose_hooks() { # {{{ TODO monster
       echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
    }
    define xerr {
-      vput vexpr es substr "$1" 0 1
+      vput csop es substr "$1" 0 1
       if [ "$es" != 2 ]
          xcall bail "$2"
       end
@@ -5105,15 +5265,15 @@ t_compose_hooks() { # {{{ TODO monster
       end
 
       echo "~^header remove $xh"; read es; call xerr $es "ins_addr $xh 2-1"
-      echo "~^header remove $xh"; read es; vput vexpr es substr $es 0 3
+      echo "~^header remove $xh"; read es; vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "ins_addr $xh 2-2"
       end
-      echo "~^header list $xh"; read es; vput vexpr es substr $es 0 3
+      echo "~^header list $xh"; read es; vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "ins_addr $xh 2-3"
       end
-      echo "~^header show $xh"; read es; vput vexpr es substr $es 0 3
+      echo "~^header show $xh"; read es; vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "ins_addr $xh 2-4"
       end
@@ -5137,22 +5297,22 @@ t_compose_hooks() { # {{{ TODO monster
       echo "~^header remove-at $xh 1"; read es;\
          call xerr $es "ins_addr $xh 3-8"
       echo "~^header remove-at $xh 1"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "ins_addr $xh 3-9"
       end
       echo "~^header remove-at $xh T"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 505 ]
          xcall bail "ins_addr $xh 3-10"
       end
       echo "~^header list $xh"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "ins_addr $xh 3-11"
       end
       echo "~^header show $xh"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "ins_addr $xh 3-12"
       end
@@ -5176,22 +5336,22 @@ t_compose_hooks() { # {{{ TODO monster
       echo "~^header remove-at $xh 1"; read es;\
          call xerr $es "ins_addr $xh 4-8"
       echo "~^header remove-at $xh 1"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "ins_addr $xh 4-9"
       end
       echo "~^header remove-at $xh T"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 505 ]
          xcall bail "ins_addr $xh 4-10"
       end
       echo "~^header list $xh"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "ins_addr $xh 4-11"
       end
       echo "~^header show $xh"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "ins_addr $xh 4-12"
       end
@@ -5210,7 +5370,7 @@ t_compose_hooks() { # {{{ TODO monster
             read es; echo $es; call xerr "$es" "ins_ref $xh 1-3"
       else
          echo "~^header insert $xh <${xh}2@exam.ple>"; read es;\
-            vput vexpr es substr $es 0 3
+            vput csop es substr $es 0 3
          if [ $es != 506 ]
             xcall bail "ins_ref $xh 1-4"
          end
@@ -5228,17 +5388,17 @@ t_compose_hooks() { # {{{ TODO monster
       echo "~^header remove $xh"; read es;\
          call xerr $es "ins_ref $xh 2-1"
       echo "~^header remove $xh"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "ins_ref $xh 2-2"
       end
       echo "~^header list $xh"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "$es ins_ref $xh 2-3"
       end
       echo "~^header show $xh"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "ins_ref $xh 2-4"
       end
@@ -5267,17 +5427,17 @@ t_compose_hooks() { # {{{ TODO monster
             call xerr $es "ins_ref $xh 3-8"
       end
       echo "~^header remove-at $xh 1"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "ins_ref $xh 3-9"
       end
       echo "~^header remove-at $xh T"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 505 ]
          xcall bail "ins_ref $xh 3-10"
       end
       echo "~^header show $xh"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "ins_ref $xh 3-11"
       end
@@ -5305,17 +5465,17 @@ t_compose_hooks() { # {{{ TODO monster
       echo "~^header remove-at $xh 1"; read es;\
          call xerr $es "ins_ref $xh 4-8"
       echo "~^header remove-at $xh 1"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "ins_ref $xh 4-9"
       end
       echo "~^header remove-at $xh T"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 505 ]
          xcall bail "ins_ref $xh 4-10"
       end
       echo "~^header show $xh"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "ins_ref $xh 4-11"
       end
@@ -5348,18 +5508,18 @@ t_compose_hooks() { # {{{ TODO monster
       echo t_attach ENTER
 
       echo "~^attachment";\
-         read hl; echo $hl; vput vexpr es substr "$hl" 0 3
+         read hl; echo $hl; vput csop es substr "$hl" 0 3
       if [ "$es" != 501 ]
          xcall bail "attach 0-1"
       end
 
       echo "~^attach attribute ./.treadctl";\
-         read hl; echo $hl; vput vexpr es substr "$hl" 0 3
+         read hl; echo $hl; vput csop es substr "$hl" 0 3
       if [ "$es" != 501 ]
          xcall bail "attach 0-2"
       end
       echo "~^attachment attribute-at 1";\
-         read hl; echo $hl; vput vexpr es substr "$hl" 0 3
+         read hl; echo $hl; vput csop es substr "$hl" 0 3
       if [ "$es" != 501 ]
          xcall bail "attach 0-3"
       end
@@ -5449,17 +5609,17 @@ t_compose_hooks() { # {{{ TODO monster
       echo "~^attachment remove ./.tattach"; read es;\
          call xerr $es "attach 3-2"
       echo "~^   attachment     remove     ./.treadctl"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "attach 3-3"
       end
       echo "~^   attachment     remove     ./.tattach"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "attach 3-4"
       end
       echo "~^attachment list"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "attach 3-5"
       end
@@ -5473,12 +5633,12 @@ t_compose_hooks() { # {{{ TODO monster
          read es; echo $es;call xerr "$es" "attach 4-3"
       call read_mline_res
       echo "~^   attachment     remove     .tattach"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 506 ]
          xcall bail "attach 4-4 $es"
       end
       echo "~^attachment remove-at T"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 505 ]
          xcall bail "attach 4-5"
       end
@@ -5487,12 +5647,12 @@ t_compose_hooks() { # {{{ TODO monster
       echo "~^attachment remove ./.tattach"; read es;\
          call xerr $es "attach 4-7"
       echo "~^   attachment     remove     ./.tattach"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "attach 4-8 $es"
       end
       echo "~^attachment list"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "attach 4-9"
       end
@@ -5511,27 +5671,27 @@ t_compose_hooks() { # {{{ TODO monster
       echo "~^attachment remove-at 3"; read es;\
          call xerr $es "attach 5-5"
       echo "~^attachment remove-at 3"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "attach 5-6"
       end
       echo "~^attachment remove-at 2"; read es;\
          call xerr $es "attach 5-7"
       echo "~^attachment remove-at 2"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "attach 5-8"
       end
       echo "~^attachment remove-at 1"; read es;\
          call xerr $es "attach 5-9"
       echo "~^attachment remove-at 1"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "attach 5-10"
       end
 
       echo "~^attachment list"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "attach 5-11"
       end
@@ -5554,13 +5714,13 @@ t_compose_hooks() { # {{{ TODO monster
       echo "~^attachment remove-at 1"; read es;\
          call xerr $es "attach 6-7"
       echo "~^attachment remove-at 1"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "attach 6-8"
       end
 
       echo "~^attachment list"; read es;\
-         vput vexpr es substr $es 0 3
+         vput csop es substr $es 0 3
       if [ $es != 501 ]
          xcall bail "attach 6-9"
       end
@@ -5669,7 +5829,7 @@ __EOT__
             echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
          }
          define xerr {
-            vput vexpr es substr "$1" 0 1
+            vput csop es substr "$1" 0 1
             if [ "$es" != 2 ]
                xcall bail "$2"
             end
@@ -5711,73 +5871,73 @@ __EOT__
             read ver
             echo t_ocs
             echo "~^header list"; read hl; echo $hl;\
-               vput vexpr es substr "$hl" 0 1
+               vput csop es substr "$hl" 0 1
             if [ "$es" != 2 ]
                xcall bail "header list"
             endif
             #
             call _work 1; echo $?
             echo "~^header insert cc splicy diet <splice@exam.ple> spliced";\
-               read es; echo $es; vput vexpr es substr "$es" 0 1
+               read es; echo $es; vput csop es substr "$es" 0 1
             if [ "$es" != 2 ]
                xcall bail "be diet"
             endif
             echo "~^header insert cc <splice2@exam.ple>";\
-               read es; echo $es; vput vexpr es substr "$es" 0 1
+               read es; echo $es; vput csop es substr "$es" 0 1
             if [ "$es" != 2 ]
                xcall bail "be diet2"
             endif
             #
             call _work 2; echo $?
             echo "~^header insert bcc juicy juice <juice@exam.ple> spliced";\
-               read es; echo $es;vput vexpr es substr "$es" 0 1
+               read es; echo $es;vput csop es substr "$es" 0 1
             if [ "$es" != 2 ]
                xcall bail "be juicy"
             endif
             echo "~^header insert bcc juice2@exam.ple";\
-               read es; echo $es;vput vexpr es substr "$es" 0 1
+               read es; echo $es;vput csop es substr "$es" 0 1
             if [ "$es" != 2 ]
                xcall bail "be juicy2"
             endif
             echo "~^header insert bcc juice3 <juice3@exam.ple>";\
-               read es; echo $es;vput vexpr es substr "$es" 0 1
+               read es; echo $es;vput csop es substr "$es" 0 1
             if [ "$es" != 2 ]
                xcall bail "be juicy3"
             endif
             echo "~^header insert bcc juice4@exam.ple";\
-               read es; echo $es;vput vexpr es substr "$es" 0 1
+               read es; echo $es;vput csop es substr "$es" 0 1
             if [ "$es" != 2 ]
                xcall bail "be juicy4"
             endif
             #
             echo "~^header remove-at bcc 3";\
-               read es; echo $es;vput vexpr es substr "$es" 0 1
+               read es; echo $es;vput csop es substr "$es" 0 1
             if [ "$es" != 2 ]
                xcall bail "remove juicy5"
             endif
             echo "~^header remove-at bcc 2";\
-               read es; echo $es;vput vexpr es substr "$es" 0 1
+               read es; echo $es;vput csop es substr "$es" 0 1
             if [ "$es" != 2 ]
                xcall bail "remove juicy6"
             endif
             echo "~^header remove-at bcc 3";\
-               read es; echo $es;vput vexpr es substr "$es" 0 3
+               read es; echo $es;vput csop es substr "$es" 0 3
             if [ "$es" != 501 ]
                xcall bail "failed to remove-at"
             endif
             # Add duplicates which ought to be removed!
             echo "~^header insert bcc juice4@exam.ple";\
-               read es; echo $es;vput vexpr es substr "$es" 0 1
+               read es; echo $es;vput csop es substr "$es" 0 1
             if [ "$es" != 2 ]
                xcall bail "be juicy4-1"
             endif
             echo "~^header insert bcc juice4@exam.ple";\
-               read es; echo $es;vput vexpr es substr "$es" 0 1
+               read es; echo $es;vput csop es substr "$es" 0 1
             if [ "$es" != 2 ]
                xcall bail "be juicy4-2"
             endif
             echo "~^header insert bcc juice4@exam.ple";\
-               read es; echo $es;vput vexpr es substr "$es" 0 1
+               read es; echo $es;vput csop es substr "$es" 0 1
             if [ "$es" != 2 ]
                xcall bail "be juicy4-3"
             endif
@@ -5921,7 +6081,7 @@ this is content of forward 2, 2nd, with showname set
             echoerr "Failed: $1.  Bailing out"; echo "~x"; xit
          }
          define xerr {
-            vput vexpr es substr "$1" 0 1
+            vput csop es substr "$1" 0 1
             if [ "$es" != 2 ]
                xcall bail "$2"
             end
@@ -6005,6 +6165,12 @@ this is content of forward 2, 2nd, with showname set
 t_mass_recipients() {
    t_prolog mass_recipients
    TRAP_EXIT_ADDONS="./.t*"
+
+   if have_feat cmd-vexpr; then :; else
+      t_echoskip '[test unsupported]'
+      t_epilog
+      return
+   fi
 
    t_xmta 'Eucalyptus Sat Jul 08 21:14:57 2017'
 
@@ -6290,9 +6456,15 @@ t_pipe_handlers() {
    t_prolog pipe_handlers
    TRAP_EXIT_ADDONS="./.t*"
 
+   if have_feat cmd-vexpr; then :; else
+      t_echoskip '[test unsupported]'
+      t_epilog
+      return
+   fi
+
    # "Test for" [d6f316a] (Gavin Troy)
    printf "m ${MBOX}\n~s subject1\nEmail body\n~.\nfi ${MBOX}\np\nx\n" |
-   ${MAILX} ${ARGS} ${ADDARG_UNI} -Spipe-text/plain="@* ${cat}" > "${BODY}"
+   ${MAILX} ${ARGS} ${ADDARG_UNI} -Spipe-text/plain="?* ${cat}" > "${BODY}"
    check 1 0 "${MBOX}" '3942990636 118'
    check 2 - "${BODY}" '3951695530 170'
 
@@ -6300,7 +6472,8 @@ t_pipe_handlers() {
    printf "m %s\n~s subject2\n~@%s\nBody2\n~.\nFi %s\nmimeview\nx\n" \
          "${MBOX}" "${TOPDIR}snailmail.jpg" "${MBOX}" |
       ${MAILX} ${ARGS} ${ADDARG_UNI} \
-         -S 'pipe-image/jpeg=@=&@'\
+         -S 'pipe-text/plain=?' \
+         -S 'pipe-image/jpeg=?=&?'\
 'trap \"'"${rm}"' -f '\ '\\"${MAILX_FILENAME_TEMPORARY}\\"\" EXIT;'\
 'trap \"trap \\\"\\\" INT QUIT TERM; exit 1\" INT QUIT TERM;'\
 'echo C=$MAILX_CONTENT;'\
@@ -6323,7 +6496,8 @@ t_pipe_handlers() {
       printf 'Fi %s\nmimeview\nvput vexpr v file-stat .t.one-link\n'\
 'eval wysh set $v;echo should be $st_nlink link\nx\n' "${MBOX}" |
          ${MAILX} ${ARGS} ${ADDARG_UNI} \
-            -S 'pipe-image/jpeg=@=++@'\
+            -S 'pipe-text/plain=?' \
+            -S 'pipe-image/jpeg=?=++?'\
 'echo C=$MAILX_CONTENT;'\
 'echo C-E=$MAILX_CONTENT_EVIDENCE;'\
 'echo E-B-U=$MAILX_EXTERNAL_BODY_URL;'\
@@ -6340,7 +6514,8 @@ t_pipe_handlers() {
       printf 'Fi %s\nmimeview\nvput vexpr v file-stat .t.one-link\n'\
 'eval wysh set $v;echo should be $st_nlink link\nx\n' "${MBOX}" |
          ${MAILX} ${ARGS} ${ADDARG_UNI} \
-            -S 'pipe-image/jpeg=@++@'\
+            -S 'pipe-text/plain=?' \
+            -S 'pipe-image/jpeg=?++?'\
 "${cat}"' > $MAILX_FILENAME_TEMPORARY;'\
 'echo C=$MAILX_CONTENT;'\
 'echo C-E=$MAILX_CONTENT_EVIDENCE;'\
@@ -6357,7 +6532,8 @@ t_pipe_handlers() {
       printf 'Fi %s\np\nvput vexpr v file-stat .t.one-link\n'\
 'eval wysh set $v;echo should be $st_nlink link\nx\n' "${MBOX}" |
          ${MAILX} ${ARGS} ${ADDARG_UNI} \
-            -S 'pipe-image/jpeg=@*++@'\
+            -S 'pipe-text/plain=?' \
+            -S 'pipe-image/jpeg=?*++?'\
 "${cat}"' > $MAILX_FILENAME_TEMPORARY;'\
 'echo C=$MAILX_CONTENT;'\
 'echo C-E=$MAILX_CONTENT_EVIDENCE;'\

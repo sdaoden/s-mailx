@@ -2136,6 +2136,16 @@ VL u32 n_pstate; /* Bits of enum n_program_state */
 #ifdef mx_HAVE_ERRORS
 VL s32 n_pstate_err_cnt; /* What backs $^ERRQUEUE-xy */
 #endif
+/* TODO n_pstate_err_no: this should contain the error number in the lower
+ * TODO bits, and a suberror in the high bits: offer accessor/setter macros.
+ * TODO Like this we could use $^ERR-SUBNO or so to access these from outer
+ * TODO space, and could perform much better testing; e.g., too many failures
+ * TODO simply result in _INVAL, but what has it been exactly?
+ * TODO This will furthermore allow better testing, in that even without
+ * TODO uistrings we can test error conditions _exactly_!
+ * TODO And change the tests accordingly, even support a mode where our
+ * TODO error output is entirely suppressed, so that we _really_ can test
+ * TODO and only based upon the subnumber!! */
 VL s32 n_pstate_err_no; /* What backs $! su_ERR_* TODO ..HACK */
 VL s32 n_pstate_ex_no; /* What backs $? n_EX_* TODO ..HACK ->64-bit */
 

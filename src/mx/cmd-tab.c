@@ -51,10 +51,12 @@
 
 #include "mx/charsetalias.h"
 #include "mx/commandalias.h"
+#include "mx/csop.h"
 #include "mx/filetype.h"
 #include "mx/shortcut.h"
 #include "mx/mlist.h"
 #include "mx/names.h"
+#include "mx/vexpr.h"
 
 /* TODO fake */
 #include "su/code-in.h"

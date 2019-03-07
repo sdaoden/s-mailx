@@ -1347,7 +1347,7 @@ If the \*(OPal documentation strings are available (see
 .Va features )
 one can type
 .Ql help X
-.Pf "(or " Ql ?X )
+.Pf "(or " Ql \&?X )
 and see the actual expansion of
 .Ql X
 and what its purpose is, i.e., commands can be abbreviated
@@ -1623,13 +1623,13 @@ asynchronously and with some other magic attached:
 .
 .Bd -literal -offset indent
 ? if [ "$features" !% +filter-html-tagsoup ]
-?   #set pipe-text/html='@* elinks -force-html -dump 1'
-?   set pipe-text/html='@* lynx -stdin -dump -force_html'
+?   #set pipe-text/html='?* elinks -force-html -dump 1'
+?   set pipe-text/html='?* lynx -stdin -dump -force_html'
 ?   # Display HTML as plain text instead
-?   #set pipe-text/html=@
+?   #set pipe-text/html=?
 ? endif
-? mimetype @ application/mathml+xml mathml
-? wysh set pipe-application/pdf='@&=@ \e
+? mimetype ? application/mathml+xml mathml
+? wysh set pipe-application/pdf='?&=? \e
     trap "rm -f \e"${MAILX_FILENAME_TEMPORARY}\e"" EXIT;\e
     trap "trap \e"\e" INT QUIT TERM; exit 1" INT QUIT TERM;\e
     mupdf "${MAILX_FILENAME_TEMPORARY}"'
@@ -3416,7 +3416,7 @@ ell, which is a programming language with syntactic elements of clearly
 defined semantics, and therefore capable to sequentially expand and
 evaluate individual elements of a line.
 \*(UA will never be able to handle
-.Ql ? set one=value two=$one
+.Ql \&? set one=value two=$one
 in a single statement, because the variable assignment is performed by
 the command
 .Pf ( Ic set ) ,
@@ -3434,9 +3434,9 @@ POSIX standard prescribes a set of abbreviations).
 .Ic \&? ) ,
 when given an argument, will show a documentation string for the
 command matching the expanded argument, as in
-.Ql ?t ,
+.Ql \&?t ,
 which should be a shorthand of
-.Ql ?type ;
+.Ql \&?type ;
 with these documentation strings both commands support a more
 .Va verbose
 listing mode which includes the argument type of the command and other
@@ -3813,7 +3813,7 @@ Adding the number 64 achieves this for the codes 0 to 31, e.g., 7 (BEL):
 The real operation is a bitwise logical XOR with 64 (bit 7 set, see
 .Ic vexpr ) ,
 thus also covering code 127 (DEL), which is mapped to 63 (question mark):
-.Ql ? vexpr ^ 127 64 .
+.Ql \&?\0vexpr\0^\0127\064 .
 .Pp
 Whereas historically circumflex notation has often been used for
 visualization purposes of control codes, e.g.,
@@ -4093,10 +4093,10 @@ and manages the error number
 shown instead; commands can be abbreviated in general and this command
 can be used to see the full expansion of an abbreviation including the
 synopsis, try, e.g.,
-.Ql ?h ,
-.Ql ?hel
+.Ql \&?h ,
+.Ql \&?hel
 and
-.Ql ?help
+.Ql \&?help
 and see how the output changes.
 This mode also supports a more
 .Va verbose
@@ -4855,6 +4855,77 @@ otherwise identical to
 otherwise identical to
 .Ic save .
 .
+.
+.Mx
+.It Ic csop
+\*(NQ A multiplexer command which provides C-style string operations on
+8-bit bytes without a notion of locale settings and character sets,
+effectively assuming ASCII data.
+For numeric and other operations refer to
+.Ic vexpr .
+.Cm vput ,
+one of the
+.Sx "Command modifiers" ,
+is supported.
+The error result is
+.Ql -1
+for usage errors and numeric results, the empty string otherwise;
+missing data errors, as for unsuccessful searches, result in the
+.Va \&!
+error number being set to
+.Va ^ERR Ns -NODATA .
+Where the question mark
+.Ql \&?
+modifier suffix is supported, a case-insensitive (ASCII mapping)
+operation mode is supported; the keyword
+.Ql case
+is optional, e.g.,
+.Ql find?
+and
+.Ql find?case
+are identical.
+.
+.Bl -hang -width ".It Cm length"
+.It Cm length
+Queries the length of the given argument.
+.
+.It Cm hash , Cm hash32
+Calculates the Chris Torek hash of the given argument.
+The latter will return a 32-bit result regardless of host environment.
+.Ql \&?
+modifier suffix is supported.
+.
+.It Cm find
+Search for the second in the first argument.
+Shows the resulting 0-based offset shall it have been found.
+.Ql \&?
+modifier suffix is supported.
+.
+.It Cm substring
+Creates a substring of its first argument.
+The optional second argument is the 0-based starting offset,
+a negative one counts from the end;
+the optional third argument specifies the length of the desired result,
+a negative length leaves off the given number of bytes at the end of the
+original string; by default the entire string is used.
+This operation tries to work around faulty arguments (set
+.Va verbose
+for error logs), but reports them via the error number
+.Va \&!
+as
+.Va ^ERR Ns -OVERFLOW .
+.
+.It Cm trim
+Trim away whitespace characters from both ends of the argument.
+.
+.It Cm trim-front
+Trim away whitespace characters from the begin of the argument.
+.
+.It Cm trim-end
+Trim away whitespace characters from the end of the argument.
+.El
+.
+.
 .Mx
 .It Ic cwd
 Show the name of the current working directory, as reported by
@@ -4936,8 +5007,10 @@ Positional parameters can be
 .Ic shift Ns
 ed, or become completely replaced, removed etc. via
 .Ic vpospar .
-A helpful command to perform many sorts of number and string evaluations is
-.Ic vexpr .
+A helpful command for numeric computation and string evaluations is
+.Ic vexpr ,
+.Ic csop
+offers C-style byte string operations.
 .
 .Bd -literal -offset indent
 define name {
@@ -5351,14 +5424,14 @@ s also provide limited (case-sensitive) auto-completion capabilities.
 For example
 .Ql mbox.gz
 will be found for
-.Ql ? file mbox
+.Ql \&? file mbox
 provided that a corresponding handler is installed.
 It will neither find
 .Ql mbox.GZ
 nor
 .Ql mbox.Gz
 however, on the other hand doing an explicit
-.Ql ? file mbox.GZ
+.Ql \&? file mbox.GZ
 will find and use the handler for
 .Ql gz .
 .
@@ -5800,13 +5873,15 @@ Available operators are
 String data operators compare the left and right hand side according to
 their textual content.
 Unset variables are treated as the empty string.
-The behaviour of string operators can be adjusted by prefixing the
-operator with the modifier trigger commercial at
-.Ql @ ,
-followed by none to multiple modifiers: for now supported is
-.Ql i ,
-which turns the comparison into a case-insensitive one: this is
-implied if no modifier follows the trigger.
+Via the question mark
+.Ql \&?
+modifier suffix a case-insensitive operation mode is available, the keyword
+.Ql case
+is optional, e.g.,
+.Ql ==?
+and
+.Ql ==?case
+are identical.
 .
 .Pp
 Available string operators are
@@ -5870,7 +5945,7 @@ if $debug
   echo *debug* is set
 endif
 if [ "$ttycharset" == UTF-8 ] || \e
-    [ "$ttycharset" @i== UTF8 ]
+    [ "$ttycharset" ==?case UTF8 ]
   echo *ttycharset* is UTF-8, the former case-sensitive!
 endif
 set t1=one t2=one
@@ -5878,7 +5953,7 @@ if [ "${t1}" == "${t2}" ]
   echo These two variables are equal
 endif
 if [ "$features" =% +regex ] && \e
-    [ "$TERM" @i=~ "^xterm\&.*" ]
+    [ "$TERM" =~?case "^xterm\&.*" ]
   echo ..in an X terminal
 endif
 if [ [ true ] && [ [ "${debug}" != '' ] || \e
@@ -6136,7 +6211,7 @@ In any event MIME type sources are loaded first as necessary \(en
 can be used to fine-tune which sources are actually loaded.
 .Pp
 The latter command deletes all specifications of the given MIME type, thus
-.Ql ? unmimetype text/plain
+.Ql \&? unmimetype text/plain
 will remove all registered specifications for the MIME type
 .Ql text/plain .
 The special name
@@ -7312,25 +7387,22 @@ output, and supports
 .
 .Mx
 .It Ic vexpr
-\*(NQ Evaluate arguments according to a given operator.
-This is a multiplexer command which can be used to perform signed 64-bit
-numeric calculations as well as byte string and string operations.
-It uses polish notation, i.e., the operator is the first argument and
-defines the number and type, and the meaning of the remaining arguments.
+\*(NQ A multiplexer command which offers signed 64-bit numeric
+calculations, as well as other, mostly string-based operations.
+C-style byte string operations are available via
+.Ic csop .
+An operator is the first argument and defines the number and type,
+and the meaning of the remaining arguments.
 An empty argument is replaced with a 0 if a number is expected.
 Supports
 .Cm vput
 (see
 .Sx "Command modifiers" ) .
-.
-.Pp
 The result that is shown in case of errors is always
 .Ql -1
-for usage errors and numeric operations, and the empty string for byte
-string and string operations;
-if the latter two fail to provide result data for
+for usage errors and numeric operations, and the empty string otherwise;
 .Dq soft
-errors, e.g., when a search operation failed, they also set the
+errors, like when a search operation failed, will also set the
 .Va \&!
 error number to
 .Va ^ERR Ns -NODATA .
@@ -7373,9 +7445,9 @@ It is possible to enforce signed interpretation by (instead) prefixing a
 One integer is expected by assignment (equals sign
 .Ql = ) ,
 which does nothing but parsing the argument, thus detecting validity and
-possible overflow conditions, and unary not (tilde
+possible overflow conditions, unary not (tilde
 .Ql ~ ) ,
-which creates the bitwise complement.
+which creates the bitwise complement, and unary plus and minus.
 Two integers are used by addition (plus sign
 .Ql + ) ,
 subtraction (hyphen-minus
@@ -7411,23 +7483,29 @@ a signed 64-bit number unless unsigned interpretation of the input
 number had been forced (with an u prefix).
 .
 .Pp
-All numeric operators can be prefixed with a commercial at
-.Ql @ ,
-e.g.,
-.Ql @* :
-this will turn the operation into a saturated one, which means that
-overflow errors and division and modulo by zero are no longer reported
-via the exit status, but the result will linger at the minimum or
-maximum possible value, instead of overflowing (or trapping).
+Numeric operations support a saturated mode via the question mark
+.Ql \&?
+modifier suffix; the keyword
+.Ql saturated
+is optional, e.g.,
+.Ql +?
+and
+.Ql +?saturated
+are identical.
+In saturated mode overflow errors and division and modulo by zero are no
+longer reported via the exit status, but the result will linger at the
+minimum or maximum possible value, instead of overflowing (or trapping).
 This is true also for the argument parse step.
 For the bitwise shifts, the saturated maximum is 63.
 Any caught overflow will be reported via the error number
 .Va \&!
 as
 .Va ^ERR Ns -OVERFLOW .
+.
 .Bd -literal -offset indent
-? vexpr @- +1 -9223372036854775808
-? echo $?/$!/$^ERRNAME
+? vput vexpr res -? +1 -9223372036854775808
+? echo $?/$!/$^ERRNAME:$res
+0/75/OVERFLOW:-9223372036854775808
 .Ed
 .
 .Pp
@@ -7459,58 +7537,19 @@ according to RFC 4648, and thus be usable as a (portable) filename.
 .El
 .
 .Pp
-Byte string operations work on 8-bit bytes and have no notion of locale
-settings and character sets, effectively assuming ASCII data.
-.
-.
-.Bl -hang -width ".It Cm length"
-.It Cm length
-Queries the length of the given argument.
-.
-.It Cm hash , Cm hash32
-Calculates the Chris Torek hash of the given argument.
-The latter will return a 32-bit result regardless of host environment.
-.
-.It Cm find
-Byte-searches in the first for the second argument.
-Shows the resulting 0-based offset shall it have been found.
-.
-.It Cm ifind
-Identical to
-.Cm find ,
-but works case-insensitively according to the rules of the ASCII
-character set.
-.
-.It Cm substring
-Creates a substring of its first argument.
-The second argument is the 0-based starting offset, a negative one
-counts from the end;
-the optional third argument specifies the length of the desired result,
-a negative length leaves off the given number of bytes at the end of the
-original string, by default the entire string is used;
-this operation tries to work around faulty arguments (set
-.Va verbose
-for error logs), but reports them via the error number
-.Va \&!
-as
-.Va ^ERR Ns -OVERFLOW .
-.
-.It Cm trim
-Trim away whitespace characters from both ends of the argument.
-.
-.It Cm trim-front
-Trim away whitespace characters from the begin of the argument.
-.
-.It Cm trim-end
-Trim away whitespace characters from the end of the argument.
-.El
-.
-.
-.Pp
 String operations work, sufficient support provided, according to the
 active user's locale encoding and character set (see
 .Sx "Character sets" ) .
-.
+Where the question mark
+.Ql \&?
+modifier suffix is supported, a case-insensitive operation mode is
+available; the keyword
+.Ql case
+is optional, e.g.,
+.Ql regex?
+and
+.Ql regex?case
+are identical.
 .
 .Bl -hang -width ".It Cm regex"
 .It Cm makeprint
@@ -7520,6 +7559,8 @@ terminal.
 .It Cm regex
 \*(OP A string operation that will try to match the first argument with
 the regular expression given as the second argument.
+.Ql \&?
+modifier suffix is supported.
 If the optional third argument has been given then instead of showing
 the match offset a replacement operation is performed: the third
 argument is treated as if specified within dollar-single-quote (see
@@ -7530,16 +7571,12 @@ is replaced by the corresponding match group of the regular expression:
 .Bd -literal -offset indent
 ? vput vexpr res regex bananarama \e
     (.*)NanA(.*) '\e${1}au\e$2'
-? echo $?/$!/$^ERRNAME: $res
-.Ed
-.
-.It Cm iregex
-On otherwise identical case-insensitive equivalent to
-.Cm regex :
-.Bd -literal -offset indent
-? vput vexpr res ire bananarama \e
-    (.*)NanA(.*) '\e${1}au\e$2'
-? echo $?/$!/$^ERRNAME: $res
+? echo $?/$!/$^ERRNAME:$res:
+1/61/NODATA::
+? vput vexpr res regex?case bananarama \e
+    (.*)NanA(.*) '\e${1}uauf\e$2'
+? echo $?/$!/$^ERRNAME:$res:
+0/0/NONE:baauf:
 .Ed
 .El
 .
@@ -8556,7 +8593,7 @@ set to
 .Pf no Va page ,
 .Va prompt
 set to
-.Ql ?\0 ,
+.Ql \&?\0 ,
 .Pf no Va quiet ,
 .Pf no Va record ,
 .Va save ,
@@ -9068,7 +9105,7 @@ adjustments dependent on the value of the environment variable
 \*(RO Addresses for contact per email and web, respectively, e.g., for
 bug reports, suggestions, or help regarding \*(UA.
 The former can be used directly:
-.Ql ? Ns \| Ic eval Ns \| Ic mail Ns \| $contact-mail .
+.Ql \&? Ns \| Ic eval Ns \| Ic mail Ns \| $contact-mail .
 .
 .Mx
 .It Va crt
@@ -10444,7 +10481,7 @@ can be given via this variable, which is parsed according to
 .Sx "Shell-style argument quoting"
 into an array of arguments, and which will be joined onto MTA options
 from other sources, and then passed individually to the MTA:
-.Ql ? wysh set mta-arguments='-t -X \&"/tmp/my log\&"' .
+.Ql \&? wysh set mta-arguments='-t -X \&"/tmp/my log\&"' .
 .
 .Mx
 .It Va mta-no-default-arguments
@@ -10501,7 +10538,7 @@ file if this variable is set (to the desired shell command).
 This can be used to, e.g., store
 .Pa \*(VN
 in encrypted form:
-.Ql ? set netrc-pipe='gpg -qd ~/.netrc.pgp' .
+.Ql \&? set netrc-pipe='gpg -qd ~/.netrc.pgp' .
 .
 .Mx
 .It Va newfolders
@@ -10598,7 +10635,7 @@ may be a better approach.
 define t_ocl {
   vput ! i cat ~/.mysig
   if [ $? -eq 0 ]
-     vput vexpr message-inject-tail trim-end $i
+     vput csop message-inject-tail trim-end $i
   end
 
   # Alternatively
@@ -10606,7 +10643,7 @@ define t_ocl {
   if [ $? -eq 0 ]
     readall i
     if [ $? -eq 0 ]
-      vput vexpr message-inject-tail trim-end $i
+      vput csop vexpr message-inject-tail trim-end $i
     end
     readctl remove ~/.mysig
   end
@@ -10688,13 +10725,13 @@ wysh set on-compose-splice-shell=$'\e
 define ocsm {
   read version
   echo Splice protocol version is $version
-  echo '~^h l'; read hl; vput vexpr es substring "${hl}" 0 1
+  echo '~^h l'; read hl; vput csop es substring "${hl}" 0 1
   if [ "$es" != 2 ]
     echoerr 'Cannot read header list'; echo '~x'; xit
   endif
-  if [ "$hl" @i!% ' cc' ]
+  if [ "$hl" !%?case ' cc' ]
     echo '~^h i cc Diet is your <mirr.or>'; read es;\e
-      vput vexpr es substring "${es}" 0 1
+      vput csop es substring "${es}" 0 1
     if [ "$es" != 2 ]
       echoerr 'Cannot insert Cc: header'; echo '~x'
       # (no xit, macro finishs anyway)
@@ -10785,10 +10822,10 @@ considered by and for the command
 .Ic mimeview .
 .
 .Pp
-The special value commercial at
-.Ql @
+The special value question mark
+.Ql \&?
 forces interpretation of the message part as plain text, e.g.,
-.Ql set pipe-application/xml=@
+.Ql set pipe-application/xml=?
 will henceforth display XML
 .Dq as is .
 (The same could also be achieved by adding a MIME type marker with the
@@ -10801,15 +10838,15 @@ And \*(OPally MIME type handlers may be defined via
 has already been used, should be referred to for further documentation.
 .
 .Pp
-The commercial at
-.Ql @
+The question mark
+.Ql \&?
 can in fact be used as a trigger character to adjust usage and behaviour
 of a following shell command specification more thoroughly by appending
 more special characters which refer to further mailcap directives, e.g.,
 the following hypothetical command specification could be used:
 .
 .Bd -literal -offset indent
-? set pipe-X/Y='@!++=@vim ${MAILX_FILENAME_TEMPORARY}'
+? set pipe-X/Y='?!++=? vim ${MAILX_FILENAME_TEMPORARY}'
 .Ed
 .
 .Pp
@@ -10851,9 +10888,9 @@ deletion of the temporary file you still have to use two plus signs
 .Ql ++
 explicitly!
 .
-.It Ql @
-To avoid ambiguities with normal shell command content you can use
-another commercial at to forcefully terminate interpretation of
+.It Ql \&?
+To avoid ambiguities with normal shell command content another
+question mark can be used to forcefully terminate interpretation of
 remaining characters.
 (Any character not in this list will have the same effect.)
 .El
@@ -13320,7 +13357,7 @@ files have the following syntax:
 .
 .Bd -literal -offset indent
 type/subtype extension [extension ...]
-# E.g., text/html html htm
+# E.g.: text/html html htm
 .Ed
 .
 .Pp
@@ -13352,21 +13389,21 @@ The following type markers are supported:
 .
 .Pp
 .Bl -tag -compact -width ".It Ar _n_u"
-.It Ar @
+.It Ar \&?
 Treat message parts with this content as plain text.
-.It Ar @t
+.It Ar ?t
 The same as plain
-.Ar @ .
-.It Ar @h
+.Ar \&? .
+.It Ar ?h
 Treat message parts with this content as HTML tagsoup.
 If the \*(OPal HTML-tagsoup-to-text converter is not available treat
 the content as plain text instead.
-.It Ar @H
+.It Ar ?H
 Likewise
-.Ar @h ,
+.Ar ?h ,
 but instead of falling back to plain text require an explicit content
 handler to be defined.
-.It Ar @q
+.It Ar ?q
 If no handler can be found a text message is displayed which says so.
 This can be annoying, for example signatures serve a contextual purpose,
 their content is of no use by itself.
@@ -14060,13 +14097,13 @@ account XandeX {
 commandalias lls '!ls ${LS_COLOUR_FLAG} -aFlrS'
 commandalias llS '!ls ${LS_COLOUR_FLAG} -aFlS'
 
-set pipe-message/external-body='@* echo $MAILX_EXTERNAL_BODY_URL'
+set pipe-message/external-body='?* echo $MAILX_EXTERNAL_BODY_URL'
 
 # We do not support gpg(1) directly yet.  But simple --clearsign'd
 # message parts can be dealt with as follows:
 define V {
   localopts yes
-  wysh set pipe-text/plain=$'@*#++=@\e
+  wysh set pipe-text/plain=$'?*#++=?\e
     < "${MAILX_FILENAME_TEMPORARY}" awk \e
         -v TMPFILE="${MAILX_FILENAME_TEMPORARY}" \e'\e
       BEGIN{done=0}\e
@@ -14828,7 +14865,7 @@ Please report bugs to the
 .Va contact-mail
 address, e.g., from within \*(uA:
 .\" v15-compat: drop eval as `mail' will expand variable?
-.Ql ? Ns \| Ic eval Ns \| Ic mail Ns \| $contact-mail .
+.Ql \&? Ns \| Ic eval Ns \| Ic mail Ns \| $contact-mail .
 Including the
 .Va verbose
 output of the command
