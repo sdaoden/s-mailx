@@ -31,7 +31,7 @@
 # - no*onehop* does not exist in this implementation.
 #   (To pass options through to the MTA, either add them after a "--"
 #   separator on the command line or set the *mta-arguments* variable.)
-# (Keep in SYNC: ./nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings"!)
+# (Keep in SYNC: mx/nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings"!)
 
 # Adjustments of standard imposed default- as well as other settings follow.
 # - Some of the latter are not portable and may thus have no effect with

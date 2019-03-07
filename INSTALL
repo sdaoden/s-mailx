@@ -15,6 +15,8 @@ System specific notes can be found in the next section.
 All (optional) features are documented (and adjustable) in make.rc.
 Adjustments may also take place, and are usually done, from the command
 line, overriding those made in make.rc (if any).
+The set of builtin MIME types could be adjusted in ./mime.types.
+Experts could find it valuable to adjust C code in ./mx-config.h.
 
 Without any adjustments all non-experimental features will be enabled,
 except some which provide redundant functionality (e.g., OPT_SPAM_SPAMC
@@ -23,7 +25,6 @@ None of the features are "require"d by default, so that configuration
 will not fail shall any of them not be available or usable.
 The generated configuration is tracked: changes will be recognized
 and cause automatic cleanups and rebuilds as necessary.
-Experts could find it valuable to adjust some settings in config.h.
 
   $ make tangerine  # equals "$ make config build test install"
   $ make citron     # equals "$ make config build install"
@@ -88,7 +89,7 @@ The following make(1) targets exist, the default being `build':
 - clean       Remove anything which can be rebuild.
 - distclean   Remove anything which can be rebuild or reconfigured.
 
-- test        Run cc-test.sh in --check-only mode on the built binary.
+- test        Run mx-test.sh in --check-only mode on the built binary.
 
 Setting the make(1) variable $VERBOSE to an arbitrary value during
 `config' time, as in "$ make VERBOSE=xy tangerine", will change the
@@ -188,19 +189,19 @@ If you have used OPT_AUTOCC (the default) and a non-debug target, you
 could try to reconfigure with an additional cc_maxopt=1 on the command
 line and report whether that turns the green testing light on.
 
-Otherwise you could run the cc-test.sh script in --mae-test mode and
+Otherwise you could run the mx-test.sh script in --run-test mode and
 invoke the failing tests (testing echoes the actual test names in
 brackets): this will produce output files of the form t.TESTXY in the
 .obj directory.  Please send these files to the mailing-list, possibly
 stored altogether in a compressed tar(1) file (the mailing-list has
 a message size restriction).  For example:
 
-  $ ./cc-test.sh --mae-test ./s-nail localopts mbox
+  $ ./mx-test.sh --run-test ./s-nail localopts mbox
   $ tar -czf badtests.tar.gz .obj/t.*
 
 Thank you!
 (These output files will also be created by "make test" a.k.a. the
---check-only mode of cc-test.sh if run in a S-nail repository.)
+--check-only mode of mx-test.sh if run in a S-nail repository.)
 
 1.4 How can i enable debugging?
 -------------------------------

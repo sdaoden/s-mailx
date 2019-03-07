@@ -193,7 +193,7 @@ non-interactive scripting capabilities.
 .
 .Bl -tag -width ".It Fl BaNg"
 .Mx
-.It Fl \&: Ar spec
+.It Fl \&: Ar spec , Fl Fl resource-files Ns =..
 Explicitly control which of the
 .Sx "Resource files"
 shall be
@@ -226,14 +226,14 @@ This option overrides
 .Fl n .
 .
 .Mx
-.It Fl A Ar account
+.It Fl A Ar name , Fl Fl account Ns =..
 Executes an
 .Ic account
-command for the given user email
-.Ar account
+command for the given user email account
+.Ar name
 after program startup is complete (all resource files are loaded, any
 .Fl S
-setting is being established; only
+setting is being established, but
 .Fl X
 commands have not been evaluated yet).
 Being a special incarnation of
@@ -253,7 +253,8 @@ or
 are set.
 .
 .Mx
-.It Fl a Ar file Ns Op Ar =input-charset Ns Op Ar #output-charset
+.It Fl a Ar file Ns Oo Ar =input-charset Ns Oo Ar #output-charset Oc Oc , \
+  Fl Fl attach Ns =..
 Attach
 .Ar file
 to the message (for compose mode opportunities refer to
@@ -306,7 +307,7 @@ line-buffered input even in batch mode enable batch mode via
 .Fl # . )
 .
 .Mx
-.It Fl b Ar addr
+.It Fl b Ar addr , Fl Fl bcc Ns =..
 Send a blind carbon copy to
 .Ar addr Ns
 ess, if the
@@ -324,7 +325,7 @@ Also see the section
 .Sx "On sending mail, and non-interactive mode" .
 .
 .Mx
-.It Fl C Ar """field: body"""
+.It Fl C Ar """field: body""" , Fl Fl custom-header Ns =..
 Create a custom header which persists for an entire session.
 A custom header consists of the field name followed by a colon
 .Ql \&:
@@ -343,19 +344,19 @@ are the most flexible and powerful options to manage message headers.
 This option may be used multiple times.
 .
 .Mx
-.It Fl c Ar addr
+.It Fl c Ar addr , Fl Fl cc Ns =..
 Just like
 .Fl b ,
 except it places the argument in the list of carbon copies.
 .
 .Mx
-.It Fl D
+.It Fl D , Fl Fl disconnected
 (\*(OP) Startup with
 .Va disconnected
 .Ic set .
 .
 .Mx
-.It Fl d
+.It Fl d , Fl Fl debug
 Almost enable a sandbox mode with the internal variable
 .Va debug ;
 the same can be achieved via
@@ -364,13 +365,13 @@ or
 .Ql Ic set Va \&\&debug .
 .
 .Mx
-.It Fl E
+.It Fl E , Fl Fl discard-empty-messages
 .Ic set
 .Va skipemptybody
 and thus discard messages with an empty message part body.
 .
 .Mx
-.It Fl e
+.It Fl e , Fl Fl check-and-exit
 Just check if mail is present (in the system
 .Va inbox
 or the one specified via
@@ -387,7 +388,7 @@ first recipient's address (instead of in
 .Va record Ns ).
 .
 .Mx
-.It Fl f
+.It Fl f , Fl Fl file
 Read in the contents of the user's
 .Mx -sx
 .Sx "secondary mailbox"
@@ -415,7 +416,7 @@ that starts with a hyphen-minus, prefix with a relative path, as in
 .Ql ./-hyphenbox.mbox .
 .
 .Mx
-.It Fl H
+.It Fl H , Fl Fl header-summary
 Display a summary of
 .Ic headers
 for the given
@@ -433,8 +434,10 @@ This mode does not honour
 .Va showlast .
 .
 .Mx
-.It Fl h
-Show a short usage summary.
+.It Fl h , Fl Fl help
+Show a brief usage summary; use
+.Fl Fl long-help
+for a list long options.
 .
 .Mx
 .It Fl i
@@ -443,7 +446,7 @@ Show a short usage summary.
 to ignore tty interrupt signals.
 .
 .Mx
-.It Fl L Ar spec
+.It Fl L Ar spec , Fl Fl header-search Ns =..
 Display a summary of
 .Ic headers
 of all messages that match the given
@@ -500,7 +503,7 @@ Also see
 .Fl q , M , t .
 .
 .Mx
-.It Fl N
+.It Fl N , Fl Fl no-header-summary
 inhibit the initial display of message headers when reading mail or
 editing a mailbox
 .Ic folder
@@ -520,7 +523,7 @@ allows more control over the startup sequence; also see
 .Sx "Resource files" .
 .
 .Mx
-.It Fl q Ar file
+.It Fl q Ar file , Fl Fl quote-file Ns =..
 Special send mode that will initialize the message body with the
 contents of the specified
 .Ar file ,
@@ -531,7 +534,7 @@ Also see
 .Fl M , m , t .
 .
 .Mx
-.It Fl R
+.It Fl R , Fl Fl read-only
 Any mailbox
 .Ic folder
 a.k.a.\&
@@ -540,7 +543,7 @@ opened will be in read-only mode.
 .
 .
 .Mx
-.It Fl r Ar from-addr
+.It Fl r Ar from-addr , Fl Fl from-address Ns =..
 Whereas the source address that appears in the
 .Va from
 header of a message (or in the
@@ -600,7 +603,7 @@ Passing an invalid address will cause an error.
 .
 .
 .Mx
-.It Fl S Ar var Ns Op = Ns value
+.It Fl S Ar var Ns Oo = Ns value Oc , Fl Fl set Ns =..
 .Ic set
 (or, with a prefix string
 .Ql no ,
@@ -632,13 +635,13 @@ They will become mutable again before commands registered via
 are executed.
 .
 .Mx
-.It Fl s Ar subject
+.It Fl s Ar subject , Fl Fl subject Ns =..
 Specify the subject of the message to be sent.
 Newline (NL) and carriage-return (CR) bytes are invalid and will be
 normalized to space (SP) characters.
 .
 .Mx
-.It Fl t
+.It Fl t , Fl Fl template
 The message given (on standard input) is expected to contain, separated
 from the message body by an empty line, one or multiple message headers.
 Headers can span multiple consecutive lines if follow lines start with
@@ -694,7 +697,7 @@ Also see
 .Fl M , m , q .
 .
 .Mx
-.It Fl u Ar user
+.It Fl u Ar user , Fl Fl inbox-of Ns =..
 Initially read the
 .Mx -sx
 .Sx "primary system mailbox"
@@ -704,7 +707,7 @@ appropriate privileges presumed; effectively identical to
 .Ql Fl \&\&f Ns \0%user .
 .
 .Mx
-.It Fl V
+.It Fl V , Fl Fl version
 Show \*(UAs
 .Va version
 and exit.
@@ -715,7 +718,7 @@ will also show the list of
 .Ql $ \*(uA -Xversion -Xx .
 .
 .Mx
-.It Fl v
+.It Fl v , Fl Fl verbose
 .Ic set Ns
 ting the internal variable
 .Va verbose
@@ -723,7 +726,7 @@ enables display of some informational context messages.
 Using it twice increases the level of verbosity.
 .
 .Mx
-.It Fl X Ar cmd
+.It Fl X Ar cmd , Fl Fl early-cmd Ns =..
 Add the given (or multiple for a multiline argument)
 .Ar cmd
 to a list of commands to be executed before normal operation starts.
@@ -735,7 +738,7 @@ and
 .Va errexit .
 .
 .Mx
-.It Fl Y Ar cmd
+.It Fl Y Ar cmd , Fl Fl cmd Ns =..
 Add the given (or multiple for a multiline argument)
 .Ar cmd
 to a list of commands to be executed after normal operation has started.
@@ -746,7 +749,7 @@ In conjunction with
 they will be evaluated after the template mail has been fully read.
 .
 .Mx
-.It Fl ~
+.It Fl ~ , Fl Fl enable-cmd-escapes
 Enable
 .Sx "COMMAND ESCAPES"
 in compose mode even in non-interactive use cases.
@@ -759,7 +762,7 @@ $ ( echo 'line    one. Word.     Word2.';\e
 .Ed
 .
 .Mx
-.It Fl #
+.It Fl # , Fl Fl batch-mode
 Enables batch mode: standard input is made line buffered, the complete
 set of (interactive) commands is available, processing of
 .Sx "COMMAND ESCAPES"
@@ -793,7 +796,7 @@ $ LC_ALL=C printf 'm bob\en~s ubject\enText\en~.\enx\en' |\e
 .Ed
 .
 .Mx
-.It Fl \&.
+.It Fl \&. , Fl Fl end-options
 This flag forces termination of option processing in order to prevent
 .Dq option injection
 (attacks).
@@ -2183,7 +2186,7 @@ may be applied),
 and the rest of this section does not apply;
 it may however still be necessary to explicitly set it if automatic
 detection fails, since in that case it defaults to
-.\" (Keep in SYNC: ./nail.1:"Character sets", ./config.h:CHARSET_*!)
+.\" (Keep in SYNC: ./nail.1:"Character sets", mx/config.h:CHARSET_*!)
 LATIN1 a.k.a. ISO-8859-1 unless the operating system environment is
 known to always and exclusively support UTF-8 locales.
 .
@@ -7430,8 +7433,9 @@ settings and character sets, effectively assuming ASCII data.
 .It Cm length
 Queries the length of the given argument.
 .
-.It Cm hash
+.It Cm hash , Cm hash32
 Calculates the Chris Torek hash of the given argument.
+The latter will return a 32-bit result regardless of host environment.
 .
 .It Cm find
 Byte-searches in the first for the second argument.
@@ -8491,7 +8495,7 @@ users should not create custom names like
 in order to avoid false classifications and treatment of such variables.
 .
 .\" .Ss "Initial settings" {{{
-.\" (Keep in SYNC: ./nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings")
+.\" (Keep in SYNC: mx/nail.h:okeys, ./nail.rc, ./nail.1:"Initial settings")
 .Ss "Initial settings"
 .
 The standard POSIX 2008/Cor 2-2016 mandates the following initial
@@ -10023,6 +10027,9 @@ call mboxfix /tmp/bad.mbox /tmp/good.mbox
 .Mx
 .It Va memdebug
 \*(BO Internal development variable.
+(Keeps memory debug enabled even if
+.Va debug
+is not set.)
 .
 .Mx
 .It Va message-id-disable
@@ -12139,7 +12146,7 @@ clear the screen and home cursor.
 plus
 .Cd cd . )
 .
-.\" HAVE_COLOUR
+.\" mx_HAVE_COLOUR
 .It Cd colors Ns \0or Cd Co
 .Cd max_colors :
 numeric capability specifying the maximum number of colours.
@@ -12173,7 +12180,7 @@ and
 .Cd clr_eos :
 clear the screen.
 .
-.\" HAVE_MLE
+.\" mx_HAVE_MLE
 .It Cd el Ns \0or Cd ce
 .Cd clr_eol :
 clear to the end of line.
@@ -12193,7 +12200,7 @@ move the cursor (to the given column parameter) in the current row.
 plus
 .Cd nd . )
 .
-.\" HAVE_TERMCAP
+.\" mx_HAVE_TERMCAP
 .It Cd rmcup Ns \0or Cd te Ns \0/ Cd smcup Ns \0or Cd ti
 .Cd exit_ca_mode
 and

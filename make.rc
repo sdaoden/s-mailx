@@ -143,7 +143,7 @@ VAL_WIDTH=80
 
 # The following tools may be provided a.k.a. overwritten,
 # `command -v NAME` is used to query the utility otherwise:
-#  MAKE=, STRIP=, awk=, basename=, cat=, chmod=, cp=, cmp=, cksum=,
+#  MAKE=, STRIP=, awk=, basename=, cat=, chmod=, cp=, cmp=, cksum=, getconf=
 #     grep=, mkdir=, mv=, pwd=, rm=, sed=, sort=, tee=, tr=, uname=
 # Usually in administrator paths:
 #  chown= [$OPT_DOTLOCK]

@@ -23,7 +23,7 @@
 # Syntax restrictions:
 # - Comments must be lines of their own.
 # - Only MIME types for which we have a type constant allocated in
-#   mime-types.c:enum mime_type are allowed in this file here.
+#   mx/mime-types.c:enum mime_type are allowed in this file here.
 # - MIME types without any file extensions are not handled.
 # - Note that the order of types and extensions is preserved ...
 # - Note that at least one built-in type is required (empty C array)

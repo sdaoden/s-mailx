@@ -168,7 +168,7 @@ ChangeLog
   is shared, yet only in compose mode `digmsg' can change messages
   or access attachments until v15, however.  For example,
 
-  ?0[steffen@essex nail.git]$ cat > /tmp/z.rc <<'_EOT'
+  #?0[steffen@essex nail.git]$ cat > /tmp/z.rc <<'_EOT'
   define one {
      if [ "${#}" -gt 0 ]
         digmsg create $1 - # no `read'/`readall' overlay but stdout
@@ -184,7 +184,7 @@ ChangeLog
      vput = all *; echo all: $all; eval call one $all
   }
 _EOT
-  ?0[steffen@essex nail.git]$ MAILRC=/tmp/z.rc \
+  #?0[steffen@essex nail.git]$ MAILRC=/tmp/z.rc \
     .obj/s-nail -:u -Snoheader -Squiet -Rf /tmp/z
   ? call all
   all: 1 2 3
