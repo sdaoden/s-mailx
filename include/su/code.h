@@ -423,21 +423,6 @@ do{\
 # define su_CC_UZ_TYPE __SIZE_TYPE__
 #endif
 
-/* Suppress some technical warnings via #pragma's unless developing.
- * XXX Wild guesses: clang(1) 1.7 and (OpenBSD) gcc(1) 4.2.1 do not work */
-#ifndef su_HAVE_DEVEL
-# if su_CC_VCHECK_GCC(4, 7) || su_CC_PCC || su_CC_TINYC
-/*#  pragma GCC diagnostic ignored "-Wformat"*/
-#  pragma GCC diagnostic ignored "-Wunused-result" /* su_UNUSED() */
-#  ifdef NDEBUG
-#   pragma GCC diagnostic ignored "-Wmaybe-uninitialized" /* su_UNINIT() */
-#  endif
-# elif su_CC_VCHECK_CLANG(3, 4)
-/*#  pragma clang diagnostic ignored "-Wformat"*/
-#  pragma clang diagnostic ignored "-Wunused-result"
-# endif
-#endif
-
 /* Function name */
 #if defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901L
 # define su_FUN __func__   /*!< "Not a literal". */
