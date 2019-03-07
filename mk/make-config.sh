@@ -536,6 +536,7 @@ _cc_flags_generic() {
          cc_check -Wno-unused-function
       fi
       cc_check -Wno-unused-result
+      cc_check -Wno-unused-value
    fi
 
    cc_check -fno-unwind-tables
