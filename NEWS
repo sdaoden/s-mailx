@@ -73,7 +73,7 @@ NOTES, ChangeLog (packager-affine)
   (to reflect the new "deep tree" directory layout).
 
 - Option OPT_QUOTE_FOLD has been renamed to OPT_FILTER_QUOTE_FOLD
-  (to reflect later code changes upwards compatible).
+  (to reflect later code changes upwards compatibly).
 
 - New options OPT_CMD_VEXPR and OPT_CMD_CSOP, by default enabled.
   To include the commands `vexpr'#299 and the new `csop'#162,
@@ -94,7 +94,7 @@ NOTES, ChangeLog (packager-affine)
     `vexpr'#299) use a slightly changed hash algorithm.
     (Which results in an improved distribution for tested sets of
     words in power-of-two spaced dictionary.)
-    These are affected by the change in the next item, too.
+    These are affected by the change in the second next item, too.
 
   o Changed to use shell quoting rules for arguments:
 
@@ -110,7 +110,7 @@ NOTES, ChangeLog (packager-affine)
 
   o Changed (with legacy compat) the "@[i]" modifier prefix to
     a question-mark ?[case|..] suffix, as is known from URLs.
-    We head toward direction URL syntax, now here too.
+    We head towards direction URL syntax, now here too.
 
     + `if'#211 and `elif'#182.
       E.g., 'wysh if "abc" ==?case "ABC"' is true, as well as is
@@ -145,7 +145,7 @@ NOTES, ChangeLog (packager-affine)
       function instead.
 
       P.S.: Thanks to Rich Felker the `regex' subcommands now
-      works as desired even with empty intermediatesubmatches.
+      works as desired even with empty intermediate submatches.
 
   o Changed address parse mode for command line arguments plus.
     This modifies decade old tradition, but results in a more
@@ -247,8 +247,8 @@ ChangeLog
 - We follow symbolic links again when writing files.
   (Russell Bell)
 
-- *tls-rand-file*#576 is in fact now necessarily an optional
-  *tls-feature*#?.  (Mike Sharov)
+- *tls-rand-file*#576 is in fact now necessarily one of the
+  optional *tls-features*#573.  (Mike Sharov)
 
 - New command line option -T#80 aka --target='FIELD: BODY'.
   FIELD can be To:, Cc:, Bcc: or Fcc:.
