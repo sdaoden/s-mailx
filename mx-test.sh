@@ -1,10 +1,12 @@
 #!/bin/sh -
 #@ Synopsis: ./mx-test.sh --check-only [s-mailx-binary]
-#@           ./mx-test.sh --run-test s-mailx-binary [:TESTNAME:]
+#@           [OBJDIR=XY] ./mx-test.sh --run-test s-mailx-binary [:TESTNAME:]
 #@           [./mx-test.sh # Note: performs hundreds of compilations!]
 #@ The latter generates output files.
 #@ TODO _All_ the tests should happen in a temporary subdir.
 # Public Domain
+
+: ${OBJDIR:=.obj}
 
 # Instead of figuring out the environment in here, require a configured build
 # system and include that!  Our makefile and configure ensure that this test
@@ -13,16 +15,16 @@ i=
 while true; do
    if [ -f ./mk-config.ev ]; then
       break
-   elif [ -f snailmail.jpg ] && [ -f .obj/mk-config.ev ]; then
-      cd .obj
-      i=../
+   elif [ -f snailmail.jpg ] && [ -f "${OBJDIR}"/mk-config.ev ]; then
+      i=`pwd`/ # not from environment, sic
+      cd "${OBJDIR}"
       break
    else
       echo >&2 'S-nail/S-mailx is not configured.'
       echo >&2 'This test script requires the shell environment that only the'
       echo >&2 'configuration script can figure out, even if it will be used to'
       echo >&2 'test a different binary than the one that would be produced!'
-      echo >&2 '(The necessary information will be in .obj/mk-config.ev.)'
+      echo >&2 '(The information will be in ${OBJDIR:=.obj}/mk-config.ev.)'
       echo >&2 'Hit RETURN to run "make config CONFIG=null'
       read l
       make config CONFIG=null

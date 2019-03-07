@@ -194,61 +194,62 @@ install:
 	__mkdir() {\
 		_dir="$(DESTDIR)$${1}";\
 		if [ -d "$${_dir}" ]; then :; else \
-			$(mkdir) -m 0755 -p "$${_dir}";\
+			$(ECHO_BLOCK_CMD)$(mkdir) -m 0755 -p "$${_dir}";\
 		fi;\
 	};\
 	__copyfile() {\
 		_mode=$${1} _src=$${2} _xdst=$${3} _dst="$(DESTDIR)$${3}";\
 		echo "rm -f \"\$${DESTDIR}$${_xdst}\"" >> \
-			"$(VAL_UAGENT)-uninstall.sh";\
-		$(cp) -f "$${_src}" "$${_dst}";\
-		$(chmod) $${_mode} "$${_dst}";\
-		\
+			"$(OBJDIR)/$(VAL_UAGENT)-uninstall.sh";\
+		$(ECHO_BLOCK_CMD)$(cp) -f "$${_src}" "$${_dst}";\
+		$(ECHO_BLOCK_CMD)$(chmod) $${_mode} "$${_dst}";\
 	};\
 	__copychownfile() {\
 		_mode=$${1} _ident=$${2} _src=$${3} \
 			_xdst=$${4} _dst="$(DESTDIR)$${4}";\
 		echo "rm -f \"\$${DESTDIR}$${_xdst}\"" >> \
-			"$(VAL_UAGENT)-uninstall.sh";\
-		$(cp) -f "$${_src}" "$${_dst}";\
-		$(chown) $${_ident} "$${_dst}" || true;\
-		$(chmod) $${_mode} "$${_dst}";\
+			"$(OBJDIR)/$(VAL_UAGENT)-uninstall.sh";\
+		$(ECHO_BLOCK_CMD)$(cp) -f "$${_src}" "$${_dst}";\
+		$(ECHO_BLOCK_CMD)$(chown) $${_ident} "$${_dst}" || true;\
+		$(ECHO_BLOCK_CMD)$(chmod) $${_mode} "$${_dst}";\
 		\
 	};\
 	__stripfile() {\
 		_file=$${1};\
 		if [ "$(OPT_DEBUG)" != 0 ]; then :;\
 		elif [ -n "$(HAVE_STRIP)" ]; then \
-			$(strip) "$${_file}";\
+			$(ECHO_BLOCK_CMD)$(strip) "$${_file}";\
 		fi;\
 	};\
 	\
 	cd "$(CWDDIR)" || exit 11;\
-	echo '#!/bin/sh -' > "$(VAL_UAGENT)-uninstall.sh";\
+	echo '#!/bin/sh -' > "$(OBJDIR)/$(VAL_UAGENT)-uninstall.sh";\
 	echo '#@ Uninstall script for $(VAL_UAGENT)' >> \
-		"$(VAL_UAGENT)-uninstall.sh";\
-	echo >> "$(VAL_UAGENT)-uninstall.sh";\
-	echo 'DESTDIR="$(DESTDIR)"' >> "$(VAL_UAGENT)-uninstall.sh";\
-	echo 'DESTDIR=' >> "$(VAL_UAGENT)-uninstall.sh";\
-	echo >> "$(VAL_UAGENT)-uninstall.sh";\
+		"$(OBJDIR)/$(VAL_UAGENT)-uninstall.sh";\
+	echo >> "$(OBJDIR)/$(VAL_UAGENT)-uninstall.sh";\
+	echo 'DESTDIR="$(DESTDIR)"' >> "$(OBJDIR)/$(VAL_UAGENT)-uninstall.sh";\
+	echo 'DESTDIR=' >> "$(OBJDIR)/$(VAL_UAGENT)-uninstall.sh";\
+	echo >> "$(OBJDIR)/$(VAL_UAGENT)-uninstall.sh";\
 	\
 	if [ -n "$(DESTDIR)" ]; then __mkdir ''; fi;\
 	__mkdir "$(VAL_BINDIR)";\
 	__mkdir "$(VAL_MANDIR)/man1";\
 	__mkdir "$(VAL_SYSCONFDIR)";\
 	\
-	__stripfile .obj/"$(VAL_UAGENT)";\
-	__copyfile 0555 .obj/"$(VAL_UAGENT)" "$(VAL_BINDIR)/$(VAL_UAGENT)";\
-	__copyfile 0444 .obj/uman.1 "$(VAL_MANDIR)/man1/$(VAL_UAGENT).1";\
+	__stripfile "$(OBJDIR)"/"$(VAL_UAGENT)";\
+	__copyfile 0555 "$(OBJDIR)"/"$(VAL_UAGENT)" \
+		"$(VAL_BINDIR)/$(VAL_UAGENT)";\
+	__copyfile 0444 "$(OBJDIR)"/uman.1 \
+		"$(VAL_MANDIR)/man1/$(VAL_UAGENT).1";\
 	if [ -f "$(DESTDIR)$(VAL_SYSCONFDIR)/$(VAL_SYSCONFRC)" ]; then :;else \
-		__copyfile 0444 .obj/urc.rc \
+		__copyfile 0444 "$(OBJDIR)"/urc.rc \
 			"$(VAL_SYSCONFDIR)/$(VAL_SYSCONFRC)";\
 	fi;\
 	\
 	if [ -n "$(OPTIONAL_PRIVSEP)" ]; then \
 		__mkdir "$(VAL_LIBEXECDIR)";\
 		\
-		__stripfile .obj/"$(VAL_PRIVSEP)";\
+		__stripfile "$(OBJDIR)"/"$(VAL_PRIVSEP)";\
 		m='o=rx' o=;\
 		if [ -n "$(_____PRIVSEP_GROUP)" ]; then \
 			m="g=rxs,$${m}" o=":$(VAL_PRIVSEP_GROUP)";\
@@ -260,16 +261,16 @@ install:
 		else \
 			m="u=rx,$${m}";\
 		fi;\
-		__copychownfile "$${m}" "$${o}" .obj/"$(VAL_PRIVSEP)" \
+		__copychownfile "$${m}" "$${o}" "$(OBJDIR)"/"$(VAL_PRIVSEP)" \
 			"$(VAL_LIBEXECDIR)/$(VAL_PRIVSEP)";\
 	fi;\
 	\
 	if [ -z "$(DESTDIR)" ]; then \
-		__copyfile 0555 "$(VAL_UAGENT)-uninstall.sh" \
+		__copyfile 0555 "$(OBJDIR)/$(VAL_UAGENT)-uninstall.sh" \
 			"$(VAL_BINDIR)/$(VAL_UAGENT)-uninstall.sh";\
 	else \
 	echo "rm -f \"\$${DESTDIR}$(VAL_BINDIR)/$(VAL_UAGENT)-uninstall.sh\"" \
-			>> "$(VAL_UAGENT)-uninstall.sh";\
+			>> "$(OBJDIR)/$(VAL_UAGENT)-uninstall.sh";\
 	fi;\
 	$(ECHO_BLOCK_END)
 
@@ -286,14 +287,11 @@ clean:
 
 distclean: clean
 	$(ECHO_CMD)\
-	cd .. && $(rm) -rf .obj;\
+	${rm} -f mk-*;\
+	cd .. && $(rm) -r "$(OBJDIR)";\
 	if [ -f "$(CWDDIR)include/mx/config.h" ]; then \
 		$(rm) -f "$(CWDDIR)include/mx/config.h" \
 			"$(CWDDIR)include/mx/gen-config.h";\
-	fi;\
-	\
-	if [ -f "$(CWDDIR)$(VAL_UAGENT)-uninstall.sh" ]; then \
-		$(rm) -f "$(CWDDIR)$(VAL_UAGENT)-uninstall.sh";\
 	fi
 
 # MUST work with "TOPDIR= grep=grep sed=sed cmp=cmp mv=mv",

@@ -139,6 +139,7 @@ ${cp} "${topdir}"mx-config.h ./
 ${awk} -v topdir="${topdir}" -v blddir="${blddir}" '
    /^CWDDIR=.*$/{ print "CWDDIR=" blddir; next}
    /^TOPDIR=.*$/{ print "TOPDIR=" topdir; next}
+   /^OBJDIR=.*$/{ print "OBJDIR=" blddir ".obj"; next}
    {print}
    ' < "${topdir}"makefile > ./makefile
 ${cp} "${topdir}"make.rc ./

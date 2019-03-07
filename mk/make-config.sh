@@ -237,19 +237,21 @@ option_update() {
    fi
 }
 
-rc=./make.rc
-lst=.obj/mk-config.lst
-ev=.obj/mk-config.ev
-h=.obj/mk-config.h h_name=mk-config.h
-mk=.obj/mk-config.mk
+: ${OBJDIR:=.obj}
 
-newlst=.obj/mk-nconfig.lst
-newmk=.obj/mk-nconfig.mk
-oldmk=.obj/mk-oconfig.mk
-newev=.obj/mk-nconfig.ev
-newh=.obj/mk-nconfig.h
-oldh=.obj/mk-oconfig.h
-tmp0=.obj/___tmp
+rc=./make.rc
+lst="${OBJDIR}"/mk-config.lst
+ev="${OBJDIR}"/mk-config.ev
+h="${OBJDIR}"/mk-config.h h_name=mk-config.h
+mk="${OBJDIR}"/mk-config.mk
+
+newlst="${OBJDIR}"/mk-nconfig.lst
+newmk="${OBJDIR}"/mk-nconfig.mk
+oldmk="${OBJDIR}"/mk-oconfig.mk
+newev="${OBJDIR}"/mk-nconfig.ev
+newh="${OBJDIR}"/mk-nconfig.h
+oldh="${OBJDIR}"/mk-oconfig.h
+tmp0="${OBJDIR}"/___tmp
 tmp=${tmp0}1$$
 tmp2=${tmp0}2$$
 
@@ -665,64 +667,8 @@ config_exit() {
 }
 
 # which(1) not standardized, command(1) -v may return non-executable: unroll!
-acmd_test() { __acmd "${1}" 1 0 0; }
-acmd_test_fail() { __acmd "${1}" 1 1 0; }
-acmd_set() { __acmd "${2}" 0 0 0 "${1}"; }
-acmd_set_fail() { __acmd "${2}" 0 1 0 "${1}"; }
-acmd_testandset() { __acmd "${2}" 1 0 0 "${1}"; }
-acmd_testandset_fail() { __acmd "${2}" 1 1 0 "${1}"; }
-thecmd_set() { __acmd "${2}" 0 0 1 "${1}"; }
-thecmd_set_fail() { __acmd "${2}" 0 1 1 "${1}"; }
-thecmd_testandset() { __acmd "${2}" 1 0 1 "${1}"; }
-thecmd_testandset_fail() { __acmd "${2}" 1 1 1 "${1}"; }
-__acmd() {
-   pname=${1} dotest=${2} dofail=${3} verbok=${4} varname=${5}
-
-   if [ "${dotest}" -ne 0 ]; then
-      eval dotest=\$${varname}
-      if [ -n "${dotest}" ]; then
-         [ -n "${VERBOSE}" ] && [ ${verbok} -ne 0 ] &&
-            msg ' . ${%s} ... %s' "${pname}" "${dotest}"
-         return 0
-      fi
-   fi
-
-   oifs=${IFS} IFS=:
-   [ -n "${noglob_shell}" ] && set -o noglob
-   set -- ${PATH}
-   [ -n "${noglob_shell}" ] && set +o noglob
-   IFS=${oifs}
-   for path
-   do
-      if [ -z "${path}" ] || [ "${path}" = . ]; then
-         if [ -d "${PWD}" ]; then
-            path=${PWD}
-         else
-            path=.
-         fi
-      fi
-      if [ -f "${path}/${pname}" ] && [ -x "${path}/${pname}" ]; then
-         [ -n "${VERBOSE}" ] && [ ${verbok} -ne 0 ] &&
-            msg ' . ${%s} ... %s' "${pname}" "${path}/${pname}"
-         [ -n "${varname}" ] && eval ${varname}="${path}/${pname}"
-         return 0
-      fi
-   done
-
-   # We may have no builtin string functions, we yet have no programs we can
-   # use, try to access once from the root, assuming it is an absolute path if
-   # that finds the executable
-   if ( cd && [ -f "${pname}" ] && [ -x "${pname}" ] ); then
-     [ -n "${VERBOSE}" ] && [ ${verbok} -ne 0 ] &&
-            msg ' . ${%s} ... %s' "${pname}" "${pname}"
-      [ -n "${varname}" ] && eval ${varname}="${pname}"
-      return 0
-   fi
-
-   [ ${dofail} -eq 0 ] && return 1
-   msg 'ERROR: no trace of utility '"${pname}"
-   exit 1
-}
+#
+SU_FIND_COMMAND_INCLUSION=1 . "${TOPDIR}"mk/su-find-command.sh
 
 msg() {
    fmt=${1}
@@ -912,10 +858,11 @@ option_join_rc() {
          }'`
       fi
       [ "${i}" = "DESTDIR" ] && continue
+      [ "${i}" = "OBJDIR" ] && continue
       echo "${i}=\"${j}\""
    done > ${tmp}
    # Reread the mixed version right now
-   . ./${tmp}
+   . ${tmp}
 }
 
 option_evaluate() {
@@ -1023,6 +970,11 @@ oneslash() {
    '
 }
 
+path_is_absolute() {
+   { echo "${*}" | ${grep} ^/; } >/dev/null 2>&1
+   return $?
+}
+
 path_check() {
    # "path_check VARNAME" or "path_check VARNAME FLAG VARNAME"
    varname=${1} addflag=${2} flagvarname=${3}
@@ -1123,7 +1075,7 @@ _check_preface() {
       { echo '#include <'"${h_name}"'>'; cat; } > ${tmp}.c
    fi
    #echo '@P'
-   #${make} -f ${makefile} ${tmp}.x
+   #MAKEFLAGS= ${make} -f ${makefile} ${tmp}.x
    #${cat} ${tmp}.x
    echo '@R'
 }
@@ -1159,7 +1111,7 @@ compile_check() {
 
    _check_preface "${variable}" "${topic}" "${define}"
 
-   if ${make} -f ${makefile} XINCS="${INCS}" \
+   if MAKEFLAGS= ${make} -f ${makefile} XINCS="${INCS}" \
             CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" ${tmp}.o &&
             [ -f ${tmp}.o ]; then
       msg 'yes'
@@ -1185,7 +1137,7 @@ _link_mayrun() {
       fi
    fi
 
-   if ${make} -f ${makefile} XINCS="${INCS} ${incs}" \
+   if MAKEFLAGS= ${make} -f ${makefile} XINCS="${INCS} ${incs}" \
             CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" \
             XLIBS="${LIBS} ${libs}" ${tmp} &&
          [ -f ${tmp} ] && { [ ${run} -eq 0 ] || ${tmp}; }; then
@@ -1227,8 +1179,8 @@ squeeze_em() {
 
 # First of all, create new configuration and check whether it changed
 
-if [ -d .obj ] || mkdir .obj; then :; else
-   msg 'ERROR: cannot create .obj build directory'
+if [ -d "${OBJDIR}" ] || mkdir -p "${OBJDIR}"; then :; else
+   msg 'ERROR: cannot create '"${OBJDIR}"' build directory'
    exit 1
 fi
 
@@ -1347,8 +1299,9 @@ if [ -z "${VERBOSE}" ]; then
    printf -- "ECHO_GEN = @echo '  'GEN \$(@);\n" >> ${newmk}
    printf -- "ECHO_TEST = @\n" >> ${newmk}
    printf -- "ECHO_CMD = @echo '  CMD';\n" >> ${newmk}
-   printf -- "ECHO_BLOCK_BEGIN = @( \n" >> ${newmk}
-   printf -- "ECHO_BLOCK_END = ) >/dev/null\n" >> ${newmk}
+   printf -- "ECHO_BLOCK_BEGIN = @(exec 4>&1 1>/dev/null;\n" >> ${newmk}
+   printf -- "ECHO_BLOCK_END = )\n" >> ${newmk}
+   printf -- "ECHO_BLOCK_CMD = echo '  CMD' >&4;\n" >> ${newmk}
 fi
 printf 'test: all\n\t$(ECHO_TEST)%s %smx-test.sh --check-only %s\n' \
    "${SHELL}" "${TOPDIR}" "./${VAL_SID}${VAL_MAILX}" >> ${newmk}
@@ -1363,7 +1316,7 @@ else
 fi
 
 for i in \
-   CWDDIR TOPDIR INCDIR SRCDIR \
+   CWDDIR TOPDIR OBJDIR INCDIR SRCDIR \
       awk basename cat chmod chown cp cmp grep getconf \
          mkdir mv rm sed sort tee tr \
       MAKE MAKEFLAGS make SHELL strip \
@@ -1379,7 +1332,13 @@ printf "\n" >> ${newev}
 
 # Build a basic set of INCS and LIBS according to user environment.
 C_INCLUDE_PATH="${INCDIR}:${SRCDIR}:${C_INCLUDE_PATH}"
-C_INCLUDE_PATH="${CWDDIR}include:${CWDDIR}.obj:${C_INCLUDE_PATH}"
+if path_is_absolute "${OBJDIR}"; then
+   C_INCLUDE_PATH="${OBJDIR}:${C_INCLUDE_PATH}"
+else
+   C_INCLUDE_PATH="${CWDDIR}${OBJDIR}:${C_INCLUDE_PATH}"
+fi
+C_INCLUDE_PATH="${CWDDIR}include:${C_INCLUDE_PATH}"
+
 path_check C_INCLUDE_PATH -I _INCS
 INCS="${INCS} ${_INCS}"
 path_check LD_LIBRARY_PATH -L _LIBS
@@ -1477,9 +1436,9 @@ ${mv} -f ${newmk} ${mk}
 ## Compile and link checking
 
 tmp3=${tmp0}3$$
-log=.obj/mk-config.log
-lib=.obj/mk-config.lib
-inc=.obj/mk-config.inc
+log="${OBJDIR}"/mk-config.log
+lib="${OBJDIR}"/mk-config.lib
+inc="${OBJDIR}"/mk-config.inc
 makefile=${tmp0}.mk
 
 # (No function since some shells loose non-exported variables in traps)
@@ -3408,7 +3367,7 @@ fi
 
 if [ -n "${config_updated}" ]; then
    msg 'Wiping away old objects and such..'
-   ( cd .obj; oldmk=`${basename} ${oldmk}`; ${MAKE} -f ${oldmk} clean )
+   ( cd "${OBJDIR}"; oldmk=`${basename} ${oldmk}`; ${MAKE} -f ${oldmk} clean )
 fi
 
 # Ensure user edits in mx-config.h are incorporated, and that our generated

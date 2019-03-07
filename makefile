@@ -5,20 +5,23 @@
 .PHONY: ohno tangerine citron \
 	all config build install uninstall clean distclean test \
 	devel odevel
+.NOTPARALLEL:
+.WAIT: # Luckily BSD make supports specifying this as target, too
 
 # These are targets of make-emerge.sh
 CWDDIR=
 TOPDIR=
+OBJDIR=.obj
 
 ohno: build
-tangerine: config build test install
-citron: config build install
-all: config build
+tangerine: config .WAIT build .WAIT test .WAIT install
+citron: config .WAIT build .WAIT install
+all: config .WAIT build
 
 config:
 	@$(_prego)
 build:
-	@$(_prestop); LC_ALL=C $${MAKE} -f mk-config.mk $(MAKEJOBS) all
+	@$(_prestop); LC_ALL=C $${MAKE} -f mk-config.mk all
 install packager-install: build
 	@$(_prestop);\
 	LC_ALL=C $${MAKE} -f mk-config.mk DESTDIR="$(DESTDIR)" install
@@ -33,22 +36,22 @@ distclean:
 devel:
 	@CONFIG=DEVEL; export CONFIG; $(_prego); $(_prestop);\
 	LC_ALL=C $${MAKE} -f mk-config.mk _update-version &&\
-	LC_ALL=C $${MAKE} -f mk-config.mk $(MAKEJOBS) all
+	LC_ALL=C $${MAKE} -f mk-config.mk all
 odevel:
 	@CONFIG=ODEVEL; export CONFIG; $(_prego); $(_prestop);\
 	LC_ALL=C $${MAKE} -f mk-config.mk _update-version &&\
-	LC_ALL=C $${MAKE} -f mk-config.mk $(MAKEJOBS) all
+	LC_ALL=C $${MAKE} -f mk-config.mk all
 d-b:
 	@$(_prestop);\
 	LC_ALL=C $${MAKE} -f mk-config.mk _update-version &&\
-	LC_ALL=C $${MAKE} -f mk-config.mk $(MAKEJOBS) all
+	LC_ALL=C $${MAKE} -f mk-config.mk all
 d-v:
 	@$(_prestop);\
 	LC_ALL=C $${MAKE} -f mk-config.mk _update-version
 
 # The test should inherit the user runtime environment!
 test:
-	@$(__prestop); cd .obj && LC_ALL=C $(MAKE) -f mk-config.mk test
+	@$(__prestop); cd "$(OBJDIR)" && LC_ALL=C $(MAKE) -f mk-config.mk test
 
 d-okeys:
 	perl mk/make-okey-map.pl
@@ -86,11 +89,11 @@ _prego = if CWDDIR="$(CWDDIR)" TOPDIR="$(TOPDIR)" \
 		CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" \
 		$(SHELL) "$(TOPDIR)"mk/make-config.sh "$(MAKEFLAGS)"; then :;\
 	else exit 1; fi
-__prestop = if [ -f .obj/mk-config.mk ]; then :; else \
+__prestop = if [ -f "$(OBJDIR)"/mk-config.mk ]; then :; else \
 		echo 'Program not configured, nothing to do';\
 		echo 'Use one of the targets: config, all, tangerine, citron';\
 		exit 0;\
 	fi
-_prestop = $(__prestop); cd .obj && . ./mk-config.ev
+_prestop = $(__prestop); cd "$(OBJDIR)" && . ./mk-config.ev
 
 # s-mk-mode
