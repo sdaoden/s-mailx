@@ -46,6 +46,18 @@ thecmd_testandset_fail() { fc__acmd "${2}" 1 1 1 "${1}"; }
 
 fc__pathsrch() { # pname=$1 exec=$2 varname=$3 verbok=$4
    fcps__pname=$1 fcps__exec=$2 fcps__varname=$3 fcps__verbok=$4
+
+   # It may be an absolute path, check that first
+   if [ "${fcps__exec}" != "${fcps__exec#/}" ] &&
+         [ -f "${fcps__exec}" ] && [ -x "${fcps__exec}" ]; then
+      [ -n "${VERBOSE}" ] && [ ${fcps__verbok} -ne 0 ] &&
+         msg ' . ${%s} ... %s' \
+            "${fcps__pname}" "${fcps__exec}"
+      [ -n "${fcps__varname}" ] &&
+         eval "${fcps__varname}"="${fcps__exec}"
+      return 0
+   fi
+
    # Manual search over $PATH
    fcps__oifs=${IFS} IFS=:
    [ -n "${noglob_shell}" ] && set -o noglob
@@ -88,15 +100,6 @@ fc__acmd() {
          msg 'WARN: ignoring non-executable ${%s}=%s' \
             "${fca__pname}" "${fca__dotest}"
       fi
-   fi
-
-   # It may be an absolute path, check that first
-   if [ "${fca__pname}" != "${fca__pname#/}" ] &&
-         [ -f "${fca__pname}" ] && [ -x "${fca__pname}" ]; then
-      [ -n "${VERBOSE}" ] && [ ${fca__verbok} -ne 0 ] &&
-            msg ' . ${%s} ... %s' "${fca__pname}" "${fca__pname}"
-      [ -n "${fca__varname}" ] && eval "${fca__varname}"="${fca__pname}"
-      return 0
    fi
 
    if fc__pathsrch "${fca__pname}" "${fca__pname}" "${fca__varname}" \
