@@ -235,7 +235,7 @@ jerr:
       self->a_T_F(count) = 0;
    }
 
-   ASSERT_NYD_RET(t != NIL, rv = su_ERR_FAULT);
+   ASSERT_NYD_EXEC(t != NIL, rv = su_ERR_FAULT);
 
    if(flags){
       self->a_T_F(flags) = t->a_T_F(flags);
@@ -653,7 +653,7 @@ a_T_PUBSYM(create)(struct a_T *self, u16 flags,
 
    su_mem_set(self, 0, sizeof *self);
 
-   ASSERT_NYD_RET_VOID(!(flags & a_T_PUBNAME(OWNS)) ||
+   ASSERT_NYD(!(flags & a_T_PUBNAME(OWNS)) ||
       (tbox_or_nil != NIL && tbox_or_nil->tb_clone != NIL &&
        tbox_or_nil->tb_delete != NIL && tbox_or_nil->tb_assign != NIL));
 
@@ -793,7 +793,7 @@ a_T_PUBSYM(remove)(struct a_T *self, a_TK const *key){
    struct a_N *np;
    NYD_IN;
    ASSERT(self);
-   ASSERT_NYD_RET(key != NIL, np = NIL);
+   ASSERT_NYD_EXEC(key != NIL, np = NIL);
 
    np = a_T_PRISYM(lookup)(self, key, &la);
    if(LIKELY(np != NIL))
@@ -849,7 +849,7 @@ a_V_PUBSYM(set_data)(struct a_V *self, void *value){
    struct a_T *parent;
    NYD_IN;
    ASSERT(self);
-   ASSERT_NYD_RET(a_V_PUBSYM(is_valid)(self), rv = su_ERR_INVAL);
+   ASSERT_NYD_EXEC(a_V_PUBSYM(is_valid)(self), rv = su_ERR_INVAL);
 
    parent = self->a_V_F(parent);
 
@@ -895,7 +895,7 @@ a_V_PUBSYM(remove)(struct a_V *self){
    struct a_T *parent;
    NYD_IN;
    ASSERT(self);
-   ASSERT_NYD_RET_VOID(a_V_PUBSYM(is_valid)(self));
+   ASSERT_NYD(a_V_PUBSYM(is_valid)(self));
 
    parent = self->a_V_F(parent);
 

@@ -51,8 +51,8 @@ su_avopt_setup(struct su_avopt *self, u32 argc, char const * const *argv,
 
    su_mem_set(self, 0, sizeof *self);
 
-   ASSERT_NYD_RET(argc == 0 || argv != NIL, self->avo_flags = a_AVOPT_DONE);
-   ASSERT_NYD_RET(opts_short_or_nil != NIL || opts_long_or_nil != NIL,
+   ASSERT_NYD_EXEC(argc == 0 || argv != NIL, self->avo_flags = a_AVOPT_DONE);
+   ASSERT_NYD_EXEC(opts_short_or_nil != NIL || opts_long_or_nil != NIL,
       self->avo_flags = a_AVOPT_DONE);
 
    self->avo_flags = (argc == 0 ? a_AVOPT_DONE : a_AVOPT_NONE) |
@@ -354,7 +354,7 @@ su_avopt_dump_doc(struct su_avopt const *self,
    boole rv;
    NYD_IN;
    ASSERT(self);
-   ASSERT_NYD_RET(ptf != NIL, rv = TRU1);
+   ASSERT_NYD_EXEC(ptf != NIL, rv = TRU1);
 
    rv = TRU1;
 

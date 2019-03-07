@@ -643,7 +643,7 @@ su_mem_set_conf(u32 mco, uz val){
    NYD_IN;
 
    rmco = S(uz,mco);
-   ASSERT_NYD_RET_VOID(rmco <= su__MEM_CONF_MAX);
+   ASSERT_NYD(rmco <= su__MEM_CONF_MAX);
 
    if((rmco & su_MEM_CONF_LINGER_FREE_RELEASE) ||
          (!val && (rmco & su_MEM_CONF_LINGER_FREE))){

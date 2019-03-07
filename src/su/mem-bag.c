@@ -384,8 +384,8 @@ struct su_mem_bag *
 su_mem_bag_push(struct su_mem_bag *self, struct su_mem_bag *that_one){
    NYD_IN;
    ASSERT(self);
-   ASSERT_NYD_RET_VOID(that_one != NIL);
-   ASSERT_NYD_RET_VOID(that_one->mb_outer_save == NIL /* max once yet! */);
+   ASSERT_NYD(that_one != NIL);
+   ASSERT_NYD(that_one->mb_outer_save == NIL /* max once yet! */);
 
    that_one->mb_outer_save = that_one->mb_outer;
    that_one->mb_outer = self->mb_top;
@@ -398,7 +398,7 @@ struct su_mem_bag *
 su_mem_bag_pop(struct su_mem_bag *self, struct su_mem_bag *that_one){
    NYD_IN;
    ASSERT(self);
-   ASSERT_NYD_RET_VOID(that_one != NIL);
+   ASSERT_NYD(that_one != NIL);
 
    for(;;){
       struct su_mem_bag *mbp;
@@ -448,7 +448,7 @@ su_mem_bag_auto_relax_gut(struct su_mem_bag *self){
 
    if((oself = self)->mb_top != NIL)
       self = oself->mb_top;
-   ASSERT_NYD_RET(self->mb_auto_relax_recur > 0, self = oself);
+   ASSERT_NYD_EXEC(self->mb_auto_relax_recur > 0, self = oself);
 
    if(--self->mb_auto_relax_recur == 0){
       struct su__mem_bag_auto_buf *mbabp;
@@ -479,7 +479,7 @@ su_mem_bag_auto_relax_unroll(struct su_mem_bag *self){
 
    if((oself = self)->mb_top != NIL)
       self = oself->mb_top;
-   ASSERT_NYD_RET(self->mb_auto_relax_recur > 0, self = oself);
+   ASSERT_NYD_EXEC(self->mb_auto_relax_recur > 0, self = oself);
 
    if(self->mb_auto_relax_recur == 1){
       struct su__mem_bag_auto_buf **pp, *mbabp, *p;

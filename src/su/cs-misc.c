@@ -53,7 +53,7 @@ su_cs_hash_cbuf(char const *buf, uz len){
    char c;
    uz h;
    NYD_IN;
-   ASSERT_NYD_RET(len == 0 || buf != NIL, h = 0);
+   ASSERT_NYD_EXEC(len == 0 || buf != NIL, h = 0);
 
    a_CSMISC_HASH(c);
    NYD_OU;
@@ -65,7 +65,7 @@ su_cs_hash_case_cbuf(char const *buf, uz len){
    char c;
    uz h;
    NYD_IN;
-   ASSERT_NYD_RET(len == 0 || buf != NIL, h = 0);
+   ASSERT_NYD_EXEC(len == 0 || buf != NIL, h = 0);
 
    a_CSMISC_HASH(su_cs_to_lower(c));
    NYD_OU;

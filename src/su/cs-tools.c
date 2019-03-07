@@ -30,8 +30,8 @@ sz
 su_cs_cmp(char const *cp1, char const *cp2){
    sz rv;
    NYD_IN;
-   ASSERT_NYD_RET(cp1 != NIL, rv = (cp2 == NIL) ? 0 : -1);
-   ASSERT_NYD_RET(cp2 != NIL, rv = 1);
+   ASSERT_NYD_EXEC(cp1 != NIL, rv = (cp2 == NIL) ? 0 : -1);
+   ASSERT_NYD_EXEC(cp2 != NIL, rv = 1);
 
    for(;;){
       u8 c1, c2;
@@ -49,8 +49,8 @@ sz
 su_cs_cmp_n(char const *cp1, char const *cp2, uz n){
    sz rv;
    NYD_IN;
-   ASSERT_NYD_RET(cp1 != NIL, rv = (cp2 == NIL) ? 0 : -1);
-   ASSERT_NYD_RET(cp2 != NIL, rv = 1);
+   ASSERT_NYD_EXEC(cp1 != NIL, rv = (cp2 == NIL) ? 0 : -1);
+   ASSERT_NYD_EXEC(cp2 != NIL, rv = 1);
 
    for(rv = 0; n != 0; --n){
       u8 c1, c2;
@@ -67,8 +67,8 @@ su_cs_cmp_n(char const *cp1, char const *cp2, uz n){
 char *
 su_cs_copy_n(char *dst, char const *src, uz n){
    NYD_IN;
-   ASSERT_NYD_RET_VOID(n == 0 || dst != NIL);
-   ASSERT_NYD_RET(src != NIL, *dst = '\0');
+   ASSERT_NYD(n == 0 || dst != NIL);
+   ASSERT_NYD_EXEC(src != NIL, *dst = '\0');
 
    if(LIKELY(n > 0)){
       char *cp;
@@ -89,7 +89,7 @@ uz
 su_cs_len(char const *cp){
    char const *cp_base;
    NYD_IN;
-   ASSERT_NYD_RET(cp != NIL, cp_base = cp);
+   ASSERT_NYD_EXEC(cp != NIL, cp_base = cp);
 
    for(cp_base = cp; *cp != '\0'; ++cp)
       ;
@@ -100,8 +100,8 @@ su_cs_len(char const *cp){
 char *
 su_cs_pcopy(char *dst, char const *src){
    NYD_IN;
-   ASSERT_NYD_RET_VOID(dst != NIL);
-   ASSERT_NYD_RET(src != NIL, *dst = '\0');
+   ASSERT_NYD(dst != NIL);
+   ASSERT_NYD_EXEC(src != NIL, *dst = '\0');
 
    while((*dst = *src++) != '\0')
       ++dst;
@@ -112,8 +112,8 @@ su_cs_pcopy(char *dst, char const *src){
 char *
 su_cs_pcopy_n(char *dst, char const *src, uz n){
    NYD_IN;
-   ASSERT_NYD_RET_VOID(n == 0 || dst != NIL);
-   ASSERT_NYD_RET(src != NIL, *dst = '\0');
+   ASSERT_NYD(n == 0 || dst != NIL);
+   ASSERT_NYD_EXEC(src != NIL, *dst = '\0');
 
    if(LIKELY(n > 0)){
       do{
@@ -133,7 +133,7 @@ char *
 su_cs_rfind_c(char const *cp, char x){
    char const *match, *tail;
    NYD_IN;
-   ASSERT_NYD_RET(cp != NIL, match = NIL);
+   ASSERT_NYD_EXEC(cp != NIL, match = NIL);
 
    for(match = NIL, tail = cp;; ++tail){
       char c;
@@ -151,7 +151,7 @@ char *
 su_cs_sep_c(char **iolist, char sep, boole ignore_empty){
    char *base, c, *cp;
    NYD_IN;
-   ASSERT_NYD_RET(iolist != NIL, base = NIL);
+   ASSERT_NYD_EXEC(iolist != NIL, base = NIL);
 
    for(base = *iolist; base != NIL; base = *iolist){
       /* Skip WS */
@@ -182,7 +182,7 @@ su_cs_sep_escable_c(char **iolist, char sep, boole ignore_empty){
    char *cp, c, *base;
    boole isesc, anyesc;
    NYD_IN;
-   ASSERT_NYD_RET(iolist != NIL, base = NIL);
+   ASSERT_NYD_EXEC(iolist != NIL, base = NIL);
 
    for(base = *iolist; base != NIL; base = *iolist){
       /* Skip WS */

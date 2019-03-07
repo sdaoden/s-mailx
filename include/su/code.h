@@ -592,7 +592,7 @@ do if(!(X)){\
 }while(0)
 
 # define su_ASSERT_NYD_EXEC(X,Y) \
-   su_ASSERT_NYD_RET_LOC(X, Y, __FILE__, __LINE__)
+   su_ASSERT_NYD_EXEC_LOC(X, Y, __FILE__, __LINE__)
 # define su_ASSERT_NYD_EXEC_LOC(X,Y,FNAME,LNNO) \
 do if(!(X)){\
    su_assert(su_STRING(X), FNAME, LNNO, su_FUN, su_FAL0);\
@@ -606,12 +606,6 @@ do if(!(X)){\
    goto su_NYD_OU_LABEL;\
 }while(0)
 #endif /* defined NDEBUG || defined DOXYGEN */
-
-/* FIXME legacy, remove! */
-#define su_ASSERT_NYD_RET su_ASSERT_NYD_EXEC
-#define su_ASSERT_NYD_RET_LOC su_ASSERT_NYD_EXEC_LOC
-#define su_ASSERT_NYD_RET_VOID su_ASSERT_NYD
-#define su_ASSERT_NYD_RET_VOID_LOC su_ASSERT_NYD_LOC
 
 /*! Create a bit mask for the bit range LO..HI -- HI cannot use highest bit! */
 #define su_BITENUM_MASK(LO,HI) (((1u << ((HI) + 1)) - 1) & ~((1u << (LO)) - 1))

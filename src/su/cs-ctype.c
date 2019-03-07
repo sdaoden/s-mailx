@@ -32,8 +32,8 @@ sz
 su_cs_cmp_case(char const *cp1, char const *cp2){
    sz rv;
    NYD_IN;
-   ASSERT_NYD_RET(cp1 != NIL, rv = (cp2 == NIL) ? 0 : -1);
-   ASSERT_NYD_RET(cp2 != NIL, rv = 1);
+   ASSERT_NYD_EXEC(cp1 != NIL, rv = (cp2 == NIL) ? 0 : -1);
+   ASSERT_NYD_EXEC(cp2 != NIL, rv = 1);
 
    for(;;){
       u8 c1, c2;
@@ -51,8 +51,8 @@ sz
 su_cs_cmp_case_n(char const *cp1, char const *cp2, uz n){
    sz rv;
    NYD_IN;
-   ASSERT_NYD_RET(cp1 != NIL, rv = (cp2 == NIL) ? 0 : -1);
-   ASSERT_NYD_RET(cp2 != NIL, rv = 1);
+   ASSERT_NYD_EXEC(cp1 != NIL, rv = (cp2 == NIL) ? 0 : -1);
+   ASSERT_NYD_EXEC(cp2 != NIL, rv = 1);
 
    for(rv = 0; n != 0; --n){
       u8 c1, c2;

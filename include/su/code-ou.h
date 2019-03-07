@@ -101,11 +101,6 @@
 #undef ASSERT_NYD_EXEC_LOC
 #undef ASSERT_NYD
 #undef ASSERT_NYD_LOC
-/* FIXME legacy, remove! */
-#undef ASSERT_NYD_RET
-#undef ASSERT_NYD_RET_LOC
-#undef ASSERT_NYD_RET_VOID
-#undef ASSERT_NYD_RET_VOID_LOC
 
 #undef DBG
 #undef NDGB
