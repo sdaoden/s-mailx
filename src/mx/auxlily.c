@@ -41,12 +41,6 @@
 # include "mx/nail.h"
 #endif
 
-#include <su/cs.h>
-#include <su/icodec.h>
-#if mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
-# include <su/prime.h>
-#endif
-
 #include <sys/utsname.h>
 
 #ifdef mx_HAVE_SOCKETS
@@ -64,8 +58,14 @@
 # include <locale.h>
 #endif
 
-#if mx_HAVE_RANDOM == n_RANDOM_IMPL_GETRANDOM
-# include n_RANDOM_GETRANDOM_H
+#if mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
+# define a_AUX_RAND_USE_BUILTIN
+# if mx_HAVE_RANDOM == n_RANDOM_IMPL_GETRANDOM
+#  include n_RANDOM_GETRANDOM_H
+# endif
+# ifdef mx_HAVE_SCHED_YIELD
+#  include <sched.h>
+# endif
 #endif
 
 #ifdef mx_HAVE_IDNA
@@ -81,7 +81,14 @@
 # include "mx/iconv.h"
 #endif
 
-#if mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
+#include <su/cs.h>
+#include <su/icodec.h>
+
+#ifdef a_AUX_RAND_USE_BUILTIN
+# include <su/prime.h>
+#endif
+
+#ifdef a_AUX_RAND_USE_BUILTIN
 union rand_state{
    struct rand_arc4{
       ui8_t _dat[256];
@@ -101,7 +108,7 @@ struct a_aux_err_node{
 };
 #endif
 
-#if mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
+#ifdef a_AUX_RAND_USE_BUILTIN
 static union rand_state *a_aux_rand;
 #endif
 
@@ -113,22 +120,16 @@ static size_t a_aux_err_linelen;
 
 /* Our ARC4 random generator with its completely unacademical pseudo
  * initialization (shall /dev/urandom fail) */
-#if mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
+#ifdef a_AUX_RAND_USE_BUILTIN
 static void a_aux_rand_init(void);
 su_SINLINE ui8_t a_aux_rand_get8(void);
 static ui32_t a_aux_rand_weak(ui32_t seed);
 #endif
 
-#if mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
+#ifdef a_AUX_RAND_USE_BUILTIN
 static void
 a_aux_rand_init(void){
-# ifdef mx_HAVE_CLOCK_GETTIME
-   struct timespec ts;
-# else
-   struct timeval ts;
-# endif
    union {int fd; size_t i;} u;
-   ui32_t seed, rnd;
    n_NYD2_IN;
 
    a_aux_rand = n_alloc(sizeof *a_aux_rand);
@@ -151,10 +152,10 @@ a_aux_rand_init(void){
          gr = n_RANDOM_GETRANDOM_FUN(&a_aux_rand->a._dat[o], i);
          if(gr == -1 && su_err_no() == su_ERR_NOSYS)
             break;
-         a_aux_rand->a._i = a_aux_rand->a._dat[a_aux_rand->a._dat[1] ^
-               a_aux_rand->a._dat[84]];
-         a_aux_rand->a._j = a_aux_rand->a._dat[a_aux_rand->a._dat[65] ^
-               a_aux_rand->a._dat[42]];
+         a_aux_rand->a._i = (a_aux_rand->a._dat[a_aux_rand->a._dat[1] ^
+               a_aux_rand->a._dat[84]]);
+         a_aux_rand->a._j = (a_aux_rand->a._dat[a_aux_rand->a._dat[65] ^
+               a_aux_rand->a._dat[42]]);
          /* ..but be on the safe side */
          if(gr > 0){
             i -= (size_t)gr;
@@ -162,8 +163,8 @@ a_aux_rand_init(void){
                goto jleave;
             o += (size_t)gr;
          }
-         n_err(_("Not enough entropy for the PseudoRandomNumberGenerator, "
-            "waiting a bit\n"));
+         n_err(_("Not enough entropy for the "
+            "P(seudo)R(andom)N(umber)G(enerator), waiting a bit\n"));
          n_msleep(250, FAL0);
       }
    }
@@ -172,14 +173,14 @@ a_aux_rand_init(void){
    if((u.fd = open("/dev/urandom", O_RDONLY)) != -1){
       bool_t ok;
 
-      ok = (sizeof(a_aux_rand->a._dat) == (size_t)read(u.fd, a_aux_rand->a._dat,
-            sizeof(a_aux_rand->a._dat)));
+      ok = (sizeof(a_aux_rand->a._dat) == (size_t)read(u.fd,
+            a_aux_rand->a._dat, sizeof(a_aux_rand->a._dat)));
       close(u.fd);
 
-      a_aux_rand->a._i = a_aux_rand->a._dat[a_aux_rand->a._dat[1] ^
-            a_aux_rand->a._dat[84]];
-      a_aux_rand->a._j = a_aux_rand->a._dat[a_aux_rand->a._dat[65] ^
-            a_aux_rand->a._dat[42]];
+      a_aux_rand->a._i = (a_aux_rand->a._dat[a_aux_rand->a._dat[1] ^
+            a_aux_rand->a._dat[84]]);
+      a_aux_rand->a._j = (a_aux_rand->a._dat[a_aux_rand->a._dat[65] ^
+            a_aux_rand->a._dat[42]]);
       if(ok)
          goto jleave;
    }
@@ -189,34 +190,70 @@ a_aux_rand_init(void){
 
    /* As a fallback, a homebrew seed */
    if(n_poption & n_PO_D_V)
-      n_err(_("P(seudo)R(andomNumber)G(enerator): creating homebrew seed\n"));
-   for(seed = (uintptr_t)a_aux_rand & UI32_MAX, rnd = 21; rnd != 0; --rnd){
-      for(u.i = n_NELEM(a_aux_rand->b32); u.i-- != 0;){
-         ui32_t t, k;
+      n_err(_("P(seudo)R(andom)N(umber)G(enerator): "
+         "creating homebrew seed\n"));
+   /* C99 */{
+# ifdef mx_HAVE_CLOCK_GETTIME
+      struct timespec ts;
+# else
+      struct timeval ts;
+# endif
+      bool_t slept;
+      ui32_t seed, rnd, t, k;
+
+      /* We first do three rounds, and then add onto that a (cramped) random
+       * number of rounds; in between we give up our timeslice once (from our
+       * point of view) */
+      seed = (uintptr_t)a_aux_rand & UI32_MAX;
+      rnd = 3;
+      slept = FAL0;
+
+      for(;;){
+         /* Stir the entire pool once */
+         for(u.i = n_NELEM(a_aux_rand->b32); u.i-- != 0;){
 
 # ifdef mx_HAVE_CLOCK_GETTIME
-         clock_gettime(CLOCK_REALTIME, &ts);
-         t = (ui32_t)ts.tv_nsec;
+            clock_gettime(CLOCK_REALTIME, &ts);
+            t = (ui32_t)ts.tv_nsec;
 # else
-         gettimeofday(&ts, NULL);
-         t = (ui32_t)ts.tv_usec;
+            gettimeofday(&ts, NULL);
+            t = (ui32_t)ts.tv_usec;
 # endif
-         if(rnd & 1)
-            t = (t >> 16) | (t << 16);
-         a_aux_rand->b32[u.i] ^= a_aux_rand_weak(seed ^ t);
-         a_aux_rand->b32[t % n_NELEM(a_aux_rand->b32)] ^= seed;
-         if(rnd == 7 || rnd == 17)
-            a_aux_rand->b32[u.i] ^= a_aux_rand_weak(seed ^ (ui32_t)ts.tv_sec);
-         k = a_aux_rand->b32[u.i] % n_NELEM(a_aux_rand->b32);
-         a_aux_rand->b32[k] ^= a_aux_rand->b32[u.i];
-         seed ^= a_aux_rand_weak(a_aux_rand->b32[k]);
-         if((rnd & 3) == 3)
-            seed ^= su_prime_lookup_next(seed);
-      }
-   }
+            if(rnd & 1)
+               t = (t >> 16) | (t << 16);
+            a_aux_rand->b32[u.i] ^= a_aux_rand_weak(seed ^ t);
+            a_aux_rand->b32[t % n_NELEM(a_aux_rand->b32)] ^= seed;
+            if(rnd == 7 || rnd == 17)
+               a_aux_rand->b32[u.i] ^=
+                  a_aux_rand_weak(seed ^ (ui32_t)ts.tv_sec);
+            k = a_aux_rand->b32[u.i] % n_NELEM(a_aux_rand->b32);
+            a_aux_rand->b32[k] ^= a_aux_rand->b32[u.i];
+            seed ^= a_aux_rand_weak(a_aux_rand->b32[k]);
+            if((rnd & 3) == 3)
+               seed ^= su_prime_lookup_next(seed);
+         }
 
-   for(u.i = 5 * sizeof(a_aux_rand->b8); u.i != 0; --u.i)
-      a_aux_rand_get8();
+         if(--rnd == 0){
+            if(slept)
+               break;
+            rnd = (a_aux_rand_get8() % 5) + 3;
+# ifdef mx_HAVE_SCHED_YIELD
+            sched_yield();
+# elif defined mx_HAVE_NANOSLEEP
+            ts.tv_sec = 0, ts.tv_nsec = 0;
+            nanosleep(&ts, NULL);
+# else
+            rnd += 10;
+# endif
+            slept = TRU1;
+         }
+      }
+
+      for(u.i = sizeof(a_aux_rand->b8) * ((a_aux_rand_get8() % 5)  + 1);
+            u.i != 0; --u.i)
+         a_aux_rand_get8();
+      goto jleave; /* (avoid unused warning) */
+   }
 jleave:
    n_NYD2_OU;
 }
@@ -249,7 +286,7 @@ a_aux_rand_weak(ui32_t seed){
       seed += SI32_MAX;
    return seed;
 }
-#endif /* mx_HAVE_RANDOM != IMPL_ARC4 != IMPL_TLS */
+#endif /* a_AUX_RAND_USE_BUILTIN */
 
 FL void
 n_locale_init(void){
@@ -820,10 +857,10 @@ n_random_create_buf(char *dat, size_t len, ui32_t *reprocnt_or_null){
 #else
 # error n_random_create_buf(): the value of mx_HAVE_RANDOM is not supported
 #endif
-         n_err(_("P(seudo)R(andomNumber)G(enerator): %s\n"), prngn);
+         n_err(_("P(seudo)R(andom)N(umber)G(enerator): %s\n"), prngn);
       }
 
-#if mx_HAVE_RANDOM != n_RANDOM_IMPL_ARC4 && mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
+#ifdef a_AUX_RAND_USE_BUILTIN
       a_aux_rand_init();
 #endif
    }

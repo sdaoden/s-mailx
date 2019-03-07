@@ -125,10 +125,12 @@ su_EMPTY_FILE()
 # define n_XTLS_STACKOF(X) /*X*/STACK
 #endif
 
-#if OPENSSL_VERSION_NUMBER + 0 >= 0x0090581fL
-# define a_XTLS_RAND_LOAD_FILE_MAXBYTES -1
-#else
-# define a_XTLS_RAND_LOAD_FILE_MAXBYTES 1024
+#ifdef mx_HAVE_TLS_RAND_FILE
+# if OPENSSL_VERSION_NUMBER + 0 >= 0x0090581fL
+#  define a_XTLS_RAND_LOAD_FILE_MAXBYTES -1
+# else
+#  define a_XTLS_RAND_LOAD_FILE_MAXBYTES 1024
+# endif
 #endif
 
 /* Compatibility sighs (that sigh is _really_ a cute one) */
@@ -175,8 +177,9 @@ su_EMPTY_FILE()
 
 enum a_xtls_state{
    a_XTLS_S_INIT = 1u<<0,
-   a_XTLS_S_RAND_INIT = 1u<<1,
-   a_XTLS_S_CONF_LOAD = 1u<<2,
+   a_XTLS_S_RAND_DRBG_INIT = 1u<<1,
+   a_XTLS_S_RAND_INIT = 1u<<2,
+   a_XTLS_S_CONF_LOAD = 1u<<3,
 
 #if mx_HAVE_XTLS_OPENSSL < 0x10100
    a_XTLS_S_EXIT_HDL = 1u<<8,
@@ -344,10 +347,26 @@ static struct a_xtls_x509_v_flags const a_xtls_x509_v_flags[] = { /* Manual! */
    {"trusted-first", X509_V_FLAG_TRUSTED_FIRST},
 };
 
-static enum a_xtls_state a_xtls_state;
+static size_t a_xtls_state;
 static size_t a_xtls_msgno;
 
+/* Special pre-PRNG PRNG init */
+#ifdef a_XTLS_S_RAND_DRBG_INIT
+su_SINLINE void a_xtls_rand_drbg_init(void);
+#else
+# define a_xtls_rand_drbg_init() \
+   do {a_xtls_state |= a_XTLS_S_RAND_DRBG_INIT;} while(0)
+#endif
+
+/* PRNG init */
+#ifdef mx_HAVE_TLS_RAND_FILE
 static void a_xtls_rand_init(void);
+#else
+# define a_xtls_rand_init() \
+   do {a_xtls_state |= a_XTLS_S_RAND_INIT;} while(0)
+#endif
+
+/* Library init */
 static void a_xtls_init(void);
 
 #if mx_HAVE_XTLS_OPENSSL < 0x10100
@@ -402,23 +421,33 @@ static enum okay  load_crl1(X509_STORE *store, char const *name);
 #endif
 static enum okay  load_crls(X509_STORE *store, enum okeys fok, enum okeys dok);
 
+#ifdef a_XTLS_S_RAND_DRBG_INIT
+su_SINLINE void
+a_xtls_rand_drbg_init(void){
+   (void)RAND_DRBG_set_reseed_defaults(0, 0, 0, 0); /* (does not fail here) */
+   a_xtls_state |= a_XTLS_S_RAND_DRBG_INIT;
+}
+#endif
+
+#ifdef mx_HAVE_TLS_RAND_FILE
 static void
 a_xtls_rand_init(void){
-#define a_XTLS_RAND_ENTROPY 32
+# define a_XTLS_RAND_ENTROPY 32
    char b64buf[a_XTLS_RAND_ENTROPY * 5 +1], *randfile;
    char const *cp, *x;
    bool_t err;
    n_NYD2_IN;
 
+   a_xtls_rand_drbg_init();
    a_xtls_state |= a_XTLS_S_RAND_INIT;
+
+# ifdef mx_HAVE_XTLS_CONFIG
+   if(!(a_xtls_state & a_XTLS_S_INIT))
+      a_xtls_init();
+# endif
 
    err = TRU1;
    randfile = NULL;
-
-#ifdef mx_HAVE_XTLS_CONFIG
-   if(!(a_xtls_state & a_XTLS_S_INIT))
-      a_xtls_init();
-#endif
 
    /* Prefer possible user setting */
    if((cp = ok_vlook(tls_rand_file)) != NULL ||
@@ -452,17 +481,17 @@ a_xtls_rand_init(void){
       RAND_add(n_random_create_buf(b64buf, sizeof(b64buf) -1, NULL),
          sizeof(b64buf) -1, a_XTLS_RAND_ENTROPY);
       if((x = (char*)((uintptr_t)x >> (1
-#if mx_HAVE_RANDOM == n_RANDOM_IMPL_TLS
+# if mx_HAVE_RANDOM == n_RANDOM_IMPL_TLS
          + 3
-#endif
+# endif
             ))) == NULL){
          err = (RAND_status() == 0);
          break;
       }
-#if mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
+# if mx_HAVE_RANDOM != n_RANDOM_IMPL_TLS
       if(!(err = (RAND_status() == 0)))
          break;
-#endif
+# endif
    }
 
    if(!err)
@@ -479,6 +508,7 @@ jleave:
             "\"$ dd if=/dev/urandom of=FILE bs=1024 count=1\"\n"));
    n_NYD2_OU;
 }
+#endif /* mx_HAVE_TLS_RAND_FILE */
 
 static void
 a_xtls_init(void){
@@ -504,6 +534,7 @@ a_xtls_init(void){
 #endif
    a_xtls_state |= a_XTLS_S_INIT;
 
+   a_xtls_rand_drbg_init();
 
    /* Load openssl.cnf or whatever was given in *tls-config-file* */
 #ifdef mx_HAVE_XTLS_CONFIG
@@ -862,34 +893,34 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
          goto jerr;
       }
    }else if(!su_cs_cmp_case(cmd, xcmd = "Ciphersuites")){
-#ifdef mx_HAVE_XTLS_SET_CIPHERSUITES
+# ifdef mx_HAVE_XTLS_SET_CIPHERSUITES
       if(SSL_CTX_set_ciphersuites(ctxp, value) != 1){
          emsg = N_("TLS: %s: invalid: %s\n");
          goto jerr;
       }
-#else
+# else
       value = NULL;
       emsg = N_("TLS: %s: directive not supported\n");
       goto jxerr;
-#endif
+# endif
    }else if(!su_cs_cmp_case(cmd, xcmd = "Curves")){
-#ifdef SSL_CTRL_SET_CURVES_LIST
+# ifdef SSL_CTRL_SET_CURVES_LIST
       if(SSL_CTX_set1_curves_list(ctxp, n_UNCONST(value)) != 1){
          emsg = N_("TLS: %s: invalid: %s\n");
          goto jerr;
       }
-#else
+# else
       value = NULL;
       emsg = N_("TLS: %s: directive not supported\n");
       goto jxerr;
-#endif
+# endif
    }else if((emsg = NULL, !su_cs_cmp_case(cmd, xcmd = "MaxProtocol")) ||
          (emsg = (char*)-1, !su_cs_cmp_case(cmd, xcmd = "MinProtocol"))){
-#ifndef mx_HAVE_XTLS_SET_MIN_PROTO_VERSION
+# ifndef mx_HAVE_XTLS_SET_MIN_PROTO_VERSION
       value = NULL;
       emsg = N_("TLS: %s: directive not supported\n");
       goto jxerr;
-#else
+# else
       struct a_xtls_protocol const *xpp;
       size_t i;
 
@@ -910,7 +941,7 @@ a_xtls_conf(void *confp, char const *cmd, char const *value){
          emsg = N_("TLS: %s: invalid protocol: %s\n");
          goto jerr;
       }
-#endif /* !mx_HAVE_XTLS_SET_MIN_PROTO_VERSION */
+# endif /* !mx_HAVE_XTLS_SET_MIN_PROTO_VERSION */
    }else if(!su_cs_cmp_case(cmd, xcmd = "Options")){
       if(su_cs_cmp_case(value, "Bugs")){
          emsg = N_("TLS: %s: fallback only supports value \"Bugs\": %s\n");
@@ -1803,16 +1834,34 @@ jleave:
 FL void
 n_tls_rand_bytes(void *buf, size_t blen){
    n_NYD2_IN;
-
    if(!(a_xtls_state & a_XTLS_S_RAND_INIT))
       a_xtls_rand_init();
 
    while(blen > 0){
       si32_t i;
 
-      i = n_MIN(SI32_MAX, blen);
+      switch(RAND_bytes(buf, i = n_MIN(SI32_MAX, blen))){
+      default:
+         /* LibreSSL always succeeds, i think it aborts otherwise.
+          * With elder OpenSSL we ensure via RAND_status() in
+          * a_xtls_rand_init() that the PRNG is seeded, so it does not fail.
+          *
+          * With newer OpenSSL we disable automatic reseeding, but do not
+          * assert RAND_status() ("Since you always have to check RAND_bytes's
+          * return value now, RAND_status is mostly useless.",
+          * 20190104180735.GA25041@roeckx.be), so we have not that many options
+          * on what to do.  Since OSs will try hard to serve, a simple sleep
+          * may be it, so do that */
+#if !defined mx_HAVE_XTLS_RESSL && !defined mx_HAVE_TLS_RAND_FILE
+         n_err(_("TLS RAND_bytes(3ssl) failed (missing entropy?), "
+            "waiting a bit\n"));
+         n_msleep(250, FAL0);
+         continue;
+#endif
+      case 1:
+         break;
+      }
       blen -= i;
-      RAND_bytes(buf, i);
       buf = (ui8_t*)buf + i;
    }
    n_NYD2_OU;

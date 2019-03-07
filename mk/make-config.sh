@@ -2421,12 +2421,26 @@ if feat_yes TLS; then # {{{
 !
    then
       ossl_v1_1=
-      VAL_TLS_FEATURES=libressl
+      VAL_TLS_FEATURES=libressl,-tls-rand-file
    # TODO OPENSSL_IS_BORINGSSL, but never tried that one!
+   elif compile_check _xtls 'TLS (OpenSSL >= v1.1.1)' \
+      '#define mx_HAVE_TLS
+      #define mx_HAVE_XTLS
+      #define mx_HAVE_XTLS_OPENSSL 0x10101' << \!
+#include <openssl/opensslv.h>
+#if OPENSSL_VERSION_NUMBER + 0 >= 0x1010100fL
+#else
+# error nope
+#endif
+!
+   then
+      ossl_v1_1=1
+      VAL_TLS_FEATURES=libssl-0x10100,-tls-rand-file
    elif compile_check _xtls 'TLS (OpenSSL >= v1.1.0)' \
       '#define mx_HAVE_TLS
       #define mx_HAVE_XTLS
-      #define mx_HAVE_XTLS_OPENSSL 0x10100' << \!
+      #define mx_HAVE_XTLS_OPENSSL 0x10100
+      #define mx_HAVE_TLS_RAND_FILE' << \!
 #include <openssl/opensslv.h>
 #if OPENSSL_VERSION_NUMBER + 0 >= 0x10100000L
 #else
@@ -2435,11 +2449,12 @@ if feat_yes TLS; then # {{{
 !
    then
       ossl_v1_1=1
-      VAL_TLS_FEATURES=libssl-0x10100
+      VAL_TLS_FEATURES=libssl-0x10100,+tls-rand-file
    elif compile_check _xtls 'TLS (OpenSSL)' \
       '#define mx_HAVE_TLS
       #define mx_HAVE_XTLS
-      #define mx_HAVE_XTLS_OPENSSL 0x10000' << \!
+      #define mx_HAVE_XTLS_OPENSSL 0x10000
+      #define mx_HAVE_TLS_RAND_FILE' << \!
 #include <openssl/opensslv.h>
 #ifdef OPENSSL_VERSION_NUMBER
 #else
@@ -2448,7 +2463,7 @@ if feat_yes TLS; then # {{{
 !
    then
       ossl_v1_1=
-      VAL_TLS_FEATURES=libssl-0x10000
+      VAL_TLS_FEATURES=libssl-0x10000,+tls-rand-file
    else
       feat_bail_required TLS
    fi # }}}
@@ -2726,7 +2741,9 @@ else
    feat_is_disabled TLS
    feat_is_disabled TLS_ALL_ALGORITHMS
 fi # }}} feat_yes TLS
+printf '#ifdef mx_SOURCE\n' >> ${h}
 printf '#define VAL_TLS_FEATURES "#'"${VAL_TLS_FEATURES}"'"\n' >> ${h}
+printf '#endif /* mx_SOURCE */\n' >> ${h}
 
 if [ "${have_xtls}" = yes ]; then
    OPT_SMIME=1
@@ -2744,6 +2761,8 @@ else
    config_exit 1
 fi
 
+# Random implementations which completely replace our builtin machine
+
 val_random_arc4() {
    link_check arc4random 'VAL_RANDOM: arc4random(3)' \
       '#define mx_HAVE_RANDOM n_RANDOM_IMPL_ARC4' << \!
@@ -2759,6 +2778,15 @@ val_random_tls() {
    if feat_yes TLS; then
       msg ' . VAL_RANDOM: tls ... yes'
       echo '#define mx_HAVE_RANDOM n_RANDOM_IMPL_TLS' >> ${h}
+      # Avoid reseeding, all we need is a streamy random producer
+      link_check xtls_rand_drbg_set_reseed_defaults \
+         'RAND_DRBG_set_reseed_defaults(3ssl)' \
+         '#define mx_HAVE_XTLS_SET_RESEED_DEFAULTS' << \!
+#include <openssl/rand_drbg.h>
+int main(void){
+   return (RAND_DRBG_set_reseed_defaults(0, 0, 0, 0) != 0);
+}
+!
       return 0
    else
       msg ' . VAL_RANDOM: tls ... no'
@@ -2766,7 +2794,25 @@ val_random_tls() {
    fi
 }
 
+# The remaining random implementation are only used to seed our builtin
+# machine; we are prepared to handle failures of those, meaning that we have
+# a homebrew seeder; that tries to yield the time slice once, via
+# sched_yield(2) if available, nanosleep({0,0},) otherwise
+val__random_yield_ok=
+val__random_check_yield() {
+   [ -n "${val__random_yield_ok}" ] && return
+   val__random_yield_ok=1
+   link_check sched_yield 'sched_yield(2)' '#define mx_HAVE_SCHED_YIELD' << \!
+#include <sched.h>
+int main(void){
+   sched_yield();
+   return 0;
+}
+!
+}
+
 val_random_libgetrandom() {
+   val__random_check_yield
    link_check getrandom 'VAL_RANDOM: getrandom(3) (in sys/random.h)' \
       '#define mx_HAVE_RANDOM n_RANDOM_IMPL_GETRANDOM
       #define n_RANDOM_GETRANDOM_FUN(B,S) getrandom(B, S, 0)
@@ -2781,6 +2827,7 @@ int main(void){
 }
 
 val_random_sysgetrandom() {
+   val__random_check_yield
    link_check getrandom 'VAL_RANDOM: getrandom(2) (via syscall(2))' \
       '#define mx_HAVE_RANDOM n_RANDOM_IMPL_GETRANDOM
       #define n_RANDOM_GETRANDOM_FUN(B,S) syscall(SYS_getrandom, B, S, 0)
@@ -2795,6 +2842,7 @@ int main(void){
 }
 
 val_random_urandom() {
+   val__random_check_yield
    msg_nonl ' . VAL_RANDOM: /dev/urandom ... '
    if feat_yes CROSS_BUILD; then
       msg 'yes (unchecked)'
@@ -2810,6 +2858,7 @@ val_random_urandom() {
 }
 
 val_random_builtin() {
+   val__random_check_yield
    msg_nonl ' . VAL_RANDOM: builtin ... '
    if [ -n "${have_no_subsecond_time}" ]; then
       msg 'no\nERROR: %s %s' 'without a specialized PRG ' \
