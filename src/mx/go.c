@@ -142,11 +142,12 @@ enum a_go_hist_flags{
 };
 
 struct a_go_eval_ctx{
-   struct str gec_line;    /* The terminated data to _evaluate() */
-   u32 gec_line_size;   /* May be used to store line memory size */
-   boole gec_ever_seen;   /* Has ever been used (main_loop() only) */
-   u8 gec__dummy[2];
-   u8 gec_hist_flags;   /* enum a_go_hist_flags */
+   struct str gec_line; /* The terminated data to _evaluate() */
+   u32 gec_line_size; /* May be used to store line memory size */
+   boole gec_ever_seen; /* Has ever been used (main_loop() only) */
+   boole gec_ignerr; /* Implicit `ignerr' prefix */
+   u8 gec__dummy[1];
+   u8 gec_hist_flags; /* enum a_go_hist_flags */
    char const *gec_hist_cmd; /* If a_GO_HIST_ADD only, cmd and args */
    char const *gec_hist_args;
 };
@@ -287,7 +288,8 @@ a_go_evaluate(struct a_go_eval_ctx *gecp){
    if(!(n_psonce & n_PSO_EXIT_MASK) && !(n_pstate & n_PS_ERR_EXIT_MASK))
       n_exit_status = n_EXIT_OK;
 
-   flags = n_cnd_if_is_skip() ? a_IS_SKIP : a_NONE;
+   flags = ((n_cnd_if_is_skip() ? a_IS_SKIP : a_NONE) |
+         (gecp->gec_ignerr ? a_IGNERR : a_NONE));
    rv = 1;
    nerrn = su_ERR_NONE;
    nexn = n_EXIT_OK;
@@ -1239,6 +1241,9 @@ a_go_event_loop(struct a_go_ctx *gcp, enum n_go_input_flags gif){
    NYD2_IN;
 
    su_mem_set(&gec, 0, sizeof gec);
+   if(gif & n_GO_INPUT_IGNERR)
+      gec.gec_ignerr = TRU1;
+
    osigmask = gcp->gc_osigmask;
    hadint = FAL0;
    f = a_RETOK;
@@ -1443,6 +1448,7 @@ n_go_main_loop(void){ /* FIXME */
                !(n_pstate & (n_PS_ROBOT | n_PS_SOURCING)) &&
                 a_go_ctx->gc_inject == su_NIL); /* xxx really injection? */
          rele_all_sigs();
+         ASSERT(!gec.gec_ignerr);
          n = n_go_input(n_GO_INPUT_CTX_DEFAULT | n_GO_INPUT_NL_ESC, NULL,
                &gec.gec_line.s, &gec.gec_line.l, NULL, &histadd);
          hold_all_sigs();
