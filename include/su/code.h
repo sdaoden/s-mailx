@@ -279,12 +279,13 @@
 /* Compile-Time-Assert
  * Problem is that some compilers warn on unused local typedefs, so add
  * a special local CTA to overcome this */
-#if !su_C_LANG && __cplusplus +0 >= 201103L
-# define su_CTA(T,M) static_assert(T, M)
-# define su_LCTA(T,M) static_assert(T, M)
-#elif defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 201112L
-# define su_CTA(T,M) _Static_assert(T, M) /*!< \_ */
-# define su_LCTA(T,M) _Static_assert(T, M) /*!< \_ */
+#if (!su_C_LANG && __cplusplus +0 >= 201103L) || defined DOXYGEN
+# define su_CTA(T,M) static_assert(T, M) /*!< \_ */
+# define su_LCTA(T,M) static_assert(T, M) /*!< \_ */
+#elif 0 /* unusable! */ && \
+      defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 201112L
+# define su_CTA(T,M) _Static_assert(T, M)
+# define su_LCTA(T,M) _Static_assert(T, M)
 #else
 # define su_CTA(T,M) su__CTA_1(T, su_FILE, __LINE__)
 # define su_LCTA(T,M) su__LCTA_1(T, su_FILE, __LINE__)
