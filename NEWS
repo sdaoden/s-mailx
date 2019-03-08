@@ -6,7 +6,7 @@ S - n a i l / S - m a i l x  N e w s
   will scroll to the manual's Point-Of-Interest, and pointing
   a web browser to the "#ANCHOR" of the online manual works.
 
-v14.9.12 ("Blue tit's spiral marriage swoop"), 2019-03-07
+v14.9.13 ("Blue tit's spiral marriage swoop"), 2019-03-08
 ---------------------------------------------------------
 
 Not so much happened as i was busy with other things in the second
@@ -22,12 +22,19 @@ thereof, [master] was ahead by 62 commits from [v14.9.11] (not all
 bugs though, hrmhrm), but also with, well, a few new features, and
 of course, development to the last minute. ^_^
 
+  v14.9.13 replaces v14.9.12 from yesterday which would pick up an
+  ISO C 2011 statement that is impracticable, thanks to Johannes
+  Schöpfer and Jürgen Daubert for reporting this (i should test
+  without OPT_AUTOCC more often.)  I have also fixed -T to match
+  NEWS (manual and code did the opposite).
+  v14.9.12 balls will be removed from the server.
+
 Credits, in order of commit appearance: Jörg Schilling,
 Paride Legovini, Olav Mørkrid, Ralph Corderoy, Rich Felker,
 Predrag Punosevac, Russell Bell, Dirk-Wilhelm Peters,
 Jean-Marc Pigeon, Warren Toomey, Cág, Martin Neitzel,
 Dr. Werner Fink, Dr. Matthias St. Pierre, Kurt Roeckx, Mike Sharov,
-and Joan.
+Joan and Johannes Schöpfer.
 
 Very special thanks go to Jean-Marc Pigeon of OSUKISS Linux, who
 provided me access to a VZGOT container on the most "beefy"
@@ -42,8 +49,8 @@ reminds me of cherry petals wafting in a warm spring breeze --
 in winter!
 
 We welcome Russell Bell, Jean-Marc Pigeon, Warren Toomey,
-Dr. Matthias St. Pierre, Kurt Roeckx, Mike Sharov and Joan in
-THANKS.
+Dr. Matthias St. Pierre, Kurt Roeckx, Mike Sharov, Joan and
+Johannes Schöpfer in THANKS.
 
 NOTES, ChangeLog (packager-affine)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -259,6 +266,15 @@ ChangeLog
 
 git(1) shortlog (edited)
 ^^^^^^^^^^^^^^^^^^^^^^^^
+
+v14.9.13 addition: Steffen Nurpmeso (9):
+b1c9e48b ISO C 2011 _Static_assert() is unusable! (Johannes Schöpfer, Jürgen
+        Daubert)
+90e9ccc6 THANKS: Johannes Schöpfer
+7542e1dc mk/make-config.sh: if !DEVEL, suppress -Wunused-value (Jean-Marc
+        Pigeon)
+776d9dc3 Add n_GO_INPUT_IGNERR: do not *errexit* due to *on-history-addition*!
+4b3a37e4 -T: FIX brain damage, implement as announced in NEWS!
 
 Steffen Nurpmeso (277):
 399fd251 nail.1: oops: document wysh EARLY (Jörg Schilling)!
