@@ -221,15 +221,16 @@ struct a_amv_mac_line{
 };
 
 struct a_amv_mac_call_args{
-   char const *amca_name;        /* For MACKY_MACK, this is *0*! */
-   struct a_amv_mac *amca_amp;   /* "const", but for am_refcnt */
+   char const *amca_name; /* For MACKY_MACK, this is *0*! */
+   struct a_amv_mac *amca_amp; /* "const", but for am_refcnt */
    struct a_amv_var **amca_unroller;
    void (*amca_hook_pre)(void *);
    void *amca_hook_arg;
    u8 amca_loflags;
    boole amca_ps_hook_mask;
-   boole amca_no_xcall;         /* We want n_GO_INPUT_NO_XCALL for this */
-   u8 amca__pad[5];
+   boole amca_no_xcall; /* XXX We want n_GO_INPUT_NO_XCALL for this */
+   boole amca_ignerr; /* XXX Use n_GO_INPUT_IGNERR for evaluating commands */
+   u8 amca__pad[4];
    struct a_amv_var *(*amca_local_vars)[a_AMV_PRIME]; /* `local's, or NULL */
    struct a_amv_pospar amca_pospar;
 };
@@ -568,7 +569,8 @@ a_amv_mac_exec(struct a_amv_mac_call_args *amcap){
    if(amcap->amca_hook_pre != NULL)
       n_PS_ROOT_BLOCK((*amcap->amca_hook_pre)(amcap->amca_hook_arg));
    rv = n_go_macro((n_GO_INPUT_NONE |
-            (amcap->amca_no_xcall ? n_GO_INPUT_NO_XCALL : 0)),
+            (amcap->amca_no_xcall ? n_GO_INPUT_NO_XCALL : 0) |
+            (amcap->amca_ignerr ? n_GO_INPUT_IGNERR : 0)),
          amp->am_name, args_base, &a_amv_mac__finalize, losp);
    NYD2_OU;
    return rv;
@@ -3008,7 +3010,7 @@ temporary_addhist_hook(char const *ctx, boole gabby, char const *histent){
       amcap->amca_name = macname;
       amcap->amca_amp = amp;
       amcap->amca_loflags = a_AMV_LF_SCOPE_FIXATE;
-      amcap->amca_no_xcall = TRU1;
+      amcap->amca_no_xcall = amcap->amca_ignerr = TRU1;
       amcap->amca_pospar.app_count = 3;
       amcap->amca_pospar.app_not_heap = TRU1;
       amcap->amca_pospar.app_dat = argv;

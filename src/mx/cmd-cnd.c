@@ -381,6 +381,7 @@ jesyn_ntr:
                   ) != su_IDEC_STATE_CONSUMED ||
                (rhvis & (su_IDEC_STATE_EMASK | su_IDEC_STATE_CONSUMED)
                   ) != su_IDEC_STATE_CONSUMED){
+            /* TODO if/elif: should support $! and set ERR-OVERFLOW!! */
             emsg = N_("invalid integer number");
             goto jesyn;
          }

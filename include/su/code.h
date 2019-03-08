@@ -163,10 +163,11 @@
 /* Compile-Time-Assert
  * Problem is that some compilers warn on unused local typedefs, so add
  * a special local CTA to overcome this */
-#if !su_C_LANG && __cplusplus +0 >= 201103L
+#if (!su_C_LANG && __cplusplus +0 >= 201103L) || defined DOXYGEN
 # define su_CTA(T,M) static_assert(T, M)
 # define su_LCTA(T,M) static_assert(T, M)
-#elif defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 201112L
+#elif 0 /* unusable! */ && \
+      defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 201112L
 # define su_CTA(T,M) _Static_assert(T, M)
 # define su_LCTA(T,M) _Static_assert(T, M)
 #else
@@ -290,20 +291,6 @@ do{\
 #endif
 #if !defined su_CC_UZ_TYPE && defined __SIZE_TYPE__
 # define su_CC_UZ_TYPE __SIZE_TYPE__
-#endif
-/* Suppress some technical warnings via #pragma's unless developing.
- * XXX Wild guesses: clang(1) 1.7 and (OpenBSD) gcc(1) 4.2.1 do not work */
-#ifndef su_HAVE_DEVEL
-# if su_CC_VCHECK_GCC(4, 7) || su_CC_PCC || su_CC_TINYC
-/*#  pragma GCC diagnostic ignored "-Wformat"*/
-#  pragma GCC diagnostic ignored "-Wunused-result" /* su_UNUSED() */
-#  ifdef NDEBUG
-#   pragma GCC diagnostic ignored "-Wmaybe-uninitialized" /* su_UNINIT() */
-#  endif
-# elif su_CC_VCHECK_CLANG(3, 4)
-/*#  pragma clang diagnostic ignored "-Wformat"*/
-#  pragma clang diagnostic ignored "-Wunused-result"
-# endif
 #endif
 /* Function name */
 #if defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901L

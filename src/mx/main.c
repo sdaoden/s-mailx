@@ -645,7 +645,7 @@ main(int argc, char *argv[]){
          "from-address:;r;" N_("set source address used by MTAs (+ -Sfrom)"),
       "set:;S;" N_("set one of the INTERNAL VARIABLES (unset via \"noARG\")"),
          "subject:;s;" N_("specify subject of message to be sent"),
-      "target:;T;" N_("add single receiver via \"header-field: address\""),
+      "target:;T;" N_("add receiver(s) \"header-field: address\" as via -t"),
       "template;t;" N_("message to be sent is read from standard input"),
       "inbox-of:;u;" N_("initially open primary mailbox of the given user"),
       "version;V;" N_("print version (more so with \"[-v] -Xversion -Xx\")"),
@@ -938,62 +938,49 @@ je_S:
          break;
 
       case 'T':{
-         /* Target mode: `digmsg header insert' from command line.
-          * TODO So far code cannot be shared since `digmsg' backing objects
-          * TODO do not exist yet (stack local for compose mode right now).
-          * TODO Thus need to unroll and can offer header subset only yet */
+         /* Target mode: `digmsg header insert' from command line */
+         struct str suffix;
          struct mx_name **npp, *np;
          enum gfield gf;
+         char const *a;
 
-         cp = UNCONST(char*,avo.avo_current_arg); /* (logical) */
-
-         if(!su_cs_cmp_case_n(cp, "bcc", i = 3))
-            gf = GBCC, npp = &bcc;
-         else if(!su_cs_cmp_case_n(cp, "cc", i = 2))
-            gf = GCC, npp = &cc;
-         else if(!su_cs_cmp_case_n(cp, "fcc", i = 3))
-            gf = GBCC_IS_FCC, npp = &bcc;
-         else if(!su_cs_cmp_case_n(cp, "to", i = 2))
-            gf = GTO, npp = &to;
-         else{
-            emsg = N_("-T: supports only to,cc,bcc and fcc for now");
+         if((a = n_header_get_field(avo.avo_current_arg, "to", &suffix)
+               ) != su_NIL){
+            gf = GTO | GSHEXP_PARSE_HACK | GFULL | GNULL_OK;
+            npp = &to;
+         }else if((a = n_header_get_field(avo.avo_current_arg, "cc", &suffix)
+               ) != su_NIL){
+            gf = GCC | GSHEXP_PARSE_HACK | GFULL | GNULL_OK;
+            npp = &cc;
+         }else if((a = n_header_get_field(avo.avo_current_arg, "bcc", &suffix)
+               ) != su_NIL){
+            gf = GBCC | GSHEXP_PARSE_HACK | GFULL | GNULL_OK;
+            npp = &cc;
+         }else if((a = n_header_get_field(avo.avo_current_arg, "fcc", su_NIL)
+               ) != su_NIL){
+            gf = GBCC_IS_FCC;
+            npp = &bcc;
+         }else{
+            ASSERT(suffix.s == su_NIL);
+jeTuse:
+            emsg = N_("-T: only supports to,cc,bcc (with ?single modifier) "
+                  "and fcc");
             goto jusage;
          }
-         cp += i;
 
-         gf |= GSHEXP_PARSE_HACK | GFULL | GNULL_OK | GNOT_A_LIST;
-
-         if(*cp == '?'){
-            char c;
-
-            for(i = 0; (c = *++cp) != '\0'; ++i)
-               if(su_cs_is_blank(c) || c == ':')
-                  break;
-            if(i > 0 && !su_cs_starts_with_case_n("list", &cp[-i], i)){
-               emsg = N_("-T: invalid modifier");
-               goto jusage;
-            }
-            gf &= ~GNOT_A_LIST;
+         if(suffix.s != su_NIL){
+            if(suffix.l > 0 &&
+                  !su_cs_starts_with_case_n("single", suffix.s, suffix.l))
+               goto jeTuse;
+            gf |= GNOT_A_LIST;
          }
 
-         while(su_cs_is_blank(*cp))
-            ++cp;
-         if(*cp == ':')
-            ++cp;
-         while(su_cs_is_blank(*cp))
-            ++cp;
-         if(*cp == '\0')
-            goto jt_err;
-
          if(!(gf & GBCC_IS_FCC))
-            np = lextract(cp, gf);
-         else if(gf & GNOT_A_LIST)
-            np = nalloc_fcc(cp);
+            np = lextract(a, gf);
          else
-            goto jt_err;
+            np = nalloc_fcc(a);
          if(np == su_NIL){
-jt_err:
-            emsg = N_("-T: invalid format or addressee");
+            emsg = N_("-T: invalid receiver (address)");
             goto jusage;
          }
          *npp = cat(*npp, np);

@@ -30,9 +30,9 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.\"@ S-nail v14.9.12 / 2019-03-07
-.Dd March 07, 2019
-.ds VV \\%v14.9.12
+.\"@ S-nail v14.9.13 / 2019-03-08
+.Dd March 08, 2019
+.ds VV \\%v14.9.13
 .\"--MKMAN-START--
 .ds UU \\%S-NAIL
 .ds UA \\%S-nail
@@ -1244,8 +1244,8 @@ normalized to space (SP) characters.
 .Mx
 .It Fl T Ar """field: addr""" , Fl Fl target Ns =..
 Add
-.Ar addr ,
-interpreted as a single addressee, to the list of receivers targeted by
+.Ar addr
+to the list of receivers targeted by
 .Ar field ,
 for now supported are only
 .Ql bcc ,
@@ -1255,22 +1255,16 @@ and
 .Ql to .
 Field and body (address) are separated by a colon
 .Ql \&:
-and/or blank (space, tabulator) characters.
+and optionally blank (space, tabulator) characters.
 The
 .Ql shquote
 .Va expandaddr
 flag is supported.
-Via the question mark
-.Ql \&?list
-modifier suffix
 .Ar addr
-is parsed like a message header address line, the keyword
-.Ql list
-is optional, e.g.,
-.Ql to? ,
-.Ql to?: ,
-.Ql to?list
-etc. are identical.
+is parsed like a message header address line, as if it would be part of
+a template message fed in via
+.Fl t ,
+and the same modifier suffix is supported.
 This option may be used multiple times.
 .Mx
 .It Fl t , Fl Fl template
