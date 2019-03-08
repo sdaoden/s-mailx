@@ -3900,17 +3900,17 @@ t_can_send_rfc() {
    # XXX NOTE we cannot test "cc@no1 <cc@no.2>" because our stupid parser
    # XXX would not treat that as a list but look for "," as a separator
    </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -Sfullnames -s Sub.3 \
-      -T 'bcc: bcc@no.1, <bcc@no.2>' -T bcc:\ bcc@no.3 \
-      -T cc\ \ :\ \ 'cc@no.1, <cc@no.2>' -T cc:\ cc@no.3 \
-      -T to\ to@no.1,'<to@no.2>' -T to\ to@no.3 \
+      -T 'bcc?single: bcc@no.1, <bcc@no.2>' -T bcc:\ bcc@no.3 \
+      -T cc?si\ \ :\ \ 'cc@no.1, <cc@no.2>' -T cc:\ cc@no.3 \
+      -T to?:\ to@no.1,'<to@no.2>' -T to:\ to@no.3 \
       > ./.terr 2>&1
    check 3 0 "${MBOX}" '3798301395 670'
    check 3-err - .terr '4294967295 0'
 
    </dev/null ${MAILX} ${ARGS} -Smta=./.tmta.sh -Sfullnames -s Sub.4 \
-      -T 'bcc?list: bcc@no.1, <bcc@no.2>' -T bcc?:\ bcc@no.3 \
-      -T cc?:\ 'cc@no.1, <cc@no.2>' -T cc?\ \ :\ \ cc@no.3 \
-      -T to?\ to@no.1,'<to@no.2>' -T to?:\ to@no.3 \
+      -T 'bcc: bcc@no.1, <bcc@no.2>' -T bcc:\ bcc@no.3 \
+      -T cc:\ 'cc@no.1, <cc@no.2>' -T cc\ \ :\ \ cc@no.3 \
+      -T to\ :to@no.1,'<to@no.2>' -T to:\ to@no.3 \
       > ./.terr 2>&1
    check 4 0 "${MBOX}" '1809352988 872'
    check 4-err - .terr '4294967295 0'

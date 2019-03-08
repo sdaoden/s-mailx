@@ -650,8 +650,8 @@ normalized to space (SP) characters.
 .Mx
 .It Fl T Ar """field: addr""" , Fl Fl target Ns =..
 Add
-.Ar addr ,
-interpreted as a single addressee, to the list of receivers targeted by
+.Ar addr
+to the list of receivers targeted by
 .Ar field ,
 for now supported are only
 .Ql bcc ,
@@ -661,22 +661,16 @@ and
 .Ql to .
 Field and body (address) are separated by a colon
 .Ql \&:
-and/or blank (space, tabulator) characters.
+and optionally blank (space, tabulator) characters.
 The
 .Ql shquote
 .Va expandaddr
 flag is supported.
-Via the question mark
-.Ql \&?list
-modifier suffix
 .Ar addr
-is parsed like a message header address line, the keyword
-.Ql list
-is optional, e.g.,
-.Ql to? ,
-.Ql to?: ,
-.Ql to?list
-etc. are identical.
+is parsed like a message header address line, as if it would be part of
+a template message fed in via
+.Fl t ,
+and the same modifier suffix is supported.
 This option may be used multiple times.
 .
 .Mx
