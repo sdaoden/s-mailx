@@ -18,7 +18,7 @@
 #   line with whitespace.  (Intervening comment lines may be used.)
 # - TYPEMARKER: a question mark (?) will tag the MIME type as plain text
 #   (unless the user installs a specific handler for the type in question).
-#   The meaning is identical to what is documented for command `mimetypes'.
+#   The meaning is identical to what is documented for command `mimetype'.
 #
 # Syntax restrictions:
 # - Comments must be lines of their own.
