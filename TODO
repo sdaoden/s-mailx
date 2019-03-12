@@ -3,9 +3,6 @@ TODO reminder.
 Rename S-nail to S-mailx in v15.0, change things i've messed with
 a single, massively backward incompatible change.
 
-Release S-mailx v20 on 2020-03-25, the 42nd anniversary of BSD Mail.
-With a clean, conforming and efficient codebase, then.
-
 In general the code is in a pretty bad shape due to the signal handling.
 I should have sat back in 2012/13 and consider what i am doing.
 My fault.  If i would, we would have a blocked signal mask anywhere in
@@ -14,18 +11,9 @@ possible to deal with signals, and possibly we would not even have to
 consider to switch the entire codebase to (the much superior, and the
 only sane approach) SysV signal handling, without SA_RESTART.
 
-But some things are already pretty good, except for normal iterations
+But a few things are already pretty good, except for normal iterations
 and a review once we have a better signal handling, and can be taken
-with us.  For example termcap.c, most of tty.c, shexp.c, memory.c.
-It all has to be converted to use a mx_ prefix and follow the coding
-style of the mentioned (mx_ is anything public / external, mx__ is
-public/e but not really, FILENAME/ABBREV_symbol are statics,
-FILENAME/ABBREV__symbol are helpers of a single other static (function
-group) (-> colour.c, lex_input.c: done)).
-
-Note n_(UN)?LIKELY() usage is yet a bit weird,
-we should not use it for entire conditions but instead repeat its use
-for each subcondition.
+with us.
 
 - We should have generic ENOMEM conditions, now that we have $!.
   I.e., test overflow (e.g., nam-a-grp.c, whether an alias _can_ be
@@ -194,11 +182,19 @@ Low-Level
   RFC 8461 on SMTP MTA Strict Transport Security (MTA-STS)
   RFC 8474 IMAP Extension for Object Identifiers
   RFC 8484 on DNS Queries over HTTPS (DoH)
-
+  RFC 8550 Secure/Multipurpose Internet Mail Extensions (S/MIME)
+                      Version 4.0 Certificate Handling
+  RFC 8551 Secure/Multipurpose Internet Mail Extensions (S/MIME) Version
+              4.0 Message Specification
+  RFC 8601 Message Header Field for Indicating Message Authentication Status
+  RFC 8616 Email Authentication for Internationalized Mail
   draft-ietf-uta-email-tls-certs-01.txt
-   SMTP security via opportunistic DANE TLS draft-ietf-dane-smtp-with-dane-15
+     SMTP security via opportunistic DANE TLS draft-ietf-dane-smtp-with-dane-15
   draft-melnikov-smime-header-signing
-   Considerations for protecting Email header with S/MIME
+     Considerations for protecting Email header with S/MIME
+  draft-ietf-jmap-mail-16.txt
+     JMAP (JSON Meta Application Protocol) for Mail
+
   Read https://tools.ietf.org/html/draft-ietf-uta-tls-bcp-07.
     Can we implement OCSP (see RFC 6066; -> RFC 6960)????
 
@@ -215,29 +211,15 @@ Low-Level
      created for each command that has an entry in cmd_tab and is passed
      as the new argument of these kind of functions.
      (send_ctx is the carrier for the MIME and send layer rewrite.)
-  2. cmd_tab handling becomes more intelligent: add bit fields so that
-     for some arguments (i.e., the first two or three) automatic
-     normalization can be specified, like whitespace trimming, like
-     automatic expansion of variables etc.  For getrawlist.
-     It knows about the short synopsis and longer help of its program.
-
-      - and: commands that work only in interactive mode, and are
-        _silently_ ignored otherwise (no error).
-        I.e., commands which work on only with true user interaction
-        should not need to take care no more, but simply assume that
-        there will be true user interaction.  And like that.
-
-     E.g., customhdr header field is always to be WS trimmed, just the
-     same as the body.  shortcut at least should have trimmed name, etc.
-     To do that right, properly parse from left to right, take care
-     about backslash escaping, and (optionally) expand shell variables
-     and backtick substituations.
+  2. cmd_tab handling becomes more intelligent: it should be able to
+     perform argument checks of subcommands, e.g., should learn about
+     subcommands, and their very own argument types / number / etc.
 
      The cmd_ctx needs to carry around the cmd_tab structure so that the
      commands can themselves print the synopsis in case of errors --
      alternatively we need a return bit which should cause the command
      callee to emit the synopsis as an error message, whatever is best.
-     Some (hopefully) duplicate occurrances of such strings can vanish.
+     Some (hopefully) duplicate occurrences of such strings can vanish.
   2.1 We have some commands which offer "show" subcommands.
       Those should only work in interactive mode OR SO.
       This could be done with a flag, too.  (Driven from the lexer.)
@@ -281,7 +263,7 @@ Low-Level
      Also in respect whether the interrupt is "propagated" or not.
      It's ugly, and documented accordingly.
  30. It should be considered to drop many variables in favour of
-       ?SEARCH usage for keys, or key=value pairs, e.g.
+     URL ?SEARCH usage for keys, or key=value pairs, e.g.
         smtp://exam.ple?starttls=yes;smtp-hostname=;
        etc.   USER@HOST is neat, but that is possibly preferable?
        Question: what is with smtp-hostname and such??
@@ -309,39 +291,6 @@ Low-Level
      We won't extend macros that much because it would require much too
      much logic for no purpose, instead we'll (hopefully) add some
      scriptable abstraction, with an optional built-in Lua binding.
-     E.g., it would be too complicated to create a language to access
-     individual message parts (headers etc.), add error handling etc.
-     Better to make it all directly accessible via language binding, and
-     offer commands which relinquish execution to such a binding, maybe
-     even with some arguments, as in "? lua ARG" - it should be possible
-     that ARG is a msgset, then.
-     On the other hand, ~^ text-protocol stuff isn't that bad, and if
-     a text-protocol command mode could be added, that would be cool.
-     Even things like 'create temporary file', write data until EOT in
-     descriptor / temporary file / etc. and such!
-
-     But what macros should be able to do is iterating over such
-     a msgset / view, as in
-        msgset create NAME :SPEC:
-        msgset add NAME :SPEC:
-      and then either
-        for[-each] NAME
-          normal-cmd SOMEHOW-REFER-TO-ITER
-          if SOMEHOW-ACCESS-LAST-STATUS
-          endif
-        endfor
-      as well as
-        msgset cmd NAME normal-cmd
-      and even
-        normal-cmd NAME
-      in which case NAME should simply be treated as a SPEC, likely that
-      this requires a new trigger, though, e.g. {NAME}, [NAME] or !NAME...
-      I.e., the new namelist (likely a deque) should contain MsgRef
-      objects which point to a Message and a Mailbox (for cross-mailbox
-      msgset's and without the need for a Message to store a pointer to
-      the owning mailbox?  Or make MsgRef a superclass that may have
-      a subclass which offers such cross-refs).
-
  50. Support SASL, unite all GSS-API etc. under an abstraction!
      Maybe even drop direct GSS-API and support only through SASL.
      That is, we can very well provide our own little SASL-client
@@ -362,7 +311,7 @@ Low-Level
      We still need to special treat things like, e.g., RFC 2046, 5.2.1.
      But on top of we-can, as opposed to the opposite.
 
-    (Brezn Stangl, brezn DOT stangl AT yandex DOT com)
+     (Brezn Stangl, brezn DOT stangl AT yandex DOT com; Martin T)
  99. Now i'm dreaming some more: with the new object-based approach
      multiple mailboxes could be in an open state.  And it should be
      possible to do so for the user (`file' and `folder' are required to
@@ -371,6 +320,19 @@ Low-Level
      The absolute sensation would be joinable operations over multiple
      open mailboxes, e.g., views over multiple such!
 100. If i say `p 3 2 1' then i mean `3 2 1' not `1 2 3'.
+200. Split program: when entering interactive mode, the main machine
+     should fork and the UI should run in the forked one, taking the
+     terminal (have done setsid, TIOCSTTY, tcsetpgrp, dance).
+     - Communication via sendmsg()/recvmsg(), it was in BSD as soon as
+       1982 says CSRG (date and time created 82/12/04 16:22:24 by
+       mckusick); ok, a bit different by then, but on 1990-04-04 at
+       latest in todays form (Mike Karels: [.]define cmsghdr structure
+       for ancillary data, with new format; move access rights into
+       ancillary data; add MSG_WAITALL).
+     - Maybe furtherly diversify: network (with loop), main machine
+       (with loop), credential helper, i do not know.
+       Provide security sandboxing if possible, i.e., capsicum,
+       pledge/unveil, prctl/seccomp.
 
 - The thread sort doesn't get
 
@@ -415,9 +377,8 @@ Low-Level
 - Stuff
   .. s-nail </dev/null should work interactively when STDERR_FILENO is
     a terminal!  (Built-in editor; how do editline and readline work?
-    should this be documented?  What does NetBSD Mail do?  Should we NOT
-    be interactive??  POSIX says for sh(1) (APPLICATION USAGE): 'sh
-    2>FILE' is not interactive, even though it accepts terminal input.)
+    should this be documented?  POSIX says for sh(1) (APPLICATION USAGE):
+    'sh 2>FILE' is not interactive, even though it accepts terminal input.)
   . Just like the RFC 3676 link above, it would be nice if it would be
     somehow possible to recognize links in a document; i don't know yet
     how this could be achieved without losing formatting information (i
@@ -437,22 +398,6 @@ Low-Level
      setpgid(2) and then tcsetpgrp(3) any processes we run synchronously,
      and properly deal with SIGTTOU, but it always has been like that and
      i won't do that before other things have been changed.
-  .. NOTE: TTY: place (at least n_child_run()) childs which go over
-     terminal into own group.
-     Introduce global "terminal state" manager which tracks who
-     currently owns the terminal, so that we can gracefully switch it
-     on/off, check in main loop whether restore is necessary.
-     It that can deal with multiple "windows" then we could have open
-     multiple of those, i.e., multiple PAGER instances, and non-PAGER
-     instances (fflush() if there is FILE before switch off).
-
-     TTY thus: "needsterminal" could be driven gracefully EVEN IF
-     a PAGER is open because the current user action is "print*", since
-     we KNOW that there is a PAGER and can temporarily lay it down to
-     sleep, fflush()ing/adjusting as necessary, and wake it up again
-     afterwards (or, with some work, gracefully shut it down if ^C ^C).
-     This is of course also true for user questions ("really display
-     part XY?", "need decryption password:", etc.!!!)!!
   . Remove all occurrences of mbtowc() with mbrtowc(); temporarily add (some)
     global mbstate_t objects until the send / MIME layer rewrite is done and
     has the carrier.  Use flip states and add aux funs with only update the
@@ -475,9 +420,8 @@ Low-Level
     message structures instead; i.e., for maildir boxes the path is yet
     allocated separately, then it could be part of the message object,
     etc.
-    It should contain a ui8_t that tracks the number of contained parts,
-    so that the "fits-onto-the-screen" tests are more useful than today;
-    i think 8-bit is sufficient, with 0xFF meaning more-than-fits-here.
+    It should track the number of contained parts, so that the
+    "fits-onto-the-screen" tests are more useful than today.
   . Given how many temporary files we use, it would make sense to
     support a reusable single temporary file, as in singletmp_take() and
     singletmp_release(), where singletmp_release() would close and thus
@@ -502,9 +446,6 @@ Low-Level
   . `dp' prints EOF at the end of a thread even if unread messages
     follow
   . `resend' doesn't smime-sign.
-  . Really do extend the test already today; test S/MIME
-    signing/encryption/decryption with two pairs of identities, instead
-    of of one.
   . RFC 5751 describes a message multipart layout that also includes the
     headers in the signature; it would be nice (for completeness sake)
     to be able to support that.  Note shutup@ietf.org.
@@ -548,18 +489,6 @@ Low-Level
     the string.
   . When a user edits a specific header, it should no longer be
     modified.  (Do not loose knowledge that collect() edited it.)
-  . Regular expression list resorting is no good; the user should be
-    able to specify a match order weight, as in:
-      mlist 10 a@b.org 8 c@d.org .*@else@org 0 almost@never.com
-    So: optional digit 0-10, where 0-4 are never relinked and always
-    placed at the tail, 6-10 are never relinked and always placed at
-    head (all in decreasing order, head to tail), and 5 is the implicit
-    value, placed in between and automatically resorted just as is the
-    sole algorithm we currently have.
-  .. And maybe we should have an event mechanism with one-shot etc..
-     Then install a resorter function when we actually have lookups and
-     one-shot sort the entire thing once (when the loop ticks).
-     Instead of busy resorting, that is.
   . The new internal ~/$ expansion mechanism should get support
      for POSIX parameter expansions ${[:]-} and ${[:]+} (and ${[:]?}).
      There is no real way to get the functionality otherwise...
@@ -588,11 +517,7 @@ Low-Level
   . `pipe' is total shit regarding MIME.  We need some defined and
      documented method to configure which parts are displayed and/or how
      they are visually separated.
-  . The new n_err() facility is nice, but we need n_msg() too, maybe
-    more.  Maybe à la Log:: and macro wrappers with priority unrolled,
-    then add user-settable treshold, too.  Btw. C99 adds vararg macros.
-    .. We must handle embedded newlines properly
-    .. In PARTICULAR we MUST NOT use stdout when in batch mode:
+  .. In PARTICULAR we MUST NOT use stdout for log/status in batch mode:
          ssh X "echo 'move * |cat' | s-nail -#f %" >> download
        should do the right thing, but can't like that due to unwanted
        noise in the stdout output!  Best would be if it would be
@@ -605,15 +530,6 @@ Low-Level
      Unicode mode?  I.e.: continue to force the user to set such
      a switch, but do it in a sensible fashion, because the UTF-16 data
      stream may nonetheless contain control characters??
---
-
-  . We can "steal" features from msmtp(1) that make sense: /etc/aliases
-    ($mta_alias_file).  At least postfix(1) also supports file and pipe
-    addressees...  It also supports include files via :include:/filename
-    but which i think should be supported in a second step.  Ditto
-    caching (timestamp check and a mechanism to support/disable
-    caching.)
-
 --
 
 . smime_verify(): only dump the multipart that is signed into the file for
@@ -645,5 +561,12 @@ Low-Level
 
 . if -t is used and the file includes Mail-Followup-To:, then we should
   NOT add to it, OR we need to offer a way to get there!
+
+. `mimetype': more type markers: i want to be able to send
+  application/mbox as text if it is 7bit clean; ditto application/x-sh.
+  Ditto xml etc.  And: if highbits, try conversion, but fall back to
+  base64 instead of failing to send the message.
+     ?ui=t,wire=7bit,8bit-or-base64
+  Something like that.
 
 # s-ts-mode
