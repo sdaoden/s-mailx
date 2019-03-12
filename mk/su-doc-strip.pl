@@ -26,7 +26,7 @@ sub main_fun{
          if($i){
             if($_ =~ /^(.*?)\*\/[[:space:]]*(.*)$/){
                $i = 0;
-               push @lines, $2 if length $2;
+               push @lines, $2 if length $2
             }
          }elsif($_ =~ /^(.*?)[[:space:]]*\/\*!(.*)$/){
             my ($m1, $m2) = ($1, $2);
@@ -49,7 +49,7 @@ sub main_fun{
       while(@lines){
          $i = shift @lines;
          die "Cannot write to $f: $^E"
-            unless print $fd $i, "\n";
+            unless print $fd $i, "\n"
       }
       die "Cannot close $f after writing: $^E"
          unless close $fd
