@@ -16,6 +16,7 @@ su_USECASE_MX_DISABLED
 #include <su/cs-dict.h>
 #include <su/icodec.h>
 #include <su/mem.h>
+#include <su/mem-bag.h>
 #include <su/prime.h>
 #include <su/sort.h>
 #include <su/utf.h>
@@ -33,6 +34,7 @@ static void a_cs_dict(void);
    static void a__cs_dict(u32 addflags);
    static void a__cs_dict_case(cs_dict<char const*> *cdp, char const *k[3]);
 static void a_icodec(void);
+static void a_mem_bag(void);
 static void a_prime(void);
 static void a_sort(void);
 static void a_utf(void);
@@ -64,6 +66,7 @@ int main(void){
    /// Basics (building upon other basics)
 
    a_icodec();
+   a_mem_bag();
    a_sort();
 
    /// Extended
@@ -194,12 +197,14 @@ a__cs_dict(u32 addflags){
             (type_toolbox<char*>::delete_fun)0x2,
             (type_toolbox<char*>::assign_fun)0x3,
             NIL, NIL);
+      typedef cs_dict<char*,TRU1> csd;
 
-      cs_dict<char*,TRU1> cdo2(&xtb);
-      if(cdo2.assign(cdo) != 0)
+      csd *cdo2 = su_NEW(csd)(&xtb);
+      if(cdo2->assign(cdo) != 0)
          a_ERR();
-      if(cdo2.count() != cdo.count())
+      if(cdo2->count() != cdo.count())
          a_ERR();
+      su_DEL(cdo2);
    }
    {
       cs_dict<char*,TRU1> cdo2(auto_type_toolbox<char*>::get_instance());
@@ -427,6 +432,27 @@ a_icodec(void){
       a_ERR();
    if(u64 != su_U64_C(0xAFFEDEADABBABEEF))
       a_ERR();
+}
+
+static void
+a_mem_bag(void){ // TODO only instantiation test yet
+#ifdef su_HAVE_MEM_BAG
+   mem_bag *mb;
+
+   mb = su_NEW(mem_bag);
+
+# ifdef su_HAVE_MEM_BAG_AUTO
+   mb->auto_allocate(10);
+# endif
+
+# ifdef su_HAVE_MEM_BAG_LOFI
+   void *lvp = mb->lofi_allocate(10);
+
+   mb->lofi_free(lvp);
+# endif
+
+   su_DEL(&mb->reset());
+#endif // su_HAVE_MEM_BAG
 }
 
 static void
