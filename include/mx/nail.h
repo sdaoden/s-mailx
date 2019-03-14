@@ -83,13 +83,6 @@
 #define n_CHILD_FD_PASS -1
 #define n_CHILD_FD_NULL -2
 
-/* Colour stuff */
-#ifdef mx_HAVE_COLOUR
-# define n_COLOUR(X) X
-#else
-# define n_COLOUR(X)
-#endif
-
 /*  */
 #define n_FROM_DATEBUF 64 /* Size of RFC 4155 From_ line date */
 #define n_DATE_DAYSYEAR 365u
@@ -280,42 +273,6 @@ enum n_cmd_arg_desc_flags{
 #define n_CMD_ARG_DESC_TO_ERRNO(FLAGCARRIER) \
    (((u32)(FLAGCARRIER) >> n_CMD_ARG_DESC_ERRNO_SHIFT) &\
       n_CMD_ARG_DESC_ERRNO_MASK)
-
-#ifdef mx_HAVE_COLOUR
-/* We do have several contexts of colour IDs; since only one of them can be
- * active at any given time let's share the value range */
-enum n_colour_ctx{
-   n_COLOUR_CTX_SUM,
-   n_COLOUR_CTX_VIEW,
-   n_COLOUR_CTX_MLE,
-   n__COLOUR_CTX_MAX1
-};
-
-enum n_colour_id{
-   /* Header summary */
-   n_COLOUR_ID_SUM_DOTMARK = 0,
-   n_COLOUR_ID_SUM_HEADER,
-   n_COLOUR_ID_SUM_THREAD,
-
-   /* Message display */
-   n_COLOUR_ID_VIEW_FROM_ = 0,
-   n_COLOUR_ID_VIEW_HEADER,
-   n_COLOUR_ID_VIEW_MSGINFO,
-   n_COLOUR_ID_VIEW_PARTINFO,
-
-   /* Mailx-Line-Editor */
-   n_COLOUR_ID_MLE_POSITION = 0,
-   n_COLOUR_ID_MLE_PROMPT,
-
-   n__COLOUR_IDS = n_COLOUR_ID_VIEW_PARTINFO + 1
-};
-
-/* Colour preconditions, let's call them tags, cannot be an enum because for
- * message display they are the actual header name of the current header.
- * Thus let's use constants of pseudo pointers */
-# define n_COLOUR_TAG_SUM_DOT ((char*)-2)
-# define n_COLOUR_TAG_SUM_OLDER ((char*)-3)
-#endif /* mx_HAVE_COLOUR */
 
 enum conversion{
    CONV_NONE, /* no conversion */
@@ -1413,20 +1370,6 @@ struct n_cmd_desc{
 #define cd_minargs cd_msgflag /* Minimum argcount for WYSH/WYRA/RAWLIST */
 #define cd_maxargs cd_msgmask /* Max argcount for WYSH/WYRA/RAWLIST */
 
-#ifdef mx_HAVE_COLOUR
-struct n_colour_env{
-   struct n_colour_env *ce_last;
-   boole ce_enabled; /* Colour enabled on this level */
-   u8 ce_ctx; /* enum n_colour_ctx */
-   u8 ce_ispipe; /* .ce_outfp known to be a pipe */
-   u8 ce__pad[5];
-   FILE *ce_outfp;
-   struct a_colour_map *ce_current; /* Active colour or NULL */
-};
-
-struct n_colour_pen;
-#endif
-
 struct url{
    char const *url_input; /* Input as given (really) */
    u32 url_flags;
@@ -1506,11 +1449,11 @@ struct n_go_data_ctx{
    struct su_mem_bag *gdc_membag;
    void *gdc_ifcond; /* Saved state of conditional stack */
 #ifdef mx_HAVE_COLOUR
-   struct n_colour_env *gdc_colour;
+   struct mx_colour_env *gdc_colour;
    boole gdc_colour_active;
    u8 gdc__colour_pad[7];
-# define n_COLOUR_IS_ACTIVE() \
-   (/*n_go_data->gc_data.gdc_colour != NULL &&*/\
+# define mx_COLOUR_IS_ACTIVE() \
+   (/*n_go_data->gc_data.gdc_colour != su_NIL &&*/\
     /*n_go_data->gc_data.gdc_colour->ce_enabled*/ n_go_data->gdc_colour_active)
 #endif
    struct su_mem_bag gdc__membag_buf[1];

@@ -49,6 +49,7 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 
+#include "mx/colour.h"
 #include "mx/commandalias.h"
 #include "mx/ui-str.h"
 
@@ -955,9 +956,9 @@ jrestart:
    }
 
    /* Cleanup non-crucial external stuff */
-   n_COLOUR(
-      if(gcp->gc_data.gdc_colour != NULL)
-         n_colour_stack_del(&gcp->gc_data);
+   mx_COLOUR(
+      if(gcp->gc_data.gdc_colour != NIL)
+         mx_colour_stack_del(&gcp->gc_data);
    )
 
    /* Work the actual context (according to cleanup mode) */
@@ -982,7 +983,7 @@ jrestart:
       ASSERT(a_go_xcall == NULL);
       ASSERT(!(gcp->gc_flags & a_GO_XCALL_LOOP_MASK));
       ASSERT(gcp->gc_on_finalize == NULL);
-      n_COLOUR( ASSERT(gcp->gc_data.gdc_colour == NULL); )
+      mx_COLOUR( ASSERT(gcp->gc_data.gdc_colour == NIL); )
       goto jxleave;
    }else if(gcm & a_GO_CLEANUP_LOOPTICK){
       su_mem_bag_reset(gcp->gc_data.gdc_membag);

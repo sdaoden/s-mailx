@@ -675,44 +675,6 @@ FL FILE *n_collect(enum n_mailsend_flags msf, struct header *hp,
             struct message *mp, char const *quotefile, s8 *checkaddr_err);
 
 /*
- * colour.c
- */
-
-#ifdef mx_HAVE_COLOUR
-/* `(un)?colour' */
-FL int c_colour(void *v);
-FL int c_uncolour(void *v);
-
-/* An execution context is teared down, and it finds to have a colour stack.
- * Signals are blocked */
-FL void n_colour_stack_del(struct n_go_data_ctx *gdcp);
-
-/* We want coloured output (in this autorec memory() cycle), pager_used is used
- * to test whether *colour-pager* is to be inspected, if fp is given, the reset
- * sequence will be written as necessary by _stack_del()
- * env_gut() will reset() as necessary if fp is not NULL */
-FL void n_colour_env_create(enum n_colour_ctx cctx, FILE *fp,
-         boole pager_used);
-FL void n_colour_env_gut(void);
-
-/* Putting anything (for pens: including NULL) resets current state first */
-FL void n_colour_put(enum n_colour_id cid, char const *ctag);
-FL void n_colour_reset(void);
-
-/* Of course temporary only and may return NULL.  Doesn't affect state! */
-FL struct str const *n_colour_reset_to_str(void);
-
-/* A pen is bound to its environment and automatically reclaimed; it may be
- * NULL but that can be used anyway for simplicity.
- * This includes pen_to_str() -- which doesn't affect state! */
-FL struct n_colour_pen *n_colour_pen_create(enum n_colour_id cid,
-                           char const *ctag);
-FL void n_colour_pen_put(struct n_colour_pen *self);
-
-FL struct str const *n_colour_pen_to_str(struct n_colour_pen *self);
-#endif /* mx_HAVE_COLOUR */
-
-/*
  * dig-msg.c
  */
 

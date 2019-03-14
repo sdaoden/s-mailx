@@ -39,6 +39,10 @@
 #include "mx/termcap.h"
 #include "mx/ui-str.h"
 
+#ifdef mx_HAVE_MLE
+# include "mx/colour.h"
+#endif
+
 /* TODO fake */
 #include "su/code-in.h"
 
@@ -367,13 +371,13 @@ jeeval:
 
    /* And there may be colour support, too */
 #ifdef mx_HAVE_COLOUR
-   if(n_COLOUR_IS_ACTIVE()){
+   if(mx_COLOUR_IS_ACTIVE()){
       struct str const *psp, *rsp;
-      struct n_colour_pen *ccp;
+      struct mx_colour_pen *ccp;
 
-      if((ccp = n_colour_pen_create(n_COLOUR_ID_MLE_PROMPT, NULL)) != NULL &&
-            (psp = n_colour_pen_to_str(ccp)) != NULL &&
-            (rsp = n_colour_reset_to_str()) != NULL){
+      if((ccp = mx_colour_pen_create(mx_COLOUR_ID_MLE_PROMPT, NIL)) != NIL &&
+            (psp = mx_colour_pen_to_str(ccp)) != NIL &&
+            (rsp = mx_colour_reset_to_str()) != NIL){
          store = n_string_unshift_buf(store, psp->s, psp->l);
          /*store =*/ n_string_push_buf(store, rsp->s, rsp->l);
       }
@@ -992,7 +996,7 @@ a_tty_signal(int sig){
    sigset_t nset, oset;
    NYD; /* Signal handler */
 
-   n_COLOUR( n_colour_env_gut(); ) /* TODO NO SIMPLE SUSPENSION POSSIBLE.. */
+   mx_COLOUR( mx_colour_env_gut(); ) /* TODO NO SIMPLE SUSPENSION POSSIBLE.. */
    a_tty_term_mode(FAL0);
    mx_TERMCAP_SUSPEND(TRU1);
    a_tty_sigs_down();
@@ -1005,7 +1009,7 @@ a_tty_signal(int sig){
    sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
 
    /* TODO THEREFORE NEED TO _GUT() .. _CREATE() ENTIRE ENVS!! */
-   n_COLOUR( n_colour_env_create(n_COLOUR_CTX_MLE, n_tty_fp, FAL0); )
+   mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_MLE, n_tty_fp, FAL0); )
    a_tty_sigs_up();
    mx_TERMCAP_RESUME(TRU1);
    a_tty_term_mode(TRU1);
@@ -1465,12 +1469,12 @@ a_tty_vinuni(struct a_tty_line *tlp){
 
       cpre = csuf = NULL;
 #ifdef mx_HAVE_COLOUR
-      if(n_COLOUR_IS_ACTIVE()){
-         struct n_colour_pen *cpen;
+      if(mx_COLOUR_IS_ACTIVE()){
+         struct mx_colour_pen *cpen;
 
-         cpen = n_colour_pen_create(n_COLOUR_ID_MLE_PROMPT, NULL);
-         if((cpre = n_colour_pen_to_str(cpen)) != NULL)
-            csuf = n_colour_reset_to_str();
+         cpen = mx_colour_pen_create(mx_COLOUR_ID_MLE_PROMPT, NULL);
+         if((cpre = mx_colour_pen_to_str(cpen)) != NULL)
+            csuf = mx_colour_reset_to_str();
       }
 #endif
       fprintf(n_tty_fp, _("%sPlease enter Unicode code point:%s "),
@@ -4283,20 +4287,20 @@ FL int
    ASSERT(n_psonce & n_PSO_LINE_EDITOR_INIT);
 
 # ifdef mx_HAVE_COLOUR
-   n_colour_env_create(n_COLOUR_CTX_MLE, n_tty_fp, FAL0);
+   mx_colour_env_create(mx_COLOUR_CTX_MLE, n_tty_fp, FAL0);
 
    /* .tl_pos_buf is a hack */
    posbuf = pos = NULL;
 
-   if(n_COLOUR_IS_ACTIVE()){
+   if(mx_COLOUR_IS_ACTIVE()){
       char const *ccol;
-      struct n_colour_pen *ccp;
+      struct mx_colour_pen *ccp;
       struct str const *s;
 
-      if((ccp = n_colour_pen_create(n_COLOUR_ID_MLE_POSITION, NULL)) != NULL &&
-            (s = n_colour_pen_to_str(ccp)) != NULL){
+      if((ccp = mx_colour_pen_create(mx_COLOUR_ID_MLE_POSITION, NULL)
+            ) != NIL && (s = mx_colour_pen_to_str(ccp)) != NIL){
          ccol = s->s;
-         if((s = n_colour_reset_to_str()) != NULL){
+         if((s = mx_colour_reset_to_str()) != NULL){
             uz l1, l2;
 
             l1 = su_cs_len(ccol);
@@ -4375,7 +4379,7 @@ FL int
    mx_TERMCAP_RESUME(FAL0);
    a_tty_term_mode(TRU1);
    nn = a_tty_readline(&tl, n, histok_or_null  su_DBG_LOC_ARGS_USE);
-   n_COLOUR( n_colour_env_gut(); )
+   mx_COLOUR( mx_colour_env_gut(); )
    a_tty_term_mode(FAL0);
    mx_TERMCAP_SUSPEND(FAL0);
    a_tty_sigs_down();

@@ -51,6 +51,7 @@
 #include <su/sort.h>
 
 #include "mx/charsetalias.h"
+#include "mx/colour.h"
 #include "mx/commandalias.h"
 #include "mx/csop.h"
 #include "mx/filetype.h"

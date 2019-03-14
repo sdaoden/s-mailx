@@ -47,6 +47,7 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 
+#include "mx/colour.h"
 #include "mx/mlist.h"
 #include "mx/names.h"
 #include "mx/ui-str.h"
@@ -2884,9 +2885,9 @@ jredo_localtime:
             x[4 + 7 + 1 + 4] = '\0';
             rv = x;
          }
-         n_COLOUR(
+         mx_COLOUR(
             if(color_tag_or_null != NULL)
-               *color_tag_or_null = n_COLOUR_TAG_SUM_OLDER;
+               *color_tag_or_null = mx_COLOUR_TAG_SUM_OLDER;
          )
       }else if((i & 1) == 0)
          fmt = NULL;

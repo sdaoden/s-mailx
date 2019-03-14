@@ -44,6 +44,8 @@
 #include <su/cs.h>
 #include <su/icodec.h>
 
+#include "mx/colour.h"
+
 /* TODO fake */
 #include "su/code-in.h"
 
@@ -71,15 +73,16 @@ a_cmsg_show_overview(FILE *obuf, struct message *mp, int msg_no){
 
    cpre = csuf = n_empty;
 #ifdef mx_HAVE_COLOUR
-   if(n_COLOUR_IS_ACTIVE()){
-      struct n_colour_pen *cpen;
+   if(mx_COLOUR_IS_ACTIVE()){
+      struct mx_colour_pen *cpen;
 
-      if((cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_MSGINFO, NULL)) != NULL){
+      if((cpen = mx_colour_pen_create(mx_COLOUR_ID_VIEW_MSGINFO, NULL)
+            ) != NIL){
          struct str const *s;
 
-         if((s = n_colour_pen_to_str(cpen)) != NULL)
+         if((s = mx_colour_pen_to_str(cpen)) != NIL)
             cpre = s->s;
-         if((s = n_colour_reset_to_str()) != NULL)
+         if((s = mx_colour_reset_to_str()) != NIL)
             csuf = s->s;
       }
    }
@@ -142,18 +145,18 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
          if((obuf = n_pager_open()) == NULL)
             obuf = n_stdout;
       }
-      n_COLOUR(
+      mx_COLOUR(
          if(action == SEND_TODISP || action == SEND_TODISP_ALL)
-            n_colour_env_create(n_COLOUR_CTX_VIEW, obuf, obuf != n_stdout);
+            mx_colour_env_create(mx_COLOUR_CTX_VIEW, obuf, obuf != n_stdout);
       )
    }
-   n_COLOUR(
+   mx_COLOUR(
       else if(action == SEND_TODISP || action == SEND_TODISP_ALL)
-         n_colour_env_create(n_COLOUR_CTX_VIEW, n_stdout, FAL0);
+         mx_colour_env_create(mx_COLOUR_CTX_VIEW, n_stdout, FAL0);
    )
 
    rv = 0;
-   srelax_hold();
+   n_autorec_relax_create();
    for (ip = msgvec; *ip && PCMP(ip - msgvec, <, msgCount); ++ip) {
       mp = message + *ip - 1;
       touch(mp);
@@ -173,7 +176,7 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
          rv = 1;
          break;
       }
-      srelax();
+      n_autorec_relax_unroll();
       if(formfeed){ /* TODO a nicer way to separate piped messages! */
          if(putc('\f', obuf) == EOF){
             rv = 1;
@@ -183,10 +186,10 @@ _type1(int *msgvec, boole doign, boole dopage, boole dopipe,
       if (tstats != NULL)
          tstats[0] += mstats[0];
    }
-   srelax_rele();
-   n_COLOUR(
+   n_autorec_relax_gut();
+   mx_COLOUR(
       if(!dopipe && (action == SEND_TODISP || action == SEND_TODISP_ALL))
-         n_colour_env_gut();
+         mx_colour_env_gut();
    )
 jleave:
    if (obuf != n_stdout)
@@ -255,7 +258,7 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
    n_pstate &= ~n_PS_MSGLIST_DIRECT; /* TODO NO ATTACHMENTS */
    plines = 0;
 
-   n_COLOUR( n_colour_env_create(n_COLOUR_CTX_VIEW, iobuf, FAL0); )
+   mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_VIEW, iobuf, FAL0); )
    n_string_creat_auto(&s);
    /* C99 */{
       sz l;
@@ -392,7 +395,7 @@ a_cmsg_top(void *vp, struct n_ignore const *itp){
    }
 
    n_string_gut(&s);
-   n_COLOUR( n_colour_env_gut(); )
+   mx_COLOUR( mx_colour_env_gut(); )
 
    fflush(pbuf);
    page_or_print(pbuf, plines);
@@ -508,9 +511,7 @@ c_mimeview(void *vp){ /* TODO direct addressable parts, multiple such */
    n_pstate |= n_PS_DID_PRINT_DOT;
    uncollapse1(mp, 1);
 
-   n_COLOUR(
-      n_colour_env_create(n_COLOUR_CTX_VIEW, n_stdout, FAL0);
-   )
+   mx_COLOUR( mx_colour_env_create(mx_COLOUR_CTX_VIEW, n_stdout, FAL0); )
 
    if(!a_cmsg_show_overview(n_stdout, mp, *msgvec))
       n_pstate_err_no = su_ERR_IO;
@@ -520,9 +521,7 @@ c_mimeview(void *vp){ /* TODO direct addressable parts, multiple such */
    else
       n_pstate_err_no = su_ERR_NONE;
 
-   n_COLOUR(
-      n_colour_env_gut();
-   )
+   mx_COLOUR( mx_colour_env_gut(); )
 
    rv = (n_pstate_err_no != su_ERR_NONE);
 jleave:

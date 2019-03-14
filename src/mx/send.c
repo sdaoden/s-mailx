@@ -43,6 +43,7 @@
 
 #include <su/cs.h>
 
+#include "mx/colour.h"
 /* TODO but only for creating chain! */
 #include "mx/filter-quote.h"
 #include "mx/iconv.h"
@@ -120,12 +121,12 @@ _print_part_info(FILE *obuf, struct mimepart const *mpp, /* TODO strtofmt.. */
 
    cpre = csuf = NULL;
 #ifdef mx_HAVE_COLOUR
-   if(n_COLOUR_IS_ACTIVE()){
-      struct n_colour_pen *cpen;
+   if(mx_COLOUR_IS_ACTIVE()){
+      struct mx_colour_pen *cpen;
 
-      cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_PARTINFO, NULL);
-      if((cpre = n_colour_pen_to_str(cpen)) != NULL)
-         csuf = n_colour_reset_to_str();
+      cpen = mx_colour_pen_create(mx_COLOUR_ID_VIEW_PARTINFO, NULL);
+      if((cpre = mx_colour_pen_to_str(cpen)) != NIL)
+         csuf = mx_colour_reset_to_str();
    }
 #endif
 
@@ -620,15 +621,15 @@ jhdrput:
       }
 
       /* Dump it */
-      n_COLOUR(
-         if(n_COLOUR_IS_ACTIVE())
-            n_colour_put(n_COLOUR_ID_VIEW_HEADER, hlp->s_dat);
+      mx_COLOUR(
+         if(mx_COLOUR_IS_ACTIVE())
+            mx_colour_put(mx_COLOUR_ID_VIEW_HEADER, hlp->s_dat);
       )
       *cp = ':';
       _out(hlp->s_dat, hlp->s_len, obuf, convert, action, qf, stats, NULL,NULL);
-      n_COLOUR(
-         if(n_COLOUR_IS_ACTIVE())
-            n_colour_reset();
+      mx_COLOUR(
+         if(mx_COLOUR_IS_ACTIVE())
+            mx_colour_reset();
       )
       if(dostat & 4)
          _out("\n", sizeof("\n") -1, obuf, convert, action, qf, stats,
@@ -1578,14 +1579,14 @@ put_from_(FILE *fp, struct mimepart *ip, u64 *stats)
       nl = n_empty;
    }
 
-   n_COLOUR(
-      if(n_COLOUR_IS_ACTIVE())
-         n_colour_put(n_COLOUR_ID_VIEW_FROM_, NULL);
+   mx_COLOUR(
+      if(mx_COLOUR_IS_ACTIVE())
+         mx_colour_put(mx_COLOUR_ID_VIEW_FROM_, NULL);
    )
    i = fprintf(fp, "From %s %s%s", froma, date, nl);
-   n_COLOUR(
-      if(n_COLOUR_IS_ACTIVE())
-         n_colour_reset();
+   mx_COLOUR(
+      if(mx_COLOUR_IS_ACTIVE())
+         mx_colour_reset();
    )
    if (i > 0 && stats != NULL)
       *stats += i;
@@ -1635,15 +1636,15 @@ sendmp(struct message *mp, FILE *obuf, struct n_ignore const *doitp,
    char const *cpre = n_empty, *csuf = n_empty;
 
 #ifdef mx_HAVE_COLOUR
-   if(n_COLOUR_IS_ACTIVE()){
-      struct n_colour_pen *cpen;
+   if(mx_COLOUR_IS_ACTIVE()){
+      struct mx_colour_pen *cpen;
       struct str const *s;
 
-      cpen = n_colour_pen_create(n_COLOUR_ID_VIEW_FROM_,NULL);
-      if((s = n_colour_pen_to_str(cpen)) != NULL){
+      cpen = mx_colour_pen_create(mx_COLOUR_ID_VIEW_FROM_,NULL);
+      if((s = mx_colour_pen_to_str(cpen)) != NIL){
          cpre = s->s;
-         s = n_colour_reset_to_str();
-         if(s != NULL)
+         s = mx_colour_reset_to_str();
+         if(s != NIL)
             csuf = s->s;
       }
    }
