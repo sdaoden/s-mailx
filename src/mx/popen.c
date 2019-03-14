@@ -44,6 +44,7 @@
 #include <su/cs.h>
 
 #include "mx/filetype.h"
+#include "mx/termcap.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -388,7 +389,7 @@ a_popen_jobsig(int sig){
    hadsig = (a_popen_hadsig != 0);
    a_popen_hadsig = 1;
    if(!hadsig)
-      n_TERMCAP_SUSPEND(TRU1);
+      mx_TERMCAP_SUSPEND(TRU1);
 
    oldact = safe_signal(sig, SIG_DFL);
 
@@ -925,7 +926,7 @@ Popen(char const *cmd, char const *mode, char const *sh,
       osigint = n_signal(SIGINT, SIG_IGN);
       tiosp = n_alloc(sizeof *tiosp);
       tcgetattr(STDIN_FILENO, tiosp);
-      n_TERMCAP_SUSPEND(TRU1);
+      mx_TERMCAP_SUSPEND(TRU1);
    }
 
    sigemptyset(&nset);
@@ -981,7 +982,7 @@ Popen(char const *cmd, char const *mode, char const *sh,
       close(myside);
 jleave:
    if(rv == NULL && tiosp != NULL){
-      n_TERMCAP_RESUME(TRU1);
+      mx_TERMCAP_RESUME(TRU1);
       tcsetattr(STDIN_FILENO, TCSAFLUSH, tiosp);
       n_free(tiosp);
       n_signal(SIGINT, osigint);
@@ -1010,7 +1011,7 @@ Pclose(FILE *ptr, boole dowait)
       hold_all_sigs();
       rv = n_child_wait(pid, NULL);
       if(tiosp != NULL){
-         n_TERMCAP_RESUME(TRU1);
+         mx_TERMCAP_RESUME(TRU1);
          tcsetattr(STDIN_FILENO, TCSAFLUSH, tiosp);
          n_signal(SIGINT, osigint);
       }
@@ -1124,7 +1125,7 @@ n_child_run(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
          f |= a_TTY;
          tcgetattr((n_psonce & n_PSO_TTYIN ? STDIN_FILENO : STDOUT_FILENO),
             &a_popen_tios);
-         n_TERMCAP_SUSPEND(FAL0);
+         mx_TERMCAP_SUSPEND(FAL0);
          sigfillset(&nset);
          sigdelset(&nset, SIGCHLD);
          sigdelset(&nset, SIGINT);
@@ -1157,7 +1158,7 @@ n_child_run(char const *cmd, sigset_t *mask_or_null, int infd, int outfd,
 
    if(f & a_TTY){
       a_popen_jobsigs_down();
-      n_TERMCAP_RESUME(a_popen_hadsig ? TRU1 : FAL0);
+      mx_TERMCAP_RESUME(a_popen_hadsig ? TRU1 : FAL0);
       tcsetattr(((n_psonce & n_PSO_TTYIN) ? STDIN_FILENO : STDOUT_FILENO),
          ((n_psonce & n_PSO_TTYIN) ? TCSAFLUSH : TCSADRAIN), &a_popen_tios);
       sigprocmask(SIG_SETMASK, &oset, NULL);

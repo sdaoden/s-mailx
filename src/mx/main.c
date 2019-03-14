@@ -51,6 +51,7 @@
 
 #include "mx/iconv.h"
 #include "mx/names.h"
+#include "mx/termcap.h"
 
 /* TODO fake */
 #include "su/code-in.h"
@@ -1244,7 +1245,7 @@ je_expandargv:
     * switch account or running commands */
 #ifdef n_HAVE_TCAP
    if((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK)){
-      n_termcap_init();
+      mx_termcap_init();
       /* Undo the decrement from a_main__scrsz()s first invocation */
       if(n_scrnwidth > 0 && (n_psonce & n_PSO_TERMCAP_FULLWIDTH))
          ++n_scrnwidth;
@@ -1331,7 +1332,7 @@ jleave:
   /* Be aware of identical code for `exit' command! */
 #ifdef n_HAVE_TCAP
    if((n_psonce & n_PSO_INTERACTIVE) && !(n_poption & n_PO_QUICKRUN_MASK))
-      n_termcap_destroy();
+      mx_termcap_destroy();
 #endif
 
 j_leave:

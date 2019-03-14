@@ -2063,61 +2063,6 @@ FL char const *n_string_cp_const(struct n_string const *self);
 #endif
 
 /*
- * termcap.c
- * This is a little bit hairy since it provides stuff even if mx_HAVE_TERMCAP
- * is false due to encapsulation desire
- */
-
-#ifdef n_HAVE_TCAP
-/* termcap(3) / xy lifetime handling -- only called if we're n_PSO_INTERACTIVE
- * but not doing something in n_PO_QUICKRUN_MASK */
-FL void n_termcap_init(void);
-FL void n_termcap_destroy(void);
-
-/* enter_ca_mode / enable keypad (both if possible).
- * TODO When complete is not set we won't enter_ca_mode, for example: we don't
- * TODO want a complete screen clearance after $PAGER returned after displaying
- * TODO a mail, because otherwise the screen would look differently for normal
- * TODO stdout display messages.  Etc. */
-# ifdef mx_HAVE_TERMCAP
-FL void n_termcap_resume(boole complete);
-FL void n_termcap_suspend(boole complete);
-
-#  define n_TERMCAP_RESUME(CPL) do{ n_termcap_resume(CPL); }while(0)
-#  define n_TERMCAP_SUSPEND(CPL) do{ n_termcap_suspend(CPL); }while(0)
-# endif
-
-/* Command multiplexer, returns FAL0 on I/O error, TRU1 on success and TRUM1
- * for commands which are not available and have no built-in fallback.
- * For query options the return represents a true value and -1 error.
- * Will return FAL0 directly unless we've been initialized.
- * By convention unused argument slots are given as -1 */
-FL sz n_termcap_cmd(enum n_termcap_cmd cmd, sz a1, sz a2);
-# define n_termcap_cmdx(CMD) n_termcap_cmd(CMD, -1, -1)
-
-/* Query multiplexer.  If query is n__TERMCAP_QUERY_MAX1 then
- * tvp->tv_data.tvd_string must contain the name of the query to look up; this
- * is used to lookup just about *any* (string) capability.
- * Returns TRU1 on success and TRUM1 for queries for which a built-in default
- * is returned; FAL0 is returned on non-availability; for boolean the return
- * value equals the result as such (still tvp is mandatory argument) */
-FL boole n_termcap_query(enum n_termcap_query query,
-      struct n_termcap_value *tvp);
-
-/* Get a n_termcap_query for name or -1 if it is not known, and -2 if
- * type wasn't _NONE and the type doesn't match. */
-# ifdef mx_HAVE_KEY_BINDINGS
-FL s32 n_termcap_query_for_name(char const *name, enum n_termcap_captype type);
-FL char const *n_termcap_name_of_query(enum n_termcap_query query);
-# endif
-#endif /* n_HAVE_TCAP */
-
-#ifndef n_TERMCAP_RESUME
-# define n_TERMCAP_RESUME(CPL) do{;}while(0)
-# define n_TERMCAP_SUSPEND(CPL) do{;}while(0);
-#endif
-
-/*
  * thread.c
  */
 

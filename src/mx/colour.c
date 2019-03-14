@@ -34,6 +34,8 @@ su_EMPTY_FILE()
 #include <su/cs.h>
 #include <su/icodec.h>
 
+#include "mx/termcap.h"
+
 /* TODO fake */
 #include "su/code-in.h"
 
@@ -859,9 +861,9 @@ n_colour_env_create(enum n_colour_ctx cctx, FILE *fp, boole pager_used){
       goto jleave;
 
    if(UNLIKELY(a_colour_g.cg_type == a_COLOUR_T_UNKNOWN)){
-      struct n_termcap_value tv;
+      struct mx_termcap_value tv;
 
-      if(!n_termcap_query(n_TERMCAP_QUERY_colors, &tv)){
+      if(!mx_termcap_query(mx_TERMCAP_QUERY_colors, &tv)){
          a_colour_g.cg_type = a_COLOUR_T_NONE;
          goto jleave;
       }else

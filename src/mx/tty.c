@@ -36,6 +36,7 @@
 # endif
 #endif
 
+#include "mx/termcap.h"
 #include "mx/ui-str.h"
 
 /* TODO fake */
@@ -592,10 +593,10 @@ struct a_tty_bind_ctx{
 struct a_tty_bind_builtin_tuple{
    boole tbbt_iskey;   /* Whether this is a control key; else termcap query */
    char tbbt_ckey;      /* Control code */
-   u16 tbbt_query;   /* enum n_termcap_query (instead) */
+   u16 tbbt_query;   /* enum mx_termcap_query (instead) */
    char tbbt_exp[12];   /* String or [0]=NUL/[1]=BIND_FUN_REDUCE() */
 };
-CTA(n__TERMCAP_QUERY_MAX1 <= U16_MAX,
+CTA(mx__TERMCAP_QUERY_MAX1 <= U16_MAX,
    "Enumeration cannot be stored in datatype");
 
 # ifdef mx_HAVE_KEY_BINDINGS
@@ -831,7 +832,7 @@ static struct a_tty_bind_builtin_tuple const a_tty_bind_base_tuples[] = {
 # ifdef mx_HAVE_KEY_BINDINGS
 #  undef a_X
 #  define a_X(Q,S) \
-   {FAL0, '\0', n_TERMCAP_QUERY_ ## Q,\
+   {FAL0, '\0', mx_TERMCAP_QUERY_ ## Q,\
       {'\0', (char)a_TTY_BIND_FUN_REDUCE(a_TTY_BIND_FUN_ ## S),}},
 
    a_X(key_backspace, DEL_BWD) a_X(key_dc, DEL_FWD)
@@ -863,7 +864,7 @@ static struct a_tty_bind_builtin_tuple const a_tty_bind_default_tuples[] = {
    /* The remains only if we have `bind' functionality available */
 # ifdef mx_HAVE_KEY_BINDINGS
 #  undef a_X
-#  define a_X(Q,S) {FAL0, '\0', n_TERMCAP_QUERY_ ## Q, {S}},
+#  define a_X(Q,S) {FAL0, '\0', mx_TERMCAP_QUERY_ ## Q, {S}},
 
    a_X(key_shome, "z0") a_X(key_send, "z$")
    a_X(xkey_sup, "z0") a_X(xkey_sdown, "z$")
@@ -993,7 +994,7 @@ a_tty_signal(int sig){
 
    n_COLOUR( n_colour_env_gut(); ) /* TODO NO SIMPLE SUSPENSION POSSIBLE.. */
    a_tty_term_mode(FAL0);
-   n_TERMCAP_SUSPEND(TRU1);
+   mx_TERMCAP_SUSPEND(TRU1);
    a_tty_sigs_down();
 
    sigemptyset(&nset);
@@ -1006,7 +1007,7 @@ a_tty_signal(int sig){
    /* TODO THEREFORE NEED TO _GUT() .. _CREATE() ENTIRE ENVS!! */
    n_COLOUR( n_colour_env_create(n_COLOUR_CTX_MLE, n_tty_fp, FAL0); )
    a_tty_sigs_up();
-   n_TERMCAP_RESUME(TRU1);
+   mx_TERMCAP_RESUME(TRU1);
    a_tty_term_mode(TRU1);
    a_tty.tg_line->tl_vi_flags |= a_TTY_VF_MOD_DIRTY;
 }
@@ -1455,8 +1456,8 @@ a_tty_vinuni(struct a_tty_line *tlp){
 
    wc = '\0';
 
-   if(!n_termcap_cmdx(n_TERMCAP_CMD_cr) ||
-         !n_termcap_cmd(n_TERMCAP_CMD_ce, 0, -1))
+   if(!mx_termcap_cmdx(mx_TERMCAP_CMD_cr) ||
+         !mx_termcap_cmd(mx_TERMCAP_CMD_ce, 0, -1))
       goto jleave;
 
    /* C99 */{
@@ -1638,7 +1639,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
          f |= a_TTY_VF_MOD_DIRTY;
 
       if((f & a_TTY_VF_MOD_DIRTY) && phy_cur != 0){
-         if(!n_termcap_cmdx(n_TERMCAP_CMD_cr))
+         if(!mx_termcap_cmdx(mx_TERMCAP_CMD_cr))
             goto jerr;
          phy_cur = 0;
       }
@@ -1652,7 +1653,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
 
       /* May need to clear former line content */
       if((f & a_TTY_VF_MOD_DIRTY) &&
-            !n_termcap_cmd(n_TERMCAP_CMD_ce, phy_cur, -1))
+            !mx_termcap_cmd(mx_TERMCAP_CMD_ce, phy_cur, -1))
          goto jerr;
 
       tlp->tl_phy_start = tlp->tl_line.cells;
@@ -1695,7 +1696,7 @@ a_tty_vi__paint(struct a_tty_line *tlp){
    /* Then search for right boundary.  Dependent upon n_PSO_FULLWIDTH (termcap
     * am/xn) We leave the rightmost column empty because some terminals
     * [cw]ould wrap the line if we write into that, or not.
-    * TODO We do not deal with !n_TERMCAP_QUERY_sam */
+    * TODO We do not deal with !mx_TERMCAP_QUERY_sam */
    phy_wid = phy_wid_base - phy_base;
    tcp_right = tlp->tl_line.cells + cnt;
 
@@ -1804,15 +1805,15 @@ jpaint:
    /* To be able to apply some quick jump offs, clear line if possible */
    if(f & a_TTY_VF_MOD_DIRTY){
       /* Force complete clearance and cursor reinitialization */
-      if(!n_termcap_cmdx(n_TERMCAP_CMD_cr) ||
-            !n_termcap_cmd(n_TERMCAP_CMD_ce, 0, -1))
+      if(!mx_termcap_cmdx(mx_TERMCAP_CMD_cr) ||
+            !mx_termcap_cmd(mx_TERMCAP_CMD_ce, 0, -1))
          goto jerr;
       tlp->tl_phy_start = tcp_left;
       phy_cur = 0;
    }
 
    if((f & (a_TTY_VF_MOD_DIRTY | a_SHOW_PROMPT)) && phy_cur != 0){
-      if(!n_termcap_cmdx(n_TERMCAP_CMD_cr))
+      if(!mx_termcap_cmdx(mx_TERMCAP_CMD_cr))
          goto jerr;
       phy_cur = 0;
    }
@@ -1879,7 +1880,7 @@ jpaint:
 # endif
 
       if(phy_cur != (w = phy_wid_base) &&
-            !n_termcap_cmd(n_TERMCAP_CMD_ch, phy_cur = w, 0))
+            !mx_termcap_cmd(mx_TERMCAP_CMD_ch, phy_cur = w, 0))
          goto jerr;
 
       *pos++ = '|';
@@ -1926,7 +1927,7 @@ jpaint:
 
 jcursor:
    if(((f & a_MOVE_CURSOR) || phy_nxtcur != phy_cur) &&
-         !n_termcap_cmd(n_TERMCAP_CMD_ch, phy_cur = phy_nxtcur, 0))
+         !mx_termcap_cmd(mx_TERMCAP_CMD_ch, phy_cur = phy_nxtcur, 0))
       goto jerr;
 
 jleave:
@@ -2983,7 +2984,7 @@ a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, uz *len){
       break;
 
    case a_X(CLEAR_SCREEN):
-      tlp->tl_vi_flags |= (n_termcap_cmdx(n_TERMCAP_CMD_cl) == TRU1)
+      tlp->tl_vi_flags |= (mx_termcap_cmdx(mx_TERMCAP_CMD_cl) == TRU1)
             ? a_TTY_VF_MOD_DIRTY : a_TTY_VF_BELL;
       break;
 
@@ -3845,7 +3846,7 @@ jleave:
 static void
 a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
    char capname[a_TTY_BIND_CAPNAME_MAX +1];
-   struct n_termcap_value tv;
+   struct mx_termcap_value tv;
    uz len;
    boole isfirst; /* TODO For now: first char must be control! */
    char *cp, *next;
@@ -3877,13 +3878,13 @@ a_tty_bind_resolve(struct a_tty_bind_ctx *tbcp){
       /* C99 */{
          s32 tq;
 
-         tq = n_termcap_query_for_name(capname, n_TERMCAP_CAPTYPE_STRING);
+         tq = mx_termcap_query_for_name(capname, mx_TERMCAP_CAPTYPE_STRING);
          if(tq == -1){
             tv.tv_data.tvd_string = capname;
-            tq = n__TERMCAP_QUERY_MAX1;
+            tq = mx__TERMCAP_QUERY_MAX1;
          }
 
-         if(tq < 0 || !n_termcap_query(tq, &tv)){
+         if(tq < 0 || !mx_termcap_query(tq, &tv)){
             if(n_poption & n_PO_D_V)
                n_err(_("`bind': unknown or unsupported capability: %s: %s\n"),
                   capname, tbcp->tbc_seq);
@@ -4215,7 +4216,7 @@ jbuiltin_redo:
             tbpc.tbpc_in_seq = buf;
          }else
             tbpc.tbpc_in_seq = savecatsep(":", '\0',
-               n_termcap_name_of_query(tbbtp->tbbt_query));
+               mx_termcap_name_of_query(tbbtp->tbbt_query));
          tbpc.tbpc_exp.s = n_UNCONST(tbbtp->tbbt_exp[0] == '\0'
                ? a_tty_bind_fun_names[(u8)tbbtp->tbbt_exp[1]]
                : tbbtp->tbbt_exp);
@@ -4371,12 +4372,12 @@ FL int
 
    a_tty.tg_line = &tl;
    a_tty_sigs_up();
-   n_TERMCAP_RESUME(FAL0);
+   mx_TERMCAP_RESUME(FAL0);
    a_tty_term_mode(TRU1);
    nn = a_tty_readline(&tl, n, histok_or_null  su_DBG_LOC_ARGS_USE);
    n_COLOUR( n_colour_env_gut(); )
    a_tty_term_mode(FAL0);
-   n_TERMCAP_SUSPEND(FAL0);
+   mx_TERMCAP_SUSPEND(FAL0);
    a_tty_sigs_down();
    a_tty.tg_line = NULL;
 
@@ -4753,7 +4754,7 @@ a_tty_signal(int sig){
    UNUSED(sig);
 
 #  ifdef mx_HAVE_TERMCAP
-   n_TERMCAP_SUSPEND(TRU1);
+   mx_TERMCAP_SUSPEND(TRU1);
    a_tty_sigs_down();
 
    sigemptyset(&nset);
@@ -4764,7 +4765,7 @@ a_tty_signal(int sig){
    sigprocmask(SIG_BLOCK, &oset, (sigset_t*)NULL);
 
    a_tty_sigs_up();
-   n_TERMCAP_RESUME(TRU1);
+   mx_TERMCAP_RESUME(TRU1);
 #  endif /* mx_HAVE_TERMCAP */
 }
 # endif /* a_TTY_SIGNALS */
@@ -4802,11 +4803,11 @@ FL int
 
 # ifdef mx_HAVE_TERMCAP
    a_tty_sigs_up();
-   n_TERMCAP_RESUME(FAL0);
+   mx_TERMCAP_RESUME(FAL0);
 # endif
    rv = (readline_restart)(n_stdin, linebuf, linesize, n  su_DBG_LOC_ARGS_USE);
 # ifdef mx_HAVE_TERMCAP
-   n_TERMCAP_SUSPEND(FAL0);
+   mx_TERMCAP_SUSPEND(FAL0);
    a_tty_sigs_down();
 # endif
    NYD_OU;
