@@ -1039,15 +1039,17 @@ ok_v_fwdheading, /* {obsolete=1} */
    ok_b_keep_content_length,
    ok_b_keepsave,
 
-   ok_v_LANG,                          /* {vip=1,env=1,notempty=1} */
-   ok_v_LC_ALL,                     /* {name=LC_ALL,vip=1,env=1,notempty=1} */
-   ok_v_LC_CTYPE,                   /* {name=LC_CTYPE,vip=1,env=1,notempty=1} */
-   ok_v_LINES,                         /* {notempty=1,posnum=1,env=1} */
-   ok_v_LISTER,                     /* {env=1,notempty=1,defval=VAL_LISTER} */
-   ok_v_LOGNAME,                       /* {rdonly=1,import=1} */
+   ok_v_LANG, /* {vip=1,env=1,notempty=1} */
+   ok_v_LC_ALL, /* {name=LC_ALL,vip=1,env=1,notempty=1} */
+   ok_v_LC_CTYPE, /* {name=LC_CTYPE,vip=1,env=1,notempty=1} */
+   ok_v_LINES, /* {notempty=1,posnum=1,env=1} */
+   ok_v_LISTER, /* {env=1,notempty=1,defval=VAL_LISTER} */
+   ok_v_LOGNAME, /* {rdonly=1,import=1} */
+   ok_v_line_editor_cpl_word_breaks, /* {\ } */
+      /* {defval=n_LINE_EDITOR_CPL_WORD_BREAKS} */
    ok_b_line_editor_disable,
    ok_b_line_editor_no_defaults,
-   ok_v_log_prefix,                    /* {nodel=1,i3val=VAL_UAGENT ": "} */
+   ok_v_log_prefix, /* {nodel=1,i3val=VAL_UAGENT ": "} */
 
    ok_v_MAIL,                          /* {env=1} */
    ok_v_MAILRC,                  /* {import=1,notempty=1,defval=VAL_MAILRC} */

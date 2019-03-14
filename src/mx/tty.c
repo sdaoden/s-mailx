@@ -27,6 +27,8 @@
 # include "mx/nail.h"
 #endif
 
+#include <su/mem.h>
+
 #if defined mx_HAVE_MLE
 # include <su/cs.h>
 # include <su/utf.h>
@@ -2413,37 +2415,40 @@ jredo:
    if(exp.s == NULL || (exp.l = su_cs_len(exp.s)) == 0){
       if(wedid < FAL0)
          goto jnope;
+
       /* No.  But maybe the users' desire was to complete only a part of the
        * shell token of interest!  TODO This can be improved, we would need to
        * TODO have shexp_parse to create a DOM structure of parsed snippets, so
        * TODO that we can tell for each snippet which quote is active and
        * TODO whether we may cross its boundary and/or apply expansion for it!
        * TODO Only like that we would be able to properly requote user input
-       * TODO like "'['a-z]<TAB>" to e.g. "\[a-z]" for glob purposes! */
+       * TODO like "'['a-z]<TAB>" to e.g. "\[a-z]" for glob purposes!
+       * TODO Then, honour *line-editor-word-breaks* from ground up! */
       if(wedid == TRU1){
          uz i, li;
+         char const *word_breaks;
 
          wedid = TRUM1;
-         for(li = UZ_MAX, i = sub.l;;){
+
+         word_breaks = ok_vlook(line_editor_cpl_word_breaks);
+         li = UZ_MAX;
+         i = sub.l;
+
+         while(i-- != 0){
             char c;
 
-            if(--i == 0)
-               goto jnope;
-            if((c = sub.s[i]) == '/')
-               li = i;
-            else if((c == '+' /* *folder*! */ || c == '&' /* *MBOX* */ ||
-                     c == '%' /* $MAIL or *inbox* */) &&
-                  i == sub.l - 1){
-               li = i;
+            c = sub.s[i];
+            if(su_cs_is_space(c))
+               break;
+            else if((i != sub.l - 1 || c != '*') &&
+                  su_cs_find_c(word_breaks, c) != NIL){
+               li = i + 1;
                break;
             }
-            /* Do stop once some "magic" characters are seen XXX magic set */
-            else if(c == '<' || c == '>' || c == '=' || c == ':' ||
-                  su_cs_is_space(c))
-               break;
          }
          if(li == UZ_MAX)
             goto jnope;
+
          preexp = sub;
          preexp.l = li;
          sub.l -= li;

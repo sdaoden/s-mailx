@@ -3076,7 +3076,9 @@ try to expand the word before the cursor, supporting the usual
 .Mx
 .Pf ( Cd mle-complete ;
 this is affected by
-.Cd mle-quote-rndtrip ) .
+.Cd mle-quote-rndtrip
+and
+.Va line-editor-cpl-word-breaks ) .
 .
 .It Ql \ecJ
 Newline:
@@ -10128,8 +10130,16 @@ originating folder when \*(UA is quit.
 This setting causes all saved message to be retained.
 .
 .Mx
+.It Va line-editor-cpl-word-breaks
+\*(OP List of bytes which are used by the
+.Cd mle-complete
+tabulator completion to decide where word boundaries exist, by default
+.Ql """'@=;|:
+\*(ID This mechanism is yet restricted.
+.
+.Mx
 .It Va line-editor-disable
-\*(BO Turn off any enhanced line editing capabilities (see
+\*(BO Turn off any line editing capabilities (from \*(UAs POW, see
 .Sx "On terminal control and line editor"
 for more).
 .
