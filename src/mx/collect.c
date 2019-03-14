@@ -482,7 +482,7 @@ a_coll_quote_message(FILE *fp, struct message *mp, boole isfwd){
                "*fwdheading*"));
          if((cp = ok_vlook(forward_inject_head)) == NULL &&
                (cp = cp_v15compat) == NULL)
-            cp = n_FORWARD_INJECT_HEAD;
+            cp = n_FORWARD_INJECT_HEAD; /* v15compat: make auto-defval */
          quoteitp = n_IGNORE_FWD;
       }else{
          if(!su_cs_cmp(cp, "noheading")){
@@ -495,7 +495,7 @@ a_coll_quote_message(FILE *fp, struct message *mp, boole isfwd){
             action = SEND_QUOTE_ALL;
             cp = NULL;
          }else if((cp = ok_vlook(quote_inject_head)) == NULL)
-            cp = n_QUOTE_INJECT_HEAD;
+            cp = n_QUOTE_INJECT_HEAD; /* v15compat: make auto-defval */
       }
       /* We we pass through our formatter? */
       if((cfc.cfc_fmt = cp) != NULL){
