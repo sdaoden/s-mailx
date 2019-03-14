@@ -1,5 +1,5 @@
 /*@ S-nail - a mail user agent derived from Berkeley Mail.
- *@ `vexpr'.
+ *@ Implementation of vexpr.h.
  *@ TODO - better commandline parser that can dive into subcommands could
  *@ TODO   get rid of a lot of ERR_SYNOPSIS cruft.
  *@ TODO - use su_regex (and if it's a wrapper only)
