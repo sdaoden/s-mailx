@@ -492,7 +492,7 @@ enum a_tty_bind_flags{
    a_TTY_BIND_NOCOMMIT = 1u<<11, /* Expansion shall be editable */
 # endif
 
-   /* MLE internal commands XXX Can these be values not bits? */
+   /* MLE internal commands */
    a_TTY_BIND_FUN_INTERNAL = 1u<<15,
    a_TTY__BIND_FUN_SHIFT = 16u,
    a_TTY__BIND_FUN_SHIFTMAX = 24u,
@@ -524,20 +524,25 @@ enum a_tty_bind_flags{
    a_X(PASTE, 23)
    a_X(CLEAR_SCREEN, 24)
 
-   a_X(CANCEL, 25)
-   a_X(RESET, 26)
-   a_X(FULLRESET, 27)
-   a_X(COMMIT, 28) /* Must be last one! */
+   a_X(RAISE_INT, 25)
+   a_X(RAISE_QUIT, 26)
+   a_X(RAISE_TSTP, 27)
+
+   a_X(CANCEL, 28)
+   a_X(RESET, 29)
+   a_X(FULLRESET, 30)
+
+   a_X(COMMIT, 31) /* Must be last one (else adjust CTAs)! */
 # undef a_X
 
-   a_TTY__BIND_LAST = 1<<28
+   a_TTY__BIND_LAST = 1u<<28
 };
 # ifdef mx_HAVE_KEY_BINDINGS
 CTA((u32)a_TTY_BIND_RESOLVE >= (u32)n__GO_INPUT_CTX_MAX1,
    "Bit carrier lower boundary must be raised to avoid value sharing");
 # endif
 CTA(a_TTY_BIND_FUN_EXPAND(a_TTY_BIND_FUN_COMMIT) <
-      (1 << a_TTY__BIND_FUN_SHIFTMAX),
+      (1u << a_TTY__BIND_FUN_SHIFTMAX),
    "Bit carrier range must be expanded to represent necessary bits");
 CTA(a_TTY__BIND_LAST >= (1u << a_TTY__BIND_FUN_SHIFTMAX),
    "Bit carrier upper boundary must be raised to avoid value sharing");
@@ -778,6 +783,10 @@ static char const a_tty_bind_fun_names[][24] = {
    a_X(PASTE, "paste")
    a_X(CLEAR_SCREEN, "clear-screen")
 
+   a_X(RAISE_INT, "raise-int")
+   a_X(RAISE_QUIT, "raise-quit")
+   a_X(RAISE_TSTP, "raise-tstp")
+
    a_X(CANCEL, "cancel")
    a_X(RESET, "reset")
    a_X(FULLRESET, "fullreset")
@@ -798,7 +807,7 @@ static struct a_tty_bind_builtin_tuple const a_tty_bind_base_tuples[] = {
 
    a_X('A', GO_HOME)
    a_X('B', GO_BWD)
-   /* C: SIGINT */
+   a_X('C', RAISE_INT)
    a_X('D', DEL_FWD)
    a_X('E', GO_END)
    a_X('F', GO_FWD)
@@ -821,7 +830,7 @@ static struct a_tty_bind_builtin_tuple const a_tty_bind_base_tuples[] = {
    a_X('W', SNARF_WORD_BWD)
    a_X('X', GO_WORD_FWD)
    a_X('Y', GO_WORD_BWD)
-   /* Z: SIGTSTP */
+   a_X('Z', RAISE_TSTP)
 
    a_X('[', CANCEL)
    /* \: below */
@@ -1038,10 +1047,8 @@ a_tty_term_mode(boole raw){
    tiosp = &a_tty.tg_tios_new;
    tiosp->c_cc[VMIN] = 1;
    tiosp->c_cc[VTIME] = 0;
-   /* Enable ^\, ^Q and ^S to be used for key bindings */
-   tiosp->c_cc[VQUIT] = tiosp->c_cc[VSTART] = tiosp->c_cc[VSTOP] = '\0';
-   tiosp->c_iflag &= ~(ISTRIP | IGNCR);
-   tiosp->c_lflag &= ~(ECHO /*| ECHOE | ECHONL */| ICANON | IEXTEN);
+   tiosp->c_iflag &= ~(ISTRIP | IGNCR | IXON | IXOFF);
+   tiosp->c_lflag &= ~(ECHO /*| ECHOE | ECHONL */| ICANON | IEXTEN | ISIG);
 jleave:
    tcsetattr(STDIN_FILENO, TCSADRAIN, tiosp);
    NYD2_OU;
@@ -2995,6 +3002,22 @@ a_tty_fun(struct a_tty_line *tlp, enum a_tty_bind_flags tbf, uz *len){
    case a_X(CLEAR_SCREEN):
       tlp->tl_vi_flags |= (mx_termcap_cmdx(mx_TERMCAP_CMD_cl) == TRU1)
             ? a_TTY_VF_MOD_DIRTY : a_TTY_VF_BELL;
+      break;
+
+   case a_X(RAISE_INT):
+#ifdef SIGINT
+      n_raise(SIGINT);
+#endif
+      break;
+   case a_X(RAISE_QUIT):
+#ifdef SIGTSTP
+      n_raise(SIGQUIT);
+#endif
+      break;
+   case a_X(RAISE_TSTP):
+#ifdef SIGTSTP
+      n_raise(SIGTSTP);
+#endif
       break;
 
    case a_X(CANCEL):

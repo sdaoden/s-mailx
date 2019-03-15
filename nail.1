@@ -3037,6 +3037,12 @@ Move the cursor backward one character
 .Mx
 .Pf ( Cd mle-go-bwd ) .
 .
+.It Ql \ecC
+.Xr raise 3
+.Ql SIGINT
+.Mx
+.Pf ( Cd mle-raise-int ) .
+.
 .It Ql \ecD
 Forward delete the character under the cursor;
 quits \*(UA if used on the empty line unless the internal variable
@@ -3172,6 +3178,12 @@ Move the cursor backward one word boundary
 .Mx
 .Pf ( Cd mle-go-word-bwd ) .
 .
+.It Ql \ecZ
+.Xr raise 3
+.Ql SIGTSTP
+.Mx
+.Pf ( Cd mle-raise-tstp ) .
+.
 .It Ql \ec[
 Escape: reset a possibly used multibyte character input state machine
 and \*(OPally a lingering, incomplete key binding
@@ -3209,19 +3221,15 @@ Backspace:
 .Cd mle-del-bwd .
 .
 .It \(en
-Move the cursor forward one screen width
 .Mx
-.Pf ( Cd mle-go-screen-fwd ) .
+.Cd mle-bell :
+ring the audible bell.
 .
 .It \(en
-Move the cursor backward one screen width
+\*(OP
 .Mx
-.Pf ( Cd mle-go-screen-bwd ) .
-.
-.It \(en
-\*(OP Move the cursor home and clear the screen
-.Mx
-.Pf ( Cd mle-clear-screen ) .
+.Cd mle-clear-screen :
+move the cursor home and clear the screen.
 .
 .It \(en
 .Mx
@@ -3232,8 +3240,19 @@ this will immediately reset a possibly active search etc.
 .
 .It \(en
 .Mx
-.Cd mle-bell :
-ring the audible bell.
+.Cd mle-go-screen-bwd :
+move the cursor backward one screen width.
+.
+.It \(en
+.Mx
+.Cd mle-go-screen-fwd :
+move the cursor forward one screen width.
+.
+.It \(en
+.Mx
+.Cd mle-raise-quit:
+.Xr raise 3
+.Ql SIGQUIT .
 .El
 .\" }}}
 .
