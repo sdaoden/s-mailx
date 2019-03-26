@@ -339,6 +339,6 @@ Occasional tests:
 . NetBSD <https://www.netbsd.org/> (8.0_RC1; i386).
   - Test shcodec-unicode fails, like Solaris.  (Faulty Unicode ctype.)
 
-. Void Linux <https://www.voidlinux.eu/> (x86)
+. Void Linux <https://www.voidlinux.org/> (x86)
 
 # s-ts-mode
