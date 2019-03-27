@@ -774,7 +774,7 @@ option_parse() {
    i="`${awk} -v input=\"${2}\" '
       BEGIN{
          for(i = 0;;){
-            voff = match(input, /[[:alnum:]_]+(='${j}'[^'${j}']+)?/)
+            voff = match(input, /[0-9a-zA-Z_]+(='${j}'[^'${j}']+)?/)
             if(voff == 0)
                break
             v = substr(input, voff, RLENGTH)
@@ -798,7 +798,7 @@ option_doc_of() {
       -v input="${XOPTIONS_DETECT}${XOPTIONS}${XOPTIONS_XTRA}" '
    BEGIN{
       for(;;){
-         voff = match(input, /[[:alnum:]_]+(='${j}'[^'${j}']+)?/)
+         voff = match(input, /[0-9a-zA-Z_]+(='${j}'[^'${j}']+)?/)
          if(voff == 0)
             break
          v = substr(input, voff, RLENGTH)
@@ -827,9 +827,9 @@ option_join_rc() {
    # use multiline values in make.rc; the resulting sh(1)/sed(1) code was very
    # slow in VMs (see [fa2e248]), Aharon Robbins suggested the following
    < ${rc} ${awk} 'BEGIN{line = ""}{
-      gsub(/^[[:space:]]+/, "", $0)
-      gsub(/[[:space:]]+$/, "", $0)
-      if(gsub(/\\$/, "", $0)){
+      sub(/^[ 	]+/, "", $0)
+      sub(/[ 	]+$/, "", $0)
+      if(sub(/\\$/, "", $0)){
          line = line $0
          next
       }else
@@ -846,7 +846,7 @@ option_join_rc() {
          i=${line%%=*}
       else
          i=`${awk} -v LINE="${line}" 'BEGIN{
-            gsub(/=.*$/, "", LINE)
+            sub(/=.*$/, "", LINE)
             print LINE
          }'`
       fi
@@ -860,9 +860,10 @@ option_join_rc() {
          : # Yet present
       else
          j=`${awk} -v LINE="${line}" 'BEGIN{
-            gsub(/^[^=]*=/, "", LINE)
-            gsub(/^\"*/, "", LINE)
-            gsub(/\"*$/, "", LINE)
+            sub(/^[^=]*=/, "", LINE)
+            sub(/^\"*/, "", LINE)
+            sub(/\"*$/, "", LINE)
+            gsub(/\"/, "\\\\\"", LINE)
             print LINE
          }'`
       fi

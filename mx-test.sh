@@ -7639,8 +7639,8 @@ cc_all_configs() {
             VALVALS["VAL_RANDOM"] = 1
          VALNO = 0
       }
-      /^[[:space:]]*OPT_/{
-         sub(/^[[:space:]]*/, "")
+      /^[ 	]*OPT_/{
+         sub(/^[ 	]*/, "")
          # This bails for UnixWare 7.1.4 awk(1), but preceeding = with \
          # does not seem to be a compliant escape for =
          #sub(/=.*$/, "")
@@ -7649,8 +7649,8 @@ cc_all_configs() {
             OPTVALS[OPTNO++] = $1
          next
       }
-      /^[[:space:]]*VAL_/{
-         sub(/^[[:space:]]*/, "")
+      /^[ 	]*VAL_/{
+         sub(/^[ 	]*/, "")
          val = substr($0, index($0, "=") + 1)
          if(val ~ /^\"/){
             val = substr(val, 2)

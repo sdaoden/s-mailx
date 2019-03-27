@@ -104,7 +104,7 @@ printf '%s\n' "${@}" | ${sort} | ${awk} -v COUNT_MODE=${COUNT_MODE} '
          if(po_i == -1)
             exit(1)
 
-         po_i = match($0, /^[[:space:]]*#[[:space:]]*include "/)
+         po_i = match($0, /^[ 	]*#[ 	]*include "/)
          if(po_i == 0)
             continue
 
@@ -114,14 +114,14 @@ printf '%s\n' "${@}" | ${sort} | ${awk} -v COUNT_MODE=${COUNT_MODE} '
 
          # Do we have a comment suffix that clarifies our path?
          h = substr(h, RSTART + 1)
-         po_i = match(h, /[[:space:]]*\/\*[[:space:]]*[^[:space:]]/)
+         po_i = match(h, /[ 	]*\/\*[ 	]*[^ 	]/)
          if(po_i == 0){
             if(!any++)
                printf " \\\n\t\t"
             printf " $(" DNAME "_INCDIR)" xh
          }else{
             h = substr(h, RSTART + RLENGTH - 1) # include first non-space
-            po_i = match(h, /[[:space:]]|\*\//)
+            po_i = match(h, /[ 	]|\*\//)
             h = substr(h, 1, RSTART - 1)
             # No dependency for this?
             if(h != "-"){

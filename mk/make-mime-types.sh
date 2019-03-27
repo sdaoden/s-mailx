@@ -9,7 +9,7 @@ LC_ALL=C
 
 exec ${awk} '
    function add(mt, ln){
-      gsub(/[[:space:]]+/, " ", ln);
+      gsub(/[ 	]]+/, " ", ln);
       i = split(ln, i_a);
       e = "";
       for(j = 1; j <= i; ++j){
@@ -22,22 +22,22 @@ exec ${awk} '
          e_a[mt] = e_a[mt] e
       }
    }
-   /^[[:space:]]*#/{next}
-   /^[[:space:]]*$/{ltype = ""; next}
-   /^[[:space:]]/{
+   /^[ 	]*#/{next}
+   /^[ 	]*$/{ltype = ""; next}
+   /^[ 	]/{
       if(!ltype)
          print "FAULTY CONTINUATION: " $0 >> "/dev/stderr";
       add(ltype, $0);
       next
    }
-   /^(\?([thHq])? )?[[:alpha:]]/{
+   /^(\?([thHq])? )?[a-zA-Z]/{
       if($1 ~ /^\?([thHq])?$/){
          pa = $1;
          $1 = $2;
          $2 = ""
       }else
          pa = "";
-      if($1 !~ /^([[:alnum:]]+)\/([[:alnum:]_+-]+)$/)
+      if($1 !~ /^([0-9a-zA-Z]+)\/([0-9a-zA-Z_+-]+)$/)
          print "FAULTY MIME TYPE: <" $1 ">" >> "/dev/stderr";
       ltype = $1; $1 = "";
       if(pa)
