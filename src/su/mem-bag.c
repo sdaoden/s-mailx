@@ -586,14 +586,18 @@ su_mem_bag_auto_allocate(struct su_mem_bag *self, uz size, uz no, u32 mbaf
          /* Have a pool, chunk in rv (and: cp==.mbab_caster == rv+chunksz) */
 jhave_pool:;
 #if a_MEMBAG_HULL
-         cp = S(char*,rv);
-         rv = su_ALLOCATE_LOC(size, 1, (mbaf | su_MEM_ALLOC_MARK_AUTO),
-               su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
-         if(rv != NIL)
-            *R(void**,cp) = rv;
-         else{
-            mbabp->mbab_caster = cp;
-            goto jleave;
+         /* C99 */{
+            union {void *p; void **pp;} v;
+
+            v.p = rv;
+            rv = su_ALLOCATE_LOC(size, 1, (mbaf | su_MEM_ALLOC_MARK_AUTO),
+                  su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
+            if(rv != NIL)
+               *v.pp = rv;
+            else{
+               mbabp->mbab_caster = v.p;
+               goto jleave;
+            }
          }
 #endif
       }else{
@@ -615,9 +619,12 @@ jhave_pool:;
          rv = su_ALLOCATE_LOC(size, 1,
                (mbaf | su_MEM_ALLOC_MARK_AUTO_HUGE),
                su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
-         if(rv != NIL)
-            *R(void**,mbahp->mbah_buf) = rv;
-         else{
+         if(rv != NIL){
+            union {void *p; void **pp;} v;
+
+            v.p = mbahp->mbah_buf;
+            *v.pp = rv;
+         }else{
             su_FREE(mbahp);
             goto jleave;
          }
@@ -750,13 +757,16 @@ jhave_pool:
       if(!isheap)
          rv = mblcp->mblc_buf;
       else{
-         cp = S(char*,rv);
+         union {void *p; void **pp;} v;
+
+         v.p = rv;
          rv = su_ALLOCATE_LOC(size, 1, (mbaf | su_MEM_ALLOC_MARK_LOFI),
                su_DBG_LOC_ARGS_FILE, su_DBG_LOC_ARGS_LINE);
-         if(rv != NIL)
-            *R(void**,mblcp->mblc_buf) = S(void*,rv);
-         else{
-            mblpp->mblp_caster = cp;
+         if(rv != NIL){
+            v.p = mblcp->mblc_buf;
+            *v.pp = S(void*,rv);
+         }else{
+            mblpp->mblp_caster = v.p;
             goto jleave;
          }
       }
@@ -800,7 +810,10 @@ su_mem_bag_lofi_free(struct su_mem_bag *self, void *ovp  su_DBG_LOC_ARGS_DECL){
 
       /* From heap? */
       if(R(up,mblcp->mblc_last) & 0x1){
-         if(*R(void**,mblcp->mblc_buf) != ovp)
+         union {void *p; void **pp;} v;
+
+         v.p = mblcp->mblc_buf;
+         if(*v.pp != ovp)
             goto jeinval;
       }else if(ovp != mblcp->mblc_buf){
 jeinval:
