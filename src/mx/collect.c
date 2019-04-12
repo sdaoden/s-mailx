@@ -1403,7 +1403,7 @@ jearg:
 "~.            Commit and send message\n"
 "~: <command>  Execute an internal command\n"
 "~< <file>     Insert <file> (\"~<! <command>\": insert shell command)\n"
-"~@ [<files>]  Edit [Add] attachments (file[=in-charset[#out-charset]])\n"
+"~@ [<files>]  Edit [Add] attachments (file[=in-charset[#out-charset]], #no)\n"
 "~c <users>    Add users to Cc: list (`~b': to Bcc:)\n"
 "~e, ~v        Edit message via $EDITOR / $VISUAL\n"
             ), n_stdout);

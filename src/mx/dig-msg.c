@@ -155,6 +155,35 @@ a_dmsg_cmd(FILE *fp, struct n_dig_msg_ctx *dmcp, char const *cmd, uz cmdl,
       if(cmda[0] != NULL)
          goto jecmd;
       rv = (fputs("210 " n_DIG_MSG_PLUMBING_VERSION "\n", fp) != EOF);
+   }else if((cmdl == 1 && cmd[0] == '?') ||
+         su_cs_starts_with_case_n("help", cmd, cmdl)){
+      if(cmda[0] != NULL)
+         goto jecmd;
+      rv = (fputs("211 Omnia vincit Amor et nos cedamos Amori\n", fp) != EOF &&
+#ifdef mx_HAVE_UISTRINGS
+            fputs(_(
+               "attachment:\n"
+               "   attribute name (212; 501)\n"
+               "   attribute-at position\n"
+               "   attribute-set name key value (210; 505/501)\n"
+               "   attribute-set-at position key value\n"
+               "   insert file[=input-charset[#output-charset]] "
+                  "(210; 501/505/506)"
+               "   insert #message-number\n"
+               "   list (212; 501)\n"
+               "   remove name (210; 501/506)\n"
+               "   remove-at position (210; 501/505)\n"), fp) != EOF &&
+            fputs(_(
+               "header\n"
+               "   insert field content (210; 501/505/506)\n"
+               "   list [field] (210; [501]);\n"
+               "   remove field (210; 501/505)\n"
+               "   remove-at field position (210; 501/505)\n"
+               "   show field (211/212; 501)\n"
+               "help (211)\n"
+               "version (210)\n"), fp) != EOF &&
+#endif
+            putc('\n', fp) != EOF);
    }else{
 jecmd:
       fputs("500\n", fp);
@@ -183,8 +212,6 @@ a_dmsg__header(FILE *fp, struct n_dig_msg_ctx *dmcp, char *cmda[3]){
          ;
       if(i > 0 && cp[i - 1] == ':'){
          --i;
-         while(i > 0 && su_cs_is_blank(cp[i - 1]))
-            --i;
          cmda[1][i] = '\0';
       }
    }

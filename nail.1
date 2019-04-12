@@ -8107,196 +8107,11 @@ The following (case-insensitive) commands are supported:
 .
 .
 .Bl -hang -width ".It Cm version"
-.It Cm version
-This command will print the protocol version via 210.
-.
-.It Cm header
-This command allows listing, inspection, and editing of message headers.
-Header name case is not normalized, and case-insensitive comparison
-should be used when matching names.
-The second argument specifies the subcommand to apply, one of:
-.
-.
-.Bl -hang -width ".It Cm remove"
-.It Cm list
-Without a third argument a list of all yet existing headers is given via
-.Ql 210 ;
-this command is the default command of
-.Cm header
-if no second argument has been given.
-A third argument restricts output to the given header only, which may
-fail with
-.Ql 501
-if no such field is defined.
-.
-.It Cm show
-Shows the content of the header given as the third argument.
-Dependent on the header type this may respond with
-.Ql 211
-or
-.Ql 212 ;
-any failure results in
-.Ql 501 .
-.
-.It Cm remove
-This will remove all instances of the header given as the third
-argument, reporting
-.Ql 210
-upon success,
-.Ql 501
-if no such header can be found, and
-.Ql 505
-on \*(UA namespace violations.
-.
-.It Cm remove-at
-This will remove from the header given as the third argument the
-instance at the list position (counting from one!) given with the fourth
-argument, reporting
-.Ql 210
-upon success or
-.Ql 505
-if the list position argument is not a number or on \*(UA namespace
-violations, and
-.Ql 501
-if no such header instance exists.
-.
-.It Cm insert
-Create a new or an additional instance of the header given in the third
-argument, with the header body content as given in the fourth argument
-(the remains of the line).
-It may return
-.Ql 501
-if the third argument specifies a free-form header field name that is
-invalid, or if body content extraction fails to succeed,
-.Ql 505
-if any extracted address does not pass syntax and/or security checks or
-on \*(UA namespace violations, and
-.Ql 506
-to indicate prevention of excessing a single-instance header \(em note that
-.Ql Subject:
-can be appended to (a space separator will be added automatically first).
-.Ql To: ,
-.Ql Cc:
-or
-.Ql Bcc:
-support the
-.Ql ?single
-modifier to enforce treatment as a single addressee, e.g.,
-.Ql header insert To?single: exa, <m@ple> ;
-the word
-.Ql single
-is optional.
-.Pp
-.Ql 210
-is returned upon success, followed by the name of the header and the list
-position of the newly inserted instance.
-The list position is always 1 for single-instance header fields.
-All free-form header fields are managed in a single list.
-.El
-.
-.
-.Pp
-In compose-mode read-only access to optional pseudo headers in the \*(UA
-private namespace is available:
-.
-.
-.Pp
-.Bl -tag -compact -width ".It Va BaNg"
-.It Ql Mailx-Command:
-The name of the command that generates the message, one of
-.Ql forward ,
-.Ql Lreply ,
-.Ql mail ,
-.Ql Reply ,
-.Ql reply ,
-.Ql resend .
-This pseudo header always exists (in compose-mode).
-.
-.It Ql Mailx-Raw-To:
-.It Ql Mailx-Raw-Cc:
-.It Ql Mailx-Raw-Bcc:
-Represent the frozen initial state of these headers before any
-transformation (e.g.,
-.Ic alias ,
-.Ic alternates ,
-.Va recipients-in-cc
-etc.) took place.
-.
-.It Ql Mailx-Orig-From:
-.It Ql Mailx-Orig-To:
-.It Ql Mailx-Orig-Cc:
-.It Ql Mailx-Orig-Bcc:
-The values of said headers of the original message which has been
-addressed by any of
-.Ic reply , forward , resend .
-.El
-.
-.
 .It Cm attachment
 This command allows listing, removal and addition of message attachments.
 The second argument specifies the subcommand to apply, one of:
 .
 .Bl -hang -width ".It Cm remove"
-.It Cm list
-List all attachments via
-.Ql 212 ,
-or report
-.Ql 501
-if no attachments exist.
-This command is the default command of
-.Cm attachment
-if no second argument has been given.
-.
-.It Cm remove
-This will remove the attachment given as the third argument, and report
-.Ql 210
-upon success or
-.Ql 501
-if no such attachment can be found.
-If there exists any path component in the given argument, then an exact
-match of the path which has been used to create the attachment is used
-directly, but if only the basename of that path matches then all
-attachments are traversed to find an exact match first, and the removal
-occurs afterwards; if multiple basenames match, a
-.Ql 506
-error occurs.
-Message attachments are treated as absolute pathnames.
-.Pp
-If no path component exists in the given argument, then all attachments
-will be searched for
-.Ql filename=
-parameter matches as well as for matches of the basename of the path
-which has been used when the attachment has been created; multiple
-matches result in a
-.Ql 506 .
-.
-.It Cm remove-at
-This will interpret the third argument as a number and remove the
-attachment at that list position (counting from one!), reporting
-.Ql 210
-upon success or
-.Ql 505
-if the argument is not a number or
-.Ql 501
-if no such attachment exists.
-.
-.It Cm insert
-Adds the attachment given as the third argument, specified exactly as
-documented for the command line option
-.Fl a ,
-and supporting the message number extension as documented for
-.Ic ~@ .
-This reports
-.Ql 210
-upon success, with the index of the new attachment following,
-.Ql 505
-if the given file cannot be opened,
-.Ql 506
-if an on-the-fly performed character set conversion fails, otherwise
-.Ql 501
-is reported; this is also reported if character set conversion is
-requested but not available.
-.
 .It Cm attribute
 This uses the same search mechanism as described for
 .Cm remove
@@ -8359,7 +8174,198 @@ This uses the same search mechanism as described for
 .Cm remove-at
 and is otherwise identical to
 .Cm attribute-set .
+.
+.It Cm insert
+Adds the attachment given as the third argument, specified exactly as
+documented for the command line option
+.Fl a ,
+and supporting the message number extension as documented for
+.Ic ~@ .
+This reports
+.Ql 210
+upon success, with the index of the new attachment following,
+.Ql 505
+if the given file cannot be opened,
+.Ql 506
+if an on-the-fly performed character set conversion fails, otherwise
+.Ql 501
+is reported; this is also reported if character set conversion is
+requested but not available.
+.
+.It Cm list
+List all attachments via
+.Ql 212 ,
+or report
+.Ql 501
+if no attachments exist.
+This command is the default command of
+.Cm attachment
+if no second argument has been given.
+.
+.It Cm remove
+This will remove the attachment given as the third argument, and report
+.Ql 210
+upon success or
+.Ql 501
+if no such attachment can be found.
+If there exists any path component in the given argument, then an exact
+match of the path which has been used to create the attachment is used
+directly, but if only the basename of that path matches then all
+attachments are traversed to find an exact match first, and the removal
+occurs afterwards; if multiple basenames match, a
+.Ql 506
+error occurs.
+Message attachments are treated as absolute pathnames.
+.Pp
+If no path component exists in the given argument, then all attachments
+will be searched for
+.Ql filename=
+parameter matches as well as for matches of the basename of the path
+which has been used when the attachment has been created; multiple
+matches result in a
+.Ql 506 .
+.
+.It Cm remove-at
+This will interpret the third argument as a number and remove the
+attachment at that list position (counting from one!), reporting
+.Ql 210
+upon success or
+.Ql 505
+if the argument is not a number or
+.Ql 501
+if no such attachment exists.
 .El
+.
+.
+.It Cm header
+This command allows listing, inspection, and editing of message headers.
+Header name case is not normalized, and case-insensitive comparison
+should be used when matching names.
+The second argument specifies the subcommand to apply, one of:
+.
+.
+.Bl -hang -width ".It Cm remove"
+.It Cm insert
+Create a new or an additional instance of the header given in the third
+argument, with the header body content as given in the fourth argument
+(the remains of the line).
+It may return
+.Ql 501
+if the third argument specifies a free-form header field name that is
+invalid, or if body content extraction fails to succeed,
+.Ql 505
+if any extracted address does not pass syntax and/or security checks or
+on \*(UA namespace violations, and
+.Ql 506
+to indicate prevention of excessing a single-instance header \(em note that
+.Ql Subject:
+can be appended to (a space separator will be added automatically first).
+.Ql To: ,
+.Ql Cc:
+or
+.Ql Bcc:
+support the
+.Ql ?single
+modifier to enforce treatment as a single addressee, e.g.,
+.Ql header insert To?single: exa, <m@ple> ;
+the word
+.Ql single
+is optional.
+.Pp
+.Ql 210
+is returned upon success, followed by the name of the header and the list
+position of the newly inserted instance.
+The list position is always 1 for single-instance header fields.
+All free-form header fields are managed in a single list.
+.
+.It Cm list
+Without a third argument a list of all yet existing headers is given via
+.Ql 210 ;
+this command is the default command of
+.Cm header
+if no second argument has been given.
+A third argument restricts output to the given header only, which may
+fail with
+.Ql 501
+if no such field is defined.
+.
+.It Cm remove
+This will remove all instances of the header given as the third
+argument, reporting
+.Ql 210
+upon success,
+.Ql 501
+if no such header can be found, and
+.Ql 505
+on \*(UA namespace violations.
+.
+.It Cm remove-at
+This will remove from the header given as the third argument the
+instance at the list position (counting from one!) given with the fourth
+argument, reporting
+.Ql 210
+upon success or
+.Ql 505
+if the list position argument is not a number or on \*(UA namespace
+violations, and
+.Ql 501
+if no such header instance exists.
+.
+.It Cm show
+Shows the content of the header given as the third argument.
+Dependent on the header type this may respond with
+.Ql 211
+or
+.Ql 212 ;
+any failure results in
+.Ql 501 .
+.El
+.
+.
+.Pp
+In compose-mode read-only access to optional pseudo headers in the \*(UA
+private namespace is available:
+.
+.
+.Pp
+.Bl -tag -compact -width ".It Va BaNg"
+.It Ql Mailx-Command:
+The name of the command that generates the message, one of
+.Ql forward ,
+.Ql Lreply ,
+.Ql mail ,
+.Ql Reply ,
+.Ql reply ,
+.Ql resend .
+This pseudo header always exists (in compose-mode).
+.
+.It Ql Mailx-Raw-To:
+.It Ql Mailx-Raw-Cc:
+.It Ql Mailx-Raw-Bcc:
+Represent the frozen initial state of these headers before any
+transformation (e.g.,
+.Ic alias ,
+.Ic alternates ,
+.Va recipients-in-cc
+etc.) took place.
+.
+.It Ql Mailx-Orig-From:
+.It Ql Mailx-Orig-To:
+.It Ql Mailx-Orig-Cc:
+.It Ql Mailx-Orig-Bcc:
+The values of said headers of the original message which has been
+addressed by any of
+.Ic reply , forward , resend .
+.El
+.
+.
+.It Cm help , \&?
+Show an abstract of the above commands via
+.Ql 211 .
+.
+.It Cm version
+This command will print the protocol version via
+.Ql 210 .
 .El
 .
 .
