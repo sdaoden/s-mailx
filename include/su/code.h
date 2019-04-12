@@ -1,7 +1,8 @@
 /*@ Code of the basic infrastructure (POD types, macros etc.) and functions.
  *@ And main documentation entry point, as below.
  *@ - Reacts upon su_HAVE_DEBUG, su_HAVE_DEVEL, and NDEBUG.
- *@   The latter is a precondition for su_HAVE_INLINE.
+ *@   The latter is a precondition for su_HAVE_INLINE; dependent upon compiler
+ *@   __OPTIMIZE__ (and __OPTIMIZE_SIZE__) may be looked at in addition, then.
  *@   su_HAVE_DEVEL is meant as a possibility to enable test paths with
  *@   debugging disabled.
  *@ - Some macros require su_FILE to be defined to a literal.
@@ -437,10 +438,16 @@ do{\
 #if su_C_LANG
 # if su_CC_CLANG || su_CC_GCC || su_CC_PCC || defined DOXYGEN
 #  if defined __STDC_VERSION__ && __STDC_VERSION__ +0 >= 199901L
-#   ifndef NDEBUG
+    /* All CCs coming here know __OPTIMIZE__ */
+#   if !defined NDEBUG || !defined __OPTIMIZE__
 #    define su_INLINE static inline /*!< \_ */
 #   else
-#    define su_INLINE inline
+     /* xxx gcc 8.3.0 bug: does not truly inline with -Os */
+#    if su_CC_GCC && defined __OPTIMIZE_SIZE__
+#     define su_INLINE inline __attribute__((always_inline))
+#    else
+#     define su_INLINE inline
+#    endif
 #   endif
 #   define su_SINLINE static inline /*!< \_ */
 #  else
